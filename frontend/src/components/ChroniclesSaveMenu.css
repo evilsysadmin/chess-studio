@@ -1,0 +1,138 @@
+.chronicles-save-menu {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: grid;
+  place-items: center;
+  isolation: isolate;
+  overflow: auto;
+  min-height: 100dvh;
+  padding: max(24px, env(safe-area-inset-top)) max(14px, env(safe-area-inset-right)) max(24px, env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left));
+  color: #f2e2c4;
+  background: #070b12;
+}
+.chronicles-save-menu__sky {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at 64% 18%, rgba(130, 166, 188, .34), transparent 21%),
+    linear-gradient(180deg, #141f32 0%, #27354b 37%, #172a33 62%, #111716 100%);
+}
+.chronicles-save-menu__sky::after {
+  content: '';
+  position: absolute;
+  inset: 38% -5% 0;
+  background:
+    radial-gradient(ellipse at 50% 88%, rgba(201, 146, 69, .13), transparent 43%),
+    linear-gradient(180deg, transparent, rgba(3, 7, 11, .9));
+}
+.chronicles-save-menu__moon {
+  position: absolute;
+  right: 20%;
+  top: 11%;
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: #f3eacb;
+  box-shadow: 0 0 46px 12px rgba(202, 214, 213, .28), 0 0 136px 34px rgba(130, 153, 186, .15);
+}
+.chronicles-save-menu__tower {
+  position: absolute;
+  bottom: 0;
+  width: 19vw;
+  height: 50vh;
+  border-radius: 22px 22px 0 0;
+  background: linear-gradient(90deg, #0b1119, #18232b 48%, #0a1118);
+  box-shadow: 15px 0 48px rgba(0, 0, 0, .45);
+  transform: skewY(4deg);
+}
+.chronicles-save-menu__tower--near { left: -7vw; }
+.chronicles-save-menu__tower--far { right: -8vw; bottom: -8vh; height: 38vh; opacity: .6; }
+.chronicles-save-menu__panel {
+  width: min(590px, 100%);
+  max-height: calc(100dvh - 42px);
+  overflow: auto;
+  padding: clamp(20px, 4vw, 42px);
+  border: 1px solid rgba(226, 179, 100, .4);
+  border-radius: 12px;
+  background: linear-gradient(155deg, rgba(34, 27, 24, .94), rgba(11, 15, 22, .96));
+  box-shadow: 0 26px 90px rgba(0, 0, 0, .62), inset 0 1px 0 rgba(250, 208, 137, .15);
+  backdrop-filter: blur(14px);
+}
+.chronicles-save-menu__kicker {
+  margin: 0 0 12px;
+  color: #d2af72;
+  font-size: .7rem;
+  letter-spacing: .22em;
+}
+.chronicles-save-menu h1 {
+  margin: 0;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: clamp(2.2rem, 7vw, 3.5rem);
+  font-weight: 500;
+  letter-spacing: -.035em;
+}
+.chronicles-save-menu h1 span { display: block; font-size: .54em; color: #cfaa74; letter-spacing: .06em; }
+.chronicles-save-menu__intro { max-width: 34rem; color: #d0bfa5; line-height: 1.5; font-size: .91rem; }
+.chronicles-save-menu__actions { display: grid; gap: 9px; margin-top: 22px; }
+.chronicles-save-menu button {
+  min-height: 46px;
+  padding: 10px 15px;
+  border: 1px solid rgba(218, 168, 100, .38);
+  border-radius: 7px;
+  color: #f0daba;
+  font: inherit;
+  font-size: .88rem;
+  cursor: pointer;
+  background: rgba(30, 33, 33, .8);
+  transition: border-color .16s ease, background .16s ease;
+}
+.chronicles-save-menu button:hover,
+.chronicles-save-menu button:focus-visible { border-color: #e6bb78; background: rgba(86, 64, 37, .62); outline: 2px solid rgba(230, 187, 120, .2); outline-offset: 1px; }
+.chronicles-save-menu button:disabled { opacity: .35; cursor: not-allowed; }
+.chronicles-save-menu button.is-primary {
+  color: #26170c;
+  font-weight: 750;
+  background: linear-gradient(180deg, #f4d39a, #cb9452);
+}
+.chronicles-save-menu button.is-exit { background: transparent; color: #aa9b89; border-color: transparent; }
+.chronicles-save-menu__actions button { text-align: left; }
+.chronicles-save-menu__actions button small { display: block; font-size: .7rem; opacity: .78; margin-top: 3px; }
+.chronicles-save-menu__browser-heading { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.chronicles-save-menu__browser-heading h2 { margin: 8px 0 12px; font-family: Georgia, serif; font-weight: 500; }
+.chronicles-save-menu__browser-heading button { min-height: 44px; }
+.chronicles-save-menu__list { margin: 0; padding: 0; display: grid; list-style: none; gap: 10px; }
+.chronicles-save-menu__list li { min-width: 0; padding: 12px; background: rgba(11, 15, 20, .7); border: 1px solid rgba(220, 180, 120, .22); border-radius: 8px; }
+.chronicles-save-menu__save { display: grid; gap: 5px; }
+.chronicles-save-menu__save strong { overflow-wrap: anywhere; }
+.chronicles-save-menu__save span, .chronicles-save-menu__save em { color: #b5a690; font-size: .75rem; }
+.chronicles-save-menu__save em { color: #e1bd83; }
+.chronicles-save-menu__row-actions { margin-top: 10px; display: flex; gap: 6px; flex-wrap: wrap; }
+.chronicles-save-menu__row-actions button { flex: 1 1 95px; }
+.chronicles-save-menu__edit { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 10px; }
+.chronicles-save-menu__edit label { flex: 1 0 100%; font-size: .76rem; }
+.chronicles-save-menu__edit input {
+  flex: 2 1 160px;
+  min-height: 46px;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid #987653;
+  border-radius: 7px;
+  background: #14171a;
+  color: #f5e8d7;
+}
+.chronicles-save-menu__confirm { margin-top: 10px; }
+.chronicles-save-menu__confirm p { font-size: .78rem; }
+.chronicles-save-menu__confirm button { margin: 4px; }
+.chronicles-save-menu__empty, .chronicles-save-menu__disclaimer { color: #b5a894; font-size: .78rem; line-height: 1.5; }
+.chronicles-save-menu__disclaimer { margin: 16px 0 0; }
+@media (max-width: 520px) {
+  .chronicles-save-menu__panel { max-height: calc(100dvh - 28px); padding: 18px; }
+  .chronicles-save-menu__moon { width: 48px; height: 48px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .chronicles-save-menu * { transition: none !important; }
+}
