@@ -442,6 +442,23 @@ func world_to_stage(world: Vector2, height: float = 0.0) -> Vector3:
 		(world.y - center.y) * WORLD_SCALE
 	)
 
+# The footballer billboards are deliberately unshaded. Apparent differences
+# come from highlights/shadows already painted into different view atlases.
+# Measured median/mean torso brightness on the approved directional banks:
+# field front ~0.482, back ~0.449; keeper front ~0.582, back ~0.562,
+# rear diagonal ~0.540. Apply modest, achromatic view compensation without
+# touching any canonical PNG, kit hue, character identity or pitch shadows.
+static func player_view_light_gain(role: String, animation: StringName) -> float:
+	var pose := String(animation)
+	if pose.ends_with("back_diagonal"):
+		return 1.07 if role == "keeper" else 1.03
+	if pose.ends_with("front_diagonal"):
+		return 1.0
+	if pose.ends_with("back"):
+		return 1.04 if role == "keeper" else 1.10
+	return 1.0
+
+
 func sync_presentation(delta: float, mode: String) -> void:
 	for team in match_node.teams:
 		for player in team:
@@ -486,6 +503,11 @@ func sync_presentation(delta: float, mode: String) -> void:
 					sprite.speed_scale = player.visual.speed_scale
 					sprite.frame = player.visual.frame
 					sprite.flip_h = player.visual.flip_h
+			# One neutral light level across the pitch. The light gain only
+			# corrects authored rear-view tonal differences; no spotlight or
+			# per-position effects, for either team and all ten footballers.
+			var gain := player_view_light_gain(player.role, sprite.animation)
+			sprite.modulate = Color(gain, gain, gain, 1.0)
 			sprite.pixel_size = TACTICAL_PLAYER_PIXEL_SIZE if mode == "tactical" else PLAYER_PIXEL_SIZE
 			_sync_player_secondary_motion(player, sprite, proxy)
 			var is_controlled: bool = player == match_node.controlled
