@@ -783,6 +783,9 @@ export default function ChroniclesOfMatthias({ onExit }) {
 
   const loadSavedGame = (runId) => {
     if (!chroniclesSelectSavedRun(FIRST_PERSON_RUN_SCOPE, runId)) return;
+    // Loading an existing expedition skips character setup; use this click to
+    // request the same native fullscreen/orientation affordance as New game.
+    void requestChroniclesLandscapeOnEntry();
     activeRunIdRef.current = null;
     authoritativeRunRef.current = null;
     checkpointFingerprintRef.current = '';
