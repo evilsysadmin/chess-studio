@@ -136,3 +136,27 @@
 @media (prefers-reduced-motion: reduce) {
   .chronicles-save-menu * { transition: none !important; }
 }
+
+/* Landscape phones have enough width for all actions, but very little height.
+   Keep the complete primary menu visible rather than trapping its last buttons
+   behind a visually unmarked scroll region. Save lists still scroll naturally. */
+@media (max-height: 480px) and (orientation: landscape) {
+  .chronicles-save-menu {
+    padding: max(6px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right))
+      max(6px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
+  }
+  .chronicles-save-menu__panel {
+    max-height: calc(100dvh - 12px);
+    padding: 12px 22px;
+  }
+  .chronicles-save-menu__kicker { margin-bottom: 5px; font-size: .6rem; }
+  .chronicles-save-menu h1 { font-size: 1.95rem; line-height: 1.08; }
+  .chronicles-save-menu h1 span { display: inline; margin-left: .25em; }
+  .chronicles-save-menu__intro { display: none; }
+  .chronicles-save-menu__actions { margin-top: 9px; gap: 4px; }
+  .chronicles-save-menu__actions button {
+    min-height: 44px;
+    padding: 6px 12px;
+    line-height: 1.2;
+  }
+}
