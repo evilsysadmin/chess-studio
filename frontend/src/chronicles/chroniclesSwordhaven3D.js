@@ -101,6 +101,68 @@ export function swordhavenGrassTexture() {
   return texture;
 }
 
+
+const cachedTownSurfaceTextures = new Map();
+
+// One authored-style set of tiny texture patterns for the five storefronts.
+// Reused across buildings/runs: no material-per-brick or new draw calls.
+export function swordhavenSurfaceTexture(kind) {
+  if (!['stucco', 'masonry', 'roof', 'timber'].includes(kind)) {
+    throw new Error('Unsupported Swordhaven material: ' + kind);
+  }
+  if (cachedTownSurfaceTextures.has(kind)) return cachedTownSurfaceTextures.get(kind);
+  const size = 128;
+  const pixels = new Uint8Array(size * size * 4);
+  const hash = (x, y) => {
+    let n = Math.imul(x + 229, 0x27d4eb2d) ^ Math.imul(y + 31, 0x165667b1);
+    n ^= n >>> 15;
+    return ((n ^ (n >>> 11)) >>> 0) / 0xffffffff;
+  };
+  for (let y = 0; y < size; y += 1) {
+    for (let x = 0; x < size; x += 1) {
+      const grain = hash(x, y) - 0.5;
+      const blur = (hash(Math.floor(x / 7), Math.floor(y / 7)) - 0.5);
+      let tone;
+      if (kind === 'stucco') {
+        // Fine limewash speckles and broad weathered patches.
+        tone = 235 + blur * 20 + grain * 12;
+      } else if (kind === 'masonry') {
+        // Staggered courses; each stone varies independently and mortar is
+        // recessed, rather than painting a grid over every building face.
+        const row = Math.floor(y / 24);
+        const sx = (x + (row % 2) * 17) % 34;
+        const sy = y % 24;
+        const stone = hash(Math.floor((x + (row % 2) * 17) / 34), row);
+        tone = sx < 2 || sy < 2 ? 167 : 221 + stone * 26 + grain * 10;
+      } else if (kind === 'roof') {
+        const row = Math.floor(y / 16);
+        const sx = (x + (row % 2) * 11) % 22;
+        const sy = y % 16;
+        const tile = hash(Math.floor((x + (row % 2) * 11) / 22), row);
+        tone = sx < 1 || sy < 2 ? 173 : 224 + tile * 28 + grain * 5;
+      } else {
+        // Directional fibres for heavy dark-oak beams and doors.
+        tone = 221 + Math.sin(y * 0.46 + blur * 3) * 11 + blur * 17 + grain * 7;
+      }
+      const value = Math.max(0, Math.min(255, Math.round(tone)));
+      const index = (y * size + x) * 4;
+      pixels[index] = pixels[index + 1] = pixels[index + 2] = value;
+      pixels[index + 3] = 255;
+    }
+  }
+  const texture = new THREE.DataTexture(pixels, size, size, THREE.RGBAFormat);
+  texture.name = 'swordhaven-' + kind + '-surface';
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+  texture.repeat.set(kind === 'stucco' ? 2 : 3, kind === 'stucco' ? 2 : 3);
+  texture.magFilter = THREE.LinearFilter;
+  texture.minFilter = THREE.LinearMipmapLinearFilter;
+  texture.generateMipmaps = true;
+  texture.needsUpdate = true;
+  cachedTownSurfaceTextures.set(kind, texture);
+  return texture;
+}
+
 // The dome moves with the camera but never rotates with it: the sun stays in
 // the same compass direction and the horizon remains stable while walking.
 export function createSwordhavenSkyDome(sunDirection) {
@@ -205,7 +267,7 @@ function building(spec, mats, coarse, contentIds, center) {
   const depth = isTavern ? 8.2 : 7.1;
   const height = isTemple ? 6.3 : isTavern ? 5.7 : 5.25;
   const facadeZ = depth / 2 + 0.10;
-  const roof = material(spec.roof);
+  const roof = material(spec.roof, { map: swordhavenSurfaceTexture('roof'), roughness: 0.95 });
   const roofRidgeY = height + 1.8;
   const wallMaterial = isTemple ? mats.stone : mats.plaster;
   const walls = mesh(root, new THREE.BoxGeometry(width, height, depth), wallMaterial,
@@ -440,8 +502,10 @@ export function buildSwordhavenScene(scene, { scenePlan = {}, coarsePointer = fa
   scene.add(root);
   const mats = {
     grass: material(0xffffff, { map: swordhavenGrassTexture(), roughness: 0.98 }), cobble: material(0x9d9588),
-    stone: material(0x989084), plaster: material(0xd7c2a3),
-    timber: material(0x59412f), gold: material(0xd6ae67, { metalness: 0.48 }),
+    stone: material(0xafa597, { map: swordhavenSurfaceTexture('masonry'), roughness: 0.95 }),
+    plaster: material(0xe0caac, { map: swordhavenSurfaceTexture('stucco'), roughness: 0.97 }),
+    timber: material(0x694b34, { map: swordhavenSurfaceTexture('timber'), roughness: 0.85 }),
+    gold: material(0xd6ae67, { metalness: 0.48 }),
     window: material(0xf8b96e, { emissive: 0x925124, emissiveIntensity: 0.45 }),
     leaves: material(0x64864c), flowers: material(0xc7756c),
     arcane: material(0x9576db, { emissive: 0x403b99, emissiveIntensity: 1.1 }),
