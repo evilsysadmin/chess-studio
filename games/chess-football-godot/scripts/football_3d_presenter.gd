@@ -25,6 +25,12 @@ const CANONICAL_BODY_HEIGHT_PIXELS := 120.0
 const DIAGONAL_WIDTH_COMPENSATION := 0.91
 const PLAYER_RUN_BOB := 0.050
 const PLAYER_SPRINT_BOB := 0.072
+# The approved keeper frames do move, but many poses are only a few pixels
+# apart at broadcast zoom. Make the real stride readable using a modest
+# diegetic lean/sway/weight transfer; do not change canonical raster anatomy.
+const KEEPER_STRIDE_EXTRA_SWAY := 0.075
+const KEEPER_STRIDE_EXTRA_BOB := 0.075
+const KEEPER_STRIDE_EXTRA_LEAN_DEGREES := 9.5
 const STAMINA_BAR_WIDTH := 0.76
 const STAMINA_BAR_DEPTH := 0.10
 const STAMINA_BAR_Z := 0.62
@@ -634,6 +640,23 @@ func _sync_player_secondary_motion(player: Footballer, sprite: AnimatedSprite3D,
 		stretch_x = 0.95 + absf(cos(phase)) * 0.028
 		stretch_y = 1.04 - absf(cos(phase)) * 0.018
 		tilt_degrees = -facing_sign * (7.5 + sin(phase) * 1.8) * moving_weight
+	# Only the keeper receives stronger *visible* weight transfer.
+	# It shares the same 8-frame cadence; no animation restarts or added clocks.
+	# At broadcast distance the current canonical feet and gloves otherwise
+	# move less than a couple of screen pixels, reading as a sliding cut-out.
+	# This is presentation only: collisions, AI speed and the authored atlas
+	# remain unchanged; stops and save/tackle animations keep their own poses.
+	if (
+		player.role == "keeper"
+		and moving_weight > 0.0
+		and (animation_name == "run" or animation_name.begins_with("run_")
+			or animation_name == "sprint" or animation_name.begins_with("sprint_"))
+	):
+		var foot_phase := sin(phase)
+		lateral_sway += foot_phase * KEEPER_STRIDE_EXTRA_SWAY * moving_weight
+		bob += absf(foot_phase) * KEEPER_STRIDE_EXTRA_BOB * moving_weight
+		tilt_degrees += foot_phase * KEEPER_STRIDE_EXTRA_LEAN_DEGREES * moving_weight
+		stretch_x *= 1.0 + foot_phase * 0.035 * moving_weight
 	elif animation_name == "pass":
 		bob = absf(sin(phase)) * 0.025
 		lateral_sway = -facing_sign * 0.026 * sin(phase)
