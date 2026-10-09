@@ -217,6 +217,11 @@ def save_idle_alpha_proof(
     return str(path.relative_to(out_root))
 
 
+def source_sha256(path: Path) -> str:
+    with path.open("rb") as handle:
+        return hashlib.file_digest(handle, "sha256").hexdigest()
+
+
 def export_atlas(weapon: str, source: Path, out_root: Path, *, cell: int, cols: int, rows: int) -> dict:
     atlas = Image.open(source).convert("RGBA")
     if V9_NAME_RE.search(source.name):
@@ -294,7 +299,7 @@ def export_atlas(weapon: str, source: Path, out_root: Path, *, cell: int, cols: 
     return {
         "weapon": weapon,
         "source": source.name,
-        "sourceSha256": hashlib.file_digest(source.open("rb"), "sha256").hexdigest(),
+        "sourceSha256": source_sha256(source),
         "sourceSize": list(source_size),
         "normalizedFromGeneratedSource": normalized_from_source,
         "atlasSize": list(atlas.size),
