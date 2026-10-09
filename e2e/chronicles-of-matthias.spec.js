@@ -47,6 +47,42 @@ test('Chronicles first-person · nueva expedición pide Swordhaven sin alterar T
   await expect(mode.locator('[data-chronicles-renderer="three"] canvas')).toHaveCount(1);
 });
 
+test('Chronicles · Escape first leaves native fullscreen, then toggles the menu without reentering', async ({ page }) => {
+  await openChronicles(page, { chroniclesCurrentMapId: 'swordhaven-square', newTown: true });
+  const menu = page.locator('details.chronicles-game-menu');
+  await expect(menu).not.toHaveAttribute('open', '');
+
+  // Simulate the native fullscreen owner independently from browser policy:
+  // fullscreen requests need user activation and cannot be reliably reentered
+  // by an automated Escape key in headless Chromium.
+  await page.evaluate(() => {
+    window.__chroniclesFakeFullscreen = true;
+    window.__chroniclesFullscreenRequests = 0;
+    Object.defineProperty(document, 'fullscreenElement', {
+      configurable: true,
+      get: () => window.__chroniclesFakeFullscreen ? document.documentElement : null,
+    });
+    document.documentElement.requestFullscreen = () => {
+      window.__chroniclesFullscreenRequests += 1;
+      return Promise.resolve();
+    };
+  });
+  const escape = () => page.evaluate(() => {
+    document.dispatchEvent(new KeyboardEvent('keydown', {
+      key: 'Escape', bubbles: true, cancelable: true,
+    }));
+  });
+  await escape();
+  await expect(menu).not.toHaveAttribute('open', '');
+
+  await page.evaluate(() => { window.__chroniclesFakeFullscreen = false; });
+  await escape();
+  await expect(menu).toHaveAttribute('open', '');
+  await escape();
+  await expect(menu).not.toHaveAttribute('open', '');
+  expect(await page.evaluate(() => window.__chroniclesFullscreenRequests)).toBe(0);
+});
+
 test('Chronicles · Swordhaven → cripta → Swordhaven, desde el teclado y sin cerrar la run', async ({ page }) => {
   await openChronicles(page, { chroniclesCurrentMapId: 'swordhaven-square', newTown: true });
   const mode = page.locator('[data-chronicles="true"]');
