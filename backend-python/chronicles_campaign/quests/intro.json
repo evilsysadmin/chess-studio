@@ -1,0 +1,49 @@
+{
+  "schemaVersion": 1,
+  "campaignId": "lost-king",
+  "questId": "lost-king-prologue",
+  "actId": "empty-throne",
+  "title": "El rey desaparecido · El trono vacío",
+  "start": {
+    "mapId": "swordhaven-square",
+    "eventId": "commission-received",
+    "objective": "Investiga el antiguo sello de la Cripta de las Ocho Casillas.",
+    "message": "Una carta sellada de la Dama llega a Swordhaven: el Rey y sus caballeros han desaparecido. Matthias acepta investigar, después de registrar que nadie le ha preguntado si le parece buena idea.",
+    "item": {
+      "itemId": "sealed-lady-letter",
+      "name": "Carta sellada de la Dama",
+      "description": "La orden privada de buscar al Rey y descubrir qué ocurrió con los caballeros desaparecidos."
+    },
+    "journal": {
+      "id": "lost-king-order",
+      "title": "La orden de la Dama",
+      "body": "La Dama confía a Matthias una investigación discreta. Primer destino: la cripta donde se perdió el rastro de sus caballeros.",
+      "sigil": "I"
+    }
+  },
+  "seal": {
+    "mapId": "crypt-eight-squares",
+    "flag": "sigilAwake",
+    "eventId": "crypt-seal-investigated",
+    "objective": "Regresa a Swordhaven para registrar el hallazgo.",
+    "message": "El sello de la cripta ha despertado. No explica dónde está el Rey, pero confirma que en estas ruinas opera algo muy anterior a los desaparecidos.",
+    "journal": {
+      "id": "lost-king-sigil",
+      "title": "El sello que despertó",
+      "body": "La compañía ha activado un sello antiguo. La Dama deberá conocerlo; todavía no hay pruebas de quién pasó antes por la cripta.",
+      "sigil": "II"
+    }
+  },
+  "report": {
+    "mapId": "swordhaven-square",
+    "eventId": "crypt-seal-reported",
+    "objective": "Investiga la Puerta Negra y busca documentación en la Galería de las Bifurcaciones.",
+    "message": "Matthias deja constancia del sello en Swordhaven. La investigación continúa: falta averiguar qué buscaban los caballeros en las galerías.",
+    "journal": {
+      "id": "lost-king-report",
+      "title": "Informe desde Swordhaven",
+      "body": "El sello ha sido investigado y la compañía regresó a salvo. El siguiente paso es seguir la pista de las galerías subterráneas.",
+      "sigil": "III"
+    }
+  }
+}

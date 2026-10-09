@@ -17,6 +17,7 @@ import {
   chroniclesRequirementsMet,
 } from './chronicles/chroniclesContentRuntime.js';
 import { resolveChroniclesCharacterParty } from './chronicles/chroniclesCharacterBuilds.js';
+import { chroniclesAdvanceLostKingIntro } from './chronicles/chroniclesLostKingIntro.js';
 import { CHRONICLES_SWORDHAVEN_RETURN_PORTAL_ID, chroniclesSwordhavenReturnAvailable } from './chronicles/chroniclesSwordhavenReturnPortal.js';
 
 const DEFAULT_MAP = chroniclesMapById(DEFAULT_CHRONICLES_MAP_ID);
@@ -446,7 +447,7 @@ export function chroniclesReduce(state, action) {
   if (actionType === 'turn-left') return { ...state, direction: (state.direction + 3) % 4, turns: state.turns + 1 };
   if (actionType === 'turn-right') return { ...state, direction: (state.direction + 1) % 4, turns: state.turns + 1 };
   if (actionType === 'attack') return resolveAttack(state, typeof action === 'object' ? action.memberId : 'matthias');
-  if (actionType === 'interact') return resolveContextualContentAction(state);
+  if (actionType === 'interact') return chroniclesAdvanceLostKingIntro(state, resolveContextualContentAction(state));
 
   const direction = CHRONICLES_DIRECTIONS[state.direction];
   // Lateral steps share the exact same collision, trigger and checkpoint path
@@ -462,7 +463,7 @@ export function chroniclesReduce(state, action) {
   const y = state.y + displacement[1];
   const blocker = explorationCellBlocker(state, x, y);
   if (blocker) return withMessage(state, blocker.message);
-  return enterTile(state, x, y);
+  return chroniclesAdvanceLostKingIntro(state, enterTile(state, x, y));
 }
 
 export function chroniclesObjective(state) {

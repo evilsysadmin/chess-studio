@@ -24,6 +24,7 @@ import { chroniclesPartyPortraitUrl } from '../chronicles/chroniclesPartyPortrai
 import { chroniclesClearRuntimeMapDefinitions, chroniclesMapForState } from '../chronicles/chroniclesMapCatalog.js';
 import { chroniclesRegionHudLocation } from '../chronicles/chroniclesRegionHud.js';
 import { chroniclesGridExplorationStep } from '../chronicles/chroniclesGridExplorationStep.js';
+import { chroniclesInitializeLostKingIntro } from '../chronicles/chroniclesLostKingIntro.js';
 import { CHRONICLES_SWORDHAVEN_RETURN_PORTAL_ID } from '../chronicles/chroniclesSwordhavenReturnPortal.js';
 import {
   chroniclesCheckpointState,
@@ -613,10 +614,15 @@ export default function ChroniclesOfMatthias({ onExit }) {
           createChroniclesState(null, activeProgression.characterBuild),
           activeProgression,
         );
-        const next = chroniclesApplyRunCheckpoint(progressed, world);
+        const restored = chroniclesApplyRunCheckpoint(progressed, world);
+        const next = chroniclesInitializeLostKingIntro(restored, {
+          fresh: !remoteSelection && world.worldVersion === 0,
+        });
         authoritativeRunRef.current = world;
         chroniclesMarkSavedRunRemote(FIRST_PERSON_RUN_SCOPE, operationId);
-        checkpointFingerprintRef.current = chroniclesRunCheckpointFingerprint(next);
+        // Compare against the server snapshot so the new commission is written
+        // immediately and survives F5 even before the first movement.
+        checkpointFingerprintRef.current = chroniclesRunCheckpointFingerprint(restored);
         setAutomapVisitedByMap(loadChroniclesAutomapVisited(operationId));
         stateRef.current = next;
         staleRunRecoveryAttemptedRef.current = false;
