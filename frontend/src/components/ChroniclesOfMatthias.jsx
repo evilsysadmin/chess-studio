@@ -44,6 +44,7 @@ import {
   beginChroniclesRun,
   chroniclesListSavedRuns,
   chroniclesMergeRemoteSavedRuns,
+  chroniclesSaveCatalogOwner,
   chroniclesMarkSavedRunRemote,
   chroniclesSelectedRunIsRemote,
   chroniclesSelectSavedRun,
@@ -193,6 +194,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
   useEffect(() => {
     if (entryView !== 'menu') return undefined;
     const controller = new AbortController();
+    const ownerAtRequest = chroniclesSaveCatalogOwner();
     let active = true;
     setSaveMenuLoading(true);
     setSaveMenuError('');
@@ -200,7 +202,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
     void chroniclesListRemoteRuns({ signal: controller.signal })
       .then((rows) => {
         if (!active) return;
-        setSaveInventory(chroniclesMergeRemoteSavedRuns(FIRST_PERSON_RUN_SCOPE, rows));
+        setSaveInventory(chroniclesMergeRemoteSavedRuns(FIRST_PERSON_RUN_SCOPE, rows, { expectedOwner: ownerAtRequest }));
       })
       .catch(() => {
         if (!active || controller.signal.aborted) return;
