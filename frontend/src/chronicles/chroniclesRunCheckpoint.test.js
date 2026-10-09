@@ -8,6 +8,7 @@ import {
   chroniclesWorldFlagsForCheckpoint,
 } from './chroniclesRunCheckpoint.js';
 import { createChroniclesState } from '../chroniclesOfMatthias.js';
+import { chroniclesApplyContentEffects, chroniclesGoldBalance } from './chroniclesContentRuntime.js';
 import { chroniclesMapById } from './chroniclesMapCatalog.js';
 
 function anotherWalkableCell(map, occupied = []) {
@@ -338,5 +339,45 @@ describe('Chronicles run checkpoint recovery', () => {
       )),
     };
     expect(chroniclesRunCheckpointFingerprint(wounded)).not.toBe(original);
+  });
+});
+
+
+describe('Chronicles campaign gold recovery', () => {
+  it('rehydrates the paid quest, coin balance and single-use reward from the same checkpoint', () => {
+    const original = createChroniclesState('swordhaven-campaign');
+    const rewarded = chroniclesApplyContentEffects(original, [
+      { type: 'grant-item', itemId: 'knight-banner', name: 'Estandarte' },
+      { type: 'start-quest', questId: 'banner-contract', title: 'Estandarte perdido' },
+      {
+        type: 'claim-reward',
+        rewardId: 'swordhaven:banner-contract:v1',
+        requirements: [
+          { itemId: 'knight-banner' },
+          { questId: 'banner-contract', questStatus: 'active' },
+        ],
+        effects: [
+          { type: 'consume-item', itemId: 'knight-banner' },
+          { type: 'complete-quest', questId: 'banner-contract' },
+          { type: 'grant-gold', amount: 18 },
+        ],
+      },
+    ]);
+    const payload = chroniclesRunCheckpointPayload(rewarded, 4);
+    expect(payload.inventory['crown-gold'].quantity).toBe(18);
+    expect(payload.claimedRewards).toContain('swordhaven:banner-contract:v1');
+    const restored = chroniclesApplyRunCheckpoint(
+      createChroniclesState('swordhaven-campaign'),
+      { ...payload, runStatus: 'active' },
+    );
+    expect(chroniclesGoldBalance(restored)).toBe(18);
+    expect(restored.quests['banner-contract'].status).toBe('completed');
+    const replayed = chroniclesApplyContentEffects(restored, [{
+      type: 'claim-reward', rewardId: 'swordhaven:banner-contract:v1',
+      effects: [{ type: 'grant-gold', amount: 18 }],
+    }]);
+    expect(replayed).toBe(restored);
+    expect(chroniclesGoldBalance(replayed)).toBe(18);
+    expect(chroniclesRunCheckpointPayload(restored, 5).inventory).toEqual(payload.inventory);
   });
 });
