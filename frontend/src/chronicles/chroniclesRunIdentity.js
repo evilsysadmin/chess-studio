@@ -49,7 +49,7 @@ function readStoredRun(storageKey) {
   const entryMapId = typeof parsed.entryMapId === 'string'
     && /^[a-z0-9-]{1,64}$/.test(parsed.entryMapId)
     ? parsed.entryMapId : null;
-  return { id: parsed.id.trim(), owner, ended: Boolean(parsed.ended), entryMapId };
+  return { id: parsed.id.trim(), owner, ended: Boolean(parsed.ended), entryMapId, remote: parsed.remote === true };
   } catch {
     return null;
   }
@@ -81,6 +81,7 @@ function readSaveCatalog() {
       currentMapId: typeof item.currentMapId === 'string' ? item.currentMapId : null,
       createdAt: Number.isFinite(item.createdAt) ? item.createdAt : 0,
       updatedAt: Number.isFinite(item.updatedAt) ? item.updatedAt : 0,
+      remote: item.remote === true,
     }));
   } catch {
     return [];
@@ -105,7 +106,7 @@ function indexActiveRun(run) {
   runs.unshift({
     id: run.id, title: 'Expedición ' + (numbered + 1),
     entryMapId: run.entryMapId || null,
-    currentMapId: run.entryMapId || null, createdAt: now, updatedAt: now,
+    currentMapId: run.entryMapId || null, createdAt: now, updatedAt: now, remote: false,
   });
   writeSaveCatalog(runs);
 }
@@ -124,6 +125,67 @@ export function chroniclesListSavedRuns(scope) {
     .sort((a, b) => b.updatedAt - a.updatedAt || a.id.localeCompare(b.id));
 }
 
+
+function remoteTimestamp(value) {
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  const time = typeof value === 'string' ? Date.parse(value) : NaN;
+  return Number.isFinite(time) ? time : 0;
+}
+
+/** Merge server authority with local display names and not-yet-created slots.
+ * Previously confirmed server rows missing from the active list are retired.
+ * Failed fetches must not call this method; that preserves the offline cache.
+ */
+export function chroniclesMergeRemoteSavedRuns(scope, remoteRuns) {
+  legacyStorageKeyFor(scope);
+  if (!Array.isArray(remoteRuns)) throw new TypeError('Invalid remote save inventory');
+  const active = readRunState(scope);
+  const previous = readSaveCatalog();
+  const byId = new Map(previous.map((row) => [row.id, row]));
+  const seen = new Set();
+  const incoming = remoteRuns.slice(0, 30).flatMap((row) => {
+    const id = typeof row?.runId === 'string' ? row.runId.trim() : '';
+    if (!id || seen.has(id) || (row.status && row.status !== 'active')) return [];
+    seen.add(id);
+    const local = byId.get(id);
+    const createdAt = remoteTimestamp(row.createdAt);
+    const updatedAt = remoteTimestamp(row.updatedAt);
+    return [{
+      id,
+      title: local?.title || `Expedición ${id.slice(0, 8)}`,
+      entryMapId: local?.entryMapId || null,
+      currentMapId: typeof row.currentMapId === 'string' ? row.currentMapId : null,
+      createdAt: createdAt || local?.createdAt || 0,
+      updatedAt: updatedAt || local?.updatedAt || 0,
+      remote: true,
+    }];
+  });
+  const pendingLocal = previous.filter((row) => !row.remote && !seen.has(row.id));
+  writeSaveCatalog([...incoming, ...pendingLocal]);
+  if (active && !active.ended && seen.has(active.id) && !active.remote) {
+    writeRunState({ ...active, remote: true });
+  }
+  return chroniclesListSavedRuns(scope);
+}
+
+/** Mark an id as server-persisted once its authoritative bootstrap succeeds. */
+export function chroniclesMarkSavedRunRemote(scope, runId) {
+  legacyStorageKeyFor(scope);
+  const runs = readSaveCatalog();
+  const row = runs.find((item) => item.id === runId);
+  if (row && !row.remote) {
+    row.remote = true;
+    writeSaveCatalog(runs);
+  }
+  const active = readRunState(scope);
+  if (active?.id === runId && !active.remote) writeRunState({ ...active, remote: true });
+}
+
+export function chroniclesSelectedRunIsRemote(scope, runId) {
+  const active = readRunState(scope);
+  return active?.id === runId && active.remote === true;
+}
+
 export function chroniclesSelectSavedRun(scope, runId) {
   legacyStorageKeyFor(scope);
   const row = readSaveCatalog().find((item) => item.id === runId);
@@ -131,6 +193,7 @@ export function chroniclesSelectSavedRun(scope, runId) {
   writeRunState({
     id: row.id, owner: currentOwner(), ended: false,
     entryMapId: row.entryMapId,
+    remote: row.remote === true,
   });
   return true;
 }
@@ -171,6 +234,7 @@ export function chroniclesNoteSavedRunCheckpoint(scope, runId, currentMapId) {
     row.currentMapId = currentMapId;
   }
   row.updatedAt = Date.now();
+  row.remote = true;
   writeSaveCatalog(runs);
   return true;
 }
