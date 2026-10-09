@@ -4,6 +4,8 @@ import './ChroniclesSaveMenu.css';
 function expeditionArea(save) {
   switch (save.currentMapId || save.entryMapId) {
     case 'swordhaven-square': return 'Swordhaven';
+    case 'swordhaven-campaign': return 'Swordhaven · Campaña';
+    case 'banner-road': return 'Camino de los Estandartes';
     case 'crypt-eight-squares': return 'Cripta de las Ocho Casillas';
     default: return 'Expedición en curso';
   }
@@ -16,7 +18,7 @@ function saveWhen(value) {
 }
 
 export default function ChroniclesSaveMenu({
-  saves = [], onNew, onLoad, onRename, onForget, onDelete, onExit,
+  saves = [], onNew, onNewCampaign, onLoad, onRename, onForget, onDelete, onExit,
   loading = false, error = '', busyRunId = null, onRetrySync,
 }) {
   const [screen, setScreen] = useState('home');
@@ -56,7 +58,14 @@ export default function ChroniclesSaveMenu({
 
         {screen === 'home' ? (
           <div className="chronicles-save-menu__actions">
-            <button type="button" className="is-primary" onClick={onNew}>Nuevo juego</button>
+            {onNewCampaign ? (
+              <div className="chronicles-save-menu__new-choices">
+                <button type="button" onClick={onNew}>Nuevo juego</button>
+                <button type="button" className="is-primary" onClick={onNewCampaign}>Nueva campaña</button>
+              </div>
+            ) : (
+              <button type="button" className="is-primary" onClick={onNew}>Nuevo juego</button>
+            )}
             <button type="button" disabled={!resume || loading} onClick={() => onLoad(resume.id)}>
               Continuar partida
               {resume && <small>{resume.title} · {expeditionArea(resume)}</small>}

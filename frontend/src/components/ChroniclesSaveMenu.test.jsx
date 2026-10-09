@@ -29,6 +29,23 @@ describe('Chronicles expedition entry', () => {
     expect(html).toContain('disabled=""');
   });
 
+  it('shows an explicit authored campaign choice without displacing the legacy new game', () => {
+    const html = menu([], { onNewCampaign: vi.fn() });
+    expect(html).toContain('Nueva campaña');
+    expect(html).toContain('Nuevo juego');
+    expect(html).toContain('chronicles-save-menu__new-choices');
+    expect(menu([])).not.toContain('Nueva campaña');
+  });
+
+  it('names authored wilderness and campaign Swordhaven in saved run listings', () => {
+    const html = menu([
+      { id: 'road-1', title: 'Primera pista', currentMapId: 'banner-road', updatedAt: 1_760_000_000_000 },
+      { id: 'town-1', title: 'Inicio', currentMapId: 'swordhaven-campaign', updatedAt: 1_760_000_000_000 },
+    ]);
+    expect(html).toContain('Camino de los Estandartes');
+    expect(html).toContain('Swordhaven · Campaña');
+  });
+
   it('shows an explicit retry only for failed catalog sync, disabled while busy', () => {
     const error = 'No se pudo consultar el servidor.';
     const html = menu([], { error, onRetrySync: vi.fn() });
