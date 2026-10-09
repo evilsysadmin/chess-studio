@@ -7,6 +7,7 @@ package gamesapi
 //	GET  /api/chronicles/runs                       (200, owner-scoped active saves)
 //	DELETE /api/chronicles/runs/{run_id}            (204, owner-scoped removal)
 //	GET  /api/chronicles/runs/{run_id}
+//	GET  /api/chronicles/runs/{run_id}/bootstrap
 //	PUT  /api/chronicles/runs/{run_id}/checkpoint
 
 import (
@@ -37,6 +38,7 @@ const (
 	ChroniclesRunListPattern       = "GET /api/chronicles/runs"
 	ChroniclesRunDeletePattern     = "DELETE /api/chronicles/runs/{run_id}"
 	ChroniclesRunReadPattern       = "GET /api/chronicles/runs/{run_id}"
+	ChroniclesRunBootstrapPattern  = "GET /api/chronicles/runs/{run_id}/bootstrap"
 	ChroniclesRunCheckpointPattern = "PUT /api/chronicles/runs/{run_id}/checkpoint"
 	chroniclesRunsPath             = "/api/chronicles/runs"
 	partyLevelHeader               = "X-Chronicles-Party-Level"
@@ -62,6 +64,12 @@ func ChroniclesRunsRoute(r *http.Request) (pattern, runID string, ok bool) {
 	}
 	rest, found := strings.CutPrefix(path, chroniclesRunsPath+"/")
 	if !found || rest == "" {
+		return "", "", false
+	}
+	if id, isBootstrap := strings.CutSuffix(rest, "/bootstrap"); isBootstrap {
+		if id != "" && !strings.Contains(id, "/") && method == http.MethodGet {
+			return ChroniclesRunBootstrapPattern, id, true
+		}
 		return "", "", false
 	}
 	if id, isCheckpoint := strings.CutSuffix(rest, "/checkpoint"); isCheckpoint {
@@ -112,6 +120,7 @@ func NewChroniclesRuns(cfg ChroniclesRunsConfig) (*ChroniclesRunsHandler, error)
 		ChroniclesRunListPattern:       newLimiter(120, time.Minute),
 		ChroniclesRunDeletePattern:     newLimiter(120, time.Minute),
 		ChroniclesRunReadPattern:       newLimiter(120, time.Minute),
+		ChroniclesRunBootstrapPattern:  newLimiter(120, time.Minute),
 		ChroniclesRunCheckpointPattern: newLimiter(120, time.Minute),
 	}}
 	if h.newSeed == nil {
@@ -860,6 +869,18 @@ func (h *ChroniclesRunsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request
 		deleted, err = h.runs.DeleteOwned(ctx, runID, username)
 		if err == nil && !deleted { err = fail(404, "Run de Chronicles no encontrada.") }
 		code = http.StatusNoContent
+	case ChroniclesRunBootstrapPattern:
+		var saved bson.D
+		saved, err = h.runs.Get(ctx, runID, username)
+		if err == nil && saved == nil { err = fail(404, "Run de Chronicles no encontrada.") }
+		if err == nil && lookupOr(saved, "status", "active") != "active" {
+			err = fail(409, "Esta expedición ya ha terminado.")
+		}
+		if err == nil {
+			var route *chronicles.RouteSnapshot
+			route, err = chronicles.NormalizeRouteSnapshot(lookupOr(saved, "route", nil))
+			if err == nil { payload, err = bootstrap(saved, route) }
+		}
 	case ChroniclesRunReadPattern:
 		payload, err = h.runs.Get(ctx, runID, username)
 		if err == nil && payload == nil {
