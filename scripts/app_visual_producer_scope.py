@@ -330,7 +330,11 @@ def classify_path(path: str) -> set[str] | None:
     }:
         return set()
     if (
-        lower == ".github/workflows/app-visual-artifact.yml"
+        lower in {
+            ".github/workflows/app-visual-artifact.yml",
+            ".github/workflows/chronicles-visual-artifact.yml",
+            ".github/workflows/tactics-visual-artifact.yml",
+        }
         or lower.startswith(".github/actions/app-visual-pipeline/")
     ):
         return set()
@@ -737,10 +741,10 @@ def classify(paths: list[str]) -> str:
 
 
 def project_chronicles_lane(producers: str, lane: str) -> str:
-    """Separate Chronicles first-person and Tactics capture in distinct CI jobs.
+    """Project visual producers into independent App, Chronicles and Tactics gates.
 
-    Shared owners still request both visual producers, but independent jobs
-    prevent slow software-WebGL Tactics from blocking first-person evidence.
+    Shared owners still request both visual producers, but independent workflows
+    prevent software-WebGL Tactics from blocking first-person evidence.
     Unknown paths remain fail-closed: 'all' expands to every known producer
     before projecting either lane, rather than bypassing the expensive gate.
     """
@@ -749,8 +753,12 @@ def project_chronicles_lane(producers: str, lane: str) -> str:
     selected = set(PRODUCER_ORDER) if producers == "all" else set(producers.split(",")) - {"none", ""}
     if lane == "tactics":
         selected &= {"chronicles-tactics"}
+    elif lane == "chronicles":
+        selected &= {"chronicles-gameplay", "chronicles-avatar"}
+    elif lane == "app":
+        selected -= {"chronicles-gameplay", "chronicles-avatar", "chronicles-tactics"}
     elif lane == "default":
-        selected.discard("chronicles-tactics")
+        selected.discard("chronicles-tactics")  # CLI backwards compatibility.
     else:
         raise ValueError(f"Unknown visual lane: {lane}")
     return _csv(selected)
@@ -763,6 +771,19 @@ def self_test() -> None:
     assert project_chronicles_lane("chronicles-gameplay", "tactics") == "none"
     assert project_chronicles_lane("chronicles-tactics", "default") == "none"
     assert project_chronicles_lane("all", "tactics") == "chronicles-tactics"
+    assert project_chronicles_lane("chronicles-tactics,chronicles-gameplay", "chronicles") == "chronicles-gameplay"
+    assert project_chronicles_lane("chronicles-tactics,chronicles-gameplay", "app") == "none"
+    assert project_chronicles_lane("chronicles-gameplay,chronicles-avatar", "app") == "none"
+    assert project_chronicles_lane("chronicles-avatar", "chronicles") == "chronicles-avatar"
+    assert project_chronicles_lane("pvp-duel", "chronicles") == "none"
+    assert project_chronicles_lane("pvp-duel", "tactics") == "none"
+    assert project_chronicles_lane("pvp-duel", "app") == "pvp-duel"
+    assert project_chronicles_lane("all", "app") != "all"
+    assert "chronicles-gameplay" in project_chronicles_lane("all", "chronicles")
+    assert "chronicles-tactics" not in project_chronicles_lane("all", "chronicles")
+    assert project_chronicles_lane("scripts", "tactics") == "none"
+    assert classify([".github/workflows/chronicles-visual-artifact.yml"]) == "none"
+    assert classify([".github/workflows/tactics-visual-artifact.yml"]) == "none"
     assert project_chronicles_lane("all", "default") != "all"
     assert "chronicles-gameplay" in project_chronicles_lane("all", "default")
     assert classify(["e2e/staging-live.spec.js"]) == "none"
@@ -1042,7 +1063,7 @@ def self_test() -> None:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--all", action="store_true")
-    parser.add_argument("--chronicles-lane", choices=("combined", "default", "tactics"), default="combined")
+    parser.add_argument("--chronicles-lane", choices=("combined", "default", "app", "chronicles", "tactics"), default="combined")
     parser.add_argument("--github-output", default=os.environ.get("GITHUB_OUTPUT", ""))
     parser.add_argument("--self-test", action="store_true")
     args = parser.parse_args(argv)
@@ -1061,12 +1082,13 @@ def main(argv: list[str] | None = None) -> int:
             handle.write(f"warroom_variants={warroom_variants}\n")
             handle.write(f"warroom_profile_scope={warroom_profile_scope}\n")
             handle.write(f"home_profile_scope={home_profile_scope}\n")
-            # The second job owns only Tactics. It must not eagerly boot Home,
-            # War Room, Hans or the Chronicles-first-person browser.
-            if args.chronicles_lane == "tactics":
+            # Specialist workflows own exactly their game, never Home, War Room,
+            # the other game's WebGL browser or general-purpose sidecars.
+            if args.chronicles_lane in {"tactics", "chronicles"}:
                 handle.write(f"capture_groups={'experiments' if result != 'none' else 'none'}\n")
                 handle.write(f"experiments_scope={'chronicles' if result != 'none' else 'none'}\n")
-                for output in ("chronicles_avatar", "warroom", "hans", "chesscom",
+                handle.write(f"chronicles_avatar={'true' if args.chronicles_lane == 'chronicles' and 'chronicles-avatar' in result.split(',') else 'false'}\n")
+                for output in ("warroom", "hans", "chesscom",
                                "warroom_revision_required", "warroom_v3_revision_required",
                                "pvp_duel_revision_required"):
                     handle.write(f"{output}=false\n")
