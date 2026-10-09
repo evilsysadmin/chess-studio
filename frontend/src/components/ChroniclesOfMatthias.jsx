@@ -25,6 +25,7 @@ import { chroniclesClearRuntimeMapDefinitions, chroniclesMapForState } from '../
 import { chroniclesRegionHudLocation } from '../chronicles/chroniclesRegionHud.js';
 import { chroniclesGridExplorationStep } from '../chronicles/chroniclesGridExplorationStep.js';
 import { chroniclesInitializeLostKingIntro } from '../chronicles/chroniclesLostKingIntro.js';
+import { chroniclesInitializeCampaignRoadQuest } from '../chronicles/chroniclesCampaignRoadQuest.js';
 import { CHRONICLES_SWORDHAVEN_RETURN_PORTAL_ID } from '../chronicles/chroniclesSwordhavenReturnPortal.js';
 import {
   chroniclesCheckpointState,
@@ -615,9 +616,12 @@ export default function ChroniclesOfMatthias({ onExit }) {
           activeProgression,
         );
         const restored = chroniclesApplyRunCheckpoint(progressed, world);
-        const next = chroniclesInitializeLostKingIntro(restored, {
-          fresh: !remoteSelection && world.worldVersion === 0,
-        });
+        const next = chroniclesInitializeCampaignRoadQuest(
+          chroniclesInitializeLostKingIntro(restored, {
+            fresh: !remoteSelection && world.worldVersion === 0,
+          }),
+          { fresh: !remoteSelection && world.worldVersion === 0 },
+        );
         authoritativeRunRef.current = world;
         chroniclesMarkSavedRunRemote(FIRST_PERSON_RUN_SCOPE, operationId);
         // Compare against the server snapshot so the new commission is written

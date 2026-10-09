@@ -93,6 +93,18 @@ def validate():
     assert intro["seal"]["mapId"] == first["objectives"][1]["at"]
     assert intro["report"]["mapId"] == intro["start"]["mapId"]
     assert len({intro[stage]["eventId"] for stage in ("start", "seal", "report")}) == 3
+    # The first authored overworld clue is a real, persistent on-map event.
+    road = load("quests/road.json")
+    road_mirror = ROOT.parents[1] / "frontend/src/chronicles/campaign/road.json"
+    assert (ROOT / "quests/road.json").read_bytes() == road_mirror.read_bytes()
+    assert road["schemaVersion"] == 1 and road["campaignId"] == world["campaignId"]
+    assert road["actId"] == first["id"] and road["start"]["mapId"] == "swordhaven-campaign"
+    assert road["clue"]["mapId"] == "banner-road"
+    assert road["clue"]["flag"] in [
+        poi["eventId"] for poi in maps["banner-road"]["pointsOfInterest"]
+    ]
+    assert road["report"]["mapId"] == road["start"]["mapId"]
+    assert len({road[key]["eventId"] for key in ("start", "clue", "report")}) == 3
     return len(maps), len(world["links"]), len(main["acts"]), len(main["endings"])
 
 if __name__ == "__main__":

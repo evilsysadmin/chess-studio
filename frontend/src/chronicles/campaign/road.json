@@ -1,0 +1,49 @@
+{
+  "schemaVersion": 1,
+  "campaignId": "lost-king",
+  "actId": "empty-throne",
+  "questId": "lost-king-road",
+  "title": "El rey desaparecido · La calzada muda",
+  "start": {
+    "mapId": "swordhaven-campaign",
+    "eventId": "road-commission-received",
+    "objective": "Sigue el Camino de los Estandartes y examina el mojón sin nombre.",
+    "message": "La Dama encarga a Matthias investigar las marcas borradas de la calzada real. Los caballeros desaparecieron siguiendo esa ruta; alguien no quiere que sus nombres permanezcan en piedra.",
+    "item": {
+      "itemId": "sealed-lady-letter",
+      "name": "Carta sellada de la Dama",
+      "description": "La orden privada de buscar al Rey y seguir los rastros de la calzada."
+    },
+    "journal": {
+      "id": "lost-king-road-order",
+      "title": "La orden de la Dama",
+      "body": "La Dama pide seguir el Camino de los Estandartes para buscar el primer rastro de los caballeros perdidos.",
+      "sigil": "I"
+    }
+  },
+  "clue": {
+    "mapId": "banner-road",
+    "flag": "milestone-erased",
+    "eventId": "road-milestone-read",
+    "objective": "Regresa a Swordhaven e informa del mojón sin nombre.",
+    "message": "El mojón conserva señales de una inscripción real, borrada deliberadamente. Matthias anota que alguien se ha tomado demasiadas molestias para ocultar una simple dirección.",
+    "journal": {
+      "id": "lost-king-road-milestone",
+      "title": "Piedra sin nombre",
+      "body": "La compañía descubre que una inscripción de la calzada fue arrancada. El borrado parece deliberado: una pista, no una respuesta.",
+      "sigil": "II"
+    }
+  },
+  "report": {
+    "mapId": "swordhaven-campaign",
+    "eventId": "road-milestone-reported",
+    "objective": "Investiga quién ordenó borrar las inscripciones del Camino de los Estandartes.",
+    "message": "El rastro del Rey ha sido manipulado. La Dama recibe el informe; el misterio sigue abierto y la calzada aguarda nuevas pistas.",
+    "journal": {
+      "id": "lost-king-road-report",
+      "title": "El informe de la calzada",
+      "body": "El mojón ha sido investigado y la compañía regresó a Swordhaven. La desaparición del Rey exige seguir encontrando pruebas reales.",
+      "sigil": "III"
+    }
+  }
+}

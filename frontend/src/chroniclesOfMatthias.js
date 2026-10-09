@@ -18,6 +18,7 @@ import {
 } from './chronicles/chroniclesContentRuntime.js';
 import { resolveChroniclesCharacterParty } from './chronicles/chroniclesCharacterBuilds.js';
 import { chroniclesAdvanceLostKingIntro } from './chronicles/chroniclesLostKingIntro.js';
+import { chroniclesAdvanceCampaignRoadQuest } from './chronicles/chroniclesCampaignRoadQuest.js';
 import { CHRONICLES_SWORDHAVEN_RETURN_PORTAL_ID, chroniclesSwordhavenReturnAvailable } from './chronicles/chroniclesSwordhavenReturnPortal.js';
 import { chroniclesIsOverworldTravelExit } from './chronicles/chroniclesWorldReturnLinks.js';
 
@@ -445,13 +446,17 @@ function explorationCellBlocker(state, x, y) {
   return null;
 }
 
+function advanceNarrative(previous, next) {
+  return chroniclesAdvanceCampaignRoadQuest(previous, chroniclesAdvanceLostKingIntro(previous, next));
+}
+
 export function chroniclesReduce(state, action) {
   if (!state || state.phase === 'escaped' || state.phase === 'defeated') return state;
   const actionType = typeof action === 'string' ? action : action?.type;
   if (actionType === 'turn-left') return { ...state, direction: (state.direction + 3) % 4, turns: state.turns + 1 };
   if (actionType === 'turn-right') return { ...state, direction: (state.direction + 1) % 4, turns: state.turns + 1 };
   if (actionType === 'attack') return resolveAttack(state, typeof action === 'object' ? action.memberId : 'matthias');
-  if (actionType === 'interact') return chroniclesAdvanceLostKingIntro(state, resolveContextualContentAction(state));
+  if (actionType === 'interact') return advanceNarrative(state, resolveContextualContentAction(state));
 
   const direction = CHRONICLES_DIRECTIONS[state.direction];
   // Lateral steps share the exact same collision, trigger and checkpoint path
@@ -467,7 +472,7 @@ export function chroniclesReduce(state, action) {
   const y = state.y + displacement[1];
   const blocker = explorationCellBlocker(state, x, y);
   if (blocker) return withMessage(state, blocker.message);
-  return chroniclesAdvanceLostKingIntro(state, enterTile(state, x, y));
+  return advanceNarrative(state, enterTile(state, x, y));
 }
 
 export function chroniclesObjective(state) {
