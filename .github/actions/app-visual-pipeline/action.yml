@@ -4,6 +4,10 @@ inputs:
   mode:
     description: canonical or hans
     required: true
+  chronicles-lane:
+    description: "default excludes Tactics; tactics runs only Tactics. Shared owners still run both jobs."
+    default: default
+    required: false
 runs:
   using: composite
   steps:
@@ -18,7 +22,7 @@ runs:
         python3 -S scripts/app_visual_changed_files.py --self-test
         if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
           python3 -S scripts/app_visual_scope.py --all --github-output "$GITHUB_OUTPUT"
-          python3 -S scripts/app_visual_producer_scope.py --all --github-output "$GITHUB_OUTPUT"
+          python3 -S scripts/app_visual_producer_scope.py --all --chronicles-lane "${{ inputs.chronicles-lane }}" --github-output "$GITHUB_OUTPUT"
           exit 0
         fi
         if [[ "$GITHUB_EVENT_NAME" == "pull_request" ]]; then
@@ -84,7 +88,7 @@ runs:
           printf '%s\n' "$scoped_files"
         fi
         printf '%s\n' "$scoped_files" | python3 -S scripts/app_visual_scope.py --github-output "$GITHUB_OUTPUT"
-        printf '%s\n' "$scoped_files" | python3 -S scripts/app_visual_producer_scope.py --github-output "$GITHUB_OUTPUT"
+        printf '%s\n' "$scoped_files" | python3 -S scripts/app_visual_producer_scope.py --chronicles-lane "${{ inputs.chronicles-lane }}" --github-output "$GITHUB_OUTPUT"
 
     - name: Restore browser + build when capture is required
       if: >-
@@ -240,7 +244,7 @@ runs:
       if: always() && steps.scope.outcome == 'success' && inputs.mode == 'canonical' && steps.scope.outputs.capture_groups != 'none' && steps.scope.outputs.producer_scope != 'none'
       uses: actions/upload-artifact@v7
       with:
-        name: app-visual-${{ github.event.pull_request.number || github.run_id }}
+        name: ${{ inputs.chronicles-lane == 'tactics' && 'tactics-visual' || 'app-visual' }}-${{ github.event.pull_request.number || github.run_id }}
         path: .artifacts/app-visual/
         if-no-files-found: error
         retention-days: 7
