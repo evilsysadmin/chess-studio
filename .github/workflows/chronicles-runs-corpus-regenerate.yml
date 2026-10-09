@@ -1,0 +1,37 @@
+name: Chronicles · one-off run corpus regeneration
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/chronicles-runs-corpus-regenerate.yml'
+permissions:
+  contents: write
+jobs:
+  regenerate:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout PR head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          persist-credentials: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install backend dependencies
+        run: python -m pip install --quiet -r backend-python/requirements.txt
+      - name: Regenerate authoritative Python run corpus
+        run: python scripts/chronicles_runs_parity_corpus.py
+      - name: Commit generated fixture only
+        run: |
+          set -eu
+          target=backend-go/internal/gamesapi/testdata/python_chronicles_runs_corpus.json
+          git add -- "$target"
+          if git diff --cached --quiet; then
+            echo 'Corpus already up to date'
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "test(chronicles): refresh run parity corpus for Swordhaven"
+          git push origin HEAD:"${{ github.event.pull_request.head.ref }}"
