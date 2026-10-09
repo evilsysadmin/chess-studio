@@ -794,3 +794,53 @@ for (const capture of CAPTURES) {
     }
   });
 }
+
+for (const camera of [
+  { label: 'desktop-1440x900', width: 1440, height: 900 },
+  { label: 'android-390x844', width: 390, height: 844 },
+]) {
+  test(`Chronicles · Camino de los Estandartes 3D real · ${camera.label}`, async ({ page }) => {
+    test.setTimeout(180_000);
+    await page.setViewportSize({ width: camera.width, height: camera.height });
+    await mockApi(page, {
+      profileSeed: {
+        'matthias.onboarded': '2',
+        'chess-study-home-guide-dismissed-v1': '1',
+      },
+      chroniclesCurrentMapId: 'swordhaven-campaign',
+    });
+    await login(page);
+    await openVisualMoreModes(page);
+    const tools = page.locator('#illustrated-home-tools');
+    await tools.getByRole('button').filter({ hasText: 'Experimentos geniales' })
+      .evaluate((button) => button.click());
+    const chroniclesEntry = page.locator('.lab-workshop-portal--chronicles');
+    await expect(chroniclesEntry).toBeVisible();
+    await chroniclesEntry.click();
+    const menu = page.locator('[data-chronicles-save-menu]');
+    await expect(menu).toBeVisible();
+    await menu.getByRole('button', { name: 'Nueva campaña', exact: true }).click();
+    await confirmChroniclesCharacterSetup(page, { newTown: true });
+    const mode = page.locator('[data-chronicles="true"]');
+    await expect(mode).toHaveAttribute('data-chronicles-map-id', 'swordhaven-campaign', { timeout: 25_000 });
+    await expect(mode.locator('.chronicles-renderer-error')).toHaveCount(0);
+    await page.screenshot({
+      path: `${ARTIFACT_DIR}/chronicles-campaign-swordhaven-${camera.label}.png`,
+      animations: 'disabled', timeout: 30_000,
+    });
+    for (let n = 0; n < 6; n += 1) await page.keyboard.press('ArrowUp');
+    await expect(mode).toHaveAttribute('data-chronicles-map-id', 'banner-road', { timeout: 25_000 });
+    // The published entry is the north portal, which faces a boundary wall.
+    // Turn towards the real southbound calzada before assessing the view.
+    await page.keyboard.press('d');
+    await page.keyboard.press('d');
+    await expect(mode.locator('[data-chronicles-renderer="three"] canvas')).toBeVisible({ timeout: 30_000 });
+    await expect(mode.locator('.chronicles-renderer-error')).toHaveCount(0);
+    await page.screenshot({
+      path: `${ARTIFACT_DIR}/chronicles-banner-road-${camera.label}.png`,
+      animations: 'disabled', timeout: 30_000,
+    });
+    const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+    expect(overflow).toBeLessThanOrEqual(1);
+  });
+}
