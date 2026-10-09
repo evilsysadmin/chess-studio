@@ -1,38 +1,43 @@
+/* The chronicle is opt-in: only its 44px trigger occupies the HUD by default. */
 .chronicles-dm-overlay {
   position: absolute;
-  z-index: 4;
+  z-index: 6;
   top: 16px;
   left: 50%;
+  width: max-content;
+  max-width: calc(100% - 32px);
   transform: translateX(-50%);
-  width: min(650px, calc(100% - 112px));
-  display: grid;
-  grid-template-columns: 30px 1fr;
-  gap: 10px;
-  align-items: start;
-  padding: 10px 14px 11px;
-  pointer-events: none;
-  border: 1px solid rgba(214, 169, 98, .32);
-  border-left: 2px solid rgba(224, 177, 100, .54);
-  border-radius: 2px;
-  background:
-    linear-gradient(90deg, rgba(34, 23, 14, .88), rgba(11, 9, 7, .76) 56%, rgba(8, 7, 6, .69)),
-    radial-gradient(circle at 18% 0, rgba(167, 108, 48, .14), transparent 62%);
-  box-shadow:
-    0 10px 28px rgba(0, 0, 0, .33),
-    inset 0 1px 0 rgba(255, 231, 190, .045),
-    inset 0 -12px 24px rgba(0, 0, 0, .13);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
   color: #dbcbb2;
-  animation: chronicles-dm-arrive 180ms ease-out both;
 }
 
-.chronicles-dm-overlay::after {
-  content: '';
-  position: absolute;
-  inset: auto 12% -1px;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(222, 171, 91, .52), transparent);
+.chronicles-dm-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  box-sizing: border-box;
+  padding: 5px 12px 5px 6px;
+  border: 1px solid rgba(214, 169, 98, .45);
+  border-radius: 999px;
+  background: linear-gradient(125deg, rgba(40, 28, 20, .94), rgba(13, 11, 9, .91));
+  box-shadow: 0 8px 20px rgba(0, 0, 0, .3);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+  color: #eadcc4;
+  font-size: .76rem;
+  font-weight: 700;
+  letter-spacing: .04em;
+  cursor: pointer;
+  user-select: none;
+  list-style: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.chronicles-dm-trigger::-webkit-details-marker { display: none; }
+.chronicles-dm-trigger:hover { border-color: rgba(235, 187, 109, .8); }
+.chronicles-dm-trigger:focus-visible {
+  outline: 2px solid #e4bd7a;
+  outline-offset: 3px;
 }
 
 .chronicles-dm-sigil {
@@ -40,96 +45,90 @@
   height: 28px;
   display: grid;
   place-items: center;
-  margin-top: 1px;
+  flex: none;
   border: 1px solid rgba(216, 166, 90, .28);
   border-radius: 50%;
   color: #e4bd7a;
   background: radial-gradient(circle, rgba(102, 62, 28, .44), rgba(22, 16, 11, .7) 70%);
-  box-shadow: 0 0 18px rgba(177, 104, 37, .08);
   font-size: .76rem;
 }
 
+.chronicles-dm-chevron {
+  display: inline-block;
+  margin-left: 2px;
+  color: #c49b65;
+  font-size: 1.05rem;
+  transition: transform 160ms ease;
+}
+.chronicles-dm-overlay[open] .chronicles-dm-chevron { transform: rotate(180deg); }
+
+/* Open content floats beneath the trigger; it never pushes the game or HUD. */
+.chronicles-dm-panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 50%;
+  width: min(520px, calc(100vw - 32px));
+  box-sizing: border-box;
+  padding: 14px 17px 16px;
+  transform: translateX(-50%);
+  border: 1px solid rgba(214, 169, 98, .42);
+  border-left: 2px solid rgba(224, 177, 100, .65);
+  border-radius: 9px;
+  background: linear-gradient(110deg, rgba(34, 23, 14, .97), rgba(9, 8, 7, .95));
+  box-shadow: 0 12px 30px rgba(0, 0, 0, .43);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+}
+.chronicles-dm-overlay:not([open]) .chronicles-dm-panel { display: none; }
+
 .chronicles-dm-kicker {
   display: block;
-  margin-bottom: 2px;
-  font-size: .56rem;
-  line-height: 1.2;
-  letter-spacing: .18em;
-  color: #b99461;
+  margin-bottom: 6px;
+  font-size: .65rem;
+  letter-spacing: .16em;
+  color: #c6a06a;
 }
 
-.chronicles-dm-overlay p {
+.chronicles-dm-panel p {
   margin: 0;
   font-family: Georgia, 'Times New Roman', serif;
-  font-size: clamp(.86rem, 1.3vw, 1rem);
-  line-height: 1.36;
+  font-size: .95rem;
+  line-height: 1.48;
   color: #eadcc4;
-  text-wrap: balance;
+  overflow-wrap: anywhere;
   text-shadow: 0 1px 7px rgba(0, 0, 0, .66);
-}
-
-@keyframes chronicles-dm-arrive {
-  from { opacity: 0; transform: translate(-50%, -5px); }
-  to { opacity: 1; transform: translate(-50%, 0); }
 }
 
 @media (max-width: 800px), (max-width: 1024px) and (max-height: 600px) {
   .chronicles-dm-overlay {
     top: 112px;
-    /* Reserve the upper-right corner for the actual interactive minimap. */
-    right: max(136px, env(safe-area-inset-right));
     left: max(10px, env(safe-area-inset-left));
-    width: auto;
     transform: none;
-    grid-template-columns: 24px 1fr;
-    gap: 8px;
-    padding: 8px 10px 9px;
-    animation-name: chronicles-dm-arrive-mobile;
   }
-  .chronicles-dm-sigil { width: 22px; height: 22px; font-size: .62rem; }
-  .chronicles-dm-overlay p {
-    font-size: .79rem;
-    line-height: 1.3;
-    display: -webkit-box;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 2;
-    overflow: hidden;
+  /* Keep the opened chronicle left of the interactive local minimap. */
+  .chronicles-dm-panel {
+    left: 0;
+    width: min(390px, calc(100vw - 160px));
+    transform: none;
+    padding: 11px 12px 12px;
   }
+  .chronicles-dm-panel p { font-size: .82rem; }
 }
 
 @media (max-width: 520px) {
-  .chronicles-dm-overlay {
-    top: 120px;
-    right: max(120px, env(safe-area-inset-right));
-    left: max(10px, env(safe-area-inset-left));
-    width: auto;
-  }
-  .chronicles-dm-kicker { font-size: .48rem; }
-  .chronicles-dm-overlay p { font-size: .74rem; }
+  .chronicles-dm-overlay { top: 120px; }
+  .chronicles-dm-kicker { font-size: .56rem; }
+  .chronicles-dm-panel p { font-size: .78rem; }
 }
 
-@keyframes chronicles-dm-arrive-mobile {
-  from { opacity: 0; transform: translateY(-5px); }
-  to { opacity: 1; transform: none; }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .chronicles-dm-overlay { animation: none; }
-}
-
-/* Initiative owns the upper combat band. Meaningful narration drops below it instead of stacking. */
-.chronicles:has(.chronicles-initiative-rail) .chronicles-dm-overlay {
-  top: 148px;
-}
-
+/* Combat initiative claims a deeper band, including when the chronicle is closed. */
+.chronicles:has(.chronicles-initiative-rail) .chronicles-dm-overlay { top: 148px; }
 @media (max-width: 800px), (max-width: 1024px) and (max-height: 600px) {
-  .chronicles:has(.chronicles-initiative-rail) .chronicles-dm-overlay {
-    top: 238px;
-  }
+  .chronicles:has(.chronicles-initiative-rail) .chronicles-dm-overlay { top: 238px; }
 }
-
 @media (max-width: 520px) {
-  .chronicles:has(.chronicles-initiative-rail) .chronicles-dm-overlay {
-    top: 252px;
-  }
+  .chronicles:has(.chronicles-initiative-rail) .chronicles-dm-overlay { top: 252px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .chronicles-dm-chevron { transition: none; }
 }
