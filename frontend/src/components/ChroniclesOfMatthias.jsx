@@ -614,10 +614,12 @@ export default function ChroniclesOfMatthias({ onExit }) {
           activeProgression,
         );
         const next = chroniclesApplyRunCheckpoint(progressed, world);
+        const confirmedId = chroniclesMarkSavedRunRemote(FIRST_PERSON_RUN_SCOPE, operationId, world.runId);
+        if (!confirmedId) return;
+        activeRunIdRef.current = confirmedId;
         authoritativeRunRef.current = world;
-        chroniclesMarkSavedRunRemote(FIRST_PERSON_RUN_SCOPE, operationId);
         checkpointFingerprintRef.current = chroniclesRunCheckpointFingerprint(next);
-        setAutomapVisitedByMap(loadChroniclesAutomapVisited(operationId));
+        setAutomapVisitedByMap(loadChroniclesAutomapVisited(confirmedId));
         stateRef.current = next;
         staleRunRecoveryAttemptedRef.current = false;
         setSelectedMemberId('matthias');
