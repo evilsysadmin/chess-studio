@@ -313,6 +313,26 @@ describe('Chronicles shared run identity', () => {
     }
   });
 
+  it('also repairs pre-catalog saves without a remote flag after exact server confirmation', async () => {
+    const provisional = '11111111-1111-4111-8111-111111111111';
+    const canonical = '55a7760a-cdd8-5717-bd0f-5c34c4aa7100';
+    localStorage.setItem(CHRONICLES_RUN_STORAGE_KEY, JSON.stringify({
+      id: provisional, owner: 'alice', ended: false,
+    }));
+    chroniclesListSavedRuns('first-person');
+    vi.stubGlobal('crypto', webcrypto);
+    try {
+      const remote = [{ runId: canonical, status: 'active', currentMapId: 'ash-vault' }];
+      expect(await chroniclesRecoverLegacySavedRunIds('first-person', remote)).toBe(1);
+      const saves = chroniclesMergeRemoteSavedRuns('first-person', remote);
+      expect(saves).toHaveLength(1);
+      expect(saves[0]).toMatchObject({ id: canonical, remote: true, pending: false, active: true });
+      expect(ensureChroniclesRun('first-person')).toBe(canonical);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
   it('does not claim to recover a legacy save without an exact remote match or after abort', async () => {
     const provisional = '550e8400-e29b-41d4-a716-446655440000';
     localStorage.setItem(CHRONICLES_RUN_STORAGE_KEY, JSON.stringify({
