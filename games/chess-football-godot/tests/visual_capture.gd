@@ -110,6 +110,7 @@ func _initialize() -> void:
 			figure._sync_locomotion(false)
 	match_node.debug_sync_presentation()
 	await _save_capture(match_node, "directional-scale-grid", "VISUAL_CAPTURE_DIRECTIONAL_SCALE_GRID")
+	await _save_capture(match_node, "tonal-parity", "VISUAL_CAPTURE_TONAL_PARITY")
 	# All on-field actions must retain the approved raster identity for BOTH
 	# teams, not briefly turn a player into the old little vector silhouette.
 	var review_actions := ["pass", "shoot", "tackle", "celebrate"]
