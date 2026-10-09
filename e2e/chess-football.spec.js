@@ -91,7 +91,7 @@ test('Chess Football fills the viewport and returns only through the runtime exi
   await page.locator('.lab-workshop-portal--football').click();
   await expect(page.getByRole('heading', { name: 'Chess Football' })).toBeVisible();
   await expect(page.locator('iframe[title="Chess Football Godot"]')).toHaveCount(0);
-  await page.getByRole('button', { name: /Partida rápida/ }).click();
+  await page.locator('.chess-football-entry__choice--quick').click();
 
   const host = page.locator('.chess-football-godot-host');
   await expect(host).toBeVisible();
@@ -123,7 +123,7 @@ test('Chess Football fills the viewport and returns only through the runtime exi
   });
   await expect(page.getByRole('heading', { name: 'Chess Football' })).toBeVisible();
   await expect(host).toHaveCount(0);
-  await page.getByRole('button', { name: /Experimentos geniales/ }).click();
+  await page.locator('.chess-football-entry__back').click();
   await expect(page.getByRole('heading', { name: 'Experimentos geniales', exact: true })).toBeVisible();
 });
 
@@ -137,7 +137,7 @@ test('Chess Football requests landscape immersion from the launch gesture and re
   await expect.poll(() => page.evaluate(() => window.__footballFullscreenRequests)).toBe(0);
   await expect(page.locator('html')).not.toHaveAttribute('data-chess-football-immersive', 'requested');
   await expect(page.locator('iframe[title="Chess Football Godot"]')).toHaveCount(0);
-  await page.getByRole('button', { name: /Partida rápida/ }).click();
+  await page.locator('.chess-football-entry__choice--quick').click();
 
   const host = page.locator('.chess-football-godot-host');
   await expect(host).toBeVisible();
@@ -170,7 +170,7 @@ test('Chess Football mobile portrait never traps the session and retries landsca
   await page.locator('.lab-workshop-portal--football').click();
   await expect(page.getByRole('heading', { name: 'Chess Football' })).toBeVisible();
   await expect(page.locator('iframe[title="Chess Football Godot"]')).toHaveCount(0);
-  await page.getByRole('button', { name: /Partida rápida/ }).click();
+  await page.locator('.chess-football-entry__choice--quick').click();
 
   const host = page.locator('.chess-football-godot-host');
   await expect(host).toBeVisible();
@@ -194,7 +194,7 @@ test('Chess Football mobile portrait never traps the session and retries landsca
   await page.getByRole('button', { name: 'Salir de Chess Football' }).click();
   await expect(page.getByRole('heading', { name: 'Chess Football' })).toBeVisible();
   await expect(host).toHaveCount(0);
-  await page.getByRole('button', { name: /Experimentos geniales/ }).click();
+  await page.locator('.chess-football-entry__back').click();
   await expect(page.getByRole('heading', { name: 'Experimentos geniales', exact: true })).toBeVisible();
 });
 
@@ -203,11 +203,11 @@ test('Chess Football manager door opens without booting a match', async ({ page 
   await page.locator('.lab-workshop-portal--football').click();
 
   await expect(page.getByRole('heading', { name: 'Chess Football' })).toBeVisible();
-  await page.getByRole('button', { name: /Modo mánager/ }).click();
+  await page.locator('.chess-football-entry__choice--manager').click();
   await expect(page.getByRole('heading', { name: 'El despacho del míster' })).toBeVisible();
   await expect(page.locator('iframe[title="Chess Football Godot"]')).toHaveCount(0);
   await page.getByRole('button', { name: 'Volver a elegir modo' }).click();
-  await expect(page.getByRole('button', { name: /Partida rápida/ })).toBeVisible();
-  await page.getByRole('button', { name: /Experimentos geniales/ }).click();
+  await expect(page.locator('.chess-football-entry__choice--quick')).toBeVisible();
+  await page.locator('.chess-football-entry__back').click();
   await expect(page.getByRole('heading', { name: 'Experimentos geniales', exact: true })).toBeVisible();
 });
