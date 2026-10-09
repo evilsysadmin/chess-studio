@@ -194,7 +194,7 @@ export function chroniclesMarkSavedRunRemote(scope, runId) {
 
 export function chroniclesSelectedRunIsRemote(scope, runId) {
   const active = readRunState(scope);
-  return active?.id === runId && active.remote === true;
+  return active?.id === runId && !active.ended && active.remote === true;
 }
 
 export function chroniclesSelectSavedRun(scope, runId) {
