@@ -41,6 +41,7 @@ LOGOUT_FLOW_OWNER = "frontend/src/useLogoutFlow.js"
 FEATURE_FLAGS_OWNER = "frontend/src/usePublicFeatureFlags.js"
 GAME_EXIT_FLOW_OWNER = "frontend/src/useGameExitFlow.js"
 SHARE_RESULT_OWNER = "frontend/src/shareResult.js"
+SHARED_RESULT_VISUAL_OWNER = "frontend/src/components/ShareResultModal.jsx"
 
 # Exact lazy-route import swap for School preload. Any unrelated App.jsx edit
 # falls back to the full visual sweep; this is NOT a blanket App exemption.
@@ -717,6 +718,23 @@ def _is_nonvisual_casual_result_app_diff(diff_text: str | None) -> bool:
     return bool(changed_lines) and all(line in NONVISUAL_CASUAL_RESULT_APP_LINES for line in changed_lines)
 
 
+def _is_shared_result_lazy_app_diff(diff_text: str | None) -> bool:
+    """Allow only the audited lazy shared-result route to scope to postgame UI.
+
+    Any extra App.jsx change fails closed to the full canonical sweep.
+    """
+    if not diff_text:
+        return False
+    return sorted(_changed_source_lines(diff_text)) == sorted([
+        "import SharedResultScreen from './components/SharedResultScreen.jsx';",
+        "const SharedResultScreen = React.lazy(() => import('./components/SharedResultScreen.jsx'));",
+        "<>",
+        '<React.Suspense fallback={<div className="route-loading" role="status">Cargando resultado compartido…</div>}>',
+        "</>",
+        "</React.Suspense>",
+    ])
+
+
 def _is_nonvisual_share_result_app_diff(diff_text: str | None) -> bool:
     return _is_exact_routing_diff(diff_text, NONVISUAL_SHARE_RESULT_APP_LINES)
 
@@ -786,6 +804,9 @@ def normalize(
         CASUAL_RESULT_FLOW_OWNER.lower() in lower_paths
         and _is_nonvisual_casual_result_app_diff(_git_diff_text(base_sha, head_sha, APP_SHELL))
     )
+    safe_shared_result_lazy_app = _is_shared_result_lazy_app_diff(
+        _git_diff_text(base_sha, head_sha, APP_SHELL)
+    ) if APP_SHELL.lower() in lower_paths else False
     safe_share_result_app = (
         SHARE_RESULT_OWNER.lower() in lower_paths
         and _is_nonvisual_share_result_app_diff(_git_diff_text(base_sha, head_sha, APP_SHELL))
@@ -810,6 +831,11 @@ def normalize(
         if not path:
             continue
         lower = path.lower()
+        if lower == APP_SHELL.lower() and safe_shared_result_lazy_app:
+            # Shared-result loading affects postgame presentation, not Home,
+            # Chronicles or training. Keep the War Room visual producer active.
+            add(SHARED_RESULT_VISUAL_OWNER)
+            continue
         if lower == APP_SHELL.lower() and safe_school_preload_app:
             add(SCHOOL_PRELOAD_OWNER)
             continue
@@ -940,6 +966,29 @@ def self_test() -> None:
     assert _is_nonvisual_casual_result_app_diff(safe_casual_result_diff)
     assert not _is_nonvisual_casual_result_app_diff(unsafe_casual_result_diff)
     assert not _is_nonvisual_casual_result_app_diff(None)
+
+    shared_lazy_diff = (
+        "--- a/frontend/src/App.jsx\n+++ b/frontend/src/App.jsx\n"
+        "@@ -1 +1 @@\n"
+        "-import SharedResultScreen from './components/SharedResultScreen.jsx';\n"
+        "+const SharedResultScreen = React.lazy(() => import('./components/SharedResultScreen.jsx'));\n"
+        "@@ -5 +5 @@\n"
+        "-      <>\n"
+        '+      <React.Suspense fallback={<div className="route-loading" role="status">Cargando resultado compartido…</div>}>\n'
+        "-      </>\n"
+        "+      </React.Suspense>\n"
+    )
+    assert _is_shared_result_lazy_app_diff(shared_lazy_diff)
+    assert not _is_shared_result_lazy_app_diff(shared_lazy_diff + "+<main>another change</main>\n")
+    original_diff = globals()["_git_diff_text"]
+    try:
+        globals()["_git_diff_text"] = lambda base, head, path: shared_lazy_diff if path == APP_SHELL else None
+        assert normalize([APP_SHELL, "e2e/war-room-decor-visual-artifact.spec.js"],
+                         base_sha="test-base", head_sha="test-head") == [
+            SHARED_RESULT_VISUAL_OWNER, "e2e/war-room-decor-visual-artifact.spec.js",
+        ]
+    finally:
+        globals()["_git_diff_text"] = original_diff
 
     safe_share_result_diff = "--- a/frontend/src/App.jsx\n+++ b/frontend/src/App.jsx\n@@ -1 +1 @@\n-import { shareRecordFromHash } from './shareResult.js';\n+import { buildLiveShareRecord, shareRecordFromHash } from './shareResult.js';\n"
     unsafe_share_result_diff = safe_share_result_diff + "@@ -20 +20 @@\n-<main className=\"old\">\n+<main className=\"new\">\n"
