@@ -58,7 +58,7 @@ export default function Home3DLoadingGate({ stageRef, onUseStaticHome }) {
       attributeFilter: ['class', 'data-home-blender-runtime'],
     });
     const timeout = window.setTimeout(() => {
-      if (!home3DFrameReady(stage)) setStalled(true);
+      if (!visibleRef.current) setStalled(true);
     }, 30_000);
     inspect();
     return () => {
