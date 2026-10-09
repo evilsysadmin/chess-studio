@@ -82,9 +82,9 @@ export function swordhavenGrassTexture() {
       const grain = hash(x, y) - 0.5;
       const warmth = meadow * 35 + clover * 15 + grain * 13;
       const index = (y * size + x) * 4;
-      pixels[index] = Math.round(103 + warmth * 0.9);
+      pixels[index] = Math.round(103 + warmth * 0.9 + clover * 15);
       pixels[index + 1] = Math.round(127 + warmth);
-      pixels[index + 2] = Math.round(73 + warmth * 0.57);
+      pixels[index + 2] = Math.round(73 + warmth * 0.57 + meadow * 11);
       pixels[index + 3] = 255;
     }
   }
