@@ -434,6 +434,9 @@ test('Chronicles · no abandona ni cambia run si el último checkpoint devuelve 
   test.setTimeout(180_000);
   let serverAvailable = false;
   const checkpointAttempts = [];
+  await openChronicles(page, { chroniclesCurrentMapId: 'swordhaven-square', newTown: true });
+  // Install after mockApi(): Playwright evaluates the most recently registered
+  // route first, so the simulated outage must intercept the shared mock.
   await page.route('http://localhost:4000/api/chronicles/runs/**', async (route) => {
     if (route.request().method() !== 'PUT' || !route.request().url().endsWith('/checkpoint')) {
       return route.fallback();
@@ -445,7 +448,6 @@ test('Chronicles · no abandona ni cambia run si el último checkpoint devuelve 
       body: JSON.stringify({ detail: 'Checkpoint unavailable' }),
     });
   });
-  await openChronicles(page, { chroniclesCurrentMapId: 'swordhaven-square', newTown: true });
   const game = page.locator('[data-chronicles="true"]');
   await page.keyboard.press('ArrowRight');
   await expect(game).toHaveAttribute('data-chronicles-turns', '1');
