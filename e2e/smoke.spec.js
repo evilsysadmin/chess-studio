@@ -1,6 +1,15 @@
 import { expect, test } from '@playwright/test';
 import { buttonWithHeading, buttonWithVisibleText, clickBoardMove, dismissTutorialIfVisible, gameTurn, login, mockApi, openCampaignBriefing, openCampaignMap, openDeployment } from './helpers.js';
 
+// Opening Home is now an atomic, genuinely blocking scene transition.
+// Functional smoke tests must wait for the same real ready gate as the user
+// rather than clicking invisible controls through the loading curtain.
+async function loginWithReadyHome(page) {
+  test.setTimeout(Math.max(test.info().timeout, 90_000));
+  await login(page);
+  await expect(page.locator('.home-3d-loading')).toHaveCount(0, { timeout: 35_000 });
+}
+
 const ACTIVE_GAME_SESSION_KEY = 'chess-study-active-game-session-v1';
 const ACTIVE_GAME_VISIBLE_ROUTE_KEY = 'chess-study-active-game-visible-route-v1';
 
@@ -44,7 +53,7 @@ async function reloadAndProveNewDocument(page) {
 
 test('login → menú → Así juegas → refresh → ESC conserva navegación', async ({ page }) => {
   await mockApi(page);
-  await login(page);
+  await loginWithReadyHome(page);
 
   await expect(page.getByText('2 usuarios online', { exact: true })).toHaveCount(0);
   await buttonWithVisibleText(page, 'Así juegas').click();
@@ -59,7 +68,7 @@ test('login → menú → Así juegas → refresh → ESC conserva navegación',
 
 test('Partida rápida · una partida activa sobrevive a reload/deploy y vuelve al tablero', async ({ page }) => {
   await mockApi(page);
-  await login(page);
+  await loginWithReadyHome(page);
 
   await buttonWithVisibleText(page, 'Partida rápida').click();
   await expect(page.getByRole('dialog', { name: 'Configurar partida rápida' })).toBeVisible();
@@ -90,7 +99,7 @@ test('Partida rápida · una partida activa sobrevive a reload/deploy y vuelve a
 
 test('Partida rápida · Back del navegador conserva la misma partida activa', async ({ page }) => {
   await mockApi(page);
-  await login(page);
+  await loginWithReadyHome(page);
 
   await buttonWithVisibleText(page, 'Partida rápida').click();
   await page.getByRole('button', { name: 'Empezar partida', exact: true }).click();
@@ -130,7 +139,7 @@ test('Partida rápida · Back del navegador conserva la misma partida activa', a
 
 test('Torneo · una partida activa sobrevive a reload y no vuelve al menú', async ({ page }) => {
   await mockApi(page);
-  await login(page);
+  await loginWithReadyHome(page);
 
   await buttonWithHeading(page, 'Torneo').click();
   await expect(page.getByRole('heading', { name: 'Siguiente rival', exact: true })).toBeVisible();
@@ -151,7 +160,7 @@ test('Torneo · una partida activa sobrevive a reload y no vuelve al menú', asy
 
 test('Partida rápida · un 503 al restaurar conserva la ruta y permite reintentar sin caer a Home', async ({ page }) => {
   await mockApi(page);
-  await login(page);
+  await loginWithReadyHome(page);
 
   await buttonWithVisibleText(page, 'Partida rápida').click();
   const startQuickMatch = page.getByRole('button', { name: 'Empezar partida', exact: true });
@@ -201,7 +210,7 @@ test('Partida rápida · un 503 al restaurar conserva la ruta y permite reintent
 
 test('admin · clicar usuarios online abre el Panel Admin', async ({ page }) => {
   await mockApi(page, { isAdmin: true });
-  await login(page);
+  await loginWithReadyHome(page);
 
   const online = page.getByRole('button', { name: '2 usuarios online', exact: true });
   await expect(online).toBeVisible();
@@ -212,7 +221,7 @@ test('admin · clicar usuarios online abre el Panel Admin', async ({ page }) => 
 
 test('Combat Chess · Campaña abre el mapa estratégico y mantiene la intel oculta', async ({ page }) => {
   await mockApi(page);
-  await login(page);
+  await loginWithReadyHome(page);
 
   const map = await openCampaignMap(page);
   await expect(map.getByText(/CPU \d+/i)).toHaveCount(0);
@@ -231,7 +240,7 @@ test('Combat Chess · Campaña abre el mapa estratégico y mantiene la intel ocu
 test('Combat Chess · mapa conserva art y todos los nodos dentro del lienzo', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await mockApi(page);
-  await login(page);
+  await loginWithReadyHome(page);
 
   const mapRegion = await openCampaignMap(page);
   const canvas = mapRegion.locator('.combat-campaign-map');
@@ -263,7 +272,7 @@ test('Combat Chess · mapa conserva art y todos los nodos dentro del lienzo', as
 
 test('Combat Chess · Campaña permite jugar con defaults en un clic y deja el despliegue manual opcional', async ({ page }) => {
   await mockApi(page);
-  await login(page);
+  await loginWithReadyHome(page);
   await openCampaignBriefing(page);
 
   await page.getByRole('button', { name: /PREPARAR EJÉRCITO/i }).click();
@@ -284,7 +293,7 @@ test('Combat Chess · Campaña permite jugar con defaults en un clic y deja el d
 
 test('Mesa de Guerra · hover abre ficha y doble clic mueve Tablero ↔ Banquillo', async ({ page }) => {
   await mockApi(page);
-  await login(page);
+  await loginWithReadyHome(page);
   await openCampaignBriefing(page);
   const deployment = await openDeployment(page);
 
@@ -310,7 +319,7 @@ test('Mesa de Guerra · hover abre ficha y doble clic mueve Tablero ↔ Banquill
 
 test('Combat Chess · una batalla activa sobrevive a reload y no vuelve a Setup', async ({ page }) => {
   await mockApi(page);
-  await login(page);
+  await loginWithReadyHome(page);
   await openCampaignBriefing(page);
   await page.getByRole('button', { name: /PREPARAR EJÉRCITO/i }).click();
   await dismissTutorialIfVisible(page);
@@ -327,7 +336,7 @@ test('Combat Chess · una batalla activa sobrevive a reload y no vuelve a Setup'
 
 test('Mesa de Guerra · clic simple fija la ficha sin mover la unidad', async ({ page }) => {
   await mockApi(page);
-  await login(page);
+  await loginWithReadyHome(page);
   await openCampaignBriefing(page);
   const deployment = await openDeployment(page);
 
@@ -346,7 +355,7 @@ test('Mesa de Guerra · clic simple fija la ficha sin mover la unidad', async ({
 
 test('Combat Chess · la batalla usa el rail derecho como Registro de batalla', async ({ page }) => {
   await mockApi(page);
-  await login(page);
+  await loginWithReadyHome(page);
   await openCampaignBriefing(page);
   const deployment = await openDeployment(page);
   await deployment.getByRole('button', { name: 'CONFIRMAR DESPLIEGUE', exact: true }).click();
@@ -363,7 +372,7 @@ test('móvil 360/390/430px · Home y briefing Combat no desbordan horizontalment
   const widths = [360, 390, 430];
   await page.setViewportSize({ width: 390, height: 844 });
   await mockApi(page);
-  await login(page);
+  await loginWithReadyHome(page);
 
   await expect(page.getByRole('region', { name: 'Hoy en Chess Studio' })).toBeVisible();
   for (const width of widths) {
@@ -415,7 +424,7 @@ test('cuenta nueva · Login y bienvenida inicial son claros y no desbordan en m�
 test('móvil 390px · Admin sigue legible y sin overflow global', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await mockApi(page, { isAdmin: true });
-  await login(page);
+  await loginWithReadyHome(page);
   await page.getByRole('button', { name: '2 usuarios online', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Usuarios registrados', exact: true })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
@@ -424,7 +433,7 @@ test('móvil 390px · Admin sigue legible y sin overflow global', async ({ page 
 
 test('Combat Chess · salir al menú conserva campaña y batalla activas', async ({ page }) => {
   await mockApi(page);
-  await login(page);
+  await loginWithReadyHome(page);
   await openCampaignBriefing(page);
   await page.getByRole('button', { name: /PREPARAR EJÉRCITO/i }).click();
   await dismissTutorialIfVisible(page);
@@ -460,7 +469,7 @@ test('Combat Chess · salir al menú conserva campaña y batalla activas', async
 
 test('Partida rápida · las 64 casillas mantienen una geometría uniforme y el chat acompaña la mesa', async ({ page }) => {
   await mockApi(page);
-  await login(page);
+  await loginWithReadyHome(page);
   await buttonWithVisibleText(page, 'Partida rápida').click();
   await page.getByRole('button', { name: 'Empezar partida', exact: true }).click();
   await expect(gameTurn(page)).toBeVisible();
@@ -486,7 +495,7 @@ test('Partida rápida · las 64 casillas mantienen una geometría uniforme y el 
 
 test('Home · Feedback abre y envía sin tumbar la pantalla ni deformar la cabecera', async ({ page }) => {
   await mockApi(page);
-  await login(page);
+  await loginWithReadyHome(page);
   const trigger = page.getByRole('button', { name: 'Enviar feedback' });
   const before = await trigger.boundingBox();
   expect(before).not.toBeNull();
@@ -508,7 +517,7 @@ test('Home · Feedback abre y envía sin tumbar la pantalla ni deformar la cabec
 
 test('Home · Feedback, Mi cuenta y Novedades comparten geometría de control', async ({ page }) => {
   await mockApi(page);
-  await login(page);
+  await loginWithReadyHome(page);
   const feedback = page.getByRole('button', { name: 'Enviar feedback' });
   const account = page.getByRole('button', { name: 'Abrir menú de cuenta' });
   const news = page.getByRole('button', { name: /Abrir novedades/ });
@@ -524,7 +533,7 @@ test('Home · Feedback, Mi cuenta y Novedades comparten geometría de control', 
 test('desktop 1440x900 · Partida completa cabe en viewport y la botonera comparte geometría', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await mockApi(page);
-  await login(page);
+  await loginWithReadyHome(page);
   await buttonWithVisibleText(page, 'Partida rápida').click();
   await page.getByRole('button', { name: 'Empezar partida', exact: true }).click();
   await expect(gameTurn(page)).toBeVisible();
@@ -564,7 +573,7 @@ test('desktop 1440x900 · Partida completa cabe en viewport y la botonera compar
 test('desktop 1366x768 · Partida compacta conserva tablero, jugador y acciones dentro del viewport', async ({ page }) => {
   await page.setViewportSize({ width: 1366, height: 768 });
   await mockApi(page);
-  await login(page);
+  await loginWithReadyHome(page);
   await buttonWithVisibleText(page, 'Partida rápida').click();
   await page.getByRole('button', { name: 'Empezar partida', exact: true }).click();
   await expect(gameTurn(page)).toBeVisible();
@@ -590,7 +599,7 @@ test('desktop 1366x768 · Partida compacta conserva tablero, jugador y acciones 
 test('desktop 1440x900 · Combat mantiene mesa y acciones coherentes dentro del viewport', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await mockApi(page);
-  await login(page);
+  await loginWithReadyHome(page);
   await openCampaignBriefing(page);
   await page.getByRole('button', { name: /PREPARAR EJÉRCITO/i }).click();
   await dismissTutorialIfVisible(page);
@@ -615,7 +624,7 @@ test('desktop 1440x900 · Combat mantiene mesa y acciones coherentes dentro del 
 
 test('Onboarding Home · Matthias presenta cuatro pasos y Escuela va primero', async ({ page }) => {
   await mockApi(page);
-  await login(page);
+  await loginWithReadyHome(page);
 
   let guide = page.getByRole('region', { name: 'Guía rápida de Chess Studio' });
   await expect(guide).toBeVisible();
@@ -659,7 +668,7 @@ test('Onboarding Home · Matthias presenta cuatro pasos y Escuela va primero', a
 
 test('Home · un 503 al iniciar partida deja un error visible junto a la acción, no en el footer', async ({ page }) => {
   await mockApi(page, { gameCreateFailures: 1 });
-  await login(page);
+  await loginWithReadyHome(page);
 
   await buttonWithVisibleText(page, 'Partida rápida').click();
   await page.getByRole('button', { name: 'Empezar partida', exact: true }).click();
@@ -675,7 +684,7 @@ test('Home · un 503 al iniciar partida deja un error visible junto a la acción
 test('resiliencia · un 503 después de persistir create reusa Idempotency-Key y no duplica partida', async ({ page }) => {
   const requests = [];
   await mockApi(page, { gameCreateCommitThenFailures: 1, requestLog: requests });
-  await login(page);
+  await loginWithReadyHome(page);
 
   await buttonWithVisibleText(page, 'Partida rápida').click();
   const dialog = page.getByRole('dialog', { name: 'Configurar partida rápida' });
@@ -695,7 +704,7 @@ test('resiliencia · un 503 después de persistir create reusa Idempotency-Key y
 test('golden journey · onboarding → partida/reload → mate → puzzle → Combat/reload', async ({ page }) => {
   await page.addInitScript(() => { Math.random = () => 0; });
   await mockApi(page, { gameScenario: 'mate' });
-  await login(page);
+  await loginWithReadyHome(page);
 
   const guide = page.getByRole('region', { name: 'Guía rápida de Chess Studio' });
   await expect(guide).toBeVisible();
@@ -744,7 +753,7 @@ test('golden journey · onboarding → partida/reload → mate → puzzle → Co
 test('resiliencia · jugada persistida con respuesta perdida se reintenta sin doble movimiento', async ({ page }) => {
   const requests = [];
   await mockApi(page, { gameScenario: 'opening', moveCommitThenFailures: 1, requestLog: requests });
-  await login(page);
+  await loginWithReadyHome(page);
   await buttonWithVisibleText(page, 'Partida rápida').click();
   await page.getByRole('dialog', { name: 'Configurar partida rápida' })
     .getByRole('button', { name: 'Empezar partida', exact: true }).click();
@@ -784,7 +793,7 @@ for (const [label, serverDelayMs, minimumMs, maximumMs] of [
       await route.fallback(); // The existing authoritative mock computes the CPU reply.
     });
 
-    await login(page);
+    await loginWithReadyHome(page);
     await buttonWithVisibleText(page, 'Partida rápida').click();
     await page.getByRole('button', { name: 'Empezar partida', exact: true }).click();
     await expect(gameTurn(page)).toBeVisible();
