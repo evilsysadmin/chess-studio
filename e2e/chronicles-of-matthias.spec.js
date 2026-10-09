@@ -468,5 +468,15 @@ test('Chronicles · campaña authored viaja Swordhaven → Camino → Swordhaven
   await expect(mode).toHaveAttribute('data-chronicles-map-id', 'swordhaven-campaign', { timeout: 25_000 });
   await expect(mode).toHaveAttribute('data-chronicles-phase', 'explore');
   expect(creates).toHaveLength(1);
-  expect(requests.filter((r) => r.method === 'PUT' && r.path.endsWith('/checkpoint')).length).toBeGreaterThan(0);
+  await expect.poll(() => requests.filter((r) => r.method === 'PUT' && r.path.endsWith('/checkpoint')).length)
+    .toBeGreaterThan(0);
+
+  // F5 must resume the same authoritative run from the save book, not mint
+  // another campaign or use the legacy Swordhaven default after reload.
+  await page.reload();
+  const restoredBook = page.locator('[data-chronicles-save-menu]');
+  await expect(restoredBook).toBeVisible({ timeout: 20_000 });
+  await restoredBook.getByRole('button', { name: /Continuar partida/ }).click();
+  await expect(mode).toHaveAttribute('data-chronicles-map-id', 'swordhaven-campaign', { timeout: 30_000 });
+  expect(creates).toHaveLength(1);
 });
