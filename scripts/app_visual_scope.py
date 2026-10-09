@@ -323,7 +323,11 @@ def _surface_groups(path: str) -> set[str] | None:
         "frontend/src/assets/r2-assets-manifest.json",
     }:
         return set()
-    if lower == ".github/workflows/app-visual-artifact.yml":
+    if lower in {
+        ".github/workflows/app-visual-artifact.yml",
+        ".github/workflows/chronicles-visual-artifact.yml",
+        ".github/workflows/tactics-visual-artifact.yml",
+    }:
         return set()
     if lower.startswith(".github/actions/app-visual-pipeline/"):
         # Visual orchestration owns no product surface. Its classifier self-tests
