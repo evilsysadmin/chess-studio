@@ -51,6 +51,30 @@ describe('Chronicles shared run identity', () => {
       .toMatchObject({ id, entryMapId: 'swordhaven-square' });
   });
 
+  it('mints an explicitly selected authored campaign run without rewriting legacy or Tactics identities', () => {
+    const legacy = beginChroniclesRun('first-person');
+    const campaign = beginChroniclesRun('first-person', { entryMapId: 'swordhaven-campaign' });
+    expect(campaign).not.toBe(legacy);
+    expect(chroniclesRunEntryMapId('first-person')).toBe('swordhaven-campaign');
+    expect(ensureChroniclesRun('tactics')).toBe(campaign);
+    expect(chroniclesRunEntryMapId('tactics')).toBe('swordhaven-campaign');
+    expect(chroniclesListSavedRuns('first-person')).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: legacy, entryMapId: 'swordhaven-square' }),
+      expect.objectContaining({ id: campaign, entryMapId: 'swordhaven-campaign' }),
+    ]));
+    expect(chroniclesSelectSavedRun('first-person', legacy)).toBe(true);
+    expect(chroniclesRunEntryMapId('first-person')).toBe('swordhaven-square');
+  });
+
+  it('rejects unsupported fresh-run map choices before changing the selected save', () => {
+    const current = beginChroniclesRun('first-person');
+    expect(() => beginChroniclesRun('first-person', { entryMapId: 'crypt-eight-squares' })).toThrow(RangeError);
+    expect(() => beginChroniclesRun('first-person', { entryMapId: 'unknown' })).toThrow(RangeError);
+    expect(() => beginChroniclesRun('tactics', { entryMapId: 'swordhaven-campaign' })).toThrow(RangeError);
+    expect(ensureChroniclesRun('first-person')).toBe(current);
+    expect(chroniclesListSavedRuns('first-person')).toHaveLength(1);
+  });
+
   it('keeps fresh Tactics-first expeditions on the dungeon route for both adapters', () => {
     const id = ensureChroniclesRun('tactics');
     expect(chroniclesRunEntryMapId('tactics')).toBeNull();
