@@ -265,7 +265,7 @@ esac
 # /api/release, and every native flag is forced on. It needs API "go" mode.
 case "$target" in
   staging) python_retired="${CHESS_STUDIO_PYTHON_RETIRED:-true}" ;;
-  *) python_retired="${CHESS_STUDIO_PYTHON_RETIRED:-false}" ;;
+  *) python_retired="${CHESS_STUDIO_PYTHON_RETIRED:-true}" ;;
 esac
 case "${python_retired,,}" in
   true|false) python_retired="${python_retired,,}" ;;
