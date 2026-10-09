@@ -221,6 +221,9 @@ def _surface_groups(path: str) -> set[str] | None:
 
     if lower.endswith(".md"):
         return set()
+    if lower in {"makefile", ".github/workflows/staging-deploy.yml", ".github/workflows/production-promote.yml"}:
+        # Delivery/test orchestration changes do not alter a canonical UI.
+        return set()
     if lower == "scripts/css_architecture_manifest.json":
         return set()
     if lower in {
@@ -231,6 +234,7 @@ def _surface_groups(path: str) -> set[str] | None:
         "scripts/browser_quality_scope.py",
         "scripts/chess_rules_gate.mjs",
         "scripts/quality_scope.py",
+        "scripts/pages_runtime_asset_grace.py",
         "scripts/pwa_check.mjs",
         "scripts/state_resilience_check.mjs",
         "scripts/visual_ux_contract_check.mjs",
@@ -690,7 +694,10 @@ def write_outputs(scope: Scope, output_path: str) -> None:
 
 
 def self_test() -> None:
+    assert classify(["Makefile", ".github/workflows/staging-deploy.yml", ".github/workflows/production-promote.yml"]).capture_groups == "none"
     assert classify(["e2e/staging-live.spec.js"]).capture_groups == "none"
+    assert classify(["scripts/pages_runtime_asset_grace.py"]).capture_groups == "none"
+    assert classify(["frontend/public/sw.js", "scripts/pwa_check.mjs"]).capture_groups == "none"
     assert classify(["e2e/staging-live.spec.js", "frontend/src/components/PvpHandoffModal.jsx"]).capture_groups == "home"
     cpu_scope = classify([
         "frontend/src/components/GameScreen.jsx",
@@ -699,7 +706,6 @@ def self_test() -> None:
         "scripts/architecture_debt_budget.py",
     ])
     assert cpu_scope.capture_groups == "warroom"
-    assert classify(["frontend/public/sw.js", "scripts/pwa_check.mjs"]).capture_groups == "none"
     assert classify(["frontend/src/components/ShareResultModal.jsx"]).capture_groups == "warroom"
     assert classify(["frontend/src/components/ProfileBackupModal.jsx"]).capture_groups == "home"
     assert classify([

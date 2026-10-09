@@ -163,7 +163,7 @@ jobs:
           path: frontend/dist
           run-id: ${{ github.event.workflow_run.id }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
-      - name: Validate prebuilt frontend or select fallback build
+      - name: Check frontend artifact
         id: frontend_artifact
         shell: bash
         run: |
@@ -189,8 +189,7 @@ jobs:
         with:
           version: '4.127.1'
           node-version: '22'
-      - name: Verify release-critical Pages topology
-        id: pages_bootstrap
+      - name: Pages check
         run: python3 scripts/cloudflare_staging_pages.py --release-fast-path
       - name: Build frontend for staging
         if: steps.frontend_artifact.outputs.hit != 'true'
@@ -204,6 +203,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          python3 -S ../scripts/pages_runtime_asset_grace.py --dist dist --site staging
           "$WRANGLER_BIN" pages deploy dist \
             --project-name chess-studio-staging \
             --branch main \
