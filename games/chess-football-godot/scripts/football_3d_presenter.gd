@@ -50,6 +50,9 @@ var player_run_views: Dictionary = {}
 var keeper_visual_phases: Dictionary = {}
 var keeper_visual_names: Dictionary = {}
 var body_scale_cache: Dictionary = {}
+# Lighting is already disabled for billboards. The remaining brightness jump
+# comes from shadows baked differently into the authored view families.
+var tone_gain_cache: Dictionary = {}
 var ball_node: MeshInstance3D
 var ball_shadow: MeshInstance3D
 var penalty_aim_marker: MeshInstance3D
@@ -496,6 +499,8 @@ func sync_presentation(delta: float, mode: String) -> void:
 					sprite.flip_h = player.visual.flip_h
 			sprite.pixel_size = TACTICAL_PLAYER_PIXEL_SIZE if mode == "tactical" else PLAYER_PIXEL_SIZE
 			_sync_player_secondary_motion(player, sprite, proxy)
+			var tone_gain := _tonal_view_gain(sprite)
+			sprite.modulate = Color(tone_gain, tone_gain, tone_gain, 1.0)
 			var depth_scale := perspective_body_scale(camera, proxy.global_position)
 			# Apply to both axes AFTER each authored-view/role correction. Boot
 			# baseline must also be scaled, or feet sink as players cross depth.
@@ -621,6 +626,39 @@ static func perspective_body_scale(view_camera: Camera3D, stage_position: Vector
 		player_depth / reference_depth,
 		MIN_PERSPECTIVE_BODY_SCALE, MAX_PERSPECTIVE_BODY_SCALE
 	)
+
+
+static func _animation_luminance(frames: SpriteFrames, name: StringName) -> float:
+	if not frames.has_animation(name):
+		return 0.0
+	var count := frames.get_frame_count(name)
+	if count < 1:
+		return 0.0
+	var sample_indexes := [0, maxi(0, count / 2), count - 1]
+	var total := 0.0
+	for sample_index in sample_indexes:
+		total += ChessFootballSpriteBank.frame_luminance(
+			frames.get_frame_texture(name, sample_index)
+		)
+	return total / float(sample_indexes.size())
+
+
+func _tonal_view_gain(sprite: AnimatedSprite3D) -> float:
+	var frames := sprite.sprite_frames
+	var key := "%d:%s" % [frames.get_instance_id(), String(sprite.animation)]
+	if tone_gain_cache.has(key):
+		return float(tone_gain_cache[key])
+	var frontal := _animation_luminance(frames, &"run_front")
+	var side := _animation_luminance(frames, &"run")
+	var wanted := _animation_luminance(frames, sprite.animation)
+	if frontal <= 0.01 or side <= 0.01 or wanted <= 0.01:
+		return 1.0
+	# Equalize within each sprite identity, not across different club colors
+	# or skin tones. This deliberately preserves the approved painted shading.
+	var target := (frontal + side) * 0.5
+	var gain := clampf(target / wanted, 0.88, 1.12)
+	tone_gain_cache[key] = gain
+	return gain
 
 
 static func normalized_body_scale(pixel_height: float) -> float:

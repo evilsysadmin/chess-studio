@@ -193,6 +193,32 @@ func _initialize() -> void:
 					first_height = screen_height
 				assert(screen_height > 10.0)
 				assert(absf(screen_height / first_height - 1.0) <= 0.075)
+	# All ten unlit player billboards have the same light response across
+	# camera positions; subtle baked-art brightness differences are balanced
+	# per view, never by forcing skin/kit colors to a global average.
+	for team in match_node.teams:
+		for player in team:
+			var sprite: AnimatedSprite3D = presenter.player_sprites[player.get_instance_id()]
+			assert(not sprite.shaded)
+			assert(sprite.cast_shadow == GeometryInstance3D.SHADOW_CASTING_SETTING_OFF)
+			var frames := sprite.sprite_frames
+			var reference_brightness := (
+				ChessFootball3DPresenter._animation_luminance(frames, &"run_front")
+				+ ChessFootball3DPresenter._animation_luminance(frames, &"run")
+			) * 0.5
+			assert(reference_brightness > 0.10)
+			for name in [
+				&"idle", &"run", &"sprint", &"run_front", &"run_back",
+				&"run_front_diagonal", &"run_back_diagonal",
+				&"sprint_front", &"sprint_back",
+				&"pass", &"shoot", &"tackle", &"celebrate",
+			]:
+				sprite.animation = name
+				var current := ChessFootball3DPresenter._animation_luminance(frames, name)
+				assert(current > 0.10)
+				var gain := presenter._tonal_view_gain(sprite)
+				assert(gain >= 0.88 and gain <= 1.12)
+				assert(absf(gain * current / reference_brightness - 1.0) < 0.065)
 	print("chess-football canonical roster parity smoke: OK")
 	quit(0)
 
