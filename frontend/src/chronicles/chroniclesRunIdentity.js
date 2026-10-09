@@ -149,7 +149,7 @@ export function chroniclesMergeRemoteSavedRuns(scope, remoteRuns) {
     seen.add(id);
     const local = byId.get(id);
     const createdAt = remoteTimestamp(row.createdAt);
-    const updatedAt = remoteTimestamp(row.updatedAt);
+    const updatedAt = remoteTimestamp(row.updatedAtMs ?? row.updatedAt);
     return [{
       id,
       title: local?.title || `Expedición ${id.slice(0, 8)}`,
