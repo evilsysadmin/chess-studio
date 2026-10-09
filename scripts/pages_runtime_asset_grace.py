@@ -231,14 +231,19 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--dist", type=pathlib.Path)
     parser.add_argument("--origin")
+    parser.add_argument("--site", choices=("staging", "production"))
     parser.add_argument("--self-test", action="store_true")
     args = parser.parse_args()
     if args.self_test:
         self_test()
         return
-    if not args.dist or not args.origin:
-        parser.error("--dist and --origin are required")
-    origin = args.origin.rstrip("/")
+    sites = {
+        "staging": "https://staging.chess-studio.shadowops.dpdns.org",
+        "production": "https://chess-studio-production.pages.dev",
+    }
+    if not args.dist or not (args.origin or args.site) or (args.origin and args.site):
+        parser.error("--dist and exactly one of --origin/--site are required")
+    origin = (args.origin or sites[args.site]).rstrip("/")
     result = prepare(args.dist, lambda path, size, optional=False:
                      fetch_from_origin(origin, path, size, optional=optional))
     print("PAGES_ASSET_GRACE_OK " + json.dumps(result, sort_keys=True))
