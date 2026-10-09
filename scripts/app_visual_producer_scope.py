@@ -743,6 +743,8 @@ def project_chronicles_lane(producers: str, lane: str) -> str:
     Unknown paths remain fail-closed: 'all' expands to every known producer
     before projecting either lane, rather than bypassing the expensive gate.
     """
+    if lane == "combined":
+        return producers  # Preserve the public classifier CLI contract.
     selected = set(PRODUCER_ORDER) if producers == "all" else set(producers.split(",")) - {"none", ""}
     if lane == "tactics":
         selected &= {"chronicles-tactics"}
@@ -754,6 +756,7 @@ def project_chronicles_lane(producers: str, lane: str) -> str:
 
 
 def self_test() -> None:
+    assert project_chronicles_lane("all", "combined") == "all"
     assert project_chronicles_lane("chronicles-tactics,chronicles-gameplay", "default") == "chronicles-gameplay"
     assert project_chronicles_lane("chronicles-tactics,chronicles-gameplay", "tactics") == "chronicles-tactics"
     assert project_chronicles_lane("chronicles-gameplay", "tactics") == "none"
@@ -1037,7 +1040,7 @@ def self_test() -> None:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--all", action="store_true")
-    parser.add_argument("--chronicles-lane", choices=("default", "tactics"), default="default")
+    parser.add_argument("--chronicles-lane", choices=("combined", "default", "tactics"), default="combined")
     parser.add_argument("--github-output", default=os.environ.get("GITHUB_OUTPUT", ""))
     parser.add_argument("--self-test", action="store_true")
     args = parser.parse_args(argv)
