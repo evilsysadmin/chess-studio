@@ -40,6 +40,23 @@ func _initialize() -> void:
 		assert(pitch.has_point(p))
 	# The far-side non-pressing defenders must not collapse into the dribbler.
 	assert(game.AI_DEFENSIVE_SHIFT_RATIO <= 0.17)
+	# Even with generous lanes, two AI teammates can briefly end up at
+	# the same spot. Their future destination must be separated smoothly.
+	var clustered: Footballer = game.teams[0][1]
+	var other: Footballer = game.teams[0][3]
+	var same_spot := pitch.get_center() + Vector2(-360.0, -240.0)
+	clustered.global_position = same_spot + Vector2(-8.0, 0.0)
+	other.global_position = same_spot
+	var safer: Vector2 = game._ai_spaced_target(clustered, same_spot)
+	assert(safer.distance_to(same_spot) >= 105.0)
+	assert(safer.y < same_spot.y)
+	assert(pitch.has_point(safer))
+	# This is not a universal force field: a free lane is not adjusted,
+	# and the ball carrier retains direct dribble control.
+	other.global_position = pitch.get_center() + Vector2(900.0, 620.0)
+	var free_target := pitch.position + Vector2(180.0, 160.0)
+	assert(game._ai_spaced_target(clustered, free_target).distance_to(free_target) < 0.01)
+	assert(game._ai_spaced_target(carrier, same_spot) == same_spot)
 	print("FOOTBALL_WIDTH=%.0f SUPPORT_SPREAD=%.0f" % [
 		pitch.size.y, support_wing.y - support_def.y
 	])
