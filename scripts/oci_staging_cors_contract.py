@@ -89,9 +89,8 @@ required_deploy_fragments = (
     'endpoint="$api_base/pvp/lobby/pulse"',
     "PVP_AUTHENTICATED_BROWSER_OK",
     "virtualPlayersEnabled",
-    "CHESS_STUDIO_PVP_ALLOW_PYTHON_FALLBACK_STAGING",
-    "deployment_target == 'staging'",
-    "required_native",
+    "pythonRetired",
+    "any(value is not True for value in native.values())",
     "/api/pvp/lobby",
     "pvp_challenge_browser_attest",
     "/api/pvp/challenges",
@@ -107,7 +106,7 @@ required_deploy_fragments = (
     "OCI staging public PvP challenge transport did not prove browser JSON/CORS semantics",
     "X-Chess-Pvp-Native",
     "deliberately-invalid",
-    "readiness/build/CORS attestation",
+    "Go readiness/build attestation",
 )
 for fragment in required_deploy_fragments:
     assert fragment in deploy, f"missing OCI staging CORS deploy contract: {fragment}"
@@ -189,16 +188,9 @@ for source, label in (
         assert fragment in source, f"missing operator Docker access contract ({label}): {fragment}"
 
 assert 'CORS_ORIGINS: "${CHESS_STUDIO_CORS_ORIGINS:-https://staging.chess-studio.shadowops.dpdns.org}"' in compose
-assert compose.count('PVP_NATIVE_LOBBY_READ_ENABLED: "${CHESS_STUDIO_PVP_NATIVE_LOBBY_READ_ENABLED:-true}"') == 2
-assert compose.count('PVP_NATIVE_ROSTER_ENABLED: "${CHESS_STUDIO_PVP_NATIVE_ROSTER_ENABLED:-true}"') == 2
-assert compose.count('PVP_NATIVE_CHALLENGE_CREATE_ENABLED: "${CHESS_STUDIO_PVP_NATIVE_CHALLENGE_CREATE_ENABLED:-true}"') == 2
-assert compose.count('PVP_NATIVE_CHAT_ENABLED: "${CHESS_STUDIO_PVP_NATIVE_CHAT_ENABLED:-true}"') == 2
-assert compose.count('PVP_NATIVE_CHALLENGE_RESOLUTION_ENABLED: "${CHESS_STUDIO_PVP_NATIVE_CHALLENGE_RESOLUTION_ENABLED:-true}"') == 2
-assert compose.count('PVP_NATIVE_MATCH_HANDOFF_CANCEL_ENABLED: "${CHESS_STUDIO_PVP_NATIVE_MATCH_HANDOFF_CANCEL_ENABLED:-true}"') == 2
-assert compose.count('PVP_NATIVE_MATCH_READY_ENABLED: "${CHESS_STUDIO_PVP_NATIVE_MATCH_READY_ENABLED:-true}"') == 2
-assert compose.count('CHESS_PVP_SPARRING_ENABLED: "${CHESS_PVP_SPARRING_ENABLED:-false}"') == 5
-assert compose.count('CHESS_PVP_SPARRING_OWNER: "${CHESS_PVP_SPARRING_OWNER:-evilsysadmin}"') == 5
-assert compose.count('CHESS_PVP_SPARRING_USERNAME: "${CHESS_PVP_SPARRING_USERNAME:-sparringmeister}"') == 5
+assert compose.count('CHESS_PVP_SPARRING_ENABLED: "${CHESS_PVP_SPARRING_ENABLED:-false}"') == 2  # the two Go slots
+assert compose.count('CHESS_PVP_SPARRING_OWNER: "${CHESS_PVP_SPARRING_OWNER:-evilsysadmin}"') == 2  # the two Go slots
+assert compose.count('CHESS_PVP_SPARRING_USERNAME: "${CHESS_PVP_SPARRING_USERNAME:-sparringmeister}"') == 2  # the two Go slots
 default_origins = assigned_literal_strings(backend_main, "_DEFAULT_CORS_ORIGINS")
 assert STAGING_ORIGIN in default_origins, (
     "FastAPI must always allow the canonical staging browser origin even if runtime "
@@ -442,26 +434,12 @@ assert '/bin/bash "$tunnel_connector" --self-test >/dev/null' in deploy
 # Images may still be publishing when the deploy starts: bounded pull retry.
 assert 'docker pull --quiet "$ref" >/dev/null 2>&1' in deploy
 assert 'local attempts="${CHESS_STUDIO_IMAGE_PULL_ATTEMPTS:-18}"' in deploy
-assert '! pull_immutable_image "$target_image"; then' in deploy
 assert 'if ! pull_immutable_image "$pvp_target_image"; then' in deploy
-assert 'candidate_service="$(slot_service "$candidate_color")"' in deploy
-assert 'candidate_port="$(slot_port "$candidate_color")"' in deploy
 assert 'candidate_pvp_service="$(pvp_service "$candidate_color")"' in deploy
-assert 'candidate_services=("$candidate_service" "$candidate_pvp_service")' in deploy
-assert 'compose "$sha" up -d --no-build --force-recreate "${candidate_services[@]}"' in deploy
-assert 'attest "$sha" "$candidate_port"' in deploy
-assert 'if candidate_attest && pvp_attest "$candidate_pvp_service" "$target"; then' in deploy
 # Python retirement: on in staging and production; when on, only the Go
 # sidecar runs, Go proves /api/ready and /api/release, Go mints the owner
 # token, nginx never names a backend_* slot and rollback stays on Go.
-assert 'staging) python_retired="${CHESS_STUDIO_PYTHON_RETIRED:-true}" ;;' in deploy
-assert '*) python_retired="${CHESS_STUDIO_PYTHON_RETIRED:-true}" ;;' in deploy
-assert 'CHESS_STUDIO_PYTHON_RETIRED=true requires CHESS_STUDIO_API_EDGE_MODE=go' in deploy
-assert 'CHESS_STUDIO_PYTHON_RETIRED="$python_retired"' in deploy
-assert compose.count('GO_PYTHON_RETIRED: "${CHESS_STUDIO_PYTHON_RETIRED:-false}"') == 2
 assert "payload.get('pythonRetired')" in deploy
-assert '  candidate_services=("$candidate_pvp_service")' in deploy
-assert '  active_backend_service="$candidate_pvp_service"' in deploy
 assert 'go_attest "$sha" "$candidate_pvp_service"' in deploy
 assert 'wget -q -O - http://127.0.0.1:8080/api/ready' in deploy
 assert 'wget -q -O - http://127.0.0.1:8080/api/release' in deploy
@@ -472,101 +450,54 @@ go_roster = deploy.split("go_virtual_roster_attest() {", 1)[1].split("\npvp_brow
 assert '-e "PVP_ATTEST_TOKEN=$token"' in go_roster
 assert 'Bearer $PVP_ATTEST_TOKEN' in go_roster  # expanded inside the container
 assert 'python - ' not in go_roster
-assert 'if [[ "$python_retired" == "true" ]] && ! wait_pvp_browser_attest cors_attest "$port"; then' in deploy
 assert 'exit 84' in deploy
-assert 'if [[ "$python_retired" != "true" ]] && ! pull_immutable_image "$target_image"; then' in deploy
-assert '[[ "${python_retired:-false}" != "true" ]] || rollback_api_mode=go' in deploy
-assert 'render_edge "$previous_color" go "$previous_sha" "$rollback_api_mode"' in deploy
-assert 'if [[ "${python_retired:-false}" != "true" && "${switch_complete:-0}" == "1"' in deploy
-assert 'python_retired=$python_retired games_native' in deploy
-assert "payload.get('nativePulse')" in deploy
-assert "payload.get('nativeLobbyRead')" in deploy
-assert "payload.get('nativeRoster')" in deploy
-assert "payload.get('nativeChat')" in deploy
-assert "payload.get('nativeChallengeResolution')" in deploy
-assert "payload.get('nativeChallengeAccept')" in deploy
-assert "payload.get('nativeChallengeCreate')" in deploy
-assert "payload.get('nativeMatchHandoffCancel')" in deploy
-assert "payload.get('nativeMatchReady')" in deploy
-assert "payload.get('nativeMatchResign')" in deploy
-assert "payload.get('nativeMatchRead')" in deploy
-assert "payload.get('nativeMatchMove')" in deploy
-assert "payload.get('nativeResidentMove')" in deploy
-assert "CHESS_STUDIO_PVP_NATIVE_PULSE_ENABLED" in deploy
 assert "CHESS_STUDIO_PVP_NATIVE_LOBBY_READ_ENABLED" in deploy
-assert "CHESS_STUDIO_PVP_NATIVE_ROSTER_ENABLED" in deploy
-assert "env.get('CHESS_STUDIO_PVP_NATIVE_ROSTER_ENABLED', 'true')" in deploy
-assert "CHESS_STUDIO_PVP_NATIVE_CHAT_ENABLED" in deploy
-assert "CHESS_STUDIO_PVP_NATIVE_MATCH_HANDOFF_CANCEL_ENABLED" in deploy
-assert "CHESS_STUDIO_PVP_NATIVE_MATCH_READY_ENABLED" in deploy
-assert "CHESS_STUDIO_PVP_NATIVE_MATCH_RESIGN_ENABLED" in deploy
-assert "CHESS_STUDIO_PVP_NATIVE_MATCH_READ_ENABLED" in deploy
-assert "CHESS_STUDIO_PVP_NATIVE_MATCH_MOVE_ENABLED" in deploy
-assert "CHESS_STUDIO_PVP_NATIVE_RESIDENT_MOVE_ENABLED" in deploy
-assert "CHESS_STUDIO_PVP_NATIVE_CHALLENGE_RESOLUTION_ENABLED" in deploy
-assert "CHESS_STUDIO_PVP_NATIVE_CHALLENGE_ACCEPT_ENABLED" in deploy
 assert "CHESS_STUDIO_PVP_NATIVE_CHALLENGE_CREATE_ENABLED" in deploy
-assert "env.get('CHESS_STUDIO_PVP_NATIVE_CHALLENGE_CREATE_ENABLED', 'true')" in deploy
 # The browser attestation must default like compose, or an unset variable
 # silently skips the native challenge-create marker check.
 assert 'native_expected="${CHESS_STUDIO_PVP_NATIVE_CHALLENGE_CREATE_ENABLED:-true}"' in deploy
 assert "CHESS_STUDIO_PVP_NATIVE_CHALLENGE_CREATE_ENABLED:-false" not in deploy
-assert "CHESS_STUDIO_PVP_ALLOW_PYTHON_FALLBACK_STAGING" in deploy
-assert "deployment_target == 'staging'" in deploy
-assert "required_native = (" in deploy
-assert "any(payload.get(key) is not True for key in required_native)" in deploy
+assert "payload.get('pythonRetired') is not True" in deploy
+assert "any(value is not True for value in native.values())" in deploy
 assert 'pvp_target_image="$(pvp_image_ref "$sha")"' in deploy
-# Strangler front: only the candidate cutover and its commit marker may put
-# nginx in API "go" mode; every rollback render stays "direct" because an
-# older Go sidecar may not be able to front the whole API.
-assert 'render_edge "$candidate_color" go "${previous_sha:-}" "$api_edge_mode"' in deploy
-assert 'render_edge "$candidate_color" go "$sha" "$api_edge_mode"' in deploy
-for line in deploy.splitlines():
-    if "render_edge \"$previous_color\"" in line:
-        assert "api_edge_mode" not in line, line
-assert 'local api_mode="${4:-direct}"' in deploy
+# nginx only ever fronts a Go slot: the candidate at cutover and commit, the
+# previous slot on rollback. No render names a Python upstream or an edge mode.
+assert 'render_edge "$candidate_color" "${previous_sha:-}"' in deploy
+assert 'render_edge "$candidate_color" "$sha"' in deploy
+assert 'render_edge "$previous_color" "${previous_sha:-}"' in deploy
+assert "--pvp-mode" not in deploy and "--api-mode" not in deploy
 assert "wait_pvp_browser_attest api_edge_attest" in deploy
 assert 'pull_immutable_image "$pvp_target_image"' in deploy
-assert 'render_edge "$candidate_color" go' in deploy
-assert 'render_edge "$candidate_color" go "$sha"' in deploy
-assert 'render_edge "$previous_color" go "$previous_sha"' in deploy
 assert 'wait_pvp_edge_attest "$port" "$previous_sha"' in deploy
-assert 'render_edge "$previous_color" direct "$previous_sha"' in deploy
-assert 'rollback_pvp_mode="go"' in deploy
-assert 'pvp=$rollback_pvp_mode' in deploy
 assert '--committed-sha "$committed_sha"' in deploy
-assert deploy.rfind('record_successful_backend "$sha"') < deploy.rfind('render_edge "$candidate_color" go "$sha"')
 assert 'failed to publish committed OCI generation marker' in deploy
 assert 'remove_service "$(pvp_service "$previous_color")"' in deploy
-assert 'CHESS_STUDIO_DEPLOY_OK target=$target repo_ref=$sha color=$candidate_color pvp=go' in deploy
+assert 'CHESS_STUDIO_DEPLOY_OK target=$target repo_ref=$sha color=$candidate_color backend=go' in deploy
 assert 'pvp_edge_attest()' in deploy
 assert 'local expected_release="${2:-$sha}"' in deploy
 assert 'pvp_edge_attest "$target_port" "$expected_release"' in deploy
 assert 'pvp_virtual_roster_attest()' in deploy
-assert 'if ! pvp_virtual_roster_attest "$candidate_service" "$candidate_pvp_service" "$target"; then' in deploy
 assert 'pvp_browser_token()' in deploy
 assert 'pvp_authenticated_browser_attest()' in deploy
-assert 'if ! pvp_authenticated_browser_attest "$candidate_service" "http://127.0.0.1:${port}/api" "$target"; then' in deploy
-assert 'if ! pvp_authenticated_browser_attest "$candidate_service" "$public_api_url" "$target"; then' in deploy
 for virtual_rival in ("sparringmeister", "otto_falk", "marta_stein", "viktor_kraus"):
     assert virtual_rival in deploy, f"missing virtual roster deploy attestation rival: {virtual_rival}"
 virtual_roster_attest = deploy.split("pvp_virtual_roster_attest() {", 1)[1].split(
     "\npvp_edge_attest() {", 1
 )[0]
-assert 'for username in required:' in virtual_roster_attest
-assert 'for username in ("otto_falk", "marta_stein", "viktor_kraus"):' in virtual_roster_attest
+assert 'for username in (sparring, *residents):' in virtual_roster_attest
+assert 'for username in residents:' in virtual_roster_attest
 assert '!= "resident"' in virtual_roster_attest
 assert 'sparring: "sparring"' not in virtual_roster_attest
 browser_token = deploy.split("pvp_browser_token() {", 1)[1].split(
     "\npvp_authenticated_browser_attest() {", 1
 )[0]
-assert 'PVP_BROWSER_TOKEN=' in browser_token
-assert 'print(f"PVP_BROWSER_TOKEN={create_token(owner, session_version)}")' in browser_token
+assert 'go_owner_token "$candidate_pvp_service" PVP_BROWSER_AUTH' in browser_token
+assert 'mint-token' in deploy and 'PVP_BROWSER_TOKEN=' in deploy
 authenticated_browser_attest = deploy.split("pvp_authenticated_browser_attest() {", 1)[1].split(
     "\npvp_edge_attest() {", 1
 )[0]
 for fragment in (
-    'token_output="$(pvp_browser_token "$backend_service")"',
+    'token_output="$(pvp_browser_token)"',
     '[[ "$line" == PVP_BROWSER_TOKEN=* ]]',
     'token_line="${line#PVP_BROWSER_TOKEN=}"',
     'multiple token sentinels',
@@ -608,150 +539,65 @@ assert 'wait_pvp_browser_attest()' in deploy
 assert 'CHESS_STUDIO_PVP_BROWSER_ATTEST_ATTEMPTS:-12' in deploy
 assert 'if "$attest_fn" "$endpoint" "${@:3}"; then' in deploy
 # Native games writes: staging first, attested through Go after the cutover.
-assert 'staging) go_native_games_write="${CHESS_STUDIO_GO_NATIVE_GAMES_WRITE_ENABLED:-true}" ;;' in deploy
-assert '*) go_native_games_write="${CHESS_STUDIO_GO_NATIVE_GAMES_WRITE_ENABLED:-true}" ;;' in deploy
-assert 'CHESS_STUDIO_GO_NATIVE_GAMES_WRITE_ENABLED="$go_native_games_write"' in deploy
-assert "payload.get('nativeGamesWrite')" in deploy
 assert 'games_native_attest "http://127.0.0.1:${port}/api/games/deploy-attest/move" POST; then' in deploy
 assert 'exit 60' in deploy
-assert 'staging) go_native_games_hint="${CHESS_STUDIO_GO_NATIVE_GAMES_HINT_ENABLED:-true}" ;;' in deploy
-assert '*) go_native_games_hint="${CHESS_STUDIO_GO_NATIVE_GAMES_HINT_ENABLED:-true}" ;;' in deploy
-assert 'CHESS_STUDIO_GO_NATIVE_GAMES_HINT_ENABLED="$go_native_games_hint"' in deploy
-assert "payload.get('nativeGamesHint')" in deploy
 assert 'games_native_attest "http://127.0.0.1:${port}/api/games/deploy-attest/hint"; then' in deploy
 assert 'exit 61' in deploy
-assert 'GO_NATIVE_GAMES_HINT_ENABLED: "${CHESS_STUDIO_GO_NATIVE_GAMES_HINT_ENABLED:-false}"' in compose
 # Native position analysis: staging first, attested through Go after the cutover.
-assert 'staging) go_native_analyze="${CHESS_STUDIO_GO_NATIVE_ANALYZE_ENABLED:-true}" ;;' in deploy
-assert '*) go_native_analyze="${CHESS_STUDIO_GO_NATIVE_ANALYZE_ENABLED:-true}" ;;' in deploy
-assert 'CHESS_STUDIO_GO_NATIVE_ANALYZE_ENABLED="$go_native_analyze"' in deploy
-assert "payload.get('nativeGamesAnalyze')" in deploy
 assert 'games_native_attest "http://127.0.0.1:${port}/api/analyze" POST; then' in deploy
 assert 'exit 62' in deploy
 assert 'games_native_attest "http://127.0.0.1:${port}/api/analyze-move" POST; then' in deploy
 assert 'exit 63' in deploy
-assert 'GO_NATIVE_ANALYZE_ENABLED: "${CHESS_STUDIO_GO_NATIVE_ANALYZE_ENABLED:-false}"' in compose
 # Native system routes: staging first, attested through Go after the cutover.
-assert 'staging) go_native_system="${CHESS_STUDIO_GO_NATIVE_SYSTEM_ENABLED:-true}" ;;' in deploy
-assert '*) go_native_system="${CHESS_STUDIO_GO_NATIVE_SYSTEM_ENABLED:-true}" ;;' in deploy
-assert 'CHESS_STUDIO_GO_NATIVE_SYSTEM_ENABLED="$go_native_system"' in deploy
-assert "payload.get('nativeSystem')" in deploy
 assert 'games_native_attest "http://127.0.0.1:${port}/api/status" GET X-Chess-System-Native; then' in deploy
 assert 'X-Chess-System-Native; then' in deploy.split('exit 65', 1)[0]
-assert 'GO_NATIVE_SYSTEM_ENABLED: "${CHESS_STUDIO_GO_NATIVE_SYSTEM_ENABLED:-false}"' in compose
 # Native profile: staging first, attested through Go after the cutover.
-assert 'staging) go_native_profile="${CHESS_STUDIO_GO_NATIVE_PROFILE_ENABLED:-true}" ;;' in deploy
-assert '*) go_native_profile="${CHESS_STUDIO_GO_NATIVE_PROFILE_ENABLED:-true}" ;;' in deploy
-assert 'CHESS_STUDIO_GO_NATIVE_PROFILE_ENABLED="$go_native_profile"' in deploy
-assert "payload.get('nativeProfile')" in deploy
 assert 'games_native_attest "http://127.0.0.1:${port}/api/profile" GET X-Chess-Profile-Native; then' in deploy
 assert 'exit 67' in deploy
-assert 'GO_NATIVE_PROFILE_ENABLED: "${CHESS_STUDIO_GO_NATIVE_PROFILE_ENABLED:-false}"' in compose
 # Native session routes: staging first, attested through Go after the cutover.
-assert 'staging) go_native_auth_session="${CHESS_STUDIO_GO_NATIVE_AUTH_SESSION_ENABLED:-true}" ;;' in deploy
-assert '*) go_native_auth_session="${CHESS_STUDIO_GO_NATIVE_AUTH_SESSION_ENABLED:-true}" ;;' in deploy
-assert 'CHESS_STUDIO_GO_NATIVE_AUTH_SESSION_ENABLED="$go_native_auth_session"' in deploy
-assert "payload.get('nativeAuthSession')" in deploy
 assert 'games_native_attest "http://127.0.0.1:${port}/api/auth/me" GET X-Chess-Session-Native; then' in deploy
 assert 'exit 68' in deploy
-assert 'GO_NATIVE_AUTH_SESSION_ENABLED: "${CHESS_STUDIO_GO_NATIVE_AUTH_SESSION_ENABLED:-false}"' in compose
 # Native login: staging first, attested by Go's 422 for an empty body.
-assert 'staging) go_native_login="${CHESS_STUDIO_GO_NATIVE_LOGIN_ENABLED:-true}" ;;' in deploy
-assert '*) go_native_login="${CHESS_STUDIO_GO_NATIVE_LOGIN_ENABLED:-true}" ;;' in deploy
-assert 'CHESS_STUDIO_GO_NATIVE_LOGIN_ENABLED="$go_native_login"' in deploy
-assert "payload.get('nativeLogin')" in deploy
 assert 'games_native_attest "http://127.0.0.1:${port}/api/auth/login" POST X-Chess-Auth-Native 422; then' in deploy
 assert 'local expected_status="${4:-401}"' in deploy
 assert 'exit 71' in deploy
-assert 'GO_NATIVE_LOGIN_ENABLED: "${CHESS_STUDIO_GO_NATIVE_LOGIN_ENABLED:-false}"' in compose
 # Native account routes: staging first, attested through Go after the cutover.
-assert 'staging) go_native_account="${CHESS_STUDIO_GO_NATIVE_ACCOUNT_ENABLED:-true}" ;;' in deploy
-assert '*) go_native_account="${CHESS_STUDIO_GO_NATIVE_ACCOUNT_ENABLED:-true}" ;;' in deploy
-assert 'CHESS_STUDIO_GO_NATIVE_ACCOUNT_ENABLED="$go_native_account"' in deploy
-assert "payload.get('nativeAccount')" in deploy
 assert 'games_native_attest "http://127.0.0.1:${port}/api/auth/password" PUT X-Chess-Auth-Native; then' in deploy
 assert 'exit 72' in deploy
-assert 'GO_NATIVE_ACCOUNT_ENABLED: "${CHESS_STUDIO_GO_NATIVE_ACCOUNT_ENABLED:-false}"' in compose
 # Native recovery: staging first, attested by Go's 422 for an empty body.
-assert 'staging) go_native_recovery="${CHESS_STUDIO_GO_NATIVE_RECOVERY_ENABLED:-true}" ;;' in deploy
-assert '*) go_native_recovery="${CHESS_STUDIO_GO_NATIVE_RECOVERY_ENABLED:-true}" ;;' in deploy
-assert 'CHESS_STUDIO_GO_NATIVE_RECOVERY_ENABLED="$go_native_recovery"' in deploy
-assert "payload.get('nativeRecovery')" in deploy
 assert 'games_native_attest "http://127.0.0.1:${port}/api/auth/reset-password" POST X-Chess-Auth-Native 422; then' in deploy
 assert 'exit 73' in deploy
-assert 'GO_NATIVE_RECOVERY_ENABLED: "${CHESS_STUDIO_GO_NATIVE_RECOVERY_ENABLED:-false}"' in compose
 # Native feedback: staging first, attested by Go's 401 for an anonymous list.
-assert 'staging) go_native_feedback="${CHESS_STUDIO_GO_NATIVE_FEEDBACK_ENABLED:-true}" ;;' in deploy
-assert '*) go_native_feedback="${CHESS_STUDIO_GO_NATIVE_FEEDBACK_ENABLED:-true}" ;;' in deploy
-assert 'CHESS_STUDIO_GO_NATIVE_FEEDBACK_ENABLED="$go_native_feedback"' in deploy
-assert "payload.get('nativeFeedback')" in deploy
 assert 'games_native_attest "http://127.0.0.1:${port}/api/feedback/mine" GET X-Chess-Feedback-Native 401; then' in deploy
 assert 'exit 74' in deploy
-assert compose.count('GO_NATIVE_FEEDBACK_ENABLED: "${CHESS_STUDIO_GO_NATIVE_FEEDBACK_ENABLED:-false}"') == 2
 # Native Matthias read side: staging first, attested by Go's 401 for an anonymous briefing.
-assert 'staging) go_native_matthias_read="${CHESS_STUDIO_GO_NATIVE_MATTHIAS_READ_ENABLED:-true}" ;;' in deploy
-assert '*) go_native_matthias_read="${CHESS_STUDIO_GO_NATIVE_MATTHIAS_READ_ENABLED:-true}" ;;' in deploy
-assert 'CHESS_STUDIO_GO_NATIVE_MATTHIAS_READ_ENABLED="$go_native_matthias_read"' in deploy
-assert "payload.get('nativeMatthias')" in deploy
 assert 'games_native_attest "http://127.0.0.1:${port}/api/matthias/briefing" GET X-Chess-Matthias-Native 401; then' in deploy
 assert 'exit 76' in deploy
-assert compose.count('GO_NATIVE_MATTHIAS_READ_ENABLED: "${CHESS_STUDIO_GO_NATIVE_MATTHIAS_READ_ENABLED:-false}"') == 2
 # Native narrative: staging first, attested by Go's 401 for an anonymous admin AI read.
-assert 'staging) go_native_narrative="${CHESS_STUDIO_GO_NATIVE_NARRATIVE_ENABLED:-true}" ;;' in deploy
-assert '*) go_native_narrative="${CHESS_STUDIO_GO_NATIVE_NARRATIVE_ENABLED:-true}" ;;' in deploy
-assert 'CHESS_STUDIO_GO_NATIVE_NARRATIVE_ENABLED="$go_native_narrative"' in deploy
-assert "payload.get('nativeNarrative')" in deploy
 assert 'games_native_attest "http://127.0.0.1:${port}/api/admin/ai-metrics" GET X-Chess-Narrative-Native 401; then' in deploy
 assert 'exit 77' in deploy
-assert compose.count('GO_NATIVE_NARRATIVE_ENABLED: "${CHESS_STUDIO_GO_NATIVE_NARRATIVE_ENABLED:-false}"') == 2
 # Native Pawn Slug: staging first, attested by Go's 401 for an anonymous stage.
-assert 'staging) go_native_pawn_slug="${CHESS_STUDIO_GO_NATIVE_PAWN_SLUG_ENABLED:-true}" ;;' in deploy
-assert 'CHESS_STUDIO_GO_NATIVE_PAWN_SLUG_ENABLED="$go_native_pawn_slug"' in deploy
-assert "payload.get('nativePawnSlug')" in deploy
 assert 'games_native_attest "http://127.0.0.1:${port}/api/pawn-slug/stages/pawn-slug-v1" GET X-Chess-PawnSlug-Native 401; then' in deploy
 assert 'exit 78' in deploy
-assert compose.count('GO_NATIVE_PAWN_SLUG_ENABLED: "${CHESS_STUDIO_GO_NATIVE_PAWN_SLUG_ENABLED:-false}"') == 2
 # Native Chronicles: staging first, attested by Go's 401 for an anonymous area.
-assert 'staging) go_native_chronicles="${CHESS_STUDIO_GO_NATIVE_CHRONICLES_ENABLED:-true}" ;;' in deploy
-assert 'CHESS_STUDIO_GO_NATIVE_CHRONICLES_ENABLED="$go_native_chronicles"' in deploy
-assert "payload.get('nativeChronicles')" in deploy
 assert 'games_native_attest "http://127.0.0.1:${port}/api/chronicles/maps/ash-vault" GET X-Chess-Chronicles-Native 401; then' in deploy
 assert 'exit 79' in deploy
-assert compose.count('GO_NATIVE_CHRONICLES_ENABLED: "${CHESS_STUDIO_GO_NATIVE_CHRONICLES_ENABLED:-false}"') == 2
 # Native Chronicles runs: staging first, attested by Go's 401 for an anonymous run read.
-assert 'staging) go_native_chronicles_runs="${CHESS_STUDIO_GO_NATIVE_CHRONICLES_RUNS_ENABLED:-true}" ;;' in deploy
-assert 'CHESS_STUDIO_GO_NATIVE_CHRONICLES_RUNS_ENABLED="$go_native_chronicles_runs"' in deploy
-assert "payload.get('nativeChroniclesRuns')" in deploy
 assert 'games_native_attest "http://127.0.0.1:${port}/api/chronicles/runs/attest" GET X-Chess-Chronicles-Native 401; then' in deploy
 assert 'exit 80' in deploy
-assert compose.count('GO_NATIVE_CHRONICLES_RUNS_ENABLED: "${CHESS_STUDIO_GO_NATIVE_CHRONICLES_RUNS_ENABLED:-false}"') == 2
 # Native Admin feedback: staging first, attested by Go's 401 for an anonymous summary.
-assert 'staging) go_native_admin_feedback="${CHESS_STUDIO_GO_NATIVE_ADMIN_FEEDBACK_ENABLED:-true}" ;;' in deploy
-assert 'CHESS_STUDIO_GO_NATIVE_ADMIN_FEEDBACK_ENABLED="$go_native_admin_feedback"' in deploy
-assert "payload.get('nativeAdminFeedback')" in deploy
 assert 'games_native_attest "http://127.0.0.1:${port}/api/admin/feedback/summary" GET X-Chess-Admin-Native 401; then' in deploy
 assert 'exit 81' in deploy
-assert compose.count('GO_NATIVE_ADMIN_FEEDBACK_ENABLED: "${CHESS_STUDIO_GO_NATIVE_ADMIN_FEEDBACK_ENABLED:-false}"') == 2
 # Native Admin user tools: staging first, attested by Go's 401 for an anonymous user list.
-assert 'staging) go_native_admin_users="${CHESS_STUDIO_GO_NATIVE_ADMIN_USERS_ENABLED:-true}" ;;' in deploy
-assert 'CHESS_STUDIO_GO_NATIVE_ADMIN_USERS_ENABLED="$go_native_admin_users"' in deploy
-assert "payload.get('nativeAdminUsers')" in deploy
 assert 'games_native_attest "http://127.0.0.1:${port}/api/admin/users" GET X-Chess-Admin-Native 401; then' in deploy
 assert 'exit 82' in deploy
-assert compose.count('GO_NATIVE_ADMIN_USERS_ENABLED: "${CHESS_STUDIO_GO_NATIVE_ADMIN_USERS_ENABLED:-false}"') == 2
 # Native Admin observability panel: staging first, attested by Go's 401 for an anonymous panel.
-assert 'staging) go_native_admin_observability="${CHESS_STUDIO_GO_NATIVE_ADMIN_OBSERVABILITY_ENABLED:-true}" ;;' in deploy
-assert 'CHESS_STUDIO_GO_NATIVE_ADMIN_OBSERVABILITY_ENABLED="$go_native_admin_observability"' in deploy
-assert "payload.get('nativeAdminObservability')" in deploy
 assert 'games_native_attest "http://127.0.0.1:${port}/api/admin/observability" GET X-Chess-Admin-Native 401; then' in deploy
 assert 'exit 83' in deploy
-assert compose.count('GO_NATIVE_ADMIN_OBSERVABILITY_ENABLED: "${CHESS_STUDIO_GO_NATIVE_ADMIN_OBSERVABILITY_ENABLED:-false}"') == 2
-assert 'GO_NATIVE_GAMES_WRITE_ENABLED: "${CHESS_STUDIO_GO_NATIVE_GAMES_WRITE_ENABLED:-false}"' in compose
 assert 'sleep 0.25' in deploy
 assert 'if ! wait_pvp_edge_attest "$port"; then' in deploy
 assert 'if ! wait_pvp_browser_attest pvp_browser_cors_attest "http://127.0.0.1:${port}/api/pvp/roster"; then' in deploy
 assert 'if ! wait_pvp_browser_attest pvp_lobby_read_attest "http://127.0.0.1:${port}/api/pvp/lobby"; then' in deploy
-assert 'if ! pvp_authenticated_browser_attest "$candidate_service" "http://127.0.0.1:${port}/api" "$target"; then' in deploy
 assert 'if ! wait_pvp_browser_attest pvp_challenge_browser_attest "http://127.0.0.1:${port}/api/pvp/challenges"; then' in deploy
 roster_attest = deploy.split("pvp_browser_cors_attest() {", 1)[1].split(
     "\npvp_lobby_read_attest() {", 1
@@ -770,10 +616,9 @@ assert 'deliberately-invalid' in lobby_attest
 assert '[[ "$status" != "200" && "$status" != "204" ]]' in challenge_attest
 assert 'if ! pvp_browser_cors_attest "${public_api_url}/pvp/roster"; then' in deploy
 assert 'if ! pvp_lobby_read_attest "${public_api_url}/pvp/lobby"; then' in deploy
-assert 'if ! pvp_authenticated_browser_attest "$candidate_service" "$public_api_url" "$target"; then' in deploy
 assert 'if ! pvp_challenge_browser_attest "${public_api_url}/pvp/challenges"; then' in deploy
 public_authenticated = deploy.find(
-    'if ! pvp_authenticated_browser_attest "$candidate_service" "$public_api_url" "$target"; then'
+    'if ! pvp_authenticated_browser_attest "$public_api_url" "$target"; then'
 )
 commit_marker = deploy.rfind('record_successful_backend "$sha"')
 assert 0 <= public_authenticated < commit_marker, (
@@ -784,25 +629,20 @@ assert 'render_edge "$candidate_color"' in deploy
 assert 'reload_edge' in deploy
 assert 'write_active_color "$candidate_color"' in deploy
 assert 'sleep "${CHESS_STUDIO_BLUE_GREEN_DRAIN_SECONDS:-50}"' in deploy
-assert 'remove_service "$(slot_service "$previous_color")"' in deploy
-assert 'docker rm -f "$legacy_id"' in deploy
+assert 'remove_service "$(pvp_service "$previous_color")"' in deploy
 assert 'compose "$sha" up -d --no-build edge' in deploy
-assert 'backend_blue:' in compose and 'backend_green:' in compose and 'edge:' in compose
+assert 'edge:' in compose
+assert 'backend_' not in compose and 'chess-studio-backend' not in compose  # no Python service
+assert compose.count('GO_PYTHON_RETIRED: "true"') == 2
 assert 'pvp_blue:' in compose and 'pvp_green:' in compose
 assert 'ghcr.io/evilsysadmin/chess-studio-pvp:oci-${CHESS_STUDIO_BLUE_SHA' in compose
 assert 'ghcr.io/evilsysadmin/chess-studio-pvp:oci-${CHESS_STUDIO_GREEN_SHA' in compose
-assert 'GO_PYTHON_UPSTREAM: "http://backend_blue:4000"' in compose
-assert 'GO_PYTHON_UPSTREAM: "http://backend_green:4000"' in compose
-assert 'PVP_PYTHON_UPSTREAM: "http://backend_blue:4000"' in compose
-assert 'PVP_PYTHON_UPSTREAM: "http://backend_green:4000"' in compose
 assert 'x-pvp-common: &pvp-common' in compose
-assert 'env_file:' in compose.split('x-pvp-common: &pvp-common', 1)[1].split('x-backend-common:', 1)[0]
-assert '${CHESS_STUDIO_ENV_FILE:-/etc/chess-studio/backend.env}' in compose.split('x-pvp-common: &pvp-common', 1)[1].split('x-backend-common:', 1)[0]
-assert compose.count('PVP_NATIVE_PULSE_ENABLED: "${CHESS_STUDIO_PVP_NATIVE_PULSE_ENABLED:-true}"') == 2
-assert compose.count('CORS_ORIGINS: "${CHESS_STUDIO_CORS_ORIGINS:-https://staging.chess-studio.shadowops.dpdns.org}"') >= 4
+assert 'env_file:' in compose.split('x-pvp-common: &pvp-common', 1)[1].split('services:', 1)[0]
+assert '${CHESS_STUDIO_ENV_FILE:-/etc/chess-studio/backend.env}' in compose.split('x-pvp-common: &pvp-common', 1)[1].split('services:', 1)[0]
+assert compose.count('CORS_ORIGINS: "${CHESS_STUDIO_CORS_ORIGINS:-https://staging.chess-studio.shadowops.dpdns.org}"') == 2
 assert '127.0.0.1:${CHESS_STUDIO_PVP' not in compose
-assert '127.0.0.1:${CHESS_STUDIO_BLUE_PORT:-4001}:4000' in compose
-assert '127.0.0.1:${CHESS_STUDIO_GREEN_PORT:-4002}:4000' in compose
+assert 'CHESS_STUDIO_BLUE_PORT' not in compose and 'CHESS_STUDIO_GREEN_PORT' not in compose
 assert '127.0.0.1:${CHESS_STUDIO_BACKEND_PORT:-4000}:8080' in compose
 assert 'nginx:1.27.5-alpine' in compose
 edge_renderer = (ROOT / "scripts" / "oci_blue_green_edge.py").read_text(encoding="utf-8")
@@ -812,12 +652,12 @@ assert 'return 503 "uncommitted' in edge_renderer
 assert 'parser.add_argument("--committed-sha", default="")' in edge_renderer
 assert 'location = /api/pvp' in edge_renderer
 assert 'location ^~ /api/pvp/' in edge_renderer
-assert 'pvp_upstream = f"pvp_{color}:8080" if pvp_mode == "go" else backend_upstream' in edge_renderer
+assert 'upstream = f"pvp_{color}:8080"' in edge_renderer
+assert 'backend_upstream' not in edge_renderer
 assert 'proxy_set_header Upgrade $http_upgrade;' in edge_renderer
 assert 'proxy_set_header Connection $chess_connection_upgrade;' in edge_renderer
-assert 'parser.add_argument("--pvp-mode", choices=("direct", "go"), default="direct")' in edge_renderer
+assert '--pvp-mode' not in edge_renderer and '--api-mode' not in edge_renderer
 assert "OCI_DEPLOY_PHASE name=%s duration_ms=%s" not in deploy
-assert 'pull_immutable_image "$target_image"' in deploy
 
 # Agent diagnostics are aggregate-only and observational. Never emit raw agent
 # log lines into Actions, and never let diagnostics block an otherwise healthy deploy.
@@ -883,7 +723,7 @@ assert "f\"{url('STAGING_API_URL')}/_deploy/committed?probe={attempt}\"" in stag
 assert "body.strip().lower() == sha" in staging_generation
 assert "OCI_DEPLOY_WATCH_IMAGE_PENDING" in deploy_watcher
 assert '["docker", "manifest", "inspect", ref]' in deploy_watcher
-assert 'image_available(backend_image_ref(candidate)) and image_available(go_image_ref(candidate))' in deploy_watcher
+assert 'return image_available(go_image_ref(candidate))' in deploy_watcher
 assert 'git -C "$repo" ls-remote --exit-code origin refs/heads/main' in deploy
 assert '["sudo", "--non-interactive", DEPLOY_WRAPPER, candidate]' in deploy_watcher
 assert "ENABLE_MARKER.is_symlink()" in deploy_watcher
@@ -903,3 +743,37 @@ from oci_vault_sync import self_test as vault_sync_self_test
 vault_sync_self_test()
 production_tunnel_self_test()
 print("OCI staging CORS + runtime deployment contract: OK")
+# Go-only runtime (Python retired 2026-10-10): one Go slot per color, attested
+# inside its container, every native route attested through the edge, rollback
+# back to the previous Go slot, and no trace of the Python runtime or flags.
+for retired in ("api_edge_mode", "go_native_", "python_retired", "backend_legacy", "slot_service",
+                "candidate_port", "chess-studio-backend:", "image_available_for_rollback", "python - "):
+    assert retired not in deploy, f"Python-era deploy remnant: {retired}"
+assert 'compose "$sha" up -d --no-build --force-recreate "$candidate_pvp_service"' in deploy
+assert 'if go_attest "$sha" "$candidate_pvp_service" && pvp_attest "$candidate_pvp_service"; then' in deploy
+assert 'active_backend_service="$candidate_pvp_service"' in deploy
+assert 'if ! pvp_virtual_roster_attest "$candidate_pvp_service" "$target"; then' in deploy
+assert 'if ! pvp_authenticated_browser_attest "http://127.0.0.1:${port}/api" "$target"; then' in deploy
+assert 'if ! wait_pvp_browser_attest cors_attest "$port"; then' in deploy
+assert 'if ! wait_pvp_browser_attest api_edge_attest "http://127.0.0.1:${port}/api/release"; then' in deploy
+for route_attest in (
+    '"http://127.0.0.1:${port}/api/games"; then',
+    '"http://127.0.0.1:${port}/api/auth/login" POST X-Chess-Auth-Native 422; then',
+    '"http://127.0.0.1:${port}/api/admin/observability" GET X-Chess-Admin-Native 401; then',
+):
+    assert f'if ! wait_pvp_browser_attest games_native_attest {route_attest}' in deploy, route_attest
+for exit_code in range(58, 85):
+    if exit_code in (64, 66, 69, 70, 75):  # unrelated/unused codes
+        continue
+    assert f"  exit {exit_code}\n" in deploy, f"missing post-cutover attestation exit {exit_code}"
+assert deploy.rfind('record_successful_backend "$sha"') < deploy.rfind('render_edge "$candidate_color" "$sha"')
+assert 'CHESS_STUDIO_ROLLBACK_OK repo_ref=${previous_sha:-unknown} color=$previous_color pvp=$rollback_mode' in deploy
+rollback_body = deploy.split("rollback() {", 1)[1].split("\n}\n", 1)[0]
+assert 'render_edge "$previous_color" "${previous_sha:-}"' in rollback_body
+assert 'wait_pvp_edge_attest "$port" "$previous_sha"' in rollback_body
+assert "backend_" not in rollback_body
+python_rollback = (ROOT / "infra" / "oci" / "runtime" / "docker-compose.python-rollback.yml.bak").read_text(encoding="utf-8")
+assert python_rollback.startswith("# ROLLBACK ONLY")
+assert "6a558ff5c62716efa217cd3a3228439ba0365026" in python_rollback
+assert "backend_blue:" in python_rollback and "backend_legacy:" in python_rollback
+print("OCI Go-only runtime contract: OK")

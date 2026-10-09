@@ -16,7 +16,7 @@ def diagnostic_command() -> str:
     command = r'''set -u
 
 printf '%s\n' 'OCI_BACKEND_DIAG_BEGIN'
-for service in edge pvp_blue pvp_green backend_blue backend_green backend_legacy backend; do
+for service in edge pvp_blue pvp_green; do
   container_id="$(docker ps -aq \
     --filter 'label=com.docker.compose.project=chess-studio-staging' \
     --filter "label=com.docker.compose.service=$service" | head -n1)"
@@ -44,7 +44,7 @@ printf '%s\n' 'OCI_BACKEND_DIAG_END'
 def self_test() -> None:
     command = diagnostic_command()
     assert "docker inspect" in command
-    assert "backend_blue backend_green" in command
+    assert "backend_blue" not in command  # no Python service since 2026-10-10
     assert "pvp_blue pvp_green" in command  # the only API slot once Python is retired
     assert "service=$service" in command
     assert "/api/health" not in command  # endpoint is composed from a fixed allow-list loop

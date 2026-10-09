@@ -6,7 +6,7 @@ This runtime is the emergency path away from Render build-minute exhaustion. It 
 
 1. Adopt the existing A1 with Docker Compose.
 2. Deploy the current backend unchanged from an immutable CI-approved SHA.
-3. Keep FastAPI on host loopback only and preserve the existing private runtime environment.
+3. Keep the backend on host loopback only and preserve the existing private runtime environment.
 4. Prove `/api/ready` (`storage=mongo`) and `/api/release` (`build=<SHA>`).
 5. Move staging traffic from Render to OCI.
 6. Move production only after staging is green and rollback is exercised.
@@ -15,13 +15,15 @@ A second A1 for pragmatic host redundancy is a later iteration. k3s/Argo CD is a
 
 ## Runtime
 
-`Main · admission` publishes the CI-approved backend for `linux/arm64` as an immutable GHCR tag:
+The backend is the Go API (`backend-go`, binary `api-edge`); Python was retired from staging on 2026-10-05 and from production on 2026-10-10. `Main · backend image` publishes it for `linux/arm64` as an immutable GHCR tag:
 
-`ghcr.io/evilsysadmin/chess-studio-backend:oci-<SHA>`
+`ghcr.io/evilsysadmin/chess-studio-pvp:oci-<SHA>`
 
-The A1 no longer invokes BuildKit merely to retag that already-built artifact. The deploy wrapper performs one explicit `docker pull` of the immutable SHA-tag **before** touching the serving container. `docker-compose.yml` then references that same GHCR image directly with `pull_policy: never`, so `docker compose up` is an offline/fail-closed replacement step rather than a second network mutation.
+Each target runs two blue/green Go slots (`pvp_blue`, `pvp_green`, `GO_PYTHON_RETIRED=true`) behind a stable nginx `edge` on the target port. The deploy pulls the immutable SHA tag (retrying while CI is still publishing it) **before** touching the serving slot, recreates only the inactive slot, proves `/api/ready`, `/api/release` and `/readyz` inside it, switches nginx, attests every native route through the edge, commits, and only then drains the previous slot. A failed attestation puts nginx back on the previous slot, which is still running.
 
-A missing remote image therefore fails before the currently served backend is replaced. Successful images remain in the local Docker cache and are valid rollback targets. The rollback helper also recognizes the older local `chess-studio-backend:oci-<SHA>` tags so the migration from the previous retagging flow remains backwards-compatible.
+### Rollback to Python (until 2026-10-17)
+
+The supported path is the **Production · rollback** workflow (or a staging deploy) to `6a558ff5c62716efa217cd3a3228439ba0365026`, the last release that can still start Python: it brings back its own deploy script, compose file and images together. `docker-compose.python-rollback.yml.bak` is a reference snapshot of that Python-capable compose for a manual recovery only; no deploy reads it. Both disappear when the rollback window closes.
 
 The host port defaults to `127.0.0.1:4000`; no public backend ingress is introduced here. Runtime secrets stay in `/etc/chess-studio/backend.env` (or `CHESS_STUDIO_ENV_FILE`) and never enter Git, Compose, Terraform state, registry images, or Run Command payloads.
 
