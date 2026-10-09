@@ -449,6 +449,9 @@ def classify_path(path: str) -> set[str] | None:
         return set(POSTGAME_EXACT_PRODUCERS[lower])
     if lower in QUICK_MATCH_EXACT_PRODUCERS:
         return set(QUICK_MATCH_EXACT_PRODUCERS[lower])
+    if lower == "frontend/src/activegamesession.js":
+        # Recovery snapshots are owned by the War Room, not other 3D products.
+        return {"warroom-core"}
     if lower == "frontend/src/components/shareresultmodal.jsx":
         return {"warroom-core"}
     if lower == "frontend/src/components/profilebackupmodal.jsx":
@@ -778,6 +781,14 @@ def self_test() -> None:
     ]) == "warroom-core"
     assert classify(["frontend/public/sw.js", "scripts/pwa_check.mjs"]) == "none"
     assert classify(["frontend/src/components/ShareResultModal.jsx"]) == "warroom-core"
+    assert classify(["frontend/src/activeGameSession.js"]) == "warroom-core"
+    assert classify([
+        "frontend/src/components/ShareResultModal.jsx",
+        "frontend/src/activeGameSession.js",
+        "frontend/src/useGameStartFlow.js",
+        "e2e/war-room-decor-visual-artifact.spec.js",
+        "scripts/app_visual_changed_files.py",
+    ]) == "warroom-core,warroom-decor"
     assert classify(["frontend/src/components/ProfileBackupModal.jsx"]) == "home-base"
     assert classify([
         "frontend/src/components/GameScreen.jsx",
