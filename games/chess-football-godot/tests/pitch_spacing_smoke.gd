@@ -54,7 +54,8 @@ func _initialize() -> void:
 	# This is not a universal force field: a free lane is not adjusted,
 	# and the ball carrier retains direct dribble control.
 	other.global_position = pitch.get_center() + Vector2(900.0, 620.0)
-	assert(game._ai_spaced_target(clustered, same_spot).distance_to(same_spot) < 0.01)
+	var free_target := pitch.position + Vector2(180.0, 160.0)
+	assert(game._ai_spaced_target(clustered, free_target).distance_to(free_target) < 0.01)
 	assert(game._ai_spaced_target(carrier, same_spot) == same_spot)
 	print("FOOTBALL_WIDTH=%.0f SUPPORT_SPREAD=%.0f" % [
 		pitch.size.y, support_wing.y - support_def.y
