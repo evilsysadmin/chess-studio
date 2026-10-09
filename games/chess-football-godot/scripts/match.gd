@@ -34,9 +34,12 @@ const RED_CARD_BEHIND_THRESHOLD := -10.0
 const KEEPER_LINE_OFFSET := 96.0
 const KEEPER_PRESS_MAX_OFFSET := 150.0
 const KEEPER_PRESS_TRIGGER_DISTANCE := 300.0
-const KEEPER_TRACK_Y_RATIO := 0.68
-const KEEPER_TRACK_MAX_Y := 94.0
-const KEEPER_TRACK_INTENSITY := 0.64
+const KEEPER_TRACK_Y_RATIO := 0.82
+const KEEPER_TRACK_MAX_Y := 155.0
+const KEEPER_TRACK_INTENSITY := 0.86
+const KEEPER_SHOT_READ_DISTANCE := 900.0
+const KEEPER_SHOT_READ_MIN_SPEED := 350.0
+const KEEPER_GOAL_COVER_MARGIN := 18.0
 const KEEPER_SAVE_RANGE := 58.0
 const KEEPER_SAVE_MIN_SPEED := 280.0
 const KEEPER_SAVE_Y_MARGIN := 36.0
@@ -954,23 +957,51 @@ func _update_keeper_ai(player: Footballer, delta: float) -> void:
 		return
 
 	keeper_distribution_started_at.erase(keeper_key)
-	var reference_position := ball.global_position
-	if ball.carrier != null:
-		reference_position = ball.carrier.global_position
+	var threat_target := _keeper_defensive_target(player)
+	var emergency := _keeper_reading_shot(player, threat_target.x)
+	player.move_ai(delta, threat_target, 1.0 if emergency else KEEPER_TRACK_INTENSITY)
 
-	var y_limit := minf(
+
+# Positioning uses a modest near-post shuffle for distant play; close danger
+# gets the full goal mouth. Incoming shots are read on the actual trajectory
+# rather than by blindly following the current position of the ball.
+func _keeper_defensive_target(player: Footballer) -> Vector2:
+	var own_goal := ChessFootballMath.goal_center(1 - player.team_id)
+	var facing_x := 1.0 if player.team_id == 0 else -1.0
+	var reference := ball.carrier.global_position if ball.carrier != null else ball.global_position
+	var danger_distance := absf(reference.x - own_goal.x)
+	var mouth_limit := minf(
 		ChessFootballMath.GOAL_HALF_HEIGHT * KEEPER_TRACK_Y_RATIO,
 		KEEPER_TRACK_MAX_Y,
 	)
-	var wanted_y := clampf(reference_position.y, own_goal.y - y_limit, own_goal.y + y_limit)
+	var coverage := clampf(1.0 - danger_distance / 1500.0, 0.23, 1.0)
+	var tracked_y := own_goal.y + clampf(reference.y - own_goal.y, -mouth_limit, mouth_limit) * coverage
 	var line_offset := KEEPER_LINE_OFFSET
-	var danger_distance := absf(reference_position.x - own_goal.x)
 	if ball.carrier != null and ball.carrier.team_id != player.team_id and danger_distance < KEEPER_PRESS_TRIGGER_DISTANCE:
 		var pressure := 1.0 - danger_distance / KEEPER_PRESS_TRIGGER_DISTANCE
 		line_offset = lerpf(KEEPER_LINE_OFFSET, KEEPER_PRESS_MAX_OFFSET, clampf(pressure, 0.0, 1.0))
+	var line_x := own_goal.x + facing_x * line_offset
+	if _keeper_reading_shot(player, line_x):
+		var intercept_y := ball.global_position.y + (
+			(line_x - ball.global_position.x) * ball.velocity.y / ball.velocity.x
+		)
+		# An obviously wide shot should not bait the goalkeeper out of position.
+		if absf(intercept_y - own_goal.y) <= ChessFootballMath.GOAL_HALF_HEIGHT + KEEPER_GOAL_COVER_MARGIN:
+			tracked_y = clampf(intercept_y, own_goal.y - mouth_limit, own_goal.y + mouth_limit)
+	return Vector2(line_x, tracked_y)
 
-	var target := Vector2(own_goal.x + away_from_goal.x * line_offset, wanted_y)
-	player.move_ai(delta, target, KEEPER_TRACK_INTENSITY)
+
+func _keeper_reading_shot(player: Footballer, line_x: float) -> bool:
+	if ball.carrier != null or ball.flight_height > KEEPER_SAVE_MAX_HEIGHT:
+		return false
+	var goal := ChessFootballMath.goal_center(1 - player.team_id)
+	var facing_x := 1.0 if player.team_id == 0 else -1.0
+	var shot_speed := -ball.velocity.x * facing_x
+	return (
+		shot_speed >= KEEPER_SHOT_READ_MIN_SPEED
+		and (ball.global_position.x - line_x) * facing_x > 0.0
+		and absf(ball.global_position.x - goal.x) <= KEEPER_SHOT_READ_DISTANCE
+	)
 
 func _keeper_pass_lane_clear(player: Footballer, teammate: Footballer) -> bool:
 	var segment: Vector2 = teammate.global_position - player.global_position
@@ -1965,12 +1996,16 @@ func _move_human_penalty_keeper(axis: float, delta: float) -> void:
 		return
 	var goal := ChessFootballMath.goal_center(1)
 	var y_limit := ChessFootballMath.GOAL_HALF_HEIGHT - 14.0
+	var old_y := keeper.global_position.y
 	keeper.global_position.y = clampf(
-		keeper.global_position.y + clampf(axis, -1.0, 1.0) * PENALTY_KEEPER_MOVE_SPEED * delta,
+		old_y + clampf(axis, -1.0, 1.0) * PENALTY_KEEPER_MOVE_SPEED * delta,
 		goal.y - y_limit,
 		goal.y + y_limit,
 	)
-	keeper.velocity = Vector2.ZERO
+	# The manual penalty shuffle used to teleport visually with ZERO velocity,
+	# so even a moving keeper looked like an idle cardboard cutout.
+	keeper.velocity = Vector2(0.0, (keeper.global_position.y - old_y) / maxf(delta, 0.001))
+	keeper._sync_locomotion(false)
 
 func penalty_preview_visible() -> bool:
 	return (
