@@ -80,7 +80,9 @@ def test_all_shipped_manifests_keep_semantics_and_become_connected_seeded_layout
     for map_id in map_ids:
         base, _revision = chronicles_api.load_chronicles_manifest(map_id)
         if base.get("layoutMode") == "authored":
-            assert base["regionKind"] == "settlement"
+            # File-authored areas include both towns and real overworld
+            # wilderness; neither must be silently proceduralized.
+            assert base["regionKind"] in {"settlement", "wilderness"}
             assert not base.get("enemies")
             for seed in (0, 1, 417, 2_147_483_647):
                 generated = proceduralize_chronicles_manifest(base, seed)
