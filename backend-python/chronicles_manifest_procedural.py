@@ -512,6 +512,10 @@ def proceduralize_chronicles_manifest(
     planner_proposal: Any = None,
     content_placement_version: int = 0,
 ) -> ChroniclesProceduralManifest:
+    # Explicitly-main campaign maps cannot accidentally drift into a seeded
+    # layout. Old manifests without dungeonRole remain backward-compatible.
+    if manifest.get("regionKind") == "dungeon" and manifest.get("dungeonRole") == "main" and manifest.get("layoutMode") != "authored":
+        raise ChroniclesMapGenerationError("main-story dungeons require layoutMode=authored")
     # Authored story dungeons and settlements keep their exact rooms, puzzle
     # anchors, doors and traps. Unmarked historical maps stay seeded.
     if manifest.get("layoutMode") == "authored":
