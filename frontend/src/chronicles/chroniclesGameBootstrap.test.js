@@ -90,6 +90,37 @@ describe('Chronicles bounded authoritative-run bootstrap', () => {
     });
   });
 
+
+  it('rehydrates a saved run with authorized GET and never creates a replacement', async () => {
+    const payload = remoteRun('Cargada desde otro dispositivo', 417, 'crypt-eight-squares');
+    payload.worldVersion = 4;
+    const readRun = vi.fn().mockResolvedValue(payload);
+    const createRun = vi.fn();
+    const world = await chroniclesBootstrapWorld({
+      resumeRunId: payload.runId,
+      readRun,
+      createRun,
+      budgetMs: 250,
+    });
+    expect(readRun).toHaveBeenCalledWith(payload.runId, { signal: expect.any(AbortSignal) });
+    expect(createRun).not.toHaveBeenCalled();
+    expect(world.runId).toBe(payload.runId);
+    expect(world.worldVersion).toBe(4);
+  });
+
+  it('fails closed on a deleted or foreign remote save, without POST fallback', async () => {
+    const error = Object.assign(new Error('Not found'), { status: 404 });
+    const readRun = vi.fn().mockRejectedValue(error);
+    const createRun = vi.fn();
+    await expect(chroniclesBootstrapWorld({
+      resumeRunId: 'missing-run',
+      readRun,
+      createRun,
+      budgetMs: 250,
+    })).rejects.toMatchObject({ code: CHRONICLES_BOOTSTRAP_ERROR_CODES.unavailable });
+    expect(createRun).not.toHaveBeenCalled();
+  });
+
   it('passes party level to run creation and preserves the backend snapshot', async () => {
     const payload = remoteRun();
     payload.partyLevel = 6;
