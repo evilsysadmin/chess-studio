@@ -21,6 +21,9 @@
 
 /release.json
   Cache-Control: no-cache, no-store, must-revalidate
+
+/asset-grace.json
+  Cache-Control: no-cache, no-store, must-revalidate
   Pragma: no-cache
 
 /sw.js
