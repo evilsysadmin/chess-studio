@@ -915,7 +915,6 @@ func _nearest_opponent_to(player: Footballer) -> Footballer:
 	return best
 
 func _update_keeper_ai(player: Footballer, delta: float) -> void:
-	var own_goal := ChessFootballMath.goal_center(1 - player.team_id)
 	var away_from_goal := Vector2.RIGHT if player.team_id == 0 else Vector2.LEFT
 	var keeper_key: int = int(player.get_instance_id())
 
