@@ -862,24 +862,32 @@ func (h *ChroniclesRunsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request
 		var summaries []bson.D
 		summaries, err = h.runs.ListActive(ctx, username, 30)
 		list := bson.A{}
-		for _, item := range summaries { list = append(list, item) }
+		for _, item := range summaries {
+			list = append(list, item)
+		}
 		payload = bson.D{{Key: "runs", Value: list}}
 	case ChroniclesRunDeletePattern:
 		var deleted bool
 		deleted, err = h.runs.DeleteOwned(ctx, runID, username)
-		if err == nil && !deleted { err = fail(404, "Run de Chronicles no encontrada.") }
+		if err == nil && !deleted {
+			err = fail(404, "Run de Chronicles no encontrada.")
+		}
 		code = http.StatusNoContent
 	case ChroniclesRunBootstrapPattern:
 		var saved bson.D
 		saved, err = h.runs.Get(ctx, runID, username)
-		if err == nil && saved == nil { err = fail(404, "Run de Chronicles no encontrada.") }
+		if err == nil && saved == nil {
+			err = fail(404, "Run de Chronicles no encontrada.")
+		}
 		if err == nil && lookupOr(saved, "status", "active") != "active" {
 			err = fail(409, "Esta expedición ya ha terminado.")
 		}
 		if err == nil {
 			var route *chronicles.RouteSnapshot
 			route, err = chronicles.NormalizeRouteSnapshot(lookupOr(saved, "route", nil))
-			if err == nil { payload, err = bootstrap(saved, route) }
+			if err == nil {
+				payload, err = bootstrap(saved, route)
+			}
 		}
 	case ChroniclesRunReadPattern:
 		payload, err = h.runs.Get(ctx, runID, username)
