@@ -467,12 +467,25 @@ func sync_presentation(delta: float, mode: String) -> void:
 					wanted_animation = directional_animation
 				if player.role == "keeper":
 					_sync_keeper_animation(key, player, sprite, wanted_animation, delta)
+					# The approved front/back keeper atlas does not alternate which
+					# leg leads strongly enough. Mirroring only the second half of
+					# those symmetric views yields a real left/right step without
+					# generating art or flipping the oblique facing direction.
+					var direct_view := String(wanted_animation)
+					var symmetric_run := direct_view in [
+						"run_front", "run_back", "sprint_front", "sprint_back"
+					]
+					var alternate_leg := (
+						symmetric_run
+						and sprite.frame >= sprite.sprite_frames.get_frame_count(wanted_animation) / 2
+					)
+					sprite.flip_h = player.visual.flip_h != alternate_leg
 				else:
 					if sprite.animation != wanted_animation:
 						sprite.play(wanted_animation)
 					sprite.speed_scale = player.visual.speed_scale
 					sprite.frame = player.visual.frame
-				sprite.flip_h = player.visual.flip_h
+					sprite.flip_h = player.visual.flip_h
 			sprite.pixel_size = TACTICAL_PLAYER_PIXEL_SIZE if mode == "tactical" else PLAYER_PIXEL_SIZE
 			_sync_player_secondary_motion(player, sprite, proxy)
 			var is_controlled: bool = player == match_node.controlled
