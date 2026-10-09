@@ -322,6 +322,9 @@ def classify_path(path: str) -> set[str] | None:
 
     if lower.endswith(".md"):
         return set()
+    if lower in {"makefile", ".github/workflows/staging-deploy.yml", ".github/workflows/production-promote.yml"}:
+        # Delivery/test orchestration changes do not alter a canonical UI.
+        return set()
     if lower.startswith("scripts/app_visual_"):
         return set()
     if lower in {
@@ -736,6 +739,7 @@ def classify(paths: list[str]) -> str:
 
 
 def self_test() -> None:
+    assert classify(["Makefile", ".github/workflows/staging-deploy.yml", ".github/workflows/production-promote.yml"]) == "none"
     assert classify(["e2e/staging-live.spec.js"]) == "none"
     assert classify(["scripts/pages_runtime_asset_grace.py"]) == "none"
     assert classify(["e2e/staging-live.spec.js", "frontend/src/components/PvpHandoffModal.jsx"]) == "pvp-handoff"
