@@ -63,6 +63,27 @@ function expectKnightJump(from, to) {
 }
 
 describe('Chronicles of Matthias vertical slice', () => {
+  it('strafes left and right relative to facing without rotating or bypassing collision', () => {
+    const start = createChroniclesState('swordhaven-square');
+    expect([start.x, start.y, start.direction]).toEqual([9, 16, 0]);
+    const left = chroniclesReduce(start, 'strafe-left');
+    expect([left.x, left.y, left.direction]).toEqual([8, 16, 0]);
+    expect(left.turns).toBe(start.turns + 1);
+    const back = chroniclesReduce(left, 'strafe-right');
+    expect([back.x, back.y, back.direction]).toEqual([9, 16, 0]);
+
+    const facingEast = { ...start, x: 9, y: 10, direction: 1 };
+    const eastFacingLeft = chroniclesReduce(facingEast, 'strafe-left');
+    expect([eastFacingLeft.x, eastFacingLeft.y, eastFacingLeft.direction])
+      .toEqual([9, 9, 1]);
+    // An authored tree at 7,16 must stop lateral movement just like forward.
+    const nextToTree = { ...start, x: 8, y: 16, direction: 0 };
+    const blocked = chroniclesReduce(nextToTree, 'strafe-left');
+    expect([blocked.x, blocked.y, blocked.direction]).toEqual([8, 16, 0]);
+    expect(blocked.turns).toBe(nextToTree.turns + 1);
+    expect(blocked.message).toMatch(/bloquea|obstáculo|paso|árbol|muro|cerrado|avanzar/i);
+  });
+
   it('applies a custom character build to the real party without changing canonical ids', () => {
     const state = createChroniclesState(null, {
       version: 1,
