@@ -643,10 +643,16 @@ func _sync_player_secondary_motion(player: Footballer, sprite: AnimatedSprite3D,
 	# between boot soles and the pitch in broadcast AND tactical zoom, even
 	# when the authored silhouette needs uniform scale correction.
 	var cell_height := ChessFootballSpriteBank.cell_size().y
-	var foot_pixels := ChessFootballSpriteBank.footline() - cell_height * 0.5
-	var clearance := PLAYER_BASE_Y - foot_pixels * PLAYER_PIXEL_SIZE
+	var canonical_foot_pixels := ChessFootballSpriteBank.footline() - cell_height * 0.5
+	var clearance := PLAYER_BASE_Y - canonical_foot_pixels * PLAYER_PIXEL_SIZE
+	# The *authored* foot bottom can differ between running frames and poses.
+	# Use the alpha baseline recorded while slicing the 3D image, otherwise
+	# a raised pose floats while another sinks despite identical sprite scale.
+	# This lookup is cached and makes NO per-frame GPU image readbacks.
+	var frame_texture := sprite.sprite_frames.get_frame_texture(sprite.animation, sprite.frame)
+	var frame_foot_pixels := ChessFootballSpriteBank.frame_bottom(frame_texture) - cell_height * 0.5
 	sprite.position.x = lateral_sway
-	sprite.position.y = clearance + foot_pixels * sprite.pixel_size * stretch_y + bob
+	sprite.position.y = clearance + frame_foot_pixels * sprite.pixel_size * stretch_y + bob
 	sprite.rotation.z = deg_to_rad(tilt_degrees)
 	sprite.scale = Vector3(stretch_x, stretch_y, 1.0)
 
