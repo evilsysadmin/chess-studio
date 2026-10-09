@@ -251,6 +251,10 @@ def _surface_groups(path: str) -> set[str] | None:
         return set(POSTGAME_VISUAL_SURFACES[lower])
     if lower in QUICK_MATCH_VISUAL_SURFACES:
         return set(QUICK_MATCH_VISUAL_SURFACES[lower])
+    if lower == "frontend/src/activegamesession.js":
+        # A recovery snapshot only affects game/War Room entry; it is not a
+        # cross-product render owner. Keep War Room pixel proof fail-closed.
+        return {"warroom"}
     if lower == "frontend/src/components/shareresultmodal.jsx":
         return {"warroom"}
     if lower == "frontend/src/components/profilebackupmodal.jsx":
@@ -699,6 +703,14 @@ def self_test() -> None:
     ])
     assert cpu_scope.capture_groups == "warroom"
     assert classify(["frontend/src/components/ShareResultModal.jsx"]).capture_groups == "warroom"
+    assert classify(["frontend/src/activeGameSession.js"]).capture_groups == "warroom"
+    assert classify([
+        "frontend/src/components/ShareResultModal.jsx",
+        "frontend/src/activeGameSession.js",
+        "frontend/src/useGameStartFlow.js",
+        "e2e/war-room-decor-visual-artifact.spec.js",
+        "scripts/app_visual_changed_files.py",
+    ]).capture_groups == "warroom"
     assert classify(["frontend/src/components/ProfileBackupModal.jsx"]).capture_groups == "home"
     assert classify([
         "frontend/src/components/GameScreen.jsx",
