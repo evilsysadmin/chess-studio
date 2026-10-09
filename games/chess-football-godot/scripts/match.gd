@@ -60,8 +60,10 @@ const AI_PRESSURE_RADIUS := 180.0
 const AI_FORWARD_PASS_GAIN := 145.0
 const AI_DRIBBLE_LOOKAHEAD := 290.0
 const AI_SUPPORT_FORWARD := 225.0
+const AI_TEAMMATE_SEPARATION_RADIUS := 130.0
+const AI_TEAMMATE_SEPARATION_MAX_CORRECTION := 110.0
 const AI_COVER_DISTANCE := 150.0
-const AI_DEFENSIVE_SHIFT_RATIO := 0.27
+const AI_DEFENSIVE_SHIFT_RATIO := 0.16
 const AI_COVER_INTENSITY := 0.86
 const AI_TEAM_PRESS_INTENSITY := 0.75
 const AI_ADAPT_SAMPLE_SECONDS := 1.0
@@ -734,6 +736,10 @@ func _update_ai(delta: float) -> void:
 					)
 					intensity = _ai_adaptive_intensity(AI_TEAM_PRESS_INTENSITY)
 
+			# Keep supporting teammates from targeting the same spot. The
+			# dribbler and lead defender retain direct control of their duels.
+			if ball.carrier != player and (team_has_ball or player != presser):
+				target = _ai_spaced_target(player, target)
 			player.move_ai(delta, target, intensity)
 
 			if (
@@ -787,6 +793,31 @@ func _ai_secondary_presser(team_id: int, primary: Footballer) -> Footballer:
 			best_distance = distance
 			best = player
 	return best
+
+# Soft tactical spacing, not a collision force: no player teleportation,
+# no repulsion from opponents during intentional dribbles or tackles.
+# A stable role/index tie-break resolves truly coincident destinations.
+func _ai_spaced_target(player: Footballer, target: Vector2) -> Vector2:
+	if player.role == "keeper" or player.has_ball:
+		return target
+	var correction := Vector2.ZERO
+	for teammate in teams[player.team_id]:
+		if teammate == player or teammate.sent_off or teammate.role == "keeper":
+			continue
+		var away: Vector2 = target - teammate.global_position
+		var distance := away.length()
+		if distance >= AI_TEAMMATE_SEPARATION_RADIUS:
+			continue
+		var direction := (
+			away / distance
+			if distance > 1.0
+			else Vector2(0.0, 1.0 if player.squad_index > teammate.squad_index else -1.0)
+		)
+		correction += direction * (AI_TEAMMATE_SEPARATION_RADIUS - distance)
+	return ChessFootballMath.clamp_to_pitch(
+		target + correction.limit_length(AI_TEAMMATE_SEPARATION_MAX_CORRECTION)
+	)
+
 
 func _ai_cover_target(player: Footballer, threat_position: Vector2) -> Vector2:
 	var own_goal: Vector2 = ChessFootballMath.goal_center(1 - player.team_id)
@@ -890,7 +921,18 @@ func _ai_support_target(player: Footballer) -> Vector2:
 	if ball.carrier == null:
 		return player.home_position
 	var forward: float = 1.0 if player.team_id == 0 else -1.0
-	var lane_offset: float = float(player.squad_index - 2) * 104.0
+	# Use distinct positional lanes rather than dragging all supporters into
+	# the dribbler's path. A wider field is only useful when the AI exploits it.
+	var lane_offset := 0.0
+	match player.role:
+		"defender":
+			lane_offset = -190.0
+		"midfielder":
+			lane_offset = 40.0
+		"wing":
+			lane_offset = 240.0
+		"forward":
+			lane_offset = -110.0
 	var role_push: float = 0.0
 	if player.role == "defender":
 		role_push = -55.0
@@ -901,7 +943,7 @@ func _ai_support_target(player: Footballer) -> Vector2:
 	var target := Vector2(
 		ball.carrier.global_position.x
 			+ forward * (_ai_adaptive_support_forward() + role_push + absf(lane_offset) * 0.18),
-		lerpf(player.home_position.y, ball.carrier.global_position.y + lane_offset, 0.42)
+		lerpf(player.home_position.y, ball.carrier.global_position.y + lane_offset, 0.26)
 	)
 	return ChessFootballMath.clamp_to_pitch(target)
 
@@ -2310,7 +2352,7 @@ func _spawn_match() -> void:
 	# creates actual playable space instead of leaving both teams clustered in
 	# the old 1640x860 footprint.
 	var home_x_ratio := [0.09, 0.26, 0.40, 0.46, 0.58]
-	var home_y_ratio := [0.48, 0.29, 0.48, 0.67, 0.48]
+	var home_y_ratio := [0.50, 0.20, 0.53, 0.80, 0.34]
 	for team_id in range(2):
 		for index in range(TEAM_SIZE):
 			var x: float = pitch.position.x + pitch.size.x * float(home_x_ratio[index])

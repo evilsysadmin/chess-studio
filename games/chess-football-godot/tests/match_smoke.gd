@@ -12,12 +12,12 @@ func _initialize() -> void:
 	assert(match_node.debug_ball_exists())
 	assert(match_node.debug_pitch_exists())
 	assert(ChessFootballMath.PITCH_RECT.size.x >= 2400.0)
-	assert(ChessFootballMath.PITCH_RECT.size.y >= 1400.0)
+	assert(ChessFootballMath.PITCH_RECT.size.y >= 1680.0)
 	assert(ChessFootballMath.GOAL_HALF_HEIGHT >= 180.0)
 	assert(
 		ChessFootballMath.GOAL_HALF_HEIGHT * 2.0
 		/ ChessFootballMath.PITCH_RECT.size.y
-		>= 0.25
+		>= 0.21
 	)
 	var goal_probe_center := ChessFootballMath.PITCH_RECT.get_center()
 	assert(

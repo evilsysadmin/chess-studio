@@ -1,7 +1,9 @@
 class_name ChessFootballMath
 extends RefCounted
 
-const PITCH_RECT := Rect2(80.0, 70.0, 2480.0, 1440.0)
+# Expand touchline-to-touchline by 16.7% while preserving the original
+# centre and goal Y (790). The 3D stadium derives its geometry from this rect.
+const PITCH_RECT := Rect2(80.0, -50.0, 2480.0, 1680.0)
 # 5v5 arcade mouth: 360 pitch units. The 290-unit first enlargement still
 # looked undersized against the widened pitch and left too little real target.
 const GOAL_HALF_HEIGHT := 180.0
