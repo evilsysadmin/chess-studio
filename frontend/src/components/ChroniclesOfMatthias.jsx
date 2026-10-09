@@ -309,6 +309,8 @@ export default function ChroniclesOfMatthias({ onExit }) {
   }, []);
 
   const dispatch = useCallback((action) => {
+    // Freeze all input while the latest checkpoint is being confirmed.
+    if (savingTransitionRef.current) return;
     const current = stateRef.current;
     if (!current) return;
 
@@ -782,7 +784,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
     if (!ready || !stateRef.current) return undefined;
     const onKeyDown = (event) => {
       const current = stateRef.current;
-      if (!current || savingTransitionRef.current) return;
+      if (!current || savingTransitionRef.current || menuOpen) return;
       if (event.key === 'm' || event.key === 'M') {
         event.preventDefault();
         clearTouchHold();
@@ -828,7 +830,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
     };
     window.addEventListener('keydown', onKeyDown, { passive: false });
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [attackWithSelected, automapOpen, clearTouchHold, dispatch, interactWithContext, openMemberSheet, ready, sheetMemberId]);
+  }, [attackWithSelected, automapOpen, clearTouchHold, dispatch, interactWithContext, menuOpen, openMemberSheet, ready, sheetMemberId]);
 
   const startFreshGame = () => {
     beginChroniclesRun(FIRST_PERSON_RUN_SCOPE);
