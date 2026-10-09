@@ -101,12 +101,21 @@ def fetch_from_origin(origin: str, path: str, limit: int, *, optional: bool = Fa
             if response.status != 200:
                 raise ValueError(f"unexpected HTTP status for {path}: {response.status}")
             data = response.read(limit + 1)
+            mime = response.headers.get("Content-Type", "").split(";", 1)[0].lower()
     except urllib.error.HTTPError as error:
         if error.code == 404 and optional:
             return None
         raise
     if len(data) > limit:
         raise ValueError(f"oversized remote response for {path}")
+    # On the first deployment of this feature, Pages may serve the actual SPA
+    # index.html with HTTP 200 for the not-yet-existing manifest. Recognize
+    # only our known React shell as an absent optional manifest. A CF challenge,
+    # corrupt JSON or HTML served for a real hashed asset still fails closed.
+    if path == MANIFEST and optional and mime == "text/html":
+        html = data.lstrip().lower()
+        if html.startswith(b"<!doctype html") and (b'<div id="root"' in html or b"<div id='root'" in html):
+            return None
     return data
 
 
@@ -174,6 +183,31 @@ def prepare(dist: pathlib.Path, fetch: Callable, *, max_previous: int = MAX_PREV
 
 def self_test() -> None:
     assert check_path("assets/Board3D-aBcDeF01.js").endswith(".js")
+    # A missing Pages file can return index.html with HTTP 200. The initial
+    # upload must bootstrap, not abort or cache the document as an asset.
+    original_urlopen = urllib.request.urlopen
+    class FakeResponse:
+        status = 200
+        headers = {"Content-Type": "text/html; charset=UTF-8"}
+        def __init__(self, content):
+            self.content = content
+        def __enter__(self):
+            return self
+        def __exit__(self, *_):
+            return False
+        def read(self, _limit):
+            return self.content
+    try:
+        urllib.request.urlopen = lambda _request, timeout=15: FakeResponse(
+            b'<!doctype html><html><body><div id="root"></div></body></html>'
+        )
+        assert fetch_from_origin("https://example.com", MANIFEST, 2048, optional=True) is None
+        assert fetch_from_origin("https://example.com", MANIFEST, 2048, optional=False) is not None
+        assert fetch_from_origin("https://example.com", "assets/Old-12345678.js", 2048, optional=True) is not None
+        urllib.request.urlopen = lambda _request, timeout=15: FakeResponse(b"<html>Cloudflare challenge</html>")
+        assert fetch_from_origin("https://example.com", MANIFEST, 2048, optional=True) is not None
+    finally:
+        urllib.request.urlopen = original_urlopen
     for item in ("../env.js", "assets/../secrets-aabbccdd.js", "/assets/a-abc12345.js", "assets/raw.js"):
         try:
             check_path(item)
