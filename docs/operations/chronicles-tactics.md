@@ -254,3 +254,11 @@ Any future haste/slow/surprise mechanic should modify the initiative contract ex
 - First implementation slice must prove an actual loop (Queen briefing → capital → traversable exterior → enter/exit dungeon → return to capital) with E2E tests for transitions, journal, F5 and idempotent saves. Visual changes demand inspected PNGs at desktop and mobile sizes. Keep Chronicles Tactics compatibility explicit in tests.
 - Do not couple narrative to the current depth label: «Nivel 1, 2, 3…» represents floors of a dungeon only, not the overworld, character level or story chapter.
 
+
+
+## Clasificación de mazmorras en el mundo de Chronicles
+
+- **Campaña principal:** topología, puertas, trampas, puzzles, composición de salas y jefes diseñados, persistentes y reconocibles. Una nueva región principal opta expresamente por `layoutMode: authored`, `regionKind: dungeon` y la etiqueta narrativa `dungeonRole: main`. Python y Go no barajan el diseño ni mueven las anclas; sus versiones y revisiones son estables entre semillas.
+- **Misiones secundarias:** pueden ser mapas authored o dungeons procedurales con objetivos garantizados. La categoría híbrida (salas fijas con conexiones variables) es un objetivo futuro, no una capacidad ya terminada.
+- **Expediciones libres:** generación procedural con semilla persistida, variedad de amenazas, botín y dificultad; conservar los gates de conectividad y ausencia de blockers invisibles.
+- **Compatibilidad obligatoria:** ningún dungeon histórico cambia de modo automáticamente. Etiquetar manifests de campaña que ya tienen partidas activas cambiaría hashes/revisiones autoritativas y provocaría 409. La migración del tronco principal debe introducir versiones de mapa/ruta y restaurar la variante procedural para las runs anteriores.

@@ -502,11 +502,11 @@ func materializeRecipe(composed bson.D, recipe chroniclesmap.Recipe, version int
 // proceduralize is proceduralize_chronicles_manifest; it returns the
 // generated manifest, its MapCode and layout revision.
 func proceduralize(manifest bson.D, seed int64, proposal any, version int) (bson.D, string, string, error) {
-	// An authored settlement is a persistent hub, not a generated dungeon.
-	// Preserve every wall and doorway; no seeded composition or relocation.
-	if get(manifest, "regionKind") == "settlement" && get(manifest, "layoutMode") == "authored" {
-		// An authored town may exceed procedural MapCode dimension limits.
-		// Its mapCode is a stable content identity, not a dungeon recipe.
+	// Authored story dungeons and settlements preserve their geometry and
+	// encounters; unmarked legacy dungeons retain seeded composition.
+	if get(manifest, "layoutMode") == "authored" {
+		// Authored maps may exceed MapCode dimensions; their mapCode
+		// identifies content, rather than a seeded dungeon recipe.
 		code := fmt.Sprintf("authored-layout-v1:%v:%v", get(manifest, "id"), get(manifest, "version"))
 		sum := sha256.Sum256([]byte(fmt.Sprintf("seeded-area-v%d\x00%s\x00", chroniclesmap.GeneratorVersion, code) + strings.Join(gridRows(manifest), "\n")))
 		revision := hex.EncodeToString(sum[:])
