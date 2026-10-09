@@ -216,6 +216,28 @@ describe('Chronicles shared run identity', () => {
     expect(chroniclesListSavedRuns('first-person')).toEqual([]);
   });
 
+  it('reads old unmarked save IDs without ever treating them as new POST slots', () => {
+    localStorage.setItem(CHRONICLES_RUN_STORAGE_KEY, JSON.stringify({
+      id: 'old-authoritative-run', owner: 'alice', ended: false,
+    }));
+    const saves = chroniclesListSavedRuns('first-person');
+    expect(saves[0]).toMatchObject({ id: 'old-authoritative-run', pending: false });
+    expect(chroniclesSelectedRunIsRemote('first-person', 'old-authoritative-run')).toBe(true);
+    expect(chroniclesSelectSavedRun('first-person', 'old-authoritative-run')).toBe(true);
+    expect(chroniclesSelectedRunIsRemote('first-person', 'old-authoritative-run')).toBe(true);
+  });
+
+  it('creates only explicit pending runs, then switches to read-only GET after server confirmation', () => {
+    const id = beginChroniclesRun('first-person');
+    expect(chroniclesSelectedRunIsRemote('first-person', id)).toBe(false);
+    expect(chroniclesListSavedRuns('first-person')[0].pending).toBe(true);
+    chroniclesMarkSavedRunRemote('first-person', id);
+    expect(chroniclesSelectedRunIsRemote('first-person', id)).toBe(true);
+    expect(chroniclesListSavedRuns('first-person')[0]).toMatchObject({
+      id, remote: true, pending: false,
+    });
+  });
+
   it('never inherits an active expedition across authenticated users', () => {
     const aliceRun = beginChroniclesRun('first-person');
 

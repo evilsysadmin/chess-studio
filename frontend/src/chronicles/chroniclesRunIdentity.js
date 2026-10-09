@@ -53,7 +53,7 @@ function readStoredRun(storageKey) {
   const entryMapId = typeof parsed.entryMapId === 'string'
     && /^[a-z0-9-]{1,64}$/.test(parsed.entryMapId)
     ? parsed.entryMapId : null;
-  return { id: parsed.id.trim(), owner, ended: Boolean(parsed.ended), entryMapId, remote: parsed.remote === true };
+  return { id: parsed.id.trim(), owner, ended: Boolean(parsed.ended), entryMapId, remote: parsed.remote === true, pending: parsed.pending === true };
   } catch {
     return null;
   }
@@ -86,6 +86,7 @@ function readSaveCatalog() {
       createdAt: Number.isFinite(item.createdAt) ? item.createdAt : 0,
       updatedAt: Number.isFinite(item.updatedAt) ? item.updatedAt : 0,
       remote: item.remote === true,
+      pending: item.pending === true,
     }));
   } catch {
     return [];
@@ -110,7 +111,7 @@ function indexActiveRun(run) {
   runs.unshift({
     id: run.id, title: 'Expedición ' + (numbered + 1),
     entryMapId: run.entryMapId || null,
-    currentMapId: run.entryMapId || null, createdAt: now, updatedAt: now, remote: false,
+    currentMapId: run.entryMapId || null, createdAt: now, updatedAt: now, remote: false, pending: run.pending === true,
   });
   writeSaveCatalog(runs);
 }
@@ -164,6 +165,7 @@ export function chroniclesMergeRemoteSavedRuns(scope, remoteRuns, { expectedOwne
       createdAt: createdAt || local?.createdAt || 0,
       updatedAt: updatedAt || local?.updatedAt || 0,
       remote: true,
+      pending: false,
     }];
   });
   // A full 30-row response can hide older server runs: absence then proves
@@ -174,7 +176,7 @@ export function chroniclesMergeRemoteSavedRuns(scope, remoteRuns, { expectedOwne
   if (active && !active.ended && active.remote && complete && !seen.has(active.id)) {
     writeRunState({ ...active, ended: true });
   } else if (active && !active.ended && seen.has(active.id) && !active.remote) {
-    writeRunState({ ...active, remote: true });
+    writeRunState({ ...active, remote: true, pending: false });
   }
   return chroniclesListSavedRuns(scope);
 }
@@ -184,17 +186,23 @@ export function chroniclesMarkSavedRunRemote(scope, runId) {
   legacyStorageKeyFor(scope);
   const runs = readSaveCatalog();
   const row = runs.find((item) => item.id === runId);
-  if (row && !row.remote) {
+  if (row && (!row.remote || row.pending)) {
     row.remote = true;
+    row.pending = false;
     writeSaveCatalog(runs);
   }
   const active = readRunState(scope);
-  if (active?.id === runId && !active.remote) writeRunState({ ...active, remote: true });
+  if (active?.id === runId && (!active.remote || active.pending)) {
+    writeRunState({ ...active, remote: true, pending: false });
+  }
 }
 
 export function chroniclesSelectedRunIsRemote(scope, runId) {
   const active = readRunState(scope);
-  return active?.id === runId && !active.ended && active.remote === true;
+  // Old local snapshots predate the remote flag. They may already exist in
+  // Mongo, so GET them and fail closed on 404 instead of attempting a POST.
+  // Only explicitly minted, not-yet-bootstraped runs are safe to create.
+  return active?.id === runId && !active.ended && (active.remote === true || !active.pending);
 }
 
 export function chroniclesSelectSavedRun(scope, runId) {
@@ -205,6 +213,7 @@ export function chroniclesSelectSavedRun(scope, runId) {
     id: row.id, owner: currentOwner(), ended: false,
     entryMapId: row.entryMapId,
     remote: row.remote === true,
+    pending: row.pending === true,
   });
   return true;
 }
@@ -246,6 +255,7 @@ export function chroniclesNoteSavedRunCheckpoint(scope, runId, currentMapId) {
   }
   row.updatedAt = Date.now();
   row.remote = true;
+  row.pending = false;
   writeSaveCatalog(runs);
   return true;
 }
@@ -291,6 +301,7 @@ export function beginChroniclesRun(scope) {
   const run = {
     id: createRunId(), owner: currentOwner(), ended: false,
     entryMapId: scope === 'first-person' ? 'swordhaven-square' : null,
+    pending: true,
   };
   writeRunState(run);
   return run.id;
