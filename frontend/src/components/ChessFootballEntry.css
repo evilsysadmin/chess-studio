@@ -1,0 +1,191 @@
+.chess-football-entry,
+.chess-football-entry__loading {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  width: 100vw;
+  min-height: 100vh;
+  height: 100dvh;
+  overflow-y: auto;
+  color: #f4e9d1;
+  background:
+    radial-gradient(ellipse at 48% 65%, rgba(82, 136, 73, .24), transparent 50%),
+    linear-gradient(140deg, rgba(14, 29, 20, .96), rgba(5, 11, 9, .99)),
+    #08130d;
+  font-family: system-ui, sans-serif;
+}
+
+.chess-football-entry__content {
+  box-sizing: border-box;
+  max-width: 1050px;
+  min-height: 100%;
+  margin: 0 auto;
+  padding: max(1rem, env(safe-area-inset-top)) max(1.1rem, env(safe-area-inset-right)) max(1.5rem, env(safe-area-inset-bottom)) max(1.1rem, env(safe-area-inset-left));
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: clamp(1.2rem, 3vw, 2.2rem);
+}
+
+.chess-football-entry__back {
+  align-self: flex-start;
+  padding: .65rem .85rem;
+  min-height: 44px;
+  border: 1px solid rgba(239, 217, 163, .26);
+  border-radius: 999px;
+  color: #f4e9d1;
+  background: rgba(8, 18, 12, .65);
+  font: inherit;
+  cursor: pointer;
+}
+
+.chess-football-entry__masthead {
+  text-align: center;
+}
+
+.chess-football-entry__eyebrow {
+  display: block;
+  color: #b6ca91;
+  font-size: .74rem;
+  font-weight: 850;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+}
+
+.chess-football-entry__masthead h1 {
+  margin: .3rem 0 .5rem;
+  font: 700 clamp(2.8rem, 8vw, 5.7rem)/1.05 Georgia, 'Times New Roman', serif;
+  letter-spacing: -.045em;
+}
+
+.chess-football-entry__masthead em {
+  color: #bdd18a;
+  font-weight: 400;
+}
+
+.chess-football-entry__masthead p {
+  max-width: 49ch;
+  margin: 0 auto;
+  color: #d0cfb9;
+  line-height: 1.55;
+}
+
+.chess-football-entry__choices {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: clamp(.8rem, 2vw, 1.4rem);
+}
+
+.chess-football-entry__choice {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: .7rem;
+  min-width: 0;
+  min-height: 265px;
+  padding: clamp(1.3rem, 3vw, 2rem);
+  border: 1px solid rgba(239, 217, 163, .26);
+  border-radius: 20px;
+  color: #f4e9d1;
+  background: linear-gradient(145deg, rgba(64, 107, 71, .28), rgba(5, 14, 10, .8));
+  box-shadow: 0 22px 55px rgba(0, 0, 0, .24);
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+  transition: border-color .16s ease, transform .16s ease, background .16s ease;
+}
+
+.chess-football-entry__choice--manager {
+  background: linear-gradient(145deg, rgba(129, 104, 53, .24), rgba(12, 13, 10, .82));
+}
+
+.chess-football-entry__choice:hover,
+.chess-football-entry__choice:focus-visible {
+  border-color: #d8c28b;
+  transform: translateY(-3px);
+}
+
+.chess-football-entry__choice:focus-visible,
+.chess-football-entry__back:focus-visible,
+.chess-football-entry__manager-return:focus-visible {
+  outline: 3px solid #d8c28b;
+  outline-offset: 3px;
+}
+
+.chess-football-entry__choice-icon {
+  font-size: 2.3rem;
+  line-height: 1;
+}
+
+.chess-football-entry__choice small {
+  color: #bad39d;
+  text-transform: uppercase;
+  font-weight: 800;
+  letter-spacing: .12em;
+}
+
+.chess-football-entry__choice strong {
+  font: 700 clamp(1.7rem, 3vw, 2.4rem)/1.1 Georgia, 'Times New Roman', serif;
+}
+
+.chess-football-entry__choice > span:not(.chess-football-entry__choice-icon) {
+  color: #d4d0bf;
+  line-height: 1.5;
+}
+
+.chess-football-entry__choice b {
+  margin-top: auto;
+  color: #e6d298;
+}
+
+.chess-football-entry__manager {
+  width: min(640px, 100%);
+  box-sizing: border-box;
+  margin: 0 auto;
+  padding: clamp(1.4rem, 4vw, 2.5rem);
+  border: 1px solid rgba(239, 217, 163, .26);
+  border-radius: 20px;
+  background: rgba(7, 15, 10, .84);
+  text-align: center;
+}
+
+.chess-football-entry__manager h2 {
+  margin: .5rem 0 1rem;
+  font: 700 clamp(2rem, 6vw, 3.2rem)/1.1 Georgia, 'Times New Roman', serif;
+}
+
+.chess-football-entry__manager p {
+  color: #d4d0bf;
+  line-height: 1.6;
+}
+
+.chess-football-entry__manager-return {
+  min-height: 44px;
+  margin-top: 1rem;
+  padding: .7rem 1.2rem;
+  border: 1px solid #b2c58b;
+  border-radius: 11px;
+  color: #fff6de;
+  background: rgba(71, 114, 65, .35);
+  font: inherit;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.chess-football-entry__loading {
+  display: grid;
+  place-items: center;
+  font-weight: 800;
+}
+
+@media (max-width: 680px) {
+  .chess-football-entry__content { justify-content: flex-start; }
+  .chess-football-entry__choices { grid-template-columns: 1fr; }
+  .chess-football-entry__choice { min-height: 185px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chess-football-entry__choice { transition: none; }
+  .chess-football-entry__choice:hover,
+  .chess-football-entry__choice:focus-visible { transform: none; }
+}
