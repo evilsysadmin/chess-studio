@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { mkdir, writeFile } from 'node:fs/promises';
-import { login, mockApi, openMoreGameModes } from './helpers.js';
+import { confirmChroniclesCharacterSetup, login, mockApi, openMoreGameModes } from './helpers.js';
 
 const ARTIFACT_DIR = '../.artifacts/app-visual';
 const CAPTURES = [
@@ -37,6 +37,8 @@ async function openExperiments(page) {
       'matthias.onboarded': '2',
       'chess-study-home-guide-dismissed-v1': '1',
     },
+    // Fresh first-person runs now start in the authored Swordhaven settlement.
+    chroniclesCurrentMapId: 'swordhaven-square',
   });
   await login(page);
   await dismissMatthiasSpeech(page);
@@ -232,10 +234,10 @@ async function captureChroniclesHealth(page) {
     return {
       horizontalOverflow: root.scrollWidth > root.clientWidth + 1,
       gameCanvasCount: document.querySelectorAll('[data-chronicles-renderer="three"] canvas').length,
-      portraitCanvasCount: document.querySelectorAll('[data-chronicles-party-renderer="three"] canvas').length,
+      portraitThumbnailCount: document.querySelectorAll('[data-chronicles-party-thumbnail]').length,
       stage: rect('.chronicles-stage'),
       gameCanvas: rect('[data-chronicles-renderer="three"] canvas'),
-      portraitCanvas: rect('[data-chronicles-party-renderer="three"] canvas'),
+      firstPortrait: rect('[data-chronicles-party-thumbnail]'),
     };
   });
 }
@@ -476,31 +478,40 @@ if (scopeEnabled('chronicles')) {
         const chronicles = page.getByRole('button', { name: /Chronicles of Matthias/ });
         await expect(chronicles).toBeVisible();
         await chronicles.click();
+        // Chronicles opens an expedition book and character setup before
+        // mounting the first-person scene. Exercise that real player flow.
+        await confirmChroniclesCharacterSetup(page);
         await expect(page.locator('[data-chronicles="true"]')).toBeVisible();
         const chroniclesCanvas = page.locator('[data-chronicles-renderer="three"] canvas');
-        const portraitCanvas = page.locator('[data-chronicles-party-renderer="three"] canvas');
+        const portraitThumbnails = page.locator('[data-chronicles-party-thumbnail]');
         await expect(chroniclesCanvas).toHaveCount(1, { timeout: 20_000 });
         await expect(chroniclesCanvas).toBeVisible();
-        await expect(portraitCanvas).toHaveCount(1, { timeout: 20_000 });
-        await expect(portraitCanvas).toBeVisible();
+        await expect(portraitThumbnails).toHaveCount(4);
+        await expect(portraitThumbnails.first()).toBeVisible();
         await page.waitForTimeout(450);
 
         const health = await captureChroniclesHealth(page);
         captures.push({ label: capture.label, ...health });
         expect(health.horizontalOverflow, `${capture.label}: Chronicles overflow`).toBe(false);
         expect(health.gameCanvasCount, `${capture.label}: Chronicles dungeon canvas`).toBe(1);
-        expect(health.portraitCanvasCount, `${capture.label}: Chronicles portrait canvas`).toBe(1);
+        expect(health.portraitThumbnailCount, `${capture.label}: Chronicles authored portraits`).toBe(4);
         expect(health.stage?.width || 0, `${capture.label}: Chronicles stage visible`).toBeGreaterThan(0);
         expect(health.gameCanvas?.width || 0, `${capture.label}: Chronicles dungeon canvas visible`).toBeGreaterThan(0);
         expect(health.gameCanvas?.height || 0, `${capture.label}: Chronicles dungeon canvas height`).toBeGreaterThan(0);
-        expect(health.portraitCanvas?.width || 0, `${capture.label}: Chronicles portrait visible`).toBeGreaterThan(0);
-        expect(health.portraitCanvas?.height || 0, `${capture.label}: Chronicles portrait height`).toBeGreaterThan(0);
+        expect(health.firstPortrait?.width || 0, `${capture.label}: Chronicles authored portrait visible`).toBeGreaterThan(0);
+        expect(health.firstPortrait?.height || 0, `${capture.label}: Chronicles authored portrait height`).toBeGreaterThan(0);
 
         await captureFrozenFrame(page, {
           path: `${ARTIFACT_DIR}/chronicles-playing-${capture.label}.png`,
           fullPage: true,
         });
 
+        // Walk through the real Swordhaven south gate to the original crypt.
+        // The crypt tactical encounter is still owned by the authored map.
+        await page.keyboard.press('d');
+        await page.keyboard.press('d');
+        await page.keyboard.press('w');
+        await expect(page.getByText('Derrota al peón corrompido', { exact: true })).toBeVisible();
         await stageChroniclesSigilAwake(page);
         await captureFrozenFrame(page, {
           path: `${ARTIFACT_DIR}/chronicles-sigil-awake-${capture.label}.png`,
