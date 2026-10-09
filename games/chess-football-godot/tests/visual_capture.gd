@@ -20,6 +20,26 @@ func _initialize() -> void:
 	# keeping a mix of both team kits and the actual 3D renderer.
 	match_node.set_process(false)
 	match_node.set_physics_process(false)
+	# Visual contract for new touchline width and off-ball support: put a
+	# real midfield dribbler under pressure with teammates in distinct lanes.
+	var wide_carrier: Footballer = match_node.teams[0][2]
+	wide_carrier.global_position = ChessFootballMath.PITCH_RECT.get_center() + Vector2(-160.0, 0.0)
+	match_node._select_player(wide_carrier)
+	match_node.ball.attach_to(wide_carrier)
+	for index in [1, 3, 4]:
+		var supporter: Footballer = match_node.teams[0][index]
+		supporter.global_position = match_node._ai_support_target(supporter)
+	for index in range(1, 5):
+		var defender: Footballer = match_node.teams[1][index]
+		defender.global_position = ChessFootballMath.PITCH_RECT.get_center() + Vector2(
+			170.0 + float(index % 2) * 140.0,
+			(float(index) - 2.5) * 260.0,
+		)
+	match_node.debug_toggle_camera_mode()
+	match_node.debug_focus_presentation()
+	await _save_capture(match_node, "wide-pitch-lanes", "VISUAL_CAPTURE_WIDE_PITCH_LANES")
+	match_node.debug_toggle_camera_mode()
+	match_node.debug_prepare_kickoff(0)
 	var directions := [
 		Vector2.RIGHT, Vector2.LEFT, Vector2.DOWN, Vector2.UP,
 		Vector2(1.0, 1.0).normalized(), Vector2(-1.0, 1.0).normalized(),
