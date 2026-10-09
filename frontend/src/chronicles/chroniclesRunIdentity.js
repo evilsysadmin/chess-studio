@@ -160,9 +160,14 @@ export function chroniclesMergeRemoteSavedRuns(scope, remoteRuns) {
       remote: true,
     }];
   });
-  const pendingLocal = previous.filter((row) => !row.remote && !seen.has(row.id));
+  // A full 30-row response can hide older server runs: absence then proves
+  // nothing. For a shorter complete response, retire removed/terminal rows.
+  const complete = remoteRuns.length < 30;
+  const pendingLocal = previous.filter((row) => (!row.remote || !complete) && !seen.has(row.id));
   writeSaveCatalog([...incoming, ...pendingLocal]);
-  if (active && !active.ended && seen.has(active.id) && !active.remote) {
+  if (active && !active.ended && active.remote && complete && !seen.has(active.id)) {
+    writeRunState({ ...active, ended: true });
+  } else if (active && !active.ended && seen.has(active.id) && !active.remote) {
     writeRunState({ ...active, remote: true });
   }
   return chroniclesListSavedRuns(scope);
