@@ -163,3 +163,11 @@
     line-height: 1.2;
   }
 }
+
+/* One row, not another tall dashboard card: the authored quest is visible on
+   the canonical path without hiding the Save menu's exit on short phones. */
+.chronicles-save-menu__new-choices { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; min-width: 0; }
+.chronicles-save-menu__new-choices button { min-width: 0; }
+@media (max-height: 480px) and (orientation: landscape) {
+  .chronicles-save-menu__new-choices { gap: 4px; }
+}

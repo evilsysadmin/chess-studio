@@ -464,3 +464,54 @@ test('Chronicles · fallos de red permiten reintentar el libro y regresar desde 
   await expect(page.getByRole('heading', { name: 'No se pudo preparar Chronicles' })).toHaveCount(0);
   await expect(menu.getByRole('button', { name: 'Nuevo juego' })).toBeEnabled();
 });
+
+test('Chronicles · campaña authored viaja Swordhaven → Camino → Swordhaven con la misma run', async ({ page }) => {
+  test.setTimeout(180_000);
+  const requests = [];
+  const creates = [];
+  page.on('request', (request) => {
+    if (request.method() === 'POST' && new URL(request.url()).pathname.endsWith('/api/chronicles/runs')) {
+      creates.push(request.postDataJSON());
+    }
+  });
+  await mockApi(page, { chroniclesCurrentMapId: 'swordhaven-campaign', requestLog: requests });
+  await login(page);
+  await dismissGuide(page);
+  const modes = await openMoreGameModes(page);
+  await modes.getByRole('button').filter({ hasText: 'Experimentos geniales' }).click();
+  await page.getByRole('button').filter({ hasText: 'Descender a la cripta' }).click();
+  const menu = page.locator('[data-chronicles-save-menu]');
+  await expect(menu).toBeVisible();
+  await menu.getByRole('button', { name: 'Nueva campaña', exact: true }).click();
+  await confirmChroniclesCharacterSetup(page, { newTown: true });
+
+  const mode = page.locator('[data-chronicles="true"]');
+  await expect(mode).toHaveAttribute('data-chronicles-map-id', 'swordhaven-campaign', { timeout: 25_000 });
+  await expect.poll(() => creates[0]?.mapId).toBe('swordhaven-campaign');
+  await expect(mode.locator('[data-chronicles-renderer="three"] canvas')).toHaveCount(1);
+
+  // Authored north gate: six real steps from the 19x15 town spawn.
+  for (let i = 0; i < 6; i += 1) await page.keyboard.press('ArrowUp');
+  await expect(mode).toHaveAttribute('data-chronicles-map-id', 'banner-road', { timeout: 25_000 });
+  await expect(mode).toHaveAttribute('data-chronicles-phase', 'explore');
+  await expect(mode.locator('.chronicles-renderer-error')).toHaveCount(0);
+
+  // The return portal on the road is an actual reciprocal exit, not the
+  // legacy virtual crypt door. Leave it and re-enter with the party.
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowUp');
+  await expect(mode).toHaveAttribute('data-chronicles-map-id', 'swordhaven-campaign', { timeout: 25_000 });
+  await expect(mode).toHaveAttribute('data-chronicles-phase', 'explore');
+  expect(creates).toHaveLength(1);
+  await expect.poll(() => requests.filter((r) => r.method === 'PUT' && r.path.endsWith('/checkpoint')).length)
+    .toBeGreaterThan(0);
+
+  // F5 must resume the same authoritative run from the save book, not mint
+  // another campaign or use the legacy Swordhaven default after reload.
+  await page.reload();
+  const restoredBook = page.locator('[data-chronicles-save-menu]');
+  await expect(restoredBook).toBeVisible({ timeout: 20_000 });
+  await restoredBook.getByRole('button', { name: /Continuar partida/ }).click();
+  await expect(mode).toHaveAttribute('data-chronicles-map-id', 'swordhaven-campaign', { timeout: 30_000 });
+  expect(creates).toHaveLength(1);
+});
