@@ -25,6 +25,12 @@ const CANONICAL_BODY_HEIGHT_PIXELS := 120.0
 const DIAGONAL_WIDTH_COMPENSATION := 0.91
 const PLAYER_RUN_BOB := 0.050
 const PLAYER_SPRINT_BOB := 0.072
+# The approved keeper frames do move, but many poses are only a few pixels
+# apart at broadcast zoom. Make the real stride readable using a modest
+# diegetic lean/sway/weight transfer; do not change canonical raster anatomy.
+const KEEPER_STRIDE_EXTRA_SWAY := 0.095
+const KEEPER_STRIDE_EXTRA_BOB := 0.035
+const KEEPER_STRIDE_EXTRA_LEAN_DEGREES := 13.0
 const STAMINA_BAR_WIDTH := 0.76
 const STAMINA_BAR_DEPTH := 0.10
 const STAMINA_BAR_Z := 0.62
@@ -461,12 +467,25 @@ func sync_presentation(delta: float, mode: String) -> void:
 					wanted_animation = directional_animation
 				if player.role == "keeper":
 					_sync_keeper_animation(key, player, sprite, wanted_animation, delta)
+					# The approved front/back keeper atlas does not alternate which
+					# leg leads strongly enough. Mirroring only the second half of
+					# those symmetric views yields a real left/right step without
+					# generating art or flipping the oblique facing direction.
+					var direct_view := String(wanted_animation)
+					var symmetric_run := direct_view in [
+						"run_front", "run_back", "sprint_front", "sprint_back"
+					]
+					var alternate_leg := (
+						symmetric_run
+						and sprite.frame >= sprite.sprite_frames.get_frame_count(wanted_animation) / 2
+					)
+					sprite.flip_h = player.visual.flip_h != alternate_leg
 				else:
 					if sprite.animation != wanted_animation:
 						sprite.play(wanted_animation)
 					sprite.speed_scale = player.visual.speed_scale
 					sprite.frame = player.visual.frame
-				sprite.flip_h = player.visual.flip_h
+					sprite.flip_h = player.visual.flip_h
 			sprite.pixel_size = TACTICAL_PLAYER_PIXEL_SIZE if mode == "tactical" else PLAYER_PIXEL_SIZE
 			_sync_player_secondary_motion(player, sprite, proxy)
 			var is_controlled: bool = player == match_node.controlled
@@ -665,6 +684,23 @@ func _sync_player_secondary_motion(player: Footballer, sprite: AnimatedSprite3D,
 		stretch_x = 0.98
 		stretch_y = 1.05
 
+	# Only the keeper receives stronger *visible* weight transfer.
+	# It shares the same 8-frame cadence; no animation restarts or added clocks.
+	# At broadcast distance the current canonical feet and gloves otherwise
+	# move less than a couple of screen pixels, reading as a sliding cut-out.
+	# This is presentation only: collisions, AI speed and the authored atlas
+	# remain unchanged; stops and save/tackle animations keep their own poses.
+	if (
+		player.role == "keeper"
+		and moving_weight > 0.0
+		and (animation_name == "run" or animation_name.begins_with("run_")
+			or animation_name == "sprint" or animation_name.begins_with("sprint_"))
+	):
+		var foot_phase := sin(phase)
+		lateral_sway += foot_phase * KEEPER_STRIDE_EXTRA_SWAY * moving_weight
+		bob += absf(foot_phase) * KEEPER_STRIDE_EXTRA_BOB * moving_weight
+		tilt_degrees += foot_phase * KEEPER_STRIDE_EXTRA_LEAN_DEGREES * moving_weight
+		stretch_x *= 1.0 + foot_phase * 0.035 * moving_weight
 	if player.keeper_save_active():
 		var save_progress := 1.0 - player.keeper_save_ratio()
 		var save_weight := sin(PI * clampf(save_progress, 0.0, 1.0))

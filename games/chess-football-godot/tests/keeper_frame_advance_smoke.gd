@@ -19,6 +19,13 @@ func _initialize() -> void:
 		var sprite: AnimatedSprite3D = presenter.player_sprites[key]
 		assert(sprite != null)
 		var observed: Dictionary = {}
+		var lead_legs: Dictionary = {}
+		var min_lean := INF
+		var max_lean := -INF
+		var min_sway := INF
+		var max_sway := -INF
+		var min_lift := INF
+		var max_lift := -INF
 		keeper.action_lock_seconds = 0.0
 		keeper.velocity = Vector2.DOWN * keeper.base_speed
 		keeper.visual.play("run")
@@ -32,7 +39,26 @@ func _initialize() -> void:
 			assert(sprite.animation == &"run_front")
 			assert(sprite.sprite_frames.get_frame_count(sprite.animation) == 8)
 			observed[sprite.frame] = true
+			var alternate_leg := sprite.frame >= 4
+			assert(sprite.flip_h == (keeper.visual.flip_h != alternate_leg))
+			lead_legs[alternate_leg] = true
+			min_lean = minf(min_lean, rad_to_deg(sprite.rotation.z))
+			max_lean = maxf(max_lean, rad_to_deg(sprite.rotation.z))
+			min_sway = minf(min_sway, sprite.position.x)
+			max_sway = maxf(max_sway, sprite.position.x)
+			min_lift = minf(min_lift, sprite.position.y)
+			max_lift = maxf(max_lift, sprite.position.y)
 		assert(observed.size() >= 6)
+		assert(lead_legs.size() == 2) # both legs visibly lead during the run
+		# A timing-only smoke passed before, while the visible image barely
+		# changed at normal match zoom. Require an expressive *screen pose*
+		# in addition to advancing frame indices.
+		print("KEEPER_STRIDE_METRICS team=%d lean=%.3f sway=%.4f lift=%.4f poses=%d" % [
+			team_id, max_lean - min_lean, max_sway - min_sway, max_lift - min_lift, observed.size()
+		])
+		assert(max_lean - min_lean >= 15.0)
+		assert(max_sway - min_sway >= 0.20)
+		assert(max_lift - min_lift >= 0.08)
 		assert(not sprite.is_playing()) # exactly one clock owns 3D frames
 		var before_turn: int = sprite.frame
 		keeper.velocity = Vector2(1.0, -1.0).normalized() * keeper.base_speed
@@ -44,6 +70,18 @@ func _initialize() -> void:
 			keeper.visual.frame = 0
 			presenter.sync_presentation(1.0 / 60.0, "broadcast")
 		assert(sprite.frame != before_turn)
+		# Back view must also alternate steps, while diagonal facing never
+		# mirrors just because the stride enters its second half.
+		keeper.velocity = Vector2.UP * keeper.base_speed
+		keeper._sync_locomotion(false)
+		presenter.sync_presentation(0.0, "broadcast")
+		assert(sprite.animation == &"run_back")
+		var back_legs: Dictionary = {}
+		for tick in range(45):
+			presenter.sync_presentation(1.0 / 60.0, "broadcast")
+			back_legs[sprite.frame >= 4] = true
+			assert(sprite.flip_h == (keeper.visual.flip_h != (sprite.frame >= 4)))
+		assert(back_legs.size() == 2)
 		var before_pause: int = sprite.frame
 		presenter.sync_presentation(0.0, "broadcast")
 		assert(sprite.frame == before_pause)
@@ -63,8 +101,9 @@ func _initialize() -> void:
 		presenter.sync_presentation(1.0 / 60.0, "broadcast")
 		assert(sprite.animation == &"idle")
 		assert(sprite.frame == 0)
-		print("KEEPER_ANIM_TEAM=%d RUN_POSES=%d TACKLE_POSES=%d" % [
-			team_id, observed.size(), action_observed.size()
+		print("KEEPER_ANIM_TEAM=%d RUN_POSES=%d TACKLE_POSES=%d LEAN=%.1f SWAY=%.3f LIFT=%.3f" % [
+			team_id, observed.size(), action_observed.size(),
+			max_lean - min_lean, max_sway - min_sway, max_lift - min_lift
 		])
 	print("chess-football keeper frame-advance smoke: OK")
 	quit(0)
