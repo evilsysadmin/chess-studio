@@ -81,6 +81,7 @@ async function openChronicles(page, captureLabel, {
   await chroniclesEntry.click();
   const entry = page.locator('[data-chronicles-save-menu]');
   await expect(entry).toBeVisible({ timeout: 10_000 });
+  await expect(entry.getByText('Consultando expediciones del servidor…')).toBeHidden({ timeout: 15_000 });
   if (captureLabel.includes('android-landscape')) {
     // A 390px-high viewport must show all home actions without hidden scrolling.
     const returnButton = entry.getByRole('button', { name: 'Volver al castillo', exact: true });
