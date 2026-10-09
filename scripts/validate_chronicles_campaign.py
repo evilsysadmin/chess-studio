@@ -80,6 +80,19 @@ def validate():
             assert set(rule["of"]) <= known_events and 0 < rule["count"] <= len(rule["of"])
     for q in side:
         assert q["at"] in maps and q["eventId"] in known_events
+    # The playable prologue is canonical in Python content; keep the frontend
+    # runtime copy byte-identical and its event IDs anchored to Act I.
+    intro = load("quests/intro.json")
+    mirror = ROOT.parents[1] / "frontend/src/chronicles/campaign/intro.json"
+    assert (ROOT / "quests/intro.json").read_bytes() == mirror.read_bytes()
+    first = main["acts"][0]
+    assert intro["schemaVersion"] == 1 and intro["campaignId"] == world["campaignId"]
+    assert intro["actId"] == first["id"]
+    assert intro["start"]["eventId"] == first["objectives"][0]["eventId"]
+    assert intro["start"]["mapId"] == first["objectives"][0]["at"]
+    assert intro["seal"]["mapId"] == first["objectives"][1]["at"]
+    assert intro["report"]["mapId"] == intro["start"]["mapId"]
+    assert len({intro[stage]["eventId"] for stage in ("start", "seal", "report")}) == 3
     return len(maps), len(world["links"]), len(main["acts"]), len(main["endings"])
 
 if __name__ == "__main__":

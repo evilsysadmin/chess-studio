@@ -191,6 +191,20 @@ def _normalize_checkpoint_quests(quests: dict[str, Any]) -> dict[str, Any]:
     return normalized
 
 
+def _legacy_swordhaven_return_allowed(run: dict[str, Any], source_id: str, target_id: str) -> bool:
+    """Authorize only the established opt-in return portal.
+
+    The outgoing Swordhaven gate is authored and unchanged. Older crypt-only
+    expeditions cannot acquire a return door just by loading the crypt.
+    Check persisted run flags, never a client's proposed checkpoint flags.
+    """
+    return (
+        source_id == "crypt-eight-squares"
+        and target_id == "swordhaven-square"
+        and (run.get("worldFlags") or {}).get("swordhavenArrived") is True
+    )
+
+
 def _transition_targets(manifest: dict[str, Any]) -> set[str]:
     effects: list[dict[str, Any]] = []
     for group in _CONTENT_GROUPS:
@@ -851,6 +865,7 @@ def build_chronicles_router(*, auth_dependency) -> APIRouter:
         if (
             target_map_id != run["currentMapId"]
             and target_map_id not in _transition_targets(current_area["manifest"])
+            and not _legacy_swordhaven_return_allowed(run, run["currentMapId"], target_map_id)
         ):
             raise HTTPException(409, "La transición solicitada no pertenece al mundo actual de la run.")
 
