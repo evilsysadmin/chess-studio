@@ -7,6 +7,7 @@ import {
   chroniclesContentInteractions,
   chroniclesContentLockedMessage,
   chroniclesInventoryEntries,
+  chroniclesGoldBalance,
   chroniclesQuestEntries,
   chroniclesRequirementsMet,
 } from './chroniclesContentRuntime.js';
@@ -275,5 +276,81 @@ describe('Chronicles spatial traders and atomic exchanges', () => {
       'field-bandage': { id: 'field-bandage', name: 'Vendaje de campaña', quantity: 9999 },
     } };
     expect(chroniclesApplyContentEffects(full, vendor.action.effects)).toBe(full);
+  });
+});
+
+
+describe('Chronicles expedition gold & exactly-once quest payout', () => {
+  const begin = {
+    type: 'start-quest', questId: 'missing-knight-banner',
+    title: 'El estandarte perdido', objective: 'Busca el estandarte en el camino.',
+  };
+  const payout = {
+    type: 'claim-reward',
+    rewardId: 'swordhaven:banner-return:v1',
+    requirements: [
+      { questId: 'missing-knight-banner', questStatus: 'active' },
+      { itemId: 'knight-banner', quantity: 1 },
+    ],
+    effects: [
+      { type: 'consume-item', itemId: 'knight-banner', quantity: 1 },
+      { type: 'complete-quest', questId: 'missing-knight-banner', objective: 'Entrega registrada.' },
+      { type: 'grant-gold', amount: 18 },
+    ],
+  };
+
+  it('starts at zero gold; refuses payment before the evidence is delivered', () => {
+    const state = chroniclesApplyContentEffects({}, [begin]);
+    expect(chroniclesGoldBalance(state)).toBe(0);
+    expect(chroniclesApplyContentEffects(state, [payout])).toBe(state);
+    expect(state.quests['missing-knight-banner'].status).toBe('active');
+  });
+
+  it('collects evidence, pays once, persists the reward receipt and spends gold at a shop', () => {
+    let state = chroniclesApplyContentEffects({}, [begin]);
+    state = chroniclesApplyContentEffects(state, [{
+      type: 'grant-item', itemId: 'knight-banner', name: 'Estandarte perdido',
+    }]);
+    const paid = chroniclesApplyContentEffects(state, [payout]);
+    expect(paid.quests['missing-knight-banner'].status).toBe('completed');
+    expect(paid.inventory).not.toHaveProperty('knight-banner');
+    expect(chroniclesGoldBalance(paid)).toBe(18);
+    expect(paid.claimedRewards).toEqual(['swordhaven:banner-return:v1']);
+    expect(chroniclesApplyContentEffects(paid, [payout])).toBe(paid);
+
+    const bought = chroniclesApplyContentEffects(paid, [{
+      type: 'exchange-item',
+      costItemId: 'crown-gold', costQuantity: 7,
+      itemId: 'road-rations', name: 'Raciones de camino', quantity: 1,
+    }]);
+    expect(chroniclesGoldBalance(bought)).toBe(11);
+    expect(chroniclesInventoryEntries(bought)).toContainEqual(
+      expect.objectContaining({ id: 'road-rations', quantity: 1 }),
+    );
+    expect(chroniclesApplyContentEffects(bought, [payout])).toBe(bought);
+    expect(chroniclesGoldBalance(bought)).toBe(11);
+    expect(chroniclesGoldBalance(paid)).toBe(18);
+  });
+
+  it('rejects malformed/duplicate rewards and overflow without credit or partial debit', () => {
+    const loaded = chroniclesApplyContentEffects({}, [begin, {
+      type: 'grant-item', itemId: 'knight-banner', name: 'Estandarte perdido',
+    }]);
+    for (const invalid of [
+      { ...payout, rewardId: '' },
+      { ...payout, rewardId: 'x'.repeat(129) },
+      { ...payout, effects: [{ type: 'transition-map', mapId: 'banner-road' }] },
+      { ...payout, effects: [{ type: 'claim-reward', rewardId: 'nested' }] },
+      { ...payout, effects: [{ type: 'consume-item', itemId: 'absent', quantity: 1 }] },
+      { ...payout, effects: [{ type: 'grant-gold', amount: 10000 }] },
+    ]) expect(chroniclesApplyContentEffects(loaded, [invalid])).toBe(loaded);
+    expect(chroniclesGoldBalance(loaded)).toBe(0);
+
+    const nearCap = chroniclesApplyContentEffects(loaded, [{ type: 'grant-gold', amount: 9995 }]);
+    expect(chroniclesGoldBalance(nearCap)).toBe(9995);
+    expect(chroniclesApplyContentEffects(nearCap, [payout])).toBe(nearCap);
+    expect(nearCap.inventory).toHaveProperty('knight-banner');
+    expect(nearCap.quests['missing-knight-banner'].status).toBe('active');
+    expect(chroniclesApplyContentEffects(nearCap, [{ type: 'grant-gold', amount: 20 }])).toBe(nearCap);
   });
 });
