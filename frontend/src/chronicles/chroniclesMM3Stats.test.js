@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { createChroniclesProgression, chroniclesHeroMM3StatPreview } from '../chroniclesOfMatthiasProgression.js';
 import {
   CHRONICLES_MM3_STATS,
   CHRONICLES_MM3_RESISTANCES,
@@ -6,6 +7,16 @@ import {
 } from './chroniclesMM3Stats.js';
 
 describe('Chronicles MM3 stat compatibility contract', () => {
+  it('is reachable through real persistent hero progression without changing legacy values', () => {
+    const profile = createChroniclesProgression();
+    const original = JSON.stringify(profile);
+    const snapshot = chroniclesHeroMM3StatPreview(profile, 'matthias');
+    expect(snapshot.schema).toBe('legacy-v1-projection');
+    expect(snapshot.attributes).toHaveProperty('speed');
+    expect(JSON.stringify(profile)).toBe(original);
+  });
+
+
   it('defines the exact seven MM3 primary stats and six resistances', () => {
     expect(CHRONICLES_MM3_STATS.map((stat) => stat.id)).toEqual([
       'might', 'intellect', 'personality', 'endurance', 'speed', 'accuracy', 'luck',
