@@ -148,6 +148,6 @@ export function footballStandings(season) {
   ranked.sort((a, b) => b.points - a.points
     || b.difference - a.difference
     || b.scored - a.scored
-    || a.name.localeCompare(b.name, 'es'));
+    || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
   return freeze(ranked);
 }
