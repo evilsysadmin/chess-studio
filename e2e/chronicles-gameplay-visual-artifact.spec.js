@@ -50,7 +50,11 @@ async function openChronicles(page, captureLabel, {
   const speech = page.getByRole('region', { name: 'Mensaje de Matthias', exact: true });
   if (await speech.isVisible().catch(() => false)) {
     const close = speech.getByRole('button', { name: 'Cerrar comentario de Matthias', exact: true });
-    if (await close.isVisible().catch(() => false)) await close.click({ force: true });
+    if (await close.isVisible().catch(() => false)) {
+      // Non-gameplay Home overlay: click its actual handler without waiting
+      // for a software-rendered pointer stability gate.
+      await close.evaluate((button) => button.click());
+    }
   }
 
   // This producer owns Chronicles evidence, not PvP. A restored/mock lobby can
@@ -417,7 +421,11 @@ async function enterCanonicalInitiativeCombat(page, gameRoot) {
   await page.keyboard.press('2');
   await page.keyboard.press('Space');
   await expect(gameRoot).toHaveAttribute('data-chronicles-phase', 'explore');
-  await page.keyboard.press('w');
+  // Use the real forward control for capture. Keyboard focus has its own E2E,
+  // while this suite owns renderer and combat evidence.
+  const advance = gameRoot.locator('[data-chronicles-touch-action="forward"]');
+  await expect(advance).toHaveCount(1);
+  await advance.evaluate((button) => button.click());
   await expect(gameRoot).toHaveAttribute('data-chronicles-phase', 'combat');
   await expect(gameRoot).toHaveAttribute('data-chronicles-initiative-die', '1d8');
 }
