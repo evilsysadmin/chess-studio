@@ -306,6 +306,21 @@
   color: #ead3aa;
 }
 .chronicles-game-menu__panel small { color: #9f907b; }
+.chronicles-game-menu__save-error {
+  margin: 0;
+  padding: 9px 10px;
+  border: 1px solid rgba(219, 146, 84, .55);
+  border-radius: 4px;
+  background: rgba(105, 39, 25, .3);
+  color: #ffdec5;
+  font-size: .78rem;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+.chronicles-game-menu__panel button:disabled {
+  opacity: .55;
+  cursor: wait;
+}
 .chronicles-game-menu__panel button {
   min-height: 42px;
   border: 1px solid rgba(197, 135, 77, .48);
