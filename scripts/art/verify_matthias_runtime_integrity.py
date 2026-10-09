@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import pathlib
 import re
 import sys
@@ -65,7 +66,7 @@ def audit(root: pathlib.Path) -> dict[str, object]:
     result = {"status": "pass", "sha256": {w: v["sourceSha256"] for w, v in atlases.items()},
               "pistolMaxHeadCut": post_cuts}
     print("OK Matthias published head integrity: verified SHA, geometry and face-cut metrics")
-    summary = pathlib.os.environ.get("GITHUB_STEP_SUMMARY")
+    summary = os.environ.get("GITHUB_STEP_SUMMARY")
     if summary:
         with open(summary, "a", encoding="utf-8") as out:
             out.write("\n### Published Matthias integrity\n\n")
