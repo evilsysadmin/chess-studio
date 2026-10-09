@@ -29,7 +29,7 @@ const PLAYER_SPRINT_BOB := 0.072
 # apart at broadcast zoom. Make the real stride readable using a modest
 # diegetic lean/sway/weight transfer; do not change canonical raster anatomy.
 const KEEPER_STRIDE_EXTRA_SWAY := 0.075
-const KEEPER_STRIDE_EXTRA_BOB := 0.075
+const KEEPER_STRIDE_EXTRA_BOB := 0.035
 const KEEPER_STRIDE_EXTRA_LEAN_DEGREES := 9.5
 const STAMINA_BAR_WIDTH := 0.76
 const STAMINA_BAR_DEPTH := 0.10
