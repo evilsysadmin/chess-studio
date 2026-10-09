@@ -36,6 +36,7 @@ async function openChronicles(page, captureLabel, {
   chroniclesWorldFlags = null,
   chroniclesAreaTransform = null,
   newTown = false,
+  newCampaign = false,
 } = {}) {
   await mockApi(page, {
     profileSeed: {
@@ -98,7 +99,9 @@ async function openChronicles(page, captureLabel, {
     path: `${ARTIFACT_DIR}/chronicles-save-menu-${captureLabel}.png`,
     animations: 'disabled', timeout: 30_000,
   });
-  await entry.getByRole('button', { name: 'Nuevo juego', exact: true }).click();
+  await entry.getByRole('button', newCampaign
+    ? { name: /Nueva campaña/ }
+    : { name: 'Nuevo juego', exact: true }).click();
   const setup = page.locator('[data-chronicles-character-setup]');
   try {
     await expect(setup).toBeVisible({ timeout: 8_000 });
@@ -191,6 +194,42 @@ async function captureElement(page, locator, path) {
   });
 }
 
+
+for (const capture of [
+  { label: 'desktop-1440x900', width: 1440, height: 900, touch: false },
+  { label: 'android-390x844', width: 390, height: 844, touch: true },
+  { label: 'android-landscape-844x390', width: 844, height: 390, touch: true },
+]) {
+  test(`Chronicles · First Book actual authored city · ${capture.label}`, async ({ browser }) => {
+    test.setTimeout(300_000);
+    await mkdir(ARTIFACT_DIR, { recursive: true });
+    const context = await browser.newContext({
+      viewport: { width: capture.width, height: capture.height },
+      hasTouch: capture.touch,
+      isMobile: capture.touch,
+    });
+    const page = await context.newPage();
+    try {
+      await openChronicles(page, `first-book-${capture.label}`, {
+        newTown: true,
+        newCampaign: true,
+        chroniclesCurrentMapId: 'swordhaven-first-book',
+      });
+      const game = page.locator('[data-chronicles="true"]');
+      await expect(game).toHaveAttribute('data-chronicles-map-id', 'swordhaven-first-book');
+      await expect(game.locator('[data-chronicles-renderer="three"] canvas')).toBeVisible({ timeout: 30_000 });
+      await expect(game.locator('.chronicles-renderer-error')).toHaveCount(0);
+      const view = await captureChroniclesHealth(page);
+      expect(view.horizontalOverflow, 'New campaign must not overflow mobile or desktop').toBe(false);
+      await page.screenshot({
+        path: `${ARTIFACT_DIR}/chronicles-first-book-town-${capture.label}.png`,
+        animations: 'disabled', timeout: 60_000,
+      });
+    } finally {
+      await context.close();
+    }
+  });
+}
 
 test('Chronicles · Swordhaven authored world · actual 3D desktop', async ({ browser }) => {
   // No synthetic gallery-of-forks disguise: the authoritative map catalog
