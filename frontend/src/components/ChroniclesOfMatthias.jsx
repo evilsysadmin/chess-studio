@@ -858,9 +858,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
 
   const returnToSaveMenu = () => {
     clearTouchHold();
-    // A failure keeps this exact run on screen instead of returning to a
-    // catalog that could accidentally suggest all progress is durable.
-    void saveBeforeLeaving(() => {
+    const leave = () => {
       stateRef.current = null;
       activeRunIdRef.current = null;
       authoritativeRunRef.current = null;
@@ -875,7 +873,15 @@ export default function ChroniclesOfMatthias({ onExit }) {
       setMenuOpen(false);
       setEntryView('menu');
       refreshSaves((value) => value + 1);
-    });
+    };
+    // Bootstrap failures have no mounted run to checkpoint. Preserve the
+    // existing recover-to-book path instead of trapping users on an error page.
+    if (bootstrapError || !stateRef.current || !authoritativeRunRef.current?.runId) {
+      leave();
+      return;
+    }
+    // A playable run can leave only after the latest checkpoint is durable.
+    void saveBeforeLeaving(leave);
   };
 
   if (entryView === 'menu') {
