@@ -516,7 +516,10 @@ def proceduralize_chronicles_manifest(
     # through the seeded dungeon generator. Legacy maps keep seeded layouts.
     if manifest.get("regionKind") == "settlement" and manifest.get("layoutMode") == "authored":
         authored = deepcopy(manifest)
-        map_code = encode_chronicles_map_code(chronicles_map_code_for_manifest(authored, seed))
+        # A town may exceed procedural MapCode size limits (19x15). Give it an
+        # explicit stable identity instead of pretending a dungeon recipe
+        # regenerates an authored city.
+        map_code = f"authored-layout-v1:{authored['id']}:{authored['version']}"
         layout_revision = _layout_revision(map_code, authored["grid"])
         authored["generation"] = {
             "kind": "authored-layout",
