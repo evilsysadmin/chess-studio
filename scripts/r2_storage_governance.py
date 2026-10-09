@@ -52,11 +52,14 @@ def status_for_report(report: dict[str, Any], config: dict[str, Any]) -> dict[st
     }
 
 
-def admission_check(config: dict[str, Any], *, token: str, account_id: str,
-                    key: str, size: int) -> None:
-    """Fail closed before PUT to avoid a new storage peak beyond the limit."""
+def admission_check_batch(config: dict[str, Any], *, token: str, account_id: str,
+                          additions: dict[str, int]) -> None:
+    """Preflight the full immutable release before the first PUT."""
     import r2_asset_gc as collector
 
+    if not additions or any(not isinstance(key, str) or not key or type(size) is not int or size < 0
+                            for key, size in additions.items()):
+        raise publisher.PublishError("R2 admission: invalid planned objects")
     warning, soft = budget(config)
     rows = collector.list_objects(token, account_id, config["bucket"])
     inventory = collector.normalize_inventory(rows)
@@ -64,7 +67,7 @@ def admission_check(config: dict[str, Any], *, token: str, account_id: str,
         raise publisher.PublishError("R2 admission: incomplete/invalid inventory; refusing upload")
     sizes = {item["key"]: item["size"] for item in inventory}
     total = sum(sizes.values())
-    projected = total - sizes.get(key, 0) + size
+    projected = total + sum(size - sizes.get(key, 0) for key, size in additions.items())
     if projected > soft:
         if os.environ.get("R2_STORAGE_BUDGET_OVERRIDE") != "1":
             raise publisher.PublishError(
@@ -77,6 +80,11 @@ def admission_check(config: dict[str, Any], *, token: str, account_id: str,
         print(f"WARN: R2 projected {projected / GB:.3f} GB exceeds {warning / GB:.1f} GB early warning", file=sys.stderr)
     else:
         print(f"R2 admission OK: {total / GB:.3f} -> {projected / GB:.3f} GB", file=sys.stderr)
+
+
+def admission_check(config: dict[str, Any], *, token: str, account_id: str,
+                    key: str, size: int) -> None:
+    admission_check_batch(config, token=token, account_id=account_id, additions={key: size})
 
 
 def issue_body(status: dict[str, Any]) -> str:
@@ -174,6 +182,21 @@ def self_test() -> None:
             assert "admission blocked" in str(exc)
         else:
             raise AssertionError("Over-budget upload must be denied")
+        # Existing objects in a republished bundle are charged only their
+        # net replacement bytes rather than their full sizes a second time.
+        admission_check_batch(config, token="test", account_id="test",
+                              additions={"scene-a.glb": 6_850_000_000,
+                                         "new/index.html": 20_000_000})
+        # A bundle must fail as a whole when individually small files exceed
+        # the ceiling in aggregate; the pointer and files share one preflight.
+        try:
+            admission_check_batch(config, token="test", account_id="test",
+                                  additions={"new/a.pck": 60_000_000,
+                                             "new/b.wasm": 60_000_000})
+        except publisher.PublishError as exc:
+            assert "admission blocked" in str(exc)
+        else:
+            raise AssertionError("Over-budget Godot batch must be denied")
         collector.list_objects = lambda *_args: [{"key": "bad", "size": "unknown"}]
         try:
             admission_check(config, token="test", account_id="test",

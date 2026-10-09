@@ -622,8 +622,9 @@ class ChessFootballSpriteForgeContractTests(unittest.TestCase):
         self.assertEqual(contract["schema"], 2)
         self.assertEqual(contract["surface"], "chess-football")
         self.assertEqual(contract["actor"], "footballer")
-        self.assertEqual(contract["variant"], "vector-v4")
-        self.assertEqual(contract["cell"], {"width": 112, "height": 144})
+        self.assertEqual(contract["variant"], "vector-v27")
+        self.assertEqual(contract["quality_contract"], "chess-football-vector-v27")
+        self.assertEqual(contract["cell"], {"width": 128, "height": 144})
         self.assertEqual(
             [animation["name"] for animation in contract["animations"]],
             ["idle", "run", "sprint", "pass", "shoot", "tackle", "celebrate"],
