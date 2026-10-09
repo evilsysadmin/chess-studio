@@ -39,6 +39,38 @@ func _initialize() -> void:
 	for expected_audio in ["goal", "pass", "post", "save", "shot", "tackle", "whistle"]:
 		assert(audio_names.has(expected_audio))
 	assert(match_node.debug_3d_animated_players() == 10)
+	# Two proper goalkeeper sprites, same canonical canvas and proportions
+	# as field players. No animation may fall back to the old SVG body.
+	var keeper_meta: Dictionary = ChessFootballSpriteBank.manifest()["goalkeeper_run"]
+	assert(keeper_meta["quality_contract"] == "football-keeper-canon-v1")
+	assert(keeper_meta["sha256"] == "41ca02f757545eb39c4f80e99eb358c167e8f9044153bedfd799ad488a88ca9c")
+	assert(int(keeper_meta["frames"]) == 8)
+	assert((keeper_meta["views"] as Dictionary).size() == 4)
+	assert(int(keeper_meta["side_fallback_row"]) == 2)
+	var keeper_images: Array[Image] = []
+	for team_id in range(2):
+		var keeper_frames := ChessFootballSpriteBank.build_frames(team_id, "keeper", 0, true)
+		var field_frames := ChessFootballSpriteBank.build_frames(team_id, "forward", 4, true)
+		for base_name in ["idle", "run", "sprint", "pass", "shoot", "tackle", "celebrate",
+			"run_front", "run_back", "run_back_diagonal", "run_front_diagonal",
+			"sprint_front", "sprint_back", "sprint_back_diagonal", "sprint_front_diagonal"]:
+			var name := StringName(base_name)
+			assert(keeper_frames.has_animation(name))
+			var frame_count: int = keeper_frames.get_frame_count(name)
+			assert(frame_count == (1 if name == &"idle" else 8))
+			for index in range(frame_count):
+				var img_texture := keeper_frames.get_frame_texture(name, index)
+				assert(img_texture is ImageTexture)
+				assert(img_texture.get_size() == Vector2(128.0, 144.0))
+				var visible := (img_texture as ImageTexture).get_image().get_used_rect()
+				assert(visible.size.y >= 113 and visible.size.y <= 123)
+				assert(visible.end.y <= 133)
+		var keeper_sample := (keeper_frames.get_frame_texture(&"run_front", 0) as ImageTexture).get_image()
+		var field_sample := (field_frames.get_frame_texture(&"run_front", 0) as ImageTexture).get_image()
+		assert(keeper_sample.get_data() != field_sample.get_data())
+		keeper_images.append(keeper_sample)
+	# Both keepers derive from one approved body but have different shirts.
+	assert(keeper_images[0].get_data() != keeper_images[1].get_data())
 	# Compare actual canonical silhouettes, not nominal 128x144 cell size.
 	# The runner's size must not change with team, roster slot, or camera.
 	assert(is_equal_approx(ChessFootball3DPresenter.normalized_body_scale(120.0), 1.0))

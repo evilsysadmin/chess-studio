@@ -18,6 +18,11 @@ const PLAYER_BASE_Y := 0.76
 # The approved front/back atlas bodies are about 120px tall. Normalize the
 # approved side run to the same perceived height without changing PNG bytes.
 const CANONICAL_BODY_HEIGHT_PIXELS := 120.0
+# Perceptual parity for oblique views: their authored shoulders/limbs occupy a
+# broader silhouette than the frontal and side atlases at the same pixel height.
+# These runtime-only factors keep the 32 approved diagonal frames untouched.
+const DIAGONAL_WIDTH_COMPENSATION := 0.91
+const DIAGONAL_HEIGHT_COMPENSATION := 0.94
 const PLAYER_RUN_BOB := 0.050
 const PLAYER_SPRINT_BOB := 0.072
 const STAMINA_BAR_WIDTH := 0.76
@@ -496,21 +501,34 @@ func sync_presentation(delta: float, mode: String) -> void:
 
 	_sync_camera(delta, mode)
 
+static func view_compensation(animation_name: StringName) -> Vector2:
+	var name := String(animation_name)
+	if name in [
+		"run_front_diagonal", "run_back_diagonal",
+		"sprint_front_diagonal", "sprint_back_diagonal",
+	]:
+		return Vector2(DIAGONAL_WIDTH_COMPENSATION, DIAGONAL_HEIGHT_COMPENSATION)
+	return Vector2.ONE
+
+
 static func normalized_body_scale(pixel_height: float) -> float:
 	# The clamp fails safely on malformed or extremely short silhouettes;
 	# smoke asserts that every approved source fits the expected body envelope.
 	return clampf(CANONICAL_BODY_HEIGHT_PIXELS / maxf(pixel_height, 1.0), 0.80, 1.40)
 
 
-func _canonical_body_scale(sprite: AnimatedSprite3D) -> float:
+func _canonical_body_scale(sprite: AnimatedSprite3D, role: String = "") -> float:
 	var current_name := String(sprite.animation)
 	var view := "side"
 	if current_name.begins_with("run_"):
 		view = current_name.trim_prefix("run_")
 	elif current_name.begins_with("sprint_"):
 		view = current_name.trim_prefix("sprint_")
-	if body_scale_cache.has(view):
-		return float(body_scale_cache[view])
+	# Keepers now have a distinct approved body; their height sample must never
+	# borrow a previously cached field-player measurement (or vice versa).
+	var cache_key := ("keeper:" if role == "keeper" else "field:") + view
+	if body_scale_cache.has(cache_key):
+		return float(body_scale_cache[cache_key])
 	var reference_name := ChessFootballRunDirection.animation_for(&"run", view)
 	if not sprite.sprite_frames.has_animation(reference_name):
 		push_error("Chess Football: missing approved run reference " + String(reference_name))
@@ -531,7 +549,7 @@ func _canonical_body_scale(sprite: AnimatedSprite3D) -> float:
 		heights.append(float(bounds.size.y))
 	heights.sort()
 	var scale := normalized_body_scale(heights[1])
-	body_scale_cache[view] = scale
+	body_scale_cache[cache_key] = scale
 	return scale
 
 
@@ -617,9 +635,10 @@ func _sync_player_secondary_motion(player: Footballer, sprite: AnimatedSprite3D,
 		tilt_degrees += player.contact_sway_sign * 16.0 * contact_weight
 
 	# One body-height reference for both teams, all views and all roles.
-	var canonical_scale := _canonical_body_scale(sprite)
-	stretch_x *= canonical_scale
-	stretch_y *= canonical_scale
+	var canonical_scale := _canonical_body_scale(sprite, player.role)
+	var view_adjust := view_compensation(sprite.animation)
+	stretch_x *= canonical_scale * view_adjust.x
+	stretch_y *= canonical_scale * view_adjust.y
 	# The 3D canvas is centered in the atlas cell. Keep the same clearance
 	# between boot soles and the pitch in broadcast AND tactical zoom, even
 	# when the authored silhouette needs uniform scale correction.
