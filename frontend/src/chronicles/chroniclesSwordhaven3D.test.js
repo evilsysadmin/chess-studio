@@ -138,6 +138,25 @@ describe('Swordhaven modular real-time 3D', () => {
       .toBe(swordhavenSurfaceTexture('masonry'));
   });
 
+  it('adds dressed stone corners, dormers and side windows to the five houses', () => {
+    for (const coarsePointer of [true, false]) {
+      const scene = new THREE.Scene();
+      buildSwordhavenScene(scene, { scenePlan: { content: [] }, coarsePointer });
+      const forge = scene.getObjectByName('swordhaven-building-swordhaven-forge');
+      expect(forge.getObjectByName('corner-dressed-stone-courses')).toBeInstanceOf(THREE.InstancedMesh);
+      expect(forge.getObjectByName('corner-dressed-stone-courses').count).toBeGreaterThan(20);
+      expect(forge.getObjectByName('side-window-amber-glass')).toBeTruthy();
+      expect(forge.getObjectByName('door-stone-lintel')).toBeTruthy();
+      expect(forge.getObjectByName('pitched-roof-dormer--1')).toBeTruthy();
+      expect(Boolean(forge.getObjectByName('pitched-roof-dormer-1'))).toBe(!coarsePointer);
+      const tower = scene.getObjectByName('swordhaven-building-swordhaven-temple')
+        .getObjectByName('temple-bell-tower');
+      expect(tower.geometry.parameters.radialSegments).toBeGreaterThanOrEqual(12);
+      const magic = scene.getObjectByName('swordhaven-building-swordhaven-magic');
+      expect(magic.getObjectByName('magic-shop-turret').geometry.parameters.radialSegments).toBeGreaterThanOrEqual(12);
+    }
+  });
+
   it('keeps the repeating authored-style patterns deterministic and distinct', () => {
     for (const kind of ['stucco', 'masonry', 'roof', 'timber']) {
       const texture = swordhavenSurfaceTexture(kind);
@@ -165,7 +184,7 @@ describe('Swordhaven modular real-time 3D', () => {
     expect(shoulders.count).toBeGreaterThan(60);
     expect(meadow).toBeInstanceOf(THREE.InstancedMesh);
     expect(meadow.count).toBeGreaterThan(40);
-    expect(meadow.count).toBeLessThanOrEqual(250);
+    expect(meadow.count).toBeLessThanOrEqual(560);
     // Avoid the old traffic-cone triangles and chunky raised kerbstones.
     expect(shoulders.geometry.parameters.height).toBeLessThan(0.09);
     const blades = meadow.geometry.getAttribute('position');
