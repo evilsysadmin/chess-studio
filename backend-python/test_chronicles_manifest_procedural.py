@@ -307,6 +307,15 @@ def test_content_placement_v2_places_one_distant_safe_exit_on_every_shipped_map(
     assert CHRONICLES_CONTENT_PLACEMENT_VERSION == CHRONICLES_EXIT_PLACEMENT_VERSION == 2
     for map_id in map_ids:
         base, _revision = chronicles_api.load_chronicles_manifest(map_id)
+        if base.get("layoutMode") == "authored":
+            # A safe town never relocates a gate or its buildings by seed.
+            for seed in (0, 1, 2, 17, 417):
+                generated = proceduralize_chronicles_manifest(
+                    base, seed, content_placement_version=CHRONICLES_EXIT_PLACEMENT_VERSION,
+                )
+                assert generated.manifest["grid"] == base["grid"]
+                assert generated.manifest["exits"] == base["exits"]
+            continue
         layout_revisions = set()
         for seed in (0, 1, 2, 17, 417):
             generated = proceduralize_chronicles_manifest(
