@@ -239,6 +239,50 @@ describe('Chronicles shared run identity', () => {
     });
   });
 
+  it('rekeys a new POST to the authoritative server UUID and preserves the local save name', () => {
+    const provisionalId = beginChroniclesRun('first-person');
+    expect(chroniclesRenameSavedRun('first-person', provisionalId, 'Swordhaven · día uno')).toBe(true);
+    const canonicalId = 'uuid5-owner-key-from-server';
+
+    expect(chroniclesMarkSavedRunRemote('first-person', provisionalId, canonicalId)).toBe(canonicalId);
+    expect(ensureChroniclesRun('tactics')).toBe(canonicalId);
+    expect(chroniclesRunEntryMapId('tactics')).toBe('swordhaven-square');
+    expect(chroniclesListSavedRuns('first-person')).toEqual([
+      expect.objectContaining({
+        id: canonicalId, title: 'Swordhaven · día uno',
+        remote: true, pending: false, active: true,
+      }),
+    ]);
+    expect(chroniclesSelectedRunIsRemote('first-person', canonicalId)).toBe(true);
+    expect(chroniclesMarkSavedRunRemote('tactics', canonicalId, canonicalId)).toBe(canonicalId);
+    // Refresh/mount must GET the canonical server ID, never POST the provisional UUID.
+    expect(ensureChroniclesRun('first-person')).toBe(canonicalId);
+  });
+
+  it('never changes a newer run or an established remote ID on a late POST response', () => {
+    const oldPending = beginChroniclesRun('first-person');
+    const newest = beginChroniclesRun('first-person');
+    expect(chroniclesMarkSavedRunRemote('first-person', oldPending, 'stale-server-run')).toBeNull();
+    expect(ensureChroniclesRun('first-person')).toBe(newest);
+    expect(chroniclesListSavedRuns('first-person').map((row) => row.id))
+      .toEqual(expect.arrayContaining([oldPending, newest]));
+
+    expect(chroniclesMarkSavedRunRemote('first-person', newest, 'server-current')).toBe('server-current');
+    expect(chroniclesMarkSavedRunRemote('first-person', 'server-current', 'different-server'))
+      .toBeNull();
+    expect(ensureChroniclesRun('first-person')).toBe('server-current');
+  });
+
+  it('cannot commit a pending run after switching authenticated owners', () => {
+    const alicePending = beginChroniclesRun('first-person');
+    localStorage.setItem('chess-study-auth-username', 'bob');
+    expect(chroniclesMarkSavedRunRemote('first-person', alicePending, 'alice-server')).toBeNull();
+    expect(chroniclesListSavedRuns('first-person')).toEqual([]);
+    localStorage.setItem('chess-study-auth-username', 'alice');
+    expect(ensureChroniclesRun('first-person')).toBe(alicePending);
+    expect(chroniclesSelectedRunIsRemote('first-person', alicePending)).toBe(false);
+  });
+
   it('never inherits an active expedition across authenticated users', () => {
     const aliceRun = beginChroniclesRun('first-person');
 
