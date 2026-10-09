@@ -447,11 +447,11 @@ assert 'candidate_services=("$candidate_service" "$candidate_pvp_service")' in d
 assert 'compose "$sha" up -d --no-build --force-recreate "${candidate_services[@]}"' in deploy
 assert 'attest "$sha" "$candidate_port"' in deploy
 assert 'if candidate_attest && pvp_attest "$candidate_pvp_service" "$target"; then' in deploy
-# Python retirement: on in staging, off in production; when on, only the Go
+# Python retirement: on in staging and production; when on, only the Go
 # sidecar runs, Go proves /api/ready and /api/release, Go mints the owner
 # token, nginx never names a backend_* slot and rollback stays on Go.
 assert 'staging) python_retired="${CHESS_STUDIO_PYTHON_RETIRED:-true}" ;;' in deploy
-assert '*) python_retired="${CHESS_STUDIO_PYTHON_RETIRED:-false}" ;;' in deploy
+assert '*) python_retired="${CHESS_STUDIO_PYTHON_RETIRED:-true}" ;;' in deploy
 assert 'CHESS_STUDIO_PYTHON_RETIRED=true requires CHESS_STUDIO_API_EDGE_MODE=go' in deploy
 assert 'CHESS_STUDIO_PYTHON_RETIRED="$python_retired"' in deploy
 assert compose.count('GO_PYTHON_RETIRED: "${CHESS_STUDIO_PYTHON_RETIRED:-false}"') == 2
