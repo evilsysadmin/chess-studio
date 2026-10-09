@@ -225,6 +225,22 @@ for (const scene of [
       await expect(game).toHaveAttribute('data-chronicles-map-id', 'swordhaven-square');
       await expect(canvas).toBeVisible({ timeout: 30_000 });
       await expect(game.locator('.chronicles-renderer-error')).toHaveCount(0);
+      if (scene.touch) {
+        const narrator = game.locator('.chronicles-dm-overlay');
+        const minimap = game.locator('[data-chronicles-minimap="visible"]');
+        await expect(narrator).toBeVisible();
+        await expect(minimap).toBeVisible();
+        const [messageBox, minimapBox] = await Promise.all([
+          narrator.boundingBox(), minimap.boundingBox(),
+        ]);
+        expect(messageBox && minimapBox, 'Swordhaven has inspectable mobile HUD boxes').toBeTruthy();
+        expect(messageBox.x + messageBox.width, 'narration must not paint beneath the minimap')
+          .toBeLessThanOrEqual(minimapBox.x - 2);
+        const objective = game.locator('.chronicles-statusbar > span:nth-child(4) b');
+        await expect(objective).toContainText('Explora Swordhaven');
+        const lineClamp = await objective.evaluate((node) => getComputedStyle(node).webkitLineClamp);
+        expect(lineClamp, 'mobile objective can display two lines').toBe('2');
+      }
       await page.screenshot({
         path: `${ARTIFACT_DIR}/chronicles-swordhaven-entry-${scene.label}.png`,
         animations: 'disabled',
