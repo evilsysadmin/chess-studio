@@ -449,10 +449,17 @@ export function chroniclesReduce(state, action) {
   if (actionType === 'interact') return resolveContextualContentAction(state);
 
   const direction = CHRONICLES_DIRECTIONS[state.direction];
-  const sign = actionType === 'backward' ? -1 : actionType === 'forward' ? 1 : 0;
-  if (!sign) return state;
-  const x = state.x + direction.dx * sign;
-  const y = state.y + direction.dy * sign;
+  // Lateral steps share the exact same collision, trigger and checkpoint path
+  // as forward/backward movement. Strafe never rotates the camera.
+  const displacement = {
+    forward: [direction.dx, direction.dy],
+    backward: [-direction.dx, -direction.dy],
+    'strafe-left': [direction.dy, -direction.dx],
+    'strafe-right': [-direction.dy, direction.dx],
+  }[actionType];
+  if (!displacement) return state;
+  const x = state.x + displacement[0];
+  const y = state.y + displacement[1];
   const blocker = explorationCellBlocker(state, x, y);
   if (blocker) return withMessage(state, blocker.message);
   return enterTile(state, x, y);
