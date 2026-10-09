@@ -722,3 +722,75 @@ for (const capture of CAPTURES) {
   });
 }
 
+
+for (const capture of CAPTURES) {
+  test(`Chronicles · recuperación de guardados · ${capture.label}`, async ({ browser }) => {
+    // No dungeon is created: capture the real save-book and bootstrap failure
+    // controls, without paying a second software-WebGL readback.
+    test.setTimeout(100_000);
+    await mkdir(ARTIFACT_DIR, { recursive: true });
+    const context = await browser.newContext({
+      viewport: { width: capture.width, height: capture.height },
+      hasTouch: capture.hasTouch,
+      isMobile: capture.hasTouch,
+    });
+    const page = await context.newPage();
+    try {
+      await mockApi(page, {
+        chroniclesRunFailureStatus: 503,
+        profileSeed: {
+          'matthias.onboarded': '2',
+          'chess-study-home-guide-dismissed-v1': '1',
+        },
+      });
+      await page.route('http://localhost:4000/api/chronicles/runs', async (route) => {
+        if (route.request().method() !== 'GET') return route.fallback();
+        return route.fulfill({
+          status: 503,
+          contentType: 'application/json',
+          body: JSON.stringify({ detail: 'Temporary inventory outage' }),
+        });
+      });
+      await login(page);
+      const speech = page.getByRole('region', { name: 'Mensaje de Matthias', exact: true });
+      if (await speech.isVisible().catch(() => false)) {
+        const close = speech.getByRole('button', { name: 'Cerrar comentario de Matthias', exact: true });
+        if (await close.isVisible().catch(() => false)) await close.evaluate((button) => button.click());
+      }
+      const pvpLobby = page.getByRole('dialog', { name: 'Duelo 1 contra 1 · War Room', exact: true });
+      if (await pvpLobby.isVisible().catch(() => false)) {
+        await pvpLobby.getByRole('button', { name: /Cerrar ventana/ }).click();
+      }
+      await openVisualMoreModes(page);
+      const tools = page.locator('#illustrated-home-tools');
+      await expect(tools).toBeVisible();
+      await tools.getByRole('button').filter({ hasText: 'Experimentos geniales' })
+        .evaluate((button) => button.click());
+      await expect(page.getByRole('heading', { name: 'Experimentos geniales', exact: true })).toBeVisible();
+      await page.locator('.lab-workshop-portal--chronicles').click();
+
+      const book = page.locator('[data-chronicles-save-menu]');
+      await expect(book).toBeVisible();
+      await expect(book.getByRole('alert')).toContainText('No se pudo consultar el servidor');
+      await expect(book.getByRole('button', { name: 'Reintentar sincronización' })).toBeVisible();
+      await page.screenshot({
+        path: `${ARTIFACT_DIR}/chronicles-save-recovery-offline-${capture.label}.png`,
+        animations: 'disabled', timeout: 30_000,
+      });
+
+      await book.getByRole('button', { name: 'Nuevo juego' }).click();
+      await confirmChroniclesCharacterSetup(page);
+      const failure = page.getByRole('alert');
+      await expect(failure.getByRole('heading', { name: 'No se pudo preparar Chronicles' })).toBeVisible();
+      await expect(failure.getByRole('button', { name: 'Volver a expediciones' })).toBeVisible();
+      await page.screenshot({
+        path: `${ARTIFACT_DIR}/chronicles-save-recovery-bootstrap-${capture.label}.png`,
+        animations: 'disabled', timeout: 30_000,
+      });
+      await failure.getByRole('button', { name: 'Volver a expediciones' }).click();
+      await expect(book).toBeVisible();
+    } finally {
+      await context.close();
+    }
+  });
+}

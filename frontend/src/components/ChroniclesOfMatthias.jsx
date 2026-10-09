@@ -128,7 +128,7 @@ function BootstrapStatus() {
   );
 }
 
-function BootstrapFailure({ error, onRetry, onExit }) {
+function BootstrapFailure({ error, onRetry, onMenu, onExit }) {
   const aborted = error?.code === CHRONICLES_BOOTSTRAP_ERROR_CODES.aborted;
   return (
     <div className="menu chronicles-bootstrap">
@@ -137,12 +137,11 @@ function BootstrapFailure({ error, onRetry, onExit }) {
         <h2>No se pudo preparar Chronicles</h2>
         <p>El mundo autoritativo no superó el arranque. No se cargará la cripta local como sustituto.</p>
         <p className="hint-text">Código {error?.code || CHRONICLES_BOOTSTRAP_ERROR_CODES.unknown}{error?.requestId ? ` · ${error.requestId}` : ''}</p>
-        {!aborted && (
-          <div className="game-controls">
-            <button type="button" className="primary-btn" onClick={onRetry}>Reintentar</button>
-            <button type="button" className="secondary-btn" onClick={onExit}>Salir de Chronicles</button>
-          </div>
-        )}
+        <div className="game-controls">
+          {!aborted && <button type="button" className="primary-btn" onClick={onRetry}>Reintentar</button>}
+          <button type="button" className="secondary-btn" onClick={onMenu}>Volver a expediciones</button>
+          <button type="button" className="secondary-btn" onClick={onExit}>Salir de Chronicles</button>
+        </div>
       </section>
     </div>
   );
@@ -808,6 +807,9 @@ export default function ChroniclesOfMatthias({ onExit }) {
       authoritativeRunRef.current = null;
       setState(null);
       setReady(false);
+      setBootstrapError(null);
+      setRendererError('');
+      checkpointFingerprintRef.current = '';
       setCharacterSetupDone(false);
       setSaveInventory(null);
       setEntryView('menu');
@@ -822,6 +824,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
         loading={saveMenuLoading}
         error={saveMenuError}
         busyRunId={saveMenuBusy}
+        onRetrySync={() => refreshSaves((value) => value + 1)}
         onNew={startFreshGame}
         onLoad={loadSavedGame}
         onRename={(id, title) => {
@@ -863,7 +866,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
   }
 
   if (bootstrapError) {
-    return <BootstrapFailure error={bootstrapError} onRetry={retryBootstrap} onExit={exitChronicles} />;
+    return <BootstrapFailure error={bootstrapError} onRetry={retryBootstrap} onMenu={returnToSaveMenu} onExit={exitChronicles} />;
   }
   if (!ready || !state) return <BootstrapStatus />;
 
