@@ -144,7 +144,10 @@ func (s *Mongo) ListActive(ctx context.Context, owner string, limit int) ([]bson
 	defer cancel()
 	if limit < 1 || limit > 30 { limit = 30 }
 	cursor, err := s.col.Find(ctx,
-		bson.D{{Key: "owner", Value: owner}, {Key: "status", Value: "active"}},
+		bson.D{{Key: "owner", Value: owner}, {Key: "$or", Value: bson.A{
+			bson.D{{Key: "status", Value: "active"}},
+			bson.D{{Key: "status", Value: bson.D{{Key: "$exists", Value: false}}}},
+		}}},
 		options.Find().SetProjection(bson.D{
 			{Key: "_id", Value: 1}, {Key: "currentMapId", Value: 1},
 			{Key: "status", Value: 1}, {Key: "worldVersion", Value: 1}, {Key: "updatedAt", Value: 1},
