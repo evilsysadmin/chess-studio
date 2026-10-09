@@ -217,12 +217,61 @@ function tree(root, x, z, mats, coarse, index) {
   const treeRoot = new THREE.Group();
   treeRoot.name = 'swordhaven-tree-' + index;
   treeRoot.position.set(x, 0, z);
-  mesh(treeRoot, new THREE.CylinderGeometry(0.17, 0.27, 2.5, 7), mats.timber,
-    'trunk', [0, 1.25, 0], !coarse);
-  const canopy = material(index % 3 === 0 ? 0x689756 : index % 3 === 1 ? 0x427a4c : 0x7eac56);
-  mesh(treeRoot, new THREE.IcosahedronGeometry(index % 2 ? 1.55 : 1.9, coarse ? 0 : 1),
-    canopy, 'leaf-canopy', [0, 3.35, 0], !coarse);
+  mesh(treeRoot, new THREE.CylinderGeometry(0.20, 0.32, 2.8, 8), mats.timber,
+    'tree-trunk', [0, 1.4, 0], !coarse);
+  const canopy = material(index % 3 === 0 ? 0x648a48 : index % 3 === 1 ? 0x477849 : 0x7a9c52);
+  const geometry = new THREE.IcosahedronGeometry(1.12, coarse ? 0 : 1);
+  const foliage = new THREE.InstancedMesh(geometry, canopy, coarse ? 4 : 6);
+  const dummy = new THREE.Object3D();
+  for (let i = 0; i < foliage.count; i += 1) {
+    const angle = i * Math.PI * 2 / foliage.count + index * 0.27;
+    dummy.position.set(Math.cos(angle) * 0.85, 3.48 + (i % 3) * 0.25, Math.sin(angle) * 0.8);
+    dummy.scale.set(1.14 + (i % 2) * 0.15, 1.12, 1.03 + (i % 3) * 0.08);
+    dummy.updateMatrix();
+    foliage.setMatrixAt(i, dummy.matrix);
+  }
+  foliage.name = 'leaf-canopy-cluster';
+  foliage.castShadow = !coarse;
+  treeRoot.add(foliage);
   root.add(treeRoot);
+}
+
+function laySwordhavenCobblestones(root, mats, coarse, width, height) {
+  // Deterministic paving: one instanced draw call rather than hundreds of meshes.
+  // Thin pavers are visual only; the manifest grid remains collision authority.
+  const positions = [];
+  const span = Math.min(height * CELL * 0.38, 30);
+  const cross = Math.min(width * CELL * 0.35, 26);
+  for (let z = -span; z <= span; z += coarse ? 1.16 : 0.87) {
+    for (let x = -3.03; x <= 3.03; x += coarse ? 1.22 : 0.82) {
+      positions.push([x + (Math.round(z) % 2 ? 0.18 : 0), z]);
+    }
+  }
+  for (let x = -cross; x <= cross; x += coarse ? 1.16 : 0.88) {
+    for (let z = -2.85; z <= 2.85; z += coarse ? 1.22 : 0.84) {
+      if (Math.abs(x) > 3.65 || Math.abs(z) > 3.65) positions.push([x, z]);
+    }
+  }
+  const paver = new THREE.InstancedMesh(
+    new THREE.BoxGeometry(coarse ? 1.05 : 0.76, 0.065, coarse ? 1.0 : 0.75),
+    mats.paving, positions.length,
+  );
+  paver.name = 'swordhaven-street-cobblestones';
+  paver.receiveShadow = true;
+  const dummy = new THREE.Object3D();
+  const tone = new THREE.Color();
+  positions.forEach(([x, z], i) => {
+    const seed = ((i * 19 + Math.round(x * 7) + Math.round(z * 13)) >>> 0) % 9;
+    dummy.position.set(x, 0.055 + (seed % 3) * 0.002, z);
+    dummy.rotation.y = (seed % 3 - 1) * 0.025;
+    dummy.updateMatrix();
+    paver.setMatrixAt(i, dummy.matrix);
+    tone.setHex([0xaaa293, 0x9b9284, 0xb1a99a, 0x8e887d, 0xbab09a][seed % 5]);
+    paver.setColorAt(i, tone);
+  });
+  paver.instanceMatrix.needsUpdate = true;
+  if (paver.instanceColor) paver.instanceColor.needsUpdate = true;
+  root.add(paver);
 }
 
 export function buildSwordhavenScene(scene, { scenePlan = {}, coarsePointer = false } = {}) {
@@ -257,6 +306,7 @@ export function buildSwordhavenScene(scene, { scenePlan = {}, coarsePointer = fa
     arcane: material(0x9576db, { emissive: 0x403b99, emissiveIntensity: 1.1 }),
     embers: material(0xffa754, { emissive: 0xeb6a20, emissiveIntensity: 1.2 }),
     steel: material(0x80909a, { metalness: 0.6, roughness: 0.32 }),
+    paving: material(0xffffff, { roughness: 0.96 }),
   };
   mesh(root, new THREE.BoxGeometry(width * CELL, 0.3, height * CELL),
     mats.grass, 'grass-terrain', [0, -0.2, 0]);
@@ -266,6 +316,7 @@ export function buildSwordhavenScene(scene, { scenePlan = {}, coarsePointer = fa
     mats.cobble, 'market-cross-street', [0, -0.028, 0]);
   mesh(root, new THREE.CylinderGeometry(10.2, 10.2, 0.11, 24),
     mats.cobble, 'circular-town-square', [0, -0.015, 0]);
+  laySwordhavenCobblestones(root, mats, coarsePointer, width, height);
   const fountain = new THREE.Group();
   fountain.name = 'swordhaven-fountain';
   mesh(fountain, new THREE.CylinderGeometry(2.0, 2.25, 0.7, 16),
@@ -300,17 +351,7 @@ export function buildSwordhavenScene(scene, { scenePlan = {}, coarsePointer = fa
     mesh(root, new THREE.BoxGeometry(19, 1.0, 0.6), mats.stone,
       'garden-boundary-' + sign, [sign * 24, 0.5, -height * CELL / 2 + 5.0]);
   }
-  const flower = material(0xb95f76);
-  for (const sign of [-1, 1]) {
-    for (let i = 0; i < 4; i += 1) {
-      const bx = sign * (11.3 + i * 2.1);
-      const bz = 10.5;
-      mesh(root, new THREE.IcosahedronGeometry(0.52, 0), mats.grass,
-        'flower-bush-leaves', [bx, 0.47, bz]);
-      mesh(root, new THREE.IcosahedronGeometry(0.2, 0), flower,
-        'flower-bush-blossom', [bx + 0.18, 0.85, bz - 0.13]);
-    }
-  }
+  // Flowers live in each shop's authored footprint, never in walkable streets.
 
   const authoredContent = new Set((scenePlan.content || []).filter(e => e.visible !== false).map(e => e.id));
   const contentProps = [];
