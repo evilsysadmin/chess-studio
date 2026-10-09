@@ -124,30 +124,63 @@ def validate_main_backend_image_non_runtime_gate(root: Path = ROOT) -> None:
     print("main backend image cost gate: OK")
 
 def validate_app_visual_product_trigger(root: Path = ROOT) -> None:
-    """Only product-owned pixel changes may wake the expensive app visual lane."""
-    workflow = (root / ".github" / "workflows" / "app-visual-artifact.yml").read_text(encoding="utf-8")
-    forbidden = (
-        "scripts/*visual*",
-        ".github/actions/app-visual-pipeline/**",
-    )
-    leaked = [token for token in forbidden if token in workflow]
-    if leaked:
-        raise SystemExit("app-visual vuelve a despertar por tooling: " + ", ".join(leaked))
+    """Separate visual gate ownership without hiding any shared product files."""
+    workflow_dir = root / ".github" / "workflows"
+    visual_workflows = {
+        "app-visual-artifact.yml": ("App", "app"),
+        "chronicles-visual-artifact.yml": ("Chronicles", "chronicles"),
+        "tactics-visual-artifact.yml": ("Tactics", "tactics"),
+    }
+    for filename, (domain, lane) in visual_workflows.items():
+        workflow = (workflow_dir / filename).read_text(encoding="utf-8")
+        for forbidden in ("scripts/*visual*", ".github/actions/app-visual-pipeline/**"):
+            if forbidden in workflow:
+                raise SystemExit(f"{filename} vuelve a despertar por tooling: {forbidden}")
+        for required in (
+            "frontend/src/**/*.jsx",
+            "frontend/src/**/*.css",
+            "frontend/public/**",
+            "e2e/*visual*.spec.js",
+            "group: ${{ github.workflow }}-${{ github.ref }}",
+            "uses: ./.github/actions/app-visual-pipeline",
+            f"name: {domain} · visual artifact",
+            f"chronicles-lane: {lane}",
+            "workflow_dispatch:",
+        ):
+            if required not in workflow:
+                raise SystemExit(f"{filename} perdió su trigger o aislamiento: {required}")
+        if "capture-tactics:" in workflow:
+            raise SystemExit(f"{filename} vuelve a combinar los dos juegos")
+        if workflow.count("uses: ./.github/actions/app-visual-pipeline") != 1:
+            raise SystemExit(f"{filename} duplica o pierde el productor visual")
+
+    action = (root / ".github" / "actions" / "app-visual-pipeline" / "action.yml").read_text(encoding="utf-8")
+    classifier = (root / "scripts" / "app_visual_producer_scope.py").read_text(encoding="utf-8")
+    for lane in ("app", "chronicles", "tactics"):
+        if f"chronicles-lane: {lane}" not in (workflow_dir / {
+            "app": "app-visual-artifact.yml",
+            "chronicles": "chronicles-visual-artifact.yml",
+            "tactics": "tactics-visual-artifact.yml",
+        }[lane]).read_text(encoding="utf-8"):
+            raise SystemExit("visual gate sin selector de lane " + lane)
     for required in (
-        "frontend/src/**/*.jsx",
-        "frontend/src/**/*.css",
-        "frontend/public/**",
-        "e2e/*visual*.spec.js",
+        "steps.scope.outputs.producer_scope != 'none'",
+        "'chronicles-visual'",
+        "'tactics-visual'",
     ):
-        if required not in workflow:
-            raise SystemExit("app-visual perdió trigger de producto: " + required)
+        if required not in action:
+            raise SystemExit(f"app-visual-pipeline perdió control de gasto/artefactos: {required}")
+    if "choices=(\"combined\", \"default\", \"app\", \"chronicles\", \"tactics\")" not in classifier:
+        raise SystemExit("app visual classifier perdió los tres dominios")
+
     for script in (
         "scripts/app_visual_scope.py",
         "scripts/app_visual_producer_scope.py",
         "scripts/app_visual_changed_files.py",
     ):
         subprocess.run([sys.executable, "-S", script, "--self-test"], cwd=root, check=True)
-    print("app visual product trigger + tooling ownership: OK")
+    print("App / Chronicles / Tactics independent visual triggers and scope: OK")
+
 
 
 def validate_cloudflare_auth_rate_limit(root: Path = ROOT) -> None:
