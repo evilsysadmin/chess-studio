@@ -18,11 +18,11 @@ const PLAYER_BASE_Y := 0.76
 # The approved front/back atlas bodies are about 120px tall. Normalize the
 # approved side run to the same perceived height without changing PNG bytes.
 const CANONICAL_BODY_HEIGHT_PIXELS := 120.0
-# Perceptual parity for oblique views: their authored shoulders/limbs occupy a
-# broader silhouette than the frontal and side atlases at the same pixel height.
-# These runtime-only factors keep the 32 approved diagonal frames untouched.
+# Diagonal artwork has broader shoulders but comparable body height.
+# The canonical scale already equalizes each view to 120px; a second vertical
+# multiplier made *every* diagonal smaller than front/back and side.
+# Correct the width only. Do not modify any approved PNG.
 const DIAGONAL_WIDTH_COMPENSATION := 0.91
-const DIAGONAL_HEIGHT_COMPENSATION := 0.94
 const PLAYER_RUN_BOB := 0.050
 const PLAYER_SPRINT_BOB := 0.072
 const STAMINA_BAR_WIDTH := 0.76
@@ -507,7 +507,7 @@ static func view_compensation(animation_name: StringName) -> Vector2:
 		"run_front_diagonal", "run_back_diagonal",
 		"sprint_front_diagonal", "sprint_back_diagonal",
 	]:
-		return Vector2(DIAGONAL_WIDTH_COMPENSATION, DIAGONAL_HEIGHT_COMPENSATION)
+		return Vector2(DIAGONAL_WIDTH_COMPENSATION, 1.0)
 	return Vector2.ONE
 
 
@@ -643,10 +643,16 @@ func _sync_player_secondary_motion(player: Footballer, sprite: AnimatedSprite3D,
 	# between boot soles and the pitch in broadcast AND tactical zoom, even
 	# when the authored silhouette needs uniform scale correction.
 	var cell_height := ChessFootballSpriteBank.cell_size().y
-	var foot_pixels := ChessFootballSpriteBank.footline() - cell_height * 0.5
-	var clearance := PLAYER_BASE_Y - foot_pixels * PLAYER_PIXEL_SIZE
+	var canonical_foot_pixels := ChessFootballSpriteBank.footline() - cell_height * 0.5
+	var clearance := PLAYER_BASE_Y - canonical_foot_pixels * PLAYER_PIXEL_SIZE
+	# The *authored* foot bottom can differ between running frames and poses.
+	# Use the alpha baseline recorded while slicing the 3D image, otherwise
+	# a raised pose floats while another sinks despite identical sprite scale.
+	# This lookup is cached and makes NO per-frame GPU image readbacks.
+	var frame_texture := sprite.sprite_frames.get_frame_texture(sprite.animation, sprite.frame)
+	var frame_foot_pixels := ChessFootballSpriteBank.frame_bottom(frame_texture) - cell_height * 0.5
 	sprite.position.x = lateral_sway
-	sprite.position.y = clearance + foot_pixels * sprite.pixel_size * stretch_y + bob
+	sprite.position.y = clearance + frame_foot_pixels * sprite.pixel_size * stretch_y + bob
 	sprite.rotation.z = deg_to_rad(tilt_degrees)
 	sprite.scale = Vector3(stretch_x, stretch_y, 1.0)
 
