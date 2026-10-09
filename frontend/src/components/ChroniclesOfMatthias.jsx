@@ -94,7 +94,6 @@ import ChroniclesTacticalMargin from './ChroniclesTacticalMargin.jsx';
 import useChroniclesLandscape, {
   releaseChroniclesLandscape,
   requestChroniclesLandscapeOnEntry,
-  shouldHandleChroniclesBack,
 } from './useChroniclesLandscape.js';
 import './ChroniclesOfMatthias.css';
 import './ChroniclesCharacterSheet.css';
@@ -266,8 +265,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
     onExit?.();
   }, [onExit]);
 
-  useEscapeToClose((event) => {
-    if (!shouldHandleChroniclesBack(event)) return;
+  useEscapeToClose(() => {
     if (automapOpen) {
       setAutomapOpen(false);
       return;
