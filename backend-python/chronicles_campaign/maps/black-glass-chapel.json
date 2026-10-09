@@ -1,0 +1,80 @@
+{
+  "schemaVersion": 1,
+  "id": "black-glass-chapel",
+  "title": "Capilla del Vidrio Negro",
+  "regionId": "north",
+  "kind": "dungeon",
+  "status": "design-only",
+  "legacyRuntimeMapId": "black-glass-chapel",
+  "threatBand": [
+    8,
+    10
+  ],
+  "description": "Una ventana que permite ver el precio real del encierro.",
+  "layout": {
+    "mode": "authored-fixed",
+    "grid": [
+      "###############",
+      "#::::::=::::::#",
+      "#::::#:=::#:::#",
+      "#::###:=####::#",
+      "#::::=:=::#:::#",
+      "#::::=:=::::::#",
+      "#=============#",
+      "#::::#:=::#:::#",
+      "#::::#:=::#:::#",
+      "#::::#:=::#:::#",
+      "#::::#:=::#:::#",
+      "#::::::=::::::#",
+      "###############"
+    ],
+    "tileLegend": {
+      "#": "solid",
+      "~": "water-blocked",
+      "^": "cliff-blocked",
+      ".": "floor",
+      ":": "old-stone-floor",
+      "=": "road-or-corridor"
+    }
+  },
+  "partyStart": {
+    "x": 7,
+    "y": 6,
+    "direction": "north"
+  },
+  "portals": [
+    {
+      "id": "to-blind-king-archive",
+      "targetMapId": "blind-king-archive",
+      "targetPortalId": "to-black-glass-chapel",
+      "x": 7,
+      "y": 1,
+      "requiresAll": [],
+      "feature": "road",
+      "linkId": "blind-king-archive--black-glass-chapel"
+    },
+    {
+      "id": "to-chain-basilica",
+      "targetMapId": "chain-basilica",
+      "targetPortalId": "to-black-glass-chapel",
+      "x": 13,
+      "y": 6,
+      "requiresAll": [
+        "pact-read"
+      ],
+      "feature": "pilgrim-passage",
+      "linkId": "black-glass-chapel--chain-basilica"
+    }
+  ],
+  "pointsOfInterest": [
+    {
+      "id": "black-mirror",
+      "label": "El espejo del último testigo",
+      "eventId": "mirror-proof",
+      "x": 5,
+      "y": 4,
+      "interaction": "adjacent-or-on-tile"
+    }
+  ],
+  "services": []
+}

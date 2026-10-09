@@ -1,0 +1,56 @@
+[
+  {
+    "id": "names-in-wood",
+    "title": "Los nombres del bosque",
+    "at": "rookwood",
+    "eventId": "woods-names-restored",
+    "hook": "Familias enteras olvidan a sus seres queridos; recuperar las placas con sus nombres refuerza el tema central.",
+    "rewardPolicy": "once-per-character-or-run-authoritative",
+    "status": "design-only"
+  },
+  {
+    "id": "salt-gates",
+    "title": "Compuertas de sal",
+    "at": "saltford",
+    "eventId": "salt-gates-repaired",
+    "hook": "Reparar el paso fluvial mejora la relación con barqueros y abre un servicio de transporte futuro.",
+    "rewardPolicy": "once-per-character-or-run-authoritative",
+    "status": "design-only"
+  },
+  {
+    "id": "black-tide",
+    "title": "La marea muda",
+    "at": "salt-coast",
+    "eventId": "black-tide-ledger",
+    "hook": "Descubrir por qué un carguero dejó de registrar tripulantes.",
+    "rewardPolicy": "once-per-character-or-run-authoritative",
+    "status": "design-only"
+  },
+  {
+    "id": "guild-accounts",
+    "title": "La contabilidad del fuego",
+    "at": "emberfall",
+    "eventId": "guild-ledger",
+    "hook": "Conservar las pruebas de las órdenes de Varren o entregarlas a la Corte.",
+    "rewardPolicy": "once-per-character-or-run-authoritative",
+    "status": "design-only"
+  },
+  {
+    "id": "last-watch",
+    "title": "La última guardia",
+    "at": "winterwatch",
+    "eventId": "last-watch-rescued",
+    "hook": "Encontrar a los vigías desaparecidos antes de que la estepa los silencie.",
+    "rewardPolicy": "once-per-character-or-run-authoritative",
+    "status": "design-only"
+  },
+  {
+    "id": "court-record",
+    "title": "El quinto asiento",
+    "at": "brass-court",
+    "eventId": "council-evidence",
+    "hook": "Identificar a quien falsificó las órdenes de búsqueda.",
+    "rewardPolicy": "once-per-character-or-run-authoritative",
+    "status": "design-only"
+  }
+]

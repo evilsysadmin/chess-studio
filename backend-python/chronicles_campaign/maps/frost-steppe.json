@@ -1,0 +1,90 @@
+{
+  "schemaVersion": 1,
+  "id": "frost-steppe",
+  "title": "Estepa de la Escarcha",
+  "regionId": "north",
+  "kind": "wilderness",
+  "status": "design-only",
+  "legacyRuntimeMapId": null,
+  "threatBand": [
+    6,
+    8
+  ],
+  "description": "Pradera fría atravesada por el camino hacia los cronistas muertos.",
+  "layout": {
+    "mode": "authored-fixed",
+    "grid": [
+      "#####################",
+      "#.........=.........#",
+      "#.........=.........#",
+      "#.........=.........#",
+      "#.........=.........#",
+      "#.......=.=.........#",
+      "#.......=.=.........#",
+      "#===================#",
+      "#.........=.........#",
+      "#.^^^^^.^^=^^^.^^.^.#",
+      "#.........=.........#",
+      "#.........=.........#",
+      "#.........=.........#",
+      "#.........=.........#",
+      "#####################"
+    ],
+    "tileLegend": {
+      "#": "solid",
+      "~": "water-blocked",
+      "^": "cliff-blocked",
+      ".": "floor",
+      ":": "old-stone-floor",
+      "=": "road-or-corridor"
+    }
+  },
+  "partyStart": {
+    "x": 10,
+    "y": 7,
+    "direction": "north"
+  },
+  "portals": [
+    {
+      "id": "to-ember-pass",
+      "targetMapId": "ember-pass",
+      "targetPortalId": "to-frost-steppe",
+      "x": 10,
+      "y": 1,
+      "requiresAll": [],
+      "feature": "road",
+      "linkId": "ember-pass--frost-steppe"
+    },
+    {
+      "id": "to-winterwatch",
+      "targetMapId": "winterwatch",
+      "targetPortalId": "to-frost-steppe",
+      "x": 19,
+      "y": 7,
+      "requiresAll": [],
+      "feature": "road",
+      "linkId": "frost-steppe--winterwatch"
+    },
+    {
+      "id": "to-blind-king-archive",
+      "targetMapId": "blind-king-archive",
+      "targetPortalId": "to-frost-steppe",
+      "x": 10,
+      "y": 13,
+      "requiresAll": [],
+      "feature": "road",
+      "linkId": "frost-steppe--blind-king-archive"
+    }
+  ],
+  "pointsOfInterest": [
+    {
+      "id": "frozen-obelisk",
+      "label": "Obelisco sin inscripciones",
+      "eventId": "obelisk-deciphered",
+      "x": 8,
+      "y": 5,
+      "interaction": "adjacent-or-on-tile"
+    }
+  ],
+  "services": []
+}

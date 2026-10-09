@@ -1,0 +1,113 @@
+{
+  "schemaVersion": 1,
+  "id": "brass-court",
+  "title": "Corte de Bronce",
+  "regionId": "heart",
+  "kind": "settlement",
+  "status": "design-only",
+  "legacyRuntimeMapId": null,
+  "threatBand": [
+    1,
+    3
+  ],
+  "description": "Capital del reino, donde la Dama sostiene la estabilidad de la Corona.",
+  "layout": {
+    "mode": "authored-fixed",
+    "grid": [
+      "###################",
+      "#........=........#",
+      "#........=........#",
+      "#..###...=...###..#",
+      "#..###...=...###..#",
+      "#......=.=.=......#",
+      "#......=.=.=......#",
+      "#=================#",
+      "#........=.=......#",
+      "#........=.=......#",
+      "#..###...=...###..#",
+      "#..###...=...###..#",
+      "#........=........#",
+      "#........=........#",
+      "###################"
+    ],
+    "tileLegend": {
+      "#": "solid",
+      "~": "water-blocked",
+      "^": "cliff-blocked",
+      ".": "floor",
+      ":": "old-stone-floor",
+      "=": "road-or-corridor"
+    }
+  },
+  "partyStart": {
+    "x": 9,
+    "y": 7,
+    "direction": "north"
+  },
+  "portals": [
+    {
+      "id": "to-banner-road",
+      "targetMapId": "banner-road",
+      "targetPortalId": "to-brass-court",
+      "x": 9,
+      "y": 1,
+      "requiresAll": [],
+      "feature": "road",
+      "linkId": "banner-road--brass-court"
+    },
+    {
+      "id": "to-gallery-of-forks",
+      "targetMapId": "gallery-of-forks",
+      "targetPortalId": "to-brass-court",
+      "x": 17,
+      "y": 7,
+      "requiresAll": [],
+      "feature": "secret-tunnel",
+      "linkId": "gallery-of-forks--brass-court"
+    },
+    {
+      "id": "to-old-causeway",
+      "targetMapId": "old-causeway",
+      "targetPortalId": "to-brass-court",
+      "x": 9,
+      "y": 13,
+      "requiresAll": [],
+      "feature": "hidden-gate",
+      "linkId": "brass-court--old-causeway"
+    }
+  ],
+  "pointsOfInterest": [
+    {
+      "id": "queen-audience",
+      "label": "Audiencia privada",
+      "eventId": "court-audience",
+      "x": 7,
+      "y": 5,
+      "interaction": "adjacent-or-on-tile"
+    },
+    {
+      "id": "council-register",
+      "label": "Registro del Consejo",
+      "eventId": "council-evidence",
+      "x": 11,
+      "y": 9,
+      "interaction": "adjacent-or-on-tile"
+    },
+    {
+      "id": "court-witness",
+      "label": "Compromiso de la Corte",
+      "eventId": "court-witness",
+      "x": 11,
+      "y": 5,
+      "interaction": "adjacent-or-on-tile"
+    }
+  ],
+  "services": [
+    "inn",
+    "merchant",
+    "smith",
+    "temple",
+    "audience",
+    "guild"
+  ]
+}

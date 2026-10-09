@@ -1,0 +1,94 @@
+{
+  "schemaVersion": 1,
+  "id": "emberfall",
+  "title": "Ascuafria",
+  "regionId": "forge",
+  "kind": "settlement",
+  "status": "design-only",
+  "legacyRuntimeMapId": null,
+  "threatBand": [
+    4,
+    6
+  ],
+  "description": "Ciudad de herreros que ha recibido un encargo imposible.",
+  "layout": {
+    "mode": "authored-fixed",
+    "grid": [
+      "###################",
+      "#........=........#",
+      "#........=........#",
+      "#..###...=...###..#",
+      "#..###...=...###..#",
+      "#......=.=........#",
+      "#......=.=........#",
+      "#=================#",
+      "#........=.=......#",
+      "#........=.=......#",
+      "#..###...=...###..#",
+      "#..###...=...###..#",
+      "#........=........#",
+      "#........=........#",
+      "###################"
+    ],
+    "tileLegend": {
+      "#": "solid",
+      "~": "water-blocked",
+      "^": "cliff-blocked",
+      ".": "floor",
+      ":": "old-stone-floor",
+      "=": "road-or-corridor"
+    }
+  },
+  "partyStart": {
+    "x": 9,
+    "y": 7,
+    "direction": "north"
+  },
+  "portals": [
+    {
+      "id": "to-banner-road",
+      "targetMapId": "banner-road",
+      "targetPortalId": "to-emberfall",
+      "x": 9,
+      "y": 1,
+      "requiresAll": [],
+      "feature": "road",
+      "linkId": "banner-road--emberfall"
+    },
+    {
+      "id": "to-ember-pass",
+      "targetMapId": "ember-pass",
+      "targetPortalId": "to-emberfall",
+      "x": 17,
+      "y": 7,
+      "requiresAll": [],
+      "feature": "road",
+      "linkId": "emberfall--ember-pass"
+    }
+  ],
+  "pointsOfInterest": [
+    {
+      "id": "guild-witness",
+      "label": "Compromiso de los gremios",
+      "eventId": "guild-witness",
+      "x": 7,
+      "y": 5,
+      "interaction": "adjacent-or-on-tile"
+    },
+    {
+      "id": "guild-ledger",
+      "label": "La orden de forja clandestina",
+      "eventId": "guild-ledger",
+      "x": 11,
+      "y": 9,
+      "interaction": "adjacent-or-on-tile"
+    }
+  ],
+  "services": [
+    "inn",
+    "smith",
+    "armor",
+    "merchant",
+    "forge-guild"
+  ]
+}

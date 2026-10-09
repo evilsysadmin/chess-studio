@@ -1,0 +1,512 @@
+{
+  "schemaVersion": 1,
+  "campaignId": "lost-king",
+  "title": "Chronicles of Matthias · El rey desaparecido",
+  "status": "design-only",
+  "startMapId": "swordhaven-square",
+  "regions": [
+    {
+      "id": "heart",
+      "name": "Tierras de la Corona",
+      "biome": "Prados, campanarios y carreteras antiguas."
+    },
+    {
+      "id": "mire",
+      "name": "Marismas de Sal",
+      "biome": "Delta y pantanos habitados por barqueros y reliquias."
+    },
+    {
+      "id": "coast",
+      "name": "Litoral de Hollín",
+      "biome": "Puertos grises, acantilados y rutas de contrabando."
+    },
+    {
+      "id": "forge",
+      "name": "Montes de Escoria",
+      "biome": "Forjas, minas y desfiladeros de roca caliente."
+    },
+    {
+      "id": "north",
+      "name": "Marcas del Norte",
+      "biome": "Fortines de piedra, páramos nevados y monasterios."
+    },
+    {
+      "id": "undercrown",
+      "name": "Bajo la Corona",
+      "biome": "Infraestructura enterrada y el origen del juramento."
+    }
+  ],
+  "locations": [
+    {
+      "id": "swordhaven-square",
+      "title": "Swordhaven",
+      "regionId": "heart",
+      "kind": "settlement",
+      "threatBand": [
+        1,
+        2
+      ],
+      "mapFile": "maps/swordhaven-square.json"
+    },
+    {
+      "id": "banner-road",
+      "title": "Camino de los Estandartes",
+      "regionId": "heart",
+      "kind": "wilderness",
+      "threatBand": [
+        1,
+        2
+      ],
+      "mapFile": "maps/banner-road.json"
+    },
+    {
+      "id": "brass-court",
+      "title": "Corte de Bronce",
+      "regionId": "heart",
+      "kind": "settlement",
+      "threatBand": [
+        1,
+        3
+      ],
+      "mapFile": "maps/brass-court.json"
+    },
+    {
+      "id": "rookwood",
+      "title": "Bosque de las Torres",
+      "regionId": "heart",
+      "kind": "wilderness",
+      "threatBand": [
+        2,
+        4
+      ],
+      "mapFile": "maps/rookwood.json"
+    },
+    {
+      "id": "crypt-eight-squares",
+      "title": "Cripta de las Ocho Casillas",
+      "regionId": "heart",
+      "kind": "dungeon",
+      "threatBand": [
+        2,
+        4
+      ],
+      "mapFile": "maps/crypt-eight-squares.json"
+    },
+    {
+      "id": "gallery-of-forks",
+      "title": "Galería de las Bifurcaciones",
+      "regionId": "heart",
+      "kind": "dungeon",
+      "threatBand": [
+        3,
+        5
+      ],
+      "mapFile": "maps/gallery-of-forks.json"
+    },
+    {
+      "id": "saltford",
+      "title": "Vado de Sal",
+      "regionId": "mire",
+      "kind": "settlement",
+      "threatBand": [
+        2,
+        4
+      ],
+      "mapFile": "maps/saltford.json"
+    },
+    {
+      "id": "mist-marsh",
+      "title": "Marisma de los Susurros",
+      "regionId": "mire",
+      "kind": "wilderness",
+      "threatBand": [
+        3,
+        5
+      ],
+      "mapFile": "maps/mist-marsh.json"
+    },
+    {
+      "id": "echo-cistern",
+      "title": "Cisterna del Eco",
+      "regionId": "mire",
+      "kind": "dungeon",
+      "threatBand": [
+        4,
+        6
+      ],
+      "mapFile": "maps/echo-cistern.json"
+    },
+    {
+      "id": "menagerie-of-ash",
+      "title": "Casa de las Bestias de Ceniza",
+      "regionId": "mire",
+      "kind": "dungeon",
+      "threatBand": [
+        4,
+        6
+      ],
+      "mapFile": "maps/menagerie-of-ash.json"
+    },
+    {
+      "id": "salt-coast",
+      "title": "Costa de las Mareas Negras",
+      "regionId": "coast",
+      "kind": "wilderness",
+      "threatBand": [
+        3,
+        5
+      ],
+      "mapFile": "maps/salt-coast.json"
+    },
+    {
+      "id": "hollowport",
+      "title": "Puerto de Hollín",
+      "regionId": "coast",
+      "kind": "settlement",
+      "threatBand": [
+        3,
+        5
+      ],
+      "mapFile": "maps/hollowport.json"
+    },
+    {
+      "id": "hollow-bell-tower",
+      "title": "Torre de la Campana Hueca",
+      "regionId": "coast",
+      "kind": "dungeon",
+      "threatBand": [
+        5,
+        7
+      ],
+      "mapFile": "maps/hollow-bell-tower.json"
+    },
+    {
+      "id": "emberfall",
+      "title": "Ascuafria",
+      "regionId": "forge",
+      "kind": "settlement",
+      "threatBand": [
+        4,
+        6
+      ],
+      "mapFile": "maps/emberfall.json"
+    },
+    {
+      "id": "ember-pass",
+      "title": "Paso de las Escorias",
+      "regionId": "forge",
+      "kind": "wilderness",
+      "threatBand": [
+        5,
+        7
+      ],
+      "mapFile": "maps/ember-pass.json"
+    },
+    {
+      "id": "iron-foundry",
+      "title": "Fundición de Hierro",
+      "regionId": "forge",
+      "kind": "dungeon",
+      "threatBand": [
+        6,
+        8
+      ],
+      "mapFile": "maps/iron-foundry.json"
+    },
+    {
+      "id": "ash-vault",
+      "title": "Cámara de Ceniza",
+      "regionId": "forge",
+      "kind": "dungeon",
+      "threatBand": [
+        7,
+        9
+      ],
+      "mapFile": "maps/ash-vault.json"
+    },
+    {
+      "id": "winterwatch",
+      "title": "Vigilia del Norte",
+      "regionId": "north",
+      "kind": "settlement",
+      "threatBand": [
+        5,
+        7
+      ],
+      "mapFile": "maps/winterwatch.json"
+    },
+    {
+      "id": "frost-steppe",
+      "title": "Estepa de la Escarcha",
+      "regionId": "north",
+      "kind": "wilderness",
+      "threatBand": [
+        6,
+        8
+      ],
+      "mapFile": "maps/frost-steppe.json"
+    },
+    {
+      "id": "blind-king-archive",
+      "title": "Archivo del Rey Ciego",
+      "regionId": "north",
+      "kind": "dungeon",
+      "threatBand": [
+        7,
+        9
+      ],
+      "mapFile": "maps/blind-king-archive.json"
+    },
+    {
+      "id": "black-glass-chapel",
+      "title": "Capilla del Vidrio Negro",
+      "regionId": "north",
+      "kind": "dungeon",
+      "threatBand": [
+        8,
+        10
+      ],
+      "mapFile": "maps/black-glass-chapel.json"
+    },
+    {
+      "id": "old-causeway",
+      "title": "Calzada Hundida",
+      "regionId": "undercrown",
+      "kind": "wilderness",
+      "threatBand": [
+        7,
+        9
+      ],
+      "mapFile": "maps/old-causeway.json"
+    },
+    {
+      "id": "chain-basilica",
+      "title": "Basílica de las Cadenas",
+      "regionId": "undercrown",
+      "kind": "dungeon",
+      "threatBand": [
+        9,
+        11
+      ],
+      "mapFile": "maps/chain-basilica.json"
+    },
+    {
+      "id": "throne-under-the-stone",
+      "title": "Trono Bajo la Piedra",
+      "regionId": "undercrown",
+      "kind": "finale",
+      "threatBand": [
+        11,
+        13
+      ],
+      "mapFile": "maps/throne-under-the-stone.json"
+    }
+  ],
+  "links": [
+    {
+      "id": "swordhaven-square--banner-road",
+      "from": "swordhaven-square",
+      "to": "banner-road",
+      "requiresAll": [],
+      "feature": "road"
+    },
+    {
+      "id": "banner-road--brass-court",
+      "from": "banner-road",
+      "to": "brass-court",
+      "requiresAll": [],
+      "feature": "road"
+    },
+    {
+      "id": "banner-road--rookwood",
+      "from": "banner-road",
+      "to": "rookwood",
+      "requiresAll": [],
+      "feature": "road"
+    },
+    {
+      "id": "banner-road--saltford",
+      "from": "banner-road",
+      "to": "saltford",
+      "requiresAll": [],
+      "feature": "road"
+    },
+    {
+      "id": "rookwood--crypt-eight-squares",
+      "from": "rookwood",
+      "to": "crypt-eight-squares",
+      "requiresAll": [],
+      "feature": "road"
+    },
+    {
+      "id": "crypt-eight-squares--gallery-of-forks",
+      "from": "crypt-eight-squares",
+      "to": "gallery-of-forks",
+      "requiresAll": [],
+      "feature": "crypt-corridor"
+    },
+    {
+      "id": "gallery-of-forks--brass-court",
+      "from": "gallery-of-forks",
+      "to": "brass-court",
+      "requiresAll": [],
+      "feature": "secret-tunnel"
+    },
+    {
+      "id": "saltford--mist-marsh",
+      "from": "saltford",
+      "to": "mist-marsh",
+      "requiresAll": [],
+      "feature": "road"
+    },
+    {
+      "id": "mist-marsh--echo-cistern",
+      "from": "mist-marsh",
+      "to": "echo-cistern",
+      "requiresAll": [],
+      "feature": "road"
+    },
+    {
+      "id": "mist-marsh--menagerie-of-ash",
+      "from": "mist-marsh",
+      "to": "menagerie-of-ash",
+      "requiresAll": [],
+      "feature": "road"
+    },
+    {
+      "id": "saltford--salt-coast",
+      "from": "saltford",
+      "to": "salt-coast",
+      "requiresAll": [],
+      "feature": "road"
+    },
+    {
+      "id": "salt-coast--hollowport",
+      "from": "salt-coast",
+      "to": "hollowport",
+      "requiresAll": [],
+      "feature": "road"
+    },
+    {
+      "id": "salt-coast--hollow-bell-tower",
+      "from": "salt-coast",
+      "to": "hollow-bell-tower",
+      "requiresAll": [],
+      "feature": "road"
+    },
+    {
+      "id": "hollowport--old-causeway",
+      "from": "hollowport",
+      "to": "old-causeway",
+      "requiresAll": [],
+      "feature": "ferry"
+    },
+    {
+      "id": "brass-court--old-causeway",
+      "from": "brass-court",
+      "to": "old-causeway",
+      "requiresAll": [],
+      "feature": "hidden-gate"
+    },
+    {
+      "id": "banner-road--emberfall",
+      "from": "banner-road",
+      "to": "emberfall",
+      "requiresAll": [],
+      "feature": "road"
+    },
+    {
+      "id": "emberfall--ember-pass",
+      "from": "emberfall",
+      "to": "ember-pass",
+      "requiresAll": [],
+      "feature": "road"
+    },
+    {
+      "id": "ember-pass--iron-foundry",
+      "from": "ember-pass",
+      "to": "iron-foundry",
+      "requiresAll": [],
+      "feature": "road"
+    },
+    {
+      "id": "iron-foundry--ash-vault",
+      "from": "iron-foundry",
+      "to": "ash-vault",
+      "requiresAll": [],
+      "feature": "forge-tunnel"
+    },
+    {
+      "id": "menagerie-of-ash--ash-vault",
+      "from": "menagerie-of-ash",
+      "to": "ash-vault",
+      "requiresAll": [
+        "ash-seal"
+      ],
+      "feature": "secret-tunnel"
+    },
+    {
+      "id": "ember-pass--frost-steppe",
+      "from": "ember-pass",
+      "to": "frost-steppe",
+      "requiresAll": [],
+      "feature": "road"
+    },
+    {
+      "id": "frost-steppe--winterwatch",
+      "from": "frost-steppe",
+      "to": "winterwatch",
+      "requiresAll": [],
+      "feature": "road"
+    },
+    {
+      "id": "frost-steppe--blind-king-archive",
+      "from": "frost-steppe",
+      "to": "blind-king-archive",
+      "requiresAll": [],
+      "feature": "road"
+    },
+    {
+      "id": "blind-king-archive--black-glass-chapel",
+      "from": "blind-king-archive",
+      "to": "black-glass-chapel",
+      "requiresAll": [],
+      "feature": "road"
+    },
+    {
+      "id": "old-causeway--chain-basilica",
+      "from": "old-causeway",
+      "to": "chain-basilica",
+      "requiresAll": [
+        "pact-read"
+      ],
+      "feature": "sealed-stairs"
+    },
+    {
+      "id": "black-glass-chapel--chain-basilica",
+      "from": "black-glass-chapel",
+      "to": "chain-basilica",
+      "requiresAll": [
+        "pact-read"
+      ],
+      "feature": "pilgrim-passage"
+    },
+    {
+      "id": "chain-basilica--throne-under-the-stone",
+      "from": "chain-basilica",
+      "to": "throne-under-the-stone",
+      "requiresAll": [
+        "pact-read",
+        "three-bells"
+      ],
+      "feature": "throne-gate"
+    }
+  ],
+  "contract": {
+    "authoredMapsOnly": true,
+    "noRuntimeRegistration": true,
+    "noTacticsChanges": true,
+    "legacyMapManifestsUntouched": true,
+    "worldStateVersionRequiredBeforeActivation": true
+  }
+}
