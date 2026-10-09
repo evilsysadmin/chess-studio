@@ -28,6 +28,10 @@ function currentOwner() {
   return String(getStorageItem(STORAGE_LOCAL, AUTH_USERNAME_KEY) || '').trim().toLowerCase();
 }
 
+export function chroniclesSaveCatalogOwner() {
+  return currentOwner();
+}
+
 function createRunId() {
   try {
     if (typeof globalThis.crypto?.randomUUID === 'function') return globalThis.crypto.randomUUID();
@@ -136,9 +140,11 @@ function remoteTimestamp(value) {
  * Previously confirmed server rows missing from the active list are retired.
  * Failed fetches must not call this method; that preserves the offline cache.
  */
-export function chroniclesMergeRemoteSavedRuns(scope, remoteRuns) {
+export function chroniclesMergeRemoteSavedRuns(scope, remoteRuns, { expectedOwner = currentOwner() } = {}) {
   legacyStorageKeyFor(scope);
   if (!Array.isArray(remoteRuns)) throw new TypeError('Invalid remote save inventory');
+  // Reject an authenticated response for a user who signed out mid-request.
+  if (!expectedOwner || expectedOwner !== currentOwner()) return chroniclesListSavedRuns(scope);
   const active = readRunState(scope);
   const previous = readSaveCatalog();
   const byId = new Map(previous.map((row) => [row.id, row]));
