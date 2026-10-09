@@ -79,6 +79,13 @@ async function openChronicles(page, captureLabel, {
   const chroniclesEntry = page.locator('.lab-workshop-portal--chronicles');
   await expect(chroniclesEntry).toBeVisible();
   await chroniclesEntry.click();
+  const entry = page.locator('[data-chronicles-save-menu]');
+  await expect(entry).toBeVisible({ timeout: 10_000 });
+  await page.screenshot({
+    path: `${ARTIFACT_DIR}/chronicles-save-menu-${captureLabel}.png`,
+    animations: 'disabled', timeout: 30_000,
+  });
+  await entry.getByRole('button', { name: 'Nuevo juego', exact: true }).click();
   const setup = page.locator('[data-chronicles-character-setup]');
   try {
     await expect(setup).toBeVisible({ timeout: 8_000 });
