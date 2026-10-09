@@ -19,6 +19,7 @@ func _initialize() -> void:
 		var sprite: AnimatedSprite3D = presenter.player_sprites[key]
 		assert(sprite != null)
 		var observed: Dictionary = {}
+		var lead_legs: Dictionary = {}
 		var min_lean := INF
 		var max_lean := -INF
 		var min_sway := INF
@@ -38,6 +39,9 @@ func _initialize() -> void:
 			assert(sprite.animation == &"run_front")
 			assert(sprite.sprite_frames.get_frame_count(sprite.animation) == 8)
 			observed[sprite.frame] = true
+			var alternate_leg := sprite.frame >= 4
+			assert(sprite.flip_h == (keeper.visual.flip_h != alternate_leg))
+			lead_legs[alternate_leg] = true
 			min_lean = minf(min_lean, rad_to_deg(sprite.rotation.z))
 			max_lean = maxf(max_lean, rad_to_deg(sprite.rotation.z))
 			min_sway = minf(min_sway, sprite.position.x)
@@ -45,6 +49,7 @@ func _initialize() -> void:
 			min_lift = minf(min_lift, sprite.position.y)
 			max_lift = maxf(max_lift, sprite.position.y)
 		assert(observed.size() >= 6)
+		assert(lead_legs.size() == 2) # both legs visibly lead during the run
 		# A timing-only smoke passed before, while the visible image barely
 		# changed at normal match zoom. Require an expressive *screen pose*
 		# in addition to advancing frame indices.
