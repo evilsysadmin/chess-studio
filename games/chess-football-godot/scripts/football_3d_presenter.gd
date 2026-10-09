@@ -34,6 +34,10 @@ var camera: Camera3D
 var player_nodes: Dictionary = {}
 var player_sprites: Dictionary = {}
 var player_run_views: Dictionary = {}
+# Keeper run/action poses tick independently in the visible 3D runtime.
+# Hidden authoritative 2D AnimatedSprite2D nodes are not a reliable clock.
+var keeper_visual_phases: Dictionary = {}
+var keeper_visual_names: Dictionary = {}
 var body_scale_cache: Dictionary = {}
 var ball_node: MeshInstance3D
 var ball_shadow: MeshInstance3D
@@ -455,11 +459,14 @@ func sync_presentation(delta: float, mode: String) -> void:
 				var directional_animation := ChessFootballRunDirection.animation_for(wanted_animation, run_view)
 				if sprite.sprite_frames.has_animation(directional_animation):
 					wanted_animation = directional_animation
-				if sprite.animation != wanted_animation:
-					sprite.play(wanted_animation)
+				if player.role == "keeper":
+					_sync_keeper_animation(key, player, sprite, wanted_animation, delta)
+				else:
+					if sprite.animation != wanted_animation:
+						sprite.play(wanted_animation)
+					sprite.speed_scale = player.visual.speed_scale
+					sprite.frame = player.visual.frame
 				sprite.flip_h = player.visual.flip_h
-				sprite.speed_scale = player.visual.speed_scale
-				sprite.frame = player.visual.frame
 			sprite.pixel_size = TACTICAL_PLAYER_PIXEL_SIZE if mode == "tactical" else PLAYER_PIXEL_SIZE
 			_sync_player_secondary_motion(player, sprite, proxy)
 			var is_controlled: bool = player == match_node.controlled
@@ -500,6 +507,51 @@ func sync_presentation(delta: float, mode: String) -> void:
 			)
 
 	_sync_camera(delta, mode)
+
+static func _keeper_locomotion(animation_name: StringName) -> bool:
+	var name := String(animation_name)
+	return name == "run" or name == "sprint" or name.begins_with("run_") or name.begins_with("sprint_")
+
+
+func _sync_keeper_animation(
+	key: int, player: Footballer, sprite: AnimatedSprite3D, wanted: StringName, delta: float
+) -> void:
+	# The gameplay actor can remain hidden as its 3D proxy is drawn. In the
+	# previous implementation, copying player.visual.frame on every physics
+	# tick made goalkeeper running poses appear static even while moving.
+	# One clock owns the *visible* goalkeeper frames; the 2D actor still owns
+	# the action state, stamina, and actual movement/rules.
+	var frames := sprite.sprite_frames
+	if not frames.has_animation(wanted):
+		return
+	var count := frames.get_frame_count(wanted)
+	if count < 1:
+		return
+	var previous: StringName = keeper_visual_names.get(key, &"")
+	var phase: float = float(keeper_visual_phases.get(key, 0.0))
+	if previous != wanted or sprite.animation != wanted:
+		if not (_keeper_locomotion(previous) and _keeper_locomotion(wanted)):
+			phase = 0.0
+		sprite.play(wanted)
+		# Do not let the built-in 3D timer race against this fixed-physics
+		# clock; only this function advances keeper frames.
+		sprite.pause()
+		keeper_visual_names[key] = wanted
+	var advance := maxf(delta, 0.0) * frames.get_animation_speed(wanted)
+	if _keeper_locomotion(wanted):
+		# Movement-phase continuity survives diagonal turns and run/sprint
+		# switches; a stationary keeper must not run in place.
+		if player.velocity.length() >= 12.0:
+			phase += advance * maxf(player.visual.speed_scale, 0.0)
+	elif wanted != &"idle":
+		phase += advance * maxf(player.visual.speed_scale, 0.0)
+	if frames.get_animation_loop(wanted):
+		phase = fposmod(phase, float(count))
+	else:
+		phase = minf(phase, float(count - 1))
+	keeper_visual_phases[key] = phase
+	sprite.frame = clampi(int(floorf(phase)), 0, count - 1)
+
 
 static func view_compensation(animation_name: StringName) -> Vector2:
 	var name := String(animation_name)
