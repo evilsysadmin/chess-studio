@@ -494,6 +494,14 @@ def classify_path(path: str) -> set[str] | None:
         # Both layout and styling of the save book belong exclusively to
         # first-person Chronicles: Tactics never mounts this menu.
         return {"chronicles-gameplay"}
+    if lower in {
+        "frontend/src/components/chroniclesofmatthias.css",
+        "frontend/src/components/chroniclesofmatthiasart.css",
+        "frontend/src/components/chroniclesofmatthiasjournal.css",
+    }:
+        # Authored first-person overlays, not the Tactics renderer. Keep the
+        # avatar consumer covered: HUD/portrait styling is still visual work.
+        return {"chronicles-gameplay", "chronicles-avatar"}
     if "chronicles" in lower:
         if "tactics" in lower or "isometric" in lower:
             return {"chronicles-tactics"}
@@ -892,6 +900,15 @@ def self_test() -> None:
     assert classify(["frontend/src/components/ChroniclesOfMatthiasTactics.jsx"]) == "chronicles-tactics"
     assert classify(["frontend/src/components/ChroniclesSaveMenu.jsx"]) == "chronicles-gameplay"
     assert classify(["frontend/src/components/ChroniclesSaveMenu.css"]) == "chronicles-gameplay"
+    for first_person_css in (
+        "ChroniclesOfMatthias.css",
+        "ChroniclesOfMatthiasArt.css",
+        "ChroniclesOfMatthiasJournal.css",
+    ):
+        producers = classify([f"frontend/src/components/{first_person_css}"])
+        assert producers == "chronicles-gameplay,chronicles-avatar"
+        assert project_chronicles_lane(producers, "tactics") == "none"
+    assert classify(["frontend/src/components/ChroniclesOfMatthiasTactics.css"]) == "chronicles-tactics"
     assert project_chronicles_lane(classify(["frontend/src/components/ChroniclesSaveMenu.css"]), "tactics") == "none"
     assert classify(["frontend/src/chronicles/chroniclesRunClient.js"]) == "none"
     assert classify(["frontend/src/chronicles/chroniclesRunIdentity.js"]) == "none"
