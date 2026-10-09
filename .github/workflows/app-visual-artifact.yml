@@ -19,7 +19,7 @@ on:
       - e2e/browser-*-health.spec.js
   workflow_dispatch:
 concurrency:
-  group: ${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 permissions: {contents: read}
 jobs:
@@ -30,15 +30,4 @@ jobs:
       - uses: actions/checkout@v7
         with: {fetch-depth: 2}
       - uses: ./.github/actions/app-visual-pipeline
-        with: {mode: canonical, chronicles-lane: default}
-  capture-tactics:
-    # Independent browser/SwiftShader lifecycle and PNG receipt. Shared
-    # Chronicles/Tactics code still selects BOTH jobs; mode-specific changes
-    # skip the other browser without losing its required check.
-    runs-on: ubuntu-24.04
-    timeout-minutes: 75
-    steps:
-      - uses: actions/checkout@v7
-        with: {fetch-depth: 2}
-      - uses: ./.github/actions/app-visual-pipeline
-        with: {mode: canonical, chronicles-lane: tactics}
+        with: {mode: canonical, chronicles-lane: app}
