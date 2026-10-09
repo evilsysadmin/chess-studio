@@ -89,5 +89,32 @@ func _initialize() -> void:
 	assert(manual_sprite.animation == &"run_front")
 	game.debug_move_penalty_keeper(0.0, 0.10)
 	assert(manual.velocity == Vector2.ZERO)
+	# Compare real movement against a field player under equal AI orders.
+	# Merely increasing a nominal speed constant would not prove the keeper
+	# actually travels faster when approaching a through-ball or cross.
+	var field_player: Footballer = game.teams[0][1]
+	var keeper_runner: Footballer = game.teams[1][0]
+	var pitch_center := ChessFootballMath.PITCH_RECT.get_center()
+	field_player.global_position = pitch_center + Vector2(410.0, -390.0)
+	keeper_runner.global_position = pitch_center + Vector2(-410.0, -390.0)
+	field_player.velocity = Vector2.ZERO
+	keeper_runner.velocity = Vector2.ZERO
+	field_player.action_lock_seconds = 0.0
+	keeper_runner.action_lock_seconds = 0.0
+	var field_start := field_player.global_position
+	var keeper_start := keeper_runner.global_position
+	for _frame in range(24):
+		field_player.move_ai(1.0 / 60.0, field_start + Vector2.DOWN * 500.0, 0.86)
+		keeper_runner.move_ai(1.0 / 60.0, keeper_start + Vector2.DOWN * 500.0, 0.86)
+	var field_distance := field_player.global_position.distance_to(field_start)
+	var keeper_distance := keeper_runner.global_position.distance_to(keeper_start)
+	print("KEEPER_DISTANCE=%.2f FIELD_DISTANCE=%.2f" % [keeper_distance, field_distance])
+	assert(field_distance > 8.0)
+	assert(keeper_distance > 25.0)
+	assert(keeper_distance > field_distance * 1.40)
+	assert(keeper_runner.velocity.length() > field_player.velocity.length() * 1.40)
+	print("KEEPER_REACTION_SPEED=%.2f FIELD_SPEED=%.2f" % [
+		keeper_runner.velocity.length(), field_player.velocity.length()
+	])
 	print("chess-football keeper motion smoke: OK")
 	quit(0)
