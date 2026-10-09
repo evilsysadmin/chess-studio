@@ -91,50 +91,123 @@ function building(spec, mats, coarse, contentIds, center) {
   root.name = 'swordhaven-building-' + spec.id;
   const [wx, wz] = worldPoint(spec.x, spec.y, center);
   root.position.set(wx, 0, wz);
+
+  const isTemple = spec.emblem === 'sun';
+  const isTavern = spec.emblem === 'mug';
+  const isMagic = spec.emblem === 'crystal';
+  const isForge = spec.emblem === 'swords';
+  const width = isTemple ? 9.0 : 8.1;
+  const depth = isTavern ? 8.2 : 7.1;
+  const height = isTemple ? 6.3 : isTavern ? 5.7 : 5.25;
+  const facadeZ = depth / 2 + 0.10;
   const roof = material(spec.roof);
-  const width = spec.emblem === 'sun' ? 9.0 : 8.1;
-  const depth = spec.emblem === 'mug' ? 8.2 : 7.1;
-  const walls = mesh(root, new THREE.BoxGeometry(width, 5.3, depth), mats.plaster,
-    'timber-and-stone-walls', [0, 2.65, 0], !coarse);
+  const roofRidgeY = height + 1.8;
+  const wallMaterial = isTemple ? mats.stone : mats.plaster;
+  const walls = mesh(root, new THREE.BoxGeometry(width, height, depth), wallMaterial,
+    'timber-and-stone-walls', [0, height / 2, 0], !coarse);
   walls.userData.chroniclesArchitecture = true;
-  mesh(root, new THREE.BoxGeometry(width + 0.5, 0.72, depth + 0.5), mats.stone,
-    'stone-foundations', [0, 0.36, 0]);
+  mesh(root, new THREE.BoxGeometry(width + 0.55, 0.7, depth + 0.6), mats.stone,
+    'stone-foundations', [0, 0.35, 0]);
+  // A proper triangular gable under each pitched roof, not a flat cube roof.
+  const gable = new THREE.Shape();
+  gable.moveTo(-width / 2, 0);
+  gable.lineTo(width / 2, 0);
+  gable.lineTo(0, 1.85);
+  gable.closePath();
+  for (const face of [-1, 1]) {
+    const g = mesh(root, new THREE.ShapeGeometry(gable), wallMaterial,
+      'roof-gable-' + face, [0, height - 0.06, face * facadeZ]);
+    if (face === -1) g.rotation.y = Math.PI;
+  }
   for (const side of [-1, 1]) {
-    const roofHalf = mesh(root, new THREE.BoxGeometry(width * 0.59, 0.24, depth + 0.8),
-      roof, 'pitched-roof-' + side, [side * width * 0.245, 6.0, 0], !coarse);
-    roofHalf.rotation.z = -side * 0.48;
+    const slope = mesh(root, new THREE.BoxGeometry(width * 0.59, 0.26, depth + 0.9),
+      roof, 'pitched-roof-' + side, [side * width * 0.245, height + 0.79, 0], !coarse);
+    slope.rotation.z = -side * 0.48;
   }
-  // Timber-framed facade, porch door and warm window light.
-  for (const x of [-width / 2 + 0.27, width / 2 - 0.27]) {
-    mesh(root, new THREE.BoxGeometry(0.32, 5.2, 0.38), mats.timber,
-      'facade-post', [x, 2.7, depth / 2 + 0.04], !coarse);
+  mesh(root, new THREE.CylinderGeometry(0.14, 0.14, depth + 0.98, 7), mats.timber,
+    'ridge-timber', [0, roofRidgeY - 0.13, 0]).rotation.x = Math.PI / 2;
+  for (const side of [-1, 1]) {
+    const fascia = mesh(root, new THREE.BoxGeometry(0.25, 0.28, depth + 1.1),
+      mats.timber, 'roof-edge-fascia', [side * width * 0.49, height + 0.02, 0]);
+    fascia.rotation.z = side * 0.16;
   }
-  mesh(root, new THREE.BoxGeometry(width, 0.3, 0.38), mats.timber,
-    'facade-beam', [0, 4.65, depth / 2 + 0.06]);
-  mesh(root, new THREE.BoxGeometry(1.9, 3.1, 0.16), mats.timber,
-    'shop-door', [0, 1.57, depth / 2 + 0.14]);
-  for (const x of [-width * 0.32, width * 0.32]) {
-    mesh(root, new THREE.BoxGeometry(1.25, 1.2, 0.13), mats.window,
-      'warm-window', [x, 2.6, depth / 2 + 0.15]);
-    mesh(root, new THREE.BoxGeometry(1.42, 0.14, 0.21), mats.timber,
-      'window-sill', [x, 1.93, depth / 2 + 0.21]);
+  // Repeated timber posts and braces form recognisable half-timbered facades.
+  const beamY = [1.02, height - 0.67];
+  for (const y of beamY) mesh(root, new THREE.BoxGeometry(width, 0.22, 0.23),
+    mats.timber, 'horizontal-facade-beam', [0, y, facadeZ]);
+  for (const x of [-width * 0.48, 0, width * 0.48]) {
+    mesh(root, new THREE.BoxGeometry(0.22, height, 0.27), mats.timber,
+      'vertical-facade-post', [x, height / 2, facadeZ], !coarse);
   }
-  const chimney = mesh(root, new THREE.BoxGeometry(0.9, 2.8, 0.85), mats.stone,
-    'chimney', [width * 0.29, 6.1, -depth * 0.23], !coarse);
-  chimney.userData.chroniclesArchitecture = true;
-  if (spec.emblem === 'sun') {
-    const spire = mesh(root, new THREE.ConeGeometry(1.15, 3.5, coarse ? 6 : 8), roof,
-      'temple-spire', [0, 8.2, -depth * 0.14], !coarse);
-    spire.rotation.y = Math.PI / 4;
+  for (const side of [-1, 1]) {
+    const brace = mesh(root, new THREE.BoxGeometry(0.17, 2.15, 0.23), mats.timber,
+      'diagonal-timber-brace', [side * width * 0.34, height - 1.77, facadeZ + 0.06]);
+    brace.rotation.z = side * 0.55;
   }
-  if (spec.emblem === 'crystal') {
-    mesh(root, new THREE.ConeGeometry(1.2, 2.1, 8), roof, 'magic-turret', [-width / 2 + 1, 7.8, -1.2], !coarse);
+  mesh(root, new THREE.BoxGeometry(1.75, 3.12, 0.16), mats.timber,
+    'shop-door', [0, 1.56, facadeZ + 0.16]);
+  mesh(root, new THREE.SphereGeometry(0.08, 8, 6), mats.gold,
+    'door-handle', [0.58, 1.45, facadeZ + 0.29]);
+  for (const x of [-width * 0.33, width * 0.33]) {
+    const front = facadeZ + 0.16;
+    mesh(root, new THREE.BoxGeometry(1.37, 1.23, 0.11), mats.window,
+      'warm-glass-window', [x, 2.75, front]);
+    for (const dx of [-0.70, 0.70]) mesh(root, new THREE.BoxGeometry(0.10, 1.38, 0.18),
+      mats.timber, 'window-side-frame', [x + dx, 2.75, front + 0.05]);
+    for (const dy of [-0.62, 0, 0.62]) mesh(root, new THREE.BoxGeometry(1.5, 0.10, 0.18),
+      mats.timber, 'window-rail', [x, 2.75 + dy, front + 0.05]);
+    mesh(root, new THREE.BoxGeometry(1.62, 0.15, 0.43), mats.stone,
+      'stone-window-sill', [x, 2.04, front + 0.11]);
+    mesh(root, new THREE.BoxGeometry(1.7, 0.36, 0.65), mats.stone,
+      'flower-window-box', [x, 1.83, front + 0.34]);
+    for (const fx of [-0.49, 0, 0.49]) {
+      mesh(root, new THREE.IcosahedronGeometry(0.22, 0), mats.leaves,
+        'window-box-leaves', [x + fx, 2.13, front + 0.38]);
+      mesh(root, new THREE.IcosahedronGeometry(0.11, 0), mats.flowers,
+        'window-box-flowers', [x + fx + 0.03, 2.3, front + 0.42]);
+    }
+  }
+  mesh(root, new THREE.BoxGeometry(1.05, 2.3, 0.95), mats.stone,
+    'stone-chimney', [width * 0.31, height + 1.04, -depth * 0.25], !coarse);
+  mesh(root, new THREE.BoxGeometry(1.38, 0.22, 1.32), mats.stone,
+    'chimney-cap', [width * 0.31, height + 2.24, -depth * 0.25]);
+
+  // Each hero building has a distinctive readable silhouette.
+  if (isTemple) {
+    mesh(root, new THREE.CylinderGeometry(1.19, 1.38, 3.2, 8), mats.stone,
+      'temple-bell-tower', [0, height + 2.5, -depth * 0.11], !coarse);
+    mesh(root, new THREE.ConeGeometry(1.48, 2.8, 8), roof,
+      'temple-spire', [0, height + 5.5, -depth * 0.11], !coarse);
+    mesh(root, new THREE.TorusGeometry(0.49, 0.10, 8, 20), mats.gold,
+      'temple-rose-window', [0, height - 0.56, facadeZ + 0.14]);
+  } else if (isMagic) {
+    mesh(root, new THREE.CylinderGeometry(1.11, 1.20, 3.35, 8), mats.plaster,
+      'magic-shop-turret', [-width * 0.40, height + 1.62, -depth * 0.28], !coarse);
+    mesh(root, new THREE.ConeGeometry(1.52, 3.5, 8), roof,
+      'magic-turret-roof', [-width * 0.40, height + 5.02, -depth * 0.28], !coarse);
+    mesh(root, new THREE.OctahedronGeometry(0.42, 0), mats.arcane,
+      'arcane-window-lantern', [width * 0.33, height - 0.3, facadeZ + 0.28]);
+  } else if (isTavern) {
+    mesh(root, new THREE.BoxGeometry(5.1, 0.21, 2.05), roof,
+      'tavern-porch-awning', [0, 3.35, facadeZ + 1.07], !coarse);
+    for (const x of [-2.35, 2.35]) mesh(root, new THREE.CylinderGeometry(0.11, 0.14, 3.15, 8),
+      mats.timber, 'porch-timber-support', [x, 1.63, facadeZ + 1.95], !coarse);
+  } else if (isForge) {
+    mesh(root, new THREE.CylinderGeometry(0.52, 0.59, 1.3, 10), mats.stone,
+      'forge-brazier', [-width * 0.40, 0.65, facadeZ + 0.23]);
+    mesh(root, new THREE.SphereGeometry(0.32, 9, 8), mats.embers,
+      'forge-brazier-embers', [-width * 0.40, 1.42, facadeZ + 0.23]);
+  } else {
+    for (const x of [-width * 0.35, width * 0.35]) mesh(root,
+      new THREE.BoxGeometry(0.67, 1.48, 0.22), mats.steel,
+      'armor-display', [x, 1.12, facadeZ + 0.24]);
   }
   const sign = new THREE.Group();
   sign.name = 'swordhaven-interaction-' + spec.id;
   sign.userData.chroniclesContentId = spec.id;
-  sign.position.set(0, 4.0, depth / 2 + 0.5);
-  mesh(sign, new THREE.BoxGeometry(1.7, 1.25, 0.18), mats.timber, 'hanging-sign', [0, 0, 0]);
+  sign.position.set(0, height - 0.33, facadeZ + 0.44);
+  mesh(sign, new THREE.BoxGeometry(1.8, 1.4, 0.16), mats.timber, 'hanging-sign', [0, 0, 0]);
+  mesh(sign, new THREE.BoxGeometry(1.66, 1.26, 0.08), mats.stone, 'sign-inset', [0, 0, 0.1]);
   emblem(sign, spec.emblem, mats);
   root.add(sign);
   return { root, sign, interactive: contentIds.has(spec.id) };
@@ -180,6 +253,10 @@ export function buildSwordhavenScene(scene, { scenePlan = {}, coarsePointer = fa
     stone: material(0x989084), plaster: material(0xd7c2a3),
     timber: material(0x59412f), gold: material(0xd6ae67, { metalness: 0.48 }),
     window: material(0xf8b96e, { emissive: 0x925124, emissiveIntensity: 0.45 }),
+    leaves: material(0x64864c), flowers: material(0xc7756c),
+    arcane: material(0x9576db, { emissive: 0x403b99, emissiveIntensity: 1.1 }),
+    embers: material(0xffa754, { emissive: 0xeb6a20, emissiveIntensity: 1.2 }),
+    steel: material(0x80909a, { metalness: 0.6, roughness: 0.32 }),
   };
   mesh(root, new THREE.BoxGeometry(width * CELL, 0.3, height * CELL),
     mats.grass, 'grass-terrain', [0, -0.2, 0]);
