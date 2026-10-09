@@ -193,6 +193,85 @@ func _initialize() -> void:
 					first_height = screen_height
 				assert(screen_height > 10.0)
 				assert(absf(screen_height / first_height - 1.0) <= 0.075)
+		# Test real 3D sync, not just the static body-scale and tonal helpers.
+		# A running player must keep its projected size and display luminance
+		# while turning through all eight headings, in either camera mode.
+		for heading in [
+			Vector2.RIGHT, Vector2.LEFT, Vector2.UP, Vector2.DOWN,
+			Vector2(1.0, 1.0).normalized(), Vector2(-1.0, 1.0).normalized(),
+			Vector2(1.0, -1.0).normalized(), Vector2(-1.0, -1.0).normalized(),
+		]:
+			for team in match_node.teams:
+				for player in team:
+					player.action_lock_seconds = 0.0
+					player.velocity = heading * player.base_speed
+					player.visual.play("run")
+					player.visual.frame = 3
+					player._sync_facing()
+					player._sync_locomotion(false)
+			presenter.sync_presentation(0.0, camera_mode)
+			var first_run_height := -1.0
+			for team in match_node.teams:
+				for player in team:
+					var key: int = player.get_instance_id()
+					var proxy: Node3D = presenter.player_nodes[key]
+					var sprite: AnimatedSprite3D = presenter.player_sprites[key]
+					var texture := sprite.sprite_frames.get_frame_texture(sprite.animation, sprite.frame)
+					assert(texture is ImageTexture)
+					var pose_height := float((texture as ImageTexture).get_image().get_used_rect().size.y)
+					var world_height := pose_height * sprite.pixel_size * sprite.scale.y
+					var center := proxy.global_position + Vector3.UP * ChessFootball3DPresenter.PLAYER_BASE_Y
+					var camera_up := camera.global_transform.basis.y
+					var top := camera.unproject_position(center + camera_up * world_height * 0.5)
+					var bottom := camera.unproject_position(center - camera_up * world_height * 0.5)
+					var run_height := top.distance_to(bottom)
+					if first_run_height < 0.0:
+						first_run_height = run_height
+					assert(run_height > 10.0)
+					# Running silhouettes change height during their authored stride.
+					assert(absf(run_height / first_run_height - 1.0) <= 0.12)
+					assert(not sprite.shaded)
+					assert(sprite.cast_shadow == GeometryInstance3D.SHADOW_CASTING_SETTING_OFF)
+					var frames := sprite.sprite_frames
+					var reference_brightness := (
+						ChessFootball3DPresenter._animation_luminance(frames, &"run_front")
+						+ ChessFootball3DPresenter._animation_luminance(frames, &"run")
+					) * 0.5
+					var displayed_brightness := (
+						ChessFootball3DPresenter._animation_luminance(frames, sprite.animation)
+						* sprite.modulate.r
+					)
+					assert(reference_brightness > 0.10)
+					assert(absf(displayed_brightness / reference_brightness - 1.0) < 0.065)
+					assert(is_equal_approx(sprite.modulate.r, sprite.modulate.g))
+					assert(is_equal_approx(sprite.modulate.r, sprite.modulate.b))
+					assert(is_equal_approx(sprite.modulate.a, 1.0))
+	# All ten unlit player billboards have the same light response across
+	# camera positions; subtle baked-art brightness differences are balanced
+	# per view, never by forcing skin/kit colors to a global average.
+	for team in match_node.teams:
+		for player in team:
+			var sprite: AnimatedSprite3D = presenter.player_sprites[player.get_instance_id()]
+			assert(not sprite.shaded)
+			assert(sprite.cast_shadow == GeometryInstance3D.SHADOW_CASTING_SETTING_OFF)
+			var frames := sprite.sprite_frames
+			var reference_brightness := (
+				ChessFootball3DPresenter._animation_luminance(frames, &"run_front")
+				+ ChessFootball3DPresenter._animation_luminance(frames, &"run")
+			) * 0.5
+			assert(reference_brightness > 0.10)
+			for name in [
+				&"idle", &"run", &"sprint", &"run_front", &"run_back",
+				&"run_front_diagonal", &"run_back_diagonal",
+				&"sprint_front", &"sprint_back",
+				&"pass", &"shoot", &"tackle", &"celebrate",
+			]:
+				sprite.animation = name
+				var current := ChessFootball3DPresenter._animation_luminance(frames, name)
+				assert(current > 0.10)
+				var gain := presenter._tonal_view_gain(sprite)
+				assert(gain >= 0.88 and gain <= 1.12)
+				assert(absf(gain * current / reference_brightness - 1.0) < 0.065)
 	print("chess-football canonical roster parity smoke: OK")
 	quit(0)
 

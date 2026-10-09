@@ -439,7 +439,11 @@ assert 'install -o root -g root -m 0755 "$source_launcher" "$target_launcher"' i
 assert 'install -o root -g root -m 0755 "$source_runtime_installer" "$target_runtime_installer"' in deploy
 assert 'source_runtime_installer="$repo/scripts/oci_runtime_install.sh"' in deploy
 assert '/bin/bash "$tunnel_connector" --self-test >/dev/null' in deploy
-assert 'docker pull --quiet "$target_image" >/dev/null' in deploy
+# Images may still be publishing when the deploy starts: bounded pull retry.
+assert 'docker pull --quiet "$ref" >/dev/null 2>&1' in deploy
+assert 'local attempts="${CHESS_STUDIO_IMAGE_PULL_ATTEMPTS:-18}"' in deploy
+assert '! pull_immutable_image "$target_image"; then' in deploy
+assert 'if ! pull_immutable_image "$pvp_target_image"; then' in deploy
 assert 'candidate_service="$(slot_service "$candidate_color")"' in deploy
 assert 'candidate_port="$(slot_port "$candidate_color")"' in deploy
 assert 'candidate_pvp_service="$(pvp_service "$candidate_color")"' in deploy
@@ -447,11 +451,11 @@ assert 'candidate_services=("$candidate_service" "$candidate_pvp_service")' in d
 assert 'compose "$sha" up -d --no-build --force-recreate "${candidate_services[@]}"' in deploy
 assert 'attest "$sha" "$candidate_port"' in deploy
 assert 'if candidate_attest && pvp_attest "$candidate_pvp_service" "$target"; then' in deploy
-# Python retirement: on in staging, off in production; when on, only the Go
+# Python retirement: on in staging and production; when on, only the Go
 # sidecar runs, Go proves /api/ready and /api/release, Go mints the owner
 # token, nginx never names a backend_* slot and rollback stays on Go.
 assert 'staging) python_retired="${CHESS_STUDIO_PYTHON_RETIRED:-true}" ;;' in deploy
-assert '*) python_retired="${CHESS_STUDIO_PYTHON_RETIRED:-false}" ;;' in deploy
+assert '*) python_retired="${CHESS_STUDIO_PYTHON_RETIRED:-true}" ;;' in deploy
 assert 'CHESS_STUDIO_PYTHON_RETIRED=true requires CHESS_STUDIO_API_EDGE_MODE=go' in deploy
 assert 'CHESS_STUDIO_PYTHON_RETIRED="$python_retired"' in deploy
 assert compose.count('GO_PYTHON_RETIRED: "${CHESS_STUDIO_PYTHON_RETIRED:-false}"') == 2
@@ -470,7 +474,7 @@ assert 'Bearer $PVP_ATTEST_TOKEN' in go_roster  # expanded inside the container
 assert 'python - ' not in go_roster
 assert 'if [[ "$python_retired" == "true" ]] && ! wait_pvp_browser_attest cors_attest "$port"; then' in deploy
 assert 'exit 84' in deploy
-assert 'if [[ "$python_retired" != "true" ]] && ! docker pull --quiet "$target_image" >/dev/null; then' in deploy
+assert 'if [[ "$python_retired" != "true" ]] && ! pull_immutable_image "$target_image"; then' in deploy
 assert '[[ "${python_retired:-false}" != "true" ]] || rollback_api_mode=go' in deploy
 assert 'render_edge "$previous_color" go "$previous_sha" "$rollback_api_mode"' in deploy
 assert 'if [[ "${python_retired:-false}" != "true" && "${switch_complete:-0}" == "1"' in deploy
@@ -522,7 +526,7 @@ for line in deploy.splitlines():
         assert "api_edge_mode" not in line, line
 assert 'local api_mode="${4:-direct}"' in deploy
 assert "wait_pvp_browser_attest api_edge_attest" in deploy
-assert 'docker pull --quiet "$pvp_target_image"' in deploy
+assert 'pull_immutable_image "$pvp_target_image"' in deploy
 assert 'render_edge "$candidate_color" go' in deploy
 assert 'render_edge "$candidate_color" go "$sha"' in deploy
 assert 'render_edge "$previous_color" go "$previous_sha"' in deploy
@@ -813,7 +817,7 @@ assert 'proxy_set_header Upgrade $http_upgrade;' in edge_renderer
 assert 'proxy_set_header Connection $chess_connection_upgrade;' in edge_renderer
 assert 'parser.add_argument("--pvp-mode", choices=("direct", "go"), default="direct")' in edge_renderer
 assert "OCI_DEPLOY_PHASE name=%s duration_ms=%s" not in deploy
-assert 'docker pull --quiet "$target_image"' in deploy
+assert 'pull_immutable_image "$target_image"' in deploy
 
 # Agent diagnostics are aggregate-only and observational. Never emit raw agent
 # log lines into Actions, and never let diagnostics block an otherwise healthy deploy.
@@ -878,7 +882,8 @@ assert 'scripts/staging_generation.py watch-committed --sha "$DEPLOY_SHA"' in st
 assert "f\"{url('STAGING_API_URL')}/_deploy/committed?probe={attempt}\"" in staging_generation
 assert "body.strip().lower() == sha" in staging_generation
 assert "OCI_DEPLOY_WATCH_IMAGE_PENDING" in deploy_watcher
-assert '["docker", "manifest", "inspect", backend_image_ref(candidate)]' in deploy_watcher
+assert '["docker", "manifest", "inspect", ref]' in deploy_watcher
+assert 'image_available(backend_image_ref(candidate)) and image_available(go_image_ref(candidate))' in deploy_watcher
 assert 'git -C "$repo" ls-remote --exit-code origin refs/heads/main' in deploy
 assert '["sudo", "--non-interactive", DEPLOY_WRAPPER, candidate]' in deploy_watcher
 assert "ENABLE_MARKER.is_symlink()" in deploy_watcher

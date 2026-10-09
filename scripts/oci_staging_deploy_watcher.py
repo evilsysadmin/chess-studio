@@ -37,6 +37,12 @@ BACKEND_IMAGE_PREFIX = os.environ.get(
     "CHESS_STUDIO_BACKEND_IMAGE_PREFIX",
     "ghcr.io/evilsysadmin/chess-studio-backend:oci-",
 ).strip()
+# The Go API image is published after the Python one by Main · backend image,
+# and it is the image the deploy pulls first once Python is retired.
+GO_IMAGE_PREFIX = os.environ.get(
+    "CHESS_STUDIO_GO_IMAGE_PREFIX",
+    "ghcr.io/evilsysadmin/chess-studio-pvp:oci-",
+).strip()
 POLL_SECONDS = 15
 ERROR_BACKOFF_SECONDS = 30
 HTTP_TIMEOUT_SECONDS = 8
@@ -87,15 +93,25 @@ def backend_image_ref(candidate: str) -> str:
     return f"{BACKEND_IMAGE_PREFIX}{candidate}"
 
 
-def backend_image_available(candidate: str) -> bool:
+def go_image_ref(candidate: str) -> str:
+    return f"{GO_IMAGE_PREFIX}{candidate}"
+
+
+def image_available(ref: str) -> bool:
     result = subprocess.run(
-        ["docker", "manifest", "inspect", backend_image_ref(candidate)],
+        ["docker", "manifest", "inspect", ref],
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
         check=False,
         timeout=HTTP_TIMEOUT_SECONDS,
     )
     return result.returncode == 0
+
+
+def backend_image_available(candidate: str) -> bool:
+    # Both images must exist before the deploy wrapper runs: it pulls them and
+    # fails on the first one that is still being published.
+    return image_available(backend_image_ref(candidate)) and image_available(go_image_ref(candidate))
 
 
 def deploy(candidate: str) -> None:
@@ -168,6 +184,8 @@ def self_test() -> None:
     assert DEPLOY_WRAPPER == "/usr/local/sbin/chess-studio-deploy"
     assert BACKEND_IMAGE_PREFIX.endswith(":oci-")
     assert backend_image_ref(sample).endswith(sample)
+    assert GO_IMAGE_PREFIX.endswith(":oci-")
+    assert go_image_ref(sample) == "ghcr.io/evilsysadmin/chess-studio-pvp:oci-" + sample
     assert ENABLE_MARKER == Path("/var/lib/chess-studio/DEPLOY_WATCH_ENABLED")
     source = Path(__file__).read_text(encoding="utf-8")
     tree = ast.parse(source)
@@ -184,7 +202,8 @@ def self_test() -> None:
     assert "refs/heads/" + "main" not in source
     assert "OCI_DEPLOY_WATCH_SUPERSEDED" in source
     assert '["sudo", "--non-interactive", DEPLOY_WRAPPER, candidate]' in source
-    assert '["docker", "manifest", "inspect", backend_image_ref(candidate)]' in source
+    assert '["docker", "manifest", "inspect", ref]' in source
+    assert "image_available(backend_image_ref(candidate)) and image_available(go_image_ref(candidate))" in source
     assert "OCI_DEPLOY_WATCH_IMAGE_PENDING" in source
     assert "ENABLE_MARKER.is_symlink()" in source
     print("OCI zero-cost deploy watcher self-test: OK")

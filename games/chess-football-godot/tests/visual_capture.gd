@@ -21,13 +21,15 @@ func _initialize() -> void:
 	match_node.set_process(false)
 	match_node.set_physics_process(false)
 	# Exact-SHA regression image: five front/back pitch depths in both kits.
+	# Keep every pair fully inside 1280x720, including the nearest-right pair
+	# previously clipped at the touchline; spread clubs apart for readability.
 	# All ten billboards should read as equal-size players even though their
 	# perspective distances and screen positions are deliberately different.
 	for team_id in range(2):
 		for i in range(5):
 			var comparison: Footballer = match_node.teams[team_id][i]
 			comparison.global_position = ChessFootballMath.PITCH_RECT.get_center() + Vector2(
-				(float(i) - 2.0) * 270.0 + (float(team_id) - 0.5) * 65.0,
+				(float(i) - 2.0) * 210.0 + (float(team_id) - 0.5) * 100.0,
 				(float(i) - 2.0) * 260.0,
 			)
 			comparison.action_lock_seconds = 0.0
@@ -40,6 +42,17 @@ func _initialize() -> void:
 	match_node.presentation_3d.camera.look_at(Vector3(0.0, 0.0, -0.85))
 	match_node.presentation_3d.last_camera_mode = "broadcast"
 	match_node.debug_sync_presentation()
+	# QA captures must show *both* kits at all five depths, not crop an edge
+	# player and make the actual perspective comparison ambiguous.
+	var review_width := match_node.get_viewport().get_visible_rect().size.x
+	for team in match_node.teams:
+		for player in team:
+			var proxy: Node3D = match_node.presentation_3d.player_nodes[player.get_instance_id()]
+			var projected: Vector2 = match_node.presentation_3d.camera.unproject_position(
+				proxy.global_position + Vector3.UP * ChessFootball3DPresenter.PLAYER_BASE_Y
+			)
+			assert(projected.x > 55.0 and projected.x < review_width - 55.0,
+				"Perspective QA player clipped at horizontal viewport edge")
 	await _save_capture(match_node, "perspective-parity", "VISUAL_CAPTURE_PERSPECTIVE_PARITY")
 	match_node.debug_prepare_kickoff(0)
 	# Visual contract for new touchline width and off-ball support: put a
@@ -110,6 +123,7 @@ func _initialize() -> void:
 			figure._sync_locomotion(false)
 	match_node.debug_sync_presentation()
 	await _save_capture(match_node, "directional-scale-grid", "VISUAL_CAPTURE_DIRECTIONAL_SCALE_GRID")
+	await _save_capture(match_node, "tonal-parity", "VISUAL_CAPTURE_TONAL_PARITY")
 	# All on-field actions must retain the approved raster identity for BOTH
 	# teams, not briefly turn a player into the old little vector silhouette.
 	var review_actions := ["pass", "shoot", "tackle", "celebrate"]
