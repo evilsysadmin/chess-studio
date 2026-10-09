@@ -40,6 +40,12 @@ func _initialize() -> void:
 	await _save_capture(match_node, "wide-pitch-lanes", "VISUAL_CAPTURE_WIDE_PITCH_LANES")
 	match_node.debug_toggle_camera_mode()
 	match_node.debug_prepare_kickoff(0)
+	# The preceding screenshot uses a top-down tactical camera. Merely
+	# toggling back to broadcast changes the label, not the smoothed 3D
+	# camera immediately: subsequent review PNGs showed only contact shadows.
+	# Move the camera into its intended position before visual QA.
+	match_node.debug_focus_presentation()
+	assert(match_node.presentation_3d.camera.position.y < 12.0)
 	var directions := [
 		Vector2.RIGHT, Vector2.LEFT, Vector2.DOWN, Vector2.UP,
 		Vector2(1.0, 1.0).normalized(), Vector2(-1.0, 1.0).normalized(),
