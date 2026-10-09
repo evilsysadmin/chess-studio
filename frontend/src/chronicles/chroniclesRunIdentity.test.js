@@ -12,6 +12,7 @@ import {
   CHRONICLES_SAVE_CATALOG_KEY,
   chroniclesListSavedRuns,
   chroniclesMergeRemoteSavedRuns,
+  chroniclesSaveCatalogOwner,
   chroniclesSelectedRunIsRemote,
   chroniclesSelectSavedRun,
   chroniclesRenameSavedRun,
@@ -204,6 +205,15 @@ describe('Chronicles shared run identity', () => {
       runId: 'bob-remote', status: 'active', updatedAtMs: 1760000000000,
     }]);
     expect(chroniclesListSavedRuns('first-person').map((save) => save.id)).toEqual(['bob-remote']);
+  });
+
+  it('discards a delayed catalog response when the authenticated owner changes', () => {
+    const alice = chroniclesSaveCatalogOwner();
+    localStorage.setItem('chess-study-auth-username', 'bob');
+    expect(chroniclesMergeRemoteSavedRuns('first-person', [
+      { runId: 'alice-id', currentMapId: 'swordhaven-square', status: 'active' },
+    ], { expectedOwner: alice })).toEqual([]);
+    expect(chroniclesListSavedRuns('first-person')).toEqual([]);
   });
 
   it('never inherits an active expedition across authenticated users', () => {
