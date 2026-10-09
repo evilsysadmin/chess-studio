@@ -46,8 +46,22 @@ func _initialize() -> void:
 		ball.velocity = Vector2.ZERO
 		ball.global_position = Vector2(goal.x + toward_field * 350.0, goal.y + 225.0)
 
+		var real_ai_frames: Dictionary = {}
+		var real_ai_swings: Array[float] = []
 		for _step in range(32):
 			game._update_keeper_ai(keeper, 1.0 / 60.0)
+			presenter.sync_presentation(1.0 / 60.0, "broadcast")
+			var live_sprite: AnimatedSprite3D = presenter.player_sprites[keeper.get_instance_id()]
+			if String(live_sprite.animation).begins_with("run"):
+				real_ai_frames[live_sprite.frame] = true
+				real_ai_swings.append(rad_to_deg(live_sprite.rotation.z))
+		# Previous synthetic frame test could pass while live keeper AI never
+		# sustained any pose changes; demand an actual moving goalkeeper here.
+		assert(real_ai_frames.size() >= 3)
+		assert(not real_ai_swings.is_empty())
+		var min_angle := real_ai_swings.min()
+		var max_angle := real_ai_swings.max()
+		assert(max_angle - min_angle >= 5.0)
 		var travel := keeper.global_position.y - goal.y
 		assert(travel > 22.0 and travel < game.KEEPER_TRACK_MAX_Y + 3.0)
 		assert(keeper.velocity.length() > 15.0)
