@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { home3DFrameReady } from './Home3DReadiness.js';
 import './Home3DLoadingGate.css';
@@ -12,7 +12,10 @@ export default function Home3DLoadingGate({ stageRef, onUseStaticHome }) {
   const onUseStaticHomeRef = useRef(onUseStaticHome);
   onUseStaticHomeRef.current = onUseStaticHome;
 
-  useLayoutEffect(() => {
+  // The stage belongs to a parent host element. Child layout effects can run
+  // before React attaches that parent's ref; passive effects run after commit.
+  // The portal already masks the viewport from the first paint.
+  useEffect(() => {
     const stage = stageRef.current;
     if (!stage) return undefined;
     let cancelled = false;
