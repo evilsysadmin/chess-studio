@@ -120,6 +120,7 @@ function runtimeCheckpointFlags(state) {
   const direction = integerOrNull(source.direction, 0, 3);
   const turns = integerOrNull(source.turns);
   const round = integerOrNull(source.round);
+  const explorationEnemySteps = integerOrNull(source.explorationEnemySteps);
   const phase = shortStringOrNull(source.phase, 32);
   const turnPhase = shortStringOrNull(source.turnPhase, 32);
 
@@ -128,6 +129,7 @@ function runtimeCheckpointFlags(state) {
   if (direction !== null) flags[runtimeKey('direction')] = direction;
   if (turns !== null) flags[runtimeKey('turns')] = turns;
   if (round !== null) flags[runtimeKey('round')] = round;
+  if (explorationEnemySteps !== null) flags[runtimeKey('explorationEnemySteps')] = explorationEnemySteps;
   if (phase !== null) flags[runtimeKey('phase')] = phase;
   if (turnPhase !== null) flags[runtimeKey('turnPhase')] = turnPhase;
   const initiative = normalizedInitiative(source.initiative);
@@ -186,6 +188,7 @@ function applyRuntimeCheckpoint(state, flags) {
   const direction = integerOrNull(flags[runtimeKey('direction')], 0, 3);
   const turns = integerOrNull(flags[runtimeKey('turns')]);
   const round = integerOrNull(flags[runtimeKey('round')]);
+  const explorationEnemySteps = integerOrNull(flags[runtimeKey('explorationEnemySteps')]);
   const phase = shortStringOrNull(flags[runtimeKey('phase')], 32);
   const turnPhase = shortStringOrNull(flags[runtimeKey('turnPhase')], 32);
 
@@ -197,6 +200,7 @@ function applyRuntimeCheckpoint(state, flags) {
   if (direction !== null) next.direction = direction;
   if (turns !== null) next.turns = turns;
   if (round !== null) next.round = round;
+  if (explorationEnemySteps !== null) next.explorationEnemySteps = explorationEnemySteps;
   if (phase !== null) next.phase = phase;
   if (turnPhase !== null) next.turnPhase = turnPhase;
   const serializedInitiative = flags[runtimeKey('initiative')];

@@ -21,14 +21,94 @@ function tacticsState(overrides = {}) {
 }
 
 describe('Chronicles Tactics turn-based combat mode', () => {
-  it('keeps free exploration outside enemy engagement range', () => {
+  it('paces enemy exploration activity without turning every player cell into a creature turn', () => {
     const initial = tacticsState();
-    const explorationStep = { ...initial, x: 1, y: 4, turns: 1, message: 'Exploración.' };
+    const pawn = chroniclesActiveEnemies(initial).find((enemy) => enemy.id === 'corrupted-pawn');
+    const before = chroniclesRuntimeEnemyPosition(initial, pawn);
+
+    const first = chroniclesTacticsResolvePlayerAction(initial, {
+      ...initial,
+      x: 1,
+      y: 4,
+      message: 'Primer paso.',
+    });
+    const second = chroniclesTacticsResolvePlayerAction(first, {
+      ...first,
+      x: 1,
+      y: 3,
+      message: 'Segundo paso.',
+    });
+    const third = chroniclesTacticsResolvePlayerAction(second, {
+      ...second,
+      x: 2,
+      y: 3,
+      message: 'Tercer paso.',
+    });
+    const after = chroniclesRuntimeEnemyPosition(third, pawn);
+
+    expect(first.explorationEnemySteps).toBe(1);
+    expect(second.explorationEnemySteps).toBe(2);
+    expect(chroniclesRuntimeEnemyPosition(first, pawn)).toEqual(before);
+    expect(chroniclesRuntimeEnemyPosition(second, pawn)).toEqual(before);
+    expect(third.explorationEnemySteps).toBe(3);
+    expect(after).not.toEqual(before);
+    expect(Math.abs(after.x - before.x) + Math.abs(after.y - before.y)).toBe(1);
+    expect(third.initiative ?? null).toBeNull();
+    expect(third.enemyTurnEvents).toEqual([]);
+    expect(third.party.map((member) => member.hp)).toEqual(initial.party.map((member) => member.hp));
+  });
+
+  it('does not advance exploration enemies for a turn-in-place action', () => {
+    const initial = tacticsState();
+    const turned = {
+      ...initial,
+      direction: (initial.direction + 1) % 4,
+      turns: initial.turns + 1,
+      message: 'Giro.',
+    };
+    const pawn = chroniclesActiveEnemies(initial).find((enemy) => enemy.id === 'corrupted-pawn');
+
+    const resolved = chroniclesTacticsResolvePlayerAction(initial, turned);
+
+    expect(resolved).toBe(turned);
+    expect(chroniclesRuntimeEnemyPosition(resolved, pawn)).toEqual(
+      chroniclesRuntimeEnemyPosition(initial, pawn),
+    );
+    expect(resolved.initiative ?? null).toBeNull();
+  });
+
+  it('starts initiative when an exploration step lets an enemy close into contact', () => {
+    const initial = tacticsState({
+      x: 1,
+      explorationEnemySteps: 2,
+      y: 5,
+      sigilAwake: true,
+      enemyHp: 0,
+      jailerHp: 0,
+      scavengerHp: 0,
+      spectralBishopHp: 4,
+      enemyPositions: {
+        'spectral-bishop': { x: 1, y: 1 },
+      },
+    });
+    const step = {
+      ...initial,
+      x: 1,
+      y: 4,
+      turns: initial.turns + 1,
+      message: 'Avance prudente.',
+    };
+    const hpBefore = initial.party.map((member) => member.hp);
 
     expect(chroniclesTacticsCombatActive(initial)).toBe(false);
-    const resolved = chroniclesTacticsResolvePlayerAction(initial, explorationStep);
-    expect(resolved).toBe(explorationStep);
-    expect(resolved.initiative ?? null).toBeNull();
+    expect(chroniclesTacticsCombatActive(step)).toBe(false);
+
+    const resolved = chroniclesTacticsResolvePlayerAction(initial, step, { random: () => 0 });
+
+    expect(chroniclesRuntimeEnemyPosition(resolved, chroniclesActiveEnemies(resolved)[0])).toEqual({ x: 1, y: 2 });
+    expect(resolved.phase).toBe('combat');
+    expect(resolved.initiative?.order.some((actor) => actor.kind === 'enemy')).toBe(true);
+    expect(resolved.party.map((member) => member.hp)).toEqual(hpBefore);
     expect(resolved.enemyTurnEvents).toEqual([]);
   });
 

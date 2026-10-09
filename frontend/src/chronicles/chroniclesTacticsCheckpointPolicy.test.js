@@ -12,11 +12,19 @@ describe('Chronicles Tactics checkpoint policy', () => {
       x: base.x + 2,
       y: base.y - 1,
       direction: 3,
+      explorationEnemySteps: 2,
     })).toBe(original);
 
     expect(chroniclesTacticsCheckpointFingerprint({
       ...base,
       galleryLeverPulled: true,
+    })).not.toBe(original);
+
+    const enemyId = 'fork-stalker';
+    expect(chroniclesTacticsCheckpointFingerprint({
+      ...base,
+      explorationEnemySteps: 3,
+      enemyPositions: { [enemyId]: { x: 4, y: 5 } },
     })).not.toBe(original);
   });
 

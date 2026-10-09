@@ -9,6 +9,7 @@ import {
   chroniclesStartInitiativeCombat,
 } from './chronicles/chroniclesInitiative.js';
 import { chroniclesRuntimeEnemyPosition } from './chroniclesOfMatthiasTurns.js';
+import { chroniclesAdvanceExplorationEnemies } from './chronicles/chroniclesExplorationEnemyActivity.js';
 
 function manhattanDistance(left, right) {
   return Math.abs(left.x - right.x) + Math.abs(left.y - right.y);
@@ -145,7 +146,10 @@ export function chroniclesTacticsResolvePlayerAction(
 ) {
   if (!previous || !next) return previous || next;
   if (previous?.mapId && next?.mapId && previous.mapId !== next.mapId) {
-    return chroniclesTacticsPrepareExplorationSpawn(next);
+    return chroniclesTacticsPrepareExplorationSpawn({
+      ...next,
+      explorationEnemySteps: 0,
+    });
   }
   if (previous.phase === 'escaped' || previous.phase === 'defeated') return previous;
 
@@ -155,18 +159,24 @@ export function chroniclesTacticsResolvePlayerAction(
   }
 
   const alreadyEngaged = chroniclesTacticsCombatActive(previous);
+  const movedIntoEngagement = chroniclesTacticsCombatActive(next);
+  const explorationNext = (!forceCombat && !alreadyEngaged && !movedIntoEngagement)
+    ? chroniclesAdvanceExplorationEnemies(previous, next)
+    : next;
   const shouldStartCombat = forceCombat
     || alreadyEngaged
-    || chroniclesTacticsCombatActive(next);
-  if (!shouldStartCombat) return next;
+    || chroniclesTacticsCombatActive(explorationNext);
+  if (!shouldStartCombat) return explorationNext;
 
   // Entering combat is a boundary, not a free attack. A move that newly enters
   // engagement completes before initiative starts; an already-engaged legacy
   // state or an explicit ranged attack rolls before committing the action.
-  const entryState = (forceCombat || alreadyEngaged) ? previous : next;
+  // Enemies may take one exploration step first; if that step closes contact,
+  // initiative starts immediately and no exploration damage is dealt.
+  const entryState = (forceCombat || alreadyEngaged) ? previous : explorationNext;
   const activeEnemies = chroniclesActiveEnemies(entryState);
   const roomEnemyIds = activeEnemies.map((enemy) => enemy.id);
-  return chroniclesStartInitiativeCombat(
+  const started = chroniclesStartInitiativeCombat(
     entryState,
     activeEnemies,
     {
@@ -179,4 +189,16 @@ export function chroniclesTacticsResolvePlayerAction(
       random,
     },
   );
+  if (
+    started !== entryState
+    && entryState === explorationNext
+    && typeof explorationNext.message === 'string'
+    && explorationNext.message
+  ) {
+    return {
+      ...started,
+      message: `${explorationNext.message} ${started.message}`,
+    };
+  }
+  return started;
 }
