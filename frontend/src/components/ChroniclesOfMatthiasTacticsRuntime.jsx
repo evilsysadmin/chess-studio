@@ -69,7 +69,6 @@ import {
   chroniclesTacticsMoveAvailability,
 } from '../chronicles/chroniclesTacticsPresentation.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
-import { shouldHandleChroniclesBack } from './useChroniclesLandscape.js';
 import ChroniclesTacticsPartyHud from './ChroniclesTacticsPartyHud.jsx';
 import './ChroniclesOfMatthiasTactics.css';
 import './ChroniclesOfMatthiasProgression.css';
@@ -125,9 +124,7 @@ export default function ChroniclesOfMatthiasTactics({
   onRestartRun = null,
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
-  useEscapeToClose((event) => {
-    if (shouldHandleChroniclesBack(event)) setMenuOpen((open) => !open);
-  }, { contextMenu: false });
+  useEscapeToClose(() => setMenuOpen((open) => !open), { contextMenu: false });
   const hostRef = useRef(null);
   const engineRef = useRef(null);
   const [progression, setProgression] = useState(() => loadChroniclesProgression());
