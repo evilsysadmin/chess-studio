@@ -143,6 +143,7 @@ func _initialize() -> void:
 		match_node.teams[0][0].get_instance_id()
 	].frame
 	await _save_capture(match_node, "keepers-stride-early", "VISUAL_CAPTURE_KEEPERS_STRIDE_EARLY")
+	await _save_keeper_detail(match_node, "keepers-stride-detail-early", "VISUAL_CAPTURE_KEEPERS_STRIDE_DETAIL_EARLY")
 	for tick in range(24):
 		for team_id in range(2):
 			match_node.teams[team_id][0].visual.frame = 0
@@ -152,6 +153,7 @@ func _initialize() -> void:
 	].frame
 	assert(late_frame != early_frame, "Keeper pose unchanged across the stride")
 	await _save_capture(match_node, "keepers-stride-late", "VISUAL_CAPTURE_KEEPERS_STRIDE_LATE")
+	await _save_keeper_detail(match_node, "keepers-stride-detail-late", "VISUAL_CAPTURE_KEEPERS_STRIDE_DETAIL_LATE")
 	for team_index in range(2):
 		for actor_index in range(4):
 			var actor: Footballer = match_node.teams[team_index][actor_index + 1]
@@ -508,6 +510,28 @@ func _save_texture_preview(source_path: String, filename: String, marker: String
 	assert(error == OK, "No se pudo escribir preview de atlas")
 	print("%s=%s" % [marker, ProjectSettings.globalize_path(path)])
 	await process_frame
+
+# Detail crops are taken from the same *actual* Godot Web renderer frame,
+# not from an idealized atlas or a synthetic animation preview.
+func _save_keeper_detail(match_node: Node, filename: String, marker: String) -> void:
+	await process_frame
+	var viewport := match_node.get_viewport()
+	var image := viewport.get_texture().get_image()
+	var current_camera := viewport.get_camera_3d()
+	assert(current_camera != null)
+	var keeper: Footballer = match_node.teams[0][0]
+	var sprite: AnimatedSprite3D = match_node.presentation_3d.player_sprites[keeper.get_instance_id()]
+	var screen_point := current_camera.unproject_position(sprite.global_position)
+	var region_width := 116
+	var region_height := 144
+	var x := clampi(int(screen_point.x) - region_width / 2, 0, image.get_width() - region_width)
+	var y := clampi(int(screen_point.y) - region_height / 2, 0, image.get_height() - region_height)
+	var closeup := image.get_region(Rect2i(x, y, region_width, region_height))
+	closeup.resize(region_width * 4, region_height * 4, Image.INTERPOLATE_NEAREST)
+	var path := "user://chess-football-%s.png" % filename
+	assert(closeup.save_png(path) == OK)
+	print("%s=%s" % [marker, ProjectSettings.globalize_path(path)])
+
 
 func _save_capture(match_node: Node, filename: String, marker: String) -> void:
 	await process_frame
