@@ -202,6 +202,7 @@ def _legacy_swordhaven_return_allowed(run: dict[str, Any], source_id: str, targe
         source_id == "crypt-eight-squares"
         and target_id == "swordhaven-square"
         and (run.get("worldFlags") or {}).get("swordhavenArrived") is True
+        and (run.get("worldFlags") or {}).get("campaignRouteV1") is not True
     )
 
 

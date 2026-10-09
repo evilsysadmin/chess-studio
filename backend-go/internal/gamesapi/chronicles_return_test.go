@@ -17,6 +17,7 @@ func TestLegacySwordhavenReturnOnlyFromPersistedArrival(t *testing.T) {
 		{"legacy crypt", bson.D{}, "crypt-eight-squares", "swordhaven-square", false},
 		{"unpersisted", bson.D{{Key: "worldFlags", Value: bson.D{}}}, "crypt-eight-squares", "swordhaven-square", false},
 		{"forged string", bson.D{{Key: "worldFlags", Value: bson.D{{Key: "swordhavenArrived", Value: "true"}}}}, "crypt-eight-squares", "swordhaven-square", false},
+		{"campaign must return via road", bson.D{{Key: "worldFlags", Value: bson.D{{Key: "swordhavenArrived", Value: true}, {Key: "campaignRouteV1", Value: true}}}}, "crypt-eight-squares", "swordhaven-square", false},
 		{"wrong origin", bson.D{{Key: "worldFlags", Value: bson.D{{Key: "swordhavenArrived", Value: true}}}}, "gallery-of-forks", "swordhaven-square", false},
 		{"wrong target", bson.D{{Key: "worldFlags", Value: bson.D{{Key: "swordhavenArrived", Value: true}}}}, "crypt-eight-squares", "ash-vault", false},
 	}

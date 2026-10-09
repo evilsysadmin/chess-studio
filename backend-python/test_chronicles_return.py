@@ -10,6 +10,7 @@ def test_legacy_swordhaven_return_requires_persisted_provenance():
         ({}, "crypt-eight-squares", "swordhaven-square"),
         ({"worldFlags": {"swordhavenArrived": "true"}}, "crypt-eight-squares", "swordhaven-square"),
         ({"worldFlags": {"swordhavenArrived": False}}, "crypt-eight-squares", "swordhaven-square"),
+        ({"worldFlags": {"swordhavenArrived": True, "campaignRouteV1": True}}, "crypt-eight-squares", "swordhaven-square"),
         (arrived, "gallery-of-forks", "swordhaven-square"),
         (arrived, "crypt-eight-squares", "ash-vault"),
     ]:
