@@ -947,13 +947,13 @@ def self_test() -> None:
     bootstrap_line = next(line for line in NONVISUAL_CHRONICLES_SAVE_BOOTSTRAP_LINES if "resumeRunId = " in line)
     def test_diff(_base, _head, path):
         line = tactics_line if path == TACTICS_REMOTE_RUN_SHELL else bootstrap_line
-        return f"@@ -1,0 +1 @@\\n+{line}\\n"
+        return f"@@ -1,0 +1 @@\n+{line}\n"
     with patch.object(sys.modules[__name__], "_git_diff_text", side_effect=test_diff):
         assert normalize([TACTICS_REMOTE_RUN_SHELL, CHRONICLES_BOOTSTRAP_OWNER], base_sha="base", head_sha="head") == []
     def visual_diff(_base, _head, path):
         if path == TACTICS_REMOTE_RUN_SHELL:
-            return f"@@ -1,0 +1 @@\\n+{tactics_line}\\n+<div className='new-scene' />\\n"
-        return f"@@ -1,0 +1 @@\\n+{bootstrap_line}\\n+const newMap = 'changed';\\n"
+            return f"@@ -1,0 +1 @@\n+{tactics_line}\n+<div className='new-scene' />\n"
+        return f"@@ -1,0 +1 @@\n+{bootstrap_line}\n+const newMap = 'changed';\n"
     with patch.object(sys.modules[__name__], "_git_diff_text", side_effect=visual_diff):
         assert normalize([TACTICS_REMOTE_RUN_SHELL, CHRONICLES_BOOTSTRAP_OWNER], base_sha="base", head_sha="head") == [
             TACTICS_REMOTE_RUN_SHELL, CHRONICLES_BOOTSTRAP_OWNER,
