@@ -1,4 +1,4 @@
-name: App · visual artifact
+name: Tactics · visual artifact
 on:
   pull_request:
     paths:
@@ -24,10 +24,11 @@ concurrency:
 permissions: {contents: read}
 jobs:
   capture:
+    name: Tactics · capture
     runs-on: ubuntu-24.04
     timeout-minutes: 75
     steps:
       - uses: actions/checkout@v7
         with: {fetch-depth: 2}
       - uses: ./.github/actions/app-visual-pipeline
-        with: {mode: canonical, chronicles-lane: app}
+        with: {mode: canonical, chronicles-lane: tactics}

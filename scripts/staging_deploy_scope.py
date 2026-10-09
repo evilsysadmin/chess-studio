@@ -31,6 +31,8 @@ NON_RUNTIME_EXACT = frozenset({
     ".github/workflows/observability-live.yml",
     ".github/workflows/security-llm-lab.yml",
     ".github/workflows/app-visual-artifact.yml",
+    ".github/workflows/chronicles-visual-artifact.yml",
+    ".github/workflows/tactics-visual-artifact.yml",
     "scripts/quality_scope.py",
     "scripts/browser_quality_scope.py",
     "scripts/blender_required_scope.py",
@@ -151,6 +153,8 @@ def self_test() -> None:
         "scripts/app_visual_producer_scope.py",
         ".github/actions/app-visual-pipeline/action.yml",
         ".github/workflows/app-visual-artifact.yml",
+        ".github/workflows/chronicles-visual-artifact.yml",
+        ".github/workflows/tactics-visual-artifact.yml",
         "scripts/war_room_visual_freeze_check.mjs",
     ]) == (False, "non-runtime-only")
     assert deploy_required_for_paths(["frontend/src/components/GameScreen.jsx"])[0]

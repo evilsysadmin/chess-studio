@@ -101,7 +101,9 @@ Render staging está retirado del plano de despliegue: el **release canónico y 
 
 | Workflow | Responsabilidad |
 | --- | --- |
-| `app-visual-artifact.yml` | Evidencia visual path-aware. El trigger server-side se limita a cambios que pueden producir píxeles de producto; tooling de clasificación/orquestación visual se acredita en Quality y no despierta capturas por sí solo. `warroom-core` ejecuta primero un canario móvil barato y fail-closed de la variante activa/default; después captura los perfiles desktop 1440×900 en una sesión autenticada compartida y serial, cambiando de variante dentro de la misma partida para pagar el bootstrap pesado una sola vez; por último drena los perfiles móviles restantes con 2 workers. |
+| `app-visual-artifact.yml` | Capturas visuales generales de la app (Home, War Room, entrenamiento, PvP, etc.). El productor excluye Chronicles y Tactics, y omite el navegador cuando los cambios no afectan a estas superficies. Misma cobertura fail-closed para archivos comunes o desconocidos. |
+| `chronicles-visual-artifact.yml` | Gate visual independiente para **Chronicles primera persona** (gameplay y avatars): PNG propio `chronicles-visual-*`, runners/SwiftShader aislados, controles desktop/móvil y ningún test de Tactics. |
+| `tactics-visual-artifact.yml` | Gate visual independiente para **Tactics**: PNG propio `tactics-visual-*`, runner/SwiftShader aislado y ningún test de Chronicles primera persona. Los cambios compartidos activan ambos según el clasificador de propietarios. |
 | `e2e-full.yml` | Sweep completo Chromium/Firefox/WebKit mensual/manual e informativo. Ya no duplica PR: la matriz requerida y path-aware War Room/Matthias vive en `cicd.yml`. |
 | `home-blender-v2-preview.yml` | Evidencia PNG Home path-aware en PR con envelope de revisión barato; los renders manuales conservan calidad alta. |
 | `home-blender-v2-runtime.yml` | Exporta/publica el GLB Home sólo en `main` o manual, luego ejecuta su gate browser y promoción. No repite el export runtime en PR: la revisión visual PR pertenece al preview PNG. |
