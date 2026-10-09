@@ -90,6 +90,7 @@ const KEY_ACTIONS = Object.freeze({
   ArrowDown: 'backward', s: 'backward', S: 'backward',
   ArrowLeft: 'turn-left', a: 'turn-left', A: 'turn-left',
   ArrowRight: 'turn-right', d: 'turn-right', D: 'turn-right',
+  q: 'strafe-left', Q: 'strafe-left', e: 'strafe-right', E: 'strafe-right',
 });
 
 const FIRST_PERSON_RUN_SCOPE = 'first-person';
@@ -690,7 +691,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
         }
         return;
       }
-      if (event.key === 'e' || event.key === 'E') {
+      if (event.key === 'f' || event.key === 'F') {
         if (chroniclesContextualContentAction(current)) {
           event.preventDefault();
           interactWithContext();
@@ -968,9 +969,10 @@ export default function ChroniclesOfMatthias({ onExit }) {
                 <span><kbd>W</kbd>/<kbd>↑</kbd> avanzar</span>
                 <span><kbd>S</kbd>/<kbd>↓</kbd> retroceder</span>
                 <span><kbd>A</kbd><kbd>D</kbd> girar</span>
+                <span><kbd>Q</kbd>/<kbd>E</kbd> desplazamiento lateral</span>
                 <span><kbd>1</kbd>–<kbd>4</kbd> pieza</span>
                 <span><kbd>ESPACIO</kbd> atacar</span>
-                <span><kbd>E</kbd> usar/recoger</span>
+                <span><kbd>F</kbd> usar/recoger</span>
                 <span><kbd>M</kbd> mapa</span>
               </div>
             </>
