@@ -8,6 +8,7 @@ import {
   ensureChroniclesRun,
   finishChroniclesRun,
   renewChroniclesRun,
+  chroniclesRunEntryMapId,
 } from './chroniclesRunIdentity.js';
 
 describe('Chronicles shared run identity', () => {
@@ -29,6 +30,30 @@ describe('Chronicles shared run identity', () => {
       owner: 'alice',
       ended: false,
     });
+  });
+
+  it('starts fresh first-person expeditions in Swordhaven and shares the map identity', () => {
+    const id = ensureChroniclesRun('first-person');
+    expect(chroniclesRunEntryMapId('first-person')).toBe('swordhaven-square');
+    expect(ensureChroniclesRun('tactics')).toBe(id);
+    expect(chroniclesRunEntryMapId('tactics')).toBe('swordhaven-square');
+    expect(JSON.parse(localStorage.getItem(CHRONICLES_RUN_STORAGE_KEY)))
+      .toMatchObject({ id, entryMapId: 'swordhaven-square' });
+  });
+
+  it('keeps fresh Tactics-first expeditions on the dungeon route for both adapters', () => {
+    const id = ensureChroniclesRun('tactics');
+    expect(chroniclesRunEntryMapId('tactics')).toBeNull();
+    expect(ensureChroniclesRun('first-person')).toBe(id);
+    expect(chroniclesRunEntryMapId('first-person')).toBeNull();
+  });
+
+  it('preserves legacy crypt run identity and server idempotency fingerprint', () => {
+    localStorage.setItem(CHRONICLES_RUN_STORAGE_KEY, JSON.stringify({
+      id: 'legacy-active', owner: 'alice', ended: false,
+    }));
+    expect(ensureChroniclesRun('first-person')).toBe('legacy-active');
+    expect(chroniclesRunEntryMapId('first-person')).toBeNull();
   });
 
   it('migrates the active legacy identity from the adapter entered first', () => {

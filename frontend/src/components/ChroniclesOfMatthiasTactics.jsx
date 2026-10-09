@@ -3,6 +3,7 @@ import {
   chroniclesClearRuntimeMapDefinitions,
 } from '../chronicles/chroniclesMapCatalog.js';
 import { chroniclesDeployedPartyLevel } from '../chronicles/chroniclesDifficultyPolicy.js';
+import { chroniclesRunEntryMapId } from '../chronicles/chroniclesRunIdentity.js';
 import {
   CHRONICLES_BOOTSTRAP_ERROR_CODES,
   chroniclesBootstrapTacticsWorld,
@@ -133,6 +134,7 @@ export default function ChroniclesOfMatthiasTactics({ onExit }) {
     void loadChroniclesTacticsRenderer().catch(() => {});
 
     chroniclesBootstrapTacticsWorld({
+      mapId: chroniclesRunEntryMapId('tactics'),
       signal: controller.signal,
       operationId,
       partyLevel: chroniclesDeployedPartyLevel(progression),

@@ -775,10 +775,20 @@ export async function openMoreGameModes(page) {
   return details;
 }
 
-export async function confirmChroniclesCharacterSetup(page) {
+export async function confirmChroniclesCharacterSetup(page, { newTown = false } = {}) {
   const setup = page.locator('[data-chronicles-character-setup]');
   await expect(setup).toBeVisible({ timeout: 10_000 });
 
+  // Existing crypt regression tests preserve their server's creation fingerprint.
+  // Explicit newTown tests exercise a fresh expedition instead.
+  if (!newTown) {
+    await page.evaluate(() => {
+      const key = 'chess-study-chronicles-run-v1';
+      if (localStorage.getItem(key)) return;
+      const owner = (localStorage.getItem('chess-study-auth-username') || 'e2e').trim().toLowerCase();
+      localStorage.setItem(key, JSON.stringify({ id: 'e2e-existing-crypt-run', owner, ended: false }));
+    });
+  }
   const canonical = setup.getByRole('button', { name: /Entrar con grupo canónico|Volver al grupo canónico/ });
   await expect(canonical).toBeVisible();
   await canonical.click();

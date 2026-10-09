@@ -45,7 +45,11 @@ function readStoredRun(storageKey) {
     if (!parsed || typeof parsed.id !== 'string' || !parsed.id.trim()) return null;
     const owner = String(parsed.owner || '').trim().toLowerCase();
     if (owner !== currentOwner()) return null;
-    return { id: parsed.id.trim(), owner, ended: Boolean(parsed.ended) };
+    // Saved runs without an entry preference remain on their original server route.
+  const entryMapId = typeof parsed.entryMapId === 'string'
+    && /^[a-z0-9-]{1,64}$/.test(parsed.entryMapId)
+    ? parsed.entryMapId : null;
+  return { id: parsed.id.trim(), owner, ended: Boolean(parsed.ended), entryMapId };
   } catch {
     return null;
   }
@@ -78,9 +82,19 @@ function readRunState(scope) {
 
 export function beginChroniclesRun(scope) {
   legacyStorageKeyFor(scope);
-  const run = { id: createRunId(), owner: currentOwner(), ended: false };
+  // New first-person expeditions start in Swordhaven; Tactics keeps its
+  // dungeon route. The first adapter fixes the map choice for both adapters.
+  const run = {
+    id: createRunId(), owner: currentOwner(), ended: false,
+    entryMapId: scope === 'first-person' ? 'swordhaven-square' : null,
+  };
   writeRunState(run);
   return run.id;
+}
+
+export function chroniclesRunEntryMapId(scope) {
+  const run = readRunState(scope);
+  return run && !run.ended ? run.entryMapId : null;
 }
 
 export function ensureChroniclesRun(scope) {
