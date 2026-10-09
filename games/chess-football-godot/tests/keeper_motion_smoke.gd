@@ -61,6 +61,20 @@ func _initialize() -> void:
 		assert(rendered.get_size() == Vector2(128.0, 144.0))
 		print("KEEPER_AI_TEAM=%d TRAVEL_Y=%.2f VISUAL=%s" % [team_id, travel, sprite.animation])
 
+	# Regression for AI getting permanently bypassed after an automatic save:
+	# while a keeper holds the ball the player can distribute manually, but
+	# after releasing it we must hand control back to an outfielder.
+	var hand_keeper: Footballer = game.teams[0][0]
+	game._select_player(hand_keeper)
+	ball.attach_to(hand_keeper)
+	game._restore_outfield_control_after_keeper_release()
+	assert(game.controlled == hand_keeper)
+	ball.release(Vector2.RIGHT, 360.0)
+	game._restore_outfield_control_after_keeper_release()
+	assert(game.controlled != hand_keeper)
+	assert(game.controlled.role != "keeper")
+	assert(game.controlled.team_id == 0)
+
 	# Manual penalty shuffle previously moved coordinates but forced ZERO
 	# velocity, so the goalkeeper appeared to stand still while sliding.
 	var manual: Footballer = game.teams[0][0]
