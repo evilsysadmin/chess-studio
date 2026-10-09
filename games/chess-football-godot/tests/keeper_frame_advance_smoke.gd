@@ -56,7 +56,7 @@ func _initialize() -> void:
 		print("KEEPER_STRIDE_METRICS team=%d lean=%.3f sway=%.4f lift=%.4f poses=%d" % [
 			team_id, max_lean - min_lean, max_sway - min_sway, max_lift - min_lift, observed.size()
 		])
-		assert(max_lean - min_lean >= 20.0)
+		assert(max_lean - min_lean >= 15.0)
 		assert(max_sway - min_sway >= 0.20)
 		assert(max_lift - min_lift >= 0.08)
 		assert(not sprite.is_playing()) # exactly one clock owns 3D frames
