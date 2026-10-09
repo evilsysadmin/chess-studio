@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import re
 import shutil
@@ -293,6 +294,7 @@ def export_atlas(weapon: str, source: Path, out_root: Path, *, cell: int, cols: 
     return {
         "weapon": weapon,
         "source": source.name,
+        "sourceSha256": hashlib.file_digest(source.open("rb"), "sha256").hexdigest(),
         "sourceSize": list(source_size),
         "normalizedFromGeneratedSource": normalized_from_source,
         "atlasSize": list(atlas.size),
