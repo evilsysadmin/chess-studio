@@ -195,6 +195,21 @@ jobs:
             exit 1
           fi
           grep -q 'chess-football keeper motion smoke: OK' "$log"
+      - name: Keeper frame advance in real 3D runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          godot="$GITHUB_WORKSPACE/.godot-ci/$GODOT_VERSION/godot"
+          log="$RUNNER_TEMP/chess-football-keeper-frame-advance.log"
+          set +e
+          timeout 30s "$godot" --headless --quit-after 360 --path games/chess-football-godot --script res://tests/keeper_frame_advance_smoke.gd 2>&1 | tee "$log"
+          status=${PIPESTATUS[0]}
+          set -e
+          if [[ "$status" -ne 0 ]] || grep -Eq 'SCRIPT ERROR:|Assertion failed|ERROR: Failed to load script|Parse Error:' "$log"; then
+            echo '::error::Football goalkeeper 3D frame progression failed.'
+            exit 1
+          fi
+          grep -q 'chess-football keeper frame-advance smoke: OK' "$log"
       - name: Canonical 3D roster parity smoke
         shell: bash
         run: |
@@ -243,6 +258,8 @@ jobs:
           canonical_actions="$(sed -n 's/^VISUAL_CAPTURE_CANONICAL_ACTIONS=//p' "$log" | tail -1)"
           keepers_front="$(sed -n 's/^VISUAL_CAPTURE_KEEPERS_FRONT=//p' "$log" | tail -1)"
           keepers_diagonal="$(sed -n 's/^VISUAL_CAPTURE_KEEPERS_DIAGONAL=//p' "$log" | tail -1)"
+          keepers_stride_early="$(sed -n 's/^VISUAL_CAPTURE_KEEPERS_STRIDE_EARLY=//p' "$log" | tail -1)"
+          keepers_stride_late="$(sed -n 's/^VISUAL_CAPTURE_KEEPERS_STRIDE_LATE=//p' "$log" | tail -1)"
           dribble="$(sed -n 's/^VISUAL_CAPTURE_DRIBBLE=//p' "$log" | tail -1)"
           pass_charge="$(sed -n 's/^VISUAL_CAPTURE_PASS_CHARGE=//p' "$log" | tail -1)"
           broadcast="$(sed -n 's/^VISUAL_CAPTURE_BROADCAST=//p' "$log" | tail -1)"
@@ -281,6 +298,8 @@ jobs:
           test -n "$canonical_actions" && test -s "$canonical_actions"
           test -n "$keepers_front" && test -s "$keepers_front"
           test -n "$keepers_diagonal" && test -s "$keepers_diagonal"
+          test -n "$keepers_stride_early" && test -s "$keepers_stride_early"
+          test -n "$keepers_stride_late" && test -s "$keepers_stride_late"
           test -n "$dribble" && test -s "$dribble"
           test -n "$pass_charge" && test -s "$pass_charge"
           test -n "$broadcast" && test -s "$broadcast"
@@ -320,6 +339,8 @@ jobs:
           cp "$canonical_actions" "$RUNNER_TEMP/chess-football-review/canonical-actions.png"
           cp "$keepers_front" "$RUNNER_TEMP/chess-football-review/keepers-front.png"
           cp "$keepers_diagonal" "$RUNNER_TEMP/chess-football-review/keepers-diagonal.png"
+          cp "$keepers_stride_early" "$RUNNER_TEMP/chess-football-review/keepers-stride-early.png"
+          cp "$keepers_stride_late" "$RUNNER_TEMP/chess-football-review/keepers-stride-late.png"
           cp "$dribble" "$RUNNER_TEMP/chess-football-review/dribble.png"
           cp "$pass_charge" "$RUNNER_TEMP/chess-football-review/pass-charge.png"
           cp "$broadcast" "$RUNNER_TEMP/chess-football-review/broadcast.png"
