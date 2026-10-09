@@ -125,6 +125,33 @@ func _initialize() -> void:
 		keeper._sync_locomotion(false)
 	match_node.debug_sync_presentation()
 	await _save_capture(match_node, "keepers-diagonal", "VISUAL_CAPTURE_KEEPERS_DIAGONAL")
+	# Capture actual keeper animation at two different phases, with both
+	# goalkeepers side by side. Their hidden 2D frame is intentionally frozen,
+	# so these frames are evidence of the visible 3D animation clock.
+	for team_id in range(2):
+		var keeper: Footballer = match_node.teams[team_id][0]
+		keeper.action_lock_seconds = 0.0
+		keeper.velocity = Vector2.DOWN * keeper.base_speed
+		keeper.visual.play("run")
+		keeper.visual.frame = 0
+		keeper._sync_locomotion(false)
+	for tick in range(6):
+		for team_id in range(2):
+			match_node.teams[team_id][0].visual.frame = 0
+		match_node.presentation_3d.sync_presentation(1.0 / 60.0, "broadcast")
+	var early_frame: int = match_node.presentation_3d.player_sprites[
+		match_node.teams[0][0].get_instance_id()
+	].frame
+	await _save_capture(match_node, "keepers-stride-early", "VISUAL_CAPTURE_KEEPERS_STRIDE_EARLY")
+	for tick in range(24):
+		for team_id in range(2):
+			match_node.teams[team_id][0].visual.frame = 0
+		match_node.presentation_3d.sync_presentation(1.0 / 60.0, "broadcast")
+	var late_frame: int = match_node.presentation_3d.player_sprites[
+		match_node.teams[0][0].get_instance_id()
+	].frame
+	assert(late_frame != early_frame, "Keeper pose unchanged across the stride")
+	await _save_capture(match_node, "keepers-stride-late", "VISUAL_CAPTURE_KEEPERS_STRIDE_LATE")
 	for team_index in range(2):
 		for actor_index in range(4):
 			var actor: Footballer = match_node.teams[team_index][actor_index + 1]
