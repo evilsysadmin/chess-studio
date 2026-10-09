@@ -3,6 +3,54 @@ const SAFE_BUILD = BUILD.replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 80) || 'unkno
 const CACHE_PREFIX = 'chess-studio-shell-v4-';
 const CACHE = `${CACHE_PREFIX}${SAFE_BUILD}`;
 const SHELL = ['./manifest.webmanifest', './favicon.svg', './favicon-32.png', './apple-touch-icon.png'];
+ 
+// Keep previously fetched content-addressed JS/CSS available to open tabs
+// across a Pages release switch. The shell/HTML/API stay network-owned.
+const RUNTIME_ASSET_CACHE = 'chess-studio-immutable-runtime-v1';
+const RUNTIME_CACHE_LIMIT = 160;
+const HASHED_RUNTIME_ASSET_RE = /^\/assets\/[a-zA-Z0-9_./-]+-[a-zA-Z0-9_-]{8,}\.(?:js|mjs|css)$/;
+
+function isHashedRuntimeAsset(url) {
+  return url.origin === self.location.origin
+    && !url.search
+    && HASHED_RUNTIME_ASSET_RE.test(url.pathname);
+}
+
+function isSafeRuntimeResponse(response, path) {
+  if (!response?.ok || response.type === 'opaque') return false;
+  const mime = (response.headers.get('content-type') || '').toLowerCase();
+  const policy = (response.headers.get('cache-control') || '').toLowerCase();
+  if (/no-store|private/.test(policy)) return false;
+  return path.endsWith('.css')
+    ? mime.includes('text/css')
+    : mime.includes('javascript') || mime.includes('ecmascript');
+}
+
+async function runtimeAssetResponse(request) {
+  // Degrade to normal network loading when CacheStorage is unavailable.
+  let cache;
+  try {
+    cache = await caches.open(RUNTIME_ASSET_CACHE);
+    const existing = await cache.match(request);
+    if (existing) return existing;
+  } catch {
+    return fetch(request);
+  }
+
+  // Do not cache HTML SPA fallbacks or 404s as JS chunks.
+  const response = await fetch(request);
+  if (isSafeRuntimeResponse(response, new URL(request.url).pathname)) {
+    try {
+      await cache.put(request, response.clone());
+      const keys = await cache.keys();
+      await Promise.all(keys.slice(0, Math.max(0, keys.length - RUNTIME_CACHE_LIMIT))
+        .map((key) => cache.delete(key)));
+    } catch {
+      // Quota/security errors never block an otherwise healthy module load.
+    }
+  }
+  return response;
+}
 
 function scopedUrl(path) {
   return new URL(path, self.registration.scope).href;
@@ -48,9 +96,13 @@ self.addEventListener('fetch', (event) => {
   if (url.origin !== self.location.origin) return;
   if (url.pathname.includes('/api/')) return;
 
-  // Vite assets are content-addressed and already carry a one-year immutable
-  // HTTP cache policy. Let the browser/CDN own them; keeping them out of the
-  // worker cache prevents cross-release JS/CSS mixtures.
+  // Only cache successful immutable JS/CSS chunks by their hashed URLs.
+  // Old tabs must be able to import their already-fetched modules after Pages
+  // switches the current deployment. Never cache HTML, API or arbitrary files.
+  if (isHashedRuntimeAsset(url)) {
+    event.respondWith(runtimeAssetResponse(request));
+    return;
+  }
   if (url.pathname.includes('/assets/')) return;
 
   if (request.mode === 'navigate') {
