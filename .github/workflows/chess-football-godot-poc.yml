@@ -119,7 +119,7 @@ jobs:
           # fabricated side row. Web payload and review PNG must be identical.
           goalkeeper = manifest["goalkeeper_run"]
           encoded = "".join(
-              (root / part).read_text(encoding="ascii").split()
+              "".join((root / part).read_text(encoding="ascii").split())
               for part in goalkeeper["encoded_parts"]
           )
           payload = base64.b64decode(encoded, validate=True)
@@ -128,7 +128,7 @@ jobs:
               raise SystemExit("keeper runtime SHA mismatch")
           if payload != (root / "keeper_canon_v1/keeper_run_v1.png").read_bytes():
               raise SystemExit("keeper Web payload differs from approved PNG")
-          if not payload.startswith(b"\\x89PNG\\r\\n\\x1a\\n"):
+          if not payload.startswith(b"\x89PNG\r\n\x1a\n"):
               raise SystemExit("keeper is not PNG")
           from struct import unpack
           w, h = unpack(">II", payload[16:24])
