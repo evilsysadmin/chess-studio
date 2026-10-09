@@ -172,6 +172,20 @@ async function withChessFootballCapturePage(browser, capture, callback) {
       path: `${ARTIFACT_DIR}/chess-football-welcome-${capture.label}.png`,
       fullPage: true,
     });
+    await welcome.locator('.chess-football-entry__choice--manager').click();
+    await expect(welcome.locator('.chess-football-entry__club')).toHaveCount(6);
+    await captureFrozenFrame(page, {
+      path: `${ARTIFACT_DIR}/chess-football-clubs-${capture.label}.png`,
+      fullPage: true,
+    });
+    await welcome.getByRole('button', { name: 'Elegir FC Matthias', exact: true }).click();
+    await expect(page.getByRole('heading', { name: 'FC Matthias', exact: true })).toBeVisible();
+    await captureFrozenFrame(page, {
+      path: `${ARTIFACT_DIR}/chess-football-manager-preview-${capture.label}.png`,
+      fullPage: true,
+    });
+    await welcome.locator('.chess-football-entry__back').click();
+    await welcome.getByRole('button', { name: 'Volver a elegir modo' }).click();
     await welcome.locator('.chess-football-entry__choice--quick').click();
     await expect(page.locator('.chess-football-godot-host')).toBeVisible();
     return await callback(page);
