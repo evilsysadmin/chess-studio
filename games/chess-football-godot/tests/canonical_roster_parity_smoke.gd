@@ -108,6 +108,37 @@ func _initialize() -> void:
 					frontal_width = effective_width
 				elif view_name.ends_with("_diagonal"):
 					assert(absf(effective_width - frontal_width) <= 10.0)
+	# Every frame from side/front/back/diagonals, both teams and keeper:
+	# the lower alpha bound should land on the *same* grass contact height
+	# in broadcast and tactical modes, independent of incidental transparent
+	# padding around a bent running pose. Exercise actual 3D presenter logic.
+	for mode in ["broadcast", "tactical"]:
+		for team in match_node.teams:
+			for player in team:
+				var sprite: AnimatedSprite3D = presenter.player_sprites[player.get_instance_id()]
+				var proxy: Node3D = presenter.player_nodes[player.get_instance_id()]
+				player.velocity = Vector2.ZERO # no intentional running bob/lean
+				sprite.pixel_size = (
+					ChessFootball3DPresenter.TACTICAL_PLAYER_PIXEL_SIZE
+					if mode == "tactical"
+					else ChessFootball3DPresenter.PLAYER_PIXEL_SIZE
+				)
+				for view_name in ["side", "front", "back", "front_diagonal", "back_diagonal"]:
+					var animation := ChessFootballRunDirection.animation_for(&"run", view_name)
+					sprite.animation = animation
+					for i in range(8):
+						sprite.frame = i
+						presenter._sync_player_secondary_motion(player, sprite, proxy)
+						var texture: Texture2D = sprite.sprite_frames.get_frame_texture(animation, i)
+						assert(ChessFootballSpriteBank.has_frame_bottom(texture))
+						var actual_bottom := float((texture as ImageTexture).get_image().get_used_rect().end.y)
+						assert(is_equal_approx(ChessFootballSpriteBank.frame_bottom(texture), actual_bottom))
+						var bottom_offset := actual_bottom - ChessFootballSpriteBank.cell_size().y * 0.5
+						var boot_contact := sprite.position.y - bottom_offset * sprite.pixel_size * sprite.scale.y
+						var nominal_contact := ChessFootball3DPresenter.PLAYER_BASE_Y - (
+							ChessFootballSpriteBank.footline() - ChessFootballSpriteBank.cell_size().y * 0.5
+						) * ChessFootball3DPresenter.PLAYER_PIXEL_SIZE
+						assert(absf(boot_contact - nominal_contact) < 0.005)
 	print("chess-football canonical roster parity smoke: OK")
 	quit(0)
 
@@ -115,6 +146,7 @@ func _initialize() -> void:
 func _assert_same_canonical_body(sprite: AnimatedSprite3D) -> void:
 	var frame_texture := sprite.sprite_frames.get_frame_texture(sprite.animation, sprite.frame)
 	assert(frame_texture is ImageTexture, "Legacy vector atlas leaked into 3D")
+	assert(ChessFootballSpriteBank.has_frame_bottom(frame_texture))
 	var bounds := (frame_texture as ImageTexture).get_image().get_used_rect()
 	assert(bounds.size.y >= 86)
 	var scaled_pixels := float(bounds.size.y) * absf(sprite.scale.y)
