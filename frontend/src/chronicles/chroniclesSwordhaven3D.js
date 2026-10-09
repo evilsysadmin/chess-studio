@@ -191,7 +191,7 @@ function building(spec, mats, coarse, contentIds, center) {
     mesh(root, new THREE.BoxGeometry(5.1, 0.21, 2.05), roof,
       'tavern-porch-awning', [0, 3.35, facadeZ + 1.07], !coarse);
     for (const x of [-2.35, 2.35]) mesh(root, new THREE.CylinderGeometry(0.11, 0.14, 3.15, 8),
-      mats.timber, 'porch-timber-support', [x, 1.63, facadeZ + 1.95], !coarse);
+      mats.timber, 'porch-timber-support', [x, 1.63, facadeZ + 1.60], !coarse);
   } else if (isForge) {
     mesh(root, new THREE.CylinderGeometry(0.52, 0.59, 1.3, 10), mats.stone,
       'forge-brazier', [-width * 0.40, 0.65, facadeZ + 0.23]);
