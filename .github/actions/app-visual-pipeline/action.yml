@@ -67,6 +67,27 @@ runs:
             echo "::error::Unable to resolve PR merge-base for $base_sha..$head_sha"
             exit 1
           }
+          # A rescue branch may have a merge HEAD whose first parent is a
+          # newer main commit than the base SHA stored in the PR event. Using
+          # the stale merge-base would include other teams' merged changes,
+          # waking unrelated visual suites (Chronicles/Football/etc.). Only
+          # use the first parent when it is PROVEN to be main lineage.
+          mapfile -t head_parents < <(git cat-file -p "$head_sha" | sed -n 's/^parent //p')
+          if [[ "${#head_parents[@]}" -eq 2 ]]; then
+            synced_main="${head_parents[0]}"
+            git cat-file -e "$synced_main^{commit}" 2>/dev/null || \
+              git fetch --no-tags --depth=1 origin "$synced_main" || true
+            for deepen in 0 64 256; do
+              if git merge-base --is-ancestor "$base_sha" "$synced_main" 2>/dev/null && \
+                 git merge-base --is-ancestor "$synced_main" "origin/$base_ref" 2>/dev/null; then
+                echo "Visual PR ownership: accredited main parent $synced_main (event base $base_sha)"
+                merge_base="$synced_main"
+                break
+              fi
+              [[ "$deepen" == 0 ]] || \
+                git fetch --no-tags --deepen="$deepen" origin "$base_ref"
+            done
+          fi
           files="$(git diff --name-only "$merge_base" "$head_sha")"
         else
           base_sha="HEAD^"
