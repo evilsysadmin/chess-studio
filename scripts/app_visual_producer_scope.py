@@ -487,8 +487,12 @@ def classify_path(path: str) -> set[str] | None:
         # Owner-scoped IDs and authenticated transport never paint the scene;
         # functional save/restore/ownership tests are their quality gate.
         return set()
-    if lower == "frontend/src/components/chroniclessavemenu.jsx":
-        # The save book belongs exclusively to first-person Chronicles.
+    if lower in {
+        "frontend/src/components/chroniclessavemenu.jsx",
+        "frontend/src/components/chroniclessavemenu.css",
+    }:
+        # Both layout and styling of the save book belong exclusively to
+        # first-person Chronicles: Tactics never mounts this menu.
         return {"chronicles-gameplay"}
     if "chronicles" in lower:
         if "tactics" in lower or "isometric" in lower:
@@ -887,6 +891,8 @@ def self_test() -> None:
     assert classify(["frontend/src/chroniclesOfMatthiasIsometric.js"]) == "chronicles-tactics"
     assert classify(["frontend/src/components/ChroniclesOfMatthiasTactics.jsx"]) == "chronicles-tactics"
     assert classify(["frontend/src/components/ChroniclesSaveMenu.jsx"]) == "chronicles-gameplay"
+    assert classify(["frontend/src/components/ChroniclesSaveMenu.css"]) == "chronicles-gameplay"
+    assert project_chronicles_lane(classify(["frontend/src/components/ChroniclesSaveMenu.css"]), "tactics") == "none"
     assert classify(["frontend/src/chronicles/chroniclesRunClient.js"]) == "none"
     assert classify(["frontend/src/chronicles/chroniclesRunIdentity.js"]) == "none"
     assert classify(["frontend/src/chronicles/chroniclesGameBootstrap.js"]) == "chronicles-tactics,chronicles-gameplay"
