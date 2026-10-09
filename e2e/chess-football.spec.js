@@ -205,7 +205,16 @@ test('Chess Football manager door opens without booting a match', async ({ page 
   await expect(page.getByRole('heading', { name: 'Chess Football' })).toBeVisible();
   await page.locator('.chess-football-entry__choice--manager').click();
   await expect(page.getByRole('heading', { name: 'El despacho del míster' })).toBeVisible();
+  await expect(page.locator('.chess-football-entry__club')).toHaveCount(6);
+  await page.getByRole('button', { name: 'Elegir FC Matthias', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'FC Matthias', exact: true })).toBeVisible();
+  await expect(page.getByText('No se ha guardado ningún progreso.', { exact: false })).toBeVisible();
   await expect(page.locator('iframe[title="Chess Football Godot"]')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Cambiar de club' }).click();
+  await expect(page.locator('.chess-football-entry__club')).toHaveCount(6);
+  await page.getByRole('button', { name: 'Elegir Peones del Norte', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Peones del Norte', exact: true })).toBeVisible();
+  await page.locator('.chess-football-entry__back').click();
   await page.getByRole('button', { name: 'Volver a elegir modo' }).click();
   await expect(page.locator('.chess-football-entry__choice--quick')).toBeVisible();
   await page.locator('.chess-football-entry__back').click();
