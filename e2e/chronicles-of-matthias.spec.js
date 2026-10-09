@@ -47,6 +47,41 @@ test('Chronicles first-person · nueva expedición pide Swordhaven sin alterar T
   await expect(mode.locator('[data-chronicles-renderer="three"] canvas')).toHaveCount(1);
 });
 
+test('Chronicles · Escape opens and closes the in-game menu while the scene stays fullscreen', async ({ page }) => {
+  // Count every attempt to engage browser-native fullscreen, including entry
+  // via Experimentos and character setup. Escape must own the game menu instead.
+  await page.addInitScript(() => {
+    window.__chroniclesFullscreenRequests = 0;
+    Element.prototype.requestFullscreen = function requestFullscreen() {
+      window.__chroniclesFullscreenRequests += 1;
+      return Promise.resolve();
+    };
+  });
+  await openChronicles(page, { chroniclesCurrentMapId: 'swordhaven-square', newTown: true });
+  const mode = page.locator('[data-chronicles="true"]');
+  const menu = mode.locator('details.chronicles-game-menu');
+  await expect(menu).not.toHaveAttribute('open', '');
+  expect(await page.evaluate(() => window.__chroniclesFullscreenRequests)).toBe(0);
+
+  const bounds = await mode.boundingBox();
+  const viewport = page.viewportSize();
+  expect(bounds?.width || 0).toBeGreaterThanOrEqual((viewport?.width || 0) - 2);
+  expect(bounds?.height || 0).toBeGreaterThanOrEqual((viewport?.height || 0) - 2);
+
+  await page.keyboard.press('Escape');
+  await expect(menu).toHaveAttribute('open', '');
+  await expect(mode).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(menu).not.toHaveAttribute('open', '');
+  await expect(mode).toBeVisible();
+  expect(await page.evaluate(() => window.__chroniclesFullscreenRequests)).toBe(0);
+
+  await page.keyboard.press('Escape');
+  await expect(menu).toHaveAttribute('open', '');
+  await menu.getByRole('button', { name: 'Salir y guardar' }).click();
+  await expect(mode).toHaveCount(0);
+});
+
 test('Chronicles · Swordhaven → cripta → Swordhaven, desde el teclado y sin cerrar la run', async ({ page }) => {
   await openChronicles(page, { chroniclesCurrentMapId: 'swordhaven-square', newTown: true });
   const mode = page.locator('[data-chronicles="true"]');
