@@ -430,6 +430,10 @@ func _refresh_hud() -> void:
 func _handle_human(delta: float) -> void:
 	if Input.is_action_just_pressed("toggle_view"):
 		_toggle_camera_mode()
+	# The keeper is selected temporarily after a human-team save so the
+	# player can distribute. Once the ball leaves his hands, return control
+	# to an outfielder: otherwise _update_ai skips the goalkeeper forever.
+	_restore_outfield_control_after_keeper_release()
 	var direction := Input.get_vector("move_left", "move_right", "move_up", "move_down")
 	controlled.move_human(delta, direction, Input.is_action_pressed("sprint"))
 
@@ -1497,6 +1501,22 @@ func _try_claim_loose_ball() -> void:
 		ball.attach_to(best)
 		if best.team_id == 0:
 			_select_player(best)
+
+func _restore_outfield_control_after_keeper_release() -> void:
+	if controlled == null or controlled.role != "keeper" or ball.carrier == controlled:
+		return
+	var best: Footballer = null
+	var best_distance := INF
+	for player in teams[0]:
+		if player.sent_off or player.role == "keeper":
+			continue
+		var distance: float = player.global_position.distance_squared_to(ball.global_position)
+		if distance < best_distance:
+			best_distance = distance
+			best = player
+	if best != null:
+		_select_player(best)
+
 
 func _best_switch_candidate() -> Footballer:
 	if (
