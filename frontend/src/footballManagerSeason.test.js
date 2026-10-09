@@ -68,8 +68,11 @@ describe('Football manager season slice 0', () => {
   });
 
   it('replays fixtures and match results from the exact same seed', () => {
-    expect(finishSeason(2026)).toEqual(finishSeason(2026));
-    expect(finishSeason(2027).results).not.toEqual(finishSeason(2026).results);
+    const firstRun = finishSeason(2026);
+    const independentReplay = finishSeason(2026);
+    const differentSeed = finishSeason(2027);
+    expect(independentReplay).toEqual(firstRun);
+    expect(differentSeed.results).not.toEqual(firstRun.results);
     expect(Object.isFrozen(finishSeason(42))).toBe(true);
     expect(Object.isFrozen(finishSeason(42).results)).toBe(true);
     expect(footballStandings(createFootballSeason()).every((row) => row.points === 0)).toBe(true);
