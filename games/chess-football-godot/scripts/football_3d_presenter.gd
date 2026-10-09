@@ -508,9 +508,6 @@ func sync_presentation(delta: float, mode: String) -> void:
 					sprite.sprite_frames.get_frame_texture(sprite.animation, sprite.frame)
 				) - cell_half_height
 			)
-			var grass_contact := PLAYER_BASE_Y - (
-				ChessFootballSpriteBank.footline() - cell_half_height
-			) * PLAYER_PIXEL_SIZE
 			sprite.position.y += foot_y * sprite.pixel_size * (sprite.scale.y - authored_y)
 			# The existing secondary motion includes deliberate running bob,
 			# which stays independent from depth and untouched here.
