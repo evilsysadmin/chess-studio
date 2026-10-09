@@ -19,6 +19,8 @@ class Budget:
 
 INVENTORY = {
     'app-visual-artifact.yml': 'visual-artifact',
+    'chronicles-visual-artifact.yml': 'visual-artifact',
+    'tactics-visual-artifact.yml': 'visual-artifact',
     'blender-setup-smoke.yml': 'art-generation-infra',
     'billing-cost-export.yml': 'observability',
     'capacity-staging.yml': 'capacity-readiness',
@@ -82,9 +84,10 @@ BUDGETS = (
     Budget('.github/workflows/staging-ai-worker.yml', 7227),
     Budget('.github/workflows/cloudflare-prometheus-exporter.yml', 5964),
     Budget('.github/workflows/oci-readiness.yml', 2840),
-    # Two isolated visual jobs (Chronicles first-person / Tactics) replace the
-    # previously coupled capture. Keep the ratchet close to their YAML footprint.
+    # Independent short visual workflows. Keep each budget below 1.5 KiB.
     Budget('.github/workflows/app-visual-artifact.yml', 1500),
+    Budget('.github/workflows/chronicles-visual-artifact.yml', 1300),
+    Budget('.github/workflows/tactics-visual-artifact.yml', 1300),
 )
 
 
