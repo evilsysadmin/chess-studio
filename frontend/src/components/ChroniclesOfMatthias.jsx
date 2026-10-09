@@ -44,6 +44,7 @@ import {
   beginChroniclesRun,
   chroniclesListSavedRuns,
   chroniclesMergeRemoteSavedRuns,
+  chroniclesRecoverLegacySavedRunIds,
   chroniclesSaveCatalogOwner,
   chroniclesMarkSavedRunRemote,
   chroniclesSelectedRunIsRemote,
@@ -199,8 +200,15 @@ export default function ChroniclesOfMatthias({ onExit }) {
     setSaveMenuError('');
     setSaveInventory(chroniclesListSavedRuns(FIRST_PERSON_RUN_SCOPE));
     void chroniclesListRemoteRuns({ signal: controller.signal })
-      .then((rows) => {
+      .then(async (rows) => {
         if (!active) return;
+        // Repair old UUIDv4 save pointers only when the backend confirms the
+        // corresponding UUIDv5 in the authenticated owner-scoped inventory.
+        await chroniclesRecoverLegacySavedRunIds(FIRST_PERSON_RUN_SCOPE, rows, {
+          expectedOwner: ownerAtRequest,
+          signal: controller.signal,
+        });
+        if (!active || controller.signal.aborted) return;
         setSaveInventory(chroniclesMergeRemoteSavedRuns(FIRST_PERSON_RUN_SCOPE, rows, { expectedOwner: ownerAtRequest }));
       })
       .catch(() => {
@@ -614,10 +622,12 @@ export default function ChroniclesOfMatthias({ onExit }) {
           activeProgression,
         );
         const next = chroniclesApplyRunCheckpoint(progressed, world);
+        const confirmedId = chroniclesMarkSavedRunRemote(FIRST_PERSON_RUN_SCOPE, operationId, world.runId);
+        if (!confirmedId) return;
+        activeRunIdRef.current = confirmedId;
         authoritativeRunRef.current = world;
-        chroniclesMarkSavedRunRemote(FIRST_PERSON_RUN_SCOPE, operationId);
         checkpointFingerprintRef.current = chroniclesRunCheckpointFingerprint(next);
-        setAutomapVisitedByMap(loadChroniclesAutomapVisited(operationId));
+        setAutomapVisitedByMap(loadChroniclesAutomapVisited(confirmedId));
         stateRef.current = next;
         staleRunRecoveryAttemptedRef.current = false;
         setSelectedMemberId('matthias');

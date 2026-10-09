@@ -1,4 +1,5 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { webcrypto } from 'node:crypto';
 import { clearStorageMemoryFallback } from '../safeStorage.js';
 import {
   CHRONICLES_FIRST_PERSON_RUN_STORAGE_KEY,
@@ -12,6 +13,7 @@ import {
   CHRONICLES_SAVE_CATALOG_KEY,
   chroniclesListSavedRuns,
   chroniclesMergeRemoteSavedRuns,
+  chroniclesRecoverLegacySavedRunIds,
   chroniclesMarkSavedRunRemote,
   chroniclesSaveCatalogOwner,
   chroniclesSelectedRunIsRemote,
@@ -237,6 +239,124 @@ describe('Chronicles shared run identity', () => {
     expect(chroniclesListSavedRuns('first-person')[0]).toMatchObject({
       id, remote: true, pending: false,
     });
+  });
+
+  it('rekeys a new POST to the authoritative server UUID and preserves the local save name', () => {
+    const provisionalId = beginChroniclesRun('first-person');
+    expect(chroniclesRenameSavedRun('first-person', provisionalId, 'Swordhaven · día uno')).toBe(true);
+    const canonicalId = 'uuid5-owner-key-from-server';
+
+    expect(chroniclesMarkSavedRunRemote('first-person', provisionalId, canonicalId)).toBe(canonicalId);
+    expect(ensureChroniclesRun('tactics')).toBe(canonicalId);
+    expect(chroniclesRunEntryMapId('tactics')).toBe('swordhaven-square');
+    expect(chroniclesListSavedRuns('first-person')).toEqual([
+      expect.objectContaining({
+        id: canonicalId, title: 'Swordhaven · día uno',
+        remote: true, pending: false, active: true,
+      }),
+    ]);
+    expect(chroniclesSelectedRunIsRemote('first-person', canonicalId)).toBe(true);
+    expect(chroniclesMarkSavedRunRemote('tactics', canonicalId, canonicalId)).toBe(canonicalId);
+    // Refresh/mount must GET the canonical server ID, never POST the provisional UUID.
+    expect(ensureChroniclesRun('first-person')).toBe(canonicalId);
+  });
+
+  it('never changes a newer run or an established remote ID on a late POST response', () => {
+    const oldPending = beginChroniclesRun('first-person');
+    const newest = beginChroniclesRun('first-person');
+    expect(chroniclesMarkSavedRunRemote('first-person', oldPending, 'stale-server-run')).toBeNull();
+    expect(ensureChroniclesRun('first-person')).toBe(newest);
+    expect(chroniclesListSavedRuns('first-person').map((row) => row.id))
+      .toEqual(expect.arrayContaining([oldPending, newest]));
+
+    expect(chroniclesMarkSavedRunRemote('first-person', newest, 'server-current')).toBe('server-current');
+    expect(chroniclesMarkSavedRunRemote('first-person', 'server-current', 'different-server'))
+      .toBeNull();
+    expect(ensureChroniclesRun('first-person')).toBe('server-current');
+  });
+
+  it('cannot commit a pending run after switching authenticated owners', () => {
+    const alicePending = beginChroniclesRun('first-person');
+    localStorage.setItem('chess-study-auth-username', 'bob');
+    expect(chroniclesMarkSavedRunRemote('first-person', alicePending, 'alice-server')).toBeNull();
+    expect(chroniclesListSavedRuns('first-person')).toEqual([]);
+    localStorage.setItem('chess-study-auth-username', 'alice');
+    expect(ensureChroniclesRun('first-person')).toBe(alicePending);
+    expect(chroniclesSelectedRunIsRemote('first-person', alicePending)).toBe(false);
+  });
+
+  it('recovers a saved expedition with an old UUIDv4 pointer from a verified server inventory', async () => {
+    const provisional = '550e8400-e29b-41d4-a716-446655440000';
+    const canonical = 'ca1e8e12-21c6-598a-96b9-6e11c722428e';
+    localStorage.setItem(CHRONICLES_RUN_STORAGE_KEY, JSON.stringify({
+      id: provisional, owner: 'alice', ended: false, entryMapId: 'swordhaven-square',
+      remote: true, pending: false,
+    }));
+    chroniclesListSavedRuns('first-person');
+    chroniclesRenameSavedRun('first-person', provisional, 'Mi Swordhaven');
+    vi.stubGlobal('crypto', webcrypto);
+    try {
+      const remoteRuns = [{ runId: canonical, status: 'active', currentMapId: 'crypt-eight-squares' }];
+      expect(await chroniclesRecoverLegacySavedRunIds('first-person', remoteRuns)).toBe(1);
+      const saves = chroniclesMergeRemoteSavedRuns('first-person', remoteRuns);
+      expect(saves).toHaveLength(1);
+      expect(saves[0]).toMatchObject({
+        id: canonical, title: 'Mi Swordhaven',
+        remote: true, pending: false, active: true,
+        currentMapId: 'crypt-eight-squares',
+      });
+      expect(ensureChroniclesRun('first-person')).toBe(canonical);
+      expect(chroniclesSelectedRunIsRemote('first-person', canonical)).toBe(true);
+      expect(await chroniclesRecoverLegacySavedRunIds('first-person', remoteRuns)).toBe(0);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it('also repairs pre-catalog saves without a remote flag after exact server confirmation', async () => {
+    const provisional = '11111111-1111-4111-8111-111111111111';
+    const canonical = '55a7760a-cdd8-5717-bd0f-5c34c4aa7100';
+    localStorage.setItem(CHRONICLES_RUN_STORAGE_KEY, JSON.stringify({
+      id: provisional, owner: 'alice', ended: false,
+    }));
+    chroniclesListSavedRuns('first-person');
+    vi.stubGlobal('crypto', webcrypto);
+    try {
+      const remote = [{ runId: canonical, status: 'active', currentMapId: 'ash-vault' }];
+      expect(await chroniclesRecoverLegacySavedRunIds('first-person', remote)).toBe(1);
+      const saves = chroniclesMergeRemoteSavedRuns('first-person', remote);
+      expect(saves).toHaveLength(1);
+      expect(saves[0]).toMatchObject({ id: canonical, remote: true, pending: false, active: true });
+      expect(ensureChroniclesRun('first-person')).toBe(canonical);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it('does not claim to recover a legacy save without an exact remote match or after abort', async () => {
+    const provisional = '550e8400-e29b-41d4-a716-446655440000';
+    localStorage.setItem(CHRONICLES_RUN_STORAGE_KEY, JSON.stringify({
+      id: provisional, owner: 'alice', ended: false, remote: true, pending: false,
+    }));
+    chroniclesListSavedRuns('first-person');
+    vi.stubGlobal('crypto', webcrypto);
+    try {
+      expect(await chroniclesRecoverLegacySavedRunIds('first-person', [
+        { runId: 'some-other-server-run', status: 'active' },
+      ])).toBe(0);
+      const controller = new AbortController();
+      controller.abort();
+      expect(await chroniclesRecoverLegacySavedRunIds('first-person', [
+        { runId: 'ca1e8e12-21c6-598a-96b9-6e11c722428e', status: 'active' },
+      ], { signal: controller.signal })).toBe(0);
+      expect(ensureChroniclesRun('first-person')).toBe(provisional);
+      localStorage.setItem('chess-study-auth-username', 'bob');
+      expect(await chroniclesRecoverLegacySavedRunIds('first-person', [
+        { runId: 'ca1e8e12-21c6-598a-96b9-6e11c722428e', status: 'active' },
+      ], { expectedOwner: 'alice' })).toBe(0);
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 
   it('never inherits an active expedition across authenticated users', () => {

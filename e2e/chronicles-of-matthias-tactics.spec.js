@@ -81,7 +81,12 @@ test('Chronicles primera persona · monta el mapa autoritativo y nunca la entrad
     const raw = localStorage.getItem('chess-study-chronicles-run-v1');
     return raw ? JSON.parse(raw) : null;
   });
-  expect(storedRun?.id).toBe(runRequests[0].idempotencyKey);
+  // The idempotency key is only a POST token. GET/checkpoint require the
+  // distinct UUID returned by the authoritative backend.
+  expect(storedRun?.id).toBe(`e2e-chronicles-${runRequests[0].idempotencyKey}`);
+  expect(storedRun?.id).not.toBe(runRequests[0].idempotencyKey);
+  expect(storedRun?.remote).toBe(true);
+  expect(storedRun?.pending).toBe(false);
   expect(storedRun?.ended).toBe(false);
 });
 
