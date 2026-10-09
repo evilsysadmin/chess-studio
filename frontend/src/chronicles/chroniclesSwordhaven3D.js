@@ -482,26 +482,26 @@ function dressSwordhavenRoadsides(root, mats, coarse, width, height, center) {
   const shoulders = [];
   const mainSpan = Math.min(height * CELL * 0.38, 30);
   const crossSpan = Math.min(width * CELL * 0.35, 26);
-  const step = coarse ? 1.35 : 1.05;
+  const step = coarse ? 0.96 : 0.82;
   for (let z = -mainSpan; z <= mainSpan; z += step) {
     if (Math.abs(z) < 10.8) continue; // The circular plaza owns this area.
-    for (const side of [-1, 1]) shoulders.push([side * 3.62, z]);
+    for (const side of [-1, 1]) shoulders.push([side * 3.45, z]);
   }
   for (let x = -crossSpan; x <= crossSpan; x += step) {
     if (Math.abs(x) < 11.2) continue;
-    for (const side of [-1, 1]) shoulders.push([x, side * 3.54]);
+    for (const side of [-1, 1]) shoulders.push([x, side * 3.43]);
   }
   const edges = new THREE.InstancedMesh(
-    new THREE.BoxGeometry(0.41, 0.12, 0.58), mats.paving, shoulders.length,
+    new THREE.BoxGeometry(0.25, 0.065, 0.72), mats.paving, shoulders.length,
   );
   edges.name = 'swordhaven-roadside-stone-edging';
   edges.receiveShadow = true;
   const dummy = new THREE.Object3D();
   const color = new THREE.Color();
   shoulders.forEach(([x, z], i) => {
-    dummy.position.set(x, 0.12, z);
-    dummy.rotation.y = ((i % 7) - 3) * 0.055;
-    dummy.scale.set(0.86 + (i % 5) * 0.04, 1, 0.85 + (i % 3) * 0.06);
+    dummy.position.set(x, 0.067, z);
+    dummy.rotation.y = ((i % 7) - 3) * 0.018;
+    dummy.scale.set(0.94 + (i % 5) * 0.02, 1, 0.92 + (i % 3) * 0.025);
     dummy.updateMatrix();
     edges.setMatrixAt(i, dummy.matrix);
     color.setHex([0x8b867c, 0xa29b8b, 0xc0b7a1, 0x9c947e][i % 4]);
@@ -511,14 +511,21 @@ function dressSwordhavenRoadsides(root, mats, coarse, width, height, center) {
   if (edges.instanceColor) edges.instanceColor.needsUpdate = true;
   root.add(edges);
 
-  // Three crossed blades per tuft: one GPU instancing call, no transparent
-  // sorting, no animated shader, and no changes to the authored walk grid.
+  // Six slim, wind-bent leaves per tuft. Narrow silhouettes avoid the large
+  // triangular spikes of the initial pass, while staying one draw call.
   const bladeVertices = [];
-  for (let blade = 0; blade < 3; blade += 1) {
+  for (let blade = 0; blade < 6; blade += 1) {
     const angle = blade * Math.PI / 3;
-    const ux = Math.cos(angle) * 0.13;
-    const uz = Math.sin(angle) * 0.13;
-    bladeVertices.push(-ux, 0, -uz, ux * 0.3, 0.25 + blade * 0.04, uz * 0.3, ux, 0, uz);
+    const ux = Math.cos(angle);
+    const uz = Math.sin(angle);
+    const offset = blade % 2 === 0 ? 0.015 : 0.044;
+    const height = 0.12 + (blade % 3) * 0.016;
+    const spread = 0.024;
+    bladeVertices.push(
+      ux * offset - uz * spread, 0, uz * offset + ux * spread,
+      ux * (offset + 0.08), height, uz * (offset + 0.08),
+      ux * offset + uz * spread, 0, uz * offset - ux * spread,
+    );
   }
   const tuftGeometry = new THREE.BufferGeometry();
   tuftGeometry.setAttribute('position', new THREE.Float32BufferAttribute(bladeVertices, 3));
@@ -548,12 +555,12 @@ function dressSwordhavenRoadsides(root, mats, coarse, width, height, center) {
   meadow.name = 'swordhaven-low-meadow-tufts';
   meadow.receiveShadow = false;
   positions.forEach(([x, z, rotation, growth], i) => {
-    dummy.position.set(x, -0.037, z);
+    dummy.position.set(x, -0.048, z);
     dummy.rotation.set(0, rotation * Math.PI * 2, 0);
-    dummy.scale.setScalar(0.66 + growth * 0.55);
+    dummy.scale.setScalar(0.66 + growth * 0.34);
     dummy.updateMatrix();
     meadow.setMatrixAt(i, dummy.matrix);
-    color.setHex([0x658647, 0x819854, 0x9da86a, 0x587a43][i % 4]);
+    color.setHex([0x799153, 0x869a65, 0x96a273, 0x708957][i % 4]);
     meadow.setColorAt(i, color);
   });
   meadow.instanceMatrix.needsUpdate = true;
