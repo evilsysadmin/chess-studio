@@ -221,6 +221,9 @@ def _surface_groups(path: str) -> set[str] | None:
 
     if lower.endswith(".md"):
         return set()
+    if lower in {"makefile", ".github/workflows/staging-deploy.yml", ".github/workflows/production-promote.yml"}:
+        # Deployment orchestration does not own product screenshots.
+        return set()
     if lower == "scripts/css_architecture_manifest.json":
         return set()
     if lower == "scripts/chronicles_area_parity_corpus.py":
@@ -235,6 +238,7 @@ def _surface_groups(path: str) -> set[str] | None:
         "scripts/chess_rules_gate.mjs",
         "scripts/quality_scope.py",
         "scripts/pwa_check.mjs",
+        "scripts/pages_runtime_asset_grace.py",
         "scripts/state_resilience_check.mjs",
         "scripts/visual_ux_contract_check.mjs",
         "scripts/run_core_e2e_lane.py",
@@ -693,6 +697,8 @@ def write_outputs(scope: Scope, output_path: str) -> None:
 
 
 def self_test() -> None:
+    assert classify(["Makefile", ".github/workflows/staging-deploy.yml", ".github/workflows/production-promote.yml"]).capture_groups == "none"
+    assert classify(["scripts/pages_runtime_asset_grace.py"]).capture_groups == "none"
     assert classify(["e2e/staging-live.spec.js"]).capture_groups == "none"
     assert classify(["scripts/chronicles_area_parity_corpus.py"]).capture_groups == "none"
     assert classify(["scripts/chronicles_area_parity_corpus.py", "frontend/src/chronicles/chroniclesMapCatalog.js"]).capture_groups == "experiments"
