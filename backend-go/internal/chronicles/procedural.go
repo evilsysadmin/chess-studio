@@ -505,14 +505,9 @@ func proceduralize(manifest bson.D, seed int64, proposal any, version int) (bson
 	// An authored settlement is a persistent hub, not a generated dungeon.
 	// Preserve every wall and doorway; no seeded composition or relocation.
 	if get(manifest, "regionKind") == "settlement" && get(manifest, "layoutMode") == "authored" {
-		recipe, err := mapCodeForManifest(manifest, seed)
-		if err != nil {
-			return nil, "", "", err
-		}
-		code, err := chroniclesmap.Encode(recipe)
-		if err != nil {
-			return nil, "", "", err
-		}
+		// An authored town may exceed procedural MapCode dimension limits.
+		// Its mapCode is a stable content identity, not a dungeon recipe.
+		code := fmt.Sprintf("authored-layout-v1:%v:%v", get(manifest, "id"), get(manifest, "version"))
 		sum := sha256.Sum256([]byte(fmt.Sprintf("seeded-area-v%d\x00%s\x00", chroniclesmap.GeneratorVersion, code) + strings.Join(gridRows(manifest), "\n")))
 		revision := hex.EncodeToString(sum[:])
 		generation := bson.D{
