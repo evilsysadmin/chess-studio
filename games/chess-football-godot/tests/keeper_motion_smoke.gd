@@ -59,8 +59,8 @@ func _initialize() -> void:
 		# sustained any pose changes; demand an actual moving goalkeeper here.
 		assert(real_ai_frames.size() >= 3)
 		assert(not real_ai_swings.is_empty())
-		var min_angle := real_ai_swings.min()
-		var max_angle := real_ai_swings.max()
+		var min_angle: float = float(real_ai_swings.min())
+		var max_angle: float = float(real_ai_swings.max())
 		assert(max_angle - min_angle >= 5.0)
 		var travel := keeper.global_position.y - goal.y
 		assert(travel > 22.0 and travel < game.KEEPER_TRACK_MAX_Y + 3.0)
