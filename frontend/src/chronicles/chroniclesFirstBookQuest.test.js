@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createChroniclesState } from '../chroniclesOfMatthias.js';
+import { chroniclesContextualContentAction, chroniclesReduce, createChroniclesState } from '../chroniclesOfMatthias.js';
 import { chroniclesTacticsInteractions, chroniclesTacticsUse } from '../chroniclesOfMatthiasTactics.js';
 import { chroniclesGoldBalance, chroniclesInventoryEntries } from './chroniclesContentRuntime.js';
 import {
@@ -90,6 +90,38 @@ describe('Chronicles first book · Swordhaven / Banner Road', () => {
     }, 'first-book-healer');
     expect(chroniclesGoldBalance(healed)).toBe(6);
     healed.party.forEach((member) => expect(member.hp).toBe(member.maxHp));
+  });
+
+  it('lets the first-person player take, finish and spend a contract without competing NPC actions', () => {
+    let state = createChroniclesState('swordhaven-first-book');
+    state = walkTo(state, 11, 9);
+    expect(chroniclesContextualContentAction(state)?.id).toBe('first-book-missing-board');
+    state = chroniclesReduce(state, 'interact');
+    expect(state.quests['banner-contract'].status).toBe('active');
+    // The board is consumed after accepting; it must not shadow the turn-in.
+    expect(chroniclesContextualContentAction(state)?.id).not.toBe('first-book-missing-board');
+
+    state = chroniclesReduce({ ...state, x: 9, y: 2, direction: 0 }, 'forward');
+    expect(state.mapId).toBe('banner-road-first-book');
+    state = walkTo(state, 9, 5);
+    expect(chroniclesContextualContentAction(state)?.id).toBe('first-book-lost-banner');
+    state = chroniclesReduce(state, 'interact');
+    expect(state.inventory['knight-banner'].quantity).toBe(1);
+
+    state = chroniclesReduce({ ...state, x: 10, y: 2, direction: 0 }, 'forward');
+    expect(state.mapId).toBe('swordhaven-first-book');
+    state = walkTo(state, 11, 9);
+    expect(chroniclesContextualContentAction(state)?.id).toBe('first-book-banner-turn-in');
+    state = chroniclesReduce(state, 'interact');
+    expect(chroniclesGoldBalance(state)).toBe(18);
+    expect(chroniclesContextualContentAction(state)?.id).not.toBe('first-book-banner-turn-in');
+
+    state = walkTo(state, 8, 7);
+    expect(chroniclesContextualContentAction(state)?.id).toBe('first-book-quartermaster');
+    state = chroniclesReduce(state, 'interact');
+    expect(chroniclesGoldBalance(state)).toBe(11);
+    expect(state.inventory['road-rations'].quantity).toBe(1);
+    expect(state.claimedRewards).toEqual(['swordhaven:banner-contract:v1']);
   });
 
   it('recovers completed quest, spent gold, visited region and reward receipt after F5', () => {
