@@ -2,6 +2,7 @@ package chronicles
 
 import (
 	"reflect"
+	"strings"
 	"testing"
 
 	"go.mongodb.org/mongo-driver/v2/bson"
@@ -52,5 +53,24 @@ func TestAuthoredMainDungeonKeepsTopologyAcrossSeeds(t *testing.T) {
 			t.Fatalf("seed %d changed static world identity", seed)
 		}
 		revision, code = nextRevision, nextCode
+	}
+}
+
+func TestMainDungeonCannotFallBackToSeededGeometry(t *testing.T) {
+	for _, mode := range []string{"", "procedural"} {
+		manifest := bson.D{
+			{Key: "id", Value: "bad-main-crypt"},
+			{Key: "version", Value: int64(1)},
+			{Key: "regionKind", Value: "dungeon"},
+			{Key: "dungeonRole", Value: "main"},
+			{Key: "grid", Value: bson.A{"#####", "#...#", "#.P.#", "#..X#", "#####"}},
+		}
+		if mode != "" {
+			manifest = append(manifest, bson.E{Key: "layoutMode", Value: mode})
+		}
+		_, _, _, err := proceduralize(manifest, 417, nil, 0)
+		if err == nil || !strings.Contains(err.Error(), "main-story dungeons require layoutMode=authored") {
+			t.Fatalf("mode %q must be rejected: %v", mode, err)
+		}
 	}
 }

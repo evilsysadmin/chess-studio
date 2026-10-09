@@ -502,6 +502,11 @@ func materializeRecipe(composed bson.D, recipe chroniclesmap.Recipe, version int
 // proceduralize is proceduralize_chronicles_manifest; it returns the
 // generated manifest, its MapCode and layout revision.
 func proceduralize(manifest bson.D, seed int64, proposal any, version int) (bson.D, string, string, error) {
+	// Explicitly-main campaign maps must never silently use procedural geometry.
+	// Historical maps have no dungeonRole and retain their seeded layout.
+	if get(manifest, "regionKind") == "dungeon" && get(manifest, "dungeonRole") == "main" && get(manifest, "layoutMode") != "authored" {
+		return nil, "", "", genErr("main-story dungeons require layoutMode=authored")
+	}
 	// Authored story dungeons and settlements preserve their geometry and
 	// encounters; unmarked legacy dungeons retain seeded composition.
 	if get(manifest, "layoutMode") == "authored" {
