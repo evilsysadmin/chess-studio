@@ -594,16 +594,25 @@ function dressSwordhavenRoadsides(root, mats, coarse, width, height, center) {
   const tuftGeometry = new THREE.BufferGeometry();
   tuftGeometry.setAttribute('position', new THREE.Float32BufferAttribute(bladeVertices, 3));
   tuftGeometry.computeVertexNormals();
-  const candidateCount = coarse ? 250 : 480;
+  const candidateCount = coarse ? 560 : 860;
   const positions = [];
   let seed = 0x51a7b3d;
   const random = () => {
     seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
     return seed / 4294967296;
   };
+  // Loose clusters instead of solitary evenly scattered triangles. Each patch
+  // is repeatable and the original street/building exclusion is still applied.
+  let patchX = 0;
+  let patchZ = 0;
   for (let i = 0; i < candidateCount; i += 1) {
-    const x = (random() - 0.5) * (width * CELL - 4);
-    const z = (random() - 0.5) * (height * CELL - 4);
+    if (i % 5 === 0) {
+      patchX = (random() - 0.5) * (width * CELL - 7);
+      patchZ = (random() - 0.5) * (height * CELL - 7);
+    }
+    const x = patchX + (random() - 0.5) * 3.1;
+    const z = patchZ + (random() - 0.5) * 3.1;
+    if (Math.abs(x) >= width * CELL / 2 - 1.5 || Math.abs(z) >= height * CELL / 2 - 1.5) continue;
     if (Math.abs(x) < 5 || Math.abs(z) < 5 || Math.hypot(x, z) < 11.6) continue;
     // Keep plants away from walls, shop foundations and obstructing trunks.
     if (SWORDHAVEN_BUILDINGS.some(spec => {
