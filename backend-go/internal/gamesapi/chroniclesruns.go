@@ -729,7 +729,7 @@ func (h *ChroniclesRunsHandler) checkpoint(ctx context.Context, username, runID 
 		return nil, fail(404, "Mapa de Chronicles no encontrado.")
 	}
 	manifest, _ := lookupOr(current, "manifest", nil).(bson.D)
-	if target != currentMapID && !chronicles.TransitionTargets(manifest)[target] {
+	if target != currentMapID && !chronicles.TransitionTargets(manifest)[target] && !legacySwordhavenReturnAllowed(run, currentMapID, target) {
 		return nil, fail(409, "La transición solicitada no pertenece al mundo actual de la run.")
 	}
 	targetArea := current
@@ -786,6 +786,18 @@ func (h *ChroniclesRunsHandler) checkpoint(ctx context.Context, username, runID 
 		return nil, fail(404, "Run de Chronicles no encontrada.")
 	}
 	return updated, nil
+}
+
+// legacySwordhavenReturnAllowed mirrors the first-person virtual return portal.
+// Authorization uses the persisted run flags, not untrusted checkpoint input.
+// Older crypt-only expeditions remain on the original one-way dungeon route.
+func legacySwordhavenReturnAllowed(run bson.D, sourceID, targetID string) bool {
+	if sourceID != "crypt-eight-squares" || targetID != "swordhaven-square" {
+		return false
+	}
+	flags, _ := lookupOr(run, "worldFlags", nil).(bson.D)
+	arrived, ok := lookupOr(flags, "swordhavenArrived", false).(bool)
+	return ok && arrived
 }
 
 func chroniclesMapID(id string) bool {
