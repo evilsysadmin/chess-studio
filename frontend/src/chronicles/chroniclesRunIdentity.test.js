@@ -12,6 +12,7 @@ import {
   CHRONICLES_SAVE_CATALOG_KEY,
   chroniclesListSavedRuns,
   chroniclesMergeRemoteSavedRuns,
+  chroniclesMarkSavedRunRemote,
   chroniclesSaveCatalogOwner,
   chroniclesSelectedRunIsRemote,
   chroniclesSelectSavedRun,
