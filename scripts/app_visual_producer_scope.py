@@ -906,7 +906,7 @@ def self_test() -> None:
         "ChroniclesOfMatthiasJournal.css",
     ):
         producers = classify([f"frontend/src/components/{first_person_css}"])
-        assert producers == "chronicles-avatar,chronicles-gameplay"
+        assert producers == "chronicles-gameplay,chronicles-avatar"
         assert project_chronicles_lane(producers, "tactics") == "none"
     assert classify(["frontend/src/components/ChroniclesOfMatthiasTactics.css"]) == "chronicles-tactics"
     assert project_chronicles_lane(classify(["frontend/src/components/ChroniclesSaveMenu.css"]), "tactics") == "none"
