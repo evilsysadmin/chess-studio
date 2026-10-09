@@ -14,7 +14,6 @@ import json
 import pathlib
 import re
 import tempfile
-import time
 import urllib.error
 import urllib.request
 from typing import Callable
@@ -24,7 +23,7 @@ MAX_PREVIOUS_GENERATIONS = 2
 MAX_FILES = 1200
 MAX_HISTORY_BYTES = 64 * 1024 * 1024
 MAX_FILE_BYTES = 16 * 1024 * 1024
-CHUNK = re.compile(r"^assets/[A-Za-z0-9_./-]+-[A-Za-z0-9_-]{8,}\\.(?:js|mjs|css)$")
+CHUNK = re.compile(r"^assets/[A-Za-z0-9_./-]+-[A-Za-z0-9_-]{8,}\.(?:js|mjs|css)$")
 BUILD = re.compile(r"^[a-f0-9]{40}$")
 
 
@@ -130,11 +129,13 @@ def prepare(dist: pathlib.Path, fetch: Callable, *, max_previous: int = MAX_PREV
     remote_manifest = fetch(MANIFEST, 2 * 1024 * 1024, optional=True)
 
     old_generations = []
+    original_build = None
     if remote_manifest is not None:
         if remote_release is None:
             raise ValueError("manifest exists but published release identity is absent")
         old_generations = validate_manifest(json.loads(remote_manifest))
-        if old_generations[0]["build"] != release_build(remote_release):
+        original_build = release_build(remote_release)
+        if old_generations[0]["build"] != original_build:
             raise ValueError("published asset manifest and release SHA disagree")
     if old_generations and old_generations[0]["build"] == current_build:
         # Re-deploy of same SHA is idempotent.
@@ -161,7 +162,7 @@ def prepare(dist: pathlib.Path, fetch: Callable, *, max_previous: int = MAX_PREV
 
     if old_generations:
         after = fetch("release.json", 8192, optional=False)
-        if after is None or release_build(after) != old_generations[0]["build"] if old_generations else False:
+        if after is None or release_build(after) != original_build:
             raise ValueError("published frontend changed while copying old assets")
 
     result = {"schema": 1, "generations": [current, *retained]}
@@ -181,7 +182,6 @@ def self_test() -> None:
         raise AssertionError(f"accepted unsafe asset name: {item}")
     with tempfile.TemporaryDirectory() as root:
         root_path = pathlib.Path(root)
-        chunks = {}
         remote = {}
         def make_dist(sha: str, suffix: str) -> pathlib.Path:
             dist = root_path / suffix
