@@ -269,6 +269,54 @@
   .chess-football-entry__choice b { font-size: .8rem; }
 }
 
+.chess-football-entry__manager--season { width: min(760px, 100%); }
+
+.chess-football-entry__standings {
+  width: 100%;
+  margin: 1.2rem auto;
+  border-collapse: collapse;
+  color: #eee9d7;
+  text-align: left;
+  font-size: clamp(.77rem, 2.2vw, .98rem);
+}
+
+.chess-football-entry__standings td,
+.chess-football-entry__standings th {
+  padding: .48rem .35rem;
+  border-bottom: 1px solid rgba(239, 217, 163, .17);
+}
+
+.chess-football-entry__standings thead { color: #b9d49e; }
+.chess-football-entry__standings td:last-child,
+.chess-football-entry__standings th:last-child { text-align: right; }
+.chess-football-entry__standings .is-my-club {
+  color: #ffe4a4;
+  background: rgba(112, 118, 55, .24);
+}
+
+.chess-football-entry__fixture-list {
+  margin: .85rem auto;
+  padding: .85rem 1rem;
+  border: 1px solid rgba(239, 217, 163, .18);
+  border-radius: 12px;
+  background: rgba(8, 23, 12, .5);
+  text-align: left;
+}
+
+.chess-football-entry__fixture-list h3 {
+  margin: 0 0 .5rem;
+  color: #b9d49e;
+  font-size: .92rem;
+}
+
+.chess-football-entry__fixture-list p { margin: .3rem 0; font-size: .85rem; }
+.chess-football-entry__manager-return.is-secondary {
+  margin-left: .6rem;
+  background: transparent;
+  border-color: rgba(239, 217, 163, .3);
+}
+.chess-football-entry__manager-return:disabled { opacity: .55; cursor: not-allowed; }
+
 @media (prefers-reduced-motion: reduce) {
   .chess-football-entry__choice { transition: none; }
   .chess-football-entry__choice:hover,
