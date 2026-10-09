@@ -156,6 +156,23 @@ async function withChessFootballCapturePage(browser, capture, callback) {
     const portal = page.locator('.lab-workshop-portal--football');
     await expect(portal).toBeVisible();
     await portal.click();
+    const welcome = page.locator('.chess-football-entry');
+    await expect(welcome).toBeVisible();
+    await expect(page.locator('iframe[title="Chess Football Godot"]')).toHaveCount(0);
+    await expect(welcome.locator('.chess-football-entry__choice')).toHaveCount(2);
+    const welcomeHealth = await welcome.evaluate((node) => ({
+      viewportWidth: node.clientWidth,
+      contentWidth: node.scrollWidth,
+    }));
+    expect(welcomeHealth.contentWidth, 'Football welcome: no horizontal overflow').toBeLessThanOrEqual(welcomeHealth.viewportWidth + 1);
+    const choicesBounds = await welcome.locator('.chess-football-entry__choices').boundingBox();
+    expect(choicesBounds, 'Football welcome: both mode choices visible').not.toBeNull();
+    expect(choicesBounds.y + choicesBounds.height, 'Football welcome: both CTAs fit the first viewport').toBeLessThanOrEqual(capture.height + 1);
+    await captureFrozenFrame(page, {
+      path: `${ARTIFACT_DIR}/chess-football-welcome-${capture.label}.png`,
+      fullPage: true,
+    });
+    await welcome.locator('.chess-football-entry__choice--quick').click();
     await expect(page.locator('.chess-football-godot-host')).toBeVisible();
     return await callback(page);
   } finally {
