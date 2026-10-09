@@ -23,6 +23,7 @@ import { chroniclesPartyPortraitUrl } from '../chronicles/chroniclesPartyPortrai
 import { chroniclesClearRuntimeMapDefinitions, chroniclesMapForState } from '../chronicles/chroniclesMapCatalog.js';
 import { chroniclesRegionHudLocation } from '../chronicles/chroniclesRegionHud.js';
 import { chroniclesGridExplorationStep } from '../chronicles/chroniclesGridExplorationStep.js';
+import { CHRONICLES_SWORDHAVEN_RETURN_PORTAL_ID } from '../chronicles/chroniclesSwordhavenReturnPortal.js';
 import { chroniclesCheckpointState } from '../chronicles/chroniclesRunClient.js';
 import {
   chroniclesApplyRunCheckpoint,
@@ -278,7 +279,10 @@ export default function ChroniclesOfMatthias({ onExit }) {
           Number(chroniclesHeroProgress(progressionRef.current, member.id).attributes?.agility || 0),
         ]),
       );
-      const started = chroniclesStartInitiativeCombat(
+      // Entering an area is not a tactical movement inside it. The player
+      // gets to see the new room/return portal before enemies can engage.
+      const transitionedMap = exploratoryNext?.mapId !== current.mapId;
+      const started = transitionedMap ? exploratoryNext : chroniclesStartInitiativeCombat(
         exploratoryNext,
         chroniclesActiveEnemies(exploratoryNext),
         {
@@ -936,7 +940,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
                     data-chronicles-touch-action="interact"
                     onClick={interactWithContext}
                     aria-label={contextualAction.label}
-                  >✦<small>USAR</small></button>
+                  >✦<small>{contextualAction.id === CHRONICLES_SWORDHAVEN_RETURN_PORTAL_ID ? 'VOLVER' : 'USAR'}</small></button>
                 )}
                 <button
                   type="button"

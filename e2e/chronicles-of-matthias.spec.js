@@ -44,6 +44,22 @@ test('Chronicles first-person · nueva expedición pide Swordhaven sin alterar T
   await expect(mode.locator('[data-chronicles-renderer="three"] canvas')).toHaveCount(1);
 });
 
+test('Chronicles · Swordhaven → cripta → Swordhaven, desde el teclado y sin cerrar la run', async ({ page }) => {
+  await openChronicles(page, { chroniclesCurrentMapId: 'swordhaven-square', newTown: true });
+  const mode = page.locator('[data-chronicles="true"]');
+  await expect(mode).toHaveAttribute('data-chronicles-map-id', 'swordhaven-square');
+  // The first-person starter faces north: one backwards step crosses the south gate.
+  await page.keyboard.press('ArrowDown');
+  await expect(mode).toHaveAttribute('data-chronicles-map-id', 'crypt-eight-squares', { timeout: 20_000 });
+  await expect(mode).toHaveAttribute('data-chronicles-phase', 'explore');
+  await expect(mode.locator('[data-chronicles-touch-action="interact"]'))
+    .toHaveAttribute('aria-label', 'Regresar a Swordhaven');
+  // The virtual return door is exposed to keyboard and mobile touch alike.
+  await page.keyboard.press('e');
+  await expect(mode).toHaveAttribute('data-chronicles-map-id', 'swordhaven-square', { timeout: 20_000 });
+  await expect(mode).toHaveAttribute('data-chronicles-phase', 'explore');
+});
+
 test('Chronicles creator · recupera el borrador tras F5 sin confirmar progreso', async ({ page }) => {
   const setup = await openChroniclesSetup(page);
   await setup.getByRole('button', { name: 'Crear PJs', exact: true }).click();
@@ -71,6 +87,9 @@ test('Chronicles creator · recupera el borrador tras F5 sin confirmar progreso'
 });
 
 test('Chronicles of Matthias · abre una cripta Three.js real y usa combate posicional de grupo', async ({ page }) => {
+  // Software WebGL runners can spend a full minute rasterizing the scene;
+  // do not share that budget with the actual combat/XP assertions.
+  test.setTimeout(180_000);
   // Deterministic initiative: identical d8 rolls leave authored agility in
   // charge, so Faust acts first once combat starts.
   await page.addInitScript(() => {
@@ -139,6 +158,17 @@ test('Chronicles of Matthias · abre una cripta Three.js real y usa combate posi
     const root = document.querySelector('[data-chronicles="true"]');
     if (!root) throw new Error('Chronicles root missing');
     const partyIds = new Set(['matthias', 'rook', 'bishop', 'knight']);
+    // A damage flash is intentionally brief. Remember that it happened rather
+    // than requiring a 100ms Playwright poll to catch the same render frame.
+    const observeHit = () => {
+      if (root.querySelector('.chronicles-party-member[data-damage-hit="true"]')) {
+        root.dataset.chroniclesDamageCueObserved = 'true';
+      }
+    };
+    const observer = new MutationObserver(observeHit);
+    observer.observe(root, { attributes: true, attributeFilter: ['data-damage-hit'], subtree: true });
+    window.__chroniclesDamageCueObserver = observer;
+    observeHit();
     const pump = () => {
       if (Number(root.getAttribute('data-party-hp-total') || 0) < hpBefore) {
         window.clearInterval(window.__chroniclesFirstPersonDamagePump);
@@ -156,13 +186,14 @@ test('Chronicles of Matthias · abre una cripta Three.js real y usa combate posi
   await page.waitForFunction((hpBefore) => {
     const root = document.querySelector('[data-chronicles="true"]');
     const hp = Number(root?.getAttribute('data-party-hp-total') || 0);
-    const hitCue = root?.querySelector('.chronicles-party-member[data-damage-hit="true"]');
-    return hp < hpBefore && Boolean(hitCue);
+    return hp < hpBefore && root?.dataset.chroniclesDamageCueObserved === 'true';
   }, hpBeforeEnemyHit, { timeout: 30_000, polling: 100 });
 
   await page.evaluate(() => {
     if (window.__chroniclesFirstPersonDamagePump) window.clearInterval(window.__chroniclesFirstPersonDamagePump);
     window.__chroniclesFirstPersonDamagePump = null;
+    window.__chroniclesDamageCueObserver?.disconnect();
+    window.__chroniclesDamageCueObserver = null;
   });
 });
 

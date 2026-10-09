@@ -14,6 +14,7 @@ import { buildChroniclesEnemyVisual } from './chroniclesEnemyVisualRegistry.js';
 import { buildSpectralChapel } from './chroniclesOfMatthiasSpectralBishop.js';
 import { createExperimentalThreeRenderer } from './experimentalThreeRenderer.js';
 import { buildSwordhavenScene } from './chronicles/chroniclesSwordhaven3D.js';
+import { CHRONICLES_SWORDHAVEN_RETURN_PORTAL_ID } from './chronicles/chroniclesSwordhavenReturnPortal.js';
 
 const CELL = 4;
 const CAMERA_Y = 1.62;
@@ -63,13 +64,27 @@ export function chroniclesEnemyFacingYaw(enemyCell, partyCell) {
   return Math.atan2(dx, dy);
 }
 
+// The entrance seal is mounted only 1.45m from the player's eye. At a
+// portrait phone aspect ratio, perspective magnifies even a 72cm plaque.
+// Keep a consistent eye-level centre while fitting the narrow camera frustum.
+export function chroniclesReturnSealFraming(coarsePointer = false) {
+  const scale = coarsePointer ? 0.30 : 0.62;
+  return { scale, lift: CAMERA_Y * (1 - scale) };
+}
+
 export function chroniclesExitGateTransform(grid, entry, center = DEFAULT_SCENE_CENTER) {
   const x = Number(entry?.position?.x ?? entry?.x);
   const y = Number(entry?.position?.y ?? entry?.y);
   if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
 
   const cell = worldForCell(x, y, center);
-  const wallSide = EXIT_GATE_SIDES.find(({ dx, dy }) => grid?.[y + dy]?.[x + dx] === '#') || null;
+  // Entries may request a particular wall when more than one borders the
+  // tile. The return portal must face the party at the western entrance, not
+  // get accidentally mounted to the southern wall by iteration order.
+  const preferred = EXIT_GATE_SIDES.find(({ side, dx, dy }) => (
+    side === entry?.wallSide && grid?.[y + dy]?.[x + dx] === '#'
+  ));
+  const wallSide = preferred || EXIT_GATE_SIDES.find(({ dx, dy }) => grid?.[y + dy]?.[x + dx] === '#') || null;
   if (!wallSide) {
     return {
       position: new THREE.Vector3(cell.x, 0, cell.z),
@@ -223,31 +238,75 @@ function createDungeonScene(scene, { coarsePointer = false, scenePlan = null } =
     const transform = chroniclesExitGateTransform(grid, exitDefinition, sceneCenter);
     if (!transform) return;
 
+    const isSwordhavenReturn = exitDefinition.id === CHRONICLES_SWORDHAVEN_RETURN_PORTAL_ID;
     const gate = new THREE.Group();
     gate.name = `chronicles-first-person-exit-${exitDefinition.id}`;
     gate.userData.chroniclesContentId = exitDefinition.id;
 
-    const gatePanel = new THREE.Mesh(new THREE.BoxGeometry(2.6, 3.05, 0.28), gateMaterial);
-    gatePanel.position.y = 1.48;
-    gatePanel.castShadow = true;
-    gatePanel.receiveShadow = true;
-
-    const gateRune = new THREE.Mesh(new THREE.TorusGeometry(0.54, 0.09, 8, 24), sigilMaterial.clone());
-    gateRune.position.set(0, 1.55, 0.17);
-    gateRune.name = `chronicles-first-person-exit-rune-${exitDefinition.id}`;
-
-    const leftPost = new THREE.Mesh(new THREE.BoxGeometry(0.16, 3.2, 0.36), sigilMaterial);
-    leftPost.position.set(-1.36, 1.52, 0);
-    const rightPost = leftPost.clone();
-    rightPost.position.x = 1.36;
-    const lintel = new THREE.Mesh(new THREE.BoxGeometry(2.88, 0.16, 0.36), sigilMaterial);
-    lintel.position.set(0, 3.06, 0);
-
-    gate.add(gatePanel, gateRune, leftPost, rightPost, lintel);
+    if (isSwordhavenReturn) {
+      // A full-size gate is illegible when the camera stands on the entrance
+      // tile: at mobile FOV its 3-metre frame fills the entire screen. Mount
+      // a small enchanted return seal at eye height instead. It is a visual
+      // marker only, with the same real contextual interaction and no collider.
+      const plaqueMaterial = new THREE.MeshStandardMaterial({
+        color: 0x283a37, roughness: 0.72, metalness: 0.46,
+        emissive: 0x0c2724, emissiveIntensity: 0.38,
+      });
+      const bronzeMaterial = new THREE.MeshStandardMaterial({
+        color: 0x9e9275, roughness: 0.42, metalness: 0.7,
+        emissive: 0x285249, emissiveIntensity: 0.42,
+      });
+      const runeMaterial = new THREE.MeshStandardMaterial({
+        color: 0xc9eadb, roughness: 0.34, metalness: 0.3,
+        emissive: 0x4c987d, emissiveIntensity: 1.1,
+      });
+      const plaque = new THREE.Mesh(new THREE.BoxGeometry(0.72, 0.96, 0.11), plaqueMaterial);
+      plaque.position.set(0, 1.62, 0);
+      plaque.castShadow = true;
+      plaque.receiveShadow = true;
+      const arch = new THREE.Mesh(new THREE.TorusGeometry(0.32, 0.03, 9, 28), bronzeMaterial);
+      arch.position.set(0, 1.62, 0.09);
+      arch.name = 'chronicles-swordhaven-return-portal-arch';
+      const sigil = new THREE.Mesh(new THREE.OctahedronGeometry(0.115, 0), runeMaterial);
+      sigil.position.set(0, 1.62, 0.135);
+      sigil.name = `chronicles-first-person-exit-rune-${exitDefinition.id}`;
+      const lintel = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.06, 0.15), bronzeMaterial);
+      lintel.position.set(0, 2.12, 0.04);
+      const sill = lintel.clone();
+      sill.position.y = 1.12;
+      const halo = new THREE.PointLight(0x80ceb4, coarsePointer ? 0.38 : 0.58, 2.3, 2);
+      halo.position.set(0, 1.62, 0.4);
+      gate.add(plaque, arch, sigil, lintel, sill, halo);
+    } else {
+      // Keep historical dungeon exits unchanged; their rune illumination
+      // continues to track the crypt's sigil puzzle state.
+      const gatePanel = new THREE.Mesh(new THREE.BoxGeometry(2.6, 3.05, 0.28), gateMaterial);
+      gatePanel.position.y = 1.48;
+      gatePanel.castShadow = true;
+      gatePanel.receiveShadow = true;
+      const gateRune = new THREE.Mesh(new THREE.TorusGeometry(0.54, 0.09, 8, 24), sigilMaterial.clone());
+      gateRune.position.set(0, 1.55, 0.17);
+      gateRune.name = `chronicles-first-person-exit-rune-${exitDefinition.id}`;
+      const leftPost = new THREE.Mesh(new THREE.BoxGeometry(0.16, 3.2, 0.36), sigilMaterial);
+      leftPost.position.set(-1.36, 1.52, 0);
+      const rightPost = leftPost.clone();
+      rightPost.position.x = 1.36;
+      const lintel = new THREE.Mesh(new THREE.BoxGeometry(2.88, 0.16, 0.36), sigilMaterial);
+      lintel.position.set(0, 3.06, 0);
+      gate.add(gatePanel, gateRune, leftPost, rightPost, lintel);
+      gateRunes.push(gateRune);
+    }
     gate.position.copy(transform.position);
     gate.rotation.y = transform.yaw;
+    if (isSwordhavenReturn) {
+      const framing = chroniclesReturnSealFraming(coarsePointer);
+      gate.scale.setScalar(framing.scale);
+      // Scale around camera eye height, not floor level: otherwise a small
+      // plaque ends up at the player's feet and behind the touch controls.
+      gate.position.y += framing.lift;
+    }
     scene.add(gate);
-    gateRunes.push(gateRune);
+
   });
 
 

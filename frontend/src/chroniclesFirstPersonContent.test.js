@@ -1,4 +1,7 @@
 import { describe, expect, it } from 'vitest';
+import { chroniclesFirstPersonScenePlan } from './chronicles/chroniclesFirstPersonScenePlan.js';
+import { chroniclesApplyContentEffects } from './chronicles/chroniclesContentRuntime.js';
+import { CHRONICLES_SWORDHAVEN_RETURN_PORTAL_ID } from './chronicles/chroniclesSwordhavenReturnPortal.js';
 import {
   chroniclesContextualContentAction,
   chroniclesObjective,
@@ -122,4 +125,48 @@ describe('Chronicles first-person authored content', () => {
   });
 
 
+});
+
+describe('Swordhaven return portal without altering legacy crypt maps', () => {
+  it('creates a genuine contextual door at the crypt entry only after arriving from Swordhaven', () => {
+    const fromTown = createChroniclesState('swordhaven-square');
+    const inCrypt = chroniclesApplyContentEffects(fromTown, [
+      { type: 'transition-map', mapId: 'crypt-eight-squares' },
+    ]);
+    expect(inCrypt.swordhavenArrived).toBe(true);
+    expect(chroniclesContextualContentAction(inCrypt)).toMatchObject({
+      id: CHRONICLES_SWORDHAVEN_RETURN_PORTAL_ID,
+      label: 'Regresar a Swordhaven',
+    });
+    expect(chroniclesFirstPersonScenePlan(inCrypt).content).toEqual(
+      expect.arrayContaining([expect.objectContaining({
+        id: CHRONICLES_SWORDHAVEN_RETURN_PORTAL_ID,
+        kind: 'exit',
+        position: { x: 1, y: 5 },
+      })]),
+    );
+    const home = chroniclesReduce(inCrypt, 'interact');
+    expect(home.mapId).toBe('swordhaven-square');
+    expect({ x: home.x, y: home.y }).toEqual({ x: 9, y: 17 });
+    expect(home.swordhavenArrived).toBe(true);
+    expect(home.phase).toBe('explore');
+    expect(home.turns).toBe(inCrypt.turns + 1);
+  });
+
+  it('does not offer a town return to legacy crypt-only saves', () => {
+    const legacy = createChroniclesState('crypt-eight-squares');
+    expect(chroniclesContextualContentAction(legacy)).toBeNull();
+    expect(chroniclesFirstPersonScenePlan(legacy).content.some(
+      (entry) => entry.id === CHRONICLES_SWORDHAVEN_RETURN_PORTAL_ID,
+    )).toBe(false);
+  });
+
+  it('requires standing at the entrance and being outside combat', () => {
+    const visited = chroniclesApplyContentEffects(createChroniclesState('swordhaven-square'), [
+      { type: 'transition-map', mapId: 'crypt-eight-squares' },
+    ]);
+    expect(chroniclesContextualContentAction({ ...visited, x: 2 })).toBeNull();
+    expect(chroniclesContextualContentAction({ ...visited, initiative: { round: 1 } })).toBeNull();
+    expect(chroniclesContextualContentAction({ ...visited, phase: 'defeated' })).toBeNull();
+  });
 });
