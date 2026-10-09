@@ -173,6 +173,39 @@ describe('Chronicles shared run identity', () => {
     expect(chroniclesRenameSavedRun('first-person', 'legacy-one', '   ')).toBe(false);
   });
 
+
+  it('reconciles cross-device server runs, preserves local labels and uses GET selection', () => {
+    const pendingId = beginChroniclesRun('first-person');
+    const remoteId = 'remote-owned-1';
+    const rows = [{ runId: remoteId, currentMapId: 'crypt-eight-squares', status: 'active', updatedAtMs: 1760000000000 }];
+    const merged = chroniclesMergeRemoteSavedRuns('first-person', rows);
+    expect(merged.map((save) => save.id)).toContain(remoteId);
+    expect(merged.map((save) => save.id)).toContain(pendingId);
+    expect(merged.find((save) => save.id === remoteId)).toMatchObject({
+      remote: true, currentMapId: 'crypt-eight-squares', updatedAt: 1760000000000,
+    });
+    expect(chroniclesSelectSavedRun('first-person', remoteId)).toBe(true);
+    expect(chroniclesSelectedRunIsRemote('first-person', remoteId)).toBe(true);
+    expect(chroniclesRenameSavedRun('first-person', remoteId, 'Mi expedición remota')).toBe(true);
+    expect(chroniclesMergeRemoteSavedRuns('first-person', rows).find((save) => save.id === remoteId).title).toBe('Mi expedición remota');
+    // Server no longer reports the run: a complete list removes its stale slot.
+    expect(chroniclesMergeRemoteSavedRuns('first-person', []).some((save) => save.id === remoteId)).toBe(false);
+    expect(chroniclesSelectedRunIsRemote('first-person', remoteId)).toBe(false);
+  });
+
+  it('never accepts malformed remote inventories or leaks them across owners', () => {
+    expect(() => chroniclesMergeRemoteSavedRuns('first-person', {})).toThrow(TypeError);
+    chroniclesMergeRemoteSavedRuns('first-person', [{
+      runId: 'alice-remote', status: 'active', updatedAtMs: 1760000000000,
+    }]);
+    localStorage.setItem('chess-study-auth-username', 'bob');
+    expect(chroniclesListSavedRuns('first-person')).toEqual([]);
+    chroniclesMergeRemoteSavedRuns('first-person', [{
+      runId: 'bob-remote', status: 'active', updatedAtMs: 1760000000000,
+    }]);
+    expect(chroniclesListSavedRuns('first-person').map((save) => save.id)).toEqual(['bob-remote']);
+  });
+
   it('never inherits an active expedition across authenticated users', () => {
     const aliceRun = beginChroniclesRun('first-person');
 
