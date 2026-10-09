@@ -4,6 +4,7 @@ import {
   buildSwordhavenScene, createSwordhavenWalkGrid, SWORDHAVEN_BUILDINGS,
   SWORDHAVEN_INTERACTION_CELLS, SWORDHAVEN_GATE_CELL, SWORDHAVEN_SPAWN,
   swordhavenGrassTexture, createSwordhavenSkyDome,
+  swordhavenSurfaceTexture,
 } from './chroniclesSwordhaven3D.js';
 
 describe('Swordhaven modular real-time 3D', () => {
@@ -117,6 +118,38 @@ describe('Swordhaven modular real-time 3D', () => {
     expect(sky.position.equals(camera.position)).toBe(true);
     expect(sky.getObjectByName('swordhaven-sun-disc').position.clone().normalize().distanceTo(sun))
       .toBeLessThan(1e-6);
+  });
+
+
+  it('uses reusable masonry, stucco, oak and tile maps on real shop meshes', () => {
+    const scene = new THREE.Scene();
+    buildSwordhavenScene(scene, { scenePlan: { content: [] }, coarsePointer: true });
+    const house = scene.getObjectByName('swordhaven-building-swordhaven-forge');
+    expect(house.getObjectByName('timber-and-stone-walls').material.map)
+      .toBe(swordhavenSurfaceTexture('stucco'));
+    expect(house.getObjectByName('stone-foundations').material.map)
+      .toBe(swordhavenSurfaceTexture('masonry'));
+    expect(house.getObjectByName('vertical-facade-post').material.map)
+      .toBe(swordhavenSurfaceTexture('timber'));
+    expect(house.getObjectByName('pitched-roof-1').material.map)
+      .toBe(swordhavenSurfaceTexture('roof'));
+    expect(scene.getObjectByName('swordhaven-building-swordhaven-temple')
+      .getObjectByName('timber-and-stone-walls').material.map)
+      .toBe(swordhavenSurfaceTexture('masonry'));
+  });
+
+  it('keeps the repeating authored-style patterns deterministic and distinct', () => {
+    for (const kind of ['stucco', 'masonry', 'roof', 'timber']) {
+      const texture = swordhavenSurfaceTexture(kind);
+      expect(texture).toBe(swordhavenSurfaceTexture(kind));
+      expect(texture.colorSpace).toBe(THREE.SRGBColorSpace);
+      expect(texture.wrapS).toBe(THREE.RepeatWrapping);
+      expect(texture.wrapT).toBe(THREE.RepeatWrapping);
+      expect(new Set(texture.image.data.filter((_v, index) => index % 4 === 0)).size)
+        .toBeGreaterThan(10);
+    }
+    expect(swordhavenSurfaceTexture('roof')).not.toBe(swordhavenSurfaceTexture('masonry'));
+    expect(() => swordhavenSurfaceTexture('unknown')).toThrow(/Unsupported/);
   });
 
   it('renders storefronts without exposing fake shop interactions before they are authored', () => {
