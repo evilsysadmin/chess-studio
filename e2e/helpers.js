@@ -298,6 +298,26 @@ export async function mockApi(page, {
       return route.fulfill({ status: 204, body: '' });
     }
 
+    // Exercise real checkpoint durability in the browser tests: CAS advances
+    // worldVersion exactly once, and the inventory reflects the last map.
+    const checkpointPath = path.match(/\/chronicles\/runs\/([^/]+)\/checkpoint$/);
+    if (checkpointPath && method === 'PUT') {
+      const runId = decodeURIComponent(checkpointPath[1]);
+      const entry = Array.from(chroniclesRuns.entries()).find(([, run]) => run.runId === runId);
+      if (!entry) return json({ detail: 'Run not found' }, 404);
+      const [operationKey, current] = entry;
+      const body = route.request().postDataJSON?.() || {};
+      if (body.expectedWorldVersion !== current.worldVersion) {
+        return json({ detail: 'Stale checkpoint version' }, 409);
+      }
+      const updated = {
+        ...current, ...body, worldVersion: current.worldVersion + 1,
+        currentMapId: body.currentMapId || current.currentMapId,
+      };
+      chroniclesRuns.set(operationKey, updated);
+      return json(updated);
+    }
+
     if (path.endsWith('/chronicles/runs') && method === 'POST') {
       if (Number(chroniclesRunFailureStatus) > 0) {
         return json({ detail: 'Chronicles bootstrap E2E failure' }, Number(chroniclesRunFailureStatus));

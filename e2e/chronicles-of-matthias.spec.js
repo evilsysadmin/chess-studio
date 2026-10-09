@@ -429,3 +429,46 @@ test('Chronicles · fallos de red permiten reintentar el libro y regresar desde 
   await expect(page.getByRole('heading', { name: 'No se pudo preparar Chronicles' })).toHaveCount(0);
   await expect(menu.getByRole('button', { name: 'Nuevo juego' })).toBeEnabled();
 });
+
+test('Chronicles · no abandona ni cambia run si el último checkpoint devuelve 503', async ({ page }) => {
+  test.setTimeout(180_000);
+  let serverAvailable = false;
+  const checkpointAttempts = [];
+  await openChronicles(page, { chroniclesCurrentMapId: 'swordhaven-square', newTown: true });
+  // Install after mockApi(): Playwright evaluates the most recently registered
+  // route first, so the simulated outage must intercept the shared mock.
+  await page.route('http://localhost:4000/api/chronicles/runs/**', async (route) => {
+    if (route.request().method() !== 'PUT' || !route.request().url().endsWith('/checkpoint')) {
+      return route.fallback();
+    }
+    checkpointAttempts.push(route.request().postDataJSON?.());
+    if (serverAvailable) return route.fallback();
+    return route.fulfill({
+      status: 503, contentType: 'application/json',
+      body: JSON.stringify({ detail: 'Checkpoint unavailable' }),
+    });
+  });
+  const game = page.locator('[data-chronicles="true"]');
+  await page.keyboard.press('ArrowRight');
+  await expect(game).toHaveAttribute('data-chronicles-turns', '1');
+  await expect.poll(() => checkpointAttempts.length).toBeGreaterThan(0);
+
+  await page.locator('summary[aria-label="Abrir menú de Chronicles"]').click();
+  const menu = page.locator('.chronicles-game-menu[open]');
+  await expect(menu).toBeVisible();
+  await menu.getByRole('button', { name: 'Salir y guardar' }).click();
+  await expect(menu.getByRole('alert')).toContainText('No se ha confirmado el guardado');
+  await expect(game).toBeVisible();
+  const sameId = await page.evaluate(() => JSON.parse(localStorage.getItem('chess-study-chronicles-run-v1')).id);
+
+  // Switching expeditions must also fail closed while the server is offline.
+  await menu.getByRole('button', { name: 'Nueva expedición' }).click();
+  await expect(menu.getByRole('alert')).toContainText('No se ha confirmado el guardado');
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('chess-study-chronicles-run-v1')).id)).toBe(sameId);
+
+  serverAvailable = true;
+  await menu.getByRole('button', { name: 'Salir y guardar' }).click();
+  await expect(game).toHaveCount(0, { timeout: 20_000 });
+  expect(checkpointAttempts.length).toBeGreaterThanOrEqual(3);
+  expect(checkpointAttempts.every((checkpoint) => checkpoint.expectedWorldVersion === 0)).toBe(true);
+});

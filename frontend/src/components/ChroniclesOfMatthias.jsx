@@ -172,7 +172,11 @@ export default function ChroniclesOfMatthias({ onExit }) {
   const activeRunIdRef = useRef(null);
   const authoritativeRunRef = useRef(null);
   const checkpointFingerprintRef = useRef('');
+  const lastPersistedCheckpointRef = useRef('');
   const checkpointQueueRef = useRef(Promise.resolve());
+  const savingTransitionRef = useRef(false);
+  const [savingTransition, setSavingTransition] = useState(false);
+  const [saveError, setSaveError] = useState('');
   const stateRef = useRef(null);
   const [state, setState] = useState(null);
   const [selectedMemberId, setSelectedMemberId] = useState('matthias');
@@ -305,6 +309,8 @@ export default function ChroniclesOfMatthias({ onExit }) {
   }, []);
 
   const dispatch = useCallback((action) => {
+    // Freeze all input while the latest checkpoint is being confirmed.
+    if (savingTransitionRef.current) return;
     const current = stateRef.current;
     if (!current) return;
 
@@ -441,12 +447,12 @@ export default function ChroniclesOfMatthias({ onExit }) {
   useEffect(() => {
     const current = stateRef.current;
     const actor = chroniclesCurrentInitiativeActor(current?.initiative);
-    if (sheetMemberId || !current?.initiative || actor?.kind !== 'enemy' || current.phase === 'defeated') return undefined;
+    if (sheetMemberId || menuOpen || savingTransition || !current?.initiative || actor?.kind !== 'enemy' || current.phase === 'defeated') return undefined;
 
     const timer = window.setTimeout(() => {
       const latest = stateRef.current;
       const latestActor = chroniclesCurrentInitiativeActor(latest?.initiative);
-      if (!latest?.initiative || latestActor?.kind !== 'enemy' || latestActor.id !== actor.id) return;
+      if (savingTransitionRef.current || !latest?.initiative || latestActor?.kind !== 'enemy' || latestActor.id !== actor.id) return;
       const acted = chroniclesResolveEnemyActor(latest, actor.id);
       const cue = chroniclesRetaliationCue(latest, acted);
       if (cue) {
@@ -465,7 +471,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
       setState(advanced);
     }, 280);
     return () => window.clearTimeout(timer);
-  }, [sheetMemberId, state?.initiative?.cursor, state?.initiative?.round, state?.phase]);
+  }, [menuOpen, savingTransition, sheetMemberId, state?.initiative?.cursor, state?.initiative?.round, state?.phase]);
 
   useEffect(() => {
     const actor = chroniclesCurrentInitiativeActor(state?.initiative);
@@ -531,8 +537,53 @@ export default function ChroniclesOfMatthias({ onExit }) {
     setSheetMemberId(memberId);
   }, [clearTouchHold]);
 
+  // Leaving a run is a durable transition, not merely a navigation action.
+  // Auto-checkpoints are coalesced and can fail while the player keeps moving;
+  // flush the freshest snapshot before switching or exiting. A failed PUT
+  // leaves the current run mounted and the same server identity selected.
+  const saveBeforeLeaving = useCallback(async (onSaved) => {
+    if (savingTransitionRef.current) return;
+    savingTransitionRef.current = true;
+    setSavingTransition(true);
+    setSaveError('');
+    try {
+      const pending = checkpointQueueRef.current.catch(() => undefined).then(async () => {
+        const run = authoritativeRunRef.current;
+        const snapshot = stateRef.current;
+        if (!run?.runId || !snapshot) throw new Error('Chronicles has no authoritative run to save');
+        const fingerprint = chroniclesRunCheckpointFingerprint(snapshot);
+        if (!fingerprint) throw new Error('Chronicles state cannot be checkpointed');
+        if (lastPersistedCheckpointRef.current === fingerprint) return;
+        const updated = await chroniclesCheckpointState(
+          run.runId, snapshot, run.worldVersion,
+          { terminalStatus: snapshot.phase === 'escaped' ? 'completed' : null },
+        );
+        if (authoritativeRunRef.current?.runId !== run.runId) {
+          throw new Error('Chronicles run changed before save confirmation');
+        }
+        authoritativeRunRef.current = { ...run, ...updated };
+        lastPersistedCheckpointRef.current = fingerprint;
+        chroniclesNoteSavedRunCheckpoint(FIRST_PERSON_RUN_SCOPE, run.runId, snapshot.mapId);
+      });
+      checkpointQueueRef.current = pending;
+      await pending;
+      onSaved();
+    } catch (error) {
+      console.error('Chronicles save before leaving failed', error);
+      if (error?.status === 409) {
+        setReady(false);
+        setBootstrapError(error);
+      } else {
+        setSaveError('No se ha confirmado el guardado en el servidor. Sigues en tu partida; comprueba la conexión y vuelve a intentarlo.');
+      }
+    } finally {
+      savingTransitionRef.current = false;
+      setSavingTransition(false);
+    }
+  }, []);
+
   const newExpedition = useCallback(() => {
-    const runId = activeRunIdRef.current;
+    void saveBeforeLeaving(() => {
     // Starting another game does not destroy the checkpoint of the old one.
     // The catalog keeps both identities loadable.
     const newRunId = beginChroniclesRun(FIRST_PERSON_RUN_SCOPE);
@@ -540,6 +591,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
     authoritativeRunRef.current = null;
     checkpointFingerprintRef.current = '';
     checkpointQueueRef.current = Promise.resolve();
+    lastPersistedCheckpointRef.current = '';
     stateRef.current = null;
     setState(null);
     setSelectedMemberId('matthias');
@@ -552,7 +604,8 @@ export default function ChroniclesOfMatthias({ onExit }) {
     staleRunRecoveryAttemptedRef.current = false;
     setMenuOpen(false);
     setBootstrapRevision((revision) => revision + 1);
-  }, []);
+    });
+  }, [saveBeforeLeaving]);
 
   const restart = useCallback(() => {
     if (activeRunIdRef.current) {
@@ -617,6 +670,8 @@ export default function ChroniclesOfMatthias({ onExit }) {
         authoritativeRunRef.current = world;
         chroniclesMarkSavedRunRemote(FIRST_PERSON_RUN_SCOPE, operationId);
         checkpointFingerprintRef.current = chroniclesRunCheckpointFingerprint(next);
+        lastPersistedCheckpointRef.current = checkpointFingerprintRef.current;
+        setSaveError('');
         setAutomapVisitedByMap(loadChroniclesAutomapVisited(operationId));
         stateRef.current = next;
         staleRunRecoveryAttemptedRef.current = false;
@@ -711,12 +766,16 @@ export default function ChroniclesOfMatthias({ onExit }) {
         if (authoritativeRunRef.current?.runId !== scheduledRunId) return;
         authoritativeRunRef.current = { ...currentRun, ...updated };
         chroniclesNoteSavedRunCheckpoint(FIRST_PERSON_RUN_SCOPE, scheduledRunId, snapshot.mapId);
+        lastPersistedCheckpointRef.current = fingerprint;
+        setSaveError('');
       })
       .catch((error) => {
         console.error('Chronicles checkpoint failed', error);
         if (error?.status === 409) {
           setReady(false);
           setBootstrapError(error);
+        } else {
+          setSaveError('El último avance no se ha confirmado en el servidor. Vuelve a intentar guardar desde MENÚ antes de salir.');
         }
       });
   }, [ready, state]);
@@ -725,7 +784,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
     if (!ready || !stateRef.current) return undefined;
     const onKeyDown = (event) => {
       const current = stateRef.current;
-      if (!current) return;
+      if (!current || savingTransitionRef.current || menuOpen) return;
       if (event.key === 'm' || event.key === 'M') {
         event.preventDefault();
         clearTouchHold();
@@ -771,7 +830,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
     };
     window.addEventListener('keydown', onKeyDown, { passive: false });
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [attackWithSelected, automapOpen, clearTouchHold, dispatch, interactWithContext, openMemberSheet, ready, sheetMemberId]);
+  }, [attackWithSelected, automapOpen, clearTouchHold, dispatch, interactWithContext, menuOpen, openMemberSheet, ready, sheetMemberId]);
 
   const startFreshGame = () => {
     beginChroniclesRun(FIRST_PERSON_RUN_SCOPE);
@@ -788,20 +847,20 @@ export default function ChroniclesOfMatthias({ onExit }) {
     activeRunIdRef.current = null;
     authoritativeRunRef.current = null;
     checkpointFingerprintRef.current = '';
+    lastPersistedCheckpointRef.current = '';
     stateRef.current = null;
     setState(null);
     setReady(false);
     setBootstrapError(null);
+    setSaveError('');
     setCharacterSetupDone(true);
     setEntryView('playing');
     setBootstrapRevision((revision) => revision + 1);
   };
 
   const returnToSaveMenu = () => {
-    setMenuOpen(false);
     clearTouchHold();
-    // Never switch the authoritative run pointer while a checkpoint is queued.
-    void checkpointQueueRef.current.catch(() => undefined).then(() => {
+    const leave = () => {
       stateRef.current = null;
       activeRunIdRef.current = null;
       authoritativeRunRef.current = null;
@@ -810,11 +869,21 @@ export default function ChroniclesOfMatthias({ onExit }) {
       setBootstrapError(null);
       setRendererError('');
       checkpointFingerprintRef.current = '';
+      lastPersistedCheckpointRef.current = '';
       setCharacterSetupDone(false);
       setSaveInventory(null);
+      setMenuOpen(false);
       setEntryView('menu');
       refreshSaves((value) => value + 1);
-    });
+    };
+    // Bootstrap failures have no mounted run to checkpoint. Preserve the
+    // existing recover-to-book path instead of trapping users on an error page.
+    if (bootstrapError || !stateRef.current || !authoritativeRunRef.current?.runId) {
+      leave();
+      return;
+    }
+    // A playable run can leave only after the latest checkpoint is durable.
+    void saveBeforeLeaving(leave);
   };
 
   if (entryView === 'menu') {
@@ -998,11 +1067,14 @@ export default function ChroniclesOfMatthias({ onExit }) {
               </summary>
               <div className="chronicles-game-menu__panel">
                 <strong>Chronicles of Matthias</strong>
-                <small>Salir conserva esta run. Nueva expedición crea otra ruta aleatoria.</small>
-                <button type="button" onClick={() => setMenuOpen(false)}>Continuar</button>
-                <button type="button" onClick={newExpedition}>Nueva expedición</button>
-                <button type="button" onClick={returnToSaveMenu}>Partidas guardadas</button>
-                <button type="button" onClick={exitChronicles}>Salir y guardar</button>
+                <small>Salir conserva esta run sólo después de confirmar el guardado en el servidor.</small>
+                {saveError && <p className="chronicles-game-menu__save-error" role="alert">{saveError}</p>}
+                <button type="button" disabled={savingTransition} onClick={() => setMenuOpen(false)}>Continuar</button>
+                <button type="button" disabled={savingTransition} onClick={newExpedition}>Nueva expedición</button>
+                <button type="button" disabled={savingTransition} onClick={returnToSaveMenu}>Partidas guardadas</button>
+                <button type="button" disabled={savingTransition} onClick={() => { void saveBeforeLeaving(exitChronicles); }}>
+                  {savingTransition ? 'Guardando…' : 'Salir y guardar'}
+                </button>
               </div>
             </details>
           </div>
