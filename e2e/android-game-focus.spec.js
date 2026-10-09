@@ -190,8 +190,8 @@ test('Android · Focus convierte reacciones nuevas de Matthias en bocadillos tem
   await clickBoardMove(page, 'e2', 'e4');
   await expect.poll(() => movePosts(requestLog).length).toBe(1);
   const board = page.locator('[data-board3d-war-room="true"]');
-  // The API may have registered e4 while Matthias is still taking his turn.
-  // Do not submit a second human move until control is returned to the player.
+  // The POST can be logged while CPU is still calculating/committing its reply.
+  // Wait for the actual player's turn, rather than pressing e4 during CPU turn.
   await expect(board).toHaveAttribute('data-board3d-turn', 'human', { timeout: 15_000 });
   await expect(board).toHaveAttribute('data-board3d-selected', '');
 

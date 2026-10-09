@@ -12,6 +12,7 @@ on:
       - scripts/art/repair_matthias_machinegun_hurt_alpha_v3.py
       - scripts/art/repair_matthias_pose_semantics_v1.py
       - scripts/art/repair_matthias_head_integrity_v1.py
+      - scripts/art/verify_matthias_runtime_integrity.py
       - scripts/art/sprite_forge.py
       - scripts/art/test_sprite_forge.py
       - scripts/art/matthias_prompt_contract.py
@@ -42,6 +43,7 @@ on:
       - scripts/art/repair_matthias_machinegun_hurt_alpha_v3.py
       - scripts/art/repair_matthias_pose_semantics_v1.py
       - scripts/art/repair_matthias_head_integrity_v1.py
+      - scripts/art/verify_matthias_runtime_integrity.py
       - scripts/art/sprite_forge.py
       - scripts/art/test_sprite_forge.py
       - scripts/art/matthias_prompt_contract.py
@@ -284,145 +286,13 @@ jobs:
                       )
           PY
 
-      - name: Publish Matthias pose semantics v1 atlases to R2
-        if: >-
-          github.event_name == 'push' &&
-          github.ref == 'refs/heads/main' &&
-          steps.scope.outputs.matthias == 'true'
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-        run: |
-          set -euo pipefail
-          CAND=/tmp/pawn-slug-sprite-smoke/matthias-pose-semantics-v1
-          PUB="$CAND/publish"
-          mkdir -p "$PUB"
-          for weapon in pistol machinegun shotgun panzerfaust; do
-            python3 -S scripts/r2_asset_publish.py publish \
-              "$CAND/atlases/matthias-${weapon}-pose-semantics-v1.png" \
-              --logical-id "pawnSlug.godot.matthias.${weapon}.poseSemanticsV1" \
-              --prefix "pawn-slug-godot/matthias/pose-semantics-v1/${weapon}/full" \
-              --manifest "$PUB/${weapon}.json"
-            cat "$PUB/${weapon}.json" >> "$GITHUB_STEP_SUMMARY"
-          done
-
-      - name: Verify published Matthias pose semantics v1 atlases
-        if: >-
-          github.event_name == 'push' &&
-          github.ref == 'refs/heads/main' &&
-          steps.scope.outputs.matthias == 'true'
-        run: |
-          set -euo pipefail
-          CAND=/tmp/pawn-slug-sprite-smoke/matthias-pose-semantics-v1
-          PUB="$CAND/publish"
-          for weapon in pistol machinegun shotgun panzerfaust; do
-            readarray -t asset < <(python3 - "$PUB/${weapon}.json" "$weapon" <<'PY'
-          import json
-          import sys
-          path, weapon = sys.argv[1:3]
-          data = json.load(open(path, encoding="utf-8"))
-          item = data["assets"][f"pawnSlug.godot.matthias.{weapon}.poseSemanticsV1"]
-          print(item["url"])
-          print(item["sha256"])
-          PY
-            )
-            curl --fail --silent --show-error --location --max-time 20 \
-              "${asset[0]}" -o "$PUB/${weapon}-published.png"
-            actual="$(sha256sum "$PUB/${weapon}-published.png" | awk '{print $1}')"
-            test "$actual" = "${asset[1]}"
-            echo "Verified ${weapon}: ${asset[0]}" | tee -a "$GITHUB_STEP_SUMMARY"
-          done
-
-      - name: Build Matthias head integrity v1 candidate
+      - name: Audit published Matthias head integrity
         if: steps.scope.outputs.matthias == 'true'
         run: |
           set -euo pipefail
-          HI=/tmp/pawn-slug-sprite-smoke/matthias-head-integrity-v1
-          SRC="$HI/sources"
-          mkdir -p "$SRC"
-          python3 scripts/art/repair_matthias_head_integrity_v1.py --self-test
-          # Pinned pose-semantics-v1 inputs: the candidate does not depend on what runtime points at.
-          python3 scripts/art/repair_matthias_head_integrity_v1.py --print-sources |
-            while read -r name url digest; do
-              curl --fail --silent --show-error --location --max-time 60 "$url" -o "$SRC/$(basename "$url")"
-            done
-          python3 scripts/art/repair_matthias_head_integrity_v1.py \
-            --sources-dir "$SRC" \
-            --output-dir "$HI" > /dev/null
-          cat "$HI/matthias-head-integrity-v1-manifest.json" >> "$GITHUB_STEP_SUMMARY"
-          python3 scripts/art/export_matthias_sprite_smoke.py \
-            --gdscript games/pawn-slug-godot/scripts/matthias_art.gd \
-            --atlas pistol="$HI/atlases/matthias-pistol-head-integrity-v1.png" \
-            --atlas machinegun="$HI/atlases/matthias-machinegun-head-integrity-v1.png" \
-            --atlas shotgun="$SRC/matthias-shotgun-pose-semantics-v1-9d2ed6f7aba558ac.png" \
-            --atlas panzerfaust="$SRC/matthias-panzerfaust-pose-semantics-v1-8419aad1ba321249.png" \
-            --output-dir "$HI/smoke"
-
-      - name: Validate Matthias head integrity v1 candidate
-        if: steps.scope.outputs.matthias == 'true'
-        run: |
-          set -euo pipefail
-          SM=/tmp/pawn-slug-sprite-smoke/matthias-head-integrity-v1/smoke
-          python3 scripts/art/validate_matthias_sprite_continuity.py \
-            --gdscript games/pawn-slug-godot/scripts/matthias_art.gd \
-            --sprite-smoke-dir "$SM" \
-            --output "$SM/continuity-health.json"
-          mkdir -p "$SM/semantic-contract"
-          python3 scripts/art/matthias_prompt_contract.py audit-smoke \
-            --smoke-dir "$SM" \
-            --output "$SM/semantic-contract/matthias-semantic-audit.json" \
-            --review-png "$SM/semantic-contract/matthias-semantic-review.png" \
-            --summary-output "$SM/semantic-contract/matthias-semantic-summary.md" \
-            --fail-on-hard
-
-      - name: Publish Matthias head integrity v1 atlases to R2
-        if: >-
-          github.event_name == 'push' &&
-          github.ref == 'refs/heads/main' &&
-          steps.scope.outputs.matthias == 'true'
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-        run: |
-          set -euo pipefail
-          HI=/tmp/pawn-slug-sprite-smoke/matthias-head-integrity-v1
-          PUB="$HI/publish"
-          mkdir -p "$PUB"
-          for weapon in pistol machinegun; do
-            python3 -S scripts/r2_asset_publish.py publish \
-              "$HI/atlases/matthias-${weapon}-head-integrity-v1.png" \
-              --logical-id "pawnSlug.godot.matthias.${weapon}.headIntegrityV1" \
-              --prefix "pawn-slug-godot/matthias/head-integrity-v1/${weapon}/full" \
-              --manifest "$PUB/${weapon}.json"
-            cat "$PUB/${weapon}.json" >> "$GITHUB_STEP_SUMMARY"
-          done
-
-      - name: Verify published Matthias head integrity v1 atlases
-        if: >-
-          github.event_name == 'push' &&
-          github.ref == 'refs/heads/main' &&
-          steps.scope.outputs.matthias == 'true'
-        run: |
-          set -euo pipefail
-          HI=/tmp/pawn-slug-sprite-smoke/matthias-head-integrity-v1
-          PUB="$HI/publish"
-          for weapon in pistol machinegun; do
-            readarray -t asset < <(python3 - "$PUB/${weapon}.json" "$weapon" <<'PY'
-          import json
-          import sys
-          path, weapon = sys.argv[1:3]
-          data = json.load(open(path, encoding="utf-8"))
-          item = data["assets"][f"pawnSlug.godot.matthias.{weapon}.headIntegrityV1"]
-          print(item["url"])
-          print(item["sha256"])
-          PY
-            )
-            curl --fail --silent --show-error --location --max-time 20 \
-              "${asset[0]}" -o "$PUB/${weapon}-published.png"
-            actual="$(sha256sum "$PUB/${weapon}-published.png" | awk '{print $1}')"
-            test "$actual" = "${asset[1]}"
-            echo "Verified ${weapon}: ${asset[0]}" | tee -a "$GITHUB_STEP_SUMMARY"
-          done
+          python3 scripts/art/verify_matthias_runtime_integrity.py --self-test
+          python3 scripts/art/verify_matthias_runtime_integrity.py \
+            --sprite-smoke-dir /tmp/pawn-slug-sprite-smoke/matthias
 
       - name: Export enemy runtime sprites
         if: steps.scope.outputs.enemy == 'true'

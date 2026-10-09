@@ -23,7 +23,6 @@ const CHRONICLES_E2E_MAP_IDS = Object.freeze([
   'hollow-bell-tower',
   'iron-foundry',
   'menagerie-of-ash',
-  'swordhaven-square',
 ]);
 let chroniclesManifestPromise = null;
 
@@ -44,10 +43,13 @@ async function chroniclesE2ERunPayload({
   currentMapId = 'crypt-eight-squares',
   status = 'active',
   worldFlags = null,
+  areaTransform = null,
 } = {}) {
   const manifests = await chroniclesE2EManifests();
   const areas = CHRONICLES_E2E_MAP_IDS.map((mapId, index) => {
-    const manifest = manifests[mapId];
+    const manifest = typeof areaTransform === 'function'
+      ? areaTransform(mapId, manifests[mapId])
+      : manifests[mapId];
     const marker = ((seed + index + 1) % 16).toString(16);
     return {
       schemaVersion: 1,
@@ -215,6 +217,7 @@ export async function mockApi(page, {
   chroniclesCurrentMapId = 'crypt-eight-squares',
   chroniclesRunStatus = 'active',
   chroniclesWorldFlags = null,
+  chroniclesAreaTransform = null,
 } = {}) {
   // Seed tutorials as seen so overlays cannot intercept unrelated E2E clicks.
   let profileData = {
@@ -279,6 +282,7 @@ export async function mockApi(page, {
         currentMapId: chroniclesCurrentMapId,
         status: chroniclesRunStatus,
         worldFlags: chroniclesWorldFlags,
+        areaTransform: chroniclesAreaTransform,
       });
       chroniclesRuns.set(operationKey, payload);
       return json(payload, 201);
@@ -620,10 +624,8 @@ export async function openCampaignBriefing(page) {
   const map = await openCampaignMap(page);
   const availableRoute = map.getByRole('button', { name: /Elegir esta ruta/ }).first();
   await expect(availableRoute).toBeVisible();
-  // The campaign route is a DOM control, not a canvas hit target. In software
-  // WebGL runs Playwright's pointer action may time out waiting for stability,
-  // even after visibility/enabled checks pass. Dispatch the real button click
-  // handler directly; dedicated interaction specs own pointer hit-testing.
+  // DOM campaign control can be activated while hosted software WebGL delays
+  // Playwright's pointer stability check; pointer-specific tests own hit testing.
   await availableRoute.evaluate((button) => button.click());
   await dismissTutorialIfVisible(page);
 
