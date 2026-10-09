@@ -775,7 +775,15 @@ export async function openMoreGameModes(page) {
   return details;
 }
 
+export async function openChroniclesStartNewGame(page) {
+  const menu = page.locator('[data-chronicles-save-menu]');
+  if (await menu.isVisible().catch(() => false)) {
+    await menu.getByRole('button', { name: 'Nuevo juego', exact: true }).click();
+  }
+}
+
 export async function confirmChroniclesCharacterSetup(page, { newTown = false } = {}) {
+  await openChroniclesStartNewGame(page);
   const setup = page.locator('[data-chronicles-character-setup]');
   await expect(setup).toBeVisible({ timeout: 10_000 });
 
@@ -784,7 +792,12 @@ export async function confirmChroniclesCharacterSetup(page, { newTown = false } 
   if (!newTown) {
     await page.evaluate(() => {
       const key = 'chess-study-chronicles-run-v1';
-      if (localStorage.getItem(key)) return;
+      const existing = localStorage.getItem(key);
+      let current = null;
+      try { current = existing ? JSON.parse(existing) : null; } catch { /* malformed old save */ }
+      // The new menu preallocates a Swordhaven identity for the upcoming
+      // creator screen. Historical crypt tests still need a legacy ID.
+      if (current && !current.ended && !current.entryMapId) return;
       const owner = (localStorage.getItem('chess-study-auth-username') || 'e2e').trim().toLowerCase();
       localStorage.setItem(key, JSON.stringify({ id: 'e2e-existing-crypt-run', owner, ended: false }));
     });
