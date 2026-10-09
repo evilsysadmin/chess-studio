@@ -47,10 +47,13 @@ func _initialize() -> void:
 					var sprite: AnimatedSprite3D = presenter.player_sprites[player.get_instance_id()]
 					assert(sprite != null)
 					assert(sprite.animation == expected)
-					_assert_same_canonical_body(sprite)
+					_assert_same_canonical_body(sprite, presenter, player)
 					var base_scale: float = presenter._canonical_body_scale(sprite, player.role)
-					var normalized_width := sprite.scale.x / base_scale
-					var normalized_height := sprite.scale.y / base_scale
+					var camera_factor := ChessFootball3DPresenter.perspective_body_scale(
+						presenter.camera, presenter.player_nodes[player.get_instance_id()].global_position
+					)
+					var normalized_width := sprite.scale.x / (base_scale * camera_factor)
+					var normalized_height := sprite.scale.y / (base_scale * camera_factor)
 					if String(expected).ends_with("_diagonal"):
 						# Real runtime scale, not merely the constant helper.
 						assert(normalized_width >= 0.85 and normalized_width <= 0.94)
@@ -72,7 +75,7 @@ func _initialize() -> void:
 				for player in team:
 					var sprite: AnimatedSprite3D = presenter.player_sprites[player.get_instance_id()]
 					assert(sprite.animation == StringName(action))
-					_assert_same_canonical_body(sprite)
+					_assert_same_canonical_body(sprite, presenter, player)
 	# Audit ALL eight real raster poses, not just nominal 128x144 canvases
 	# or frame 3. Both uniforms and the keeper have their own body references.
 	for team in match_node.teams:
@@ -139,17 +142,71 @@ func _initialize() -> void:
 							ChessFootballSpriteBank.footline() - ChessFootballSpriteBank.cell_size().y * 0.5
 						) * ChessFootball3DPresenter.PLAYER_PIXEL_SIZE
 						assert(absf(boot_contact - nominal_contact) < 0.005)
+	# The user-observed size mismatch was in the *projected* camera view:
+	# atlas/world bounds were equal, but perspective made rear players tiny.
+	# Measure true Godot Camera3D screen positions across ten different
+	# locations, both camera modes and both club kits, including keepers.
+	var positions := [
+		Vector2(-420.0, -560.0), Vector2(-180.0, -320.0),
+		Vector2(0.0, 0.0), Vector2(180.0, 320.0),
+		Vector2(420.0, 560.0),
+	]
+	for camera_mode in ["broadcast", "tactical"]:
+		var camera := presenter.camera
+		camera.position = (
+			Vector3(0.0, ChessFootball3DPresenter.TACTICAL_HEIGHT, 0.35)
+			if camera_mode == "tactical"
+			else Vector3(0.0, ChessFootball3DPresenter.BROADCAST_HEIGHT,
+				ChessFootball3DPresenter.BROADCAST_DEPTH)
+		)
+		camera.look_at(Vector3.ZERO if camera_mode == "tactical" else Vector3(0.0, 0.0, -0.85))
+		presenter.last_camera_mode = camera_mode
+		for team_id in range(2):
+			for index in range(5):
+				var player: Footballer = match_node.teams[team_id][index]
+				player.global_position = ChessFootballMath.PITCH_RECT.get_center() + Vector2(
+					positions[index].x + (float(team_id) - 0.5) * 65.0,
+					positions[index].y,
+				)
+				player.action_lock_seconds = 0.0
+				player.velocity = Vector2.ZERO
+				player.visual.play("idle")
+		presenter.sync_presentation(0.0, camera_mode)
+		var first_height := -1.0
+		for team in match_node.teams:
+			for player in team:
+				var key: int = player.get_instance_id()
+				var proxy: Node3D = presenter.player_nodes[key]
+				var sprite: AnimatedSprite3D = presenter.player_sprites[key]
+				var image := (sprite.sprite_frames.get_frame_texture(
+					sprite.animation, sprite.frame
+				) as ImageTexture).get_image()
+				var height_world := (
+					float(image.get_used_rect().size.y) * sprite.pixel_size * sprite.scale.y
+				)
+				var center := proxy.global_position + Vector3.UP * ChessFootball3DPresenter.PLAYER_BASE_Y
+				var camera_up := camera.global_transform.basis.y
+				var top := camera.unproject_position(center + camera_up * height_world * 0.5)
+				var bottom := camera.unproject_position(center - camera_up * height_world * 0.5)
+				var screen_height := top.distance_to(bottom)
+				if first_height < 0.0:
+					first_height = screen_height
+				assert(screen_height > 10.0)
+				assert(absf(screen_height / first_height - 1.0) <= 0.075)
 	print("chess-football canonical roster parity smoke: OK")
 	quit(0)
 
 
-func _assert_same_canonical_body(sprite: AnimatedSprite3D) -> void:
+func _assert_same_canonical_body(sprite: AnimatedSprite3D, presenter: ChessFootball3DPresenter, player: Footballer) -> void:
 	var frame_texture := sprite.sprite_frames.get_frame_texture(sprite.animation, sprite.frame)
 	assert(frame_texture is ImageTexture, "Legacy vector atlas leaked into 3D")
 	assert(ChessFootballSpriteBank.has_frame_bottom(frame_texture))
 	var bounds := (frame_texture as ImageTexture).get_image().get_used_rect()
 	assert(bounds.size.y >= 86)
-	var scaled_pixels := float(bounds.size.y) * absf(sprite.scale.y)
+	var correction := ChessFootball3DPresenter.perspective_body_scale(
+		presenter.camera, presenter.player_nodes[player.get_instance_id()].global_position
+	)
+	var scaled_pixels := float(bounds.size.y) * absf(sprite.scale.y) / correction
 	assert(absf(scaled_pixels - ChessFootball3DPresenter.CANONICAL_BODY_HEIGHT_PIXELS) <= 18.0)
 	# Sprite3D uses a centered canvas; boot soles must remain grounded in
 	# both camera modes, including the different tactical pixel size.

@@ -18,6 +18,11 @@ const PLAYER_BASE_Y := 0.76
 # The approved front/back atlas bodies are about 120px tall. Normalize the
 # approved side run to the same perceived height without changing PNG bytes.
 const CANONICAL_BODY_HEIGHT_PIXELS := 120.0
+# Perspective makes identical world-sized billboards look bigger near the
+# camera and smaller far away. Compensate their *projected* size only.
+# Keep gameplay coordinates, canonical atlas bytes and shadows unchanged.
+const MIN_PERSPECTIVE_BODY_SCALE := 0.45
+const MAX_PERSPECTIVE_BODY_SCALE := 1.80
 # Diagonal artwork has broader shoulders but comparable body height.
 # The canonical scale already equalizes each view to 120px; a second vertical
 # multiplier made *every* diagonal smaller than front/back and side.
@@ -443,6 +448,9 @@ func world_to_stage(world: Vector2, height: float = 0.0) -> Vector3:
 	)
 
 func sync_presentation(delta: float, mode: String) -> void:
+	# Size compensation must use the camera pose from this same frame, not
+	# yesterday's interpolated pose; otherwise footballers visibly pulse.
+	_sync_camera(delta, mode)
 	for team in match_node.teams:
 		for player in team:
 			var key: int = int(player.get_instance_id())
@@ -488,6 +496,21 @@ func sync_presentation(delta: float, mode: String) -> void:
 					sprite.flip_h = player.visual.flip_h
 			sprite.pixel_size = TACTICAL_PLAYER_PIXEL_SIZE if mode == "tactical" else PLAYER_PIXEL_SIZE
 			_sync_player_secondary_motion(player, sprite, proxy)
+			var depth_scale := perspective_body_scale(camera, proxy.global_position)
+			# Apply to both axes AFTER each authored-view/role correction. Boot
+			# baseline must also be scaled, or feet sink as players cross depth.
+			var authored_y := sprite.scale.y
+			sprite.scale.x *= depth_scale
+			sprite.scale.y *= depth_scale
+			var cell_half_height := ChessFootballSpriteBank.cell_size().y * 0.5
+			var foot_y := (
+				ChessFootballSpriteBank.frame_bottom(
+					sprite.sprite_frames.get_frame_texture(sprite.animation, sprite.frame)
+				) - cell_half_height
+			)
+			sprite.position.y += foot_y * sprite.pixel_size * (sprite.scale.y - authored_y)
+			# The existing secondary motion includes deliberate running bob,
+			# which stays independent from depth and untouched here.
 			var is_controlled: bool = player == match_node.controlled
 			var active_disc := proxy.get_node_or_null("ActiveDisc") as MeshInstance3D
 			if active_disc != null:
@@ -525,7 +548,6 @@ func sync_presentation(delta: float, mode: String) -> void:
 				0.045,
 			)
 
-	_sync_camera(delta, mode)
 
 static func _keeper_locomotion(animation_name: StringName) -> bool:
 	var name := String(animation_name)
@@ -580,6 +602,25 @@ static func view_compensation(animation_name: StringName) -> Vector2:
 	]:
 		return Vector2(DIAGONAL_WIDTH_COMPENSATION, 1.0)
 	return Vector2.ONE
+
+
+static func perspective_body_scale(view_camera: Camera3D, stage_position: Vector3) -> float:
+	if view_camera == null or view_camera.projection != Camera3D.PROJECTION_PERSPECTIVE:
+		return 1.0
+	# Use CAMERA FORWARD depth, not Euclidean distance: a player's horizontal
+	# lane should not make them larger at the same pitch depth.
+	var forward := -view_camera.global_transform.basis.z
+	var reference_point := Vector3(view_camera.global_position.x, PLAYER_BASE_Y, 0.0)
+	var reference_depth := (reference_point - view_camera.global_position).dot(forward)
+	var player_depth := (
+		(stage_position + Vector3.UP * PLAYER_BASE_Y) - view_camera.global_position
+	).dot(forward)
+	if reference_depth <= 0.01 or player_depth <= 0.01:
+		return 1.0
+	return clampf(
+		player_depth / reference_depth,
+		MIN_PERSPECTIVE_BODY_SCALE, MAX_PERSPECTIVE_BODY_SCALE
+	)
 
 
 static func normalized_body_scale(pixel_height: float) -> float:

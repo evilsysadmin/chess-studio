@@ -20,6 +20,28 @@ func _initialize() -> void:
 	# keeping a mix of both team kits and the actual 3D renderer.
 	match_node.set_process(false)
 	match_node.set_physics_process(false)
+	# Exact-SHA regression image: five front/back pitch depths in both kits.
+	# All ten billboards should read as equal-size players even though their
+	# perspective distances and screen positions are deliberately different.
+	for team_id in range(2):
+		for i in range(5):
+			var comparison: Footballer = match_node.teams[team_id][i]
+			comparison.global_position = ChessFootballMath.PITCH_RECT.get_center() + Vector2(
+				(float(i) - 2.0) * 270.0 + (float(team_id) - 0.5) * 65.0,
+				(float(i) - 2.0) * 260.0,
+			)
+			comparison.action_lock_seconds = 0.0
+			comparison.velocity = Vector2.ZERO
+			comparison.visual.play("idle")
+	match_node.presentation_3d.camera.position = Vector3(
+		0.0, ChessFootball3DPresenter.BROADCAST_HEIGHT,
+		ChessFootball3DPresenter.BROADCAST_DEPTH,
+	)
+	match_node.presentation_3d.camera.look_at(Vector3(0.0, 0.0, -0.85))
+	match_node.presentation_3d.last_camera_mode = "broadcast"
+	match_node.debug_sync_presentation()
+	await _save_capture(match_node, "perspective-parity", "VISUAL_CAPTURE_PERSPECTIVE_PARITY")
+	match_node.debug_prepare_kickoff(0)
 	# Visual contract for new touchline width and off-ball support: put a
 	# real midfield dribbler under pressure with teammates in distinct lanes.
 	var wide_carrier: Footballer = match_node.teams[0][2]
