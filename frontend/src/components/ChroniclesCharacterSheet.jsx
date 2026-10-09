@@ -1,5 +1,7 @@
 import { createPortal } from 'react-dom';
 import {
+  CHRONICLES_GOLD_ITEM_ID,
+  chroniclesGoldBalance,
   chroniclesInventoryEntries,
 } from '../chronicles/chroniclesContentRuntime.js';
 import {
@@ -85,7 +87,8 @@ export default function ChroniclesCharacterSheet({
     : firstPersonStats.damage;
   const effectiveAgility = Number(member.agility || 0) + Number(modifiers.initiativeBonus || 0);
   const relic = relicDetails(state, member.id);
-  const inventory = chroniclesInventoryEntries(state);
+  const inventory = chroniclesInventoryEntries(state).filter((item) => item.id !== CHRONICLES_GOLD_ITEM_ID);
+  const gold = chroniclesGoldBalance(state);
 
   const closeOnEscape = (event) => {
     if (event.key !== 'Escape') return;
@@ -153,6 +156,7 @@ export default function ChroniclesCharacterSheet({
         <div className="chronicles-character-sheet__section">
           <div className="chronicles-character-sheet__section-head">
             <div><span>EQUIPO Y OBJETOS</span><small>Equipo personal y botín de la expedición</small></div>
+            <b aria-label={`Oro de la compañía: ${gold}`}>{gold} oro</b>
           </div>
           <div className="chronicles-character-sheet__loadout">
             <article className={relic ? 'has-relic' : ''}>
