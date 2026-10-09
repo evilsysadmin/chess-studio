@@ -16,9 +16,12 @@ describe('ChroniclesNarratorOverlay', () => {
     expect(html).toContain('aria-live="polite"');
   });
 
-  it('does not show a chronicle trigger when the message is empty or routine', () => {
-    expect(renderToStaticMarkup(<ChroniclesNarratorOverlay message="" />)).toBe('');
-    expect(renderToStaticMarkup(<ChroniclesNarratorOverlay message="Giras a la izquierda." />)).toBe('');
+  it('keeps the chronicle trigger available even when movement is routine', () => {
+    const empty = renderToStaticMarkup(<ChroniclesNarratorOverlay message="" />);
+    const routine = renderToStaticMarkup(<ChroniclesNarratorOverlay message="Giras a la izquierda." />);
+    expect(empty).toContain('class="chronicles-dm-trigger"');
+    expect(routine).toContain('Todavía no hay anotaciones en la crónica.');
+    expect(routine).not.toContain('Giras a la izquierda.');
   });
 
   it('deja el resumen rutinario del turno a la iniciativa y evita solapar overlays', () => {
