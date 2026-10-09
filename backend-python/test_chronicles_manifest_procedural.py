@@ -79,6 +79,16 @@ def test_all_shipped_manifests_keep_semantics_and_become_connected_seeded_layout
     assert map_ids
     for map_id in map_ids:
         base, _revision = chronicles_api.load_chronicles_manifest(map_id)
+        if base.get("layoutMode") == "authored":
+            assert base["regionKind"] == "settlement"
+            assert not base.get("enemies")
+            for seed in (0, 1, 417, 2_147_483_647):
+                generated = proceduralize_chronicles_manifest(base, seed)
+                assert generated.manifest["grid"] == base["grid"]
+                assert generated.manifest["interactables"] == base["interactables"]
+                assert generated.manifest["generation"]["kind"] == "authored-layout"
+            continue
+
         original_markers = _marker_positions(base["grid"])
 
         for seed in (0, 1, 417, 2_147_483_647):
