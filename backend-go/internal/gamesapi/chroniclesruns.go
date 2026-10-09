@@ -4,6 +4,8 @@ package gamesapi
 // chronicles_run_store.py (default 120/minute each):
 //
 //	POST /api/chronicles/runs                       (201, Idempotency-Key, X-Chronicles-Party-Level)
+//	GET  /api/chronicles/runs                       (200, owner-scoped active saves)
+//	DELETE /api/chronicles/runs/{run_id}            (204, owner-scoped removal)
 //	GET  /api/chronicles/runs/{run_id}
 //	PUT  /api/chronicles/runs/{run_id}/checkpoint
 
@@ -32,6 +34,8 @@ import (
 
 const (
 	ChroniclesRunCreatePattern     = "POST /api/chronicles/runs"
+	ChroniclesRunListPattern       = "GET /api/chronicles/runs"
+	ChroniclesRunDeletePattern     = "DELETE /api/chronicles/runs/{run_id}"
 	ChroniclesRunReadPattern       = "GET /api/chronicles/runs/{run_id}"
 	ChroniclesRunCheckpointPattern = "PUT /api/chronicles/runs/{run_id}/checkpoint"
 	chroniclesRunsPath             = "/api/chronicles/runs"
@@ -48,7 +52,13 @@ func ChroniclesRunsRoute(r *http.Request) (pattern, runID string, ok bool) {
 	}
 	path := r.URL.Path
 	if path == chroniclesRunsPath {
-		return ChroniclesRunCreatePattern, "", method == http.MethodPost
+		switch method {
+		case http.MethodPost:
+			return ChroniclesRunCreatePattern, "", true
+		case http.MethodGet:
+			return ChroniclesRunListPattern, "", true
+		}
+		return "", "", false
 	}
 	rest, found := strings.CutPrefix(path, chroniclesRunsPath+"/")
 	if !found || rest == "" {
@@ -60,8 +70,13 @@ func ChroniclesRunsRoute(r *http.Request) (pattern, runID string, ok bool) {
 		}
 		return "", "", false
 	}
-	if !strings.Contains(rest, "/") && method == http.MethodGet {
-		return ChroniclesRunReadPattern, rest, true
+	if !strings.Contains(rest, "/") {
+		switch method {
+		case http.MethodGet:
+			return ChroniclesRunReadPattern, rest, true
+		case http.MethodDelete:
+			return ChroniclesRunDeletePattern, rest, true
+		}
 	}
 	return "", "", false
 }
@@ -94,6 +109,8 @@ func NewChroniclesRuns(cfg ChroniclesRunsConfig) (*ChroniclesRunsHandler, error)
 	}
 	h := &ChroniclesRunsHandler{base: base, runs: cfg.Runs, newSeed: cfg.NewSeed, newRunID: cfg.NewRunID, limits: map[string]*limiter{
 		ChroniclesRunCreatePattern:     newLimiter(120, time.Minute),
+		ChroniclesRunListPattern:       newLimiter(120, time.Minute),
+		ChroniclesRunDeletePattern:     newLimiter(120, time.Minute),
 		ChroniclesRunReadPattern:       newLimiter(120, time.Minute),
 		ChroniclesRunCheckpointPattern: newLimiter(120, time.Minute),
 	}}
@@ -808,7 +825,7 @@ func (h *ChroniclesRunsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request
 		return
 	}
 	var body any
-	if pattern != ChroniclesRunReadPattern {
+	if pattern == ChroniclesRunCreatePattern || pattern == ChroniclesRunCheckpointPattern {
 		raw, status := readBody(w, r)
 		if status != 0 {
 			return
@@ -832,6 +849,17 @@ func (h *ChroniclesRunsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request
 		code    = http.StatusOK
 	)
 	switch pattern {
+	case ChroniclesRunListPattern:
+		var summaries []bson.D
+		summaries, err = h.runs.ListActive(ctx, username, 30)
+		list := bson.A{}
+		for _, item := range summaries { list = append(list, item) }
+		payload = bson.D{{Key: "runs", Value: list}}
+	case ChroniclesRunDeletePattern:
+		var deleted bool
+		deleted, err = h.runs.DeleteOwned(ctx, runID, username)
+		if err == nil && !deleted { err = fail(404, "Run de Chronicles no encontrada.") }
+		code = http.StatusNoContent
 	case ChroniclesRunReadPattern:
 		payload, err = h.runs.Get(ctx, runID, username)
 		if err == nil && payload == nil {
@@ -866,6 +894,10 @@ func (h *ChroniclesRunsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request
 	case err != nil:
 		internalError(w)
 	default:
-		writeDoc(w, code, payload)
+		if code == http.StatusNoContent {
+			w.WriteHeader(code)
+		} else {
+			writeDoc(w, code, payload)
+		}
 	}
 }
