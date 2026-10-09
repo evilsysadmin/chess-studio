@@ -23,6 +23,7 @@ const CHRONICLES_E2E_MAP_IDS = Object.freeze([
   'hollow-bell-tower',
   'iron-foundry',
   'menagerie-of-ash',
+  'swordhaven-square',
 ]);
 let chroniclesManifestPromise = null;
 
@@ -624,7 +625,9 @@ export async function openCampaignBriefing(page) {
   const map = await openCampaignMap(page);
   const availableRoute = map.getByRole('button', { name: /Elegir esta ruta/ }).first();
   await expect(availableRoute).toBeVisible();
-  await availableRoute.click();
+  // DOM campaign control can be activated while hosted software WebGL delays
+  // Playwright's pointer stability check; pointer-specific tests own hit testing.
+  await availableRoute.evaluate((button) => button.click());
   await dismissTutorialIfVisible(page);
 
   const briefing = page.getByLabel('Resumen táctico');

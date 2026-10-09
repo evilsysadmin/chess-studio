@@ -143,7 +143,10 @@ async function captureElement(page, locator, path) {
 
 for (const capture of CAPTURES) {
   test(`Chronicles Tactics · visual proof · ${capture.label}`, async ({ browser }) => {
-    test.setTimeout(150_000);
+    // Full software-WebGL readbacks cover portraits, RPG sheet, world, menu,
+    // walking and moved states. A shared CI runner can exceed 150s without any
+    // failed assertion; preserve every capture with a bounded 5-minute budget.
+    test.setTimeout(300_000);
     await mkdir(ARTIFACT_DIR, { recursive: true });
 
     const context = await browser.newContext({

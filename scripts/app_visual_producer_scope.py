@@ -396,6 +396,7 @@ def classify_path(path: str) -> set[str] | None:
             return set()
         if lower in {
             "scripts/css_architecture_manifest.json",
+            "scripts/chronicles_area_parity_corpus.py",  # Backend fixture data, no render code.
             "scripts/architecture_debt_budget.py",
             "scripts/async_resilience_gate.mjs",
             "scripts/visual_ux_contract_check.mjs",
@@ -735,8 +736,39 @@ def classify(paths: list[str]) -> str:
     return _csv(producers)
 
 
+def project_chronicles_lane(producers: str, lane: str) -> str:
+    """Separate Chronicles first-person and Tactics capture in distinct CI jobs.
+
+    Shared owners still request both visual producers, but independent jobs
+    prevent slow software-WebGL Tactics from blocking first-person evidence.
+    Unknown paths remain fail-closed: 'all' expands to every known producer
+    before projecting either lane, rather than bypassing the expensive gate.
+    """
+    if lane == "combined":
+        return producers  # Preserve the public classifier CLI contract.
+    selected = set(PRODUCER_ORDER) if producers == "all" else set(producers.split(",")) - {"none", ""}
+    if lane == "tactics":
+        selected &= {"chronicles-tactics"}
+    elif lane == "default":
+        selected.discard("chronicles-tactics")
+    else:
+        raise ValueError(f"Unknown visual lane: {lane}")
+    return _csv(selected)
+
+
 def self_test() -> None:
+    assert project_chronicles_lane("all", "combined") == "all"
+    assert project_chronicles_lane("chronicles-tactics,chronicles-gameplay", "default") == "chronicles-gameplay"
+    assert project_chronicles_lane("chronicles-tactics,chronicles-gameplay", "tactics") == "chronicles-tactics"
+    assert project_chronicles_lane("chronicles-gameplay", "tactics") == "none"
+    assert project_chronicles_lane("chronicles-tactics", "default") == "none"
+    assert project_chronicles_lane("all", "tactics") == "chronicles-tactics"
+    assert project_chronicles_lane("all", "default") != "all"
+    assert "chronicles-gameplay" in project_chronicles_lane("all", "default")
     assert classify(["e2e/staging-live.spec.js"]) == "none"
+    assert classify(["scripts/chronicles_area_parity_corpus.py"]) == "none"
+    assert classify(["scripts/chronicles_area_parity_corpus.py", "frontend/src/chronicles/chroniclesMapCatalog.js"]) == "chronicles-tactics,chronicles-gameplay"
+    assert classify(["scripts/unknown_unowned_generator.py"]) == "all"
     assert classify(["e2e/staging-live.spec.js", "frontend/src/components/PvpHandoffModal.jsx"]) == "pvp-handoff"
     assert classify([
         "frontend/src/components/GameScreen.jsx",
@@ -1010,6 +1042,7 @@ def self_test() -> None:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--all", action="store_true")
+    parser.add_argument("--chronicles-lane", choices=("combined", "default", "tactics"), default="combined")
     parser.add_argument("--github-output", default=os.environ.get("GITHUB_OUTPUT", ""))
     parser.add_argument("--self-test", action="store_true")
     args = parser.parse_args(argv)
@@ -1017,7 +1050,8 @@ def main(argv: list[str] | None = None) -> int:
         self_test()
         return 0
     paths = [] if args.all else sys.stdin.read().splitlines()
-    result = "all" if args.all else classify(paths)
+    selected_producers = "all" if args.all else classify(paths)
+    result = project_chronicles_lane(selected_producers, args.chronicles_lane)
     warroom_variants = _variant_csv(WARROOM_VARIANT_ALL) if args.all else classify_warroom_variants(paths)
     warroom_profile_scope = WARROOM_PROFILE_SCOPE_ALL if args.all else classify_warroom_profile_scope(paths)
     home_profile_scope = HOME_PROFILE_SCOPE_ALL if args.all else classify_home_profile_scope(paths)
@@ -1027,6 +1061,17 @@ def main(argv: list[str] | None = None) -> int:
             handle.write(f"warroom_variants={warroom_variants}\n")
             handle.write(f"warroom_profile_scope={warroom_profile_scope}\n")
             handle.write(f"home_profile_scope={home_profile_scope}\n")
+            # The second job owns only Tactics. It must not eagerly boot Home,
+            # War Room, Hans or the Chronicles-first-person browser.
+            if args.chronicles_lane == "tactics":
+                handle.write(f"capture_groups={'experiments' if result != 'none' else 'none'}\n")
+                handle.write(f"experiments_scope={'chronicles' if result != 'none' else 'none'}\n")
+                for output in ("chronicles_avatar", "warroom", "hans", "chesscom",
+                               "warroom_revision_required", "warroom_v3_revision_required",
+                               "pvp_duel_revision_required"):
+                    handle.write(f"{output}=false\n")
+            elif result == "none":
+                handle.write("capture_groups=none\n")
     else:
         print(f"producer_scope={result}")
         print(f"warroom_variants={warroom_variants}")
