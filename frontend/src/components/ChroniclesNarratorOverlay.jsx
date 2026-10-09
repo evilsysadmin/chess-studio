@@ -31,12 +31,16 @@ export default function ChroniclesNarratorOverlay({ message }) {
   if (!shouldShowChroniclesNarration(message)) return null;
 
   return (
-    <aside className="chronicles-dm-overlay" aria-live="polite" aria-atomic="true">
-      <span className="chronicles-dm-sigil" aria-hidden="true">✦</span>
-      <div>
+    <details className="chronicles-dm-overlay">
+      <summary className="chronicles-dm-trigger" aria-label="Crónica de expedición">
+        <span className="chronicles-dm-sigil" aria-hidden="true">✦</span>
+        <span>Crónica</span>
+        <span className="chronicles-dm-chevron" aria-hidden="true">⌄</span>
+      </summary>
+      <div className="chronicles-dm-panel" role="region" aria-label="Relato de la expedición" aria-live="polite" aria-atomic="true">
         <span className="chronicles-dm-kicker">CRÓNICA DE EXPEDICIÓN</span>
         <p>{message}</p>
       </div>
-    </aside>
+    </details>
   );
 }
