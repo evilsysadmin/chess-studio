@@ -1,7 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { confirmChroniclesCharacterSetup, login, mockApi, openMoreGameModes } from './helpers.js';
-import { createSwordhavenWalkGrid, SWORDHAVEN_INTERACTION_CELLS, SWORDHAVEN_SPAWN } from '../frontend/src/chronicles/chroniclesSwordhaven3D.js';
 
 const ARTIFACT_DIR = '../.artifacts/app-visual';
 const CAPTURES = [
@@ -168,49 +167,26 @@ async function captureElement(page, locator, path) {
 }
 
 
-test('Chronicles · Swordhaven 3D visual prototype · desktop', async ({ browser }) => {
-  // This runs the REAL first-person renderer with an authored-like area envelope
-  // but uses a known legacy area ID so no production run/catalog is modified.
+test('Chronicles · Swordhaven authored world · actual 3D desktop', async ({ browser }) => {
+  // No synthetic gallery-of-forks disguise: the authoritative map catalog
+  // and the real Three.js scene must agree on the actual town id and geometry.
   test.setTimeout(240_000);
   await mkdir(ARTIFACT_DIR, { recursive: true });
   const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
   const page = await context.newPage();
   try {
-    await openChronicles(page, 'swordhaven-preview', {
-      chroniclesCurrentMapId: 'gallery-of-forks',
-      chroniclesAreaTransform(mapId, manifest) {
-        if (mapId !== 'gallery-of-forks') return manifest;
-        const grid = createSwordhavenWalkGrid();
-        const shops = SWORDHAVEN_INTERACTION_CELLS.map(({ id, x, y }) => [id, x, y]);
-        return {
-          ...manifest,
-          title: 'Swordhaven · visual prototype',
-          regionKind: 'settlement',
-          grid,
-          materials: null,
-          partyStart: SWORDHAVEN_SPAWN,
-          enemies: [],
-          initialFlags: {},
-          triggers: [],
-          treasures: [],
-          traps: [],
-          exits: [],
-          interactables: shops.map(([id, x, y]) => ({
-            id, kind: 'lore', label: 'Visitar establecimiento', x, y,
-            action: { effects: [], message: 'Swordhaven se prepara para recibir viajeros.' },
-          })),
-          initialJournal: { id: 'swordhaven-arrival', title: 'Swordhaven', body: 'Un nuevo comienzo.', sigil: 'I' },
-          introMessage: 'Las puertas de Swordhaven están abiertas.',
-        };
-      },
+    await openChronicles(page, 'swordhaven-authored', {
+      chroniclesCurrentMapId: 'swordhaven-square',
     });
-    const stage = page.locator('[data-chronicles-renderer="three"]');
+    const mode = page.locator('[data-chronicles="true"]');
+    await expect(mode).toHaveAttribute('data-chronicles-map-id', 'swordhaven-square');
+    const stage = mode.locator('[data-chronicles-renderer="three"]');
     await expect(stage.locator('canvas')).toBeVisible({ timeout: 30_000 });
-    await expect(page.locator('.chronicles-statusbar')).toContainText('SWORDHAVEN');
-    await expect(page.locator('.chronicles-statusbar')).not.toContainText('CRIPTA');
-    await expect(page.locator('.chronicles-renderer-error')).toHaveCount(0);
+    await expect(mode.locator('.chronicles-statusbar')).toContainText('SWORDHAVEN');
+    await expect(mode.locator('.chronicles-statusbar')).not.toContainText('CRIPTA');
+    await expect(mode.locator('.chronicles-renderer-error')).toHaveCount(0);
     await page.screenshot({
-      path: ARTIFACT_DIR + '/chronicles-swordhaven-3d-prototype-desktop.png',
+      path: ARTIFACT_DIR + '/chronicles-swordhaven-authored-desktop-1440x900.png',
       animations: 'disabled',
       timeout: 60_000,
     });
@@ -218,7 +194,6 @@ test('Chronicles · Swordhaven 3D visual prototype · desktop', async ({ browser
     await context.close();
   }
 });
-
 
 for (const capture of CAPTURES) {
   test(`Chronicles · gameplay visual · ${capture.label}`, async ({ browser }) => {
