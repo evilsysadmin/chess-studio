@@ -179,9 +179,17 @@ function enterTile(state, x, y) {
 
   const exit = contentEntryAt(state, 'exits', x, y);
   if (exit && chroniclesRequirementsMet(state, exit.requirements)) {
+    const currentMap = chroniclesMapForState(state);
+    // Authored settlement gates genuinely enter the next region. Keep the
+    // historical dungeon-end contract untouched, so legacy runs/checkpoints
+    // do not suddenly switch map or terminal behaviour.
+    const route = currentMap.regionKind === 'settlement'
+      && (exit.action?.effects || []).some((effect) => (
+        effect.type === 'transition-map' && effect.mapId
+      ));
     next = chroniclesApplyContentAction(
       next,
-      explorationAction(exit, [{ type: 'set', key: 'phase', value: 'escaped' }]),
+      route ? exit.action : explorationAction(exit, [{ type: 'set', key: 'phase', value: 'escaped' }]),
       { appendJournal },
     );
   }
