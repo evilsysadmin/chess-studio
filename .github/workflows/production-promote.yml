@@ -649,6 +649,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          python3 -S ../../scripts/pages_runtime_asset_grace.py --dist dist --site production
           wrangler pages deploy dist \
             --project-name chess-studio-production \
             --branch main \

@@ -322,6 +322,9 @@ def classify_path(path: str) -> set[str] | None:
 
     if lower.endswith(".md"):
         return set()
+    if lower in {"makefile", ".github/workflows/staging-deploy.yml", ".github/workflows/production-promote.yml"}:
+        # Deployment orchestration does not own product screenshots.
+        return set()
     if lower.startswith("scripts/app_visual_"):
         return set()
     if lower in {
@@ -405,6 +408,7 @@ def classify_path(path: str) -> set[str] | None:
             "scripts/chess_rules_gate.mjs",
             "scripts/quality_scope.py",
             "scripts/pwa_check.mjs",
+            "scripts/pages_runtime_asset_grace.py",
             "scripts/state_resilience_check.mjs",
             "scripts/visual_ux_contract_check.mjs",
             "scripts/workflow_debt_gate.py",
@@ -757,6 +761,8 @@ def project_chronicles_lane(producers: str, lane: str) -> str:
 
 
 def self_test() -> None:
+    assert classify(["Makefile", ".github/workflows/staging-deploy.yml", ".github/workflows/production-promote.yml"]) == "none"
+    assert classify(["scripts/pages_runtime_asset_grace.py"]) == "none"
     assert project_chronicles_lane("all", "combined") == "all"
     assert project_chronicles_lane("chronicles-tactics,chronicles-gameplay", "default") == "chronicles-gameplay"
     assert project_chronicles_lane("chronicles-tactics,chronicles-gameplay", "tactics") == "chronicles-tactics"
