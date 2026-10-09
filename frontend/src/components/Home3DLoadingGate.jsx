@@ -19,6 +19,25 @@ export default function Home3DLoadingGate({ stageRef, onUseStaticHome }) {
     let pending = false;
     let firstFrame = 0;
     let secondFrame = 0;
+    let helpTimer = 0;
+    let fallbackTimer = 0;
+    const clearRecovery = () => {
+      window.clearTimeout(helpTimer);
+      window.clearTimeout(fallbackTimer);
+      helpTimer = 0;
+      fallbackTimer = 0;
+    };
+    const armRecovery = () => {
+      if (fallbackTimer) return;
+      // On a slow GPU users may immediately choose the pre-decoded illustration;
+      // the same recovery applies after a later WebGL context loss.
+      helpTimer = window.setTimeout(() => {
+        if (!visibleRef.current) setStalled(true);
+      }, 6_000);
+      fallbackTimer = window.setTimeout(() => {
+        if (!visibleRef.current) onUseStaticHomeRef.current?.();
+      }, 30_000);
+    };
     const cancelFrames = () => {
       window.cancelAnimationFrame(firstFrame);
       window.cancelAnimationFrame(secondFrame);
@@ -27,6 +46,7 @@ export default function Home3DLoadingGate({ stageRef, onUseStaticHome }) {
     };
     const inspect = () => {
       if (!home3DFrameReady(stage)) {
+        armRecovery();
         cancelFrames();
         pending = false;
         if (visibleRef.current) {
@@ -49,6 +69,7 @@ export default function Home3DLoadingGate({ stageRef, onUseStaticHome }) {
           visibleRef.current = true;
           setReady(true);
           setStalled(false);
+          clearRecovery();
         });
       });
     };
@@ -59,22 +80,13 @@ export default function Home3DLoadingGate({ stageRef, onUseStaticHome }) {
       attributes: true,
       attributeFilter: ['class', 'data-home-blender-runtime'],
     });
-    // User can choose the already-decoded illustration without waiting for a
-    // slow phone GPU; after a hard limit we choose it automatically rather
-    // than trapping the Home behind an eternal overlay.
-    const helpTimer = window.setTimeout(() => {
-      if (!visibleRef.current) setStalled(true);
-    }, 6_000);
-    const fallbackTimer = window.setTimeout(() => {
-      if (!visibleRef.current) onUseStaticHomeRef.current?.();
-    }, 30_000);
+    armRecovery();
     inspect();
     return () => {
       cancelled = true;
       observer.disconnect();
       cancelFrames();
-      window.clearTimeout(helpTimer);
-      window.clearTimeout(fallbackTimer);
+      clearRecovery();
     };
   }, [stageRef]);
 
