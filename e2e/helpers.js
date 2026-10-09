@@ -831,11 +831,15 @@ export async function confirmChroniclesCharacterSetup(page, { newTown = false } 
       const existing = localStorage.getItem(key);
       let current = null;
       try { current = existing ? JSON.parse(existing) : null; } catch { /* malformed old save */ }
-      // The new menu preallocates a Swordhaven identity for the upcoming
-      // creator screen. Historical crypt tests still need a legacy ID.
-      if (current && !current.ended && !current.entryMapId) return;
+      // Historical crypt tests explicitly create a new crypt run using a
+      // stable fixture ID, not a previously persisted server save. A freshly
+      // allocated identity is pending until its first authoritative POST;
+      // only real legacy IDs without this flag are restored via GET.
+      if (current && !current.ended && !current.entryMapId && current.pending === true) return;
       const owner = (localStorage.getItem('chess-study-auth-username') || 'e2e').trim().toLowerCase();
-      localStorage.setItem(key, JSON.stringify({ id: 'e2e-existing-crypt-run', owner, ended: false }));
+      localStorage.setItem(key, JSON.stringify({
+        id: 'e2e-existing-crypt-run', owner, ended: false, pending: true,
+      }));
     });
   }
   const canonical = setup.getByRole('button', { name: /Entrar con grupo canónico|Volver al grupo canónico/ });
