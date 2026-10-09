@@ -181,10 +181,10 @@ El mismo asset/contrato debe mantenerse coherente entre tarjeta grande, thumbnai
 Chronicles first-person es una superficie **viewport-owned**: durante la expedición no existe un modo windowed interno.
 
 - El root de Chronicles ocupa siempre el viewport completo con layout propio (`100vw` + `100dvh`) en desktop, móvil vertical y móvil apaisado.
-- En desktop, la entrada a Chronicles y Tactics aprovecha el gesto real del jugador para pedir browser-native fullscreen. El navegador puede rechazar la API; el runtime sigue siendo viewport-owned y usable sin ella.
-- En móvil/coarse pointer, la entrada a Chronicles y Tactics aprovecha el gesto real para pedir `fullscreen + screen.orientation.lock('landscape')`. El navegador puede rechazar cualquiera de las dos APIs; el juego debe seguir siendo usable y ofrecer un control compacto «Apaisado» mientras siga en portrait.
-- Al salir de Chronicles se libera el lock de orientación y se abandona únicamente el fullscreen nativo que haya abierto el propio runtime.
-- `Escape` cierra primero el automap si está abierto. Sólo cuando no hay automap abierto alterna el menú de Chronicles en desktop/no-fullscreen.
+- El fullscreen del gameplay es **viewport-owned**, sin petición automática de fullscreen nativo del navegador. La API fullscreen nativa siempre permite a `Escape` abandonar ese estado y no puede ofrecer simultáneamente un `Escape` exclusivo para el menú. En escritorio puede quedar visible la barra del navegador; el juego ocupa todo el viewport útil. Fullscreen real sin barra queda a elección del navegador/usuario (p. ej. F11 o modo PWA).
+- En móvil/coarse pointer se puede intentar `screen.orientation.lock('landscape')` sin solicitar fullscreen nativo. Si el navegador exige fullscreen para bloquear orientación, se degrada sin bloquear la partida, dejando el control «Apaisado» y la escena viewport-owned.
+- Al salir de Chronicles se libera el lock de orientación que se haya solicitado; nunca se sale de un fullscreen nativo activado por el usuario u otra superficie.
+- `Escape` cierra primero el automap si está abierto. En caso contrario abre/cierra el menú del juego, desde el que se puede continuar, volver a partidas guardadas o salir. No solicita fullscreen ni sale de Chronicles por sí solo.
 - El automap es un overlay diegético de la expedición, accesible con `M` y con un control táctil/desktop visible. Mientras está abierto, los controles de locomoción/combate no actúan por debajo.
 - La posición y orientación del marcador del grupo derivan exclusivamente de `state.x`, `state.y` y `state.direction`; el automap no mantiene una segunda posición ni una segunda lógica de facing.
 - El grupo se representa como una flecha/chevron orientada con la dirección canónica N/E/S/O. Girar el grupo rota inmediatamente ese marcador.
