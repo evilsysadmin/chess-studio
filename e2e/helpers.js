@@ -777,9 +777,18 @@ export async function openMoreGameModes(page) {
 
 export async function openChroniclesStartNewGame(page) {
   const menu = page.locator('[data-chronicles-save-menu]');
-  if (await menu.isVisible().catch(() => false)) {
+  const setup = page.locator('[data-chronicles-character-setup]');
+  // Chronicles is route-lazy. Never sample isVisible() before its first React
+  // render or the helper races the entry menu and falsely reports no creator.
+  await expect.poll(async () => {
+    if (await setup.isVisible().catch(() => false)) return 'recovered-draft';
+    if (await menu.isVisible().catch(() => false)) return 'entry-menu';
+    return 'pending';
+  }, { timeout: 20_000 }).not.toBe('pending');
+  if (await menu.isVisible()) {
     await menu.getByRole('button', { name: 'Nuevo juego', exact: true }).click();
   }
+  await expect(setup).toBeVisible({ timeout: 10_000 });
 }
 
 export async function confirmChroniclesCharacterSetup(page, { newTown = false } = {}) {
