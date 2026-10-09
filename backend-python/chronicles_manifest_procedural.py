@@ -512,13 +512,16 @@ def proceduralize_chronicles_manifest(
     planner_proposal: Any = None,
     content_placement_version: int = 0,
 ) -> ChroniclesProceduralManifest:
-    # Towns are designed spaces; never mutate their paths, storefronts or doors
-    # through the seeded dungeon generator. Legacy maps keep seeded layouts.
-    if manifest.get("regionKind") == "settlement" and manifest.get("layoutMode") == "authored":
+    # Explicitly-main campaign maps cannot accidentally drift into a seeded
+    # layout. Old manifests without dungeonRole remain backward-compatible.
+    if manifest.get("regionKind") == "dungeon" and manifest.get("dungeonRole") == "main" and manifest.get("layoutMode") != "authored":
+        raise ChroniclesMapGenerationError("main-story dungeons require layoutMode=authored")
+    # Authored story dungeons and settlements keep their exact rooms, puzzle
+    # anchors, doors and traps. Unmarked historical maps stay seeded.
+    if manifest.get("layoutMode") == "authored":
         authored = deepcopy(manifest)
-        # A town may exceed procedural MapCode size limits (19x15). Give it an
-        # explicit stable identity instead of pretending a dungeon recipe
-        # regenerates an authored city.
+        # Authored regions may exceed procedural MapCode dimensions.
+        # Their identity is not a generated dungeon recipe.
         map_code = f"authored-layout-v1:{authored['id']}:{authored['version']}"
         layout_revision = _layout_revision(map_code, authored["grid"])
         authored["generation"] = {

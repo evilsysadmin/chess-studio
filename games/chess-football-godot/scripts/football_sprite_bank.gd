@@ -5,11 +5,24 @@ const MANIFEST_PATH := "res://assets/players/manifest.json"
 const ASSET_ROOT := "res://assets/players/"
 const TEAM_KEYS := ["fc_matthias", "real_enroque"]
 
+# Temporary action poses are composed from the already approved lateral
+# raster run canon. Keep gameplay timing and unique action animation names;
+# never flash back to a differently styled vector footballer mid-match.
+# Authored action-specific raster art can replace these holds later.
+const CANONICAL_ACTION_POSES := {
+	"pass": [0, 0, 2, 3, 4, 4, 6, 6],
+	"shoot": [1, 1, 3, 3, 5, 5, 7, 7],
+	"tackle": [5, 6, 7, 7, 4, 3, 2, 1],
+	"celebrate": [0, 2, 4, 6, 4, 2, 0, 0],
+}
+
 static var _cached_manifest: Dictionary = {}
 static var _cached_run_textures: Dictionary = {}
 static var _cached_3d_run_frames: Dictionary = {}
 static var _cached_directional_textures: Dictionary = {}
 static var _cached_3d_directional_frames: Dictionary = {}
+static var _cached_keeper_textures: Dictionary = {}
+static var _cached_keeper_frames: Dictionary = {}
 
 static func manifest() -> Dictionary:
 	if not _cached_manifest.is_empty():
@@ -139,6 +152,110 @@ static func _direction_frame_3d(
 	_cached_3d_directional_frames[key] = texture
 	return texture
 
+# Keeper runtime uses the accepted 4x8 raster bank, never the SVG silhouettes
+# or another team's field-player animations. Four authored views are available.
+static func _keeper_texture(team_id: int) -> Texture2D:
+	var key := _team_key(team_id)
+	if _cached_keeper_textures.has(key):
+		return _cached_keeper_textures[key]
+	var meta: Dictionary = manifest().get("goalkeeper_run", {})
+	if meta.is_empty():
+		push_error("Chess Football: canonical keeper metadata missing")
+		return null
+	var encoded := ""
+	for part in meta["encoded_parts"]:
+		# The approved payload has fixed-width base64 lines, unlike old run chunks.
+		encoded += FileAccess.get_file_as_string(ASSET_ROOT + String(part)).replace("\n", "").replace("\r", "").strip_edges()
+	if encoded.is_empty():
+		push_error("Chess Football: approved keeper payload missing from Web export")
+		return null
+	var bytes := Marshalls.base64_to_raw(encoded)
+	var hash := HashingContext.new()
+	if hash.start(HashingContext.HASH_SHA256) != OK or hash.update(bytes) != OK:
+		push_error("Chess Football: cannot verify keeper atlas SHA")
+		return null
+	if hash.finish().hex_encode() != String(meta["sha256"]):
+		push_error("Chess Football: keeper asset does not match approved SHA")
+		return null
+	var image := Image.new()
+	if image.load_png_from_buffer(bytes) != OK:
+		push_error("Chess Football: cannot decode approved keeper atlas")
+		return null
+	var cell: Dictionary = meta["cell"]
+	if image.get_size() != Vector2i(int(cell["width"]) * int(meta["frames"]), int(cell["height"]) * 4):
+		push_error("Chess Football: keeper atlas has invalid dimensions")
+		return null
+	if team_id == 1:
+		# Recolor jersey/shorts/socks ONLY. Cap, white gloves and skin stay intact.
+		var target := Color("#2bafad")
+		for y in range(image.get_height()):
+			for x in range(image.get_width()):
+				var color := image.get_pixel(x, y)
+				if color.a < 0.10:
+					continue
+				if color.h >= 0.105 and color.h <= 0.19 and color.s >= 0.43 and color.v >= 0.28:
+					image.set_pixel(x, y, Color.from_hsv(target.h, color.s, color.v, color.a))
+	var mipmap_result := image.generate_mipmaps()
+	assert(mipmap_result == OK, "Chess Football: keeper mipmap creation failed")
+	var texture := ImageTexture.create_from_image(image)
+	_cached_keeper_textures[key] = texture
+	return texture
+
+
+static func _keeper_frame_3d(team_id: int, row: int, column: int, atlas: Texture2D, cell: Vector2) -> ImageTexture:
+	var key := "%d:%d:%d" % [team_id, row, column]
+	if _cached_keeper_frames.has(key):
+		return _cached_keeper_frames[key]
+	var image := atlas.get_image()
+	var region := image.get_region(Rect2i(column * int(cell.x), row * int(cell.y), int(cell.x), int(cell.y)))
+	assert(region.get_size() == Vector2i(128, 144), "Chess Football: invalid goalkeeper frame")
+	var texture := ImageTexture.create_from_image(region)
+	_cached_keeper_frames[key] = texture
+	return texture
+
+
+static func _build_keeper_frames(team_id: int) -> SpriteFrames:
+	var data := manifest()
+	var meta: Dictionary = data["goalkeeper_run"]
+	var atlas := _keeper_texture(team_id)
+	var frames := SpriteFrames.new()
+	if frames.has_animation("default"):
+		frames.remove_animation("default")
+	if atlas == null:
+		push_error("Chess Football: keeper raster bank unavailable")
+		return frames
+	var cell := Vector2(float(meta["cell"]["width"]), float(meta["cell"]["height"]))
+	var side_row := int(meta["side_fallback_row"])
+	var front_row := int(meta["views"]["front"])
+	for item in data["animations"]:
+		var anim: StringName = StringName(item["name"])
+		frames.add_animation(anim)
+		frames.set_animation_speed(anim, maxf(float(item["fps"]), 15.0) if anim == &"sprint" else float(item["fps"]))
+		frames.set_animation_loop(anim, bool(item["loop"]))
+		if anim == &"idle":
+			frames.add_frame(anim, _keeper_frame_3d(team_id, front_row, 0, atlas, cell))
+			continue
+		for frame_id in range(int(item["frames"])):
+			var source_frame := frame_id
+			if anim not in [&"run", &"sprint"]:
+				var poses: Array = CANONICAL_ACTION_POSES.get(String(anim), [])
+				if poses.is_empty():
+					push_error("Chess Football: no keeper raster for " + String(anim))
+					break
+				source_frame = int(poses[frame_id % poses.size()])
+			frames.add_frame(anim, _keeper_frame_3d(team_id, side_row, source_frame, atlas, cell))
+	for view_name in ["front", "back", "back_diagonal", "front_diagonal"]:
+		var authored_row: int = int(meta["views"][view_name])
+		for base_name in ["run", "sprint"]:
+			var named := StringName(base_name + "_" + view_name)
+			frames.add_animation(named)
+			frames.set_animation_speed(named, 15.0 if base_name == "sprint" else 12.0)
+			frames.set_animation_loop(named, true)
+			for frame_id in range(int(meta["frames"])):
+				frames.add_frame(named, _keeper_frame_3d(team_id, authored_row, frame_id, atlas, cell))
+	return frames
+
+
 static func _run_frame_3d(team_id: int, column: int, atlas: Texture2D, cell: Vector2) -> Texture2D:
 	var key := "%d:%d" % [team_id, column]
 	if _cached_3d_run_frames.has(key):
@@ -165,16 +282,21 @@ static func atlas_key(team_id: int, role: String = "", squad_index: int = -1) ->
 	return String(variants[field_slot])
 
 static func build_frames(team_id: int, role: String = "", squad_index: int = -1, for_3d: bool = false) -> SpriteFrames:
+	if role == "keeper" and for_3d:
+		return _build_keeper_frames(team_id)
 	var data := manifest()
 	var key: String = atlas_key(team_id, role, squad_index)
 	var atlas_meta: Dictionary = data["atlases"][key]
-	var texture := load(ASSET_ROOT + String(atlas_meta["file"])) as Texture2D
-	assert(texture != null, "No se pudo cargar el atlas de Chess Football")
-
+	# The vector bank is kept for the authoritative 2D simulation only.
+	# Never load/show its inconsistent body silhouettes in the 3D stadium.
+	var texture: Texture2D = null
 	var cell_data: Dictionary = data["cell"]
 	var cell := Vector2(float(cell_data["width"]), float(cell_data["height"]))
-	var expected_size := Vector2(cell.x * int(data["columns"]), cell.y * int(data["rows"]))
-	assert(texture.get_size() == expected_size, "Dimensiones de atlas incompatibles con manifest")
+	if not for_3d:
+		texture = load(ASSET_ROOT + String(atlas_meta["file"])) as Texture2D
+		assert(texture != null, "No se pudo cargar el atlas de Chess Football")
+		var expected_size := Vector2(cell.x * int(data["columns"]), cell.y * int(data["rows"]))
+		assert(texture.get_size() == expected_size, "Dimensiones de atlas incompatibles con manifest")
 
 	var run_meta := _canonical_run_meta()
 	var run_texture := _canonical_run_texture(team_id)
@@ -211,6 +333,18 @@ static func build_frames(team_id: int, role: String = "", squad_index: int = -1,
 				run_region.atlas = run_texture
 				run_region.region = Rect2(Vector2(float(column) * run_cell.x, 0.0), run_cell)
 				frames.add_frame(animation_name, _run_frame_3d(team_id, column, run_texture, run_cell) if for_3d else run_region)
+			continue
+		if for_3d:
+			var action_poses: Array = CANONICAL_ACTION_POSES.get(String(animation_name), [])
+			if action_poses.is_empty():
+				push_error("Chess Football: no canonical 3D raster for action " + String(animation_name))
+				continue
+			for action_frame in range(int(animation["frames"])):
+				var source_frame: int = int(action_poses[action_frame % action_poses.size()])
+				frames.add_frame(
+					animation_name,
+					_run_frame_3d(team_id, source_frame, run_texture, run_cell),
+				)
 			continue
 		var row := int(animation["row"])
 		for column in range(int(animation["frames"])):

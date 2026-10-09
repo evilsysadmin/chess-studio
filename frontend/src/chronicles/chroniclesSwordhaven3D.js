@@ -123,6 +123,22 @@ function building(spec, mats, coarse, contentIds, center) {
     const slope = mesh(root, new THREE.BoxGeometry(width * 0.59, 0.26, depth + 0.9),
       roof, 'pitched-roof-' + side, [side * width * 0.245, height + 0.79, 0], !coarse);
     slope.rotation.z = -side * 0.48;
+    // One instanced draw-call per roof slope instead of individual roof tiles.
+    // Thin cross-seams add depth without a dense triangle mesh on phones.
+    const bands = new THREE.InstancedMesh(
+      new THREE.BoxGeometry(width * 0.55, 0.045, 0.07),
+      mats.roofSeams,
+      coarse ? 7 : 12,
+    );
+    bands.name = 'pitched-roof-shingle-seams';
+    const band = new THREE.Object3D();
+    for (let i = 0; i < bands.count; i += 1) {
+      band.position.set(0, 0.16, -(depth + 0.6) / 2 + (i + 0.5) * (depth + 0.6) / bands.count);
+      band.updateMatrix();
+      bands.setMatrixAt(i, band.matrix);
+    }
+    bands.instanceMatrix.needsUpdate = true;
+    slope.add(bands);
   }
   mesh(root, new THREE.CylinderGeometry(0.14, 0.14, depth + 0.98, 7), mats.timber,
     'ridge-timber', [0, roofRidgeY - 0.13, 0]).rotation.x = Math.PI / 2;
@@ -146,6 +162,24 @@ function building(spec, mats, coarse, contentIds, center) {
   }
   mesh(root, new THREE.BoxGeometry(1.75, 3.12, 0.16), mats.timber,
     'shop-door', [0, 1.56, facadeZ + 0.16]);
+  // Lanterns and pennants are attached to the blocking building footprint,
+  // never freestanding on traversable tiles.
+  for (const x of [-width * 0.41, width * 0.41]) {
+    mesh(root, new THREE.BoxGeometry(0.14, 0.24, 0.4), mats.steel,
+      'shop-lantern-bracket', [x, height - 0.36, facadeZ + 0.19]);
+    mesh(root, new THREE.BoxGeometry(0.30, 0.43, 0.28), mats.window,
+      'shop-amber-lantern', [x, height - 0.69, facadeZ + 0.26]);
+  }
+  for (const side of [-1, 1]) {
+    const banner = new THREE.Group();
+    banner.name = 'shop-pennant-' + (side < 0 ? 'left' : 'right');
+    banner.position.set(side * width * 0.38, height - 1.03, facadeZ + 0.19);
+    mesh(banner, new THREE.BoxGeometry(0.68, 1.45, 0.045), roof,
+      'vertical-heraldic-banner', [0, -0.48, 0]);
+    mesh(banner, new THREE.BoxGeometry(0.88, 0.10, 0.10), mats.gold,
+      'banner-gold-rail', [0, 0.31, 0.07]);
+    root.add(banner);
+  }
   mesh(root, new THREE.SphereGeometry(0.08, 8, 6), mats.gold,
     'door-handle', [0.58, 1.45, facadeZ + 0.29]);
   for (const x of [-width * 0.33, width * 0.33]) {
@@ -307,6 +341,7 @@ export function buildSwordhavenScene(scene, { scenePlan = {}, coarsePointer = fa
     embers: material(0xffa754, { emissive: 0xeb6a20, emissiveIntensity: 1.2 }),
     steel: material(0x80909a, { metalness: 0.6, roughness: 0.32 }),
     paving: material(0xffffff, { roughness: 0.96 }),
+    roofSeams: material(0x413a36, { roughness: 0.92 }),
   };
   mesh(root, new THREE.BoxGeometry(width * CELL, 0.3, height * CELL),
     mats.grass, 'grass-terrain', [0, -0.2, 0]);
@@ -319,10 +354,14 @@ export function buildSwordhavenScene(scene, { scenePlan = {}, coarsePointer = fa
   laySwordhavenCobblestones(root, mats, coarsePointer, width, height);
   const fountain = new THREE.Group();
   fountain.name = 'swordhaven-fountain';
-  mesh(fountain, new THREE.CylinderGeometry(2.0, 2.25, 0.7, 16),
+  // The full basin must fit the single blocked 4×4 m fountain cell.
+  mesh(fountain, new THREE.CylinderGeometry(1.72, 1.88, 0.7, 16),
     mats.stone, 'fountain-basin', [0, 0.34, 0]);
-  mesh(fountain, new THREE.CylinderGeometry(1.67, 1.67, 0.03, 16),
+  mesh(fountain, new THREE.CylinderGeometry(1.47, 1.47, 0.03, 16),
     material(0x64bfd0, { metalness: 0.12, roughness: 0.22 }), 'fountain-water', [0, 0.71, 0]);
+  const rim = mesh(fountain, new THREE.TorusGeometry(1.74, 0.10, 6, 24),
+    mats.stone, 'fountain-carved-rim', [0, 0.75, 0]);
+  rim.rotation.x = Math.PI / 2;
   mesh(fountain, new THREE.CylinderGeometry(0.31, 0.44, 1.9, 10),
     mats.stone, 'fountain-pedestal', [0, 1.25, 0]);
   root.add(fountain);

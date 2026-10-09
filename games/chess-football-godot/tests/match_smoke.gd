@@ -30,8 +30,9 @@ func _initialize() -> void:
 			Vector2(ChessFootballMath.PITCH_RECT.end.x, goal_probe_center.y + 190.0)
 		)
 	)
-	assert(match_node.debug_keeper_track_y_limit() <= 94.01)
-	assert(match_node.debug_keeper_track_y_limit() < ChessFootballMath.GOAL_HALF_HEIGHT * 0.60)
+	assert(match_node.debug_keeper_track_y_limit() >= 120.0)
+	assert(match_node.debug_keeper_track_y_limit() <= 155.0)
+	assert(match_node.debug_keeper_track_y_limit() <= ChessFootballMath.GOAL_HALF_HEIGHT * 0.83)
 	assert(ChessFootballMath.GOAL_MAX_FLIGHT_HEIGHT >= 80.0)
 	assert(match_node.debug_3d_ready())
 	assert(match_node.debug_audio_ready())
@@ -39,6 +40,58 @@ func _initialize() -> void:
 	for expected_audio in ["goal", "pass", "post", "save", "shot", "tackle", "whistle"]:
 		assert(audio_names.has(expected_audio))
 	assert(match_node.debug_3d_animated_players() == 10)
+	# Two proper goalkeeper sprites, same canonical canvas and proportions
+	# as field players. No animation may fall back to the old SVG body.
+	var keeper_meta: Dictionary = ChessFootballSpriteBank.manifest()["goalkeeper_run"]
+	assert(keeper_meta["quality_contract"] == "football-keeper-canon-v1")
+	assert(keeper_meta["sha256"] == "41ca02f757545eb39c4f80e99eb358c167e8f9044153bedfd799ad488a88ca9c")
+	assert(int(keeper_meta["frames"]) == 8)
+	assert((keeper_meta["views"] as Dictionary).size() == 4)
+	assert(int(keeper_meta["side_fallback_row"]) == 2)
+	var keeper_images: Array[Image] = []
+	for team_id in range(2):
+		var keeper_frames := ChessFootballSpriteBank.build_frames(team_id, "keeper", 0, true)
+		var field_frames := ChessFootballSpriteBank.build_frames(team_id, "forward", 4, true)
+		for base_name in ["idle", "run", "sprint", "pass", "shoot", "tackle", "celebrate",
+			"run_front", "run_back", "run_back_diagonal", "run_front_diagonal",
+			"sprint_front", "sprint_back", "sprint_back_diagonal", "sprint_front_diagonal"]:
+			var name := StringName(base_name)
+			assert(keeper_frames.has_animation(name))
+			var frame_count: int = keeper_frames.get_frame_count(name)
+			assert(frame_count == (1 if name == &"idle" else 8))
+			for index in range(frame_count):
+				var img_texture := keeper_frames.get_frame_texture(name, index)
+				assert(img_texture is ImageTexture)
+				assert(img_texture.get_size() == Vector2(128.0, 144.0))
+				var visible := (img_texture as ImageTexture).get_image().get_used_rect()
+				assert(visible.size.y >= 113 and visible.size.y <= 123)
+				assert(visible.end.y <= 133)
+		var keeper_sample := (keeper_frames.get_frame_texture(&"run_front", 0) as ImageTexture).get_image()
+		var field_sample := (field_frames.get_frame_texture(&"run_front", 0) as ImageTexture).get_image()
+		assert(keeper_sample.get_data() != field_sample.get_data())
+		keeper_images.append(keeper_sample)
+	# Both keepers derive from one approved body but have different shirts.
+	assert(keeper_images[0].get_data() != keeper_images[1].get_data())
+	# Compare actual canonical silhouettes, not nominal 128x144 cell size.
+	# The runner's size must not change with team, roster slot, or camera.
+	assert(is_equal_approx(ChessFootball3DPresenter.normalized_body_scale(120.0), 1.0))
+	for team_id in range(2):
+		for squad_index in [0, 4]:
+			var sampled_role := "keeper" if squad_index == 0 else "forward"
+			var rendered_frames := ChessFootballSpriteBank.build_frames(
+				team_id, sampled_role, squad_index, true
+			)
+			for view_name in ["side", "front", "back", "front_diagonal", "back_diagonal"]:
+				var run_name := ChessFootballRunDirection.animation_for(&"run", view_name)
+				var height_samples: Array[float] = []
+				for frame_id in [0, 3, 6]:
+					var run_image := (rendered_frames.get_frame_texture(run_name, frame_id) as ImageTexture).get_image()
+					var used := run_image.get_used_rect()
+					assert(used.size.y >= 86 and used.size.y <= 135)
+					height_samples.append(float(used.size.y))
+				height_samples.sort()
+				var effective_height := height_samples[1] * ChessFootball3DPresenter.normalized_body_scale(height_samples[1])
+				assert(absf(effective_height - 120.0) < 2.0)
 	# Eight-way movement resolves to five authored views, with mirrored diagonals.
 	assert(ChessFootballRunDirection.view_for_velocity(Vector2(250.0, 0.0)) == "side")
 	assert(ChessFootballRunDirection.view_for_velocity(Vector2(0.0, 250.0)) == "front")
@@ -204,6 +257,28 @@ func _initialize() -> void:
 					assert(frame_texture.get_size() == Vector2(128.0, 144.0))
 					var used_rect := (frame_texture as ImageTexture).get_image().get_used_rect()
 					assert(used_rect.size.x >= 40 and used_rect.size.y >= 90)
+	# The 3D stadium cannot mix legacy vector footballer bodies with the
+	# approved raster canon. This applies to *every player*, including keepers,
+	# both kits, shots, passes, tackles and celebrations.
+	for roster_team in match_node.teams:
+		for roster_player in roster_team:
+			var visible_frames := ChessFootballSpriteBank.build_frames(
+				roster_player.team_id, roster_player.role, roster_player.squad_index, true
+			)
+			for action_name in [&"idle", &"run", &"sprint", &"pass", &"shoot", &"tackle", &"celebrate"]:
+				assert(visible_frames.has_animation(action_name))
+				var frame_total := visible_frames.get_frame_count(action_name)
+				assert(frame_total == (1 if action_name == &"idle" else 8))
+				for frame_index in range(frame_total):
+					var visible_texture := visible_frames.get_frame_texture(action_name, frame_index)
+					assert(visible_texture is ImageTexture)
+					assert(visible_texture.get_size() == Vector2(128.0, 144.0))
+					var body_region := (visible_texture as ImageTexture).get_image().get_used_rect()
+					assert(body_region.size.y >= 65 and body_region.size.x >= 25)
+	# 2D-only action animation resources remain intact for the simulation.
+	var simulation_frames := ChessFootballSpriteBank.build_frames(1, "forward", 4, false)
+	for action_name in [&"pass", &"shoot", &"tackle", &"celebrate"]:
+		assert(simulation_frames.get_frame_texture(action_name, 0) is AtlasTexture)
 	assert(canonical_run_frame.region == Rect2(0.0, 0.0, 128.0, 144.0))
 	assert(canonical_sprint_frame.region == Rect2(0.0, 0.0, 128.0, 144.0))
 	assert(is_equal_approx(canonical_frames.get_animation_speed(&"run"), 12.0))

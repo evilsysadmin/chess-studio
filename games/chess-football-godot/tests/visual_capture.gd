@@ -40,6 +40,69 @@ func _initialize() -> void:
 		runner._sync_locomotion(false)
 	match_node.debug_sync_presentation()
 	await _save_capture(match_node, "directional-runs", "VISUAL_CAPTURE_DIRECTIONAL_RUNS")
+	# Camera-scale comparison: same pitch depth, same eight-frame pose,
+	# five canonical views next to each other for each team's complete roster.
+	# A two-row, five-column grid makes diagonal bloat evident without
+	# introducing false size differences from the 3D camera perspective.
+	var scale_view_directions := [
+		Vector2.RIGHT, Vector2.DOWN, Vector2.UP,
+		Vector2(1.0, 1.0).normalized(), Vector2(1.0, -1.0).normalized(),
+	]
+	for team_index in range(2):
+		for squad_index in range(5):
+			var figure: Footballer = match_node.teams[team_index][squad_index]
+			figure.global_position = pitch_center + Vector2(
+				(float(squad_index) - 2.0) * 330.0,
+				(float(team_index) - 0.5) * 240.0,
+			)
+			figure.velocity = scale_view_directions[squad_index] * figure.base_speed
+			figure.visual.play("run")
+			figure.visual.frame = 3
+			figure._sync_facing()
+			figure._sync_locomotion(false)
+	match_node.debug_sync_presentation()
+	await _save_capture(match_node, "directional-scale-grid", "VISUAL_CAPTURE_DIRECTIONAL_SCALE_GRID")
+	# All on-field actions must retain the approved raster identity for BOTH
+	# teams, not briefly turn a player into the old little vector silhouette.
+	var review_actions := ["pass", "shoot", "tackle", "celebrate"]
+	for team_index in range(2):
+		for actor_index in range(4):
+			var actor: Footballer = match_node.teams[team_index][actor_index + 1]
+			actor.action_lock_seconds = 0.0
+			actor.play_action(review_actions[actor_index], 1.0)
+			actor.visual.frame = 3
+	match_node.debug_sync_presentation()
+	await _save_capture(match_node, "canonical-actions", "VISUAL_CAPTURE_CANONICAL_ACTIONS")
+	# Two real, differently recolored keepers at the same pitch depth.
+	# Put outfield players outside the camera only for this comparison shot.
+	for team_id in range(2):
+		for field_index in range(1, 5):
+			match_node.teams[team_id][field_index].global_position = pitch_center + Vector2(
+				4200.0 + float(field_index) * 100.0, 2600.0
+			)
+		var keeper: Footballer = match_node.teams[team_id][0]
+		keeper.global_position = pitch_center + Vector2(-190.0 if team_id == 0 else 190.0, 0.0)
+		keeper.action_lock_seconds = 0.0
+		keeper.velocity = Vector2.DOWN * keeper.base_speed
+		keeper.visual.play("run")
+		keeper.visual.frame = 3
+		keeper._sync_facing()
+		keeper._sync_locomotion(false)
+	match_node.debug_sync_presentation()
+	await _save_capture(match_node, "keepers-front", "VISUAL_CAPTURE_KEEPERS_FRONT")
+	for team_id in range(2):
+		var keeper: Footballer = match_node.teams[team_id][0]
+		keeper.velocity = Vector2(1.0, -1.0).normalized() * keeper.base_speed
+		keeper.visual.play("run")
+		keeper.visual.frame = 3
+		keeper._sync_facing()
+		keeper._sync_locomotion(false)
+	match_node.debug_sync_presentation()
+	await _save_capture(match_node, "keepers-diagonal", "VISUAL_CAPTURE_KEEPERS_DIAGONAL")
+	for team_index in range(2):
+		for actor_index in range(4):
+			var actor: Footballer = match_node.teams[team_index][actor_index + 1]
+			actor.action_lock_seconds = 0.0
 	for team in match_node.teams:
 		for runner in team:
 			runner.velocity = Vector2.ZERO
