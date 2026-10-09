@@ -14,6 +14,7 @@ Las reglas detalladas viven en los `.md` especializados enlazados aquí. Antes d
 - Para assets grandes de runtime, preferir R2/CDN y mantener Git centrado en código, manifests y contratos.
 - Trabajar incrementalmente, con cambios pequeños, reversibles y verificables. No dar por buena una iteración visual sólo porque el build o CI estén verdes.
 - Cuando haya artefactos PNG de una pipeline visual, revisarlos y compararlos con el último baseline validado antes de integrar.
+- En Chess Football, el tamaño proyectado de ambos equipos/porteros, la luminosidad entre orientaciones, el apoyo de botas/sombras y los atlas canónicos son **contratos de producto**; ver [`docs/operations/chess-football-product.md`](docs/operations/chess-football-product.md).
 
 ## Flujo global de PR
 
@@ -27,6 +28,7 @@ El contrato de entrega está en [`docs/auto-merge-delivery.md`](docs/auto-merge-
 - PR **no visual** y sin inspección humana de PNG/capturas/renders: armar native automerge **al crearla**. La PR sigue empezando en Draft y branch protection + required checks siguen mandando; si GitHub no permite armarlo aún por estar Draft, reintentarlo automáticamente en cuanto pase a Ready.
 - PR visual, o cualquier PR cuya aceptación dependa de revisar PNG/capturas/renders: **no** armar automerge al crearla. Mantenerla Draft hasta revisar y aceptar la evidencia visual; entonces pasar a Ready y habilitar native automerge.
 - Cuando todos los required checks estén verdes, pasar la PR a Ready for review; en PR no visual verificar que el automerge ya quedó armado, y en PR visual habilitarlo sólo después de la revisión visual obligatoria.
+- **Excepción Football**: para toda PR que afecte al runtime, assets, herramientas o CI de Football, no activar automerge ni pasar a Ready hasta obtener el gate `Football · required visual gate` verde en el SHA exacto y revisar sus PNG. Es una regla de equipo/repositorio: no equivale a branch protection automática. Ver [`docs/ci/football-required-merge-gate.md`](docs/ci/football-required-merge-gate.md).
 - Tras merge, comprobar los workflows posteriores relevantes (main admission, staging/deploy, smoke checks) antes de cerrar la iteración.
 - Mantener las llamadas a GitHub pequeñas y dirigidas: metadata, checks, SHA, commit/PR. Evitar diffs enormes, lecturas repetidas y blobs pesados cuando el trabajo pueda hacerse sobre artefactos locales/cacheados.
 - Si el conector GitHub/git no aparece inicialmente, **redescubrirlo antes de declarar el repositorio inaccesible**. No sustituir de entrada el flujo normal por fetches web, clones repetidos o llamadas grandes.
@@ -37,6 +39,7 @@ El contrato de entrega está en [`docs/auto-merge-delivery.md`](docs/auto-merge-
 
 | Tarea | Documentos que hay que leer |
 | --- | --- |
+| Producto Chess Football / QA visual / futuro modo mánager | [`docs/operations/chess-football-product.md`](docs/operations/chess-football-product.md), [`docs/ci/football-required-merge-gate.md`](docs/ci/football-required-merge-gate.md) |
 | Sprites, frames, atlases o animaciones de Pawn Slug/Godot/Chess Football | [`docs/pawnslug-sprites.md`](docs/pawnslug-sprites.md), [`skills/godot-spritesheets/SKILL.md`](skills/godot-spritesheets/SKILL.md), [`scripts/art/README.md`](scripts/art/README.md), [`frontend/src/assets/pawnSlug/README.md`](frontend/src/assets/pawnSlug/README.md), [`games/chess-football-godot/assets/players/run_canon/README.md`](games/chess-football-godot/assets/players/run_canon/README.md) |
 | Pawn Slug runtime, Web export, Playwright smoke o input real | [`skills/pawn-slug-runtime-smoke/SKILL.md`](skills/pawn-slug-runtime-smoke/SKILL.md) |
 | Música / radio de sesión / Pawn Slug OST / composición y mezcla | [`docs/music.md`](docs/music.md), [`skills/pawn-slug-synthwave/SKILL.md`](skills/pawn-slug-synthwave/SKILL.md) |
@@ -75,7 +78,7 @@ El contrato de entrega está en [`docs/auto-merge-delivery.md`](docs/auto-merge-
 - [`README.md`](README.md) — entrada al proyecto, estructura y comandos canónicos.
 - [`.github/workflows/README.md`](.github/workflows/README.md) — documentación de workflows.
 - [`docs/auto-merge-delivery.md`](docs/auto-merge-delivery.md) — native automerge y cadena de entrega.
-- [`docs/ci/football-required-merge-gate.md`](docs/ci/football-required-merge-gate.md) — activar el gate visual obligatorio de Football y comprobar su alcance.
+- [`docs/ci/football-required-merge-gate.md`](docs/ci/football-required-merge-gate.md) — regla operativa de revisión visual de Football (sin afirmar branch protection).
 
 ### AGENTS por subsistema
 
@@ -115,6 +118,7 @@ El contrato de entrega está en [`docs/auto-merge-delivery.md`](docs/auto-merge-
 - [`docs/operations/matthias-runtime.md`](docs/operations/matthias-runtime.md)
 - [`docs/operations/chronicles-tactics.md`](docs/operations/chronicles-tactics.md)
 - [`docs/operations/chronicles-mm3-economy.md`](docs/operations/chronicles-mm3-economy.md) — siete estadísticas MM3, compatibilidad legacy y ownership de economía.
+- [`docs/operations/chess-football-product.md`](docs/operations/chess-football-product.md) — calidad del partido y diseño futuro de mánager de clubes.
 - [`backend-python/chronicles_campaign/DESIGN.md`](backend-python/chronicles_campaign/DESIGN.md) — atlas, actos, portales y contrato de autoría de la campaña.
 - [`docs/operations/combat-chess.md`](docs/operations/combat-chess.md)
 - [`docs/operations/client-storage.md`](docs/operations/client-storage.md)
