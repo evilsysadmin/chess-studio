@@ -1,0 +1,85 @@
+{
+  "schemaVersion": 1,
+  "id": "hollowport",
+  "title": "Puerto de Hollín",
+  "regionId": "coast",
+  "kind": "settlement",
+  "status": "design-only",
+  "legacyRuntimeMapId": null,
+  "threatBand": [
+    3,
+    5
+  ],
+  "description": "Puerto mercantil donde los capitanes compran silencios.",
+  "layout": {
+    "mode": "authored-fixed",
+    "grid": [
+      "###################",
+      "#........=........#",
+      "#........=........#",
+      "#..###...=...###..#",
+      "#..###...=...###..#",
+      "#......=.=........#",
+      "#......=.=........#",
+      "#=================#",
+      "#........=........#",
+      "#........=........#",
+      "#..###...=...###..#",
+      "#..###...=...###..#",
+      "#........=........#",
+      "#........=........#",
+      "###################"
+    ],
+    "tileLegend": {
+      "#": "solid",
+      "~": "water-blocked",
+      "^": "cliff-blocked",
+      ".": "floor",
+      ":": "old-stone-floor",
+      "=": "road-or-corridor"
+    }
+  },
+  "partyStart": {
+    "x": 9,
+    "y": 7,
+    "direction": "north"
+  },
+  "portals": [
+    {
+      "id": "to-salt-coast",
+      "targetMapId": "salt-coast",
+      "targetPortalId": "to-hollowport",
+      "x": 9,
+      "y": 1,
+      "requiresAll": [],
+      "feature": "road",
+      "linkId": "salt-coast--hollowport"
+    },
+    {
+      "id": "to-old-causeway",
+      "targetMapId": "old-causeway",
+      "targetPortalId": "to-hollowport",
+      "x": 17,
+      "y": 7,
+      "requiresAll": [],
+      "feature": "ferry",
+      "linkId": "hollowport--old-causeway"
+    }
+  ],
+  "pointsOfInterest": [
+    {
+      "id": "harbor-ledger",
+      "label": "El manifiesto del puerto",
+      "eventId": "port-manifest",
+      "x": 7,
+      "y": 5,
+      "interaction": "adjacent-or-on-tile"
+    }
+  ],
+  "services": [
+    "inn",
+    "shipwright",
+    "merchant",
+    "tavern"
+  ]
+}

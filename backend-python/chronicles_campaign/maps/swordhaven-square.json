@@ -1,0 +1,84 @@
+{
+  "schemaVersion": 1,
+  "id": "swordhaven-square",
+  "title": "Swordhaven",
+  "regionId": "heart",
+  "kind": "settlement",
+  "status": "design-only",
+  "legacyRuntimeMapId": "swordhaven-square",
+  "threatBand": [
+    1,
+    2
+  ],
+  "description": "Aldea de origen y centro de la primera expedición.",
+  "layout": {
+    "mode": "authored-fixed",
+    "grid": [
+      "###################",
+      "#........=........#",
+      "#........=........#",
+      "#..###...=...###..#",
+      "#..###...=...###..#",
+      "#......=.=........#",
+      "#......=.=........#",
+      "#=================#",
+      "#........=.=......#",
+      "#........=.=......#",
+      "#..###...=...###..#",
+      "#..###...=...###..#",
+      "#........=........#",
+      "#........=........#",
+      "###################"
+    ],
+    "tileLegend": {
+      "#": "solid",
+      "~": "water-blocked",
+      "^": "cliff-blocked",
+      ".": "floor",
+      ":": "old-stone-floor",
+      "=": "road-or-corridor"
+    }
+  },
+  "partyStart": {
+    "x": 9,
+    "y": 7,
+    "direction": "north"
+  },
+  "portals": [
+    {
+      "id": "to-banner-road",
+      "targetMapId": "banner-road",
+      "targetPortalId": "to-swordhaven-square",
+      "x": 9,
+      "y": 1,
+      "requiresAll": [],
+      "feature": "road",
+      "linkId": "swordhaven-square--banner-road"
+    }
+  ],
+  "pointsOfInterest": [
+    {
+      "id": "sealed-order",
+      "label": "El sobre de la Dama",
+      "eventId": "commission-received",
+      "x": 7,
+      "y": 5,
+      "interaction": "adjacent-or-on-tile"
+    },
+    {
+      "id": "missing-board",
+      "label": "Tablón de los caballeros perdidos",
+      "eventId": "missing-knights-notice",
+      "x": 11,
+      "y": 9,
+      "interaction": "adjacent-or-on-tile"
+    }
+  ],
+  "services": [
+    "inn",
+    "smith",
+    "temple",
+    "merchant",
+    "tavern"
+  ]
+}

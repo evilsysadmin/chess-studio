@@ -1,0 +1,83 @@
+{
+  "schemaVersion": 1,
+  "id": "winterwatch",
+  "title": "Vigilia del Norte",
+  "regionId": "north",
+  "kind": "settlement",
+  "status": "design-only",
+  "legacyRuntimeMapId": null,
+  "threatBand": [
+    5,
+    7
+  ],
+  "description": "Ciudadela de monjes y guardabosques guardianes del primer juramento.",
+  "layout": {
+    "mode": "authored-fixed",
+    "grid": [
+      "###################",
+      "#........=........#",
+      "#........=........#",
+      "#..###...=...###..#",
+      "#..###...=...###..#",
+      "#......=.=........#",
+      "#......=.=........#",
+      "#=================#",
+      "#........=.=......#",
+      "#........=.=......#",
+      "#..###...=...###..#",
+      "#..###...=...###..#",
+      "#........=........#",
+      "#........=........#",
+      "###################"
+    ],
+    "tileLegend": {
+      "#": "solid",
+      "~": "water-blocked",
+      "^": "cliff-blocked",
+      ".": "floor",
+      ":": "old-stone-floor",
+      "=": "road-or-corridor"
+    }
+  },
+  "partyStart": {
+    "x": 9,
+    "y": 7,
+    "direction": "north"
+  },
+  "portals": [
+    {
+      "id": "to-frost-steppe",
+      "targetMapId": "frost-steppe",
+      "targetPortalId": "to-winterwatch",
+      "x": 9,
+      "y": 1,
+      "requiresAll": [],
+      "feature": "road",
+      "linkId": "frost-steppe--winterwatch"
+    }
+  ],
+  "pointsOfInterest": [
+    {
+      "id": "abbey-witness",
+      "label": "Compromiso de la Abadía",
+      "eventId": "abbey-witness",
+      "x": 7,
+      "y": 5,
+      "interaction": "adjacent-or-on-tile"
+    },
+    {
+      "id": "last-watch",
+      "label": "La última guardia",
+      "eventId": "last-watch-rescued",
+      "x": 11,
+      "y": 9,
+      "interaction": "adjacent-or-on-tile"
+    }
+  ],
+  "services": [
+    "inn",
+    "healer",
+    "abbey",
+    "merchant"
+  ]
+}

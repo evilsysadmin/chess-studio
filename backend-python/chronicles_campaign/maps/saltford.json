@@ -1,0 +1,95 @@
+{
+  "schemaVersion": 1,
+  "id": "saltford",
+  "title": "Vado de Sal",
+  "regionId": "mire",
+  "kind": "settlement",
+  "status": "design-only",
+  "legacyRuntimeMapId": null,
+  "threatBand": [
+    2,
+    4
+  ],
+  "description": "Pueblo de barqueros que recuerda voces perdidas en la niebla.",
+  "layout": {
+    "mode": "authored-fixed",
+    "grid": [
+      "###################",
+      "#........=........#",
+      "#........=........#",
+      "#..###...=...###..#",
+      "#..###...=...###..#",
+      "#......=.=........#",
+      "#......=.=........#",
+      "#=================#",
+      "#........=........#",
+      "#........=........#",
+      "#..###...=...###..#",
+      "#..###...=...###..#",
+      "#........=........#",
+      "#........=........#",
+      "###################"
+    ],
+    "tileLegend": {
+      "#": "solid",
+      "~": "water-blocked",
+      "^": "cliff-blocked",
+      ".": "floor",
+      ":": "old-stone-floor",
+      "=": "road-or-corridor"
+    }
+  },
+  "partyStart": {
+    "x": 9,
+    "y": 7,
+    "direction": "north"
+  },
+  "portals": [
+    {
+      "id": "to-banner-road",
+      "targetMapId": "banner-road",
+      "targetPortalId": "to-saltford",
+      "x": 9,
+      "y": 1,
+      "requiresAll": [],
+      "feature": "road",
+      "linkId": "banner-road--saltford"
+    },
+    {
+      "id": "to-mist-marsh",
+      "targetMapId": "mist-marsh",
+      "targetPortalId": "to-saltford",
+      "x": 17,
+      "y": 7,
+      "requiresAll": [],
+      "feature": "road",
+      "linkId": "saltford--mist-marsh"
+    },
+    {
+      "id": "to-salt-coast",
+      "targetMapId": "salt-coast",
+      "targetPortalId": "to-saltford",
+      "x": 9,
+      "y": 13,
+      "requiresAll": [],
+      "feature": "road",
+      "linkId": "saltford--salt-coast"
+    }
+  ],
+  "pointsOfInterest": [
+    {
+      "id": "salt-gates",
+      "label": "Compuertas del estuario",
+      "eventId": "salt-gates-repaired",
+      "x": 7,
+      "y": 5,
+      "interaction": "adjacent-or-on-tile"
+    }
+  ],
+  "services": [
+    "inn",
+    "healer",
+    "merchant",
+    "ferryman"
+  ]
+}
