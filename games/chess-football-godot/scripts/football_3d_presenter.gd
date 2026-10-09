@@ -640,23 +640,6 @@ func _sync_player_secondary_motion(player: Footballer, sprite: AnimatedSprite3D,
 		stretch_x = 0.95 + absf(cos(phase)) * 0.028
 		stretch_y = 1.04 - absf(cos(phase)) * 0.018
 		tilt_degrees = -facing_sign * (7.5 + sin(phase) * 1.8) * moving_weight
-	# Only the keeper receives stronger *visible* weight transfer.
-	# It shares the same 8-frame cadence; no animation restarts or added clocks.
-	# At broadcast distance the current canonical feet and gloves otherwise
-	# move less than a couple of screen pixels, reading as a sliding cut-out.
-	# This is presentation only: collisions, AI speed and the authored atlas
-	# remain unchanged; stops and save/tackle animations keep their own poses.
-	if (
-		player.role == "keeper"
-		and moving_weight > 0.0
-		and (animation_name == "run" or animation_name.begins_with("run_")
-			or animation_name == "sprint" or animation_name.begins_with("sprint_"))
-	):
-		var foot_phase := sin(phase)
-		lateral_sway += foot_phase * KEEPER_STRIDE_EXTRA_SWAY * moving_weight
-		bob += absf(foot_phase) * KEEPER_STRIDE_EXTRA_BOB * moving_weight
-		tilt_degrees += foot_phase * KEEPER_STRIDE_EXTRA_LEAN_DEGREES * moving_weight
-		stretch_x *= 1.0 + foot_phase * 0.035 * moving_weight
 	elif animation_name == "pass":
 		bob = absf(sin(phase)) * 0.025
 		lateral_sway = -facing_sign * 0.026 * sin(phase)
@@ -688,6 +671,23 @@ func _sync_player_secondary_motion(player: Footballer, sprite: AnimatedSprite3D,
 		stretch_x = 0.98
 		stretch_y = 1.05
 
+	# Only the keeper receives stronger *visible* weight transfer.
+	# It shares the same 8-frame cadence; no animation restarts or added clocks.
+	# At broadcast distance the current canonical feet and gloves otherwise
+	# move less than a couple of screen pixels, reading as a sliding cut-out.
+	# This is presentation only: collisions, AI speed and the authored atlas
+	# remain unchanged; stops and save/tackle animations keep their own poses.
+	if (
+		player.role == "keeper"
+		and moving_weight > 0.0
+		and (animation_name == "run" or animation_name.begins_with("run_")
+			or animation_name == "sprint" or animation_name.begins_with("sprint_"))
+	):
+		var foot_phase := sin(phase)
+		lateral_sway += foot_phase * KEEPER_STRIDE_EXTRA_SWAY * moving_weight
+		bob += absf(foot_phase) * KEEPER_STRIDE_EXTRA_BOB * moving_weight
+		tilt_degrees += foot_phase * KEEPER_STRIDE_EXTRA_LEAN_DEGREES * moving_weight
+		stretch_x *= 1.0 + foot_phase * 0.035 * moving_weight
 	if player.keeper_save_active():
 		var save_progress := 1.0 - player.keeper_save_ratio()
 		var save_weight := sin(PI * clampf(save_progress, 0.0, 1.0))
