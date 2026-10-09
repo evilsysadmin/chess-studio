@@ -48,7 +48,7 @@ func _initialize() -> void:
 	for team in match_node.teams:
 		for player in team:
 			var proxy: Node3D = match_node.presentation_3d.player_nodes[player.get_instance_id()]
-			var projected := match_node.presentation_3d.camera.unproject_position(
+			var projected: Vector2 = match_node.presentation_3d.camera.unproject_position(
 				proxy.global_position + Vector3.UP * ChessFootball3DPresenter.PLAYER_BASE_Y
 			)
 			assert(projected.x > 55.0 and projected.x < review_width - 55.0,
