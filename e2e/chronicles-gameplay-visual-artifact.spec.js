@@ -330,12 +330,12 @@ for (const capture of CAPTURES) {
       const stage = page.locator('.chronicles-stage');
       const gameMenu = page.locator('summary[aria-label="Abrir menú de Chronicles"]');
       await expect(gameRoot).toBeVisible();
-      if (!capture.hasTouch) {
-        expect(
-          await page.evaluate(() => Boolean(document.fullscreenElement)),
-          `${capture.label}: desktop Chronicles enters browser-native fullscreen`,
-        ).toBe(true);
-      }
+      // Escape is reserved for the in-game menu. Browser-native fullscreen
+      // would intercept it, so viewport-owned immersion must not use that API.
+      expect(
+        await page.evaluate(() => Boolean(document.fullscreenElement)),
+        `${capture.label}: Chronicles leaves native fullscreen to the browser`,
+      ).toBe(false);
       const landscapeTrigger = page.getByRole('button', { name: 'Activar apaisado', exact: true });
       if (capture.hasTouch && capture.width < capture.height) {
         await expect(landscapeTrigger).toBeVisible();
