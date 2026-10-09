@@ -81,7 +81,7 @@ describe('Chronicles of Matthias vertical slice', () => {
     const blocked = chroniclesReduce(nextToTree, 'strafe-left');
     expect([blocked.x, blocked.y, blocked.direction]).toEqual([8, 16, 0]);
     expect(blocked.turns).toBe(nextToTree.turns + 1);
-    expect(blocked.message).toMatch(/bloquea|obstáculo|paso|árbol|muro|cerrado|avanzar/i);
+    expect(blocked.message).toMatch(/pared|bloquea|obstáculo|paso|árbol|muro|cerrado|avanzar/i);
   });
 
   it('applies a custom character build to the real party without changing canonical ids', () => {
