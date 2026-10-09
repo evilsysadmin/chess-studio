@@ -143,6 +143,14 @@ describe('Chronicles shared run identity', () => {
   });
 
 
+  it('preserves the authored campaign route when renewing a stale first-person run', () => {
+    const stale = beginChroniclesRun('first-person', { entryMapId: 'swordhaven-campaign' });
+    const renewed = renewChroniclesRun('first-person', stale);
+    expect(renewed).not.toBe(stale);
+    expect(chroniclesRunEntryMapId('first-person')).toBe('swordhaven-campaign');
+    expect(chroniclesListSavedRuns('first-person').map((run) => run.id)).toContain(renewed);
+  });
+
   it('indexes old runs without changing their idempotent server IDs', () => {
     localStorage.setItem(CHRONICLES_RUN_STORAGE_KEY, JSON.stringify({
       id: 'old-run', owner: 'alice', ended: false,

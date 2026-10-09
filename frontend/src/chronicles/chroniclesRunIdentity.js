@@ -330,7 +330,11 @@ export function renewChroniclesRun(scope, runId) {
   if (current && current.id === runId && !current.ended) {
     writeRunState({ ...current, ended: true });
   }
-  return beginChroniclesRun(scope);
+  // A lost/stale server identity must not silently change an opted-in
+  // campaign back to legacy Swordhaven when first-person renews the run.
+  const entryMapId = scope === 'first-person' && current?.entryMapId === 'swordhaven-campaign'
+    ? current.entryMapId : null;
+  return beginChroniclesRun(scope, { entryMapId });
 }
 
 export function finishChroniclesRun(scope, runId) {
