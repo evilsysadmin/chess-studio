@@ -41,7 +41,8 @@ describe('Chronicles immersive entry', () => {
       requested: true, fullscreen: false, landscape: true,
     });
     expect(requestFullscreen).not.toHaveBeenCalled();
-    expect(lock).toHaveBeenCalledExactlyOnceWith('landscape');
+    expect(lock).toHaveBeenCalledOnce();
+    expect(lock).toHaveBeenCalledWith('landscape');
   });
 
   it('degrades gracefully when mobile landscape lock requires native fullscreen', async () => {
