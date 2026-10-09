@@ -183,6 +183,9 @@ def main() -> None:
     compiled = materialize_campaign_maps(options.ids)
     if options.write:
         options.write.mkdir(parents=True, exist_ok=True)
+        conflicts = [name for name in sorted(compiled) if (options.write / f"{name}.json").exists()]
+        if conflicts:
+            cli.error("refusing to overwrite existing manifests: " + ", ".join(conflicts))
         for map_id, payload in sorted(compiled.items()):
             dest = options.write / f"{map_id}.json"
             with dest.open("x", encoding="utf-8") as handle:

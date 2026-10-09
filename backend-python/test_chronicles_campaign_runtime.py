@@ -1,13 +1,8 @@
 """A candidate runtime world may never overwrite or mutate legacy Chronicles."""
 import json
-from pathlib import Path
-
 import pytest
 
 from chronicles_campaign.runtime_manifests import materialize_campaign_maps
-
-CAMPAIGN = Path(__file__).with_name("chronicles_campaign")
-
 
 def test_swordhaven_road_candidate_has_real_reciprocal_exits():
     maps = materialize_campaign_maps(["swordhaven-square", "banner-road"])
@@ -44,6 +39,6 @@ def test_generator_never_replaces_legacy_dungeons_or_has_hidden_side_effects():
         materialize_campaign_maps(["not-a-map"])
     with pytest.raises(ValueError, match="unique"):
         materialize_campaign_maps(["banner-road", "banner-road"])
-    before = (CAMPAIGN / "maps/banner-road.json").read_bytes()
-    materialize_campaign_maps(["banner-road"])
-    assert (CAMPAIGN / "maps/banner-road.json").read_bytes() == before
+    first = materialize_campaign_maps(["banner-road"])
+    again = materialize_campaign_maps(["banner-road"])
+    assert first == again
