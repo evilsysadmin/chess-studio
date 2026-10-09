@@ -25,7 +25,11 @@ import { chroniclesClearRuntimeMapDefinitions, chroniclesMapForState } from '../
 import { chroniclesRegionHudLocation } from '../chronicles/chroniclesRegionHud.js';
 import { chroniclesGridExplorationStep } from '../chronicles/chroniclesGridExplorationStep.js';
 import { CHRONICLES_SWORDHAVEN_RETURN_PORTAL_ID } from '../chronicles/chroniclesSwordhavenReturnPortal.js';
-import { chroniclesCheckpointState } from '../chronicles/chroniclesRunClient.js';
+import {
+  chroniclesCheckpointState,
+  chroniclesListRemoteRuns,
+  chroniclesDeleteRemoteRun,
+} from '../chronicles/chroniclesRunClient.js';
 import { loadChroniclesCharacterDraft } from '../chronicles/chroniclesCharacterDraft.js';
 import {
   chroniclesApplyRunCheckpoint,
@@ -39,6 +43,9 @@ import {
   ensureChroniclesRun,
   beginChroniclesRun,
   chroniclesListSavedRuns,
+  chroniclesMergeRemoteSavedRuns,
+  chroniclesMarkSavedRunRemote,
+  chroniclesSelectedRunIsRemote,
   chroniclesSelectSavedRun,
   chroniclesRenameSavedRun,
   chroniclesForgetSavedRun,
@@ -153,7 +160,11 @@ export default function ChroniclesOfMatthias({ onExit }) {
   // Restore an unfinished character editor draft; otherwise display the
   // expedition book before allocating or loading any server run.
   const [entryView, setEntryView] = useState(() => loadChroniclesCharacterDraft(CHRONICLES_PARTY) ? 'setup' : 'menu');
-  const [, refreshSaves] = useState(0);
+  const [savesRefreshKey, refreshSaves] = useState(0);
+  const [saveInventory, setSaveInventory] = useState(null);
+  const [saveMenuLoading, setSaveMenuLoading] = useState(false);
+  const [saveMenuError, setSaveMenuError] = useState('');
+  const [saveMenuBusy, setSaveMenuBusy] = useState(null);
   const [ready, setReady] = useState(false);
   const [bootstrapError, setBootstrapError] = useState(null);
   const [bootstrapRevision, setBootstrapRevision] = useState(0);
@@ -176,6 +187,34 @@ export default function ChroniclesOfMatthias({ onExit }) {
   const [automapVisitedByMap, setAutomapVisitedByMap] = useState({});
   const touchHoldRef = useRef({ delayId: null, repeatId: null });
   const { needsRotation, lockState, activateLandscape } = useChroniclesLandscape(characterSetupDone);
+
+  // Reconcile server-owned expeditions only while browsing the save book.
+  // Cleanup discards stale results after navigating away or switching flows.
+  useEffect(() => {
+    if (entryView !== 'menu') return undefined;
+    const controller = new AbortController();
+    let active = true;
+    setSaveMenuLoading(true);
+    setSaveMenuError('');
+    setSaveInventory(chroniclesListSavedRuns(FIRST_PERSON_RUN_SCOPE));
+    void chroniclesListRemoteRuns({ signal: controller.signal })
+      .then((rows) => {
+        if (!active) return;
+        setSaveInventory(chroniclesMergeRemoteSavedRuns(FIRST_PERSON_RUN_SCOPE, rows));
+      })
+      .catch(() => {
+        if (!active || controller.signal.aborted) return;
+        setSaveMenuError('No se pudo consultar el servidor. Se muestran los guardados locales; inténtalo de nuevo cuando vuelva la conexión.');
+        setSaveInventory(chroniclesListSavedRuns(FIRST_PERSON_RUN_SCOPE));
+      })
+      .finally(() => {
+        if (active) setSaveMenuLoading(false);
+      });
+    return () => {
+      active = false;
+      controller.abort();
+    };
+  }, [entryView, savesRefreshKey]);
 
   useEffect(() => {
     selectedMemberIdRef.current = selectedMemberId;
@@ -552,6 +591,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
 
     setBootstrapError(null);
     const operationId = ensureChroniclesRun(FIRST_PERSON_RUN_SCOPE);
+    const remoteSelection = chroniclesSelectedRunIsRemote(FIRST_PERSON_RUN_SCOPE, operationId);
     activeRunIdRef.current = operationId;
 
     // Overlap renderer chunk loading with the authoritative world bootstrap.
@@ -563,6 +603,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
       mapId: chroniclesRunEntryMapId(FIRST_PERSON_RUN_SCOPE),
       signal: controller.signal,
       operationId,
+      resumeRunId: remoteSelection ? operationId : null,
       partyLevel: chroniclesDeployedPartyLevel(activeProgression),
     })
       .then((world) => {
@@ -573,6 +614,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
         );
         const next = chroniclesApplyRunCheckpoint(progressed, world);
         authoritativeRunRef.current = world;
+        chroniclesMarkSavedRunRemote(FIRST_PERSON_RUN_SCOPE, operationId);
         checkpointFingerprintRef.current = chroniclesRunCheckpointFingerprint(next);
         setAutomapVisitedByMap(loadChroniclesAutomapVisited(operationId));
         stateRef.current = next;
@@ -585,7 +627,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
       })
       .catch((error) => {
         if (!active || error?.code === CHRONICLES_BOOTSTRAP_ERROR_CODES.aborted) return;
-        if (error?.status === 409 && !staleRunRecoveryAttemptedRef.current) {
+        if (error?.status === 409 && !remoteSelection && !staleRunRecoveryAttemptedRef.current) {
           staleRunRecoveryAttemptedRef.current = true;
           clearChroniclesAutomapVisited(operationId);
           const replacementRunId = renewChroniclesRun(FIRST_PERSON_RUN_SCOPE, operationId);
@@ -762,6 +804,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
       setState(null);
       setReady(false);
       setCharacterSetupDone(false);
+      setSaveInventory(null);
       setEntryView('menu');
       refreshSaves((value) => value + 1);
     });
@@ -770,7 +813,10 @@ export default function ChroniclesOfMatthias({ onExit }) {
   if (entryView === 'menu') {
     return (
       <ChroniclesSaveMenu
-        saves={chroniclesListSavedRuns(FIRST_PERSON_RUN_SCOPE)}
+        saves={saveInventory ?? chroniclesListSavedRuns(FIRST_PERSON_RUN_SCOPE)}
+        loading={saveMenuLoading}
+        error={saveMenuError}
+        busyRunId={saveMenuBusy}
         onNew={startFreshGame}
         onLoad={loadSavedGame}
         onRename={(id, title) => {
@@ -778,9 +824,21 @@ export default function ChroniclesOfMatthias({ onExit }) {
           if (result) refreshSaves((value) => value + 1);
           return result;
         }}
-        onForget={(id) => {
-          if (chroniclesForgetSavedRun(FIRST_PERSON_RUN_SCOPE, id)) {
+        onDelete={async (id, remote) => {
+          if (saveMenuBusy !== null) return false;
+          setSaveMenuBusy(id);
+          setSaveMenuError('');
+          try {
+            if (remote) await chroniclesDeleteRemoteRun(id);
+            if (!chroniclesForgetSavedRun(FIRST_PERSON_RUN_SCOPE, id)) return false;
+            setSaveInventory(chroniclesListSavedRuns(FIRST_PERSON_RUN_SCOPE));
             refreshSaves((value) => value + 1);
+            return true;
+          } catch {
+            setSaveMenuError('No se pudo eliminar la expedición del servidor. No se ha retirado de tu lista.');
+            return false;
+          } finally {
+            setSaveMenuBusy(null);
           }
         }}
         onExit={exitChronicles}
