@@ -48,6 +48,12 @@ test('Chronicles · Swordhaven → cripta → Swordhaven, desde el teclado y sin
   await openChronicles(page, { chroniclesCurrentMapId: 'swordhaven-square', newTown: true });
   const mode = page.locator('[data-chronicles="true"]');
   await expect(mode).toHaveAttribute('data-chronicles-map-id', 'swordhaven-square');
+  // Strafe Q/E changes position but not facing; returning to spawn allows gate travel.
+  const turnsBeforeStrafe = Number(await mode.getAttribute('data-chronicles-turns'));
+  await page.keyboard.press('q');
+  await expect(mode).toHaveAttribute('data-chronicles-turns', String(turnsBeforeStrafe + 1));
+  await page.keyboard.press('e');
+  await expect(mode).toHaveAttribute('data-chronicles-turns', String(turnsBeforeStrafe + 2));
   // The first-person starter faces north: one backwards step crosses the south gate.
   await page.keyboard.press('ArrowDown');
   await expect(mode).toHaveAttribute('data-chronicles-map-id', 'crypt-eight-squares', { timeout: 20_000 });
@@ -55,7 +61,7 @@ test('Chronicles · Swordhaven → cripta → Swordhaven, desde el teclado y sin
   await expect(mode.locator('[data-chronicles-touch-action="interact"]'))
     .toHaveAttribute('aria-label', 'Regresar a Swordhaven');
   // The virtual return door is exposed to keyboard and mobile touch alike.
-  await page.keyboard.press('e');
+  await page.keyboard.press('f');
   await expect(mode).toHaveAttribute('data-chronicles-map-id', 'swordhaven-square', { timeout: 20_000 });
   await expect(mode).toHaveAttribute('data-chronicles-phase', 'explore');
 });

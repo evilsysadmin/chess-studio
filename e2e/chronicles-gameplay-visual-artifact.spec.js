@@ -261,7 +261,7 @@ for (const scene of [
         await expect(returnAction).toBeVisible();
         await returnAction.tap({ force: true });
       } else {
-        await page.keyboard.press('e');
+        await page.keyboard.press('f');
       }
       await expect(game).toHaveAttribute('data-chronicles-map-id', 'swordhaven-square', { timeout: 20_000 });
       await expect(game).toHaveAttribute('data-chronicles-phase', 'explore');

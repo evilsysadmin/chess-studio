@@ -4,6 +4,7 @@ import {
   buildSwordhavenScene, createSwordhavenWalkGrid, SWORDHAVEN_BUILDINGS,
   SWORDHAVEN_INTERACTION_CELLS, SWORDHAVEN_GATE_CELL, SWORDHAVEN_SPAWN,
   swordhavenGrassTexture, createSwordhavenSkyDome,
+  swordhavenSurfaceTexture,
 } from './chroniclesSwordhaven3D.js';
 
 describe('Swordhaven modular real-time 3D', () => {
@@ -117,6 +118,97 @@ describe('Swordhaven modular real-time 3D', () => {
     expect(sky.position.equals(camera.position)).toBe(true);
     expect(sky.getObjectByName('swordhaven-sun-disc').position.clone().normalize().distanceTo(sun))
       .toBeLessThan(1e-6);
+  });
+
+
+  it('uses reusable masonry, stucco, oak and tile maps on real shop meshes', () => {
+    const scene = new THREE.Scene();
+    buildSwordhavenScene(scene, { scenePlan: { content: [] }, coarsePointer: true });
+    const house = scene.getObjectByName('swordhaven-building-swordhaven-forge');
+    expect(house.getObjectByName('timber-and-stone-walls').material.map)
+      .toBe(swordhavenSurfaceTexture('stucco'));
+    expect(house.getObjectByName('stone-foundations').material.map)
+      .toBe(swordhavenSurfaceTexture('masonry'));
+    expect(house.getObjectByName('vertical-facade-post').material.map)
+      .toBe(swordhavenSurfaceTexture('timber'));
+    expect(house.getObjectByName('pitched-roof-1').material.map)
+      .toBe(swordhavenSurfaceTexture('roof'));
+    expect(scene.getObjectByName('swordhaven-building-swordhaven-temple')
+      .getObjectByName('timber-and-stone-walls').material.map)
+      .toBe(swordhavenSurfaceTexture('masonry'));
+  });
+
+  it('adds dressed stone corners, dormers and side windows to the five houses', () => {
+    for (const coarsePointer of [true, false]) {
+      const scene = new THREE.Scene();
+      buildSwordhavenScene(scene, { scenePlan: { content: [] }, coarsePointer });
+      const forge = scene.getObjectByName('swordhaven-building-swordhaven-forge');
+      expect(forge.getObjectByName('corner-dressed-stone-courses')).toBeInstanceOf(THREE.InstancedMesh);
+      expect(forge.getObjectByName('corner-dressed-stone-courses').count).toBeGreaterThan(20);
+      expect(forge.getObjectByName('side-window-amber-glass')).toBeTruthy();
+      expect(forge.getObjectByName('door-stone-lintel')).toBeTruthy();
+      expect(forge.getObjectByName('pitched-roof-dormer--1')).toBeTruthy();
+      expect(Boolean(forge.getObjectByName('pitched-roof-dormer-1'))).toBe(!coarsePointer);
+      const tower = scene.getObjectByName('swordhaven-building-swordhaven-temple')
+        .getObjectByName('temple-bell-tower');
+      expect(tower.geometry.parameters.radialSegments).toBeGreaterThanOrEqual(12);
+      const magic = scene.getObjectByName('swordhaven-building-swordhaven-magic');
+      expect(magic.getObjectByName('magic-shop-turret').geometry.parameters.radialSegments).toBeGreaterThanOrEqual(12);
+    }
+  });
+
+  it('keeps the repeating authored-style patterns deterministic and distinct', () => {
+    for (const kind of ['stucco', 'masonry', 'roof', 'timber']) {
+      const texture = swordhavenSurfaceTexture(kind);
+      expect(texture).toBe(swordhavenSurfaceTexture(kind));
+      expect(texture.colorSpace).toBe(THREE.SRGBColorSpace);
+      expect(texture.wrapS).toBe(THREE.RepeatWrapping);
+      expect(texture.wrapT).toBe(THREE.RepeatWrapping);
+      expect(new Set(texture.image.data.filter((_v, index) => index % 4 === 0)).size)
+        .toBeGreaterThan(10);
+    }
+    expect(swordhavenSurfaceTexture('roof')).not.toBe(swordhavenSurfaceTexture('masonry'));
+    expect(() => swordhavenSurfaceTexture('unknown')).toThrow(/Unsupported/);
+  });
+
+
+  it('adds instanced road shoulders and grass tufts without introducing collision geometry', () => {
+    const scene = new THREE.Scene();
+    buildSwordhavenScene(scene, {
+      scenePlan: { width: 19, height: 19, center: { x: 9, y: 9 }, content: [] },
+      coarsePointer: true,
+    });
+    const shoulders = scene.getObjectByName('swordhaven-roadside-stone-edging');
+    const meadow = scene.getObjectByName('swordhaven-low-meadow-tufts');
+    expect(shoulders).toBeInstanceOf(THREE.InstancedMesh);
+    expect(shoulders.count).toBeGreaterThan(60);
+    expect(meadow).toBeInstanceOf(THREE.InstancedMesh);
+    expect(meadow.count).toBeGreaterThan(40);
+    expect(meadow.count).toBeLessThanOrEqual(560);
+    // Avoid the old traffic-cone triangles and chunky raised kerbstones.
+    expect(shoulders.geometry.parameters.height).toBeLessThan(0.09);
+    const blades = meadow.geometry.getAttribute('position');
+    expect(blades.count).toBe(18); // Six slim blades per tuft.
+    let top = 0;
+    for (let vertex = 0; vertex < blades.count; vertex += 1) {
+      top = Math.max(top, blades.getY(vertex));
+    }
+    expect(top).toBeGreaterThan(0.10);
+    expect(top).toBeLessThan(0.17);
+    const matrix = new THREE.Matrix4();
+    const point = new THREE.Vector3();
+    for (let i = 0; i < meadow.count; i += 1) {
+      meadow.getMatrixAt(i, matrix);
+      point.setFromMatrixPosition(matrix);
+      expect(Math.abs(point.x)).toBeGreaterThanOrEqual(5);
+      expect(Math.abs(point.z)).toBeGreaterThanOrEqual(5);
+      expect(SWORDHAVEN_BUILDINGS.some(spec => (
+        Math.abs(point.x - (spec.x - 9) * 4) < 5.2
+        && Math.abs(point.z - (spec.y - 9) * 4) < 5.2
+      ))).toBe(false);
+    }
+    expect(createSwordhavenWalkGrid()[9][9]).toBe('#');
+    expect(createSwordhavenWalkGrid()[SWORDHAVEN_SPAWN.y][SWORDHAVEN_SPAWN.x]).toBe('.');
   });
 
   it('renders storefronts without exposing fake shop interactions before they are authored', () => {
