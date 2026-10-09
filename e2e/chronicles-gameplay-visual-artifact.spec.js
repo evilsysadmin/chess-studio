@@ -620,6 +620,8 @@ test('Chronicles · Swordhaven 3D visual prototype · desktop', async ({ browser
     });
     const stage = page.locator('[data-chronicles-renderer="three"]');
     await expect(stage.locator('canvas')).toBeVisible({ timeout: 30_000 });
+    await expect(page.locator('.chronicles-statusbar')).toContainText('SWORDHAVEN');
+    await expect(page.locator('.chronicles-statusbar')).not.toContainText('CRIPTA');
     await expect(page.locator('.chronicles-renderer-error')).toHaveCount(0);
     await page.screenshot({
       path: ARTIFACT_DIR + '/chronicles-swordhaven-3d-prototype-desktop.png',
