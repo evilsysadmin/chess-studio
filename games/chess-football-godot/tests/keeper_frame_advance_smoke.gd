@@ -70,6 +70,18 @@ func _initialize() -> void:
 			keeper.visual.frame = 0
 			presenter.sync_presentation(1.0 / 60.0, "broadcast")
 		assert(sprite.frame != before_turn)
+		# Back view must also alternate steps, while diagonal facing never
+		# mirrors just because the stride enters its second half.
+		keeper.velocity = Vector2.UP * keeper.base_speed
+		keeper._sync_locomotion(false)
+		presenter.sync_presentation(0.0, "broadcast")
+		assert(sprite.animation == &"run_back")
+		var back_legs: Dictionary = {}
+		for tick in range(45):
+			presenter.sync_presentation(1.0 / 60.0, "broadcast")
+			back_legs[sprite.frame >= 4] = true
+			assert(sprite.flip_h == (keeper.visual.flip_h != (sprite.frame >= 4)))
+		assert(back_legs.size() == 2)
 		var before_pause: int = sprite.frame
 		presenter.sync_presentation(0.0, "broadcast")
 		assert(sprite.frame == before_pause)
