@@ -48,7 +48,7 @@ func _initialize() -> void:
 					assert(sprite != null)
 					assert(sprite.animation == expected)
 					_assert_same_canonical_body(sprite)
-					var base_scale: float = presenter._canonical_body_scale(sprite)
+					var base_scale: float = presenter._canonical_body_scale(sprite, player.role)
 					var normalized_width := sprite.scale.x / base_scale
 					var normalized_height := sprite.scale.y / base_scale
 					if String(expected).ends_with("_diagonal"):
