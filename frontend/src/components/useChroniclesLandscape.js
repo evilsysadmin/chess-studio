@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
   exitWarRoomBrowserFullscreen,
+  getWarRoomBrowserFullscreenElement,
   requestWarRoomBrowserFullscreen,
   requestWarRoomLandscapeFullscreen,
   unlockWarRoomOrientation,
@@ -8,6 +9,11 @@ import {
 
 export const CHRONICLES_PHONE_QUERY = '(pointer: coarse) and (max-width: 920px)';
 export const CHRONICLES_LANDSCAPE_QUERY = '(orientation: landscape) and (max-width: 920px) and (max-height: 620px)';
+
+/** Native browser Escape only leaves fullscreen; later Escape can operate the game menu. */
+export function shouldHandleChroniclesBack(event, doc = globalThis.document) {
+  return event?.type !== 'keydown' || event.key !== 'Escape' || !getWarRoomBrowserFullscreenElement(doc);
+}
 
 export function shouldAutoRotateChroniclesOnEntry({ win = globalThis.window } = {}) {
   if (!win || typeof win.matchMedia !== 'function') return false;
