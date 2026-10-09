@@ -251,6 +251,10 @@ def _surface_groups(path: str) -> set[str] | None:
         return set(POSTGAME_VISUAL_SURFACES[lower])
     if lower in QUICK_MATCH_VISUAL_SURFACES:
         return set(QUICK_MATCH_VISUAL_SURFACES[lower])
+    if lower == "frontend/src/components/shareresultmodal.jsx":
+        return {"warroom"}
+    if lower == "frontend/src/components/profilebackupmodal.jsx":
+        return {"home"}
     if lower == "frontend/src/components/homemobilegoldenpath.css":
         return {"home"}
     if lower in WARROOM_MOBILE_VISUAL_SURFACES:
@@ -261,6 +265,13 @@ def _surface_groups(path: str) -> set[str] | None:
         return {"training", "warroom"}
     if lower in TRAINING_PROGRESS_MATTHIAS_VISUAL_SURFACES:
         return {"training"}
+    if lower in {
+        "frontend/src/tutorialroute.js",
+        "frontend/src/components/trainingschoolintentpreload.js",
+    }:
+        return {"training"}
+    if lower == "frontend/src/components/homeillustrated.jsx":
+        return {"home"}
     if lower in TRAINING_VISUAL_SURFACES:
         return {"training"}
     if lower == "frontend/src/usepvpappflow.js":
@@ -273,7 +284,10 @@ def _surface_groups(path: str) -> set[str] | None:
         # Backend changes have no browser pixels of their own. Any accompanying
         # frontend visual owner determines the capture scope.
         return set()
-    if lower == "frontend/src/components/labscreen.jsx":
+    if lower in {
+        "frontend/src/components/labscreen.jsx",
+        "frontend/src/components/labworkshopmobile.css",
+    }:
         return {"experiments"}
     if lower in DEDICATED_WAR_ROOM_BLENDER_PATHS:
         # Dedicated Blender workflows already build, render, validate, upload
@@ -319,6 +333,10 @@ def _surface_groups(path: str) -> set[str] | None:
     if lower.startswith("scripts/app_visual_"):
         return set()
     if lower.startswith("e2e/"):
+        # Staging has its own exact-SHA real-backend browser smoke. It is not
+        # a canonical app-PNG producer and must not trigger all visual rooms.
+        if name in {"staging-live.spec.js", "staging-war-room-restore.spec.js", "staging-pawn-slug-godot.spec.js"}:
+            return set()
         if name in {"pvp-lobby-visual-artifact.spec.js", "pvp-handoff-visual-artifact.spec.js"}:
             return {"home"}
         if name in {"war-room-pvp.spec.js", "pvp-background-roster.spec.js"}:
@@ -352,6 +370,8 @@ def _surface_groups(path: str) -> set[str] | None:
             # Behaviour/lifecycle coverage only. The Godot workflow owns the
             # runtime pixels; this spec must not wake unrelated app visuals.
             return set()
+        if name == "war-room-entry-latency-visual.spec.js":
+            return {"warroom"}
         if name.startswith("war-room-") and "visual" in name:
             return {"warroom"}
         return None
@@ -427,6 +447,8 @@ def _experiment_parts(path: str) -> set[str]:
         or lower.startswith(".github/actions/app-visual-pipeline/")
     ):
         return {"chronicles"}
+    if name == "labworkshopmobile.css":
+        return {"landing"}
     if name == "experiments-visual-artifact.spec.js":
         return {"landing", "pawnslug"}
     if name == "chronicles-avatar-visual-artifact.spec.js" or "chronicles" in lower:
@@ -561,6 +583,23 @@ POSTGAME_WARROOM_FAST_PATH = {
     "scripts/app_visual_producer_scope.py",
 }
 
+CPU_PRESENTATION_WARROOM_PATHS = {
+    "frontend/src/components/gamescreen.jsx",
+    "frontend/src/cpupresentationtiming.js",
+    "frontend/src/cpupresentationtiming.test.js",
+    "scripts/architecture_debt_budget.py",
+}
+
+
+def _is_cpu_presentation_warroom_fast_path(paths: list[str]) -> bool:
+    normalized = {path.strip().replace("\\", "/").lower() for path in paths if path.strip()}
+    return (
+        {"frontend/src/components/gamescreen.jsx", "frontend/src/cpupresentationtiming.js"}
+        .issubset(normalized)
+        and normalized.issubset(CPU_PRESENTATION_WARROOM_PATHS)
+    )
+
+
 def _is_postgame_warroom_fast_path(paths: list[str]) -> bool:
     normalized = {path.strip().replace("\\", "/").lower() for path in paths if path.strip()}
     return (
@@ -576,7 +615,7 @@ def classify(paths: list[str]) -> Scope:
         return full_scope()
     if _is_home_mobile_tools_fast_path(cleaned):
         return Scope(("home",))
-    if _is_postgame_warroom_fast_path(cleaned):
+    if _is_postgame_warroom_fast_path(cleaned) or _is_cpu_presentation_warroom_fast_path(cleaned):
         return Scope(("warroom",))
 
     groups: set[str] = set()
@@ -650,6 +689,22 @@ def write_outputs(scope: Scope, output_path: str) -> None:
 
 
 def self_test() -> None:
+    assert classify(["e2e/staging-live.spec.js"]).capture_groups == "none"
+    assert classify(["e2e/staging-live.spec.js", "frontend/src/components/PvpHandoffModal.jsx"]).capture_groups == "home"
+    cpu_scope = classify([
+        "frontend/src/components/GameScreen.jsx",
+        "frontend/src/cpuPresentationTiming.js",
+        "frontend/src/cpuPresentationTiming.test.js",
+        "scripts/architecture_debt_budget.py",
+    ])
+    assert cpu_scope.capture_groups == "warroom"
+    assert classify(["frontend/src/components/ShareResultModal.jsx"]).capture_groups == "warroom"
+    assert classify(["frontend/src/components/ProfileBackupModal.jsx"]).capture_groups == "home"
+    assert classify([
+        "frontend/src/components/GameScreen.jsx",
+        "frontend/src/cpuPresentationTiming.js",
+        "frontend/src/components/HomeIllustrated.jsx",
+    ]).capture_groups != "warroom"
     assert classify(["e2e/smoke.spec.js"]).capture_groups == "none"
     quick_match = classify([
         "frontend/src/components/QuickMatchModal.jsx",
@@ -769,6 +824,9 @@ def self_test() -> None:
     ])
     assert football.capture_groups == "experiments"
     assert football.experiments_scope == "football"
+    mobile_workshop = classify(["frontend/src/components/LabWorkshopMobile.css"])
+    assert mobile_workshop.capture_groups == "experiments"
+    assert mobile_workshop.experiments_scope == "landing"
     lab_visual = classify([
         "frontend/src/components/LabScreen.jsx",
         "frontend/src/labLaunchIntent.js",
@@ -919,6 +977,8 @@ def self_test() -> None:
     assert warroom_ui.capture_groups == "warroom" and not warroom_ui.hans
     warroom_visual = classify(["e2e/war-room-decor-visual-artifact.spec.js"])
     assert warroom_visual.capture_groups == "warroom" and not warroom_visual.hans
+    entry_latency = classify(["e2e/war-room-entry-latency-visual.spec.js"])
+    assert entry_latency.capture_groups == "warroom" and not entry_latency.hans
     hans_visual = classify(["e2e/war-room-hans-visual-artifact.spec.js"])
     assert hans_visual.hans
     hans_routines = classify(["e2e/war-room-hans-routines-visual.spec.js"])
@@ -1056,6 +1116,9 @@ def self_test() -> None:
     assert visual_pipeline.capture_groups == "none"
     assert visual_pipeline.experiments_scope == "none"
     assert not visual_pipeline.chronicles_avatar
+    assert classify(["frontend/src/tutorialRoute.js"]).capture_groups == "training"
+    assert classify(["frontend/src/components/trainingSchoolIntentPreload.js"]).capture_groups == "training"
+    assert classify(["frontend/src/components/HomeIllustrated.jsx"]).capture_groups == "home"
     print("app visual scope self-test: OK")
 
 

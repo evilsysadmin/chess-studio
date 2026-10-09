@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import Menu from './components/Menu.jsx';
 import { GameScreenRoute as GameScreen, TrainingRoomRoute as PuzzleScreen } from './goldenPathScreens.js';
-const Tutorial = React.lazy(() => import('./components/Tutorial.jsx'));
+import { TutorialRoute as Tutorial } from './tutorialRoute.js';
 const OpeningsScreen = React.lazy(() => import('./components/OpeningsScreen.jsx'));
 const TournamentScreen = React.lazy(() => import('./components/TournamentScreen.jsx'));
 const HistoryScreen = React.lazy(() => import('./components/HistoryScreen.jsx'));

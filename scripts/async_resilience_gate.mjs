@@ -72,9 +72,6 @@ requirePattern('frontend/src/useGameStartFlow.js', /api\.createGame\([\s\S]{0,50
 requirePattern('frontend/src/useActiveSessionRestore.js', /restoreRequestRef/, 'restauración debe deduplicar/cancelar respuestas tardías');
 requirePattern('frontend/src/components/FeedbackModalInner.jsx', /submitInFlightRef\.current/, 'Feedback necesita mutex síncrono para impedir doble submit');
 requirePattern('frontend/src/components/FeedbackModalInner.jsx', /submitAbortRef\.current\?\.abort/, 'Feedback debe cancelar el envío al cerrar/desmontar');
-requirePattern('frontend/src/components/AdminObservabilitySummary.jsx', /tempoProbeInFlightRef\.current/, 'el probe de trazas debe impedir doble ejecución concurrente');
-requirePattern('frontend/src/components/AdminObservabilitySummary.jsx', /signalProbeInFlightRef\.current/, 'el probe de señales debe impedir doble ejecución concurrente');
-requirePattern('frontend/src/components/ObservabilityPanel.jsx', /metricsRequestRef\.current\.controller\?\.abort/, 'Observabilidad debe cancelar refresh antiguos');
 requirePatternInAny(
   [
     'frontend/src/components/AdminDashboardContent.jsx',

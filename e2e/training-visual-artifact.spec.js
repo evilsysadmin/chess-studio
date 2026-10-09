@@ -555,6 +555,11 @@ scopedTest('progress', 'Entrenar · Así juegas y Mi progreso', async ({ page })
   await expect(page.getByRole('heading', { name: 'Así juegas', exact: true })).toBeVisible();
   await page.setViewportSize({ width: 1440, height: 900 });
   await settle(page);
+  const archive1 = page.locator('details[data-insights-archive]');
+  await expect(archive1).toBeVisible();
+  if (await archive1.getAttribute('open') === null) {
+    await archive1.locator('summary').click();
+  }
   await page.getByRole('button', { name: 'Mi progreso', exact: true }).click();
 
   const career = page.locator('.career-screen');
@@ -596,6 +601,11 @@ scopedTest('progress', 'Entrenar · Expediente de Matthias', async ({ page }) =>
 
   await page.locator('.illustrated-home__matthias').click();
   await expect(page.getByRole('heading', { name: 'Así juegas', exact: true })).toBeVisible();
+  const archiveDrawer = page.locator('details[data-insights-archive]');
+  await expect(archiveDrawer).toBeVisible();
+  if (await archiveDrawer.getAttribute('open') === null) {
+    await archiveDrawer.locator('summary').click();
+  }
   await page.getByRole('button', { name: 'Expediente', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Expediente', exact: true })).toBeVisible();
   await expect(page.getByRole('region', { name: 'Consulta diaria con Matthias' })).toBeVisible();

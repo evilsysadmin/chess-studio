@@ -77,6 +77,11 @@ test('Así juegas · una recaída real posterior devuelve el patrón a la sesió
   await expect(session.getByText(/reapareció en 1 partida observada después del entrenamiento/)).toBeVisible();
 
   await session.getByRole('button', { name: 'Cancelar sesión', exact: true }).click();
+  const archive1 = page.locator('details[data-insights-archive]');
+  await expect(archive1).toBeVisible();
+  if (await archive1.getAttribute('open') === null) {
+    await archive1.locator('summary').click();
+  }
   await page.getByRole('button', { name: 'Errores', exact: true }).click();
   await expect(page.getByText('Horquillas de caballo sufridas', { exact: true })).toBeVisible();
   await expect(page.getByText('Sigue ocurriendo · reapareció después de entrenarlo y aún no hay muestra limpia suficiente.', { exact: true })).toBeVisible();

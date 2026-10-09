@@ -24,7 +24,7 @@ async function openExperiments(page) {
   await page.route(INDEX_URL, (route) => route.fulfill({
     status: 200,
     contentType: 'text/html',
-    body: '<!doctype html><html><body><main>Chess Football mock runtime</main></body></html>',
+    body: '<!doctype html><html><body><main>Chess Football mock runtime</main><script>window.parent.postMessage({source:'chess-football-godot',type:'ready'},'*')</script></body></html>',
   }));
 
   await login(page);
@@ -95,7 +95,9 @@ test('Chess Football fills the viewport and returns only through the runtime exi
   const frame = page.locator('iframe[title="Chess Football Godot"]');
   await expect(frame).toBeVisible();
   await expect(frame).toHaveAttribute('src', INDEX_URL);
+  await expect(page.getByRole('button', { name: 'Salir de Chess Football' })).toBeVisible();
   await expect(host).toHaveAttribute('data-runtime-ready', 'true');
+  // A frame load alone is never proof that the actual Godot scene booted.
   await expect(page.locator('.chess-football-godot-host__status')).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Volver a Experimentos' })).toHaveCount(0);
 

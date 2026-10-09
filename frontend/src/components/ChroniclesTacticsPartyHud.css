@@ -53,6 +53,7 @@
 }
 
 .chronicles-party-hud__portrait-frame {
+  position: relative;
   width: 40px;
   height: 48px;
   display: grid;
@@ -268,6 +269,11 @@
   .chronicles-party-hud__vital-track i {
     transition: none;
   }
+
+  .chronicles-party-hud__damage-slash {
+    animation: none;
+    opacity: .92;
+  }
 }
 
 .chronicles-party-hud__portrait-frame img {
@@ -276,5 +282,35 @@
   display: block;
   object-fit: cover;
   object-position: 50% 22%;
+}
+
+.chronicles-party-hud__member[data-damage-hit="true"] {
+  border-color: rgba(226, 105, 72, .92);
+  box-shadow:
+    inset 3px 0 0 rgba(232, 112, 77, .9),
+    inset 0 0 24px rgba(181, 52, 36, .18),
+    0 0 16px rgba(168, 49, 34, .22);
+}
+
+.chronicles-party-hud__damage-slash {
+  position: absolute;
+  z-index: 3;
+  top: 50%;
+  left: 50%;
+  width: 140%;
+  height: 3px;
+  border-radius: 999px;
+  pointer-events: none;
+  background: linear-gradient(90deg, transparent, rgba(255, 224, 205, .95) 16%, #d83f32 50%, rgba(255, 224, 205, .95) 84%, transparent);
+  box-shadow: 0 0 5px rgba(255, 81, 61, .95), 0 0 11px rgba(173, 31, 24, .72);
+  transform: translate(-50%, -50%) rotate(-34deg);
+  animation: chronicles-party-hit-slash 1.8s ease-out both;
+}
+
+@keyframes chronicles-party-hit-slash {
+  0% { opacity: 0; transform: translate(-58%, -50%) rotate(-34deg) scaleX(.35); }
+  12% { opacity: 1; transform: translate(-50%, -50%) rotate(-34deg) scaleX(1); }
+  72% { opacity: .9; }
+  100% { opacity: 0; transform: translate(-44%, -50%) rotate(-34deg) scaleX(1.04); }
 }
 

@@ -135,13 +135,16 @@ function sphere(root, radius, material, position, name = '', widthSegments = 24,
   return mesh;
 }
 
-function addBoard(root, lightSquare, darkSquare, trim, woodDark) {
+function addBoard(root, lightSquare, darkSquare, brass, woodDark, wood) {
   const board = new THREE.Group();
   board.name = 'quick-match-ready-board';
 
-  box(board, [6.86, .20, 6.86], woodDark, [0, -.035, 0], 'board-underlay');
-  box(board, [6.66, .17, 6.66], trim, [0, .035, 0], 'board-frame');
-  box(board, [6.20, .10, 6.20], woodDark, [0, .12, 0], 'board-bed');
+  // Layered wooden frame with a restrained brass inlay instead of one large
+  // metallic slab. This reads more like crafted furniture at play distance.
+  box(board, [6.92, .20, 6.92], woodDark, [0, -.035, 0], 'board-underlay');
+  box(board, [6.76, .17, 6.76], wood, [0, .035, 0], 'board-wood-frame');
+  box(board, [6.48, .12, 6.48], brass, [0, .090, 0], 'board-brass-inlay');
+  box(board, [6.30, .10, 6.30], woodDark, [0, .145, 0], 'board-bed');
 
   const { centerX, centerY, centerZ, squareSize } = QUICK_MATCH_READY_ROOM_BOARD_LAYOUT;
   const squareGeo = new THREE.BoxGeometry(squareSize, .095, squareSize);
@@ -165,11 +168,11 @@ function addBoard(root, lightSquare, darkSquare, trim, woodDark) {
   dark.receiveShadow = true;
   board.add(light, dark);
 
-  for (const z of [-3.23, 3.23]) {
-    box(board, [6.54, .055, .065], trim, [0, .20, z], 'board-brass-fillet');
+  for (const z of [-3.17, 3.17]) {
+    box(board, [6.34, .040, .045], brass, [0, .205, z], 'board-brass-fillet');
   }
-  for (const x of [-3.23, 3.23]) {
-    box(board, [.065, .055, 6.54], trim, [x, .20, 0], 'board-brass-fillet');
+  for (const x of [-3.17, 3.17]) {
+    box(board, [.045, .040, 6.34], brass, [x, .205, 0], 'board-brass-fillet');
   }
 
   board.position.set(centerX, centerY, centerZ);
@@ -177,18 +180,62 @@ function addBoard(root, lightSquare, darkSquare, trim, woodDark) {
   return board;
 }
 
+function lathePiecePart(group, points, material, scale, position, name, segments = 28) {
+  const geometry = new THREE.LatheGeometry(
+    points.map(([radius, y]) => new THREE.Vector2(radius * scale, y * scale)),
+    segments,
+  );
+  const mesh = new THREE.Mesh(geometry, material);
+  mesh.position.set(...position);
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  mesh.name = name;
+  group.add(mesh);
+  return mesh;
+}
+
 function addPieceBase(group, material, scale) {
-  cylinder(group, [.29 * scale, .36 * scale], .09 * scale, material, [0, .045 * scale, 0], 'piece-base', 28);
-  cylinder(group, [.24 * scale, .29 * scale], .08 * scale, material, [0, .125 * scale, 0], 'piece-plinth', 28);
+  lathePiecePart(
+    group,
+    [
+      [.35, 0],
+      [.38, .025],
+      [.39, .055],
+      [.36, .085],
+      [.32, .11],
+      [.33, .135],
+      [.29, .165],
+      [.25, .19],
+    ],
+    material,
+    scale,
+    [0, 0, 0],
+    'piece-turned-base',
+    34,
+  );
 }
 
 function addPawnPiece(root, x, z, material, scale = 1) {
   const piece = new THREE.Group();
   piece.name = 'ready-room-piece pawn';
   addPieceBase(piece, material, scale);
-  cylinder(piece, [.13 * scale, .20 * scale], .30 * scale, material, [0, .31 * scale, 0], 'piece-body', 24);
-  cylinder(piece, [.12 * scale, .14 * scale], .08 * scale, material, [0, .49 * scale, 0], 'piece-collar', 24);
-  sphere(piece, .16 * scale, material, [0, .66 * scale, 0], 'piece-head', 24, 16);
+  lathePiecePart(
+    piece,
+    [
+      [.20, .18],
+      [.18, .24],
+      [.145, .34],
+      [.13, .43],
+      [.145, .50],
+      [.12, .54],
+    ],
+    material,
+    scale,
+    [0, 0, 0],
+    'piece-pawn-stem',
+    28,
+  );
+  sphere(piece, .165 * scale, material, [0, .69 * scale, 0], 'piece-head', 28, 18);
   piece.position.set(x, 1.61, z);
   root.add(piece);
 }
@@ -197,13 +244,33 @@ function addRookPiece(root, x, z, material, scale = 1) {
   const piece = new THREE.Group();
   piece.name = 'ready-room-piece rook';
   addPieceBase(piece, material, scale);
-  cylinder(piece, [.18 * scale, .23 * scale], .36 * scale, material, [0, .36 * scale, 0], 'piece-body', 24);
-  cylinder(piece, [.27 * scale, .20 * scale], .12 * scale, material, [0, .60 * scale, 0], 'piece-rook-crown', 24);
-  for (let i = 0; i < 4; i += 1) {
-    const battlement = box(piece, [.13 * scale, .12 * scale, .14 * scale], material, [0, .71 * scale, .20 * scale], 'piece-rook-battlement');
-    battlement.rotation.y = i * Math.PI / 2;
-    battlement.position.x = Math.sin(i * Math.PI / 2) * .20 * scale;
-    battlement.position.z = Math.cos(i * Math.PI / 2) * .20 * scale;
+  lathePiecePart(
+    piece,
+    [
+      [.23, .18],
+      [.20, .25],
+      [.16, .38],
+      [.17, .50],
+      [.21, .58],
+      [.25, .62],
+    ],
+    material,
+    scale,
+    [0, 0, 0],
+    'piece-rook-body',
+    28,
+  );
+  cylinder(piece, [.29 * scale, .25 * scale], .13 * scale, material, [0, .68 * scale, 0], 'piece-rook-crown', 28);
+  for (let i = 0; i < 6; i += 1) {
+    const angle = (i / 6) * Math.PI * 2;
+    const battlement = box(
+      piece,
+      [.105 * scale, .14 * scale, .12 * scale],
+      material,
+      [Math.sin(angle) * .225 * scale, .80 * scale, Math.cos(angle) * .225 * scale],
+      'piece-rook-battlement',
+    );
+    battlement.rotation.y = angle;
   }
   piece.position.set(x, 1.61, z);
   root.add(piece);
@@ -213,14 +280,26 @@ function addBishopPiece(root, x, z, material, scale = 1) {
   const piece = new THREE.Group();
   piece.name = 'ready-room-piece bishop';
   addPieceBase(piece, material, scale);
-  cylinder(piece, [.12 * scale, .23 * scale], .43 * scale, material, [0, .38 * scale, 0], 'piece-body', 28);
-  cylinder(piece, [.16 * scale, .12 * scale], .08 * scale, material, [0, .62 * scale, 0], 'piece-collar', 28);
-  const mitre = new THREE.Mesh(new THREE.ConeGeometry(.18 * scale, .34 * scale, 28), material);
-  mitre.position.y = .82 * scale;
-  mitre.castShadow = true;
-  mitre.name = 'piece-bishop-mitre';
-  piece.add(mitre);
-  sphere(piece, .055 * scale, material, [0, 1.00 * scale, 0], 'piece-bishop-finial', 18, 12);
+  lathePiecePart(
+    piece,
+    [
+      [.23, .18],
+      [.20, .27],
+      [.145, .43],
+      [.13, .56],
+      [.17, .64],
+      [.14, .70],
+      [.11, .78],
+      [.07, .91],
+      [.018, 1.02],
+    ],
+    material,
+    scale,
+    [0, 0, 0],
+    'piece-bishop-profile',
+    30,
+  );
+  sphere(piece, .05 * scale, material, [0, 1.055 * scale, 0], 'piece-bishop-finial', 18, 12);
   piece.position.set(x, 1.61, z);
   root.add(piece);
 }
@@ -229,38 +308,93 @@ function addKnightPiece(root, x, z, material, scale = 1, facing = 1) {
   const piece = new THREE.Group();
   piece.name = 'ready-room-piece knight';
   addPieceBase(piece, material, scale);
-  cylinder(piece, [.15 * scale, .23 * scale], .28 * scale, material, [0, .32 * scale, 0], 'piece-body', 24);
 
-  const neck = new THREE.Mesh(new THREE.CylinderGeometry(.12 * scale, .18 * scale, .42 * scale, 20), material);
-  neck.rotation.z = -.40 * facing;
-  neck.position.set(.055 * facing * scale, .62 * scale, 0);
+  lathePiecePart(
+    piece,
+    [
+      [.22, .18],
+      [.19, .27],
+      [.16, .37],
+      [.14, .47],
+    ],
+    material,
+    scale,
+    [0, 0, 0],
+    'piece-knight-base-neck',
+    24,
+  );
+
+  const neck = new THREE.Mesh(
+    new THREE.CylinderGeometry(.105 * scale, .17 * scale, .48 * scale, 24),
+    material,
+  );
+  neck.rotation.z = -.34 * facing;
+  neck.position.set(.055 * facing * scale, .66 * scale, 0);
+  neck.scale.z = 1.08;
   neck.castShadow = true;
+  neck.receiveShadow = true;
   neck.name = 'piece-knight-neck';
   piece.add(neck);
 
-  const head = new THREE.Mesh(new THREE.SphereGeometry(.17 * scale, 22, 14), material);
-  head.scale.set(1.15, .86, .72);
-  head.position.set(.22 * facing * scale, .82 * scale, 0);
+  const head = new THREE.Mesh(
+    new THREE.SphereGeometry(.18 * scale, 28, 18),
+    material,
+  );
+  head.scale.set(1.14, .88, .82);
+  head.position.set(.20 * facing * scale, .91 * scale, 0);
   head.castShadow = true;
+  head.receiveShadow = true;
   head.name = 'piece-knight-head';
   piece.add(head);
 
-  const muzzle = new THREE.Mesh(new THREE.BoxGeometry(.20 * scale, .13 * scale, .18 * scale), material);
-  muzzle.position.set(.34 * facing * scale, .76 * scale, 0);
-  muzzle.rotation.z = -.08 * facing;
+  const muzzle = new THREE.Mesh(
+    new THREE.SphereGeometry(.125 * scale, 24, 16),
+    material,
+  );
+  muzzle.scale.set(1.32, .68, .72);
+  muzzle.position.set(.36 * facing * scale, .84 * scale, 0);
   muzzle.castShadow = true;
+  muzzle.receiveShadow = true;
   muzzle.name = 'piece-knight-muzzle';
   piece.add(muzzle);
 
-  for (const zOffset of [-.08, .08]) {
-    const ear = new THREE.Mesh(new THREE.ConeGeometry(.055 * scale, .18 * scale, 12), material);
-    ear.position.set(.15 * facing * scale, 1.00 * scale, zOffset * scale);
-    ear.rotation.z = -.15 * facing;
+  const jaw = new THREE.Mesh(
+    new THREE.SphereGeometry(.095 * scale, 20, 14),
+    material,
+  );
+  jaw.scale.set(1.05, .74, .78);
+  jaw.position.set(.26 * facing * scale, .76 * scale, 0);
+  jaw.castShadow = true;
+  jaw.name = 'piece-knight-jaw';
+  piece.add(jaw);
+
+  for (const zOffset of [-.072, .072]) {
+    const ear = new THREE.Mesh(new THREE.ConeGeometry(.046 * scale, .17 * scale, 14), material);
+    ear.position.set(.11 * facing * scale, 1.105 * scale, zOffset * scale);
+    ear.rotation.z = -.18 * facing;
     ear.castShadow = true;
+    ear.name = 'piece-knight-ear';
     piece.add(ear);
   }
 
+  for (let i = 0; i < 4; i += 1) {
+    const mane = new THREE.Mesh(
+      new THREE.ConeGeometry(.048 * scale, .15 * scale, 10),
+      material,
+    );
+    mane.rotation.z = Math.PI / 2;
+    mane.position.set(
+      (-.055 + i * .035) * facing * scale,
+      (.86 - i * .10) * scale,
+      -.15 * scale,
+    );
+    mane.castShadow = true;
+    mane.name = 'piece-knight-mane';
+    piece.add(mane);
+  }
+
   piece.position.set(x, 1.61, z);
+  piece.rotation.y = facing > 0 ? -.12 : .12;
   root.add(piece);
 }
 
@@ -268,24 +402,43 @@ function addRoyalPiece(root, x, z, material, scale = 1, king = false) {
   const piece = new THREE.Group();
   piece.name = `ready-room-piece ${king ? 'king' : 'queen'}`;
   addPieceBase(piece, material, scale);
-  cylinder(piece, [.14 * scale, .25 * scale], .48 * scale, material, [0, .41 * scale, 0], 'piece-body', 28);
-  cylinder(piece, [.21 * scale, .14 * scale], .09 * scale, material, [0, .69 * scale, 0], 'piece-collar', 28);
+  lathePiecePart(
+    piece,
+    [
+      [.25, .18],
+      [.21, .27],
+      [.16, .42],
+      [.14, .56],
+      [.19, .67],
+      [.16, .74],
+      [.13, .80],
+    ],
+    material,
+    scale,
+    [0, 0, 0],
+    king ? 'piece-king-body' : 'piece-queen-body',
+    30,
+  );
 
   if (king) {
-    sphere(piece, .15 * scale, material, [0, .86 * scale, 0], 'piece-king-crown', 22, 14);
-    box(piece, [.07 * scale, .29 * scale, .07 * scale], material, [0, 1.10 * scale, 0], 'piece-king-cross');
-    box(piece, [.23 * scale, .07 * scale, .07 * scale], material, [0, 1.12 * scale, 0], 'piece-king-cross');
+    sphere(piece, .145 * scale, material, [0, .91 * scale, 0], 'piece-king-crown', 24, 16);
+    box(piece, [.065 * scale, .28 * scale, .065 * scale], material, [0, 1.13 * scale, 0], 'piece-king-cross');
+    box(piece, [.225 * scale, .065 * scale, .065 * scale], material, [0, 1.14 * scale, 0], 'piece-king-cross');
   } else {
-    cylinder(piece, [.23 * scale, .19 * scale], .12 * scale, material, [0, .86 * scale, 0], 'piece-queen-crown', 20);
-    sphere(piece, .075 * scale, material, [0, 1.02 * scale, 0], 'piece-queen-finial', 18, 12);
-    for (let i = 0; i < 6; i += 1) {
-      const gem = sphere(piece, .045 * scale, material, [
-        Math.cos((i / 6) * Math.PI * 2) * .19 * scale,
-        .96 * scale,
-        Math.sin((i / 6) * Math.PI * 2) * .19 * scale,
-      ], 'piece-queen-crown-point', 12, 8);
-      gem.scale.y = 1.35;
+    cylinder(piece, [.23 * scale, .18 * scale], .11 * scale, material, [0, .89 * scale, 0], 'piece-queen-crown', 24);
+    for (let i = 0; i < 8; i += 1) {
+      const angle = (i / 8) * Math.PI * 2;
+      const point = new THREE.Mesh(new THREE.ConeGeometry(.045 * scale, .16 * scale, 12), material);
+      point.position.set(
+        Math.sin(angle) * .19 * scale,
+        1.01 * scale,
+        Math.cos(angle) * .19 * scale,
+      );
+      point.castShadow = true;
+      point.name = 'piece-queen-crown-point';
+      piece.add(point);
     }
+    sphere(piece, .067 * scale, material, [0, 1.10 * scale, 0], 'piece-queen-finial', 18, 12);
   }
 
   piece.position.set(x, 1.61, z);
@@ -892,10 +1045,17 @@ function buildRoom({ lite = false } = {}) {
   const brass = mat(0xc09449, .82, .22);
   const leather = mat(0x542521, .05, .66);
   const steel = mat(0x8d9396, .74, .27);
-  const ivory = mat(0xd8cfba, .06, .42);
-  const ebony = mat(0x2d2b2b, .30, .30);
-  const lightSquare = mat(0xcfc7b3, .04, .66);
-  const darkSquare = mat(0x4a4843, .05, .58);
+  const ivory = mat(0xe2d8c2, .04, .30, {
+    clearcoat: .34,
+    clearcoatRoughness: .24,
+  });
+  // Ebony should remain dark without disappearing into the rear rank shadows.
+  const ebony = mat(0x4a4039, .10, .34, {
+    clearcoat: .31,
+    clearcoatRoughness: .30,
+  });
+  const lightSquare = mat(0xd7ccb6, .04, .62);
+  const darkSquare = mat(0x4b4037, .06, .56);
 
   const surfaceTextures = [];
   if (!lite) {
@@ -966,9 +1126,16 @@ function buildRoom({ lite = false } = {}) {
   box(root, [17.3, .36, .34], stoneEdge, [0, 6.45, -6.12], 'room-cornice');
 
   for (const x of [-7.8, -3.2, 3.2, 7.8]) {
-    box(root, [.34, 6.72, .54], stoneEdge, [x, 3.18, -6.11], 'pilaster');
-    box(root, [.54, .18, .72], stoneHighlight, [x, .37, -5.98], 'pilaster-base');
-    box(root, [.58, .20, .72], stoneHighlight, [x, 6.36, -5.98], 'pilaster-cap');
+    box(root, [.42, 6.30, .50], stoneEdge, [x, 3.20, -6.10], 'pilaster-shaft');
+    box(root, [.22, 5.74, .08], stoneHighlight, [x, 3.20, -5.80], 'pilaster-face-relief');
+
+    box(root, [.70, .18, .78], stoneHighlight, [x, .40, -5.98], 'pilaster-base-plinth');
+    box(root, [.58, .17, .68], stoneEdge, [x, .56, -5.99], 'pilaster-base-step');
+    box(root, [.48, .13, .59], stoneHighlight, [x, .70, -6.02], 'pilaster-base-neck');
+
+    box(root, [.48, .13, .59], stoneHighlight, [x, 5.72, -6.02], 'pilaster-cap-neck');
+    box(root, [.60, .17, .70], stoneEdge, [x, 5.86, -5.99], 'pilaster-cap-step');
+    box(root, [.76, .22, .82], stoneHighlight, [x, 6.04, -5.96], 'pilaster-cap-abacus');
   }
 
   for (const x of [-5.95, 5.95]) {
@@ -980,22 +1147,22 @@ function buildRoom({ lite = false } = {}) {
   }
 
   addWindow(root, stoneEdge, brass, night, moon, moonHalo);
-  addSconce(root, -6.05, brass, sconceGlow, warmGlass);
-  addSconce(root, 6.05, brass, sconceGlow, warmGlass);
+  addSconce(root, -7.02, brass, sconceGlow, warmGlass);
+  addSconce(root, 7.02, brass, sconceGlow, warmGlass);
   addHeraldicTrophy(root, -5.95, leather, brass, steel);
   addHeraldicTrophy(root, 5.95, leather, brass, steel);
   addConsole(root, -6.15, woodDark, brass, leather);
   addConsole(root, 6.15, woodDark, brass, leather);
 
-  const table = box(root, [10.65, .28, 5.12], wood, [0, 1.14, -1.16], 'table-top');
+  const table = box(root, [10.95, .28, 7.45], wood, [0, 1.14, -1.25], 'table-top');
   table.rotation.x = -.012;
-  box(root, [10.45, .10, 4.94], brass, [0, .98, -1.16], 'table-brass-edge');
-  box(root, [10.22, .16, 4.72], woodDark, [0, .87, -1.16], 'table-lower-edge');
-  box(root, [9.98, .055, 4.50], brass, [0, .765, -1.16], 'table-brass-skirt');
-  box(root, [9.78, .28, 4.34], woodDark, [0, .60, -1.16], 'table-apron');
+  box(root, [10.75, .10, 7.25], brass, [0, .98, -1.25], 'table-brass-edge');
+  box(root, [10.50, .16, 7.02], woodDark, [0, .87, -1.25], 'table-lower-edge');
+  box(root, [10.24, .055, 6.80], brass, [0, .765, -1.25], 'table-brass-skirt');
+  box(root, [10.02, .28, 6.58], woodDark, [0, .60, -1.25], 'table-apron');
 
-  for (const x of [-4.56, 4.56]) {
-    for (const z of [-2.50, .18]) {
+  for (const x of [-4.70, 4.70]) {
+    for (const z of [-4.38, 1.88]) {
       cylinder(root, [.22, .27], .24, brass, [x, .73, z], 'table-leg-cap', 22);
       cylinder(root, [.17, .23], .36, woodDark, [x, .48, z], 'table-leg-upper', 22);
       sphere(root, .22, wood, [x, .24, z], 'table-leg-knot', 20, 14);
@@ -1005,7 +1172,7 @@ function buildRoom({ lite = false } = {}) {
     }
   }
 
-  addBoard(root, lightSquare, darkSquare, brass, woodDark);
+  addBoard(root, lightSquare, darkSquare, brass, woodDark, wood);
   addChessSet(root, ivory, ebony, lite);
   if (!lite) addClock(root, brass, ebony, woodDark, ivory);
   addChair(root, woodDark, leather, brass);
@@ -1019,12 +1186,34 @@ function buildRoom({ lite = false } = {}) {
   root.add(rug);
 
   const rugTrim = mat(0x9b6e2f, .38, .64);
+  const rugShadowTrim = mat(0x2a0e10, .02, .96);
   for (const z of [-5.02, 2.46]) {
     box(root, [10.62, .025, .055], rugTrim, [0, -.02, z], 'quick-match-ready-rug-border');
   }
   for (const x of [-5.28, 5.28]) {
     box(root, [.055, .025, 7.44], rugTrim, [x, -.02, -1.28], 'quick-match-ready-rug-border');
   }
+
+  for (const z of [-4.72, 2.16]) {
+    box(root, [9.98, .018, .035], rugShadowTrim, [0, -.015, z], 'quick-match-ready-rug-inner-shadow');
+    box(root, [9.72, .020, .030], rugTrim, [0, -.012, z], 'quick-match-ready-rug-inner-fillet');
+  }
+  for (const x of [-4.96, 4.96]) {
+    box(root, [.035, .018, 6.86], rugShadowTrim, [x, -.015, -1.28], 'quick-match-ready-rug-inner-shadow');
+    box(root, [.030, .020, 6.58], rugTrim, [x, -.012, -1.28], 'quick-match-ready-rug-inner-fillet');
+  }
+
+  const rugMedallion = new THREE.Mesh(
+    new THREE.RingGeometry(.78, .94, 4),
+    rugTrim,
+  );
+  rugMedallion.rotation.x = -Math.PI / 2;
+  rugMedallion.rotation.z = Math.PI / 4;
+  rugMedallion.scale.set(1.55, 1, 1);
+  rugMedallion.position.set(0, -.010, 1.02);
+  rugMedallion.name = 'quick-match-ready-rug-medallion';
+  rugMedallion.receiveShadow = true;
+  root.add(rugMedallion);
 
   return root;
 }
@@ -1127,6 +1316,21 @@ export default function QuickMatchReadyRoomScene3D() {
       boardFill.position.set(0, 6.2, -1.1);
       boardFill.castShadow = false;
       scene.add(boardFill);
+
+      // Narrow, shadow-free moonlit bounce across the ebony ranks: reveal the
+      // carved silhouettes without raising the exposure of the entire room.
+      const ebonyFill = new THREE.SpotLight(
+        0xc7d7e9,
+        coarsePointer ? .66 : 1.02,
+        9,
+        Math.PI / 6.4,
+        .8,
+        1.8,
+      );
+      ebonyFill.position.set(-.55, 4.35, -.45);
+      ebonyFill.target.position.set(-.28, 1.88, -3.22);
+      ebonyFill.castShadow = false;
+      scene.add(ebonyFill, ebonyFill.target);
 
       if (!coarsePointer) {
         for (const x of [-5.8, 5.8]) {

@@ -9,22 +9,18 @@ import {
   reanalyzeAdminUser,
   resetAdminMatthiasMemory,
 } from '../admin.js';
-import { useEscapeToClose } from '../useEscapeToClose.js';
-import { getToken, getUsername } from '../auth.js';
+import { getUsername } from '../auth.js';
 import { buildAdminInsights } from '../adminDashboardInsights.js';
 import { createAsyncCommitGuard } from '../asyncLifecycle.js';
 import AdminFeedbackSection from './AdminFeedbackSection.jsx';
 import AdminMatthiasStatusSection from './AdminMatthiasStatusSection.jsx';
-import AdminObservabilitySummary from './AdminObservabilitySummary.jsx';
 import AdminUserDirectory from './AdminUserDirectory.jsx';
-import ObservabilityPanel from './ObservabilityPanel.jsx';
 import useAdminDashboardData from './useAdminDashboardData.js';
 import useAdminFeedbackController from './useAdminFeedbackController.js';
 
 const BUILD_SHA = import.meta.env.VITE_BUILD_SHA || 'local';
 
-export default function AdminScreen({ onExit }) {
-  useEscapeToClose(onExit);
+export default function AdminDashboardContent({ section = 'overview', onNavigate = () => {} }) {
   const {
     users,
     setUsers,
@@ -40,7 +36,7 @@ export default function AdminScreen({ onExit }) {
     matthiasStatusError,
     setMatthiasStatusError,
     invalidateAdminData,
-  } = useAdminDashboardData();
+  } = useAdminDashboardData(section);
   const {
     feedbackUpdating,
     feedbackTestCreating,
@@ -61,7 +57,6 @@ export default function AdminScreen({ onExit }) {
   const [deletingUser, setDeletingUser] = useState(null);
   const [deleteError, setDeleteError] = useState(null);
   const [activityFilter, setActivityFilter] = useState('all');
-  const [adminView, setAdminView] = useState('overview');
   const [aiPortraitByUser, setAiPortraitByUser] = useState({});
   const [aiPortraitLoading, setAiPortraitLoading] = useState({});
   const [aiPortraitError, setAiPortraitError] = useState({});
@@ -180,25 +175,9 @@ export default function AdminScreen({ onExit }) {
 
   const currentAdmin = getUsername();
 
-  if (adminView === 'observability') {
-    return (
-      <div className="menu admin-screen admin-observability-view">
-        <button className="back-link" onClick={() => setAdminView('overview')}>← Volver al panel admin</button>
-        <div className="menu-section">
-          <div className="admin-subview-heading">
-            <div><span className="section-label">Admin</span><h2>Observabilidad</h2></div>
-            <button type="button" className="secondary-btn" onClick={onExit}>Salir al menú</button>
-          </div>
-          <p className="hint-text">Dashboards operativos, histórico temporal, Workers AI y diagnóstico SRE.</p>
-          <ObservabilityPanel token={getToken()} users={users || []} currentAdmin={currentAdmin} />
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="menu admin-screen">
-      {feedbackDeleteCandidate && (
+      {section === 'feedback' && feedbackDeleteCandidate && (
         <div className="modal-backdrop admin-confirm-backdrop" role="presentation" onMouseDown={dismissFeedbackDelete}>
           <section className="army-card admin-confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="feedback-delete-title" onMouseDown={(event) => event.stopPropagation()}>
             <span className="section-label">Feedback · acción irreversible</span>
@@ -211,15 +190,18 @@ export default function AdminScreen({ onExit }) {
           </section>
         </div>
       )}
-      <button className="back-link" onClick={onExit}>← Volver al menú</button>
       <div className="menu-section">
-        <span className="section-label">Admin</span>
-        <h2>Administración</h2>
-        <p className="hint-text">Salud y feedback primero; usuarios y actividad quedan debajo.</p>
-        <p className="hint-text admin-build-id">Release: <code>{APP_RELEASE}</code> · Build: <code>{BUILD_SHA === 'local' ? 'local' : BUILD_SHA.slice(0, 8)}</code></p>
-        <AdminObservabilitySummary token={getToken()} users={users || []} currentAdmin={currentAdmin} onOpen={() => setAdminView('observability')} />
+        {section === 'overview' && <p className="hint-text admin-build-id">Release: <code>{APP_RELEASE}</code> · Build: <code>{BUILD_SHA === 'local' ? 'local' : BUILD_SHA.slice(0, 8)}</code></p>}
+        {section === 'overview' && (
+          <nav className="admin-workspace-shortcuts" aria-label="Herramientas de administración">
+            <button type="button" className="secondary-btn" onClick={() => onNavigate('users')}>Gestionar usuarios</button>
+            <button type="button" className="secondary-btn" onClick={() => onNavigate('feedback')}>Revisar feedback</button>
+            <button type="button" className="secondary-btn" onClick={() => onNavigate('matthias')}>Administrar Matthias</button>
+            <button type="button" className="secondary-btn" onClick={() => onNavigate('observability')}>Estado y latencia de API</button>
+          </nav>
+        )}
 
-        <AdminMatthiasStatusSection
+        {section === 'matthias' && <AdminMatthiasStatusSection
           status={matthiasStatus}
           error={matthiasStatusError}
           previewPreset={matthiasPreviewPreset}
@@ -228,9 +210,9 @@ export default function AdminScreen({ onExit }) {
           previewError={matthiasPreviewError}
           onPreviewPresetChange={(preset) => { setMatthiasPreviewPreset(preset); setMatthiasPreview(null); }}
           onPreview={() => void handlePreviewMatthias()}
-        />
+        />}
 
-        <AdminFeedbackSection
+        {section === 'feedback' && <AdminFeedbackSection
           feedback={feedback}
           error={feedbackError}
           updating={feedbackUpdating}
@@ -241,9 +223,9 @@ export default function AdminScreen({ onExit }) {
           onStatus={(feedbackId, status) => void handleFeedbackStatus(feedbackId, status)}
           onDelete={requestFeedbackDelete}
           onCreateTest={() => void handleCreateTestFeedback()}
-        />
+        />}
 
-        <AdminUserDirectory
+        {section === 'users' && <AdminUserDirectory
           users={users}
           error={error}
           deleteError={deleteError}
@@ -269,7 +251,7 @@ export default function AdminScreen({ onExit }) {
           matthiasResettingUser={matthiasResettingUser}
           matthiasResetError={matthiasResetError}
           onResetMatthiasMemory={(username) => void handleResetMatthiasMemory(username)}
-        />
+        />}
       </div>
     </div>
   );

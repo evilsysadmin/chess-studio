@@ -39,10 +39,120 @@ func _initialize() -> void:
 	for expected_audio in ["goal", "pass", "post", "save", "shot", "tackle", "whistle"]:
 		assert(audio_names.has(expected_audio))
 	assert(match_node.debug_3d_animated_players() == 10)
+	# Compare actual canonical silhouettes, not nominal 128x144 cell size.
+	# The runner's size must not change with team, roster slot, or camera.
+	assert(is_equal_approx(ChessFootball3DPresenter.normalized_body_scale(120.0), 1.0))
+	for team_id in range(2):
+		for squad_index in [0, 4]:
+			var sampled_role := "keeper" if squad_index == 0 else "forward"
+			var rendered_frames := ChessFootballSpriteBank.build_frames(
+				team_id, sampled_role, squad_index, true
+			)
+			for view_name in ["side", "front", "back", "front_diagonal", "back_diagonal"]:
+				var run_name := ChessFootballRunDirection.animation_for(&"run", view_name)
+				var height_samples: Array[float] = []
+				for frame_id in [0, 3, 6]:
+					var run_image := (rendered_frames.get_frame_texture(run_name, frame_id) as ImageTexture).get_image()
+					var used := run_image.get_used_rect()
+					assert(used.size.y >= 86 and used.size.y <= 135)
+					height_samples.append(float(used.size.y))
+				height_samples.sort()
+				var effective_height := height_samples[1] * ChessFootball3DPresenter.normalized_body_scale(height_samples[1])
+				assert(absf(effective_height - 120.0) < 2.0)
+	# Eight-way movement resolves to five authored views, with mirrored diagonals.
+	assert(ChessFootballRunDirection.view_for_velocity(Vector2(250.0, 0.0)) == "side")
+	assert(ChessFootballRunDirection.view_for_velocity(Vector2(0.0, 250.0)) == "front")
+	assert(ChessFootballRunDirection.view_for_velocity(Vector2(0.0, -250.0)) == "back")
+	assert(ChessFootballRunDirection.view_for_velocity(Vector2(180.0, 150.0)) == "front_diagonal")
+	assert(ChessFootballRunDirection.view_for_velocity(Vector2(-180.0, -150.0)) == "back_diagonal")
+	assert(ChessFootballRunDirection.view_for_velocity(Vector2(10.0, 0.0), "front") == "front")
+	assert(ChessFootballRunDirection.view_for_velocity(Vector2(200.0, 120.0), "side") == "side")
+	assert(ChessFootballRunDirection.view_for_velocity(Vector2(120.0, 45.0), "front_diagonal") == "front_diagonal")
+	assert(ChessFootballRunDirection.animation_for(&"run", "side") == &"run")
+	assert(ChessFootballRunDirection.animation_for(&"run", "back_diagonal") == &"run_back_diagonal")
+	assert(ChessFootballRunDirection.animation_for(&"sprint", "front") == &"sprint_front")
+	assert(ChessFootballRunDirection.animation_for(&"shoot", "front") == &"shoot")
 	assert(match_node.controlled != null)
 	assert(match_node.controlled.debug_visual_ready())
+	assert(match_node.controlled.debug_texture_filter_linear())
 	assert(match_node.controlled.debug_animation_names().size() == 7)
 	assert(match_node.controlled.debug_animation_names().has("shoot"))
+	var transition_runner: Footballer = match_node.controlled
+	assert(not transition_runner.debug_visual_flip_h())
+	transition_runner.velocity = Vector2(-10.0, 0.0)
+	transition_runner._sync_facing()
+	assert(not transition_runner.debug_visual_flip_h())
+	transition_runner.velocity = Vector2(-40.0, 0.0)
+	transition_runner._sync_facing()
+	assert(transition_runner.debug_visual_flip_h())
+	transition_runner.velocity = Vector2(10.0, 0.0)
+	transition_runner._sync_facing()
+	assert(transition_runner.debug_visual_flip_h())
+	transition_runner.velocity = Vector2(40.0, 0.0)
+	transition_runner._sync_facing()
+	assert(not transition_runner.debug_visual_flip_h())
+	transition_runner.velocity = Vector2.ZERO
+	transition_runner._sync_locomotion(false)
+	transition_runner.move_human(0.02, Vector2.RIGHT, false)
+	assert(transition_runner.debug_locomotion_crossfade_active())
+	assert(transition_runner.debug_transition_visual_playing())
+	assert(is_equal_approx(transition_runner.debug_transition_visual_speed_scale(), 1.0))
+	assert(transition_runner.debug_locomotion_crossfade_alpha() <= 0.01)
+	transition_runner._process(0.05)
+	assert(transition_runner.debug_locomotion_crossfade_active())
+	assert(transition_runner.debug_locomotion_crossfade_alpha() > 0.40)
+	assert(transition_runner.debug_locomotion_crossfade_alpha() < 0.60)
+	transition_runner._process(0.06)
+	assert(not transition_runner.debug_locomotion_crossfade_active())
+	assert(not transition_runner.debug_transition_visual_playing())
+	assert(is_equal_approx(transition_runner.debug_locomotion_crossfade_alpha(), 1.0))
+	var outgoing_run_cadence := transition_runner.visual.speed_scale
+	transition_runner.play_action("shoot", 0.20)
+	assert(transition_runner.debug_locomotion_crossfade_active())
+	assert(transition_runner.debug_transition_visual_playing())
+	assert(is_equal_approx(transition_runner.debug_transition_visual_speed_scale(), outgoing_run_cadence))
+	assert(is_equal_approx(transition_runner.visual.speed_scale, 1.0))
+	assert(is_equal_approx(transition_runner.debug_visual_crossfade_total(), 0.08))
+	assert(transition_runner.debug_locomotion_crossfade_alpha() <= 0.01)
+	transition_runner._process(0.04)
+	assert(transition_runner.debug_locomotion_crossfade_active())
+	assert(transition_runner.debug_locomotion_crossfade_alpha() > 0.45)
+	assert(transition_runner.debug_locomotion_crossfade_alpha() < 0.55)
+	transition_runner._process(0.05)
+	assert(not transition_runner.debug_locomotion_crossfade_active())
+	assert(not transition_runner.debug_transition_visual_playing())
+	assert(is_equal_approx(transition_runner.debug_locomotion_crossfade_alpha(), 1.0))
+	transition_runner._process(0.12)
+	assert(transition_runner.debug_locomotion_crossfade_active())
+	assert(is_equal_approx(transition_runner.debug_transition_visual_speed_scale(), 1.0))
+	assert(is_equal_approx(transition_runner.debug_visual_crossfade_total(), 0.08))
+	transition_runner._process(0.09)
+	assert(not transition_runner.debug_locomotion_crossfade_active())
+	transition_runner.visual.frame = 5
+	transition_runner.visual.frame_progress = 0.42
+	transition_runner.velocity = Vector2.RIGHT * transition_runner.base_speed
+	transition_runner._sync_locomotion(true)
+	assert(String(transition_runner.visual.animation) == "sprint")
+	assert(transition_runner.visual.frame == 5)
+	assert(absf(transition_runner.visual.frame_progress - 0.42) < 0.02)
+	transition_runner._sync_locomotion(false)
+	assert(String(transition_runner.visual.animation) == "run")
+	assert(transition_runner.visual.frame == 5)
+	assert(absf(transition_runner.visual.frame_progress - 0.42) < 0.02)
+	transition_runner.velocity = Vector2.RIGHT * transition_runner.base_speed * 0.50
+	var half_run_cadence := transition_runner.debug_locomotion_speed_scale("run")
+	transition_runner.velocity = Vector2.RIGHT * transition_runner.base_speed
+	var full_run_cadence := transition_runner.debug_locomotion_speed_scale("run")
+	assert(half_run_cadence < full_run_cadence)
+	assert(half_run_cadence >= 0.90 and half_run_cadence <= 0.94)
+	assert(full_run_cadence >= 1.05 and full_run_cadence <= 1.07)
+	transition_runner.velocity = Vector2.RIGHT * transition_runner.base_speed * transition_runner.SPRINT_SPEED_MULTIPLIER * 0.50
+	var half_sprint_cadence := transition_runner.debug_locomotion_speed_scale("sprint")
+	transition_runner.velocity = Vector2.RIGHT * transition_runner.base_speed * transition_runner.SPRINT_SPEED_MULTIPLIER
+	var full_sprint_cadence := transition_runner.debug_locomotion_speed_scale("sprint")
+	assert(half_sprint_cadence < full_sprint_cadence)
+	assert(half_sprint_cadence >= 0.96 and half_sprint_cadence <= 0.98)
+	assert(full_sprint_cadence >= 1.11 and full_sprint_cadence <= 1.13)
 	assert(ChessFootballSpriteBank.atlas_key(0, "keeper") == "fc_matthias_keeper")
 	assert(ChessFootballSpriteBank.atlas_key(1, "keeper") == "real_enroque_keeper")
 	assert(ChessFootballSpriteBank.atlas_key(0, "forward") == "fc_matthias")
@@ -65,10 +175,81 @@ func _initialize() -> void:
 	assert(int(sprite_manifest["canonical_run"]["frames"]) == 8)
 	assert(int(sprite_manifest["canonical_run"]["footline"]) == 130)
 	var canonical_frames := ChessFootballSpriteBank.build_frames(0, "midfielder", 2)
+	assert(canonical_frames.get_frame_count(&"idle") == 1)
+	var canonical_idle_frame := canonical_frames.get_frame_texture(&"idle", 0) as AtlasTexture
+	assert(canonical_idle_frame != null)
+	assert(canonical_idle_frame.atlas is ImageTexture)
+	assert(canonical_idle_frame.region == Rect2(0.0, 0.0, 128.0, 144.0))
 	var canonical_run_frame := canonical_frames.get_frame_texture(&"run", 0) as AtlasTexture
+	var canonical_sprint_frame := canonical_frames.get_frame_texture(&"sprint", 0) as AtlasTexture
 	assert(canonical_run_frame != null)
+	assert(canonical_sprint_frame != null)
 	assert(canonical_run_frame.atlas is ImageTexture)
+	assert(canonical_sprint_frame.atlas is ImageTexture)
+	var canonical_run_image := (canonical_run_frame.atlas as ImageTexture).get_image()
+	assert(canonical_run_image != null)
+	assert(canonical_run_image.has_mipmaps())
+	assert(canonical_run_frame.atlas == canonical_sprint_frame.atlas)
+	assert(canonical_idle_frame.atlas == canonical_run_frame.atlas)
+	# The 3D WebGL presenter must receive actual ImageTextures, not atlas subregions.
+	for team_id in [0, 1]:
+		var flat_frames := ChessFootballSpriteBank.build_frames(team_id, "midfielder", 2, true)
+		for animation_name in [&"idle", &"run", &"sprint"]:
+			for frame_id in range(flat_frames.get_frame_count(animation_name)):
+				var frame_texture := flat_frames.get_frame_texture(animation_name, frame_id)
+				assert(frame_texture is ImageTexture)
+				assert(frame_texture.get_size() == Vector2(128.0, 144.0))
+	# Supplementary directional rows are genuinely distinct frames from the
+	# reviewed atlas, in both kits and in WebGL-safe standalone textures.
+	var directional_meta: Dictionary = sprite_manifest["directional_run"]
+	assert(String(directional_meta["quality_contract"]) == "football-directional-run-canon-v1")
+	assert(String(directional_meta["sha256"]) == "7d23e79dd5f9b23d1a04cf27f4d725d249e37f528c23d696ea260cd498644e70")
+	assert(int(directional_meta["frames"]) == 8)
+	assert((directional_meta["views"] as Dictionary).size() == 4)
+	for team_id in [0, 1]:
+		var directional_frames := ChessFootballSpriteBank.build_frames(team_id, "midfielder", 2, true)
+		for view_name in ["front", "back", "back_diagonal", "front_diagonal"]:
+			for base_animation in ["run", "sprint"]:
+				var directional_name := StringName(base_animation + "_" + view_name)
+				assert(directional_frames.has_animation(directional_name))
+				assert(directional_frames.get_frame_count(directional_name) == 8)
+				assert(directional_frames.get_animation_loop(directional_name))
+				assert(is_equal_approx(
+					directional_frames.get_animation_speed(directional_name),
+					15.0 if base_animation == "sprint" else 12.0
+				))
+				for frame_index in range(8):
+					var frame_texture := directional_frames.get_frame_texture(directional_name, frame_index)
+					assert(frame_texture is ImageTexture)
+					assert(frame_texture.get_size() == Vector2(128.0, 144.0))
+					var used_rect := (frame_texture as ImageTexture).get_image().get_used_rect()
+					assert(used_rect.size.x >= 40 and used_rect.size.y >= 90)
+	# The 3D stadium cannot mix legacy vector footballer bodies with the
+	# approved raster canon. This applies to *every player*, including keepers,
+	# both kits, shots, passes, tackles and celebrations.
+	for roster_team in match_node.teams:
+		for roster_player in roster_team:
+			var visible_frames := ChessFootballSpriteBank.build_frames(
+				roster_player.team_id, roster_player.role, roster_player.squad_index, true
+			)
+			for action_name in [&"idle", &"run", &"sprint", &"pass", &"shoot", &"tackle", &"celebrate"]:
+				assert(visible_frames.has_animation(action_name))
+				var frame_total := visible_frames.get_frame_count(action_name)
+				assert(frame_total == (1 if action_name == &"idle" else 8))
+				for frame_index in range(frame_total):
+					var visible_texture := visible_frames.get_frame_texture(action_name, frame_index)
+					assert(visible_texture is ImageTexture)
+					assert(visible_texture.get_size() == Vector2(128.0, 144.0))
+					var body_region := (visible_texture as ImageTexture).get_image().get_used_rect()
+					assert(body_region.size.y >= 65 and body_region.size.x >= 25)
+	# 2D-only action animation resources remain intact for the simulation.
+	var simulation_frames := ChessFootballSpriteBank.build_frames(1, "forward", 4, false)
+	for action_name in [&"pass", &"shoot", &"tackle", &"celebrate"]:
+		assert(simulation_frames.get_frame_texture(action_name, 0) is AtlasTexture)
 	assert(canonical_run_frame.region == Rect2(0.0, 0.0, 128.0, 144.0))
+	assert(canonical_sprint_frame.region == Rect2(0.0, 0.0, 128.0, 144.0))
+	assert(is_equal_approx(canonical_frames.get_animation_speed(&"run"), 12.0))
+	assert(is_equal_approx(canonical_frames.get_animation_speed(&"sprint"), 15.0))
 	assert(sprite_manifest["atlases"]["fc_matthias"]["body_profile"] == "defender")
 	assert(sprite_manifest["atlases"]["fc_matthias_v2"]["body_profile"] == "midfielder")
 	assert(sprite_manifest["atlases"]["fc_matthias_v3"]["body_profile"] == "wing")
@@ -111,7 +292,8 @@ func _initialize() -> void:
 	assert(sprite_manifest["atlases"]["real_enroque"]["kinetics_profile"] == "weight-transfer-v21")
 	assert(sprite_manifest["atlases"]["real_enroque_keeper"]["kinetics_profile"] == "weight-transfer-v21")
 	assert(match_node.teams[0][0].debug_loop_phase_frame(&"idle") == 0)
-	assert(match_node.teams[0][1].debug_loop_phase_frame(&"idle") == 3)
+	# Raster idle has a single intentional hold; run still keeps per-player phase staggering.
+	assert(match_node.teams[0][1].debug_loop_phase_frame(&"idle") == 0)
 	assert(
 		match_node.teams[0][0].debug_loop_phase_frame(&"run")
 		!= match_node.teams[0][1].debug_loop_phase_frame(&"run")

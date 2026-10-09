@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   chroniclesActiveQuest,
   chroniclesInventoryEntries,
@@ -14,6 +14,7 @@ import {
 } from '../chroniclesOfMatthiasTactics.js';
 import ChroniclesCharacterSheet from './ChroniclesCharacterSheet.jsx';
 import { chroniclesPartyPortraitUrl } from '../chronicles/chroniclesPartyPortraitAssets.js';
+import { chroniclesRetaliationCue } from '../chroniclesOfMatthiasRetaliation.js';
 import './ChroniclesTacticsPartyHud.css';
 import './ChroniclesCharacterSheet.css';
 import './ChroniclesTacticsAdventureSummary.css';
@@ -57,6 +58,9 @@ export default function ChroniclesTacticsPartyHud({
   onLearnSkill,
 }) {
   const [sheetMemberId, setSheetMemberId] = useState(null);
+  const [damageCue, setDamageCue] = useState(null);
+  const previousStateRef = useRef(state);
+  const damageCueTimerRef = useRef(null);
   const party = useMemo(
     () => PARTY_ORDER.map((id) => state.party.find((member) => member.id === id)).filter(Boolean),
     [state.party],
@@ -69,6 +73,23 @@ export default function ChroniclesTacticsPartyHud({
   const sheetMember = sheetMemberId
     ? party.find((member) => member.id === sheetMemberId) || null
     : null;
+
+  useEffect(() => {
+    const previous = previousStateRef.current;
+    previousStateRef.current = state;
+    const cue = chroniclesRetaliationCue(previous, state);
+    if (!cue) return;
+    if (damageCueTimerRef.current) window.clearTimeout(damageCueTimerRef.current);
+    setDamageCue({ ...cue, token: Date.now() });
+    damageCueTimerRef.current = window.setTimeout(() => {
+      setDamageCue(null);
+      damageCueTimerRef.current = null;
+    }, 1800);
+  }, [state]);
+
+  useEffect(() => () => {
+    if (damageCueTimerRef.current) window.clearTimeout(damageCueTimerRef.current);
+  }, []);
 
   useEffect(() => {
     const memberId = sheetRequest?.memberId;
@@ -92,7 +113,7 @@ export default function ChroniclesTacticsPartyHud({
   return (
     <>
       <aside className="chronicles-tactics__party chronicles-party-hud" aria-label="Compañía">
-        <span className="chronicles-tactics__kicker">COMPAÑÍA · 1–4</span>
+        <span className="chronicles-tactics__kicker">COMPAÑÍA · 1–4 · DOBLE FICHA</span>
         {party.map((member, index) => {
           const profile = chroniclesTacticsProfile(member.id);
           const progress = chroniclesHeroProgress(progression, member.id);
@@ -106,6 +127,8 @@ export default function ChroniclesTacticsPartyHud({
               key={member.id}
               className={`chronicles-party-hud__member${selected ? ' is-selected' : ''}${fallen ? ' is-fallen' : ''}`}
               data-member-id={member.id}
+              data-member-hp={member.hp}
+              data-damage-hit={damageCue?.targetId === member.id ? 'true' : undefined}
             >
               <button
                 type="button"
@@ -116,6 +139,12 @@ export default function ChroniclesTacticsPartyHud({
               >
                 <span className="chronicles-party-hud__portrait-frame" aria-hidden="true">
                   <img src={chroniclesPartyPortraitUrl(member.id)} alt="" />
+                  {damageCue?.targetId === member.id ? (
+                    <span
+                      key={damageCue.token}
+                      className="chronicles-party-hud__damage-slash"
+                    />
+                  ) : null}
                 </span>
                 <span className="chronicles-party-hud__hotkey" aria-hidden="true">{index + 1}</span>
               </button>

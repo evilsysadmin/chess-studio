@@ -92,7 +92,14 @@ async function openDuelRoom(page, viewport) {
   }));
 
   await login(page);
-  await page.getByRole('button', { name: 'Abrir Sala de Duelos 1 contra 1' }).click();
+  const duelEntry = page.getByRole('button', { name: 'Abrir Sala de Duelos 1 contra 1' });
+  if (!await duelEntry.isVisible().catch(() => false)) {
+    const more = page.locator('.illustrated-home__play-more');
+    await expect(more).toBeVisible();
+    if ((await more.getAttribute('aria-expanded')) !== 'true') await more.click();
+  }
+  await expect(duelEntry).toBeVisible();
+  await duelEntry.click();
 
   const lobby = page.getByRole('dialog', { name: 'Duelo 1 contra 1 · War Room' });
   await expect(lobby).toBeVisible();

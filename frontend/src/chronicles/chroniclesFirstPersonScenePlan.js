@@ -1,5 +1,4 @@
 import {
-  DEFAULT_CHRONICLES_MAP_ID,
   chroniclesMapForState,
 } from './chroniclesMapCatalog.js';
 import { chroniclesIsometricScenePlan } from './chroniclesIsometricScenePlan.js';
@@ -12,6 +11,7 @@ export function chroniclesFirstPersonScenePlan(state) {
     mapId: map.id,
     grid: map.grid,
     enemies: map.enemies,
-    useAuthoredCryptDressing: map.id === DEFAULT_CHRONICLES_MAP_ID,
+    regionKind: map.regionKind || 'dungeon',
+    useAuthoredCryptDressing: map.id === 'crypt-eight-squares',
   });
 }

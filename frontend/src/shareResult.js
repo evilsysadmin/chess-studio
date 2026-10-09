@@ -85,13 +85,17 @@ export function buildShareUrl(record, extras = {}) {
   return `${base}#share=${encodeShareRecord(record, extras)}`;
 }
 
+export function countFullMoves(moves) {
+  return Math.ceil((Array.isArray(moves) ? moves.length : 0) / 2);
+}
+
 export function buildShareText(record, extras = {}) {
   const data = normalizeShareRecord(record, extras);
   const result = OUTCOME[data.outcome] || data.outcome;
   const color = data.humanColor === 'w' ? 'blancas' : 'negras';
   const lines = [
     `♟ ${result} contra la CPU · nivel ${data.difficulty}`,
-    `${data.moves.length} jugadas · jugué con ${color}`,
+    `${countFullMoves(data.moves)} jugadas · jugué con ${color}`,
   ];
   if (data.opening) lines.push(`Apertura: ${data.opening}`);
   if (data.timeControl?.label) lines.push(`Ritmo: ${data.timeControl.label}`);

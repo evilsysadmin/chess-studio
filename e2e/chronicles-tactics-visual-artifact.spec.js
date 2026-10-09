@@ -162,6 +162,15 @@ for (const capture of CAPTURES) {
     try {
       await openTactics(page);
       if (capture.hasTouch) {
+        // The production entry correctly requests fullscreen from the user gesture.
+        // The visual harness must leave fullscreen before resizing its synthetic
+        // desktop browser window to a mobile viewport.
+        await page.evaluate(async () => {
+          if (document.fullscreenElement && document.exitFullscreen) {
+            await document.exitFullscreen();
+          }
+        });
+        await expect.poll(() => page.evaluate(() => Boolean(document.fullscreenElement))).toBe(false);
         await page.setViewportSize({ width: capture.width, height: capture.height });
         await page.waitForTimeout(180);
       }
@@ -300,6 +309,7 @@ for (const capture of CAPTURES) {
         `${ARTIFACT_DIR}/chronicles-tactics-walking-${capture.label}.png`,
       );
       await page.keyboard.up('ArrowUp');
+      await expect(rendererHost).toHaveAttribute('data-chronicles-party-motion', 'idle');
       await expect(narrator).toContainText(/La compañía avanza hacia norte/i);
       const releasedCell = await mode.evaluate((node) => ({
         x: node.getAttribute('data-party-x'),
@@ -336,7 +346,7 @@ for (const capture of CAPTURES) {
   });
 
   test(`Chronicles Tactics · combat grid visual proof · ${capture.label}`, async ({ browser }) => {
-    test.setTimeout(90_000);
+    test.setTimeout(150_000);
     await mkdir(ARTIFACT_DIR, { recursive: true });
 
     const context = await browser.newContext({
@@ -351,6 +361,11 @@ for (const capture of CAPTURES) {
     try {
       await openTactics(page);
       if (capture.hasTouch) {
+        // Desktop fullscreen needs to be released before reusing this context at mobile size.
+        await page.evaluate(async () => {
+          if (document.fullscreenElement) await document.exitFullscreen();
+        });
+        await expect.poll(() => page.evaluate(() => document.fullscreenElement === null)).toBe(true);
         await page.setViewportSize({ width: capture.width, height: capture.height });
         await page.waitForTimeout(180);
       }
@@ -386,6 +401,71 @@ for (const capture of CAPTURES) {
         viewport,
         `${ARTIFACT_DIR}/chronicles-tactics-combat-grid-${capture.label}.png`,
       );
+
+      const hpBeforeEnemyHit = Number(await mode.getAttribute('data-party-hp-total'));
+      await page.evaluate((hpBefore) => {
+        const root = document.querySelector('[data-chronicles-tactics="true"]');
+        if (!root) throw new Error('Chronicles Tactics root missing');
+        const pump = () => {
+          if (Number(root.getAttribute('data-party-hp-total') || 0) < hpBefore) {
+            window.clearInterval(window.__chroniclesVisualDamagePump);
+            window.__chroniclesVisualDamagePump = null;
+            return;
+          }
+          if (root.getAttribute('data-turn-phase') !== 'party') return;
+          const pass = [...root.querySelectorAll('button')]
+            .find((node) => node.getAttribute('aria-label') === 'Pasar turno');
+          if (pass && !pass.disabled) pass.click();
+        };
+        window.__chroniclesVisualDamagePump = window.setInterval(pump, 120);
+        pump();
+      }, hpBeforeEnemyHit);
+
+      await page.waitForFunction((hpBefore) => {
+        const root = document.querySelector('[data-chronicles-tactics="true"]');
+        return Number(root?.getAttribute('data-party-hp-total') || 0) < hpBefore;
+      }, hpBeforeEnemyHit, { timeout: 30_000, polling: 100 });
+
+      // The required browser canary separately proves that a real enemy attack
+      // activates the transient production cue. This visual producer owns a
+      // different contract: inspect the cue styling without racing its 1.8 s
+      // lifetime against hosted SwiftShader screenshot latency.
+      const hitClip = await mode.evaluate((root) => {
+        const node = root.querySelector('.chronicles-party-hud__member[data-member-id]');
+        if (!node) return null;
+
+        node.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'instant' });
+        node.setAttribute('data-damage-hit', 'true');
+        const frame = node.querySelector('.chronicles-party-hud__portrait-frame');
+        if (frame && !frame.querySelector('.chronicles-party-hud__damage-slash')) {
+          const slash = document.createElement('span');
+          slash.className = 'chronicles-party-hud__damage-slash';
+          slash.style.animation = 'none';
+          slash.style.opacity = '.9';
+          slash.style.transform = 'translate(-50%, -50%) rotate(-34deg) scaleX(1)';
+          frame.appendChild(slash);
+        }
+
+        const box = node.getBoundingClientRect();
+        const left = Math.max(0, box.left);
+        const top = Math.max(0, box.top);
+        const right = Math.min(window.innerWidth, box.right);
+        const bottom = Math.min(window.innerHeight, box.bottom);
+        if (right <= left || bottom <= top) return null;
+        return {
+          x: left,
+          y: top,
+          width: right - left,
+          height: bottom - top,
+        };
+      });
+      expect(hitClip, `${capture.label}: enemy-hit styling bounds`).not.toBeNull();
+      await page.screenshot({
+        path: `${ARTIFACT_DIR}/chronicles-tactics-enemy-hit-member-${capture.label}.png`,
+        animations: 'allow',
+        timeout: 10_000,
+        clip: hitClip,
+      });
     } finally {
       await context.close();
     }
@@ -477,6 +557,12 @@ for (const room of AUTHORED_ROOM_VISUAL_CAPTURES) {
       );
 
       if (room.mapId === 'echo-cistern') {
+        // Desktop Chronicles owns native fullscreen. Exit it before resizing the
+        // same Chromium window for the separate mobile-layout proof.
+        await page.evaluate(async () => {
+          if (document.fullscreenElement) await document.exitFullscreen();
+        });
+        await expect.poll(() => page.evaluate(() => document.fullscreenElement === null)).toBe(true);
         await page.setViewportSize({ width: 390, height: 844 });
         await page.waitForTimeout(420);
         const mobileHealth = await captureTacticsHealth(page);
@@ -550,6 +636,11 @@ for (const capture of CAPTURES) {
         expectReady: false,
       });
       if (capture.hasTouch) {
+        // The bootstrap-error flow can also leave Chromium in native fullscreen.
+        await page.evaluate(async () => {
+          if (document.fullscreenElement) await document.exitFullscreen();
+        });
+        await expect.poll(() => page.evaluate(() => document.fullscreenElement === null)).toBe(true);
         await page.setViewportSize({ width: capture.width, height: capture.height });
         await page.waitForTimeout(120);
       }

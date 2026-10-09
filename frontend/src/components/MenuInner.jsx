@@ -3,6 +3,7 @@ import './HomeRoute.css';
 import { QuickMatchReadyRoomRoute as QuickMatchModal, prefetchQuickMatchReadyRoom } from '../quickMatchRoute.js';
 import { prefetchGameScreenRoute } from '../gameScreenRoute.js';
 import { preloadPreferredWarRoomOnIntent } from './warRoomIntentPreload.js';
+import { preloadTrainingSchoolOnIntent } from './trainingSchoolIntentPreload.js';
 const PracticeMatchModal = lazy(() => import('./PracticeMatchModal.jsx'));
 const PvPLobbyModal = lazy(() => import('./PvPLobbyModal.jsx'));
 import HomeIllustrated from './HomeIllustrated.jsx';
@@ -190,6 +191,15 @@ export default function Menu({
     void prefetchQuickMatchReadyRoom();
   }
 
+  function warmTrainingSchoolPath() {
+    void preloadTrainingSchoolOnIntent({ boardRenderer: getBoardRenderer() });
+  }
+
+  function openTrainingSchool() {
+    warmTrainingSchoolPath();
+    onTutorial();
+  }
+
   function handleMatthiasAction() {
     const action = matthiasVisit?.action || 'insights';
     setMatthiasVisit(null);
@@ -202,8 +212,9 @@ export default function Menu({
   const pvpEntryVisible = !showQuickMatch && !showPracticeMatch && !showPvpLobby;
   // One canonical 1 vs 1 entry on Home. Its state comes from the PvP runtime
   // owner; Home only projects it and navigates to lobby or the active match.
-  const renderPvpRosterLink = () => (
+  const renderPvpRosterLink = ({ placement = 'floating' } = {}) => (
     <HomePvpRosterLink
+      placement={placement}
       onOpen={() => {
         if (pvpFlow?.activeMatch) {
           pvpFlow?.enterMatch?.(pvpFlow.activeMatch);
@@ -232,7 +243,8 @@ export default function Menu({
         onPractice={() => setShowPracticeMatch(true)}
         pendingModes={pendingModes}
         onTournament={onTournament}
-        onTrain={onTutorial}
+        onTrain={openTrainingSchool}
+        onTrainIntent={warmTrainingSchoolPath}
         onCombat={onCombatRoguelike}
         onDaily={() => onDailyChallenge()}
         onHistory={onHistory}
@@ -241,6 +253,7 @@ export default function Menu({
         matthiasSpeaking={Boolean(matthiasVisit) && !matthiasCornerBlocked}
         onMatthiasAction={handleMatthiasAction}
         onMatthiasDismiss={() => setMatthiasVisit(null)}
+        pvpMenuEntry={pvpEntryVisible ? renderPvpRosterLink({ placement: 'menu' }) : null}
         tools={[
           ['Puzzles personales', onTrainPersonal],
           ['Puzzles clásicos', onPuzzle],

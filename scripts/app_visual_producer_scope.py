@@ -273,6 +273,10 @@ def _e2e_producer(name: str) -> set[str] | None:
     exact = {
         "app-visual-artifact.spec.js": {"home-base"},
         "smoke.spec.js": set(),
+        # Dedicated staging browser gate owns these: not app visual artifacts.
+        "staging-live.spec.js": set(),
+        "staging-war-room-restore.spec.js": set(),
+        "staging-pawn-slug-godot.spec.js": set(),
         "chess-football.spec.js": set(),
         "matthias-home-visual-artifact.spec.js": {"home-matthias"},
         "matthias-home-visual-critical.spec.js": {"home-matthias"},
@@ -281,6 +285,7 @@ def _e2e_producer(name: str) -> set[str] | None:
         "pvp-handoff-visual-artifact.spec.js": {"pvp-handoff"},
         "home-lab-visibility.spec.js": {"home-base"},
         "experiments-visual-artifact.spec.js": {"experiments-hub"},
+        "lab-mobile-room.spec.js": {"experiments-hub"},
         "pawn-slug-godot-visual-artifact.spec.js": {"experiments-hub"},
         "chronicles-tactics-visual-artifact.spec.js": {"chronicles-tactics"},
         "chronicles-gameplay-visual-artifact.spec.js": {"chronicles-gameplay"},
@@ -296,6 +301,7 @@ def _e2e_producer(name: str) -> set[str] | None:
         "pvp-background-roster.spec.js": {"pvp-duel"},
         "mobile-golden-path-war-room-invariants.spec.js": {"warroom-core"},
         "war-room-visual-artifact.spec.js": {"warroom-core"},
+        "war-room-entry-latency-visual.spec.js": {"warroom-core"},
         "war-room-decor-visual-artifact.spec.js": {"warroom-decor"},
         "war-room-armor-oblique-visual-artifact.spec.js": {"warroom-armor"},
         "war-room-hans-visual-artifact.spec.js": {"warroom-hans"},
@@ -441,16 +447,30 @@ def classify_path(path: str) -> set[str] | None:
         return set(POSTGAME_EXACT_PRODUCERS[lower])
     if lower in QUICK_MATCH_EXACT_PRODUCERS:
         return set(QUICK_MATCH_EXACT_PRODUCERS[lower])
+    if lower == "frontend/src/components/shareresultmodal.jsx":
+        return {"warroom-core"}
+    if lower == "frontend/src/components/profilebackupmodal.jsx":
+        return {"home-base"}
     if lower == "frontend/src/components/homemobilegoldenpath.css":
         return {"home-base"}
     if lower in PVP_DUEL_EXACT_PRODUCERS:
         return set(PVP_DUEL_EXACT_PRODUCERS[lower])
     if lower in PVP_EXACT_PRODUCERS:
         return set(PVP_EXACT_PRODUCERS[lower])
-    if lower == "frontend/src/components/labscreen.jsx":
+    if lower in {
+        "frontend/src/components/labscreen.jsx",
+        "frontend/src/components/labworkshopmobile.css",
+    }:
         return {"experiments-hub"}
     if lower in SHARED_BOOTSTRAP_EXACT_PRODUCERS:
         return set(SHARED_BOOTSTRAP_EXACT_PRODUCERS[lower])
+    if lower in {
+        "frontend/src/tutorialroute.js",
+        "frontend/src/components/trainingschoolintentpreload.js",
+    }:
+        return {"training-school"}
+    if lower == "frontend/src/components/homeillustrated.jsx":
+        return {"home-base"}
     if lower in TRAINING_EXACT_PRODUCERS:
         return set(TRAINING_EXACT_PRODUCERS[lower])
 
@@ -662,6 +682,23 @@ POSTGAME_WARROOM_FAST_PATH = {
     "scripts/app_visual_producer_scope.py",
 }
 
+CPU_PRESENTATION_WARROOM_PATHS = {
+    "frontend/src/components/gamescreen.jsx",
+    "frontend/src/cpupresentationtiming.js",
+    "frontend/src/cpupresentationtiming.test.js",
+    "scripts/architecture_debt_budget.py",
+}
+
+
+def _is_cpu_presentation_warroom_fast_path(paths: list[str]) -> bool:
+    normalized = {path.strip().replace("\\", "/").lower() for path in paths if path.strip()}
+    return (
+        {"frontend/src/components/gamescreen.jsx", "frontend/src/cpupresentationtiming.js"}
+        .issubset(normalized)
+        and normalized.issubset(CPU_PRESENTATION_WARROOM_PATHS)
+    )
+
+
 def _is_postgame_warroom_fast_path(paths: list[str]) -> bool:
     normalized = {path.strip().replace("\\", "/").lower() for path in paths if path.strip()}
     return (
@@ -677,7 +714,7 @@ def classify(paths: list[str]) -> str:
         return "all"
     if _is_home_mobile_tools_fast_path(cleaned):
         return "home-base"
-    if _is_postgame_warroom_fast_path(cleaned):
+    if _is_postgame_warroom_fast_path(cleaned) or _is_cpu_presentation_warroom_fast_path(cleaned):
         return "warroom-core"
     training_visual_spec_touched = any(
         Path(path.lower().replace("\\", "/")).name == "training-visual-artifact.spec.js"
@@ -698,6 +735,21 @@ def classify(paths: list[str]) -> str:
 
 
 def self_test() -> None:
+    assert classify(["e2e/staging-live.spec.js"]) == "none"
+    assert classify(["e2e/staging-live.spec.js", "frontend/src/components/PvpHandoffModal.jsx"]) == "pvp-handoff"
+    assert classify([
+        "frontend/src/components/GameScreen.jsx",
+        "frontend/src/cpuPresentationTiming.js",
+        "frontend/src/cpuPresentationTiming.test.js",
+        "scripts/architecture_debt_budget.py",
+    ]) == "warroom-core"
+    assert classify(["frontend/src/components/ShareResultModal.jsx"]) == "warroom-core"
+    assert classify(["frontend/src/components/ProfileBackupModal.jsx"]) == "home-base"
+    assert classify([
+        "frontend/src/components/GameScreen.jsx",
+        "frontend/src/cpuPresentationTiming.js",
+        "frontend/src/components/HomeIllustrated.jsx",
+    ]) != "warroom-core"
     assert classify(["frontend/src/components/WarRoomClassicShellLoader.js"]) == "training-school,warroom-core"
     assert classify_warroom_variants(["frontend/src/components/WarRoomClassicShell.js"]) == "classic"
     assert classify_warroom_variants(["frontend/src/components/PremiumWarRoomScene.js"]) == "classic"
@@ -917,8 +969,11 @@ def self_test() -> None:
     assert classify(["frontend/src/components/GameBoardView.jsx"]) == "warroom-core"
     assert classify(["frontend/src/components/WarRoomCastleArchitecture.js"]) == "warroom-core,warroom-decor,warroom-armor,warroom-hans"
     assert classify(["e2e/war-room-decor-visual-artifact.spec.js"]) == "warroom-decor"
+    assert classify(["e2e/war-room-entry-latency-visual.spec.js"]) == "warroom-core"
     assert classify(["e2e/browser-storage-health.spec.js"]) == "health-storage"
     assert classify(["e2e/pawn-slug-godot-visual-artifact.spec.js"]) == "experiments-hub"
+    assert classify(["frontend/src/components/LabWorkshopMobile.css"]) == "experiments-hub"
+    assert classify(["e2e/lab-mobile-room.spec.js"]) == "experiments-hub"
     assert classify(["frontend/src/components/AdminDashboardContent.jsx"]) == "none"
     assert classify(["frontend/src/App.css"]) == "all"
     assert classify(["scripts/async_resilience_gate.mjs"]) == "none"
@@ -944,6 +999,9 @@ def self_test() -> None:
         "frontend/src/chroniclesOfMatthiasIsometric.js",
         "frontend/src/chroniclesDungeon.js",
     ]) == "chronicles-tactics,chronicles-gameplay"
+    assert classify(["frontend/src/tutorialRoute.js"]) == "training-school"
+    assert classify(["frontend/src/components/trainingSchoolIntentPreload.js"]) == "training-school"
+    assert classify(["frontend/src/components/HomeIllustrated.jsx"]) == "home-base"
     print("app visual producer scope self-test: OK")
 
 

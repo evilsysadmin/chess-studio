@@ -28,7 +28,7 @@ import { planBoard3DPieceReconciliation } from './Board3DPieceReconciliation.js'
 import { addCoarsePieceHitTarget, applyMatthiasCheckPose, buildPiece, disposeObject } from './Board3DPieces.js';
 import { fitBoardCamera, makeTextSprite } from './Board3DScene.js';
 import { resolveStableBoardViewportForHost } from './Board3DViewportSize.js';
-import { applyBoard3DProjectionDiagnostics } from './Board3DProjectionDiagnostics.js';
+import { applyBoard3DProjectionDiagnostics, applyBoard3DRendererMemoryDiagnostics } from './Board3DProjectionDiagnostics.js';
 import { board3DForensicGhost, board3DTechniqueTargetCount, board3DTerrainSquares, buildBoard3DLegalMap } from './Board3DParityVisuals.js';
 import useWarRoomVariant from './useWarRoomVariant.js';
 import { resolveBoard3DPresentation } from './Board3DPresentation.js';
@@ -336,7 +336,7 @@ function Board3DCanvas({
         keyIntensity: key.intensity,
         exposure: renderer.toneMappingExposure,
       });
-      renderer.render(scene, camera);
+      renderer.render(scene, camera); applyBoard3DRendererMemoryDiagnostics(renderer.domElement, renderer);
       applyBoard3DProjectionDiagnostics(renderer.domElement, camera);
       if (!cachedHansDriver && latestPropsRef.current.hansDiagnosticsRequested) {
         cachedHansDriver = scene.getObjectByName('war-room-hans-fireplace-driver');

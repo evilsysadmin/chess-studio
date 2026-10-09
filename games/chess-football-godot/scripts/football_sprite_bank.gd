@@ -5,8 +5,22 @@ const MANIFEST_PATH := "res://assets/players/manifest.json"
 const ASSET_ROOT := "res://assets/players/"
 const TEAM_KEYS := ["fc_matthias", "real_enroque"]
 
+# Temporary action poses are composed from the already approved lateral
+# raster run canon. Keep gameplay timing and unique action animation names;
+# never flash back to a differently styled vector footballer mid-match.
+# Authored action-specific raster art can replace these holds later.
+const CANONICAL_ACTION_POSES := {
+	"pass": [0, 0, 2, 3, 4, 4, 6, 6],
+	"shoot": [1, 1, 3, 3, 5, 5, 7, 7],
+	"tackle": [5, 6, 7, 7, 4, 3, 2, 1],
+	"celebrate": [0, 2, 4, 6, 4, 2, 0, 0],
+}
+
 static var _cached_manifest: Dictionary = {}
 static var _cached_run_textures: Dictionary = {}
+static var _cached_3d_run_frames: Dictionary = {}
+static var _cached_directional_textures: Dictionary = {}
+static var _cached_3d_directional_frames: Dictionary = {}
 
 static func manifest() -> Dictionary:
 	if not _cached_manifest.is_empty():
@@ -50,14 +64,102 @@ static func _canonical_run_texture(team_id: int) -> Texture2D:
 	assert(not encoded.is_empty(), "Canonical run atlas vacío")
 	var bytes := Marshalls.base64_to_raw(encoded)
 	var hash := HashingContext.new()
-	assert(hash.start(HashingContext.HASH_SHA256) == OK, "No se pudo iniciar SHA-256")
-	assert(hash.update(bytes) == OK, "No se pudo hashear canonical run")
-	assert(hash.finish().hex_encode() == String(meta["sha256"]), "Canonical run SHA-256 inválido")
+	# Never perform required work inside assert(): release Web exports strip assertions.
+	var hash_start := hash.start(HashingContext.HASH_SHA256)
+	assert(hash_start == OK, "No se pudo iniciar SHA-256")
+	var hash_update := hash.update(bytes)
+	assert(hash_update == OK, "No se pudo hashear canonical run")
+	var digest := hash.finish().hex_encode()
+	assert(digest == String(meta["sha256"]), "Canonical run SHA-256 inválido")
 	var image := Image.new()
-	assert(image.load_png_from_buffer(bytes) == OK, "Canonical run PNG inválido")
+	var decode_result := image.load_png_from_buffer(bytes)
+	assert(decode_result == OK, "Canonical run PNG inválido")
+	if decode_result != OK:
+		push_error("Chess Football: cannot decode canonical run PNG; Web export may be missing .b64 assets")
+		return null
 	_recolor_canonical_run(image, team_id)
+	var mipmap_result := image.generate_mipmaps()
+	assert(mipmap_result == OK, "No se pudieron generar mipmaps del canonical run")
 	var texture := ImageTexture.create_from_image(image)
 	_cached_run_textures[key] = texture
+	return texture
+
+static func _directional_run_texture(team_id: int) -> Texture2D:
+	var key := _team_key(team_id)
+	if _cached_directional_textures.has(key):
+		return _cached_directional_textures[key]
+	var meta: Dictionary = manifest().get("directional_run", {})
+	if meta.is_empty():
+		return null
+	var encoded := ""
+	for part in meta["encoded_parts"]:
+		encoded += FileAccess.get_file_as_string(ASSET_ROOT + String(part)).strip_edges()
+	if encoded.is_empty():
+		push_error("Chess Football: directional run atlas missing from Web export")
+		return null
+	var bytes := Marshalls.base64_to_raw(encoded)
+	var hash := HashingContext.new()
+	if hash.start(HashingContext.HASH_SHA256) != OK or hash.update(bytes) != OK:
+		push_error("Chess Football: directional atlas SHA-256 failed")
+		return null
+	if hash.finish().hex_encode() != String(meta["sha256"]):
+		push_error("Chess Football: directional run atlas SHA-256 mismatch")
+		return null
+	var image := Image.new()
+	if image.load_png_from_buffer(bytes) != OK:
+		push_error("Chess Football: directional run PNG could not be decoded")
+		return null
+	var size_meta: Dictionary = meta["cell"]
+	var expected_size := Vector2i(
+		int(size_meta["width"]) * int(meta["frames"]),
+		int(size_meta["height"]) * int((meta["views"] as Dictionary).size()),
+	)
+	if image.get_size() != expected_size:
+		push_error("Chess Football: directional run atlas dimensions mismatch")
+		return null
+	# This source's authored blue is slightly more violet than the side run.
+	# Remap kit blues to each team's hue; never recolor white fabric or skin.
+	var target := _canonical_run_target(team_id)
+	for y in range(image.get_height()):
+		for x in range(image.get_width()):
+			var color := image.get_pixel(x, y)
+			if color.a <= 0.03:
+				continue
+			if color.h >= 0.54 and color.h <= 0.74 and color.s >= 0.25 and color.v >= 0.12:
+				var saturation := clampf(color.s * 0.72 + target.s * 0.28, 0.20, 1.0)
+				image.set_pixel(x, y, Color.from_hsv(target.h, saturation, color.v, color.a))
+	var mipmap_result := image.generate_mipmaps()
+	assert(mipmap_result == OK, "Chess Football: directional run mipmaps failed")
+	var texture := ImageTexture.create_from_image(image)
+	_cached_directional_textures[key] = texture
+	return texture
+
+static func _direction_frame_3d(
+	team_id: int, row: int, column: int, atlas: Texture2D, cell: Vector2
+) -> Texture2D:
+	var key := "%d:%d:%d" % [team_id, row, column]
+	if _cached_3d_directional_frames.has(key):
+		return _cached_3d_directional_frames[key]
+	# WebGL cannot reliably draw AtlasTexture as AnimatedSprite3D frames.
+	var source := atlas.get_image()
+	var region := source.get_region(Rect2i(
+		column * int(cell.x), row * int(cell.y), int(cell.x), int(cell.y)
+	))
+	assert(not region.is_empty(), "Empty directional 3D football frame")
+	var texture := ImageTexture.create_from_image(region)
+	_cached_3d_directional_frames[key] = texture
+	return texture
+
+static func _run_frame_3d(team_id: int, column: int, atlas: Texture2D, cell: Vector2) -> Texture2D:
+	var key := "%d:%d" % [team_id, column]
+	if _cached_3d_run_frames.has(key):
+		return _cached_3d_run_frames[key]
+	# Sprite3D needs a standalone texture: AtlasTexture regions can vanish on WebGL.
+	var source := atlas.get_image()
+	var region := source.get_region(Rect2i(column * int(cell.x), 0, int(cell.x), int(cell.y)))
+	assert(not region.is_empty(), "Empty 3D football frame")
+	var texture := ImageTexture.create_from_image(region)
+	_cached_3d_run_frames[key] = texture
 	return texture
 
 static func atlas_key(team_id: int, role: String = "", squad_index: int = -1) -> String:
@@ -73,17 +175,20 @@ static func atlas_key(team_id: int, role: String = "", squad_index: int = -1) ->
 	var field_slot := clampi(squad_index - 1, 0, variants.size() - 1)
 	return String(variants[field_slot])
 
-static func build_frames(team_id: int, role: String = "", squad_index: int = -1) -> SpriteFrames:
+static func build_frames(team_id: int, role: String = "", squad_index: int = -1, for_3d: bool = false) -> SpriteFrames:
 	var data := manifest()
 	var key: String = atlas_key(team_id, role, squad_index)
 	var atlas_meta: Dictionary = data["atlases"][key]
-	var texture := load(ASSET_ROOT + String(atlas_meta["file"])) as Texture2D
-	assert(texture != null, "No se pudo cargar el atlas de Chess Football")
-
+	# The vector bank is kept for the authoritative 2D simulation only.
+	# Never load/show its inconsistent body silhouettes in the 3D stadium.
+	var texture: Texture2D = null
 	var cell_data: Dictionary = data["cell"]
 	var cell := Vector2(float(cell_data["width"]), float(cell_data["height"]))
-	var expected_size := Vector2(cell.x * int(data["columns"]), cell.y * int(data["rows"]))
-	assert(texture.get_size() == expected_size, "Dimensiones de atlas incompatibles con manifest")
+	if not for_3d:
+		texture = load(ASSET_ROOT + String(atlas_meta["file"])) as Texture2D
+		assert(texture != null, "No se pudo cargar el atlas de Chess Football")
+		var expected_size := Vector2(cell.x * int(data["columns"]), cell.y * int(data["rows"]))
+		assert(texture.get_size() == expected_size, "Dimensiones de atlas incompatibles con manifest")
 
 	var run_meta := _canonical_run_meta()
 	var run_texture := _canonical_run_texture(team_id)
@@ -102,15 +207,36 @@ static func build_frames(team_id: int, role: String = "", squad_index: int = -1)
 		var animation: Dictionary = item
 		var animation_name := StringName(animation["name"])
 		frames.add_animation(animation_name)
-		frames.set_animation_speed(animation_name, float(animation["fps"]))
+		var animation_fps := float(animation["fps"])
+		if animation_name == &"sprint":
+			animation_fps = maxf(animation_fps, 15.0)
+		frames.set_animation_speed(animation_name, animation_fps)
 		frames.set_animation_loop(animation_name, bool(animation["loop"]))
-		if animation_name == &"run":
-			assert(run_frames == int(animation["frames"]), "Canonical run frame count inválido")
+		if animation_name == &"idle":
+			var idle_region := AtlasTexture.new()
+			idle_region.atlas = run_texture
+			idle_region.region = Rect2(Vector2.ZERO, run_cell)
+			frames.add_frame(animation_name, _run_frame_3d(team_id, 0, run_texture, run_cell) if for_3d else idle_region)
+			continue
+		if animation_name in [&"run", &"sprint"]:
+			assert(run_frames == int(animation["frames"]), "Canonical locomotion frame count inválido")
 			for column in range(run_frames):
 				var run_region := AtlasTexture.new()
 				run_region.atlas = run_texture
 				run_region.region = Rect2(Vector2(float(column) * run_cell.x, 0.0), run_cell)
-				frames.add_frame(animation_name, run_region)
+				frames.add_frame(animation_name, _run_frame_3d(team_id, column, run_texture, run_cell) if for_3d else run_region)
+			continue
+		if for_3d:
+			var action_poses: Array = CANONICAL_ACTION_POSES.get(String(animation_name), [])
+			if action_poses.is_empty():
+				push_error("Chess Football: no canonical 3D raster for action " + String(animation_name))
+				continue
+			for action_frame in range(int(animation["frames"])):
+				var source_frame: int = int(action_poses[action_frame % action_poses.size()])
+				frames.add_frame(
+					animation_name,
+					_run_frame_3d(team_id, source_frame, run_texture, run_cell),
+				)
 			continue
 		var row := int(animation["row"])
 		for column in range(int(animation["frames"])):
@@ -118,6 +244,35 @@ static func build_frames(team_id: int, role: String = "", squad_index: int = -1)
 			region.atlas = texture
 			region.region = Rect2(Vector2(float(column) * cell.x, float(row) * cell.y), cell)
 			frames.add_frame(animation_name, region)
+	# Add the four supplementary canonical views while preserving the original
+	# side run/sprint and all action animations, including their existing phases.
+	var directional_meta: Dictionary = data.get("directional_run", {})
+	if not directional_meta.is_empty():
+		var directional_atlas := _directional_run_texture(team_id)
+		if directional_atlas != null:
+			var directional_cell_data: Dictionary = directional_meta["cell"]
+			var directional_cell := Vector2(
+				float(directional_cell_data["width"]), float(directional_cell_data["height"])
+			)
+			for view_name in ["front", "back", "back_diagonal", "front_diagonal"]:
+				var row: int = int(directional_meta["views"][view_name])
+				for base_name in ["run", "sprint"]:
+					var directional_name := StringName(base_name + "_" + view_name)
+					frames.add_animation(directional_name)
+					frames.set_animation_speed(directional_name, 15.0 if base_name == "sprint" else 12.0)
+					frames.set_animation_loop(directional_name, true)
+					for column in range(int(directional_meta["frames"])):
+						var region := AtlasTexture.new()
+						region.atlas = directional_atlas
+						region.region = Rect2(
+							Vector2(column * directional_cell.x, row * directional_cell.y),
+							directional_cell,
+						)
+						frames.add_frame(
+							directional_name,
+							_direction_frame_3d(team_id, row, column, directional_atlas, directional_cell)
+							if for_3d else region,
+						)
 	return frames
 
 static func cell_size() -> Vector2:

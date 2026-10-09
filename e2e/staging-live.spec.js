@@ -550,12 +550,15 @@ test('staging live · auth real → War Room v2 → recovery 3D → jugada real'
         && url.origin + url.pathname === `${STAGING_API_URL}/games/${gameId}/move`;
     }, { timeout: 60_000 });
     await clickBoardMove(page, 'e2', 'e4');
+    // HTTP 200 alone does not prove the CPU reply was actually presented.
+    // Observe Matthias thinking and the authoritative return to the human turn.
+    await expect(gameStatus(page).getByText('La CPU está pensando…', { exact: true })).toBeVisible({ timeout: 10_000 });
     const moveResponse = await moveResponsePromise;
     expect(moveResponse.status()).toBe(200);
     const moved = await moveResponse.json();
     expect(Array.isArray(moved.history)).toBe(true);
     expect(moved.history.length).toBeGreaterThanOrEqual(1);
-    await expect(gameStatus(page)).toBeVisible();
+    await expect(gameStatus(page).getByText('Tu turno', { exact: true })).toBeVisible({ timeout: 30_000 });
 
     await leaveCurrentGameThroughUi(page);
     await expect(page.getByRole('region', { name: 'Modos principales', exact: true })).toBeVisible({ timeout: 30_000 });

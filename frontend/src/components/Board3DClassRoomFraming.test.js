@@ -40,9 +40,22 @@ describe('Class Room full-board camera framing', () => {
     const args = { aspect: 390 / 844, coarsePointer: true, viewportWidth: 390 };
     const school = classRoomCameraFramingProfile(args);
     const training = trainingRoomCameraFramingProfile(args);
-    expect(training.version).toBe('training-room-overhead-v1');
+    expect(training.version).toBe('training-room-overhead-v2');
     expect(training.halfSpan).toBeLessThan(school.halfSpan);
     expect(training.targetY).toBeLessThan(school.targetY);
+    expect(training.targetZ).toBeLessThan(0);
+    expect(training.cameraY).toBeGreaterThan(school.cameraY);
+    expect(training.cameraZ).toBeLessThan(school.cameraZ);
     expect(rawDistance(training, args.aspect, { mobile: true })).toBeLessThan(rawDistance(school, args.aspect, { mobile: true }));
   });
+  it('keeps the desktop Training Room pitch stable while tightening only portrait framing', () => {
+    const args = { aspect: 1440 / 900, coarsePointer: false, viewportWidth: 1440 };
+    const school = classRoomCameraFramingProfile(args);
+    const training = trainingRoomCameraFramingProfile(args);
+    expect(training.version).toBe('training-room-overhead-v2');
+    expect(training.cameraY).toBe(school.cameraY);
+    expect(training.cameraZ).toBe(school.cameraZ);
+    expect(training.targetZ).toBe(school.targetZ);
+  });
+
 });

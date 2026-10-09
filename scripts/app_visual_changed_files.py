@@ -42,6 +42,14 @@ FEATURE_FLAGS_OWNER = "frontend/src/usePublicFeatureFlags.js"
 GAME_EXIT_FLOW_OWNER = "frontend/src/useGameExitFlow.js"
 SHARE_RESULT_OWNER = "frontend/src/shareResult.js"
 
+# Exact lazy-route import swap for School preload. Any unrelated App.jsx edit
+# falls back to the full visual sweep; this is NOT a blanket App exemption.
+SCHOOL_PRELOAD_APP_LINES = {
+    "const Tutorial = React.lazy(() => import('./components/Tutorial.jsx'));",
+    "import { TutorialRoute as Tutorial } from './tutorialRoute.js';",
+}
+SCHOOL_PRELOAD_OWNER = "frontend/src/components/MatthiasSchool.jsx"
+
 GAME_SCREEN = "frontend/src/components/GameScreen.jsx"
 PUZZLE_SCREEN_OWNER = "frontend/src/components/PuzzleScreen.jsx"
 
@@ -757,6 +765,10 @@ def normalize(
         LEARNING_JOURNEY_OWNER.lower() in lower_paths
         and _is_nonvisual_learning_app_diff(_git_diff_text(base_sha, head_sha, APP_SHELL))
     )
+    safe_school_preload_app = (
+        "frontend/src/tutorialroute.js" in lower_paths
+        and _is_exact_routing_diff(_git_diff_text(base_sha, head_sha, APP_SHELL), SCHOOL_PRELOAD_APP_LINES)
+    )
     safe_global_shell_app = (
         GLOBAL_SHELL_OWNER.lower() in lower_paths
         and _is_nonvisual_global_shell_app_diff(_git_diff_text(base_sha, head_sha, APP_SHELL))
@@ -798,6 +810,9 @@ def normalize(
         if not path:
             continue
         lower = path.lower()
+        if lower == APP_SHELL.lower() and safe_school_preload_app:
+            add(SCHOOL_PRELOAD_OWNER)
+            continue
         if lower == APP_SHELL.lower() and safe_training_route_app:
             add(PUZZLE_SCREEN_OWNER)
             continue
@@ -874,6 +889,14 @@ def self_test() -> None:
     pawn_slug_pow_sources = [PAWN_SLUG_POW_BLEND, PAWN_SLUG_POW_MODEL, PAWN_SLUG_POW_BUILDER]
     assert normalize(pawn_slug_pow_sources) == [PAWN_SLUG_OWNER]
     assert normalize(["scripts/unknown_visual_owner.py"]) == ["scripts/unknown_visual_owner.py"]
+    exact_school_diff = (
+        "--- a/frontend/src/App.jsx\n+++ b/frontend/src/App.jsx\n@@ -1 +1 @@\n"
+        "-const Tutorial = React.lazy(() => import('./components/Tutorial.jsx'));\n"
+        "+import { TutorialRoute as Tutorial } from './tutorialRoute.js';\n"
+    )
+    assert _is_exact_routing_diff(exact_school_diff, SCHOOL_PRELOAD_APP_LINES)
+    assert not _is_exact_routing_diff(exact_school_diff + "+<div>changed shell</div>\n", SCHOOL_PRELOAD_APP_LINES)
+
 
     safe_learning_diff = "--- a/frontend/src/App.jsx\n+++ b/frontend/src/App.jsx\n@@ -1 +1 @@\n-import { usePuzzleLaunchFlow } from './usePuzzleLaunchFlow.js';\n+import { useLearningJourneyFlow } from './useLearningJourneyFlow.js';\n@@ -2 +1,0 @@\n-const [insightsLandingSection, setInsightsLandingSection] = useState('diagnosis');\n"
     unsafe_learning_diff = "--- a/frontend/src/App.jsx\n+++ b/frontend/src/App.jsx\n@@ -1 +1 @@\n-import { usePuzzleLaunchFlow } from './usePuzzleLaunchFlow.js';\n+import { useLearningJourneyFlow } from './useLearningJourneyFlow.js';\n@@ -2 +1,0 @@\n-const [insightsLandingSection, setInsightsLandingSection] = useState('diagnosis');\n@@ -10 +10 @@\n-<main className=\"old-shell\">\n+<main className=\"new-shell\">\n"

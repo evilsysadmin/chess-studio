@@ -108,3 +108,20 @@
 @media (prefers-reduced-motion: reduce) {
   .chronicles-dm-overlay { animation: none; }
 }
+
+/* Initiative owns the upper combat band. Meaningful narration drops below it instead of stacking. */
+.chronicles:has(.chronicles-initiative-rail) .chronicles-dm-overlay {
+  top: 148px;
+}
+
+@media (max-width: 800px), (max-width: 1024px) and (max-height: 600px) {
+  .chronicles:has(.chronicles-initiative-rail) .chronicles-dm-overlay {
+    top: 238px;
+  }
+}
+
+@media (max-width: 520px) {
+  .chronicles:has(.chronicles-initiative-rail) .chronicles-dm-overlay {
+    top: 252px;
+  }
+}

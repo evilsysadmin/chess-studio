@@ -154,9 +154,12 @@ export function startWarRoomVariantScene({
             }
             releaseHans = hans.release;
             if (canvas) canvas.dataset.warRoomHansStage = hans.status;
-            // The board marks Hans' scene ready after two real paints with his
-            // driver in place (v1 installs him inside a render); give it the
-            // extra paint so the fire-call narrative can start.
+            // The board requires two real paints with Hans' driver present
+            // before releasing his scene dialogue. The lazy stage arrives
+            // after the room's normal ready paint, so both qualifying paints
+            // must be explicit here rather than relying on unrelated installer
+            // side effects to trigger a second render.
+            onPaint?.();
             onPaint?.();
           })
           .catch((error) => {

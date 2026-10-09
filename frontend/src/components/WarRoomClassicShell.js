@@ -72,38 +72,3 @@ export function buildClassicWarRoomShell({
   classicShellObjects.forEach((object) => { if (object) object.visible = visible; });
   return { classicShellObjects };
 }
-
-export function createWarRoomClassicShellController({ build, eager = false } = {}) {
-  if (typeof build !== 'function') throw new TypeError('Classic War Room shell requires a builder');
-  let objects = [];
-  let built = false;
-
-  const ensure = () => {
-    if (!built) {
-      const result = build();
-      objects = Array.isArray(result) ? result : result?.classicShellObjects || [];
-      built = true;
-    }
-    return objects;
-  };
-
-  if (eager) ensure();
-
-  return {
-    ensure,
-    current: () => objects,
-    isBuilt: () => built,
-  };
-}
-
-export function createClassicWarRoomShellController(
-  { scene, boardGroup, theme, whiteSide, renderLite, classroom = false } = {},
-  eager = false,
-) {
-  return createWarRoomClassicShellController({
-    eager,
-    build: () => buildClassicWarRoomShell({
-      scene, boardGroup, theme, whiteSide, renderLite, classroom,
-    }).classicShellObjects,
-  });
-}

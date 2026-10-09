@@ -102,3 +102,12 @@ export function applyBoard3DProjectionDiagnostics(canvas, camera) {
   }
   return 1;
 }
+
+
+export function applyBoard3DRendererMemoryDiagnostics(canvas, renderer) {
+  if (!canvas?.dataset || !renderer?.info?.memory) return 0;
+  canvas.dataset.board3dMemoryGeometries = String(renderer.info.memory.geometries || 0);
+  canvas.dataset.board3dMemoryTextures = String(renderer.info.memory.textures || 0);
+  canvas.dataset.board3dMemoryPrograms = String(renderer.info.programs?.length || 0);
+  return 1;
+}

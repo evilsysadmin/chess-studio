@@ -45,6 +45,8 @@ describe('PremiumWarRoomScene', () => {
     expect(desktop.userData.premiumPass).toBe('cinematic-v3-teutonic');
     expect(desktop.userData.warRoomDesktopRetiredCurtainPelmetsOmitted).toBe(2);
     expect(desktop.userData.warRoomDesktopLatePracticalLightsOmitted).toBe(3);
+    expect(desktop.userData.warRoomRetiredCinematicAccentLightsOmitted).toBe(3);
+    expect(mobile.userData.warRoomRetiredCinematicAccentLightsOmitted).toBe(3);
     expect(mobile.userData.warRoomDesktopRetiredCurtainPelmetsOmitted).toBeUndefined();
     expect(mobile.userData.warRoomDesktopLatePracticalLightsOmitted).toBeUndefined();
     expect(desktop.getObjectByName('coffered-paneling')).toBeTruthy();
@@ -57,8 +59,8 @@ describe('PremiumWarRoomScene', () => {
     expect(desktop.getObjectByName('war-room-velvet-curtain-fold')).toBeTruthy();
     expect(desktop.getObjectByName('war-room-sconce-flame')).toBeTruthy();
     expect(desktopStats.meshes).toBeGreaterThan(125);
-    expect(desktopStats.lights).toBe(6);
-    expect(desktopStats.spotLights).toBe(1);
+    expect(desktopStats.lights).toBe(3);
+    expect(desktopStats.spotLights).toBe(0);
     expect(desktopStats.meshes).toBeGreaterThan(mobileStats.meshes);
 
     dispose(desktop);
@@ -73,13 +75,13 @@ describe('PremiumWarRoomScene', () => {
     expect(typeof driver.onBeforeRender).toBe('function');
     expect(typeof driver.onAfterRender).toBe('function');
     expect(desktop.userData.warRoomDesktopLatePracticalLightsOmitted).toBe(3);
-    expect(sceneStats(desktop).lights).toBe(6);
+    expect(sceneStats(desktop).lights).toBe(3);
 
     // The warm fireplace bounce is intentionally created by the castle driver
     // on the first real render and remains because it contributes visible fill.
     driver.onBeforeRender();
     expect(desktop.getObjectByName('war-room-fire-bounce-light')).toBeInstanceOf(THREE.PointLight);
-    expect(sceneStats(desktop).lights).toBe(7);
+    expect(sceneStats(desktop).lights).toBe(4);
 
     // Source ownership is now authoritative: there is no first-frame cleanup
     // pass, no late-light census and no legacy retirement metadata to maintain.
@@ -88,9 +90,9 @@ describe('PremiumWarRoomScene', () => {
     expect(desktop.userData.warRoomLatePracticalLightBudget).toBeUndefined();
     expect(desktop.userData.warRoomFinalLightCensus).toBeUndefined();
     expect(desktop.userData.warRoomLatePracticalLightRetirementArmed).toBeUndefined();
-    expect(finalStats.lights).toBe(7);
-    expect(finalStats.pointLights).toBe(6);
-    expect(finalStats.spotLights).toBe(1);
+    expect(finalStats.lights).toBe(4);
+    expect(finalStats.pointLights).toBe(4);
+    expect(finalStats.spotLights).toBe(0);
 
     dispose(desktop);
   });

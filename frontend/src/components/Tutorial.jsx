@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react';
 import './TutorialRoute.css';
 import './MatthiasClassRoom.css';
 import './SchoolRoomImmersive.css';
@@ -18,14 +18,21 @@ import {
   schoolCoachSelectionMessage,
   schoolCoachStepMessage,
 } from './SchoolCoach.js';
-import SchoolCurriculumOverlay from './SchoolCurriculumOverlay.jsx';
-import './SchoolTopicExplorer.css';
-import './SchoolCurriculumOverlay.css';
 import { abortableDelay, isAbortError } from '../asyncControl.js';
-import ChessGlossary from './ChessGlossary.jsx';
 import { useEscapeToClose } from '../useEscapeToClose.js';
-import { MECHANIC_TUTORIALS, loadMechanicTutorialProgress, markMechanicTutorialSeen } from '../mechanicTutorials.js';
 import { CPU_IDENTITY } from '../cpuIdentity.js';
+const SchoolCurriculumOverlay = lazy(() => import('./SchoolCurriculumOverlay.jsx'));
+const ChessGlossary = lazy(() => import('./ChessGlossary.jsx'));
+const SchoolMechanicsResource = lazy(() => import('./SchoolMechanicsResource.jsx'));
+
+function SchoolResourceFallback({ label }) {
+  return (
+    <div className="matthias-school-resource-loading" role="status" aria-live="polite">
+      {label}
+    </div>
+  );
+}
+
 import {
   MATTHIAS_SCHOOL_LESSONS,
   incrementMatthiasSchoolAttempt,
@@ -82,9 +89,6 @@ export default function Tutorial({ onExit }) {
   const playbackAbortRef = useRef(null);
   const coachIncidentRef = useRef({ kind: null, count: 0 });
   const [coach, setCoach] = useState(() => ({ tone: 'neutral', text: initialCoachText(MATTHIAS_SCHOOL_LESSONS[firstSchoolIndex(loadMatthiasSchoolProgress())] || MATTHIAS_SCHOOL_LESSONS[0]) }));
-  const [mechanicId, setMechanicId] = useState(MECHANIC_TUTORIALS[0]?.id || null);
-  const [mechanicStep, setMechanicStep] = useState(0);
-  const [mechanicProgress, setMechanicProgress] = useState(() => loadMechanicTutorialProgress());
   const schoolRenderer = getSchoolBoardRenderer();
 
   useEffect(() => () => {
@@ -100,8 +104,6 @@ export default function Tutorial({ onExit }) {
     setBoardAnimation(null);
   }
 
-  const mechanic = MECHANIC_TUTORIALS.find((item) => item.id === mechanicId) || MECHANIC_TUTORIALS[0];
-  const mechanicCurrentStep = mechanic?.steps?.[Math.max(0, Math.min((mechanic?.steps?.length || 1) - 1, mechanicStep))];
   const schoolSummary = useMemo(() => matthiasSchoolSummary(schoolProgress), [schoolProgress]);
   const lessonComplete = schoolProgress?.[lesson.id]?.completed === true;
   const lessonAccessible = isSchoolLessonAccessible(schoolProgress, lesson.id, { freeStudy });
@@ -417,40 +419,17 @@ export default function Tutorial({ onExit }) {
       {section === 'glossary' ? (
         <div className="matthias-school-resource-overlay is-glossary" role="region" aria-label="Glosario de la Escuela">
           <div className="matthias-school-resource-surface">
-            <ChessGlossary />
+            <Suspense fallback={<SchoolResourceFallback label="Abriendo glosario…" />}>
+              <ChessGlossary />
+            </Suspense>
           </div>
         </div>
       ) : section === 'mechanics' ? (
         <div className="matthias-school-resource-overlay is-mechanics" role="region" aria-label="Modos especiales de la Escuela">
           <div className="matthias-school-resource-surface">
-            <div className="mechanic-library">
-          <aside className="mechanic-library-list">
-            {MECHANIC_TUTORIALS.map((item) => (
-              <button type="button" key={item.id} className={item.id === mechanic?.id ? 'active' : ''} onClick={() => { setMechanicId(item.id); setMechanicStep(0); }}>
-                <span>{item.group}</span><strong>{item.title}</strong><small>{mechanicProgress[item.id]?.seen ? '✓ visto' : 'nuevo'}</small>
-              </button>
-            ))}
-          </aside>
-          {mechanic && mechanicCurrentStep && (
-            <article className="mechanic-library-detail">
-              <span className="section-label">{mechanic.group} · TUTORIAL NO ESTÁNDAR</span>
-              <h2>{mechanic.title}</h2>
-              <p className="hero-scope-note">{mechanic.summary}</p>
-              <div className="mechanic-tutorial-step">
-                <span className="mechanic-tutorial-counter">{mechanicStep + 1}/{mechanic.steps.length}</span>
-                <h3>{mechanicCurrentStep.title}</h3><p>{mechanicCurrentStep.text}</p>
-              </div>
-              <div className="mechanic-tutorial-actions">
-                <button type="button" className="secondary-btn" disabled={mechanicStep === 0} onClick={() => setMechanicStep((i) => Math.max(0, i - 1))}>Anterior</button>
-                {mechanicStep < mechanic.steps.length - 1 ? (
-                  <button type="button" className="primary-btn" onClick={() => setMechanicStep((i) => Math.min(mechanic.steps.length - 1, i + 1))}>Siguiente</button>
-                ) : (
-                  <button type="button" className="primary-btn" onClick={() => setMechanicProgress(markMechanicTutorialSeen(mechanic.id))}>Marcar entendido</button>
-                )}
-              </div>
-            </article>
-          )}
-            </div>
+            <Suspense fallback={<SchoolResourceFallback label="Abriendo modos especiales…" />}>
+              <SchoolMechanicsResource />
+            </Suspense>
           </div>
         </div>
       ) : null}
@@ -499,17 +478,19 @@ export default function Tutorial({ onExit }) {
           </div>
 
           {curriculumOpen && (
-            <SchoolCurriculumOverlay
-              progress={schoolProgress}
-              freeStudy={freeStudy}
-              currentLessonId={lesson.id}
-              onClose={() => setCurriculumOpen(false)}
-              onStudyModeChange={setStudyMode}
-              onOpenLesson={(lessonId) => {
-                const lessonIndex = MATTHIAS_SCHOOL_LESSONS.findIndex((item) => item.id === lessonId);
-                if (lessonIndex >= 0) goTo(lessonIndex);
-              }}
-            />
+            <Suspense fallback={<SchoolResourceFallback label="Abriendo plan de estudios…" />}>
+              <SchoolCurriculumOverlay
+                progress={schoolProgress}
+                freeStudy={freeStudy}
+                currentLessonId={lesson.id}
+                onClose={() => setCurriculumOpen(false)}
+                onStudyModeChange={setStudyMode}
+                onOpenLesson={(lessonId) => {
+                  const lessonIndex = MATTHIAS_SCHOOL_LESSONS.findIndex((item) => item.id === lessonId);
+                  if (lessonIndex >= 0) goTo(lessonIndex);
+                }}
+              />
+            </Suspense>
           )}
           <div className="matthias-school-layout">
             <div className="matthias-school-stage">

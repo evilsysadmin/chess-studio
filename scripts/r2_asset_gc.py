@@ -97,7 +97,7 @@ def load_policy(config: dict[str, Any]) -> dict[str, Any]:
     if not isinstance(fraction, (int, float)) or not 0 < float(fraction) <= 1:
         raise RetentionError("retention.maxDeleteFractionPerRun debe estar en (0, 1]")
 
-    for name in ("ephemeralPrefixes", "deprecatedPrefixes", "protectedPrefixes"):
+    for name in ("ephemeralPrefixes", "deprecatedPrefixes", "protectedPrefixes", "protectedKeys"):
         values = policy.get(name, [])
         if not isinstance(values, list) or not all(
             isinstance(item, str) and item and not item.startswith("/") for item in values
@@ -353,6 +353,7 @@ def plan_cleanup(
     total_bytes = sum(item["size"] for item in inventory)
 
     protected_prefixes = list(policy.get("protectedPrefixes", []))
+    protected_keys = set(policy.get("protectedKeys", []))
     protected: dict[str, str] = {}
     for key in by_key:
         if key in manifest_keys:
@@ -365,6 +366,8 @@ def plan_cleanup(
             protected[key] = "active-release"
         elif any(_under_prefix(key, prefix) for prefix in blocked_release_prefixes):
             protected[key] = "release-fail-closed"
+        elif key in protected_keys:
+            protected[key] = "protected-key"
         elif _starts_with_any(key, protected_prefixes):
             protected[key] = "protected-prefix"
 
@@ -844,6 +847,7 @@ def self_test() -> None:
         "ephemeralPrefixes": ["_smoke/"],
         "deprecatedPrefixes": ["deprecated/"],
         "protectedPrefixes": [],
+        "protectedKeys": ["archive/pinned-1234567890abcdef.png"],
         "releaseBundles": [
             {
                 "pointerKey": "game/current.json",
@@ -875,6 +879,7 @@ def self_test() -> None:
         row("tooling/legacy/script-only-9999999999999999.webp", 250, 60),
         row("loose/young.bin", 125, 2),
         row("loose/old.bin", 175, 60),
+        row("archive/pinned-1234567890abcdef.png", 120, 60),
         row("game/current.json", 10, 0),
         row("game/releases/1111111111111111/index.html", 100, 0),
         row("game/releases/1111111111111111/index.pck", 500, 0),
@@ -920,7 +925,8 @@ def self_test() -> None:
     assert report["repoPinOperationalOnlyObjects"] == 1
     assert report["repoPinOperationalOnlyByScope"] == [{"scope": "scripts", "objects": 1, "bytes": 250}]
     assert report["topOperationalOnlyPinPrefixes"][0] == {"prefix": "tooling/legacy", "bytes": 250}
-    assert report["protectedBytes"] >= 550
+    assert report["protectedBytesByReason"]["protected-key"] == 120
+    assert report["protectedBytes"] >= 670
     retained_by_reason = {
         item["reason"]: item
         for item in report["retainedUnprotectedByReason"]

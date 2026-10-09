@@ -432,3 +432,35 @@ body:has(.puzzle-screen) .global-music-dock {
     border-radius: 12px;
   }
 }
+
+
+/* Desktop coaching should read as a tactical annotation rail over the room,
+   not as a floating dashboard card. Mobile keeps its compact bottom sheet. */
+@media (min-width: 861px) and (pointer: fine) {
+  .puzzle-screen .puzzle-coach-panel {
+    right: max(.85rem, env(safe-area-inset-right));
+    width: min(300px, 24vw);
+    max-height: calc(100dvh - 9.4rem);
+    border: 0;
+    border-left: 3px solid rgba(211, 168, 85, .56);
+    border-top: 1px solid rgba(215, 174, 96, .16);
+    border-bottom: 1px solid rgba(255, 255, 255, .05);
+    border-radius: 0;
+    background:
+      linear-gradient(90deg, rgba(8, 9, 12, .88), rgba(8, 9, 12, .62) 82%, rgba(8, 9, 12, .22));
+    box-shadow: 0 14px 34px rgba(0, 0, 0, .24);
+    backdrop-filter: blur(8px);
+  }
+
+  .puzzle-screen .puzzle-coach-chrome {
+    min-height: 38px;
+    padding: .46rem .65rem;
+    border-bottom: 1px solid rgba(215, 174, 96, .12);
+    background: rgba(8, 9, 12, .72);
+  }
+
+  .puzzle-screen .puzzle-context-drawer,
+  .puzzle-screen .puzzle-progress-details {
+    margin-top: .36rem;
+  }
+}

@@ -45,21 +45,28 @@ with `Cache-Control: public, max-age=31536000, immutable`. A small manifest in G
 
 The repository owns an automatic retention policy for the public asset bucket.
 
-- Target footprint: **7.0 GB**.
-- Soft ceiling: **7.5 GB**.
+- Early-warning threshold: **5.0 GB** (GitHub issue + Actions warning).
+- Cleanup target after pressure: **5.5 GB**.
+- Soft ceiling / new CLI publication guard: **7.0 GB**.
 - Immutable assets receive a **7-day** grace period.
 - Keep one rollback generation per ordinary content-addressed family.
 - Fully unreferenced content-addressed families age out completely after **45 days**.
 - Keep one staging revision and two runtime revisions per revision journal.
 - Old `_smoke/` objects expire after one day.
 - Prefixes explicitly marked `deprecated/` or `_deprecated/` age out after the grace period unless they are still runtime-pinned.
+- The five exact historical Matthias repair inputs use `retention.protectedKeys` (exact object keys), not broad protected prefixes. This preserves any existing archival source with an approved SHA without retaining every unrelated generation in the same directory. They are composed dynamically by Python and may escape literal-URL scanning. An exact pin cannot restore a missing R2 object; historical source recovery is tracked in #5259.
+- The Pawn Slug sprite-smoke CI audits **published runtime** atlas bytes using content-addressed SHA-256, 8×18 geometry, complete frame coverage, and pistol head-cut metrics. It does not automatically republish derived pose-semantics or head-integrity historical generations on routine main pushes. The original head-integrity reconstruction tool remains available for explicit, reviewed archival rebuilds, but its pinned historical R2 sources must first be recovered if missing (tracked in #5259).
 - A single pass is limited to 1,000 objects and 70% of observed bucket bytes.
 
 `scripts/r2_asset_gc.py` inventories R2, protects the reviewed manifest, hard-coded runtime R2 URLs and stable `current.*` aliases, then prunes only safely classified stale objects. Capacity pressure may prune old rollback copies, but never active pins.
 
 The audit report also separates hard-coded URL pins that are referenced by runtime source from objects kept alive only by operational surfaces such as `scripts/`, `e2e/` or `.github/`. That classification is observational only: tooling-only pins remain protected until a dedicated reviewed cleanup explicitly retires them.
 
-`Infra · R2 assets` runs the retention pass daily and when the R2 surface changes on `main`, and publishes a JSON audit report. If the bucket remains above the soft ceiling after safe candidates are exhausted, the job fails closed rather than guessing.
+`Infra · R2 assets` runs the retention pass daily and when the R2 surface changes on `main`, and publishes a JSON audit report and a measured-storage summary. From 5 GB it opens/updates one deduplicated GitHub issue (`[R2] Storage capacity warning`), auto-closing it below 5 GB. At 7 GB remaining after the cleanup pass the governance check fails. The collector always protects active assets and will fail closed if safe candidates are exhausted.
+
+Normal `scripts/r2_asset_publish.py publish` checks the live R2 inventory **before PUT** and rejects uploads projected above 7 GB. Re-uploading an existing content-addressed object counts only the net size difference. In a local emergency, an operator may explicitly use `R2_STORAGE_BUDGET_OVERRIDE=1`; this prints a warning and should never be enabled as a CI default. The check also protects Pawn Slug and Chess Football Godot Web bundles: it budgets the **entire release plus current pointer** before uploading its first object. Other direct/manual R2 upload paths can still bypass admission, so scheduled inventory alerts remain essential. Admission is a preflight, not an atomic cross-workflow reservation; concurrent publishers must still be controlled operationally. A malformed/unavailable inventory blocks the guarded publication rather than assuming free space.
+
+**Billing note:** Cloudflare GB-months are calculated from daily storage measurements, not the instantaneous bucket size; a later cleanup cannot undo an earlier day's high-water mark. The live 5/7 GB thresholds control future growth but cannot guarantee that an already-accumulated billing period remains inside the free allowance.
 
 
 ### Immutable Godot Web bundles

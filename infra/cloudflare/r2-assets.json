@@ -24,8 +24,9 @@
   },
   "retention": {
     "enabled": true,
-    "targetBytes": 7000000000,
-    "softLimitBytes": 7500000000,
+    "warningBytes": 5000000000,
+    "targetBytes": 5500000000,
+    "softLimitBytes": 7000000000,
     "minimumAgeDays": 7,
     "ephemeralMaxAgeDays": 1,
     "keepRollbackPerFamily": 1,
@@ -41,6 +42,13 @@
       "_deprecated/"
     ],
     "protectedPrefixes": [],
+    "protectedKeys": [
+      "pawn-slug-godot/matthias/pose-semantics-v1/pistol/full/matthias-pistol-pose-semantics-v1-2000f78183cea6f5.png",
+      "pawn-slug-godot/matthias/pose-semantics-v1/machinegun/full/matthias-machinegun-pose-semantics-v1-769398f427278c03.png",
+      "pawn-slug-godot/matthias/pose-semantics-v1/shotgun/full/matthias-shotgun-pose-semantics-v1-9d2ed6f7aba558ac.png",
+      "pawn-slug-godot/matthias/pose-semantics-v1/panzerfaust/full/matthias-panzerfaust-pose-semantics-v1-8419aad1ba321249.png",
+      "pawn-slug-godot/matthias/continuity-repair/machinegun/run13/machinegun-run13-repaired-f37fd16c29eb44db.png"
+    ],
     "releaseBundles": [
       {
         "pointerKey": "pawn-slug-godot/current.json",

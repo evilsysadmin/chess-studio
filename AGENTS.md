@@ -133,6 +133,7 @@ El contrato de entrega está en [`docs/auto-merge-delivery.md`](docs/auto-merge-
 - [`docs/visual-assets-r2-flow.md`](docs/visual-assets-r2-flow.md)
 - [`frontend/src/assets/pawnSlug/README.md`](frontend/src/assets/pawnSlug/README.md)
 - [`scripts/art/README.md`](scripts/art/README.md)
+- [`games/chess-football-godot/assets/players/run_directions_v1/README.md`](games/chess-football-godot/assets/players/run_directions_v1/README.md) — canon adicional de las 32 poses de carrera direccional de Football; conserva intacta la vista lateral.
 
 ### Pawn Slug — contratos de escenario
 

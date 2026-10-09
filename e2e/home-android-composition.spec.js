@@ -132,7 +132,7 @@ test('Home Android · portrait usa vestíbulo y reserva 3D para apaisado', async
   }
 });
 
-test('Home Android 3D · apaisado libera el centro entre Matthias y 1v1', async ({ browser }) => {
+test('Home Android 3D · apaisado guarda 1v1 bajo Más y libera el salón', async ({ browser }) => {
   const viewport = { width: 844, height: 390 };
   const context = await browser.newContext({
     viewport,
@@ -150,23 +150,18 @@ test('Home Android 3D · apaisado libera el centro entre Matthias y 1v1', async 
     expect(await page.evaluate(() => window.matchMedia('(pointer: coarse)').matches)).toBe(true);
     await expect(home.locator('.illustrated-home__castle-3d.is-ready')).toBeVisible({ timeout: 15_000 });
 
-    const speech = home.locator('.illustrated-home__speech');
-    const pvp = page.locator('.home-pvp-roster-link:not(.home-pvp-roster-link--menu)');
-    await expect(speech).toBeVisible();
-    await expect(pvp).toBeVisible();
+    const floatingPvp = page.locator('.home-pvp-roster-link:not(.home-pvp-roster-link--menu)');
+    await expect(floatingPvp).toBeHidden();
 
-    const [speechBox, pvpBox] = await Promise.all([
-      speech.boundingBox(),
-      pvp.boundingBox(),
-    ]);
-    expect(speechBox).not.toBeNull();
-    expect(pvpBox).not.toBeNull();
-
-    expect(speechBox.width, 'Matthias speech stays compact').toBeLessThanOrEqual(viewport.width * 0.35);
-    expect(pvpBox.width, '1v1 card stays compact').toBeLessThanOrEqual(viewport.width * 0.45);
-    expect(pvpBox.x - (speechBox.x + speechBox.width), 'central hall corridor').toBeGreaterThanOrEqual(viewport.width * 0.12);
-    expect(speechBox.y + speechBox.height).toBeLessThanOrEqual(viewport.height + 1);
-    expect(pvpBox.y + pvpBox.height).toBeLessThanOrEqual(viewport.height + 1);
+    const more = home.locator('.illustrated-home__play-more');
+    await expect(more).toBeVisible();
+    await more.click();
+    const menuPvp = home.locator('.illustrated-home__play-mobile-pvp .home-pvp-roster-link--menu');
+    await expect(menuPvp).toBeVisible();
+    await expect(menuPvp).toContainText('Jugar 1 vs 1');
+    const box = await menuPvp.boundingBox();
+    expect(box).not.toBeNull();
+    expect(box.height, '1v1 remains touch-safe under Más').toBeGreaterThanOrEqual(44);
   } finally {
     await context.close();
   }
