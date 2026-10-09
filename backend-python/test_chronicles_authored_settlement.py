@@ -11,8 +11,8 @@ def test_swordhaven_style_settlement_does_not_seed_shuffle_paths_or_content():
         "title": "Swordhaven",
         "regionKind": "settlement",
         "layoutMode": "authored",
-        "grid": ["#######", "#.....#", "#.###.#", "#..P..#", "#######"],
-        "partyStart": {"x": 3, "y": 3, "direction": 0},
+        "grid": ["#" * 19] + ["#" + "." * 17 + "#" for _ in range(17)] + ["#" * 19],
+        "partyStart": {"x": 9, "y": 16, "direction": 0},
         "enemies": [],
         "triggers": [],
         "interactables": [
