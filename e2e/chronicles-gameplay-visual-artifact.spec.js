@@ -249,8 +249,9 @@ for (const scene of [
       await expect(game).toHaveAttribute('data-chronicles-turns', String(beforeTurn + 2));
       await expect(game).toHaveAttribute('data-chronicles-phase', 'explore');
       await expect(returnAction).toHaveAttribute('aria-label', 'Regresar a Swordhaven');
-      // Allow the Three.js camera turn interpolation to settle before readback.
-      await page.waitForTimeout(750);
+      // Give the real first-person camera enough rendered frames to settle on
+      // portrait SwiftShader: a half-turned camera clips the entrance plaque.
+      await page.waitForTimeout(1750);
       await page.screenshot({
         path: `${ARTIFACT_DIR}/chronicles-swordhaven-return-portal-${scene.label}.png`,
         animations: 'disabled',
