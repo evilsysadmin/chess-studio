@@ -70,19 +70,32 @@ actual sigue disponible de forma independiente.
 - Guardados versionados, recuperación tras F5, sin cambios destructivos
   sobre partidas rápidas o partidas de Football preexistentes.
 
-### Progresión incremental
+### Progresión incremental (alineada con el backlog vivo #34)
 
-- **Fase 0 · Contratos**: modelo de club, plantilla, calendario, economía y
-  resultados; pruebas deterministas, sin pantalla nueva aún.
-- **Fase 1 · Temporada mínima**: una liga ficticia, varios clubes,
-  clasificación, once inicial, avance de jornada y simulación coherente.
-- **Fase 2 · Partidos vinculados**: entrar al encuentro jugable Godot,
-  finalizarlo y registrar resultado/crónica sin duplicaciones.
-- **Fase 3 · Despacho**: mercado de fichajes, renovaciones, salarios,
-  finanzas, entrenamientos, lesiones y evolución.
-- **Fase 4 · Profundidad**: distintas divisiones, ascensos/descensos,
-  cantera, directiva, patrocinios e instalaciones, sólo después de
-  demostrar que el bucle básico es divertido.
+- **Slice 0 · El veneno de «una jornada más»**: seis clubes ficticios,
+  calendario de ida/vuelta reproducible, motor estadístico con seed
+  inyectable, resultados y clasificación. Sin backend, Web Storage,
+  economía o plantillas persistentes todavía. Primero demostrar que el
+  calendario y la tabla ya enganchan **sin render de partidos**.
+- **Slice 1 · Plantillas y decisiones**: futbolistas con atributos
+  estrictamente futbolísticos, forma, fatiga, moral, edad y potencial;
+  alineaciones y tácticas con consecuencias medibles. Las piezas de
+  ajedrez sólo dan identidad y arquetipos: nunca reglas de movimiento.
+- **Slice 2 · Carrera del mánager**: mercado, contratos, cantera,
+  salarios, economía y temporadas encadenadas sólo después de
+  validar los dos slices anteriores.
+- **Integración Godot en HOLD para el mánager**: el partido Godot ya
+  existe como experiencia separada; enlazarlo al calendario
+  (Jugar/Ver/Simular y un `MatchResult` único) sólo cuando el motor
+  estadístico sea la autoridad y el loop de gestión esté validado.
+- **Profundidad opcional posterior**: divisiones, ascensos/descensos,
+  directiva, patrocinadores e instalaciones; evitar complejidad
+  antes de que las decisiones básicas sean divertidas.
+
+El diseño y la prioridad de estos slices ya viven en
+[Backlog vivo · Chess Studio #34](https://github.com/evilsysadmin/chess-studio/issues/34).
+Este documento precisa el contrato de producto, **no crea una segunda
+hoja de ruta ni autoriza implementarlo todo de golpe**.
 
 ### Límites de UX y arquitectura
 
