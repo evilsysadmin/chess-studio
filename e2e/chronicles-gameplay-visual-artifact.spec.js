@@ -81,6 +81,18 @@ async function openChronicles(page, captureLabel, {
   await chroniclesEntry.click();
   const entry = page.locator('[data-chronicles-save-menu]');
   await expect(entry).toBeVisible({ timeout: 10_000 });
+  if (captureLabel.includes('android-landscape')) {
+    // A 390px-high viewport must show all home actions without hidden scrolling.
+    const returnButton = entry.getByRole('button', { name: 'Volver al castillo', exact: true });
+    await expect(returnButton).toBeVisible();
+    const [buttonBox, panelBox] = await Promise.all([
+      returnButton.boundingBox(), entry.locator('.chronicles-save-menu__panel').boundingBox(),
+    ]);
+    expect(buttonBox, 'landscape exit option has rendered bounds').not.toBeNull();
+    expect(panelBox, 'landscape entry menu has rendered bounds').not.toBeNull();
+    expect(buttonBox.y + buttonBox.height, 'landscape entry menu does not clip the last action')
+      .toBeLessThanOrEqual(Math.min(panelBox.y + panelBox.height, page.viewportSize().height) - 6);
+  }
   await page.screenshot({
     path: `${ARTIFACT_DIR}/chronicles-save-menu-${captureLabel}.png`,
     animations: 'disabled', timeout: 30_000,
