@@ -436,13 +436,21 @@ test('Chronicles · mobile keeps Use separate from Attack · 390x844', async ({ 
 });
 
 
-async function enterCanonicalInitiativeCombat(page, gameRoot) {
+async function enterCanonicalInitiativeCombat(page, gameRoot, { touchForward = false } = {}) {
   // Match the functional Chronicles contract: Hildegard attacks once from the
   // canonical start, then advances into the pawn engagement radius.
   await page.keyboard.press('2');
   await page.keyboard.press('Space');
   await expect(gameRoot).toHaveAttribute('data-chronicles-phase', 'explore');
-  await page.keyboard.press('w');
+  if (touchForward) {
+    // Exercise the actual mobile navigation affordance. Synthetic keyboard W
+    // is not a reliable proxy for the touch path on Chromium mobile contexts.
+    const forward = page.locator('[data-chronicles-touch-action="forward"]');
+    await expect(forward).toBeVisible();
+    await forward.click();
+  } else {
+    await page.keyboard.press('w');
+  }
   await expect(gameRoot).toHaveAttribute('data-chronicles-phase', 'combat');
   await expect(gameRoot).toHaveAttribute('data-chronicles-initiative-die', '1d8');
 }
@@ -474,7 +482,7 @@ test('Chronicles · initiative rail visual · android-390x844', async ({ browser
   try {
     await openChronicles(page, 'initiative-android-390x844');
     const gameRoot = page.locator('[data-chronicles="true"]');
-    await enterCanonicalInitiativeCombat(page, gameRoot);
+    await enterCanonicalInitiativeCombat(page, gameRoot, { touchForward: true });
     const rail = page.locator('[data-chronicles-initiative="visible"]');
     const minimap = page.locator('[data-chronicles-minimap="visible"]');
     await expect(rail).toBeVisible();
