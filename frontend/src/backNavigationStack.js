@@ -37,7 +37,7 @@ export function createBackNavigationStack() {
 
       if (event?.type === 'contextmenu') event.preventDefault?.();
       event?.stopPropagation?.();
-      entry.callbackRef?.current?.();
+      entry.callbackRef?.current?.(event);
       return true;
     },
   };
