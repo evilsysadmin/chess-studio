@@ -44,6 +44,22 @@ test('Chronicles first-person · nueva expedición pide Swordhaven sin alterar T
   await expect(mode.locator('[data-chronicles-renderer="three"] canvas')).toHaveCount(1);
 });
 
+test('Chronicles · Swordhaven → cripta → Swordhaven, desde el teclado y sin cerrar la run', async ({ page }) => {
+  await openChronicles(page, { chroniclesCurrentMapId: 'swordhaven-square', newTown: true });
+  const mode = page.locator('[data-chronicles="true"]');
+  await expect(mode).toHaveAttribute('data-chronicles-map-id', 'swordhaven-square');
+  // The first-person starter faces north: one backwards step crosses the south gate.
+  await page.keyboard.press('ArrowDown');
+  await expect(mode).toHaveAttribute('data-chronicles-map-id', 'crypt-eight-squares', { timeout: 20_000 });
+  await expect(mode).toHaveAttribute('data-chronicles-phase', 'explore');
+  await expect(mode.locator('[data-chronicles-touch-action="interact"]'))
+    .toHaveAttribute('aria-label', 'Regresar a Swordhaven');
+  // The virtual return door is exposed to keyboard and mobile touch alike.
+  await page.keyboard.press('e');
+  await expect(mode).toHaveAttribute('data-chronicles-map-id', 'swordhaven-square', { timeout: 20_000 });
+  await expect(mode).toHaveAttribute('data-chronicles-phase', 'explore');
+});
+
 test('Chronicles creator · recupera el borrador tras F5 sin confirmar progreso', async ({ page }) => {
   const setup = await openChroniclesSetup(page);
   await setup.getByRole('button', { name: 'Crear PJs', exact: true }).click();

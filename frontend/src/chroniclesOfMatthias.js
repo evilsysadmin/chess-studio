@@ -17,6 +17,7 @@ import {
   chroniclesRequirementsMet,
 } from './chronicles/chroniclesContentRuntime.js';
 import { resolveChroniclesCharacterParty } from './chronicles/chroniclesCharacterBuilds.js';
+import { CHRONICLES_SWORDHAVEN_RETURN_PORTAL_ID, chroniclesSwordhavenReturnAvailable } from './chronicles/chroniclesSwordhavenReturnPortal.js';
 
 const DEFAULT_MAP = chroniclesMapById(DEFAULT_CHRONICLES_MAP_ID);
 
@@ -199,6 +200,9 @@ function enterTile(state, x, y) {
 
 export function chroniclesContextualContentAction(state) {
   if (!state || state.phase === 'escaped' || state.phase === 'defeated') return null;
+  if (chroniclesSwordhavenReturnAvailable(state)) {
+    return { id: CHRONICLES_SWORDHAVEN_RETURN_PORTAL_ID, kind: 'exit', label: 'Regresar a Swordhaven' };
+  }
   const map = chroniclesMapForState(state);
   let interaction = chroniclesContentInteractions(
     state,
@@ -240,6 +244,18 @@ export function chroniclesContextualContentAction(state) {
 function resolveContextualContentAction(state) {
   const contextual = chroniclesContextualContentAction(state);
   if (!contextual) return withMessage(state, 'No hay nada útil que manipular aquí. Matthias lo considera una decepción menor.');
+  if (contextual.id === CHRONICLES_SWORDHAVEN_RETURN_PORTAL_ID) {
+    const arrived = chroniclesApplyContentEffects(state, [{
+      type: 'transition-map',
+      mapId: 'swordhaven-square',
+      entryExitId: 'swordhaven-south-gate',
+    }]);
+    return {
+      ...arrived,
+      turns: state.turns + 1,
+      message: 'Las escaleras conducen de nuevo al portón de Swordhaven. Matthias exige una parada en la taberna.',
+    };
+  }
   const map = chroniclesMapForState(state);
   const definition = chroniclesContentDefinition(map, contextual.id);
   if (!definition?.action) return state;

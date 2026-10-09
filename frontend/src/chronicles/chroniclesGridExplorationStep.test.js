@@ -5,6 +5,8 @@ import { chroniclesEnemyCanAttackParty } from '../chroniclesOfMatthiasTurns.js';
 vi.mock('../chroniclesOfMatthias.js', () => ({
   chroniclesReduce: vi.fn((state, action) => action === 'forward'
     ? { ...state, x: state.x + 1 }
+    : action === 'transition'
+      ? { ...state, mapId: 'crypt-eight-squares', x: 1, y: 5 }
     : action === 'blocked'
       ? { ...state, message: 'pared' }
       : { ...state, direction: (state.direction + 1) % 4 }),
@@ -32,6 +34,12 @@ describe('one party tile, one enemy move', () => {
     const next = chroniclesGridExplorationStep(state, 'forward');
     expect(next.x).toBe(2);
     expect(next.enemyPositions).toEqual(state.enemyPositions);
+  });
+  it('does not move destination enemies during an authored area transition', () => {
+    const before = { ...state, mapId: 'swordhaven-square' };
+    const arrived = chroniclesGridExplorationStep(before, 'transition');
+    expect(arrived.mapId).toBe('crypt-eight-squares');
+    expect(arrived.enemyPositions).toEqual(before.enemyPositions);
   });
   it('does not activate an enemy for turning in place', () => {
     expect(chroniclesGridExplorationStep(state, 'turn-right').enemyPositions).toEqual(state.enemyPositions);

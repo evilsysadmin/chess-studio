@@ -35,6 +35,7 @@ async function openChronicles(page, captureLabel, {
   chroniclesCurrentMapId = 'crypt-eight-squares',
   chroniclesWorldFlags = null,
   chroniclesAreaTransform = null,
+  newTown = false,
 } = {}) {
   await mockApi(page, {
     profileSeed: {
@@ -113,7 +114,7 @@ async function openChronicles(page, captureLabel, {
   });
   await editor.getByRole('button', { name: '← Volver', exact: true }).click();
 
-  await confirmChroniclesCharacterSetup(page);
+  await confirmChroniclesCharacterSetup(page, { newTown });
   await expect(page.locator('[data-chronicles="true"]')).toBeVisible();
 }
 
@@ -198,6 +199,77 @@ test('Chronicles · Swordhaven authored world · actual 3D desktop', async ({ br
     await context.close();
   }
 });
+
+// The visual receipt must show both the authored town and the actual return
+// portal, including mobile. Generic crypt screenshots do not prove either.
+for (const scene of [
+  { label: 'desktop-1440x900', width: 1440, height: 900, touch: false },
+  { label: 'android-390x844', width: 390, height: 844, touch: true },
+]) {
+  test(`Chronicles · Swordhaven round trip visual · ${scene.label}`, async ({ browser }) => {
+    test.setTimeout(300_000);
+    await mkdir(ARTIFACT_DIR, { recursive: true });
+    const context = await browser.newContext({
+      viewport: { width: scene.width, height: scene.height },
+      hasTouch: scene.touch,
+      isMobile: scene.touch,
+    });
+    const page = await context.newPage();
+    try {
+      await openChronicles(page, `swordhaven-route-${scene.label}`, {
+        chroniclesCurrentMapId: 'swordhaven-square',
+        newTown: true,
+      });
+      const game = page.locator('[data-chronicles="true"]');
+      const canvas = game.locator('[data-chronicles-renderer="three"] canvas');
+      await expect(game).toHaveAttribute('data-chronicles-map-id', 'swordhaven-square');
+      await expect(canvas).toBeVisible({ timeout: 30_000 });
+      await expect(game.locator('.chronicles-renderer-error')).toHaveCount(0);
+      await page.screenshot({
+        path: `${ARTIFACT_DIR}/chronicles-swordhaven-entry-${scene.label}.png`,
+        animations: 'disabled',
+        timeout: 60_000,
+      });
+
+      // The starting tile is adjacent to the real south gate. Crossing it
+      // must reach the crypt without ending or replacing the current run.
+      await page.keyboard.press('ArrowDown');
+      await expect(game).toHaveAttribute('data-chronicles-map-id', 'crypt-eight-squares', { timeout: 20_000 });
+      await expect(game).toHaveAttribute('data-chronicles-phase', 'explore');
+      const returnAction = game.locator('[data-chronicles-touch-action="interact"]');
+      await expect(returnAction).toHaveAttribute('aria-label', 'Regresar a Swordhaven');
+      await expect(returnAction).toContainText('VOLVER');
+      await expect(canvas).toBeVisible();
+      // The party faces into the crypt, so the real exit arch is naturally
+      // BEHIND them on the entrance wall. Turn around for visual proof rather
+      // than capturing the enemy corridor and calling it a portal screenshot.
+      const beforeTurn = Number(await game.getAttribute('data-chronicles-turns'));
+      await page.keyboard.press('ArrowRight');
+      await page.keyboard.press('ArrowRight');
+      await expect(game).toHaveAttribute('data-chronicles-turns', String(beforeTurn + 2));
+      await expect(game).toHaveAttribute('data-chronicles-phase', 'explore');
+      await expect(returnAction).toHaveAttribute('aria-label', 'Regresar a Swordhaven');
+      // Allow the Three.js camera turn interpolation to settle before readback.
+      await page.waitForTimeout(750);
+      await page.screenshot({
+        path: `${ARTIFACT_DIR}/chronicles-swordhaven-return-portal-${scene.label}.png`,
+        animations: 'disabled',
+        timeout: 60_000,
+      });
+      if (scene.touch) {
+        await expect(returnAction).toBeVisible();
+        await returnAction.tap({ force: true });
+      } else {
+        await page.keyboard.press('e');
+      }
+      await expect(game).toHaveAttribute('data-chronicles-map-id', 'swordhaven-square', { timeout: 20_000 });
+      await expect(game).toHaveAttribute('data-chronicles-phase', 'explore');
+      await expect(game.locator('.chronicles-renderer-error')).toHaveCount(0);
+    } finally {
+      await context.close();
+    }
+  });
+}
 
 for (const capture of CAPTURES) {
   test(`Chronicles · gameplay visual · ${capture.label}`, async ({ browser }) => {
