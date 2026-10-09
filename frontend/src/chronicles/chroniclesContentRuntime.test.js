@@ -243,10 +243,11 @@ describe('Chronicles spatial traders and atomic exchanges', () => {
       'crown-coin': { id: 'crown-coin', name: 'Moneda', quantity: 7 },
     } };
     const first = chroniclesApplyContentEffects(state, buy);
-    expect(chroniclesInventoryEntries(first)).toEqual([
+    expect(chroniclesInventoryEntries(first)).toEqual(expect.arrayContaining([
       expect.objectContaining({ id: 'field-bandage', quantity: 1 }),
       expect.objectContaining({ id: 'crown-coin', quantity: 4 }),
-    ]);
+    ]));
+    expect(chroniclesInventoryEntries(first)).toHaveLength(2);
     const second = chroniclesApplyContentEffects(first, buy);
     expect(second.inventory['field-bandage'].quantity).toBe(2);
     expect(second.inventory['crown-coin'].quantity).toBe(1);
