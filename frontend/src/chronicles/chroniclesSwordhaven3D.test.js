@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import {
   buildSwordhavenScene, createSwordhavenWalkGrid, SWORDHAVEN_BUILDINGS,
   SWORDHAVEN_INTERACTION_CELLS, SWORDHAVEN_GATE_CELL, SWORDHAVEN_SPAWN,
+  swordhavenGrassTexture, createSwordhavenSkyDome,
 } from './chroniclesSwordhaven3D.js';
 
 describe('Swordhaven modular real-time 3D', () => {
@@ -49,6 +50,8 @@ describe('Swordhaven modular real-time 3D', () => {
     });
     expect(scene.background).toBeInstanceOf(THREE.Color);
     expect(scene.getObjectByName('swordhaven-sun')).toBeTruthy();
+    expect(scene.getObjectByName('swordhaven-sky-dome')).toBeTruthy();
+    expect(scene.getObjectByName('grass-terrain').material.map).toBe(swordhavenGrassTexture());
     expect(scene.getObjectByName('chronicles-swordhaven-town')).toBeTruthy();
     expect(scene.getObjectByName('chronicles-first-person-ceiling')).toBeFalsy();
     expect(scene.getObjectByName('swordhaven-fountain')).toBeTruthy();
@@ -73,6 +76,47 @@ describe('Swordhaven modular real-time 3D', () => {
     expect(state.enemyDefinitions).toEqual([]);
     expect(state.spectralChapel.userData).toEqual({});
     expect(state.sceneCenter).toEqual({ x: 9, y: 9 });
+  });
+
+
+  it('tiles deterministic meadow variation rather than painting one solid green', () => {
+    const texture = swordhavenGrassTexture();
+    expect(texture).toBe(swordhavenGrassTexture()); // One bounded allocation across runs.
+    expect(texture).toBeInstanceOf(THREE.DataTexture);
+    expect(texture.colorSpace).toBe(THREE.SRGBColorSpace);
+    expect(texture.wrapS).toBe(THREE.RepeatWrapping);
+    expect(texture.wrapT).toBe(THREE.RepeatWrapping);
+    expect(texture.repeat.x).toBeGreaterThan(1);
+    const rgba = texture.image.data;
+    expect(rgba).toHaveLength(128 * 128 * 4);
+    const grassTones = new Set();
+    for (let index = 0; index < rgba.length; index += 4) {
+      grassTones.add([rgba[index], rgba[index + 1], rgba[index + 2]].join('/'));
+      expect(rgba[index + 3]).toBe(255);
+    }
+    expect(grassTones.size).toBeGreaterThan(200);
+  });
+
+  it('keeps the skydome horizon and visible sun fixed when the party turns or walks', () => {
+    const sun = new THREE.Vector3(-28, 26, -90).normalize();
+    const sky = createSwordhavenSkyDome(sun);
+    expect(sky.name).toBe('swordhaven-sky-dome');
+    expect(sky.material.side).toBe(THREE.BackSide);
+    expect(sky.material.vertexColors).toBe(true);
+    expect(sky.getObjectByName('swordhaven-sun-disc')).toBeTruthy();
+    expect(sky.getObjectByName('swordhaven-sun-halo')).toBeTruthy();
+    const discDirection = sky.getObjectByName('swordhaven-sun-disc').position.clone().normalize();
+    expect(discDirection.distanceTo(sun)).toBeLessThan(1e-6);
+    const camera = new THREE.PerspectiveCamera();
+    camera.position.set(12, 1.62, -16);
+    sky.onBeforeRender(null, null, camera);
+    expect(sky.position.equals(camera.position)).toBe(true);
+    camera.position.set(-17, 1.62, 25);
+    camera.rotation.y = Math.PI;
+    sky.onBeforeRender(null, null, camera);
+    expect(sky.position.equals(camera.position)).toBe(true);
+    expect(sky.getObjectByName('swordhaven-sun-disc').position.clone().normalize().distanceTo(sun))
+      .toBeLessThan(1e-6);
   });
 
   it('renders storefronts without exposing fake shop interactions before they are authored', () => {
