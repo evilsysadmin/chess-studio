@@ -119,10 +119,12 @@ function interactionFromEntry(state, entry, tileAt) {
     };
   }
   if (!onCurrentCell(state, entry, tileAt)) return null;
+  const locked = !chroniclesRequirementsMet(state, entry.requirements);
   return {
     id: entry.id,
     kind: entry.kind,
-    label: entry.label,
+    label: locked ? (entry.lockedLabel || entry.label) : entry.label,
+    locked,
     x: entry.x ?? state.x,
     y: entry.y ?? state.y,
   };
@@ -173,6 +175,29 @@ function consumeItem(state, effect) {
   if (quantity > 0) nextInventory[effect.itemId] = { ...current, quantity };
   else delete nextInventory[effect.itemId];
   return { ...state, inventory: nextInventory };
+}
+
+// A trade is one indivisible exchange, not two loosely chained effects.
+// The currency can be any ordinary inventory item (coins, tokens or quest
+// vouchers), so it round-trips through existing versioned checkpoints.
+function exchangeItem(state, effect) {
+  const costId = effect.costItemId;
+  const rewardId = effect.itemId;
+  const price = Number(effect.costQuantity ?? 1);
+  const quantity = Number(effect.quantity ?? 1);
+  if (typeof costId !== 'string' || !costId || typeof rewardId !== 'string' || !rewardId
+    || costId === rewardId || !Number.isSafeInteger(price) || price < 1
+    || !Number.isSafeInteger(quantity) || quantity < 1) return state;
+
+  const inventory = inventoryFor(state);
+  const balance = positiveQuantity(inventory[costId]?.quantity, 0);
+  const rewardBalance = positiveQuantity(inventory[rewardId]?.quantity, 0);
+  if (balance < price || rewardBalance + quantity > 9999) return state;
+
+  return grantItem(
+    consumeItem(state, { itemId: costId, quantity: price }),
+    { ...effect, quantity },
+  );
 }
 
 function updateQuest(state, effect, status) {
@@ -227,6 +252,7 @@ export function chroniclesApplyContentEffects(state, effects, adapters = {}) {
     }
     if (effect.type === 'grant-item') return grantItem(next, effect);
     if (effect.type === 'consume-item') return consumeItem(next, effect);
+    if (effect.type === 'exchange-item') return exchangeItem(next, effect);
     if (effect.type === 'start-quest') return updateQuest(next, effect, 'active');
     if (effect.type === 'advance-quest') return updateQuest(next, effect, 'active');
     if (effect.type === 'complete-quest') return updateQuest(next, effect, 'completed');
