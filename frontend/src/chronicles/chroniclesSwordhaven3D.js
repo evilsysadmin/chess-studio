@@ -48,6 +48,111 @@ const material = (color, extra = {}) => new THREE.MeshStandardMaterial({
   color, roughness: 0.86, metalness: 0.03, ...extra,
 });
 
+
+let cachedGrassTexture = null;
+
+// Reusable, deterministic meadow texture. Smooth patches and fine grain break
+// the solid-green prototype look without any external image or canvas.
+export function swordhavenGrassTexture() {
+  if (cachedGrassTexture) return cachedGrassTexture;
+  const size = 128;
+  const pixels = new Uint8Array(size * size * 4);
+  const hash = (x, y) => {
+    let value = Math.imul(x + 113, 0x1f123bb5) ^ Math.imul(y + 397, 0x5f356495);
+    value ^= value >>> 13;
+    value = Math.imul(value, 0x85ebca6b);
+    return ((value ^ (value >>> 16)) >>> 0) / 0xffffffff;
+  };
+  const noise = (x, y, cells) => {
+    const u = x * cells / size;
+    const v = y * cells / size;
+    const x0 = Math.floor(u);
+    const y0 = Math.floor(v);
+    const fx = (u - x0) ** 2 * (3 - 2 * (u - x0));
+    const fy = (v - y0) ** 2 * (3 - 2 * (v - y0));
+    const sample = (dx, dy) => hash((x0 + dx) % cells, (y0 + dy) % cells);
+    const a = sample(0, 0) * (1 - fx) + sample(1, 0) * fx;
+    const b = sample(0, 1) * (1 - fx) + sample(1, 1) * fx;
+    return a * (1 - fy) + b * fy;
+  };
+  for (let y = 0; y < size; y += 1) {
+    for (let x = 0; x < size; x += 1) {
+      const meadow = noise(x, y, 5) - 0.5;
+      const clover = noise(x, y, 17) - 0.5;
+      const grain = hash(x, y) - 0.5;
+      const warmth = meadow * 35 + clover * 15 + grain * 13;
+      const index = (y * size + x) * 4;
+      pixels[index] = Math.round(103 + warmth * 0.9 + clover * 15);
+      pixels[index + 1] = Math.round(127 + warmth);
+      pixels[index + 2] = Math.round(73 + warmth * 0.57 + meadow * 11);
+      pixels[index + 3] = 255;
+    }
+  }
+  const texture = new THREE.DataTexture(pixels, size, size, THREE.RGBAFormat);
+  texture.name = 'swordhaven-meadow-grass-texture';
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+  texture.repeat.set(7, 7);
+  texture.magFilter = THREE.LinearFilter;
+  texture.minFilter = THREE.LinearMipmapLinearFilter;
+  texture.generateMipmaps = true;
+  texture.needsUpdate = true;
+  cachedGrassTexture = texture;
+  return texture;
+}
+
+// The dome moves with the camera but never rotates with it: the sun stays in
+// the same compass direction and the horizon remains stable while walking.
+export function createSwordhavenSkyDome(sunDirection) {
+  const geometry = new THREE.SphereGeometry(62, 64, 32);
+  const coords = geometry.getAttribute('position');
+  const colors = [];
+  const direction = new THREE.Vector3();
+  const zenith = new THREE.Color(0x65a6d0);
+  const horizon = new THREE.Color(0xb8dce9);
+  const warm = new THREE.Color(0xffe4b0);
+  const color = new THREE.Color();
+  for (let i = 0; i < coords.count; i += 1) {
+    direction.fromBufferAttribute(coords, i).normalize();
+    const altitude = THREE.MathUtils.smoothstep(direction.y, -0.08, 0.75);
+    const sunlight = Math.pow(Math.max(direction.dot(sunDirection), 0), 30) * 0.54;
+    color.copy(horizon).lerp(zenith, altitude).lerp(warm, sunlight);
+    colors.push(color.r, color.g, color.b);
+  }
+  geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+  const sky = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial({
+    color: 0xffffff, side: THREE.BackSide, vertexColors: true,
+    fog: false, toneMapped: false, depthWrite: false,
+  }));
+  sky.name = 'swordhaven-sky-dome';
+  sky.renderOrder = -100;
+  sky.frustumCulled = false;
+  const solarFacing = new THREE.Quaternion().setFromUnitVectors(
+    new THREE.Vector3(0, 0, 1), sunDirection,
+  );
+  for (const [name, radius, opacity, order] of [
+    ['swordhaven-sun-halo', 5.6, 0.22, -99],
+    ['swordhaven-sun-disc', 1.45, 1, -98],
+  ]) {
+    const glow = new THREE.Mesh(new THREE.CircleGeometry(radius, 32),
+      new THREE.MeshBasicMaterial({
+        color: name === 'swordhaven-sun-disc' ? 0xfff8db : 0xffdfb2,
+        transparent: opacity < 1, opacity, depthWrite: false,
+        depthTest: true, fog: false, toneMapped: false, side: THREE.DoubleSide,
+      }));
+    glow.name = name;
+    glow.renderOrder = order;
+    glow.position.copy(sunDirection).multiplyScalar(name === 'swordhaven-sun-disc' ? 57.5 : 59);
+    glow.quaternion.copy(solarFacing);
+    sky.add(glow);
+  }
+  sky.onBeforeRender = (_renderer, _scene, camera) => {
+    sky.position.copy(camera.position);
+    sky.updateMatrixWorld();
+  };
+  return sky;
+}
+
 function mesh(group, geometry, mat, name, position, shadow = false) {
   const piece = new THREE.Mesh(geometry, mat);
   piece.name = name;
@@ -312,13 +417,15 @@ export function buildSwordhavenScene(scene, { scenePlan = {}, coarsePointer = fa
   const center = scenePlan.center || { x: 9, y: 9 };
   const width = Math.max(19, Number(scenePlan.width) || 19);
   const height = Math.max(19, Number(scenePlan.height) || 19);
-  scene.background = new THREE.Color(0x88c8ef);
-  scene.fog = new THREE.Fog(0xa6d8f1, 48, Math.max(width, height) * CELL * 0.98);
+  scene.background = new THREE.Color(0xb8dce9); // Fallback if WebGL cannot render the dome.
+  scene.fog = new THREE.Fog(0xb8dce9, 48, Math.max(width, height) * CELL * 0.98);
+  const sunDirection = new THREE.Vector3(-28, 26, -90).normalize();
+  scene.add(createSwordhavenSkyDome(sunDirection));
   const skylight = new THREE.HemisphereLight(0xd7ebff, 0x688258, 1.45);
   scene.add(skylight);
   const sun = new THREE.DirectionalLight(0xffedd1, coarsePointer ? 1.2 : 1.65);
   sun.name = 'swordhaven-sun';
-  sun.position.set(-26, 42, -22);
+  sun.position.copy(sunDirection).multiplyScalar(98);
   sun.castShadow = !coarsePointer;
   if (!coarsePointer) {
     sun.shadow.mapSize.set(1024, 1024);
@@ -332,7 +439,7 @@ export function buildSwordhavenScene(scene, { scenePlan = {}, coarsePointer = fa
   root.name = 'chronicles-swordhaven-town';
   scene.add(root);
   const mats = {
-    grass: material(0x668850), cobble: material(0x9d9588),
+    grass: material(0xffffff, { map: swordhavenGrassTexture(), roughness: 0.98 }), cobble: material(0x9d9588),
     stone: material(0x989084), plaster: material(0xd7c2a3),
     timber: material(0x59412f), gold: material(0xd6ae67, { metalness: 0.48 }),
     window: material(0xf8b96e, { emissive: 0x925124, emissiveIntensity: 0.45 }),
