@@ -15,6 +15,10 @@ const STAMINA_RECOVER_IDLE_PER_SECOND := 26.0
 const STAMINA_RECOVER_THRESHOLD := 24.0
 const AI_SPRINT_INTENSITY := 0.94
 const AI_EXHAUSTED_INTENSITY_CAP := 0.82
+# Keepers need a sharp lateral shuffle to react to a shot. Outfield movement,
+# dribbling and the penalty keeper's separately controlled speed are unchanged.
+const KEEPER_AI_SPEED_MULTIPLIER := 1.65
+const KEEPER_AI_ACCELERATION_MULTIPLIER := 1.50
 const TACKLE_ACTIVE_SECONDS := 0.18
 const SLIDE_TACKLE_ACTIVE_SECONDS := 0.24
 const DRIBBLE_BURST_SECONDS := 0.22
@@ -167,8 +171,11 @@ func move_ai(delta: float, target: Vector2, intensity: float = 1.0) -> void:
 		recovery_scale *= 0.32
 	var desired := Vector2.ZERO
 	if moving:
-		desired = offset.normalized() * base_speed * effective_intensity * recovery_scale
+		var keeper_boost := KEEPER_AI_SPEED_MULTIPLIER if role == "keeper" else 1.0
+		desired = offset.normalized() * base_speed * effective_intensity * recovery_scale * keeper_boost
 	var acceleration := MOVE_ACCELERATION if desired.length_squared() > 0.001 else MOVE_DECELERATION
+	if role == "keeper":
+		acceleration *= KEEPER_AI_ACCELERATION_MULTIPLIER
 	velocity = velocity.move_toward(desired, acceleration * delta)
 	if velocity.length() < 1.0:
 		velocity = Vector2.ZERO
