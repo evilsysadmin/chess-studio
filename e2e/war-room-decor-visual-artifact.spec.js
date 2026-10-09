@@ -122,18 +122,55 @@ function clipFromRatio(scene, viewport, { x, y, width, height, scale = 1 }) {
   };
 }
 
-async function captureSceneOnce(context, page, clip) {
-  const session = await context.newCDPSession(page);
-  try {
-    const { data } = await session.send('Page.captureScreenshot', {
-      format: 'png',
-      fromSurface: true,
-      captureBeyondViewport: false,
-      clip: { ...clip, scale: 1 },
+async function captureSceneOnce(page, clip) {
+  // CDP's direct Page.captureScreenshot can omit a live WebGL layer under
+  // headless SwiftShader while still capturing HUD/overlays. Match the proven
+  // War Room core visual path: snapshot the preserved drawing buffer into a
+  // temporary DOM image INSIDE the 3D shell, then capture one composed frame.
+  // Keep the pixel-coverage assertion below: an actually black canvas is a
+  // hard failure, never an acceptable visual artifact.
+  const staged = await page.evaluate(() => {
+    const canvases = [...document.querySelectorAll('canvas.board3d-main-canvas')];
+    return canvases.map((canvas, index) => {
+      const rect = canvas.getBoundingClientRect();
+      const shell = canvas.closest('.board3d-main-shell');
+      const shellRect = shell?.getBoundingClientRect();
+      const image = document.createElement('img');
+      image.src = canvas.toDataURL('image/png');
+      image.alt = '';
+      image.dataset.warRoomWebglCapture = String(index);
+      Object.assign(image.style, {
+        position: shell ? 'absolute' : 'fixed',
+        left: `${shellRect ? rect.left - shellRect.left : rect.left}px`,
+        top: `${shellRect ? rect.top - shellRect.top : rect.top}px`,
+        width: `${rect.width}px`,
+        height: `${rect.height}px`,
+        zIndex: '1',
+        pointerEvents: 'none',
+        objectFit: 'fill',
+      });
+      (shell || document.body).appendChild(image);
+      return image.dataset.warRoomWebglCapture;
     });
-    return data;
+  });
+  try {
+    if (staged.length) {
+      await page.waitForFunction(
+        () => [...document.querySelectorAll('img[data-war-room-webgl-capture]')]
+          .every((image) => image.complete && image.naturalWidth > 0),
+      );
+    }
+    const png = await page.screenshot({
+      clip: { x: clip.x, y: clip.y, width: clip.width, height: clip.height },
+      animations: 'disabled',
+      caret: 'hide',
+      fullPage: false,
+    });
+    return png.toString('base64');
   } finally {
-    await session.detach();
+    await page.evaluate(() => {
+      document.querySelectorAll('img[data-war-room-webgl-capture]').forEach((image) => image.remove());
+    });
   }
 }
 
@@ -242,7 +279,7 @@ for (const profile of PROFILES) {
 
       const sceneCapture = captures.find(({ name }) => name === 'scene');
       if (!sceneCapture) throw new Error('War Room scene capture definition missing');
-      const scenePng = await captureSceneOnce(context, page, sceneCapture.clip);
+      const scenePng = await captureSceneOnce(page, sceneCapture.clip);
       // A visible WebGL canvas can still be an unrendered black buffer: refuse
       // golden evidence unless the board region contains actual scene pixels.
       const sceneCoverage = await renderedBoardCoverage(page, scenePng);
