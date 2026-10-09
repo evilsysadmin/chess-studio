@@ -34,7 +34,7 @@ export default function ChroniclesNarratorOverlay({ message }) {
     <aside className="chronicles-dm-overlay" aria-live="polite" aria-atomic="true">
       <span className="chronicles-dm-sigil" aria-hidden="true">✦</span>
       <div>
-        <span className="chronicles-dm-kicker">CRÓNICA DE LA CRIPTA</span>
+        <span className="chronicles-dm-kicker">CRÓNICA DE EXPEDICIÓN</span>
         <p>{message}</p>
       </div>
     </aside>
