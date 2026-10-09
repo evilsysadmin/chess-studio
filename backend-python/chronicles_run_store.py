@@ -378,7 +378,7 @@ async def list_active_runs(owner: str, *, limit: int = 30) -> list[dict[str, Any
             return [_save_summary(row) for row in rows[:limit]]
     try:
         cursor = collection.find(
-            {"owner": owner, "status": "active"},
+            {"owner": owner, "$or": [{"status": "active"}, {"status": {"$exists": False}}]},
             {"_id": 1, "currentMapId": 1, "status": 1, "worldVersion": 1, "updatedAt": 1},
         ).sort("updatedAt", -1).limit(limit)
         return [_save_summary(row) async for row in cursor]
