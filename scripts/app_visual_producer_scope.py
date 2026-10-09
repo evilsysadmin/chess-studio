@@ -480,6 +480,16 @@ def classify_path(path: str) -> set[str] | None:
     if lower in TRAINING_EXACT_PRODUCERS:
         return set(TRAINING_EXACT_PRODUCERS[lower])
 
+    if lower in {
+        "frontend/src/chronicles/chroniclesrunclient.js",
+        "frontend/src/chronicles/chroniclesrunidentity.js",
+    }:
+        # Owner-scoped IDs and authenticated transport never paint the scene;
+        # functional save/restore/ownership tests are their quality gate.
+        return set()
+    if lower == "frontend/src/components/chroniclessavemenu.jsx":
+        # The save book belongs exclusively to first-person Chronicles.
+        return {"chronicles-gameplay"}
     if "chronicles" in lower:
         if "tactics" in lower or "isometric" in lower:
             return {"chronicles-tactics"}
@@ -876,6 +886,10 @@ def self_test() -> None:
     assert classify([".github/workflows/app-visual-artifact.yml"]) == "none"
     assert classify(["frontend/src/chroniclesOfMatthiasIsometric.js"]) == "chronicles-tactics"
     assert classify(["frontend/src/components/ChroniclesOfMatthiasTactics.jsx"]) == "chronicles-tactics"
+    assert classify(["frontend/src/components/ChroniclesSaveMenu.jsx"]) == "chronicles-gameplay"
+    assert classify(["frontend/src/chronicles/chroniclesRunClient.js"]) == "none"
+    assert classify(["frontend/src/chronicles/chroniclesRunIdentity.js"]) == "none"
+    assert classify(["frontend/src/chronicles/chroniclesGameBootstrap.js"]) == "chronicles-tactics,chronicles-gameplay"
     assert classify(["frontend/src/chroniclesDungeon.js"]) == "chronicles-gameplay"
     assert classify(["frontend/src/experimentalThreeRenderer.js"]) == "chronicles-tactics,chronicles-gameplay"
     assert classify(["frontend/src/components/LabScreen.jsx"]) == "experiments-hub"

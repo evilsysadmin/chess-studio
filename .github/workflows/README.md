@@ -243,3 +243,9 @@ El objetivo no es tener el mínimo número de YAML, sino **mínimo estado, míni
 ## Interruptor temporal de producción
 
 `.github/production-deploy.env` contiene un único `DEPLOY_TARGET=render|oci`. Es deliberadamente distinto de `DEPLOY_ENV`: ambos targets ejecutan producción y usan la configuración/BD de producción. El workflow valida el archivo antes de cualquier mutación. El CNAME público del API ya no pertenece a Terraform; `scripts/oci_production_tunnel.py` lo conmuta sólo después de acreditar el SHA exacto en el target elegido. El rollback de producción siempre restaura primero la ruta del API a Render.
+
+## Chronicles vs. Tactics · deuda visual independiente
+
+Chronicles y Tactics tienen productores, artifacts y workflows visuales distintos. Las modificaciones a la pantalla de guardados de Chronicles, el transporte HTTP del catálogo y la identidad local de expediciones no activan capturas Tactics. Los cambios estrictamente auditados de cableado de GET para recuperar una run en el bootstrap compartido y en el shell Tactics se normalizan como **no visuales** sólo si todas sus líneas modificadas pertenecen al allowlist exacto de `scripts/app_visual_changed_files.py`.
+
+Una edición nueva de JSX, mapa, renderer, scene, lógica de mundo fuera de ese allowlist, diff ilegible o path desconocido **restablece fail-closed** el gate visual Tactics. Pruebas de estado/contrato y Quality siguen siendo obligatorias en los cambios compartidos; no se relajan por esta separación. Las excepciones se comprueban en los self-tests de los clasificadores.

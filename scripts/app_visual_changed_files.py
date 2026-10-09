@@ -17,6 +17,38 @@ import sys
 MATTHIAS_MODEL = "frontend/public/models/matthias-home-canonical.glb"
 MATTHIAS_BLEND = "frontend/art-source/matthias-home-canonical.blend"
 CHRONICLES_PARTY_MODEL = "frontend/public/models/chronicles-tactics-party.glb"
+CHRONICLES_BOOTSTRAP_OWNER = "frontend/src/chronicles/chroniclesGameBootstrap.js"
+TACTICS_REMOTE_RUN_SHELL = "frontend/src/components/ChroniclesOfMatthiasTactics.jsx"
+
+# Narrowly scoped persistence/bootstrap wiring does not change the rendered
+# Tactics scene. This is an exact-diff allowlist, NOT an exemption for Tactics.
+# Changes to JSX, scene lifecycle or an unknown bootstrap line fail closed.
+NONVISUAL_TACTICS_REMOTE_RUN_LINES = {
+    "import { chroniclesRunEntryMapId } from '../chronicles/chroniclesRunIdentity.js';",
+    "import {",
+    "chroniclesRunEntryMapId,",
+    "chroniclesSelectedRunIsRemote,",
+    "chroniclesMarkSavedRunRemote,",
+    "} from '../chronicles/chroniclesRunIdentity.js';",
+    "const remoteSelection = chroniclesSelectedRunIsRemote('tactics', operationId);",
+    "resumeRunId: remoteSelection ? operationId : null,",
+    "chroniclesMarkSavedRunRemote('tactics', operationId);",
+    "if (error?.status === 409 && !staleRunRecoveryAttemptedRef.current) {",
+    "if (error?.status === 409 && !remoteSelection && !staleRunRecoveryAttemptedRef.current) {",
+}
+NONVISUAL_CHRONICLES_SAVE_BOOTSTRAP_LINES = {
+    "import { chroniclesCreateRun } from './chroniclesRunClient.js';",
+    "import { chroniclesCreateRun, chroniclesReadRunBootstrap } from './chroniclesRunClient.js';",
+    "resumeRunId = null,",
+    "readRun = chroniclesReadRunBootstrap,",
+    ".then(() => createRun(mapId, requestOptions))",
+    ".then((payload) => ({ ok: true, value: validateAuthoritativeRun(payload, mapId) }))",
+    ".then(() => resumeRunId",
+    "? readRun(resumeRunId, { signal: requestController.signal })",
+    ": createRun(mapId, requestOptions))",
+    ".then((payload) => ({ ok: true, value: validateAuthoritativeRun(payload, resumeRunId ? null : mapId) }))",
+}
+
 CHRONICLES_PARTY_BUILDER = "scripts/blender/build_chronicles_tactics_party.py"
 PAWN_SLUG_OWNER = "frontend/src/components/PawnSlugGodotHost.jsx"
 CHESS_FOOTBALL_OWNER = "frontend/src/components/ChessFootballGodotHost.jsx"
@@ -753,6 +785,20 @@ def normalize(
     normalized: list[str] = []
     seen: set[str] = set()
     lower_paths = {raw.strip().replace("\\", "/").lower() for raw in paths if raw.strip()}
+    safe_tactics_remote_run = (
+        TACTICS_REMOTE_RUN_SHELL.lower() in lower_paths
+        and _is_exact_routing_diff(
+            _git_diff_text(base_sha, head_sha, TACTICS_REMOTE_RUN_SHELL),
+            NONVISUAL_TACTICS_REMOTE_RUN_LINES,
+        )
+    )
+    safe_chronicles_save_bootstrap = (
+        CHRONICLES_BOOTSTRAP_OWNER.lower() in lower_paths
+        and _is_exact_routing_diff(
+            _git_diff_text(base_sha, head_sha, CHRONICLES_BOOTSTRAP_OWNER),
+            NONVISUAL_CHRONICLES_SAVE_BOOTSTRAP_LINES,
+        )
+    )
     safe_training_route_app = (
         PUZZLE_SCREEN_OWNER.lower() in lower_paths
         and _is_training_route_app_diff(_git_diff_text(base_sha, head_sha, APP_SHELL))
@@ -810,6 +856,10 @@ def normalize(
         if not path:
             continue
         lower = path.lower()
+        if lower == TACTICS_REMOTE_RUN_SHELL.lower() and safe_tactics_remote_run:
+            continue
+        if lower == CHRONICLES_BOOTSTRAP_OWNER.lower() and safe_chronicles_save_bootstrap:
+            continue
         if lower == APP_SHELL.lower() and safe_school_preload_app:
             add(SCHOOL_PRELOAD_OWNER)
             continue
@@ -889,6 +939,28 @@ def self_test() -> None:
     pawn_slug_pow_sources = [PAWN_SLUG_POW_BLEND, PAWN_SLUG_POW_MODEL, PAWN_SLUG_POW_BUILDER]
     assert normalize(pawn_slug_pow_sources) == [PAWN_SLUG_OWNER]
     assert normalize(["scripts/unknown_visual_owner.py"]) == ["scripts/unknown_visual_owner.py"]
+    # Pure remote-save plumbing never starts the 3D Tactics capture. A visual
+    # JSX edit in the same file, a missing Git diff, or an unknown bootstrap
+    # change restores the original Tactics producer (fail closed).
+    from unittest.mock import patch
+    tactics_line = next(line for line in NONVISUAL_TACTICS_REMOTE_RUN_LINES if "remoteSelection = " in line)
+    bootstrap_line = next(line for line in NONVISUAL_CHRONICLES_SAVE_BOOTSTRAP_LINES if "resumeRunId = " in line)
+    def test_diff(_base, _head, path):
+        line = tactics_line if path == TACTICS_REMOTE_RUN_SHELL else bootstrap_line
+        return f"@@ -1,0 +1 @@\\n+{line}\\n"
+    with patch.object(sys.modules[__name__], "_git_diff_text", side_effect=test_diff):
+        assert normalize([TACTICS_REMOTE_RUN_SHELL, CHRONICLES_BOOTSTRAP_OWNER], base_sha="base", head_sha="head") == []
+    def visual_diff(_base, _head, path):
+        if path == TACTICS_REMOTE_RUN_SHELL:
+            return f"@@ -1,0 +1 @@\\n+{tactics_line}\\n+<div className='new-scene' />\\n"
+        return f"@@ -1,0 +1 @@\\n+{bootstrap_line}\\n+const newMap = 'changed';\\n"
+    with patch.object(sys.modules[__name__], "_git_diff_text", side_effect=visual_diff):
+        assert normalize([TACTICS_REMOTE_RUN_SHELL, CHRONICLES_BOOTSTRAP_OWNER], base_sha="base", head_sha="head") == [
+            TACTICS_REMOTE_RUN_SHELL, CHRONICLES_BOOTSTRAP_OWNER,
+        ]
+    assert normalize([TACTICS_REMOTE_RUN_SHELL, CHRONICLES_BOOTSTRAP_OWNER]) == [
+        TACTICS_REMOTE_RUN_SHELL, CHRONICLES_BOOTSTRAP_OWNER,
+    ]
     exact_school_diff = (
         "--- a/frontend/src/App.jsx\n+++ b/frontend/src/App.jsx\n@@ -1 +1 @@\n"
         "-const Tutorial = React.lazy(() => import('./components/Tutorial.jsx'));\n"
