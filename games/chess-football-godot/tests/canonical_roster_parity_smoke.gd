@@ -13,6 +13,16 @@ func _initialize() -> void:
 	match_node.set_physics_process(false)
 	var presenter: ChessFootball3DPresenter = match_node.presentation_3d
 	assert(presenter != null)
+	# Intentional asymmetric size trim is restricted to running diagonals.
+	for name in [&"run", &"sprint", &"run_front", &"run_back",
+		&"sprint_front", &"sprint_back", &"pass", &"shoot"]:
+		assert(ChessFootball3DPresenter.view_compensation(name) == Vector2.ONE)
+	for name in [&"run_front_diagonal", &"run_back_diagonal",
+		&"sprint_front_diagonal", &"sprint_back_diagonal"]:
+		assert(
+			ChessFootball3DPresenter.view_compensation(name)
+			== Vector2(0.91, 0.94)
+		)
 	var directions := [
 		Vector2.RIGHT, Vector2.LEFT, Vector2.UP, Vector2.DOWN,
 		Vector2(1, 1).normalized(), Vector2(-1, 1).normalized(),
@@ -38,6 +48,16 @@ func _initialize() -> void:
 					assert(sprite != null)
 					assert(sprite.animation == expected)
 					_assert_same_canonical_body(sprite)
+					var base_scale: float = presenter._canonical_body_scale(sprite)
+					var normalized_width := sprite.scale.x / base_scale
+					var normalized_height := sprite.scale.y / base_scale
+					if String(expected).ends_with("_diagonal"):
+						# Real runtime scale, not merely the constant helper.
+						assert(normalized_width >= 0.85 and normalized_width <= 0.94)
+						assert(normalized_height >= 0.93 and normalized_height <= 0.99)
+					else:
+						assert(normalized_width >= 0.94 and normalized_width <= 1.05)
+						assert(normalized_height >= 1.00 and normalized_height <= 1.07)
 		# Actions should not unexpectedly replace a raster player with the
 		# legacy SVG body. The existing action timing/controls remain untouched.
 		for action in ["pass", "shoot", "tackle", "celebrate"]:
