@@ -16,6 +16,20 @@ function clearedGallery(overrides = {}) {
 }
 
 describe('Chronicles first-person authored content', () => {
+  it('crosses the Swordhaven south gate into a real explorable crypt, not a terminal victory', () => {
+    const atTown = createChroniclesState('swordhaven-square');
+    expect(atTown.phase).toBe('explore');
+    expect(atTown.swordhavenArrived).toBe(true);
+    // The canonical spawn faces north; stepping backward reaches the south gate.
+    const crossed = chroniclesReduce(atTown, 'backward');
+    expect(crossed.mapId).toBe('crypt-eight-squares');
+    expect(crossed.phase).toBe('explore');
+    expect({ x: crossed.x, y: crossed.y }).toEqual({ x: 1, y: 5 });
+    expect(crossed.swordhavenArrived).toBe(true);
+    expect(crossed.turns).toBeGreaterThan(atTown.turns);
+  });
+
+
   it('guides the Gallery through lever, relic and only then the exit', () => {
     const beforeLever = clearedGallery();
     expect(chroniclesObjective(beforeLever)).toBe('Bajar contrapeso');
