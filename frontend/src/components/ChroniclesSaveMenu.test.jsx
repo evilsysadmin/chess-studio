@@ -38,12 +38,17 @@ describe('Chronicles expedition entry', () => {
   });
 
   it('names authored wilderness and campaign Swordhaven in saved run listings', () => {
-    const html = menu([
+    // The home screen only renders the most recent resumable run. Check
+    // each location as the selected run rather than expecting both in one
+    // server-rendered home screen (the full catalog is a separate view).
+    const road = menu([
       { id: 'road-1', title: 'Primera pista', currentMapId: 'banner-road', updatedAt: 1_760_000_000_000 },
+    ]);
+    const town = menu([
       { id: 'town-1', title: 'Inicio', currentMapId: 'swordhaven-campaign', updatedAt: 1_760_000_000_000 },
     ]);
-    expect(html).toContain('Camino de los Estandartes');
-    expect(html).toContain('Swordhaven · Campaña');
+    expect(road).toContain('Camino de los Estandartes');
+    expect(town).toContain('Swordhaven · Campaña');
   });
 
   it('shows an explicit retry only for failed catalog sync, disabled while busy', () => {
