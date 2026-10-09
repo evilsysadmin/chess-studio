@@ -175,3 +175,35 @@ describe('Chronicles content runtime', () => {
     ])).toBe(true);
   });
 });
+
+
+// Campaign gates use x/y coordinates so there is no arbitrary marker tile.
+// They remain usable from the adjacent tile (or on arrival), but not through
+// solid geometry or from a diagonal.
+describe('Chronicles authored overworld coordinate gates', () => {
+  const gate = {
+    id: 'road-west-gate', kind: 'exit', x: 2, y: 1,
+    requiresReturn: true, openLabel: 'Volver al pueblo',
+    lockedLabel: 'Camino cerrado',
+    requirements: [{ key: 'routeUnlocked', equals: true, message: 'Necesitas la autorización.' }],
+    action: { effects: [{ type: 'transition-map', mapId: 'swordhaven-campaign' }] },
+  };
+  const map = { triggers: [], interactables: [], treasures: [], traps: [], exits: [gate] };
+  const floor = (x, y) => (x >= 0 && y >= 0 && x < 5 && y < 5 ? '.' : '#');
+  it('discovers and respects locked copy from adjacent, on-gate and distant cells', () => {
+    const adjacent = { x: 2, y: 2, routeUnlocked: false };
+    expect(chroniclesContentInteractions(adjacent, map, floor)).toContainEqual(expect.objectContaining({
+      id: gate.id, locked: true, requiresReturn: true, direction: 'north',
+    }));
+    expect(chroniclesContentLockedMessage(adjacent, gate)).toBe('Necesitas la autorización.');
+    expect(chroniclesContentInteractions({ ...adjacent, routeUnlocked: true }, map, floor))
+      .toContainEqual(expect.objectContaining({ id: gate.id, locked: false, label: 'Volver al pueblo' }));
+    expect(chroniclesContentInteractions({ x: 2, y: 1, routeUnlocked: true }, map, floor))
+      .toContainEqual(expect.objectContaining({ id: gate.id, locked: false }));
+    expect(chroniclesContentInteractions({ x: 1, y: 2, routeUnlocked: true }, map, floor)).toEqual([]);
+    expect(chroniclesContentInteractions({ x: 2, y: 3, routeUnlocked: true }, map, floor)).toEqual([]);
+  });
+  it('does not expose a portal placed inside a wall', () => {
+    expect(chroniclesContentInteractions({ x: 2, y: 2 }, map, () => '#')).toEqual([]);
+  });
+});

@@ -18,6 +18,7 @@ import {
 } from './chronicles/chroniclesContentRuntime.js';
 import { resolveChroniclesCharacterParty } from './chronicles/chroniclesCharacterBuilds.js';
 import { CHRONICLES_SWORDHAVEN_RETURN_PORTAL_ID, chroniclesSwordhavenReturnAvailable } from './chronicles/chroniclesSwordhavenReturnPortal.js';
+import { chroniclesIsOverworldTravelExit } from './chronicles/chroniclesWorldReturnLinks.js';
 
 const DEFAULT_MAP = chroniclesMapById(DEFAULT_CHRONICLES_MAP_ID);
 
@@ -184,10 +185,7 @@ function enterTile(state, x, y) {
     // Authored settlement gates genuinely enter the next region. Keep the
     // historical dungeon-end contract untouched, so legacy runs/checkpoints
     // do not suddenly switch map or terminal behaviour.
-    const route = currentMap.regionKind === 'settlement'
-      && (exit.action?.effects || []).some((effect) => (
-        effect.type === 'transition-map' && effect.mapId
-      ));
+    const route = chroniclesIsOverworldTravelExit(currentMap, exit);
     next = chroniclesApplyContentAction(
       next,
       route ? exit.action : explorationAction(exit, [{ type: 'set', key: 'phase', value: 'escaped' }]),
@@ -208,7 +206,8 @@ export function chroniclesContextualContentAction(state) {
     state,
     map,
     (x, y) => chroniclesTileAt(x, y, state),
-  ).find((entry) => !['exit', 'trigger', 'trap'].includes(entry.kind));
+  ).find((entry) => !['trigger', 'trap'].includes(entry.kind)
+    && (entry.kind !== 'exit' || entry.requiresReturn === true));
 
   if (!interaction) {
     const front = chroniclesFrontCell(state);
@@ -238,6 +237,7 @@ export function chroniclesContextualContentAction(state) {
     id: interaction.id,
     kind: interaction.kind,
     label: interaction.label || definition.label || 'Interactuar',
+    locked: interaction.locked === true,
   };
 }
 
@@ -259,6 +259,10 @@ function resolveContextualContentAction(state) {
   const map = chroniclesMapForState(state);
   const definition = chroniclesContentDefinition(map, contextual.id);
   if (!definition?.action) return state;
+  if (contextual.locked) {
+    const blocked = chroniclesRequirementFailure(state, definition.requirements);
+    return withMessage(state, blocked?.message || 'El paso sigue cerrado.');
+  }
   const next = chroniclesApplyContentAction(state, definition.action, { appendJournal });
   return next === state ? state : { ...next, turns: state.turns + 1 };
 }

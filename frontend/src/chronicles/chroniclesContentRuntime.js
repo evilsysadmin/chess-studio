@@ -82,6 +82,18 @@ function onCurrentCell(state, entry, tileAt) {
 }
 
 function adjacentExit(state, entry, tileAt) {
+  // The new authored world describes gates with coordinates, not magic grid
+  // markers. A party may use them from the same tile or one cardinal tile
+  // away, but never through a solid obstacle or from a diagonal.
+  if (Number.isInteger(entry?.x) && Number.isInteger(entry?.y) && !entry.tile) {
+    if (tileAt(entry.x, entry.y) === '#') return null;
+    const distance = Math.abs(state.x - entry.x) + Math.abs(state.y - entry.y);
+    if (distance > 1) return null;
+    const facing = CARDINAL_DIRECTIONS.find((direction) => (
+      state.x + direction.dx === entry.x && state.y + direction.dy === entry.y
+    ));
+    return { x: entry.x, y: entry.y, direction: facing?.key || null };
+  }
   return CARDINAL_DIRECTIONS
     .map((direction) => ({
       x: state.x + direction.dx,
@@ -102,6 +114,7 @@ function interactionFromEntry(state, entry, tileAt) {
       kind: entry.kind,
       label: unlocked ? entry.openLabel : entry.lockedLabel,
       locked: !unlocked,
+      requiresReturn: entry.requiresReturn === true,
       ...position,
     };
   }

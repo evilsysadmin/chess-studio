@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { chroniclesAssertWorldReturnLinks } from './chroniclesWorldReturnLinks.js';
+import { chroniclesAssertWorldReturnLinks, chroniclesIsOverworldTravelExit } from './chroniclesWorldReturnLinks.js';
 
 const exitTo = (id, mapId, requiresReturn = true) => ({
   id,
@@ -36,5 +36,19 @@ describe('Chronicles opt-in overworld return links', () => {
       region('crypt', [exitTo('black-gate', 'gallery', false)]),
       region('gallery'),
     ])).toBe(true);
+  });
+});
+
+
+// New authored settlements and wilderness are region hops; dungeons retain
+// the historic exit = terminal expedition contract.
+describe('Chronicles region travel routing', () => {
+  const exit = exitTo('north-gate', 'banner-road');
+  it('routes settlement and wilderness exits without ending the expedition', () => {
+    expect(chroniclesIsOverworldTravelExit({ regionKind: 'settlement' }, exit)).toBe(true);
+    expect(chroniclesIsOverworldTravelExit({ regionKind: 'wilderness' }, exit)).toBe(true);
+    expect(chroniclesIsOverworldTravelExit({ regionKind: 'dungeon' }, exit)).toBe(false);
+    expect(chroniclesIsOverworldTravelExit({}, exit)).toBe(false);
+    expect(chroniclesIsOverworldTravelExit({ regionKind: 'wilderness' }, { action: { effects: [] } })).toBe(false);
   });
 });
