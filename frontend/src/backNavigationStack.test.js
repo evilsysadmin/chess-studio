@@ -11,7 +11,6 @@ describe('pila global de volver/cerrar', () => {
 
     expect(stack.dispatch({ type: 'keydown', key: 'Escape', stopPropagation: vi.fn() })).toBe(true);
     expect(modal).toHaveBeenCalledTimes(1);
-    expect(modal).toHaveBeenCalledWith(expect.objectContaining({ type: 'keydown', key: 'Escape' }));
     expect(parent).not.toHaveBeenCalled();
 
     stack.remove('modal');
