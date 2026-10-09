@@ -517,15 +517,18 @@ static func normalized_body_scale(pixel_height: float) -> float:
 	return clampf(CANONICAL_BODY_HEIGHT_PIXELS / maxf(pixel_height, 1.0), 0.80, 1.40)
 
 
-func _canonical_body_scale(sprite: AnimatedSprite3D) -> float:
+func _canonical_body_scale(sprite: AnimatedSprite3D, role: String = "") -> float:
 	var current_name := String(sprite.animation)
 	var view := "side"
 	if current_name.begins_with("run_"):
 		view = current_name.trim_prefix("run_")
 	elif current_name.begins_with("sprint_"):
 		view = current_name.trim_prefix("sprint_")
-	if body_scale_cache.has(view):
-		return float(body_scale_cache[view])
+	# Keepers now have a distinct approved body; their height sample must never
+	# borrow a previously cached field-player measurement (or vice versa).
+	var cache_key := ("keeper:" if role == "keeper" else "field:") + view
+	if body_scale_cache.has(cache_key):
+		return float(body_scale_cache[cache_key])
 	var reference_name := ChessFootballRunDirection.animation_for(&"run", view)
 	if not sprite.sprite_frames.has_animation(reference_name):
 		push_error("Chess Football: missing approved run reference " + String(reference_name))
@@ -546,7 +549,7 @@ func _canonical_body_scale(sprite: AnimatedSprite3D) -> float:
 		heights.append(float(bounds.size.y))
 	heights.sort()
 	var scale := normalized_body_scale(heights[1])
-	body_scale_cache[view] = scale
+	body_scale_cache[cache_key] = scale
 	return scale
 
 
@@ -632,7 +635,7 @@ func _sync_player_secondary_motion(player: Footballer, sprite: AnimatedSprite3D,
 		tilt_degrees += player.contact_sway_sign * 16.0 * contact_weight
 
 	# One body-height reference for both teams, all views and all roles.
-	var canonical_scale := _canonical_body_scale(sprite)
+	var canonical_scale := _canonical_body_scale(sprite, player.role)
 	var view_adjust := view_compensation(sprite.animation)
 	stretch_x *= canonical_scale * view_adjust.x
 	stretch_y *= canonical_scale * view_adjust.y
