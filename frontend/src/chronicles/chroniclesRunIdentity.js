@@ -291,16 +291,22 @@ function readRunState(scope) {
   return null;
 }
 
-export function beginChroniclesRun(scope) {
+export function beginChroniclesRun(scope, { entryMapId = null } = {}) {
+  // The campaign is opt-in and may only be selected for a *fresh* first-person
+  // run. Do not allow callers to mint an unknown map ID or silently redirect
+  // Tactics/legacy runs. Existing server checkpoints remain authoritative.
+  legacyStorageKeyFor(scope);
+  if (entryMapId !== null && (scope !== 'first-person' || entryMapId !== 'swordhaven-campaign')) {
+    throw new RangeError('Unsupported Chronicles fresh-run entry map');
+  }
   // Do not discard the previous active run when starting a new expedition.
   // Existing run IDs keep their backend checkpoints and stay loadable.
   readRunState(scope);
-  legacyStorageKeyFor(scope);
-  // New first-person expeditions start in Swordhaven; Tactics keeps its
-  // dungeon route. The first adapter fixes the map choice for both adapters.
+  // Default is still historical Swordhaven until the new world has passed its
+  // end-to-end server/renderer/restore gates and the UI offers explicit entry.
   const run = {
     id: createRunId(), owner: currentOwner(), ended: false,
-    entryMapId: scope === 'first-person' ? 'swordhaven-square' : null,
+    entryMapId: scope === 'first-person' ? (entryMapId || 'swordhaven-square') : null,
     pending: true,
   };
   writeRunState(run);
@@ -324,7 +330,11 @@ export function renewChroniclesRun(scope, runId) {
   if (current && current.id === runId && !current.ended) {
     writeRunState({ ...current, ended: true });
   }
-  return beginChroniclesRun(scope);
+  // A lost/stale server identity must not silently change an opted-in
+  // campaign back to legacy Swordhaven when first-person renews the run.
+  const entryMapId = scope === 'first-person' && current?.entryMapId === 'swordhaven-campaign'
+    ? current.entryMapId : null;
+  return beginChroniclesRun(scope, { entryMapId });
 }
 
 export function finishChroniclesRun(scope, runId) {
