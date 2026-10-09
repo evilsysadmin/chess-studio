@@ -208,8 +208,10 @@ export async function chroniclesRecoverLegacySavedRunIds(scope, remoteRuns, {
       ...(serverRow || {}), ...stale,
       id: canonicalId, remote: true, pending: false,
     };
-    writeSaveCatalog([repaired, ...latest.filter((row) => row.id !== candidate.id && row.id !== canonicalId)]);
+    // Reading active state also indexes it. Do that BEFORE removing the
+    // provisional catalog row, otherwise a stale UUIDv4 is reintroduced.
     const active = readRunState(scope);
+    writeSaveCatalog([repaired, ...latest.filter((row) => row.id !== candidate.id && row.id !== canonicalId)]);
     if (active?.id === candidate.id && !active.ended && !active.pending) {
       writeRunState({ ...active, id: canonicalId, remote: true, pending: false });
     }
