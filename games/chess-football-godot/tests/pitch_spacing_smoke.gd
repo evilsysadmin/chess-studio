@@ -47,7 +47,7 @@ func _initialize() -> void:
 	var same_spot := pitch.get_center() + Vector2(-360.0, -240.0)
 	clustered.global_position = same_spot + Vector2(-8.0, 0.0)
 	other.global_position = same_spot
-	var safer := game._ai_spaced_target(clustered, same_spot)
+	var safer: Vector2 = game._ai_spaced_target(clustered, same_spot)
 	assert(safer.distance_to(same_spot) >= 105.0)
 	assert(safer.y < same_spot.y)
 	assert(pitch.has_point(safer))
