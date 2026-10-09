@@ -55,14 +55,140 @@ function readStoredRun(storageKey) {
   }
 }
 
+
+export const CHRONICLES_SAVE_CATALOG_KEY = 'chess-study-chronicles-save-catalog-v1';
+
+// This is an index of authoritative server run IDs, never a client-side
+// copy of world/checkpoint state. The owner is checked on every read.
+function readSaveCatalog() {
+  const owner = currentOwner();
+  if (!owner) return [];
+  try {
+    const raw = getStorageItem(STORAGE_LOCAL, CHRONICLES_SAVE_CATALOG_KEY);
+    const parsed = raw ? JSON.parse(raw) : null;
+    if (!parsed || parsed.version !== 1 || parsed.owner !== owner || !Array.isArray(parsed.runs)) return [];
+    const seen = new Set();
+    return parsed.runs.filter((item) => {
+      if (!item || typeof item.id !== 'string' || !item.id.trim()
+          || typeof item.title !== 'string' || !item.title.trim()
+          || seen.has(item.id)) return false;
+      seen.add(item.id);
+      return true;
+    }).map((item) => ({
+      id: item.id,
+      title: item.title.slice(0, 56),
+      entryMapId: typeof item.entryMapId === 'string' ? item.entryMapId : null,
+      currentMapId: typeof item.currentMapId === 'string' ? item.currentMapId : null,
+      createdAt: Number.isFinite(item.createdAt) ? item.createdAt : 0,
+      updatedAt: Number.isFinite(item.updatedAt) ? item.updatedAt : 0,
+    }));
+  } catch {
+    return [];
+  }
+}
+
+function writeSaveCatalog(runs) {
+  return setStorageItem(STORAGE_LOCAL, CHRONICLES_SAVE_CATALOG_KEY, JSON.stringify({
+    version: 1, owner: currentOwner(), runs,
+  }));
+}
+
+function indexActiveRun(run) {
+  if (!run || run.ended || !currentOwner()) return;
+  const runs = readSaveCatalog();
+  if (runs.some((item) => item.id === run.id)) return;
+  const now = Date.now();
+  const numbered = runs.reduce((highest, item) => {
+    const match = /^Expedición (\d+)$/.exec(item.title);
+    return Math.max(highest, match ? Number(match[1]) : 0);
+  }, 0);
+  runs.unshift({
+    id: run.id, title: 'Expedición ' + (numbered + 1),
+    entryMapId: run.entryMapId || null,
+    currentMapId: run.entryMapId || null, createdAt: now, updatedAt: now,
+  });
+  writeSaveCatalog(runs);
+}
+
+function unindexRun(runId) {
+  const runs = readSaveCatalog();
+  const kept = runs.filter((item) => item.id !== runId);
+  if (kept.length !== runs.length) writeSaveCatalog(kept);
+}
+
+export function chroniclesListSavedRuns(scope) {
+  const current = readRunState(scope); // Migrate pre-catalog active sessions.
+  if (current && !current.ended) indexActiveRun(current);
+  return readSaveCatalog()
+    .map((item) => ({ ...item, active: item.id === current?.id && !current.ended }))
+    .sort((a, b) => b.updatedAt - a.updatedAt || a.id.localeCompare(b.id));
+}
+
+export function chroniclesSelectSavedRun(scope, runId) {
+  legacyStorageKeyFor(scope);
+  const row = readSaveCatalog().find((item) => item.id === runId);
+  if (!row) return false;
+  writeRunState({
+    id: row.id, owner: currentOwner(), ended: false,
+    entryMapId: row.entryMapId,
+  });
+  return true;
+}
+
+export function chroniclesRenameSavedRun(scope, runId, title) {
+  legacyStorageKeyFor(scope);
+  const name = String(title || '').trim().slice(0, 56);
+  if (!name) return false;
+  const runs = readSaveCatalog();
+  const row = runs.find((item) => item.id === runId);
+  if (!row) return false;
+  row.title = name;
+  writeSaveCatalog(runs);
+  return true;
+}
+
+// Forget removes the device-local pointer only. It deliberately does not
+// pretend to delete the server-owned checkpoint or any character progression.
+export function chroniclesForgetSavedRun(scope, runId) {
+  const current = readRunState(scope);
+  const runs = readSaveCatalog();
+  if (!runs.some((item) => item.id === runId)) return false;
+  unindexRun(runId);
+  if (current && current.id === runId) {
+    setStorageItem(STORAGE_LOCAL, CHRONICLES_RUN_STORAGE_KEY, JSON.stringify({
+      ...current, ended: true,
+    }));
+  }
+  return true;
+}
+
+export function chroniclesNoteSavedRunCheckpoint(scope, runId, currentMapId) {
+  legacyStorageKeyFor(scope);
+  const runs = readSaveCatalog();
+  const row = runs.find((item) => item.id === runId);
+  if (!row) return false;
+  if (typeof currentMapId === 'string' && /^[a-z0-9-]{1,64}$/.test(currentMapId)) {
+    row.currentMapId = currentMapId;
+  }
+  row.updatedAt = Date.now();
+  writeSaveCatalog(runs);
+  return true;
+}
+
 function writeRunState(run) {
-  return setStorageItem(STORAGE_LOCAL, CHRONICLES_RUN_STORAGE_KEY, JSON.stringify(run));
+  const saved = setStorageItem(STORAGE_LOCAL, CHRONICLES_RUN_STORAGE_KEY, JSON.stringify(run));
+  if (run.ended) unindexRun(run.id);
+  else indexActiveRun(run);
+  return saved;
 }
 
 function readRunState(scope) {
   const preferredLegacyKey = legacyStorageKeyFor(scope);
   const shared = readStoredRun(CHRONICLES_RUN_STORAGE_KEY);
-  if (shared) return shared;
+  if (shared) {
+    if (!shared.ended) indexActiveRun(shared);
+    return shared;
+  }
 
   // Migration is intentionally first-entry-wins. If old first-person and
   // Tactics sessions disagree, whichever adapter the player opens first
@@ -81,6 +207,9 @@ function readRunState(scope) {
 }
 
 export function beginChroniclesRun(scope) {
+  // Do not discard the previous active run when starting a new expedition.
+  // Existing run IDs keep their backend checkpoints and stay loadable.
+  readRunState(scope);
   legacyStorageKeyFor(scope);
   // New first-person expeditions start in Swordhaven; Tactics keeps its
   // dungeon route. The first adapter fixes the map choice for both adapters.
