@@ -475,6 +475,99 @@ function laySwordhavenCobblestones(root, mats, coarse, width, height) {
   root.add(paver);
 }
 
+
+function dressSwordhavenRoadsides(root, mats, coarse, width, height, center) {
+  // Road shoulders are visual trim, not new blockers. A single instanced
+  // cobble mesh is substantially cheaper than individual edge stones.
+  const shoulders = [];
+  const mainSpan = Math.min(height * CELL * 0.38, 30);
+  const crossSpan = Math.min(width * CELL * 0.35, 26);
+  const step = coarse ? 0.96 : 0.82;
+  for (let z = -mainSpan; z <= mainSpan; z += step) {
+    if (Math.abs(z) < 10.8) continue; // The circular plaza owns this area.
+    for (const side of [-1, 1]) shoulders.push([side * 3.45, z]);
+  }
+  for (let x = -crossSpan; x <= crossSpan; x += step) {
+    if (Math.abs(x) < 11.2) continue;
+    for (const side of [-1, 1]) shoulders.push([x, side * 3.43]);
+  }
+  const edges = new THREE.InstancedMesh(
+    new THREE.BoxGeometry(0.25, 0.065, 0.72), mats.paving, shoulders.length,
+  );
+  edges.name = 'swordhaven-roadside-stone-edging';
+  edges.receiveShadow = true;
+  const dummy = new THREE.Object3D();
+  const color = new THREE.Color();
+  shoulders.forEach(([x, z], i) => {
+    dummy.position.set(x, 0.067, z);
+    dummy.rotation.y = ((i % 7) - 3) * 0.018;
+    dummy.scale.set(0.94 + (i % 5) * 0.02, 1, 0.92 + (i % 3) * 0.025);
+    dummy.updateMatrix();
+    edges.setMatrixAt(i, dummy.matrix);
+    color.setHex([0x8b867c, 0xa29b8b, 0xc0b7a1, 0x9c947e][i % 4]);
+    edges.setColorAt(i, color);
+  });
+  edges.instanceMatrix.needsUpdate = true;
+  if (edges.instanceColor) edges.instanceColor.needsUpdate = true;
+  root.add(edges);
+
+  // Six slim, wind-bent leaves per tuft. Narrow silhouettes avoid the large
+  // triangular spikes of the initial pass, while staying one draw call.
+  const bladeVertices = [];
+  for (let blade = 0; blade < 6; blade += 1) {
+    const angle = blade * Math.PI / 3;
+    const ux = Math.cos(angle);
+    const uz = Math.sin(angle);
+    const offset = blade % 2 === 0 ? 0.015 : 0.044;
+    const height = 0.12 + (blade % 3) * 0.016;
+    const spread = 0.024;
+    bladeVertices.push(
+      ux * offset - uz * spread, 0, uz * offset + ux * spread,
+      ux * (offset + 0.08), height, uz * (offset + 0.08),
+      ux * offset + uz * spread, 0, uz * offset - ux * spread,
+    );
+  }
+  const tuftGeometry = new THREE.BufferGeometry();
+  tuftGeometry.setAttribute('position', new THREE.Float32BufferAttribute(bladeVertices, 3));
+  tuftGeometry.computeVertexNormals();
+  const candidateCount = coarse ? 250 : 480;
+  const positions = [];
+  let seed = 0x51a7b3d;
+  const random = () => {
+    seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+    return seed / 4294967296;
+  };
+  for (let i = 0; i < candidateCount; i += 1) {
+    const x = (random() - 0.5) * (width * CELL - 4);
+    const z = (random() - 0.5) * (height * CELL - 4);
+    if (Math.abs(x) < 5 || Math.abs(z) < 5 || Math.hypot(x, z) < 11.6) continue;
+    // Keep plants away from walls, shop foundations and obstructing trunks.
+    if (SWORDHAVEN_BUILDINGS.some(spec => {
+      const [bx, bz] = worldPoint(spec.x, spec.y, center);
+      return Math.abs(x - bx) < 5.2 && Math.abs(z - bz) < 5.2;
+    })) continue;
+    positions.push([x, z, random(), random()]);
+  }
+  const meadow = new THREE.InstancedMesh(
+    tuftGeometry, material(0xffffff, { side: THREE.DoubleSide, roughness: 1 }),
+    positions.length,
+  );
+  meadow.name = 'swordhaven-low-meadow-tufts';
+  meadow.receiveShadow = false;
+  positions.forEach(([x, z, rotation, growth], i) => {
+    dummy.position.set(x, -0.048, z);
+    dummy.rotation.set(0, rotation * Math.PI * 2, 0);
+    dummy.scale.setScalar(0.66 + growth * 0.34);
+    dummy.updateMatrix();
+    meadow.setMatrixAt(i, dummy.matrix);
+    color.setHex([0x799153, 0x869a65, 0x96a273, 0x708957][i % 4]);
+    meadow.setColorAt(i, color);
+  });
+  meadow.instanceMatrix.needsUpdate = true;
+  if (meadow.instanceColor) meadow.instanceColor.needsUpdate = true;
+  root.add(meadow);
+}
+
 export function buildSwordhavenScene(scene, { scenePlan = {}, coarsePointer = false } = {}) {
   const center = scenePlan.center || { x: 9, y: 9 };
   const width = Math.max(19, Number(scenePlan.width) || 19);
@@ -523,6 +616,7 @@ export function buildSwordhavenScene(scene, { scenePlan = {}, coarsePointer = fa
   mesh(root, new THREE.CylinderGeometry(10.2, 10.2, 0.11, 24),
     mats.cobble, 'circular-town-square', [0, -0.015, 0]);
   laySwordhavenCobblestones(root, mats, coarsePointer, width, height);
+  dressSwordhavenRoadsides(root, mats, coarsePointer, width, height, center);
   const fountain = new THREE.Group();
   fountain.name = 'swordhaven-fountain';
   // The full basin must fit the single blocked 4×4 m fountain cell.
