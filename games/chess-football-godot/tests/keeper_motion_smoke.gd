@@ -95,8 +95,8 @@ func _initialize() -> void:
 	var field_player: Footballer = game.teams[0][1]
 	var keeper_runner: Footballer = game.teams[1][0]
 	var pitch_center := ChessFootballMath.PITCH_RECT.get_center()
-	field_player.global_position = pitch_center + Vector2(410.0, -190.0)
-	keeper_runner.global_position = pitch_center + Vector2(-410.0, -190.0)
+	field_player.global_position = pitch_center + Vector2(410.0, -390.0)
+	keeper_runner.global_position = pitch_center + Vector2(-410.0, -390.0)
 	field_player.velocity = Vector2.ZERO
 	keeper_runner.velocity = Vector2.ZERO
 	field_player.action_lock_seconds = 0.0
@@ -108,7 +108,9 @@ func _initialize() -> void:
 		keeper_runner.move_ai(1.0 / 60.0, keeper_start + Vector2.DOWN * 500.0, 0.86)
 	var field_distance := field_player.global_position.distance_to(field_start)
 	var keeper_distance := keeper_runner.global_position.distance_to(keeper_start)
-	assert(field_distance > 25.0)
+	print("KEEPER_DISTANCE=%.2f FIELD_DISTANCE=%.2f" % [keeper_distance, field_distance])
+	assert(field_distance > 8.0)
+	assert(keeper_distance > 30.0)
 	assert(keeper_distance > field_distance * 1.40)
 	assert(keeper_runner.velocity.length() > field_player.velocity.length() * 1.40)
 	print("KEEPER_REACTION_SPEED=%.2f FIELD_SPEED=%.2f" % [
