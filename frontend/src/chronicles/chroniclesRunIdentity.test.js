@@ -11,6 +11,8 @@ import {
   chroniclesRunEntryMapId,
   CHRONICLES_SAVE_CATALOG_KEY,
   chroniclesListSavedRuns,
+  chroniclesMergeRemoteSavedRuns,
+  chroniclesSelectedRunIsRemote,
   chroniclesSelectSavedRun,
   chroniclesRenameSavedRun,
   chroniclesForgetSavedRun,
