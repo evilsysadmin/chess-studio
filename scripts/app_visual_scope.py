@@ -231,6 +231,7 @@ def _surface_groups(path: str) -> set[str] | None:
         "scripts/browser_quality_scope.py",
         "scripts/chess_rules_gate.mjs",
         "scripts/quality_scope.py",
+        "scripts/pages_runtime_asset_grace.py",
         "scripts/state_resilience_check.mjs",
         "scripts/visual_ux_contract_check.mjs",
         "scripts/run_core_e2e_lane.py",
@@ -690,6 +691,7 @@ def write_outputs(scope: Scope, output_path: str) -> None:
 
 def self_test() -> None:
     assert classify(["e2e/staging-live.spec.js"]).capture_groups == "none"
+    assert classify(["scripts/pages_runtime_asset_grace.py"]).capture_groups == "none"
     assert classify(["e2e/staging-live.spec.js", "frontend/src/components/PvpHandoffModal.jsx"]).capture_groups == "home"
     cpu_scope = classify([
         "frontend/src/components/GameScreen.jsx",
