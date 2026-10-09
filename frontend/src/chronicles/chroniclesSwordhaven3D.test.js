@@ -53,6 +53,15 @@ describe('Swordhaven modular real-time 3D', () => {
     expect(scene.getObjectByName('chronicles-first-person-ceiling')).toBeFalsy();
     expect(scene.getObjectByName('swordhaven-fountain')).toBeTruthy();
     expect(scene.getObjectByName('swordhaven-cloud-0')).toBeTruthy();
+    const pavedStreet = scene.getObjectByName('swordhaven-street-cobblestones');
+    expect(pavedStreet).toBeInstanceOf(THREE.InstancedMesh);
+    expect(pavedStreet.count).toBeGreaterThan(100);
+    expect(scene.getObjectByName('swordhaven-tree-0')?.getObjectByName('leaf-canopy-cluster'))
+      .toBeInstanceOf(THREE.InstancedMesh);
+    expect(scene.getObjectByName('swordhaven-building-swordhaven-temple')?.getObjectByName('temple-bell-tower')).toBeTruthy();
+    expect(scene.getObjectByName('swordhaven-building-swordhaven-magic')?.getObjectByName('magic-shop-turret')).toBeTruthy();
+    expect(scene.getObjectByName('swordhaven-building-swordhaven-tavern')?.getObjectByName('tavern-porch-awning')).toBeTruthy();
+    expect(scene.getObjectByName('swordhaven-building-swordhaven-forge')?.getObjectByName('forge-brazier')).toBeTruthy();
     expect(scene.getObjectByName('perimeter-stone-wall--1')).toBeTruthy();
     expect(SWORDHAVEN_BUILDINGS.every(b => scene.getObjectByName('swordhaven-building-' + b.id))).toBe(true);
     expect(state.contentProps.map(p => p.id).sort())
