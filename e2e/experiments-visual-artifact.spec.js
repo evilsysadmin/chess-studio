@@ -165,6 +165,9 @@ async function withChessFootballCapturePage(browser, capture, callback) {
       contentWidth: node.scrollWidth,
     }));
     expect(welcomeHealth.contentWidth, 'Football welcome: no horizontal overflow').toBeLessThanOrEqual(welcomeHealth.viewportWidth + 1);
+    const choicesBounds = await welcome.locator('.chess-football-entry__choices').boundingBox();
+    expect(choicesBounds, 'Football welcome: both mode choices visible').not.toBeNull();
+    expect(choicesBounds.y + choicesBounds.height, 'Football welcome: both CTAs fit the first viewport').toBeLessThanOrEqual(capture.height + 1);
     await captureFrozenFrame(page, {
       path: `${ARTIFACT_DIR}/chess-football-welcome-${capture.label}.png`,
       fullPage: true,
