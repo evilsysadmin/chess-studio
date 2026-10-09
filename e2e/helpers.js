@@ -23,6 +23,7 @@ const CHRONICLES_E2E_MAP_IDS = Object.freeze([
   'hollow-bell-tower',
   'iron-foundry',
   'menagerie-of-ash',
+  'swordhaven-square',
 ]);
 let chroniclesManifestPromise = null;
 
