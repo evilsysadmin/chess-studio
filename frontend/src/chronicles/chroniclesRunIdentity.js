@@ -1,3 +1,4 @@
+import { chroniclesCanonicalRunIdForKey } from './chroniclesCanonicalRunId.js';
 import {
   STORAGE_LOCAL,
   getStorageItem,
@@ -181,7 +182,42 @@ export function chroniclesMergeRemoteSavedRuns(scope, remoteRuns, { expectedOwne
   return chroniclesListSavedRuns(scope);
 }
 
-/** Mark an id as server-persisted once its authoritative bootstrap succeeds. */
+/** Repair previously confirmed saves that kept a provisional UUIDv4.
+ * Rebinding requires a deterministic UUIDv5 AND an exact match in the
+ * authenticated server inventory. Never use this to create/replay a POST.
+ */
+export async function chroniclesRecoverLegacySavedRunIds(scope, remoteRuns, {
+  expectedOwner = currentOwner(),
+  signal,
+} = {}) {
+  legacyStorageKeyFor(scope);
+  if (!expectedOwner || expectedOwner !== currentOwner() || !Array.isArray(remoteRuns) || signal?.aborted) return 0;
+  const serverIds = new Set(remoteRuns.filter((row) => !row.status || row.status === 'active')
+    .map((row) => row.runId).filter((id) => typeof id === 'string'));
+  let recovered = 0;
+  const candidates = readSaveCatalog().filter((row) => row.remote && !row.pending && !serverIds.has(row.id));
+  for (const candidate of candidates) {
+    if (signal?.aborted || expectedOwner !== currentOwner()) break;
+    const canonicalId = await chroniclesCanonicalRunIdForKey(expectedOwner, candidate.id);
+    if (!canonicalId || !serverIds.has(canonicalId) || signal?.aborted || expectedOwner !== currentOwner()) continue;
+    const latest = readSaveCatalog();
+    const stale = latest.find((row) => row.id === candidate.id);
+    if (!stale || !stale.remote || stale.pending) continue;
+    const serverRow = latest.find((row) => row.id === canonicalId);
+    const repaired = {
+      ...(serverRow || {}), ...stale,
+      id: canonicalId, remote: true, pending: false,
+    };
+    writeSaveCatalog([repaired, ...latest.filter((row) => row.id !== candidate.id && row.id !== canonicalId)]);
+    const active = readRunState(scope);
+    if (active?.id === candidate.id && !active.ended && active.remote && !active.pending) {
+      writeRunState({ ...active, id: canonicalId, remote: true, pending: false });
+    }
+    recovered += 1;
+  }
+  return recovered;
+}
+
 /** Confirm a POST with the server-owned run ID, not its idempotency key.
  * POST is repeatable with the provisional key until confirmation. Afterwards
  * the canonical UUID is the sole identity used by GET/checkpoint/delete.
