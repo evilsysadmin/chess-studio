@@ -1561,13 +1561,14 @@ func TestNativeChroniclesRunsServesOnlyItsRoutes(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, req := range [][2]string{
-		{"POST", "/api/chronicles/runs"}, {"GET", "/api/chronicles/runs/r1"}, {"PUT", "/api/chronicles/runs/r1/checkpoint"},
-		{"GET", "/api/chronicles/maps/ash-vault"}, {"DELETE", "/api/chronicles/runs/r1"},
+		{"POST", "/api/chronicles/runs"}, {"GET", "/api/chronicles/runs"}, {"GET", "/api/chronicles/runs/r1"},
+		{"PUT", "/api/chronicles/runs/r1/checkpoint"}, {"DELETE", "/api/chronicles/runs/r1"},
+		{"GET", "/api/chronicles/maps/ash-vault"},
 	} {
 		h.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(req[0], "http://api.chess.test"+req[1], nil))
 	}
-	if strings.Join(served, ",") != "POST /api/chronicles/runs,GET /api/chronicles/runs/r1,PUT /api/chronicles/runs/r1/checkpoint" ||
-		strings.Join(proxied, ",") != "GET /api/chronicles/maps/ash-vault,DELETE /api/chronicles/runs/r1" {
+	if strings.Join(served, ",") != "POST /api/chronicles/runs,GET /api/chronicles/runs,GET /api/chronicles/runs/r1,PUT /api/chronicles/runs/r1/checkpoint,DELETE /api/chronicles/runs/r1" ||
+		strings.Join(proxied, ",") != "GET /api/chronicles/maps/ash-vault" {
 		t.Fatalf("served %v proxied %v", served, proxied)
 	}
 }

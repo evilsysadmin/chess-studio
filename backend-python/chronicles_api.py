@@ -916,6 +916,25 @@ def build_chronicles_router(*, auth_dependency) -> APIRouter:
             raise HTTPException(404, "Run de Chronicles no encontrada.")
         return updated
 
+    @router.get("/runs")
+    async def list_saved_runs(username: str = Depends(auth_dependency)):
+        return {"runs": await chronicles_run_store.list_active_runs(username)}
+
+    @router.delete("/runs/{run_id}", status_code=204)
+    async def delete_saved_run(run_id: str, username: str = Depends(auth_dependency)):
+        if not await chronicles_run_store.delete_owned_run(run_id, username):
+            raise HTTPException(404, "Run de Chronicles no encontrada.")
+
+    @router.get("/runs/{run_id}/bootstrap")
+    async def bootstrap_saved_run(run_id: str, username: str = Depends(auth_dependency)):
+        run = await chronicles_run_store.get_run(run_id, username)
+        if run is None:
+            raise HTTPException(404, "Run de Chronicles no encontrada.")
+        if run.get("status", "active") != "active":
+            raise HTTPException(409, "Esta expedición ya ha terminado.")
+        route_snapshot = _normalize_route_snapshot(run.get("route"))
+        return _run_bootstrap_payload(run, route_snapshot=route_snapshot)
+
     @router.get("/runs/{run_id}")
     async def get_run(run_id: str, username: str = Depends(auth_dependency)):
         row = await chronicles_run_store.get_run(run_id, username)

@@ -35,6 +35,10 @@ type Store interface {
 	Checkpoint(ctx context.Context, c Checkpoint) (bson.D, error)
 	// Get is get_run.
 	Get(ctx context.Context, runID, owner string) (bson.D, error)
+	// ListActive is the bounded owner-scoped save selector.
+	ListActive(ctx context.Context, owner string, limit int) ([]bson.D, error)
+	// DeleteOwned deletes one run if and only if its owner matches.
+	DeleteOwned(ctx context.Context, runID, owner string) (bool, error)
 }
 
 // NewRun are create_or_replay_run's arguments.
@@ -118,6 +122,26 @@ func document(run NewRun) bson.D {
 		doc = append(doc, bson.E{Key: "plannerSnapshot", Value: deepCopy(run.PlannerSnapshot)})
 	}
 	return doc
+}
+
+func Summary(row bson.D) bson.D {
+	updated := get(row, "updatedAt")
+	var ms int64
+	switch value := updated.(type) {
+	case bson.DateTime:
+		ms = int64(value)
+	case time.Time:
+		ms = value.UnixMilli()
+	}
+	id, _ := get(row, "_id").(string)
+	mapID, _ := get(row, "currentMapId").(string)
+	return bson.D{
+		{Key: "runId", Value: id},
+		{Key: "currentMapId", Value: mapID},
+		{Key: "status", Value: statusOf(row)},
+		{Key: "worldVersion", Value: intOr(row, "worldVersion", 0)},
+		{Key: "updatedAtMs", Value: ms},
+	}
 }
 
 func deepCopy(v any) any {
