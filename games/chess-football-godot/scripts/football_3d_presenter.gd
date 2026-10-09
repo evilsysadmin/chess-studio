@@ -15,6 +15,9 @@ const TACTICAL_HEIGHT := 27.0
 const PLAYER_PIXEL_SIZE := 0.0124
 const TACTICAL_PLAYER_PIXEL_SIZE := 0.0162
 const PLAYER_BASE_Y := 0.76
+# The approved front/back atlas bodies are about 120px tall. Normalize the
+# approved side run to the same perceived height without changing PNG bytes.
+const CANONICAL_BODY_HEIGHT_PIXELS := 120.0
 const PLAYER_RUN_BOB := 0.050
 const PLAYER_SPRINT_BOB := 0.072
 const STAMINA_BAR_WIDTH := 0.76
@@ -26,6 +29,7 @@ var camera: Camera3D
 var player_nodes: Dictionary = {}
 var player_sprites: Dictionary = {}
 var player_run_views: Dictionary = {}
+var body_scale_cache: Dictionary = {}
 var ball_node: MeshInstance3D
 var ball_shadow: MeshInstance3D
 var penalty_aim_marker: MeshInstance3D
@@ -492,6 +496,45 @@ func sync_presentation(delta: float, mode: String) -> void:
 
 	_sync_camera(delta, mode)
 
+static func normalized_body_scale(pixel_height: float) -> float:
+	# The clamp fails safely on malformed or extremely short silhouettes;
+	# smoke asserts that every approved source fits the expected body envelope.
+	return clampf(CANONICAL_BODY_HEIGHT_PIXELS / maxf(pixel_height, 1.0), 0.80, 1.40)
+
+
+func _canonical_body_scale(sprite: AnimatedSprite3D) -> float:
+	var current_name := String(sprite.animation)
+	var view := "side"
+	if current_name.begins_with("run_"):
+		view = current_name.trim_prefix("run_")
+	elif current_name.begins_with("sprint_"):
+		view = current_name.trim_prefix("sprint_")
+	if body_scale_cache.has(view):
+		return float(body_scale_cache[view])
+	var reference_name := ChessFootballRunDirection.animation_for(&"run", view)
+	if not sprite.sprite_frames.has_animation(reference_name):
+		push_error("Chess Football: missing approved run reference " + String(reference_name))
+		return 1.0
+	# Measure once per authored view from three cycle poses, not once per
+	# player/frame. This avoids size pumping as legs alternate and avoids
+	# repeated GPU readbacks during play.
+	var heights: Array[float] = []
+	for frame_id in [0, 3, 6]:
+		var sample := sprite.sprite_frames.get_frame_texture(reference_name, frame_id) as ImageTexture
+		if sample == null:
+			push_error("Chess Football: non-raster canonical height sample")
+			return 1.0
+		var bounds := sample.get_image().get_used_rect()
+		if bounds.size.y < 60:
+			push_error("Chess Football: empty/invalid approved football silhouette")
+			return 1.0
+		heights.append(float(bounds.size.y))
+	heights.sort()
+	var scale := normalized_body_scale(heights[1])
+	body_scale_cache[view] = scale
+	return scale
+
+
 func _sync_player_secondary_motion(player: Footballer, sprite: AnimatedSprite3D, proxy: Node3D) -> void:
 	var animation_name := String(sprite.animation)
 	var frame_count := maxi(1, sprite.sprite_frames.get_frame_count(sprite.animation))
@@ -573,8 +616,18 @@ func _sync_player_secondary_motion(player: Footballer, sprite: AnimatedSprite3D,
 		stretch_y *= 1.0 - 0.065 * contact_weight
 		tilt_degrees += player.contact_sway_sign * 16.0 * contact_weight
 
+	# One body-height reference for both teams, all views and all roles.
+	var canonical_scale := _canonical_body_scale(sprite)
+	stretch_x *= canonical_scale
+	stretch_y *= canonical_scale
+	# The 3D canvas is centered in the atlas cell. Keep the same clearance
+	# between boot soles and the pitch in broadcast AND tactical zoom, even
+	# when the authored silhouette needs uniform scale correction.
+	var cell_height := ChessFootballSpriteBank.cell_size().y
+	var foot_pixels := ChessFootballSpriteBank.footline() - cell_height * 0.5
+	var clearance := PLAYER_BASE_Y - foot_pixels * PLAYER_PIXEL_SIZE
 	sprite.position.x = lateral_sway
-	sprite.position.y = PLAYER_BASE_Y + bob
+	sprite.position.y = clearance + foot_pixels * sprite.pixel_size * stretch_y + bob
 	sprite.rotation.z = deg_to_rad(tilt_degrees)
 	sprite.scale = Vector3(stretch_x, stretch_y, 1.0)
 

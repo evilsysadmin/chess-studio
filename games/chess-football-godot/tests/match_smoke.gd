@@ -39,6 +39,26 @@ func _initialize() -> void:
 	for expected_audio in ["goal", "pass", "post", "save", "shot", "tackle", "whistle"]:
 		assert(audio_names.has(expected_audio))
 	assert(match_node.debug_3d_animated_players() == 10)
+	# Compare actual canonical silhouettes, not nominal 128x144 cell size.
+	# The runner's size must not change with team, roster slot, or camera.
+	assert(is_equal_approx(ChessFootball3DPresenter.normalized_body_scale(120.0), 1.0))
+	for team_id in range(2):
+		for squad_index in [0, 4]:
+			var sampled_role := "keeper" if squad_index == 0 else "forward"
+			var rendered_frames := ChessFootballSpriteBank.build_frames(
+				team_id, sampled_role, squad_index, true
+			)
+			for view_name in ["side", "front", "back", "front_diagonal", "back_diagonal"]:
+				var run_name := ChessFootballRunDirection.animation_for(&"run", view_name)
+				var height_samples: Array[float] = []
+				for frame_id in [0, 3, 6]:
+					var run_image := (rendered_frames.get_frame_texture(run_name, frame_id) as ImageTexture).get_image()
+					var used := run_image.get_used_rect()
+					assert(used.size.y >= 86 and used.size.y <= 135)
+					height_samples.append(float(used.size.y))
+				height_samples.sort()
+				var effective_height := height_samples[1] * ChessFootball3DPresenter.normalized_body_scale(height_samples[1])
+				assert(absf(effective_height - 120.0) < 2.0)
 	# Eight-way movement resolves to five authored views, with mirrored diagonals.
 	assert(ChessFootballRunDirection.view_for_velocity(Vector2(250.0, 0.0)) == "side")
 	assert(ChessFootballRunDirection.view_for_velocity(Vector2(0.0, 250.0)) == "front")
