@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   CHRONICLES_DIRECTIONS,
   chroniclesActiveEnemies,
+  CHRONICLES_PARTY,
   chroniclesEnemyTargetAhead,
   chroniclesContextualContentAction,
   chroniclesPartyAttackStats,
@@ -25,6 +26,7 @@ import { chroniclesRegionHudLocation } from '../chronicles/chroniclesRegionHud.j
 import { chroniclesGridExplorationStep } from '../chronicles/chroniclesGridExplorationStep.js';
 import { CHRONICLES_SWORDHAVEN_RETURN_PORTAL_ID } from '../chronicles/chroniclesSwordhavenReturnPortal.js';
 import { chroniclesCheckpointState } from '../chronicles/chroniclesRunClient.js';
+import { loadChroniclesCharacterDraft } from '../chronicles/chroniclesCharacterDraft.js';
 import {
   chroniclesApplyRunCheckpoint,
   chroniclesRunCheckpointFingerprint,
@@ -35,6 +37,12 @@ import {
 } from '../chronicles/chroniclesGameBootstrap.js';
 import {
   ensureChroniclesRun,
+  beginChroniclesRun,
+  chroniclesListSavedRuns,
+  chroniclesSelectSavedRun,
+  chroniclesRenameSavedRun,
+  chroniclesForgetSavedRun,
+  chroniclesNoteSavedRunCheckpoint,
   chroniclesRunEntryMapId,
   finishChroniclesRun,
   renewChroniclesRun,
@@ -67,6 +75,7 @@ import ChroniclesCharacterSheet from './ChroniclesCharacterSheet.jsx';
 import ChroniclesMinimap from './ChroniclesMinimap.jsx';
 import ChroniclesBookOneEpilogue from './ChroniclesBookOneEpilogue.jsx';
 import ChroniclesCharacterSetup from './ChroniclesCharacterSetup.jsx';
+import ChroniclesSaveMenu from './ChroniclesSaveMenu.jsx';
 import ChroniclesDefeatOverlay from './ChroniclesDefeatOverlay.jsx';
 import ChroniclesEnemyRetaliationFx from './ChroniclesEnemyRetaliationFx.jsx';
 import ChroniclesInitiativeRail from './ChroniclesInitiativeRail.jsx';
@@ -141,6 +150,10 @@ export default function ChroniclesOfMatthias({ onExit }) {
   const [progression, setProgression] = useState(() => loadChroniclesProgression());
   const progressionRef = useRef(progression);
   const [characterSetupDone, setCharacterSetupDone] = useState(false);
+  // Restore an unfinished character editor draft; otherwise display the
+  // expedition book before allocating or loading any server run.
+  const [entryView, setEntryView] = useState(() => loadChroniclesCharacterDraft(CHRONICLES_PARTY) ? 'setup' : 'menu');
+  const [, refreshSaves] = useState(0);
   const [ready, setReady] = useState(false);
   const [bootstrapError, setBootstrapError] = useState(null);
   const [bootstrapRevision, setBootstrapRevision] = useState(0);
@@ -237,6 +250,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
     setAutomapOpen(false);
     setAutomapVisitedByMap({});
     setCharacterSetupDone(true);
+    setEntryView('playing');
     setBootstrapRevision((revision) => revision + 1);
   }, [progression]);
 
@@ -479,11 +493,13 @@ export default function ChroniclesOfMatthias({ onExit }) {
 
   const newExpedition = useCallback(() => {
     const runId = activeRunIdRef.current;
-    if (runId) {
-      clearChroniclesAutomapVisited(runId);
-      finishChroniclesRun(FIRST_PERSON_RUN_SCOPE, runId);
-      activeRunIdRef.current = null;
-    }
+    // Starting another game does not destroy the checkpoint of the old one.
+    // The catalog keeps both identities loadable.
+    const newRunId = beginChroniclesRun(FIRST_PERSON_RUN_SCOPE);
+    activeRunIdRef.current = newRunId;
+    authoritativeRunRef.current = null;
+    checkpointFingerprintRef.current = '';
+    checkpointQueueRef.current = Promise.resolve();
     stateRef.current = null;
     setState(null);
     setSelectedMemberId('matthias');
@@ -530,7 +546,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
   }, [clearTouchHold]);
 
   useEffect(() => {
-    if (!characterSetupDone) return undefined;
+    if (!characterSetupDone || entryView !== 'playing') return undefined;
     const controller = new AbortController();
     let active = true;
 
@@ -590,7 +606,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
       controller.abort();
       chroniclesClearRuntimeMapDefinitions();
     };
-  }, [bootstrapRevision, characterSetupDone]);
+  }, [bootstrapRevision, characterSetupDone, entryView]);
 
   useEffect(() => {
     let cancelled = false;
@@ -651,6 +667,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
         );
         if (authoritativeRunRef.current?.runId !== scheduledRunId) return;
         authoritativeRunRef.current = { ...currentRun, ...updated };
+        chroniclesNoteSavedRunCheckpoint(FIRST_PERSON_RUN_SCOPE, scheduledRunId, snapshot.mapId);
       })
       .catch((error) => {
         console.error('Chronicles checkpoint failed', error);
@@ -712,6 +729,64 @@ export default function ChroniclesOfMatthias({ onExit }) {
     window.addEventListener('keydown', onKeyDown, { passive: false });
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [attackWithSelected, automapOpen, clearTouchHold, dispatch, interactWithContext, openMemberSheet, ready, sheetMemberId]);
+
+  const startFreshGame = () => {
+    beginChroniclesRun(FIRST_PERSON_RUN_SCOPE);
+    setCharacterSetupDone(false);
+    setEntryView('setup');
+    refreshSaves((value) => value + 1);
+  };
+
+  const loadSavedGame = (runId) => {
+    if (!chroniclesSelectSavedRun(FIRST_PERSON_RUN_SCOPE, runId)) return;
+    activeRunIdRef.current = null;
+    authoritativeRunRef.current = null;
+    checkpointFingerprintRef.current = '';
+    stateRef.current = null;
+    setState(null);
+    setReady(false);
+    setBootstrapError(null);
+    setCharacterSetupDone(true);
+    setEntryView('playing');
+    setBootstrapRevision((revision) => revision + 1);
+  };
+
+  const returnToSaveMenu = () => {
+    setMenuOpen(false);
+    clearTouchHold();
+    // Never switch the authoritative run pointer while a checkpoint is queued.
+    void checkpointQueueRef.current.catch(() => undefined).then(() => {
+      stateRef.current = null;
+      activeRunIdRef.current = null;
+      authoritativeRunRef.current = null;
+      setState(null);
+      setReady(false);
+      setCharacterSetupDone(false);
+      setEntryView('menu');
+      refreshSaves((value) => value + 1);
+    });
+  };
+
+  if (entryView === 'menu') {
+    return (
+      <ChroniclesSaveMenu
+        saves={chroniclesListSavedRuns(FIRST_PERSON_RUN_SCOPE)}
+        onNew={startFreshGame}
+        onLoad={loadSavedGame}
+        onRename={(id, title) => {
+          const result = chroniclesRenameSavedRun(FIRST_PERSON_RUN_SCOPE, id, title);
+          if (result) refreshSaves((value) => value + 1);
+          return result;
+        }}
+        onForget={(id) => {
+          if (chroniclesForgetSavedRun(FIRST_PERSON_RUN_SCOPE, id)) {
+            refreshSaves((value) => value + 1);
+          }
+        }}
+        onExit={exitChronicles}
+      />
+    );
+  }
 
   if (!characterSetupDone) {
     return (
@@ -860,6 +935,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
                 <small>Salir conserva esta run. Nueva expedición crea otra ruta aleatoria.</small>
                 <button type="button" onClick={() => setMenuOpen(false)}>Continuar</button>
                 <button type="button" onClick={newExpedition}>Nueva expedición</button>
+                <button type="button" onClick={returnToSaveMenu}>Partidas guardadas</button>
                 <button type="button" onClick={exitChronicles}>Salir y guardar</button>
               </div>
             </details>

@@ -9,6 +9,12 @@ import {
   finishChroniclesRun,
   renewChroniclesRun,
   chroniclesRunEntryMapId,
+  CHRONICLES_SAVE_CATALOG_KEY,
+  chroniclesListSavedRuns,
+  chroniclesSelectSavedRun,
+  chroniclesRenameSavedRun,
+  chroniclesForgetSavedRun,
+  chroniclesNoteSavedRunCheckpoint,
 } from './chroniclesRunIdentity.js';
 
 describe('Chronicles shared run identity', () => {
@@ -106,6 +112,63 @@ describe('Chronicles shared run identity', () => {
     expect(replacement).not.toBe(stale);
     expect(ensureChroniclesRun('first-person')).toBe(replacement);
     expect(renewChroniclesRun('first-person', stale)).toBe(replacement);
+  });
+
+
+  it('indexes old runs without changing their idempotent server IDs', () => {
+    localStorage.setItem(CHRONICLES_RUN_STORAGE_KEY, JSON.stringify({
+      id: 'old-run', owner: 'alice', ended: false,
+    }));
+    const saves = chroniclesListSavedRuns('first-person');
+    expect(saves).toHaveLength(1);
+    expect(saves[0]).toMatchObject({ id: 'old-run', entryMapId: null, active: true });
+    expect(ensureChroniclesRun('first-person')).toBe('old-run');
+  });
+
+  it('preserves separate expeditions when switching and starting new ones', () => {
+    const first = beginChroniclesRun('first-person');
+    chroniclesRenameSavedRun('first-person', first, 'Campaña de Hildegard');
+    chroniclesNoteSavedRunCheckpoint('first-person', first, 'crypt-eight-squares');
+    const second = beginChroniclesRun('first-person');
+    expect(second).not.toBe(first);
+    const saves = chroniclesListSavedRuns('first-person');
+    expect(saves.map((save) => save.id)).toEqual(expect.arrayContaining([first, second]));
+    expect(saves.find((save) => save.id === first)).toMatchObject({
+      title: 'Campaña de Hildegard', currentMapId: 'crypt-eight-squares', active: false,
+    });
+    expect(chroniclesSelectSavedRun('first-person', first)).toBe(true);
+    expect(ensureChroniclesRun('tactics')).toBe(first);
+    expect(chroniclesRunEntryMapId('first-person')).toBe('swordhaven-square');
+    expect(chroniclesListSavedRuns('first-person').find((save) => save.id === first).active).toBe(true);
+  });
+
+  it('removes only the chosen local slot without touching another run', () => {
+    const first = beginChroniclesRun('first-person');
+    const second = beginChroniclesRun('first-person');
+    expect(chroniclesForgetSavedRun('first-person', second)).toBe(true);
+    expect(chroniclesListSavedRuns('first-person').map((row) => row.id)).toEqual([first]);
+    expect(ensureChroniclesRun('first-person')).not.toBe(second);
+    expect(chroniclesSelectSavedRun('first-person', first)).toBe(true);
+    expect(chroniclesForgetSavedRun('first-person', 'not-my-slot')).toBe(false);
+  });
+
+  it('cannot list, load, rename or forget a different account’s saves', () => {
+    const aliceId = beginChroniclesRun('first-person');
+    localStorage.setItem('chess-study-auth-username', 'bob');
+    expect(chroniclesListSavedRuns('first-person')).toEqual([]);
+    expect(chroniclesSelectSavedRun('first-person', aliceId)).toBe(false);
+    expect(chroniclesRenameSavedRun('first-person', aliceId, 'Malicious')).toBe(false);
+    expect(chroniclesForgetSavedRun('first-person', aliceId)).toBe(false);
+    expect(JSON.parse(localStorage.getItem(CHRONICLES_SAVE_CATALOG_KEY)).owner).toBe('alice');
+  });
+
+  it('treats corrupt catalog data as empty and keeps old runs migratable', () => {
+    localStorage.setItem(CHRONICLES_SAVE_CATALOG_KEY, 'not-json');
+    localStorage.setItem(CHRONICLES_FIRST_PERSON_RUN_STORAGE_KEY, JSON.stringify({
+      id: 'legacy-one', owner: 'alice', ended: false,
+    }));
+    expect(chroniclesListSavedRuns('first-person').map((row) => row.id)).toEqual(['legacy-one']);
+    expect(chroniclesRenameSavedRun('first-person', 'legacy-one', '   ')).toBe(false);
   });
 
   it('never inherits an active expedition across authenticated users', () => {

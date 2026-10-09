@@ -19,6 +19,9 @@ async function openChroniclesSetup(page, options = {}) {
   const descend = page.getByRole('button').filter({ hasText: 'Descender a la cripta' });
   await expect(descend).toBeVisible();
   await descend.click();
+  const entry = page.locator('[data-chronicles-save-menu]');
+  await expect(entry).toBeVisible();
+  await entry.getByRole('button', { name: 'Nuevo juego', exact: true }).click();
   const setup = page.locator('[data-chronicles-character-setup]');
   await expect(setup).toBeVisible();
   return setup;
