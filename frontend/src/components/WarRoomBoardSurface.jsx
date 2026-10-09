@@ -1,4 +1,5 @@
-import { lazy, memo, Suspense } from 'react';
+import { lazy, memo, Suspense, useLayoutEffect, useRef, useState } from 'react';
+import { warRoomFirstFrameReady } from './WarRoomSceneReadiness.js';
 import Board from './Board.jsx';
 import WarRoomBoardZoom from './WarRoomBoardZoom.jsx';
 
@@ -48,16 +49,94 @@ const WarRoomBoardSurface = memo(function WarRoomBoardSurface({
   loadingLabel = 'Preparando sala 3D…',
   loadingClassName = 'hint-text',
 }) {
-  if (isThreeD) {
-    return (
+  const gateRef = useRef(null);
+  const [ready, setReady] = useState(false);
+  const [stalled, setStalled] = useState(false);
+  const [retry, setRetry] = useState(0);
+
+  useLayoutEffect(() => {
+    if (!isThreeD) return undefined;
+    // Run before paint: a new game must never inherit the previous room's
+    // ready state, even for one frame.
+    setReady(false);
+    setStalled(false);
+    let cancelled = false;
+    let pendingReveal = false;
+    let firstFrame = 0;
+    let secondFrame = 0;
+    const cancelReveal = () => {
+      window.cancelAnimationFrame(firstFrame);
+      window.cancelAnimationFrame(secondFrame);
+      firstFrame = 0;
+      secondFrame = 0;
+    };
+    const inspect = () => {
+      const complete = warRoomFirstFrameReady(gateRef.current);
+      if (!complete) {
+        cancelReveal();
+        if (pendingReveal) {
+          pendingReveal = false;
+          setReady(false);
+        }
+        return;
+      }
+      if (pendingReveal) return;
+      pendingReveal = true;
+      // The renderer has painted synchronously, but let the browser composite
+      // the complete frame before uncovering it. No arbitrary minimum delay.
+      firstFrame = window.requestAnimationFrame(() => {
+        secondFrame = window.requestAnimationFrame(() => {
+          if (cancelled) return;
+          setReady(true);
+          setStalled(false);
+        });
+      });
+    };
+    const observer = new MutationObserver(inspect);
+    observer.observe(gateRef.current, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ['data-war-room-variant-status', 'data-war-room-variant', 'data-board3d-piece-built'],
+    });
+    const stalledTimer = window.setTimeout(() => {
+      if (!warRoomFirstFrameReady(gateRef.current)) setStalled(true);
+    }, 30000);
+    inspect();
+    return () => {
+      cancelled = true;
+      observer.disconnect();
+      cancelReveal();
+      window.clearTimeout(stalledTimer);
+    };
+  }, [isThreeD, boardProps?.gameId, retry]);
+
+  if (!isThreeD) return <Board {...boardProps} />;
+  return (
+    <div ref={gateRef} style={{ display: 'contents' }} data-war-room-scene-gate={ready ? 'ready' : 'loading'}>
       <WarRoomBoardZoom>
-        <Suspense fallback={<div className={loadingClassName}>{loadingLabel}</div>}>
-          <Board3D {...boardProps} />
+        <Suspense fallback={null}>
+          <Board3D key={`${boardProps?.gameId || 'war-room'}-${retry}`} {...boardProps} />
         </Suspense>
       </WarRoomBoardZoom>
-    );
-  }
-  return <Board {...boardProps} />;
+      {!ready && (
+        <div className="route-loading scene-transition-cover" role="status" aria-live="polite">
+          <strong className="scene-transition-title">LOADING</strong>
+          <span className={loadingClassName}>{loadingLabel}</span>
+          {stalled && (
+            <div className="scene-transition-recovery">
+              <span>La sala está tardando demasiado en prepararse.</span>
+              <button type="button" className="secondary-btn" onClick={() => {
+                setReady(false);
+                setStalled(false);
+                setRetry((value) => value + 1);
+              }}>Reintentar</button>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
 }, sameBoardSurfaceProps);
 
 export default WarRoomBoardSurface;
