@@ -275,6 +275,29 @@ function building(spec, mats, coarse, contentIds, center) {
   walls.userData.chroniclesArchitecture = true;
   mesh(root, new THREE.BoxGeometry(width + 0.55, 0.7, depth + 0.6), mats.stone,
     'stone-foundations', [0, 0.35, 0]);
+  // One instanced corner-course mesh per house: masonry reads as dressed
+  // stone instead of four perfectly smooth box corners.
+  const courses = Math.floor((height - 0.75) / 0.70);
+  const quoinGeometry = new THREE.BoxGeometry(0.50, 0.31, 0.51);
+  const quoins = new THREE.InstancedMesh(quoinGeometry, mats.stone, courses * 4);
+  quoins.name = 'corner-dressed-stone-courses';
+  const quoin = new THREE.Object3D();
+  const quoinColor = new THREE.Color();
+  let courseIndex = 0;
+  for (let level = 0; level < courses; level += 1) {
+    for (const sideX of [-1, 1]) for (const sideZ of [-1, 1]) {
+      quoin.position.set(sideX * (width / 2 - 0.08), 0.92 + level * 0.70, sideZ * (depth / 2 - 0.08));
+      quoin.scale.set(0.92 + (level % 3) * 0.055, 1, 1);
+      quoin.updateMatrix();
+      quoins.setMatrixAt(courseIndex, quoin.matrix);
+      quoinColor.setHex([0xb5ab9a, 0xa59d8c, 0xc5bba9][level % 3]);
+      quoins.setColorAt(courseIndex, quoinColor);
+      courseIndex += 1;
+    }
+  }
+  quoins.instanceMatrix.needsUpdate = true;
+  if (quoins.instanceColor) quoins.instanceColor.needsUpdate = true;
+  root.add(quoins);
   // A proper triangular gable under each pitched roof, not a flat cube roof.
   const gable = new THREE.Shape();
   gable.moveTo(-width / 2, 0);
@@ -329,6 +352,13 @@ function building(spec, mats, coarse, contentIds, center) {
   }
   mesh(root, new THREE.BoxGeometry(1.75, 3.12, 0.16), mats.timber,
     'shop-door', [0, 1.56, facadeZ + 0.16]);
+  // A projecting stone entrance frame and arched lintel add real depth.
+  for (const side of [-1, 1]) {
+    mesh(root, new THREE.BoxGeometry(0.28, 3.27, 0.35), mats.stone,
+      'door-recessed-stone-jamb', [side * 0.98, 1.62, facadeZ + 0.28]);
+  }
+  mesh(root, new THREE.BoxGeometry(2.27, 0.21, 0.43), mats.stone,
+    'door-stone-lintel', [0, 3.21, facadeZ + 0.26]);
   // Lanterns and pennants are attached to the blocking building footprint,
   // never freestanding on traversable tiles.
   for (const x of [-width * 0.41, width * 0.41]) {
@@ -368,6 +398,40 @@ function building(spec, mats, coarse, contentIds, center) {
         'window-box-flowers', [x + fx + 0.03, 2.3, front + 0.42]);
     }
   }
+  // The former blank side walls now have inset windows and deep stone sills.
+  // All facade details remain within the foundation's authored footprint.
+  for (const side of [-1, 1]) {
+    for (const z of [-depth * 0.22, depth * 0.22]) {
+      const edge = side * (width / 2 + 0.105);
+      mesh(root, new THREE.BoxGeometry(0.13, 1.63, 1.77), mats.stone,
+        'side-window-stone-reveal', [edge, 2.79, z]);
+      mesh(root, new THREE.BoxGeometry(0.16, 1.27, 1.39), mats.window,
+        'side-window-amber-glass', [edge + side * 0.09, 2.84, z]);
+      mesh(root, new THREE.BoxGeometry(0.26, 0.16, 1.88), mats.stone,
+        'side-window-carved-sill', [edge + side * 0.11, 1.95, z]);
+      mesh(root, new THREE.BoxGeometry(0.15, 0.10, 1.4), mats.timber,
+        'side-window-crossbar', [edge + side * 0.17, 2.85, z]);
+    }
+  }
+  // Shaped dormers break the broad low-poly roof silhouette. One on touch,
+  // two on desktop; all parts are decorative and far above the walk grid.
+  for (const side of (coarse ? [-1] : [-1, 1])) {
+    const x = side * width * 0.245;
+    const z = depth * 0.17;
+    const bay = new THREE.Group();
+    bay.name = 'pitched-roof-dormer-' + side;
+    bay.position.set(x, height + 1.38, z);
+    mesh(bay, new THREE.BoxGeometry(1.22, 1.16, 1.10), wallMaterial,
+      'dormer-walls', [0, 0, 0]);
+    mesh(bay, new THREE.BoxGeometry(0.73, 0.69, 0.11), mats.window,
+      'dormer-glass', [0, 0.09, 0.61]);
+    for (const rx of [-1, 1]) {
+      const canopy = mesh(bay, new THREE.BoxGeometry(0.87, 0.14, 1.47), roof,
+        'dormer-roof-slope', [rx * 0.30, 0.76, 0]);
+      canopy.rotation.z = -rx * 0.48;
+    }
+    root.add(bay);
+  }
   mesh(root, new THREE.BoxGeometry(1.05, 2.3, 0.95), mats.stone,
     'stone-chimney', [width * 0.31, height + 1.04, -depth * 0.25], !coarse);
   mesh(root, new THREE.BoxGeometry(1.38, 0.22, 1.32), mats.stone,
@@ -375,16 +439,16 @@ function building(spec, mats, coarse, contentIds, center) {
 
   // Each hero building has a distinctive readable silhouette.
   if (isTemple) {
-    mesh(root, new THREE.CylinderGeometry(1.19, 1.38, 3.2, 8), mats.stone,
+    mesh(root, new THREE.CylinderGeometry(1.19, 1.38, 3.2, coarse ? 12 : 20), mats.stone,
       'temple-bell-tower', [0, height + 2.5, -depth * 0.11], !coarse);
-    mesh(root, new THREE.ConeGeometry(1.48, 2.8, 8), roof,
+    mesh(root, new THREE.ConeGeometry(1.48, 2.8, coarse ? 12 : 20), roof,
       'temple-spire', [0, height + 5.5, -depth * 0.11], !coarse);
     mesh(root, new THREE.TorusGeometry(0.49, 0.10, 8, 20), mats.gold,
       'temple-rose-window', [0, height - 0.56, facadeZ + 0.14]);
   } else if (isMagic) {
-    mesh(root, new THREE.CylinderGeometry(1.11, 1.20, 3.35, 8), mats.plaster,
+    mesh(root, new THREE.CylinderGeometry(1.11, 1.20, 3.35, coarse ? 12 : 20), mats.plaster,
       'magic-shop-turret', [-width * 0.40, height + 1.62, -depth * 0.28], !coarse);
-    mesh(root, new THREE.ConeGeometry(1.52, 3.5, 8), roof,
+    mesh(root, new THREE.ConeGeometry(1.52, 3.5, coarse ? 12 : 20), roof,
       'magic-turret-roof', [-width * 0.40, height + 5.02, -depth * 0.28], !coarse);
     mesh(root, new THREE.OctahedronGeometry(0.42, 0), mats.arcane,
       'arcane-window-lantern', [width * 0.33, height - 0.3, facadeZ + 0.28]);
