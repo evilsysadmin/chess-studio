@@ -1,4 +1,5 @@
 import { chroniclesMapForState } from './chronicles/chroniclesMapCatalog.js';
+import { chroniclesMM3StatSnapshot } from './chronicles/chroniclesMM3Stats.js';
 import {
   STORAGE_LOCAL,
   readJsonStorage,
@@ -801,4 +802,11 @@ export function applyChroniclesTacticsProgression(progression, previous, next, {
   }
 
   return { progression: progress, awards, levelUps };
+}
+
+// Read-only bridge for the upcoming versioned MM3 character model. The
+// legacy progression and combat modifiers remain authoritative until v2
+// migration; this must not alter training points or initiative.
+export function chroniclesHeroMM3StatPreview(progression, memberId) {
+  return chroniclesMM3StatSnapshot(chroniclesHeroProgress(progression, memberId));
 }
