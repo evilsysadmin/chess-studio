@@ -124,7 +124,6 @@ func document(run NewRun) bson.D {
 	return doc
 }
 
-
 func Summary(row bson.D) bson.D {
 	updated := get(row, "updatedAt")
 	var ms int64
