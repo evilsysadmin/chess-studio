@@ -3,9 +3,20 @@ import {
   releaseChroniclesLandscape,
   requestChroniclesLandscapeOnEntry,
   shouldAutoRotateChroniclesOnEntry,
+  shouldHandleChroniclesBack,
 } from './useChroniclesLandscape.js';
 
 describe('Chronicles immersive entry', () => {
+  it('lets browser Escape exit native fullscreen without operating the game menu', () => {
+    const root = {};
+    const doc = { documentElement: root, fullscreenElement: root };
+    expect(shouldHandleChroniclesBack({ type: 'keydown', key: 'Escape' }, doc)).toBe(false);
+    expect(shouldHandleChroniclesBack({ type: 'keydown', key: 'Escape' }, { fullscreenElement: null })).toBe(true);
+    expect(shouldHandleChroniclesBack({ type: 'popstate' }, doc)).toBe(true);
+    expect(shouldHandleChroniclesBack({ type: 'contextmenu' }, doc)).toBe(true);
+    expect(shouldHandleChroniclesBack({ type: 'keydown', key: 'Escape' }, { webkitFullscreenElement: root })).toBe(false);
+  });
+
   it('targets phone-like coarse-pointer viewports only', () => {
     const mobile = { innerWidth: 390, matchMedia: vi.fn(() => ({ matches: true })) };
     const desktop = { innerWidth: 1440, matchMedia: vi.fn(() => ({ matches: false })) };
