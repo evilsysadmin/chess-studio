@@ -1,6 +1,7 @@
 import { lazy, memo, Suspense, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { warRoomFirstFrameReady } from './WarRoomSceneReadiness.js';
+import './WarRoomSceneOverlay.css';
 import Board from './Board.jsx';
 import WarRoomBoardZoom from './WarRoomBoardZoom.jsx';
 
