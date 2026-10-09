@@ -17,7 +17,7 @@ function saveWhen(value) {
 
 export default function ChroniclesSaveMenu({
   saves = [], onNew, onLoad, onRename, onForget, onDelete, onExit,
-  loading = false, error = '', busyRunId = null,
+  loading = false, error = '', busyRunId = null, onRetrySync,
 }) {
   const [screen, setScreen] = useState('home');
   const [editing, setEditing] = useState(null);
@@ -45,7 +45,14 @@ export default function ChroniclesSaveMenu({
           Tu compañía te espera. Y Matthias, naturalmente, lleva la cuenta de tus decisiones cuestionables.
         </p>
         {loading && <p className="chronicles-save-menu__sync" role="status">Consultando expediciones del servidor…</p>}
-        {error && <p className="chronicles-save-menu__sync-error" role="alert">{error}</p>}
+        {error && (
+          <div className="chronicles-save-menu__sync-recovery">
+            <p className="chronicles-save-menu__sync-error" role="alert">{error}</p>
+            <button type="button" onClick={onRetrySync} disabled={loading || busyRunId !== null}>
+              Reintentar sincronización
+            </button>
+          </div>
+        )}
 
         {screen === 'home' ? (
           <div className="chronicles-save-menu__actions">

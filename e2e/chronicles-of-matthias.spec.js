@@ -387,3 +387,45 @@ test('Chronicles of Matthias · automap sigue el rumbo real y ESC no abandona el
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   expect(overflow).toBeLessThanOrEqual(1);
 });
+
+test('Chronicles · fallos de red permiten reintentar el libro y regresar desde bootstrap', async ({ page }) => {
+  const requests = [];
+  await mockApi(page, { chroniclesRunFailureStatus: 503, requestLog: requests });
+  let inventoryAttempts = 0;
+  // This route overrides only the first inventory request; subsequent GETs
+  // fall through to the authoritative test API, with no creation on retry.
+  await page.route('http://localhost:4000/api/chronicles/runs', async (route) => {
+    if (route.request().method() !== 'GET') return route.fallback();
+    inventoryAttempts += 1;
+    if (inventoryAttempts === 1) {
+      return route.fulfill({
+        status: 503,
+        contentType: 'application/json',
+        body: JSON.stringify({ detail: 'Temporary catalog outage' }),
+      });
+    }
+    return route.fallback();
+  });
+  await login(page);
+  await dismissGuide(page);
+  const modes = await openMoreGameModes(page);
+  const experiments = modes.getByRole('button').filter({ hasText: 'Experimentos geniales' });
+  await experiments.click();
+  await page.getByRole('button').filter({ hasText: 'Descender a la cripta' }).click();
+
+  const menu = page.locator('[data-chronicles-save-menu]');
+  await expect(menu).toBeVisible();
+  await expect(menu.getByRole('alert')).toContainText('No se pudo consultar el servidor');
+  await menu.getByRole('button', { name: 'Reintentar sincronización' }).click();
+  await expect.poll(() => inventoryAttempts).toBe(2);
+  await expect(menu.getByRole('alert')).toHaveCount(0);
+  expect(requests.filter((r) => r.method === 'POST' && r.path === '/api/chronicles/runs')).toHaveLength(0);
+
+  await menu.getByRole('button', { name: 'Nuevo juego' }).click();
+  await confirmChroniclesCharacterSetup(page);
+  await expect(page.getByRole('heading', { name: 'No se pudo preparar Chronicles' })).toBeVisible();
+  await page.getByRole('button', { name: 'Volver a expediciones' }).click();
+  await expect(menu).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'No se pudo preparar Chronicles' })).toHaveCount(0);
+  await expect(menu.getByRole('button', { name: 'Nuevo juego' })).toBeEnabled();
+});

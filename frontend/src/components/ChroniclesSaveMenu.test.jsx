@@ -3,7 +3,7 @@ import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import ChroniclesSaveMenu from './ChroniclesSaveMenu.jsx';
 
-function menu(saves) {
+function menu(saves, props = {}) {
   return renderToStaticMarkup(
     <ChroniclesSaveMenu
       saves={saves}
@@ -12,6 +12,7 @@ function menu(saves) {
       onRename={vi.fn()}
       onForget={vi.fn()}
       onExit={vi.fn()}
+      {...props}
     />,
   );
 }
@@ -26,6 +27,18 @@ describe('Chronicles expedition entry', () => {
     expect(html).toContain('Volver al castillo');
     expect(html).toContain('data-chronicles-save-menu="home"');
     expect(html).toContain('disabled=""');
+  });
+
+  it('shows an explicit retry only for failed catalog sync, disabled while busy', () => {
+    const error = 'No se pudo consultar el servidor.';
+    const html = menu([], { error, onRetrySync: vi.fn() });
+    expect(html).toContain(error);
+    expect(html).toContain('Reintentar sincronización');
+    expect(html).toContain('role="alert"');
+    expect(menu([])).not.toContain('Reintentar sincronización');
+
+    const busyHtml = menu([], { error, busyRunId: 'run-1', onRetrySync: vi.fn() });
+    expect(busyHtml).toMatch(/disabled=""[^>]*>Reintentar sincronización<\/button>/);
   });
 
   it('shows the selected server run identity without putting checkpoint state in HTML', () => {
