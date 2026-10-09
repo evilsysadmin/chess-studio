@@ -242,22 +242,6 @@ async function captureChroniclesHealth(page) {
   });
 }
 
-async function stageChroniclesSigilAwake(page) {
-  const forward = page.getByRole('button', { name: 'Avanzar', exact: true });
-  const attack = page.getByRole('button', { name: 'Atacar', exact: true });
-
-  await forward.click();
-  await page.keyboard.press('2');
-  await expect(page.getByRole('button', { name: 'Seleccionar Hildegard', exact: true })).toHaveAttribute('aria-pressed', 'true');
-  for (let hit = 0; hit < 3; hit += 1) await attack.click();
-  await forward.click();
-  await page.getByRole('button', { name: 'Girar a la izquierda', exact: true }).click();
-  await forward.click();
-  await expect(page.getByText('Derrota a la torre carcelero', { exact: true })).toBeVisible();
-  await page.getByRole('button', { name: 'Retroceder', exact: true }).click();
-  await page.waitForTimeout(220);
-}
-
 async function capturePawnSlugReadyHealth(page) {
   return page.evaluate(() => {
     const root = document.documentElement;
@@ -511,10 +495,24 @@ if (scopeEnabled('chronicles')) {
         await page.keyboard.press('d');
         await page.keyboard.press('d');
         await page.keyboard.press('w');
+        const game = page.locator('[data-chronicles="true"]');
+        await expect(game).toHaveAttribute('data-chronicles-map-id', 'crypt-eight-squares');
         await expect(page.getByText('Derrota al peón corrompido', { exact: true })).toBeVisible();
-        await stageChroniclesSigilAwake(page);
+        // Record the real crypt entrance rather than scripting a brittle
+        // battle/AI sequence. Sigil mechanics have their own focused tests.
         await captureFrozenFrame(page, {
-          path: `${ARTIFACT_DIR}/chronicles-sigil-awake-${capture.label}.png`,
+          path: `${ARTIFACT_DIR}/chronicles-crypt-entry-${capture.label}.png`,
+          fullPage: true,
+        });
+        // The established first-person return portal must remain actionable
+        // after the Swordhaven → crypt crossing.
+        const returnAction = game.locator('[data-chronicles-touch-action="interact"]');
+        await expect(returnAction).toHaveAttribute('aria-label', 'Regresar a Swordhaven');
+        await page.keyboard.press('f');
+        await expect(game).toHaveAttribute('data-chronicles-map-id', 'swordhaven-square');
+        await expect(game).toHaveAttribute('data-chronicles-phase', 'explore');
+        await captureFrozenFrame(page, {
+          path: `${ARTIFACT_DIR}/chronicles-swordhaven-return-${capture.label}.png`,
           fullPage: true,
         });
       });
