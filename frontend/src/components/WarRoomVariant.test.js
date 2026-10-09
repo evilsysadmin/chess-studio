@@ -18,6 +18,7 @@ import {
   warRoomVariantDefinition,
   warRoomVariantDomData,
   warRoomVariantRuntimeModelUrl,
+  warRoomVariantSupportsHans,
 } from './WarRoomVariant.js';
 
 describe('War Room staging variant', () => {
@@ -118,6 +119,15 @@ describe('War Room staging variant', () => {
     expect(isClassicWarRoomVariant({ selectable: true, variant: 'classic' })).toBe(true);
     expect(isClassicWarRoomVariant({ selectable: true, variant: 'v2' })).toBe(false);
     expect(isClassicWarRoomVariant({ selectable: false, variant: 'v3' })).toBe(true);
+  });
+
+  it('keeps Hans eligibility in lightweight variant metadata', () => {
+    expect(warRoomVariantSupportsHans('v2')).toBe(true);
+    expect(warRoomVariantSupportsHans('v3')).toBe(true);
+    expect(warRoomVariantSupportsHans('v4')).toBe(true);
+    expect(warRoomVariantSupportsHans('classic')).toBe(false);
+    expect(warRoomVariantSupportsHans('duel')).toBe(false);
+    expect(warRoomVariantSupportsHans('combat-ops')).toBe(false);
   });
 
   it('owns cacheable runtime model URLs before the scene mounts', () => {

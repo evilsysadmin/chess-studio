@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { buildShareText, buildShareUrl, normalizeShareRecord } from '../shareResult.js';
+import { buildShareText, buildShareUrl, normalizeShareRecord, countFullMoves } from '../shareResult.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
 import GlossaryTerm from './GlossaryTerm.jsx';
 import { withTimeout } from '../asyncControl.js';
@@ -12,6 +12,8 @@ export default function ShareResultModal({ record, onClose }) {
   const data = useMemo(() => normalizeShareRecord(record), [record]);
   const text = useMemo(() => buildShareText(record), [record]);
   const url = useMemo(() => buildShareUrl(record), [record]);
+  // Stored moves are half-moves (plies); a displayed chess move is a full turn.
+  const moveCount = countFullMoves(data.moves);
 
   async function copy(value, message) {
     try { await navigator.clipboard.writeText(value); setFeedback(message); }
@@ -24,7 +26,7 @@ export default function ShareResultModal({ record, onClose }) {
     ctx.fillStyle='#d8c08b';ctx.font='700 34px serif';ctx.fillText(data.incident?'CHESS STUDIO · CÁMARA DEL CRIMEN':'CHESS STUDIO · ACTA DE PARTIDA',70,80);
     ctx.fillStyle=data.outcome==='win'?'#d9c978':data.outcome==='loss'?'#c87c70':'#b7b7a8';ctx.font='800 78px serif';ctx.fillText(data.incident?'PRUEBA FORENSE':(OUTCOME[data.outcome]||data.outcome),70,190);
     ctx.fillStyle='#f1ead8';ctx.font='600 38px sans-serif';ctx.fillText(`contra CPU · nivel ${data.difficulty}`,74,250);
-    ctx.fillStyle='#c7bea8';ctx.font='30px sans-serif';ctx.fillText(`${data.moves.length} jugadas · ${data.humanColor==='w'?'Blancas':'Negras'}${data.timeControl?.label?` · ${data.timeControl.label}`:''}`,74,310);
+    ctx.fillStyle='#c7bea8';ctx.font='30px sans-serif';ctx.fillText(`${moveCount} jugadas · ${data.humanColor==='w'?'Blancas':'Negras'}${data.timeControl?.label?` · ${data.timeControl.label}`:''}`,74,310);
     if(data.incident){ctx.fillStyle='#f1ead8';ctx.font='600 30px serif';ctx.fillText(`Jugada ${data.incident.moveNumber}: ${data.incident.played} · −${data.incident.loss} cp`,74,370);ctx.font='25px sans-serif';ctx.fillStyle='#c7bea8';ctx.fillText(`Motor: ${data.incident.suggested}`,74,414);}
     else if(data.opening){ctx.font='28px serif';ctx.fillText(data.opening.slice(0,62),74,365);}
     if(data.series&&!data.incident){ctx.font='26px sans-serif';ctx.fillText(`Serie: Tú ${data.series.humanWins} · CPU ${data.series.cpuWins}${data.series.draws?` · tablas ${data.series.draws}`:''}`,74,420);}
@@ -56,7 +58,7 @@ export default function ShareResultModal({ record, onClose }) {
             <span>contra CPU · nivel {data.difficulty}</span>
           </div>
           <div className="share-result-stats">
-            <span>{data.moves.length} jugadas</span>
+            <span>{moveCount} jugadas</span>
             <span>{data.humanColor === 'w' ? 'Blancas' : 'Negras'}</span>
             {data.timeControl?.label && <span>{data.timeControl.label}</span>}
           </div>
@@ -73,7 +75,7 @@ export default function ShareResultModal({ record, onClose }) {
           <button className="secondary-btn" onClick={() => copy(text,'Resumen copiado.')}>Copiar resumen</button>
           <button className="secondary-btn" onClick={downloadCard}>Tarjeta PNG</button>
         </div>
-        {feedback && <p className="hint-text share-feedback">{feedback}</p>}
+        {feedback && <p className="hint-text share-feedback" role="status" aria-live="polite">{feedback}</p>}
       </div>
     </div>
   );

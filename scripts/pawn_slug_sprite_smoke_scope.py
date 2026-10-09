@@ -40,6 +40,11 @@ SHARED_PATHS = {
     ".github/workflows/pawn-slug-matthias-sprite-smoke.yml",
 }
 
+# Contract-test-only changes are checked by Pawn Slug Godot's regular
+# Sprite Forge tests; they do not modify runtime atlases or regeneration logic.
+# Keep sprite_forge.py (the actual compiler) fail-closed in the broad scope.
+CONTRACT_TEST_ONLY_PATHS = {"scripts/art/test_sprite_forge.py"}
+
 SELF_PATH = "scripts/pawn_slug_sprite_smoke_scope.py"
 
 
@@ -61,7 +66,7 @@ def classify(paths: list[str]) -> Scope:
     matthias = False
     enemy = False
     for path in cleaned:
-        if path == SELF_PATH:
+        if path == SELF_PATH or path in CONTRACT_TEST_ONLY_PATHS:
             continue
         if path in SHARED_PATHS:
             matthias = True
@@ -108,6 +113,9 @@ def self_test() -> None:
     assert classify(["scripts/art/new_sprite_tool.py"]) == full_scope()
     assert classify(["frontend/src/App.jsx"]) == Scope(False, False)
     assert classify(["infra/grafana/README.md"]) == Scope(False, False)
+    assert classify(["scripts/art/test_sprite_forge.py"]) == Scope(False, False)
+    assert classify(["scripts/art/test_sprite_forge.py", "scripts/art/sprite_forge.py"]) == full_scope()
+    assert classify(["scripts/art/test_sprite_forge.py", "games/pawn-slug-godot/scripts/matthias_art.gd"]) == Scope(True, False)
     assert classify([SELF_PATH]) == Scope(False, False)
     assert classify([
         "games/pawn-slug-godot/scripts/matthias_art.gd",

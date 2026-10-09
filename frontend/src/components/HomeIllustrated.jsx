@@ -80,7 +80,7 @@ function currentReducedMotion() {
   return reducedMotionStatus().effective;
 }
 
-export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, onPlayIntent, onContinue, onPractice, pendingModes = [], onTournament, onTrain, onCombat, onDaily, onHistory, onInsights, tools, matthiasModel, matthiasSpeaking, onMatthiasAction, onMatthiasDismiss }) {
+export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, onPlayIntent, onContinue, onPractice, pendingModes = [], onTournament, onTrain, onTrainIntent, onCombat, onDaily, onHistory, onInsights, tools, matthiasModel, matthiasSpeaking, onMatthiasAction, onMatthiasDismiss, pvpMenuEntry = null }) {
   const [toolsOpen, setToolsOpen] = useState(false);
   const [quickOpen, setQuickOpen] = useState(false);
   const [playMenuOpen, setPlayMenuOpen] = useState(false);
@@ -174,9 +174,15 @@ export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, 
     if (!loading) onPlayIntent?.();
   };
 
+  const signalDestinationIntent = (destination) => {
+    if (loading) return;
+    if (destination === 'play') onPlayIntent?.();
+    if (destination === 'train') onTrainIntent?.();
+  };
+
   const handleSceneDestinationHover = (destination) => {
     setActiveRoom(destination);
-    if (destination === 'play') signalPlayIntent();
+    signalDestinationIntent(destination);
   };
 
   const activateSceneDestination = (destination) => {
@@ -343,10 +349,10 @@ export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, 
                 className={`illustrated-home__destination illustrated-home__destination--${id}${PRIMARY_DIEGETIC_DESTINATIONS.has(id) ? ' is-diegetic-object' : ''}${activeRoom === id ? ' is-active' : ''}`}
                 data-home-diegetic-object={PRIMARY_DIEGETIC_DESTINATIONS.has(id) ? id : undefined}
                 onClick={action}
-                onPointerEnter={() => { setActiveRoom(id); if (id === 'play') signalPlayIntent(); }}
-                onPointerDown={() => { if (id === 'play') signalPlayIntent(); }}
+                onPointerEnter={() => { setActiveRoom(id); signalDestinationIntent(id); }}
+                onPointerDown={() => signalDestinationIntent(id)}
                 onPointerLeave={() => setActiveRoom(null)}
-                onFocus={() => { setActiveRoom(id); if (id === 'play') signalPlayIntent(); }}
+                onFocus={() => { setActiveRoom(id); signalDestinationIntent(id); }}
                 onBlur={() => setActiveRoom(null)}
                 disabled={loading}
               >
@@ -411,6 +417,7 @@ export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, 
                   ))}
                 </div>
               )}
+              {pvpMenuEntry && <div className="illustrated-home__play-mobile-pvp">{pvpMenuEntry}</div>}
               {hasSavedGame && (
                 <button type="button" className="illustrated-home__play-menu-item" onClick={onPlay} disabled={loading}>
                   <IconSword aria-hidden="true" />
@@ -425,7 +432,15 @@ export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, 
                     <IconBook aria-hidden="true" />
                     <span><strong>Así juegas</strong><small>Revisa tus patrones y errores</small></span>
                   </button>
-                  <button type="button" className="illustrated-home__play-menu-item is-portrait-only" onClick={onTrain} disabled={loading}>
+                  <button
+                    type="button"
+                    className="illustrated-home__play-menu-item is-portrait-only"
+                    onClick={onTrain}
+                    onPointerEnter={() => signalDestinationIntent('train')}
+                    onPointerDown={() => signalDestinationIntent('train')}
+                    onFocus={() => signalDestinationIntent('train')}
+                    disabled={loading}
+                  >
                     <IconBook aria-hidden="true" />
                     <span><strong>Entrenar</strong><small>Puzzles y práctica guiada</small></span>
                   </button>
@@ -480,9 +495,9 @@ export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, 
                   type="button"
                   className={`illustrated-home__quickbar-chip illustrated-home__quickbar-chip--${id}${activeRoom === id ? ' is-active' : ''}`}
                   onClick={() => { setQuickOpen(false); action(); }}
-                  onPointerEnter={() => setActiveRoom(id)}
+                  onPointerEnter={() => { setActiveRoom(id); signalDestinationIntent(id); }}
                   onPointerLeave={() => setActiveRoom(null)}
-                  onFocus={() => setActiveRoom(id)}
+                  onFocus={() => { setActiveRoom(id); signalDestinationIntent(id); }}
                   onBlur={() => setActiveRoom(null)}
                   disabled={loading}
                 >

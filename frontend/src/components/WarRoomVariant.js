@@ -26,6 +26,7 @@ export const WAR_ROOM_VARIANTS = Object.freeze([
     shell: 'blender',
     runtimeModelUrl: r2AssetUrl('warRoom.v2.runtime'),
     cacheBustBuild: false,
+    hansStage: true,
     loadInstaller: () => import('./WarRoomV2Shell.js').then(({ installWarRoomV2Shell }) => installWarRoomV2Shell),
   }),
   Object.freeze({
@@ -34,6 +35,7 @@ export const WAR_ROOM_VARIANTS = Object.freeze([
     shell: 'blender',
     runtimeModelUrl: r2AssetUrl('warRoom.v3.runtime'),
     cacheBustBuild: false,
+    hansStage: true,
     loadInstaller: () => import('./WarRoomV3Shell.js').then(({ installWarRoomV3Shell }) => installWarRoomV3Shell),
   }),
   Object.freeze({
@@ -45,6 +47,7 @@ export const WAR_ROOM_VARIANTS = Object.freeze([
     randomPool: false,
     runtimeModelUrl: r2AssetUrl('warRoom.v4.runtime'),
     cacheBustBuild: false,
+    hansStage: true,
     loadInstaller: () => import('./WarRoomV4Shell.js').then(({ installWarRoomV4Shell }) => installWarRoomV4Shell),
   }),
 ]);
@@ -127,6 +130,10 @@ export function warRoomVariantDefinition(value) {
 export function isClassicWarRoomVariant({ selectable = false, variant = 'classic' } = {}) {
   const definition = warRoomVariantDefinition(variant);
   return (!selectable && definition?.internal !== true) || definition?.shell === 'procedural';
+}
+
+export function warRoomVariantSupportsHans(value) {
+  return warRoomVariantDefinition(value)?.hansStage === true;
 }
 
 export function loadWarRoomVariantInstaller(value) {

@@ -1,6 +1,4 @@
-import { lazy, Suspense, useEffect, useRef, useState } from 'react';
-import { fetchAdminUsers } from '../admin.js';
-import { getToken, getUsername } from '../auth.js';
+import { lazy, Suspense, useRef, useState } from 'react';
 import { useEscapeToClose } from '../useEscapeToClose.js';
 import AdminDashboardContent from './AdminDashboardContent.jsx';
 import ObservabilityPanel from './ObservabilityPanel.jsx';
@@ -10,7 +8,7 @@ const AdminRatingEditor = lazy(() => import('./AdminRatingEditor.jsx'));
 
 const ADMIN_SECTIONS = Object.freeze([
   { id: 'overview', label: 'Resumen', hint: 'Estado esencial' },
-  { id: 'observability', label: 'Observabilidad', hint: 'SRE y servicio' },
+  { id: 'observability', label: 'Estado API', hint: 'Disponibilidad y latencia' },
   { id: 'users', label: 'Usuarios', hint: 'Presencia y cuentas' },
   { id: 'feedback', label: 'Feedback', hint: 'Voz del usuario' },
   { id: 'matthias', label: 'Matthias', hint: 'IA y memoria' },
@@ -74,49 +72,21 @@ function AdminWorkspaceTabs({ section, onChange }) {
   );
 }
 
-function AdminObservabilityWorkspace({ onExit }) {
-  useEscapeToClose(onExit);
-  const [users, setUsers] = useState([]);
-  const [usersError, setUsersError] = useState(null);
-
-  useEffect(() => {
-    let mounted = true;
-    const controller = new AbortController();
-    fetchAdminUsers({ signal: controller.signal })
-      .then((result) => {
-        if (mounted) setUsers(Array.isArray(result) ? result : []);
-      })
-      .catch((error) => {
-        if (mounted && error?.name !== 'AbortError') setUsersError(error?.message || 'No se pudo cargar la presencia de usuarios.');
-      });
-    return () => {
-      mounted = false;
-      controller.abort();
-    };
-  }, []);
-
+function AdminObservabilityWorkspace() {
   return (
-    <section
-      className="admin-workspace-observability"
-      id="admin-panel-observability"
-      role="tabpanel"
-      aria-labelledby="admin-tab-observability"
-    >
+    <section className="admin-workspace-observability" id="admin-panel-observability" role="tabpanel" aria-labelledby="admin-tab-observability">
       <div className="admin-workspace-section-heading">
-        <div>
-          <span className="section-label">Operaciones</span>
-          <h2>Observabilidad</h2>
-        </div>
-        <p>Salud, SLO, logs, métricas y trazas en una vista propia; sin atravesar el censo de usuarios para llegar aquí.</p>
+        <div><span className="section-label">Operaciones</span><h2>Estado API</h2></div>
+        <p>Grafana conserva las métricas, alertas y trazas. Aquí sólo comprobamos disponibilidad y latencia de la API.</p>
       </div>
-      {usersError && <p className="error-text">{usersError}</p>}
-      <ObservabilityPanel token={getToken()} users={users} currentAdmin={getUsername()} />
+      <ObservabilityPanel />
     </section>
   );
 }
 
 export default function AdminScreen({ onExit }) {
   const [section, setSection] = useState('overview');
+  useEscapeToClose(onExit);
 
   return (
     <div className="admin-workspace-shell" data-admin-section={section}>
@@ -124,7 +94,7 @@ export default function AdminScreen({ onExit }) {
       <AdminWorkspaceTabs section={section} onChange={setSection} />
 
       {section === 'observability' ? (
-        <AdminObservabilityWorkspace onExit={onExit} />
+        <AdminObservabilityWorkspace />
       ) : (
         <div
           className="admin-workspace-content-slot"
@@ -137,7 +107,7 @@ export default function AdminScreen({ onExit }) {
               <AdminRatingEditor />
             </Suspense>
           )}
-          <AdminDashboardContent onExit={onExit} />
+          <AdminDashboardContent section={section} onNavigate={setSection} />
         </div>
       )}
     </div>

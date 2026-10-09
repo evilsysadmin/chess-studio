@@ -109,14 +109,15 @@ describe('Chronicles of Matthias dungeon atmosphere', () => {
     expect(key?.castShadow).toBe(false);
     expect(bounce?.castShadow).toBe(false);
     expect(key?.intensity).toBeGreaterThan(4.5);
-    expect(key?.distance).toBeGreaterThanOrEqual(14);
+    expect(key?.distance).toBeLessThanOrEqual(13);
     expect(key?.position.distanceTo(camera.position)).toBeLessThan(1.2);
     expect(bounce?.intensity).toBeGreaterThan(2.6);
-    expect(bounce?.position.y).toBeLessThan(0.5);
+    expect(bounce?.position.y).toBeGreaterThan(0.8);
+    expect(bounce?.position.y).toBeLessThan(1.3);
     const forward = new THREE.Vector3();
     camera.getWorldDirection(forward);
     const bounceOffset = bounce.position.clone().sub(camera.position);
-    expect(bounceOffset.dot(forward)).toBeGreaterThan(1);
+    expect(bounceOffset.dot(forward)).toBeGreaterThan(0.5);
 
     const before = key.position.clone();
     camera.position.set(-4, 1.62, 8);
@@ -124,6 +125,44 @@ describe('Chronicles of Matthias dungeon atmosphere', () => {
     atmosphere.userData.updateChroniclesAtmosphere(2.1);
     expect(key.position.distanceTo(before)).toBeGreaterThan(3.5);
     expect(key.position.distanceTo(camera.position)).toBeLessThan(1.2);
+  });
+
+  it('keeps the current party tile bright even in the dark crypt mobile profile', () => {
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(67, 1, 0.08, 70);
+    camera.position.set(8, 1.62, -4);
+    camera.rotation.y = Math.PI / 2;
+    const atmosphere = buildChroniclesDungeonAtmosphere({
+      coarsePointer: true,
+      reducedMotion: true,
+      scenePlan: {
+        materials: { lightingProfile: 'crypt-dark' },
+        floors: [{ x: 1, y: 1 }],
+        center: { x: 1, y: 1 },
+      },
+    });
+    scene.add(camera, atmosphere);
+    atmosphere.userData.updateChroniclesAtmosphere(1);
+    const key = atmosphere.getObjectByName('chronicles-party-torch-key');
+    const bounce = atmosphere.getObjectByName('chronicles-party-torch-bounce');
+
+    expect(key.intensity).toBeGreaterThan(10);
+    expect(bounce.intensity).toBeGreaterThan(7);
+    expect(key.distance).toBeLessThanOrEqual(13);
+    expect(bounce.distance).toBeLessThanOrEqual(8);
+    // This ground spill is directly beneath/just ahead of the party, never at
+    // a fixed authored tile or a point light buried at floor height.
+    expect(bounce.position.y).toBeGreaterThan(0.8);
+    expect(bounce.position.y).toBeLessThan(1.3);
+    expect(Math.hypot(bounce.position.x - camera.position.x, bounce.position.z - camera.position.z))
+      .toBeLessThan(1);
+    const start = bounce.position.clone();
+    camera.position.set(-4, 1.62, 4);
+    camera.rotation.y = 0;
+    atmosphere.userData.updateChroniclesAtmosphere(8);
+    expect(bounce.position.distanceTo(start)).toBeGreaterThan(10);
+    expect(Math.hypot(bounce.position.x - camera.position.x, bounce.position.z - camera.position.z))
+      .toBeLessThan(1);
   });
 
   it('keeps the carried torch attached when reduced motion disables flicker', () => {

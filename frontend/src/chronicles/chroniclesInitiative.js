@@ -31,7 +31,7 @@ export function chroniclesEnemyInitiativeAgility(enemy) {
   if (!enemy) return 0;
   const resolved = resolveChroniclesEnemyBuildDefinition(enemy);
   const buildAgility = nonNegativeInteger(resolved?.build?.attributes?.agility);
-  return nonNegativeInteger(enemy.agility, buildAgility);
+  return nonNegativeInteger(enemy.agility == null || enemy.agility === '' ? buildAgility : enemy.agility, buildAgility);
 }
 
 function actorEntry({ id, kind, name, agility, random }) {

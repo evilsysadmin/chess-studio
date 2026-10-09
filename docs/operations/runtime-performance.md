@@ -109,3 +109,22 @@ Guardarraíles:
 - el escenario `game-turn` usa dificultad 50 como baseline representativo; dificultades extremas se miden aparte antes de prometer capacidad para ellas.
 - con un único worker, el análisis opcional no debe construir cola delante de gameplay: `/api/analyze` y `/api/analyze-move` usan admisión acotada y pueden responder `503 Retry-After: 1` cuando el slot opcional está ocupado; `move`, apertura CPU e `hint` permanecen en el camino crítico y no se rechazan por ese gate.
 - el límite opcional por defecto coincide con `CHESS_ENGINE_WORKERS`; cualquier override `CHESS_ENGINE_OPTIONAL_INFLIGHT_LIMIT` debe volver a medirse antes de producción.
+
+## Tiempo percibido entre salas (contrato transversal)
+
+Además del FPS una vez dentro de la sala, medir el recorrido **intención del usuario → primer frame significativo → primera interacción funcional**. La primera interacción exige respuesta del control real, no sólo que el canvas exista. No confundir `DOMContentLoaded`, mount del componente o desaparición de un spinner con jugabilidad.
+
+Para cada transición Home → Preparación/Jugar → War Room, Postpartida → Entrenar y vuelta a jugar, registrar:
+
+| Punto | Inicio | Fin | Evidencia |
+| --- | --- | --- | --- |
+| Intent-to-first-frame | click/tap válido | primera escena útil visible | marca monotónica + captura runtime |
+| Intent-to-interactive | mismo click/tap | primer input de juego aceptado | traza del input y respuesta de la vista |
+| Segunda visita | nueva entrada a la sala | primera interacción | comparación warm vs cold |
+| Salir y regresar | salida real | reentrada jugable | contador de contextos, listeners y recursos |
+
+Comparar **cold**, **warm**, dispositivo móvil representativo y escritorio. Separar tiempo de red/descarga, decodificación, compilación de shaders, montaje y transición; reportar cifras observadas, no umbrales inventados. Si falla una carga de GLB/textura, debe existir estado de error y salida operable, no spinner perpetuo.
+
+La precarga se permite sólo cuando hay intención razonable del usuario y no penaliza la escena activa: no precargar indiscriminadamente todos los experimentos al entrar en Home. Toda nueva precarga debe demostrar consumo acotado y cancelar o reutilizar trabajo al navegar rápidamente. Una escena descargada pero no utilizada no debe mantener innecesariamente render loops, listeners ni contexto WebGL.
+
+**Acceptance adicional para cambios de transición:** ejecutar el ciclo A → B → A al menos repetidamente con y sin cache; observar que la latencia no crece sesión tras sesión, que el primer toque funciona y que se liberan recursos al desmontar. Registrar el SHA, entorno, viewport, renderer y los números de antes/después. Cualquier optimización que mejore FPS pero empeore perceptiblemente intent-to-interactive requiere justificación explícita.

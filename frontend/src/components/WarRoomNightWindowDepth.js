@@ -270,55 +270,6 @@ function makeArchMesh(group, geometry, material, y, z, towardBoard, name) {
   return mesh;
 }
 
-function boxDimensions(mesh) {
-  const params = mesh?.geometry?.parameters;
-  if (mesh?.geometry?.type !== 'BoxGeometry' || !params) return null;
-  return [Number(params.width), Number(params.height), Number(params.depth)];
-}
-
-function closeTo(value, expected, tolerance = 0.035) {
-  return Number.isFinite(value) && Math.abs(value - expected) <= tolerance;
-}
-
-function matchesBox(mesh, expected) {
-  const dims = boxDimensions(mesh);
-  return Boolean(dims) && dims.every((value, index) => closeTo(value, expected[index]));
-}
-
-function retireLegacyWindow(group, { wallZ, towardBoard }) {
-  const legacyX = towardBoard * 4.2;
-  let retired = 0;
-
-  group.traverse?.((object) => {
-    if (!object?.isMesh || object.name?.startsWith?.('war-room-weather-window')) return;
-    const x = Number(object.position?.x);
-    const y = Number(object.position?.y);
-    const z = Number(object.position?.z);
-    const color = object.material?.color?.getHex?.();
-    if (![x, y, z].every(Number.isFinite)) return;
-
-    const zOffset = (z - wallZ) / towardBoard;
-    if (Math.abs(x - legacyX) > 2.45 || y < 1.55 || y > 5.08 || zOffset < 0.24 || zOffset > 0.5) return;
-
-    const oldBackdrop = color === 0x0a2334 && matchesBox(object, [4.3, 3.1, 0.16]);
-    const oldHorizontalFrame = color === 0x2a160d && matchesBox(object, [4.55, 0.15, 0.35]);
-    const oldVerticalFrame = color === 0x2a160d && matchesBox(object, [0.15, 3.3, 0.35]);
-    const oldVerticalMullion = color === 0x1f2f3a && matchesBox(object, [0.11, 3.05, 0.28]);
-    const oldTransom = color === 0x1f2f3a && matchesBox(object, [4.3, 0.1, 0.28]);
-    const oldTower = color === 0x09131b && object.geometry?.type === 'BoxGeometry' && closeTo(object.geometry.parameters?.width, 0.4);
-    const oldMoon = color === 0xb9d9f0 && object.geometry?.type === 'SphereGeometry' && closeTo(object.geometry.parameters?.radius, 0.28);
-
-    if (!(oldBackdrop || oldHorizontalFrame || oldVerticalFrame || oldVerticalMullion || oldTransom || oldTower || oldMoon)) return;
-    object.visible = false;
-    object.userData ||= {};
-    object.userData.warRoomLegacyWindowRetired = WAR_ROOM_NIGHT_WINDOW_VERSION;
-    retired += 1;
-  });
-
-  group.userData.warRoomLegacyWindowRetiredCount = retired;
-  return retired;
-}
-
 function attachWeatherMotion(mesh, weather) {
   const texture = mesh?.material?.map;
   if (!texture || weather === 'sunny') return;
@@ -552,7 +503,6 @@ export function installWarRoomNightWindowDepth(group, {
   const condition = normalizeWarRoomWeather(weather || group.userData.warRoomWeather);
   const side = Math.sign(towardBoard) || 1;
 
-  retireLegacyWindow(group, { wallZ, towardBoard });
 
   const fireplace = group.getObjectByName?.('war-room-fireplace');
   if (fireplace) {

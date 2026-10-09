@@ -28,17 +28,16 @@ import { planBoard3DPieceReconciliation } from './Board3DPieceReconciliation.js'
 import { addCoarsePieceHitTarget, applyMatthiasCheckPose, buildPiece, disposeObject } from './Board3DPieces.js';
 import { fitBoardCamera, makeTextSprite } from './Board3DScene.js';
 import { resolveStableBoardViewportForHost } from './Board3DViewportSize.js';
-import { applyBoard3DProjectionDiagnostics } from './Board3DProjectionDiagnostics.js';
+import { applyBoard3DProjectionDiagnostics, applyBoard3DRendererMemoryDiagnostics } from './Board3DProjectionDiagnostics.js';
 import { board3DForensicGhost, board3DTechniqueTargetCount, board3DTerrainSquares, buildBoard3DLegalMap } from './Board3DParityVisuals.js';
 import useWarRoomVariant from './useWarRoomVariant.js';
 import { resolveBoard3DPresentation } from './Board3DPresentation.js';
-import { createClassicWarRoomShellController } from './WarRoomClassicShell.js'; import { buildTrainingRoomBoardShell } from './TrainingRoomBoardShell.js';
+import { createClassicWarRoomShellController } from './WarRoomClassicShellLoader.js'; import { buildTrainingRoomBoardShell } from './TrainingRoomBoardShell.js';
 import { shouldShowClassicWarRoomShell, startWarRoomVariantScene } from './WarRoomSceneVariant.js';
 import './Board3D.css';
 import './Board3DViewportTuning.css';
 import './Board3DParity.css';
 import './WarRoomSharedViewport.css';
-
 function clearObjectGroup(group) {
   if (!group) return;
   for (const child of [...group.children]) {
@@ -244,8 +243,8 @@ function Board3DCanvas({
     scene.add(warm);
 
     const trainingRoomShell = trainingRoom ? buildTrainingRoomBoardShell({ scene, boardGroup, coarsePointer: sceneLite }) : null;
-    const classicShellController = createClassicWarRoomShellController({ scene, boardGroup, theme, whiteSide, renderLite: sceneLite, classroom: classroomCamera }, !trainingRoom && shouldShowClassicWarRoomShell({ selectable: warRoomVariantSelectable, variant: warRoomVariant }));
-    renderer.domElement.dataset.schoolRoomScene = classicShellController.current().find((object) => object?.userData?.schoolRoomCanonical)?.userData?.schoolRoomSceneVersion || 'off'; renderer.domElement.dataset.trainingRoomScene = trainingRoomShell?.sceneVersion || 'off';
+    const classicShellController = createClassicWarRoomShellController({ scene, boardGroup, theme, whiteSide, renderLite: sceneLite, classroom: classroomCamera, canvas: renderer.domElement }, !trainingRoom && shouldShowClassicWarRoomShell({ selectable: warRoomVariantSelectable, variant: warRoomVariant }));
+    renderer.domElement.dataset.trainingRoomScene = trainingRoomShell?.sceneVersion || 'off';
 
     const lightTileMaterial = makePremiumTileMaterial({ color: theme.light, light: true, coarsePointer: sceneLite, seed: 0x531f });
     const darkTileMaterial = makePremiumTileMaterial({ color: theme.dark, light: false, coarsePointer: sceneLite, seed: 0xa72d });
@@ -337,7 +336,7 @@ function Board3DCanvas({
         keyIntensity: key.intensity,
         exposure: renderer.toneMappingExposure,
       });
-      renderer.render(scene, camera);
+      renderer.render(scene, camera); applyBoard3DRendererMemoryDiagnostics(renderer.domElement, renderer);
       applyBoard3DProjectionDiagnostics(renderer.domElement, camera);
       if (!cachedHansDriver && latestPropsRef.current.hansDiagnosticsRequested) {
         cachedHansDriver = scene.getObjectByName('war-room-hans-fireplace-driver');

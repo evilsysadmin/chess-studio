@@ -173,16 +173,18 @@ export default function InsightsScreen(props) {
                 : 'El informe completo queda archivado aquí para consultarlo cuando necesites contexto, no para bloquear la tarea del día.'}
         </p>
 
-        <div className="insights-room-tools" role="group" aria-label="Material de la Training Room">
+        <details className="insights-room-archive-drawer" open={!isTask} data-insights-archive="room-objects-v2">
+          <summary>{isTask ? 'Abrir archivo de Matthias' : 'Archivo de Matthias'}</summary>
+          <div className="insights-room-tools insights-room-archive" role="group" aria-label="Material de la Training Room">
           {!isTask ? (
-            <button id="insights-view-now" type="button" className="insights-room-tool insights-room-tool-return" onClick={openTask}>
+            <button id="insights-view-now" type="button" className="insights-room-tool insights-room-tool-return insights-room-object insights-room-object--task" onClick={openTask}>
               ← Tarea de Matthias
             </button>
           ) : null}
           <button
             id="insights-view-errors"
             type="button"
-            className="insights-room-tool"
+            className="insights-room-tool insights-room-object insights-room-object--errors"
             aria-pressed={!isCareer && diagnosisView === 'errors'}
             onPointerEnter={() => preloadDiagnosis('errors')}
             onFocus={() => preloadDiagnosis('errors')}
@@ -194,7 +196,7 @@ export default function InsightsScreen(props) {
           <button
             id="insights-view-dossier"
             type="button"
-            className="insights-room-tool"
+            className="insights-room-tool insights-room-object insights-room-object--dossier"
             aria-pressed={!isCareer && diagnosisView === 'dossier'}
             onPointerEnter={() => preloadDiagnosis('dossier')}
             onFocus={() => preloadDiagnosis('dossier')}
@@ -206,7 +208,7 @@ export default function InsightsScreen(props) {
           <button
             id="insights-section-career"
             type="button"
-            className="insights-room-tool"
+            className="insights-room-tool insights-room-object insights-room-object--career"
             aria-pressed={isCareer}
             onPointerEnter={preloadCareer}
             onFocus={preloadCareer}
@@ -215,7 +217,8 @@ export default function InsightsScreen(props) {
           >
             Mi progreso
           </button>
-        </div>
+          </div>
+        </details>
       </header>
 
       <div

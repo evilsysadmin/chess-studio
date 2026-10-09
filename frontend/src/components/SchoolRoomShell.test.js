@@ -12,6 +12,9 @@ describe('School Room 3D shell', () => {
     expect(room.userData.schoolRoomSceneVersion).toBe(SCHOOL_ROOM_SCENE_VERSION);
     expect(room.userData.schoolRoomDeskCount).toBe(6);
     expect(room.userData.schoolRoomRenderLite).toBe(false);
+    expect(room.userData.schoolRoomGeometryPool).toBe('box-dimensions-v1');
+    expect(room.userData.schoolRoomBoxMeshCount).toBeGreaterThan(100);
+    expect(room.userData.schoolRoomBoxGeometryCount).toBeLessThan(room.userData.schoolRoomBoxMeshCount / 3);
     expect(room.getObjectByName('school-chalkboard')).toBeTruthy();
     expect(room.getObjectByName('school-bookcase-left')).toBeTruthy();
     expect(room.getObjectByName('school-bookcase-right')).toBeTruthy();

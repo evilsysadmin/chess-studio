@@ -34,6 +34,70 @@ function mat(color, metalness = 0.04, roughness = 0.8, extra = {}) {
   });
 }
 
+function surfaceTexture(kind, size = 64) {
+  const data = new Uint8Array(size * size * 4);
+  const texture = new THREE.DataTexture(data, size, size, THREE.RGBAFormat);
+
+  for (let y = 0; y < size; y += 1) {
+    for (let x = 0; x < size; x += 1) {
+      const index = (y * size + x) * 4;
+      const hash = (x * 37 + y * 71 + ((x * y + 17) * 13)) & 31;
+      let value = 224;
+
+      if (kind === 'stone') {
+        const broad = Math.sin(x * .42) * 7 + Math.cos(y * .31) * 6;
+        value = Math.max(184, Math.min(248, 218 + broad + hash - 15));
+      } else if (kind === 'wood') {
+        const grain = Math.sin((x + Math.sin(y * .32) * 3) * .72) * 17;
+        value = Math.max(176, Math.min(252, 218 + grain + (hash * .45) - 7));
+      } else {
+        const weave = ((x + y) % 4 === 0 ? 7 : -3) + ((x - y) % 7 === 0 ? 5 : 0);
+        value = Math.max(190, Math.min(246, 220 + weave + (hash * .35) - 5));
+      }
+
+      data[index] = value;
+      data[index + 1] = value;
+      data[index + 2] = value;
+      data[index + 3] = 255;
+    }
+  }
+
+  texture.wrapS = THREE.RepeatWrapping;
+  texture.wrapT = THREE.RepeatWrapping;
+  texture.magFilter = THREE.LinearFilter;
+  texture.minFilter = THREE.LinearMipmapLinearFilter;
+  texture.generateMipmaps = true;
+  texture.repeat.set(kind === 'wood' ? 3.5 : 2.5, kind === 'wood' ? 1.5 : 2.5);
+  texture.needsUpdate = true;
+  return texture;
+}
+
+function nightSkyTexture(width = 32, height = 64) {
+  const data = new Uint8Array(width * height * 4);
+  for (let y = 0; y < height; y += 1) {
+    const t = y / Math.max(1, height - 1);
+    const horizon = 1 - t;
+    for (let x = 0; x < width; x += 1) {
+      const index = (y * width + x) * 4;
+      const ripple = Math.sin((x * .8) + (y * .18)) * 3;
+      const r = Math.round(6 + horizon * 7 + ripple * .18);
+      const g = Math.round(20 + horizon * 25 + ripple * .32);
+      const b = Math.round(42 + horizon * 48 + ripple);
+      data[index] = Math.max(0, Math.min(255, r));
+      data[index + 1] = Math.max(0, Math.min(255, g));
+      data[index + 2] = Math.max(0, Math.min(255, b));
+      data[index + 3] = 255;
+    }
+  }
+
+  const texture = new THREE.DataTexture(data, width, height, THREE.RGBAFormat);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.magFilter = THREE.LinearFilter;
+  texture.minFilter = THREE.LinearFilter;
+  texture.needsUpdate = true;
+  return texture;
+}
+
 function box(root, size, material, position, name = '') {
   const mesh = new THREE.Mesh(new THREE.BoxGeometry(...size), material);
   mesh.position.set(...position);
@@ -71,13 +135,16 @@ function sphere(root, radius, material, position, name = '', widthSegments = 24,
   return mesh;
 }
 
-function addBoard(root, lightSquare, darkSquare, trim, woodDark) {
+function addBoard(root, lightSquare, darkSquare, brass, woodDark, wood) {
   const board = new THREE.Group();
   board.name = 'quick-match-ready-board';
 
-  box(board, [6.86, .20, 6.86], woodDark, [0, -.035, 0], 'board-underlay');
-  box(board, [6.66, .17, 6.66], trim, [0, .035, 0], 'board-frame');
-  box(board, [6.20, .10, 6.20], woodDark, [0, .12, 0], 'board-bed');
+  // Layered wooden frame with a restrained brass inlay instead of one large
+  // metallic slab. This reads more like crafted furniture at play distance.
+  box(board, [6.92, .20, 6.92], woodDark, [0, -.035, 0], 'board-underlay');
+  box(board, [6.76, .17, 6.76], wood, [0, .035, 0], 'board-wood-frame');
+  box(board, [6.48, .12, 6.48], brass, [0, .090, 0], 'board-brass-inlay');
+  box(board, [6.30, .10, 6.30], woodDark, [0, .145, 0], 'board-bed');
 
   const { centerX, centerY, centerZ, squareSize } = QUICK_MATCH_READY_ROOM_BOARD_LAYOUT;
   const squareGeo = new THREE.BoxGeometry(squareSize, .095, squareSize);
@@ -101,11 +168,11 @@ function addBoard(root, lightSquare, darkSquare, trim, woodDark) {
   dark.receiveShadow = true;
   board.add(light, dark);
 
-  for (const z of [-3.23, 3.23]) {
-    box(board, [6.54, .055, .065], trim, [0, .20, z], 'board-brass-fillet');
+  for (const z of [-3.17, 3.17]) {
+    box(board, [6.34, .040, .045], brass, [0, .205, z], 'board-brass-fillet');
   }
-  for (const x of [-3.23, 3.23]) {
-    box(board, [.065, .055, 6.54], trim, [x, .20, 0], 'board-brass-fillet');
+  for (const x of [-3.17, 3.17]) {
+    box(board, [.045, .040, 6.34], brass, [x, .205, 0], 'board-brass-fillet');
   }
 
   board.position.set(centerX, centerY, centerZ);
@@ -113,18 +180,62 @@ function addBoard(root, lightSquare, darkSquare, trim, woodDark) {
   return board;
 }
 
+function lathePiecePart(group, points, material, scale, position, name, segments = 28) {
+  const geometry = new THREE.LatheGeometry(
+    points.map(([radius, y]) => new THREE.Vector2(radius * scale, y * scale)),
+    segments,
+  );
+  const mesh = new THREE.Mesh(geometry, material);
+  mesh.position.set(...position);
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  mesh.name = name;
+  group.add(mesh);
+  return mesh;
+}
+
 function addPieceBase(group, material, scale) {
-  cylinder(group, [.29 * scale, .36 * scale], .09 * scale, material, [0, .045 * scale, 0], 'piece-base', 28);
-  cylinder(group, [.24 * scale, .29 * scale], .08 * scale, material, [0, .125 * scale, 0], 'piece-plinth', 28);
+  lathePiecePart(
+    group,
+    [
+      [.35, 0],
+      [.38, .025],
+      [.39, .055],
+      [.36, .085],
+      [.32, .11],
+      [.33, .135],
+      [.29, .165],
+      [.25, .19],
+    ],
+    material,
+    scale,
+    [0, 0, 0],
+    'piece-turned-base',
+    34,
+  );
 }
 
 function addPawnPiece(root, x, z, material, scale = 1) {
   const piece = new THREE.Group();
   piece.name = 'ready-room-piece pawn';
   addPieceBase(piece, material, scale);
-  cylinder(piece, [.13 * scale, .20 * scale], .30 * scale, material, [0, .31 * scale, 0], 'piece-body', 24);
-  cylinder(piece, [.12 * scale, .14 * scale], .08 * scale, material, [0, .49 * scale, 0], 'piece-collar', 24);
-  sphere(piece, .16 * scale, material, [0, .66 * scale, 0], 'piece-head', 24, 16);
+  lathePiecePart(
+    piece,
+    [
+      [.20, .18],
+      [.18, .24],
+      [.145, .34],
+      [.13, .43],
+      [.145, .50],
+      [.12, .54],
+    ],
+    material,
+    scale,
+    [0, 0, 0],
+    'piece-pawn-stem',
+    28,
+  );
+  sphere(piece, .165 * scale, material, [0, .69 * scale, 0], 'piece-head', 28, 18);
   piece.position.set(x, 1.61, z);
   root.add(piece);
 }
@@ -133,13 +244,33 @@ function addRookPiece(root, x, z, material, scale = 1) {
   const piece = new THREE.Group();
   piece.name = 'ready-room-piece rook';
   addPieceBase(piece, material, scale);
-  cylinder(piece, [.18 * scale, .23 * scale], .36 * scale, material, [0, .36 * scale, 0], 'piece-body', 24);
-  cylinder(piece, [.27 * scale, .20 * scale], .12 * scale, material, [0, .60 * scale, 0], 'piece-rook-crown', 24);
-  for (let i = 0; i < 4; i += 1) {
-    const battlement = box(piece, [.13 * scale, .12 * scale, .14 * scale], material, [0, .71 * scale, .20 * scale], 'piece-rook-battlement');
-    battlement.rotation.y = i * Math.PI / 2;
-    battlement.position.x = Math.sin(i * Math.PI / 2) * .20 * scale;
-    battlement.position.z = Math.cos(i * Math.PI / 2) * .20 * scale;
+  lathePiecePart(
+    piece,
+    [
+      [.23, .18],
+      [.20, .25],
+      [.16, .38],
+      [.17, .50],
+      [.21, .58],
+      [.25, .62],
+    ],
+    material,
+    scale,
+    [0, 0, 0],
+    'piece-rook-body',
+    28,
+  );
+  cylinder(piece, [.29 * scale, .25 * scale], .13 * scale, material, [0, .68 * scale, 0], 'piece-rook-crown', 28);
+  for (let i = 0; i < 6; i += 1) {
+    const angle = (i / 6) * Math.PI * 2;
+    const battlement = box(
+      piece,
+      [.105 * scale, .14 * scale, .12 * scale],
+      material,
+      [Math.sin(angle) * .225 * scale, .80 * scale, Math.cos(angle) * .225 * scale],
+      'piece-rook-battlement',
+    );
+    battlement.rotation.y = angle;
   }
   piece.position.set(x, 1.61, z);
   root.add(piece);
@@ -149,14 +280,26 @@ function addBishopPiece(root, x, z, material, scale = 1) {
   const piece = new THREE.Group();
   piece.name = 'ready-room-piece bishop';
   addPieceBase(piece, material, scale);
-  cylinder(piece, [.12 * scale, .23 * scale], .43 * scale, material, [0, .38 * scale, 0], 'piece-body', 28);
-  cylinder(piece, [.16 * scale, .12 * scale], .08 * scale, material, [0, .62 * scale, 0], 'piece-collar', 28);
-  const mitre = new THREE.Mesh(new THREE.ConeGeometry(.18 * scale, .34 * scale, 28), material);
-  mitre.position.y = .82 * scale;
-  mitre.castShadow = true;
-  mitre.name = 'piece-bishop-mitre';
-  piece.add(mitre);
-  sphere(piece, .055 * scale, material, [0, 1.00 * scale, 0], 'piece-bishop-finial', 18, 12);
+  lathePiecePart(
+    piece,
+    [
+      [.23, .18],
+      [.20, .27],
+      [.145, .43],
+      [.13, .56],
+      [.17, .64],
+      [.14, .70],
+      [.11, .78],
+      [.07, .91],
+      [.018, 1.02],
+    ],
+    material,
+    scale,
+    [0, 0, 0],
+    'piece-bishop-profile',
+    30,
+  );
+  sphere(piece, .05 * scale, material, [0, 1.055 * scale, 0], 'piece-bishop-finial', 18, 12);
   piece.position.set(x, 1.61, z);
   root.add(piece);
 }
@@ -165,38 +308,93 @@ function addKnightPiece(root, x, z, material, scale = 1, facing = 1) {
   const piece = new THREE.Group();
   piece.name = 'ready-room-piece knight';
   addPieceBase(piece, material, scale);
-  cylinder(piece, [.15 * scale, .23 * scale], .28 * scale, material, [0, .32 * scale, 0], 'piece-body', 24);
 
-  const neck = new THREE.Mesh(new THREE.CylinderGeometry(.12 * scale, .18 * scale, .42 * scale, 20), material);
-  neck.rotation.z = -.40 * facing;
-  neck.position.set(.055 * facing * scale, .62 * scale, 0);
+  lathePiecePart(
+    piece,
+    [
+      [.22, .18],
+      [.19, .27],
+      [.16, .37],
+      [.14, .47],
+    ],
+    material,
+    scale,
+    [0, 0, 0],
+    'piece-knight-base-neck',
+    24,
+  );
+
+  const neck = new THREE.Mesh(
+    new THREE.CylinderGeometry(.105 * scale, .17 * scale, .48 * scale, 24),
+    material,
+  );
+  neck.rotation.z = -.34 * facing;
+  neck.position.set(.055 * facing * scale, .66 * scale, 0);
+  neck.scale.z = 1.08;
   neck.castShadow = true;
+  neck.receiveShadow = true;
   neck.name = 'piece-knight-neck';
   piece.add(neck);
 
-  const head = new THREE.Mesh(new THREE.SphereGeometry(.17 * scale, 22, 14), material);
-  head.scale.set(1.15, .86, .72);
-  head.position.set(.22 * facing * scale, .82 * scale, 0);
+  const head = new THREE.Mesh(
+    new THREE.SphereGeometry(.18 * scale, 28, 18),
+    material,
+  );
+  head.scale.set(1.14, .88, .82);
+  head.position.set(.20 * facing * scale, .91 * scale, 0);
   head.castShadow = true;
+  head.receiveShadow = true;
   head.name = 'piece-knight-head';
   piece.add(head);
 
-  const muzzle = new THREE.Mesh(new THREE.BoxGeometry(.20 * scale, .13 * scale, .18 * scale), material);
-  muzzle.position.set(.34 * facing * scale, .76 * scale, 0);
-  muzzle.rotation.z = -.08 * facing;
+  const muzzle = new THREE.Mesh(
+    new THREE.SphereGeometry(.125 * scale, 24, 16),
+    material,
+  );
+  muzzle.scale.set(1.32, .68, .72);
+  muzzle.position.set(.36 * facing * scale, .84 * scale, 0);
   muzzle.castShadow = true;
+  muzzle.receiveShadow = true;
   muzzle.name = 'piece-knight-muzzle';
   piece.add(muzzle);
 
-  for (const zOffset of [-.08, .08]) {
-    const ear = new THREE.Mesh(new THREE.ConeGeometry(.055 * scale, .18 * scale, 12), material);
-    ear.position.set(.15 * facing * scale, 1.00 * scale, zOffset * scale);
-    ear.rotation.z = -.15 * facing;
+  const jaw = new THREE.Mesh(
+    new THREE.SphereGeometry(.095 * scale, 20, 14),
+    material,
+  );
+  jaw.scale.set(1.05, .74, .78);
+  jaw.position.set(.26 * facing * scale, .76 * scale, 0);
+  jaw.castShadow = true;
+  jaw.name = 'piece-knight-jaw';
+  piece.add(jaw);
+
+  for (const zOffset of [-.072, .072]) {
+    const ear = new THREE.Mesh(new THREE.ConeGeometry(.046 * scale, .17 * scale, 14), material);
+    ear.position.set(.11 * facing * scale, 1.105 * scale, zOffset * scale);
+    ear.rotation.z = -.18 * facing;
     ear.castShadow = true;
+    ear.name = 'piece-knight-ear';
     piece.add(ear);
   }
 
+  for (let i = 0; i < 4; i += 1) {
+    const mane = new THREE.Mesh(
+      new THREE.ConeGeometry(.048 * scale, .15 * scale, 10),
+      material,
+    );
+    mane.rotation.z = Math.PI / 2;
+    mane.position.set(
+      (-.055 + i * .035) * facing * scale,
+      (.86 - i * .10) * scale,
+      -.15 * scale,
+    );
+    mane.castShadow = true;
+    mane.name = 'piece-knight-mane';
+    piece.add(mane);
+  }
+
   piece.position.set(x, 1.61, z);
+  piece.rotation.y = facing > 0 ? -.12 : .12;
   root.add(piece);
 }
 
@@ -204,24 +402,43 @@ function addRoyalPiece(root, x, z, material, scale = 1, king = false) {
   const piece = new THREE.Group();
   piece.name = `ready-room-piece ${king ? 'king' : 'queen'}`;
   addPieceBase(piece, material, scale);
-  cylinder(piece, [.14 * scale, .25 * scale], .48 * scale, material, [0, .41 * scale, 0], 'piece-body', 28);
-  cylinder(piece, [.21 * scale, .14 * scale], .09 * scale, material, [0, .69 * scale, 0], 'piece-collar', 28);
+  lathePiecePart(
+    piece,
+    [
+      [.25, .18],
+      [.21, .27],
+      [.16, .42],
+      [.14, .56],
+      [.19, .67],
+      [.16, .74],
+      [.13, .80],
+    ],
+    material,
+    scale,
+    [0, 0, 0],
+    king ? 'piece-king-body' : 'piece-queen-body',
+    30,
+  );
 
   if (king) {
-    sphere(piece, .15 * scale, material, [0, .86 * scale, 0], 'piece-king-crown', 22, 14);
-    box(piece, [.07 * scale, .29 * scale, .07 * scale], material, [0, 1.10 * scale, 0], 'piece-king-cross');
-    box(piece, [.23 * scale, .07 * scale, .07 * scale], material, [0, 1.12 * scale, 0], 'piece-king-cross');
+    sphere(piece, .145 * scale, material, [0, .91 * scale, 0], 'piece-king-crown', 24, 16);
+    box(piece, [.065 * scale, .28 * scale, .065 * scale], material, [0, 1.13 * scale, 0], 'piece-king-cross');
+    box(piece, [.225 * scale, .065 * scale, .065 * scale], material, [0, 1.14 * scale, 0], 'piece-king-cross');
   } else {
-    cylinder(piece, [.23 * scale, .19 * scale], .12 * scale, material, [0, .86 * scale, 0], 'piece-queen-crown', 20);
-    sphere(piece, .075 * scale, material, [0, 1.02 * scale, 0], 'piece-queen-finial', 18, 12);
-    for (let i = 0; i < 6; i += 1) {
-      const gem = sphere(piece, .045 * scale, material, [
-        Math.cos((i / 6) * Math.PI * 2) * .19 * scale,
-        .96 * scale,
-        Math.sin((i / 6) * Math.PI * 2) * .19 * scale,
-      ], 'piece-queen-crown-point', 12, 8);
-      gem.scale.y = 1.35;
+    cylinder(piece, [.23 * scale, .18 * scale], .11 * scale, material, [0, .89 * scale, 0], 'piece-queen-crown', 24);
+    for (let i = 0; i < 8; i += 1) {
+      const angle = (i / 8) * Math.PI * 2;
+      const point = new THREE.Mesh(new THREE.ConeGeometry(.045 * scale, .16 * scale, 12), material);
+      point.position.set(
+        Math.sin(angle) * .19 * scale,
+        1.01 * scale,
+        Math.cos(angle) * .19 * scale,
+      );
+      point.castShadow = true;
+      point.name = 'piece-queen-crown-point';
+      piece.add(point);
     }
+    sphere(piece, .067 * scale, material, [0, 1.10 * scale, 0], 'piece-queen-finial', 18, 12);
   }
 
   piece.position.set(x, 1.61, z);
@@ -272,68 +489,246 @@ function addChair(root, wood, leather, brass) {
   const chair = new THREE.Group();
   chair.name = 'quick-match-ready-opponent-chair';
 
-  box(chair, [2.12, .26, 1.28], leather, [0, .64, 0], 'chair-seat');
-  box(chair, [2.02, .12, 1.16], wood, [0, .48, 0], 'chair-seat-frame');
+  box(chair, [2.16, .26, 1.30], leather, [0, .64, 0], 'chair-seat');
+  box(chair, [2.08, .13, 1.18], wood, [0, .47, 0], 'chair-seat-frame');
 
-  const back = box(chair, [1.58, 1.56, .20], leather, [0, 1.68, -.61], 'chair-back');
-  back.rotation.x = -.035;
-  box(chair, [1.90, .12, .18], wood, [0, 2.51, -.65], 'chair-top-rail');
-  box(chair, [1.42, .045, .055], brass, [0, 2.16, -.48], 'chair-brass-inlay');
+  const outerBackShape = new THREE.Shape();
+  outerBackShape.moveTo(-1.02, 0);
+  outerBackShape.lineTo(-1.02, 1.08);
+  outerBackShape.quadraticCurveTo(-.96, 1.57, -.58, 1.75);
+  outerBackShape.quadraticCurveTo(0, 2.05, .58, 1.75);
+  outerBackShape.quadraticCurveTo(.96, 1.57, 1.02, 1.08);
+  outerBackShape.lineTo(1.02, 0);
+  outerBackShape.closePath();
 
-  for (const x of [-.92, .92]) {
-    cylinder(chair, [.085, .11], 2.36, wood, [x, 1.32, -.66], 'chair-post', 18);
-    sphere(chair, .12, brass, [x, 2.58, -.66], 'chair-post-finial', 18, 12);
-    cylinder(chair, [.09, .12], .92, wood, [x, .04, .43], 'chair-leg', 18);
+  const outerBack = new THREE.Mesh(
+    new THREE.ExtrudeGeometry(outerBackShape, {
+      depth: .18,
+      bevelEnabled: true,
+      bevelSegments: 2,
+      bevelSize: .045,
+      bevelThickness: .035,
+    }),
+    wood,
+  );
+  outerBack.position.set(0, .86, -.76);
+  outerBack.castShadow = true;
+  outerBack.receiveShadow = true;
+  outerBack.name = 'chair-arched-back-frame';
+  chair.add(outerBack);
+
+  const leatherBackShape = new THREE.Shape();
+  leatherBackShape.moveTo(-.78, .13);
+  leatherBackShape.lineTo(-.78, 1.02);
+  leatherBackShape.quadraticCurveTo(-.72, 1.38, -.43, 1.52);
+  leatherBackShape.quadraticCurveTo(0, 1.76, .43, 1.52);
+  leatherBackShape.quadraticCurveTo(.72, 1.38, .78, 1.02);
+  leatherBackShape.lineTo(.78, .13);
+  leatherBackShape.closePath();
+
+  const leatherBack = new THREE.Mesh(
+    new THREE.ExtrudeGeometry(leatherBackShape, {
+      depth: .10,
+      bevelEnabled: true,
+      bevelSegments: 2,
+      bevelSize: .025,
+      bevelThickness: .02,
+    }),
+    leather,
+  );
+  leatherBack.position.set(0, .89, -.54);
+  leatherBack.castShadow = true;
+  leatherBack.receiveShadow = true;
+  leatherBack.name = 'chair-leather-back';
+  chair.add(leatherBack);
+
+  for (const [x, y] of [
+    [-.34, 1.42], [.34, 1.42],
+    [-.52, 1.82], [0, 1.72], [.52, 1.82],
+    [-.28, 2.16], [.28, 2.16],
+  ]) {
+    const button = sphere(chair, .045, brass, [x, y, -.405], 'chair-tuft-button', 14, 10);
+    button.scale.z = .42;
   }
 
-  const crest = new THREE.Mesh(new THREE.ConeGeometry(.17, .30, 3), brass);
-  crest.rotation.z = Math.PI;
-  crest.position.set(0, 2.69, -.64);
-  crest.castShadow = true;
-  crest.name = 'chair-crest';
-  chair.add(crest);
-
-  for (const x of [-.82, .82]) {
-    box(chair, [.12, .12, 1.12], wood, [x, .92, .10], 'chair-arm');
-    sphere(chair, .105, brass, [x, .98, .62], 'chair-brass-cap', 18, 12);
+  for (const x of [-.98, .98]) {
+    cylinder(chair, [.085, .115], 2.44, wood, [x, 1.33, -.67], 'chair-post', 20);
+    sphere(chair, .13, brass, [x, 2.61, -.67], 'chair-post-finial', 18, 12);
+    cylinder(chair, [.09, .12], .94, wood, [x, .04, .43], 'chair-leg', 18);
   }
+
+  const crown = new THREE.Mesh(new THREE.ConeGeometry(.16, .30, 4), brass);
+  crown.rotation.y = Math.PI / 4;
+  crown.position.set(0, 2.91, -.65);
+  crown.castShadow = true;
+  crown.name = 'chair-crown-finial';
+  chair.add(crown);
+
+  box(chair, [1.56, .045, .05], brass, [0, 2.42, -.41], 'chair-brass-inlay');
+
+  for (const x of [-.84, .84]) {
+    const arm = box(chair, [.13, .13, 1.12], wood, [x, .92, .10], 'chair-arm');
+    arm.rotation.x = -.035;
+    sphere(chair, .11, brass, [x, .98, .63], 'chair-brass-cap', 18, 12);
+  }
+
+  box(chair, [1.58, .10, .10], wood, [0, .12, .52], 'chair-front-stretcher');
+  box(chair, [1.68, .055, .065], brass, [0, .18, .58], 'chair-front-stretcher-inlay');
 
   chair.position.set(0, .00, -5.04);
   root.add(chair);
 }
 
-function addSconce(root, x, brass, glow, warmGlass) {
+function addSconce(root, x, brass, glow, ember) {
   const sconce = new THREE.Group();
   sconce.name = 'quick-match-ready-sconce';
-  cylinder(sconce, [.22, .22], .08, brass, [0, .12, 0], 'sconce-boss', 24);
-  box(sconce, [.11, .48, .11], brass, [0, -.18, .18], 'sconce-arm');
-  const cup = cylinder(sconce, [.18, .12], .18, brass, [0, -.42, .35], 'sconce-cup', 20);
-  cup.rotation.x = Math.PI / 2;
-  sphere(sconce, .19, warmGlass, [0, -.50, .42], 'sconce-glass', 22, 14);
-  const flame = new THREE.Mesh(new THREE.ConeGeometry(.075, .24, 16), glow);
-  flame.position.set(0, -.36, .43);
+
+  box(sconce, [.34, .72, .10], brass, [0, .02, 0], 'sconce-wall-plate');
+  sphere(sconce, .095, brass, [0, -.30, .09], 'sconce-wall-boss', 18, 12);
+
+  const arm = cylinder(
+    sconce,
+    [.055, .075],
+    .72,
+    brass,
+    [0, -.48, .36],
+    'sconce-torch-arm',
+    18,
+  );
+  arm.rotation.x = -1.02;
+
+  sphere(sconce, .085, brass, [0, -.64, .62], 'sconce-arm-joint', 16, 10);
+
+  const bowl = cylinder(
+    sconce,
+    [.30, .16],
+    .20,
+    brass,
+    [0, -.54, .69],
+    'sconce-brazier-bowl',
+    28,
+  );
+  bowl.scale.y = .78;
+
+  const lip = new THREE.Mesh(new THREE.TorusGeometry(.295, .035, 10, 32), brass);
+  lip.rotation.x = Math.PI / 2;
+  lip.position.set(0, -.46, .69);
+  lip.name = 'sconce-brazier-lip';
+  sconce.add(lip);
+
+  const coals = sphere(sconce, .19, ember, [0, -.42, .69], 'sconce-coals', 20, 12);
+  coals.scale.set(1, .30, 1);
+
+  const flame = new THREE.Mesh(new THREE.ConeGeometry(.115, .46, 20), glow);
+  flame.position.set(0, -.12, .69);
+  flame.scale.set(.92, 1.14, .82);
   flame.name = 'sconce-flame';
   sconce.add(flame);
-  sconce.position.set(x, 4.48, -6.03);
+
+  const flameCoreMaterial = new THREE.MeshBasicMaterial({ color: 0xff9a3d });
+  const flameCore = new THREE.Mesh(new THREE.ConeGeometry(.060, .30, 18), flameCoreMaterial);
+  flameCore.position.set(0, -.17, .705);
+  flameCore.scale.set(.90, 1.06, .78);
+  flameCore.name = 'sconce-flame-core';
+  sconce.add(flameCore);
+
+  sconce.position.set(x, 4.58, -6.02);
   root.add(sconce);
 }
 
-function addClock(root, brass, dark, wood) {
+function addClock(root, brass, dark, wood, faceMaterial) {
   const clock = new THREE.Group();
   clock.name = 'quick-match-ready-clock';
-  box(clock, [2.12, .74, .66], wood, [0, .38, 0], 'clock-body');
-  box(clock, [1.96, .58, .70], dark, [0, .38, .05], 'clock-face-panel');
-  for (const x of [-.54, .54]) {
-    const face = new THREE.Mesh(new THREE.CylinderGeometry(.25, .25, .05, 32), brass);
+
+  const bodyShape = new THREE.Shape();
+  bodyShape.moveTo(-1.12, 0);
+  bodyShape.lineTo(-1.12, .58);
+  bodyShape.quadraticCurveTo(-1.05, .78, -.82, .82);
+  bodyShape.lineTo(-.30, .82);
+  bodyShape.quadraticCurveTo(0, .92, .30, .82);
+  bodyShape.lineTo(.82, .82);
+  bodyShape.quadraticCurveTo(1.05, .78, 1.12, .58);
+  bodyShape.lineTo(1.12, 0);
+  bodyShape.closePath();
+
+  const housing = new THREE.Mesh(
+    new THREE.ExtrudeGeometry(bodyShape, {
+      depth: .62,
+      bevelEnabled: true,
+      bevelSegments: 2,
+      bevelSize: .045,
+      bevelThickness: .035,
+    }),
+    wood,
+  );
+  housing.position.set(0, .02, -.31);
+  housing.castShadow = true;
+  housing.receiveShadow = true;
+  housing.name = 'clock-walnut-housing';
+  clock.add(housing);
+
+  box(clock, [1.88, .48, .035], dark, [0, .40, .335], 'clock-face-inset');
+
+  for (const [index, x] of [-.54, .54].entries()) {
+    const bezel = new THREE.Mesh(new THREE.CylinderGeometry(.285, .285, .055, 36), brass);
+    bezel.rotation.x = Math.PI / 2;
+    bezel.position.set(x, .41, .375);
+    bezel.name = 'clock-bezel';
+    bezel.castShadow = true;
+    clock.add(bezel);
+
+    const face = new THREE.Mesh(new THREE.CylinderGeometry(.235, .235, .032, 36), faceMaterial);
     face.rotation.x = Math.PI / 2;
-    face.position.set(x, .40, .39);
+    face.position.set(x, .41, .414);
     face.name = 'clock-face';
     clock.add(face);
-    sphere(clock, .025, dark, [x, .40, .425], 'clock-hand-hub', 12, 8);
+
+    sphere(clock, .026, brass, [x, .41, .437], 'clock-hand-hub', 14, 10);
+
+    const minuteHand = box(
+      clock,
+      [.028, .17, .022],
+      dark,
+      [x, .48, .438],
+      'clock-minute-hand',
+    );
+    minuteHand.rotation.z = index === 0 ? -.18 : .14;
+
+    const hourHand = box(
+      clock,
+      [.026, .12, .023],
+      dark,
+      [x + (index === 0 ? .035 : -.03), .40, .439],
+      'clock-hour-hand',
+    );
+    hourHand.rotation.z = index === 0 ? .92 : -.78;
+
+    for (let tick = 0; tick < 12; tick += 1) {
+      const angle = (tick / 12) * Math.PI * 2;
+      const marker = box(
+        clock,
+        [tick % 3 === 0 ? .018 : .012, tick % 3 === 0 ? .050 : .032, .012],
+        dark,
+        [x + Math.sin(angle) * .185, .41 + Math.cos(angle) * .185, .438],
+        'clock-hour-marker',
+      );
+      marker.rotation.z = -angle;
+    }
   }
-  box(clock, [.48, .10, .32], brass, [-.54, .81, 0], 'clock-button-left');
-  box(clock, [.48, .10, .32], brass, [.54, .81, 0], 'clock-button-right');
-  clock.position.set(4.18, 1.48, -1.10);
+
+  box(clock, [1.92, .045, .055], brass, [0, .12, .345], 'clock-brass-line');
+
+  for (const x of [-.54, .54]) {
+    const buttonStem = cylinder(clock, [.055, .065], .16, brass, [x, .89, -.02], 'clock-button-stem', 18);
+    buttonStem.rotation.z = Math.PI / 2;
+    box(clock, [.44, .095, .30], brass, [x, .95, -.02], x < 0 ? 'clock-button-left' : 'clock-button-right');
+  }
+
+  for (const x of [-.86, .86]) {
+    sphere(clock, .075, brass, [x, -.03, .18], 'clock-foot', 16, 10);
+  }
+
+  clock.position.set(4.18, 1.42, -1.10);
   clock.rotation.y = -.09;
   root.add(clock);
 }
@@ -342,20 +737,72 @@ function addWindow(root, stone, brass, night, moon, glow) {
   const windowGroup = new THREE.Group();
   windowGroup.name = 'quick-match-ready-window';
 
-  box(windowGroup, [5.35, 4.12, .10], night, [0, 3.34, 0], 'window-night');
-  box(windowGroup, [.28, 4.44, .34], stone, [-2.83, 3.34, .04], 'window-jamb-left');
-  box(windowGroup, [.28, 4.44, .34], stone, [2.83, 3.34, .04], 'window-jamb-right');
-  box(windowGroup, [5.96, .28, .34], stone, [0, 1.08, .04], 'window-sill');
-  box(windowGroup, [.10, 4.06, .20], brass, [0, 3.34, .12], 'window-mullion');
-  box(windowGroup, [5.28, .08, .20], brass, [0, 3.34, .12], 'window-transom');
+  const sillY = 1.08;
+  const archCenterY = 3.62;
+  const archRadius = 2.56;
+
+  box(
+    windowGroup,
+    [archRadius * 2, archCenterY - sillY, .10],
+    night,
+    [0, (sillY + archCenterY) / 2, 0],
+    'window-night-lower',
+  );
+
+  const upperNight = new THREE.Mesh(
+    new THREE.CircleGeometry(archRadius, 48, 0, Math.PI),
+    night,
+  );
+  upperNight.position.set(0, archCenterY, .01);
+  upperNight.name = 'window-night-arch';
+  windowGroup.add(upperNight);
+
+  const jambHeight = archCenterY - sillY;
+  for (const x of [-2.78, 2.78]) {
+    box(
+      windowGroup,
+      [.28, jambHeight + .10, .34],
+      stone,
+      [x, sillY + jambHeight / 2, .04],
+      x < 0 ? 'window-jamb-left' : 'window-jamb-right',
+    );
+  }
+
+  box(windowGroup, [5.96, .28, .34], stone, [0, sillY, .04], 'window-sill');
+
+  const stoneArch = new THREE.Mesh(
+    new THREE.TorusGeometry(2.69, .15, 14, 56, Math.PI),
+    stone,
+  );
+  stoneArch.position.set(0, archCenterY, .04);
+  stoneArch.castShadow = true;
+  stoneArch.receiveShadow = true;
+  stoneArch.name = 'window-stone-arch';
+  windowGroup.add(stoneArch);
+
+  const brassArch = new THREE.Mesh(
+    new THREE.TorusGeometry(2.49, .045, 10, 56, Math.PI),
+    brass,
+  );
+  brassArch.position.set(0, archCenterY, .13);
+  brassArch.name = 'window-brass-arch';
+  windowGroup.add(brassArch);
+
+  box(
+    windowGroup,
+    [.10, (archCenterY - sillY) + archRadius * .92, .20],
+    brass,
+    [0, sillY + ((archCenterY - sillY) + archRadius * .92) / 2, .12],
+    'window-mullion',
+  );
+  box(windowGroup, [5.10, .08, .20], brass, [0, archCenterY, .12], 'window-transom');
 
   for (const x of [-2.78, 2.78]) {
-    cylinder(windowGroup, [.20, .25], .28, brass, [x, 1.08, .18], 'window-brass-cap', 22);
-    cylinder(windowGroup, [.20, .25], .28, brass, [x, 5.55, .18], 'window-brass-cap', 22);
+    cylinder(windowGroup, [.20, .25], .28, brass, [x, sillY, .18], 'window-brass-cap', 22);
   }
 
   const moonMesh = new THREE.Mesh(new THREE.SphereGeometry(.35, 28, 18), moon);
-  moonMesh.position.set(1.52, 4.76, .18);
+  moonMesh.position.set(1.22, 4.72, .18);
   moonMesh.name = 'window-moon';
   windowGroup.add(moonMesh);
 
@@ -363,7 +810,7 @@ function addWindow(root, stone, brass, night, moon, glow) {
     new THREE.CircleGeometry(.66, 36),
     glow,
   );
-  halo.position.set(1.52, 4.76, .16);
+  halo.position.set(1.22, 4.72, .16);
   halo.name = 'window-moon-halo';
   windowGroup.add(halo);
 
@@ -375,10 +822,13 @@ function addWindow(root, stone, brass, night, moon, glow) {
     sizeAttenuation: true,
   });
   const starPositions = [];
-  for (let i = 0; i < 54; i += 1) {
-    const px = -2.45 + ((i * 37) % 97) / 96 * 4.9;
-    const py = 1.55 + ((i * 61) % 101) / 100 * 3.55;
-    if (Math.hypot(px - 1.52, py - 4.76) > .68) {
+  for (let i = 0; i < 72; i += 1) {
+    const px = -2.42 + ((i * 37) % 101) / 100 * 4.84;
+    const py = 1.34 + ((i * 61) % 107) / 106 * 4.72;
+    const inLower = py <= archCenterY && Math.abs(px) <= 2.42;
+    const inArch = py > archCenterY
+      && Math.hypot(px, py - archCenterY) <= archRadius - .12;
+    if ((inLower || inArch) && Math.hypot(px - 1.22, py - 4.72) > .66) {
       starPositions.push(px, py, .20);
     }
   }
@@ -390,6 +840,69 @@ function addWindow(root, stone, brass, night, moon, glow) {
 
   windowGroup.position.set(0, .03, -6.22);
   root.add(windowGroup);
+}
+
+function addWallPanel(root, x, wood, leather, brass) {
+  const panel = new THREE.Group();
+  panel.name = 'quick-match-ready-wall-panel';
+
+  const outerShape = new THREE.Shape();
+  outerShape.moveTo(-1.58, -1.18);
+  outerShape.lineTo(1.58, -1.18);
+  outerShape.lineTo(1.58, .72);
+  outerShape.quadraticCurveTo(1.36, 1.18, .92, 1.28);
+  outerShape.quadraticCurveTo(0, 1.46, -.92, 1.28);
+  outerShape.quadraticCurveTo(-1.36, 1.18, -1.58, .72);
+  outerShape.closePath();
+
+  const frame = new THREE.Mesh(
+    new THREE.ExtrudeGeometry(outerShape, {
+      depth: .15,
+      bevelEnabled: true,
+      bevelSegments: 2,
+      bevelSize: .045,
+      bevelThickness: .03,
+    }),
+    wood,
+  );
+  frame.position.set(0, 0, 0);
+  frame.castShadow = true;
+  frame.receiveShadow = true;
+  frame.name = 'wall-panel-arched-frame';
+  panel.add(frame);
+
+  const insetShape = new THREE.Shape();
+  insetShape.moveTo(-1.30, -1.00);
+  insetShape.lineTo(1.30, -1.00);
+  insetShape.lineTo(1.30, .62);
+  insetShape.quadraticCurveTo(1.10, .96, .72, 1.05);
+  insetShape.quadraticCurveTo(0, 1.19, -.72, 1.05);
+  insetShape.quadraticCurveTo(-1.10, .96, -1.30, .62);
+  insetShape.closePath();
+
+  const inset = new THREE.Mesh(
+    new THREE.ExtrudeGeometry(insetShape, {
+      depth: .055,
+      bevelEnabled: true,
+      bevelSegments: 1,
+      bevelSize: .018,
+      bevelThickness: .012,
+    }),
+    leather,
+  );
+  inset.position.set(0, 0, .16);
+  inset.receiveShadow = true;
+  inset.name = 'wall-panel-leather-inset';
+  panel.add(inset);
+
+  box(panel, [2.70, .055, .055], brass, [0, -.90, .245], 'wall-panel-fillet-bottom');
+  box(panel, [2.34, .045, .05], brass, [0, .83, .245], 'wall-panel-fillet-top');
+  for (const accentX of [-1.36, 1.36]) {
+    box(panel, [.05, 1.68, .05], brass, [accentX, -.08, .245], 'wall-panel-side-fillet');
+  }
+
+  panel.position.set(x, 1.82, -6.06);
+  root.add(panel);
 }
 
 function addHeraldicTrophy(root, x, leather, brass, steel) {
@@ -422,6 +935,16 @@ function addHeraldicTrophy(root, x, leather, brass, steel) {
       16,
       10,
     );
+    const grip = cylinder(
+      trophy,
+      [.045, .055],
+      .34,
+      leather,
+      [direction * .66, -.68, .08],
+      'wall-sword-grip',
+      14,
+    );
+    grip.rotation.z = direction * .61;
   }
 
   const shieldShape = new THREE.Shape();
@@ -433,6 +956,23 @@ function addHeraldicTrophy(root, x, leather, brass, steel) {
   shieldShape.lineTo(-.58, .43);
   shieldShape.closePath();
 
+  const shieldRim = new THREE.Mesh(
+    new THREE.ExtrudeGeometry(shieldShape, {
+      depth: .07,
+      bevelEnabled: true,
+      bevelSegments: 2,
+      bevelSize: .055,
+      bevelThickness: .035,
+    }),
+    brass,
+  );
+  shieldRim.scale.set(1.08, 1.08, 1);
+  shieldRim.position.z = .09;
+  shieldRim.castShadow = true;
+  shieldRim.receiveShadow = true;
+  shieldRim.name = 'wall-heater-shield-rim';
+  trophy.add(shieldRim);
+
   const shield = new THREE.Mesh(
     new THREE.ExtrudeGeometry(shieldShape, {
       depth: .09,
@@ -443,14 +983,19 @@ function addHeraldicTrophy(root, x, leather, brass, steel) {
     }),
     leather,
   );
-  shield.position.z = .13;
+  shield.position.z = .16;
   shield.castShadow = true;
   shield.receiveShadow = true;
   shield.name = 'wall-heater-shield';
   trophy.add(shield);
 
-  box(trophy, [.095, 1.18, .055], brass, [0, -.02, .27], 'wall-shield-cross-vertical');
-  box(trophy, [.82, .095, .055], brass, [0, .20, .27], 'wall-shield-cross-horizontal');
+  box(trophy, [.095, 1.18, .055], brass, [0, -.02, .30], 'wall-shield-cross-vertical');
+  box(trophy, [.82, .095, .055], brass, [0, .20, .30], 'wall-shield-cross-horizontal');
+  sphere(trophy, .105, brass, [0, .13, .35], 'wall-shield-boss', 20, 12);
+
+  for (const [rx, ry] of [[-.36,.40],[.36,.40],[-.32,-.34],[.32,-.34]]) {
+    sphere(trophy, .035, brass, [rx, ry, .31], 'wall-shield-rivet', 12, 8);
+  }
 
   trophy.position.set(x, 1.88, -5.90);
   trophy.scale.setScalar(.82);
@@ -460,13 +1005,31 @@ function addHeraldicTrophy(root, x, leather, brass, steel) {
 function addConsole(root, x, wood, brass, leather) {
   const console = new THREE.Group();
   console.name = 'quick-match-ready-console';
-  box(console, [2.35, .18, .72], wood, [0, 1.18, 0], 'console-top');
-  box(console, [2.05, .62, .52], leather, [0, .82, -.03], 'console-front');
-  for (const legX of [-.91, .91]) {
-    cylinder(console, [.075, .10], 1.04, wood, [legX, .55, 0], 'console-leg', 16);
+
+  box(console, [2.42, .16, .76], wood, [0, 1.22, 0], 'console-top');
+  box(console, [2.18, .10, .68], brass, [0, 1.10, 0], 'console-top-trim');
+
+  const cabinet = box(console, [2.02, .66, .54], wood, [0, .78, -.03], 'console-cabinet');
+  cabinet.castShadow = true;
+  box(console, [1.82, .49, .055], leather, [0, .79, .26], 'console-front-inset');
+  box(console, [1.92, .045, .06], brass, [0, 1.00, .30], 'console-brass-line-top');
+  box(console, [1.92, .045, .06], brass, [0, .57, .30], 'console-brass-line-bottom');
+
+  for (const panelX of [-.47, .47]) {
+    box(console, [.055, .44, .06], brass, [panelX, .79, .30], 'console-panel-divider');
+    sphere(console, .055, brass, [panelX * .55, .79, .345], 'console-handle', 16, 10);
   }
-  box(console, [1.84, .055, .055], brass, [0, .96, .38], 'console-brass-line');
-  console.position.set(x, 0, -4.92);
+
+  for (const legX of [-.88, .88]) {
+    cylinder(console, [.085, .12], .46, wood, [legX, .39, 0], 'console-leg-upper', 18);
+    sphere(console, .12, wood, [legX, .17, 0], 'console-leg-knot', 18, 12);
+    cylinder(console, [.07, .10], .34, wood, [legX, -.03, 0], 'console-leg-lower', 18);
+    cylinder(console, [.11, .075], .10, brass, [legX, -.25, 0], 'console-foot-collar', 16);
+    sphere(console, .10, wood, [legX, -.34, 0], 'console-foot', 16, 10);
+  }
+
+  box(console, [1.56, .08, .08], wood, [0, .12, .02], 'console-stretcher');
+  console.position.set(x, .32, -4.92);
   root.add(console);
 }
 
@@ -474,19 +1037,60 @@ function buildRoom({ lite = false } = {}) {
   const root = new THREE.Group();
   root.name = 'quick-match-ready-room';
 
-  const stone = mat(0x46403b, .02, .90);
-  const stoneEdge = mat(0x736a60, .03, .76);
-  const stoneHighlight = mat(0x948878, .04, .68);
-  const wood = mat(0x6a3e24, .08, .54);
-  const woodDark = mat(0x2a1710, .05, .72);
-  const brass = mat(0xb68b43, .82, .24);
-  const leather = mat(0x4a201d, .05, .70);
+  const stone = mat(0x514a43, .02, .86);
+  const stoneEdge = mat(0x7b7166, .03, .72);
+  const stoneHighlight = mat(0x9c8f7e, .04, .64);
+  const wood = mat(0x75472a, .08, .50);
+  const woodDark = mat(0x321c13, .05, .68);
+  const brass = mat(0xc09449, .82, .22);
+  const leather = mat(0x542521, .05, .66);
   const steel = mat(0x8d9396, .74, .27);
-  const ivory = mat(0xd8cfba, .06, .42);
-  const ebony = mat(0x2d2b2b, .30, .30);
-  const lightSquare = mat(0xcfc7b3, .04, .66);
-  const darkSquare = mat(0x4a4843, .05, .58);
-  const night = new THREE.MeshBasicMaterial({ color: 0x0b3156 });
+  const ivory = mat(0xe2d8c2, .04, .30, {
+    clearcoat: .34,
+    clearcoatRoughness: .24,
+  });
+  // Ebony should remain dark without disappearing into the rear rank shadows.
+  const ebony = mat(0x4a4039, .10, .34, {
+    clearcoat: .31,
+    clearcoatRoughness: .30,
+  });
+  const lightSquare = mat(0xd7ccb6, .04, .62);
+  const darkSquare = mat(0x4b4037, .06, .56);
+
+  const surfaceTextures = [];
+  if (!lite) {
+    const stoneTexture = surfaceTexture('stone');
+    const woodTexture = surfaceTexture('wood');
+    const leatherTexture = surfaceTexture('leather');
+    surfaceTextures.push(stoneTexture, woodTexture, leatherTexture);
+
+    for (const material of [stone, stoneEdge, stoneHighlight]) {
+      material.bumpMap = stoneTexture;
+      material.bumpScale = material === stone ? .045 : .028;
+      material.roughnessMap = stoneTexture;
+      material.needsUpdate = true;
+    }
+
+    for (const material of [wood, woodDark]) {
+      material.bumpMap = woodTexture;
+      material.bumpScale = .025;
+      material.roughnessMap = woodTexture;
+      material.needsUpdate = true;
+    }
+
+    leather.bumpMap = leatherTexture;
+    leather.bumpScale = .018;
+    leather.roughnessMap = leatherTexture;
+    leather.needsUpdate = true;
+  }
+
+  const nightTexture = nightSkyTexture();
+  surfaceTextures.push(nightTexture);
+  root.userData.surfaceTextures = surfaceTextures;
+  const night = new THREE.MeshBasicMaterial({
+    color: 0xffffff,
+    map: nightTexture,
+  });
   const moon = new THREE.MeshBasicMaterial({ color: 0xe8eef3 });
   const moonHalo = new THREE.MeshBasicMaterial({
     color: 0x9ec8ee,
@@ -522,16 +1126,20 @@ function buildRoom({ lite = false } = {}) {
   box(root, [17.3, .36, .34], stoneEdge, [0, 6.45, -6.12], 'room-cornice');
 
   for (const x of [-7.8, -3.2, 3.2, 7.8]) {
-    box(root, [.34, 6.72, .54], stoneEdge, [x, 3.18, -6.11], 'pilaster');
-    box(root, [.54, .18, .72], stoneHighlight, [x, .37, -5.98], 'pilaster-base');
-    box(root, [.58, .20, .72], stoneHighlight, [x, 6.36, -5.98], 'pilaster-cap');
+    box(root, [.42, 6.30, .50], stoneEdge, [x, 3.20, -6.10], 'pilaster-shaft');
+    box(root, [.22, 5.74, .08], stoneHighlight, [x, 3.20, -5.80], 'pilaster-face-relief');
+
+    box(root, [.70, .18, .78], stoneHighlight, [x, .40, -5.98], 'pilaster-base-plinth');
+    box(root, [.58, .17, .68], stoneEdge, [x, .56, -5.99], 'pilaster-base-step');
+    box(root, [.48, .13, .59], stoneHighlight, [x, .70, -6.02], 'pilaster-base-neck');
+
+    box(root, [.48, .13, .59], stoneHighlight, [x, 5.72, -6.02], 'pilaster-cap-neck');
+    box(root, [.60, .17, .70], stoneEdge, [x, 5.86, -5.99], 'pilaster-cap-step');
+    box(root, [.76, .22, .82], stoneHighlight, [x, 6.04, -5.96], 'pilaster-cap-abacus');
   }
 
   for (const x of [-5.95, 5.95]) {
-    box(root, [3.15, 2.45, .16], woodDark, [x, 1.82, -6.13], 'wall-panel');
-    box(root, [2.72, 2.02, .08], leather, [x, 1.82, -6.02], 'wall-panel-inset');
-    box(root, [2.86, .06, .10], brass, [x, 2.72, -5.96], 'wall-panel-fillet');
-    box(root, [2.86, .06, .10], brass, [x, .92, -5.96], 'wall-panel-fillet');
+    addWallPanel(root, x, woodDark, leather, brass);
   }
 
   for (const x of [-6.65, -2.2, 2.2, 6.65]) {
@@ -539,28 +1147,34 @@ function buildRoom({ lite = false } = {}) {
   }
 
   addWindow(root, stoneEdge, brass, night, moon, moonHalo);
-  addSconce(root, -5.55, brass, sconceGlow, warmGlass);
-  addSconce(root, 5.55, brass, sconceGlow, warmGlass);
+  addSconce(root, -7.02, brass, sconceGlow, warmGlass);
+  addSconce(root, 7.02, brass, sconceGlow, warmGlass);
   addHeraldicTrophy(root, -5.95, leather, brass, steel);
   addHeraldicTrophy(root, 5.95, leather, brass, steel);
   addConsole(root, -6.15, woodDark, brass, leather);
   addConsole(root, 6.15, woodDark, brass, leather);
 
-  const table = box(root, [10.65, .42, 5.12], wood, [0, 1.08, -1.16], 'table-top');
-  table.rotation.x = -.018;
-  box(root, [10.05, .17, 4.55], brass, [0, .86, -1.16], 'table-brass-skirt');
-  box(root, [9.86, .28, 4.38], woodDark, [0, .69, -1.16], 'table-apron');
+  const table = box(root, [10.95, .28, 7.45], wood, [0, 1.14, -1.25], 'table-top');
+  table.rotation.x = -.012;
+  box(root, [10.75, .10, 7.25], brass, [0, .98, -1.25], 'table-brass-edge');
+  box(root, [10.50, .16, 7.02], woodDark, [0, .87, -1.25], 'table-lower-edge');
+  box(root, [10.24, .055, 6.80], brass, [0, .765, -1.25], 'table-brass-skirt');
+  box(root, [10.02, .28, 6.58], woodDark, [0, .60, -1.25], 'table-apron');
 
-  for (const x of [-4.58, 4.58]) {
-    for (const z of [-2.52, .18]) {
-      cylinder(root, [.19, .25], 1.66, woodDark, [x, .02, z], 'table-leg', 20);
-      cylinder(root, [.25, .31], .12, brass, [x, .78, z], 'table-leg-cap', 20);
+  for (const x of [-4.70, 4.70]) {
+    for (const z of [-4.38, 1.88]) {
+      cylinder(root, [.22, .27], .24, brass, [x, .73, z], 'table-leg-cap', 22);
+      cylinder(root, [.17, .23], .36, woodDark, [x, .48, z], 'table-leg-upper', 22);
+      sphere(root, .22, wood, [x, .24, z], 'table-leg-knot', 20, 14);
+      cylinder(root, [.13, .18], .56, woodDark, [x, -.05, z], 'table-leg-stem', 20);
+      cylinder(root, [.20, .14], .22, brass, [x, -.44, z], 'table-leg-foot-collar', 20);
+      cylinder(root, [.25, .20], .16, woodDark, [x, -.63, z], 'table-leg-foot', 20);
     }
   }
 
-  addBoard(root, lightSquare, darkSquare, brass, woodDark);
+  addBoard(root, lightSquare, darkSquare, brass, woodDark, wood);
   addChessSet(root, ivory, ebony, lite);
-  addClock(root, brass, ebony, woodDark);
+  if (!lite) addClock(root, brass, ebony, woodDark, ivory);
   addChair(root, woodDark, leather, brass);
 
   const rugMaterial = mat(0x421416, .01, .98);
@@ -572,12 +1186,34 @@ function buildRoom({ lite = false } = {}) {
   root.add(rug);
 
   const rugTrim = mat(0x9b6e2f, .38, .64);
+  const rugShadowTrim = mat(0x2a0e10, .02, .96);
   for (const z of [-5.02, 2.46]) {
     box(root, [10.62, .025, .055], rugTrim, [0, -.02, z], 'quick-match-ready-rug-border');
   }
   for (const x of [-5.28, 5.28]) {
     box(root, [.055, .025, 7.44], rugTrim, [x, -.02, -1.28], 'quick-match-ready-rug-border');
   }
+
+  for (const z of [-4.72, 2.16]) {
+    box(root, [9.98, .018, .035], rugShadowTrim, [0, -.015, z], 'quick-match-ready-rug-inner-shadow');
+    box(root, [9.72, .020, .030], rugTrim, [0, -.012, z], 'quick-match-ready-rug-inner-fillet');
+  }
+  for (const x of [-4.96, 4.96]) {
+    box(root, [.035, .018, 6.86], rugShadowTrim, [x, -.015, -1.28], 'quick-match-ready-rug-inner-shadow');
+    box(root, [.030, .020, 6.58], rugTrim, [x, -.012, -1.28], 'quick-match-ready-rug-inner-fillet');
+  }
+
+  const rugMedallion = new THREE.Mesh(
+    new THREE.RingGeometry(.78, .94, 4),
+    rugTrim,
+  );
+  rugMedallion.rotation.x = -Math.PI / 2;
+  rugMedallion.rotation.z = Math.PI / 4;
+  rugMedallion.scale.set(1.55, 1, 1);
+  rugMedallion.position.set(0, -.010, 1.02);
+  rugMedallion.name = 'quick-match-ready-rug-medallion';
+  rugMedallion.receiveShadow = true;
+  root.add(rugMedallion);
 
   return root;
 }
@@ -640,7 +1276,7 @@ export default function QuickMatchReadyRoomScene3D() {
       });
       renderer.outputColorSpace = THREE.SRGBColorSpace;
       renderer.toneMapping = THREE.ACESFilmicToneMapping;
-      renderer.toneMappingExposure = 2.20;
+      renderer.toneMappingExposure = 2.28;
       renderer.setPixelRatio(Math.min(globalThis.devicePixelRatio || 1, coarsePointer ? .88 : 1.35));
       renderer.shadowMap.enabled = !coarsePointer;
       renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -652,16 +1288,16 @@ export default function QuickMatchReadyRoomScene3D() {
       camera.position.set(...QUICK_MATCH_READY_ROOM_CAMERA.position);
       camera.lookAt(...QUICK_MATCH_READY_ROOM_CAMERA.target);
 
-      const hemi = new THREE.HemisphereLight(0x9ab6d5, 0x3b2417, coarsePointer ? 1.12 : 1.58);
+      const hemi = new THREE.HemisphereLight(0xa3bdd7, 0x432719, coarsePointer ? 1.16 : 1.72);
       scene.add(hemi);
 
       const warmLeft = new THREE.PointLight(0xffa654, coarsePointer ? 2.05 : 3.45, 20, 2);
-      warmLeft.position.set(-5.55, 4.2, -4.6);
+      warmLeft.position.set(-6.05, 4.25, -4.6);
       warmLeft.castShadow = false;
       scene.add(warmLeft);
 
       const warmRight = new THREE.PointLight(0xffc06b, coarsePointer ? 1.48 : 2.55, 19, 2);
-      warmRight.position.set(5.55, 4.0, -4.4);
+      warmRight.position.set(6.05, 4.10, -4.4);
       warmRight.castShadow = false;
       scene.add(warmRight);
 
@@ -676,10 +1312,42 @@ export default function QuickMatchReadyRoomScene3D() {
       cameraFill.castShadow = false;
       scene.add(cameraFill);
 
-      const boardFill = new THREE.PointLight(0xffe2bd, coarsePointer ? .38 : .72, 17, 2);
+      const boardFill = new THREE.PointLight(0xffe2bd, coarsePointer ? .40 : .80, 17, 2);
       boardFill.position.set(0, 6.2, -1.1);
       boardFill.castShadow = false;
       scene.add(boardFill);
+
+      // Narrow, shadow-free moonlit bounce across the ebony ranks: reveal the
+      // carved silhouettes without raising the exposure of the entire room.
+      const ebonyFill = new THREE.SpotLight(
+        0xc7d7e9,
+        coarsePointer ? .66 : 1.02,
+        9,
+        Math.PI / 6.4,
+        .8,
+        1.8,
+      );
+      ebonyFill.position.set(-.55, 4.35, -.45);
+      ebonyFill.target.position.set(-.28, 1.88, -3.22);
+      ebonyFill.castShadow = false;
+      scene.add(ebonyFill, ebonyFill.target);
+
+      if (!coarsePointer) {
+        for (const x of [-5.8, 5.8]) {
+          const wallWash = new THREE.SpotLight(
+            0xffb86a,
+            1.05,
+            13,
+            Math.PI / 4.8,
+            .72,
+            1.9,
+          );
+          wallWash.position.set(x, 5.1, -2.9);
+          wallWash.target.position.set(x, 2.0, -6.0);
+          wallWash.castShadow = false;
+          scene.add(wallWash, wallWash.target);
+        }
+      }
 
       const boardKey = new THREE.SpotLight(
         0xffd7a0,
@@ -725,6 +1393,7 @@ export default function QuickMatchReadyRoomScene3D() {
       if (onResize) globalThis.removeEventListener?.('resize', onResize);
       if (room) scene?.remove?.(room);
       renderer?.dispose?.();
+      room?.userData?.surfaceTextures?.forEach((texture) => texture?.dispose?.());
       room?.traverse?.((node) => {
         node.geometry?.dispose?.();
         if (Array.isArray(node.material)) node.material.forEach((entry) => entry?.dispose?.());

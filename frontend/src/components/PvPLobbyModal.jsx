@@ -246,13 +246,9 @@ export default function PvPLobbyModal({
               <i />
               {self ? 'Disponible' : 'No disponible'}
             </span>
-            <span className="pvp-lobby__metric">
-              <b>{rivalCount}</b>
-              <small>rivales</small>
-            </span>
-            <span className={`pvp-lobby__metric${challengeCount > 0 ? ' has-attention' : ''}`}>
-              <b>{challengeCount}</b>
-              <small>retos</small>
+            <span className={`pvp-lobby__room-counts${challengeCount > 0 ? ' has-attention' : ''}`}>
+              {rivalCount} rival{rivalCount === 1 ? '' : 'es'}
+              {challengeCount > 0 ? ` · ${challengeCount} reto${challengeCount === 1 ? '' : 's'}` : ''}
             </span>
           </div>
         </header>
@@ -362,63 +358,65 @@ export default function PvPLobbyModal({
           </section>
 
           <div className="pvp-lobby__side">
-          <section className={`pvp-lobby__panel pvp-lobby__panel--challenges${challengeCount === 0 ? ' is-empty' : ' has-attention'}`} aria-labelledby="pvp-challenges-title">
-            <header>
-              <div>
-                <small>MESA DEL HERALDO</small>
-                <h3 id="pvp-challenges-title">Retos</h3>
-                <p>Acepta, declina o cancela sin salir de la sala.</p>
-              </div>
-              <span>{challengeCount}</span>
-            </header>
-            {challengeCount === 0 ? (
-              <div className="pvp-lobby__empty-state pvp-lobby__empty-state--dispatch">
-                <span aria-hidden="true">✦</span>
+          {challengeCount > 0 && (
+            <section className={`pvp-lobby__panel pvp-lobby__panel--challenges${challengeCount === 0 ? ' is-empty' : ' has-attention'}`} aria-labelledby="pvp-challenges-title">
+              <header>
                 <div>
-                  <strong>Sin retos pendientes</strong>
-                  <p>{self ? 'Cuando alguien te rete, la orden aparecerá aquí.' : 'Ponte disponible para poder recibir desafíos.'}</p>
+                  <small>MESA DEL HERALDO</small>
+                  <h3 id="pvp-challenges-title">Retos</h3>
+                  <p>Acepta, declina o cancela sin salir de la sala.</p>
                 </div>
-              </div>
-            ) : (
-              <div className="pvp-lobby__challenge-list">
-                {incoming.map((challenge) => (
-                  <article key={challenge.id} className="pvp-lobby__challenge is-incoming">
-                    <span className="pvp-lobby__challenge-seal" aria-hidden="true">✦</span>
-                    <div><small>RETO ENTRANTE</small><strong>{challenge.challenger}</strong><span>{challenge.challengerRating} Elo 1v1{challenge.expiresAt ? ` · ${challengeExpiryLabel(challenge.expiresAt)}` : ''}</span></div>
-                    <div className="pvp-lobby__challenge-actions"><button type="button" className="primary-btn" disabled={Boolean(busyKey)} onClick={() => accept(challenge)}>Aceptar</button><button type="button" className="secondary-btn" disabled={Boolean(busyKey)} onClick={() => run(`decline:${challenge.id}`, () => onDeclineChallenge ? onDeclineChallenge(challenge) : pvpApi.declineChallenge(challenge.id))}>Declinar</button></div>
-                  </article>
-                ))}
-                {outgoing.map((challenge) => (
-                  <article key={challenge.id} className="pvp-lobby__challenge">
-                    <span className="pvp-lobby__challenge-seal is-outgoing" aria-hidden="true">✧</span>
-                    <div>
-                      <small>RETO ENVIADO</small>
-                      <strong>{challenge.opponent}</strong>
-                      <span>{challenge.opponentRating} Elo 1v1 · esperando respuesta{challenge.expiresAt ? ` · ${challengeExpiryLabel(challenge.expiresAt)}` : ''}</span>
-                    </div>
-                    {challenge.expiresAt && (
-                      <div className="pvp-lobby__challenge-actions">
-                        <button
-                          type="button"
-                          className="secondary-btn"
-                          aria-label={`Cancelar reto a ${challenge.opponent}`}
-                          disabled={Boolean(busyKey)}
-                          onClick={() => run(
-                            `cancel:${challenge.id}`,
-                            () => onCancelChallenge ? onCancelChallenge(challenge) : pvpApi.cancelChallenge(challenge.id),
-                          )}
-                        >
-                          {busyKey === `cancel:${challenge.id}` ? 'Cancelando…' : 'Cancelar'}
-                        </button>
+                <span>{challengeCount}</span>
+              </header>
+              {challengeCount === 0 ? (
+                <div className="pvp-lobby__empty-state pvp-lobby__empty-state--dispatch">
+                  <span aria-hidden="true">✦</span>
+                  <div>
+                    <strong>Sin retos pendientes</strong>
+                    <p>{self ? 'Cuando alguien te rete, la orden aparecerá aquí.' : 'Ponte disponible para poder recibir desafíos.'}</p>
+                  </div>
+                </div>
+              ) : (
+                <div className="pvp-lobby__challenge-list">
+                  {incoming.map((challenge) => (
+                    <article key={challenge.id} className="pvp-lobby__challenge is-incoming">
+                      <span className="pvp-lobby__challenge-seal" aria-hidden="true">✦</span>
+                      <div><small>RETO ENTRANTE</small><strong>{challenge.challenger}</strong><span>{challenge.challengerRating} Elo 1v1{challenge.expiresAt ? ` · ${challengeExpiryLabel(challenge.expiresAt)}` : ''}</span></div>
+                      <div className="pvp-lobby__challenge-actions"><button type="button" className="primary-btn" disabled={Boolean(busyKey)} onClick={() => accept(challenge)}>Aceptar</button><button type="button" className="secondary-btn" disabled={Boolean(busyKey)} onClick={() => run(`decline:${challenge.id}`, () => onDeclineChallenge ? onDeclineChallenge(challenge) : pvpApi.declineChallenge(challenge.id))}>Declinar</button></div>
+                    </article>
+                  ))}
+                  {outgoing.map((challenge) => (
+                    <article key={challenge.id} className="pvp-lobby__challenge">
+                      <span className="pvp-lobby__challenge-seal is-outgoing" aria-hidden="true">✧</span>
+                      <div>
+                        <small>RETO ENVIADO</small>
+                        <strong>{challenge.opponent}</strong>
+                        <span>{challenge.opponentRating} Elo 1v1 · esperando respuesta{challenge.expiresAt ? ` · ${challengeExpiryLabel(challenge.expiresAt)}` : ''}</span>
                       </div>
-                    )}
-                  </article>
-                ))}
-              </div>
-            )}
-          </section>
+                      {challenge.expiresAt && (
+                        <div className="pvp-lobby__challenge-actions">
+                          <button
+                            type="button"
+                            className="secondary-btn"
+                            aria-label={`Cancelar reto a ${challenge.opponent}`}
+                            disabled={Boolean(busyKey)}
+                            onClick={() => run(
+                              `cancel:${challenge.id}`,
+                              () => onCancelChallenge ? onCancelChallenge(challenge) : pvpApi.cancelChallenge(challenge.id),
+                            )}
+                          >
+                            {busyKey === `cancel:${challenge.id}` ? 'Cancelando…' : 'Cancelar'}
+                          </button>
+                        </div>
+                      )}
+                    </article>
+                  ))}
+                </div>
+              )}
+            </section>
+          )}
 
-          <details
+                    <details
             className="pvp-lobby__chat-disclosure"
             open={chatOpen}
             onToggle={(event) => setChatOpen(event.currentTarget.open)}

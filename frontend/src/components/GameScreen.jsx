@@ -28,6 +28,7 @@ import { useGameClock } from '../useGameClock.js';
 import { focusPostGameTrainingOpportunity, usePostGameTrainingOpportunity } from '../usePostGameTrainingOpportunity.js';
 import { buildPostGameReportMeta } from '../postGameReportMeta.js';
 import { getBoardCoordinates, USER_PREFERENCES_CHANGED_EVENT } from '../userPreferences.js';
+import { cpuPresentationDelayMs } from '../cpuPresentationTiming.js';
 import { humanHasLostPiece } from '../gameOutcome.js';
 import { checkedKingSquare } from '../boardState.js';
 import { gameStatusView } from '../gameStatusView.js';
@@ -39,11 +40,6 @@ import './WarRoomMobileLandscape.css';
 
 const PIECE_NAMES_ES = { p: 'un peón', n: 'un caballo', b: 'un alfil', r: 'una torre', q: 'la dama' };
 
-// Tiempo mínimo (ms) que se muestra "La CPU está pensando…" antes de aplicar
-// su jugada, aunque el servidor responda antes. Sin esto, en dificultad baja
-// la respuesta puede llegar tan rápido que la animación del jugador ni
-// alcanza a verse antes de que se dispare la de la CPU encima.
-const MIN_CPU_THINK_MS = 350;
 // El control táctico es una pausa pedagógica, no un semáforo crítico. Si el
 // usuario no pulsa el CTA (por ejemplo porque quedó fuera del viewport), la
 // partida continúa sola y nunca aparenta haberse congelado.
@@ -534,7 +530,10 @@ export default function GameScreen({
       if (!mutationCoordinator.isCurrent(operation)) return;
     }
 
-    const minThink = abortableDelay(MIN_CPU_THINK_MS, controller.signal);
+    const cpuColor = humanColor === 'w' ? 'b' : 'w';
+    const cpuTime = getTime(cpuColor);
+    const thinkMs = cpuPresentationDelayMs({ cpuTime: hasClock ? cpuTime : null, gameOver: optimistic.isGameOver() });
+    const minThink = abortableDelay(thinkMs, controller.signal);
 
     try {
       const operationId = mutationCoordinator.operationId('move', [game.id, from, to, promotion || 'q']);

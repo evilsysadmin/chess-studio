@@ -5,7 +5,7 @@ import {
   shouldAutoRotateChroniclesOnEntry,
 } from './useChroniclesLandscape.js';
 
-describe('Chronicles mobile landscape entry', () => {
+describe('Chronicles immersive entry', () => {
   it('targets phone-like coarse-pointer viewports only', () => {
     const mobile = { innerWidth: 390, matchMedia: vi.fn(() => ({ matches: true })) };
     const desktop = { innerWidth: 1440, matchMedia: vi.fn(() => ({ matches: false })) };
@@ -32,19 +32,19 @@ describe('Chronicles mobile landscape entry', () => {
     expect(order).toEqual(['fullscreen', 'landscape']);
   });
 
-  it('does nothing on desktop entry', async () => {
-    const requestFullscreen = vi.fn();
+  it('requests browser fullscreen on desktop without locking orientation', async () => {
+    const requestFullscreen = vi.fn(async () => {});
     const lock = vi.fn();
     const win = { innerWidth: 1440, matchMedia: vi.fn(() => ({ matches: false })) };
     const doc = { documentElement: { requestFullscreen }, fullscreenElement: null };
     const screenApi = { orientation: { lock } };
 
     await expect(requestChroniclesLandscapeOnEntry({ win, doc, screenApi })).resolves.toEqual({
-      requested: false,
-      fullscreen: false,
+      requested: true,
+      fullscreen: true,
       landscape: false,
     });
-    expect(requestFullscreen).not.toHaveBeenCalled();
+    expect(requestFullscreen).toHaveBeenCalledOnce();
     expect(lock).not.toHaveBeenCalled();
   });
 

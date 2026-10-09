@@ -13,6 +13,7 @@ import { installChroniclesFirstPersonPremiumMaterials } from './chroniclesOfMatt
 import { buildChroniclesEnemyVisual } from './chroniclesEnemyVisualRegistry.js';
 import { buildSpectralChapel } from './chroniclesOfMatthiasSpectralBishop.js';
 import { createExperimentalThreeRenderer } from './experimentalThreeRenderer.js';
+import { buildSwordhavenScene } from './chronicles/chroniclesSwordhaven3D.js';
 
 const CELL = 4;
 const CAMERA_Y = 1.62;
@@ -517,21 +518,25 @@ export function createChroniclesOfMatthiasGame(host, {
   host.appendChild(renderer.domElement);
 
   const scene = new THREE.Scene();
-  scene.fog = new THREE.FogExp2(0x0a0c0f, coarse ? 0.038 : 0.034);
-  scene.add(new THREE.HemisphereLight(0x6f8191, 0x1b130d, coarse ? 0.35 : 0.24));
+  if (scenePlan?.regionKind !== 'settlement') scene.fog = new THREE.FogExp2(0x0a0c0f, coarse ? 0.038 : 0.034);
+  if (scenePlan?.regionKind !== 'settlement') scene.add(new THREE.HemisphereLight(0x6f8191, 0x1b130d, coarse ? 0.35 : 0.24));
   const camera = new THREE.PerspectiveCamera(67, 1, 0.08, 70);
   camera.rotation.order = 'YXZ';
   scene.add(camera);
   const combatFx = createCombatFx(camera);
 
-  const dungeon = createDungeonScene(scene, { coarsePointer: coarse, scenePlan });
+  const dungeon = scenePlan?.regionKind === 'settlement'
+    ? buildSwordhavenScene(scene, { coarsePointer: coarse, scenePlan })
+    : createDungeonScene(scene, { coarsePointer: coarse, scenePlan });
   const contentRaycaster = new THREE.Raycaster();
   const contentPointer = new THREE.Vector2();
   const dressing = scenePlan?.useAuthoredCryptDressing
     ? buildChroniclesDungeonDressing({ coarsePointer: coarse })
     : new THREE.Group();
   dressing.name ||= 'chronicles-map-specific-dressing';
-  const atmosphere = buildChroniclesDungeonAtmosphere({ coarsePointer: coarse, reducedMotion, scenePlan });
+  const atmosphere = scenePlan?.regionKind === 'settlement'
+    ? new THREE.Group()
+    : buildChroniclesDungeonAtmosphere({ coarsePointer: coarse, reducedMotion, scenePlan });
   scene.add(dressing, atmosphere);
   let destroyed = false;
   let visible = document.visibilityState !== 'hidden';
@@ -636,6 +641,7 @@ export function createChroniclesOfMatthiasGame(host, {
     if (reducedMotion) {
       camera.position.copy(desiredPosition);
       camera.rotation.y = desiredYaw;
+      atmosphere.userData.updateChroniclesAtmosphere?.(now);
       renderer.render(scene, camera);
     }
   }
@@ -667,7 +673,6 @@ export function createChroniclesOfMatthiasGame(host, {
     if (!reducedMotion) {
       camera.position.lerp(desiredPosition, 0.16);
       camera.rotation.y += wrapAngle(desiredYaw - camera.rotation.y) * 0.18;
-      atmosphere.userData.updateChroniclesAtmosphere?.(time);
       dungeon.torches.forEach((torch) => {
         const pulse = 0.9 + Math.sin(time * 8.5 + torch.phase) * 0.08 + Math.sin(time * 17 + torch.phase) * 0.04;
         torch.light.intensity = torch.baseIntensity * pulse;
@@ -755,6 +760,9 @@ export function createChroniclesOfMatthiasGame(host, {
         combatFx.group.visible = false;
       }
     }
+    // Party-carried light is gameplay visibility, not a decorative animation.
+    // Keep it synced on every frame, including prefers-reduced-motion.
+    atmosphere.userData.updateChroniclesAtmosphere?.(time);
     renderer.render(scene, camera);
   }
 

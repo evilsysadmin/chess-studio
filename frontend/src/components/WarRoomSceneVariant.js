@@ -1,10 +1,8 @@
 import {
   isClassicWarRoomVariant,
-  isWarRoomVariantSelectable,
-  loadWarRoomVariant,
   loadWarRoomVariantInstaller,
+  warRoomVariantSupportsHans,
 } from './WarRoomVariant.js';
-import { installWarRoomHansVariantStage, warRoomHansRoom } from './WarRoomHansStage.js';
 
 export function shouldShowClassicWarRoomShell(options = {}) {
   return isClassicWarRoomVariant(options);
@@ -23,8 +21,41 @@ function setClassicShellVisible(objects, visible) {
   }
 }
 
+function isPromiseLike(value) {
+  return Boolean(value && typeof value.then === 'function');
+}
+
+function syncBlenderShadowTelemetry(scene, variant, canvas) {
+  if (!canvas?.dataset || !scene?.children) return;
+  const root = scene.children.find((child) => child?.userData?.warRoomVariant === variant);
+  if (!root?.userData) return;
+  const { userData } = root;
+  const rows = [
+    ['warRoomBlenderShadowCasterBudget', 'warRoomShadowCasterBudget'],
+    ['warRoomBlenderShadowCasterCandidates', 'warRoomShadowCasterCandidates'],
+    ['warRoomBlenderShadowProjectedCount', 'warRoomShadowProjectedCount'],
+    ['warRoomBlenderShadowCasterCount', 'warRoomShadowCasterCount'],
+    ['warRoomBlenderShadowWarmup', 'warRoomShadowWarmup'],
+  ];
+  for (const [source, target] of rows) {
+    const value = userData[source];
+    if (value === undefined || value === null) continue;
+    canvas.dataset[target] = String(value);
+  }
+}
+
 export function startWarRoomVariantScene({
-  scene, classicShellController, variant, selectable, whiteSide, renderLite, canvas, onStatus, onPaint,
+  scene,
+  classicShellController,
+  variant,
+  selectable,
+  whiteSide,
+  renderLite,
+  canvas,
+  onStatus,
+  onPaint,
+  loadVariantInstaller = loadWarRoomVariantInstaller,
+  loadHansStage = () => import('./WarRoomHansStage.js'),
 }) {
   let cancelled = false;
   let releaseShell = null;
@@ -42,6 +73,37 @@ export function startWarRoomVariantScene({
 
   if (shouldShowClassicWarRoomShell({ selectable, variant })) {
     const visibleClassicShell = ensureClassicShell?.() || classicShellObjects;
+    if (isPromiseLike(visibleClassicShell)) {
+      scene.userData ||= {};
+      scene.userData.warRoomRenderedVariant = 'classic-loading';
+      setStatus('loading', 'classic-loading');
+      onPaint?.();
+      void Promise.resolve(visibleClassicShell)
+        .then((objects) => {
+          if (cancelled) {
+            setClassicShellVisible(objects, false);
+            return;
+          }
+          setClassicShellVisible(objects, true);
+          scene.userData ||= {};
+          scene.userData.warRoomRenderedVariant = 'classic';
+          setStatus('idle', 'classic');
+          onPaint?.();
+        })
+        .catch((error) => {
+          if (cancelled) return;
+          if (canvas) canvas.dataset.warRoomVariantError = String(error?.message || error || 'classic-shell-error').slice(0, 240);
+          scene.userData ||= {};
+          scene.userData.warRoomRenderedVariant = 'classic-error';
+          setStatus('fallback', 'classic-fallback');
+          onPaint?.();
+        });
+      return () => {
+        cancelled = true;
+        setClassicShellVisible(classicShellController?.current?.() || [], false);
+      };
+    }
+
     setClassicShellVisible(visibleClassicShell, true);
     scene.userData ||= {};
     scene.userData.warRoomRenderedVariant = 'classic';
@@ -58,36 +120,57 @@ export function startWarRoomVariantScene({
   setStatus('loading', `${variant}-loading`);
   onPaint?.();
   const shellCoarsePointer = warRoomVariantShellCoarsePointer({ renderLite });
-  void loadWarRoomVariantInstaller(variant)
+  const onShellRefine = () => {
+    syncBlenderShadowTelemetry(scene, variant, canvas);
+    onPaint?.();
+  };
+  void loadVariantInstaller(variant)
     .then((installShell) => installShell(scene, {
       whiteSide,
       coarsePointer: shellCoarsePointer,
-      onRefine: onPaint,
+      onRefine: onShellRefine,
     }))
     .then((release) => {
       if (cancelled) return release?.();
       releaseShell = release;
-      if (warRoomHansRoom(variant)) {
-        // Hans lives in every War Room (never the Duel Room). Blender rooms get
-        // him once their shell exports his anchors and door leaf; a failure
-        // here must never cost the room.
-        try {
-          const hans = installWarRoomHansVariantStage(scene, {
-            variant,
-            coarsePointer: shellCoarsePointer,
-            shellRoot: scene.children.find((child) => child?.userData?.warRoomVariant === variant) || null,
+      syncBlenderShadowTelemetry(scene, variant, canvas);
+      if (warRoomVariantSupportsHans(variant)) {
+        // Hans is decorative/narrative rather than a prerequisite for board
+        // interaction. Keep his sizeable stage/routine graph off the initial
+        // Blender-room path and load it only after the shell itself is ready.
+        if (canvas) canvas.dataset.warRoomHansStage = 'loading';
+        void Promise.resolve()
+          .then(() => loadHansStage())
+          .then(({ installWarRoomHansVariantStage }) => {
+            if (cancelled) return;
+            const hans = installWarRoomHansVariantStage(scene, {
+              variant,
+              coarsePointer: shellCoarsePointer,
+              shellRoot: scene.children.find((child) => child?.userData?.warRoomVariant === variant) || null,
+            });
+            if (cancelled) {
+              hans.release?.();
+              return;
+            }
+            releaseHans = hans.release;
+            if (canvas) canvas.dataset.warRoomHansStage = hans.status;
+            // The board requires two real paints with Hans' driver present
+            // before releasing his scene dialogue. The lazy stage arrives
+            // after the room's normal ready paint, so both qualifying paints
+            // must be explicit here rather than relying on unrelated installer
+            // side effects to trigger a second render.
+            onPaint?.();
+            onPaint?.();
+          })
+          .catch((error) => {
+            if (cancelled) return;
+            if (canvas) {
+              canvas.dataset.warRoomHansStage = 'error';
+              canvas.dataset.warRoomHansStageError = String(error?.message || error).slice(0, 200);
+            }
           });
-          releaseHans = hans.release;
-          if (canvas) canvas.dataset.warRoomHansStage = hans.status;
-          // The board marks Hans' scene ready after two real paints with his
-          // driver in place (v1 installs him inside a render); give it the
-          // extra paint so the fire-call narrative can start.
-          onPaint?.();
-        } catch (error) {
-          if (canvas) canvas.dataset.warRoomHansStageError = String(error?.message || error).slice(0, 200);
-        }
       }
-      setClassicShellVisible(classicShellObjects, false);
+      setClassicShellVisible(classicShellController?.current?.() || classicShellObjects, false);
       scene.userData ||= {};
       scene.userData.warRoomRenderedVariant = variant;
       setStatus('ready', variant);
@@ -99,11 +182,33 @@ export function startWarRoomVariantScene({
         canvas.dataset.warRoomVariantError = String(error?.message || error || 'unknown-shell-error').slice(0, 240);
       }
       const fallbackClassicShell = ensureClassicShell?.() || classicShellObjects;
-      setClassicShellVisible(fallbackClassicShell, true);
-      scene.userData ||= {};
-      scene.userData.warRoomRenderedVariant = 'classic';
-      setStatus('fallback', 'classic-fallback');
-      onPaint?.();
+      const revealFallback = (objects) => {
+        if (cancelled) {
+          setClassicShellVisible(objects, false);
+          return;
+        }
+        setClassicShellVisible(objects, true);
+        scene.userData ||= {};
+        scene.userData.warRoomRenderedVariant = 'classic';
+        setStatus('fallback', 'classic-fallback');
+        onPaint?.();
+      };
+      if (isPromiseLike(fallbackClassicShell)) {
+        void Promise.resolve(fallbackClassicShell)
+          .then(revealFallback)
+          .catch((fallbackError) => {
+            if (cancelled) return;
+            if (canvas) {
+              canvas.dataset.warRoomVariantError = `${canvas.dataset.warRoomVariantError || 'shell-error'}; classic: ${String(fallbackError?.message || fallbackError).slice(0, 160)}`;
+            }
+            scene.userData ||= {};
+            scene.userData.warRoomRenderedVariant = 'classic-fallback-error';
+            setStatus('fallback', 'classic-fallback');
+            onPaint?.();
+          });
+        return;
+      }
+      revealFallback(fallbackClassicShell);
     });
 
   return () => {

@@ -154,10 +154,21 @@ test('Partida rápida · un 503 al restaurar conserva la ruta y permite reintent
   await login(page);
 
   await buttonWithVisibleText(page, 'Partida rápida').click();
-  await page.getByRole('button', { name: 'Empezar partida', exact: true }).click();
-  await expect(gameTurn(page)).toBeVisible();
-  // Igual que el reload normal: recovery sólo se prueba después de que la
-  // sesión durable exista. Ver el tablero por sí solo no acredita persistencia.
+  const startQuickMatch = page.getByRole('button', { name: 'Empezar partida', exact: true });
+  await expect(startQuickMatch).toBeVisible({ timeout: 20_000 });
+  await expect(startQuickMatch).toBeEnabled();
+  // Este smoke valida recovery, no la mecánica de pointer. El render 3D puede
+  // mantener el bounding box moviéndose durante unos frames bajo carga CI y
+  // Playwright se queda esperando "stable" aunque el CTA ya sea accionable.
+  await startQuickMatch.evaluate((button) => button.click());
+  await expect(gameTurn(page)).toBeVisible({ timeout: 20_000 });
+  // Bajo carga CI el tablero 3D puede pintar antes de que el efecto de
+  // continuidad haya terminado. Sincronizamos con la señal de producto que
+  // sólo aparece tras guardar el sobre local y después acreditamos las claves
+  // concretas que necesita el restore.
+  await expect(page.getByRole('status', {
+    name: 'La última posición confirmada está guardada.',
+  })).toBeVisible({ timeout: 20_000 });
   await expectDurableActiveSession(page, 'game');
 
   // Arm the failures only after the game is fully mounted. Supplying GET
@@ -751,3 +762,40 @@ test('resiliencia · jugada persistida con respuesta perdida se reintenta sin do
   expect(moves[0].idempotencyKey).toBeTruthy();
   expect(moves[1].idempotencyKey).toBe(moves[0].idempotencyKey);
 });
+
+
+// The clock below starts when the actual HTTP move is sent, not when the user
+// clicks a square: animations and slow software-rendered canvases are excluded.
+// A fast CPU should be paced, while a slow CPU must not pay the delay *again*.
+for (const [label, serverDelayMs, minimumMs, maximumMs] of [
+  ['fast CPU respects the presentation floor', 0, 1750, 4800],
+  ['slow CPU does not receive another presentation pause', 3500, 3350, 5400],
+]) {
+  test(`Matthias · ${label}`, async ({ page }) => {
+    test.setTimeout(45_000);
+    await page.addInitScript(() => {
+      localStorage.setItem('chess-study-device-board-renderer-v1', '2d');
+    });
+    await mockApi(page);
+    let requestStartedAt = null;
+    await page.route('**/api/games/*/move', async (route) => {
+      requestStartedAt ??= Date.now();
+      if (serverDelayMs) await new Promise((resolve) => setTimeout(resolve, serverDelayMs));
+      await route.fallback(); // The existing authoritative mock computes the CPU reply.
+    });
+
+    await login(page);
+    await buttonWithVisibleText(page, 'Partida rápida').click();
+    await page.getByRole('button', { name: 'Empezar partida', exact: true }).click();
+    await expect(gameTurn(page)).toBeVisible();
+
+    await clickBoardMove(page, 'e2', 'e4');
+    await expect(gameTurn(page, 'La CPU está pensando…')).toBeVisible();
+    await expect(gameTurn(page)).toBeVisible({ timeout: 12_000 });
+
+    expect(requestStartedAt, 'the real move endpoint must have been called').not.toBeNull();
+    const elapsed = Date.now() - requestStartedAt;
+    expect(elapsed, `${label}: no premature or sequential CPU move presentation`).toBeGreaterThanOrEqual(minimumMs);
+    expect(elapsed, `${label}: avoid an extra 2–3s after the CPU is ready`).toBeLessThan(maximumMs);
+  });
+}

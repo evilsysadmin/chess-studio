@@ -249,14 +249,14 @@ export async function installWarRoomBlenderShell(
   let runtimeMetalMaterials = 0;
   let runtimeFabricMaterials = 0;
   let runtimeLeatherMaterials = 0;
-  const deferredShadowMeshes = [];
+  const shadowCandidateMeshes = [];
   root.traverse((node) => {
     if (!node.isMesh) return;
     // First paint prioritizes getting the room on screen. Static shell shadows
     // are restored immediately afterwards during browser idle time, preserving
     // the final desktop image without making shader/shadow warm-up block entry.
     node.castShadow = false;
-    if (!coarsePointer) deferredShadowMeshes.push(node);
+    shadowCandidateMeshes.push(node);
     node.receiveShadow = true;
     node.frustumCulled = true;
     const rows = Array.isArray(node.material) ? node.material : [node.material];
@@ -287,15 +287,18 @@ export async function installWarRoomBlenderShell(
   root.userData.warRoomBlenderRuntimeLeatherTextures = Object.keys(runtimeLeatherTextures).length;
   root.userData.warRoomBlenderShadowWarmup = coarsePointer ? 'disabled-lite' : 'deferred-after-first-paint';
   root.userData.warRoomBlenderShadowCasterBudget = coarsePointer ? 0 : WAR_ROOM_BLENDER_SHADOW_CASTER_LIMIT;
-  root.userData.warRoomBlenderShadowCasterCandidates = deferredShadowMeshes.length;
+  root.userData.warRoomBlenderShadowCasterCandidates = shadowCandidateMeshes.length;
   root.userData.warRoomBlenderShadowCasterCount = 0;
   const disposeRuntimeEffects = installRuntimeEffects?.(root, { coarsePointer }) || (() => {});
   scene.add(root);
+  root.updateMatrixWorld?.(true);
+  const projectedShadowCasters = selectWarRoomBlenderShadowCasters(shadowCandidateMeshes);
+  root.userData.warRoomBlenderShadowProjectedCount = projectedShadowCasters.length;
 
   const cancelShadowWarmup = coarsePointer ? () => {} : scheduleWarRoomAfterFirstPaint(() => {
     if (!root.parent) return;
     root.updateMatrixWorld?.(true);
-    const selectedShadowCasters = selectWarRoomBlenderShadowCasters(deferredShadowMeshes);
+    const selectedShadowCasters = selectWarRoomBlenderShadowCasters(shadowCandidateMeshes);
     selectedShadowCasters.forEach((node) => { node.castShadow = true; });
     root.userData.warRoomBlenderShadowWarmup = 'ready-budgeted';
     root.userData.warRoomBlenderShadowCasterCount = selectedShadowCasters.length;

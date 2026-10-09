@@ -15,6 +15,53 @@ func _initialize() -> void:
 	match_node.debug_prepare_kickoff(0)
 	match_node.debug_sync_presentation()
 	await _save_capture(match_node, "kickoff", "VISUAL_CAPTURE_KICKOFF")
+	# Review *all eight* pitch directions inside the real 3D stadium.
+	# Suspend match simulation for one deterministic, carefully arranged frame,
+	# keeping a mix of both team kits and the actual 3D renderer.
+	match_node.set_process(false)
+	match_node.set_physics_process(false)
+	var directions := [
+		Vector2.RIGHT, Vector2.LEFT, Vector2.DOWN, Vector2.UP,
+		Vector2(1.0, 1.0).normalized(), Vector2(-1.0, 1.0).normalized(),
+		Vector2(1.0, -1.0).normalized(), Vector2(-1.0, -1.0).normalized(),
+	]
+	var pitch_center := ChessFootballMath.PITCH_RECT.get_center()
+	for n in range(directions.size()):
+		var team_index: int = int(n / 4)
+		var runner: Footballer = match_node.teams[team_index][1 + n % 4]
+		runner.global_position = pitch_center + Vector2(
+			(float(n % 4) - 1.5) * 250.0,
+			(float(team_index) - 0.5) * 300.0,
+		)
+		runner.velocity = directions[n] * runner.base_speed
+		runner.visual.play("run")
+		runner.visual.frame = 3
+		runner._sync_facing()
+		runner._sync_locomotion(false)
+	match_node.debug_sync_presentation()
+	await _save_capture(match_node, "directional-runs", "VISUAL_CAPTURE_DIRECTIONAL_RUNS")
+	# All on-field actions must retain the approved raster identity for BOTH
+	# teams, not briefly turn a player into the old little vector silhouette.
+	var review_actions := ["pass", "shoot", "tackle", "celebrate"]
+	for team_index in range(2):
+		for actor_index in range(4):
+			var actor: Footballer = match_node.teams[team_index][actor_index + 1]
+			actor.action_lock_seconds = 0.0
+			actor.play_action(review_actions[actor_index], 1.0)
+			actor.visual.frame = 3
+	match_node.debug_sync_presentation()
+	await _save_capture(match_node, "canonical-actions", "VISUAL_CAPTURE_CANONICAL_ACTIONS")
+	for team_index in range(2):
+		for actor_index in range(4):
+			var actor: Footballer = match_node.teams[team_index][actor_index + 1]
+			actor.action_lock_seconds = 0.0
+	for team in match_node.teams:
+		for runner in team:
+			runner.velocity = Vector2.ZERO
+			runner._sync_locomotion(false)
+	match_node.debug_prepare_kickoff(0)
+	match_node.set_process(true)
+	match_node.set_physics_process(true)
 	match_node.debug_force_kickoff_ready()
 	assert(match_node.ball.carrier == null)
 	assert(match_node.ball.velocity.length() > 0.0)
@@ -342,6 +389,11 @@ func _initialize() -> void:
 		"res://assets/players/real_enroque_keeper_atlas.svg",
 		"atlas-real-enroque-keeper",
 		"VISUAL_CAPTURE_ATLAS_REAL_ENROQUE_KEEPER",
+	)
+	await _save_texture_preview(
+		"res://assets/players/run_directions_v1/directional_run_v1.png",
+		"atlas-directional-run",
+		"VISUAL_CAPTURE_ATLAS_DIRECTIONAL_RUN",
 	)
 	quit(0)
 

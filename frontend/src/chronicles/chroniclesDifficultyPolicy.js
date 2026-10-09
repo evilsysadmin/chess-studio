@@ -28,7 +28,15 @@ export function chroniclesRunDepth(authoritativeRun, mapId = null) {
   const areas = Array.isArray(authoritativeRun?.areas) ? authoritativeRun.areas : [];
   const currentMapId = mapId || authoritativeRun?.currentMapId;
   const index = areas.findIndex((area) => area?.mapId === currentMapId);
-  return index < 0 ? 0 : index;
+  if (index < 0) return 0;
+  // Old runs store only dungeon maps and continue using their route index.
+  // When an overworld is authored, village and road stops do not add dungeon
+  // floors or artificial combat pressure to the first real dungeon.
+  const hasRegionKinds = areas.some((area) => area?.regionKind || area?.map?.regionKind);
+  if (!hasRegionKinds) return index;
+  const dungeonVisits = areas.slice(0, index + 1).filter((area) =>
+    (area?.regionKind || area?.map?.regionKind || 'dungeon') === 'dungeon').length;
+  return Math.max(0, dungeonVisits - 1);
 }
 
 export function chroniclesDifficultyBand({

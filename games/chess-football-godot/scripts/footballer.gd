@@ -22,6 +22,7 @@ const DRIBBLE_COOLDOWN_SECONDS := 0.68
 const DRIBBLE_SPEED_MULTIPLIER := 1.52
 const DRIBBLE_ACCELERATION := 3900.0
 const DRIBBLE_TOUCH_DISTANCE := 24.0
+const FACING_SWITCH_SPEED := 18.0
 var home_position: Vector2
 var active: bool = false
 var has_ball: bool = false
@@ -29,6 +30,11 @@ var ai_target: Vector2
 var team_color: Color = Color(0.2, 0.45, 0.95)
 
 var visual: AnimatedSprite2D
+var transition_visual: AnimatedSprite2D
+const LOCOMOTION_CROSSFADE_SECONDS := 0.10
+const ACTION_CROSSFADE_SECONDS := 0.08
+var visual_crossfade_seconds: float = 0.0
+var visual_crossfade_total: float = 0.0
 var action_lock_seconds: float = 0.0
 var tackle_cooldown_seconds: float = 0.0
 var tackle_recovery_seconds: float = 0.0
@@ -66,17 +72,28 @@ func _configure_visual() -> void:
 	if visual == null:
 		visual = AnimatedSprite2D.new()
 		add_child(visual)
+	if transition_visual == null:
+		transition_visual = AnimatedSprite2D.new()
+		transition_visual.visible = false
+		add_child(transition_visual)
 	visual.sprite_frames = ChessFootballSpriteBank.build_frames(team_id, role, squad_index)
+	transition_visual.sprite_frames = visual.sprite_frames
+	visual.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+	transition_visual.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
 	visual.centered = true
 	var cell := ChessFootballSpriteBank.cell_size()
 	var visual_scale := ChessFootballSpriteBank.display_scale()
 	visual.scale = Vector2.ONE * visual_scale
 	visual.position = Vector2(0.0, -(ChessFootballSpriteBank.footline() - cell.y * 0.5) * visual_scale)
+	transition_visual.scale = visual.scale
+	transition_visual.position = visual.position
 	visual.flip_h = team_id == 1
+	transition_visual.flip_h = visual.flip_h
 	visual.play("idle")
 	_apply_loop_phase(&"idle")
 
 func _process(delta: float) -> void:
+	_tick_visual_crossfade(delta)
 	tackle_cooldown_seconds = maxf(0.0, tackle_cooldown_seconds - delta)
 	dribble_cooldown_seconds = maxf(0.0, dribble_cooldown_seconds - delta)
 	dribble_burst_seconds = maxf(0.0, dribble_burst_seconds - delta)
@@ -187,6 +204,11 @@ func can_sprint() -> bool:
 func play_action(animation_name: String, duration: float = 0.78) -> void:
 	if visual == null or not visual.sprite_frames.has_animation(animation_name):
 		return
+	var previous := String(visual.animation)
+	if previous in ["run", "sprint"]:
+		_begin_visual_crossfade(ACTION_CROSSFADE_SECONDS)
+	else:
+		_cancel_visual_crossfade()
 	action_lock_seconds = maxf(duration, 0.05)
 	visual.speed_scale = 1.0
 	visual.play(animation_name)
@@ -342,9 +364,26 @@ func ball_anchor() -> Vector2:
 	return anchor
 
 func _sync_facing() -> void:
-	if visual == null or absf(velocity.x) < 4.0:
+	if visual == null or absf(velocity.x) < FACING_SWITCH_SPEED:
 		return
-	visual.flip_h = velocity.x < 0.0
+	var face_left := velocity.x < 0.0
+	if visual.flip_h == face_left:
+		return
+	visual.flip_h = face_left
+	if transition_visual != null:
+		transition_visual.flip_h = face_left
+
+func _locomotion_speed_scale(wanted: String) -> float:
+	if wanted == "idle":
+		return 1.0
+	var reference_speed := base_speed
+	if wanted == "sprint":
+		reference_speed *= SPRINT_SPEED_MULTIPLIER
+	var speed_ratio := clampf(velocity.length() / maxf(reference_speed, 1.0), 0.0, 1.15)
+	if wanted == "sprint":
+		return lerpf(0.82, 1.12, speed_ratio)
+	return lerpf(0.78, 1.06, speed_ratio)
+
 
 func _sync_locomotion(sprinting: bool) -> void:
 	if visual == null or action_lock_seconds > 0.0:
@@ -352,10 +391,80 @@ func _sync_locomotion(sprinting: bool) -> void:
 	var wanted := "idle"
 	if velocity.length() >= 12.0:
 		wanted = "sprint" if sprinting else "run"
-	visual.speed_scale = 1.16 if wanted == "sprint" else (1.05 if wanted == "run" else 1.0)
+	var wanted_speed_scale := _locomotion_speed_scale(wanted)
 	if String(visual.animation) != wanted or not visual.is_playing():
+		var previous := String(visual.animation)
+		var preserve_raster_phase := previous in ["run", "sprint"] and wanted in ["run", "sprint"]
+		var previous_frame := visual.frame
+		var previous_progress := visual.frame_progress
+		var crosses_idle_boundary := (
+			previous == "idle" and wanted in ["run", "sprint"]
+		) or (
+			wanted == "idle" and previous in ["run", "sprint"]
+		)
+		var returns_from_action := (
+			previous in ["pass", "shoot", "tackle", "celebrate"]
+			and wanted in ["run", "sprint"]
+		)
+		if crosses_idle_boundary:
+			_begin_visual_crossfade(LOCOMOTION_CROSSFADE_SECONDS)
+		elif returns_from_action:
+			_begin_visual_crossfade(ACTION_CROSSFADE_SECONDS)
+		else:
+			_cancel_visual_crossfade()
 		visual.play(wanted)
-		_apply_loop_phase(StringName(wanted))
+		visual.speed_scale = wanted_speed_scale
+		if preserve_raster_phase:
+			var frame_count := visual.sprite_frames.get_frame_count(StringName(wanted))
+			visual.frame = previous_frame % maxi(frame_count, 1)
+			visual.frame_progress = previous_progress
+		else:
+			_apply_loop_phase(StringName(wanted))
+	else:
+		visual.speed_scale = wanted_speed_scale
+
+
+func _begin_visual_crossfade(duration: float) -> void:
+	if transition_visual == null or visual == null or visual.sprite_frames == null:
+		return
+	_cancel_visual_crossfade()
+	transition_visual.sprite_frames = visual.sprite_frames
+	transition_visual.play(visual.animation)
+	transition_visual.frame = visual.frame
+	transition_visual.frame_progress = visual.frame_progress
+	transition_visual.speed_scale = visual.speed_scale
+	transition_visual.flip_h = visual.flip_h
+	transition_visual.visible = true
+	transition_visual.modulate = Color(1.0, 1.0, 1.0, 1.0)
+	visual.modulate = Color(1.0, 1.0, 1.0, 0.0)
+	visual_crossfade_total = maxf(duration, 0.01)
+	visual_crossfade_seconds = visual_crossfade_total
+
+
+func _tick_visual_crossfade(delta: float) -> void:
+	if visual_crossfade_seconds <= 0.0:
+		return
+	visual_crossfade_seconds = maxf(0.0, visual_crossfade_seconds - delta)
+	var progress := 1.0 - visual_crossfade_seconds / maxf(visual_crossfade_total, 0.01)
+	progress = clampf(progress, 0.0, 1.0)
+	if visual != null:
+		visual.modulate = Color(1.0, 1.0, 1.0, progress)
+	if transition_visual != null:
+		transition_visual.modulate = Color(1.0, 1.0, 1.0, 1.0 - progress)
+	if visual_crossfade_seconds <= 0.0:
+		_cancel_visual_crossfade()
+
+
+func _cancel_visual_crossfade() -> void:
+	visual_crossfade_seconds = 0.0
+	visual_crossfade_total = 0.0
+	if visual != null:
+		visual.modulate = Color.WHITE
+	if transition_visual != null:
+		transition_visual.stop()
+		transition_visual.visible = false
+		transition_visual.modulate = Color.WHITE
+
 
 func _loop_phase_frame(animation_name: StringName) -> int:
 	if visual == null or visual.sprite_frames == null:
@@ -372,6 +481,44 @@ func _apply_loop_phase(animation_name: StringName) -> void:
 	if visual == null or not (animation_name in [&"idle", &"run", &"sprint"]):
 		return
 	visual.frame = _loop_phase_frame(animation_name)
+
+
+func debug_locomotion_crossfade_active() -> bool:
+	return visual_crossfade_seconds > 0.0
+
+
+func debug_locomotion_crossfade_alpha() -> float:
+	return visual.modulate.a if visual != null else 1.0
+
+
+func debug_visual_crossfade_total() -> float:
+	return visual_crossfade_total
+
+
+func debug_transition_visual_playing() -> bool:
+	return transition_visual != null and transition_visual.is_playing()
+
+
+func debug_transition_visual_speed_scale() -> float:
+	return transition_visual.speed_scale if transition_visual != null else 1.0
+
+
+func debug_locomotion_speed_scale(wanted: String) -> float:
+	return _locomotion_speed_scale(wanted)
+
+
+func debug_texture_filter_linear() -> bool:
+	return (
+		visual != null
+		and transition_visual != null
+		and visual.texture_filter == CanvasItem.TEXTURE_FILTER_LINEAR
+		and transition_visual.texture_filter == CanvasItem.TEXTURE_FILTER_LINEAR
+	)
+
+
+func debug_visual_flip_h() -> bool:
+	return visual != null and visual.flip_h
+
 
 func debug_visual_ready() -> bool:
 	return visual != null and visual.sprite_frames != null

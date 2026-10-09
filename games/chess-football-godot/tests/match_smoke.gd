@@ -39,10 +39,120 @@ func _initialize() -> void:
 	for expected_audio in ["goal", "pass", "post", "save", "shot", "tackle", "whistle"]:
 		assert(audio_names.has(expected_audio))
 	assert(match_node.debug_3d_animated_players() == 10)
+	# Compare actual canonical silhouettes, not nominal 128x144 cell size.
+	# The runner's size must not change with team, roster slot, or camera.
+	assert(is_equal_approx(ChessFootball3DPresenter.normalized_body_scale(120.0), 1.0))
+	for team_id in range(2):
+		for squad_index in [0, 4]:
+			var sampled_role := "keeper" if squad_index == 0 else "forward"
+			var rendered_frames := ChessFootballSpriteBank.build_frames(
+				team_id, sampled_role, squad_index, true
+			)
+			for view_name in ["side", "front", "back", "front_diagonal", "back_diagonal"]:
+				var run_name := ChessFootballRunDirection.animation_for(&"run", view_name)
+				var height_samples: Array[float] = []
+				for frame_id in [0, 3, 6]:
+					var run_image := (rendered_frames.get_frame_texture(run_name, frame_id) as ImageTexture).get_image()
+					var used := run_image.get_used_rect()
+					assert(used.size.y >= 86 and used.size.y <= 135)
+					height_samples.append(float(used.size.y))
+				height_samples.sort()
+				var effective_height := height_samples[1] * ChessFootball3DPresenter.normalized_body_scale(height_samples[1])
+				assert(absf(effective_height - 120.0) < 2.0)
+	# Eight-way movement resolves to five authored views, with mirrored diagonals.
+	assert(ChessFootballRunDirection.view_for_velocity(Vector2(250.0, 0.0)) == "side")
+	assert(ChessFootballRunDirection.view_for_velocity(Vector2(0.0, 250.0)) == "front")
+	assert(ChessFootballRunDirection.view_for_velocity(Vector2(0.0, -250.0)) == "back")
+	assert(ChessFootballRunDirection.view_for_velocity(Vector2(180.0, 150.0)) == "front_diagonal")
+	assert(ChessFootballRunDirection.view_for_velocity(Vector2(-180.0, -150.0)) == "back_diagonal")
+	assert(ChessFootballRunDirection.view_for_velocity(Vector2(10.0, 0.0), "front") == "front")
+	assert(ChessFootballRunDirection.view_for_velocity(Vector2(200.0, 120.0), "side") == "side")
+	assert(ChessFootballRunDirection.view_for_velocity(Vector2(120.0, 45.0), "front_diagonal") == "front_diagonal")
+	assert(ChessFootballRunDirection.animation_for(&"run", "side") == &"run")
+	assert(ChessFootballRunDirection.animation_for(&"run", "back_diagonal") == &"run_back_diagonal")
+	assert(ChessFootballRunDirection.animation_for(&"sprint", "front") == &"sprint_front")
+	assert(ChessFootballRunDirection.animation_for(&"shoot", "front") == &"shoot")
 	assert(match_node.controlled != null)
 	assert(match_node.controlled.debug_visual_ready())
+	assert(match_node.controlled.debug_texture_filter_linear())
 	assert(match_node.controlled.debug_animation_names().size() == 7)
 	assert(match_node.controlled.debug_animation_names().has("shoot"))
+	var transition_runner: Footballer = match_node.controlled
+	assert(not transition_runner.debug_visual_flip_h())
+	transition_runner.velocity = Vector2(-10.0, 0.0)
+	transition_runner._sync_facing()
+	assert(not transition_runner.debug_visual_flip_h())
+	transition_runner.velocity = Vector2(-40.0, 0.0)
+	transition_runner._sync_facing()
+	assert(transition_runner.debug_visual_flip_h())
+	transition_runner.velocity = Vector2(10.0, 0.0)
+	transition_runner._sync_facing()
+	assert(transition_runner.debug_visual_flip_h())
+	transition_runner.velocity = Vector2(40.0, 0.0)
+	transition_runner._sync_facing()
+	assert(not transition_runner.debug_visual_flip_h())
+	transition_runner.velocity = Vector2.ZERO
+	transition_runner._sync_locomotion(false)
+	transition_runner.move_human(0.02, Vector2.RIGHT, false)
+	assert(transition_runner.debug_locomotion_crossfade_active())
+	assert(transition_runner.debug_transition_visual_playing())
+	assert(is_equal_approx(transition_runner.debug_transition_visual_speed_scale(), 1.0))
+	assert(transition_runner.debug_locomotion_crossfade_alpha() <= 0.01)
+	transition_runner._process(0.05)
+	assert(transition_runner.debug_locomotion_crossfade_active())
+	assert(transition_runner.debug_locomotion_crossfade_alpha() > 0.40)
+	assert(transition_runner.debug_locomotion_crossfade_alpha() < 0.60)
+	transition_runner._process(0.06)
+	assert(not transition_runner.debug_locomotion_crossfade_active())
+	assert(not transition_runner.debug_transition_visual_playing())
+	assert(is_equal_approx(transition_runner.debug_locomotion_crossfade_alpha(), 1.0))
+	var outgoing_run_cadence := transition_runner.visual.speed_scale
+	transition_runner.play_action("shoot", 0.20)
+	assert(transition_runner.debug_locomotion_crossfade_active())
+	assert(transition_runner.debug_transition_visual_playing())
+	assert(is_equal_approx(transition_runner.debug_transition_visual_speed_scale(), outgoing_run_cadence))
+	assert(is_equal_approx(transition_runner.visual.speed_scale, 1.0))
+	assert(is_equal_approx(transition_runner.debug_visual_crossfade_total(), 0.08))
+	assert(transition_runner.debug_locomotion_crossfade_alpha() <= 0.01)
+	transition_runner._process(0.04)
+	assert(transition_runner.debug_locomotion_crossfade_active())
+	assert(transition_runner.debug_locomotion_crossfade_alpha() > 0.45)
+	assert(transition_runner.debug_locomotion_crossfade_alpha() < 0.55)
+	transition_runner._process(0.05)
+	assert(not transition_runner.debug_locomotion_crossfade_active())
+	assert(not transition_runner.debug_transition_visual_playing())
+	assert(is_equal_approx(transition_runner.debug_locomotion_crossfade_alpha(), 1.0))
+	transition_runner._process(0.12)
+	assert(transition_runner.debug_locomotion_crossfade_active())
+	assert(is_equal_approx(transition_runner.debug_transition_visual_speed_scale(), 1.0))
+	assert(is_equal_approx(transition_runner.debug_visual_crossfade_total(), 0.08))
+	transition_runner._process(0.09)
+	assert(not transition_runner.debug_locomotion_crossfade_active())
+	transition_runner.visual.frame = 5
+	transition_runner.visual.frame_progress = 0.42
+	transition_runner.velocity = Vector2.RIGHT * transition_runner.base_speed
+	transition_runner._sync_locomotion(true)
+	assert(String(transition_runner.visual.animation) == "sprint")
+	assert(transition_runner.visual.frame == 5)
+	assert(absf(transition_runner.visual.frame_progress - 0.42) < 0.02)
+	transition_runner._sync_locomotion(false)
+	assert(String(transition_runner.visual.animation) == "run")
+	assert(transition_runner.visual.frame == 5)
+	assert(absf(transition_runner.visual.frame_progress - 0.42) < 0.02)
+	transition_runner.velocity = Vector2.RIGHT * transition_runner.base_speed * 0.50
+	var half_run_cadence := transition_runner.debug_locomotion_speed_scale("run")
+	transition_runner.velocity = Vector2.RIGHT * transition_runner.base_speed
+	var full_run_cadence := transition_runner.debug_locomotion_speed_scale("run")
+	assert(half_run_cadence < full_run_cadence)
+	assert(half_run_cadence >= 0.90 and half_run_cadence <= 0.94)
+	assert(full_run_cadence >= 1.05 and full_run_cadence <= 1.07)
+	transition_runner.velocity = Vector2.RIGHT * transition_runner.base_speed * transition_runner.SPRINT_SPEED_MULTIPLIER * 0.50
+	var half_sprint_cadence := transition_runner.debug_locomotion_speed_scale("sprint")
+	transition_runner.velocity = Vector2.RIGHT * transition_runner.base_speed * transition_runner.SPRINT_SPEED_MULTIPLIER
+	var full_sprint_cadence := transition_runner.debug_locomotion_speed_scale("sprint")
+	assert(half_sprint_cadence < full_sprint_cadence)
+	assert(half_sprint_cadence >= 0.96 and half_sprint_cadence <= 0.98)
+	assert(full_sprint_cadence >= 1.11 and full_sprint_cadence <= 1.13)
 	assert(ChessFootballSpriteBank.atlas_key(0, "keeper") == "fc_matthias_keeper")
 	assert(ChessFootballSpriteBank.atlas_key(1, "keeper") == "real_enroque_keeper")
 	assert(ChessFootballSpriteBank.atlas_key(0, "forward") == "fc_matthias")
@@ -60,6 +170,86 @@ func _initialize() -> void:
 	var sprite_manifest: Dictionary = ChessFootballSpriteBank.manifest()
 	assert(int(sprite_manifest["version"]) == 27)
 	assert(String(sprite_manifest["quality_contract"]) == "chess-football-vector-v27")
+	assert(String(sprite_manifest["canonical_run"]["quality_contract"]) == "chess-football-run-canon-v1")
+	assert(String(sprite_manifest["canonical_run"]["sha256"]) == "62e6b26f5cfc11ccf94ae93c643659a51695baf53c4511366bddfdd6692d234c")
+	assert(int(sprite_manifest["canonical_run"]["frames"]) == 8)
+	assert(int(sprite_manifest["canonical_run"]["footline"]) == 130)
+	var canonical_frames := ChessFootballSpriteBank.build_frames(0, "midfielder", 2)
+	assert(canonical_frames.get_frame_count(&"idle") == 1)
+	var canonical_idle_frame := canonical_frames.get_frame_texture(&"idle", 0) as AtlasTexture
+	assert(canonical_idle_frame != null)
+	assert(canonical_idle_frame.atlas is ImageTexture)
+	assert(canonical_idle_frame.region == Rect2(0.0, 0.0, 128.0, 144.0))
+	var canonical_run_frame := canonical_frames.get_frame_texture(&"run", 0) as AtlasTexture
+	var canonical_sprint_frame := canonical_frames.get_frame_texture(&"sprint", 0) as AtlasTexture
+	assert(canonical_run_frame != null)
+	assert(canonical_sprint_frame != null)
+	assert(canonical_run_frame.atlas is ImageTexture)
+	assert(canonical_sprint_frame.atlas is ImageTexture)
+	var canonical_run_image := (canonical_run_frame.atlas as ImageTexture).get_image()
+	assert(canonical_run_image != null)
+	assert(canonical_run_image.has_mipmaps())
+	assert(canonical_run_frame.atlas == canonical_sprint_frame.atlas)
+	assert(canonical_idle_frame.atlas == canonical_run_frame.atlas)
+	# The 3D WebGL presenter must receive actual ImageTextures, not atlas subregions.
+	for team_id in [0, 1]:
+		var flat_frames := ChessFootballSpriteBank.build_frames(team_id, "midfielder", 2, true)
+		for animation_name in [&"idle", &"run", &"sprint"]:
+			for frame_id in range(flat_frames.get_frame_count(animation_name)):
+				var frame_texture := flat_frames.get_frame_texture(animation_name, frame_id)
+				assert(frame_texture is ImageTexture)
+				assert(frame_texture.get_size() == Vector2(128.0, 144.0))
+	# Supplementary directional rows are genuinely distinct frames from the
+	# reviewed atlas, in both kits and in WebGL-safe standalone textures.
+	var directional_meta: Dictionary = sprite_manifest["directional_run"]
+	assert(String(directional_meta["quality_contract"]) == "football-directional-run-canon-v1")
+	assert(String(directional_meta["sha256"]) == "7d23e79dd5f9b23d1a04cf27f4d725d249e37f528c23d696ea260cd498644e70")
+	assert(int(directional_meta["frames"]) == 8)
+	assert((directional_meta["views"] as Dictionary).size() == 4)
+	for team_id in [0, 1]:
+		var directional_frames := ChessFootballSpriteBank.build_frames(team_id, "midfielder", 2, true)
+		for view_name in ["front", "back", "back_diagonal", "front_diagonal"]:
+			for base_animation in ["run", "sprint"]:
+				var directional_name := StringName(base_animation + "_" + view_name)
+				assert(directional_frames.has_animation(directional_name))
+				assert(directional_frames.get_frame_count(directional_name) == 8)
+				assert(directional_frames.get_animation_loop(directional_name))
+				assert(is_equal_approx(
+					directional_frames.get_animation_speed(directional_name),
+					15.0 if base_animation == "sprint" else 12.0
+				))
+				for frame_index in range(8):
+					var frame_texture := directional_frames.get_frame_texture(directional_name, frame_index)
+					assert(frame_texture is ImageTexture)
+					assert(frame_texture.get_size() == Vector2(128.0, 144.0))
+					var used_rect := (frame_texture as ImageTexture).get_image().get_used_rect()
+					assert(used_rect.size.x >= 40 and used_rect.size.y >= 90)
+	# The 3D stadium cannot mix legacy vector footballer bodies with the
+	# approved raster canon. This applies to *every player*, including keepers,
+	# both kits, shots, passes, tackles and celebrations.
+	for roster_team in match_node.teams:
+		for roster_player in roster_team:
+			var visible_frames := ChessFootballSpriteBank.build_frames(
+				roster_player.team_id, roster_player.role, roster_player.squad_index, true
+			)
+			for action_name in [&"idle", &"run", &"sprint", &"pass", &"shoot", &"tackle", &"celebrate"]:
+				assert(visible_frames.has_animation(action_name))
+				var frame_total := visible_frames.get_frame_count(action_name)
+				assert(frame_total == (1 if action_name == &"idle" else 8))
+				for frame_index in range(frame_total):
+					var visible_texture := visible_frames.get_frame_texture(action_name, frame_index)
+					assert(visible_texture is ImageTexture)
+					assert(visible_texture.get_size() == Vector2(128.0, 144.0))
+					var body_region := (visible_texture as ImageTexture).get_image().get_used_rect()
+					assert(body_region.size.y >= 65 and body_region.size.x >= 25)
+	# 2D-only action animation resources remain intact for the simulation.
+	var simulation_frames := ChessFootballSpriteBank.build_frames(1, "forward", 4, false)
+	for action_name in [&"pass", &"shoot", &"tackle", &"celebrate"]:
+		assert(simulation_frames.get_frame_texture(action_name, 0) is AtlasTexture)
+	assert(canonical_run_frame.region == Rect2(0.0, 0.0, 128.0, 144.0))
+	assert(canonical_sprint_frame.region == Rect2(0.0, 0.0, 128.0, 144.0))
+	assert(is_equal_approx(canonical_frames.get_animation_speed(&"run"), 12.0))
+	assert(is_equal_approx(canonical_frames.get_animation_speed(&"sprint"), 15.0))
 	assert(sprite_manifest["atlases"]["fc_matthias"]["body_profile"] == "defender")
 	assert(sprite_manifest["atlases"]["fc_matthias_v2"]["body_profile"] == "midfielder")
 	assert(sprite_manifest["atlases"]["fc_matthias_v3"]["body_profile"] == "wing")
@@ -102,7 +292,8 @@ func _initialize() -> void:
 	assert(sprite_manifest["atlases"]["real_enroque"]["kinetics_profile"] == "weight-transfer-v21")
 	assert(sprite_manifest["atlases"]["real_enroque_keeper"]["kinetics_profile"] == "weight-transfer-v21")
 	assert(match_node.teams[0][0].debug_loop_phase_frame(&"idle") == 0)
-	assert(match_node.teams[0][1].debug_loop_phase_frame(&"idle") == 3)
+	# Raster idle has a single intentional hold; run still keeps per-player phase staggering.
+	assert(match_node.teams[0][1].debug_loop_phase_frame(&"idle") == 0)
 	assert(
 		match_node.teams[0][0].debug_loop_phase_frame(&"run")
 		!= match_node.teams[0][1].debug_loop_phase_frame(&"run")
@@ -216,6 +407,108 @@ func _initialize() -> void:
 	assert(auto_lane.x > 0.99)
 	assert(absf(auto_lane.y) < 0.01)
 	print("SMOKE_STAGE=dribble")
+
+	# Keeper distribution should not donate the ball back to a nearby attacker:
+	# wait briefly when no safe outlet exists, use a short pass once a teammate
+	# is genuinely free, and clear long when pressed or the waiting window expires.
+	var ai_keeper: Footballer = match_node.teams[1][0]
+	ai_keeper.global_position = Vector2(
+		ChessFootballMath.PITCH_RECT.end.x - 110.0,
+		ChessFootballMath.PITCH_RECT.get_center().y,
+	)
+	for teammate in match_node.teams[1]:
+		if teammate == ai_keeper:
+			continue
+		teammate.global_position = Vector2(
+			ChessFootballMath.PITCH_RECT.get_center().x,
+			ChessFootballMath.PITCH_RECT.position.y + 140.0 + teammate.squad_index * 180.0,
+		)
+	for opponent in match_node.teams[0]:
+		opponent.global_position = Vector2(
+			ChessFootballMath.PITCH_RECT.position.x + 140.0,
+			ChessFootballMath.PITCH_RECT.position.y + 120.0 + opponent.squad_index * 190.0,
+		)
+	var outlet_candidate: Footballer = match_node.teams[1][1]
+	outlet_candidate.global_position = ai_keeper.global_position + Vector2(-250.0, 40.0)
+	var outlet_marker: Footballer = match_node.teams[0][1]
+	outlet_marker.global_position = outlet_candidate.global_position + Vector2(38.0, 0.0)
+	var keeper_plan: Dictionary = match_node.debug_keeper_distribution_plan(ai_keeper, 0.8)
+	assert(String(keeper_plan["kind"]) == "hold")
+
+	outlet_marker.global_position = ChessFootballMath.PITCH_RECT.position + Vector2(180.0, 180.0)
+	keeper_plan = match_node.debug_keeper_distribution_plan(ai_keeper, 0.8)
+	assert(String(keeper_plan["kind"]) == "short")
+	assert(keeper_plan["target"] == outlet_candidate)
+
+	for teammate in match_node.teams[1]:
+		if teammate == ai_keeper:
+			continue
+		teammate.global_position = Vector2(
+			ChessFootballMath.PITCH_RECT.get_center().x - 160.0,
+			ChessFootballMath.PITCH_RECT.position.y + 120.0 + teammate.squad_index * 210.0,
+		)
+	var keeper_presser: Footballer = match_node.teams[0][4]
+	keeper_presser.global_position = ai_keeper.global_position + Vector2(-120.0, 10.0)
+	keeper_plan = match_node.debug_keeper_distribution_plan(ai_keeper, 0.4)
+	assert(String(keeper_plan["kind"]) == "clear")
+	keeper_presser.global_position = ChessFootballMath.PITCH_RECT.position + Vector2(160.0, 120.0)
+	keeper_plan = match_node.debug_keeper_distribution_plan(ai_keeper, 2.3)
+	assert(String(keeper_plan["kind"]) == "clear")
+	print("SMOKE_STAGE=keeper-distribution")
+
+	# Layered pressing: one AI player attacks the carrier, a second takes the
+	# goal-side cover lane, while supporting runners advance beyond possession.
+	var press_carrier: Footballer = match_node.teams[0][4]
+	press_carrier.global_position = ChessFootballMath.PITCH_RECT.get_center()
+	match_node.ball.attach_to(press_carrier)
+	var rival_defender: Footballer = match_node.teams[1][1]
+	var rival_midfielder: Footballer = match_node.teams[1][2]
+	var rival_wing: Footballer = match_node.teams[1][3]
+	var rival_forward: Footballer = match_node.teams[1][4]
+	rival_defender.global_position = press_carrier.global_position + Vector2(210.0, 25.0)
+	rival_midfielder.global_position = press_carrier.global_position + Vector2(255.0, -85.0)
+	rival_wing.global_position = press_carrier.global_position + Vector2(470.0, 180.0)
+	rival_forward.global_position = press_carrier.global_position + Vector2(610.0, -210.0)
+	var primary_presser: Footballer = match_node.debug_ai_primary_presser(1)
+	var secondary_presser: Footballer = match_node.debug_ai_secondary_presser(1)
+	assert(primary_presser == rival_defender)
+	assert(secondary_presser == rival_midfielder)
+	var cover_target: Vector2 = match_node.debug_ai_cover_target(
+		secondary_presser,
+		press_carrier.global_position,
+	)
+	var rival_own_goal: Vector2 = ChessFootballMath.goal_center(0)
+	assert(cover_target.distance_to(rival_own_goal) < press_carrier.global_position.distance_to(rival_own_goal))
+
+	var ai_ball_carrier: Footballer = rival_forward
+	ai_ball_carrier.global_position = ChessFootballMath.PITCH_RECT.get_center()
+	match_node.ball.attach_to(ai_ball_carrier)
+	rival_wing.home_position = ai_ball_carrier.global_position + Vector2(120.0, 220.0)
+	var support_target: Vector2 = match_node.debug_ai_support_target(rival_wing)
+	assert(support_target.x < ai_ball_carrier.global_position.x - 180.0)
+	assert(absf(support_target.y - ai_ball_carrier.global_position.y) > 40.0)
+	print("SMOKE_STAGE=ai-pressure-support")
+
+	# Adaptive difficulty is bounded and changes intelligence rather than physics.
+	# Human dominance can raise the CPU by one notch, opposite dominance walks it
+	# back through neutral, and it never jumps beyond the [-1, +1] band.
+	assert(match_node.debug_ai_adaptive_level() == 0)
+	var normal_decision_interval: float = match_node.debug_ai_adaptive_decision_interval()
+	match_node.debug_set_ai_adaptation_window(8.0, 0.0)
+	match_node.debug_evaluate_ai_adaptation()
+	assert(match_node.debug_ai_adaptive_level() == 1)
+	assert(match_node.debug_ai_adaptive_decision_interval() < normal_decision_interval)
+	match_node.debug_set_ai_adaptation_window(0.0, 8.0)
+	match_node.debug_evaluate_ai_adaptation()
+	assert(match_node.debug_ai_adaptive_level() == 0)
+	match_node.debug_set_ai_adaptation_window(0.0, 8.0)
+	match_node.debug_evaluate_ai_adaptation()
+	assert(match_node.debug_ai_adaptive_level() == -1)
+	assert(match_node.debug_ai_adaptive_decision_interval() > normal_decision_interval)
+	match_node.debug_set_ai_adaptation_window(0.0, 0.0)
+	match_node.debug_evaluate_ai_adaptation()
+	assert(match_node.debug_ai_adaptive_level() == 0)
+	print("SMOKE_STAGE=ai-adaptive")
 
 	# The same shot crossing the goal plane is only a goal while the whole
 	# ball fits below the crossbar.
@@ -534,6 +827,13 @@ func _initialize() -> void:
 
 	var rival_keeper: Footballer = match_node.teams[1][0]
 	rival_keeper.global_position = Vector2(ChessFootballMath.PITCH_RECT.end.x - 120.0, ChessFootballMath.PITCH_RECT.get_center().y)
+	var rival_keeper_outlet: Footballer = match_node.teams[1][1]
+	rival_keeper_outlet.global_position = rival_keeper.global_position + Vector2(-250.0, 55.0)
+	for human_player in match_node.teams[0]:
+		human_player.global_position = Vector2(
+			ChessFootballMath.PITCH_RECT.position.x + 140.0,
+			ChessFootballMath.PITCH_RECT.position.y + 120.0 + human_player.squad_index * 190.0,
+		)
 	match_node.ball.attach_to(rival_keeper)
 	rival_keeper.begin_keeper_hold(0.0)
 	match_node.debug_step_ai(1.0 / 60.0)

@@ -60,7 +60,7 @@ Its audit output classifies hard-coded repo URL pins by authority. Runtime refer
 
 Eligible cleanup includes expired smoke objects, explicitly deprecated prefixes, duplicate content-addressed payloads, excess staging/runtime revision history, old immutable generations beyond the rollback window, fully unreferenced hash families older than 45 days, and finally old rollback copies when bucket pressure exceeds the configured soft ceiling.
 
-The current policy targets 7.0 GB and starts pressure cleanup at 7.5 GB, leaving materially more headroom below the 10 GB-month free-storage allowance. Each run is guarded by a maximum object count and maximum fraction of the bucket so one bad classification cannot empty the bucket in a single execution.
+The current policy emits an early warning at 5.0 GB, starts pressure cleanup at 7.0 GB, and targets 5.5 GB after cleanup. This leaves headroom below the 10 GB-month free-storage allowance without equating live capacity to cumulative billing GB-months. Each run is guarded by a maximum object count and maximum fraction of the bucket so one bad classification cannot empty the bucket in a single execution.
 
 Godot Web releases are treated as atomic directories rather than unrelated files. The collector validates each configured `current.json`, protects the full active release and one previous release, then retires older release directories after their grace period. A missing or malformed pointer protects that whole release family for the run.
 
@@ -91,4 +91,4 @@ Do not overwrite the canonical master in-place. A changed master receives a new 
 
 PRs execute only local validation and do not receive Cloudflare credentials.
 
-On `main`, `Infra · R2 assets` reconciles the bucket/domain/CORS and performs a tiny remote upload/get/delete smoke test using the raw PUT transport. This confirms that the existing Cloudflare API token can perform real object operations without adding an S3 credential pair.
+On `main`, `Infra · R2 assets` reconciles the bucket/domain/CORS and performs a tiny remote upload/get/delete smoke test using the raw PUT transport. The scheduled retention job also emits a capacity summary and maintains an actionable, deduplicated GitHub warning issue. The CLI publisher checks projected bucket bytes before PUT and fails closed above 7.0 GB, unless an explicit local emergency override is set. The shared Godot Web bundle publisher checks the aggregate size of a release (including the current pointer) once before its first PUT, preventing a partially uploaded over-budget release. This confirms that the existing Cloudflare API token can perform real object operations without adding an S3 credential pair.

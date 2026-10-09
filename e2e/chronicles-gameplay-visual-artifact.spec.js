@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { confirmChroniclesCharacterSetup, login, mockApi, openMoreGameModes } from './helpers.js';
+import { createSwordhavenWalkGrid, SWORDHAVEN_INTERACTION_CELLS, SWORDHAVEN_SPAWN } from '../frontend/src/chronicles/chroniclesSwordhaven3D.js';
 
 const ARTIFACT_DIR = '../.artifacts/app-visual';
 const CAPTURES = [
@@ -34,6 +35,7 @@ async function openChronicles(page, captureLabel, {
   runStatus = 'active',
   chroniclesCurrentMapId = 'crypt-eight-squares',
   chroniclesWorldFlags = null,
+  chroniclesAreaTransform = null,
 } = {}) {
   await mockApi(page, {
     profileSeed: {
@@ -43,6 +45,7 @@ async function openChronicles(page, captureLabel, {
     chroniclesRunStatus: runStatus,
     chroniclesCurrentMapId,
     chroniclesWorldFlags,
+    chroniclesAreaTransform,
   });
   await login(page);
   const speech = page.getByRole('region', { name: 'Mensaje de Matthias', exact: true });
@@ -164,6 +167,59 @@ async function captureElement(page, locator, path) {
   });
 }
 
+
+test('Chronicles · Swordhaven 3D visual prototype · desktop', async ({ browser }) => {
+  // This runs the REAL first-person renderer with an authored-like area envelope
+  // but uses a known legacy area ID so no production run/catalog is modified.
+  test.setTimeout(240_000);
+  await mkdir(ARTIFACT_DIR, { recursive: true });
+  const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+  const page = await context.newPage();
+  try {
+    await openChronicles(page, 'swordhaven-preview', {
+      chroniclesCurrentMapId: 'gallery-of-forks',
+      chroniclesAreaTransform(mapId, manifest) {
+        if (mapId !== 'gallery-of-forks') return manifest;
+        const grid = createSwordhavenWalkGrid();
+        const shops = SWORDHAVEN_INTERACTION_CELLS.map(({ id, x, y }) => [id, x, y]);
+        return {
+          ...manifest,
+          title: 'Swordhaven · visual prototype',
+          regionKind: 'settlement',
+          grid,
+          materials: null,
+          partyStart: SWORDHAVEN_SPAWN,
+          enemies: [],
+          initialFlags: {},
+          triggers: [],
+          treasures: [],
+          traps: [],
+          exits: [],
+          interactables: shops.map(([id, x, y]) => ({
+            id, kind: 'lore', label: 'Visitar establecimiento', x, y,
+            action: { effects: [], message: 'Swordhaven se prepara para recibir viajeros.' },
+          })),
+          initialJournal: { id: 'swordhaven-arrival', title: 'Swordhaven', body: 'Un nuevo comienzo.', sigil: 'I' },
+          introMessage: 'Las puertas de Swordhaven están abiertas.',
+        };
+      },
+    });
+    const stage = page.locator('[data-chronicles-renderer="three"]');
+    await expect(stage.locator('canvas')).toBeVisible({ timeout: 30_000 });
+    await expect(page.locator('.chronicles-statusbar')).toContainText('SWORDHAVEN');
+    await expect(page.locator('.chronicles-statusbar')).not.toContainText('CRIPTA');
+    await expect(page.locator('.chronicles-renderer-error')).toHaveCount(0);
+    await page.screenshot({
+      path: ARTIFACT_DIR + '/chronicles-swordhaven-3d-prototype-desktop.png',
+      animations: 'disabled',
+      timeout: 60_000,
+    });
+  } finally {
+    await context.close();
+  }
+});
+
+
 for (const capture of CAPTURES) {
   test(`Chronicles · gameplay visual · ${capture.label}`, async ({ browser }) => {
     // Hosted SwiftShader makes large WebGL readbacks expensive. Keep this
@@ -188,9 +244,9 @@ for (const capture of CAPTURES) {
       await expect(gameRoot).toBeVisible();
       if (!capture.hasTouch) {
         expect(
-          await page.evaluate(() => document.fullscreenElement),
-          `${capture.label}: desktop Chronicles must not enter browser-native fullscreen`,
-        ).toBeNull();
+          await page.evaluate(() => Boolean(document.fullscreenElement)),
+          `${capture.label}: desktop Chronicles enters browser-native fullscreen`,
+        ).toBe(true);
       }
       const landscapeTrigger = page.getByRole('button', { name: 'Activar apaisado', exact: true });
       if (capture.hasTouch && capture.width < capture.height) {
@@ -293,12 +349,6 @@ for (const capture of CAPTURES) {
       await expect(automap).toHaveCount(0);
 
       await page.keyboard.press('Escape');
-      if (!capture.hasTouch) {
-        expect(
-          await page.evaluate(() => document.fullscreenElement),
-          `${capture.label}: desktop Escape belongs to the Chronicles menu`,
-        ).toBeNull();
-      }
       const openedMenu = page.locator('.chronicles-game-menu[open]');
       await expect(openedMenu).toBeVisible();
       await expect(openedMenu.getByRole('button', { name: 'Continuar', exact: true })).toBeVisible();
@@ -385,6 +435,69 @@ test('Chronicles · mobile keeps Use separate from Attack · 390x844', async ({ 
   }
 });
 
+
+async function enterCanonicalInitiativeCombat(page, gameRoot) {
+  // Match the functional Chronicles contract: Hildegard attacks once from the
+  // canonical start, then advances into the pawn engagement radius.
+  await page.keyboard.press('2');
+  await page.keyboard.press('Space');
+  await expect(gameRoot).toHaveAttribute('data-chronicles-phase', 'explore');
+  await page.keyboard.press('w');
+  await expect(gameRoot).toHaveAttribute('data-chronicles-phase', 'combat');
+  await expect(gameRoot).toHaveAttribute('data-chronicles-initiative-die', '1d8');
+}
+
+
+test('Chronicles · initiative rail visual · desktop-1440x900', async ({ browser }) => {
+  test.setTimeout(180_000);
+  await mkdir(ARTIFACT_DIR, { recursive: true });
+  const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+  const page = await context.newPage();
+  try {
+    await openChronicles(page, 'initiative-desktop-1440x900');
+    const gameRoot = page.locator('[data-chronicles="true"]');
+    await enterCanonicalInitiativeCombat(page, gameRoot);
+    const rail = page.locator('[data-chronicles-initiative="visible"]');
+    await expect(rail).toBeVisible();
+    await expect(rail.locator('li').first()).toHaveAttribute('aria-current', 'step');
+    await captureElement(page, gameRoot, ARTIFACT_DIR + '/chronicles-initiative-desktop-1440x900.png');
+  } finally {
+    await context.close();
+  }
+});
+
+test('Chronicles · initiative rail visual · android-390x844', async ({ browser }) => {
+  test.setTimeout(180_000);
+  await mkdir(ARTIFACT_DIR, { recursive: true });
+  const context = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+  const page = await context.newPage();
+  try {
+    await openChronicles(page, 'initiative-android-390x844');
+    const gameRoot = page.locator('[data-chronicles="true"]');
+    await enterCanonicalInitiativeCombat(page, gameRoot);
+    const rail = page.locator('[data-chronicles-initiative="visible"]');
+    const minimap = page.locator('[data-chronicles-minimap="visible"]');
+    await expect(rail).toBeVisible();
+    await expect(rail.locator('li').first()).toHaveAttribute('aria-current', 'step');
+    const activeActor = await rail.getAttribute('data-active-actor');
+    expect(activeActor).toBeTruthy();
+    const tactical = page.locator('.chronicles-target-margin');
+    await expect(tactical).toBeVisible();
+    const railBox = await rail.boundingBox();
+    const minimapBox = await minimap.boundingBox();
+    const tacticalBox = await tactical.boundingBox();
+    expect(railBox).not.toBeNull();
+    expect(minimapBox).not.toBeNull();
+    expect(tacticalBox).not.toBeNull();
+    const overlaps = !(railBox.x + railBox.width <= minimapBox.x || minimapBox.x + minimapBox.width <= railBox.x || railBox.y + railBox.height <= minimapBox.y || minimapBox.y + minimapBox.height <= railBox.y);
+    expect(overlaps).toBe(false);
+    const tacticalOverlap = !(railBox.x + railBox.width <= tacticalBox.x || tacticalBox.x + tacticalBox.width <= railBox.x || railBox.y + railBox.height <= tacticalBox.y || tacticalBox.y + tacticalBox.height <= railBox.y);
+    expect(tacticalOverlap, 'initiative rail must not cover the tactical target margin').toBe(false);
+    await captureElement(page, gameRoot, ARTIFACT_DIR + '/chronicles-initiative-android-390x844.png');
+  } finally {
+    await context.close();
+  }
+});
 
 test('Chronicles · Gallery of Forks first-person material proof · desktop-1440x900', async ({ browser }) => {
   test.setTimeout(180_000);
@@ -520,3 +633,4 @@ for (const capture of CAPTURES) {
     }
   });
 }
+

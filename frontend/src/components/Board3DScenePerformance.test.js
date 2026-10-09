@@ -37,7 +37,28 @@ describe('War Room base scene performance', () => {
     dispose(room);
   });
 
-  it('removes the static base-room geometry from the directional shadow caster pass', () => {
+  it('omits the retired rectangular base window now owned by the premium layer', () => {
+    const room = buildWarRoom(theme, true, false);
+    const retiredBackdrop = room.children.find((object) => (
+      object.isMesh
+      && object.material?.color?.getHex?.() === 0x0a2334
+      && object.geometry?.type === 'BoxGeometry'
+      && object.geometry.parameters?.width === 4.3
+    ));
+    const retiredMoon = room.children.find((object) => (
+      object.isMesh
+      && object.material?.color?.getHex?.() === 0xb9d9f0
+      && object.geometry?.type === 'SphereGeometry'
+      && object.geometry.parameters?.radius === 0.28
+    ));
+
+    expect(room.userData.warRoomLegacyBaseWindowMeshesOmitted).toBe(13);
+    expect(retiredBackdrop).toBeUndefined();
+    expect(retiredMoon).toBeUndefined();
+    dispose(room);
+  });
+
+  it('builds the static base-room geometry receive-only without a retirement pass', () => {
     const room = buildWarRoom(theme, true, false);
     const casters = [];
     room.traverse((object) => {
@@ -45,8 +66,9 @@ describe('War Room base scene performance', () => {
     });
 
     expect(casters).toHaveLength(0);
-    expect(room.userData.warRoomBaseStaticShadowCastersRetired).toBeGreaterThan(20);
-    expect(room.userData.warRoomBaseShadowMode).toBe('receive-only-v1');
+    expect(room.userData.warRoomBaseStaticShadowCastersRetired).toBeUndefined();
+    expect(room.userData.warRoomBaseStaticShadowCastersOmitted).toBe(true);
+    expect(room.userData.warRoomBaseShadowMode).toBe('receive-only-at-source-v2');
     dispose(room);
   });
 });

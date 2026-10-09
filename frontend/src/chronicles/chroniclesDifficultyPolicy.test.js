@@ -78,6 +78,23 @@ describe('Chronicles difficulty/progression policy', () => {
     })).toBe(authoritative);
   });
 
+  it('does not count settlement and wilderness stops as dungeon levels', () => {
+    const run = {
+      currentMapId: 'crypt',
+      areas: [
+        { mapId: 'village', map: { regionKind: 'settlement' } },
+        { mapId: 'road', regionKind: 'wilderness' },
+        { mapId: 'crypt', map: { regionKind: 'dungeon' } },
+        { mapId: 'gallery', map: { regionKind: 'dungeon' } },
+      ],
+    };
+    expect(chroniclesRunDepth(run, 'village')).toBe(0);
+    expect(chroniclesRunDepth(run, 'road')).toBe(0);
+    expect(chroniclesRunDepth(run)).toBe(0);
+    expect(chroniclesRunDepth(run, 'gallery')).toBe(1);
+    expect(chroniclesRunDepth(run, 'missing')).toBe(0);
+  });
+
   it('derives run depth from the authoritative route order', () => {
     const run = {
       currentMapId: 'archive',

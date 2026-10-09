@@ -218,7 +218,7 @@
     z-index: 34 !important;
     left: 18px !important;
     right: 18px !important;
-    bottom: calc(max(18px, env(safe-area-inset-bottom)) + 132px) !important;
+    bottom: calc(max(18px, env(safe-area-inset-bottom)) + 74px) !important;
     display: block !important;
     pointer-events: auto !important;
   }
@@ -256,7 +256,7 @@
     z-index: 36 !important;
     left: 50% !important;
     right: auto !important;
-    bottom: calc(max(18px, env(safe-area-inset-bottom)) + 76px) !important;
+    bottom: max(18px, env(safe-area-inset-bottom)) !important;
     width: auto !important;
     transform: translateX(-50%) !important;
   }
@@ -299,9 +299,9 @@
  * scene stretched vertically. This file loads last in the Home cascade, so keep
  * the portrait contract here instead of fighting earlier diegetic rules. */
 @media (pointer: coarse) and (orientation: portrait) and (max-width: 520px) {
-  /* GP-4 (#4405): de abajo arriba, barra fija «Jugar 1 vs 1» (18px + ~72px),
-     fila MATTHIAS/MAZMORRAS/más y rejilla de navegación. Antes la fila se
-     anclaba a 60px y quedaba medio oculta bajo la barra en cualquier teléfono. */
+  /* Mobile 1v1 now lives under “Más”; no lower-third is reserved. The legacy
+     row variables remain for the older composition above, but the final portrait
+     authority below reclaims that former PvP strip for JUGAR + disclosure. */
   body .app-shell-home .menu.menu-illustrated {
     --home-portrait-row-bottom: calc(max(18px, env(safe-area-inset-bottom)) + 64px);
     --home-portrait-nav-bottom: calc(max(18px, env(safe-area-inset-bottom)) + 128px);
@@ -512,7 +512,7 @@
     left: 18px !important;
     right: 18px !important;
     top: auto !important;
-    bottom: calc(max(18px, env(safe-area-inset-bottom)) + 132px) !important;
+    bottom: calc(max(18px, env(safe-area-inset-bottom)) + 74px) !important;
     display: block !important;
     grid-template-columns: none !important;
     pointer-events: auto !important;
@@ -551,7 +551,7 @@
     left: 50% !important;
     right: auto !important;
     top: auto !important;
-    bottom: calc(max(18px, env(safe-area-inset-bottom)) + 76px) !important;
+    bottom: max(18px, env(safe-area-inset-bottom)) !important;
     width: auto !important;
     transform: translateX(-50%) !important;
     overflow: visible !important;
@@ -561,12 +561,37 @@
     display: inline-flex !important;
     align-items: center !important;
     justify-content: center !important;
-    min-width: 88px !important;
+    min-width: 96px !important;
     min-height: 44px !important;
+    color: #ead6aa !important;
+    border-color: rgba(229, 183, 92, .34) !important;
+    background: rgba(28, 16, 9, .88) !important;
+    box-shadow: 0 7px 18px rgba(0, 0, 0, .28) !important;
+  }
+
+  /* A transformed wrapper becomes the containing block of fixed descendants.
+     When the drawer opens, promote the wrapper itself to the viewport so the
+     panel can genuinely span the phone instead of collapsing to the 96px chip. */
+  body .app-shell-home .menu.menu-illustrated .illustrated-home__play-more-wrap.is-open {
+    position: fixed !important;
+    z-index: 120 !important;
+    inset: 0 !important;
+    width: 100vw !important;
+    height: 100dvh !important;
+    transform: none !important;
+    pointer-events: none !important;
+  }
+
+  body .app-shell-home .menu.menu-illustrated .illustrated-home__play-more-wrap.is-open > .illustrated-home__play-more {
+    position: absolute !important;
+    left: 50% !important;
+    bottom: max(18px, env(safe-area-inset-bottom)) !important;
+    transform: translateX(-50%) !important;
+    pointer-events: auto !important;
   }
 
   body .app-shell-home .menu.menu-illustrated .illustrated-home__play-menu {
-    position: fixed !important;
+    position: absolute !important;
     z-index: 120 !important;
     left: 12px !important;
     right: 12px !important;
@@ -585,6 +610,7 @@
     background: rgba(21, 12, 7, .97) !important;
     box-shadow: 0 18px 44px rgba(0, 0, 0, .5) !important;
     text-align: left !important;
+    pointer-events: auto !important;
   }
 
   body .app-shell-home .menu.menu-illustrated .illustrated-home__play-menu-item {

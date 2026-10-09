@@ -31,12 +31,12 @@ function sharedBoxGeometry(group, size) {
   return geometry;
 }
 
-export function addMesh(group, geometry, material, position = [0, 0, 0], rotation = [0, 0, 0]) {
+export function addMesh(group, geometry, material, position = [0, 0, 0], rotation = [0, 0, 0], options = {}) {
   const mesh = new THREE.Mesh(geometry, material);
   mesh.position.set(...position);
   mesh.rotation.set(...rotation);
-  mesh.castShadow = true;
-  mesh.receiveShadow = true;
+  mesh.castShadow = options.castShadow ?? true;
+  mesh.receiveShadow = options.receiveShadow ?? true;
   group.add(mesh);
   return mesh;
 }
@@ -71,19 +71,23 @@ function addBox(group, size, color, position, options = {}) {
     transparent: options.opacity != null && options.opacity < 1,
     opacity: options.opacity ?? 1,
   });
-  const mesh = addMesh(group, sharedBoxGeometry(group, size), material, position, options.rotation || [0, 0, 0]);
-  mesh.castShadow = options.castShadow ?? true;
-  mesh.receiveShadow = options.receiveShadow ?? true;
-  return mesh;
+  return addMesh(
+    group,
+    sharedBoxGeometry(group, size),
+    material,
+    position,
+    options.rotation || [0, 0, 0],
+    options,
+  );
 }
 
-function buildTrophy(group, x, y, z, goldMaterial) {
-  addMesh(group, new THREE.CylinderGeometry(0.12, 0.17, 0.08, 24), goldMaterial, [x, y, z]);
-  addMesh(group, new THREE.CylinderGeometry(0.05, 0.07, 0.22, 20), goldMaterial, [x, y + 0.14, z]);
-  addMesh(group, new THREE.SphereGeometry(0.13, 20, 14), goldMaterial, [x, y + 0.3, z]);
+function buildTrophy(group, x, y, z, goldMaterial, options = {}) {
+  addMesh(group, new THREE.CylinderGeometry(0.12, 0.17, 0.08, 24), goldMaterial, [x, y, z], [0, 0, 0], options);
+  addMesh(group, new THREE.CylinderGeometry(0.05, 0.07, 0.22, 20), goldMaterial, [x, y + 0.14, z], [0, 0, 0], options);
+  addMesh(group, new THREE.SphereGeometry(0.13, 20, 14), goldMaterial, [x, y + 0.3, z], [0, 0, 0], options);
   const handle = new THREE.TorusGeometry(0.15, 0.025, 8, 24, Math.PI * 1.35);
-  addMesh(group, handle, goldMaterial, [x - 0.12, y + 0.3, z], [Math.PI / 2, 0, Math.PI * 0.2]);
-  addMesh(group, handle.clone(), goldMaterial, [x + 0.12, y + 0.3, z], [Math.PI / 2, Math.PI, -Math.PI * 0.2]);
+  addMesh(group, handle, goldMaterial, [x - 0.12, y + 0.3, z], [Math.PI / 2, 0, Math.PI * 0.2], options);
+  addMesh(group, handle.clone(), goldMaterial, [x + 0.12, y + 0.3, z], [Math.PI / 2, Math.PI, -Math.PI * 0.2], options);
 }
 
 export function buildWarRoom(theme, whiteSide, coarsePointer = false) {
@@ -95,57 +99,41 @@ export function buildWarRoom(theme, whiteSide, coarsePointer = false) {
   const woodDark = 0x130b07;
   const brass = 0xb88a35;
   const decor = warRoomDecorProfile(coarsePointer);
+  const receiveOnly = { castShadow: false, receiveShadow: true };
 
-  addBox(room, [19, 0.38, 18], 0x100b08, [0, -0.55, 0], { roughness: 0.82, metalness: 0.02 });
-  addBox(room, [15.6, 6.3, 0.35], woodDark, [0, 2.42, wallZ], { roughness: 0.82 });
-  addBox(room, [15.3, 0.28, 0.55], wood, [0, 0.12, wallZ + towardBoard * 0.12]);
-  addBox(room, [15.3, 0.25, 0.62], wood, [0, 2.0, wallZ + towardBoard * 0.12]);
-  addBox(room, [15.3, 0.25, 0.62], wood, [0, 4.9, wallZ + towardBoard * 0.12]);
+  addBox(room, [19, 0.38, 18], 0x100b08, [0, -0.55, 0], { ...receiveOnly, roughness: 0.82, metalness: 0.02 });
+  addBox(room, [15.6, 6.3, 0.35], woodDark, [0, 2.42, wallZ], { ...receiveOnly, roughness: 0.82 });
+  addBox(room, [15.3, 0.28, 0.55], wood, [0, 0.12, wallZ + towardBoard * 0.12], receiveOnly);
+  addBox(room, [15.3, 0.25, 0.62], wood, [0, 2.0, wallZ + towardBoard * 0.12], receiveOnly);
+  addBox(room, [15.3, 0.25, 0.62], wood, [0, 4.9, wallZ + towardBoard * 0.12], receiveOnly);
 
   for (const x of [-6.4, -4.7, -3, 3, 4.7, 6.4]) {
-    addBox(room, [0.16, 4.7, 0.5], wood, [x, 2.55, wallZ + towardBoard * 0.16], { roughness: 0.75 });
+    addBox(room, [0.16, 4.7, 0.5], wood, [x, 2.55, wallZ + towardBoard * 0.16], { ...receiveOnly, roughness: 0.75 });
   }
 
-  const windowX = whiteSide ? 4.2 : -4.2;
-  addBox(room, [4.3, 3.1, 0.16], 0x0a2334, [windowX, 3.3, wallZ + towardBoard * 0.27], { emissive: 0x0c3551, roughness: 0.42 });
-  addBox(room, [4.55, 0.15, 0.35], wood, [windowX, 1.72, wallZ + towardBoard * 0.34]);
-  addBox(room, [4.55, 0.15, 0.35], wood, [windowX, 4.88, wallZ + towardBoard * 0.34]);
-  addBox(room, [0.15, 3.3, 0.35], wood, [windowX - 2.23, 3.3, wallZ + towardBoard * 0.34]);
-  addBox(room, [0.15, 3.3, 0.35], wood, [windowX + 2.23, 3.3, wallZ + towardBoard * 0.34]);
-  addBox(room, [0.11, 3.05, 0.28], 0x1f2f3a, [windowX, 3.3, wallZ + towardBoard * 0.38]);
-  addBox(room, [4.3, 0.1, 0.28], 0x1f2f3a, [windowX, 3.3, wallZ + towardBoard * 0.38]);
-
-  const moon = new THREE.Mesh(
-    new THREE.SphereGeometry(0.28, 20, 14),
-    new THREE.MeshBasicMaterial({ color: 0xb9d9f0 }),
-  );
-  moon.position.set(windowX + 1.15, 4.05, wallZ + towardBoard * 0.43);
-  room.add(moon);
-
-  for (const [offset, height] of [[-1.1, 1.2], [-0.6, 1.65], [0, 1.4], [0.55, 2.0], [1.05, 1.45]]) {
-    const tower = addBox(room, [0.4, height, 0.24], 0x09131b, [windowX + offset, 1.72 + height / 2, wallZ + towardBoard * 0.46], { roughness: 1, castShadow: false });
-    tower.castShadow = false;
-  }
+  // The premium layer owns the canonical weather window. The retired rectangular
+  // base-window vignette used to allocate 13 meshes underneath it.
+  room.userData.warRoomLegacyBaseWindowMeshesOmitted = 13;
 
   const bannerX = whiteSide ? -0.6 : 0.6;
-  addBox(room, [2.25, 3.25, 0.12], decor.banner, [bannerX, 3.25, wallZ + towardBoard * 0.31], { roughness: 0.88 });
-  addBox(room, [2.34, 0.09, 0.18], brass, [bannerX, 4.9, wallZ + towardBoard * 0.38], { metalness: 0.8, roughness: 0.24 });
+  addBox(room, [2.25, 3.25, 0.12], decor.banner, [bannerX, 3.25, wallZ + towardBoard * 0.31], { ...receiveOnly, roughness: 0.88 });
+  addBox(room, [2.34, 0.09, 0.18], brass, [bannerX, 4.9, wallZ + towardBoard * 0.38], { ...receiveOnly, metalness: 0.8, roughness: 0.24 });
 
   const gold = new THREE.MeshPhysicalMaterial({ color: brass, metalness: 0.82, roughness: 0.22, clearcoat: 0.7, clearcoatRoughness: 0.1, envMapIntensity: 1.18 });
   const shelfZ = wallZ + towardBoard * 0.55;
-  buildTrophy(room, bannerX - 2.35, 2.18, shelfZ, gold);
-  buildTrophy(room, bannerX + 2.25, 2.18, shelfZ, gold);
+  buildTrophy(room, bannerX - 2.35, 2.18, shelfZ, gold, receiveOnly);
+  buildTrophy(room, bannerX + 2.25, 2.18, shelfZ, gold, receiveOnly);
 
   const globeX = whiteSide ? -4.2 : 4.2;
-  addMesh(room, new THREE.SphereGeometry(0.52, 28, 18), new THREE.MeshPhysicalMaterial({ color: 0x283640, metalness: 0.25, roughness: 0.45, clearcoat: 0.45, envMapIntensity: 0.82 }), [globeX, 2.78, shelfZ]);
-  addMesh(room, new THREE.TorusGeometry(0.61, 0.035, 10, 36), gold, [globeX, 2.78, shelfZ], [Math.PI / 2.2, 0, 0.35]);
-  addMesh(room, new THREE.CylinderGeometry(0.05, 0.09, 0.55, 18), gold, [globeX, 2.25, shelfZ]);
+  addMesh(room, new THREE.SphereGeometry(0.52, 28, 18), new THREE.MeshPhysicalMaterial({ color: 0x283640, metalness: 0.25, roughness: 0.45, clearcoat: 0.45, envMapIntensity: 0.82 }), [globeX, 2.78, shelfZ], [0, 0, 0], receiveOnly);
+  addMesh(room, new THREE.TorusGeometry(0.61, 0.035, 10, 36), gold, [globeX, 2.78, shelfZ], [Math.PI / 2.2, 0, 0.35], receiveOnly);
+  addMesh(room, new THREE.CylinderGeometry(0.05, 0.09, 0.55, 18), gold, [globeX, 2.25, shelfZ], [0, 0, 0], receiveOnly);
 
   const candleMaterial = new THREE.MeshStandardMaterial({ color: 0xe7d1a4, roughness: 0.8 });
   const flameMaterial = new THREE.MeshBasicMaterial({ color: 0xffbd57 });
   for (const x of [bannerX - 3.15, bannerX + 3.15]) {
-    addMesh(room, new THREE.CylinderGeometry(0.07, 0.09, 0.52, 18), candleMaterial, [x, 2.18, shelfZ]);
-    addMesh(room, new THREE.SphereGeometry(0.055, 12, 8), flameMaterial, [x, 2.5, shelfZ]);
+    addMesh(room, new THREE.CylinderGeometry(0.07, 0.09, 0.52, 18), candleMaterial, [x, 2.18, shelfZ], [0, 0, 0], receiveOnly);
+    addMesh(room, new THREE.SphereGeometry(0.055, 12, 8), flameMaterial, [x, 2.5, shelfZ], [0, 0, 0], receiveOnly);
   }
   room.userData.warRoomCandleLighting = 'emissive-only-v1';
 
@@ -157,16 +145,8 @@ export function buildWarRoom(theme, whiteSide, coarsePointer = false) {
   if (whiteSide) ambientPanel.rotation.y = Math.PI;
   room.add(ambientPanel);
 
-  let retiredCasters = 0;
-  room.traverse((object) => {
-    if (!object?.isMesh || !object.castShadow) return;
-    object.castShadow = false;
-    object.userData ||= {};
-    object.userData.warRoomStaticShadowCasterRetired = true;
-    retiredCasters += 1;
-  });
-  room.userData.warRoomBaseStaticShadowCastersRetired = retiredCasters;
-  room.userData.warRoomBaseShadowMode = 'receive-only-v1';
+  room.userData.warRoomBaseStaticShadowCastersOmitted = true;
+  room.userData.warRoomBaseShadowMode = 'receive-only-at-source-v2';
 
   return room;
 }
@@ -214,15 +194,22 @@ export function classRoomCameraFramingProfile({ aspect = 1, coarsePointer = fals
 
 export function trainingRoomCameraFramingProfile(args = {}) {
   const base = classRoomCameraFramingProfile(args);
+  const portrait = base.mode === 'classroom-portrait';
   return Object.freeze({
     ...base,
-    version: 'training-room-overhead-v1',
-    mode: base.mode === 'classroom-portrait' ? 'training-room-portrait' : 'training-room-desktop',
+    version: 'training-room-overhead-v2',
+    mode: portrait ? 'training-room-portrait' : 'training-room-desktop',
     // Training is an active board-first surface rather than a teaching
-    // composition with room for curriculum chrome. Pull the camera in just
-    // enough to clear the >=85% mobile board contract without cropping files.
-    halfSpan: Number((base.halfSpan * 0.96).toFixed(3)),
+    // composition with room for curriculum chrome. Portrait gets a more
+    // overhead, slightly higher crop so the board fills the useful phone
+    // viewport instead of leaving a dark ceiling between HUD and play.
+    halfSpan: Number((base.halfSpan * (portrait ? 0.953 : 0.96)).toFixed(3)),
     targetY: 0.05,
+    ...(portrait ? {
+      targetZ: -1.0,
+      cameraY: 12.6,
+      cameraZ: 6.7,
+    } : null),
   });
 }
 
