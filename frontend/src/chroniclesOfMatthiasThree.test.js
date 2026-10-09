@@ -5,6 +5,7 @@ import {
   chroniclesContentIdFromObject,
   chroniclesEnemyFacingYaw,
   chroniclesExitGateTransform,
+  chroniclesReturnSealFraming,
   chroniclesTorchTransform,
 } from './chroniclesOfMatthiasThree.js';
 
@@ -75,6 +76,17 @@ describe('Chronicles of Matthias dungeon photography', () => {
     expect(chroniclesExitGateTransform(
       CHRONICLES_MAP, { position: { x: 1, y: 5 } },
     ).side).toBe('south');
+  });
+
+  it('fits the Swordhaven return seal into narrow portrait view without lowering its eye-level centre', () => {
+    const desktop = chroniclesReturnSealFraming(false);
+    const portrait = chroniclesReturnSealFraming(true);
+    expect(desktop.scale).toBeLessThan(0.7);
+    expect(portrait.scale).toBeLessThan(0.35);
+    expect(portrait.scale).toBeLessThan(desktop.scale);
+    for (const framing of [desktop, portrait]) {
+      expect(framing.lift + 1.62 * framing.scale).toBeCloseTo(1.62);
+    }
   });
 
   it('rejects unknown wall sides instead of silently placing a floating torch', () => {
