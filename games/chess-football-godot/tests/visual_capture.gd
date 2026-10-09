@@ -40,6 +40,21 @@ func _initialize() -> void:
 		runner._sync_locomotion(false)
 	match_node.debug_sync_presentation()
 	await _save_capture(match_node, "directional-runs", "VISUAL_CAPTURE_DIRECTIONAL_RUNS")
+	# All on-field actions must retain the approved raster identity for BOTH
+	# teams, not briefly turn a player into the old little vector silhouette.
+	var review_actions := ["pass", "shoot", "tackle", "celebrate"]
+	for team_index in range(2):
+		for actor_index in range(4):
+			var actor: Footballer = match_node.teams[team_index][actor_index + 1]
+			actor.action_lock_seconds = 0.0
+			actor.play_action(review_actions[actor_index], 1.0)
+			actor.visual.frame = 3
+	match_node.debug_sync_presentation()
+	await _save_capture(match_node, "canonical-actions", "VISUAL_CAPTURE_CANONICAL_ACTIONS")
+	for team_index in range(2):
+		for actor_index in range(4):
+			var actor: Footballer = match_node.teams[team_index][actor_index + 1]
+			actor.action_lock_seconds = 0.0
 	for team in match_node.teams:
 		for runner in team:
 			runner.velocity = Vector2.ZERO

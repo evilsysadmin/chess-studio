@@ -5,6 +5,17 @@ const MANIFEST_PATH := "res://assets/players/manifest.json"
 const ASSET_ROOT := "res://assets/players/"
 const TEAM_KEYS := ["fc_matthias", "real_enroque"]
 
+# Temporary action poses are composed from the already approved lateral
+# raster run canon. Keep gameplay timing and unique action animation names;
+# never flash back to a differently styled vector footballer mid-match.
+# Authored action-specific raster art can replace these holds later.
+const CANONICAL_ACTION_POSES := {
+	"pass": [0, 0, 2, 3, 4, 4, 6, 6],
+	"shoot": [1, 1, 3, 3, 5, 5, 7, 7],
+	"tackle": [5, 6, 7, 7, 4, 3, 2, 1],
+	"celebrate": [0, 2, 4, 6, 4, 2, 0, 0],
+}
+
 static var _cached_manifest: Dictionary = {}
 static var _cached_run_textures: Dictionary = {}
 static var _cached_3d_run_frames: Dictionary = {}
@@ -168,13 +179,16 @@ static func build_frames(team_id: int, role: String = "", squad_index: int = -1,
 	var data := manifest()
 	var key: String = atlas_key(team_id, role, squad_index)
 	var atlas_meta: Dictionary = data["atlases"][key]
-	var texture := load(ASSET_ROOT + String(atlas_meta["file"])) as Texture2D
-	assert(texture != null, "No se pudo cargar el atlas de Chess Football")
-
+	# The vector bank is kept for the authoritative 2D simulation only.
+	# Never load/show its inconsistent body silhouettes in the 3D stadium.
+	var texture: Texture2D = null
 	var cell_data: Dictionary = data["cell"]
 	var cell := Vector2(float(cell_data["width"]), float(cell_data["height"]))
-	var expected_size := Vector2(cell.x * int(data["columns"]), cell.y * int(data["rows"]))
-	assert(texture.get_size() == expected_size, "Dimensiones de atlas incompatibles con manifest")
+	if not for_3d:
+		texture = load(ASSET_ROOT + String(atlas_meta["file"])) as Texture2D
+		assert(texture != null, "No se pudo cargar el atlas de Chess Football")
+		var expected_size := Vector2(cell.x * int(data["columns"]), cell.y * int(data["rows"]))
+		assert(texture.get_size() == expected_size, "Dimensiones de atlas incompatibles con manifest")
 
 	var run_meta := _canonical_run_meta()
 	var run_texture := _canonical_run_texture(team_id)
@@ -211,6 +225,18 @@ static func build_frames(team_id: int, role: String = "", squad_index: int = -1,
 				run_region.atlas = run_texture
 				run_region.region = Rect2(Vector2(float(column) * run_cell.x, 0.0), run_cell)
 				frames.add_frame(animation_name, _run_frame_3d(team_id, column, run_texture, run_cell) if for_3d else run_region)
+			continue
+		if for_3d:
+			var action_poses: Array = CANONICAL_ACTION_POSES.get(String(animation_name), [])
+			if action_poses.is_empty():
+				push_error("Chess Football: no canonical 3D raster for action " + String(animation_name))
+				continue
+			for action_frame in range(int(animation["frames"])):
+				var source_frame: int = int(action_poses[action_frame % action_poses.size()])
+				frames.add_frame(
+					animation_name,
+					_run_frame_3d(team_id, source_frame, run_texture, run_cell),
+				)
 			continue
 		var row := int(animation["row"])
 		for column in range(int(animation["frames"])):

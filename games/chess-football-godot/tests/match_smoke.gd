@@ -204,6 +204,28 @@ func _initialize() -> void:
 					assert(frame_texture.get_size() == Vector2(128.0, 144.0))
 					var used_rect := (frame_texture as ImageTexture).get_image().get_used_rect()
 					assert(used_rect.size.x >= 40 and used_rect.size.y >= 90)
+	# The 3D stadium cannot mix legacy vector footballer bodies with the
+	# approved raster canon. This applies to *every player*, including keepers,
+	# both kits, shots, passes, tackles and celebrations.
+	for roster_team in match_node.teams:
+		for roster_player in roster_team:
+			var visible_frames := ChessFootballSpriteBank.build_frames(
+				roster_player.team_id, roster_player.role, roster_player.squad_index, true
+			)
+			for action_name in [&"idle", &"run", &"sprint", &"pass", &"shoot", &"tackle", &"celebrate"]:
+				assert(visible_frames.has_animation(action_name))
+				var frame_total := visible_frames.get_frame_count(action_name)
+				assert(frame_total == (1 if action_name == &"idle" else 8))
+				for frame_index in range(frame_total):
+					var visible_texture := visible_frames.get_frame_texture(action_name, frame_index)
+					assert(visible_texture is ImageTexture)
+					assert(visible_texture.get_size() == Vector2(128.0, 144.0))
+					var body_region := (visible_texture as ImageTexture).get_image().get_used_rect()
+					assert(body_region.size.y >= 65 and body_region.size.x >= 25)
+	# 2D-only action animation resources remain intact for the simulation.
+	var simulation_frames := ChessFootballSpriteBank.build_frames(1, "forward", 4, false)
+	for action_name in [&"pass", &"shoot", &"tackle", &"celebrate"]:
+		assert(simulation_frames.get_frame_texture(action_name, 0) is AtlasTexture)
 	assert(canonical_run_frame.region == Rect2(0.0, 0.0, 128.0, 144.0))
 	assert(canonical_sprint_frame.region == Rect2(0.0, 0.0, 128.0, 144.0))
 	assert(is_equal_approx(canonical_frames.get_animation_speed(&"run"), 12.0))
