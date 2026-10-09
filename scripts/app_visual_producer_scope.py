@@ -396,6 +396,7 @@ def classify_path(path: str) -> set[str] | None:
             return set()
         if lower in {
             "scripts/css_architecture_manifest.json",
+            "scripts/chronicles_area_parity_corpus.py",  # Backend fixture data, no render code.
             "scripts/architecture_debt_budget.py",
             "scripts/async_resilience_gate.mjs",
             "scripts/visual_ux_contract_check.mjs",
@@ -736,6 +737,9 @@ def classify(paths: list[str]) -> str:
 
 def self_test() -> None:
     assert classify(["e2e/staging-live.spec.js"]) == "none"
+    assert classify(["scripts/chronicles_area_parity_corpus.py"]) == "none"
+    assert classify(["scripts/chronicles_area_parity_corpus.py", "frontend/src/chronicles/chroniclesMapCatalog.js"]) == "chronicles-tactics,chronicles-gameplay"
+    assert classify(["scripts/unknown_unowned_generator.py"]) == "all"
     assert classify(["e2e/staging-live.spec.js", "frontend/src/components/PvpHandoffModal.jsx"]) == "pvp-handoff"
     assert classify([
         "frontend/src/components/GameScreen.jsx",
