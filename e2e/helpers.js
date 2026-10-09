@@ -620,7 +620,11 @@ export async function openCampaignBriefing(page) {
   const map = await openCampaignMap(page);
   const availableRoute = map.getByRole('button', { name: /Elegir esta ruta/ }).first();
   await expect(availableRoute).toBeVisible();
-  await availableRoute.click();
+  // The campaign route is a DOM control, not a canvas hit target. In software
+  // WebGL runs Playwright's pointer action may time out waiting for stability,
+  // even after visibility/enabled checks pass. Dispatch the real button click
+  // handler directly; dedicated interaction specs own pointer hit-testing.
+  await availableRoute.evaluate((button) => button.click());
   await dismissTutorialIfVisible(page);
 
   const briefing = page.getByLabel('Resumen táctico');
