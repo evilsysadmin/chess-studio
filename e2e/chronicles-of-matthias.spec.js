@@ -8,8 +8,8 @@ async function dismissGuide(page) {
   if (await dismiss.isVisible().catch(() => false)) await dismiss.click();
 }
 
-async function openChroniclesSetup(page) {
-  await mockApi(page);
+async function openChroniclesSetup(page, options = {}) {
+  await mockApi(page, options);
   await login(page);
   await dismissGuide(page);
   const moreModes = await openMoreGameModes(page);
@@ -24,11 +24,25 @@ async function openChroniclesSetup(page) {
   return setup;
 }
 
-async function openChronicles(page) {
-  await openChroniclesSetup(page);
-  await confirmChroniclesCharacterSetup(page);
+async function openChronicles(page, options = {}) {
+  await openChroniclesSetup(page, options);
+  await confirmChroniclesCharacterSetup(page, { newTown: options.newTown === true });
   await expect(page.locator('[data-chronicles="true"]')).toBeVisible();
 }
+
+test('Chronicles first-person · nueva expedición pide Swordhaven sin alterar Tactics', async ({ page }) => {
+  const creationBodies = [];
+  page.on('request', (request) => {
+    if (request.method() !== 'POST' || !new URL(request.url()).pathname.endsWith('/api/chronicles/runs')) return;
+    creationBodies.push(request.postDataJSON());
+  });
+  await openChronicles(page, { chroniclesCurrentMapId: 'swordhaven-square', newTown: true });
+  await expect.poll(() => creationBodies[0]?.mapId, { timeout: 20_000 })
+    .toBe('swordhaven-square');
+  const mode = page.locator('[data-chronicles="true"]');
+  await expect(mode).toHaveAttribute('data-chronicles-map-id', 'swordhaven-square');
+  await expect(mode.locator('[data-chronicles-renderer="three"] canvas')).toHaveCount(1);
+});
 
 test('Chronicles creator · recupera el borrador tras F5 sin confirmar progreso', async ({ page }) => {
   const setup = await openChroniclesSetup(page);

@@ -123,6 +123,36 @@ describe('Chronicles bounded authoritative-run bootstrap', () => {
     expect(resolved.runId).toBe(payload.runId);
   });
 
+  it('restores a progressed Swordhaven run already inside the crypt', async () => {
+    const payload = remoteRun('Cripta tras Swordhaven', 417, 'crypt-eight-squares');
+    payload.worldVersion = 3;
+    const createRun = vi.fn().mockResolvedValue(payload);
+    const run = await chroniclesBootstrapWorld({
+      mapId: 'swordhaven-square',
+      createRun,
+      budgetMs: 250,
+      operationId: 'town-to-crypt-expedition',
+    });
+    expect(run.currentMapId).toBe('crypt-eight-squares');
+    expect(run.worldVersion).toBe(3);
+    expect(createRun).toHaveBeenCalledWith('swordhaven-square', expect.objectContaining({
+      operationId: 'town-to-crypt-expedition',
+    }));
+  });
+
+  it('rejects a fresh run that ignores the requested Swordhaven entry', async () => {
+    const payload = remoteRun('Incorrect new run', 417, 'crypt-eight-squares');
+    const createRun = vi.fn().mockResolvedValue(payload);
+    await expect(chroniclesBootstrapWorld({
+      mapId: 'swordhaven-square',
+      createRun,
+      budgetMs: 250,
+    })).rejects.toMatchObject({
+      code: CHRONICLES_BOOTSTRAP_ERROR_CODES.invalidWorld,
+      reason: 'run-map-mismatch',
+    });
+  });
+
   it('accepts a safe entry map selected by the backend from the run seed', async () => {
     const createRun = vi.fn().mockResolvedValue(
       remoteRun('Menagerie procedural', 733, 'menagerie-of-ash'),

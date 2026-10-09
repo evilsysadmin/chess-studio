@@ -51,8 +51,8 @@ async function openChronicles(page, captureLabel, {
   if (await speech.isVisible().catch(() => false)) {
     const close = speech.getByRole('button', { name: 'Cerrar comentario de Matthias', exact: true });
     if (await close.isVisible().catch(() => false)) {
-      // Non-gameplay Home overlay: click its actual handler without waiting
-      // for a software-rendered pointer stability gate.
+      // This is a non-gameplay Home overlay. Avoid SwiftShader stalls in
+      // Playwright pointer stability checks; trigger the actual close handler.
       await close.evaluate((button) => button.click());
     }
   }
@@ -421,8 +421,9 @@ async function enterCanonicalInitiativeCombat(page, gameRoot) {
   await page.keyboard.press('2');
   await page.keyboard.press('Space');
   await expect(gameRoot).toHaveAttribute('data-chronicles-phase', 'explore');
-  // Use the real forward control for capture. Keyboard focus has its own E2E,
-  // while this suite owns renderer and combat evidence.
+  // Visual producer: advance using the real onClick path instead of relying
+  // on keyboard focus after the authored character editor. Functional keyboard
+  // input remains covered by its dedicated gameplay E2E specs.
   const advance = gameRoot.locator('[data-chronicles-touch-action="forward"]');
   await expect(advance).toHaveCount(1);
   await advance.evaluate((button) => button.click());

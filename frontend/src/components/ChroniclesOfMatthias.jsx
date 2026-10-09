@@ -34,6 +34,7 @@ import {
 } from '../chronicles/chroniclesGameBootstrap.js';
 import {
   ensureChroniclesRun,
+  chroniclesRunEntryMapId,
   finishChroniclesRun,
   renewChroniclesRun,
 } from '../chronicles/chroniclesRunIdentity.js';
@@ -538,6 +539,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
 
     const activeProgression = progressionRef.current;
     chroniclesBootstrapWorld({
+      mapId: chroniclesRunEntryMapId(FIRST_PERSON_RUN_SCOPE),
       signal: controller.signal,
       operationId,
       partyLevel: chroniclesDeployedPartyLevel(activeProgression),
