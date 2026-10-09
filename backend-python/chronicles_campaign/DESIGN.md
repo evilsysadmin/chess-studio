@@ -37,3 +37,31 @@ La exploración es libre desde temprano; sólo los accesos al santuario y al tro
 - Separación estricta de Chronicles frente a Tactics: pueden compartir perfil de PJ, nunca mapa narrativo, gates, world flags o deuda visual.
 - Grillas compatibles con exploración por tiles; girar/leer/interactuar no consume tick enemigo. Iniciar combate congela la exploración y aplica AGI+1d8.
 - Validar desktop/móvil, conexiones bidireccionales, bloqueos, F5, guardado cruzado, combate, legibilidad y PNG reales **antes** de promover mapas a gameplay.
+
+## Runtime promotion of the authored world (candidate pipeline)
+
+The source of truth remains `world.json` and `maps/<id>.json`. A new,
+standard-library-only compiler in `runtime_manifests.py` produces
+**candidate** manifests in the existing Chronicles runtime schema.
+
+For the first reversible slice:
+
+```bash
+python3 -m chronicles_campaign.runtime_manifests swordhaven-square banner-road --write /tmp/chronicles-map-candidates
+```
+
+Run the command with `PYTHONPATH=backend-python` from repository root.
+`swordhaven-square` becomes the new opt-in `swordhaven-campaign` runtime
+identity: the historical `swordhaven-square` remains untouched for existing
+runs. The new road remains `banner-road`. Only reciprocal exits whose two
+areas have been selected are emitted. A legacy dungeon such as
+`crypt-eight-squares` **cannot** be auto-compiled from the simplified atlas:
+it requires a deliberate adapter preserving its tactical content.
+
+The command without `--write` prints the candidate JSON; the write mode
+uses exclusive creation and refuses to overwrite existing files. The generated
+manifest is **not shipped automatically**. Promote selected, visually
+accepted candidates into `backend-python/chronicles_maps/` only together
+with the Go/frontend mirrors and refreshed cross-runtime corpora via
+`make chronicles-contracts`; then update the opt-in entry route, test
+checkpoints, and review real desktop/mobile gameplay PNGs.
