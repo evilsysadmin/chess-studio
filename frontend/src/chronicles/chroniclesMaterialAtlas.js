@@ -99,6 +99,7 @@ export function chroniclesMaterialEnvironment(environmentId) {
 export function chroniclesMaterialEnvironmentForMapId(mapId = '') {
   const id = String(mapId || '').trim().toLowerCase();
   if (MAP_ENVIRONMENT[id]) return MAP_ENVIRONMENT[id];
+  if (/(swordhaven|village|hamlet|town|settlement|outskirts|forest|road|woodland)/.test(id)) return 'exterior';
   if (/(cistern|sewer|water|flood|canal)/.test(id)) return 'cave-water';
   if (/(cave|cavern|grotto|mine|mountain|tunnel|underground)/.test(id)) return 'cave';
   if (/(foundry|forge|iron|smelter)/.test(id)) return 'iron-foundry';
@@ -161,7 +162,9 @@ function pickProfiles(values, count, seed, salt) {
 }
 
 export function chroniclesMaterialPlanForScene(scenePlan = null) {
-  const environmentId = chroniclesMaterialEnvironmentForMapId(scenePlan?.mapId);
+  const environmentId = (scenePlan?.regionKind === 'settlement' || scenePlan?.regionKind === 'wilderness')
+    ? 'exterior'
+    : chroniclesMaterialEnvironmentForMapId(scenePlan?.mapId);
   const environment = chroniclesMaterialEnvironment(environmentId);
   const seed = chroniclesMaterialSceneSeed(scenePlan);
   const authoredWalls = Object.values(scenePlan?.materials?.wallLegend || {})

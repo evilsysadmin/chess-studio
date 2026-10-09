@@ -39,6 +39,26 @@ func _initialize() -> void:
 	for expected_audio in ["goal", "pass", "post", "save", "shot", "tackle", "whistle"]:
 		assert(audio_names.has(expected_audio))
 	assert(match_node.debug_3d_animated_players() == 10)
+	# Compare actual canonical silhouettes, not nominal 128x144 cell size.
+	# The runner's size must not change with team, roster slot, or camera.
+	assert(is_equal_approx(ChessFootball3DPresenter.normalized_body_scale(120.0), 1.0))
+	for team_id in range(2):
+		for squad_index in [0, 4]:
+			var sampled_role := "keeper" if squad_index == 0 else "forward"
+			var rendered_frames := ChessFootballSpriteBank.build_frames(
+				team_id, sampled_role, squad_index, true
+			)
+			for view_name in ["side", "front", "back", "front_diagonal", "back_diagonal"]:
+				var run_name := ChessFootballRunDirection.animation_for(&"run", view_name)
+				var height_samples: Array[float] = []
+				for frame_id in [0, 3, 6]:
+					var run_image := (rendered_frames.get_frame_texture(run_name, frame_id) as ImageTexture).get_image()
+					var used := run_image.get_used_rect()
+					assert(used.size.y >= 86 and used.size.y <= 135)
+					height_samples.append(float(used.size.y))
+				height_samples.sort()
+				var effective_height := height_samples[1] * ChessFootball3DPresenter.normalized_body_scale(height_samples[1])
+				assert(absf(effective_height - 120.0) < 2.0)
 	# Eight-way movement resolves to five authored views, with mirrored diagonals.
 	assert(ChessFootballRunDirection.view_for_velocity(Vector2(250.0, 0.0)) == "side")
 	assert(ChessFootballRunDirection.view_for_velocity(Vector2(0.0, 250.0)) == "front")
@@ -204,6 +224,28 @@ func _initialize() -> void:
 					assert(frame_texture.get_size() == Vector2(128.0, 144.0))
 					var used_rect := (frame_texture as ImageTexture).get_image().get_used_rect()
 					assert(used_rect.size.x >= 40 and used_rect.size.y >= 90)
+	# The 3D stadium cannot mix legacy vector footballer bodies with the
+	# approved raster canon. This applies to *every player*, including keepers,
+	# both kits, shots, passes, tackles and celebrations.
+	for roster_team in match_node.teams:
+		for roster_player in roster_team:
+			var visible_frames := ChessFootballSpriteBank.build_frames(
+				roster_player.team_id, roster_player.role, roster_player.squad_index, true
+			)
+			for action_name in [&"idle", &"run", &"sprint", &"pass", &"shoot", &"tackle", &"celebrate"]:
+				assert(visible_frames.has_animation(action_name))
+				var frame_total := visible_frames.get_frame_count(action_name)
+				assert(frame_total == (1 if action_name == &"idle" else 8))
+				for frame_index in range(frame_total):
+					var visible_texture := visible_frames.get_frame_texture(action_name, frame_index)
+					assert(visible_texture is ImageTexture)
+					assert(visible_texture.get_size() == Vector2(128.0, 144.0))
+					var body_region := (visible_texture as ImageTexture).get_image().get_used_rect()
+					assert(body_region.size.y >= 65 and body_region.size.x >= 25)
+	# 2D-only action animation resources remain intact for the simulation.
+	var simulation_frames := ChessFootballSpriteBank.build_frames(1, "forward", 4, false)
+	for action_name in [&"pass", &"shoot", &"tackle", &"celebrate"]:
+		assert(simulation_frames.get_frame_texture(action_name, 0) is AtlasTexture)
 	assert(canonical_run_frame.region == Rect2(0.0, 0.0, 128.0, 144.0))
 	assert(canonical_sprint_frame.region == Rect2(0.0, 0.0, 128.0, 144.0))
 	assert(is_equal_approx(canonical_frames.get_animation_speed(&"run"), 12.0))

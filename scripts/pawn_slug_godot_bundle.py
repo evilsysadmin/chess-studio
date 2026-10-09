@@ -164,12 +164,24 @@ def publish(build_dir: pathlib.Path, config_path: pathlib.Path, prefix: str, dry
             print(f"REPOINTED Pawn Slug Godot {pointer['release']} -> sourceSha={pointer['sourceSha']}")
             return pointer
 
+    # Admission is atomic at release granularity: budget the sum of every
+    # immutable object and the updated pointer before uploading any file.
+    from r2_storage_governance import admission_check_batch
+
+    rendered = (json.dumps(pointer, indent=2, sort_keys=True) + "\n").encode("utf-8")
+    admission_check_batch(
+        config, token=token, account_id=account_id,
+        additions={
+            **{entry["key"]: entry["bytes"] for entry in pointer["files"].values()},
+            pointer_key: len(rendered),
+        },
+    )
+
     for relative, entry in pointer["files"].items():
         source = build_dir / pathlib.PurePosixPath(relative)
         core.upload_object(token, account_id, bucket, entry["key"], source.read_bytes(), entry["contentType"])
         print(f"UPLOADED {relative} -> {entry['url']}")
 
-    rendered = (json.dumps(pointer, indent=2, sort_keys=True) + "\n").encode("utf-8")
     core.upload_object(token, account_id, bucket, pointer_key, rendered, "application/json; charset=utf-8")
     print(f"PUBLISHED Pawn Slug Godot {pointer['release']} -> {pointer['index']}")
     return pointer

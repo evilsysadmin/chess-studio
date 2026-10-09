@@ -20,7 +20,8 @@ import {
 import { chroniclesDeployedPartyLevel } from '../chronicles/chroniclesDifficultyPolicy.js';
 import { playChroniclesActionSound } from '../chronicles/chroniclesActionAudio.js';
 import { chroniclesPartyPortraitUrl } from '../chronicles/chroniclesPartyPortraitAssets.js';
-import { chroniclesClearRuntimeMapDefinitions } from '../chronicles/chroniclesMapCatalog.js';
+import { chroniclesClearRuntimeMapDefinitions, chroniclesMapForState } from '../chronicles/chroniclesMapCatalog.js';
+import { chroniclesRegionHudLocation } from '../chronicles/chroniclesRegionHud.js';
 import { chroniclesGridExplorationStep } from '../chronicles/chroniclesGridExplorationStep.js';
 import { chroniclesCheckpointState } from '../chronicles/chroniclesRunClient.js';
 import {
@@ -723,6 +724,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
 
   const direction = CHRONICLES_DIRECTIONS[state.direction];
   const objective = chroniclesObjective(state);
+  const locationHud = chroniclesRegionHudLocation(chroniclesMapForState(state));
   const selectedMember = state.party.find((member) => member.id === selectedMemberId) || state.party[0];
   const selectedCondition = chroniclesPartyCondition(selectedMember);
   const selectedRelic = chroniclesPartyRelic(state, selectedMember?.id);
@@ -808,7 +810,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
 
         <main className="chronicles-stage-wrap">
           <div className="chronicles-statusbar" aria-live="polite">
-            <span>CRIPTA <b>01</b></span>
+            <span>{locationHud.kind} <b>{locationHud.value}</b></span>
             <span>RUMBO <b>{direction.label}</b></span>
             <span>ACTIVO <b>{selectedMember?.name}</b></span>
             <span>OBJETIVO <b>{objective}</b></span>

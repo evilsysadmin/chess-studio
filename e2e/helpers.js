@@ -43,10 +43,13 @@ async function chroniclesE2ERunPayload({
   currentMapId = 'crypt-eight-squares',
   status = 'active',
   worldFlags = null,
+  areaTransform = null,
 } = {}) {
   const manifests = await chroniclesE2EManifests();
   const areas = CHRONICLES_E2E_MAP_IDS.map((mapId, index) => {
-    const manifest = manifests[mapId];
+    const manifest = typeof areaTransform === 'function'
+      ? areaTransform(mapId, manifests[mapId])
+      : manifests[mapId];
     const marker = ((seed + index + 1) % 16).toString(16);
     return {
       schemaVersion: 1,
@@ -214,6 +217,7 @@ export async function mockApi(page, {
   chroniclesCurrentMapId = 'crypt-eight-squares',
   chroniclesRunStatus = 'active',
   chroniclesWorldFlags = null,
+  chroniclesAreaTransform = null,
 } = {}) {
   // Seed tutorials as seen so overlays cannot intercept unrelated E2E clicks.
   let profileData = {
@@ -278,6 +282,7 @@ export async function mockApi(page, {
         currentMapId: chroniclesCurrentMapId,
         status: chroniclesRunStatus,
         worldFlags: chroniclesWorldFlags,
+        areaTransform: chroniclesAreaTransform,
       });
       chroniclesRuns.set(operationKey, payload);
       return json(payload, 201);
