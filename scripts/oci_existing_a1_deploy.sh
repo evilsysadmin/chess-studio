@@ -36,7 +36,6 @@ deploy_watcher_source="$repo/scripts/oci_staging_deploy_watcher.py"
 deploy_watcher_unit_source="$repo/infra/oci/runtime/chess-studio-deploy-watcher.service"
 deploy_watcher_target="/usr/local/libexec/chess-studio-deploy-watcher"
 deploy_watcher_unit_target="/etc/systemd/system/chess-studio-deploy-watcher.service"
-registry_image_prefix="${CHESS_STUDIO_BACKEND_IMAGE_PREFIX:-ghcr.io/evilsysadmin/chess-studio-backend:oci-}"
 pvp_registry_image_prefix="${CHESS_STUDIO_PVP_IMAGE_PREFIX:-ghcr.io/evilsysadmin/chess-studio-pvp:oci-}"
 
 case "$target" in
@@ -75,227 +74,9 @@ else
   pvp_sparring_enabled=false
 fi
 pvp_sparring_owner="${CHESS_PVP_SPARRING_OWNER:-evilsysadmin}"
-# Strangler front for the Python -> Go migration. "direct": nginx sends only
-# /api/pvp to the Go sidecar. "go": nginx sends the whole API to the sidecar,
-# which serves what is native and forwards the rest to Python. Versioned here
-# per target so enabling or reverting it is a reviewed one-line change.
-case "$target" in
-  staging) api_edge_mode="${CHESS_STUDIO_API_EDGE_MODE:-go}" ;;
-  *) api_edge_mode="${CHESS_STUDIO_API_EDGE_MODE:-go}" ;;
-esac
-case "$api_edge_mode" in
-  direct|go) ;;
-  *) echo "invalid CHESS_STUDIO_API_EDGE_MODE: $api_edge_mode" >&2; exit 2 ;;
-esac
-# Native Go routes for games vs the CPU (GET/DELETE /api/games*). They only
-# receive traffic in API "go" mode; staging first, production stays off.
-case "$target" in
-  staging) go_native_games_read="${CHESS_STUDIO_GO_NATIVE_GAMES_READ_ENABLED:-true}" ;;
-  *) go_native_games_read="${CHESS_STUDIO_GO_NATIVE_GAMES_READ_ENABLED:-true}" ;;
-esac
-case "${go_native_games_read,,}" in
-  true|false) go_native_games_read="${go_native_games_read,,}" ;;
-  *) echo "invalid CHESS_STUDIO_GO_NATIVE_GAMES_READ_ENABLED: $go_native_games_read" >&2; exit 2 ;;
-esac
-# Native Go writes for games vs the CPU (POST /api/games, .../move, .../undo):
-# same rule as the reads, staging first, production stays off.
-case "$target" in
-  staging) go_native_games_write="${CHESS_STUDIO_GO_NATIVE_GAMES_WRITE_ENABLED:-true}" ;;
-  *) go_native_games_write="${CHESS_STUDIO_GO_NATIVE_GAMES_WRITE_ENABLED:-true}" ;;
-esac
-case "${go_native_games_write,,}" in
-  true|false) go_native_games_write="${go_native_games_write,,}" ;;
-  *) echo "invalid CHESS_STUDIO_GO_NATIVE_GAMES_WRITE_ENABLED: $go_native_games_write" >&2; exit 2 ;;
-esac
-# Native Go hint for games vs the CPU (GET /api/games/{id}/hint).
-case "$target" in
-  staging) go_native_games_hint="${CHESS_STUDIO_GO_NATIVE_GAMES_HINT_ENABLED:-true}" ;;
-  *) go_native_games_hint="${CHESS_STUDIO_GO_NATIVE_GAMES_HINT_ENABLED:-true}" ;;
-esac
-case "${go_native_games_hint,,}" in
-  true|false) go_native_games_hint="${go_native_games_hint,,}" ;;
-  *) echo "invalid CHESS_STUDIO_GO_NATIVE_GAMES_HINT_ENABLED: $go_native_games_hint" >&2; exit 2 ;;
-esac
-# Native Go analysis (POST /api/analyze and /api/analyze-move), optional engine work.
-case "$target" in
-  staging) go_native_analyze="${CHESS_STUDIO_GO_NATIVE_ANALYZE_ENABLED:-true}" ;;
-  *) go_native_analyze="${CHESS_STUDIO_GO_NATIVE_ANALYZE_ENABLED:-true}" ;;
-esac
-case "${go_native_analyze,,}" in
-  true|false) go_native_analyze="${go_native_analyze,,}" ;;
-  *) echo "invalid CHESS_STUDIO_GO_NATIVE_ANALYZE_ENABLED: $go_native_analyze" >&2; exit 2 ;;
-esac
-# Native Go system routes (GET /api/status, GET /api/features, POST /api/client-telemetry).
-case "$target" in
-  staging) go_native_system="${CHESS_STUDIO_GO_NATIVE_SYSTEM_ENABLED:-true}" ;;
-  *) go_native_system="${CHESS_STUDIO_GO_NATIVE_SYSTEM_ENABLED:-true}" ;;
-esac
-case "${go_native_system,,}" in
-  true|false) go_native_system="${go_native_system,,}" ;;
-  *) echo "invalid CHESS_STUDIO_GO_NATIVE_SYSTEM_ENABLED: $go_native_system" >&2; exit 2 ;;
-esac
-# Native Go profile (GET, PUT and PATCH /api/profile).
-case "$target" in
-  staging) go_native_profile="${CHESS_STUDIO_GO_NATIVE_PROFILE_ENABLED:-true}" ;;
-  *) go_native_profile="${CHESS_STUDIO_GO_NATIVE_PROFILE_ENABLED:-true}" ;;
-esac
-case "${go_native_profile,,}" in
-  true|false) go_native_profile="${go_native_profile,,}" ;;
-  *) echo "invalid CHESS_STUDIO_GO_NATIVE_PROFILE_ENABLED: $go_native_profile" >&2; exit 2 ;;
-esac
-# Native Go session routes (GET /api/auth/me, POST /api/auth/activity and /logout).
-case "$target" in
-  staging) go_native_auth_session="${CHESS_STUDIO_GO_NATIVE_AUTH_SESSION_ENABLED:-true}" ;;
-  *) go_native_auth_session="${CHESS_STUDIO_GO_NATIVE_AUTH_SESSION_ENABLED:-true}" ;;
-esac
-case "${go_native_auth_session,,}" in
-  true|false) go_native_auth_session="${go_native_auth_session,,}" ;;
-  *) echo "invalid CHESS_STUDIO_GO_NATIVE_AUTH_SESSION_ENABLED: $go_native_auth_session" >&2; exit 2 ;;
-esac
-# Native Go login (POST /api/auth/login).
-case "$target" in
-  staging) go_native_login="${CHESS_STUDIO_GO_NATIVE_LOGIN_ENABLED:-true}" ;;
-  *) go_native_login="${CHESS_STUDIO_GO_NATIVE_LOGIN_ENABLED:-true}" ;;
-esac
-case "${go_native_login,,}" in
-  true|false) go_native_login="${go_native_login,,}" ;;
-  *) echo "invalid CHESS_STUDIO_GO_NATIVE_LOGIN_ENABLED: $go_native_login" >&2; exit 2 ;;
-esac
-# Native Go account routes (register, password and email changes, delete-account).
-case "$target" in
-  staging) go_native_account="${CHESS_STUDIO_GO_NATIVE_ACCOUNT_ENABLED:-true}" ;;
-  *) go_native_account="${CHESS_STUDIO_GO_NATIVE_ACCOUNT_ENABLED:-true}" ;;
-esac
-case "${go_native_account,,}" in
-  true|false) go_native_account="${go_native_account,,}" ;;
-  *) echo "invalid CHESS_STUDIO_GO_NATIVE_ACCOUNT_ENABLED: $go_native_account" >&2; exit 2 ;;
-esac
-# Native Go password recovery (forgot-password, reset-password).
-case "$target" in
-  staging) go_native_recovery="${CHESS_STUDIO_GO_NATIVE_RECOVERY_ENABLED:-true}" ;;
-  *) go_native_recovery="${CHESS_STUDIO_GO_NATIVE_RECOVERY_ENABLED:-true}" ;;
-esac
-case "${go_native_recovery,,}" in
-  true|false) go_native_recovery="${go_native_recovery,,}" ;;
-  *) echo "invalid CHESS_STUDIO_GO_NATIVE_RECOVERY_ENABLED: $go_native_recovery" >&2; exit 2 ;;
-esac
-# Native Go user feedback (submit, mine, delete own).
-case "$target" in
-  staging) go_native_feedback="${CHESS_STUDIO_GO_NATIVE_FEEDBACK_ENABLED:-true}" ;;
-  *) go_native_feedback="${CHESS_STUDIO_GO_NATIVE_FEEDBACK_ENABLED:-true}" ;;
-esac
-case "${go_native_feedback,,}" in
-  true|false) go_native_feedback="${go_native_feedback,,}" ;;
-  *) echo "invalid CHESS_STUDIO_GO_NATIVE_FEEDBACK_ENABLED: $go_native_feedback" >&2; exit 2 ;;
-esac
-# Native Go Matthias read side (daily status, briefing, memory reset).
-case "$target" in
-  staging) go_native_matthias_read="${CHESS_STUDIO_GO_NATIVE_MATTHIAS_READ_ENABLED:-true}" ;;
-  *) go_native_matthias_read="${CHESS_STUDIO_GO_NATIVE_MATTHIAS_READ_ENABLED:-true}" ;;
-esac
-case "${go_native_matthias_read,,}" in
-  true|false) go_native_matthias_read="${go_native_matthias_read,,}" ;;
-  *) echo "invalid CHESS_STUDIO_GO_NATIVE_MATTHIAS_READ_ENABLED: $go_native_matthias_read" >&2; exit 2 ;;
-esac
-# Native Go narrative (/api/narrative, Matthias' audience, admin AI reads).
-case "$target" in
-  staging) go_native_narrative="${CHESS_STUDIO_GO_NATIVE_NARRATIVE_ENABLED:-true}" ;;
-  *) go_native_narrative="${CHESS_STUDIO_GO_NATIVE_NARRATIVE_ENABLED:-true}" ;;
-esac
-case "${go_native_narrative,,}" in
-  true|false) go_native_narrative="${go_native_narrative,,}" ;;
-  *) echo "invalid CHESS_STUDIO_GO_NATIVE_NARRATIVE_ENABLED: $go_native_narrative" >&2; exit 2 ;;
-esac
-# Native Go Pawn Slug stage content.
-case "$target" in
-  staging) go_native_pawn_slug="${CHESS_STUDIO_GO_NATIVE_PAWN_SLUG_ENABLED:-true}" ;;
-  *) go_native_pawn_slug="${CHESS_STUDIO_GO_NATIVE_PAWN_SLUG_ENABLED:-true}" ;;
-esac
-case "${go_native_pawn_slug,,}" in
-  true|false) go_native_pawn_slug="${go_native_pawn_slug,,}" ;;
-  *) echo "invalid CHESS_STUDIO_GO_NATIVE_PAWN_SLUG_ENABLED: $go_native_pawn_slug" >&2; exit 2 ;;
-esac
-# Native Go Chronicles area content and MapCode previews.
-case "$target" in
-  staging) go_native_chronicles="${CHESS_STUDIO_GO_NATIVE_CHRONICLES_ENABLED:-true}" ;;
-  *) go_native_chronicles="${CHESS_STUDIO_GO_NATIVE_CHRONICLES_ENABLED:-true}" ;;
-esac
-case "${go_native_chronicles,,}" in
-  true|false) go_native_chronicles="${go_native_chronicles,,}" ;;
-  *) echo "invalid CHESS_STUDIO_GO_NATIVE_CHRONICLES_ENABLED: $go_native_chronicles" >&2; exit 2 ;;
-esac
-# Native Go Chronicles runs (create, read, checkpoint).
-case "$target" in
-  staging) go_native_chronicles_runs="${CHESS_STUDIO_GO_NATIVE_CHRONICLES_RUNS_ENABLED:-true}" ;;
-  *) go_native_chronicles_runs="${CHESS_STUDIO_GO_NATIVE_CHRONICLES_RUNS_ENABLED:-true}" ;;
-esac
-case "${go_native_chronicles_runs,,}" in
-  true|false) go_native_chronicles_runs="${go_native_chronicles_runs,,}" ;;
-  *) echo "invalid CHESS_STUDIO_GO_NATIVE_CHRONICLES_RUNS_ENABLED: $go_native_chronicles_runs" >&2; exit 2 ;;
-esac
-# Native Go Admin feedback management.
-case "$target" in
-  staging) go_native_admin_feedback="${CHESS_STUDIO_GO_NATIVE_ADMIN_FEEDBACK_ENABLED:-true}" ;;
-  *) go_native_admin_feedback="${CHESS_STUDIO_GO_NATIVE_ADMIN_FEEDBACK_ENABLED:-true}" ;;
-esac
-case "${go_native_admin_feedback,,}" in
-  true|false) go_native_admin_feedback="${go_native_admin_feedback,,}" ;;
-  *) echo "invalid CHESS_STUDIO_GO_NATIVE_ADMIN_FEEDBACK_ENABLED: $go_native_admin_feedback" >&2; exit 2 ;;
-esac
-# Native Go Admin user tools.
-case "$target" in
-  staging) go_native_admin_users="${CHESS_STUDIO_GO_NATIVE_ADMIN_USERS_ENABLED:-true}" ;;
-  *) go_native_admin_users="${CHESS_STUDIO_GO_NATIVE_ADMIN_USERS_ENABLED:-true}" ;;
-esac
-case "${go_native_admin_users,,}" in
-  true|false) go_native_admin_users="${go_native_admin_users,,}" ;;
-  *) echo "invalid CHESS_STUDIO_GO_NATIVE_ADMIN_USERS_ENABLED: $go_native_admin_users" >&2; exit 2 ;;
-esac
-# Native Go Admin observability panel.
-case "$target" in
-  staging) go_native_admin_observability="${CHESS_STUDIO_GO_NATIVE_ADMIN_OBSERVABILITY_ENABLED:-true}" ;;
-  *) go_native_admin_observability="${CHESS_STUDIO_GO_NATIVE_ADMIN_OBSERVABILITY_ENABLED:-true}" ;;
-esac
-case "${go_native_admin_observability,,}" in
-  true|false) go_native_admin_observability="${go_native_admin_observability,,}" ;;
-  *) echo "invalid CHESS_STUDIO_GO_NATIVE_ADMIN_OBSERVABILITY_ENABLED: $go_native_admin_observability" >&2; exit 2 ;;
-esac
-# Python retirement (GO_PYTHON_RETIRED in the Go sidecar): no backend_* slot is
-# started, the Go sidecar serves every route itself, including /api/ready and
-# /api/release, and every native flag is forced on. It needs API "go" mode.
-case "$target" in
-  staging) python_retired="${CHESS_STUDIO_PYTHON_RETIRED:-true}" ;;
-  *) python_retired="${CHESS_STUDIO_PYTHON_RETIRED:-true}" ;;
-esac
-case "${python_retired,,}" in
-  true|false) python_retired="${python_retired,,}" ;;
-  *) echo "invalid CHESS_STUDIO_PYTHON_RETIRED: $python_retired" >&2; exit 2 ;;
-esac
-if [[ "$python_retired" == "true" ]]; then
-  if [[ "$api_edge_mode" != "go" ]]; then
-    echo "CHESS_STUDIO_PYTHON_RETIRED=true requires CHESS_STUDIO_API_EDGE_MODE=go" >&2
-    exit 2
-  fi
-  go_native_games_read=true
-  go_native_games_write=true
-  go_native_games_hint=true
-  go_native_analyze=true
-  go_native_system=true
-  go_native_profile=true
-  go_native_auth_session=true
-  go_native_login=true
-  go_native_account=true
-  go_native_recovery=true
-  go_native_feedback=true
-  go_native_matthias_read=true
-  go_native_narrative=true
-  go_native_pawn_slug=true
-  go_native_chronicles=true
-  go_native_chronicles_runs=true
-  go_native_admin_feedback=true
-  go_native_admin_users=true
-  go_native_admin_observability=true
-fi
+# The Go API (the pvp_* slots) serves every route: Python was retired from
+# staging on 2026-10-05 and from production on 2026-10-10. To bring Python
+# back, run "Production · rollback" to 6a558ff5 (see go-migration.md).
 pvp_sparring_username="${CHESS_PVP_SPARRING_USERNAME:-sparringmeister}"
 
 state_file="$state_dir/deployed.sha"
@@ -365,16 +146,8 @@ if [[ -s "$state_file" ]]; then
   [[ "$previous_sha" =~ ^[0-9a-f]{40}$ ]] || previous_sha=''
 fi
 
-image_ref() {
-  printf '%s%s' "$registry_image_prefix" "$1"
-}
-
 pvp_image_ref() {
   printf '%s%s' "$pvp_registry_image_prefix" "$1"
-}
-
-legacy_image_ref() {
-  printf 'chess-studio-backend:oci-%s' "$1"
 }
 
 prepare_signal_controller_disabled() {
@@ -440,73 +213,29 @@ deploy_watcher_diag_summary() {
   echo "OCI_DEPLOY_WATCHER_DIAG active=$active enabled=$enabled marker=$marker restarts=$restarts main_status=$main_status $metrics"
 }
 
-image_available_for_rollback() {
-  local target_sha="$1"
-  docker image inspect "$(image_ref "$target_sha")" >/dev/null 2>&1 || \
-    docker image inspect "$(legacy_image_ref "$target_sha")" >/dev/null 2>&1
-}
-
 compose() {
   local target_sha="$1"
   shift
   GIT_COMMIT_SHA="$target_sha" \
   CHESS_STUDIO_BLUE_SHA="$target_sha" \
   CHESS_STUDIO_GREEN_SHA="$target_sha" \
-  CHESS_STUDIO_LEGACY_SHA="${previous_sha:-$target_sha}" \
   CHESS_STUDIO_ENV_FILE="$env_file" \
   CHESS_STUDIO_BACKEND_PORT="$port" \
-  CHESS_STUDIO_BLUE_PORT="$((port + 1))" \
-  CHESS_STUDIO_GREEN_PORT="$((port + 2))" \
   CHESS_STUDIO_EDGE_CONFIG_DIR="$edge_config_dir" \
   CHESS_STUDIO_CORS_ORIGINS="$cors_origin" \
   CHESS_STUDIO_STATE_DIR="$state_dir" \
   CHESS_STUDIO_TRUST_CLOUDFLARE_CLIENT_IP="true" \
   CHESS_PVP_SPARRING_ENABLED="$pvp_sparring_enabled" \
-  CHESS_STUDIO_GO_NATIVE_GAMES_READ_ENABLED="$go_native_games_read" \
-  CHESS_STUDIO_GO_NATIVE_GAMES_WRITE_ENABLED="$go_native_games_write" \
-  CHESS_STUDIO_GO_NATIVE_GAMES_HINT_ENABLED="$go_native_games_hint" \
-  CHESS_STUDIO_GO_NATIVE_ANALYZE_ENABLED="$go_native_analyze" \
-  CHESS_STUDIO_GO_NATIVE_SYSTEM_ENABLED="$go_native_system" \
-  CHESS_STUDIO_GO_NATIVE_PROFILE_ENABLED="$go_native_profile" \
-  CHESS_STUDIO_GO_NATIVE_AUTH_SESSION_ENABLED="$go_native_auth_session" \
-  CHESS_STUDIO_GO_NATIVE_LOGIN_ENABLED="$go_native_login" \
-  CHESS_STUDIO_GO_NATIVE_ACCOUNT_ENABLED="$go_native_account" \
-  CHESS_STUDIO_GO_NATIVE_RECOVERY_ENABLED="$go_native_recovery" \
-  CHESS_STUDIO_GO_NATIVE_FEEDBACK_ENABLED="$go_native_feedback" \
-  CHESS_STUDIO_GO_NATIVE_MATTHIAS_READ_ENABLED="$go_native_matthias_read" \
-  CHESS_STUDIO_GO_NATIVE_NARRATIVE_ENABLED="$go_native_narrative" \
-  CHESS_STUDIO_GO_NATIVE_PAWN_SLUG_ENABLED="$go_native_pawn_slug" \
-  CHESS_STUDIO_GO_NATIVE_CHRONICLES_ENABLED="$go_native_chronicles" \
-  CHESS_STUDIO_GO_NATIVE_CHRONICLES_RUNS_ENABLED="$go_native_chronicles_runs" \
-  CHESS_STUDIO_GO_NATIVE_ADMIN_FEEDBACK_ENABLED="$go_native_admin_feedback" \
-  CHESS_STUDIO_GO_NATIVE_ADMIN_USERS_ENABLED="$go_native_admin_users" \
-  CHESS_STUDIO_GO_NATIVE_ADMIN_OBSERVABILITY_ENABLED="$go_native_admin_observability" \
-  CHESS_STUDIO_PYTHON_RETIRED="$python_retired" \
   CHESS_PVP_SPARRING_OWNER="$pvp_sparring_owner" \
   CHESS_PVP_SPARRING_USERNAME="$pvp_sparring_username" \
   CHESS_STUDIO_OCI_LOG_SERVICE_NAME="chess-studio-oci-backend-${target}-stdout" \
   docker compose -p "$project" -f "$compose_file" "$@"
 }
 
-slot_service() {
-  case "$1" in
-    blue|green) printf 'backend_%s\n' "$1" ;;
-    *) echo "invalid backend color: $1" >&2; return 64 ;;
-  esac
-}
-
 pvp_service() {
   case "$1" in
     blue|green) printf 'pvp_%s\n' "$1" ;;
     *) echo "invalid PvP color: $1" >&2; return 64 ;;
-  esac
-}
-
-slot_port() {
-  case "$1" in
-    blue) printf '%s\n' "$((port + 1))" ;;
-    green) printf '%s\n' "$((port + 2))" ;;
-    *) echo "invalid backend color: $1" >&2; return 64 ;;
   esac
 }
 
@@ -541,16 +270,10 @@ write_active_color() {
 
 render_edge() {
   local color="$1"
-  local pvp_mode="${2:-go}"
-  local committed_sha="${3:-${previous_sha:-}}"
-  # Only the candidate cutover passes the configured API mode. Rollbacks keep
-  # "direct": an older Go sidecar may not be able to front the whole API.
-  local api_mode="${4:-direct}"
+  local committed_sha="${2:-${previous_sha:-}}"
   python3 -S "$blue_green_edge" \
     --color "$color" \
-    --pvp-mode "$pvp_mode" \
     --committed-sha "$committed_sha" \
-    --api-mode "$api_mode" \
     --output "$edge_config_file"
 }
 
@@ -618,50 +341,9 @@ PY
   rm -f "$headers"
 }
 
-attest() {
-  local expected="$1"
-  local target_port="${2:-$port}"
-  local ready release rc
-  ready="$(mktemp)"
-  release="$(mktemp)"
-
-  if ! curl --fail --silent --show-error --max-time 8 \
-    "http://127.0.0.1:${target_port}/api/ready" >"$ready"; then
-    rm -f "$ready" "$release"
-    return 1
-  fi
-  if ! curl --fail --silent --show-error --max-time 8 \
-    "http://127.0.0.1:${target_port}/api/release" >"$release"; then
-    rm -f "$ready" "$release"
-    return 1
-  fi
-
-  if python3 - "$ready" "$release" "$expected" <<'PY'
-import json
-import pathlib
-import sys
-ready = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding='utf-8'))
-release = json.loads(pathlib.Path(sys.argv[2]).read_text(encoding='utf-8'))
-expected = sys.argv[3].lower()
-if ready.get('ok') is not True or ready.get('storage') != 'mongo':
-    raise SystemExit(1)
-if str(release.get('build') or '').lower() != expected:
-    raise SystemExit(1)
-PY
-  then
-    rc=0
-  else
-    rc=$?
-  fi
-  rm -f "$ready" "$release"
-  [[ "$rc" -eq 0 ]] || return "$rc"
-  cors_attest "$target_port"
-}
-
-# attest's Python-free twin: /api/ready and /api/release come from the Go
-# sidecar itself (identity routes), read from inside its container because the
-# sidecars publish no host port. CORS is accredited through the edge after the
-# cutover (cors_attest "$port").
+# /api/ready and /api/release of the candidate Go slot, read from inside its
+# container because the slots publish no host port. CORS is accredited through
+# the edge after the cutover (cors_attest "$port").
 go_attest() {
   local expected="$1"
   local service="$2"
@@ -694,16 +376,8 @@ PY
   return "$rc"
 }
 
-candidate_attest() {
-  if [[ "$python_retired" == "true" ]]; then
-    go_attest "$sha" "$candidate_pvp_service"
-  else
-    attest "$sha" "$candidate_port"
-  fi
-}
-
-# The staging owner's session token, minted by the Go sidecar
-# (`api-edge mint-token`) once Python is retired.
+# The staging owner's session token, minted by the Go slot
+# (`api-edge mint-token`).
 go_owner_token() {
   local pvp_service="$1"
   local fail_prefix="$2"
@@ -712,203 +386,56 @@ go_owner_token() {
 
 pvp_attest() {
   local service="$1"
-  local deployment_target="${2:-$target}"
-  local body
+  local body rc
   body="$(mktemp)"
   if ! compose "$sha" exec -T "$service" wget -q -O - http://127.0.0.1:8080/readyz >"$body"; then
     rm -f "$body"
     return 1
   fi
-  if python3 - "$body" "$pvp_sparring_enabled" "$deployment_target" "$sha" "$go_native_games_read" "$go_native_games_write" "$go_native_games_hint" "$go_native_analyze" "$go_native_system" "$go_native_profile" "$go_native_auth_session" "$go_native_login" "$go_native_account" "$go_native_recovery" "$go_native_feedback" "$go_native_matthias_read" "$go_native_narrative" "$go_native_pawn_slug" "$go_native_chronicles" "$go_native_chronicles_runs" "$go_native_admin_feedback" "$go_native_admin_users" "$go_native_admin_observability" "$python_retired" <<'PY'
+  # The Go slot serves everything: /readyz must report the exact release,
+  # pythonRetired, every native* route on and the expected virtual players.
+  if python3 - "$body" "$pvp_sparring_enabled" "$sha" <<'PY'
 import json
 import pathlib
 import sys
 payload = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding='utf-8'))
-env = __import__('os').environ
-deployment_target = str(sys.argv[3]).strip().lower()
-expected_release = str(sys.argv[4]).strip().lower()
-allow_staging_fallback = str(env.get('CHESS_STUDIO_PVP_ALLOW_PYTHON_FALLBACK_STAGING', 'false')).strip().lower() in {'1', 'true', 'yes', 'on'}
-expected_native = str(env.get('CHESS_STUDIO_PVP_NATIVE_PULSE_ENABLED', 'true')).strip().lower() in {'1', 'true', 'yes', 'on'}
-expected_lobby_read = str(env.get('CHESS_STUDIO_PVP_NATIVE_LOBBY_READ_ENABLED', 'true')).strip().lower() in {'1', 'true', 'yes', 'on'}
 expected_virtual_players = str(sys.argv[2]).strip().lower() in {'1', 'true', 'yes', 'on'}
-expected_roster = str(env.get('CHESS_STUDIO_PVP_NATIVE_ROSTER_ENABLED', 'true')).strip().lower() in {'1', 'true', 'yes', 'on'}
-expected_chat = str(env.get('CHESS_STUDIO_PVP_NATIVE_CHAT_ENABLED', 'true')).strip().lower() in {'1', 'true', 'yes', 'on'}
-expected_challenge_resolution = str(env.get('CHESS_STUDIO_PVP_NATIVE_CHALLENGE_RESOLUTION_ENABLED', 'true')).strip().lower() in {'1', 'true', 'yes', 'on'}
-expected_challenge_accept = str(env.get('CHESS_STUDIO_PVP_NATIVE_CHALLENGE_ACCEPT_ENABLED', 'true')).strip().lower() in {'1', 'true', 'yes', 'on'}
-expected_challenge_create = str(env.get('CHESS_STUDIO_PVP_NATIVE_CHALLENGE_CREATE_ENABLED', 'true')).strip().lower() in {'1', 'true', 'yes', 'on'}
-expected_match_handoff_cancel = str(env.get('CHESS_STUDIO_PVP_NATIVE_MATCH_HANDOFF_CANCEL_ENABLED', 'true')).strip().lower() in {'1', 'true', 'yes', 'on'}
-expected_match_ready = str(env.get('CHESS_STUDIO_PVP_NATIVE_MATCH_READY_ENABLED', 'true')).strip().lower() in {'1', 'true', 'yes', 'on'}
-expected_match_resign = str(env.get('CHESS_STUDIO_PVP_NATIVE_MATCH_RESIGN_ENABLED', 'true')).strip().lower() in {'1', 'true', 'yes', 'on'}
-expected_match_read = str(env.get('CHESS_STUDIO_PVP_NATIVE_MATCH_READ_ENABLED', 'true')).strip().lower() in {'1', 'true', 'yes', 'on'}
-expected_match_move = str(env.get('CHESS_STUDIO_PVP_NATIVE_MATCH_MOVE_ENABLED', 'true')).strip().lower() in {'1', 'true', 'yes', 'on'}
-expected_resident_move = str(env.get('CHESS_STUDIO_PVP_NATIVE_RESIDENT_MOVE_ENABLED', 'true')).strip().lower() in {'1', 'true', 'yes', 'on'}
+expected_release = str(sys.argv[3]).strip().lower()
+native = {key: value for key, value in payload.items() if key.startswith('native')}
 if (
     payload.get('status') != 'ready'
     or payload.get('service') != 'chess-studio-pvp-go'
     or str(payload.get('release') or '').strip().lower() != expected_release
-    or bool(payload.get('nativePulse')) != expected_native
-    or bool(payload.get('nativeLobbyRead')) != expected_lobby_read
+    or payload.get('pythonRetired') is not True
+    or len(native) < 30
+    or any(value is not True for value in native.values())
     or bool(payload.get('virtualPlayersEnabled')) != expected_virtual_players
-    or bool(payload.get('nativeRoster')) != expected_roster
-    or bool(payload.get('nativeChat')) != expected_chat
-    or bool(payload.get('nativeChallengeResolution')) != expected_challenge_resolution
-    or bool(payload.get('nativeChallengeAccept')) != expected_challenge_accept
-    or bool(payload.get('nativeChallengeCreate')) != expected_challenge_create
-    or bool(payload.get('nativeMatchHandoffCancel')) != expected_match_handoff_cancel
-    or bool(payload.get('nativeMatchReady')) != expected_match_ready
-    or bool(payload.get('nativeMatchResign')) != expected_match_resign
-    or bool(payload.get('nativeMatchRead')) != expected_match_read
-    or bool(payload.get('nativeMatchMove')) != expected_match_move
-    or bool(payload.get('nativeResidentMove')) != expected_resident_move
-    or bool(payload.get('nativeGamesRead')) != (str(sys.argv[5]).strip().lower() == 'true')
-    or bool(payload.get('nativeGamesWrite')) != (str(sys.argv[6]).strip().lower() == 'true')
-    or bool(payload.get('nativeGamesHint')) != (str(sys.argv[7]).strip().lower() == 'true')
-    or bool(payload.get('nativeGamesAnalyze')) != (str(sys.argv[8]).strip().lower() == 'true')
-    or bool(payload.get('nativeSystem')) != (str(sys.argv[9]).strip().lower() == 'true')
-    or bool(payload.get('nativeProfile')) != (str(sys.argv[10]).strip().lower() == 'true')
-    or bool(payload.get('nativeAuthSession')) != (str(sys.argv[11]).strip().lower() == 'true')
-    or bool(payload.get('nativeLogin')) != (str(sys.argv[12]).strip().lower() == 'true')
-    or bool(payload.get('nativeAccount')) != (str(sys.argv[13]).strip().lower() == 'true')
-    or bool(payload.get('nativeRecovery')) != (str(sys.argv[14]).strip().lower() == 'true')
-    or bool(payload.get('nativeFeedback')) != (str(sys.argv[15]).strip().lower() == 'true')
-    or bool(payload.get('nativeMatthias')) != (str(sys.argv[16]).strip().lower() == 'true')
-    or bool(payload.get('nativeNarrative')) != (str(sys.argv[17]).strip().lower() == 'true')
-    or bool(payload.get('nativePawnSlug')) != (str(sys.argv[18]).strip().lower() == 'true')
-    or bool(payload.get('nativeChronicles')) != (str(sys.argv[19]).strip().lower() == 'true')
-    or bool(payload.get('nativeChroniclesRuns')) != (str(sys.argv[20]).strip().lower() == 'true')
-    or bool(payload.get('nativeAdminFeedback')) != (str(sys.argv[21]).strip().lower() == 'true')
-    or bool(payload.get('nativeAdminUsers')) != (str(sys.argv[22]).strip().lower() == 'true')
-    or bool(payload.get('nativeAdminObservability')) != (str(sys.argv[23]).strip().lower() == 'true')
-    or bool(payload.get('pythonRetired')) != (str(sys.argv[24]).strip().lower() == 'true')
 ):
     raise SystemExit(1)
-
-if deployment_target == 'staging' and not allow_staging_fallback:
-    required_native = (
-        'nativePulse',
-        'nativeLobbyRead',
-        'nativeRoster',
-        'nativeChat',
-        'nativeChallengeResolution',
-        'nativeChallengeAccept',
-        'nativeChallengeCreate',
-        'nativeMatchHandoffCancel',
-        'nativeMatchReady',
-        'nativeMatchResign',
-        'nativeMatchRead',
-        'nativeMatchMove',
-        'nativeResidentMove',
-    )
-    if any(payload.get(key) is not True for key in required_native):
-        raise SystemExit(1)
-    if payload.get('virtualPlayersEnabled') is not True:
-        raise SystemExit(1)
 PY
   then
-    rm -f "$body"
-    return 0
+    rc=0
+  else
+    rc=1
   fi
   rm -f "$body"
-  return 1
+  return "$rc"
 }
 
 pvp_virtual_roster_attest() {
-  local backend_service="$1"
-  local pvp_service="$2"
-  local deployment_target="${3:-$target}"
+  local pvp_service="$1"
+  local deployment_target="${2:-$target}"
   local enabled="${pvp_sparring_enabled,,}"
 
   if [[ "$deployment_target" != "staging" ]] || [[ ! "$enabled" =~ ^(1|true|yes|on)$ ]]; then
     return 0
   fi
-
-  if [[ "$python_retired" == "true" ]]; then
-    go_virtual_roster_attest "$pvp_service"
-    return
-  fi
-
-  compose "$sha" exec -T "$backend_service" python - "$pvp_service" <<'PY'
-import asyncio
-import json
-import os
-import sys
-import urllib.request
-
-from auth import create_token
-from db import close_db
-from users_store import get_auth_state
-
-pvp_service = str(sys.argv[1]).strip()
-owner = str(os.environ.get("CHESS_PVP_SPARRING_OWNER") or "evilsysadmin").strip().lower()
-sparring = str(os.environ.get("CHESS_PVP_SPARRING_USERNAME") or "sparringmeister").strip().lower()
-
-
-async def load_owner_state():
-    try:
-        return await get_auth_state(owner, force=True)
-    finally:
-        await close_db()
-
-
-try:
-    exists, session_version = asyncio.run(load_owner_state())
-except Exception:
-    raise SystemExit("PVP_VIRTUAL_ROSTER_FAIL reason=owner-auth-state-unavailable")
-
-if not exists:
-    raise SystemExit("PVP_VIRTUAL_ROSTER_FAIL reason=owner-account-missing")
-
-token = create_token(owner, session_version)
-request = urllib.request.Request(
-    f"http://{pvp_service}:8080/api/pvp/lobby",
-    headers={
-        "Accept": "application/json",
-        "Authorization": f"Bearer {token}",
-        "Cache-Control": "no-cache",
-    },
-)
-try:
-    with urllib.request.urlopen(request, timeout=8) as response:
-        payload = json.load(response)
-except Exception:
-    raise SystemExit("PVP_VIRTUAL_ROSTER_FAIL reason=lobby-request-failed")
-
-rows = payload.get("roster")
-if not isinstance(rows, list):
-    raise SystemExit("PVP_VIRTUAL_ROSTER_FAIL reason=roster-not-list")
-
-by_name = {
-    str(row.get("username") or "").strip().lower(): row
-    for row in rows
-    if isinstance(row, dict)
+  go_virtual_roster_attest "$pvp_service"
 }
-required = (
-    sparring,
-    "otto_falk",
-    "marta_stein",
-    "viktor_kraus",
-)
-for username in required:
-    row = by_name.get(username)
-    if row is None:
-        raise SystemExit(f"PVP_VIRTUAL_ROSTER_FAIL reason=missing-rival rival={username}")
-    if row.get("isSelf") is True:
-        raise SystemExit(f"PVP_VIRTUAL_ROSTER_FAIL reason=virtual-rival-marked-self rival={username}")
 
-for username in ("otto_falk", "marta_stein", "viktor_kraus"):
-    row = by_name[username]
-    if str(row.get("actorKind") or "").strip().lower() != "resident":
-        raise SystemExit(f"PVP_VIRTUAL_ROSTER_FAIL reason=wrong-actor-kind rival={username}")
-
-print(
-    "PVP_VIRTUAL_ROSTER_OK "
-    f"sparring={sparring} residents=otto_falk,marta_stein,viktor_kraus"
-)
-PY
-}
-# pvp_virtual_roster_attest without Python: Go mints the owner token, the
-# lobby is read inside the sidecar (the token travels in the exec environment,
-# never on a command line) and the roster is judged here.
+# Go mints the owner token, the lobby is read inside the Go slot (the token
+# travels in the exec environment, never on a command line) and the roster is
+# judged here.
 go_virtual_roster_attest() {
   local pvp_service="$1"
   local token_line token body rc
@@ -967,43 +494,12 @@ PY
 }
 
 pvp_browser_token() {
-  local backend_service="$1"
-  if [[ "$python_retired" == "true" ]]; then
-    go_owner_token "$candidate_pvp_service" PVP_BROWSER_AUTH
-    return
-  fi
-  compose "$sha" exec -T "$backend_service" python - <<'PY'
-import asyncio
-import os
-
-from auth import create_token
-from db import close_db
-from users_store import get_auth_state
-
-owner = str(os.environ.get("CHESS_PVP_SPARRING_OWNER") or "evilsysadmin").strip().lower()
-
-
-async def load_owner_state():
-    try:
-        return await get_auth_state(owner, force=True)
-    finally:
-        await close_db()
-
-
-try:
-    exists, session_version = asyncio.run(load_owner_state())
-except Exception:
-    raise SystemExit("PVP_BROWSER_AUTH_FAIL reason=owner-auth-state-unavailable")
-if not exists:
-    raise SystemExit("PVP_BROWSER_AUTH_FAIL reason=owner-account-missing")
-print(f"PVP_BROWSER_TOKEN={create_token(owner, session_version)}")
-PY
+  go_owner_token "$candidate_pvp_service" PVP_BROWSER_AUTH
 }
 
 pvp_authenticated_browser_attest() {
-  local backend_service="$1"
-  local api_base="${2%/}"
-  local deployment_target="${3:-$target}"
+  local api_base="${1%/}"
+  local deployment_target="${2:-$target}"
   local token token_output token_line line probe endpoint expected_native request_id
   local preflight_headers preflight_status headers body status
 
@@ -1011,7 +507,7 @@ pvp_authenticated_browser_attest() {
     return 0
   fi
 
-  if ! token_output="$(pvp_browser_token "$backend_service")"; then
+  if ! token_output="$(pvp_browser_token)"; then
     echo "authenticated PvP browser probe could not mint a staging owner token" >&2
     return 1
   fi
@@ -1542,73 +1038,34 @@ PY
 
 rollback() {
   local failed_sha="$1"
-  local candidate_service="${candidate_service:-}"
   local candidate_pvp_service="${candidate_pvp_service:-}"
+  local rollback_mode="go"
   echo "rolling back OCI backend after failed candidate $failed_sha" >&2
 
-  if [[ -n "${previous_color:-}" ]]; then
-    local rollback_pvp_mode="python-direct"
-    # Once Python is retired the previous slot has no backend_* container, so
-    # nginx must not name one: the previous sidecar fronts the whole API.
-    local rollback_api_mode=direct
-    [[ "${python_retired:-false}" != "true" ]] || rollback_api_mode=go
-    # Preserve the previously accredited full-Go PvP authority whenever its
-    # paired sidecar is still healthy. Python-direct is only a compatibility
-    # escape hatch for a pre-sidecar generation or a genuinely unhealthy
-    # previous sidecar; a failed candidate must not silently downgrade PvP.
-    if [[ -n "$previous_sha" ]]; then
-      render_edge "$previous_color" go "$previous_sha" "$rollback_api_mode"
-      if reload_edge && wait_pvp_edge_attest "$port" "$previous_sha"; then
-        rollback_pvp_mode="go"
-      elif [[ "$rollback_api_mode" == "go" ]]; then
-        rollback_pvp_mode="go-unverified"
-      else
-        render_edge "$previous_color" direct "$previous_sha"
-        reload_edge || true
-      fi
-    elif [[ "$rollback_api_mode" == "go" ]]; then
-      render_edge "$previous_color" go "" go
-      reload_edge || true
-      rollback_pvp_mode="go-unverified"
-    else
-      render_edge "$previous_color" direct
-      reload_edge || true
-    fi
-    write_active_color "$previous_color"
-    if [[ -n "$previous_sha" ]]; then
-      record_successful_backend "$previous_sha"
-    fi
-    if [[ -n "$candidate_service" ]]; then
-      if [[ "${switch_complete:-0}" == "1" ]]; then
-        sleep "${CHESS_STUDIO_BLUE_GREEN_DRAIN_SECONDS:-50}"
-      fi
-      remove_service "$candidate_service"
-      [[ -z "$candidate_pvp_service" ]] || remove_service "$candidate_pvp_service"
-    fi
-    echo "CHESS_STUDIO_ROLLBACK_OK repo_ref=${previous_sha:-unknown} color=$previous_color pvp=$rollback_pvp_mode"
-    return 0
+  if [[ -z "${previous_color:-}" ]]; then
+    [[ -z "$candidate_pvp_service" ]] || remove_service "$candidate_pvp_service"
+    echo 'rollback could not restore a previous backend: no previous slot' >&2
+    return 1
   fi
 
-  if [[ "${python_retired:-false}" != "true" && "${switch_complete:-0}" == "1" && -n "$previous_sha" ]] && image_available_for_rollback "$previous_sha"; then
-    compose "$failed_sha" rm -f -s edge >/dev/null 2>&1 || true
-    compose "$previous_sha" up -d --no-build --force-recreate backend_legacy
-    for _ in $(seq 1 45); do
-      if attest "$previous_sha" "$port"; then
-        rm -f "$active_color_file"
-        record_successful_backend "$previous_sha"
-        [[ -z "$candidate_service" ]] || remove_service "$candidate_service"
-        [[ -z "$candidate_pvp_service" ]] || remove_service "$candidate_pvp_service"
-        echo "CHESS_STUDIO_ROLLBACK_OK repo_ref=$previous_sha color=legacy pvp=python-direct"
-        return 0
-      fi
-      sleep 2
-    done
+  # nginx goes back to the previous Go slot, which is still running until the
+  # candidate is committed (the drain only happens after every attestation).
+  render_edge "$previous_color" "${previous_sha:-}"
+  if ! reload_edge || [[ -z "${previous_sha:-}" ]] || ! wait_pvp_edge_attest "$port" "$previous_sha"; then
+    rollback_mode="go-unverified"
   fi
-
-  [[ -z "$candidate_service" ]] || remove_service "$candidate_service"
-  [[ -z "$candidate_pvp_service" ]] || remove_service "$candidate_pvp_service"
-  echo 'rollback could not restore a previous backend' >&2
-  return 1
+  write_active_color "$previous_color"
+  if [[ -n "${previous_sha:-}" ]]; then
+    record_successful_backend "$previous_sha"
+  fi
+  if [[ -n "$candidate_pvp_service" ]]; then
+    if [[ "${switch_complete:-0}" == "1" ]]; then
+      sleep "${CHESS_STUDIO_BLUE_GREEN_DRAIN_SECONDS:-50}"
+    fi
+    remove_service "$candidate_pvp_service"
+  fi
+  echo "CHESS_STUDIO_ROLLBACK_OK repo_ref=${previous_sha:-unknown} color=$previous_color pvp=$rollback_mode"
+  return 0
 }
 
 record_successful_backend() {
@@ -1963,7 +1420,6 @@ phase_done preflight "$preflight_started_ms"
 # CI already built and published the exact linux/arm64 backend image. Pull that
 # immutable artifact before touching the serving container; do not invoke
 # BuildKit on the A1 merely to retag an image that already exists in GHCR.
-target_image="$(image_ref "$sha")"
 pvp_target_image="$(pvp_image_ref "$sha")"
 image_pull_started_ms="$(now_ms)"
 # Main · backend image may still be publishing this SHA's images when a deploy
@@ -1980,11 +1436,6 @@ pull_immutable_image() {
   done
   return 1
 }
-if [[ "$python_retired" != "true" ]] && ! pull_immutable_image "$target_image"; then
-  echo "failed to pull immutable OCI backend image: $target_image" >&2
-  [[ -z "$previous_sha" ]] || git checkout --detach "$previous_sha" >/dev/null 2>&1 || true
-  exit 1
-fi
 if ! pull_immutable_image "$pvp_target_image"; then
   echo "failed to pull immutable PvP Go image: $pvp_target_image" >&2
   [[ -z "$previous_sha" ]] || git checkout --detach "$previous_sha" >/dev/null 2>&1 || true
@@ -1999,16 +1450,9 @@ if [[ -n "$previous_color" ]]; then
 else
   candidate_color=blue
 fi
-candidate_service="$(slot_service "$candidate_color")"
 candidate_pvp_service="$(pvp_service "$candidate_color")"
-candidate_port="$(slot_port "$candidate_color")"
-active_backend_service="$candidate_service"
-candidate_services=("$candidate_service" "$candidate_pvp_service")
-if [[ "$python_retired" == "true" ]]; then
-  # Only the Go sidecar runs; its container is also the backend log source.
-  active_backend_service="$candidate_pvp_service"
-  candidate_services=("$candidate_pvp_service")
-fi
+# The Go slot's container is also the backend log source for Alloy.
+active_backend_service="$candidate_pvp_service"
 switch_complete=0
 
 if ! compose "$sha" pull edge >/dev/null; then
@@ -2017,7 +1461,7 @@ if ! compose "$sha" pull edge >/dev/null; then
 fi
 
 compose_log="$(mktemp /tmp/chess-studio-compose-up.XXXXXX)"
-if ! compose "$sha" up -d --no-build --force-recreate "${candidate_services[@]}" >"$compose_log" 2>&1; then
+if ! compose "$sha" up -d --no-build --force-recreate "$candidate_pvp_service" >"$compose_log" 2>&1; then
   cat "$compose_log" >&2
   rm -f "$compose_log"
   rollback "$sha" || true
@@ -2029,18 +1473,18 @@ phase_done recreate "$recreate_started_ms"
 readiness_started_ms="$(now_ms)"
 candidate_ready=0
 for _ in $(seq 1 60); do
-  if candidate_attest && pvp_attest "$candidate_pvp_service" "$target"; then
+  if go_attest "$sha" "$candidate_pvp_service" && pvp_attest "$candidate_pvp_service"; then
     candidate_ready=1
     break
   fi
   sleep 2
 done
 if [[ "$candidate_ready" != "1" ]]; then
-  echo "candidate failed Python/PvP-Go readiness/build/CORS attestation: $sha color=$candidate_color python_retired=$python_retired" >&2
+  echo "candidate failed Go readiness/build attestation: $sha color=$candidate_color" >&2
   rollback "$sha" || true
   exit 43
 fi
-if ! pvp_virtual_roster_attest "$candidate_service" "$candidate_pvp_service" "$target"; then
+if ! pvp_virtual_roster_attest "$candidate_pvp_service" "$target"; then
   echo "candidate failed authenticated staging virtual-roster attestation: $sha color=$candidate_color" >&2
   rollback "$sha" || true
   exit 53
@@ -2048,7 +1492,7 @@ fi
 phase_done readiness "$readiness_started_ms"
 
 switch_started_ms="$(now_ms)"
-render_edge "$candidate_color" go "${previous_sha:-}" "$api_edge_mode"
+render_edge "$candidate_color" "${previous_sha:-}"
 if [[ -n "$previous_color" ]]; then
   if ! reload_edge; then
     echo "edge reload failed for candidate color=$candidate_color" >&2
@@ -2056,19 +1500,9 @@ if [[ -n "$previous_color" ]]; then
     exit 44
   fi
 else
-  legacy_id="$(docker ps -q \
-    --filter "label=com.docker.compose.project=$project" \
-    --filter 'label=com.docker.compose.service=backend' | head -n 1)"
-  if [[ -z "$legacy_id" ]]; then
-    legacy_id="$(docker ps -q \
-      --filter "label=com.docker.compose.project=$project" \
-      --filter 'label=com.docker.compose.service=backend_legacy' | head -n 1)"
-  fi
-  if [[ -n "$legacy_id" ]]; then
-    docker rm -f "$legacy_id" >/dev/null
-  fi
+  # First generation on this host: start the stable edge.
   if ! compose "$sha" up -d --no-build edge >/dev/null 2>&1; then
-    echo 'failed to start stable edge during blue/green migration' >&2
+    echo 'failed to start stable edge for the first blue/green generation' >&2
     switch_complete=1
     rollback "$sha" || true
     exit 44
@@ -2077,7 +1511,7 @@ fi
 switch_complete=1
 if ! wait_pvp_edge_attest "$port"; then
   echo "edge did not route PvP through Go after bounded convergence: color=$candidate_color" >&2
-  compose "$sha" ps "$candidate_service" "$candidate_pvp_service" edge >&2 || true
+  compose "$sha" ps "$candidate_pvp_service" edge >&2 || true
   compose "$sha" logs --no-color --tail=40 "$candidate_pvp_service" edge >&2 || true
   rollback "$sha" || true
   exit 45
@@ -2094,7 +1528,7 @@ if ! wait_pvp_browser_attest pvp_lobby_read_attest "http://127.0.0.1:${port}/api
   rollback "$sha" || true
   exit 51
 fi
-if ! pvp_authenticated_browser_attest "$candidate_service" "http://127.0.0.1:${port}/api" "$target"; then
+if ! pvp_authenticated_browser_attest "http://127.0.0.1:${port}/api" "$target"; then
   echo "edge PvP authenticated browser lobby/pulse attestation failed after cutover: color=$candidate_color" >&2
   compose "$sha" logs --no-color --tail=60 "$candidate_pvp_service" edge >&2 || true
   rollback "$sha" || true
@@ -2106,146 +1540,146 @@ if ! wait_pvp_browser_attest pvp_challenge_browser_attest "http://127.0.0.1:${po
   rollback "$sha" || true
   exit 49
 fi
-if [[ "$api_edge_mode" == "go" ]] && ! wait_pvp_browser_attest api_edge_attest "http://127.0.0.1:${port}/api/release"; then
+if ! wait_pvp_browser_attest api_edge_attest "http://127.0.0.1:${port}/api/release"; then
   echo "edge did not front the API through Go after cutover: color=$candidate_color" >&2
   compose "$sha" logs --no-color --tail=40 "$candidate_pvp_service" edge >&2 || true
   rollback "$sha" || true
   exit 58
 fi
-if [[ "$api_edge_mode" == "go" && "$go_native_games_read" == "true" ]] && ! wait_pvp_browser_attest games_native_attest "http://127.0.0.1:${port}/api/games"; then
+if ! wait_pvp_browser_attest games_native_attest "http://127.0.0.1:${port}/api/games"; then
   echo "native games routes did not answer through Go after cutover: color=$candidate_color" >&2
   compose "$sha" logs --no-color --tail=40 "$candidate_pvp_service" edge >&2 || true
   rollback "$sha" || true
   exit 59
 fi
-if [[ "$api_edge_mode" == "go" && "$go_native_games_write" == "true" ]] && ! wait_pvp_browser_attest games_native_attest "http://127.0.0.1:${port}/api/games/deploy-attest/move" POST; then
+if ! wait_pvp_browser_attest games_native_attest "http://127.0.0.1:${port}/api/games/deploy-attest/move" POST; then
   echo "native games writes did not answer through Go after cutover: color=$candidate_color" >&2
   compose "$sha" logs --no-color --tail=40 "$candidate_pvp_service" edge >&2 || true
   rollback "$sha" || true
   exit 60
 fi
-if [[ "$api_edge_mode" == "go" && "$go_native_games_hint" == "true" ]] && ! wait_pvp_browser_attest games_native_attest "http://127.0.0.1:${port}/api/games/deploy-attest/hint"; then
+if ! wait_pvp_browser_attest games_native_attest "http://127.0.0.1:${port}/api/games/deploy-attest/hint"; then
   echo "native games hint did not answer through Go after cutover: color=$candidate_color" >&2
   compose "$sha" logs --no-color --tail=40 "$candidate_pvp_service" edge >&2 || true
   rollback "$sha" || true
   exit 61
 fi
-if [[ "$api_edge_mode" == "go" && "$go_native_analyze" == "true" ]] && ! wait_pvp_browser_attest games_native_attest "http://127.0.0.1:${port}/api/analyze" POST; then
+if ! wait_pvp_browser_attest games_native_attest "http://127.0.0.1:${port}/api/analyze" POST; then
   echo "native analysis did not answer through Go after cutover: color=$candidate_color" >&2
   compose "$sha" logs --no-color --tail=40 "$candidate_pvp_service" edge >&2 || true
   rollback "$sha" || true
   exit 62
 fi
-if [[ "$api_edge_mode" == "go" && "$go_native_analyze" == "true" ]] && ! wait_pvp_browser_attest games_native_attest "http://127.0.0.1:${port}/api/analyze-move" POST; then
+if ! wait_pvp_browser_attest games_native_attest "http://127.0.0.1:${port}/api/analyze-move" POST; then
   echo "native move analysis did not answer through Go after cutover: color=$candidate_color" >&2
   compose "$sha" logs --no-color --tail=40 "$candidate_pvp_service" edge >&2 || true
   rollback "$sha" || true
   exit 63
 fi
-if [[ "$api_edge_mode" == "go" && "$go_native_system" == "true" ]] && ! wait_pvp_browser_attest games_native_attest "http://127.0.0.1:${port}/api/status" GET X-Chess-System-Native; then
+if ! wait_pvp_browser_attest games_native_attest "http://127.0.0.1:${port}/api/status" GET X-Chess-System-Native; then
   echo "native system routes did not answer through Go after cutover: color=$candidate_color" >&2
   compose "$sha" logs --no-color --tail=40 "$candidate_pvp_service" edge >&2 || true
   rollback "$sha" || true
   exit 65
 fi
-if [[ "$api_edge_mode" == "go" && "$go_native_profile" == "true" ]] && ! wait_pvp_browser_attest games_native_attest "http://127.0.0.1:${port}/api/profile" GET X-Chess-Profile-Native; then
+if ! wait_pvp_browser_attest games_native_attest "http://127.0.0.1:${port}/api/profile" GET X-Chess-Profile-Native; then
   echo "native profile did not answer through Go after cutover: color=$candidate_color" >&2
   compose "$sha" logs --no-color --tail=40 "$candidate_pvp_service" edge >&2 || true
   rollback "$sha" || true
   exit 67
 fi
-if [[ "$api_edge_mode" == "go" && "$go_native_auth_session" == "true" ]] && ! wait_pvp_browser_attest games_native_attest "http://127.0.0.1:${port}/api/auth/me" GET X-Chess-Session-Native; then
+if ! wait_pvp_browser_attest games_native_attest "http://127.0.0.1:${port}/api/auth/me" GET X-Chess-Session-Native; then
   echo "native session routes did not answer through Go after cutover: color=$candidate_color" >&2
   compose "$sha" logs --no-color --tail=40 "$candidate_pvp_service" edge >&2 || true
   rollback "$sha" || true
   exit 68
 fi
 # An empty login body is Go's 422: it reads no credentials and feeds no guard.
-if [[ "$api_edge_mode" == "go" && "$go_native_login" == "true" ]] && ! wait_pvp_browser_attest games_native_attest "http://127.0.0.1:${port}/api/auth/login" POST X-Chess-Auth-Native 422; then
+if ! wait_pvp_browser_attest games_native_attest "http://127.0.0.1:${port}/api/auth/login" POST X-Chess-Auth-Native 422; then
   echo "native login did not answer through Go after cutover: color=$candidate_color" >&2
   compose "$sha" logs --no-color --tail=40 "$candidate_pvp_service" edge >&2 || true
   rollback "$sha" || true
   exit 71
 fi
-if [[ "$api_edge_mode" == "go" && "$go_native_account" == "true" ]] && ! wait_pvp_browser_attest games_native_attest "http://127.0.0.1:${port}/api/auth/password" PUT X-Chess-Auth-Native; then
+if ! wait_pvp_browser_attest games_native_attest "http://127.0.0.1:${port}/api/auth/password" PUT X-Chess-Auth-Native; then
   echo "native account routes did not answer through Go after cutover: color=$candidate_color" >&2
   compose "$sha" logs --no-color --tail=40 "$candidate_pvp_service" edge >&2 || true
   rollback "$sha" || true
   exit 72
 fi
 # An empty reset body is Go's 422: no token is read, no mail is sent.
-if [[ "$api_edge_mode" == "go" && "$go_native_recovery" == "true" ]] && ! wait_pvp_browser_attest games_native_attest "http://127.0.0.1:${port}/api/auth/reset-password" POST X-Chess-Auth-Native 422; then
+if ! wait_pvp_browser_attest games_native_attest "http://127.0.0.1:${port}/api/auth/reset-password" POST X-Chess-Auth-Native 422; then
   echo "native recovery did not answer through Go after cutover: color=$candidate_color" >&2
   compose "$sha" logs --no-color --tail=40 "$candidate_pvp_service" edge >&2 || true
   rollback "$sha" || true
   exit 73
 fi
 # Anonymous GET /api/feedback/mine is Go's 401: nothing is read or written.
-if [[ "$api_edge_mode" == "go" && "$go_native_feedback" == "true" ]] && ! wait_pvp_browser_attest games_native_attest "http://127.0.0.1:${port}/api/feedback/mine" GET X-Chess-Feedback-Native 401; then
+if ! wait_pvp_browser_attest games_native_attest "http://127.0.0.1:${port}/api/feedback/mine" GET X-Chess-Feedback-Native 401; then
   echo "native feedback did not answer through Go after cutover: color=$candidate_color" >&2
   compose "$sha" logs --no-color --tail=40 "$candidate_pvp_service" edge >&2 || true
   rollback "$sha" || true
   exit 74
 fi
 # Anonymous GET /api/matthias/briefing is Go's 401: no memory is read.
-if [[ "$api_edge_mode" == "go" && "$go_native_matthias_read" == "true" ]] && ! wait_pvp_browser_attest games_native_attest "http://127.0.0.1:${port}/api/matthias/briefing" GET X-Chess-Matthias-Native 401; then
+if ! wait_pvp_browser_attest games_native_attest "http://127.0.0.1:${port}/api/matthias/briefing" GET X-Chess-Matthias-Native 401; then
   echo "native matthias did not answer through Go after cutover: color=$candidate_color" >&2
   compose "$sha" logs --no-color --tail=40 "$candidate_pvp_service" edge >&2 || true
   rollback "$sha" || true
   exit 76
 fi
 # Anonymous GET /api/admin/ai-metrics is Go's 401: no model is called.
-if [[ "$api_edge_mode" == "go" && "$go_native_narrative" == "true" ]] && ! wait_pvp_browser_attest games_native_attest "http://127.0.0.1:${port}/api/admin/ai-metrics" GET X-Chess-Narrative-Native 401; then
+if ! wait_pvp_browser_attest games_native_attest "http://127.0.0.1:${port}/api/admin/ai-metrics" GET X-Chess-Narrative-Native 401; then
   echo "native narrative did not answer through Go after cutover: color=$candidate_color" >&2
   compose "$sha" logs --no-color --tail=40 "$candidate_pvp_service" edge >&2 || true
   rollback "$sha" || true
   exit 77
 fi
 # Anonymous GET of a Pawn Slug stage is Go's 401.
-if [[ "$api_edge_mode" == "go" && "$go_native_pawn_slug" == "true" ]] && ! wait_pvp_browser_attest games_native_attest "http://127.0.0.1:${port}/api/pawn-slug/stages/pawn-slug-v1" GET X-Chess-PawnSlug-Native 401; then
+if ! wait_pvp_browser_attest games_native_attest "http://127.0.0.1:${port}/api/pawn-slug/stages/pawn-slug-v1" GET X-Chess-PawnSlug-Native 401; then
   echo "native pawn slug did not answer through Go after cutover: color=$candidate_color" >&2
   compose "$sha" logs --no-color --tail=40 "$candidate_pvp_service" edge >&2 || true
   rollback "$sha" || true
   exit 78
 fi
 # Anonymous GET of a Chronicles area is Go's 401.
-if [[ "$api_edge_mode" == "go" && "$go_native_chronicles" == "true" ]] && ! wait_pvp_browser_attest games_native_attest "http://127.0.0.1:${port}/api/chronicles/maps/ash-vault" GET X-Chess-Chronicles-Native 401; then
+if ! wait_pvp_browser_attest games_native_attest "http://127.0.0.1:${port}/api/chronicles/maps/ash-vault" GET X-Chess-Chronicles-Native 401; then
   echo "native chronicles did not answer through Go after cutover: color=$candidate_color" >&2
   compose "$sha" logs --no-color --tail=40 "$candidate_pvp_service" edge >&2 || true
   rollback "$sha" || true
   exit 79
 fi
 # Anonymous GET of a Chronicles run is Go's 401.
-if [[ "$api_edge_mode" == "go" && "$go_native_chronicles_runs" == "true" ]] && ! wait_pvp_browser_attest games_native_attest "http://127.0.0.1:${port}/api/chronicles/runs/attest" GET X-Chess-Chronicles-Native 401; then
+if ! wait_pvp_browser_attest games_native_attest "http://127.0.0.1:${port}/api/chronicles/runs/attest" GET X-Chess-Chronicles-Native 401; then
   echo "native chronicles runs did not answer through Go after cutover: color=$candidate_color" >&2
   compose "$sha" logs --no-color --tail=40 "$candidate_pvp_service" edge >&2 || true
   rollback "$sha" || true
   exit 80
 fi
 # Anonymous GET of Admin's feedback summary is Go's 401.
-if [[ "$api_edge_mode" == "go" && "$go_native_admin_feedback" == "true" ]] && ! wait_pvp_browser_attest games_native_attest "http://127.0.0.1:${port}/api/admin/feedback/summary" GET X-Chess-Admin-Native 401; then
+if ! wait_pvp_browser_attest games_native_attest "http://127.0.0.1:${port}/api/admin/feedback/summary" GET X-Chess-Admin-Native 401; then
   echo "native admin feedback did not answer through Go after cutover: color=$candidate_color" >&2
   compose "$sha" logs --no-color --tail=40 "$candidate_pvp_service" edge >&2 || true
   rollback "$sha" || true
   exit 81
 fi
 # Anonymous GET of Admin's user list is Go's 401.
-if [[ "$api_edge_mode" == "go" && "$go_native_admin_users" == "true" ]] && ! wait_pvp_browser_attest games_native_attest "http://127.0.0.1:${port}/api/admin/users" GET X-Chess-Admin-Native 401; then
+if ! wait_pvp_browser_attest games_native_attest "http://127.0.0.1:${port}/api/admin/users" GET X-Chess-Admin-Native 401; then
   echo "native admin users did not answer through Go after cutover: color=$candidate_color" >&2
   compose "$sha" logs --no-color --tail=40 "$candidate_pvp_service" edge >&2 || true
   rollback "$sha" || true
   exit 82
 fi
 # Anonymous GET of Admin's observability panel is Go's 401.
-if [[ "$api_edge_mode" == "go" && "$go_native_admin_observability" == "true" ]] && ! wait_pvp_browser_attest games_native_attest "http://127.0.0.1:${port}/api/admin/observability" GET X-Chess-Admin-Native 401; then
+if ! wait_pvp_browser_attest games_native_attest "http://127.0.0.1:${port}/api/admin/observability" GET X-Chess-Admin-Native 401; then
   echo "native admin observability did not answer through Go after cutover: color=$candidate_color" >&2
   compose "$sha" logs --no-color --tail=40 "$candidate_pvp_service" edge >&2 || true
   rollback "$sha" || true
   exit 83
 fi
-# Without Python the candidate exposes no host port, so the browser CORS
-# contract of the API (not only /api/pvp) is accredited through the edge.
-if [[ "$python_retired" == "true" ]] && ! wait_pvp_browser_attest cors_attest "$port"; then
+# The Go slots expose no host port, so the browser CORS contract of the API
+# (not only /api/pvp) is accredited through the edge.
+if ! wait_pvp_browser_attest cors_attest "$port"; then
   echo "Go API browser CORS attestation failed after cutover: color=$candidate_color" >&2
   compose "$sha" logs --no-color --tail=40 "$candidate_pvp_service" edge >&2 || true
   rollback "$sha" || true
@@ -2278,7 +1712,7 @@ if [[ "$target" == staging ]]; then
     rollback "$sha" || true
     exit 52
   fi
-  if ! pvp_authenticated_browser_attest "$candidate_service" "$public_api_url" "$target"; then
+  if ! pvp_authenticated_browser_attest "$public_api_url" "$target"; then
     echo "OCI staging public PvP authenticated browser lobby/pulse contract failed for $sha" >&2
     rollback "$sha" || true
     exit 57
@@ -2292,7 +1726,7 @@ fi
 phase_done tunnel "$tunnel_started_ms"
 
 record_successful_backend "$sha"
-if ! render_edge "$candidate_color" go "$sha" "$api_edge_mode" || ! reload_edge; then
+if ! render_edge "$candidate_color" "$sha" || ! reload_edge; then
   echo "failed to publish committed OCI generation marker: $sha color=$candidate_color" >&2
   rollback "$sha" || true
   exit 55
@@ -2301,7 +1735,6 @@ fi
 drain_started_ms="$(now_ms)"
 if [[ -n "$previous_color" ]]; then
   sleep "${CHESS_STUDIO_BLUE_GREEN_DRAIN_SECONDS:-50}"
-  remove_service "$(slot_service "$previous_color")"
   remove_service "$(pvp_service "$previous_color")"
 fi
 phase_done drain "$drain_started_ms"
@@ -2314,5 +1747,5 @@ fi
 agent_diag_summary || printf '%s\n' 'OCI_AGENT_DIAG unavailable'
 phase_done total "$total_started_ms"
 printf 'OCI_DEPLOY_TIMINGS target=%s phases=%s tunnel=%s color=%s\n' "$target" "${deploy_phase_summary%,}" "$tunnel_action" "$candidate_color"
-echo "CHESS_STUDIO_DEPLOY_OK target=$target repo_ref=$sha color=$candidate_color pvp=go api_edge=$api_edge_mode python_retired=$python_retired games_native=$go_native_games_read games_native_write=$go_native_games_write games_native_hint=$go_native_games_hint analyze_native=$go_native_analyze system_native=$go_native_system profile_native=$go_native_profile auth_session_native=$go_native_auth_session login_native=$go_native_login account_native=$go_native_account recovery_native=$go_native_recovery feedback_native=$go_native_feedback matthias_read_native=$go_native_matthias_read narrative_native=$go_native_narrative pawn_slug_native=$go_native_pawn_slug chronicles_native=$go_native_chronicles chronicles_runs_native=$go_native_chronicles_runs admin_feedback_native=$go_native_admin_feedback admin_users_native=$go_native_admin_users admin_observability_native=$go_native_admin_observability cors_origin=$cors_origin tunnel_action=$tunnel_action image=pulled observability=${observability_summary:-unknown}"
+echo "CHESS_STUDIO_DEPLOY_OK target=$target repo_ref=$sha color=$candidate_color backend=go cors_origin=$cors_origin tunnel_action=$tunnel_action image=pulled observability=${observability_summary:-unknown}"
 exit 0
