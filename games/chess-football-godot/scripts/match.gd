@@ -34,9 +34,12 @@ const RED_CARD_BEHIND_THRESHOLD := -10.0
 const KEEPER_LINE_OFFSET := 96.0
 const KEEPER_PRESS_MAX_OFFSET := 150.0
 const KEEPER_PRESS_TRIGGER_DISTANCE := 300.0
-const KEEPER_TRACK_Y_RATIO := 0.68
-const KEEPER_TRACK_MAX_Y := 94.0
-const KEEPER_TRACK_INTENSITY := 0.64
+const KEEPER_TRACK_Y_RATIO := 0.82
+const KEEPER_TRACK_MAX_Y := 155.0
+const KEEPER_TRACK_INTENSITY := 0.86
+const KEEPER_SHOT_READ_DISTANCE := 900.0
+const KEEPER_SHOT_READ_MIN_SPEED := 350.0
+const KEEPER_GOAL_COVER_MARGIN := 18.0
 const KEEPER_SAVE_RANGE := 58.0
 const KEEPER_SAVE_MIN_SPEED := 280.0
 const KEEPER_SAVE_Y_MARGIN := 36.0
@@ -57,8 +60,10 @@ const AI_PRESSURE_RADIUS := 180.0
 const AI_FORWARD_PASS_GAIN := 145.0
 const AI_DRIBBLE_LOOKAHEAD := 290.0
 const AI_SUPPORT_FORWARD := 225.0
+const AI_TEAMMATE_SEPARATION_RADIUS := 130.0
+const AI_TEAMMATE_SEPARATION_MAX_CORRECTION := 110.0
 const AI_COVER_DISTANCE := 150.0
-const AI_DEFENSIVE_SHIFT_RATIO := 0.27
+const AI_DEFENSIVE_SHIFT_RATIO := 0.16
 const AI_COVER_INTENSITY := 0.86
 const AI_TEAM_PRESS_INTENSITY := 0.75
 const AI_ADAPT_SAMPLE_SECONDS := 1.0
@@ -427,6 +432,10 @@ func _refresh_hud() -> void:
 func _handle_human(delta: float) -> void:
 	if Input.is_action_just_pressed("toggle_view"):
 		_toggle_camera_mode()
+	# The keeper is selected temporarily after a human-team save so the
+	# player can distribute. Once the ball leaves his hands, return control
+	# to an outfielder: otherwise _update_ai skips the goalkeeper forever.
+	_restore_outfield_control_after_keeper_release()
 	var direction := Input.get_vector("move_left", "move_right", "move_up", "move_down")
 	controlled.move_human(delta, direction, Input.is_action_pressed("sprint"))
 
@@ -727,6 +736,10 @@ func _update_ai(delta: float) -> void:
 					)
 					intensity = _ai_adaptive_intensity(AI_TEAM_PRESS_INTENSITY)
 
+			# Keep supporting teammates from targeting the same spot. The
+			# dribbler and lead defender retain direct control of their duels.
+			if ball.carrier != player and (team_has_ball or player != presser):
+				target = _ai_spaced_target(player, target)
 			player.move_ai(delta, target, intensity)
 
 			if (
@@ -780,6 +793,31 @@ func _ai_secondary_presser(team_id: int, primary: Footballer) -> Footballer:
 			best_distance = distance
 			best = player
 	return best
+
+# Soft tactical spacing, not a collision force: no player teleportation,
+# no repulsion from opponents during intentional dribbles or tackles.
+# A stable role/index tie-break resolves truly coincident destinations.
+func _ai_spaced_target(player: Footballer, target: Vector2) -> Vector2:
+	if player.role == "keeper" or player.has_ball:
+		return target
+	var correction := Vector2.ZERO
+	for teammate in teams[player.team_id]:
+		if teammate == player or teammate.sent_off or teammate.role == "keeper":
+			continue
+		var away: Vector2 = target - teammate.global_position
+		var distance := away.length()
+		if distance >= AI_TEAMMATE_SEPARATION_RADIUS:
+			continue
+		var direction := (
+			away / distance
+			if distance > 1.0
+			else Vector2(0.0, 1.0 if player.squad_index > teammate.squad_index else -1.0)
+		)
+		correction += direction * (AI_TEAMMATE_SEPARATION_RADIUS - distance)
+	return ChessFootballMath.clamp_to_pitch(
+		target + correction.limit_length(AI_TEAMMATE_SEPARATION_MAX_CORRECTION)
+	)
+
 
 func _ai_cover_target(player: Footballer, threat_position: Vector2) -> Vector2:
 	var own_goal: Vector2 = ChessFootballMath.goal_center(1 - player.team_id)
@@ -883,7 +921,18 @@ func _ai_support_target(player: Footballer) -> Vector2:
 	if ball.carrier == null:
 		return player.home_position
 	var forward: float = 1.0 if player.team_id == 0 else -1.0
-	var lane_offset: float = float(player.squad_index - 2) * 104.0
+	# Use distinct positional lanes rather than dragging all supporters into
+	# the dribbler's path. A wider field is only useful when the AI exploits it.
+	var lane_offset := 0.0
+	match player.role:
+		"defender":
+			lane_offset = -190.0
+		"midfielder":
+			lane_offset = 40.0
+		"wing":
+			lane_offset = 240.0
+		"forward":
+			lane_offset = -110.0
 	var role_push: float = 0.0
 	if player.role == "defender":
 		role_push = -55.0
@@ -894,7 +943,7 @@ func _ai_support_target(player: Footballer) -> Vector2:
 	var target := Vector2(
 		ball.carrier.global_position.x
 			+ forward * (_ai_adaptive_support_forward() + role_push + absf(lane_offset) * 0.18),
-		lerpf(player.home_position.y, ball.carrier.global_position.y + lane_offset, 0.42)
+		lerpf(player.home_position.y, ball.carrier.global_position.y + lane_offset, 0.26)
 	)
 	return ChessFootballMath.clamp_to_pitch(target)
 
@@ -912,7 +961,6 @@ func _nearest_opponent_to(player: Footballer) -> Footballer:
 	return best
 
 func _update_keeper_ai(player: Footballer, delta: float) -> void:
-	var own_goal := ChessFootballMath.goal_center(1 - player.team_id)
 	var away_from_goal := Vector2.RIGHT if player.team_id == 0 else Vector2.LEFT
 	var keeper_key: int = int(player.get_instance_id())
 
@@ -954,23 +1002,51 @@ func _update_keeper_ai(player: Footballer, delta: float) -> void:
 		return
 
 	keeper_distribution_started_at.erase(keeper_key)
-	var reference_position := ball.global_position
-	if ball.carrier != null:
-		reference_position = ball.carrier.global_position
+	var threat_target := _keeper_defensive_target(player)
+	var emergency := _keeper_reading_shot(player, threat_target.x)
+	player.move_ai(delta, threat_target, 1.0 if emergency else KEEPER_TRACK_INTENSITY)
 
-	var y_limit := minf(
+
+# Positioning uses a modest near-post shuffle for distant play; close danger
+# gets the full goal mouth. Incoming shots are read on the actual trajectory
+# rather than by blindly following the current position of the ball.
+func _keeper_defensive_target(player: Footballer) -> Vector2:
+	var own_goal := ChessFootballMath.goal_center(1 - player.team_id)
+	var facing_x := 1.0 if player.team_id == 0 else -1.0
+	var reference := ball.carrier.global_position if ball.carrier != null else ball.global_position
+	var danger_distance := absf(reference.x - own_goal.x)
+	var mouth_limit := minf(
 		ChessFootballMath.GOAL_HALF_HEIGHT * KEEPER_TRACK_Y_RATIO,
 		KEEPER_TRACK_MAX_Y,
 	)
-	var wanted_y := clampf(reference_position.y, own_goal.y - y_limit, own_goal.y + y_limit)
+	var coverage := clampf(1.0 - danger_distance / 1500.0, 0.23, 1.0)
+	var tracked_y := own_goal.y + clampf(reference.y - own_goal.y, -mouth_limit, mouth_limit) * coverage
 	var line_offset := KEEPER_LINE_OFFSET
-	var danger_distance := absf(reference_position.x - own_goal.x)
 	if ball.carrier != null and ball.carrier.team_id != player.team_id and danger_distance < KEEPER_PRESS_TRIGGER_DISTANCE:
 		var pressure := 1.0 - danger_distance / KEEPER_PRESS_TRIGGER_DISTANCE
 		line_offset = lerpf(KEEPER_LINE_OFFSET, KEEPER_PRESS_MAX_OFFSET, clampf(pressure, 0.0, 1.0))
+	var line_x := own_goal.x + facing_x * line_offset
+	if _keeper_reading_shot(player, line_x):
+		var intercept_y := ball.global_position.y + (
+			(line_x - ball.global_position.x) * ball.velocity.y / ball.velocity.x
+		)
+		# An obviously wide shot should not bait the goalkeeper out of position.
+		if absf(intercept_y - own_goal.y) <= ChessFootballMath.GOAL_HALF_HEIGHT + KEEPER_GOAL_COVER_MARGIN:
+			tracked_y = clampf(intercept_y, own_goal.y - mouth_limit, own_goal.y + mouth_limit)
+	return Vector2(line_x, tracked_y)
 
-	var target := Vector2(own_goal.x + away_from_goal.x * line_offset, wanted_y)
-	player.move_ai(delta, target, KEEPER_TRACK_INTENSITY)
+
+func _keeper_reading_shot(player: Footballer, line_x: float) -> bool:
+	if ball.carrier != null or ball.flight_height > KEEPER_SAVE_MAX_HEIGHT:
+		return false
+	var goal := ChessFootballMath.goal_center(1 - player.team_id)
+	var facing_x := 1.0 if player.team_id == 0 else -1.0
+	var shot_speed := -ball.velocity.x * facing_x
+	return (
+		shot_speed >= KEEPER_SHOT_READ_MIN_SPEED
+		and (ball.global_position.x - line_x) * facing_x > 0.0
+		and absf(ball.global_position.x - goal.x) <= KEEPER_SHOT_READ_DISTANCE
+	)
 
 func _keeper_pass_lane_clear(player: Footballer, teammate: Footballer) -> bool:
 	var segment: Vector2 = teammate.global_position - player.global_position
@@ -1467,6 +1543,22 @@ func _try_claim_loose_ball() -> void:
 		ball.attach_to(best)
 		if best.team_id == 0:
 			_select_player(best)
+
+func _restore_outfield_control_after_keeper_release() -> void:
+	if controlled == null or controlled.role != "keeper" or ball.carrier == controlled:
+		return
+	var best: Footballer = null
+	var best_distance := INF
+	for player in teams[0]:
+		if player.sent_off or player.role == "keeper":
+			continue
+		var distance: float = player.global_position.distance_squared_to(ball.global_position)
+		if distance < best_distance:
+			best_distance = distance
+			best = player
+	if best != null:
+		_select_player(best)
+
 
 func _best_switch_candidate() -> Footballer:
 	if (
@@ -1965,12 +2057,16 @@ func _move_human_penalty_keeper(axis: float, delta: float) -> void:
 		return
 	var goal := ChessFootballMath.goal_center(1)
 	var y_limit := ChessFootballMath.GOAL_HALF_HEIGHT - 14.0
+	var old_y := keeper.global_position.y
 	keeper.global_position.y = clampf(
-		keeper.global_position.y + clampf(axis, -1.0, 1.0) * PENALTY_KEEPER_MOVE_SPEED * delta,
+		old_y + clampf(axis, -1.0, 1.0) * PENALTY_KEEPER_MOVE_SPEED * delta,
 		goal.y - y_limit,
 		goal.y + y_limit,
 	)
-	keeper.velocity = Vector2.ZERO
+	# The manual penalty shuffle used to teleport visually with ZERO velocity,
+	# so even a moving keeper looked like an idle cardboard cutout.
+	keeper.velocity = Vector2(0.0, (keeper.global_position.y - old_y) / maxf(delta, 0.001))
+	keeper._sync_locomotion(false)
 
 func penalty_preview_visible() -> bool:
 	return (
@@ -2256,7 +2352,7 @@ func _spawn_match() -> void:
 	# creates actual playable space instead of leaving both teams clustered in
 	# the old 1640x860 footprint.
 	var home_x_ratio := [0.09, 0.26, 0.40, 0.46, 0.58]
-	var home_y_ratio := [0.48, 0.29, 0.48, 0.67, 0.48]
+	var home_y_ratio := [0.50, 0.20, 0.53, 0.80, 0.34]
 	for team_id in range(2):
 		for index in range(TEAM_SIZE):
 			var x: float = pitch.position.x + pitch.size.x * float(home_x_ratio[index])

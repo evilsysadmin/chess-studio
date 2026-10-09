@@ -23,6 +23,9 @@ static var _cached_directional_textures: Dictionary = {}
 static var _cached_3d_directional_frames: Dictionary = {}
 static var _cached_keeper_textures: Dictionary = {}
 static var _cached_keeper_frames: Dictionary = {}
+# Every 3D raster frame has a known alpha boot baseline. Cache it while the
+# CPU image is being cropped, not by reading textures back from WebGL each tick.
+static var _cached_3d_frame_bottoms: Dictionary = {}
 
 static func manifest() -> Dictionary:
 	if not _cached_manifest.is_empty():
@@ -136,6 +139,22 @@ static func _directional_run_texture(team_id: int) -> Texture2D:
 	_cached_directional_textures[key] = texture
 	return texture
 
+static func _register_frame_bottom(texture: ImageTexture, cropped: Image) -> void:
+	var visible: Rect2i = cropped.get_used_rect()
+	assert(visible.size.y >= 60 and visible.end.y <= cropped.get_height())
+	_cached_3d_frame_bottoms[texture.get_instance_id()] = float(visible.end.y)
+
+
+static func frame_bottom(texture: Texture2D) -> float:
+	if texture == null:
+		return footline()
+	return float(_cached_3d_frame_bottoms.get(texture.get_instance_id(), footline()))
+
+
+static func has_frame_bottom(texture: Texture2D) -> bool:
+	return texture != null and _cached_3d_frame_bottoms.has(texture.get_instance_id())
+
+
 static func _direction_frame_3d(
 	team_id: int, row: int, column: int, atlas: Texture2D, cell: Vector2
 ) -> Texture2D:
@@ -149,6 +168,7 @@ static func _direction_frame_3d(
 	))
 	assert(not region.is_empty(), "Empty directional 3D football frame")
 	var texture := ImageTexture.create_from_image(region)
+	_register_frame_bottom(texture, region)
 	_cached_3d_directional_frames[key] = texture
 	return texture
 
@@ -210,6 +230,7 @@ static func _keeper_frame_3d(team_id: int, row: int, column: int, atlas: Texture
 	var region := image.get_region(Rect2i(column * int(cell.x), row * int(cell.y), int(cell.x), int(cell.y)))
 	assert(region.get_size() == Vector2i(128, 144), "Chess Football: invalid goalkeeper frame")
 	var texture := ImageTexture.create_from_image(region)
+	_register_frame_bottom(texture, region)
 	_cached_keeper_frames[key] = texture
 	return texture
 
@@ -265,6 +286,7 @@ static func _run_frame_3d(team_id: int, column: int, atlas: Texture2D, cell: Vec
 	var region := source.get_region(Rect2i(column * int(cell.x), 0, int(cell.x), int(cell.y)))
 	assert(not region.is_empty(), "Empty 3D football frame")
 	var texture := ImageTexture.create_from_image(region)
+	_register_frame_bottom(texture, region)
 	_cached_3d_run_frames[key] = texture
 	return texture
 
