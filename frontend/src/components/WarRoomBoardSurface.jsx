@@ -1,4 +1,5 @@
 import { lazy, memo, Suspense, useLayoutEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { warRoomFirstFrameReady } from './WarRoomSceneReadiness.js';
 import Board from './Board.jsx';
 import WarRoomBoardZoom from './WarRoomBoardZoom.jsx';
@@ -119,7 +120,7 @@ const WarRoomBoardSurface = memo(function WarRoomBoardSurface({
           <Board3D key={`${boardProps?.gameId || 'war-room'}-${retry}`} {...boardProps} />
         </Suspense>
       </WarRoomBoardZoom>
-      {!ready && (
+      {!ready && typeof document !== 'undefined' && createPortal(
         <div className="route-loading scene-transition-cover" role="status" aria-live="polite">
           <strong className="scene-transition-title">LOADING</strong>
           <span className={loadingClassName}>{loadingLabel}</span>
@@ -133,7 +134,8 @@ const WarRoomBoardSurface = memo(function WarRoomBoardSurface({
               }}>Reintentar</button>
             </div>
           )}
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   );
