@@ -29,9 +29,22 @@ def _read(relative: str) -> Any:
 def _runtime_id(source_id: str) -> str:
     if source_id in SAFE_LEGACY_ALIASES:
         return SAFE_LEGACY_ALIASES[source_id]
-    # Never silently replace a shipped dungeon with an empty campaign shell.
-    if (SHIPPED / (source_id + ".json")).is_file():
-        raise ValueError(f"Legacy dungeon {source_id} requires an explicit preserved-gameplay adapter")
+    # Publishing an authored campaign location must not make subsequent
+    # compiler runs illegal. Recompile only content *already identified* as
+    # that campaign source; old tactical dungeons are never silently replaced.
+    shipped = SHIPPED / (source_id + ".json")
+    if shipped.is_file():
+        try:
+            current = json.loads(shipped.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            raise ValueError(f"Published campaign map {source_id} cannot be verified") from exc
+        if (
+            current.get("id") != source_id
+            or current.get("progressionKey") != f"campaign-{source_id}-v1"
+            or current.get("layoutMode") != "authored"
+            or current.get("regionKind") not in {"settlement", "wilderness"}
+        ):
+            raise ValueError(f"Legacy dungeon {source_id} requires an explicit preserved-gameplay adapter")
     return source_id
 
 

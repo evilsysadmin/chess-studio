@@ -42,3 +42,22 @@ def test_generator_never_replaces_legacy_dungeons_or_has_hidden_side_effects():
     first = materialize_campaign_maps(["banner-road"])
     again = materialize_campaign_maps(["banner-road"])
     assert first == again
+
+
+
+def test_published_campaign_manifests_match_source_and_reciprocal_portals():
+    from chronicles_api import load_chronicles_manifest
+    import json
+
+    compiled = materialize_campaign_maps(["swordhaven-square", "banner-road"])
+    for runtime_id, candidate in compiled.items():
+        deployed, _revision = load_chronicles_manifest(runtime_id)
+        assert deployed == candidate
+        for exit_ in deployed["exits"]:
+            destination_id = exit_["action"]["effects"][0]["mapId"]
+            destination = compiled[destination_id]
+            back = exit_["action"]["effects"][0]["entryExitId"]
+            assert any(
+                e["id"] == back and e["action"]["effects"][0]["mapId"] == runtime_id
+                for e in destination["exits"]
+            )

@@ -1,5 +1,5 @@
 import { expect } from '@playwright/test';
-import { readFile } from 'node:fs/promises';
+import { readFile, readdir } from 'node:fs/promises';
 import { basename, resolve } from 'node:path';
 import { clickWarRoomMove } from './war-room-board-input.js';
 
@@ -12,28 +12,24 @@ export async function activateSetupControl(locator, timeout = 45_000) {
   await locator.dispatchEvent('click', undefined, { timeout });
 }
 
-const CHRONICLES_E2E_MAP_IDS = Object.freeze([
-  'ash-vault',
-  'black-glass-chapel',
-  'blind-king-archive',
-  'chain-basilica',
-  'crypt-eight-squares',
-  'echo-cistern',
-  'gallery-of-forks',
-  'hollow-bell-tower',
-  'iron-foundry',
-  'menagerie-of-ash',
-  'swordhaven-square',
-]);
+// E2E must serve the exact published Chronicles fallback catalog. Keeping an
+// 11-map literal here made every new authored region fail bootstrap in browser
+// tests even when the runtime manifests and Python/Go parity were correct.
 let chroniclesManifestPromise = null;
 
 function chroniclesE2EManifests() {
   if (!chroniclesManifestPromise) {
-    chroniclesManifestPromise = Promise.all(CHRONICLES_E2E_MAP_IDS.map(async (mapId) => {
-      const repoRoot = process.env.GITHUB_WORKSPACE || resolve(process.cwd(), basename(process.cwd()) === 'e2e' ? '..' : '.');
-      const path = resolve(repoRoot, 'frontend', 'src', 'chronicles', 'maps', `${mapId}.json`);
-      return [mapId, JSON.parse(await readFile(path, 'utf8'))];
-    })).then((entries) => Object.fromEntries(entries));
+    const repoRoot = process.env.GITHUB_WORKSPACE || resolve(process.cwd(), basename(process.cwd()) === 'e2e' ? '..' : '.');
+    const dir = resolve(repoRoot, 'frontend', 'src', 'chronicles', 'maps');
+    chroniclesManifestPromise = readdir(dir)
+      .then((names) => names.filter((name) => name.endsWith('.json')).sort())
+      .then((names) => Promise.all(names.map(async (name) => {
+        const manifest = JSON.parse(await readFile(resolve(dir, name), 'utf8'));
+        if (manifest.id !== name.slice(0, -5)) {
+          throw new Error(`Chronicles E2E manifest ID mismatch: ${name}`);
+        }
+        return [manifest.id, manifest];
+      }))).then((entries) => Object.fromEntries(entries));
   }
   return chroniclesManifestPromise;
 }
@@ -47,7 +43,7 @@ async function chroniclesE2ERunPayload({
   areaTransform = null,
 } = {}) {
   const manifests = await chroniclesE2EManifests();
-  const areas = CHRONICLES_E2E_MAP_IDS.map((mapId, index) => {
+  const areas = Object.keys(manifests).map((mapId, index) => {
     const manifest = typeof areaTransform === 'function'
       ? areaTransform(mapId, manifests[mapId])
       : manifests[mapId];
