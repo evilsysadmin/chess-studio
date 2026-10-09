@@ -182,19 +182,52 @@ export function chroniclesMergeRemoteSavedRuns(scope, remoteRuns, { expectedOwne
 }
 
 /** Mark an id as server-persisted once its authoritative bootstrap succeeds. */
-export function chroniclesMarkSavedRunRemote(scope, runId) {
+/** Confirm a POST with the server-owned run ID, not its idempotency key.
+ * POST is repeatable with the provisional key until confirmation. Afterwards
+ * the canonical UUID is the sole identity used by GET/checkpoint/delete.
+ * Never rekey a run that has been replaced or belongs to another user.
+ */
+export function chroniclesMarkSavedRunRemote(scope, runId, authoritativeRunId = runId) {
   legacyStorageKeyFor(scope);
+  const serverId = typeof authoritativeRunId === 'string' ? authoritativeRunId.trim() : '';
+  if (!serverId) return null;
+  const active = readRunState(scope);
+  if (!active || active.ended || active.id !== runId) return null;
   const runs = readSaveCatalog();
   const row = runs.find((item) => item.id === runId);
+
+  if (serverId !== runId) {
+    // A fresh POST alone may change an idempotency token into a server ID.
+    // A GET resume must never rename an already confirmed run.
+    if (!active.pending) return null;
+    const existing = runs.find((item) => item.id === serverId);
+    const now = Date.now();
+    const confirmed = {
+      ...(existing || {}),
+      ...(row || {}),
+      id: serverId,
+      title: row?.title || existing?.title || `Expedición ${serverId.slice(0, 8)}`,
+      entryMapId: row?.entryMapId || existing?.entryMapId || active.entryMapId || null,
+      currentMapId: existing?.currentMapId || row?.currentMapId || active.entryMapId || null,
+      createdAt: row?.createdAt || existing?.createdAt || now,
+      updatedAt: Math.max(row?.updatedAt || 0, existing?.updatedAt || 0, now),
+      remote: true,
+      pending: false,
+    };
+    writeSaveCatalog([confirmed, ...runs.filter((item) => item.id !== runId && item.id !== serverId)]);
+    writeRunState({ ...active, id: serverId, remote: true, pending: false });
+    return serverId;
+  }
+
   if (row && (!row.remote || row.pending)) {
     row.remote = true;
     row.pending = false;
     writeSaveCatalog(runs);
   }
-  const active = readRunState(scope);
-  if (active?.id === runId && (!active.remote || active.pending)) {
+  if (!active.remote || active.pending) {
     writeRunState({ ...active, remote: true, pending: false });
   }
+  return serverId;
 }
 
 export function chroniclesSelectedRunIsRemote(scope, runId) {
