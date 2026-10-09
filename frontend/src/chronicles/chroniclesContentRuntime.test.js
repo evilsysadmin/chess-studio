@@ -207,3 +207,72 @@ describe('Chronicles authored overworld coordinate gates', () => {
     expect(chroniclesContentInteractions({ x: 2, y: 2 }, map, () => '#')).toEqual([]);
   });
 });
+
+
+describe('Chronicles spatial traders and atomic exchanges', () => {
+  const vendor = {
+    id: 'swordhaven-quartermaster', kind: 'merchant', x: 3, y: 2,
+    label: 'Comprar vendaje (3 monedas)',
+    lockedLabel: 'Necesitas 3 monedas',
+    requirements: [{ itemId: 'crown-coin', quantity: 3, message: 'Te faltan monedas.' }],
+    action: { effects: [{
+      type: 'exchange-item', costItemId: 'crown-coin', costQuantity: 3,
+      itemId: 'field-bandage', name: 'Vendaje de campaña',
+      description: 'Provisiones del camino.', quantity: 1,
+    }] },
+  };
+  const map = { triggers: [], interactables: [vendor], treasures: [], traps: [], exits: [] };
+  const tileAt = () => '.';
+
+  it('locks an unaffordable merchant at its actual world tile with grounded feedback', () => {
+    const state = { x: 3, y: 2, inventory: { 'crown-coin': { quantity: 2 } } };
+    const [interaction] = chroniclesContentInteractions(state, map, tileAt);
+    expect(interaction).toMatchObject({
+      id: 'swordhaven-quartermaster', locked: true, label: 'Necesitas 3 monedas',
+    });
+    expect(chroniclesContentLockedMessage(state, vendor)).toBe('Te faltan monedas.');
+    expect(chroniclesContentInteractions({ ...state, x: 2 }, map, tileAt)).toEqual([]);
+    expect(chroniclesContentInteractions({
+      ...state, inventory: { 'crown-coin': { quantity: 3 } },
+    }, map, tileAt)[0]).toMatchObject({ locked: false, label: 'Comprar vendaje (3 monedas)' });
+  });
+
+  it('exchanges payment and merchandise in the same state transition and supports repeat sales', () => {
+    const buy = vendor.action.effects;
+    const state = { inventory: {
+      'crown-coin': { id: 'crown-coin', name: 'Moneda', quantity: 7 },
+    } };
+    const first = chroniclesApplyContentEffects(state, buy);
+    expect(chroniclesInventoryEntries(first)).toEqual([
+      expect.objectContaining({ id: 'field-bandage', quantity: 1 }),
+      expect.objectContaining({ id: 'crown-coin', quantity: 4 }),
+    ]);
+    const second = chroniclesApplyContentEffects(first, buy);
+    expect(second.inventory['field-bandage'].quantity).toBe(2);
+    expect(second.inventory['crown-coin'].quantity).toBe(1);
+    const denied = chroniclesApplyContentEffects(second, buy);
+    expect(denied).toBe(second);
+    expect(state.inventory).not.toHaveProperty('field-bandage');
+  });
+
+  it('rejects free, malformed or overflowing trades without changing the inventory', () => {
+    const state = { inventory: { 'crown-coin': { id: 'crown-coin', quantity: 5 } } };
+    const item = { itemId: 'field-bandage', name: 'Vendaje de campaña', quantity: 1 };
+    for (const malformed of [
+      { ...item, costItemId: 'crown-coin', costQuantity: 0 },
+      { ...item, costItemId: 'crown-coin', costQuantity: -1 },
+      { ...item, costItemId: 'crown-coin', costQuantity: 1.5 },
+      { ...item, costItemId: 'crown-coin', costQuantity: 1, quantity: 0 },
+      { ...item, costItemId: 'crown-coin', costQuantity: 1, quantity: 10000 },
+      { ...item, costItemId: 'field-bandage', costQuantity: 1 },
+      { ...item, costItemId: 'crown-coin', costQuantity: 6 },
+    ]) {
+      expect(chroniclesApplyContentEffects(state, [{ type: 'exchange-item', ...malformed }])).toBe(state);
+    }
+    const full = { inventory: {
+      ...state.inventory,
+      'field-bandage': { id: 'field-bandage', name: 'Vendaje de campaña', quantity: 9999 },
+    } };
+    expect(chroniclesApplyContentEffects(full, vendor.action.effects)).toBe(full);
+  });
+});
