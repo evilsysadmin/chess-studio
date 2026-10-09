@@ -167,6 +167,59 @@ async function captureElement(page, locator, path) {
   });
 }
 
+
+test('Chronicles · Swordhaven 3D visual prototype · desktop', async ({ browser }) => {
+  // This runs the REAL first-person renderer with an authored-like area envelope
+  // but uses a known legacy area ID so no production run/catalog is modified.
+  test.setTimeout(240_000);
+  await mkdir(ARTIFACT_DIR, { recursive: true });
+  const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+  const page = await context.newPage();
+  try {
+    await openChronicles(page, 'swordhaven-preview', {
+      chroniclesCurrentMapId: 'gallery-of-forks',
+      chroniclesAreaTransform(mapId, manifest) {
+        if (mapId !== 'gallery-of-forks') return manifest;
+        const grid = createSwordhavenWalkGrid();
+        const shops = SWORDHAVEN_INTERACTION_CELLS.map(({ id, x, y }) => [id, x, y]);
+        return {
+          ...manifest,
+          title: 'Swordhaven · visual prototype',
+          regionKind: 'settlement',
+          grid,
+          materials: null,
+          partyStart: SWORDHAVEN_SPAWN,
+          enemies: [],
+          initialFlags: {},
+          triggers: [],
+          treasures: [],
+          traps: [],
+          exits: [],
+          interactables: shops.map(([id, x, y]) => ({
+            id, kind: 'lore', label: 'Visitar establecimiento', x, y,
+            action: { effects: [], message: 'Swordhaven se prepara para recibir viajeros.' },
+          })),
+          initialJournal: { id: 'swordhaven-arrival', title: 'Swordhaven', body: 'Un nuevo comienzo.', sigil: 'I' },
+          introMessage: 'Las puertas de Swordhaven están abiertas.',
+        };
+      },
+    });
+    const stage = page.locator('[data-chronicles-renderer="three"]');
+    await expect(stage.locator('canvas')).toBeVisible({ timeout: 30_000 });
+    await expect(page.locator('.chronicles-statusbar')).toContainText('SWORDHAVEN');
+    await expect(page.locator('.chronicles-statusbar')).not.toContainText('CRIPTA');
+    await expect(page.locator('.chronicles-renderer-error')).toHaveCount(0);
+    await page.screenshot({
+      path: ARTIFACT_DIR + '/chronicles-swordhaven-3d-prototype-desktop.png',
+      animations: 'disabled',
+      timeout: 60_000,
+    });
+  } finally {
+    await context.close();
+  }
+});
+
+
 for (const capture of CAPTURES) {
   test(`Chronicles · gameplay visual · ${capture.label}`, async ({ browser }) => {
     // Hosted SwiftShader makes large WebGL readbacks expensive. Keep this
@@ -581,54 +634,3 @@ for (const capture of CAPTURES) {
   });
 }
 
-
-test('Chronicles · Swordhaven 3D visual prototype · desktop', async ({ browser }) => {
-  // This runs the REAL first-person renderer with an authored-like area envelope
-  // but uses a known legacy area ID so no production run/catalog is modified.
-  test.setTimeout(240_000);
-  await mkdir(ARTIFACT_DIR, { recursive: true });
-  const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
-  const page = await context.newPage();
-  try {
-    await openChronicles(page, 'swordhaven-preview', {
-      chroniclesCurrentMapId: 'gallery-of-forks',
-      chroniclesAreaTransform(mapId, manifest) {
-        if (mapId !== 'gallery-of-forks') return manifest;
-        const grid = createSwordhavenWalkGrid();
-        const shops = SWORDHAVEN_INTERACTION_CELLS.map(({ id, x, y }) => [id, x, y]);
-        return {
-          ...manifest,
-          title: 'Swordhaven · visual prototype',
-          regionKind: 'settlement',
-          grid,
-          materials: null,
-          partyStart: SWORDHAVEN_SPAWN,
-          enemies: [],
-          initialFlags: {},
-          triggers: [],
-          treasures: [],
-          traps: [],
-          exits: [],
-          interactables: shops.map(([id, x, y]) => ({
-            id, kind: 'lore', label: 'Visitar establecimiento', x, y,
-            action: { effects: [], message: 'Swordhaven se prepara para recibir viajeros.' },
-          })),
-          initialJournal: { id: 'swordhaven-arrival', title: 'Swordhaven', body: 'Un nuevo comienzo.', sigil: 'I' },
-          introMessage: 'Las puertas de Swordhaven están abiertas.',
-        };
-      },
-    });
-    const stage = page.locator('[data-chronicles-renderer="three"]');
-    await expect(stage.locator('canvas')).toBeVisible({ timeout: 30_000 });
-    await expect(page.locator('.chronicles-statusbar')).toContainText('SWORDHAVEN');
-    await expect(page.locator('.chronicles-statusbar')).not.toContainText('CRIPTA');
-    await expect(page.locator('.chronicles-renderer-error')).toHaveCount(0);
-    await page.screenshot({
-      path: ARTIFACT_DIR + '/chronicles-swordhaven-3d-prototype-desktop.png',
-      animations: 'disabled',
-      timeout: 60_000,
-    });
-  } finally {
-    await context.close();
-  }
-});
