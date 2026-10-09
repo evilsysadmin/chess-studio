@@ -50,11 +50,11 @@ export default function ChroniclesSaveMenu({
         {screen === 'home' ? (
           <div className="chronicles-save-menu__actions">
             <button type="button" className="is-primary" onClick={onNew}>Nuevo juego</button>
-            <button type="button" disabled={!resume} onClick={() => onLoad(resume.id)}>
+            <button type="button" disabled={!resume || loading} onClick={() => onLoad(resume.id)}>
               Continuar partida
               {resume && <small>{resume.title} · {expeditionArea(resume)}</small>}
             </button>
-            <button type="button" disabled={!saves.length} onClick={() => openList('load')}>Cargar juego</button>
+            <button type="button" disabled={!saves.length || loading} onClick={() => openList('load')}>Cargar juego</button>
             <button type="button" onClick={() => openList('manage')}>Gestionar partidas</button>
             <button type="button" className="is-exit" onClick={onExit}>Volver al castillo</button>
           </div>
@@ -77,7 +77,7 @@ export default function ChroniclesSaveMenu({
                       {save.remote && <em>Guardada en servidor</em>}
                     </div>
                     <div className="chronicles-save-menu__row-actions">
-                      <button type="button" disabled={busyRunId !== null} onClick={() => onLoad(save.id)}>Cargar</button>
+                      <button type="button" disabled={busyRunId !== null || loading} onClick={() => onLoad(save.id)}>Cargar</button>
                       {screen === 'manage' && (
                         <>
                           <button type="button" onClick={() => {
