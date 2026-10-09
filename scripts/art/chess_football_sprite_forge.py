@@ -1423,6 +1423,17 @@ def build_outputs() -> dict[str, str]:
                 "front_diagonal": 3,
             },
         },
+        "goalkeeper_run": {
+            "quality_contract": "football-keeper-canon-v1",
+            "encoded_parts": ["keeper_canon_v1/keeper_run_v1.b64"],
+            "sha256": "41ca02f757545eb39c4f80e99eb358c167e8f9044153bedfd799ad488a88ca9c",
+            "source_sha256": "6d4536b1cc5c0f7e14cceb6b7c7595e56f63e74c74b9272dfd470263bfecef6f",
+            "cell": {"width": CELL_W, "height": CELL_H},
+            "frames": COLUMNS,
+            "footline": FOOTLINE,
+            "views": {"front": 0, "back": 1, "back_diagonal": 2, "front_diagonal": 3},
+            "side_fallback_row": 2,
+        },
         "field_variants": field_variants,
         "atlases": atlas_meta,
         "animations": [
