@@ -189,7 +189,7 @@ jobs:
         with:
           version: '4.127.1'
           node-version: '22'
-      - name: Verify Pages topology
+      - name: Pages check
         run: python3 scripts/cloudflare_staging_pages.py --release-fast-path
       - name: Build frontend for staging
         if: steps.frontend_artifact.outputs.hit != 'true'
