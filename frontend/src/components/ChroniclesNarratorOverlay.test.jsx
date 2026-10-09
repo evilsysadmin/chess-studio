@@ -1,8 +1,17 @@
 import { describe, expect, it } from 'vitest';
+import { renderToStaticMarkup } from 'react-dom/server';
+import React from 'react';
 
-import { shouldShowChroniclesNarration } from './ChroniclesNarratorOverlay.jsx';
+import ChroniclesNarratorOverlay, { shouldShowChroniclesNarration } from './ChroniclesNarratorOverlay.jsx';
 
 describe('ChroniclesNarratorOverlay', () => {
+  it('uses a town-and-crypt neutral chronicle heading and preserves the full message for accessibility', () => {
+    const html = renderToStaticMarkup(<ChroniclesNarratorOverlay message="Swordhaven: sol, calles empedradas y cinco puertas esperando viajeros." />);
+    expect(html).toContain('CRÓNICA DE EXPEDICIÓN');
+    expect(html).not.toContain('CRÓNICA DE LA CRIPTA');
+    expect(html).toContain('Swordhaven: sol, calles empedradas y cinco puertas esperando viajeros.');
+    expect(html).toContain('aria-live="polite"');
+  });
   it('deja el resumen rutinario del turno a la iniciativa y evita solapar overlays', () => {
     expect(shouldShowChroniclesNarration('Turno de las criaturas: un impacto encuentra carne, piedra o dignidad.')).toBe(false);
     expect(shouldShowChroniclesNarration('Combate por turnos · iniciativa = AGI + 1d8: Matthias 10 · Hildegard 9.')).toBe(false);
