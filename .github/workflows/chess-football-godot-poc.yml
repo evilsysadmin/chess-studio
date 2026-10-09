@@ -145,6 +145,21 @@ jobs:
             exit 1
           fi
           grep -q 'chess-football godot smoke: OK' "$log"
+      - name: Canonical 3D roster parity smoke
+        shell: bash
+        run: |
+          set -euo pipefail
+          godot="$GITHUB_WORKSPACE/.godot-ci/$GODOT_VERSION/godot"
+          log="$RUNNER_TEMP/chess-football-roster-parity-smoke.log"
+          set +e
+          timeout 30s "$godot" --headless --quit-after 360 --path games/chess-football-godot --script res://tests/canonical_roster_parity_smoke.gd 2>&1 | tee "$log"
+          status=${PIPESTATUS[0]}
+          set -e
+          if [[ "$status" -ne 0 ]] || grep -Eq 'SCRIPT ERROR:|Assertion failed|ERROR: Failed to load script|Parse Error:' "$log"; then
+            echo '::error::Football 3D canonical roster parity failed.'
+            exit 1
+          fi
+          grep -q 'chess-football canonical roster parity smoke: OK' "$log"
       - name: Mobile touch smoke
         shell: bash
         run: |
