@@ -1,0 +1,42 @@
+# Temporary, tightly scoped generator job for the authored Chronicles map PR.
+# It triggers only on this file's addition, commits generated contracts, then
+# will be deleted from the PR before merge.
+name: Chronicles · one-shot corpus refresh
+on:
+  push:
+    branches:
+      - feat/chronicles-swordhaven-first-quest-20261010
+    paths:
+      - .github/workflows/chronicles-fixture-refresh-once.yml
+permissions:
+  contents: write
+jobs:
+  regenerate:
+    if: github.repository == 'evilsysadmin/chess-studio'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install canonical generator dependencies
+        run: python -m pip install -r backend-python/requirements.txt
+      - name: Generate mirrors and Python/Go parity corpora
+        run: python scripts/chronicles_contracts.py
+      - name: Commit only regenerated contracts
+        run: |
+          set -euo pipefail
+          git add backend-go/internal/chronicles/testdata/python_chronicles_area_corpus.json
+          git add backend-go/internal/gamesapi/testdata/python_chronicles_runs_corpus.json
+          git diff --cached --check
+          if git diff --cached --quiet; then
+            echo 'Parity corpora already current.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'test(chronicles): regenerate Python-Go parity fixtures'
+          git push origin HEAD:feat/chronicles-swordhaven-first-quest-20261010
