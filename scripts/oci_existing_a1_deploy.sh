@@ -1966,12 +1966,26 @@ phase_done preflight "$preflight_started_ms"
 target_image="$(image_ref "$sha")"
 pvp_target_image="$(pvp_image_ref "$sha")"
 image_pull_started_ms="$(now_ms)"
-if [[ "$python_retired" != "true" ]] && ! docker pull --quiet "$target_image" >/dev/null; then
+# Main · backend image may still be publishing this SHA's images when a deploy
+# starts (it runs in parallel with Deploy to staging): wait for them, bounded.
+pull_immutable_image() {
+  local ref="$1"
+  local attempts="${CHESS_STUDIO_IMAGE_PULL_ATTEMPTS:-18}"
+  local attempt
+  for attempt in $(seq 1 "$attempts"); do
+    if docker pull --quiet "$ref" >/dev/null 2>&1; then
+      return 0
+    fi
+    [[ "$attempt" == "$attempts" ]] || sleep 10
+  done
+  return 1
+}
+if [[ "$python_retired" != "true" ]] && ! pull_immutable_image "$target_image"; then
   echo "failed to pull immutable OCI backend image: $target_image" >&2
   [[ -z "$previous_sha" ]] || git checkout --detach "$previous_sha" >/dev/null 2>&1 || true
   exit 1
 fi
-if ! docker pull --quiet "$pvp_target_image" >/dev/null; then
+if ! pull_immutable_image "$pvp_target_image"; then
   echo "failed to pull immutable PvP Go image: $pvp_target_image" >&2
   [[ -z "$previous_sha" ]] || git checkout --detach "$previous_sha" >/dev/null 2>&1 || true
   exit 1
