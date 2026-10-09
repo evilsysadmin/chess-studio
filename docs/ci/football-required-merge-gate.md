@@ -16,22 +16,36 @@ of `pull_request.paths`.
 - On diff-discovery errors, truncated PR lists, cancelled, skipped, pending or
   failing Football tests, the final gate **fails closed**.
 
-## One-time repository administrator action
+## Regla operativa de repositorio (sin exigir cambios de ruleset)
 
-The active ruleset [**Protect main**](https://github.com/evilsysadmin/chess-studio/rules/23068505)
-was observed with `required_status_checks: []` on 2026-10-10. GitHub will
-still permit an early merge until a repository administrator edits that
-ruleset:
+Por decisión de producto, este contrato se aplica como **regla explícita de
+trabajo del repositorio**, en lugar de solicitar ahora nuevos checks obligatorios
+en `Protect main`. El workflow y su check `Football · required visual gate`
+se conservan porque ayudan a verificar las iteraciones, pero **si GitHub no
+los exige en su ruleset, un fallo o un job pendiente NO bloquea por sí mismo
+el merge**.
 
-1. Open **Settings → Rules → Rulesets → Protect main**.
-2. In **Require status checks to pass**, add the exact status check
-   **`Football · required visual gate`**. Preserve all existing rules.
-3. Save the ruleset and verify it lists that check under
-   `required_status_checks`. Do not require the conditional `validate` or
-   `Real Chromium · Godot Web boot` jobs directly: they intentionally do not
-   run on unrelated PRs.
-4. Verify a Football PR with a deliberately failing visual check cannot merge
-   or automerge, while an unrelated PR can merge with the final gate green.
+Para toda PR que afecte a Football, incluyendo scripts de arte canónico,
+export o su workflow:
 
-**A passing CI workflow alone is not branch protection.** The check is not
-enforced until step 3 is confirmed. Issue #5322 tracks that final activation.
+1. Empezar en **Draft**; no usar automerge prematuro ni fusionar manualmente
+   mientras falten Godot `validate`, capturas visuales o arranque Chromium.
+2. Esperar el resultado **success** del check estable
+   `Football · required visual gate` sobre el SHA exacto que se fusionará.
+   Si falla, se cancela, queda omitido inesperadamente o no aparece,
+   corregir e iterar en la **misma PR**.
+3. Inspeccionar los PNG de comparación y juzgar tamaño aparente,
+   luminosidad entre orientaciones, alineación de botas/sombras y ausencia
+   de regresión visual. No basta con un test verde.
+4. Sólo entonces pasar a **Ready** y permitir el merge/automerge; comprobar
+   el resultado después de fusionar. Un commit posterior invalida la revisión
+   anterior y obliga a mirar los checks del nuevo SHA.
+5. Una PR ajena a Football debe recibir el gate verde sin ejecutar Godot ni
+   Chromium; no castigar otros productos por este criterio visual.
+
+Estas instrucciones complementan
+[`AGENTS.md`](../../AGENTS.md) y
+[`docs/operations/chess-football-product.md`](../operations/chess-football-product.md).
+**No afirmar protección automática del branch** donde no existe. La
+incidencia histórica #5320 motivó el workflow, pero la preferencia actual
+es calidad operacional documentada y no aumentar las condiciones del ruleset.
