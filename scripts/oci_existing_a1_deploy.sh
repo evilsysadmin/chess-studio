@@ -81,7 +81,7 @@ pvp_sparring_owner="${CHESS_PVP_SPARRING_OWNER:-evilsysadmin}"
 # per target so enabling or reverting it is a reviewed one-line change.
 case "$target" in
   staging) api_edge_mode="${CHESS_STUDIO_API_EDGE_MODE:-go}" ;;
-  *) api_edge_mode="${CHESS_STUDIO_API_EDGE_MODE:-direct}" ;;
+  *) api_edge_mode="${CHESS_STUDIO_API_EDGE_MODE:-go}" ;;
 esac
 case "$api_edge_mode" in
   direct|go) ;;
@@ -91,7 +91,7 @@ esac
 # receive traffic in API "go" mode; staging first, production stays off.
 case "$target" in
   staging) go_native_games_read="${CHESS_STUDIO_GO_NATIVE_GAMES_READ_ENABLED:-true}" ;;
-  *) go_native_games_read="${CHESS_STUDIO_GO_NATIVE_GAMES_READ_ENABLED:-false}" ;;
+  *) go_native_games_read="${CHESS_STUDIO_GO_NATIVE_GAMES_READ_ENABLED:-true}" ;;
 esac
 case "${go_native_games_read,,}" in
   true|false) go_native_games_read="${go_native_games_read,,}" ;;
@@ -101,7 +101,7 @@ esac
 # same rule as the reads, staging first, production stays off.
 case "$target" in
   staging) go_native_games_write="${CHESS_STUDIO_GO_NATIVE_GAMES_WRITE_ENABLED:-true}" ;;
-  *) go_native_games_write="${CHESS_STUDIO_GO_NATIVE_GAMES_WRITE_ENABLED:-false}" ;;
+  *) go_native_games_write="${CHESS_STUDIO_GO_NATIVE_GAMES_WRITE_ENABLED:-true}" ;;
 esac
 case "${go_native_games_write,,}" in
   true|false) go_native_games_write="${go_native_games_write,,}" ;;
@@ -110,7 +110,7 @@ esac
 # Native Go hint for games vs the CPU (GET /api/games/{id}/hint).
 case "$target" in
   staging) go_native_games_hint="${CHESS_STUDIO_GO_NATIVE_GAMES_HINT_ENABLED:-true}" ;;
-  *) go_native_games_hint="${CHESS_STUDIO_GO_NATIVE_GAMES_HINT_ENABLED:-false}" ;;
+  *) go_native_games_hint="${CHESS_STUDIO_GO_NATIVE_GAMES_HINT_ENABLED:-true}" ;;
 esac
 case "${go_native_games_hint,,}" in
   true|false) go_native_games_hint="${go_native_games_hint,,}" ;;
@@ -119,7 +119,7 @@ esac
 # Native Go analysis (POST /api/analyze and /api/analyze-move), optional engine work.
 case "$target" in
   staging) go_native_analyze="${CHESS_STUDIO_GO_NATIVE_ANALYZE_ENABLED:-true}" ;;
-  *) go_native_analyze="${CHESS_STUDIO_GO_NATIVE_ANALYZE_ENABLED:-false}" ;;
+  *) go_native_analyze="${CHESS_STUDIO_GO_NATIVE_ANALYZE_ENABLED:-true}" ;;
 esac
 case "${go_native_analyze,,}" in
   true|false) go_native_analyze="${go_native_analyze,,}" ;;
@@ -128,7 +128,7 @@ esac
 # Native Go system routes (GET /api/status, GET /api/features, POST /api/client-telemetry).
 case "$target" in
   staging) go_native_system="${CHESS_STUDIO_GO_NATIVE_SYSTEM_ENABLED:-true}" ;;
-  *) go_native_system="${CHESS_STUDIO_GO_NATIVE_SYSTEM_ENABLED:-false}" ;;
+  *) go_native_system="${CHESS_STUDIO_GO_NATIVE_SYSTEM_ENABLED:-true}" ;;
 esac
 case "${go_native_system,,}" in
   true|false) go_native_system="${go_native_system,,}" ;;
@@ -137,7 +137,7 @@ esac
 # Native Go profile (GET, PUT and PATCH /api/profile).
 case "$target" in
   staging) go_native_profile="${CHESS_STUDIO_GO_NATIVE_PROFILE_ENABLED:-true}" ;;
-  *) go_native_profile="${CHESS_STUDIO_GO_NATIVE_PROFILE_ENABLED:-false}" ;;
+  *) go_native_profile="${CHESS_STUDIO_GO_NATIVE_PROFILE_ENABLED:-true}" ;;
 esac
 case "${go_native_profile,,}" in
   true|false) go_native_profile="${go_native_profile,,}" ;;
@@ -146,7 +146,7 @@ esac
 # Native Go session routes (GET /api/auth/me, POST /api/auth/activity and /logout).
 case "$target" in
   staging) go_native_auth_session="${CHESS_STUDIO_GO_NATIVE_AUTH_SESSION_ENABLED:-true}" ;;
-  *) go_native_auth_session="${CHESS_STUDIO_GO_NATIVE_AUTH_SESSION_ENABLED:-false}" ;;
+  *) go_native_auth_session="${CHESS_STUDIO_GO_NATIVE_AUTH_SESSION_ENABLED:-true}" ;;
 esac
 case "${go_native_auth_session,,}" in
   true|false) go_native_auth_session="${go_native_auth_session,,}" ;;
@@ -155,7 +155,7 @@ esac
 # Native Go login (POST /api/auth/login).
 case "$target" in
   staging) go_native_login="${CHESS_STUDIO_GO_NATIVE_LOGIN_ENABLED:-true}" ;;
-  *) go_native_login="${CHESS_STUDIO_GO_NATIVE_LOGIN_ENABLED:-false}" ;;
+  *) go_native_login="${CHESS_STUDIO_GO_NATIVE_LOGIN_ENABLED:-true}" ;;
 esac
 case "${go_native_login,,}" in
   true|false) go_native_login="${go_native_login,,}" ;;
@@ -164,7 +164,7 @@ esac
 # Native Go account routes (register, password and email changes, delete-account).
 case "$target" in
   staging) go_native_account="${CHESS_STUDIO_GO_NATIVE_ACCOUNT_ENABLED:-true}" ;;
-  *) go_native_account="${CHESS_STUDIO_GO_NATIVE_ACCOUNT_ENABLED:-false}" ;;
+  *) go_native_account="${CHESS_STUDIO_GO_NATIVE_ACCOUNT_ENABLED:-true}" ;;
 esac
 case "${go_native_account,,}" in
   true|false) go_native_account="${go_native_account,,}" ;;
@@ -173,7 +173,7 @@ esac
 # Native Go password recovery (forgot-password, reset-password).
 case "$target" in
   staging) go_native_recovery="${CHESS_STUDIO_GO_NATIVE_RECOVERY_ENABLED:-true}" ;;
-  *) go_native_recovery="${CHESS_STUDIO_GO_NATIVE_RECOVERY_ENABLED:-false}" ;;
+  *) go_native_recovery="${CHESS_STUDIO_GO_NATIVE_RECOVERY_ENABLED:-true}" ;;
 esac
 case "${go_native_recovery,,}" in
   true|false) go_native_recovery="${go_native_recovery,,}" ;;
@@ -182,7 +182,7 @@ esac
 # Native Go user feedback (submit, mine, delete own).
 case "$target" in
   staging) go_native_feedback="${CHESS_STUDIO_GO_NATIVE_FEEDBACK_ENABLED:-true}" ;;
-  *) go_native_feedback="${CHESS_STUDIO_GO_NATIVE_FEEDBACK_ENABLED:-false}" ;;
+  *) go_native_feedback="${CHESS_STUDIO_GO_NATIVE_FEEDBACK_ENABLED:-true}" ;;
 esac
 case "${go_native_feedback,,}" in
   true|false) go_native_feedback="${go_native_feedback,,}" ;;
@@ -191,7 +191,7 @@ esac
 # Native Go Matthias read side (daily status, briefing, memory reset).
 case "$target" in
   staging) go_native_matthias_read="${CHESS_STUDIO_GO_NATIVE_MATTHIAS_READ_ENABLED:-true}" ;;
-  *) go_native_matthias_read="${CHESS_STUDIO_GO_NATIVE_MATTHIAS_READ_ENABLED:-false}" ;;
+  *) go_native_matthias_read="${CHESS_STUDIO_GO_NATIVE_MATTHIAS_READ_ENABLED:-true}" ;;
 esac
 case "${go_native_matthias_read,,}" in
   true|false) go_native_matthias_read="${go_native_matthias_read,,}" ;;
@@ -200,7 +200,7 @@ esac
 # Native Go narrative (/api/narrative, Matthias' audience, admin AI reads).
 case "$target" in
   staging) go_native_narrative="${CHESS_STUDIO_GO_NATIVE_NARRATIVE_ENABLED:-true}" ;;
-  *) go_native_narrative="${CHESS_STUDIO_GO_NATIVE_NARRATIVE_ENABLED:-false}" ;;
+  *) go_native_narrative="${CHESS_STUDIO_GO_NATIVE_NARRATIVE_ENABLED:-true}" ;;
 esac
 case "${go_native_narrative,,}" in
   true|false) go_native_narrative="${go_native_narrative,,}" ;;
@@ -209,7 +209,7 @@ esac
 # Native Go Pawn Slug stage content.
 case "$target" in
   staging) go_native_pawn_slug="${CHESS_STUDIO_GO_NATIVE_PAWN_SLUG_ENABLED:-true}" ;;
-  *) go_native_pawn_slug="${CHESS_STUDIO_GO_NATIVE_PAWN_SLUG_ENABLED:-false}" ;;
+  *) go_native_pawn_slug="${CHESS_STUDIO_GO_NATIVE_PAWN_SLUG_ENABLED:-true}" ;;
 esac
 case "${go_native_pawn_slug,,}" in
   true|false) go_native_pawn_slug="${go_native_pawn_slug,,}" ;;
@@ -218,7 +218,7 @@ esac
 # Native Go Chronicles area content and MapCode previews.
 case "$target" in
   staging) go_native_chronicles="${CHESS_STUDIO_GO_NATIVE_CHRONICLES_ENABLED:-true}" ;;
-  *) go_native_chronicles="${CHESS_STUDIO_GO_NATIVE_CHRONICLES_ENABLED:-false}" ;;
+  *) go_native_chronicles="${CHESS_STUDIO_GO_NATIVE_CHRONICLES_ENABLED:-true}" ;;
 esac
 case "${go_native_chronicles,,}" in
   true|false) go_native_chronicles="${go_native_chronicles,,}" ;;
@@ -227,7 +227,7 @@ esac
 # Native Go Chronicles runs (create, read, checkpoint).
 case "$target" in
   staging) go_native_chronicles_runs="${CHESS_STUDIO_GO_NATIVE_CHRONICLES_RUNS_ENABLED:-true}" ;;
-  *) go_native_chronicles_runs="${CHESS_STUDIO_GO_NATIVE_CHRONICLES_RUNS_ENABLED:-false}" ;;
+  *) go_native_chronicles_runs="${CHESS_STUDIO_GO_NATIVE_CHRONICLES_RUNS_ENABLED:-true}" ;;
 esac
 case "${go_native_chronicles_runs,,}" in
   true|false) go_native_chronicles_runs="${go_native_chronicles_runs,,}" ;;
@@ -236,7 +236,7 @@ esac
 # Native Go Admin feedback management.
 case "$target" in
   staging) go_native_admin_feedback="${CHESS_STUDIO_GO_NATIVE_ADMIN_FEEDBACK_ENABLED:-true}" ;;
-  *) go_native_admin_feedback="${CHESS_STUDIO_GO_NATIVE_ADMIN_FEEDBACK_ENABLED:-false}" ;;
+  *) go_native_admin_feedback="${CHESS_STUDIO_GO_NATIVE_ADMIN_FEEDBACK_ENABLED:-true}" ;;
 esac
 case "${go_native_admin_feedback,,}" in
   true|false) go_native_admin_feedback="${go_native_admin_feedback,,}" ;;
@@ -245,7 +245,7 @@ esac
 # Native Go Admin user tools.
 case "$target" in
   staging) go_native_admin_users="${CHESS_STUDIO_GO_NATIVE_ADMIN_USERS_ENABLED:-true}" ;;
-  *) go_native_admin_users="${CHESS_STUDIO_GO_NATIVE_ADMIN_USERS_ENABLED:-false}" ;;
+  *) go_native_admin_users="${CHESS_STUDIO_GO_NATIVE_ADMIN_USERS_ENABLED:-true}" ;;
 esac
 case "${go_native_admin_users,,}" in
   true|false) go_native_admin_users="${go_native_admin_users,,}" ;;
@@ -254,7 +254,7 @@ esac
 # Native Go Admin observability panel.
 case "$target" in
   staging) go_native_admin_observability="${CHESS_STUDIO_GO_NATIVE_ADMIN_OBSERVABILITY_ENABLED:-true}" ;;
-  *) go_native_admin_observability="${CHESS_STUDIO_GO_NATIVE_ADMIN_OBSERVABILITY_ENABLED:-false}" ;;
+  *) go_native_admin_observability="${CHESS_STUDIO_GO_NATIVE_ADMIN_OBSERVABILITY_ENABLED:-true}" ;;
 esac
 case "${go_native_admin_observability,,}" in
   true|false) go_native_admin_observability="${go_native_admin_observability,,}" ;;

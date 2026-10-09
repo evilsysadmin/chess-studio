@@ -605,13 +605,13 @@ assert 'CHESS_STUDIO_PVP_BROWSER_ATTEST_ATTEMPTS:-12' in deploy
 assert 'if "$attest_fn" "$endpoint" "${@:3}"; then' in deploy
 # Native games writes: staging first, attested through Go after the cutover.
 assert 'staging) go_native_games_write="${CHESS_STUDIO_GO_NATIVE_GAMES_WRITE_ENABLED:-true}" ;;' in deploy
-assert '*) go_native_games_write="${CHESS_STUDIO_GO_NATIVE_GAMES_WRITE_ENABLED:-false}" ;;' in deploy
+assert '*) go_native_games_write="${CHESS_STUDIO_GO_NATIVE_GAMES_WRITE_ENABLED:-true}" ;;' in deploy
 assert 'CHESS_STUDIO_GO_NATIVE_GAMES_WRITE_ENABLED="$go_native_games_write"' in deploy
 assert "payload.get('nativeGamesWrite')" in deploy
 assert 'games_native_attest "http://127.0.0.1:${port}/api/games/deploy-attest/move" POST; then' in deploy
 assert 'exit 60' in deploy
 assert 'staging) go_native_games_hint="${CHESS_STUDIO_GO_NATIVE_GAMES_HINT_ENABLED:-true}" ;;' in deploy
-assert '*) go_native_games_hint="${CHESS_STUDIO_GO_NATIVE_GAMES_HINT_ENABLED:-false}" ;;' in deploy
+assert '*) go_native_games_hint="${CHESS_STUDIO_GO_NATIVE_GAMES_HINT_ENABLED:-true}" ;;' in deploy
 assert 'CHESS_STUDIO_GO_NATIVE_GAMES_HINT_ENABLED="$go_native_games_hint"' in deploy
 assert "payload.get('nativeGamesHint')" in deploy
 assert 'games_native_attest "http://127.0.0.1:${port}/api/games/deploy-attest/hint"; then' in deploy
@@ -619,7 +619,7 @@ assert 'exit 61' in deploy
 assert 'GO_NATIVE_GAMES_HINT_ENABLED: "${CHESS_STUDIO_GO_NATIVE_GAMES_HINT_ENABLED:-false}"' in compose
 # Native position analysis: staging first, attested through Go after the cutover.
 assert 'staging) go_native_analyze="${CHESS_STUDIO_GO_NATIVE_ANALYZE_ENABLED:-true}" ;;' in deploy
-assert '*) go_native_analyze="${CHESS_STUDIO_GO_NATIVE_ANALYZE_ENABLED:-false}" ;;' in deploy
+assert '*) go_native_analyze="${CHESS_STUDIO_GO_NATIVE_ANALYZE_ENABLED:-true}" ;;' in deploy
 assert 'CHESS_STUDIO_GO_NATIVE_ANALYZE_ENABLED="$go_native_analyze"' in deploy
 assert "payload.get('nativeGamesAnalyze')" in deploy
 assert 'games_native_attest "http://127.0.0.1:${port}/api/analyze" POST; then' in deploy
@@ -629,7 +629,7 @@ assert 'exit 63' in deploy
 assert 'GO_NATIVE_ANALYZE_ENABLED: "${CHESS_STUDIO_GO_NATIVE_ANALYZE_ENABLED:-false}"' in compose
 # Native system routes: staging first, attested through Go after the cutover.
 assert 'staging) go_native_system="${CHESS_STUDIO_GO_NATIVE_SYSTEM_ENABLED:-true}" ;;' in deploy
-assert '*) go_native_system="${CHESS_STUDIO_GO_NATIVE_SYSTEM_ENABLED:-false}" ;;' in deploy
+assert '*) go_native_system="${CHESS_STUDIO_GO_NATIVE_SYSTEM_ENABLED:-true}" ;;' in deploy
 assert 'CHESS_STUDIO_GO_NATIVE_SYSTEM_ENABLED="$go_native_system"' in deploy
 assert "payload.get('nativeSystem')" in deploy
 assert 'games_native_attest "http://127.0.0.1:${port}/api/status" GET X-Chess-System-Native; then' in deploy
@@ -637,7 +637,7 @@ assert 'X-Chess-System-Native; then' in deploy.split('exit 65', 1)[0]
 assert 'GO_NATIVE_SYSTEM_ENABLED: "${CHESS_STUDIO_GO_NATIVE_SYSTEM_ENABLED:-false}"' in compose
 # Native profile: staging first, attested through Go after the cutover.
 assert 'staging) go_native_profile="${CHESS_STUDIO_GO_NATIVE_PROFILE_ENABLED:-true}" ;;' in deploy
-assert '*) go_native_profile="${CHESS_STUDIO_GO_NATIVE_PROFILE_ENABLED:-false}" ;;' in deploy
+assert '*) go_native_profile="${CHESS_STUDIO_GO_NATIVE_PROFILE_ENABLED:-true}" ;;' in deploy
 assert 'CHESS_STUDIO_GO_NATIVE_PROFILE_ENABLED="$go_native_profile"' in deploy
 assert "payload.get('nativeProfile')" in deploy
 assert 'games_native_attest "http://127.0.0.1:${port}/api/profile" GET X-Chess-Profile-Native; then' in deploy
@@ -645,7 +645,7 @@ assert 'exit 67' in deploy
 assert 'GO_NATIVE_PROFILE_ENABLED: "${CHESS_STUDIO_GO_NATIVE_PROFILE_ENABLED:-false}"' in compose
 # Native session routes: staging first, attested through Go after the cutover.
 assert 'staging) go_native_auth_session="${CHESS_STUDIO_GO_NATIVE_AUTH_SESSION_ENABLED:-true}" ;;' in deploy
-assert '*) go_native_auth_session="${CHESS_STUDIO_GO_NATIVE_AUTH_SESSION_ENABLED:-false}" ;;' in deploy
+assert '*) go_native_auth_session="${CHESS_STUDIO_GO_NATIVE_AUTH_SESSION_ENABLED:-true}" ;;' in deploy
 assert 'CHESS_STUDIO_GO_NATIVE_AUTH_SESSION_ENABLED="$go_native_auth_session"' in deploy
 assert "payload.get('nativeAuthSession')" in deploy
 assert 'games_native_attest "http://127.0.0.1:${port}/api/auth/me" GET X-Chess-Session-Native; then' in deploy
@@ -653,7 +653,7 @@ assert 'exit 68' in deploy
 assert 'GO_NATIVE_AUTH_SESSION_ENABLED: "${CHESS_STUDIO_GO_NATIVE_AUTH_SESSION_ENABLED:-false}"' in compose
 # Native login: staging first, attested by Go's 422 for an empty body.
 assert 'staging) go_native_login="${CHESS_STUDIO_GO_NATIVE_LOGIN_ENABLED:-true}" ;;' in deploy
-assert '*) go_native_login="${CHESS_STUDIO_GO_NATIVE_LOGIN_ENABLED:-false}" ;;' in deploy
+assert '*) go_native_login="${CHESS_STUDIO_GO_NATIVE_LOGIN_ENABLED:-true}" ;;' in deploy
 assert 'CHESS_STUDIO_GO_NATIVE_LOGIN_ENABLED="$go_native_login"' in deploy
 assert "payload.get('nativeLogin')" in deploy
 assert 'games_native_attest "http://127.0.0.1:${port}/api/auth/login" POST X-Chess-Auth-Native 422; then' in deploy
@@ -662,7 +662,7 @@ assert 'exit 71' in deploy
 assert 'GO_NATIVE_LOGIN_ENABLED: "${CHESS_STUDIO_GO_NATIVE_LOGIN_ENABLED:-false}"' in compose
 # Native account routes: staging first, attested through Go after the cutover.
 assert 'staging) go_native_account="${CHESS_STUDIO_GO_NATIVE_ACCOUNT_ENABLED:-true}" ;;' in deploy
-assert '*) go_native_account="${CHESS_STUDIO_GO_NATIVE_ACCOUNT_ENABLED:-false}" ;;' in deploy
+assert '*) go_native_account="${CHESS_STUDIO_GO_NATIVE_ACCOUNT_ENABLED:-true}" ;;' in deploy
 assert 'CHESS_STUDIO_GO_NATIVE_ACCOUNT_ENABLED="$go_native_account"' in deploy
 assert "payload.get('nativeAccount')" in deploy
 assert 'games_native_attest "http://127.0.0.1:${port}/api/auth/password" PUT X-Chess-Auth-Native; then' in deploy
@@ -670,7 +670,7 @@ assert 'exit 72' in deploy
 assert 'GO_NATIVE_ACCOUNT_ENABLED: "${CHESS_STUDIO_GO_NATIVE_ACCOUNT_ENABLED:-false}"' in compose
 # Native recovery: staging first, attested by Go's 422 for an empty body.
 assert 'staging) go_native_recovery="${CHESS_STUDIO_GO_NATIVE_RECOVERY_ENABLED:-true}" ;;' in deploy
-assert '*) go_native_recovery="${CHESS_STUDIO_GO_NATIVE_RECOVERY_ENABLED:-false}" ;;' in deploy
+assert '*) go_native_recovery="${CHESS_STUDIO_GO_NATIVE_RECOVERY_ENABLED:-true}" ;;' in deploy
 assert 'CHESS_STUDIO_GO_NATIVE_RECOVERY_ENABLED="$go_native_recovery"' in deploy
 assert "payload.get('nativeRecovery')" in deploy
 assert 'games_native_attest "http://127.0.0.1:${port}/api/auth/reset-password" POST X-Chess-Auth-Native 422; then' in deploy
@@ -678,7 +678,7 @@ assert 'exit 73' in deploy
 assert 'GO_NATIVE_RECOVERY_ENABLED: "${CHESS_STUDIO_GO_NATIVE_RECOVERY_ENABLED:-false}"' in compose
 # Native feedback: staging first, attested by Go's 401 for an anonymous list.
 assert 'staging) go_native_feedback="${CHESS_STUDIO_GO_NATIVE_FEEDBACK_ENABLED:-true}" ;;' in deploy
-assert '*) go_native_feedback="${CHESS_STUDIO_GO_NATIVE_FEEDBACK_ENABLED:-false}" ;;' in deploy
+assert '*) go_native_feedback="${CHESS_STUDIO_GO_NATIVE_FEEDBACK_ENABLED:-true}" ;;' in deploy
 assert 'CHESS_STUDIO_GO_NATIVE_FEEDBACK_ENABLED="$go_native_feedback"' in deploy
 assert "payload.get('nativeFeedback')" in deploy
 assert 'games_native_attest "http://127.0.0.1:${port}/api/feedback/mine" GET X-Chess-Feedback-Native 401; then' in deploy
@@ -686,7 +686,7 @@ assert 'exit 74' in deploy
 assert compose.count('GO_NATIVE_FEEDBACK_ENABLED: "${CHESS_STUDIO_GO_NATIVE_FEEDBACK_ENABLED:-false}"') == 2
 # Native Matthias read side: staging first, attested by Go's 401 for an anonymous briefing.
 assert 'staging) go_native_matthias_read="${CHESS_STUDIO_GO_NATIVE_MATTHIAS_READ_ENABLED:-true}" ;;' in deploy
-assert '*) go_native_matthias_read="${CHESS_STUDIO_GO_NATIVE_MATTHIAS_READ_ENABLED:-false}" ;;' in deploy
+assert '*) go_native_matthias_read="${CHESS_STUDIO_GO_NATIVE_MATTHIAS_READ_ENABLED:-true}" ;;' in deploy
 assert 'CHESS_STUDIO_GO_NATIVE_MATTHIAS_READ_ENABLED="$go_native_matthias_read"' in deploy
 assert "payload.get('nativeMatthias')" in deploy
 assert 'games_native_attest "http://127.0.0.1:${port}/api/matthias/briefing" GET X-Chess-Matthias-Native 401; then' in deploy
@@ -694,7 +694,7 @@ assert 'exit 76' in deploy
 assert compose.count('GO_NATIVE_MATTHIAS_READ_ENABLED: "${CHESS_STUDIO_GO_NATIVE_MATTHIAS_READ_ENABLED:-false}"') == 2
 # Native narrative: staging first, attested by Go's 401 for an anonymous admin AI read.
 assert 'staging) go_native_narrative="${CHESS_STUDIO_GO_NATIVE_NARRATIVE_ENABLED:-true}" ;;' in deploy
-assert '*) go_native_narrative="${CHESS_STUDIO_GO_NATIVE_NARRATIVE_ENABLED:-false}" ;;' in deploy
+assert '*) go_native_narrative="${CHESS_STUDIO_GO_NATIVE_NARRATIVE_ENABLED:-true}" ;;' in deploy
 assert 'CHESS_STUDIO_GO_NATIVE_NARRATIVE_ENABLED="$go_native_narrative"' in deploy
 assert "payload.get('nativeNarrative')" in deploy
 assert 'games_native_attest "http://127.0.0.1:${port}/api/admin/ai-metrics" GET X-Chess-Narrative-Native 401; then' in deploy
