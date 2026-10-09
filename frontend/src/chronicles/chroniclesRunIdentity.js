@@ -28,6 +28,10 @@ function currentOwner() {
   return String(getStorageItem(STORAGE_LOCAL, AUTH_USERNAME_KEY) || '').trim().toLowerCase();
 }
 
+export function chroniclesSaveCatalogOwner() {
+  return currentOwner();
+}
+
 function createRunId() {
   try {
     if (typeof globalThis.crypto?.randomUUID === 'function') return globalThis.crypto.randomUUID();
@@ -49,7 +53,7 @@ function readStoredRun(storageKey) {
   const entryMapId = typeof parsed.entryMapId === 'string'
     && /^[a-z0-9-]{1,64}$/.test(parsed.entryMapId)
     ? parsed.entryMapId : null;
-  return { id: parsed.id.trim(), owner, ended: Boolean(parsed.ended), entryMapId };
+  return { id: parsed.id.trim(), owner, ended: Boolean(parsed.ended), entryMapId, remote: parsed.remote === true, pending: parsed.pending === true };
   } catch {
     return null;
   }
@@ -81,6 +85,8 @@ function readSaveCatalog() {
       currentMapId: typeof item.currentMapId === 'string' ? item.currentMapId : null,
       createdAt: Number.isFinite(item.createdAt) ? item.createdAt : 0,
       updatedAt: Number.isFinite(item.updatedAt) ? item.updatedAt : 0,
+      remote: item.remote === true,
+      pending: item.pending === true,
     }));
   } catch {
     return [];
@@ -105,7 +111,7 @@ function indexActiveRun(run) {
   runs.unshift({
     id: run.id, title: 'Expedición ' + (numbered + 1),
     entryMapId: run.entryMapId || null,
-    currentMapId: run.entryMapId || null, createdAt: now, updatedAt: now,
+    currentMapId: run.entryMapId || null, createdAt: now, updatedAt: now, remote: false, pending: run.pending === true,
   });
   writeSaveCatalog(runs);
 }
@@ -124,6 +130,81 @@ export function chroniclesListSavedRuns(scope) {
     .sort((a, b) => b.updatedAt - a.updatedAt || a.id.localeCompare(b.id));
 }
 
+
+function remoteTimestamp(value) {
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  const time = typeof value === 'string' ? Date.parse(value) : NaN;
+  return Number.isFinite(time) ? time : 0;
+}
+
+/** Merge server authority with local display names and not-yet-created slots.
+ * Previously confirmed server rows missing from the active list are retired.
+ * Failed fetches must not call this method; that preserves the offline cache.
+ */
+export function chroniclesMergeRemoteSavedRuns(scope, remoteRuns, { expectedOwner = currentOwner() } = {}) {
+  legacyStorageKeyFor(scope);
+  if (!Array.isArray(remoteRuns)) throw new TypeError('Invalid remote save inventory');
+  // Reject an authenticated response for a user who signed out mid-request.
+  if (!expectedOwner || expectedOwner !== currentOwner()) return chroniclesListSavedRuns(scope);
+  const active = readRunState(scope);
+  const previous = readSaveCatalog();
+  const byId = new Map(previous.map((row) => [row.id, row]));
+  const seen = new Set();
+  const incoming = remoteRuns.slice(0, 30).flatMap((row) => {
+    const id = typeof row?.runId === 'string' ? row.runId.trim() : '';
+    if (!id || seen.has(id) || (row.status && row.status !== 'active')) return [];
+    seen.add(id);
+    const local = byId.get(id);
+    const createdAt = remoteTimestamp(row.createdAt);
+    const updatedAt = remoteTimestamp(row.updatedAtMs ?? row.updatedAt);
+    return [{
+      id,
+      title: local?.title || `Expedición ${id.slice(0, 8)}`,
+      entryMapId: local?.entryMapId || null,
+      currentMapId: typeof row.currentMapId === 'string' ? row.currentMapId : null,
+      createdAt: createdAt || local?.createdAt || 0,
+      updatedAt: updatedAt || local?.updatedAt || 0,
+      remote: true,
+      pending: false,
+    }];
+  });
+  // A full 30-row response can hide older server runs: absence then proves
+  // nothing. For a shorter complete response, retire removed/terminal rows.
+  const complete = remoteRuns.length < 30;
+  const pendingLocal = previous.filter((row) => (!row.remote || !complete) && !seen.has(row.id));
+  writeSaveCatalog([...incoming, ...pendingLocal]);
+  if (active && !active.ended && active.remote && complete && !seen.has(active.id)) {
+    writeRunState({ ...active, ended: true });
+  } else if (active && !active.ended && seen.has(active.id) && !active.remote) {
+    writeRunState({ ...active, remote: true, pending: false });
+  }
+  return chroniclesListSavedRuns(scope);
+}
+
+/** Mark an id as server-persisted once its authoritative bootstrap succeeds. */
+export function chroniclesMarkSavedRunRemote(scope, runId) {
+  legacyStorageKeyFor(scope);
+  const runs = readSaveCatalog();
+  const row = runs.find((item) => item.id === runId);
+  if (row && (!row.remote || row.pending)) {
+    row.remote = true;
+    row.pending = false;
+    writeSaveCatalog(runs);
+  }
+  const active = readRunState(scope);
+  if (active?.id === runId && (!active.remote || active.pending)) {
+    writeRunState({ ...active, remote: true, pending: false });
+  }
+}
+
+export function chroniclesSelectedRunIsRemote(scope, runId) {
+  const active = readRunState(scope);
+  // Old local snapshots predate the remote flag. They may already exist in
+  // Mongo, so GET them and fail closed on 404 instead of attempting a POST.
+  // Only explicitly minted, not-yet-bootstraped runs are safe to create.
+  return active?.id === runId && !active.ended && (active.remote === true || !active.pending);
+}
+
 export function chroniclesSelectSavedRun(scope, runId) {
   legacyStorageKeyFor(scope);
   const row = readSaveCatalog().find((item) => item.id === runId);
@@ -131,6 +212,8 @@ export function chroniclesSelectSavedRun(scope, runId) {
   writeRunState({
     id: row.id, owner: currentOwner(), ended: false,
     entryMapId: row.entryMapId,
+    remote: row.remote === true,
+    pending: row.pending === true,
   });
   return true;
 }
@@ -171,6 +254,8 @@ export function chroniclesNoteSavedRunCheckpoint(scope, runId, currentMapId) {
     row.currentMapId = currentMapId;
   }
   row.updatedAt = Date.now();
+  row.remote = true;
+  row.pending = false;
   writeSaveCatalog(runs);
   return true;
 }
@@ -216,6 +301,7 @@ export function beginChroniclesRun(scope) {
   const run = {
     id: createRunId(), owner: currentOwner(), ended: false,
     entryMapId: scope === 'first-person' ? 'swordhaven-square' : null,
+    pending: true,
   };
   writeRunState(run);
   return run.id;

@@ -7,7 +7,7 @@ import {
   chroniclesMapIds,
   chroniclesSetRuntimeEntryMapId,
 } from './chroniclesMapCatalog.js';
-import { chroniclesCreateRun } from './chroniclesRunClient.js';
+import { chroniclesCreateRun, chroniclesReadRunBootstrap } from './chroniclesRunClient.js';
 
 export const CHRONICLES_BOOTSTRAP_BUDGET_MS = 5000;
 
@@ -160,6 +160,8 @@ export async function chroniclesBootstrapWorld({
   operationId = null,
   partyLevel = null,
   createRun = chroniclesCreateRun,
+  resumeRunId = null,
+  readRun = chroniclesReadRunBootstrap,
 } = {}) {
   chroniclesClearRuntimeMapDefinitions();
   if (signal?.aborted) {
@@ -201,8 +203,10 @@ export async function chroniclesBootstrapWorld({
     ...(Number.isInteger(partyLevel) ? { partyLevel } : {}),
   };
   const request = Promise.resolve()
-    .then(() => createRun(mapId, requestOptions))
-    .then((payload) => ({ ok: true, value: validateAuthoritativeRun(payload, mapId) }))
+    .then(() => resumeRunId
+      ? readRun(resumeRunId, { signal: requestController.signal })
+      : createRun(mapId, requestOptions))
+    .then((payload) => ({ ok: true, value: validateAuthoritativeRun(payload, resumeRunId ? null : mapId) }))
     .catch((error) => ({
       ok: false,
       error: bootstrapTransportError(error, {

@@ -271,6 +271,33 @@ export async function mockApi(page, {
     requestLog.push({ method, path, idempotencyKey: headers['idempotency-key'] || null, presenceSession: headers['x-presence-session'] || null });
     const json = (body, status = 200) => route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) });
 
+    // Chronicles saved expeditions are an owner-scoped inventory. Keep the mock
+    // consistent across create, list, GET bootstrap and permanent deletion.
+    if (path.endsWith('/chronicles/runs') && method === 'GET') {
+      return json({ runs: Array.from(chroniclesRuns.values())
+        .filter((run) => run.status === 'active')
+        .map((run) => ({
+          runId: run.runId,
+          currentMapId: run.currentMapId,
+          status: run.status,
+          worldVersion: run.worldVersion,
+          updatedAtMs: Date.now(),
+        })) });
+    }
+    const bootstrapSave = path.match(/\/chronicles\/runs\/([^/]+)\/bootstrap$/);
+    if (bootstrapSave && method === 'GET') {
+      const payload = Array.from(chroniclesRuns.values()).find((run) => run.runId === decodeURIComponent(bootstrapSave[1]));
+      return payload ? json(payload) : json({ detail: 'Run not found' }, 404);
+    }
+    const deleteSave = path.match(/\/chronicles\/runs\/([^/]+)$/);
+    if (deleteSave && method === 'DELETE') {
+      const key = Array.from(chroniclesRuns.entries())
+        .find(([, run]) => run.runId === decodeURIComponent(deleteSave[1]))?.[0];
+      if (!key) return json({ detail: 'Run not found' }, 404);
+      chroniclesRuns.delete(key);
+      return route.fulfill({ status: 204, body: '' });
+    }
+
     if (path.endsWith('/chronicles/runs') && method === 'POST') {
       if (Number(chroniclesRunFailureStatus) > 0) {
         return json({ detail: 'Chronicles bootstrap E2E failure' }, Number(chroniclesRunFailureStatus));
@@ -804,11 +831,15 @@ export async function confirmChroniclesCharacterSetup(page, { newTown = false } 
       const existing = localStorage.getItem(key);
       let current = null;
       try { current = existing ? JSON.parse(existing) : null; } catch { /* malformed old save */ }
-      // The new menu preallocates a Swordhaven identity for the upcoming
-      // creator screen. Historical crypt tests still need a legacy ID.
-      if (current && !current.ended && !current.entryMapId) return;
+      // Historical crypt tests explicitly create a new crypt run using a
+      // stable fixture ID, not a previously persisted server save. A freshly
+      // allocated identity is pending until its first authoritative POST;
+      // only real legacy IDs without this flag are restored via GET.
+      if (current && !current.ended && !current.entryMapId && current.pending === true) return;
       const owner = (localStorage.getItem('chess-study-auth-username') || 'e2e').trim().toLowerCase();
-      localStorage.setItem(key, JSON.stringify({ id: 'e2e-existing-crypt-run', owner, ended: false }));
+      localStorage.setItem(key, JSON.stringify({
+        id: 'e2e-existing-crypt-run', owner, ended: false, pending: true,
+      }));
     });
   }
   const canonical = setup.getByRole('button', { name: /Entrar con grupo canónico|Volver al grupo canónico/ });

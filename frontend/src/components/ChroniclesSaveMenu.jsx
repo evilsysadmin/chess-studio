@@ -16,7 +16,8 @@ function saveWhen(value) {
 }
 
 export default function ChroniclesSaveMenu({
-  saves = [], onNew, onLoad, onRename, onForget, onExit,
+  saves = [], onNew, onLoad, onRename, onForget, onDelete, onExit,
+  loading = false, error = '', busyRunId = null,
 }) {
   const [screen, setScreen] = useState('home');
   const [editing, setEditing] = useState(null);
@@ -43,15 +44,17 @@ export default function ChroniclesSaveMenu({
         <p className="chronicles-save-menu__intro">
           Tu compañía te espera. Y Matthias, naturalmente, lleva la cuenta de tus decisiones cuestionables.
         </p>
+        {loading && <p className="chronicles-save-menu__sync" role="status">Consultando expediciones del servidor…</p>}
+        {error && <p className="chronicles-save-menu__sync-error" role="alert">{error}</p>}
 
         {screen === 'home' ? (
           <div className="chronicles-save-menu__actions">
             <button type="button" className="is-primary" onClick={onNew}>Nuevo juego</button>
-            <button type="button" disabled={!resume} onClick={() => onLoad(resume.id)}>
+            <button type="button" disabled={!resume || loading} onClick={() => onLoad(resume.id)}>
               Continuar partida
               {resume && <small>{resume.title} · {expeditionArea(resume)}</small>}
             </button>
-            <button type="button" disabled={!saves.length} onClick={() => openList('load')}>Cargar juego</button>
+            <button type="button" disabled={!saves.length || loading} onClick={() => openList('load')}>Cargar juego</button>
             <button type="button" onClick={() => openList('manage')}>Gestionar partidas</button>
             <button type="button" className="is-exit" onClick={onExit}>Volver al castillo</button>
           </div>
@@ -62,7 +65,7 @@ export default function ChroniclesSaveMenu({
               <button type="button" onClick={() => openList('home')}>← Volver</button>
             </div>
             {saves.length === 0 ? (
-              <p className="chronicles-save-menu__empty">Todavía no hay expediciones registradas en este dispositivo.</p>
+              <p className="chronicles-save-menu__empty">{loading ? 'Buscando expediciones…' : 'Todavía no hay expediciones guardadas.'}</p>
             ) : (
               <ol className="chronicles-save-menu__list">
                 {saves.map((save) => (
@@ -71,9 +74,10 @@ export default function ChroniclesSaveMenu({
                       <strong>{save.title}</strong>
                       <span>{expeditionArea(save)} · {saveWhen(save.updatedAt)}</span>
                       {save.active && <em>Última partida</em>}
+                      {save.remote && <em>Guardada en servidor</em>}
                     </div>
                     <div className="chronicles-save-menu__row-actions">
-                      <button type="button" onClick={() => onLoad(save.id)}>Cargar</button>
+                      <button type="button" disabled={busyRunId !== null || loading} onClick={() => onLoad(save.id)}>Cargar</button>
                       {screen === 'manage' && (
                         <>
                           <button type="button" onClick={() => {
@@ -81,7 +85,7 @@ export default function ChroniclesSaveMenu({
                             setDraftName(save.title);
                             setConfirmForget(null);
                           }}>Renombrar</button>
-                          <button type="button" onClick={() => {
+                          <button type="button" disabled={busyRunId !== null} onClick={() => {
                             setConfirmForget(save.id);
                             setEditing(null);
                           }}>Quitar</button>
@@ -101,11 +105,17 @@ export default function ChroniclesSaveMenu({
                     )}
                     {screen === 'manage' && confirmForget === save.id && (
                       <div className="chronicles-save-menu__confirm" role="group" aria-label={'Quitar ' + save.title}>
-                        <p>Se quitará de la lista de este dispositivo. No se borrará del servidor.</p>
-                        <button type="button" onClick={() => {
-                          onForget(save.id);
-                          setConfirmForget(null);
-                        }}>Quitar del dispositivo</button>
+                        <p>{save.remote
+                          ? 'Se borrará definitivamente esta expedición del servidor y de todos tus dispositivos. Esta acción no se puede deshacer. La progresión de personajes se conserva aparte.'
+                          : 'Se quitará la partida pendiente de este dispositivo. No existe aún un guardado remoto confirmado.'}</p>
+                        <button type="button" disabled={busyRunId !== null} onClick={async () => {
+                          try {
+                            const completed = await (onDelete || onForget)?.(save.id, Boolean(save.remote));
+                            if (completed !== false) setConfirmForget(null);
+                          } catch {
+                            // Parent owns the visible server error; keep confirmation open.
+                          }
+                        }}>{busyRunId === save.id ? 'Procesando…' : save.remote ? 'Eliminar definitivamente' : 'Quitar del dispositivo'}</button>
                         <button type="button" onClick={() => setConfirmForget(null)}>Cancelar</button>
                       </div>
                     )}
@@ -114,8 +124,8 @@ export default function ChroniclesSaveMenu({
               </ol>
             )}
             <p className="chronicles-save-menu__disclaimer">
-              Este catálogo es local. Los checkpoints reales permanecen en el servidor; las expediciones
-              de otros dispositivos todavía no aparecen automáticamente aquí.
+              Las partidas marcadas «Guardada en servidor» se sincronizan entre dispositivos al abrir este menú.
+              Los nombres personalizados se conservan en este dispositivo.
             </p>
           </div>
         )}
