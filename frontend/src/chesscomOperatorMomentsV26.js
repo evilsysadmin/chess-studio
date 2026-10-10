@@ -71,21 +71,14 @@ export function installChesscomOperatorMomentsV26(B,scene,{tier='ultra',host,red
     braces.alpha=.64;
     braces.isPickable=false;
   }
-  const light=tier==='balanced'?null:new B.PointLight('chesscom-moment-v26-fill',new B.Vector3(0,1.42,0),scene);
-  if(light){
-    light.diffuse=new B.Color3(.28,.64,.68);
-    light.specular=new B.Color3(.08,.12,.12);
-    light.range=2.8;
-    light.intensity=0;
-  }
-  const coolLight=new B.Color3(.28,.64,.68);
-  const hotLight=new B.Color3(.96,.42,.21);
+  // Deliberately no dynamic lights: a single extra Babylon PointLight can
+  // overwhelm SwiftShader during the full tactical render + E2E interaction.
+  // Emissive geometry is enough to stage the moment without shader churn.
   const coolBraces=new B.Color3(.36,.72,.74);
   const hotBraces=new B.Color3(.89,.52,.29);
   const glow=scene.getEffectLayerByName?.('ops-glow');
   glow?.addIncludedOnlyMesh?.(ring);
   let selectedId=null;
-  let litUnitId=null;
   let highlight=null;
   let previous=null;
   let lastState=null;
@@ -128,29 +121,22 @@ export function installChesscomOperatorMomentsV26(B,scene,{tier='ultra',host,red
     if(highlight && now>=highlight.expiry)highlight=null;
     const highlightedId=highlight?.unitId||selectedId;
     const p=highlightedId?unitPosition(highlightedId):null;
-    if(light && litUnitId!==highlightedId){
-      // Light only the acting character, not hundreds of wet tiles and
-      // buildings. This prevents a global shader/light workload on SwiftShader.
-      const actor=scene.getTransformNodeByName?.(`unit-${highlightedId}`);
-      light.includedOnlyMeshes=actor?.getChildMeshes?.()||[];
-      litUnitId=highlightedId;
-    }
     root.setEnabled(Boolean(p));
-    if(!p){if(light)light.intensity=0;return;}
+    if(!p)return;
     root.position.set(p.x,0,p.z);
     const danger=highlight?.kind==='hit'||highlight?.kind==='down';
-    ring.material=danger?hot:cool;
-    if(braces)braces.color=danger?hotBraces:coolBraces;
+    const desiredMaterial=danger?hot:cool;
+    if(ring.material!==desiredMaterial)ring.material=desiredMaterial;
+    if(braces){
+      const wanted=danger?hotBraces:coolBraces;
+      if(braces.color!==wanted)braces.color=wanted;
+    }
     if(!reducedMotion){
       const wave=highlight?Math.max(0,(highlight.expiry-now)/CHESSCOM_OPERATOR_MOMENTS_V26.hitDuration):0;
       const pulse=1+Math.sin(now*.005)*.018+wave*.07;
       root.scaling.set(pulse,1,pulse);
     }else root.scaling.set(1,1,1);
-    if(light){
-      light.position.set(p.x,1.4,p.z);
-      light.diffuse=danger?hotLight:coolLight;
-      light.intensity=danger?2.6:highlight?.kind==='shot'?2.0:1.15;
-    }
+
   }
   const observer=scene.onBeforeRenderObservable?.add?.(frame);
   root.setEnabled(false);
@@ -170,7 +156,6 @@ export function installChesscomOperatorMomentsV26(B,scene,{tier='ultra',host,red
       braces?.dispose?.();
       ring.dispose();
       root.dispose();
-      light?.dispose?.();
       cool.dispose();
       hot.dispose();
     },
