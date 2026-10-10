@@ -90,16 +90,20 @@ test('Chesscom · abre la planta 17 con renderer Babylon real y HUD Dust Veil pr
   await page.setViewportSize({ width:1600, height:900 });
   await expect(mode).toHaveAttribute('data-chesscom-layout', 'dust-veil-canonical-v1');
   await expect.poll(() => mode.evaluate((node) => {
+    const origin = node.getBoundingClientRect();
     const field = node.querySelector('.chesscom-stage-shell')?.getBoundingClientRect();
     const squad = node.querySelector('.chesscom-squad')?.getBoundingClientRect();
     const actions = node.querySelector('.chesscom-actionbar')?.getBoundingClientRect();
     const objectives = node.querySelector('.chesscom-objectives')?.getBoundingClientRect();
     if (!field || !squad || !actions || !objectives) return false;
     return field.width >= window.innerWidth * .95
-      && field.height >= window.innerHeight * .94
+      && field.height >= window.innerHeight - origin.top - 2
+      && field.bottom <= window.innerHeight + 2
       && squad.bottom >= window.innerHeight - 40
+      && squad.bottom <= window.innerHeight + 2
       && actions.bottom >= window.innerHeight - 40
-      && objectives.top < window.innerHeight * .2
+      && actions.bottom <= window.innerHeight + 2
+      && objectives.top < origin.top + 160
       && squad.right < actions.left
       && actions.right < window.innerWidth - 260;
   })).toBe(true);
@@ -116,6 +120,12 @@ test('Chesscom · abre la planta 17 con renderer Babylon real y HUD Dust Veil pr
   }))).toEqual({ viewport:390, documentWidth:390 });
   await expect.poll(() => canvas.evaluate((node) => Math.ceil(node.getBoundingClientRect().width))).toBeLessThanOrEqual(390);
   await expect(mode.locator('.chesscom-operation')).toBeVisible();
+  // Compact branding must fit beside the exit, not be clipped by it.
+  await expect.poll(() => mode.evaluate((node) => {
+    const title = node.querySelector('.chesscom-brand h2')?.getBoundingClientRect();
+    const exit = node.querySelector('.chesscom-exit')?.getBoundingClientRect();
+    return Boolean(title && exit && title.right <= exit.left - 2);
+  })).toBe(true);
   await expect(page.getByRole('button', { name: '← Experimentos', exact: true })).toBeVisible();
 
   // Reutilizamos el Babylon ya arrancado para comprobar también la salida. El
