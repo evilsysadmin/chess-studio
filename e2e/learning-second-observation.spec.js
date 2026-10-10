@@ -6,6 +6,7 @@ import {
   login,
   mockApi,
   waitForTrainingRoomSettled,
+  waitForHomeInteractive,
 } from './helpers.js';
 
 const PERSONAL_MATE_FEN = '6k1/5ppp/8/8/8/8/5PPP/R5K1 w - - 0 1';
@@ -262,7 +263,7 @@ test('Home · el avatar residente de Matthias abre Así juegas · entrenamiento 
   await page.getByRole('button', { name: '← Volver a Así juegas', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Así juegas', exact: true })).toBeVisible();
   await page.getByRole('button', { name: '← Volver al menú', exact: true }).click();
-  await expect(page.getByRole('region', { name: 'Modos principales', exact: true })).toBeVisible();
+  await waitForHomeInteractive(page);
 
   await installObservationGame(page);
   await startObservationGame2D(page);
@@ -276,7 +277,6 @@ test('Home · el avatar residente de Matthias abre Así juegas · entrenamiento 
     has: page.getByRole('heading', { name: 'Jaque mate', exact: true }),
   });
   await expect(endgame).toBeVisible();
-  await endgame.getByRole('button', { name: 'Más opciones', exact: true }).click();
   await installObservationAnalysis(page);
   await endgame.getByRole('button', { name: 'Resumen de la partida', exact: true }).click();
 
@@ -297,10 +297,8 @@ test('Home · el avatar residente de Matthias abre Así juegas · entrenamiento 
   expect(observation.incidentKeys).not.toContain('cpu:KNIGHT_FORK');
 
   await report.getByRole('button', { name: 'Cerrar', exact: true }).click();
-  // El menú ya sigue abierto tras cerrar el resumen: no lo colapsemos antes
-  // de pulsar «Volver al menú».
-  await endgame.getByRole('button', { name: 'Volver al menú', exact: true }).click();
-  await expect(page.getByRole('region', { name: 'Modos principales', exact: true })).toBeVisible();
+  await endgame.getByRole('button', { name: 'Volver al castillo', exact: true }).click();
+  await waitForHomeInteractive(page);
 
   const homeCorner = page.getByRole('complementary', { name: 'Rincón de Matthias' });
   await homeCorner.getByRole('button', { name: 'Abrir Así juegas con Matthias', exact: true }).click();

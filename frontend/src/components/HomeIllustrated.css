@@ -65,9 +65,8 @@
   body .app-shell-home .masthead-text, body .app-shell-home .masthead > .player-status-bar { display: none; }
   body .app-shell-home .masthead-top-row, body .app-shell-home .masthead-actions, body .app-shell-home .masthead-account-stack { display: contents !important; position: static !important; transform: none !important; }
   body .app-shell-home .masthead-account-menu { position: absolute; left: 2.8vw !important; right: auto !important; top: 2.5dvh !important; pointer-events: auto; }
-  body .app-shell-home .masthead-release-trigger { position: absolute; right: 10.7vw; top: 2.7dvh; pointer-events: auto; }
-  body .app-shell-home .masthead-feedback-trigger { position: absolute; right: 1.8vw; top: 2.7dvh; pointer-events: auto; }
-  body .app-shell-home .masthead-account-trigger, body .app-shell-home .masthead-release-trigger, body .app-shell-home .masthead-feedback-trigger { border: 1px solid #8b683866; border-radius: 999px !important; color: #eed7a5 !important; background: #160f0bdd !important; width: auto !important; min-width: 0 !important; height: 40px; min-height: 40px; padding: 8px 18px; white-space: nowrap; box-shadow: none; font-size: 14px !important; }
+
+  body .app-shell-home .masthead-account-trigger { border: 1px solid #8b683866; border-radius: 999px !important; color: #eed7a5 !important; background: #160f0bdd !important; width: auto !important; min-width: 0 !important; height: 40px; min-height: 40px; padding: 8px 18px; white-space: nowrap; box-shadow: none; font-size: 14px !important; }
   body .app-shell-home .masthead-account-popover { left: 0; right: auto; pointer-events: auto; }
   body .app-shell-home .masthead-admin-feedback-inbox { position: absolute; left: calc(2.8vw + 170px); top: 2.5dvh; pointer-events: auto; }
   body .app-shell-home .masthead-session-error { pointer-events: auto; position: absolute; top: 60px; left: 3vw; background: #21120c; }
@@ -81,7 +80,6 @@
   .illustrated-home__motto { transform: translateY(calc(50dvh - 28.125vw)); }
 }
 @media (min-width: 1000px) and (max-width: 1300px) {
-  body .app-shell-home .masthead-release-trigger { right: 13vw; }
   .illustrated-home__matthias { width: 14%; padding: .6cqw; }
 }
 @media (prefers-reduced-motion: reduce) {

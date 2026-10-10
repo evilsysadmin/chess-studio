@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { buttonWithVisibleText, clickBoardMove, gameStatus } from './helpers.js';
+import { buttonWithVisibleText, clickBoardMove, gameStatus, openDuelHall } from './helpers.js';
 import { stagingSyntheticHeaders } from './staging-synthetic.js';
 
 const STAGING_URL = process.env.STAGING_URL || 'https://staging.chess-studio.shadowops.dpdns.org';
@@ -231,7 +231,7 @@ async function assertLivePvpBrowserPath(page) {
 
   try {
     const firstLobby = waitLobby();
-    await page.getByRole('button', { name: 'Abrir Sala de Duelos 1 contra 1' }).click();
+    await openDuelHall(page);
     assertPvpBrowserResponse(await firstLobby, { suffix: '/lobby', native: 'lobby-read' });
 
     const lobby = page.getByRole('dialog', { name: 'Duelo 1 contra 1 · War Room' });

@@ -4,6 +4,14 @@ services:
     volumes:
       - mongo-data:/data/db
     restart: unless-stopped
+    # The Go API pings MongoDB at startup and exits if it cannot; start it only
+    # once mongod accepts connections.
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+      start_period: 5s
 
   # The API is the Go edge on its own (GO_PYTHON_RETIRED): every route is
   # native, there is no Python behind it.
@@ -32,13 +40,15 @@ services:
       # Desarrollo local: cualquier cuenta autenticada es admin.
       ADMIN_USERNAMES: "*"
     depends_on:
-      - mongo
+      mongo:
+        condition: service_healthy
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/api/ready"]
-      interval: 10s
+      interval: 5s
       timeout: 3s
-      retries: 5
+      retries: 10
+      start_period: 10s
 
   frontend:
     build:

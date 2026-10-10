@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { login, mockApi } from './helpers.js';
+import { login, mockApi, openFeedback } from './helpers.js';
 
 test('Feedback · admin responde RESUELTO y el usuario ve la respuesta después', async ({ page }) => {
   await mockApi(page, {
@@ -22,7 +22,7 @@ test('Feedback · admin responde RESUELTO y el usuario ve la respuesta después'
   await expect(resolved.getByText('RESUELTO: corregido y protegido con watchdog.', { exact: true })).toBeVisible();
 
   await page.getByRole('button', { name: '← Volver al menú', exact: true }).click();
-  await page.getByRole('button', { name: 'Enviar feedback', exact: true }).click();
+  await openFeedback(page);
   const dialog = page.getByRole('dialog', { name: 'Dinos qué mejorar' });
   const history = dialog.locator('details.feedback-thread-history');
   await expect(history).toBeVisible();
@@ -34,9 +34,10 @@ test('Feedback · admin responde RESUELTO y el usuario ve la respuesta después'
 test('Feedback · adjunta PNG y envía sin deformar ni romper la cabecera', async ({ page }) => {
   await mockApi(page);
   await login(page);
-  const trigger = page.getByRole('button', { name: 'Enviar feedback', exact: true });
+  // On Home Feedback lives in the account menu: the crest must not deform.
+  const trigger = page.locator('.masthead-account-trigger');
   const before = await trigger.boundingBox();
-  await trigger.click();
+  await openFeedback(page);
 
   const dialog = page.getByRole('dialog', { name: 'Dinos qué mejorar' });
   const input = dialog.locator('input[type="file"]');

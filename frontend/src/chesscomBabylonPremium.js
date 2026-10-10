@@ -1,4 +1,7 @@
 import babylonPackage from 'babylonjs/package.json';
+import { createChesscomTruckV21 } from './chesscomTruckArtV21.js';
+import { chesscomCrateEdgeV24Parts } from './chesscomCoverEdgesV24.js';
+import { CHESSCOM_OPERATOR_MOMENTS_V26 } from './chesscomOperatorMomentsV26.js';
 
 const BABYLON_VERSION = babylonPackage.version;
 
@@ -340,7 +343,7 @@ function addBuildingDetails(B,scene,p,item,mats,shadowGenerator,warmLights) {
   for(let i=-1;i<=1;i+=1) makeWorldBox(B,scene,'wall-vent',{w:.34,d:.04,h:.16},{x:p.x+i*.55,y:1.65,z:p.z+item.d/2+.025},mats.metal);
 }
 
-function addScenery(B,scene,mats,shadowGenerator,warmLights) {
+function addScenery(B,scene,mats,shadowGenerator,warmLights,coarse=false) {
   for(const item of SCENERY){
     const p=world(item.x,item.z);
     if(item.type==='building'){addBuildingDetails(B,scene,p,item,mats,shadowGenerator,warmLights);continue;}
@@ -348,6 +351,12 @@ function addScenery(B,scene,mats,shadowGenerator,warmLights) {
       const h=item.high ? 1.05 : .58; const crate=makeWorldBox(B,scene,'crate',{w:1.03,d:1.03,h},p,mats.wood); shadowGenerator?.addShadowCaster(crate);
       for(const offset of [-.36,.36]){makeWorldBox(B,scene,'crate-band',{w:.07,d:1.06,h:h+.02},{x:p.x+offset,y:0,z:p.z},mats.metal);makeWorldBox(B,scene,'crate-band',{w:1.06,d:.07,h:h+.02},{x:p.x,y:0,z:p.z+offset},mats.metal);}
       for(const offset of [-.30,0,.30])makeWorldBox(B,scene,'crate-top-slat',{w:.22,d:.98,h:.035},{x:p.x+offset,y:h+.01,z:p.z},mats.woodLight);
+      for(const part of chesscomCrateEdgeV24Parts({high:Boolean(item.high),coarse})){
+        const edge=makeWorldBox(B,scene,`crate-v24-${part.name}`,
+          {w:part.w,h:part.h,d:part.d},
+          {x:p.x+part.x,y:part.y,z:p.z+part.z},mats[part.finish]);
+        edge.isPickable=false;
+      }
       continue;
     }
     if(item.type==='barrel'){
@@ -360,12 +369,12 @@ function addScenery(B,scene,mats,shadowGenerator,warmLights) {
       for(let i=0;i<3;i+=1){const bag=makeWorldBox(B,scene,'sandbag',{w:.62,d:.48,h:.28},{x:p.x+(i-1)*.45,y:i===1 ? .16 : 0,z:p.z},mats.sandbag);bag.rotation.y=(i-1)*.08;shadowGenerator?.addShadowCaster(bag);}continue;
     }
     if(item.type==='truck'){
-      const truck=makeWorldBox(B,scene,'truck-body',{w:2.35,d:1.18,h:.86},p,mats.truck);truck.rotation.y=.18;shadowGenerator?.addShadowCaster(truck);
-      const cab=makeWorldBox(B,scene,'truck-cab',{w:.92,d:1.12,h:1.10},{x:p.x-.92,y:0,z:p.z},mats.truck);cab.rotation.y=.18;shadowGenerator?.addShadowCaster(cab);
-      const windshield=makeWorldBox(B,scene,'truck-windshield',{w:.62,d:.035,h:.36},{x:p.x-1.24,y:.63,z:p.z-.47},mats.window);windshield.rotation.y=.18;
-      const bumper=makeWorldBox(B,scene,'truck-bumper',{w:.16,d:1.26,h:.14},{x:p.x-1.34,y:.16,z:p.z},mats.metalBright);bumper.rotation.y=.18;
-      for(const oz of [-.36,.36]){const headlight=makeWorldBox(B,scene,'truck-headlight',{w:.055,d:.20,h:.12},{x:p.x-1.40,y:.48,z:p.z+oz},mats.headlight);headlight.rotation.y=.18;}
-      for(const ox of [-.75,.75])for(const oz of [-.48,.48]){const wheel=cylinder(B,scene,'truck-wheel',.22,.38,null,mats.tire,p.x+ox,.23,p.z+oz,16);wheel.rotation.z=Math.PI/2;}
+      // The transport is scenery, never a logical tile, obstacle or
+      // interactive cover object. The six-wheel v21 mesh is rotated as
+      // one vehicle so its cabin, wheels and cargo remain aligned.
+      createChesscomTruckV21(B,scene,{
+        x:p.x,z:p.z,mats,shadowGenerator,tier:coarse?'balanced':'ultra',
+      });
       continue;
     }
     if(item.type==='tower'){
@@ -464,7 +473,7 @@ export async function createChesscomBabylon(host,{onTile,onUnit,onHover,onReady}
 
   const mats={
     ground:material(B,scene,'ground','#151b1e'),tile:material(B,scene,'tile','#242c2f'),road:material(B,scene,'road','#1d2326'),concrete:material(B,scene,'concrete','#34393b'),roof:material(B,scene,'roof','#14191c'),roofTrim:material(B,scene,'roof-trim','#282d2f'),door:material(B,scene,'door','#171d20'),lamp:material(B,scene,'lamp','#8a5726','#ff8c32'),
-    wood:material(B,scene,'wood','#59402b'),woodLight:material(B,scene,'wood-light','#76563a'),barrel:material(B,scene,'barrel','#5c2c24'),barrelTop:material(B,scene,'barrel-top','#41201d'),sandbag:material(B,scene,'sandbag','#72694f'),metal:material(B,scene,'metal','#252c30'),metalBright:material(B,scene,'metal-bright','#3a4246'),metalDark:material(B,scene,'metal-dark','#151a1d'),fenceWire:material(B,scene,'fence-wire','#566166'),truck:material(B,scene,'truck','#2d3934'),tire:material(B,scene,'tire','#0b0d0e'),window:material(B,scene,'window','#16272e','#0b2530'),headlight:material(B,scene,'headlight','#78683c','#c5a75c'),
+    wood:material(B,scene,'wood','#59402b'),woodLight:material(B,scene,'wood-light','#76563a'),barrel:material(B,scene,'barrel','#5c2c24'),barrelTop:material(B,scene,'barrel-top','#41201d'),sandbag:material(B,scene,'sandbag','#72694f'),metal:material(B,scene,'metal','#252c30'),metalBright:material(B,scene,'metal-bright','#3a4246'),metalDark:material(B,scene,'metal-dark','#151a1d'),fenceWire:material(B,scene,'fence-wire','#566166'),truck:material(B,scene,'truck','#2d3934'),truckCanvas:material(B,scene,'truck-canvas','#353f38'),tire:material(B,scene,'tire','#0b0d0e'),window:material(B,scene,'window','#16272e','#0b2530'),headlight:material(B,scene,'headlight','#78683c','#c5a75c'),
     friendlyBody:material(B,scene,'friendly-body','#313737'),friendlyArmour:material(B,scene,'friendly-armour','#171c1d'),friendlyHead:material(B,scene,'friendly-head','#bda985'),enemyBody:material(B,scene,'enemy-body','#312e29'),enemyArmour:material(B,scene,'enemy-armour','#171818'),enemyHead:material(B,scene,'enemy-head','#a18d71'),helmet:material(B,scene,'helmet','#252a28'),helmetBand:material(B,scene,'helmet-band','#151817'),eliteHelmet:material(B,scene,'elite-helmet','#211817'),eliteTrim:material(B,scene,'elite-trim','#6f211c'),pack:material(B,scene,'pack','#202522'),boot:material(B,scene,'boot','#101314'),glove:material(B,scene,'glove','#0c0f10'),pouch:material(B,scene,'pouch','#4a4434'),gun:material(B,scene,'gun','#101315'),
     matthiasCore:material(B,scene,'matthias-core','#e9dcc2'),matthiasCoreShade:material(B,scene,'matthias-core-shade','#c1ad89'),matthiasFace:material(B,scene,'matthias-face','#efe0c5'),matthiasBlack:material(B,scene,'matthias-black','#101315'),matthiasBlack2:material(B,scene,'matthias-black-2','#22272c'),matthiasBrass:material(B,scene,'matthias-brass','#b98535'),matthiasRed:material(B,scene,'matthias-red','#681c1b'),matthiasEye:material(B,scene,'matthias-eye','#080909'),matthiasMouth:material(B,scene,'matthias-mouth','#3b2f28'),
     enemyVisor:material(B,scene,'enemy-visor','#421111','#ff2929'),eliteVisor:material(B,scene,'elite-visor','#6d1515','#ff1717'),
@@ -489,14 +498,14 @@ export async function createChesscomBabylon(host,{onTile,onUnit,onHover,onReady}
   const warmA=new B.PointLight('warm-a',new B.Vector3(-4.8,3.2,-1.2),scene);warmA.diffuse=new B.Color3(1,.50,.18);warmA.intensity=11.8;warmA.range=7.4;warmLights.push(warmA);
   const warmB=new B.PointLight('warm-b',new B.Vector3(5.6,3.0,2.6),scene);warmB.diffuse=new B.Color3(1,.39,.13);warmB.intensity=10.2;warmB.range=6.8;warmLights.push(warmB);
   const coolFill=new B.PointLight('cool-fill',new B.Vector3(1.2,4.4,-4.2),scene);coolFill.diffuse=new B.Color3(.22,.46,.64);coolFill.intensity=3.1;coolFill.range=9.5;
-  addScenery(B,scene,mats,shadowGenerator,warmLights);
+  addScenery(B,scene,mats,shadowGenerator,warmLights,coarse);
 
   const tiles=new Map();for(let y=0;y<MAP_H;y+=1)for(let x=0;x<MAP_W;x+=1)tiles.set(`${x},${y}`,createTile(B,scene,x,y,mats));
   const glow=new B.GlowLayer('ops-glow',scene,{blurKernelSize:coarse ? 16 : 28});glow.intensity=.64;
   const props=createMissionProps(B,scene,mats,glow);
   const unitRoots=new Map();const markers=new Map();const reachableIndicators=new Map();const fx=[];let matthiasUrl='';let previous=null;let previousObjectives={intel:false,extraction:false,target:false};
 
-  function markerFor(id){if(markers.has(id))return markers.get(id);const ring=B.MeshBuilder.CreateTorus(`marker-${id}`,{diameter:1.18,thickness:.05,tessellation:32},scene);ring.rotation.x=Math.PI/2;ring.material=mats.cyan;ring.isVisible=false;glow.addIncludedOnlyMesh(ring);markers.set(id,ring);return ring;}
+  function markerFor(id){if(markers.has(id))return markers.get(id);const ring=B.MeshBuilder.CreateTorus(`marker-${id}`,{diameter:1.18,thickness:.05,tessellation:32},scene);ring.rotation.x=Math.PI/2;ring.material=mats.cyan;ring.isVisible=false;ring.isPickable=false;glow.addIncludedOnlyMesh(ring);markers.set(id,ring);return ring;}
   function ensureUnit(unit,friendly,matthiasArt){if(unitRoots.has(unit.id))return unitRoots.get(unit.id);let root;if(unit.id==='matthias'){if(matthiasArt)matthiasUrl=matthiasArt;root=createMatthiasOperative(B,scene,mats);}else root=createTacticalAgent(B,scene,unit.id,friendly,unit.elite,mats);root.getChildMeshes().forEach((mesh)=>shadowGenerator.addShadowCaster(mesh));unitRoots.set(unit.id,root);return root;}
   function ensureReachableIndicator(tile){const key=`${tile.x},${tile.y}`;let indicator=reachableIndicators.get(key);if(!indicator){indicator=createReachableIndicator(B,scene,mats,glow,key,tile.cost);reachableIndicators.set(key,indicator);}if(indicator.metadata.cost!==tile.cost){indicator.metadata.cost=tile.cost;indicator.metadata.ring.material=moveMaterialForCost(mats,tile.cost);indicator.metadata.disc.material=moveMaterialForCost(mats,tile.cost);paintMoveBadge(indicator.metadata.texture,tile.cost);}return indicator;}
   function pushFx(mesh,life=260){mesh.isPickable=false;fx.push({mesh,born:performance.now(),life});return mesh;}
@@ -547,7 +556,33 @@ export async function createChesscomBabylon(host,{onTile,onUnit,onHover,onReady}
         if(parts?.legR&&!reduced)parts.legR.rotation.x=-moveWave*.17;
         if(parts?.head&&!reduced)parts.head.position.x=Math.sin(t*.46+phase)*.008;
       }
-      const marker=markers.get(id);if(marker?.isVisible&&!reduced){const s=1+Math.sin(t*1.85+phase)*.026;marker.scaling.set(s,s,s);}
+      const marker=markers.get(id);
+      if(marker){
+        const cue=marker.metadata;
+        const active=Boolean(cue?.momentUntil && cue.momentUntil>now);
+        if(cue?.momentUntil && !active){
+          if(cue.momentBaseVisible===false && !cue.operatorFocus)marker.isVisible=false;
+          delete cue.momentUntil;
+          delete cue.momentBaseVisible;
+        }
+        if(marker.isVisible){
+          const breathing=reduced?1:1+Math.sin(t*1.85+phase)*.026;
+          const focus=cue?.operatorFocus?CHESSCOM_OPERATOR_MOMENTS_V26.selectedScale:1;
+          const action=active?CHESSCOM_OPERATOR_MOMENTS_V26.momentScale:1;
+          const scale=breathing*focus*action;
+          marker.scaling.set(scale,scale,scale);
+        }
+      }
+    }
+    // Dead operatives no longer enter the motion loop; their temporary
+    // casualty ring must still expire instead of becoming permanent scenery.
+    for(const marker of markers.values()){
+      const cue=marker.metadata;
+      if(cue?.momentUntil && cue.momentUntil<=now){
+        if(cue.momentBaseVisible===false && !cue.operatorFocus)marker.isVisible=false;
+        delete cue.momentUntil;
+        delete cue.momentBaseVisible;
+      }
     }
     if(!reduced){for(const indicator of reachableIndicators.values()){if(!indicator.isEnabled())continue;const pulse=1+Math.sin(t*1.75+indicator.metadata.phase)*.032;indicator.metadata.ring.scaling.set(pulse,pulse,pulse);indicator.metadata.badge.position.y=.39+Math.sin(t*1.25+indicator.metadata.phase)*.012;}props.ring.rotation.z=t*.12;props.beacon.scaling.y=.95+Math.sin(t*1.45)*.05;props.exfilLight.intensity=4.0+Math.sin(t*1.55)*.42;warmLights.forEach((light,index)=>{const base=index<2 ? 11 : 4.8;light.intensity=base+Math.sin(t*1.35+index*1.7)*.22;});}
     for(let i=fx.length-1;i>=0;i-=1){const item=fx[i];const progress=(now-item.born)/item.life;if(progress>=1){item.mesh.dispose();fx.splice(i,1);continue;}if('alpha' in item.mesh)item.mesh.alpha=1-progress;const s=1+progress*.65;item.mesh.scaling.set(s,s,s);}

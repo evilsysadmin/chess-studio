@@ -8,7 +8,6 @@ import experimentsRoomCanonical from '../assets/lab-arcade-dungeon-canon-q70.web
 import PreferredBoard from './PreferredBoard.jsx';
 import GlossaryTerm from './GlossaryTerm.jsx';
 import MechanicTutorialHelp from './MechanicTutorialHelp.jsx';
-import { requestWarRoomLandscapeFullscreen } from './useWarRoomImmersive.js';
 import {
   releaseChroniclesLandscape,
   requestChroniclesLandscapeOnEntry,
@@ -22,7 +21,7 @@ import './LabWorkshopMobile.css';
 const ArenaExperiment = lazy(() => import('./ArenaExperiment.jsx'));
 const PawnTrailblazer = lazy(() => import('./PawnTrailblazer.jsx'));
 const PawnSlugGodotHost = lazy(() => import('./PawnSlugGodotHost.jsx'));
-const ChessFootballGodotHost = lazy(() => import('./ChessFootballGodotHost.jsx'));
+const ChessFootballEntry = lazy(() => import('./ChessFootballEntry.jsx'));
 const Chesscom = lazy(() => import('./Chesscom.jsx'));
 const ChroniclesOfMatthias = lazy(() => import('./ChroniclesOfMatthias.jsx'));
 const ChroniclesOfMatthiasTactics = lazy(() => import('./ChroniclesOfMatthiasTactics.jsx'));
@@ -111,14 +110,8 @@ export default function LabScreen({ onExit, onStart }){
   }
 
   function enterChessFootball() {
-    const coarsePointer = typeof window.matchMedia === 'function'
-      && window.matchMedia('(pointer: coarse)').matches;
-
-    if (coarsePointer) {
-      document.documentElement.dataset.chessFootballImmersive = 'requested';
-      void requestWarRoomLandscapeFullscreen();
-    }
-
+    // The Football welcome screen owns the two entry paths. A mobile
+    // landscape request belongs to the later "Play now" user gesture.
     setLabMode('chess-football-godot');
   }
 
@@ -129,7 +122,7 @@ export default function LabScreen({ onExit, onStart }){
 
   if (labMode==='trailblazer') return <Suspense fallback={<LabModeFallback />}><PawnTrailblazer onExit={()=>setLabMode('hub')} /></Suspense>;
   if (labMode==='pawnslug-godot') return <Suspense fallback={<LabModeFallback />}><PawnSlugGodotHost onExit={()=>setLabMode('hub')} /></Suspense>;
-  if (labMode==='chess-football-godot') return <Suspense fallback={<LabModeFallback />}><ChessFootballGodotHost onExit={()=>setLabMode('hub')} /></Suspense>;
+  if (labMode==='chess-football-godot') return <Suspense fallback={<LabModeFallback />}><ChessFootballEntry onExit={()=>setLabMode('hub')} /></Suspense>;
   if (labMode==='chesscom') return <Suspense fallback={<LabModeFallback />}><Chesscom onExit={()=>setLabMode('hub')} /></Suspense>;
   if (labMode==='chronicles') return <Suspense fallback={<LabModeFallback />}><ChroniclesOfMatthias onExit={exitChronicles} /></Suspense>;
   if (labMode==='chronicles-tactics') return <Suspense fallback={<LabModeFallback />}><ChroniclesOfMatthiasTactics onExit={exitChronicles} /></Suspense>;
@@ -188,7 +181,7 @@ export default function LabScreen({ onExit, onStart }){
               <small>{experimentMaturityLabel(EXPERIMENT_MATURITY.POC, 'Godot Web')}</small>
               <strong>Chess Football</strong>
               <span>Fútbol arcade 5 contra 5 con piezas de ajedrez, pases, tiros, sprint y cambio de jugador.</span>
-              <b>Saltar al césped</b>
+              <b>Abrir vestuario</b>
             </button>
             <button type="button" className="lab-workshop-portal lab-workshop-portal--shutter lab-workshop-portal--trailblazer" data-glyph="♙" onClick={()=>setLabMode('trailblazer')}>
               <small>{experimentMaturityLabel(EXPERIMENT_MATURITY.POC, 'jugable')}</small>

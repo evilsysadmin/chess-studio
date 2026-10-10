@@ -20,6 +20,9 @@ Primer slice pequeño del backlog de Home vivo.
 - La Home principal se mantiene limpia. Los modos secundarios o de mayor profundidad se agrupan detrás de una transición diegética explícita hacia un **Dungeon/zona secundaria**.
 - Esa transición debe leerse como parte física del espacio —preferentemente una escalera integrada en la escena— y ser un hotspot real, no decorado muerto ni un botón flotante disfrazado.
 - El Dungeon no duplica los CTA principales de Home: sirve para descargar complejidad del camino común y concentrar allí modos adicionales.
+- Cabecera de Home: el escudo de cuenta es el único control; Novedades (con sello de «nuevo») y Feedback viven dentro de su menú. Nada de pills sueltas ni barras de «accesos rápidos» que dupliquen los hotspots.
+- 1 vs 1 (Sala de Duelos) vive bajo «Más formas de jugar». Sólo aparece flotando sobre la sala cuando necesita al jugador (duelo en curso o reto pendiente); si hay algo nuevo, «Más formas de jugar» lleva un punto.
+- Tras la partida, el debrief ofrece una decisión principal, «Resumen de la partida» y «Volver al castillo» siempre visibles, y el resto (compartir, entrenar errores) como enlaces discretos: sin desplegables «Más opciones».
 
 ## No cambia
 - navegación principal;

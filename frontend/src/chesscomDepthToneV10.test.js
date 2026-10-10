@@ -13,5 +13,12 @@ describe('Chesscom depth/tone v10', () => {
     expect(ultra.warmScale).toBeLessThan(high.warmScale);
     expect(high.warmScale).toBeLessThan(balanced.warmScale);
     expect(ultra.exposureMax).toBeLessThanOrEqual(high.exposureMax);
+    expect(ultra.exposureMax).toBeLessThanOrEqual(1.1);
+    expect(high.fillScale).toBeGreaterThan(balanced.fillScale);
+    expect(ultra.fillScale).toBeGreaterThan(high.fillScale);
+    // Larger darkness values soften contact shadows in Babylon; keep the
+    // playable floor legible while preserving the warm/cool contrast.
+    expect(ultra.darkness).toBeGreaterThan(high.darkness);
+    expect(high.darkness).toBeGreaterThan(balanced.darkness);
   });
 });

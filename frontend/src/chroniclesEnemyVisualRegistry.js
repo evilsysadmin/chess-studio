@@ -9,6 +9,7 @@ import {
   buildForkStalker,
 } from './chroniclesFantasyEnemyArt.js';
 import { installChroniclesEnemyMotionArt } from './chroniclesEnemyMotionArt.js';
+import { buildChroniclesSpriteBillboard } from './chronicles/chroniclesSpriteBillboards.js';
 
 const VISUALS = Object.freeze({
   'corrupted-pawn': Object.freeze({ build: buildCorruptedPawn, scale: 0.92 }),
@@ -20,6 +21,11 @@ const VISUALS = Object.freeze({
   'ember-wisp': Object.freeze({ build: buildEmberWisp, scale: 0.96 }),
   'bone-hound': Object.freeze({ build: buildBoneHound, scale: 1.08 }),
   'fork-stalker': Object.freeze({ build: buildForkStalker, scale: 1.02 }),
+  // Overworld foes painted as first-person billboards; Tactics keeps a 3D
+  // stand-in from the closest procedural model.
+  'road-bandit': Object.freeze({ build: buildScavengerKnight, scale: 0.96 }),
+  'bandit-captain': Object.freeze({ build: buildScavengerKnight, scale: 1.18 }),
+  'weaver-spider': Object.freeze({ build: buildCryptSpider, scale: 1.2 }),
 });
 
 export function chroniclesEnemyVisualSpec(visualType) {
@@ -31,6 +37,12 @@ export function chroniclesEnemyVisualSpec(visualType) {
 export function buildChroniclesEnemyVisual(visualType, options = {}) {
   const visual = VISUALS[visualType];
   if (!visual) return null;
+  // First-person opts into 2.5D painted billboards where a sheet exists;
+  // everything else (and Tactics) keeps the procedural 3D model.
+  if (options.sprites) {
+    const billboard = buildChroniclesSpriteBillboard(visualType);
+    if (billboard) return Object.freeze({ model: billboard, scale: 1 });
+  }
   const model = visual.build(options);
   installChroniclesEnemyMotionArt(model, visualType, options);
   return Object.freeze({

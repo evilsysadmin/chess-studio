@@ -21,7 +21,9 @@ async function openChroniclesSetup(page, options = {}) {
   await descend.click();
   const entry = page.locator('[data-chronicles-save-menu]');
   await expect(entry).toBeVisible();
-  await entry.getByRole('button', { name: 'Nuevo juego', exact: true }).click();
+  await entry.getByRole('button', options.newCampaign
+    ? { name: /Nueva campaña/ }
+    : { name: 'Nuevo juego', exact: true }).click();
   const setup = page.locator('[data-chronicles-character-setup]');
   await expect(setup).toBeVisible();
   return setup;
@@ -32,6 +34,26 @@ async function openChronicles(page, options = {}) {
   await confirmChroniclesCharacterSetup(page, { newTown: options.newTown === true });
   await expect(page.locator('[data-chronicles="true"]')).toBeVisible();
 }
+
+test('Chronicles · nueva campaña crea una partida versionada de Swordhaven sin tocar el juego clásico', async ({ page }) => {
+  test.setTimeout(180_000);
+  const creationBodies = [];
+  page.on('request', (request) => {
+    if (request.method() !== 'POST' || !new URL(request.url()).pathname.endsWith('/api/chronicles/runs')) return;
+    creationBodies.push(request.postDataJSON());
+  });
+  await openChronicles(page, {
+    chroniclesCurrentMapId: 'swordhaven-first-book',
+    newCampaign: true,
+    newTown: true,
+  });
+  await expect.poll(() => creationBodies[0]?.mapId, { timeout: 20_000 }).toBe('swordhaven-first-book');
+  const mode = page.locator('[data-chronicles="true"]');
+  await expect(mode).toHaveAttribute('data-chronicles-map-id', 'swordhaven-first-book');
+  await expect(mode.locator('[data-chronicles-renderer="three"] canvas')).toHaveCount(1);
+  await expect(mode).toHaveAttribute('data-chronicles-phase', 'explore');
+  await expect(mode.locator('.chronicles-renderer-error')).toHaveCount(0);
+});
 
 test('Chronicles first-person · nueva expedición pide Swordhaven sin alterar Tactics', async ({ page }) => {
   const creationBodies = [];
@@ -45,6 +67,41 @@ test('Chronicles first-person · nueva expedición pide Swordhaven sin alterar T
   const mode = page.locator('[data-chronicles="true"]');
   await expect(mode).toHaveAttribute('data-chronicles-map-id', 'swordhaven-square');
   await expect(mode.locator('[data-chronicles-renderer="three"] canvas')).toHaveCount(1);
+});
+
+test('Chronicles · Escape opens and closes the in-game menu while the scene stays fullscreen', async ({ page }) => {
+  // Count every attempt to engage browser-native fullscreen, including entry
+  // via Experimentos and character setup. Escape must own the game menu instead.
+  await page.addInitScript(() => {
+    window.__chroniclesFullscreenRequests = 0;
+    Element.prototype.requestFullscreen = function requestFullscreen() {
+      window.__chroniclesFullscreenRequests += 1;
+      return Promise.resolve();
+    };
+  });
+  await openChronicles(page, { chroniclesCurrentMapId: 'swordhaven-square', newTown: true });
+  const mode = page.locator('[data-chronicles="true"]');
+  const menu = mode.locator('details.chronicles-game-menu');
+  await expect(menu).not.toHaveAttribute('open', '');
+  expect(await page.evaluate(() => window.__chroniclesFullscreenRequests)).toBe(0);
+
+  const bounds = await mode.boundingBox();
+  const viewport = page.viewportSize();
+  expect(bounds?.width || 0).toBeGreaterThanOrEqual((viewport?.width || 0) - 2);
+  expect(bounds?.height || 0).toBeGreaterThanOrEqual((viewport?.height || 0) - 2);
+
+  await page.keyboard.press('Escape');
+  await expect(menu).toHaveAttribute('open', '');
+  await expect(mode).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(menu).not.toHaveAttribute('open', '');
+  await expect(mode).toBeVisible();
+  expect(await page.evaluate(() => window.__chroniclesFullscreenRequests)).toBe(0);
+
+  await page.keyboard.press('Escape');
+  await expect(menu).toHaveAttribute('open', '');
+  await menu.getByRole('button', { name: 'Salir y guardar' }).click();
+  await expect(mode).toHaveCount(0);
 });
 
 test('Chronicles · Swordhaven → cripta → Swordhaven, desde el teclado y sin cerrar la run', async ({ page }) => {
@@ -75,7 +132,9 @@ test('Chronicles creator · recupera el borrador tras F5 sin confirmar progreso'
 
   const name = page.getByRole('textbox', { name: 'Nombre de matthias', exact: true });
   await name.fill('Greta de la Cripta');
-  await page.getByRole('button', { name: 'Subir Vigor', exact: true }).click();
+  await page.getByRole('button', { name: /Tirar dados/ }).click();
+  const rolledMight = await page.locator('.chronicles-character-setup__attribute[data-stat="might"] strong').textContent();
+  const rolledClass = await page.locator('.chronicles-character-setup__class-grid button[aria-pressed="true"]').getAttribute('data-class-id');
   const azizSlot = page.locator('.chronicles-character-setup__slots button').filter({ hasText: 'Aziz' });
   await azizSlot.click();
   await expect(azizSlot).toHaveAttribute('aria-pressed', 'true');
@@ -91,7 +150,10 @@ test('Chronicles creator · recupera el borrador tras F5 sin confirmar progreso'
   const matthiasSlot = page.locator('.chronicles-character-setup__slots button').filter({ hasText: 'Greta de la Cripta' });
   await matthiasSlot.click();
   await expect(page.getByRole('textbox', { name: 'Nombre de matthias', exact: true })).toHaveValue('Greta de la Cripta');
-  await expect(restored.getByText('+1 HP', { exact: true })).toBeVisible();
+  // The rolled dice and class survive the reload with the draft.
+  await expect(restored.locator('.chronicles-character-setup__attribute[data-stat="might"] strong')).toHaveText(rolledMight || '');
+  await expect(restored.locator('.chronicles-character-setup__class-grid button[aria-pressed="true"]'))
+    .toHaveAttribute('data-class-id', rolledClass || '');
   await expect(page.locator('[data-chronicles="true"]')).toHaveCount(0);
 });
 

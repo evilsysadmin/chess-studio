@@ -65,3 +65,37 @@ accepted candidates into `backend-python/chronicles_maps/` only together
 with the Go/frontend mirrors and refreshed cross-runtime corpora via
 `make chronicles-contracts`; then update the opt-in entry route, test
 checkpoints, and review real desktop/mobile gameplay PNGs.
+
+## Estructura del juego: historia principal + side quests
+
+Chronicles no se divide en «libros» ni capítulos cerrados. Hay **una historia
+principal** («El rey desaparecido», que arranca con el sobre de la Dama) y
+**muchísimas side quests** repartidas por el mundo abierto: cada región,
+pueblo o PNJ puede dar side quests opcionales, finitas y con recompensa
+propia. El diario las separa en Historia (♛) y Side quest (◆). En textos de
+juego y documentación se llaman «side quest», no «encargo secundario».
+
+El sufijo `-first-book` de los ids de mapa (`swordhaven-first-book`,
+`banner-road-first-book`, `rookwood-first-book`) es un nombre interno
+histórico: se conserva porque las partidas guardadas y los checkpoints
+referencian esos ids. No debe aparecer en textos del juego ni usarse como
+concepto de diseño; los mapas nuevos no lo llevan.
+
+## Side quest jugable: «Los nombres del bosque»
+
+`names-in-wood` («Los nombres del bosque», `quests/side.json`) es la primera
+side quest materializada: `rookwood-first-book` (wilderness) se abre
+desde `banner-road-first-book` por una salida recíproca
+(`to-banner-road-rookwood` ↔ `to-rookwood-banner-road`). Edda da el encargo,
+tres placas `rookwood-name-plaque` aparecen sólo con la quest activa (una tras
+un sabueso de hueso opcional) y el Roble de los Nombres paga 15 oro mediante
+`claim-reward` (`rookwood:names-in-wood:v1`, una vez por run, F5/CAS-safe).
+El atlas sigue siendo la fuente de diseño; el manifiesto de runtime se edita en
+`backend-python/chronicles_maps/` y se sincroniza con `make chronicles-contracts`.
+
+## Side quests de Swordhaven
+
+- **Bandidos del Camino** (`road-bandits`): la da el sargento Brask en el cuartel (4,6). Hay que derrotar al bandido desertor (`banner-road-deserter`, `road-bandit`) y a Garrah, jefe de los desertores (`banner-road-bandit-captain`, `bandit-captain`), en el Camino de los Estandartes. Las flags de derrota habilitan la entrega en el cuartel, que paga 12 oro una sola vez (`swordhaven:road-bandits:v1`).
+- **Seda para las vendas** (`weaver-silk`): la da la sacerdotisa Ilse en el templo (14,6). La tejedora de la hondonada de Rookwood (`rookwood-weaver`, `weaver-spider`) suelta `weaver-silk` al morir. La entrega en el templo consume la seda, paga 8 oro (`swordhaven:weaver-silk:v1`) y cura a la compañía.
+
+Los tres enemigos nuevos son opcionales y en primera persona se dibujan como billboards 2.5D generados con SpriteCook. En Tactics usan un modelo 3D procedural equivalente.

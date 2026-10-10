@@ -74,6 +74,7 @@ export default function Menu({
     onContinueRun,
   }), [onCombatRoguelike, onContinueRun]);
   const [matthiasVisit, setMatthiasVisit] = useState(null);
+  const [homeAvailable, setHomeAvailable] = useState(false);
   const [matthiasMemory, setMatthiasMemory] = useState(null);
   const matthiasRollRef = useRef(Math.random());
 
@@ -165,12 +166,14 @@ export default function Menu({
   }, [matthiasIntroBlocked, matthiasVisit]);
 
   useEffect(() => {
-    if (matthiasVisit?.kind !== 'login-greeting') return undefined;
+    // Count the seven seconds from first actual Home visibility, never while
+    // the knight curtain hides the greeting on slow 3D hardware.
+    if (matthiasVisit?.kind !== 'login-greeting' || !homeAvailable) return undefined;
     const timer = window.setTimeout(() => {
       setMatthiasVisit((current) => current?.kind === 'login-greeting' ? null : current);
     }, 7000);
     return () => window.clearTimeout(timer);
-  }, [matthiasVisit?.kind]);
+  }, [matthiasVisit?.kind, homeAvailable]);
 
   useEffect(() => {
     if (quickMatchLaunchNonce > 0) setShowQuickMatch(true);
@@ -210,6 +213,11 @@ export default function Menu({
   }
 
   const pvpEntryVisible = !showQuickMatch && !showPracticeMatch && !showPvpLobby;
+  // The 1 vs 1 entry lives under "Más formas de jugar". It only surfaces on its
+  // own over the hall when it needs the player: a duel in progress or a
+  // challenge waiting for an answer. Never a permanent dashboard card.
+  const pvpNeedsPlayer = Boolean(pvpFlow?.activeMatch) || Number(pvpFlow?.incomingCount || 0) > 0;
+  const pvpAttention = pvpNeedsPlayer || Number(pvpFlow?.unreadMessageCount || 0) > 0;
   // One canonical 1 vs 1 entry on Home. Its state comes from the PvP runtime
   // owner; Home only projects it and navigates to lobby or the active match.
   const renderPvpRosterLink = ({ placement = 'floating' } = {}) => (
@@ -251,9 +259,11 @@ export default function Menu({
         onInsights={onInsights}
         matthiasModel={matthiasCardModel}
         matthiasSpeaking={Boolean(matthiasVisit) && !matthiasCornerBlocked}
+        onHomeAvailable={() => setHomeAvailable(true)}
         onMatthiasAction={handleMatthiasAction}
         onMatthiasDismiss={() => setMatthiasVisit(null)}
         pvpMenuEntry={pvpEntryVisible ? renderPvpRosterLink({ placement: 'menu' }) : null}
+        pvpAttention={pvpAttention}
         tools={[
           ['Puzzles personales', onTrainPersonal],
           ['Puzzles clásicos', onPuzzle],
@@ -266,7 +276,7 @@ export default function Menu({
         ]}
       />
 
-      {pvpEntryVisible && renderPvpRosterLink()}
+      {pvpEntryVisible && pvpNeedsPlayer && renderPvpRosterLink()}
 
       {showQuickMatch && (
         <QuickMatchModal

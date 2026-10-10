@@ -14,11 +14,22 @@ import { decodePng } from './png-pixels.js';
 // and "promoted" -- if it fails, the workflow must not commit the manifest.
 const GLB_PATH = process.env.HOME_RUNTIME_GATE_GLB;
 
+// Hosted runners have no GPU and current Chromium no longer falls back to
+// SwiftShader WebGL on its own: without these flags every WebGL context fails
+// ("Cannot read properties of null (reading 'precision')") and the scene sits
+// in "loading" forever. Same launch contract as the other Home/War Room
+// WebGL specs.
+test.use({
+  launchOptions: {
+    args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'],
+  },
+});
+
 test('Home runtime gate: freshly published GLB mounts without regression', async ({ page }) => {
   // Parsing an ~11 MB GLTFLoader scene plus login/mockApi setup routinely
   // takes close to the 20s default test timeout on its own, before the
   // settle wait and screenshot even run. Give it real headroom.
-  test.setTimeout(60_000);
+  test.setTimeout(330_000);
   // Only the promote workflow sets this; every other Playwright run (the
   // general CI sweep, a local `npx playwright test`) has nothing to gate.
   // A no-op pass here, not a conditional skip call -- this repo's test-suite
@@ -44,6 +55,32 @@ test('Home runtime gate: freshly published GLB mounts without regression', async
     body: glbBuffer,
   }));
 
+  // The device policy (HomeCastle3DRenderPolicy) only mounts the Blender
+  // runtime on 'full' LOD, which needs more than 4 cores; hosted runners
+  // report 4 and silently got the lite single-image compositor, so the gate
+  // failed without ever loading the GLB. This gate judges the GLB, not the
+  // runner, so present a desktop-class CPU count.
+  await page.addInitScript(() => {
+    Object.defineProperty(Navigator.prototype, 'hardwareConcurrency', { get: () => 8 });
+    // Same reasoning for the scene's 20 s load watchdog (HomeBlenderScene3D):
+    // on a software-rendered runner decoding the ~11 MB scene can outlast it,
+    // and the Home then falls back to the painted hall without the GLB ever
+    // being judged. Stretch only that watchdog; every other timer is untouched.
+    const nativeSetTimeout = window.setTimeout.bind(window);
+    window.setTimeout = (handler, delay, ...args) => nativeSetTimeout(handler, delay === 20_000 ? 90_000 : delay, ...args);
+    // Leave a trail of the runtime state for the failure report.
+    window.__homeRuntimeTrail = [];
+    new MutationObserver((records) => {
+      for (const record of records) {
+        const value = record.target?.getAttribute?.(record.attributeName);
+        window.__homeRuntimeTrail.push(`${Math.round(performance.now())}ms ${record.attributeName}=${value}`);
+      }
+    }).observe(document, { subtree: true, attributes: true, attributeFilter: ['data-home-blender-runtime', 'data-home-castle-compositor'] });
+  });
+  page.on('console', (message) => {
+    if (message.type() === 'error' || message.type() === 'warning') console.log(`[console.${message.type()}] ${message.text().slice(0, 300)}`);
+  });
+
   await mockApi(page, {
     profileSeed: {
       'matthias.onboarded': '2',
@@ -58,7 +95,12 @@ test('Home runtime gate: freshly published GLB mounts without regression', async
 
   // Never silently accept the legacy 2D fallback as "the scene mounted" --
   // that's exactly the failure mode this gate exists to catch.
-  await expect(castle).toHaveClass(/is-ready/, { timeout: 25_000 });
+  try {
+    await expect(castle).toHaveClass(/is-ready/, { timeout: 105_000 });
+  } catch (error) {
+    console.log('Home runtime trail:', JSON.stringify(await page.evaluate(() => window.__homeRuntimeTrail || [])));
+    throw error;
+  }
   await expect(castle).toHaveAttribute('data-home-castle-compositor', 'blender-runtime');
 
   // Let materials/lighting settle a couple of real frames before sampling.
@@ -70,9 +112,10 @@ test('Home runtime gate: freshly published GLB mounts without regression', async
   // that case: without preserveDrawingBuffer the backbuffer can already be
   // cleared by the time a separate page.evaluate() call samples it. Playwright's
   // own screenshot goes through the compositor instead, so it isn't affected.
-  const box = await castle.boundingBox();
+  // A software-rendered main thread can be busy for a while; give layout reads room.
+  const box = await castle.boundingBox({ timeout: 45_000 });
   if (!box) throw new Error('Could not resolve the castle canvas bounding box');
-  const png = await page.screenshot({ clip: box });
+  const png = await page.screenshot({ clip: box, timeout: 150_000 });
   const { width, height, pixels } = decodePng(png);
 
   let total = 0;

@@ -405,6 +405,11 @@ def _surface_groups(path: str) -> set[str] | None:
         return set()
     if ".test." in name or ".spec." in name:
         return set()
+    if lower.startswith("frontend/src/footballmanager"):
+        # The manager's pure simulation/roster modules only paint the
+        # Experiments > Football surface. Generic unknown source still
+        # falls back to every canonical room.
+        return {"experiments"}
     if _is_noncanonical_admin_surface(path):
         return set()
     if lower.startswith("frontend/src/components/homematthias"):
@@ -465,7 +470,7 @@ def _experiment_parts(path: str) -> set[str]:
         return {"pawnslug"}
     if "trailblazer" in lower or "arcade" in lower:
         return {"landing"}
-    if "chessfootball" in lower or "chess-football" in lower:
+    if any(token in lower for token in ("chessfootball", "chess-football", "footballmanager")):
         return {"football"}
     if lower == "frontend/src/components/labscreen.jsx":
         return {"landing", "pawnslug"}
@@ -836,6 +841,18 @@ def self_test() -> None:
     ])
     assert football.capture_groups == "experiments"
     assert football.experiments_scope == "football"
+    manager = classify([
+        "frontend/src/components/ChessFootballEntry.jsx",
+        "frontend/src/components/ChessFootballEntry.css",
+        "frontend/src/footballManagerSeason.js",
+        "frontend/src/footballManagerSeason.test.js",
+        "e2e/chess-football.spec.js",
+        "e2e/experiments-visual-artifact.spec.js",
+    ])
+    assert manager.capture_groups == "experiments"
+    assert manager.experiments_scope == "landing,pawnslug,football"
+    assert classify(["frontend/src/footballManagerRoster.js"]).experiments_scope == "football"
+    assert classify(["frontend/src/unownedVisualModule.js"]).capture_groups == ",".join(GROUP_ORDER)
     mobile_workshop = classify(["frontend/src/components/LabWorkshopMobile.css"])
     assert mobile_workshop.capture_groups == "experiments"
     assert mobile_workshop.experiments_scope == "landing"

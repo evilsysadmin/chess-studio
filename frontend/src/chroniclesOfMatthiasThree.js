@@ -14,6 +14,7 @@ import { buildChroniclesEnemyVisual } from './chroniclesEnemyVisualRegistry.js';
 import { buildSpectralChapel } from './chroniclesOfMatthiasSpectralBishop.js';
 import { createExperimentalThreeRenderer } from './experimentalThreeRenderer.js';
 import { buildSwordhavenScene } from './chronicles/chroniclesSwordhaven3D.js';
+import { buildChroniclesCampaignExterior } from './chronicles/chroniclesCampaignExterior3D.js';
 import { CHRONICLES_SWORDHAVEN_RETURN_PORTAL_ID } from './chronicles/chroniclesSwordhavenReturnPortal.js';
 
 const CELL = 4;
@@ -57,6 +58,20 @@ function worldForCell(x, y, center = DEFAULT_SCENE_CENTER) {
 // of inheriting the old fixed chess-piece yaw: asymmetric fantasy enemies
 // (especially the ash goblin) otherwise become a near-invisible side profile
 // while still legitimately blocking their runtime cell.
+const CHRONICLES_FIRST_PERSON_VFOV = 67;
+const CHRONICLES_FIRST_PERSON_MAX_HFOV = 96;
+
+// Vertical field of view for a viewport aspect. A fixed 67° vertical FOV on a
+// wide desktop canvas (≈2.5:1) opens ~117° horizontally: buildings at the
+// screen edges stretch and look taller and nearer than the ones ahead. Cap
+// the horizontal FOV so wide screens see more world, not a fisheye.
+export function chroniclesFirstPersonFov(aspect) {
+  const safeAspect = Number.isFinite(aspect) && aspect > 0 ? aspect : 1;
+  const maxHalfH = THREE.MathUtils.degToRad(CHRONICLES_FIRST_PERSON_MAX_HFOV / 2);
+  const cappedV = THREE.MathUtils.radToDeg(2 * Math.atan(Math.tan(maxHalfH) / safeAspect));
+  return Math.min(CHRONICLES_FIRST_PERSON_VFOV, cappedV);
+}
+
 export function chroniclesEnemyFacingYaw(enemyCell, partyCell) {
   const dx = Number(partyCell?.x) - Number(enemyCell?.x);
   const dy = Number(partyCell?.y) - Number(enemyCell?.y);
@@ -205,7 +220,7 @@ function createDungeonScene(scene, { coarsePointer = false, scenePlan = null } =
 
   const enemyModels = {};
   enemyDefinitions.forEach((enemyDefinition) => {
-    const visual = buildChroniclesEnemyVisual(enemyDefinition.visualType || enemyDefinition.id, { coarsePointer });
+    const visual = buildChroniclesEnemyVisual(enemyDefinition.visualType || enemyDefinition.id, { coarsePointer, sprites: true });
     const enemy = visual?.model;
     if (!enemy) return;
     enemyModels[enemyDefinition.id] = enemy;
@@ -577,23 +592,27 @@ export function createChroniclesOfMatthiasGame(host, {
   host.appendChild(renderer.domElement);
 
   const scene = new THREE.Scene();
-  if (scenePlan?.regionKind !== 'settlement') scene.fog = new THREE.FogExp2(0x0a0c0f, coarse ? 0.038 : 0.034);
-  if (scenePlan?.regionKind !== 'settlement') scene.add(new THREE.HemisphereLight(0x6f8191, 0x1b130d, coarse ? 0.35 : 0.24));
-  const camera = new THREE.PerspectiveCamera(67, 1, 0.08, 70);
+  const outdoors = scenePlan?.regionKind === 'settlement' || scenePlan?.regionKind === 'wilderness';
+  if (!outdoors) scene.fog = new THREE.FogExp2(0x0a0c0f, coarse ? 0.038 : 0.034);
+  if (!outdoors) scene.add(new THREE.HemisphereLight(0x6f8191, 0x1b130d, coarse ? 0.35 : 0.24));
+  const camera = new THREE.PerspectiveCamera(CHRONICLES_FIRST_PERSON_VFOV, 1, 0.08, 70);
   camera.rotation.order = 'YXZ';
   scene.add(camera);
   const combatFx = createCombatFx(camera);
 
-  const dungeon = scenePlan?.regionKind === 'settlement'
-    ? buildSwordhavenScene(scene, { coarsePointer: coarse, scenePlan })
-    : createDungeonScene(scene, { coarsePointer: coarse, scenePlan });
+  const campaignExterior = ['swordhaven-campaign', 'banner-road', 'swordhaven-first-book', 'banner-road-first-book', 'rookwood-first-book'].includes(scenePlan?.mapId);
+  const dungeon = campaignExterior
+    ? buildChroniclesCampaignExterior(scene, { coarsePointer: coarse, scenePlan })
+    : scenePlan?.regionKind === 'settlement'
+      ? buildSwordhavenScene(scene, { coarsePointer: coarse, scenePlan })
+      : createDungeonScene(scene, { coarsePointer: coarse, scenePlan });
   const contentRaycaster = new THREE.Raycaster();
   const contentPointer = new THREE.Vector2();
   const dressing = scenePlan?.useAuthoredCryptDressing
     ? buildChroniclesDungeonDressing({ coarsePointer: coarse })
     : new THREE.Group();
   dressing.name ||= 'chronicles-map-specific-dressing';
-  const atmosphere = scenePlan?.regionKind === 'settlement'
+  const atmosphere = outdoors
     ? new THREE.Group()
     : buildChroniclesDungeonAtmosphere({ coarsePointer: coarse, reducedMotion, scenePlan });
   scene.add(dressing, atmosphere);
@@ -611,6 +630,7 @@ export function createChroniclesOfMatthiasGame(host, {
   let attackFxStartedAt = -1;
   let attackFxConfig = ATTACK_FX.matthias;
   const enemyHitStartedAt = new Map();
+  const enemyAttackStartedAt = new Map();
   const enemyDeathStartedAt = new Map();
   const enemyMoveStartedAt = new Map();
   const enemyMoveFrom = new Map();
@@ -624,6 +644,7 @@ export function createChroniclesOfMatthiasGame(host, {
     const height = Math.max(1, host.clientHeight || 1);
     renderer.setSize(width, height, false);
     camera.aspect = width / height;
+    camera.fov = chroniclesFirstPersonFov(camera.aspect);
     camera.updateProjectionMatrix();
   }
 
@@ -634,6 +655,9 @@ export function createChroniclesOfMatthiasGame(host, {
       const previousHp = previousState?.[enemyDefinition.hpKey];
       const nextHp = state[enemyDefinition.hpKey];
       if (previousHp != null && nextHp < previousHp) enemyHitStartedAt.set(enemyDefinition.id, now);
+      const landedBlow = state.enemyTurnEvents !== previousState?.enemyTurnEvents
+        && (state.enemyTurnEvents || []).some((event) => event.type === 'attack' && event.enemyId === enemyDefinition.id && !event.missed);
+      if (landedBlow) enemyAttackStartedAt.set(enemyDefinition.id, now);
       if (!reducedMotion && previousHp > 0 && nextHp === 0) enemyDeathStartedAt.set(enemyDefinition.id, now);
     });
     desiredPosition = worldForCell(state.x, state.y, dungeon.sceneCenter);
@@ -662,6 +686,10 @@ export function createChroniclesOfMatthiasGame(host, {
       enemy.userData.chroniclesBaseYaw = chroniclesEnemyFacingYaw(currentCell, { x: state.x, y: state.y });
       if (reducedMotion) enemy.position.copy(target);
       enemy.visible = active && (hp > 0 || (!reducedMotion && deathStartedAt != null));
+      if (reducedMotion && enemy.userData.updateChroniclesSprite) {
+        const adjacent = Math.abs(currentCell.x - state.x) + Math.abs(currentCell.y - state.y) <= 1;
+        enemy.userData.updateChroniclesSprite(0, { menace: Boolean(adjacent || state.initiative) });
+      }
       const enemyGlow = enemy.userData.chroniclesGlowMaterials || [];
       enemyGlow.forEach((glow) => {
         const baseGlow = enemy.userData.chroniclesBaseGlow || 1.7;
@@ -689,6 +717,16 @@ export function createChroniclesOfMatthiasGame(host, {
     dungeon.contentProps.forEach((prop) => {
       const visual = contentVisualById.get(prop.id);
       prop.root.visible = Boolean(visual?.visible);
+      if (prop.root.userData.updateChroniclesSprite) {
+        const position = visual?.position;
+        prop.root.userData.chroniclesSpriteCues = {
+          grateful: Boolean(visual?.activated),
+          speaking: Boolean(position && Math.abs(position.x - state.x) + Math.abs(position.y - state.y) <= 1),
+        };
+        // Reduced motion: no idle loop, but the frame still tells the truth.
+        if (reducedMotion) prop.root.userData.updateChroniclesSprite(0, prop.root.userData.chroniclesSpriteCues);
+      }
+      if (prop.activatedRoot) prop.activatedRoot.visible = Boolean(visual?.activated);
       if (prop.kind === 'lever' && prop.pivot) {
         prop.pivot.rotation.z = visual?.activated ? -0.86 : 0.48;
       }
@@ -749,6 +787,9 @@ export function createChroniclesOfMatthiasGame(host, {
       });
 
       dungeon.contentProps.forEach((prop) => {
+        if (prop.root.visible && prop.root.userData.updateChroniclesSprite) {
+          prop.root.userData.updateChroniclesSprite(time + prop.phase, prop.root.userData.chroniclesSpriteCues);
+        }
         if (!prop.root.visible || prop.kind !== 'pickup' || !prop.core) return;
         prop.core.rotation.y = time * 0.75 + prop.phase;
         prop.core.position.y = 0.58 + Math.sin(time * 2.2 + prop.phase) * 0.06;
@@ -786,6 +827,19 @@ export function createChroniclesOfMatthiasGame(host, {
         if (active && hp > 0) {
           const hitElapsed = time - hitStartedAt;
           const hitKick = hitElapsed >= 0 && hitElapsed < 0.24 ? Math.sin((hitElapsed / 0.24) * Math.PI) : 0;
+          if (enemy.userData.updateChroniclesSprite) {
+            // 2.5D billboard: frames carry the motion; menace when engaged
+            // next to the party, hurt for a beat after a blow.
+            const cell = latestState ? chroniclesEnemyPosition(latestState, enemyDefinition) : null;
+            const adjacent = cell && latestState
+              && Math.abs(cell.x - latestState.x) + Math.abs(cell.y - latestState.y) <= 1;
+            const attackElapsed = time - (enemyAttackStartedAt.get(enemyDefinition.id) ?? -10);
+            enemy.userData.updateChroniclesSprite(time + index * 0.37, {
+              hurt: hitElapsed >= 0 && hitElapsed < 0.42,
+              attacking: attackElapsed >= 0 && attackElapsed < 0.5,
+              menace: Boolean(adjacent || latestState?.initiative),
+            });
+          }
           enemy.visible = true;
           enemy.rotation.y = baseYaw + Math.sin(time * 0.9 + index) * 0.1 + hitKick * 0.16 + jumpTwist;
           enemy.rotation.z = hitKick * -0.08;
@@ -793,7 +847,16 @@ export function createChroniclesOfMatthiasGame(host, {
           enemy.scale.setScalar(baseScale + hitKick * 0.07);
         } else if (active && deathStartedAt != null) {
           const deathElapsed = time - deathStartedAt;
-          if (deathElapsed < 0.5) {
+          if (enemy.userData.updateChroniclesSprite && deathElapsed < 0.9) {
+            // Billboards collapse into their own "dead" frame instead of
+            // shrinking geometry, then fade out of the cell.
+            enemy.visible = true;
+            enemy.userData.updateChroniclesSprite(time, { dead: true });
+            enemy.userData.setChroniclesSpriteOpacity?.(deathElapsed < 0.55 ? 1 : 1 - (deathElapsed - 0.55) / 0.35);
+            enemy.position.y = 0;
+            enemy.rotation.z = 0;
+            enemy.scale.setScalar(baseScale);
+          } else if (deathElapsed < 0.5) {
             enemy.visible = true;
             enemy.position.y = -Math.max(0, deathElapsed) * 1.45;
             enemy.rotation.z = Math.max(0, deathElapsed) * 1.4;

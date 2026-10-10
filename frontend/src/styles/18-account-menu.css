@@ -72,6 +72,33 @@
 .masthead-account-popover .masthead-account-menu-admin { min-height: 44px; }
 .masthead-account-popover .masthead-account-menu-admin b { color: color-mix(in srgb, var(--brass) 70%, var(--parchment)); }
 .masthead-account-popover button:disabled { cursor: wait; opacity: .62; }
+/* Unseen Novedades on the castle Home: a quiet brass seal on the crest
+   instead of a separate pill. */
+.masthead-account-trigger.has-news { position: relative; }
+.masthead-account-trigger.has-news::after {
+  content: '';
+  position: absolute;
+  top: 5px;
+  left: 30px;
+  width: 8px;
+  height: 8px;
+  border: 1.5px solid #1a120c;
+  border-radius: 50%;
+  background: var(--brass);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--brass) 70%, transparent);
+}
+/* In the castle the crest's menu belongs to the hall: warm parchment-on-oak
+   instead of the app's slate panel. */
+.app-shell-home .masthead-account-popover {
+  border-color: rgba(205, 157, 72, .38);
+  background: linear-gradient(180deg, rgba(38, 24, 14, .98), rgba(20, 13, 8, .98));
+  box-shadow: 0 18px 44px rgba(0, 0, 0, .5), inset 0 1px rgba(255, 226, 160, .08);
+}
+.app-shell-home .masthead-account-popover button:hover:not(:disabled),
+.app-shell-home .masthead-account-popover button:focus-visible { background: rgba(255, 200, 110, .08); }
+.app-shell-home .masthead-account-menu-separator { background: rgba(205, 157, 72, .22); }
+.masthead-account-popover .masthead-account-menu-news.is-new b,
+.masthead-account-popover .masthead-account-menu-news.is-new > span:first-child { color: var(--brass); }
 
 .masthead-game-compact .masthead-account-trigger { width: 38px; min-height: 38px; justify-content: center; padding: 0; }
 .masthead-game-compact .masthead-account-trigger > span:not(.masthead-account-avatar) { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }

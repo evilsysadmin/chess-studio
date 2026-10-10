@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { buttonWithHeading, login, mockApi } from './helpers.js';
+import { buttonWithHeading, login, mockApi, openDuelHall } from './helpers.js';
 
 const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 
@@ -85,7 +85,7 @@ test('1v1 · un join confirmado no se deshace si falla la reconciliación inmedi
   });
 
   await login(page);
-  await page.getByRole('button', { name: 'Abrir Sala de Duelos 1 contra 1' }).click();
+  await openDuelHall(page);
   const lobby = page.getByRole('dialog', { name: 'Duelo 1 contra 1 · War Room' });
 
   await expect(lobby.getByText('Otto Falk', { exact: true })).toBeVisible();
@@ -190,15 +190,18 @@ test('1v1 · enrolado sigue disponible fuera del roster y un reto global hace ha
 
   await login(page);
 
-  const rosterLink = page.getByRole('button', { name: 'Abrir Sala de Duelos 1 contra 1' });
-  await rosterLink.click();
+  await openDuelHall(page);
   const lobby = page.getByRole('dialog', { name: 'Duelo 1 contra 1 · War Room' });
   await lobby.getByRole('button', { name: 'Recibir retos', exact: true }).click();
   await expect(lobby.getByText('RECIBIENDO RETOS', { exact: true })).toBeVisible();
   await lobby.getByRole('button', { name: 'Cerrar', exact: true }).click();
 
+  const more = page.locator('.illustrated-home__play-more');
+  if ((await more.getAttribute('aria-expanded')) !== 'true') await more.click();
+  const rosterLink = page.locator('.illustrated-home__play-pvp').getByRole('button', { name: 'Abrir Sala de Duelos 1 contra 1' });
   await expect(rosterLink.getByText('Rivales disponibles', { exact: true })).toBeVisible();
   await expect(rosterLink.getByText('ELEGIR', { exact: true })).toBeVisible();
+  await page.keyboard.press('Escape');
   challengeReady = true;
 
   await buttonWithHeading(page, 'Torneo').click();

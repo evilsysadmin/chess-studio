@@ -57,43 +57,31 @@ describe('Chronicles Tactics · progression', () => {
     ]);
   });
 
-  it('persists a valid custom build and applies creator modifiers on top of RPG progression', () => {
+  it('persists a valid MM3 company without changing Tactics profiles', () => {
     const base = createChroniclesProgression();
     const custom = {
-      version: 1,
+      version: 2,
       mode: 'custom',
       characters: [
-        {
-          slotId: 'matthias',
-          classId: 'matthias',
-          name: 'Greta',
-          attributes: { vigor: 1, power: 2 },
-          startingSkillId: 'matthias-keen-point',
-        },
-        { slotId: 'rook', classId: 'rook', name: 'Hildegard', attributes: {}, startingSkillId: null },
-        {
-          slotId: 'bishop',
-          classId: 'bishop',
-          name: 'Nadir',
-          attributes: { precision: 2, will: 1 },
-          startingSkillId: 'bishop-long-diagonal',
-        },
-        { slotId: 'knight', classId: 'knight', name: 'Faust', attributes: {}, startingSkillId: null },
+        { slotId: 'matthias', classId: 'barbarian', name: 'Greta', stats: { might: 17, intellect: 8, personality: 9, endurance: 16, speed: 12, accuracy: 13, luck: 10 } },
+        { slotId: 'rook', classId: 'paladin', name: 'Hildegard', stats: { might: 14, intellect: 9, personality: 13, endurance: 15, speed: 10, accuracy: 11, luck: 11 } },
+        { slotId: 'bishop', classId: 'sorcerer', name: 'Nadir', stats: { might: 7, intellect: 16, personality: 10, endurance: 9, speed: 12, accuracy: 12, luck: 12 } },
+        { slotId: 'knight', classId: 'archer', name: 'Faust', stats: { might: 11, intellect: 13, personality: 10, endurance: 12, speed: 14, accuracy: 15, luck: 11 } },
       ],
     };
 
     const selected = setChroniclesCharacterBuild(base, custom);
     expect(selected.updated).toBe(true);
     const saved = saveChroniclesProgression(selected.progression);
-    expect(loadChroniclesProgression().characterBuild.characters[0].name).toBe('Greta');
+    expect(loadChroniclesProgression().characterBuild.characters[0]).toMatchObject({ name: 'Greta', classId: 'barbarian' });
 
     const tactics = applyChroniclesProgressionToTacticsState(
       createChroniclesState(null, saved.characterBuild),
       saved,
     );
-    expect(tactics.party.find((member) => member.id === 'matthias')?.maxHp).toBe(8);
-    expect(tactics.rpgModifiers.matthias.attackDamageBonus).toBe(2);
-    expect(tactics.rpgModifiers.bishop.reachBonus).toBe(2);
+    expect(tactics.party.find((member) => member.id === 'matthias')).toMatchObject({ name: 'Greta', maxHp: 7 });
+    expect(tactics.rpgModifiers.matthias.attackDamageBonus).toBe(0);
+    expect(setChroniclesCharacterBuild(base, { ...custom, version: 1 }).updated).toBe(false);
   });
 
   beforeEach(() => {

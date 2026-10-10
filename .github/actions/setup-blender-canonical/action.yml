@@ -53,13 +53,18 @@ runs:
         set -euo pipefail
         os_version="$(. /etc/os-release; printf '%s' "${VERSION_ID//./}")"
         echo "os-version=${os_version}" >> "${GITHUB_OUTPUT}"
+        # The cached libEGL/libegl-mesa0 debs must match the runner image's
+        # own Mesa (libgallium/DRI). Keyed only by OS version, a cache made on
+        # an older image segfaulted EEVEE renders after the 2026-10-04 image
+        # (EGL_BAD_PARAMETER, exit 139). Key it by the image build too.
+        echo "image-version=${ImageVersion:-unknown}" >> "${GITHUB_OUTPUT}"
 
     - name: Restore EGL package cache
       id: egl-cache
       uses: actions/cache@v6
       with:
         path: ${{ runner.temp }}/blender-egl-debs
-        key: blender-egl-debs-${{ runner.os }}-${{ runner.arch }}-${{ steps.host-runtime.outputs.os-version }}-v2
+        key: blender-egl-debs-${{ runner.os }}-${{ runner.arch }}-${{ steps.host-runtime.outputs.os-version }}-${{ steps.host-runtime.outputs.image-version }}-v3
 
     - name: Download EGL packages on cache miss
       if: steps.egl-cache.outputs.cache-hit != 'true'

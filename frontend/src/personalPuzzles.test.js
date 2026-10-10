@@ -35,6 +35,21 @@ describe('personal puzzles', () => {
     expect(loadPersonalPuzzles()[0].solution).toEqual(['Bc4']);
   });
 
+  it('salta errores no entrenables antes de limitar la cola a dos puzzles válidos', () => {
+    const history = [
+      { san: 'e4', from: 'e2', to: 'e4' },
+      { san: 'e5', from: 'e7', to: 'e5' },
+      { san: 'Nf3', from: 'g1', to: 'f3' },
+    ];
+    const report = { topMistakes: [
+      { index: 2, played: 'Nf3', suggested: 'Ke9', loss: 500 },
+      { index: 2, played: 'Nf3', suggested: 'Nf3', loss: 400 },
+      { index: 2, played: 'Nf3', suggested: 'Bc4', loss: 300 },
+    ] };
+    expect(savePersonalPuzzlesFromReport(history, 'w', report).added).toBe(1);
+    expect(loadPersonalPuzzles()).toMatchObject([{ played: 'Nf3', suggested: 'Bc4' }]);
+  });
+
   it('conserva la apertura de la autopsia y permite filtrar entrenamiento némesis', () => {
     const history = [{ san: 'e4' }, { san: 'e5' }, { san: 'Nf3' }];
     const report = { topMistakes: [{ index: 2, played: 'Nf3', suggested: 'Bc4', loss: 150 }] };
