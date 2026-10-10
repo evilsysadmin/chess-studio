@@ -295,7 +295,7 @@
     padding: .55cqw;
     border: 1px solid rgba(218, 166, 78, .55);
     border-radius: .6cqw;
-    background: linear-gradient(180deg, rgba(48, 27, 13, .96), rgba(20, 11, 6, .97));
+    background: linear-gradient(180deg, #301b0d, #140b06);
     box-shadow: inset 0 1px 0 rgba(255, 226, 160, .16), 0 .6cqw 1.6cqw rgba(0, 0, 0, .6);
     text-align: left;
     animation: home-play-menu-in .18s ease-out;

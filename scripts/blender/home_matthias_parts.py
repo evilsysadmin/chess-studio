@@ -269,7 +269,7 @@ def build_character():
     # head read as a block instead of the canonical cream pawn globe.
     ivory=mat('classic warm ivory',(.70,.60,.44),.60,.00); ivory_hi=mat('classic ivory highlight',(.80,.69,.52),.56,.00)
     navy=mat('classic midnight pawn',(.0025,.0035,.0055),.38,.12); navy_soft=mat('classic navy cloth',(.006,.008,.012),.48,.04)
-    leather=mat('classic black leather',(.006,.004,.003),.46,.05); brass=mat('classic aged brass',(.50,.27,.055),.34,.82); cap_red=mat('classic cap oxblood band',(.075,.012,.009),.44,.02); black=mat('classic brow eye mouth',(.0015,.002,.003),.56); paper=mat('aged dossier paper',(.42,.30,.16),.88); collar_steel=mat('classic pale steel collar',(.30,.29,.26),.40,.42); bread=mat('campaign bread',(.70,.52,.28),.82)
+    leather=mat('classic black leather',(.006,.004,.003),.46,.05); brass=mat('classic aged brass',(.50,.27,.055),.34,.82); cap_red=mat('classic cap oxblood band',(.075,.012,.009),.44,.02); black=mat('classic brow eye mouth',(.0015,.002,.003),.56); paper=mat('aged dossier paper',(.42,.30,.16),.88); collar_steel=mat('classic pale steel collar',(.30,.29,.26),.40,.42); bread=mat('campaign bread',(.70,.52,.28),.82); crust=mat('bocadillo crust',(.40,.19,.055),.72); ham=mat('bocadillo cured ham',(.66,.24,.22),.62); lettuce=mat('bocadillo lettuce',(.30,.52,.16),.70)
     rig=build_rig(); rig['matthias_asset_version']='home-blender-classic-v21'; rig['canonical_identity']='stern-no-moustache-pawn'; rig['canonical_reference']='classic-pawn-first-avatar'; rig['canonical_reference_sha256']='beb64c1dffd6b32a64847b8f768df43e823e858acf630516e27a2cc771e2d975'; rig['canonical_pose_language']='permanently-stern'
     root=[]; spine=[]; head=[]
 
@@ -350,7 +350,22 @@ def build_character():
     book=box('RoutineBook',(0,-.485,.915),(.225,.025,.145),leather,(math.radians(5),0,0),.012); book_page=box('RoutineBookPages',(0,-.512,.915),(.166,.008,.096),paper,(math.radians(5),0,0),.004); book_badge=sphere('RoutineBookBadge',(0,-.526,.910),(.030,.008,.036),brass,20); book_hand_l=glove('RoutineBookHand.L',(-.205,-.520,.835),(-.420,-.360,.740),-1,ivory,1.15); book_hand_r=glove('RoutineBookHand.R',(.205,-.520,.835),(.420,-.360,.740),1,ivory,1.15); cup=cyl('RoutineCup',(.265,-.420,1.195),.090,.132,ivory_hi,verts=48,bevel=.010); cup_band=cyl('RoutineCupBand',(.265,-.420,1.253),.092,.013,brass,verts=48,bevel=.004); cup_handle=sphere('RoutineCupHandle',(.365,-.420,1.198),(.045,.021,.060),brass,24); cup_hand=glove('RoutineCupHand',(.220,-.438,1.105),(.400,-.330,.900),1,ivory,1.15); pen=cyl('RoutinePen',(.145,-.525,.935),.010,.24,leather,(0,math.radians(64),math.radians(-8)),verts=24,bevel=.004); pen_tip=cone('RoutinePenTip',(.255,-.525,.885),.016,.003,.060,brass,(0,math.radians(64),math.radians(-8)),.003)
     # Keep the campaign bite below the stern mouth. At Home scale, a prop that
     # crosses the mouth reads as a replacement face instead of a short routine.
-    sandwich_bread=box('RoutineSandwichBread',(-.292,-.435,1.085),(.132,.038,.049),bread,(math.radians(4),math.radians(-7),math.radians(-6)),.016); sandwich_filling=box('RoutineSandwichFilling',(-.292,-.477,1.080),(.117,.013,.037),cap_red,(math.radians(4),math.radians(-7),math.radians(-6)),.007); sandwich_hand=glove('RoutineSandwichHand',(-.230,-.448,1.015),(-.400,-.340,.840),-1,ivory,1.15)
+    # A bocadillo, not a brick: a golden baguette split along its length, the
+    # crust halves slightly apart so a lip of ham and a curl of lettuce show
+    # from the hall camera. The old box with an oxblood slab in front of the
+    # bread read as a red block at Home distance.
+    tilt=(math.radians(4),math.radians(-7),math.radians(-6))
+    bread_lo=sphere('RoutineSandwichBread',(-.292,-.437,1.064),(.150,.044,.024),crust,40,tilt)
+    bread_hi=sphere('RoutineSandwichBreadTop',(-.292,-.437,1.104),(.146,.042,.026),crust,40,tilt)
+    crumb=sphere('RoutineSandwichCrumb',(-.292,-.437,1.085),(.128,.036,.012),bread,32,tilt)
+    bpy.ops.object.select_all(action='DESELECT')
+    for part in (bread_lo,bread_hi,crumb): part.select_set(True)
+    bpy.context.view_layer.objects.active=bread_lo
+    bpy.ops.object.join()
+    sandwich_bread=bpy.context.view_layer.objects.active; sandwich_bread.name='RoutineSandwichBread'
+    sandwich_filling=sphere('RoutineSandwichFilling',(-.292,-.448,1.084),(.134,.045,.013),ham,40,tilt)
+    sandwich_lettuce=sphere('RoutineSandwichLettuce',(-.300,-.454,1.092),(.126,.046,.006),lettuce,32,tilt)
+    sandwich_hand=glove('RoutineSandwichHand',(-.230,-.448,1.015),(-.400,-.340,.840),-1,ivory,1.15)
 
     for obj in root: parent_bone(obj,rig,'root')
     for obj in spine: parent_bone(obj,rig,'spine')
@@ -366,5 +381,5 @@ def build_character():
     for obj in (book,book_page,book_badge,book_hand_l,book_hand_r): parent_bone(obj,rig,'prop_book')
     for obj in (cup,cup_band,cup_handle,cup_hand): parent_bone(obj,rig,'prop_cup')
     for obj in (pen,pen_tip): parent_bone(obj,rig,'prop_pen')
-    for obj in (sandwich_bread,sandwich_filling,sandwich_hand): parent_bone(obj,rig,'prop_bite')
+    for obj in (sandwich_bread,sandwich_filling,sandwich_lettuce,sandwich_hand): parent_bone(obj,rig,'prop_bite')
     return rig
