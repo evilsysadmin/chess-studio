@@ -1,6 +1,7 @@
 package gamesapi
 
 import (
+	"context"
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/base64"
@@ -138,9 +139,12 @@ func TestChroniclesRunsRoute(t *testing.T) {
 		method, path, pattern, id string
 	}{
 		{"POST", "/api/chronicles/runs", ChroniclesRunCreatePattern, ""},
+		{"GET", "/api/chronicles/runs", ChroniclesRunListPattern, ""},
+		{"DELETE", "/api/chronicles/runs/r1", ChroniclesRunDeletePattern, "r1"},
 		{"GET", "/api/chronicles/runs/r1", ChroniclesRunReadPattern, "r1"},
+		{"GET", "/api/chronicles/runs/r1/bootstrap", ChroniclesRunBootstrapPattern, "r1"},
 		{"PUT", "/api/chronicles/runs/r1/checkpoint", ChroniclesRunCheckpointPattern, "r1"},
-		{"GET", "/api/chronicles/runs", "", ""},
+		{"PUT", "/api/chronicles/runs", "", ""},
 		{"PUT", "/api/chronicles/runs/r1", "", ""},
 		{"GET", "/api/chronicles/runs/r1/checkpoint", "", ""},
 		{"PUT", "/api/chronicles/runs//checkpoint", "", ""},
@@ -156,5 +160,55 @@ func TestChroniclesRunsRoute(t *testing.T) {
 	r.Header.Set("Access-Control-Request-Method", "POST")
 	if pattern, _, ok := ChroniclesRunsRoute(r); !ok || pattern != ChroniclesRunCreatePattern {
 		t.Errorf("preflight: %q %v", pattern, ok)
+	}
+}
+
+func TestChroniclesSavesAreOwnerScopedAndDeleteOnlyOne(t *testing.T) {
+	store := chroniclesrun.NewMemory()
+	now := time.Date(2026, 10, 9, 15, 0, 0, 0, time.UTC)
+	for _, r := range []struct{ id, owner string }{{"alice-one", "alice"}, {"alice-two", "alice"}, {"bob-one", "bob"}} {
+		_, err := store.Create(context.Background(), chroniclesrun.NewRun{
+			RunID: r.id, Owner: r.owner, Seed: 1, MapID: "swordhaven-square",
+			ContentVersion: 1, ManifestRevision: "rev", Fingerprint: "test",
+			Now: now,
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	h, err := NewChroniclesRuns(ChroniclesRunsConfig{Config: Config{
+		Accounts: fakeAccounts{}, Presence: &fakePresence{}, JWTSecret: secret,
+	}, Runs: store})
+	if err != nil {
+		t.Fatal(err)
+	}
+	request := func(method, path string) *httptest.ResponseRecorder {
+		r := httptest.NewRequest(method, path, nil)
+		r.Header.Set("Authorization", "Bearer "+longToken("alice"))
+		w := httptest.NewRecorder()
+		h.ServeHTTP(w, r)
+		return w
+	}
+	list := request("GET", "/api/chronicles/runs")
+	if list.Code != 200 || !strings.Contains(list.Body.String(), "alice-one") ||
+		!strings.Contains(list.Body.String(), "alice-two") ||
+		strings.Contains(list.Body.String(), "bob-one") ||
+		strings.Contains(list.Body.String(), "worldFlags") {
+		t.Fatalf("owner-scoped summaries: %d %s", list.Code, list.Body.String())
+	}
+	if denied := request("DELETE", "/api/chronicles/runs/bob-one"); denied.Code != 404 {
+		t.Fatalf("foreign delete: %d", denied.Code)
+	}
+	if deleted := request("DELETE", "/api/chronicles/runs/alice-one"); deleted.Code != 204 || deleted.Body.Len() != 0 {
+		t.Fatalf("expected empty 204: %d %s", deleted.Code, deleted.Body.String())
+	}
+	if repeated := request("DELETE", "/api/chronicles/runs/alice-one"); repeated.Code != 404 {
+		t.Fatalf("repeat delete: %d", repeated.Code)
+	}
+	if stored, err := store.Get(context.Background(), "bob-one", "bob"); err != nil || stored == nil {
+		t.Fatalf("foreign run altered: %v %v", stored, err)
+	}
+	if got := request("GET", "/api/chronicles/runs"); strings.Contains(got.Body.String(), "alice-one") {
+		t.Fatalf("deleted run still listed: %s", got.Body.String())
 	}
 }

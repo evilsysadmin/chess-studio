@@ -191,6 +191,21 @@ def _normalize_checkpoint_quests(quests: dict[str, Any]) -> dict[str, Any]:
     return normalized
 
 
+def _legacy_swordhaven_return_allowed(run: dict[str, Any], source_id: str, target_id: str) -> bool:
+    """Authorize only the established opt-in return portal.
+
+    The outgoing Swordhaven gate is authored and unchanged. Older crypt-only
+    expeditions cannot acquire a return door just by loading the crypt.
+    Check persisted run flags, never a client's proposed checkpoint flags.
+    """
+    return (
+        source_id == "crypt-eight-squares"
+        and target_id == "swordhaven-square"
+        and (run.get("worldFlags") or {}).get("swordhavenArrived") is True
+        and (run.get("worldFlags") or {}).get("campaignRouteV1") is not True
+    )
+
+
 def _transition_targets(manifest: dict[str, Any]) -> set[str]:
     effects: list[dict[str, Any]] = []
     for group in _CONTENT_GROUPS:
@@ -851,6 +866,7 @@ def build_chronicles_router(*, auth_dependency) -> APIRouter:
         if (
             target_map_id != run["currentMapId"]
             and target_map_id not in _transition_targets(current_area["manifest"])
+            and not _legacy_swordhaven_return_allowed(run, run["currentMapId"], target_map_id)
         ):
             raise HTTPException(409, "La transición solicitada no pertenece al mundo actual de la run.")
 
@@ -915,6 +931,25 @@ def build_chronicles_router(*, auth_dependency) -> APIRouter:
         if updated is None:
             raise HTTPException(404, "Run de Chronicles no encontrada.")
         return updated
+
+    @router.get("/runs")
+    async def list_saved_runs(username: str = Depends(auth_dependency)):
+        return {"runs": await chronicles_run_store.list_active_runs(username)}
+
+    @router.delete("/runs/{run_id}", status_code=204)
+    async def delete_saved_run(run_id: str, username: str = Depends(auth_dependency)):
+        if not await chronicles_run_store.delete_owned_run(run_id, username):
+            raise HTTPException(404, "Run de Chronicles no encontrada.")
+
+    @router.get("/runs/{run_id}/bootstrap")
+    async def bootstrap_saved_run(run_id: str, username: str = Depends(auth_dependency)):
+        run = await chronicles_run_store.get_run(run_id, username)
+        if run is None:
+            raise HTTPException(404, "Run de Chronicles no encontrada.")
+        if run.get("status", "active") != "active":
+            raise HTTPException(409, "Esta expedición ya ha terminado.")
+        route_snapshot = _normalize_route_snapshot(run.get("route"))
+        return _run_bootstrap_payload(run, route_snapshot=route_snapshot)
 
     @router.get("/runs/{run_id}")
     async def get_run(run_id: str, username: str = Depends(auth_dependency)):

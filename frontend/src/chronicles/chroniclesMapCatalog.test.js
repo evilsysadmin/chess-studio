@@ -11,6 +11,41 @@ import {
 } from './chroniclesMapCatalog.js';
 
 describe('Chronicles declarative map catalog', () => {
+  it('loads Swordhaven as a safe, static and reachable 19x19 settlement', () => {
+    const town = chroniclesMapById('swordhaven-square');
+    expect(town.title).toBe('Swordhaven');
+    expect(town.regionKind).toBe('settlement');
+    expect(town.layoutMode).toBe('authored');
+    expect(town.grid).toHaveLength(19);
+    expect(town.grid.every(row => row.length === 19)).toBe(true);
+    expect(town.enemies).toHaveLength(0);
+    expect(town.exits.map(exit => exit.id)).toContain('swordhaven-south-gate');
+    const access = [
+      ['swordhaven-forge', 4, 7],
+      ['swordhaven-armor', 14, 7],
+      ['swordhaven-tavern', 4, 15],
+      ['swordhaven-magic', 14, 15],
+      ['swordhaven-temple', 9, 5],
+    ];
+    expect(town.interactables.map(item => item.id)).toEqual(access.map(item => item[0]));
+    const visited = new Set();
+    const queue = [[town.partyStart.x, town.partyStart.y]];
+    while (queue.length) {
+      const [x, y] = queue.shift();
+      const key = x + ':' + y;
+      if (visited.has(key) || chroniclesMapTileAt(town, x, y) === '#') continue;
+      visited.add(key);
+      queue.push([x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]);
+    }
+    for (const [, x, y] of access) {
+      expect(chroniclesMapTileAt(town, x, y)).not.toBe('#');
+      expect(visited.has(x + ':' + y)).toBe(true);
+    }
+    expect(visited.has('9:17')).toBe(true);
+    expect(chroniclesMapTileAt(town, 9, 9)).toBe('#'); // Fountain footprint.
+  });
+
+
   it('loads the current crypt as a standalone data file', () => {
     const map = chroniclesMapById(DEFAULT_CHRONICLES_MAP_ID);
 

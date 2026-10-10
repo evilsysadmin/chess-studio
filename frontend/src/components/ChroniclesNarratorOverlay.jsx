@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import './ChroniclesNarratorOverlay.css';
 
 const LOW_SIGNAL_NARRATION = Object.freeze([
@@ -27,16 +28,31 @@ export function shouldShowChroniclesNarration(message) {
   return ![...LOW_SIGNAL_NARRATION, ...PARTY_OWNED_MILESTONES].some((pattern) => pattern.test(text));
 }
 
-export default function ChroniclesNarratorOverlay({ message }) {
-  if (!shouldShowChroniclesNarration(message)) return null;
+export default function ChroniclesNarratorOverlay({ message, children = null }) {
+  const isMeaningful = shouldShowChroniclesNarration(message);
+  const [lastNarration, setLastNarration] = useState(() => (isMeaningful ? message : ''));
+
+  // Routine movement must not make the chronicle button disappear.
+  // Keep the latest meaningful note visible until another replaces it.
+  useEffect(() => {
+    if (isMeaningful) setLastNarration(message);
+  }, [isMeaningful, message]);
+
+  const narration = isMeaningful ? message : lastNarration || 'Todavía no hay anotaciones en la crónica.';
 
   return (
-    <aside className="chronicles-dm-overlay" aria-live="polite" aria-atomic="true">
-      <span className="chronicles-dm-sigil" aria-hidden="true">✦</span>
-      <div>
-        <span className="chronicles-dm-kicker">CRÓNICA DE LA CRIPTA</span>
-        <p>{message}</p>
+    <details className="chronicles-dm-overlay">
+      <summary className="chronicles-dm-trigger" aria-label="Crónica de expedición">
+        <span className="chronicles-dm-sigil" aria-hidden="true">✦</span>
+        <span>Crónica</span>
+        <span className="chronicles-dm-chevron" aria-hidden="true">⌄</span>
+      </summary>
+      <div className="chronicles-dm-panel" role="region" aria-label="Relato de la expedición" aria-live="polite" aria-atomic="true">
+        <span className="chronicles-dm-kicker">CRÓNICA DE EXPEDICIÓN</span>
+        <p>{narration}</p>
+        {/* Touch layouts hide the bottom journal; quests travel with the chronicle. */}
+        {children && <div className="chronicles-dm-quests">{children}</div>}
       </div>
-    </aside>
+    </details>
   );
 }

@@ -18,6 +18,11 @@ const PLAYER_BASE_Y := 0.76
 # The approved front/back atlas bodies are about 120px tall. Normalize the
 # approved side run to the same perceived height without changing PNG bytes.
 const CANONICAL_BODY_HEIGHT_PIXELS := 120.0
+# Perspective makes identical world-sized billboards look bigger near the
+# camera and smaller far away. Compensate their *projected* size only.
+# Keep gameplay coordinates, canonical atlas bytes and shadows unchanged.
+const MIN_PERSPECTIVE_BODY_SCALE := 0.45
+const MAX_PERSPECTIVE_BODY_SCALE := 1.80
 # Diagonal artwork has broader shoulders but comparable body height.
 # The canonical scale already equalizes each view to 120px; a second vertical
 # multiplier made *every* diagonal smaller than front/back and side.
@@ -25,6 +30,12 @@ const CANONICAL_BODY_HEIGHT_PIXELS := 120.0
 const DIAGONAL_WIDTH_COMPENSATION := 0.91
 const PLAYER_RUN_BOB := 0.050
 const PLAYER_SPRINT_BOB := 0.072
+# The approved keeper frames do move, but many poses are only a few pixels
+# apart at broadcast zoom. Make the real stride readable using a modest
+# diegetic lean/sway/weight transfer; do not change canonical raster anatomy.
+const KEEPER_STRIDE_EXTRA_SWAY := 0.095
+const KEEPER_STRIDE_EXTRA_BOB := 0.035
+const KEEPER_STRIDE_EXTRA_LEAN_DEGREES := 13.0
 const STAMINA_BAR_WIDTH := 0.76
 const STAMINA_BAR_DEPTH := 0.10
 const STAMINA_BAR_Z := 0.62
@@ -34,7 +45,14 @@ var camera: Camera3D
 var player_nodes: Dictionary = {}
 var player_sprites: Dictionary = {}
 var player_run_views: Dictionary = {}
+# Keeper run/action poses tick independently in the visible 3D runtime.
+# Hidden authoritative 2D AnimatedSprite2D nodes are not a reliable clock.
+var keeper_visual_phases: Dictionary = {}
+var keeper_visual_names: Dictionary = {}
 var body_scale_cache: Dictionary = {}
+# Lighting is already disabled for billboards. The remaining brightness jump
+# comes from shadows baked differently into the authored view families.
+var tone_gain_cache: Dictionary = {}
 var ball_node: MeshInstance3D
 var ball_shadow: MeshInstance3D
 var penalty_aim_marker: MeshInstance3D
@@ -433,6 +451,9 @@ func world_to_stage(world: Vector2, height: float = 0.0) -> Vector3:
 	)
 
 func sync_presentation(delta: float, mode: String) -> void:
+	# Size compensation must use the camera pose from this same frame, not
+	# yesterday's interpolated pose; otherwise footballers visibly pulse.
+	_sync_camera(delta, mode)
 	for team in match_node.teams:
 		for player in team:
 			var key: int = int(player.get_instance_id())
@@ -455,13 +476,46 @@ func sync_presentation(delta: float, mode: String) -> void:
 				var directional_animation := ChessFootballRunDirection.animation_for(wanted_animation, run_view)
 				if sprite.sprite_frames.has_animation(directional_animation):
 					wanted_animation = directional_animation
-				if sprite.animation != wanted_animation:
-					sprite.play(wanted_animation)
-				sprite.flip_h = player.visual.flip_h
-				sprite.speed_scale = player.visual.speed_scale
-				sprite.frame = player.visual.frame
+				if player.role == "keeper":
+					_sync_keeper_animation(key, player, sprite, wanted_animation, delta)
+					# The approved front/back keeper atlas does not alternate which
+					# leg leads strongly enough. Mirroring only the second half of
+					# those symmetric views yields a real left/right step without
+					# generating art or flipping the oblique facing direction.
+					var direct_view := String(wanted_animation)
+					var symmetric_run := direct_view in [
+						"run_front", "run_back", "sprint_front", "sprint_back"
+					]
+					var alternate_leg := (
+						symmetric_run
+						and sprite.frame >= sprite.sprite_frames.get_frame_count(wanted_animation) / 2
+					)
+					sprite.flip_h = player.visual.flip_h != alternate_leg
+				else:
+					if sprite.animation != wanted_animation:
+						sprite.play(wanted_animation)
+					sprite.speed_scale = player.visual.speed_scale
+					sprite.frame = player.visual.frame
+					sprite.flip_h = player.visual.flip_h
 			sprite.pixel_size = TACTICAL_PLAYER_PIXEL_SIZE if mode == "tactical" else PLAYER_PIXEL_SIZE
 			_sync_player_secondary_motion(player, sprite, proxy)
+			var tone_gain := _tonal_view_gain(sprite)
+			sprite.modulate = Color(tone_gain, tone_gain, tone_gain, 1.0)
+			var depth_scale := perspective_body_scale(camera, proxy.global_position)
+			# Apply to both axes AFTER each authored-view/role correction. Boot
+			# baseline must also be scaled, or feet sink as players cross depth.
+			var authored_y := sprite.scale.y
+			sprite.scale.x *= depth_scale
+			sprite.scale.y *= depth_scale
+			var cell_half_height := ChessFootballSpriteBank.cell_size().y * 0.5
+			var foot_y := (
+				ChessFootballSpriteBank.frame_bottom(
+					sprite.sprite_frames.get_frame_texture(sprite.animation, sprite.frame)
+				) - cell_half_height
+			)
+			sprite.position.y += foot_y * sprite.pixel_size * (sprite.scale.y - authored_y)
+			# The existing secondary motion includes deliberate running bob,
+			# which stays independent from depth and untouched here.
 			var is_controlled: bool = player == match_node.controlled
 			var active_disc := proxy.get_node_or_null("ActiveDisc") as MeshInstance3D
 			if active_disc != null:
@@ -499,7 +553,51 @@ func sync_presentation(delta: float, mode: String) -> void:
 				0.045,
 			)
 
-	_sync_camera(delta, mode)
+
+static func _keeper_locomotion(animation_name: StringName) -> bool:
+	var name := String(animation_name)
+	return name == "run" or name == "sprint" or name.begins_with("run_") or name.begins_with("sprint_")
+
+
+func _sync_keeper_animation(
+	key: int, player: Footballer, sprite: AnimatedSprite3D, wanted: StringName, delta: float
+) -> void:
+	# The gameplay actor can remain hidden as its 3D proxy is drawn. In the
+	# previous implementation, copying player.visual.frame on every physics
+	# tick made goalkeeper running poses appear static even while moving.
+	# One clock owns the *visible* goalkeeper frames; the 2D actor still owns
+	# the action state, stamina, and actual movement/rules.
+	var frames := sprite.sprite_frames
+	if not frames.has_animation(wanted):
+		return
+	var count := frames.get_frame_count(wanted)
+	if count < 1:
+		return
+	var previous: StringName = keeper_visual_names.get(key, &"")
+	var phase: float = float(keeper_visual_phases.get(key, 0.0))
+	if previous != wanted or sprite.animation != wanted:
+		if not (_keeper_locomotion(previous) and _keeper_locomotion(wanted)):
+			phase = 0.0
+		sprite.play(wanted)
+		# Do not let the built-in 3D timer race against this fixed-physics
+		# clock; only this function advances keeper frames.
+		sprite.pause()
+		keeper_visual_names[key] = wanted
+	var advance := maxf(delta, 0.0) * frames.get_animation_speed(wanted)
+	if _keeper_locomotion(wanted):
+		# Movement-phase continuity survives diagonal turns and run/sprint
+		# switches; a stationary keeper must not run in place.
+		if player.velocity.length() >= 12.0:
+			phase += advance * maxf(player.visual.speed_scale, 0.0)
+	elif wanted != &"idle":
+		phase += advance * maxf(player.visual.speed_scale, 0.0)
+	if frames.get_animation_loop(wanted):
+		phase = fposmod(phase, float(count))
+	else:
+		phase = minf(phase, float(count - 1))
+	keeper_visual_phases[key] = phase
+	sprite.frame = clampi(int(floorf(phase)), 0, count - 1)
+
 
 static func view_compensation(animation_name: StringName) -> Vector2:
 	var name := String(animation_name)
@@ -509,6 +607,58 @@ static func view_compensation(animation_name: StringName) -> Vector2:
 	]:
 		return Vector2(DIAGONAL_WIDTH_COMPENSATION, 1.0)
 	return Vector2.ONE
+
+
+static func perspective_body_scale(view_camera: Camera3D, stage_position: Vector3) -> float:
+	if view_camera == null or view_camera.projection != Camera3D.PROJECTION_PERSPECTIVE:
+		return 1.0
+	# Use CAMERA FORWARD depth, not Euclidean distance: a player's horizontal
+	# lane should not make them larger at the same pitch depth.
+	var forward := -view_camera.global_transform.basis.z
+	var reference_point := Vector3(view_camera.global_position.x, PLAYER_BASE_Y, 0.0)
+	var reference_depth := (reference_point - view_camera.global_position).dot(forward)
+	var player_depth := (
+		(stage_position + Vector3.UP * PLAYER_BASE_Y) - view_camera.global_position
+	).dot(forward)
+	if reference_depth <= 0.01 or player_depth <= 0.01:
+		return 1.0
+	return clampf(
+		player_depth / reference_depth,
+		MIN_PERSPECTIVE_BODY_SCALE, MAX_PERSPECTIVE_BODY_SCALE
+	)
+
+
+static func _animation_luminance(frames: SpriteFrames, name: StringName) -> float:
+	if not frames.has_animation(name):
+		return 0.0
+	var count := frames.get_frame_count(name)
+	if count < 1:
+		return 0.0
+	var sample_indexes := [0, maxi(0, count / 2), count - 1]
+	var total := 0.0
+	for sample_index in sample_indexes:
+		total += ChessFootballSpriteBank.frame_luminance(
+			frames.get_frame_texture(name, sample_index)
+		)
+	return total / float(sample_indexes.size())
+
+
+func _tonal_view_gain(sprite: AnimatedSprite3D) -> float:
+	var frames := sprite.sprite_frames
+	var key := "%d:%s" % [frames.get_instance_id(), String(sprite.animation)]
+	if tone_gain_cache.has(key):
+		return float(tone_gain_cache[key])
+	var frontal := _animation_luminance(frames, &"run_front")
+	var side := _animation_luminance(frames, &"run")
+	var wanted := _animation_luminance(frames, sprite.animation)
+	if frontal <= 0.01 or side <= 0.01 or wanted <= 0.01:
+		return 1.0
+	# Equalize within each sprite identity, not across different club colors
+	# or skin tones. This deliberately preserves the approved painted shading.
+	var target := (frontal + side) * 0.5
+	var gain := clampf(target / wanted, 0.88, 1.12)
+	tone_gain_cache[key] = gain
+	return gain
 
 
 static func normalized_body_scale(pixel_height: float) -> float:
@@ -613,6 +763,23 @@ func _sync_player_secondary_motion(player: Footballer, sprite: AnimatedSprite3D,
 		stretch_x = 0.98
 		stretch_y = 1.05
 
+	# Only the keeper receives stronger *visible* weight transfer.
+	# It shares the same 8-frame cadence; no animation restarts or added clocks.
+	# At broadcast distance the current canonical feet and gloves otherwise
+	# move less than a couple of screen pixels, reading as a sliding cut-out.
+	# This is presentation only: collisions, AI speed and the authored atlas
+	# remain unchanged; stops and save/tackle animations keep their own poses.
+	if (
+		player.role == "keeper"
+		and moving_weight > 0.0
+		and (animation_name == "run" or animation_name.begins_with("run_")
+			or animation_name == "sprint" or animation_name.begins_with("sprint_"))
+	):
+		var foot_phase := sin(phase)
+		lateral_sway += foot_phase * KEEPER_STRIDE_EXTRA_SWAY * moving_weight
+		bob += absf(foot_phase) * KEEPER_STRIDE_EXTRA_BOB * moving_weight
+		tilt_degrees += foot_phase * KEEPER_STRIDE_EXTRA_LEAN_DEGREES * moving_weight
+		stretch_x *= 1.0 + foot_phase * 0.035 * moving_weight
 	if player.keeper_save_active():
 		var save_progress := 1.0 - player.keeper_save_ratio()
 		var save_weight := sin(PI * clampf(save_progress, 0.0, 1.0))

@@ -11,6 +11,9 @@ export function chroniclesGridExplorationStep(state, action) {
   const before = state;
   const next = chroniclesReduce(before, action);
   if (!before || !next || before.phase !== 'explore' || next.phase !== 'explore') return next;
+  // Crossing an authored gate changes areas, not an exploration tile inside the
+  // destination. Never grant enemies a free step on the arrival transition.
+  if (next.mapId !== before.mapId) return next;
   if (next.x === before.x && next.y === before.y) return next;
   // Engagement takes precedence over exploration movement: an enemy already
   // in reach must enter initiative, not escape the encounter on this tick.

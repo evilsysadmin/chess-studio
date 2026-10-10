@@ -1,5 +1,5 @@
-import { expect } from '@playwright/test';
-import { readFile } from 'node:fs/promises';
+import { expect, test } from '@playwright/test';
+import { readFile, readdir } from 'node:fs/promises';
 import { basename, resolve } from 'node:path';
 import { clickWarRoomMove } from './war-room-board-input.js';
 
@@ -12,27 +12,24 @@ export async function activateSetupControl(locator, timeout = 45_000) {
   await locator.dispatchEvent('click', undefined, { timeout });
 }
 
-const CHRONICLES_E2E_MAP_IDS = Object.freeze([
-  'ash-vault',
-  'black-glass-chapel',
-  'blind-king-archive',
-  'chain-basilica',
-  'crypt-eight-squares',
-  'echo-cistern',
-  'gallery-of-forks',
-  'hollow-bell-tower',
-  'iron-foundry',
-  'menagerie-of-ash',
-]);
+// E2E must serve the exact published Chronicles fallback catalog. Keeping an
+// 11-map literal here made every new authored region fail bootstrap in browser
+// tests even when the runtime manifests and Python/Go parity were correct.
 let chroniclesManifestPromise = null;
 
 function chroniclesE2EManifests() {
   if (!chroniclesManifestPromise) {
-    chroniclesManifestPromise = Promise.all(CHRONICLES_E2E_MAP_IDS.map(async (mapId) => {
-      const repoRoot = process.env.GITHUB_WORKSPACE || resolve(process.cwd(), basename(process.cwd()) === 'e2e' ? '..' : '.');
-      const path = resolve(repoRoot, 'frontend', 'src', 'chronicles', 'maps', `${mapId}.json`);
-      return [mapId, JSON.parse(await readFile(path, 'utf8'))];
-    })).then((entries) => Object.fromEntries(entries));
+    const repoRoot = process.env.GITHUB_WORKSPACE || resolve(process.cwd(), basename(process.cwd()) === 'e2e' ? '..' : '.');
+    const dir = resolve(repoRoot, 'frontend', 'src', 'chronicles', 'maps');
+    chroniclesManifestPromise = readdir(dir)
+      .then((names) => names.filter((name) => name.endsWith('.json')).sort())
+      .then((names) => Promise.all(names.map(async (name) => {
+        const manifest = JSON.parse(await readFile(resolve(dir, name), 'utf8'));
+        if (manifest.id !== name.slice(0, -5)) {
+          throw new Error(`Chronicles E2E manifest ID mismatch: ${name}`);
+        }
+        return [manifest.id, manifest];
+      }))).then((entries) => Object.fromEntries(entries));
   }
   return chroniclesManifestPromise;
 }
@@ -46,7 +43,7 @@ async function chroniclesE2ERunPayload({
   areaTransform = null,
 } = {}) {
   const manifests = await chroniclesE2EManifests();
-  const areas = CHRONICLES_E2E_MAP_IDS.map((mapId, index) => {
+  const areas = Object.keys(manifests).map((mapId, index) => {
     const manifest = typeof areaTransform === 'function'
       ? areaTransform(mapId, manifests[mapId])
       : manifests[mapId];
@@ -269,6 +266,33 @@ export async function mockApi(page, {
     const headers = route.request().headers();
     requestLog.push({ method, path, idempotencyKey: headers['idempotency-key'] || null, presenceSession: headers['x-presence-session'] || null });
     const json = (body, status = 200) => route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) });
+
+    // Chronicles saved expeditions are an owner-scoped inventory. Keep the mock
+    // consistent across create, list, GET bootstrap and permanent deletion.
+    if (path.endsWith('/chronicles/runs') && method === 'GET') {
+      return json({ runs: Array.from(chroniclesRuns.values())
+        .filter((run) => run.status === 'active')
+        .map((run) => ({
+          runId: run.runId,
+          currentMapId: run.currentMapId,
+          status: run.status,
+          worldVersion: run.worldVersion,
+          updatedAtMs: Date.now(),
+        })) });
+    }
+    const bootstrapSave = path.match(/\/chronicles\/runs\/([^/]+)\/bootstrap$/);
+    if (bootstrapSave && method === 'GET') {
+      const payload = Array.from(chroniclesRuns.values()).find((run) => run.runId === decodeURIComponent(bootstrapSave[1]));
+      return payload ? json(payload) : json({ detail: 'Run not found' }, 404);
+    }
+    const deleteSave = path.match(/\/chronicles\/runs\/([^/]+)$/);
+    if (deleteSave && method === 'DELETE') {
+      const key = Array.from(chroniclesRuns.entries())
+        .find(([, run]) => run.runId === decodeURIComponent(deleteSave[1]))?.[0];
+      if (!key) return json({ detail: 'Run not found' }, 404);
+      chroniclesRuns.delete(key);
+      return route.fulfill({ status: 204, body: '' });
+    }
 
     if (path.endsWith('/chronicles/runs') && method === 'POST') {
       if (Number(chroniclesRunFailureStatus) > 0) {
@@ -518,6 +542,20 @@ export async function login(page) {
   await password.press('Enter');
   // Stable Home-ready landmark shared by immersive desktop and compact mobile.
   await expect(page.getByRole('region', { name: 'Modos principales', exact: true })).toBeVisible();
+  // From this release the visible Home is intentionally non-interactive while
+  // the real scene is compositing. Functional journeys wait for that single
+  // contract (Blender ready OR complete static fallback) before clicking.
+  // Dedicated Home loading/readiness tests log in manually to inspect the gate.
+  test.setTimeout(Math.max(test.info().timeout, 90_000));
+  await waitForHomeInteractive(page);
+}
+
+// Every Home mount (login, or coming back from a game/room) keeps the hall
+// non-interactive behind the knight LOADING until the scene has composited or
+// the static fallback took over. Journeys that return Home wait for it too.
+export async function waitForHomeInteractive(page) {
+  await expect(page.getByRole('region', { name: 'Modos principales', exact: true })).toBeVisible();
+  await expect(page.locator('.home-3d-loading')).toHaveCount(0, { timeout: 38_000 });
 }
 
 
@@ -624,7 +662,9 @@ export async function openCampaignBriefing(page) {
   const map = await openCampaignMap(page);
   const availableRoute = map.getByRole('button', { name: /Elegir esta ruta/ }).first();
   await expect(availableRoute).toBeVisible();
-  await availableRoute.click();
+  // DOM campaign control can be activated while hosted software WebGL delays
+  // Playwright's pointer stability check; pointer-specific tests own hit testing.
+  await availableRoute.evaluate((button) => button.click());
   await dismissTutorialIfVisible(page);
 
   const briefing = page.getByLabel('Resumen táctico');
@@ -695,6 +735,32 @@ export async function clickBoardMove(page, from, to, scope = page) {
   // Keep the old semantic failure when neither renderer is available so a
   // broken board does not get disguised as a helper timeout.
   await expect(fromSquare).toBeVisible();
+}
+
+// On the castle Home, Feedback and Novedades live inside the account menu
+// (the crest is the only chrome control); other views keep their own trigger.
+export async function openFeedback(page) {
+  const direct = page.locator('.masthead-feedback-trigger');
+  if (await direct.isVisible().catch(() => false)) {
+    await direct.click();
+    return;
+  }
+  await page.locator('.masthead-account-trigger').click();
+  await page.getByRole('menu', { name: 'Cuenta' }).getByRole('menuitem', { name: 'Enviar feedback', exact: true }).click();
+}
+
+// The 1 vs 1 Sala de Duelos lives under "Más formas de jugar". The floating
+// entry only exists while a duel or a challenge needs the player.
+export async function openDuelHall(page) {
+  const floating = page.locator('.menu.menu-illustrated > .home-pvp-roster-link:not(.home-pvp-roster-link--menu)');
+  if (await floating.isVisible().catch(() => false)) {
+    await floating.click();
+    return;
+  }
+  const more = page.locator('.illustrated-home__play-more');
+  await expect(more).toBeVisible();
+  if ((await more.getAttribute('aria-expanded')) !== 'true') await more.click();
+  await page.locator('.illustrated-home__play-pvp').getByRole('button', { name: 'Abrir Sala de Duelos 1 contra 1' }).click();
 }
 
 export async function startQuickGame(page) {
@@ -772,10 +838,46 @@ export async function openMoreGameModes(page) {
   return details;
 }
 
-export async function confirmChroniclesCharacterSetup(page) {
+export async function openChroniclesStartNewGame(page) {
+  const menu = page.locator('[data-chronicles-save-menu]');
+  const setup = page.locator('[data-chronicles-character-setup]');
+  // Chronicles is route-lazy. Never sample isVisible() before its first React
+  // render or the helper races the entry menu and falsely reports no creator.
+  await expect.poll(async () => {
+    if (await setup.isVisible().catch(() => false)) return 'recovered-draft';
+    if (await menu.isVisible().catch(() => false)) return 'entry-menu';
+    return 'pending';
+  }, { timeout: 20_000 }).not.toBe('pending');
+  if (await menu.isVisible()) {
+    await menu.getByRole('button', { name: 'Nuevo juego', exact: true }).click();
+  }
+  await expect(setup).toBeVisible({ timeout: 10_000 });
+}
+
+export async function confirmChroniclesCharacterSetup(page, { newTown = false } = {}) {
+  await openChroniclesStartNewGame(page);
   const setup = page.locator('[data-chronicles-character-setup]');
   await expect(setup).toBeVisible({ timeout: 10_000 });
 
+  // Existing crypt regression tests preserve their server's creation fingerprint.
+  // Explicit newTown tests exercise a fresh expedition instead.
+  if (!newTown) {
+    await page.evaluate(() => {
+      const key = 'chess-study-chronicles-run-v1';
+      const existing = localStorage.getItem(key);
+      let current = null;
+      try { current = existing ? JSON.parse(existing) : null; } catch { /* malformed old save */ }
+      // Historical crypt tests explicitly create a new crypt run using a
+      // stable fixture ID, not a previously persisted server save. A freshly
+      // allocated identity is pending until its first authoritative POST;
+      // only real legacy IDs without this flag are restored via GET.
+      if (current && !current.ended && !current.entryMapId && current.pending === true) return;
+      const owner = (localStorage.getItem('chess-study-auth-username') || 'e2e').trim().toLowerCase();
+      localStorage.setItem(key, JSON.stringify({
+        id: 'e2e-existing-crypt-run', owner, ended: false, pending: true,
+      }));
+    });
+  }
   const canonical = setup.getByRole('button', { name: /Entrar con grupo canónico|Volver al grupo canónico/ });
   await expect(canonical).toBeVisible();
   await canonical.click();

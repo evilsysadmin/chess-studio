@@ -6,6 +6,7 @@ import {
   login,
   mockApi,
   waitForTrainingRoomSettled,
+  waitForHomeInteractive,
 } from './helpers.js';
 
 const PERSONAL_MATE_FEN = '6k1/5ppp/8/8/8/8/5PPP/R5K1 w - - 0 1';
@@ -147,11 +148,10 @@ test('Home · el avatar residente de Matthias abre Así juegas · y cierra el lo
   await expect(endgame).toBeVisible();
   await expect(endgame.getByText('¡Has ganado la partida!', { exact: true })).toBeVisible();
   // GP-6/GP-8: tras ganar, la acción principal es la revancha en un toque; el
-  // menú queda en «Más opciones».
+  // castillo queda siempre visible como acción secundaria.
   await expect(endgame.locator('.primary-btn')).toHaveText('Jugar otra partida');
-  await endgame.getByRole('button', { name: 'Más opciones', exact: true }).click();
-  await endgame.getByRole('button', { name: 'Volver al menú', exact: true }).click();
-  await expect(page.getByRole('region', { name: 'Modos principales', exact: true })).toBeVisible();
+  await endgame.getByRole('button', { name: 'Volver al castillo', exact: true }).click();
+  await waitForHomeInteractive(page);
 
   const corner = page.getByRole('complementary', { name: 'Rincón de Matthias' });
   await corner.getByRole('button', { name: 'Abrir Así juegas con Matthias', exact: true }).click();
@@ -215,3 +215,97 @@ test('Home · el avatar residente de Matthias abre Así juegas · y cierra el lo
   await quickMatch.getByRole('button', { name: 'Empezar partida', exact: true }).click();
   await expect(gameTurn(page)).toBeVisible();
 });
+
+// Golden path regression: real loss -> factual puzzle -> replay, with F5 after
+// a committed human/CPU exchange. This is part of the required learning-golden lane.
+test.describe('Mobile · pérdida factual y entrenamiento tras F5', () => {
+  test.use({ isMobile: true, hasTouch: true });
+
+  for (const viewport of [
+    { width: 360, height: 800 },
+    { width: 430, height: 932 },
+  ]) {
+    test('conserva partida y vuelve a jugar en ' + viewport.width + 'x' + viewport.height, async ({ page }) => {
+      test.setTimeout(150_000);
+      await page.setViewportSize(viewport);
+      const requestLog = [];
+      await mockApi(page, {
+        gameScenario: 'foolsMateLoss',
+        requestLog,
+        analysisMoves: [
+          {
+            suggested: { from: 'f2', to: 'f3', san: 'f3', piece: 'p' },
+            evalAfterSuggested: 0,
+            evalAfterPlayed: 0,
+            factualEvalAfterSuggested: 0,
+            factualEvalAfterPlayed: 0,
+            analysisDepth: 2,
+            candidateCount: 2,
+          },
+          {
+            suggested: { from: 'e2', to: 'e4', san: 'e4', piece: 'p' },
+            evalAfterSuggested: 0,
+            evalAfterPlayed: -500,
+            factualEvalAfterSuggested: 0,
+            factualEvalAfterPlayed: -500,
+            analysisDepth: 2,
+            candidateCount: 2,
+          },
+        ],
+        profileSeed: {
+          'matthias.onboarded': '2',
+          'chess-study-home-guide-dismissed-v1': '1',
+        },
+      });
+      await login(page);
+      await startQuickGame2D(page);
+      await clickBoardMove(page, 'f2', 'f3');
+      await expect(page.getByRole('button', { name: /^Casilla e5, (?!vacía)/ })).toBeVisible({ timeout: 15_000 });
+      await expect(gameTurn(page)).toBeVisible({ timeout: 15_000 });
+
+      // F5 restores the current game, without creating a duplicate.
+      const creations = () => requestLog.filter((row) => row.method === 'POST' && /\/games\/?$/.test(row.path)).length;
+      const beforeReload = creations();
+      await expect.poll(() => page.evaluate(() => {
+        const raw = localStorage.getItem('chess-study-active-game-session-v1');
+        const session = raw ? JSON.parse(raw) : null;
+        return session?.gameSnapshot?.history?.length || 0;
+      })).toBeGreaterThanOrEqual(2);
+      await page.reload();
+      await expect(gameTurn(page)).toBeVisible({ timeout: 30_000 });
+      await expect(page.getByRole('button', { name: /^Casilla g2,/ })).toBeVisible();
+      expect(creations(), 'F5 must not create another game').toBe(beforeReload);
+
+      await clickBoardMove(page, 'g2', 'g4');
+      const endgame = page.getByRole('dialog').filter({ has: page.getByRole('heading', { name: /Jaque mate/i }) });
+      await expect(endgame).toBeVisible({ timeout: 15_000 });
+      const train = endgame.getByRole('button', { name: 'Entrenar este error', exact: true });
+      await expect(train).toBeVisible({ timeout: 20_000 });
+      await expect(endgame.locator('.primary-btn')).toHaveCount(1);
+      const trainBox = await train.boundingBox();
+      expect(trainBox).not.toBeNull();
+      expect(trainBox.height, 'train CTA touch height').toBeGreaterThanOrEqual(44);
+      expect(trainBox.y + trainBox.height, 'train CTA above fold').toBeLessThanOrEqual(viewport.height);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+
+      await train.tap();
+      const focused = page.locator('.puzzle-screen[data-training-origin="postgame-error"]');
+      await expect(focused).toBeVisible({ timeout: 15_000 });
+      await expect(focused.getByText(/Aquí jugaste g4 y perdiste/)).toBeVisible();
+      await expect(focused.getByRole('group', { name: 'Tipo de puzzle' })).toHaveCount(0);
+      await clickBoardMove(page, 'e2', 'e4');
+      await expect(focused.getByText('¡Resuelto!', { exact: true })).toBeVisible({ timeout: 15_000 });
+      const replay = focused.getByRole('button', { name: 'Volver a jugar', exact: true });
+      await expectTouchTarget(replay);
+      await replay.tap();
+
+      const setup = page.getByRole('dialog', { name: 'Configurar partida rápida' });
+      await expect(setup).toBeVisible({ timeout: 15_000 });
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+      await setup.getByRole('button', { name: 'Empezar partida', exact: true }).click();
+      await expect(gameTurn(page)).toBeVisible({ timeout: 30_000 });
+      expect(creations(), 'replay starts exactly one new game').toBe(beforeReload + 1);
+    });
+  }
+});
+

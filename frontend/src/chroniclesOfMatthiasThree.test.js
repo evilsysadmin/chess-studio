@@ -5,6 +5,7 @@ import {
   chroniclesContentIdFromObject,
   chroniclesEnemyFacingYaw,
   chroniclesExitGateTransform,
+  chroniclesReturnSealFraming,
   chroniclesTorchTransform,
 } from './chroniclesOfMatthiasThree.js';
 
@@ -60,6 +61,32 @@ describe('Chronicles of Matthias dungeon photography', () => {
     );
     expect(east.side).toBe('east');
     expect(east.yaw).toBeCloseTo(-Math.PI / 2);
+  });
+
+  it('keeps the return portal facing west when the entrance also has a southern wall', () => {
+    const entrance = chroniclesExitGateTransform(
+      CHRONICLES_MAP,
+      { position: { x: 1, y: 5 }, wallSide: 'west' },
+    );
+    expect(entrance.side).toBe('west');
+    expect(entrance.yaw).toBeCloseTo(Math.PI / 2);
+    expect(entrance.position.x).toBeLessThan(-8);
+
+    // Without an explicit side, keep legacy exit-wall preference unchanged.
+    expect(chroniclesExitGateTransform(
+      CHRONICLES_MAP, { position: { x: 1, y: 5 } },
+    ).side).toBe('south');
+  });
+
+  it('fits the Swordhaven return seal into narrow portrait view without lowering its eye-level centre', () => {
+    const desktop = chroniclesReturnSealFraming(false);
+    const portrait = chroniclesReturnSealFraming(true);
+    expect(desktop.scale).toBeLessThan(0.7);
+    expect(portrait.scale).toBeLessThan(0.35);
+    expect(portrait.scale).toBeLessThan(desktop.scale);
+    for (const framing of [desktop, portrait]) {
+      expect(framing.lift + 1.62 * framing.scale).toBeCloseTo(1.62);
+    }
   });
 
   it('rejects unknown wall sides instead of silently placing a floating torch', () => {

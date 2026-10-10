@@ -140,7 +140,6 @@ export function chroniclesTacticsResolvePlayerAction(
   {
     forceCombat = false,
     forceEnemyIds = [],
-    partyAgilityBonuses = {},
     random = Math.random,
   } = {},
 ) {
@@ -185,7 +184,6 @@ export function chroniclesTacticsResolvePlayerAction(
       // otherwise a distant patrol could wander into range without ever owning
       // an initiative turn.
       forceEnemyIds: [...new Set([...roomEnemyIds, ...forceEnemyIds])],
-      partyAgilityBonuses,
       random,
     },
   );

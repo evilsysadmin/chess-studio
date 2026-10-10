@@ -7,7 +7,7 @@ import {
   chroniclesMapIds,
   chroniclesSetRuntimeEntryMapId,
 } from './chroniclesMapCatalog.js';
-import { chroniclesCreateRun } from './chroniclesRunClient.js';
+import { chroniclesCreateRun, chroniclesReadRunBootstrap } from './chroniclesRunClient.js';
 
 export const CHRONICLES_BOOTSTRAP_BUDGET_MS = 5000;
 
@@ -79,7 +79,14 @@ function validateRunBootstrap(payload, requestedMapId) {
   if (typeof payload.runId !== 'string' || !payload.runId) throw new Error('invalid-run-id');
   const currentMapId = payload.currentMapId;
   if (!chroniclesMapIds().includes(currentMapId)) throw new Error('unknown-run-map');
-  if (requestedMapId && currentMapId !== requestedMapId) throw new Error('run-map-mismatch');
+  if (requestedMapId && !chroniclesMapIds().includes(requestedMapId)) throw new Error('unknown-entry-map');
+  // The backend enforces the immutable creation fingerprint on replay.
+  // A progressed run may legitimately have left its original entry region;
+  // requiring currentMapId === requestedMapId would make saved expeditions
+  // impossible to resume after travelling from Swordhaven into the crypt.
+  if (requestedMapId && currentMapId !== requestedMapId && !(payload.worldVersion > 0)) {
+    throw new Error('run-map-mismatch');
+  }
   if (!Number.isInteger(payload.seed) || payload.seed < 0) throw new Error('invalid-run-seed');
   if (!Number.isInteger(payload.worldVersion) || payload.worldVersion < 0) throw new Error('invalid-world-version');
   if (payload.partyLevel !== undefined && (!Number.isInteger(payload.partyLevel) || payload.partyLevel < 1 || payload.partyLevel > 12)) {
@@ -153,6 +160,8 @@ export async function chroniclesBootstrapWorld({
   operationId = null,
   partyLevel = null,
   createRun = chroniclesCreateRun,
+  resumeRunId = null,
+  readRun = chroniclesReadRunBootstrap,
 } = {}) {
   chroniclesClearRuntimeMapDefinitions();
   if (signal?.aborted) {
@@ -194,8 +203,10 @@ export async function chroniclesBootstrapWorld({
     ...(Number.isInteger(partyLevel) ? { partyLevel } : {}),
   };
   const request = Promise.resolve()
-    .then(() => createRun(mapId, requestOptions))
-    .then((payload) => ({ ok: true, value: validateAuthoritativeRun(payload, mapId) }))
+    .then(() => resumeRunId
+      ? readRun(resumeRunId, { signal: requestController.signal })
+      : createRun(mapId, requestOptions))
+    .then((payload) => ({ ok: true, value: validateAuthoritativeRun(payload, resumeRunId ? null : mapId) }))
     .catch((error) => ({
       ok: false,
       error: bootstrapTransportError(error, {

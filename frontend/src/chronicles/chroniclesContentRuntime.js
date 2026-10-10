@@ -22,6 +22,15 @@ function positiveQuantity(value, fallback = 1) {
   return Number.isFinite(numeric) && numeric > 0 ? Math.floor(numeric) : fallback;
 }
 
+// Party currency uses the existing CAS-persisted expedition inventory until
+// the dedicated gold wallet schema is introduced. Never infer gold from XP.
+export const CHRONICLES_GOLD_ITEM_ID = 'crown-gold';
+
+export function chroniclesGoldBalance(state) {
+  const quantity = inventoryFor(state)[CHRONICLES_GOLD_ITEM_ID]?.quantity;
+  return Number.isSafeInteger(quantity) && quantity > 0 && quantity <= 9999 ? quantity : 0;
+}
+
 export function chroniclesInventoryEntries(state) {
   return Object.values(inventoryFor(state))
     .filter((item) => item && positiveQuantity(item.quantity, 0) > 0)
@@ -82,6 +91,18 @@ function onCurrentCell(state, entry, tileAt) {
 }
 
 function adjacentExit(state, entry, tileAt) {
+  // The new authored world describes gates with coordinates, not magic grid
+  // markers. A party may use them from the same tile or one cardinal tile
+  // away, but never through a solid obstacle or from a diagonal.
+  if (Number.isInteger(entry?.x) && Number.isInteger(entry?.y) && !entry.tile) {
+    if (tileAt(entry.x, entry.y) === '#') return null;
+    const distance = Math.abs(state.x - entry.x) + Math.abs(state.y - entry.y);
+    if (distance > 1) return null;
+    const facing = CARDINAL_DIRECTIONS.find((direction) => (
+      state.x + direction.dx === entry.x && state.y + direction.dy === entry.y
+    ));
+    return { x: entry.x, y: entry.y, direction: facing?.key || null };
+  }
   return CARDINAL_DIRECTIONS
     .map((direction) => ({
       x: state.x + direction.dx,
@@ -102,14 +123,17 @@ function interactionFromEntry(state, entry, tileAt) {
       kind: entry.kind,
       label: unlocked ? entry.openLabel : entry.lockedLabel,
       locked: !unlocked,
+      requiresReturn: entry.requiresReturn === true,
       ...position,
     };
   }
   if (!onCurrentCell(state, entry, tileAt)) return null;
+  const locked = !chroniclesRequirementsMet(state, entry.requirements);
   return {
     id: entry.id,
     kind: entry.kind,
-    label: entry.label,
+    label: locked ? (entry.lockedLabel || entry.label) : entry.label,
+    locked,
     x: entry.x ?? state.x,
     y: entry.y ?? state.y,
   };
@@ -162,6 +186,84 @@ function consumeItem(state, effect) {
   return { ...state, inventory: nextInventory };
 }
 
+// A trade is one indivisible exchange, not two loosely chained effects.
+// The currency can be any ordinary inventory item (coins, tokens or quest
+// vouchers), so it round-trips through existing versioned checkpoints.
+function exchangeItem(state, effect) {
+  const costId = effect.costItemId;
+  const rewardId = effect.itemId;
+  const price = Number(effect.costQuantity ?? 1);
+  const quantity = Number(effect.quantity ?? 1);
+  if (typeof costId !== 'string' || !costId || typeof rewardId !== 'string' || !rewardId
+    || costId === rewardId || !Number.isSafeInteger(price) || price < 1
+    || !Number.isSafeInteger(quantity) || quantity < 1) return state;
+
+  const inventory = inventoryFor(state);
+  const balance = positiveQuantity(inventory[costId]?.quantity, 0);
+  const rewardBalance = positiveQuantity(inventory[rewardId]?.quantity, 0);
+  if (balance < price || rewardBalance + quantity > 9999) return state;
+
+  return grantItem(
+    consumeItem(state, { itemId: costId, quantity: price }),
+    { ...effect, quantity },
+  );
+}
+
+// Gold is a real expendable expedition resource, not an unbounded or
+// locally duplicated counter. The existing checkpoint inventory caps 9999.
+function grantGold(state, effect) {
+  const amount = effect.amount;
+  if (!Number.isSafeInteger(amount) || amount <= 0
+    || chroniclesGoldBalance(state) + amount > 9999) return state;
+  return grantItem(state, {
+    itemId: CHRONICLES_GOLD_ITEM_ID,
+    name: 'Monedas de oro',
+    description: 'Moneda del reino, aceptada por los comerciantes.',
+    quantity: amount,
+  });
+}
+
+const REWARD_EFFECT_TYPES = new Set([
+  'grant-gold', 'grant-item', 'consume-item', 'start-quest',
+  'advance-quest', 'complete-quest', 'set',
+]);
+
+// The reward receipt is written *in the same checkpoint* as the loot and
+// updated quest. Replaying an action, loading after F5 or retrying CAS
+// cannot claim it again. No arbitrary transitions/recursive rewards.
+function claimReward(state, effect, adapters) {
+  const rewardId = effect.rewardId;
+  if (typeof rewardId !== 'string' || !rewardId.trim() || rewardId.length > 128) return state;
+  const receipts = Array.isArray(state.claimedRewards) ? state.claimedRewards : [];
+  if (receipts.includes(rewardId) || receipts.length >= 512) return state;
+  if (!chroniclesRequirementsMet(state, effect.requirements)) return state;
+  const effects = effect.effects;
+  if (!Array.isArray(effects) || effects.length < 1 || effects.length > 12
+    || !effects.every((part) => part && REWARD_EFFECT_TYPES.has(part.type))) return state;
+
+  // Preflight all inventory debit/credit effects so an invalid payment,
+  // missing quest token or gold cap cannot partially complete the reward.
+  let simulated = state;
+  for (const part of effects) {
+    if (part.type === 'consume-item') {
+      const count = part.quantity ?? 1;
+      if (!Number.isSafeInteger(count) || count < 1
+        || positiveQuantity(inventoryFor(simulated)[part.itemId]?.quantity, 0) < count) return state;
+    }
+    if (part.type === 'grant-gold') {
+      if (!Number.isSafeInteger(part.amount) || part.amount < 1
+        || chroniclesGoldBalance(simulated) + part.amount > 9999) return state;
+    }
+    if (part.type === 'grant-item') {
+      const count = part.quantity ?? 1;
+      if (!part.itemId || !Number.isSafeInteger(count) || count < 1
+        || positiveQuantity(inventoryFor(simulated)[part.itemId]?.quantity, 0) + count > 9999) return state;
+    }
+    simulated = chroniclesApplyContentEffects(simulated, [part], adapters);
+  }
+  return { ...simulated, claimedRewards: [...receipts, rewardId] };
+}
+
 function updateQuest(state, effect, status) {
   if (!effect.questId) return state;
   const quests = questsFor(state);
@@ -183,11 +285,29 @@ function updateQuest(state, effect, status) {
   };
 }
 
+// MM Luck: under MM rules each hero rolls a save against traps; a success
+// halves the damage. Deterministic per state so F5 cannot reroll it.
+function trapSaveRoll(state, memberId) {
+  const text = [state?.runSeed ?? '', state?.mapId ?? '', state?.turns ?? 0, 'trap', memberId].join('|');
+  let hash = 2166136261;
+  for (let index = 0; index < text.length; index += 1) {
+    hash ^= text.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return 1 + ((hash >>> 0) % 20);
+}
+
+function trapDamageFor(state, member, amount) {
+  if (state?.combatRules !== 'mm3' || amount <= 0) return amount;
+  const saved = trapSaveRoll(state, member.id) + Number(member.mm3?.bonuses?.luck || 0) >= 14;
+  return saved ? Math.floor(amount / 2) : amount;
+}
+
 function damageParty(state, effect) {
   const amount = Math.max(0, Number(effect.amount || 0));
   const party = Array.isArray(state.party)
     ? state.party.map((member) => member.hp > 0
-      ? { ...member, hp: Math.max(0, member.hp - amount) }
+      ? { ...member, hp: Math.max(0, member.hp - trapDamageFor(state, member, amount)) }
       : member)
     : state.party;
   const defeated = Array.isArray(party) && party.length > 0 && party.every((member) => member.hp <= 0);
@@ -214,6 +334,9 @@ export function chroniclesApplyContentEffects(state, effects, adapters = {}) {
     }
     if (effect.type === 'grant-item') return grantItem(next, effect);
     if (effect.type === 'consume-item') return consumeItem(next, effect);
+    if (effect.type === 'exchange-item') return exchangeItem(next, effect);
+    if (effect.type === 'grant-gold') return grantGold(next, effect);
+    if (effect.type === 'claim-reward') return claimReward(next, effect, adapters);
     if (effect.type === 'start-quest') return updateQuest(next, effect, 'active');
     if (effect.type === 'advance-quest') return updateQuest(next, effect, 'active');
     if (effect.type === 'complete-quest') return updateQuest(next, effect, 'completed');

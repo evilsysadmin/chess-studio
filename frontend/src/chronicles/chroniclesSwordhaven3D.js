@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { chroniclesPixelTexture } from './chroniclesPixelTextures.js';
 
 // Authored in grid coordinates: future map collision must reserve these footprints.
 export const SWORDHAVEN_BUILDINGS = Object.freeze([
@@ -48,6 +49,78 @@ const material = (color, extra = {}) => new THREE.MeshStandardMaterial({
   color, roughness: 0.86, metalness: 0.03, ...extra,
 });
 
+
+// Meadow and town surfaces are MM3-style pixel art (chunky texels, short
+// colour ramps, ordered dithering) shared with the overworld renderer.
+export function swordhavenGrassTexture() {
+  const texture = chroniclesPixelTexture('grass');
+  texture.repeat.set(20, 20);
+  return texture;
+}
+
+const SURFACE_REPEAT = Object.freeze({ stucco: 2, masonry: 3, roof: 3, timber: 3, cobble: 1 });
+
+// One cached pattern per surface, reused across buildings and runs: no
+// material-per-brick or new draw calls.
+export function swordhavenSurfaceTexture(kind) {
+  if (!SURFACE_REPEAT[kind]) throw new Error('Unsupported Swordhaven material: ' + kind);
+  const texture = chroniclesPixelTexture(kind);
+  texture.repeat.set(SURFACE_REPEAT[kind], SURFACE_REPEAT[kind]);
+  return texture;
+}
+
+// The dome moves with the camera but never rotates with it: the sun stays in
+// the same compass direction and the horizon remains stable while walking.
+export function createSwordhavenSkyDome(sunDirection) {
+  const geometry = new THREE.SphereGeometry(62, 64, 32);
+  const coords = geometry.getAttribute('position');
+  const colors = [];
+  const direction = new THREE.Vector3();
+  const zenith = new THREE.Color(0x65a6d0);
+  const horizon = new THREE.Color(0xb8dce9);
+  const warm = new THREE.Color(0xffe4b0);
+  const color = new THREE.Color();
+  for (let i = 0; i < coords.count; i += 1) {
+    direction.fromBufferAttribute(coords, i).normalize();
+    const altitude = THREE.MathUtils.smoothstep(direction.y, -0.08, 0.75);
+    const sunlight = Math.pow(Math.max(direction.dot(sunDirection), 0), 30) * 0.54;
+    color.copy(horizon).lerp(zenith, altitude).lerp(warm, sunlight);
+    colors.push(color.r, color.g, color.b);
+  }
+  geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+  const sky = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial({
+    color: 0xffffff, side: THREE.BackSide, vertexColors: true,
+    fog: false, toneMapped: false, depthWrite: false,
+  }));
+  sky.name = 'swordhaven-sky-dome';
+  sky.renderOrder = -100;
+  sky.frustumCulled = false;
+  const solarFacing = new THREE.Quaternion().setFromUnitVectors(
+    new THREE.Vector3(0, 0, 1), sunDirection,
+  );
+  for (const [name, radius, opacity, order] of [
+    ['swordhaven-sun-halo', 5.6, 0.22, -99],
+    ['swordhaven-sun-disc', 1.45, 1, -98],
+  ]) {
+    const glow = new THREE.Mesh(new THREE.CircleGeometry(radius, 32),
+      new THREE.MeshBasicMaterial({
+        color: name === 'swordhaven-sun-disc' ? 0xfff8db : 0xffdfb2,
+        transparent: opacity < 1, opacity, depthWrite: false,
+        depthTest: true, fog: false, toneMapped: false, side: THREE.DoubleSide,
+      }));
+    glow.name = name;
+    glow.renderOrder = order;
+    glow.position.copy(sunDirection).multiplyScalar(name === 'swordhaven-sun-disc' ? 57.5 : 59);
+    glow.quaternion.copy(solarFacing);
+    sky.add(glow);
+  }
+  sky.onBeforeRender = (_renderer, _scene, camera) => {
+    sky.position.copy(camera.position);
+    sky.updateMatrixWorld();
+  };
+  return sky;
+}
+
 function mesh(group, geometry, mat, name, position, shadow = false) {
   const piece = new THREE.Mesh(geometry, mat);
   piece.name = name;
@@ -80,13 +153,16 @@ function emblem(group, kind, mats) {
   } else if (kind === 'crystal') {
     mesh(group, new THREE.OctahedronGeometry(0.45, 0),
       material(0xa78aff, { emissive: 0x423377, emissiveIntensity: 0.6 }), 'arcane-crystal', [0, 0, 0.12]);
+  } else if (kind === 'sack') {
+    mesh(group, new THREE.SphereGeometry(0.34, 10, 8), gold, 'grain-sack', [0, -0.08, 0.12]).scale.set(1, 1.15, 0.5);
+    mesh(group, new THREE.CylinderGeometry(0.09, 0.14, 0.2, 8), gold, 'grain-sack-neck', [0, 0.32, 0.12]);
   } else if (kind === 'sun') {
     mesh(group, new THREE.SphereGeometry(0.27, 10, 8), gold, 'temple-sun', [0, 0, 0.13]);
     mesh(group, new THREE.TorusGeometry(0.42, 0.045, 5, 16), gold, 'temple-halo', [0, 0, 0.13]);
   }
 }
 
-function building(spec, mats, coarse, contentIds, center) {
+export function buildSwordhavenHouse(spec, mats, coarse, contentIds, center) {
   const root = new THREE.Group();
   root.name = 'swordhaven-building-' + spec.id;
   const [wx, wz] = worldPoint(spec.x, spec.y, center);
@@ -100,7 +176,7 @@ function building(spec, mats, coarse, contentIds, center) {
   const depth = isTavern ? 8.2 : 7.1;
   const height = isTemple ? 6.3 : isTavern ? 5.7 : 5.25;
   const facadeZ = depth / 2 + 0.10;
-  const roof = material(spec.roof);
+  const roof = material(spec.roof, { map: swordhavenSurfaceTexture('roof'), roughness: 0.95 });
   const roofRidgeY = height + 1.8;
   const wallMaterial = isTemple ? mats.stone : mats.plaster;
   const walls = mesh(root, new THREE.BoxGeometry(width, height, depth), wallMaterial,
@@ -108,6 +184,29 @@ function building(spec, mats, coarse, contentIds, center) {
   walls.userData.chroniclesArchitecture = true;
   mesh(root, new THREE.BoxGeometry(width + 0.55, 0.7, depth + 0.6), mats.stone,
     'stone-foundations', [0, 0.35, 0]);
+  // One instanced corner-course mesh per house: masonry reads as dressed
+  // stone instead of four perfectly smooth box corners.
+  const courses = Math.floor((height - 0.75) / 0.70);
+  const quoinGeometry = new THREE.BoxGeometry(0.50, 0.31, 0.51);
+  const quoins = new THREE.InstancedMesh(quoinGeometry, mats.stone, courses * 4);
+  quoins.name = 'corner-dressed-stone-courses';
+  const quoin = new THREE.Object3D();
+  const quoinColor = new THREE.Color();
+  let courseIndex = 0;
+  for (let level = 0; level < courses; level += 1) {
+    for (const sideX of [-1, 1]) for (const sideZ of [-1, 1]) {
+      quoin.position.set(sideX * (width / 2 - 0.08), 0.92 + level * 0.70, sideZ * (depth / 2 - 0.08));
+      quoin.scale.set(0.92 + (level % 3) * 0.055, 1, 1);
+      quoin.updateMatrix();
+      quoins.setMatrixAt(courseIndex, quoin.matrix);
+      quoinColor.setHex([0xb5ab9a, 0xa59d8c, 0xc5bba9][level % 3]);
+      quoins.setColorAt(courseIndex, quoinColor);
+      courseIndex += 1;
+    }
+  }
+  quoins.instanceMatrix.needsUpdate = true;
+  if (quoins.instanceColor) quoins.instanceColor.needsUpdate = true;
+  root.add(quoins);
   // A proper triangular gable under each pitched roof, not a flat cube roof.
   const gable = new THREE.Shape();
   gable.moveTo(-width / 2, 0);
@@ -162,6 +261,13 @@ function building(spec, mats, coarse, contentIds, center) {
   }
   mesh(root, new THREE.BoxGeometry(1.75, 3.12, 0.16), mats.timber,
     'shop-door', [0, 1.56, facadeZ + 0.16]);
+  // A projecting stone entrance frame and arched lintel add real depth.
+  for (const side of [-1, 1]) {
+    mesh(root, new THREE.BoxGeometry(0.28, 3.27, 0.35), mats.stone,
+      'door-recessed-stone-jamb', [side * 0.98, 1.62, facadeZ + 0.28]);
+  }
+  mesh(root, new THREE.BoxGeometry(2.27, 0.21, 0.43), mats.stone,
+    'door-stone-lintel', [0, 3.21, facadeZ + 0.26]);
   // Lanterns and pennants are attached to the blocking building footprint,
   // never freestanding on traversable tiles.
   for (const x of [-width * 0.41, width * 0.41]) {
@@ -201,6 +307,40 @@ function building(spec, mats, coarse, contentIds, center) {
         'window-box-flowers', [x + fx + 0.03, 2.3, front + 0.42]);
     }
   }
+  // The former blank side walls now have inset windows and deep stone sills.
+  // All facade details remain within the foundation's authored footprint.
+  for (const side of [-1, 1]) {
+    for (const z of [-depth * 0.22, depth * 0.22]) {
+      const edge = side * (width / 2 + 0.105);
+      mesh(root, new THREE.BoxGeometry(0.13, 1.63, 1.77), mats.stone,
+        'side-window-stone-reveal', [edge, 2.79, z]);
+      mesh(root, new THREE.BoxGeometry(0.16, 1.27, 1.39), mats.window,
+        'side-window-amber-glass', [edge + side * 0.09, 2.84, z]);
+      mesh(root, new THREE.BoxGeometry(0.26, 0.16, 1.88), mats.stone,
+        'side-window-carved-sill', [edge + side * 0.11, 1.95, z]);
+      mesh(root, new THREE.BoxGeometry(0.15, 0.10, 1.4), mats.timber,
+        'side-window-crossbar', [edge + side * 0.17, 2.85, z]);
+    }
+  }
+  // Shaped dormers break the broad low-poly roof silhouette. One on touch,
+  // two on desktop; all parts are decorative and far above the walk grid.
+  for (const side of (coarse ? [-1] : [-1, 1])) {
+    const x = side * width * 0.245;
+    const z = depth * 0.17;
+    const bay = new THREE.Group();
+    bay.name = 'pitched-roof-dormer-' + side;
+    bay.position.set(x, height + 1.38, z);
+    mesh(bay, new THREE.BoxGeometry(1.22, 1.16, 1.10), wallMaterial,
+      'dormer-walls', [0, 0, 0]);
+    mesh(bay, new THREE.BoxGeometry(0.73, 0.69, 0.11), mats.window,
+      'dormer-glass', [0, 0.09, 0.61]);
+    for (const rx of [-1, 1]) {
+      const canopy = mesh(bay, new THREE.BoxGeometry(0.87, 0.14, 1.47), roof,
+        'dormer-roof-slope', [rx * 0.30, 0.76, 0]);
+      canopy.rotation.z = -rx * 0.48;
+    }
+    root.add(bay);
+  }
   mesh(root, new THREE.BoxGeometry(1.05, 2.3, 0.95), mats.stone,
     'stone-chimney', [width * 0.31, height + 1.04, -depth * 0.25], !coarse);
   mesh(root, new THREE.BoxGeometry(1.38, 0.22, 1.32), mats.stone,
@@ -208,16 +348,16 @@ function building(spec, mats, coarse, contentIds, center) {
 
   // Each hero building has a distinctive readable silhouette.
   if (isTemple) {
-    mesh(root, new THREE.CylinderGeometry(1.19, 1.38, 3.2, 8), mats.stone,
+    mesh(root, new THREE.CylinderGeometry(1.19, 1.38, 3.2, coarse ? 12 : 20), mats.stone,
       'temple-bell-tower', [0, height + 2.5, -depth * 0.11], !coarse);
-    mesh(root, new THREE.ConeGeometry(1.48, 2.8, 8), roof,
+    mesh(root, new THREE.ConeGeometry(1.48, 2.8, coarse ? 12 : 20), roof,
       'temple-spire', [0, height + 5.5, -depth * 0.11], !coarse);
     mesh(root, new THREE.TorusGeometry(0.49, 0.10, 8, 20), mats.gold,
       'temple-rose-window', [0, height - 0.56, facadeZ + 0.14]);
   } else if (isMagic) {
-    mesh(root, new THREE.CylinderGeometry(1.11, 1.20, 3.35, 8), mats.plaster,
+    mesh(root, new THREE.CylinderGeometry(1.11, 1.20, 3.35, coarse ? 12 : 20), mats.plaster,
       'magic-shop-turret', [-width * 0.40, height + 1.62, -depth * 0.28], !coarse);
-    mesh(root, new THREE.ConeGeometry(1.52, 3.5, 8), roof,
+    mesh(root, new THREE.ConeGeometry(1.52, 3.5, coarse ? 12 : 20), roof,
       'magic-turret-roof', [-width * 0.40, height + 5.02, -depth * 0.28], !coarse);
     mesh(root, new THREE.OctahedronGeometry(0.42, 0), mats.arcane,
       'arcane-window-lantern', [width * 0.33, height - 0.3, facadeZ + 0.28]);
@@ -236,6 +376,8 @@ function building(spec, mats, coarse, contentIds, center) {
       new THREE.BoxGeometry(0.67, 1.48, 0.22), mats.steel,
       'armor-display', [x, 1.12, facadeZ + 0.24]);
   }
+  // Homes carry no shop sign.
+  if (spec.emblem === 'home') return { root, sign: null, interactive: false };
   const sign = new THREE.Group();
   sign.name = 'swordhaven-interaction-' + spec.id;
   sign.userData.chroniclesContentId = spec.id;
@@ -247,7 +389,7 @@ function building(spec, mats, coarse, contentIds, center) {
   return { root, sign, interactive: contentIds.has(spec.id) };
 }
 
-function tree(root, x, z, mats, coarse, index) {
+export function buildSwordhavenTree(root, x, z, mats, coarse, index) {
   const treeRoot = new THREE.Group();
   treeRoot.name = 'swordhaven-tree-' + index;
   treeRoot.position.set(x, 0, z);
@@ -308,50 +450,109 @@ function laySwordhavenCobblestones(root, mats, coarse, width, height) {
   root.add(paver);
 }
 
-export function buildSwordhavenScene(scene, { scenePlan = {}, coarsePointer = false } = {}) {
-  const center = scenePlan.center || { x: 9, y: 9 };
-  const width = Math.max(19, Number(scenePlan.width) || 19);
-  const height = Math.max(19, Number(scenePlan.height) || 19);
-  scene.background = new THREE.Color(0x88c8ef);
-  scene.fog = new THREE.Fog(0xa6d8f1, 48, Math.max(width, height) * CELL * 0.98);
-  const skylight = new THREE.HemisphereLight(0xd7ebff, 0x688258, 1.45);
-  scene.add(skylight);
-  const sun = new THREE.DirectionalLight(0xffedd1, coarsePointer ? 1.2 : 1.65);
-  sun.name = 'swordhaven-sun';
-  sun.position.set(-26, 42, -22);
-  sun.castShadow = !coarsePointer;
-  if (!coarsePointer) {
-    sun.shadow.mapSize.set(1024, 1024);
-    sun.shadow.camera.left = -45; sun.shadow.camera.right = 45;
-    sun.shadow.camera.top = 45; sun.shadow.camera.bottom = -45;
-    sun.shadow.bias = -0.001;
-  }
-  scene.add(sun);
 
-  const root = new THREE.Group();
-  root.name = 'chronicles-swordhaven-town';
-  scene.add(root);
-  const mats = {
-    grass: material(0x668850), cobble: material(0x9d9588),
-    stone: material(0x989084), plaster: material(0xd7c2a3),
-    timber: material(0x59412f), gold: material(0xd6ae67, { metalness: 0.48 }),
-    window: material(0xf8b96e, { emissive: 0x925124, emissiveIntensity: 0.45 }),
-    leaves: material(0x64864c), flowers: material(0xc7756c),
-    arcane: material(0x9576db, { emissive: 0x403b99, emissiveIntensity: 1.1 }),
-    embers: material(0xffa754, { emissive: 0xeb6a20, emissiveIntensity: 1.2 }),
-    steel: material(0x80909a, { metalness: 0.6, roughness: 0.32 }),
-    paving: material(0xffffff, { roughness: 0.96 }),
-    roofSeams: material(0x413a36, { roughness: 0.92 }),
+function dressSwordhavenRoadsides(root, mats, coarse, width, height, center) {
+  // Road shoulders are visual trim, not new blockers. A single instanced
+  // cobble mesh is substantially cheaper than individual edge stones.
+  const shoulders = [];
+  const mainSpan = Math.min(height * CELL * 0.38, 30);
+  const crossSpan = Math.min(width * CELL * 0.35, 26);
+  const step = coarse ? 0.96 : 0.82;
+  for (let z = -mainSpan; z <= mainSpan; z += step) {
+    if (Math.abs(z) < 10.8) continue; // The circular plaza owns this area.
+    for (const side of [-1, 1]) shoulders.push([side * 3.45, z]);
+  }
+  for (let x = -crossSpan; x <= crossSpan; x += step) {
+    if (Math.abs(x) < 11.2) continue;
+    for (const side of [-1, 1]) shoulders.push([x, side * 3.43]);
+  }
+  const edges = new THREE.InstancedMesh(
+    new THREE.BoxGeometry(0.25, 0.065, 0.72), mats.paving, shoulders.length,
+  );
+  edges.name = 'swordhaven-roadside-stone-edging';
+  edges.receiveShadow = true;
+  const dummy = new THREE.Object3D();
+  const color = new THREE.Color();
+  shoulders.forEach(([x, z], i) => {
+    dummy.position.set(x, 0.067, z);
+    dummy.rotation.y = ((i % 7) - 3) * 0.018;
+    dummy.scale.set(0.94 + (i % 5) * 0.02, 1, 0.92 + (i % 3) * 0.025);
+    dummy.updateMatrix();
+    edges.setMatrixAt(i, dummy.matrix);
+    color.setHex([0x8b867c, 0xa29b8b, 0xc0b7a1, 0x9c947e][i % 4]);
+    edges.setColorAt(i, color);
+  });
+  edges.instanceMatrix.needsUpdate = true;
+  if (edges.instanceColor) edges.instanceColor.needsUpdate = true;
+  root.add(edges);
+
+  // Six slim, wind-bent leaves per tuft. Narrow silhouettes avoid the large
+  // triangular spikes of the initial pass, while staying one draw call.
+  const bladeVertices = [];
+  for (let blade = 0; blade < 6; blade += 1) {
+    const angle = blade * Math.PI / 3;
+    const ux = Math.cos(angle);
+    const uz = Math.sin(angle);
+    const offset = blade % 2 === 0 ? 0.015 : 0.044;
+    const height = 0.12 + (blade % 3) * 0.016;
+    const spread = 0.024;
+    bladeVertices.push(
+      ux * offset - uz * spread, 0, uz * offset + ux * spread,
+      ux * (offset + 0.08), height, uz * (offset + 0.08),
+      ux * offset + uz * spread, 0, uz * offset - ux * spread,
+    );
+  }
+  const tuftGeometry = new THREE.BufferGeometry();
+  tuftGeometry.setAttribute('position', new THREE.Float32BufferAttribute(bladeVertices, 3));
+  tuftGeometry.computeVertexNormals();
+  const candidateCount = coarse ? 560 : 860;
+  const positions = [];
+  let seed = 0x51a7b3d;
+  const random = () => {
+    seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+    return seed / 4294967296;
   };
-  mesh(root, new THREE.BoxGeometry(width * CELL, 0.3, height * CELL),
-    mats.grass, 'grass-terrain', [0, -0.2, 0]);
-  mesh(root, new THREE.BoxGeometry(7.1, 0.08, height * CELL * 0.8),
-    mats.cobble, 'main-street', [0, -0.03, 0]);
-  mesh(root, new THREE.BoxGeometry(width * CELL * 0.75, 0.08, 6.9),
-    mats.cobble, 'market-cross-street', [0, -0.028, 0]);
-  mesh(root, new THREE.CylinderGeometry(10.2, 10.2, 0.11, 24),
-    mats.cobble, 'circular-town-square', [0, -0.015, 0]);
-  laySwordhavenCobblestones(root, mats, coarsePointer, width, height);
+  // Loose clusters instead of solitary evenly scattered triangles. Each patch
+  // is repeatable and the original street/building exclusion is still applied.
+  let patchX = 0;
+  let patchZ = 0;
+  for (let i = 0; i < candidateCount; i += 1) {
+    if (i % 5 === 0) {
+      patchX = (random() - 0.5) * (width * CELL - 7);
+      patchZ = (random() - 0.5) * (height * CELL - 7);
+    }
+    const x = patchX + (random() - 0.5) * 3.1;
+    const z = patchZ + (random() - 0.5) * 3.1;
+    if (Math.abs(x) >= width * CELL / 2 - 1.5 || Math.abs(z) >= height * CELL / 2 - 1.5) continue;
+    if (Math.abs(x) < 5 || Math.abs(z) < 5 || Math.hypot(x, z) < 11.6) continue;
+    // Keep plants away from walls, shop foundations and obstructing trunks.
+    if (SWORDHAVEN_BUILDINGS.some(spec => {
+      const [bx, bz] = worldPoint(spec.x, spec.y, center);
+      return Math.abs(x - bx) < 5.2 && Math.abs(z - bz) < 5.2;
+    })) continue;
+    positions.push([x, z, random(), random()]);
+  }
+  const meadow = new THREE.InstancedMesh(
+    tuftGeometry, material(0xffffff, { side: THREE.DoubleSide, roughness: 1 }),
+    positions.length,
+  );
+  meadow.name = 'swordhaven-low-meadow-tufts';
+  meadow.receiveShadow = false;
+  positions.forEach(([x, z, rotation, growth], i) => {
+    dummy.position.set(x, -0.048, z);
+    dummy.rotation.set(0, rotation * Math.PI * 2, 0);
+    dummy.scale.setScalar(0.66 + growth * 0.34);
+    dummy.updateMatrix();
+    meadow.setMatrixAt(i, dummy.matrix);
+    color.setHex([0x799153, 0x869a65, 0x96a273, 0x708957][i % 4]);
+    meadow.setColorAt(i, color);
+  });
+  meadow.instanceMatrix.needsUpdate = true;
+  if (meadow.instanceColor) meadow.instanceColor.needsUpdate = true;
+  root.add(meadow);
+}
+
+export function buildSwordhavenFountain(mats) {
   const fountain = new THREE.Group();
   fountain.name = 'swordhaven-fountain';
   // The full basin must fit the single blocked 4×4 m fountain cell.
@@ -364,8 +565,29 @@ export function buildSwordhavenScene(scene, { scenePlan = {}, coarsePointer = fa
   rim.rotation.x = Math.PI / 2;
   mesh(fountain, new THREE.CylinderGeometry(0.31, 0.44, 1.9, 10),
     mats.stone, 'fountain-pedestal', [0, 1.25, 0]);
-  root.add(fountain);
+  return fountain;
+}
 
+// Shared village palette: the legacy square and the First Book town use the
+// same dressed stone, stucco, timber and roof textures.
+export function createSwordhavenMaterials() {
+  return {
+    grass: material(0xffffff, { map: swordhavenGrassTexture(), roughness: 0.98 }), cobble: material(0x9d9588),
+    stone: material(0xafa597, { map: swordhavenSurfaceTexture('masonry'), roughness: 0.95 }),
+    plaster: material(0xe0caac, { map: swordhavenSurfaceTexture('stucco'), roughness: 0.97 }),
+    timber: material(0x694b34, { map: swordhavenSurfaceTexture('timber'), roughness: 0.85 }),
+    gold: material(0xd6ae67, { metalness: 0.48 }),
+    window: material(0xf8b96e, { emissive: 0x925124, emissiveIntensity: 0.45 }),
+    leaves: material(0x64864c), flowers: material(0xc7756c),
+    arcane: material(0x9576db, { emissive: 0x403b99, emissiveIntensity: 1.1 }),
+    embers: material(0xffa754, { emissive: 0xeb6a20, emissiveIntensity: 1.2 }),
+    steel: material(0x80909a, { metalness: 0.6, roughness: 0.32 }),
+    paving: material(0xffffff, { roughness: 0.96 }),
+    roofSeams: material(0x413a36, { roughness: 0.92 }),
+  };
+}
+
+export function addSwordhavenClouds(root, coarsePointer = false) {
   // Cloud banks are genuine low-detail 3D volume silhouettes, not a flat sky texture.
   // Basic materials keep the clouds bright without costly per-cloud lighting.
   const cloudMaterial = new THREE.MeshBasicMaterial({
@@ -382,6 +604,47 @@ export function buildSwordhavenScene(scene, { scenePlan = {}, coarsePointer = fa
     }
     root.add(cloud);
   }
+}
+
+export function buildSwordhavenScene(scene, { scenePlan = {}, coarsePointer = false } = {}) {
+  const center = scenePlan.center || { x: 9, y: 9 };
+  const width = Math.max(19, Number(scenePlan.width) || 19);
+  const height = Math.max(19, Number(scenePlan.height) || 19);
+  scene.background = new THREE.Color(0xb8dce9); // Fallback if WebGL cannot render the dome.
+  scene.fog = new THREE.Fog(0xb8dce9, 48, Math.max(width, height) * CELL * 0.98);
+  const sunDirection = new THREE.Vector3(-28, 26, -90).normalize();
+  scene.add(createSwordhavenSkyDome(sunDirection));
+  const skylight = new THREE.HemisphereLight(0xd7ebff, 0x688258, 1.45);
+  scene.add(skylight);
+  const sun = new THREE.DirectionalLight(0xffedd1, coarsePointer ? 1.2 : 1.65);
+  sun.name = 'swordhaven-sun';
+  sun.position.copy(sunDirection).multiplyScalar(98);
+  sun.castShadow = !coarsePointer;
+  if (!coarsePointer) {
+    sun.shadow.mapSize.set(1024, 1024);
+    sun.shadow.camera.left = -45; sun.shadow.camera.right = 45;
+    sun.shadow.camera.top = 45; sun.shadow.camera.bottom = -45;
+    sun.shadow.bias = -0.001;
+  }
+  scene.add(sun);
+
+  const root = new THREE.Group();
+  root.name = 'chronicles-swordhaven-town';
+  scene.add(root);
+  const mats = createSwordhavenMaterials();
+  mesh(root, new THREE.BoxGeometry(width * CELL, 0.3, height * CELL),
+    mats.grass, 'grass-terrain', [0, -0.2, 0]);
+  mesh(root, new THREE.BoxGeometry(7.1, 0.08, height * CELL * 0.8),
+    mats.cobble, 'main-street', [0, -0.03, 0]);
+  mesh(root, new THREE.BoxGeometry(width * CELL * 0.75, 0.08, 6.9),
+    mats.cobble, 'market-cross-street', [0, -0.028, 0]);
+  mesh(root, new THREE.CylinderGeometry(10.2, 10.2, 0.11, 24),
+    mats.cobble, 'circular-town-square', [0, -0.015, 0]);
+  laySwordhavenCobblestones(root, mats, coarsePointer, width, height);
+  dressSwordhavenRoadsides(root, mats, coarsePointer, width, height, center);
+  root.add(buildSwordhavenFountain(mats));
+
+  addSwordhavenClouds(root, coarsePointer);
 
   // Low walls define the silhouette but never replace grid-authoritative collision.
   for (const sign of [-1, 1]) {
@@ -395,7 +658,7 @@ export function buildSwordhavenScene(scene, { scenePlan = {}, coarsePointer = fa
   const authoredContent = new Set((scenePlan.content || []).filter(e => e.visible !== false).map(e => e.id));
   const contentProps = [];
   SWORDHAVEN_BUILDINGS.forEach(spec => {
-    const result = building(spec, mats, coarsePointer, authoredContent, center);
+    const result = buildSwordhavenHouse(spec, mats, coarsePointer, authoredContent, center);
     root.add(result.root);
     if (result.interactive) contentProps.push({
       id: spec.id, kind: 'lore', root: result.sign, phase: 0,
@@ -404,7 +667,7 @@ export function buildSwordhavenScene(scene, { scenePlan = {}, coarsePointer = fa
   const locations = [[1,1],[17,1],[1,17],[17,17],[3,9],[15,9],[7,16],[12,16]];
   locations.forEach(([x, y], i) => {
     const [wx, wz] = worldPoint(x, y, center);
-    tree(root, wx, wz, mats, coarsePointer, i);
+    buildSwordhavenTree(root, wx, wz, mats, coarsePointer, i);
   });
   // An authored gate exit participates in the same raycast and content rules as dungeon exits.
   (scenePlan.content || []).filter(entry => entry.kind === 'exit' && entry.position).forEach(entry => {

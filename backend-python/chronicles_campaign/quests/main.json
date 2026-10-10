@@ -1,0 +1,221 @@
+{
+  "schemaVersion": 1,
+  "campaignId": "lost-king",
+  "status": "design-only",
+  "premise": "La Dama envía a Matthias a buscar al Rey. El Rey se encerró voluntariamente para contener el Silencio; un consejero quiere explotar el debilitamiento del pacto borrando nombres y memorias.",
+  "antagonist": {
+    "id": "chancellor-varren",
+    "name": "Canciller Varren",
+    "motive": "Sustituir el pacto de la Corona por un juramento que entregue a su Consejo el poder de decidir quién puede ser recordado.",
+    "revealAt": "council-evidence"
+  },
+  "acts": [
+    {
+      "id": "empty-throne",
+      "title": "I · El trono vacío",
+      "setup": "La Dama entrega a Matthias una orden sellada en Swordhaven. Los caballeros anteriores no volvieron.",
+      "objectives": [
+        {
+          "id": "receive-order",
+          "at": "swordhaven-square",
+          "eventId": "commission-received",
+          "clue": "La misión oficial comienza."
+        },
+        {
+          "id": "missing-signet",
+          "at": "crypt-eight-squares",
+          "eventId": "first-signet",
+          "clue": "La insignia prueba que los caballeros alcanzaron las criptas."
+        },
+        {
+          "id": "secret-routes",
+          "at": "gallery-of-forks",
+          "eventId": "ledger-evidence",
+          "clue": "La ruta fue cambiada por orden del Canciller."
+        }
+      ],
+      "completion": {
+        "all": [
+          "commission-received",
+          "first-signet",
+          "ledger-evidence"
+        ]
+      }
+    },
+    {
+      "id": "voices-in-water",
+      "title": "II · Voces bajo el agua",
+      "setup": "La compañía sigue dos pistas independientes para demostrar que los desaparecidos siguen vivos en algún lugar.",
+      "objectives": [
+        {
+          "id": "find-survivor",
+          "at": "menagerie-of-ash",
+          "eventId": "knight-testimony",
+          "clue": "Sir Olan confirma que el Rey entró por voluntad propia."
+        },
+        {
+          "id": "recover-echo",
+          "at": "echo-cistern",
+          "eventId": "echo-record",
+          "clue": "El agua conserva la advertencia de la voz real."
+        },
+        {
+          "id": "inspect-bell",
+          "at": "hollow-bell-tower",
+          "eventId": "bell-heart",
+          "clue": "Las campanas forman una red de sellado."
+        }
+      ],
+      "completion": {
+        "anyAtLeast": 2,
+        "of": [
+          "knight-testimony",
+          "echo-record",
+          "bell-heart"
+        ]
+      }
+    },
+    {
+      "id": "first-oath",
+      "title": "III · La Corona de Vidrio",
+      "setup": "Una corona falsa permite a Varren reclamar el trono mientras se deshace el sello.",
+      "objectives": [
+        {
+          "id": "find-mould",
+          "at": "iron-foundry",
+          "eventId": "false-crown",
+          "clue": "La forja prueba la falsificación."
+        },
+        {
+          "id": "read-pact",
+          "at": "blind-king-archive",
+          "eventId": "pact-read",
+          "clue": "La Corona custodiaba un juramento compartido, no un trono absoluto."
+        },
+        {
+          "id": "see-mirror",
+          "at": "black-glass-chapel",
+          "eventId": "mirror-proof",
+          "clue": "El espejo muestra el precio del cautiverio."
+        }
+      ],
+      "completion": {
+        "all": [
+          "pact-read"
+        ],
+        "anyAtLeast": 1,
+        "of": [
+          "false-crown",
+          "mirror-proof"
+        ]
+      }
+    },
+    {
+      "id": "witnesses",
+      "title": "IV · Las tres campanas",
+      "setup": "Para modificar el juramento hacen falta testigos de al menos dos poderes del reino y restaurar el mecanismo.",
+      "objectives": [
+        {
+          "id": "court",
+          "at": "brass-court",
+          "eventId": "court-witness",
+          "clue": "La Corte puede jurar en nombre de la Corona."
+        },
+        {
+          "id": "guild",
+          "at": "emberfall",
+          "eventId": "guild-witness",
+          "clue": "Los gremios controlan el hierro del mecanismo."
+        },
+        {
+          "id": "abbey",
+          "at": "winterwatch",
+          "eventId": "abbey-witness",
+          "clue": "La Abadía conserva el juramento original."
+        },
+        {
+          "id": "restore-bells",
+          "at": "chain-basilica",
+          "eventId": "three-bells",
+          "clue": "El santuario deja de devorar recuerdos."
+        }
+      ],
+      "completion": {
+        "all": [
+          "three-bells"
+        ],
+        "anyAtLeast": 2,
+        "of": [
+          "court-witness",
+          "guild-witness",
+          "abbey-witness"
+        ]
+      }
+    },
+    {
+      "id": "last-turn",
+      "title": "V · El último turno",
+      "setup": "Matthias encuentra al Rey aún vivo y debe decidir cómo preservar el reino.",
+      "objectives": [
+        {
+          "id": "find-king",
+          "at": "throne-under-the-stone",
+          "eventId": "king-found",
+          "clue": "El Rey selló voluntariamente el Silencio desde dentro."
+        }
+      ],
+      "completion": {
+        "all": [
+          "king-found"
+        ]
+      }
+    }
+  ],
+  "endings": [
+    {
+      "id": "shared-crown",
+      "title": "La Corona Compartida",
+      "requiresAll": [
+        "king-found",
+        "pact-read",
+        "three-bells"
+      ],
+      "requiresAtLeast": {
+        "count": 2,
+        "of": [
+          "court-witness",
+          "guild-witness",
+          "abbey-witness"
+        ]
+      },
+      "outcome": "El Rey regresa, pero comparte la custodia del sello con las ciudades y la Abadía; Varren pierde el monopolio de la memoria."
+    },
+    {
+      "id": "last-guardian",
+      "title": "La Última Guardia",
+      "requiresAll": [
+        "king-found",
+        "pact-read",
+        "three-bells"
+      ],
+      "outcome": "La compañía acepta renovar la guardia del sello. El reino perdura, aunque la Corona nunca recupera toda su antigua autoridad."
+    },
+    {
+      "id": "broken-oath",
+      "title": "El Juramento Roto",
+      "requiresAll": [
+        "king-found",
+        "mirror-proof"
+      ],
+      "outcome": "Se destruye el mecanismo. Nadie podrá ser borrado a voluntad, pero el Silencio deja cicatrices irreversibles y el reino se fragmenta."
+    }
+  ],
+  "rules": {
+    "openExploration": true,
+    "questEventsIdempotent": true,
+    "progressionAuthority": "/api/profile",
+    "runCheckpointAuthority": "chronicles_runs",
+    "noImplicitUnlocks": true,
+    "legacyRunsUnchanged": true
+  }
+}

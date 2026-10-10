@@ -1,0 +1,124 @@
+{
+  "id": "swordhaven-square",
+  "version": 1,
+  "progressionKey": "swordhaven-01",
+  "title": "Swordhaven",
+  "regionKind": "settlement",
+  "layoutMode": "authored",
+  "grid": [
+    "###################",
+    "##...............##",
+    "#.......###.......#",
+    "#.......###.......#",
+    "#..###..###..###..#",
+    "#..###.......###..#",
+    "#..###.......###..#",
+    "#.................#",
+    "#.................#",
+    "#..#.....#.....#..#",
+    "#.................#",
+    "#.................#",
+    "#..###.......###..#",
+    "#..###.......###..#",
+    "#..###.......###..#",
+    "#.................#",
+    "#......#.P..#.....#",
+    "##...............##",
+    "###################"
+  ],
+  "partyStart": {
+    "x": 9,
+    "y": 16,
+    "direction": 0
+  },
+  "initialFlags": {
+    "swordhavenArrived": true
+  },
+  "enemies": [],
+  "triggers": [],
+  "interactables": [
+    {
+      "id": "swordhaven-forge",
+      "kind": "lore",
+      "x": 4,
+      "y": 7,
+      "label": "Visitar Armería",
+      "action": {
+        "effects": [],
+        "message": "La fragua está encendida. El armero promete tener un catálogo listo para los aventureros."
+      }
+    },
+    {
+      "id": "swordhaven-armor",
+      "kind": "lore",
+      "x": 14,
+      "y": 7,
+      "label": "Visitar Armaduras",
+      "action": {
+        "effects": [],
+        "message": "Armaduras, escudos y un artesano que desconfía de los golpes en la cabeza."
+      }
+    },
+    {
+      "id": "swordhaven-tavern",
+      "kind": "lore",
+      "x": 4,
+      "y": 15,
+      "label": "Visitar Taberna",
+      "action": {
+        "effects": [],
+        "message": "La taberna está abierta. Aquí empiezan rumores y encargos, no termina la aventura."
+      }
+    },
+    {
+      "id": "swordhaven-magic",
+      "kind": "lore",
+      "x": 14,
+      "y": 15,
+      "label": "Visitar Tienda arcana",
+      "action": {
+        "effects": [],
+        "message": "Un olor a pergamino, tinta y hechicería sale de la tienda de magia."
+      }
+    },
+    {
+      "id": "swordhaven-temple",
+      "kind": "lore",
+      "x": 9,
+      "y": 5,
+      "label": "Visitar Templo",
+      "action": {
+        "effects": [],
+        "message": "Las campanas del templo suenan sobre los tejados de Swordhaven."
+      }
+    }
+  ],
+  "treasures": [],
+  "traps": [],
+  "exits": [
+    {
+      "id": "swordhaven-south-gate",
+      "kind": "exit",
+      "x": 9,
+      "y": 17,
+      "openLabel": "Salir de Swordhaven",
+      "explorationObjective": "Explora Swordhaven y encuentra la salida",
+      "action": {
+        "effects": [
+          {
+            "type": "transition-map",
+            "mapId": "crypt-eight-squares"
+          }
+        ],
+        "message": "Dejas atrás las murallas de Swordhaven. El camino desciende hacia las criptas."
+      }
+    }
+  ],
+  "initialJournal": {
+    "id": "arrival-swordhaven",
+    "title": "Bienvenido a Swordhaven",
+    "body": "La compañía llega al pequeño pueblo donde podrá prepararse para sus aventuras. La plaza reúne los cinco establecimientos esenciales.",
+    "sigil": "I"
+  },
+  "introMessage": "Swordhaven: sol, calles empedradas y cinco puertas esperando viajeros."
+}

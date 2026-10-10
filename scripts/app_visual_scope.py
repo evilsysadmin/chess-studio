@@ -223,6 +223,9 @@ def _surface_groups(path: str) -> set[str] | None:
         return set()
     if lower == "scripts/css_architecture_manifest.json":
         return set()
+    if lower == "scripts/chronicles_area_parity_corpus.py":
+        # Backend parity-fixture generator: no browser-owned visual surface.
+        return set()
     if lower in {
         "scripts/architecture_debt_budget.py",
         "scripts/async_resilience_gate.mjs",
@@ -231,6 +234,7 @@ def _surface_groups(path: str) -> set[str] | None:
         "scripts/browser_quality_scope.py",
         "scripts/chess_rules_gate.mjs",
         "scripts/quality_scope.py",
+        "scripts/pwa_check.mjs",
         "scripts/state_resilience_check.mjs",
         "scripts/visual_ux_contract_check.mjs",
         "scripts/run_core_e2e_lane.py",
@@ -319,7 +323,11 @@ def _surface_groups(path: str) -> set[str] | None:
         "frontend/src/assets/r2-assets-manifest.json",
     }:
         return set()
-    if lower == ".github/workflows/app-visual-artifact.yml":
+    if lower in {
+        ".github/workflows/app-visual-artifact.yml",
+        ".github/workflows/chronicles-visual-artifact.yml",
+        ".github/workflows/tactics-visual-artifact.yml",
+    }:
         return set()
     if lower.startswith(".github/actions/app-visual-pipeline/"):
         # Visual orchestration owns no product surface. Its classifier self-tests
@@ -397,6 +405,11 @@ def _surface_groups(path: str) -> set[str] | None:
         return set()
     if ".test." in name or ".spec." in name:
         return set()
+    if lower.startswith("frontend/src/footballmanager"):
+        # The manager's pure simulation/roster modules only paint the
+        # Experiments > Football surface. Generic unknown source still
+        # falls back to every canonical room.
+        return {"experiments"}
     if _is_noncanonical_admin_surface(path):
         return set()
     if lower.startswith("frontend/src/components/homematthias"):
@@ -457,7 +470,7 @@ def _experiment_parts(path: str) -> set[str]:
         return {"pawnslug"}
     if "trailblazer" in lower or "arcade" in lower:
         return {"landing"}
-    if "chessfootball" in lower or "chess-football" in lower:
+    if any(token in lower for token in ("chessfootball", "chess-football", "footballmanager")):
         return {"football"}
     if lower == "frontend/src/components/labscreen.jsx":
         return {"landing", "pawnslug"}
@@ -690,6 +703,9 @@ def write_outputs(scope: Scope, output_path: str) -> None:
 
 def self_test() -> None:
     assert classify(["e2e/staging-live.spec.js"]).capture_groups == "none"
+    assert classify(["scripts/chronicles_area_parity_corpus.py"]).capture_groups == "none"
+    assert classify(["scripts/chronicles_area_parity_corpus.py", "frontend/src/chronicles/chroniclesMapCatalog.js"]).capture_groups == "experiments"
+    assert classify(["scripts/unknown_unowned_generator.py"]).capture_groups == "home,experiments,training,warroom,health"
     assert classify(["e2e/staging-live.spec.js", "frontend/src/components/PvpHandoffModal.jsx"]).capture_groups == "home"
     cpu_scope = classify([
         "frontend/src/components/GameScreen.jsx",
@@ -698,6 +714,7 @@ def self_test() -> None:
         "scripts/architecture_debt_budget.py",
     ])
     assert cpu_scope.capture_groups == "warroom"
+    assert classify(["frontend/public/sw.js", "scripts/pwa_check.mjs"]).capture_groups == "none"
     assert classify(["frontend/src/components/ShareResultModal.jsx"]).capture_groups == "warroom"
     assert classify(["frontend/src/components/ProfileBackupModal.jsx"]).capture_groups == "home"
     assert classify([
@@ -824,6 +841,18 @@ def self_test() -> None:
     ])
     assert football.capture_groups == "experiments"
     assert football.experiments_scope == "football"
+    manager = classify([
+        "frontend/src/components/ChessFootballEntry.jsx",
+        "frontend/src/components/ChessFootballEntry.css",
+        "frontend/src/footballManagerSeason.js",
+        "frontend/src/footballManagerSeason.test.js",
+        "e2e/chess-football.spec.js",
+        "e2e/experiments-visual-artifact.spec.js",
+    ])
+    assert manager.capture_groups == "experiments"
+    assert manager.experiments_scope == "landing,pawnslug,football"
+    assert classify(["frontend/src/footballManagerRoster.js"]).experiments_scope == "football"
+    assert classify(["frontend/src/unownedVisualModule.js"]).capture_groups == ",".join(GROUP_ORDER)
     mobile_workshop = classify(["frontend/src/components/LabWorkshopMobile.css"])
     assert mobile_workshop.capture_groups == "experiments"
     assert mobile_workshop.experiments_scope == "landing"

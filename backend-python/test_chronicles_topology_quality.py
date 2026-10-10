@@ -187,6 +187,13 @@ def test_shipped_local_procedural_areas_pass_quality_gate(seed):
     for map_id in chronicles_api.chronicles_shipped_map_ids():
         area = chronicles_api.chronicles_area_envelope(map_id, seed)
         generation = area["manifest"]["generation"]
+        if generation["kind"] == "authored-layout":
+            # The settlement is intentionally not a generated dungeon: its
+            # traversability is validated by dedicated authored-map tests.
+            assert area["manifest"]["grid"] == chronicles_api.load_chronicles_manifest(map_id)[0]["grid"]
+            assert area["mapCode"].startswith("authored-layout-v1:")
+            assert generation["layoutRevision"] == area["layoutRevision"]
+            continue
         quality = generation["topologyQuality"]
 
         assert quality["accepted"] is True, (map_id, seed, quality)
@@ -211,6 +218,9 @@ def test_procedural_sweep_replays_identically_for_representative_seeds():
             assert repeated["layoutRevision"] == first["layoutRevision"]
             assert repeated["manifest"]["grid"] == first["manifest"]["grid"]
             assert repeated["manifest"]["partyStart"] == first["manifest"]["partyStart"]
+            if first["manifest"]["generation"]["kind"] == "authored-layout":
+                assert repeated["manifest"]["generation"] == first["manifest"]["generation"]
+                continue
             assert repeated["manifest"]["generation"]["topologyQuality"] == (
                 first["manifest"]["generation"]["topologyQuality"]
             )

@@ -67,7 +67,12 @@ PLANNER_PROPOSALS = [
 
 def build() -> dict:
     rng = random.Random(SEED)
-    map_ids = list(api.chronicles_shipped_map_ids())
+    # The legacy area corpus validates procedural dungeons. Authored settlements
+    # are separately covered by explicit Python/Go layout-preservation tests.
+    map_ids = [
+        map_id for map_id in api.chronicles_shipped_map_ids()
+        if api.load_chronicles_manifest(map_id)[0].get("layoutMode") != "authored"
+    ]
     seeds = FIXED_SEEDS + [rng.randrange(0, 2**31) for _ in range(9)]
     areas = []
     full_kept = set()

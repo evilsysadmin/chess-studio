@@ -1,0 +1,95 @@
+{
+  "schemaVersion": 1,
+  "id": "chain-basilica",
+  "title": "Basílica de las Cadenas",
+  "regionId": "undercrown",
+  "kind": "dungeon",
+  "status": "design-only",
+  "legacyRuntimeMapId": "chain-basilica",
+  "threatBand": [
+    9,
+    11
+  ],
+  "description": "Tres mecanismos de campana mantienen cerrado el santuario real.",
+  "layout": {
+    "mode": "authored-fixed",
+    "grid": [
+      "###############",
+      "#::::::=::::::#",
+      "#::::#:=::#:::#",
+      "#::###:=####::#",
+      "#::::=:=::#:::#",
+      "#::::=:=::::::#",
+      "#=============#",
+      "#::::#:=::#:::#",
+      "#::::#:=::#:::#",
+      "#::::#:=::#:::#",
+      "#::::#:=::#:::#",
+      "#::::::=::::::#",
+      "###############"
+    ],
+    "tileLegend": {
+      "#": "solid",
+      "~": "water-blocked",
+      "^": "cliff-blocked",
+      ".": "floor",
+      ":": "old-stone-floor",
+      "=": "road-or-corridor"
+    }
+  },
+  "partyStart": {
+    "x": 7,
+    "y": 6,
+    "direction": "north"
+  },
+  "portals": [
+    {
+      "id": "to-old-causeway",
+      "targetMapId": "old-causeway",
+      "targetPortalId": "to-chain-basilica",
+      "x": 7,
+      "y": 1,
+      "requiresAll": [
+        "pact-read"
+      ],
+      "feature": "sealed-stairs",
+      "linkId": "old-causeway--chain-basilica"
+    },
+    {
+      "id": "to-black-glass-chapel",
+      "targetMapId": "black-glass-chapel",
+      "targetPortalId": "to-chain-basilica",
+      "x": 13,
+      "y": 6,
+      "requiresAll": [
+        "pact-read"
+      ],
+      "feature": "pilgrim-passage",
+      "linkId": "black-glass-chapel--chain-basilica"
+    },
+    {
+      "id": "to-throne-under-the-stone",
+      "targetMapId": "throne-under-the-stone",
+      "targetPortalId": "to-chain-basilica",
+      "x": 7,
+      "y": 11,
+      "requiresAll": [
+        "pact-read",
+        "three-bells"
+      ],
+      "feature": "throne-gate",
+      "linkId": "chain-basilica--throne-under-the-stone"
+    }
+  ],
+  "pointsOfInterest": [
+    {
+      "id": "three-bells",
+      "label": "Afinar las tres campanas",
+      "eventId": "three-bells",
+      "x": 5,
+      "y": 4,
+      "interaction": "adjacent-or-on-tile"
+    }
+  ],
+  "services": []
+}

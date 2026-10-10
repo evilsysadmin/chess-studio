@@ -8,8 +8,8 @@ async function dismissGuide(page) {
   if (await dismiss.isVisible().catch(() => false)) await dismiss.click();
 }
 
-async function openChroniclesSetup(page) {
-  await mockApi(page);
+async function openChroniclesSetup(page, options = {}) {
+  await mockApi(page, options);
   await login(page);
   await dismissGuide(page);
   const moreModes = await openMoreGameModes(page);
@@ -19,16 +19,112 @@ async function openChroniclesSetup(page) {
   const descend = page.getByRole('button').filter({ hasText: 'Descender a la cripta' });
   await expect(descend).toBeVisible();
   await descend.click();
+  const entry = page.locator('[data-chronicles-save-menu]');
+  await expect(entry).toBeVisible();
+  await entry.getByRole('button', options.newCampaign
+    ? { name: /Nueva campaña/ }
+    : { name: 'Nuevo juego', exact: true }).click();
   const setup = page.locator('[data-chronicles-character-setup]');
   await expect(setup).toBeVisible();
   return setup;
 }
 
-async function openChronicles(page) {
-  await openChroniclesSetup(page);
-  await confirmChroniclesCharacterSetup(page);
+async function openChronicles(page, options = {}) {
+  await openChroniclesSetup(page, options);
+  await confirmChroniclesCharacterSetup(page, { newTown: options.newTown === true });
   await expect(page.locator('[data-chronicles="true"]')).toBeVisible();
 }
+
+test('Chronicles · nueva campaña crea una partida versionada de Swordhaven sin tocar el juego clásico', async ({ page }) => {
+  test.setTimeout(180_000);
+  const creationBodies = [];
+  page.on('request', (request) => {
+    if (request.method() !== 'POST' || !new URL(request.url()).pathname.endsWith('/api/chronicles/runs')) return;
+    creationBodies.push(request.postDataJSON());
+  });
+  await openChronicles(page, {
+    chroniclesCurrentMapId: 'swordhaven-first-book',
+    newCampaign: true,
+    newTown: true,
+  });
+  await expect.poll(() => creationBodies[0]?.mapId, { timeout: 20_000 }).toBe('swordhaven-first-book');
+  const mode = page.locator('[data-chronicles="true"]');
+  await expect(mode).toHaveAttribute('data-chronicles-map-id', 'swordhaven-first-book');
+  await expect(mode.locator('[data-chronicles-renderer="three"] canvas')).toHaveCount(1);
+  await expect(mode).toHaveAttribute('data-chronicles-phase', 'explore');
+  await expect(mode.locator('.chronicles-renderer-error')).toHaveCount(0);
+});
+
+test('Chronicles first-person · nueva expedición pide Swordhaven sin alterar Tactics', async ({ page }) => {
+  const creationBodies = [];
+  page.on('request', (request) => {
+    if (request.method() !== 'POST' || !new URL(request.url()).pathname.endsWith('/api/chronicles/runs')) return;
+    creationBodies.push(request.postDataJSON());
+  });
+  await openChronicles(page, { chroniclesCurrentMapId: 'swordhaven-square', newTown: true });
+  await expect.poll(() => creationBodies[0]?.mapId, { timeout: 20_000 })
+    .toBe('swordhaven-square');
+  const mode = page.locator('[data-chronicles="true"]');
+  await expect(mode).toHaveAttribute('data-chronicles-map-id', 'swordhaven-square');
+  await expect(mode.locator('[data-chronicles-renderer="three"] canvas')).toHaveCount(1);
+});
+
+test('Chronicles · Escape opens and closes the in-game menu while the scene stays fullscreen', async ({ page }) => {
+  // Count every attempt to engage browser-native fullscreen, including entry
+  // via Experimentos and character setup. Escape must own the game menu instead.
+  await page.addInitScript(() => {
+    window.__chroniclesFullscreenRequests = 0;
+    Element.prototype.requestFullscreen = function requestFullscreen() {
+      window.__chroniclesFullscreenRequests += 1;
+      return Promise.resolve();
+    };
+  });
+  await openChronicles(page, { chroniclesCurrentMapId: 'swordhaven-square', newTown: true });
+  const mode = page.locator('[data-chronicles="true"]');
+  const menu = mode.locator('details.chronicles-game-menu');
+  await expect(menu).not.toHaveAttribute('open', '');
+  expect(await page.evaluate(() => window.__chroniclesFullscreenRequests)).toBe(0);
+
+  const bounds = await mode.boundingBox();
+  const viewport = page.viewportSize();
+  expect(bounds?.width || 0).toBeGreaterThanOrEqual((viewport?.width || 0) - 2);
+  expect(bounds?.height || 0).toBeGreaterThanOrEqual((viewport?.height || 0) - 2);
+
+  await page.keyboard.press('Escape');
+  await expect(menu).toHaveAttribute('open', '');
+  await expect(mode).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(menu).not.toHaveAttribute('open', '');
+  await expect(mode).toBeVisible();
+  expect(await page.evaluate(() => window.__chroniclesFullscreenRequests)).toBe(0);
+
+  await page.keyboard.press('Escape');
+  await expect(menu).toHaveAttribute('open', '');
+  await menu.getByRole('button', { name: 'Salir y guardar' }).click();
+  await expect(mode).toHaveCount(0);
+});
+
+test('Chronicles · Swordhaven → cripta → Swordhaven, desde el teclado y sin cerrar la run', async ({ page }) => {
+  await openChronicles(page, { chroniclesCurrentMapId: 'swordhaven-square', newTown: true });
+  const mode = page.locator('[data-chronicles="true"]');
+  await expect(mode).toHaveAttribute('data-chronicles-map-id', 'swordhaven-square');
+  // Strafe Q/E changes position but not facing; returning to spawn allows gate travel.
+  const turnsBeforeStrafe = Number(await mode.getAttribute('data-chronicles-turns'));
+  await page.keyboard.press('q');
+  await expect(mode).toHaveAttribute('data-chronicles-turns', String(turnsBeforeStrafe + 1));
+  await page.keyboard.press('e');
+  await expect(mode).toHaveAttribute('data-chronicles-turns', String(turnsBeforeStrafe + 2));
+  // The first-person starter faces north: one backwards step crosses the south gate.
+  await page.keyboard.press('ArrowDown');
+  await expect(mode).toHaveAttribute('data-chronicles-map-id', 'crypt-eight-squares', { timeout: 20_000 });
+  await expect(mode).toHaveAttribute('data-chronicles-phase', 'explore');
+  await expect(mode.locator('[data-chronicles-touch-action="interact"]'))
+    .toHaveAttribute('aria-label', 'Regresar a Swordhaven');
+  // The virtual return door is exposed to keyboard and mobile touch alike.
+  await page.keyboard.press('f');
+  await expect(mode).toHaveAttribute('data-chronicles-map-id', 'swordhaven-square', { timeout: 20_000 });
+  await expect(mode).toHaveAttribute('data-chronicles-phase', 'explore');
+});
 
 test('Chronicles creator · recupera el borrador tras F5 sin confirmar progreso', async ({ page }) => {
   const setup = await openChroniclesSetup(page);
@@ -36,7 +132,9 @@ test('Chronicles creator · recupera el borrador tras F5 sin confirmar progreso'
 
   const name = page.getByRole('textbox', { name: 'Nombre de matthias', exact: true });
   await name.fill('Greta de la Cripta');
-  await page.getByRole('button', { name: 'Subir Vigor', exact: true }).click();
+  await page.getByRole('button', { name: /Tirar dados/ }).click();
+  const rolledMight = await page.locator('.chronicles-character-setup__attribute[data-stat="might"] strong').textContent();
+  const rolledClass = await page.locator('.chronicles-character-setup__class-grid button[aria-pressed="true"]').getAttribute('data-class-id');
   const azizSlot = page.locator('.chronicles-character-setup__slots button').filter({ hasText: 'Aziz' });
   await azizSlot.click();
   await expect(azizSlot).toHaveAttribute('aria-pressed', 'true');
@@ -52,11 +150,17 @@ test('Chronicles creator · recupera el borrador tras F5 sin confirmar progreso'
   const matthiasSlot = page.locator('.chronicles-character-setup__slots button').filter({ hasText: 'Greta de la Cripta' });
   await matthiasSlot.click();
   await expect(page.getByRole('textbox', { name: 'Nombre de matthias', exact: true })).toHaveValue('Greta de la Cripta');
-  await expect(restored.getByText('+1 HP', { exact: true })).toBeVisible();
+  // The rolled dice and class survive the reload with the draft.
+  await expect(restored.locator('.chronicles-character-setup__attribute[data-stat="might"] strong')).toHaveText(rolledMight || '');
+  await expect(restored.locator('.chronicles-character-setup__class-grid button[aria-pressed="true"]'))
+    .toHaveAttribute('data-class-id', rolledClass || '');
   await expect(page.locator('[data-chronicles="true"]')).toHaveCount(0);
 });
 
 test('Chronicles of Matthias · abre una cripta Three.js real y usa combate posicional de grupo', async ({ page }) => {
+  // Software WebGL runners can spend a full minute rasterizing the scene;
+  // do not share that budget with the actual combat/XP assertions.
+  test.setTimeout(180_000);
   // Deterministic initiative: identical d8 rolls leave authored agility in
   // charge, so Faust acts first once combat starts.
   await page.addInitScript(() => {
@@ -125,6 +229,17 @@ test('Chronicles of Matthias · abre una cripta Three.js real y usa combate posi
     const root = document.querySelector('[data-chronicles="true"]');
     if (!root) throw new Error('Chronicles root missing');
     const partyIds = new Set(['matthias', 'rook', 'bishop', 'knight']);
+    // A damage flash is intentionally brief. Remember that it happened rather
+    // than requiring a 100ms Playwright poll to catch the same render frame.
+    const observeHit = () => {
+      if (root.querySelector('.chronicles-party-member[data-damage-hit="true"]')) {
+        root.dataset.chroniclesDamageCueObserved = 'true';
+      }
+    };
+    const observer = new MutationObserver(observeHit);
+    observer.observe(root, { attributes: true, attributeFilter: ['data-damage-hit'], subtree: true });
+    window.__chroniclesDamageCueObserver = observer;
+    observeHit();
     const pump = () => {
       if (Number(root.getAttribute('data-party-hp-total') || 0) < hpBefore) {
         window.clearInterval(window.__chroniclesFirstPersonDamagePump);
@@ -142,13 +257,14 @@ test('Chronicles of Matthias · abre una cripta Three.js real y usa combate posi
   await page.waitForFunction((hpBefore) => {
     const root = document.querySelector('[data-chronicles="true"]');
     const hp = Number(root?.getAttribute('data-party-hp-total') || 0);
-    const hitCue = root?.querySelector('.chronicles-party-member[data-damage-hit="true"]');
-    return hp < hpBefore && Boolean(hitCue);
+    return hp < hpBefore && root?.dataset.chroniclesDamageCueObserved === 'true';
   }, hpBeforeEnemyHit, { timeout: 30_000, polling: 100 });
 
   await page.evaluate(() => {
     if (window.__chroniclesFirstPersonDamagePump) window.clearInterval(window.__chroniclesFirstPersonDamagePump);
     window.__chroniclesFirstPersonDamagePump = null;
+    window.__chroniclesDamageCueObserver?.disconnect();
+    window.__chroniclesDamageCueObserver = null;
   });
 });
 
@@ -332,4 +448,46 @@ test('Chronicles of Matthias · automap sigue el rumbo real y ESC no abandona el
   expect(rootBox?.height || 0).toBeGreaterThanOrEqual(842);
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   expect(overflow).toBeLessThanOrEqual(1);
+});
+
+test('Chronicles · fallos de red permiten reintentar el libro y regresar desde bootstrap', async ({ page }) => {
+  const requests = [];
+  await mockApi(page, { chroniclesRunFailureStatus: 503, requestLog: requests });
+  let inventoryAttempts = 0;
+  // This route overrides only the first inventory request; subsequent GETs
+  // fall through to the authoritative test API, with no creation on retry.
+  await page.route('http://localhost:4000/api/chronicles/runs', async (route) => {
+    if (route.request().method() !== 'GET') return route.fallback();
+    inventoryAttempts += 1;
+    if (inventoryAttempts === 1) {
+      return route.fulfill({
+        status: 503,
+        contentType: 'application/json',
+        body: JSON.stringify({ detail: 'Temporary catalog outage' }),
+      });
+    }
+    return route.fallback();
+  });
+  await login(page);
+  await dismissGuide(page);
+  const modes = await openMoreGameModes(page);
+  const experiments = modes.getByRole('button').filter({ hasText: 'Experimentos geniales' });
+  await experiments.click();
+  await page.getByRole('button').filter({ hasText: 'Descender a la cripta' }).click();
+
+  const menu = page.locator('[data-chronicles-save-menu]');
+  await expect(menu).toBeVisible();
+  await expect(menu.getByRole('alert')).toContainText('No se pudo consultar el servidor');
+  await menu.getByRole('button', { name: 'Reintentar sincronización' }).click();
+  await expect.poll(() => inventoryAttempts).toBe(2);
+  await expect(menu.getByRole('alert')).toHaveCount(0);
+  expect(requests.filter((r) => r.method === 'POST' && r.path === '/api/chronicles/runs')).toHaveLength(0);
+
+  await menu.getByRole('button', { name: 'Nuevo juego' }).click();
+  await confirmChroniclesCharacterSetup(page);
+  await expect(page.getByRole('heading', { name: 'No se pudo preparar Chronicles' })).toBeVisible();
+  await page.getByRole('button', { name: 'Volver a expediciones' }).click();
+  await expect(menu).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'No se pudo preparar Chronicles' })).toHaveCount(0);
+  await expect(menu.getByRole('button', { name: 'Nuevo juego' })).toBeEnabled();
 });

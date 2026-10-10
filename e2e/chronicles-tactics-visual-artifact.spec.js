@@ -36,7 +36,11 @@ async function openTactics(page, {
   const speech = page.getByRole('region', { name: 'Mensaje de Matthias', exact: true });
   if (await speech.isVisible().catch(() => false)) {
     const close = speech.getByRole('button', { name: 'Cerrar comentario de Matthias', exact: true });
-    if (await close.isVisible().catch(() => false)) await close.click({ force: true });
+    // The Home bubble can dismiss itself between the visibility probe and the
+    // click; invoke its real handler without waiting on a detaching node.
+    if (await close.isVisible().catch(() => false)) {
+      await close.evaluate((button) => button.click(), undefined, { timeout: 2_000 }).catch(() => {});
+    }
   }
   try {
     await openMoreGameModes(page);
@@ -143,7 +147,10 @@ async function captureElement(page, locator, path) {
 
 for (const capture of CAPTURES) {
   test(`Chronicles Tactics · visual proof · ${capture.label}`, async ({ browser }) => {
-    test.setTimeout(150_000);
+    // Full software-WebGL readbacks cover portraits, RPG sheet, world, menu,
+    // walking and moved states. A shared CI runner can exceed 150s without any
+    // failed assertion; preserve every capture with a bounded 5-minute budget.
+    test.setTimeout(300_000);
     await mkdir(ARTIFACT_DIR, { recursive: true });
 
     const context = await browser.newContext({

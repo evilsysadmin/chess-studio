@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { login, mockApi } from './helpers.js';
+import { login, mockApi, openDuelHall } from './helpers.js';
 
 test('Home · el roster 1 vs 1 abre la sala y puede minimizarse', async ({ page }) => {
   await mockApi(page);
@@ -16,9 +16,10 @@ test('Home · el roster 1 vs 1 abre la sala y puede minimizarse', async ({ page 
 
   await login(page);
 
-  const rosterLink = page.getByRole('button', { name: 'Abrir Sala de Duelos 1 contra 1' });
-  await expect(rosterLink).toBeVisible();
-  await rosterLink.click();
+  // No permanent floating card: the 1 vs 1 entry lives under Más formas de jugar.
+  await expect(page.locator('.menu.menu-illustrated > .home-pvp-roster-link')).toHaveCount(0);
+  await openDuelHall(page);
+  const rosterLink = page.locator('.illustrated-home__play-pvp').getByRole('button', { name: 'Abrir Sala de Duelos 1 contra 1' });
 
   const lobby = page.getByRole('dialog', { name: 'Duelo 1 contra 1 · War Room' });
   await expect(lobby).toBeVisible();
@@ -34,6 +35,10 @@ test('Home · el roster 1 vs 1 abre la sala y puede minimizarse', async ({ page 
   await minimizeButton.click();
 
   await expect(lobby).toBeHidden();
+  // Available but nobody waiting on him: still no floating card.
+  await expect(page.locator('.menu.menu-illustrated > .home-pvp-roster-link')).toHaveCount(0);
+  const more = page.locator('.illustrated-home__play-more');
+  if ((await more.getAttribute('aria-expanded')) !== 'true') await more.click();
   await expect(rosterLink).toBeVisible();
   await expect(rosterLink.getByText('Esperando rival', { exact: true })).toBeVisible();
   await expect(rosterLink.getByText('VER SALA', { exact: true })).toBeVisible();
@@ -68,7 +73,7 @@ test('Roster 1v1 · retar a un rival es una acción directa sin selección inter
   });
 
   await login(page);
-  await page.getByRole('button', { name: 'Abrir Sala de Duelos 1 contra 1' }).click();
+  await openDuelHall(page);
   const lobby = page.getByRole('dialog', { name: 'Duelo 1 contra 1 · War Room' });
   const bobRow = lobby.locator('.pvp-lobby__player').filter({ hasText: 'bob' });
 
@@ -117,7 +122,7 @@ test('Roster 1v1 · residente owner-only se muestra con disclosure y reta por us
   });
 
   await login(page);
-  await page.getByRole('button', { name: 'Abrir Sala de Duelos 1 contra 1' }).click();
+  await openDuelHall(page);
 
   const lobby = page.getByRole('dialog', { name: 'Duelo 1 contra 1 · War Room' });
   const row = lobby.locator('.pvp-lobby__player').filter({ hasText: 'Marta Stein' });
@@ -179,7 +184,7 @@ test('Roster 1v1 · un reto saliente con contrato nuevo puede cancelarse', async
   });
 
   await login(page);
-  await page.getByRole('button', { name: 'Abrir Sala de Duelos 1 contra 1' }).click();
+  await openDuelHall(page);
 
   const lobby = page.getByRole('dialog', { name: 'Duelo 1 contra 1 · War Room' });
   const outgoingChallenge = lobby.locator('.pvp-lobby__challenge').filter({ hasText: 'bob' });
@@ -213,7 +218,7 @@ test('Roster 1v1 móvil · abre arriba, sin título amputado ni estado vacío du
   const more = page.locator('.illustrated-home__play-more');
   await expect(page.locator('.home-pvp-roster-link:not(.home-pvp-roster-link--menu)')).toBeHidden();
   await more.click();
-  await page.locator('.illustrated-home__play-mobile-pvp').getByRole('button', { name: 'Abrir Sala de Duelos 1 contra 1' }).click();
+  await page.locator('.illustrated-home__play-pvp').getByRole('button', { name: 'Abrir Sala de Duelos 1 contra 1' }).click();
 
   const lobby = page.getByRole('dialog', { name: 'Duelo 1 contra 1 · War Room' });
   const heading = lobby.getByRole('heading', { name: 'Sala de Duelos' });

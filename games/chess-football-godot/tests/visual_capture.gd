@@ -20,6 +20,41 @@ func _initialize() -> void:
 	# keeping a mix of both team kits and the actual 3D renderer.
 	match_node.set_process(false)
 	match_node.set_physics_process(false)
+	# Exact-SHA regression image: five front/back pitch depths in both kits.
+	# Keep every pair fully inside 1280x720, including the nearest-right pair
+	# previously clipped at the touchline; spread clubs apart for readability.
+	# All ten billboards should read as equal-size players even though their
+	# perspective distances and screen positions are deliberately different.
+	for team_id in range(2):
+		for i in range(5):
+			var comparison: Footballer = match_node.teams[team_id][i]
+			comparison.global_position = ChessFootballMath.PITCH_RECT.get_center() + Vector2(
+				(float(i) - 2.0) * 210.0 + (float(team_id) - 0.5) * 100.0,
+				(float(i) - 2.0) * 260.0,
+			)
+			comparison.action_lock_seconds = 0.0
+			comparison.velocity = Vector2.ZERO
+			comparison.visual.play("idle")
+	match_node.presentation_3d.camera.position = Vector3(
+		0.0, ChessFootball3DPresenter.BROADCAST_HEIGHT,
+		ChessFootball3DPresenter.BROADCAST_DEPTH,
+	)
+	match_node.presentation_3d.camera.look_at(Vector3(0.0, 0.0, -0.85))
+	match_node.presentation_3d.last_camera_mode = "broadcast"
+	match_node.debug_sync_presentation()
+	# QA captures must show *both* kits at all five depths, not crop an edge
+	# player and make the actual perspective comparison ambiguous.
+	var review_width := match_node.get_viewport().get_visible_rect().size.x
+	for team in match_node.teams:
+		for player in team:
+			var proxy: Node3D = match_node.presentation_3d.player_nodes[player.get_instance_id()]
+			var projected: Vector2 = match_node.presentation_3d.camera.unproject_position(
+				proxy.global_position + Vector3.UP * ChessFootball3DPresenter.PLAYER_BASE_Y
+			)
+			assert(projected.x > 55.0 and projected.x < review_width - 55.0,
+				"Perspective QA player clipped at horizontal viewport edge")
+	await _save_capture(match_node, "perspective-parity", "VISUAL_CAPTURE_PERSPECTIVE_PARITY")
+	match_node.debug_prepare_kickoff(0)
 	# Visual contract for new touchline width and off-ball support: put a
 	# real midfield dribbler under pressure with teammates in distinct lanes.
 	var wide_carrier: Footballer = match_node.teams[0][2]
@@ -88,6 +123,7 @@ func _initialize() -> void:
 			figure._sync_locomotion(false)
 	match_node.debug_sync_presentation()
 	await _save_capture(match_node, "directional-scale-grid", "VISUAL_CAPTURE_DIRECTIONAL_SCALE_GRID")
+	await _save_capture(match_node, "tonal-parity", "VISUAL_CAPTURE_TONAL_PARITY")
 	# All on-field actions must retain the approved raster identity for BOTH
 	# teams, not briefly turn a player into the old little vector silhouette.
 	var review_actions := ["pass", "shoot", "tackle", "celebrate"]
@@ -125,6 +161,35 @@ func _initialize() -> void:
 		keeper._sync_locomotion(false)
 	match_node.debug_sync_presentation()
 	await _save_capture(match_node, "keepers-diagonal", "VISUAL_CAPTURE_KEEPERS_DIAGONAL")
+	# Capture actual keeper animation at two different phases, with both
+	# goalkeepers side by side. Their hidden 2D frame is intentionally frozen,
+	# so these frames are evidence of the visible 3D animation clock.
+	for team_id in range(2):
+		var keeper: Footballer = match_node.teams[team_id][0]
+		keeper.action_lock_seconds = 0.0
+		keeper.velocity = Vector2.DOWN * keeper.base_speed
+		keeper.visual.play("run")
+		keeper.visual.frame = 0
+		keeper._sync_locomotion(false)
+	for tick in range(6):
+		for team_id in range(2):
+			match_node.teams[team_id][0].visual.frame = 0
+		match_node.presentation_3d.sync_presentation(1.0 / 60.0, "broadcast")
+	var early_frame: int = match_node.presentation_3d.player_sprites[
+		match_node.teams[0][0].get_instance_id()
+	].frame
+	await _save_capture(match_node, "keepers-stride-early", "VISUAL_CAPTURE_KEEPERS_STRIDE_EARLY")
+	await _save_keeper_detail(match_node, "keepers-stride-detail-early", "VISUAL_CAPTURE_KEEPERS_STRIDE_DETAIL_EARLY")
+	for tick in range(24):
+		for team_id in range(2):
+			match_node.teams[team_id][0].visual.frame = 0
+		match_node.presentation_3d.sync_presentation(1.0 / 60.0, "broadcast")
+	var late_frame: int = match_node.presentation_3d.player_sprites[
+		match_node.teams[0][0].get_instance_id()
+	].frame
+	assert(late_frame != early_frame, "Keeper pose unchanged across the stride")
+	await _save_capture(match_node, "keepers-stride-late", "VISUAL_CAPTURE_KEEPERS_STRIDE_LATE")
+	await _save_keeper_detail(match_node, "keepers-stride-detail-late", "VISUAL_CAPTURE_KEEPERS_STRIDE_DETAIL_LATE")
 	for team_index in range(2):
 		for actor_index in range(4):
 			var actor: Footballer = match_node.teams[team_index][actor_index + 1]
@@ -481,6 +546,28 @@ func _save_texture_preview(source_path: String, filename: String, marker: String
 	assert(error == OK, "No se pudo escribir preview de atlas")
 	print("%s=%s" % [marker, ProjectSettings.globalize_path(path)])
 	await process_frame
+
+# Detail crops are taken from the same *actual* Godot Web renderer frame,
+# not from an idealized atlas or a synthetic animation preview.
+func _save_keeper_detail(match_node: Node, filename: String, marker: String) -> void:
+	await process_frame
+	var viewport := match_node.get_viewport()
+	var image := viewport.get_texture().get_image()
+	var current_camera := viewport.get_camera_3d()
+	assert(current_camera != null)
+	var keeper: Footballer = match_node.teams[0][0]
+	var sprite: AnimatedSprite3D = match_node.presentation_3d.player_sprites[keeper.get_instance_id()]
+	var screen_point := current_camera.unproject_position(sprite.global_position)
+	var region_width := 116
+	var region_height := 144
+	var x := clampi(int(screen_point.x) - region_width / 2, 0, image.get_width() - region_width)
+	var y := clampi(int(screen_point.y) - region_height / 2, 0, image.get_height() - region_height)
+	var closeup := image.get_region(Rect2i(x, y, region_width, region_height))
+	closeup.resize(region_width * 4, region_height * 4, Image.INTERPOLATE_NEAREST)
+	var path := "user://chess-football-%s.png" % filename
+	assert(closeup.save_png(path) == OK)
+	print("%s=%s" % [marker, ProjectSettings.globalize_path(path)])
+
 
 func _save_capture(match_node: Node, filename: String, marker: String) -> void:
 	await process_frame

@@ -1,0 +1,80 @@
+{
+  "schemaVersion": 1,
+  "id": "ash-vault",
+  "title": "Cámara de Ceniza",
+  "regionId": "forge",
+  "kind": "dungeon",
+  "status": "design-only",
+  "legacyRuntimeMapId": "ash-vault",
+  "threatBand": [
+    7,
+    9
+  ],
+  "description": "Relicario de las pruebas que nadie debía poder recuperar.",
+  "layout": {
+    "mode": "authored-fixed",
+    "grid": [
+      "###############",
+      "#::::::=::::::#",
+      "#::::#:=::#:::#",
+      "#::###:=####::#",
+      "#::::=:=::#:::#",
+      "#::::=:=::::::#",
+      "#=============#",
+      "#::::#:=::#:::#",
+      "#::::#:=::#:::#",
+      "#::::#:=::#:::#",
+      "#::::#:=::#:::#",
+      "#::::::=::::::#",
+      "###############"
+    ],
+    "tileLegend": {
+      "#": "solid",
+      "~": "water-blocked",
+      "^": "cliff-blocked",
+      ".": "floor",
+      ":": "old-stone-floor",
+      "=": "road-or-corridor"
+    }
+  },
+  "partyStart": {
+    "x": 7,
+    "y": 6,
+    "direction": "north"
+  },
+  "portals": [
+    {
+      "id": "to-iron-foundry",
+      "targetMapId": "iron-foundry",
+      "targetPortalId": "to-ash-vault",
+      "x": 7,
+      "y": 1,
+      "requiresAll": [],
+      "feature": "forge-tunnel",
+      "linkId": "iron-foundry--ash-vault"
+    },
+    {
+      "id": "to-menagerie-of-ash",
+      "targetMapId": "menagerie-of-ash",
+      "targetPortalId": "to-ash-vault",
+      "x": 13,
+      "y": 6,
+      "requiresAll": [
+        "ash-seal"
+      ],
+      "feature": "secret-tunnel",
+      "linkId": "menagerie-of-ash--ash-vault"
+    }
+  ],
+  "pointsOfInterest": [
+    {
+      "id": "ash-seal",
+      "label": "El sello del relicario",
+      "eventId": "ash-seal",
+      "x": 5,
+      "y": 4,
+      "interaction": "adjacent-or-on-tile"
+    }
+  ],
+  "services": []
+}

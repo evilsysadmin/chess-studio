@@ -330,7 +330,11 @@ def classify_path(path: str) -> set[str] | None:
     }:
         return set()
     if (
-        lower == ".github/workflows/app-visual-artifact.yml"
+        lower in {
+            ".github/workflows/app-visual-artifact.yml",
+            ".github/workflows/chronicles-visual-artifact.yml",
+            ".github/workflows/tactics-visual-artifact.yml",
+        }
         or lower.startswith(".github/actions/app-visual-pipeline/")
     ):
         return set()
@@ -396,6 +400,7 @@ def classify_path(path: str) -> set[str] | None:
             return set()
         if lower in {
             "scripts/css_architecture_manifest.json",
+            "scripts/chronicles_area_parity_corpus.py",  # Backend fixture data, no render code.
             "scripts/architecture_debt_budget.py",
             "scripts/async_resilience_gate.mjs",
             "scripts/visual_ux_contract_check.mjs",
@@ -403,6 +408,7 @@ def classify_path(path: str) -> set[str] | None:
             "scripts/browser_quality_scope.py",
             "scripts/chess_rules_gate.mjs",
             "scripts/quality_scope.py",
+            "scripts/pwa_check.mjs",
             "scripts/state_resilience_check.mjs",
             "scripts/visual_ux_contract_check.mjs",
             "scripts/workflow_debt_gate.py",
@@ -474,6 +480,28 @@ def classify_path(path: str) -> set[str] | None:
     if lower in TRAINING_EXACT_PRODUCERS:
         return set(TRAINING_EXACT_PRODUCERS[lower])
 
+    if lower in {
+        "frontend/src/chronicles/chroniclesrunclient.js",
+        "frontend/src/chronicles/chroniclesrunidentity.js",
+    }:
+        # Owner-scoped IDs and authenticated transport never paint the scene;
+        # functional save/restore/ownership tests are their quality gate.
+        return set()
+    if lower in {
+        "frontend/src/components/chroniclessavemenu.jsx",
+        "frontend/src/components/chroniclessavemenu.css",
+    }:
+        # Both layout and styling of the save book belong exclusively to
+        # first-person Chronicles: Tactics never mounts this menu.
+        return {"chronicles-gameplay"}
+    if lower in {
+        "frontend/src/components/chroniclesofmatthias.css",
+        "frontend/src/components/chroniclesofmatthiasart.css",
+        "frontend/src/components/chroniclesofmatthiasjournal.css",
+    }:
+        # Authored first-person overlays, not the Tactics renderer. Keep the
+        # avatar consumer covered: HUD/portrait styling is still visual work.
+        return {"chronicles-gameplay", "chronicles-avatar"}
     if "chronicles" in lower:
         if "tactics" in lower or "isometric" in lower:
             return {"chronicles-tactics"}
@@ -488,7 +516,7 @@ def classify_path(path: str) -> set[str] | None:
         return set(CHRONICLES_SHARED)
 
     if any(token in lower for token in (
-        "pawnslug", "pawn-slug", "trailblazer", "arcade", "chessfootball", "chess-football",
+        "pawnslug", "pawn-slug", "trailblazer", "arcade", "chessfootball", "chess-football", "footballmanager",
     )):
         return {"experiments-hub"}
     if "experimentsscreen" in lower or "/experiments" in lower:
@@ -734,8 +762,56 @@ def classify(paths: list[str]) -> str:
     return _csv(producers)
 
 
+def project_chronicles_lane(producers: str, lane: str) -> str:
+    """Project visual producers into independent App, Chronicles and Tactics gates.
+
+    Shared owners still request both visual producers, but independent workflows
+    prevent software-WebGL Tactics from blocking first-person evidence.
+    Unknown paths remain fail-closed: 'all' expands to every known producer
+    before projecting either lane, rather than bypassing the expensive gate.
+    """
+    if lane == "combined":
+        return producers  # Preserve the public classifier CLI contract.
+    selected = set(PRODUCER_ORDER) if producers == "all" else set(producers.split(",")) - {"none", ""}
+    if lane == "tactics":
+        selected &= {"chronicles-tactics"}
+    elif lane == "chronicles":
+        selected &= {"chronicles-gameplay", "chronicles-avatar"}
+    elif lane == "app":
+        selected -= {"chronicles-gameplay", "chronicles-avatar", "chronicles-tactics"}
+    elif lane == "default":
+        selected.discard("chronicles-tactics")  # CLI backwards compatibility.
+    else:
+        raise ValueError(f"Unknown visual lane: {lane}")
+    return _csv(selected)
+
+
 def self_test() -> None:
+    assert project_chronicles_lane("all", "combined") == "all"
+    assert project_chronicles_lane("chronicles-tactics,chronicles-gameplay", "default") == "chronicles-gameplay"
+    assert project_chronicles_lane("chronicles-tactics,chronicles-gameplay", "tactics") == "chronicles-tactics"
+    assert project_chronicles_lane("chronicles-gameplay", "tactics") == "none"
+    assert project_chronicles_lane("chronicles-tactics", "default") == "none"
+    assert project_chronicles_lane("all", "tactics") == "chronicles-tactics"
+    assert project_chronicles_lane("chronicles-tactics,chronicles-gameplay", "chronicles") == "chronicles-gameplay"
+    assert project_chronicles_lane("chronicles-tactics,chronicles-gameplay", "app") == "none"
+    assert project_chronicles_lane("chronicles-gameplay,chronicles-avatar", "app") == "none"
+    assert project_chronicles_lane("chronicles-avatar", "chronicles") == "chronicles-avatar"
+    assert project_chronicles_lane("pvp-duel", "chronicles") == "none"
+    assert project_chronicles_lane("pvp-duel", "tactics") == "none"
+    assert project_chronicles_lane("pvp-duel", "app") == "pvp-duel"
+    assert project_chronicles_lane("all", "app") != "all"
+    assert "chronicles-gameplay" in project_chronicles_lane("all", "chronicles")
+    assert "chronicles-tactics" not in project_chronicles_lane("all", "chronicles")
+    assert project_chronicles_lane("scripts", "tactics") == "none"
+    assert classify([".github/workflows/chronicles-visual-artifact.yml"]) == "none"
+    assert classify([".github/workflows/tactics-visual-artifact.yml"]) == "none"
+    assert project_chronicles_lane("all", "default") != "all"
+    assert "chronicles-gameplay" in project_chronicles_lane("all", "default")
     assert classify(["e2e/staging-live.spec.js"]) == "none"
+    assert classify(["scripts/chronicles_area_parity_corpus.py"]) == "none"
+    assert classify(["scripts/chronicles_area_parity_corpus.py", "frontend/src/chronicles/chroniclesMapCatalog.js"]) == "chronicles-tactics,chronicles-gameplay"
+    assert classify(["scripts/unknown_unowned_generator.py"]) == "all"
     assert classify(["e2e/staging-live.spec.js", "frontend/src/components/PvpHandoffModal.jsx"]) == "pvp-handoff"
     assert classify([
         "frontend/src/components/GameScreen.jsx",
@@ -743,6 +819,7 @@ def self_test() -> None:
         "frontend/src/cpuPresentationTiming.test.js",
         "scripts/architecture_debt_budget.py",
     ]) == "warroom-core"
+    assert classify(["frontend/public/sw.js", "scripts/pwa_check.mjs"]) == "none"
     assert classify(["frontend/src/components/ShareResultModal.jsx"]) == "warroom-core"
     assert classify(["frontend/src/components/ProfileBackupModal.jsx"]) == "home-base"
     assert classify([
@@ -821,6 +898,21 @@ def self_test() -> None:
     assert classify([".github/workflows/app-visual-artifact.yml"]) == "none"
     assert classify(["frontend/src/chroniclesOfMatthiasIsometric.js"]) == "chronicles-tactics"
     assert classify(["frontend/src/components/ChroniclesOfMatthiasTactics.jsx"]) == "chronicles-tactics"
+    assert classify(["frontend/src/components/ChroniclesSaveMenu.jsx"]) == "chronicles-gameplay"
+    assert classify(["frontend/src/components/ChroniclesSaveMenu.css"]) == "chronicles-gameplay"
+    for first_person_css in (
+        "ChroniclesOfMatthias.css",
+        "ChroniclesOfMatthiasArt.css",
+        "ChroniclesOfMatthiasJournal.css",
+    ):
+        producers = classify([f"frontend/src/components/{first_person_css}"])
+        assert producers == "chronicles-gameplay,chronicles-avatar"
+        assert project_chronicles_lane(producers, "tactics") == "none"
+    assert classify(["frontend/src/components/ChroniclesOfMatthiasTactics.css"]) == "chronicles-tactics"
+    assert project_chronicles_lane(classify(["frontend/src/components/ChroniclesSaveMenu.css"]), "tactics") == "none"
+    assert classify(["frontend/src/chronicles/chroniclesRunClient.js"]) == "none"
+    assert classify(["frontend/src/chronicles/chroniclesRunIdentity.js"]) == "none"
+    assert classify(["frontend/src/chronicles/chroniclesGameBootstrap.js"]) == "chronicles-tactics,chronicles-gameplay"
     assert classify(["frontend/src/chroniclesDungeon.js"]) == "chronicles-gameplay"
     assert classify(["frontend/src/experimentalThreeRenderer.js"]) == "chronicles-tactics,chronicles-gameplay"
     assert classify(["frontend/src/components/LabScreen.jsx"]) == "experiments-hub"
@@ -828,6 +920,15 @@ def self_test() -> None:
         "frontend/src/components/ChessFootballGodotHost.jsx",
         "e2e/chess-football.spec.js",
     ]) == "experiments-hub"
+    manager = [
+        "frontend/src/components/ChessFootballEntry.jsx",
+        "frontend/src/footballManagerSeason.js",
+        "frontend/src/footballManagerSeason.test.js",
+        "e2e/experiments-visual-artifact.spec.js",
+    ]
+    assert classify(manager) == "experiments-hub"
+    assert classify(["frontend/src/footballManagerRoster.js"]) == "experiments-hub"
+    assert classify(["frontend/src/unownedVisualModule.js"]) == "all"
     assert classify(["frontend/src/components/QuickMatchModal.jsx"]) == "home-base,warroom-core"
     assert classify(["frontend/src/components/CampaignCombatPreparation.jsx"]) == "combat-prep"
     assert classify(["frontend/src/components/CombatBattleView.jsx"]) == "combat-battle"
@@ -1008,6 +1109,7 @@ def self_test() -> None:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--all", action="store_true")
+    parser.add_argument("--chronicles-lane", choices=("combined", "default", "app", "chronicles", "tactics"), default="combined")
     parser.add_argument("--github-output", default=os.environ.get("GITHUB_OUTPUT", ""))
     parser.add_argument("--self-test", action="store_true")
     args = parser.parse_args(argv)
@@ -1015,7 +1117,8 @@ def main(argv: list[str] | None = None) -> int:
         self_test()
         return 0
     paths = [] if args.all else sys.stdin.read().splitlines()
-    result = "all" if args.all else classify(paths)
+    selected_producers = "all" if args.all else classify(paths)
+    result = project_chronicles_lane(selected_producers, args.chronicles_lane)
     warroom_variants = _variant_csv(WARROOM_VARIANT_ALL) if args.all else classify_warroom_variants(paths)
     warroom_profile_scope = WARROOM_PROFILE_SCOPE_ALL if args.all else classify_warroom_profile_scope(paths)
     home_profile_scope = HOME_PROFILE_SCOPE_ALL if args.all else classify_home_profile_scope(paths)
@@ -1025,6 +1128,18 @@ def main(argv: list[str] | None = None) -> int:
             handle.write(f"warroom_variants={warroom_variants}\n")
             handle.write(f"warroom_profile_scope={warroom_profile_scope}\n")
             handle.write(f"home_profile_scope={home_profile_scope}\n")
+            # Specialist workflows own exactly their game, never Home, War Room,
+            # the other game's WebGL browser or general-purpose sidecars.
+            if args.chronicles_lane in {"tactics", "chronicles"}:
+                handle.write(f"capture_groups={'experiments' if result != 'none' else 'none'}\n")
+                handle.write(f"experiments_scope={'chronicles' if result != 'none' else 'none'}\n")
+                handle.write(f"chronicles_avatar={'true' if args.chronicles_lane == 'chronicles' and 'chronicles-avatar' in result.split(',') else 'false'}\n")
+                for output in ("warroom", "hans", "chesscom",
+                               "warroom_revision_required", "warroom_v3_revision_required",
+                               "pvp_duel_revision_required"):
+                    handle.write(f"{output}=false\n")
+            elif result == "none":
+                handle.write("capture_groups=none\n")
     else:
         print(f"producer_scope={result}")
         print(f"warroom_variants={warroom_variants}")

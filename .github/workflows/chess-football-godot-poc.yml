@@ -1,15 +1,9 @@
 name: Build · Chess Football Godot Web
 
+# Required Football gate exists on every PR. Cheap path detection below
+# skips Godot for unrelated changes; no path-filtered missing check.
 on:
   pull_request:
-    paths:
-      - games/chess-football-godot/**
-      - scripts/art/chess_football_sprite_forge.py
-      - scripts/art/sprite_forge.py
-      - scripts/art/sprite_forge_contract_v2.schema.json
-      - scripts/art/contracts/chess_football_players_v1.json
-      - scripts/pawn_slug_godot_bundle.py
-      - .github/workflows/chess-football-godot-poc.yml
   push:
     branches: [main]
     paths:
@@ -24,6 +18,7 @@ on:
 
 permissions:
   contents: read
+  pull-requests: read
 
 concurrency:
   group: chess-football-godot-${{ github.event.pull_request.number || github.ref }}
@@ -37,7 +32,53 @@ env:
   GODOT_TEMPLATES_SHA256: 'f298490b8d44d934be425a5a65a51bf15f422428b229a06a6e11d9ffea248011'
 
 jobs:
+  affected_paths:
+    name: Football · affected paths
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    outputs:
+      changed: ${{ steps.scope.outputs.changed }}
+    steps:
+      - name: Discover affected PR files (fail closed)
+        uses: actions/github-script@v8
+        id: scope
+        with:
+          script: |
+            if (context.eventName !== 'pull_request') {
+              core.setOutput('changed', 'true');
+              return;
+            }
+            const files = await github.paginate(github.rest.pulls.listFiles, {
+              ...context.repo,
+              pull_number: context.issue.number,
+              per_page: 100,
+            });
+            // GitHub's PR file API truncates large PRs at 3000 files.
+            if (files.length >= 3000) {
+              core.setFailed('PR file list truncated; cannot safely skip Football');
+              return;
+            }
+            const specific = new Set([
+              'scripts/art/chess_football_sprite_forge.py',
+              'scripts/art/sprite_forge.py',
+              'scripts/art/sprite_forge_contract_v2.schema.json',
+              'scripts/art/contracts/chess_football_players_v1.json',
+              'scripts/pawn_slug_godot_bundle.py',
+              '.github/workflows/chess-football-godot-poc.yml',
+            ]);
+            const changed = files.some(file =>
+              file.filename.startsWith('games/chess-football-godot/') ||
+              specific.has(file.filename) ||
+              (file.previous_filename && (
+                file.previous_filename.startsWith('games/chess-football-godot/') ||
+                specific.has(file.previous_filename)
+              ))
+            );
+            core.setOutput('changed', String(changed));
+
   validate:
+    needs: affected_paths
+    if: needs.affected_paths.outputs.changed == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 8
     steps:
@@ -195,6 +236,21 @@ jobs:
             exit 1
           fi
           grep -q 'chess-football keeper motion smoke: OK' "$log"
+      - name: Keeper frame advance in real 3D runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          godot="$GITHUB_WORKSPACE/.godot-ci/$GODOT_VERSION/godot"
+          log="$RUNNER_TEMP/chess-football-keeper-frame-advance.log"
+          set +e
+          timeout 30s "$godot" --headless --quit-after 360 --path games/chess-football-godot --script res://tests/keeper_frame_advance_smoke.gd 2>&1 | tee "$log"
+          status=${PIPESTATUS[0]}
+          set -e
+          if [[ "$status" -ne 0 ]] || grep -Eq 'SCRIPT ERROR:|Assertion failed|ERROR: Failed to load script|Parse Error:' "$log"; then
+            echo '::error::Football goalkeeper 3D frame progression failed.'
+            exit 1
+          fi
+          grep -q 'chess-football keeper frame-advance smoke: OK' "$log"
       - name: Canonical 3D roster parity smoke
         shell: bash
         run: |
@@ -238,11 +294,17 @@ jobs:
           kickoff="$(sed -n 's/^VISUAL_CAPTURE_KICKOFF=//p' "$log" | tail -1)"
           kickoff_touch="$(sed -n 's/^VISUAL_CAPTURE_KICKOFF_TOUCH=//p' "$log" | tail -1)"
           directional_runs="$(sed -n 's/^VISUAL_CAPTURE_DIRECTIONAL_RUNS=//p' "$log" | tail -1)"
+          perspective_parity="$(sed -n 's/^VISUAL_CAPTURE_PERSPECTIVE_PARITY=//p' "$log" | tail -1)"
           wide_lanes="$(sed -n 's/^VISUAL_CAPTURE_WIDE_PITCH_LANES=//p' "$log" | tail -1)"
           directional_scale_grid="$(sed -n 's/^VISUAL_CAPTURE_DIRECTIONAL_SCALE_GRID=//p' "$log" | tail -1)"
+          tonal_parity="$(sed -n 's/^VISUAL_CAPTURE_TONAL_PARITY=//p' "$log" | tail -1)"
           canonical_actions="$(sed -n 's/^VISUAL_CAPTURE_CANONICAL_ACTIONS=//p' "$log" | tail -1)"
           keepers_front="$(sed -n 's/^VISUAL_CAPTURE_KEEPERS_FRONT=//p' "$log" | tail -1)"
           keepers_diagonal="$(sed -n 's/^VISUAL_CAPTURE_KEEPERS_DIAGONAL=//p' "$log" | tail -1)"
+          keepers_stride_early="$(sed -n 's/^VISUAL_CAPTURE_KEEPERS_STRIDE_EARLY=//p' "$log" | tail -1)"
+          keepers_stride_late="$(sed -n 's/^VISUAL_CAPTURE_KEEPERS_STRIDE_LATE=//p' "$log" | tail -1)"
+          keepers_stride_detail_early="$(sed -n 's/^VISUAL_CAPTURE_KEEPERS_STRIDE_DETAIL_EARLY=//p' "$log" | tail -1)"
+          keepers_stride_detail_late="$(sed -n 's/^VISUAL_CAPTURE_KEEPERS_STRIDE_DETAIL_LATE=//p' "$log" | tail -1)"
           dribble="$(sed -n 's/^VISUAL_CAPTURE_DRIBBLE=//p' "$log" | tail -1)"
           pass_charge="$(sed -n 's/^VISUAL_CAPTURE_PASS_CHARGE=//p' "$log" | tail -1)"
           broadcast="$(sed -n 's/^VISUAL_CAPTURE_BROADCAST=//p' "$log" | tail -1)"
@@ -276,11 +338,17 @@ jobs:
           test -n "$kickoff" && test -s "$kickoff"
           test -n "$kickoff_touch" && test -s "$kickoff_touch"
           test -n "$directional_runs" && test -s "$directional_runs"
+          test -n "$perspective_parity" && test -s "$perspective_parity"
           test -n "$wide_lanes" && test -s "$wide_lanes"
           test -n "$directional_scale_grid" && test -s "$directional_scale_grid"
+          test -n "$tonal_parity" && test -s "$tonal_parity"
           test -n "$canonical_actions" && test -s "$canonical_actions"
           test -n "$keepers_front" && test -s "$keepers_front"
           test -n "$keepers_diagonal" && test -s "$keepers_diagonal"
+          test -n "$keepers_stride_early" && test -s "$keepers_stride_early"
+          test -n "$keepers_stride_late" && test -s "$keepers_stride_late"
+          test -n "$keepers_stride_detail_early" && test -s "$keepers_stride_detail_early"
+          test -n "$keepers_stride_detail_late" && test -s "$keepers_stride_detail_late"
           test -n "$dribble" && test -s "$dribble"
           test -n "$pass_charge" && test -s "$pass_charge"
           test -n "$broadcast" && test -s "$broadcast"
@@ -315,11 +383,17 @@ jobs:
           cp "$kickoff" "$RUNNER_TEMP/chess-football-review/kickoff.png"
           cp "$kickoff_touch" "$RUNNER_TEMP/chess-football-review/kickoff-touch.png"
           cp "$directional_runs" "$RUNNER_TEMP/chess-football-review/directional-runs.png"
+          cp "$perspective_parity" "$RUNNER_TEMP/chess-football-review/perspective-parity.png"
           cp "$wide_lanes" "$RUNNER_TEMP/chess-football-review/wide-pitch-lanes.png"
           cp "$directional_scale_grid" "$RUNNER_TEMP/chess-football-review/directional-scale-grid.png"
+          cp "$tonal_parity" "$RUNNER_TEMP/chess-football-review/tonal-parity.png"
           cp "$canonical_actions" "$RUNNER_TEMP/chess-football-review/canonical-actions.png"
           cp "$keepers_front" "$RUNNER_TEMP/chess-football-review/keepers-front.png"
           cp "$keepers_diagonal" "$RUNNER_TEMP/chess-football-review/keepers-diagonal.png"
+          cp "$keepers_stride_early" "$RUNNER_TEMP/chess-football-review/keepers-stride-early.png"
+          cp "$keepers_stride_late" "$RUNNER_TEMP/chess-football-review/keepers-stride-late.png"
+          cp "$keepers_stride_detail_early" "$RUNNER_TEMP/chess-football-review/keepers-stride-detail-early.png"
+          cp "$keepers_stride_detail_late" "$RUNNER_TEMP/chess-football-review/keepers-stride-detail-late.png"
           cp "$dribble" "$RUNNER_TEMP/chess-football-review/dribble.png"
           cp "$pass_charge" "$RUNNER_TEMP/chess-football-review/pass-charge.png"
           cp "$broadcast" "$RUNNER_TEMP/chess-football-review/broadcast.png"
@@ -442,6 +516,46 @@ jobs:
           path: .artifacts/football-web/
           if-no-files-found: warn
           retention-days: 7
+
+  required_gate:
+    name: Football · required visual gate
+    # Always emit a check even if detection or Godot fails or skips.
+    if: always()
+    needs: [affected_paths, validate, web_runtime]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - name: Enforce Godot visual evidence and Chromium before merge
+        shell: bash
+        env:
+          DETECT_RESULT: ${{ needs.affected_paths.result }}
+          FOOTBALL_CHANGED: ${{ needs.affected_paths.outputs.changed }}
+          GODOT_RESULT: ${{ needs.validate.result }}
+          CHROMIUM_RESULT: ${{ needs.web_runtime.result }}
+        run: |
+          set -euo pipefail
+          gate_ok() {
+            local detection="$1" changed="$2" godot="$3" chromium="$4"
+            [[ "$detection" == success ]] || return 1
+            case "$changed" in
+              true) [[ "$godot" == success && "$chromium" == success ]] ;;
+              false) [[ "$godot" == skipped && "$chromium" == skipped ]] ;;
+              *) return 1 ;;
+            esac
+          }
+          # Both green and red fixtures ensure fail-closed merge semantics.
+          gate_ok success true success success
+          gate_ok success false skipped skipped
+          ! gate_ok success true success failure
+          ! gate_ok success true skipped skipped
+          ! gate_ok success true success cancelled
+          ! gate_ok failure false skipped skipped
+          ! gate_ok success false success success
+          if ! gate_ok "$DETECT_RESULT" "$FOOTBALL_CHANGED" "$GODOT_RESULT" "$CHROMIUM_RESULT"; then
+            echo "::error::Football CI incomplete or failed: detector=$DETECT_RESULT scope=$FOOTBALL_CHANGED Godot=$GODOT_RESULT Chromium=$CHROMIUM_RESULT"
+            exit 1
+          fi
+          echo "Football required visual gate: OK (affected=$FOOTBALL_CHANGED)" >> "$GITHUB_STEP_SUMMARY"
 
   build_publish:
     name: Export + publish · Chess Football Godot Web

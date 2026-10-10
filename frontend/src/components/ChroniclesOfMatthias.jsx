@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   CHRONICLES_DIRECTIONS,
   chroniclesActiveEnemies,
+  CHRONICLES_PARTY,
   chroniclesEnemyTargetAhead,
   chroniclesContextualContentAction,
   chroniclesPartyAttackStats,
@@ -23,7 +24,14 @@ import { chroniclesPartyPortraitUrl } from '../chronicles/chroniclesPartyPortrai
 import { chroniclesClearRuntimeMapDefinitions, chroniclesMapForState } from '../chronicles/chroniclesMapCatalog.js';
 import { chroniclesRegionHudLocation } from '../chronicles/chroniclesRegionHud.js';
 import { chroniclesGridExplorationStep } from '../chronicles/chroniclesGridExplorationStep.js';
-import { chroniclesCheckpointState } from '../chronicles/chroniclesRunClient.js';
+import { chroniclesInitializeLostKingIntro } from '../chronicles/chroniclesLostKingIntro.js';
+import { CHRONICLES_SWORDHAVEN_RETURN_PORTAL_ID } from '../chronicles/chroniclesSwordhavenReturnPortal.js';
+import {
+  chroniclesCheckpointState,
+  chroniclesListRemoteRuns,
+  chroniclesDeleteRemoteRun,
+} from '../chronicles/chroniclesRunClient.js';
+import { loadChroniclesCharacterDraft } from '../chronicles/chroniclesCharacterDraft.js';
 import {
   chroniclesApplyRunCheckpoint,
   chroniclesRunCheckpointFingerprint,
@@ -34,6 +42,17 @@ import {
 } from '../chronicles/chroniclesGameBootstrap.js';
 import {
   ensureChroniclesRun,
+  beginChroniclesRun,
+  chroniclesListSavedRuns,
+  chroniclesMergeRemoteSavedRuns,
+  chroniclesSaveCatalogOwner,
+  chroniclesMarkSavedRunRemote,
+  chroniclesSelectedRunIsRemote,
+  chroniclesSelectSavedRun,
+  chroniclesRenameSavedRun,
+  chroniclesForgetSavedRun,
+  chroniclesNoteSavedRunCheckpoint,
+  chroniclesRunEntryMapId,
   finishChroniclesRun,
   renewChroniclesRun,
 } from '../chronicles/chroniclesRunIdentity.js';
@@ -65,6 +84,8 @@ import ChroniclesCharacterSheet from './ChroniclesCharacterSheet.jsx';
 import ChroniclesMinimap from './ChroniclesMinimap.jsx';
 import ChroniclesBookOneEpilogue from './ChroniclesBookOneEpilogue.jsx';
 import ChroniclesCharacterSetup from './ChroniclesCharacterSetup.jsx';
+import ChroniclesSaveMenu from './ChroniclesSaveMenu.jsx';
+import ChroniclesQuestLog, { chroniclesQuestLogEntries } from './ChroniclesQuestLog.jsx';
 import ChroniclesDefeatOverlay from './ChroniclesDefeatOverlay.jsx';
 import ChroniclesEnemyRetaliationFx from './ChroniclesEnemyRetaliationFx.jsx';
 import ChroniclesInitiativeRail from './ChroniclesInitiativeRail.jsx';
@@ -88,6 +109,7 @@ const KEY_ACTIONS = Object.freeze({
   ArrowDown: 'backward', s: 'backward', S: 'backward',
   ArrowLeft: 'turn-left', a: 'turn-left', A: 'turn-left',
   ArrowRight: 'turn-right', d: 'turn-right', D: 'turn-right',
+  q: 'strafe-left', Q: 'strafe-left', e: 'strafe-right', E: 'strafe-right',
 });
 
 const FIRST_PERSON_RUN_SCOPE = 'first-person';
@@ -108,7 +130,7 @@ function BootstrapStatus() {
   );
 }
 
-function BootstrapFailure({ error, onRetry, onExit }) {
+function BootstrapFailure({ error, onRetry, onMenu, onExit }) {
   const aborted = error?.code === CHRONICLES_BOOTSTRAP_ERROR_CODES.aborted;
   return (
     <div className="menu chronicles-bootstrap">
@@ -117,12 +139,11 @@ function BootstrapFailure({ error, onRetry, onExit }) {
         <h2>No se pudo preparar Chronicles</h2>
         <p>El mundo autoritativo no superó el arranque. No se cargará la cripta local como sustituto.</p>
         <p className="hint-text">Código {error?.code || CHRONICLES_BOOTSTRAP_ERROR_CODES.unknown}{error?.requestId ? ` · ${error.requestId}` : ''}</p>
-        {!aborted && (
-          <div className="game-controls">
-            <button type="button" className="primary-btn" onClick={onRetry}>Reintentar</button>
-            <button type="button" className="secondary-btn" onClick={onExit}>Salir de Chronicles</button>
-          </div>
-        )}
+        <div className="game-controls">
+          {!aborted && <button type="button" className="primary-btn" onClick={onRetry}>Reintentar</button>}
+          <button type="button" className="secondary-btn" onClick={onMenu}>Volver a expediciones</button>
+          <button type="button" className="secondary-btn" onClick={onExit}>Salir de Chronicles</button>
+        </div>
       </section>
     </div>
   );
@@ -138,6 +159,14 @@ export default function ChroniclesOfMatthias({ onExit }) {
   const [progression, setProgression] = useState(() => loadChroniclesProgression());
   const progressionRef = useRef(progression);
   const [characterSetupDone, setCharacterSetupDone] = useState(false);
+  // Restore an unfinished character editor draft; otherwise display the
+  // expedition book before allocating or loading any server run.
+  const [entryView, setEntryView] = useState(() => loadChroniclesCharacterDraft(CHRONICLES_PARTY) ? 'setup' : 'menu');
+  const [savesRefreshKey, refreshSaves] = useState(0);
+  const [saveInventory, setSaveInventory] = useState(null);
+  const [saveMenuLoading, setSaveMenuLoading] = useState(false);
+  const [saveMenuError, setSaveMenuError] = useState('');
+  const [saveMenuBusy, setSaveMenuBusy] = useState(null);
   const [ready, setReady] = useState(false);
   const [bootstrapError, setBootstrapError] = useState(null);
   const [bootstrapRevision, setBootstrapRevision] = useState(0);
@@ -160,6 +189,35 @@ export default function ChroniclesOfMatthias({ onExit }) {
   const [automapVisitedByMap, setAutomapVisitedByMap] = useState({});
   const touchHoldRef = useRef({ delayId: null, repeatId: null });
   const { needsRotation, lockState, activateLandscape } = useChroniclesLandscape(characterSetupDone);
+
+  // Reconcile server-owned expeditions only while browsing the save book.
+  // Cleanup discards stale results after navigating away or switching flows.
+  useEffect(() => {
+    if (entryView !== 'menu') return undefined;
+    const controller = new AbortController();
+    const ownerAtRequest = chroniclesSaveCatalogOwner();
+    let active = true;
+    setSaveMenuLoading(true);
+    setSaveMenuError('');
+    setSaveInventory(chroniclesListSavedRuns(FIRST_PERSON_RUN_SCOPE));
+    void chroniclesListRemoteRuns({ signal: controller.signal })
+      .then((rows) => {
+        if (!active) return;
+        setSaveInventory(chroniclesMergeRemoteSavedRuns(FIRST_PERSON_RUN_SCOPE, rows, { expectedOwner: ownerAtRequest }));
+      })
+      .catch(() => {
+        if (!active || controller.signal.aborted) return;
+        setSaveMenuError('No se pudo consultar el servidor. Se muestran los guardados locales; inténtalo de nuevo cuando vuelva la conexión.');
+        setSaveInventory(chroniclesListSavedRuns(FIRST_PERSON_RUN_SCOPE));
+      })
+      .finally(() => {
+        if (active) setSaveMenuLoading(false);
+      });
+    return () => {
+      active = false;
+      controller.abort();
+    };
+  }, [entryView, savesRefreshKey]);
 
   useEffect(() => {
     selectedMemberIdRef.current = selectedMemberId;
@@ -234,6 +292,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
     setAutomapOpen(false);
     setAutomapVisitedByMap({});
     setCharacterSetupDone(true);
+    setEntryView('playing');
     setBootstrapRevision((revision) => revision + 1);
   }, [progression]);
 
@@ -252,6 +311,14 @@ export default function ChroniclesOfMatthias({ onExit }) {
     if (!current) return;
 
     const actionType = typeof action === 'string' ? action : action?.type;
+    if (actionType === 'equip-item' || actionType === 'unequip-item') {
+      const updated = chroniclesReduce(current, action);
+      if (updated !== current) {
+        stateRef.current = updated;
+        setState(updated);
+      }
+      return; // Equipping is not a movement tick or a combat action.
+    }
     const activeActor = chroniclesCurrentInitiativeActor(current.initiative);
     if (current.initiative && activeActor?.kind === 'enemy') return;
     if (
@@ -271,18 +338,14 @@ export default function ChroniclesOfMatthias({ onExit }) {
       const forcedTarget = attackingMember
         ? chroniclesEnemyTargetAhead(current, chroniclesPartyAttackStats(current, attackingMember.id).reach)
         : null;
-      const partyAgilityBonuses = Object.fromEntries(
-        (current.party || []).map((member) => [
-          member.id,
-          Number(chroniclesHeroProgress(progressionRef.current, member.id).attributes?.agility || 0),
-        ]),
-      );
-      const started = chroniclesStartInitiativeCombat(
+      // Entering an area is not a tactical movement inside it. The player
+      // gets to see the new room/return portal before enemies can engage.
+      const transitionedMap = exploratoryNext?.mapId !== current.mapId;
+      const started = transitionedMap ? exploratoryNext : chroniclesStartInitiativeCombat(
         exploratoryNext,
         chroniclesActiveEnemies(exploratoryNext),
         {
           forceEnemyIds: forcedTarget ? [forcedTarget.enemy.id] : [],
-          partyAgilityBonuses,
         },
       );
       next = started !== exploratoryNext
@@ -473,11 +536,13 @@ export default function ChroniclesOfMatthias({ onExit }) {
 
   const newExpedition = useCallback(() => {
     const runId = activeRunIdRef.current;
-    if (runId) {
-      clearChroniclesAutomapVisited(runId);
-      finishChroniclesRun(FIRST_PERSON_RUN_SCOPE, runId);
-      activeRunIdRef.current = null;
-    }
+    // Starting another game does not destroy the checkpoint of the old one.
+    // The catalog keeps both identities loadable.
+    const newRunId = beginChroniclesRun(FIRST_PERSON_RUN_SCOPE);
+    activeRunIdRef.current = newRunId;
+    authoritativeRunRef.current = null;
+    checkpointFingerprintRef.current = '';
+    checkpointQueueRef.current = Promise.resolve();
     stateRef.current = null;
     setState(null);
     setSelectedMemberId('matthias');
@@ -524,12 +589,13 @@ export default function ChroniclesOfMatthias({ onExit }) {
   }, [clearTouchHold]);
 
   useEffect(() => {
-    if (!characterSetupDone) return undefined;
+    if (!characterSetupDone || entryView !== 'playing') return undefined;
     const controller = new AbortController();
     let active = true;
 
     setBootstrapError(null);
     const operationId = ensureChroniclesRun(FIRST_PERSON_RUN_SCOPE);
+    const remoteSelection = chroniclesSelectedRunIsRemote(FIRST_PERSON_RUN_SCOPE, operationId);
     activeRunIdRef.current = operationId;
 
     // Overlap renderer chunk loading with the authoritative world bootstrap.
@@ -538,19 +604,31 @@ export default function ChroniclesOfMatthias({ onExit }) {
 
     const activeProgression = progressionRef.current;
     chroniclesBootstrapWorld({
+      mapId: chroniclesRunEntryMapId(FIRST_PERSON_RUN_SCOPE),
       signal: controller.signal,
       operationId,
+      resumeRunId: remoteSelection ? operationId : null,
       partyLevel: chroniclesDeployedPartyLevel(activeProgression),
     })
       .then((world) => {
         if (!active) return;
         const progressed = applyChroniclesProgressionToTacticsState(
-          createChroniclesState(null, activeProgression.characterBuild),
+          createChroniclesState(null, activeProgression.characterBuild, { rules: 'mm3' }),
           activeProgression,
         );
-        const next = chroniclesApplyRunCheckpoint(progressed, world);
+        const restored = chroniclesApplyRunCheckpoint(progressed, world);
+        // The run id seeds every MM3 die so F5 never rerolls a blow.
+        const next = {
+          ...chroniclesInitializeLostKingIntro(restored, {
+            fresh: !remoteSelection && world.worldVersion === 0,
+          }),
+          runSeed: operationId,
+        };
         authoritativeRunRef.current = world;
-        checkpointFingerprintRef.current = chroniclesRunCheckpointFingerprint(next);
+        chroniclesMarkSavedRunRemote(FIRST_PERSON_RUN_SCOPE, operationId);
+        // Compare against the server snapshot so the new commission is written
+        // immediately and survives F5 even before the first movement.
+        checkpointFingerprintRef.current = chroniclesRunCheckpointFingerprint(restored);
         setAutomapVisitedByMap(loadChroniclesAutomapVisited(operationId));
         stateRef.current = next;
         staleRunRecoveryAttemptedRef.current = false;
@@ -562,7 +640,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
       })
       .catch((error) => {
         if (!active || error?.code === CHRONICLES_BOOTSTRAP_ERROR_CODES.aborted) return;
-        if (error?.status === 409 && !staleRunRecoveryAttemptedRef.current) {
+        if (error?.status === 409 && !remoteSelection && !staleRunRecoveryAttemptedRef.current) {
           staleRunRecoveryAttemptedRef.current = true;
           clearChroniclesAutomapVisited(operationId);
           const replacementRunId = renewChroniclesRun(FIRST_PERSON_RUN_SCOPE, operationId);
@@ -583,7 +661,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
       controller.abort();
       chroniclesClearRuntimeMapDefinitions();
     };
-  }, [bootstrapRevision, characterSetupDone]);
+  }, [bootstrapRevision, characterSetupDone, entryView]);
 
   useEffect(() => {
     let cancelled = false;
@@ -644,6 +722,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
         );
         if (authoritativeRunRef.current?.runId !== scheduledRunId) return;
         authoritativeRunRef.current = { ...currentRun, ...updated };
+        chroniclesNoteSavedRunCheckpoint(FIRST_PERSON_RUN_SCOPE, scheduledRunId, snapshot.mapId);
       })
       .catch((error) => {
         console.error('Chronicles checkpoint failed', error);
@@ -684,7 +763,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
         }
         return;
       }
-      if (event.key === 'e' || event.key === 'E') {
+      if (event.key === 'f' || event.key === 'F') {
         if (chroniclesContextualContentAction(current)) {
           event.preventDefault();
           interactWithContext();
@@ -706,6 +785,87 @@ export default function ChroniclesOfMatthias({ onExit }) {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [attackWithSelected, automapOpen, clearTouchHold, dispatch, interactWithContext, openMemberSheet, ready, sheetMemberId]);
 
+  const startFreshGame = (entryMapId = null) => {
+    beginChroniclesRun(FIRST_PERSON_RUN_SCOPE, { entryMapId });
+    setCharacterSetupDone(false);
+    setEntryView('setup');
+    refreshSaves((value) => value + 1);
+  };
+
+  const loadSavedGame = (runId) => {
+    if (!chroniclesSelectSavedRun(FIRST_PERSON_RUN_SCOPE, runId)) return;
+    // Loading an existing expedition skips character setup; use this click to
+    // request the same native fullscreen/orientation affordance as New game.
+    void requestChroniclesLandscapeOnEntry();
+    activeRunIdRef.current = null;
+    authoritativeRunRef.current = null;
+    checkpointFingerprintRef.current = '';
+    stateRef.current = null;
+    setState(null);
+    setReady(false);
+    setBootstrapError(null);
+    setCharacterSetupDone(true);
+    setEntryView('playing');
+    setBootstrapRevision((revision) => revision + 1);
+  };
+
+  const returnToSaveMenu = () => {
+    setMenuOpen(false);
+    clearTouchHold();
+    // Never switch the authoritative run pointer while a checkpoint is queued.
+    void checkpointQueueRef.current.catch(() => undefined).then(() => {
+      stateRef.current = null;
+      activeRunIdRef.current = null;
+      authoritativeRunRef.current = null;
+      setState(null);
+      setReady(false);
+      setBootstrapError(null);
+      setRendererError('');
+      checkpointFingerprintRef.current = '';
+      setCharacterSetupDone(false);
+      setSaveInventory(null);
+      setEntryView('menu');
+      refreshSaves((value) => value + 1);
+    });
+  };
+
+  if (entryView === 'menu') {
+    return (
+      <ChroniclesSaveMenu
+        saves={saveInventory ?? chroniclesListSavedRuns(FIRST_PERSON_RUN_SCOPE)}
+        loading={saveMenuLoading}
+        error={saveMenuError}
+        busyRunId={saveMenuBusy}
+        onRetrySync={() => refreshSaves((value) => value + 1)}
+        onNew={startFreshGame}
+        onLoad={loadSavedGame}
+        onRename={(id, title) => {
+          const result = chroniclesRenameSavedRun(FIRST_PERSON_RUN_SCOPE, id, title);
+          if (result) refreshSaves((value) => value + 1);
+          return result;
+        }}
+        onDelete={async (id, remote) => {
+          if (saveMenuBusy !== null) return false;
+          setSaveMenuBusy(id);
+          setSaveMenuError('');
+          try {
+            if (remote) await chroniclesDeleteRemoteRun(id);
+            if (!chroniclesForgetSavedRun(FIRST_PERSON_RUN_SCOPE, id)) return false;
+            setSaveInventory(chroniclesListSavedRuns(FIRST_PERSON_RUN_SCOPE));
+            refreshSaves((value) => value + 1);
+            return true;
+          } catch {
+            setSaveMenuError('No se pudo eliminar la expedición del servidor. No se ha retirado de tu lista.');
+            return false;
+          } finally {
+            setSaveMenuBusy(null);
+          }
+        }}
+        onExit={exitChronicles}
+      />
+    );
+  }
+
   if (!characterSetupDone) {
     return (
       <ChroniclesCharacterSetup
@@ -718,7 +878,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
   }
 
   if (bootstrapError) {
-    return <BootstrapFailure error={bootstrapError} onRetry={retryBootstrap} onExit={exitChronicles} />;
+    return <BootstrapFailure error={bootstrapError} onRetry={retryBootstrap} onMenu={returnToSaveMenu} onExit={exitChronicles} />;
   }
   if (!ready || !state) return <BootstrapStatus />;
 
@@ -735,6 +895,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
     : null;
   const journalEntries = chroniclesJournalEntries(state);
   const latestJournalEntry = journalEntries[journalEntries.length - 1];
+  const activeQuests = chroniclesQuestLogEntries(state).filter((quest) => quest.status === 'active');
   const expeditionOver = state.phase === 'defeated' || state.phase === 'escaped';
   const contextualAction = chroniclesContextualContentAction(state);
   const activeInitiativeActor = chroniclesCurrentInitiativeActor(state.initiative);
@@ -853,6 +1014,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
                 <small>Salir conserva esta run. Nueva expedición crea otra ruta aleatoria.</small>
                 <button type="button" onClick={() => setMenuOpen(false)}>Continuar</button>
                 <button type="button" onClick={newExpedition}>Nueva expedición</button>
+                <button type="button" onClick={returnToSaveMenu}>Partidas guardadas</button>
                 <button type="button" onClick={exitChronicles}>Salir y guardar</button>
               </div>
             </details>
@@ -873,7 +1035,9 @@ export default function ChroniclesOfMatthias({ onExit }) {
               }}
             />
             <ChroniclesInitiativeRail initiative={state.initiative} />
-            <ChroniclesNarratorOverlay message={state.message} />
+            <ChroniclesNarratorOverlay message={state.message}>
+              {activeQuests.length > 0 && <ChroniclesQuestLog state={state} />}
+            </ChroniclesNarratorOverlay>
             <ChroniclesPartyBark key={partyBark?.token || 'none'} bark={partyBark} />
             <ChroniclesTacticalMargin target={tacticalTarget} />
             <ChroniclesEnemyRetaliationFx key={retaliationCue?.token || 'none'} cue={retaliationCue} />
@@ -884,17 +1048,23 @@ export default function ChroniclesOfMatthias({ onExit }) {
 
           <details className="chronicles-journal" aria-label="Crónica de expedición">
             <summary>
-              <span><i aria-hidden="true">✦</i><b>Crónica de expedición</b><small>{latestJournalEntry?.title}</small></span>
-              <em>{journalEntries.length} {journalEntries.length === 1 ? 'folio' : 'folios'}</em>
+              <span><i aria-hidden="true">✦</i><b>Crónica de expedición</b><small>{activeQuests[0] ? `◆ ${activeQuests[0].title}` : latestJournalEntry?.title}</small></span>
+              <em>
+                {activeQuests.length > 0 && `${activeQuests.length} ${activeQuests.length === 1 ? 'encargo' : 'encargos'} · `}
+                {journalEntries.length} {journalEntries.length === 1 ? 'folio' : 'folios'}
+              </em>
             </summary>
-            <ol>
-              {journalEntries.map((entry) => (
-                <li key={entry.id}>
-                  <span aria-hidden="true">{entry.sigil}</span>
-                  <div><strong>{entry.title}</strong><p>{entry.body}</p></div>
-                </li>
-              ))}
-            </ol>
+            <div className="chronicles-journal__body">
+              <ChroniclesQuestLog state={state} />
+              <ol>
+                {journalEntries.map((entry) => (
+                  <li key={entry.id}>
+                    <span aria-hidden="true">{entry.sigil}</span>
+                    <div><strong>{entry.title}</strong><p>{entry.body}</p></div>
+                  </li>
+                ))}
+              </ol>
+            </div>
           </details>
 
           {!expeditionOver && (
@@ -934,7 +1104,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
                     data-chronicles-touch-action="interact"
                     onClick={interactWithContext}
                     aria-label={contextualAction.label}
-                  >✦<small>USAR</small></button>
+                  >✦<small>{contextualAction.id === CHRONICLES_SWORDHAVEN_RETURN_PORTAL_ID ? 'VOLVER' : 'USAR'}</small></button>
                 )}
                 <button
                   type="button"
@@ -962,9 +1132,10 @@ export default function ChroniclesOfMatthias({ onExit }) {
                 <span><kbd>W</kbd>/<kbd>↑</kbd> avanzar</span>
                 <span><kbd>S</kbd>/<kbd>↓</kbd> retroceder</span>
                 <span><kbd>A</kbd><kbd>D</kbd> girar</span>
+                <span><kbd>Q</kbd>/<kbd>E</kbd> desplazamiento lateral</span>
                 <span><kbd>1</kbd>–<kbd>4</kbd> pieza</span>
                 <span><kbd>ESPACIO</kbd> atacar</span>
-                <span><kbd>E</kbd> usar/recoger</span>
+                <span><kbd>F</kbd> usar/recoger</span>
                 <span><kbd>M</kbd> mapa</span>
               </div>
             </>
@@ -981,6 +1152,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
           onClose={() => setSheetMemberId(null)}
           onAllocateAttribute={allocateAttribute}
           onLearnSkill={learnSkill}
+          onEquipmentAction={(action) => dispatch({ ...action, memberId: sheetMember.id })}
         />
       )}
 

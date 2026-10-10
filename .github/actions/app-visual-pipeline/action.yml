@@ -4,6 +4,10 @@ inputs:
   mode:
     description: canonical or hans
     required: true
+  chronicles-lane:
+    description: "app, chronicles or tactics selects one independent visual workflow; default keeps the legacy CLI behavior."
+    default: default
+    required: false
 runs:
   using: composite
   steps:
@@ -18,7 +22,7 @@ runs:
         python3 -S scripts/app_visual_changed_files.py --self-test
         if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
           python3 -S scripts/app_visual_scope.py --all --github-output "$GITHUB_OUTPUT"
-          python3 -S scripts/app_visual_producer_scope.py --all --github-output "$GITHUB_OUTPUT"
+          python3 -S scripts/app_visual_producer_scope.py --all --chronicles-lane "${{ inputs.chronicles-lane }}" --github-output "$GITHUB_OUTPUT"
           exit 0
         fi
         if [[ "$GITHUB_EVENT_NAME" == "pull_request" ]]; then
@@ -67,6 +71,28 @@ runs:
             echo "::error::Unable to resolve PR merge-base for $base_sha..$head_sha"
             exit 1
           }
+          # A rescue branch may have a merge HEAD whose first parent is a
+          # newer main commit than the base SHA stored in the PR event. Using
+          # the stale merge-base would include other teams' merged changes,
+          # waking unrelated visual suites (Chronicles/Football/etc.). Only
+          # use the first parent when it is PROVEN to be main lineage.
+          mapfile -t head_parents < <(git cat-file -p "$head_sha" | sed -n 's/^parent //p')
+          if [[ "${#head_parents[@]}" -eq 2 ]]; then
+            synced_main="${head_parents[0]}"
+            git cat-file -e "$synced_main^{commit}" 2>/dev/null || \
+              git fetch --no-tags --depth=1 origin "$synced_main" || true
+            for deepen in 0 64 256; do
+              if [[ "$deepen" != 0 ]]; then
+                git fetch --no-tags --deepen="$deepen" origin "$base_ref"
+              fi
+              if git merge-base --is-ancestor "$base_sha" "$synced_main" 2>/dev/null && \
+                 git merge-base --is-ancestor "$synced_main" "origin/$base_ref" 2>/dev/null; then
+                echo "Visual PR ownership: accredited main parent $synced_main (event base $base_sha)"
+                merge_base="$synced_main"
+                break
+              fi
+            done
+          fi
           files="$(git diff --name-only "$merge_base" "$head_sha")"
         else
           base_sha="HEAD^"
@@ -84,14 +110,14 @@ runs:
           printf '%s\n' "$scoped_files"
         fi
         printf '%s\n' "$scoped_files" | python3 -S scripts/app_visual_scope.py --github-output "$GITHUB_OUTPUT"
-        printf '%s\n' "$scoped_files" | python3 -S scripts/app_visual_producer_scope.py --github-output "$GITHUB_OUTPUT"
+        printf '%s\n' "$scoped_files" | python3 -S scripts/app_visual_producer_scope.py --chronicles-lane "${{ inputs.chronicles-lane }}" --github-output "$GITHUB_OUTPUT"
 
     - name: Restore browser + build when capture is required
       if: >-
         inputs.mode == 'hans' ||
-        steps.scope.outputs.capture_groups != 'none' ||
-        steps.scope.outputs.hans == 'true' ||
-        steps.scope.outputs.chesscom == 'true'
+        (steps.scope.outputs.capture_groups != 'none' && steps.scope.outputs.producer_scope != 'none') ||
+        ((inputs.chronicles-lane == 'app' || inputs.chronicles-lane == 'default') &&
+         (steps.scope.outputs.hans == 'true' || steps.scope.outputs.chesscom == 'true'))
       uses: ./.github/actions/setup-browser-e2e
       env:
         VITE_WAR_ROOM_VARIANTS_ENABLE: 'true'
@@ -179,7 +205,7 @@ runs:
         exit 1
 
     - name: Capture affected canonical surfaces
-      if: inputs.mode == 'hans' || (inputs.mode == 'canonical' && steps.scope.outputs.capture_groups != 'none')
+      if: inputs.mode == 'hans' || (inputs.mode == 'canonical' && steps.scope.outputs.capture_groups != 'none' && steps.scope.outputs.producer_scope != 'none')
       env:
         APP_VISUAL_EXPECTED_WAR_ROOM_REVISION: ${{ steps.scope.outputs.warroom_revision_required == 'true' && (github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha) || '' }}
         APP_VISUAL_EXPECTED_WAR_ROOM_V3_REVISION: ${{ steps.scope.outputs.warroom_v3_revision_required == 'true' && (github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha) || '' }}
@@ -240,7 +266,7 @@ runs:
       if: always() && steps.scope.outcome == 'success' && inputs.mode == 'canonical' && steps.scope.outputs.capture_groups != 'none' && steps.scope.outputs.producer_scope != 'none'
       uses: actions/upload-artifact@v7
       with:
-        name: app-visual-${{ github.event.pull_request.number || github.run_id }}
+        name: ${{ inputs.chronicles-lane == 'tactics' && 'tactics-visual' || inputs.chronicles-lane == 'chronicles' && 'chronicles-visual' || 'app-visual' }}-${{ github.event.pull_request.number || github.run_id }}
         path: .artifacts/app-visual/
         if-no-files-found: error
         retention-days: 7
@@ -251,6 +277,7 @@ runs:
     - name: Capture Hans routines
       if: >-
         inputs.mode == 'canonical' &&
+        (inputs.chronicles-lane == 'app' || inputs.chronicles-lane == 'default') &&
         steps.scope.outputs.hans == 'true' &&
         (steps.scope.outputs.producer_scope == 'all' || contains(steps.scope.outputs.producer_scope, 'warroom-hans'))
       id: hans_capture
@@ -262,7 +289,7 @@ runs:
       run: bash scripts/app_visual_capture.sh hans
 
     - name: Upload Hans routine artifact
-      if: always() && inputs.mode == 'canonical' && steps.scope.outputs.hans == 'true' && steps.hans_capture.outcome != 'skipped'
+      if: always() && inputs.mode == 'canonical' && (inputs.chronicles-lane == 'app' || inputs.chronicles-lane == 'default') && steps.scope.outputs.hans == 'true' && steps.hans_capture.outcome != 'skipped'
       continue-on-error: true
       uses: actions/upload-artifact@v7
       with:
@@ -276,6 +303,7 @@ runs:
       if: >-
         always() &&
         inputs.mode == 'canonical' &&
+        (inputs.chronicles-lane == 'app' || inputs.chronicles-lane == 'default') &&
         steps.scope.outputs.hans == 'true' &&
         steps.hans_capture.outcome == 'failure'
       shell: bash
@@ -289,7 +317,7 @@ runs:
         } >> "$GITHUB_STEP_SUMMARY"
 
     - name: Capture Chesscom desktop + mobile
-      if: inputs.mode == 'canonical' && steps.scope.outputs.chesscom == 'true'
+      if: inputs.mode == 'canonical' && (inputs.chronicles-lane == 'app' || inputs.chronicles-lane == 'default') && steps.scope.outputs.chesscom == 'true'
       continue-on-error: true
       shell: bash
       working-directory: e2e
@@ -298,7 +326,7 @@ runs:
       run: ./node_modules/.bin/playwright test chesscom-visual-artifact.spec.js --workers=1 --retries=0
 
     - name: Upload Chesscom visual artifact
-      if: always() && inputs.mode == 'canonical' && steps.scope.outputs.chesscom == 'true'
+      if: always() && inputs.mode == 'canonical' && (inputs.chronicles-lane == 'app' || inputs.chronicles-lane == 'default') && steps.scope.outputs.chesscom == 'true'
       uses: actions/upload-artifact@v7
       with:
         name: chesscom-visual-${{ github.event.pull_request.number || github.run_id }}

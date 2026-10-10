@@ -226,8 +226,7 @@
   body .app-shell-home .menu.menu-illustrated
     .illustrated-home__destination:not(.illustrated-home__destination--play),
   body .app-shell-home .menu.menu-illustrated .illustrated-home__resident,
-  body .app-shell-home .menu.menu-illustrated .illustrated-home__utilities,
-  body .app-shell-home .menu.menu-illustrated .illustrated-home__quickbar {
+  body .app-shell-home .menu.menu-illustrated .illustrated-home__utilities {
     display: none !important;
   }
 
@@ -479,9 +478,6 @@
     font-size: 9px !important;
   }
 
-  body .app-shell-home .menu.menu-illustrated .illustrated-home__quickbar {
-    display: none !important;
-  }
 }
 
 /* Android desktop-site portrait still uses the tall-touch composition. Keep
@@ -521,8 +517,7 @@
   body .app-shell-home .menu.menu-illustrated
     .illustrated-home__destination:not(.illustrated-home__destination--play),
   body .app-shell-home .menu.menu-illustrated .illustrated-home__resident,
-  body .app-shell-home .menu.menu-illustrated .illustrated-home__utilities:not(.is-open),
-  body .app-shell-home .menu.menu-illustrated .illustrated-home__quickbar {
+  body .app-shell-home .menu.menu-illustrated .illustrated-home__utilities:not(.is-open) {
     display: none !important;
   }
 
@@ -607,7 +602,9 @@
     transform: none !important;
     border: 1px solid rgba(218, 166, 78, .36) !important;
     border-radius: 14px !important;
-    background: rgba(21, 12, 7, .97) !important;
+    /* Opaque: at .97 the gold JUGAR plaque underneath ghosted through the
+       last rows of the drawer. */
+    background: linear-gradient(180deg, #1d120a, #150c07) !important;
     box-shadow: 0 18px 44px rgba(0, 0, 0, .5) !important;
     text-align: left !important;
     pointer-events: auto !important;

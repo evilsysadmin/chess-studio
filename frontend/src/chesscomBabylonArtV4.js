@@ -5,12 +5,14 @@ import {
 } from './chesscomBabylonCanonical.js';
 import { installChesscomCharacterArtV4 } from './chesscomCharacterArtV4.js';
 import { installChesscomEnvironmentArtV4 } from './chesscomEnvironmentArtV4.js';
+import { CHESSCOM_INDUSTRIAL_ARCHITECTURE_V19, installChesscomIndustrialArchitectureV19 } from './chesscomIndustrialArchitectureV19.js';
 import { installChesscomOverlayArtV6 } from './chesscomOverlayArtV6.js';
 import { installChesscomMaterialArtV7 } from './chesscomMaterialArtV7.js';
 import { installChesscomRenderQualityV9 } from './chesscomRenderQualityV9.js';
 import { installChesscomDepthToneV10 } from './chesscomDepthToneV10.js';
 import { installChesscomWeaponArtV11 } from './chesscomWeaponArtV11.js';
-import { CHESSCOM_CAMERA_V18, installChesscomCameraV18 } from './chesscomCameraV18.js';
+import { CHESSCOM_CAMERA_V25, installChesscomCameraV25 } from './chesscomCameraV25.js';
+import { CHESSCOM_OPERATOR_MOMENTS_V26, installChesscomOperatorMomentsV26 } from './chesscomOperatorMomentsV26.js';
 
 function sceneFromBabylon(B) {
   return B.EngineStore?.LastCreatedScene
@@ -41,21 +43,26 @@ export async function createChesscomBabylon(host, options = {}) {
   const renderQualityV9 = installChesscomRenderQualityV9(B,scene,{ host,tier });
   const artV4 = installChesscomCharacterArtV4(B,scene);
   const environmentV4 = installChesscomEnvironmentArtV4(B,scene,{ tier });
+  const architectureV19 = installChesscomIndustrialArchitectureV19(B,scene,{ tier,host });
   const overlayV6 = installChesscomOverlayArtV6(B,scene,{ tier });
   const materialV7 = installChesscomMaterialArtV7(B,scene,{ tier });
   const depthToneV10 = installChesscomDepthToneV10(B,scene,{ tier,host });
   const weaponArtV11 = installChesscomWeaponArtV11(host);
-  const cameraV18 = installChesscomCameraV18(scene);
+  const cameraV25 = installChesscomCameraV25(scene,{host});
+  const momentsV26 = installChesscomOperatorMomentsV26(B,scene,{tier,host,reducedMotion:Boolean(window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches)});
   const v3Visibility = new Map();
   host.dataset.chesscomOperator = 'character-art-v4';
   host.dataset.chesscomCharacterMesh = 'custom-lowpoly-v4';
   host.dataset.chesscomCharacterMaterials = 'procedural-pbr-v4';
   host.dataset.chesscomEnvironment = 'environment-art-v4';
+  host.dataset.chesscomArchitecture = CHESSCOM_INDUSTRIAL_ARCHITECTURE_V19.identity;
+  host.dataset.chesscomVehicle = 'military-truck-v21';
   host.dataset.chesscomOverlay = 'tactical-overlay-v6';
   host.dataset.chesscomMaterials = 'material-art-v7';
   host.dataset.chesscomWeaponArt = 'weapon-art-v11';
-  host.dataset.chesscomCamera = CHESSCOM_CAMERA_V18.identity;
-  onReady?.(`BABYLON.JS ${BABYLON_VERSION} · GPU PREMIUM V2 · BALLISTICS · UNIT STANCE · CHARACTER ART V4 · OVERLAY V6 · MATERIAL V7 · HIDPI V9 · DEPTH V10 · WEAPON ART V11 · CAMERA V18`);
+  host.dataset.chesscomCamera = CHESSCOM_CAMERA_V25.identity;
+  host.dataset.chesscomOperatorMoments = CHESSCOM_OPERATOR_MOMENTS_V26.identity;
+  onReady?.(`BABYLON.JS ${BABYLON_VERSION} · GPU PREMIUM V2 · BALLISTICS · UNIT STANCE · CHARACTER ART V4 · OVERLAY V6 · MATERIAL V7 · HIDPI V9 · DEPTH V10 · WEAPON ART V11 · CAMERA V25 · OPERATOR MOMENTS V26 · INDUSTRIAL ARCHITECTURE V19 · FIELD KIT V20 · SILHOUETTE V23 · MILITARY TRUCK V21`);
 
   return {
     ...base,
@@ -63,14 +70,17 @@ export async function createChesscomBabylon(host, options = {}) {
       base.update(state,ui);
       hideOperatorV3(scene,v3Visibility);
       artV4.update(state);
+      momentsV26.update(state,ui);
     },
     destroy() {
-      cameraV18.destroy();
+      momentsV26.destroy();
+      cameraV25.destroy();
       weaponArtV11.destroy();
       depthToneV10.destroy();
       materialV7.destroy();
       overlayV6.destroy();
       artV4.destroy();
+      architectureV19.destroy();
       environmentV4.destroy();
       renderQualityV9.destroy();
       for (const [mesh,old] of v3Visibility) {
@@ -80,10 +90,16 @@ export async function createChesscomBabylon(host, options = {}) {
       delete host.dataset.chesscomCharacterMesh;
       delete host.dataset.chesscomCharacterMaterials;
       delete host.dataset.chesscomEnvironment;
+      delete host.dataset.chesscomArchitecture;
+      delete host.dataset.chesscomVehicle;
       delete host.dataset.chesscomOverlay;
       delete host.dataset.chesscomMaterials;
       delete host.dataset.chesscomWeaponArt;
+      delete host.dataset.chesscomOperatorMoments;
+      delete host.dataset.chesscomFocusUnit;
+      delete host.dataset.chesscomMoment;
       delete host.dataset.chesscomCamera;
+      delete host.dataset.chesscomCameraFraming;
       base.destroy();
     },
   };

@@ -511,7 +511,7 @@
     transform: translateX(-50%);
     border: 1px solid rgba(218, 166, 78, .36);
     border-radius: 14px;
-    background: rgba(21, 12, 7, .97);
+    background: linear-gradient(180deg, #1d120a, #150c07);
     box-shadow: 0 18px 44px rgba(0, 0, 0, .5);
     text-align: left;
   }

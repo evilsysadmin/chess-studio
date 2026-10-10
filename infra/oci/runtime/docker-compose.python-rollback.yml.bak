@@ -1,0 +1,249 @@
+# ROLLBACK ONLY — not used by any deploy. Snapshot of the Python-capable
+# runtime as of 2026-10-10 (last release still able to start Python:
+# 6a558ff5c62716efa217cd3a3228439ba0365026; staging and production have run
+# Go-only since 50c0b0ef). The supported rollback is the
+# "Production · rollback" workflow to 6a558ff5, which brings back the matching
+# script, compose and images together. Keep this file only as a reference for a
+# manual recovery; delete it once the rollback window closes (2026-10-17).
+x-pvp-common: &pvp-common
+  pull_policy: never
+  env_file:
+    - ${CHESS_STUDIO_ENV_FILE:-/etc/chess-studio/backend.env}
+  restart: unless-stopped
+  healthcheck:
+    test:
+      - CMD
+      - wget
+      - -q
+      - -O
+      - /dev/null
+      - http://127.0.0.1:8080/healthz
+    interval: 15s
+    timeout: 3s
+    start_period: 5s
+    retries: 4
+  logging:
+    driver: json-file
+    options:
+      max-size: "5m"
+      max-file: "2"
+
+x-backend-common: &backend-common
+  pull_policy: never
+  env_file:
+    - ${CHESS_STUDIO_ENV_FILE:-/etc/chess-studio/backend.env}
+  restart: unless-stopped
+  healthcheck:
+    test:
+      - CMD
+      - python
+      - -c
+      - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:4000/api/ready', timeout=3).read()"
+    interval: 15s
+    timeout: 5s
+    start_period: 15s
+    retries: 4
+  logging:
+    driver: json-file
+    options:
+      max-size: "10m"
+      max-file: "3"
+
+services:
+  # Blue/green slots. Only the inactive slot is recreated during a deploy.
+  # Both stay loopback-only; Cloudflare continues to target :4000 through edge.
+  backend_blue:
+    <<: *backend-common
+    image: ghcr.io/evilsysadmin/chess-studio-backend:oci-${CHESS_STUDIO_BLUE_SHA:?CHESS_STUDIO_BLUE_SHA is required}
+    environment:
+      GIT_COMMIT_SHA: ${CHESS_STUDIO_BLUE_SHA:?CHESS_STUDIO_BLUE_SHA is required}
+      PORT: "4000"
+      CORS_ORIGINS: "${CHESS_STUDIO_CORS_ORIGINS:-https://staging.chess-studio.shadowops.dpdns.org}"
+      TRUST_CLOUDFLARE_CLIENT_IP: "${CHESS_STUDIO_TRUST_CLOUDFLARE_CLIENT_IP:-false}"
+      CHESS_PVP_SPARRING_ENABLED: "${CHESS_PVP_SPARRING_ENABLED:-false}"
+      CHESS_PVP_SPARRING_OWNER: "${CHESS_PVP_SPARRING_OWNER:-evilsysadmin}"
+      CHESS_PVP_SPARRING_USERNAME: "${CHESS_PVP_SPARRING_USERNAME:-sparringmeister}"
+    ports:
+      - "127.0.0.1:${CHESS_STUDIO_BLUE_PORT:-4001}:4000"
+
+  backend_green:
+    <<: *backend-common
+    image: ghcr.io/evilsysadmin/chess-studio-backend:oci-${CHESS_STUDIO_GREEN_SHA:?CHESS_STUDIO_GREEN_SHA is required}
+    environment:
+      GIT_COMMIT_SHA: ${CHESS_STUDIO_GREEN_SHA:?CHESS_STUDIO_GREEN_SHA is required}
+      PORT: "4000"
+      CORS_ORIGINS: "${CHESS_STUDIO_CORS_ORIGINS:-https://staging.chess-studio.shadowops.dpdns.org}"
+      TRUST_CLOUDFLARE_CLIENT_IP: "${CHESS_STUDIO_TRUST_CLOUDFLARE_CLIENT_IP:-false}"
+      CHESS_PVP_SPARRING_ENABLED: "${CHESS_PVP_SPARRING_ENABLED:-false}"
+      CHESS_PVP_SPARRING_OWNER: "${CHESS_PVP_SPARRING_OWNER:-evilsysadmin}"
+      CHESS_PVP_SPARRING_USERNAME: "${CHESS_PVP_SPARRING_USERNAME:-sparringmeister}"
+    ports:
+      - "127.0.0.1:${CHESS_STUDIO_GREEN_PORT:-4002}:4000"
+
+  # PvP Go migration wedge. These sidecars are paired 1:1 with the Python
+  # blue/green slots but remain internal-only until nginx routing is enabled.
+  pvp_blue:
+    <<: *pvp-common
+    image: ghcr.io/evilsysadmin/chess-studio-pvp:oci-${CHESS_STUDIO_BLUE_SHA:?CHESS_STUDIO_BLUE_SHA is required}
+    environment:
+      GIT_COMMIT_SHA: ${CHESS_STUDIO_BLUE_SHA:?CHESS_STUDIO_BLUE_SHA is required}
+      PORT: "8080"
+      GO_PYTHON_UPSTREAM: "http://backend_blue:4000"
+      # true: no backend_* slot runs; Go serves every route (deploy-owned).
+      GO_PYTHON_RETIRED: "${CHESS_STUDIO_PYTHON_RETIRED:-false}"
+      PVP_PYTHON_UPSTREAM: "http://backend_blue:4000"
+      PVP_NATIVE_PULSE_ENABLED: "${CHESS_STUDIO_PVP_NATIVE_PULSE_ENABLED:-true}"
+      PVP_NATIVE_LOBBY_READ_ENABLED: "${CHESS_STUDIO_PVP_NATIVE_LOBBY_READ_ENABLED:-true}"
+      PVP_NATIVE_ROSTER_ENABLED: "${CHESS_STUDIO_PVP_NATIVE_ROSTER_ENABLED:-true}"
+      PVP_NATIVE_CHAT_ENABLED: "${CHESS_STUDIO_PVP_NATIVE_CHAT_ENABLED:-true}"
+      PVP_NATIVE_CHALLENGE_RESOLUTION_ENABLED: "${CHESS_STUDIO_PVP_NATIVE_CHALLENGE_RESOLUTION_ENABLED:-true}"
+      PVP_NATIVE_CHALLENGE_ACCEPT_ENABLED: "${CHESS_STUDIO_PVP_NATIVE_CHALLENGE_ACCEPT_ENABLED:-true}"
+      PVP_NATIVE_CHALLENGE_CREATE_ENABLED: "${CHESS_STUDIO_PVP_NATIVE_CHALLENGE_CREATE_ENABLED:-true}"
+      PVP_NATIVE_MATCH_HANDOFF_CANCEL_ENABLED: "${CHESS_STUDIO_PVP_NATIVE_MATCH_HANDOFF_CANCEL_ENABLED:-true}"
+      PVP_NATIVE_MATCH_READY_ENABLED: "${CHESS_STUDIO_PVP_NATIVE_MATCH_READY_ENABLED:-true}"
+      PVP_NATIVE_MATCH_RESIGN_ENABLED: "${CHESS_STUDIO_PVP_NATIVE_MATCH_RESIGN_ENABLED:-true}"
+      PVP_NATIVE_MATCH_READ_ENABLED: "${CHESS_STUDIO_PVP_NATIVE_MATCH_READ_ENABLED:-true}"
+      PVP_NATIVE_MATCH_MOVE_ENABLED: "${CHESS_STUDIO_PVP_NATIVE_MATCH_MOVE_ENABLED:-true}"
+      PVP_NATIVE_RESIDENT_MOVE_ENABLED: "${CHESS_STUDIO_PVP_NATIVE_RESIDENT_MOVE_ENABLED:-true}"
+      GO_NATIVE_GAMES_READ_ENABLED: "${CHESS_STUDIO_GO_NATIVE_GAMES_READ_ENABLED:-false}"
+      GO_NATIVE_GAMES_WRITE_ENABLED: "${CHESS_STUDIO_GO_NATIVE_GAMES_WRITE_ENABLED:-false}"
+      GO_NATIVE_GAMES_HINT_ENABLED: "${CHESS_STUDIO_GO_NATIVE_GAMES_HINT_ENABLED:-false}"
+      GO_NATIVE_ANALYZE_ENABLED: "${CHESS_STUDIO_GO_NATIVE_ANALYZE_ENABLED:-false}"
+      GO_NATIVE_SYSTEM_ENABLED: "${CHESS_STUDIO_GO_NATIVE_SYSTEM_ENABLED:-false}"
+      GO_NATIVE_PROFILE_ENABLED: "${CHESS_STUDIO_GO_NATIVE_PROFILE_ENABLED:-false}"
+      GO_NATIVE_AUTH_SESSION_ENABLED: "${CHESS_STUDIO_GO_NATIVE_AUTH_SESSION_ENABLED:-false}"
+      GO_NATIVE_LOGIN_ENABLED: "${CHESS_STUDIO_GO_NATIVE_LOGIN_ENABLED:-false}"
+      GO_NATIVE_ACCOUNT_ENABLED: "${CHESS_STUDIO_GO_NATIVE_ACCOUNT_ENABLED:-false}"
+      GO_NATIVE_RECOVERY_ENABLED: "${CHESS_STUDIO_GO_NATIVE_RECOVERY_ENABLED:-false}"
+      GO_NATIVE_FEEDBACK_ENABLED: "${CHESS_STUDIO_GO_NATIVE_FEEDBACK_ENABLED:-false}"
+      GO_NATIVE_MATTHIAS_READ_ENABLED: "${CHESS_STUDIO_GO_NATIVE_MATTHIAS_READ_ENABLED:-false}"
+      GO_NATIVE_NARRATIVE_ENABLED: "${CHESS_STUDIO_GO_NATIVE_NARRATIVE_ENABLED:-false}"
+      GO_NATIVE_PAWN_SLUG_ENABLED: "${CHESS_STUDIO_GO_NATIVE_PAWN_SLUG_ENABLED:-false}"
+      GO_NATIVE_CHRONICLES_ENABLED: "${CHESS_STUDIO_GO_NATIVE_CHRONICLES_ENABLED:-false}"
+      GO_NATIVE_CHRONICLES_RUNS_ENABLED: "${CHESS_STUDIO_GO_NATIVE_CHRONICLES_RUNS_ENABLED:-false}"
+      GO_NATIVE_ADMIN_FEEDBACK_ENABLED: "${CHESS_STUDIO_GO_NATIVE_ADMIN_FEEDBACK_ENABLED:-false}"
+      GO_NATIVE_ADMIN_USERS_ENABLED: "${CHESS_STUDIO_GO_NATIVE_ADMIN_USERS_ENABLED:-false}"
+      GO_NATIVE_ADMIN_OBSERVABILITY_ENABLED: "${CHESS_STUDIO_GO_NATIVE_ADMIN_OBSERVABILITY_ENABLED:-false}"
+      TRUST_CLOUDFLARE_CLIENT_IP: "${CHESS_STUDIO_TRUST_CLOUDFLARE_CLIENT_IP:-false}"
+      CHESS_PVP_SPARRING_ENABLED: "${CHESS_PVP_SPARRING_ENABLED:-false}"
+      CHESS_PVP_SPARRING_OWNER: "${CHESS_PVP_SPARRING_OWNER:-evilsysadmin}"
+      CHESS_PVP_SPARRING_USERNAME: "${CHESS_PVP_SPARRING_USERNAME:-sparringmeister}"
+      CORS_ORIGINS: "${CHESS_STUDIO_CORS_ORIGINS:-https://staging.chess-studio.shadowops.dpdns.org}"
+
+  pvp_green:
+    <<: *pvp-common
+    image: ghcr.io/evilsysadmin/chess-studio-pvp:oci-${CHESS_STUDIO_GREEN_SHA:?CHESS_STUDIO_GREEN_SHA is required}
+    environment:
+      GIT_COMMIT_SHA: ${CHESS_STUDIO_GREEN_SHA:?CHESS_STUDIO_GREEN_SHA is required}
+      PORT: "8080"
+      GO_PYTHON_UPSTREAM: "http://backend_green:4000"
+      # true: no backend_* slot runs; Go serves every route (deploy-owned).
+      GO_PYTHON_RETIRED: "${CHESS_STUDIO_PYTHON_RETIRED:-false}"
+      PVP_PYTHON_UPSTREAM: "http://backend_green:4000"
+      PVP_NATIVE_PULSE_ENABLED: "${CHESS_STUDIO_PVP_NATIVE_PULSE_ENABLED:-true}"
+      PVP_NATIVE_LOBBY_READ_ENABLED: "${CHESS_STUDIO_PVP_NATIVE_LOBBY_READ_ENABLED:-true}"
+      PVP_NATIVE_ROSTER_ENABLED: "${CHESS_STUDIO_PVP_NATIVE_ROSTER_ENABLED:-true}"
+      PVP_NATIVE_CHAT_ENABLED: "${CHESS_STUDIO_PVP_NATIVE_CHAT_ENABLED:-true}"
+      PVP_NATIVE_CHALLENGE_RESOLUTION_ENABLED: "${CHESS_STUDIO_PVP_NATIVE_CHALLENGE_RESOLUTION_ENABLED:-true}"
+      PVP_NATIVE_CHALLENGE_ACCEPT_ENABLED: "${CHESS_STUDIO_PVP_NATIVE_CHALLENGE_ACCEPT_ENABLED:-true}"
+      PVP_NATIVE_CHALLENGE_CREATE_ENABLED: "${CHESS_STUDIO_PVP_NATIVE_CHALLENGE_CREATE_ENABLED:-true}"
+      PVP_NATIVE_MATCH_HANDOFF_CANCEL_ENABLED: "${CHESS_STUDIO_PVP_NATIVE_MATCH_HANDOFF_CANCEL_ENABLED:-true}"
+      PVP_NATIVE_MATCH_READY_ENABLED: "${CHESS_STUDIO_PVP_NATIVE_MATCH_READY_ENABLED:-true}"
+      PVP_NATIVE_MATCH_RESIGN_ENABLED: "${CHESS_STUDIO_PVP_NATIVE_MATCH_RESIGN_ENABLED:-true}"
+      PVP_NATIVE_MATCH_READ_ENABLED: "${CHESS_STUDIO_PVP_NATIVE_MATCH_READ_ENABLED:-true}"
+      PVP_NATIVE_MATCH_MOVE_ENABLED: "${CHESS_STUDIO_PVP_NATIVE_MATCH_MOVE_ENABLED:-true}"
+      PVP_NATIVE_RESIDENT_MOVE_ENABLED: "${CHESS_STUDIO_PVP_NATIVE_RESIDENT_MOVE_ENABLED:-true}"
+      GO_NATIVE_GAMES_READ_ENABLED: "${CHESS_STUDIO_GO_NATIVE_GAMES_READ_ENABLED:-false}"
+      GO_NATIVE_GAMES_WRITE_ENABLED: "${CHESS_STUDIO_GO_NATIVE_GAMES_WRITE_ENABLED:-false}"
+      GO_NATIVE_GAMES_HINT_ENABLED: "${CHESS_STUDIO_GO_NATIVE_GAMES_HINT_ENABLED:-false}"
+      GO_NATIVE_ANALYZE_ENABLED: "${CHESS_STUDIO_GO_NATIVE_ANALYZE_ENABLED:-false}"
+      GO_NATIVE_SYSTEM_ENABLED: "${CHESS_STUDIO_GO_NATIVE_SYSTEM_ENABLED:-false}"
+      GO_NATIVE_PROFILE_ENABLED: "${CHESS_STUDIO_GO_NATIVE_PROFILE_ENABLED:-false}"
+      GO_NATIVE_AUTH_SESSION_ENABLED: "${CHESS_STUDIO_GO_NATIVE_AUTH_SESSION_ENABLED:-false}"
+      GO_NATIVE_LOGIN_ENABLED: "${CHESS_STUDIO_GO_NATIVE_LOGIN_ENABLED:-false}"
+      GO_NATIVE_ACCOUNT_ENABLED: "${CHESS_STUDIO_GO_NATIVE_ACCOUNT_ENABLED:-false}"
+      GO_NATIVE_RECOVERY_ENABLED: "${CHESS_STUDIO_GO_NATIVE_RECOVERY_ENABLED:-false}"
+      GO_NATIVE_FEEDBACK_ENABLED: "${CHESS_STUDIO_GO_NATIVE_FEEDBACK_ENABLED:-false}"
+      GO_NATIVE_MATTHIAS_READ_ENABLED: "${CHESS_STUDIO_GO_NATIVE_MATTHIAS_READ_ENABLED:-false}"
+      GO_NATIVE_NARRATIVE_ENABLED: "${CHESS_STUDIO_GO_NATIVE_NARRATIVE_ENABLED:-false}"
+      GO_NATIVE_PAWN_SLUG_ENABLED: "${CHESS_STUDIO_GO_NATIVE_PAWN_SLUG_ENABLED:-false}"
+      GO_NATIVE_CHRONICLES_ENABLED: "${CHESS_STUDIO_GO_NATIVE_CHRONICLES_ENABLED:-false}"
+      GO_NATIVE_CHRONICLES_RUNS_ENABLED: "${CHESS_STUDIO_GO_NATIVE_CHRONICLES_RUNS_ENABLED:-false}"
+      GO_NATIVE_ADMIN_FEEDBACK_ENABLED: "${CHESS_STUDIO_GO_NATIVE_ADMIN_FEEDBACK_ENABLED:-false}"
+      GO_NATIVE_ADMIN_USERS_ENABLED: "${CHESS_STUDIO_GO_NATIVE_ADMIN_USERS_ENABLED:-false}"
+      GO_NATIVE_ADMIN_OBSERVABILITY_ENABLED: "${CHESS_STUDIO_GO_NATIVE_ADMIN_OBSERVABILITY_ENABLED:-false}"
+      TRUST_CLOUDFLARE_CLIENT_IP: "${CHESS_STUDIO_TRUST_CLOUDFLARE_CLIENT_IP:-false}"
+      CHESS_PVP_SPARRING_ENABLED: "${CHESS_PVP_SPARRING_ENABLED:-false}"
+      CHESS_PVP_SPARRING_OWNER: "${CHESS_PVP_SPARRING_OWNER:-evilsysadmin}"
+      CHESS_PVP_SPARRING_USERNAME: "${CHESS_PVP_SPARRING_USERNAME:-sparringmeister}"
+      CORS_ORIGINS: "${CHESS_STUDIO_CORS_ORIGINS:-https://staging.chess-studio.shadowops.dpdns.org}"
+
+  # One-time rollback target for the migration from the old single-slot runtime.
+  # Never runs together with edge because both own the public loopback port.
+  backend_legacy:
+    <<: *backend-common
+    image: ghcr.io/evilsysadmin/chess-studio-backend:oci-${CHESS_STUDIO_LEGACY_SHA:?CHESS_STUDIO_LEGACY_SHA is required}
+    environment:
+      GIT_COMMIT_SHA: ${CHESS_STUDIO_LEGACY_SHA:?CHESS_STUDIO_LEGACY_SHA is required}
+      PORT: "4000"
+      CORS_ORIGINS: "${CHESS_STUDIO_CORS_ORIGINS:-https://staging.chess-studio.shadowops.dpdns.org}"
+      TRUST_CLOUDFLARE_CLIENT_IP: "${CHESS_STUDIO_TRUST_CLOUDFLARE_CLIENT_IP:-false}"
+      CHESS_PVP_SPARRING_ENABLED: "${CHESS_PVP_SPARRING_ENABLED:-false}"
+      CHESS_PVP_SPARRING_OWNER: "${CHESS_PVP_SPARRING_OWNER:-evilsysadmin}"
+      CHESS_PVP_SPARRING_USERNAME: "${CHESS_PVP_SPARRING_USERNAME:-sparringmeister}"
+    ports:
+      - "127.0.0.1:${CHESS_STUDIO_BACKEND_PORT:-4000}:4000"
+
+  # Stable listener for Cloudflare Tunnel. nginx reloads gracefully, so old
+  # workers drain in-flight requests against the previous slot after the switch.
+  edge:
+    image: nginx:1.27.5-alpine
+    ports:
+      - "127.0.0.1:${CHESS_STUDIO_BACKEND_PORT:-4000}:8080"
+    volumes:
+      - "${CHESS_STUDIO_EDGE_CONFIG_DIR:?CHESS_STUDIO_EDGE_CONFIG_DIR is required}:/etc/nginx/conf.d:ro"
+    restart: unless-stopped
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - "wget -q -O /dev/null http://127.0.0.1:8080/api/ready || exit 1"
+      interval: 10s
+      timeout: 3s
+      start_period: 5s
+      retries: 6
+    logging:
+      driver: json-file
+      options:
+        max-size: "5m"
+        max-file: "2"
+
+  # Host telemetry is deliberately independent from the product backend.
+  alloy:
+    image: grafana/alloy:v1.19.2
+    env_file:
+      - ${CHESS_STUDIO_ENV_FILE:-/etc/chess-studio/backend.env}
+    environment:
+      GIT_COMMIT_SHA: ${GIT_COMMIT_SHA:?GIT_COMMIT_SHA is required}
+      OCI_LOG_SERVICE_NAME: "${CHESS_STUDIO_OCI_LOG_SERVICE_NAME:-chess-studio-oci-backend-staging-stdout}"
+    command:
+      - run
+      - --stability.level=public-preview
+      - --server.http.listen-addr=127.0.0.1:12345
+      - --storage.path=/var/lib/alloy/data
+      - /etc/alloy/config.alloy
+    volumes:
+      - ./alloy.alloy:/etc/alloy/config.alloy:ro
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - "${CHESS_STUDIO_STATE_DIR:-/var/lib/chess-studio}/observability:/var/lib/chess-studio/observability:ro"
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - alloy-data:/var/lib/alloy/data
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "5m"
+        max-file: "2"
+
+volumes:
+  alloy-data:

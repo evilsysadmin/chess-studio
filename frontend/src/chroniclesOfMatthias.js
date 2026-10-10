@@ -12,11 +12,22 @@ import {
   chroniclesApplyContentEffects,
   chroniclesContentDefinition,
   chroniclesContentInteractions,
+  chroniclesQuestEntries,
   chroniclesRequirementFailure,
   chroniclesRequirementMet,
   chroniclesRequirementsMet,
 } from './chronicles/chroniclesContentRuntime.js';
 import { resolveChroniclesCharacterParty } from './chronicles/chroniclesCharacterBuilds.js';
+import { chroniclesEquipItem, chroniclesUnequipItem, chroniclesEquipmentBonuses } from './chronicles/chroniclesEquipment.js';
+import {
+  chroniclesMM3AttackHits,
+  chroniclesMM3EnemyArmorClass,
+  chroniclesMM3EnemyToHit,
+  chroniclesMM3Roll,
+} from './chronicles/chroniclesMM3Rules.js';
+import { chroniclesAdvanceLostKingIntro } from './chronicles/chroniclesLostKingIntro.js';
+import { CHRONICLES_SWORDHAVEN_RETURN_PORTAL_ID, chroniclesSwordhavenReturnAvailable } from './chronicles/chroniclesSwordhavenReturnPortal.js';
+import { chroniclesIsOverworldTravelExit } from './chronicles/chroniclesWorldReturnLinks.js';
 
 const DEFAULT_MAP = chroniclesMapById(DEFAULT_CHRONICLES_MAP_ID);
 
@@ -52,8 +63,8 @@ function enemiesFor(state) {
   return chroniclesMapForState(state).enemies;
 }
 
-function partyState(characterBuild = null) {
-  return resolveChroniclesCharacterParty(CHRONICLES_PARTY, characterBuild)
+function partyState(characterBuild = null, rules = null) {
+  return resolveChroniclesCharacterParty(CHRONICLES_PARTY, characterBuild, { rules })
     .map((member) => ({ ...member, hp: member.maxHp }));
 }
 
@@ -68,7 +79,9 @@ export function chroniclesJournalEntries(state) {
   return Array.isArray(state?.journal) && state.journal.length ? state.journal : [initialJournal];
 }
 
-export function createChroniclesState(mapId = null, characterBuild = null) {
+// `rules: 'mm3'` turns on the first-person MM3 sheet and combat (class HP,
+// Might damage, to-hit vs AC, Speed, Luck). Tactics keeps its own profiles.
+export function createChroniclesState(mapId = null, characterBuild = null, { rules = null } = {}) {
   const buildOnly = mapId && typeof mapId === 'object' && !Array.isArray(mapId);
   const requestedMapId = buildOnly ? null : mapId;
   const requestedBuild = buildOnly ? mapId : characterBuild;
@@ -81,7 +94,8 @@ export function createChroniclesState(mapId = null, characterBuild = null) {
     ...chroniclesMapInitialEnemyState(map.id),
     ...map.initialFlags,
     phase: 'explore',
-    party: partyState(requestedBuild),
+    party: partyState(requestedBuild, rules),
+    ...(rules === 'mm3' ? { combatRules: 'mm3' } : {}),
     turns: 0,
     journal: [map.initialJournal],
     message: map.introMessage,
@@ -179,9 +193,14 @@ function enterTile(state, x, y) {
 
   const exit = contentEntryAt(state, 'exits', x, y);
   if (exit && chroniclesRequirementsMet(state, exit.requirements)) {
+    const currentMap = chroniclesMapForState(state);
+    // Authored settlement gates genuinely enter the next region. Keep the
+    // historical dungeon-end contract untouched, so legacy runs/checkpoints
+    // do not suddenly switch map or terminal behaviour.
+    const route = chroniclesIsOverworldTravelExit(currentMap, exit);
     next = chroniclesApplyContentAction(
       next,
-      explorationAction(exit, [{ type: 'set', key: 'phase', value: 'escaped' }]),
+      route ? exit.action : explorationAction(exit, [{ type: 'set', key: 'phase', value: 'escaped' }]),
       { appendJournal },
     );
   }
@@ -191,12 +210,16 @@ function enterTile(state, x, y) {
 
 export function chroniclesContextualContentAction(state) {
   if (!state || state.phase === 'escaped' || state.phase === 'defeated') return null;
+  if (chroniclesSwordhavenReturnAvailable(state)) {
+    return { id: CHRONICLES_SWORDHAVEN_RETURN_PORTAL_ID, kind: 'exit', label: 'Regresar a Swordhaven' };
+  }
   const map = chroniclesMapForState(state);
   let interaction = chroniclesContentInteractions(
     state,
     map,
     (x, y) => chroniclesTileAt(x, y, state),
-  ).find((entry) => !['exit', 'trigger', 'trap'].includes(entry.kind));
+  ).find((entry) => !['trigger', 'trap'].includes(entry.kind)
+    && (entry.kind !== 'exit' || entry.requiresReturn === true));
 
   if (!interaction) {
     const front = chroniclesFrontCell(state);
@@ -226,15 +249,32 @@ export function chroniclesContextualContentAction(state) {
     id: interaction.id,
     kind: interaction.kind,
     label: interaction.label || definition.label || 'Interactuar',
+    locked: interaction.locked === true,
   };
 }
 
 function resolveContextualContentAction(state) {
   const contextual = chroniclesContextualContentAction(state);
   if (!contextual) return withMessage(state, 'No hay nada útil que manipular aquí. Matthias lo considera una decepción menor.');
+  if (contextual.id === CHRONICLES_SWORDHAVEN_RETURN_PORTAL_ID) {
+    const arrived = chroniclesApplyContentEffects(state, [{
+      type: 'transition-map',
+      mapId: 'swordhaven-square',
+      entryExitId: 'swordhaven-south-gate',
+    }]);
+    return {
+      ...arrived,
+      turns: state.turns + 1,
+      message: 'Las escaleras conducen de nuevo al portón de Swordhaven. Matthias exige una parada en la taberna.',
+    };
+  }
   const map = chroniclesMapForState(state);
   const definition = chroniclesContentDefinition(map, contextual.id);
   if (!definition?.action) return state;
+  if (contextual.locked) {
+    const blocked = chroniclesRequirementFailure(state, definition.requirements);
+    return withMessage(state, blocked?.message || 'El paso sigue cerrado.');
+  }
   const next = chroniclesApplyContentAction(state, definition.action, { appendJournal });
   return next === state ? state : { ...next, turns: state.turns + 1 };
 }
@@ -256,10 +296,34 @@ export function chroniclesPartyAttackStats(state, memberId) {
     0,
     Number(modifiers.reachBonus || 0) - Number(creator.reachBonus || 0),
   );
+  const equipment = chroniclesEquipmentBonuses(state, memberId);
   return {
-    damage: Math.max(0, Number(member.damage || 0) + persistentDamageBonus),
+    damage: Math.max(0, Number(member.damage || 0) + persistentDamageBonus + equipment.attackDamageBonus),
     reach: Math.max(1, Number(member.reach || 1) + persistentReachBonus),
+    // MM to-hit: level + Accuracy bonus + weapon (material) to-hit.
+    toHit: Math.max(1, Number(modifiers.level || 1))
+      + Number(member.mm3?.bonuses?.accuracy || 0)
+      + equipment.toHitBonus,
   };
+}
+
+// MM armor class: Speed bonus + worn armor (type + material).
+export function chroniclesPartyArmorClass(state, memberId) {
+  const member = partyMember(state, memberId);
+  if (!member) return 0;
+  return Math.max(0, Number(member.mm3?.bonuses?.speed || 0) + chroniclesEquipmentBonuses(state, memberId).armorClassBonus);
+}
+
+export function chroniclesUsesMM3Combat(state) {
+  return state?.combatRules === 'mm3';
+}
+
+// One enemy swing at one hero under MM rules: d20 + enemy to-hit vs 10 + AC.
+// Armor no longer subtracts damage here; it makes the blow miss.
+export function chroniclesMM3EnemySwing(state, enemy, targetId, salt = 'enemy') {
+  const roll = chroniclesMM3Roll(state, salt, enemy.id, targetId);
+  const hit = chroniclesMM3AttackHits(roll, chroniclesMM3EnemyToHit(enemy), chroniclesPartyArmorClass(state, targetId));
+  return { roll, hit, damage: hit ? Math.max(1, Number(enemy.retaliation || 1)) : 0 };
 }
 
 function partyDefeated(state) {
@@ -350,6 +414,16 @@ function resolveAttack(state, memberId) {
   if (!target) return withMessage(state, `${attacker.name} ejecuta ${attacker.attackName.toLowerCase()} contra absolutamente nada. La nada resiste.`);
 
   const { enemy, distance } = target;
+  if (chroniclesUsesMM3Combat(state)) {
+    const roll = chroniclesMM3Roll(state, 'party', attacker.id, enemy.id);
+    if (!chroniclesMM3AttackHits(roll, attackStats.toHit, chroniclesMM3EnemyArmorClass(enemy))) {
+      return {
+        ...state,
+        turns: state.turns + 1,
+        message: `${attacker.name} lanza ${attacker.attackName.toLowerCase()} y falla. ${enemy.name[0].toUpperCase()}${enemy.name.slice(1)} esquiva (d20: ${roll}).`,
+      };
+    }
+  }
   const nextHp = Math.max(0, Number(state[enemy.hpKey] || 0) - attackStats.damage);
   if (nextHp === 0) {
     const defeated = rewardForDefeat({ ...state, [enemy.hpKey]: 0, turns: state.turns + 1, message: defeatMessage(attacker, enemy) }, enemy);
@@ -372,8 +446,16 @@ function resolveAttack(state, memberId) {
 
   const targetId = retaliationTargetId(state, attacker);
   const previousTarget = state.party.find((member) => member.id === targetId);
+  const swing = chroniclesUsesMM3Combat(state) && targetId
+    ? chroniclesMM3EnemySwing(state, enemy, targetId, 'retaliation')
+    : null;
+  const retaliationDamage = (member) => (swing
+    ? swing.damage
+    : Math.max(0, enemy.retaliation - chroniclesEquipmentBonuses(state, member.id).damageReduction));
   const party = targetId
-    ? state.party.map((member) => member.id === targetId ? { ...member, hp: Math.max(0, member.hp - enemy.retaliation) } : member)
+    ? state.party.map((member) => member.id === targetId
+      ? { ...member, hp: Math.max(0, member.hp - retaliationDamage(member)) }
+      : member)
     : state.party;
   const retaliationTarget = party.find((member) => member.id === targetId);
   let nextState = {
@@ -381,7 +463,9 @@ function resolveAttack(state, memberId) {
     [enemy.hpKey]: nextHp,
     party,
     turns: state.turns + 1,
-    message: `${attacker.name} impacta con ${attacker.attackName.toLowerCase()}. ${enemy.name[0].toUpperCase()}${enemy.name.slice(1)} responde${retaliationTarget ? ` y alcanza a ${retaliationTarget.name}` : ''}.`,
+    message: swing && !swing.hit
+      ? `${attacker.name} impacta con ${attacker.attackName.toLowerCase()}. ${enemy.name[0].toUpperCase()}${enemy.name.slice(1)} responde, pero ${retaliationTarget?.name || 'su objetivo'} desvía el golpe.`
+      : `${attacker.name} impacta con ${attacker.attackName.toLowerCase()}. ${enemy.name[0].toUpperCase()}${enemy.name.slice(1)} responde${retaliationTarget ? ` y alcanza a ${retaliationTarget.name}` : ''}.`,
   };
   if (previousTarget?.hp > 0 && retaliationTarget?.hp === 0) {
     nextState = appendJournal(nextState, {
@@ -419,19 +503,28 @@ function explorationCellBlocker(state, x, y) {
 export function chroniclesReduce(state, action) {
   if (!state || state.phase === 'escaped' || state.phase === 'defeated') return state;
   const actionType = typeof action === 'string' ? action : action?.type;
+  if (actionType === 'equip-item') return chroniclesEquipItem(state, action.memberId, action.itemId);
+  if (actionType === 'unequip-item') return chroniclesUnequipItem(state, action.memberId, action.slot);
   if (actionType === 'turn-left') return { ...state, direction: (state.direction + 3) % 4, turns: state.turns + 1 };
   if (actionType === 'turn-right') return { ...state, direction: (state.direction + 1) % 4, turns: state.turns + 1 };
   if (actionType === 'attack') return resolveAttack(state, typeof action === 'object' ? action.memberId : 'matthias');
-  if (actionType === 'interact') return resolveContextualContentAction(state);
+  if (actionType === 'interact') return chroniclesAdvanceLostKingIntro(state, resolveContextualContentAction(state));
 
   const direction = CHRONICLES_DIRECTIONS[state.direction];
-  const sign = actionType === 'backward' ? -1 : actionType === 'forward' ? 1 : 0;
-  if (!sign) return state;
-  const x = state.x + direction.dx * sign;
-  const y = state.y + direction.dy * sign;
+  // Lateral steps share the exact same collision, trigger and checkpoint path
+  // as forward/backward movement. Strafe never rotates the camera.
+  const displacement = {
+    forward: [direction.dx, direction.dy],
+    backward: [-direction.dx, -direction.dy],
+    'strafe-left': [direction.dy, -direction.dx],
+    'strafe-right': [-direction.dy, direction.dx],
+  }[actionType];
+  if (!displacement) return state;
+  const x = state.x + displacement[0];
+  const y = state.y + displacement[1];
   const blocker = explorationCellBlocker(state, x, y);
   if (blocker) return withMessage(state, blocker.message);
-  return enterTile(state, x, y);
+  return chroniclesAdvanceLostKingIntro(state, enterTile(state, x, y));
 }
 
 export function chroniclesObjective(state) {
@@ -480,6 +573,22 @@ export function chroniclesObjective(state) {
         || pendingInteraction.label
         || (pendingInteraction.kind === 'pickup' ? 'Recoge el objeto' : 'Interactúa con el entorno');
     }
+  }
+
+  // In the open world the party follows its quests, not the nearest gate.
+  // A quest with content on this map wins; otherwise the story thread. An
+  // exit objective a designer wrote by hand (legacy Swordhaven) still rules.
+  if (['settlement', 'wilderness'].includes(map.regionKind) && !exit?.explorationObjective) {
+    const active = chroniclesQuestEntries(state, 'active').filter((quest) => quest.objective);
+    const localQuestIds = new Set((map.interactables || []).flatMap((entry) => (
+      (entry.when || []).map((requirement) => requirement?.questId).filter(Boolean)
+    )));
+    const tracked = active.find((quest) => localQuestIds.has(quest.id)) || active[0];
+    if (tracked) return tracked.objective;
+    // Nothing tracked yet: point at whoever here hands out work.
+    const questGiver = (map.interactables || []).find((entry) => chroniclesRequirementsMet(state, entry.when)
+      && (entry.action?.effects || []).some((effect) => effect.type === 'start-quest'));
+    if (questGiver?.label) return questGiver.label;
   }
 
   if (exit) return exit.explorationObjective || exit.openLabel || 'Busca una salida';

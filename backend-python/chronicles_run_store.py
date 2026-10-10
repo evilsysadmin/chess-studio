@@ -352,6 +352,57 @@ async def get_run(run_id: str, owner: str) -> dict[str, Any] | None:
         raise PersistentStorageUnavailable("No se pudo cargar la run de Chronicles.") from exc
 
 
+
+def _save_summary(row: dict[str, Any]) -> dict[str, Any]:
+    updated = row.get("updatedAt")
+    return {
+        "runId": str(row.get("_id") or row.get("runId")),
+        "currentMapId": str(row.get("currentMapId") or ""),
+        "status": str(row.get("status") or "active"),
+        "worldVersion": int(row.get("worldVersion", 0)),
+        "updatedAtMs": int(updated.timestamp() * 1000) if isinstance(updated, datetime) else 0,
+    }
+
+
+async def list_active_runs(owner: str, *, limit: int = 30) -> list[dict[str, Any]]:
+    """Bounded, owner-scoped index. Never expose inventories or world flags."""
+    limit = min(30, max(1, int(limit)))
+    collection = await _collection()
+    if collection is None:
+        async with _memory_guard():
+            rows = [
+                row for row in _memory_runs.values()
+                if row.get("owner") == owner and row.get("status", "active") == "active"
+            ]
+            rows.sort(key=lambda row: row.get("updatedAt") or datetime.min.replace(tzinfo=timezone.utc), reverse=True)
+            return [_save_summary(row) for row in rows[:limit]]
+    try:
+        cursor = collection.find(
+            {"owner": owner, "$or": [{"status": "active"}, {"status": {"$exists": False}}]},
+            {"_id": 1, "currentMapId": 1, "status": 1, "worldVersion": 1, "updatedAt": 1},
+        ).sort("updatedAt", -1).limit(limit)
+        return [_save_summary(row) async for row in cursor]
+    except PyMongoError as exc:
+        raise PersistentStorageUnavailable("No se pudo listar las partidas de Chronicles.") from exc
+
+
+async def delete_owned_run(run_id: str, owner: str) -> bool:
+    """Delete one authenticated owner's run; missing/foreign IDs are identical."""
+    collection = await _collection()
+    if collection is None:
+        async with _memory_guard():
+            row = _memory_runs.get(run_id)
+            if not row or row.get("owner") != owner:
+                return False
+            del _memory_runs[run_id]
+            return True
+    try:
+        result = await collection.delete_one({"_id": run_id, "owner": owner})
+        return int(result.deleted_count) == 1
+    except PyMongoError as exc:
+        raise PersistentStorageUnavailable("No se pudo borrar la partida de Chronicles.") from exc
+
+
 async def delete_user_runs(owner: str) -> int:
     collection = await _collection()
     if collection is None:

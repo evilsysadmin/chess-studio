@@ -110,10 +110,62 @@ def convert_curves_to_meshes() -> int:
 ANIMATED_PROP_NAME = re.compile(r"(flame|tongue|front_base|ember|_hot|steam|moon)", re.IGNORECASE)
 
 
+# Klaus the cat breathes, glances up and flicks his ears at runtime
+# (prepareHomeBlenderKlausRig): his parts must not dissolve into the room-wide
+# material batches. They are joined into one multi-material node of their own,
+# HOME_PROP_cat_body, except three small landmarks the runtime reads to place
+# the head and ear pivots. His cushion and tassels stay static set dressing.
+KLAUS_PART_NAME = re.compile(r"^HOME_PROP_cat_(?!cushion|tassel)", re.IGNORECASE)
+KLAUS_BODY_NAME = "HOME_PROP_cat_body"
+KLAUS_LANDMARK_NAMES = frozenset({
+    "HOME_PROP_cat_nose",
+    "HOME_PROP_cat_ear_inner_l",
+    "HOME_PROP_cat_ear_inner_r",
+})
+
+
 def _is_static_batchable(name: str) -> bool:
     if name.startswith("HOME_ARCH_"):
         return True
+    if KLAUS_PART_NAME.match(name):
+        return False
     return name.startswith("HOME_PROP_") and not ANIMATED_PROP_NAME.search(name)
+
+
+def consolidate_klaus() -> int:
+    """Join Klaus into one node (plus the landmarks); returns the parts joined."""
+    parts = [
+        obj for obj in bpy.context.scene.objects
+        if obj.type == "MESH" and KLAUS_PART_NAME.match(obj.name) and obj.name not in KLAUS_LANDMARK_NAMES
+    ]
+    body = bpy.context.scene.objects.get(KLAUS_BODY_NAME)
+    if body is None or body.type != "MESH":
+        raise SystemExit(f"Klaus body mesh {KLAUS_BODY_NAME} missing from the Home scene")
+    missing = sorted(name for name in KLAUS_LANDMARK_NAMES if bpy.context.scene.objects.get(name) is None)
+    if missing:
+        raise SystemExit(f"Klaus landmarks missing from the Home scene: {missing}")
+    with_modifiers = [obj for obj in parts if obj.modifiers]
+    if with_modifiers:
+        bpy.ops.object.select_all(action="DESELECT")
+        for obj in with_modifiers:
+            obj.select_set(True)
+        bpy.context.view_layer.objects.active = with_modifiers[0]
+        bpy.ops.object.convert(target="MESH")
+    parts = [
+        obj for obj in bpy.context.scene.objects
+        if obj.type == "MESH" and KLAUS_PART_NAME.match(obj.name) and obj.name not in KLAUS_LANDMARK_NAMES
+    ]
+    body = bpy.context.scene.objects[KLAUS_BODY_NAME]
+    bpy.ops.object.select_all(action="DESELECT")
+    for obj in parts:
+        obj.select_set(True)
+    bpy.context.view_layer.objects.active = body
+    if len(parts) > 1:
+        bpy.ops.object.join()
+    body = bpy.context.view_layer.objects.active
+    body.name = KLAUS_BODY_NAME
+    body.select_set(False)
+    return len(parts)
 
 
 def consolidate_static_architecture() -> tuple[int, int, int, int]:
@@ -247,6 +299,7 @@ def main() -> None:
     flatten_runtime_materials()
     converted_curves = convert_curves_to_meshes()
     architecture_meshes_before, architecture_meshes_after, prop_meshes_before, prop_meshes_after = consolidate_static_architecture()
+    klaus_parts = consolidate_klaus()
     mesh_count = select_runtime_geometry()
     if mesh_count < 80:
         raise SystemExit(f"Refusing suspicious Home runtime export with only {mesh_count} meshes")
@@ -290,6 +343,7 @@ def main() -> None:
         },
         "mesh_count": mesh_count,
         "converted_curves": converted_curves,
+        "klaus_parts": klaus_parts,
         "architecture_meshes_before": architecture_meshes_before,
         "architecture_meshes_after": architecture_meshes_after,
         "static_prop_meshes_before": prop_meshes_before,

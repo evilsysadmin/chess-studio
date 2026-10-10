@@ -1,0 +1,78 @@
+{
+  "schemaVersion": 1,
+  "id": "blind-king-archive",
+  "title": "Archivo del Rey Ciego",
+  "regionId": "north",
+  "kind": "dungeon",
+  "status": "design-only",
+  "legacyRuntimeMapId": "blind-king-archive",
+  "threatBand": [
+    7,
+    9
+  ],
+  "description": "Documentos de la primera alianza entre Corona, ciudades y custodios.",
+  "layout": {
+    "mode": "authored-fixed",
+    "grid": [
+      "###############",
+      "#::::::=::::::#",
+      "#::::#:=::#:::#",
+      "#::###:=####::#",
+      "#::::=:=::#:::#",
+      "#::::=:=::::::#",
+      "#=============#",
+      "#::::#:=::#:::#",
+      "#::::#:=::#:::#",
+      "#::::#:=::#:::#",
+      "#::::#:=::#:::#",
+      "#::::::=::::::#",
+      "###############"
+    ],
+    "tileLegend": {
+      "#": "solid",
+      "~": "water-blocked",
+      "^": "cliff-blocked",
+      ".": "floor",
+      ":": "old-stone-floor",
+      "=": "road-or-corridor"
+    }
+  },
+  "partyStart": {
+    "x": 7,
+    "y": 6,
+    "direction": "north"
+  },
+  "portals": [
+    {
+      "id": "to-frost-steppe",
+      "targetMapId": "frost-steppe",
+      "targetPortalId": "to-blind-king-archive",
+      "x": 7,
+      "y": 1,
+      "requiresAll": [],
+      "feature": "road",
+      "linkId": "frost-steppe--blind-king-archive"
+    },
+    {
+      "id": "to-black-glass-chapel",
+      "targetMapId": "black-glass-chapel",
+      "targetPortalId": "to-blind-king-archive",
+      "x": 13,
+      "y": 6,
+      "requiresAll": [],
+      "feature": "road",
+      "linkId": "blind-king-archive--black-glass-chapel"
+    }
+  ],
+  "pointsOfInterest": [
+    {
+      "id": "first-pact",
+      "label": "El Primer Pacto",
+      "eventId": "pact-read",
+      "x": 5,
+      "y": 4,
+      "interaction": "adjacent-or-on-tile"
+    }
+  ],
+  "services": []
+}

@@ -19,7 +19,7 @@ on:
       - e2e/browser-*-health.spec.js
   workflow_dispatch:
 concurrency:
-  group: ${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 permissions: {contents: read}
 jobs:
@@ -30,4 +30,4 @@ jobs:
       - uses: actions/checkout@v7
         with: {fetch-depth: 2}
       - uses: ./.github/actions/app-visual-pipeline
-        with: {mode: canonical}
+        with: {mode: canonical, chronicles-lane: app}

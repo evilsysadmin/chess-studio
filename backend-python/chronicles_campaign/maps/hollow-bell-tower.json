@@ -1,0 +1,68 @@
+{
+  "schemaVersion": 1,
+  "id": "hollow-bell-tower",
+  "title": "Torre de la Campana Hueca",
+  "regionId": "coast",
+  "kind": "dungeon",
+  "status": "design-only",
+  "legacyRuntimeMapId": "hollow-bell-tower",
+  "threatBand": [
+    5,
+    7
+  ],
+  "description": "Una campana cuyo sonido sostiene parte del sello antiguo.",
+  "layout": {
+    "mode": "authored-fixed",
+    "grid": [
+      "###############",
+      "#::::::=::::::#",
+      "#::::#:=::#:::#",
+      "#::###:=####::#",
+      "#::::=:=::#:::#",
+      "#::::=:=::::::#",
+      "#=============#",
+      "#::::#:=::#:::#",
+      "#::::#:=::#:::#",
+      "#::::#:=::#:::#",
+      "#::::#:=::#:::#",
+      "#::::::=::::::#",
+      "###############"
+    ],
+    "tileLegend": {
+      "#": "solid",
+      "~": "water-blocked",
+      "^": "cliff-blocked",
+      ".": "floor",
+      ":": "old-stone-floor",
+      "=": "road-or-corridor"
+    }
+  },
+  "partyStart": {
+    "x": 7,
+    "y": 6,
+    "direction": "north"
+  },
+  "portals": [
+    {
+      "id": "to-salt-coast",
+      "targetMapId": "salt-coast",
+      "targetPortalId": "to-hollow-bell-tower",
+      "x": 7,
+      "y": 1,
+      "requiresAll": [],
+      "feature": "road",
+      "linkId": "salt-coast--hollow-bell-tower"
+    }
+  ],
+  "pointsOfInterest": [
+    {
+      "id": "bell-heart",
+      "label": "El corazón de la campana",
+      "eventId": "bell-heart",
+      "x": 5,
+      "y": 4,
+      "interaction": "adjacent-or-on-tile"
+    }
+  ],
+  "services": []
+}

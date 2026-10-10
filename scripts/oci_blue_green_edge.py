@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Render the stable nginx edge config for OCI blue/green backend deploys."""
+"""Render the stable nginx edge config for the OCI blue/green Go API slots."""
 from __future__ import annotations
 
 import argparse
@@ -19,23 +19,14 @@ def normalize_committed_sha(value: str) -> str:
     return normalized
 
 
-def render(color: str, *, pvp_mode: str = "direct", committed_sha: str = "", api_mode: str = "direct") -> str:
+def render(color: str, *, committed_sha: str = "") -> str:
+    """nginx in front of the Go API slot of ``color``: it serves every route
+    (Python was retired on 2026-10-10, so there is no other upstream)."""
     color = str(color or "").strip().lower()
     if color not in VALID_COLORS:
         raise SystemExit(f"invalid backend color: {color!r}")
-    if pvp_mode not in {"direct", "go"}:
-        raise SystemExit(f"invalid PvP mode: {pvp_mode!r}")
-    if api_mode not in {"direct", "go"}:
-        raise SystemExit(f"invalid API mode: {api_mode!r}")
-    if api_mode == "go" and pvp_mode != "go":
-        # Without a healthy Go sidecar there is nothing to front the API with.
-        raise SystemExit("API mode go requires PvP mode go")
     committed_sha = normalize_committed_sha(committed_sha)
-    backend_upstream = f"backend_{color}:4000"
-    pvp_upstream = f"pvp_{color}:8080" if pvp_mode == "go" else backend_upstream
-    # Strangler front: in api "go" mode the Go sidecar receives the whole API
-    # and forwards to Python whatever it does not serve natively yet.
-    api_upstream = pvp_upstream if api_mode == "go" else backend_upstream
+    upstream = f"pvp_{color}:8080"
     proxy_common = """        proxy_http_version 1.1;
         proxy_set_header Host $host;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -48,28 +39,6 @@ def render(color: str, *, pvp_mode: str = "direct", committed_sha: str = "", api
         if committed_sha
         else '        return 503 "uncommitted\\n";'
     )
-    committed_location = f"""
-    # Host-committed generation. This is intentionally independent from the
-    # candidate upstream: it changes only after every post-cutover attestation
-    # has passed and rollback restores the previous committed SHA.
-    location = /api/_deploy/committed {{
-        default_type text/plain;
-        add_header Cache-Control "no-store, no-cache, must-revalidate" always;
-        add_header Pragma "no-cache" always;
-{committed_response}
-    }}
-"""
-
-    probe_location = ""
-    if pvp_mode == "go":
-        probe_location = f"""
-    # Deploy-only readiness probe: nginx -> Go -> paired Python readiness.
-    location = /api/pvp/_edge/ready {{
-{proxy_common}
-        proxy_set_header Connection "";
-        proxy_pass http://{pvp_upstream};
-    }}
-"""
     return f"""map $http_upgrade $chess_connection_upgrade {{
     default upgrade;
     '' '';
@@ -82,29 +51,43 @@ server {{
     access_log off;
     keepalive_timeout 5s;
 
-{committed_location}
-{probe_location}
-    # PvP is cut over independently so the rest of the product still talks
-    # directly to Python while Go progressively takes ownership of the domain.
+    # Host-committed generation. This is intentionally independent from the
+    # candidate upstream: it changes only after every post-cutover attestation
+    # has passed and rollback restores the previous committed SHA.
+    location = /api/_deploy/committed {{
+        default_type text/plain;
+        add_header Cache-Control "no-store, no-cache, must-revalidate" always;
+        add_header Pragma "no-cache" always;
+{committed_response}
+    }}
+
+    # Deploy-only readiness probe of the Go slot behind this edge.
+    location = /api/pvp/_edge/ready {{
+{proxy_common}
+        proxy_set_header Connection "";
+        proxy_pass http://{upstream};
+    }}
+
+    # PvP keeps websocket upgrades.
     location = /api/pvp {{
 {proxy_common}
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection $chess_connection_upgrade;
-        proxy_pass http://{pvp_upstream};
+        proxy_pass http://{upstream};
     }}
 
     location ^~ /api/pvp/ {{
 {proxy_common}
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection $chess_connection_upgrade;
-        proxy_pass http://{pvp_upstream};
+        proxy_pass http://{upstream};
     }}
 
     location / {{
 {proxy_common}
         proxy_set_header Connection "";
         keepalive_timeout 5s;
-        proxy_pass http://{api_upstream};
+        proxy_pass http://{upstream};
     }}
 }}
 """
@@ -129,28 +112,14 @@ def atomic_write(path: pathlib.Path, content: str) -> None:
 
 def self_test() -> None:
     sample = "0123456789abcdef0123456789abcdef01234567"
-    blue = render("blue", pvp_mode="go", committed_sha=sample)
-    green = render("green", pvp_mode="go", committed_sha=sample)
-    fallback = render("blue", pvp_mode="direct", committed_sha=sample)
-    uncommitted = render("blue", pvp_mode="direct")
-    fronted = render("green", pvp_mode="go", committed_sha=sample, api_mode="go")
-    assert fronted.count("pvp_green:8080") == 4  # probe, /api/pvp, /api/pvp/, /
-    assert "backend_green:4000" not in fronted
-    assert blue.count("backend_blue:4000") == 1  # default api mode stays direct
-    try:
-        render("blue", pvp_mode="direct", api_mode="go")
-    except SystemExit:
-        pass
-    else:
-        raise AssertionError("api go mode accepted without the Go sidecar")
-    assert "backend_blue:4000" in blue
-    assert "backend_green:4000" in green
-    assert "pvp_blue:8080" in blue
-    assert "pvp_green:8080" in green
-    assert "pvp_blue:8080" not in fallback
-    assert fallback.count("backend_blue:4000") == 3
+    blue = render("blue", committed_sha=sample)
+    green = render("green", committed_sha=sample)
+    uncommitted = render("blue")
+    assert blue.count("pvp_blue:8080") == 4  # probe, /api/pvp, /api/pvp/, /
+    assert green.count("pvp_green:8080") == 4
+    assert "pvp_green" not in blue and "pvp_blue" not in green
+    assert "backend_" not in blue + green  # no Python upstream exists any more
     assert "location = /api/pvp/_edge/ready" in blue
-    assert "location = /api/pvp/_edge/ready" not in fallback
     assert "location = /api/pvp" in blue
     assert "location ^~ /api/pvp/" in blue
     assert "proxy_set_header Upgrade $http_upgrade;" in blue
@@ -184,9 +153,7 @@ def main() -> None:
     parser.add_argument("--self-test", action="store_true")
     parser.add_argument("--color", choices=sorted(VALID_COLORS))
     parser.add_argument("--output")
-    parser.add_argument("--pvp-mode", choices=("direct", "go"), default="direct")
     parser.add_argument("--committed-sha", default="")
-    parser.add_argument("--api-mode", choices=("direct", "go"), default="direct")
     args = parser.parse_args()
     if args.self_test:
         self_test()
@@ -195,7 +162,7 @@ def main() -> None:
         parser.error("--color and --output are required")
     atomic_write(
         pathlib.Path(args.output),
-        render(args.color, pvp_mode=args.pvp_mode, committed_sha=args.committed_sha, api_mode=args.api_mode),
+        render(args.color, committed_sha=args.committed_sha),
     )
 
 

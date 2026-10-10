@@ -90,6 +90,37 @@ describe('Chronicles bounded authoritative-run bootstrap', () => {
     });
   });
 
+
+  it('rehydrates a saved run with authorized GET and never creates a replacement', async () => {
+    const payload = remoteRun('Cargada desde otro dispositivo', 417, 'crypt-eight-squares');
+    payload.worldVersion = 4;
+    const readRun = vi.fn().mockResolvedValue(payload);
+    const createRun = vi.fn();
+    const world = await chroniclesBootstrapWorld({
+      resumeRunId: payload.runId,
+      readRun,
+      createRun,
+      budgetMs: 250,
+    });
+    expect(readRun).toHaveBeenCalledWith(payload.runId, { signal: expect.any(AbortSignal) });
+    expect(createRun).not.toHaveBeenCalled();
+    expect(world.runId).toBe(payload.runId);
+    expect(world.worldVersion).toBe(4);
+  });
+
+  it('fails closed on a deleted or foreign remote save, without POST fallback', async () => {
+    const error = Object.assign(new Error('Not found'), { status: 404 });
+    const readRun = vi.fn().mockRejectedValue(error);
+    const createRun = vi.fn();
+    await expect(chroniclesBootstrapWorld({
+      resumeRunId: 'missing-run',
+      readRun,
+      createRun,
+      budgetMs: 250,
+    })).rejects.toMatchObject({ code: CHRONICLES_BOOTSTRAP_ERROR_CODES.unavailable });
+    expect(createRun).not.toHaveBeenCalled();
+  });
+
   it('passes party level to run creation and preserves the backend snapshot', async () => {
     const payload = remoteRun();
     payload.partyLevel = 6;
@@ -121,6 +152,36 @@ describe('Chronicles bounded authoritative-run bootstrap', () => {
 
     expect(resolved.runStatus).toBe('defeated');
     expect(resolved.runId).toBe(payload.runId);
+  });
+
+  it('restores a progressed Swordhaven run already inside the crypt', async () => {
+    const payload = remoteRun('Cripta tras Swordhaven', 417, 'crypt-eight-squares');
+    payload.worldVersion = 3;
+    const createRun = vi.fn().mockResolvedValue(payload);
+    const run = await chroniclesBootstrapWorld({
+      mapId: 'swordhaven-square',
+      createRun,
+      budgetMs: 250,
+      operationId: 'town-to-crypt-expedition',
+    });
+    expect(run.currentMapId).toBe('crypt-eight-squares');
+    expect(run.worldVersion).toBe(3);
+    expect(createRun).toHaveBeenCalledWith('swordhaven-square', expect.objectContaining({
+      operationId: 'town-to-crypt-expedition',
+    }));
+  });
+
+  it('rejects a fresh run that ignores the requested Swordhaven entry', async () => {
+    const payload = remoteRun('Incorrect new run', 417, 'crypt-eight-squares');
+    const createRun = vi.fn().mockResolvedValue(payload);
+    await expect(chroniclesBootstrapWorld({
+      mapId: 'swordhaven-square',
+      createRun,
+      budgetMs: 250,
+    })).rejects.toMatchObject({
+      code: CHRONICLES_BOOTSTRAP_ERROR_CODES.invalidWorld,
+      reason: 'run-map-mismatch',
+    });
   });
 
   it('accepts a safe entry map selected by the backend from the run seed', async () => {

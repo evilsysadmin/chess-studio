@@ -92,7 +92,7 @@ Render staging está retirado del plano de despliegue: el **release canónico y 
 | `pvp-duel-room-blender-art.yml` | Genera/valida/publica el shell Blender de la Sala de Duelos en su superficie path-aware. |
 | `war-room-v4-blender-art.yml` | Genera/valida/publica War Room v4 sin reemplazar las generaciones anteriores. |
 | `pawn-slug-enemy-cast-v2.yml` | Regenera, prueba y publica el cast enemigo v2 de Pawn Slug; conserva evidencia visual e identidad R2 verificable. |
-| `staging-pawn-slug-visual.yml` | Reusable/manual de evidencia live de Pawn Slug. Comparte con Resend/continuity el baseline durable calculado una vez por `staging_deploy_prepare.py`; sólo se invoca cuando ese diff contiene superficie Pawn Slug y vuelve a exigir backend/frontend/worker en el SHA solicitado. |
+| `staging-pawn-slug-visual.yml` | Reusable/manual de evidencia live de Pawn Slug. Comparte con Resend/continuity el baseline durable calculado una vez por `staging_deploy_prepare.py`; sólo se invoca cuando ese diff contiene cambios directos de Pawn Slug, su test de staging o su infraestructura específica, y vuelve a exigir backend/frontend/worker en el SHA solicitado. El clasificador `scripts/staging_pawn_slug_visual_scope.py` es independiente de `quality_scope.py`: cambios en el harness compartido (`e2e/helpers.js`, `cicd.yml`, `staging-deploy.yml` o tooling general) mantienen su cobertura en Quality sin pagar la captura Godot. El self-test del clasificador fija casos positivos, negativos y cambios combinados. |
 | `home-r2-assets.yml` | Valida y publica a R2 los assets 3D específicos de Home; PR sólo valida y `main`/manual publican. |
 | `r2-assets-infra.yml` | Contrato/reconciliación de bucket, dominio, CORS y manifiesto R2 compartido. Además ejecuta GC conservador diario: protege manifest/runtime/aliases `current.*`, poda duplicados y generaciones/revisiones obsoletas, y presiona hacia 8.0 GB al superar 8.5 GB; muta sólo fuera de PR. |
 | `security-llm-lab.yml` | Laboratorio manual y acotado para revisión LLM de backend; nunca forma parte de los required checks ni de la entrega. |
@@ -101,7 +101,9 @@ Render staging está retirado del plano de despliegue: el **release canónico y 
 
 | Workflow | Responsabilidad |
 | --- | --- |
-| `app-visual-artifact.yml` | Evidencia visual path-aware. El trigger server-side se limita a cambios que pueden producir píxeles de producto; tooling de clasificación/orquestación visual se acredita en Quality y no despierta capturas por sí solo. `warroom-core` ejecuta primero un canario móvil barato y fail-closed de la variante activa/default; después captura los perfiles desktop 1440×900 en una sesión autenticada compartida y serial, cambiando de variante dentro de la misma partida para pagar el bootstrap pesado una sola vez; por último drena los perfiles móviles restantes con 2 workers. |
+| `app-visual-artifact.yml` | Capturas visuales generales de la app (Home, War Room, entrenamiento, PvP, etc.). El productor excluye Chronicles y Tactics, y omite el navegador cuando los cambios no afectan a estas superficies. Misma cobertura fail-closed para archivos comunes o desconocidos. |
+| `chronicles-visual-artifact.yml` | Gate visual independiente para **Chronicles primera persona** (gameplay y avatars): PNG propio `chronicles-visual-*`, runners/SwiftShader aislados, controles desktop/móvil y ningún test de Tactics. |
+| `tactics-visual-artifact.yml` | Gate visual independiente para **Tactics**: PNG propio `tactics-visual-*`, runner/SwiftShader aislado y ningún test de Chronicles primera persona. Los cambios compartidos activan ambos según el clasificador de propietarios. |
 | `e2e-full.yml` | Sweep completo Chromium/Firefox/WebKit mensual/manual e informativo. Ya no duplica PR: la matriz requerida y path-aware War Room/Matthias vive en `cicd.yml`. |
 | `home-blender-v2-preview.yml` | Evidencia PNG Home path-aware en PR con envelope de revisión barato; los renders manuales conservan calidad alta. |
 | `home-blender-v2-runtime.yml` | Exporta/publica el GLB Home sólo en `main` o manual, luego ejecuta su gate browser y promoción. No repite el export runtime en PR: la revisión visual PR pertenece al preview PNG. |
@@ -241,3 +243,9 @@ El objetivo no es tener el mínimo número de YAML, sino **mínimo estado, míni
 ## Interruptor temporal de producción
 
 `.github/production-deploy.env` contiene un único `DEPLOY_TARGET=render|oci`. Es deliberadamente distinto de `DEPLOY_ENV`: ambos targets ejecutan producción y usan la configuración/BD de producción. El workflow valida el archivo antes de cualquier mutación. El CNAME público del API ya no pertenece a Terraform; `scripts/oci_production_tunnel.py` lo conmuta sólo después de acreditar el SHA exacto en el target elegido. El rollback de producción siempre restaura primero la ruta del API a Render.
+
+## Chronicles vs. Tactics · deuda visual independiente
+
+Chronicles y Tactics tienen productores, artifacts y workflows visuales distintos. Las modificaciones a la pantalla de guardados de Chronicles, el transporte HTTP del catálogo y la identidad local de expediciones no activan capturas Tactics. Los cambios estrictamente auditados de cableado de GET para recuperar una run en el bootstrap compartido y en el shell Tactics se normalizan como **no visuales** sólo si todas sus líneas modificadas pertenecen al allowlist exacto de `scripts/app_visual_changed_files.py`.
+
+Una edición nueva de JSX, mapa, renderer, scene, lógica de mundo fuera de ese allowlist, diff ilegible o path desconocido **restablece fail-closed** el gate visual Tactics. Pruebas de estado/contrato y Quality siguen siendo obligatorias en los cambios compartidos; no se relajan por esta separación. Las excepciones se comprueban en los self-tests de los clasificadores.

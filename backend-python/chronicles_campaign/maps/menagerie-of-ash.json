@@ -1,0 +1,80 @@
+{
+  "schemaVersion": 1,
+  "id": "menagerie-of-ash",
+  "title": "Casa de las Bestias de Ceniza",
+  "regionId": "mire",
+  "kind": "dungeon",
+  "status": "design-only",
+  "legacyRuntimeMapId": "menagerie-of-ash",
+  "threatBand": [
+    4,
+    6
+  ],
+  "description": "Criaturas cautivas protegen al único caballero que regresó del subsuelo.",
+  "layout": {
+    "mode": "authored-fixed",
+    "grid": [
+      "###############",
+      "#::::::=::::::#",
+      "#::::#:=::#:::#",
+      "#::###:=####::#",
+      "#::::=:=::#:::#",
+      "#::::=:=::::::#",
+      "#=============#",
+      "#::::#:=::#:::#",
+      "#::::#:=::#:::#",
+      "#::::#:=::#:::#",
+      "#::::#:=::#:::#",
+      "#::::::=::::::#",
+      "###############"
+    ],
+    "tileLegend": {
+      "#": "solid",
+      "~": "water-blocked",
+      "^": "cliff-blocked",
+      ".": "floor",
+      ":": "old-stone-floor",
+      "=": "road-or-corridor"
+    }
+  },
+  "partyStart": {
+    "x": 7,
+    "y": 6,
+    "direction": "north"
+  },
+  "portals": [
+    {
+      "id": "to-mist-marsh",
+      "targetMapId": "mist-marsh",
+      "targetPortalId": "to-menagerie-of-ash",
+      "x": 7,
+      "y": 1,
+      "requiresAll": [],
+      "feature": "road",
+      "linkId": "mist-marsh--menagerie-of-ash"
+    },
+    {
+      "id": "to-ash-vault",
+      "targetMapId": "ash-vault",
+      "targetPortalId": "to-menagerie-of-ash",
+      "x": 13,
+      "y": 6,
+      "requiresAll": [
+        "ash-seal"
+      ],
+      "feature": "secret-tunnel",
+      "linkId": "menagerie-of-ash--ash-vault"
+    }
+  ],
+  "pointsOfInterest": [
+    {
+      "id": "knight-survivor",
+      "label": "El testimonio de Sir Olan",
+      "eventId": "knight-testimony",
+      "x": 5,
+      "y": 4,
+      "interaction": "adjacent-or-on-tile"
+    }
+  ],
+  "services": []
+}

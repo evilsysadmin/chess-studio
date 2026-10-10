@@ -554,6 +554,7 @@ export function chroniclesTacticsModifiers(progression, memberId) {
     abilityPotencyBonus,
     abilityCharges: 1 + (will >= 3 ? 1 : 0) + Number(skillModifiers.abilityCharges || 0),
     initiativeBonus: agility,
+    level: Math.max(1, nonNegativeInteger(hero.level, 1)),
     profileOverrides,
   };
 }

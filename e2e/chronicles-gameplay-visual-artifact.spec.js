@@ -1,7 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { confirmChroniclesCharacterSetup, login, mockApi, openMoreGameModes } from './helpers.js';
-import { createSwordhavenWalkGrid, SWORDHAVEN_INTERACTION_CELLS, SWORDHAVEN_SPAWN } from '../frontend/src/chronicles/chroniclesSwordhaven3D.js';
 
 const ARTIFACT_DIR = '../.artifacts/app-visual';
 const CAPTURES = [
@@ -36,6 +35,8 @@ async function openChronicles(page, captureLabel, {
   chroniclesCurrentMapId = 'crypt-eight-squares',
   chroniclesWorldFlags = null,
   chroniclesAreaTransform = null,
+  newTown = false,
+  newCampaign = false,
 } = {}) {
   await mockApi(page, {
     profileSeed: {
@@ -51,7 +52,11 @@ async function openChronicles(page, captureLabel, {
   const speech = page.getByRole('region', { name: 'Mensaje de Matthias', exact: true });
   if (await speech.isVisible().catch(() => false)) {
     const close = speech.getByRole('button', { name: 'Cerrar comentario de Matthias', exact: true });
-    if (await close.isVisible().catch(() => false)) await close.click({ force: true });
+    if (await close.isVisible().catch(() => false)) {
+      // This is a non-gameplay Home overlay. Avoid SwiftShader stalls in
+      // Playwright pointer stability checks; trigger the actual close handler.
+      await close.evaluate((button) => button.click());
+    }
   }
 
   // This producer owns Chronicles evidence, not PvP. A restored/mock lobby can
@@ -75,6 +80,28 @@ async function openChronicles(page, captureLabel, {
   const chroniclesEntry = page.locator('.lab-workshop-portal--chronicles');
   await expect(chroniclesEntry).toBeVisible();
   await chroniclesEntry.click();
+  const entry = page.locator('[data-chronicles-save-menu]');
+  await expect(entry).toBeVisible({ timeout: 10_000 });
+  await expect(entry.getByText('Consultando expediciones del servidor…')).toBeHidden({ timeout: 15_000 });
+  if (captureLabel.includes('android-landscape')) {
+    // A 390px-high viewport must show all home actions without hidden scrolling.
+    const returnButton = entry.getByRole('button', { name: 'Volver al castillo', exact: true });
+    await expect(returnButton).toBeVisible();
+    const [buttonBox, panelBox] = await Promise.all([
+      returnButton.boundingBox(), entry.locator('.chronicles-save-menu__panel').boundingBox(),
+    ]);
+    expect(buttonBox, 'landscape exit option has rendered bounds').not.toBeNull();
+    expect(panelBox, 'landscape entry menu has rendered bounds').not.toBeNull();
+    expect(buttonBox.y + buttonBox.height, 'landscape entry menu does not clip the last action')
+      .toBeLessThanOrEqual(Math.min(panelBox.y + panelBox.height, page.viewportSize().height) - 6);
+  }
+  await page.screenshot({
+    path: `${ARTIFACT_DIR}/chronicles-save-menu-${captureLabel}.png`,
+    animations: 'disabled', timeout: 30_000,
+  });
+  await entry.getByRole('button', newCampaign
+    ? { name: /Nueva campaña/ }
+    : { name: 'Nuevo juego', exact: true }).click();
   const setup = page.locator('[data-chronicles-character-setup]');
   try {
     await expect(setup).toBeVisible({ timeout: 8_000 });
@@ -96,12 +123,12 @@ async function openChronicles(page, captureLabel, {
   await setup.getByRole('button', { name: 'Crear PJs', exact: true }).click();
   const editor = page.locator('[data-chronicles-character-setup="editor"]');
   await expect(editor).toBeVisible();
-  const seed = editor.getByRole('textbox', { name: 'Seed de build', exact: true });
-  await seed.fill(`VISUAL-${captureLabel}`);
-  await editor.getByRole('button', { name: 'Generar con seed', exact: true }).click();
+  // MM3 roller: real dice, then the class grid only offers what they allow.
+  await editor.getByRole('button', { name: /Tirar dados/ }).click();
+  await expect(editor.locator('.chronicles-character-setup__class-grid button[aria-pressed="true"]')).toHaveCount(1);
   const mechanics = editor.locator('.chronicles-character-setup__mechanics');
   await expect(mechanics).toBeVisible();
-  await expect(mechanics).toContainText(/\+\d/);
+  await expect(mechanics).toContainText(/Vida \d+ · Armadura \d+/);
   await page.screenshot({
     path: `${ARTIFACT_DIR}/chronicles-character-editor-${captureLabel}.png`,
     animations: 'disabled',
@@ -110,7 +137,7 @@ async function openChronicles(page, captureLabel, {
   });
   await editor.getByRole('button', { name: '← Volver', exact: true }).click();
 
-  await confirmChroniclesCharacterSetup(page);
+  await confirmChroniclesCharacterSetup(page, { newTown });
   await expect(page.locator('[data-chronicles="true"]')).toBeVisible();
 }
 
@@ -168,49 +195,280 @@ async function captureElement(page, locator, path) {
 }
 
 
-test('Chronicles · Swordhaven 3D visual prototype · desktop', async ({ browser }) => {
-  // This runs the REAL first-person renderer with an authored-like area envelope
-  // but uses a known legacy area ID so no production run/catalog is modified.
+test('Chronicles · First Book road encounter · actual 3D desktop', async ({ browser }) => {
+  test.setTimeout(300_000);
+  await mkdir(ARTIFACT_DIR, { recursive: true });
+  const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+  const page = await context.newPage();
+  try {
+    await openChronicles(page, 'first-book-road-desktop', {
+      newTown: true,
+      newCampaign: true,
+      chroniclesCurrentMapId: 'swordhaven-first-book',
+    });
+    const game = page.locator('[data-chronicles="true"]');
+    const canvas = game.locator('[data-chronicles-renderer="three"] canvas');
+    await expect(canvas).toBeVisible({ timeout: 30_000 });
+    // Real first-person movement from the authored town start to its north gate.
+    for (let step = 0; step < 6; step += 1) await page.keyboard.press('ArrowUp');
+    await expect(game).toHaveAttribute('data-chronicles-map-id', 'banner-road-first-book', { timeout: 30_000 });
+    await expect(game).toHaveAttribute('data-chronicles-phase', 'explore');
+    await expect(game.locator('.chronicles-renderer-error')).toHaveCount(0);
+    // Arrival faces north toward the boundary wall. Turn toward the
+    // interior road and its optional deserter at (11, 5), not the wall.
+    // The actual Three scene must remain visible after these input actions.
+    await page.keyboard.press('ArrowRight');
+    await page.keyboard.press('ArrowRight');
+    await expect(game.locator('.chronicles-renderer-error')).toHaveCount(0);
+    await page.waitForTimeout(450);
+    await page.screenshot({
+      path: `${ARTIFACT_DIR}/chronicles-first-book-road-encounter-desktop-1440x900.png`,
+      animations: 'disabled', timeout: 60_000,
+    });
+    const health = await captureChroniclesHealth(page);
+    expect(health.horizontalOverflow).toBe(false);
+    expect(health.gameCanvasCount).toBe(1);
+  } finally {
+    await context.close();
+  }
+});
+
+for (const capture of [
+  { label: 'desktop-1440x900', width: 1440, height: 900, touch: false },
+  { label: 'android-390x844', width: 390, height: 844, touch: true },
+  { label: 'android-landscape-844x390', width: 844, height: 390, touch: true },
+]) {
+  test(`Chronicles · First Book actual authored city · ${capture.label}`, async ({ browser }) => {
+    test.setTimeout(300_000);
+    await mkdir(ARTIFACT_DIR, { recursive: true });
+    const context = await browser.newContext({
+      viewport: { width: capture.width, height: capture.height },
+      hasTouch: capture.touch,
+      isMobile: capture.touch,
+    });
+    const page = await context.newPage();
+    try {
+      await openChronicles(page, `first-book-${capture.label}`, {
+        newTown: true,
+        newCampaign: true,
+        chroniclesCurrentMapId: 'swordhaven-first-book',
+      });
+      const game = page.locator('[data-chronicles="true"]');
+      await expect(game).toHaveAttribute('data-chronicles-map-id', 'swordhaven-first-book');
+      await expect(game.locator('[data-chronicles-renderer="three"] canvas')).toBeVisible({ timeout: 30_000 });
+      await expect(game.locator('.chronicles-renderer-error')).toHaveCount(0);
+      const view = await captureChroniclesHealth(page);
+      expect(view.horizontalOverflow, 'New campaign must not overflow mobile or desktop').toBe(false);
+      await page.screenshot({
+        path: `${ARTIFACT_DIR}/chronicles-first-book-town-${capture.label}.png`,
+        animations: 'disabled', timeout: 60_000,
+      });
+    } finally {
+      await context.close();
+    }
+  });
+}
+
+// Rookwood side quest «Los nombres del bosque»: real keyboard walk from the
+// Banner Road gate to Edda, the quest log, and the Oak of Names.
+const ROOKWOOD_WALK_TO_OAK = [
+  'ArrowUp', 'ArrowUp', 'ArrowUp', 'ArrowUp', 'ArrowUp', 'ArrowUp',
+  'ArrowLeft', 'ArrowUp', 'ArrowUp', 'ArrowUp',
+  'ArrowRight', 'ArrowUp', 'ArrowUp', 'ArrowUp',
+  'ArrowRight', 'ArrowUp',
+  'ArrowLeft', 'ArrowUp', 'ArrowUp', 'ArrowUp',
+];
+
+async function pressSequence(page, keys) {
+  for (const key of keys) {
+    await page.keyboard.press(key);
+    await page.waitForTimeout(240);
+  }
+}
+
+// New campaigns always start in Swordhaven. Walk the real route: north gate,
+// then the Banner Road's northern verge east and down to the Rookwood trail
+// (away from the optional deserter), arriving at Rookwood facing east.
+async function walkToRookwood(page, game) {
+  await expect(game).toHaveAttribute('data-chronicles-map-id', 'swordhaven-first-book', { timeout: 30_000 });
+  await pressSequence(page, Array(6).fill('ArrowUp'));
+  await expect(game).toHaveAttribute('data-chronicles-map-id', 'banner-road-first-book', { timeout: 30_000 });
+  await pressSequence(page, ['ArrowRight', ...Array(9).fill('ArrowUp'), 'ArrowRight', ...Array(9).fill('ArrowUp')]);
+  await expect(game).toHaveAttribute('data-chronicles-map-id', 'rookwood-first-book', { timeout: 30_000 });
+  await expect(game).toHaveAttribute('data-chronicles-phase', 'explore');
+}
+
+for (const capture of [
+  { label: 'desktop-1440x900', width: 1440, height: 900, touch: false },
+  { label: 'android-390x844', width: 390, height: 844, touch: true },
+]) {
+  test(`Chronicles · Rookwood side quest walk · ${capture.label}`, async ({ browser }) => {
+    test.setTimeout(300_000);
+    await mkdir(ARTIFACT_DIR, { recursive: true });
+    const context = await browser.newContext({
+      viewport: { width: capture.width, height: capture.height },
+      hasTouch: capture.touch,
+      isMobile: capture.touch,
+    });
+    const page = await context.newPage();
+    try {
+      await openChronicles(page, `rookwood-${capture.label}`, {
+        newTown: true, newCampaign: true, chroniclesCurrentMapId: 'swordhaven-first-book',
+      });
+      const game = page.locator('[data-chronicles="true"]');
+      await expect(game.locator('[data-chronicles-renderer="three"] canvas')).toBeVisible({ timeout: 30_000 });
+      await walkToRookwood(page, game);
+      await expect(game.locator('.chronicles-renderer-error')).toHaveCount(0);
+      await page.waitForTimeout(700);
+      await page.screenshot({
+        path: `${ARTIFACT_DIR}/chronicles-rookwood-arrival-${capture.label}.png`,
+        animations: 'disabled', timeout: 60_000,
+      });
+
+      await pressSequence(page, ['ArrowUp', 'ArrowUp', 'f']);
+      const quest = game.locator('[data-chronicles-quest-id="names-in-wood"]');
+      await expect(quest.first()).toHaveAttribute('data-chronicles-quest-status', 'active');
+      // Desktop keeps quests in the bottom journal; touch layouts carry them
+      // inside the floating chronicle.
+      const questToggle = capture.touch ? game.locator('.chronicles-dm-trigger') : game.locator('.chronicles-journal summary');
+      const visibleQuest = capture.touch ? game.locator('.chronicles-dm-quests [data-chronicles-quest-id="names-in-wood"]') : game.locator('.chronicles-journal [data-chronicles-quest-id="names-in-wood"]');
+      await questToggle.evaluate((node) => node.click());
+      await expect(visibleQuest).toBeVisible();
+      const health = await captureChroniclesHealth(page);
+      expect(health.horizontalOverflow).toBe(false);
+      await page.screenshot({
+        path: `${ARTIFACT_DIR}/chronicles-rookwood-quest-log-${capture.label}.png`,
+        animations: 'disabled', timeout: 60_000,
+      });
+      await questToggle.evaluate((node) => node.click());
+
+      await pressSequence(page, ROOKWOOD_WALK_TO_OAK);
+      await expect(game).toHaveAttribute('data-chronicles-phase', 'explore');
+      await page.waitForTimeout(500);
+      await page.screenshot({
+        path: `${ARTIFACT_DIR}/chronicles-rookwood-name-oak-${capture.label}.png`,
+        animations: 'disabled', timeout: 60_000,
+      });
+    } finally {
+      await context.close();
+    }
+  });
+}
+
+test('Chronicles · Rookwood restored Oak of Names · desktop-1440x900', async ({ browser }) => {
+  test.setTimeout(300_000);
+  await mkdir(ARTIFACT_DIR, { recursive: true });
+  const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+  const page = await context.newPage();
+  try {
+    await openChronicles(page, 'rookwood-restored-desktop', {
+      newTown: true,
+      newCampaign: true,
+      chroniclesCurrentMapId: 'swordhaven-first-book',
+      chroniclesWorldFlags: { rookwoodMournerMet: true, rookwoodNamesRestored: true },
+    });
+    const game = page.locator('[data-chronicles="true"]');
+    await walkToRookwood(page, game);
+    await pressSequence(page, ['ArrowUp', 'ArrowUp', ...ROOKWOOD_WALK_TO_OAK]);
+    await expect(game).toHaveAttribute('data-chronicles-phase', 'explore');
+    await page.waitForTimeout(500);
+    await page.screenshot({
+      path: `${ARTIFACT_DIR}/chronicles-rookwood-name-oak-restored-desktop-1440x900.png`,
+      animations: 'disabled', timeout: 60_000,
+    });
+  } finally {
+    await context.close();
+  }
+});
+
+test('Chronicles · Rookwood bone hound in the forest · desktop-1440x900', async ({ browser }) => {
+  test.setTimeout(300_000);
+  await mkdir(ARTIFACT_DIR, { recursive: true });
+  const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+  const page = await context.newPage();
+  try {
+    await openChronicles(page, 'rookwood-hound-desktop', {
+      newTown: true, newCampaign: true, chroniclesCurrentMapId: 'swordhaven-first-book',
+    });
+    const game = page.locator('[data-chronicles="true"]');
+    await walkToRookwood(page, game);
+    // Real walk through the clearing toward the den (13,13), facing east.
+    await pressSequence(page, [
+      ...Array(8).fill('ArrowUp'), 'ArrowRight', 'ArrowUp', 'ArrowUp', 'ArrowUp',
+      'ArrowLeft', 'ArrowUp', 'ArrowRight', 'ArrowUp', 'ArrowLeft', 'ArrowUp',
+      'ArrowRight', 'ArrowUp', 'ArrowUp', 'ArrowLeft', 'ArrowUp', 'ArrowUp',
+      // One more step enters the hound's engage range and starts initiative.
+      'ArrowUp',
+    ]);
+    await expect(game.locator('.chronicles-renderer-error')).toHaveCount(0);
+    await page.waitForTimeout(600);
+    await page.screenshot({
+      path: `${ARTIFACT_DIR}/chronicles-rookwood-hound-desktop-1440x900.png`,
+      animations: 'disabled', timeout: 60_000,
+    });
+  } finally {
+    await context.close();
+  }
+});
+
+test('Chronicles · First Book equipment sheet · actual Android 390px', async ({ browser }) => {
+  test.setTimeout(300_000);
+  await mkdir(ARTIFACT_DIR, { recursive: true });
+  const context = await browser.newContext({
+    viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true,
+  });
+  const page = await context.newPage();
+  try {
+    await openChronicles(page, 'first-book-gear-mobile', {
+      newTown: true, newCampaign: true, chroniclesCurrentMapId: 'swordhaven-first-book',
+    });
+    const game = page.locator('[data-chronicles="true"]');
+    await expect(game).toHaveAttribute('data-chronicles-map-id', 'swordhaven-first-book');
+    await game.getByRole('button', { name: 'Seleccionar Matthias', exact: true })
+      .evaluate((button) => button.click());
+    const sheet = page.getByRole('dialog', { name: 'Matthias', exact: true });
+    const gear = sheet.locator('.chronicles-character-sheet__equipment');
+    await expect(sheet).toBeVisible();
+    await expect(gear).toBeVisible();
+    await expect(gear).toContainText('Armas y armaduras equipadas');
+    // Weapon, armour and shield.
+    await expect(gear.locator('.chronicles-character-sheet__gear-slot')).toHaveCount(3);
+    await gear.evaluate((node) => node.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'instant' }));
+    const bounds = await sheet.evaluate((node) => ({
+      width: node.getBoundingClientRect().width,
+      horizontalOverflow: node.scrollWidth > node.clientWidth + 1,
+    }));
+    expect(bounds.width).toBeLessThanOrEqual(390);
+    expect(bounds.horizontalOverflow, 'equipment sheet must fit a 390px Android viewport').toBe(false);
+    await page.screenshot({
+      path: `${ARTIFACT_DIR}/chronicles-first-book-equipment-sheet-android-390x844.png`,
+      animations: 'disabled', timeout: 60_000,
+    });
+  } finally {
+    await context.close();
+  }
+});
+
+test('Chronicles · Swordhaven authored world · actual 3D desktop', async ({ browser }) => {
+  // No synthetic gallery-of-forks disguise: the authoritative map catalog
+  // and the real Three.js scene must agree on the actual town id and geometry.
   test.setTimeout(240_000);
   await mkdir(ARTIFACT_DIR, { recursive: true });
   const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
   const page = await context.newPage();
   try {
-    await openChronicles(page, 'swordhaven-preview', {
-      chroniclesCurrentMapId: 'gallery-of-forks',
-      chroniclesAreaTransform(mapId, manifest) {
-        if (mapId !== 'gallery-of-forks') return manifest;
-        const grid = createSwordhavenWalkGrid();
-        const shops = SWORDHAVEN_INTERACTION_CELLS.map(({ id, x, y }) => [id, x, y]);
-        return {
-          ...manifest,
-          title: 'Swordhaven · visual prototype',
-          regionKind: 'settlement',
-          grid,
-          materials: null,
-          partyStart: SWORDHAVEN_SPAWN,
-          enemies: [],
-          initialFlags: {},
-          triggers: [],
-          treasures: [],
-          traps: [],
-          exits: [],
-          interactables: shops.map(([id, x, y]) => ({
-            id, kind: 'lore', label: 'Visitar establecimiento', x, y,
-            action: { effects: [], message: 'Swordhaven se prepara para recibir viajeros.' },
-          })),
-          initialJournal: { id: 'swordhaven-arrival', title: 'Swordhaven', body: 'Un nuevo comienzo.', sigil: 'I' },
-          introMessage: 'Las puertas de Swordhaven están abiertas.',
-        };
-      },
+    await openChronicles(page, 'swordhaven-authored', {
+      chroniclesCurrentMapId: 'swordhaven-square',
     });
-    const stage = page.locator('[data-chronicles-renderer="three"]');
+    const mode = page.locator('[data-chronicles="true"]');
+    await expect(mode).toHaveAttribute('data-chronicles-map-id', 'swordhaven-square');
+    const stage = mode.locator('[data-chronicles-renderer="three"]');
     await expect(stage.locator('canvas')).toBeVisible({ timeout: 30_000 });
-    await expect(page.locator('.chronicles-statusbar')).toContainText('SWORDHAVEN');
-    await expect(page.locator('.chronicles-statusbar')).not.toContainText('CRIPTA');
-    await expect(page.locator('.chronicles-renderer-error')).toHaveCount(0);
+    await expect(mode.locator('.chronicles-statusbar')).toContainText('SWORDHAVEN');
+    await expect(mode.locator('.chronicles-statusbar')).not.toContainText('CRIPTA');
+    await expect(mode.locator('.chronicles-renderer-error')).toHaveCount(0);
     await page.screenshot({
-      path: ARTIFACT_DIR + '/chronicles-swordhaven-3d-prototype-desktop.png',
+      path: ARTIFACT_DIR + '/chronicles-swordhaven-authored-desktop-1440x900.png',
       animations: 'disabled',
       timeout: 60_000,
     });
@@ -219,6 +477,93 @@ test('Chronicles · Swordhaven 3D visual prototype · desktop', async ({ browser
   }
 });
 
+// The visual receipt must show both the authored town and the actual return
+// portal, including mobile. Generic crypt screenshots do not prove either.
+for (const scene of [
+  { label: 'desktop-1440x900', width: 1440, height: 900, touch: false },
+  { label: 'android-390x844', width: 390, height: 844, touch: true },
+]) {
+  test(`Chronicles · Swordhaven round trip visual · ${scene.label}`, async ({ browser }) => {
+    test.setTimeout(300_000);
+    await mkdir(ARTIFACT_DIR, { recursive: true });
+    const context = await browser.newContext({
+      viewport: { width: scene.width, height: scene.height },
+      hasTouch: scene.touch,
+      isMobile: scene.touch,
+    });
+    const page = await context.newPage();
+    try {
+      await openChronicles(page, `swordhaven-route-${scene.label}`, {
+        chroniclesCurrentMapId: 'swordhaven-square',
+        newTown: true,
+      });
+      const game = page.locator('[data-chronicles="true"]');
+      const canvas = game.locator('[data-chronicles-renderer="three"] canvas');
+      await expect(game).toHaveAttribute('data-chronicles-map-id', 'swordhaven-square');
+      await expect(canvas).toBeVisible({ timeout: 30_000 });
+      await expect(game.locator('.chronicles-renderer-error')).toHaveCount(0);
+      if (scene.touch) {
+        const narrator = game.locator('.chronicles-dm-overlay');
+        const minimap = game.locator('[data-chronicles-minimap="visible"]');
+        await expect(narrator).toBeVisible();
+        await expect(minimap).toBeVisible();
+        const [messageBox, minimapBox] = await Promise.all([
+          narrator.boundingBox(), minimap.boundingBox(),
+        ]);
+        expect(messageBox && minimapBox, 'Swordhaven has inspectable mobile HUD boxes').toBeTruthy();
+        expect(messageBox.x + messageBox.width, 'narration must not paint beneath the minimap')
+          .toBeLessThanOrEqual(minimapBox.x - 2);
+        const objective = game.locator('.chronicles-statusbar > span:nth-child(4) b');
+        await expect(objective).toContainText('Explora Swordhaven');
+        const lineClamp = await objective.evaluate((node) => getComputedStyle(node).webkitLineClamp);
+        expect(lineClamp, 'mobile objective can display two lines').toBe('2');
+      }
+      await page.screenshot({
+        path: `${ARTIFACT_DIR}/chronicles-swordhaven-entry-${scene.label}.png`,
+        animations: 'disabled',
+        timeout: 60_000,
+      });
+
+      // The starting tile is adjacent to the real south gate. Crossing it
+      // must reach the crypt without ending or replacing the current run.
+      await page.keyboard.press('ArrowDown');
+      await expect(game).toHaveAttribute('data-chronicles-map-id', 'crypt-eight-squares', { timeout: 20_000 });
+      await expect(game).toHaveAttribute('data-chronicles-phase', 'explore');
+      const returnAction = game.locator('[data-chronicles-touch-action="interact"]');
+      await expect(returnAction).toHaveAttribute('aria-label', 'Regresar a Swordhaven');
+      await expect(returnAction).toContainText('VOLVER');
+      await expect(canvas).toBeVisible();
+      // The party faces into the crypt, so the real exit arch is naturally
+      // BEHIND them on the entrance wall. Turn around for visual proof rather
+      // than capturing the enemy corridor and calling it a portal screenshot.
+      const beforeTurn = Number(await game.getAttribute('data-chronicles-turns'));
+      await page.keyboard.press('ArrowRight');
+      await page.keyboard.press('ArrowRight');
+      await expect(game).toHaveAttribute('data-chronicles-turns', String(beforeTurn + 2));
+      await expect(game).toHaveAttribute('data-chronicles-phase', 'explore');
+      await expect(returnAction).toHaveAttribute('aria-label', 'Regresar a Swordhaven');
+      // Give the real first-person camera enough rendered frames to settle on
+      // portrait SwiftShader: a half-turned camera clips the entrance plaque.
+      await page.waitForTimeout(1750);
+      await page.screenshot({
+        path: `${ARTIFACT_DIR}/chronicles-swordhaven-return-portal-${scene.label}.png`,
+        animations: 'disabled',
+        timeout: 60_000,
+      });
+      if (scene.touch) {
+        await expect(returnAction).toBeVisible();
+        await returnAction.tap({ force: true });
+      } else {
+        await page.keyboard.press('f');
+      }
+      await expect(game).toHaveAttribute('data-chronicles-map-id', 'swordhaven-square', { timeout: 20_000 });
+      await expect(game).toHaveAttribute('data-chronicles-phase', 'explore');
+      await expect(game.locator('.chronicles-renderer-error')).toHaveCount(0);
+    } finally {
+      await context.close();
+    }
+  });
+}
 
 for (const capture of CAPTURES) {
   test(`Chronicles · gameplay visual · ${capture.label}`, async ({ browser }) => {
@@ -242,12 +587,12 @@ for (const capture of CAPTURES) {
       const stage = page.locator('.chronicles-stage');
       const gameMenu = page.locator('summary[aria-label="Abrir menú de Chronicles"]');
       await expect(gameRoot).toBeVisible();
-      if (!capture.hasTouch) {
-        expect(
-          await page.evaluate(() => Boolean(document.fullscreenElement)),
-          `${capture.label}: desktop Chronicles enters browser-native fullscreen`,
-        ).toBe(true);
-      }
+      // Escape is reserved for the in-game menu. Browser-native fullscreen
+      // would intercept it, so viewport-owned immersion must not use that API.
+      expect(
+        await page.evaluate(() => Boolean(document.fullscreenElement)),
+        `${capture.label}: Chronicles leaves native fullscreen to the browser`,
+      ).toBe(false);
       const landscapeTrigger = page.getByRole('button', { name: 'Activar apaisado', exact: true });
       if (capture.hasTouch && capture.width < capture.height) {
         await expect(landscapeTrigger).toBeVisible();
@@ -345,17 +690,12 @@ for (const capture of CAPTURES) {
         automap.locator('.chronicles-automap__panel'),
         `${ARTIFACT_DIR}/chronicles-automap-${capture.label}.png`,
       );
-      await page.keyboard.press('m');
-      await expect(automap).toHaveCount(0);
-
-      await page.keyboard.press('Escape');
-      const openedMenu = page.locator('.chronicles-game-menu[open]');
-      await expect(openedMenu).toBeVisible();
-      await expect(openedMenu.getByRole('button', { name: 'Continuar', exact: true })).toBeVisible();
-      await expect(openedMenu.getByRole('button', { name: 'Nueva expedición', exact: true })).toBeVisible();
-      await expect(openedMenu.getByRole('button', { name: 'Salir y guardar', exact: true })).toBeVisible();
-      await page.keyboard.press('Escape');
-      await expect(page.locator('.chronicles-game-menu[open]')).toHaveCount(0);
+      // Keep this producer limited to its PNG/geometry contract. After
+      // software-WebGL readbacks the runner may stall on synthetic key input
+      // and exhaust the entire 360s budget. Automap/Escape lifecycle belongs
+      // to the required functional Chronicles browser canaries, not to this
+      // heavyweight visual capture; the menu's actual bounds were asserted
+      // above without another GPU round trip.
 
       await writeFile(
         `${ARTIFACT_DIR}/chronicles-visual-health-${capture.label}.json`,
@@ -442,7 +782,12 @@ async function enterCanonicalInitiativeCombat(page, gameRoot) {
   await page.keyboard.press('2');
   await page.keyboard.press('Space');
   await expect(gameRoot).toHaveAttribute('data-chronicles-phase', 'explore');
-  await page.keyboard.press('w');
+  // Visual producer: advance using the real onClick path instead of relying
+  // on keyboard focus after the authored character editor. Functional keyboard
+  // input remains covered by its dedicated gameplay E2E specs.
+  const advance = gameRoot.locator('[data-chronicles-touch-action="forward"]');
+  await expect(advance).toHaveCount(1);
+  await advance.evaluate((button) => button.click());
   await expect(gameRoot).toHaveAttribute('data-chronicles-phase', 'combat');
   await expect(gameRoot).toHaveAttribute('data-chronicles-initiative-die', '1d8');
 }
@@ -634,3 +979,75 @@ for (const capture of CAPTURES) {
   });
 }
 
+
+for (const capture of CAPTURES) {
+  test(`Chronicles · recuperación de guardados · ${capture.label}`, async ({ browser }) => {
+    // No dungeon is created: capture the real save-book and bootstrap failure
+    // controls, without paying a second software-WebGL readback.
+    test.setTimeout(100_000);
+    await mkdir(ARTIFACT_DIR, { recursive: true });
+    const context = await browser.newContext({
+      viewport: { width: capture.width, height: capture.height },
+      hasTouch: capture.hasTouch,
+      isMobile: capture.hasTouch,
+    });
+    const page = await context.newPage();
+    try {
+      await mockApi(page, {
+        chroniclesRunFailureStatus: 503,
+        profileSeed: {
+          'matthias.onboarded': '2',
+          'chess-study-home-guide-dismissed-v1': '1',
+        },
+      });
+      await page.route('http://localhost:4000/api/chronicles/runs', async (route) => {
+        if (route.request().method() !== 'GET') return route.fallback();
+        return route.fulfill({
+          status: 503,
+          contentType: 'application/json',
+          body: JSON.stringify({ detail: 'Temporary inventory outage' }),
+        });
+      });
+      await login(page);
+      const speech = page.getByRole('region', { name: 'Mensaje de Matthias', exact: true });
+      if (await speech.isVisible().catch(() => false)) {
+        const close = speech.getByRole('button', { name: 'Cerrar comentario de Matthias', exact: true });
+        if (await close.isVisible().catch(() => false)) await close.evaluate((button) => button.click());
+      }
+      const pvpLobby = page.getByRole('dialog', { name: 'Duelo 1 contra 1 · War Room', exact: true });
+      if (await pvpLobby.isVisible().catch(() => false)) {
+        await pvpLobby.getByRole('button', { name: /Cerrar ventana/ }).click();
+      }
+      await openVisualMoreModes(page);
+      const tools = page.locator('#illustrated-home-tools');
+      await expect(tools).toBeVisible();
+      await tools.getByRole('button').filter({ hasText: 'Experimentos geniales' })
+        .evaluate((button) => button.click());
+      await expect(page.getByRole('heading', { name: 'Experimentos geniales', exact: true })).toBeVisible();
+      await page.locator('.lab-workshop-portal--chronicles').click();
+
+      const book = page.locator('[data-chronicles-save-menu]');
+      await expect(book).toBeVisible();
+      await expect(book.getByRole('alert')).toContainText('No se pudo consultar el servidor');
+      await expect(book.getByRole('button', { name: 'Reintentar sincronización' })).toBeVisible();
+      await page.screenshot({
+        path: `${ARTIFACT_DIR}/chronicles-save-recovery-offline-${capture.label}.png`,
+        animations: 'disabled', timeout: 30_000,
+      });
+
+      await book.getByRole('button', { name: 'Nuevo juego' }).click();
+      await confirmChroniclesCharacterSetup(page);
+      const failure = page.getByRole('alert');
+      await expect(failure.getByRole('heading', { name: 'No se pudo preparar Chronicles' })).toBeVisible();
+      await expect(failure.getByRole('button', { name: 'Volver a expediciones' })).toBeVisible();
+      await page.screenshot({
+        path: `${ARTIFACT_DIR}/chronicles-save-recovery-bootstrap-${capture.label}.png`,
+        animations: 'disabled', timeout: 30_000,
+      });
+      await failure.getByRole('button', { name: 'Volver a expediciones' }).click();
+      await expect(book).toBeVisible();
+    } finally {
+      await context.close();
+    }
+  });
+}

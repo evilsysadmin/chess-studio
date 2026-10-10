@@ -2,6 +2,7 @@ package chroniclesrun
 
 import (
 	"context"
+	"sort"
 	"sync"
 
 	"go.mongodb.org/mongo-driver/v2/bson"
@@ -109,4 +110,50 @@ func (m *Memory) Get(_ context.Context, runID, owner string) (bson.D, error) {
 		return nil, nil
 	}
 	return Public(row), nil
+}
+
+func (m *Memory) ListActive(_ context.Context, owner string, limit int) ([]bson.D, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if limit < 1 || limit > 30 {
+		limit = 30
+	}
+	type result struct {
+		row     bson.D
+		updated int64
+	}
+	rows := []result{}
+	for _, row := range m.runs {
+		if get(row, "owner") != owner || statusOf(row) != "active" {
+			continue
+		}
+		summary := Summary(row)
+		updated, _ := get(summary, "updatedAtMs").(int64)
+		rows = append(rows, result{row: summary, updated: updated})
+	}
+	sort.SliceStable(rows, func(i, j int) bool {
+		if rows[i].updated != rows[j].updated {
+			return rows[i].updated > rows[j].updated
+		}
+		return get(rows[i].row, "runId").(string) < get(rows[j].row, "runId").(string)
+	})
+	if len(rows) > limit {
+		rows = rows[:limit]
+	}
+	out := make([]bson.D, 0, len(rows))
+	for _, item := range rows {
+		out = append(out, item.row)
+	}
+	return out, nil
+}
+
+func (m *Memory) DeleteOwned(_ context.Context, runID, owner string) (bool, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	row, ok := m.runs[runID]
+	if !ok || get(row, "owner") != owner {
+		return false, nil
+	}
+	delete(m.runs, runID)
+	return true, nil
 }

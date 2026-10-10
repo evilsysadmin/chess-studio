@@ -627,10 +627,6 @@
     white-space: normal !important;
   }
 
-  .illustrated-home__quickbar {
-    display: none !important;
-  }
-
   .illustrated-home__speech {
     position: fixed !important;
     z-index: 90 !important;

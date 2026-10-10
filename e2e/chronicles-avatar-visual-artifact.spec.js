@@ -44,6 +44,12 @@ async function openChronicles(page) {
   const chroniclesEntry = page.locator('.lab-workshop-portal--chronicles');
   await expect(chroniclesEntry).toBeVisible();
   await chroniclesEntry.click();
+  // Chronicles now opens its save book before the character creator. The
+  // avatar canary must exercise the real New Game entry, not assume play
+  // mounts directly when entering from the Dungeon.
+  const entry = page.locator('[data-chronicles-save-menu]');
+  await expect(entry).toBeVisible({ timeout: 15_000 });
+  await entry.getByRole('button', { name: 'Nuevo juego', exact: true }).click();
   await confirmChroniclesCharacterSetup(page);
   await expect(page.locator('[data-chronicles="true"]')).toBeVisible();
   await expect(page.locator('[data-chronicles-renderer="three"] canvas')).toHaveCount(1, { timeout: 20_000 });

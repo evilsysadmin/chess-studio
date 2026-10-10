@@ -105,42 +105,6 @@
     line-height: 1 !important;
   }
 
-  body .app-shell-home .masthead-feedback-trigger,
-  body .app-shell-home .masthead-release-trigger {
-    top: max(8px, env(safe-area-inset-top)) !important;
-    width: 30px !important;
-    min-width: 30px !important;
-    height: 30px !important;
-    min-height: 30px !important;
-    padding: 0 !important;
-    display: grid !important;
-    place-items: center !important;
-    border-color: rgba(171, 132, 72, .20) !important;
-    background: rgba(14, 9, 6, .54) !important;
-    color: rgba(239, 211, 155, .88) !important;
-    box-shadow: none !important;
-    opacity: .82 !important;
-  }
-
-  body .app-shell-home .masthead-feedback-trigger { right: 7px !important; }
-  body .app-shell-home .masthead-release-trigger { right: 41px !important; }
-
-  body .app-shell-home .masthead-feedback-trigger > span:last-child,
-  body .app-shell-home .masthead-release-trigger > span:last-child {
-    position: absolute !important;
-    width: 1px !important;
-    height: 1px !important;
-    overflow: hidden !important;
-    clip: rect(0 0 0 0) !important;
-  }
-
-  body .app-shell-home .masthead-release-trigger.is-new::after {
-    width: 5px !important;
-    height: 5px !important;
-    top: 1px !important;
-    right: 1px !important;
-  }
-
   body .app-shell-home .masthead-account-popover {
     left: 50% !important;
     right: auto !important;
@@ -255,9 +219,6 @@
 }
 
 @media (max-width: 380px) {
-  body .app-shell-home .masthead-release-trigger { right: 39px !important; }
-  body .app-shell-home .masthead-feedback-trigger { right: 5px !important; }
-
   body .app-shell-home .menu.menu-illustrated .illustrated-home__brand {
     left: 7% !important;
     width: 86% !important;

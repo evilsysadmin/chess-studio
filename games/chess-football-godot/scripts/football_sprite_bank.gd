@@ -26,6 +26,9 @@ static var _cached_keeper_frames: Dictionary = {}
 # Every 3D raster frame has a known alpha boot baseline. Cache it while the
 # CPU image is being cropped, not by reading textures back from WebGL each tick.
 static var _cached_3d_frame_bottoms: Dictionary = {}
+# Per-frame opaque-pixel luminance is gathered from already decoded CPU
+# pixels during atlas slicing. No texture readbacks in the 3D game loop.
+static var _cached_3d_frame_luminance: Dictionary = {}
 
 static func manifest() -> Dictionary:
 	if not _cached_manifest.is_empty():
@@ -143,6 +146,31 @@ static func _register_frame_bottom(texture: ImageTexture, cropped: Image) -> voi
 	var visible: Rect2i = cropped.get_used_rect()
 	assert(visible.size.y >= 60 and visible.end.y <= cropped.get_height())
 	_cached_3d_frame_bottoms[texture.get_instance_id()] = float(visible.end.y)
+	var rgba := cropped
+	if rgba.get_format() != Image.FORMAT_RGBA8:
+		rgba = cropped.duplicate()
+		rgba.convert(Image.FORMAT_RGBA8)
+	var bytes := rgba.get_data()
+	var total := 0.0
+	var opaque_count := 0
+	for offset in range(0, bytes.size(), 4):
+		if bytes[offset + 3] < 128:
+			continue
+		total += (
+			0.2126 * float(bytes[offset])
+			+ 0.7152 * float(bytes[offset + 1])
+			+ 0.0722 * float(bytes[offset + 2])
+		) / 255.0
+		opaque_count += 1
+	_cached_3d_frame_luminance[texture.get_instance_id()] = (
+		total / float(opaque_count) if opaque_count > 0 else 0.0
+	)
+
+
+static func frame_luminance(texture: Texture2D) -> float:
+	if texture == null:
+		return 0.0
+	return float(_cached_3d_frame_luminance.get(texture.get_instance_id(), 0.0))
 
 
 static func frame_bottom(texture: Texture2D) -> float:

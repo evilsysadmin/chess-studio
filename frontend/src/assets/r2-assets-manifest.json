@@ -14,6 +14,13 @@
       "sha256": "0d12bb3c3ec92d55b3e4af7b64cade1dede55537ff118c360ec260f788ff640c",
       "url": "https://assets.chess-studio.shadowops.dpdns.org/chronicles/tactics/party/runtime/chronicles-tactics-party-0d12bb3c3ec92d55.glb"
     },
+    "combat.operationsRoom.runtime": {
+      "bytes": 2476092,
+      "contentType": "model/gltf-binary",
+      "key": "combat/operations-room/runtime/combat-operations-room-shell-7d248a340d8153ed.glb",
+      "sha256": "7d248a340d8153ed0da1152e1a56ee745615e37e5f032de28d9b5096815f20bc",
+      "url": "https://assets.chess-studio.shadowops.dpdns.org/combat/operations-room/runtime/combat-operations-room-shell-7d248a340d8153ed.glb"
+    },
     "home.combat.heraldry.runtime": {
       "bytes": 29012,
       "contentType": "model/gltf-binary",
@@ -29,11 +36,11 @@
       "url": "https://assets.chess-studio.shadowops.dpdns.org/home/play/rook/play-rook-v1-3f49c19ffd8cb894.glb"
     },
     "home.scene.runtime": {
-      "bytes": 10711280,
+      "bytes": 10669704,
       "contentType": "model/gltf-binary",
-      "key": "home/scene/canonical/home-v2-runtime-23ea65d54ef38bf9.glb",
-      "sha256": "23ea65d54ef38bf97b792d76a4227c709731121bacf2a2018f17d97c6aff4d86",
-      "url": "https://assets.chess-studio.shadowops.dpdns.org/home/scene/canonical/home-v2-runtime-23ea65d54ef38bf9.glb"
+      "key": "home/scene/canonical/home-v2-runtime-f58e3c7ac5fd5e41.glb",
+      "sha256": "f58e3c7ac5fd5e4110533990515487566f807641e674d8acc298d41ac1079cdb",
+      "url": "https://assets.chess-studio.shadowops.dpdns.org/home/scene/canonical/home-v2-runtime-f58e3c7ac5fd5e41.glb"
     },
     "home.tournament.trophy.runtime": {
       "bytes": 10128,
@@ -146,13 +153,6 @@
       "key": "war-room/v4/runtime/war-room-v4-shell-58e5243dcf0b39d7.glb",
       "sha256": "58e5243dcf0b39d7df3b0f8ba35e4f0745ac7a587917e254eada750af6b22584",
       "url": "https://assets.chess-studio.shadowops.dpdns.org/war-room/v4/runtime/war-room-v4-shell-58e5243dcf0b39d7.glb"
-    },
-    "combat.operationsRoom.runtime": {
-      "bytes": 2476092,
-      "contentType": "model/gltf-binary",
-      "key": "combat/operations-room/runtime/combat-operations-room-shell-7d248a340d8153ed.glb",
-      "sha256": "7d248a340d8153ed0da1152e1a56ee745615e37e5f032de28d9b5096815f20bc",
-      "url": "https://assets.chess-studio.shadowops.dpdns.org/combat/operations-room/runtime/combat-operations-room-shell-7d248a340d8153ed.glb"
     }
   },
   "baseUrl": "https://assets.chess-studio.shadowops.dpdns.org",

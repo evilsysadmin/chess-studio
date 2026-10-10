@@ -81,7 +81,100 @@ assert(!worker.includes("const SHELL = ['./'"), 'el worker todavía precachea in
 assert(worker.includes("pathname.includes('/api/')"), 'el worker no excluye API dinámica');
 assert(worker.includes("CACHE_PREFIX = 'chess-studio-shell-v4-'") && worker.includes('SAFE_BUILD'), 'la caché PWA no está aislada por build v4');
 assert(worker.includes("url.origin !== self.location.origin"), 'el worker intercepta peticiones de terceros');
-assert(worker.includes("pathname.includes('/assets/')"), 'los assets Vite hashed siguen pasando por la caché PWA');
+assert(worker.includes('RUNTIME_ASSET_CACHE') && worker.includes('isHashedRuntimeAsset(url)'),
+  'los chunks hashed JS/CSS no tienen continuidad entre despliegues');
+
+// Exercise the real SW handler: an open game must still load a previously
+// fetched JS chunk after the current Pages generation no longer serves it.
+// The cache is keyed by immutable URL, not a mutable release name.
+{
+  const origin = 'https://staging.chess-studio.shadowops.dpdns.org';
+  const oldChunk = `${origin}/assets/GameScreen-abc12345.js`;
+  const missingChunk = `${origin}/assets/Board3D-deadbeef.js`;
+  const htmlChunk = `${origin}/assets/False-abcd5678.js`;
+  const handlers = new Map();
+  const objects = new Map();
+  let oldChunkServed = true;
+  let networkCalls = 0;
+  const stores = new Map();
+  const cacheUrl = (request) => typeof request === 'string' ? request : request.url;
+  const fakeCaches = {
+    async open(name) {
+      if (!stores.has(name)) stores.set(name, new Map());
+      const entries = stores.get(name);
+      return {
+        async match(request) { return entries.get(cacheUrl(request))?.clone(); },
+        async put(request, response) { entries.set(cacheUrl(request), response.clone()); },
+        async keys() { return [...entries.keys()].map((url) => new Request(url)); },
+        async delete(request) { return entries.delete(cacheUrl(request)); },
+      };
+    },
+    async keys() { return [...stores.keys()]; },
+    async delete(name) { return stores.delete(name); },
+  };
+  const fakeFetch = async (request) => {
+    networkCalls++;
+    const url = cacheUrl(request);
+    if (url === oldChunk && oldChunkServed) {
+      return new Response('export default 42;', {
+        status: 200,
+        headers: { 'Content-Type': 'text/javascript', 'Cache-Control': 'public, max-age=31536000, immutable' },
+      });
+    }
+    if (url === htmlChunk && !objects.has(url)) {
+      objects.set(url, true);
+      return new Response('<html>SPA fallback</html>', {
+        status: 200,
+        headers: { 'Content-Type': 'text/html' },
+      });
+    }
+    return new Response('not found', { status: 404 });
+  };
+  const selfMock = {
+    location: { href: `${origin}/sw.js?build=first`, origin },
+    registration: { scope: `${origin}/` },
+    addEventListener(type, handler) { handlers.set(type, handler); },
+    clients: { claim: async () => {} },
+    skipWaiting: async () => {},
+  };
+  vm.runInNewContext(worker, {
+    self: selfMock, caches: fakeCaches, fetch: fakeFetch, URL, Request, Response,
+  });
+  const fetchFromWorker = async (url) => {
+    const event = {
+      request: new Request(url),
+      respondWith(promise) { this.response = Promise.resolve(promise); },
+    };
+    handlers.get('fetch')(event);
+    return event.response ? event.response : fakeFetch(event.request);
+  };
+
+  const initial = await fetchFromWorker(oldChunk);
+  assert(initial.status === 200 && await initial.text() === 'export default 42;', 'no se pudo leer chunk antes del deploy');
+  oldChunkServed = false;
+  const before = networkCalls;
+  const retained = await fetchFromWorker(oldChunk);
+  assert(retained.status === 200 && await retained.text() === 'export default 42;',
+    'un deploy ha roto el chunk hashed de una partida abierta');
+  assert(networkCalls === before, 'el SW no prioriza un chunk immutable ya conservado');
+  const unavailable = await fetchFromWorker(missingChunk);
+  assert(unavailable.status === 404, 'el SW inventó un chunk que nunca llegó a cargar');
+  await fetchFromWorker(htmlChunk);
+  const rejectedFallback = await fetchFromWorker(htmlChunk);
+  assert(rejectedFallback.status === 404, 'el SW cacheó HTML como JavaScript');
+  const apiEvent = { request: new Request(`${origin}/api/games/123`), respondWith() { this.handled = true; } };
+  handlers.get('fetch')(apiEvent);
+  assert(!apiEvent.handled, 'el SW ha interceptado datos privados de la API');
+
+  // A new release worker may rotate shell icons but must not delete the
+  // immutable runtime cache while an older client still uses its chunks.
+  stores.set('chess-studio-shell-v4-previous', new Map());
+  let activation;
+  handlers.get('activate')({ waitUntil(promise) { activation = promise; } });
+  await activation;
+  assert(stores.has('chess-studio-immutable-runtime-v1'), 'activation borró los chunks de la partida');
+  assert(!stores.has('chess-studio-shell-v4-previous'), 'activation mantuvo cachés shell obsoletas');
+}
 assert(!worker.includes("const CACHE = 'chess-studio-shell-v2'"), 'la caché compartida entre releases sigue activa');
 assert(moduleRecovery.includes('chess-studio-module-recovery-v1'), 'bootstrap externo no protege el arranque frente a entrypoints stale');
 assert(moduleRecovery.includes("'vite:preloadError'") && moduleRecovery.includes('navigator.serviceWorker.getRegistrations()'), 'la recuperación de chunks stale no limpia PWA antes de recargar');

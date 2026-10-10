@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   chesscomGpuQualityProfile,
+  chesscomSurfaceGrainDensity,
   chesscomPremiumMissOffset,
   chesscomPremiumRoundPattern,
 } from './chesscomBabylonGpu.js';
@@ -44,5 +45,14 @@ describe('Chesscom premium ballistics', () => {
     expect(a).not.toEqual(c);
     expect(Math.hypot(a.x, a.z)).toBeGreaterThanOrEqual(.62);
     expect(Math.hypot(a.x, a.z)).toBeLessThanOrEqual(1.2);
+  });
+});
+
+describe('Chesscom canonical surface grain', () => {
+  it('keeps readable wet industrial ground without aggressive pixel speckling', () => {
+    expect(chesscomSurfaceGrainDensity('grit')).toBeLessThan(chesscomSurfaceGrainDensity('metal'));
+    expect(chesscomSurfaceGrainDensity('asphalt')).toBeLessThan(chesscomSurfaceGrainDensity('fabric'));
+    expect(chesscomSurfaceGrainDensity('concrete')).toBeLessThan(.02);
+    expect(chesscomSurfaceGrainDensity('fabric')).toBeGreaterThan(.04);
   });
 });

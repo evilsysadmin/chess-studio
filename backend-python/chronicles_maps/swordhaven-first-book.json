@@ -1,0 +1,513 @@
+{
+  "id": "swordhaven-first-book",
+  "version": 1,
+  "progressionKey": "campaign-swordhaven-first-book-v1",
+  "title": "Swordhaven",
+  "regionKind": "settlement",
+  "layoutMode": "authored",
+  "grid": [
+    "###################",
+    "#.................#",
+    "#.###.###.###.###.#",
+    "#.###.###.###.###.#",
+    "#.................#",
+    "#.##...........##.#",
+    "#.##...........##.#",
+    "#.##...........##.#",
+    "#.................#",
+    "#........#........#",
+    "#.................#",
+    "#.###.###.###.###.#",
+    "#.###.###.###.###.#",
+    "#.....###.........#",
+    "###################"
+  ],
+  "partyStart": {
+    "x": 9,
+    "y": 7,
+    "direction": 0
+  },
+  "initialFlags": {
+    "swordhavenArrived": true,
+    "campaignRouteV1": true
+  },
+  "enemies": [],
+  "triggers": [],
+  "interactables": [
+    {
+      "id": "sealed-order",
+      "kind": "lore",
+      "x": 7,
+      "y": 5,
+      "label": "El sobre de la Dama",
+      "when": [
+        {
+          "key": "commission-received",
+          "falsy": true
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "set",
+            "key": "commission-received",
+            "value": true
+          }
+        ],
+        "message": "Swordhaven: El sobre de la Dama.",
+        "journal": {
+          "id": "campaign-commission-received",
+          "title": "El sobre de la Dama",
+          "body": "Aldea de origen y centro de la primera expedición.",
+          "sigil": "✦"
+        }
+      }
+    },
+    {
+      "id": "first-book-missing-board",
+      "kind": "lore",
+      "x": 11,
+      "y": 9,
+      "label": "Aceptar encargo: estandarte perdido",
+      "when": [
+        {
+          "key": "missing-knights-notice",
+          "falsy": true
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "set",
+            "key": "missing-knights-notice",
+            "value": true
+          },
+          {
+            "type": "start-quest",
+            "questId": "banner-contract",
+            "title": "El estandarte perdido",
+            "description": "Un explorador no regresó del Camino de los Estandartes.",
+            "objective": "Busca el estandarte cerca del mojón sin nombre.",
+            "order": 2
+          }
+        ],
+        "message": "El alguacil promete 18 monedas de oro por recuperar el estandarte de la patrulla.",
+        "journal": {
+          "id": "first-book-contract-accepted",
+          "title": "Encargo del alguacil",
+          "body": "El estandarte se perdió junto al mojón sin nombre, en el Camino de los Estandartes. Recompensa: 18 monedas de oro.",
+          "sigil": "✦"
+        }
+      }
+    },
+    {
+      "id": "first-book-banner-turn-in",
+      "kind": "quest",
+      "x": 11,
+      "y": 9,
+      "label": "Entregar estandarte y cobrar 18 oro",
+      "when": [
+        {
+          "questId": "banner-contract",
+          "questStatus": "active"
+        },
+        {
+          "itemId": "knight-banner"
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "claim-reward",
+            "rewardId": "swordhaven:banner-contract:v1",
+            "requirements": [
+              {
+                "questId": "banner-contract",
+                "questStatus": "active"
+              },
+              {
+                "itemId": "knight-banner"
+              }
+            ],
+            "effects": [
+              {
+                "type": "consume-item",
+                "itemId": "knight-banner",
+                "quantity": 1
+              },
+              {
+                "type": "complete-quest",
+                "questId": "banner-contract",
+                "objective": "Encargo completado: estandarte entregado."
+              },
+              {
+                "type": "grant-gold",
+                "amount": 18
+              }
+            ]
+          }
+        ],
+        "message": "El alguacil cuenta dieciocho monedas. Matthias apunta que el trabajo honrado también paga impuestos imaginarios.",
+        "journal": {
+          "id": "first-book-banner-reward",
+          "title": "Contrato saldado",
+          "body": "Estandarte recuperado y entregado en Swordhaven. La compañía ha recibido 18 monedas de oro.",
+          "sigil": "◆"
+        }
+      }
+    },
+    {
+      "id": "first-book-quartermaster",
+      "kind": "merchant",
+      "x": 15,
+      "y": 10,
+      "label": "Comprar raciones de viaje · 7 oro",
+      "lockedLabel": "Raciones · necesitas 7 oro",
+      "requirements": [
+        {
+          "itemId": "crown-gold",
+          "quantity": 7,
+          "message": "El intendente exige siete monedas de oro. La caridad no figura en su inventario."
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "exchange-item",
+            "costItemId": "crown-gold",
+            "costQuantity": 7,
+            "itemId": "road-rations",
+            "name": "Raciones de viaje",
+            "description": "Provisiones para futuras incursiones; aún no son un consumible de combate.",
+            "quantity": 1
+          }
+        ],
+        "message": "El intendente entrega raciones de campaña. Siete monedas menos en la bolsa."
+      },
+      "visualType": "building-store"
+    },
+    {
+      "id": "first-book-healer",
+      "kind": "service",
+      "x": 7,
+      "y": 10,
+      "label": "Taberna · descansar y curar · 5 oro",
+      "lockedLabel": "Taberna · necesitas 5 oro",
+      "requirements": [
+        {
+          "itemId": "crown-gold",
+          "quantity": 5,
+          "message": "La posadera no ofrece crédito a los héroes, por muy heroicos que parezcan."
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "consume-item",
+            "itemId": "crown-gold",
+            "quantity": 5
+          },
+          {
+            "type": "heal-party",
+            "amount": 6
+          },
+          {
+            "type": "refill-class-abilities"
+          }
+        ],
+        "message": "La compañía descansa en la taberna de La Espada Mellada. Heridas tratadas y fuerzas renovadas."
+      },
+      "visualType": "building-tavern"
+    },
+    {
+      "id": "first-book-weaponsmith",
+      "kind": "merchant",
+      "x": 7,
+      "y": 4,
+      "label": "Armero · sable de la guardia (12 oro)",
+      "lockedLabel": "Armero · faltan 12 monedas",
+      "requirements": [
+        {
+          "itemId": "crown-gold",
+          "quantity": 12,
+          "message": "El armero pide doce monedas. El acero templado no crece en las cunetas."
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "exchange-item",
+            "costItemId": "crown-gold",
+            "costQuantity": 12,
+            "itemId": "roadwatch-sabre",
+            "name": "Sable de la guardia",
+            "description": "Arma equipada: +2 daño para Matthias o Hildegard.",
+            "quantity": 1
+          }
+        ],
+        "message": "Compras un sable de guardia. Abre una ficha de personaje para equiparlo. La mochila no aumenta el daño."
+      },
+      "visualType": "building-forge"
+    },
+    {
+      "id": "first-book-armorer",
+      "kind": "merchant",
+      "x": 11,
+      "y": 4,
+      "label": "Coracero · jubón de la guardia (9 oro)",
+      "lockedLabel": "Coracero · faltan 9 monedas",
+      "requirements": [
+        {
+          "itemId": "crown-gold",
+          "quantity": 9,
+          "message": "Nueve monedas por el jubón. Tu sonrisa no cuenta como pago."
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "exchange-item",
+            "costItemId": "crown-gold",
+            "costQuantity": 9,
+            "itemId": "roadwatch-vest",
+            "name": "Jubón de guardia",
+            "description": "Armadura equipada: reduce en 1 el daño recibido.",
+            "quantity": 1
+          }
+        ],
+        "message": "El coracero entrega un jubón de guardia. Hasta equiparlo en la ficha, no protege a nadie."
+      },
+      "visualType": "building-armor"
+    },
+    {
+      "id": "first-book-temple",
+      "kind": "lore",
+      "x": 14,
+      "y": 6,
+      "visualType": "building-temple",
+      "label": "Templo · hablar con la sacerdotisa Ilse",
+      "when": [
+        {
+          "key": "swordhaven-temple-visited",
+          "falsy": true
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "set",
+            "key": "swordhaven-temple-visited",
+            "value": true
+          },
+          {
+            "type": "start-quest",
+            "questId": "weaver-silk",
+            "title": "Seda para las vendas",
+            "description": "El templo se ha quedado sin vendas para los heridos del Camino.",
+            "objective": "Consigue seda de la tejedora gigante de Rookwood y llévala al templo.",
+            "order": 30
+          }
+        ],
+        "message": "La sacerdotisa Ilse enciende una vela por los caballeros perdidos. «Me quedan pocas vendas. En Rookwood anida una tejedora; su seda es la mejor. ¿Me traerías un ovillo?»",
+        "journal": {
+          "id": "first-book-temple",
+          "title": "La sacerdotisa Ilse",
+          "body": "Ilse necesita seda de la tejedora gigante de Rookwood para hacer vendas. Ofrece oro y la bendición del templo.",
+          "sigil": "☼"
+        }
+      }
+    },
+    {
+      "id": "first-book-temple-reward",
+      "kind": "quest",
+      "x": 14,
+      "y": 6,
+      "visualType": "building-temple",
+      "label": "Entregar la seda a la sacerdotisa Ilse",
+      "when": [
+        {
+          "questId": "weaver-silk",
+          "questStatus": "active"
+        },
+        {
+          "itemId": "weaver-silk"
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "claim-reward",
+            "rewardId": "swordhaven:weaver-silk:v1",
+            "requirements": [
+              {
+                "questId": "weaver-silk",
+                "questStatus": "active"
+              },
+              {
+                "itemId": "weaver-silk"
+              }
+            ],
+            "effects": [
+              {
+                "type": "consume-item",
+                "itemId": "weaver-silk",
+                "quantity": 1
+              },
+              {
+                "type": "complete-quest",
+                "questId": "weaver-silk",
+                "objective": "Side quest completada: el templo tiene vendas."
+              },
+              {
+                "type": "grant-gold",
+                "amount": 8
+              }
+            ]
+          },
+          {
+            "type": "heal-party",
+            "amount": 6
+          }
+        ],
+        "message": "Ilse teje vendas a la luz de las velas y bendice a la compañía. Ocho monedas y las heridas, cerradas.",
+        "journal": {
+          "id": "first-book-temple-reward",
+          "title": "Vendas de seda",
+          "body": "El templo de Swordhaven ya tiene vendas. Ilse pagó 8 monedas y curó a la compañía.",
+          "sigil": "☼"
+        }
+      }
+    },
+    {
+      "id": "first-book-watch-house",
+      "kind": "lore",
+      "x": 4,
+      "y": 6,
+      "visualType": "building-watch",
+      "label": "Cuartel · hablar con el sargento Brask",
+      "when": [
+        {
+          "key": "swordhaven-watch-visited",
+          "falsy": true
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "set",
+            "key": "swordhaven-watch-visited",
+            "value": true
+          },
+          {
+            "type": "start-quest",
+            "questId": "road-bandits",
+            "title": "Bandidos del Camino",
+            "description": "Desertores armados asaltan a los viajeros en el Camino de los Estandartes.",
+            "objective": "Derrota al bandido desertor y a Garrah, su jefe, en el Camino de los Estandartes.",
+            "order": 20
+          }
+        ],
+        "message": "El sargento Brask golpea el mapa: «Desertores en el Camino. Su jefe, Garrah, acampa al suroeste. Tráeme la paz del Camino y te pagaré doce monedas». Añade en voz baja que en Rookwood hablan de huesos que caminan.",
+        "journal": {
+          "id": "first-book-watch-quest",
+          "title": "Encargo del sargento Brask",
+          "body": "Derrota al bandido desertor y a Garrah, jefe de los desertores, en el Camino de los Estandartes. Recompensa: 12 monedas de oro.",
+          "sigil": "◆"
+        }
+      }
+    },
+    {
+      "id": "first-book-watch-reward",
+      "kind": "quest",
+      "x": 4,
+      "y": 6,
+      "visualType": "building-watch",
+      "label": "Informar al sargento Brask y cobrar 12 oro",
+      "when": [
+        {
+          "questId": "road-bandits",
+          "questStatus": "active"
+        },
+        {
+          "key": "bannerRoadDeserterDefeated",
+          "truthy": true
+        },
+        {
+          "key": "bannerRoadCaptainDefeated",
+          "truthy": true
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "claim-reward",
+            "rewardId": "swordhaven:road-bandits:v1",
+            "requirements": [
+              {
+                "questId": "road-bandits",
+                "questStatus": "active"
+              },
+              {
+                "key": "bannerRoadDeserterDefeated",
+                "truthy": true
+              },
+              {
+                "key": "bannerRoadCaptainDefeated",
+                "truthy": true
+              }
+            ],
+            "effects": [
+              {
+                "type": "complete-quest",
+                "questId": "road-bandits",
+                "objective": "Side quest completada: el Camino está limpio."
+              },
+              {
+                "type": "grant-gold",
+                "amount": 12
+              }
+            ]
+          }
+        ],
+        "message": "Brask cuenta doce monedas sobre la mesa del cuartel. «Garrah tenía precio. Ahora tú tienes fama».",
+        "journal": {
+          "id": "first-book-watch-reward",
+          "title": "El Camino, en paz",
+          "body": "El sargento Brask ha pagado 12 monedas por acabar con los desertores del Camino.",
+          "sigil": "◆"
+        }
+      }
+    }
+  ],
+  "treasures": [],
+  "traps": [],
+  "exits": [
+    {
+      "id": "to-first-book-banner-road",
+      "kind": "exit",
+      "x": 9,
+      "y": 1,
+      "requiresReturn": true,
+      "openLabel": "Salir al Camino de los Estandartes",
+      "lockedLabel": "El paso está sellado",
+      "requirements": [],
+      "action": {
+        "effects": [
+          {
+            "type": "transition-map",
+            "mapId": "banner-road-first-book",
+            "entryExitId": "to-first-book-swordhaven"
+          }
+        ],
+        "message": "La compañía llega a Camino de los Estandartes."
+      }
+    }
+  ],
+  "initialJournal": {
+    "id": "first-book-swordhaven",
+    "title": "Swordhaven",
+    "body": "La plaza de la fuente, el tablón de encargos, la taberna, el templo y los comerciantes te esperan. El Camino de los Estandartes queda al norte.",
+    "sigil": "I"
+  },
+  "introMessage": "Swordhaven. La Dama ha pedido noticias de sus caballeros; el tablón de la plaza ofrece la primera pista."
+}

@@ -1462,3 +1462,15 @@ body:has([data-chronicles="true"]) .navigation-back-hint {
   .chronicles-initiative-rail ol { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .chronicles-initiative-rail li:nth-child(n + 3) { display: none; }
 }
+
+/* Portrait first-person HUD: the objective should be readable without opening
+   an overlay. Limit it to two lines so the party row retains its touch space. */
+@media (max-width: 520px) {
+  .chronicles-statusbar > span:nth-child(4) b {
+    white-space: normal;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-height: 1.15;
+  }
+}
