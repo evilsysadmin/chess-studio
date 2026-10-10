@@ -8,26 +8,29 @@ export function chesscomDepthToneProfile(tier='ultra') {
   if(tier==='balanced') return Object.freeze({
     warmScale:.90,
     bounceScale:.88,
+    fillScale:1,
     contrastMax:1.09,
     exposureMax:1.05,
     shadowMode:'blur',
     darkness:.22,
   });
   if(tier==='high') return Object.freeze({
-    warmScale:.78,
-    bounceScale:.84,
-    contrastMax:1.075,
-    exposureMax:1.035,
+    warmScale:.70,
+    bounceScale:.86,
+    fillScale:1.28,
+    contrastMax:1.065,
+    exposureMax:1.085,
     shadowMode:'pcf',
-    darkness:.25,
+    darkness:.34,
   });
   return Object.freeze({
-    warmScale:.72,
-    bounceScale:.82,
-    contrastMax:1.065,
-    exposureMax:1.025,
+    warmScale:.58,
+    bounceScale:.88,
+    fillScale:1.52,
+    contrastMax:1.055,
+    exposureMax:1.08,
     shadowMode:'pcss',
-    darkness:.27,
+    darkness:.39,
   });
 }
 
@@ -81,9 +84,11 @@ export function installChesscomDepthToneV10(B,scene,{tier='ultra',host=null}={})
     const name=String(light?.name || '');
     const isMainWarm=name==='warm-a'||name==='warm-b';
     const isBounce=name.startsWith('environment-v4-bounce-warm-');
-    if(!isMainWarm && !isBounce) continue;
+    const isFill=name==='environment-v4-contact-fill';
+    if(!isMainWarm && !isBounce && !isFill) continue;
     lightSnapshots.set(light,snapshotLight(light));
-    light.intensity*=isMainWarm?profile.warmScale:profile.bounceScale;
+    // Lift the neutral bounce instead of washing the scene with extra exposure.
+    light.intensity*=isFill?profile.fillScale:isMainWarm?profile.warmScale:profile.bounceScale;
   }
 
   if(shadow){
