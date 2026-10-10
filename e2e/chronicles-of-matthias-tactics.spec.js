@@ -154,7 +154,15 @@ test('Chronicles Tactics · la ficha pausa locomoción continua', async ({ page 
 });
 
 test('Chronicles Tactics · arranca como RPG táctico isométrico · exploración a combate', async ({ page }) => {
-  test.setTimeout(120_000);
+  // Software-WebGL runners spend most of the old 120 s budget opening the
+  // scene; the combat assertions below need their own headroom.
+  test.setTimeout(180_000);
+  // Deterministic initiative: identical d8 rolls leave authored AGI in charge,
+  // so the run no longer depends on how many rounds the dice take before an
+  // enemy reaches the party (same contract as the first-person crypt canary).
+  await page.addInitScript(() => {
+    Math.random = () => 0.5;
+  });
   await openTactics(page);
   const mode = page.locator('[data-chronicles-tactics="true"]');
   await expect(mode.locator('[data-chronicles-tactics-renderer="three"] canvas')).toHaveCount(1, { timeout: 30_000 });
