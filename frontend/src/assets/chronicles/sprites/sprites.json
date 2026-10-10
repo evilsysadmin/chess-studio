@@ -4,7 +4,9 @@
       "idle-a",
       "idle-b",
       "menace",
-      "hurt"
+      "attack",
+      "hurt",
+      "dead"
     ],
     "framePx": 384
   },
@@ -12,7 +14,8 @@
     "frames": [
       "idle-a",
       "idle-b",
-      "speak"
+      "speak",
+      "grateful"
     ],
     "framePx": 384
   }

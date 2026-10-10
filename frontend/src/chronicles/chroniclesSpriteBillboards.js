@@ -17,12 +17,17 @@ export function chroniclesHasSpriteBillboard(visualType) {
   return Boolean(SPRITES[visualType] && spriteManifest[visualType]?.frames?.length);
 }
 
-export function chroniclesSpriteFrameIndex(frames, { time = 0, hurt = false, menace = false, speaking = false, idleFps = 2 } = {}) {
-  const find = (id) => frames.indexOf(id);
-  if (hurt && find('hurt') >= 0) return find('hurt');
-  if (menace && find('menace') >= 0) return find('menace');
-  if (speaking && find('speak') >= 0) return find('speak');
-  const idle = ['idle-a', 'idle-b'].map(find).filter((index) => index >= 0);
+// Cue priority: dead > hurt > attack > menace > grateful > speak > idle.
+export function chroniclesSpriteFrameIndex(frames, {
+  time = 0, dead = false, hurt = false, attacking = false, menace = false,
+  grateful = false, speaking = false, idleFps = 2,
+} = {}) {
+  const pick = [
+    [dead, 'dead'], [hurt, 'hurt'], [attacking, 'attack'], [menace, 'menace'],
+    [grateful, 'grateful'], [speaking, 'speak'],
+  ].find(([on, id]) => on && frames.includes(id));
+  if (pick) return frames.indexOf(pick[1]);
+  const idle = ['idle-a', 'idle-b'].map((id) => frames.indexOf(id)).filter((index) => index >= 0);
   if (!idle.length) return 0;
   return idle[Math.floor(Math.max(0, time) * idleFps) % idle.length];
 }
@@ -80,6 +85,9 @@ export function buildChroniclesSpriteBillboard(visualType, { tint = 0xffffff } =
   group.userData.chroniclesBillboard = { visualType, frames, sprite };
   group.userData.updateChroniclesSprite = (time, cues = {}) => {
     showFrame(chroniclesSpriteFrameIndex(frames, { ...cues, time, idleFps: spec.idleFps }));
+  };
+  group.userData.setChroniclesSpriteOpacity = (opacity) => {
+    material.opacity = Math.max(0, Math.min(1, opacity));
   };
   group.userData.chroniclesDispose = () => {
     texture.dispose();

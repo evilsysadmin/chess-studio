@@ -616,6 +616,7 @@ export function createChroniclesOfMatthiasGame(host, {
   let attackFxStartedAt = -1;
   let attackFxConfig = ATTACK_FX.matthias;
   const enemyHitStartedAt = new Map();
+  const enemyAttackStartedAt = new Map();
   const enemyDeathStartedAt = new Map();
   const enemyMoveStartedAt = new Map();
   const enemyMoveFrom = new Map();
@@ -639,6 +640,9 @@ export function createChroniclesOfMatthiasGame(host, {
       const previousHp = previousState?.[enemyDefinition.hpKey];
       const nextHp = state[enemyDefinition.hpKey];
       if (previousHp != null && nextHp < previousHp) enemyHitStartedAt.set(enemyDefinition.id, now);
+      const landedBlow = state.enemyTurnEvents !== previousState?.enemyTurnEvents
+        && (state.enemyTurnEvents || []).some((event) => event.type === 'attack' && event.enemyId === enemyDefinition.id && !event.missed);
+      if (landedBlow) enemyAttackStartedAt.set(enemyDefinition.id, now);
       if (!reducedMotion && previousHp > 0 && nextHp === 0) enemyDeathStartedAt.set(enemyDefinition.id, now);
     });
     desiredPosition = worldForCell(state.x, state.y, dungeon.sceneCenter);
@@ -667,6 +671,10 @@ export function createChroniclesOfMatthiasGame(host, {
       enemy.userData.chroniclesBaseYaw = chroniclesEnemyFacingYaw(currentCell, { x: state.x, y: state.y });
       if (reducedMotion) enemy.position.copy(target);
       enemy.visible = active && (hp > 0 || (!reducedMotion && deathStartedAt != null));
+      if (reducedMotion && enemy.userData.updateChroniclesSprite) {
+        const adjacent = Math.abs(currentCell.x - state.x) + Math.abs(currentCell.y - state.y) <= 1;
+        enemy.userData.updateChroniclesSprite(0, { menace: Boolean(adjacent || state.initiative) });
+      }
       const enemyGlow = enemy.userData.chroniclesGlowMaterials || [];
       enemyGlow.forEach((glow) => {
         const baseGlow = enemy.userData.chroniclesBaseGlow || 1.7;
@@ -694,6 +702,15 @@ export function createChroniclesOfMatthiasGame(host, {
     dungeon.contentProps.forEach((prop) => {
       const visual = contentVisualById.get(prop.id);
       prop.root.visible = Boolean(visual?.visible);
+      if (prop.root.userData.updateChroniclesSprite) {
+        const position = visual?.position;
+        prop.root.userData.chroniclesSpriteCues = {
+          grateful: Boolean(visual?.activated),
+          speaking: Boolean(position && Math.abs(position.x - state.x) + Math.abs(position.y - state.y) <= 1),
+        };
+        // Reduced motion: no idle loop, but the frame still tells the truth.
+        if (reducedMotion) prop.root.userData.updateChroniclesSprite(0, prop.root.userData.chroniclesSpriteCues);
+      }
       if (prop.activatedRoot) prop.activatedRoot.visible = Boolean(visual?.activated);
       if (prop.kind === 'lever' && prop.pivot) {
         prop.pivot.rotation.z = visual?.activated ? -0.86 : 0.48;
@@ -756,7 +773,7 @@ export function createChroniclesOfMatthiasGame(host, {
 
       dungeon.contentProps.forEach((prop) => {
         if (prop.root.visible && prop.root.userData.updateChroniclesSprite) {
-          prop.root.userData.updateChroniclesSprite(time + prop.phase);
+          prop.root.userData.updateChroniclesSprite(time + prop.phase, prop.root.userData.chroniclesSpriteCues);
         }
         if (!prop.root.visible || prop.kind !== 'pickup' || !prop.core) return;
         prop.core.rotation.y = time * 0.75 + prop.phase;
@@ -801,8 +818,10 @@ export function createChroniclesOfMatthiasGame(host, {
             const cell = latestState ? chroniclesEnemyPosition(latestState, enemyDefinition) : null;
             const adjacent = cell && latestState
               && Math.abs(cell.x - latestState.x) + Math.abs(cell.y - latestState.y) <= 1;
+            const attackElapsed = time - (enemyAttackStartedAt.get(enemyDefinition.id) ?? -10);
             enemy.userData.updateChroniclesSprite(time + index * 0.37, {
               hurt: hitElapsed >= 0 && hitElapsed < 0.42,
+              attacking: attackElapsed >= 0 && attackElapsed < 0.5,
               menace: Boolean(adjacent || latestState?.initiative),
             });
           }
@@ -813,7 +832,16 @@ export function createChroniclesOfMatthiasGame(host, {
           enemy.scale.setScalar(baseScale + hitKick * 0.07);
         } else if (active && deathStartedAt != null) {
           const deathElapsed = time - deathStartedAt;
-          if (deathElapsed < 0.5) {
+          if (enemy.userData.updateChroniclesSprite && deathElapsed < 0.9) {
+            // Billboards collapse into their own "dead" frame instead of
+            // shrinking geometry, then fade out of the cell.
+            enemy.visible = true;
+            enemy.userData.updateChroniclesSprite(time, { dead: true });
+            enemy.userData.setChroniclesSpriteOpacity?.(deathElapsed < 0.55 ? 1 : 1 - (deathElapsed - 0.55) / 0.35);
+            enemy.position.y = 0;
+            enemy.rotation.z = 0;
+            enemy.scale.setScalar(baseScale);
+          } else if (deathElapsed < 0.5) {
             enemy.visible = true;
             enemy.position.y = -Math.max(0, deathElapsed) * 1.45;
             enemy.rotation.z = Math.max(0, deathElapsed) * 1.4;

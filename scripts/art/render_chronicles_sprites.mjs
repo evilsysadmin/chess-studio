@@ -24,10 +24,20 @@ const SHEETS = [
   { id: 'rookwood-mourner', frames: EDDA_FRAMES, draw: eddaFrame },
 ];
 
-function sheetSvg({ frames, draw }) {
+// MM3-style palette banding (0 = smooth gradients). Each cell gets its own
+// id namespace so filters/gradients never leak between frames.
+const BANDS = Number(process.env.SPRITE_BANDS || 0);
+
+function scopeIds(svg, prefix) {
+  return svg
+    .replace(/id="([^"]+)"/g, `id="${prefix}-$1"`)
+    .replace(/url\(#([^)]+)\)/g, `url(#${prefix}-$1)`);
+}
+
+function sheetSvg({ id, frames, draw }) {
   const cells = frames.map((frame, index) => `
     <svg x="${index * FRAME_PX}" y="0" width="${FRAME_PX}" height="${FRAME_PX}" viewBox="0 0 256 256">
-      ${draw(frame)}
+      ${scopeIds(draw(frame, { bands: BANDS }), `${id}-${index}`)}
     </svg>`).join('');
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${frames.length * FRAME_PX}" height="${FRAME_PX}">${cells}</svg>`;
 }
@@ -51,7 +61,7 @@ for (const sheet of SHEETS) {
     canvas.width = image.width;
     canvas.height = image.height;
     canvas.getContext('2d').drawImage(image, 0, 0);
-    return canvas.toDataURL('image/webp', 0.9).split(',')[1];
+    return canvas.toDataURL('image/webp', 0.84).split(',')[1];
   }, png.toString('base64'));
   const file = path.join(outDir, `${sheet.id}.webp`);
   await writeFile(file, Buffer.from(webp, 'base64'));

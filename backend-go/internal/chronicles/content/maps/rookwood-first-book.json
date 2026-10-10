@@ -124,7 +124,13 @@
         }
       },
       "persistentVisual": true,
-      "visualFacing": 3
+      "visualFacing": 3,
+      "visualActivatedWhen": [
+        {
+          "key": "rookwoodNamesRestored",
+          "truthy": true
+        }
+      ]
     },
     {
       "id": "rookwood-plaque-hollow",

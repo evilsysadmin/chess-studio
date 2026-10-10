@@ -263,6 +263,6 @@ Any future haste/slow/surprise mechanic should modify the initiative contract ex
 ## 2.5D billboards (first-person, MM3 style)
 
 - First-person creatures and NPCs can be painted sprites that always face the camera, while walls, terrain and forest stay 3D. `buildChroniclesEnemyVisual(type, { sprites: true })` returns a billboard when a sheet exists and falls back to the procedural 3D model otherwise; Tactics never asks for sprites.
-- Sheets: one row of square frames (`idle-a`, `idle-b`, optional `menace`, `hurt`, `speak`) in `frontend/src/assets/chronicles/sprites/` plus `sprites.json`. The runtime picks hurt → menace (engaged/adjacent) → speak → alternating idle.
+- Sheets: one row of square frames (`idle-a`, `idle-b`, optional `menace`, `attack`, `hurt`, `dead`, `speak`, `grateful`) in `frontend/src/assets/chronicles/sprites/` plus `sprites.json`. Cue priority: dead → hurt → attack (a blow it just landed) → menace (engaged/adjacent) → grateful (the NPC entry's `visualActivatedWhen`) → speak (party adjacent) → alternating idle. Under reduced motion there is no idle loop, but state-driven frames still apply.
 - Source art is hand-authored vector code in `scripts/art/chronicles_sprites/*.mjs`, rendered deterministically with `node scripts/art/render_chronicles_sprites.mjs` (Chromium rasterizer → WebP). No image model is involved; regenerate the sheets whenever the source changes and review real in-game captures before accepting.
 - First slice: bone hound and Edda (Rookwood).
