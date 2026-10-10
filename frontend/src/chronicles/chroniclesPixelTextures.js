@@ -53,8 +53,6 @@ const SIZES = Object.freeze({
   grass: 64, masonry: 64, stucco: 32, timber: 32, roof: 32, cobble: 64, bark: 32, leaves: 32,
 });
 
-export const CHRONICLES_PIXEL_TEXTURE_KINDS = Object.freeze(Object.keys(RAMPS));
-
 // Returns a light value (≈0..1, dithered onto the ramp), SEAM (darkest ramp
 // colour, for mortar and gaps) or { color } for an off-ramp accent pixel.
 const SEAM = Object.freeze({ index: 0 });
