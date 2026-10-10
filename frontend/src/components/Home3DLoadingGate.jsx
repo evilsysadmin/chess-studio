@@ -7,7 +7,7 @@ import './Home3DLoadingGate.css';
 // adjacent-sibling selectors and diegetic click targets must keep working.
 export default function Home3DLoadingGate({ stageRef, onUseStaticHome }) {
   const [ready, setReady] = useState(false);
-  const [stalled, setStalled] = useState(false);
+  const [previewing, setPreviewing] = useState(false);
   const visibleRef = useRef(false);
   const onUseStaticHomeRef = useRef(onUseStaticHome);
   onUseStaticHomeRef.current = onUseStaticHome;
@@ -24,6 +24,11 @@ export default function Home3DLoadingGate({ stageRef, onUseStaticHome }) {
     let secondFrame = 0;
     let helpTimer = 0;
     let fallbackTimer = 0;
+    const showIllustration = () => {
+      if (cancelled || visibleRef.current) return;
+      stage.dataset.home3dPreview = 'painted';
+      setPreviewing(true);
+    };
     const clearRecovery = () => {
       window.clearTimeout(helpTimer);
       window.clearTimeout(fallbackTimer);
@@ -34,9 +39,7 @@ export default function Home3DLoadingGate({ stageRef, onUseStaticHome }) {
       if (fallbackTimer) return;
       // On a slow GPU users may immediately choose the pre-decoded illustration;
       // the same recovery applies after a later WebGL context loss.
-      helpTimer = window.setTimeout(() => {
-        if (!visibleRef.current) setStalled(true);
-      }, 6_000);
+      helpTimer = window.setTimeout(showIllustration, 6_000);
       fallbackTimer = window.setTimeout(() => {
         if (!visibleRef.current) onUseStaticHomeRef.current?.();
       }, 30_000);
@@ -55,6 +58,7 @@ export default function Home3DLoadingGate({ stageRef, onUseStaticHome }) {
         if (visibleRef.current) {
           visibleRef.current = false;
           setReady(false);
+          showIllustration();
         }
         return;
       }
@@ -70,8 +74,9 @@ export default function Home3DLoadingGate({ stageRef, onUseStaticHome }) {
             return;
           }
           visibleRef.current = true;
+          delete stage.dataset.home3dPreview;
           setReady(true);
-          setStalled(false);
+          setPreviewing(false);
           clearRecovery();
         });
       });
@@ -90,19 +95,14 @@ export default function Home3DLoadingGate({ stageRef, onUseStaticHome }) {
       observer.disconnect();
       cancelFrames();
       clearRecovery();
+      delete stage.dataset.home3dPreview;
     };
   }, [stageRef]);
 
-  if (ready || typeof document === 'undefined') return null;
+  if (ready || previewing || typeof document === 'undefined') return null;
   return createPortal(
     <div className="route-loading home-3d-loading" role="status" aria-live="polite" data-home-loading="waiting-for-frame">
       <span>LOADING</span>
-      {stalled && (
-        <div className="home-3d-loading__recovery">
-          <span>El castillo está tardando demasiado en prepararse.</span>
-          <button type="button" className="secondary-btn" onClick={onUseStaticHome}>Entrar con la imagen del castillo</button>
-        </div>
-      )}
     </div>,
     document.body,
   );
