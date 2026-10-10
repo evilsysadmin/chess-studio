@@ -1,0 +1,412 @@
+{
+  "id": "rookwood-first-book",
+  "version": 1,
+  "progressionKey": "campaign-rookwood-first-book-v1",
+  "title": "Rookwood · Los nombres del bosque",
+  "regionKind": "wilderness",
+  "layoutMode": "authored",
+  "grid": [
+    "#####################",
+    "#.....##.....#......#",
+    "#.##...#..##.#.###..#",
+    "#.##.......#......#.#",
+    "#....###.....##...#.#",
+    "##.....#..#.......#.#",
+    "#...##....#.###.....#",
+    "#.........#...#..##.#",
+    "#..#.###......#.....#",
+    "#..#...#..##.....#..#",
+    "#.##...#...#..##.#..#",
+    "#....#...#.......#..#",
+    "#.##.#.###..###.....#",
+    "#....#..............#",
+    "#####################"
+  ],
+  "partyStart": {
+    "x": 1,
+    "y": 7,
+    "direction": 1
+  },
+  "initialFlags": {},
+  "enemies": [
+    {
+      "id": "rookwood-hollow-hound",
+      "visualType": "bone-hound",
+      "name": "sabueso de los olvidados",
+      "explorationObjective": "Un sabueso de hueso ronda la última placa.",
+      "x": 17,
+      "y": 13,
+      "hpKey": "rookwoodHoundHp",
+      "maxHp": 5,
+      "retaliation": 1,
+      "optional": true,
+      "activation": "always",
+      "ai": {
+        "movement": "cardinal-roam",
+        "attackReach": 1,
+        "engagedMovement": "cardinal-chase",
+        "engageRange": 4
+      },
+      "blockingMessage": "El sabueso de hueso gruñe sobre la hojarasca. No va a dejarte pasar por las buenas.",
+      "onDefeat": {
+        "message": "{attacker} deshace al sabueso con {attack}. Entre sus costillas brillan cuatro monedas que alguien ya no podrá reclamar.",
+        "effects": [
+          {
+            "type": "set",
+            "key": "rookwoodHoundDefeated",
+            "value": true
+          },
+          {
+            "type": "grant-gold",
+            "amount": 4
+          }
+        ],
+        "journal": {
+          "id": "rookwood-hound-falls",
+          "title": "El sabueso de los olvidados",
+          "body": "La bestia que custodiaba la última placa cae. Llevaba cuatro monedas enredadas en los huesos.",
+          "sigil": "†"
+        }
+      },
+      "enemyBuild": {
+        "version": 1,
+        "archetype": "bone-hound",
+        "level": 1,
+        "attributes": {
+          "vigor": 1,
+          "power": 1,
+          "precision": 0,
+          "will": 0
+        },
+        "skills": [
+          "brutal-strike"
+        ]
+      }
+    }
+  ],
+  "triggers": [],
+  "interactables": [
+    {
+      "id": "rookwood-mourner",
+      "kind": "lore",
+      "visualType": "rookwood-mourner",
+      "x": 4,
+      "y": 7,
+      "label": "Hablar con Edda, la leñadora",
+      "when": [
+        {
+          "key": "rookwoodMournerMet",
+          "falsy": true
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "set",
+            "key": "rookwoodMournerMet",
+            "value": true
+          },
+          {
+            "type": "start-quest",
+            "questId": "names-in-wood",
+            "title": "Los nombres del bosque",
+            "description": "En Rookwood la gente olvida a sus muertos. Edda ya no recuerda el nombre de su hija.",
+            "objective": "Recupera tres placas con nombres y cuélgalas en el Roble del claro.",
+            "order": 3
+          }
+        ],
+        "message": "Edda aprieta un hacha sin filo: «Teníamos placas en el Roble. El bosque se las llevó y con ellas los nombres. Tráelas y quizá recuerde el de mi hija». Paga quince monedas.",
+        "journal": {
+          "id": "rookwood-quest-accepted",
+          "title": "Los nombres del bosque",
+          "body": "Edda pide recuperar tres placas con nombres y colgarlas en el Roble de los Nombres, en el claro central. Recompensa: 15 monedas de oro.",
+          "sigil": "❦"
+        }
+      },
+      "persistentVisual": true,
+      "visualFacing": 3
+    },
+    {
+      "id": "rookwood-plaque-hollow",
+      "kind": "lore",
+      "visualType": "name-plaque",
+      "x": 5,
+      "y": 3,
+      "label": "Recoger la placa del tocón",
+      "when": [
+        {
+          "questId": "names-in-wood",
+          "questStatus": "active"
+        },
+        {
+          "key": "rookwoodPlaqueHollow",
+          "falsy": true
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "set",
+            "key": "rookwoodPlaqueHollow",
+            "value": true
+          },
+          {
+            "type": "grant-item",
+            "itemId": "rookwood-name-plaque",
+            "name": "Placa con nombre",
+            "description": "Una tablilla de roble con un nombre tallado. Pertenece al Roble de los Nombres.",
+            "quantity": 1
+          },
+          {
+            "type": "advance-quest",
+            "questId": "names-in-wood",
+            "objective": "Reúne las tres placas y cuélgalas en el Roble del claro."
+          }
+        ],
+        "message": "Bajo un tocón hueco, una placa: «Aldric, que silbaba al podar». Una de tres.",
+        "journal": {
+          "id": "rookwood-plaque-hollow-found",
+          "title": "Primera placa",
+          "body": "«Aldric, que silbaba al podar». Hallada en un tocón hueco al norte del sendero.",
+          "sigil": "❦"
+        }
+      }
+    },
+    {
+      "id": "rookwood-plaque-thicket",
+      "kind": "lore",
+      "visualType": "name-plaque",
+      "x": 18,
+      "y": 1,
+      "label": "Recoger la placa de la espesura",
+      "when": [
+        {
+          "questId": "names-in-wood",
+          "questStatus": "active"
+        },
+        {
+          "key": "rookwoodPlaqueThicket",
+          "falsy": true
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "set",
+            "key": "rookwoodPlaqueThicket",
+            "value": true
+          },
+          {
+            "type": "grant-item",
+            "itemId": "rookwood-name-plaque",
+            "name": "Placa con nombre",
+            "description": "Una tablilla de roble con un nombre tallado. Pertenece al Roble de los Nombres.",
+            "quantity": 1
+          },
+          {
+            "type": "advance-quest",
+            "questId": "names-in-wood",
+            "objective": "Reúne las tres placas y cuélgalas en el Roble del claro."
+          }
+        ],
+        "message": "Entre zarzas, una placa: «Mirela, que contaba cuervos». El bosque la había enterrado a medias.",
+        "journal": {
+          "id": "rookwood-plaque-thicket-found",
+          "title": "Segunda placa",
+          "body": "«Mirela, que contaba cuervos». Arrancada de las zarzas del noreste.",
+          "sigil": "❦"
+        }
+      }
+    },
+    {
+      "id": "rookwood-plaque-den",
+      "kind": "lore",
+      "visualType": "name-plaque",
+      "x": 19,
+      "y": 13,
+      "label": "Recoger la placa de la madriguera",
+      "when": [
+        {
+          "questId": "names-in-wood",
+          "questStatus": "active"
+        },
+        {
+          "key": "rookwoodPlaqueDen",
+          "falsy": true
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "set",
+            "key": "rookwoodPlaqueDen",
+            "value": true
+          },
+          {
+            "type": "grant-item",
+            "itemId": "rookwood-name-plaque",
+            "name": "Placa con nombre",
+            "description": "Una tablilla de roble con un nombre tallado. Pertenece al Roble de los Nombres.",
+            "quantity": 1
+          },
+          {
+            "type": "advance-quest",
+            "questId": "names-in-wood",
+            "objective": "Reúne las tres placas y cuélgalas en el Roble del claro."
+          }
+        ],
+        "message": "En la madriguera del sabueso, una placa pequeña: «Ilse, siete inviernos». Edda la reconocerá.",
+        "journal": {
+          "id": "rookwood-plaque-den-found",
+          "title": "Tercera placa",
+          "body": "«Ilse, siete inviernos». Recuperada de la madriguera del sudeste.",
+          "sigil": "❦"
+        }
+      }
+    },
+    {
+      "id": "rookwood-name-oak",
+      "kind": "lore",
+      "visualType": "name-oak",
+      "x": 16,
+      "y": 5,
+      "label": "Colgar las placas en el Roble de los Nombres",
+      "lockedLabel": "Roble de los Nombres · faltan placas",
+      "when": [
+        {
+          "questId": "names-in-wood",
+          "questStatus": "active"
+        },
+        {
+          "key": "rookwoodNamesRestored",
+          "falsy": true
+        }
+      ],
+      "requirements": [
+        {
+          "itemId": "rookwood-name-plaque",
+          "quantity": 3,
+          "message": "Del Roble cuelgan cordeles vacíos. Faltan placas; los nombres no vuelven a medias."
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "claim-reward",
+            "rewardId": "rookwood:names-in-wood:v1",
+            "requirements": [
+              {
+                "questId": "names-in-wood",
+                "questStatus": "active"
+              },
+              {
+                "itemId": "rookwood-name-plaque",
+                "quantity": 3
+              }
+            ],
+            "effects": [
+              {
+                "type": "consume-item",
+                "itemId": "rookwood-name-plaque",
+                "quantity": 3
+              },
+              {
+                "type": "set",
+                "key": "rookwoodNamesRestored",
+                "value": true
+              },
+              {
+                "type": "complete-quest",
+                "questId": "names-in-wood",
+                "objective": "Encargo completado: los nombres vuelven al Roble."
+              },
+              {
+                "type": "grant-gold",
+                "amount": 15
+              }
+            ]
+          }
+        ],
+        "message": "Las tres placas vuelven a sus cordeles. El viento las hace sonar y, por un instante, todo Rookwood recuerda. Edda deja quince monedas al pie del Roble.",
+        "journal": {
+          "id": "rookwood-names-restored",
+          "title": "Los nombres vuelven",
+          "body": "Aldric, Mirela e Ilse cuelgan de nuevo en el Roble. Edda recuerda a su hija y paga 15 monedas de oro.",
+          "sigil": "❦"
+        }
+      },
+      "persistentVisual": true,
+      "visualActivatedWhen": [
+        {
+          "key": "rookwoodNamesRestored",
+          "truthy": true
+        }
+      ]
+    },
+    {
+      "id": "rookwood-mourner-thanks",
+      "kind": "lore",
+      "visualType": "rookwood-mourner-voice",
+      "x": 4,
+      "y": 7,
+      "label": "Hablar con Edda",
+      "when": [
+        {
+          "key": "rookwoodNamesRestored",
+          "truthy": true
+        },
+        {
+          "key": "rookwoodMournerThanked",
+          "falsy": true
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "set",
+            "key": "rookwoodMournerThanked",
+            "value": true
+          }
+        ],
+        "message": "«Ilse», dice Edda, y lo repite para no perderlo. «Si buscáis al Rey, la cripta de las ocho casillas está tras el bosque. Allí también se olvidan cosas».",
+        "journal": {
+          "id": "rookwood-mourner-thanks",
+          "title": "Ilse",
+          "body": "Edda recuerda a su hija. Señala la cripta de las ocho casillas, más allá de Rookwood.",
+          "sigil": "✦"
+        }
+      }
+    }
+  ],
+  "treasures": [],
+  "traps": [],
+  "exits": [
+    {
+      "id": "to-rookwood-banner-road",
+      "kind": "exit",
+      "x": 1,
+      "y": 7,
+      "requiresReturn": true,
+      "openLabel": "Volver al Camino de los Estandartes",
+      "lockedLabel": "El paso está sellado",
+      "requirements": [],
+      "action": {
+        "effects": [
+          {
+            "type": "transition-map",
+            "mapId": "banner-road-first-book",
+            "entryExitId": "to-banner-road-rookwood"
+          }
+        ],
+        "message": "La compañía regresa al Camino de los Estandartes."
+      }
+    }
+  ],
+  "initialJournal": {
+    "id": "first-book-rookwood",
+    "title": "Rookwood",
+    "body": "Un bosque espeso al oeste del Camino. Sus aldeanos olvidan a quienes pierden.",
+    "sigil": "III"
+  },
+  "introMessage": "Rookwood. Los robles crecen tan juntos que el camino se pierde. Una leñadora espera junto al sendero."
+}

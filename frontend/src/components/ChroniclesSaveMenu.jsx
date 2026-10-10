@@ -7,6 +7,7 @@ function expeditionArea(save) {
     case 'swordhaven-campaign':
     case 'swordhaven-first-book': return 'Swordhaven';
     case 'banner-road-first-book': return 'Camino de los Estandartes';
+    case 'rookwood-first-book': return 'Rookwood';
     case 'crypt-eight-squares': return 'Cripta de las Ocho Casillas';
     default: return 'Expedición en curso';
   }

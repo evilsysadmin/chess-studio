@@ -5,3 +5,17 @@
 @media (max-width:520px){.chronicles-journal summary small{display:none}.chronicles-journal summary>span{display:flex;align-items:center}.chronicles-journal summary i{margin-right:2px}.chronicles-journal ol{max-height:155px}}
 
 @media (hover:hover){.chronicles-journal summary:hover{background:linear-gradient(90deg,rgba(92,57,25,.16),transparent 72%)}}
+
+/* Quest log lives inside the expedition journal: one scroll surface. */
+.chronicles-journal__body{max-height:230px;overflow:auto;scrollbar-width:thin}.chronicles-journal__body>ol{max-height:none;overflow:visible}
+.chronicles-quest-log{padding:9px 12px 2px}.chronicles-quest-log h3{margin:0 0 6px;font:600 .58rem/1 Georgia,serif;letter-spacing:.16em;text-transform:uppercase;color:#9e8159}
+.chronicles-quest-log ul{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.chronicles-quest-log__quest{display:grid;grid-template-columns:28px 1fr;gap:9px;align-items:start;padding:8px 9px;border:1px solid rgba(214,170,96,.2);border-left:2px solid rgba(226,177,92,.62);background:linear-gradient(90deg,rgba(96,62,28,.2),rgba(8,7,5,.42))}
+.chronicles-quest-log__quest>span{display:grid;place-items:center;min-height:28px;color:#e2b15c;font-size:.78rem}
+.chronicles-quest-log__quest small{display:block;font-size:.55rem;letter-spacing:.12em;text-transform:uppercase;color:#a88a5e}
+.chronicles-quest-log__quest strong{display:block;font-family:Georgia,serif;font-size:.82rem;color:#f0d9b2}
+.chronicles-quest-log__quest p{margin:2px 0 0;color:#c2b195;font-size:.7rem;line-height:1.42}
+.chronicles-quest-log__quest.is-main{border-left-color:#e9c27a}
+.chronicles-quest-log__quest.is-completed{border-left-color:rgba(130,150,104,.55);opacity:.72}.chronicles-quest-log__quest.is-completed>span{color:#9fb07f}
+@media (max-width:800px){.chronicles-journal__body{max-height:180px}.chronicles-quest-log{padding:7px 9px 2px}.chronicles-quest-log__quest{padding:6px 7px}.chronicles-quest-log__quest p{font-size:.66rem}}
+@media (max-width:520px){.chronicles-journal__body{max-height:200px}}

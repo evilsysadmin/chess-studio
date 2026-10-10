@@ -269,6 +269,148 @@ for (const capture of [
   });
 }
 
+// Rookwood side quest «Los nombres del bosque»: real keyboard walk from the
+// Banner Road gate to Edda, the quest log, and the Oak of Names.
+const ROOKWOOD_WALK_TO_OAK = [
+  'ArrowUp', 'ArrowUp', 'ArrowUp', 'ArrowUp', 'ArrowUp', 'ArrowUp',
+  'ArrowLeft', 'ArrowUp', 'ArrowUp', 'ArrowUp',
+  'ArrowRight', 'ArrowUp', 'ArrowUp', 'ArrowUp',
+  'ArrowRight', 'ArrowUp',
+  'ArrowLeft', 'ArrowUp', 'ArrowUp', 'ArrowUp',
+];
+
+async function pressSequence(page, keys) {
+  for (const key of keys) {
+    await page.keyboard.press(key);
+    await page.waitForTimeout(240);
+  }
+}
+
+// New campaigns always start in Swordhaven. Walk the real route: north gate,
+// then the Banner Road's northern verge east and down to the Rookwood trail
+// (away from the optional deserter), arriving at Rookwood facing east.
+async function walkToRookwood(page, game) {
+  await expect(game).toHaveAttribute('data-chronicles-map-id', 'swordhaven-first-book', { timeout: 30_000 });
+  await pressSequence(page, Array(6).fill('ArrowUp'));
+  await expect(game).toHaveAttribute('data-chronicles-map-id', 'banner-road-first-book', { timeout: 30_000 });
+  await pressSequence(page, ['ArrowRight', ...Array(9).fill('ArrowUp'), 'ArrowRight', ...Array(9).fill('ArrowUp')]);
+  await expect(game).toHaveAttribute('data-chronicles-map-id', 'rookwood-first-book', { timeout: 30_000 });
+  await expect(game).toHaveAttribute('data-chronicles-phase', 'explore');
+}
+
+for (const capture of [
+  { label: 'desktop-1440x900', width: 1440, height: 900, touch: false },
+  { label: 'android-390x844', width: 390, height: 844, touch: true },
+]) {
+  test(`Chronicles · Rookwood side quest walk · ${capture.label}`, async ({ browser }) => {
+    test.setTimeout(300_000);
+    await mkdir(ARTIFACT_DIR, { recursive: true });
+    const context = await browser.newContext({
+      viewport: { width: capture.width, height: capture.height },
+      hasTouch: capture.touch,
+      isMobile: capture.touch,
+    });
+    const page = await context.newPage();
+    try {
+      await openChronicles(page, `rookwood-${capture.label}`, {
+        newTown: true, newCampaign: true, chroniclesCurrentMapId: 'swordhaven-first-book',
+      });
+      const game = page.locator('[data-chronicles="true"]');
+      await expect(game.locator('[data-chronicles-renderer="three"] canvas')).toBeVisible({ timeout: 30_000 });
+      await walkToRookwood(page, game);
+      await expect(game.locator('.chronicles-renderer-error')).toHaveCount(0);
+      await page.waitForTimeout(700);
+      await page.screenshot({
+        path: `${ARTIFACT_DIR}/chronicles-rookwood-arrival-${capture.label}.png`,
+        animations: 'disabled', timeout: 60_000,
+      });
+
+      await pressSequence(page, ['ArrowUp', 'ArrowUp', 'f']);
+      const quest = game.locator('[data-chronicles-quest-id="names-in-wood"]');
+      await expect(quest.first()).toHaveAttribute('data-chronicles-quest-status', 'active');
+      // Desktop keeps quests in the bottom journal; touch layouts carry them
+      // inside the floating chronicle.
+      const questToggle = capture.touch ? game.locator('.chronicles-dm-trigger') : game.locator('.chronicles-journal summary');
+      const visibleQuest = capture.touch ? game.locator('.chronicles-dm-quests [data-chronicles-quest-id="names-in-wood"]') : game.locator('.chronicles-journal [data-chronicles-quest-id="names-in-wood"]');
+      await questToggle.evaluate((node) => node.click());
+      await expect(visibleQuest).toBeVisible();
+      const health = await captureChroniclesHealth(page);
+      expect(health.horizontalOverflow).toBe(false);
+      await page.screenshot({
+        path: `${ARTIFACT_DIR}/chronicles-rookwood-quest-log-${capture.label}.png`,
+        animations: 'disabled', timeout: 60_000,
+      });
+      await questToggle.evaluate((node) => node.click());
+
+      await pressSequence(page, ROOKWOOD_WALK_TO_OAK);
+      await expect(game).toHaveAttribute('data-chronicles-phase', 'explore');
+      await page.waitForTimeout(500);
+      await page.screenshot({
+        path: `${ARTIFACT_DIR}/chronicles-rookwood-name-oak-${capture.label}.png`,
+        animations: 'disabled', timeout: 60_000,
+      });
+    } finally {
+      await context.close();
+    }
+  });
+}
+
+test('Chronicles · Rookwood restored Oak of Names · desktop-1440x900', async ({ browser }) => {
+  test.setTimeout(300_000);
+  await mkdir(ARTIFACT_DIR, { recursive: true });
+  const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+  const page = await context.newPage();
+  try {
+    await openChronicles(page, 'rookwood-restored-desktop', {
+      newTown: true,
+      newCampaign: true,
+      chroniclesCurrentMapId: 'swordhaven-first-book',
+      chroniclesWorldFlags: { rookwoodMournerMet: true, rookwoodNamesRestored: true },
+    });
+    const game = page.locator('[data-chronicles="true"]');
+    await walkToRookwood(page, game);
+    await pressSequence(page, ['ArrowUp', 'ArrowUp', ...ROOKWOOD_WALK_TO_OAK]);
+    await expect(game).toHaveAttribute('data-chronicles-phase', 'explore');
+    await page.waitForTimeout(500);
+    await page.screenshot({
+      path: `${ARTIFACT_DIR}/chronicles-rookwood-name-oak-restored-desktop-1440x900.png`,
+      animations: 'disabled', timeout: 60_000,
+    });
+  } finally {
+    await context.close();
+  }
+});
+
+test('Chronicles · Rookwood bone hound in the forest · desktop-1440x900', async ({ browser }) => {
+  test.setTimeout(300_000);
+  await mkdir(ARTIFACT_DIR, { recursive: true });
+  const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+  const page = await context.newPage();
+  try {
+    await openChronicles(page, 'rookwood-hound-desktop', {
+      newTown: true, newCampaign: true, chroniclesCurrentMapId: 'swordhaven-first-book',
+    });
+    const game = page.locator('[data-chronicles="true"]');
+    await walkToRookwood(page, game);
+    // Real walk through the clearing toward the den (13,13), facing east.
+    await pressSequence(page, [
+      ...Array(8).fill('ArrowUp'), 'ArrowRight', 'ArrowUp', 'ArrowUp', 'ArrowUp',
+      'ArrowLeft', 'ArrowUp', 'ArrowRight', 'ArrowUp', 'ArrowLeft', 'ArrowUp',
+      'ArrowRight', 'ArrowUp', 'ArrowUp', 'ArrowLeft', 'ArrowUp', 'ArrowUp',
+      // One more step enters the hound's engage range and starts initiative.
+      'ArrowUp',
+    ]);
+    await expect(game.locator('.chronicles-renderer-error')).toHaveCount(0);
+    await page.waitForTimeout(600);
+    await page.screenshot({
+      path: `${ARTIFACT_DIR}/chronicles-rookwood-hound-desktop-1440x900.png`,
+      animations: 'disabled', timeout: 60_000,
+    });
+  } finally {
+    await context.close();
+  }
+});
+
 test('Chronicles · First Book equipment sheet · actual Android 390px', async ({ browser }) => {
   test.setTimeout(300_000);
   await mkdir(ARTIFACT_DIR, { recursive: true });

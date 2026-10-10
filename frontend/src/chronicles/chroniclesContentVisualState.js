@@ -5,6 +5,7 @@ import {
 import {
   chroniclesContentEntries,
   chroniclesContentVisible,
+  chroniclesRequirementsMet,
 } from './chroniclesContentRuntime.js';
 
 const PERSISTENT_VISUAL_KINDS = new Set(['trigger', 'lever', 'exit']);
@@ -19,6 +20,11 @@ function controlledRequirementKeys(entry) {
 
 export function chroniclesContentActivated(state, entry) {
   if (!state || !entry) return false;
+  // Authored landmarks whose outcome lives inside an atomic reward (so it has
+  // no top-level `set`) declare their visual activation explicitly.
+  if (Array.isArray(entry.visualActivatedWhen)) {
+    return chroniclesRequirementsMet(state, entry.visualActivatedWhen);
+  }
   const controlledKeys = controlledRequirementKeys(entry);
   if (!controlledKeys.size) return false;
 
@@ -30,7 +36,9 @@ export function chroniclesContentActivated(state, entry) {
 
 export function chroniclesContentVisualVisible(state, entry) {
   if (!entry) return false;
-  if (PERSISTENT_VISUAL_KINDS.has(entry.kind)) return true;
+  // Landmarks (an NPC, a great tree) stay in the world after their
+  // interaction is spent; only their interaction availability changes.
+  if (PERSISTENT_VISUAL_KINDS.has(entry.kind) || entry.persistentVisual === true) return true;
   return chroniclesContentVisible(state, entry);
 }
 

@@ -251,3 +251,11 @@ Any future haste/slow/surprise mechanic should modify the initiative contract ex
 - **Misiones secundarias:** pueden ser mapas authored o dungeons procedurales con objetivos garantizados. La categoría híbrida (salas fijas con conexiones variables) es un objetivo futuro, no una capacidad ya terminada.
 - **Expediciones libres:** generación procedural con semilla persistida, variedad de amenazas, botín y dificultad; conservar los gates de conectividad y ausencia de blockers invisibles.
 - **Compatibilidad obligatoria:** ningún dungeon histórico cambia de modo automáticamente. Etiquetar manifests de campaña que ya tienen partidas activas cambiaría hashes/revisiones autoritativas y provocaría 409. La migración del tronco principal debe introducir versiones de mapa/ruta y restaurar la variante procedural para las runs anteriores.
+
+## Overworld quests, journal and landmarks (Rookwood slice)
+
+- The open world follows quests, not gates: on `settlement`/`wilderness` maps the HUD objective is the active quest with content on that map (else the first active quest), then any available quest giver's label, and only then the exit label.
+- Quest log: desktop shows «Encargos» inside the bottom expedition journal; touch layouts (where that journal is hidden) show the same list inside the floating «Crónica» panel. The story thread (`lost-king-prologue`) is labelled «Historia»; everything else is «Encargo secundario».
+- Authored visual hooks for overworld content (renderer-only, no gameplay effect): `visualType` (`name-plaque`, `name-oak`, `rookwood-mourner`; `rookwood-mourner-voice` has no body), `persistentVisual: true` keeps an NPC/landmark visible after its interaction is spent, `visualActivatedWhen` (requirements) drives an activated look when the outcome lives inside an atomic `claim-reward`, and `visualFacing` (0 N, 1 E, 2 S, 3 W) orients a character.
+- Overworld enemies are real bodies drawn from the shared enemy registry (they were previously invisible on exterior maps). A forest map (`rookwood-first-book`) dresses `#` cells as tree clumps and extends trees past the grid so gaps never show the void; collision is still only the grid.
+- Gates on the west/east map edge rotate 90° so their posts flank the road instead of blocking the arriving camera.
