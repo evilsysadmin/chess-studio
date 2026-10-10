@@ -44,7 +44,7 @@ test('Chesscom · abre la planta 17 con renderer Babylon real y HUD Dust Veil pr
   const mode = page.locator('[data-chesscom-poc="true"][data-chesscom-renderer="babylon"]');
   await expect(mode).toBeVisible();
   await expect(mode).toHaveAttribute('data-chesscom-visual', 'premium-v1');
-  await expect(mode.getByText('OPERATION: DUST VEIL', { exact: true })).toBeVisible();
+  await expect(mode.getByText('OPERACIÓN: DUST VEIL', { exact: true })).toBeVisible();
   await expect(mode.getByText('Kharif Outpost', { exact: true })).toBeVisible();
   await expect(mode.getByText('HK416 (Used)', { exact: true })).toBeVisible();
   await expect(mode.locator('.chesscom-economy strong')).toHaveText(/^(?:3400|3[.\u00a0\u202f ]400) cr$/);
@@ -79,7 +79,7 @@ test('Chesscom · abre la planta 17 con renderer Babylon real y HUD Dust Veil pr
   await expect(fireModes.getByRole('button', { name: 'Auto', exact: true })).toBeVisible();
   await fireModes.getByRole('button', { name: 'Ráfaga', exact: true }).click();
   await expect(fireModes.getByRole('button', { name: 'Ráfaga', exact: true })).toHaveAttribute('aria-pressed', 'true');
-  await expect(mode.locator('.chesscom-mission-badge strong')).toHaveText('SHOOT');
+  await expect(mode.locator('.chesscom-mission-badge strong')).toHaveText('DISPARAR');
 
   await mode.locator('.chesscom-squad-card').filter({ hasText: 'Sven' }).click();
   await expect(mode.getByRole('group', { name: 'Modo de disparo' }).getByRole('button', { name: 'Ráfaga', exact: true })).toHaveCount(0);
