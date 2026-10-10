@@ -99,6 +99,12 @@ Rechazar inmediatamente una iteración si Matthias flota, clippea de forma evide
 
 La prueba de éxito es simple: **debe parecer que Matthias vive allí**.
 
+### Klaus (gato) animado
+
+- `export_home_v2_runtime.py` agrupa los props estáticos por material; Klaus queda **fuera** de esos batches (`consolidate_klaus`): un nodo multi-material `HOME_PROP_cat_body` + tres landmarks (`HOME_PROP_cat_nose`, `HOME_PROP_cat_ear_inner_l/_r`). Antes se fundía en los batches de la sala y su animación no movía nada (sólo el colgante).
+- `prepareHomeBlenderKlausRig` respira con el rig (re-anclado al cojín) y hace soft-skin por vértice de cabeza y orejas a partir de los landmarks: un vistazo raro (cabeza arriba y giro, ~1/min) y flicks de oreja. Las patas delanteras y las piezas pequeñas (collar, colgante, ojos) no se estiran.
+- Sin landmarks (GLB antiguo) sólo respira. En SwiftShader/reduced-motion no se anima; para evidencia, forzar un `timeMs` en local sin commitear.
+
 ## GLTF / runtime traps
 
 Revisar explícitamente:

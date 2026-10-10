@@ -127,75 +127,118 @@ export function applyHomeBlenderMoonVisibility(root, ambient = 'day') {
 const HOME_BLENDER_KLAUS_PART = /^HOME_PROP_cat_/i;
 const HOME_BLENDER_KLAUS_STATIC = /^HOME_PROP_cat_(?:cushion|tassel)/i;
 
+// Klaus sleeps, but he is alive: a breath you can see, a lazy tail tip, the
+// odd ear flick and, once a minute or so, he lifts his head, glances at the
+// hall and settles back. Distances are in Blender metres (the cat is ~0.7 m).
 export const HOME_BLENDER_KLAUS_MOTION = Object.freeze({
-  breatheScale: 0.0045,
-  breatheLift: 0.003,
+  breathSeconds: 3.4,
+  // Chest rise as a fraction of the cat's height; the rig is re-grounded so
+  // the belly never sinks into the cushion.
+  breatheScale: 0.022,
+  breatheSpread: 0.007,
   settleX: 0.0025,
   settleZ: 0.0015,
   yaw: 0.0045,
   roll: 0.0025,
 });
 
-const HOME_BLENDER_KLAUS_TAIL_SEGMENT = /^HOME_PROP_cat_tail_seg_(\d+)$/i;
-const HOME_BLENDER_KLAUS_EAR = /^HOME_PROP_cat_ear_(?:inner_)?(?:l|r)$/i;
-const HOME_BLENDER_KLAUS_PAW = /^HOME_PROP_cat_paw_(?:l|r)$/i;
-
-export const HOME_BLENDER_KLAUS_PAW_MOTION = Object.freeze({
-  tuckY: 0.0018,
-  flexZ: 0.0012,
-});
-
-export const HOME_BLENDER_KLAUS_TAIL_MOTION = Object.freeze({
-  startIndex: 48,
-  endIndex: 55,
-  swingX: 0.0045,
-  swingZ: 0.0035,
+// Klaus ships as one node (HOME_PROP_cat_body, every material of the cat)
+// plus three landmarks that place his head and ear pivots; see
+// consolidate_klaus in scripts/blender/export_home_v2_runtime.py.
+const HOME_BLENDER_KLAUS_LANDMARK = Object.freeze({
+  nose: /^HOME_PROP_cat_nose$/i,
+  earL: /^HOME_PROP_cat_ear_inner_l$/i,
+  earR: /^HOME_PROP_cat_ear_inner_r$/i,
 });
 
 export const HOME_BLENDER_KLAUS_EAR_MOTION = Object.freeze({
-  twitchY: 0.0024,
-  twitchZ: 0.0015,
+  flickDeg: 22,
+  flickSeconds: 0.42,
+  // Each ear flicks on its own, mismatched clock.
+  periods: Object.freeze([13.7, 19.3]),
 });
 
-export function homeBlenderKlausTailWeight(name = '') {
-  const match = HOME_BLENDER_KLAUS_TAIL_SEGMENT.exec(String(name || ''));
-  if (!match) return 0;
-  const index = Number(match[1]);
-  const { startIndex, endIndex } = HOME_BLENDER_KLAUS_TAIL_MOTION;
-  if (!Number.isFinite(index) || index < startIndex) return 0;
-  if (index >= endIndex) return 1;
-  return (index - startIndex + 1) / (endIndex - startIndex + 1);
+// A rare wake moment: the head lifts off the paws, glances at the hall and
+// settles back down.
+export const HOME_BLENDER_KLAUS_HEAD_MOTION = Object.freeze({
+  periodSeconds: 58,
+  offsetSeconds: 9,
+  riseSeconds: 0.9,
+  holdSeconds: 2.6,
+  settleSeconds: 1.5,
+  lift: 0.022,
+  pitchDeg: 12,
+  yawDeg: 15,
+});
+
+// Head anatomy measured on the Blender builder (add_royal_cat): the ear
+// panels sit 0.144 apart, the head centre 0.112 behind the nose and 0.010
+// above it.
+const KLAUS_HEAD = Object.freeze({
+  earSpan: 0.144,
+  centerBack: 0.112,
+  centerUp: 0.01,
+  pivotBack: 0.045,
+  pivotDown: 0.035,
+  // Soft weight: full inside `inner`, none past `outer` (ears are reached by
+  // squashing the distance above the centre).
+  inner: 0.118,
+  outer: 0.178,
+  upSquash: 0.6,
+  earFrom: 0.045,
+  earTo: 0.085,
+  earLateralFrom: 0.018,
+  earLateralTo: 0.045,
+  // Only the ear lump itself: the hip is also high and to the side.
+  earReachFrom: 0.07,
+  earReachTo: 0.1,
+  // The front paws sit low and to the sides under the chin; they stay on
+  // the cushion while the head lifts off them.
+  pawLateralFrom: 0.04,
+  pawLateralTo: 0.065,
+  pawHeightFrom: -0.045,
+  pawHeightTo: -0.02,
+  // Pieces that fit around the head (collar, pendant, eye slits and mouth:
+  // one primitive per material) move rigidly with the weight at their centre
+  // instead of stretching across the falloff and the paw gate.
+  rigidRadius: 0.11,
+});
+
+function klausSmooth(value, from, to) {
+  if (to === from) return value >= to ? 1 : 0;
+  const t = Math.max(0, Math.min(1, (value - from) / (to - from)));
+  return t * t * (3 - 2 * t);
 }
 
-export function homeBlenderKlausTailPose(timeMs = 0, weight = 1) {
+// 0 asleep on the paws, 1 head up. Eased in and out; the glance swings from
+// one side to the other while he holds the head up.
+export function homeBlenderKlausHeadPose(timeMs = 0) {
+  const spec = HOME_BLENDER_KLAUS_HEAD_MOTION;
   const seconds = Math.max(0, Number(timeMs) || 0) / 1000;
-  const clampedWeight = Math.max(0, Math.min(1, Number(weight) || 0));
-  const slow = Math.sin(seconds * (Math.PI * 2 / 13.7) + 0.45);
-  const micro = Math.sin(seconds * (Math.PI * 2 / 5.3) + 1.7);
-  // A sleeping cat rests far longer than it moves. Two narrow, mismatched envelopes
-  // wake the existing tail-tip loop for brief asymmetric flicks, then let it settle.
-  const primaryFlick = Math.max(0, Math.sin(seconds * (Math.PI * 2 / 19.0) - 0.9)) ** 16;
-  const echoFlick = Math.max(0, Math.sin(seconds * (Math.PI * 2 / 29.0) + 2.1)) ** 22;
-  const activity = Math.min(1, primaryFlick + echoFlick * 0.45);
-  const sway = ((slow * 0.72) + (micro * 0.28)) * activity;
-  const curl = Math.sin(seconds * (Math.PI * 2 / 9.1) + 2.2) * activity;
+  const local = (((seconds - spec.offsetSeconds) % spec.periodSeconds) + spec.periodSeconds) % spec.periodSeconds;
+  const rise = klausSmooth(local, 0, spec.riseSeconds);
+  const holdEnd = spec.riseSeconds + spec.holdSeconds;
+  const settle = 1 - klausSmooth(local, holdEnd, holdEnd + spec.settleSeconds);
+  const up = Math.min(rise, settle);
+  const glance = Math.sin(Math.min(1, local / holdEnd) * Math.PI * 1.5 - Math.PI * 0.25);
   return {
-    offsetX: sway * HOME_BLENDER_KLAUS_TAIL_MOTION.swingX * clampedWeight,
-    offsetZ: curl * HOME_BLENDER_KLAUS_TAIL_MOTION.swingZ * clampedWeight,
+    up,
+    lift: up * spec.lift,
+    pitch: THREE.MathUtils.degToRad(up * spec.pitchDeg),
+    yaw: THREE.MathUtils.degToRad(up * glance * spec.yawDeg),
   };
 }
 
-export function homeBlenderKlausPawPose(timeMs = 0, weight = 1) {
+// Ear flick angle (radians, outwards) for ear 0 or 1. Ears perk a little while
+// the head is up.
+export function homeBlenderKlausEarPose(timeMs = 0, index = 0) {
+  const spec = HOME_BLENDER_KLAUS_EAR_MOTION;
   const seconds = Math.max(0, Number(timeMs) || 0) / 1000;
-  const clampedWeight = Math.max(0, Math.min(1, Number(weight) || 0));
-  // A rare sleeping reflex: long stillness, one soft tuck, then a weaker echo.
-  const primary = Math.max(0, Math.sin(seconds * (Math.PI * 2 / 37.0) - 1.35)) ** 24;
-  const echo = Math.max(0, Math.sin(seconds * (Math.PI * 2 / 53.0) + 2.6)) ** 30;
-  const activity = Math.min(1, primary + echo * 0.32);
-  return {
-    offsetY: activity * HOME_BLENDER_KLAUS_PAW_MOTION.tuckY * clampedWeight,
-    offsetZ: -activity * HOME_BLENDER_KLAUS_PAW_MOTION.flexZ * clampedWeight,
-  };
+  const period = spec.periods[index % spec.periods.length];
+  const local = ((seconds + index * 4.1) % period + period) % period;
+  const flick = local < spec.flickSeconds ? Math.sin((local / spec.flickSeconds) * Math.PI) : 0;
+  const perk = homeBlenderKlausHeadPose(timeMs).up * 0.35;
+  return THREE.MathUtils.degToRad(spec.flickDeg) * Math.max(flick, perk);
 }
 
 export function homeBlenderIsKlausPart(name = '') {
@@ -205,17 +248,210 @@ export function homeBlenderIsKlausPart(name = '') {
 
 export function homeBlenderKlausPose(timeMs = 0) {
   const seconds = Math.max(0, Number(timeMs) || 0) / 1000;
-  const breathe = Math.sin(seconds * (Math.PI * 2 / 5.8));
+  const motion = HOME_BLENDER_KLAUS_MOTION;
+  // Asymmetric breath: a quicker inhale, a longer, softer exhale.
+  const phase = (seconds / motion.breathSeconds) % 1;
+  const breath = phase < 0.4
+    ? klausSmooth(phase, 0, 0.4)
+    : 1 - klausSmooth(phase, 0.4, 1);
   const settle = Math.sin(seconds * (Math.PI * 2 / 17.0) + 0.8);
   const tinyShift = Math.sin(seconds * (Math.PI * 2 / 23.0) + 2.1);
   return {
-    scaleY: 1 + ((breathe + 1) * 0.5) * HOME_BLENDER_KLAUS_MOTION.breatheScale,
-    offsetY: ((breathe + 1) * 0.5) * HOME_BLENDER_KLAUS_MOTION.breatheLift,
-    offsetX: settle * HOME_BLENDER_KLAUS_MOTION.settleX,
-    offsetZ: tinyShift * HOME_BLENDER_KLAUS_MOTION.settleZ,
-    yaw: settle * HOME_BLENDER_KLAUS_MOTION.yaw,
-    roll: tinyShift * HOME_BLENDER_KLAUS_MOTION.roll,
+    breath,
+    scaleY: 1 + breath * motion.breatheScale,
+    scaleXZ: 1 + breath * motion.breatheSpread,
+    offsetX: settle * motion.settleX,
+    offsetZ: tinyShift * motion.settleZ,
+    yaw: settle * motion.yaw,
+    roll: tinyShift * motion.roll,
   };
+}
+
+const klausRodrigues = (point, pivot, axis, angle, out) => {
+  out.copy(point).sub(pivot).applyAxisAngle(axis, angle).add(pivot);
+  return out;
+};
+
+// Soft-skins Klaus's head and ears onto the single metaball body mesh and the
+// separate face pieces, in rig space. Returns null when the GLB lacks the eye
+// and ear landmarks (older exports): then he only breathes and sways.
+function prepareKlausHeadDeform(rig, parts) {
+  const byName = (pattern) => parts.find((part) => pattern.test(String(part.name || '')));
+  const nose = byName(HOME_BLENDER_KLAUS_LANDMARK.nose);
+  const ears = [byName(HOME_BLENDER_KLAUS_LANDMARK.earL), byName(HOME_BLENDER_KLAUS_LANDMARK.earR)];
+  if (!nose || ears.some((part) => !part)) return null;
+
+  rig.updateMatrixWorld(true);
+  const toRig = rig.matrixWorld.clone().invert();
+  const centerOf = (object) => new THREE.Box3().setFromObject(object).getCenter(new THREE.Vector3()).applyMatrix4(toRig);
+  const earCenters = ears.map(centerOf);
+  const scale = earCenters[0].distanceTo(earCenters[1]) / KLAUS_HEAD.earSpan;
+  if (!(scale > 1e-6)) return null;
+  const up = new THREE.Vector3(0, 1, 0).transformDirection(toRig);
+  const noseCenter = centerOf(nose);
+  const earsMid = earCenters[0].clone().add(earCenters[1]).multiplyScalar(0.5);
+  const forward = noseCenter.clone().sub(earsMid);
+  forward.addScaledVector(up, -forward.dot(up));
+  if (forward.lengthSq() < 1e-10) return null;
+  forward.normalize();
+  const center = noseCenter.clone()
+    .addScaledVector(forward, -KLAUS_HEAD.centerBack * scale)
+    .addScaledVector(up, KLAUS_HEAD.centerUp * scale);
+  const pivot = center.clone()
+    .addScaledVector(forward, -KLAUS_HEAD.pivotBack * scale)
+    .addScaledVector(up, -KLAUS_HEAD.pivotDown * scale);
+  const side = new THREE.Vector3().crossVectors(up, forward).normalize();
+  const earFrames = earCenters.map((earCenter) => {
+    const lateral = earCenter.clone().sub(center);
+    lateral.addScaledVector(up, -lateral.dot(up)).addScaledVector(forward, -lateral.dot(forward));
+    const lateralDir = lateral.lengthSq() > 1e-10 ? lateral.normalize() : side.clone();
+    return {
+      lateral: lateralDir,
+      // Rotating about up x lateral swings the tip outwards for a positive angle.
+      axis: new THREE.Vector3().crossVectors(up, lateralDir).normalize(),
+      center: earCenter,
+      pivot: center.clone()
+        .addScaledVector(up, KLAUS_HEAD.earFrom * scale)
+        .addScaledVector(lateralDir, earCenter.clone().sub(center).dot(lateralDir)),
+    };
+  });
+
+  const headWeight = (point) => {
+    const offset = point.clone().sub(center);
+    const along = offset.dot(up);
+    const flat = offset.clone().addScaledVector(up, -along);
+    const vertical = along > 0 ? along * KLAUS_HEAD.upSquash : along;
+    const distance = Math.sqrt(flat.lengthSq() + vertical * vertical) / scale;
+    const radial = 1 - klausSmooth(distance, KLAUS_HEAD.inner, KLAUS_HEAD.outer);
+    const sideways = Math.abs(offset.dot(side)) / scale;
+    const paw = klausSmooth(sideways, KLAUS_HEAD.pawLateralFrom, KLAUS_HEAD.pawLateralTo)
+      * (1 - klausSmooth(along / scale, KLAUS_HEAD.pawHeightFrom, KLAUS_HEAD.pawHeightTo));
+    return radial * (1 - paw);
+  };
+  const earWeight = (point, frame) => {
+    const offset = point.clone().sub(center);
+    const height = offset.dot(up) / scale;
+    const lateral = offset.dot(frame.lateral) / scale;
+    const reach = point.distanceTo(frame.center) / scale;
+    return klausSmooth(height, KLAUS_HEAD.earFrom, KLAUS_HEAD.earTo)
+      * klausSmooth(lateral, KLAUS_HEAD.earLateralFrom, KLAUS_HEAD.earLateralTo)
+      * (1 - klausSmooth(reach, KLAUS_HEAD.earReachFrom, KLAUS_HEAD.earReachTo));
+  };
+
+  const meshes = [];
+  const landmarks = new Set([nose, ...ears]);
+  for (const part of parts) {
+    const landmark = landmarks.has(part);
+    part.traverse((node) => {
+      const position = node.isMesh ? node.geometry?.getAttribute?.('position') : null;
+      if (!position) return;
+      const toMesh = node.matrixWorld.clone().premultiply(toRig);
+      const fromRig = toMesh.clone().invert();
+      const rest = new Float32Array(position.count * 3);
+      const indices = [];
+      const weights = [];
+      const point = new THREE.Vector3();
+      const sphere = new THREE.Box3().setFromBufferAttribute(position).applyMatrix4(toMesh)
+        .getBoundingSphere(new THREE.Sphere());
+      // The landmarks follow the per-vertex weights of the skin they sit on.
+      const rigid = !landmark && sphere.radius < KLAUS_HEAD.rigidRadius * scale
+        ? [headWeight(sphere.center), earWeight(sphere.center, earFrames[0]), earWeight(sphere.center, earFrames[1])]
+        : null;
+      for (let index = 0; index < position.count; index += 1) {
+        point.fromBufferAttribute(position, index);
+        rest[index * 3] = point.x;
+        rest[index * 3 + 1] = point.y;
+        rest[index * 3 + 2] = point.z;
+        point.applyMatrix4(toMesh);
+        const head = rigid ? rigid[0] : headWeight(point);
+        const earA = rigid ? rigid[1] : earWeight(point, earFrames[0]);
+        const earB = rigid ? rigid[2] : earWeight(point, earFrames[1]);
+        if (head <= 0 && earA <= 0 && earB <= 0) continue;
+        indices.push(index);
+        weights.push(head, earA, earB, point.x, point.y, point.z);
+      }
+      if (!indices.length) return;
+      // Several meshes can share one geometry in a GLB; deform a private copy.
+      node.geometry = node.geometry.clone();
+      const geometry = node.geometry;
+      geometry.computeBoundingSphere?.();
+      if (geometry.boundingSphere) geometry.boundingSphere.radius += 0.05 * scale;
+      meshes.push({
+        node,
+        attribute: geometry.getAttribute('position'),
+        fromRig,
+        rest,
+        indices: Uint32Array.from(indices),
+        weights: Float32Array.from(weights),
+      });
+    });
+  }
+  if (!meshes.length) return null;
+  return {
+    meshes,
+    up,
+    forward,
+    side,
+    center,
+    pivot,
+    ears: earFrames,
+    scale,
+    active: false,
+  };
+}
+
+const klausScratch = {
+  point: new THREE.Vector3(),
+  ear: new THREE.Vector3(),
+  head: new THREE.Vector3(),
+  turned: new THREE.Vector3(),
+  quaternion: new THREE.Quaternion(),
+  pitchQuaternion: new THREE.Quaternion(),
+};
+
+// Applies the head lift/glance and ear flicks. Untouched while asleep: the
+// buffers are only rewritten while something moves, plus once to settle.
+export function applyHomeBlenderKlausHeadDeform(deform, timeMs = 0) {
+  if (!deform) return false;
+  const head = homeBlenderKlausHeadPose(timeMs);
+  const earAngles = [homeBlenderKlausEarPose(timeMs, 0), homeBlenderKlausEarPose(timeMs, 1)];
+  const moving = head.up > 1e-4 || earAngles[0] > 1e-4 || earAngles[1] > 1e-4;
+  if (!moving && !deform.active) return false;
+  deform.active = moving;
+  const { point, ear, turned, quaternion, pitchQuaternion } = klausScratch;
+  quaternion.setFromAxisAngle(deform.up, head.yaw);
+  pitchQuaternion.setFromAxisAngle(deform.side, -head.pitch);
+  quaternion.multiply(pitchQuaternion);
+  const lift = head.lift * deform.scale;
+  for (const mesh of deform.meshes) {
+    const { attribute, rest, indices, weights, fromRig } = mesh;
+    for (let n = 0; n < indices.length; n += 1) {
+      const index = indices[n];
+      const base = n * 6;
+      const headWeight = weights[base];
+      point.set(weights[base + 3], weights[base + 4], weights[base + 5]);
+      for (let e = 0; e < 2; e += 1) {
+        const weight = weights[base + 1 + e];
+        if (weight <= 0 || earAngles[e] <= 0) continue;
+        const frame = deform.ears[e];
+        klausRodrigues(point, frame.pivot, frame.axis, earAngles[e] * weight, ear);
+        point.copy(ear);
+      }
+      if (headWeight > 0 && head.up > 0) {
+        turned.copy(point).sub(deform.pivot).applyQuaternion(quaternion).add(deform.pivot);
+        turned.addScaledVector(deform.up, lift);
+        point.lerp(turned, headWeight);
+      }
+      if (!moving) {
+        attribute.setXYZ(index, rest[index * 3], rest[index * 3 + 1], rest[index * 3 + 2]);
+        continue;
+      }
+      point.applyMatrix4(fromRig);
+      attribute.setXYZ(index, point.x, point.y, point.z);
+    }
+    attribute.needsUpdate = true;
+  }
+  return true;
 }
 
 export function prepareHomeBlenderKlausRig(root) {
@@ -245,32 +481,18 @@ export function prepareHomeBlenderKlausRig(root) {
   rig.updateMatrixWorld(true);
 
   for (const part of parts) rig.attach(part);
+  rig.updateMatrixWorld(true);
+  // Half the cat's height in rig units: breathing scales about the centre, so
+  // the rig rises by the same amount to keep the belly on the cushion.
+  const rigScale = rig.getWorldScale(new THREE.Vector3());
+  const size = bounds.getSize(new THREE.Vector3());
   rig.userData.homeKlausBase = {
     position: rig.position.clone(),
     scale: rig.scale.clone(),
     rotation: rig.rotation.clone(),
+    halfHeight: (size.y / 2) / Math.max(Math.abs(rigScale.y), 1e-6),
   };
-  rig.userData.homeKlausEars = parts
-    .filter((part) => HOME_BLENDER_KLAUS_EAR.test(String(part.name || '')))
-    .map((part, index) => ({
-      part,
-      index,
-      rotation: part.rotation.clone(),
-    }));
-  rig.userData.homeKlausPaws = parts
-    .filter((part) => HOME_BLENDER_KLAUS_PAW.test(String(part.name || '')))
-    .map((part, index) => ({
-      part,
-      weight: index % 2 ? 0.62 : 1,
-      position: part.position.clone(),
-    }));
-  rig.userData.homeKlausTail = parts
-    .map((part) => ({
-      part,
-      weight: homeBlenderKlausTailWeight(part.name),
-      position: part.position.clone(),
-    }))
-    .filter((entry) => entry.weight > 0);
+  rig.userData.homeKlausHead = prepareKlausHeadDeform(rig, parts);
   return rig;
 }
 
@@ -280,42 +502,14 @@ export function applyHomeBlenderKlausMotion(rig, timeMs = 0) {
   const pose = homeBlenderKlausPose(timeMs);
   rig.position.set(
     base.position.x + pose.offsetX,
-    base.position.y + pose.offsetY,
+    base.position.y + (pose.scaleY - 1) * (base.halfHeight || 0),
     base.position.z + pose.offsetZ,
   );
-  rig.scale.set(base.scale.x, base.scale.y * pose.scaleY, base.scale.z);
+  rig.scale.set(base.scale.x * pose.scaleXZ, base.scale.y * pose.scaleY, base.scale.z * pose.scaleXZ);
   rig.rotation.copy(base.rotation);
   rig.rotation.y += pose.yaw;
   rig.rotation.z += pose.roll;
-  const seconds = Math.max(0, Number(timeMs) || 0) / 1000;
-  // Two long, slightly mismatched pulses keep the sleeping ear flick from reading like a
-  // metronome. The second pulse is deliberately much weaker: an occasional reflex, not a loop.
-  const earPulsePrimary = Math.max(0, Math.sin(seconds * (Math.PI * 2 / 23.0) - 1.1)) ** 18;
-  const earPulseEcho = Math.max(0, Math.sin(seconds * (Math.PI * 2 / 31.0) + 2.35)) ** 24;
-  for (const ear of rig.userData.homeKlausEars || []) {
-    const direction = ear.index % 2 ? -1 : 1;
-    const sideWeight = ear.index % 2 ? 0.72 : 1;
-    const earPulse = (earPulsePrimary + earPulseEcho * 0.38) * sideWeight;
-    ear.part.rotation.copy(ear.rotation);
-    ear.part.rotation.y += direction * earPulse * HOME_BLENDER_KLAUS_EAR_MOTION.twitchY;
-    ear.part.rotation.z += direction * earPulse * HOME_BLENDER_KLAUS_EAR_MOTION.twitchZ;
-  }
-  for (const paw of rig.userData.homeKlausPaws || []) {
-    const pawPose = homeBlenderKlausPawPose(timeMs, paw.weight);
-    paw.part.position.set(
-      paw.position.x,
-      paw.position.y + pawPose.offsetY,
-      paw.position.z + pawPose.offsetZ,
-    );
-  }
-  for (const tail of rig.userData.homeKlausTail || []) {
-    const tailPose = homeBlenderKlausTailPose(timeMs, tail.weight);
-    tail.part.position.set(
-      tail.position.x + tailPose.offsetX,
-      tail.position.y,
-      tail.position.z + tailPose.offsetZ,
-    );
-  }
+  applyHomeBlenderKlausHeadDeform(rig.userData.homeKlausHead, timeMs);
   rig.updateMatrixWorld?.(true);
   return true;
 }

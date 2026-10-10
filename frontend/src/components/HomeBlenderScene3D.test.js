@@ -41,13 +41,12 @@ import {
   homeBlenderCandleAttributes,
   HOME_BLENDER_CANDLE_PARTICLES,
   HOME_BLENDER_KLAUS_MOTION,
-  HOME_BLENDER_KLAUS_TAIL_MOTION,
-  HOME_BLENDER_KLAUS_PAW_MOTION,
+  HOME_BLENDER_KLAUS_HEAD_MOTION,
+  HOME_BLENDER_KLAUS_EAR_MOTION,
+  homeBlenderKlausHeadPose,
+  homeBlenderKlausEarPose,
   homeBlenderIsKlausPart,
   homeBlenderKlausPose,
-  homeBlenderKlausTailWeight,
-  homeBlenderKlausTailPose,
-  homeBlenderKlausPawPose,
   prepareHomeBlenderKlausRig,
   applyHomeBlenderKlausMotion,
   releaseHomeBlenderWebglContext,
@@ -173,54 +172,66 @@ describe('HomeBlenderScene3D Klaus idle motion', () => {
     expect(homeBlenderIsKlausPart('HOME_PROP_table_candle')).toBe(false);
   });
 
-  it('keeps breathing and settling deliberately tiny', () => {
+  it('breathes visibly but keeps the settle drift tiny', () => {
+    let deepest = 0;
     for (let timeMs = 0; timeMs < 60000; timeMs += 137) {
       const pose = homeBlenderKlausPose(timeMs);
       expect(pose.scaleY).toBeGreaterThanOrEqual(1);
       expect(pose.scaleY).toBeLessThanOrEqual(1 + HOME_BLENDER_KLAUS_MOTION.breatheScale);
-      expect(Math.abs(pose.offsetY)).toBeLessThanOrEqual(HOME_BLENDER_KLAUS_MOTION.breatheLift);
+      expect(pose.scaleXZ).toBeLessThanOrEqual(1 + HOME_BLENDER_KLAUS_MOTION.breatheSpread);
       expect(Math.abs(pose.offsetX)).toBeLessThanOrEqual(HOME_BLENDER_KLAUS_MOTION.settleX);
       expect(Math.abs(pose.offsetZ)).toBeLessThanOrEqual(HOME_BLENDER_KLAUS_MOTION.settleZ);
       expect(Math.abs(pose.yaw)).toBeLessThanOrEqual(HOME_BLENDER_KLAUS_MOTION.yaw);
       expect(Math.abs(pose.roll)).toBeLessThanOrEqual(HOME_BLENDER_KLAUS_MOTION.roll);
+      deepest = Math.max(deepest, pose.scaleY - 1);
     }
+    // ~2% of a 0.25 m cat: a breath that reads at Home distance.
+    expect(deepest).toBeGreaterThan(0.015);
+    expect(HOME_BLENDER_KLAUS_MOTION.breatheScale).toBeLessThanOrEqual(0.03);
   });
 
-  it('moves only the authored tail tip and keeps the gesture microscopic', () => {
-    expect(homeBlenderKlausTailWeight('HOME_PROP_cat_tail_seg_47')).toBe(0);
-    expect(homeBlenderKlausTailWeight('HOME_PROP_cat_tail_seg_48')).toBeGreaterThan(0);
-    expect(homeBlenderKlausTailWeight('HOME_PROP_cat_tail_seg_55')).toBe(1);
-    expect(homeBlenderKlausTailWeight('HOME_PROP_cat_tail_seg_72')).toBe(1);
-    expect(homeBlenderKlausTailWeight('HOME_PROP_cat_body')).toBe(0);
-
-    for (let timeMs = 0; timeMs < 60000; timeMs += 137) {
-      const pose = homeBlenderKlausTailPose(timeMs, 1);
-      expect(Math.abs(pose.offsetX)).toBeLessThanOrEqual(HOME_BLENDER_KLAUS_TAIL_MOTION.swingX);
-      expect(Math.abs(pose.offsetZ)).toBeLessThanOrEqual(HOME_BLENDER_KLAUS_TAIL_MOTION.swingZ);
+  it('lifts his head for a brief glance about once a minute, asleep otherwise', () => {
+    const spec = HOME_BLENDER_KLAUS_HEAD_MOTION;
+    let awake = 0;
+    let peak = 0;
+    let samples = 0;
+    let previous = homeBlenderKlausHeadPose(0);
+    for (let timeMs = 0; timeMs < spec.periodSeconds * 2000; timeMs += 50) {
+      const pose = homeBlenderKlausHeadPose(timeMs);
+      expect(pose.up).toBeGreaterThanOrEqual(0);
+      expect(pose.up).toBeLessThanOrEqual(1);
+      expect(pose.lift).toBeLessThanOrEqual(spec.lift + 1e-9);
+      expect(Math.abs(pose.yaw)).toBeLessThanOrEqual(THREE.MathUtils.degToRad(spec.yawDeg) + 1e-9);
+      // Eased: no snapping between consecutive frames.
+      expect(Math.abs(pose.up - previous.up)).toBeLessThan(0.12);
+      if (pose.up > 0.05) awake += 1;
+      peak = Math.max(peak, pose.up);
+      previous = pose;
+      samples += 1;
     }
+    expect(peak).toBeGreaterThan(0.99);
+    expect(awake / samples).toBeGreaterThan(0.03);
+    expect(awake / samples).toBeLessThan(0.15);
   });
 
-  it('rests between brief tail-tip flicks instead of swaying like a metronome', () => {
-    const resting = homeBlenderKlausTailPose(3000, 1);
-    const flicking = homeBlenderKlausTailPose(7000, 1);
-
-    expect(Math.hypot(resting.offsetX, resting.offsetZ)).toBeLessThan(1e-7);
-    expect(Math.hypot(flicking.offsetX, flicking.offsetZ)).toBeGreaterThan(0.001);
-  });
-
-  it('gives the front paws a rare sub-two-millimetre sleeping reflex', () => {
-    let activeSamples = 0;
-    let restingSamples = 0;
-    for (let timeMs = 0; timeMs < 120000; timeMs += 137) {
-      const pose = homeBlenderKlausPawPose(timeMs, 1);
-      expect(pose.offsetY).toBeGreaterThanOrEqual(0);
-      expect(pose.offsetY).toBeLessThanOrEqual(HOME_BLENDER_KLAUS_PAW_MOTION.tuckY);
-      expect(Math.abs(pose.offsetZ)).toBeLessThanOrEqual(HOME_BLENDER_KLAUS_PAW_MOTION.flexZ);
-      if (Math.hypot(pose.offsetY, pose.offsetZ) > 0.00005) activeSamples += 1;
-      else restingSamples += 1;
+  it('flicks each ear briefly on its own clock', () => {
+    const limit = THREE.MathUtils.degToRad(HOME_BLENDER_KLAUS_EAR_MOTION.flickDeg);
+    for (const index of [0, 1]) {
+      let flicking = 0;
+      let samples = 0;
+      for (let timeMs = 0; timeMs < 60000; timeMs += 20) {
+        const angle = homeBlenderKlausEarPose(timeMs, index);
+        expect(angle).toBeGreaterThanOrEqual(0);
+        expect(angle).toBeLessThanOrEqual(limit + 1e-9);
+        if (angle > limit * 0.5) flicking += 1;
+        samples += 1;
+      }
+      expect(flicking).toBeGreaterThan(0);
+      expect(flicking / samples).toBeLessThan(0.12);
     }
-    expect(activeSamples).toBeGreaterThan(0);
-    expect(restingSamples).toBeGreaterThan(activeSamples * 2);
+    // Not in sync: one ear flicks while the other rests.
+    expect(homeBlenderKlausEarPose(200, 0)).toBeGreaterThan(0);
+    expect(homeBlenderKlausEarPose(200, 1)).toBe(0);
   });
 
   it('groups the authored cat around its own pivot without dragging the cushion', () => {
@@ -228,47 +239,80 @@ describe('HomeBlenderScene3D Klaus idle motion', () => {
     const body = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.22, 0.38), new THREE.MeshBasicMaterial());
     body.name = 'HOME_PROP_cat_body';
     body.position.set(1.1, 0.3, -1.4);
-    const tail = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.08, 0.08), new THREE.MeshBasicMaterial());
-    tail.name = 'HOME_PROP_cat_tail_seg_55';
-    tail.position.set(1.35, 0.32, -1.3);
-    const paw = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.05, 0.12), new THREE.MeshBasicMaterial());
-    paw.name = 'HOME_PROP_cat_paw_l';
-    paw.position.set(1.02, 0.25, -1.55);
     const cushion = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.08, 0.7), new THREE.MeshBasicMaterial());
     cushion.name = 'HOME_PROP_cat_cushion';
     cushion.position.set(1.15, 0.12, -1.4);
-    root.add(body, tail, paw, cushion);
+    root.add(body, cushion);
     root.updateMatrixWorld(true);
 
     const bodyBefore = body.getWorldPosition(new THREE.Vector3()).clone();
     const cushionBefore = cushion.getWorldPosition(new THREE.Vector3()).clone();
+    const bottomBefore = new THREE.Box3().setFromObject(body).min.y;
     const rig = prepareHomeBlenderKlausRig(root);
 
     expect(rig).toBeTruthy();
     expect(body.parent).toBe(rig);
-    expect(tail.parent).toBe(rig);
     expect(cushion.parent).toBe(root);
+    // Without the head landmarks (older GLB) he still breathes.
+    expect(rig.userData.homeKlausHead).toBeNull();
     expect(body.getWorldPosition(new THREE.Vector3()).distanceTo(bodyBefore)).toBeLessThan(1e-6);
-    expect(cushion.getWorldPosition(new THREE.Vector3()).distanceTo(cushionBefore)).toBeLessThan(1e-6);
-    const tailLocalBefore = tail.position.clone();
-    const pawLocalBefore = paw.position.clone();
 
-    expect(applyHomeBlenderKlausMotion(rig, 5100)).toBe(true);
-    expect(body.getWorldPosition(new THREE.Vector3()).distanceTo(bodyBefore)).toBeGreaterThan(0);
+    const deepMs = Array.from({ length: 400 }, (_, index) => index * 17)
+      .reduce((best, timeMs) => (homeBlenderKlausPose(timeMs).scaleY > homeBlenderKlausPose(best).scaleY ? timeMs : best), 0);
+    expect(applyHomeBlenderKlausMotion(rig, deepMs)).toBe(true);
+    const box = new THREE.Box3().setFromObject(body);
+    // The chest rises; the belly stays on the cushion.
+    expect(box.max.y - box.min.y).toBeGreaterThan(0.22 * 1.015);
+    expect(Math.abs(box.min.y - bottomBefore)).toBeLessThan(0.0035);
     expect(body.getWorldPosition(new THREE.Vector3()).distanceTo(bodyBefore)).toBeLessThan(0.02);
-    expect(tail.position.distanceTo(tailLocalBefore)).toBeGreaterThan(0);
-    expect(tail.position.distanceTo(tailLocalBefore)).toBeLessThan(0.01);
-
-    const activePawTime = Array.from({ length: 600 }, (_, index) => index * 137)
-      .find((timeMs) => {
-        const pose = homeBlenderKlausPawPose(timeMs, 1);
-        return Math.hypot(pose.offsetY, pose.offsetZ) > 0.00005;
-      });
-    expect(activePawTime).toBeDefined();
-    expect(applyHomeBlenderKlausMotion(rig, activePawTime)).toBe(true);
-    expect(paw.position.distanceTo(pawLocalBefore)).toBeGreaterThan(0);
-    expect(paw.position.distanceTo(pawLocalBefore)).toBeLessThan(0.003);
     expect(cushion.getWorldPosition(new THREE.Vector3()).distanceTo(cushionBefore)).toBeLessThan(1e-6);
+  });
+
+  it('soft-skins the head and ears for the glance, leaves the body, and settles back exactly', () => {
+    const root = new THREE.Group();
+    const material = new THREE.MeshBasicMaterial();
+    const part = (name, geometry, x, y, z) => {
+      const mesh = new THREE.Mesh(geometry, material);
+      mesh.name = name;
+      mesh.position.set(x, y, z);
+      root.add(mesh);
+      return mesh;
+    };
+    // Facing +z, Y up, ear panels 0.144 apart (Blender builder scale); the
+    // head centre sits 0.112 behind the nose and 0.010 above it.
+    part('HOME_PROP_cat_nose', new THREE.BoxGeometry(0.016, 0.011, 0.01), 0, 0.176, 0.31);
+    part('HOME_PROP_cat_ear_inner_l', new THREE.BoxGeometry(0.044, 0.066, 0.004), -0.072, 0.289, 0.218);
+    part('HOME_PROP_cat_ear_inner_r', new THREE.BoxGeometry(0.044, 0.066, 0.004), 0.072, 0.289, 0.218);
+    const head = part('HOME_PROP_cat_body', new THREE.SphereGeometry(0.1, 16, 12), 0, 0.186, 0.198);
+    const haunch = part('HOME_PROP_cat_haunch', new THREE.BoxGeometry(0.2, 0.2, 0.2), 0.45, 0.1, -0.35);
+    const headRest = head.geometry.getAttribute('position').array.slice();
+    const haunchRest = haunch.geometry.getAttribute('position').array.slice();
+    root.updateMatrixWorld(true);
+
+    const rig = prepareHomeBlenderKlausRig(root);
+    expect(rig.userData.homeKlausHead).toBeTruthy();
+    const spec = HOME_BLENDER_KLAUS_HEAD_MOTION;
+    const peakMs = (spec.offsetSeconds + spec.riseSeconds + spec.holdSeconds * 0.5) * 1000;
+    expect(homeBlenderKlausHeadPose(peakMs).up).toBeGreaterThan(0.99);
+
+    applyHomeBlenderKlausMotion(rig, peakMs);
+    const moved = head.geometry.getAttribute('position').array;
+    let largest = 0;
+    for (let index = 0; index < moved.length; index += 1) {
+      largest = Math.max(largest, Math.abs(moved[index] - headRest[index]));
+    }
+    expect(largest).toBeGreaterThan(0.005);
+    // A glance, not a head flying off: well under the head's own radius.
+    expect(largest).toBeLessThan(0.07);
+    expect(Array.from(haunch.geometry.getAttribute('position').array)).toEqual(Array.from(haunchRest));
+
+    const quietMs = Array.from({ length: 400 }, (_, index) => peakMs + 6000 + index * 50)
+      .find((timeMs) => homeBlenderKlausHeadPose(timeMs).up === 0
+        && homeBlenderKlausEarPose(timeMs, 0) === 0
+        && homeBlenderKlausEarPose(timeMs, 1) === 0);
+    expect(quietMs).toBeDefined();
+    applyHomeBlenderKlausMotion(rig, quietMs);
+    expect(Array.from(head.geometry.getAttribute('position').array)).toEqual(Array.from(headRest));
   });
 });
 

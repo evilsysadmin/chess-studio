@@ -200,14 +200,24 @@ describe('Home Matthias in-scene actor', () => {
   it('sleeps with slack arms along the flank, never pointing at the ceiling', () => {
     // The lie override replaces the arm bone rotation outright: 0 deg points
     // the canonical rig's arm at the head, ~180 deg hangs it to the hip.
-    // Measured on matthias-home-canonical.glb: 150/-10/20 drops each glove
-    // ~0.45 rig units below its shoulder; the old 38/22/64 fold kept them at
-    // the chest, which lying on the side means pointing at the ceiling.
-    const { upperPitchDeg, upperSplayDeg, forePitchDeg } = HOME_MATTHIAS_LIE_POSE.arms;
-    expect(upperPitchDeg).toBeGreaterThanOrEqual(120);
-    expect(upperPitchDeg).toBeLessThanOrEqual(170);
-    expect(Math.abs(upperSplayDeg)).toBeLessThanOrEqual(20);
-    expect(forePitchDeg).toBeLessThanOrEqual(45);
+    // Reviewed on matthias-home-canonical.glb from the canonical Home camera:
+    // the upper (L) arm drapes on the flank with the glove on the chest, the
+    // lower (R) one drops onto the cushion. A shared pose left L floating.
+    for (const side of ['L', 'R']) {
+      const { upperPitchDeg, upperSplayDeg, forePitchDeg } = HOME_MATTHIAS_LIE_POSE.arms[side];
+      expect(upperPitchDeg, side).toBeGreaterThanOrEqual(140);
+      expect(upperPitchDeg, side).toBeLessThanOrEqual(185);
+      expect(Math.abs(upperSplayDeg), side).toBeLessThanOrEqual(35);
+      expect(forePitchDeg, side).toBeLessThanOrEqual(45);
+    }
+  });
+
+  it('keeps the sleeping face out of the collar and blanket', () => {
+    // The Sleep clip tucks the chin; the lie pose lifts it back so the face
+    // reads from the hall and the blanket stops at the chest.
+    expect(HOME_MATTHIAS_LIE_POSE.headPitchDeg).toBeLessThanOrEqual(-15);
+    expect(HOME_MATTHIAS_LIE_POSE.headPitchDeg).toBeGreaterThanOrEqual(-45);
+    expect(HOME_MATTHIAS_BLANKET.toY).toBeLessThanOrEqual(0.62);
   });
 
   it('converts the authored Blender frame to the runtime Y-up frame', () => {
