@@ -779,8 +779,8 @@ export default function ChroniclesOfMatthias({ onExit }) {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [attackWithSelected, automapOpen, clearTouchHold, dispatch, interactWithContext, openMemberSheet, ready, sheetMemberId]);
 
-  const startFreshGame = () => {
-    beginChroniclesRun(FIRST_PERSON_RUN_SCOPE);
+  const startFreshGame = (entryMapId = null) => {
+    beginChroniclesRun(FIRST_PERSON_RUN_SCOPE, { entryMapId });
     setCharacterSetupDone(false);
     setEntryView('setup');
     refreshSaves((value) => value + 1);

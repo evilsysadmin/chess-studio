@@ -1,6 +1,7 @@
-import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { IconTrophy, IconBook } from './Icons.jsx';
 import HomeScene3D from './HomeScene3D.jsx';
+import Home3DLoadingGate from './Home3DLoadingGate.jsx';
 import { homeBlenderRuntimeEligible } from './HomeBlenderScene3D.jsx';
 import HomeMatthias3D from './HomeMatthias3D.jsx';
 import HomeDungeonPanel from './HomeDungeonPanel.jsx';
@@ -80,7 +81,7 @@ function currentReducedMotion() {
   return reducedMotionStatus().effective;
 }
 
-export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, onPlayIntent, onContinue, onPractice, pendingModes = [], onTournament, onTrain, onTrainIntent, onCombat, onDaily, onHistory, onInsights, tools, matthiasModel, matthiasSpeaking, onMatthiasAction, onMatthiasDismiss, pvpMenuEntry = null, pvpAttention = false }) {
+export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, onPlayIntent, onContinue, onPractice, pendingModes = [], onTournament, onTrain, onTrainIntent, onCombat, onDaily, onHistory, onInsights, tools, matthiasModel, matthiasSpeaking, onMatthiasAction, onMatthiasDismiss, onHomeAvailable = null, pvpMenuEntry = null, pvpAttention = false }) {
   const [toolsOpen, setToolsOpen] = useState(false);
   const [playMenuOpen, setPlayMenuOpen] = useState(false);
   // Screen positions (0..1 of the stage) of each destination's 3D object, projected by the
@@ -116,10 +117,16 @@ export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, 
   const [matthiasRoutineClock, setMatthiasRoutineClock] = useState(() => new Date());
   const [reducedMotion, setReducedMotion] = useState(currentReducedMotion);
   const [portraitVestibule, setPortraitVestibule] = useState(currentPortraitVestibule);
+  const [useStaticHome, setUseStaticHome] = useState(false);
+  const homeStageRef = useRef(null);
   useEffect(() => {
     // The mobile vestibule does not mount the hall at all.
     if (portraitVestibule) setMatthiasInScene(null);
   }, [portraitVestibule]);
+  useEffect(() => {
+    // Portrait Home and an emergency static Home have no WebGL readiness gate.
+    if (portraitVestibule || useStaticHome) onHomeAvailable?.();
+  }, [portraitVestibule, useStaticHome, onHomeAvailable]);
 
   const castleLife = useMemo(() => buildHomeCastleLife({
     rivalry: loadRivalry(),
@@ -288,7 +295,9 @@ export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, 
   return (
     <section className="illustrated-home" aria-label="Modos principales">
       <div
+        ref={homeStageRef}
         className="illustrated-home__stage"
+        data-home-atomic-transition={!portraitVestibule && !useStaticHome ? 'enabled' : undefined}
         data-home-castle-ambient={castleLife.ambient}
         data-home-castle-memory={memories.map((memory) => memory.kind).join(' ') || 'none'}
         data-home-castle-rare={castleLife.rareSighting || 'none'}
@@ -296,7 +305,7 @@ export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, 
         data-home-beacons={anchors ? 'projected' : 'static'}
         style={{ '--home-hall-art': `url("${hall}")` }}
       >
-        {!portraitVestibule && (
+        {!portraitVestibule && !useStaticHome && (
           <HomeScene3D
             artUrl={hall}
             ambient={castleLife.ambient}
@@ -307,6 +316,13 @@ export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, 
             matthias={{ scene: matthiasSceneKey, activity: matthiasActivity, speaking: Boolean(matthiasSpeaking) }}
             onMatthiasLayout={handleMatthiasLayout}
           />
+        )}
+        {!portraitVestibule && !useStaticHome && (
+          <Home3DLoadingGate stageRef={homeStageRef} onHomeAvailable={onHomeAvailable} onUseStaticHome={() => {
+            setUseStaticHome(true);
+            handleAnchorLayout(null);
+            handleMatthiasLayout(null);
+          }} />
         )}
         <img className="illustrated-home__art" src={hall} alt="" fetchPriority="high" draggable="false" style={{ zIndex: 0 }} />
         {portraitVestibule && (

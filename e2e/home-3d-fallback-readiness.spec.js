@@ -65,7 +65,10 @@ test('Home Blender no muestra el fallback mientras espera su primer frame', asyn
   const home = page.getByRole('region', { name: 'Modos principales', exact: true });
   const art = home.locator('.illustrated-home__art');
   const canvas = home.locator('.illustrated-home__castle-3d');
+  const loadingCover = page.locator('.route-loading.home-3d-loading');
 
+  await expect(loadingCover).toBeVisible();
+  await expect(loadingCover).toContainText('LOADING');
   await expect(canvas).toHaveCount(1);
   await expect.poll(() => art.evaluate((image) => image.complete && image.naturalWidth > 0)).toBe(true);
   await page.waitForTimeout(150);
@@ -80,6 +83,7 @@ test('Home Blender no muestra el fallback mientras espera su primer frame', asyn
 
   await page.evaluate(() => window.__homeFrameGate.release());
   await expect(canvas).toHaveClass(/is-ready/, { timeout: 15_000 });
+  await expect(loadingCover).toHaveCount(0, { timeout: 15_000 });
   await expect(canvas).toHaveAttribute('data-home-blender-runtime', 'ready');
   await expect(art).toHaveCSS('opacity', '0');
 });

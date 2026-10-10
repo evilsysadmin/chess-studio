@@ -21,7 +21,9 @@ async function openChroniclesSetup(page, options = {}) {
   await descend.click();
   const entry = page.locator('[data-chronicles-save-menu]');
   await expect(entry).toBeVisible();
-  await entry.getByRole('button', { name: 'Nuevo juego', exact: true }).click();
+  await entry.getByRole('button', options.newCampaign
+    ? { name: /Nueva campaña/ }
+    : { name: 'Nuevo juego', exact: true }).click();
   const setup = page.locator('[data-chronicles-character-setup]');
   await expect(setup).toBeVisible();
   return setup;
@@ -32,6 +34,26 @@ async function openChronicles(page, options = {}) {
   await confirmChroniclesCharacterSetup(page, { newTown: options.newTown === true });
   await expect(page.locator('[data-chronicles="true"]')).toBeVisible();
 }
+
+test('Chronicles · nueva campaña crea una partida versionada de Swordhaven sin tocar el juego clásico', async ({ page }) => {
+  test.setTimeout(180_000);
+  const creationBodies = [];
+  page.on('request', (request) => {
+    if (request.method() !== 'POST' || !new URL(request.url()).pathname.endsWith('/api/chronicles/runs')) return;
+    creationBodies.push(request.postDataJSON());
+  });
+  await openChronicles(page, {
+    chroniclesCurrentMapId: 'swordhaven-first-book',
+    newCampaign: true,
+    newTown: true,
+  });
+  await expect.poll(() => creationBodies[0]?.mapId, { timeout: 20_000 }).toBe('swordhaven-first-book');
+  const mode = page.locator('[data-chronicles="true"]');
+  await expect(mode).toHaveAttribute('data-chronicles-map-id', 'swordhaven-first-book');
+  await expect(mode.locator('[data-chronicles-renderer="three"] canvas')).toHaveCount(1);
+  await expect(mode).toHaveAttribute('data-chronicles-phase', 'explore');
+  await expect(mode.locator('.chronicles-renderer-error')).toHaveCount(0);
+});
 
 test('Chronicles first-person · nueva expedición pide Swordhaven sin alterar Tactics', async ({ page }) => {
   const creationBodies = [];

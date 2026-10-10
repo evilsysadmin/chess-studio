@@ -1,0 +1,252 @@
+{
+  "id": "swordhaven-first-book",
+  "version": 1,
+  "progressionKey": "campaign-swordhaven-first-book-v1",
+  "title": "Swordhaven · El primer encargo",
+  "regionKind": "settlement",
+  "layoutMode": "authored",
+  "grid": [
+    "###################",
+    "#.................#",
+    "#.................#",
+    "#..###.......###..#",
+    "#..###.......###..#",
+    "#.................#",
+    "#.................#",
+    "#.................#",
+    "#.................#",
+    "#.................#",
+    "#..###.......###..#",
+    "#..###.......###..#",
+    "#.................#",
+    "#.................#",
+    "###################"
+  ],
+  "partyStart": {
+    "x": 9,
+    "y": 7,
+    "direction": 0
+  },
+  "initialFlags": {
+    "swordhavenArrived": true,
+    "campaignRouteV1": true
+  },
+  "enemies": [],
+  "triggers": [],
+  "interactables": [
+    {
+      "id": "sealed-order",
+      "kind": "lore",
+      "x": 7,
+      "y": 5,
+      "label": "El sobre de la Dama",
+      "when": [
+        {
+          "key": "commission-received",
+          "falsy": true
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "set",
+            "key": "commission-received",
+            "value": true
+          }
+        ],
+        "message": "Swordhaven: El sobre de la Dama.",
+        "journal": {
+          "id": "campaign-commission-received",
+          "title": "El sobre de la Dama",
+          "body": "Aldea de origen y centro de la primera expedición.",
+          "sigil": "✦"
+        }
+      }
+    },
+    {
+      "id": "first-book-missing-board",
+      "kind": "lore",
+      "x": 11,
+      "y": 9,
+      "label": "Aceptar encargo: estandarte perdido",
+      "when": [
+        {
+          "key": "missing-knights-notice",
+          "falsy": true
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "set",
+            "key": "missing-knights-notice",
+            "value": true
+          },
+          {
+            "type": "start-quest",
+            "questId": "banner-contract",
+            "title": "El estandarte perdido",
+            "description": "Un explorador no regresó del Camino de los Estandartes.",
+            "objective": "Busca el estandarte cerca del mojón sin nombre.",
+            "order": 2
+          }
+        ],
+        "message": "El alguacil promete 18 monedas de oro por recuperar el estandarte de la patrulla.",
+        "journal": {
+          "id": "first-book-contract-accepted",
+          "title": "Encargo del alguacil",
+          "body": "El estandarte se perdió junto al mojón sin nombre, en el Camino de los Estandartes. Recompensa: 18 monedas de oro.",
+          "sigil": "✦"
+        }
+      }
+    },
+    {
+      "id": "first-book-banner-turn-in",
+      "kind": "quest",
+      "x": 11,
+      "y": 9,
+      "label": "Entregar estandarte y cobrar 18 oro",
+      "when": [
+        {
+          "questId": "banner-contract",
+          "questStatus": "active"
+        },
+        {
+          "itemId": "knight-banner"
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "claim-reward",
+            "rewardId": "swordhaven:banner-contract:v1",
+            "requirements": [
+              {
+                "questId": "banner-contract",
+                "questStatus": "active"
+              },
+              {
+                "itemId": "knight-banner"
+              }
+            ],
+            "effects": [
+              {
+                "type": "consume-item",
+                "itemId": "knight-banner",
+                "quantity": 1
+              },
+              {
+                "type": "complete-quest",
+                "questId": "banner-contract",
+                "objective": "Encargo completado: estandarte entregado."
+              },
+              {
+                "type": "grant-gold",
+                "amount": 18
+              }
+            ]
+          }
+        ],
+        "message": "El alguacil cuenta dieciocho monedas. Matthias apunta que el trabajo honrado también paga impuestos imaginarios.",
+        "journal": {
+          "id": "first-book-banner-reward",
+          "title": "Contrato saldado",
+          "body": "Estandarte recuperado y entregado en Swordhaven. La compañía ha recibido 18 monedas de oro.",
+          "sigil": "◆"
+        }
+      }
+    },
+    {
+      "id": "first-book-quartermaster",
+      "kind": "merchant",
+      "x": 8,
+      "y": 7,
+      "label": "Comprar raciones de viaje · 7 oro",
+      "lockedLabel": "Raciones · necesitas 7 oro",
+      "requirements": [
+        {
+          "itemId": "crown-gold",
+          "quantity": 7,
+          "message": "El intendente exige siete monedas de oro. La caridad no figura en su inventario."
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "exchange-item",
+            "costItemId": "crown-gold",
+            "costQuantity": 7,
+            "itemId": "road-rations",
+            "name": "Raciones de viaje",
+            "description": "Provisiones para futuras incursiones; aún no son un consumible de combate.",
+            "quantity": 1
+          }
+        ],
+        "message": "El intendente entrega raciones de campaña. Siete monedas menos en la bolsa."
+      }
+    },
+    {
+      "id": "first-book-healer",
+      "kind": "service",
+      "x": 13,
+      "y": 7,
+      "label": "Descansar en la posada · 5 oro",
+      "lockedLabel": "Posada · necesitas 5 oro",
+      "requirements": [
+        {
+          "itemId": "crown-gold",
+          "quantity": 5,
+          "message": "La posadera no ofrece crédito a los héroes, por muy heroicos que parezcan."
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "consume-item",
+            "itemId": "crown-gold",
+            "quantity": 5
+          },
+          {
+            "type": "heal-party",
+            "amount": 6
+          },
+          {
+            "type": "refill-class-abilities"
+          }
+        ],
+        "message": "La compañía descansa en la posada de Swordhaven. Heridas tratadas y fuerzas renovadas."
+      }
+    }
+  ],
+  "treasures": [],
+  "traps": [],
+  "exits": [
+    {
+      "id": "to-first-book-banner-road",
+      "kind": "exit",
+      "x": 9,
+      "y": 1,
+      "requiresReturn": true,
+      "openLabel": "Salir al Camino de los Estandartes",
+      "lockedLabel": "El paso está sellado",
+      "requirements": [],
+      "action": {
+        "effects": [
+          {
+            "type": "transition-map",
+            "mapId": "banner-road-first-book",
+            "entryExitId": "to-first-book-swordhaven"
+          }
+        ],
+        "message": "La compañía llega a Camino de los Estandartes."
+      }
+    }
+  ],
+  "initialJournal": {
+    "id": "first-book-swordhaven",
+    "title": "Swordhaven",
+    "body": "La plaza, el tablón de encargos y los comerciantes te esperan. El Camino de los Estandartes queda al norte.",
+    "sigil": "I"
+  },
+  "introMessage": "Swordhaven. La Dama ha pedido noticias de sus caballeros; el tablón de la plaza ofrece la primera pista."
+}

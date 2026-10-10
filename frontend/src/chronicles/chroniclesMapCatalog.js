@@ -2,6 +2,8 @@ import cryptEightSquares from './maps/crypt-eight-squares.json';
 import swordhavenSquare from './maps/swordhaven-square.json';
 import swordhavenCampaign from './maps/swordhaven-campaign.json';
 import bannerRoad from './maps/banner-road.json';
+import swordhavenFirstBook from './maps/swordhaven-first-book.json';
+import bannerRoadFirstBook from './maps/banner-road-first-book.json';
 import galleryOfForks from './maps/gallery-of-forks.json';
 import menagerieOfAsh from './maps/menagerie-of-ash.json';
 import ashVault from './maps/ash-vault.json';
@@ -344,6 +346,8 @@ const MAPS = Object.freeze({
   [swordhavenSquare.id]: normalizeMap(swordhavenSquare),
   [swordhavenCampaign.id]: normalizeMap(swordhavenCampaign),
   [bannerRoad.id]: normalizeMap(bannerRoad),
+  [swordhavenFirstBook.id]: normalizeMap(swordhavenFirstBook),
+  [bannerRoadFirstBook.id]: normalizeMap(bannerRoadFirstBook),
   [DEFAULT_CHRONICLES_MAP_ID]: normalizeMap(cryptEightSquares),
   [galleryOfForks.id]: normalizeMap(galleryOfForks),
   [menagerieOfAsh.id]: normalizeMap(menagerieOfAsh),

@@ -8,15 +8,16 @@ Might (Fuerza), Intellect (Intelecto), Personality (Personalidad), Endurance (Re
 
 MM3 references: [original manual](https://www.gamesdatabase.org/Media/SYSTEM/Commodore_Amiga/Manual/formated/Might_and_Magic_III-_Isles_of_Terra-_1992_-_New_World_Computing.htm) and [character reference](https://rpg.o2h.pl/mm3/en/character.html).
 
-## Preserve existing players
+## New campaign save contract (decision 2026-10-10)
 
-The current canonical profile uses `chess-study-chronicles-progression-v1` with level, XP, points, class skills and five **bonus** attributes: `vigor`, `power`, `precision`, `will`, `agility`. Do not rename in-place or silently reinterpret old saves.
+**Chronicles is a new RPG; existing Chronicles save games do not need to remain loadable.** Breaking the old `vigor/power/precision/will/agility` profile schema, old world IDs, old quest flags, and former run checkpoints is explicitly permitted. Retire compatibility adapters when they block good RPG mechanics. Do not spend implementation time keeping old expeditions alive.
 
-- MM3 read-only projection (implemented in `chroniclesMM3Stats.js`): neutral base 10; `power → might`, `vigor → endurance`, `precision → accuracy`, `agility → speed` once. `will` remains with legacy ability modifiers; **do not** arbitrarily split into intellect/personality. The projection is NOT yet a source of authority for gameplay.
-- Explicit v2 stats must override the legacy projection rather than stack on it. Future profile schema must include a migration ledger/version, retain preexisting points and learned skills, and be reversible via read-only fallback.
-- `Speed` is the user-facing MM3 stat, replacing the meaning of `Agility`. Until the actual initiative migration, underlying `agility` and `initiativeBonus` remain **one** functional authority: keep the existing `+ 1d8` variation, not MM3 deterministic first-mover. Do not simultaneously apply Speed and Agility bonuses.
-- Extend build/level/spending only together with class-sensitive mechanics and tests: Intellect for arcane SP, Personality for divine SP, Endurance for HP, Might for physical damage, Accuracy for physical hit chance, Speed for AC/initiative, Luck for saves/traps.
-- Attribute allocation and point caps in legacy v1 must not be changed retroactively; implement explicit v2 spending before making the new seven trainable.
+This does **not** allow corrupting Chess Studio profiles outside Chronicles, or leaking Chronicles quest state into Tactics. New campaign saves, once created, must round-trip reliably through F5, multiple devices, CAS retries and identity changes. Reset or migrate only the Chronicles-specific keys and run documents, never unrelated user progress.
+
+- Build the next character model directly from seven real MM3 stats: Might, Intellect, Personality, Endurance, Speed, Accuracy, Luck. The existing read-only projection is transitional scaffolding, not a long-term requirement.
+- Speed replaces Agility as the single initiative stat; keep the intentionally chaotic +1d8 roll. Never apply both Speed and legacy Agility in the same roll.
+- Wire class-sensitive effective mechanics rather than cosmetic numbers: Intellect/Personality for spell points by class, Endurance for HP, Might for physical damage, Accuracy for hit chance, Speed for AC/initiative, Luck for saving throws and traps.
+- New level-up spending, starting stat budgets, and equipment modifiers should be internally consistent; do not preserve deprecated v1 caps or point ledgers solely for old saves.
 
 ## Economy & equipment ownership
 
@@ -26,4 +27,4 @@ Persist equipped slot ownership explicitly per hero and define class restriction
 
 ## Acceptance
 
-Tests must cover v1/v2 projections without double counting, exact seven stats, status effects and correct per-class spell rules when activated; F5, remote restore, old saves and concurrency 409 for all wallet/equipment writes; no visual placeholders. Integration into Swordhaven requires authored map manifests and all three runtime mirrors + Go/Python parity checks and reviewed mobile/desktop screenshots.
+Tests must cover exactly seven effective stats, status effects and correct per-class spell rules when activated; F5, remote restore and concurrency 409 for all NEW wallet/equipment writes; no visual placeholders. Integration into Swordhaven requires authored map manifests and all three runtime mirrors + Go/Python parity checks and reviewed mobile/desktop screenshots.

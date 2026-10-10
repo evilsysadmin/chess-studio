@@ -586,7 +586,7 @@ export function createChroniclesOfMatthiasGame(host, {
   scene.add(camera);
   const combatFx = createCombatFx(camera);
 
-  const campaignExterior = scenePlan?.mapId === 'swordhaven-campaign' || scenePlan?.mapId === 'banner-road';
+  const campaignExterior = ['swordhaven-campaign', 'banner-road', 'swordhaven-first-book', 'banner-road-first-book'].includes(scenePlan?.mapId);
   const dungeon = campaignExterior
     ? buildChroniclesCampaignExterior(scene, { coarsePointer: coarse, scenePlan })
     : scenePlan?.regionKind === 'settlement'
