@@ -139,7 +139,7 @@ test('Chesscom · abre la planta 17 con renderer Babylon real y HUD Dust Veil pr
   await expect.poll(() => mode.evaluate((node) => {
     const title = node.querySelector('.chesscom-brand h2')?.getBoundingClientRect();
     const exit = node.querySelector('.chesscom-exit')?.getBoundingClientRect();
-    return Boolean(title && exit && title.right <= exit.left - 2);
+    return Boolean(title && exit && title.right <= exit.left - 10);
   })).toBe(true);
   await expect(page.getByRole('button', { name: '← Experimentos', exact: true })).toBeVisible();
 

@@ -339,7 +339,7 @@
     font-size:1.55rem;
   }
   .chesscom[data-chesscom-visual="premium-v1"][data-chesscom-layout="dust-veil-canonical-v1"] .chesscom-brand h2{
-    font-size:clamp(1.35rem,7.2vw,1.7rem);
+    font-size:clamp(1.30rem,6.75vw,1.61rem);
     line-height:.96;
     white-space:nowrap;
   }
