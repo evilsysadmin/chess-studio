@@ -64,7 +64,6 @@ export default function PostGameExperience({
   postGameFeedbackEnabled = true,
 }) {
   const [showReport, setShowReport] = useState(false);
-  const [showMoreActions, setShowMoreActions] = useState(false);
   const [showPostGameFeedback, setShowPostGameFeedback] = useState(false);
   const feedbackRegisteredGameRef = useRef(null);
   const finished = Boolean(game.isGameOver || flagFallen || forcedOutcome);
@@ -80,7 +79,6 @@ export default function PostGameExperience({
 
   useEffect(() => {
     setShowReport(false);
-    setShowMoreActions(false);
     setShowPostGameFeedback(false);
   }, [game.id]);
 
@@ -116,14 +114,12 @@ export default function PostGameExperience({
     lastCpuComment,
   });
   const primaryLeavesToMenu = nextAction.id === 'advance';
-  const hasMoreActions = Boolean(
-    !sequenceInProgress
-    && (
-      !primaryLeavesToMenu
-      || onShareResult
-      || onTrainPersonal
-    )
-  );
+  const showReviewLink = !sequenceInProgress && hasReport && nextAction.id !== 'review';
+  const showLeaveLink = sequenceInProgress || !primaryLeavesToMenu;
+  const sideActions = sequenceInProgress ? [] : [
+    onShareResult && { key: 'share', label: 'Compartir resultado', run: () => onShareResult(finalOutcome) },
+    onTrainPersonal && { key: 'train', label: 'Entrenar mis errores', run: onTrainPersonal },
+  ].filter(Boolean);
 
   return <>
     <div className="modal-backdrop endgame-modal-backdrop" role="presentation">
@@ -183,33 +179,28 @@ export default function PostGameExperience({
           <button className="primary-btn" onClick={onLeave}>{nextAction.label}</button>
         )}
         {!sequenceInProgress && <p className="endgame-next-detail">{nextAction.detail}{nextAction.id === 'train-error' && trainingOpportunity?.moveNumber ? ` · Jugada ${trainingOpportunity.moveNumber}: ${trainingOpportunity.played}.` : ''}</p>}
-        {!sequenceInProgress && hasReport && nextAction.id !== 'review' && (
-          <button className="secondary-btn endgame-review-btn" onClick={() => setShowReport(true)}>
-            Resumen de la partida
-          </button>
-        )}
-        {sequenceInProgress && <button className="secondary-btn" style={{ marginTop: '0.6rem' }} onClick={onLeave}>Volver al menú</button>}
-        {hasMoreActions && (
-          <button
-            className="secondary-btn"
-            style={{ marginTop: '0.6rem' }}
-            type="button"
-            aria-expanded={showMoreActions}
-            onClick={() => setShowMoreActions((visible) => !visible)}
-          >
-            {showMoreActions ? 'Ocultar opciones' : 'Más opciones'}
-          </button>
-        )}
-        {showMoreActions && !sequenceInProgress && (
-          <div className="endgame-more-actions">
-            {!primaryLeavesToMenu && <button className="secondary-btn" style={{ marginTop: '0.6rem' }} onClick={onLeave}>Volver al menú</button>}
-            {onShareResult && (
-              <button className="secondary-btn" style={{ marginTop: '0.6rem' }} onClick={() => onShareResult(finalOutcome)}>
-                Compartir resultado
+        {/* One primary decision, the way home always in sight, and the rest as
+            quiet links: no disclosure, no stack of grey buttons. */}
+        {(showReviewLink || showLeaveLink) && (
+          <div className="endgame-secondary-actions">
+            {showReviewLink && (
+              <button type="button" className="secondary-btn endgame-review-btn" onClick={() => setShowReport(true)}>
+                Resumen de la partida
               </button>
             )}
-            {onTrainPersonal && <button className="secondary-btn" style={{ marginTop: '0.6rem' }} onClick={onTrainPersonal}>Entrenar mis errores</button>}
+            {showLeaveLink && (
+              <button type="button" className="secondary-btn endgame-leave-btn" onClick={onLeave}>
+                Volver al castillo
+              </button>
+            )}
           </div>
+        )}
+        {sideActions.length > 0 && (
+          <nav className="endgame-side-actions" aria-label="Más acciones de la partida">
+            {sideActions.map((action) => (
+              <button key={action.key} type="button" className="endgame-side-link" onClick={action.run}>{action.label}</button>
+            ))}
+          </nav>
         )}
         {postGameFeedbackEnabled && showPostGameFeedback && (
           <PostGameFeedbackPrompt onDone={() => setShowPostGameFeedback(false)} />

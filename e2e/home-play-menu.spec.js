@@ -3,7 +3,7 @@ import { login, mockApi } from './helpers.js';
 
 test.use({ viewport: { width: 1672, height: 941 } });
 
-test('Home · 1 vs 1 es canónico y práctica sigue bajo Más formas de jugar', async ({ page }) => {
+test('Home · 1 vs 1 y práctica viven bajo Más formas de jugar', async ({ page }) => {
   await mockApi(page);
   await login(page);
   const home = page.getByRole('region', { name: 'Modos principales' });
@@ -13,12 +13,12 @@ test('Home · 1 vs 1 es canónico y práctica sigue bajo Más formas de jugar', 
   await expect(more).toBeVisible();
   await expect(more).toHaveAttribute('aria-expanded', 'false');
   await expect(menu).toHaveCount(0);
-  const duelEntry = page.getByRole('button', { name: 'Abrir Sala de Duelos 1 contra 1' });
-  await expect(duelEntry).toBeVisible();
+  // No permanent 1 vs 1 card over the hall: it lives in this menu.
+  await expect(page.locator('.menu.menu-illustrated > .home-pvp-roster-link')).toHaveCount(0);
 
   await more.click();
   await expect(more).toHaveAttribute('aria-expanded', 'true');
-  await expect(menu.getByRole('button', { name: 'Abrir Sala de Duelos 1 contra 1' })).toHaveCount(0);
+  await expect(menu.getByRole('button', { name: 'Abrir Sala de Duelos 1 contra 1' })).toBeVisible();
   await expect(menu.getByRole('button', { name: /Partida de práctica/ })).toBeVisible();
 
   await page.keyboard.press('Escape');

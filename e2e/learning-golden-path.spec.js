@@ -6,6 +6,7 @@ import {
   login,
   mockApi,
   waitForTrainingRoomSettled,
+  waitForHomeInteractive,
 } from './helpers.js';
 
 const PERSONAL_MATE_FEN = '6k1/5ppp/8/8/8/8/5PPP/R5K1 w - - 0 1';
@@ -147,11 +148,10 @@ test('Home · el avatar residente de Matthias abre Así juegas · y cierra el lo
   await expect(endgame).toBeVisible();
   await expect(endgame.getByText('¡Has ganado la partida!', { exact: true })).toBeVisible();
   // GP-6/GP-8: tras ganar, la acción principal es la revancha en un toque; el
-  // menú queda en «Más opciones».
+  // castillo queda siempre visible como acción secundaria.
   await expect(endgame.locator('.primary-btn')).toHaveText('Jugar otra partida');
-  await endgame.getByRole('button', { name: 'Más opciones', exact: true }).click();
-  await endgame.getByRole('button', { name: 'Volver al menú', exact: true }).click();
-  await expect(page.getByRole('region', { name: 'Modos principales', exact: true })).toBeVisible();
+  await endgame.getByRole('button', { name: 'Volver al castillo', exact: true }).click();
+  await waitForHomeInteractive(page);
 
   const corner = page.getByRole('complementary', { name: 'Rincón de Matthias' });
   await corner.getByRole('button', { name: 'Abrir Así juegas con Matthias', exact: true }).click();

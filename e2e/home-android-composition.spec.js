@@ -42,38 +42,20 @@ for (const viewport of [
       expect(box.y + box.height).toBeLessThanOrEqual(viewport.height + 1);
     }
 
+    // The account crest is the only chrome control; Novedades and Feedback
+    // live inside its menu.
     const account = page.locator('.masthead-account-trigger');
-    const feedback = page.locator('.masthead-feedback-trigger');
-    const releases = page.locator('.masthead-release-trigger');
     await expect(account).toBeVisible();
-    await expect(feedback).toBeVisible();
-    await expect(releases).toBeVisible();
-
-    const [accountBox, feedbackBox, releaseBox] = await Promise.all([
-      account.boundingBox(),
-      feedback.boundingBox(),
-      releases.boundingBox(),
-    ]);
+    await expect(page.locator('.masthead-feedback-trigger')).toHaveCount(0);
+    await expect(page.locator('.masthead-release-trigger')).toHaveCount(0);
+    const accountBox = await account.boundingBox();
     expect(accountBox).not.toBeNull();
-    expect(feedbackBox).not.toBeNull();
-    expect(releaseBox).not.toBeNull();
-
     const accountCenter = accountBox.x + accountBox.width / 2;
     expect(Math.abs(accountCenter - viewport.width / 2)).toBeLessThanOrEqual(3);
-
-    for (const [label, box] of [
-      ['account', accountBox],
-      ['feedback', feedbackBox],
-      ['releases', releaseBox],
-    ]) {
-      expect(box.width, `${label}: touch width`).toBeGreaterThanOrEqual(44);
-      expect(box.height, `${label}: touch height`).toBeGreaterThanOrEqual(44);
-      expect(box.width, `${label}: chrome stays compact`).toBeLessThanOrEqual(48);
-      expect(box.height, `${label}: chrome stays compact`).toBeLessThanOrEqual(48);
-    }
-
-    expect(releaseBox.x + releaseBox.width).toBeLessThanOrEqual(feedbackBox.x + 1);
-    expect(feedbackBox.x + feedbackBox.width).toBeLessThanOrEqual(viewport.width + 1);
+    expect(accountBox.width, 'account: touch width').toBeGreaterThanOrEqual(44);
+    expect(accountBox.height, 'account: touch height').toBeGreaterThanOrEqual(44);
+    expect(accountBox.width, 'account: chrome stays compact').toBeLessThanOrEqual(48);
+    expect(accountBox.height, 'account: chrome stays compact').toBeLessThanOrEqual(48);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
   });
 }
@@ -156,7 +138,7 @@ test('Home Android 3D · apaisado guarda 1v1 bajo Más y libera el salón', asyn
     const more = home.locator('.illustrated-home__play-more');
     await expect(more).toBeVisible();
     await more.click();
-    const menuPvp = home.locator('.illustrated-home__play-mobile-pvp .home-pvp-roster-link--menu');
+    const menuPvp = home.locator('.illustrated-home__play-pvp .home-pvp-roster-link--menu');
     await expect(menuPvp).toBeVisible();
     await expect(menuPvp).toContainText('Jugar 1 vs 1');
     const box = await menuPvp.boundingBox();

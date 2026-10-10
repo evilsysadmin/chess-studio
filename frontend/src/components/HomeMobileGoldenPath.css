@@ -226,8 +226,7 @@
   body .app-shell-home .menu.menu-illustrated
     .illustrated-home__destination:not(.illustrated-home__destination--play),
   body .app-shell-home .menu.menu-illustrated .illustrated-home__resident,
-  body .app-shell-home .menu.menu-illustrated .illustrated-home__utilities,
-  body .app-shell-home .menu.menu-illustrated .illustrated-home__quickbar {
+  body .app-shell-home .menu.menu-illustrated .illustrated-home__utilities {
     display: none !important;
   }
 
@@ -479,9 +478,6 @@
     font-size: 9px !important;
   }
 
-  body .app-shell-home .menu.menu-illustrated .illustrated-home__quickbar {
-    display: none !important;
-  }
 }
 
 /* Android desktop-site portrait still uses the tall-touch composition. Keep
@@ -521,8 +517,7 @@
   body .app-shell-home .menu.menu-illustrated
     .illustrated-home__destination:not(.illustrated-home__destination--play),
   body .app-shell-home .menu.menu-illustrated .illustrated-home__resident,
-  body .app-shell-home .menu.menu-illustrated .illustrated-home__utilities:not(.is-open),
-  body .app-shell-home .menu.menu-illustrated .illustrated-home__quickbar {
+  body .app-shell-home .menu.menu-illustrated .illustrated-home__utilities:not(.is-open) {
     display: none !important;
   }
 

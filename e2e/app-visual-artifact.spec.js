@@ -290,7 +290,7 @@ test('App · captura visual canónica desktop + Android normal/desktop-site', as
         const more = morePage.locator('.illustrated-home__play-more');
         await expect(more).toBeVisible();
         await more.click();
-        const mobilePvp = morePage.locator('.illustrated-home__play-mobile-pvp .home-pvp-roster-link--menu');
+        const mobilePvp = morePage.locator('.illustrated-home__play-pvp .home-pvp-roster-link--menu');
         await expect(mobilePvp).toBeVisible();
         await morePage.waitForTimeout(100);
         await captureViewportPng(
