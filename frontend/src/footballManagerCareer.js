@@ -3,16 +3,24 @@
 import { FOOTBALL_MANAGER_CLUBS } from './footballManagerClubs.js';
 import { advanceFootballSeason, createFootballSeason, FOOTBALL_MANAGER_TACTICS } from './footballManagerSeason.js';
 import { evaluateFootballLineup, getDefaultFootballLineup, getFootballClubRoster } from './footballManagerRoster.js';
+import { FOOTBALL_TRAINING_PLANS } from './footballManagerTraining.js';
 import { STORAGE_LOCAL, getStorageItem, storageHealthSnapshot } from './safeStorage.js';
 import { profileStorageIdentityMatchesCurrentUser, setProfileStorageItem } from './profileKeys.js';
 
 export const FOOTBALL_CAREER_KEY = 'chess-study-football-manager-career-v1';
-export const FOOTBALL_CAREER_VERSION = 1;
+export const FOOTBALL_CAREER_VERSION = 2;
 const MAX_SAVE_BYTES = 16000;
 const freeze = Object.freeze;
 
 function findClub(id) {
   return FOOTBALL_MANAGER_CLUBS.find((club) => club.id === id) || null;
+}
+
+function requireTraining(training) {
+  if (!FOOTBALL_TRAINING_PLANS.some((plan) => plan.id === training)) {
+    throw new Error('Invalid football career training plan');
+  }
+  return training;
 }
 
 function requireTactic(tactic) {
@@ -38,6 +46,7 @@ export function createFootballCareer(clubId, seed = 2026) {
     seed,
     rounds: freeze([]),
     nextTactic: 'balanced',
+    nextTraining: 'standard',
     nextLineup: getDefaultFootballLineup(getFootballClubRoster(club)),
   });
 }
@@ -46,7 +55,7 @@ export function createFootballCareer(clubId, seed = 2026) {
 // no foreign players, invalid tactics, impossible rounds or invented fatigue.
 export function replayFootballCareer(journal) {
   if (!journal || typeof journal !== 'object' || Array.isArray(journal)
-    || journal.version !== FOOTBALL_CAREER_VERSION
+    || (journal.version !== 1 && journal.version !== FOOTBALL_CAREER_VERSION)
     || !findClub(journal.clubId)
     || !Number.isSafeInteger(journal.seed) || journal.seed < 0
     || !Array.isArray(journal.rounds) || journal.rounds.length > 10) {
@@ -59,16 +68,19 @@ export function replayFootballCareer(journal) {
     }
     return freeze({
       tactic: requireTactic(decision.tactic),
+      training: requireTraining(journal.version === 1 ? 'standard' : decision.training),
       lineup: requireLineup(roster, decision.lineup),
     });
   });
   const nextTactic = requireTactic(journal.nextTactic);
+  const nextTraining = requireTraining(journal.version === 1 ? 'standard' : journal.nextTraining);
   const nextLineup = requireLineup(roster, journal.nextLineup);
   let season = createFootballSeason({ seed: journal.seed });
   for (const decision of rounds) {
     season = advanceFootballSeason(season, {
       managerClubId: journal.clubId,
       tactic: decision.tactic,
+      training: decision.training,
       lineup: decision.lineup,
     });
   }
@@ -79,18 +91,20 @@ export function replayFootballCareer(journal) {
       seed: journal.seed,
       rounds: freeze(rounds),
       nextTactic,
+      nextTraining,
       nextLineup,
     }),
     season,
   });
 }
 
-export function editFootballCareer(journal, { tactic, lineup } = {}) {
+export function editFootballCareer(journal, { tactic, lineup, training } = {}) {
   const { journal: current } = replayFootballCareer(journal);
   if (current.rounds.length === 10) throw new Error('Football career already complete');
   return replayFootballCareer({
     ...current,
     nextTactic: tactic === undefined ? current.nextTactic : tactic,
+    nextTraining: training === undefined ? current.nextTraining : training,
     nextLineup: lineup === undefined ? current.nextLineup : lineup,
   });
 }
@@ -100,7 +114,7 @@ export function playFootballCareerRound(journal) {
   if (current.rounds.length >= 10) throw new Error('Football career already complete');
   return replayFootballCareer({
     ...current,
-    rounds: [...current.rounds, { tactic: current.nextTactic, lineup: current.nextLineup }],
+    rounds: [...current.rounds, { tactic: current.nextTactic, training: current.nextTraining, lineup: current.nextLineup }],
   });
 }
 
