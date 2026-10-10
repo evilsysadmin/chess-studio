@@ -9,6 +9,7 @@ import {
   buildForkStalker,
 } from './chroniclesFantasyEnemyArt.js';
 import { installChroniclesEnemyMotionArt } from './chroniclesEnemyMotionArt.js';
+import { buildChroniclesSpriteBillboard } from './chronicles/chroniclesSpriteBillboards.js';
 
 const VISUALS = Object.freeze({
   'corrupted-pawn': Object.freeze({ build: buildCorruptedPawn, scale: 0.92 }),
@@ -31,6 +32,12 @@ export function chroniclesEnemyVisualSpec(visualType) {
 export function buildChroniclesEnemyVisual(visualType, options = {}) {
   const visual = VISUALS[visualType];
   if (!visual) return null;
+  // First-person opts into 2.5D painted billboards where a sheet exists;
+  // everything else (and Tactics) keeps the procedural 3D model.
+  if (options.sprites) {
+    const billboard = buildChroniclesSpriteBillboard(visualType);
+    if (billboard) return Object.freeze({ model: billboard, scale: 1 });
+  }
   const model = visual.build(options);
   installChroniclesEnemyMotionArt(model, visualType, options);
   return Object.freeze({

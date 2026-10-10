@@ -58,6 +58,15 @@ test('Chesscom · abre la planta 17 con renderer Babylon real y HUD Dust Veil pr
   await expect(host).toHaveAttribute('data-chesscom-character-mesh', 'custom-lowpoly-v4');
   await expect(host).toHaveAttribute('data-chesscom-character-materials', 'procedural-pbr-v4');
   await expect(host).toHaveAttribute('data-chesscom-environment', 'environment-art-v4');
+  await expect(host).toHaveAttribute('data-chesscom-architecture', 'industrial-architecture-v19');
+  await expect(host).toHaveAttribute('data-chesscom-vehicle', 'military-truck-v21');
+  await expect.poll(() => host.evaluate(() => {
+    const B = window.BABYLON;
+    const scene = B?.EngineStore?.LastCreatedScene;
+    const wheels = scene?.meshes?.filter((mesh) => mesh.name.startsWith('truck-v21-tyre-')) || [];
+    const root = scene?.getTransformNodeByName?.('truck-v21-root');
+    return Boolean(root && wheels.length === 6 && wheels.every((mesh) => !mesh.isPickable && mesh.parent === root));
+  })).toBe(true);
   await expect(host).toHaveAttribute('data-chesscom-lighting', 'readability-v2');
   await expect(mode.getByText(/BABYLON\.JS \d+\.\d+\.\d+ · GPU PREMIUM V2 · BALLISTICS · UNIT STANCE · CHARACTER ART V4/)).toBeVisible({ timeout: 30_000 });
   await expect(mode.getByText('BABYLON · ERROR', { exact: true })).toHaveCount(0);
@@ -128,9 +137,12 @@ test('Chesscom · abre la planta 17 con renderer Babylon real y HUD Dust Veil pr
   await expect(mode.locator('.chesscom-operation')).toBeVisible();
   // Compact branding must fit beside the exit, not be clipped by it.
   await expect.poll(() => mode.evaluate((node) => {
+    const brand = node.querySelector('.chesscom-brand')?.getBoundingClientRect();
     const title = node.querySelector('.chesscom-brand h2')?.getBoundingClientRect();
     const exit = node.querySelector('.chesscom-exit')?.getBoundingClientRect();
-    return Boolean(title && exit && title.right <= exit.left - 2);
+    return Boolean(brand && title && exit
+      && brand.right <= exit.left - 10
+      && title.right <= exit.left - 10);
   })).toBe(true);
   await expect(page.getByRole('button', { name: '← Experimentos', exact: true })).toBeVisible();
 
