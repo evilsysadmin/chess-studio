@@ -89,7 +89,6 @@ function AppInner({ isAdminUser }) {
   const { puzzleLaunch, quickMatchLaunchNonce, insightsLandingSection, openPuzzleMode, openPersonalTraining, openDailyChallengeSlot, openInsights, returnToQuickMatchFromPersonalTraining } = useLearningJourneyFlow({ navigateTo, resetNavigation });
 
   usePresenceHeartbeat(view);
-
   useEffect(() => {
     if (view !== 'lab') clearRememberedLabMode();
   }, [view]);
