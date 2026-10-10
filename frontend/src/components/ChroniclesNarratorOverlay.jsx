@@ -28,7 +28,7 @@ export function shouldShowChroniclesNarration(message) {
   return ![...LOW_SIGNAL_NARRATION, ...PARTY_OWNED_MILESTONES].some((pattern) => pattern.test(text));
 }
 
-export default function ChroniclesNarratorOverlay({ message }) {
+export default function ChroniclesNarratorOverlay({ message, children = null }) {
   const isMeaningful = shouldShowChroniclesNarration(message);
   const [lastNarration, setLastNarration] = useState(() => (isMeaningful ? message : ''));
 
@@ -50,6 +50,8 @@ export default function ChroniclesNarratorOverlay({ message }) {
       <div className="chronicles-dm-panel" role="region" aria-label="Relato de la expedición" aria-live="polite" aria-atomic="true">
         <span className="chronicles-dm-kicker">CRÓNICA DE EXPEDICIÓN</span>
         <p>{narration}</p>
+        {/* Touch layouts hide the bottom journal; quests travel with the chronicle. */}
+        {children && <div className="chronicles-dm-quests">{children}</div>}
       </div>
     </details>
   );

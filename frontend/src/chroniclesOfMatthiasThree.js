@@ -586,7 +586,7 @@ export function createChroniclesOfMatthiasGame(host, {
   scene.add(camera);
   const combatFx = createCombatFx(camera);
 
-  const campaignExterior = ['swordhaven-campaign', 'banner-road', 'swordhaven-first-book', 'banner-road-first-book'].includes(scenePlan?.mapId);
+  const campaignExterior = ['swordhaven-campaign', 'banner-road', 'swordhaven-first-book', 'banner-road-first-book', 'rookwood-first-book'].includes(scenePlan?.mapId);
   const dungeon = campaignExterior
     ? buildChroniclesCampaignExterior(scene, { coarsePointer: coarse, scenePlan })
     : scenePlan?.regionKind === 'settlement'
@@ -694,6 +694,7 @@ export function createChroniclesOfMatthiasGame(host, {
     dungeon.contentProps.forEach((prop) => {
       const visual = contentVisualById.get(prop.id);
       prop.root.visible = Boolean(visual?.visible);
+      if (prop.activatedRoot) prop.activatedRoot.visible = Boolean(visual?.activated);
       if (prop.kind === 'lever' && prop.pivot) {
         prop.pivot.rotation.z = visual?.activated ? -0.86 : 0.48;
       }

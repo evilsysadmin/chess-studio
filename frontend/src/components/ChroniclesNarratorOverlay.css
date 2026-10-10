@@ -99,7 +99,21 @@
   text-shadow: 0 1px 7px rgba(0, 0, 0, .66);
 }
 
+/* Desktop already shows quests in the bottom journal. */
+.chronicles-dm-quests { display: none; }
+
 @media (max-width: 800px), (max-width: 1024px) and (max-height: 600px) {
+  .chronicles-dm-quests {
+    display: block;
+    max-height: min(46vh, 320px);
+    overflow: auto;
+    margin: 10px -4px 0;
+    border-top: 1px solid rgba(214, 169, 98, .2);
+    scrollbar-width: thin;
+  }
+  .chronicles-dm-quests .chronicles-quest-log { padding: 8px 4px 0; }
+  .chronicles-dm-quests .chronicles-quest-log__quest { grid-template-columns: 20px 1fr; gap: 6px; padding: 6px 7px; }
+  .chronicles-dm-quests .chronicles-quest-log__quest p { font-family: inherit; font-size: .68rem; text-shadow: none; color: #c2b195; }
   .chronicles-dm-overlay {
     top: 112px;
     left: max(10px, env(safe-area-inset-left));

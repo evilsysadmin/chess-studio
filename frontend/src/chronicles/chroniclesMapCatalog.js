@@ -4,6 +4,7 @@ import swordhavenCampaign from './maps/swordhaven-campaign.json';
 import bannerRoad from './maps/banner-road.json';
 import swordhavenFirstBook from './maps/swordhaven-first-book.json';
 import bannerRoadFirstBook from './maps/banner-road-first-book.json';
+import rookwoodFirstBook from './maps/rookwood-first-book.json';
 import galleryOfForks from './maps/gallery-of-forks.json';
 import menagerieOfAsh from './maps/menagerie-of-ash.json';
 import ashVault from './maps/ash-vault.json';
@@ -348,6 +349,7 @@ const MAPS = Object.freeze({
   [bannerRoad.id]: normalizeMap(bannerRoad),
   [swordhavenFirstBook.id]: normalizeMap(swordhavenFirstBook),
   [bannerRoadFirstBook.id]: normalizeMap(bannerRoadFirstBook),
+  [rookwoodFirstBook.id]: normalizeMap(rookwoodFirstBook),
   [DEFAULT_CHRONICLES_MAP_ID]: normalizeMap(cryptEightSquares),
   [galleryOfForks.id]: normalizeMap(galleryOfForks),
   [menagerieOfAsh.id]: normalizeMap(menagerieOfAsh),
@@ -479,6 +481,7 @@ function chroniclesMapRenderContent(map) {
       kind: entry.kind,
       group,
       visualType: entry.visualType || entry.kind,
+      ...(Number.isInteger(entry.visualFacing) ? { visualFacing: entry.visualFacing } : {}),
       position: position ? Object.freeze(position) : null,
     });
   }));

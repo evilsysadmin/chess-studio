@@ -85,6 +85,7 @@ import ChroniclesMinimap from './ChroniclesMinimap.jsx';
 import ChroniclesBookOneEpilogue from './ChroniclesBookOneEpilogue.jsx';
 import ChroniclesCharacterSetup from './ChroniclesCharacterSetup.jsx';
 import ChroniclesSaveMenu from './ChroniclesSaveMenu.jsx';
+import ChroniclesQuestLog, { chroniclesQuestLogEntries } from './ChroniclesQuestLog.jsx';
 import ChroniclesDefeatOverlay from './ChroniclesDefeatOverlay.jsx';
 import ChroniclesEnemyRetaliationFx from './ChroniclesEnemyRetaliationFx.jsx';
 import ChroniclesInitiativeRail from './ChroniclesInitiativeRail.jsx';
@@ -890,6 +891,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
     : null;
   const journalEntries = chroniclesJournalEntries(state);
   const latestJournalEntry = journalEntries[journalEntries.length - 1];
+  const activeQuests = chroniclesQuestLogEntries(state).filter((quest) => quest.status === 'active');
   const expeditionOver = state.phase === 'defeated' || state.phase === 'escaped';
   const contextualAction = chroniclesContextualContentAction(state);
   const activeInitiativeActor = chroniclesCurrentInitiativeActor(state.initiative);
@@ -1029,7 +1031,9 @@ export default function ChroniclesOfMatthias({ onExit }) {
               }}
             />
             <ChroniclesInitiativeRail initiative={state.initiative} />
-            <ChroniclesNarratorOverlay message={state.message} />
+            <ChroniclesNarratorOverlay message={state.message}>
+              {activeQuests.length > 0 && <ChroniclesQuestLog state={state} />}
+            </ChroniclesNarratorOverlay>
             <ChroniclesPartyBark key={partyBark?.token || 'none'} bark={partyBark} />
             <ChroniclesTacticalMargin target={tacticalTarget} />
             <ChroniclesEnemyRetaliationFx key={retaliationCue?.token || 'none'} cue={retaliationCue} />
@@ -1040,17 +1044,23 @@ export default function ChroniclesOfMatthias({ onExit }) {
 
           <details className="chronicles-journal" aria-label="Crónica de expedición">
             <summary>
-              <span><i aria-hidden="true">✦</i><b>Crónica de expedición</b><small>{latestJournalEntry?.title}</small></span>
-              <em>{journalEntries.length} {journalEntries.length === 1 ? 'folio' : 'folios'}</em>
+              <span><i aria-hidden="true">✦</i><b>Crónica de expedición</b><small>{activeQuests[0] ? `◆ ${activeQuests[0].title}` : latestJournalEntry?.title}</small></span>
+              <em>
+                {activeQuests.length > 0 && `${activeQuests.length} ${activeQuests.length === 1 ? 'encargo' : 'encargos'} · `}
+                {journalEntries.length} {journalEntries.length === 1 ? 'folio' : 'folios'}
+              </em>
             </summary>
-            <ol>
-              {journalEntries.map((entry) => (
-                <li key={entry.id}>
-                  <span aria-hidden="true">{entry.sigil}</span>
-                  <div><strong>{entry.title}</strong><p>{entry.body}</p></div>
-                </li>
-              ))}
-            </ol>
+            <div className="chronicles-journal__body">
+              <ChroniclesQuestLog state={state} />
+              <ol>
+                {journalEntries.map((entry) => (
+                  <li key={entry.id}>
+                    <span aria-hidden="true">{entry.sigil}</span>
+                    <div><strong>{entry.title}</strong><p>{entry.body}</p></div>
+                  </li>
+                ))}
+              </ol>
+            </div>
           </details>
 
           {!expeditionOver && (

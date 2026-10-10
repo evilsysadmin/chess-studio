@@ -12,6 +12,7 @@ import {
   chroniclesApplyContentEffects,
   chroniclesContentDefinition,
   chroniclesContentInteractions,
+  chroniclesQuestEntries,
   chroniclesRequirementFailure,
   chroniclesRequirementMet,
   chroniclesRequirementsMet,
@@ -521,6 +522,22 @@ export function chroniclesObjective(state) {
         || pendingInteraction.label
         || (pendingInteraction.kind === 'pickup' ? 'Recoge el objeto' : 'Interactúa con el entorno');
     }
+  }
+
+  // In the open world the party follows its quests, not the nearest gate.
+  // A quest with content on this map wins; otherwise the story thread. An
+  // exit objective a designer wrote by hand (legacy Swordhaven) still rules.
+  if (['settlement', 'wilderness'].includes(map.regionKind) && !exit?.explorationObjective) {
+    const active = chroniclesQuestEntries(state, 'active').filter((quest) => quest.objective);
+    const localQuestIds = new Set((map.interactables || []).flatMap((entry) => (
+      (entry.when || []).map((requirement) => requirement?.questId).filter(Boolean)
+    )));
+    const tracked = active.find((quest) => localQuestIds.has(quest.id)) || active[0];
+    if (tracked) return tracked.objective;
+    // Nothing tracked yet: point at whoever here hands out work.
+    const questGiver = (map.interactables || []).find((entry) => chroniclesRequirementsMet(state, entry.when)
+      && (entry.action?.effects || []).some((effect) => effect.type === 'start-quest'));
+    if (questGiver?.label) return questGiver.label;
   }
 
   if (exit) return exit.explorationObjective || exit.openLabel || 'Busca una salida';

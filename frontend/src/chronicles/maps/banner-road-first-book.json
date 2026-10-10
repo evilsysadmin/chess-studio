@@ -183,6 +183,26 @@
         ],
         "message": "La compañía llega a Swordhaven."
       }
+    },
+    {
+      "id": "to-banner-road-rookwood",
+      "kind": "exit",
+      "x": 19,
+      "y": 10,
+      "requiresReturn": true,
+      "openLabel": "Tomar el sendero de Rookwood",
+      "lockedLabel": "El paso está sellado",
+      "requirements": [],
+      "action": {
+        "effects": [
+          {
+            "type": "transition-map",
+            "mapId": "rookwood-first-book",
+            "entryExitId": "to-rookwood-banner-road"
+          }
+        ],
+        "message": "La compañía se adentra en Rookwood."
+      }
     }
   ],
   "initialJournal": {

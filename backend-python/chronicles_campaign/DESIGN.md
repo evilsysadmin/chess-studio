@@ -65,3 +65,15 @@ accepted candidates into `backend-python/chronicles_maps/` only together
 with the Go/frontend mirrors and refreshed cross-runtime corpora via
 `make chronicles-contracts`; then update the opt-in entry route, test
 checkpoints, and review real desktop/mobile gameplay PNGs.
+
+## Primer encargo secundario jugable (First Book)
+
+`names-in-wood` («Los nombres del bosque», `quests/side.json`) es el primer
+encargo secundario materializado: `rookwood-first-book` (wilderness) se abre
+desde `banner-road-first-book` por una salida recíproca
+(`to-banner-road-rookwood` ↔ `to-rookwood-banner-road`). Edda da el encargo,
+tres placas `rookwood-name-plaque` aparecen sólo con la quest activa (una tras
+un sabueso de hueso opcional) y el Roble de los Nombres paga 15 oro mediante
+`claim-reward` (`rookwood:names-in-wood:v1`, una vez por run, F5/CAS-safe).
+El atlas sigue siendo la fuente de diseño; el manifiesto de runtime se edita en
+`backend-python/chronicles_maps/` y se sincroniza con `make chronicles-contracts`.
