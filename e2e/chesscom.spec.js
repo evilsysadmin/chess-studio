@@ -96,8 +96,9 @@ test('Chesscom · abre la planta 17 con renderer Babylon real y HUD Dust Veil pr
     const actions = node.querySelector('.chesscom-actionbar')?.getBoundingClientRect();
     const objectives = node.querySelector('.chesscom-objectives')?.getBoundingClientRect();
     if (!field || !squad || !actions || !objectives) return false;
-    return field.width >= window.innerWidth * .95
-      && field.height >= window.innerHeight - origin.top - 2
+    return origin.top >= -1 && origin.top <= 2
+      && field.width >= window.innerWidth * .95
+      && field.height >= window.innerHeight - 2
       && field.bottom <= window.innerHeight + 2
       && squad.bottom >= window.innerHeight - 40
       && squad.bottom <= window.innerHeight + 2
