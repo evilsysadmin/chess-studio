@@ -6,6 +6,66 @@ export const CHESSCOM_TRUCK_ART_V21 = Object.freeze({
   nonInteractive:true,
 });
 
+// Decorative V22 upgrade. These are fittings on the existing V21 vehicle,
+// not obstacles: no extra hitboxes, tiles, cover or targeting surfaces.
+export const CHESSCOM_TRUCK_DETAIL_V22 = Object.freeze({
+  identity:'truck-field-details-v22',
+  noPicking:true,
+  maxAdditionalParts:38,
+});
+
+export function chesscomTruckV22DetailParts(tier='ultra') {
+  const full=tier==='ultra';
+  const detail=tier!=='balanced';
+  const parts=[];
+  const box=(name,finish,x,y,z,w,h,d,rz=0)=>{
+    parts.push({kind:'box',name,finish,x,y,z,w,h,d,rz});
+  };
+  const wheel=(name,finish,x,y,z,diameter,thickness)=>{
+    parts.push({kind:'wheel',name,finish,x,y,z,diameter,thickness});
+  };
+
+  // Wheel arches are part of the transport, not independent cover objects.
+  for(const axle of CHESSCOM_TRUCK_ART_V21.axles){
+    for(const side of [-1,1]){
+      box(`fender-${axle}-${side}`,'dark',axle,.635,side*.72,.78,.105,.18);
+    }
+  }
+  // Cab windshield framing breaks the all-box silhouette at playing zoom.
+  for(const side of [-1,1]){
+    box(`windshield-pillar-${side}`,'steel',-1.46,1.315,side*.47,.085,.50,.07,-.14);
+    box(`cab-grabrail-${side}`,'steel',-1.02,.99,side*.64,.045,.39,.05);
+  }
+  // Tarpaulin tension across the cargo bed, with subdued military finishes.
+  for(const x of [-.15,.52,1.15]){
+    box(`canopy-tie-left-${x}`,'dark',x,1.72,-.658,.045,.43,.045);
+    box(`canopy-tie-right-${x}`,'dark',x,1.72,.658,.045,.43,.045);
+  }
+  if(detail){
+    // A single externally mounted spare wheel is useful as a silhouette cue.
+    wheel('spare-wheel','tyre',.48,1.20,-.785,.61,.20);
+    wheel('spare-wheel-hub','steel',.48,1.20,-.90,.26,.036);
+    box('fuel-tank','dark',.18,.56,.62,.54,.25,.27);
+    box('underbody-locker','steel',.85,.56,.62,.47,.24,.24);
+    box('roof-service-marker','warning',-1.0,1.66,.02,.30,.04,.20);
+    box('rear-crossbar','steel',1.40,1.19,0,.09,.095,1.26);
+    for(const side of [-1,1]){
+      box(`tailgate-latch-${side}`,'dark',1.48,1.24,side*.47,.065,.27,.06);
+      box(`side-cleat-${side}`,'steel',.54,1.44,side*.69,.21,.055,.06);
+    }
+  }
+  if(full){
+    for(const x of [-.12,.50,1.10]){
+      box(`canopy-seam-${x}`,'steel',x,1.939,0,.032,.027,1.23);
+    }
+    box('cab-aerial-base','dark',-.77,1.73,-.39,.12,.08,.12);
+    box('cab-aerial','steel',-.77,1.91,-.39,.022,.30,.022);
+    box('front-tow-eye','warning',-1.97,.47,.37,.13,.09,.13);
+    box('rear-tow-eye','warning',1.53,.47,-.31,.13,.09,.13);
+  }
+  return parts;
+}
+
 export function chesscomTruckV21Parts(tier='ultra'){
   const detail=tier!=='balanced';
   const ultra=tier==='ultra';
@@ -66,6 +126,8 @@ export function chesscomTruckV21Parts(tier='ultra'){
     box('cargo-number-plate','warning',.88,1.21,-.665,.26,.14,.035);
     for(const z of [-.51,.51])box(`mud-flap-${z}`,'dark',1.27,.28,z,.12,.32,.22);
   }
+  // Layer v22 fittings on the existing V21 six-wheel vehicle.
+  parts.push(...chesscomTruckV22DetailParts(tier));
   return parts;
 }
 
@@ -74,7 +136,7 @@ export function createChesscomTruckV21(B,scene,{x,z,mats,shadowGenerator,tier='u
   const root=new B.TransformNode('truck-v21-root',scene);
   root.position.set(x,0,z);
   root.rotation.y=.18;
-  root.metadata={visual:'military-truck-v21',decorative:true};
+  root.metadata={visual:'military-truck-v21',detail:CHESSCOM_TRUCK_DETAIL_V22.identity,decorative:true};
   const finishes={
     body:mats.truck,canvas:mats.truckCanvas,steel:mats.metalBright,
     dark:mats.metalDark,glass:mats.window,lamp:mats.headlight,
