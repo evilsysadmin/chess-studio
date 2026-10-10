@@ -1,15 +1,22 @@
 import { useEffect, useMemo, useState } from 'react';
 import { CHRONICLES_PARTY } from '../chroniclesOfMatthias.js';
 import {
-  CHRONICLES_CREATOR_ATTRIBUTE_BUDGET,
-  CHRONICLES_CREATOR_ATTRIBUTE_CAP,
-  CHRONICLES_CREATOR_RULES,
-  chroniclesCreatorMechanicalSummary,
+  chroniclesRollCharacterStats,
   createCanonicalChroniclesCharacterBuild,
-  createSeededChroniclesCharacterBuild,
   normalizeChroniclesCharacterBuild,
   validateChroniclesCharacterBuild,
 } from '../chronicles/chroniclesCharacterBuilds.js';
+import {
+  CHRONICLES_MM3_CLASSES,
+  CHRONICLES_MM3_CLASS_IDS,
+  CHRONICLES_MM3_STATS,
+  CHRONICLES_MM3_STAT_EFFECTS,
+  CHRONICLES_MM3_STAT_LABELS,
+  CHRONICLES_MM3_STAT_SHORT,
+  chroniclesMM3Derived,
+  chroniclesMM3UnmetRequirements,
+} from '../chronicles/chroniclesMM3Rules.js';
+import { chroniclesPartyPortraitUrl } from '../chronicles/chroniclesPartyPortraitAssets.js';
 import {
   clearChroniclesCharacterDraft,
   loadChroniclesCharacterDraft,
@@ -18,13 +25,6 @@ import {
 import { clearRememberedLabMode, rememberLabMode } from '../labLaunchIntent.js';
 import './ChroniclesCharacterSetup.css';
 
-const ATTRIBUTE_LABELS = Object.freeze({
-  vigor: 'Vigor',
-  power: 'Potencia',
-  precision: 'Precisión',
-  will: 'Voluntad',
-});
-
 function customFrom(build) {
   const normalized = normalizeChroniclesCharacterBuild(build, CHRONICLES_PARTY);
   return {
@@ -32,13 +32,19 @@ function customFrom(build) {
     mode: 'custom',
     characters: normalized.characters.map((character) => ({
       ...character,
-      attributes: { ...character.attributes },
+      stats: { ...character.stats },
     })),
   };
 }
 
-function pointsSpent(character) {
-  return Object.values(character?.attributes || {}).reduce((sum, value) => sum + (Number(value) || 0), 0);
+function signed(value) {
+  return value > 0 ? `+${value}` : String(value);
+}
+
+function requirementText(classId) {
+  return Object.entries(CHRONICLES_MM3_CLASSES[classId].requirements)
+    .map(([stat, need]) => `${CHRONICLES_MM3_STAT_SHORT[stat]} ${need}`)
+    .join(' · ');
 }
 
 export default function ChroniclesCharacterSetup({
@@ -53,7 +59,7 @@ export default function ChroniclesCharacterSetup({
   );
   const [recoveredDraft, setRecoveredDraft] = useState(() => loadChroniclesCharacterDraft(CHRONICLES_PARTY));
   const [editing, setEditing] = useState(() => Boolean(recoveredDraft));
-  const [seed, setSeed] = useState(() => recoveredDraft?.seed || normalizedCurrent.seed || 'MATTHIAS');
+  const [rolls, setRolls] = useState(0);
   const [activeSlot, setActiveSlot] = useState(() => recoveredDraft?.activeSlot || 'matthias');
   const [draft, setDraft] = useState(() => (
     recoveredDraft?.build ? customFrom(recoveredDraft.build) : customFrom(normalizedCurrent)
@@ -61,9 +67,9 @@ export default function ChroniclesCharacterSetup({
 
   useEffect(() => {
     if (!editing) return;
-    const saved = saveChroniclesCharacterDraft({ seed, activeSlot, build: draft }, CHRONICLES_PARTY);
+    const saved = saveChroniclesCharacterDraft({ activeSlot, build: draft }, CHRONICLES_PARTY);
     if (saved && recoveryLabMode) rememberLabMode(recoveryLabMode);
-  }, [activeSlot, draft, editing, recoveryLabMode, seed]);
+  }, [activeSlot, draft, editing, recoveryLabMode]);
 
   const clearRecovery = () => {
     clearChroniclesCharacterDraft();
@@ -84,15 +90,12 @@ export default function ChroniclesCharacterSetup({
     clearRecovery();
     setRecoveredDraft(null);
     setDraft(customFrom(normalizedCurrent));
-    setSeed(normalizedCurrent.seed || 'MATTHIAS');
     setActiveSlot('matthias');
     setEditing(false);
   };
 
   const activeCharacter = draft.characters.find((character) => character.slotId === activeSlot) || draft.characters[0];
-  const rules = CHRONICLES_CREATOR_RULES[activeCharacter.slotId];
-  const spent = pointsSpent(activeCharacter);
-  const remaining = CHRONICLES_CREATOR_ATTRIBUTE_BUDGET - spent;
+  const derived = chroniclesMM3Derived(activeCharacter.classId, activeCharacter.stats);
   const validation = validateChroniclesCharacterBuild(draft);
 
   const beginCustom = () => {
@@ -100,11 +103,6 @@ export default function ChroniclesCharacterSetup({
     setDraft(customFrom(normalizedCurrent));
     setActiveSlot('matthias');
     setEditing(true);
-  };
-
-  const randomizeBuild = () => {
-    setDraft(createSeededChroniclesCharacterBuild(seed, CHRONICLES_PARTY));
-    setActiveSlot('matthias');
   };
 
   const patchCharacter = (slotId, patch) => {
@@ -117,24 +115,17 @@ export default function ChroniclesCharacterSetup({
     }));
   };
 
-  const setAttribute = (key, delta) => {
-    setDraft((current) => ({
-      ...current,
-      mode: 'custom',
-      characters: current.characters.map((character) => {
-        if (character.slotId !== activeCharacter.slotId) return character;
-        const currentValue = Number(character.attributes?.[key] || 0);
-        const currentSpent = pointsSpent(character);
-        if (delta > 0 && (currentSpent >= CHRONICLES_CREATOR_ATTRIBUTE_BUDGET || currentValue >= CHRONICLES_CREATOR_ATTRIBUTE_CAP)) {
-          return character;
-        }
-        const nextValue = Math.max(0, Math.min(CHRONICLES_CREATOR_ATTRIBUTE_CAP, currentValue + delta));
-        return {
-          ...character,
-          attributes: { ...character.attributes, [key]: nextValue },
-        };
-      }),
-    }));
+  // MM3 roller: reroll all seven stats as often as you like; keep the class
+  // if the new roll still qualifies, otherwise fall to the first that does.
+  const rerollStats = () => {
+    const { stats, classId } = chroniclesRollCharacterStats(Math.random, activeCharacter.classId);
+    patchCharacter(activeCharacter.slotId, { stats, classId });
+    setRolls((count) => count + 1);
+  };
+
+  const chooseClass = (classId) => {
+    if (chroniclesMM3UnmetRequirements(classId, activeCharacter.stats).length) return;
+    patchCharacter(activeCharacter.slotId, { classId });
   };
 
   if (!editing) {
@@ -145,8 +136,8 @@ export default function ChroniclesCharacterSetup({
           <span className="section-label">FORMAR COMPAÑÍA</span>
           <h2 id="chronicles-character-setup-title">¿Con quién bajamos ahí?</h2>
           <p>
-            Puedes entrar con Matthias, Hildegard, Aziz y Faust tal como vienen de fábrica,
-            o crear tu propia compañía sobre los cuatro arquetipos de ajedrez.
+            Puedes entrar con Matthias, Hildegard, Aziz y Faust tal como vienen de fábrica
+            (Caballero, Paladín, Clérigo y Arquero), o tirar los dados y elegir sus clases.
           </p>
 
           {hasCustom ? (
@@ -194,30 +185,14 @@ export default function ChroniclesCharacterSetup({
       <section className="chronicles-character-setup__panel chronicles-character-setup__panel--editor">
         <div className="chronicles-character-setup__head">
           <div>
-            <span className="section-label">CREADOR DE PJS · BUILD V1</span>
+            <span className="section-label">CREAR PERSONAJES · REGLAS MM3</span>
             <h2>Forma la compañía</h2>
-            <p>Un PJ cada vez. Tres puntos de atributo, una skill inicial opcional y nada de numeritos decorativos.</p>
+            <p>Tira los dados de cada héroe tantas veces como quieras y elige una de las diez clases que su tirada permita.</p>
             {recoveredDraft ? (
               <small className="chronicles-character-setup__recovered">Borrador recuperado de esta sesión.</small>
             ) : null}
           </div>
           <button type="button" className="ghost-btn" onClick={leaveEditor}>← Volver</button>
-        </div>
-
-        <div className="chronicles-character-setup__seed">
-          <label>
-            Seed de build
-            <input
-              aria-label="Seed de build"
-              value={seed}
-              maxLength={48}
-              onChange={(event) => setSeed(event.target.value)}
-            />
-          </label>
-          <button type="button" className="secondary-btn" onClick={randomizeBuild}>
-            Generar con seed
-          </button>
-          <small>Misma seed = mismos atributos y skills iniciales.</small>
         </div>
 
         <nav className="chronicles-character-setup__slots" aria-label="Personajes de la compañía">
@@ -229,7 +204,8 @@ export default function ChroniclesCharacterSetup({
               onClick={() => setActiveSlot(character.slotId)}
               aria-pressed={character.slotId === activeCharacter.slotId}
             >
-              <span>{index + 1}</span>
+              <img src={chroniclesPartyPortraitUrl(character.slotId)} alt="" aria-hidden="true" />
+              <span>{index + 1} · {CHRONICLES_MM3_CLASSES[character.classId]?.label}</span>
               <strong>{character.name}</strong>
             </button>
           ))}
@@ -237,7 +213,7 @@ export default function ChroniclesCharacterSetup({
 
         <div className="chronicles-character-setup__sheet">
           <div className="chronicles-character-setup__identity">
-            <span>{rules.classLabel}</span>
+            <span>{CHRONICLES_MM3_CLASSES[activeCharacter.classId]?.label}</span>
             <label>
               Nombre
               <input
@@ -247,70 +223,74 @@ export default function ChroniclesCharacterSetup({
                 onChange={(event) => patchCharacter(activeCharacter.slotId, { name: event.target.value })}
               />
             </label>
+            <dl className="chronicles-character-setup__derived" aria-label={`Valores de combate de ${activeCharacter.name}`}>
+              <div><dt>Vida</dt><dd>{derived.maxHp}</dd></div>
+              <div><dt>Armadura</dt><dd>{derived.armorClass}</dd></div>
+              <div><dt>Acierto</dt><dd>{signed(derived.toHit)}</dd></div>
+              <div><dt>Daño</dt><dd>{signed(derived.damageBonus)}</dd></div>
+            </dl>
+            <small className="chronicles-character-setup__derived-note">
+              La armadura sube con el equipo. Intelecto y Personalidad darán puntos de hechizo cuando llegue la magia.
+            </small>
           </div>
 
-          <section className="chronicles-character-setup__attributes" aria-label={`Atributos de ${activeCharacter.name}`}>
+          <section className="chronicles-character-setup__attributes" aria-label={`Estadísticas de ${activeCharacter.name}`}>
             <div className="chronicles-character-setup__section-head">
               <div>
-                <span>ATRIBUTOS</span>
-                <strong>{remaining} puntos disponibles</strong>
+                <span>ESTADÍSTICAS · 3D6</span>
+                <strong>{rolls > 0 ? `${rolls} ${rolls === 1 ? 'tirada' : 'tiradas'} en esta sesión` : 'Tirada inicial'}</strong>
               </div>
-              <small>Máximo {CHRONICLES_CREATOR_ATTRIBUTE_CAP} por atributo en creación.</small>
+              <button type="button" className="secondary-btn" onClick={rerollStats}>
+                🎲 Tirar dados
+              </button>
             </div>
-            {rules.allowedAttributes.map((key) => {
-              const value = Number(activeCharacter.attributes?.[key] || 0);
+            {CHRONICLES_MM3_STATS.map((key) => {
+              const value = Number(activeCharacter.stats?.[key] || 0);
+              const bonus = derived.bonuses[key];
               return (
-                <div className="chronicles-character-setup__attribute" key={key}>
-                  <span>{ATTRIBUTE_LABELS[key]}</span>
+                <div className="chronicles-character-setup__attribute" key={key} data-stat={key}>
+                  <span>
+                    <b>{CHRONICLES_MM3_STAT_LABELS[key]}</b>
+                    <small>{CHRONICLES_MM3_STAT_EFFECTS[key]}</small>
+                  </span>
                   <div>
-                    <button
-                      type="button"
-                      aria-label={`Bajar ${ATTRIBUTE_LABELS[key]}`}
-                      onClick={() => setAttribute(key, -1)}
-                      disabled={value <= 0}
-                    >−</button>
                     <strong>{value}</strong>
-                    <button
-                      type="button"
-                      aria-label={`Subir ${ATTRIBUTE_LABELS[key]}`}
-                      onClick={() => setAttribute(key, 1)}
-                      disabled={remaining <= 0 || value >= CHRONICLES_CREATOR_ATTRIBUTE_CAP}
-                    >+</button>
+                    <em className={bonus > 0 ? 'is-up' : bonus < 0 ? 'is-down' : ''}>{signed(bonus)}</em>
                   </div>
                 </div>
               );
             })}
           </section>
 
-          <section className="chronicles-character-setup__skills">
+          <section className="chronicles-character-setup__classes" aria-label={`Clase de ${activeCharacter.name}`}>
             <div className="chronicles-character-setup__section-head">
               <div>
-                <span>SKILL INICIAL</span>
-                <strong>Una ventaja real, no confeti.</strong>
+                <span>CLASE</span>
+                <strong>Sólo las que permite la tirada.</strong>
               </div>
             </div>
-            <button
-              type="button"
-              className={!activeCharacter.startingSkillId ? 'is-selected' : ''}
-              onClick={() => patchCharacter(activeCharacter.slotId, { startingSkillId: null })}
-              aria-pressed={!activeCharacter.startingSkillId}
-            >
-              <strong>Sin skill inicial</strong>
-              <small>Build limpia; toda la progresión vendrá de la expedición.</small>
-            </button>
-            {rules.startingSkills.map((skill) => (
-              <button
-                type="button"
-                key={skill.id}
-                aria-label={skill.label}
-                className={activeCharacter.startingSkillId === skill.id ? 'is-selected' : ''}
-                onClick={() => patchCharacter(activeCharacter.slotId, { startingSkillId: skill.id })}
-                aria-pressed={activeCharacter.startingSkillId === skill.id}
-              >
-                <strong>{skill.label}</strong>
-                <small>{skill.description}</small>
-              </button>
-            ))}
+            <div className="chronicles-character-setup__class-grid">
+              {CHRONICLES_MM3_CLASS_IDS.map((classId) => {
+                const definition = CHRONICLES_MM3_CLASSES[classId];
+                const unmet = chroniclesMM3UnmetRequirements(classId, activeCharacter.stats);
+                const selected = activeCharacter.classId === classId;
+                return (
+                  <button
+                    type="button"
+                    key={classId}
+                    data-class-id={classId}
+                    className={selected ? 'is-selected' : ''}
+                    aria-pressed={selected}
+                    disabled={unmet.length > 0}
+                    onClick={() => chooseClass(classId)}
+                  >
+                    <strong>{definition.label}</strong>
+                    <small>{definition.summary}</small>
+                    <em>{unmet.length ? `Necesita ${requirementText(classId)}` : `Vida base ${definition.hpBase} · ${requirementText(classId)}`}</em>
+                  </button>
+                );
+              })}
+            </div>
           </section>
         </div>
 
@@ -322,18 +302,18 @@ export default function ChroniclesCharacterSetup({
 
         <footer className="chronicles-character-setup__footer">
           <details className="chronicles-character-setup__mechanics" open>
-            <summary>Resumen mecánico de la compañía</summary>
+            <summary>Resumen de la compañía</summary>
             <div>
-              {draft.characters.map((character) => (
-                <span key={character.slotId}>
-                  <strong>{character.name}</strong>
-                  <small>
-                    {chroniclesCreatorMechanicalSummary(character).map((row) => row.label).join(' · ')}
-                  </small>
-                </span>
-              ))}
+              {draft.characters.map((character) => {
+                const sheet = chroniclesMM3Derived(character.classId, character.stats);
+                return (
+                  <span key={character.slotId}>
+                    <strong>{character.name} · {sheet.classLabel}</strong>
+                    <small>Vida {sheet.maxHp} · Armadura {sheet.armorClass} · Acierto {signed(sheet.toHit)} · Daño {signed(sheet.damageBonus)}</small>
+                  </span>
+                );
+              })}
             </div>
-            <p>No hay penalizadores de creación en Build v1; el coste es qué mejoras dejas fuera.</p>
           </details>
           <button
             type="button"

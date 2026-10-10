@@ -285,11 +285,29 @@ function updateQuest(state, effect, status) {
   };
 }
 
+// MM Luck: under MM rules each hero rolls a save against traps; a success
+// halves the damage. Deterministic per state so F5 cannot reroll it.
+function trapSaveRoll(state, memberId) {
+  const text = [state?.runSeed ?? '', state?.mapId ?? '', state?.turns ?? 0, 'trap', memberId].join('|');
+  let hash = 2166136261;
+  for (let index = 0; index < text.length; index += 1) {
+    hash ^= text.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return 1 + ((hash >>> 0) % 20);
+}
+
+function trapDamageFor(state, member, amount) {
+  if (state?.combatRules !== 'mm3' || amount <= 0) return amount;
+  const saved = trapSaveRoll(state, member.id) + Number(member.mm3?.bonuses?.luck || 0) >= 14;
+  return saved ? Math.floor(amount / 2) : amount;
+}
+
 function damageParty(state, effect) {
   const amount = Math.max(0, Number(effect.amount || 0));
   const party = Array.isArray(state.party)
     ? state.party.map((member) => member.hp > 0
-      ? { ...member, hp: Math.max(0, member.hp - amount) }
+      ? { ...member, hp: Math.max(0, member.hp - trapDamageFor(state, member, amount)) }
       : member)
     : state.party;
   const defeated = Array.isArray(party) && party.length > 0 && party.every((member) => member.hp <= 0);

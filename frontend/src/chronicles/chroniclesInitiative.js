@@ -27,7 +27,9 @@ export function chroniclesPartyInitiativeAgility(state, member) {
   if (!member) return 0;
   const base = nonNegativeInteger(member.agility);
   const progressionBonus = nonNegativeInteger(state?.rpgModifiers?.[member.id]?.initiativeBonus);
-  return base + progressionBonus;
+  // MM Speed: its bonus (negative for slow heroes) moves the hero in the order.
+  const speedBonus = Number(member.mm3?.bonuses?.speed || 0);
+  return Math.max(0, base + progressionBonus + speedBonus);
 }
 
 export function chroniclesEnemyInitiativeAgility(enemy) {
