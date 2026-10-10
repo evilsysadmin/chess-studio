@@ -26,17 +26,26 @@ function render(props = {}) {
 }
 
 describe('PostGameExperience', () => {
-  it('cierra la partida con un debrief editorial de Matthias y deja la autopsia a un clic', () => {
-    const html = render({ onShareResult: () => {}, onTrainPersonal: () => {} });
+  it('cierra la partida con un debrief editorial de Matthias, la autopsia y el castillo a un clic', () => {
+    const html = render({ onPlayAgain: () => {}, onShareResult: () => {}, onTrainPersonal: () => {} });
     expect(html).toContain('PARTIDA FINALIZADA');
     expect(html).toContain('MATTHIAS // DEBRIEF');
     expect(html).toContain('¡Has ganado la partida!');
     expect(html).toContain('Bien. Has ganado.');
     expect(html).toContain('QUÉ MIRAR AHORA');
     expect(html).toContain('Resumen de la partida');
-    expect(html).toContain('Más opciones');
-    expect(html).not.toContain('Compartir resultado');
-    expect(html).not.toContain('Entrenar mis errores');
+    // The way home is always in sight; the rest are quiet links, no disclosure.
+    expect(html).toContain('Volver al castillo');
+    expect(html).not.toContain('Más opciones');
+    expect(html).toContain('class="endgame-side-link">Compartir resultado');
+    expect(html).toContain('class="endgame-side-link">Entrenar mis errores');
+    expect((html.match(/class="primary-btn"/g) || [])).toHaveLength(1);
+    expect(html).toContain('>Jugar otra partida</button>');
+
+    // When the primary already leaves the hall, the castle link is not repeated.
+    const advancing = render();
+    expect(advancing).toContain('>Ver siguiente objetivo</button>');
+    expect(advancing).not.toContain('Volver al castillo');
   });
 
   it('hace del error factual el único CTA primario cuando ya existe un puzzle entrenable', () => {
@@ -87,7 +96,7 @@ describe('PostGameExperience', () => {
       onTrainPersonal: () => {},
     });
     expect(html).toContain('Intentar cerrar la serie');
-    expect(html).toContain('Volver al menú');
+    expect(html).toContain('Volver al castillo');
     expect(html).not.toContain('Más opciones');
     expect(html).not.toContain('Compartir resultado');
     expect(html).not.toContain('Entrenar mis errores');

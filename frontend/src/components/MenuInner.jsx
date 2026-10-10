@@ -210,6 +210,11 @@ export default function Menu({
   }
 
   const pvpEntryVisible = !showQuickMatch && !showPracticeMatch && !showPvpLobby;
+  // The 1 vs 1 entry lives under "Más formas de jugar". It only surfaces on its
+  // own over the hall when it needs the player: a duel in progress or a
+  // challenge waiting for an answer. Never a permanent dashboard card.
+  const pvpNeedsPlayer = Boolean(pvpFlow?.activeMatch) || Number(pvpFlow?.incomingCount || 0) > 0;
+  const pvpAttention = pvpNeedsPlayer || Number(pvpFlow?.unreadMessageCount || 0) > 0;
   // One canonical 1 vs 1 entry on Home. Its state comes from the PvP runtime
   // owner; Home only projects it and navigates to lobby or the active match.
   const renderPvpRosterLink = ({ placement = 'floating' } = {}) => (
@@ -254,6 +259,7 @@ export default function Menu({
         onMatthiasAction={handleMatthiasAction}
         onMatthiasDismiss={() => setMatthiasVisit(null)}
         pvpMenuEntry={pvpEntryVisible ? renderPvpRosterLink({ placement: 'menu' }) : null}
+        pvpAttention={pvpAttention}
         tools={[
           ['Puzzles personales', onTrainPersonal],
           ['Puzzles clásicos', onPuzzle],
@@ -266,7 +272,7 @@ export default function Menu({
         ]}
       />
 
-      {pvpEntryVisible && renderPvpRosterLink()}
+      {pvpEntryVisible && pvpNeedsPlayer && renderPvpRosterLink()}
 
       {showQuickMatch && (
         <QuickMatchModal

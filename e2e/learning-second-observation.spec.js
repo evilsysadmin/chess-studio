@@ -276,7 +276,6 @@ test('Home · el avatar residente de Matthias abre Así juegas · entrenamiento 
     has: page.getByRole('heading', { name: 'Jaque mate', exact: true }),
   });
   await expect(endgame).toBeVisible();
-  await endgame.getByRole('button', { name: 'Más opciones', exact: true }).click();
   await installObservationAnalysis(page);
   await endgame.getByRole('button', { name: 'Resumen de la partida', exact: true }).click();
 
@@ -297,9 +296,7 @@ test('Home · el avatar residente de Matthias abre Así juegas · entrenamiento 
   expect(observation.incidentKeys).not.toContain('cpu:KNIGHT_FORK');
 
   await report.getByRole('button', { name: 'Cerrar', exact: true }).click();
-  // El menú ya sigue abierto tras cerrar el resumen: no lo colapsemos antes
-  // de pulsar «Volver al menú».
-  await endgame.getByRole('button', { name: 'Volver al menú', exact: true }).click();
+  await endgame.getByRole('button', { name: 'Volver al castillo', exact: true }).click();
   await expect(page.getByRole('region', { name: 'Modos principales', exact: true })).toBeVisible();
 
   const homeCorner = page.getByRole('complementary', { name: 'Rincón de Matthias' });

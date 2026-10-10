@@ -42,14 +42,18 @@ for (const viewport of [{ width: 1672, height: 941 }, { width: 1814, height: 772
   });
 }
 
-test('illustrated Home reuses account and feedback controls', async ({ page }) => {
+test('illustrated Home folds Novedades and Feedback into the account crest', async ({ page }) => {
   await page.setViewportSize({ width: 1672, height: 941 });
   await mockApi(page);
   await login(page);
   await page.getByRole('button', { name: 'Abrir menú de cuenta' }).click();
   await expect(page.getByRole('menu', { name: 'Cuenta' })).toBeVisible();
-  await page.keyboard.press('Escape');
-  await page.getByRole('button', { name: 'Enviar feedback', exact: true }).click();
+  // The crest is the only chrome control on Home; Novedades and Feedback
+  // live inside its menu.
+  await expect(page.locator('.masthead-feedback-trigger')).toHaveCount(0);
+  await expect(page.locator('.masthead-release-trigger')).toHaveCount(0);
+  await expect(page.getByRole('menuitem', { name: /Abrir novedades/ })).toBeVisible();
+  await page.getByRole('menuitem', { name: 'Enviar feedback', exact: true }).click();
   await expect(page.getByRole('dialog')).toBeVisible();
 });
 

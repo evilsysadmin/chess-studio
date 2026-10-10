@@ -73,25 +73,6 @@
     min-height: 44px !important;
   }
 
-  body .app-shell-home .masthead-feedback-trigger,
-  body .app-shell-home .masthead-release-trigger {
-    top: max(2px, env(safe-area-inset-top)) !important;
-    width: 44px !important;
-    min-width: 44px !important;
-    height: 44px !important;
-    min-height: 44px !important;
-    border-color: rgba(171, 132, 72, .16) !important;
-    background: rgba(14, 9, 6, .42) !important;
-  }
-
-  body .app-shell-home .masthead-feedback-trigger {
-    right: 2px !important;
-  }
-
-  body .app-shell-home .masthead-release-trigger {
-    right: 48px !important;
-  }
-
   body .app-shell-home .masthead-account-popover {
     top: 52px !important;
   }

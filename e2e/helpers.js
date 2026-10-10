@@ -723,6 +723,32 @@ export async function clickBoardMove(page, from, to, scope = page) {
   await expect(fromSquare).toBeVisible();
 }
 
+// On the castle Home, Feedback and Novedades live inside the account menu
+// (the crest is the only chrome control); other views keep their own trigger.
+export async function openFeedback(page) {
+  const direct = page.locator('.masthead-feedback-trigger');
+  if (await direct.isVisible().catch(() => false)) {
+    await direct.click();
+    return;
+  }
+  await page.locator('.masthead-account-trigger').click();
+  await page.getByRole('menu', { name: 'Cuenta' }).getByRole('menuitem', { name: 'Enviar feedback', exact: true }).click();
+}
+
+// The 1 vs 1 Sala de Duelos lives under "Más formas de jugar". The floating
+// entry only exists while a duel or a challenge needs the player.
+export async function openDuelHall(page) {
+  const floating = page.locator('.menu.menu-illustrated > .home-pvp-roster-link:not(.home-pvp-roster-link--menu)');
+  if (await floating.isVisible().catch(() => false)) {
+    await floating.click();
+    return;
+  }
+  const more = page.locator('.illustrated-home__play-more');
+  await expect(more).toBeVisible();
+  if ((await more.getAttribute('aria-expanded')) !== 'true') await more.click();
+  await page.locator('.illustrated-home__play-pvp').getByRole('button', { name: 'Abrir Sala de Duelos 1 contra 1' }).click();
+}
+
 export async function startQuickGame(page) {
   await buttonWithVisibleText(page, 'Partida rápida').click();
   await expect(page.getByRole('dialog', { name: 'Configurar partida rápida' })).toBeVisible();

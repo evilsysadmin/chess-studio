@@ -80,9 +80,8 @@ function currentReducedMotion() {
   return reducedMotionStatus().effective;
 }
 
-export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, onPlayIntent, onContinue, onPractice, pendingModes = [], onTournament, onTrain, onTrainIntent, onCombat, onDaily, onHistory, onInsights, tools, matthiasModel, matthiasSpeaking, onMatthiasAction, onMatthiasDismiss, pvpMenuEntry = null }) {
+export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, onPlayIntent, onContinue, onPractice, pendingModes = [], onTournament, onTrain, onTrainIntent, onCombat, onDaily, onHistory, onInsights, tools, matthiasModel, matthiasSpeaking, onMatthiasAction, onMatthiasDismiss, pvpMenuEntry = null, pvpAttention = false }) {
   const [toolsOpen, setToolsOpen] = useState(false);
-  const [quickOpen, setQuickOpen] = useState(false);
   const [playMenuOpen, setPlayMenuOpen] = useState(false);
   // Screen positions (0..1 of the stage) of each destination's 3D object, projected by the
   // scene's own camera. null until the Blender scene reports them (and again if it falls
@@ -395,7 +394,7 @@ export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, 
             disabled={loading}
           >
             <span>{portraitVestibule ? 'Más' : 'Más formas de jugar'}</span>
-            {pendingModes.length > 0 && <b className="illustrated-home__play-more-dot" aria-hidden="true" />}
+            {(pendingModes.length > 0 || pvpAttention) && <b className="illustrated-home__play-more-dot" aria-hidden="true" />}
             <i aria-hidden="true">{playMenuOpen ? '▴' : '▾'}</i>
           </button>
           {playMenuOpen && (
@@ -417,7 +416,7 @@ export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, 
                   ))}
                 </div>
               )}
-              {pvpMenuEntry && <div className="illustrated-home__play-mobile-pvp">{pvpMenuEntry}</div>}
+              {pvpMenuEntry && <div className="illustrated-home__play-pvp">{pvpMenuEntry}</div>}
               {hasSavedGame && (
                 <button type="button" className="illustrated-home__play-menu-item" onClick={onPlay} disabled={loading}>
                   <IconSword aria-hidden="true" />
@@ -465,47 +464,6 @@ export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, 
                     <span><strong>Mazmorras</strong><small>Más modos y herramientas</small></span>
                   </button>
             </div>
-          )}
-        </div>
-        {/* Collapsed by default so it never competes with the scene; the chips are
-            the same actions as the destination buttons, JUGAR/CONTINUAR first. Hovering
-            or focusing a chip highlights the matching prop in the room. */}
-        <div className={`illustrated-home__quickbar${quickOpen ? ' is-open' : ''}`}>
-          <button
-            type="button"
-            className="illustrated-home__quickbar-toggle"
-            aria-expanded={quickOpen}
-            aria-controls="illustrated-home-quickbar"
-            onClick={() => setQuickOpen((open) => !open)}
-            onKeyDown={(event) => { if (event.key === 'Escape') setQuickOpen(false); }}
-          >
-            <span>Accesos rápidos</span>
-            <i aria-hidden="true">{quickOpen ? '▴' : '▾'}</i>
-          </button>
-          {quickOpen && (
-            <nav
-              id="illustrated-home-quickbar"
-              className="illustrated-home__quickbar-list"
-              aria-label="Accesos rápidos"
-              onKeyDown={(event) => { if (event.key === 'Escape') setQuickOpen(false); }}
-            >
-              {[rooms[5], rooms[0], rooms[1], rooms[2], rooms[3], rooms[4]].map(([id, title, , Icon, action]) => (
-                <button
-                  key={id}
-                  type="button"
-                  className={`illustrated-home__quickbar-chip illustrated-home__quickbar-chip--${id}${activeRoom === id ? ' is-active' : ''}`}
-                  onClick={() => { setQuickOpen(false); action(); }}
-                  onPointerEnter={() => { setActiveRoom(id); signalDestinationIntent(id); }}
-                  onPointerLeave={() => setActiveRoom(null)}
-                  onFocus={() => { setActiveRoom(id); signalDestinationIntent(id); }}
-                  onBlur={() => setActiveRoom(null)}
-                  disabled={loading}
-                >
-                  <Icon aria-hidden="true" />
-                  <span>{title}</span>
-                </button>
-              ))}
-            </nav>
           )}
         </div>
         <aside className="illustrated-home__resident" aria-label="Rincón de Matthias">

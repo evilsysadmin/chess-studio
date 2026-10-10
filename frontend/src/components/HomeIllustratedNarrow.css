@@ -255,11 +255,8 @@
   body .app-shell-home .masthead-actions,
   body .app-shell-home .masthead-account-stack { display: contents !important; position: static !important; transform: none !important; }
   body .app-shell-home .masthead-account-menu { position: absolute; left: 8px !important; right: auto !important; top: 8px !important; pointer-events: auto; }
-  body .app-shell-home .masthead-release-trigger { position: absolute; right: 92px; top: 8px; pointer-events: auto; }
-  body .app-shell-home .masthead-feedback-trigger { position: absolute; right: 8px; top: 8px; pointer-events: auto; }
-  body .app-shell-home .masthead-account-trigger,
-  body .app-shell-home .masthead-release-trigger,
-  body .app-shell-home .masthead-feedback-trigger {
+
+  body .app-shell-home .masthead-account-trigger {
     min-width: 0 !important;
     min-height: 38px;
     height: 38px;
@@ -444,8 +441,7 @@
     overflow: hidden;
     font-size: 0 !important;
   }
-  body .app-shell-home .masthead-release-trigger { right: 52px; font-size: 0 !important; width: 38px !important; padding: 0 !important; }
-  body .app-shell-home .masthead-feedback-trigger { right: 8px; font-size: 0 !important; width: 38px !important; padding: 0 !important; }
+
   body .app-shell-home .masthead-admin-feedback-inbox { display: none; }
 }
 

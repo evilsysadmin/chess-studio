@@ -66,23 +66,7 @@
     pointer-events: auto;
   }
 
-  body .app-shell-home .masthead-release-trigger {
-    position: absolute !important;
-    right: 11.2vw !important;
-    top: 12px !important;
-    pointer-events: auto;
-  }
-
-  body .app-shell-home .masthead-feedback-trigger {
-    position: absolute !important;
-    right: 3.25vw !important;
-    top: 12px !important;
-    pointer-events: auto;
-  }
-
-  body .app-shell-home .masthead-account-trigger,
-  body .app-shell-home .masthead-release-trigger,
-  body .app-shell-home .masthead-feedback-trigger {
+  body .app-shell-home .masthead-account-trigger {
     min-height: 40px !important;
     height: 40px !important;
     min-width: 0 !important;

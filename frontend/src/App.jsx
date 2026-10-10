@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import Menu from './components/Menu.jsx';
 import { GameScreenRoute as GameScreen, TrainingRoomRoute as PuzzleScreen } from './goldenPathScreens.js';
 import { TutorialRoute as Tutorial } from './tutorialRoute.js';
+// The account menu body only loads when the crest opens (initial JS budget).
+const MastheadAccountPopover = React.lazy(() => import('./components/MastheadAccountPopover.jsx'));
 const OpeningsScreen = React.lazy(() => import('./components/OpeningsScreen.jsx'));
 const TournamentScreen = React.lazy(() => import('./components/TournamentScreen.jsx'));
 const HistoryScreen = React.lazy(() => import('./components/HistoryScreen.jsx'));
@@ -331,6 +333,10 @@ function AppInner({ isAdminUser }) {
   const statisticalHistoryList = statisticalHistoryRecords(historyList);
 
   const isBoardGameView = view === 'game' || view === 'tournamentGame' || view === 'pvpGame' || combatBattleUiActive;
+  // The castle Home keeps a single chrome control (the account crest); its
+  // Novedades and Feedback move inside that menu. Other views keep theirs.
+  const homeChromeMinimal = view === 'menu';
+  const homeHasNews = homeChromeMinimal && !releaseNotesSeen;
 
   return (
     <>
@@ -354,25 +360,27 @@ function AppInner({ isAdminUser }) {
               {((view === 'game' || view === 'tournamentGame') && (game?.id || tournamentGame?.id) || combatBattleUiActive) && (
                 <SaveStatusBadge state={gameSaveState} />
               )}
-              <button
-                type="button"
-                className="masthead-feedback-trigger"
-                onClick={openGlobalFeedback}
-                aria-label="Enviar feedback"
-                title="Enviar feedback"
-              >
-                <span aria-hidden="true">✦</span>
-                <span>Feedback</span>
-              </button>
+              {!homeChromeMinimal && (
+                <button
+                  type="button"
+                  className="masthead-feedback-trigger"
+                  onClick={openGlobalFeedback}
+                  aria-label="Enviar feedback"
+                  title="Enviar feedback"
+                >
+                  <span aria-hidden="true">✦</span>
+                  <span>Feedback</span>
+                </button>
+              )}
               {isAdminUser && view === 'menu' && <AdminFeedbackInboxButton count={adminFeedbackNewCount} onOpen={() => navigateTo('admin')} />}
               <div className="masthead-account-stack">
                 <div className="masthead-account-menu" ref={accountMenuRef}>
                   <button
                     ref={accountMenuButtonRef}
                     type="button"
-                    className="masthead-account-trigger"
+                    className={`masthead-account-trigger${homeHasNews ? ' has-news' : ''}`}
                     onClick={toggleAccountMenu}
-                    aria-label="Abrir menú de cuenta"
+                    aria-label={homeHasNews ? 'Abrir menú de cuenta · hay novedades' : 'Abrir menú de cuenta'}
                     aria-haspopup="menu"
                     aria-expanded={showAccountMenu}
                   >
@@ -381,37 +389,34 @@ function AppInner({ isAdminUser }) {
                     <span className="masthead-account-chevron" aria-hidden="true">⌄</span>
                   </button>
                   {showAccountMenu && (
-                    <div className="masthead-account-popover" role="menu" aria-label="Cuenta">
-                      <button type="button" role="menuitem" onClick={openGlobalAccount}>
-                        <span aria-hidden="true">♙</span><span><b>Mi cuenta</b><small>Perfil y preferencias</small></span>
-                      </button>
-                    {isAdminUser && (
-                      <button type="button" role="menuitem" className="masthead-account-menu-admin" onClick={() => { closeAccountMenu(); navigateTo('admin'); }}>
-                        <span aria-hidden="true">◉</span><span><b>Administración</b><small>Usuarios y operación</small></span>
-                      </button>
-                    )}
-                    <button type="button" role="menuitem" onClick={() => { closeAccountMenu(); openInsights('diagnosis'); }}>
-                      <span aria-hidden="true">◫</span><span><b>Mi progreso</b><small>Diagnóstico y siguiente mejora</small></span>
-                    </button>
-                    <button type="button" role="menuitem" onClick={openSettings}>
-                      <span aria-hidden="true">⚙</span><span><b>Personalizar</b><small>Tablero, piezas y sonido</small></span>
-                    </button>
-                    <div className="masthead-account-menu-separator" role="separator" />
-                    <button type="button" role="menuitem" className="masthead-account-menu-logout" onClick={() => { closeAccountMenu(); void handleGlobalLogout(); }} disabled={loggingOut}>
-                      <span aria-hidden="true">↪</span><span><b>{loggingOut ? 'Guardando…' : 'Cerrar sesión'}</b><small>Guarda antes de salir</small></span>
-                    </button>
-                    </div>
+                    <React.Suspense fallback={null}>
+                      <MastheadAccountPopover
+                        onClose={closeAccountMenu}
+                        onAccount={openGlobalAccount}
+                        onProgress={() => openInsights('diagnosis')}
+                        onSettings={openSettings}
+                        onAdmin={isAdminUser ? () => navigateTo('admin') : null}
+                        onLogout={() => { void handleGlobalLogout(); }}
+                        loggingOut={loggingOut}
+                        withNewsAndFeedback={homeChromeMinimal}
+                        hasNews={homeHasNews}
+                        onReleaseNotes={openReleaseNotes}
+                        onFeedback={openGlobalFeedback}
+                      />
+                    </React.Suspense>
                   )}
                 </div>
-                <button
-                  type="button"
-                  className={`masthead-release-trigger ${releaseNotesSeen ? '' : 'is-new'}`}
-                  onClick={openReleaseNotes}
-                  aria-label={releaseNotesSeen ? 'Abrir novedades' : 'Abrir novedades nuevas'}
-                >
-                  <span aria-hidden="true">✦</span>
-                  <span>Novedades{releaseNotesSeen ? '' : ' · Nuevo'}</span>
-                </button>
+                {!homeChromeMinimal && (
+                  <button
+                    type="button"
+                    className={`masthead-release-trigger ${releaseNotesSeen ? '' : 'is-new'}`}
+                    onClick={openReleaseNotes}
+                    aria-label={releaseNotesSeen ? 'Abrir novedades' : 'Abrir novedades nuevas'}
+                  >
+                    <span aria-hidden="true">✦</span>
+                    <span>Novedades{releaseNotesSeen ? '' : ' · Nuevo'}</span>
+                  </button>
+                )}
               </div>
             </div>
           </div>

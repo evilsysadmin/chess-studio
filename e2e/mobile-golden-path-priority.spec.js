@@ -156,7 +156,7 @@ test.describe('Mobile golden path · Home portrait mantiene el camino principal 
       await expect(page.locator('.home-pvp-roster-link:not(.home-pvp-roster-link--menu)')).toBeHidden();
       await more.click();
       const playMenu = home.getByRole('group', { name: 'Más formas de jugar' });
-      const menuPvp = home.locator('.illustrated-home__play-mobile-pvp .home-pvp-roster-link--menu');
+      const menuPvp = home.locator('.illustrated-home__play-pvp .home-pvp-roster-link--menu');
       await expect(playMenu).toBeVisible();
       await expect(menuPvp).toBeVisible();
       await expect(menuPvp).toContainText('Jugar 1 vs 1');
