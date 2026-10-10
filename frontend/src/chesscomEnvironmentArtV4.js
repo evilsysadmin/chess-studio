@@ -69,11 +69,30 @@ function addContactFill(B,scene,tier,disposables){
   disposables.push(fill);
 }
 
+// Additional neutral bounce is concentrated in the center aisle. Its purpose
+// is to expose the existing cover/figures, not to brighten the whole level.
+export const CHESSCOM_CENTER_AISLE_BOUNCE_V25 = Object.freeze({
+  identity:'center-aisle-bounce-v25',
+  color:Object.freeze([.44,.56,.59]),
+  specular:Object.freeze([.06,.08,.09]),
+  range:8.1,
+});
+
+export function chesscomCenterAisleBounceV25Profile(tier='ultra'){
+  return Object.freeze({
+    intensity:tier==='balanced'?.22:tier==='high'?.49:.66,
+    range:CHESSCOM_CENTER_AISLE_BOUNCE_V25.range,
+    color:CHESSCOM_CENTER_AISLE_BOUNCE_V25.color,
+    specular:CHESSCOM_CENTER_AISLE_BOUNCE_V25.specular,
+  });
+}
+
 function addCinematicBounce(B,scene,tier,disposables){
+  const center=chesscomCenterAisleBounceV25Profile(tier);
   const specs=[
     {name:'warm-left',x:-3.25,y:1.25,z:-1.85,diffuse:[1,.57,.27],specular:[.24,.13,.065],range:6.8,intensity:tier==='ultra'?1.18:tier==='high'?.92:.54},
     {name:'warm-right',x:3.10,y:1.18,z:2.12,diffuse:[1,.49,.21],specular:[.21,.105,.05],range:6.2,intensity:tier==='ultra'?.94:tier==='high'?.72:.28},
-    {name:'center-soft',x:.35,y:2.8,z:.65,diffuse:[.48,.58,.58],specular:[.08,.10,.10],range:7.8,intensity:tier==='ultra'?.50:tier==='high'?.38:.20},
+    {name:'center-soft',x:.35,y:2.8,z:.65,diffuse:center.color,specular:center.specular,range:center.range,intensity:center.intensity},
   ];
   for(const spec of specs){
     if(spec.intensity<=0) continue;
