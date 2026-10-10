@@ -227,25 +227,19 @@
       "label": "Forja de Brunna · armas",
       "action": {
         "effects": [],
-        "message": "Brunna deja el martillo: «Bronce para empezar, hierro para durar, acero para quien pueda pagarlo»."
+        "message": "Brunna se encoge de hombros: «Madera y latón, lo que llega a un pueblo de frontera. El buen acero se gana ahí fuera, no se compra aquí»."
       },
       "visualType": "building-forge",
       "shop": {
         "stock": [
-          "bronze-dagger",
-          "ivory-dagger",
-          "bronze-staff",
-          "ivory-staff",
-          "bronze-mace",
-          "iron-mace",
-          "bronze-spear",
-          "iron-spear",
-          "roadwatch-sabre",
-          "bronze-sword",
-          "iron-sword",
-          "bronze-axe",
-          "iron-axe",
-          "steel-sword"
+          "wooden-staff",
+          "wooden-mace",
+          "wooden-spear",
+          "brass-dagger",
+          "brass-mace",
+          "brass-spear",
+          "brass-sword",
+          "brass-axe"
         ]
       }
     },
@@ -257,25 +251,18 @@
       "label": "Coracería de Odo · armaduras y escudos",
       "action": {
         "effects": [],
-        "message": "Odo golpea un peto: «Lo que te pongas decide si vuelves. Elige con la cabeza, no con la bolsa»."
+        "message": "Odo palmea un gambesón remendado: «Cuero y latón. Si quieres malla, quítasela a quien la lleve»."
       },
       "visualType": "building-armor",
       "shop": {
         "stock": [
           "leather-padded",
-          "roadwatch-vest",
           "leather-leather",
-          "bronze-leather",
-          "bronze-scale",
-          "iron-scale",
-          "bronze-ring",
-          "iron-ring",
-          "bronze-chain",
-          "iron-chain",
-          "steel-chain",
-          "bronze-shield",
-          "iron-shield",
-          "ivory-shield"
+          "roadwatch-vest",
+          "brass-scale",
+          "brass-ring",
+          "wooden-shield",
+          "brass-shield"
         ]
       }
     },

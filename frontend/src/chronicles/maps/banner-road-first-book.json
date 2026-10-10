@@ -49,7 +49,7 @@
       },
       "blockingMessage": "Un saqueador bloquea el camino. No parece dispuesto a compartir el botín sin resistencia.",
       "onDefeat": {
-        "message": "{attacker} acaba con el saqueador usando {attack}. Matthias recomienda registrar los bolsillos antes del informe.",
+        "message": "{attacker} acaba con el saqueador usando {attack}. Matthias recomienda registrar los bolsillos antes del informe. Deja caer una espada de bronce.",
         "effects": [
           {
             "type": "set",
@@ -59,6 +59,13 @@
           {
             "type": "grant-gold",
             "amount": 3
+          },
+          {
+            "type": "grant-item",
+            "itemId": "bronze-sword",
+            "name": "Espada de bronce",
+            "description": "Espada · acierto +2, daño +0.",
+            "quantity": 1
           }
         ],
         "journal": {
@@ -103,7 +110,7 @@
       },
       "blockingMessage": "Garrah apoya el hacha en el hombro: «El Camino cobra peaje, y hoy el peaje eres tú».",
       "onDefeat": {
-        "message": "{attacker} derriba a Garrah con {attack}. Su bolsa tintinea con seis monedas robadas a la patrulla.",
+        "message": "{attacker} derriba a Garrah con {attack}. Su bolsa tintinea con seis monedas robadas, y su hacha y su escudo de hierro quedan en el barro.",
         "effects": [
           {
             "type": "set",
@@ -113,6 +120,20 @@
           {
             "type": "grant-gold",
             "amount": 6
+          },
+          {
+            "type": "grant-item",
+            "itemId": "iron-axe",
+            "name": "Hacha de hierro",
+            "description": "Hacha · acierto +1, daño +3.",
+            "quantity": 1
+          },
+          {
+            "type": "grant-item",
+            "itemId": "iron-shield",
+            "name": "Escudo de hierro",
+            "description": "Escudo · armadura +2. Sólo clases con escudo y una mano libre.",
+            "quantity": 1
           }
         ],
         "journal": {
