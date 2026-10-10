@@ -1,5 +1,6 @@
 import babylonPackage from 'babylonjs/package.json';
 import { createChesscomTruckV21 } from './chesscomTruckArtV21.js';
+import { chesscomCrateEdgeV24Parts } from './chesscomCoverEdgesV24.js';
 
 const BABYLON_VERSION = babylonPackage.version;
 
@@ -349,6 +350,12 @@ function addScenery(B,scene,mats,shadowGenerator,warmLights,coarse=false) {
       const h=item.high ? 1.05 : .58; const crate=makeWorldBox(B,scene,'crate',{w:1.03,d:1.03,h},p,mats.wood); shadowGenerator?.addShadowCaster(crate);
       for(const offset of [-.36,.36]){makeWorldBox(B,scene,'crate-band',{w:.07,d:1.06,h:h+.02},{x:p.x+offset,y:0,z:p.z},mats.metal);makeWorldBox(B,scene,'crate-band',{w:1.06,d:.07,h:h+.02},{x:p.x,y:0,z:p.z+offset},mats.metal);}
       for(const offset of [-.30,0,.30])makeWorldBox(B,scene,'crate-top-slat',{w:.22,d:.98,h:.035},{x:p.x+offset,y:h+.01,z:p.z},mats.woodLight);
+      for(const part of chesscomCrateEdgeV24Parts({high:Boolean(item.high),coarse})){
+        const edge=makeWorldBox(B,scene,`crate-v24-${part.name}`,
+          {w:part.w,h:part.h,d:part.d},
+          {x:p.x+part.x,y:part.y,z:p.z+part.z},mats[part.finish]);
+        edge.isPickable=false;
+      }
       continue;
     }
     if(item.type==='barrel'){
