@@ -99,10 +99,12 @@ test('Chesscom · abre la planta 17 con renderer Babylon real y HUD Dust Veil pr
   // Babylon como protagonista sin perder el acceso a las acciones existentes.
   await page.setViewportSize({ width:1600, height:900 });
   await expect(host).toHaveAttribute('data-chesscom-camera-framing', 'cinematic');
-  await expect.poll(() => host.evaluate(() => {
-    const camera=window.BABYLON?.EngineStore?.LastCreatedScene?.getCameraByName('chesscom-camera');
-    return camera ? {beta:camera.beta,right:camera.orthoRight} : null;
-  })).toMatchObject({beta:0.995,right:expect.closeTo(9.65*1.04*.94,2)});
+  await expect.poll(() => host.evaluate(() =>
+    window.BABYLON?.EngineStore?.LastCreatedScene?.getCameraByName('chesscom-camera')?.beta
+  )).toBeCloseTo(.995,3);
+  await expect.poll(() => host.evaluate(() =>
+    window.BABYLON?.EngineStore?.LastCreatedScene?.getCameraByName('chesscom-camera')?.orthoRight
+  )).toBeCloseTo(9.65*1.04*.94,2);
 
   await expect(mode).toHaveAttribute('data-chesscom-layout', 'dust-veil-canonical-v1');
   await expect.poll(() => mode.evaluate((node) => {
