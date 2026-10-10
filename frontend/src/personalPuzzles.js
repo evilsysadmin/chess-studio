@@ -155,9 +155,9 @@ export function personalPuzzleFromMistake(history, humanColor, moveReport, meta 
 export function savePersonalPuzzlesFromReport(history, humanColor, report, meta = {}) {
   const candidates = (report?.topMistakes || [])
     .filter((m) => m.loss >= 80)
-    .slice(0, 2)
     .map((m) => personalPuzzleFromMistake(history, humanColor, m, meta))
-    .filter(Boolean);
+    .filter(Boolean)
+    .slice(0, 2);
   if (!candidates.length) return { added: 0, total: loadPersonalPuzzles().length };
 
   const current = loadPersonalPuzzles();
