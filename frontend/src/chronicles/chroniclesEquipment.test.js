@@ -47,7 +47,7 @@ describe('Chronicles First Book · real purchased gear', () => {
 
   it('charges gold at authored Swordhaven merchants, but a weapon in the bag grants no power', () => {
     const initial = withGold(createChroniclesState('swordhaven-first-book'), 21);
-    const smith = { ...initial, x: 14, y: 7 };
+    const smith = { ...initial, x: 7, y: 4 };
     expect(chroniclesContextualContentAction(smith)?.id).toBe('first-book-weaponsmith');
     const bought = chroniclesReduce(smith, 'interact');
     expect(chroniclesGoldBalance(bought)).toBe(9);
@@ -102,7 +102,7 @@ describe('Chronicles First Book · real purchased gear', () => {
 
   it('reduces actual retaliation after equipping armor, including after F5', () => {
     let state = withGold(createChroniclesState('swordhaven-first-book'), 9);
-    state = chroniclesReduce({ ...state, x: 12, y: 7 }, 'interact');
+    state = chroniclesReduce({ ...state, x: 11, y: 4 }, 'interact');
     expect(chroniclesGoldBalance(state)).toBe(0);
     expect(state.inventory['roadwatch-vest'].quantity).toBe(1);
     expect(chroniclesEquipmentBonuses(state, 'matthias').damageReduction).toBe(0);
