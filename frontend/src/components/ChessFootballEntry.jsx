@@ -3,6 +3,7 @@ import { requestWarRoomLandscapeFullscreen } from './useWarRoomImmersive.js';
 import { FOOTBALL_MANAGER_CLUBS, getFootballManagerClub } from '../footballManagerClubs.js';
 import { footballStandings, FOOTBALL_MANAGER_TACTICS } from '../footballManagerSeason.js';
 import { footballClubObjectiveReport } from '../footballManagerObjectives.js';
+import { FOOTBALL_TRAINING_PLANS } from '../footballManagerTraining.js';
 import { createFootballCareer, editFootballCareer, playFootballCareerRound, readFootballCareer, replayFootballCareer, writeFootballCareer } from '../footballManagerCareer.js';
 import { getFootballClubRoster, getDefaultFootballLineup, FOOTBALL_FIVE_POSITIONS, getFootballFatigue } from '../footballManagerRoster.js';
 import './ChessFootballEntry.css';
@@ -287,6 +288,24 @@ export default function ChessFootballEntry({ onExit }) {
               </section>
             ) : null}
             {season && season.currentRound < season.rounds.length ? (
+              <section className="chess-football-entry__training" aria-label="Entrenamiento de la jornada">
+                <details>
+                  <summary>Preparar entrenamiento · {FOOTBALL_TRAINING_PLANS.find((plan) => plan.id === journal?.nextTraining)?.label || 'Rutina normal'}</summary>
+                  <p>Una sesión antes del partido: más ataque, más defensa o recuperación. El esfuerzo también se paga con cansancio.</p>
+                  <div className="chess-football-entry__training-options" role="group" aria-label="Plan de entrenamiento">
+                    {FOOTBALL_TRAINING_PLANS.map((plan) => (
+                      <button type="button" key={plan.id}
+                        className="chess-football-entry__training-option"
+                        aria-pressed={journal?.nextTraining === plan.id}
+                        onClick={() => changeDraft({ training: plan.id })}
+                      >{plan.label}</button>
+                    ))}
+                  </div>
+                  <p role="status">{FOOTBALL_TRAINING_PLANS.find((plan) => plan.id === journal?.nextTraining)?.description}</p>
+                </details>
+              </section>
+            ) : null}
+            {season && season.currentRound < season.rounds.length ? (
               <div className="chess-football-entry__fixture-list" aria-label="Próxima jornada">
                 <h3>Próxima jornada</h3>
                 {season.rounds[season.currentRound].map((fixture) => (
@@ -305,6 +324,9 @@ export default function ChessFootballEntry({ onExit }) {
                     ) : null}
                     {result.managerFatigueAtKickoff > 0 ? (
                       <span className="chess-football-entry__used-plan"> · Fatiga inicial media: {Math.round(result.managerFatigueAtKickoff)}%</span>
+                    ) : null}
+                    {result.managerTraining && result.managerTraining !== 'standard' ? (
+                      <span className="chess-football-entry__used-plan"> · Entreno: {FOOTBALL_TRAINING_PLANS.find((plan) => plan.id === result.managerTraining)?.label}</span>
                     ) : null}
                     {result.managerTactic ? (
                       <span className="chess-football-entry__used-plan">
