@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { mkdir, writeFile } from 'node:fs/promises';
-import { login, mockApi, openMoreGameModes } from './helpers.js';
+import { confirmChroniclesCharacterSetup, login, mockApi, openMoreGameModes } from './helpers.js';
 
 const ARTIFACT_DIR = '../.artifacts/app-visual';
 const CAPTURES = [
@@ -37,6 +37,8 @@ async function openExperiments(page) {
       'matthias.onboarded': '2',
       'chess-study-home-guide-dismissed-v1': '1',
     },
+    // Fresh first-person runs now start in the authored Swordhaven settlement.
+    chroniclesCurrentMapId: 'swordhaven-square',
   });
   await login(page);
   await dismissMatthiasSpeech(page);
@@ -154,6 +156,104 @@ async function withChessFootballCapturePage(browser, capture, callback) {
     const portal = page.locator('.lab-workshop-portal--football');
     await expect(portal).toBeVisible();
     await portal.click();
+    const welcome = page.locator('.chess-football-entry');
+    await expect(welcome).toBeVisible();
+    await expect(page.locator('iframe[title="Chess Football Godot"]')).toHaveCount(0);
+    await expect(welcome.locator('.chess-football-entry__choice')).toHaveCount(2);
+    const welcomeHealth = await welcome.evaluate((node) => ({
+      viewportWidth: node.clientWidth,
+      contentWidth: node.scrollWidth,
+    }));
+    expect(welcomeHealth.contentWidth, 'Football welcome: no horizontal overflow').toBeLessThanOrEqual(welcomeHealth.viewportWidth + 1);
+    const choicesBounds = await welcome.locator('.chess-football-entry__choices').boundingBox();
+    expect(choicesBounds, 'Football welcome: both mode choices visible').not.toBeNull();
+    expect(choicesBounds.y + choicesBounds.height, 'Football welcome: both CTAs fit the first viewport').toBeLessThanOrEqual(capture.height + 1);
+    await captureFrozenFrame(page, {
+      path: `${ARTIFACT_DIR}/chess-football-welcome-${capture.label}.png`,
+      fullPage: true,
+    });
+    await welcome.locator('.chess-football-entry__choice--manager').click();
+    await expect(welcome.locator('.chess-football-entry__club')).toHaveCount(6);
+    await captureFrozenFrame(page, {
+      path: `${ARTIFACT_DIR}/chess-football-clubs-${capture.label}.png`,
+      fullPage: true,
+    });
+    await welcome.getByRole('button', { name: 'Elegir FC Matthias', exact: true }).click();
+    await expect(page.getByRole('heading', { name: 'FC Matthias', exact: true })).toBeVisible();
+    await captureFrozenFrame(page, {
+      path: `${ARTIFACT_DIR}/chess-football-manager-preview-${capture.label}.png`,
+      fullPage: true,
+    });
+    await welcome.getByRole('button', { name: 'Empezar temporada de prueba', exact: true }).click();
+    const standings = welcome.locator('.chess-football-entry__standings');
+    await expect(standings.locator('tbody tr')).toHaveCount(6);
+    await standings.scrollIntoViewIfNeeded();
+    await captureFrozenFrame(page, {
+      path: `${ARTIFACT_DIR}/chess-football-season-${capture.label}.png`,
+      fullPage: true,
+    });
+    await expect(welcome.getByLabel('Objetivo del club')).toContainText('En disputa');
+    await welcome.getByLabel('Objetivo del club').screenshot({
+      path: `${ARTIFACT_DIR}/chess-football-objective-${capture.label}.png`,
+      animations: 'disabled',
+    });
+    const lineupPanel = welcome.getByLabel('Alineación del míster');
+    await lineupPanel.locator('summary').click();
+    await lineupPanel.getByRole('combobox', { name: 'Titular 5 · DEL' }).selectOption('fc-matthias-del-2');
+    await captureFrozenFrame(page, {
+      path: `${ARTIFACT_DIR}/chess-football-lineup-${capture.label}.png`,
+      fullPage: true,
+    });
+    await lineupPanel.locator('summary').click();
+    const attacking = welcome.getByRole('button', { name: 'Ataque total', exact: true });
+    await attacking.click();
+    await expect(attacking).toHaveAttribute('aria-pressed', 'true');
+    const tacticalOverflow = await welcome.evaluate((node) => node.scrollWidth > node.clientWidth + 1);
+    expect(tacticalOverflow, 'Manager tactical selector: no horizontal overflow').toBe(false);
+    await captureFrozenFrame(page, {
+      path: `${ARTIFACT_DIR}/chess-football-tactics-${capture.label}.png`,
+      fullPage: true,
+    });
+    await welcome.getByRole('button', { name: 'Simular siguiente jornada', exact: true }).click();
+    await expect(welcome).toContainText('Jornada 1 de 10');
+    await lineupPanel.locator('summary').click();
+    await expect(lineupPanel).toContainText('Fatiga 17%');
+    await expect(lineupPanel.locator('.chess-football-entry__slot-fatigue')).toHaveCount(5);
+    if (capture.portrait) {
+      await lineupPanel.screenshot({
+        path: `${ARTIFACT_DIR}/chess-football-fatigue-${capture.label}.png`,
+        animations: 'disabled',
+      });
+    } else {
+      // A DOM element taller than 390px may produce an unpainted white strip
+      // in headless Chromium's off-viewport element screenshot. Capture the
+      // actual scrolled handset viewport instead of inventing white pixels.
+      await lineupPanel.locator('summary').scrollIntoViewIfNeeded();
+      await page.screenshot({
+        path: `${ARTIFACT_DIR}/chess-football-fatigue-${capture.label}.png`,
+        animations: 'disabled',
+      });
+    }
+    await lineupPanel.locator('summary').click();
+    await welcome.locator('.chess-football-entry__back').click();
+    await welcome.locator('.chess-football-entry__back').click();
+    await welcome.getByRole('button', { name: 'Volver a elegir modo' }).click();
+    const resume = welcome.getByRole('button', { name: 'Continuar temporada' });
+    await expect(resume).toBeVisible();
+    expect(await welcome.evaluate((node) => node.scrollTop), 'Welcome must reset to its entrance').toBe(0);
+    const resumeBounds = await resume.boundingBox();
+    expect(resumeBounds?.y, 'Resume CTA must be on screen').toBeGreaterThanOrEqual(0);
+    expect(resumeBounds.y + resumeBounds.height, 'Resume CTA visible in first viewport').toBeLessThanOrEqual(capture.height + 1);
+    await captureFrozenFrame(page, {
+      path: `${ARTIFACT_DIR}/chess-football-resume-${capture.label}.png`,
+      fullPage: true,
+    });
+    await resume.click();
+    await expect(welcome).toContainText('Jornada 1 de 10');
+    await welcome.locator('.chess-football-entry__back').click();
+    await welcome.locator('.chess-football-entry__back').click();
+    await welcome.locator('.chess-football-entry__back').click();
+    await welcome.locator('.chess-football-entry__choice--quick').click();
     await expect(page.locator('.chess-football-godot-host')).toBeVisible();
     return await callback(page);
   } finally {
@@ -232,28 +332,12 @@ async function captureChroniclesHealth(page) {
     return {
       horizontalOverflow: root.scrollWidth > root.clientWidth + 1,
       gameCanvasCount: document.querySelectorAll('[data-chronicles-renderer="three"] canvas').length,
-      portraitCanvasCount: document.querySelectorAll('[data-chronicles-party-renderer="three"] canvas').length,
+      portraitThumbnailCount: document.querySelectorAll('[data-chronicles-party-thumbnail]').length,
       stage: rect('.chronicles-stage'),
       gameCanvas: rect('[data-chronicles-renderer="three"] canvas'),
-      portraitCanvas: rect('[data-chronicles-party-renderer="three"] canvas'),
+      firstPortrait: rect('[data-chronicles-party-thumbnail]'),
     };
   });
-}
-
-async function stageChroniclesSigilAwake(page) {
-  const forward = page.getByRole('button', { name: 'Avanzar', exact: true });
-  const attack = page.getByRole('button', { name: 'Atacar', exact: true });
-
-  await forward.click();
-  await page.keyboard.press('2');
-  await expect(page.getByRole('button', { name: 'Seleccionar Hildegard', exact: true })).toHaveAttribute('aria-pressed', 'true');
-  for (let hit = 0; hit < 3; hit += 1) await attack.click();
-  await forward.click();
-  await page.getByRole('button', { name: 'Girar a la izquierda', exact: true }).click();
-  await forward.click();
-  await expect(page.getByText('Derrota a la torre carcelero', { exact: true })).toBeVisible();
-  await page.getByRole('button', { name: 'Retroceder', exact: true }).click();
-  await page.waitForTimeout(220);
 }
 
 async function capturePawnSlugReadyHealth(page) {
@@ -476,34 +560,57 @@ if (scopeEnabled('chronicles')) {
         const chronicles = page.getByRole('button', { name: /Chronicles of Matthias/ });
         await expect(chronicles).toBeVisible();
         await chronicles.click();
+        // Chronicles opens an expedition book and character setup before
+        // mounting the first-person scene. Exercise that real player flow.
+        await confirmChroniclesCharacterSetup(page);
         await expect(page.locator('[data-chronicles="true"]')).toBeVisible();
         const chroniclesCanvas = page.locator('[data-chronicles-renderer="three"] canvas');
-        const portraitCanvas = page.locator('[data-chronicles-party-renderer="three"] canvas');
+        const portraitThumbnails = page.locator('[data-chronicles-party-thumbnail]');
         await expect(chroniclesCanvas).toHaveCount(1, { timeout: 20_000 });
         await expect(chroniclesCanvas).toBeVisible();
-        await expect(portraitCanvas).toHaveCount(1, { timeout: 20_000 });
-        await expect(portraitCanvas).toBeVisible();
+        await expect(portraitThumbnails).toHaveCount(4);
+        await expect(portraitThumbnails.first()).toBeVisible();
         await page.waitForTimeout(450);
 
         const health = await captureChroniclesHealth(page);
         captures.push({ label: capture.label, ...health });
         expect(health.horizontalOverflow, `${capture.label}: Chronicles overflow`).toBe(false);
         expect(health.gameCanvasCount, `${capture.label}: Chronicles dungeon canvas`).toBe(1);
-        expect(health.portraitCanvasCount, `${capture.label}: Chronicles portrait canvas`).toBe(1);
+        expect(health.portraitThumbnailCount, `${capture.label}: Chronicles authored portraits`).toBe(4);
         expect(health.stage?.width || 0, `${capture.label}: Chronicles stage visible`).toBeGreaterThan(0);
         expect(health.gameCanvas?.width || 0, `${capture.label}: Chronicles dungeon canvas visible`).toBeGreaterThan(0);
         expect(health.gameCanvas?.height || 0, `${capture.label}: Chronicles dungeon canvas height`).toBeGreaterThan(0);
-        expect(health.portraitCanvas?.width || 0, `${capture.label}: Chronicles portrait visible`).toBeGreaterThan(0);
-        expect(health.portraitCanvas?.height || 0, `${capture.label}: Chronicles portrait height`).toBeGreaterThan(0);
+        expect(health.firstPortrait?.width || 0, `${capture.label}: Chronicles authored portrait visible`).toBeGreaterThan(0);
+        expect(health.firstPortrait?.height || 0, `${capture.label}: Chronicles authored portrait height`).toBeGreaterThan(0);
 
         await captureFrozenFrame(page, {
           path: `${ARTIFACT_DIR}/chronicles-playing-${capture.label}.png`,
           fullPage: true,
         });
 
-        await stageChroniclesSigilAwake(page);
+        // Walk through the real Swordhaven south gate to the original crypt.
+        // The crypt tactical encounter is still owned by the authored map.
+        await page.keyboard.press('d');
+        await page.keyboard.press('d');
+        await page.keyboard.press('w');
+        const game = page.locator('[data-chronicles="true"]');
+        await expect(game).toHaveAttribute('data-chronicles-map-id', 'crypt-eight-squares');
+        await expect(page.getByText('Derrota al peón corrompido', { exact: true })).toBeVisible();
+        // Record the real crypt entrance rather than scripting a brittle
+        // battle/AI sequence. Sigil mechanics have their own focused tests.
         await captureFrozenFrame(page, {
-          path: `${ARTIFACT_DIR}/chronicles-sigil-awake-${capture.label}.png`,
+          path: `${ARTIFACT_DIR}/chronicles-crypt-entry-${capture.label}.png`,
+          fullPage: true,
+        });
+        // The established first-person return portal must remain actionable
+        // after the Swordhaven → crypt crossing.
+        const returnAction = game.locator('[data-chronicles-touch-action="interact"]');
+        await expect(returnAction).toHaveAttribute('aria-label', 'Regresar a Swordhaven');
+        await page.keyboard.press('f');
+        await expect(game).toHaveAttribute('data-chronicles-map-id', 'swordhaven-square');
+        await expect(game).toHaveAttribute('data-chronicles-phase', 'explore');
+        await captureFrozenFrame(page, {
+          path: `${ARTIFACT_DIR}/chronicles-swordhaven-return-${capture.label}.png`,
           fullPage: true,
         });
       });

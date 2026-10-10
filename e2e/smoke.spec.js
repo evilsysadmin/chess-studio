@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { buttonWithHeading, buttonWithVisibleText, clickBoardMove, dismissTutorialIfVisible, gameTurn, login, mockApi, openCampaignBriefing, openCampaignMap, openDeployment } from './helpers.js';
+import { buttonWithHeading, buttonWithVisibleText, clickBoardMove, dismissTutorialIfVisible, gameTurn, login, mockApi, openCampaignBriefing, openCampaignMap, openDeployment, openFeedback, waitForHomeInteractive } from './helpers.js';
 
 const ACTIVE_GAME_SESSION_KEY = 'chess-study-active-game-session-v1';
 const ACTIVE_GAME_VISIBLE_ROUTE_KEY = 'chess-study-active-game-visible-route-v1';
@@ -487,11 +487,12 @@ test('Partida rápida · las 64 casillas mantienen una geometría uniforme y el 
 test('Home · Feedback abre y envía sin tumbar la pantalla ni deformar la cabecera', async ({ page }) => {
   await mockApi(page);
   await login(page);
-  const trigger = page.getByRole('button', { name: 'Enviar feedback' });
+  // On Home Feedback lives in the account menu: the crest must not deform.
+  const trigger = page.locator('.masthead-account-trigger');
   const before = await trigger.boundingBox();
   expect(before).not.toBeNull();
 
-  await trigger.click();
+  await openFeedback(page);
   const dialog = page.getByRole('dialog', { name: 'Dinos qué mejorar' });
   await expect(dialog).toBeVisible();
   await dialog.getByLabel('¿Qué pasó o qué cambiarías?').fill('Feedback E2E sin romper la pantalla.');
@@ -506,18 +507,17 @@ test('Home · Feedback abre y envía sin tumbar la pantalla ni deformar la cabec
   expect(Math.abs(after.height - before.height)).toBeLessThan(1);
 });
 
-test('Home · Feedback, Mi cuenta y Novedades comparten geometría de control', async ({ page }) => {
+test('Home · la cuenta es el único control de cabecera y guarda Novedades y Feedback', async ({ page }) => {
   await mockApi(page);
   await login(page);
-  const feedback = page.getByRole('button', { name: 'Enviar feedback' });
-  const account = page.getByRole('button', { name: 'Abrir menú de cuenta' });
-  const news = page.getByRole('button', { name: /Abrir novedades/ });
-  const boxes = await Promise.all([feedback.boundingBox(), account.boundingBox(), news.boundingBox()]);
-  expect(boxes.every(Boolean)).toBe(true);
-  const widths = boxes.map((box) => box.width);
-  const heights = boxes.map((box) => box.height);
-  expect(Math.max(...widths) - Math.min(...widths)).toBeLessThan(1);
-  expect(Math.max(...heights) - Math.min(...heights)).toBeLessThan(1);
+  await expect(page.locator('.masthead-feedback-trigger')).toHaveCount(0);
+  await expect(page.locator('.masthead-release-trigger')).toHaveCount(0);
+  const account = page.getByRole('button', { name: /Abrir menú de cuenta/ });
+  await expect(account).toBeVisible();
+  await account.click();
+  const menu = page.getByRole('menu', { name: 'Cuenta' });
+  await expect(menu.getByRole('menuitem', { name: /Abrir novedades/ })).toBeVisible();
+  await expect(menu.getByRole('menuitem', { name: 'Enviar feedback', exact: true })).toBeVisible();
 });
 
 
@@ -714,9 +714,8 @@ test('golden journey · onboarding → partida/reload → mate → puzzle → Co
   const endgame = page.getByRole('dialog').filter({ has: page.getByRole('heading', { name: 'Jaque mate', exact: true }) });
   await expect(endgame).toBeVisible();
   await expect(endgame.getByText('¡Has ganado la partida!', { exact: true })).toBeVisible();
-  await endgame.getByRole('button', { name: 'Más opciones', exact: true }).click();
-  await endgame.getByRole('button', { name: 'Volver al menú', exact: true }).click();
-  await expect(page.getByRole('region', { name: 'Modos principales' })).toBeVisible();
+  await endgame.getByRole('button', { name: 'Volver al castillo', exact: true }).click();
+  await waitForHomeInteractive(page);
 
   const learningMore = page.locator('details.home-learning-more');
   if (!(await learningMore.evaluate((node) => node.open))) await learningMore.locator('summary').click();

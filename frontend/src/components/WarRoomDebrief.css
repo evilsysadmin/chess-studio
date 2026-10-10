@@ -66,8 +66,76 @@
   line-height: 1.45;
 }
 
-.endgame-review-btn {
-  margin-top: .45rem;
+/* Secondary row: the way home is always visible next to the review. Quiet
+ * brass outlines, the same weight, never a stack of grey application buttons. */
+.endgame-dialog .endgame-secondary-actions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
+  gap: .5rem;
+  margin-top: .8rem;
+}
+
+.endgame-dialog .endgame-secondary-actions .secondary-btn {
+  min-height: 44px;
+  margin: 0;
+  padding: .55rem .8rem;
+  border: 1px solid color-mix(in srgb, var(--brass) 38%, transparent);
+  border-radius: 8px;
+  background: rgba(255, 220, 150, .035);
+  color: var(--parchment);
+  font: 700 .78rem/1.15 var(--font-body);
+  text-align: center;
+  box-shadow: none;
+  transition: border-color .16s ease, background .16s ease, color .16s ease;
+}
+
+.endgame-dialog .endgame-secondary-actions .secondary-btn:is(:hover, :focus-visible) {
+  border-color: color-mix(in srgb, var(--brass) 82%, transparent);
+  background: rgba(255, 200, 110, .09);
+  color: #fff3d6;
+  outline: none;
+}
+
+.endgame-dialog .endgame-side-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: .2rem 1.1rem;
+  margin-top: .7rem;
+}
+
+.endgame-dialog .endgame-side-link {
+  min-height: 36px;
+  padding: .3rem .1rem;
+  border: 0;
+  background: none;
+  color: var(--parchment-dim);
+  font: 600 .72rem/1.2 var(--font-body);
+  letter-spacing: .02em;
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--brass) 40%, transparent);
+  text-underline-offset: .22em;
+  cursor: pointer;
+}
+
+.endgame-dialog .endgame-side-link:is(:hover, :focus-visible) {
+  color: var(--brass);
+  text-decoration-color: currentColor;
+  outline: none;
+}
+
+body:has([data-board3d-war-room="true"]) .endgame-dialog .endgame-side-actions {
+  justify-content: flex-start;
+}
+
+body:has([data-board3d-war-room="true"]) .endgame-dialog .endgame-secondary-actions .secondary-btn {
+  border-radius: 3px;
+}
+
+body:has([data-board3d-war-room="true"]) .endgame-dialog > .endgame-next-detail {
+  max-width: none;
+  margin: .55rem 0 0 !important;
+  text-align: left;
 }
 
 body:has([data-board3d-war-room="true"]) .endgame-modal-backdrop {
@@ -205,11 +273,12 @@ body:has([data-board3d-war-room="true"]) .endgame-dialog > .secondary-btn:hover:
 
 
 @media (min-width: 821px) {
+  /* Full width so the decision lines up with the secondary row beneath it. */
   body:has([data-board3d-war-room="true"]) .endgame-dialog > .primary-btn {
-    justify-self: start;
-    width: auto;
-    min-width: 250px;
-    max-width: 320px;
+    justify-self: stretch;
+    width: 100%;
+    min-width: 0;
+    max-width: none;
   }
 
   body:has([data-board3d-war-room="true"]) .endgame-dialog > .secondary-btn {

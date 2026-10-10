@@ -84,30 +84,36 @@ describe('Chronicles of Matthias vertical slice', () => {
     expect(blocked.message).toMatch(/pared|bloquea|obstáculo|paso|árbol|muro|cerrado|avanzar/i);
   });
 
-  it('applies a custom character build to the real party without changing canonical ids', () => {
-    const state = createChroniclesState(null, {
-      version: 1,
+  it('applies a custom MM3 company to the real party without changing canonical ids', () => {
+    const build = {
+      version: 2,
       mode: 'custom',
       characters: [
-        {
-          slotId: 'matthias',
-          classId: 'matthias',
-          name: 'Greta',
-          attributes: { vigor: 1, power: 2 },
-          startingSkillId: 'matthias-keen-point',
-        },
-        { slotId: 'rook', classId: 'rook', name: 'Hildegard', attributes: {}, startingSkillId: null },
-        { slotId: 'bishop', classId: 'bishop', name: 'Aziz', attributes: {}, startingSkillId: null },
-        { slotId: 'knight', classId: 'knight', name: 'Faust', attributes: {}, startingSkillId: null },
+        { slotId: 'matthias', classId: 'barbarian', name: 'Greta', stats: { might: 17, intellect: 8, personality: 9, endurance: 16, speed: 12, accuracy: 13, luck: 10 } },
+        { slotId: 'rook', classId: 'paladin', name: 'Hildegard', stats: { might: 14, intellect: 9, personality: 13, endurance: 15, speed: 10, accuracy: 11, luck: 11 } },
+        { slotId: 'bishop', classId: 'sorcerer', name: 'Nadir', stats: { might: 7, intellect: 16, personality: 10, endurance: 9, speed: 12, accuracy: 12, luck: 12 } },
+        { slotId: 'knight', classId: 'archer', name: 'Faust', stats: { might: 11, intellect: 13, personality: 10, endurance: 12, speed: 14, accuracy: 15, luck: 11 } },
       ],
-    });
-    const greta = state.party.find((member) => member.id === 'matthias');
-
+    };
+    const legacy = createChroniclesState(null, build);
+    const greta = legacy.party.find((member) => member.id === 'matthias');
     expect(greta.name).toBe('Greta');
     expect(greta.id).toBe('matthias');
-    expect(greta.maxHp).toBe(8);
-    expect(greta.damage).toBe(3);
-    expect(greta.characterBuild.creatorModifiers.attackDamageBonus).toBe(2);
+    // Without MM3 rules (Tactics) the chess-piece profile stays untouched.
+    expect(greta.maxHp).toBe(7);
+    expect(greta.damage).toBe(1);
+    expect(greta.mm3).toBeUndefined();
+
+    const mm3 = createChroniclesState(null, build, { rules: 'mm3' });
+    const barbarian = mm3.party.find((member) => member.id === 'matthias');
+    expect(mm3.combatRules).toBe('mm3');
+    // Bárbaro 12 HP + Resistencia 16 (+2); Fuerza 17 (+3) on a 1-damage blow.
+    expect(barbarian.maxHp).toBe(14);
+    expect(barbarian.hp).toBe(14);
+    expect(barbarian.damage).toBe(4);
+    expect(barbarian.mm3).toMatchObject({ classId: 'barbarian', bonuses: { might: 3, endurance: 2 } });
+    // Hechicero 4 HP + Resistencia 9 (-1).
+    expect(mm3.party.find((member) => member.id === 'bishop').maxHp).toBe(3);
   });
 
   it('turns the four-piece party into positional combat instead of one generic attack', () => {

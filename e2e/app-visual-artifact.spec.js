@@ -26,6 +26,9 @@ async function openCanonicalHome(page, { reducedMotion = 'no-preference' } = {})
     },
   });
   await login(page);
+  // LOADING now owns the entry until the real 3D frame composites, or the
+  // static castle takes over on a slow/unsupported renderer.
+  await expect(page.locator('.home-3d-loading')).toHaveCount(0, { timeout: 40_000 });
   const home = page.getByRole('region', { name:'Modos principales' });
   await expect(home).toBeVisible();
   await expect(home.locator('.illustrated-home__stage')).toBeVisible();
@@ -287,7 +290,7 @@ test('App · captura visual canónica desktop + Android normal/desktop-site', as
         const more = morePage.locator('.illustrated-home__play-more');
         await expect(more).toBeVisible();
         await more.click();
-        const mobilePvp = morePage.locator('.illustrated-home__play-mobile-pvp .home-pvp-roster-link--menu');
+        const mobilePvp = morePage.locator('.illustrated-home__play-pvp .home-pvp-roster-link--menu');
         await expect(mobilePvp).toBeVisible();
         await morePage.waitForTimeout(100);
         await captureViewportPng(
@@ -348,6 +351,7 @@ test('App · captura visual canónica desktop + Android normal/desktop-site', as
           },
         });
         await login(quickMatchPage);
+        await expect(quickMatchPage.locator('.home-3d-loading')).toHaveCount(0, { timeout: 40_000 });
         await buttonWithVisibleText(quickMatchPage, 'Partida rápida').click();
         const quickMatch = quickMatchPage.getByRole('dialog', { name:'Configurar partida rápida' });
         await expect(quickMatch).toBeVisible();

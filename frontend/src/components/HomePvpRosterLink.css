@@ -382,24 +382,20 @@
 }
 
 
-/* Mobile Home keeps 1v1 discoverable under the existing “Más” disclosure instead
- * of paying for an always-visible lower-third. The same live PvP owner/component
- * is reused in the menu, so challenges, rivals, unread chat and active matches
- * keep their real state. Desktop retains the canonical floating entry. */
-.illustrated-home__play-mobile-pvp {
-  display: none;
+/* 1 vs 1 lives under "Más formas de jugar" on every viewport, reusing the live
+ * PvP owner/component so challenges, rivals, unread chat and active matches keep
+ * their real state. The floating entry is only mounted when a duel or a
+ * challenge needs the player (MenuInner), and never on touch phones. */
+.illustrated-home__play-pvp {
+  display: block;
+}
+
+.illustrated-home__play-pvp .home-pvp-roster-link--menu {
+  min-height: 48px;
 }
 
 @media (pointer: coarse) and (max-width: 999px) {
   .menu.menu-illustrated > .home-pvp-roster-link:not(.home-pvp-roster-link--menu) {
     display: none !important;
-  }
-
-  .illustrated-home__play-mobile-pvp {
-    display: block;
-  }
-
-  .illustrated-home__play-mobile-pvp .home-pvp-roster-link--menu {
-    min-height: 48px;
   }
 }

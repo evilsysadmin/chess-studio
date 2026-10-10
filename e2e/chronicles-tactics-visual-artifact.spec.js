@@ -36,7 +36,11 @@ async function openTactics(page, {
   const speech = page.getByRole('region', { name: 'Mensaje de Matthias', exact: true });
   if (await speech.isVisible().catch(() => false)) {
     const close = speech.getByRole('button', { name: 'Cerrar comentario de Matthias', exact: true });
-    if (await close.isVisible().catch(() => false)) await close.click({ force: true });
+    // The Home bubble can dismiss itself between the visibility probe and the
+    // click; invoke its real handler without waiting on a detaching node.
+    if (await close.isVisible().catch(() => false)) {
+      await close.evaluate((button) => button.click(), undefined, { timeout: 2_000 }).catch(() => {});
+    }
   }
   try {
     await openMoreGameModes(page);

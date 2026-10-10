@@ -80,22 +80,25 @@ describe('Swordhaven modular real-time 3D', () => {
   });
 
 
-  it('tiles deterministic meadow variation rather than painting one solid green', () => {
+  it('tiles a deterministic pixel-art meadow with a short VGA-like palette', () => {
     const texture = swordhavenGrassTexture();
     expect(texture).toBe(swordhavenGrassTexture()); // One bounded allocation across runs.
     expect(texture).toBeInstanceOf(THREE.DataTexture);
     expect(texture.colorSpace).toBe(THREE.SRGBColorSpace);
     expect(texture.wrapS).toBe(THREE.RepeatWrapping);
     expect(texture.wrapT).toBe(THREE.RepeatWrapping);
+    expect(texture.magFilter).toBe(THREE.NearestFilter);
     expect(texture.repeat.x).toBeGreaterThan(1);
     const rgba = texture.image.data;
-    expect(rgba).toHaveLength(128 * 128 * 4);
+    expect(rgba).toHaveLength(64 * 64 * 4);
     const grassTones = new Set();
     for (let index = 0; index < rgba.length; index += 4) {
       grassTones.add([rgba[index], rgba[index + 1], rgba[index + 2]].join('/'));
       expect(rgba[index + 3]).toBe(255);
     }
-    expect(grassTones.size).toBeGreaterThan(200);
+    // Varied, but quantised: a ramp of greens plus a couple of flower accents.
+    expect(grassTones.size).toBeGreaterThanOrEqual(5);
+    expect(grassTones.size).toBeLessThanOrEqual(8);
   });
 
   it('keeps the skydome horizon and visible sun fixed when the party turns or walks', () => {
@@ -158,14 +161,17 @@ describe('Swordhaven modular real-time 3D', () => {
   });
 
   it('keeps the repeating authored-style patterns deterministic and distinct', () => {
-    for (const kind of ['stucco', 'masonry', 'roof', 'timber']) {
+    for (const kind of ['stucco', 'masonry', 'roof', 'timber', 'cobble']) {
       const texture = swordhavenSurfaceTexture(kind);
       expect(texture).toBe(swordhavenSurfaceTexture(kind));
       expect(texture.colorSpace).toBe(THREE.SRGBColorSpace);
       expect(texture.wrapS).toBe(THREE.RepeatWrapping);
       expect(texture.wrapT).toBe(THREE.RepeatWrapping);
-      expect(new Set(texture.image.data.filter((_v, index) => index % 4 === 0)).size)
-        .toBeGreaterThan(10);
+      expect(texture.magFilter).toBe(THREE.NearestFilter);
+      // Pixel art: every texel comes from a short hand-picked ramp.
+      const tones = new Set(texture.image.data.filter((_v, index) => index % 4 === 0));
+      expect(tones.size, kind).toBeGreaterThanOrEqual(3);
+      expect(tones.size, kind).toBeLessThanOrEqual(6);
     }
     expect(swordhavenSurfaceTexture('roof')).not.toBe(swordhavenSurfaceTexture('masonry'));
     expect(() => swordhavenSurfaceTexture('unknown')).toThrow(/Unsupported/);

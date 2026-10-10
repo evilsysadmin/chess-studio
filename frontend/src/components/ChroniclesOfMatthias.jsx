@@ -24,6 +24,7 @@ import { chroniclesPartyPortraitUrl } from '../chronicles/chroniclesPartyPortrai
 import { chroniclesClearRuntimeMapDefinitions, chroniclesMapForState } from '../chronicles/chroniclesMapCatalog.js';
 import { chroniclesRegionHudLocation } from '../chronicles/chroniclesRegionHud.js';
 import { chroniclesGridExplorationStep } from '../chronicles/chroniclesGridExplorationStep.js';
+import { chroniclesInitializeLostKingIntro } from '../chronicles/chroniclesLostKingIntro.js';
 import { CHRONICLES_SWORDHAVEN_RETURN_PORTAL_ID } from '../chronicles/chroniclesSwordhavenReturnPortal.js';
 import {
   chroniclesCheckpointState,
@@ -84,6 +85,7 @@ import ChroniclesMinimap from './ChroniclesMinimap.jsx';
 import ChroniclesBookOneEpilogue from './ChroniclesBookOneEpilogue.jsx';
 import ChroniclesCharacterSetup from './ChroniclesCharacterSetup.jsx';
 import ChroniclesSaveMenu from './ChroniclesSaveMenu.jsx';
+import ChroniclesQuestLog, { chroniclesQuestLogEntries } from './ChroniclesQuestLog.jsx';
 import ChroniclesDefeatOverlay from './ChroniclesDefeatOverlay.jsx';
 import ChroniclesEnemyRetaliationFx from './ChroniclesEnemyRetaliationFx.jsx';
 import ChroniclesInitiativeRail from './ChroniclesInitiativeRail.jsx';
@@ -315,6 +317,14 @@ export default function ChroniclesOfMatthias({ onExit }) {
     if (!current) return;
 
     const actionType = typeof action === 'string' ? action : action?.type;
+    if (actionType === 'equip-item' || actionType === 'unequip-item') {
+      const updated = chroniclesReduce(current, action);
+      if (updated !== current) {
+        stateRef.current = updated;
+        setState(updated);
+      }
+      return; // Equipping is not a movement tick or a combat action.
+    }
     const activeActor = chroniclesCurrentInitiativeActor(current.initiative);
     if (current.initiative && activeActor?.kind === 'enemy') return;
     if (
@@ -334,12 +344,6 @@ export default function ChroniclesOfMatthias({ onExit }) {
       const forcedTarget = attackingMember
         ? chroniclesEnemyTargetAhead(current, chroniclesPartyAttackStats(current, attackingMember.id).reach)
         : null;
-      const partyAgilityBonuses = Object.fromEntries(
-        (current.party || []).map((member) => [
-          member.id,
-          Number(chroniclesHeroProgress(progressionRef.current, member.id).attributes?.agility || 0),
-        ]),
-      );
       // Entering an area is not a tactical movement inside it. The player
       // gets to see the new room/return portal before enemies can engage.
       const transitionedMap = exploratoryNext?.mapId !== current.mapId;
@@ -348,7 +352,6 @@ export default function ChroniclesOfMatthias({ onExit }) {
         chroniclesActiveEnemies(exploratoryNext),
         {
           forceEnemyIds: forcedTarget ? [forcedTarget.enemy.id] : [],
-          partyAgilityBonuses,
         },
       );
       next = started !== exploratoryNext
@@ -663,13 +666,22 @@ export default function ChroniclesOfMatthias({ onExit }) {
       .then((world) => {
         if (!active) return;
         const progressed = applyChroniclesProgressionToTacticsState(
-          createChroniclesState(null, activeProgression.characterBuild),
+          createChroniclesState(null, activeProgression.characterBuild, { rules: 'mm3' }),
           activeProgression,
         );
-        const next = chroniclesApplyRunCheckpoint(progressed, world);
+        const restored = chroniclesApplyRunCheckpoint(progressed, world);
+        // The run id seeds every MM3 die so F5 never rerolls a blow.
+        const next = {
+          ...chroniclesInitializeLostKingIntro(restored, {
+            fresh: !remoteSelection && world.worldVersion === 0,
+          }),
+          runSeed: operationId,
+        };
         authoritativeRunRef.current = world;
         chroniclesMarkSavedRunRemote(FIRST_PERSON_RUN_SCOPE, operationId);
-        checkpointFingerprintRef.current = chroniclesRunCheckpointFingerprint(next);
+        // Compare against the server snapshot so the new commission is written
+        // immediately and survives F5 even before the first movement.
+        checkpointFingerprintRef.current = chroniclesRunCheckpointFingerprint(restored);
         lastPersistedCheckpointRef.current = checkpointFingerprintRef.current;
         setSaveError('');
         setAutomapVisitedByMap(loadChroniclesAutomapVisited(operationId));
@@ -832,8 +844,8 @@ export default function ChroniclesOfMatthias({ onExit }) {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [attackWithSelected, automapOpen, clearTouchHold, dispatch, interactWithContext, menuOpen, openMemberSheet, ready, sheetMemberId]);
 
-  const startFreshGame = () => {
-    beginChroniclesRun(FIRST_PERSON_RUN_SCOPE);
+  const startFreshGame = (entryMapId = null) => {
+    beginChroniclesRun(FIRST_PERSON_RUN_SCOPE, { entryMapId });
     setCharacterSetupDone(false);
     setEntryView('setup');
     refreshSaves((value) => value + 1);
@@ -952,6 +964,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
     : null;
   const journalEntries = chroniclesJournalEntries(state);
   const latestJournalEntry = journalEntries[journalEntries.length - 1];
+  const activeQuests = chroniclesQuestLogEntries(state).filter((quest) => quest.status === 'active');
   const expeditionOver = state.phase === 'defeated' || state.phase === 'escaped';
   const contextualAction = chroniclesContextualContentAction(state);
   const activeInitiativeActor = chroniclesCurrentInitiativeActor(state.initiative);
@@ -1094,7 +1107,9 @@ export default function ChroniclesOfMatthias({ onExit }) {
               }}
             />
             <ChroniclesInitiativeRail initiative={state.initiative} />
-            <ChroniclesNarratorOverlay message={state.message} />
+            <ChroniclesNarratorOverlay message={state.message}>
+              {activeQuests.length > 0 && <ChroniclesQuestLog state={state} />}
+            </ChroniclesNarratorOverlay>
             <ChroniclesPartyBark key={partyBark?.token || 'none'} bark={partyBark} />
             <ChroniclesTacticalMargin target={tacticalTarget} />
             <ChroniclesEnemyRetaliationFx key={retaliationCue?.token || 'none'} cue={retaliationCue} />
@@ -1105,17 +1120,23 @@ export default function ChroniclesOfMatthias({ onExit }) {
 
           <details className="chronicles-journal" aria-label="Crónica de expedición">
             <summary>
-              <span><i aria-hidden="true">✦</i><b>Crónica de expedición</b><small>{latestJournalEntry?.title}</small></span>
-              <em>{journalEntries.length} {journalEntries.length === 1 ? 'folio' : 'folios'}</em>
+              <span><i aria-hidden="true">✦</i><b>Crónica de expedición</b><small>{activeQuests[0] ? `◆ ${activeQuests[0].title}` : latestJournalEntry?.title}</small></span>
+              <em>
+                {activeQuests.length > 0 && `${activeQuests.length} ${activeQuests.length === 1 ? 'encargo' : 'encargos'} · `}
+                {journalEntries.length} {journalEntries.length === 1 ? 'folio' : 'folios'}
+              </em>
             </summary>
-            <ol>
-              {journalEntries.map((entry) => (
-                <li key={entry.id}>
-                  <span aria-hidden="true">{entry.sigil}</span>
-                  <div><strong>{entry.title}</strong><p>{entry.body}</p></div>
-                </li>
-              ))}
-            </ol>
+            <div className="chronicles-journal__body">
+              <ChroniclesQuestLog state={state} />
+              <ol>
+                {journalEntries.map((entry) => (
+                  <li key={entry.id}>
+                    <span aria-hidden="true">{entry.sigil}</span>
+                    <div><strong>{entry.title}</strong><p>{entry.body}</p></div>
+                  </li>
+                ))}
+              </ol>
+            </div>
           </details>
 
           {!expeditionOver && (
@@ -1203,6 +1224,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
           onClose={() => setSheetMemberId(null)}
           onAllocateAttribute={allocateAttribute}
           onLearnSkill={learnSkill}
+          onEquipmentAction={(action) => dispatch({ ...action, memberId: sheetMember.id })}
         />
       )}
 

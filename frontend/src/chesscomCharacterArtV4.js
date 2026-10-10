@@ -5,32 +5,99 @@ export const CHESSCOM_CHARACTER_ART_V4 = Object.freeze({
   weaponSocket:'weapon-muzzle-v2',
 });
 
+// At tactical zoom, almost-black PBR clothing merged into the shadows.
+export const CHESSCOM_OPERATOR_READABILITY_V22 = Object.freeze({
+  identity:'operator-readability-v22',
+  accentEmission:.085,
+  faceEmission:.022,
+});
+
 export function chesscomCharacterV4Profile(id, friendly = true) {
   const key = String(id || '').toLowerCase();
   if (key === 'matthias') return Object.freeze({
     id:'matthias', role:'leader', friendly:true,
     identity:'matthias-operative-v4',
-    cloth:'#171a1c', cloth2:'#24292c', armour:'#20262a', accent:'#b8873d', skin:'#d4c5a1', compact:false,
+    cloth:'#252a2e', cloth2:'#323b40', armour:'#303840', accent:'#c8a165', skin:'#d4c5a1', compact:false,
     muzzleX:1.065,
   });
   if (!friendly) return Object.freeze({
     id:key || 'hostile', role:'hostile', friendly:false,
     identity:'hostile-operator-v4',
-    cloth:'#292725', cloth2:'#36312c', armour:'#171b1d', accent:'#8e4938', skin:'#a98b72', compact:false,
+    cloth:'#423a34', cloth2:'#52453e', armour:'#292d2e', accent:'#b46d54', skin:'#a98b72', compact:false,
     muzzleX:.91,
   });
   if (key === 'sven') return Object.freeze({
     id:'sven', role:'scout', friendly:true,
     identity:'scout-operator-v4',
-    cloth:'#233034', cloth2:'#304047', armour:'#1d282c', accent:'#4f8793', skin:'#c09a79', compact:true,
+    cloth:'#36535c', cloth2:'#4a636a', armour:'#2c3f44', accent:'#70a5b0', skin:'#c09a79', compact:true,
     muzzleX:.82,
   });
   return Object.freeze({
     id:key || 'dieter', role:'rifleman', friendly:true,
     identity:'rifleman-operator-v4',
-    cloth:'#33342f', cloth2:'#45453d', armour:'#202625', accent:'#8f7953', skin:'#c6a280', compact:false,
+    cloth:'#51534c', cloth2:'#66685d', armour:'#343b37', accent:'#b39d75', skin:'#c6a280', compact:false,
     muzzleX:.91,
   });
+}
+
+// Extra silhouettes are deliberately attached to existing units. Their
+// pick metadata stays identical to the unit, without changing tactical rules.
+export function chesscomFieldKitV20Profile(role) {
+  const key=String(role||'').toLowerCase();
+  if(key==='scout')return Object.freeze({identity:'field-kit-v20',role:'scout',pack:.23,plates:.10,accent:'#4f8793',scarf:true});
+  if(key==='rifleman')return Object.freeze({identity:'field-kit-v20',role:'rifleman',pack:.36,plates:.15,accent:'#8f7953',scarf:false});
+  if(key==='hostile')return Object.freeze({identity:'field-kit-v20',role:'hostile',pack:.29,plates:.16,accent:'#8e4938',scarf:false});
+  return Object.freeze({identity:'field-kit-v20',role:'leader',pack:.28,plates:.12,accent:'#b8873d',scarf:false});
+}
+
+// Battlefield-scale role recognition: broad cloth/metal shapes catch the
+// moonlight at normal zoom, unlike tiny floating nameplates or emissive halos.
+// This is decoration attached to the same unit root, never a new tactical actor.
+export const CHESSCOM_OPERATOR_SILHOUETTE_V23 = Object.freeze({
+  identity:'operator-silhouette-v23',
+  maxPartsPerUnit:5,
+  materials:'existing-character-pbr',
+});
+
+export function chesscomOperatorSilhouetteV23Parts(role='rifleman') {
+  const kind=['leader','rifleman','scout','hostile'].includes(role)?role:'rifleman';
+  const leader=kind==='leader';
+  const scout=kind==='scout';
+  const hostile=kind==='hostile';
+  const size=leader?.22:scout?.20:hostile?.27:.26;
+  const parts=[];
+  for(const side of [-1,1]){
+    parts.push({
+      name:`shoulder-sign-${side}`,material:'accent',
+      spec:{h:.067,bw:size,bd:.24,tw:size*.91,td:.21,
+        x:side*(leader?.34:.32),y:leader?1.42:1.255,z:-.04},
+    });
+  }
+  if(leader){
+    // Brass tabs above the field coat. Do not obscure Matthias' ivory pawn,
+    // distinctive canonical face, peaked cap or actual weapon socket.
+    parts.push({name:'officer-coat-flash',material:'accent',
+      spec:{h:.09,bw:.19,bd:.035,tw:.16,td:.028,x:0,y:1.15,z:-.204}});
+  }else{
+    parts.push({name:'upper-vest-id',material:'accent',
+      spec:{h:.075,bw:scout?.19:.26,bd:.037,tw:scout?.18:.24,td:.033,
+        x:0,y:1.075,z:-.265}});
+    parts.push({name:'helmet-ridge',material:'accent',
+      spec:{h:.036,bw:scout?.17:.20,bd:.28,tw:scout?.16:.19,td:.26,
+        x:0,y:1.52,z:-.015}});
+    parts.push({name:'pack-flash',material:hostile?'accent':'cloth2',
+      spec:{h:.12,bw:scout?.24:.28,bd:.038,tw:scout?.22:.26,td:.035,
+        x:0,y:.965,z:.375}});
+  }
+  return parts;
+}
+
+function addSilhouetteV23(B,scene,root,profile,mats,disposables){
+  for(const part of chesscomOperatorSilhouetteV23Parts(profile.role)){
+    polyBlock(B,scene,`silhouette-v23-${profile.id}-${part.name}`,
+      root,mats[part.material],part.spec,profile.id,profile.friendly,disposables);
+  }
+  root.metadata.silhouetteArt=CHESSCOM_OPERATOR_SILHOUETTE_V23.identity;
 }
 
 function unitRoot(scene, id) {
@@ -110,13 +177,14 @@ function makeSurfaceTexture(B, scene, name, kind, size, disposables) {
   return texture;
 }
 
-function pbr(B, scene, name, hex, kind, disposables, { metallic=0, roughness=.72 } = {}) {
+function pbr(B, scene, name, hex, kind, disposables, { metallic=0, roughness=.72, emissive=0 } = {}) {
   if (B.PBRMaterial) {
     const mat = new B.PBRMaterial(name,scene);
     mat.albedoColor = B.Color3.FromHexString(hex);
     mat.metallic = metallic;
     mat.roughness = roughness;
     mat.environmentIntensity = .72;
+    if(emissive>0) mat.emissiveColor=B.Color3.FromHexString(hex).scale(emissive);
     const texture = makeSurfaceTexture(B,scene,`${name}-surface`,kind,128,disposables);
     texture.uScale = texture.vScale = kind === 'cloth' ? 7 : kind === 'metal' ? 4.5 : 5.5;
     mat.albedoTexture = texture;
@@ -127,6 +195,7 @@ function pbr(B, scene, name, hex, kind, disposables, { metallic=0, roughness=.72
   mat.diffuseColor = B.Color3.FromHexString(hex);
   mat.specularColor = kind === 'metal' ? new B.Color3(.28,.29,.30) : new B.Color3(.045,.05,.052);
   mat.specularPower = kind === 'metal' ? 96 : 18;
+  if(emissive>0) mat.emissiveColor=B.Color3.FromHexString(hex).scale(emissive);
   mat.diffuseTexture = makeSurfaceTexture(B,scene,`${name}-surface`,kind,96,disposables);
   disposables.push(mat);
   return mat;
@@ -195,9 +264,9 @@ function materialsFor(B,scene,profile,disposables){
   return {
     cloth:pbr(B,scene,`character-v4-${profile.id}-cloth`,profile.cloth,'cloth',disposables,{roughness:.88}),
     cloth2:pbr(B,scene,`character-v4-${profile.id}-cloth2`,profile.cloth2,'cloth',disposables,{roughness:.82}),
-    armour:pbr(B,scene,`character-v4-${profile.id}-armour`,profile.armour,'metal',disposables,{metallic:.36,roughness:.43}),
-    accent:pbr(B,scene,`character-v4-${profile.id}-accent`,profile.accent,'metal',disposables,{metallic:.54,roughness:.34}),
-    skin:pbr(B,scene,`character-v4-${profile.id}-skin`,profile.skin,'leather',disposables,{roughness:.70}),
+    armour:pbr(B,scene,`character-v4-${profile.id}-armour`,profile.armour,'metal',disposables,{metallic:.36,roughness:.50}),
+    accent:pbr(B,scene,`character-v4-${profile.id}-accent`,profile.accent,'metal',disposables,{metallic:.43,roughness:.43,emissive:CHESSCOM_OPERATOR_READABILITY_V22.accentEmission}),
+    skin:pbr(B,scene,`character-v4-${profile.id}-skin`,profile.skin,'leather',disposables,{roughness:.70,emissive:CHESSCOM_OPERATOR_READABILITY_V22.faceEmission}),
     boot:pbr(B,scene,`character-v4-${profile.id}-boot`,'#101315','leather',disposables,{roughness:.78}),
     gun:pbr(B,scene,`character-v4-${profile.id}-gun`,'#111619','metal',disposables,{metallic:.62,roughness:.29}),
   };
@@ -234,14 +303,33 @@ function addWeapon(B,scene,root,profile,mats,disposables){
   root.metadata.weaponMuzzleLocalX=profile.muzzleX;
 }
 
+function addFieldKitV20(B,scene,root,profile,mats,disposables){
+  const kit=chesscomFieldKitV20Profile(profile.role);
+  const id=profile.id;
+  const part=(name,mat,spec)=>polyBlock(B,scene,`field-kit-v20-${id}-${name}`,root,mat,spec,id,profile.friendly,disposables);
+  // Front armour silhouette: shoulder pads, load-bearing straps, and a
+  // prominent radio/identity tab visible at ordinary tactical zoom.
+  for(const side of [-1,1]){
+    part(`pauldron-${side}`,mats.armour,{h:.225,bw:kit.plates+.15,bd:.30,tw:kit.plates+.09,td:.25,x:side*.33,y:1.12,z:-.02,rz:side*.12});
+    part(`webbing-${side}`,mats.accent,{h:.35,bw:.052,bd:.034,tw:.042,td:.03,x:side*.12,y:.92,z:-.257,rz:side*.31});
+    part(`pouch-${side}`,mats.cloth2,{h:.18,bw:.17,bd:.095,tw:.16,td:.09,x:side*.17,y:.67,z:-.21});
+    part(`knee-${side}`,mats.armour,{h:.16,bw:.17,bd:.09,tw:.16,td:.07,x:side*.15,y:.30,z:-.09});
+  }
+  part('backpack',mats.cloth2,{h:kit.pack+.11,bw:profile.compact?.29:.36,bd:.16,tw:profile.compact?.27:.32,td:.14,y:.91,z:.28});
+  part('unit-tab',mats.accent,{h:.11,bw:.16,bd:.045,tw:.15,td:.041,x:.15,y:1.02,z:-.282});
+  if(kit.scarf)part('scout-collar',mats.accent,{h:.10,bw:.32,bd:.25,tw:.29,td:.23,y:1.16,z:-.018});
+  if(profile.role==='hostile')part('hostile-visor',mats.accent,{h:.07,bw:.29,bd:.06,tw:.27,td:.05,y:1.30,z:-.176});
+  root.metadata.fieldKit=kit.identity;
+}
+
 function addMercenary(B,scene,root,profile,disposables,restorers,invisible){
   hideLegacyMercenary(scene,profile.id,root,invisible,restorers);
   const mats=materialsFor(B,scene,profile,disposables);const parts=root.metadata?.parts||{};
   polyBlock(B,scene,`character-v4-${profile.id}-torso`,root,mats.cloth,{h:profile.compact?.62:.69,bw:profile.compact?.44:.50,bd:.31,tw:profile.compact?.39:.44,td:.28,y:.84},profile.id,profile.friendly,disposables);
   polyBlock(B,scene,`character-v4-${profile.id}-vest`,root,mats.armour,{h:.44,bw:profile.compact?.41:.46,bd:.10,tw:profile.compact?.37:.42,td:.085,y:.90,z:-.19},profile.id,profile.friendly,disposables);
   polyBlock(B,scene,`character-v4-${profile.id}-pelvis`,root,mats.cloth2,{h:.25,bw:.39,bd:.29,tw:.34,td:.27,y:.53},profile.id,profile.friendly,disposables);
-  polyHead(B,scene,`character-v4-${profile.id}-head`,root,mats.skin,{rx:.17,ry:.19,rz:.16,y:1.27,z:-.01},profile.id,profile.friendly,disposables);
-  polyBlock(B,scene,`character-v4-${profile.id}-helmet`,root,mats.armour,{h:.18,bw:.40,bd:.37,tw:.30,td:.31,y:1.40,z:.01},profile.id,profile.friendly,disposables);
+  polyHead(B,scene,`character-v4-${profile.id}-head`,root,mats.skin,{rx:.182,ry:.202,rz:.171,y:1.27,z:-.01},profile.id,profile.friendly,disposables);
+  polyBlock(B,scene,`character-v4-${profile.id}-helmet`,root,mats.armour,{h:.195,bw:.435,bd:.40,tw:.33,td:.33,y:1.41,z:.01},profile.id,profile.friendly,disposables);
   for(const [part,side] of [[parts.armL,-1],[parts.armR,1]]){
     if(!part)continue;
     polyBlock(B,scene,`character-v4-${profile.id}-arm-${side<0?'l':'r'}`,part,mats.cloth,{h:.48,bw:.13,bd:.15,tw:.115,td:.135,z:-.24,rx:Math.PI/2},profile.id,profile.friendly,disposables);
@@ -258,6 +346,8 @@ function addMercenary(B,scene,root,profile,disposables,restorers,invisible){
   }else{
     polyBlock(B,scene,`character-v4-${profile.id}-radio`,root,mats.accent,{h:.24,bw:.035,bd:.035,tw:.022,td:.022,x:.20,y:1.48,z:.03,rz:-.10},profile.id,profile.friendly,disposables);
   }
+  addFieldKitV20(B,scene,root,profile,mats,disposables);
+  addSilhouetteV23(B,scene,root,profile,mats,disposables);
   addWeapon(B,scene,root,profile,mats,disposables);
   root.metadata.visualIdentity=profile.identity;
   root.metadata.characterArt='v4';
@@ -281,6 +371,15 @@ function addMatthias(B,scene,root,profile,disposables,restorers,invisible){
     polyBlock(B,scene,`character-v4-matthias-trouser-${side<0?'l':'r'}`,part,mats.cloth2,{h:.62,bw:.16,bd:.17,tw:.135,td:.15,y:-.35},profile.id,true,disposables);
     polyBlock(B,scene,`character-v4-matthias-boot-${side<0?'l':'r'}`,part,mats.boot,{h:.18,bw:.22,bd:.37,tw:.20,td:.31,y:-.76,z:-.08},profile.id,true,disposables);
   }
+  // Matthias retains his canonical cap and pawn silhouette; epaulettes
+  // and field-coat seams give him a unique officer profile at playing zoom.
+  for(const side of [-1,1]){
+    polyBlock(B,scene,`field-kit-v20-matthias-shoulder-${side}`,root,mats.accent,{h:.065,bw:.20,bd:.25,tw:.18,td:.23,x:side*.35,y:1.37,z:-.035},profile.id,true,disposables);
+    polyBlock(B,scene,`field-kit-v20-matthias-cuff-${side}`,root,mats.accent,{h:.07,bw:.10,bd:.14,tw:.10,td:.14,x:side*.42,y:.83,z:-.10},profile.id,true,disposables);
+  }
+  polyBlock(B,scene,'field-kit-v20-matthias-chest-insignia',root,mats.accent,{h:.10,bw:.12,bd:.04,tw:.11,td:.04,x:.16,y:1.22,z:-.18},profile.id,true,disposables);
+  root.metadata.fieldKit='field-kit-v20';
+  addSilhouetteV23(B,scene,root,profile,mats,disposables);
   addWeapon(B,scene,root,profile,mats,disposables);
   root.metadata.visualIdentity=profile.identity;
   root.metadata.characterArt='v4';

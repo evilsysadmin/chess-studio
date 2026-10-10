@@ -26,3 +26,12 @@ export function chroniclesAssertWorldReturnLinks(maps) {
   }
   return true;
 }
+
+// A true region transition is never an expedition-end event. Legacy dungeon
+// gates still use their existing escape contract until explicitly migrated.
+export function chroniclesIsOverworldTravelExit(map, entry) {
+  return ['settlement', 'wilderness'].includes(map?.regionKind)
+    && (entry?.action?.effects || []).some((effect) => (
+      effect.type === 'transition-map' && typeof effect.mapId === 'string' && effect.mapId.length > 0
+    ));
+}

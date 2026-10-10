@@ -26,17 +26,26 @@ function render(props = {}) {
 }
 
 describe('PostGameExperience', () => {
-  it('cierra la partida con un debrief editorial de Matthias y deja la autopsia a un clic', () => {
-    const html = render({ onShareResult: () => {}, onTrainPersonal: () => {} });
+  it('cierra la partida con un debrief editorial de Matthias, la autopsia y el castillo a un clic', () => {
+    const html = render({ onPlayAgain: () => {}, onShareResult: () => {}, onTrainPersonal: () => {} });
     expect(html).toContain('PARTIDA FINALIZADA');
     expect(html).toContain('MATTHIAS // DEBRIEF');
     expect(html).toContain('¡Has ganado la partida!');
     expect(html).toContain('Bien. Has ganado.');
     expect(html).toContain('QUÉ MIRAR AHORA');
     expect(html).toContain('Resumen de la partida');
-    expect(html).toContain('Más opciones');
-    expect(html).not.toContain('Compartir resultado');
-    expect(html).not.toContain('Entrenar mis errores');
+    // The way home is always in sight; the rest are quiet links, no disclosure.
+    expect(html).toContain('Volver al castillo');
+    expect(html).not.toContain('Más opciones');
+    expect(html).toContain('class="endgame-side-link">Compartir resultado');
+    expect(html).toContain('class="endgame-side-link">Entrenar mis errores');
+    expect((html.match(/class="primary-btn"/g) || [])).toHaveLength(1);
+    expect(html).toContain('>Jugar otra partida</button>');
+
+    // When the primary already leaves the hall, the castle link is not repeated.
+    const advancing = render();
+    expect(advancing).toContain('>Ver siguiente objetivo</button>');
+    expect(advancing).not.toContain('Volver al castillo');
   });
 
   it('hace del error factual el único CTA primario cuando ya existe un puzzle entrenable', () => {
@@ -50,6 +59,38 @@ describe('PostGameExperience', () => {
     expect(html).toContain('Jugada 7: Qh5?.');
     expect((html.match(/class="primary-btn"/g) || [])).toHaveLength(1);
     expect(html).not.toContain('>Jugar otra partida</button>');
+  });
+
+  it('no inventa un entrenamiento cuando la oportunidad carece de puzzle válido', () => {
+    for (const trainingOpportunity of [null, {}, { moveNumber: 7, played: 'Qh5?' }]) {
+      const html = render({
+        trainingOpportunity,
+        onTrainCurrentError: () => {},
+        onPlayAgain: () => {},
+      });
+      expect(html).not.toContain('Entrenar este error');
+      expect(html).toContain('>Jugar otra partida</button>');
+      expect((html.match(/class="primary-btn"/g) || [])).toHaveLength(1);
+    }
+
+    const withoutHandler = render({
+      trainingOpportunity: { puzzleId: 'personal-1', moveNumber: 7 },
+      onPlayAgain: () => {},
+    });
+    expect(withoutHandler).not.toContain('Entrenar este error');
+    expect(withoutHandler).toContain('>Jugar otra partida</button>');
+  });
+
+  it('no interrumpe una serie para entrenar aunque haya puzzle factual', () => {
+    const html = render({
+      seriesState: { bestOf: 3, humanWins: 1, cpuWins: 0, games: [{ outcome: 'win' }], winner: null },
+      onNextSeriesGame: () => {},
+      trainingOpportunity: { puzzleId: 'personal-1', moveNumber: 7 },
+      onTrainCurrentError: () => {},
+      onPlayAgain: () => {},
+    });
+    expect(html).not.toContain('Entrenar este error');
+    expect(html).toContain('Intentar cerrar la serie');
   });
 
   it('muestra la recalibración factual sólo cuando el resumen trae un cambio material', () => {
@@ -87,7 +128,7 @@ describe('PostGameExperience', () => {
       onTrainPersonal: () => {},
     });
     expect(html).toContain('Intentar cerrar la serie');
-    expect(html).toContain('Volver al menú');
+    expect(html).toContain('Volver al castillo');
     expect(html).not.toContain('Más opciones');
     expect(html).not.toContain('Compartir resultado');
     expect(html).not.toContain('Entrenar mis errores');
