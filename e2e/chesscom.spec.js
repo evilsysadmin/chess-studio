@@ -60,6 +60,13 @@ test('Chesscom · abre la planta 17 con renderer Babylon real y HUD Dust Veil pr
   await expect(host).toHaveAttribute('data-chesscom-environment', 'environment-art-v4');
   await expect(host).toHaveAttribute('data-chesscom-architecture', 'industrial-architecture-v19');
   await expect(host).toHaveAttribute('data-chesscom-vehicle', 'military-truck-v21');
+  await expect.poll(() => host.evaluate(() => {
+    const B = window.BABYLON;
+    const scene = B?.EngineStore?.LastCreatedScene;
+    const wheels = scene?.meshes?.filter((mesh) => mesh.name.startsWith('truck-v21-tyre-')) || [];
+    const root = scene?.getTransformNodeByName?.('truck-v21-root');
+    return Boolean(root && wheels.length === 6 && wheels.every((mesh) => !mesh.isPickable && mesh.parent === root));
+  })).toBe(true);
   await expect(host).toHaveAttribute('data-chesscom-lighting', 'readability-v2');
   await expect(mode.getByText(/BABYLON\.JS \d+\.\d+\.\d+ · GPU PREMIUM V2 · BALLISTICS · UNIT STANCE · CHARACTER ART V4/)).toBeVisible({ timeout: 30_000 });
   await expect(mode.getByText('BABYLON · ERROR', { exact: true })).toHaveCount(0);
