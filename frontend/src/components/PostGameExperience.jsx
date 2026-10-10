@@ -96,7 +96,7 @@ export default function PostGameExperience({
     outcome: finalOutcome,
     moveCount: game.history.length,
     hasReport: game.history.length > 0,
-    canTrainCurrentError: Boolean(trainingOpportunity && onTrainCurrentError),
+    canTrainCurrentError: trainableErrorReady,
     canPlayAgain: typeof onPlayAgain === 'function',
     adaptive: Boolean(resultSummary?.adaptiveDifficulty),
   });
