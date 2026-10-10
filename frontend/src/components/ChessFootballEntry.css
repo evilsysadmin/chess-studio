@@ -269,8 +269,259 @@
   .chess-football-entry__choice b { font-size: .8rem; }
 }
 
+.chess-football-entry__manager--season { width: min(760px, 100%); }
+
+.chess-football-entry__standings {
+  width: 100%;
+  margin: 1.2rem auto;
+  border-collapse: collapse;
+  color: #eee9d7;
+  text-align: left;
+  font-size: clamp(.77rem, 2.2vw, .98rem);
+}
+
+.chess-football-entry__standings td,
+.chess-football-entry__standings th {
+  padding: .48rem .35rem;
+  border-bottom: 1px solid rgba(239, 217, 163, .17);
+}
+
+.chess-football-entry__standings thead { color: #b9d49e; }
+.chess-football-entry__standings td:last-child,
+.chess-football-entry__standings th:last-child { text-align: right; }
+.chess-football-entry__standings .is-my-club {
+  color: #ffe4a4;
+  background: rgba(112, 118, 55, .24);
+}
+
+.chess-football-entry__fixture-list {
+  margin: .85rem auto;
+  padding: .85rem 1rem;
+  border: 1px solid rgba(239, 217, 163, .18);
+  border-radius: 12px;
+  background: rgba(8, 23, 12, .5);
+  text-align: left;
+}
+
+.chess-football-entry__fixture-list h3 {
+  margin: 0 0 .5rem;
+  color: #b9d49e;
+  font-size: .92rem;
+}
+
+.chess-football-entry__fixture-list p { margin: .3rem 0; font-size: .85rem; }
+.chess-football-entry__manager-return.is-secondary {
+  margin-left: .6rem;
+  background: transparent;
+  border-color: rgba(239, 217, 163, .3);
+}
+.chess-football-entry__manager-return:disabled { opacity: .55; cursor: not-allowed; }
+
 @media (prefers-reduced-motion: reduce) {
   .chess-football-entry__choice { transition: none; }
   .chess-football-entry__choice:hover,
   .chess-football-entry__choice:focus-visible { transform: none; }
+}
+
+/* One decision at a time: tactics for the upcoming manager fixture only. */
+.chess-football-entry__plan {
+  margin: .9rem auto;
+  padding: .9rem 1rem;
+  border: 1px solid rgba(239, 217, 163, .24);
+  border-radius: 12px;
+  background: rgba(48, 66, 35, .27);
+  text-align: left;
+}
+.chess-football-entry__plan h3 {
+  margin: 0;
+  color: #ead6a0;
+  font: 700 1.08rem Georgia, 'Times New Roman', serif;
+}
+.chess-football-entry__plan p {
+  margin: .35rem 0 .7rem;
+  font-size: .84rem;
+  line-height: 1.45;
+}
+.chess-football-entry__plan-options {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: .45rem;
+}
+.chess-football-entry__plan-option {
+  min-width: 0;
+  min-height: 44px;
+  padding: .5rem .3rem;
+  border: 1px solid rgba(239, 217, 163, .27);
+  border-radius: 9px;
+  color: #f4e9d1;
+  background: rgba(8, 18, 12, .65);
+  font: inherit;
+  font-size: clamp(.74rem, 2vw, .9rem);
+  font-weight: 750;
+  cursor: pointer;
+}
+.chess-football-entry__plan-option[aria-pressed="true"] {
+  border-color: #e4c980;
+  color: #fff4ce;
+  background: rgba(87, 106, 55, .65);
+}
+.chess-football-entry__plan-option:focus-visible {
+  outline: 3px solid #d8c28b;
+  outline-offset: 2px;
+}
+.chess-football-entry__plan .chess-football-entry__plan-effect {
+  margin: .6rem 0 0;
+  color: #e5d2a5;
+  min-height: 1.3rem;
+}
+@media (max-width: 360px) {
+  .chess-football-entry__plan { padding: .75rem .6rem; }
+  .chess-football-entry__plan-options { gap: .3rem; }
+}
+
+.chess-football-entry__used-plan {
+  color: #e9d298;
+  font-size: .79rem;
+  font-weight: 650;
+}
+/* The manager's five starters are advanced detail; the next-round CTA stays
+   the dominant action. Each selector remains usable on narrow touch screens. */
+.chess-football-entry__lineup {
+  margin: .6rem 0;
+  padding: .75rem .9rem;
+  border: 1px solid rgba(239, 217, 163, .24);
+  border-radius: 12px;
+  background: rgba(7, 23, 15, .48);
+  text-align: left;
+}
+.chess-football-entry__lineup summary {
+  color: #e8d4a1;
+  font-weight: 750;
+  cursor: pointer;
+  padding: .35rem 0;
+}
+.chess-football-entry__lineup summary:focus-visible { outline: 3px solid #d8c28b; outline-offset: 2px; }
+.chess-football-entry__lineup p { font-size: .83rem; line-height: 1.45; }
+.chess-football-entry__lineup-slots { display: grid; gap: .65rem; }
+.chess-football-entry__lineup-slots label { display: grid; gap: .2rem; min-width: 0; }
+.chess-football-entry__lineup-slots label span { font-size: .78rem; color: #bcd2a1; font-weight: 750; }
+.chess-football-entry__lineup-slots select {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  border: 1px solid rgba(239, 217, 163, .33);
+  border-radius: 8px;
+  padding: .5rem;
+  font: inherit;
+  font-size: .83rem;
+  color: #f4e9d1;
+  background: #152519;
+}
+.chess-football-entry__lineup-slots select:focus-visible { outline: 3px solid #d8c28b; outline-offset: 2px; }
+
+/* The selected player's condition must remain visible even when a native
+   select truncates long candidate names on 390px Android. */
+.chess-football-entry__lineup-slots .chess-football-entry__slot-label {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: .25rem .55rem;
+}
+.chess-football-entry__slot-fatigue {
+  flex: 0 0 auto;
+  color: #ebd596;
+  font-size: .78rem;
+  font-weight: 750;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Saved careers are part of the mode's optional continuation, not another
+   dashboard. The confirmation is explicit and usable with touch/keyboard. */
+.chess-football-entry__career-resume,
+.chess-football-entry__career-confirm {
+  margin: .2rem 0;
+  padding: .9rem 1rem;
+  border: 1px solid rgba(237, 205, 133, .35);
+  border-radius: 12px;
+  background: rgba(20, 38, 24, .76);
+}
+.chess-football-entry__career-resume > strong { color: #f1dca5; }
+.chess-football-entry__career-resume p,
+.chess-football-entry__career-confirm p { font-size: .87rem; line-height: 1.5; }
+.chess-football-entry__save-state {
+  font-size: .78rem;
+  color: #cedfb5;
+}
+.chess-football-entry__career-warning {
+  font-size: .84rem;
+  color: #f1d493;
+}
+
+.chess-football-entry__career-resume { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .4rem 1rem; }
+.chess-football-entry__career-resume p { flex: 1 1 210px; margin: 0; }
+.chess-football-entry__career-resume .chess-football-entry__manager-return { margin: 0; min-height: 44px; }
+@media (max-width: 680px) {
+  .chess-football-entry__career-resume { align-items: flex-start; }
+}
+
+/* Objective is a compact, evidence-based league brief, not an extra dashboard. */
+.chess-football-entry__objective {
+  margin: .55rem 0 .85rem;
+  padding: .8rem .95rem;
+  border: 1px solid rgba(213, 186, 112, .33);
+  border-radius: 12px;
+  background: rgba(23, 43, 29, .68);
+  text-align: left;
+}
+.chess-football-entry__objective-heading {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: .4rem .8rem;
+}
+.chess-football-entry__objective-heading strong { color: #edd9ac; }
+.chess-football-entry__objective-heading span { color: #d3ddac; font-size: .78rem; }
+.chess-football-entry__objective p { margin: .35rem 0; font-size: .84rem; line-height: 1.45; }
+.chess-football-entry__objective .chess-football-entry__objective-progress { color: #f0dbac; font-weight: 750; font-variant-numeric: tabular-nums; }
+
+/* Advanced coaching is collapsed by default: keep the next-match flow simple. */
+.chess-football-entry__training {
+  margin: .55rem 0;
+  padding: .7rem .9rem;
+  border: 1px solid rgba(209, 190, 134, .24);
+  border-radius: 12px;
+  background: rgba(9, 26, 16, .56);
+}
+.chess-football-entry__training summary { color: #e8d7ae; font-weight: 750; cursor: pointer; }
+.chess-football-entry__training p { font-size: .81rem; line-height: 1.5; }
+.chess-football-entry__training-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: .45rem;
+}
+.chess-football-entry__training-option {
+  min-height: 44px;
+  min-width: 0;
+  border: 1px solid rgba(230, 202, 141, .34);
+  border-radius: 9px;
+  padding: .45rem .5rem;
+  background: #1b2b1e;
+  color: #efe8d5;
+  font: inherit;
+  font-size: .83rem;
+  font-weight: 650;
+  cursor: pointer;
+}
+.chess-football-entry__training-option[aria-pressed="true"] {
+  border-color: #e9ca80;
+  background: #455b36;
+  color: #fff4ce;
+}
+.chess-football-entry__training-option:focus-visible,
+.chess-football-entry__training summary:focus-visible {
+  outline: 3px solid #d8c28b;
+  outline-offset: 2px;
 }
