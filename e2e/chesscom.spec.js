@@ -137,9 +137,12 @@ test('Chesscom · abre la planta 17 con renderer Babylon real y HUD Dust Veil pr
   await expect(mode.locator('.chesscom-operation')).toBeVisible();
   // Compact branding must fit beside the exit, not be clipped by it.
   await expect.poll(() => mode.evaluate((node) => {
+    const brand = node.querySelector('.chesscom-brand')?.getBoundingClientRect();
     const title = node.querySelector('.chesscom-brand h2')?.getBoundingClientRect();
     const exit = node.querySelector('.chesscom-exit')?.getBoundingClientRect();
-    return Boolean(title && exit && title.right <= exit.left - 10);
+    return Boolean(brand && title && exit
+      && brand.right <= exit.left - 10
+      && title.right <= exit.left - 10);
   })).toBe(true);
   await expect(page.getByRole('button', { name: '← Experimentos', exact: true })).toBeVisible();
 
