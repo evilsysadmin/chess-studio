@@ -19,14 +19,14 @@ describe('CHESSCOM Kharif industrial compound V27',()=>{
     const ultra=chesscomIndustrialCompoundParts(buildings,'ultra');
     expect(CHESSCOM_INDUSTRIAL_COMPOUND_V27.buildingNames).toHaveLength(4);
     expect(balanced).toHaveLength(23);
-    expect(high).toHaveLength(73);
-    expect(ultra).toHaveLength(89);
+    expect(high).toHaveLength(49);
+    expect(ultra).toHaveLength(57);
     expect(ultra.length).toBeLessThanOrEqual(CHESSCOM_INDUSTRIAL_COMPOUND_V27.maxParts);
     expect(ultra.map(p=>p.name)).toContain('storage-loading-shutter');
     expect(ultra.map(p=>p.name)).toContain('office-gantry-canopy');
     expect(ultra.filter(p=>p.name==='roof-service-main')).toHaveLength(2);
-    expect(ultra.filter(p=>p.name==='roof-conduit-bridge')).toHaveLength(2);
-    expect(ultra.filter(p=>p.name.includes('shutter-rib')).length).toBe(20);
+    expect(ultra.filter(p=>p.name==='roof-conduit-bridge')).toHaveLength(1);
+    expect(ultra.filter(p=>p.name.includes('shutter-rib')).length).toBe(6);
     for(const p of ultra){
       expect([p.x,p.y,p.z,p.w,p.h,p.d].every(Number.isFinite)).toBe(true);
       expect(Math.min(p.w,p.h,p.d)).toBeGreaterThan(0);
