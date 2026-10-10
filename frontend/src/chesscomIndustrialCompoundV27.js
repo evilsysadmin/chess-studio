@@ -6,7 +6,7 @@
 export const CHESSCOM_INDUSTRIAL_COMPOUND_V27=Object.freeze({
   identity:'industrial-compound-v27',
   buildingNames:Object.freeze(['OFFICE','STORAGE','NO FLAGS','JUST JOBS']),
-  maxParts:110,
+  maxParts:55,
   minPipeClearance:3.10,
 });
 
@@ -31,6 +31,7 @@ export function chesscomIndustrialCompoundParts(buildings=[],tier='ultra'){
     &&b.w>2&&b.d>1.7&&b.h>2);
   for(const b of valid){
     if(!high&&!['OFFICE','STORAGE'].includes(b.name))continue;
+    const mainBay=b.name==='OFFICE'||b.name==='STORAGE';
     const tag=b.name.replaceAll(' ','-').toLowerCase();
     const face=b.x+b.w/2, center=b.z+.02*b.d;
     const x=face+.055, panelD=Math.min(1.28,b.d*.75);
@@ -39,19 +40,19 @@ export function chesscomIndustrialCompoundParts(buildings=[],tier='ultra'){
     for(const z of [-1,1])push(`${tag}-portal-jamb`,'gunmetal',x+.06,.92,center+z*(panelD/2+.065),.16,1.83,.15);
     push(`${tag}-portal-header`,'zinc',x+.075,1.81,center,.22,.17,panelD+.32);
     push(`${tag}-gantry-canopy`,'gunmetal',face+.31,2.01,center,.63,.13,panelD+.47);
-    push(`${tag}-canopy-strut-a`,'zinc',face+.27,1.85,center-panelD*.35,.07,.27,.07);
-    push(`${tag}-canopy-strut-b`,'zinc',face+.27,1.85,center+panelD*.35,.07,.27,.07);
+    if(mainBay)push(`${tag}-canopy-strut-a`,'zinc',face+.27,1.85,center-panelD*.35,.07,.27,.07);
+    if(mainBay)push(`${tag}-canopy-strut-b`,'zinc',face+.27,1.85,center+panelD*.35,.07,.27,.07);
     push(`${tag}-loading-sill`,'gunmetal',x+.06,.18,center,.18,.14,panelD+.28);
     // Broad aged warning stripe legible at the real tactical zoom.
     push(`${tag}-caution-sill`,'caution',x+.153,.26,center,.023,.10,panelD*.84);
-    if(high){
-      for(const y of [.43,.72,1.01,1.30,1.59])
+    if(high&&mainBay){
+      for(const y of [.48,.92,1.37])
         push(`${tag}-shutter-rib-${y}`,'gunmetal',x+.075,y,center,.038,.035,panelD-.08);
       // A dark vertical utility run catches the warm industrial practicals.
       push(`${tag}-downfeed`,'zinc',face+.04,1.46,b.z+b.d*.40,.15,.96,.14);
       push(`${tag}-downfeed-box`,'shutter',face+.075,1.00,b.z+b.d*.40,.19,.33,.28);
     }
-    if(ultra){
+    if(ultra&&mainBay){
       for(const z of [-1,1]){
         push(`${tag}-caution-post-${z}`,'caution',x+.153,.60,center+z*(panelD/2+.055),.032,.62,.064);
         push(`${tag}-facade-vent-${z}`,'zinc',face+.06,Math.min(b.h-.3,2.10),center+z*(panelD*.65),.14,.13,.30);
@@ -73,7 +74,7 @@ export function chesscomIndustrialCompoundParts(buildings=[],tier='ultra'){
       for(const x of [a+.12,b-.12])
         push('roof-service-landing','gunmetal',x,y-.28,pz,.18,.48,.59);
       if(high){
-        for(const x of [a+span*.33,a+span*.66]){
+        for(const x of [a+span*.50]){
           push('roof-conduit-bridge','gunmetal',x,y+.045,pz,.09,.20,.60);
           push('roof-conduit-clamp','caution',x,y+.17,pz,.20,.045,.55);
         }
@@ -122,7 +123,8 @@ export function installChesscomIndustrialCompoundV27(B,scene,{tier='ultra',host}
       mesh.position.set(part.x,part.y,part.z);
       mesh.scaling.set(part.w,part.h,part.d);
       mesh.isPickable=false;
-      mesh.receiveShadows=true;
+      // Scene already has heavy PCSS shadows; facade trim doesn't need them.
+      mesh.receiveShadows=false;
       mesh.metadata={decorative:true,visual:'industrial-compound-v27'};
       disposal.push(mesh);
       partCount++;
