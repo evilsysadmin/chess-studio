@@ -78,6 +78,10 @@ export function installChesscomOperatorMomentsV26(B,scene,{tier='ultra',host,red
     light.range=2.8;
     light.intensity=0;
   }
+  const coolLight=new B.Color3(.28,.64,.68);
+  const hotLight=new B.Color3(.96,.42,.21);
+  const coolBraces=new B.Color3(.36,.72,.74);
+  const hotBraces=new B.Color3(.89,.52,.29);
   const glow=scene.getEffectLayerByName?.('ops-glow');
   glow?.addIncludedOnlyMesh?.(ring);
   let selectedId=null;
@@ -128,7 +132,7 @@ export function installChesscomOperatorMomentsV26(B,scene,{tier='ultra',host,red
     root.position.set(p.x,0,p.z);
     const danger=highlight?.kind==='hit'||highlight?.kind==='down';
     ring.material=danger?hot:cool;
-    if(braces)braces.color=danger?new B.Color3(.89,.52,.29):new B.Color3(.36,.72,.74);
+    if(braces)braces.color=danger?hotBraces:coolBraces;
     if(!reducedMotion){
       const wave=highlight?Math.max(0,(highlight.expiry-now)/CHESSCOM_OPERATOR_MOMENTS_V26.hitDuration):0;
       const pulse=1+Math.sin(now*.005)*.018+wave*.07;
@@ -136,7 +140,7 @@ export function installChesscomOperatorMomentsV26(B,scene,{tier='ultra',host,red
     }else root.scaling.set(1,1,1);
     if(light){
       light.position.set(p.x,1.4,p.z);
-      light.diffuse=danger?new B.Color3(.96,.42,.21):new B.Color3(.28,.64,.68);
+      light.diffuse=danger?hotLight:coolLight;
       light.intensity=danger?2.6:highlight?.kind==='shot'?2.0:1.15;
     }
   }
