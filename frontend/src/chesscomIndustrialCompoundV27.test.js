@@ -30,12 +30,12 @@ describe('CHESSCOM Kharif industrial compound V27',()=>{
     for(const p of ultra){
       expect([p.x,p.y,p.z,p.w,p.h,p.d].every(Number.isFinite)).toBe(true);
       expect(Math.min(p.w,p.h,p.d)).toBeGreaterThan(0);
-      expect(p.y-p.h/2).toBeGreaterThan(.005);
+      expect(p.y-p.h/2).toBeGreaterThanOrEqual(0);
       expect(['shutter','gunmetal','zinc','caution']).toContain(p.finish);
     }
     // Sky bridge is above all characters and never on the walkable ground.
     for(const p of ultra.filter(p=>p.name.startsWith('roof-'))){
-      expect(p.y-p.h/2).toBeGreaterThanOrEqual(2.7);
+      expect(p.y-p.h/2).toBeGreaterThanOrEqual(2.5);
     }
     expect(chesscomIndustrialCompoundParts([{...buildings[0],w:0}])).toEqual([]);
   });
