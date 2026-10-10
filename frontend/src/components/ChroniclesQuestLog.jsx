@@ -32,7 +32,7 @@ export default function ChroniclesQuestLog({ state }) {
           >
             <span aria-hidden="true">{quest.status === 'completed' ? '✓' : quest.main ? '♛' : '◆'}</span>
             <div>
-              <small>{quest.main ? 'Historia' : 'Encargo secundario'}{quest.status === 'completed' ? ' · completado' : ''}</small>
+              <small>{quest.main ? 'Historia' : 'Side quest'}{quest.status === 'completed' ? ' · completado' : ''}</small>
               <strong>{quest.title}</strong>
               {quest.objective && <p>{quest.objective}</p>}
             </div>

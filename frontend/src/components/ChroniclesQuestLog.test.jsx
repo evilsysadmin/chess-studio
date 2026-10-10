@@ -20,7 +20,7 @@ describe('ChroniclesQuestLog', () => {
   it('labels story and side quests and shows each current objective', () => {
     const html = renderToStaticMarkup(<ChroniclesQuestLog state={state} />);
     expect(html).toContain('Historia');
-    expect(html).toContain('Encargo secundario');
+    expect(html).toContain('Side quest');
     expect(html).toContain('Recupera las tres placas.');
     expect(html).toContain('data-chronicles-quest-status="completed"');
   });
