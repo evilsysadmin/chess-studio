@@ -11,25 +11,26 @@ describe('Chronicles · optional banner road ambusher', () => {
   it('spawns as a real, optional enemy on walkable terrain', () => {
     const map = chroniclesMapById('banner-road-first-book');
     const enemy = map.enemies.find((entry) => entry.id === 'banner-road-deserter');
+    // The authored file starts at 4 HP; the resolved enemyBuild has 5 effective HP.
     expect(enemy).toMatchObject({
       optional: true, visualType: 'corrupted-pawn', hpKey: 'bannerRoadDeserterHp',
-      maxHp: 4, x: 11, y: 5,
+      maxHp: 5, x: 11, y: 5,
     });
     expect(map.grid[enemy.y][enemy.x]).not.toBe('#');
-    expect(createChroniclesState('banner-road-first-book').bannerRoadDeserterHp).toBe(4);
+    expect(createChroniclesState('banner-road-first-book').bannerRoadDeserterHp).toBe(5);
   });
 
   it('allows first-person combat and grants exactly three gold only on the kill', () => {
     let state = createChroniclesState('banner-road-first-book');
     state = { ...state, x: 11, y: 6, direction: 0 };
     // Hildegard has enough HP to survive the retaliation; Matthias alone
-    // can be knocked out before finishing this four-HP combat encounter.
+    // can be knocked out before finishing this five-HP combat encounter.
     const damage = chroniclesPartyAttackStats(state, 'rook').damage;
     const blows = Math.ceil(state.bannerRoadDeserterHp / damage);
     expect(blows).toBeGreaterThan(1);
     for (let hit = 1; hit < blows; hit += 1) {
       state = chroniclesReduce(state, { type: 'attack', memberId: 'rook' });
-      expect(state.bannerRoadDeserterHp).toBe(4 - hit * damage);
+      expect(state.bannerRoadDeserterHp).toBe(5 - hit * damage);
       expect(chroniclesGoldBalance(state)).toBe(0);
     }
     state = chroniclesReduce(state, { type: 'attack', memberId: 'rook' });
