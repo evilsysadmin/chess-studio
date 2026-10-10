@@ -18,6 +18,11 @@ MATTHIAS_MODEL = "frontend/public/models/matthias-home-canonical.glb"
 MATTHIAS_BLEND = "frontend/art-source/matthias-home-canonical.blend"
 CHRONICLES_PARTY_MODEL = "frontend/public/models/chronicles-tactics-party.glb"
 CHRONICLES_BOOTSTRAP_OWNER = "frontend/src/chronicles/chroniclesGameBootstrap.js"
+FOOTBALL_PROFILE_REGISTRY = "frontend/src/profileKeys.js"
+FOOTBALL_MANAGER_VISUAL_OWNER = "frontend/src/footballManagerCareer.js"
+# Exact registry-only addition: changes elsewhere in profileKeys fail closed
+# into the full canonical visual suite as before.
+NONVISUAL_FOOTBALL_REGISTRY_LINES = {"'chess-study-football-manager-career-v1',"}
 TACTICS_REMOTE_RUN_SHELL = "frontend/src/components/ChroniclesOfMatthiasTactics.jsx"
 
 # Narrowly scoped persistence/bootstrap wiring does not change the rendered
@@ -799,6 +804,13 @@ def normalize(
             NONVISUAL_CHRONICLES_SAVE_BOOTSTRAP_LINES,
         )
     )
+    safe_football_registry = (
+        FOOTBALL_PROFILE_REGISTRY.lower() in lower_paths
+        and _is_exact_routing_diff(
+            _git_diff_text(base_sha, head_sha, FOOTBALL_PROFILE_REGISTRY),
+            NONVISUAL_FOOTBALL_REGISTRY_LINES,
+        )
+    )
     safe_training_route_app = (
         PUZZLE_SCREEN_OWNER.lower() in lower_paths
         and _is_training_route_app_diff(_git_diff_text(base_sha, head_sha, APP_SHELL))
@@ -860,6 +872,14 @@ def normalize(
             continue
         if lower == CHRONICLES_BOOTSTRAP_OWNER.lower() and safe_chronicles_save_bootstrap:
             continue
+        if lower == FOOTBALL_PROFILE_REGISTRY.lower() and safe_football_registry:
+            # A new registered progress key paints no shared app surface.
+            # The actual Football view still runs its full Experiment capture.
+            add(FOOTBALL_MANAGER_VISUAL_OWNER)
+            continue
+        if lower == "scripts/state_ownership_contract.json":
+            # Static ownership manifest has its own preflight gate, no pixels.
+            continue
         if lower == APP_SHELL.lower() and safe_school_preload_app:
             add(SCHOOL_PRELOAD_OWNER)
             continue
@@ -919,6 +939,15 @@ def normalize(
 
 
 def self_test() -> None:
+    from unittest.mock import patch
+    assert normalize([FOOTBALL_PROFILE_REGISTRY]) == [FOOTBALL_PROFILE_REGISTRY]
+    with patch(__name__ + "._git_diff_text", return_value="diff --git a/profileKeys b/profileKeys\n+  'chess-study-football-manager-career-v1',\n"):
+        assert normalize(
+            [FOOTBALL_PROFILE_REGISTRY, "scripts/state_ownership_contract.json"],
+            base_sha="old", head_sha="new",
+        ) == [FOOTBALL_MANAGER_VISUAL_OWNER]
+    with patch(__name__ + "._git_diff_text", return_value="diff --git a/profileKeys b/profileKeys\n+  'chess-study-football-manager-career-v1',\n+  'unknown-progress',\n"):
+        assert normalize([FOOTBALL_PROFILE_REGISTRY], base_sha="old", head_sha="new") == [FOOTBALL_PROFILE_REGISTRY]
     matthias_sources = [
         MATTHIAS_BLEND,
         MATTHIAS_MODEL,

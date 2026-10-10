@@ -184,8 +184,70 @@ async function withChessFootballCapturePage(browser, capture, callback) {
       path: `${ARTIFACT_DIR}/chess-football-manager-preview-${capture.label}.png`,
       fullPage: true,
     });
+    await welcome.getByRole('button', { name: 'Empezar temporada de prueba', exact: true }).click();
+    const standings = welcome.locator('.chess-football-entry__standings');
+    await expect(standings.locator('tbody tr')).toHaveCount(6);
+    await standings.scrollIntoViewIfNeeded();
+    await captureFrozenFrame(page, {
+      path: `${ARTIFACT_DIR}/chess-football-season-${capture.label}.png`,
+      fullPage: true,
+    });
+    const lineupPanel = welcome.getByLabel('Alineación del míster');
+    await lineupPanel.locator('summary').click();
+    await lineupPanel.getByRole('combobox', { name: 'Titular 5 · DEL' }).selectOption('fc-matthias-del-2');
+    await captureFrozenFrame(page, {
+      path: `${ARTIFACT_DIR}/chess-football-lineup-${capture.label}.png`,
+      fullPage: true,
+    });
+    await lineupPanel.locator('summary').click();
+    const attacking = welcome.getByRole('button', { name: 'Ataque total', exact: true });
+    await attacking.click();
+    await expect(attacking).toHaveAttribute('aria-pressed', 'true');
+    const tacticalOverflow = await welcome.evaluate((node) => node.scrollWidth > node.clientWidth + 1);
+    expect(tacticalOverflow, 'Manager tactical selector: no horizontal overflow').toBe(false);
+    await captureFrozenFrame(page, {
+      path: `${ARTIFACT_DIR}/chess-football-tactics-${capture.label}.png`,
+      fullPage: true,
+    });
+    await welcome.getByRole('button', { name: 'Simular siguiente jornada', exact: true }).click();
+    await expect(welcome).toContainText('Jornada 1 de 10');
+    await lineupPanel.locator('summary').click();
+    await expect(lineupPanel).toContainText('Fatiga 17%');
+    await expect(lineupPanel.locator('.chess-football-entry__slot-fatigue')).toHaveCount(5);
+    if (capture.portrait) {
+      await lineupPanel.screenshot({
+        path: `${ARTIFACT_DIR}/chess-football-fatigue-${capture.label}.png`,
+        animations: 'disabled',
+      });
+    } else {
+      // A DOM element taller than 390px may produce an unpainted white strip
+      // in headless Chromium's off-viewport element screenshot. Capture the
+      // actual scrolled handset viewport instead of inventing white pixels.
+      await lineupPanel.locator('summary').scrollIntoViewIfNeeded();
+      await page.screenshot({
+        path: `${ARTIFACT_DIR}/chess-football-fatigue-${capture.label}.png`,
+        animations: 'disabled',
+      });
+    }
+    await lineupPanel.locator('summary').click();
+    await welcome.locator('.chess-football-entry__back').click();
     await welcome.locator('.chess-football-entry__back').click();
     await welcome.getByRole('button', { name: 'Volver a elegir modo' }).click();
+    const resume = welcome.getByRole('button', { name: 'Continuar temporada' });
+    await expect(resume).toBeVisible();
+    expect(await welcome.evaluate((node) => node.scrollTop), 'Welcome must reset to its entrance').toBe(0);
+    const resumeBounds = await resume.boundingBox();
+    expect(resumeBounds?.y, 'Resume CTA must be on screen').toBeGreaterThanOrEqual(0);
+    expect(resumeBounds.y + resumeBounds.height, 'Resume CTA visible in first viewport').toBeLessThanOrEqual(capture.height + 1);
+    await captureFrozenFrame(page, {
+      path: `${ARTIFACT_DIR}/chess-football-resume-${capture.label}.png`,
+      fullPage: true,
+    });
+    await resume.click();
+    await expect(welcome).toContainText('Jornada 1 de 10');
+    await welcome.locator('.chess-football-entry__back').click();
+    await welcome.locator('.chess-football-entry__back').click();
+    await welcome.locator('.chess-football-entry__back').click();
     await welcome.locator('.chess-football-entry__choice--quick').click();
     await expect(page.locator('.chess-football-godot-host')).toBeVisible();
     return await callback(page);

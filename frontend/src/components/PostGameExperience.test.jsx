@@ -61,6 +61,38 @@ describe('PostGameExperience', () => {
     expect(html).not.toContain('>Jugar otra partida</button>');
   });
 
+  it('no inventa un entrenamiento cuando la oportunidad carece de puzzle válido', () => {
+    for (const trainingOpportunity of [null, {}, { moveNumber: 7, played: 'Qh5?' }]) {
+      const html = render({
+        trainingOpportunity,
+        onTrainCurrentError: () => {},
+        onPlayAgain: () => {},
+      });
+      expect(html).not.toContain('Entrenar este error');
+      expect(html).toContain('>Jugar otra partida</button>');
+      expect((html.match(/class="primary-btn"/g) || [])).toHaveLength(1);
+    }
+
+    const withoutHandler = render({
+      trainingOpportunity: { puzzleId: 'personal-1', moveNumber: 7 },
+      onPlayAgain: () => {},
+    });
+    expect(withoutHandler).not.toContain('Entrenar este error');
+    expect(withoutHandler).toContain('>Jugar otra partida</button>');
+  });
+
+  it('no interrumpe una serie para entrenar aunque haya puzzle factual', () => {
+    const html = render({
+      seriesState: { bestOf: 3, humanWins: 1, cpuWins: 0, games: [{ outcome: 'win' }], winner: null },
+      onNextSeriesGame: () => {},
+      trainingOpportunity: { puzzleId: 'personal-1', moveNumber: 7 },
+      onTrainCurrentError: () => {},
+      onPlayAgain: () => {},
+    });
+    expect(html).not.toContain('Entrenar este error');
+    expect(html).toContain('Intentar cerrar la serie');
+  });
+
   it('muestra la recalibración factual sólo cuando el resumen trae un cambio material', () => {
     const html = render({
       resultSummary: {
