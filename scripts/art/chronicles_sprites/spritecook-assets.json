@@ -1,0 +1,15 @@
+{
+  "_comment": "SpriteCook provenance for Chronicles 2.5D billboard sources (gpt-image-2, pixel art, quality low). asset_id lets future edits reuse the same canonical subject; sha12 = first 12 hex of sha256 of the committed PNG.",
+  "bone-hound": {
+    "idle": { "asset_id": "8d2d9018-e268-45ba-a193-3c0366c781b6", "sha12": "3e6182176680", "label": "canonical base" },
+    "menace": { "asset_id": "ac612b84-dd3a-4619-8dcc-e920e084053d", "sha12": "888255d910e8" },
+    "attack": { "asset_id": "682718d5-1a8a-4443-ad53-8c537cf349c0", "sha12": "b8582134d2f2" },
+    "hurt": { "asset_id": "d13d7a7f-20fc-4beb-870c-f45e00c3430d", "sha12": "8af136eca01f" },
+    "dead": { "asset_id": "493e1eaf-fb4e-4a26-95df-d86b0c353b80", "sha12": "7d6483b21988" }
+  },
+  "rookwood-mourner": {
+    "idle": { "asset_id": "d2992dcc-edab-460c-b301-685ce30f4199", "sha12": "2ab6d942f667", "label": "canonical base (blank name tag)" },
+    "speak": { "asset_id": "1af2553d-5722-4bdd-a29b-47508863ce60", "sha12": "1a1abce6f583" },
+    "grateful": { "asset_id": "c677551a-1565-4140-b277-0d7af66dccaf", "sha12": "818f451d4056" }
+  }
+}
