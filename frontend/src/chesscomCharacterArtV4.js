@@ -33,6 +33,16 @@ export function chesscomCharacterV4Profile(id, friendly = true) {
   });
 }
 
+// Extra silhouettes are deliberately attached to existing units. Their
+// pick metadata stays identical to the unit, without changing tactical rules.
+export function chesscomFieldKitV20Profile(role) {
+  const key=String(role||'').toLowerCase();
+  if(key==='scout')return Object.freeze({identity:'field-kit-v20',role:'scout',pack:.23,plates:.10,accent:'#4f8793',scarf:true});
+  if(key==='rifleman')return Object.freeze({identity:'field-kit-v20',role:'rifleman',pack:.36,plates:.15,accent:'#8f7953',scarf:false});
+  if(key==='hostile')return Object.freeze({identity:'field-kit-v20',role:'hostile',pack:.29,plates:.16,accent:'#8e4938',scarf:false});
+  return Object.freeze({identity:'field-kit-v20',role:'leader',pack:.28,plates:.12,accent:'#b8873d',scarf:false});
+}
+
 function unitRoot(scene, id) {
   return scene.getTransformNodeByName?.(`unit-${id}`)
     || scene.transformNodes?.find?.((node) => node.name === `unit-${id}`)
@@ -234,6 +244,25 @@ function addWeapon(B,scene,root,profile,mats,disposables){
   root.metadata.weaponMuzzleLocalX=profile.muzzleX;
 }
 
+function addFieldKitV20(B,scene,root,profile,mats,disposables){
+  const kit=chesscomFieldKitV20Profile(profile.role);
+  const id=profile.id;
+  const part=(name,mat,spec)=>polyBlock(B,scene,`field-kit-v20-${id}-${name}`,root,mat,spec,id,profile.friendly,disposables);
+  // Front armour silhouette: shoulder pads, load-bearing straps, and a
+  // prominent radio/identity tab visible at ordinary tactical zoom.
+  for(const side of [-1,1]){
+    part(`pauldron-${side}`,mats.armour,{h:.20,bw:kit.plates+.13,bd:.28,tw:kit.plates+.07,td:.24,x:side*.33,y:1.12,z:-.02,rz:side*.12});
+    part(`webbing-${side}`,mats.accent,{h:.35,bw:.052,bd:.034,tw:.042,td:.03,x:side*.12,y:.92,z:-.257,rz:side*.31});
+    part(`pouch-${side}`,mats.cloth2,{h:.18,bw:.17,bd:.095,tw:.16,td:.09,x:side*.17,y:.67,z:-.21});
+    part(`knee-${side}`,mats.armour,{h:.16,bw:.17,bd:.09,tw:.16,td:.07,x:side*.15,y:.30,z:-.09});
+  }
+  part('backpack',mats.cloth2,{h:kit.pack+.11,bw:profile.compact?.29:.36,bd:.16,tw:profile.compact?.27:.32,td:.14,y:.91,z:.28});
+  part('unit-tab',mats.accent,{h:.11,bw:.16,bd:.045,tw:.15,td:.041,x:.15,y:1.02,z:-.282});
+  if(kit.scarf)part('scout-collar',mats.accent,{h:.10,bw:.32,bd:.25,tw:.29,td:.23,y:1.16,z:-.018});
+  if(profile.role==='hostile')part('hostile-visor',mats.accent,{h:.07,bw:.29,bd:.06,tw:.27,td:.05,y:1.30,z:-.176});
+  root.metadata.fieldKit=kit.identity;
+}
+
 function addMercenary(B,scene,root,profile,disposables,restorers,invisible){
   hideLegacyMercenary(scene,profile.id,root,invisible,restorers);
   const mats=materialsFor(B,scene,profile,disposables);const parts=root.metadata?.parts||{};
@@ -258,6 +287,7 @@ function addMercenary(B,scene,root,profile,disposables,restorers,invisible){
   }else{
     polyBlock(B,scene,`character-v4-${profile.id}-radio`,root,mats.accent,{h:.24,bw:.035,bd:.035,tw:.022,td:.022,x:.20,y:1.48,z:.03,rz:-.10},profile.id,profile.friendly,disposables);
   }
+  addFieldKitV20(B,scene,root,profile,mats,disposables);
   addWeapon(B,scene,root,profile,mats,disposables);
   root.metadata.visualIdentity=profile.identity;
   root.metadata.characterArt='v4';
@@ -281,6 +311,14 @@ function addMatthias(B,scene,root,profile,disposables,restorers,invisible){
     polyBlock(B,scene,`character-v4-matthias-trouser-${side<0?'l':'r'}`,part,mats.cloth2,{h:.62,bw:.16,bd:.17,tw:.135,td:.15,y:-.35},profile.id,true,disposables);
     polyBlock(B,scene,`character-v4-matthias-boot-${side<0?'l':'r'}`,part,mats.boot,{h:.18,bw:.22,bd:.37,tw:.20,td:.31,y:-.76,z:-.08},profile.id,true,disposables);
   }
+  // Matthias retains his canonical cap and pawn silhouette; epaulettes
+  // and field-coat seams give him a unique officer profile at playing zoom.
+  for(const side of [-1,1]){
+    polyBlock(B,scene,`field-kit-v20-matthias-shoulder-${side}`,root,mats.accent,{h:.065,bw:.20,bd:.25,tw:.18,td:.23,x:side*.35,y:1.37,z:-.035},profile.id,true,disposables);
+    polyBlock(B,scene,`field-kit-v20-matthias-cuff-${side}`,root,mats.accent,{h:.07,bw:.10,bd:.14,tw:.10,td:.14,x:side*.42,y:.83,z:-.10},profile.id,true,disposables);
+  }
+  polyBlock(B,scene,'field-kit-v20-matthias-chest-insignia',root,mats.accent,{h:.10,bw:.12,bd:.04,tw:.11,td:.04,x:.16,y:1.22,z:-.18},profile.id,true,disposables);
+  root.metadata.fieldKit='field-kit-v20';
   addWeapon(B,scene,root,profile,mats,disposables);
   root.metadata.visualIdentity=profile.identity;
   root.metadata.characterArt='v4';
