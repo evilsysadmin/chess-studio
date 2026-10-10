@@ -18,7 +18,7 @@ test('Home runtime gate: freshly published GLB mounts without regression', async
   // Parsing an ~11 MB GLTFLoader scene plus login/mockApi setup routinely
   // takes close to the 20s default test timeout on its own, before the
   // settle wait and screenshot even run. Give it real headroom.
-  test.setTimeout(60_000);
+  test.setTimeout(120_000);
   // Only the promote workflow sets this; every other Playwright run (the
   // general CI sweep, a local `npx playwright test`) has nothing to gate.
   // A no-op pass here, not a conditional skip call -- this repo's test-suite
@@ -44,6 +44,15 @@ test('Home runtime gate: freshly published GLB mounts without regression', async
     body: glbBuffer,
   }));
 
+  // The device policy (HomeCastle3DRenderPolicy) only mounts the Blender
+  // runtime on 'full' LOD, which needs more than 4 cores; hosted runners
+  // report 4 and silently got the lite single-image compositor, so the gate
+  // failed without ever loading the GLB. This gate judges the GLB, not the
+  // runner, so present a desktop-class CPU count.
+  await page.addInitScript(() => {
+    Object.defineProperty(Navigator.prototype, 'hardwareConcurrency', { get: () => 8 });
+  });
+
   await mockApi(page, {
     profileSeed: {
       'matthias.onboarded': '2',
@@ -58,7 +67,7 @@ test('Home runtime gate: freshly published GLB mounts without regression', async
 
   // Never silently accept the legacy 2D fallback as "the scene mounted" --
   // that's exactly the failure mode this gate exists to catch.
-  await expect(castle).toHaveClass(/is-ready/, { timeout: 25_000 });
+  await expect(castle).toHaveClass(/is-ready/, { timeout: 75_000 });
   await expect(castle).toHaveAttribute('data-home-castle-compositor', 'blender-runtime');
 
   // Let materials/lighting settle a couple of real frames before sampling.
