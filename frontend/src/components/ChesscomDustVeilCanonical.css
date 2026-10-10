@@ -326,7 +326,7 @@
    Mobile stays in the proven vertical flow, with the brand/exit fully visible. */
 @media (max-width:620px){
   .chesscom[data-chesscom-visual="premium-v1"][data-chesscom-layout="dust-veil-canonical-v1"] .chesscom-topbar{
-    gap:.38rem;
+    gap:.75rem;
     padding:.42rem;
     min-height:0;
     align-items:center;
