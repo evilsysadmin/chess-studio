@@ -221,12 +221,20 @@
   .chesscom[data-chesscom-visual="premium-v1"][data-chesscom-layout="dust-veil-canonical-v1"] .chesscom-weapon-art{
     right:-8px;
     bottom:-7px;
-    width:170px;
+    width:155px;
     height:72px;
     opacity:.86;
   }
   .chesscom[data-chesscom-visual="premium-v1"][data-chesscom-layout="dust-veil-canonical-v1"] .chesscom-weapon-ammo{
+    position:absolute;
+    right:4px;
+    bottom:3px;
+    margin:0;
+    padding:.12rem .25rem;
+    background:rgba(3,12,19,.89);
     color:#f4bd65;
+    font-size:.83rem;
+    white-space:nowrap;
   }
   .chesscom[data-chesscom-visual="premium-v1"][data-chesscom-layout="dust-veil-canonical-v1"] .chesscom-weapon-advanced{
     margin-top:.45rem;
