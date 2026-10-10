@@ -2,6 +2,7 @@ import { lazy, Suspense, useState } from 'react';
 import { requestWarRoomLandscapeFullscreen } from './useWarRoomImmersive.js';
 import { FOOTBALL_MANAGER_CLUBS, getFootballManagerClub } from '../footballManagerClubs.js';
 import { advanceFootballSeason, createFootballSeason, footballStandings, FOOTBALL_MANAGER_TACTICS } from '../footballManagerSeason.js';
+import { getFootballClubRoster, getDefaultFootballLineup, FOOTBALL_FIVE_POSITIONS } from '../footballManagerRoster.js';
 import './ChessFootballEntry.css';
 
 const ChessFootballGodotHost = lazy(() => import('./ChessFootballGodotHost.jsx'));
@@ -11,11 +12,16 @@ export default function ChessFootballEntry({ onExit }) {
   const [selectedClubId, setSelectedClubId] = useState(null);
   const [season, setSeason] = useState(null);
   const [tactic, setTactic] = useState('balanced');
+  const [lineupIds, setLineupIds] = useState(null);
   const selectedClub = getFootballManagerClub(selectedClubId);
+  const roster = selectedClub ? getFootballClubRoster(selectedClub) : [];
+  const defaultLineup = selectedClub ? getDefaultFootballLineup(roster) : [];
+  const startingFive = lineupIds || defaultLineup;
   const standings = season ? footballStandings(season) : [];
 
   const openSeasonPreview = () => {
     setTactic('balanced');
+    setLineupIds(defaultLineup);
     setSeason(createFootballSeason({ seed: 2026 }));
     setView('season');
   };
@@ -80,7 +86,7 @@ export default function ChessFootballEntry({ onExit }) {
                   type="button"
                   className="chess-football-entry__club"
                   key={club.id}
-                  onClick={() => { setSelectedClubId(club.id); setSeason(null); setTactic('balanced'); setView('club'); }}
+                  onClick={() => { setSelectedClubId(club.id); setSeason(null); setLineupIds(null); setTactic('balanced'); setView('club'); }}
                   aria-label={`Elegir ${club.name}`}
                 >
                   <span className="chess-football-entry__crest" aria-hidden="true">{club.initials}</span>
@@ -100,7 +106,7 @@ export default function ChessFootballEntry({ onExit }) {
               <div className="chess-football-entry__club-summary">
                 <p><strong>Estilo:</strong> {selectedClub.style}</p>
                 <p><strong>Objetivo propuesto:</strong> {selectedClub.objective}</p>
-                <p>Selección temporal: prueba una liga estadística de seis clubes y diez jornadas. Sin plantilla ni economía todavía. No se ha guardado ningún progreso.</p>
+                <p>Selección temporal: prueba una liga estadística de seis clubes y diez jornadas, con nueve futbolistas y un quinteto configurable. Aún sin economía ni guardado de carrera. No se ha guardado ningún progreso.</p>
               </div>
             ) : null}
             <button type="button" className="chess-football-entry__manager-return" onClick={openSeasonPreview}>Empezar temporada de prueba</button>
@@ -121,6 +127,43 @@ export default function ChessFootballEntry({ onExit }) {
                 ))}
               </tbody>
             </table>
+            {season && season.currentRound < season.rounds.length ? (
+              <section className="chess-football-entry__lineup" aria-label="Alineación del míster">
+                <details>
+                  <summary>Preparar quinteto titular</summary>
+                  <p>Fútbol 5: portero, defensa, dos medios y delantero. Los suplentes ofrecen otro equilibrio entre ataque y defensa.</p>
+                  <div className="chess-football-entry__lineup-slots">
+                    {startingFive.map((playerId, index) => {
+                      const player = roster.find((entry) => entry.id === playerId);
+                      if (!player) return null;
+                      return (
+                        <label key={index}>
+                          <span>{FOOTBALL_FIVE_POSITIONS[player.role]} {player.role === 'MED' ? (index === 2 ? '1' : '2') : ''}</span>
+                          <select
+                            aria-label={`Titular ${index + 1} · ${player.role}`}
+                            value={playerId}
+                            onChange={(event) => {
+                              const nextId = event.target.value;
+                              setLineupIds((previous) => {
+                                const next = [...(previous || defaultLineup)];
+                                next[index] = nextId;
+                                return next;
+                              });
+                            }}
+                          >
+                            {roster.filter((candidate) => candidate.role === player.role).map((candidate) => (
+                              <option key={candidate.id} value={candidate.id} disabled={startingFive.includes(candidate.id) && candidate.id !== playerId}>
+                                {candidate.name} · ATQ {candidate.attack} / DEF {candidate.defense}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </details>
+              </section>
+            ) : null}
             {season && season.currentRound < season.rounds.length ? (
               <section className="chess-football-entry__plan" aria-label="Plan del míster para la próxima jornada">
                 <h3>Tu planteamiento</h3>
@@ -155,6 +198,9 @@ export default function ChessFootballEntry({ onExit }) {
                 {season.results.slice(-3).map((result) => (
                   <p key={result.fixtureId}>
                     {season.clubs.find((club) => club.id === result.homeId)?.name} {result.homeGoals}–{result.awayGoals} {season.clubs.find((club) => club.id === result.awayId)?.name}
+                    {result.managerLineup?.some((id, slot) => id !== defaultLineup[slot]) ? (
+                      <span className="chess-football-entry__used-plan"> · Quinteto alternativo</span>
+                    ) : null}
                     {result.managerTactic ? (
                       <span className="chess-football-entry__used-plan">
                         {' · Plan: '}{FOOTBALL_MANAGER_TACTICS.find((plan) => plan.id === result.managerTactic)?.label}
@@ -168,7 +214,7 @@ export default function ChessFootballEntry({ onExit }) {
               type="button"
               className="chess-football-entry__manager-return"
               disabled={!season || season.currentRound >= season.rounds.length}
-              onClick={() => setSeason((previous) => advanceFootballSeason(previous, { managerClubId: selectedClubId, tactic }))}
+              onClick={() => setSeason((previous) => advanceFootballSeason(previous, { managerClubId: selectedClubId, tactic, lineup: startingFive }))}
             >
               {season?.currentRound >= season?.rounds.length ? 'Liga completada' : 'Simular siguiente jornada'}
             </button>
