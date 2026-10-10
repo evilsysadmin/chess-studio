@@ -225,7 +225,7 @@ async function withChessFootballCapturePage(browser, capture, callback) {
     await welcome.getByRole('button', { name: 'Simular siguiente jornada', exact: true }).click();
     await expect(welcome).toContainText('Jornada 1 de 10');
     await lineupPanel.locator('summary').click();
-    await expect(lineupPanel).toContainText('Fatiga 17%');
+    await expect(lineupPanel).toContainText('Fatiga 24%');
     await expect(lineupPanel.locator('.chess-football-entry__slot-fatigue')).toHaveCount(5);
     if (capture.portrait) {
       await lineupPanel.screenshot({
