@@ -208,7 +208,7 @@ test('Chess Football manager door opens without booting a match', async ({ page 
   await expect(page.locator('.chess-football-entry__club')).toHaveCount(6);
   await page.getByRole('button', { name: 'Elegir FC Matthias', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'FC Matthias', exact: true })).toBeVisible();
-  await expect(page.getByText('No se ha guardado ningún progreso.', { exact: false })).toBeVisible();
+  await expect(page.getByText('La guardamos en el progreso de tu perfil', { exact: false })).toBeVisible();
   await expect(page.locator('iframe[title="Chess Football Godot"]')).toHaveCount(0);
   await page.getByRole('button', { name: 'Cambiar de club' }).click();
   await expect(page.locator('.chess-football-entry__club')).toHaveCount(6);
@@ -231,6 +231,8 @@ test('Chess Football manager can simulate ten reproducible matchdays without loa
   const season = page.locator('.chess-football-entry__manager--season');
   await expect(season).toBeVisible();
   await expect(season).toContainText('Jornada 0 de 10');
+  await expect(page.getByLabel('Objetivo del club')).toContainText('Conquistar la liga');
+  await expect(page.getByLabel('Objetivo del club')).toContainText('En disputa');
   const lineupPanel = page.getByLabel('Alineación del míster');
   await lineupPanel.locator('summary').click();
   await lineupPanel.getByRole('combobox', { name: 'Titular 5 · DEL' }).selectOption('fc-matthias-del-2');
@@ -262,8 +264,46 @@ test('Chess Football manager can simulate ten reproducible matchdays without loa
     }
   }
   await expect(page.getByRole('button', { name: 'Liga completada', exact: true })).toBeDisabled();
+  await expect(page.getByLabel('Objetivo del club')).toContainText('Objetivo');
+  await expect(page.getByLabel('Objetivo del club')).not.toContainText('En disputa');
   await expect(season).toContainText('Temporada completada.');
   await expect(season.locator('[aria-label="Resultados de la última jornada"] p')).toHaveCount(3);
   await page.locator('.chess-football-entry__back').click();
   await expect(page.getByRole('heading', { name: 'FC Matthias', exact: true })).toBeVisible();
+});
+
+test('Chess Football manager restores the authoritative journal after leaving the mode', async ({ page }) => {
+  await openExperiments(page);
+  await page.locator('.lab-workshop-portal--football').click();
+  await page.locator('.chess-football-entry__choice--manager').click();
+  await page.getByRole('button', { name: 'Elegir FC Matthias' }).click();
+  await page.getByRole('button', { name: 'Empezar temporada de prueba' }).click();
+  await page.getByRole('button', { name: 'Ataque total' }).click();
+  await page.getByLabel('Alineación del míster').locator('summary').click();
+  await page.getByRole('combobox', { name: 'Titular 5 · DEL' }).selectOption('fc-matthias-del-2');
+  await page.getByRole('button', { name: 'Simular siguiente jornada' }).click();
+  await expect(page.locator('.chess-football-entry__manager--season')).toContainText('Jornada 1 de 10');
+  const baseline = await page.locator('.chess-football-entry__standings tbody').innerText();
+  await page.locator('.chess-football-entry__back').click();
+  await page.locator('.chess-football-entry__back').click();
+  await page.locator('.chess-football-entry__back').click();
+  await page.getByRole('button', { name: 'Continuar temporada' }).click();
+  await expect(page.locator('.chess-football-entry__manager--season')).toContainText('Jornada 1 de 10');
+  expect(await page.locator('.chess-football-entry__standings tbody').innerText()).toBe(baseline);
+  await page.getByLabel('Alineación del míster').locator('summary').click();
+  await expect(page.getByRole('combobox', { name: 'Titular 5 · DEL' })).toHaveValue('fc-matthias-del-2');
+  await expect(page.getByRole('combobox', { name: 'Titular 5 · DEL' })).toContainText('F17%');
+  await expect(page.getByRole('button', { name: 'Ataque total' })).toHaveAttribute('aria-pressed', 'true');
+  await page.locator('.chess-football-entry__back').click();
+  await page.locator('.chess-football-entry__back').click();
+  await page.locator('.chess-football-entry__back').click();
+  await page.locator('.chess-football-entry__choice--manager').click();
+  await page.getByRole('button', { name: 'Elegir FC Matthias' }).click();
+  await page.getByRole('button', { name: 'Empezar temporada de prueba' }).click();
+  await expect(page.getByRole('group', { name: 'Confirmar nueva temporada' })).toBeVisible();
+  await page.getByRole('button', { name: 'Conservar la anterior' }).click();
+  await page.locator('.chess-football-entry__back').click();
+  await page.locator('.chess-football-entry__back').click();
+  await page.getByRole('button', { name: 'Continuar temporada' }).click();
+  await expect(page.locator('.chess-football-entry__manager--season')).toContainText('Jornada 1 de 10');
 });

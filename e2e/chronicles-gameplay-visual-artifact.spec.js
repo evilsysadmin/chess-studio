@@ -431,7 +431,8 @@ test('Chronicles · First Book equipment sheet · actual Android 390px', async (
     await expect(sheet).toBeVisible();
     await expect(gear).toBeVisible();
     await expect(gear).toContainText('Armas y armaduras equipadas');
-    await expect(gear.locator('.chronicles-character-sheet__gear-slot')).toHaveCount(2);
+    // Weapon, armour and shield.
+    await expect(gear.locator('.chronicles-character-sheet__gear-slot')).toHaveCount(3);
     await gear.evaluate((node) => node.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'instant' }));
     const bounds = await sheet.evaluate((node) => ({
       width: node.getBoundingClientRect().width,
