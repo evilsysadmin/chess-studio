@@ -1,7 +1,7 @@
 import { lazy, Suspense, useState } from 'react';
 import { requestWarRoomLandscapeFullscreen } from './useWarRoomImmersive.js';
 import { FOOTBALL_MANAGER_CLUBS, getFootballManagerClub } from '../footballManagerClubs.js';
-import { advanceFootballSeason, createFootballSeason, footballStandings } from '../footballManagerSeason.js';
+import { advanceFootballSeason, createFootballSeason, footballStandings, FOOTBALL_MANAGER_TACTICS } from '../footballManagerSeason.js';
 import './ChessFootballEntry.css';
 
 const ChessFootballGodotHost = lazy(() => import('./ChessFootballGodotHost.jsx'));
@@ -10,10 +10,12 @@ export default function ChessFootballEntry({ onExit }) {
   const [view, setView] = useState('welcome');
   const [selectedClubId, setSelectedClubId] = useState(null);
   const [season, setSeason] = useState(null);
+  const [tactic, setTactic] = useState('balanced');
   const selectedClub = getFootballManagerClub(selectedClubId);
   const standings = season ? footballStandings(season) : [];
 
   const openSeasonPreview = () => {
+    setTactic('balanced');
     setSeason(createFootballSeason({ seed: 2026 }));
     setView('season');
   };
@@ -78,7 +80,7 @@ export default function ChessFootballEntry({ onExit }) {
                   type="button"
                   className="chess-football-entry__club"
                   key={club.id}
-                  onClick={() => { setSelectedClubId(club.id); setSeason(null); setView('club'); }}
+                  onClick={() => { setSelectedClubId(club.id); setSeason(null); setTactic('balanced'); setView('club'); }}
                   aria-label={`Elegir ${club.name}`}
                 >
                   <span className="chess-football-entry__crest" aria-hidden="true">{club.initials}</span>
@@ -120,6 +122,26 @@ export default function ChessFootballEntry({ onExit }) {
               </tbody>
             </table>
             {season && season.currentRound < season.rounds.length ? (
+              <section className="chess-football-entry__plan" aria-label="Plan del míster para la próxima jornada">
+                <h3>Tu planteamiento</h3>
+                <p>Elige cómo afrontará tu club el próximo encuentro. Sólo afecta a tu partido; los demás siguen su simulación normal.</p>
+                <div className="chess-football-entry__plan-options" role="group" aria-label="Táctica del siguiente partido">
+                  {FOOTBALL_MANAGER_TACTICS.map((plan) => (
+                    <button
+                      key={plan.id}
+                      type="button"
+                      aria-pressed={tactic === plan.id}
+                      className="chess-football-entry__plan-option"
+                      onClick={() => setTactic(plan.id)}
+                    >{plan.label}</button>
+                  ))}
+                </div>
+                <p className="chess-football-entry__plan-effect" role="status">
+                  {FOOTBALL_MANAGER_TACTICS.find((plan) => plan.id === tactic)?.description}
+                </p>
+              </section>
+            ) : null}
+            {season && season.currentRound < season.rounds.length ? (
               <div className="chess-football-entry__fixture-list" aria-label="Próxima jornada">
                 <h3>Próxima jornada</h3>
                 {season.rounds[season.currentRound].map((fixture) => (
@@ -131,7 +153,14 @@ export default function ChessFootballEntry({ onExit }) {
               <div className="chess-football-entry__fixture-list" aria-label="Resultados de la última jornada">
                 <h3>Últimos resultados</h3>
                 {season.results.slice(-3).map((result) => (
-                  <p key={result.fixtureId}>{season.clubs.find((club) => club.id === result.homeId)?.name} {result.homeGoals}–{result.awayGoals} {season.clubs.find((club) => club.id === result.awayId)?.name}</p>
+                  <p key={result.fixtureId}>
+                    {season.clubs.find((club) => club.id === result.homeId)?.name} {result.homeGoals}–{result.awayGoals} {season.clubs.find((club) => club.id === result.awayId)?.name}
+                    {result.managerTactic ? (
+                      <span className="chess-football-entry__used-plan">
+                        {' · Plan: '}{FOOTBALL_MANAGER_TACTICS.find((plan) => plan.id === result.managerTactic)?.label}
+                      </span>
+                    ) : null}
+                  </p>
                 ))}
               </div>
             ) : null}
@@ -139,7 +168,7 @@ export default function ChessFootballEntry({ onExit }) {
               type="button"
               className="chess-football-entry__manager-return"
               disabled={!season || season.currentRound >= season.rounds.length}
-              onClick={() => setSeason((previous) => advanceFootballSeason(previous))}
+              onClick={() => setSeason((previous) => advanceFootballSeason(previous, { managerClubId: selectedClubId, tactic }))}
             >
               {season?.currentRound >= season?.rounds.length ? 'Liga completada' : 'Simular siguiente jornada'}
             </button>

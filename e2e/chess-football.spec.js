@@ -231,12 +231,27 @@ test('Chess Football manager can simulate ten reproducible matchdays without loa
   const season = page.locator('.chess-football-entry__manager--season');
   await expect(season).toBeVisible();
   await expect(season).toContainText('Jornada 0 de 10');
+  const tactics = page.getByRole('group', { name: 'Táctica del siguiente partido' });
+  await expect(tactics.getByRole('button', { name: 'Equilibrio' })).toHaveAttribute('aria-pressed', 'true');
+  await tactics.getByRole('button', { name: 'Ataque total' }).click();
+  await expect(tactics.getByRole('button', { name: 'Ataque total' })).toHaveAttribute('aria-pressed', 'true');
+  await expect(season).toContainText('deja espacios atrás');
   await expect(season.locator('tbody tr')).toHaveCount(6);
   await expect(page.locator('iframe[title="Chess Football Godot"]')).toHaveCount(0);
 
   for (let round = 1; round <= 10; round += 1) {
+    if (round === 2) {
+      await tactics.getByRole('button', { name: 'Bloque bajo' }).click();
+      await expect(tactics.getByRole('button', { name: 'Bloque bajo' })).toHaveAttribute('aria-pressed', 'true');
+    }
     await page.getByRole('button', { name: 'Simular siguiente jornada', exact: true }).click();
     await expect(season).toContainText(`Jornada ${round} de 10`);
+    if (round === 1) {
+      await expect(season.getByLabel('Resultados de la última jornada')).toContainText('Plan: Ataque total');
+    }
+    if (round === 2) {
+      await expect(season.getByLabel('Resultados de la última jornada')).toContainText('Plan: Bloque bajo');
+    }
   }
   await expect(page.getByRole('button', { name: 'Liga completada', exact: true })).toBeDisabled();
   await expect(season).toContainText('Temporada completada.');

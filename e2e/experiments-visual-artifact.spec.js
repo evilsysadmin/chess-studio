@@ -192,6 +192,15 @@ async function withChessFootballCapturePage(browser, capture, callback) {
       path: `${ARTIFACT_DIR}/chess-football-season-${capture.label}.png`,
       fullPage: true,
     });
+    const attacking = welcome.getByRole('button', { name: 'Ataque total', exact: true });
+    await attacking.click();
+    await expect(attacking).toHaveAttribute('aria-pressed', 'true');
+    const tacticalOverflow = await welcome.evaluate((node) => node.scrollWidth > node.clientWidth + 1);
+    expect(tacticalOverflow, 'Manager tactical selector: no horizontal overflow').toBe(false);
+    await captureFrozenFrame(page, {
+      path: `${ARTIFACT_DIR}/chess-football-tactics-${capture.label}.png`,
+      fullPage: true,
+    });
     await welcome.getByRole('button', { name: 'Simular siguiente jornada', exact: true }).click();
     await expect(welcome).toContainText('Jornada 1 de 10');
     await welcome.locator('.chess-football-entry__back').click();

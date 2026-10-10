@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { FOOTBALL_MANAGER_CLUBS } from './footballManagerClubs.js';
-import { advanceFootballSeason, createFootballSeason, footballStandings } from './footballManagerSeason.js';
+import { advanceFootballSeason, createFootballSeason, footballStandings, FOOTBALL_MANAGER_TACTICS } from './footballManagerSeason.js';
 
 function finishSeason(seed) {
   let season = createFootballSeason({ seed });
@@ -76,6 +76,60 @@ describe('Football manager season slice 0', () => {
     expect(Object.isFrozen(finishSeason(42))).toBe(true);
     expect(Object.isFrozen(finishSeason(42).results)).toBe(true);
     expect(footballStandings(createFootballSeason()).every((row) => row.points === 0)).toBe(true);
+  });
+
+  it('applies the chosen tactical trade-off only to our next fixture', () => {
+    expect(FOOTBALL_MANAGER_TACTICS.map((plan) => plan.id)).toEqual(['balanced', 'attack', 'defend']);
+    const create = (seed) => createFootballSeason({ seed });
+    const simulate = (seed, tactic) => advanceFootballSeason(create(seed), {
+      managerClubId: 'fc-matthias', tactic,
+    });
+    const season = simulate(2026, 'attack');
+    expect(season.results).toHaveLength(3);
+    expect(season.results.filter((result) => result.managerTactic === 'attack')).toHaveLength(1);
+    expect(season.results.filter((result) => !result.managerTactic)).toHaveLength(2);
+    const original = advanceFootballSeason(create(2026));
+    expect(season.results.filter((result) => !result.managerTactic))
+      .toEqual(original.results.filter((result) => result.homeId !== 'fc-matthias' && result.awayId !== 'fc-matthias'));
+
+    // The trade-off must have observable outcomes across different seeds,
+    // rather than being a cosmetic button or a forced score.
+    const hasDifference = Array.from({ length: 64 }, (_, seed) => seed).some((seed) => {
+      const balanced = simulate(seed, 'balanced').results.find((result) => result.managerTactic);
+      const aggressive = simulate(seed, 'attack').results.find((result) => result.managerTactic);
+      const defensive = simulate(seed, 'defend').results.find((result) => result.managerTactic);
+      return balanced.homeGoals !== aggressive.homeGoals
+        || balanced.awayGoals !== aggressive.awayGoals
+        || balanced.homeGoals !== defensive.homeGoals
+        || balanced.awayGoals !== defensive.awayGoals;
+    });
+    expect(hasDifference).toBe(true);
+    // Even with an extreme level spread, matches without our club retain
+    // exactly the previous statistical model and results.
+    const wideLevels = FOOTBALL_MANAGER_CLUBS.map((club, index) => ({
+      ...club, level: index % 2 ? 5 : 1,
+    }));
+    const varied = createFootballSeason({ clubs: wideLevels, seed: 2026 });
+    const baseline = advanceFootballSeason(varied).results;
+    const adjusted = advanceFootballSeason(varied, {
+      managerClubId: 'fc-matthias', tactic: 'attack',
+    }).results;
+    expect(adjusted.filter((result) => !result.managerTactic))
+      .toEqual(baseline.filter((result) => result.homeId !== 'fc-matthias' && result.awayId !== 'fc-matthias'));
+
+    const next = advanceFootballSeason(season, { managerClubId: 'fc-matthias', tactic: 'defend' });
+    expect(next.results.slice(0, 3)).toEqual(season.results);
+    expect(next.results.slice(3).filter((result) => result.managerTactic === 'defend')).toHaveLength(1);
+    expect(advanceFootballSeason(season, { managerClubId: 'fc-matthias', tactic: 'defend' }))
+      .toEqual(next);
+  });
+
+  it('rejects invented tactics and clubs without mutating the season', () => {
+    const season = createFootballSeason({ seed: 2 });
+    expect(() => advanceFootballSeason(season, { managerClubId: 'no-such-club' })).toThrow('tactical');
+    expect(() => advanceFootballSeason(season, { managerClubId: 'fc-matthias', tactic: 'impossible' })).toThrow('tactical');
+    expect(() => advanceFootballSeason(season, { tactic: 'attack' })).toThrow('tactical');
+    expect(season.results).toHaveLength(0);
   });
 
   it('rejects duplicate clubs and invalid seeds instead of inventing a league', () => {

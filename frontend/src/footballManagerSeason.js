@@ -5,6 +5,14 @@ import { FOOTBALL_MANAGER_CLUBS } from './footballManagerClubs.js';
 const freeze = (value) => Object.freeze(value);
 const CHANCES_PER_TEAM = 7;
 
+// A deliberately small first managerial choice: observable trade-offs, not
+// fictional player stats or an additional match authority.
+export const FOOTBALL_MANAGER_TACTICS = Object.freeze([
+  Object.freeze({ id: 'balanced', label: 'Equilibrio', description: 'Sin riesgos añadidos: conserva el plan del club.', attackBoost: 0, vulnerability: 0 }),
+  Object.freeze({ id: 'attack', label: 'Ataque total', description: 'Crea más ocasiones, pero deja espacios atrás.', attackBoost: .08, vulnerability: .05 }),
+  Object.freeze({ id: 'defend', label: 'Bloque bajo', description: 'Concede menos ocasiones, a costa de atacar menos.', attackBoost: -.05, vulnerability: -.08 }),
+]);
+
 function requireClubs(clubs) {
   if (!Array.isArray(clubs) || clubs.length !== 6) {
     throw new Error('Chess Football season requires exactly six clubs');
@@ -78,14 +86,20 @@ export function createFootballSeason({ clubs = FOOTBALL_MANAGER_CLUBS, seed = 1 
   });
 }
 
-function simulateFixture(season, fixture) {
+function simulateFixture(season, fixture, managerClubId, tacticalPlan) {
   const home = season.clubs.find((club) => club.id === fixture.homeId);
   const away = season.clubs.find((club) => club.id === fixture.awayId);
   // Better squads and playing at home influence the chances. Each decision
   // remains explicitly statistical: no claim of real Godot match events.
   const gap = home.level - away.level;
-  const homeProbability = Math.max(.07, Math.min(.38, .20 + gap * .035));
-  const awayProbability = Math.max(.07, Math.min(.38, .17 - gap * .035));
+  const homeManaged = home.id === managerClubId;
+  const awayManaged = away.id === managerClubId;
+  // Attack raises both our scoring chances and the opponent's; block low
+  // lowers both. Only the manager's actual fixture is changed.
+  const homeAdjustment = homeManaged ? tacticalPlan.attackBoost : awayManaged ? tacticalPlan.vulnerability : 0;
+  const awayAdjustment = awayManaged ? tacticalPlan.attackBoost : homeManaged ? tacticalPlan.vulnerability : 0;
+  const homeProbability = Math.max(.07, Math.min(.38, .20 + gap * .035 + homeAdjustment));
+  const awayProbability = Math.max(.07, Math.min(.38, .17 - gap * .035 + awayAdjustment));
   let homeGoals = 0;
   let awayGoals = 0;
   for (let attempt = 0; attempt < CHANCES_PER_TEAM; attempt += 1) {
@@ -101,15 +115,21 @@ function simulateFixture(season, fixture) {
     homeGoals,
     awayGoals,
     source: 'statistical-simulation',
+    ...(homeManaged || awayManaged ? { managerTactic: tacticalPlan.id } : {}),
   });
 }
 
-export function advanceFootballSeason(season) {
+export function advanceFootballSeason(season, { managerClubId = null, tactic = 'balanced' } = {}) {
   if (!season || season.version !== 1 || !Array.isArray(season.rounds) || !Array.isArray(season.results)) {
     throw new Error('Invalid Chess Football season');
   }
+  const tacticalPlan = FOOTBALL_MANAGER_TACTICS.find((entry) => entry.id === tactic);
+  if (!tacticalPlan || (managerClubId !== null && !season.clubs.some((club) => club.id === managerClubId))
+    || (managerClubId === null && tactic !== 'balanced')) {
+    throw new Error('Invalid manager club or tactical plan');
+  }
   if (season.currentRound >= season.rounds.length) return season;
-  const roundResults = season.rounds[season.currentRound].map((fixture) => simulateFixture(season, fixture));
+  const roundResults = season.rounds[season.currentRound].map((fixture) => simulateFixture(season, fixture, managerClubId, tacticalPlan));
   return freeze({
     ...season,
     currentRound: season.currentRound + 1,
