@@ -6,11 +6,17 @@
 import * as THREE from 'three';
 import boneHoundSheet from '../assets/chronicles/sprites/bone-hound.webp';
 import mournerSheet from '../assets/chronicles/sprites/rookwood-mourner.webp';
+import roadBanditSheet from '../assets/chronicles/sprites/road-bandit.webp';
+import banditCaptainSheet from '../assets/chronicles/sprites/bandit-captain.webp';
+import weaverSpiderSheet from '../assets/chronicles/sprites/weaver-spider.webp';
 import spriteManifest from '../assets/chronicles/sprites/sprites.json';
 
 const SPRITES = Object.freeze({
   'bone-hound': Object.freeze({ url: boneHoundSheet, worldHeight: 2.8, idleFps: 2.2 }),
   'rookwood-mourner': Object.freeze({ url: mournerSheet, worldHeight: 2.6, idleFps: 1.3 }),
+  'road-bandit': Object.freeze({ url: roadBanditSheet, worldHeight: 2.55, idleFps: 1.8 }),
+  'bandit-captain': Object.freeze({ url: banditCaptainSheet, worldHeight: 3.15, idleFps: 1.4 }),
+  'weaver-spider': Object.freeze({ url: weaverSpiderSheet, worldHeight: 2.3, idleFps: 2.6 }),
 });
 
 export function chroniclesHasSpriteBillboard(visualType) {

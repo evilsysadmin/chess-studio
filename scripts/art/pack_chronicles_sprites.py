@@ -24,7 +24,8 @@ REPO = Path(__file__).resolve().parents[2]
 SOURCE = REPO / "scripts/art/chronicles_sprites/source"
 UPSCALE = 2
 
-# runtime frame id -> source pose (None = derived breathing frame)
+# runtime frame id -> source pose (None = derived breathing frame), optional
+# integer-free scale to even out an edit that came back at a different size.
 SHEETS = {
     "bone-hound": {
         "cell": 160,
@@ -35,6 +36,21 @@ SHEETS = {
         "cell": 200,
         "frames": [("idle-a", "idle"), ("idle-b", None), ("speak", "speak"),
                    ("grateful", "grateful")],
+    },
+    "road-bandit": {
+        "cell": 168,
+        "frames": [("idle-a", "idle"), ("idle-b", None), ("attack", "attack", 1.22),
+                   ("hurt", "hurt"), ("dead", "dead")],
+    },
+    "bandit-captain": {
+        "cell": 256,
+        "frames": [("idle-a", "idle"), ("idle-b", None), ("attack", "attack"),
+                   ("hurt", "hurt"), ("dead", "dead")],
+    },
+    "weaver-spider": {
+        "cell": 152,
+        "frames": [("idle-a", "idle"), ("idle-b", None), ("attack", "attack"),
+                   ("dead", "dead")],
     },
 }
 
@@ -75,8 +91,12 @@ def main() -> None:
         cell = spec["cell"]
         idle = trimmed(SOURCE / f"{sprite}.idle.png")
         cells = []
-        for _frame_id, pose in spec["frames"]:
+        for _frame_id, pose, *rest in spec["frames"]:
             pose_image = breathe(idle) if pose is None else trimmed(SOURCE / f"{sprite}.{pose}.png")
+            if rest:
+                factor = rest[0]
+                pose_image = pose_image.resize(
+                    (round(pose_image.width * factor), round(pose_image.height * factor)), Image.NEAREST)
             cells.append(place(pose_image, cell))
         sheet = Image.new("RGBA", (cell * len(cells), cell), (0, 0, 0, 0))
         for index, image in enumerate(cells):
@@ -85,7 +105,7 @@ def main() -> None:
         target = out_dir / f"{sprite}.webp"
         sheet.save(target, "WEBP", lossless=True, method=6, exact=False)
         manifest[sprite] = {
-            "frames": [frame_id for frame_id, _ in spec["frames"]],
+            "frames": [frame[0] for frame in spec["frames"]],
             "framePx": cell * UPSCALE,
             "pixelArt": True,
         }

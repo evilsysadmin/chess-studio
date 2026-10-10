@@ -92,3 +92,10 @@ un sabueso de hueso opcional) y el Roble de los Nombres paga 15 oro mediante
 `claim-reward` (`rookwood:names-in-wood:v1`, una vez por run, F5/CAS-safe).
 El atlas sigue siendo la fuente de diseño; el manifiesto de runtime se edita en
 `backend-python/chronicles_maps/` y se sincroniza con `make chronicles-contracts`.
+
+## Side quests de Swordhaven
+
+- **Bandidos del Camino** (`road-bandits`): la da el sargento Brask en el cuartel (4,6). Hay que derrotar al bandido desertor (`banner-road-deserter`, `road-bandit`) y a Garrah, jefe de los desertores (`banner-road-bandit-captain`, `bandit-captain`), en el Camino de los Estandartes. Las flags de derrota habilitan la entrega en el cuartel, que paga 12 oro una sola vez (`swordhaven:road-bandits:v1`).
+- **Seda para las vendas** (`weaver-silk`): la da la sacerdotisa Ilse en el templo (14,6). La tejedora del claro de Rookwood (`rookwood-weaver`, `weaver-spider`) suelta `weaver-silk` al morir. La entrega en el templo consume la seda, paga 8 oro (`swordhaven:weaver-silk:v1`) y cura a la compañía.
+
+Los tres enemigos nuevos son opcionales y en primera persona se dibujan como billboards 2.5D generados con SpriteCook. En Tactics usan un modelo 3D procedural equivalente.
