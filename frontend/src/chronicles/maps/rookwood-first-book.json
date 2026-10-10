@@ -86,10 +86,10 @@
     {
       "id": "rookwood-weaver",
       "visualType": "weaver-spider",
-      "name": "tejedora del claro",
-      "explorationObjective": "Una tejedora gigante teje su red en el claro del centro del bosque.",
-      "x": 12,
-      "y": 9,
+      "name": "tejedora de la hondonada",
+      "explorationObjective": "Una tejedora gigante teje su red en la hondonada del suroeste del bosque.",
+      "x": 3,
+      "y": 13,
       "hpKey": "rookwoodWeaverHp",
       "maxHp": 6,
       "retaliation": 1,
@@ -99,7 +99,7 @@
         "movement": "cardinal-roam",
         "attackReach": 1,
         "engagedMovement": "cardinal-chase",
-        "engageRange": 3
+        "engageRange": 2
       },
       "blockingMessage": "La tejedora tensa sus hilos entre los troncos. Habrá que abrirse paso a espadazos.",
       "onDefeat": {
@@ -120,8 +120,8 @@
         ],
         "journal": {
           "id": "rookwood-weaver-falls",
-          "title": "La tejedora del claro",
-          "body": "La araña gigante del centro de Rookwood ha caído. Su seda puede servir en el templo de Swordhaven.",
+          "title": "La tejedora de la hondonada",
+          "body": "La araña gigante de la hondonada de Rookwood ha caído. Su seda puede servir en el templo de Swordhaven.",
           "sigil": "†"
         }
       },
