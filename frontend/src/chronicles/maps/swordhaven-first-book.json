@@ -224,60 +224,60 @@
       "kind": "merchant",
       "x": 7,
       "y": 4,
-      "label": "Armero · sable de la guardia (12 oro)",
-      "lockedLabel": "Armero · faltan 12 monedas",
-      "requirements": [
-        {
-          "itemId": "crown-gold",
-          "quantity": 12,
-          "message": "El armero pide doce monedas. El acero templado no crece en las cunetas."
-        }
-      ],
+      "label": "Forja de Brunna · armas",
       "action": {
-        "effects": [
-          {
-            "type": "exchange-item",
-            "costItemId": "crown-gold",
-            "costQuantity": 12,
-            "itemId": "roadwatch-sabre",
-            "name": "Sable de la guardia",
-            "description": "Arma equipada: +2 daño para Matthias o Hildegard.",
-            "quantity": 1
-          }
-        ],
-        "message": "Compras un sable de guardia. Abre una ficha de personaje para equiparlo. La mochila no aumenta el daño."
+        "effects": [],
+        "message": "Brunna deja el martillo: «Bronce para empezar, hierro para durar, acero para quien pueda pagarlo»."
       },
-      "visualType": "building-forge"
+      "visualType": "building-forge",
+      "shop": {
+        "stock": [
+          "bronze-dagger",
+          "ivory-dagger",
+          "bronze-staff",
+          "ivory-staff",
+          "bronze-mace",
+          "iron-mace",
+          "bronze-spear",
+          "iron-spear",
+          "roadwatch-sabre",
+          "bronze-sword",
+          "iron-sword",
+          "bronze-axe",
+          "iron-axe",
+          "steel-sword"
+        ]
+      }
     },
     {
       "id": "first-book-armorer",
       "kind": "merchant",
       "x": 11,
       "y": 4,
-      "label": "Coracero · jubón de la guardia (9 oro)",
-      "lockedLabel": "Coracero · faltan 9 monedas",
-      "requirements": [
-        {
-          "itemId": "crown-gold",
-          "quantity": 9,
-          "message": "Nueve monedas por el jubón. Tu sonrisa no cuenta como pago."
-        }
-      ],
+      "label": "Coracería de Odo · armaduras y escudos",
       "action": {
-        "effects": [
-          {
-            "type": "exchange-item",
-            "costItemId": "crown-gold",
-            "costQuantity": 9,
-            "itemId": "roadwatch-vest",
-            "name": "Jubón de guardia",
-            "description": "Armadura equipada: reduce en 1 el daño recibido.",
-            "quantity": 1
-          }
-        ],
-        "message": "El coracero entrega un jubón de guardia. Hasta equiparlo en la ficha, no protege a nadie."
+        "effects": [],
+        "message": "Odo golpea un peto: «Lo que te pongas decide si vuelves. Elige con la cabeza, no con la bolsa»."
       },
-      "visualType": "building-armor"
+      "visualType": "building-armor",
+      "shop": {
+        "stock": [
+          "leather-padded",
+          "roadwatch-vest",
+          "leather-leather",
+          "bronze-leather",
+          "bronze-scale",
+          "iron-scale",
+          "bronze-ring",
+          "iron-ring",
+          "bronze-chain",
+          "iron-chain",
+          "steel-chain",
+          "bronze-shield",
+          "iron-shield",
+          "ivory-shield"
+        ]
+      }
     },
     {
       "id": "first-book-temple",

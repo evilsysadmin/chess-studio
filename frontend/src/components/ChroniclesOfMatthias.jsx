@@ -81,6 +81,7 @@ import {
 import { useEscapeToClose } from '../useEscapeToClose.js';
 import ChroniclesAutomap from './ChroniclesAutomap.jsx';
 import ChroniclesCharacterSheet from './ChroniclesCharacterSheet.jsx';
+import ChroniclesShop from './ChroniclesShop.jsx';
 import ChroniclesMinimap from './ChroniclesMinimap.jsx';
 import ChroniclesBookOneEpilogue from './ChroniclesBookOneEpilogue.jsx';
 import ChroniclesCharacterSetup from './ChroniclesCharacterSetup.jsx';
@@ -311,13 +312,14 @@ export default function ChroniclesOfMatthias({ onExit }) {
     if (!current) return;
 
     const actionType = typeof action === 'string' ? action : action?.type;
-    if (actionType === 'equip-item' || actionType === 'unequip-item') {
+    if (actionType === 'equip-item' || actionType === 'unequip-item'
+      || actionType === 'shop-buy' || actionType === 'shop-sell' || actionType === 'shop-close') {
       const updated = chroniclesReduce(current, action);
       if (updated !== current) {
         stateRef.current = updated;
         setState(updated);
       }
-      return; // Equipping is not a movement tick or a combat action.
+      return; // Equipping and trading are not movement ticks or combat actions.
     }
     const activeActor = chroniclesCurrentInitiativeActor(current.initiative);
     if (current.initiative && activeActor?.kind === 'enemy') return;
@@ -1142,6 +1144,14 @@ export default function ChroniclesOfMatthias({ onExit }) {
           )}
         </main>
       </div>
+
+      {state.shop && !sheetMember && (
+        <ChroniclesShop
+          state={state}
+          onAction={dispatch}
+          onClose={() => dispatch({ type: 'shop-close' })}
+        />
+      )}
 
       {sheetMember && (
         <ChroniclesCharacterSheet

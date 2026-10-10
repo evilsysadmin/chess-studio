@@ -20,6 +20,9 @@ import {
 import { resolveChroniclesCharacterParty } from './chronicles/chroniclesCharacterBuilds.js';
 import { chroniclesEquipItem, chroniclesUnequipItem, chroniclesEquipmentBonuses } from './chronicles/chroniclesEquipment.js';
 import {
+  chroniclesCloseShop, chroniclesOpenShop, chroniclesShopBuy, chroniclesShopSell,
+} from './chronicles/chroniclesShops.js';
+import {
   chroniclesMM3AttackHits,
   chroniclesMM3EnemyArmorClass,
   chroniclesMM3EnemyToHit,
@@ -270,6 +273,8 @@ function resolveContextualContentAction(state) {
   }
   const map = chroniclesMapForState(state);
   const definition = chroniclesContentDefinition(map, contextual.id);
+  // A merchant with a stock list opens its counter instead of a scripted trade.
+  if (definition?.shop && Array.isArray(definition.shop.stock)) return chroniclesOpenShop(state, definition);
   if (!definition?.action) return state;
   if (contextual.locked) {
     const blocked = chroniclesRequirementFailure(state, definition.requirements);
@@ -503,6 +508,13 @@ function explorationCellBlocker(state, x, y) {
 export function chroniclesReduce(state, action) {
   if (!state || state.phase === 'escaped' || state.phase === 'defeated') return state;
   const actionType = typeof action === 'string' ? action : action?.type;
+  if (actionType === 'shop-buy') return chroniclesShopBuy(state, chroniclesMapForState(state), action.itemId);
+  if (actionType === 'shop-sell') return chroniclesShopSell(state, chroniclesMapForState(state), action.itemId);
+  if (actionType === 'shop-close') return chroniclesCloseShop(state);
+  // Any other action (moving, turning, fighting) walks away from the counter.
+  if (state.shop && actionType !== 'equip-item' && actionType !== 'unequip-item') {
+    return chroniclesReduce(chroniclesCloseShop(state), action);
+  }
   if (actionType === 'equip-item') return chroniclesEquipItem(state, action.memberId, action.itemId);
   if (actionType === 'unequip-item') return chroniclesUnequipItem(state, action.memberId, action.slot);
   if (actionType === 'turn-left') return { ...state, direction: (state.direction + 3) % 4, turns: state.turns + 1 };
