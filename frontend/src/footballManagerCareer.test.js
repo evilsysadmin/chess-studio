@@ -1,9 +1,10 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { FOOTBALL_CAREER_KEY, createFootballCareer, editFootballCareer, playFootballCareerRound, readFootballCareer, replayFootballCareer, writeFootballCareer } from './footballManagerCareer.js';
-import { STORAGE_LOCAL, getStorageItem, removeStorageItem, setStorageItem } from './safeStorage.js';
+import { STORAGE_LOCAL, clearStorageMemoryFallback, getStorageItem, removeStorageItem, setStorageItem } from './safeStorage.js';
+import { clearProfileProgress } from './profileKeys.js';
 
 describe('Football manager · versioned career journal', () => {
-  beforeEach(() => { removeStorageItem(STORAGE_LOCAL, FOOTBALL_CAREER_KEY); });
+  beforeEach(() => { clearStorageMemoryFallback(); removeStorageItem(STORAGE_LOCAL, FOOTBALL_CAREER_KEY); });
 
   it('replays actual decisions, scores and fatigue exactly across re-entry', () => {
     const first = createFootballCareer('fc-matthias', 2026);
@@ -35,6 +36,36 @@ describe('Football manager · versioned career journal', () => {
     expect(finished.season.results).toHaveLength(30);
     expect(() => playFootballCareerRound(current)).toThrow('complete');
     expect(() => editFootballCareer(current, { tactic: 'defend' })).toThrow('complete');
+  });
+
+  it('reports memory-only progress when Web Storage rejects native writes', () => {
+    const original = global.localStorage;
+    try {
+      global.localStorage = {
+        getItem(key) { return original.getItem(key); },
+        setItem() { throw new DOMException('full', 'QuotaExceededError'); },
+        removeItem() { throw new DOMException('blocked', 'SecurityError'); },
+        get length() { return original.length; },
+        key(index) { return original.key(index); },
+      };
+      const career = createFootballCareer('fc-matthias');
+      expect(writeFootballCareer(career).status).toBe('memory');
+      expect(readFootballCareer().status).toBe('available');
+      expect(original.getItem(FOOTBALL_CAREER_KEY)).toBeNull();
+      const played = playFootballCareerRound(career);
+      expect(writeFootballCareer(played.journal).status).toBe('memory');
+      expect(readFootballCareer().season.currentRound).toBe(1);
+    } finally {
+      global.localStorage = original;
+      clearStorageMemoryFallback();
+    }
+  });
+
+  it('participates in Empezar de cero as progress, not as a preference', () => {
+    expect(writeFootballCareer(createFootballCareer('fc-matthias')).status).toBe('saved');
+    expect(readFootballCareer().status).toBe('available');
+    clearProfileProgress();
+    expect(readFootballCareer().status).toBe('empty');
   });
 
   it('fails closed on corruption, invented players or future versions without deleting data', () => {
