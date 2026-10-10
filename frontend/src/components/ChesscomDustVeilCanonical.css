@@ -227,7 +227,7 @@
   }
   .chesscom[data-chesscom-visual="premium-v1"][data-chesscom-layout="dust-veil-canonical-v1"] .chesscom-weapon-ammo{
     position:absolute;
-    right:4px;
+    right:20px;
     bottom:3px;
     margin:0;
     padding:.12rem .25rem;
