@@ -50,7 +50,7 @@ function tuneMaterial(B, mat, profile) {
 
 function tuneScene(B, scene, profile) {
   scene.clearColor = new B.Color4(.010,.017,.022,1);
-  scene.ambientColor = new B.Color3(.045,.055,.066);
+  scene.ambientColor = new B.Color3(.065,.082,.102);
   scene.fogMode = B.Scene.FOGMODE_EXP2;
   scene.fogDensity = profile.fogDensity;
   scene.fogColor = new B.Color3(.028,.041,.052);
@@ -63,7 +63,7 @@ function tuneScene(B, scene, profile) {
       image.toneMappingType = B.ImageProcessingConfiguration.TONEMAPPING_ACES;
     }
     image.vignetteEnabled = true;
-    image.vignetteWeight = .72;
+    image.vignetteWeight = .46;
     image.vignetteStretch = .18;
     image.vignetteColor = new B.Color4(.004,.009,.012,1);
   }
@@ -72,18 +72,18 @@ function tuneScene(B, scene, profile) {
   const warmA = scene.getLightByName?.('warm-a');
   if (warmA) {
     warmA.diffuse = new B.Color3(1,.49,.18);
-    warmA.intensity = Math.max(Number(warmA.intensity) || 0, 11.2);
+    warmA.intensity = Math.max(Number(warmA.intensity) || 0, 10.2);
   }
   const warmB = scene.getLightByName?.('warm-b');
   if (warmB) {
     warmB.diffuse = new B.Color3(1,.42,.14);
-    warmB.intensity = Math.max(Number(warmB.intensity) || 0, 10.0);
+    warmB.intensity = Math.max(Number(warmB.intensity) || 0, 9.1);
   }
   const coolFill = scene.getLightByName?.('cool-fill');
   if (coolFill) {
     coolFill.diffuse = new B.Color3(.20,.42,.58);
-    coolFill.intensity = Math.max(Number(coolFill.intensity) || 0, 3.25);
-    coolFill.range = Math.max(Number(coolFill.range) || 0, 10.8);
+    coolFill.intensity = Math.max(Number(coolFill.intensity) || 0, 3.85);
+    coolFill.range = Math.max(Number(coolFill.range) || 0, 11.4);
   }
 }
 
