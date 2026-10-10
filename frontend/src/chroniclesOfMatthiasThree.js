@@ -206,7 +206,7 @@ function createDungeonScene(scene, { coarsePointer = false, scenePlan = null } =
 
   const enemyModels = {};
   enemyDefinitions.forEach((enemyDefinition) => {
-    const visual = buildChroniclesEnemyVisual(enemyDefinition.visualType || enemyDefinition.id, { coarsePointer });
+    const visual = buildChroniclesEnemyVisual(enemyDefinition.visualType || enemyDefinition.id, { coarsePointer, sprites: true });
     const enemy = visual?.model;
     if (!enemy) return;
     enemyModels[enemyDefinition.id] = enemy;
@@ -755,6 +755,9 @@ export function createChroniclesOfMatthiasGame(host, {
       });
 
       dungeon.contentProps.forEach((prop) => {
+        if (prop.root.visible && prop.root.userData.updateChroniclesSprite) {
+          prop.root.userData.updateChroniclesSprite(time + prop.phase);
+        }
         if (!prop.root.visible || prop.kind !== 'pickup' || !prop.core) return;
         prop.core.rotation.y = time * 0.75 + prop.phase;
         prop.core.position.y = 0.58 + Math.sin(time * 2.2 + prop.phase) * 0.06;
@@ -792,6 +795,17 @@ export function createChroniclesOfMatthiasGame(host, {
         if (active && hp > 0) {
           const hitElapsed = time - hitStartedAt;
           const hitKick = hitElapsed >= 0 && hitElapsed < 0.24 ? Math.sin((hitElapsed / 0.24) * Math.PI) : 0;
+          if (enemy.userData.updateChroniclesSprite) {
+            // 2.5D billboard: frames carry the motion; menace when engaged
+            // next to the party, hurt for a beat after a blow.
+            const cell = latestState ? chroniclesEnemyPosition(latestState, enemyDefinition) : null;
+            const adjacent = cell && latestState
+              && Math.abs(cell.x - latestState.x) + Math.abs(cell.y - latestState.y) <= 1;
+            enemy.userData.updateChroniclesSprite(time + index * 0.37, {
+              hurt: hitElapsed >= 0 && hitElapsed < 0.42,
+              menace: Boolean(adjacent || latestState?.initiative),
+            });
+          }
           enemy.visible = true;
           enemy.rotation.y = baseYaw + Math.sin(time * 0.9 + index) * 0.1 + hitKick * 0.16 + jumpTwist;
           enemy.rotation.z = hitKick * -0.08;

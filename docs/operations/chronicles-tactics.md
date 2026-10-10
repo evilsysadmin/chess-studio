@@ -259,3 +259,10 @@ Any future haste/slow/surprise mechanic should modify the initiative contract ex
 - Authored visual hooks for overworld content (renderer-only, no gameplay effect): `visualType` (`name-plaque`, `name-oak`, `rookwood-mourner`; `rookwood-mourner-voice` has no body), `persistentVisual: true` keeps an NPC/landmark visible after its interaction is spent, `visualActivatedWhen` (requirements) drives an activated look when the outcome lives inside an atomic `claim-reward`, and `visualFacing` (0 N, 1 E, 2 S, 3 W) orients a character.
 - Overworld enemies are real bodies drawn from the shared enemy registry (they were previously invisible on exterior maps). A forest map (`rookwood-first-book`) dresses `#` cells as tree clumps and extends trees past the grid so gaps never show the void; collision is still only the grid.
 - Gates on the west/east map edge rotate 90° so their posts flank the road instead of blocking the arriving camera.
+
+## 2.5D billboards (first-person, MM3 style)
+
+- First-person creatures and NPCs can be painted sprites that always face the camera, while walls, terrain and forest stay 3D. `buildChroniclesEnemyVisual(type, { sprites: true })` returns a billboard when a sheet exists and falls back to the procedural 3D model otherwise; Tactics never asks for sprites.
+- Sheets: one row of square frames (`idle-a`, `idle-b`, optional `menace`, `hurt`, `speak`) in `frontend/src/assets/chronicles/sprites/` plus `sprites.json`. The runtime picks hurt → menace (engaged/adjacent) → speak → alternating idle.
+- Source art is hand-authored vector code in `scripts/art/chronicles_sprites/*.mjs`, rendered deterministically with `node scripts/art/render_chronicles_sprites.mjs` (Chromium rasterizer → WebP). No image model is involved; regenerate the sheets whenever the source changes and review real in-game captures before accepting.
+- First slice: bone hound and Edda (Rookwood).
