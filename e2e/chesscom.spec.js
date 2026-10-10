@@ -124,19 +124,29 @@ test('Chesscom · abre la planta 17 con renderer Babylon real y HUD Dust Veil pr
     const squad = node.querySelector('.chesscom-squad')?.getBoundingClientRect();
     const actions = node.querySelector('.chesscom-actionbar')?.getBoundingClientRect();
     const objectives = node.querySelector('.chesscom-objectives')?.getBoundingClientRect();
-    if (!field || !squad || !actions || !objectives) return false;
-    return origin.top >= -1 && origin.top <= 2
-      && field.width >= window.innerWidth * .95
-      && field.height >= window.innerHeight - 2
-      && field.bottom <= window.innerHeight + 2
-      && squad.bottom >= window.innerHeight - 40
-      && squad.bottom <= window.innerHeight + 2
-      && actions.bottom >= window.innerHeight - 40
-      && actions.bottom <= window.innerHeight + 2
-      && objectives.top < origin.top + 160
-      && squad.right < actions.left
-      && actions.right < window.innerWidth - 260;
-  })).toBe(true);
+    if (!field || !squad || !actions || !objectives) return null;
+    // Keep the original strict geometric contract, but report which piece
+    // failed rather than waiting 120 seconds on an opaque boolean.
+    return {
+      stageTop:origin.top>=-1 && origin.top<=2,
+      fieldFull:field.width>=window.innerWidth*.95 && field.height>=window.innerHeight-2,
+      fieldBottom:field.bottom<=window.innerHeight+2,
+      squadBottom:squad.bottom>=window.innerHeight-40 && squad.bottom<=window.innerHeight+2,
+      actionsBottom:actions.bottom>=window.innerHeight-40 && actions.bottom<=window.innerHeight+2,
+      objectivesTop:objectives.top<origin.top+160,
+      squadActionsGap:squad.right<actions.left,
+      actionsWeaponGap:actions.right<window.innerWidth-260,
+    };
+  }), {timeout:15000}).toEqual({
+    stageTop:true,
+    fieldFull:true,
+    fieldBottom:true,
+    squadBottom:true,
+    actionsBottom:true,
+    objectivesTop:true,
+    squadActionsGap:true,
+    actionsWeaponGap:true,
+  });
   await expect(mode.getByText('Informe de campo', { exact:true })).toBeVisible();
   await expect(mode.locator('.chesscom-weapon-ammo')).toHaveText('30/30');
   await expect.poll(() => mode.evaluate((node) => {
