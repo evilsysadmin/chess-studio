@@ -285,7 +285,7 @@
       "x": 14,
       "y": 6,
       "visualType": "building-temple",
-      "label": "Templo de la Llama Serena",
+      "label": "Templo · hablar con la sacerdotisa Ilse",
       "when": [
         {
           "key": "swordhaven-temple-visited",
@@ -298,13 +298,82 @@
             "type": "set",
             "key": "swordhaven-temple-visited",
             "value": true
+          },
+          {
+            "type": "start-quest",
+            "questId": "weaver-silk",
+            "title": "Seda para las vendas",
+            "description": "El templo se ha quedado sin vendas para los heridos del Camino.",
+            "objective": "Consigue seda de la tejedora gigante de Rookwood y llévala al templo.",
+            "order": 30
           }
         ],
-        "message": "La sacerdotisa enciende una vela por los caballeros perdidos. «Que el camino os devuelva a casa», murmura.",
+        "message": "La sacerdotisa Ilse enciende una vela por los caballeros perdidos. «Me quedan pocas vendas. En Rookwood anida una tejedora; su seda es la mejor. ¿Me traerías un ovillo?»",
         "journal": {
           "id": "first-book-temple",
-          "title": "Templo de la Llama Serena",
-          "body": "En el templo de Swordhaven arde una vela por los caballeros desaparecidos de la Dama.",
+          "title": "La sacerdotisa Ilse",
+          "body": "Ilse necesita seda de la tejedora gigante de Rookwood para hacer vendas. Ofrece oro y la bendición del templo.",
+          "sigil": "☼"
+        }
+      }
+    },
+    {
+      "id": "first-book-temple-reward",
+      "kind": "quest",
+      "x": 14,
+      "y": 6,
+      "visualType": "building-temple",
+      "label": "Entregar la seda a la sacerdotisa Ilse",
+      "when": [
+        {
+          "questId": "weaver-silk",
+          "questStatus": "active"
+        },
+        {
+          "itemId": "weaver-silk"
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "claim-reward",
+            "rewardId": "swordhaven:weaver-silk:v1",
+            "requirements": [
+              {
+                "questId": "weaver-silk",
+                "questStatus": "active"
+              },
+              {
+                "itemId": "weaver-silk"
+              }
+            ],
+            "effects": [
+              {
+                "type": "consume-item",
+                "itemId": "weaver-silk",
+                "quantity": 1
+              },
+              {
+                "type": "complete-quest",
+                "questId": "weaver-silk",
+                "objective": "Side quest completada: el templo tiene vendas."
+              },
+              {
+                "type": "grant-gold",
+                "amount": 8
+              }
+            ]
+          },
+          {
+            "type": "heal-party",
+            "amount": 6
+          }
+        ],
+        "message": "Ilse teje vendas a la luz de las velas y bendice a la compañía. Ocho monedas y las heridas, cerradas.",
+        "journal": {
+          "id": "first-book-temple-reward",
+          "title": "Vendas de seda",
+          "body": "El templo de Swordhaven ya tiene vendas. Ilse pagó 8 monedas y curó a la compañía.",
           "sigil": "☼"
         }
       }
@@ -315,7 +384,7 @@
       "x": 4,
       "y": 6,
       "visualType": "building-watch",
-      "label": "Cuartel de la guardia",
+      "label": "Cuartel · hablar con el sargento Brask",
       "when": [
         {
           "key": "swordhaven-watch-visited",
@@ -328,14 +397,84 @@
             "type": "set",
             "key": "swordhaven-watch-visited",
             "value": true
+          },
+          {
+            "type": "start-quest",
+            "questId": "road-bandits",
+            "title": "Bandidos del Camino",
+            "description": "Desertores armados asaltan a los viajeros en el Camino de los Estandartes.",
+            "objective": "Derrota al bandido desertor y a Garrah, su jefe, en el Camino de los Estandartes.",
+            "order": 20
           }
         ],
-        "message": "El sargento de guardia señala el norte: «El Camino de los Estandartes ya no es seguro. Huesos que caminan, dicen los leñadores de Rookwood».",
+        "message": "El sargento Brask golpea el mapa: «Desertores en el Camino. Su jefe, Garrah, acampa al suroeste. Tráeme la paz del Camino y te pagaré doce monedas». Añade en voz baja que en Rookwood hablan de huesos que caminan.",
         "journal": {
-          "id": "first-book-watch-rumour",
-          "title": "Rumor del cuartel",
-          "body": "La guardia habla de huesos que caminan en el bosque de Rookwood, al otro lado del Camino de los Estandartes.",
-          "sigil": "✦"
+          "id": "first-book-watch-quest",
+          "title": "Encargo del sargento Brask",
+          "body": "Derrota al bandido desertor y a Garrah, jefe de los desertores, en el Camino de los Estandartes. Recompensa: 12 monedas de oro.",
+          "sigil": "◆"
+        }
+      }
+    },
+    {
+      "id": "first-book-watch-reward",
+      "kind": "quest",
+      "x": 4,
+      "y": 6,
+      "visualType": "building-watch",
+      "label": "Informar al sargento Brask y cobrar 12 oro",
+      "when": [
+        {
+          "questId": "road-bandits",
+          "questStatus": "active"
+        },
+        {
+          "key": "bannerRoadDeserterDefeated",
+          "truthy": true
+        },
+        {
+          "key": "bannerRoadCaptainDefeated",
+          "truthy": true
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "claim-reward",
+            "rewardId": "swordhaven:road-bandits:v1",
+            "requirements": [
+              {
+                "questId": "road-bandits",
+                "questStatus": "active"
+              },
+              {
+                "key": "bannerRoadDeserterDefeated",
+                "truthy": true
+              },
+              {
+                "key": "bannerRoadCaptainDefeated",
+                "truthy": true
+              }
+            ],
+            "effects": [
+              {
+                "type": "complete-quest",
+                "questId": "road-bandits",
+                "objective": "Side quest completada: el Camino está limpio."
+              },
+              {
+                "type": "grant-gold",
+                "amount": 12
+              }
+            ]
+          }
+        ],
+        "message": "Brask cuenta doce monedas sobre la mesa del cuartel. «Garrah tenía precio. Ahora tú tienes fama».",
+        "journal": {
+          "id": "first-book-watch-reward",
+          "title": "El Camino, en paz",
+          "body": "El sargento Brask ha pagado 12 monedas por acabar con los desertores del Camino.",
+          "sigil": "◆"
         }
       }
     }

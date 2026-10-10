@@ -13,7 +13,7 @@ describe('Chronicles · optional banner road ambusher', () => {
     const enemy = map.enemies.find((entry) => entry.id === 'banner-road-deserter');
     // The authored file starts at 4 HP; the resolved enemyBuild has 5 effective HP.
     expect(enemy).toMatchObject({
-      optional: true, visualType: 'corrupted-pawn', hpKey: 'bannerRoadDeserterHp',
+      optional: true, visualType: 'road-bandit', hpKey: 'bannerRoadDeserterHp',
       maxHp: 5, x: 11, y: 5,
     });
     expect(map.grid[enemy.y][enemy.x]).not.toBe('#');

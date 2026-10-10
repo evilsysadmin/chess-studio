@@ -20,5 +20,37 @@
     ],
     "framePx": 400,
     "pixelArt": true
+  },
+  "road-bandit": {
+    "frames": [
+      "idle-a",
+      "idle-b",
+      "attack",
+      "hurt",
+      "dead"
+    ],
+    "framePx": 336,
+    "pixelArt": true
+  },
+  "bandit-captain": {
+    "frames": [
+      "idle-a",
+      "idle-b",
+      "attack",
+      "hurt",
+      "dead"
+    ],
+    "framePx": 512,
+    "pixelArt": true
+  },
+  "weaver-spider": {
+    "frames": [
+      "idle-a",
+      "idle-b",
+      "attack",
+      "dead"
+    ],
+    "framePx": 304,
+    "pixelArt": true
   }
 }

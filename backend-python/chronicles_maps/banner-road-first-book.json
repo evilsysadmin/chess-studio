@@ -31,8 +31,8 @@
   "enemies": [
     {
       "id": "banner-road-deserter",
-      "visualType": "corrupted-pawn",
-      "name": "saqueador del camino",
+      "visualType": "road-bandit",
+      "name": "bandido desertor",
       "explorationObjective": "La patrulla desertora protege el botín del Camino.",
       "x": 11,
       "y": 5,
@@ -70,11 +70,65 @@
       },
       "enemyBuild": {
         "version": 1,
-        "archetype": "corrupted-pawn",
+        "archetype": "road-bandit",
         "level": 1,
         "attributes": {
           "vigor": 1,
           "power": 0,
+          "precision": 0,
+          "will": 0
+        },
+        "skills": [
+          "brutal-strike"
+        ]
+      }
+    },
+    {
+      "id": "banner-road-bandit-captain",
+      "visualType": "bandit-captain",
+      "name": "Garrah, jefe de los desertores",
+      "explorationObjective": "El jefe de los desertores acampa en el rincón suroeste del Camino.",
+      "x": 3,
+      "y": 12,
+      "hpKey": "bannerRoadCaptainHp",
+      "maxHp": 9,
+      "retaliation": 2,
+      "optional": true,
+      "activation": "always",
+      "ai": {
+        "movement": "cardinal-roam",
+        "attackReach": 1,
+        "engagedMovement": "cardinal-chase",
+        "engageRange": 2
+      },
+      "blockingMessage": "Garrah apoya el hacha en el hombro: «El Camino cobra peaje, y hoy el peaje eres tú».",
+      "onDefeat": {
+        "message": "{attacker} derriba a Garrah con {attack}. Su bolsa tintinea con seis monedas robadas a la patrulla.",
+        "effects": [
+          {
+            "type": "set",
+            "key": "bannerRoadCaptainDefeated",
+            "value": true
+          },
+          {
+            "type": "grant-gold",
+            "amount": 6
+          }
+        ],
+        "journal": {
+          "id": "banner-road-captain-falls",
+          "title": "Cae Garrah",
+          "body": "El jefe de los desertores ya no cobrará peaje en el Camino de los Estandartes.",
+          "sigil": "†"
+        }
+      },
+      "enemyBuild": {
+        "version": 1,
+        "archetype": "bandit-captain",
+        "level": 2,
+        "attributes": {
+          "vigor": 2,
+          "power": 2,
           "precision": 0,
           "will": 0
         },

@@ -21,6 +21,11 @@ const VISUALS = Object.freeze({
   'ember-wisp': Object.freeze({ build: buildEmberWisp, scale: 0.96 }),
   'bone-hound': Object.freeze({ build: buildBoneHound, scale: 1.08 }),
   'fork-stalker': Object.freeze({ build: buildForkStalker, scale: 1.02 }),
+  // Overworld foes painted as first-person billboards; Tactics keeps a 3D
+  // stand-in from the closest procedural model.
+  'road-bandit': Object.freeze({ build: buildScavengerKnight, scale: 0.96 }),
+  'bandit-captain': Object.freeze({ build: buildScavengerKnight, scale: 1.18 }),
+  'weaver-spider': Object.freeze({ build: buildCryptSpider, scale: 1.2 }),
 });
 
 export function chroniclesEnemyVisualSpec(visualType) {

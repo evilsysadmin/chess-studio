@@ -82,6 +82,63 @@
           "brutal-strike"
         ]
       }
+    },
+    {
+      "id": "rookwood-weaver",
+      "visualType": "weaver-spider",
+      "name": "tejedora de la hondonada",
+      "explorationObjective": "Una tejedora gigante teje su red en la hondonada del suroeste del bosque.",
+      "x": 3,
+      "y": 13,
+      "hpKey": "rookwoodWeaverHp",
+      "maxHp": 6,
+      "retaliation": 1,
+      "optional": true,
+      "activation": "always",
+      "ai": {
+        "movement": "cardinal-roam",
+        "attackReach": 1,
+        "engagedMovement": "cardinal-chase",
+        "engageRange": 2
+      },
+      "blockingMessage": "La tejedora tensa sus hilos entre los troncos. Habrá que abrirse paso a espadazos.",
+      "onDefeat": {
+        "message": "{attacker} parte a la tejedora con {attack}. Entre sus hilaturas queda un ovillo de seda plateada.",
+        "effects": [
+          {
+            "type": "set",
+            "key": "rookwoodWeaverDefeated",
+            "value": true
+          },
+          {
+            "type": "grant-item",
+            "itemId": "weaver-silk",
+            "name": "Seda de tejedora",
+            "description": "Un ovillo de seda plateada, fuerte y limpia. La sacerdotisa de Swordhaven la quiere para vendas.",
+            "quantity": 1
+          }
+        ],
+        "journal": {
+          "id": "rookwood-weaver-falls",
+          "title": "La tejedora de la hondonada",
+          "body": "La araña gigante de la hondonada de Rookwood ha caído. Su seda puede servir en el templo de Swordhaven.",
+          "sigil": "†"
+        }
+      },
+      "enemyBuild": {
+        "version": 1,
+        "archetype": "weaver-spider",
+        "level": 1,
+        "attributes": {
+          "vigor": 1,
+          "power": 1,
+          "precision": 0,
+          "will": 0
+        },
+        "skills": [
+          "brutal-strike"
+        ]
+      }
     }
   ],
   "triggers": [],

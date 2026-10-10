@@ -1,15 +1,94 @@
 {
   "_comment": "SpriteCook provenance for Chronicles 2.5D billboard sources (gpt-image-2, pixel art, quality low). asset_id lets future edits reuse the same canonical subject; sha12 = first 12 hex of sha256 of the committed PNG.",
   "bone-hound": {
-    "idle": { "asset_id": "8d2d9018-e268-45ba-a193-3c0366c781b6", "sha12": "3e6182176680", "label": "canonical base" },
-    "menace": { "asset_id": "ac612b84-dd3a-4619-8dcc-e920e084053d", "sha12": "888255d910e8" },
-    "attack": { "asset_id": "682718d5-1a8a-4443-ad53-8c537cf349c0", "sha12": "b8582134d2f2" },
-    "hurt": { "asset_id": "d13d7a7f-20fc-4beb-870c-f45e00c3430d", "sha12": "8af136eca01f" },
-    "dead": { "asset_id": "493e1eaf-fb4e-4a26-95df-d86b0c353b80", "sha12": "7d6483b21988" }
+    "idle": {
+      "asset_id": "8d2d9018-e268-45ba-a193-3c0366c781b6",
+      "sha12": "3e6182176680",
+      "label": "canonical base"
+    },
+    "menace": {
+      "asset_id": "ac612b84-dd3a-4619-8dcc-e920e084053d",
+      "sha12": "888255d910e8"
+    },
+    "attack": {
+      "asset_id": "682718d5-1a8a-4443-ad53-8c537cf349c0",
+      "sha12": "b8582134d2f2"
+    },
+    "hurt": {
+      "asset_id": "d13d7a7f-20fc-4beb-870c-f45e00c3430d",
+      "sha12": "8af136eca01f"
+    },
+    "dead": {
+      "asset_id": "493e1eaf-fb4e-4a26-95df-d86b0c353b80",
+      "sha12": "7d6483b21988"
+    }
   },
   "rookwood-mourner": {
-    "idle": { "asset_id": "d2992dcc-edab-460c-b301-685ce30f4199", "sha12": "2ab6d942f667", "label": "canonical base (blank name tag)" },
-    "speak": { "asset_id": "1af2553d-5722-4bdd-a29b-47508863ce60", "sha12": "1a1abce6f583" },
-    "grateful": { "asset_id": "c677551a-1565-4140-b277-0d7af66dccaf", "sha12": "818f451d4056" }
+    "idle": {
+      "asset_id": "d2992dcc-edab-460c-b301-685ce30f4199",
+      "sha12": "2ab6d942f667",
+      "label": "canonical base (blank name tag)"
+    },
+    "speak": {
+      "asset_id": "1af2553d-5722-4bdd-a29b-47508863ce60",
+      "sha12": "1a1abce6f583"
+    },
+    "grateful": {
+      "asset_id": "c677551a-1565-4140-b277-0d7af66dccaf",
+      "sha12": "818f451d4056"
+    }
+  },
+  "road-bandit": {
+    "idle": {
+      "asset_id": "e98297b3-3256-4539-aa8d-f1664e24a1df",
+      "sha12": "34e08b2d8363",
+      "label": "canonical base"
+    },
+    "attack": {
+      "asset_id": "bbad96db-7b82-4a65-ba9f-f188bde14fb7",
+      "sha12": "95174a080477"
+    },
+    "hurt": {
+      "asset_id": "dd16e8ad-7cd3-4e1b-b9a3-9d9ce0aac6e6",
+      "sha12": "58795c336e13"
+    },
+    "dead": {
+      "asset_id": "52aadf69-05e7-4d7c-9dfb-913d84f51e18",
+      "sha12": "dd8753e8fce2"
+    }
+  },
+  "bandit-captain": {
+    "idle": {
+      "asset_id": "afd0b0ba-795c-4c3e-b558-4801373b4449",
+      "sha12": "aaa5a8e34b35",
+      "label": "canonical base (referenced from road-bandit)"
+    },
+    "attack": {
+      "asset_id": "add03bf2-c779-4eed-a21a-7b9278cc90ce",
+      "sha12": "b7f7a69e7af6"
+    },
+    "hurt": {
+      "asset_id": "6c8185b7-e759-4a7f-8881-0765c8b590fe",
+      "sha12": "5da56c09459f"
+    },
+    "dead": {
+      "asset_id": "6a23eece-034d-4545-82b9-97b0a5799c64",
+      "sha12": "592da34eeab4"
+    }
+  },
+  "weaver-spider": {
+    "idle": {
+      "asset_id": "fd82f53b-5e5b-4c25-8dbc-fd57f9e90e83",
+      "sha12": "7929e20133e3",
+      "label": "canonical base"
+    },
+    "attack": {
+      "asset_id": "c5af6ee5-0d71-4f20-9427-7e4c3c96e82d",
+      "sha12": "6f09a5ca4e19"
+    },
+    "dead": {
+      "asset_id": "eb3a653d-cafc-4c3e-bd88-964ac9bff81e",
+      "sha12": "8219928689b6"
+    }
   }
 }
