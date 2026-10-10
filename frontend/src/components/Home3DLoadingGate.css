@@ -35,3 +35,13 @@
 .illustrated-home__stage[data-home-atomic-transition='enabled'] > .illustrated-home__art {
   transition: none !important;
 }
+
+/* A cold/slow 3D renderer keeps preparing behind the usable 2D castle.
+   Never expose an unfinished WebGL scene when dismissing the loading curtain. */
+.illustrated-home__stage[data-home3d-preview='painted'] > .illustrated-home__castle-3d {
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+.illustrated-home__stage[data-home3d-preview='painted'] > .illustrated-home__art {
+  opacity: 1 !important;
+}
