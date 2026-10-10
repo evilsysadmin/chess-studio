@@ -76,13 +76,13 @@ export function installChesscomOperatorMomentsV26(B,scene,{tier='ultra',host,red
   // Emissive geometry is enough to stage the moment without shader churn.
   const coolBraces=new B.Color3(.36,.72,.74);
   const hotBraces=new B.Color3(.89,.52,.29);
-  const glow=scene.getEffectLayerByName?.('ops-glow');
-  glow?.addIncludedOnlyMesh?.(ring);
+  // No extra glow-layer pass; both materials are independently emissive.
   let selectedId=null;
   let highlight=null;
   let previous=null;
   let lastState=null;
   let disposed=false;
+  let visible=false;
 
   function unitPosition(id) {
     const unit=[...(lastState?.friendlies||[]),...(lastState?.enemies||[])].find(u=>u.id===id);
@@ -121,7 +121,10 @@ export function installChesscomOperatorMomentsV26(B,scene,{tier='ultra',host,red
     if(highlight && now>=highlight.expiry)highlight=null;
     const highlightedId=highlight?.unitId||selectedId;
     const p=highlightedId?unitPosition(highlightedId):null;
-    root.setEnabled(Boolean(p));
+    if(Boolean(p)!==visible){
+      visible=Boolean(p);
+      root.setEnabled(visible);
+    }
     if(!p)return;
     root.position.set(p.x,0,p.z);
     const danger=highlight?.kind==='hit'||highlight?.kind==='down';
@@ -152,7 +155,6 @@ export function installChesscomOperatorMomentsV26(B,scene,{tier='ultra',host,red
         delete host.dataset.chesscomFocusUnit;
         delete host.dataset.chesscomMoment;
       }
-      try{glow?.removeIncludedOnlyMesh?.(ring);}catch{}
       braces?.dispose?.();
       ring.dispose();
       root.dispose();
