@@ -62,20 +62,21 @@ describe('Chronicles initiative', () => {
     expect(initiative.order[1].initiative).toBe(7);
   });
 
-  it('adds progression AGI to the resolved party stat and advances by rounds', () => {
+  it('adds progression AGI exactly once to the resolved party stat and advances by rounds', () => {
     const state = {
       party: [{ id: 'matthias', hp: 7, agility: 4 }],
       rpgModifiers: { matthias: { initiativeBonus: 3 } },
     };
     expect(chroniclesPartyInitiativeAgility(state, state.party[0])).toBe(7);
-    expect(chroniclesPartyInitiativeAgility(state, state.party[0], 2)).toBe(9);
+    // A stray caller-provided bonus must not stack the same AGI again.
+    expect(chroniclesPartyInitiativeAgility(state, state.party[0], 3)).toBe(7);
 
     const initiative = chroniclesRollInitiative(state, [], {
       random: () => 0,
-      partyAgilityBonuses: { matthias: 2 },
+      partyAgilityBonuses: { matthias: 3 },
     });
     expect(chroniclesCurrentInitiativeActor(initiative)?.id).toBe('matthias');
-    expect(initiative.order[0].agility).toBe(9);
+    expect(initiative.order[0].agility).toBe(7);
     const next = chroniclesAdvanceInitiative(initiative);
     expect(next.cursor).toBe(0);
     expect(next.round).toBe(2);
