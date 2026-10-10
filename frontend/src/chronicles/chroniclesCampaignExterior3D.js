@@ -1,5 +1,8 @@
 import * as THREE from 'three';
-import { createSwordhavenSkyDome, swordhavenGrassTexture } from './chroniclesSwordhaven3D.js';
+import {
+  addSwordhavenClouds, buildSwordhavenHouse, buildSwordhavenTree, createSwordhavenMaterials,
+  createSwordhavenSkyDome, swordhavenGrassTexture,
+} from './chroniclesSwordhaven3D.js';
 import { buildChroniclesEnemyVisual } from '../chroniclesEnemyVisualRegistry.js';
 
 // File-authored exterior topology: no independent collision map or invisible
@@ -37,8 +40,12 @@ export function buildChroniclesCampaignExterior(scene, { scenePlan = {}, coarseP
   const sceneCenter = scenePlan.center || { x: Math.floor(width / 2), y: Math.floor(height / 2) };
   const roadMap = scenePlan.mapId === 'banner-road';
   const forest = scenePlan.mapId === 'rookwood-first-book';
+  // Authored towns (First Book Swordhaven) dress their interior blocks as the
+  // same half-timbered houses as the legacy square; collision stays the grid.
+  const settlement = scenePlan.regionKind === 'settlement';
+  const village = settlement ? createSwordhavenMaterials() : null;
   const earth = material(forest ? 0x8fa178 : 0xffffff, { map: swordhavenGrassTexture() });
-  const stone = material(roadMap ? 0x77756c : 0xaba18f);
+  const stone = village ? village.stone : material(roadMap ? 0x77756c : 0xaba18f);
   const paver = material(roadMap ? 0xb8ab91 : 0xc6bba5);
   const timber = material(0x4d3424);
   const linen = material(0x963f32, { side: THREE.DoubleSide });
@@ -91,10 +98,36 @@ export function buildChroniclesCampaignExterior(scene, { scenePlan = {}, coarseP
 
   // Existing '#'-cell collision is visualized as stone embankment (one draw
   // call), not as unmarked floor. Do not scatter blockers on '.' terrain.
-  const blocked = [];
+  let blocked = [];
   grid.forEach((row, y) => [...row].forEach((tile, x) => {
     if (tile === '#') blocked.push({ x, y });
   }));
+  if (village) {
+    const town = new THREE.Group();
+    town.name = 'chronicles-campaign-town';
+    const houses = settlementHouseBlocks(grid, width, height);
+    const houseCells = new Set();
+    houses.forEach((block, index) => {
+      block.cells.forEach(({ x, y }) => houseCells.add(x + ',' + y));
+      const style = TOWN_HOUSE_STYLES[index % TOWN_HOUSE_STYLES.length];
+      const { root } = buildSwordhavenHouse(
+        { id: 'first-book-' + style.id + '-' + index, x: block.cx, y: block.cy, roof: style.roof, emblem: style.emblem },
+        village, coarsePointer, new Set(), sceneCenter,
+      );
+      // Facades face the street: blocks south of the centre turn around. The
+      // tavern's deep porch is left out: it would reach into walkable cells.
+      if (block.cy > sceneCenter.y) root.rotation.y = Math.PI;
+      town.add(root);
+    });
+    blocked = blocked.filter(({ x, y }) => !houseCells.has(x + ',' + y));
+    // Trees stand outside the town wall so no walkable cell gains a blocker.
+    TOWN_TREE_CELLS(width, height).forEach(([x, y], index) => {
+      const [wx, wz] = gridToWorld(x, y, sceneCenter);
+      buildSwordhavenTree(town, wx, wz, village, coarsePointer, index);
+    });
+    addSwordhavenClouds(town, coarsePointer);
+    scene.add(town);
+  }
   if (blocked.length && forest) {
     const outskirts = [];
     for (let y = -FOREST_MARGIN_CELLS; y < height + FOREST_MARGIN_CELLS; y += 1) {
@@ -193,6 +226,54 @@ export function buildChroniclesCampaignExterior(scene, { scenePlan = {}, coarseP
 }
 
 const FOREST_MARGIN_CELLS = 3;
+
+const TOWN_HOUSE_STYLES = Object.freeze([
+  Object.freeze({ id: 'forge', roof: 0x8a4632, emblem: 'swords' }),
+  Object.freeze({ id: 'armor', roof: 0x4a657e, emblem: 'shield' }),
+  Object.freeze({ id: 'apothecary', roof: 0x554481, emblem: 'crystal' }),
+  Object.freeze({ id: 'temple', roof: 0x65758a, emblem: 'sun' }),
+]);
+
+function TOWN_TREE_CELLS(width, height) {
+  return [[-1, -1], [width, -1], [-1, height], [width, height],
+    [-1, Math.floor(height / 2)], [width, Math.floor(height / 2)],
+    [Math.floor(width / 4), -1], [Math.floor(width * 3 / 4), -1]];
+}
+
+// Interior '#' blocks (not touching the map border) of at least 2×2 cells
+// become houses, ordered north-west → south-east for a stable style mapping.
+export function settlementHouseBlocks(grid, width, height) {
+  const seen = new Set();
+  const blocks = [];
+  for (let y = 1; y < height - 1; y += 1) {
+    for (let x = 1; x < width - 1; x += 1) {
+      if (grid[y]?.[x] !== '#' || seen.has(x + ',' + y)) continue;
+      const cells = [];
+      const queue = [{ x, y }];
+      seen.add(x + ',' + y);
+      let touchesBorder = false;
+      while (queue.length) {
+        const cell = queue.pop();
+        cells.push(cell);
+        if (cell.x <= 0 || cell.y <= 0 || cell.x >= width - 1 || cell.y >= height - 1) touchesBorder = true;
+        for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+          const nx = cell.x + dx;
+          const ny = cell.y + dy;
+          const key = nx + ',' + ny;
+          if (grid[ny]?.[nx] === '#' && !seen.has(key)) { seen.add(key); queue.push({ x: nx, y: ny }); }
+        }
+      }
+      const xs = cells.map(c => c.x);
+      const ys = cells.map(c => c.y);
+      const minX = Math.min(...xs); const maxX = Math.max(...xs);
+      const minY = Math.min(...ys); const maxY = Math.max(...ys);
+      const solid = cells.length === (maxX - minX + 1) * (maxY - minY + 1);
+      if (touchesBorder || !solid || maxX - minX < 1 || maxY - minY < 1) continue;
+      blocks.push({ cells, cx: (minX + maxX) / 2, cy: (minY + maxY) / 2 });
+    }
+  }
+  return blocks;
+}
 
 // Deterministic per-cell jitter: the same map always grows the same forest.
 function cellNoise(x, y, salt = 0) {

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
-import { buildChroniclesCampaignExterior } from './chroniclesCampaignExterior3D.js';
+import { buildChroniclesCampaignExterior, settlementHouseBlocks } from './chroniclesCampaignExterior3D.js';
+import swordhavenFirstBook from './maps/swordhaven-first-book.json';
 
 const demo = {
   mapId: 'banner-road', regionKind: 'wilderness', width: 5, height: 5,
@@ -33,5 +34,30 @@ describe('Chronicles file-authored exterior renderer', () => {
       coarsePointer: true,
     });
     expect(scene.getObjectByName('chronicles-campaign-visible-blockers')).toBeUndefined();
+  });
+
+  it('dresses First Book Swordhaven blocks as village houses and keeps only the town wall as blockers', () => {
+    const grid = swordhavenFirstBook.grid;
+    const width = grid[0].length;
+    const height = grid.length;
+    const blocks = settlementHouseBlocks(grid, width, height);
+    expect(blocks.map(({ cx, cy }) => [cx, cy])).toEqual([[4, 3.5], [14, 3.5], [4, 10.5], [14, 10.5]]);
+    const scene = new THREE.Scene();
+    buildChroniclesCampaignExterior(scene, {
+      coarsePointer: true,
+      scenePlan: {
+        mapId: 'swordhaven-first-book', regionKind: 'settlement', width, height,
+        center: { x: 9, y: 7 }, grid, content: [],
+      },
+    });
+    const town = scene.getObjectByName('chronicles-campaign-town');
+    const houses = town.children.filter(child => child.name.startsWith('swordhaven-building-'));
+    expect(houses).toHaveLength(4);
+    // South-side houses turn their facade to the street.
+    expect(houses.map(house => house.rotation.y)).toEqual([0, 0, Math.PI, Math.PI]);
+    const border = grid.join('').split('#').length - 1 - blocks.reduce((sum, b) => sum + b.cells.length, 0);
+    expect(scene.getObjectByName('chronicles-campaign-visible-blockers').count).toBe(border);
+    // Every house footprint stays on its blocked cells: no walkable tile is covered.
+    blocks.forEach(({ cells }) => cells.forEach(({ x, y }) => expect(grid[y][x]).toBe('#')));
   });
 });
