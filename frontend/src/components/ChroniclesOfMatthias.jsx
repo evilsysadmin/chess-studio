@@ -337,12 +337,6 @@ export default function ChroniclesOfMatthias({ onExit }) {
       const forcedTarget = attackingMember
         ? chroniclesEnemyTargetAhead(current, chroniclesPartyAttackStats(current, attackingMember.id).reach)
         : null;
-      const partyAgilityBonuses = Object.fromEntries(
-        (current.party || []).map((member) => [
-          member.id,
-          Number(chroniclesHeroProgress(progressionRef.current, member.id).attributes?.agility || 0),
-        ]),
-      );
       // Entering an area is not a tactical movement inside it. The player
       // gets to see the new room/return portal before enemies can engage.
       const transitionedMap = exploratoryNext?.mapId !== current.mapId;
@@ -351,7 +345,6 @@ export default function ChroniclesOfMatthias({ onExit }) {
         chroniclesActiveEnemies(exploratoryNext),
         {
           forceEnemyIds: forcedTarget ? [forcedTarget.enemy.id] : [],
-          partyAgilityBonuses,
         },
       );
       next = started !== exploratoryNext

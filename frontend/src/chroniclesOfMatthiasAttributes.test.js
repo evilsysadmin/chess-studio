@@ -10,6 +10,7 @@ import {
   normalizeChroniclesProgression,
   spendChroniclesAttributePoint,
 } from './chroniclesOfMatthiasProgression.js';
+import { chroniclesRollInitiative } from './chronicles/chroniclesInitiative.js';
 import {
   chroniclesTacticsAbility,
   chroniclesTacticsAttack,
@@ -87,6 +88,12 @@ describe('Chronicles Tactics · class attributes', () => {
     const state = tacticsState(progression);
     expect(state.rpgModifiers.matthias.initiativeBonus).toBe(3);
     expect(chroniclesHeroProgress(progression, 'matthias').attributes.agility).toBe(3);
+
+    // The rolled initiative counts that Agilidad once, not once per caller.
+    const baseAgility = createChroniclesState().party.find((member) => member.id === 'matthias').agility;
+    const initiative = chroniclesRollInitiative(state, [], { random: () => 0 });
+    const matthias = initiative.order.find((actor) => actor.id === 'matthias');
+    expect(matthias.agility).toBe(baseAgility + 3);
   });
 
   it('turns Vigor into real maximum HP at encounter start', () => {

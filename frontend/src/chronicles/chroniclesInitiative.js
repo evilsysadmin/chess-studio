@@ -20,11 +20,14 @@ export function chroniclesRollD8(random = Math.random) {
   return 1 + Math.floor(normalized * CHRONICLES_INITIATIVE_DIE_SIDES);
 }
 
-export function chroniclesPartyInitiativeAgility(state, member, explicitBonus = 0) {
+// Progression AGI reaches initiative exactly once: through the
+// `rpgModifiers` that applyChroniclesProgressionToTacticsState/reconcile
+// already keep in the run state. Callers must not add it again.
+export function chroniclesPartyInitiativeAgility(state, member) {
   if (!member) return 0;
   const base = nonNegativeInteger(member.agility);
   const progressionBonus = nonNegativeInteger(state?.rpgModifiers?.[member.id]?.initiativeBonus);
-  return base + progressionBonus + nonNegativeInteger(explicitBonus);
+  return base + progressionBonus;
 }
 
 export function chroniclesEnemyInitiativeAgility(enemy) {
@@ -49,7 +52,7 @@ function actorEntry({ id, kind, name, agility, random }) {
 export function chroniclesRollInitiative(
   state,
   enemies,
-  { random = Math.random, partyAgilityBonuses = {} } = {},
+  { random = Math.random } = {},
 ) {
   const partyActors = (state?.party || [])
     .filter((member) => Number(member?.hp || 0) > 0)
@@ -57,11 +60,7 @@ export function chroniclesRollInitiative(
       id: member.id,
       kind: 'party',
       name: member.name || member.id,
-      agility: chroniclesPartyInitiativeAgility(
-        state,
-        member,
-        partyAgilityBonuses?.[member.id],
-      ),
+      agility: chroniclesPartyInitiativeAgility(state, member),
       random,
     }));
 
