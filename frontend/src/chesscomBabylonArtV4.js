@@ -58,7 +58,7 @@ export async function createChesscomBabylon(host, options = {}) {
   host.dataset.chesscomMaterials = 'material-art-v7';
   host.dataset.chesscomWeaponArt = 'weapon-art-v11';
   host.dataset.chesscomCamera = CHESSCOM_CAMERA_V18.identity;
-  onReady?.(`BABYLON.JS ${BABYLON_VERSION} · GPU PREMIUM V2 · BALLISTICS · UNIT STANCE · CHARACTER ART V4 · OVERLAY V6 · MATERIAL V7 · HIDPI V9 · DEPTH V10 · WEAPON ART V11 · CAMERA V18 · INDUSTRIAL ARCHITECTURE V19`);
+  onReady?.(`BABYLON.JS ${BABYLON_VERSION} · GPU PREMIUM V2 · BALLISTICS · UNIT STANCE · CHARACTER ART V4 · OVERLAY V6 · MATERIAL V7 · HIDPI V9 · DEPTH V10 · WEAPON ART V11 · CAMERA V18 · INDUSTRIAL ARCHITECTURE V19 · FIELD KIT V20`);
 
   return {
     ...base,
