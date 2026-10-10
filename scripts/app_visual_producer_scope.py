@@ -322,6 +322,8 @@ def classify_path(path: str) -> set[str] | None:
 
     if lower.endswith(".md"):
         return set()
+    if lower in {"makefile", ".github/workflows/staging-deploy.yml", ".github/workflows/production-promote.yml"}:
+        return set()
     if lower.startswith("scripts/app_visual_"):
         return set()
     if lower in {
@@ -409,6 +411,7 @@ def classify_path(path: str) -> set[str] | None:
             "scripts/chess_rules_gate.mjs",
             "scripts/quality_scope.py",
             "scripts/pwa_check.mjs",
+            "scripts/pages_runtime_asset_grace.py",
             "scripts/state_resilience_check.mjs",
             "scripts/visual_ux_contract_check.mjs",
             "scripts/workflow_debt_gate.py",
@@ -516,7 +519,7 @@ def classify_path(path: str) -> set[str] | None:
         return set(CHRONICLES_SHARED)
 
     if any(token in lower for token in (
-        "pawnslug", "pawn-slug", "trailblazer", "arcade", "chessfootball", "chess-football",
+        "pawnslug", "pawn-slug", "trailblazer", "arcade", "chessfootball", "chess-football", "footballmanager",
     )):
         return {"experiments-hub"}
     if "experimentsscreen" in lower or "/experiments" in lower:
@@ -920,6 +923,15 @@ def self_test() -> None:
         "frontend/src/components/ChessFootballGodotHost.jsx",
         "e2e/chess-football.spec.js",
     ]) == "experiments-hub"
+    manager = [
+        "frontend/src/components/ChessFootballEntry.jsx",
+        "frontend/src/footballManagerSeason.js",
+        "frontend/src/footballManagerSeason.test.js",
+        "e2e/experiments-visual-artifact.spec.js",
+    ]
+    assert classify(manager) == "experiments-hub"
+    assert classify(["frontend/src/footballManagerRoster.js"]) == "experiments-hub"
+    assert classify(["frontend/src/unownedVisualModule.js"]) == "all"
     assert classify(["frontend/src/components/QuickMatchModal.jsx"]) == "home-base,warroom-core"
     assert classify(["frontend/src/components/CampaignCombatPreparation.jsx"]) == "combat-prep"
     assert classify(["frontend/src/components/CombatBattleView.jsx"]) == "combat-battle"

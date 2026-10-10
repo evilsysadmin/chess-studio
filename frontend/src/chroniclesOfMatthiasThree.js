@@ -58,6 +58,20 @@ function worldForCell(x, y, center = DEFAULT_SCENE_CENTER) {
 // of inheriting the old fixed chess-piece yaw: asymmetric fantasy enemies
 // (especially the ash goblin) otherwise become a near-invisible side profile
 // while still legitimately blocking their runtime cell.
+const CHRONICLES_FIRST_PERSON_VFOV = 67;
+const CHRONICLES_FIRST_PERSON_MAX_HFOV = 96;
+
+// Vertical field of view for a viewport aspect. A fixed 67° vertical FOV on a
+// wide desktop canvas (≈2.5:1) opens ~117° horizontally: buildings at the
+// screen edges stretch and look taller and nearer than the ones ahead. Cap
+// the horizontal FOV so wide screens see more world, not a fisheye.
+export function chroniclesFirstPersonFov(aspect) {
+  const safeAspect = Number.isFinite(aspect) && aspect > 0 ? aspect : 1;
+  const maxHalfH = THREE.MathUtils.degToRad(CHRONICLES_FIRST_PERSON_MAX_HFOV / 2);
+  const cappedV = THREE.MathUtils.radToDeg(2 * Math.atan(Math.tan(maxHalfH) / safeAspect));
+  return Math.min(CHRONICLES_FIRST_PERSON_VFOV, cappedV);
+}
+
 export function chroniclesEnemyFacingYaw(enemyCell, partyCell) {
   const dx = Number(partyCell?.x) - Number(enemyCell?.x);
   const dy = Number(partyCell?.y) - Number(enemyCell?.y);
@@ -581,7 +595,7 @@ export function createChroniclesOfMatthiasGame(host, {
   const outdoors = scenePlan?.regionKind === 'settlement' || scenePlan?.regionKind === 'wilderness';
   if (!outdoors) scene.fog = new THREE.FogExp2(0x0a0c0f, coarse ? 0.038 : 0.034);
   if (!outdoors) scene.add(new THREE.HemisphereLight(0x6f8191, 0x1b130d, coarse ? 0.35 : 0.24));
-  const camera = new THREE.PerspectiveCamera(67, 1, 0.08, 70);
+  const camera = new THREE.PerspectiveCamera(CHRONICLES_FIRST_PERSON_VFOV, 1, 0.08, 70);
   camera.rotation.order = 'YXZ';
   scene.add(camera);
   const combatFx = createCombatFx(camera);
@@ -630,6 +644,7 @@ export function createChroniclesOfMatthiasGame(host, {
     const height = Math.max(1, host.clientHeight || 1);
     renderer.setSize(width, height, false);
     camera.aspect = width / height;
+    camera.fov = chroniclesFirstPersonFov(camera.aspect);
     camera.updateProjectionMatrix();
   }
 
