@@ -6,7 +6,7 @@
 export const CHESSCOM_INDUSTRIAL_COMPOUND_V27=Object.freeze({
   identity:'industrial-compound-v27',
   buildingNames:Object.freeze(['OFFICE','STORAGE','NO FLAGS','JUST JOBS']),
-  maxParts:55,
+  maxParts:60,
   minPipeClearance:3.10,
 });
 
