@@ -247,6 +247,9 @@ function emblem(group, kind, mats) {
   } else if (kind === 'crystal') {
     mesh(group, new THREE.OctahedronGeometry(0.45, 0),
       material(0xa78aff, { emissive: 0x423377, emissiveIntensity: 0.6 }), 'arcane-crystal', [0, 0, 0.12]);
+  } else if (kind === 'sack') {
+    mesh(group, new THREE.SphereGeometry(0.34, 10, 8), gold, 'grain-sack', [0, -0.08, 0.12]).scale.set(1, 1.15, 0.5);
+    mesh(group, new THREE.CylinderGeometry(0.09, 0.14, 0.2, 8), gold, 'grain-sack-neck', [0, 0.32, 0.12]);
   } else if (kind === 'sun') {
     mesh(group, new THREE.SphereGeometry(0.27, 10, 8), gold, 'temple-sun', [0, 0, 0.13]);
     mesh(group, new THREE.TorusGeometry(0.42, 0.045, 5, 16), gold, 'temple-halo', [0, 0, 0.13]);
@@ -467,6 +470,8 @@ export function buildSwordhavenHouse(spec, mats, coarse, contentIds, center) {
       new THREE.BoxGeometry(0.67, 1.48, 0.22), mats.steel,
       'armor-display', [x, 1.12, facadeZ + 0.24]);
   }
+  // Homes carry no shop sign.
+  if (spec.emblem === 'home') return { root, sign: null, interactive: false };
   const sign = new THREE.Group();
   sign.name = 'swordhaven-interaction-' + spec.id;
   sign.userData.chroniclesContentId = spec.id;
@@ -641,6 +646,22 @@ function dressSwordhavenRoadsides(root, mats, coarse, width, height, center) {
   root.add(meadow);
 }
 
+export function buildSwordhavenFountain(mats) {
+  const fountain = new THREE.Group();
+  fountain.name = 'swordhaven-fountain';
+  // The full basin must fit the single blocked 4×4 m fountain cell.
+  mesh(fountain, new THREE.CylinderGeometry(1.72, 1.88, 0.7, 16),
+    mats.stone, 'fountain-basin', [0, 0.34, 0]);
+  mesh(fountain, new THREE.CylinderGeometry(1.47, 1.47, 0.03, 16),
+    material(0x64bfd0, { metalness: 0.12, roughness: 0.22 }), 'fountain-water', [0, 0.71, 0]);
+  const rim = mesh(fountain, new THREE.TorusGeometry(1.74, 0.10, 6, 24),
+    mats.stone, 'fountain-carved-rim', [0, 0.75, 0]);
+  rim.rotation.x = Math.PI / 2;
+  mesh(fountain, new THREE.CylinderGeometry(0.31, 0.44, 1.9, 10),
+    mats.stone, 'fountain-pedestal', [0, 1.25, 0]);
+  return fountain;
+}
+
 // Shared village palette: the legacy square and the First Book town use the
 // same dressed stone, stucco, timber and roof textures.
 export function createSwordhavenMaterials() {
@@ -715,19 +736,7 @@ export function buildSwordhavenScene(scene, { scenePlan = {}, coarsePointer = fa
     mats.cobble, 'circular-town-square', [0, -0.015, 0]);
   laySwordhavenCobblestones(root, mats, coarsePointer, width, height);
   dressSwordhavenRoadsides(root, mats, coarsePointer, width, height, center);
-  const fountain = new THREE.Group();
-  fountain.name = 'swordhaven-fountain';
-  // The full basin must fit the single blocked 4×4 m fountain cell.
-  mesh(fountain, new THREE.CylinderGeometry(1.72, 1.88, 0.7, 16),
-    mats.stone, 'fountain-basin', [0, 0.34, 0]);
-  mesh(fountain, new THREE.CylinderGeometry(1.47, 1.47, 0.03, 16),
-    material(0x64bfd0, { metalness: 0.12, roughness: 0.22 }), 'fountain-water', [0, 0.71, 0]);
-  const rim = mesh(fountain, new THREE.TorusGeometry(1.74, 0.10, 6, 24),
-    mats.stone, 'fountain-carved-rim', [0, 0.75, 0]);
-  rim.rotation.x = Math.PI / 2;
-  mesh(fountain, new THREE.CylinderGeometry(0.31, 0.44, 1.9, 10),
-    mats.stone, 'fountain-pedestal', [0, 1.25, 0]);
-  root.add(fountain);
+  root.add(buildSwordhavenFountain(mats));
 
   addSwordhavenClouds(root, coarsePointer);
 

@@ -8,18 +8,18 @@
   "grid": [
     "###################",
     "#.................#",
+    "#.###.###.###.###.#",
+    "#.###.###.###.###.#",
     "#.................#",
-    "#..###.......###..#",
-    "#..###.......###..#",
+    "#.##...........##.#",
+    "#.##...........##.#",
+    "#.##...........##.#",
     "#.................#",
+    "#........#........#",
     "#.................#",
-    "#.................#",
-    "#.................#",
-    "#.................#",
-    "#..###.......###..#",
-    "#..###.......###..#",
-    "#.................#",
-    "#.................#",
+    "#.###.###.###.###.#",
+    "#.###.###.###.###.#",
+    "#.....###.........#",
     "###################"
   ],
   "partyStart": {
@@ -159,8 +159,8 @@
     {
       "id": "first-book-quartermaster",
       "kind": "merchant",
-      "x": 8,
-      "y": 7,
+      "x": 15,
+      "y": 10,
       "label": "Comprar raciones de viaje · 7 oro",
       "lockedLabel": "Raciones · necesitas 7 oro",
       "requirements": [
@@ -183,15 +183,16 @@
           }
         ],
         "message": "El intendente entrega raciones de campaña. Siete monedas menos en la bolsa."
-      }
+      },
+      "visualType": "building-store"
     },
     {
       "id": "first-book-healer",
       "kind": "service",
-      "x": 13,
-      "y": 7,
-      "label": "Descansar en la posada · 5 oro",
-      "lockedLabel": "Posada · necesitas 5 oro",
+      "x": 7,
+      "y": 10,
+      "label": "Taberna · descansar y curar · 5 oro",
+      "lockedLabel": "Taberna · necesitas 5 oro",
       "requirements": [
         {
           "itemId": "crown-gold",
@@ -214,14 +215,15 @@
             "type": "refill-class-abilities"
           }
         ],
-        "message": "La compañía descansa en la posada de Swordhaven. Heridas tratadas y fuerzas renovadas."
-      }
+        "message": "La compañía descansa en la taberna de La Espada Mellada. Heridas tratadas y fuerzas renovadas."
+      },
+      "visualType": "building-tavern"
     },
     {
       "id": "first-book-weaponsmith",
       "kind": "merchant",
-      "x": 14,
-      "y": 7,
+      "x": 7,
+      "y": 4,
       "label": "Armero · sable de la guardia (12 oro)",
       "lockedLabel": "Armero · faltan 12 monedas",
       "requirements": [
@@ -244,13 +246,14 @@
           }
         ],
         "message": "Compras un sable de guardia. Abre una ficha de personaje para equiparlo. La mochila no aumenta el daño."
-      }
+      },
+      "visualType": "building-forge"
     },
     {
       "id": "first-book-armorer",
       "kind": "merchant",
-      "x": 12,
-      "y": 7,
+      "x": 11,
+      "y": 4,
       "label": "Coracero · jubón de la guardia (9 oro)",
       "lockedLabel": "Coracero · faltan 9 monedas",
       "requirements": [
@@ -273,6 +276,67 @@
           }
         ],
         "message": "El coracero entrega un jubón de guardia. Hasta equiparlo en la ficha, no protege a nadie."
+      },
+      "visualType": "building-armor"
+    },
+    {
+      "id": "first-book-temple",
+      "kind": "lore",
+      "x": 14,
+      "y": 6,
+      "visualType": "building-temple",
+      "label": "Templo de la Llama Serena",
+      "when": [
+        {
+          "key": "swordhaven-temple-visited",
+          "falsy": true
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "set",
+            "key": "swordhaven-temple-visited",
+            "value": true
+          }
+        ],
+        "message": "La sacerdotisa enciende una vela por los caballeros perdidos. «Que el camino os devuelva a casa», murmura.",
+        "journal": {
+          "id": "first-book-temple",
+          "title": "Templo de la Llama Serena",
+          "body": "En el templo de Swordhaven arde una vela por los caballeros desaparecidos de la Dama.",
+          "sigil": "☼"
+        }
+      }
+    },
+    {
+      "id": "first-book-watch-house",
+      "kind": "lore",
+      "x": 4,
+      "y": 6,
+      "visualType": "building-watch",
+      "label": "Cuartel de la guardia",
+      "when": [
+        {
+          "key": "swordhaven-watch-visited",
+          "falsy": true
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "set",
+            "key": "swordhaven-watch-visited",
+            "value": true
+          }
+        ],
+        "message": "El sargento de guardia señala el norte: «El Camino de los Estandartes ya no es seguro. Huesos que caminan, dicen los leñadores de Rookwood».",
+        "journal": {
+          "id": "first-book-watch-rumour",
+          "title": "Rumor del cuartel",
+          "body": "La guardia habla de huesos que caminan en el bosque de Rookwood, al otro lado del Camino de los Estandartes.",
+          "sigil": "✦"
+        }
       }
     }
   ],
@@ -303,7 +367,7 @@
   "initialJournal": {
     "id": "first-book-swordhaven",
     "title": "Swordhaven",
-    "body": "La plaza, el tablón de encargos y los comerciantes te esperan. El Camino de los Estandartes queda al norte.",
+    "body": "La plaza de la fuente, el tablón de encargos, la taberna, el templo y los comerciantes te esperan. El Camino de los Estandartes queda al norte.",
     "sigil": "I"
   },
   "introMessage": "Swordhaven. La Dama ha pedido noticias de sus caballeros; el tablón de la plaza ofrece la primera pista."

@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import {
-  addSwordhavenClouds, buildSwordhavenHouse, buildSwordhavenTree, createSwordhavenMaterials,
+  addSwordhavenClouds, buildSwordhavenFountain, buildSwordhavenHouse, buildSwordhavenTree, createSwordhavenMaterials,
   createSwordhavenSkyDome, swordhavenGrassTexture,
 } from './chroniclesSwordhaven3D.js';
 import { buildChroniclesEnemyVisual } from '../chroniclesEnemyVisualRegistry.js';
@@ -107,17 +107,33 @@ export function buildChroniclesCampaignExterior(scene, { scenePlan = {}, coarseP
     town.name = 'chronicles-campaign-town';
     const houses = settlementHouseBlocks(grid, width, height);
     const houseCells = new Set();
+    const contentAt = new Map((scenePlan.content || [])
+      .filter(entry => entry.position && String(entry.visualType || '').startsWith('building-'))
+      .map(entry => [entry.position.x + ',' + entry.position.y, entry.visualType.slice('building-'.length)]));
+    let homeIndex = 0;
     houses.forEach((block, index) => {
       block.cells.forEach(({ x, y }) => houseCells.add(x + ',' + y));
-      const style = TOWN_HOUSE_STYLES[index % TOWN_HOUSE_STYLES.length];
+      const facing = settlementHouseFacing(block, grid, sceneCenter);
+      const door = facing.door;
+      const styleId = contentAt.get(door.x + ',' + door.y);
+      const style = TOWN_BUILDING_STYLES[styleId] || TOWN_HOME_STYLES[homeIndex++ % TOWN_HOME_STYLES.length];
       const { root } = buildSwordhavenHouse(
-        { id: 'first-book-' + style.id + '-' + index, x: block.cx, y: block.cy, roof: style.roof, emblem: style.emblem },
+        { id: 'first-book-' + (styleId || 'home') + '-' + index, x: block.cx, y: block.cy, roof: style.roof, emblem: style.emblem },
         village, coarsePointer, new Set(), sceneCenter,
       );
-      // Facades face the street: blocks south of the centre turn around. The
-      // tavern's deep porch is left out: it would reach into walkable cells.
-      if (block.cy > sceneCenter.y) root.rotation.y = Math.PI;
+      root.rotation.y = facing.yaw;
       town.add(root);
+    });
+    // A lone interior blocker is the town fountain, which fits one 4×4 m cell.
+    blocked.forEach(({ x, y }) => {
+      if (x <= 0 || y <= 0 || x >= width - 1 || y >= height - 1 || houseCells.has(x + ',' + y)) return;
+      const neighbours = [[1, 0], [-1, 0], [0, 1], [0, -1]].filter(([dx, dy]) => grid[y + dy]?.[x + dx] === '#');
+      if (neighbours.length) return;
+      const fountain = buildSwordhavenFountain(village);
+      const [wx, wz] = gridToWorld(x, y, sceneCenter);
+      fountain.position.set(wx, 0, wz);
+      town.add(fountain);
+      houseCells.add(x + ',' + y);
     });
     blocked = blocked.filter(({ x, y }) => !houseCells.has(x + ',' + y));
     // Trees stand outside the town wall so no walkable cell gains a blocker.
@@ -227,12 +243,42 @@ export function buildChroniclesCampaignExterior(scene, { scenePlan = {}, coarseP
 
 const FOREST_MARGIN_CELLS = 3;
 
-const TOWN_HOUSE_STYLES = Object.freeze([
-  Object.freeze({ id: 'forge', roof: 0x8a4632, emblem: 'swords' }),
-  Object.freeze({ id: 'armor', roof: 0x4a657e, emblem: 'shield' }),
-  Object.freeze({ id: 'apothecary', roof: 0x554481, emblem: 'crystal' }),
-  Object.freeze({ id: 'temple', roof: 0x65758a, emblem: 'sun' }),
+// A shop's style comes from the authored NPC standing at its door
+// (`visualType: building-<style>`); unclaimed blocks are homes.
+const TOWN_BUILDING_STYLES = Object.freeze({
+  forge: Object.freeze({ roof: 0x8a4632, emblem: 'swords' }),
+  armor: Object.freeze({ roof: 0x4a657e, emblem: 'shield' }),
+  tavern: Object.freeze({ roof: 0x995e37, emblem: 'mug' }),
+  temple: Object.freeze({ roof: 0x65758a, emblem: 'sun' }),
+  store: Object.freeze({ roof: 0x7a6a3c, emblem: 'sack' }),
+  apothecary: Object.freeze({ roof: 0x554481, emblem: 'crystal' }),
+  watch: Object.freeze({ roof: 0x5c3b38, emblem: 'shield' }),
+});
+const TOWN_HOME_STYLES = Object.freeze([
+  Object.freeze({ roof: 0x7d4a36, emblem: 'home' }),
+  Object.freeze({ roof: 0x5d6b52, emblem: 'home' }),
+  Object.freeze({ roof: 0x6e5a74, emblem: 'crystal' }),
+  Object.freeze({ roof: 0x8b5b3a, emblem: 'home' }),
 ]);
+
+// Wide blocks face north/south, tall blocks east/west — always toward the
+// side whose door cell is walkable and nearer the town centre.
+export function settlementHouseFacing(block, grid, center) {
+  const { minX, maxX, minY, maxY } = block;
+  const cx = Math.round(block.cx);
+  const cy = Math.round(block.cy);
+  const open = ({ x, y }) => grid[y]?.[x] === '.';
+  const options = (maxX - minX) >= (maxY - minY)
+    ? [
+      { yaw: 0, door: { x: cx, y: maxY + 1 }, toward: center.y >= block.cy },
+      { yaw: Math.PI, door: { x: cx, y: minY - 1 }, toward: center.y < block.cy },
+    ]
+    : [
+      { yaw: Math.PI / 2, door: { x: maxX + 1, y: cy }, toward: center.x >= block.cx },
+      { yaw: -Math.PI / 2, door: { x: minX - 1, y: cy }, toward: center.x < block.cx },
+    ];
+  return options.find(o => o.toward && open(o.door)) || options.find(o => open(o.door)) || options[0];
+}
 
 function TOWN_TREE_CELLS(width, height) {
   return [[-1, -1], [width, -1], [-1, height], [width, height],
@@ -240,8 +286,9 @@ function TOWN_TREE_CELLS(width, height) {
     [Math.floor(width / 4), -1], [Math.floor(width * 3 / 4), -1]];
 }
 
-// Interior '#' blocks (not touching the map border) of at least 2×2 cells
-// become houses, ordered north-west → south-east for a stable style mapping.
+// Solid interior '#' blocks of at least 2×2 cells become houses (a block may
+// back onto the town wall; the wall itself is never part of a block),
+// ordered north-west → south-east for a stable style mapping.
 export function settlementHouseBlocks(grid, width, height) {
   const seen = new Set();
   const blocks = [];
@@ -251,16 +298,15 @@ export function settlementHouseBlocks(grid, width, height) {
       const cells = [];
       const queue = [{ x, y }];
       seen.add(x + ',' + y);
-      let touchesBorder = false;
       while (queue.length) {
         const cell = queue.pop();
         cells.push(cell);
-        if (cell.x <= 0 || cell.y <= 0 || cell.x >= width - 1 || cell.y >= height - 1) touchesBorder = true;
         for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
           const nx = cell.x + dx;
           const ny = cell.y + dy;
           const key = nx + ',' + ny;
-          if (grid[ny]?.[nx] === '#' && !seen.has(key)) { seen.add(key); queue.push({ x: nx, y: ny }); }
+          const interior = nx > 0 && ny > 0 && nx < width - 1 && ny < height - 1;
+          if (interior && grid[ny]?.[nx] === '#' && !seen.has(key)) { seen.add(key); queue.push({ x: nx, y: ny }); }
         }
       }
       const xs = cells.map(c => c.x);
@@ -268,8 +314,8 @@ export function settlementHouseBlocks(grid, width, height) {
       const minX = Math.min(...xs); const maxX = Math.max(...xs);
       const minY = Math.min(...ys); const maxY = Math.max(...ys);
       const solid = cells.length === (maxX - minX + 1) * (maxY - minY + 1);
-      if (touchesBorder || !solid || maxX - minX < 1 || maxY - minY < 1) continue;
-      blocks.push({ cells, cx: (minX + maxX) / 2, cy: (minY + maxY) / 2 });
+      if (!solid || maxX - minX < 1 || maxY - minY < 1) continue;
+      blocks.push({ cells, minX, maxX, minY, maxY, cx: (minX + maxX) / 2, cy: (minY + maxY) / 2 });
     }
   }
   return blocks;
