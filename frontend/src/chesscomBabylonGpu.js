@@ -8,10 +8,10 @@ import { isFxMuted } from './soundPreferences.js';
 
 const BASE_FX_NAMES = new Set(['muzzle-flash', 'tracer', 'impact']);
 const SURFACE_PROFILES = Object.freeze({
-  ground: { kind:'grit', scale:7.5, bump:.28 },
-  tile: { kind:'grit', scale:5.5, bump:.19 },
-  road: { kind:'asphalt', scale:7.5, bump:.32 },
-  concrete: { kind:'concrete', scale:3.8, bump:.30 },
+  ground: { kind:'grit', scale:7.5, bump:.17 },
+  tile: { kind:'grit', scale:5.5, bump:.12 },
+  road: { kind:'asphalt', scale:7.5, bump:.22 },
+  concrete: { kind:'concrete', scale:3.8, bump:.21 },
   roof: { kind:'metal', scale:4.8, bump:.18 },
   'roof-trim': { kind:'metal', scale:4.8, bump:.16 },
   door: { kind:'metal', scale:4.0, bump:.21 },
@@ -117,6 +117,16 @@ export function chesscomPremiumMissOffset(seed, roundIndex = 0) {
   };
 }
 
+// Subtle, deterministic surface grain: coarse procedural salt-and-pepper at
+// tactical camera distances made the asphalt look artificially damaged.
+export function chesscomSurfaceGrainDensity(kind) {
+  if (kind === 'fabric') return .055;
+  if (kind === 'grit') return .008;
+  if (kind === 'asphalt') return .011;
+  if (kind === 'concrete') return .014;
+  return .024;
+}
+
 function paintSurfaceTexture(texture, kind, seedText, bump = false) {
   const ctx = texture.getContext();
   const size = texture.getSize().width;
@@ -125,7 +135,7 @@ function paintSurfaceTexture(texture, kind, seedText, bump = false) {
   ctx.fillStyle = `rgb(${base},${base},${base})`;
   ctx.fillRect(0, 0, size, size);
 
-  const dotCount = Math.round(size * size * (kind === 'fabric' ? .055 : .032));
+  const dotCount = Math.round(size * size * chesscomSurfaceGrainDensity(kind));
   for (let index = 0; index < dotCount; index += 1) {
     const x = random() * size;
     const y = random() * size;
@@ -135,7 +145,7 @@ function paintSurfaceTexture(texture, kind, seedText, bump = false) {
       ? Math.round(clamp(base + (bright ? 1 : -1) * (15 + random() * 44), 42, 220))
       : bright ? 255 : Math.round(145 + random() * 56);
     ctx.fillStyle = `rgba(${value},${value},${value},${alpha})`;
-    const radius = kind === 'grit' || kind === 'asphalt' ? .7 + random() * 1.5 : .45 + random() * 1.05;
+    const radius = kind === 'grit' || kind === 'asphalt' ? .5 + random() * .85 : .45 + random() * 1.05;
     ctx.fillRect(x, y, radius, radius);
   }
 
@@ -229,7 +239,7 @@ function installPostFx(B, scene, quality, disposables) {
     pipeline.bloomKernel = quality.bloomKernel;
     pipeline.sharpenEnabled = true;
     if (pipeline.sharpen) {
-      pipeline.sharpen.edgeAmount = .18;
+      pipeline.sharpen.edgeAmount = .10;
       pipeline.sharpen.colorAmount = 1.02;
     }
     disposables.push(pipeline);
@@ -240,8 +250,8 @@ function installPostFx(B, scene, quality, disposables) {
   if (!quality.ssao || !B.SSAO2RenderingPipeline) return;
   try {
     const ssao = new B.SSAO2RenderingPipeline('chesscom-ssao-v2', scene, { ssaoRatio:.55, blurRatio:.5 }, [camera]);
-    ssao.radius = 1.8;
-    ssao.totalStrength = .70;
+    ssao.radius = 1.35;
+    ssao.totalStrength = .48;
     ssao.expensiveBlur = false;
     disposables.push(ssao);
   } catch (error) {
