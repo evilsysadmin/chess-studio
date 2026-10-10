@@ -74,6 +74,7 @@ export default function Menu({
     onContinueRun,
   }), [onCombatRoguelike, onContinueRun]);
   const [matthiasVisit, setMatthiasVisit] = useState(null);
+  const [homeAvailable, setHomeAvailable] = useState(false);
   const [matthiasMemory, setMatthiasMemory] = useState(null);
   const matthiasRollRef = useRef(Math.random());
 
@@ -165,12 +166,14 @@ export default function Menu({
   }, [matthiasIntroBlocked, matthiasVisit]);
 
   useEffect(() => {
-    if (matthiasVisit?.kind !== 'login-greeting') return undefined;
+    // Count the seven seconds from first actual Home visibility, never while
+    // the knight curtain hides the greeting on slow 3D hardware.
+    if (matthiasVisit?.kind !== 'login-greeting' || !homeAvailable) return undefined;
     const timer = window.setTimeout(() => {
       setMatthiasVisit((current) => current?.kind === 'login-greeting' ? null : current);
     }, 7000);
     return () => window.clearTimeout(timer);
-  }, [matthiasVisit?.kind]);
+  }, [matthiasVisit?.kind, homeAvailable]);
 
   useEffect(() => {
     if (quickMatchLaunchNonce > 0) setShowQuickMatch(true);
@@ -251,6 +254,7 @@ export default function Menu({
         onInsights={onInsights}
         matthiasModel={matthiasCardModel}
         matthiasSpeaking={Boolean(matthiasVisit) && !matthiasCornerBlocked}
+        onHomeAvailable={() => setHomeAvailable(true)}
         onMatthiasAction={handleMatthiasAction}
         onMatthiasDismiss={() => setMatthiasVisit(null)}
         pvpMenuEntry={pvpEntryVisible ? renderPvpRosterLink({ placement: 'menu' }) : null}

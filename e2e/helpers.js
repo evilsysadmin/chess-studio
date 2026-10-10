@@ -1,4 +1,4 @@
-import { expect } from '@playwright/test';
+import { expect, test } from '@playwright/test';
 import { readFile, readdir } from 'node:fs/promises';
 import { basename, resolve } from 'node:path';
 import { clickWarRoomMove } from './war-room-board-input.js';
@@ -542,6 +542,12 @@ export async function login(page) {
   await password.press('Enter');
   // Stable Home-ready landmark shared by immersive desktop and compact mobile.
   await expect(page.getByRole('region', { name: 'Modos principales', exact: true })).toBeVisible();
+  // From this release the visible Home is intentionally non-interactive while
+  // the real scene is compositing. Functional journeys wait for that single
+  // contract (Blender ready OR complete static fallback) before clicking.
+  // Dedicated Home loading/readiness tests log in manually to inspect the gate.
+  test.setTimeout(Math.max(test.info().timeout, 90_000));
+  await expect(page.locator('.home-3d-loading')).toHaveCount(0, { timeout: 38_000 });
 }
 
 
