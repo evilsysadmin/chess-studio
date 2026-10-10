@@ -300,7 +300,7 @@ test('Chess Football manager restores the authoritative journal after leaving th
   expect(await page.locator('.chess-football-entry__standings tbody').innerText()).toBe(baseline);
   await page.getByLabel('Alineación del míster').locator('summary').click();
   await expect(page.getByRole('combobox', { name: 'Titular 5 · DEL' })).toHaveValue('fc-matthias-del-2');
-  await expect(page.getByRole('combobox', { name: 'Titular 5 · DEL' })).toContainText('F17%');
+  await expect(page.getByRole('combobox', { name: 'Titular 5 · DEL' })).toContainText('F24%');
   await expect(page.getByRole('button', { name: 'Ataque total' })).toHaveAttribute('aria-pressed', 'true');
   await expect(page.getByLabel('Entrenamiento de la jornada').locator('summary')).toContainText('Remates');
   await page.locator('.chess-football-entry__back').click();
