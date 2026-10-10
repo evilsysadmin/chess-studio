@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
 import { buildChroniclesCampaignExterior, settlementHouseBlocks, settlementHouseFacing } from './chroniclesCampaignExterior3D.js';
 import swordhavenFirstBook from './maps/swordhaven-first-book.json';
+import rookwood from './maps/rookwood-first-book.json';
 
 const demo = {
   mapId: 'banner-road', regionKind: 'wilderness', width: 5, height: 5,
@@ -67,5 +68,22 @@ describe('Chronicles file-authored exterior renderer', () => {
       tile === '#' && (x === 0 || y === 0 || x === width - 1 || y === height - 1))).length, 0);
     expect(scene.getObjectByName('chronicles-campaign-visible-blockers').count).toBe(wall);
     expect(town.getObjectByName('swordhaven-fountain')).toBeTruthy();
+  });
+
+  it('builds the Rookwood forest with pixel-art bark and foliage', () => {
+    const grid = rookwood.grid;
+    const scene = new THREE.Scene();
+    buildChroniclesCampaignExterior(scene, {
+      coarsePointer: true,
+      scenePlan: {
+        mapId: 'rookwood-first-book', regionKind: 'wilderness', width: grid[0].length, height: grid.length,
+        center: { x: Math.floor(grid[0].length / 2), y: Math.floor(grid.length / 2) }, grid, content: [],
+      },
+    });
+    const forest = scene.getObjectByName('chronicles-campaign-forest');
+    expect(forest.children).toHaveLength(3);
+    for (const mesh of forest.children) {
+      expect(mesh.material.map?.magFilter).toBe(THREE.NearestFilter);
+    }
   });
 });

@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { chroniclesPixelTexture } from './chroniclesPixelTextures.js';
 
 // Authored in grid coordinates: future map collision must reserve these footprints.
 export const SWORDHAVEN_BUILDINGS = Object.freeze([
@@ -49,117 +50,22 @@ const material = (color, extra = {}) => new THREE.MeshStandardMaterial({
 });
 
 
-let cachedGrassTexture = null;
-
-// Reusable, deterministic meadow texture. Smooth patches and fine grain break
-// the solid-green prototype look without any external image or canvas.
+// Meadow and town surfaces are MM3-style pixel art (chunky texels, short
+// colour ramps, ordered dithering) shared with the overworld renderer.
 export function swordhavenGrassTexture() {
-  if (cachedGrassTexture) return cachedGrassTexture;
-  const size = 128;
-  const pixels = new Uint8Array(size * size * 4);
-  const hash = (x, y) => {
-    let value = Math.imul(x + 113, 0x1f123bb5) ^ Math.imul(y + 397, 0x5f356495);
-    value ^= value >>> 13;
-    value = Math.imul(value, 0x85ebca6b);
-    return ((value ^ (value >>> 16)) >>> 0) / 0xffffffff;
-  };
-  const noise = (x, y, cells) => {
-    const u = x * cells / size;
-    const v = y * cells / size;
-    const x0 = Math.floor(u);
-    const y0 = Math.floor(v);
-    const fx = (u - x0) ** 2 * (3 - 2 * (u - x0));
-    const fy = (v - y0) ** 2 * (3 - 2 * (v - y0));
-    const sample = (dx, dy) => hash((x0 + dx) % cells, (y0 + dy) % cells);
-    const a = sample(0, 0) * (1 - fx) + sample(1, 0) * fx;
-    const b = sample(0, 1) * (1 - fx) + sample(1, 1) * fx;
-    return a * (1 - fy) + b * fy;
-  };
-  for (let y = 0; y < size; y += 1) {
-    for (let x = 0; x < size; x += 1) {
-      const meadow = noise(x, y, 5) - 0.5;
-      const clover = noise(x, y, 17) - 0.5;
-      const grain = hash(x, y) - 0.5;
-      const warmth = meadow * 35 + clover * 15 + grain * 13;
-      const index = (y * size + x) * 4;
-      pixels[index] = Math.round(103 + warmth * 0.9 + clover * 15);
-      pixels[index + 1] = Math.round(127 + warmth);
-      pixels[index + 2] = Math.round(73 + warmth * 0.57 + meadow * 11);
-      pixels[index + 3] = 255;
-    }
-  }
-  const texture = new THREE.DataTexture(pixels, size, size, THREE.RGBAFormat);
-  texture.name = 'swordhaven-meadow-grass-texture';
-  texture.colorSpace = THREE.SRGBColorSpace;
-  texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
-  texture.repeat.set(7, 7);
-  texture.magFilter = THREE.LinearFilter;
-  texture.minFilter = THREE.LinearMipmapLinearFilter;
-  texture.generateMipmaps = true;
-  texture.needsUpdate = true;
-  cachedGrassTexture = texture;
+  const texture = chroniclesPixelTexture('grass');
+  texture.repeat.set(20, 20);
   return texture;
 }
 
+const SURFACE_REPEAT = Object.freeze({ stucco: 2, masonry: 3, roof: 3, timber: 3, cobble: 1 });
 
-const cachedTownSurfaceTextures = new Map();
-
-// One authored-style set of tiny texture patterns for the five storefronts.
-// Reused across buildings/runs: no material-per-brick or new draw calls.
+// One cached pattern per surface, reused across buildings and runs: no
+// material-per-brick or new draw calls.
 export function swordhavenSurfaceTexture(kind) {
-  if (!['stucco', 'masonry', 'roof', 'timber'].includes(kind)) {
-    throw new Error('Unsupported Swordhaven material: ' + kind);
-  }
-  if (cachedTownSurfaceTextures.has(kind)) return cachedTownSurfaceTextures.get(kind);
-  const size = 128;
-  const pixels = new Uint8Array(size * size * 4);
-  const hash = (x, y) => {
-    let n = Math.imul(x + 229, 0x27d4eb2d) ^ Math.imul(y + 31, 0x165667b1);
-    n ^= n >>> 15;
-    return ((n ^ (n >>> 11)) >>> 0) / 0xffffffff;
-  };
-  for (let y = 0; y < size; y += 1) {
-    for (let x = 0; x < size; x += 1) {
-      const grain = hash(x, y) - 0.5;
-      const blur = (hash(Math.floor(x / 7), Math.floor(y / 7)) - 0.5);
-      let tone;
-      if (kind === 'stucco') {
-        // Fine limewash speckles and broad weathered patches.
-        tone = 235 + blur * 20 + grain * 12;
-      } else if (kind === 'masonry') {
-        // Staggered courses; each stone varies independently and mortar is
-        // recessed, rather than painting a grid over every building face.
-        const row = Math.floor(y / 24);
-        const sx = (x + (row % 2) * 17) % 34;
-        const sy = y % 24;
-        const stone = hash(Math.floor((x + (row % 2) * 17) / 34), row);
-        tone = sx < 2 || sy < 2 ? 167 : 221 + stone * 26 + grain * 10;
-      } else if (kind === 'roof') {
-        const row = Math.floor(y / 16);
-        const sx = (x + (row % 2) * 11) % 22;
-        const sy = y % 16;
-        const tile = hash(Math.floor((x + (row % 2) * 11) / 22), row);
-        tone = sx < 1 || sy < 2 ? 173 : 224 + tile * 28 + grain * 5;
-      } else {
-        // Directional fibres for heavy dark-oak beams and doors.
-        tone = 221 + Math.sin(y * 0.46 + blur * 3) * 11 + blur * 17 + grain * 7;
-      }
-      const value = Math.max(0, Math.min(255, Math.round(tone)));
-      const index = (y * size + x) * 4;
-      pixels[index] = pixels[index + 1] = pixels[index + 2] = value;
-      pixels[index + 3] = 255;
-    }
-  }
-  const texture = new THREE.DataTexture(pixels, size, size, THREE.RGBAFormat);
-  texture.name = 'swordhaven-' + kind + '-surface';
-  texture.colorSpace = THREE.SRGBColorSpace;
-  texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
-  texture.repeat.set(kind === 'stucco' ? 2 : 3, kind === 'stucco' ? 2 : 3);
-  texture.magFilter = THREE.LinearFilter;
-  texture.minFilter = THREE.LinearMipmapLinearFilter;
-  texture.generateMipmaps = true;
-  texture.needsUpdate = true;
-  cachedTownSurfaceTextures.set(kind, texture);
+  if (!SURFACE_REPEAT[kind]) throw new Error('Unsupported Swordhaven material: ' + kind);
+  const texture = chroniclesPixelTexture(kind);
+  texture.repeat.set(SURFACE_REPEAT[kind], SURFACE_REPEAT[kind]);
   return texture;
 }
 
