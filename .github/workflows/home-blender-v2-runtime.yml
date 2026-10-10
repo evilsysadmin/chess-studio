@@ -10,6 +10,7 @@ on:
       - 'scripts/blender/export_home_v2_runtime.py'
       - 'scripts/blender/references/home_canon_20260918.webp.b64'
       - '.github/workflows/home-blender-v2-runtime.yml'
+      - 'e2e/home-scene-runtime-gate.spec.js'
   workflow_dispatch:
 
 permissions:
