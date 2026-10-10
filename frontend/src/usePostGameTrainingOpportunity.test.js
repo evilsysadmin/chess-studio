@@ -40,6 +40,28 @@ describe('preparePostGameTrainingOpportunity', () => {
     ]);
   });
 
+  it('ofrece el tercer error factual si los dos primeros no forman puzzles, y lo guarda antes de ofrecerlo', async () => {
+    analyzeMove
+      .mockResolvedValueOnce({ suggested: { from: 'e1', to: 'e9', san: 'Ke9' }, loss: 500 })
+      .mockResolvedValueOnce({ suggested: { from: 'g1', to: 'f3', san: 'Nf3' }, loss: 400 })
+      .mockResolvedValueOnce({ suggested: { from: 'f1', to: 'b5', san: 'Bb5' }, loss: 300 });
+    const game = {
+      id: 'g-third-trainable',
+      history: [
+        { from: 'e2', to: 'e4', san: 'e4', piece: 'p' },
+        { from: 'e7', to: 'e5', san: 'e5', piece: 'p' },
+        { from: 'g1', to: 'f3', san: 'Nf3', piece: 'n' },
+        { from: 'b8', to: 'c6', san: 'Nc6', piece: 'n' },
+        { from: 'f1', to: 'c4', san: 'Bc4', piece: 'b' },
+      ],
+    };
+    const opportunity = await preparePostGameTrainingOpportunity({ game, humanColor: 'w', meta: { gameId: game.id } });
+    expect(opportunity).toMatchObject({ moveNumber: 3, played: 'Bc4', suggested: 'Bb5' });
+    expect(JSON.parse(localStorage.getItem('chess-study-personal-puzzles'))).toEqual([
+      expect.objectContaining({ id: opportunity.puzzleId, sourceGameId: game.id, suggested: 'Bb5' }),
+    ]);
+  });
+
   it('no inventa entrenamiento si el análisis no demuestra un error de 80 cp', async () => {
     analyzeMove.mockResolvedValue({
       suggested: { from: 'a1', to: 'a2', san: 'Ra2', piece: 'r' },
