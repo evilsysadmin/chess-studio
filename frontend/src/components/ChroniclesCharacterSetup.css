@@ -116,7 +116,7 @@
 
 .chronicles-character-setup__identity,
 .chronicles-character-setup__attributes,
-.chronicles-character-setup__skills {
+.chronicles-character-setup__classes {
   border: 1px solid rgba(255, 255, 255, .08);
   background: rgba(0, 0, 0, .18);
   padding: 16px;
@@ -163,30 +163,98 @@
   justify-content: space-between;
   gap: 16px;
   align-items: center;
-  min-height: 42px;
+  min-height: 46px;
   border-top: 1px solid rgba(255, 255, 255, .06);
+}
+
+.chronicles-character-setup__attribute > span {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+}
+
+.chronicles-character-setup__attribute > span small {
+  color: rgba(242, 238, 231, .5);
+  font-size: 12px;
 }
 
 .chronicles-character-setup__attribute > div {
   display: grid;
-  grid-template-columns: 34px 30px 34px;
-  align-items: center;
-  text-align: center;
+  grid-template-columns: 34px 30px;
+  align-items: baseline;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
 }
 
-.chronicles-character-setup__attribute button {
-  width: 30px;
-  height: 30px;
+.chronicles-character-setup__attribute strong {
+  font-size: 20px;
+  color: #f1dfbd;
 }
 
-.chronicles-character-setup__skills {
+.chronicles-character-setup__attribute em {
+  font-style: normal;
+  font-size: 12px;
+  color: rgba(242, 238, 231, .5);
+}
+
+.chronicles-character-setup__attribute em.is-up { color: #a9cf8a; }
+.chronicles-character-setup__attribute em.is-down { color: #e0a08f; }
+
+.chronicles-character-setup__slots img {
+  width: 44px;
+  height: 44px;
+  object-fit: cover;
+  border: 1px solid rgba(211, 177, 120, .35);
+}
+
+.chronicles-character-setup__derived {
   display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 16px 0 0;
+}
+
+.chronicles-character-setup__derived > div {
+  padding: 9px 10px;
+  border: 1px solid rgba(211, 177, 120, .18);
+  background: rgba(211, 177, 120, .05);
+}
+
+.chronicles-character-setup__derived dt {
+  font-size: 11px;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: rgba(211, 177, 120, .78);
+}
+
+.chronicles-character-setup__derived dd {
+  margin: 2px 0 0;
+  font-size: 22px;
+  font-variant-numeric: tabular-nums;
+  color: #f1dfbd;
+}
+
+.chronicles-character-setup__derived-note {
+  display: block;
+  margin-top: 10px;
+  color: rgba(242, 238, 231, .48);
+  line-height: 1.4;
+}
+
+.chronicles-character-setup__classes {
+  grid-column: 1 / -1;
+}
+
+.chronicles-character-setup__class-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 8px;
 }
 
-.chronicles-character-setup__skills > button {
+.chronicles-character-setup__class-grid > button {
   display: grid;
-  gap: 3px;
+  gap: 4px;
+  align-content: start;
   padding: 11px 12px;
   text-align: left;
   color: inherit;
@@ -194,13 +262,26 @@
   background: rgba(255, 255, 255, .02);
 }
 
-.chronicles-character-setup__skills > button.is-selected {
-  border-color: rgba(211, 177, 120, .64);
-  background: rgba(211, 177, 120, .08);
+.chronicles-character-setup__class-grid > button.is-selected {
+  border-color: rgba(211, 177, 120, .7);
+  background: rgba(211, 177, 120, .1);
 }
 
-.chronicles-character-setup__skills small {
-  color: rgba(242, 238, 231, .58);
+.chronicles-character-setup__class-grid > button:disabled {
+  opacity: .42;
+  cursor: not-allowed;
+}
+
+.chronicles-character-setup__class-grid small {
+  color: rgba(242, 238, 231, .6);
+  line-height: 1.35;
+}
+
+.chronicles-character-setup__class-grid em {
+  font-style: normal;
+  font-size: 11px;
+  letter-spacing: .04em;
+  color: rgba(211, 177, 120, .8);
 }
 
 .chronicles-character-setup__errors {
@@ -285,6 +366,11 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .chronicles-character-setup__slots img {
+    width: 34px;
+    height: 34px;
+  }
+
   .chronicles-character-setup__sheet {
     grid-template-columns: 1fr;
   }
@@ -300,41 +386,9 @@
   .chronicles-character-setup__mechanics > div {
     grid-template-columns: 1fr;
   }
-}
 
-.chronicles-character-setup__seed {
-  display: grid;
-  grid-template-columns: minmax(180px, 1fr) auto;
-  gap: 8px 10px;
-  align-items: end;
-  margin: 18px 0 4px;
-}
-
-.chronicles-character-setup__seed label {
-  display: grid;
-  gap: 6px;
-  color: rgba(242, 238, 231, .7);
-}
-
-.chronicles-character-setup__seed input {
-  width: 100%;
-  padding: 10px 11px;
-  border: 1px solid rgba(255, 255, 255, .14);
-  background: rgba(0, 0, 0, .28);
-  color: inherit;
-}
-
-.chronicles-character-setup__seed small {
-  grid-column: 1 / -1;
-  color: rgba(242, 238, 231, .48);
-}
-
-@media (max-width: 560px) {
-  .chronicles-character-setup__seed {
-    grid-template-columns: 1fr;
-  }
-
-  .chronicles-character-setup__seed small {
-    grid-column: auto;
+  .chronicles-character-setup__class-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+

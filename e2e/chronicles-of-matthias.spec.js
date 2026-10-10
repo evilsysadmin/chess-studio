@@ -132,7 +132,9 @@ test('Chronicles creator · recupera el borrador tras F5 sin confirmar progreso'
 
   const name = page.getByRole('textbox', { name: 'Nombre de matthias', exact: true });
   await name.fill('Greta de la Cripta');
-  await page.getByRole('button', { name: 'Subir Vigor', exact: true }).click();
+  await page.getByRole('button', { name: /Tirar dados/ }).click();
+  const rolledMight = await page.locator('.chronicles-character-setup__attribute[data-stat="might"] strong').textContent();
+  const rolledClass = await page.locator('.chronicles-character-setup__class-grid button[aria-pressed="true"]').getAttribute('data-class-id');
   const azizSlot = page.locator('.chronicles-character-setup__slots button').filter({ hasText: 'Aziz' });
   await azizSlot.click();
   await expect(azizSlot).toHaveAttribute('aria-pressed', 'true');
@@ -148,7 +150,10 @@ test('Chronicles creator · recupera el borrador tras F5 sin confirmar progreso'
   const matthiasSlot = page.locator('.chronicles-character-setup__slots button').filter({ hasText: 'Greta de la Cripta' });
   await matthiasSlot.click();
   await expect(page.getByRole('textbox', { name: 'Nombre de matthias', exact: true })).toHaveValue('Greta de la Cripta');
-  await expect(restored.getByText('+1 HP', { exact: true })).toBeVisible();
+  // The rolled dice and class survive the reload with the draft.
+  await expect(restored.locator('.chronicles-character-setup__attribute[data-stat="might"] strong')).toHaveText(rolledMight || '');
+  await expect(restored.locator('.chronicles-character-setup__class-grid button[aria-pressed="true"]'))
+    .toHaveAttribute('data-class-id', rolledClass || '');
   await expect(page.locator('[data-chronicles="true"]')).toHaveCount(0);
 });
 

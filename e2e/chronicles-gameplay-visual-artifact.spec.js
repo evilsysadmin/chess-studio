@@ -123,12 +123,12 @@ async function openChronicles(page, captureLabel, {
   await setup.getByRole('button', { name: 'Crear PJs', exact: true }).click();
   const editor = page.locator('[data-chronicles-character-setup="editor"]');
   await expect(editor).toBeVisible();
-  const seed = editor.getByRole('textbox', { name: 'Seed de build', exact: true });
-  await seed.fill(`VISUAL-${captureLabel}`);
-  await editor.getByRole('button', { name: 'Generar con seed', exact: true }).click();
+  // MM3 roller: real dice, then the class grid only offers what they allow.
+  await editor.getByRole('button', { name: /Tirar dados/ }).click();
+  await expect(editor.locator('.chronicles-character-setup__class-grid button[aria-pressed="true"]')).toHaveCount(1);
   const mechanics = editor.locator('.chronicles-character-setup__mechanics');
   await expect(mechanics).toBeVisible();
-  await expect(mechanics).toContainText(/\+\d/);
+  await expect(mechanics).toContainText(/Vida \d+ · Armadura \d+/);
   await page.screenshot({
     path: `${ARTIFACT_DIR}/chronicles-character-editor-${captureLabel}.png`,
     animations: 'disabled',

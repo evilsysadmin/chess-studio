@@ -2,7 +2,9 @@ import {
   CHRONICLES_DIRECTIONS,
   chroniclesActiveEnemies,
   chroniclesEnemyPosition,
+  chroniclesMM3EnemySwing,
   chroniclesTileAt,
+  chroniclesUsesMM3Combat,
 } from './chroniclesOfMatthias.js';
 import { chroniclesEquipmentBonuses } from './chronicles/chroniclesEquipment.js';
 import {
@@ -272,7 +274,12 @@ function damageParty(state, enemy, enemyIndex, events, target = null) {
   target = target || choosePartyTarget(state, enemy, enemyPosition);
   if (!target) return state;
   const rawDamage = Math.max(1, Number(enemy.retaliation || 1));
-  const damage = Math.max(0, rawDamage - chroniclesEquipmentBonuses(state, target.id).damageReduction);
+  const swing = chroniclesUsesMM3Combat(state)
+    ? chroniclesMM3EnemySwing(state, enemy, target.id, `turn-${enemyIndex}`)
+    : null;
+  const damage = swing
+    ? swing.damage
+    : Math.max(0, rawDamage - chroniclesEquipmentBonuses(state, target.id).damageReduction);
   const previousHp = target.hp;
   const nextHp = Math.max(0, previousHp - damage);
   let next = {
@@ -286,6 +293,7 @@ function damageParty(state, enemy, enemyIndex, events, target = null) {
     damage,
     fromHp: previousHp,
     toHp: nextHp,
+    ...(swing ? { roll: swing.roll, missed: !swing.hit } : {}),
   });
   if (previousHp > 0 && nextHp === 0) next = appendDownJournal(next, target);
   return next;
@@ -307,8 +315,10 @@ function partyDefeated(state) {
 }
 
 function turnSummary(state, events) {
-  const attacks = events.filter((event) => event.type === 'attack');
+  const swings = events.filter((event) => event.type === 'attack');
+  const attacks = swings.filter((event) => !event.missed);
   if (partyDefeated(state)) return 'La compañía cae. La cripta, con notable falta de deportividad, permanece en pie.';
+  if (swings.length && !attacks.length) return `Turno de las criaturas: ${swings.length === 1 ? 'el golpe rebota en la armadura' : `${swings.length} golpes fallan contra la formación`}.`;
   if (attacks.length) return `Turno de las criaturas: ${attacks.length === 1 ? 'un impacto encuentra carne, piedra o dignidad' : `${attacks.length} impactos sacuden la formación`}.`;
   if (events.some((event) => event.type === 'move')) return 'Turno de las criaturas: piedra contra piedra; algo cambia de casilla en la oscuridad.';
   return state.message;
