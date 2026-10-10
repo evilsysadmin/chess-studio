@@ -178,6 +178,63 @@
   font-weight: 800;
 }
 
+.chess-football-entry__manager--selection { width: min(890px, 100%); }
+
+.chess-football-entry__clubs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: .7rem;
+  margin: 1.5rem 0 .4rem;
+}
+
+.chess-football-entry__club {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: .45rem;
+  min-width: 0;
+  min-height: 150px;
+  padding: 1rem .65rem;
+  border: 1px solid rgba(239, 217, 163, .28);
+  border-radius: 13px;
+  color: #f4e9d1;
+  background: rgba(31, 54, 35, .58);
+  font: inherit;
+  cursor: pointer;
+}
+
+.chess-football-entry__club:hover,
+.chess-football-entry__club:focus-visible {
+  border-color: #d8c28b;
+  background: rgba(60, 85, 48, .7);
+}
+
+.chess-football-entry__club:focus-visible { outline: 3px solid #d8c28b; outline-offset: 2px; }
+
+.chess-football-entry__crest {
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 54px;
+  border: 2px solid rgba(222, 200, 132, .85);
+  border-radius: 12px 12px 18px 18px;
+  color: #e9d6aa;
+  background: rgba(5, 15, 8, .75);
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 1.1rem;
+  font-weight: 800;
+}
+
+.chess-football-entry__club strong { font-size: 1.02rem; line-height: 1.3; }
+.chess-football-entry__club span:not(.chess-football-entry__crest) { color: #c3c8b5; font-size: .85rem; }
+.chess-football-entry__club small { color: #edcf81; letter-spacing: .12em; }
+.chess-football-entry__club-summary { max-width: 43ch; margin: 1rem auto; text-align: left; }
+
+@media (max-width: 680px) {
+  .chess-football-entry__clubs { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .chess-football-entry__club { min-height: 138px; }
+}
+
 @media (max-width: 680px) {
   .chess-football-entry__content { justify-content: flex-start; }
   .chess-football-entry__choices { grid-template-columns: 1fr; }
