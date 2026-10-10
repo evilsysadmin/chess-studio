@@ -1,4 +1,4 @@
-import { lazy, Suspense, useState } from 'react';
+import { lazy, Suspense, useLayoutEffect, useRef, useState } from 'react';
 import { requestWarRoomLandscapeFullscreen } from './useWarRoomImmersive.js';
 import { FOOTBALL_MANAGER_CLUBS, getFootballManagerClub } from '../footballManagerClubs.js';
 import { footballStandings, FOOTBALL_MANAGER_TACTICS } from '../footballManagerSeason.js';
@@ -10,6 +10,7 @@ const ChessFootballGodotHost = lazy(() => import('./ChessFootballGodotHost.jsx')
 
 export default function ChessFootballEntry({ onExit }) {
   const [view, setView] = useState('welcome');
+  const scrollSurface = useRef(null);
   const [selectedClubId, setSelectedClubId] = useState(null);
   const [season, setSeason] = useState(null);
   const [tactic, setTactic] = useState('balanced');
@@ -23,6 +24,12 @@ export default function ChessFootballEntry({ onExit }) {
   const defaultLineup = selectedClub ? getDefaultFootballLineup(roster) : [];
   const startingFive = lineupIds || defaultLineup;
   const standings = season ? footballStandings(season) : [];
+
+  // Each new room starts at its entrance. Reusing this mounted full-screen
+  // scroller otherwise carries a deep standings offset back into Welcome.
+  useLayoutEffect(() => {
+    if (view !== 'match' && scrollSurface.current) scrollSurface.current.scrollTop = 0;
+  }, [view]);
 
   const showCareer = ({ journal: nextJournal, season: nextSeason }) => {
     setSelectedClubId(nextJournal.clubId);
@@ -107,7 +114,7 @@ export default function ChessFootballEntry({ onExit }) {
   }
 
   return (
-    <main className="chess-football-entry" data-football-view={view}>
+    <main ref={scrollSurface} className="chess-football-entry" data-football-view={view}>
       <div className="chess-football-entry__content">
         <button type="button" className="chess-football-entry__back" onClick={view === 'welcome' ? onExit : () => setView(view === 'season' ? 'club' : view === 'club' ? 'manager' : 'welcome')}>
           ← {view === 'welcome' ? 'Experimentos geniales' : view === 'season' ? 'Volver a la ficha' : view === 'club' ? 'Volver a los clubes' : 'Volver a Football'}
