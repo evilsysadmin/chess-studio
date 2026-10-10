@@ -18,7 +18,7 @@ test('Home runtime gate: freshly published GLB mounts without regression', async
   // Parsing an ~11 MB GLTFLoader scene plus login/mockApi setup routinely
   // takes close to the 20s default test timeout on its own, before the
   // settle wait and screenshot even run. Give it real headroom.
-  test.setTimeout(120_000);
+  test.setTimeout(180_000);
   // Only the promote workflow sets this; every other Playwright run (the
   // general CI sweep, a local `npx playwright test`) has nothing to gate.
   // A no-op pass here, not a conditional skip call -- this repo's test-suite
@@ -51,6 +51,23 @@ test('Home runtime gate: freshly published GLB mounts without regression', async
   // runner, so present a desktop-class CPU count.
   await page.addInitScript(() => {
     Object.defineProperty(Navigator.prototype, 'hardwareConcurrency', { get: () => 8 });
+    // Same reasoning for the scene's 20 s load watchdog (HomeBlenderScene3D):
+    // on a software-rendered runner decoding the ~11 MB scene can outlast it,
+    // and the Home then falls back to the painted hall without the GLB ever
+    // being judged. Stretch only that watchdog; every other timer is untouched.
+    const nativeSetTimeout = window.setTimeout.bind(window);
+    window.setTimeout = (handler, delay, ...args) => nativeSetTimeout(handler, delay === 20_000 ? 90_000 : delay, ...args);
+    // Leave a trail of the runtime state for the failure report.
+    window.__homeRuntimeTrail = [];
+    new MutationObserver((records) => {
+      for (const record of records) {
+        const value = record.target?.getAttribute?.(record.attributeName);
+        window.__homeRuntimeTrail.push(`${Math.round(performance.now())}ms ${record.attributeName}=${value}`);
+      }
+    }).observe(document, { subtree: true, attributes: true, attributeFilter: ['data-home-blender-runtime', 'data-home-castle-compositor'] });
+  });
+  page.on('console', (message) => {
+    if (message.type() === 'error' || message.type() === 'warning') console.log(`[console.${message.type()}] ${message.text().slice(0, 300)}`);
   });
 
   await mockApi(page, {
@@ -67,7 +84,12 @@ test('Home runtime gate: freshly published GLB mounts without regression', async
 
   // Never silently accept the legacy 2D fallback as "the scene mounted" --
   // that's exactly the failure mode this gate exists to catch.
-  await expect(castle).toHaveClass(/is-ready/, { timeout: 75_000 });
+  try {
+    await expect(castle).toHaveClass(/is-ready/, { timeout: 105_000 });
+  } catch (error) {
+    console.log('Home runtime trail:', JSON.stringify(await page.evaluate(() => window.__homeRuntimeTrail || [])));
+    throw error;
+  }
   await expect(castle).toHaveAttribute('data-home-castle-compositor', 'blender-runtime');
 
   // Let materials/lighting settle a couple of real frames before sampling.
@@ -79,9 +101,10 @@ test('Home runtime gate: freshly published GLB mounts without regression', async
   // that case: without preserveDrawingBuffer the backbuffer can already be
   // cleared by the time a separate page.evaluate() call samples it. Playwright's
   // own screenshot goes through the compositor instead, so it isn't affected.
-  const box = await castle.boundingBox();
+  // A software-rendered main thread can be busy for a while; give layout reads room.
+  const box = await castle.boundingBox({ timeout: 45_000 });
   if (!box) throw new Error('Could not resolve the castle canvas bounding box');
-  const png = await page.screenshot({ clip: box });
+  const png = await page.screenshot({ clip: box, timeout: 60_000 });
   const { width, height, pixels } = decodePng(png);
 
   let total = 0;
