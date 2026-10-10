@@ -32,7 +32,7 @@ export const HOME_MATTHIAS_ACTOR_STATIONS = Object.freeze({
   // Mirror spot at the left end of the table, by the left hearth.
   'hearth-files': Object.freeze({
     posture: 'stand',
-    at: Object.freeze([-4.6, -0.1, 0]),
+    at: Object.freeze([-4.4, -0.1, 0]),
     yawDeg: 28,
   }),
   // Both seated routines use the right chair, the end of the table that has
@@ -237,11 +237,20 @@ export const HOME_MATTHIAS_LIE_POSE = Object.freeze({
   // Roll about the body axis: a side nap facing the hall camera, so the
   // stern sleeping face reads from the canonical Home view.
   rollDeg: 58,
-  // Arms gone slack: hanging along the flank towards the hips, elbows a bit
-  // bent, gloves resting on the cushion/blanket. The overrides replace the
-  // bone rotation outright and a zero rotation points the arm at the head,
-  // so the old chest fold left the hands pointing at the ceiling.
-  arms: Object.freeze({ upperPitchDeg: 150, upperSplayDeg: -10, forePitchDeg: 20 }),
+  // Arms gone slack, one per side of the side-nap. The overrides replace the
+  // bone rotation outright (0 deg points the arm at the head, ~180 hangs it to
+  // the hip). Upper side (L, towards the camera's top): draped along the flank
+  // with the glove resting on the chest; the same pose on both sides left that
+  // arm floating above the body like a rod. Lower side (R): dropped onto the
+  // cushion, elbow slightly bent.
+  arms: Object.freeze({
+    L: Object.freeze({ upperPitchDeg: 172, upperSplayDeg: -25, forePitchDeg: 0 }),
+    R: Object.freeze({ upperPitchDeg: 150, upperSplayDeg: -30, forePitchDeg: 40 }),
+  }),
+  // The Sleep clip drops the chin onto the chest; lying on his side that buried
+  // the mouth in the collar and blanket. The override replaces the clip's head
+  // rotation with the rest pose tilted by this much, face towards the hall.
+  headPitchDeg: -30,
 });
 
 function eulerDeg(x = 0, y = 0, z = 0) {
@@ -285,8 +294,10 @@ function plaidTexture() {
 // -0.23, skirt top 0.655 squashed by the lie posture, hands at ~0.65).
 export const HOME_MATTHIAS_BLANKET = Object.freeze({
   fromY: -0.3,
-  toY: 0.74,
-  centerY: 0.22,
+  // Up to the chest, never the chin: lying on his side the face rolls towards
+  // the cloth, and a blanket reaching 0.74 swallowed his mouth.
+  toY: 0.6,
+  centerY: 0.15,
   // Wide enough to drape over the cushion on both sides: a narrow sheet
   // hugging the body read as a plaid tube.
   width: 2.0,
@@ -305,7 +316,7 @@ export function homeMatthiasBlanketProfile(t = 0) {
   const u = THREE.MathUtils.clamp(Number(t) || 0, 0, 1);
   const feet = 0.2 * Math.exp(-((u - 0.07) ** 2) / 0.006);
   const skirt = 0.3 + 0.08 * u;
-  const waist = 0.47 * THREE.MathUtils.smoothstep(u, 0.72, 1.0);
+  const waist = 0.47 * THREE.MathUtils.smoothstep(u, 0.86, 1.0);
   return Math.max(feet, skirt, waist);
 }
 
@@ -358,7 +369,7 @@ export const HOME_MATTHIAS_SLEEP_FACE = Object.freeze({
   capPrefix: 'classiccap',
   eyes: Object.freeze(['Eye.L', 'Eye.R']),
   closedEyeScale: 0.14,
-  zzz: Object.freeze({ count: 3, period: 4.2, rise: 0.7, drift: 0.22, size: 0.28 }),
+  zzz: Object.freeze({ count: 3, period: 4.2, rise: 0.7, drift: 0.22, size: 0.28, side: 0.55 }),
 });
 
 // One drifting Z: t in [0, 1) along its climb. Fades in, grows, fades out.
@@ -626,6 +637,8 @@ export function createHomeMatthiasActor(gltf, { shadowsEnabled = true, random = 
   let sipCycleStart = 0;
   let sipCycle = 9.6;
   const head = findBone(model, 'head');
+  const headRest = head ? head.quaternion.clone() : null;
+  const headTilt = new THREE.Quaternion();
   const capNodes = [];
   model.traverse((node) => {
     const key = String(node.name || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
@@ -638,6 +651,8 @@ export function createHomeMatthiasActor(gltf, { shadowsEnabled = true, random = 
   const zzz = createHomeMatthiasZzz();
   actor.add(zzz);
   const headWorld = new THREE.Vector3();
+  const zzzSide = new THREE.Vector3();
+  const actorInverse = new THREE.Quaternion();
   let asleep = false;
   let zzzElapsed = 0;
 
@@ -656,12 +671,16 @@ export function createHomeMatthiasActor(gltf, { shadowsEnabled = true, random = 
     head.getWorldPosition(headWorld);
     actor.worldToLocal(headWorld);
     const unit = HOME_MATTHIAS_ACTOR_SCALE;
+    // Screen-right in the hall is world +x; the hotspot ring above the daybed
+    // sits up and to the left of his head, so the Z's climb away from it.
+    zzzSide.set(1, 0, 0).applyQuaternion(actorInverse.copy(actor.quaternion).invert());
     zzz.children.forEach((sprite, index) => {
       const frame = homeMatthiasZzzFrame(zzzElapsed, index);
+      const side = (HOME_MATTHIAS_SLEEP_FACE.zzz.side + frame.drift + frame.rise * 0.5) * unit;
       sprite.position.set(
-        headWorld.x + frame.drift * unit,
-        headWorld.y + (0.42 + frame.rise) * unit,
-        headWorld.z,
+        headWorld.x + zzzSide.x * side,
+        headWorld.y + (0.48 + frame.rise) * unit,
+        headWorld.z + zzzSide.z * side,
       );
       sprite.scale.setScalar(frame.scale * unit);
       sprite.material.opacity = frame.opacity;
@@ -745,11 +764,15 @@ export function createHomeMatthiasActor(gltf, { shadowsEnabled = true, random = 
     const spec = homeMatthiasPostureSpec(routine.posture);
     if (spine) spine.position.y = SPINE_REST_Y - homeMatthiasSpineDrop(routine.posture);
     if (routine.posture === 'lie') {
-      const fold = HOME_MATTHIAS_LIE_POSE.arms;
       for (const arm of arms) {
         if (!arm.upper || !arm.fore) continue;
-        arm.upper.quaternion.setFromEuler(eulerDeg(fold.upperPitchDeg, 0, arm.sign * fold.upperSplayDeg));
+        const fold = HOME_MATTHIAS_LIE_POSE.arms[arm.side];
+        arm.upper.quaternion.setFromEuler(eulerDeg(fold.upperPitchDeg, 0, fold.upperSplayDeg));
         arm.fore.quaternion.setFromEuler(eulerDeg(fold.forePitchDeg, 0, 0));
+      }
+      if (head && headRest) {
+        headTilt.setFromEuler(eulerDeg(HOME_MATTHIAS_LIE_POSE.headPitchDeg, 0, 0));
+        head.quaternion.copy(headRest).multiply(headTilt);
       }
     } else {
       const armPose = HOME_MATTHIAS_ARM_POSES[routine.propProfile || routine.profile];
