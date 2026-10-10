@@ -1,4 +1,5 @@
 import babylonPackage from 'babylonjs/package.json';
+import { createChesscomTruckV21 } from './chesscomTruckArtV21.js';
 
 const BABYLON_VERSION = babylonPackage.version;
 
@@ -340,7 +341,7 @@ function addBuildingDetails(B,scene,p,item,mats,shadowGenerator,warmLights) {
   for(let i=-1;i<=1;i+=1) makeWorldBox(B,scene,'wall-vent',{w:.34,d:.04,h:.16},{x:p.x+i*.55,y:1.65,z:p.z+item.d/2+.025},mats.metal);
 }
 
-function addScenery(B,scene,mats,shadowGenerator,warmLights) {
+function addScenery(B,scene,mats,shadowGenerator,warmLights,coarse=false) {
   for(const item of SCENERY){
     const p=world(item.x,item.z);
     if(item.type==='building'){addBuildingDetails(B,scene,p,item,mats,shadowGenerator,warmLights);continue;}
@@ -360,12 +361,12 @@ function addScenery(B,scene,mats,shadowGenerator,warmLights) {
       for(let i=0;i<3;i+=1){const bag=makeWorldBox(B,scene,'sandbag',{w:.62,d:.48,h:.28},{x:p.x+(i-1)*.45,y:i===1 ? .16 : 0,z:p.z},mats.sandbag);bag.rotation.y=(i-1)*.08;shadowGenerator?.addShadowCaster(bag);}continue;
     }
     if(item.type==='truck'){
-      const truck=makeWorldBox(B,scene,'truck-body',{w:2.35,d:1.18,h:.86},p,mats.truck);truck.rotation.y=.18;shadowGenerator?.addShadowCaster(truck);
-      const cab=makeWorldBox(B,scene,'truck-cab',{w:.92,d:1.12,h:1.10},{x:p.x-.92,y:0,z:p.z},mats.truck);cab.rotation.y=.18;shadowGenerator?.addShadowCaster(cab);
-      const windshield=makeWorldBox(B,scene,'truck-windshield',{w:.62,d:.035,h:.36},{x:p.x-1.24,y:.63,z:p.z-.47},mats.window);windshield.rotation.y=.18;
-      const bumper=makeWorldBox(B,scene,'truck-bumper',{w:.16,d:1.26,h:.14},{x:p.x-1.34,y:.16,z:p.z},mats.metalBright);bumper.rotation.y=.18;
-      for(const oz of [-.36,.36]){const headlight=makeWorldBox(B,scene,'truck-headlight',{w:.055,d:.20,h:.12},{x:p.x-1.40,y:.48,z:p.z+oz},mats.headlight);headlight.rotation.y=.18;}
-      for(const ox of [-.75,.75])for(const oz of [-.48,.48]){const wheel=cylinder(B,scene,'truck-wheel',.22,.38,null,mats.tire,p.x+ox,.23,p.z+oz,16);wheel.rotation.z=Math.PI/2;}
+      // The transport is scenery, never a logical tile, obstacle or
+      // interactive cover object. The six-wheel v21 mesh is rotated as
+      // one vehicle so its cabin, wheels and cargo remain aligned.
+      createChesscomTruckV21(B,scene,{
+        x:p.x,z:p.z,mats,shadowGenerator,tier:coarse?'balanced':'ultra',
+      });
       continue;
     }
     if(item.type==='tower'){
@@ -464,7 +465,7 @@ export async function createChesscomBabylon(host,{onTile,onUnit,onHover,onReady}
 
   const mats={
     ground:material(B,scene,'ground','#151b1e'),tile:material(B,scene,'tile','#242c2f'),road:material(B,scene,'road','#1d2326'),concrete:material(B,scene,'concrete','#34393b'),roof:material(B,scene,'roof','#14191c'),roofTrim:material(B,scene,'roof-trim','#282d2f'),door:material(B,scene,'door','#171d20'),lamp:material(B,scene,'lamp','#8a5726','#ff8c32'),
-    wood:material(B,scene,'wood','#59402b'),woodLight:material(B,scene,'wood-light','#76563a'),barrel:material(B,scene,'barrel','#5c2c24'),barrelTop:material(B,scene,'barrel-top','#41201d'),sandbag:material(B,scene,'sandbag','#72694f'),metal:material(B,scene,'metal','#252c30'),metalBright:material(B,scene,'metal-bright','#3a4246'),metalDark:material(B,scene,'metal-dark','#151a1d'),fenceWire:material(B,scene,'fence-wire','#566166'),truck:material(B,scene,'truck','#2d3934'),tire:material(B,scene,'tire','#0b0d0e'),window:material(B,scene,'window','#16272e','#0b2530'),headlight:material(B,scene,'headlight','#78683c','#c5a75c'),
+    wood:material(B,scene,'wood','#59402b'),woodLight:material(B,scene,'wood-light','#76563a'),barrel:material(B,scene,'barrel','#5c2c24'),barrelTop:material(B,scene,'barrel-top','#41201d'),sandbag:material(B,scene,'sandbag','#72694f'),metal:material(B,scene,'metal','#252c30'),metalBright:material(B,scene,'metal-bright','#3a4246'),metalDark:material(B,scene,'metal-dark','#151a1d'),fenceWire:material(B,scene,'fence-wire','#566166'),truck:material(B,scene,'truck','#2d3934'),truckCanvas:material(B,scene,'truck-canvas','#353f38'),tire:material(B,scene,'tire','#0b0d0e'),window:material(B,scene,'window','#16272e','#0b2530'),headlight:material(B,scene,'headlight','#78683c','#c5a75c'),
     friendlyBody:material(B,scene,'friendly-body','#313737'),friendlyArmour:material(B,scene,'friendly-armour','#171c1d'),friendlyHead:material(B,scene,'friendly-head','#bda985'),enemyBody:material(B,scene,'enemy-body','#312e29'),enemyArmour:material(B,scene,'enemy-armour','#171818'),enemyHead:material(B,scene,'enemy-head','#a18d71'),helmet:material(B,scene,'helmet','#252a28'),helmetBand:material(B,scene,'helmet-band','#151817'),eliteHelmet:material(B,scene,'elite-helmet','#211817'),eliteTrim:material(B,scene,'elite-trim','#6f211c'),pack:material(B,scene,'pack','#202522'),boot:material(B,scene,'boot','#101314'),glove:material(B,scene,'glove','#0c0f10'),pouch:material(B,scene,'pouch','#4a4434'),gun:material(B,scene,'gun','#101315'),
     matthiasCore:material(B,scene,'matthias-core','#e9dcc2'),matthiasCoreShade:material(B,scene,'matthias-core-shade','#c1ad89'),matthiasFace:material(B,scene,'matthias-face','#efe0c5'),matthiasBlack:material(B,scene,'matthias-black','#101315'),matthiasBlack2:material(B,scene,'matthias-black-2','#22272c'),matthiasBrass:material(B,scene,'matthias-brass','#b98535'),matthiasRed:material(B,scene,'matthias-red','#681c1b'),matthiasEye:material(B,scene,'matthias-eye','#080909'),matthiasMouth:material(B,scene,'matthias-mouth','#3b2f28'),
     enemyVisor:material(B,scene,'enemy-visor','#421111','#ff2929'),eliteVisor:material(B,scene,'elite-visor','#6d1515','#ff1717'),
@@ -489,7 +490,7 @@ export async function createChesscomBabylon(host,{onTile,onUnit,onHover,onReady}
   const warmA=new B.PointLight('warm-a',new B.Vector3(-4.8,3.2,-1.2),scene);warmA.diffuse=new B.Color3(1,.50,.18);warmA.intensity=11.8;warmA.range=7.4;warmLights.push(warmA);
   const warmB=new B.PointLight('warm-b',new B.Vector3(5.6,3.0,2.6),scene);warmB.diffuse=new B.Color3(1,.39,.13);warmB.intensity=10.2;warmB.range=6.8;warmLights.push(warmB);
   const coolFill=new B.PointLight('cool-fill',new B.Vector3(1.2,4.4,-4.2),scene);coolFill.diffuse=new B.Color3(.22,.46,.64);coolFill.intensity=3.1;coolFill.range=9.5;
-  addScenery(B,scene,mats,shadowGenerator,warmLights);
+  addScenery(B,scene,mats,shadowGenerator,warmLights,coarse);
 
   const tiles=new Map();for(let y=0;y<MAP_H;y+=1)for(let x=0;x<MAP_W;x+=1)tiles.set(`${x},${y}`,createTile(B,scene,x,y,mats));
   const glow=new B.GlowLayer('ops-glow',scene,{blurKernelSize:coarse ? 16 : 28});glow.intensity=.64;

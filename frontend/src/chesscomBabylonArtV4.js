@@ -54,11 +54,12 @@ export async function createChesscomBabylon(host, options = {}) {
   host.dataset.chesscomCharacterMaterials = 'procedural-pbr-v4';
   host.dataset.chesscomEnvironment = 'environment-art-v4';
   host.dataset.chesscomArchitecture = CHESSCOM_INDUSTRIAL_ARCHITECTURE_V19.identity;
+  host.dataset.chesscomVehicle = 'military-truck-v21';
   host.dataset.chesscomOverlay = 'tactical-overlay-v6';
   host.dataset.chesscomMaterials = 'material-art-v7';
   host.dataset.chesscomWeaponArt = 'weapon-art-v11';
   host.dataset.chesscomCamera = CHESSCOM_CAMERA_V18.identity;
-  onReady?.(`BABYLON.JS ${BABYLON_VERSION} · GPU PREMIUM V2 · BALLISTICS · UNIT STANCE · CHARACTER ART V4 · OVERLAY V6 · MATERIAL V7 · HIDPI V9 · DEPTH V10 · WEAPON ART V11 · CAMERA V18 · INDUSTRIAL ARCHITECTURE V19 · FIELD KIT V20`);
+  onReady?.(`BABYLON.JS ${BABYLON_VERSION} · GPU PREMIUM V2 · BALLISTICS · UNIT STANCE · CHARACTER ART V4 · OVERLAY V6 · MATERIAL V7 · HIDPI V9 · DEPTH V10 · WEAPON ART V11 · CAMERA V18 · INDUSTRIAL ARCHITECTURE V19 · FIELD KIT V20 · MILITARY TRUCK V21`);
 
   return {
     ...base,
@@ -85,6 +86,7 @@ export async function createChesscomBabylon(host, options = {}) {
       delete host.dataset.chesscomCharacterMaterials;
       delete host.dataset.chesscomEnvironment;
       delete host.dataset.chesscomArchitecture;
+      delete host.dataset.chesscomVehicle;
       delete host.dataset.chesscomOverlay;
       delete host.dataset.chesscomMaterials;
       delete host.dataset.chesscomWeaponArt;
