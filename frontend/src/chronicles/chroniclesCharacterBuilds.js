@@ -1,6 +1,21 @@
-export const CHRONICLES_CHARACTER_BUILD_VERSION = 1;
-export const CHRONICLES_CREATOR_ATTRIBUTE_BUDGET = 3;
-export const CHRONICLES_CREATOR_ATTRIBUTE_CAP = 2;
+// Party creation, Might and Magic III style (build v2).
+//
+// Each of the four heroes keeps their portrait and slot, but freely picks one
+// of the ten MM3 classes and carries seven rolled stats (3-18). Old v1
+// point-buy builds are not migrated: Chronicles saves may break (decision
+// 2026-10-10), so anything that is not a valid v2 build becomes the
+// canonical company. Tactics shares this company through the same party.
+import {
+  CHRONICLES_MM3_CLASS_IDS,
+  CHRONICLES_MM3_STATS,
+  chroniclesMM3ClassAllowed,
+  chroniclesMM3Derived,
+  chroniclesMM3RollStats,
+  chroniclesMM3UnmetRequirements,
+  normalizeChroniclesMM3Stats,
+} from './chroniclesMM3Rules.js';
+
+export const CHRONICLES_CHARACTER_BUILD_VERSION = 2;
 export const CHRONICLES_CHARACTER_NAME_MAX = 24;
 
 export const CHRONICLES_CHARACTER_SLOTS = Object.freeze([
@@ -10,85 +25,24 @@ export const CHRONICLES_CHARACTER_SLOTS = Object.freeze([
   'knight',
 ]);
 
-export const CHRONICLES_CREATOR_ATTRIBUTE_KEYS = Object.freeze([
-  'vigor',
-  'power',
-  'precision',
-  'will',
-]);
-
-export const CHRONICLES_CREATOR_RULES = Object.freeze({
+// The canonical company: a knight, a paladin, a cleric and an archer whose
+// fixed stats meet their class minimums.
+export const CHRONICLES_CANONICAL_CHARACTERS = Object.freeze({
   matthias: Object.freeze({
-    classLabel: 'Espadachín',
-    allowedAttributes: Object.freeze(['vigor', 'power', 'will']),
-    startingSkills: Object.freeze([
-      Object.freeze({
-        id: 'matthias-keen-point',
-        label: 'Punta afilada',
-        description: '+1 daño con el ataque básico.',
-        modifiers: Object.freeze({ attackDamageBonus: 1 }),
-      }),
-      Object.freeze({
-        id: 'matthias-field-discipline',
-        label: 'Disciplina de campaña',
-        description: '+1 vida máxima al iniciar la incursión.',
-        modifiers: Object.freeze({ bonusMaxHp: 1 }),
-      }),
-    ]),
+    classId: 'knight',
+    stats: Object.freeze({ might: 15, intellect: 10, personality: 11, endurance: 13, speed: 12, accuracy: 13, luck: 10 }),
   }),
   rook: Object.freeze({
-    classLabel: 'Guardiana',
-    allowedAttributes: Object.freeze(['vigor', 'power', 'will']),
-    startingSkills: Object.freeze([
-      Object.freeze({
-        id: 'rook-bulwark-drill',
-        label: 'Drill de baluarte',
-        description: '+2 vida máxima al iniciar la incursión.',
-        modifiers: Object.freeze({ bonusMaxHp: 2 }),
-      }),
-      Object.freeze({
-        id: 'rook-crushing-form',
-        label: 'Forma demoledora',
-        description: '+1 daño con el ataque básico.',
-        modifiers: Object.freeze({ attackDamageBonus: 1 }),
-      }),
-    ]),
+    classId: 'paladin',
+    stats: Object.freeze({ might: 14, intellect: 9, personality: 13, endurance: 15, speed: 10, accuracy: 11, luck: 11 }),
   }),
   bishop: Object.freeze({
-    classLabel: 'Taumaturgo',
-    allowedAttributes: Object.freeze(['vigor', 'precision', 'will']),
-    startingSkills: Object.freeze([
-      Object.freeze({
-        id: 'bishop-lumen-initiate',
-        label: 'Iniciado del lumen',
-        description: '+1 potencia para la habilidad de clase.',
-        modifiers: Object.freeze({ abilityPotencyBonus: 1 }),
-      }),
-      Object.freeze({
-        id: 'bishop-long-diagonal',
-        label: 'Diagonal larga',
-        description: '+1 alcance con el ataque básico.',
-        modifiers: Object.freeze({ reachBonus: 1 }),
-      }),
-    ]),
+    classId: 'cleric',
+    stats: Object.freeze({ might: 9, intellect: 12, personality: 16, endurance: 11, speed: 11, accuracy: 12, luck: 12 }),
   }),
   knight: Object.freeze({
-    classLabel: 'Hostigador',
-    allowedAttributes: Object.freeze(['vigor', 'precision', 'will']),
-    startingSkills: Object.freeze([
-      Object.freeze({
-        id: 'knight-marksman-drill',
-        label: 'Tiro de campaña',
-        description: '+1 alcance con el ataque básico.',
-        modifiers: Object.freeze({ reachBonus: 1 }),
-      }),
-      Object.freeze({
-        id: 'knight-reserve-quiver',
-        label: 'Carcaj de reserva',
-        description: '+1 carga de habilidad por incursión.',
-        modifiers: Object.freeze({ abilityCharges: 1 }),
-      }),
-    ]),
+    classId: 'archer',
+    stats: Object.freeze({ might: 11, intellect: 13, personality: 10, endurance: 12, speed: 14, accuracy: 15, luck: 11 }),
   }),
 });
 
@@ -111,97 +65,14 @@ function cleanName(value, fallback) {
   return normalized.slice(0, CHRONICLES_CHARACTER_NAME_MAX);
 }
 
-function nonNegativeInteger(value) {
-  const parsed = Number(value);
-  if (!Number.isFinite(parsed)) return 0;
-  return Math.max(0, Math.floor(parsed));
-}
-
-function emptyAttributes() {
-  return Object.fromEntries(CHRONICLES_CREATOR_ATTRIBUTE_KEYS.map((key) => [key, 0]));
-}
-
-function normalizeAttributes(slotId, raw) {
-  const rules = CHRONICLES_CREATOR_RULES[slotId];
-  const source = raw && typeof raw === 'object' ? raw : {};
-  const result = emptyAttributes();
-  let remaining = CHRONICLES_CREATOR_ATTRIBUTE_BUDGET;
-
-  rules.allowedAttributes.forEach((key) => {
-    if (remaining <= 0) return;
-    const requested = Math.min(
-      CHRONICLES_CREATOR_ATTRIBUTE_CAP,
-      nonNegativeInteger(source[key]),
-    );
-    const granted = Math.min(remaining, requested);
-    result[key] = granted;
-    remaining -= granted;
-  });
-
-  return result;
-}
-
-export function chroniclesCreatorSkillsForSlot(slotId) {
-  return CHRONICLES_CREATOR_RULES[slotId]?.startingSkills || Object.freeze([]);
-}
-
-export function chroniclesCreatorSkill(slotId, skillId) {
-  if (!skillId) return null;
-  return chroniclesCreatorSkillsForSlot(slotId).find((skill) => skill.id === skillId) || null;
-}
-
-export function chroniclesCreatorRuntimeModifiers(character) {
-  const slotId = character?.slotId;
-  const attributes = character?.attributes && typeof character.attributes === 'object'
-    ? character.attributes
-    : emptyAttributes();
-  const skill = chroniclesCreatorSkill(slotId, character?.startingSkillId);
-  const skillModifiers = skill?.modifiers || {};
-  const physical = slotId === 'matthias' || slotId === 'rook';
-  const rangedOrMagic = slotId === 'bishop' || slotId === 'knight';
-  const vigor = nonNegativeInteger(attributes.vigor);
-  const power = nonNegativeInteger(attributes.power);
-  const precision = nonNegativeInteger(attributes.precision);
-  const will = nonNegativeInteger(attributes.will);
-
-  return {
-    bonusMaxHp: vigor + nonNegativeInteger(skillModifiers.bonusMaxHp),
-    attackDamageBonus: (physical ? Math.floor(power / 2) : Math.floor(precision / 3))
-      + nonNegativeInteger(skillModifiers.attackDamageBonus),
-    reachBonus: (rangedOrMagic ? Math.floor(precision / 2) : 0)
-      + nonNegativeInteger(skillModifiers.reachBonus),
-    abilityPotencyBonus: (physical ? Math.floor(power / 2) : Math.floor(precision / 3))
-      + Math.floor(will / 2)
-      + nonNegativeInteger(skillModifiers.abilityPotencyBonus),
-    abilityChargesBonus: nonNegativeInteger(skillModifiers.abilityCharges),
-  };
-}
-
-export function chroniclesCreatorMechanicalSummary(character) {
-  const modifiers = chroniclesCreatorRuntimeModifiers(character);
-  const rows = [
-    ['bonusMaxHp', modifiers.bonusMaxHp, (value) => `+${value} HP`],
-    ['attackDamageBonus', modifiers.attackDamageBonus, (value) => `+${value} daño básico`],
-    ['reachBonus', modifiers.reachBonus, (value) => `+${value} alcance`],
-    ['abilityPotencyBonus', modifiers.abilityPotencyBonus, (value) => `+${value} potencia de habilidad`],
-    ['abilityChargesBonus', modifiers.abilityChargesBonus, (value) => `+${value} ${value === 1 ? 'carga' : 'cargas'} de habilidad`],
-  ]
-    .filter(([, value]) => Number(value) > 0)
-    .map(([key, value, label]) => ({ key, value: Number(value), label: label(Number(value)) }));
-
-  return rows.length
-    ? rows
-    : [{ key: 'base', value: 0, label: 'Sin bonificaciones iniciales' }];
-}
-
 function canonicalCharacter(slotId, partyTemplates) {
   const template = templateById(partyTemplates, slotId);
+  const canonical = CHRONICLES_CANONICAL_CHARACTERS[slotId];
   return {
     slotId,
-    classId: slotId,
+    classId: canonical.classId,
     name: template?.name || fallbackName(slotId),
-    attributes: emptyAttributes(),
-    startingSkillId: null,
+    stats: { ...canonical.stats },
   };
 }
 
@@ -211,6 +82,25 @@ export function createCanonicalChroniclesCharacterBuild(partyTemplates) {
     mode: 'canonical',
     characters: CHRONICLES_CHARACTER_SLOTS.map((slotId) => canonicalCharacter(slotId, partyTemplates)),
   };
+}
+
+// The first class (in MM3 order) the rolled stats qualify for, so a reroll
+// never strands a hero in a class they no longer meet.
+export function chroniclesFirstAllowedClass(stats, preferred = null) {
+  if (preferred && chroniclesMM3ClassAllowed(preferred, stats)) return preferred;
+  return CHRONICLES_MM3_CLASS_IDS.find((classId) => chroniclesMM3ClassAllowed(classId, stats)) || null;
+}
+
+// Rolls until the stats qualify for at least one class (as the MM3 roller
+// effectively forces): the creator never offers a dead-end hero.
+export function chroniclesRollCharacterStats(random = Math.random, preferredClassId = null) {
+  for (let attempt = 0; attempt < 200; attempt += 1) {
+    const stats = chroniclesMM3RollStats(random);
+    const classId = chroniclesFirstAllowedClass(stats, preferredClassId);
+    if (classId) return { stats, classId };
+  }
+  const fallback = CHRONICLES_CANONICAL_CHARACTERS.matthias;
+  return { stats: { ...fallback.stats }, classId: fallback.classId };
 }
 
 function seedToUint32(seed) {
@@ -223,7 +113,7 @@ function seedToUint32(seed) {
   return hash >>> 0;
 }
 
-function seededRandom(seed) {
+export function chroniclesSeededRandom(seed) {
   let state = seedToUint32(seed) || 0x9e3779b9;
   return () => {
     state += 0x6d2b79f5;
@@ -234,44 +124,32 @@ function seededRandom(seed) {
   };
 }
 
+// Reproducible custom company (tests, e2e fixtures): same seed, same dice.
 export function createSeededChroniclesCharacterBuild(seed, partyTemplates) {
-  const random = seededRandom(seed);
+  const random = chroniclesSeededRandom(seed);
   const canonical = createCanonicalChroniclesCharacterBuild(partyTemplates);
   return {
     ...canonical,
     mode: 'custom',
-    seed: String(seed ?? '').trim().slice(0, 48),
-    characters: canonical.characters.map((character) => {
-      const rules = CHRONICLES_CREATOR_RULES[character.slotId];
-      const attributes = emptyAttributes();
-      let remaining = CHRONICLES_CREATOR_ATTRIBUTE_BUDGET;
-      while (remaining > 0) {
-        const candidates = rules.allowedAttributes.filter((key) => attributes[key] < CHRONICLES_CREATOR_ATTRIBUTE_CAP);
-        if (!candidates.length) break;
-        const key = candidates[Math.floor(random() * candidates.length)];
-        attributes[key] += 1;
-        remaining -= 1;
-      }
-      const skills = rules.startingSkills;
-      const startingSkillId = skills.length
-        ? skills[Math.floor(random() * skills.length)]?.id || null
-        : null;
-      return { ...character, attributes, startingSkillId };
-    }),
+    characters: canonical.characters.map((character) => ({
+      ...character,
+      ...chroniclesRollCharacterStats(random),
+    })),
   };
 }
 
 function normalizeCharacter(slotId, raw, partyTemplates) {
   const canonical = canonicalCharacter(slotId, partyTemplates);
   const source = raw && typeof raw === 'object' ? raw : {};
-  const skill = chroniclesCreatorSkill(slotId, source.startingSkillId);
-
+  const stats = normalizeChroniclesMM3Stats(source.stats);
+  if (!stats) return { ...canonical, name: cleanName(source.name, canonical.name) };
+  const classId = chroniclesFirstAllowedClass(stats, CHRONICLES_MM3_CLASS_IDS.includes(source.classId) ? source.classId : null);
+  if (!classId) return { ...canonical, name: cleanName(source.name, canonical.name) };
   return {
     slotId,
-    classId: slotId,
+    classId,
     name: cleanName(source.name, canonical.name),
-    attributes: normalizeAttributes(slotId, source.attributes),
-    startingSkillId: skill?.id || null,
+    stats,
   };
 }
 
@@ -279,9 +157,8 @@ export function normalizeChroniclesCharacterBuild(raw, partyTemplates) {
   const canonical = createCanonicalChroniclesCharacterBuild(partyTemplates);
   const source = raw && typeof raw === 'object' ? raw : null;
   if (!source || source.mode !== 'custom') return canonical;
-
-  const version = nonNegativeInteger(source.version);
-  if (version > CHRONICLES_CHARACTER_BUILD_VERSION) return canonical;
+  // v1 point-buy builds are intentionally not carried over.
+  if (Number(source.version) !== CHRONICLES_CHARACTER_BUILD_VERSION) return canonical;
 
   const rawCharacters = Array.isArray(source.characters) ? source.characters : [];
   const bySlot = new Map(
@@ -293,18 +170,10 @@ export function normalizeChroniclesCharacterBuild(raw, partyTemplates) {
   return {
     version: CHRONICLES_CHARACTER_BUILD_VERSION,
     mode: 'custom',
-    seed: String(source.seed ?? '').trim().slice(0, 48),
     characters: CHRONICLES_CHARACTER_SLOTS.map((slotId) => (
       normalizeCharacter(slotId, bySlot.get(slotId), partyTemplates)
     )),
   };
-}
-
-function rawAttributesTotal(source) {
-  return CHRONICLES_CREATOR_ATTRIBUTE_KEYS.reduce(
-    (total, key) => total + nonNegativeInteger(source?.[key]),
-    0,
-  );
 }
 
 export function validateChroniclesCharacterBuild(raw) {
@@ -313,8 +182,8 @@ export function validateChroniclesCharacterBuild(raw) {
   if (raw.mode !== 'custom') return { valid: false, errors: ['Modo de build desconocido'] };
 
   const errors = [];
-  if (Number(raw.version) > CHRONICLES_CHARACTER_BUILD_VERSION) {
-    errors.push('Versión de build futura no compatible');
+  if (Number(raw.version) !== CHRONICLES_CHARACTER_BUILD_VERSION) {
+    errors.push('Versión de build no compatible');
   }
 
   const characters = Array.isArray(raw.characters) ? raw.characters : [];
@@ -327,10 +196,6 @@ export function validateChroniclesCharacterBuild(raw) {
       errors.push(`Falta el personaje de ${slotId}`);
       return;
     }
-    if (character.classId != null && character.classId !== slotId) {
-      errors.push(`Clase inválida para ${slotId}`);
-    }
-
     const name = String(character.name || '').trim().replace(/\s+/g, ' ');
     if (!name) {
       errors.push(`Nombre vacío para ${slotId}`);
@@ -342,59 +207,70 @@ export function validateChroniclesCharacterBuild(raw) {
       names.add(key);
     }
 
-    const rules = CHRONICLES_CREATOR_RULES[slotId];
-    const attributes = character.attributes && typeof character.attributes === 'object'
-      ? character.attributes
-      : {};
-    if (rawAttributesTotal(attributes) > CHRONICLES_CREATOR_ATTRIBUTE_BUDGET) {
-      errors.push(`Presupuesto de atributos excedido para ${slotId}`);
+    const stats = normalizeChroniclesMM3Stats(character.stats);
+    const exact = stats && CHRONICLES_MM3_STATS.every((key) => stats[key] === character.stats?.[key]);
+    if (!exact) {
+      errors.push(`Estadísticas inválidas para ${name || slotId}`);
+      return;
     }
-
-    Object.entries(attributes).forEach(([key, value]) => {
-      const numeric = Number(value);
-      if (!CHRONICLES_CREATOR_ATTRIBUTE_KEYS.includes(key) && nonNegativeInteger(value) > 0) {
-        errors.push(`Atributo desconocido para ${slotId}: ${key}`);
-        return;
-      }
-      if (!rules.allowedAttributes.includes(key) && nonNegativeInteger(value) > 0) {
-        errors.push(`Atributo no permitido para ${slotId}: ${key}`);
-      }
-      if (!Number.isInteger(numeric) || numeric < 0 || numeric > CHRONICLES_CREATOR_ATTRIBUTE_CAP) {
-        errors.push(`Valor de atributo inválido para ${slotId}: ${key}`);
-      }
-    });
-
-    if (character.startingSkillId && !chroniclesCreatorSkill(slotId, character.startingSkillId)) {
-      errors.push(`Skill inicial desconocida para ${slotId}`);
+    if (!CHRONICLES_MM3_CLASS_IDS.includes(character.classId)) {
+      errors.push(`Clase desconocida para ${name || slotId}`);
+      return;
+    }
+    const unmet = chroniclesMM3UnmetRequirements(character.classId, stats);
+    if (unmet.length) {
+      errors.push(`${name || slotId} no cumple los requisitos de su clase`);
     }
   });
 
   return { valid: errors.length === 0, errors };
 }
 
-export function resolveChroniclesCharacterParty(partyTemplates, rawBuild) {
+// Legacy-shaped creator modifiers for systems that still read them (Tactics
+// profiles, progression reconcile). The MM3 sheet does not feed Tactics.
+export function chroniclesCreatorRuntimeModifiers() {
+  return {
+    bonusMaxHp: 0,
+    attackDamageBonus: 0,
+    reachBonus: 0,
+    abilityPotencyBonus: 0,
+    abilityChargesBonus: 0,
+  };
+}
+
+// With `rules: 'mm3'` (first-person Chronicles) class and Endurance own HP,
+// Might shifts damage, and the hero carries the MM3 sheet that equipment,
+// initiative, to-hit and saves read. Without it (Tactics) the party keeps
+// its authored chess-piece profiles and only the names change.
+export function resolveChroniclesCharacterParty(partyTemplates, rawBuild, { rules = null } = {}) {
   const normalized = normalizeChroniclesCharacterBuild(rawBuild, partyTemplates);
   const characters = new Map(normalized.characters.map((character) => [character.slotId, character]));
+  const mm3 = rules === 'mm3';
 
   return (Array.isArray(partyTemplates) ? partyTemplates : []).map((template) => {
     const character = characters.get(template.id) || canonicalCharacter(template.id, partyTemplates);
-    const skill = chroniclesCreatorSkill(template.id, character.startingSkillId);
-    const creatorModifiers = chroniclesCreatorRuntimeModifiers(character);
+    const derived = chroniclesMM3Derived(character.classId, character.stats);
     return {
       ...template,
       name: character.name,
-      maxHp: Math.max(1, Number(template.maxHp || 1) + creatorModifiers.bonusMaxHp),
-      damage: Math.max(1, Number(template.damage || 1) + creatorModifiers.attackDamageBonus),
-      reach: Math.max(1, Number(template.reach || 1) + creatorModifiers.reachBonus),
+      maxHp: mm3 ? derived.maxHp : Math.max(1, Number(template.maxHp || 1)),
+      damage: Math.max(1, Number(template.damage || 1) + (mm3 ? derived.damageBonus : 0)),
+      reach: Math.max(1, Number(template.reach || 1)),
+      ...(mm3 ? {
+        mm3: {
+          classId: derived.classId,
+          classLabel: derived.classLabel,
+          stats: { ...character.stats },
+          bonuses: { ...derived.bonuses },
+        },
+      } : {}),
       characterBuild: {
         version: normalized.version,
         mode: normalized.mode,
         slotId: template.id,
         classId: character.classId,
-        attributes: { ...character.attributes },
-        startingSkillId: character.startingSkillId,
-        startingSkillModifiers: { ...(skill?.modifiers || {}) },
-        creatorModifiers,
+        stats: { ...character.stats },
+        creatorModifiers: chroniclesCreatorRuntimeModifiers(),
       },
     };
   });

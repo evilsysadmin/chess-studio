@@ -19,8 +19,15 @@ import {
   CHRONICLES_EQUIPMENT_SLOTS,
   chroniclesEquippedItem,
   chroniclesEquipmentBonuses,
+  chroniclesMemberCanEquip,
 } from '../chronicles/chroniclesEquipment.js';
-import { chroniclesPartyAttackStats } from '../chroniclesOfMatthias.js';
+import { chroniclesPartyArmorClass, chroniclesPartyAttackStats } from '../chroniclesOfMatthias.js';
+import { chroniclesPartyInitiativeAgility } from '../chronicles/chroniclesInitiative.js';
+import {
+  CHRONICLES_MM3_STATS,
+  CHRONICLES_MM3_STAT_EFFECTS,
+  CHRONICLES_MM3_STAT_LABELS,
+} from '../chronicles/chroniclesMM3Rules.js';
 import { chroniclesTacticsEffectiveProfile } from '../chroniclesOfMatthiasTactics.js';
 import { chroniclesPartyPortraitUrl } from '../chronicles/chroniclesPartyPortraitAssets.js';
 
@@ -30,6 +37,11 @@ const RELIC_LABELS = Object.freeze({
     description: 'Reliquia recuperada por Aziz. Su luz sigue ligada al alfil.',
   }),
 });
+
+function signed(value) {
+  const numeric = Number(value) || 0;
+  return numeric > 0 ? `+${numeric}` : String(numeric);
+}
 
 function clamp01(value) {
   return Math.max(0, Math.min(1, Number(value) || 0));
@@ -92,7 +104,9 @@ export default function ChroniclesCharacterSheet({
   const damage = tacticsMode
     ? Number(profile.damage || 1) + Number(modifiers.attackDamageBonus || 0)
     : firstPersonStats.damage;
-  const effectiveAgility = Number(member.agility || 0) + Number(modifiers.initiativeBonus || 0);
+  const effectiveAgility = chroniclesPartyInitiativeAgility(state, member);
+  const mm3 = !tacticsMode && member.mm3 ? member.mm3 : null;
+  const className = mm3?.classLabel || profile.className;
   const relic = relicDetails(state, member.id);
   const inventory = chroniclesInventoryEntries(state).filter((item) => item.id !== CHRONICLES_GOLD_ITEM_ID);
   const gold = chroniclesGoldBalance(state);
@@ -129,7 +143,7 @@ export default function ChroniclesCharacterSheet({
           <div className="chronicles-character-sheet__identity">
             <span>EXPEDIENTE DE CAMPAÑA</span>
             <h3 id="chronicles-character-sheet-title">{member.name}</h3>
-            <p>{profile.className} · {profile.weaponName}</p>
+            <p>{className} · Nivel {progress.level}{mm3 ? '' : ` · ${profile.weaponName}`}</p>
           </div>
           <button type="button" autoFocus onClick={onClose} aria-label="Cerrar ficha">×</button>
         </header>
@@ -149,20 +163,39 @@ export default function ChroniclesCharacterSheet({
           <div><span>HP</span><b>{member.hp}/{member.maxHp}</b></div>
           {tacticsMode
             ? <div><span>RECURSO</span><b>{ability.charges}/{ability.max}</b></div>
-            : <div><span>AGILIDAD</span><b>{effectiveAgility}</b></div>}
+            : <div><span>INICIATIVA</span><b>{effectiveAgility}</b></div>}
           <div><span>DAÑO</span><b>{damage}</b></div>
-          {!tacticsMode && <div><span>REDUCCIÓN</span><b>{gearBonus.damageReduction}</b></div>}
+          {mm3 && <div><span>ACIERTO</span><b>{signed(firstPersonStats.toHit)}</b></div>}
+          {mm3 && <div><span>ARMADURA</span><b>{chroniclesPartyArmorClass(state, member.id)}</b></div>}
+          {!tacticsMode && !mm3 && <div><span>REDUCCIÓN</span><b>{gearBonus.damageReduction}</b></div>}
           <div><span>ALCANCE</span><b>{reach}</b></div>
         </div>
 
         <div className="chronicles-character-sheet__combat">
-          <div><span>Clase</span><b>{profile.className}</b></div>
+          <div><span>Clase</span><b>{className}</b></div>
           <div><span>Arma</span><b>{profile.weaponName}</b></div>
           <div><span>Ataque</span><b>{member.attackName || profile.attackName}</b></div>
           <div><span>Geometría</span><b>{profile.kindLabel}</b></div>
           <div><span>{tacticsMode ? 'Habilidad' : 'Habilidad táctica'}</span><b>{profile.abilityName}</b></div>
           <div><span>Estado</span><b>{member.hp > 0 ? 'Operativo' : 'Fuera de combate'}</b></div>
         </div>
+
+        {mm3 && (
+          <div className="chronicles-character-sheet__section">
+            <div className="chronicles-character-sheet__section-head">
+              <div><span>ESTADÍSTICAS</span><small>Tiradas de creación · bonificador MM3 entre paréntesis</small></div>
+            </div>
+            <div className="chronicles-character-sheet__mm3-stats">
+              {CHRONICLES_MM3_STATS.map((key) => (
+                <div key={key} data-stat={key} title={CHRONICLES_MM3_STAT_EFFECTS[key]}>
+                  <span>{CHRONICLES_MM3_STAT_LABELS[key]}</span>
+                  <b>{mm3.stats[key]} <em>({signed(mm3.bonuses[key])})</em></b>
+                  <small>{CHRONICLES_MM3_STAT_EFFECTS[key]}</small>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className="chronicles-character-sheet__section">
           <div className="chronicles-character-sheet__section-head">
@@ -190,12 +223,16 @@ export default function ChroniclesCharacterSheet({
                   </div>
                 );
               })}
-              <small>Daño +{gearBonus.attackDamageBonus} · mitigación {gearBonus.damageReduction}. Sólo cuenta el equipo puesto.</small>
+              <small>
+                {mm3
+                  ? `Daño +${gearBonus.attackDamageBonus} · acierto ${signed(gearBonus.toHitBonus)} · armadura +${gearBonus.armorClassBonus}. Sólo cuenta el equipo puesto.`
+                  : `Daño +${gearBonus.attackDamageBonus} · mitigación ${gearBonus.damageReduction}. Sólo cuenta el equipo puesto.`}
+              </small>
               {Object.values(CHRONICLES_EQUIPMENT)
                 .filter((item) => inventory.some((owned) => owned.id === item.id && owned.quantity > 0))
                 .map((item) => (
                   <button type="button" key={item.id}
-                    disabled={!canChangeEquipment || !item.allowedMembers.includes(member.id)}
+                    disabled={!canChangeEquipment || !chroniclesMemberCanEquip(member, item)}
                     title={item.description}
                     onClick={() => onEquipmentAction?.({ type: 'equip-item', itemId: item.id })}>
                     Equipar {item.name} · {item.description}

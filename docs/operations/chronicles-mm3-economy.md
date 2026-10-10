@@ -1,6 +1,15 @@
 # Chronicles — MM3 RPG statistics and economy migration
 
-This contract supports [Chronicles open-world RPG epic](https://github.com/evilsysadmin/chess-studio/issues/5324). It is deliberately incremental. **The seven new statistics and resistances are not yet combat-active.** No character sheet may claim a new attribute/resistance affects mechanics until that modifier is wired to the authoritative combat/spell implementation.
+This contract supports [Chronicles open-world RPG epic](https://github.com/evilsysadmin/chess-studio/issues/5324). It is deliberately incremental. No character sheet may claim a new attribute/resistance affects mechanics until that modifier is wired to the authoritative combat/spell implementation.
+
+## Current state: MM3 company and first-person combat (build v2)
+
+- **Creation:** each of the four heroes (portraits and slots unchanged) rolls seven stats with 3d6 (3-18), rerolls freely, and picks one of the ten MM3 classes whose minimums the dice meet (Caballero, Paladín, Arquero, Clérigo, Hechicero, Ladrón, Ninja, Bárbaro, Druida, Explorador). The canonical company is Caballero, Paladín, Clérigo and Arquero. Build v1 point-buy saves fall back to canonical. Races are not modelled yet. Rules live in `frontend/src/chronicles/chroniclesMM3Rules.js`; the company in `chroniclesCharacterBuilds.js`.
+- **Bonus table:** MM3 bands (…9-10 −1, 11-12 0, 13-14 +1, 15-16 +2, 17-18 +3…).
+- **Wired in first-person (`createChroniclesState(..., { rules: 'mm3' })`, `state.combatRules === 'mm3'`):** HP = class HP/level + Endurance bonus; damage = weapon profile + Might bonus; to-hit = level + Accuracy bonus + weapon/material to-hit; AC = Speed bonus + armor type + material; initiative adds the Speed bonus; Luck saves (d20 + bonus ≥ 14) halve trap damage. Attacks roll d20 + to-hit vs 10 + AC (natural 20 hits, natural 1 misses) on both sides; armor no longer subtracts damage under these rules.
+- **Deterministic dice:** every roll hashes `runSeed` (the run id), map, turn and actors, so F5, replays and CAS retries never reroll.
+- **Classes gate gear:** weapon families and armor tiers per class decide what a hero can equip (e.g. a Clérigo refuses swords; a Hechicero only wears padded armor).
+- **Not wired yet (shown as such):** Intellect/Personality only gate classes until spells and spell points land. Tactics keeps its chess-piece profiles and legacy creator modifiers at zero; it does not read the MM3 sheet.
 
 ## MM3 canonical stats
 

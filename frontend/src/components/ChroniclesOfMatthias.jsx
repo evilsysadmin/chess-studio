@@ -613,13 +613,17 @@ export default function ChroniclesOfMatthias({ onExit }) {
       .then((world) => {
         if (!active) return;
         const progressed = applyChroniclesProgressionToTacticsState(
-          createChroniclesState(null, activeProgression.characterBuild),
+          createChroniclesState(null, activeProgression.characterBuild, { rules: 'mm3' }),
           activeProgression,
         );
         const restored = chroniclesApplyRunCheckpoint(progressed, world);
-        const next = chroniclesInitializeLostKingIntro(restored, {
-          fresh: !remoteSelection && world.worldVersion === 0,
-        });
+        // The run id seeds every MM3 die so F5 never rerolls a blow.
+        const next = {
+          ...chroniclesInitializeLostKingIntro(restored, {
+            fresh: !remoteSelection && world.worldVersion === 0,
+          }),
+          runSeed: operationId,
+        };
         authoritativeRunRef.current = world;
         chroniclesMarkSavedRunRemote(FIRST_PERSON_RUN_SCOPE, operationId);
         // Compare against the server snapshot so the new commission is written
