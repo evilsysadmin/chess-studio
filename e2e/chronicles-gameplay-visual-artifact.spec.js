@@ -195,6 +195,44 @@ async function captureElement(page, locator, path) {
 }
 
 
+test('Chronicles · First Book road encounter · actual 3D desktop', async ({ browser }) => {
+  test.setTimeout(300_000);
+  await mkdir(ARTIFACT_DIR, { recursive: true });
+  const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+  const page = await context.newPage();
+  try {
+    await openChronicles(page, 'first-book-road-desktop', {
+      newTown: true,
+      newCampaign: true,
+      chroniclesCurrentMapId: 'swordhaven-first-book',
+    });
+    const game = page.locator('[data-chronicles="true"]');
+    const canvas = game.locator('[data-chronicles-renderer="three"] canvas');
+    await expect(canvas).toBeVisible({ timeout: 30_000 });
+    // Real first-person movement from the authored town start to its north gate.
+    for (let step = 0; step < 6; step += 1) await page.keyboard.press('ArrowUp');
+    await expect(game).toHaveAttribute('data-chronicles-map-id', 'banner-road-first-book', { timeout: 30_000 });
+    await expect(game).toHaveAttribute('data-chronicles-phase', 'explore');
+    await expect(game.locator('.chronicles-renderer-error')).toHaveCount(0);
+    // Arrival faces north toward the boundary wall. Turn toward the
+    // interior road and its optional deserter at (11, 5), not the wall.
+    // The actual Three scene must remain visible after these input actions.
+    await page.keyboard.press('ArrowRight');
+    await page.keyboard.press('ArrowRight');
+    await expect(game.locator('.chronicles-renderer-error')).toHaveCount(0);
+    await page.waitForTimeout(450);
+    await page.screenshot({
+      path: `${ARTIFACT_DIR}/chronicles-first-book-road-encounter-desktop-1440x900.png`,
+      animations: 'disabled', timeout: 60_000,
+    });
+    const health = await captureChroniclesHealth(page);
+    expect(health.horizontalOverflow).toBe(false);
+    expect(health.gameCanvasCount).toBe(1);
+  } finally {
+    await context.close();
+  }
+});
+
 for (const capture of [
   { label: 'desktop-1440x900', width: 1440, height: 900, touch: false },
   { label: 'android-390x844', width: 390, height: 844, touch: true },
