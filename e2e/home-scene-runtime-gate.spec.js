@@ -14,11 +14,22 @@ import { decodePng } from './png-pixels.js';
 // and "promoted" -- if it fails, the workflow must not commit the manifest.
 const GLB_PATH = process.env.HOME_RUNTIME_GATE_GLB;
 
+// Hosted runners have no GPU and current Chromium no longer falls back to
+// SwiftShader WebGL on its own: without these flags every WebGL context fails
+// ("Cannot read properties of null (reading 'precision')") and the scene sits
+// in "loading" forever. Same launch contract as the other Home/War Room
+// WebGL specs.
+test.use({
+  launchOptions: {
+    args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'],
+  },
+});
+
 test('Home runtime gate: freshly published GLB mounts without regression', async ({ page }) => {
   // Parsing an ~11 MB GLTFLoader scene plus login/mockApi setup routinely
   // takes close to the 20s default test timeout on its own, before the
   // settle wait and screenshot even run. Give it real headroom.
-  test.setTimeout(180_000);
+  test.setTimeout(330_000);
   // Only the promote workflow sets this; every other Playwright run (the
   // general CI sweep, a local `npx playwright test`) has nothing to gate.
   // A no-op pass here, not a conditional skip call -- this repo's test-suite
@@ -104,7 +115,7 @@ test('Home runtime gate: freshly published GLB mounts without regression', async
   // A software-rendered main thread can be busy for a while; give layout reads room.
   const box = await castle.boundingBox({ timeout: 45_000 });
   if (!box) throw new Error('Could not resolve the castle canvas bounding box');
-  const png = await page.screenshot({ clip: box, timeout: 60_000 });
+  const png = await page.screenshot({ clip: box, timeout: 150_000 });
   const { width, height, pixels } = decodePng(png);
 
   let total = 0;
