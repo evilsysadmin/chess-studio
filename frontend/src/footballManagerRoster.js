@@ -71,3 +71,36 @@ export function evaluateFootballLineup(roster, lineupIds) {
     lineupIds: freeze([...lineupIds]),
   });
 }
+
+
+// Fatigue derives exclusively from a simulated match with a real manager
+// lineup. No random injuries, invented minutes played, or second clock.
+export function getFootballFatigue(fatigue, playerId) {
+  const value = fatigue?.[playerId] ?? 0;
+  if (!Number.isInteger(value) || value < 0 || value > 100) {
+    throw new Error('Invalid football fatigue');
+  }
+  return value;
+}
+
+export function evaluateFootballFatigue(roster, lineupIds, fatigue = {}) {
+  evaluateFootballLineup(roster, lineupIds);
+  const average = lineupIds.reduce((sum, id) => sum + getFootballFatigue(fatigue, id), 0) / 5;
+  return freeze({
+    average,
+    // At 100% exhaustion the chance penalty stays bounded. It applies to
+    // the manager's fixture, not to any other result or club.
+    attackPenalty: Math.min(.065, average * .00065),
+    defensePenalty: Math.min(.05, average * .0005),
+  });
+}
+
+export function advanceFootballFatigue(roster, lineupIds, fatigue = {}) {
+  evaluateFootballLineup(roster, lineupIds);
+  const starters = new Set(lineupIds);
+  return freeze(Object.fromEntries(roster.map(({ id }) => [
+    id, starters.has(id)
+      ? Math.min(100, getFootballFatigue(fatigue, id) + 17)
+      : Math.max(0, getFootballFatigue(fatigue, id) - 22),
+  ])));
+}

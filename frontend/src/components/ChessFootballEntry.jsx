@@ -2,7 +2,7 @@ import { lazy, Suspense, useState } from 'react';
 import { requestWarRoomLandscapeFullscreen } from './useWarRoomImmersive.js';
 import { FOOTBALL_MANAGER_CLUBS, getFootballManagerClub } from '../footballManagerClubs.js';
 import { advanceFootballSeason, createFootballSeason, footballStandings, FOOTBALL_MANAGER_TACTICS } from '../footballManagerSeason.js';
-import { getFootballClubRoster, getDefaultFootballLineup, FOOTBALL_FIVE_POSITIONS } from '../footballManagerRoster.js';
+import { getFootballClubRoster, getDefaultFootballLineup, FOOTBALL_FIVE_POSITIONS, getFootballFatigue } from '../footballManagerRoster.js';
 import './ChessFootballEntry.css';
 
 const ChessFootballGodotHost = lazy(() => import('./ChessFootballGodotHost.jsx'));
@@ -131,7 +131,7 @@ export default function ChessFootballEntry({ onExit }) {
               <section className="chess-football-entry__lineup" aria-label="Alineación del míster">
                 <details>
                   <summary>Preparar quinteto titular</summary>
-                  <p>Fútbol 5: portero, defensa, dos medios y delantero. Los suplentes ofrecen otro equilibrio entre ataque y defensa.</p>
+                  <p>Fútbol 5: portero, defensa, dos medios y delantero. Cada jornada suma 17 puntos de cansancio a los titulares y recupera 22 a los suplentes. La fatiga reduce su rendimiento hasta que roten.</p>
                   <div className="chess-football-entry__lineup-slots">
                     {startingFive.map((playerId, index) => {
                       const player = roster.find((entry) => entry.id === playerId);
@@ -153,7 +153,7 @@ export default function ChessFootballEntry({ onExit }) {
                           >
                             {roster.filter((candidate) => candidate.role === player.role).map((candidate) => (
                               <option key={candidate.id} value={candidate.id} disabled={startingFive.includes(candidate.id) && candidate.id !== playerId}>
-                                {candidate.name} · ATQ {candidate.attack} / DEF {candidate.defense}
+                                {candidate.name} · ATQ {candidate.attack} / DEF {candidate.defense} · Fatiga {getFootballFatigue(season.managerFatigue, candidate.id)}%
                               </option>
                             ))}
                           </select>
@@ -200,6 +200,9 @@ export default function ChessFootballEntry({ onExit }) {
                     {season.clubs.find((club) => club.id === result.homeId)?.name} {result.homeGoals}–{result.awayGoals} {season.clubs.find((club) => club.id === result.awayId)?.name}
                     {result.managerLineup?.some((id, slot) => id !== defaultLineup[slot]) ? (
                       <span className="chess-football-entry__used-plan"> · Quinteto alternativo</span>
+                    ) : null}
+                    {result.managerFatigueAtKickoff > 0 ? (
+                      <span className="chess-football-entry__used-plan"> · Fatiga inicial media: {Math.round(result.managerFatigueAtKickoff)}%</span>
                     ) : null}
                     {result.managerTactic ? (
                       <span className="chess-football-entry__used-plan">

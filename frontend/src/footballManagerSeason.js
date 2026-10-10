@@ -1,7 +1,7 @@
 // Pure, reproducible first league slice: no browser storage, clock, backend,
 // Godot coupling or random global state. This is not yet a saved career.
 import { FOOTBALL_MANAGER_CLUBS } from './footballManagerClubs.js';
-import { getFootballClubRoster, evaluateFootballLineup } from './footballManagerRoster.js';
+import { getFootballClubRoster, evaluateFootballLineup, evaluateFootballFatigue, advanceFootballFatigue } from './footballManagerRoster.js';
 
 const freeze = (value) => Object.freeze(value);
 const CHANCES_PER_TEAM = 7;
@@ -121,7 +121,10 @@ function simulateFixture(season, fixture, managerClubId, tacticalPlan, lineupEff
     awayGoals,
     source: 'statistical-simulation',
     ...(homeManaged || awayManaged ? { managerTactic: tacticalPlan.id } : {}),
-    ...(lineupEffect && (homeManaged || awayManaged) ? { managerLineup: lineupEffect.lineupIds } : {}),
+    ...(lineupEffect && (homeManaged || awayManaged) ? {
+      managerLineup: lineupEffect.lineupIds,
+      managerFatigueAtKickoff: lineupEffect.fatigueAtKickoff,
+    } : {}),
   });
 }
 
@@ -134,15 +137,29 @@ export function advanceFootballSeason(season, { managerClubId = null, tactic = '
     || (managerClubId === null && (tactic !== 'balanced' || lineup !== null))) {
     throw new Error('Invalid manager club or tactical plan');
   }
+  if (season.managerFatigueClubId && (managerClubId !== season.managerFatigueClubId || lineup === null)) {
+    throw new Error('Cannot change or abandon the manager club during a managed season');
+  }
   const manager = season.clubs.find((club) => club.id === managerClubId);
-  const lineupEffect = lineup === null ? null
-    : evaluateFootballLineup(getFootballClubRoster(manager), lineup);
+  const roster = lineup === null ? null : getFootballClubRoster(manager);
+  const lineupRatings = roster === null ? null : evaluateFootballLineup(roster, lineup);
+  const fitness = roster === null ? null : evaluateFootballFatigue(roster, lineup, season.managerFatigue);
+  const lineupEffect = lineupRatings === null ? null : freeze({
+    ...lineupRatings,
+    attackDelta: lineupRatings.attackDelta - fitness.attackPenalty,
+    defenseDelta: lineupRatings.defenseDelta - fitness.defensePenalty,
+    fatigueAtKickoff: fitness.average,
+  });
   if (season.currentRound >= season.rounds.length) return season;
   const roundResults = season.rounds[season.currentRound].map((fixture) => simulateFixture(season, fixture, managerClubId, tacticalPlan, lineupEffect));
   return freeze({
     ...season,
     currentRound: season.currentRound + 1,
     results: freeze([...season.results, ...roundResults]),
+    ...(roster ? {
+      managerFatigueClubId: managerClubId,
+      managerFatigue: advanceFootballFatigue(roster, lineup, season.managerFatigue),
+    } : {}),
   });
 }
 

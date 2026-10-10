@@ -211,6 +211,13 @@ async function withChessFootballCapturePage(browser, capture, callback) {
     });
     await welcome.getByRole('button', { name: 'Simular siguiente jornada', exact: true }).click();
     await expect(welcome).toContainText('Jornada 1 de 10');
+    await lineupPanel.locator('summary').click();
+    await expect(lineupPanel).toContainText('Fatiga 17%');
+    await lineupPanel.screenshot({
+      path: `${ARTIFACT_DIR}/chess-football-fatigue-${capture.label}.png`,
+      animations: 'disabled',
+    });
+    await lineupPanel.locator('summary').click();
     await welcome.locator('.chess-football-entry__back').click();
     await welcome.locator('.chess-football-entry__back').click();
     await welcome.getByRole('button', { name: 'Volver a elegir modo' }).click();
