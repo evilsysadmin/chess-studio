@@ -233,6 +233,21 @@ async function withChessFootballCapturePage(browser, capture, callback) {
     await welcome.locator('.chess-football-entry__back').click();
     await welcome.locator('.chess-football-entry__back').click();
     await welcome.getByRole('button', { name: 'Volver a elegir modo' }).click();
+    const resume = welcome.getByRole('button', { name: 'Continuar temporada' });
+    await expect(resume).toBeVisible();
+    expect(await welcome.evaluate((node) => node.scrollTop), 'Welcome must reset to its entrance').toBe(0);
+    const resumeBounds = await resume.boundingBox();
+    expect(resumeBounds?.y, 'Resume CTA must be on screen').toBeGreaterThanOrEqual(0);
+    expect(resumeBounds.y + resumeBounds.height, 'Resume CTA visible in first viewport').toBeLessThanOrEqual(capture.height + 1);
+    await captureFrozenFrame(page, {
+      path: `${ARTIFACT_DIR}/chess-football-resume-${capture.label}.png`,
+      fullPage: true,
+    });
+    await resume.click();
+    await expect(welcome).toContainText('Jornada 1 de 10');
+    await welcome.locator('.chess-football-entry__back').click();
+    await welcome.locator('.chess-football-entry__back').click();
+    await welcome.locator('.chess-football-entry__back').click();
     await welcome.locator('.chess-football-entry__choice--quick').click();
     await expect(page.locator('.chess-football-godot-host')).toBeVisible();
     return await callback(page);
