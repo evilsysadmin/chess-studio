@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CHESSCOM_CHARACTER_ART_V4, chesscomCharacterV4Profile } from './chesscomCharacterArtV4.js';
+import { CHESSCOM_CHARACTER_ART_V4, chesscomCharacterV4Profile, chesscomFieldKitV20Profile } from './chesscomCharacterArtV4.js';
 
 describe('Chesscom character art v4', () => {
   it('declares the custom mesh and procedural PBR contract', () => {
@@ -28,4 +28,21 @@ describe('Chesscom character art v4', () => {
     expect(chesscomCharacterV4Profile('sven', true).muzzleX).toBeLessThan(.9);
     expect(chesscomCharacterV4Profile('dieter', true).muzzleX).toBeCloseTo(.91, 4);
   });
+  it('gives each role a recognisable and bounded tactical equipment identity',()=>{
+    const scout=chesscomFieldKitV20Profile('scout');
+    const rifleman=chesscomFieldKitV20Profile('rifleman');
+    const hostile=chesscomFieldKitV20Profile('hostile');
+    const leader=chesscomFieldKitV20Profile('leader');
+    expect([scout,rifleman,hostile,leader].every(kit=>kit.identity==='field-kit-v20')).toBe(true);
+    expect(scout.scarf).toBe(true);
+    expect(rifleman.scarf).toBe(false);
+    expect(scout.pack).toBeLessThan(rifleman.pack);
+    expect(hostile.accent).not.toBe(leader.accent);
+    for(const kit of [scout,rifleman,hostile,leader]){
+      expect(kit.pack).toBeGreaterThan(0);
+      expect(kit.pack).toBeLessThan(.5);
+      expect(kit.plates).toBeLessThan(.2);
+    }
+  });
+
 });
