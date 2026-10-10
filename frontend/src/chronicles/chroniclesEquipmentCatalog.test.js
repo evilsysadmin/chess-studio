@@ -46,6 +46,12 @@ describe('Chronicles · MM3 equipment catalog', () => {
     // Heavier armour protects more within one material.
     expect(CHRONICLES_EQUIPMENT['iron-plate'].armorClassBonus)
       .toBeGreaterThan(CHRONICLES_EQUIPMENT['iron-chain'].armorClassBonus);
+    // No catalog weapon is worse than bare hands, and iron matches the guard's sabre.
+    for (const item of Object.values(CHRONICLES_EQUIPMENT).filter((entry) => entry.slot === 'weapon')) {
+      expect(item.attackDamageBonus, item.id).toBeGreaterThanOrEqual(0);
+    }
+    expect(CHRONICLES_EQUIPMENT['iron-sword'].attackDamageBonus)
+      .toBe(CHRONICLES_EQUIPMENT['roadwatch-sabre'].attackDamageBonus);
     // A fresh company can afford bronze from one side quest; steel plate is an aspiration.
     expect(CHRONICLES_EQUIPMENT['bronze-sword'].price).toBeLessThanOrEqual(8);
     expect(CHRONICLES_EQUIPMENT['steel-plate'].price).toBeGreaterThan(300);

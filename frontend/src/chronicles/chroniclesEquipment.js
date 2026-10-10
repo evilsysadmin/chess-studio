@@ -23,7 +23,10 @@ function authoredEquipment(spec) {
   const weapon = spec.slot === 'weapon';
   return Object.freeze({
     ...spec,
-    attackDamageBonus: spec.baseDamageBonus + (weapon ? material.damage : 0),
+    // Catalog weapons apply half the MM3 material damage: this world's base
+    // damage is a few points, so the raw table (steel +6) would one-shot.
+    attackDamageBonus: spec.baseDamageBonus
+      + (weapon ? Math.round(material.damage * (spec.materialDamageScale ?? 1)) : 0),
     // Existing First Book mitigation is an interim, deterministic defense
     // effect. MM3's material armorClass remains explicit for proper AC later.
     damageReduction: spec.baseDamageReduction,
@@ -42,12 +45,12 @@ const LEGACY_ALL = Object.freeze(['matthias', 'rook', 'bishop', 'knight']);
 // quest pays 8–18 oro); the material multiplier does the rest, so steel is
 // an aspiration and bronze is what a fresh company can afford.
 const BASE_WEAPONS = Object.freeze({
-  dagger: { name: 'Daga', family: 'dagger', basePrice: 2, baseDamageBonus: -1, allowed: LEGACY_ALL },
-  staff: { name: 'Bastón', family: 'staff', basePrice: 3, baseDamageBonus: 0, twoHanded: true, allowed: LEGACY_ALL },
-  mace: { name: 'Maza', family: 'mace', basePrice: 5, baseDamageBonus: 0, allowed: LEGACY_ALL },
-  spear: { name: 'Lanza', family: 'spear', basePrice: 5, baseDamageBonus: 1, twoHanded: true, allowed: LEGACY_MARTIAL },
-  sword: { name: 'Espada', family: 'sword', basePrice: 6, baseDamageBonus: 0, allowed: LEGACY_MARTIAL },
-  axe: { name: 'Hacha', family: 'axe', basePrice: 7, baseDamageBonus: 1, allowed: LEGACY_MARTIAL },
+  dagger: { name: 'Daga', family: 'dagger', basePrice: 2, baseDamageBonus: 1, allowed: LEGACY_ALL },
+  staff: { name: 'Bastón', family: 'staff', basePrice: 3, baseDamageBonus: 1, twoHanded: true, allowed: LEGACY_ALL },
+  mace: { name: 'Maza', family: 'mace', basePrice: 5, baseDamageBonus: 1, allowed: LEGACY_ALL },
+  spear: { name: 'Lanza', family: 'spear', basePrice: 5, baseDamageBonus: 2, twoHanded: true, allowed: LEGACY_MARTIAL },
+  sword: { name: 'Espada', family: 'sword', basePrice: 6, baseDamageBonus: 1, allowed: LEGACY_MARTIAL },
+  axe: { name: 'Hacha', family: 'axe', basePrice: 7, baseDamageBonus: 2, allowed: LEGACY_MARTIAL },
 });
 
 const BASE_ARMORS = Object.freeze({
@@ -80,11 +83,11 @@ function signed(value) {
 function weaponItem(baseId, materialId) {
   const base = BASE_WEAPONS[baseId];
   const material = CHRONICLES_ITEM_MATERIALS[materialId];
-  const damage = base.baseDamageBonus + material.damage;
+  const damage = base.baseDamageBonus + Math.round(material.damage / 2);
   return authoredEquipment({
     id: `${materialId}-${baseId}`, name: `${base.name} de ${materialName(materialId)}`, slot: 'weapon',
     baseItemId: baseId, materialId, basePrice: base.basePrice,
-    baseDamageBonus: base.baseDamageBonus, baseDamageReduction: 0,
+    baseDamageBonus: base.baseDamageBonus, baseDamageReduction: 0, materialDamageScale: 0.5,
     weaponFamily: base.family, twoHanded: Boolean(base.twoHanded),
     allowedMembers: base.allowed,
     description: `${base.name}${base.twoHanded ? ' a dos manos' : ''} · acierto ${signed(material.toHit)}, daño ${signed(damage)}.`,
