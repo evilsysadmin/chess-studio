@@ -437,12 +437,12 @@ function paintMoveBadge(texture, cost) {
 function createReachableIndicator(B,scene,mats,glow,key,cost) {
   const root=new B.TransformNode(`move-indicator-${key}`,scene);
   root.metadata={cost,phase:Math.random()*Math.PI*2};
-  const ring=B.MeshBuilder.CreateTorus(`move-ring-${key}`,{diameter:1.14,thickness:.065,tessellation:32},scene);
-  ring.parent=root;ring.rotation.x=Math.PI/2;ring.position.y=.085;ring.material=moveMaterialForCost(mats,cost);ring.isPickable=false;glow.addIncludedOnlyMesh(ring);
-  const disc=B.MeshBuilder.CreateDisc(`move-disc-${key}`,{radius:.34,tessellation:28},scene);
-  disc.parent=root;disc.rotation.x=Math.PI/2;disc.position.y=.052;disc.material=moveMaterialForCost(mats,cost);disc.isPickable=false;disc.visibility=.42;
-  const badge=B.MeshBuilder.CreatePlane(`move-badge-${key}`,{width:.76,height:.40},scene);
-  badge.parent=root;badge.position.y=.39;badge.billboardMode=B.Mesh.BILLBOARDMODE_ALL;badge.isPickable=false;
+  const ring=B.MeshBuilder.CreateTorus(`move-ring-${key}`,{diameter:.90,thickness:.028,tessellation:28},scene);
+  ring.parent=root;ring.rotation.x=Math.PI/2;ring.position.y=.064;ring.material=moveMaterialForCost(mats,cost);ring.isPickable=false;ring.visibility=.55;
+  const disc=B.MeshBuilder.CreateDisc(`move-disc-${key}`,{radius:.245,tessellation:24},scene);
+  disc.parent=root;disc.rotation.x=Math.PI/2;disc.position.y=.052;disc.material=moveMaterialForCost(mats,cost);disc.isPickable=false;disc.visibility=.15;
+  const badge=B.MeshBuilder.CreatePlane(`move-badge-${key}`,{width:.66,height:.34},scene);
+  badge.parent=root;badge.position.y=.27;badge.billboardMode=B.Mesh.BILLBOARDMODE_ALL;badge.isPickable=false;
   const texture=new B.DynamicTexture(`move-badge-texture-${key}`,{width:256,height:128},scene,false);
   texture.hasAlpha=true;paintMoveBadge(texture,cost);
   const badgeMat=new B.StandardMaterial(`move-badge-mat-${key}`,scene);
@@ -606,7 +606,7 @@ export async function createChesscomBabylon(host,{onTile,onUnit,onHover,onReady}
         delete cue.momentBaseVisible;
       }
     }
-    if(!reduced){for(const indicator of reachableIndicators.values()){if(!indicator.isEnabled())continue;const pulse=1+Math.sin(t*1.75+indicator.metadata.phase)*.032;indicator.metadata.ring.scaling.set(pulse,pulse,pulse);indicator.metadata.badge.position.y=.39+Math.sin(t*1.25+indicator.metadata.phase)*.012;}props.ring.rotation.z=t*.12;props.beacon.scaling.y=.95+Math.sin(t*1.45)*.05;props.exfilLight.intensity=4.0+Math.sin(t*1.55)*.42;warmLights.forEach((light,index)=>{const base=index<2 ? 11 : 4.8;light.intensity=base+Math.sin(t*1.35+index*1.7)*.22;});}
+    if(!reduced){props.ring.rotation.z=t*.12;props.beacon.scaling.y=.95+Math.sin(t*1.45)*.05;props.exfilLight.intensity=4.0+Math.sin(t*1.55)*.42;warmLights.forEach((light,index)=>{const base=index<2 ? 11 : 4.8;light.intensity=base+Math.sin(t*1.35+index*1.7)*.22;});}
     for(let i=fx.length-1;i>=0;i-=1){const item=fx[i];const progress=(now-item.born)/item.life;if(progress>=1){item.mesh.dispose();fx.splice(i,1);continue;}if('alpha' in item.mesh)item.mesh.alpha=1-progress;const s=1+progress*.65;item.mesh.scaling.set(s,s,s);}
     scene.render();
   });
