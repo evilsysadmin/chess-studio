@@ -82,6 +82,11 @@ import { useEscapeToClose } from '../useEscapeToClose.js';
 import ChroniclesAutomap from './ChroniclesAutomap.jsx';
 import ChroniclesCharacterSheet from './ChroniclesCharacterSheet.jsx';
 import ChroniclesShop from './ChroniclesShop.jsx';
+import ChroniclesGuild from './ChroniclesGuild.jsx';
+import ChroniclesSpellMenu from './ChroniclesSpellMenu.jsx';
+import {
+  CHRONICLES_SPELLS, chroniclesMemberMaxSp, chroniclesMemberSp, chroniclesMemberSpells,
+} from '../chronicles/chroniclesMagic.js';
 import ChroniclesMinimap from './ChroniclesMinimap.jsx';
 import ChroniclesBookOneEpilogue from './ChroniclesBookOneEpilogue.jsx';
 import ChroniclesCharacterSetup from './ChroniclesCharacterSetup.jsx';
@@ -187,6 +192,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
   const [partyBark, setPartyBark] = useState(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [automapOpen, setAutomapOpen] = useState(false);
+  const [spellMenuOpen, setSpellMenuOpen] = useState(false);
   const [automapVisitedByMap, setAutomapVisitedByMap] = useState({});
   const touchHoldRef = useRef({ delayId: null, repeatId: null });
   const { needsRotation, lockState, activateLandscape } = useChroniclesLandscape(characterSetupDone);
@@ -313,7 +319,8 @@ export default function ChroniclesOfMatthias({ onExit }) {
 
     const actionType = typeof action === 'string' ? action : action?.type;
     if (actionType === 'equip-item' || actionType === 'unequip-item'
-      || actionType === 'shop-buy' || actionType === 'shop-sell' || actionType === 'shop-close') {
+      || actionType === 'shop-buy' || actionType === 'shop-sell' || actionType === 'shop-close'
+      || actionType === 'guild-join' || actionType === 'guild-learn' || actionType === 'guild-close') {
       const updated = chroniclesReduce(current, action);
       if (updated !== current) {
         stateRef.current = updated;
@@ -325,7 +332,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
     if (current.initiative && activeActor?.kind === 'enemy') return;
     if (
       current.initiative
-      && actionType === 'attack'
+      && (actionType === 'attack' || actionType === 'cast')
       && activeActor?.kind === 'party'
       && typeof action === 'object'
       && action.memberId !== activeActor.id
@@ -333,12 +340,17 @@ export default function ChroniclesOfMatthias({ onExit }) {
 
     let next;
     if (!current.initiative) {
-      const exploratoryNext = actionType === 'attack' ? current : chroniclesGridExplorationStep(current, action);
-      const attackingMember = actionType === 'attack' && typeof action === 'object'
+      // An offensive spell opens combat exactly like a swing, at the spell's reach.
+      const offensiveSpell = actionType === 'cast' && CHRONICLES_SPELLS[action.spellId]?.kind === 'attack'
+        ? CHRONICLES_SPELLS[action.spellId]
+        : null;
+      const offensive = actionType === 'attack' || Boolean(offensiveSpell);
+      const exploratoryNext = offensive ? current : chroniclesGridExplorationStep(current, action);
+      const attackingMember = offensive && typeof action === 'object'
         ? current.party.find((member) => member.id === action.memberId)
         : null;
       const forcedTarget = attackingMember
-        ? chroniclesEnemyTargetAhead(current, chroniclesPartyAttackStats(current, attackingMember.id).reach)
+        ? chroniclesEnemyTargetAhead(current, offensiveSpell?.reach ?? chroniclesPartyAttackStats(current, attackingMember.id).reach)
         : null;
       // Entering an area is not a tactical movement inside it. The player
       // gets to see the new room/return portal before enemies can engage.
@@ -352,12 +364,14 @@ export default function ChroniclesOfMatthias({ onExit }) {
       );
       next = started !== exploratoryNext
         ? started
-        : actionType === 'attack'
+        : offensive
           ? chroniclesReduce(current, action)
           : exploratoryNext;
     } else {
       next = chroniclesReduce(current, action);
-      if (next !== current && next.phase !== 'defeated' && next.phase !== 'escaped') {
+      // A refused cast (no spell points, no target) keeps the hero's turn.
+      const spentTurn = actionType !== 'cast' || next.turns !== current.turns;
+      if (next !== current && spentTurn && next.phase !== 'defeated' && next.phase !== 'escaped') {
         next = chroniclesAdvanceCombatInitiative(next, chroniclesActiveEnemies(next));
       }
     }
@@ -777,6 +791,11 @@ export default function ChroniclesOfMatthias({ onExit }) {
         attackWithSelected();
         return;
       }
+      if (event.key === 'c' || event.key === 'C') {
+        event.preventDefault();
+        setSpellMenuOpen((open) => !open);
+        return;
+      }
       const action = KEY_ACTIONS[event.key];
       if (!action) return;
       event.preventDefault();
@@ -901,6 +920,11 @@ export default function ChroniclesOfMatthias({ onExit }) {
   const expeditionOver = state.phase === 'defeated' || state.phase === 'escaped';
   const contextualAction = chroniclesContextualContentAction(state);
   const activeInitiativeActor = chroniclesCurrentInitiativeActor(state.initiative);
+  // In combat the hero whose turn it is casts; exploring, the selected one.
+  const caster = activeInitiativeActor?.kind === 'party'
+    ? state.party.find((member) => member.id === activeInitiativeActor.id) || selectedMember
+    : selectedMember;
+  const casterKnowsSpells = caster ? chroniclesMemberSpells(state, caster).length > 0 : false;
 
   return (
     <div
@@ -965,7 +989,14 @@ export default function ChroniclesOfMatthias({ onExit }) {
                   ) : null}
                 </span>
                 <span><strong>{index + 1}. {member.name}</strong><small>Nv {chroniclesHeroProgress(progression, member.id).level} · {member.row === 'front' ? 'FRENTE' : 'RETAGUARDIA'} · clic · ficha</small></span>
-                <b>{member.hp}/{member.maxHp}</b>
+                <b>
+                  {member.hp}/{member.maxHp}
+                  {chroniclesMemberMaxSp(state, member) > 0 && (
+                    <i className="chronicles-party-sp" data-member-sp={chroniclesMemberSp(state, member)}>
+                      {chroniclesMemberSp(state, member)}/{chroniclesMemberMaxSp(state, member)} PH
+                    </i>
+                  )}
+                </b>
               </button>
             );
           })}
@@ -1099,6 +1130,16 @@ export default function ChroniclesOfMatthias({ onExit }) {
                   onClick={attackWithSelected}
                   aria-label="Atacar"
                 >⚔<small>{selectedMember?.name?.toUpperCase() || 'ATACAR'}</small></button>
+                {casterKnowsSpells && (
+                  <button
+                    type="button"
+                    className="is-magic"
+                    data-chronicles-touch-action="cast"
+                    aria-expanded={spellMenuOpen}
+                    onClick={() => setSpellMenuOpen((open) => !open)}
+                    aria-label={`Hechizos de ${caster.name}`}
+                  >✧<small>MAGIA</small></button>
+                )}
                 {contextualAction && (
                   <button
                     type="button"
@@ -1138,12 +1179,33 @@ export default function ChroniclesOfMatthias({ onExit }) {
                 <span><kbd>1</kbd>–<kbd>4</kbd> pieza</span>
                 <span><kbd>ESPACIO</kbd> atacar</span>
                 <span><kbd>F</kbd> usar/recoger</span>
+                <span><kbd>C</kbd> hechizos</span>
                 <span><kbd>M</kbd> mapa</span>
               </div>
             </>
           )}
         </main>
       </div>
+
+      {spellMenuOpen && casterKnowsSpells && !expeditionOver && !sheetMember && !state.shop && !state.guild && (
+        <ChroniclesSpellMenu
+          state={state}
+          member={caster}
+          onClose={() => setSpellMenuOpen(false)}
+          onCast={(spellId) => {
+            setSpellMenuOpen(false);
+            dispatch({ type: 'cast', memberId: caster.id, spellId });
+          }}
+        />
+      )}
+
+      {state.guild && !sheetMember && (
+        <ChroniclesGuild
+          state={state}
+          onAction={dispatch}
+          onClose={() => dispatch({ type: 'guild-close' })}
+        />
+      )}
 
       {state.shop && !sheetMember && (
         <ChroniclesShop

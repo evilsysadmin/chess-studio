@@ -213,9 +213,12 @@
           },
           {
             "type": "refill-class-abilities"
+          },
+          {
+            "type": "restore-spell-points"
           }
         ],
-        "message": "La compañía descansa en la taberna de La Espada Mellada. Heridas tratadas y fuerzas renovadas."
+        "message": "La compañía descansa en la taberna de La Espada Mellada. Heridas tratadas, puntos de hechizo recuperados."
       },
       "visualType": "building-tavern"
     },
@@ -263,6 +266,29 @@
           "brass-ring",
           "wooden-shield",
           "brass-shield"
+        ]
+      }
+    },
+    {
+      "id": "first-book-guild",
+      "kind": "merchant",
+      "x": 15,
+      "y": 4,
+      "label": "Gremio de las Tres Fuerzas · hechizos",
+      "action": {
+        "effects": [],
+        "message": "La archivista Mirela levanta la vista del atril: «Cosmonium, Esoterica, Gaiam. Sólo los socios leen estas estanterías»."
+      },
+      "visualType": "building-guild",
+      "guild": {
+        "membership": 10,
+        "greeting": "La archivista Mirela levanta la vista del atril: «Cosmonium, Esoterica, Gaiam. Sólo los socios leen estas estanterías. Diez de oro y firmáis en el registro».",
+        "memberGreeting": "Mirela señala las estanterías: «Lo que quepa en vuestros libros, y en vuestra bolsa».",
+        "spells": [
+          "first-aid",
+          "flying-fist",
+          "elemental-arrow",
+          "detect-magic"
         ]
       }
     },

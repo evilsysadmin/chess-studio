@@ -1,4 +1,5 @@
 import { CHRONICLES_EQUIPMENT_SLOTS, chroniclesEquippedItem } from './chroniclesEquipment.js';
+import { chroniclesSpellAvailableTo } from './chroniclesMagic.js';
 import {
   chroniclesMapById,
   chroniclesMapIds,
@@ -154,6 +155,18 @@ function runtimeCheckpointFlags(state) {
     }
   });
 
+  // MM3 magic: spent spell points, each caster's spellbook, guild memberships.
+  (source.party || []).forEach((member) => {
+    const sp = integerOrNull(source.spellPoints?.[member.id], 0, 999);
+    if (sp !== null) flags[runtimeKey('party', member.id, 'sp')] = sp;
+    const book = source.spellbook?.[member.id];
+    if (Array.isArray(book)) flags[runtimeKey('spells', member.id)] = book.join(',').slice(0, 256);
+  });
+  Object.entries(source.guildMemberships || {}).forEach(([guildId, joined]) => {
+    const safeGuildId = shortStringOrNull(guildId, 64);
+    if (safeGuildId && joined === true) flags[runtimeKey('guild', safeGuildId)] = true;
+  });
+
   Object.entries(source.classAbilityCharges || {}).forEach(([memberId, rawCharges]) => {
     const safeMemberId = shortStringOrNull(memberId, 40);
     const charges = integerOrNull(rawCharges, 0, 99);
@@ -245,6 +258,27 @@ function applyRuntimeCheckpoint(state, flags) {
     }
   });
   next.equipment = equipment;
+
+  const spellPoints = {};
+  const spellbook = {};
+  (next.party || []).forEach((member) => {
+    const sp = integerOrNull(flags[runtimeKey('party', member.id, 'sp')], 0, 999);
+    if (sp !== null) spellPoints[member.id] = sp;
+    const book = flags[runtimeKey('spells', member.id)];
+    if (typeof book === 'string') {
+      spellbook[member.id] = [...new Set(book.split(',').filter((id) => chroniclesSpellAvailableTo(member, id)))];
+    }
+  });
+  if (Object.keys(spellPoints).length) next.spellPoints = spellPoints;
+  else delete next.spellPoints;
+  if (Object.keys(spellbook).length) next.spellbook = spellbook;
+  else delete next.spellbook;
+  const guildPrefix = runtimeKey('guild', '');
+  const guildMemberships = Object.fromEntries(Object.entries(flags)
+    .filter(([key, value]) => key.startsWith(guildPrefix) && value === true)
+    .map(([key]) => [key.slice(guildPrefix.length), true]));
+  if (Object.keys(guildMemberships).length) next.guildMemberships = guildMemberships;
+  else delete next.guildMemberships;
 
   if (next.classAbilityCharges && typeof next.classAbilityCharges === 'object') {
     const charges = { ...next.classAbilityCharges };
