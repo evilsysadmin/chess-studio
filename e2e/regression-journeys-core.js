@@ -268,7 +268,7 @@ test('deploy · una release nueva no fuerza reload mientras la partida está act
 
   const notice = page.getByRole('status').filter({ hasText: 'Nueva versión disponible' });
   await expect(notice).toBeVisible({ timeout: 5_000 });
-  await expect(notice.getByText(/Tu partida sigue intacta; actualiza al terminar/i)).toBeVisible();
+  await expect(notice.getByText(/Puedes continuar aquí\. Actualiza al volver al castillo\./i)).toBeVisible();
   await expect(notice.getByRole('button', { name: 'Actualizar', exact: true })).toHaveCount(0);
   await expect(notice.getByRole('button', { name: 'Después', exact: true })).toBeVisible();
 
