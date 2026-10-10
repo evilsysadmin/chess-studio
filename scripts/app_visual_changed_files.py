@@ -941,12 +941,12 @@ def normalize(
 def self_test() -> None:
     from unittest.mock import patch
     assert normalize([FOOTBALL_PROFILE_REGISTRY]) == [FOOTBALL_PROFILE_REGISTRY]
-    with patch(__name__ + "._git_diff_text", return_value="diff --git a/profileKeys b/profileKeys\\n+  'chess-study-football-manager-career-v1',\\n"):
+    with patch(__name__ + "._git_diff_text", return_value="diff --git a/profileKeys b/profileKeys\n+  'chess-study-football-manager-career-v1',\n"):
         assert normalize(
             [FOOTBALL_PROFILE_REGISTRY, "scripts/state_ownership_contract.json"],
             base_sha="old", head_sha="new",
         ) == [FOOTBALL_MANAGER_VISUAL_OWNER]
-    with patch(__name__ + "._git_diff_text", return_value="diff --git a/profileKeys b/profileKeys\\n+  'chess-study-football-manager-career-v1',\\n+  'unknown-progress',\\n"):
+    with patch(__name__ + "._git_diff_text", return_value="diff --git a/profileKeys b/profileKeys\n+  'chess-study-football-manager-career-v1',\n+  'unknown-progress',\n"):
         assert normalize([FOOTBALL_PROFILE_REGISTRY], base_sha="old", head_sha="new") == [FOOTBALL_PROFILE_REGISTRY]
     matthias_sources = [
         MATTHIAS_BLEND,
