@@ -5,6 +5,7 @@ import {
 } from './chesscomBabylonCanonical.js';
 import { installChesscomCharacterArtV4 } from './chesscomCharacterArtV4.js';
 import { installChesscomEnvironmentArtV4 } from './chesscomEnvironmentArtV4.js';
+import { CHESSCOM_INDUSTRIAL_ARCHITECTURE_V19, installChesscomIndustrialArchitectureV19 } from './chesscomIndustrialArchitectureV19.js';
 import { installChesscomOverlayArtV6 } from './chesscomOverlayArtV6.js';
 import { installChesscomMaterialArtV7 } from './chesscomMaterialArtV7.js';
 import { installChesscomRenderQualityV9 } from './chesscomRenderQualityV9.js';
@@ -41,6 +42,7 @@ export async function createChesscomBabylon(host, options = {}) {
   const renderQualityV9 = installChesscomRenderQualityV9(B,scene,{ host,tier });
   const artV4 = installChesscomCharacterArtV4(B,scene);
   const environmentV4 = installChesscomEnvironmentArtV4(B,scene,{ tier });
+  const architectureV19 = installChesscomIndustrialArchitectureV19(B,scene,{ tier,host });
   const overlayV6 = installChesscomOverlayArtV6(B,scene,{ tier });
   const materialV7 = installChesscomMaterialArtV7(B,scene,{ tier });
   const depthToneV10 = installChesscomDepthToneV10(B,scene,{ tier,host });
@@ -51,11 +53,12 @@ export async function createChesscomBabylon(host, options = {}) {
   host.dataset.chesscomCharacterMesh = 'custom-lowpoly-v4';
   host.dataset.chesscomCharacterMaterials = 'procedural-pbr-v4';
   host.dataset.chesscomEnvironment = 'environment-art-v4';
+  host.dataset.chesscomArchitecture = CHESSCOM_INDUSTRIAL_ARCHITECTURE_V19.identity;
   host.dataset.chesscomOverlay = 'tactical-overlay-v6';
   host.dataset.chesscomMaterials = 'material-art-v7';
   host.dataset.chesscomWeaponArt = 'weapon-art-v11';
   host.dataset.chesscomCamera = CHESSCOM_CAMERA_V18.identity;
-  onReady?.(`BABYLON.JS ${BABYLON_VERSION} · GPU PREMIUM V2 · BALLISTICS · UNIT STANCE · CHARACTER ART V4 · OVERLAY V6 · MATERIAL V7 · HIDPI V9 · DEPTH V10 · WEAPON ART V11 · CAMERA V18`);
+  onReady?.(`BABYLON.JS ${BABYLON_VERSION} · GPU PREMIUM V2 · BALLISTICS · UNIT STANCE · CHARACTER ART V4 · OVERLAY V6 · MATERIAL V7 · HIDPI V9 · DEPTH V10 · WEAPON ART V11 · CAMERA V18 · INDUSTRIAL ARCHITECTURE V19`);
 
   return {
     ...base,
@@ -71,6 +74,7 @@ export async function createChesscomBabylon(host, options = {}) {
       materialV7.destroy();
       overlayV6.destroy();
       artV4.destroy();
+      architectureV19.destroy();
       environmentV4.destroy();
       renderQualityV9.destroy();
       for (const [mesh,old] of v3Visibility) {
@@ -80,6 +84,7 @@ export async function createChesscomBabylon(host, options = {}) {
       delete host.dataset.chesscomCharacterMesh;
       delete host.dataset.chesscomCharacterMaterials;
       delete host.dataset.chesscomEnvironment;
+      delete host.dataset.chesscomArchitecture;
       delete host.dataset.chesscomOverlay;
       delete host.dataset.chesscomMaterials;
       delete host.dataset.chesscomWeaponArt;
