@@ -184,6 +184,17 @@ async function withChessFootballCapturePage(browser, capture, callback) {
       path: `${ARTIFACT_DIR}/chess-football-manager-preview-${capture.label}.png`,
       fullPage: true,
     });
+    await welcome.getByRole('button', { name: 'Empezar temporada de prueba', exact: true }).click();
+    const standings = welcome.locator('.chess-football-entry__standings');
+    await expect(standings.locator('tbody tr')).toHaveCount(6);
+    await standings.scrollIntoViewIfNeeded();
+    await captureFrozenFrame(page, {
+      path: `${ARTIFACT_DIR}/chess-football-season-${capture.label}.png`,
+      fullPage: true,
+    });
+    await welcome.getByRole('button', { name: 'Simular siguiente jornada', exact: true }).click();
+    await expect(welcome).toContainText('Jornada 1 de 10');
+    await welcome.locator('.chess-football-entry__back').click();
     await welcome.locator('.chess-football-entry__back').click();
     await welcome.getByRole('button', { name: 'Volver a elegir modo' }).click();
     await welcome.locator('.chess-football-entry__choice--quick').click();

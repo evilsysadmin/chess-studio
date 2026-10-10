@@ -516,7 +516,7 @@ def classify_path(path: str) -> set[str] | None:
         return set(CHRONICLES_SHARED)
 
     if any(token in lower for token in (
-        "pawnslug", "pawn-slug", "trailblazer", "arcade", "chessfootball", "chess-football",
+        "pawnslug", "pawn-slug", "trailblazer", "arcade", "chessfootball", "chess-football", "footballmanager",
     )):
         return {"experiments-hub"}
     if "experimentsscreen" in lower or "/experiments" in lower:
@@ -920,6 +920,15 @@ def self_test() -> None:
         "frontend/src/components/ChessFootballGodotHost.jsx",
         "e2e/chess-football.spec.js",
     ]) == "experiments-hub"
+    manager = [
+        "frontend/src/components/ChessFootballEntry.jsx",
+        "frontend/src/footballManagerSeason.js",
+        "frontend/src/footballManagerSeason.test.js",
+        "e2e/experiments-visual-artifact.spec.js",
+    ]
+    assert classify(manager) == "experiments-hub"
+    assert classify(["frontend/src/footballManagerRoster.js"]) == "experiments-hub"
+    assert classify(["frontend/src/unownedVisualModule.js"]) == "all"
     assert classify(["frontend/src/components/QuickMatchModal.jsx"]) == "home-base,warroom-core"
     assert classify(["frontend/src/components/CampaignCombatPreparation.jsx"]) == "combat-prep"
     assert classify(["frontend/src/components/CombatBattleView.jsx"]) == "combat-battle"
