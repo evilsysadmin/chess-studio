@@ -67,11 +67,12 @@ test('Chesscom · abre la planta 17 con renderer Babylon real y HUD Dust Veil pr
   await expect.poll(() => dieterArt.evaluate((node) => getComputedStyle(node).backgroundImage)).toMatch(/dieter-portrait\.svg/i);
   await expect(mode.locator('.chesscom-weapon-art')).toBeVisible();
 
-  await expect(mode.getByRole('button', { name: 'Move', exact: true })).toBeVisible();
-  await expect(mode.getByRole('button', { name: 'Shoot', exact: true })).toBeVisible();
-  await expect(mode.getByRole('button', { name: 'Overwatch', exact: true })).toBeVisible();
-  await expect(mode.getByRole('button', { name: 'End turn', exact: true })).toBeVisible();
+  await expect(mode.getByRole('button', { name: 'Mover', exact: true })).toBeVisible();
+  await expect(mode.getByRole('button', { name: 'Disparar', exact: true })).toBeVisible();
+  await expect(mode.getByRole('button', { name: 'Vigilancia', exact: true })).toBeVisible();
+  await expect(mode.getByRole('button', { name: 'Fin de turno', exact: true })).toBeVisible();
 
+  await mode.getByText(/Detalles del arma/).click();
   const fireModes = mode.getByRole('group', { name: 'Modo de disparo' });
   await expect(fireModes.getByRole('button', { name: 'SA', exact: true })).toBeVisible();
   await expect(fireModes.getByRole('button', { name: 'Ráfaga', exact: true })).toBeVisible();
@@ -83,6 +84,27 @@ test('Chesscom · abre la planta 17 con renderer Babylon real y HUD Dust Veil pr
   await mode.locator('.chesscom-squad-card').filter({ hasText: 'Sven' }).click();
   await expect(mode.getByRole('group', { name: 'Modo de disparo' }).getByRole('button', { name: 'Ráfaga', exact: true })).toHaveCount(0);
   await expect(mode.getByRole('group', { name: 'Modo de disparo' }).getByRole('button', { name: 'Auto', exact: true })).toBeVisible();
+
+  // El PNG canónico Dust Veil convierte los laterales en overlays y deja
+  // Babylon como protagonista sin perder el acceso a las acciones existentes.
+  await page.setViewportSize({ width:1600, height:900 });
+  await expect(mode).toHaveAttribute('data-chesscom-layout', 'dust-veil-canonical-v1');
+  await expect.poll(() => mode.evaluate((node) => {
+    const field = node.querySelector('.chesscom-stage-shell')?.getBoundingClientRect();
+    const squad = node.querySelector('.chesscom-squad')?.getBoundingClientRect();
+    const actions = node.querySelector('.chesscom-actionbar')?.getBoundingClientRect();
+    const objectives = node.querySelector('.chesscom-objectives')?.getBoundingClientRect();
+    if (!field || !squad || !actions || !objectives) return false;
+    return field.width >= window.innerWidth * .95
+      && field.height >= window.innerHeight * .94
+      && squad.bottom >= window.innerHeight - 40
+      && actions.bottom >= window.innerHeight - 40
+      && objectives.top < window.innerHeight * .2
+      && squad.right < actions.left
+      && actions.right < window.innerWidth - 260;
+  })).toBe(true);
+  await expect(mode.getByText('Informe de campo', { exact:true })).toBeVisible();
+  await expect(mode.locator('.chesscom-weapon-ammo')).toHaveText('30/30');
 
   // El renderer ya está caliente: aprovechamos el mismo boot para verificar la
   // arista móvil que el artifact visual detectó (390px de viewport vs 491px de
