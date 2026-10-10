@@ -1,0 +1,356 @@
+/* Dust Veil canonical composition — based on the user-approved tactical PNG.
+ * Keep the Babylon scene authoritative: this stylesheet only moves the existing
+ * DOM chrome and never overlays a replacement battlefield image.
+ * First slice is large desktop only; existing 360/390/430 touch contracts remain. */
+@media (min-width:1480px) and (min-height:700px){
+  .chesscom[data-chesscom-visual="premium-v1"][data-chesscom-layout="dust-veil-canonical-v1"]{
+    --cc-dust-glass:rgba(4,13,21,.88);
+    --cc-dust-outline:rgba(55,194,237,.48);
+    position:fixed;
+    inset:0;
+    z-index:1200;
+    width:100vw;
+    height:100dvh;
+    min-height:0;
+    padding:0;
+    overflow:hidden;
+    background:#050e15;
+  }
+  .chesscom[data-chesscom-visual="premium-v1"][data-chesscom-layout="dust-veil-canonical-v1"] .chesscom-topbar{
+    position:absolute;
+    inset:0 0 auto;
+    z-index:15;
+    min-height:74px;
+    padding:12px 17px;
+    border:0;
+    background:linear-gradient(180deg,rgba(2,10,16,.94),rgba(2,10,16,.45) 72%,transparent);
+    box-shadow:none;
+    pointer-events:none;
+  }
+  .chesscom[data-chesscom-visual="premium-v1"][data-chesscom-layout="dust-veil-canonical-v1"] .chesscom-topbar::after{
+    display:none;
+  }
+  .chesscom[data-chesscom-visual="premium-v1"][data-chesscom-layout="dust-veil-canonical-v1"] .chesscom-rook{
+    color:#e7ac4c;
+    font-size:2.1rem;
+  }
+  .chesscom[data-chesscom-visual="premium-v1"][data-chesscom-layout="dust-veil-canonical-v1"] .chesscom-brand h2{
+    font-size:2.35rem;
+    text-shadow:0 3px 10px rgba(0,0,0,.62);
+  }
+  .chesscom[data-chesscom-visual="premium-v1"][data-chesscom-layout="dust-veil-canonical-v1"] .chesscom-brand strong{
+    border-top-color:#d09c46;
+    font-size:.55rem;
+  }
+  .chesscom[data-chesscom-visual="premium-v1"][data-chesscom-layout="dust-veil-canonical-v1"] .chesscom-classified{display:none}
+  .chesscom[data-chesscom-visual="premium-v1"][data-chesscom-layout="dust-veil-canonical-v1"] .chesscom-exit{
+    pointer-events:auto;
+    min-height:44px;
+    border-color:var(--cc-dust-outline);
+    background:rgba(3,13,20,.83);
+    color:#dcecf2;
+  }
+  .chesscom[data-chesscom-visual="premium-v1"][data-chesscom-layout="dust-veil-canonical-v1"] .chesscom-frame{
+    position:relative;
+    display:block;
+    width:100%;
+    height:100dvh;
+    min-height:0;
+    max-height:none;
+    margin:0;
+    overflow:hidden;
+  }
+  .chesscom[data-chesscom-visual="premium-v1"][data-chesscom-layout="dust-veil-canonical-v1"] .chesscom-stage-wrap{
+    display:block;
+    position:relative;
+    width:100%;
+    height:100%;
+    min-height:0;
+    margin:0;
+  }
+  .chesscom[data-chesscom-visual="premium-v1"][data-chesscom-layout="dust-veil-canonical-v1"] .chesscom-stage-shell{
+    display:block;
+    width:100%;
+    height:100%;
+    min-height:0;
+    border:0;
+    border-radius:0;
+    box-shadow:none;
+    background:#09141c;
+  }
+  .chesscom[data-chesscom-visual="premium-v1"][data-chesscom-layout="dust-veil-canonical-v1"] .chesscom-babylon-host,
+  .chesscom[data-chesscom-visual="premium-v1"][data-chesscom-layout="dust-veil-canonical-v1"] .chesscom-babylon-canvas{
+    display:block;
+    width:100%;
+    height:100%;
+    min-height:0;
+    max-width:100%;
+  }
+  .chesscom[data-chesscom-visual="premium-v1"][data-chesscom-layout="dust-veil-canonical-v1"] .chesscom-stage-shell::after{
+    background:linear-gradient(180deg,rgba(2,8,14,.24),transparent 29%,transparent 69%,rgba(2,8,14,.71));
+  }
+  .chesscom[data-chesscom-visual="premium-v1"][data-chesscom-layout="dust-veil-canonical-v1"] .chesscom-left{
+    position:absolute;
+    inset:88px auto 15px 16px;
+    z-index:9;
+    display:block;
+    width:532px;
+    min-width:0;
+    pointer-events:none;
+  }
+  .chesscom[data-chesscom-visual="premium-v1"][data-chesscom-layout="dust-veil-canonical-v1"] .chesscom-objectives{
+    width:320px;
+    max-width:100%;
+    padding:.8rem .86rem;
+    background:var(--cc-dust-glass);
+    border:1px solid rgba(110,158,181,.32);
+    box-shadow:0 8px 22px rgba(0,0,0,.28);
+    pointer-events:none;
+  }
+  .chesscom[data-chesscom-visual="premium-v1"][data-chesscom-layout="dust-veil-canonical-v1"] .chesscom-objectives h3{
+    color:#f1f4f6;
+    font-size:.83rem;
+  }
+  .chesscom[data-chesscom-visual="premium-v1"][data-chesscom-layout="dust-veil-canonical-v1"] .chesscom-objectives li{
+    color:#e0e8e9;
+    font-size:.76rem;
+  }
+  .chesscom[data-chesscom-visual="premium-v1"][data-chesscom-layout="dust-veil-canonical-v1"] .chesscom-squad{
+    position:absolute;
+    left:0;
+    bottom:0;
+    display:grid;
+    grid-template-columns:repeat(3,minmax(0,1fr));
+    width:532px;
+    gap:.36rem;
+    pointer-events:auto;
+  }
+  .chesscom[data-chesscom-visual="premium-v1"][data-chesscom-layout="dust-veil-canonical-v1"] .chesscom-squad-card{
+    grid-template-columns:49px minmax(0,1fr);
+    min-height:89px;
+    gap:.32rem;
+    padding:.36rem;
+    border:1px solid rgba(104,157,182,.48);
+    background:var(--cc-dust-glass);
+    text-align:left;
+    overflow:hidden;
+  }
+  .chesscom[data-chesscom-visual="premium-v1"][data-chesscom-layout="dust-veil-canonical-v1"] .chesscom-squad-card.is-selected{
+    border-color:#36d0ff;
+    background:rgba(9,31,43,.95);
+    box-shadow:inset 3px 0 #31cfff,0 0 16px rgba(13,158,216,.21);
+  }
+  .chesscom[data-chesscom-visual="premium-v1"][data-chesscom-layout="dust-veil-canonical-v1"] .chesscom-portrait{
+    height:73px;
+    min-width:0;
+  }
+  .chesscom[data-chesscom-visual="premium-v1"][data-chesscom-layout="dust-veil-canonical-v1"] .chesscom-squad-copy>strong{
+    font-size:.78rem;
+    white-space:nowrap;
+  }
+  .chesscom[data-chesscom-visual="premium-v1"][data-chesscom-layout="dust-veil-canonical-v1"] .chesscom-squad-copy>small{
+    font-size:.58rem;
+    margin-bottom:.2rem;
+  }
+  .chesscom[data-chesscom-visual="premium-v1"][data-chesscom-layout="dust-veil-canonical-v1"] .chesscom-mini-row{
+    margin:.16rem 0;
+  }
+  .chesscom[data-chesscom-visual="premium-v1"][data-chesscom-layout="dust-veil-canonical-v1"] .chesscom-actionbar{
+    position:absolute;
+    z-index:12;
+    left:560px;
+    right:322px;
+    bottom:15px;
+    display:flex;
+    width:auto;
+    max-width:none;
+    min-height:89px;
+    margin:0;
+    padding:.30rem;
+    gap:.34rem;
+    justify-content:space-between;
+    transform:none;
+    border:1px solid rgba(108,158,181,.42);
+    background:rgba(3,13,21,.91);
+    box-shadow:0 9px 22px rgba(0,0,0,.45);
+  }
+  .chesscom[data-chesscom-visual="premium-v1"][data-chesscom-layout="dust-veil-canonical-v1"] .chesscom-actionbar button{
+    flex:1 1 0;
+    min-width:0;
+    min-height:78px;
+    margin:0;
+    padding:.38rem .20rem;
+    border-radius:3px;
+    background:rgba(7,23,34,.84);
+    color:#cfdee3;
+  }
+  .chesscom[data-chesscom-visual="premium-v1"][data-chesscom-layout="dust-veil-canonical-v1"] .chesscom-actionbar button.is-end-turn{
+    background:rgba(76,45,13,.88);
+    border-color:#e6a142;
+    color:#ffd08e;
+  }
+  .chesscom[data-chesscom-visual="premium-v1"][data-chesscom-layout="dust-veil-canonical-v1"] .chesscom-right{
+    position:absolute;
+    z-index:13;
+    right:16px;
+    bottom:15px;
+    display:block;
+    width:292px;
+    min-width:0;
+    pointer-events:none;
+  }
+  .chesscom[data-chesscom-visual="premium-v1"][data-chesscom-layout="dust-veil-canonical-v1"] .chesscom-right .chesscom-weapon{
+    position:relative;
+    width:100%;
+    padding:.56rem .64rem;
+    border:1px solid rgba(110,158,181,.45);
+    background:var(--cc-dust-glass);
+    pointer-events:auto;
+  }
+  .chesscom[data-chesscom-visual="premium-v1"][data-chesscom-layout="dust-veil-canonical-v1"] .chesscom-weapon-title{
+    min-height:70px;
+    margin:0;
+    border:0;
+    padding:0;
+  }
+  .chesscom[data-chesscom-visual="premium-v1"][data-chesscom-layout="dust-veil-canonical-v1"] .chesscom-weapon-title strong{font-size:.8rem}
+  .chesscom[data-chesscom-visual="premium-v1"][data-chesscom-layout="dust-veil-canonical-v1"] .chesscom-weapon-title small{
+    max-width:148px;
+    font-size:.52rem;
+  }
+  .chesscom[data-chesscom-visual="premium-v1"][data-chesscom-layout="dust-veil-canonical-v1"] .chesscom-weapon-art{
+    right:-8px;
+    bottom:-7px;
+    width:155px;
+    height:72px;
+    opacity:.86;
+  }
+  .chesscom[data-chesscom-visual="premium-v1"][data-chesscom-layout="dust-veil-canonical-v1"] .chesscom-weapon-ammo{
+    position:absolute;
+    right:20px;
+    bottom:3px;
+    margin:0;
+    padding:.12rem .25rem;
+    background:rgba(3,12,19,.89);
+    color:#f4bd65;
+    font-size:.83rem;
+    white-space:nowrap;
+  }
+  .chesscom[data-chesscom-visual="premium-v1"][data-chesscom-layout="dust-veil-canonical-v1"] .chesscom-weapon-advanced{
+    margin-top:.45rem;
+  }
+  .chesscom[data-chesscom-visual="premium-v1"][data-chesscom-layout="dust-veil-canonical-v1"] .chesscom-weapon-advanced[open]{
+    max-height:min(52vh,380px);
+    overflow:auto;
+  }
+  .chesscom[data-chesscom-visual="premium-v1"][data-chesscom-layout="dust-veil-canonical-v1"] .chesscom-mission-details{
+    position:absolute;
+    right:0;
+    bottom:calc(100% + 9px);
+    width:292px;
+    pointer-events:auto;
+    color:#dbe9ef;
+    background:rgba(4,15,24,.94);
+    border:1px solid rgba(110,158,181,.35);
+    border-radius:4px;
+  }
+  .chesscom[data-chesscom-visual="premium-v1"][data-chesscom-layout="dust-veil-canonical-v1"] .chesscom-mission-detail-content{
+    display:grid;
+    gap:.45rem;
+    max-height:35vh;
+    overflow:auto;
+    padding:.4rem;
+  }
+  .chesscom[data-chesscom-visual="premium-v1"][data-chesscom-layout="dust-veil-canonical-v1"] .chesscom-mission-badge{
+    top:83px;
+    right:16px;
+    bottom:auto;
+    left:auto;
+    background:rgba(5,18,29,.86);
+    border-color:var(--cc-dust-outline);
+    color:#d4effb;
+  }
+  .chesscom[data-chesscom-visual="premium-v1"][data-chesscom-layout="dust-veil-canonical-v1"] .chesscom-operation{
+    top:133px;
+    right:16px;
+    width:248px;
+    padding:.55rem .65rem;
+    background:rgba(4,16,26,.87);
+  }
+  .chesscom[data-chesscom-visual="premium-v1"][data-chesscom-layout="dust-veil-canonical-v1"] .chesscom-hover-card{
+    right:318px;
+    bottom:116px;
+  }
+  .chesscom[data-chesscom-visual="premium-v1"][data-chesscom-layout="dust-veil-canonical-v1"] .chesscom-footer{
+    position:absolute;
+    z-index:14;
+    bottom:0;
+    left:0;
+    width:100%;
+    height:12px;
+    padding:0 18px;
+    border:0;
+    background:rgba(2,8,13,.77);
+    font-size:.42rem;
+    line-height:12px;
+  }
+}
+/* Shared disclosure: optional telemetry/fire-mode details never block the primary mission.
+   Keep the controls reachable by keyboard and touch on smaller viewports too. */
+.chesscom .chesscom-weapon-advanced summary,
+.chesscom .chesscom-mission-details summary{
+  cursor:pointer;
+  color:#c0d9e2;
+  font:700 .63rem/1.35 ui-monospace,monospace;
+  letter-spacing:.035em;
+  padding:.36rem .28rem;
+}
+.chesscom .chesscom-weapon-advanced summary:focus-visible,
+.chesscom .chesscom-mission-details summary:focus-visible{
+  outline:2px solid #43c8ff;
+  outline-offset:2px;
+}
+.chesscom .chesscom-weapon-ammo{
+  position:relative;
+  z-index:2;
+  align-self:flex-end;
+  margin:0 0 .2rem auto;
+  color:#e6b95e;
+  font:800 .85rem ui-monospace,monospace;
+  white-space:nowrap;
+}
+.chesscom .chesscom-weapon-advanced[open]>dl{margin-top:.55rem}
+.chesscom .chesscom-mission-detail-content{display:grid;gap:.5rem;padding:.4rem}
+
+/* Desktop CHESSCOM is an immersive room above the ordinary Chess Studio chrome.
+   Mobile stays in the proven vertical flow, with the brand/exit fully visible. */
+@media (max-width:620px){
+  .chesscom[data-chesscom-visual="premium-v1"][data-chesscom-layout="dust-veil-canonical-v1"] .chesscom-topbar{
+    gap:.38rem;
+    padding:.42rem;
+    min-height:0;
+    align-items:center;
+  }
+  .chesscom[data-chesscom-visual="premium-v1"][data-chesscom-layout="dust-veil-canonical-v1"] .chesscom-brand{
+    gap:.26rem;
+    align-items:center;
+  }
+  .chesscom[data-chesscom-visual="premium-v1"][data-chesscom-layout="dust-veil-canonical-v1"] .chesscom-rook{
+    font-size:1.55rem;
+  }
+  .chesscom[data-chesscom-visual="premium-v1"][data-chesscom-layout="dust-veil-canonical-v1"] .chesscom-brand h2{
+    font-size:clamp(1.35rem,7.2vw,1.7rem);
+    line-height:.96;
+    white-space:nowrap;
+  }
+  .chesscom[data-chesscom-visual="premium-v1"][data-chesscom-layout="dust-veil-canonical-v1"] .chesscom-brand strong{
+    font-size:.47rem;
+    letter-spacing:.13em;
+    margin-top:.16rem;
+  }
+  .chesscom[data-chesscom-visual="premium-v1"][data-chesscom-layout="dust-veil-canonical-v1"] .chesscom-exit{
+    max-width:100px;
+    min-height:44px;
+    padding:.38rem .4rem;
+  }
+}
