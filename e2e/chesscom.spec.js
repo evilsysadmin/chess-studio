@@ -67,6 +67,7 @@ test('Chesscom · abre la planta 17 con renderer Babylon real y HUD Dust Veil pr
     const root = scene?.getTransformNodeByName?.('truck-v21-root');
     return Boolean(root && wheels.length === 6 && wheels.every((mesh) => !mesh.isPickable && mesh.parent === root));
   })).toBe(true);
+  await expect(host).toHaveAttribute('data-chesscom-camera', 'camera-v25-cinematic-wide');
   await expect(host).toHaveAttribute('data-chesscom-lighting', 'readability-v2');
   await expect(mode.getByText(/BABYLON\.JS \d+\.\d+\.\d+ · GPU PREMIUM V2 · BALLISTICS · UNIT STANCE · CHARACTER ART V4/)).toBeVisible({ timeout: 30_000 });
   await expect(mode.getByText('BABYLON · ERROR', { exact: true })).toHaveCount(0);
@@ -97,6 +98,12 @@ test('Chesscom · abre la planta 17 con renderer Babylon real y HUD Dust Veil pr
   // El PNG canónico Dust Veil convierte los laterales en overlays y deja
   // Babylon como protagonista sin perder el acceso a las acciones existentes.
   await page.setViewportSize({ width:1600, height:900 });
+  await expect(host).toHaveAttribute('data-chesscom-camera-framing', 'cinematic');
+  await expect.poll(() => host.evaluate(() => {
+    const camera=window.BABYLON?.EngineStore?.LastCreatedScene?.getCameraByName('chesscom-camera');
+    return camera ? {beta:camera.beta,right:camera.orthoRight} : null;
+  })).toMatchObject({beta:0.995,right:expect.closeTo(9.65*1.04*.94,2)});
+
   await expect(mode).toHaveAttribute('data-chesscom-layout', 'dust-veil-canonical-v1');
   await expect.poll(() => mode.evaluate((node) => {
     const origin = node.getBoundingClientRect();
@@ -129,6 +136,13 @@ test('Chesscom · abre la planta 17 con renderer Babylon real y HUD Dust Veil pr
   // arista móvil que el artifact visual detectó (390px de viewport vs 491px de
   // canvas CSS). El scroll interno de la actionbar es válido; el documento no.
   await page.setViewportSize({ width:390, height:844 });
+  // Resize must restore the overview without a scene remount.
+  await expect(host).toHaveAttribute('data-chesscom-camera-framing', 'overview');
+  await expect.poll(() => host.evaluate(() => {
+    const camera=window.BABYLON?.EngineStore?.LastCreatedScene?.getCameraByName('chesscom-camera');
+    return camera?.orthoRight;
+  })).toBeCloseTo(9.65*1.04,2);
+
   await expect.poll(() => page.evaluate(() => ({
     viewport:window.innerWidth,
     documentWidth:document.documentElement.scrollWidth,
