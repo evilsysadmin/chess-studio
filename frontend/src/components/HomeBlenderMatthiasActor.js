@@ -26,7 +26,7 @@ export const HOME_MATTHIAS_ACTOR_STATIONS = Object.freeze({
   // hotspot, a large hit-area that would sit on top of his own.
   'table-coffee': Object.freeze({
     posture: 'stand',
-    at: Object.freeze([-3.05, -1.35, 0]),
+    at: Object.freeze([-2.9, -1.35, 0]),
     yawDeg: 18,
   }),
   // Mirror spot at the left end of the table, by the left hearth.
