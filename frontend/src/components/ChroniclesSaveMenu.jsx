@@ -3,7 +3,10 @@ import './ChroniclesSaveMenu.css';
 
 function expeditionArea(save) {
   switch (save.currentMapId || save.entryMapId) {
-    case 'swordhaven-square': return 'Swordhaven';
+    case 'swordhaven-square':
+    case 'swordhaven-campaign':
+    case 'swordhaven-first-book': return 'Swordhaven';
+    case 'banner-road-first-book': return 'Camino de los Estandartes';
     case 'crypt-eight-squares': return 'Cripta de las Ocho Casillas';
     default: return 'Expedición en curso';
   }
@@ -56,7 +59,8 @@ export default function ChroniclesSaveMenu({
 
         {screen === 'home' ? (
           <div className="chronicles-save-menu__actions">
-            <button type="button" className="is-primary" onClick={onNew}>Nuevo juego</button>
+            <button type="button" className="is-primary" onClick={() => onNew('swordhaven-first-book')}>Nueva campaña <small>El rey desaparecido · Primera misión</small></button>
+            <button type="button" onClick={() => onNew()}>Nuevo juego</button>
             <button type="button" disabled={!resume || loading} onClick={() => onLoad(resume.id)}>
               Continuar partida
               {resume && <small>{resume.title} · {expeditionArea(resume)}</small>}

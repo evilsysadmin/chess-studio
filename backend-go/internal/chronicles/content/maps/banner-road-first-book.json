@@ -1,0 +1,140 @@
+{
+  "id": "banner-road-first-book",
+  "version": 1,
+  "progressionKey": "campaign-banner-road-first-book-v1",
+  "title": "Camino de los Estandartes · El primer encargo",
+  "regionKind": "wilderness",
+  "layoutMode": "authored",
+  "grid": [
+    "#####################",
+    "#...................#",
+    "#...................#",
+    "#...................#",
+    "#.##..#.##.###.####.#",
+    "#...................#",
+    "#...................#",
+    "#...................#",
+    "#...................#",
+    "#...................#",
+    "#...................#",
+    "#...................#",
+    "#...................#",
+    "#...................#",
+    "#####################"
+  ],
+  "partyStart": {
+    "x": 10,
+    "y": 7,
+    "direction": 0
+  },
+  "initialFlags": {},
+  "enemies": [],
+  "triggers": [],
+  "interactables": [
+    {
+      "id": "stone-milestone",
+      "kind": "lore",
+      "x": 8,
+      "y": 5,
+      "label": "El mojón sin nombre",
+      "when": [
+        {
+          "key": "milestone-erased",
+          "falsy": true
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "set",
+            "key": "milestone-erased",
+            "value": true
+          }
+        ],
+        "message": "Camino de los Estandartes: El mojón sin nombre.",
+        "journal": {
+          "id": "campaign-milestone-erased",
+          "title": "El mojón sin nombre",
+          "body": "Calzada real que conecta los mercados con la capital.",
+          "sigil": "✦"
+        }
+      }
+    },
+    {
+      "id": "first-book-lost-banner",
+      "kind": "quest",
+      "x": 9,
+      "y": 5,
+      "label": "Recuperar estandarte junto al mojón",
+      "when": [
+        {
+          "questId": "banner-contract",
+          "questStatus": "active"
+        },
+        {
+          "key": "bannerFound",
+          "falsy": true
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "set",
+            "key": "bannerFound",
+            "value": true
+          },
+          {
+            "type": "grant-item",
+            "itemId": "knight-banner",
+            "name": "Estandarte de la patrulla",
+            "description": "Tela azul con el emblema real. El alguacil de Swordhaven ofreció una recompensa.",
+            "quantity": 1
+          },
+          {
+            "type": "advance-quest",
+            "questId": "banner-contract",
+            "objective": "Regresa al tablón de Swordhaven y entrega el estandarte."
+          }
+        ],
+        "message": "Entre raíces y piedras aparece el estandarte perdido. La pista conduce de nuevo a Swordhaven.",
+        "journal": {
+          "id": "first-book-banner-found",
+          "title": "Estandarte recuperado",
+          "body": "Hallado junto al mojón sin nombre. El alguacil debe recibirlo para pagar la recompensa.",
+          "sigil": "✦"
+        }
+      }
+    }
+  ],
+  "treasures": [],
+  "traps": [],
+  "exits": [
+    {
+      "id": "to-first-book-swordhaven",
+      "kind": "exit",
+      "x": 10,
+      "y": 1,
+      "requiresReturn": true,
+      "openLabel": "Regresar a Swordhaven",
+      "lockedLabel": "El paso está sellado",
+      "requirements": [],
+      "action": {
+        "effects": [
+          {
+            "type": "transition-map",
+            "mapId": "swordhaven-first-book",
+            "entryExitId": "to-first-book-banner-road"
+          }
+        ],
+        "message": "La compañía llega a Swordhaven."
+      }
+    }
+  ],
+  "initialJournal": {
+    "id": "first-book-banner-road",
+    "title": "Camino de los Estandartes",
+    "body": "Una calzada antigua. El mojón sin nombre esconde el estandarte de una patrulla perdida.",
+    "sigil": "II"
+  },
+  "introMessage": "Camino de los Estandartes. El camino parece desierto, pero los hitos de piedra todavía recuerdan a los desaparecidos."
+}

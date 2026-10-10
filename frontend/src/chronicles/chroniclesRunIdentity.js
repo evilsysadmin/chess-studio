@@ -296,7 +296,7 @@ export function beginChroniclesRun(scope, { entryMapId = null } = {}) {
   // run. Do not allow callers to mint an unknown map ID or silently redirect
   // Tactics/legacy runs. Existing server checkpoints remain authoritative.
   legacyStorageKeyFor(scope);
-  if (entryMapId !== null && (scope !== 'first-person' || entryMapId !== 'swordhaven-campaign')) {
+  if (entryMapId !== null && (scope !== 'first-person' || !['swordhaven-campaign', 'swordhaven-first-book'].includes(entryMapId))) {
     throw new RangeError('Unsupported Chronicles fresh-run entry map');
   }
   // Do not discard the previous active run when starting a new expedition.
@@ -332,7 +332,7 @@ export function renewChroniclesRun(scope, runId) {
   }
   // A lost/stale server identity must not silently change an opted-in
   // campaign back to legacy Swordhaven when first-person renews the run.
-  const entryMapId = scope === 'first-person' && current?.entryMapId === 'swordhaven-campaign'
+  const entryMapId = scope === 'first-person' && ['swordhaven-campaign', 'swordhaven-first-book'].includes(current?.entryMapId)
     ? current.entryMapId : null;
   return beginChroniclesRun(scope, { entryMapId });
 }
