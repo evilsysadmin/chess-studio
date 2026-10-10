@@ -486,3 +486,42 @@
 .chess-football-entry__objective-heading span { color: #d3ddac; font-size: .78rem; }
 .chess-football-entry__objective p { margin: .35rem 0; font-size: .84rem; line-height: 1.45; }
 .chess-football-entry__objective .chess-football-entry__objective-progress { color: #f0dbac; font-weight: 750; font-variant-numeric: tabular-nums; }
+
+/* Advanced coaching is collapsed by default: keep the next-match flow simple. */
+.chess-football-entry__training {
+  margin: .55rem 0;
+  padding: .7rem .9rem;
+  border: 1px solid rgba(209, 190, 134, .24);
+  border-radius: 12px;
+  background: rgba(9, 26, 16, .56);
+}
+.chess-football-entry__training summary { color: #e8d7ae; font-weight: 750; cursor: pointer; }
+.chess-football-entry__training p { font-size: .81rem; line-height: 1.5; }
+.chess-football-entry__training-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: .45rem;
+}
+.chess-football-entry__training-option {
+  min-height: 44px;
+  min-width: 0;
+  border: 1px solid rgba(230, 202, 141, .34);
+  border-radius: 9px;
+  padding: .45rem .5rem;
+  background: #1b2b1e;
+  color: #efe8d5;
+  font: inherit;
+  font-size: .83rem;
+  font-weight: 650;
+  cursor: pointer;
+}
+.chess-football-entry__training-option[aria-pressed="true"] {
+  border-color: #e9ca80;
+  background: #455b36;
+  color: #fff4ce;
+}
+.chess-football-entry__training-option:focus-visible,
+.chess-football-entry__training summary:focus-visible {
+  outline: 3px solid #d8c28b;
+  outline-offset: 2px;
+}

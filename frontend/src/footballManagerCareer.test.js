@@ -28,6 +28,32 @@ describe('Football manager · versioned career journal', () => {
     expect(next.season.results.slice(0, 3)).toEqual(played.season.results);
   });
 
+  it('migrates legacy v1 decisions into default training without changing scores', () => {
+    let current = createFootballCareer('fc-matthias');
+    current = playFootballCareerRound(current).journal;
+    const old = { ...current, version: 1, rounds: current.rounds.map(({ tactic, lineup }) => ({ tactic, lineup })) };
+    delete old.nextTraining;
+    const migrated = replayFootballCareer(old);
+    expect(migrated.journal.version).toBe(2);
+    expect(migrated.journal.nextTraining).toBe('standard');
+    expect(migrated.journal.rounds[0].training).toBe('standard');
+    expect(migrated.season.results.map(r => [r.homeGoals, r.awayGoals]))
+      .toEqual(replayFootballCareer(current).season.results.map(r => [r.homeGoals, r.awayGoals]));
+    expect(playFootballCareerRound(migrated.journal).season).toEqual(playFootballCareerRound(current).season);
+  });
+
+  it('persists training choices and does not invent a training history', () => {
+    const start = createFootballCareer('fc-matthias');
+    const next = editFootballCareer(start, { training: 'shooting' });
+    expect(writeFootballCareer(next.journal).status).toBe('saved');
+    expect(readFootballCareer().journal.nextTraining).toBe('shooting');
+    const played = playFootballCareerRound(readFootballCareer().journal);
+    expect(played.journal.rounds[0].training).toBe('shooting');
+    expect(played.season.results.find(r => r.managerLineup).managerTraining).toBe('shooting');
+    expect(played.season.managerFatigue[played.journal.nextLineup[0]]).toBe(24);
+    expect(() => editFootballCareer(played.journal, { training: 'fake' })).toThrow('training');
+  });
+
   it('completes exactly ten rounds and never duplicates a finish', () => {
     let current = createFootballCareer('fc-matthias');
     for (let i = 0; i < 10; i += 1) current = playFootballCareerRound(current).journal;

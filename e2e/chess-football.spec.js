@@ -250,6 +250,10 @@ test('Chess Football manager can simulate ten reproducible matchdays without loa
       await expect(lineupPanel).toContainText('Fatiga 17%');
       await expect(lineupPanel.locator('.chess-football-entry__slot-fatigue')).toHaveCount(5);
       await expect(lineupPanel.locator('.chess-football-entry__slot-fatigue').first()).toHaveText('Fatiga 17%');
+      const training = page.getByLabel('Entrenamiento de la jornada');
+      await training.locator('summary').click();
+      await page.getByRole('group', { name: 'Plan de entrenamiento' }).getByRole('button', { name: 'Recuperación' }).click();
+      await expect(training.locator('summary')).toContainText('Recuperación');
       await tactics.getByRole('button', { name: 'Bloque bajo' }).click();
       await expect(tactics.getByRole('button', { name: 'Bloque bajo' })).toHaveAttribute('aria-pressed', 'true');
     }
@@ -261,6 +265,8 @@ test('Chess Football manager can simulate ten reproducible matchdays without loa
     }
     if (round === 2) {
       await expect(season.getByLabel('Resultados de la última jornada')).toContainText('Plan: Bloque bajo');
+      await expect(season.getByLabel('Resultados de la última jornada')).toContainText('Entreno: Recuperación');
+      await expect(season.getByLabel('Resultados de la última jornada')).toContainText('Fatiga inicial media: 5%');
     }
   }
   await expect(page.getByRole('button', { name: 'Liga completada', exact: true })).toBeDisabled();
@@ -279,6 +285,8 @@ test('Chess Football manager restores the authoritative journal after leaving th
   await page.getByRole('button', { name: 'Elegir FC Matthias' }).click();
   await page.getByRole('button', { name: 'Empezar temporada de prueba' }).click();
   await page.getByRole('button', { name: 'Ataque total' }).click();
+  await page.getByLabel('Entrenamiento de la jornada').locator('summary').click();
+  await page.getByRole('group', { name: 'Plan de entrenamiento' }).getByRole('button', { name: 'Remates' }).click();
   await page.getByLabel('Alineación del míster').locator('summary').click();
   await page.getByRole('combobox', { name: 'Titular 5 · DEL' }).selectOption('fc-matthias-del-2');
   await page.getByRole('button', { name: 'Simular siguiente jornada' }).click();
@@ -292,8 +300,9 @@ test('Chess Football manager restores the authoritative journal after leaving th
   expect(await page.locator('.chess-football-entry__standings tbody').innerText()).toBe(baseline);
   await page.getByLabel('Alineación del míster').locator('summary').click();
   await expect(page.getByRole('combobox', { name: 'Titular 5 · DEL' })).toHaveValue('fc-matthias-del-2');
-  await expect(page.getByRole('combobox', { name: 'Titular 5 · DEL' })).toContainText('F17%');
+  await expect(page.getByRole('combobox', { name: 'Titular 5 · DEL' })).toContainText('F24%');
   await expect(page.getByRole('button', { name: 'Ataque total' })).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByLabel('Entrenamiento de la jornada').locator('summary')).toContainText('Remates');
   await page.locator('.chess-football-entry__back').click();
   await page.locator('.chess-football-entry__back').click();
   await page.locator('.chess-football-entry__back').click();

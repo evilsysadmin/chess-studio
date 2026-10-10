@@ -2,6 +2,7 @@
 // Godot coupling or random global state. This is not yet a saved career.
 import { FOOTBALL_MANAGER_CLUBS } from './footballManagerClubs.js';
 import { getFootballClubRoster, evaluateFootballLineup, evaluateFootballFatigue, advanceFootballFatigue } from './footballManagerRoster.js';
+import { FOOTBALL_TRAINING_PLANS, prepareFootballTraining } from './footballManagerTraining.js';
 
 const freeze = (value) => Object.freeze(value);
 const CHANCES_PER_TEAM = 7;
@@ -121,6 +122,7 @@ function simulateFixture(season, fixture, managerClubId, tacticalPlan, lineupEff
     awayGoals,
     source: 'statistical-simulation',
     ...(homeManaged || awayManaged ? { managerTactic: tacticalPlan.id } : {}),
+    ...(lineupEffect && (homeManaged || awayManaged) ? { managerTraining: lineupEffect.trainingId } : {}),
     ...(lineupEffect && (homeManaged || awayManaged) ? {
       managerLineup: lineupEffect.lineupIds,
       managerFatigueAtKickoff: lineupEffect.fatigueAtKickoff,
@@ -128,13 +130,15 @@ function simulateFixture(season, fixture, managerClubId, tacticalPlan, lineupEff
   });
 }
 
-export function advanceFootballSeason(season, { managerClubId = null, tactic = 'balanced', lineup = null } = {}) {
+export function advanceFootballSeason(season, { managerClubId = null, tactic = 'balanced', lineup = null, training = 'standard' } = {}) {
   if (!season || season.version !== 1 || !Array.isArray(season.rounds) || !Array.isArray(season.results)) {
     throw new Error('Invalid Chess Football season');
   }
   const tacticalPlan = FOOTBALL_MANAGER_TACTICS.find((entry) => entry.id === tactic);
-  if (!tacticalPlan || (managerClubId !== null && !season.clubs.some((club) => club.id === managerClubId))
-    || (managerClubId === null && (tactic !== 'balanced' || lineup !== null))) {
+  if (!tacticalPlan || !FOOTBALL_TRAINING_PLANS.some((plan) => plan.id === training)
+    || (managerClubId !== null && !season.clubs.some((club) => club.id === managerClubId))
+    || (managerClubId === null && (tactic !== 'balanced' || lineup !== null || training !== 'standard'))
+    || (lineup === null && training !== 'standard')) {
     throw new Error('Invalid manager club or tactical plan');
   }
   if (season.managerFatigueClubId && (managerClubId !== season.managerFatigueClubId || lineup === null)) {
@@ -143,12 +147,14 @@ export function advanceFootballSeason(season, { managerClubId = null, tactic = '
   const manager = season.clubs.find((club) => club.id === managerClubId);
   const roster = lineup === null ? null : getFootballClubRoster(manager);
   const lineupRatings = roster === null ? null : evaluateFootballLineup(roster, lineup);
-  const fitness = roster === null ? null : evaluateFootballFatigue(roster, lineup, season.managerFatigue);
+  const practice = roster === null ? null : prepareFootballTraining(roster, lineup, season.managerFatigue, training);
+  const fitness = roster === null ? null : evaluateFootballFatigue(roster, lineup, practice.kickoffFatigue);
   const lineupEffect = lineupRatings === null ? null : freeze({
     ...lineupRatings,
-    attackDelta: lineupRatings.attackDelta - fitness.attackPenalty,
-    defenseDelta: lineupRatings.defenseDelta - fitness.defensePenalty,
+    attackDelta: lineupRatings.attackDelta + practice.attackBonus - fitness.attackPenalty,
+    defenseDelta: lineupRatings.defenseDelta + practice.defenseBonus - fitness.defensePenalty,
     fatigueAtKickoff: fitness.average,
+    trainingId: practice.id,
   });
   if (season.currentRound >= season.rounds.length) return season;
   const roundResults = season.rounds[season.currentRound].map((fixture) => simulateFixture(season, fixture, managerClubId, tacticalPlan, lineupEffect));
@@ -158,7 +164,7 @@ export function advanceFootballSeason(season, { managerClubId = null, tactic = '
     results: freeze([...season.results, ...roundResults]),
     ...(roster ? {
       managerFatigueClubId: managerClubId,
-      managerFatigue: advanceFootballFatigue(roster, lineup, season.managerFatigue),
+      managerFatigue: advanceFootballFatigue(roster, lineup, practice.kickoffFatigue),
     } : {}),
   });
 }
