@@ -81,7 +81,7 @@ function currentReducedMotion() {
   return reducedMotionStatus().effective;
 }
 
-export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, onPlayIntent, onContinue, onPractice, pendingModes = [], onTournament, onTrain, onTrainIntent, onCombat, onDaily, onHistory, onInsights, tools, matthiasModel, matthiasSpeaking, onMatthiasAction, onMatthiasDismiss, pvpMenuEntry = null }) {
+export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, onPlayIntent, onContinue, onPractice, pendingModes = [], onTournament, onTrain, onTrainIntent, onCombat, onDaily, onHistory, onInsights, tools, matthiasModel, matthiasSpeaking, onMatthiasAction, onMatthiasDismiss, onHomeAvailable = null, pvpMenuEntry = null }) {
   const [toolsOpen, setToolsOpen] = useState(false);
   const [quickOpen, setQuickOpen] = useState(false);
   const [playMenuOpen, setPlayMenuOpen] = useState(false);
@@ -124,6 +124,10 @@ export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, 
     // The mobile vestibule does not mount the hall at all.
     if (portraitVestibule) setMatthiasInScene(null);
   }, [portraitVestibule]);
+  useEffect(() => {
+    // Portrait Home and an emergency static Home have no WebGL readiness gate.
+    if (portraitVestibule || useStaticHome) onHomeAvailable?.();
+  }, [portraitVestibule, useStaticHome, onHomeAvailable]);
 
   const castleLife = useMemo(() => buildHomeCastleLife({
     rivalry: loadRivalry(),
@@ -315,7 +319,7 @@ export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, 
           />
         )}
         {!portraitVestibule && !useStaticHome && (
-          <Home3DLoadingGate stageRef={homeStageRef} onUseStaticHome={() => {
+          <Home3DLoadingGate stageRef={homeStageRef} onHomeAvailable={onHomeAvailable} onUseStaticHome={() => {
             setUseStaticHome(true);
             handleAnchorLayout(null);
             handleMatthiasLayout(null);
