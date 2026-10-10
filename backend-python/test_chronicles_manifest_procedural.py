@@ -83,11 +83,13 @@ def test_all_shipped_manifests_keep_semantics_and_become_connected_seeded_layout
             # File-authored areas include both towns and real overworld
             # wilderness; neither must be silently proceduralized.
             assert base["regionKind"] in {"settlement", "wilderness"}
-            assert not base.get("enemies")
+            # Authored wilderness may contain real encounters. Their enemy
+            # identities, spawns and rewards must not be randomized away.
             for seed in (0, 1, 417, 2_147_483_647):
                 generated = proceduralize_chronicles_manifest(base, seed)
                 assert generated.manifest["grid"] == base["grid"]
                 assert generated.manifest["interactables"] == base["interactables"]
+                assert generated.manifest.get("enemies", []) == base.get("enemies", [])
                 assert generated.manifest["generation"]["kind"] == "authored-layout"
             continue
 

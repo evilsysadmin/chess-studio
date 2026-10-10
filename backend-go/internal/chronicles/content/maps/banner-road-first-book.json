@@ -28,7 +28,62 @@
     "direction": 0
   },
   "initialFlags": {},
-  "enemies": [],
+  "enemies": [
+    {
+      "id": "banner-road-deserter",
+      "visualType": "corrupted-pawn",
+      "name": "saqueador del camino",
+      "explorationObjective": "La patrulla desertora protege el botín del Camino.",
+      "x": 11,
+      "y": 5,
+      "hpKey": "bannerRoadDeserterHp",
+      "maxHp": 4,
+      "retaliation": 1,
+      "optional": true,
+      "activation": "always",
+      "ai": {
+        "movement": "cardinal-roam",
+        "attackReach": 1,
+        "engagedMovement": "cardinal-chase",
+        "engageRange": 2
+      },
+      "blockingMessage": "Un saqueador bloquea el camino. No parece dispuesto a compartir el botín sin resistencia.",
+      "onDefeat": {
+        "message": "{attacker} acaba con el saqueador usando {attack}. Matthias recomienda registrar los bolsillos antes del informe.",
+        "effects": [
+          {
+            "type": "set",
+            "key": "bannerRoadDeserterDefeated",
+            "value": true
+          },
+          {
+            "type": "grant-gold",
+            "amount": 3
+          }
+        ],
+        "journal": {
+          "id": "banner-road-deserter-falls",
+          "title": "La patrulla desertora retrocede",
+          "body": "La compañía elimina al saqueador y recupera tres monedas de oro. El sendero permanece abierto.",
+          "sigil": "†"
+        }
+      },
+      "enemyBuild": {
+        "version": 1,
+        "archetype": "corrupted-pawn",
+        "level": 1,
+        "attributes": {
+          "vigor": 1,
+          "power": 0,
+          "precision": 0,
+          "will": 0
+        },
+        "skills": [
+          "brutal-strike"
+        ]
+      }
+    }
+  ],
   "triggers": [],
   "interactables": [
     {
