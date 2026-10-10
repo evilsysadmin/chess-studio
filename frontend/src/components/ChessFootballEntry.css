@@ -436,3 +436,25 @@
   font-weight: 750;
   font-variant-numeric: tabular-nums;
 }
+
+/* Saved careers are part of the mode's optional continuation, not another
+   dashboard. The confirmation is explicit and usable with touch/keyboard. */
+.chess-football-entry__career-resume,
+.chess-football-entry__career-confirm {
+  margin: 1rem 0;
+  padding: .9rem 1rem;
+  border: 1px solid rgba(237, 205, 133, .35);
+  border-radius: 12px;
+  background: rgba(20, 38, 24, .76);
+}
+.chess-football-entry__career-resume > strong { color: #f1dca5; }
+.chess-football-entry__career-resume p,
+.chess-football-entry__career-confirm p { font-size: .87rem; line-height: 1.5; }
+.chess-football-entry__save-state {
+  font-size: .78rem;
+  color: #cedfb5;
+}
+.chess-football-entry__career-warning {
+  font-size: .84rem;
+  color: #f1d493;
+}
