@@ -1,6 +1,7 @@
 // Pure, reproducible first league slice: no browser storage, clock, backend,
 // Godot coupling or random global state. This is not yet a saved career.
 import { FOOTBALL_MANAGER_CLUBS } from './footballManagerClubs.js';
+import { getFootballClubRoster, evaluateFootballLineup } from './footballManagerRoster.js';
 
 const freeze = (value) => Object.freeze(value);
 const CHANCES_PER_TEAM = 7;
@@ -86,7 +87,7 @@ export function createFootballSeason({ clubs = FOOTBALL_MANAGER_CLUBS, seed = 1 
   });
 }
 
-function simulateFixture(season, fixture, managerClubId, tacticalPlan) {
+function simulateFixture(season, fixture, managerClubId, tacticalPlan, lineupEffect) {
   const home = season.clubs.find((club) => club.id === fixture.homeId);
   const away = season.clubs.find((club) => club.id === fixture.awayId);
   // Better squads and playing at home influence the chances. Each decision
@@ -96,8 +97,12 @@ function simulateFixture(season, fixture, managerClubId, tacticalPlan) {
   const awayManaged = away.id === managerClubId;
   // Attack raises both our scoring chances and the opponent's; block low
   // lowers both. Only the manager's actual fixture is changed.
-  const homeAdjustment = homeManaged ? tacticalPlan.attackBoost : awayManaged ? tacticalPlan.vulnerability : 0;
-  const awayAdjustment = awayManaged ? tacticalPlan.attackBoost : homeManaged ? tacticalPlan.vulnerability : 0;
+  const attackBonus = lineupEffect?.attackDelta || 0;
+  const defenseBonus = lineupEffect?.defenseDelta || 0;
+  const homeAdjustment = homeManaged ? tacticalPlan.attackBoost + attackBonus
+    : awayManaged ? tacticalPlan.vulnerability - defenseBonus : 0;
+  const awayAdjustment = awayManaged ? tacticalPlan.attackBoost + attackBonus
+    : homeManaged ? tacticalPlan.vulnerability - defenseBonus : 0;
   const homeProbability = Math.max(.07, Math.min(.38, .20 + gap * .035 + homeAdjustment));
   const awayProbability = Math.max(.07, Math.min(.38, .17 - gap * .035 + awayAdjustment));
   let homeGoals = 0;
@@ -116,20 +121,24 @@ function simulateFixture(season, fixture, managerClubId, tacticalPlan) {
     awayGoals,
     source: 'statistical-simulation',
     ...(homeManaged || awayManaged ? { managerTactic: tacticalPlan.id } : {}),
+    ...(lineupEffect && (homeManaged || awayManaged) ? { managerLineup: lineupEffect.lineupIds } : {}),
   });
 }
 
-export function advanceFootballSeason(season, { managerClubId = null, tactic = 'balanced' } = {}) {
+export function advanceFootballSeason(season, { managerClubId = null, tactic = 'balanced', lineup = null } = {}) {
   if (!season || season.version !== 1 || !Array.isArray(season.rounds) || !Array.isArray(season.results)) {
     throw new Error('Invalid Chess Football season');
   }
   const tacticalPlan = FOOTBALL_MANAGER_TACTICS.find((entry) => entry.id === tactic);
   if (!tacticalPlan || (managerClubId !== null && !season.clubs.some((club) => club.id === managerClubId))
-    || (managerClubId === null && tactic !== 'balanced')) {
+    || (managerClubId === null && (tactic !== 'balanced' || lineup !== null))) {
     throw new Error('Invalid manager club or tactical plan');
   }
+  const manager = season.clubs.find((club) => club.id === managerClubId);
+  const lineupEffect = lineup === null ? null
+    : evaluateFootballLineup(getFootballClubRoster(manager), lineup);
   if (season.currentRound >= season.rounds.length) return season;
-  const roundResults = season.rounds[season.currentRound].map((fixture) => simulateFixture(season, fixture, managerClubId, tacticalPlan));
+  const roundResults = season.rounds[season.currentRound].map((fixture) => simulateFixture(season, fixture, managerClubId, tacticalPlan, lineupEffect));
   return freeze({
     ...season,
     currentRound: season.currentRound + 1,

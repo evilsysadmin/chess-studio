@@ -231,6 +231,10 @@ test('Chess Football manager can simulate ten reproducible matchdays without loa
   const season = page.locator('.chess-football-entry__manager--season');
   await expect(season).toBeVisible();
   await expect(season).toContainText('Jornada 0 de 10');
+  const lineupPanel = page.getByLabel('Alineación del míster');
+  await lineupPanel.locator('summary').click();
+  await lineupPanel.getByRole('combobox', { name: 'Titular 5 · DEL' }).selectOption('fc-matthias-del-2');
+  await expect(lineupPanel.getByRole('combobox', { name: 'Titular 5 · DEL' })).toHaveValue('fc-matthias-del-2');
   const tactics = page.getByRole('group', { name: 'Táctica del siguiente partido' });
   await expect(tactics.getByRole('button', { name: 'Equilibrio' })).toHaveAttribute('aria-pressed', 'true');
   await tactics.getByRole('button', { name: 'Ataque total' }).click();
@@ -248,6 +252,7 @@ test('Chess Football manager can simulate ten reproducible matchdays without loa
     await expect(season).toContainText(`Jornada ${round} de 10`);
     if (round === 1) {
       await expect(season.getByLabel('Resultados de la última jornada')).toContainText('Plan: Ataque total');
+      await expect(season.getByLabel('Resultados de la última jornada')).toContainText('Quinteto alternativo');
     }
     if (round === 2) {
       await expect(season.getByLabel('Resultados de la última jornada')).toContainText('Plan: Bloque bajo');

@@ -192,6 +192,14 @@ async function withChessFootballCapturePage(browser, capture, callback) {
       path: `${ARTIFACT_DIR}/chess-football-season-${capture.label}.png`,
       fullPage: true,
     });
+    const lineupPanel = welcome.getByLabel('Alineación del míster');
+    await lineupPanel.locator('summary').click();
+    await lineupPanel.getByRole('combobox', { name: 'Titular 5 · DEL' }).selectOption('fc-matthias-del-2');
+    await captureFrozenFrame(page, {
+      path: `${ARTIFACT_DIR}/chess-football-lineup-${capture.label}.png`,
+      fullPage: true,
+    });
+    await lineupPanel.locator('summary').click();
     const attacking = welcome.getByRole('button', { name: 'Ataque total', exact: true });
     await attacking.click();
     await expect(attacking).toHaveAttribute('aria-pressed', 'true');

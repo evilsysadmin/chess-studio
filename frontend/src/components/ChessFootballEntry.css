@@ -384,3 +384,38 @@
   font-size: .79rem;
   font-weight: 650;
 }
+/* The manager's five starters are advanced detail; the next-round CTA stays
+   the dominant action. Each selector remains usable on narrow touch screens. */
+.chess-football-entry__lineup {
+  margin: .6rem 0;
+  padding: .75rem .9rem;
+  border: 1px solid rgba(239, 217, 163, .24);
+  border-radius: 12px;
+  background: rgba(7, 23, 15, .48);
+  text-align: left;
+}
+.chess-football-entry__lineup summary {
+  color: #e8d4a1;
+  font-weight: 750;
+  cursor: pointer;
+  padding: .35rem 0;
+}
+.chess-football-entry__lineup summary:focus-visible { outline: 3px solid #d8c28b; outline-offset: 2px; }
+.chess-football-entry__lineup p { font-size: .83rem; line-height: 1.45; }
+.chess-football-entry__lineup-slots { display: grid; gap: .65rem; }
+.chess-football-entry__lineup-slots label { display: grid; gap: .2rem; min-width: 0; }
+.chess-football-entry__lineup-slots label span { font-size: .78rem; color: #bcd2a1; font-weight: 750; }
+.chess-football-entry__lineup-slots select {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  border: 1px solid rgba(239, 217, 163, .33);
+  border-radius: 8px;
+  padding: .5rem;
+  font: inherit;
+  font-size: .83rem;
+  color: #f4e9d1;
+  background: #152519;
+}
+.chess-football-entry__lineup-slots select:focus-visible { outline: 3px solid #d8c28b; outline-offset: 2px; }
