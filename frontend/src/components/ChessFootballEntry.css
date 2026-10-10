@@ -465,3 +465,24 @@
 @media (max-width: 680px) {
   .chess-football-entry__career-resume { align-items: flex-start; }
 }
+
+/* Objective is a compact, evidence-based league brief, not an extra dashboard. */
+.chess-football-entry__objective {
+  margin: .55rem 0 .85rem;
+  padding: .8rem .95rem;
+  border: 1px solid rgba(213, 186, 112, .33);
+  border-radius: 12px;
+  background: rgba(23, 43, 29, .68);
+  text-align: left;
+}
+.chess-football-entry__objective-heading {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: .4rem .8rem;
+}
+.chess-football-entry__objective-heading strong { color: #edd9ac; }
+.chess-football-entry__objective-heading span { color: #d3ddac; font-size: .78rem; }
+.chess-football-entry__objective p { margin: .35rem 0; font-size: .84rem; line-height: 1.45; }
+.chess-football-entry__objective .chess-football-entry__objective-progress { color: #f0dbac; font-weight: 750; font-variant-numeric: tabular-nums; }
