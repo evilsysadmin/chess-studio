@@ -183,5 +183,11 @@ export function boneHoundFrame(frame, { bands = 0 } = {}) {
       ${skull({ jaw: frame.jaw, eyes: frame.hurt ? 0.35 : 1 })}
     </g>
   </g>
+  </g>
+  <!-- emissive light sits on top of the lit body: embers never get shaded -->
+  <g transform="translate(${lunge} ${c * 0.4})" style="mix-blend-mode:screen">
+    <ellipse cx="138" cy="${146 + frame.breath * 0.5}" rx="${26 + frame.glow * 6}" ry="${20 + frame.glow * 5}" fill="url(#bh-core)" opacity="${0.15 + frame.glow * 0.45}"/>
+    <g transform="translate(${hx} ${hy}) rotate(${hr} 104 100)"><circle cx="78" cy="75" r="9" fill="url(#bh-ember)" opacity="${frame.hurt ? 0.2 : 0.75}"/></g>
+    ${emberMane(frame.phase, frame.flare).replace(/opacity=".92"/g, 'opacity=".45"')}
   </g>`;
 }

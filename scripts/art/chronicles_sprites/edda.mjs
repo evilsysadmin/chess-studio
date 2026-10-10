@@ -81,12 +81,12 @@ export function eddaFrame(frame, { bands = 0 } = {}) {
       <stop offset="0" stop-color="#f3d3ad"/><stop offset="1" stop-color="#c58d63"/>
     </linearGradient>
     <radialGradient id="ed-glow"><stop offset="0" stop-color="#ffe3a0"/><stop offset=".3" stop-color="#ffb04a" stop-opacity=".7"/><stop offset="1" stop-color="#ff8a1e" stop-opacity="0"/></radialGradient>
-    ${paintFilter('ed-paint', { bands, seed: 23 })}
+    ${paintFilter('ed-paint', { bands, seed: 23, relief: 2.8, sheen: 0.12, saturation: 1.35 })}
   </defs>
   <ellipse cx="128" cy="241" rx="60" ry="9" fill="#000" opacity=".38"/>
+  <g transform="rotate(${s} 128 236)">${lanternGlow(frame.glow, 173, 160)}</g>
   <g filter="url(#ed-paint)">
   <g transform="rotate(${s} 128 236)">
-    ${lanternGlow(frame.glow, 173, 160)}
     <!-- cloak -->
     <path d="M98 100 C84 144 76 198 70 238 L186 238 C180 198 172 144 158 100 Z" fill="${INK}"/>
     <path d="M101 104 C88 146 81 198 76 234 L180 234 C175 198 168 146 155 104 Z" fill="url(#ed-cloak)"/>

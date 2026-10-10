@@ -47,7 +47,8 @@ const outDir = path.resolve(repo, outArg > 0 ? process.argv[outArg + 1] : 'front
 await mkdir(outDir, { recursive: true });
 
 const browser = await chromium.launch();
-const page = await browser.newPage({ deviceScaleFactor: 1 });
+// Supersampled: rasterize at 2× and downscale for clean anti-aliased edges.
+const page = await browser.newPage({ deviceScaleFactor: 2 });
 const manifest = {};
 for (const sheet of SHEETS) {
   const svg = sheetSvg(sheet);
@@ -58,9 +59,11 @@ for (const sheet of SHEETS) {
     image.src = `data:image/png;base64,${base64}`;
     await image.decode();
     const canvas = document.createElement('canvas');
-    canvas.width = image.width;
-    canvas.height = image.height;
-    canvas.getContext('2d').drawImage(image, 0, 0);
+    canvas.width = Math.round(image.width / 2);
+    canvas.height = Math.round(image.height / 2);
+    const context = canvas.getContext('2d');
+    context.imageSmoothingQuality = 'high';
+    context.drawImage(image, 0, 0, canvas.width, canvas.height);
     return canvas.toDataURL('image/webp', 0.84).split(',')[1];
   }, png.toString('base64'));
   const file = path.join(outDir, `${sheet.id}.webp`);
