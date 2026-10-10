@@ -1,0 +1,24 @@
+{
+  "bone-hound": {
+    "frames": [
+      "idle-a",
+      "idle-b",
+      "menace",
+      "attack",
+      "hurt",
+      "dead"
+    ],
+    "framePx": 320,
+    "pixelArt": true
+  },
+  "rookwood-mourner": {
+    "frames": [
+      "idle-a",
+      "idle-b",
+      "speak",
+      "grateful"
+    ],
+    "framePx": 400,
+    "pixelArt": true
+  }
+}

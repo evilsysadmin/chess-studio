@@ -50,6 +50,56 @@ export function chesscomFieldKitV20Profile(role) {
   return Object.freeze({identity:'field-kit-v20',role:'leader',pack:.28,plates:.12,accent:'#b8873d',scarf:false});
 }
 
+// Battlefield-scale role recognition: broad cloth/metal shapes catch the
+// moonlight at normal zoom, unlike tiny floating nameplates or emissive halos.
+// This is decoration attached to the same unit root, never a new tactical actor.
+export const CHESSCOM_OPERATOR_SILHOUETTE_V23 = Object.freeze({
+  identity:'operator-silhouette-v23',
+  maxPartsPerUnit:5,
+  materials:'existing-character-pbr',
+});
+
+export function chesscomOperatorSilhouetteV23Parts(role='rifleman') {
+  const kind=['leader','rifleman','scout','hostile'].includes(role)?role:'rifleman';
+  const leader=kind==='leader';
+  const scout=kind==='scout';
+  const hostile=kind==='hostile';
+  const size=leader?.22:scout?.20:hostile?.27:.26;
+  const parts=[];
+  for(const side of [-1,1]){
+    parts.push({
+      name:`shoulder-sign-${side}`,material:'accent',
+      spec:{h:.067,bw:size,bd:.24,tw:size*.91,td:.21,
+        x:side*(leader?.34:.32),y:leader?1.42:1.255,z:-.04},
+    });
+  }
+  if(leader){
+    // Brass tabs above the field coat. Do not obscure Matthias' ivory pawn,
+    // distinctive canonical face, peaked cap or actual weapon socket.
+    parts.push({name:'officer-coat-flash',material:'accent',
+      spec:{h:.09,bw:.19,bd:.035,tw:.16,td:.028,x:0,y:1.15,z:-.204}});
+  }else{
+    parts.push({name:'upper-vest-id',material:'accent',
+      spec:{h:.075,bw:scout?.19:.26,bd:.037,tw:scout?.18:.24,td:.033,
+        x:0,y:1.075,z:-.265}});
+    parts.push({name:'helmet-ridge',material:'accent',
+      spec:{h:.036,bw:scout?.17:.20,bd:.28,tw:scout?.16:.19,td:.26,
+        x:0,y:1.52,z:-.015}});
+    parts.push({name:'pack-flash',material:hostile?'accent':'cloth2',
+      spec:{h:.12,bw:scout?.24:.28,bd:.038,tw:scout?.22:.26,td:.035,
+        x:0,y:.965,z:.375}});
+  }
+  return parts;
+}
+
+function addSilhouetteV23(B,scene,root,profile,mats,disposables){
+  for(const part of chesscomOperatorSilhouetteV23Parts(profile.role)){
+    polyBlock(B,scene,`silhouette-v23-${profile.id}-${part.name}`,
+      root,mats[part.material],part.spec,profile.id,profile.friendly,disposables);
+  }
+  root.metadata.silhouetteArt=CHESSCOM_OPERATOR_SILHOUETTE_V23.identity;
+}
+
 function unitRoot(scene, id) {
   return scene.getTransformNodeByName?.(`unit-${id}`)
     || scene.transformNodes?.find?.((node) => node.name === `unit-${id}`)
@@ -297,6 +347,7 @@ function addMercenary(B,scene,root,profile,disposables,restorers,invisible){
     polyBlock(B,scene,`character-v4-${profile.id}-radio`,root,mats.accent,{h:.24,bw:.035,bd:.035,tw:.022,td:.022,x:.20,y:1.48,z:.03,rz:-.10},profile.id,profile.friendly,disposables);
   }
   addFieldKitV20(B,scene,root,profile,mats,disposables);
+  addSilhouetteV23(B,scene,root,profile,mats,disposables);
   addWeapon(B,scene,root,profile,mats,disposables);
   root.metadata.visualIdentity=profile.identity;
   root.metadata.characterArt='v4';
@@ -328,6 +379,7 @@ function addMatthias(B,scene,root,profile,disposables,restorers,invisible){
   }
   polyBlock(B,scene,'field-kit-v20-matthias-chest-insignia',root,mats.accent,{h:.10,bw:.12,bd:.04,tw:.11,td:.04,x:.16,y:1.22,z:-.18},profile.id,true,disposables);
   root.metadata.fieldKit='field-kit-v20';
+  addSilhouetteV23(B,scene,root,profile,mats,disposables);
   addWeapon(B,scene,root,profile,mats,disposables);
   root.metadata.visualIdentity=profile.identity;
   root.metadata.characterArt='v4';

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CHESSCOM_TRUCK_ART_V21, chesscomTruckV21Parts, createChesscomTruckV21 } from './chesscomTruckArtV21.js';
+import { CHESSCOM_TRUCK_ART_V21, CHESSCOM_TRUCK_DETAIL_V22, chesscomTruckV22DetailParts, chesscomTruckV21Parts, createChesscomTruckV21 } from './chesscomTruckArtV21.js';
 
 describe('CHESSCOM Kharif Outpost six-wheel transport',()=>{
   it('builds a legible 6x6 cab, roof and cargo silhouette with budgeted details',()=>{
@@ -20,6 +20,26 @@ describe('CHESSCOM Kharif Outpost six-wheel transport',()=>{
       expect([part.x,part.y,part.z].every(Number.isFinite)).toBe(true);
       expect(part.kind==='box' ? Math.min(part.w,part.h,part.d)>0 : part.diameter>0 && part.thickness>0).toBe(true);
     }
+  });
+
+  it('adds physically attached V22 field details with a strict GPU tier budget',()=>{
+    const balanced=chesscomTruckV22DetailParts('balanced');
+    const high=chesscomTruckV22DetailParts('high');
+    const ultra=chesscomTruckV22DetailParts('ultra');
+    expect(CHESSCOM_TRUCK_DETAIL_V22.noPicking).toBe(true);
+    expect(balanced.length).toBeLessThan(high.length);
+    expect(high.length).toBeLessThan(ultra.length);
+    expect(ultra.length).toBeLessThanOrEqual(CHESSCOM_TRUCK_DETAIL_V22.maxAdditionalParts);
+    expect(ultra.map(p=>p.name)).toContain('spare-wheel');
+    expect(ultra.filter(p=>p.name.startsWith('fender-'))).toHaveLength(6);
+    expect(ultra.filter(p=>p.name.startsWith('canopy-seam-'))).toHaveLength(3);
+    for(const part of ultra) {
+      expect([part.x,part.y,part.z].every(Number.isFinite)).toBe(true);
+      expect(part.kind==='box'
+        ? [part.w,part.h,part.d].every(v=>v>0)
+        : part.diameter>0 && part.thickness>0).toBe(true);
+    }
+    expect(chesscomTruckV21Parts('ultra').map(p=>p.name)).toContain('spare-wheel');
   });
 
   it('keeps every mesh decorative and reuses a single yaw-correct vehicle pivot',()=>{
@@ -43,6 +63,7 @@ describe('CHESSCOM Kharif Outpost six-wheel transport',()=>{
     });
     expect(root.name).toBe('truck-v21-root');
     expect(root.rotation.y).toBeCloseTo(.18);
+    expect(root.metadata.detail).toBe('truck-field-details-v22');
     const children=meshes.filter(m=>m!==root);
     expect(children).toHaveLength(chesscomTruckV21Parts('balanced').length);
     expect(children.every(m=>m.parent===root && m.isPickable===false && m.metadata.decorative===true)).toBe(true);

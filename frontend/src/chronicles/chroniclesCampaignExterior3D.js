@@ -4,6 +4,7 @@ import {
   createSwordhavenSkyDome, swordhavenGrassTexture,
 } from './chroniclesSwordhaven3D.js';
 import { buildChroniclesEnemyVisual } from '../chroniclesEnemyVisualRegistry.js';
+import { buildChroniclesSpriteBillboard } from './chroniclesSpriteBillboards.js';
 
 // File-authored exterior topology: no independent collision map or invisible
 // decorative blockers. Impassable cells alone own boulders/low walls; every
@@ -187,7 +188,14 @@ export function buildChroniclesCampaignExterior(scene, { scenePlan = {}, coarseP
     } else if (entry.visualType === 'name-plaque') {
       buildNamePlaque(root, { timber, plaque });
     } else if (entry.visualType === 'rookwood-mourner') {
-      buildMourner(root);
+      // 2.5D painted billboard; the procedural figure stays as fallback.
+      const billboard = buildChroniclesSpriteBillboard('rookwood-mourner');
+      if (billboard) {
+        root.add(billboard);
+        root.userData.updateChroniclesSprite = billboard.userData.updateChroniclesSprite;
+      } else {
+        buildMourner(root);
+      }
     } else if (entry.kind === 'exit') {
       // Gate posts flank the road, so a gate on the west/east edge turns 90°
       // instead of planting one post straight in front of the arriving camera.
@@ -218,7 +226,7 @@ export function buildChroniclesCampaignExterior(scene, { scenePlan = {}, coarseP
   const enemyDefinitions = scenePlan.enemies || [];
   const enemies = {};
   enemyDefinitions.forEach((definition) => {
-    const enemy = buildChroniclesEnemyVisual(definition.visualType || definition.id, { coarsePointer })?.model;
+    const enemy = buildChroniclesEnemyVisual(definition.visualType || definition.id, { coarsePointer, sprites: true })?.model;
     if (!enemy) return;
     const [ex, ez] = gridToWorld(definition.x, definition.y, sceneCenter);
     enemy.position.set(ex, 0, ez);
