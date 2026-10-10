@@ -110,6 +110,11 @@ test('Chesscom · abre la planta 17 con renderer Babylon real y HUD Dust Veil pr
   })).toBe(true);
   await expect(mode.getByText('Informe de campo', { exact:true })).toBeVisible();
   await expect(mode.locator('.chesscom-weapon-ammo')).toHaveText('30/30');
+  await expect.poll(() => mode.evaluate((node) => {
+    const ammo = node.querySelector('.chesscom-weapon-ammo')?.getBoundingClientRect();
+    const weapon = node.querySelector('.chesscom-weapon')?.getBoundingClientRect();
+    return Boolean(ammo && weapon && ammo.right <= weapon.right - 12);
+  })).toBe(true);
 
   // El renderer ya está caliente: aprovechamos el mismo boot para verificar la
   // arista móvil que el artifact visual detectó (390px de viewport vs 491px de
