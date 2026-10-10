@@ -239,7 +239,7 @@ function applyRuntimeCheckpoint(state, flags) {
       const itemId = shortStringOrNull(flags[runtimeKey('gear', member.id, slot)], 64);
       if (!itemId) continue;
       // Validate against the same class/slot catalog as live equip actions.
-      const matched = chroniclesEquippedItem({ equipment: { [member.id]: { [slot]: itemId } } }, member.id, slot);
+      const matched = chroniclesEquippedItem({ party: [member], equipment: { [member.id]: { [slot]: itemId } } }, member.id, slot);
       if (!matched) continue;
       equipment[member.id] = { ...equipment[member.id], [slot]: matched.id };
     }

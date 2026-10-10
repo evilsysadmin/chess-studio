@@ -214,7 +214,7 @@ export default function ChroniclesCharacterSheet({
                 const worn = chroniclesEquippedItem(state, member.id, slot);
                 return (
                   <div className="chronicles-character-sheet__gear-slot" key={slot}>
-                    <small>{slot === 'weapon' ? 'Arma' : 'Armadura'}</small>
+                    <small>{{ weapon: 'Arma', armor: 'Armadura', shield: 'Escudo' }[slot]}</small>
                     <strong>{worn?.name || 'Sin equipar'}</strong>
                     {worn && <button type="button" disabled={!canChangeEquipment}
                       onClick={() => onEquipmentAction?.({ type: 'unequip-item', slot })}>
