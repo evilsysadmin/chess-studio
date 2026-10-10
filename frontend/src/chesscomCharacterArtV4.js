@@ -5,30 +5,37 @@ export const CHESSCOM_CHARACTER_ART_V4 = Object.freeze({
   weaponSocket:'weapon-muzzle-v2',
 });
 
+// At tactical zoom, almost-black PBR clothing merged into the shadows.
+export const CHESSCOM_OPERATOR_READABILITY_V22 = Object.freeze({
+  identity:'operator-readability-v22',
+  accentEmission:.085,
+  faceEmission:.022,
+});
+
 export function chesscomCharacterV4Profile(id, friendly = true) {
   const key = String(id || '').toLowerCase();
   if (key === 'matthias') return Object.freeze({
     id:'matthias', role:'leader', friendly:true,
     identity:'matthias-operative-v4',
-    cloth:'#171a1c', cloth2:'#24292c', armour:'#20262a', accent:'#b8873d', skin:'#d4c5a1', compact:false,
+    cloth:'#252a2e', cloth2:'#323b40', armour:'#303840', accent:'#c8a165', skin:'#d4c5a1', compact:false,
     muzzleX:1.065,
   });
   if (!friendly) return Object.freeze({
     id:key || 'hostile', role:'hostile', friendly:false,
     identity:'hostile-operator-v4',
-    cloth:'#292725', cloth2:'#36312c', armour:'#171b1d', accent:'#8e4938', skin:'#a98b72', compact:false,
+    cloth:'#423a34', cloth2:'#52453e', armour:'#292d2e', accent:'#b46d54', skin:'#a98b72', compact:false,
     muzzleX:.91,
   });
   if (key === 'sven') return Object.freeze({
     id:'sven', role:'scout', friendly:true,
     identity:'scout-operator-v4',
-    cloth:'#233034', cloth2:'#304047', armour:'#1d282c', accent:'#4f8793', skin:'#c09a79', compact:true,
+    cloth:'#36535c', cloth2:'#4a636a', armour:'#2c3f44', accent:'#70a5b0', skin:'#c09a79', compact:true,
     muzzleX:.82,
   });
   return Object.freeze({
     id:key || 'dieter', role:'rifleman', friendly:true,
     identity:'rifleman-operator-v4',
-    cloth:'#33342f', cloth2:'#45453d', armour:'#202625', accent:'#8f7953', skin:'#c6a280', compact:false,
+    cloth:'#51534c', cloth2:'#66685d', armour:'#343b37', accent:'#b39d75', skin:'#c6a280', compact:false,
     muzzleX:.91,
   });
 }
@@ -120,13 +127,14 @@ function makeSurfaceTexture(B, scene, name, kind, size, disposables) {
   return texture;
 }
 
-function pbr(B, scene, name, hex, kind, disposables, { metallic=0, roughness=.72 } = {}) {
+function pbr(B, scene, name, hex, kind, disposables, { metallic=0, roughness=.72, emissive=0 } = {}) {
   if (B.PBRMaterial) {
     const mat = new B.PBRMaterial(name,scene);
     mat.albedoColor = B.Color3.FromHexString(hex);
     mat.metallic = metallic;
     mat.roughness = roughness;
     mat.environmentIntensity = .72;
+    if(emissive>0) mat.emissiveColor=B.Color3.FromHexString(hex).scale(emissive);
     const texture = makeSurfaceTexture(B,scene,`${name}-surface`,kind,128,disposables);
     texture.uScale = texture.vScale = kind === 'cloth' ? 7 : kind === 'metal' ? 4.5 : 5.5;
     mat.albedoTexture = texture;
@@ -137,6 +145,7 @@ function pbr(B, scene, name, hex, kind, disposables, { metallic=0, roughness=.72
   mat.diffuseColor = B.Color3.FromHexString(hex);
   mat.specularColor = kind === 'metal' ? new B.Color3(.28,.29,.30) : new B.Color3(.045,.05,.052);
   mat.specularPower = kind === 'metal' ? 96 : 18;
+  if(emissive>0) mat.emissiveColor=B.Color3.FromHexString(hex).scale(emissive);
   mat.diffuseTexture = makeSurfaceTexture(B,scene,`${name}-surface`,kind,96,disposables);
   disposables.push(mat);
   return mat;
@@ -205,9 +214,9 @@ function materialsFor(B,scene,profile,disposables){
   return {
     cloth:pbr(B,scene,`character-v4-${profile.id}-cloth`,profile.cloth,'cloth',disposables,{roughness:.88}),
     cloth2:pbr(B,scene,`character-v4-${profile.id}-cloth2`,profile.cloth2,'cloth',disposables,{roughness:.82}),
-    armour:pbr(B,scene,`character-v4-${profile.id}-armour`,profile.armour,'metal',disposables,{metallic:.36,roughness:.43}),
-    accent:pbr(B,scene,`character-v4-${profile.id}-accent`,profile.accent,'metal',disposables,{metallic:.54,roughness:.34}),
-    skin:pbr(B,scene,`character-v4-${profile.id}-skin`,profile.skin,'leather',disposables,{roughness:.70}),
+    armour:pbr(B,scene,`character-v4-${profile.id}-armour`,profile.armour,'metal',disposables,{metallic:.36,roughness:.50}),
+    accent:pbr(B,scene,`character-v4-${profile.id}-accent`,profile.accent,'metal',disposables,{metallic:.43,roughness:.43,emissive:CHESSCOM_OPERATOR_READABILITY_V22.accentEmission}),
+    skin:pbr(B,scene,`character-v4-${profile.id}-skin`,profile.skin,'leather',disposables,{roughness:.70,emissive:CHESSCOM_OPERATOR_READABILITY_V22.faceEmission}),
     boot:pbr(B,scene,`character-v4-${profile.id}-boot`,'#101315','leather',disposables,{roughness:.78}),
     gun:pbr(B,scene,`character-v4-${profile.id}-gun`,'#111619','metal',disposables,{metallic:.62,roughness:.29}),
   };
@@ -251,7 +260,7 @@ function addFieldKitV20(B,scene,root,profile,mats,disposables){
   // Front armour silhouette: shoulder pads, load-bearing straps, and a
   // prominent radio/identity tab visible at ordinary tactical zoom.
   for(const side of [-1,1]){
-    part(`pauldron-${side}`,mats.armour,{h:.20,bw:kit.plates+.13,bd:.28,tw:kit.plates+.07,td:.24,x:side*.33,y:1.12,z:-.02,rz:side*.12});
+    part(`pauldron-${side}`,mats.armour,{h:.225,bw:kit.plates+.15,bd:.30,tw:kit.plates+.09,td:.25,x:side*.33,y:1.12,z:-.02,rz:side*.12});
     part(`webbing-${side}`,mats.accent,{h:.35,bw:.052,bd:.034,tw:.042,td:.03,x:side*.12,y:.92,z:-.257,rz:side*.31});
     part(`pouch-${side}`,mats.cloth2,{h:.18,bw:.17,bd:.095,tw:.16,td:.09,x:side*.17,y:.67,z:-.21});
     part(`knee-${side}`,mats.armour,{h:.16,bw:.17,bd:.09,tw:.16,td:.07,x:side*.15,y:.30,z:-.09});
@@ -269,8 +278,8 @@ function addMercenary(B,scene,root,profile,disposables,restorers,invisible){
   polyBlock(B,scene,`character-v4-${profile.id}-torso`,root,mats.cloth,{h:profile.compact?.62:.69,bw:profile.compact?.44:.50,bd:.31,tw:profile.compact?.39:.44,td:.28,y:.84},profile.id,profile.friendly,disposables);
   polyBlock(B,scene,`character-v4-${profile.id}-vest`,root,mats.armour,{h:.44,bw:profile.compact?.41:.46,bd:.10,tw:profile.compact?.37:.42,td:.085,y:.90,z:-.19},profile.id,profile.friendly,disposables);
   polyBlock(B,scene,`character-v4-${profile.id}-pelvis`,root,mats.cloth2,{h:.25,bw:.39,bd:.29,tw:.34,td:.27,y:.53},profile.id,profile.friendly,disposables);
-  polyHead(B,scene,`character-v4-${profile.id}-head`,root,mats.skin,{rx:.17,ry:.19,rz:.16,y:1.27,z:-.01},profile.id,profile.friendly,disposables);
-  polyBlock(B,scene,`character-v4-${profile.id}-helmet`,root,mats.armour,{h:.18,bw:.40,bd:.37,tw:.30,td:.31,y:1.40,z:.01},profile.id,profile.friendly,disposables);
+  polyHead(B,scene,`character-v4-${profile.id}-head`,root,mats.skin,{rx:.182,ry:.202,rz:.171,y:1.27,z:-.01},profile.id,profile.friendly,disposables);
+  polyBlock(B,scene,`character-v4-${profile.id}-helmet`,root,mats.armour,{h:.195,bw:.435,bd:.40,tw:.33,td:.33,y:1.41,z:.01},profile.id,profile.friendly,disposables);
   for(const [part,side] of [[parts.armL,-1],[parts.armR,1]]){
     if(!part)continue;
     polyBlock(B,scene,`character-v4-${profile.id}-arm-${side<0?'l':'r'}`,part,mats.cloth,{h:.48,bw:.13,bd:.15,tw:.115,td:.135,z:-.24,rx:Math.PI/2},profile.id,profile.friendly,disposables);
