@@ -69,6 +69,15 @@ test('Chesscom · abre la planta 17 con renderer Babylon real y HUD Dust Veil pr
   })).toBe(true);
   await expect(host).toHaveAttribute('data-chesscom-camera', 'camera-v25-cinematic-wide');
   await expect(host).toHaveAttribute('data-chesscom-lighting', 'readability-v2');
+  await expect(host).toHaveAttribute('data-chesscom-operator-moments', 'operator-moments-v26');
+  await expect(host).toHaveAttribute('data-chesscom-focus-unit', 'matthias');
+  await expect.poll(() => host.evaluate(() => {
+    const scene=window.BABYLON?.EngineStore?.LastCreatedScene;
+    const ring=scene?.getMeshByName?.('chesscom-moment-v26-ring');
+    const root=scene?.getTransformNodeByName?.('chesscom-moment-v26-root');
+    return Boolean(ring&&root&&!ring.isPickable&&ring.parent===root);
+  })).toBe(true);
+
   await expect(mode.getByText(/BABYLON\.JS \d+\.\d+\.\d+ · GPU PREMIUM V2 · BALLISTICS · UNIT STANCE · CHARACTER ART V4/)).toBeVisible({ timeout: 30_000 });
   await expect(mode.getByText('BABYLON · ERROR', { exact: true })).toHaveCount(0);
 
@@ -92,6 +101,8 @@ test('Chesscom · abre la planta 17 con renderer Babylon real y HUD Dust Veil pr
   await expect(mode.locator('.chesscom-mission-badge strong')).toHaveText('DISPARAR');
 
   await mode.locator('.chesscom-squad-card').filter({ hasText: 'Sven' }).click();
+  await expect(host).toHaveAttribute('data-chesscom-focus-unit', 'sven');
+
   await expect(mode.getByRole('group', { name: 'Modo de disparo' }).getByRole('button', { name: 'Ráfaga', exact: true })).toHaveCount(0);
   await expect(mode.getByRole('group', { name: 'Modo de disparo' }).getByRole('button', { name: 'Auto', exact: true })).toBeVisible();
 
