@@ -214,6 +214,14 @@ async function withChessFootballCapturePage(browser, capture, callback) {
       path: `${ARTIFACT_DIR}/chess-football-tactics-${capture.label}.png`,
       fullPage: true,
     });
+    const training = welcome.getByLabel('Entrenamiento de la jornada');
+    await training.locator('summary').click();
+    await welcome.getByRole('group', { name: 'Plan de entrenamiento' }).getByRole('button', { name: 'Remates' }).click();
+    await captureFrozenFrame(page, {
+      path: `${ARTIFACT_DIR}/chess-football-training-${capture.label}.png`,
+      fullPage: true,
+    });
+    await training.locator('summary').click();
     await welcome.getByRole('button', { name: 'Simular siguiente jornada', exact: true }).click();
     await expect(welcome).toContainText('Jornada 1 de 10');
     await lineupPanel.locator('summary').click();
