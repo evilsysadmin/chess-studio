@@ -24,10 +24,10 @@ import './ChesscomFireControl.css';
 
 const MATTHIAS_CANONICAL_ASSET_URL = '/matthias-home-canonical.b64?v=88bebc7e44293093';
 const ACTIONS = [
-  ['move', '↗', 'Move'],
-  ['shoot', '⌖', 'Shoot'],
-  ['overwatch', '◉', 'Overwatch'],
-  ['interact', '▣', 'Interact'],
+  ['move', '↗', 'Mover'],
+  ['shoot', '⌖', 'Disparar'],
+  ['overwatch', '◉', 'Vigilancia'],
+  ['interact', '▣', 'Interactuar'],
 ];
 
 function canonicalMatthiasDataUrl(payload) {
@@ -72,7 +72,10 @@ function WeaponPanel({ unit, status, onFireMode }) {
       <div className="chesscom-weapon-title">
         <div><strong>{unit?.weapon || '—'}</strong><small>{unit?.id === 'matthias' ? 'Used · fixer stock · serial scrubbed' : 'Contract issue'}</small></div>
         <span className="chesscom-weapon-art" aria-hidden="true" />
+        <span className="chesscom-weapon-ammo" aria-label="Munición">{unit?.ammo ?? "—"}/30</span>
       </div>
+      <details className="chesscom-weapon-advanced">
+        <summary>Detalles del arma · {fireMode.label}</summary>
       <dl>
         <div><dt>DMG</dt><dd>{unit?.damage || 0}</dd></div>
         <div><dt>RNG</dt><dd>{unit?.range || 0}</dd></div>
@@ -98,6 +101,7 @@ function WeaponPanel({ unit, status, onFireMode }) {
           ))}
         </div>
       </div>
+      </details>
     </div>
   );
 }
@@ -287,7 +291,7 @@ export default function Chesscom({ onExit }) {
   }
 
   return (
-    <div className="chesscom" data-chesscom-poc="true" data-chesscom-renderer="babylon" data-chesscom-visual="premium-v1">
+    <div className="chesscom" data-chesscom-poc="true" data-chesscom-renderer="babylon" data-chesscom-visual="premium-v1" data-chesscom-layout="dust-veil-canonical-v1">
       <header className="chesscom-topbar">
         <div className="chesscom-brand">
           <span className="chesscom-rook" aria-hidden="true">♜</span>
@@ -341,16 +345,21 @@ export default function Chesscom({ onExit }) {
 
           <div className="chesscom-actionbar" role="toolbar" aria-label="Acciones tácticas">
             {ACTIONS.map(([action,glyph,label]) => <button key={action} type="button" className={state.action===action?'is-active':''} onClick={() => chooseAction(action)} disabled={status!=='active'||selected?.hp<=0}><span aria-hidden="true">{glyph}</span><small>{label}</small></button>)}
-            <button type="button" onClick={reload} disabled={status!=='active'||selected?.ap<1}><span aria-hidden="true">▥</span><small>Reload</small></button>
-            <button type="button" className="is-end-turn" onClick={endTurn} disabled={status!=='active'}><span aria-hidden="true">↻</span><small>End turn</small></button>
+            <button type="button" onClick={reload} disabled={status!=='active'||selected?.ap<1}><span aria-hidden="true">▥</span><small>Recargar</small></button>
+            <button type="button" className="is-end-turn" onClick={endTurn} disabled={status!=='active'}><span aria-hidden="true">↻</span><small>Fin de turno</small></button>
           </div>
         </main>
 
         <aside className="chesscom-right">
           <WeaponPanel unit={selected} status={status} onFireMode={chooseFireMode} />
-          <div className="chesscom-panel chesscom-economy"><span>DEPLOYMENT</span><strong>{state.deploymentCost.toLocaleString('es-ES')} cr</strong><small>Funds: {state.credits.toLocaleString('es-ES')} cr</small></div>
-          <div className="chesscom-panel chesscom-log"><h3>FIELD LOG</h3>{state.log.map((line,index)=><p key={`${line}-${index}`}>{line}</p>)}</div>
-          <blockquote>“Good people, bad jobs.”<small>— Matthias</small></blockquote>
+          <details className="chesscom-mission-details">
+            <summary>Informe de campo</summary>
+            <div className="chesscom-mission-detail-content">
+              <div className="chesscom-panel chesscom-economy"><span>DEPLOYMENT</span><strong>{state.deploymentCost.toLocaleString('es-ES')} cr</strong><small>Funds: {state.credits.toLocaleString('es-ES')} cr</small></div>
+              <div className="chesscom-panel chesscom-log"><h3>FIELD LOG</h3>{state.log.map((line,index)=><p key={`${line}-${index}`}>{line}</p>)}</div>
+              <blockquote>“Good people, bad jobs.”<small>— Matthias</small></blockquote>
+            </div>
+          </details>
         </aside>
       </section>
 
