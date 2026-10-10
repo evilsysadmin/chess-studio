@@ -547,6 +547,14 @@ export async function login(page) {
   // contract (Blender ready OR complete static fallback) before clicking.
   // Dedicated Home loading/readiness tests log in manually to inspect the gate.
   test.setTimeout(Math.max(test.info().timeout, 90_000));
+  await waitForHomeInteractive(page);
+}
+
+// Every Home mount (login, or coming back from a game/room) keeps the hall
+// non-interactive behind the knight LOADING until the scene has composited or
+// the static fallback took over. Journeys that return Home wait for it too.
+export async function waitForHomeInteractive(page) {
+  await expect(page.getByRole('region', { name: 'Modos principales', exact: true })).toBeVisible();
   await expect(page.locator('.home-3d-loading')).toHaveCount(0, { timeout: 38_000 });
 }
 

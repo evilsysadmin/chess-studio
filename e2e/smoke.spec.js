@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { buttonWithHeading, buttonWithVisibleText, clickBoardMove, dismissTutorialIfVisible, gameTurn, login, mockApi, openCampaignBriefing, openCampaignMap, openDeployment, openFeedback } from './helpers.js';
+import { buttonWithHeading, buttonWithVisibleText, clickBoardMove, dismissTutorialIfVisible, gameTurn, login, mockApi, openCampaignBriefing, openCampaignMap, openDeployment, openFeedback, waitForHomeInteractive } from './helpers.js';
 
 const ACTIVE_GAME_SESSION_KEY = 'chess-study-active-game-session-v1';
 const ACTIVE_GAME_VISIBLE_ROUTE_KEY = 'chess-study-active-game-visible-route-v1';
@@ -715,7 +715,7 @@ test('golden journey · onboarding → partida/reload → mate → puzzle → Co
   await expect(endgame).toBeVisible();
   await expect(endgame.getByText('¡Has ganado la partida!', { exact: true })).toBeVisible();
   await endgame.getByRole('button', { name: 'Volver al castillo', exact: true }).click();
-  await expect(page.getByRole('region', { name: 'Modos principales' })).toBeVisible();
+  await waitForHomeInteractive(page);
 
   const learningMore = page.locator('details.home-learning-more');
   if (!(await learningMore.evaluate((node) => node.open))) await learningMore.locator('summary').click();

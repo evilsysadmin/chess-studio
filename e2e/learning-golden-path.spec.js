@@ -6,6 +6,7 @@ import {
   login,
   mockApi,
   waitForTrainingRoomSettled,
+  waitForHomeInteractive,
 } from './helpers.js';
 
 const PERSONAL_MATE_FEN = '6k1/5ppp/8/8/8/8/5PPP/R5K1 w - - 0 1';
@@ -150,7 +151,7 @@ test('Home · el avatar residente de Matthias abre Así juegas · y cierra el lo
   // castillo queda siempre visible como acción secundaria.
   await expect(endgame.locator('.primary-btn')).toHaveText('Jugar otra partida');
   await endgame.getByRole('button', { name: 'Volver al castillo', exact: true }).click();
-  await expect(page.getByRole('region', { name: 'Modos principales', exact: true })).toBeVisible();
+  await waitForHomeInteractive(page);
 
   const corner = page.getByRole('complementary', { name: 'Rincón de Matthias' });
   await corner.getByRole('button', { name: 'Abrir Así juegas con Matthias', exact: true }).click();
