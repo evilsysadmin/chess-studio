@@ -361,15 +361,8 @@ function AppInner({ isAdminUser }) {
                 <SaveStatusBadge state={gameSaveState} />
               )}
               {!homeChromeMinimal && (
-                <button
-                  type="button"
-                  className="masthead-feedback-trigger"
-                  onClick={openGlobalFeedback}
-                  aria-label="Enviar feedback"
-                  title="Enviar feedback"
-                >
-                  <span aria-hidden="true">✦</span>
-                  <span>Feedback</span>
+                <button type="button" className="masthead-feedback-trigger" onClick={openGlobalFeedback} aria-label="Enviar feedback" title="Enviar feedback">
+                  <span aria-hidden="true">✦</span><span>Feedback</span>
                 </button>
               )}
               {isAdminUser && view === 'menu' && <AdminFeedbackInboxButton count={adminFeedbackNewCount} onOpen={() => navigateTo('admin')} />}
@@ -407,14 +400,8 @@ function AppInner({ isAdminUser }) {
                   )}
                 </div>
                 {!homeChromeMinimal && (
-                  <button
-                    type="button"
-                    className={`masthead-release-trigger ${releaseNotesSeen ? '' : 'is-new'}`}
-                    onClick={openReleaseNotes}
-                    aria-label={releaseNotesSeen ? 'Abrir novedades' : 'Abrir novedades nuevas'}
-                  >
-                    <span aria-hidden="true">✦</span>
-                    <span>Novedades{releaseNotesSeen ? '' : ' · Nuevo'}</span>
+                  <button type="button" className={`masthead-release-trigger ${releaseNotesSeen ? '' : 'is-new'}`} onClick={openReleaseNotes} aria-label={releaseNotesSeen ? 'Abrir novedades' : 'Abrir novedades nuevas'}>
+                    <span aria-hidden="true">✦</span><span>Novedades{releaseNotesSeen ? '' : ' · Nuevo'}</span>
                   </button>
                 )}
               </div>
