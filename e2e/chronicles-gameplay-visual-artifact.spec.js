@@ -269,6 +269,43 @@ for (const capture of [
   });
 }
 
+test('Chronicles · First Book equipment sheet · actual Android 390px', async ({ browser }) => {
+  test.setTimeout(300_000);
+  await mkdir(ARTIFACT_DIR, { recursive: true });
+  const context = await browser.newContext({
+    viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true,
+  });
+  const page = await context.newPage();
+  try {
+    await openChronicles(page, 'first-book-gear-mobile', {
+      newTown: true, newCampaign: true, chroniclesCurrentMapId: 'swordhaven-first-book',
+    });
+    const game = page.locator('[data-chronicles="true"]');
+    await expect(game).toHaveAttribute('data-chronicles-map-id', 'swordhaven-first-book');
+    await game.getByRole('button', { name: 'Seleccionar Matthias', exact: true })
+      .evaluate((button) => button.click());
+    const sheet = page.getByRole('dialog', { name: 'Matthias', exact: true });
+    const gear = sheet.locator('.chronicles-character-sheet__equipment');
+    await expect(sheet).toBeVisible();
+    await expect(gear).toBeVisible();
+    await expect(gear).toContainText('Armas y armaduras equipadas');
+    await expect(gear.locator('.chronicles-character-sheet__gear-slot')).toHaveCount(2);
+    await gear.evaluate((node) => node.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'instant' }));
+    const bounds = await sheet.evaluate((node) => ({
+      width: node.getBoundingClientRect().width,
+      horizontalOverflow: node.scrollWidth > node.clientWidth + 1,
+    }));
+    expect(bounds.width).toBeLessThanOrEqual(390);
+    expect(bounds.horizontalOverflow, 'equipment sheet must fit a 390px Android viewport').toBe(false);
+    await page.screenshot({
+      path: `${ARTIFACT_DIR}/chronicles-first-book-equipment-sheet-android-390x844.png`,
+      animations: 'disabled', timeout: 60_000,
+    });
+  } finally {
+    await context.close();
+  }
+});
+
 test('Chronicles · Swordhaven authored world · actual 3D desktop', async ({ browser }) => {
   // No synthetic gallery-of-forks disguise: the authoritative map catalog
   // and the real Three.js scene must agree on the actual town id and geometry.
