@@ -23,6 +23,10 @@
   Cache-Control: no-cache, no-store, must-revalidate
   Pragma: no-cache
 
+/asset-grace.json
+  Cache-Control: no-cache, no-store, must-revalidate
+  Pragma: no-cache
+
 /sw.js
   Cache-Control: no-cache, no-store, must-revalidate
   Service-Worker-Allowed: /

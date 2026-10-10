@@ -384,6 +384,7 @@ data-ux-check:
 
 pwa-check:
 	node scripts/pwa_check.mjs
+	python3 -S scripts/pages_runtime_asset_grace.py --self-test
 
 campaign-map-check:
 	node scripts/campaign_map_check.mjs

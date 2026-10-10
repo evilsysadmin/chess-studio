@@ -322,6 +322,8 @@ def classify_path(path: str) -> set[str] | None:
 
     if lower.endswith(".md"):
         return set()
+    if lower in {"makefile", ".github/workflows/staging-deploy.yml", ".github/workflows/production-promote.yml"}:
+        return set()
     if lower.startswith("scripts/app_visual_"):
         return set()
     if lower in {
@@ -409,6 +411,7 @@ def classify_path(path: str) -> set[str] | None:
             "scripts/chess_rules_gate.mjs",
             "scripts/quality_scope.py",
             "scripts/pwa_check.mjs",
+            "scripts/pages_runtime_asset_grace.py",
             "scripts/state_resilience_check.mjs",
             "scripts/visual_ux_contract_check.mjs",
             "scripts/workflow_debt_gate.py",
