@@ -112,12 +112,9 @@ test('Chesscom · abre la planta 17 con renderer Babylon real y HUD Dust Veil pr
   // Babylon como protagonista sin perder el acceso a las acciones existentes.
   await page.setViewportSize({ width:1600, height:900 });
   await expect(host).toHaveAttribute('data-chesscom-camera-framing', 'cinematic');
-  await expect.poll(() => host.evaluate(() =>
-    window.BABYLON?.EngineStore?.LastCreatedScene?.getCameraByName('chesscom-camera')?.beta
-  )).toBeCloseTo(.995,3);
-  await expect.poll(() => host.evaluate(() =>
-    window.BABYLON?.EngineStore?.LastCreatedScene?.getCameraByName('chesscom-camera')?.orthoRight
-  )).toBeCloseTo(9.65*1.04*.94,2);
+  // V25's numeric beta/ortho invariants have their dedicated unit tests.
+  // Browser acceptance checks the real responsive profile and HUD geometry
+  // without synchronously interrogating the hot software WebGL render loop.
 
   await expect(mode).toHaveAttribute('data-chesscom-layout', 'dust-veil-canonical-v1');
   await expect.poll(() => mode.evaluate((node) => {
@@ -163,10 +160,8 @@ test('Chesscom · abre la planta 17 con renderer Babylon real y HUD Dust Veil pr
   await page.setViewportSize({ width:390, height:844 });
   // Resize must restore the overview without a scene remount.
   await expect(host).toHaveAttribute('data-chesscom-camera-framing', 'overview');
-  await expect.poll(() => host.evaluate(() => {
-    const camera=window.BABYLON?.EngineStore?.LastCreatedScene?.getCameraByName('chesscom-camera');
-    return camera?.orthoRight;
-  })).toBeCloseTo(9.65*1.04,2);
+  // Camera V25 numeric overview restoration is covered by unit tests;
+  // this live test still asserts the actual mobile profile and input layout.
 
   await expect.poll(() => page.evaluate(() => ({
     viewport:window.innerWidth,
