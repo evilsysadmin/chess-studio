@@ -19,6 +19,12 @@ import {
 } from './chronicles/chroniclesContentRuntime.js';
 import { resolveChroniclesCharacterParty } from './chronicles/chroniclesCharacterBuilds.js';
 import { chroniclesEquipItem, chroniclesUnequipItem, chroniclesEquipmentBonuses } from './chronicles/chroniclesEquipment.js';
+import {
+  chroniclesMM3AttackHits,
+  chroniclesMM3EnemyArmorClass,
+  chroniclesMM3EnemyToHit,
+  chroniclesMM3Roll,
+} from './chronicles/chroniclesMM3Rules.js';
 import { chroniclesAdvanceLostKingIntro } from './chronicles/chroniclesLostKingIntro.js';
 import { CHRONICLES_SWORDHAVEN_RETURN_PORTAL_ID, chroniclesSwordhavenReturnAvailable } from './chronicles/chroniclesSwordhavenReturnPortal.js';
 import { chroniclesIsOverworldTravelExit } from './chronicles/chroniclesWorldReturnLinks.js';
@@ -57,8 +63,8 @@ function enemiesFor(state) {
   return chroniclesMapForState(state).enemies;
 }
 
-function partyState(characterBuild = null) {
-  return resolveChroniclesCharacterParty(CHRONICLES_PARTY, characterBuild)
+function partyState(characterBuild = null, rules = null) {
+  return resolveChroniclesCharacterParty(CHRONICLES_PARTY, characterBuild, { rules })
     .map((member) => ({ ...member, hp: member.maxHp }));
 }
 
@@ -73,7 +79,9 @@ export function chroniclesJournalEntries(state) {
   return Array.isArray(state?.journal) && state.journal.length ? state.journal : [initialJournal];
 }
 
-export function createChroniclesState(mapId = null, characterBuild = null) {
+// `rules: 'mm3'` turns on the first-person MM3 sheet and combat (class HP,
+// Might damage, to-hit vs AC, Speed, Luck). Tactics keeps its own profiles.
+export function createChroniclesState(mapId = null, characterBuild = null, { rules = null } = {}) {
   const buildOnly = mapId && typeof mapId === 'object' && !Array.isArray(mapId);
   const requestedMapId = buildOnly ? null : mapId;
   const requestedBuild = buildOnly ? mapId : characterBuild;
@@ -86,7 +94,8 @@ export function createChroniclesState(mapId = null, characterBuild = null) {
     ...chroniclesMapInitialEnemyState(map.id),
     ...map.initialFlags,
     phase: 'explore',
-    party: partyState(requestedBuild),
+    party: partyState(requestedBuild, rules),
+    ...(rules === 'mm3' ? { combatRules: 'mm3' } : {}),
     turns: 0,
     journal: [map.initialJournal],
     message: map.introMessage,
@@ -287,10 +296,34 @@ export function chroniclesPartyAttackStats(state, memberId) {
     0,
     Number(modifiers.reachBonus || 0) - Number(creator.reachBonus || 0),
   );
+  const equipment = chroniclesEquipmentBonuses(state, memberId);
   return {
-    damage: Math.max(0, Number(member.damage || 0) + persistentDamageBonus + chroniclesEquipmentBonuses(state, memberId).attackDamageBonus),
+    damage: Math.max(0, Number(member.damage || 0) + persistentDamageBonus + equipment.attackDamageBonus),
     reach: Math.max(1, Number(member.reach || 1) + persistentReachBonus),
+    // MM to-hit: level + Accuracy bonus + weapon (material) to-hit.
+    toHit: Math.max(1, Number(modifiers.level || 1))
+      + Number(member.mm3?.bonuses?.accuracy || 0)
+      + equipment.toHitBonus,
   };
+}
+
+// MM armor class: Speed bonus + worn armor (type + material).
+export function chroniclesPartyArmorClass(state, memberId) {
+  const member = partyMember(state, memberId);
+  if (!member) return 0;
+  return Math.max(0, Number(member.mm3?.bonuses?.speed || 0) + chroniclesEquipmentBonuses(state, memberId).armorClassBonus);
+}
+
+export function chroniclesUsesMM3Combat(state) {
+  return state?.combatRules === 'mm3';
+}
+
+// One enemy swing at one hero under MM rules: d20 + enemy to-hit vs 10 + AC.
+// Armor no longer subtracts damage here; it makes the blow miss.
+export function chroniclesMM3EnemySwing(state, enemy, targetId, salt = 'enemy') {
+  const roll = chroniclesMM3Roll(state, salt, enemy.id, targetId);
+  const hit = chroniclesMM3AttackHits(roll, chroniclesMM3EnemyToHit(enemy), chroniclesPartyArmorClass(state, targetId));
+  return { roll, hit, damage: hit ? Math.max(1, Number(enemy.retaliation || 1)) : 0 };
 }
 
 function partyDefeated(state) {
@@ -381,6 +414,16 @@ function resolveAttack(state, memberId) {
   if (!target) return withMessage(state, `${attacker.name} ejecuta ${attacker.attackName.toLowerCase()} contra absolutamente nada. La nada resiste.`);
 
   const { enemy, distance } = target;
+  if (chroniclesUsesMM3Combat(state)) {
+    const roll = chroniclesMM3Roll(state, 'party', attacker.id, enemy.id);
+    if (!chroniclesMM3AttackHits(roll, attackStats.toHit, chroniclesMM3EnemyArmorClass(enemy))) {
+      return {
+        ...state,
+        turns: state.turns + 1,
+        message: `${attacker.name} lanza ${attacker.attackName.toLowerCase()} y falla. ${enemy.name[0].toUpperCase()}${enemy.name.slice(1)} esquiva (d20: ${roll}).`,
+      };
+    }
+  }
   const nextHp = Math.max(0, Number(state[enemy.hpKey] || 0) - attackStats.damage);
   if (nextHp === 0) {
     const defeated = rewardForDefeat({ ...state, [enemy.hpKey]: 0, turns: state.turns + 1, message: defeatMessage(attacker, enemy) }, enemy);
@@ -403,9 +446,15 @@ function resolveAttack(state, memberId) {
 
   const targetId = retaliationTargetId(state, attacker);
   const previousTarget = state.party.find((member) => member.id === targetId);
+  const swing = chroniclesUsesMM3Combat(state) && targetId
+    ? chroniclesMM3EnemySwing(state, enemy, targetId, 'retaliation')
+    : null;
+  const retaliationDamage = (member) => (swing
+    ? swing.damage
+    : Math.max(0, enemy.retaliation - chroniclesEquipmentBonuses(state, member.id).damageReduction));
   const party = targetId
     ? state.party.map((member) => member.id === targetId
-      ? { ...member, hp: Math.max(0, member.hp - Math.max(0, enemy.retaliation - chroniclesEquipmentBonuses(state, member.id).damageReduction)) }
+      ? { ...member, hp: Math.max(0, member.hp - retaliationDamage(member)) }
       : member)
     : state.party;
   const retaliationTarget = party.find((member) => member.id === targetId);
@@ -414,7 +463,9 @@ function resolveAttack(state, memberId) {
     [enemy.hpKey]: nextHp,
     party,
     turns: state.turns + 1,
-    message: `${attacker.name} impacta con ${attacker.attackName.toLowerCase()}. ${enemy.name[0].toUpperCase()}${enemy.name.slice(1)} responde${retaliationTarget ? ` y alcanza a ${retaliationTarget.name}` : ''}.`,
+    message: swing && !swing.hit
+      ? `${attacker.name} impacta con ${attacker.attackName.toLowerCase()}. ${enemy.name[0].toUpperCase()}${enemy.name.slice(1)} responde, pero ${retaliationTarget?.name || 'su objetivo'} desvía el golpe.`
+      : `${attacker.name} impacta con ${attacker.attackName.toLowerCase()}. ${enemy.name[0].toUpperCase()}${enemy.name.slice(1)} responde${retaliationTarget ? ` y alcanza a ${retaliationTarget.name}` : ''}.`,
   };
   if (previousTarget?.hp > 0 && retaliationTarget?.hp === 0) {
     nextState = appendJournal(nextState, {

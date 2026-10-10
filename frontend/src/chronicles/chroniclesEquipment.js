@@ -4,6 +4,8 @@
 // MM3-style item materials: material changes combat and merchant value,
 // not merely the name. Canonical values follow the MM3 materials tables.
 // Ivory is an authored-world extension, not an original MM3 material row.
+import { CHRONICLES_MM3_ARMOR_TIERS, chroniclesMM3Class } from './chroniclesMM3Rules.js';
+
 export const CHRONICLES_ITEM_MATERIALS = Object.freeze({
   leather: Object.freeze({ name: 'cuero', toHit: -4, damage: -6, armorClass: 0, valueMultiplier: 0.25, tier: 1 }),
   bronze: Object.freeze({ name: 'bronce', toHit: 2, damage: -2, armorClass: -1, valueMultiplier: 0.75, tier: 1 }),
@@ -26,7 +28,8 @@ function authoredEquipment(spec) {
     // effect. MM3's material armorClass remains explicit for proper AC later.
     damageReduction: spec.baseDamageReduction,
     toHitBonus: weapon ? material.toHit : 0,
-    armorClassBonus: !weapon ? material.armorClass : 0,
+    // MM armor class: the armor type's own AC plus its material.
+    armorClassBonus: !weapon ? Math.max(0, Number(spec.baseArmorClass || 0) + material.armorClass) : 0,
     price: Math.max(1, Math.round(spec.basePrice * material.valueMultiplier)),
   });
 }
@@ -36,15 +39,17 @@ export const CHRONICLES_EQUIPMENT = Object.freeze({
     id: 'roadwatch-sabre', name: 'Sable de hierro de la guardia', slot: 'weapon',
     baseItemId: 'sabre', materialId: 'iron', basePrice: 6,
     baseDamageBonus: 0, baseDamageReduction: 0,
+    weaponFamily: 'sword',
     allowedMembers: Object.freeze(['matthias', 'rook']),
-    description: 'Hierro · +1 acierto, +2 daño equipado, precio ×2.',
+    description: 'Espada de hierro · +1 acierto, +2 daño. Caballero, Paladín, Arquero, Ladrón o Ninja.',
   }),
   'roadwatch-vest': authoredEquipment({
     id: 'roadwatch-vest', name: 'Jubón de cuero de guardia', slot: 'armor',
     baseItemId: 'vest', materialId: 'leather', basePrice: 36,
     baseDamageBonus: 0, baseDamageReduction: 1,
+    armorType: 'leather', baseArmorClass: 2,
     allowedMembers: Object.freeze(['matthias', 'rook', 'bishop', 'knight']),
-    description: 'Cuero · defensa base: -1 daño recibido; material sin bono AC.',
+    description: 'Armadura de cuero · +2 armadura. Cualquier clase salvo Hechicero.',
   }),
 });
 
@@ -55,11 +60,26 @@ function stock(state) {
     ? state.inventory : {};
 }
 
+// Under MM rules the hero's class decides what they may wield or wear;
+// parties without a class sheet keep the authored per-hero allow-list.
+export function chroniclesMemberCanEquip(member, item) {
+  if (!member || !item) return false;
+  const definition = chroniclesMM3Class(member.mm3?.classId);
+  if (!definition) return item.allowedMembers.includes(member.id);
+  if (item.slot === 'weapon') return definition.weapons.includes(item.weaponFamily);
+  if (item.slot === 'armor') return definition.maxArmorTier >= (CHRONICLES_MM3_ARMOR_TIERS[item.armorType] ?? 0);
+  return false;
+}
+
+function memberById(state, memberId) {
+  return state?.party?.find((person) => person.id === memberId) || { id: memberId };
+}
+
 function equippedId(state, memberId, slot) {
   if (!CHRONICLES_EQUIPMENT_SLOTS.includes(slot)) return null;
   const id = state?.equipment?.[memberId]?.[slot];
   const item = CHRONICLES_EQUIPMENT[id];
-  return item?.slot === slot && item.allowedMembers.includes(memberId) ? id : null;
+  return item?.slot === slot && chroniclesMemberCanEquip(memberById(state, memberId), item) ? id : null;
 }
 
 export function chroniclesEquippedItem(state, memberId, slot) {
@@ -73,6 +93,8 @@ export function chroniclesEquipmentBonuses(state, memberId) {
   return {
     attackDamageBonus: items.reduce((sum, item) => sum + item.attackDamageBonus, 0),
     damageReduction: items.reduce((sum, item) => sum + item.damageReduction, 0),
+    toHitBonus: items.reduce((sum, item) => sum + item.toHitBonus, 0),
+    armorClassBonus: items.reduce((sum, item) => sum + item.armorClassBonus, 0),
   };
 }
 
@@ -97,7 +119,16 @@ export function chroniclesEquipItem(state, memberId, itemId) {
   if (!state || state.phase !== 'explore' || state.initiative) return state;
   const member = state.party?.find((person) => person.id === memberId && person.hp > 0);
   const item = CHRONICLES_EQUIPMENT[itemId];
-  if (!member || !item || !item.allowedMembers.includes(memberId)) return state;
+  if (!member || !item) return state;
+  if (!chroniclesMemberCanEquip(member, item)) {
+    const classLabel = chroniclesMM3Class(member.mm3?.classId)?.label;
+    return {
+      ...state,
+      message: classLabel
+        ? `${member.name} (${classLabel}) no puede usar ${item.name}: su clase no lo permite.`
+        : `${member.name} no puede usar ${item.name}.`,
+    };
+  }
   const inventory = stock(state);
   const count = inventoryQuantity(inventory, item.id);
   if (count < 1 || equippedId(state, memberId, item.slot) === item.id) return state;

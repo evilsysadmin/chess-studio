@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CHESSCOM_CHARACTER_ART_V4, CHESSCOM_OPERATOR_READABILITY_V22, chesscomCharacterV4Profile, chesscomFieldKitV20Profile } from './chesscomCharacterArtV4.js';
+import { CHESSCOM_CHARACTER_ART_V4, CHESSCOM_OPERATOR_READABILITY_V22, CHESSCOM_OPERATOR_SILHOUETTE_V23, chesscomOperatorSilhouetteV23Parts, chesscomCharacterV4Profile, chesscomFieldKitV20Profile } from './chesscomCharacterArtV4.js';
 
 describe('Chesscom character art v4', () => {
   it('declares the custom mesh and procedural PBR contract', () => {
@@ -72,5 +72,35 @@ describe('CHESSCOM operator readability v22',()=>{
     expect(CHESSCOM_OPERATOR_READABILITY_V22.accentEmission).toBeGreaterThan(0);
     expect(CHESSCOM_OPERATOR_READABILITY_V22.accentEmission).toBeLessThan(.10);
     expect(CHESSCOM_OPERATOR_READABILITY_V22.faceEmission).toBeLessThan(CHESSCOM_OPERATOR_READABILITY_V22.accentEmission);
+  });
+});
+
+describe('CHESSCOM operator recognition silhouettes v23',()=>{
+  it('keeps high-contrast shape identifiers attached to each role without touching the muzzle',()=>{
+    expect(CHESSCOM_OPERATOR_SILHOUETTE_V23.identity).toBe('operator-silhouette-v23');
+    const leader=chesscomOperatorSilhouetteV23Parts('leader');
+    const scout=chesscomOperatorSilhouetteV23Parts('scout');
+    const rifleman=chesscomOperatorSilhouetteV23Parts('rifleman');
+    const hostile=chesscomOperatorSilhouetteV23Parts('hostile');
+    expect(leader).toHaveLength(3);
+    for(const entries of [scout,rifleman,hostile]){
+      expect(entries).toHaveLength(5);
+      expect(entries.map(x=>x.name)).toContain('helmet-ridge');
+    }
+    expect(leader.map(x=>x.name)).not.toContain('helmet-ridge');
+    expect(scout[0].spec.bw).toBeLessThan(rifleman[0].spec.bw);
+    expect(hostile[0].spec.bw).toBeGreaterThan(scout[0].spec.bw);
+    for(const entries of [leader,scout,rifleman,hostile]){
+      expect(entries.length).toBeLessThanOrEqual(CHESSCOM_OPERATOR_SILHOUETTE_V23.maxPartsPerUnit);
+      for(const item of entries){
+        expect(['accent','cloth2']).toContain(item.material);
+        expect(item.name).not.toMatch(/weapon|muzzle|gun/);
+        expect([item.spec.x,item.spec.y,item.spec.z,item.spec.h,item.spec.bw,item.spec.bd].every(Number.isFinite)).toBe(true);
+        expect(item.spec.h).toBeGreaterThan(0);
+        expect(Math.abs(item.spec.x)).toBeLessThan(.55);
+        expect(item.spec.y).toBeGreaterThan(.90);
+        expect(item.spec.y).toBeLessThan(1.56);
+      }
+    }
   });
 });

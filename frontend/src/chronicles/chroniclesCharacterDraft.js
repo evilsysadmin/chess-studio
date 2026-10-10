@@ -13,7 +13,7 @@ import {
 
 export const CHRONICLES_CHARACTER_DRAFT_VERSION = 1;
 const AUTH_USERNAME_KEY = 'chess-study-auth-username';
-const DRAFT_KEY_PREFIX = 'chess-study-chronicles-character-draft-v1';
+const DRAFT_KEY_PREFIX = 'chess-study-chronicles-character-draft-v2';
 
 function currentOwner() {
   return String(getStorageItem(STORAGE_LOCAL, AUTH_USERNAME_KEY) || '').trim().toLocaleLowerCase('es');

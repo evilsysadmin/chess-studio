@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   chroniclesContextualContentAction,
+  chroniclesPartyArmorClass,
   chroniclesPartyAttackStats,
   chroniclesReduce,
   createChroniclesState,
@@ -40,7 +41,7 @@ describe('Chronicles First Book · real purchased gear', () => {
       attackDamageBonus: 2, price: 12,
     });
     expect(CHRONICLES_EQUIPMENT['roadwatch-vest']).toMatchObject({
-      materialId: 'leather', slot: 'armor', armorClassBonus: 0,
+      materialId: 'leather', slot: 'armor', armorType: 'leather', armorClassBonus: 2,
       damageReduction: 1, price: 9,
     });
   });
@@ -88,7 +89,10 @@ describe('Chronicles First Book · real purchased gear', () => {
     const inventory = chroniclesApplyContentEffects(initial, [{
       type: 'grant-item', itemId: 'roadwatch-sabre', name: 'Sable de la guardia',
     }]);
-    expect(chroniclesEquipItem(inventory, 'bishop', 'roadwatch-sabre')).toBe(inventory);
+    const refused = chroniclesEquipItem(inventory, 'bishop', 'roadwatch-sabre');
+    expect(refused.inventory).toBe(inventory.inventory);
+    expect(refused.equipment).toBe(inventory.equipment);
+    expect(refused.message).toMatch(/no puede usar/);
     expect(chroniclesEquipItem(inventory, 'unknown', 'roadwatch-sabre')).toBe(inventory);
     expect(chroniclesEquipItem(inventory, 'matthias', 'unknown')).toBe(inventory);
     const equipped = chroniclesEquipItem(inventory, 'matthias', 'roadwatch-sabre');
@@ -126,5 +130,25 @@ describe('Chronicles First Book · real purchased gear', () => {
     const removed = chroniclesUnequipItem(reloaded, 'matthias', 'armor');
     expect(removed.inventory['roadwatch-vest'].quantity).toBe(1);
     expect(chroniclesEquipmentBonuses(removed, 'matthias').damageReduction).toBe(0);
+  });
+
+  it('lets MM3 classes, not hero names, decide gear and turns armor into real AC', () => {
+    const initial = createChroniclesState('swordhaven-first-book', null, { rules: 'mm3' });
+    const stocked = chroniclesApplyContentEffects(initial, [
+      { type: 'grant-item', itemId: 'roadwatch-sabre', name: 'Sable' },
+      { type: 'grant-item', itemId: 'roadwatch-vest', name: 'Jubón' },
+    ]);
+    // Aziz is a Clérigo: blunt weapons only, so the sabre is refused.
+    const cleric = chroniclesEquipItem(stocked, 'bishop', 'roadwatch-sabre');
+    expect(cleric.equipment).toBe(stocked.equipment);
+    expect(cleric.message).toMatch(/Clérigo/);
+    // Faust is an Arquero: swords allowed.
+    const archer = chroniclesEquipItem(stocked, 'knight', 'roadwatch-sabre');
+    expect(chroniclesEquippedItem(archer, 'knight', 'weapon')?.id).toBe('roadwatch-sabre');
+    expect(chroniclesPartyAttackStats(archer, 'knight').toHit)
+      .toBe(chroniclesPartyAttackStats(stocked, 'knight').toHit + 1);
+    // Leather armor adds 2 to the wearer's armor class.
+    const worn = chroniclesEquipItem(stocked, 'matthias', 'roadwatch-vest');
+    expect(chroniclesPartyArmorClass(worn, 'matthias')).toBe(chroniclesPartyArmorClass(stocked, 'matthias') + 2);
   });
 });
