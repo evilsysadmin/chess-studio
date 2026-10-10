@@ -204,6 +204,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          python3 -S ../scripts/pages_runtime_asset_grace.py --dist dist --site staging
           "$WRANGLER_BIN" pages deploy dist \
             --project-name chess-studio-staging \
             --branch main \
