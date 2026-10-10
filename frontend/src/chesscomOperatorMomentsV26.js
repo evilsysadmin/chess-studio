@@ -85,6 +85,7 @@ export function installChesscomOperatorMomentsV26(B,scene,{tier='ultra',host,red
   const glow=scene.getEffectLayerByName?.('ops-glow');
   glow?.addIncludedOnlyMesh?.(ring);
   let selectedId=null;
+  let litUnitId=null;
   let highlight=null;
   let previous=null;
   let lastState=null;
@@ -127,6 +128,13 @@ export function installChesscomOperatorMomentsV26(B,scene,{tier='ultra',host,red
     if(highlight && now>=highlight.expiry)highlight=null;
     const highlightedId=highlight?.unitId||selectedId;
     const p=highlightedId?unitPosition(highlightedId):null;
+    if(light && litUnitId!==highlightedId){
+      // Light only the acting character, not hundreds of wet tiles and
+      // buildings. This prevents a global shader/light workload on SwiftShader.
+      const actor=scene.getTransformNodeByName?.(`unit-${highlightedId}`);
+      light.includedOnlyMeshes=actor?.getChildMeshes?.()||[];
+      litUnitId=highlightedId;
+    }
     root.setEnabled(Boolean(p));
     if(!p){if(light)light.intensity=0;return;}
     root.position.set(p.x,0,p.z);
