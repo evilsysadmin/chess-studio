@@ -119,16 +119,20 @@ jobs:
     needs: build
     if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.build.outputs.published == 'true'
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    timeout-minutes: 20
     permissions:
       contents: read
     steps:
       - uses: actions/checkout@v7
+      # Gate the production bundle, not the Vite dev server: dev mode remounts
+      # every effect (React StrictMode), the Home's cached WebGL context comes
+      # back lost and three.js fails on getShaderPrecisionFormat, so the scene
+      # never left "loading" and the gate could never judge the GLB.
       - uses: ./.github/actions/setup-browser-e2e
         with:
           browser-scope: chromium
           restore-frontend-deps: 'true'
-          build-frontend: 'false'
+          build-frontend: 'true'
       - name: Fetch the just-published runtime GLB
         run: |
           set -euo pipefail
@@ -139,7 +143,6 @@ jobs:
         working-directory: e2e
         env:
           HOME_RUNTIME_GATE_GLB: /tmp/home-v2-runtime-candidate.glb
-          PLAYWRIGHT_SOURCE_SERVER: '1'
         run: ./node_modules/.bin/playwright test home-scene-runtime-gate.spec.js
       - uses: actions/upload-artifact@v7
         if: failure()
