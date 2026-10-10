@@ -246,6 +246,8 @@ test('Chess Football manager can simulate ten reproducible matchdays without loa
   for (let round = 1; round <= 10; round += 1) {
     if (round === 2) {
       await expect(lineupPanel).toContainText('Fatiga 17%');
+      await expect(lineupPanel.locator('.chess-football-entry__slot-fatigue')).toHaveCount(5);
+      await expect(lineupPanel.locator('.chess-football-entry__slot-fatigue').first()).toHaveText('Fatiga 17%');
       await tactics.getByRole('button', { name: 'Bloque bajo' }).click();
       await expect(tactics.getByRole('button', { name: 'Bloque bajo' })).toHaveAttribute('aria-pressed', 'true');
     }

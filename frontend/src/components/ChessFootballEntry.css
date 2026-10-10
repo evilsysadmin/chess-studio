@@ -419,3 +419,20 @@
   background: #152519;
 }
 .chess-football-entry__lineup-slots select:focus-visible { outline: 3px solid #d8c28b; outline-offset: 2px; }
+
+/* The selected player's condition must remain visible even when a native
+   select truncates long candidate names on 390px Android. */
+.chess-football-entry__lineup-slots .chess-football-entry__slot-label {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: .25rem .55rem;
+}
+.chess-football-entry__slot-fatigue {
+  flex: 0 0 auto;
+  color: #ebd596;
+  font-size: .78rem;
+  font-weight: 750;
+  font-variant-numeric: tabular-nums;
+}

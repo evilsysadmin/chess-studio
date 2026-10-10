@@ -138,7 +138,10 @@ export default function ChessFootballEntry({ onExit }) {
                       if (!player) return null;
                       return (
                         <label key={index}>
-                          <span>{FOOTBALL_FIVE_POSITIONS[player.role]} {player.role === 'MED' ? (index === 2 ? '1' : '2') : ''}</span>
+                          <span className="chess-football-entry__slot-label">
+                            {FOOTBALL_FIVE_POSITIONS[player.role]} {player.role === 'MED' ? (index === 2 ? '1' : '2') : ''}
+                            <b className="chess-football-entry__slot-fatigue">Fatiga {getFootballFatigue(season.managerFatigue, player.id)}%</b>
+                          </span>
                           <select
                             aria-label={`Titular ${index + 1} · ${player.role}`}
                             value={playerId}
@@ -153,7 +156,7 @@ export default function ChessFootballEntry({ onExit }) {
                           >
                             {roster.filter((candidate) => candidate.role === player.role).map((candidate) => (
                               <option key={candidate.id} value={candidate.id} disabled={startingFive.includes(candidate.id) && candidate.id !== playerId}>
-                                {candidate.name} · ATQ {candidate.attack} / DEF {candidate.defense} · Fatiga {getFootballFatigue(season.managerFatigue, candidate.id)}%
+                                {candidate.name} · ATQ {candidate.attack} / DEF {candidate.defense} · F{getFootballFatigue(season.managerFatigue, candidate.id)}%
                               </option>
                             ))}
                           </select>

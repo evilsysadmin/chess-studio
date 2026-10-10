@@ -213,10 +213,22 @@ async function withChessFootballCapturePage(browser, capture, callback) {
     await expect(welcome).toContainText('Jornada 1 de 10');
     await lineupPanel.locator('summary').click();
     await expect(lineupPanel).toContainText('Fatiga 17%');
-    await lineupPanel.screenshot({
-      path: `${ARTIFACT_DIR}/chess-football-fatigue-${capture.label}.png`,
-      animations: 'disabled',
-    });
+    await expect(lineupPanel.locator('.chess-football-entry__slot-fatigue')).toHaveCount(5);
+    if (capture.portrait) {
+      await lineupPanel.screenshot({
+        path: `${ARTIFACT_DIR}/chess-football-fatigue-${capture.label}.png`,
+        animations: 'disabled',
+      });
+    } else {
+      // A DOM element taller than 390px may produce an unpainted white strip
+      // in headless Chromium's off-viewport element screenshot. Capture the
+      // actual scrolled handset viewport instead of inventing white pixels.
+      await lineupPanel.locator('summary').scrollIntoViewIfNeeded();
+      await page.screenshot({
+        path: `${ARTIFACT_DIR}/chess-football-fatigue-${capture.label}.png`,
+        animations: 'disabled',
+      });
+    }
     await lineupPanel.locator('summary').click();
     await welcome.locator('.chess-football-entry__back').click();
     await welcome.locator('.chess-football-entry__back').click();
