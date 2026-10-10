@@ -22,6 +22,9 @@ import {
 import './Chesscom.css';
 import './ChesscomFireControl.css';
 
+const ROLE_LABELS = Object.freeze({ Leader:'Líder', Rifleman:'Fusilero', Scout:'Explorador' });
+const ACTION_LABELS = Object.freeze({ move:'MOVER', shoot:'DISPARAR', overwatch:'VIGILANCIA', interact:'INTERACTUAR' });
+
 const MATTHIAS_CANONICAL_ASSET_URL = '/matthias-home-canonical.b64?v=88bebc7e44293093';
 const ACTIONS = [
   ['move', '↗', 'Mover'],
@@ -56,7 +59,7 @@ function SquadPortrait({ unit, selected, matthiasArt, onSelect }) {
       </span>
       <span className="chesscom-squad-copy">
         <strong>{unit.name}</strong>
-        <small>{unit.role}</small>
+        <small>{ROLE_LABELS[unit.role] || unit.role}</small>
         <span className="chesscom-mini-row"><em>HP</em><i><b style={{ width:`${clampPercent(unit.hp, unit.maxHp)}%` }} /></i><strong>{unit.hp}/{unit.maxHp}</strong></span>
         <span className="chesscom-mini-row"><em>AP</em><i><b style={{ width:`${clampPercent(unit.ap, unit.maxAp)}%` }} /></i><strong>{unit.ap}/{unit.maxAp}</strong></span>
       </span>
@@ -303,11 +306,11 @@ export default function Chesscom({ onExit }) {
       <section className="chesscom-frame">
         <aside className="chesscom-left">
           <div className="chesscom-panel chesscom-objectives">
-            <h3>OBJECTIVES</h3>
+            <h3>OBJETIVOS</h3>
             <ul>
-              <Objective done={state.objectives.target}>Neutralize the target</Objective>
-              <Objective done={state.objectives.intel}>Retrieve the intel case</Objective>
-              <Objective done={state.objectives.extraction}>Reach extraction</Objective>
+              <Objective done={state.objectives.target}>Neutralizar al comandante</Objective>
+              <Objective done={state.objectives.intel}>Recuperar el dossier</Objective>
+              <Objective done={state.objectives.extraction}>Llegar a extracción</Objective>
             </ul>
           </div>
           <div className="chesscom-squad" aria-label="Escuadra desplegada">
@@ -321,10 +324,10 @@ export default function Chesscom({ onExit }) {
             <div ref={hostRef} className="chesscom-babylon-host" />
             <div className="chesscom-stage-scanlines" aria-hidden="true" />
             <div className="chesscom-operation chesscom-panel">
-              <h3>OPERATION: DUST VEIL</h3>
-              <dl><div><dt>Location</dt><dd>Kharif Outpost</dd></div><div><dt>Local contacts</dt><dd className="is-danger">Poor</dd></div><div><dt>Expected equipment</dt><dd className="is-warning">Limited</dd></div></dl>
+              <h3>OPERACIÓN: DUST VEIL</h3>
+              <dl><div><dt>Ubicación</dt><dd>Kharif Outpost</dd></div><div><dt>Contactos locales</dt><dd className="is-danger">Escasos</dd></div><div><dt>Equipo disponible</dt><dd className="is-warning">Limitado</dd></div></dl>
             </div>
-            <div className="chesscom-mission-badge"><span>TURN {state.turn}</span><strong>{state.action.toUpperCase()}</strong></div>
+            <div className="chesscom-mission-badge"><span>TURNO {state.turn}</span><strong>{ACTION_LABELS[state.action] || state.action.toUpperCase()}</strong></div>
             {hovered?.type === 'tile' && (
               <div className="chesscom-hover-card">
                 <b>Terrain {hovered.x+1},{hovered.y+1}</b>
@@ -356,7 +359,7 @@ export default function Chesscom({ onExit }) {
             <summary>Informe de campo</summary>
             <div className="chesscom-mission-detail-content">
               <div className="chesscom-panel chesscom-economy"><span>DEPLOYMENT</span><strong>{state.deploymentCost.toLocaleString('es-ES')} cr</strong><small>Funds: {state.credits.toLocaleString('es-ES')} cr</small></div>
-              <div className="chesscom-panel chesscom-log"><h3>FIELD LOG</h3>{state.log.map((line,index)=><p key={`${line}-${index}`}>{line}</p>)}</div>
+              <div className="chesscom-panel chesscom-log"><h3>REGISTRO TÁCTICO</h3>{state.log.map((line,index)=><p key={`${line}-${index}`}>{line}</p>)}</div>
               <blockquote>“Good people, bad jobs.”<small>— Matthias</small></blockquote>
             </div>
           </details>
