@@ -214,11 +214,9 @@ test('Chronicles · First Book road encounter · actual 3D desktop', async ({ br
     await expect(game).toHaveAttribute('data-chronicles-map-id', 'banner-road-first-book', { timeout: 30_000 });
     await expect(game).toHaveAttribute('data-chronicles-phase', 'explore');
     await expect(game.locator('.chronicles-renderer-error')).toHaveCount(0);
-    // Face back into the road and walk near the optional deserter.
-    await page.keyboard.press('ArrowRight');
-    await page.keyboard.press('ArrowRight');
-    for (let step = 0; step < 4; step += 1) await page.keyboard.press('ArrowUp');
-    await page.keyboard.press('ArrowLeft');
+    // The authored spawn faces north toward the deserter at (11, 5).
+    // Keep the camera on the encounter: walking south and turning east
+    // only frames the outer wall and cannot validate the new enemy.
     await page.waitForTimeout(450);
     await page.screenshot({
       path: `${ARTIFACT_DIR}/chronicles-first-book-road-encounter-desktop-1440x900.png`,
