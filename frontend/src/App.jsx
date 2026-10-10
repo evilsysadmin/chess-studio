@@ -373,8 +373,7 @@ function AppInner({ isAdminUser }) {
                     type="button"
                     className={`masthead-account-trigger${homeHasNews ? ' has-news' : ''}`}
                     onClick={toggleAccountMenu}
-                    aria-label={homeHasNews ? 'Abrir menú de cuenta · hay novedades' : 'Abrir menú de cuenta'}
-                    aria-haspopup="menu"
+                    aria-label="Abrir menú de cuenta" title={homeHasNews ? 'Hay novedades' : undefined} aria-haspopup="menu"
                     aria-expanded={showAccountMenu}
                   >
                     <span className="masthead-account-avatar" aria-hidden="true">♙</span>
