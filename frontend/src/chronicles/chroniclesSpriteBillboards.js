@@ -1,8 +1,8 @@
 // 2.5D billboards for first-person Chronicles, Might and Magic III style:
 // the world stays 3D (walls, forest, light, fog) while creatures and NPCs are
 // painted sprites that always face the camera and swap frames for idle,
-// menace and hurt. Sheets are hand-authored vector art rendered by
-// scripts/art/render_chronicles_sprites.mjs (one row, square cells).
+// menace and hurt. Sheets are SpriteCook-generated pixel art packed by
+// scripts/art/pack_chronicles_sprites.py (one row, square cells).
 import * as THREE from 'three';
 import boneHoundSheet from '../assets/chronicles/sprites/bone-hound.webp';
 import mournerSheet from '../assets/chronicles/sprites/rookwood-mourner.webp';
@@ -34,12 +34,14 @@ export function chroniclesSpriteFrameIndex(frames, {
 
 const textureCache = new Map();
 
-function sheetTexture(url, frameCount) {
+function sheetTexture(url, frameCount, pixelArt) {
   if (!textureCache.has(url)) {
     // Headless (tests/SSR) gets an empty texture; browsers load the sheet.
     const texture = typeof document === 'undefined' ? new THREE.Texture() : new THREE.TextureLoader().load(url);
     texture.colorSpace = THREE.SRGBColorSpace;
-    texture.magFilter = THREE.LinearFilter;
+    // Pixel-art sheets keep their VGA grid up close; minification still
+    // mipmaps so distant creatures don't shimmer.
+    texture.magFilter = pixelArt ? THREE.NearestFilter : THREE.LinearFilter;
     texture.minFilter = THREE.LinearMipmapLinearFilter;
     textureCache.set(url, texture);
   }
@@ -57,7 +59,7 @@ export function buildChroniclesSpriteBillboard(visualType, { tint = 0xffffff } =
   const frames = spriteManifest[visualType]?.frames || [];
   if (!spec || !frames.length) return null;
 
-  const texture = sheetTexture(spec.url, frames.length);
+  const texture = sheetTexture(spec.url, frames.length, Boolean(spriteManifest[visualType]?.pixelArt));
   const material = new THREE.SpriteMaterial({
     map: texture,
     color: tint,
