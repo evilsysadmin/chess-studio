@@ -1,8 +1,9 @@
 import * as THREE from 'three';
 import {
   addSwordhavenClouds, buildSwordhavenFountain, buildSwordhavenHouse, buildSwordhavenTree, createSwordhavenMaterials,
-  createSwordhavenSkyDome, swordhavenGrassTexture,
+  createSwordhavenSkyDome, swordhavenGrassTexture, swordhavenSurfaceTexture,
 } from './chroniclesSwordhaven3D.js';
+import { chroniclesPixelTexture } from './chroniclesPixelTextures.js';
 import { buildChroniclesEnemyVisual } from '../chroniclesEnemyVisualRegistry.js';
 import { buildChroniclesSpriteBillboard } from './chroniclesSpriteBillboards.js';
 
@@ -45,9 +46,11 @@ export function buildChroniclesCampaignExterior(scene, { scenePlan = {}, coarseP
   // same half-timbered houses as the legacy square; collision stays the grid.
   const settlement = scenePlan.regionKind === 'settlement';
   const village = settlement ? createSwordhavenMaterials() : null;
-  const earth = material(forest ? 0x8fa178 : 0xffffff, { map: swordhavenGrassTexture() });
-  const stone = village ? village.stone : material(roadMap ? 0x77756c : 0xaba18f);
-  const paver = material(roadMap ? 0xb8ab91 : 0xc6bba5);
+  const earth = material(forest ? 0xaebc9e : 0xffffff, { map: swordhavenGrassTexture() });
+  const stone = village ? village.stone
+    : material(roadMap ? 0x8f8a7e : 0xb9b09f, { map: swordhavenSurfaceTexture('masonry') });
+  // Roads are pixel-art cobbles: one 64-px tile per 4 m cell.
+  const paver = material(roadMap ? 0xcabfa6 : 0xddd3bf, { map: swordhavenSurfaceTexture('cobble') });
   const timber = material(0x4d3424);
   const linen = material(0x963f32, { side: THREE.DoubleSide });
   const plaque = material(0xc4aa70, { metalness: 0.47, roughness: 0.45 });
@@ -342,13 +345,17 @@ function buildForestCanopy(blocked, center, { coarsePointer = false } = {}) {
   group.name = 'chronicles-campaign-forest';
   const perCell = coarsePointer ? 1 : 2;
   const count = blocked.length * perCell;
+  const bark = chroniclesPixelTexture('bark');
+  bark.repeat.set(2, 3); // ≈16 texels per metre around a trunk
   const trunks = new THREE.InstancedMesh(
     new THREE.CylinderGeometry(0.22, 0.34, 3.2, 7),
-    material(0x4a3423),
+    material(0xffffff, { map: bark }),
     count,
   );
-  const lower = new THREE.InstancedMesh(new THREE.ConeGeometry(1.75, 3.4, 8), material(0x2f4a2a), count);
-  const upper = new THREE.InstancedMesh(new THREE.ConeGeometry(1.2, 2.7, 8), material(0x3d5c32), count);
+  const foliage = chroniclesPixelTexture('leaves');
+  foliage.repeat.set(6, 2);
+  const lower = new THREE.InstancedMesh(new THREE.ConeGeometry(1.75, 3.4, 8), material(0xc8d6c0, { map: foliage }), count);
+  const upper = new THREE.InstancedMesh(new THREE.ConeGeometry(1.2, 2.7, 8), material(0xffffff, { map: foliage }), count);
   const dummy = new THREE.Object3D();
   let index = 0;
   blocked.forEach(({ x, y }) => {
