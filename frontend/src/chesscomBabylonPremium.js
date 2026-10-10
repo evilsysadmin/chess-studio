@@ -1,6 +1,7 @@
 import babylonPackage from 'babylonjs/package.json';
 import { createChesscomTruckV21 } from './chesscomTruckArtV21.js';
 import { chesscomCrateEdgeV24Parts } from './chesscomCoverEdgesV24.js';
+import { CHESSCOM_OPERATOR_MOMENTS_V26 } from './chesscomOperatorMomentsV26.js';
 
 const BABYLON_VERSION = babylonPackage.version;
 
@@ -555,7 +556,23 @@ export async function createChesscomBabylon(host,{onTile,onUnit,onHover,onReady}
         if(parts?.legR&&!reduced)parts.legR.rotation.x=-moveWave*.17;
         if(parts?.head&&!reduced)parts.head.position.x=Math.sin(t*.46+phase)*.008;
       }
-      const marker=markers.get(id);if(marker?.isVisible&&!reduced){const s=1+Math.sin(t*1.85+phase)*.026;marker.scaling.set(s,s,s);}
+      const marker=markers.get(id);
+      if(marker){
+        const cue=marker.metadata;
+        const active=Boolean(cue?.momentUntil && cue.momentUntil>now);
+        if(cue?.momentUntil && !active){
+          if(cue.momentBaseVisible===false && !cue.operatorFocus)marker.isVisible=false;
+          delete cue.momentUntil;
+          delete cue.momentBaseVisible;
+        }
+        if(marker.isVisible){
+          const breathing=reduced?1:1+Math.sin(t*1.85+phase)*.026;
+          const focus=cue?.operatorFocus?CHESSCOM_OPERATOR_MOMENTS_V26.selectedScale:1;
+          const action=active?CHESSCOM_OPERATOR_MOMENTS_V26.momentScale:1;
+          const scale=breathing*focus*action;
+          marker.scaling.set(scale,scale,scale);
+        }
+      }
     }
     if(!reduced){for(const indicator of reachableIndicators.values()){if(!indicator.isEnabled())continue;const pulse=1+Math.sin(t*1.75+indicator.metadata.phase)*.032;indicator.metadata.ring.scaling.set(pulse,pulse,pulse);indicator.metadata.badge.position.y=.39+Math.sin(t*1.25+indicator.metadata.phase)*.012;}props.ring.rotation.z=t*.12;props.beacon.scaling.y=.95+Math.sin(t*1.45)*.05;props.exfilLight.intensity=4.0+Math.sin(t*1.55)*.42;warmLights.forEach((light,index)=>{const base=index<2 ? 11 : 4.8;light.intensity=base+Math.sin(t*1.35+index*1.7)*.22;});}
     for(let i=fx.length-1;i>=0;i-=1){const item=fx[i];const progress=(now-item.born)/item.life;if(progress>=1){item.mesh.dispose();fx.splice(i,1);continue;}if('alpha' in item.mesh)item.mesh.alpha=1-progress;const s=1+progress*.65;item.mesh.scaling.set(s,s,s);}
