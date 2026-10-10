@@ -66,7 +66,21 @@ with the Go/frontend mirrors and refreshed cross-runtime corpora via
 `make chronicles-contracts`; then update the opt-in entry route, test
 checkpoints, and review real desktop/mobile gameplay PNGs.
 
-## Primer encargo secundario jugable (First Book)
+## Estructura del juego: historia principal + encargos secundarios
+
+Chronicles no se divide en «libros» ni capítulos cerrados. Hay **una historia
+principal** («El rey desaparecido», que arranca con el sobre de la Dama) y
+**muchísimos encargos secundarios** repartidos por el mundo abierto: cada
+región, pueblo o PNJ puede dar encargos opcionales, finitos y con recompensa
+propia. El diario ya los separa en Historia (♛) y Encargo secundario (◆).
+
+El sufijo `-first-book` de los ids de mapa (`swordhaven-first-book`,
+`banner-road-first-book`, `rookwood-first-book`) es un nombre interno
+histórico: se conserva porque las partidas guardadas y los checkpoints
+referencian esos ids. No debe aparecer en textos del juego ni usarse como
+concepto de diseño; los mapas nuevos no lo llevan.
+
+## Encargo secundario jugable: «Los nombres del bosque»
 
 `names-in-wood` («Los nombres del bosque», `quests/side.json`) es el primer
 encargo secundario materializado: `rookwood-first-book` (wilderness) se abre
