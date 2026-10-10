@@ -505,7 +505,29 @@ export async function createChesscomBabylon(host,{onTile,onUnit,onHover,onReady}
   const props=createMissionProps(B,scene,mats,glow);
   const unitRoots=new Map();const markers=new Map();const reachableIndicators=new Map();const fx=[];let matthiasUrl='';let previous=null;let previousObjectives={intel:false,extraction:false,target:false};
 
-  function markerFor(id){if(markers.has(id))return markers.get(id);const ring=B.MeshBuilder.CreateTorus(`marker-${id}`,{diameter:1.18,thickness:.05,tessellation:32},scene);ring.rotation.x=Math.PI/2;ring.material=mats.cyan;ring.isVisible=false;ring.isPickable=false;glow.addIncludedOnlyMesh(ring);markers.set(id,ring);return ring;}
+  // Understated ground brackets replace the oversized glowing selection halo.
+  // Exactly one reusable mesh per unit, no GlowLayer, no extra materials/lights.
+  const focusFriendly=new B.Color3(.38,.59,.60);
+  const focusHostile=new B.Color3(.67,.40,.31);
+  function markerFor(id){
+    if(markers.has(id))return markers.get(id);
+    const lines=[];
+    for(const sx of [-1,1])for(const sz of [-1,1]){
+      lines.push([
+        new B.Vector3(sx*.52,0,sz*.35),
+        new B.Vector3(sx*.52,0,sz*.52),
+        new B.Vector3(sx*.35,0,sz*.52),
+      ]);
+    }
+    const marker=B.MeshBuilder.CreateLineSystem(`marker-${id}`,{lines},scene);
+    marker.isVisible=false;
+    marker.isPickable=false;
+    marker.alpha=.54;
+    marker.color=focusFriendly;
+    marker.metadata={selectionStyle:'ground-brackets-v28'};
+    markers.set(id,marker);
+    return marker;
+  }
   function ensureUnit(unit,friendly,matthiasArt){if(unitRoots.has(unit.id))return unitRoots.get(unit.id);let root;if(unit.id==='matthias'){if(matthiasArt)matthiasUrl=matthiasArt;root=createMatthiasOperative(B,scene,mats);}else root=createTacticalAgent(B,scene,unit.id,friendly,unit.elite,mats);root.getChildMeshes().forEach((mesh)=>shadowGenerator.addShadowCaster(mesh));unitRoots.set(unit.id,root);return root;}
   function ensureReachableIndicator(tile){const key=`${tile.x},${tile.y}`;let indicator=reachableIndicators.get(key);if(!indicator){indicator=createReachableIndicator(B,scene,mats,glow,key,tile.cost);reachableIndicators.set(key,indicator);}if(indicator.metadata.cost!==tile.cost){indicator.metadata.cost=tile.cost;indicator.metadata.ring.material=moveMaterialForCost(mats,tile.cost);indicator.metadata.disc.material=moveMaterialForCost(mats,tile.cost);paintMoveBadge(indicator.metadata.texture,tile.cost);}return indicator;}
   function pushFx(mesh,life=260){mesh.isPickable=false;fx.push({mesh,born:performance.now(),life});return mesh;}
@@ -521,7 +543,7 @@ export async function createChesscomBabylon(host,{onTile,onUnit,onHover,onReady}
     for(const indicator of reachableIndicators.values())indicator.setEnabled(false);
     for(const tile of reachableTiles){const indicator=ensureReachableIndicator(tile);const p=world(tile.x,tile.y,.03);indicator.position.set(p.x,0,p.z);indicator.setEnabled(true);}
     props.intel.setEnabled(!state.objectives.intel);props.intelLamp.setEnabled(!state.objectives.intel);
-    for(const unit of [...state.friendlies,...state.enemies]){const friendly=state.friendlies.some((candidate)=>candidate.id===unit.id);const root=ensureUnit(unit,friendly,matthiasArt||matthiasUrl);const p=world(unit.x,unit.y,.03);const nextTarget=new B.Vector3(p.x,unit.hp > 0 ? .03 : -.55,p.z);const previousTarget=root.metadata.target;const changed=!previousTarget||Math.abs(previousTarget.x-nextTarget.x)>.001||Math.abs(previousTarget.z-nextTarget.z)>.001;if(!root.metadata.initialized){root.position.copyFrom(nextTarget);root.metadata.initialized=true;root.metadata.motion=null;}else if(changed&&unit.hp>0){const start=root.position.clone();const distance=Math.hypot(nextTarget.x-start.x,nextTarget.z-start.z);root.metadata.motion={start,target:nextTarget.clone(),startedAt:performance.now(),duration:chesscomMovementDuration(distance),steps:Math.max(1,Math.round((distance/TILE)*1.25))};}root.metadata.target=nextTarget;root.metadata.baseYaw=friendly ? -.58 : 2.38;root.setEnabled(unit.hp>0);root.rotation.y=root.metadata.baseYaw;const ring=markerFor(unit.id);ring.position.set(p.x,.055,p.z);ring.isVisible=unit.hp>0&&(unit.id===selectedId||(!friendly&&(unit.id===targetId||targetable.has(`${unit.x},${unit.y}`))));ring.material=friendly ? mats.cyan : mats.red;}
+    for(const unit of [...state.friendlies,...state.enemies]){const friendly=state.friendlies.some((candidate)=>candidate.id===unit.id);const root=ensureUnit(unit,friendly,matthiasArt||matthiasUrl);const p=world(unit.x,unit.y,.03);const nextTarget=new B.Vector3(p.x,unit.hp > 0 ? .03 : -.55,p.z);const previousTarget=root.metadata.target;const changed=!previousTarget||Math.abs(previousTarget.x-nextTarget.x)>.001||Math.abs(previousTarget.z-nextTarget.z)>.001;if(!root.metadata.initialized){root.position.copyFrom(nextTarget);root.metadata.initialized=true;root.metadata.motion=null;}else if(changed&&unit.hp>0){const start=root.position.clone();const distance=Math.hypot(nextTarget.x-start.x,nextTarget.z-start.z);root.metadata.motion={start,target:nextTarget.clone(),startedAt:performance.now(),duration:chesscomMovementDuration(distance),steps:Math.max(1,Math.round((distance/TILE)*1.25))};}root.metadata.target=nextTarget;root.metadata.baseYaw=friendly ? -.58 : 2.38;root.setEnabled(unit.hp>0);root.rotation.y=root.metadata.baseYaw;const ring=markerFor(unit.id);ring.position.set(p.x,.055,p.z);ring.isVisible=unit.hp>0&&(unit.id===selectedId||(!friendly&&(unit.id===targetId||targetable.has(`${unit.x},${unit.y}`))));ring.color=friendly ? focusFriendly : focusHostile;}
     if(previous){for(const enemy of state.enemies){const old=previous.enemies.find((u)=>u.id===enemy.id);if(old&&enemy.hp<old.hp){const ammoShooters=state.friendlies.filter((unit)=>{const prior=previous.friendlies.find((candidate)=>candidate.id===unit.id);return prior&&unit.hp>0&&Number.isFinite(unit.ammo)&&Number.isFinite(prior.ammo)&&unit.ammo<prior.ammo;});const source=ammoShooters.sort((a,b)=>closest([a],enemy)===a?-1:closest([b],enemy)===b?1:0)[0]||state.friendlies.find((u)=>u.id===selectedId&&u.hp>0)||closest(state.friendlies,enemy);const priorSource=previous.friendlies.find((u)=>u.id===source?.id);const rounds=priorSource&&source ? Math.max(1,priorSource.ammo-source.ammo) : 1;shotFx(source,enemy,true,rounds);}}for(const ally of state.friendlies){const old=previous.friendlies.find((u)=>u.id===ally.id);if(old&&ally.hp<old.hp)shotFx(closest(state.enemies,ally),ally,false,1);}}
     if(state.objectives.intel&&!previousObjectives.intel)pulseAt(world(INTEL.x,INTEL.y),mats.intel);
     if(state.objectives.extraction&&!previousObjectives.extraction)pulseAt(world(EXFIL.x,EXFIL.y),mats.exfil);
@@ -566,7 +588,7 @@ export async function createChesscomBabylon(host,{onTile,onUnit,onHover,onReady}
           delete cue.momentBaseVisible;
         }
         if(marker.isVisible){
-          const breathing=reduced?1:1+Math.sin(t*1.85+phase)*.026;
+          const breathing=1; // Static selection corners never shimmer.
           const focus=cue?.operatorFocus?CHESSCOM_OPERATOR_MOMENTS_V26.selectedScale:1;
           const action=active?CHESSCOM_OPERATOR_MOMENTS_V26.momentScale:1;
           const scale=breathing*focus*action;
