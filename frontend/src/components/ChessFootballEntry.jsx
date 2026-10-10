@@ -127,6 +127,17 @@ export default function ChessFootballEntry({ onExit }) {
 
         {view === 'welcome' ? (
           <div className="chess-football-entry__choices" aria-label="Elige un modo de Chess Football">
+            {savedCareer.status === 'available' ? (
+              <div className="chess-football-entry__career-resume" aria-label="Temporada guardada">
+                <strong>{FOOTBALL_MANAGER_CLUBS.find((club) => club.id === savedCareer.journal.clubId)?.name}</strong>
+                <p>Jornada {savedCareer.season.currentRound} de 10. Clasificación, quinteto y fatiga listos para continuar.</p>
+                <button type="button" className="chess-football-entry__manager-return" onClick={continueCareer}>Continuar temporada</button>
+              </div>
+            ) : savedCareer.status === 'future' ? (
+              <p className="chess-football-entry__career-warning" role="status">Este dispositivo tiene una carrera creada con una versión más nueva. Se conserva intacta; actualiza el juego para continuar.</p>
+            ) : savedCareer.status === 'invalid' ? (
+              <p className="chess-football-entry__career-warning" role="status">El último guardado no se puede leer. No se borrará hasta que confirmes una nueva temporada.</p>
+            ) : null}
             <button type="button" className="chess-football-entry__choice chess-football-entry__choice--quick" onClick={startQuickMatch}>
               <span className="chess-football-entry__choice-icon" aria-hidden="true">⚽</span>
               <small>Salta al campo</small>
@@ -141,17 +152,7 @@ export default function ChessFootballEntry({ onExit }) {
               <span>Construye tu equipo, prepara la temporada y decide el futuro del club.</span>
               <b>Entrar al despacho →</b>
             </button>
-            {savedCareer.status === 'available' ? (
-              <div className="chess-football-entry__career-resume" aria-label="Temporada guardada">
-                <strong>{FOOTBALL_MANAGER_CLUBS.find((club) => club.id === savedCareer.journal.clubId)?.name}</strong>
-                <p>Jornada {savedCareer.season.currentRound} de 10. Clasificación, quinteto y fatiga listos para continuar.</p>
-                <button type="button" className="chess-football-entry__manager-return" onClick={continueCareer}>Continuar temporada</button>
-              </div>
-            ) : savedCareer.status === 'future' ? (
-              <p className="chess-football-entry__career-warning" role="status">Este dispositivo tiene una carrera creada con una versión más nueva. Se conserva intacta; actualiza el juego para continuar.</p>
-            ) : savedCareer.status === 'invalid' ? (
-              <p className="chess-football-entry__career-warning" role="status">El último guardado no se puede leer. No se borrará hasta que confirmes una nueva temporada.</p>
-            ) : null}
+
           </div>
         ) : view === 'manager' ? (
           <section className="chess-football-entry__manager chess-football-entry__manager--selection" aria-labelledby="football-manager-title">

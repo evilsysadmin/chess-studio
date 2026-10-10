@@ -441,7 +441,7 @@
    dashboard. The confirmation is explicit and usable with touch/keyboard. */
 .chess-football-entry__career-resume,
 .chess-football-entry__career-confirm {
-  margin: 1rem 0;
+  margin: .2rem 0;
   padding: .9rem 1rem;
   border: 1px solid rgba(237, 205, 133, .35);
   border-radius: 12px;
@@ -457,4 +457,11 @@
 .chess-football-entry__career-warning {
   font-size: .84rem;
   color: #f1d493;
+}
+
+.chess-football-entry__career-resume { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .4rem 1rem; }
+.chess-football-entry__career-resume p { flex: 1 1 210px; margin: 0; }
+.chess-football-entry__career-resume .chess-football-entry__manager-return { margin: 0; min-height: 44px; }
+@media (max-width: 680px) {
+  .chess-football-entry__career-resume { align-items: flex-start; }
 }

@@ -236,6 +236,9 @@ async function withChessFootballCapturePage(browser, capture, callback) {
     const resume = welcome.getByRole('button', { name: 'Continuar temporada' });
     await expect(resume).toBeVisible();
     expect(await welcome.evaluate((node) => node.scrollTop), 'Welcome must reset to its entrance').toBe(0);
+    const resumeBounds = await resume.boundingBox();
+    expect(resumeBounds?.y, 'Resume CTA must be on screen').toBeGreaterThanOrEqual(0);
+    expect(resumeBounds.y + resumeBounds.height, 'Resume CTA visible in first viewport').toBeLessThanOrEqual(capture.height + 1);
     await captureFrozenFrame(page, {
       path: `${ARTIFACT_DIR}/chess-football-resume-${capture.label}.png`,
       fullPage: true,
