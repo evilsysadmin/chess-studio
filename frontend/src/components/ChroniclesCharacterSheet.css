@@ -493,3 +493,38 @@
     transition: none;
   }
 }
+
+/* Actual First Book equipment: touch-sized, readable controls inside the sheet. */
+.chronicles-character-sheet__equipment {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+}
+.chronicles-character-sheet__gear-slot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(205, 169, 116, .18);
+}
+.chronicles-character-sheet__gear-slot strong { flex: 1 1 120px; }
+.chronicles-character-sheet__equipment button {
+  min-height: 44px;
+  padding: 8px 10px;
+  border: 1px solid rgba(205, 169, 116, .48);
+  border-radius: 6px;
+  color: #ead2a5;
+  background: rgba(42, 30, 20, .7);
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+}
+.chronicles-character-sheet__equipment button:focus-visible {
+  outline: 2px solid #f3cb82;
+  outline-offset: 2px;
+}
+.chronicles-character-sheet__equipment button:disabled {
+  opacity: .5;
+  cursor: not-allowed;
+}

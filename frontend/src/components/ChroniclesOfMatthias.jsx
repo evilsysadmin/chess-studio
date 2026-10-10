@@ -310,6 +310,14 @@ export default function ChroniclesOfMatthias({ onExit }) {
     if (!current) return;
 
     const actionType = typeof action === 'string' ? action : action?.type;
+    if (actionType === 'equip-item' || actionType === 'unequip-item') {
+      const updated = chroniclesReduce(current, action);
+      if (updated !== current) {
+        stateRef.current = updated;
+        setState(updated);
+      }
+      return; // Equipping is not a movement tick or a combat action.
+    }
     const activeActor = chroniclesCurrentInitiativeActor(current.initiative);
     if (current.initiative && activeActor?.kind === 'enemy') return;
     if (
@@ -1137,6 +1145,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
           onClose={() => setSheetMemberId(null)}
           onAllocateAttribute={allocateAttribute}
           onLearnSkill={learnSkill}
+          onEquipmentAction={(action) => dispatch({ ...action, memberId: sheetMember.id })}
         />
       )}
 

@@ -14,6 +14,12 @@ import {
   chroniclesXpToNextLevel,
 } from '../chroniclesOfMatthiasProgression.js';
 import { chroniclesPartyRelic } from '../chroniclesOfMatthiasRelics.js';
+import {
+  CHRONICLES_EQUIPMENT,
+  CHRONICLES_EQUIPMENT_SLOTS,
+  chroniclesEquippedItem,
+  chroniclesEquipmentBonuses,
+} from '../chronicles/chroniclesEquipment.js';
 import { chroniclesPartyAttackStats } from '../chroniclesOfMatthias.js';
 import { chroniclesTacticsEffectiveProfile } from '../chroniclesOfMatthiasTactics.js';
 import { chroniclesPartyPortraitUrl } from '../chronicles/chroniclesPartyPortraitAssets.js';
@@ -66,6 +72,7 @@ export default function ChroniclesCharacterSheet({
   onClose,
   onAllocateAttribute = null,
   onLearnSkill = null,
+  onEquipmentAction = null,
 }) {
   if (!state || !progression || !member) return null;
 
@@ -89,6 +96,9 @@ export default function ChroniclesCharacterSheet({
   const relic = relicDetails(state, member.id);
   const inventory = chroniclesInventoryEntries(state).filter((item) => item.id !== CHRONICLES_GOLD_ITEM_ID);
   const gold = chroniclesGoldBalance(state);
+  const gearBonus = chroniclesEquipmentBonuses(state, member.id);
+  const canChangeEquipment = !tacticsMode && state.phase === 'explore' && !state.initiative
+    && member.hp > 0 && typeof onEquipmentAction === 'function';
 
   const closeOnEscape = (event) => {
     if (event.key !== 'Escape') return;
@@ -141,6 +151,7 @@ export default function ChroniclesCharacterSheet({
             ? <div><span>RECURSO</span><b>{ability.charges}/{ability.max}</b></div>
             : <div><span>AGILIDAD</span><b>{effectiveAgility}</b></div>}
           <div><span>DAÑO</span><b>{damage}</b></div>
+          {!tacticsMode && <div><span>REDUCCIÓN</span><b>{gearBonus.damageReduction}</b></div>}
           <div><span>ALCANCE</span><b>{reach}</b></div>
         </div>
 
@@ -164,6 +175,33 @@ export default function ChroniclesCharacterSheet({
               <b>{relic?.name || 'Ninguna'}</b>
               <small>{relic?.description || 'Este personaje no lleva una reliquia vinculada.'}</small>
             </article>
+            {!tacticsMode && <article className="chronicles-character-sheet__equipment">
+              <span>Armas y armaduras equipadas</span>
+              {CHRONICLES_EQUIPMENT_SLOTS.map((slot) => {
+                const worn = chroniclesEquippedItem(state, member.id, slot);
+                return (
+                  <div className="chronicles-character-sheet__gear-slot" key={slot}>
+                    <small>{slot === 'weapon' ? 'Arma' : 'Armadura'}</small>
+                    <strong>{worn?.name || 'Sin equipar'}</strong>
+                    {worn && <button type="button" disabled={!canChangeEquipment}
+                      onClick={() => onEquipmentAction?.({ type: 'unequip-item', slot })}>
+                      Guardar en mochila
+                    </button>}
+                  </div>
+                );
+              })}
+              <small>Daño +{gearBonus.attackDamageBonus} · mitigación {gearBonus.damageReduction}. Sólo cuenta el equipo puesto.</small>
+              {Object.values(CHRONICLES_EQUIPMENT)
+                .filter((item) => inventory.some((owned) => owned.id === item.id && owned.quantity > 0))
+                .map((item) => (
+                  <button type="button" key={item.id}
+                    disabled={!canChangeEquipment || !item.allowedMembers.includes(member.id)}
+                    title={item.description}
+                    onClick={() => onEquipmentAction?.({ type: 'equip-item', itemId: item.id })}>
+                    Equipar {item.name} · {item.description}
+                  </button>
+                ))}
+            </article>}
             <article>
               <span>Mochila de expedición</span>
               {inventory.length ? (

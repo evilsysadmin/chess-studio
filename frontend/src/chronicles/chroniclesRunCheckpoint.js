@@ -1,3 +1,4 @@
+import { CHRONICLES_EQUIPMENT_SLOTS, chroniclesEquippedItem } from './chroniclesEquipment.js';
 import {
   chroniclesMapById,
   chroniclesMapIds,
@@ -146,6 +147,13 @@ function runtimeCheckpointFlags(state) {
     }
   });
 
+  (source.party || []).forEach((member) => {
+    for (const slot of CHRONICLES_EQUIPMENT_SLOTS) {
+      const equipped = chroniclesEquippedItem(source, member.id, slot);
+      if (equipped) flags[runtimeKey('gear', member.id, slot)] = equipped.id;
+    }
+  });
+
   Object.entries(source.classAbilityCharges || {}).forEach(([memberId, rawCharges]) => {
     const safeMemberId = shortStringOrNull(memberId, 40);
     const charges = integerOrNull(rawCharges, 0, 99);
@@ -224,6 +232,19 @@ function applyRuntimeCheckpoint(state, flags) {
     });
     if (Object.keys(restoredPartyPositions).length) next.partyPositions = restoredPartyPositions;
   }
+
+  const equipment = {};
+  (next.party || []).forEach((member) => {
+    for (const slot of CHRONICLES_EQUIPMENT_SLOTS) {
+      const itemId = shortStringOrNull(flags[runtimeKey('gear', member.id, slot)], 64);
+      if (!itemId) continue;
+      // Validate against the same class/slot catalog as live equip actions.
+      const matched = chroniclesEquippedItem({ equipment: { [member.id]: { [slot]: itemId } } }, member.id, slot);
+      if (!matched) continue;
+      equipment[member.id] = { ...equipment[member.id], [slot]: matched.id };
+    }
+  });
+  next.equipment = equipment;
 
   if (next.classAbilityCharges && typeof next.classAbilityCharges === 'object') {
     const charges = { ...next.classAbilityCharges };

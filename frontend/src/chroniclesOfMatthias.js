@@ -17,6 +17,7 @@ import {
   chroniclesRequirementsMet,
 } from './chronicles/chroniclesContentRuntime.js';
 import { resolveChroniclesCharacterParty } from './chronicles/chroniclesCharacterBuilds.js';
+import { chroniclesEquipItem, chroniclesUnequipItem, chroniclesEquipmentBonuses } from './chronicles/chroniclesEquipment.js';
 import { chroniclesAdvanceLostKingIntro } from './chronicles/chroniclesLostKingIntro.js';
 import { CHRONICLES_SWORDHAVEN_RETURN_PORTAL_ID, chroniclesSwordhavenReturnAvailable } from './chronicles/chroniclesSwordhavenReturnPortal.js';
 import { chroniclesIsOverworldTravelExit } from './chronicles/chroniclesWorldReturnLinks.js';
@@ -286,7 +287,7 @@ export function chroniclesPartyAttackStats(state, memberId) {
     Number(modifiers.reachBonus || 0) - Number(creator.reachBonus || 0),
   );
   return {
-    damage: Math.max(0, Number(member.damage || 0) + persistentDamageBonus),
+    damage: Math.max(0, Number(member.damage || 0) + persistentDamageBonus + chroniclesEquipmentBonuses(state, memberId).attackDamageBonus),
     reach: Math.max(1, Number(member.reach || 1) + persistentReachBonus),
   };
 }
@@ -402,7 +403,9 @@ function resolveAttack(state, memberId) {
   const targetId = retaliationTargetId(state, attacker);
   const previousTarget = state.party.find((member) => member.id === targetId);
   const party = targetId
-    ? state.party.map((member) => member.id === targetId ? { ...member, hp: Math.max(0, member.hp - enemy.retaliation) } : member)
+    ? state.party.map((member) => member.id === targetId
+      ? { ...member, hp: Math.max(0, member.hp - Math.max(0, enemy.retaliation - chroniclesEquipmentBonuses(state, member.id).damageReduction)) }
+      : member)
     : state.party;
   const retaliationTarget = party.find((member) => member.id === targetId);
   let nextState = {
@@ -448,6 +451,8 @@ function explorationCellBlocker(state, x, y) {
 export function chroniclesReduce(state, action) {
   if (!state || state.phase === 'escaped' || state.phase === 'defeated') return state;
   const actionType = typeof action === 'string' ? action : action?.type;
+  if (actionType === 'equip-item') return chroniclesEquipItem(state, action.memberId, action.itemId);
+  if (actionType === 'unequip-item') return chroniclesUnequipItem(state, action.memberId, action.slot);
   if (actionType === 'turn-left') return { ...state, direction: (state.direction + 3) % 4, turns: state.turns + 1 };
   if (actionType === 'turn-right') return { ...state, direction: (state.direction + 1) % 4, turns: state.turns + 1 };
   if (actionType === 'attack') return resolveAttack(state, typeof action === 'object' ? action.memberId : 'matthias');

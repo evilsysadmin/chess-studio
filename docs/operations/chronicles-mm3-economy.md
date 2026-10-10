@@ -28,3 +28,13 @@ Persist equipped slot ownership explicitly per hero and define class restriction
 ## Acceptance
 
 Tests must cover exactly seven effective stats, status effects and correct per-class spell rules when activated; F5, remote restore and concurrency 409 for all NEW wallet/equipment writes; no visual placeholders. Integration into Swordhaven requires authored map manifests and all three runtime mirrors + Go/Python parity checks and reviewed mobile/desktop screenshots.
+
+## Object materials and item quality (MM3-inspired)
+
+Equipment is composed as `base item + material + optional elemental enchantment + optional attribute enchantment + charged power`, rather than a closed set of arbitrary labeled weapons. A material changes actual **to-hit, damage, armor class and value**, with modifiers applied by applicable item type. This is distinct from the base object's class restrictions, slot and intrinsic stats. Store the source components and derived price so generated drops and shops use the same formula.
+
+The source is the *Might and Magic III* item-generation table: https://gamefaqs.gamespot.com/segacd/570500-might-and-magic-iii-isles-of-terra/faqs/36599 (section 5A, item material enchantments). Examples include Iron (+1 hit, +2 damage, +1 AC, value ×2), Steel (+3 hit, +6 damage, +4 AC, ×10), Silver (+2 hit, +4 damage, +2 AC, ×5) and Pearl (+2/+2/+2, ×20). The same base sword therefore varies with its material; a necklace takes material protection/enchants but not weapon damage.
+
+**Ivory Necklace** is a requested Chronicles extension: ivory is not listed among those particular canonical MM3 material entries. Mark such materials as extensions and assign explicit balanced modifiers; never misrepresent invented rows as authentic. Rarity/tier must drive sensible availability and value.
+
+**Current vertical slice limitations:** `roadwatch-sabre` = base sabre (6 gold) + Iron (×2) = 12 gold, with +2 equipped attack damage. `roadwatch-vest` = base vest (36 gold) + leather material (×0.25) = 9 gold, with baseline 1 damage mitigation. The game currently resolves hits deterministically, so material `toHit` and `armorClass` are **stored data for future actual hit/AC resolution**, not falsely advertised as currently changing hit chance. Introduce a real accuracy-vs-AC resolution alongside MM3 stats; then jewelry and better materials can influence real hit/miss instead of cosmetic labels. Item identification, resale/merchant prices, elemental enchantments and charge powers are separate follow-up slices.

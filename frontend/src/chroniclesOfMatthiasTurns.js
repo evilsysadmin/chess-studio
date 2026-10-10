@@ -4,6 +4,7 @@ import {
   chroniclesEnemyPosition,
   chroniclesTileAt,
 } from './chroniclesOfMatthias.js';
+import { chroniclesEquipmentBonuses } from './chronicles/chroniclesEquipment.js';
 import {
   chroniclesLivingPartyPositions,
   chroniclesPartyCellOccupied,
@@ -270,7 +271,8 @@ function damageParty(state, enemy, enemyIndex, events, target = null) {
   const enemyPosition = chroniclesRuntimeEnemyPosition(state, enemy);
   target = target || choosePartyTarget(state, enemy, enemyPosition);
   if (!target) return state;
-  const damage = Math.max(1, Number(enemy.retaliation || 1));
+  const rawDamage = Math.max(1, Number(enemy.retaliation || 1));
+  const damage = Math.max(0, rawDamage - chroniclesEquipmentBonuses(state, target.id).damageReduction);
   const previousHp = target.hp;
   const nextHp = Math.max(0, previousHp - damage);
   let next = {
