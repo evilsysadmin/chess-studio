@@ -73,9 +73,11 @@ test('Chesscom · abre la planta 17 con renderer Babylon real y HUD Dust Veil pr
   await expect(host).toHaveAttribute('data-chesscom-focus-unit', 'matthias');
   await expect.poll(() => host.evaluate(() => {
     const scene=window.BABYLON?.EngineStore?.LastCreatedScene;
-    const ring=scene?.getMeshByName?.('chesscom-moment-v26-ring');
-    const root=scene?.getTransformNodeByName?.('chesscom-moment-v26-root');
-    return Boolean(ring&&root&&!ring.isPickable&&ring.parent===root);
+    const marker=scene?.getMeshByName?.('marker-matthias');
+    // Focus reuses a real 3D selection ring; never allocate a second effect.
+    return Boolean(marker && !marker.isPickable && marker.metadata?.operatorFocus
+      && !scene.getMeshByName?.('chesscom-moment-v26-ring')
+      && !scene.getLightByName?.('chesscom-moment-v26-fill'));
   })).toBe(true);
 
   await expect(mode.getByText(/BABYLON\.JS \d+\.\d+\.\d+ · GPU PREMIUM V2 · BALLISTICS · UNIT STANCE · CHARACTER ART V4/)).toBeVisible({ timeout: 30_000 });
