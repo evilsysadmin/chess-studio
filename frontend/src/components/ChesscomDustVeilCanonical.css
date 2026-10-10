@@ -6,9 +6,11 @@
   .chesscom[data-chesscom-visual="premium-v1"][data-chesscom-layout="dust-veil-canonical-v1"]{
     --cc-dust-glass:rgba(4,13,21,.88);
     --cc-dust-outline:rgba(55,194,237,.48);
-    position:relative;
-    width:100%;
-    height:var(--cc-dust-available-height,calc(100dvh - 176px));
+    position:fixed;
+    inset:0;
+    z-index:1200;
+    width:100vw;
+    height:100dvh;
     min-height:0;
     padding:0;
     overflow:hidden;
@@ -52,7 +54,7 @@
     position:relative;
     display:block;
     width:100%;
-    height:var(--cc-dust-available-height,calc(100dvh - 176px));
+    height:100dvh;
     min-height:0;
     max-height:none;
     margin:0;
@@ -312,7 +314,7 @@
 .chesscom .chesscom-weapon-advanced[open]>dl{margin-top:.55rem}
 .chesscom .chesscom-mission-detail-content{display:grid;gap:.5rem;padding:.4rem}
 
-/* No desktop chrome may force Chesscom past the bottom of the real viewport.
+/* Desktop CHESSCOM is an immersive room above the ordinary Chess Studio chrome.
    Mobile stays in the proven vertical flow, with the brand/exit fully visible. */
 @media (max-width:620px){
   .chesscom[data-chesscom-visual="premium-v1"][data-chesscom-layout="dust-veil-canonical-v1"] .chesscom-topbar{
