@@ -68,6 +68,8 @@ checkpoints, and review real desktop/mobile gameplay PNGs.
 
 ## Estructura del juego: historia principal + side quests
 
+**Chronicles es un tributo a Might and Magic III.** Ante cualquier duda de diseño (reglas, progresión, economía, botín, magia, interfaz), la referencia es cómo lo resolvía MM3, adaptado a este mundo. El equipo bueno no se compra en el pueblo inicial: se saquea en mazmorras, cae de enemigos o se vende en pueblos posteriores.
+
 Chronicles no se divide en «libros» ni capítulos cerrados. Hay **una historia
 principal** («El rey desaparecido», que arranca con el sobre de la Dama) y
 **muchísimas side quests** repartidas por el mundo abierto: cada región,

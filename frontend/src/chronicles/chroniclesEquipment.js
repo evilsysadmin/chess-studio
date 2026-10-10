@@ -7,7 +7,11 @@
 import { CHRONICLES_MM3_ARMOR_TIERS, chroniclesMM3Class } from './chroniclesMM3Rules.js';
 
 export const CHRONICLES_ITEM_MATERIALS = Object.freeze({
-  leather: Object.freeze({ name: 'cuero', toHit: -4, damage: -6, armorClass: 0, valueMultiplier: 0.25, tier: 1 }),
+  // Starter junk. Wood and brass sit below bronze as in MM3's ladder; their
+  // exact canonical rows were not verifiable, so they are marked approximate.
+  wooden: Object.freeze({ name: 'madera', toHit: -1, damage: -3, armorClass: 0, valueMultiplier: 0.2, tier: 0, approximate: true }),
+  brass: Object.freeze({ name: 'latón', toHit: 1, damage: -2, armorClass: 0, valueMultiplier: 0.5, tier: 0, approximate: true }),
+  leather: Object.freeze({ name: 'cuero', toHit: -4, damage: -6, armorClass: 0, valueMultiplier: 0.25, tier: 0 }),
   bronze: Object.freeze({ name: 'bronce', toHit: 2, damage: -2, armorClass: -1, valueMultiplier: 0.75, tier: 1 }),
   iron: Object.freeze({ name: 'hierro', toHit: 1, damage: 2, armorClass: 1, valueMultiplier: 2, tier: 2 }),
   silver: Object.freeze({ name: 'plata', toHit: 2, damage: 4, armorClass: 2, valueMultiplier: 5, tier: 2 }),
@@ -34,6 +38,9 @@ function authoredEquipment(spec) {
     // MM armor class: the armor type's own AC plus its material.
     armorClassBonus: !weapon ? Math.max(0, Number(spec.baseArmorClass || 0) + material.armorClass) : 0,
     price: Math.max(1, Math.round(spec.basePrice * material.valueMultiplier)),
+    // Progression tier: 0 starter junk (wood, brass, leather), 1 bronze,
+    // 2 iron/silver/ivory/pearl, 3 steel. Towns and loot tables gate by it.
+    tier: material.tier,
   });
 }
 
@@ -65,10 +72,13 @@ const BASE_ARMORS = Object.freeze({
 
 // Which materials each base item is forged in. Leather only makes soft
 // armour; ivory (our extension) is carved into daggers, staves and shields.
-const WEAPON_MATERIALS = Object.freeze(['bronze', 'iron', 'silver', 'steel']);
+const WEAPON_MATERIALS = Object.freeze(['brass', 'bronze', 'iron', 'silver', 'steel']);
+// Wood makes staves, clubs (wooden maces) and spears; ivory is carved.
+const WOODEN_WEAPONS = Object.freeze(['staff', 'mace', 'spear']);
 const CARVED_MATERIALS = Object.freeze(['ivory']);
 const SOFT_ARMOR_MATERIALS = Object.freeze(['leather', 'bronze', 'iron', 'steel']);
-const METAL_ARMOR_MATERIALS = Object.freeze(['bronze', 'iron', 'silver', 'steel']);
+const METAL_ARMOR_MATERIALS = Object.freeze(['brass', 'bronze', 'iron', 'silver', 'steel']);
+const SHIELD_MATERIALS = Object.freeze(['wooden', 'brass', 'bronze', 'iron', 'silver', 'steel', 'ivory']);
 
 // «Espada de acero», «Bastón de marfil»: Spanish material phrases are
 // genderless, so the base name always goes first.
@@ -141,7 +151,10 @@ function catalog() {
   };
   for (const baseId of Object.keys(BASE_WEAPONS)) {
     const carved = baseId === 'dagger' || baseId === 'staff' ? CARVED_MATERIALS : [];
-    for (const materialId of [...WEAPON_MATERIALS, ...carved]) items[`${materialId}-${baseId}`] = weaponItem(baseId, materialId);
+    const wooden = WOODEN_WEAPONS.includes(baseId) ? ['wooden'] : [];
+    for (const materialId of [...wooden, ...WEAPON_MATERIALS, ...carved]) {
+      items[`${materialId}-${baseId}`] = weaponItem(baseId, materialId);
+    }
   }
   for (const baseId of Object.keys(BASE_ARMORS)) {
     const soft = baseId === 'padded' || baseId === 'leather';
@@ -149,7 +162,7 @@ function catalog() {
       items[`${materialId}-${baseId}`] = armorItem(baseId, materialId);
     }
   }
-  for (const materialId of ['bronze', 'iron', 'silver', 'steel', 'ivory']) items[`${materialId}-shield`] = shieldItem(materialId);
+  for (const materialId of SHIELD_MATERIALS) items[`${materialId}-shield`] = shieldItem(materialId);
   return Object.freeze(items);
 }
 

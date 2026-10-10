@@ -52,8 +52,12 @@ describe('Chronicles First Book · real purchased gear', () => {
     expect(chroniclesContextualContentAction(smith)?.id).toBe('first-book-weaponsmith');
     const counter = chroniclesReduce(smith, 'interact');
     expect(counter.shop?.id).toBe('first-book-weaponsmith');
-    const bought = chroniclesReduce(counter, { type: 'shop-buy', itemId: 'roadwatch-sabre' });
-    expect(chroniclesGoldBalance(bought)).toBe(9);
+    // The guard's iron sabre is not sold in the starting town: it is looted.
+    expect(chroniclesReduce(counter, { type: 'shop-buy', itemId: 'roadwatch-sabre' })).toBe(counter);
+    const bought = chroniclesApplyContentEffects(counter, [{
+      type: 'grant-item', itemId: 'roadwatch-sabre', name: 'Sable de hierro de la guardia',
+    }]);
+    expect(chroniclesGoldBalance(bought)).toBe(21);
     expect(bought.inventory['roadwatch-sabre'].quantity).toBe(1);
     expect(chroniclesPartyAttackStats(bought, 'matthias').damage).toBe(
       chroniclesPartyAttackStats(initial, 'matthias').damage,
