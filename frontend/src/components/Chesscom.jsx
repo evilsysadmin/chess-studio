@@ -120,6 +120,23 @@ export default function Chesscom({ onExit }) {
   const [rendererName, setRendererName] = useState('CARGANDO BABYLON');
   const [rendererError, setRendererError] = useState('');
 
+  // CHESSCOM lives beneath Chess Studio's shell. 100dvh alone would put the
+  // tactical controls below the viewport on desktop; measure the real origin.
+  useEffect(() => {
+    const root = hostRef.current?.closest('.chesscom');
+    if (!root) return undefined;
+    const syncHeight = () => {
+      const top = Math.max(0, root.getBoundingClientRect().top);
+      root.style.setProperty('--cc-dust-available-height', `${Math.max(320, Math.floor(window.innerHeight - top))}px`);
+    };
+    syncHeight();
+    window.addEventListener('resize', syncHeight);
+    return () => {
+      window.removeEventListener('resize', syncHeight);
+      root.style.removeProperty('--cc-dust-available-height');
+    };
+  }, []);
+
   useEffect(() => {
     const scroller = document.scrollingElement;
     if (scroller) scroller.scrollTop = 0;
