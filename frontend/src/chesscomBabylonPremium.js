@@ -505,7 +505,7 @@ export async function createChesscomBabylon(host,{onTile,onUnit,onHover,onReady}
   const props=createMissionProps(B,scene,mats,glow);
   const unitRoots=new Map();const markers=new Map();const reachableIndicators=new Map();const fx=[];let matthiasUrl='';let previous=null;let previousObjectives={intel:false,extraction:false,target:false};
 
-  function markerFor(id){if(markers.has(id))return markers.get(id);const ring=B.MeshBuilder.CreateTorus(`marker-${id}`,{diameter:1.18,thickness:.05,tessellation:32},scene);ring.rotation.x=Math.PI/2;ring.material=mats.cyan;ring.isVisible=false;glow.addIncludedOnlyMesh(ring);markers.set(id,ring);return ring;}
+  function markerFor(id){if(markers.has(id))return markers.get(id);const ring=B.MeshBuilder.CreateTorus(`marker-${id}`,{diameter:1.18,thickness:.05,tessellation:32},scene);ring.rotation.x=Math.PI/2;ring.material=mats.cyan;ring.isVisible=false;ring.isPickable=false;glow.addIncludedOnlyMesh(ring);markers.set(id,ring);return ring;}
   function ensureUnit(unit,friendly,matthiasArt){if(unitRoots.has(unit.id))return unitRoots.get(unit.id);let root;if(unit.id==='matthias'){if(matthiasArt)matthiasUrl=matthiasArt;root=createMatthiasOperative(B,scene,mats);}else root=createTacticalAgent(B,scene,unit.id,friendly,unit.elite,mats);root.getChildMeshes().forEach((mesh)=>shadowGenerator.addShadowCaster(mesh));unitRoots.set(unit.id,root);return root;}
   function ensureReachableIndicator(tile){const key=`${tile.x},${tile.y}`;let indicator=reachableIndicators.get(key);if(!indicator){indicator=createReachableIndicator(B,scene,mats,glow,key,tile.cost);reachableIndicators.set(key,indicator);}if(indicator.metadata.cost!==tile.cost){indicator.metadata.cost=tile.cost;indicator.metadata.ring.material=moveMaterialForCost(mats,tile.cost);indicator.metadata.disc.material=moveMaterialForCost(mats,tile.cost);paintMoveBadge(indicator.metadata.texture,tile.cost);}return indicator;}
   function pushFx(mesh,life=260){mesh.isPickable=false;fx.push({mesh,born:performance.now(),life});return mesh;}
@@ -572,6 +572,16 @@ export async function createChesscomBabylon(host,{onTile,onUnit,onHover,onReady}
           const scale=breathing*focus*action;
           marker.scaling.set(scale,scale,scale);
         }
+      }
+    }
+    // Dead operatives no longer enter the motion loop; their temporary
+    // casualty ring must still expire instead of becoming permanent scenery.
+    for(const marker of markers.values()){
+      const cue=marker.metadata;
+      if(cue?.momentUntil && cue.momentUntil<=now){
+        if(cue.momentBaseVisible===false && !cue.operatorFocus)marker.isVisible=false;
+        delete cue.momentUntil;
+        delete cue.momentBaseVisible;
       }
     }
     if(!reduced){for(const indicator of reachableIndicators.values()){if(!indicator.isEnabled())continue;const pulse=1+Math.sin(t*1.75+indicator.metadata.phase)*.032;indicator.metadata.ring.scaling.set(pulse,pulse,pulse);indicator.metadata.badge.position.y=.39+Math.sin(t*1.25+indicator.metadata.phase)*.012;}props.ring.rotation.z=t*.12;props.beacon.scaling.y=.95+Math.sin(t*1.45)*.05;props.exfilLight.intensity=4.0+Math.sin(t*1.55)*.42;warmLights.forEach((light,index)=>{const base=index<2 ? 11 : 4.8;light.intensity=base+Math.sin(t*1.35+index*1.7)*.22;});}
