@@ -525,8 +525,9 @@ export function chroniclesObjective(state) {
   }
 
   // In the open world the party follows its quests, not the nearest gate.
-  // A quest with content on this map wins; otherwise the story thread.
-  if (['settlement', 'wilderness'].includes(map.regionKind)) {
+  // A quest with content on this map wins; otherwise the story thread. An
+  // exit objective a designer wrote by hand (legacy Swordhaven) still rules.
+  if (['settlement', 'wilderness'].includes(map.regionKind) && !exit?.explorationObjective) {
     const active = chroniclesQuestEntries(state, 'active').filter((quest) => quest.objective);
     const localQuestIds = new Set((map.interactables || []).flatMap((entry) => (
       (entry.when || []).map((requirement) => requirement?.questId).filter(Boolean)
