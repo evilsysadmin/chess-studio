@@ -5,12 +5,14 @@ import './Home3DLoadingGate.css';
 
 // No wrapper is inserted inside the illustrated stage: existing canvas/art
 // adjacent-sibling selectors and diegetic click targets must keep working.
-export default function Home3DLoadingGate({ stageRef, onUseStaticHome }) {
+export default function Home3DLoadingGate({ stageRef, onUseStaticHome, onHomeAvailable }) {
   const [ready, setReady] = useState(false);
   const [previewing, setPreviewing] = useState(false);
   const visibleRef = useRef(false);
   const onUseStaticHomeRef = useRef(onUseStaticHome);
   onUseStaticHomeRef.current = onUseStaticHome;
+  const onHomeAvailableRef = useRef(onHomeAvailable);
+  onHomeAvailableRef.current = onHomeAvailable;
 
   // The stage belongs to a parent host element. Child layout effects can run
   // before React attaches that parent's ref; passive effects run after commit.
@@ -28,6 +30,7 @@ export default function Home3DLoadingGate({ stageRef, onUseStaticHome }) {
       if (cancelled || visibleRef.current) return;
       stage.dataset.home3dPreview = 'painted';
       setPreviewing(true);
+      onHomeAvailableRef.current?.();
     };
     const clearRecovery = () => {
       window.clearTimeout(helpTimer);
@@ -77,6 +80,7 @@ export default function Home3DLoadingGate({ stageRef, onUseStaticHome }) {
           delete stage.dataset.home3dPreview;
           setReady(true);
           setPreviewing(false);
+          onHomeAvailableRef.current?.();
           clearRecovery();
         });
       });
