@@ -231,6 +231,8 @@ test('Chess Football manager can simulate ten reproducible matchdays without loa
   const season = page.locator('.chess-football-entry__manager--season');
   await expect(season).toBeVisible();
   await expect(season).toContainText('Jornada 0 de 10');
+  await expect(page.getByLabel('Objetivo del club')).toContainText('Conquistar la liga');
+  await expect(page.getByLabel('Objetivo del club')).toContainText('En disputa');
   const lineupPanel = page.getByLabel('Alineación del míster');
   await lineupPanel.locator('summary').click();
   await lineupPanel.getByRole('combobox', { name: 'Titular 5 · DEL' }).selectOption('fc-matthias-del-2');
@@ -262,6 +264,8 @@ test('Chess Football manager can simulate ten reproducible matchdays without loa
     }
   }
   await expect(page.getByRole('button', { name: 'Liga completada', exact: true })).toBeDisabled();
+  await expect(page.getByLabel('Objetivo del club')).toContainText('Objetivo');
+  await expect(page.getByLabel('Objetivo del club')).not.toContainText('En disputa');
   await expect(season).toContainText('Temporada completada.');
   await expect(season.locator('[aria-label="Resultados de la última jornada"] p')).toHaveCount(3);
   await page.locator('.chess-football-entry__back').click();

@@ -2,6 +2,7 @@ import { lazy, Suspense, useLayoutEffect, useRef, useState } from 'react';
 import { requestWarRoomLandscapeFullscreen } from './useWarRoomImmersive.js';
 import { FOOTBALL_MANAGER_CLUBS, getFootballManagerClub } from '../footballManagerClubs.js';
 import { footballStandings, FOOTBALL_MANAGER_TACTICS } from '../footballManagerSeason.js';
+import { footballClubObjectiveReport } from '../footballManagerObjectives.js';
 import { createFootballCareer, editFootballCareer, playFootballCareerRound, readFootballCareer, replayFootballCareer, writeFootballCareer } from '../footballManagerCareer.js';
 import { getFootballClubRoster, getDefaultFootballLineup, FOOTBALL_FIVE_POSITIONS, getFootballFatigue } from '../footballManagerRoster.js';
 import './ChessFootballEntry.css';
@@ -24,6 +25,7 @@ export default function ChessFootballEntry({ onExit }) {
   const defaultLineup = selectedClub ? getDefaultFootballLineup(roster) : [];
   const startingFive = lineupIds || defaultLineup;
   const standings = season ? footballStandings(season) : [];
+  const objective = season && selectedClubId ? footballClubObjectiveReport(season, selectedClubId) : null;
 
   // Each new room starts at its entrance. Reusing this mounted full-screen
   // scroller otherwise carries a deep standings offset back into Welcome.
@@ -206,6 +208,16 @@ export default function ChessFootballEntry({ onExit }) {
             <p>Jornada {season?.currentRound || 0} de {season?.rounds.length || 10}. Los resultados pertenecen a esta simulación estadística, no a un partido jugado en Godot.</p>
             {saveStatus === 'saved' ? <p className="chess-football-entry__save-state" role="status">Progreso guardado en este dispositivo y pendiente de sincronización del perfil.</p> : null}
             {saveStatus === 'memory' ? <p className="chess-football-entry__career-warning" role="status">El almacenamiento está bloqueado: los cambios sólo están disponibles en esta pestaña.</p> : null}
+            {objective ? (
+              <section className="chess-football-entry__objective" aria-label="Objetivo del club">
+                <div className="chess-football-entry__objective-heading">
+                  <strong>Objetivo del club · {objective.title}</strong>
+                  <span>{objective.statusLabel}</span>
+                </div>
+                <p>{objective.detail}</p>
+                <p className="chess-football-entry__objective-progress">{objective.progress}</p>
+              </section>
+            ) : null}
             <table className="chess-football-entry__standings" aria-label="Clasificación de liga">
               <thead><tr><th scope="col">#</th><th scope="col">Club</th><th scope="col">PJ</th><th scope="col">Pts</th></tr></thead>
               <tbody>

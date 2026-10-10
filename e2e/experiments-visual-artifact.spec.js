@@ -192,6 +192,11 @@ async function withChessFootballCapturePage(browser, capture, callback) {
       path: `${ARTIFACT_DIR}/chess-football-season-${capture.label}.png`,
       fullPage: true,
     });
+    await expect(welcome.getByLabel('Objetivo del club')).toContainText('En disputa');
+    await welcome.getByLabel('Objetivo del club').screenshot({
+      path: `${ARTIFACT_DIR}/chess-football-objective-${capture.label}.png`,
+      animations: 'disabled',
+    });
     const lineupPanel = welcome.getByLabel('Alineación del míster');
     await lineupPanel.locator('summary').click();
     await lineupPanel.getByRole('combobox', { name: 'Titular 5 · DEL' }).selectOption('fc-matthias-del-2');
