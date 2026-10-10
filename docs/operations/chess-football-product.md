@@ -32,10 +32,15 @@ técnicamente un required status check del ruleset de GitHub.
 
 ## Dirección futura: «Despacho del míster» (inspiración PC Fútbol)
 
-**Backlog conceptual; no implementado.** Añadir una capa de mánager de clubes,
-con sabor a simulador clásico de gestión futbolística y sin copiar interfaces,
-marcas, plantillas o contenido protegido de terceros. El partido jugable
-actual sigue disponible de forma independiente.
+**Implementación incremental en curso.** La pantalla de bienvenida y su
+entrada separada a `Partida rápida` / `Modo mánager` ya llegaron en #5336,
+y el selector de seis clubes ficticios con estilos y objetivos en #5337.
+La primera liga estadística reversible se desarrolla en #5339: hasta que
+supere la CI y la revisión visual, no se debe presentar como carrera
+persistente ni como simulación enlazada a partidos Godot. El modo conserva
+la inspiración de gestión futbolística clásica, sin copiar interfaces,
+marcas, plantillas o contenido protegido de terceros. El partido Godot
+sigue jugable de forma independiente.
 
 ### Bucle de juego
 
