@@ -74,7 +74,7 @@ describe('Chronicles first book · Swordhaven / Banner Road', () => {
     expect(paid.claimedRewards).toContain('swordhaven:banner-contract:v1');
     expect(chroniclesTacticsInteractions(paid).some((i) => i.id === 'first-book-banner-turn-in')).toBe(false);
 
-    const merchant = walkTo(paid, 8, 7);
+    const merchant = walkTo(paid, 15, 10);
     const choices = chroniclesTacticsInteractions(merchant);
     expect(choices).toContainEqual(expect.objectContaining({
       id: 'first-book-quartermaster', locked: false,
@@ -84,7 +84,7 @@ describe('Chronicles first book · Swordhaven / Banner Road', () => {
     expect(chroniclesInventoryEntries(bought)).toContainEqual(expect.objectContaining({
       id: 'road-rations', quantity: 1,
     }));
-    const rest = walkTo(bought, 13, 7);
+    const rest = walkTo(bought, 7, 10);
     const healed = chroniclesTacticsUse({
       ...rest, party: rest.party.map((member) => ({ ...member, hp: Math.max(1, member.hp - 4) })),
     }, 'first-book-healer');
@@ -116,7 +116,7 @@ describe('Chronicles first book · Swordhaven / Banner Road', () => {
     expect(chroniclesGoldBalance(state)).toBe(18);
     expect(chroniclesContextualContentAction(state)?.id).not.toBe('first-book-banner-turn-in');
 
-    state = walkTo(state, 8, 7);
+    state = walkTo(state, 15, 10);
     expect(chroniclesContextualContentAction(state)?.id).toBe('first-book-quartermaster');
     state = chroniclesReduce(state, 'interact');
     expect(chroniclesGoldBalance(state)).toBe(11);
@@ -131,7 +131,7 @@ describe('Chronicles first book · Swordhaven / Banner Road', () => {
     state = chroniclesTacticsUse(walkTo(state, 9, 5), 'first-book-lost-banner');
     state = chroniclesTacticsUse(walkTo(state, 10, 1), 'to-first-book-swordhaven');
     state = chroniclesTacticsUse(walkTo(state, 11, 9), 'first-book-banner-turn-in');
-    state = chroniclesTacticsUse(walkTo(state, 8, 7), 'first-book-quartermaster');
+    state = chroniclesTacticsUse(walkTo(state, 15, 10), 'first-book-quartermaster');
     const snapshot = chroniclesRunCheckpointPayload(state, 7);
     expect(snapshot.currentMapId).toBe('swordhaven-first-book');
     expect(snapshot.claimedRewards).toEqual(['swordhaven:banner-contract:v1']);

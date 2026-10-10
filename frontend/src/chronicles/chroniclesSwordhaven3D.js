@@ -247,13 +247,16 @@ function emblem(group, kind, mats) {
   } else if (kind === 'crystal') {
     mesh(group, new THREE.OctahedronGeometry(0.45, 0),
       material(0xa78aff, { emissive: 0x423377, emissiveIntensity: 0.6 }), 'arcane-crystal', [0, 0, 0.12]);
+  } else if (kind === 'sack') {
+    mesh(group, new THREE.SphereGeometry(0.34, 10, 8), gold, 'grain-sack', [0, -0.08, 0.12]).scale.set(1, 1.15, 0.5);
+    mesh(group, new THREE.CylinderGeometry(0.09, 0.14, 0.2, 8), gold, 'grain-sack-neck', [0, 0.32, 0.12]);
   } else if (kind === 'sun') {
     mesh(group, new THREE.SphereGeometry(0.27, 10, 8), gold, 'temple-sun', [0, 0, 0.13]);
     mesh(group, new THREE.TorusGeometry(0.42, 0.045, 5, 16), gold, 'temple-halo', [0, 0, 0.13]);
   }
 }
 
-function building(spec, mats, coarse, contentIds, center) {
+export function buildSwordhavenHouse(spec, mats, coarse, contentIds, center) {
   const root = new THREE.Group();
   root.name = 'swordhaven-building-' + spec.id;
   const [wx, wz] = worldPoint(spec.x, spec.y, center);
@@ -467,6 +470,8 @@ function building(spec, mats, coarse, contentIds, center) {
       new THREE.BoxGeometry(0.67, 1.48, 0.22), mats.steel,
       'armor-display', [x, 1.12, facadeZ + 0.24]);
   }
+  // Homes carry no shop sign.
+  if (spec.emblem === 'home') return { root, sign: null, interactive: false };
   const sign = new THREE.Group();
   sign.name = 'swordhaven-interaction-' + spec.id;
   sign.userData.chroniclesContentId = spec.id;
@@ -478,7 +483,7 @@ function building(spec, mats, coarse, contentIds, center) {
   return { root, sign, interactive: contentIds.has(spec.id) };
 }
 
-function tree(root, x, z, mats, coarse, index) {
+export function buildSwordhavenTree(root, x, z, mats, coarse, index) {
   const treeRoot = new THREE.Group();
   treeRoot.name = 'swordhaven-tree-' + index;
   treeRoot.position.set(x, 0, z);
@@ -641,6 +646,60 @@ function dressSwordhavenRoadsides(root, mats, coarse, width, height, center) {
   root.add(meadow);
 }
 
+export function buildSwordhavenFountain(mats) {
+  const fountain = new THREE.Group();
+  fountain.name = 'swordhaven-fountain';
+  // The full basin must fit the single blocked 4×4 m fountain cell.
+  mesh(fountain, new THREE.CylinderGeometry(1.72, 1.88, 0.7, 16),
+    mats.stone, 'fountain-basin', [0, 0.34, 0]);
+  mesh(fountain, new THREE.CylinderGeometry(1.47, 1.47, 0.03, 16),
+    material(0x64bfd0, { metalness: 0.12, roughness: 0.22 }), 'fountain-water', [0, 0.71, 0]);
+  const rim = mesh(fountain, new THREE.TorusGeometry(1.74, 0.10, 6, 24),
+    mats.stone, 'fountain-carved-rim', [0, 0.75, 0]);
+  rim.rotation.x = Math.PI / 2;
+  mesh(fountain, new THREE.CylinderGeometry(0.31, 0.44, 1.9, 10),
+    mats.stone, 'fountain-pedestal', [0, 1.25, 0]);
+  return fountain;
+}
+
+// Shared village palette: the legacy square and the First Book town use the
+// same dressed stone, stucco, timber and roof textures.
+export function createSwordhavenMaterials() {
+  return {
+    grass: material(0xffffff, { map: swordhavenGrassTexture(), roughness: 0.98 }), cobble: material(0x9d9588),
+    stone: material(0xafa597, { map: swordhavenSurfaceTexture('masonry'), roughness: 0.95 }),
+    plaster: material(0xe0caac, { map: swordhavenSurfaceTexture('stucco'), roughness: 0.97 }),
+    timber: material(0x694b34, { map: swordhavenSurfaceTexture('timber'), roughness: 0.85 }),
+    gold: material(0xd6ae67, { metalness: 0.48 }),
+    window: material(0xf8b96e, { emissive: 0x925124, emissiveIntensity: 0.45 }),
+    leaves: material(0x64864c), flowers: material(0xc7756c),
+    arcane: material(0x9576db, { emissive: 0x403b99, emissiveIntensity: 1.1 }),
+    embers: material(0xffa754, { emissive: 0xeb6a20, emissiveIntensity: 1.2 }),
+    steel: material(0x80909a, { metalness: 0.6, roughness: 0.32 }),
+    paving: material(0xffffff, { roughness: 0.96 }),
+    roofSeams: material(0x413a36, { roughness: 0.92 }),
+  };
+}
+
+export function addSwordhavenClouds(root, coarsePointer = false) {
+  // Cloud banks are genuine low-detail 3D volume silhouettes, not a flat sky texture.
+  // Basic materials keep the clouds bright without costly per-cloud lighting.
+  const cloudMaterial = new THREE.MeshBasicMaterial({
+    color: 0xf6f8f4, transparent: true, opacity: 0.87, depthWrite: false,
+  });
+  for (let cluster = 0; cluster < (coarsePointer ? 3 : 5); cluster += 1) {
+    const cloud = new THREE.Group();
+    cloud.name = 'swordhaven-cloud-' + cluster;
+    const direction = cluster % 2 === 0 ? -1 : 1;
+    cloud.position.set(direction * (16 + cluster * 2.7), 16 + (cluster % 3) * 2, -38 + cluster * 3);
+    for (let puff = 0; puff < 3; puff += 1) {
+      mesh(cloud, new THREE.SphereGeometry(2.35 - puff * 0.26, 9, 6),
+        cloudMaterial, 'cloud-puff', [(puff - 1) * 2.0, puff % 2 ? 0.65 : 0, 0]);
+    }
+    root.add(cloud);
+  }
+}
+
 export function buildSwordhavenScene(scene, { scenePlan = {}, coarsePointer = false } = {}) {
   const center = scenePlan.center || { x: 9, y: 9 };
   const width = Math.max(19, Number(scenePlan.width) || 19);
@@ -666,20 +725,7 @@ export function buildSwordhavenScene(scene, { scenePlan = {}, coarsePointer = fa
   const root = new THREE.Group();
   root.name = 'chronicles-swordhaven-town';
   scene.add(root);
-  const mats = {
-    grass: material(0xffffff, { map: swordhavenGrassTexture(), roughness: 0.98 }), cobble: material(0x9d9588),
-    stone: material(0xafa597, { map: swordhavenSurfaceTexture('masonry'), roughness: 0.95 }),
-    plaster: material(0xe0caac, { map: swordhavenSurfaceTexture('stucco'), roughness: 0.97 }),
-    timber: material(0x694b34, { map: swordhavenSurfaceTexture('timber'), roughness: 0.85 }),
-    gold: material(0xd6ae67, { metalness: 0.48 }),
-    window: material(0xf8b96e, { emissive: 0x925124, emissiveIntensity: 0.45 }),
-    leaves: material(0x64864c), flowers: material(0xc7756c),
-    arcane: material(0x9576db, { emissive: 0x403b99, emissiveIntensity: 1.1 }),
-    embers: material(0xffa754, { emissive: 0xeb6a20, emissiveIntensity: 1.2 }),
-    steel: material(0x80909a, { metalness: 0.6, roughness: 0.32 }),
-    paving: material(0xffffff, { roughness: 0.96 }),
-    roofSeams: material(0x413a36, { roughness: 0.92 }),
-  };
+  const mats = createSwordhavenMaterials();
   mesh(root, new THREE.BoxGeometry(width * CELL, 0.3, height * CELL),
     mats.grass, 'grass-terrain', [0, -0.2, 0]);
   mesh(root, new THREE.BoxGeometry(7.1, 0.08, height * CELL * 0.8),
@@ -690,36 +736,9 @@ export function buildSwordhavenScene(scene, { scenePlan = {}, coarsePointer = fa
     mats.cobble, 'circular-town-square', [0, -0.015, 0]);
   laySwordhavenCobblestones(root, mats, coarsePointer, width, height);
   dressSwordhavenRoadsides(root, mats, coarsePointer, width, height, center);
-  const fountain = new THREE.Group();
-  fountain.name = 'swordhaven-fountain';
-  // The full basin must fit the single blocked 4×4 m fountain cell.
-  mesh(fountain, new THREE.CylinderGeometry(1.72, 1.88, 0.7, 16),
-    mats.stone, 'fountain-basin', [0, 0.34, 0]);
-  mesh(fountain, new THREE.CylinderGeometry(1.47, 1.47, 0.03, 16),
-    material(0x64bfd0, { metalness: 0.12, roughness: 0.22 }), 'fountain-water', [0, 0.71, 0]);
-  const rim = mesh(fountain, new THREE.TorusGeometry(1.74, 0.10, 6, 24),
-    mats.stone, 'fountain-carved-rim', [0, 0.75, 0]);
-  rim.rotation.x = Math.PI / 2;
-  mesh(fountain, new THREE.CylinderGeometry(0.31, 0.44, 1.9, 10),
-    mats.stone, 'fountain-pedestal', [0, 1.25, 0]);
-  root.add(fountain);
+  root.add(buildSwordhavenFountain(mats));
 
-  // Cloud banks are genuine low-detail 3D volume silhouettes, not a flat sky texture.
-  // Basic materials keep the clouds bright without costly per-cloud lighting.
-  const cloudMaterial = new THREE.MeshBasicMaterial({
-    color: 0xf6f8f4, transparent: true, opacity: 0.87, depthWrite: false,
-  });
-  for (let cluster = 0; cluster < (coarsePointer ? 3 : 5); cluster += 1) {
-    const cloud = new THREE.Group();
-    cloud.name = 'swordhaven-cloud-' + cluster;
-    const direction = cluster % 2 === 0 ? -1 : 1;
-    cloud.position.set(direction * (16 + cluster * 2.7), 16 + (cluster % 3) * 2, -38 + cluster * 3);
-    for (let puff = 0; puff < 3; puff += 1) {
-      mesh(cloud, new THREE.SphereGeometry(2.35 - puff * 0.26, 9, 6),
-        cloudMaterial, 'cloud-puff', [(puff - 1) * 2.0, puff % 2 ? 0.65 : 0, 0]);
-    }
-    root.add(cloud);
-  }
+  addSwordhavenClouds(root, coarsePointer);
 
   // Low walls define the silhouette but never replace grid-authoritative collision.
   for (const sign of [-1, 1]) {
@@ -733,7 +752,7 @@ export function buildSwordhavenScene(scene, { scenePlan = {}, coarsePointer = fa
   const authoredContent = new Set((scenePlan.content || []).filter(e => e.visible !== false).map(e => e.id));
   const contentProps = [];
   SWORDHAVEN_BUILDINGS.forEach(spec => {
-    const result = building(spec, mats, coarsePointer, authoredContent, center);
+    const result = buildSwordhavenHouse(spec, mats, coarsePointer, authoredContent, center);
     root.add(result.root);
     if (result.interactive) contentProps.push({
       id: spec.id, kind: 'lore', root: result.sign, phase: 0,
@@ -742,7 +761,7 @@ export function buildSwordhavenScene(scene, { scenePlan = {}, coarsePointer = fa
   const locations = [[1,1],[17,1],[1,17],[17,17],[3,9],[15,9],[7,16],[12,16]];
   locations.forEach(([x, y], i) => {
     const [wx, wz] = worldPoint(x, y, center);
-    tree(root, wx, wz, mats, coarsePointer, i);
+    buildSwordhavenTree(root, wx, wz, mats, coarsePointer, i);
   });
   // An authored gate exit participates in the same raycast and content rules as dungeon exits.
   (scenePlan.content || []).filter(entry => entry.kind === 'exit' && entry.position).forEach(entry => {
