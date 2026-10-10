@@ -41,7 +41,7 @@ describe('Chesscom Dust Veil industrial architecture v19',()=>{
     });
     const box={minimumWorld:{x:-2.3,y:0,z:-1.2},maximumWorld:{x:2.3,y:2.45,z:1.2}};
     const B={
-      Color3:{FromHexString:(hex)=>hex},
+      Color3:class Color3 {static FromHexString(hex){return hex;}},
       StandardMaterial:class{constructor(name){this.name=name;}dispose(){disposed.push(this.name);}},
       MeshBuilder:{CreateBox:(name)=>master(name)},
     };
