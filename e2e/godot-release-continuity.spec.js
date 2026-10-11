@@ -41,7 +41,9 @@ async function flipReleaseAndCheckLiveIframe(page, frame, getRelease, setRelease
   // running. The active session owns its own content-addressed release.
   await page.waitForTimeout(300);
   await expect(frame).toHaveAttribute('src', oldSrc);
-  expect(await frame.elementHandle()).not.toBeNull();
+  // The exact DOM iframe must survive, not just a replacement with same URL:
+  // replacing it would wipe the player's in-memory Godot game.
+  expect(await frame.evaluate((element, original) => element === original, oldFrameHandle)).toBe(true);
   expect(getRelease()).toBe(B);
   return oldFrameHandle;
 }
