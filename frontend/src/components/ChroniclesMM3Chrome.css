@@ -207,8 +207,8 @@
       'view status'
       'view journal'
       'view help'
-      'view hero'
-      'party hero';
+      'view .'
+      'party party';
     gap: 10px 12px;
     padding: 10px 12px 12px;
     /* The big stone surface is toned down so the view stays the focus. */
@@ -268,26 +268,8 @@
     display: none;
   }
 
-  /* The active hero, large, set in the panel under the controls. */
-  .chronicles .chronicles-party-preview {
-    grid-area: hero;
-    min-height: 0;
-    border: 3px solid;
-    border-color: var(--mm3-lo) var(--mm3-hi) var(--mm3-hi) var(--mm3-lo);
-    box-shadow: 0 0 0 1px #141416;
-  }
-  .chronicles .chronicles-party-preview::before { inset: 0; border: 0; }
-  .chronicles .chronicles-party-preview-image { object-fit: cover; object-position: 50% 22%; }
-  .chronicles .chronicles-party-preview-copy {
-    inset: auto 6px 6px;
-    border: 2px solid;
-    border-color: #f0c48a #5a2e12 #5a2e12 #f0c48a;
-    background: #b87033 var(--mm3-sand) 0 0 / 64px 64px;
-    backdrop-filter: none;
-  }
-  .chronicles .chronicles-party-preview-copy span,
-  .chronicles .chronicles-party-preview-copy small { color: #3b1e08; }
-  .chronicles .chronicles-party-preview-copy strong { color: #1f0f04; text-shadow: 1px 1px 0 rgba(255, 220, 170, .45); }
+  /* MM3 has no big portrait in the panel: the faces in the strip are it. */
+  .chronicles .chronicles-party-preview { display: none; }
   .chronicles .chronicles-party-member {
     flex: 1 1 0;
     min-width: 0;
