@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CHESSCOM_CHARACTER_ART_V4, CHESSCOM_OPERATOR_READABILITY_V22, CHESSCOM_OPERATOR_SILHOUETTE_V23, CHESSCOM_OPERATOR_ANATOMY_V28, chesscomOperatorSilhouetteV23Parts, chesscomCharacterV4Profile, chesscomFieldKitV20Profile } from './chesscomCharacterArtV4.js';
+import { CHESSCOM_CHARACTER_ART_V4, CHESSCOM_OPERATOR_READABILITY_V22, CHESSCOM_OPERATOR_SILHOUETTE_V23, CHESSCOM_OPERATOR_ANATOMY_V28, CHESSCOM_OPERATOR_CONTOUR_V29, chesscomOperatorContourV29Geometry, chesscomOperatorSilhouetteV23Parts, chesscomCharacterV4Profile, chesscomFieldKitV20Profile } from './chesscomCharacterArtV4.js';
 
 describe('Chesscom character art v4', () => {
   it('declares the custom mesh and procedural PBR contract', () => {
@@ -119,5 +119,36 @@ describe('CHESSCOM human silhouette and kit V28',()=>{
     const hostile=chesscomOperatorSilhouetteV23Parts('hostile');
     expect(scout[0].spec.bw).toBeLessThan(rifleman[0].spec.bw);
     expect(rifleman[0].spec.bw).toBeLessThan(hostile[0].spec.bw);
+  });
+});
+
+describe('CHESSCOM premium contoured operators V29',()=>{
+  it('creates a closed, finite, outward-facing 8-sided tailored surface with no extra meshes',()=>{
+    const shape=chesscomOperatorContourV29Geometry({h:.69,bw:.35,bd:.27,tw:.47,td:.29});
+    expect(CHESSCOM_OPERATOR_CONTOUR_V29.identity).toBe('operator-contour-v29');
+    expect(shape.positions).toHaveLength(24*3);
+    expect(shape.uvs).toHaveLength(24*2);
+    expect(shape.indices).toHaveLength(132);
+    expect(Math.max(...shape.indices)).toBeLessThan(24);
+    expect(shape.positions.every(Number.isFinite)).toBe(true);
+    expect(shape.uvs.every(Number.isFinite)).toBe(true);
+    // Shoulders are wider than the waist; intermediate contours remain bounded.
+    const width=(ring)=>Math.max(...shape.positions.slice(ring*24,ring*24+24).filter((_,i)=>i%3===0))
+      -Math.min(...shape.positions.slice(ring*24,ring*24+24).filter((_,i)=>i%3===0));
+    expect(width(2)).toBeGreaterThan(width(0));
+    expect(width(1)).toBeLessThan(.6);
+    // Top and bottom cap normals face outward, not inside the body.
+    const triangleY=(offset)=>{
+      const [a,b,c]=shape.indices.slice(offset,offset+3).map(i=>shape.positions.slice(i*3,i*3+3));
+      const u=[b[0]-a[0],b[1]-a[1],b[2]-a[2]],v=[c[0]-a[0],c[1]-a[1],c[2]-a[2]];
+      return u[2]*v[0]-u[0]*v[2];
+    };
+    expect(triangleY(0)).toBeLessThan(0);
+    expect(triangleY(3)).toBeGreaterThan(0);
+  });
+  it('rejects degenerate or non-finite contours rather than sending corrupt data to Babylon',()=>{
+    expect(()=>chesscomOperatorContourV29Geometry({h:0,bw:.3,bd:.3,tw:.4,td:.3})).toThrow(RangeError);
+    expect(()=>chesscomOperatorContourV29Geometry({h:.6,bw:Infinity,bd:.3,tw:.4,td:.3})).toThrow(RangeError);
+    expect(()=>chesscomOperatorContourV29Geometry({h:.6,bw:.3,bd:.3,tw:.4,td:.3,middleScale:1.4})).toThrow(RangeError);
   });
 });
