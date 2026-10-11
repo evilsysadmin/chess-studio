@@ -29,7 +29,6 @@ NON_RUNTIME_EXACT = frozenset({
     ".github/workflows/capacity-virtual-players.yml",
     ".github/workflows/billing-cost-export.yml",
     ".github/workflows/observability-live.yml",
-    ".github/workflows/security-llm-lab.yml",
     ".github/workflows/app-visual-artifact.yml",
     ".github/workflows/chronicles-visual-artifact.yml",
     ".github/workflows/tactics-visual-artifact.yml",
