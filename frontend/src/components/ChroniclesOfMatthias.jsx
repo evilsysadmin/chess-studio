@@ -74,7 +74,7 @@ import {
   unlockChroniclesSkill,
 } from '../chroniclesOfMatthiasProgression.js';
 import {
-  chroniclesAutomapMarkVisited,
+  chroniclesAutomapMarkSeen,
   clearChroniclesAutomapVisited,
   loadChroniclesAutomapVisited,
   saveChroniclesAutomapVisited,
@@ -239,7 +239,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
 
   useEffect(() => {
     if (!state?.mapId) return;
-    setAutomapVisitedByMap((visited) => chroniclesAutomapMarkVisited(visited, state));
+    setAutomapVisitedByMap((visited) => chroniclesAutomapMarkSeen(visited, chroniclesMapForState(state), state));
   }, [state?.mapId, state?.x, state?.y]);
 
   useEffect(() => {
