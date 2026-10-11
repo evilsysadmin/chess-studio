@@ -297,7 +297,7 @@ test('Chess Football manager restores the authoritative journal after leaving th
   await page.getByRole('button', { name: 'Ataque total' }).click();
   await page.getByLabel('Entrenamiento de la jornada').locator('summary').click();
   await page.getByRole('group', { name: 'Plan de entrenamiento' }).getByRole('button', { name: 'Remates' }).click();
-  await page.getByLabel('Alineación del míster').locator('summary').click();
+  await page.getByLabel('Alineación del míster').locator(':scope > details > summary').click();
   await page.getByRole('combobox', { name: 'Titular 5 · DEL' }).selectOption('fc-matthias-del-2');
   await page.getByRole('button', { name: 'Simular siguiente jornada' }).click();
   await expect(page.locator('.chess-football-entry__manager--season')).toContainText('Jornada 1 de 10');
@@ -308,7 +308,7 @@ test('Chess Football manager restores the authoritative journal after leaving th
   await page.getByRole('button', { name: 'Continuar temporada' }).click();
   await expect(page.locator('.chess-football-entry__manager--season')).toContainText('Jornada 1 de 10');
   expect(await page.locator('.chess-football-entry__standings tbody').innerText()).toBe(baseline);
-  await page.getByLabel('Alineación del míster').locator('summary').click();
+  await page.getByLabel('Alineación del míster').locator(':scope > details > summary').click();
   await expect(page.getByRole('combobox', { name: 'Titular 5 · DEL' })).toHaveValue('fc-matthias-del-2');
   await expect(page.getByRole('combobox', { name: 'Titular 5 · DEL' })).toContainText('F24%');
   await expect(page.getByRole('button', { name: 'Ataque total' })).toHaveAttribute('aria-pressed', 'true');
