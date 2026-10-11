@@ -109,6 +109,7 @@ import './ChroniclesOfMatthiasJournal.css';
 import './ChroniclesPartyCondition.css';
 import './ChroniclesPartyThumbnails.css';
 import './ChroniclesRecoveredRelic.css';
+import './ChroniclesMM3Chrome.css';
 
 const KEY_ACTIONS = Object.freeze({
   ArrowUp: 'forward', w: 'forward', W: 'forward',
@@ -989,6 +990,12 @@ export default function ChroniclesOfMatthias({ onExit }) {
                   ) : null}
                 </span>
                 <span><strong>{index + 1}. {member.name}</strong><small>Nv {chroniclesHeroProgress(progression, member.id).level} · {member.row === 'front' ? 'FRENTE' : 'RETAGUARDIA'} · clic · ficha</small></span>
+                <span className="chronicles-party-bars" aria-hidden="true">
+                  <i className="is-hp" style={{ '--fill': member.maxHp ? Math.max(0, member.hp) / member.maxHp : 0 }} />
+                  {chroniclesMemberMaxSp(state, member) > 0 && (
+                    <i className="is-sp" style={{ '--fill': chroniclesMemberSp(state, member) / chroniclesMemberMaxSp(state, member) }} />
+                  )}
+                </span>
                 <b>
                   {member.hp}/{member.maxHp}
                   {chroniclesMemberMaxSp(state, member) > 0 && (
