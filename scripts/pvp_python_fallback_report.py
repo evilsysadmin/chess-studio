@@ -205,6 +205,47 @@ def resolve_datasource_uids(api: GrafanaReadApi, metrics_uid: str, logs_uid: str
     return metrics_uid, logs_uid
 
 
+
+def query_with_uid_recovery(
+    api: GrafanaReadApi, uid: str, kind: str, suffix: str,
+    params: dict[str, str], *, sleep=time.sleep,
+) -> tuple[dict, str]:
+    """Recover a stale configured UID after a *specific* Grafana 404.
+
+    No arbitrary 404, bad credential or unavailable metrics may become a
+    fabricated zero. Discovery retries cover short-lived Grafana startup 503s.
+    """
+    def query(candidate: str) -> dict:
+        path = f"/api/datasources/proxy/uid/{urllib.parse.quote(candidate, safe='')}{suffix}"
+        return api.get_json(path, params)
+
+    try:
+        return query(uid), uid
+    except SystemExit as original:
+        message = str(original)
+        if "HTTP 404" not in message or "Unable to find datasource" not in message:
+            raise
+
+    datasources = None
+    for attempt in range(3):
+        if attempt:
+            sleep(attempt)  # bounded: total three seconds maximum
+        try:
+            datasources = api.get_list("/api/datasources")
+            break
+        except SystemExit as exc:
+            # Grafana Cloud returns 503 while a stack is starting. Retry only
+            # this transient condition; auth/permission failures are fatal.
+            if "HTTP 503" not in str(exc) or attempt == 2:
+                raise
+    if datasources is None:
+        fail(f"stale {kind} datasource UID and discovery unavailable")
+    recovered = _resolve_datasource_uid(datasources, uid, kind)
+    if recovered == uid:
+        fail(f"stale {kind} datasource UID {uid!r} could not be recovered")
+    return query(recovered), recovered
+
+
 def self_test() -> int:
     query = fallback_query(14 * 86400)
     assert 'http_route=~"/api/pvp.*"' in query
@@ -255,6 +296,45 @@ def self_test() -> int:
     assert resolve_datasource_uids(discovery, "", "", include_logs=True) == ("test-prom", "test-logs")
     assert discovery.calls == 1  # fallback discovers once, reused for both UIDs
 
+    class StaleGrafana:
+        discovery_calls = 0
+        queries = 0
+        sleeps: list[int] = []
+
+        def get_json(self, path: str, params: dict[str, str]) -> dict:
+            self.queries += 1
+            if "/old-prom/" in path:
+                raise SystemExit("grafana-live-check FAIL · HTTP 404: {'message': 'Unable to find datasource'}")
+            return {"data": {"result": []}}
+
+        def get_list(self, path: str) -> list[dict]:
+            assert path == "/api/datasources"
+            self.discovery_calls += 1
+            if self.discovery_calls == 1:
+                raise SystemExit("grafana-live-check FAIL · HTTP 503: instance loading")
+            return [{"type": "prometheus", "uid": "new-prom"}]
+
+    stale = StaleGrafana()
+    recovered_payload, recovered_uid = query_with_uid_recovery(
+        stale, "old-prom", "prometheus", "/api/v1/query", {"query": "up"},
+        sleep=lambda delay: stale.sleeps.append(delay),
+    )
+    assert recovered_uid == "new-prom" and recovered_payload == {"data": {"result": []}}
+    assert stale.queries == 2 and stale.discovery_calls == 2 and stale.sleeps == [1]
+
+    class DeniedGrafana(StaleGrafana):
+        def get_json(self, path: str, params: dict[str, str]) -> dict:
+            raise SystemExit("grafana-live-check FAIL · HTTP 403: Forbidden")
+
+    denied = DeniedGrafana()
+    try:
+        query_with_uid_recovery(denied, "old-prom", "prometheus", "/api/v1/query", {})
+    except SystemExit as exc:
+        assert "HTTP 403" in str(exc)
+    else:
+        raise AssertionError("auth failure must remain fatal")
+    assert denied.discovery_calls == 0
+
     print("pvp-python-fallback-report self-test OK")
     return 0
 
@@ -281,8 +361,8 @@ def main() -> int:
         os.getenv("GRAFANA_LOGS_DATASOURCE_UID", ""),
         include_logs=args.sources,
     )
-    payload = api.get_json(
-        f"/api/datasources/proxy/uid/{urllib.parse.quote(metrics_uid, safe='')}/api/v1/query",
+    payload, metrics_uid = query_with_uid_recovery(
+        api, metrics_uid, "prometheus", "/api/v1/query",
         {"query": fallback_query(window_seconds), "time": str(int(time.time()))},
     )
     rows = parse_rows(payload)
@@ -297,8 +377,8 @@ def main() -> int:
     if args.timeline:
         now = int(time.time())
         span = min(window_seconds, 7 * 86400)
-        data = api.get_json(
-            f"/api/datasources/proxy/uid/{urllib.parse.quote(metrics_uid, safe='')}/api/v1/query_range",
+        data, metrics_uid = query_with_uid_recovery(
+            api, metrics_uid, "prometheus", "/api/v1/query_range",
             {"query": timeline_query(), "start": str(now - span), "end": str(now), "step": "3600"},
         )
         section = timeline_markdown(timeline_rows(data))
@@ -310,8 +390,8 @@ def main() -> int:
         # Loki rejects very long ranges; the source breakdown is about now.
         log_window = min(window_seconds, 2 * 86400)
         for environment, service in LOG_SERVICES.items():
-            data = api.get_json(
-                f"/api/datasources/proxy/uid/{urllib.parse.quote(logs_uid, safe='')}/loki/api/v1/query",
+            data, logs_uid = query_with_uid_recovery(
+                api, logs_uid, "loki", "/loki/api/v1/query",
                 {"query": breakdown_query(service, log_window), "time": str(int(time.time()))},
             )
             section = breakdown_markdown(environment, breakdown_rows(data))
