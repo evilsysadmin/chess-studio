@@ -3,6 +3,7 @@ import { chroniclesGoldBalance } from '../chronicles/chroniclesContentRuntime.js
 import { chroniclesGuildCanLearn, chroniclesGuildMember, chroniclesGuildSpells } from '../chronicles/chroniclesGuild.js';
 import { CHRONICLES_SPELL_SCHOOLS, chroniclesMemberKnowsSpell, chroniclesSpellAvailableTo } from '../chronicles/chroniclesMagic.js';
 import { chroniclesMapForState } from '../chronicles/chroniclesMapCatalog.js';
+import { chroniclesShopRoom } from '../chronicles/chroniclesShopRooms.js';
 import './ChroniclesShop.css';
 
 // The guild counter shares the shop's parchment frame: membership first,
@@ -25,6 +26,7 @@ export default function ChroniclesGuild({ state, onAction, onClose }) {
   }, [onClose]);
 
   if (!entry) return null;
+  const room = chroniclesShopRoom(entry);
   const gold = chroniclesGoldBalance(state);
   const member = chroniclesGuildMember(state, entry.id);
   const fee = Number(entry.guild.membership || 0);
@@ -49,6 +51,12 @@ export default function ChroniclesGuild({ state, onAction, onClose }) {
           <button ref={closeRef} type="button" className="chronicles-shop__close" onClick={onClose}
             aria-label="Salir del gremio">✕</button>
         </header>
+
+        {room ? (
+          <figure className="chronicles-shop__scene" data-chronicles-shop-room={room.id}>
+            <img src={room.src} alt={room.alt} draggable="false" />
+          </figure>
+        ) : null}
 
         {!member ? (
           <div className="chronicles-shop__join">

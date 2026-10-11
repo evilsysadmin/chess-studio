@@ -7,6 +7,7 @@ import {
   chroniclesShopSellPrice,
   chroniclesShopStock,
 } from '../chronicles/chroniclesShops.js';
+import { chroniclesShopRoom } from '../chronicles/chroniclesShopRooms.js';
 import './ChroniclesShop.css';
 
 const SLOT_LABEL = Object.freeze({ weapon: 'Arma', armor: 'Armadura', shield: 'Escudo' });
@@ -35,6 +36,7 @@ export default function ChroniclesShop({ state, onAction, onClose }) {
   }, [onClose]);
 
   if (!entry) return null;
+  const room = chroniclesShopRoom(entry);
   const gold = chroniclesGoldBalance(state);
   const stock = chroniclesShopStock(entry);
   const sellable = chroniclesShopSellable(state);
@@ -59,6 +61,12 @@ export default function ChroniclesShop({ state, onAction, onClose }) {
           <button ref={closeRef} type="button" className="chronicles-shop__close" onClick={onClose}
             aria-label="Salir de la tienda">✕</button>
         </header>
+
+        {room ? (
+          <figure className="chronicles-shop__scene" data-chronicles-shop-room={room.id}>
+            <img src={room.src} alt={room.alt} draggable="false" />
+          </figure>
+        ) : null}
 
         <div className="chronicles-shop__tabs" role="tablist">
           <button type="button" role="tab" aria-selected={tab === 'buy'} onClick={() => setTab('buy')}>Comprar</button>

@@ -15,16 +15,16 @@
 .chronicles-shop {
   position: relative;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(220px, 270px);
+  grid-template-columns: minmax(0, 1fr) minmax(230px, 300px);
   grid-template-rows: auto auto auto minmax(0, 1fr) auto;
   grid-template-areas:
     'list head'
     'list join'
     'list tabs'
-    'list .'
+    'list scene'
     'foot foot';
   gap: 10px 12px;
-  width: min(880px, 100%);
+  width: min(940px, 100%);
   height: min(640px, calc(100dvh - 40px));
   padding: 36px;
   image-rendering: pixelated;
@@ -295,11 +295,37 @@
 }
 
 /* Phones: the tablet goes on top, the wares below, one column. */
+/* The shopkeeper in their room, as MM3 shows on entering a shop. */
+.chronicles-shop__scene {
+  grid-area: scene;
+  min-height: 0;
+  margin: 0;
+  overflow: hidden;
+  border: 2px solid;
+  border-color: var(--mm3-lo) var(--mm3-hi) var(--mm3-hi) var(--mm3-lo);
+  background: #0c0b0a;
+  box-shadow: 0 0 0 1px #141416;
+}
+
+.chronicles-shop__scene img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 30%;
+  image-rendering: pixelated;
+}
+
+/* When the niche is short, keep each room's focus in frame. */
+.chronicles-shop__scene[data-chronicles-shop-room='guild-sanctum'] img { object-position: 50% 66%; }
+.chronicles-shop__scene[data-chronicles-shop-room='odo-forge'] img { object-position: 50% 45%; }
+
 @media (max-width: 680px) {
   .chronicles-shop {
     grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: auto auto auto minmax(0, 1fr) auto;
+    grid-template-rows: auto auto auto auto minmax(0, 1fr) auto;
     grid-template-areas:
+      'scene'
       'head'
       'join'
       'tabs'
@@ -316,6 +342,8 @@
   }
 
   .chronicles-shop::before { background-size: 20px 20px; }
+
+  .chronicles-shop__scene { height: clamp(96px, 18dvh, 150px); }
 
   .chronicles-shop__head {
     grid-template-columns: minmax(0, 1fr) auto;
