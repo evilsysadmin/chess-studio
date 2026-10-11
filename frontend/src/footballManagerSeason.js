@@ -3,6 +3,7 @@
 import { FOOTBALL_MANAGER_CLUBS } from './footballManagerClubs.js';
 import { getFootballClubRoster, evaluateFootballLineup, evaluateFootballFatigue, advanceFootballFatigue } from './footballManagerRoster.js';
 import { FOOTBALL_TRAINING_PLANS, prepareFootballTraining } from './footballManagerTraining.js';
+import { advanceFootballDevelopment, getDevelopedFootballRoster } from './footballManagerDevelopment.js';
 
 const freeze = (value) => Object.freeze(value);
 const CHANCES_PER_TEAM = 7;
@@ -130,7 +131,7 @@ function simulateFixture(season, fixture, managerClubId, tacticalPlan, lineupEff
   });
 }
 
-export function advanceFootballSeason(season, { managerClubId = null, tactic = 'balanced', lineup = null, training = 'standard' } = {}) {
+export function advanceFootballSeason(season, { managerClubId = null, tactic = 'balanced', lineup = null, training = 'standard', development = false } = {}) {
   if (!season || season.version !== 1 || !Array.isArray(season.rounds) || !Array.isArray(season.results)) {
     throw new Error('Invalid Chess Football season');
   }
@@ -138,7 +139,8 @@ export function advanceFootballSeason(season, { managerClubId = null, tactic = '
   if (!tacticalPlan || !FOOTBALL_TRAINING_PLANS.some((plan) => plan.id === training)
     || (managerClubId !== null && !season.clubs.some((club) => club.id === managerClubId))
     || (managerClubId === null && (tactic !== 'balanced' || lineup !== null || training !== 'standard'))
-    || (lineup === null && training !== 'standard')) {
+    || (lineup === null && (training !== 'standard' || development))
+    || typeof development !== 'boolean') {
     throw new Error('Invalid manager club or tactical plan');
   }
   if (season.managerFatigueClubId && (managerClubId !== season.managerFatigueClubId || lineup === null)) {
@@ -146,7 +148,10 @@ export function advanceFootballSeason(season, { managerClubId = null, tactic = '
   }
   const manager = season.clubs.find((club) => club.id === managerClubId);
   const roster = lineup === null ? null : getFootballClubRoster(manager);
-  const lineupRatings = roster === null ? null : evaluateFootballLineup(roster, lineup);
+  // New careers grow only from actually played rounds. Legacy replay can
+  // leave growth disabled so historic scores and standings remain identical.
+  const effectiveRoster = roster === null ? null : getDevelopedFootballRoster(roster, season.managerDevelopment);
+  const lineupRatings = roster === null ? null : evaluateFootballLineup(effectiveRoster, lineup, roster);
   const practice = roster === null ? null : prepareFootballTraining(roster, lineup, season.managerFatigue, training);
   const fitness = roster === null ? null : evaluateFootballFatigue(roster, lineup, practice.kickoffFatigue);
   const lineupEffect = lineupRatings === null ? null : freeze({
@@ -165,6 +170,9 @@ export function advanceFootballSeason(season, { managerClubId = null, tactic = '
     ...(roster ? {
       managerFatigueClubId: managerClubId,
       managerFatigue: advanceFootballFatigue(roster, lineup, practice.kickoffFatigue),
+      ...(development ? {
+        managerDevelopment: advanceFootballDevelopment(roster, lineup, training, season.managerDevelopment),
+      } : {}),
     } : {}),
   });
 }

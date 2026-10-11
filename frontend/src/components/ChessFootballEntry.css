@@ -525,3 +525,31 @@
   outline: 3px solid #d8c28b;
   outline-offset: 2px;
 }
+
+/* Earned squad development lives inside the lineup details, not Home or a
+   permanent dashboard. Two-column rows wrap cleanly on narrow touch devices. */
+.chess-football-entry__development {
+  margin-top: .85rem;
+  border-top: 1px solid rgba(233, 211, 158, .19);
+  padding-top: .6rem;
+}
+.chess-football-entry__development summary { font-size: .88rem; }
+.chess-football-entry__development > p { color: #d9dfc8; }
+.chess-football-entry__development ul { display: grid; gap: .4rem; margin: .6rem 0 0; padding: 0; list-style: none; }
+.chess-football-entry__development li {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: .18rem .6rem;
+  padding: .55rem .65rem;
+  background: rgba(22, 39, 27, .78);
+  border-radius: 8px;
+  color: #eee8d2;
+  font-size: .79rem;
+  line-height: 1.45;
+  font-variant-numeric: tabular-nums;
+}
+.chess-football-entry__development li > span { min-width: 0; }
+.chess-football-entry__development li strong { font-weight: 700; }
+.chess-football-entry__development li small { color: #c6d2ba; font-size: .76rem; }
+.chess-football-entry__development summary:focus-visible { outline: 3px solid #d8c28b; outline-offset: 2px; }
