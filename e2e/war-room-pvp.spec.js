@@ -38,7 +38,8 @@ function matchPulsePayload(match) {
 }
 
 test('War Room 1v1 · un 409 por carrera de turno sincroniza sin flash de error', async ({ page }) => {
-  test.setTimeout(90_000);
+  // 3D cold boot + a legitimate 409 resync can outlast the shorter generic gate.
+  test.setTimeout(150_000);
   await mockApi(page);
 
   await page.route('**/api/pvp/lobby', (route) => route.fulfill({
@@ -107,12 +108,36 @@ test('War Room 1v1 · un 409 por carrera de turno sincroniza sin flash de error'
   await expect(clickWarRoomMove(page, 'e2', 'e4')).resolves.toBe(true);
 
   await expect.poll(() => moveAttempts).toBe(1);
-  await expect(warRoom.getByText('bob juega', { exact: true })).toBeVisible({ timeout: 10_000 });
+  const duelStatus = warRoom.locator('.pvp-war-room__duel-pill [role="status"]');
+  // Wait for the authoritative 409 reconciliation, not the brief amber transmitting state.
+  await expect(duelStatus).toHaveText('bob juega', { timeout: 30_000 });
   await expect(warRoom.getByRole('alert')).toHaveCount(0);
+
+  // A deploy may publish a new release while the duel and its server clock
+  // are active. The update notice must not offer an interrupting reload.
+  await page.evaluate(() => { window.__pvpSessionContinuity = 'same-document'; });
+  let navigations = 0;
+  page.on('framenavigated', (frame) => {
+    if (frame === page.mainFrame()) navigations += 1;
+  });
+  await page.route('**/release.json?*', (route) => route.fulfill({
+    status: 200,
+    contentType: 'application/json',
+    body: JSON.stringify({ release: 'v99pvp', build: 'f'.repeat(40) }),
+  }));
+  await page.evaluate(() => window.dispatchEvent(new Event('focus')));
+  const update = page.locator('.release-update-notice');
+  await expect(update).toContainText('Nueva versión disponible', { timeout: 10_000 });
+  await expect(update).toContainText('Puedes continuar aquí');
+  await expect(update.getByRole('button', { name: 'Actualizar', exact: true })).toHaveCount(0);
+  await expect(update.getByRole('button', { name: 'Después', exact: true })).toBeVisible();
+  await expect(duelStatus).toHaveText('bob juega');
+  expect(await page.evaluate(() => window.__pvpSessionContinuity)).toBe('same-document');
+  expect(navigations).toBe(0);
 });
 
 test('War Room 1v1 · rendirse no resucita un handoff stale del lobby', async ({ page }) => {
-  test.setTimeout(90_000);
+  test.setTimeout(150_000);
   await mockApi(page);
 
   const staleStarting = matchPayload({
@@ -265,7 +290,8 @@ test('War Room 1v1 · rendirse no resucita un handoff stale del lobby', async ({
   await resignDialog.getByRole('button', { name: 'Rendirse', exact: true }).click();
 
   const debrief = warRoom.getByRole('dialog', { name: 'Resumen del duelo' });
-  await expect(debrief).toBeVisible({ timeout: 5_000 });
+  // Wait for backend-confirmed resignation; software-rendered 3D can delay React updates.
+  await expect(debrief).toBeVisible({ timeout: 25_000 });
   await expect(debrief).toContainText('Derrota');
   await debrief.getByRole('button', { name: 'Volver al lobby', exact: true }).click();
 
