@@ -154,6 +154,13 @@ def write_outputs(path: Path, gates: list[Gate]) -> None:
 
 
 def self_test() -> None:
+    # A gate-classifier-only change must not schedule an expensive, unrelated
+    # Combat Operations Room render before any art source is changed.
+    combat_workflow = (
+        Path(__file__).resolve().parents[1]
+        / ".github/workflows/combat-operations-room-blender-art.yml"
+    ).read_text(encoding="utf-8")
+    assert "'scripts/blender_required_scope.py'" not in combat_workflow
     assert classify(["frontend/src/components/Home.css"]) == []
     assert output_lines([]) == ["blender_required=false", "blender_workflows=[]"]
     assert [gate.workflow for gate in classify(["scripts/blender/build_home_matthias.py"])] == [
