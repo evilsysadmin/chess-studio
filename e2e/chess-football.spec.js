@@ -234,7 +234,7 @@ test('Chess Football manager can simulate ten reproducible matchdays without loa
   await expect(page.getByLabel('Objetivo del club')).toContainText('Conquistar la liga');
   await expect(page.getByLabel('Objetivo del club')).toContainText('En disputa');
   const lineupPanel = page.getByLabel('Alineación del míster');
-  await lineupPanel.locator('summary').click();
+  await lineupPanel.locator(':scope > details > summary').click();
   await lineupPanel.getByRole('combobox', { name: 'Titular 5 · DEL' }).selectOption('fc-matthias-del-2');
   await expect(lineupPanel.getByRole('combobox', { name: 'Titular 5 · DEL' })).toHaveValue('fc-matthias-del-2');
   const tactics = page.getByRole('group', { name: 'Táctica del siguiente partido' });
