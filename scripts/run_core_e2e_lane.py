@@ -34,8 +34,7 @@ ADMIN_GREP = 'admin · presencia distingue|admin · evidencia visual de cinco á
 TOURNAMENT_GREP = 'Torneo · una partida activa'
 COMBAT_GREP = (
     'Combat Chess · Campaña permite jugar con defaults|'
-    'Combat Chess · salir al menú conserva campaña|'
-    'Combat Chess · una batalla activa sobrevive a reload'
+    'Combat Chess · salir al menú conserva campaña'
 )
 HOME_GREP = (
     'Matthias · saluda una vez tras login y no repite el saludo con F5|'
@@ -200,7 +199,7 @@ def self_test() -> None:
     assert LANE_COMMANDS['tournament'][0].grep == TOURNAMENT_GREP
     assert LANE_COMMANDS['combat'][0].spec == 'smoke.spec.js'
     assert LANE_COMMANDS['combat'][0].grep == COMBAT_GREP
-    assert 'Combat Chess · una batalla activa sobrevive a reload' in COMBAT_GREP
+    assert 'Combat Chess · una batalla activa sobrevive a reload' not in COMBAT_GREP
     assert 'Combat Chess · una batalla activa sobrevive a reload' in SMOKE_GREP
     assert [command.spec for command in LANE_COMMANDS['home']] == [
         'regression-journeys.spec.js', 'mobile-final-interactions.spec.js', 'browser-runtime-health.spec.js'
