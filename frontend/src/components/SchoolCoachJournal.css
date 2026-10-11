@@ -33,13 +33,13 @@
 }
 .tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode][data-school-focus="normal"][data-school-coach="expanded"] .matthias-school-coach {
   top: calc(var(--school-hud-top) + 50px);
-  bottom: calc(var(--school-hud-bottom) + 55px);
+  bottom: auto;
   display: flex;
   flex-direction: column;
   width: min(382px, calc(100vw - 2 * var(--school-hud-side)));
   height: auto;
-  max-height: none;
-  min-height: 0;
+  max-height: calc(100dvh - var(--school-hud-top) - var(--school-hud-bottom) - 124px);
+  min-height: min(275px,42dvh);
   gap: .56rem;
   padding: .63rem .7rem;
   overflow: hidden;
@@ -58,10 +58,11 @@
 }
 .tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode][data-school-focus="normal"][data-school-coach="expanded"] .matthias-school-coach-detail {
   display: flex;
-  flex: 1 1 auto;
+  flex: 0 1 auto;
   flex-direction: column;
   gap: .55rem;
   min-height: 0;
+  max-height: min(48dvh,440px);
   overflow-y: auto;
   overscroll-behavior: contain;
   scrollbar-width: thin;
@@ -146,7 +147,11 @@
     left: var(--school-hud-side);
     width: min(400px, calc(100vw - 2 * var(--school-hud-side)));
     height: min(55dvh,470px);
+    min-height: 0;
     max-height: calc(100dvh - var(--school-hud-top) - var(--school-hud-bottom) - 120px);
+  }
+  .tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode][data-school-focus="normal"][data-school-coach="expanded"] .matthias-school-coach-detail {
+    flex: 1 1 auto;
   }
 }
 @media (max-height: 520px) and (orientation: landscape) {
