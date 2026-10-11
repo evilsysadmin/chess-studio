@@ -269,6 +269,17 @@ Any future haste/slow/surprise mechanic should modify the initiative contract ex
 - `defeatedFlag` on an enemy keeps a named foe down when the company comes back: re-entering an area restores its `initialFlags` and respawns its foes, except those whose flag is already set (Tobías, Garrah, the deserter).
 - `sewer-grate` (exit) draws an iron grate flush with the road, and `building-hall` gives the town hall its own roof.
 
+## Terra overworld (areas A1–F6)
+
+- The outdoors is a 6×6 grid of 21×15 areas joined by edge gates (reciprocal `requiresReturn` exits), MM3 style. It is generated from the design table in `scripts/chronicles/build_terra_world.py`, which writes the manifests to `backend-python/chronicles_maps/`; then run `make chronicles-contracts`.
+  - C3 is `banner-road-first-book` and D3 is `rookwood-first-book`; the script only adds their gates.
+  - Manifests carry `areaCode` (HUD «ÁREA C4») and `biome`, which drives ground texture, rock and sky tints, and forest canopy.
+- Every authored outdoor region uses the campaign exterior renderer. Only the legacy `swordhaven-square` keeps its historic builder.
+- Exterior props: `chest` (pickup), `signpost`, `shrine`, `dungeon-arch` and `sewer-grate`.
+- The frontend catalog bundles Terra manifests with `import.meta.glob`.
+- Checkpoints keep world flags for every region but enemy HP only for the current map. Python and Go accept up to 512 flags / 64 KB.
+- Debt: run creation still ships every bundled area (≈380 KB raw). Bootstrap per area once the world grows further.
+
 ## 2.5D billboards (first-person, MM3 style)
 
 - First-person creatures and NPCs can be painted sprites that always face the camera, while walls, terrain and forest stay 3D. `buildChroniclesEnemyVisual(type, { sprites: true })` returns a billboard when a sheet exists and falls back to the procedural 3D model otherwise; Tactics never asks for sprites.

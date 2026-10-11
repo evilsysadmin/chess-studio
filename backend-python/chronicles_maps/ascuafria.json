@@ -1,0 +1,481 @@
+{
+  "id": "ascuafria",
+  "version": 1,
+  "progressionKey": "ascuafria-v1",
+  "title": "Ascuafría",
+  "areaCode": "F2",
+  "regionKind": "settlement",
+  "layoutMode": "authored",
+  "grid": [
+    "###################",
+    "#.................#",
+    "#.###.###.###.###.#",
+    "#.###.###.###.###.#",
+    "#.................#",
+    "#.##...........##.#",
+    "#.##...........##.#",
+    "#.##...........##.#",
+    "#.................#",
+    "#........#........#",
+    "#.................#",
+    "#.###.###.###.###.#",
+    "#.###.###.###.###.#",
+    "#.................#",
+    "###################"
+  ],
+  "partyStart": {
+    "x": 9,
+    "y": 1,
+    "direction": 2
+  },
+  "initialFlags": {},
+  "enemies": [],
+  "triggers": [],
+  "interactables": [
+    {
+      "id": "ascuafria-inn",
+      "kind": "service",
+      "x": 7,
+      "y": 10,
+      "visualType": "building-tavern",
+      "label": "Posada · descansar y curar · 8 oro",
+      "lockedLabel": "Posada · necesitas 8 oro",
+      "requirements": [
+        {
+          "itemId": "crown-gold",
+          "quantity": 8,
+          "message": "El posadero cobra por adelantado."
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "consume-item",
+            "itemId": "crown-gold",
+            "quantity": 8
+          },
+          {
+            "type": "heal-party",
+            "amount": 12
+          },
+          {
+            "type": "refill-class-abilities"
+          },
+          {
+            "type": "restore-spell-points"
+          }
+        ],
+        "message": "La compañía duerme en la posada de Ascuafría. Heridas curadas, puntos de hechizo recuperados."
+      }
+    },
+    {
+      "id": "ascuafria-weapons",
+      "kind": "merchant",
+      "x": 7,
+      "y": 4,
+      "visualType": "building-forge",
+      "label": "Armería de Ascuafría",
+      "shop": {
+        "stock": [
+          "steel-dagger",
+          "iron-axe",
+          "silver-sword",
+          "steel-mace"
+        ]
+      },
+      "action": {
+        "effects": [],
+        "message": "El armero no levanta la vista del afilador: «Mira lo que quieras. Rompes, pagas»."
+      }
+    },
+    {
+      "id": "ascuafria-armour",
+      "kind": "merchant",
+      "x": 11,
+      "y": 4,
+      "visualType": "building-armor",
+      "label": "Coracería de Ascuafría",
+      "shop": {
+        "stock": [
+          "iron-chain",
+          "steel-scale",
+          "iron-splint",
+          "iron-shield"
+        ]
+      },
+      "action": {
+        "effects": [],
+        "message": "El forjador golpea una coraza al rojo: «Hecha a mano. Como mis precios»."
+      }
+    },
+    {
+      "id": "ascuafria-temple",
+      "kind": "service",
+      "x": 14,
+      "y": 6,
+      "visualType": "building-temple",
+      "label": "Templo · sanar a la compañía · 4 oro",
+      "lockedLabel": "Templo · necesitas 4 oro",
+      "requirements": [
+        {
+          "itemId": "crown-gold",
+          "quantity": 4,
+          "message": "El templo pide una ofrenda de cuatro monedas."
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "consume-item",
+            "itemId": "crown-gold",
+            "quantity": 4
+          },
+          {
+            "type": "heal-party",
+            "amount": 20
+          }
+        ],
+        "message": "Los sacerdotes rezan sobre la compañía. Las heridas se cierran."
+      }
+    },
+    {
+      "id": "ascuafria-guild",
+      "kind": "merchant",
+      "x": 15,
+      "y": 4,
+      "visualType": "building-guild",
+      "label": "Gremio de la Llama · hechizos",
+      "action": {
+        "effects": [],
+        "message": "Una archivista encapuchada señala el registro de socios de Gremio de la Llama."
+      },
+      "guild": {
+        "membership": 15,
+        "greeting": "«Gremio de la Llama. Firmad y pagad 15 de oro, y las estanterías son vuestras».",
+        "memberGreeting": "«Lo que quepa en vuestros libros, y en vuestra bolsa».",
+        "spells": [
+          "first-aid",
+          "elemental-arrow",
+          "detect-magic"
+        ]
+      }
+    },
+    {
+      "id": "hilde-brief",
+      "kind": "lore",
+      "x": 11,
+      "y": 10,
+      "visualType": "building-hall",
+      "label": "Hablar con la maestra fundidora Hilde",
+      "when": [
+        {
+          "key": "hollinUlricReported",
+          "truthy": true
+        },
+        {
+          "key": "ascuafriaHildeBriefed",
+          "falsy": true
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "set",
+            "key": "ascuafriaHildeBriefed",
+            "value": true
+          },
+          {
+            "type": "advance-quest",
+            "questId": "lost-king",
+            "title": "El rey desaparecido",
+            "description": "La Dama busca a sus caballeros desaparecidos.",
+            "order": 1,
+            "objective": "Encuentra el molde de la corona hueca en las Minas de Escoria (E3)."
+          }
+        ],
+        "message": "Hilde se seca el sudor con el antebrazo: «Me encargaron un molde de corona que no pesaba nada. Lo rechacé. Otro lo fundió en las Minas de Escoria, de noche»",
+        "journal": {
+          "id": "lost-king-hilde",
+          "title": "La maestra fundidora Hilde",
+          "body": "Encuentra el molde de la corona hueca en las Minas de Escoria (E3).",
+          "sigil": "♛"
+        }
+      }
+    },
+    {
+      "id": "hilde-report",
+      "kind": "quest",
+      "x": 11,
+      "y": 10,
+      "visualType": "building-hall",
+      "label": "Informar a la maestra fundidora Hilde · 60 oro",
+      "when": [
+        {
+          "key": "ascuafriaHildeBriefed",
+          "truthy": true
+        },
+        {
+          "key": "ascuafriaHildeReported",
+          "falsy": true
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "claim-reward",
+            "rewardId": "terra:escoria:v1",
+            "requirements": [
+              {
+                "key": "minas_de_escoriaBossDefeated",
+                "truthy": true
+              }
+            ],
+            "effects": [
+              {
+                "type": "set",
+                "key": "ascuafriaHildeReported",
+                "value": true
+              },
+              {
+                "type": "grant-gold",
+                "amount": 60
+              },
+              {
+                "type": "award-xp",
+                "awardId": "terra:escoria:v1",
+                "amount": 120
+              },
+              {
+                "type": "advance-quest",
+                "questId": "lost-king",
+                "title": "El rey desaparecido",
+                "description": "La Dama busca a sus caballeros desaparecidos.",
+                "order": 1,
+                "objective": "El molde lleva el sello del Primer Pacto. Llévalo al archivero ciego de Vigilia del Norte (C1)."
+              }
+            ]
+          }
+        ],
+        "message": "Hilde gira el molde al fuego: «Este sello no es de la Corona. Es del Primer Pacto. Sólo el archivero de la Vigilia sabe leerlo»",
+        "journal": {
+          "id": "lost-king-hilde-done",
+          "title": "La maestra fundidora Hilde ha hablado",
+          "body": "El molde lleva el sello del Primer Pacto. Llévalo al archivero ciego de Vigilia del Norte (C1).",
+          "sigil": "♛"
+        }
+      },
+      "requirements": [
+        {
+          "key": "minas_de_escoriaBossDefeated",
+          "truthy": true,
+          "message": "La maestra fundidora Hilde espera: «Todavía no. Encuentra el molde de la corona hueca en las Minas de Escoria (E3).»"
+        }
+      ],
+      "lockedLabel": "La maestra fundidora Hilde · «Encuentra el molde de la corona hueca en las Minas de Escoria (E3).»"
+    },
+    {
+      "id": "ascua-smith-errand-brief",
+      "kind": "lore",
+      "x": 15,
+      "y": 10,
+      "visualType": "building-store",
+      "label": "Hablar con el aprendiz Tomé",
+      "when": [
+        {
+          "key": "ascua_smithErrandStarted",
+          "falsy": true
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "set",
+            "key": "ascua_smithErrandStarted",
+            "value": true
+          },
+          {
+            "type": "start-quest",
+            "questId": "ascua-smith-errand",
+            "title": "Cristal de lava",
+            "description": "«La maestra necesita cristal de lava de las Crestas Volcánicas (F3) para templar acero. Yo no me atrevo a ir».",
+            "objective": "Busca cristal de lava en F3 · Crestas Volcánicas y tráelo.",
+            "order": 45
+          }
+        ],
+        "message": "«La maestra necesita cristal de lava de las Crestas Volcánicas (F3) para templar acero. Yo no me atrevo a ir»."
+      }
+    },
+    {
+      "id": "ascua-smith-errand-report",
+      "kind": "quest",
+      "x": 15,
+      "y": 10,
+      "visualType": "building-store",
+      "label": "Entregar cristal de lava · 35 oro",
+      "when": [
+        {
+          "questId": "ascua-smith-errand",
+          "questStatus": "active"
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "claim-reward",
+            "rewardId": "terra:ascua-smith-errand:v1",
+            "requirements": [
+              {
+                "itemId": "lava-glass"
+              }
+            ],
+            "effects": [
+              {
+                "type": "consume-item",
+                "itemId": "lava-glass",
+                "quantity": 1
+              },
+              {
+                "type": "complete-quest",
+                "questId": "ascua-smith-errand",
+                "objective": "Side quest completada."
+              },
+              {
+                "type": "grant-gold",
+                "amount": 35
+              },
+              {
+                "type": "award-xp",
+                "awardId": "terra:ascua-smith-errand:v1",
+                "amount": 60
+              }
+            ]
+          }
+        ],
+        "message": "Tomé sonríe de oreja a oreja: «¡La maestra va a creer que fui yo!»."
+      },
+      "requirements": [
+        {
+          "itemId": "lava-glass",
+          "message": "«¿Y cristal de lava? Está en F3»."
+        }
+      ],
+      "lockedLabel": "El aprendiz Tomé · espera cristal de lava"
+    },
+    {
+      "id": "ascua-watch-hunt-brief",
+      "kind": "lore",
+      "x": 4,
+      "y": 6,
+      "visualType": "building-watch",
+      "label": "Hablar con la capitana de la forja",
+      "when": [
+        {
+          "key": "ascua_watchHuntStarted",
+          "falsy": true
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "set",
+            "key": "ascua_watchHuntStarted",
+            "value": true
+          },
+          {
+            "type": "start-quest",
+            "questId": "ascua-watch-hunt",
+            "title": "Caza: el Coloso de Escoria",
+            "description": "«En la Fundición en Ruinas (F4) algo enorme se mueve entre los hornos. Que alguien lo apague».",
+            "objective": "Acaba con el Coloso de Escoria en F4 · Fundición en Ruinas.",
+            "order": 40
+          }
+        ],
+        "message": "«En la Fundición en Ruinas (F4) algo enorme se mueve entre los hornos. Que alguien lo apague»."
+      }
+    },
+    {
+      "id": "ascua-watch-hunt-report",
+      "kind": "quest",
+      "x": 4,
+      "y": 6,
+      "visualType": "building-watch",
+      "label": "Cobrar la caza a la capitana de la forja · 45 oro",
+      "when": [
+        {
+          "questId": "ascua-watch-hunt",
+          "questStatus": "active"
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "claim-reward",
+            "rewardId": "terra:ascua-watch-hunt:v1",
+            "requirements": [
+              {
+                "key": "ascua_watchHunted",
+                "truthy": true
+              }
+            ],
+            "effects": [
+              {
+                "type": "complete-quest",
+                "questId": "ascua-watch-hunt",
+                "objective": "Side quest completada."
+              },
+              {
+                "type": "grant-gold",
+                "amount": 45
+              },
+              {
+                "type": "award-xp",
+                "awardId": "terra:ascua-watch-hunt:v1",
+                "amount": 90
+              }
+            ]
+          }
+        ],
+        "message": "«Ni el coloso pudo con vosotros. Respeto»"
+      },
+      "requirements": [
+        {
+          "key": "ascua_watchHunted",
+          "truthy": true,
+          "message": "«El Coloso de Escoria sigue vivo en F4»."
+        }
+      ],
+      "lockedLabel": "La capitana de la forja · «¿Ya cayó el Coloso de Escoria?»"
+    }
+  ],
+  "treasures": [],
+  "traps": [],
+  "exits": [
+    {
+      "id": "town-gate",
+      "kind": "exit",
+      "x": 9,
+      "y": 1,
+      "requiresReturn": true,
+      "openLabel": "Salir a F2 · Ladera de Ascuafría",
+      "lockedLabel": "Las puertas están cerradas",
+      "requirements": [],
+      "action": {
+        "effects": [
+          {
+            "type": "transition-map",
+            "mapId": "terra-f2",
+            "entryExitId": "f2-to-town"
+          }
+        ],
+        "message": "La compañía sale de Ascuafría."
+      }
+    }
+  ],
+  "initialJournal": {
+    "id": "ascuafria-arrival",
+    "title": "Ascuafría",
+    "body": "Martillos en cada calle; el aire tiembla de calor.",
+    "sigil": "F2"
+  },
+  "introMessage": "Ascuafría. Martillos en cada calle; el aire tiembla de calor."
+}

@@ -390,7 +390,7 @@ func canonicalLen(value bson.D) int {
 func runeLen(s string) int { return utf8.RuneCountInString(s) }
 
 func normalizeFlags(flags bson.D) (bson.D, error) {
-	if len(flags) > 128 || canonicalLen(flags) > 16_384 {
+	if len(flags) > 512 || canonicalLen(flags) > 65_536 {
 		return nil, fail(400, "El checkpoint contiene demasiados flags.")
 	}
 	for _, e := range flags {

@@ -111,7 +111,7 @@ def _normalize_checkpoint_ids(values: list[str], *, label: str) -> list[str]:
 
 
 def _normalize_checkpoint_flags(flags: dict[str, Any]) -> dict[str, Any]:
-    if len(flags) > 128 or len(_canonical_bytes(flags)) > 16_384:
+    if len(flags) > 512 or len(_canonical_bytes(flags)) > 65_536:
         raise HTTPException(400, "El checkpoint contiene demasiados flags.")
     normalized: dict[str, Any] = {}
     for key, value in flags.items():

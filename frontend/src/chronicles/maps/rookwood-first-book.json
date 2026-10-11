@@ -475,6 +475,66 @@
         ],
         "message": "La compañía regresa al Camino de los Estandartes."
       }
+    },
+    {
+      "id": "d3-to-d2",
+      "kind": "exit",
+      "x": 10,
+      "y": 1,
+      "requiresReturn": true,
+      "openLabel": "Ir a D2 · Viñedos del Rey",
+      "lockedLabel": "El paso está cortado",
+      "requirements": [],
+      "action": {
+        "effects": [
+          {
+            "type": "transition-map",
+            "mapId": "terra-d2",
+            "entryExitId": "d2-to-d3"
+          }
+        ],
+        "message": "La compañía entra en D2."
+      }
+    },
+    {
+      "id": "d3-to-d4",
+      "kind": "exit",
+      "x": 10,
+      "y": 13,
+      "requiresReturn": true,
+      "openLabel": "Ir a D4 · Lindes de las Marismas",
+      "lockedLabel": "El paso está cortado",
+      "requirements": [],
+      "action": {
+        "effects": [
+          {
+            "type": "transition-map",
+            "mapId": "terra-d4",
+            "entryExitId": "d4-to-d3"
+          }
+        ],
+        "message": "La compañía entra en D4."
+      }
+    },
+    {
+      "id": "d3-to-e3",
+      "kind": "exit",
+      "x": 19,
+      "y": 7,
+      "requiresReturn": true,
+      "openLabel": "Ir a E3 · Bocamina de Escoria",
+      "lockedLabel": "El paso está cortado",
+      "requirements": [],
+      "action": {
+        "effects": [
+          {
+            "type": "transition-map",
+            "mapId": "terra-e3",
+            "entryExitId": "e3-to-d3"
+          }
+        ],
+        "message": "La compañía entra en E3."
+      }
     }
   ],
   "initialJournal": {
@@ -483,5 +543,7 @@
     "body": "Un bosque espeso al oeste del Camino. Sus aldeanos olvidan a quienes pierden.",
     "sigil": "III"
   },
-  "introMessage": "Rookwood. Los robles crecen tan juntos que el camino se pierde. Una leñadora espera junto al sendero."
+  "introMessage": "Rookwood. Los robles crecen tan juntos que el camino se pierde. Una leñadora espera junto al sendero.",
+  "areaCode": "D3",
+  "biome": "forest"
 }

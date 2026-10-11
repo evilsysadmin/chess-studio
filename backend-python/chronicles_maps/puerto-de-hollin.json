@@ -1,0 +1,459 @@
+{
+  "id": "puerto-de-hollin",
+  "version": 1,
+  "progressionKey": "puerto-de-hollin-v1",
+  "title": "Puerto de Hollín",
+  "areaCode": "A3",
+  "regionKind": "settlement",
+  "layoutMode": "authored",
+  "grid": [
+    "###################",
+    "#.................#",
+    "#.###.###.###.###.#",
+    "#.###.###.###.###.#",
+    "#.................#",
+    "#.##...........##.#",
+    "#.##...........##.#",
+    "#.##...........##.#",
+    "#.................#",
+    "#........#........#",
+    "#.................#",
+    "#.###.###.###.###.#",
+    "#.###.###.###.###.#",
+    "#.................#",
+    "###################"
+  ],
+  "partyStart": {
+    "x": 9,
+    "y": 1,
+    "direction": 2
+  },
+  "initialFlags": {},
+  "enemies": [],
+  "triggers": [],
+  "interactables": [
+    {
+      "id": "puerto-de-hollin-inn",
+      "kind": "service",
+      "x": 7,
+      "y": 10,
+      "visualType": "building-tavern",
+      "label": "Posada · descansar y curar · 8 oro",
+      "lockedLabel": "Posada · necesitas 8 oro",
+      "requirements": [
+        {
+          "itemId": "crown-gold",
+          "quantity": 8,
+          "message": "El posadero cobra por adelantado."
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "consume-item",
+            "itemId": "crown-gold",
+            "quantity": 8
+          },
+          {
+            "type": "heal-party",
+            "amount": 12
+          },
+          {
+            "type": "refill-class-abilities"
+          },
+          {
+            "type": "restore-spell-points"
+          }
+        ],
+        "message": "La compañía duerme en la posada de Puerto de Hollín. Heridas curadas, puntos de hechizo recuperados."
+      }
+    },
+    {
+      "id": "puerto-de-hollin-weapons",
+      "kind": "merchant",
+      "x": 7,
+      "y": 4,
+      "visualType": "building-forge",
+      "label": "Armería de Puerto de Hollín",
+      "shop": {
+        "stock": [
+          "iron-dagger",
+          "iron-spear",
+          "iron-sword",
+          "bronze-axe"
+        ]
+      },
+      "action": {
+        "effects": [],
+        "message": "El armero no levanta la vista del afilador: «Mira lo que quieras. Rompes, pagas»."
+      }
+    },
+    {
+      "id": "puerto-de-hollin-armour",
+      "kind": "merchant",
+      "x": 11,
+      "y": 4,
+      "visualType": "building-armor",
+      "label": "Coracería de Puerto de Hollín",
+      "shop": {
+        "stock": [
+          "leather-leather",
+          "bronze-scale",
+          "iron-ring",
+          "bronze-shield"
+        ]
+      },
+      "action": {
+        "effects": [],
+        "message": "El forjador golpea una coraza al rojo: «Hecha a mano. Como mis precios»."
+      }
+    },
+    {
+      "id": "puerto-de-hollin-temple",
+      "kind": "service",
+      "x": 14,
+      "y": 6,
+      "visualType": "building-temple",
+      "label": "Templo · sanar a la compañía · 4 oro",
+      "lockedLabel": "Templo · necesitas 4 oro",
+      "requirements": [
+        {
+          "itemId": "crown-gold",
+          "quantity": 4,
+          "message": "El templo pide una ofrenda de cuatro monedas."
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "consume-item",
+            "itemId": "crown-gold",
+            "quantity": 4
+          },
+          {
+            "type": "heal-party",
+            "amount": 20
+          }
+        ],
+        "message": "Los sacerdotes rezan sobre la compañía. Las heridas se cierran."
+      }
+    },
+    {
+      "id": "ulric-brief",
+      "kind": "lore",
+      "x": 11,
+      "y": 10,
+      "visualType": "building-hall",
+      "label": "Hablar con el campanero Ulric",
+      "when": [
+        {
+          "key": "vadoNelaReported",
+          "truthy": true
+        },
+        {
+          "key": "hollinUlricBriefed",
+          "falsy": true
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "set",
+            "key": "hollinUlricBriefed",
+            "value": true
+          },
+          {
+            "type": "advance-quest",
+            "questId": "lost-king",
+            "title": "El rey desaparecido",
+            "description": "La Dama busca a sus caballeros desaparecidos.",
+            "order": 1,
+            "objective": "Entra en la Cueva de los Contrabandistas (A4) y recupera el registro de la campana."
+          }
+        ],
+        "message": "Ulric se frota las manos negras de hollín: «Yo no la toqué. Fueron los de las calas. Me quitaron la llave del campanario y me dejaron un saco de monedas para callar»",
+        "journal": {
+          "id": "lost-king-ulric",
+          "title": "El campanero Ulric",
+          "body": "Entra en la Cueva de los Contrabandistas (A4) y recupera el registro de la campana.",
+          "sigil": "♛"
+        }
+      }
+    },
+    {
+      "id": "ulric-report",
+      "kind": "quest",
+      "x": 11,
+      "y": 10,
+      "visualType": "building-hall",
+      "label": "Informar a el campanero Ulric · 50 oro",
+      "when": [
+        {
+          "key": "hollinUlricBriefed",
+          "truthy": true
+        },
+        {
+          "key": "hollinUlricReported",
+          "falsy": true
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "claim-reward",
+            "rewardId": "terra:contrabandistas:v1",
+            "requirements": [
+              {
+                "key": "cueva_contrabandistasBossDefeated",
+                "truthy": true
+              }
+            ],
+            "effects": [
+              {
+                "type": "set",
+                "key": "hollinUlricReported",
+                "value": true
+              },
+              {
+                "type": "grant-gold",
+                "amount": 50
+              },
+              {
+                "type": "award-xp",
+                "awardId": "terra:contrabandistas:v1",
+                "amount": 100
+              },
+              {
+                "type": "advance-quest",
+                "questId": "lost-king",
+                "title": "El rey desaparecido",
+                "description": "La Dama busca a sus caballeros desaparecidos.",
+                "order": 1,
+                "objective": "El registro paga en lingotes de Ascuafría (F2). Busca a la maestra fundidora Hilde."
+              }
+            ]
+          }
+        ],
+        "message": "Ulric pasa los dedos por el registro: «Lingotes de Ascuafría. Allí funden todo lo que brilla, y también lo que no debería existir»",
+        "journal": {
+          "id": "lost-king-ulric-done",
+          "title": "El campanero Ulric ha hablado",
+          "body": "El registro paga en lingotes de Ascuafría (F2). Busca a la maestra fundidora Hilde.",
+          "sigil": "♛"
+        }
+      },
+      "requirements": [
+        {
+          "key": "cueva_contrabandistasBossDefeated",
+          "truthy": true,
+          "message": "El campanero Ulric espera: «Todavía no. Entra en la Cueva de los Contrabandistas (A4) y recupera el registro de la campana.»"
+        }
+      ],
+      "lockedLabel": "El campanero Ulric · «Entra en la Cueva de los Contrabandistas (A4) y recupera el registro de la campana.»"
+    },
+    {
+      "id": "hollin-fisher-errand-brief",
+      "kind": "lore",
+      "x": 15,
+      "y": 10,
+      "visualType": "building-store",
+      "label": "Hablar con la pescadera Iria",
+      "when": [
+        {
+          "key": "hollin_fisherErrandStarted",
+          "falsy": true
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "set",
+            "key": "hollin_fisherErrandStarted",
+            "value": true
+          },
+          {
+            "type": "start-quest",
+            "questId": "hollin-fisher-errand",
+            "title": "El amuleto de las redes",
+            "description": "«Mi marido se ahogó en los Arrecifes del Naufragio (A5) con el amuleto de la familia. Sin él no pesca nadie».",
+            "objective": "Busca el amuleto de las redes en A5 · Arrecifes del Naufragio y tráelo.",
+            "order": 45
+          }
+        ],
+        "message": "«Mi marido se ahogó en los Arrecifes del Naufragio (A5) con el amuleto de la familia. Sin él no pesca nadie»."
+      }
+    },
+    {
+      "id": "hollin-fisher-errand-report",
+      "kind": "quest",
+      "x": 15,
+      "y": 10,
+      "visualType": "building-store",
+      "label": "Entregar el amuleto de las redes · 25 oro",
+      "when": [
+        {
+          "questId": "hollin-fisher-errand",
+          "questStatus": "active"
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "claim-reward",
+            "rewardId": "terra:hollin-fisher-errand:v1",
+            "requirements": [
+              {
+                "itemId": "lost-net-charm"
+              }
+            ],
+            "effects": [
+              {
+                "type": "consume-item",
+                "itemId": "lost-net-charm",
+                "quantity": 1
+              },
+              {
+                "type": "complete-quest",
+                "questId": "hollin-fisher-errand",
+                "objective": "Side quest completada."
+              },
+              {
+                "type": "grant-gold",
+                "amount": 25
+              },
+              {
+                "type": "award-xp",
+                "awardId": "terra:hollin-fisher-errand:v1",
+                "amount": 40
+              }
+            ]
+          }
+        ],
+        "message": "Iria aprieta el amuleto: «Mañana salen las barcas»."
+      },
+      "requirements": [
+        {
+          "itemId": "lost-net-charm",
+          "message": "«¿Y el amuleto de las redes? Está en A5»."
+        }
+      ],
+      "lockedLabel": "La pescadera Iria · espera el amuleto de las redes"
+    },
+    {
+      "id": "hollin-watch-hunt-brief",
+      "kind": "lore",
+      "x": 4,
+      "y": 6,
+      "visualType": "building-watch",
+      "label": "Hablar con el capitán del puerto",
+      "when": [
+        {
+          "key": "hollin_watchHuntStarted",
+          "falsy": true
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "set",
+            "key": "hollin_watchHuntStarted",
+            "value": true
+          },
+          {
+            "type": "start-quest",
+            "questId": "hollin-watch-hunt",
+            "title": "Caza: el Ahogado del Acantilado",
+            "description": "«Algo sube de noche por los Acantilados de Hollín (A2) y se lleva a los vigías».",
+            "objective": "Acaba con el Ahogado del Acantilado en A2 · Acantilados de Hollín.",
+            "order": 40
+          }
+        ],
+        "message": "«Algo sube de noche por los Acantilados de Hollín (A2) y se lleva a los vigías»."
+      }
+    },
+    {
+      "id": "hollin-watch-hunt-report",
+      "kind": "quest",
+      "x": 4,
+      "y": 6,
+      "visualType": "building-watch",
+      "label": "Cobrar la caza a el capitán del puerto · 30 oro",
+      "when": [
+        {
+          "questId": "hollin-watch-hunt",
+          "questStatus": "active"
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "claim-reward",
+            "rewardId": "terra:hollin-watch-hunt:v1",
+            "requirements": [
+              {
+                "key": "hollin_watchHunted",
+                "truthy": true
+              }
+            ],
+            "effects": [
+              {
+                "type": "complete-quest",
+                "questId": "hollin-watch-hunt",
+                "objective": "Side quest completada."
+              },
+              {
+                "type": "grant-gold",
+                "amount": 30
+              },
+              {
+                "type": "award-xp",
+                "awardId": "terra:hollin-watch-hunt:v1",
+                "amount": 60
+              }
+            ]
+          }
+        ],
+        "message": "«El puerto duerme tranquilo. Tomad, os lo habéis ganado»."
+      },
+      "requirements": [
+        {
+          "key": "hollin_watchHunted",
+          "truthy": true,
+          "message": "«El Ahogado del Acantilado sigue vivo en A2»."
+        }
+      ],
+      "lockedLabel": "El capitán del puerto · «¿Ya cayó el Ahogado del Acantilado?»"
+    }
+  ],
+  "treasures": [],
+  "traps": [],
+  "exits": [
+    {
+      "id": "town-gate",
+      "kind": "exit",
+      "x": 9,
+      "y": 1,
+      "requiresReturn": true,
+      "openLabel": "Salir a A3 · Bahía de Hollín",
+      "lockedLabel": "Las puertas están cerradas",
+      "requirements": [],
+      "action": {
+        "effects": [
+          {
+            "type": "transition-map",
+            "mapId": "terra-a3",
+            "entryExitId": "a3-to-town"
+          }
+        ],
+        "message": "La compañía sale de Puerto de Hollín."
+      }
+    }
+  ],
+  "initialJournal": {
+    "id": "puerto-de-hollin-arrival",
+    "title": "Puerto de Hollín",
+    "body": "Gaviotas, brea y un campanario que nadie toca desde hace semanas.",
+    "sigil": "A3"
+  },
+  "introMessage": "Puerto de Hollín. Gaviotas, brea y un campanario que nadie toca desde hace semanas."
+}

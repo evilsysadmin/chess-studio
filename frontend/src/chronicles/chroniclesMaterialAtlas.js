@@ -88,6 +88,12 @@ const MAP_ENVIRONMENT = Object.freeze({
   'echo-cistern': 'cave-water',
   // Named after its town, but it is wet brick underground, not the town.
   'swordhaven-sewers': 'cave-water',
+  // Terra dungeons.
+  'salinas-hundidas': 'cave-water',
+  'cueva-contrabandistas': 'cave',
+  'minas-de-escoria': 'iron-foundry',
+  'tumulos-primer-pacto': 'dungeon',
+  'cienaga-negra': 'cave-water',
 });
 
 export function chroniclesMaterialProfile(profileId) {
