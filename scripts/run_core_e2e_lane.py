@@ -46,7 +46,8 @@ HOME_WEBGL_GREP = 'Browser WebGL · Home 3D recupera el contexto perdido'
 SMOKE_GREP = (
     'login → menú|Partida rápida · una partida activa|Torneo · una partida activa|'
     'Partida rápida · un 503 al restaurar|Combat Chess · Campaña permite jugar con defaults|'
-    'Combat Chess · salir al menú conserva campaña'
+    'Combat Chess · salir al menú conserva campaña|'
+    'Combat Chess · una batalla activa sobrevive a reload'
 )
 
 
@@ -198,6 +199,8 @@ def self_test() -> None:
     assert LANE_COMMANDS['tournament'][0].grep == TOURNAMENT_GREP
     assert LANE_COMMANDS['combat'][0].spec == 'smoke.spec.js'
     assert LANE_COMMANDS['combat'][0].grep == COMBAT_GREP
+    assert 'Combat Chess · una batalla activa sobrevive a reload' not in COMBAT_GREP
+    assert 'Combat Chess · una batalla activa sobrevive a reload' in SMOKE_GREP
     assert [command.spec for command in LANE_COMMANDS['home']] == [
         'regression-journeys.spec.js', 'mobile-final-interactions.spec.js', 'browser-runtime-health.spec.js'
     ]
