@@ -88,6 +88,7 @@ import {
   CHRONICLES_SPELLS, chroniclesMemberMaxSp, chroniclesMemberSp, chroniclesMemberSpells,
 } from '../chronicles/chroniclesMagic.js';
 import ChroniclesMinimap from './ChroniclesMinimap.jsx';
+import ChroniclesCombatRoster, { chroniclesHealthBand } from './ChroniclesCombatRoster.jsx';
 import ChroniclesBookOneEpilogue from './ChroniclesBookOneEpilogue.jsx';
 import ChroniclesCharacterSetup from './ChroniclesCharacterSetup.jsx';
 import ChroniclesSaveMenu from './ChroniclesSaveMenu.jsx';
@@ -954,7 +955,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
                 onClick={() => openMemberSheet(member.id)}
                 disabled={expeditionOver}
                 aria-label={`Seleccionar ${member.name}`}
-                title={`Seleccionar y abrir ficha de ${member.name}`}
+                title={`${member.name} · ${member.hp}/${member.maxHp} PV${chroniclesMemberMaxSp(state, member) > 0 ? ` · ${chroniclesMemberSp(state, member)}/${chroniclesMemberMaxSp(state, member)} PH` : ''} · clic: ficha`}
                 aria-pressed={member.id === selectedMemberId}
                 data-member-hp={member.hp}
                 data-damage-hit={retaliationCue?.targetId === member.id ? 'true' : undefined}
@@ -975,7 +976,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
                   ) : null}
                 </span>
                 <span><strong>{index + 1}. {member.name}</strong><small>Nv {chroniclesHeroProgress(progression, member.id).level} · {member.row === 'front' ? 'FRENTE' : 'RETAGUARDIA'} · clic · ficha</small></span>
-                <span className="chronicles-party-bars" aria-hidden="true">
+                <span className="chronicles-party-bars" aria-hidden="true" data-band={chroniclesHealthBand(member.hp, member.maxHp)}>
                   <i className="is-hp" style={{ '--fill': member.maxHp ? Math.max(0, member.hp) / member.maxHp : 0 }} />
                   {chroniclesMemberMaxSp(state, member) > 0 && (
                     <i className="is-sp" style={{ '--fill': chroniclesMemberSp(state, member) / chroniclesMemberMaxSp(state, member) }} />
@@ -1049,16 +1050,6 @@ export default function ChroniclesOfMatthias({ onExit }) {
             <div ref={hostRef} className="chronicles-three" data-chronicles-renderer="three" aria-label="Mazmorra 3D en primera persona de Chronicles of Matthias" />
             <div className="chronicles-vignette" aria-hidden="true" />
             <div className="chronicles-crosshair" aria-hidden="true">·</div>
-            <ChroniclesMinimap
-              state={state}
-              visitedCells={automapVisitedByMap[state.mapId] || []}
-              hidden={automapOpen || expeditionOver}
-              onExpand={() => {
-                clearTouchHold();
-                setMenuOpen(false);
-                setAutomapOpen(true);
-              }}
-            />
             <ChroniclesInitiativeRail initiative={state.initiative} />
             <ChroniclesNarratorOverlay message={state.message}>
               {activeQuests.length > 0 && <ChroniclesQuestLog state={state} />}
@@ -1070,6 +1061,19 @@ export default function ChroniclesOfMatthias({ onExit }) {
             {state.phase === 'defeated' && <ChroniclesDefeatOverlay onRestart={restart} onExit={exitChronicles} />}
             {state.phase === 'escaped' && <ChroniclesBookOneEpilogue state={state} onRestart={restart} />}
           </div>
+
+          {/* Desktop puts these in the MM3 panel; mobile floats them over the view. */}
+          <ChroniclesMinimap
+            state={state}
+            visitedCells={automapVisitedByMap[state.mapId] || []}
+            hidden={automapOpen || expeditionOver}
+            onExpand={() => {
+              clearTouchHold();
+              setMenuOpen(false);
+              setAutomapOpen(true);
+            }}
+          />
+          <ChroniclesCombatRoster state={state} />
 
           <details className="chronicles-journal" aria-label="Crónica de expedición">
             <summary>

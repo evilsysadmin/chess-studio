@@ -1,3 +1,6 @@
+/* Only the MM3 desktop chrome shows the always-on band. */
+.chronicles-dm-band { display: none; }
+
 /* The chronicle is opt-in: only its 44px trigger occupies the HUD by default. */
 .chronicles-dm-overlay {
   position: absolute;
