@@ -348,6 +348,15 @@
     font-weight: 700;
   }
   .chronicles .chronicles-game-menu { border-left: 0; }
+  /* MENÚ sits low in the panel: open the tablet upward over the controls so
+     «Salir y guardar» never falls below the screen. */
+  .chronicles .chronicles-game-menu__panel {
+    top: auto;
+    bottom: calc(100% + 6px);
+    right: 0;
+    max-height: calc(100dvh - 24px);
+    overflow-y: auto;
+  }
 
   .chronicles .chronicles-touch {
     grid-area: touch;
