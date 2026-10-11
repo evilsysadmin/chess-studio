@@ -226,8 +226,19 @@ function grantGold(state, effect) {
 
 const REWARD_EFFECT_TYPES = new Set([
   'grant-gold', 'grant-item', 'consume-item', 'start-quest',
-  'advance-quest', 'complete-quest', 'set',
+  'advance-quest', 'complete-quest', 'set', 'award-xp',
 ]);
+
+// Quest XP, MM3 style: every living hero earns it. The content runtime only
+// records the award; the shared progression grants it once per run and hero.
+function awardXp(state, effect) {
+  const awardId = typeof effect.awardId === 'string' ? effect.awardId.trim() : '';
+  const amount = effect.amount;
+  if (!awardId || awardId.length > 128 || !Number.isSafeInteger(amount) || amount < 1 || amount > 1000) return state;
+  const awards = Array.isArray(state.xpAwards) ? state.xpAwards : [];
+  if (awards.some((award) => award.id === awardId) || awards.length >= 256) return state;
+  return { ...state, xpAwards: [...awards, { id: awardId, amount }] };
+}
 
 // The reward receipt is written *in the same checkpoint* as the loot and
 // updated quest. Replaying an action, loading after F5 or retrying CAS
@@ -338,6 +349,7 @@ export function chroniclesApplyContentEffects(state, effects, adapters = {}) {
     if (effect.type === 'exchange-item') return exchangeItem(next, effect);
     if (effect.type === 'grant-gold') return grantGold(next, effect);
     if (effect.type === 'claim-reward') return claimReward(next, effect, adapters);
+    if (effect.type === 'award-xp') return awardXp(next, effect);
     if (effect.type === 'start-quest') return updateQuest(next, effect, 'active');
     if (effect.type === 'advance-quest') return updateQuest(next, effect, 'active');
     if (effect.type === 'complete-quest') return updateQuest(next, effect, 'completed');

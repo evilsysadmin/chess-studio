@@ -43,6 +43,7 @@ import {
   chroniclesMM3Roll,
 } from './chronicles/chroniclesMM3Rules.js';
 import { chroniclesAdvanceLostKingIntro } from './chronicles/chroniclesLostKingIntro.js';
+import { chroniclesArriveOnTransition } from './chronicles/chroniclesArrival.js';
 import { CHRONICLES_SWORDHAVEN_RETURN_PORTAL_ID, chroniclesSwordhavenReturnAvailable } from './chronicles/chroniclesSwordhavenReturnPortal.js';
 import { chroniclesIsOverworldTravelExit } from './chronicles/chroniclesWorldReturnLinks.js';
 
@@ -618,7 +619,7 @@ function bumpIntoBuilding(state, front) {
   const here = doors.find((entry) => entry.x === state.x && entry.y === state.y);
   if (here) {
     const contextual = chroniclesContextualContentAction(state);
-    if (contextual) return chroniclesAdvanceLostKingIntro(state, resolveContextualContentAction(state));
+    if (contextual) return chroniclesArriveOnTransition(state, chroniclesAdvanceLostKingIntro(state, resolveContextualContentAction(state)));
     return withMessage(state, `${buildingName(here)}: no hay nadie que te atienda ahora mismo.`);
   }
   const door = doors[0];
@@ -676,7 +677,7 @@ export function chroniclesReduce(state, action) {
   if (actionType === 'turn-right') return { ...state, direction: (state.direction + 1) % 4, turns: state.turns + 1 };
   if (actionType === 'attack') return resolveAttack(state, typeof action === 'object' ? action.memberId : 'matthias');
   if (actionType === 'cast') return resolveCast(state, action.memberId, action.spellId);
-  if (actionType === 'interact') return chroniclesAdvanceLostKingIntro(state, resolveContextualContentAction(state));
+  if (actionType === 'interact') return chroniclesArriveOnTransition(state, chroniclesAdvanceLostKingIntro(state, resolveContextualContentAction(state)));
 
   const direction = CHRONICLES_DIRECTIONS[state.direction];
   // Lateral steps share the exact same collision, trigger and checkpoint path
@@ -696,7 +697,7 @@ export function chroniclesReduce(state, action) {
     if (entered) return entered;
   }
   if (blocker) return withMessage(state, blocker.message);
-  return chroniclesAdvanceLostKingIntro(state, enterTile(state, x, y));
+  return chroniclesArriveOnTransition(state, chroniclesAdvanceLostKingIntro(state, enterTile(state, x, y)));
 }
 
 export function chroniclesObjective(state) {
@@ -750,7 +751,9 @@ export function chroniclesObjective(state) {
   // In the open world the party follows its quests, not the nearest gate.
   // A quest with content on this map wins; otherwise the story thread. An
   // exit objective a designer wrote by hand (legacy Swordhaven) still rules.
-  if (['settlement', 'wilderness'].includes(map.regionKind) && !exit?.explorationObjective) {
+  const campaignArea = ['settlement', 'wilderness'].includes(map.regionKind)
+    || (map.regionKind === 'dungeon' && exit?.requiresReturn === true);
+  if (campaignArea && !exit?.explorationObjective) {
     const active = chroniclesQuestEntries(state, 'active').filter((quest) => quest.objective);
     const localQuestIds = new Set((map.interactables || []).flatMap((entry) => (
       (entry.when || []).map((requirement) => requirement?.questId).filter(Boolean)

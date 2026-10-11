@@ -199,6 +199,20 @@ export function buildChroniclesCampaignExterior(scene, { scenePlan = {}, coarseP
       } else {
         buildMourner(root);
       }
+    } else if (entry.visualType === 'sewer-grate') {
+      // A town's dungeon mouth: iron grate in a stone ring, flush with the road.
+      const ring = new THREE.Mesh(new THREE.CylinderGeometry(1.05, 1.15, 0.12, 12), stone);
+      ring.position.y = 0.06;
+      root.add(ring);
+      const iron = material(0x2b2b30, { metalness: 0.6, roughness: 0.55 });
+      for (let bar = -3; bar <= 3; bar += 1) {
+        const rod = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.08, 1.5), iron);
+        rod.position.set(bar * 0.22, 0.14, 0);
+        root.add(rod);
+      }
+      const cross = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.08, 0.1), iron);
+      cross.position.y = 0.16;
+      root.add(cross);
     } else if (entry.kind === 'exit') {
       // Gate posts flank the road, so a gate on the west/east edge turns 90°
       // instead of planting one post straight in front of the arriving camera.
@@ -265,6 +279,7 @@ const TOWN_BUILDING_STYLES = Object.freeze({
   apothecary: Object.freeze({ roof: 0x554481, emblem: 'crystal' }),
   guild: Object.freeze({ roof: 0x3f4f8a, emblem: 'crystal' }),
   watch: Object.freeze({ roof: 0x5c3b38, emblem: 'shield' }),
+  hall: Object.freeze({ roof: 0x6e2e2a, emblem: 'sun' }),
 });
 const TOWN_HOME_STYLES = Object.freeze([
   Object.freeze({ roof: 0x7d4a36, emblem: 'home' }),

@@ -25,6 +25,7 @@ import { chroniclesClearRuntimeMapDefinitions, chroniclesMapForState } from '../
 import { chroniclesRegionHudLocation } from '../chronicles/chroniclesRegionHud.js';
 import { chroniclesGridExplorationStep } from '../chronicles/chroniclesGridExplorationStep.js';
 import { chroniclesInitializeLostKingIntro } from '../chronicles/chroniclesLostKingIntro.js';
+import { chroniclesApplyArrival } from '../chronicles/chroniclesArrival.js';
 import { CHRONICLES_SWORDHAVEN_RETURN_PORTAL_ID } from '../chronicles/chroniclesSwordhavenReturnPortal.js';
 import {
   chroniclesCheckpointState,
@@ -637,9 +638,9 @@ export default function ChroniclesOfMatthias({ onExit }) {
         const restored = chroniclesApplyRunCheckpoint(progressed, world);
         // The run id seeds every MM3 die so F5 never rerolls a blow.
         const next = {
-          ...chroniclesInitializeLostKingIntro(restored, {
+          ...chroniclesApplyArrival(chroniclesInitializeLostKingIntro(restored, {
             fresh: !remoteSelection && world.worldVersion === 0,
-          }),
+          })),
           runSeed: operationId,
         };
         authoritativeRunRef.current = world;

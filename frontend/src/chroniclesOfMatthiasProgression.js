@@ -787,6 +787,23 @@ export function applyChroniclesTacticsProgression(progression, previous, next, {
     }
   }
 
+  // Quest XP recorded by the content runtime goes to every living hero, once
+  // per run, hero and award (replays and F5 hit claimedAwards).
+  const knownAwards = new Set((previous.xpAwards || []).map((entry) => entry.id));
+  (next.xpAwards || []).filter((entry) => !knownAwards.has(entry.id)).forEach((entry) => {
+    (next.party || []).filter((member) => member.hp > 0 && HERO_IDS.includes(member.id)).forEach((member) => {
+      progress = award(
+        progress,
+        awards,
+        levelUps,
+        member.id,
+        entry.amount,
+        `${safeRunId}:quest-xp:${entry.id}:${member.id}`,
+        'misión',
+      );
+    });
+  });
+
   if (previous.phase !== 'escaped' && next.phase === 'escaped') {
     (next.party || []).filter((member) => member.hp > 0 && HERO_IDS.includes(member.id)).forEach((member) => {
       progress = award(

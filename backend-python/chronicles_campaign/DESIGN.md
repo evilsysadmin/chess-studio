@@ -101,3 +101,47 @@ El atlas sigue siendo la fuente de diseño; el manifiesto de runtime se edita en
 - **Seda para las vendas** (`weaver-silk`): la da la sacerdotisa Ilse en el templo (14,6). La tejedora de la hondonada de Rookwood (`rookwood-weaver`, `weaver-spider`) suelta `weaver-silk` al morir. La entrega en el templo consume la seda, paga 8 oro (`swordhaven:weaver-silk:v1`) y cura a la compañía.
 
 Los tres enemigos nuevos son opcionales y en primera persona se dibujan como billboards 2.5D generados con SpriteCook. En Tactics usan un modelo 3D procedural equivalente.
+
+## Hilo principal en el mundo abierto (estructura MM3)
+
+Regla de producto: **nunca «¿y ahora qué?»**. Desde el primer minuto hay una
+quest de Historia activa (♛) cuyo objetivo nombra a una persona o un lugar
+concreto. Cada pueblo tiene quien da el siguiente paso de la Historia y dos
+o tres side quests (◆). Explorar siempre suma (oro, botín, XP, rumores),
+pero nunca es la única pista. Cada paso de la Historia paga oro y XP a toda
+la compañía (efecto `award-xp` dentro de `claim-reward`, una vez por run).
+
+La Historia se llama `lost-king` («El rey desaparecido») y avanza por etapas
+con `advance-quest`. Como en MM3, la Historia lleva de pueblo en pueblo y
+cada pueblo tiene su mazmorra; las mazmorras históricas del catálogo se
+reaprovechan como mazmorra del pueblo que les toque.
+
+### Acto I · El trono vacío (Swordhaven y alrededores) — materializado
+1. **Llegada** (`arrivalAction` de `swordhaven-first-book`): la carta de la
+   Dama abre la Historia. Objetivo: preséntate al alcalde Aldric en el
+   ayuntamiento (puerta en (11,10), al sur de la fuente).
+2. **El alcalde** te da la llave de la reja y el primer trabajo: limpiar las
+   **Alcantarillas de Swordhaven** (`swordhaven-sewers`, la mazmorra del
+   pueblo; reja en (13,13)). También señala a Brask, Ilse y el tablón.
+3. **Alcantarillas**: ratas de cloaca, arañas y el contrabandista Tobías. Hay
+   que cerrar la compuerta del desagüe y acabar con Tobías, que suelta el
+   **libro de contrabando**: un carro con el sello de la Dama salió por el
+   Camino y Garrah lo asaltó. El alcalde paga 25 oro y 40 XP por cabeza.
+4. **Garrah** (Camino de los Estandartes; se cruza con la side quest de
+   Brask) suelta la **hoja de ruta adulterada**.
+5. **Informe al alcalde**: la hoja de ruta prueba que alguien desvió a los
+   caballeros hacia las Marismas de Sal. 30 oro y 60 XP por cabeza. Objetivo
+   siguiente: viajar a Vado de Sal.
+
+### Siguientes tramos (diseño, no materializado)
+| Tramo | Pueblo | Quién mueve la Historia | Mazmorra del pueblo | Pista |
+| --- | --- | --- | --- | --- |
+| Acto II | Vado de Sal (Marismas de Sal) | la barquera Nela | Cisterna de los Ecos (`echo-cistern`) | testimonio de los supervivientes |
+| Acto II | Puerto de Hollín (Litoral) | el campanero mudo | Torre de la Campana Hueca (`hollow-bell-tower`) | el eco de la campana |
+| Acto III | Ascuafría (Montes de Escoria) | la maestra fundidora | Fundición de Hierro (`iron-foundry`) | molde de la corona hueca |
+| Acto III | Vigilia del Norte (Marcas) | el archivero ciego | Archivo del Rey Ciego (`blind-king-archive`) | el Primer Pacto |
+| Acto IV | Corte de Bronce | la Dama | Basílica de Cadenas (`chain-basilica`) | apoyos de facciones |
+| Acto V | Bajo la Corona | — | Trono Bajo la Piedra | desenlace |
+
+Cada tramo se entrega en su PR: pueblo jugable con quien da la Historia, dos
+side quests locales, su mazmorra y un camino recíproco desde el tramo anterior.
