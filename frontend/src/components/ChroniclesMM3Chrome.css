@@ -27,6 +27,16 @@
   --mm3-lo: #47474e;
 }
 
+/* The MM3 screen is a light-stone palette by design. Browsers with a forced
+   «night mode» (Brave, Chrome auto dark theme) would lighten its dark ink
+   on the stone until it disappears, so Chronicles opts out explicitly. The
+   sheet is portalled outside the game root, hence its own selector. */
+.chronicles,
+.chronicles-character-sheet__backdrop,
+.chronicles-shop__backdrop {
+  color-scheme: only light;
+}
+
 /* HP/SP gems under each portrait: green life, blue spell points. */
 .chronicles .chronicles-party-bars {
   display: none;
@@ -348,6 +358,15 @@
     font-weight: 700;
   }
   .chronicles .chronicles-game-menu { border-left: 0; }
+  /* MENÚ sits low in the panel: open the tablet upward over the controls so
+     «Salir y guardar» never falls below the screen. */
+  .chronicles .chronicles-game-menu__panel {
+    top: auto;
+    bottom: calc(100% + 6px);
+    right: 0;
+    max-height: calc(100dvh - 24px);
+    overflow-y: auto;
+  }
 
   .chronicles .chronicles-touch {
     grid-area: touch;

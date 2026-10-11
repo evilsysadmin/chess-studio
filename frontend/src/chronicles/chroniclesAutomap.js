@@ -42,6 +42,21 @@ export function chroniclesAutomapMarkVisited(visitedByMap, state) {
   };
 }
 
+// The automap remembers everything the company has seen, not only the cells
+// it stood on: the same line-of-sight radius the minimap shows.
+export function chroniclesAutomapMarkSeen(visitedByMap, map, state, radius = 3) {
+  const marked = chroniclesAutomapMarkVisited(visitedByMap, state);
+  if (!map?.grid || !state?.mapId) return marked;
+  const visited = Array.isArray(marked[state.mapId]) ? marked[state.mapId] : [];
+  const known = new Set(visited);
+  const seen = [...chroniclesAutomapLocalVisibleCells(map, state, radius)].filter((key) => {
+    const cell = parseCellKey(key);
+    return cell && map.grid[cell.y]?.[cell.x] !== '#' && !known.has(key);
+  });
+  if (!seen.length) return marked;
+  return { ...marked, [state.mapId]: [...visited, ...seen] };
+}
+
 export function chroniclesAutomapRevealedCells(map, visitedCells) {
   const revealed = new Set();
   const width = Number(map?.grid?.[0]?.length || 0);

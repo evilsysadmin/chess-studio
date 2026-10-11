@@ -88,3 +88,15 @@ describe('Chronicles automap', () => {
 
 
 });
+
+describe('Chronicles automap remembers what the company saw', () => {
+  it('marks the line-of-sight cells, not only the one underfoot', async () => {
+    const { chroniclesAutomapMarkSeen, chroniclesAutomapRevealedCells } = await import('./chroniclesAutomap.js');
+    const map = { grid: ['#######', '#.....#', '#.###.#', '#.....#', '#######'] };
+    const seen = chroniclesAutomapMarkSeen({}, map, { mapId: 'm', x: 1, y: 1 }, 3);
+    expect(seen.m).toEqual(expect.arrayContaining(['1:1', '2:1', '3:1', '4:1', '1:2', '1:3', '2:3']));
+    expect(seen.m.every((key) => { const [x, y] = key.split(':').map(Number); return map.grid[y][x] !== '#'; })).toBe(true);
+    expect(chroniclesAutomapRevealedCells(map, seen.m).size).toBeGreaterThan(5);
+    expect(chroniclesAutomapMarkSeen(seen, map, { mapId: 'm', x: 1, y: 1 }, 3)).toBe(seen);
+  });
+});

@@ -671,6 +671,22 @@ for (const capture of CAPTURES) {
 
       await captureElement(page, gameRoot, `${ARTIFACT_DIR}/chronicles-playing-${capture.label}.png`);
 
+      // A browser «night mode» must not lighten the dark ink on the stone.
+      expect(await gameRoot.evaluate((root) => getComputedStyle(root).colorScheme.split(' ').sort().join(' ')), `${capture.label}: Chronicles opts out of forced dark`).toBe('light only');
+
+      // Every menu action stays on screen, «Salir y guardar» included.
+      const menuDetails = page.locator('details.chronicles-game-menu');
+      const menuSummary = menuDetails.locator('> summary');
+      await menuSummary.evaluate((summary) => summary.click());
+      const exitAction = menuDetails.getByRole('button', { name: 'Salir y guardar', exact: true });
+      await expect(exitAction).toBeVisible();
+      const exitBox = await exitAction.boundingBox();
+      expect(exitBox, `${capture.label}: menu exit action has bounds`).not.toBeNull();
+      expect(exitBox.y, `${capture.label}: menu exit action below the top edge`).toBeGreaterThanOrEqual(0);
+      expect(exitBox.y + exitBox.height, `${capture.label}: menu exit action above the bottom edge`).toBeLessThanOrEqual(capture.height);
+      await menuSummary.evaluate((summary) => summary.click());
+      await expect(exitAction).toBeHidden();
+
       await page.getByRole('button', { name: 'Minimapa local. Abrir automapa completo', exact: true }).click();
       const automap = page.getByRole('dialog', { name: 'Automapa de Chronicles', exact: true });
       await expect(automap).toBeVisible();
