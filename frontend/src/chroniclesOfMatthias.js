@@ -12,6 +12,7 @@ import {
   chroniclesApplyContentEffects,
   chroniclesContentDefinition,
   chroniclesContentInteractions,
+  chroniclesContentVisible,
   chroniclesQuestEntries,
   chroniclesRequirementFailure,
   chroniclesRequirementMet,
@@ -22,6 +23,19 @@ import { chroniclesEquipItem, chroniclesUnequipItem, chroniclesEquipmentBonuses 
 import {
   chroniclesCloseShop, chroniclesOpenShop, chroniclesShopBuy, chroniclesShopSell,
 } from './chronicles/chroniclesShops.js';
+import {
+  chroniclesCloseGuild, chroniclesGuildJoin, chroniclesGuildLearn, chroniclesOpenGuild,
+} from './chronicles/chroniclesGuild.js';
+import {
+  CHRONICLES_ELEMENT_LABELS,
+  CHRONICLES_SPELLS,
+  chroniclesDetectMagicMessage,
+  chroniclesMemberKnowsSpell,
+  chroniclesMemberSp,
+  chroniclesMostWoundedAlly,
+  chroniclesSpellDamage,
+  chroniclesSpendSp,
+} from './chronicles/chroniclesMagic.js';
 import {
   chroniclesMM3AttackHits,
   chroniclesMM3EnemyArmorClass,
@@ -275,6 +289,7 @@ function resolveContextualContentAction(state) {
   const definition = chroniclesContentDefinition(map, contextual.id);
   // A merchant with a stock list opens its counter instead of a scripted trade.
   if (definition?.shop && Array.isArray(definition.shop.stock)) return chroniclesOpenShop(state, definition);
+  if (definition?.guild && Array.isArray(definition.guild.spells)) return chroniclesOpenGuild(state, definition);
   if (!definition?.action) return state;
   if (contextual.locked) {
     const blocked = chroniclesRequirementFailure(state, definition.requirements);
@@ -409,17 +424,24 @@ function evadeAfterHit(state, enemy) {
     message: `${state.message} ${enemy.name[0].toUpperCase()}${enemy.name.slice(1)} se escabulle hacia otra posición del mapa.`,
   };
 }
-function resolveAttack(state, memberId) {
-  const attacker = partyMember(state, memberId);
-  if (!attacker) return state;
-  if (attacker.hp <= 0) return withMessage(state, `${attacker.name} está fuera de combate. Incluso la épica tiene límites médicos.`);
+// `spell` turns the swing into an offensive spell: its own reach and damage
+// (after the target's elemental resistance), no to-hit roll, SP already paid.
+function resolveAttack(state, memberId, spell = null) {
+  const member = partyMember(state, memberId);
+  if (!member) return state;
+  if (member.hp <= 0) return withMessage(state, `${member.name} está fuera de combate. Incluso la épica tiene límites médicos.`);
+  const attacker = spell ? { ...member, attackName: spell.name } : member;
 
-  const attackStats = chroniclesPartyAttackStats(state, attacker.id);
+  const weaponStats = chroniclesPartyAttackStats(state, attacker.id);
+  const attackStats = spell ? { ...weaponStats, reach: spell.reach } : weaponStats;
   const target = chroniclesEnemyTargetAhead(state, attackStats.reach);
   if (!target) return withMessage(state, `${attacker.name} ejecuta ${attacker.attackName.toLowerCase()} contra absolutamente nada. La nada resiste.`);
 
   const { enemy, distance } = target;
-  if (chroniclesUsesMM3Combat(state)) {
+  if (spell) {
+    attackStats.damage = chroniclesSpellDamage(spell, enemy);
+    state = chroniclesSpendSp(state, attacker.id, spell.cost);
+  } else if (chroniclesUsesMM3Combat(state)) {
     const roll = chroniclesMM3Roll(state, 'party', attacker.id, enemy.id);
     if (!chroniclesMM3AttackHits(roll, attackStats.toHit, chroniclesMM3EnemyArmorClass(enemy))) {
       return {
@@ -483,6 +505,57 @@ function resolveAttack(state, memberId) {
   return markPartyDefeated(evadeAfterHit(nextState, enemy));
 }
 
+function resolveCast(state, memberId, spellId) {
+  // A refused cast costs no turn: MM3 simply tells you why.
+  const refuse = (message) => ({ ...state, message });
+  const caster = partyMember(state, memberId);
+  const spell = CHRONICLES_SPELLS[spellId];
+  if (!caster || !spell) return state;
+  if (caster.hp <= 0) return refuse(`${caster.name} está fuera de combate y no puede conjurar.`);
+  if (!chroniclesMemberKnowsSpell(state, caster, spellId)) return refuse(`${caster.name} no conoce ${spell.name}.`);
+  if (chroniclesMemberSp(state, caster) < spell.cost) {
+    return refuse(`${caster.name} no tiene puntos de hechizo para ${spell.name} (${spell.cost} PH). Descansa en una posada.`);
+  }
+  if (spell.kind === 'attack') {
+    if (!chroniclesEnemyTargetAhead(state, spell.reach)) {
+      return refuse(`${caster.name} prepara ${spell.name}, pero no hay ningún enemigo a ${spell.reach} casillas.`);
+    }
+    const next = resolveAttack(state, memberId, spell);
+    const element = CHRONICLES_ELEMENT_LABELS[spell.element];
+    return next === state ? state : { ...next, message: `${next.message} (${spell.name}, ${element}: ${spell.cost} PH)` };
+  }
+  if (spell.kind === 'heal') {
+    const patient = chroniclesMostWoundedAlly(state);
+    if (!patient) return refuse(`${caster.name} repasa ${spell.name}, pero nadie de la compañía está herido.`);
+    const healed = Math.min(patient.maxHp, patient.hp + spell.amount);
+    return {
+      ...chroniclesSpendSp(state, caster.id, spell.cost),
+      party: state.party.map((member) => member.id === patient.id ? { ...member, hp: healed } : member),
+      turns: state.turns + 1,
+      message: `${caster.name} conjura ${spell.name} sobre ${patient.name}: ${patient.hp} → ${healed} PV.`,
+    };
+  }
+  if (spell.kind === 'detect') {
+    const map = chroniclesMapForState(state);
+    // Magic senses treasure still sealed, even behind its guardians: a chest
+    // counts as opened once the flag its own action sets is already set.
+    const opened = (entry) => (entry.action?.effects || [])
+      .some((effect) => effect.type === 'set' && state[effect.key] === effect.value);
+    const treasures = (map.treasures || [])
+      .filter((entry) => (entry.action?.effects || []).some((effect) => effect.type === 'set')
+        ? !opened(entry)
+        : chroniclesContentVisible(state, entry))
+      .map((entry) => chroniclesMapContentPosition(map, entry))
+      .filter(Boolean);
+    return {
+      ...chroniclesSpendSp(state, caster.id, spell.cost),
+      turns: state.turns + 1,
+      message: chroniclesDetectMagicMessage(caster, treasures, state),
+    };
+  }
+  return state;
+}
+
 function blockingEnemyMessage(enemy) {
   if (enemy.blockingMessage) return enemy.blockingMessage;
   return `${enemy.name[0].toUpperCase()}${enemy.name.slice(1)} bloquea el paso. Convéncelo con violencia reglamentaria.`;
@@ -511,15 +584,21 @@ export function chroniclesReduce(state, action) {
   if (actionType === 'shop-buy') return chroniclesShopBuy(state, chroniclesMapForState(state), action.itemId);
   if (actionType === 'shop-sell') return chroniclesShopSell(state, chroniclesMapForState(state), action.itemId);
   if (actionType === 'shop-close') return chroniclesCloseShop(state);
+  if (actionType === 'guild-join') return chroniclesGuildJoin(state, chroniclesMapForState(state));
+  if (actionType === 'guild-learn') {
+    return chroniclesGuildLearn(state, chroniclesMapForState(state), action.memberId, action.spellId);
+  }
+  if (actionType === 'guild-close') return chroniclesCloseGuild(state);
   // Any other action (moving, turning, fighting) walks away from the counter.
-  if (state.shop && actionType !== 'equip-item' && actionType !== 'unequip-item') {
-    return chroniclesReduce(chroniclesCloseShop(state), action);
+  if ((state.shop || state.guild) && actionType !== 'equip-item' && actionType !== 'unequip-item') {
+    return chroniclesReduce(chroniclesCloseGuild(chroniclesCloseShop(state)), action);
   }
   if (actionType === 'equip-item') return chroniclesEquipItem(state, action.memberId, action.itemId);
   if (actionType === 'unequip-item') return chroniclesUnequipItem(state, action.memberId, action.slot);
   if (actionType === 'turn-left') return { ...state, direction: (state.direction + 3) % 4, turns: state.turns + 1 };
   if (actionType === 'turn-right') return { ...state, direction: (state.direction + 1) % 4, turns: state.turns + 1 };
   if (actionType === 'attack') return resolveAttack(state, typeof action === 'object' ? action.memberId : 'matthias');
+  if (actionType === 'cast') return resolveCast(state, action.memberId, action.spellId);
   if (actionType === 'interact') return chroniclesAdvanceLostKingIntro(state, resolveContextualContentAction(state));
 
   const direction = CHRONICLES_DIRECTIONS[state.direction];

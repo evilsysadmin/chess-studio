@@ -30,6 +30,13 @@ import {
 } from '../chronicles/chroniclesMM3Rules.js';
 import { chroniclesTacticsEffectiveProfile } from '../chroniclesOfMatthiasTactics.js';
 import { chroniclesPartyPortraitUrl } from '../chronicles/chroniclesPartyPortraitAssets.js';
+import {
+  CHRONICLES_SPELL_SCHOOLS,
+  chroniclesMemberMaxSp,
+  chroniclesMemberSchool,
+  chroniclesMemberSp,
+  chroniclesMemberSpells,
+} from '../chronicles/chroniclesMagic.js';
 
 const RELIC_LABELS = Object.freeze({
   'spectral-lantern': Object.freeze({
@@ -192,6 +199,27 @@ export default function ChroniclesCharacterSheet({
                   <b>{mm3.stats[key]} <em>({signed(mm3.bonuses[key])})</em></b>
                   <small>{CHRONICLES_MM3_STAT_EFFECTS[key]}</small>
                 </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {mm3 && chroniclesMemberSchool(member) && (
+          <div className="chronicles-character-sheet__section" data-chronicles-spellbook={member.id}>
+            <div className="chronicles-character-sheet__section-head">
+              <div>
+                <span>LIBRO DE HECHIZOS</span>
+                <small>{CHRONICLES_SPELL_SCHOOLS[chroniclesMemberSchool(member)].label} · {CHRONICLES_SPELL_SCHOOLS[chroniclesMemberSchool(member)].summary} Más hechizos en el gremio.</small>
+              </div>
+              <b>{chroniclesMemberSp(state, member)}/{chroniclesMemberMaxSp(state, member)} PH</b>
+            </div>
+            <div className="chronicles-character-sheet__loadout">
+              {chroniclesMemberSpells(state, member).map((spell) => (
+                <article key={spell.id}>
+                  <span>{spell.cost} PH</span>
+                  <b>{spell.name}</b>
+                  <small>{spell.description}</small>
+                </article>
               ))}
             </div>
           </div>

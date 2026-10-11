@@ -1,4 +1,5 @@
 import { chroniclesMapContentPosition, chroniclesMapForState, chroniclesMapTransitionState } from './chroniclesMapCatalog.js';
+import { chroniclesRestoreSpellPoints } from './chroniclesMagic.js';
 
 const CARDINAL_DIRECTIONS = Object.freeze([
   Object.freeze({ key: 'north', dx: 0, dy: -1 }),
@@ -352,6 +353,7 @@ export function chroniclesApplyContentEffects(state, effects, adapters = {}) {
       };
     }
     if (effect.type === 'damage-party') return damageParty(next, effect);
+    if (effect.type === 'restore-spell-points') return chroniclesRestoreSpellPoints(next);
     if (effect.type === 'refill-class-abilities' && typeof adapters.refillClassAbilities === 'function') {
       return adapters.refillClassAbilities(next);
     }
