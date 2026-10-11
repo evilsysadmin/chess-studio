@@ -20,13 +20,16 @@ function authoredSetKeys(map) {
     .map((effect) => effect.key);
 }
 
-function checkpointFlagKeys() {
+// World flags persist for every region; enemy HP only for the current one,
+// because entering any other region resets its foes anyway. With dozens of
+// Terra areas, keeping every visited map's HP would overflow the checkpoint.
+function checkpointFlagKeys(currentMapId) {
   return chroniclesMapIds().flatMap((mapId) => {
     const map = chroniclesMapById(mapId);
     return [
       ...Object.keys(map.initialFlags || {}),
       ...authoredSetKeys(map),
-      ...(map.enemies || []).map((enemy) => enemy?.hpKey).filter(Boolean),
+      ...(mapId === currentMapId ? (map.enemies || []).map((enemy) => enemy?.hpKey).filter(Boolean) : []),
     ];
   });
 }
@@ -325,7 +328,7 @@ export function chroniclesRunHasRuntimeCheckpoint(run) {
 export function chroniclesWorldFlagsForCheckpoint(state) {
   const source = state && typeof state === 'object' ? state : {};
   const authored = Object.fromEntries(
-    checkpointFlagKeys()
+    checkpointFlagKeys(source.mapId)
       .filter((key, index, keys) => keys.indexOf(key) === index)
       .filter((key) => Object.prototype.hasOwnProperty.call(source, key))
       .filter((key) => durableFlagValue(source[key]))

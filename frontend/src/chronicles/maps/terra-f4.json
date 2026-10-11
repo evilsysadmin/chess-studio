@@ -1,0 +1,253 @@
+{
+  "id": "terra-f4",
+  "version": 1,
+  "progressionKey": "terra-f4-v1",
+  "title": "Fundición en Ruinas",
+  "areaCode": "F4",
+  "biome": "ash",
+  "regionKind": "wilderness",
+  "layoutMode": "authored",
+  "grid": [
+    "#####################",
+    "#...................#",
+    "#......#............#",
+    "#...................#",
+    "###.#.........##....#",
+    "####.#.#.#.....#....#",
+    "#..............#....#",
+    "#...................#",
+    "#..............#....#",
+    "#...................#",
+    "###........#........#",
+    "#...............#...#",
+    "##.#.......#.......##",
+    "##................###",
+    "#####################"
+  ],
+  "partyStart": {
+    "x": 10,
+    "y": 7,
+    "direction": 0
+  },
+  "initialFlags": {},
+  "enemies": [
+    {
+      "id": "terra-f4-foe-0",
+      "visualType": "ash-goblin",
+      "name": "goblin de ceniza",
+      "x": 7,
+      "y": 3,
+      "hpKey": "terra_f4Foe0Hp",
+      "maxHp": 12,
+      "retaliation": 2,
+      "optional": true,
+      "activation": "always",
+      "ai": {
+        "movement": "cardinal-roam",
+        "attackReach": 1,
+        "engagedMovement": "cardinal-chase",
+        "engageRange": 2
+      },
+      "onDefeat": {
+        "message": "{attacker} acaba con goblin de ceniza usando {attack}.",
+        "effects": [
+          {
+            "type": "grant-gold",
+            "amount": 10
+          }
+        ]
+      }
+    },
+    {
+      "id": "terra-f4-foe-1",
+      "visualType": "ember-wisp",
+      "name": "lumbre de ceniza",
+      "x": 13,
+      "y": 11,
+      "hpKey": "terra_f4Foe1Hp",
+      "maxHp": 12,
+      "retaliation": 2,
+      "optional": true,
+      "activation": "always",
+      "ai": {
+        "movement": "hold",
+        "attackReach": 2,
+        "requiresLineOfSight": true
+      },
+      "onDefeat": {
+        "message": "{attacker} acaba con lumbre de ceniza usando {attack}.",
+        "effects": [
+          {
+            "type": "grant-gold",
+            "amount": 10
+          }
+        ]
+      }
+    },
+    {
+      "id": "terra-f4-foe-2",
+      "visualType": "gate-jailer",
+      "name": "guardián de escoria",
+      "x": 3,
+      "y": 11,
+      "hpKey": "terra_f4Foe2Hp",
+      "maxHp": 12,
+      "retaliation": 2,
+      "optional": true,
+      "activation": "always",
+      "ai": {
+        "movement": "hold",
+        "attackReach": 1,
+        "engagedMovement": "cardinal-chase",
+        "engageRange": 2
+      },
+      "onDefeat": {
+        "message": "{attacker} acaba con guardián de escoria usando {attack}.",
+        "effects": [
+          {
+            "type": "grant-gold",
+            "amount": 10
+          }
+        ]
+      }
+    },
+    {
+      "id": "ascua-watch-quarry",
+      "visualType": "gate-jailer",
+      "name": "el Coloso de Escoria",
+      "hpKey": "ascua_watchQuarryHp",
+      "maxHp": 25,
+      "retaliation": 3,
+      "optional": true,
+      "activation": "always",
+      "defeatedFlag": "ascua_watchHunted",
+      "ai": {
+        "movement": "hold",
+        "attackReach": 1,
+        "engagedMovement": "cardinal-chase",
+        "engageRange": 2
+      },
+      "onDefeat": {
+        "message": "{attacker} abate a el Coloso de Escoria con {attack}.",
+        "effects": [
+          {
+            "type": "set",
+            "key": "ascua_watchHunted",
+            "value": true
+          }
+        ]
+      },
+      "x": 17,
+      "y": 3
+    }
+  ],
+  "triggers": [],
+  "interactables": [],
+  "treasures": [
+    {
+      "id": "terra-f4-chest",
+      "kind": "pickup",
+      "visualType": "chest",
+      "x": 5,
+      "y": 4,
+      "label": "Abrir el cofre",
+      "when": [
+        {
+          "key": "terra_f4ChestOpened",
+          "falsy": true
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "set",
+            "key": "terra_f4ChestOpened",
+            "value": true
+          },
+          {
+            "type": "grant-gold",
+            "amount": 30
+          },
+          {
+            "type": "grant-item",
+            "itemId": "silver-spear",
+            "name": "Silver spear",
+            "description": "Botín de un cofre de Terra.",
+            "quantity": 1
+          }
+        ],
+        "message": "El cofre guarda 30 monedas y algo de equipo."
+      }
+    }
+  ],
+  "traps": [],
+  "exits": [
+    {
+      "id": "f4-to-f3",
+      "kind": "exit",
+      "x": 10,
+      "y": 1,
+      "requiresReturn": true,
+      "openLabel": "Ir a F3 · Crestas Volcánicas",
+      "lockedLabel": "El paso está cortado",
+      "requirements": [],
+      "action": {
+        "effects": [
+          {
+            "type": "transition-map",
+            "mapId": "terra-f3",
+            "entryExitId": "f3-to-f4"
+          }
+        ],
+        "message": "La compañía entra en F3."
+      }
+    },
+    {
+      "id": "f4-to-f5",
+      "kind": "exit",
+      "x": 10,
+      "y": 13,
+      "requiresReturn": true,
+      "openLabel": "Ir a F5 · Desierto de Ceniza",
+      "lockedLabel": "El paso está cortado",
+      "requirements": [],
+      "action": {
+        "effects": [
+          {
+            "type": "transition-map",
+            "mapId": "terra-f5",
+            "entryExitId": "f5-to-f4"
+          }
+        ],
+        "message": "La compañía entra en F5."
+      }
+    },
+    {
+      "id": "f4-to-e4",
+      "kind": "exit",
+      "x": 1,
+      "y": 7,
+      "requiresReturn": true,
+      "openLabel": "Ir a E4 · Bosque Ceniciento",
+      "lockedLabel": "El paso está cortado",
+      "requirements": [],
+      "action": {
+        "effects": [
+          {
+            "type": "transition-map",
+            "mapId": "terra-e4",
+            "entryExitId": "e4-to-f4"
+          }
+        ],
+        "message": "La compañía entra en E4."
+      }
+    }
+  ],
+  "initialJournal": {
+    "id": "terra-f4-arrival",
+    "title": "F4 · Fundición en Ruinas",
+    "body": "Un horno del tamaño de una iglesia, frío desde hace un siglo.",
+    "sigil": "F4"
+  },
+  "introMessage": "F4 · Fundición en Ruinas. Un horno del tamaño de una iglesia, frío desde hace un siglo."
+}

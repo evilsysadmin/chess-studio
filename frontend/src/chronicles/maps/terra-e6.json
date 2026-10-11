@@ -1,0 +1,292 @@
+{
+  "id": "terra-e6",
+  "version": 1,
+  "progressionKey": "terra-e6-v1",
+  "title": "Ruinas del Obispo",
+  "areaCode": "E6",
+  "biome": "hills",
+  "regionKind": "wilderness",
+  "layoutMode": "authored",
+  "grid": [
+    "#####################",
+    "#.##.#.............##",
+    "#.....#......#......#",
+    "#..................##",
+    "#...............#...#",
+    "#..........#..###...#",
+    "#.............#.....#",
+    "#...................#",
+    "#....##........##.#.#",
+    "#.##.#.#......#.#...#",
+    "##..................#",
+    "#...................#",
+    "#........#.#........#",
+    "#..........#........#",
+    "#####################"
+  ],
+  "partyStart": {
+    "x": 10,
+    "y": 7,
+    "direction": 0
+  },
+  "initialFlags": {},
+  "enemies": [
+    {
+      "id": "terra-e6-foe-0",
+      "visualType": "ash-goblin",
+      "name": "goblin de las colinas",
+      "x": 7,
+      "y": 3,
+      "hpKey": "terra_e6Foe0Hp",
+      "maxHp": 14,
+      "retaliation": 2,
+      "optional": true,
+      "activation": "always",
+      "ai": {
+        "movement": "cardinal-roam",
+        "attackReach": 1,
+        "engagedMovement": "cardinal-chase",
+        "engageRange": 2
+      },
+      "onDefeat": {
+        "message": "{attacker} acaba con goblin de las colinas usando {attack}.",
+        "effects": [
+          {
+            "type": "grant-gold",
+            "amount": 12
+          }
+        ]
+      }
+    },
+    {
+      "id": "terra-e6-foe-1",
+      "visualType": "road-bandit",
+      "name": "bandolero",
+      "x": 13,
+      "y": 11,
+      "hpKey": "terra_e6Foe1Hp",
+      "maxHp": 14,
+      "retaliation": 2,
+      "optional": true,
+      "activation": "always",
+      "ai": {
+        "movement": "hold",
+        "attackReach": 1,
+        "engagedMovement": "cardinal-chase",
+        "engageRange": 2
+      },
+      "onDefeat": {
+        "message": "{attacker} acaba con bandolero usando {attack}.",
+        "effects": [
+          {
+            "type": "grant-gold",
+            "amount": 12
+          }
+        ]
+      }
+    },
+    {
+      "id": "terra-e6-foe-2",
+      "visualType": "bone-hound",
+      "name": "lobo de hueso",
+      "x": 3,
+      "y": 11,
+      "hpKey": "terra_e6Foe2Hp",
+      "maxHp": 14,
+      "retaliation": 2,
+      "optional": true,
+      "activation": "always",
+      "ai": {
+        "movement": "cardinal-roam",
+        "attackReach": 1,
+        "engagedMovement": "cardinal-chase",
+        "engageRange": 4
+      },
+      "onDefeat": {
+        "message": "{attacker} acaba con lobo de hueso usando {attack}.",
+        "effects": [
+          {
+            "type": "grant-gold",
+            "amount": 12
+          }
+        ]
+      }
+    }
+  ],
+  "triggers": [],
+  "interactables": [
+    {
+      "id": "terra-e6-shrine",
+      "kind": "lore",
+      "visualType": "shrine",
+      "x": 5,
+      "y": 4,
+      "label": "Beber de la Pila del Obispo",
+      "when": [
+        {
+          "key": "terra_e6ShrineUsed",
+          "falsy": true
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "set",
+            "key": "terra_e6ShrineUsed",
+            "value": true
+          },
+          {
+            "type": "heal-party",
+            "amount": 8
+          },
+          {
+            "type": "restore-spell-points"
+          }
+        ],
+        "message": "El agua de la Pila del Obispo está helada y sabe a hierro. La compañía recupera fuerzas y puntos de hechizo."
+      }
+    }
+  ],
+  "treasures": [
+    {
+      "id": "corte-steward-errand-item",
+      "kind": "pickup",
+      "visualType": "chest",
+      "label": "Recoger la campanilla de la abadía",
+      "when": [
+        {
+          "questId": "corte-steward-errand",
+          "questStatus": "active"
+        },
+        {
+          "key": "corte_stewardErrandFound",
+          "falsy": true
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "set",
+            "key": "corte_stewardErrandFound",
+            "value": true
+          },
+          {
+            "type": "grant-item",
+            "itemId": "abbey-bell",
+            "name": "La campanilla de la abadía",
+            "description": "Lo que pidió la mayordoma de la Corte.",
+            "quantity": 1
+          }
+        ],
+        "message": "Aquí está: la campanilla de la abadía."
+      },
+      "x": 15,
+      "y": 4
+    },
+    {
+      "id": "terra-e6-chest",
+      "kind": "pickup",
+      "visualType": "chest",
+      "x": 5,
+      "y": 10,
+      "label": "Abrir el cofre",
+      "when": [
+        {
+          "key": "terra_e6ChestOpened",
+          "falsy": true
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "set",
+            "key": "terra_e6ChestOpened",
+            "value": true
+          },
+          {
+            "type": "grant-gold",
+            "amount": 36
+          },
+          {
+            "type": "grant-item",
+            "itemId": "silver-sword",
+            "name": "Silver sword",
+            "description": "Botín de un cofre de Terra.",
+            "quantity": 1
+          }
+        ],
+        "message": "El cofre guarda 36 monedas y algo de equipo."
+      }
+    }
+  ],
+  "traps": [],
+  "exits": [
+    {
+      "id": "e6-to-e5",
+      "kind": "exit",
+      "x": 10,
+      "y": 1,
+      "requiresReturn": true,
+      "openLabel": "Ir a E5 · Ciénaga Negra",
+      "lockedLabel": "El paso está cortado",
+      "requirements": [],
+      "action": {
+        "effects": [
+          {
+            "type": "transition-map",
+            "mapId": "terra-e5",
+            "entryExitId": "e5-to-e6"
+          }
+        ],
+        "message": "La compañía entra en E5."
+      }
+    },
+    {
+      "id": "e6-to-d6",
+      "kind": "exit",
+      "x": 1,
+      "y": 7,
+      "requiresReturn": true,
+      "openLabel": "Ir a D6 · Puertas de Bronce",
+      "lockedLabel": "El paso está cortado",
+      "requirements": [],
+      "action": {
+        "effects": [
+          {
+            "type": "transition-map",
+            "mapId": "terra-d6",
+            "entryExitId": "d6-to-e6"
+          }
+        ],
+        "message": "La compañía entra en D6."
+      }
+    },
+    {
+      "id": "e6-to-f6",
+      "kind": "exit",
+      "x": 19,
+      "y": 7,
+      "requiresReturn": true,
+      "openLabel": "Ir a F6 · Umbral Bajo la Corona",
+      "lockedLabel": "El paso está cortado",
+      "requirements": [],
+      "action": {
+        "effects": [
+          {
+            "type": "transition-map",
+            "mapId": "terra-f6",
+            "entryExitId": "f6-to-e6"
+          }
+        ],
+        "message": "La compañía entra en F6."
+      }
+    }
+  ],
+  "initialJournal": {
+    "id": "terra-e6-arrival",
+    "title": "E6 · Ruinas del Obispo",
+    "body": "Una abadía derrumbada. Las campanas están enterradas, no rotas.",
+    "sigil": "E6"
+  },
+  "introMessage": "E6 · Ruinas del Obispo. Una abadía derrumbada. Las campanas están enterradas, no rotas."
+}

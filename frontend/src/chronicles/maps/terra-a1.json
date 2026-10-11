@@ -1,0 +1,234 @@
+{
+  "id": "terra-a1",
+  "version": 1,
+  "progressionKey": "terra-a1-v1",
+  "title": "Glaciar del Cuervo",
+  "areaCode": "A1",
+  "biome": "snow",
+  "regionKind": "wilderness",
+  "layoutMode": "authored",
+  "grid": [
+    "#####################",
+    "##....#.....#.......#",
+    "#..........#....#...#",
+    "#...................#",
+    "#..................##",
+    "###...........#....##",
+    "#..........#........#",
+    "#...................#",
+    "#...................#",
+    "#...........#.......#",
+    "#......#.....#......#",
+    "#...................#",
+    "#...................#",
+    "#...................#",
+    "#####################"
+  ],
+  "partyStart": {
+    "x": 10,
+    "y": 7,
+    "direction": 0
+  },
+  "initialFlags": {},
+  "enemies": [
+    {
+      "id": "terra-a1-foe-0",
+      "visualType": "drowned",
+      "name": "congelado",
+      "x": 7,
+      "y": 3,
+      "hpKey": "terra_a1Foe0Hp",
+      "maxHp": 12,
+      "retaliation": 2,
+      "optional": true,
+      "activation": "always",
+      "ai": {
+        "movement": "cardinal-chase",
+        "attackReach": 1,
+        "engagedMovement": "cardinal-chase",
+        "engageRange": 3
+      },
+      "onDefeat": {
+        "message": "{attacker} acaba con congelado usando {attack}.",
+        "effects": [
+          {
+            "type": "grant-gold",
+            "amount": 10
+          }
+        ]
+      }
+    },
+    {
+      "id": "terra-a1-foe-1",
+      "visualType": "bone-hound",
+      "name": "lobo de escarcha",
+      "x": 13,
+      "y": 11,
+      "hpKey": "terra_a1Foe1Hp",
+      "maxHp": 12,
+      "retaliation": 2,
+      "optional": true,
+      "activation": "always",
+      "ai": {
+        "movement": "cardinal-roam",
+        "attackReach": 1,
+        "engagedMovement": "cardinal-chase",
+        "engageRange": 4
+      },
+      "onDefeat": {
+        "message": "{attacker} acaba con lobo de escarcha usando {attack}.",
+        "effects": [
+          {
+            "type": "grant-gold",
+            "amount": 10
+          }
+        ]
+      }
+    },
+    {
+      "id": "terra-a1-foe-2",
+      "visualType": "scavenger-knight",
+      "name": "caballero helado",
+      "x": 3,
+      "y": 11,
+      "hpKey": "terra_a1Foe2Hp",
+      "maxHp": 12,
+      "retaliation": 2,
+      "optional": true,
+      "activation": "always",
+      "ai": {
+        "movement": "hold",
+        "attackReach": 1,
+        "engagedMovement": "cardinal-chase",
+        "engageRange": 2
+      },
+      "onDefeat": {
+        "message": "{attacker} acaba con caballero helado usando {attack}.",
+        "effects": [
+          {
+            "type": "grant-gold",
+            "amount": 10
+          }
+        ]
+      }
+    },
+    {
+      "id": "vigilia-watch-quarry",
+      "visualType": "bone-hound",
+      "name": "el Cuervo Blanco",
+      "hpKey": "vigilia_watchQuarryHp",
+      "maxHp": 25,
+      "retaliation": 3,
+      "optional": true,
+      "activation": "always",
+      "defeatedFlag": "vigilia_watchHunted",
+      "ai": {
+        "movement": "cardinal-roam",
+        "attackReach": 1,
+        "engagedMovement": "cardinal-chase",
+        "engageRange": 4
+      },
+      "onDefeat": {
+        "message": "{attacker} abate a el Cuervo Blanco con {attack}.",
+        "effects": [
+          {
+            "type": "set",
+            "key": "vigilia_watchHunted",
+            "value": true
+          }
+        ]
+      },
+      "x": 17,
+      "y": 3
+    }
+  ],
+  "triggers": [],
+  "interactables": [],
+  "treasures": [
+    {
+      "id": "terra-a1-chest",
+      "kind": "pickup",
+      "visualType": "chest",
+      "x": 5,
+      "y": 4,
+      "label": "Abrir el cofre",
+      "when": [
+        {
+          "key": "terra_a1ChestOpened",
+          "falsy": true
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "set",
+            "key": "terra_a1ChestOpened",
+            "value": true
+          },
+          {
+            "type": "grant-gold",
+            "amount": 30
+          },
+          {
+            "type": "grant-item",
+            "itemId": "silver-staff",
+            "name": "Silver staff",
+            "description": "Botín de un cofre de Terra.",
+            "quantity": 1
+          }
+        ],
+        "message": "El cofre guarda 30 monedas y algo de equipo."
+      }
+    }
+  ],
+  "traps": [],
+  "exits": [
+    {
+      "id": "a1-to-a2",
+      "kind": "exit",
+      "x": 10,
+      "y": 13,
+      "requiresReturn": true,
+      "openLabel": "Ir a A2 · Acantilados de Hollín",
+      "lockedLabel": "El paso está cortado",
+      "requirements": [],
+      "action": {
+        "effects": [
+          {
+            "type": "transition-map",
+            "mapId": "terra-a2",
+            "entryExitId": "a2-to-a1"
+          }
+        ],
+        "message": "La compañía entra en A2."
+      }
+    },
+    {
+      "id": "a1-to-b1",
+      "kind": "exit",
+      "x": 19,
+      "y": 7,
+      "requiresReturn": true,
+      "openLabel": "Ir a B1 · Paso de los Juramentos",
+      "lockedLabel": "El paso está cortado",
+      "requirements": [],
+      "action": {
+        "effects": [
+          {
+            "type": "transition-map",
+            "mapId": "terra-b1",
+            "entryExitId": "b1-to-a1"
+          }
+        ],
+        "message": "La compañía entra en B1."
+      }
+    }
+  ],
+  "initialJournal": {
+    "id": "terra-a1-arrival",
+    "title": "A1 · Glaciar del Cuervo",
+    "body": "Hielo azul hasta donde alcanza la vista. Un cuervo te sigue de roca en roca.",
+    "sigil": "A1"
+  },
+  "introMessage": "A1 · Glaciar del Cuervo. Hielo azul hasta donde alcanza la vista. Un cuervo te sigue de roca en roca."
+}

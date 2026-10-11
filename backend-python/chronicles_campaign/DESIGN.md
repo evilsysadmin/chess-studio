@@ -145,3 +145,34 @@ reaprovechan como mazmorra del pueblo que les toque.
 
 Cada tramo se entrega en su PR: pueblo jugable con quien da la Historia, dos
 side quests locales, su mazmorra y un camino recíproco desde el tramo anterior.
+
+## Terra: áreas A1–F6 (primera pasada generada)
+
+Como en MM3, el exterior se divide en una cuadrícula de áreas: columnas A–F (oeste → este) y filas 1–6 (norte → sur). Las áreas se unen por puertas en los bordes, y los pueblos y las mazmorras se abren desde dentro de ellas. El HUD muestra «ÁREA C4».
+
+- **Fuente**: la tabla de `scripts/chronicles/build_terra_world.py`. El script genera los manifests en `chronicles_maps/` de forma determinista; después hay que ejecutar `make chronicles-contracts`. Con `--check`, falla si los manifests no coinciden con la tabla.
+- **C3 y D3** son el Camino de los Estandartes y Rookwood, ya existentes: el script solo les añade las puertas de borde. Swordhaven se entra desde el Camino.
+- **Biomas** (llanura, bosque, colinas, marisma, costa, nieve, ceniza): fijan los obstáculos, el suelo, el cielo y la fauna de cada área.
+- **Contenido de cada área**:
+  - siempre un cofre con oro y equipo del nivel de la zona;
+  - según el área, carteles con direcciones, fuentes que curan y devuelven PH, ermitaños con rumores y presas de side quests;
+  - 2–3 enemigos que se endurecen con la distancia a C3.
+- **Pueblos**: Puerto de Hollín (A3), Vado de Sal (C5), Ascuafría (F2), Vigilia del Norte (C1) y Corte de Bronce (D6). Comparten el plano de Swordhaven. Cada uno tiene posada, templo, armería, coracería, a veces gremio, quien mueve la Historia y dos side quests (una caza y un recado).
+- **Mazmorras** (laberintos sembrados con jefe que no revive):
+  - Salinas Hundidas (C6);
+  - Cueva de los Contrabandistas (A4);
+  - Minas de Escoria (E3);
+  - Túmulos del Primer Pacto (D1);
+  - Choza de la Ciénaga Negra (E5).
+- **Historia**: tras el alcalde de Swordhaven sigue esta cadena, y cada paso paga oro y XP:
+  1. Vado de Sal (Nela) → Salinas Hundidas;
+  2. Puerto de Hollín (Ulric) → Cueva de los Contrabandistas;
+  3. Ascuafría (Hilde) → Minas de Escoria;
+  4. Vigilia del Norte (Osric) → Túmulos del Primer Pacto;
+  5. la Dama en la Corte de Bronce, que abre el Templo Bajo la Corona (F6), el último acto, aún sin hacer.
+- **Pendiente de destilar**:
+  - planos propios para cada pueblo;
+  - arte de rocas por bioma;
+  - tenderos y criaturas pintados;
+  - el Templo Bajo la Corona;
+  - bootstrap por área: hoy la creación de run envía todos los mapas.

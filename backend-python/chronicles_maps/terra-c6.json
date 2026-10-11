@@ -1,0 +1,246 @@
+{
+  "id": "terra-c6",
+  "version": 1,
+  "progressionKey": "terra-c6-v1",
+  "title": "Salinas Hundidas",
+  "areaCode": "C6",
+  "biome": "marsh",
+  "regionKind": "wilderness",
+  "layoutMode": "authored",
+  "grid": [
+    "#####################",
+    "#......#....#.#.###.#",
+    "##.......#..........#",
+    "##..#...............#",
+    "#...............##..#",
+    "#...........##.#....#",
+    "##.....#........#...#",
+    "#...................#",
+    "##....#....#....##..#",
+    "##......#........#..#",
+    "#...##..............#",
+    "#...................#",
+    "#....#.#.......#....#",
+    "#....##.......##....#",
+    "#####################"
+  ],
+  "partyStart": {
+    "x": 10,
+    "y": 7,
+    "direction": 0
+  },
+  "initialFlags": {},
+  "enemies": [
+    {
+      "id": "terra-c6-foe-0",
+      "visualType": "sewer-rat",
+      "name": "rata de marisma",
+      "x": 7,
+      "y": 3,
+      "hpKey": "terra_c6Foe0Hp",
+      "maxHp": 10,
+      "retaliation": 2,
+      "optional": true,
+      "activation": "always",
+      "ai": {
+        "movement": "cardinal-roam",
+        "attackReach": 1,
+        "engagedMovement": "cardinal-chase",
+        "engageRange": 3
+      },
+      "onDefeat": {
+        "message": "{attacker} acaba con rata de marisma usando {attack}.",
+        "effects": [
+          {
+            "type": "grant-gold",
+            "amount": 8
+          }
+        ]
+      }
+    },
+    {
+      "id": "terra-c6-foe-1",
+      "visualType": "salt-crab",
+      "name": "cangrejo de salitre",
+      "x": 13,
+      "y": 11,
+      "hpKey": "terra_c6Foe1Hp",
+      "maxHp": 10,
+      "retaliation": 2,
+      "optional": true,
+      "activation": "always",
+      "ai": {
+        "movement": "cardinal-roam",
+        "attackReach": 1,
+        "engagedMovement": "knight-chase",
+        "engageRange": 2
+      },
+      "onDefeat": {
+        "message": "{attacker} acaba con cangrejo de salitre usando {attack}.",
+        "effects": [
+          {
+            "type": "grant-gold",
+            "amount": 8
+          }
+        ]
+      }
+    },
+    {
+      "id": "terra-c6-foe-2",
+      "visualType": "drowned",
+      "name": "ahogado",
+      "x": 3,
+      "y": 11,
+      "hpKey": "terra_c6Foe2Hp",
+      "maxHp": 10,
+      "retaliation": 2,
+      "optional": true,
+      "activation": "always",
+      "ai": {
+        "movement": "cardinal-chase",
+        "attackReach": 1,
+        "engagedMovement": "cardinal-chase",
+        "engageRange": 3
+      },
+      "onDefeat": {
+        "message": "{attacker} acaba con ahogado usando {attack}.",
+        "effects": [
+          {
+            "type": "grant-gold",
+            "amount": 8
+          }
+        ]
+      }
+    }
+  ],
+  "triggers": [],
+  "interactables": [],
+  "treasures": [
+    {
+      "id": "terra-c6-chest",
+      "kind": "pickup",
+      "visualType": "chest",
+      "x": 15,
+      "y": 4,
+      "label": "Abrir el cofre",
+      "when": [
+        {
+          "key": "terra_c6ChestOpened",
+          "falsy": true
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "set",
+            "key": "terra_c6ChestOpened",
+            "value": true
+          },
+          {
+            "type": "grant-gold",
+            "amount": 24
+          },
+          {
+            "type": "grant-item",
+            "itemId": "iron-mace",
+            "name": "Iron mace",
+            "description": "Botín de un cofre de Terra.",
+            "quantity": 1
+          }
+        ],
+        "message": "El cofre guarda 24 monedas y algo de equipo."
+      }
+    }
+  ],
+  "traps": [],
+  "exits": [
+    {
+      "id": "c6-to-c5",
+      "kind": "exit",
+      "x": 10,
+      "y": 1,
+      "requiresReturn": true,
+      "openLabel": "Ir a C5 · Orillas de Vado de Sal",
+      "lockedLabel": "El paso está cortado",
+      "requirements": [],
+      "action": {
+        "effects": [
+          {
+            "type": "transition-map",
+            "mapId": "terra-c5",
+            "entryExitId": "c5-to-c6"
+          }
+        ],
+        "message": "La compañía entra en C5."
+      }
+    },
+    {
+      "id": "c6-to-b6",
+      "kind": "exit",
+      "x": 1,
+      "y": 7,
+      "requiresReturn": true,
+      "openLabel": "Ir a B6 · Dunas Costeras",
+      "lockedLabel": "El paso está cortado",
+      "requirements": [],
+      "action": {
+        "effects": [
+          {
+            "type": "transition-map",
+            "mapId": "terra-b6",
+            "entryExitId": "b6-to-c6"
+          }
+        ],
+        "message": "La compañía entra en B6."
+      }
+    },
+    {
+      "id": "c6-to-d6",
+      "kind": "exit",
+      "x": 19,
+      "y": 7,
+      "requiresReturn": true,
+      "openLabel": "Ir a D6 · Puertas de Bronce",
+      "lockedLabel": "El paso está cortado",
+      "requirements": [],
+      "action": {
+        "effects": [
+          {
+            "type": "transition-map",
+            "mapId": "terra-d6",
+            "entryExitId": "d6-to-c6"
+          }
+        ],
+        "message": "La compañía entra en D6."
+      }
+    },
+    {
+      "id": "c6-to-dungeon",
+      "kind": "exit",
+      "visualType": "dungeon-arch",
+      "x": 5,
+      "y": 4,
+      "requiresReturn": true,
+      "openLabel": "Entrar en Salinas Hundidas",
+      "lockedLabel": "Salinas Hundidas · sellada",
+      "requirements": [],
+      "action": {
+        "effects": [
+          {
+            "type": "transition-map",
+            "mapId": "salinas-hundidas",
+            "entryExitId": "dungeon-exit"
+          }
+        ],
+        "message": "La compañía desciende a Salinas Hundidas."
+      }
+    }
+  ],
+  "initialJournal": {
+    "id": "terra-c6-arrival",
+    "title": "C6 · Salinas Hundidas",
+    "body": "Eras de sal abandonadas. Una compuerta lleva bajo tierra.",
+    "sigil": "C6"
+  },
+  "introMessage": "C6 · Salinas Hundidas. Eras de sal abandonadas. Una compuerta lleva bajo tierra."
+}

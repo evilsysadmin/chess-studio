@@ -1,0 +1,456 @@
+{
+  "id": "vado-de-sal",
+  "version": 1,
+  "progressionKey": "vado-de-sal-v1",
+  "title": "Vado de Sal",
+  "areaCode": "C5",
+  "regionKind": "settlement",
+  "layoutMode": "authored",
+  "grid": [
+    "###################",
+    "#.................#",
+    "#.###.###.###.###.#",
+    "#.###.###.###.###.#",
+    "#.................#",
+    "#.##...........##.#",
+    "#.##...........##.#",
+    "#.##...........##.#",
+    "#.................#",
+    "#........#........#",
+    "#.................#",
+    "#.###.###.###.###.#",
+    "#.###.###.###.###.#",
+    "#.................#",
+    "###################"
+  ],
+  "partyStart": {
+    "x": 9,
+    "y": 1,
+    "direction": 2
+  },
+  "initialFlags": {},
+  "enemies": [],
+  "triggers": [],
+  "interactables": [
+    {
+      "id": "vado-de-sal-inn",
+      "kind": "service",
+      "x": 7,
+      "y": 10,
+      "visualType": "building-tavern",
+      "label": "Posada · descansar y curar · 8 oro",
+      "lockedLabel": "Posada · necesitas 8 oro",
+      "requirements": [
+        {
+          "itemId": "crown-gold",
+          "quantity": 8,
+          "message": "El posadero cobra por adelantado."
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "consume-item",
+            "itemId": "crown-gold",
+            "quantity": 8
+          },
+          {
+            "type": "heal-party",
+            "amount": 12
+          },
+          {
+            "type": "refill-class-abilities"
+          },
+          {
+            "type": "restore-spell-points"
+          }
+        ],
+        "message": "La compañía duerme en la posada de Vado de Sal. Heridas curadas, puntos de hechizo recuperados."
+      }
+    },
+    {
+      "id": "vado-de-sal-weapons",
+      "kind": "merchant",
+      "x": 7,
+      "y": 4,
+      "visualType": "building-forge",
+      "label": "Armería de Vado de Sal",
+      "shop": {
+        "stock": [
+          "iron-mace",
+          "iron-spear",
+          "bronze-sword",
+          "ivory-staff"
+        ]
+      },
+      "action": {
+        "effects": [],
+        "message": "El armero no levanta la vista del afilador: «Mira lo que quieras. Rompes, pagas»."
+      }
+    },
+    {
+      "id": "vado-de-sal-armour",
+      "kind": "merchant",
+      "x": 11,
+      "y": 4,
+      "visualType": "building-armor",
+      "label": "Coracería de Vado de Sal",
+      "shop": {
+        "stock": [
+          "bronze-leather",
+          "iron-scale",
+          "bronze-ring",
+          "wooden-shield"
+        ]
+      },
+      "action": {
+        "effects": [],
+        "message": "El forjador golpea una coraza al rojo: «Hecha a mano. Como mis precios»."
+      }
+    },
+    {
+      "id": "vado-de-sal-temple",
+      "kind": "service",
+      "x": 14,
+      "y": 6,
+      "visualType": "building-temple",
+      "label": "Templo · sanar a la compañía · 4 oro",
+      "lockedLabel": "Templo · necesitas 4 oro",
+      "requirements": [
+        {
+          "itemId": "crown-gold",
+          "quantity": 4,
+          "message": "El templo pide una ofrenda de cuatro monedas."
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "consume-item",
+            "itemId": "crown-gold",
+            "quantity": 4
+          },
+          {
+            "type": "heal-party",
+            "amount": 20
+          }
+        ],
+        "message": "Los sacerdotes rezan sobre la compañía. Las heridas se cierran."
+      }
+    },
+    {
+      "id": "nela-brief",
+      "kind": "lore",
+      "x": 11,
+      "y": 10,
+      "visualType": "building-hall",
+      "label": "Hablar con la barquera Nela",
+      "when": [
+        {
+          "key": "swordhavenRouteReported",
+          "truthy": true
+        },
+        {
+          "key": "vadoNelaBriefed",
+          "falsy": true
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "set",
+            "key": "vadoNelaBriefed",
+            "value": true
+          },
+          {
+            "type": "advance-quest",
+            "questId": "lost-king",
+            "title": "El rey desaparecido",
+            "description": "La Dama busca a sus caballeros desaparecidos.",
+            "order": 1,
+            "objective": "Baja a las Salinas Hundidas (C6) y encuentra lo que queda de la escolta de los caballeros."
+          }
+        ],
+        "message": "Nela amarra la barca y mira la hoja de ruta de Garrah: «Esta etapa no existe. Los caballeros nunca cruzaron el vado. Los que volvieron, volvieron muertos, y se los tragaron las Salinas Hundidas, al sur»",
+        "journal": {
+          "id": "lost-king-nela",
+          "title": "La barquera Nela",
+          "body": "Baja a las Salinas Hundidas (C6) y encuentra lo que queda de la escolta de los caballeros.",
+          "sigil": "♛"
+        }
+      }
+    },
+    {
+      "id": "nela-report",
+      "kind": "quest",
+      "x": 11,
+      "y": 10,
+      "visualType": "building-hall",
+      "label": "Informar a la barquera Nela · 40 oro",
+      "when": [
+        {
+          "key": "vadoNelaBriefed",
+          "truthy": true
+        },
+        {
+          "key": "vadoNelaReported",
+          "falsy": true
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "claim-reward",
+            "rewardId": "terra:salinas:v1",
+            "requirements": [
+              {
+                "key": "salinas_hundidasBossDefeated",
+                "truthy": true
+              }
+            ],
+            "effects": [
+              {
+                "type": "set",
+                "key": "vadoNelaReported",
+                "value": true
+              },
+              {
+                "type": "grant-gold",
+                "amount": 40
+              },
+              {
+                "type": "award-xp",
+                "awardId": "terra:salinas:v1",
+                "amount": 80
+              },
+              {
+                "type": "advance-quest",
+                "questId": "lost-king",
+                "title": "El rey desaparecido",
+                "description": "La Dama busca a sus caballeros desaparecidos.",
+                "order": 1,
+                "objective": "El escudero oyó la campana de Puerto de Hollín (A3) la noche de la emboscada. Habla con el campanero."
+              }
+            ]
+          }
+        ],
+        "message": "Nela lee el testimonio del escudero con los labios apretados: «La campana de Puerto de Hollín. Alguien la tocó para avisar de que la escolta pasaba. Id al oeste»",
+        "journal": {
+          "id": "lost-king-nela-done",
+          "title": "La barquera Nela ha hablado",
+          "body": "El escudero oyó la campana de Puerto de Hollín (A3) la noche de la emboscada. Habla con el campanero.",
+          "sigil": "♛"
+        }
+      },
+      "requirements": [
+        {
+          "key": "salinas_hundidasBossDefeated",
+          "truthy": true,
+          "message": "La barquera Nela espera: «Todavía no. Baja a las Salinas Hundidas (C6) y encuentra lo que queda de la escolta de los caballeros.»"
+        }
+      ],
+      "lockedLabel": "La barquera Nela · «Baja a las Salinas Hundidas (C6) y encuentra lo que queda de la escolta de los caballeros.»"
+    },
+    {
+      "id": "vado-watch-hunt-brief",
+      "kind": "lore",
+      "x": 4,
+      "y": 6,
+      "visualType": "building-watch",
+      "label": "Hablar con el alguacil del vado",
+      "when": [
+        {
+          "key": "vado_watchHuntStarted",
+          "falsy": true
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "set",
+            "key": "vado_watchHuntStarted",
+            "value": true
+          },
+          {
+            "type": "start-quest",
+            "questId": "vado-watch-hunt",
+            "title": "Caza: la Reina Tenaza",
+            "description": "«Una cangreja del tamaño de un carro se come las redes en las Marismas de Sal (D5). Paga el concejo».",
+            "objective": "Acaba con la Reina Tenaza en D5 · Marismas de Sal.",
+            "order": 40
+          }
+        ],
+        "message": "«Una cangreja del tamaño de un carro se come las redes en las Marismas de Sal (D5). Paga el concejo»."
+      }
+    },
+    {
+      "id": "vado-watch-hunt-report",
+      "kind": "quest",
+      "x": 4,
+      "y": 6,
+      "visualType": "building-watch",
+      "label": "Cobrar la caza a el alguacil del vado · 30 oro",
+      "when": [
+        {
+          "questId": "vado-watch-hunt",
+          "questStatus": "active"
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "claim-reward",
+            "rewardId": "terra:vado-watch-hunt:v1",
+            "requirements": [
+              {
+                "key": "vado_watchHunted",
+                "truthy": true
+              }
+            ],
+            "effects": [
+              {
+                "type": "complete-quest",
+                "questId": "vado-watch-hunt",
+                "objective": "Side quest completada."
+              },
+              {
+                "type": "grant-gold",
+                "amount": 30
+              },
+              {
+                "type": "award-xp",
+                "awardId": "terra:vado-watch-hunt:v1",
+                "amount": 50
+              }
+            ]
+          }
+        ],
+        "message": "El alguacil cuenta las monedas despacio: «Esta noche se cena cangrejo en todo Vado de Sal»."
+      },
+      "requirements": [
+        {
+          "key": "vado_watchHunted",
+          "truthy": true,
+          "message": "«La Reina Tenaza sigue vivo en D5»."
+        }
+      ],
+      "lockedLabel": "El alguacil del vado · «¿Ya cayó la Reina Tenaza?»"
+    },
+    {
+      "id": "vado-herbalist-hunt-brief",
+      "kind": "lore",
+      "x": 15,
+      "y": 10,
+      "visualType": "building-store",
+      "label": "Hablar con la curandera Ada",
+      "when": [
+        {
+          "key": "vado_herbalistHuntStarted",
+          "falsy": true
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "set",
+            "key": "vado_herbalistHuntStarted",
+            "value": true
+          },
+          {
+            "type": "start-quest",
+            "questId": "vado-herbalist-hunt",
+            "title": "Caza: la Bruja del Cieno",
+            "description": "«La bruja de la Ciénaga Negra (E5) envenena los pozos. Hay quien dice que vive en una choza sobre el agua, bajo tierra».",
+            "objective": "Acaba con la Bruja del Cieno en E5 · Ciénaga Negra.",
+            "order": 40
+          }
+        ],
+        "message": "«La bruja de la Ciénaga Negra (E5) envenena los pozos. Hay quien dice que vive en una choza sobre el agua, bajo tierra»."
+      }
+    },
+    {
+      "id": "vado-herbalist-hunt-report",
+      "kind": "quest",
+      "x": 15,
+      "y": 10,
+      "visualType": "building-store",
+      "label": "Cobrar la caza a la curandera Ada · 45 oro",
+      "when": [
+        {
+          "questId": "vado-herbalist-hunt",
+          "questStatus": "active"
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "claim-reward",
+            "rewardId": "terra:vado-herbalist-hunt:v1",
+            "requirements": [
+              {
+                "key": "cienaga_negraBossDefeated",
+                "truthy": true
+              }
+            ],
+            "effects": [
+              {
+                "type": "complete-quest",
+                "questId": "vado-herbalist-hunt",
+                "objective": "Side quest completada."
+              },
+              {
+                "type": "grant-gold",
+                "amount": 45
+              },
+              {
+                "type": "award-xp",
+                "awardId": "terra:vado-herbalist-hunt:v1",
+                "amount": 90
+              }
+            ]
+          }
+        ],
+        "message": "Ada huele el aire: «Ya se nota. El agua vuelve a saber a agua»."
+      },
+      "requirements": [
+        {
+          "key": "cienaga_negraBossDefeated",
+          "truthy": true,
+          "message": "«La Bruja del Cieno sigue vivo en E5»."
+        }
+      ],
+      "lockedLabel": "La curandera Ada · «¿Ya cayó la Bruja del Cieno?»"
+    }
+  ],
+  "treasures": [],
+  "traps": [],
+  "exits": [
+    {
+      "id": "town-gate",
+      "kind": "exit",
+      "x": 9,
+      "y": 1,
+      "requiresReturn": true,
+      "openLabel": "Salir a C5 · Orillas de Vado de Sal",
+      "lockedLabel": "Las puertas están cerradas",
+      "requirements": [],
+      "action": {
+        "effects": [
+          {
+            "type": "transition-map",
+            "mapId": "terra-c5",
+            "entryExitId": "c5-to-town"
+          }
+        ],
+        "message": "La compañía sale de Vado de Sal."
+      }
+    }
+  ],
+  "initialJournal": {
+    "id": "vado-de-sal-arrival",
+    "title": "Vado de Sal",
+    "body": "Casas sobre pilotes, puentes de cuerda y la sal en cada esquina.",
+    "sigil": "C5"
+  },
+  "introMessage": "Vado de Sal. Casas sobre pilotes, puentes de cuerda y la sal en cada esquina."
+}
