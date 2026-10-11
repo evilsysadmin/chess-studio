@@ -30,6 +30,7 @@ NON_RUNTIME_EXACT = frozenset({
     ".github/workflows/billing-cost-export.yml",
     ".github/workflows/observability-live.yml",
     ".github/workflows/pvp-python-fallback.yml",
+    ".github/workflows/war-room-blender-art.yml",
     ".github/workflows/app-visual-artifact.yml",
     ".github/workflows/chronicles-visual-artifact.yml",
     ".github/workflows/tactics-visual-artifact.yml",
@@ -150,6 +151,7 @@ def self_test() -> None:
     assert deploy_required_for_paths(["scripts/dead_code_reachability_check.py"]) == (False, "non-runtime-only")
     assert deploy_required_for_paths(["scripts/grafana_dashboard_check.py", ".github/workflows/billing-cost-export.yml"]) == (False, "non-runtime-only")
     assert deploy_required_for_paths(["scripts/pvp_python_fallback_report.py", ".github/workflows/pvp-python-fallback.yml"]) == (False, "non-runtime-only")
+    assert deploy_required_for_paths([".github/workflows/war-room-blender-art.yml", "scripts/blender_required_scope.py"]) == (False, "non-runtime-only")
     assert deploy_required_for_paths(["scripts/chronicles_contracts.py"]) == (False, "non-runtime-only")
     assert deploy_required_for_paths([
         "e2e/war-room-visual-artifact.spec.js",
