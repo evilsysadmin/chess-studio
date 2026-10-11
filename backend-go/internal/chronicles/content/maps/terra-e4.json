@@ -121,11 +121,80 @@
       "visualType": "rookwood-mourner",
       "x": 5,
       "y": 4,
-      "persistentVisual": true,
+      "when": [
+        {
+          "key": "b4TaxLeadStarted",
+          "falsy": true
+        }
+      ],
       "label": "Hablar con el carbonero Bruno",
       "action": {
         "effects": [],
         "message": "El carbonero Bruno: «En las Minas de Escoria trabajan de noche. ¿Quién trabaja de noche en una mina?»"
+      }
+    },
+    {
+      "id": "e4-bruno-ledger",
+      "kind": "lore",
+      "visualType": "rookwood-mourner",
+      "x": 5,
+      "y": 4,
+      "when": [
+        {
+          "key": "b4TaxLeadStarted",
+          "truthy": true
+        },
+        {
+          "key": "e4LedgerRecovered",
+          "falsy": true
+        }
+      ],
+      "label": "Preguntar a Bruno por el libro de tasas",
+      "action": {
+        "effects": [
+          {
+            "type": "set",
+            "key": "e4LedgerRecovered",
+            "value": true
+          },
+          {
+            "type": "grant-item",
+            "itemId": "forgotten-tax-ledger",
+            "name": "Libro de los tributos olvidados",
+            "description": "Doce nombres borrados siguen tributando bajo el sello del Canciller Varren.",
+            "quantity": 1
+          },
+          {
+            "type": "advance-quest",
+            "questId": "tax-of-the-forgotten",
+            "objective": "Devuelve a Tesa el libro de tasas en Granjas del Trigo (B4)."
+          }
+        ],
+        "message": "Bruno extrae de la carbonera un libro chamuscado. Doce nombres desaparecidos siguen tributando. La orden lleva el sello de Varren: no eran deudas, eran personas que alguien quiso borrar.",
+        "journal": {
+          "id": "e4-accounts-found",
+          "title": "El libro chamuscado",
+          "body": "La cancillería aún recauda sobre los ausentes. La prueba debe regresar a Tesa (B4).",
+          "sigil": "◆"
+        }
+      }
+    },
+    {
+      "id": "e4-bruno-after",
+      "kind": "lore",
+      "visualType": "rookwood-mourner",
+      "x": 5,
+      "y": 4,
+      "when": [
+        {
+          "key": "e4LedgerRecovered",
+          "truthy": true
+        }
+      ],
+      "label": "Volver a hablar con Bruno",
+      "action": {
+        "effects": [],
+        "message": "Bruno señala al oeste: «Lleva esas cuentas a Tesa, en B4. Yo seguiré quemando carbón. El que quiera quemar nombres ya tendrá bastante trabajo»."
       }
     }
   ],

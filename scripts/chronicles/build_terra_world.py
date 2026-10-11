@@ -369,11 +369,230 @@ def build_area(code: str, quests: dict) -> dict:
     if code in HERMITS:
         hid, hname, line = HERMITS[code]
         pos = take()
-        interactables.append({
-            "id": hid, "kind": "lore", "visualType": "rookwood-mourner", "x": pos[0], "y": pos[1],
-            "persistentVisual": True, "label": f"Hablar con {hname}",
-            "action": {"effects": [], "message": f"{hname[0].upper()}{hname[1:]}: {line}"},
-        })
+        # Authored mystery linking existing NPCs and geography. The three
+        # phases share exactly one physical actor per region; no extra props.
+        if code == "B4":
+            interactables.extend(
+            [
+              {
+                "id": "b4-farmer",
+                "kind": "lore",
+                "visualType": "rookwood-mourner",
+                "x": pos[0],
+                "y": pos[1],
+                "when": [
+                  {
+                    "key": "b4TaxLeadStarted",
+                    "falsy": True
+                  }
+                ],
+                "label": "Preguntar a Tesa por los impuestos de los ausentes",
+                "action": {
+                  "effects": [
+                    {
+                      "type": "set",
+                      "key": "b4TaxLeadStarted",
+                      "value": True
+                    },
+                    {
+                      "type": "start-quest",
+                      "questId": "tax-of-the-forgotten",
+                      "title": "El impuesto de los ausentes",
+                      "description": "En B4 cobran tributos incluso a vecinos cuyo recuerdo se ha borrado. El carbonero Bruno transportó las cuentas selladas.",
+                      "objective": "Busca a Bruno en el Bosque Ceniciento (E4) y recupera el libro de tasas.",
+                      "order": 40
+                    }
+                  ],
+                  "message": "Tesa se aferra al delantal: «Aún nos cobran por doce vecinos que nadie recuerda. Bruno llevaba sus nombres anotados. Encuéntralo en el Bosque Ceniciento, E4».",
+                  "journal": {
+                    "id": "b4-tax-whispers",
+                    "title": "Doce nombres ausentes",
+                    "body": "La cuenta real exige tributos a personas que nadie recuerda. Bruno, en E4, vio el libro.",
+                    "sigil": "◆"
+                  }
+                }
+              },
+              {
+                "id": "b4-farmer-proof",
+                "kind": "lore",
+                "visualType": "rookwood-mourner",
+                "x": pos[0],
+                "y": pos[1],
+                "when": [
+                  {
+                    "questId": "tax-of-the-forgotten",
+                    "questStatus": "active"
+                  }
+                ],
+                "label": "Entregar a Tesa el libro de tasas",
+                "lockedLabel": "Tesa espera el libro de Bruno",
+                "requirements": [
+                  {
+                    "itemId": "forgotten-tax-ledger",
+                    "quantity": 1,
+                    "message": "Bruno guarda las cuentas en el Bosque Ceniciento (E4)."
+                  }
+                ],
+                "action": {
+                  "effects": [
+                    {
+                      "type": "claim-reward",
+                      "rewardId": "terra:b4:tax-absent:v1",
+                      "requirements": [
+                        {
+                          "questId": "tax-of-the-forgotten",
+                          "questStatus": "active"
+                        },
+                        {
+                          "itemId": "forgotten-tax-ledger",
+                          "quantity": 1
+                        }
+                      ],
+                      "effects": [
+                        {
+                          "type": "consume-item",
+                          "itemId": "forgotten-tax-ledger",
+                          "quantity": 1
+                        },
+                        {
+                          "type": "complete-quest",
+                          "questId": "tax-of-the-forgotten",
+                          "objective": "Tesa conserva la prueba de los nombres borrados."
+                        },
+                        {
+                          "type": "grant-gold",
+                          "amount": 22
+                        },
+                        {
+                          "type": "award-xp",
+                          "awardId": "terra:b4:tax-absent:xp:v1",
+                          "amount": 40
+                        }
+                      ]
+                    }
+                  ],
+                  "message": "Tesa reconoce un nombre en el libro y se le rompe la voz: «Mi hermano. Decían que nunca existió». Conserva la prueba contra el Canciller y entrega 22 monedas a la compañía.",
+                  "journal": {
+                    "id": "b4-taxes-restored",
+                    "title": "Los que no fueron olvidados",
+                    "body": "El libro demuestra que el Canciller sigue cobrando a quienes el Silencio ha borrado. Tesa custodia sus nombres.",
+                    "sigil": "◆"
+                  }
+                }
+              },
+              {
+                "id": "b4-farmer-after",
+                "kind": "lore",
+                "visualType": "rookwood-mourner",
+                "x": pos[0],
+                "y": pos[1],
+                "when": [
+                  {
+                    "questId": "tax-of-the-forgotten",
+                    "questStatus": "completed"
+                  }
+                ],
+                "label": "Volver a hablar con Tesa",
+                "action": {
+                  "effects": [],
+                  "message": "Tesa mantiene el libro envuelto bajo su camisa: «Ahora que recuerdo su nombre, no permitiré que lo borren otra vez»."
+                }
+              }
+            ]
+            )
+        elif code == "E4":
+            interactables.extend(
+            [
+              {
+                "id": "e4-charcoal",
+                "kind": "lore",
+                "visualType": "rookwood-mourner",
+                "x": pos[0],
+                "y": pos[1],
+                "when": [
+                  {
+                    "key": "b4TaxLeadStarted",
+                    "falsy": True
+                  }
+                ],
+                "label": "Hablar con el carbonero Bruno",
+                "action": {
+                  "effects": [],
+                  "message": "El carbonero Bruno: «En las Minas de Escoria trabajan de noche. ¿Quién trabaja de noche en una mina?»"
+                }
+              },
+              {
+                "id": "e4-bruno-ledger",
+                "kind": "lore",
+                "visualType": "rookwood-mourner",
+                "x": pos[0],
+                "y": pos[1],
+                "when": [
+                  {
+                    "key": "b4TaxLeadStarted",
+                    "truthy": True
+                  },
+                  {
+                    "key": "e4LedgerRecovered",
+                    "falsy": True
+                  }
+                ],
+                "label": "Preguntar a Bruno por el libro de tasas",
+                "action": {
+                  "effects": [
+                    {
+                      "type": "set",
+                      "key": "e4LedgerRecovered",
+                      "value": True
+                    },
+                    {
+                      "type": "grant-item",
+                      "itemId": "forgotten-tax-ledger",
+                      "name": "Libro de los tributos olvidados",
+                      "description": "Doce nombres borrados siguen tributando bajo el sello del Canciller Varren.",
+                      "quantity": 1
+                    },
+                    {
+                      "type": "advance-quest",
+                      "questId": "tax-of-the-forgotten",
+                      "objective": "Devuelve a Tesa el libro de tasas en Granjas del Trigo (B4)."
+                    }
+                  ],
+                  "message": "Bruno extrae de la carbonera un libro chamuscado. Doce nombres desaparecidos siguen tributando. La orden lleva el sello de Varren: no eran deudas, eran personas que alguien quiso borrar.",
+                  "journal": {
+                    "id": "e4-accounts-found",
+                    "title": "El libro chamuscado",
+                    "body": "La cancillería aún recauda sobre los ausentes. La prueba debe regresar a Tesa (B4).",
+                    "sigil": "◆"
+                  }
+                }
+              },
+              {
+                "id": "e4-bruno-after",
+                "kind": "lore",
+                "visualType": "rookwood-mourner",
+                "x": pos[0],
+                "y": pos[1],
+                "when": [
+                  {
+                    "key": "e4LedgerRecovered",
+                    "truthy": True
+                  }
+                ],
+                "label": "Volver a hablar con Bruno",
+                "action": {
+                  "effects": [],
+                  "message": "Bruno señala al oeste: «Lleva esas cuentas a Tesa, en B4. Yo seguiré quemando carbón. El que quiera quemar nombres ya tendrá bastante trabajo»."
+                }
+              }
+            ]
+            )
+        else:
+            interactables.append({
+                "id": hid, "kind": "lore", "visualType": "rookwood-mourner", "x": pos[0], "y": pos[1],
+                "persistentVisual": True, "label": f"Hablar con {hname}",
+                "action": {"effects": [], "message": f"{hname[0].upper()}{hname[1:]}: {line}"},
+            })
     # Quest objects placed in this area by the quest table.
     for entry in quests.get(code, {}).get("treasures", []):
         pos = take()
