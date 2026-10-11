@@ -255,10 +255,19 @@ Any future haste/slow/surprise mechanic should modify the initiative contract ex
 ## Overworld quests, journal and landmarks (Rookwood slice)
 
 - The open world follows quests, not gates: on `settlement`/`wilderness` maps the HUD objective is the active quest with content on that map (else the first active quest), then any available quest giver's label, and only then the exit label.
-- Quest log: desktop shows «Encargos» inside the bottom expedition journal; touch layouts (where that journal is hidden) show the same list inside the floating «Crónica» panel. The story thread (`lost-king-prologue`) is labelled «Historia»; everything else is «Encargo secundario».
+- Quest log: desktop shows «Encargos» inside the bottom expedition journal; touch layouts (where that journal is hidden) show the same list inside the floating «Crónica» panel. The story threads (`lost-king`, legacy `lost-king-prologue`) are labelled «Historia»; everything else is «Side quest».
 - Authored visual hooks for overworld content (renderer-only, no gameplay effect): `visualType` (`name-plaque`, `name-oak`, `rookwood-mourner`; `rookwood-mourner-voice` has no body), `persistentVisual: true` keeps an NPC/landmark visible after its interaction is spent, `visualActivatedWhen` (requirements) drives an activated look when the outcome lives inside an atomic `claim-reward`, and `visualFacing` (0 N, 1 E, 2 S, 3 W) orients a character.
 - Overworld enemies are real bodies drawn from the shared enemy registry (they were previously invisible on exterior maps). A forest map (`rookwood-first-book`) dresses `#` cells as tree clumps and extends trees past the grid so gaps never show the void; collision is still only the grid.
 - Gates on the west/east map edge rotate 90° so their posts flank the road instead of blocking the arriving camera.
+
+## Main story thread and town dungeons (Swordhaven slice)
+
+- Product rule: never «¿y ahora qué?». The main story `lost-king` («El rey desaparecido», labelled «Historia») is active from arrival, and its objective always names a person or place. The full chain lives in `backend-python/chronicles_campaign/DESIGN.md` («Hilo principal en el mundo abierto»).
+- `arrivalAction` on a manifest (effects, optional message/journal) runs once per run when the company first stands in that region: on a fresh start, on restore and on entry through a transition. The receipt is `arrival:<mapId>` in `consumedContentIds` (durable, F5-safe).
+- Quest XP, MM3 style: `{ "type": "award-xp", "awardId", "amount" }` inside a `claim-reward` records the award in `state.xpAwards`. The shared progression then grants it to every living hero, once per run and hero (`<runId>:quest-xp:<awardId>:<hero>`). Every Swordhaven quest-giver pays XP as well as gold.
+- A town's dungeon is an authored campaign dungeon (`regionKind: dungeon`, `dungeonRole: main`, `layoutMode: authored`) joined to the town by reciprocal `requiresReturn` exits. Climbing out is travel, not the end of the expedition. Its HUD plaque reads «MAZMORRA · <hudTitle|title>», and the objective follows the active quest even while you stand on the ladder.
+- `defeatedFlag` on an enemy keeps a named foe down when the company comes back: re-entering an area restores its `initialFlags` and respawns its foes, except those whose flag is already set (Tobías, Garrah, the deserter).
+- `sewer-grate` (exit) draws an iron grate flush with the road, and `building-hall` gives the town hall its own roof.
 
 ## 2.5D billboards (first-person, MM3 style)
 

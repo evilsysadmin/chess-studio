@@ -5,6 +5,7 @@ import bannerRoad from './maps/banner-road.json';
 import swordhavenFirstBook from './maps/swordhaven-first-book.json';
 import bannerRoadFirstBook from './maps/banner-road-first-book.json';
 import rookwoodFirstBook from './maps/rookwood-first-book.json';
+import swordhavenSewers from './maps/swordhaven-sewers.json';
 import galleryOfForks from './maps/gallery-of-forks.json';
 import menagerieOfAsh from './maps/menagerie-of-ash.json';
 import ashVault from './maps/ash-vault.json';
@@ -350,6 +351,7 @@ const MAPS = Object.freeze({
   [swordhavenFirstBook.id]: normalizeMap(swordhavenFirstBook),
   [bannerRoadFirstBook.id]: normalizeMap(bannerRoadFirstBook),
   [rookwoodFirstBook.id]: normalizeMap(rookwoodFirstBook),
+  [swordhavenSewers.id]: normalizeMap(swordhavenSewers),
   [DEFAULT_CHRONICLES_MAP_ID]: normalizeMap(cryptEightSquares),
   [galleryOfForks.id]: normalizeMap(galleryOfForks),
   [menagerieOfAsh.id]: normalizeMap(menagerieOfAsh),
@@ -423,10 +425,11 @@ export function chroniclesMapInteractable(mapOrState, id) {
   return map.interactables.find((entry) => entry.id === id) || null;
 }
 
-export function chroniclesMapInitialEnemyState(mapId = DEFAULT_CHRONICLES_MAP_ID) {
+export function chroniclesMapInitialEnemyState(mapId = DEFAULT_CHRONICLES_MAP_ID, world = null) {
   const map = chroniclesMapById(mapId);
   return map.enemies.reduce((state, enemy) => {
-    state[enemy.hpKey] = enemy.maxHp;
+    // A named foe whose defeat the world remembers stays down on re-entry.
+    state[enemy.hpKey] = enemy.defeatedFlag && world?.[enemy.defeatedFlag] ? 0 : enemy.maxHp;
     if (enemy.positionKey && enemy.initialPosition) state[enemy.positionKey] = enemy.initialPosition;
     return state;
   }, {});
@@ -450,7 +453,7 @@ export function chroniclesMapTransitionState(state, mapId) {
     x: map.partyStart.x,
     y: map.partyStart.y,
     direction: map.partyStart.direction,
-    ...chroniclesMapInitialEnemyState(map.id),
+    ...chroniclesMapInitialEnemyState(map.id, state),
     ...map.initialFlags,
     phase: 'explore',
     turnPhase: 'party',

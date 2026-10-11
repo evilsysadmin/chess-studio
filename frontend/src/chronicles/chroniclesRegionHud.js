@@ -8,5 +8,9 @@ export function chroniclesRegionHudLocation(map) {
   if (kind === 'wilderness') {
     return { kind: 'EXTERIOR', value: String(map?.title || 'Camino').split(' · ')[0].toUpperCase() };
   }
+  // Authored campaign dungeons carry their own name (e.g. a town's sewers).
+  if (kind === 'dungeon' && map?.layoutMode === 'authored' && map?.title) {
+    return { kind: 'MAZMORRA', value: String(map.hudTitle || map.title).toUpperCase() };
+  }
   return { kind: 'CRIPTA', value: '01' };
 }

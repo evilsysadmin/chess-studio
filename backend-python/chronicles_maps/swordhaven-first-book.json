@@ -140,6 +140,11 @@
               {
                 "type": "grant-gold",
                 "amount": 18
+              },
+              {
+                "type": "award-xp",
+                "awardId": "swordhaven:banner-contract:v1",
+                "amount": 20
               }
             ]
           }
@@ -375,6 +380,11 @@
               {
                 "type": "grant-gold",
                 "amount": 8
+              },
+              {
+                "type": "award-xp",
+                "awardId": "swordhaven:weaver-silk:v1",
+                "amount": 30
               }
             ]
           },
@@ -478,6 +488,11 @@
               {
                 "type": "grant-gold",
                 "amount": 12
+              },
+              {
+                "type": "award-xp",
+                "awardId": "swordhaven:road-bandits:v1",
+                "amount": 30
               }
             ]
           }
@@ -503,6 +518,202 @@
         }
       ],
       "lockedLabel": "Cuartel · Brask espera noticias de los bandidos"
+    },
+    {
+      "id": "swordhaven-mayor",
+      "kind": "lore",
+      "x": 11,
+      "y": 10,
+      "visualType": "building-hall",
+      "label": "Ayuntamiento · hablar con el alcalde Aldric",
+      "when": [
+        {
+          "key": "swordhavenMayorMet",
+          "falsy": true
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "set",
+            "key": "swordhavenMayorMet",
+            "value": true
+          },
+          {
+            "type": "grant-item",
+            "itemId": "sewer-key",
+            "name": "Llave de la reja",
+            "description": "Abre la reja de las alcantarillas, al sur de la plaza.",
+            "quantity": 1
+          },
+          {
+            "type": "advance-quest",
+            "questId": "lost-king",
+            "title": "El rey desaparecido",
+            "description": "La Dama busca a sus caballeros desaparecidos. Swordhaven es el primer paso.",
+            "order": 1,
+            "objective": "Baja a las alcantarillas por la reja del sur de la plaza y límpialas."
+          }
+        ],
+        "message": "El alcalde Aldric lee la carta y suspira: «Antes de hablar de caballeros, ayudadme con el pueblo. Algo sube de noche por las alcantarillas a las bodegas. Tomad la llave de la reja. Si os sobra tiempo, el sargento Brask, la sacerdotisa Ilse y el tablón de la plaza también tienen trabajo».",
+        "journal": {
+          "id": "lost-king-mayor",
+          "title": "El alcalde Aldric",
+          "body": "El alcalde pide limpiar las alcantarillas antes de hablar de los caballeros. Brask (cuartel), Ilse (templo) y el tablón de la plaza ofrecen más trabajo.",
+          "sigil": "♛"
+        }
+      }
+    },
+    {
+      "id": "swordhaven-mayor-sewers",
+      "kind": "quest",
+      "x": 11,
+      "y": 10,
+      "visualType": "building-hall",
+      "label": "Informar al alcalde: alcantarillas limpias · 25 oro",
+      "lockedLabel": "Alcalde Aldric · las alcantarillas siguen infestadas",
+      "when": [
+        {
+          "key": "swordhavenMayorMet",
+          "truthy": true
+        },
+        {
+          "key": "swordhavenSewersReported",
+          "falsy": true
+        }
+      ],
+      "requirements": [
+        {
+          "key": "sewersSluiceClosed",
+          "truthy": true,
+          "message": "Aldric frunce el ceño: «El agua sigue subiendo. Hay una compuerta en el extremo sureste de las cloacas»."
+        },
+        {
+          "key": "sewersSmugglerDefeated",
+          "truthy": true,
+          "message": "Aldric baja la voz: «Las bodegas siguen perdiendo cosas. Lo que sube de noche sigue ahí abajo»."
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "claim-reward",
+            "rewardId": "swordhaven:sewers:v1",
+            "requirements": [
+              {
+                "key": "sewersSluiceClosed",
+                "truthy": true
+              },
+              {
+                "key": "sewersSmugglerDefeated",
+                "truthy": true
+              }
+            ],
+            "effects": [
+              {
+                "type": "set",
+                "key": "swordhavenSewersReported",
+                "value": true
+              },
+              {
+                "type": "grant-gold",
+                "amount": 25
+              },
+              {
+                "type": "award-xp",
+                "awardId": "swordhaven:sewers:v1",
+                "amount": 40
+              },
+              {
+                "type": "advance-quest",
+                "questId": "lost-king",
+                "title": "El rey desaparecido",
+                "description": "La Dama busca a sus caballeros desaparecidos. Swordhaven es el primer paso.",
+                "order": 1,
+                "objective": "Garrah asaltó el carro de los caballeros. Búscalo en el Camino de los Estandartes, al norte."
+              }
+            ]
+          }
+        ],
+        "message": "Aldric hojea el libro de Tobías y palidece: «Un carro con el lacre de la Dama… y Garrah lo asaltó en el Camino. Si alguien sabe adónde iban los caballeros, es él». Cuenta veinticinco monedas.",
+        "journal": {
+          "id": "lost-king-sewers-reported",
+          "title": "El carro de los caballeros",
+          "body": "Según el libro del contrabandista, Garrah asaltó un carro con el lacre de la Dama en el Camino de los Estandartes.",
+          "sigil": "♛"
+        }
+      }
+    },
+    {
+      "id": "swordhaven-mayor-route",
+      "kind": "quest",
+      "x": 11,
+      "y": 10,
+      "visualType": "building-hall",
+      "label": "Enseñar al alcalde lo que llevaba Garrah · 30 oro",
+      "lockedLabel": "Alcalde Aldric · «¿Habéis encontrado a Garrah?»",
+      "when": [
+        {
+          "key": "swordhavenSewersReported",
+          "truthy": true
+        },
+        {
+          "key": "swordhavenRouteReported",
+          "falsy": true
+        }
+      ],
+      "requirements": [
+        {
+          "key": "bannerRoadCaptainDefeated",
+          "truthy": true,
+          "message": "Aldric niega con la cabeza: «Garrah acampa al suroeste del Camino de los Estandartes. Sin él no hay pista»."
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "claim-reward",
+            "rewardId": "swordhaven:garrah-route:v1",
+            "requirements": [
+              {
+                "key": "bannerRoadCaptainDefeated",
+                "truthy": true
+              }
+            ],
+            "effects": [
+              {
+                "type": "set",
+                "key": "swordhavenRouteReported",
+                "value": true
+              },
+              {
+                "type": "grant-gold",
+                "amount": 30
+              },
+              {
+                "type": "award-xp",
+                "awardId": "swordhaven:garrah-route:v1",
+                "amount": 60
+              },
+              {
+                "type": "advance-quest",
+                "questId": "lost-king",
+                "title": "El rey desaparecido",
+                "description": "La Dama busca a sus caballeros desaparecidos. Swordhaven es el primer paso.",
+                "order": 1,
+                "objective": "La hoja de ruta lleva a las Marismas de Sal. Prepárate para viajar a Vado de Sal."
+              }
+            ]
+          }
+        ],
+        "message": "Aldric extiende la hoja de ruta de Garrah sobre la mesa: «Esto no es el camino del rey. Alguien cambió las etapas y mandó a los caballeros a las Marismas de Sal. En Vado de Sal sabrán más». Treinta monedas para el viaje.",
+        "journal": {
+          "id": "lost-king-route-reported",
+          "title": "La hoja de ruta adulterada",
+          "body": "Alguien desvió a los caballeros hacia las Marismas de Sal. Próximo destino: Vado de Sal.",
+          "sigil": "♛"
+        }
+      }
     }
   ],
   "treasures": [],
@@ -527,6 +738,33 @@
         ],
         "message": "La compañía llega a Camino de los Estandartes."
       }
+    },
+    {
+      "id": "swordhaven-to-sewers",
+      "kind": "exit",
+      "visualType": "sewer-grate",
+      "x": 13,
+      "y": 13,
+      "requiresReturn": true,
+      "openLabel": "Bajar a las alcantarillas",
+      "lockedLabel": "Reja de las alcantarillas · cerrada con candado",
+      "requirements": [
+        {
+          "itemId": "sewer-key",
+          "quantity": 1,
+          "message": "La reja tiene un candado nuevo. El alcalde Aldric guarda la llave."
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "transition-map",
+            "mapId": "swordhaven-sewers",
+            "entryExitId": "sewers-to-swordhaven"
+          }
+        ],
+        "message": "La compañía baja por la escalerilla oxidada a las alcantarillas."
+      }
     }
   ],
   "initialJournal": {
@@ -535,5 +773,24 @@
     "body": "La plaza de la fuente, el tablón de encargos, la taberna, el templo y los comerciantes te esperan. El Camino de los Estandartes queda al norte.",
     "sigil": "I"
   },
-  "introMessage": "Swordhaven. La Dama ha pedido noticias de sus caballeros; el tablón de la plaza ofrece la primera pista."
+  "introMessage": "Swordhaven. La carta de la Dama pide que te presentes al alcalde Aldric; el ayuntamiento está al sur de la fuente.",
+  "arrivalAction": {
+    "effects": [
+      {
+        "type": "start-quest",
+        "questId": "lost-king",
+        "title": "El rey desaparecido",
+        "description": "La Dama busca a sus caballeros desaparecidos. Swordhaven es el primer paso.",
+        "order": 1,
+        "objective": "Preséntate al alcalde Aldric en el ayuntamiento, al sur de la fuente."
+      }
+    ],
+    "message": "La carta de la Dama es breve: sus caballeros no han vuelto y el alcalde Aldric de Swordhaven sabe más de lo que cuenta. Matthias señala el ayuntamiento, al sur de la fuente.",
+    "journal": {
+      "id": "lost-king-arrival",
+      "title": "La carta de la Dama",
+      "body": "Los caballeros de la Dama han desaparecido. Primer paso: hablar con el alcalde Aldric en el ayuntamiento de Swordhaven.",
+      "sigil": "♛"
+    }
+  }
 }

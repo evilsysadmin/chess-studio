@@ -88,7 +88,8 @@
         "skills": [
           "brutal-strike"
         ]
-      }
+      },
+      "defeatedFlag": "bannerRoadDeserterDefeated"
     },
     {
       "id": "banner-road-bandit-captain",
@@ -110,7 +111,7 @@
       },
       "blockingMessage": "Garrah apoya el hacha en el hombro: «El Camino cobra peaje, y hoy el peaje eres tú».",
       "onDefeat": {
-        "message": "{attacker} derriba a Garrah con {attack}. Su bolsa tintinea con seis monedas robadas, y su hacha y su escudo de hierro quedan en el barro.",
+        "message": "{attacker} derriba a Garrah con {attack}. Su bolsa tintinea con seis monedas robadas, y su hacha y su escudo de hierro quedan en el barro. Entre sus cosas hay una hoja de ruta con el lacre de la Dama.",
         "effects": [
           {
             "type": "set",
@@ -134,6 +135,13 @@
             "name": "Escudo de hierro",
             "description": "Escudo · armadura +2. Sólo clases con escudo y una mano libre.",
             "quantity": 1
+          },
+          {
+            "type": "grant-item",
+            "itemId": "tampered-route",
+            "name": "Hoja de ruta adulterada",
+            "description": "Las etapas del viaje de los caballeros, raspadas y reescritas. Alguien los mandó a las Marismas de Sal.",
+            "quantity": 1
           }
         ],
         "journal": {
@@ -156,7 +164,8 @@
         "skills": [
           "brutal-strike"
         ]
-      }
+      },
+      "defeatedFlag": "bannerRoadCaptainDefeated"
     }
   ],
   "triggers": [],

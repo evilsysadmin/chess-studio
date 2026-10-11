@@ -86,6 +86,8 @@ const MAP_ENVIRONMENT = Object.freeze({
   'hollow-bell-tower': 'exterior',
   'black-glass-chapel': 'black-glass',
   'echo-cistern': 'cave-water',
+  // Named after its town, but it is wet brick underground, not the town.
+  'swordhaven-sewers': 'cave-water',
 });
 
 export function chroniclesMaterialProfile(profileId) {
