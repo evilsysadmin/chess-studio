@@ -123,6 +123,19 @@ export function chroniclesAutomapLocalVisibleCells(map, state, radius = 3) {
   return visible;
 }
 
+// MM3-style position inside the current map: X grows east, Y grows north
+// (0,0 is the south-west corner), so «X9 Y7» reads the way the old games did.
+export function chroniclesMapCoordinates(map, state) {
+  const height = Number(map?.grid?.length || 0);
+  if (!height || !Number.isInteger(state?.x) || !Number.isInteger(state?.y)) return null;
+  return { x: state.x, y: height - 1 - state.y };
+}
+
+export function chroniclesMapCoordinatesLabel(map, state) {
+  const coords = chroniclesMapCoordinates(map, state);
+  return coords ? `X${coords.x} Y${coords.y}` : '';
+}
+
 export function chroniclesAutomapFacingDegrees(direction) {
   const numeric = Number.isFinite(Number(direction)) ? Number(direction) : 0;
   const normalized = ((Math.trunc(numeric) % 4) + 4) % 4;

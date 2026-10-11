@@ -75,6 +75,7 @@ import {
 } from '../chroniclesOfMatthiasProgression.js';
 import {
   chroniclesAutomapMarkSeen,
+  chroniclesMapCoordinatesLabel,
   clearChroniclesAutomapVisited,
   loadChroniclesAutomapVisited,
   saveChroniclesAutomapVisited,
@@ -1007,7 +1008,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
         <main className="chronicles-stage-wrap">
           <div className="chronicles-statusbar" aria-live="polite">
             <span>{locationHud.kind} <b>{locationHud.value}</b></span>
-            <span>RUMBO <b>{direction.label}</b></span>
+            <span>RUMBO <b>{direction.label} · {chroniclesMapCoordinatesLabel(chroniclesMapForState(state), state)}</b></span>
             <span>ACTIVO <b>{selectedMember?.name}</b></span>
             <span>OBJETIVO <b>{objective}</b></span>
             {needsRotation && (

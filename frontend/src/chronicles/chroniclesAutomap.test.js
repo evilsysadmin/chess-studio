@@ -104,3 +104,13 @@ describe('Chronicles automap remembers what the company saw', () => {
     expect(chroniclesAutomapMarkSeen(seen, map, { mapId: 'm', x: 1, y: 1 }, 3)).toBe(seen);
   });
 });
+
+describe('Chronicles map coordinates, MM3 style', () => {
+  it('counts X east and Y north from the south-west corner', async () => {
+    const { chroniclesMapCoordinates, chroniclesMapCoordinatesLabel } = await import('./chroniclesAutomap.js');
+    const map = { grid: ['#####', '#...#', '#...#', '#####'] };
+    expect(chroniclesMapCoordinates(map, { x: 1, y: 2 })).toEqual({ x: 1, y: 1 });
+    expect(chroniclesMapCoordinatesLabel(map, { x: 3, y: 1 })).toBe('X3 Y2');
+    expect(chroniclesMapCoordinatesLabel(map, {})).toBe('');
+  });
+});

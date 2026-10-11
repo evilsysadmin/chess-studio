@@ -178,6 +178,9 @@ El mismo asset/contrato debe mantenerse coherente entre tarjeta grande, thumbnai
 
 ## Automap y ownership de viewport
 
+- Coordenadas al estilo MM3 (`chroniclesMapCoordinates`): X crece hacia el este e Y hacia el norte, con (0,0) en la esquina suroeste del mapa. Se muestran en la placa RUMBO («N · X9 Y7») en escritorio, sobre el minimapa en móvil y en la cabecera del automapa (con el código de área de Terra si lo hay).
+
+
 Chronicles first-person es una superficie **viewport-owned**: durante la expedición no existe un modo windowed interno.
 
 - El root de Chronicles ocupa siempre el viewport completo con layout propio (`100vw` + `100dvh`) en desktop, móvil vertical y móvil apaisado.
