@@ -62,7 +62,7 @@ Eligible cleanup includes expired smoke objects, explicitly deprecated prefixes,
 
 The current policy emits an early warning at 5.0 GB, starts pressure cleanup at 7.0 GB, and targets 5.5 GB after cleanup. This leaves headroom below the 10 GB-month free-storage allowance without equating live capacity to cumulative billing GB-months. Each run is guarded by a maximum object count and maximum fraction of the bucket so one bad classification cannot empty the bucket in a single execution.
 
-Godot Web releases are treated as atomic directories rather than unrelated files. The collector validates each configured `current.json`, protects the full active release and two previous complete releases, then retires older release directories only after seven days. An eligible Godot release is deleted as a release group, never partially pruned while retained. A missing or malformed pointer protects that whole release family for the run.
+Godot Web releases are treated as atomic directories rather than unrelated files. The collector validates each configured `current.json`, protects the full active release and two previous complete releases, then retires older release directories only after seven days. A retained Godot release is never partially pruned. Already-eligible obsolete releases may be removed over multiple GC passes because per-run deletion caps still apply. A missing or malformed pointer protects that whole release family for the run.
 
 ## Matthias Pawn Slug canonical master
 

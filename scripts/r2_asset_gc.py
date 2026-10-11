@@ -996,27 +996,28 @@ def self_test() -> None:
         assert not any(key.startswith(f"game/releases/{release}/") for key in deleted), release
     assert {f"game/releases/{release_ids[3]}/{name}" for name in ("game.pck", "sprite-aaaaaaaaaaaaaaaa.png")} <= deleted
     assert guarded["projectedBytes"] > bundle_policy["softLimitBytes"]
-    # A young *third* rollback must also retain its whole package for 7 days.
-    bundle_rows = [
-        {**item, "last_modified": row(item["key"], item["size"], 2)["last_modified"]}
-        if f"/{release_ids[3]}/" in item["key"] else item
-        for item in bundle_rows
+    # A *third* rollback younger than its seven-day bundle grace survives
+    # despite being outside the two reserved rollbacks. Use a shorter global
+    # grace to force duplicate-SHA and capacity passes to challenge it.
+    young_ids = ("aaaaaaaaaaaaaaaa", "bbbbbbbbbbbbbbbb", "cccccccccccccccc", "dddddddddddddddd", "eeeeeeeeeeeeeeee")
+    young_rows = [
+        row(f"game/releases/{release}/{filename}", size, age)
+        for release, age in zip(young_ids, (0, 1, 1, 2, 28))
+        for filename, size in (("game.pck", 400), ("sprite-aaaaaaaaaaaaaaaa.png", 200))
     ]
     young = plan_cleanup(
-        bundle_rows,
+        young_rows,
         manifest_keys=set(),
         repo_pins=set(),
-        policy=bundle_policy,
-        active_release_prefixes={"game/releases": f"game/releases/{release_ids[0]}"},
+        policy={**bundle_policy, "minimumAgeDays": 1},
+        active_release_prefixes={"game/releases": f"game/releases/{young_ids[0]}"},
         blocked_release_prefixes=set(),
         now=now,
     )
-    # The 2-day release is now one of the two newest rollbacks; the 18-day
-    # release is beyond that count and can be collected as a complete bundle.
-    assert not any(
-        item["key"].startswith(f"game/releases/{release_ids[3]}/")
-        for item in young["deletions"]
-    )
+    young_deletions = {item["key"] for item in young["deletions"]}
+    for release in young_ids[:4]:
+        assert not any(key.startswith(f"game/releases/{release}/") for key in young_deletions), release
+    assert {f"game/releases/{young_ids[4]}/{name}" for name in ("game.pck", "sprite-aaaaaaaaaaaaaaaa.png")} <= young_deletions
     print("OK r2 retention self-test")
 
 
