@@ -273,7 +273,7 @@ async function withChessFootballCapturePage(browser, capture, callback) {
       fullPage: true,
     });
     await resume.click();
-    await expect(welcome).toContainText('Jornada 1 de 10');
+    await expect(welcome).toContainText('Jornada 4 de 10');
     await welcome.locator('.chess-football-entry__back').click();
     await welcome.locator('.chess-football-entry__back').click();
     await welcome.locator('.chess-football-entry__back').click();
