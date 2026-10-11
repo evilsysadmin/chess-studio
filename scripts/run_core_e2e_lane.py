@@ -86,6 +86,10 @@ LANE_COMMANDS: dict[str, tuple[LaneCommand, ...]] = {
             'regression-journeys.spec.js',
             ('--grep', REGRESSION_SCHOOL_GREP, '--workers=1', '--retries=0', '--max-failures=1', '--timeout=75000'),
         ),
+        LaneCommand(
+            'matthias-school-coach-journal.spec.js',
+            ('--workers=1', '--retries=0', '--max-failures=1', '--timeout=75000'),
+        ),
     ),
     'learning-golden': (
         LaneCommand('learning-golden-path.spec.js', ('--workers=1', '--retries=0', '--max-failures=1')),
@@ -147,6 +151,10 @@ COMPOSITE_LANE_COMMANDS: dict[str, tuple[LaneCommand, ...]] = {
                 '--grep-invert', REGRESSION_STATE_INVERT,
                 '--workers=1', '--retries=0', '--max-failures=1', '--timeout=75000',
             ),
+        ),
+        LaneCommand(
+            'matthias-school-coach-journal.spec.js',
+            ('--workers=1', '--retries=0', '--max-failures=1', '--timeout=75000'),
         ),
     ),
     'learning-golden+learning-observation': (
@@ -237,7 +245,9 @@ def self_test() -> None:
             '--grep', f'{REGRESSION_STATE_GREP}|{REGRESSION_SCHOOL_GREP}',
             '--grep-invert', REGRESSION_STATE_INVERT,
             '--workers=1', '--retries=0', '--max-failures=1', '--timeout=75000',
-        ], E2E_DIR, True)
+        ], E2E_DIR, True),
+        ([PLAYWRIGHT, 'test', 'matthias-school-coach-journal.spec.js',
+          '--workers=1', '--retries=0', '--max-failures=1', '--timeout=75000'], E2E_DIR, True),
     ]
     calls.clear()
     run_lane('learning-golden+learning-observation', fake_runner)
