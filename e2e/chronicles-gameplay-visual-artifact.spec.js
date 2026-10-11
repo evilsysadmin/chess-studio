@@ -643,7 +643,12 @@ for (const capture of CAPTURES) {
       expect(health.automapButton?.height || 0, `${capture.label}: automap button height`).toBeGreaterThanOrEqual(capture.hasTouch ? 44 : 30);
       expect(health.localMinimap?.width || 0, `${capture.label}: local minimap visible`).toBeGreaterThanOrEqual(capture.hasTouch ? 100 : 120);
       expect(health.localMinimap?.height || 0, `${capture.label}: local minimap height`).toBeGreaterThanOrEqual(capture.hasTouch ? 100 : 120);
-      expect(health.localMinimap?.top ?? 0, `${capture.label}: local minimap clears top menu`).toBeGreaterThanOrEqual((health.gameMenu?.bottom ?? 0) - 2);
+      // The minimap must never sit on the menu: on mobile the menu is a top
+      // bar above it, on desktop it lives in the MM3 side panel.
+      const overlaps = (a, b, slack = 2) => Boolean(a && b
+        && a.left + slack < b.right && b.left + slack < a.right
+        && a.top + slack < b.bottom && b.top + slack < a.bottom);
+      expect(overlaps(health.localMinimap, health.gameMenu), `${capture.label}: local minimap clears the menu`).toBe(false);
       expect(health.stage?.width || 0, `${capture.label}: Chronicles stage visible`).toBeGreaterThan(0);
       expect(health.gameCanvas?.width || 0, `${capture.label}: Chronicles dungeon canvas visible`).toBeGreaterThan(0);
       expect(health.gameCanvas?.height || 0, `${capture.label}: Chronicles dungeon canvas height`).toBeGreaterThan(0);

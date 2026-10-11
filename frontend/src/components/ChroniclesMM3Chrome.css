@@ -1,0 +1,415 @@
+/* Chronicles · MM3 chrome.
+   Carved grey stone around the first-person view, a ruby at each corner,
+   the company as a portrait strip with HP/SP gems under the view, and a stone
+   control panel on the right with engraved buttons — the early-90s VGA RPG
+   layout. Pixel art comes from scripts/art/build_chronicles_mm3_ui.py and is
+   always scaled by whole factors with nearest-neighbour. */
+
+.chronicles {
+  --mm3-stone: url('../assets/chronicles/ui/mm3-stone.png');
+  --mm3-sand: url('../assets/chronicles/ui/mm3-sandstone.png');
+  --mm3-frame: url('../assets/chronicles/ui/mm3-frame.png');
+  --mm3-gem: url('../assets/chronicles/ui/mm3-gem.png');
+  --mm3-ink: #26262b;
+  --mm3-hi: #f4f4f2;
+  --mm3-lo: #47474e;
+}
+
+/* HP/SP gems under each portrait: green life, blue spell points. */
+.chronicles .chronicles-party-bars {
+  display: none;
+}
+.chronicles .chronicles-party-bars i {
+  display: block;
+  height: 6px;
+  border: 1px solid #111;
+  background:
+    linear-gradient(90deg, var(--bar) calc(var(--fill) * 100%), #1b1b1e calc(var(--fill) * 100%));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .35);
+}
+.chronicles .chronicles-party-bars .is-hp { --bar: #3cc63f; }
+.chronicles .chronicles-party-bars .is-sp { --bar: #4f8df0; }
+
+/* Engraved stone button: grey slab, bevelled, dark carved glyph. */
+.chronicles .chronicles-touch button,
+.chronicles .chronicles-statusbar .chronicles-map-trigger,
+.chronicles .chronicles-game-menu > summary {
+  border: 2px solid;
+  border-color: var(--mm3-hi) var(--mm3-lo) var(--mm3-lo) var(--mm3-hi);
+  border-radius: 0;
+  background: #9d9da2 var(--mm3-stone) 0 0 / 128px 128px;
+  image-rendering: pixelated;
+  color: var(--mm3-ink);
+  text-shadow: 1px 1px 0 rgba(255, 255, 255, .55), -1px -1px 0 rgba(0, 0, 0, .28);
+  box-shadow: 0 0 0 1px #141416, 0 3px 0 rgba(0, 0, 0, .35);
+  backdrop-filter: none;
+}
+.chronicles .chronicles-touch button small {
+  color: #3a3a40;
+  font-weight: 700;
+}
+.chronicles .chronicles-touch button:hover,
+.chronicles .chronicles-touch button:focus-visible {
+  border-color: #fff var(--mm3-lo) var(--mm3-lo) #fff;
+  background-color: #b4b4b8;
+  background-blend-mode: luminosity;
+  outline: 2px solid #e9c25a;
+  outline-offset: 1px;
+}
+.chronicles .chronicles-touch button:active {
+  border-color: var(--mm3-lo) var(--mm3-hi) var(--mm3-hi) var(--mm3-lo);
+  transform: translateY(1px);
+  box-shadow: 0 0 0 1px #141416;
+}
+.chronicles .chronicles-touch button.is-attack {
+  border-color: #ffd6cc #5a1d16 #5a1d16 #ffd6cc;
+  background-color: #f0a596;
+  background-blend-mode: multiply;
+  color: #2a0905;
+}
+.chronicles .chronicles-touch button.is-attack small { color: #3b0f0a; }
+.chronicles .chronicles-touch button.is-magic {
+  border-color: #dfe8ff #1e2c5c #1e2c5c #dfe8ff;
+  background-color: #b4c6f4;
+  background-blend-mode: multiply;
+  color: #0b1433;
+}
+.chronicles .chronicles-touch button.is-magic small { color: #101c46; }
+.chronicles .chronicles-touch button.is-contextual {
+  border-color: #ffeec2 #6b4510 #6b4510 #ffeec2;
+  background-color: #e3b45c;
+  background-blend-mode: multiply;
+  color: #2c1a03;
+}
+.chronicles .chronicles-touch button.is-contextual small { color: #3a2304; }
+
+/* Map/menu captions and the mobile rotate key read as engraved too. */
+.chronicles .chronicles-statusbar .chronicles-map-trigger b,
+.chronicles .chronicles-game-menu > summary b,
+.chronicles .chronicles-statusbar .chronicles-map-trigger i {
+  color: inherit;
+}
+.chronicles .chronicles-landscape-trigger {
+  border: 2px solid;
+  border-color: var(--mm3-hi) var(--mm3-lo) var(--mm3-lo) var(--mm3-hi);
+  border-radius: 0;
+  background: #9d9da2 var(--mm3-stone) 0 0 / 128px 128px;
+  color: var(--mm3-ink);
+  backdrop-filter: none;
+}
+
+/* Minimap set in a carved stone bezel. */
+.chronicles .chronicles-minimap {
+  border: 3px solid;
+  border-color: var(--mm3-hi) var(--mm3-lo) var(--mm3-lo) var(--mm3-hi);
+  border-radius: 0;
+  box-shadow: 0 0 0 1px #141416, 0 6px 18px rgba(0, 0, 0, .4);
+}
+
+/* The narrator speaks from a sandstone tablet under a stone tab. */
+.chronicles .chronicles-dm-trigger {
+  border: 2px solid;
+  border-color: var(--mm3-hi) var(--mm3-lo) var(--mm3-lo) var(--mm3-hi);
+  border-radius: 0;
+  background: #9d9da2 var(--mm3-stone) 0 0 / 128px 128px;
+  image-rendering: pixelated;
+  box-shadow: 0 0 0 1px #141416, 0 4px 12px rgba(0, 0, 0, .35);
+  backdrop-filter: none;
+  color: var(--mm3-ink);
+  text-shadow: 1px 1px 0 rgba(255, 255, 255, .55);
+}
+.chronicles .chronicles-dm-sigil {
+  border: 0;
+  background: var(--mm3-gem) center / 22px 22px no-repeat;
+  color: transparent;
+}
+.chronicles .chronicles-dm-chevron { color: #3a3a40; }
+.chronicles .chronicles-dm-panel {
+  border: 2px solid;
+  border-color: #f0c48a #5a2e12 #5a2e12 #f0c48a;
+  border-radius: 0;
+  background: #b87033 var(--mm3-sand) 0 0 / 64px 64px;
+  image-rendering: pixelated;
+  box-shadow: 0 0 0 1px #141416, 0 12px 30px rgba(0, 0, 0, .43);
+  backdrop-filter: none;
+}
+.chronicles .chronicles-dm-kicker { color: #4a250b; }
+.chronicles .chronicles-dm-panel p { color: #1f0f04; text-shadow: 1px 1px 0 rgba(255, 220, 170, .35); }
+.chronicles .chronicles-dm-quests { border-top-color: rgba(60, 28, 8, .4); }
+.chronicles .chronicles-dm-quests .chronicles-quest-log__quest {
+  border: 1px solid rgba(60, 28, 8, .45);
+  border-left: 3px solid #5a2e12;
+  background: rgba(255, 232, 196, .22);
+}
+.chronicles .chronicles-dm-quests .chronicles-quest-log__quest strong { color: #1f0f04; }
+.chronicles .chronicles-dm-quests .chronicles-quest-log__quest p { color: #3b1e08; }
+.chronicles .chronicles-dm-quests .chronicles-quest-log h3,
+.chronicles .chronicles-dm-quests .chronicles-quest-log__quest small { color: #4a250b; }
+
+/* Party portraits: carved slab with the portrait set like a cameo. */
+.chronicles .chronicles-party-member {
+  border: 2px solid;
+  border-color: var(--mm3-hi) var(--mm3-lo) var(--mm3-lo) var(--mm3-hi);
+  border-radius: 0;
+  background: #9d9da2 var(--mm3-stone) 0 0 / 128px 128px;
+  image-rendering: pixelated;
+  color: var(--mm3-ink);
+  box-shadow: 0 0 0 1px #141416;
+}
+.chronicles .chronicles-party-member strong { color: #1d1d22; text-shadow: 1px 1px 0 rgba(255, 255, 255, .5); }
+.chronicles .chronicles-party-member small { color: #2e2e34; }
+.chronicles .chronicles-party-member b { color: #1d1d22; }
+.chronicles .chronicles-party-member .chronicles-party-sp { color: #173c8a; }
+.chronicles .chronicles-party-member.is-leader {
+  border-color: var(--mm3-hi) var(--mm3-lo) var(--mm3-lo) var(--mm3-hi);
+  background: #9d9da2 var(--mm3-stone) 0 0 / 128px 128px;
+}
+.chronicles .chronicles-party-member.is-selected {
+  border-color: #fff1c4 #7a5512 #7a5512 #fff1c4;
+  background: #e7c46d var(--mm3-stone) 0 0 / 128px 128px;
+  background-blend-mode: multiply;
+  box-shadow: 0 0 0 1px #141416, 0 0 0 3px #e9c25a;
+}
+.chronicles .chronicles-party-member:hover,
+.chronicles .chronicles-party-member:focus-visible {
+  border-color: #fff var(--mm3-lo) var(--mm3-lo) #fff;
+  outline: none;
+}
+.chronicles .chronicles-party .chronicles-party-glyph.has-authored-portrait {
+  border: 1px solid;
+  border-color: var(--mm3-lo) var(--mm3-hi) var(--mm3-hi) var(--mm3-lo);
+  border-radius: 0;
+  box-shadow: 0 0 0 1px #141416;
+}
+
+/* ─── Desktop / wide landscape: the full MM3 screen ─────────────────────── */
+@media (min-width: 1025px), (min-width: 801px) and (min-height: 601px) {
+  .chronicles .chronicles-shell {
+    grid-template-columns: minmax(0, 1fr) clamp(244px, 21vw, 304px);
+    grid-template-rows: auto auto auto auto minmax(0, 1fr) auto;
+    grid-template-areas:
+      'view status'
+      'view touch'
+      'view journal'
+      'view help'
+      'view hero'
+      'party hero';
+    gap: 10px 12px;
+    padding: 10px 12px 12px;
+    background: #6f6f75 var(--mm3-stone) 0 0 / 128px 128px;
+    image-rendering: pixelated;
+  }
+
+  /* The stage column dissolves so its pieces sit in the MM3 panels. */
+  .chronicles .chronicles-stage-wrap {
+    display: contents;
+  }
+
+  .chronicles .chronicles-stage {
+    grid-area: view;
+    border: 32px solid transparent;
+    border-image: var(--mm3-frame) 16 / 32px round;
+    box-shadow: 0 6px 0 rgba(0, 0, 0, .35);
+    background: #050403;
+  }
+  .chronicles .chronicles-stage::before {
+    inset: 0;
+    border: 2px solid #141416;
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .08), inset 0 0 22px rgba(0, 0, 0, .28);
+  }
+  /* Four rubies set in the frame corners. */
+  .chronicles .chronicles-shell::after {
+    content: '';
+    grid-area: view;
+    z-index: 6;
+    margin: -2px;
+    pointer-events: none;
+    background:
+      var(--mm3-gem) left top / 28px 28px no-repeat,
+      var(--mm3-gem) right top / 28px 28px no-repeat,
+      var(--mm3-gem) left bottom / 28px 28px no-repeat,
+      var(--mm3-gem) right bottom / 28px 28px no-repeat;
+    image-rendering: pixelated;
+  }
+
+  /* Portrait strip under the view. */
+  .chronicles .chronicles-party {
+    grid-area: party;
+    height: auto;
+    flex-direction: row;
+    align-items: stretch;
+    gap: 10px;
+    padding: 0;
+    overflow: visible;
+    border: 0;
+    background: none;
+    box-shadow: none;
+  }
+  .chronicles .chronicles-party::before,
+  .chronicles .chronicles-party .chronicles-panel-kicker {
+    display: none;
+  }
+
+  /* The active hero, large, set in the panel under the controls. */
+  .chronicles .chronicles-party-preview {
+    grid-area: hero;
+    min-height: 0;
+    border: 3px solid;
+    border-color: var(--mm3-lo) var(--mm3-hi) var(--mm3-hi) var(--mm3-lo);
+    box-shadow: 0 0 0 1px #141416;
+  }
+  .chronicles .chronicles-party-preview::before { inset: 0; border: 0; }
+  .chronicles .chronicles-party-preview-image { object-fit: cover; object-position: 50% 22%; }
+  .chronicles .chronicles-party-preview-copy {
+    inset: auto 6px 6px;
+    border: 2px solid;
+    border-color: #f0c48a #5a2e12 #5a2e12 #f0c48a;
+    background: #b87033 var(--mm3-sand) 0 0 / 64px 64px;
+    backdrop-filter: none;
+  }
+  .chronicles .chronicles-party-preview-copy span,
+  .chronicles .chronicles-party-preview-copy small { color: #3b1e08; }
+  .chronicles .chronicles-party-preview-copy strong { color: #1f0f04; text-shadow: 1px 1px 0 rgba(255, 220, 170, .45); }
+  .chronicles .chronicles-party-member {
+    flex: 1 1 0;
+    min-width: 0;
+    grid-template-columns: 58px minmax(0, 1fr);
+    grid-template-rows: auto auto auto;
+    grid-template-areas:
+      'portrait name'
+      'portrait stats'
+      'bars bars';
+    gap: 3px 9px;
+    padding: 6px 7px 7px;
+  }
+  .chronicles .chronicles-party-member > .chronicles-party-glyph { grid-area: portrait; width: 58px; height: 58px; border-width: 2px; }
+  .chronicles .chronicles-party-member > span:nth-child(2) { grid-area: name; justify-content: flex-end; }
+  .chronicles .chronicles-party-member > b {
+    grid-area: stats;
+    flex-direction: row;
+    justify-content: flex-start;
+    align-items: baseline;
+    gap: 8px;
+    font-size: .74rem;
+  }
+  .chronicles .chronicles-party-member .chronicles-party-bars {
+    grid-area: bars;
+    display: grid;
+    gap: 2px;
+  }
+
+  /* Right control panel: title plaque, location, engraved buttons. */
+  .chronicles .chronicles-statusbar {
+    grid-area: status;
+    min-height: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+    border: 0;
+    background: none;
+    box-shadow: none;
+  }
+  .chronicles .chronicles-statusbar::before {
+    content: 'Chronicles of Matthias';
+    grid-column: 1 / -1;
+    padding: 12px 8px 10px;
+    border: 2px solid;
+    border-color: var(--mm3-hi) var(--mm3-lo) var(--mm3-lo) var(--mm3-hi);
+    background: #a3a3a8 var(--mm3-stone) 0 0 / 128px 128px;
+    box-shadow: 0 0 0 1px #141416;
+    color: #2a2a30;
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: clamp(1.15rem, 1.6vw, 1.5rem);
+    font-style: italic;
+    font-weight: 700;
+    line-height: 1.05;
+    text-align: center;
+    text-shadow: 1px 1px 0 rgba(255, 255, 255, .7), -1px -1px 0 rgba(0, 0, 0, .35);
+  }
+  .chronicles .chronicles-statusbar > span {
+    padding: 6px 8px;
+    border: 2px solid;
+    border-color: var(--mm3-lo) var(--mm3-hi) var(--mm3-hi) var(--mm3-lo);
+    background: #1a1a1e;
+    color: #8f8f98;
+  }
+  .chronicles .chronicles-statusbar > span:first-child { padding-left: 8px; }
+  .chronicles .chronicles-statusbar > span:last-child { border-right: 2px solid var(--mm3-hi); }
+  .chronicles .chronicles-statusbar > span b { color: #f2e6c4; }
+  .chronicles .chronicles-statusbar > span:nth-child(4) { grid-column: 1 / -1; }
+  .chronicles .chronicles-statusbar > span:nth-child(4) b { white-space: normal; }
+  .chronicles .chronicles-statusbar .chronicles-map-trigger,
+  .chronicles .chronicles-game-menu > summary {
+    min-height: 40px;
+    justify-content: center;
+    font-weight: 700;
+  }
+  .chronicles .chronicles-game-menu { border-left: 0; }
+
+  .chronicles .chronicles-touch {
+    grid-area: touch;
+    grid-template-columns: repeat(3, 1fr);
+    grid-auto-rows: 54px;
+    gap: 6px;
+    padding: 8px;
+    border: 2px solid;
+    border-color: var(--mm3-lo) var(--mm3-hi) var(--mm3-hi) var(--mm3-lo);
+    background: #2b2b30;
+  }
+  .chronicles .chronicles-touch button { min-height: 0; font-size: 1.3rem; }
+  .chronicles .chronicles-touch [data-chronicles-touch-action='turn-left'] { grid-area: 1 / 1; }
+  .chronicles .chronicles-touch [data-chronicles-touch-action='forward'] { grid-area: 1 / 2; }
+  .chronicles .chronicles-touch [data-chronicles-touch-action='turn-right'] { grid-area: 1 / 3; }
+  .chronicles .chronicles-touch [data-chronicles-touch-action='attack'] { grid-area: 2 / 1; }
+  .chronicles .chronicles-touch [data-chronicles-touch-action='backward'] { grid-area: 2 / 2; }
+  .chronicles .chronicles-touch [data-chronicles-touch-action='cast'] { grid-area: 2 / 3; }
+  .chronicles .chronicles-touch [data-chronicles-touch-action='interact'] { grid-area: 3 / 1 / 4 / 4; }
+
+  .chronicles .chronicles-keyboard-help {
+    grid-area: help;
+    gap: 4px 10px;
+    padding: 7px 8px;
+    border: 2px solid;
+    border-color: var(--mm3-lo) var(--mm3-hi) var(--mm3-hi) var(--mm3-lo);
+    background: #1a1a1e;
+    color: #a4a4ad;
+    font-size: .62rem;
+  }
+
+  /* The chronicle is a sandstone tablet, like the town ledgers. */
+  .chronicles .chronicles-journal {
+    grid-area: journal;
+    min-height: 0;
+    overflow: auto;
+    border: 2px solid;
+    border-color: #f0c48a #5a2e12 #5a2e12 #f0c48a;
+    background: #b87033 var(--mm3-sand) 0 0 / 64px 64px;
+    box-shadow: 0 0 0 1px #141416;
+    color: #1f0f04;
+  }
+  .chronicles .chronicles-journal summary { color: #2a1406; }
+  .chronicles .chronicles-journal summary b { color: #2a1406; text-shadow: 1px 1px 0 rgba(255, 220, 170, .45); }
+  .chronicles .chronicles-journal summary small,
+  .chronicles .chronicles-journal summary em { color: #4a250b; }
+  .chronicles .chronicles-journal summary i { color: #6e0a0e; text-shadow: none; }
+  .chronicles .chronicles-journal[open] summary {
+    border-bottom: 2px solid #5a2e12;
+    background: rgba(255, 220, 170, .18);
+  }
+  .chronicles .chronicles-journal__body { max-height: min(42vh, 360px); }
+  .chronicles .chronicles-journal li,
+  .chronicles .chronicles-quest-log__quest {
+    border: 1px solid rgba(60, 28, 8, .45);
+    border-left: 3px solid #5a2e12;
+    background: rgba(255, 232, 196, .22);
+  }
+  .chronicles .chronicles-journal li > span,
+  .chronicles .chronicles-quest-log__quest > span { color: #6e0a0e; border-color: rgba(60, 28, 8, .35); }
+  .chronicles .chronicles-journal li strong,
+  .chronicles .chronicles-quest-log__quest strong { color: #1f0f04; }
+  .chronicles .chronicles-journal li p,
+  .chronicles .chronicles-quest-log__quest p { color: #3b1e08; }
+  .chronicles .chronicles-quest-log h3,
+  .chronicles .chronicles-quest-log__quest small { color: #4a250b; }
+}
