@@ -19,6 +19,8 @@ import time
 import urllib.error
 import urllib.request
 
+import staging_pvp_continuity_probe as pvp
+
 SOURCE = "staging-capacity"
 
 
@@ -359,6 +361,7 @@ def self_test() -> None:
         else:
             raise AssertionError("Chronicles checkpoint invariant accepted a corrupted snapshot")
     godot_pins_self_test()
+    pvp.self_test()
     print("deploy-continuity probe self-test: OK")
 
 
@@ -398,11 +401,15 @@ def run(args: argparse.Namespace) -> dict:
         raise RuntimeError("sentinel move returned no FEN")
 
     chronicles_id = create_chronicles_sentinel(api, token)
+    pvp_sentinel = pvp.create(
+        api, username, password, invite, secret, token,
+        request_json, expect, signed_headers,
+    )
     traffic_ids = [str(create_game(api, token)["id"]) for _ in range(args.traffic_games)]
     pathlib.Path(args.arm_file).write_text(
         json.dumps({
             "game_id": sentinel_id, "chronicles_run_id": chronicles_id,
-            "traffic_games": len(traffic_ids),
+            "pvp_match_id": pvp_sentinel["id"], "traffic_games": len(traffic_ids),
         }),
         encoding="utf-8",
     )
@@ -419,19 +426,20 @@ def run(args: argparse.Namespace) -> dict:
         if time.monotonic() - started > args.max_seconds:
             raise RuntimeError("deploy drill exceeded max duration before done signal")
 
-        # Alternate under the same synthetic account's 120/minute read cap.
-        # Each owner is read ~50/minute; do not double the request frequency.
-        if probe_count % 2 == 0:
+        # Round-robin game/Chronicles/PvP; each account stays under its read cap.
+        if probe_count % 3 == 0:
             game, latency = get_game(api, token, sentinel_id)
             if str(game.get("id") or "") != sentinel_id:
                 raise RuntimeError("sentinel game id changed during deploy")
             if str(game.get("fen") or "") != expected_fen:
                 raise RuntimeError("sentinel FEN changed during deploy")
-        else:
+        elif probe_count % 3 == 1:
             world, latency = chronicles_read(api, token, chronicles_id)
             assert_chronicles_checkpoint(
                 world, chronicles_id, 1, CHRONICLES_BEFORE_FLAGS, "during deploy"
             )
+        else:
+            latency = pvp.sample(api, pvp_sentinel, request_json, expect)
         probe_count += 1
         max_get_ms = max(max_get_ms, latency)
         if probe_count % 60 == 0:
@@ -457,8 +465,8 @@ def run(args: argparse.Namespace) -> dict:
         final_world, chronicles_id, 1, CHRONICLES_BEFORE_FLAGS, "after deploy"
     )
     max_get_ms = max(max_get_ms, world_latency)
-    if probe_count < 4:
-        raise RuntimeError(f"too few continuity probes: {probe_count}")
+    if probe_count < 6 or pvp_sentinel["reads"] < 2:
+        raise RuntimeError(f"too few cross-mode continuity probes: {probe_count}")
     if move_count < min(2, args.traffic_games):
         raise RuntimeError(f"too few real turns during deploy: {move_count}")
 
@@ -491,6 +499,7 @@ def run(args: argparse.Namespace) -> dict:
     )
     max_get_ms = max(max_get_ms, world_latency)
     godot_checks += check_godot_pins(godot_pins)
+    pvp_result = pvp.resume(api, pvp_sentinel, request_json, expect)
 
     return {
         "ok": True,
@@ -502,6 +511,7 @@ def run(args: argparse.Namespace) -> dict:
         "chronicles_checkpoint_resumed": True,
         "chronicles_stale_checkpoint_rejected": True,
         "godot_pinned_asset_checks": godot_checks,
+        **pvp_result,
         "max_get_ms": round(max_get_ms, 1),
         "duration_s": round(time.monotonic() - started, 2),
     }

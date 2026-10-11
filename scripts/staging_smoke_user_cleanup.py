@@ -17,6 +17,8 @@ import re
 import urllib.error
 import urllib.request
 
+from staging_pvp_continuity_probe import companion_username
+
 CI_USER_RE = re.compile(r"^ci_smoke_[0-9a-f]{16}$")
 SYNTHETIC_SOURCE = "staging-smoke-cleanup"
 
@@ -144,6 +146,8 @@ def self_test() -> None:
             pass
         else:
             raise AssertionError(f"El janitor aceptó un username no técnico: {invalid}")
+    companion = companion_username("ci_smoke_0123456789abcdef")
+    assert CI_USER_RE.fullmatch(companion)
     print("staging-smoke-user-cleanup self-test OK · API-only")
 
 
@@ -168,8 +172,18 @@ def main() -> None:
     username = required("STAGING_E2E_USERNAME")
     password = required("STAGING_E2E_PASSWORD")
     synthetic_secret = required("STAGING_SYNTHETIC_SECRET")
-    result = cleanup_identity(api, username, password, synthetic_secret)
-    print(f"Staging smoke janitor: identidad actual · {result} · OK")
+    # Always clean the deterministic companion first, including if the drill
+    # crashed before publishing its armed marker. Other smokes get "absent".
+    # Never skip cleanup of the primary if companion cleanup fails.
+    failures = []
+    for identity in (companion_username(validate_ci_username(username)), username):
+        try:
+            result = cleanup_identity(api, identity, password, synthetic_secret)
+            print(f"Staging smoke janitor: {identity} · {result} · OK")
+        except (SystemExit, Exception) as exc:
+            failures.append(str(exc))
+    if failures:
+        raise SystemExit("Staging smoke janitor failed: " + "; ".join(failures))
 
 
 if __name__ == "__main__":
