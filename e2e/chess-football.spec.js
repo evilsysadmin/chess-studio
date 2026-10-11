@@ -281,6 +281,8 @@ test('Chess Football manager can simulate ten reproducible matchdays without loa
   await expect(page.getByLabel('Objetivo del club')).toContainText('Objetivo');
   await expect(page.getByLabel('Objetivo del club')).not.toContainText('En disputa');
   await expect(season).toContainText('Temporada completada.');
+  await expect(season.getByLabel('Plantilla al cierre')).toBeVisible();
+  await expect(season.getByLabel('Evolución de la plantilla').locator('summary')).toContainText('5 mejorados');
   await expect(season.locator('[aria-label="Resultados de la última jornada"] p')).toHaveCount(3);
   await page.locator('.chess-football-entry__back').click();
   await expect(page.getByRole('heading', { name: 'FC Matthias', exact: true })).toBeVisible();
