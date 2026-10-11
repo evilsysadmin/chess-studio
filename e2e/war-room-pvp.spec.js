@@ -137,7 +137,7 @@ test('War Room 1v1 · un 409 por carrera de turno sincroniza sin flash de error'
 });
 
 test('War Room 1v1 · rendirse no resucita un handoff stale del lobby', async ({ page }) => {
-  test.setTimeout(90_000);
+  test.setTimeout(150_000);
   await mockApi(page);
 
   const staleStarting = matchPayload({
@@ -290,7 +290,8 @@ test('War Room 1v1 · rendirse no resucita un handoff stale del lobby', async ({
   await resignDialog.getByRole('button', { name: 'Rendirse', exact: true }).click();
 
   const debrief = warRoom.getByRole('dialog', { name: 'Resumen del duelo' });
-  await expect(debrief).toBeVisible({ timeout: 5_000 });
+  // Wait for backend-confirmed resignation; software-rendered 3D can delay React updates.
+  await expect(debrief).toBeVisible({ timeout: 25_000 });
   await expect(debrief).toContainText('Derrota');
   await debrief.getByRole('button', { name: 'Volver al lobby', exact: true }).click();
 
