@@ -183,6 +183,28 @@ def breakdown_markdown(environment: str, rows: list[dict]) -> str:
     return "\n".join(lines) + "\n"
 
 
+def resolve_datasource_uids(api: GrafanaReadApi, metrics_uid: str, logs_uid: str, *, include_logs: bool) -> tuple[str, str]:
+    """Only use datasource discovery if a required UID was not configured.
+
+    A configured UID can be queried directly. Avoid making a successful
+    evidence report depend on Grafana's optional /api/datasources endpoint.
+    Actual Prometheus/Loki query failures still fail closed (never fake zero).
+    """
+    metrics_uid = str(metrics_uid or "").strip()
+    logs_uid = str(logs_uid or "").strip() if include_logs else ""
+    needs_discovery = not metrics_uid or (include_logs and not logs_uid)
+    datasources = api.get_list("/api/datasources") if needs_discovery else None
+    if datasources is not None:
+        metrics_uid = _resolve_datasource_uid(datasources, metrics_uid, "prometheus")
+        if include_logs:
+            logs_uid = _resolve_datasource_uid(datasources, logs_uid, "loki")
+    if not metrics_uid:
+        fail("missing GRAFANA_METRICS_DATASOURCE_UID")
+    if include_logs and not logs_uid:
+        fail("missing GRAFANA_LOGS_DATASOURCE_UID")
+    return metrics_uid, logs_uid
+
+
 def self_test() -> int:
     query = fallback_query(14 * 86400)
     assert 'http_route=~"/api/pvp.*"' in query
@@ -211,6 +233,28 @@ def self_test() -> int:
                                                  "values": [[3600, "0"], [7200, "41.6"]]}]}})
     assert trows == [{"environment": "staging", "hour_end": 7200, "requests": 42}]
     assert "1970-01-01 02:00" in timeline_markdown(trows)
+    class StubGrafana:
+        calls = 0
+
+        def get_list(self, path: str) -> list[dict]:
+            assert path == "/api/datasources"
+            self.calls += 1
+            return [
+                {"type": "prometheus", "uid": "test-prom"},
+                {"type": "loki", "uid": "test-logs"},
+            ]
+
+    ready = StubGrafana()
+    assert resolve_datasource_uids(ready, "configured-prom", "configured-logs", include_logs=True) == (
+        "configured-prom", "configured-logs"
+    )
+    assert ready.calls == 0  # no fragile control-plane discovery on daily path
+    assert resolve_datasource_uids(ready, "configured-prom", "", include_logs=False) == ("configured-prom", "")
+    assert ready.calls == 0  # default schedule does not need Loki either
+    discovery = StubGrafana()
+    assert resolve_datasource_uids(discovery, "", "", include_logs=True) == ("test-prom", "test-logs")
+    assert discovery.calls == 1  # fallback discovers once, reused for both UIDs
+
     print("pvp-python-fallback-report self-test OK")
     return 0
 
@@ -231,11 +275,12 @@ def main() -> int:
 
     window_seconds = _window_seconds(args.window)
     api = GrafanaReadApi(os.getenv("GRAFANA_URL", ""), os.getenv("GRAFANA_AUTH", ""))
-    preferred = os.getenv("GRAFANA_METRICS_DATASOURCE_UID", "")
-    datasources = api.get_list("/api/datasources")
-    metrics_uid = _resolve_datasource_uid(datasources, preferred, "prometheus") if datasources is not None else preferred
-    if not metrics_uid:
-        fail("missing GRAFANA_METRICS_DATASOURCE_UID")
+    metrics_uid, logs_uid = resolve_datasource_uids(
+        api,
+        os.getenv("GRAFANA_METRICS_DATASOURCE_UID", ""),
+        os.getenv("GRAFANA_LOGS_DATASOURCE_UID", ""),
+        include_logs=args.sources,
+    )
     payload = api.get_json(
         f"/api/datasources/proxy/uid/{urllib.parse.quote(metrics_uid, safe='')}/api/v1/query",
         {"query": fallback_query(window_seconds), "time": str(int(time.time()))},
@@ -262,10 +307,6 @@ def main() -> int:
             with open(args.summary, "a", encoding="utf-8") as handle:
                 handle.write(section)
     if args.sources:
-        preferred_logs = os.getenv("GRAFANA_LOGS_DATASOURCE_UID", "")
-        logs_uid = _resolve_datasource_uid(datasources, preferred_logs, "loki") if datasources is not None else preferred_logs
-        if not logs_uid:
-            fail("missing GRAFANA_LOGS_DATASOURCE_UID")
         # Loki rejects very long ranges; the source breakdown is about now.
         log_window = min(window_seconds, 2 * 86400)
         for environment, service in LOG_SERVICES.items():
