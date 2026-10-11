@@ -9,96 +9,158 @@
   backdrop-filter: blur(6px);
 }
 
+/* MM3 counter: the shop sits in the carved stone frame with rubies; the
+   merchant's tablet (name, greeting, purse, tabs) is sandstone on the right,
+   the wares are a dark slate niche on the left. */
 .chronicles-shop {
+  position: relative;
   display: grid;
-  grid-template-rows: auto auto minmax(0, 1fr) auto;
-  width: min(720px, 100%);
-  max-height: calc(100dvh - 24px);
-  overflow: hidden;
-  border: 1px solid rgba(204, 157, 83, .54);
-  border-radius: 14px;
-  color: #dfd0b2;
-  background:
-    radial-gradient(circle at 15% 0%, rgba(144, 100, 47, .22), transparent 38%),
-    linear-gradient(145deg, #241a11, #0c0907 72%);
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 270px);
+  grid-template-rows: auto auto auto minmax(0, 1fr) auto;
+  grid-template-areas:
+    'list head'
+    'list join'
+    'list tabs'
+    'list .'
+    'foot foot';
+  gap: 10px 12px;
+  width: min(880px, 100%);
+  height: min(640px, calc(100dvh - 40px));
+  padding: 36px;
+  image-rendering: pixelated;
+  color: #e6e1d4;
+  background: #6f6f75 var(--mm3-stone) 0 0 / 128px 128px;
   box-shadow: 0 24px 70px rgba(0, 0, 0, .6);
 }
 
+/* Frame and rubies live inside the box (padding = frame + 4 px). */
+.chronicles-shop::after {
+  content: '';
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  pointer-events: none;
+  border: 32px solid transparent;
+  border-image: var(--mm3-frame) 16 / 32px round;
+}
+
+.chronicles-shop::before {
+  content: '';
+  position: absolute;
+  z-index: 2;
+  inset: 0;
+  pointer-events: none;
+  background:
+    var(--mm3-gem) left top / 28px 28px no-repeat,
+    var(--mm3-gem) right top / 28px 28px no-repeat,
+    var(--mm3-gem) left bottom / 28px 28px no-repeat,
+    var(--mm3-gem) right bottom / 28px 28px no-repeat;
+}
+
 .chronicles-shop__head {
+  grid-area: head;
+  position: relative;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
-  gap: 12px;
-  align-items: start;
-  padding: 16px 18px 10px;
-  border-bottom: 1px solid rgba(204, 157, 83, .22);
+  gap: 8px;
+  padding: 14px 14px 12px;
+  border: 2px solid;
+  border-color: #f0c48a #5a2e12 #5a2e12 #f0c48a;
+  background: #b87033 var(--mm3-sand) 0 0 / 64px 64px;
+  box-shadow: 0 0 0 1px #141416;
+  color: #1f0f04;
 }
 
 .chronicles-shop__head span {
   font-size: 11px;
+  font-weight: 700;
   letter-spacing: .18em;
-  color: #b9925a;
+  color: #4a250b;
 }
 
 .chronicles-shop__head h2 {
-  margin: 2px 0 4px;
+  margin: 2px 40px 6px 0;
   font-family: Georgia, 'Times New Roman', serif;
-  font-size: clamp(18px, 2.4vw, 22px);
-  color: #f1e2c2;
+  font-size: clamp(18px, 2.2vw, 22px);
+  line-height: 1.15;
+  color: #1f0f04;
+  text-shadow: 1px 1px 0 rgba(255, 220, 170, .45);
 }
 
 .chronicles-shop__head p {
   margin: 0;
+  font-family: Georgia, 'Times New Roman', serif;
   font-size: 13px;
   font-style: italic;
-  color: #c9b48f;
+  line-height: 1.4;
+  color: #2e1606;
 }
 
+/* Purse plaque, as in the bank ledger: dark inset, gold figures. */
 .chronicles-shop__head b {
-  align-self: center;
+  justify-self: stretch;
   padding: 6px 10px;
-  border: 1px solid rgba(224, 180, 92, .5);
-  border-radius: 999px;
-  color: #f3cf7d;
+  border: 2px solid;
+  border-color: #5a2e12 #f0c48a #f0c48a #5a2e12;
+  background: #1a120b;
+  color: #ffd76a;
+  font-size: 15px;
+  text-align: center;
   white-space: nowrap;
 }
 
 .chronicles-shop__close {
-  width: 36px;
-  height: 36px;
-  border: 1px solid rgba(204, 157, 83, .4);
-  border-radius: 10px;
-  color: #dfd0b2;
-  background: rgba(255, 255, 255, .03);
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 34px;
+  height: 34px;
+  border: 2px solid;
+  border-color: var(--mm3-hi) var(--mm3-lo) var(--mm3-lo) var(--mm3-hi);
+  background: #9d9da2 var(--mm3-stone) 0 0 / 128px 128px;
+  box-shadow: 0 0 0 1px #141416;
+  color: var(--mm3-ink);
+  font-weight: 700;
   cursor: pointer;
 }
 
 .chronicles-shop__tabs {
-  display: flex;
+  grid-area: tabs;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
   gap: 6px;
-  padding: 10px 18px 0;
 }
 
 .chronicles-shop__tabs button {
-  padding: 8px 14px;
-  border: 1px solid rgba(204, 157, 83, .3);
-  border-bottom: none;
-  border-radius: 10px 10px 0 0;
-  color: #cbb48c;
-  background: transparent;
+  min-height: 40px;
+  padding: 8px 10px;
+  border: 2px solid;
+  border-color: var(--mm3-hi) var(--mm3-lo) var(--mm3-lo) var(--mm3-hi);
+  background: #9d9da2 var(--mm3-stone) 0 0 / 128px 128px;
+  box-shadow: 0 0 0 1px #141416;
+  color: var(--mm3-ink);
+  font-weight: 700;
+  text-shadow: 1px 1px 0 rgba(255, 255, 255, .55);
   cursor: pointer;
 }
 
 .chronicles-shop__tabs button[aria-selected='true'] {
-  color: #f1e2c2;
-  background: rgba(204, 157, 83, .14);
+  border-color: var(--mm3-lo) var(--mm3-hi) var(--mm3-hi) var(--mm3-lo);
+  background-color: #e3b45c;
+  background-blend-mode: multiply;
 }
 
 .chronicles-shop__list {
+  grid-area: list;
+  min-height: 0;
   margin: 0;
-  padding: 8px 12px 12px;
+  padding: 6px;
   overflow-y: auto;
   list-style: none;
-  border-top: 1px solid rgba(204, 157, 83, .22);
+  border: 2px solid;
+  border-color: var(--mm3-lo) var(--mm3-hi) var(--mm3-hi) var(--mm3-lo);
+  background: #17171b;
+  box-shadow: inset 0 0 24px rgba(0, 0, 0, .55);
 }
 
 .chronicles-shop__list li {
@@ -106,12 +168,16 @@
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 12px;
   align-items: center;
-  padding: 10px 8px;
-  border-bottom: 1px solid rgba(204, 157, 83, .12);
+  padding: 9px 10px;
+  border-bottom: 1px solid #2c2c33;
+}
+
+.chronicles-shop__list li:nth-child(even) {
+  background: rgba(255, 255, 255, .025);
 }
 
 .chronicles-shop__list li.is-expensive .chronicles-shop__item {
-  opacity: .6;
+  opacity: .55;
 }
 
 .chronicles-shop__item {
@@ -122,76 +188,83 @@
 
 .chronicles-shop__item small {
   font-size: 10px;
+  font-weight: 700;
   letter-spacing: .14em;
   text-transform: uppercase;
-  color: #a98a5a;
+  color: #9c9ca6;
 }
 
 .chronicles-shop__item strong {
-  color: #f1e2c2;
+  color: #ffe9a8;
 }
 
 .chronicles-shop__item span,
 .chronicles-shop__item em {
   font-size: 12.5px;
-  color: #c3ae88;
+  color: #c9c6bd;
 }
 
 .chronicles-shop__item em {
   font-style: normal;
-  color: #9c8a6c;
+  color: #8fd18a;
 }
 
-.chronicles-shop__list button {
-  min-width: 78px;
+/* Engraved stone price key with a gold tint. */
+.chronicles-shop__list button,
+.chronicles-shop__join button {
+  min-width: 82px;
   min-height: 40px;
   padding: 8px 12px;
-  border: 1px solid rgba(224, 180, 92, .55);
-  border-radius: 10px;
-  color: #f3cf7d;
-  background: rgba(224, 180, 92, .08);
-  font-weight: 600;
+  border: 2px solid;
+  border-color: #ffeec2 #6b4510 #6b4510 #ffeec2;
+  background: #e3b45c var(--mm3-stone) 0 0 / 128px 128px;
+  background-blend-mode: multiply;
+  box-shadow: 0 0 0 1px #141416;
+  color: #2c1a03;
+  font-weight: 700;
+  text-shadow: 1px 1px 0 rgba(255, 240, 200, .5);
   cursor: pointer;
 }
 
-.chronicles-shop__list button:disabled {
-  border-color: rgba(204, 157, 83, .2);
-  color: #7d6c52;
+.chronicles-shop__list button:hover:not(:disabled),
+.chronicles-shop__join button:hover:not(:disabled),
+.chronicles-shop__tabs button:hover,
+.chronicles-shop__close:hover {
+  outline: 2px solid #e9c25a;
+  outline-offset: 1px;
+}
+
+.chronicles-shop__list button:active:not(:disabled),
+.chronicles-shop__join button:active:not(:disabled) {
+  border-color: #6b4510 #ffeec2 #ffeec2 #6b4510;
+  transform: translateY(1px);
+}
+
+.chronicles-shop__list button:disabled,
+.chronicles-shop__join button:disabled {
+  border-color: #d4d4d8 #5a5a60 #5a5a60 #d4d4d8;
+  background-color: #a9a9ae;
+  background-blend-mode: normal;
+  color: #55555d;
+  text-shadow: 1px 1px 0 rgba(255, 255, 255, .45);
+  opacity: .8;
   cursor: not-allowed;
 }
 
 .chronicles-shop__join {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px 14px;
-  align-items: center;
-  justify-content: space-between;
-  padding: 12px 18px;
-  border-top: 1px solid rgba(204, 157, 83, .22);
-  background: rgba(224, 180, 92, .05);
+  grid-area: join;
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border: 2px solid;
+  border-color: var(--mm3-lo) var(--mm3-hi) var(--mm3-hi) var(--mm3-lo);
+  background: #1a1a1e;
 }
 
 .chronicles-shop__join p {
   margin: 0;
-  flex: 1 1 220px;
   font-size: 12.5px;
-  color: #c3ae88;
-}
-
-.chronicles-shop__join button {
-  min-height: 40px;
-  padding: 8px 14px;
-  border: 1px solid rgba(224, 180, 92, .7);
-  border-radius: 10px;
-  color: #1a130b;
-  background: #e0b45c;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.chronicles-shop__join button:disabled {
-  opacity: .5;
-  cursor: not-allowed;
+  color: #c9c6bd;
 }
 
 .chronicles-shop__learners {
@@ -203,31 +276,53 @@
 
 .chronicles-shop__empty {
   display: block !important;
-  color: #a99577;
+  color: #a8a8b0;
   font-style: italic;
 }
 
 .chronicles-shop__foot {
-  padding: 10px 18px 14px;
-  border-top: 1px solid rgba(204, 157, 83, .22);
+  grid-area: foot;
+  padding: 7px 10px;
+  border: 2px solid;
+  border-color: var(--mm3-lo) var(--mm3-hi) var(--mm3-hi) var(--mm3-lo);
+  background: #1a1a1e;
   font-size: 12px;
-  color: #a99577;
+  color: #a8a8b0;
 }
 
-@media (max-width: 560px) {
+/* Phones: the tablet goes on top, the wares below, one column. */
+@media (max-width: 680px) {
+  .chronicles-shop {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto auto auto minmax(0, 1fr) auto;
+    grid-template-areas:
+      'head'
+      'join'
+      'tabs'
+      'list'
+      'foot';
+    gap: 8px;
+    height: calc(100dvh - 24px);
+    padding: 19px;
+  }
+
+  .chronicles-shop::after {
+    border-width: 16px;
+    border-image: var(--mm3-frame) 16 / 16px round;
+  }
+
+  .chronicles-shop::before { background-size: 20px 20px; }
+
   .chronicles-shop__head {
     grid-template-columns: minmax(0, 1fr) auto;
+    padding: 10px 12px;
   }
+
+  .chronicles-shop__head > div { grid-column: 1 / -1; }
 
   .chronicles-shop__head b {
     grid-column: 1;
-    grid-row: 2;
     justify-self: start;
-  }
-
-  .chronicles-shop__close {
-    grid-column: 2;
-    grid-row: 1;
   }
 
   .chronicles-shop__list li:has(.chronicles-shop__learners) {

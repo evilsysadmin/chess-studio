@@ -137,12 +137,14 @@ export default function ChroniclesCharacterSheet({
       }}
     >
       <section
-        className="chronicles-character-sheet"
+        className={`chronicles-character-sheet${tacticsMode ? '' : ' chronicles-character-sheet--mm3'}`}
         role="dialog"
         aria-modal="true"
         aria-labelledby="chronicles-character-sheet-title"
         onKeyDown={closeOnEscape}
       >
+        {/* The frame (and its corner gems) stays put; only the contents scroll. */}
+        <div className="chronicles-character-sheet__scroll">
         <header className="chronicles-character-sheet__head">
           <div className="chronicles-character-sheet__portrait">
             <img src={chroniclesPartyPortraitUrl(member.id)} alt={`Retrato de ${member.name}`} draggable="false" />
@@ -359,6 +361,7 @@ export default function ChroniclesCharacterSheet({
           <span>{member.attackName || profile.attackName} · daño {damage} · alcance {reach}</span>
           <span>Esc · cerrar</span>
         </footer>
+        </div>
       </section>
     </div>
   );
