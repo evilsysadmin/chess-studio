@@ -1,0 +1,288 @@
+{
+  "id": "terra-d5",
+  "version": 1,
+  "progressionKey": "terra-d5-v1",
+  "title": "Marismas de Sal",
+  "areaCode": "D5",
+  "biome": "marsh",
+  "regionKind": "wilderness",
+  "layoutMode": "authored",
+  "grid": [
+    "#####################",
+    "##.........#..##....#",
+    "##.###..............#",
+    "###.................#",
+    "##.................##",
+    "##..#..#..........###",
+    "#..##........#......#",
+    "#...................#",
+    "##.#..#.........#...#",
+    "##......#........#..#",
+    "#...#..........####.#",
+    "#...............#####",
+    "#...##......###..####",
+    "#..#.........#..#####",
+    "#####################"
+  ],
+  "partyStart": {
+    "x": 10,
+    "y": 7,
+    "direction": 0
+  },
+  "initialFlags": {},
+  "enemies": [
+    {
+      "id": "terra-d5-foe-0",
+      "visualType": "salt-crab",
+      "name": "cangrejo de salitre",
+      "x": 7,
+      "y": 3,
+      "hpKey": "terra_d5Foe0Hp",
+      "maxHp": 10,
+      "retaliation": 2,
+      "optional": true,
+      "activation": "always",
+      "ai": {
+        "movement": "cardinal-roam",
+        "attackReach": 1,
+        "engagedMovement": "knight-chase",
+        "engageRange": 2
+      },
+      "onDefeat": {
+        "message": "{attacker} acaba con cangrejo de salitre usando {attack}.",
+        "effects": [
+          {
+            "type": "grant-gold",
+            "amount": 8
+          }
+        ]
+      }
+    },
+    {
+      "id": "terra-d5-foe-1",
+      "visualType": "drowned",
+      "name": "ahogado",
+      "x": 13,
+      "y": 11,
+      "hpKey": "terra_d5Foe1Hp",
+      "maxHp": 10,
+      "retaliation": 2,
+      "optional": true,
+      "activation": "always",
+      "ai": {
+        "movement": "cardinal-chase",
+        "attackReach": 1,
+        "engagedMovement": "cardinal-chase",
+        "engageRange": 3
+      },
+      "onDefeat": {
+        "message": "{attacker} acaba con ahogado usando {attack}.",
+        "effects": [
+          {
+            "type": "grant-gold",
+            "amount": 8
+          }
+        ]
+      }
+    },
+    {
+      "id": "terra-d5-foe-2",
+      "visualType": "sewer-rat",
+      "name": "rata de marisma",
+      "x": 3,
+      "y": 11,
+      "hpKey": "terra_d5Foe2Hp",
+      "maxHp": 10,
+      "retaliation": 2,
+      "optional": true,
+      "activation": "always",
+      "ai": {
+        "movement": "cardinal-roam",
+        "attackReach": 1,
+        "engagedMovement": "cardinal-chase",
+        "engageRange": 3
+      },
+      "onDefeat": {
+        "message": "{attacker} acaba con rata de marisma usando {attack}.",
+        "effects": [
+          {
+            "type": "grant-gold",
+            "amount": 8
+          }
+        ]
+      }
+    },
+    {
+      "id": "vado-watch-quarry",
+      "visualType": "salt-crab",
+      "name": "la Reina Tenaza",
+      "hpKey": "vado_watchQuarryHp",
+      "maxHp": 22,
+      "retaliation": 3,
+      "optional": true,
+      "activation": "always",
+      "defeatedFlag": "vado_watchHunted",
+      "ai": {
+        "movement": "cardinal-roam",
+        "attackReach": 1,
+        "engagedMovement": "knight-chase",
+        "engageRange": 2
+      },
+      "onDefeat": {
+        "message": "{attacker} abate a la Reina Tenaza con {attack}.",
+        "effects": [
+          {
+            "type": "set",
+            "key": "vado_watchHunted",
+            "value": true
+          }
+        ]
+      },
+      "x": 17,
+      "y": 3
+    }
+  ],
+  "triggers": [],
+  "interactables": [
+    {
+      "id": "terra-d5-sign",
+      "kind": "lore",
+      "visualType": "signpost",
+      "x": 5,
+      "y": 4,
+      "persistentVisual": true,
+      "label": "Leer el cartel",
+      "action": {
+        "effects": [],
+        "message": "Cartel: al este, la Ciénaga Negra (E5). No vayas de noche. Ni de día."
+      }
+    }
+  ],
+  "treasures": [
+    {
+      "id": "terra-d5-chest",
+      "kind": "pickup",
+      "visualType": "chest",
+      "x": 15,
+      "y": 4,
+      "label": "Abrir el cofre",
+      "when": [
+        {
+          "key": "terra_d5ChestOpened",
+          "falsy": true
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "set",
+            "key": "terra_d5ChestOpened",
+            "value": true
+          },
+          {
+            "type": "grant-gold",
+            "amount": 24
+          },
+          {
+            "type": "grant-item",
+            "itemId": "iron-sword",
+            "name": "Iron sword",
+            "description": "Botín de un cofre de Terra.",
+            "quantity": 1
+          }
+        ],
+        "message": "El cofre guarda 24 monedas y algo de equipo."
+      }
+    }
+  ],
+  "traps": [],
+  "exits": [
+    {
+      "id": "d5-to-d4",
+      "kind": "exit",
+      "x": 10,
+      "y": 1,
+      "requiresReturn": true,
+      "openLabel": "Ir a D4 · Lindes de las Marismas",
+      "lockedLabel": "El paso está cortado",
+      "requirements": [],
+      "action": {
+        "effects": [
+          {
+            "type": "transition-map",
+            "mapId": "terra-d4",
+            "entryExitId": "d4-to-d5"
+          }
+        ],
+        "message": "La compañía entra en D4."
+      }
+    },
+    {
+      "id": "d5-to-d6",
+      "kind": "exit",
+      "x": 10,
+      "y": 13,
+      "requiresReturn": true,
+      "openLabel": "Ir a D6 · Puertas de Bronce",
+      "lockedLabel": "El paso está cortado",
+      "requirements": [],
+      "action": {
+        "effects": [
+          {
+            "type": "transition-map",
+            "mapId": "terra-d6",
+            "entryExitId": "d6-to-d5"
+          }
+        ],
+        "message": "La compañía entra en D6."
+      }
+    },
+    {
+      "id": "d5-to-c5",
+      "kind": "exit",
+      "x": 1,
+      "y": 7,
+      "requiresReturn": true,
+      "openLabel": "Ir a C5 · Orillas de Vado de Sal",
+      "lockedLabel": "El paso está cortado",
+      "requirements": [],
+      "action": {
+        "effects": [
+          {
+            "type": "transition-map",
+            "mapId": "terra-c5",
+            "entryExitId": "c5-to-d5"
+          }
+        ],
+        "message": "La compañía entra en C5."
+      }
+    },
+    {
+      "id": "d5-to-e5",
+      "kind": "exit",
+      "x": 19,
+      "y": 7,
+      "requiresReturn": true,
+      "openLabel": "Ir a E5 · Ciénaga Negra",
+      "lockedLabel": "El paso está cortado",
+      "requirements": [],
+      "action": {
+        "effects": [
+          {
+            "type": "transition-map",
+            "mapId": "terra-e5",
+            "entryExitId": "e5-to-d5"
+          }
+        ],
+        "message": "La compañía entra en E5."
+      }
+    }
+  ],
+  "initialJournal": {
+    "id": "terra-d5-arrival",
+    "title": "D5 · Marismas de Sal",
+    "body": "Cañas, lodo y voces que no son de nadie.",
+    "sigil": "D5"
+  },
+  "introMessage": "D5 · Marismas de Sal. Cañas, lodo y voces que no son de nadie."
+}

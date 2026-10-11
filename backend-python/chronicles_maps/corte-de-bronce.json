@@ -1,0 +1,409 @@
+{
+  "id": "corte-de-bronce",
+  "version": 1,
+  "progressionKey": "corte-de-bronce-v1",
+  "title": "Corte de Bronce",
+  "areaCode": "D6",
+  "regionKind": "settlement",
+  "layoutMode": "authored",
+  "grid": [
+    "###################",
+    "#.................#",
+    "#.###.###.###.###.#",
+    "#.###.###.###.###.#",
+    "#.................#",
+    "#.##...........##.#",
+    "#.##...........##.#",
+    "#.##...........##.#",
+    "#.................#",
+    "#........#........#",
+    "#.................#",
+    "#.###.###.###.###.#",
+    "#.###.###.###.###.#",
+    "#.................#",
+    "###################"
+  ],
+  "partyStart": {
+    "x": 9,
+    "y": 1,
+    "direction": 2
+  },
+  "initialFlags": {},
+  "enemies": [],
+  "triggers": [],
+  "interactables": [
+    {
+      "id": "corte-de-bronce-inn",
+      "kind": "service",
+      "x": 7,
+      "y": 10,
+      "visualType": "building-tavern",
+      "label": "Posada · descansar y curar · 8 oro",
+      "lockedLabel": "Posada · necesitas 8 oro",
+      "requirements": [
+        {
+          "itemId": "crown-gold",
+          "quantity": 8,
+          "message": "El posadero cobra por adelantado."
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "consume-item",
+            "itemId": "crown-gold",
+            "quantity": 8
+          },
+          {
+            "type": "heal-party",
+            "amount": 12
+          },
+          {
+            "type": "refill-class-abilities"
+          },
+          {
+            "type": "restore-spell-points"
+          }
+        ],
+        "message": "La compañía duerme en la posada de Corte de Bronce. Heridas curadas, puntos de hechizo recuperados."
+      }
+    },
+    {
+      "id": "corte-de-bronce-weapons",
+      "kind": "merchant",
+      "x": 7,
+      "y": 4,
+      "visualType": "building-forge",
+      "label": "Armería de Corte de Bronce",
+      "shop": {
+        "stock": [
+          "steel-sword",
+          "steel-axe",
+          "steel-spear",
+          "silver-mace"
+        ]
+      },
+      "action": {
+        "effects": [],
+        "message": "El armero no levanta la vista del afilador: «Mira lo que quieras. Rompes, pagas»."
+      }
+    },
+    {
+      "id": "corte-de-bronce-armour",
+      "kind": "merchant",
+      "x": 11,
+      "y": 4,
+      "visualType": "building-armor",
+      "label": "Coracería de Corte de Bronce",
+      "shop": {
+        "stock": [
+          "steel-chain",
+          "steel-splint",
+          "steel-plate",
+          "steel-shield"
+        ]
+      },
+      "action": {
+        "effects": [],
+        "message": "El forjador golpea una coraza al rojo: «Hecha a mano. Como mis precios»."
+      }
+    },
+    {
+      "id": "corte-de-bronce-temple",
+      "kind": "service",
+      "x": 14,
+      "y": 6,
+      "visualType": "building-temple",
+      "label": "Templo · sanar a la compañía · 4 oro",
+      "lockedLabel": "Templo · necesitas 4 oro",
+      "requirements": [
+        {
+          "itemId": "crown-gold",
+          "quantity": 4,
+          "message": "El templo pide una ofrenda de cuatro monedas."
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "consume-item",
+            "itemId": "crown-gold",
+            "quantity": 4
+          },
+          {
+            "type": "heal-party",
+            "amount": 20
+          }
+        ],
+        "message": "Los sacerdotes rezan sobre la compañía. Las heridas se cierran."
+      }
+    },
+    {
+      "id": "dama-audience",
+      "kind": "lore",
+      "x": 11,
+      "y": 10,
+      "visualType": "building-hall",
+      "label": "Audiencia con la Dama · 100 oro",
+      "when": [
+        {
+          "key": "vigiliaOsricReported",
+          "truthy": true
+        },
+        {
+          "key": "lostKingFinalActOpen",
+          "falsy": true
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "claim-reward",
+            "rewardId": "terra:dama:v1",
+            "requirements": [
+              {
+                "key": "vigiliaOsricReported",
+                "truthy": true
+              }
+            ],
+            "effects": [
+              {
+                "type": "set",
+                "key": "lostKingFinalActOpen",
+                "value": true
+              },
+              {
+                "type": "grant-gold",
+                "amount": 100
+              },
+              {
+                "type": "award-xp",
+                "awardId": "terra:dama:v1",
+                "amount": 200
+              },
+              {
+                "type": "advance-quest",
+                "questId": "lost-king",
+                "title": "El rey desaparecido",
+                "description": "La Dama busca a sus caballeros desaparecidos.",
+                "order": 1,
+                "objective": "La Dama ha abierto el Templo Bajo la Corona (F6). El Rey espera allí, bajo la piedra. (Último acto en preparación.)"
+              }
+            ]
+          }
+        ],
+        "message": "La Dama recibe la tablilla sin testigos: «El Canciller Varren fundió una corona hueca para jurar en lugar del Rey. Y el Rey… el Rey sigue vivo, bajo la piedra, en el Templo Bajo la Corona. Tomad esto: abre las siete coronas»",
+        "journal": {
+          "id": "lost-king-dama",
+          "title": "La Dama",
+          "body": "El Rey vive bajo el Templo Bajo la Corona (F6). El Canciller Varren es el traidor.",
+          "sigil": "♛"
+        }
+      }
+    },
+    {
+      "id": "corte-steward-errand-brief",
+      "kind": "lore",
+      "x": 15,
+      "y": 10,
+      "visualType": "building-store",
+      "label": "Hablar con la mayordoma de la Corte",
+      "when": [
+        {
+          "key": "corte_stewardErrandStarted",
+          "falsy": true
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "set",
+            "key": "corte_stewardErrandStarted",
+            "value": true
+          },
+          {
+            "type": "start-quest",
+            "questId": "corte-steward-errand",
+            "title": "La campanilla de la abadía",
+            "description": "«La Dama quiere oír la campanilla de las Ruinas del Obispo (E6). Dicen que trae paz a quien la oye».",
+            "objective": "Busca la campanilla de la abadía en E6 · Ruinas del Obispo y tráelo.",
+            "order": 45
+          }
+        ],
+        "message": "«La Dama quiere oír la campanilla de las Ruinas del Obispo (E6). Dicen que trae paz a quien la oye»."
+      }
+    },
+    {
+      "id": "corte-steward-errand-report",
+      "kind": "quest",
+      "x": 15,
+      "y": 10,
+      "visualType": "building-store",
+      "label": "Entregar la campanilla de la abadía · 40 oro",
+      "when": [
+        {
+          "questId": "corte-steward-errand",
+          "questStatus": "active"
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "claim-reward",
+            "rewardId": "terra:corte-steward-errand:v1",
+            "requirements": [
+              {
+                "itemId": "abbey-bell"
+              }
+            ],
+            "effects": [
+              {
+                "type": "consume-item",
+                "itemId": "abbey-bell",
+                "quantity": 1
+              },
+              {
+                "type": "complete-quest",
+                "questId": "corte-steward-errand",
+                "objective": "Side quest completada."
+              },
+              {
+                "type": "grant-gold",
+                "amount": 40
+              },
+              {
+                "type": "award-xp",
+                "awardId": "terra:corte-steward-errand:v1",
+                "amount": 70
+              }
+            ]
+          }
+        ],
+        "message": "La mayordoma envuelve la campanilla en seda: «Hoy dormirá alguien en esta corte»."
+      },
+      "requirements": [
+        {
+          "itemId": "abbey-bell",
+          "message": "«¿Y la campanilla de la abadía? Está en E6»."
+        }
+      ],
+      "lockedLabel": "La mayordoma de la Corte · espera la campanilla de la abadía"
+    },
+    {
+      "id": "corte-guard-hunt-brief",
+      "kind": "lore",
+      "x": 4,
+      "y": 6,
+      "visualType": "building-watch",
+      "label": "Hablar con el capitán de la guardia",
+      "when": [
+        {
+          "key": "corte_guardHuntStarted",
+          "falsy": true
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "set",
+            "key": "corte_guardHuntStarted",
+            "value": true
+          },
+          {
+            "type": "start-quest",
+            "questId": "corte-guard-hunt",
+            "title": "Caza: el Fantasma del Dragón",
+            "description": "«Una luz roja recorre el Desierto de Ceniza (F5) junto al esqueleto del dragón. Las caravanas no pasan».",
+            "objective": "Acaba con el Fantasma del Dragón en F5 · Desierto de Ceniza.",
+            "order": 40
+          }
+        ],
+        "message": "«Una luz roja recorre el Desierto de Ceniza (F5) junto al esqueleto del dragón. Las caravanas no pasan»."
+      }
+    },
+    {
+      "id": "corte-guard-hunt-report",
+      "kind": "quest",
+      "x": 4,
+      "y": 6,
+      "visualType": "building-watch",
+      "label": "Cobrar la caza a el capitán de la guardia · 50 oro",
+      "when": [
+        {
+          "questId": "corte-guard-hunt",
+          "questStatus": "active"
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "claim-reward",
+            "rewardId": "terra:corte-guard-hunt:v1",
+            "requirements": [
+              {
+                "key": "corte_guardHunted",
+                "truthy": true
+              }
+            ],
+            "effects": [
+              {
+                "type": "complete-quest",
+                "questId": "corte-guard-hunt",
+                "objective": "Side quest completada."
+              },
+              {
+                "type": "grant-gold",
+                "amount": 50
+              },
+              {
+                "type": "award-xp",
+                "awardId": "terra:corte-guard-hunt:v1",
+                "amount": 100
+              }
+            ]
+          }
+        ],
+        "message": "«Las caravanas volverán. Y con ellas, los impuestos»."
+      },
+      "requirements": [
+        {
+          "key": "corte_guardHunted",
+          "truthy": true,
+          "message": "«El Fantasma del Dragón sigue vivo en F5»."
+        }
+      ],
+      "lockedLabel": "El capitán de la guardia · «¿Ya cayó el Fantasma del Dragón?»"
+    }
+  ],
+  "treasures": [],
+  "traps": [],
+  "exits": [
+    {
+      "id": "town-gate",
+      "kind": "exit",
+      "x": 9,
+      "y": 1,
+      "requiresReturn": true,
+      "openLabel": "Salir a D6 · Puertas de Bronce",
+      "lockedLabel": "Las puertas están cerradas",
+      "requirements": [],
+      "action": {
+        "effects": [
+          {
+            "type": "transition-map",
+            "mapId": "terra-d6",
+            "entryExitId": "d6-to-town"
+          }
+        ],
+        "message": "La compañía sale de Corte de Bronce."
+      }
+    }
+  ],
+  "initialJournal": {
+    "id": "corte-de-bronce-arrival",
+    "title": "Corte de Bronce",
+    "body": "Cúpulas de bronce, guardias de gala y silencio de luto.",
+    "sigil": "D6"
+  },
+  "introMessage": "Corte de Bronce. Cúpulas de bronce, guardias de gala y silencio de luto."
+}

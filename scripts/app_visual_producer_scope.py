@@ -400,6 +400,16 @@ def classify_path(path: str) -> set[str] | None:
     if not lower.startswith("frontend/src/"):
         if lower.startswith(("backend-python/", "backend-go/")):
             return set()
+        # Chronicles content and art generators have no render code: what they
+        # write (manifests under frontend/src/chronicles/maps, assets under
+        # frontend/src/assets/chronicles) is classified on its own.
+        if (
+            lower.startswith("scripts/chronicles/")
+            or lower.startswith("scripts/art/chronicles_sprites/")
+            or lower.startswith("scripts/art/build_chronicles_")
+            or lower == "scripts/art/pack_chronicles_sprites.py"
+        ):
+            return set()
         if lower in {
             "scripts/css_architecture_manifest.json",
             "scripts/chronicles_area_parity_corpus.py",  # Backend fixture data, no render code.
@@ -790,6 +800,9 @@ def project_chronicles_lane(producers: str, lane: str) -> str:
 
 
 def self_test() -> None:
+    assert classify_path("scripts/chronicles/build_terra_world.py") == set()
+    assert classify_path("scripts/art/build_chronicles_procedural_sprites.py") == set()
+    assert classify_path("scripts/art/chronicles_sprites/source/drowned.idle.png") == set()
     assert project_chronicles_lane("all", "combined") == "all"
     assert project_chronicles_lane("chronicles-tactics,chronicles-gameplay", "default") == "chronicles-gameplay"
     assert project_chronicles_lane("chronicles-tactics,chronicles-gameplay", "tactics") == "chronicles-tactics"

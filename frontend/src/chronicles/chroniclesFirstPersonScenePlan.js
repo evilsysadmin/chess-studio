@@ -17,6 +17,7 @@ export function chroniclesFirstPersonScenePlan(state) {
       ...chroniclesSwordhavenReturnVisual(state),
     ]),
     regionKind: map.regionKind || 'dungeon',
+    biome: map.biome || null,
     useAuthoredCryptDressing: map.id === 'crypt-eight-squares',
   });
 }

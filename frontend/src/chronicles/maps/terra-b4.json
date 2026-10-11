@@ -1,0 +1,232 @@
+{
+  "id": "terra-b4",
+  "version": 1,
+  "progressionKey": "terra-b4-v1",
+  "title": "Granjas del Trigo",
+  "areaCode": "B4",
+  "biome": "plains",
+  "regionKind": "wilderness",
+  "layoutMode": "authored",
+  "grid": [
+    "#####################",
+    "#...................#",
+    "#...................#",
+    "#...................#",
+    "##..................#",
+    "#...................#",
+    "#...............##..#",
+    "#...................#",
+    "#...................#",
+    "#..............#....#",
+    "#...................#",
+    "#...................#",
+    "#...................#",
+    "#............#......#",
+    "#####################"
+  ],
+  "partyStart": {
+    "x": 10,
+    "y": 7,
+    "direction": 0
+  },
+  "initialFlags": {},
+  "enemies": [
+    {
+      "id": "terra-b4-foe-0",
+      "visualType": "ash-goblin",
+      "name": "goblin",
+      "x": 7,
+      "y": 3,
+      "hpKey": "terra_b4Foe0Hp",
+      "maxHp": 8,
+      "retaliation": 1,
+      "optional": true,
+      "activation": "always",
+      "ai": {
+        "movement": "cardinal-roam",
+        "attackReach": 1,
+        "engagedMovement": "cardinal-chase",
+        "engageRange": 2
+      },
+      "onDefeat": {
+        "message": "{attacker} acaba con goblin usando {attack}.",
+        "effects": [
+          {
+            "type": "grant-gold",
+            "amount": 6
+          }
+        ]
+      }
+    },
+    {
+      "id": "terra-b4-foe-1",
+      "visualType": "sewer-rat",
+      "name": "rata gigante",
+      "x": 13,
+      "y": 11,
+      "hpKey": "terra_b4Foe1Hp",
+      "maxHp": 8,
+      "retaliation": 1,
+      "optional": true,
+      "activation": "always",
+      "ai": {
+        "movement": "cardinal-roam",
+        "attackReach": 1,
+        "engagedMovement": "cardinal-chase",
+        "engageRange": 3
+      },
+      "onDefeat": {
+        "message": "{attacker} acaba con rata gigante usando {attack}.",
+        "effects": [
+          {
+            "type": "grant-gold",
+            "amount": 6
+          }
+        ]
+      }
+    }
+  ],
+  "triggers": [],
+  "interactables": [
+    {
+      "id": "b4-farmer",
+      "kind": "lore",
+      "visualType": "rookwood-mourner",
+      "x": 5,
+      "y": 4,
+      "persistentVisual": true,
+      "label": "Hablar con la granjera Tesa",
+      "action": {
+        "effects": [],
+        "message": "La granjera Tesa: «Desde que el Rey falta, los recaudadores vienen dos veces. Uno de ellos llevaba un anillo de Ascuafría.»"
+      }
+    }
+  ],
+  "treasures": [
+    {
+      "id": "terra-b4-chest",
+      "kind": "pickup",
+      "visualType": "chest",
+      "x": 15,
+      "y": 4,
+      "label": "Abrir el cofre",
+      "when": [
+        {
+          "key": "terra_b4ChestOpened",
+          "falsy": true
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "set",
+            "key": "terra_b4ChestOpened",
+            "value": true
+          },
+          {
+            "type": "grant-gold",
+            "amount": 18
+          },
+          {
+            "type": "grant-item",
+            "itemId": "iron-axe",
+            "name": "Iron axe",
+            "description": "Botín de un cofre de Terra.",
+            "quantity": 1
+          }
+        ],
+        "message": "El cofre guarda 18 monedas y algo de equipo."
+      }
+    }
+  ],
+  "traps": [],
+  "exits": [
+    {
+      "id": "b4-to-b3",
+      "kind": "exit",
+      "x": 10,
+      "y": 1,
+      "requiresReturn": true,
+      "openLabel": "Ir a B3 · Calzada del Oeste",
+      "lockedLabel": "El paso está cortado",
+      "requirements": [],
+      "action": {
+        "effects": [
+          {
+            "type": "transition-map",
+            "mapId": "terra-b3",
+            "entryExitId": "b3-to-b4"
+          }
+        ],
+        "message": "La compañía entra en B3."
+      }
+    },
+    {
+      "id": "b4-to-b5",
+      "kind": "exit",
+      "x": 10,
+      "y": 13,
+      "requiresReturn": true,
+      "openLabel": "Ir a B5 · Molinos del Oeste",
+      "lockedLabel": "El paso está cortado",
+      "requirements": [],
+      "action": {
+        "effects": [
+          {
+            "type": "transition-map",
+            "mapId": "terra-b5",
+            "entryExitId": "b5-to-b4"
+          }
+        ],
+        "message": "La compañía entra en B5."
+      }
+    },
+    {
+      "id": "b4-to-a4",
+      "kind": "exit",
+      "x": 1,
+      "y": 7,
+      "requiresReturn": true,
+      "openLabel": "Ir a A4 · Calas de los Contrabandistas",
+      "lockedLabel": "El paso está cortado",
+      "requirements": [],
+      "action": {
+        "effects": [
+          {
+            "type": "transition-map",
+            "mapId": "terra-a4",
+            "entryExitId": "a4-to-b4"
+          }
+        ],
+        "message": "La compañía entra en A4."
+      }
+    },
+    {
+      "id": "b4-to-c4",
+      "kind": "exit",
+      "x": 19,
+      "y": 7,
+      "requiresReturn": true,
+      "openLabel": "Ir a C4 · Encrucijada del Ahorcado",
+      "lockedLabel": "El paso está cortado",
+      "requirements": [],
+      "action": {
+        "effects": [
+          {
+            "type": "transition-map",
+            "mapId": "terra-c4",
+            "entryExitId": "c4-to-b4"
+          }
+        ],
+        "message": "La compañía entra en C4."
+      }
+    }
+  ],
+  "initialJournal": {
+    "id": "terra-b4-arrival",
+    "title": "B4 · Granjas del Trigo",
+    "body": "Campos de trigo y graneros vacíos. Los granjeros hablan bajo.",
+    "sigil": "B4"
+  },
+  "introMessage": "B4 · Granjas del Trigo. Campos de trigo y graneros vacíos. Los granjeros hablan bajo."
+}

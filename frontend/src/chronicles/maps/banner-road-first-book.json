@@ -287,6 +287,66 @@
         ],
         "message": "La compañía se adentra en Rookwood."
       }
+    },
+    {
+      "id": "c3-to-c2",
+      "kind": "exit",
+      "x": 4,
+      "y": 1,
+      "requiresReturn": true,
+      "openLabel": "Ir a C2 · Colinas de la Corona",
+      "lockedLabel": "El paso está cortado",
+      "requirements": [],
+      "action": {
+        "effects": [
+          {
+            "type": "transition-map",
+            "mapId": "terra-c2",
+            "entryExitId": "c2-to-c3"
+          }
+        ],
+        "message": "La compañía entra en C2."
+      }
+    },
+    {
+      "id": "c3-to-c4",
+      "kind": "exit",
+      "x": 10,
+      "y": 13,
+      "requiresReturn": true,
+      "openLabel": "Ir a C4 · Encrucijada del Ahorcado",
+      "lockedLabel": "El paso está cortado",
+      "requirements": [],
+      "action": {
+        "effects": [
+          {
+            "type": "transition-map",
+            "mapId": "terra-c4",
+            "entryExitId": "c4-to-c3"
+          }
+        ],
+        "message": "La compañía entra en C4."
+      }
+    },
+    {
+      "id": "c3-to-b3",
+      "kind": "exit",
+      "x": 1,
+      "y": 7,
+      "requiresReturn": true,
+      "openLabel": "Ir a B3 · Calzada del Oeste",
+      "lockedLabel": "El paso está cortado",
+      "requirements": [],
+      "action": {
+        "effects": [
+          {
+            "type": "transition-map",
+            "mapId": "terra-b3",
+            "entryExitId": "b3-to-c3"
+          }
+        ],
+        "message": "La compañía entra en B3."
+      }
     }
   ],
   "initialJournal": {
@@ -295,5 +355,7 @@
     "body": "Una calzada antigua. El mojón sin nombre esconde el estandarte de una patrulla perdida.",
     "sigil": "II"
   },
-  "introMessage": "Camino de los Estandartes. El camino parece desierto, pero los hitos de piedra todavía recuerdan a los desaparecidos."
+  "introMessage": "Camino de los Estandartes. El camino parece desierto, pero los hitos de piedra todavía recuerdan a los desaparecidos.",
+  "areaCode": "C3",
+  "biome": "plains"
 }

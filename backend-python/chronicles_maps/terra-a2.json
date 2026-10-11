@@ -1,0 +1,268 @@
+{
+  "id": "terra-a2",
+  "version": 1,
+  "progressionKey": "terra-a2-v1",
+  "title": "Acantilados de Hollín",
+  "areaCode": "A2",
+  "biome": "coast",
+  "regionKind": "wilderness",
+  "layoutMode": "authored",
+  "grid": [
+    "#####################",
+    "#...##.............##",
+    "#..#.........#......#",
+    "#..#................#",
+    "#................#.##",
+    "#......##........#..#",
+    "#.##............#...#",
+    "#...................#",
+    "#..............#....#",
+    "#...................#",
+    "#.###...............#",
+    "#...................#",
+    "#..............#..#.#",
+    "#.............#....##",
+    "#####################"
+  ],
+  "partyStart": {
+    "x": 10,
+    "y": 7,
+    "direction": 0
+  },
+  "initialFlags": {},
+  "enemies": [
+    {
+      "id": "terra-a2-foe-0",
+      "visualType": "salt-crab",
+      "name": "cangrejo de roca",
+      "x": 7,
+      "y": 3,
+      "hpKey": "terra_a2Foe0Hp",
+      "maxHp": 10,
+      "retaliation": 2,
+      "optional": true,
+      "activation": "always",
+      "ai": {
+        "movement": "cardinal-roam",
+        "attackReach": 1,
+        "engagedMovement": "knight-chase",
+        "engageRange": 2
+      },
+      "onDefeat": {
+        "message": "{attacker} acaba con cangrejo de roca usando {attack}.",
+        "effects": [
+          {
+            "type": "grant-gold",
+            "amount": 8
+          }
+        ]
+      }
+    },
+    {
+      "id": "terra-a2-foe-1",
+      "visualType": "drowned",
+      "name": "náufrago ahogado",
+      "x": 13,
+      "y": 11,
+      "hpKey": "terra_a2Foe1Hp",
+      "maxHp": 10,
+      "retaliation": 2,
+      "optional": true,
+      "activation": "always",
+      "ai": {
+        "movement": "cardinal-chase",
+        "attackReach": 1,
+        "engagedMovement": "cardinal-chase",
+        "engageRange": 3
+      },
+      "onDefeat": {
+        "message": "{attacker} acaba con náufrago ahogado usando {attack}.",
+        "effects": [
+          {
+            "type": "grant-gold",
+            "amount": 8
+          }
+        ]
+      }
+    },
+    {
+      "id": "terra-a2-foe-2",
+      "visualType": "road-bandit",
+      "name": "pirata",
+      "x": 3,
+      "y": 11,
+      "hpKey": "terra_a2Foe2Hp",
+      "maxHp": 10,
+      "retaliation": 2,
+      "optional": true,
+      "activation": "always",
+      "ai": {
+        "movement": "hold",
+        "attackReach": 1,
+        "engagedMovement": "cardinal-chase",
+        "engageRange": 2
+      },
+      "onDefeat": {
+        "message": "{attacker} acaba con pirata usando {attack}.",
+        "effects": [
+          {
+            "type": "grant-gold",
+            "amount": 8
+          }
+        ]
+      }
+    },
+    {
+      "id": "hollin-watch-quarry",
+      "visualType": "drowned",
+      "name": "el Ahogado del Acantilado",
+      "hpKey": "hollin_watchQuarryHp",
+      "maxHp": 22,
+      "retaliation": 3,
+      "optional": true,
+      "activation": "always",
+      "defeatedFlag": "hollin_watchHunted",
+      "ai": {
+        "movement": "cardinal-chase",
+        "attackReach": 1,
+        "engagedMovement": "cardinal-chase",
+        "engageRange": 3
+      },
+      "onDefeat": {
+        "message": "{attacker} abate a el Ahogado del Acantilado con {attack}.",
+        "effects": [
+          {
+            "type": "set",
+            "key": "hollin_watchHunted",
+            "value": true
+          }
+        ]
+      },
+      "x": 17,
+      "y": 3
+    }
+  ],
+  "triggers": [],
+  "interactables": [
+    {
+      "id": "terra-a2-sign",
+      "kind": "lore",
+      "visualType": "signpost",
+      "x": 5,
+      "y": 4,
+      "persistentVisual": true,
+      "label": "Leer el cartel",
+      "action": {
+        "effects": [],
+        "message": "Cartel: Puerto de Hollín (A3) al sur, siguiendo el acantilado."
+      }
+    }
+  ],
+  "treasures": [
+    {
+      "id": "terra-a2-chest",
+      "kind": "pickup",
+      "visualType": "chest",
+      "x": 15,
+      "y": 4,
+      "label": "Abrir el cofre",
+      "when": [
+        {
+          "key": "terra_a2ChestOpened",
+          "falsy": true
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "set",
+            "key": "terra_a2ChestOpened",
+            "value": true
+          },
+          {
+            "type": "grant-gold",
+            "amount": 24
+          },
+          {
+            "type": "grant-item",
+            "itemId": "iron-sword",
+            "name": "Iron sword",
+            "description": "Botín de un cofre de Terra.",
+            "quantity": 1
+          }
+        ],
+        "message": "El cofre guarda 24 monedas y algo de equipo."
+      }
+    }
+  ],
+  "traps": [],
+  "exits": [
+    {
+      "id": "a2-to-a1",
+      "kind": "exit",
+      "x": 10,
+      "y": 1,
+      "requiresReturn": true,
+      "openLabel": "Ir a A1 · Glaciar del Cuervo",
+      "lockedLabel": "El paso está cortado",
+      "requirements": [],
+      "action": {
+        "effects": [
+          {
+            "type": "transition-map",
+            "mapId": "terra-a1",
+            "entryExitId": "a1-to-a2"
+          }
+        ],
+        "message": "La compañía entra en A1."
+      }
+    },
+    {
+      "id": "a2-to-a3",
+      "kind": "exit",
+      "x": 10,
+      "y": 13,
+      "requiresReturn": true,
+      "openLabel": "Ir a A3 · Bahía de Hollín",
+      "lockedLabel": "El paso está cortado",
+      "requirements": [],
+      "action": {
+        "effects": [
+          {
+            "type": "transition-map",
+            "mapId": "terra-a3",
+            "entryExitId": "a3-to-a2"
+          }
+        ],
+        "message": "La compañía entra en A3."
+      }
+    },
+    {
+      "id": "a2-to-b2",
+      "kind": "exit",
+      "x": 19,
+      "y": 7,
+      "requiresReturn": true,
+      "openLabel": "Ir a B2 · Brezal de los Lobos",
+      "lockedLabel": "El paso está cortado",
+      "requirements": [],
+      "action": {
+        "effects": [
+          {
+            "type": "transition-map",
+            "mapId": "terra-b2",
+            "entryExitId": "b2-to-a2"
+          }
+        ],
+        "message": "La compañía entra en B2."
+      }
+    }
+  ],
+  "initialJournal": {
+    "id": "terra-a2-arrival",
+    "title": "A2 · Acantilados de Hollín",
+    "body": "El mar golpea abajo. La roca está negra de hollín de algún incendio antiguo.",
+    "sigil": "A2"
+  },
+  "introMessage": "A2 · Acantilados de Hollín. El mar golpea abajo. La roca está negra de hollín de algún incendio antiguo."
+}

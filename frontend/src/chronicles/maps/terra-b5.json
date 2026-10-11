@@ -1,0 +1,277 @@
+{
+  "id": "terra-b5",
+  "version": 1,
+  "progressionKey": "terra-b5-v1",
+  "title": "Molinos del Oeste",
+  "areaCode": "B5",
+  "biome": "plains",
+  "regionKind": "wilderness",
+  "layoutMode": "authored",
+  "grid": [
+    "#####################",
+    "#................#..#",
+    "#...................#",
+    "#...........#.......#",
+    "#...................#",
+    "#...................#",
+    "#...................#",
+    "#...................#",
+    "#..#..............#.#",
+    "#.#.................#",
+    "#......#............#",
+    "#...................#",
+    "#...................#",
+    "#...................#",
+    "#####################"
+  ],
+  "partyStart": {
+    "x": 10,
+    "y": 7,
+    "direction": 0
+  },
+  "initialFlags": {},
+  "enemies": [
+    {
+      "id": "terra-b5-foe-0",
+      "visualType": "sewer-rat",
+      "name": "rata gigante",
+      "x": 7,
+      "y": 3,
+      "hpKey": "terra_b5Foe0Hp",
+      "maxHp": 10,
+      "retaliation": 2,
+      "optional": true,
+      "activation": "always",
+      "ai": {
+        "movement": "cardinal-roam",
+        "attackReach": 1,
+        "engagedMovement": "cardinal-chase",
+        "engageRange": 3
+      },
+      "onDefeat": {
+        "message": "{attacker} acaba con rata gigante usando {attack}.",
+        "effects": [
+          {
+            "type": "grant-gold",
+            "amount": 8
+          }
+        ]
+      }
+    },
+    {
+      "id": "terra-b5-foe-1",
+      "visualType": "road-bandit",
+      "name": "salteador",
+      "x": 13,
+      "y": 11,
+      "hpKey": "terra_b5Foe1Hp",
+      "maxHp": 10,
+      "retaliation": 2,
+      "optional": true,
+      "activation": "always",
+      "ai": {
+        "movement": "hold",
+        "attackReach": 1,
+        "engagedMovement": "cardinal-chase",
+        "engageRange": 2
+      },
+      "onDefeat": {
+        "message": "{attacker} acaba con salteador usando {attack}.",
+        "effects": [
+          {
+            "type": "grant-gold",
+            "amount": 8
+          }
+        ]
+      }
+    },
+    {
+      "id": "terra-b5-foe-2",
+      "visualType": "ash-goblin",
+      "name": "goblin",
+      "x": 3,
+      "y": 11,
+      "hpKey": "terra_b5Foe2Hp",
+      "maxHp": 10,
+      "retaliation": 2,
+      "optional": true,
+      "activation": "always",
+      "ai": {
+        "movement": "cardinal-roam",
+        "attackReach": 1,
+        "engagedMovement": "cardinal-chase",
+        "engageRange": 2
+      },
+      "onDefeat": {
+        "message": "{attacker} acaba con goblin usando {attack}.",
+        "effects": [
+          {
+            "type": "grant-gold",
+            "amount": 8
+          }
+        ]
+      }
+    }
+  ],
+  "triggers": [],
+  "interactables": [
+    {
+      "id": "terra-b5-shrine",
+      "kind": "lore",
+      "visualType": "shrine",
+      "x": 5,
+      "y": 4,
+      "label": "Beber de la Fuente del Molino",
+      "when": [
+        {
+          "key": "terra_b5ShrineUsed",
+          "falsy": true
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "set",
+            "key": "terra_b5ShrineUsed",
+            "value": true
+          },
+          {
+            "type": "heal-party",
+            "amount": 8
+          },
+          {
+            "type": "restore-spell-points"
+          }
+        ],
+        "message": "El agua de la Fuente del Molino está helada y sabe a hierro. La compañía recupera fuerzas y puntos de hechizo."
+      }
+    }
+  ],
+  "treasures": [
+    {
+      "id": "terra-b5-chest",
+      "kind": "pickup",
+      "visualType": "chest",
+      "x": 15,
+      "y": 4,
+      "label": "Abrir el cofre",
+      "when": [
+        {
+          "key": "terra_b5ChestOpened",
+          "falsy": true
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "set",
+            "key": "terra_b5ChestOpened",
+            "value": true
+          },
+          {
+            "type": "grant-gold",
+            "amount": 24
+          },
+          {
+            "type": "grant-item",
+            "itemId": "iron-mace",
+            "name": "Iron mace",
+            "description": "Botín de un cofre de Terra.",
+            "quantity": 1
+          }
+        ],
+        "message": "El cofre guarda 24 monedas y algo de equipo."
+      }
+    }
+  ],
+  "traps": [],
+  "exits": [
+    {
+      "id": "b5-to-b4",
+      "kind": "exit",
+      "x": 10,
+      "y": 1,
+      "requiresReturn": true,
+      "openLabel": "Ir a B4 · Granjas del Trigo",
+      "lockedLabel": "El paso está cortado",
+      "requirements": [],
+      "action": {
+        "effects": [
+          {
+            "type": "transition-map",
+            "mapId": "terra-b4",
+            "entryExitId": "b4-to-b5"
+          }
+        ],
+        "message": "La compañía entra en B4."
+      }
+    },
+    {
+      "id": "b5-to-b6",
+      "kind": "exit",
+      "x": 10,
+      "y": 13,
+      "requiresReturn": true,
+      "openLabel": "Ir a B6 · Dunas Costeras",
+      "lockedLabel": "El paso está cortado",
+      "requirements": [],
+      "action": {
+        "effects": [
+          {
+            "type": "transition-map",
+            "mapId": "terra-b6",
+            "entryExitId": "b6-to-b5"
+          }
+        ],
+        "message": "La compañía entra en B6."
+      }
+    },
+    {
+      "id": "b5-to-a5",
+      "kind": "exit",
+      "x": 1,
+      "y": 7,
+      "requiresReturn": true,
+      "openLabel": "Ir a A5 · Arrecifes del Naufragio",
+      "lockedLabel": "El paso está cortado",
+      "requirements": [],
+      "action": {
+        "effects": [
+          {
+            "type": "transition-map",
+            "mapId": "terra-a5",
+            "entryExitId": "a5-to-b5"
+          }
+        ],
+        "message": "La compañía entra en A5."
+      }
+    },
+    {
+      "id": "b5-to-c5",
+      "kind": "exit",
+      "x": 19,
+      "y": 7,
+      "requiresReturn": true,
+      "openLabel": "Ir a C5 · Orillas de Vado de Sal",
+      "lockedLabel": "El paso está cortado",
+      "requirements": [],
+      "action": {
+        "effects": [
+          {
+            "type": "transition-map",
+            "mapId": "terra-c5",
+            "entryExitId": "c5-to-b5"
+          }
+        ],
+        "message": "La compañía entra en C5."
+      }
+    }
+  ],
+  "initialJournal": {
+    "id": "terra-b5-arrival",
+    "title": "B5 · Molinos del Oeste",
+    "body": "Molinos que giran sin viento. Nadie quiere saber por qué.",
+    "sigil": "B5"
+  },
+  "introMessage": "B5 · Molinos del Oeste. Molinos que giran sin viento. Nadie quiere saber por qué."
+}

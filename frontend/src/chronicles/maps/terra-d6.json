@@ -1,0 +1,259 @@
+{
+  "id": "terra-d6",
+  "version": 1,
+  "progressionKey": "terra-d6-v1",
+  "title": "Puertas de Bronce",
+  "areaCode": "D6",
+  "biome": "plains",
+  "regionKind": "wilderness",
+  "layoutMode": "authored",
+  "grid": [
+    "#####################",
+    "#...................#",
+    "#............#..#...#",
+    "#...................#",
+    "#...................#",
+    "#...................#",
+    "#..#.........##.....#",
+    "#...................#",
+    "#.......#...........#",
+    "#........#..........#",
+    "#...................#",
+    "#...................#",
+    "#................#..#",
+    "#................#..#",
+    "#####################"
+  ],
+  "partyStart": {
+    "x": 10,
+    "y": 7,
+    "direction": 0
+  },
+  "initialFlags": {},
+  "enemies": [
+    {
+      "id": "terra-d6-foe-0",
+      "visualType": "ash-goblin",
+      "name": "goblin",
+      "x": 7,
+      "y": 3,
+      "hpKey": "terra_d6Foe0Hp",
+      "maxHp": 12,
+      "retaliation": 2,
+      "optional": true,
+      "activation": "always",
+      "ai": {
+        "movement": "cardinal-roam",
+        "attackReach": 1,
+        "engagedMovement": "cardinal-chase",
+        "engageRange": 2
+      },
+      "onDefeat": {
+        "message": "{attacker} acaba con goblin usando {attack}.",
+        "effects": [
+          {
+            "type": "grant-gold",
+            "amount": 10
+          }
+        ]
+      }
+    },
+    {
+      "id": "terra-d6-foe-1",
+      "visualType": "sewer-rat",
+      "name": "rata gigante",
+      "x": 13,
+      "y": 11,
+      "hpKey": "terra_d6Foe1Hp",
+      "maxHp": 12,
+      "retaliation": 2,
+      "optional": true,
+      "activation": "always",
+      "ai": {
+        "movement": "cardinal-roam",
+        "attackReach": 1,
+        "engagedMovement": "cardinal-chase",
+        "engageRange": 3
+      },
+      "onDefeat": {
+        "message": "{attacker} acaba con rata gigante usando {attack}.",
+        "effects": [
+          {
+            "type": "grant-gold",
+            "amount": 10
+          }
+        ]
+      }
+    },
+    {
+      "id": "terra-d6-foe-2",
+      "visualType": "road-bandit",
+      "name": "salteador",
+      "x": 3,
+      "y": 11,
+      "hpKey": "terra_d6Foe2Hp",
+      "maxHp": 12,
+      "retaliation": 2,
+      "optional": true,
+      "activation": "always",
+      "ai": {
+        "movement": "hold",
+        "attackReach": 1,
+        "engagedMovement": "cardinal-chase",
+        "engageRange": 2
+      },
+      "onDefeat": {
+        "message": "{attacker} acaba con salteador usando {attack}.",
+        "effects": [
+          {
+            "type": "grant-gold",
+            "amount": 10
+          }
+        ]
+      }
+    }
+  ],
+  "triggers": [],
+  "interactables": [
+    {
+      "id": "terra-d6-sign",
+      "kind": "lore",
+      "visualType": "signpost",
+      "x": 15,
+      "y": 4,
+      "persistentVisual": true,
+      "label": "Leer el cartel",
+      "action": {
+        "effects": [],
+        "message": "Cartel: Corte de Bronce. Los peregrinos esperan turno a la puerta."
+      }
+    }
+  ],
+  "treasures": [
+    {
+      "id": "terra-d6-chest",
+      "kind": "pickup",
+      "visualType": "chest",
+      "x": 5,
+      "y": 10,
+      "label": "Abrir el cofre",
+      "when": [
+        {
+          "key": "terra_d6ChestOpened",
+          "falsy": true
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "set",
+            "key": "terra_d6ChestOpened",
+            "value": true
+          },
+          {
+            "type": "grant-gold",
+            "amount": 30
+          },
+          {
+            "type": "grant-item",
+            "itemId": "silver-axe",
+            "name": "Silver axe",
+            "description": "Botín de un cofre de Terra.",
+            "quantity": 1
+          }
+        ],
+        "message": "El cofre guarda 30 monedas y algo de equipo."
+      }
+    }
+  ],
+  "traps": [],
+  "exits": [
+    {
+      "id": "d6-to-d5",
+      "kind": "exit",
+      "x": 10,
+      "y": 1,
+      "requiresReturn": true,
+      "openLabel": "Ir a D5 · Marismas de Sal",
+      "lockedLabel": "El paso está cortado",
+      "requirements": [],
+      "action": {
+        "effects": [
+          {
+            "type": "transition-map",
+            "mapId": "terra-d5",
+            "entryExitId": "d5-to-d6"
+          }
+        ],
+        "message": "La compañía entra en D5."
+      }
+    },
+    {
+      "id": "d6-to-c6",
+      "kind": "exit",
+      "x": 1,
+      "y": 7,
+      "requiresReturn": true,
+      "openLabel": "Ir a C6 · Salinas Hundidas",
+      "lockedLabel": "El paso está cortado",
+      "requirements": [],
+      "action": {
+        "effects": [
+          {
+            "type": "transition-map",
+            "mapId": "terra-c6",
+            "entryExitId": "c6-to-d6"
+          }
+        ],
+        "message": "La compañía entra en C6."
+      }
+    },
+    {
+      "id": "d6-to-e6",
+      "kind": "exit",
+      "x": 19,
+      "y": 7,
+      "requiresReturn": true,
+      "openLabel": "Ir a E6 · Ruinas del Obispo",
+      "lockedLabel": "El paso está cortado",
+      "requirements": [],
+      "action": {
+        "effects": [
+          {
+            "type": "transition-map",
+            "mapId": "terra-e6",
+            "entryExitId": "e6-to-d6"
+          }
+        ],
+        "message": "La compañía entra en E6."
+      }
+    },
+    {
+      "id": "d6-to-town",
+      "kind": "exit",
+      "x": 5,
+      "y": 4,
+      "requiresReturn": true,
+      "openLabel": "Entrar en Corte de Bronce",
+      "lockedLabel": "Corte de Bronce · puertas cerradas",
+      "requirements": [],
+      "action": {
+        "effects": [
+          {
+            "type": "transition-map",
+            "mapId": "corte-de-bronce",
+            "entryExitId": "town-gate"
+          }
+        ],
+        "message": "La compañía cruza las puertas de Corte de Bronce."
+      }
+    }
+  ],
+  "initialJournal": {
+    "id": "terra-d6-arrival",
+    "title": "D6 · Puertas de Bronce",
+    "body": "La gran calzada termina en las murallas doradas de la Corte de Bronce.",
+    "sigil": "D6"
+  },
+  "introMessage": "D6 · Puertas de Bronce. La gran calzada termina en las murallas doradas de la Corte de Bronce."
+}

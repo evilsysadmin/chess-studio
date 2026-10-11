@@ -1,0 +1,250 @@
+{
+  "id": "terra-b2",
+  "version": 1,
+  "progressionKey": "terra-b2-v1",
+  "title": "Brezal de los Lobos",
+  "areaCode": "B2",
+  "biome": "hills",
+  "regionKind": "wilderness",
+  "layoutMode": "authored",
+  "grid": [
+    "#####################",
+    "#.....#.....#......##",
+    "##..#.............###",
+    "#....#.............##",
+    "#..................##",
+    "#..................##",
+    "#...........##.#....#",
+    "#...................#",
+    "#.##.............#..#",
+    "#.##........##......#",
+    "#..#.......#........#",
+    "#.#.#...............#",
+    "#...................#",
+    "#...#...............#",
+    "#####################"
+  ],
+  "partyStart": {
+    "x": 10,
+    "y": 7,
+    "direction": 0
+  },
+  "initialFlags": {},
+  "enemies": [
+    {
+      "id": "terra-b2-foe-0",
+      "visualType": "bone-hound",
+      "name": "lobo de hueso",
+      "x": 7,
+      "y": 3,
+      "hpKey": "terra_b2Foe0Hp",
+      "maxHp": 8,
+      "retaliation": 1,
+      "optional": true,
+      "activation": "always",
+      "ai": {
+        "movement": "cardinal-roam",
+        "attackReach": 1,
+        "engagedMovement": "cardinal-chase",
+        "engageRange": 4
+      },
+      "onDefeat": {
+        "message": "{attacker} acaba con lobo de hueso usando {attack}.",
+        "effects": [
+          {
+            "type": "grant-gold",
+            "amount": 6
+          }
+        ]
+      }
+    },
+    {
+      "id": "terra-b2-foe-1",
+      "visualType": "ash-goblin",
+      "name": "goblin de las colinas",
+      "x": 13,
+      "y": 11,
+      "hpKey": "terra_b2Foe1Hp",
+      "maxHp": 8,
+      "retaliation": 1,
+      "optional": true,
+      "activation": "always",
+      "ai": {
+        "movement": "cardinal-roam",
+        "attackReach": 1,
+        "engagedMovement": "cardinal-chase",
+        "engageRange": 2
+      },
+      "onDefeat": {
+        "message": "{attacker} acaba con goblin de las colinas usando {attack}.",
+        "effects": [
+          {
+            "type": "grant-gold",
+            "amount": 6
+          }
+        ]
+      }
+    }
+  ],
+  "triggers": [],
+  "interactables": [
+    {
+      "id": "terra-b2-shrine",
+      "kind": "lore",
+      "visualType": "shrine",
+      "x": 5,
+      "y": 4,
+      "label": "Beber de la Fuente de los Lobos",
+      "when": [
+        {
+          "key": "terra_b2ShrineUsed",
+          "falsy": true
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "set",
+            "key": "terra_b2ShrineUsed",
+            "value": true
+          },
+          {
+            "type": "heal-party",
+            "amount": 8
+          },
+          {
+            "type": "restore-spell-points"
+          }
+        ],
+        "message": "El agua de la Fuente de los Lobos está helada y sabe a hierro. La compañía recupera fuerzas y puntos de hechizo."
+      }
+    }
+  ],
+  "treasures": [
+    {
+      "id": "terra-b2-chest",
+      "kind": "pickup",
+      "visualType": "chest",
+      "x": 15,
+      "y": 4,
+      "label": "Abrir el cofre",
+      "when": [
+        {
+          "key": "terra_b2ChestOpened",
+          "falsy": true
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "set",
+            "key": "terra_b2ChestOpened",
+            "value": true
+          },
+          {
+            "type": "grant-gold",
+            "amount": 18
+          },
+          {
+            "type": "grant-item",
+            "itemId": "iron-staff",
+            "name": "Iron staff",
+            "description": "Botín de un cofre de Terra.",
+            "quantity": 1
+          }
+        ],
+        "message": "El cofre guarda 18 monedas y algo de equipo."
+      }
+    }
+  ],
+  "traps": [],
+  "exits": [
+    {
+      "id": "b2-to-b1",
+      "kind": "exit",
+      "x": 10,
+      "y": 1,
+      "requiresReturn": true,
+      "openLabel": "Ir a B1 · Paso de los Juramentos",
+      "lockedLabel": "El paso está cortado",
+      "requirements": [],
+      "action": {
+        "effects": [
+          {
+            "type": "transition-map",
+            "mapId": "terra-b1",
+            "entryExitId": "b1-to-b2"
+          }
+        ],
+        "message": "La compañía entra en B1."
+      }
+    },
+    {
+      "id": "b2-to-b3",
+      "kind": "exit",
+      "x": 10,
+      "y": 13,
+      "requiresReturn": true,
+      "openLabel": "Ir a B3 · Calzada del Oeste",
+      "lockedLabel": "El paso está cortado",
+      "requirements": [],
+      "action": {
+        "effects": [
+          {
+            "type": "transition-map",
+            "mapId": "terra-b3",
+            "entryExitId": "b3-to-b2"
+          }
+        ],
+        "message": "La compañía entra en B3."
+      }
+    },
+    {
+      "id": "b2-to-a2",
+      "kind": "exit",
+      "x": 1,
+      "y": 7,
+      "requiresReturn": true,
+      "openLabel": "Ir a A2 · Acantilados de Hollín",
+      "lockedLabel": "El paso está cortado",
+      "requirements": [],
+      "action": {
+        "effects": [
+          {
+            "type": "transition-map",
+            "mapId": "terra-a2",
+            "entryExitId": "a2-to-b2"
+          }
+        ],
+        "message": "La compañía entra en A2."
+      }
+    },
+    {
+      "id": "b2-to-c2",
+      "kind": "exit",
+      "x": 19,
+      "y": 7,
+      "requiresReturn": true,
+      "openLabel": "Ir a C2 · Colinas de la Corona",
+      "lockedLabel": "El paso está cortado",
+      "requirements": [],
+      "action": {
+        "effects": [
+          {
+            "type": "transition-map",
+            "mapId": "terra-c2",
+            "entryExitId": "c2-to-b2"
+          }
+        ],
+        "message": "La compañía entra en C2."
+      }
+    }
+  ],
+  "initialJournal": {
+    "id": "terra-b2-arrival",
+    "title": "B2 · Brezal de los Lobos",
+    "body": "Brezo hasta la cintura y aullidos que nunca suenan cerca.",
+    "sigil": "B2"
+  },
+  "introMessage": "B2 · Brezal de los Lobos. Brezo hasta la cintura y aullidos que nunca suenan cerca."
+}

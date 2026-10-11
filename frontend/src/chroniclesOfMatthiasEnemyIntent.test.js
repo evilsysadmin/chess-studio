@@ -58,7 +58,8 @@ describe('Chronicles enemy intent preview', () => {
       }
     }
     expect(checked).toBeGreaterThan(100);
-  });
+  // Walks every standable cell of every shipped map: Terra adds dozens.
+  }, 120_000);
 
   it('does not mutate the state it previews', () => {
     const state = createChroniclesState();

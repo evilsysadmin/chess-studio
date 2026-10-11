@@ -1,0 +1,266 @@
+{
+  "id": "salinas-hundidas",
+  "version": 1,
+  "progressionKey": "salinas-hundidas-v1",
+  "title": "Salinas Hundidas",
+  "hudTitle": "Salinas",
+  "areaCode": "C6",
+  "regionKind": "dungeon",
+  "dungeonRole": "main",
+  "layoutMode": "authored",
+  "grid": [
+    "#################",
+    "#...#...#.......#",
+    "###.###.#.###.#.#",
+    "#.#...#...#...#.#",
+    "#.###.#.###.###.#",
+    "#.#...#.#...#.#.#",
+    "#.#.#####.###.#.#",
+    "#.#.#.....#.....#",
+    "#.#.###.###.#####",
+    "#.......#.......#",
+    "#################"
+  ],
+  "partyStart": {
+    "x": 1,
+    "y": 1,
+    "direction": 1
+  },
+  "initialFlags": {},
+  "enemies": [
+    {
+      "id": "salinas-hundidas-foe-0",
+      "visualType": "drowned",
+      "name": "ahogado",
+      "x": 7,
+      "y": 7,
+      "hpKey": "salinas_hundidasFoe0Hp",
+      "maxHp": 12,
+      "retaliation": 2,
+      "optional": true,
+      "activation": "always",
+      "ai": {
+        "movement": "cardinal-chase",
+        "attackReach": 1,
+        "engagedMovement": "cardinal-chase",
+        "engageRange": 3
+      },
+      "onDefeat": {
+        "message": "{attacker} acaba con ahogado usando {attack}.",
+        "effects": [
+          {
+            "type": "grant-gold",
+            "amount": 10
+          }
+        ]
+      }
+    },
+    {
+      "id": "salinas-hundidas-foe-1",
+      "visualType": "salt-crab",
+      "name": "cangrejo de salitre",
+      "x": 12,
+      "y": 3,
+      "hpKey": "salinas_hundidasFoe1Hp",
+      "maxHp": 12,
+      "retaliation": 2,
+      "optional": true,
+      "activation": "always",
+      "ai": {
+        "movement": "cardinal-roam",
+        "attackReach": 1,
+        "engagedMovement": "knight-chase",
+        "engageRange": 2
+      },
+      "onDefeat": {
+        "message": "{attacker} acaba con cangrejo de salitre usando {attack}.",
+        "effects": [
+          {
+            "type": "grant-gold",
+            "amount": 10
+          }
+        ]
+      }
+    },
+    {
+      "id": "salinas-hundidas-foe-2",
+      "visualType": "sewer-rat",
+      "name": "rata de salina",
+      "x": 15,
+      "y": 4,
+      "hpKey": "salinas_hundidasFoe2Hp",
+      "maxHp": 12,
+      "retaliation": 2,
+      "optional": true,
+      "activation": "always",
+      "ai": {
+        "movement": "cardinal-roam",
+        "attackReach": 1,
+        "engagedMovement": "cardinal-chase",
+        "engageRange": 3
+      },
+      "onDefeat": {
+        "message": "{attacker} acaba con rata de salina usando {attack}.",
+        "effects": [
+          {
+            "type": "grant-gold",
+            "amount": 10
+          }
+        ]
+      }
+    },
+    {
+      "id": "salinas-hundidas-foe-3",
+      "visualType": "ember-wisp",
+      "name": "fuego fatuo",
+      "x": 6,
+      "y": 1,
+      "hpKey": "salinas_hundidasFoe3Hp",
+      "maxHp": 12,
+      "retaliation": 2,
+      "optional": true,
+      "activation": "always",
+      "ai": {
+        "movement": "hold",
+        "attackReach": 2,
+        "requiresLineOfSight": true
+      },
+      "onDefeat": {
+        "message": "{attacker} acaba con fuego fatuo usando {attack}.",
+        "effects": [
+          {
+            "type": "grant-gold",
+            "amount": 10
+          }
+        ]
+      }
+    },
+    {
+      "id": "salinas-hundidas-foe-9",
+      "visualType": "drowned",
+      "name": "el Capitán Ahogado",
+      "x": 15,
+      "y": 9,
+      "hpKey": "salinas_hundidasFoe9Hp",
+      "maxHp": 16,
+      "retaliation": 3,
+      "optional": true,
+      "activation": "always",
+      "ai": {
+        "movement": "hold",
+        "attackReach": 1,
+        "engagedMovement": "cardinal-chase",
+        "engageRange": 2
+      },
+      "onDefeat": {
+        "message": "{attacker} derriba a el Capitán Ahogado con {attack}.",
+        "effects": [
+          {
+            "type": "set",
+            "key": "salinas_hundidasBossDefeated",
+            "value": true
+          },
+          {
+            "type": "grant-gold",
+            "amount": 26
+          },
+          {
+            "type": "grant-item",
+            "itemId": "squire-testimony",
+            "name": "Testimonio del escudero",
+            "description": "El escudero Bran, el último de la escolta, dejó escrito lo que vio: la campana de Puerto de Hollín sonó la noche de la emboscada.",
+            "quantity": 1
+          }
+        ],
+        "journal": {
+          "id": "salinas-hundidas-boss",
+          "title": "Cae el Capitán Ahogado",
+          "body": "El escudero Bran, el último de la escolta, dejó escrito lo que vio: la campana de Puerto de Hollín sonó la noche de la emboscada.",
+          "sigil": "†"
+        }
+      },
+      "defeatedFlag": "salinas_hundidasBossDefeated",
+      "blockingMessage": "El Capitán Ahogado cierra el paso."
+    }
+  ],
+  "triggers": [],
+  "interactables": [],
+  "treasures": [
+    {
+      "id": "salinas-hundidas-chest",
+      "kind": "pickup",
+      "visualType": "ember-cache",
+      "x": 5,
+      "y": 1,
+      "label": "Abrir el cofre",
+      "when": [
+        {
+          "key": "salinas_hundidasChestOpened",
+          "falsy": true
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "set",
+            "key": "salinas_hundidasChestOpened",
+            "value": true
+          },
+          {
+            "type": "grant-gold",
+            "amount": 47
+          },
+          {
+            "type": "grant-item",
+            "itemId": "silver-spear",
+            "name": "Silver spear",
+            "description": "Botín de mazmorra.",
+            "quantity": 1
+          },
+          {
+            "type": "grant-item",
+            "itemId": "silver-chain",
+            "name": "Silver chain",
+            "description": "Botín de mazmorra.",
+            "quantity": 1
+          }
+        ],
+        "message": "Un cofre con herrajes de bronce: oro y equipo de calidad."
+      }
+    }
+  ],
+  "traps": [],
+  "exits": [
+    {
+      "id": "dungeon-exit",
+      "kind": "exit",
+      "x": 1,
+      "y": 1,
+      "requiresReturn": true,
+      "openLabel": "Salir a C6 · Salinas Hundidas",
+      "lockedLabel": "La salida está bloqueada",
+      "requirements": [],
+      "action": {
+        "effects": [
+          {
+            "type": "transition-map",
+            "mapId": "terra-c6",
+            "entryExitId": "c6-to-dungeon"
+          }
+        ],
+        "message": "La compañía sale a la luz."
+      }
+    }
+  ],
+  "initialJournal": {
+    "id": "salinas-hundidas-arrival",
+    "title": "Salinas Hundidas",
+    "body": "Salinas Hundidas, bajo C6.",
+    "sigil": "C6"
+  },
+  "introMessage": "Salinas Hundidas. El aire huele a cerrado y a algo que no quiere visitas.",
+  "arrivalAction": {
+    "effects": [],
+    "message": "Salinas Hundidas. Al fondo de los pasillos espera el Capitán Ahogado."
+  }
+}
