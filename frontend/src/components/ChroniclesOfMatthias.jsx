@@ -945,21 +945,6 @@ export default function ChroniclesOfMatthias({ onExit }) {
       <div className="chronicles-shell">
         <aside className="chronicles-party" aria-label="Grupo de Matthias">
           <span className="chronicles-panel-kicker">GRUPO · 1–4 SELECCIONAR · DOBLE FICHA</span>
-          <div className="chronicles-party-preview" data-condition={selectedCondition} data-relic={selectedRelic || undefined}>
-            <img
-              className="chronicles-party-preview-image"
-              src={chroniclesPartyPortraitUrl(selectedMember.id)}
-              alt={`Retrato de ${selectedMember.name}`}
-              data-chronicles-party-renderer="authored"
-              data-member-id={selectedMember.id}
-              draggable="false"
-            />
-            <div className="chronicles-party-preview-copy">
-              <span>{selectedMember?.role}</span>
-              <strong>{selectedMember?.name}</strong>
-              <small>{selectedMember?.attackName} · daño {selectedAttackStats.damage} · alcance {selectedAttackStats.reach}</small>
-            </div>
-          </div>
           {state.party.map((member, index) => {
             return (
               <button
@@ -1192,6 +1177,23 @@ export default function ChroniclesOfMatthias({ onExit }) {
             </>
           )}
         </main>
+
+        {/* The active hero, large: the MM3 panel shows it under the controls. */}
+        <div className="chronicles-party-preview" data-condition={selectedCondition} data-relic={selectedRelic || undefined}>
+          <img
+            className="chronicles-party-preview-image"
+            src={chroniclesPartyPortraitUrl(selectedMember.id)}
+            alt={`Retrato de ${selectedMember.name}`}
+            data-chronicles-party-renderer="authored"
+            data-member-id={selectedMember.id}
+            draggable="false"
+          />
+          <div className="chronicles-party-preview-copy">
+            <span>{selectedMember?.role}</span>
+            <strong>{selectedMember?.name}</strong>
+            <small>{selectedMember?.attackName} · daño {selectedAttackStats.damage} · alcance {selectedAttackStats.reach}</small>
+          </div>
+        </div>
       </div>
 
       {spellMenuOpen && casterKnowsSpells && !expeditionOver && !sheetMember && !state.shop && !state.guild && (
