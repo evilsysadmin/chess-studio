@@ -279,7 +279,10 @@ test('War Room 1v1 · rendirse no resucita un handoff stale del lobby', async ({
   await expect(warRoom.getByText('Tu turno', { exact: true })).toBeVisible({ timeout: 45_000 });
   await expect(clickWarRoomMove(page, 'e2', 'e4')).resolves.toBe(true);
   await expect.poll(() => moveAttempts).toBe(1);
-  await expect(warRoom.getByText('sparringmeister juega', { exact: true })).toBeVisible({ timeout: 10_000 });
+  const duelStatus = warRoom.locator('.pvp-war-room__duel-pill [role="status"]');
+  // Same authoritative turn convergence budget as the neighboring 409 test;
+  // the hosted 3D renderer can starve React updates beyond ten seconds.
+  await expect(duelStatus).toHaveText('sparringmeister juega', { timeout: 30_000 });
 
   await expect(warRoom.getByRole('button', { name: 'Salir de la partida', exact: true })).toBeVisible();
   await expect(warRoom.getByRole('button', { name: 'Lobby', exact: true })).toHaveCount(0);
