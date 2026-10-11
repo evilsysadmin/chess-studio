@@ -17,10 +17,10 @@ test('Escuela · el cuaderno de Matthias conserva contexto y se puede compactar'
   await testInfo.attach('school-coach-expanded-desktop', { body: await page.screenshot(), contentType: 'image/png' });
 
   await page.locator('.matthias-school-board').getByRole('button', { name: /^Casilla a3, vacía/ }).click();
-  await expect(coach.getByRole('status')).toContainText(/casilla/i);
+  await expect(coach.getByRole('status')).toContainText(/a3 está vacía/i);
   await page.getByRole('button', { name: 'Dame una pista', exact: true }).click();
   await expect(coach.getByRole('status')).toContainText('Se lo marco en el tablero');
-  await expect(coach.locator('.matthias-school-coach-history')).toContainText(/casilla/i);
+  await expect(coach.locator('.matthias-school-coach-history')).toContainText(/a3 está vacía/i);
 
   await coach.getByRole('button', { name: 'Compactar' }).click();
   await expect(shell).toHaveAttribute('data-school-coach', 'compact');
@@ -28,7 +28,7 @@ test('Escuela · el cuaderno de Matthias conserva contexto y se puede compactar'
   await expect(coach.getByRole('status')).toContainText('Se lo marco en el tablero');
   await coach.getByRole('button', { name: 'Ampliar' }).click();
   await expect(detail).toBeVisible();
-  await expect(coach.locator('.matthias-school-coach-history')).toContainText(/casilla/i);
+  await expect(coach.locator('.matthias-school-coach-history')).toContainText(/a3 está vacía/i);
 });
 
 test('Escuela · móvil empieza compacto y puede consultar el historial sin desbordar', async ({ page }, testInfo) => {
