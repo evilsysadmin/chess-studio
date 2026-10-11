@@ -599,7 +599,7 @@ def main() -> int:
 
     billing_workflow = BILLING_WORKFLOW.read_text(encoding="utf-8") if BILLING_WORKFLOW.exists() else ""
     for token in (
-        "cron: '17 */6 * * *'",
+        "workflow_dispatch:",
         "CLOUDFLARE_BILLING_API_TOKEN",
         "CLOUDFLARE_API_TOKEN",
         "OCI_TENANCY_OCID",
@@ -609,6 +609,10 @@ def main() -> int:
     ):
         if token not in billing_workflow:
             fail(f"workflow billing incompleto: {token}")
+    # Keep automatic billing collection paused until multi-currency ingest is
+    # supported end-to-end (#5404). A red cron every six hours is not monitoring.
+    if re.search(r"(?m)^[ \\t]*schedule[ \\t]*:", billing_workflow):
+        fail("billing cron must remain suspended until multi-currency support (#5404)")
     billing_exporter = BILLING_EXPORTER.read_text(encoding="utf-8") if BILLING_EXPORTER.exists() else ""
     for token in (
         "/billable-usage",

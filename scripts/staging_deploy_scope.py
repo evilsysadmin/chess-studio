@@ -37,6 +37,7 @@ NON_RUNTIME_EXACT = frozenset({
     "scripts/blender_required_scope.py",
     "scripts/security_scope.py",
     "scripts/workflow_debt_gate.py",
+    "scripts/grafana_dashboard_check.py",
     "scripts/dead_code_reachability_check.py",
     "scripts/chronicles_contracts.py",
     "scripts/test_suite_audit.mjs",
@@ -145,6 +146,7 @@ def self_test() -> None:
     assert deploy_required_for_paths(["e2e/smoke.spec.js", "backend-go/internal/pulse/pulse_test.go"]) == (False, "non-runtime-only")
     assert deploy_required_for_paths(["scripts/quality_scope.py", ".github/workflows/cicd.yml"]) == (False, "non-runtime-only")
     assert deploy_required_for_paths(["scripts/dead_code_reachability_check.py"]) == (False, "non-runtime-only")
+    assert deploy_required_for_paths(["scripts/grafana_dashboard_check.py", ".github/workflows/billing-cost-export.yml"]) == (False, "non-runtime-only")
     assert deploy_required_for_paths(["scripts/chronicles_contracts.py"]) == (False, "non-runtime-only")
     assert deploy_required_for_paths([
         "e2e/war-room-visual-artifact.spec.js",
