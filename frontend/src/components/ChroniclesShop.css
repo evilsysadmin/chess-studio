@@ -26,20 +26,29 @@
   gap: 10px 12px;
   width: min(880px, 100%);
   height: min(640px, calc(100dvh - 40px));
-  padding: 4px;
-  border: 32px solid transparent;
-  border-image: var(--mm3-frame) 16 / 32px round;
+  padding: 36px;
   image-rendering: pixelated;
   color: #e6e1d4;
   background: #6f6f75 var(--mm3-stone) 0 0 / 128px 128px;
   box-shadow: 0 24px 70px rgba(0, 0, 0, .6);
 }
 
+/* Frame and rubies live inside the box (padding = frame + 4 px). */
+.chronicles-shop::after {
+  content: '';
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  pointer-events: none;
+  border: 32px solid transparent;
+  border-image: var(--mm3-frame) 16 / 32px round;
+}
+
 .chronicles-shop::before {
   content: '';
   position: absolute;
   z-index: 2;
-  inset: -34px;
+  inset: 0;
   pointer-events: none;
   background:
     var(--mm3-gem) left top / 28px 28px no-repeat,
@@ -294,14 +303,15 @@
       'foot';
     gap: 8px;
     height: calc(100dvh - 24px);
+    padding: 19px;
+  }
+
+  .chronicles-shop::after {
     border-width: 16px;
     border-image: var(--mm3-frame) 16 / 16px round;
   }
 
-  .chronicles-shop::before {
-    inset: -18px;
-    background-size: 20px 20px;
-  }
+  .chronicles-shop::before { background-size: 20px 20px; }
 
   .chronicles-shop__head {
     grid-template-columns: minmax(0, 1fr) auto;

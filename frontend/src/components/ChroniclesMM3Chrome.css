@@ -415,19 +415,30 @@
 }
 
 /* ─── Character sheet (first person): framed in stone, sandstone header ── */
+/* Frame and gems are drawn by pseudo-elements inside the box (padding =
+   frame width), so nothing pokes out and the sheet never scrolls sideways. */
 .chronicles-character-sheet--mm3 {
   display: flex;
   flex-direction: column;
-  overflow: visible;
-  border: 32px solid transparent;
+  overflow: hidden;
+  padding: 32px;
+  border: 0;
   border-radius: 0;
-  border-image: var(--mm3-frame) 16 / 32px round;
   image-rendering: pixelated;
   background: #17171b;
   box-shadow: 0 34px 110px rgba(0, 0, 0, .86);
 }
+.chronicles-character-sheet--mm3::after {
+  content: '';
+  position: absolute;
+  z-index: 2;
+  inset: 0;
+  pointer-events: none;
+  border: 32px solid transparent;
+  border-image: var(--mm3-frame) 16 / 32px round;
+}
 .chronicles-character-sheet--mm3::before {
-  inset: -34px;
+  inset: 0;
   z-index: 3;
   border: 0;
   border-radius: 0;
@@ -515,14 +526,12 @@
   color: #9a9aa3;
 }
 @media (max-width: 680px) {
-  .chronicles-character-sheet--mm3 {
+  .chronicles-character-sheet--mm3 { padding: 16px; }
+  .chronicles-character-sheet--mm3::after {
     border-width: 16px;
     border-image: var(--mm3-frame) 16 / 16px round;
   }
-  .chronicles-character-sheet--mm3::before {
-    inset: -18px;
-    background-size: 20px 20px;
-  }
+  .chronicles-character-sheet--mm3::before { background-size: 20px 20px; }
 }
 
 /* ─── Spell book: small framed slate with a sandstone heading ─────────── */
