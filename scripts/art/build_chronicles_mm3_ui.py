@@ -30,6 +30,7 @@ STONE = [hexrgb(v) for v in (0x4c4c52, 0x6e6e74, 0x8e8e93, 0xa9a9ad, 0xc1c1c4, 0
 SAND = [hexrgb(v) for v in (0x5a2e12, 0x7f441b, 0x9c5a25, 0xb87033, 0xcf8743, 0xe2a35c)]
 GOLD = [hexrgb(v) for v in (0x5c3b0a, 0x8a5c14, 0xbf8a2a, 0xe8bd52, 0xfff0a8)]
 RUBY = [hexrgb(v) for v in (0x3d0507, 0x6e0a0e, 0xa5161a, 0xd8352c, 0xff8a70, 0xffffff)]
+SAPPHIRE = [hexrgb(v) for v in (0x0a1a4a, 0x14328c, 0x2357c8, 0x3f86ea, 0x8cc4ff, 0xffffff)]
 
 
 def hash2(x: int, y: int, salt: int) -> float:
@@ -170,6 +171,30 @@ def gem(size: int = 14) -> Image.Image:
     return img
 
 
+def diamond(width: int = 28, height: int = 18) -> Image.Image:
+    """Cut sapphire seen from the front: a wide rhombus with a table facet
+    and a silver rim, set at the bottom centre of the view frame."""
+    img = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+    cx, cy = (width - 1) / 2, (height - 1) / 2
+    for y in range(height):
+        for x in range(width):
+            dx, dy = (x - cx) / (width / 2), (y - cy) / (height / 2)
+            r = abs(dx) + abs(dy)
+            if r > 1.0:
+                continue
+            if r > 0.86:
+                img.putpixel((x, y), ramp_pick(STONE, 0.95 - (dx + dy) * 0.3, x, y))
+                continue
+            table = abs(dx) < 0.36 and abs(dy) < 0.32
+            facet = 0.42 - dy * 0.4 - dx * 0.18 + (0.1 if table else 0)
+            if abs(abs(dx) - 0.36) < 0.05 or abs(abs(dy) - 0.32) < 0.07:
+                facet += 0.16
+            img.putpixel((x, y), ramp_pick(SAPPHIRE, facet, x, y))
+    for px, py in ((int(cx) - 4, int(cy) - 3), (int(cx) - 3, int(cy) - 3)):
+        img.putpixel((px, py), SAPPHIRE[-1])
+    return img
+
+
 def save(img: Image.Image, path: Path) -> None:
     img.save(path, "PNG", optimize=True)
     print(f"wrote {path.relative_to(REPO)} ({path.stat().st_size} bytes)")
@@ -184,6 +209,7 @@ def main() -> None:
     save(sand_tile(), out / "mm3-sandstone.png")
     save(frame(), out / "mm3-frame.png")
     save(gem(), out / "mm3-gem.png")
+    save(diamond(), out / "mm3-sapphire.png")
 
 
 if __name__ == "__main__":

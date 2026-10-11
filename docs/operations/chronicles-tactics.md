@@ -273,4 +273,11 @@ Any future haste/slow/surprise mechanic should modify the initiative contract ex
   - the company as a portrait strip under the view, with green HP and blue SP bars;
   - a stone control panel on the right with the title plaque, location plaques, a 3×3 grid of engraved buttons, the sandstone chronicle and the key help.
 
+  Tuned against Isles of Terra DOS screenshots:
+  - the panel's top slot is the automap on a sandstone tablet (blue walls, light-cyan visited floor, red party arrow); during initiative it becomes the «Combate» list, with foes in green, yellow or red by health and the one in front boxed;
+  - pictogram buttons sit on a blue field with no captions;
+  - the strip shows only faces with gem bars that turn yellow and then red; numbers are in the tooltip and the sheet;
+  - the latest meaningful note runs as a sandstone band along the bottom of the view, set in VT323 (SIL OFL, vendored under `assets/chronicles/ui/fonts`);
+  - a sapphire is set at the bottom centre of the frame.
+
   Mobile keeps its overlay layout and only takes the stone look on the buttons, portraits, minimap and narrator. The pixel art (`mm3-stone`, `mm3-frame`, `mm3-gem`, `mm3-sandstone` under `frontend/src/assets/chronicles/ui/`) is original. It is generated deterministically by `python3 scripts/art/build_chronicles_mm3_ui.py` and always scaled by whole factors with `image-rendering: pixelated`.
