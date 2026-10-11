@@ -268,6 +268,14 @@ test('Chess Football manager can simulate ten reproducible matchdays without loa
       await expect(season.getByLabel('Resultados de la última jornada')).toContainText('Entreno: Recuperación');
       await expect(season.getByLabel('Resultados de la última jornada')).toContainText('Fatiga inicial media: 5%');
     }
+    if (round === 4) {
+      const development = page.getByLabel('Evolución de la plantilla');
+      await expect(development.locator('summary')).toContainText('5 mejorados');
+      await development.locator('summary').click();
+      await expect(development.locator('li')).toHaveCount(9);
+      await expect(development).toContainText('(+1)');
+      await expect(development).toContainText('titularidades');
+    }
   }
   await expect(page.getByRole('button', { name: 'Liga completada', exact: true })).toBeDisabled();
   await expect(page.getByLabel('Objetivo del club')).toContainText('Objetivo');
