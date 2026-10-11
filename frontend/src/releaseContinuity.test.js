@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { installReleaseContinuity, isChunkLoadFailure, requestReleaseReload } from './releaseContinuity.js';
+import { installReleaseContinuity, isChunkLoadFailure, requestReleaseReload, shouldDeferReleaseReload } from './releaseContinuity.js';
 
 function fakeStorage() {
   const data = new Map();
@@ -19,6 +19,17 @@ function fakeWindow() {
 }
 
 describe('continuidad entre releases', () => {
+  it('ofrece actualizar sólo desde Home y nunca interrumpe un modo nuevo o embebido', () => {
+    expect(shouldDeferReleaseReload('menu')).toBe(false);
+    expect(shouldDeferReleaseReload('menu', { combatBattleUiActive: true })).toBe(true);
+    for (const view of ['game', 'tournamentGame', 'pvpGame', 'combat', 'puzzle',
+      'chronicles', 'tactics', 'football', 'chesscom', 'pawnSlug', 'training', 'futureMode',
+      'replay', 'lab', null]) {
+      expect(shouldDeferReleaseReload(view)).toBe(true);
+    }
+  });
+
+
   it('reconoce los errores típicos de chunks viejos de Vite y React.lazy', () => {
     expect(isChunkLoadFailure(new TypeError('Failed to fetch dynamically imported module: /assets/Game.js'))).toBe(true);
     expect(isChunkLoadFailure(new Error('Loading chunk 42 failed'))).toBe(true);
