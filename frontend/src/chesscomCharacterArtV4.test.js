@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CHESSCOM_CHARACTER_ART_V4, CHESSCOM_OPERATOR_READABILITY_V22, CHESSCOM_OPERATOR_SILHOUETTE_V23, CHESSCOM_OPERATOR_ANATOMY_V28, CHESSCOM_OPERATOR_CONTOUR_V29, chesscomOperatorContourV29Geometry, chesscomOperatorSilhouetteV23Parts, chesscomCharacterV4Profile, chesscomFieldKitV20Profile } from './chesscomCharacterArtV4.js';
+import { CHESSCOM_CHARACTER_ART_V4, CHESSCOM_OPERATOR_READABILITY_V22, CHESSCOM_OPERATOR_SILHOUETTE_V23, CHESSCOM_OPERATOR_ANATOMY_V28, CHESSCOM_OPERATOR_CONTOUR_V29, chesscomOperatorContourV29Geometry, CHESSCOM_OPERATOR_POSE_V30, chesscomOperatorArmPoseV30Geometry, chesscomOperatorSilhouetteV23Parts, chesscomCharacterV4Profile, chesscomFieldKitV20Profile } from './chesscomCharacterArtV4.js';
 
 describe('Chesscom character art v4', () => {
   it('declares the custom mesh and procedural PBR contract', () => {
@@ -150,5 +150,40 @@ describe('CHESSCOM premium contoured operators V29',()=>{
     expect(()=>chesscomOperatorContourV29Geometry({h:0,bw:.3,bd:.3,tw:.4,td:.3})).toThrow(RangeError);
     expect(()=>chesscomOperatorContourV29Geometry({h:.6,bw:Infinity,bd:.3,tw:.4,td:.3})).toThrow(RangeError);
     expect(()=>chesscomOperatorContourV29Geometry({h:.6,bw:.3,bd:.3,tw:.4,td:.3,middleScale:1.4})).toThrow(RangeError);
+  });
+});
+
+describe('CHESSCOM human rifle-ready pose V30',()=>{
+  it('bends two three-ring sleeves from shoulder to actual rifle-grip area',()=>{
+    expect(CHESSCOM_OPERATOR_POSE_V30.identity).toBe('operator-rifle-ready-pose-v30');
+    expect(CHESSCOM_OPERATOR_POSE_V30.newMeshesPerUnit).toBe(0);
+    const left=chesscomOperatorArmPoseV30Geometry(-1,'rifleman');
+    const right=chesscomOperatorArmPoseV30Geometry(1,'rifleman');
+    for(const arm of [left,right]){
+      expect(arm.positions).toHaveLength(72);
+      expect(arm.indices).toHaveLength(132);
+      expect(arm.uvs).toHaveLength(48);
+      expect(Math.max(...arm.indices)).toBeLessThan(24);
+      expect(arm.positions.every(Number.isFinite)).toBe(true);
+      expect(arm.anchors.shoulder.y).toBeGreaterThan(arm.anchors.elbow.y);
+      expect(arm.anchors.elbow.y).toBeGreaterThan(arm.anchors.wrist.y);
+      expect(arm.anchors.wrist.z).toBeLessThan(arm.anchors.shoulder.z);
+      for(const anchor of Object.values(arm.anchors)){
+        expect(Math.abs(anchor.x)).toBeLessThan(.65);
+        expect(anchor.y).toBeGreaterThan(.80);
+        expect(anchor.y).toBeLessThan(1.25);
+      }
+    }
+    expect(left.anchors.shoulder.x).toBeLessThan(0);
+    expect(right.anchors.shoulder.x).toBeGreaterThan(0);
+    // Rifle points to +X: trigger and handguard grips must remain separated.
+    expect(right.anchors.wrist.x-left.anchors.wrist.x).toBeGreaterThan(.4);
+  });
+  it('keeps scout pose tighter and rejects invalid handedness',()=>{
+    const scout=chesscomOperatorArmPoseV30Geometry(1,'scout');
+    const rifle=chesscomOperatorArmPoseV30Geometry(1,'rifleman');
+    expect(scout.anchors.wrist.x).toBeLessThan(rifle.anchors.wrist.x);
+    expect(()=>chesscomOperatorArmPoseV30Geometry(0)).toThrow(RangeError);
+    expect(()=>chesscomOperatorArmPoseV30Geometry(NaN)).toThrow(RangeError);
   });
 });

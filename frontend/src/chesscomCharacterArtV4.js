@@ -259,6 +259,40 @@ export function chesscomOperatorContourV29Geometry({h,bw,bd,tw,td,middleScale=1.
   return {positions,indices,uvs};
 }
 
+
+/**
+ * A bent, continuous upper-arm/forearm sleeve from shoulder to rifle grip.
+ * This is one existing cloth mesh per arm, not separate cylinders or an IK rig.
+ * Local root-space geometry follows the original weapon socket but does not
+ * change the socket, hitboxes, ballistic origin, or tactical unit transforms.
+ */
+export const CHESSCOM_OPERATOR_POSE_V30=Object.freeze({
+  identity:'operator-rifle-ready-pose-v30',rings:3,perimeter:8,
+  newMeshesPerUnit:0,roles:Object.freeze(['rifleman','scout','hostile']),
+});
+
+export function chesscomOperatorArmPoseV30Geometry(side,role='rifleman'){
+  if(side!==-1&&side!==1)throw new RangeError('Operator arm side must be -1 or 1');
+  const compact=role==='scout';
+  const anchors={
+    wrist:{x:side<0?(compact?.075:.095):(compact?.47:.53),y:.895,z:-.36},
+    elbow:{x:side*(compact?.30:.315),y:1.005,z:-.25},
+    shoulder:{x:side*(compact?.275:.285),y:1.165,z:-.055},
+  };
+  const geometry=chesscomOperatorContourV29Geometry({
+    h:.27,bw:compact?.105:.115,bd:compact?.115:.125,
+    tw:compact?.135:.15,td:compact?.145:.16,middleScale:1.035,
+  });
+  for(const [ring,point] of [anchors.wrist,anchors.elbow,anchors.shoulder].entries()){
+    for(let vertex=ring*8;vertex<ring*8+8;vertex+=1){
+      geometry.positions[vertex*3]+=point.x;
+      geometry.positions[vertex*3+1]=point.y;
+      geometry.positions[vertex*3+2]+=point.z;
+    }
+  }
+  return {...geometry,anchors};
+}
+
 function polyBlock(B, scene, name, parent, mat, spec, id, friendly, disposables) {
   const h = spec.h;
   const bw = spec.bw ?? spec.w;
@@ -266,7 +300,7 @@ function polyBlock(B, scene, name, parent, mat, spec, id, friendly, disposables)
   const tw = spec.tw ?? spec.w;
   const td = spec.td ?? spec.d;
   const y0=-h/2, y1=h/2;
-  const contour=spec.contour ? chesscomOperatorContourV29Geometry({h,bw,bd,tw,td}) : null;
+  const contour=spec.poseMesh || (spec.contour ? chesscomOperatorContourV29Geometry({h,bw,bd,tw,td}) : null);
   const positions=contour?.positions ?? [
     -bw/2,y0,-bd/2,  bw/2,y0,-bd/2,  bw/2,y0,bd/2,  -bw/2,y0,bd/2,
     -tw/2,y1,-td/2,  tw/2,y1,-td/2,  tw/2,y1,td/2,  -tw/2,y1,td/2,
@@ -391,8 +425,15 @@ function addMercenary(B,scene,root,profile,disposables,restorers,invisible){
   polyBlock(B,scene,`character-v4-${profile.id}-helmet`,root,mats.armour,{h:CHESSCOM_OPERATOR_ANATOMY_V28.helmetHeight,bw:CHESSCOM_OPERATOR_ANATOMY_V28.helmetWidth,bd:.345,tw:.295,td:.29,y:1.41,z:.01,contour:true},profile.id,profile.friendly,disposables);
   for(const [part,side] of [[parts.armL,-1],[parts.armR,1]]){
     if(!part)continue;
-    polyBlock(B,scene,`character-v4-${profile.id}-arm-${side<0?'l':'r'}`,part,mats.cloth,{h:.48,bw:.12,bd:.135,tw:.095,td:.11,z:-.24,rx:Math.PI/2,contour:true},profile.id,profile.friendly,disposables);
-    polyBlock(B,scene,`character-v4-${profile.id}-glove-${side<0?'l':'r'}`,part,mats.boot,{h:.12,bw:.115,bd:.14,tw:.10,td:.12,z:-.50,rx:Math.PI/2},profile.id,profile.friendly,disposables);
+    const arm=chesscomOperatorArmPoseV30Geometry(side,profile.role);
+    // Both meshes now live on the unit root with the rifle, not on invisible
+    // legacy block arms that introduced an extra rotation/offset.
+    polyBlock(B,scene,`character-v4-${profile.id}-arm-${side<0?'l':'r'}`,root,mats.cloth,{h:.27,w:.15,d:.15,poseMesh:arm},profile.id,profile.friendly,disposables);
+    polyBlock(B,scene,`character-v4-${profile.id}-glove-${side<0?'l':'r'}`,root,mats.boot,{
+      h:.105,bw:.115,bd:.13,tw:.095,td:.11,
+      x:arm.anchors.wrist.x,y:arm.anchors.wrist.y,z:arm.anchors.wrist.z,
+      contour:true,
+    },profile.id,profile.friendly,disposables);
   }
   for(const [part,side] of [[parts.legL,-1],[parts.legR,1]]){
     if(!part)continue;
@@ -408,6 +449,7 @@ function addMercenary(B,scene,root,profile,disposables,restorers,invisible){
   addFieldKitV20(B,scene,root,profile,mats,disposables);
   addSilhouetteV23(B,scene,root,profile,mats,disposables);
   addWeapon(B,scene,root,profile,mats,disposables);
+  root.metadata.humanArmPose=CHESSCOM_OPERATOR_POSE_V30.identity;
   root.metadata.visualIdentity=profile.identity;
   root.metadata.characterArt='v4';
 }
