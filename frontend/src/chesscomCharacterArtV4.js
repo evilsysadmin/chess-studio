@@ -50,6 +50,18 @@ export function chesscomFieldKitV20Profile(role) {
   return Object.freeze({identity:'field-kit-v20',role:'leader',pack:.28,plates:.12,accent:'#b8873d',scarf:false});
 }
 
+// Less toy-like proportions at the ACTUAL tactical camera scale.
+// Human operators have a narrower helmet, tapered shoulders, smaller hands
+// and boots. Matthias retains the distinct ivory pawn head and peaked cap.
+export const CHESSCOM_OPERATOR_ANATOMY_V28=Object.freeze({
+  identity:'operator-anatomy-v28',
+  helmetWidth:.355,
+  helmetHeight:.160,
+  headWidth:.158,
+  bootDepth:.245,
+  emphasis:'human-tapered-lowpoly',
+});
+
 // Battlefield-scale role recognition: broad cloth/metal shapes catch the
 // moonlight at normal zoom, unlike tiny floating nameplates or emissive halos.
 // This is decoration attached to the same unit root, never a new tactical actor.
@@ -64,13 +76,13 @@ export function chesscomOperatorSilhouetteV23Parts(role='rifleman') {
   const leader=kind==='leader';
   const scout=kind==='scout';
   const hostile=kind==='hostile';
-  const size=leader?.22:scout?.20:hostile?.27:.26;
+  const size=leader?.19:scout?.16:hostile?.22:.21;
   const parts=[];
   for(const side of [-1,1]){
     parts.push({
       name:`shoulder-sign-${side}`,material:'accent',
       spec:{h:.067,bw:size,bd:.24,tw:size*.91,td:.21,
-        x:side*(leader?.34:.32),y:leader?1.42:1.255,z:-.04},
+        x:side*(leader?.32:.30),y:leader?1.40:1.255,z:-.04},
     });
   }
   if(leader){
@@ -310,10 +322,10 @@ function addFieldKitV20(B,scene,root,profile,mats,disposables){
   // Front armour silhouette: shoulder pads, load-bearing straps, and a
   // prominent radio/identity tab visible at ordinary tactical zoom.
   for(const side of [-1,1]){
-    part(`pauldron-${side}`,mats.armour,{h:.225,bw:kit.plates+.15,bd:.30,tw:kit.plates+.09,td:.25,x:side*.33,y:1.12,z:-.02,rz:side*.12});
+    part(`pauldron-${side}`,mats.armour,{h:.15,bw:kit.plates+.09,bd:.23,tw:kit.plates+.035,td:.20,x:side*.29,y:1.18,z:-.02,rz:side*.15});
     part(`webbing-${side}`,mats.accent,{h:.35,bw:.052,bd:.034,tw:.042,td:.03,x:side*.12,y:.92,z:-.257,rz:side*.31});
     part(`pouch-${side}`,mats.cloth2,{h:.18,bw:.17,bd:.095,tw:.16,td:.09,x:side*.17,y:.67,z:-.21});
-    part(`knee-${side}`,mats.armour,{h:.16,bw:.17,bd:.09,tw:.16,td:.07,x:side*.15,y:.30,z:-.09});
+    part(`knee-${side}`,mats.armour,{h:.13,bw:.14,bd:.075,tw:.125,td:.06,x:side*.14,y:.30,z:-.09});
   }
   part('backpack',mats.cloth2,{h:kit.pack+.11,bw:profile.compact?.29:.36,bd:.16,tw:profile.compact?.27:.32,td:.14,y:.91,z:.28});
   part('unit-tab',mats.accent,{h:.11,bw:.16,bd:.045,tw:.15,td:.041,x:.15,y:1.02,z:-.282});
@@ -325,22 +337,22 @@ function addFieldKitV20(B,scene,root,profile,mats,disposables){
 function addMercenary(B,scene,root,profile,disposables,restorers,invisible){
   hideLegacyMercenary(scene,profile.id,root,invisible,restorers);
   const mats=materialsFor(B,scene,profile,disposables);const parts=root.metadata?.parts||{};
-  polyBlock(B,scene,`character-v4-${profile.id}-torso`,root,mats.cloth,{h:profile.compact?.62:.69,bw:profile.compact?.44:.50,bd:.31,tw:profile.compact?.39:.44,td:.28,y:.84},profile.id,profile.friendly,disposables);
-  polyBlock(B,scene,`character-v4-${profile.id}-vest`,root,mats.armour,{h:.44,bw:profile.compact?.41:.46,bd:.10,tw:profile.compact?.37:.42,td:.085,y:.90,z:-.19},profile.id,profile.friendly,disposables);
-  polyBlock(B,scene,`character-v4-${profile.id}-pelvis`,root,mats.cloth2,{h:.25,bw:.39,bd:.29,tw:.34,td:.27,y:.53},profile.id,profile.friendly,disposables);
-  polyHead(B,scene,`character-v4-${profile.id}-head`,root,mats.skin,{rx:.182,ry:.202,rz:.171,y:1.27,z:-.01},profile.id,profile.friendly,disposables);
-  polyBlock(B,scene,`character-v4-${profile.id}-helmet`,root,mats.armour,{h:.195,bw:.435,bd:.40,tw:.33,td:.33,y:1.41,z:.01},profile.id,profile.friendly,disposables);
+  polyBlock(B,scene,`character-v4-${profile.id}-torso`,root,mats.cloth,{h:profile.compact?.66:.69,bw:profile.compact?.39:.44,bd:.29,tw:profile.compact?.32:.36,td:.255,y:.84},profile.id,profile.friendly,disposables);
+  polyBlock(B,scene,`character-v4-${profile.id}-vest`,root,mats.armour,{h:.43,bw:profile.compact?.35:.40,bd:.075,tw:profile.compact?.30:.35,td:.067,y:.90,z:-.178},profile.id,profile.friendly,disposables);
+  polyBlock(B,scene,`character-v4-${profile.id}-pelvis`,root,mats.cloth2,{h:.24,bw:.35,bd:.265,tw:.32,td:.25,y:.53},profile.id,profile.friendly,disposables);
+  polyHead(B,scene,`character-v4-${profile.id}-head`,root,mats.skin,{rx:CHESSCOM_OPERATOR_ANATOMY_V28.headWidth,ry:.178,rz:.148,y:1.275,z:-.01},profile.id,profile.friendly,disposables);
+  polyBlock(B,scene,`character-v4-${profile.id}-helmet`,root,mats.armour,{h:CHESSCOM_OPERATOR_ANATOMY_V28.helmetHeight,bw:CHESSCOM_OPERATOR_ANATOMY_V28.helmetWidth,bd:.345,tw:.295,td:.29,y:1.41,z:.01},profile.id,profile.friendly,disposables);
   for(const [part,side] of [[parts.armL,-1],[parts.armR,1]]){
     if(!part)continue;
-    polyBlock(B,scene,`character-v4-${profile.id}-arm-${side<0?'l':'r'}`,part,mats.cloth,{h:.48,bw:.13,bd:.15,tw:.115,td:.135,z:-.24,rx:Math.PI/2},profile.id,profile.friendly,disposables);
-    polyBlock(B,scene,`character-v4-${profile.id}-glove-${side<0?'l':'r'}`,part,mats.boot,{h:.15,bw:.14,bd:.16,tw:.12,td:.14,z:-.50,rx:Math.PI/2},profile.id,profile.friendly,disposables);
+    polyBlock(B,scene,`character-v4-${profile.id}-arm-${side<0?'l':'r'}`,part,mats.cloth,{h:.48,bw:.115,bd:.135,tw:.095,td:.12,z:-.24,rx:Math.PI/2},profile.id,profile.friendly,disposables);
+    polyBlock(B,scene,`character-v4-${profile.id}-glove-${side<0?'l':'r'}`,part,mats.boot,{h:.12,bw:.115,bd:.14,tw:.10,td:.12,z:-.50,rx:Math.PI/2},profile.id,profile.friendly,disposables);
   }
   for(const [part,side] of [[parts.legL,-1],[parts.legR,1]]){
     if(!part)continue;
-    polyBlock(B,scene,`character-v4-${profile.id}-leg-${side<0?'l':'r'}`,part,mats.cloth2,{h:.50,bw:.145,bd:.16,tw:.125,td:.14,y:0},profile.id,profile.friendly,disposables);
+    polyBlock(B,scene,`character-v4-${profile.id}-leg-${side<0?'l':'r'}`,part,mats.cloth2,{h:.50,bw:.125,bd:.145,tw:.105,td:.125,y:0},profile.id,profile.friendly,disposables);
   }
-  polyBlock(B,scene,`character-v4-${profile.id}-boot-l`,root,mats.boot,{h:.14,bw:.18,bd:.31,tw:.17,td:.26,x:-.14,y:.07,z:-.05},profile.id,profile.friendly,disposables);
-  polyBlock(B,scene,`character-v4-${profile.id}-boot-r`,root,mats.boot,{h:.14,bw:.18,bd:.31,tw:.17,td:.26,x:.14,y:.07,z:-.05},profile.id,profile.friendly,disposables);
+  polyBlock(B,scene,`character-v4-${profile.id}-boot-l`,root,mats.boot,{h:.14,bw:.165,bd:CHESSCOM_OPERATOR_ANATOMY_V28.bootDepth,tw:.145,td:.22,x:-.135,y:.07,z:-.05},profile.id,profile.friendly,disposables);
+  polyBlock(B,scene,`character-v4-${profile.id}-boot-r`,root,mats.boot,{h:.14,bw:.165,bd:CHESSCOM_OPERATOR_ANATOMY_V28.bootDepth,tw:.145,td:.22,x:.135,y:.07,z:-.05},profile.id,profile.friendly,disposables);
   if(profile.role==='scout'){
     polyBlock(B,scene,`character-v4-${profile.id}-goggles`,root,mats.accent,{h:.055,bw:.30,bd:.045,tw:.29,td:.04,y:1.29,z:-.165},profile.id,profile.friendly,disposables);
   }else{
@@ -357,7 +369,7 @@ function addMatthias(B,scene,root,profile,disposables,restorers,invisible){
   hideLegacyMatthias(scene,root,invisible,restorers);
   const mats=materialsFor(B,scene,profile,disposables);const parts=root.metadata?.parts||{};
   // Preserve Matthias' canonical face/head/cap, but replace the exosuit body with a tailored field coat.
-  polyBlock(B,scene,'character-v4-matthias-coat',root,mats.cloth,{h:.70,bw:.58,bd:.33,tw:.46,td:.29,y:1.03},profile.id,true,disposables);
+  polyBlock(B,scene,'character-v4-matthias-coat',root,mats.cloth,{h:.72,bw:.53,bd:.32,tw:.45,td:.28,y:1.03},profile.id,true,disposables);
   polyBlock(B,scene,'character-v4-matthias-lapel-l',root,mats.accent,{h:.36,bw:.055,bd:.035,tw:.035,td:.025,x:-.11,y:1.18,z:-.19,rz:-.22},profile.id,true,disposables);
   polyBlock(B,scene,'character-v4-matthias-lapel-r',root,mats.accent,{h:.36,bw:.055,bd:.035,tw:.035,td:.025,x:.11,y:1.18,z:-.19,rz:.22},profile.id,true,disposables);
   polyBlock(B,scene,'character-v4-matthias-belt',root,mats.accent,{h:.075,bw:.56,bd:.34,tw:.56,td:.34,y:.83},profile.id,true,disposables);
@@ -374,7 +386,7 @@ function addMatthias(B,scene,root,profile,disposables,restorers,invisible){
   // Matthias retains his canonical cap and pawn silhouette; epaulettes
   // and field-coat seams give him a unique officer profile at playing zoom.
   for(const side of [-1,1]){
-    polyBlock(B,scene,`field-kit-v20-matthias-shoulder-${side}`,root,mats.accent,{h:.065,bw:.20,bd:.25,tw:.18,td:.23,x:side*.35,y:1.37,z:-.035},profile.id,true,disposables);
+    polyBlock(B,scene,`field-kit-v20-matthias-shoulder-${side}`,root,mats.accent,{h:.055,bw:.155,bd:.23,tw:.145,td:.21,x:side*.32,y:1.37,z:-.035},profile.id,true,disposables);
     polyBlock(B,scene,`field-kit-v20-matthias-cuff-${side}`,root,mats.accent,{h:.07,bw:.10,bd:.14,tw:.10,td:.14,x:side*.42,y:.83,z:-.10},profile.id,true,disposables);
   }
   polyBlock(B,scene,'field-kit-v20-matthias-chest-insignia',root,mats.accent,{h:.10,bw:.12,bd:.04,tw:.11,td:.04,x:.16,y:1.22,z:-.18},profile.id,true,disposables);

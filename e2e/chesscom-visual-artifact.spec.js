@@ -52,6 +52,28 @@ async function collectRenderMetadata(page, host, label) {
     const height = canvas?.height || 0;
     const brandRect = document.querySelector('.chesscom-brand')?.getBoundingClientRect?.();
     const exitRect = document.querySelector('.chesscom-exit')?.getBoundingClientRect?.();
+    const mode=node.closest('[data-chesscom-poc="true"]');
+    const field=mode?.querySelector('.chesscom-stage-shell')?.getBoundingClientRect();
+    const squad=mode?.querySelector('.chesscom-squad')?.getBoundingClientRect();
+    const actions=mode?.querySelector('.chesscom-actionbar')?.getBoundingClientRect();
+    const objectives=mode?.querySelector('.chesscom-objectives')?.getBoundingClientRect();
+    const root=mode?.getBoundingClientRect();
+    const weapon=mode?.querySelector('.chesscom-weapon')?.getBoundingClientRect();
+    const ammo=mode?.querySelector('.chesscom-weapon-ammo')?.getBoundingClientRect();
+    const titleRect=mode?.querySelector('.chesscom-brand h2')?.getBoundingClientRect();
+    const layout=(root&&field&&squad&&actions&&objectives&&weapon&&ammo&&titleRect&&exitRect)
+      ? {
+        stageTop:root.top>=-1&&root.top<=2,
+        fieldFull:field.width>=window.innerWidth*.95&&field.height>=window.innerHeight-2,
+        fieldBottom:field.bottom<=window.innerHeight+2,
+        squadBottom:squad.bottom>=window.innerHeight-40&&squad.bottom<=window.innerHeight+2,
+        actionsBottom:actions.bottom>=window.innerHeight-40&&actions.bottom<=window.innerHeight+2,
+        objectivesTop:objectives.top<root.top+160,
+        squadActionsGap:squad.right<actions.left,
+        actionsWeaponGap:actions.right<window.innerWidth-260,
+        ammoInsideWeapon:ammo.right<=weapon.right-12,
+        titleClearOfExit:titleRect.right<=exitRect.left-10,
+      }:null;
     const headerOverlap = brandRect && exitRect
       ? !(
         brandRect.right <= exitRect.left + 1
@@ -73,6 +95,7 @@ async function collectRenderMetadata(page, host, label) {
         effectivePixelRatioX:cssWidth > 0 ? Number((width / cssWidth).toFixed(3)) : 0,
         effectivePixelRatioY:cssHeight > 0 ? Number((height / cssHeight).toFixed(3)) : 0,
       } : null,
+      layout,
       header:brandRect && exitRect ? {
         brandRight:Number(brandRect.right.toFixed(2)),
         exitLeft:Number(exitRect.left.toFixed(2)),
@@ -105,6 +128,16 @@ function expectHealthyCapture(capture) {
   expect(capture.header).not.toBeNull();
   expect(capture.header?.overlap).toBe(false);
   expect(capture.header?.gap).toBeGreaterThanOrEqual(MIN_HEADER_GAP);
+  // Transfer geometry assertions from the interactive browser smoke to the
+  // dedicated visual-runtime gate. No loss of coverage; no duplicate 3D boot.
+  if(capture.label==='desktop-1600x900'){
+    expect(capture.layout).not.toBeNull();
+    for(const [name,healthy] of Object.entries(capture.layout||{}))
+      expect(healthy,`CHESSCOM desktop layout: ${name}`).toBe(true);
+  }else{
+    expect(capture.layout?.titleClearOfExit).toBe(true);
+  }
+
 }
 
 test('Chesscom · genera referencia visual desktop + móvil con metadata de render', async ({ page }) => {
@@ -133,7 +166,7 @@ test('Chesscom · genera referencia visual desktop + móvil con metadata de rend
 
   await writeFile(
     `${ARTIFACT_DIR}/render-metadata.json`,
-    `${JSON.stringify({ schema:4, minimumEffectivePixelRatio:MIN_EFFECTIVE_PIXEL_RATIO, minimumHeaderGap:MIN_HEADER_GAP, captures:[desktop, mobile] }, null, 2)}\n`,
+    `${JSON.stringify({ schema:5, minimumEffectivePixelRatio:MIN_EFFECTIVE_PIXEL_RATIO, minimumHeaderGap:MIN_HEADER_GAP, captures:[desktop, mobile] }, null, 2)}\n`,
     'utf8',
   );
 

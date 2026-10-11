@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CHESSCOM_CHARACTER_ART_V4, CHESSCOM_OPERATOR_READABILITY_V22, CHESSCOM_OPERATOR_SILHOUETTE_V23, chesscomOperatorSilhouetteV23Parts, chesscomCharacterV4Profile, chesscomFieldKitV20Profile } from './chesscomCharacterArtV4.js';
+import { CHESSCOM_CHARACTER_ART_V4, CHESSCOM_OPERATOR_READABILITY_V22, CHESSCOM_OPERATOR_SILHOUETTE_V23, CHESSCOM_OPERATOR_ANATOMY_V28, chesscomOperatorSilhouetteV23Parts, chesscomCharacterV4Profile, chesscomFieldKitV20Profile } from './chesscomCharacterArtV4.js';
 
 describe('Chesscom character art v4', () => {
   it('declares the custom mesh and procedural PBR contract', () => {
@@ -102,5 +102,22 @@ describe('CHESSCOM operator recognition silhouettes v23',()=>{
         expect(item.spec.y).toBeLessThan(1.56);
       }
     }
+  });
+});
+
+describe('CHESSCOM human silhouette and kit V28',()=>{
+  it('keeps helmets, boots and heads in restrained non-toy proportions',()=>{
+    expect(CHESSCOM_OPERATOR_ANATOMY_V28.identity).toBe('operator-anatomy-v28');
+    expect(CHESSCOM_OPERATOR_ANATOMY_V28.helmetWidth).toBeLessThan(.37);
+    expect(CHESSCOM_OPERATOR_ANATOMY_V28.headWidth).toBeLessThan(.17);
+    expect(CHESSCOM_OPERATOR_ANATOMY_V28.bootDepth).toBeLessThan(.26);
+    expect(CHESSCOM_OPERATOR_ANATOMY_V28.helmetHeight).toBeLessThan(.18);
+    expect(CHESSCOM_OPERATOR_ANATOMY_V28.emphasis).toBe('human-tapered-lowpoly');
+    // Role-specific silhouette stays functional even with less shoulder bulk.
+    const scout=chesscomOperatorSilhouetteV23Parts('scout');
+    const rifleman=chesscomOperatorSilhouetteV23Parts('rifleman');
+    const hostile=chesscomOperatorSilhouetteV23Parts('hostile');
+    expect(scout[0].spec.bw).toBeLessThan(rifleman[0].spec.bw);
+    expect(rifleman[0].spec.bw).toBeLessThan(hostile[0].spec.bw);
   });
 });
