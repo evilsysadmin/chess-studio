@@ -132,6 +132,13 @@
 .tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode][data-school-focus="normal"][data-school-coach="expanded"] .matthias-school-nav { margin-top: auto; }
 .tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-focus="board"] .matthias-school-coach-toggle { display: none; }
 @media (max-width: 860px), (pointer: coarse) {
+  .tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode][data-school-focus="normal"] .matthias-school-coach-toggle {
+    min-height: 44px;
+    min-width: 70px;
+  }
+  .tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode][data-school-focus="normal"][data-school-coach="compact"] .matthias-school-coach {
+    max-height: 35dvh;
+  }
   /* Compact by default on phones; expanded becomes an opt-in bottom sheet. */
   .tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode][data-school-focus="normal"][data-school-coach="expanded"] .matthias-school-coach {
     top: auto;

@@ -13,6 +13,7 @@ test('Escuela · el cuaderno de Matthias conserva contexto y se puede compactar'
   await expect(shell).toHaveAttribute('data-school-coach', 'expanded');
   await expect(detail).toBeVisible();
   await expect(coach.getByRole('button', { name: 'Compactar' })).toHaveAttribute('aria-expanded', 'true');
+  await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
   await testInfo.attach('school-coach-expanded-desktop', { body: await page.screenshot(), contentType: 'image/png' });
 
   await page.locator('.matthias-school-board').getByRole('button', { name: /^Casilla a3, vacía/ }).click();
@@ -39,10 +40,13 @@ test('Escuela · móvil empieza compacto y puede consultar el historial sin desb
   const shell = page.locator('.matthias-school-shell');
   const coach = shell.locator('.matthias-school-coach');
   await expect(shell).toHaveAttribute('data-school-coach', 'compact');
-  await coach.getByRole('button', { name: 'Ampliar' }).click();
+  const expand = coach.getByRole('button', { name: 'Ampliar' });
+  expect(await expand.evaluate((node) => node.getBoundingClientRect().height)).toBeGreaterThanOrEqual(44);
+  await expand.click();
   await expect(shell).toHaveAttribute('data-school-coach', 'expanded');
   await expect(coach.locator('#matthias-school-coach-detail')).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+  await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
   await testInfo.attach('school-coach-expanded-mobile', { body: await page.screenshot(), contentType: 'image/png' });
   await coach.getByRole('button', { name: 'Compactar' }).click();
   await expect(coach.locator('#matthias-school-coach-detail')).toBeHidden();
