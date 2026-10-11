@@ -11,6 +11,23 @@ import './ChessFootballEntry.css';
 
 const ChessFootballGodotHost = lazy(() => import('./ChessFootballGodotHost.jsx'));
 
+function FootballSquadDevelopment({ players }) {
+  return (
+  <details className="chess-football-entry__development" aria-label="Evolución de la plantilla">
+    <summary>Desarrollo de la plantilla · {players.filter((player) => player.attackGrowth || player.defenseGrowth).length} mejorados</summary>
+    <p>Tras cuatro titularidades: +1 en ataque y defensa. Dos sesiones de remates o repliegue: +1 adicional en su atributo. Máximo +{FOOTBALL_MAX_GROWTH_PER_ATTRIBUTE} por atributo. No se inventan estadísticas individuales.</p>
+    <ul>
+      {players.map((player) => (
+        <li key={player.id}>
+          <span><strong>{player.name}</strong> <small>{player.role} · {player.starts} titularidades</small></span>
+          <span>ATQ {player.attack}{player.attackGrowth ? ` (+${player.attackGrowth})` : ''} · DEF {player.defense}{player.defenseGrowth ? ` (+${player.defenseGrowth})` : ''}</span>
+        </li>
+      ))}
+    </ul>
+  </details>
+  );
+}
+
 export default function ChessFootballEntry({ onExit }) {
   const [view, setView] = useState('welcome');
   const scrollSurface = useRef(null);
@@ -266,18 +283,7 @@ export default function ChessFootballEntry({ onExit }) {
                       );
                     })}
                   </div>
-                  <details className="chess-football-entry__development" aria-label="Evolución de la plantilla">
-                    <summary>Desarrollo de la plantilla · {developedRoster.filter((player) => player.attackGrowth || player.defenseGrowth).length} mejorados</summary>
-                    <p>Tras cuatro titularidades: +1 en ataque y defensa. Dos sesiones de remates o repliegue: +1 adicional en su atributo. Máximo +{FOOTBALL_MAX_GROWTH_PER_ATTRIBUTE} por atributo. No se inventan estadísticas individuales.</p>
-                    <ul>
-                      {developedRoster.map((player) => (
-                        <li key={player.id}>
-                          <span><strong>{player.name}</strong> <small>{player.role} · {player.starts} titularidades</small></span>
-                          <span>ATQ {player.attack}{player.attackGrowth ? ` (+${player.attackGrowth})` : ''} · DEF {player.defense}{player.defenseGrowth ? ` (+${player.defenseGrowth})` : ''}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </details>
+                  <FootballSquadDevelopment players={developedRoster} />
                 </details>
               </section>
             ) : null}
@@ -326,7 +332,12 @@ export default function ChessFootballEntry({ onExit }) {
                   <p key={fixture.id}>{season.clubs.find((club) => club.id === fixture.homeId)?.name} – {season.clubs.find((club) => club.id === fixture.awayId)?.name}</p>
                 ))}
               </div>
-            ) : <p>Temporada completada. La clasificación final ya está calculada.</p>}
+            ) : (
+              <section className="chess-football-entry__lineup" aria-label="Plantilla al cierre">
+                <p>Temporada completada. La clasificación final ya está calculada.</p>
+                <FootballSquadDevelopment players={developedRoster} />
+              </section>
+            )}
             {season?.results.length ? (
               <div className="chess-football-entry__fixture-list" aria-label="Resultados de la última jornada">
                 <h3>Últimos resultados</h3>
