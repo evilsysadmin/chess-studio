@@ -27,6 +27,16 @@
   --mm3-lo: #47474e;
 }
 
+/* The MM3 screen is a light-stone palette by design. Browsers with a forced
+   «night mode» (Brave, Chrome auto dark theme) would lighten its dark ink
+   on the stone until it disappears, so Chronicles opts out explicitly. The
+   sheet is portalled outside the game root, hence its own selector. */
+.chronicles,
+.chronicles-character-sheet__backdrop,
+.chronicles-shop__backdrop {
+  color-scheme: only light;
+}
+
 /* HP/SP gems under each portrait: green life, blue spell points. */
 .chronicles .chronicles-party-bars {
   display: none;
