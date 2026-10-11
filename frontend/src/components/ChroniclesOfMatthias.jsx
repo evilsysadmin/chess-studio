@@ -1182,7 +1182,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
           )}
         </main>
 
-        {/* The active hero, large: the MM3 panel shows it under the controls. */}
+        {/* Legacy large portrait of the active hero; the MM3 chrome hides it (faces live in the strip). */}
         <div className="chronicles-party-preview" data-condition={selectedCondition} data-relic={selectedRelic || undefined}>
           <img
             className="chronicles-party-preview-image"

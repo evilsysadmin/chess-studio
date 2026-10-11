@@ -166,6 +166,7 @@ async function captureChroniclesHealth(page) {
       gameCanvas: rect('[data-chronicles-renderer="three"] canvas'),
       authoredPortrait: rect('[data-chronicles-party-renderer="authored"]'),
       partyTarget: rect('.chronicles-party-member'),
+      partyFace: rect('[data-chronicles-party-thumbnail]'),
       forwardControl: rect('[data-chronicles-touch-action="forward"]'),
       attackControl: rect('.chronicles-touch .is-attack'),
       narration: rect('.chronicles-dm-overlay'),
@@ -602,8 +603,8 @@ for (const capture of CAPTURES) {
       await expect(chroniclesCanvas).toHaveCount(1, { timeout: 20_000 });
       await expect(chroniclesCanvas).toBeVisible();
       await expect(authoredPortrait).toHaveCount(1, { timeout: 20_000 });
-      if (capture.hasTouch) await expect(authoredPortrait).toBeHidden();
-      else await expect(authoredPortrait).toBeVisible();
+      // The MM3 chrome keeps the large preview hidden; faces are in the strip.
+      await expect(authoredPortrait).toBeHidden();
       await expect(stage).toBeVisible();
       await expect(gameMenu).toBeVisible();
       await page.waitForTimeout(450);
@@ -664,8 +665,8 @@ for (const capture of CAPTURES) {
         expect(health.narration?.top ?? 0, `${capture.label}: narration clears compact party`).toBeGreaterThanOrEqual(health.partyTarget?.bottom ?? 0);
         expect(health.narration?.bottom ?? capture.height, `${capture.label}: narration clears thumb controls`).toBeLessThanOrEqual(health.forwardControl?.top ?? capture.height);
       } else {
-        expect(health.authoredPortrait?.width || 0, `${capture.label}: Chronicles portrait visible`).toBeGreaterThan(0);
-        expect(health.authoredPortrait?.height || 0, `${capture.label}: Chronicles portrait height`).toBeGreaterThan(0);
+        expect(health.partyFace?.width || 0, `${capture.label}: party face width`).toBeGreaterThanOrEqual(80);
+        expect(health.partyFace?.height || 0, `${capture.label}: party face height`).toBeGreaterThanOrEqual(80);
       }
 
       await captureElement(page, gameRoot, `${ARTIFACT_DIR}/chronicles-playing-${capture.label}.png`);
