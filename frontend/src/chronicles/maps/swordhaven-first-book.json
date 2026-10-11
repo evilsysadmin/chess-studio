@@ -110,9 +110,6 @@
         {
           "questId": "banner-contract",
           "questStatus": "active"
-        },
-        {
-          "itemId": "knight-banner"
         }
       ],
       "action": {
@@ -154,7 +151,14 @@
           "body": "Estandarte recuperado y entregado en Swordhaven. La compañía ha recibido 18 monedas de oro.",
           "sigil": "◆"
         }
-      }
+      },
+      "requirements": [
+        {
+          "itemId": "knight-banner",
+          "message": "El tablón sigue pidiendo el estandarte perdido. Sin él no hay recompensa."
+        }
+      ],
+      "lockedLabel": "Tablón · falta el estandarte perdido"
     },
     {
       "id": "first-book-quartermaster",
@@ -341,9 +345,6 @@
         {
           "questId": "weaver-silk",
           "questStatus": "active"
-        },
-        {
-          "itemId": "weaver-silk"
         }
       ],
       "action": {
@@ -389,7 +390,14 @@
           "body": "El templo de Swordhaven ya tiene vendas. Ilse pagó 8 monedas y curó a la compañía.",
           "sigil": "☼"
         }
-      }
+      },
+      "requirements": [
+        {
+          "itemId": "weaver-silk",
+          "message": "Ilse cruza las manos: «Sin la seda de la tejedora de Rookwood no hay ofrenda que bendecir»."
+        }
+      ],
+      "lockedLabel": "Templo · Ilse espera la seda de la tejedora"
     },
     {
       "id": "first-book-watch-house",
@@ -440,14 +448,6 @@
         {
           "questId": "road-bandits",
           "questStatus": "active"
-        },
-        {
-          "key": "bannerRoadDeserterDefeated",
-          "truthy": true
-        },
-        {
-          "key": "bannerRoadCaptainDefeated",
-          "truthy": true
         }
       ],
       "action": {
@@ -489,7 +489,20 @@
           "body": "El sargento Brask ha pagado 12 monedas por acabar con los desertores del Camino.",
           "sigil": "◆"
         }
-      }
+      },
+      "requirements": [
+        {
+          "key": "bannerRoadDeserterDefeated",
+          "truthy": true,
+          "message": "Brask golpea el mapa: «El desertor sigue suelto en el Camino de los Estandartes»."
+        },
+        {
+          "key": "bannerRoadCaptainDefeated",
+          "truthy": true,
+          "message": "Brask niega con la cabeza: «Garrah sigue al mando de esos bandidos. Vuelve cuando caiga»."
+        }
+      ],
+      "lockedLabel": "Cuartel · Brask espera noticias de los bandidos"
     }
   ],
   "treasures": [],
