@@ -1,5 +1,5 @@
 // Single, compact manager career journal. Derived standings, scores and
-// fatigue are replayed from actual decisions, never trusted from Web Storage.
+// fatigue and player growth replay from decisions, never trusted from Web Storage.
 import { FOOTBALL_MANAGER_CLUBS } from './footballManagerClubs.js';
 import { advanceFootballSeason, createFootballSeason, FOOTBALL_MANAGER_TACTICS } from './footballManagerSeason.js';
 import { evaluateFootballLineup, getDefaultFootballLineup, getFootballClubRoster } from './footballManagerRoster.js';
@@ -8,7 +8,7 @@ import { STORAGE_LOCAL, getStorageItem, storageHealthSnapshot } from './safeStor
 import { profileStorageIdentityMatchesCurrentUser, setProfileStorageItem } from './profileKeys.js';
 
 export const FOOTBALL_CAREER_KEY = 'chess-study-football-manager-career-v1';
-export const FOOTBALL_CAREER_VERSION = 2;
+export const FOOTBALL_CAREER_VERSION = 3;
 const MAX_SAVE_BYTES = 16000;
 const freeze = Object.freeze;
 
@@ -45,6 +45,8 @@ export function createFootballCareer(clubId, seed = 2026) {
     clubId,
     seed,
     rounds: freeze([]),
+    // Existing v1/v2 histories stay frozen statistically after migration.
+    legacyRounds: 0,
     nextTactic: 'balanced',
     nextTraining: 'standard',
     nextLineup: getDefaultFootballLineup(getFootballClubRoster(club)),
@@ -55,7 +57,7 @@ export function createFootballCareer(clubId, seed = 2026) {
 // no foreign players, invalid tactics, impossible rounds or invented fatigue.
 export function replayFootballCareer(journal) {
   if (!journal || typeof journal !== 'object' || Array.isArray(journal)
-    || (journal.version !== 1 && journal.version !== FOOTBALL_CAREER_VERSION)
+    || ![1, 2, FOOTBALL_CAREER_VERSION].includes(journal.version)
     || !findClub(journal.clubId)
     || !Number.isSafeInteger(journal.seed) || journal.seed < 0
     || !Array.isArray(journal.rounds) || journal.rounds.length > 10) {
@@ -72,16 +74,26 @@ export function replayFootballCareer(journal) {
       lineup: requireLineup(roster, decision.lineup),
     });
   });
+  // Upgrading an in-progress old career must NOT simulate growth into
+  // already-played games, otherwise saved scores could change on reload.
+  // The migration boundary is a bounded event-journal marker, not another
+  // store of player ratings or invented past performance.
+  const legacyRounds = journal.version < FOOTBALL_CAREER_VERSION
+    ? rounds.length : journal.legacyRounds;
+  if (!Number.isInteger(legacyRounds) || legacyRounds < 0 || legacyRounds > rounds.length) {
+    throw new Error('Invalid football career development boundary');
+  }
   const nextTactic = requireTactic(journal.nextTactic);
   const nextTraining = requireTraining(journal.version === 1 ? 'standard' : journal.nextTraining);
   const nextLineup = requireLineup(roster, journal.nextLineup);
   let season = createFootballSeason({ seed: journal.seed });
-  for (const decision of rounds) {
+  for (const [index, decision] of rounds.entries()) {
     season = advanceFootballSeason(season, {
       managerClubId: journal.clubId,
       tactic: decision.tactic,
       training: decision.training,
       lineup: decision.lineup,
+      development: index >= legacyRounds,
     });
   }
   return freeze({
@@ -90,6 +102,7 @@ export function replayFootballCareer(journal) {
       clubId: journal.clubId,
       seed: journal.seed,
       rounds: freeze(rounds),
+      legacyRounds,
       nextTactic,
       nextTraining,
       nextLineup,
