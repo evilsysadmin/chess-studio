@@ -211,7 +211,9 @@
       'party hero';
     gap: 10px 12px;
     padding: 10px 12px 12px;
-    background: #6f6f75 var(--mm3-stone) 0 0 / 128px 128px;
+    /* The big stone surface is toned down so the view stays the focus. */
+    background: #a3a3a8 var(--mm3-stone) 0 0 / 128px 128px;
+    background-blend-mode: multiply;
     image-rendering: pixelated;
   }
 
@@ -705,21 +707,69 @@
   }
 
   /* Faces and gem bars only; numbers live in the tooltip and the sheet. */
-  .chronicles .chronicles-party { justify-content: flex-start; }
-  .chronicles .chronicles-party-member {
-    flex: 0 0 auto;
-    width: auto;
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: auto auto;
-    grid-template-areas: 'portrait' 'bars';
-    justify-items: center;
-    gap: 6px;
-    padding: 6px 6px 7px;
+  /* The company fills the whole strip under the view, as MM3's faces do. */
+  .chronicles .chronicles-party {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 10px;
   }
-  .chronicles .chronicles-party-member > span:nth-child(2),
-  .chronicles .chronicles-party-member > b { display: none; }
-  .chronicles .chronicles-party-member > .chronicles-party-glyph { width: clamp(76px, 7vw, 96px); height: clamp(76px, 7vw, 96px); }
-  .chronicles .chronicles-party-member .chronicles-party-bars { width: 100%; }
+  /* Each tile: the face (MM3 proportions) and, beside it, name, level,
+     HP and SP in bitmap lettering over the gem bars. */
+  .chronicles .chronicles-party-member {
+    --face: clamp(84px, 16.5vh, 170px);
+    flex: none;
+    width: auto;
+    min-width: 0;
+    grid-template-columns: calc(var(--face) * .86) minmax(0, 1fr);
+    grid-template-rows: auto auto 1fr;
+    grid-template-areas:
+      'portrait name'
+      'portrait stats'
+      'portrait bars';
+    align-items: start;
+    gap: 4px 10px;
+    padding: 6px 8px 6px 6px;
+  }
+  .chronicles .chronicles-party-member > .chronicles-party-glyph {
+    width: 100%;
+    height: var(--face);
+  }
+  .chronicles .chronicles-party-member .chronicles-party-thumbnail { object-position: 50% 18%; }
+  .chronicles .chronicles-party-member > span:nth-child(2) {
+    grid-area: name;
+    align-items: flex-start;
+    gap: 2px;
+  }
+  .chronicles .chronicles-party-member > span:nth-child(2) strong {
+    font: 400 1.35rem/1 var(--mm3-pixel-font);
+    color: #1d1d22;
+    text-shadow: 1px 1px 0 rgba(255, 255, 255, .55);
+  }
+  .chronicles .chronicles-party-member > span:nth-child(2) small {
+    font: 400 .95rem/1 var(--mm3-pixel-font);
+    letter-spacing: .02em;
+    color: #3a3a42;
+  }
+  .chronicles .chronicles-party-member > b {
+    grid-area: stats;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1px;
+    font: 400 1.15rem/1.05 var(--mm3-pixel-font);
+    color: #1d4a1d;
+  }
+  .chronicles .chronicles-party-member > b::before {
+    content: 'PV ';
+    display: none;
+  }
+  .chronicles .chronicles-party-member > b .chronicles-party-sp { font: inherit; color: #173c8a; }
+  .chronicles .chronicles-party-member .chronicles-party-bars {
+    grid-area: bars;
+    align-self: end;
+    width: 100%;
+  }
+  .chronicles .chronicles-party-bars i { height: 9px; }
   .chronicles .chronicles-party-member.is-selected {
     border-color: #fff36a #8a6a00 #8a6a00 #fff36a;
     background: #9d9da2 var(--mm3-stone) 0 0 / 128px 128px;
