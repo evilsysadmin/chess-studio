@@ -92,7 +92,10 @@ def fetch_from_origin(origin: str, path: str, limit: int, *, optional: bool = Fa
     if not re.fullmatch(r"https://[A-Za-z0-9.-]+", origin):
         raise ValueError("asset grace origin must be an HTTPS hostname")
     url = origin + "/" + path
+    # Cloudflare's bot protection answers 403 to the default Python-urllib
+    # user agent, which broke every staging deploy after the first cutover.
     request = urllib.request.Request(url, headers={
+        "User-Agent": "chess-studio-pages-asset-grace/1",
         "Cache-Control": "no-cache, no-store",
         "Accept": "application/json" if path.startswith(("release.json", MANIFEST)) else "*/*",
     })
