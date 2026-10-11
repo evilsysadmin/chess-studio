@@ -5,7 +5,7 @@
    layout. Pixel art comes from scripts/art/build_chronicles_mm3_ui.py and is
    always scaled by whole factors with nearest-neighbour. */
 
-.chronicles {
+:root {
   --mm3-stone: url('../assets/chronicles/ui/mm3-stone.png');
   --mm3-sand: url('../assets/chronicles/ui/mm3-sandstone.png');
   --mm3-frame: url('../assets/chronicles/ui/mm3-frame.png');
@@ -392,4 +392,177 @@
   .chronicles .chronicles-quest-log__quest p { color: #3b1e08; }
   .chronicles .chronicles-quest-log h3,
   .chronicles .chronicles-quest-log__quest small { color: #4a250b; }
+}
+
+/* ─── Character sheet (first person): framed in stone, sandstone header ── */
+.chronicles-character-sheet--mm3 {
+  display: flex;
+  flex-direction: column;
+  overflow: visible;
+  border: 32px solid transparent;
+  border-radius: 0;
+  border-image: var(--mm3-frame) 16 / 32px round;
+  image-rendering: pixelated;
+  background: #17171b;
+  box-shadow: 0 34px 110px rgba(0, 0, 0, .86);
+}
+.chronicles-character-sheet--mm3::before {
+  inset: -34px;
+  z-index: 3;
+  border: 0;
+  border-radius: 0;
+  background:
+    var(--mm3-gem) left top / 28px 28px no-repeat,
+    var(--mm3-gem) right top / 28px 28px no-repeat,
+    var(--mm3-gem) left bottom / 28px 28px no-repeat,
+    var(--mm3-gem) right bottom / 28px 28px no-repeat;
+}
+.chronicles-character-sheet--mm3 .chronicles-character-sheet__scroll {
+  min-height: 0;
+  overflow: auto;
+  scrollbar-color: #6c6c74 #17171b;
+}
+.chronicles-character-sheet--mm3 .chronicles-character-sheet__head {
+  border-bottom: 3px solid;
+  border-color: #5a2e12;
+  background: #b87033 var(--mm3-sand) 0 0 / 64px 64px;
+  color: #1f0f04;
+}
+.chronicles-character-sheet--mm3 .chronicles-character-sheet__identity span { color: #4a250b; }
+.chronicles-character-sheet--mm3 .chronicles-character-sheet__identity h3 {
+  color: #1f0f04;
+  text-shadow: 1px 1px 0 rgba(255, 220, 170, .45);
+}
+.chronicles-character-sheet--mm3 .chronicles-character-sheet__identity p { color: #3b1e08; }
+.chronicles-character-sheet--mm3 .chronicles-character-sheet__portrait {
+  border: 3px solid;
+  border-color: var(--mm3-lo) var(--mm3-hi) var(--mm3-hi) var(--mm3-lo);
+  border-radius: 0;
+  box-shadow: 0 0 0 1px #141416, 0 10px 24px rgba(0, 0, 0, .45);
+}
+.chronicles-character-sheet--mm3 .chronicles-character-sheet__head > button {
+  border: 2px solid;
+  border-color: var(--mm3-hi) var(--mm3-lo) var(--mm3-lo) var(--mm3-hi);
+  border-radius: 0;
+  background: #9d9da2 var(--mm3-stone) 0 0 / 128px 128px;
+  box-shadow: 0 0 0 1px #141416;
+  color: var(--mm3-ink);
+  font-weight: 700;
+}
+.chronicles-character-sheet--mm3 .chronicles-character-sheet__vitals,
+.chronicles-character-sheet--mm3 .chronicles-character-sheet__combat {
+  border: 2px solid;
+  border-color: var(--mm3-lo) var(--mm3-hi) var(--mm3-hi) var(--mm3-lo);
+  background: #2c2c33;
+}
+.chronicles-character-sheet--mm3 .chronicles-character-sheet__vitals > div,
+.chronicles-character-sheet--mm3 .chronicles-character-sheet__combat > div { background: #1d1d22; }
+.chronicles-character-sheet--mm3 .chronicles-character-sheet__vitals b { color: #ffe9a8; }
+.chronicles-character-sheet--mm3 .chronicles-character-sheet__section { border-top: 2px solid #2c2c33; }
+.chronicles-character-sheet--mm3 .chronicles-character-sheet__section-head span { color: #c9b27a; }
+.chronicles-character-sheet--mm3 .chronicles-character-sheet__loadout article,
+.chronicles-character-sheet--mm3 .chronicles-character-sheet__mm3-stats > div,
+.chronicles-character-sheet--mm3 .chronicles-character-sheet__attribute-grid > button,
+.chronicles-character-sheet--mm3 .chronicles-character-sheet__skill-grid > button {
+  border: 2px solid;
+  border-color: #45454c #6e6e76 #6e6e76 #45454c;
+  border-radius: 0;
+  background: #222228;
+}
+.chronicles-character-sheet--mm3 .chronicles-character-sheet__loadout article b { color: #ffe9a8; }
+.chronicles-character-sheet--mm3 .chronicles-character-sheet__inventory em { border-radius: 0; }
+/* Equip / stow keys are engraved stone with a gold tint, like the shops. */
+.chronicles-character-sheet--mm3 .chronicles-character-sheet__equipment button {
+  border: 2px solid;
+  border-color: #ffeec2 #6b4510 #6b4510 #ffeec2;
+  border-radius: 0;
+  background: #e3b45c var(--mm3-stone) 0 0 / 128px 128px;
+  background-blend-mode: multiply;
+  box-shadow: 0 0 0 1px #141416;
+  color: #2c1a03;
+  font-weight: 700;
+}
+.chronicles-character-sheet--mm3 .chronicles-character-sheet__equipment button:disabled {
+  border-color: #d4d4d8 #5a5a60 #5a5a60 #d4d4d8;
+  background-color: #a9a9ae;
+  background-blend-mode: normal;
+  color: #55555d;
+  text-shadow: 1px 1px 0 rgba(255, 255, 255, .45);
+  opacity: .8;
+}
+.chronicles-character-sheet--mm3 .chronicles-character-sheet__foot {
+  border-top: 2px solid #2c2c33;
+  color: #9a9aa3;
+}
+@media (max-width: 680px) {
+  .chronicles-character-sheet--mm3 {
+    border-width: 16px;
+    border-image: var(--mm3-frame) 16 / 16px round;
+  }
+  .chronicles-character-sheet--mm3::before {
+    inset: -18px;
+    background-size: 20px 20px;
+  }
+}
+
+/* ─── Spell book: small framed slate with a sandstone heading ─────────── */
+.chronicles .chronicles-spell-menu {
+  border: 16px solid transparent;
+  border-radius: 0;
+  border-image: var(--mm3-frame) 16 / 16px round;
+  image-rendering: pixelated;
+  background: #17171b;
+  overflow: auto;
+}
+.chronicles .chronicles-spell-menu header {
+  border-bottom: 2px solid #5a2e12;
+  background: #b87033 var(--mm3-sand) 0 0 / 64px 64px;
+}
+.chronicles .chronicles-spell-menu header span { color: #4a250b; }
+.chronicles .chronicles-spell-menu header strong { color: #1f0f04; }
+.chronicles .chronicles-spell-menu header b {
+  padding: 3px 8px;
+  border: 2px solid;
+  border-color: #5a2e12 #f0c48a #f0c48a #5a2e12;
+  background: #10131f;
+  color: #9fc0ff;
+}
+.chronicles .chronicles-spell-menu__close {
+  border: 2px solid;
+  border-color: var(--mm3-hi) var(--mm3-lo) var(--mm3-lo) var(--mm3-hi);
+  border-radius: 0;
+  background: #9d9da2 var(--mm3-stone) 0 0 / 128px 128px;
+  color: var(--mm3-ink);
+  font-weight: 700;
+}
+.chronicles .chronicles-spell-menu li button {
+  border: 2px solid;
+  border-color: #45454c #6e6e76 #6e6e76 #45454c;
+  border-radius: 0;
+  background: #222228;
+}
+.chronicles .chronicles-spell-menu li button:hover:not(:disabled),
+.chronicles .chronicles-spell-menu li button:focus-visible {
+  border-color: #b4c6f4 #1e2c5c #1e2c5c #b4c6f4;
+  background: #26304f;
+}
+.chronicles .chronicles-spell-menu li strong { color: #ffe9a8; }
+
+/* ─── Game menu panel ──────────────────────────────────────────────────── */
+.chronicles .chronicles-game-menu__panel {
+  border: 2px solid;
+  border-color: #f0c48a #5a2e12 #5a2e12 #f0c48a;
+  background: #b87033 var(--mm3-sand) 0 0 / 64px 64px;
+  box-shadow: 0 0 0 1px #141416, 0 18px 54px rgba(0, 0, 0, .58);
+  backdrop-filter: none;
+}
+.chronicles .chronicles-game-menu__panel strong { color: #1f0f04; }
+.chronicles .chronicles-game-menu__panel small { color: #3b1e08; }
+.chronicles .chronicles-game-menu__panel button {
+  border: 2px solid;
+  border-color: var(--mm3-hi) var(--mm3-lo) var(--mm3-lo) var(--mm3-hi);
+  background: #9d9da2 var(--mm3-stone) 0 0 / 128px 128px;
+  box-shadow: 0 0 0 1px #141416;
+  color: var(--mm3-ink);
+  font-weight: 700;
 }
