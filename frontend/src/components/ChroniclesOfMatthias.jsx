@@ -975,7 +975,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
                     />
                   ) : null}
                 </span>
-                <span><strong>{index + 1}. {member.name}</strong><small>Nv {chroniclesHeroProgress(progression, member.id).level} · {member.row === 'front' ? 'FRENTE' : 'RETAGUARDIA'} · clic · ficha</small></span>
+                <span><strong>{index + 1}. {member.name}</strong><small>Nv {chroniclesHeroProgress(progression, member.id).level} · {member.row === 'front' ? 'FRENTE' : 'RETAGUARDIA'}</small></span>
                 <span className="chronicles-party-bars" aria-hidden="true" data-band={chroniclesHealthBand(member.hp, member.maxHp)}>
                   <i className="is-hp" style={{ '--fill': member.maxHp ? Math.max(0, member.hp) / member.maxHp : 0 }} />
                   {chroniclesMemberMaxSp(state, member) > 0 && (
@@ -993,6 +993,14 @@ export default function ChroniclesOfMatthias({ onExit }) {
               </button>
             );
           })}
+          {/* MM3 keeps two places beside the company for hired hands. */}
+          {[1, 2].map((slot) => (
+            <div key={`hireling-${slot}`} className="chronicles-party-hireling" data-chronicles-hireling-slot={slot}
+              aria-label={`Hueco ${slot} para contratado, libre`}>
+              <span className="chronicles-party-hireling__face" aria-hidden="true" />
+              <span className="chronicles-party-hireling__label"><strong>Contratado</strong><small>Hueco libre</small></span>
+            </div>
+          ))}
         </aside>
 
         <main className="chronicles-stage-wrap">

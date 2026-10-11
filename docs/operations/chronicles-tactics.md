@@ -270,7 +270,7 @@ Any future haste/slow/surprise mechanic should modify the initiative contract ex
 
 - The first-person screen wears an MM3-style chrome (`frontend/src/components/ChroniclesMM3Chrome.css`). On desktop and wide landscape it has three parts:
   - the 3D view inside a carved stone frame with a Greek-key band and a ruby at each corner;
-  - the company as a portrait strip under the view, with green HP and blue SP bars;
+  - the company as a portrait strip under the view, with green HP and blue SP bars, plus two empty hireling places as in MM3 (desktop only). Text on stone is near-black ink (`--mm3-ink`); text on the black plaques is near-white;
   - a stone control panel on the right with the title plaque, location plaques, a 3×3 grid of engraved buttons, the sandstone chronicle and the key help.
 
   Tuned against Isles of Terra DOS screenshots:
