@@ -8,6 +8,7 @@ import {
   chroniclesAutomapFacingDegrees,
   chroniclesAutomapLocalVisibleCells,
   chroniclesAutomapRevealedCells,
+  chroniclesMapCoordinatesLabel,
 } from '../chronicles/chroniclesAutomap.js';
 
 export const CHRONICLES_MINIMAP_RADIUS = 3;
@@ -110,7 +111,7 @@ export default function ChroniclesMinimap({
       aria-label="Minimapa local. Abrir automapa completo"
       onClick={onExpand}
     >
-      <span className="chronicles-minimap__title" aria-hidden="true">LOCAL</span>
+      <span className="chronicles-minimap__title" aria-hidden="true" data-chronicles-coordinates>{chroniclesMapCoordinatesLabel(map, state) || 'LOCAL'}</span>
       <svg
         viewBox={`${minX} ${minY} ${size} ${size}`}
         role="img"
