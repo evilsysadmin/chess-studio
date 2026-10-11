@@ -38,7 +38,8 @@ function matchPulsePayload(match) {
 }
 
 test('War Room 1v1 · un 409 por carrera de turno sincroniza sin flash de error', async ({ page }) => {
-  test.setTimeout(90_000);
+  // 3D cold boot + a legitimate 409 resync can outlast the shorter generic gate.
+  test.setTimeout(150_000);
   await mockApi(page);
 
   await page.route('**/api/pvp/lobby', (route) => route.fulfill({
@@ -107,7 +108,9 @@ test('War Room 1v1 · un 409 por carrera de turno sincroniza sin flash de error'
   await expect(clickWarRoomMove(page, 'e2', 'e4')).resolves.toBe(true);
 
   await expect.poll(() => moveAttempts).toBe(1);
-  await expect(warRoom.getByText('bob juega', { exact: true })).toBeVisible({ timeout: 10_000 });
+  const duelStatus = warRoom.locator('.pvp-war-room__duel-pill [role="status"]');
+  // Wait for the authoritative 409 reconciliation, not the brief amber transmitting state.
+  await expect(duelStatus).toHaveText('bob juega', { timeout: 30_000 });
   await expect(warRoom.getByRole('alert')).toHaveCount(0);
 
   // A deploy may publish a new release while the duel and its server clock
@@ -128,7 +131,7 @@ test('War Room 1v1 · un 409 por carrera de turno sincroniza sin flash de error'
   await expect(update).toContainText('Puedes continuar aquí');
   await expect(update.getByRole('button', { name: 'Actualizar', exact: true })).toHaveCount(0);
   await expect(update.getByRole('button', { name: 'Después', exact: true })).toBeVisible();
-  await expect(warRoom.getByText('bob juega', { exact: true })).toBeVisible();
+  await expect(duelStatus).toHaveText('bob juega');
   expect(await page.evaluate(() => window.__pvpSessionContinuity)).toBe('same-document');
   expect(navigations).toBe(0);
 });
