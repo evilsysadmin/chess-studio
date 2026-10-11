@@ -283,12 +283,20 @@ test.describe('Mobile golden path · entrenar el error real en un toque', () => 
     await expect(page.getByRole('heading', { name: /Cuenta pendiente|Escena del crimen/ })).toBeVisible({ timeout: 15_000 });
     await expect(page.getByText(/Aquí jugaste g4 y perdiste/)).toBeVisible();
     await expect(focusedTraining.getByRole('group', { name: 'Tipo de puzzle' })).toHaveCount(0);
-    await expect(focusedTraining.locator('> .back-link')).toHaveText('← Volver a la partida');
+    await expect(focusedTraining.locator('> .back-link')).toHaveText('← Volver al resultado');
 
     await clickBoardMove(page, 'e2', 'e4');
     await expect(page.getByText('¡Resuelto!', { exact: true })).toBeVisible({ timeout: 15_000 });
-    const returnToPlay = page.getByRole('button', { name: 'Volver a jugar', exact: true });
+    const returnToPlay = focusedTraining.getByRole('button', { name: 'Volver a jugar', exact: true });
+    const nextPuzzle = focusedTraining.getByRole('button', { name: 'Siguiente puzzle', exact: true });
     await expect(returnToPlay).toBeVisible();
+    await expect(returnToPlay).toHaveClass(/primary-btn/);
+    await expect(nextPuzzle).toHaveClass(/secondary-btn/);
+    // The postgame journey has one primary decision, leading back into play.
+    await expect(focusedTraining.locator('.puzzle-board-column > .game-controls > .primary-btn')).toHaveCount(1);
+    const replayBox = await returnToPlay.boundingBox();
+    expect(replayBox.height).toBeGreaterThanOrEqual(44);
+    expect(replayBox.y + replayBox.height).toBeLessThanOrEqual(844);
     await returnToPlay.tap();
 
     await expect(page.getByRole('dialog', { name: 'Configurar partida rápida' })).toBeVisible({ timeout: 15_000 });

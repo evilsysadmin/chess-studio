@@ -436,12 +436,15 @@ export default function PuzzleScreen({ onExit, onPlayAgain = null, points = 0, o
       ? 'Desafío diario'
       : 'Puzzles clásicos';
 
+  const replayIsNextStep = focusedPostGameTraining && source === 'personal'
+    && status === 'solved' && typeof onPlayAgain === 'function';
+
   return (
     <div
       className={`tutorial-shell puzzle-screen ${source === 'personal' ? 'puzzle-screen-personal' : ''}`}
       data-training-origin={trainingOrigin || undefined}
     >
-      <button className="back-link" onClick={onExit}>{focusedInsightsTraining ? '← Volver a Así juegas' : focusedPostGameTraining ? '← Volver a la partida' : '← Volver al menú'}</button>
+      <button className="back-link" onClick={onExit}>{focusedInsightsTraining ? '← Volver a Así juegas' : focusedPostGameTraining ? '← Volver al resultado' : '← Volver al menú'}</button>
       {!rushMode && !focusedTrainingJourney && (
         <details
           className="puzzle-source-picker puzzle-source-disclosure"
@@ -520,8 +523,15 @@ export default function PuzzleScreen({ onExit, onPlayAgain = null, points = 0, o
             )}
             {/* Mientras se juega, la acción principal es el tablero: saltar el
                 puzzle no puede ser el CTA dorado (GP-7, #34). */}
-            {!rushMode && source !== 'daily' && <button className={status === 'playing' ? 'secondary-btn' : 'primary-btn'} onClick={newPuzzle}>Siguiente puzzle</button>}
-            {!rushMode && source === 'personal' && status === 'solved' && onPlayAgain && (
+            {/* Tras corregir un error real, la progresión natural es volver a
+                jugar. El siguiente puzzle sigue disponible sin competir. */}
+            {!rushMode && replayIsNextStep && (
+              <button className="primary-btn" onClick={onPlayAgain}>Volver a jugar</button>
+            )}
+            {!rushMode && source !== 'daily' && (
+              <button className={status === 'playing' || replayIsNextStep ? 'secondary-btn' : 'primary-btn'} onClick={newPuzzle}>Siguiente puzzle</button>
+            )}
+            {!rushMode && source === 'personal' && status === 'solved' && onPlayAgain && !replayIsNextStep && (
               <button className="secondary-btn" onClick={onPlayAgain}>Volver a jugar</button>
             )}
             {rushMode && rushEnded && <button className="primary-btn" onClick={onExit}>Guardar marca y salir</button>}
