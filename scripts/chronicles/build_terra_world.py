@@ -335,15 +335,19 @@ def build_area(code: str, quests: dict) -> dict:
                        "message": f"La compañía desciende a {dungeon_name}."},
         })
     if code == "F6":
+        # Act V has not been authored yet. Never make a visible "enter" gate
+        # silently teleport to its own area (or terminalize the expedition).
+        # Keep the physical arch and a discoverable, saved lore interaction.
         pos = take()
-        exits.append({
-            "id": "f6-sealed-temple", "kind": "exit", "visualType": "dungeon-arch", "x": pos[0], "y": pos[1],
-            "requiresReturn": True, "openLabel": "Descender al Templo Bajo la Corona",
-            "lockedLabel": "Templo Bajo la Corona · siete coronas lo sellan",
+        interactables.append({
+            "id": "f6-sealed-temple", "kind": "lore", "visualType": "dungeon-arch",
+            "x": pos[0], "y": pos[1], "persistentVisual": True,
+            "label": "Examinar las siete coronas",
+            "lockedLabel": "Las siete coronas no reconocen a la compañía",
             "requirements": [{"key": "lostKingFinalActOpen", "truthy": True,
-                              "message": "Siete coronas de piedra sellan la puerta. La Dama sabrá cómo abrirla, cuando llegue el momento."}],
-            "action": {"effects": [{"type": "transition-map", "mapId": "terra-f6", "entryExitId": "f6-sealed-temple"}],
-                       "message": "La puerta no se mueve."},
+                              "message": "La Dama aún no ha revelado el camino al Trono Bajo la Piedra."}],
+            "action": {"effects": [{"type": "set", "key": "terraF6SealExamined", "value": True}],
+                       "message": "Apoyas la mano sobre las siete coronas. Detrás de la piedra late el Silencio, pero ninguna cede: el juramento del Rey sigue incompleto."},
         })
     if code in SIGNPOSTS:
         pos = take()

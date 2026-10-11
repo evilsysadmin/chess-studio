@@ -113,7 +113,35 @@
     }
   ],
   "triggers": [],
-  "interactables": [],
+  "interactables": [
+    {
+      "id": "f6-sealed-temple",
+      "kind": "lore",
+      "visualType": "dungeon-arch",
+      "x": 5,
+      "y": 4,
+      "persistentVisual": true,
+      "label": "Examinar las siete coronas",
+      "lockedLabel": "Las siete coronas no reconocen a la compañía",
+      "requirements": [
+        {
+          "key": "lostKingFinalActOpen",
+          "truthy": true,
+          "message": "La Dama aún no ha revelado el camino al Trono Bajo la Piedra."
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "set",
+            "key": "terraF6SealExamined",
+            "value": true
+          }
+        ],
+        "message": "Apoyas la mano sobre las siete coronas. Detrás de la piedra late el Silencio, pero ninguna cede: el juramento del Rey sigue incompleto."
+      }
+    }
+  ],
   "treasures": [
     {
       "id": "terra-f6-chest",
@@ -191,33 +219,6 @@
           }
         ],
         "message": "La compañía entra en E6."
-      }
-    },
-    {
-      "id": "f6-sealed-temple",
-      "kind": "exit",
-      "visualType": "dungeon-arch",
-      "x": 5,
-      "y": 4,
-      "requiresReturn": true,
-      "openLabel": "Descender al Templo Bajo la Corona",
-      "lockedLabel": "Templo Bajo la Corona · siete coronas lo sellan",
-      "requirements": [
-        {
-          "key": "lostKingFinalActOpen",
-          "truthy": true,
-          "message": "Siete coronas de piedra sellan la puerta. La Dama sabrá cómo abrirla, cuando llegue el momento."
-        }
-      ],
-      "action": {
-        "effects": [
-          {
-            "type": "transition-map",
-            "mapId": "terra-f6",
-            "entryExitId": "f6-sealed-temple"
-          }
-        ],
-        "message": "La puerta no se mueve."
       }
     }
   ],
