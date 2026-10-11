@@ -4,7 +4,8 @@
 The workflow arms this probe only after staging already serves the target SHA,
 then forces a second deployment of that same SHA. The probe keeps one sentinel
 game alive and sends real CPU turns on disposable sibling games while the edge
-switches slots. Any network error or non-2xx response fails the drill.
+switches slots. It also tracks a real Chronicles checkpoint through the switch.
+Unexpected HTTP responses, stale snapshots or duplicate writes fail the drill.
 """
 from __future__ import annotations
 
@@ -145,6 +146,76 @@ def get_game(api: str, token: str, game_id: str) -> tuple[dict, float]:
     return body, latency
 
 
+CHRONICLES_MAP = "crypt-eight-squares"
+CHRONICLES_BEFORE_FLAGS = {"ciDeployContinuity": "before"}
+CHRONICLES_AFTER_FLAGS = {"ciDeployContinuity": "after"}
+
+
+def chronicles_read(api: str, token: str, run_id: str) -> tuple[dict, float]:
+    status, body, latency = request_json(
+        "GET", f"{api}/chronicles/runs/{run_id}", token=token, timeout=10
+    )
+    expect(status, 200, body, f"read Chronicles run {run_id}")
+    return body, latency
+
+
+def chronicles_checkpoint(
+    api: str, token: str, run_id: str, version: int, flags: dict
+) -> tuple[int, dict]:
+    status, body, _ = request_json(
+        "PUT", f"{api}/chronicles/runs/{run_id}/checkpoint",
+        {
+            "expectedWorldVersion": version,
+            "currentMapId": CHRONICLES_MAP,
+            "worldFlags": flags,
+            "inventory": {},
+            "quests": {},
+            "consumedContentIds": [],
+            "claimedRewards": [],
+        },
+        token=token,
+    )
+    return status, body
+
+
+def assert_chronicles_checkpoint(
+    run: dict, run_id: str, version: int, flags: dict, phase: str
+) -> None:
+    if run.get("runId") != run_id:
+        raise RuntimeError(f"Chronicles {phase}: run identity changed")
+    if run.get("currentMapId") != CHRONICLES_MAP:
+        raise RuntimeError(f"Chronicles {phase}: active map changed")
+    if run.get("worldVersion") != version:
+        raise RuntimeError(f"Chronicles {phase}: world version changed")
+    if run.get("worldFlags") != flags:
+        raise RuntimeError(f"Chronicles {phase}: world flags changed")
+
+
+def create_chronicles_sentinel(api: str, token: str) -> str:
+    status, created, _ = request_json(
+        "POST", f"{api}/chronicles/runs", {"mapId": CHRONICLES_MAP},
+        token=token,
+        extra_headers={"Idempotency-Key": "deploy-chronicles-sentinel-0001"},
+    )
+    expect(status, 201, created, "create Chronicles sentinel")
+    run_id = str(created.get("runId") or "")
+    if not run_id:
+        raise RuntimeError("Chronicles sentinel missing runId")
+    assert_chronicles_checkpoint(created, run_id, 0, {}, "created")
+    checkpoint_status, checkpoint = chronicles_checkpoint(
+        api, token, run_id, 0, CHRONICLES_BEFORE_FLAGS
+    )
+    expect(checkpoint_status, 200, checkpoint, "Chronicles initial checkpoint")
+    assert_chronicles_checkpoint(
+        checkpoint, run_id, 1, CHRONICLES_BEFORE_FLAGS, "checkpoint"
+    )
+    stored, _ = chronicles_read(api, token, run_id)
+    assert_chronicles_checkpoint(
+        stored, run_id, 1, CHRONICLES_BEFORE_FLAGS, "persisted"
+    )
+    return run_id
+
+
 def wait_file(path: pathlib.Path, timeout: float) -> None:
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
@@ -173,6 +244,23 @@ def self_test() -> None:
             pass
         else:
             raise AssertionError("resume invariant accepted a duplicate, stale or wrong-game replay")
+    run = {
+        "runId": "run1", "currentMapId": CHRONICLES_MAP,
+        "worldVersion": 1, "worldFlags": dict(CHRONICLES_BEFORE_FLAGS),
+    }
+    assert_chronicles_checkpoint(run, "run1", 1, CHRONICLES_BEFORE_FLAGS, "self-test")
+    for broken in (
+        {**run, "runId": "wrong-run"},
+        {**run, "worldVersion": 2},
+        {**run, "currentMapId": "wrong-map"},
+        {**run, "worldFlags": {}},
+    ):
+        try:
+            assert_chronicles_checkpoint(broken, "run1", 1, CHRONICLES_BEFORE_FLAGS, "self-test")
+        except RuntimeError:
+            pass
+        else:
+            raise AssertionError("Chronicles checkpoint invariant accepted a corrupted snapshot")
     print("deploy-continuity probe self-test: OK")
 
 
@@ -209,9 +297,13 @@ def run(args: argparse.Namespace) -> dict:
     if not expected_fen:
         raise RuntimeError("sentinel move returned no FEN")
 
+    chronicles_id = create_chronicles_sentinel(api, token)
     traffic_ids = [str(create_game(api, token)["id"]) for _ in range(args.traffic_games)]
     pathlib.Path(args.arm_file).write_text(
-        json.dumps({"game_id": sentinel_id, "traffic_games": len(traffic_ids)}),
+        json.dumps({
+            "game_id": sentinel_id, "chronicles_run_id": chronicles_id,
+            "traffic_games": len(traffic_ids),
+        }),
         encoding="utf-8",
     )
     wait_file(pathlib.Path(args.trigger_file), args.arm_timeout)
@@ -227,13 +319,21 @@ def run(args: argparse.Namespace) -> dict:
         if time.monotonic() - started > args.max_seconds:
             raise RuntimeError("deploy drill exceeded max duration before done signal")
 
-        game, latency = get_game(api, token, sentinel_id)
+        # Alternate under the same synthetic account's 120/minute read cap.
+        # Each owner is read ~50/minute; do not double the request frequency.
+        if probe_count % 2 == 0:
+            game, latency = get_game(api, token, sentinel_id)
+            if str(game.get("id") or "") != sentinel_id:
+                raise RuntimeError("sentinel game id changed during deploy")
+            if str(game.get("fen") or "") != expected_fen:
+                raise RuntimeError("sentinel FEN changed during deploy")
+        else:
+            world, latency = chronicles_read(api, token, chronicles_id)
+            assert_chronicles_checkpoint(
+                world, chronicles_id, 1, CHRONICLES_BEFORE_FLAGS, "during deploy"
+            )
         probe_count += 1
         max_get_ms = max(max_get_ms, latency)
-        if str(game.get("id") or "") != sentinel_id:
-            raise RuntimeError("sentinel game id changed during deploy")
-        if str(game.get("fen") or "") != expected_fen:
-            raise RuntimeError("sentinel FEN changed during deploy")
 
         if traffic_index < len(traffic_ids):
             move_e2e4(api, token, traffic_ids[traffic_index])
@@ -250,7 +350,12 @@ def run(args: argparse.Namespace) -> dict:
         raise RuntimeError("sentinel FEN changed after deploy")
     if str(final_game.get("status") or "") != "playing":
         raise RuntimeError(f"sentinel status changed: {final_game.get('status')!r}")
-    if probe_count < 3:
+    final_world, world_latency = chronicles_read(api, token, chronicles_id)
+    assert_chronicles_checkpoint(
+        final_world, chronicles_id, 1, CHRONICLES_BEFORE_FLAGS, "after deploy"
+    )
+    max_get_ms = max(max_get_ms, world_latency)
+    if probe_count < 4:
         raise RuntimeError(f"too few continuity probes: {probe_count}")
     if move_count < min(2, args.traffic_games):
         raise RuntimeError(f"too few real turns during deploy: {move_count}")
@@ -264,6 +369,26 @@ def run(args: argparse.Namespace) -> dict:
     resumed_plies = assert_resume_consistent(final_game, resumed, replayed, persisted)
     max_get_ms = max(max_get_ms, post_resume_latency)
 
+    # The same world must accept a fresh authoritative checkpoint after the
+    # cutover, then reject an out-of-date writer instead of losing progress.
+    status, checkpoint = chronicles_checkpoint(
+        api, token, chronicles_id, 1, CHRONICLES_AFTER_FLAGS
+    )
+    expect(status, 200, checkpoint, "Chronicles resumed checkpoint")
+    assert_chronicles_checkpoint(
+        checkpoint, chronicles_id, 2, CHRONICLES_AFTER_FLAGS, "resumed"
+    )
+    stale_status, _ = chronicles_checkpoint(
+        api, token, chronicles_id, 1, CHRONICLES_BEFORE_FLAGS
+    )
+    if stale_status != 409:
+        raise RuntimeError(f"Chronicles stale checkpoint accepted: HTTP {stale_status}")
+    persisted_world, world_latency = chronicles_read(api, token, chronicles_id)
+    assert_chronicles_checkpoint(
+        persisted_world, chronicles_id, 2, CHRONICLES_AFTER_FLAGS, "durable resume"
+    )
+    max_get_ms = max(max_get_ms, world_latency)
+
     return {
         "ok": True,
         "game_id": sentinel_id,
@@ -271,6 +396,8 @@ def run(args: argparse.Namespace) -> dict:
         "real_turns": move_count,
         "resumed_plies": resumed_plies,
         "idempotent_resume": True,
+        "chronicles_checkpoint_resumed": True,
+        "chronicles_stale_checkpoint_rejected": True,
         "max_get_ms": round(max_get_ms, 1),
         "duration_s": round(time.monotonic() - started, 2),
     }
