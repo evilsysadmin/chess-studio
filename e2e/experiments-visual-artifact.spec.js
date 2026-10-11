@@ -243,6 +243,22 @@ async function withChessFootballCapturePage(browser, capture, callback) {
       });
     }
     await lineupPanel.locator('summary').click();
+    for (let day = 2; day <= 4; day += 1) {
+      await welcome.getByRole('button', { name: 'Simular siguiente jornada', exact: true }).click();
+    }
+    const development = welcome.getByLabel('Evolución de la plantilla');
+    await lineupPanel.locator('summary').click();
+    await expect(development.locator('summary')).toContainText('5 mejorados');
+    await development.locator('summary').click();
+    await expect(development.locator('li')).toHaveCount(9);
+    const developmentOverflow = await welcome.evaluate(node => node.scrollWidth > node.clientWidth + 1);
+    expect(developmentOverflow, 'Manager development: no horizontal overflow').toBe(false);
+    await captureFrozenFrame(page, {
+      path: `${ARTIFACT_DIR}/chess-football-development-${capture.label}.png`,
+      fullPage: true,
+    });
+    await development.locator('summary').click();
+    await lineupPanel.locator('summary').click();
     await welcome.locator('.chess-football-entry__back').click();
     await welcome.locator('.chess-football-entry__back').click();
     await welcome.getByRole('button', { name: 'Volver a elegir modo' }).click();
