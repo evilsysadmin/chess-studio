@@ -52,5 +52,60 @@
     ],
     "framePx": 304,
     "pixelArt": true
+  },
+  "sewer-rat": {
+    "frames": [
+      "idle-a",
+      "idle-b",
+      "attack",
+      "hurt",
+      "dead"
+    ],
+    "framePx": 168,
+    "pixelArt": true
+  },
+  "ash-goblin": {
+    "frames": [
+      "idle-a",
+      "idle-b",
+      "attack",
+      "hurt",
+      "dead"
+    ],
+    "framePx": 176,
+    "pixelArt": true
+  },
+  "salt-crab": {
+    "frames": [
+      "idle-a",
+      "idle-b",
+      "attack",
+      "hurt",
+      "dead"
+    ],
+    "framePx": 184,
+    "pixelArt": true
+  },
+  "drowned": {
+    "frames": [
+      "idle-a",
+      "idle-b",
+      "attack",
+      "hurt",
+      "dead"
+    ],
+    "framePx": 192,
+    "pixelArt": true
+  },
+  "mire-witch": {
+    "frames": [
+      "idle-a",
+      "idle-b",
+      "attack",
+      "hurt",
+      "dead"
+    ],
+    "framePx": 208,
+    "pixelArt": true
   }
 }
