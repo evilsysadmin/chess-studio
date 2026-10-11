@@ -63,9 +63,11 @@ def marble(x: int, y: int, size: int, salt: int = 1) -> float:
     base = value_noise(x, y, size, 4, salt) - 0.5
     fine = value_noise(x, y, size, 16, salt + 1) - 0.5
     vein = abs(value_noise(x, y, size, 6, salt + 2) - 0.5)
-    v = 0.66 + base * 0.32 + fine * 0.14
-    if vein < 0.035:
-        v -= 0.22
+    # Quiet slab: soft cloud and faint veins, so panels read as stone without
+    # competing with the view (players found the first pass too busy).
+    v = 0.6 + base * 0.16 + fine * 0.08
+    if vein < 0.025:
+        v -= 0.09
     return v
 
 
