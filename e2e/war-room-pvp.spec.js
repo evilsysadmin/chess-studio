@@ -109,6 +109,28 @@ test('War Room 1v1 · un 409 por carrera de turno sincroniza sin flash de error'
   await expect.poll(() => moveAttempts).toBe(1);
   await expect(warRoom.getByText('bob juega', { exact: true })).toBeVisible({ timeout: 10_000 });
   await expect(warRoom.getByRole('alert')).toHaveCount(0);
+
+  // A deploy may publish a new release while the duel and its server clock
+  // are active. The update notice must not offer an interrupting reload.
+  await page.evaluate(() => { window.__pvpSessionContinuity = 'same-document'; });
+  let navigations = 0;
+  page.on('framenavigated', (frame) => {
+    if (frame === page.mainFrame()) navigations += 1;
+  });
+  await page.route('**/release.json?*', (route) => route.fulfill({
+    status: 200,
+    contentType: 'application/json',
+    body: JSON.stringify({ release: 'v99pvp', build: 'f'.repeat(40) }),
+  }));
+  await page.evaluate(() => window.dispatchEvent(new Event('focus')));
+  const update = page.locator('.release-update-notice');
+  await expect(update).toContainText('Nueva versión disponible', { timeout: 10_000 });
+  await expect(update).toContainText('Puedes continuar aquí');
+  await expect(update.getByRole('button', { name: 'Actualizar', exact: true })).toHaveCount(0);
+  await expect(update.getByRole('button', { name: 'Después', exact: true })).toBeVisible();
+  await expect(warRoom.getByText('bob juega', { exact: true })).toBeVisible();
+  expect(await page.evaluate(() => window.__pvpSessionContinuity)).toBe('same-document');
+  expect(navigations).toBe(0);
 });
 
 test('War Room 1v1 · rendirse no resucita un handoff stale del lobby', async ({ page }) => {
