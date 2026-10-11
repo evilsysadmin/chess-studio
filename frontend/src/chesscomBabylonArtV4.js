@@ -6,6 +6,7 @@ import {
 import { installChesscomCharacterArtV4 } from './chesscomCharacterArtV4.js';
 import { installChesscomEnvironmentArtV4 } from './chesscomEnvironmentArtV4.js';
 import { CHESSCOM_INDUSTRIAL_ARCHITECTURE_V19, installChesscomIndustrialArchitectureV19 } from './chesscomIndustrialArchitectureV19.js';
+import { CHESSCOM_KHARIF_LOADING_BAYS_V27, installChesscomKharifLoadingBaysV27 } from './chesscomKharifLoadingBaysV27.js';
 import { installChesscomOverlayArtV6 } from './chesscomOverlayArtV6.js';
 import { installChesscomMaterialArtV7 } from './chesscomMaterialArtV7.js';
 import { installChesscomRenderQualityV9 } from './chesscomRenderQualityV9.js';
@@ -44,6 +45,7 @@ export async function createChesscomBabylon(host, options = {}) {
   const artV4 = installChesscomCharacterArtV4(B,scene);
   const environmentV4 = installChesscomEnvironmentArtV4(B,scene,{ tier });
   const architectureV19 = installChesscomIndustrialArchitectureV19(B,scene,{ tier,host });
+  const loadingV27 = installChesscomKharifLoadingBaysV27(B,scene,{ tier,host });
   const overlayV6 = installChesscomOverlayArtV6(B,scene,{ tier });
   const materialV7 = installChesscomMaterialArtV7(B,scene,{ tier });
   const depthToneV10 = installChesscomDepthToneV10(B,scene,{ tier,host });
@@ -56,13 +58,14 @@ export async function createChesscomBabylon(host, options = {}) {
   host.dataset.chesscomCharacterMaterials = 'procedural-pbr-v4';
   host.dataset.chesscomEnvironment = 'environment-art-v4';
   host.dataset.chesscomArchitecture = CHESSCOM_INDUSTRIAL_ARCHITECTURE_V19.identity;
+  host.dataset.chesscomLoadingBays = CHESSCOM_KHARIF_LOADING_BAYS_V27.identity;
   host.dataset.chesscomVehicle = 'military-truck-v21';
   host.dataset.chesscomOverlay = 'tactical-overlay-v6';
   host.dataset.chesscomMaterials = 'material-art-v7';
   host.dataset.chesscomWeaponArt = 'weapon-art-v11';
   host.dataset.chesscomCamera = CHESSCOM_CAMERA_V25.identity;
   host.dataset.chesscomOperatorMoments = CHESSCOM_OPERATOR_MOMENTS_V26.identity;
-  onReady?.(`BABYLON.JS ${BABYLON_VERSION} · GPU PREMIUM V2 · BALLISTICS · UNIT STANCE · CHARACTER ART V4 · OVERLAY V6 · MATERIAL V7 · HIDPI V9 · DEPTH V10 · WEAPON ART V11 · CAMERA V25 · OPERATOR MOMENTS V26 · INDUSTRIAL ARCHITECTURE V19 · FIELD KIT V20 · SILHOUETTE V23 · MILITARY TRUCK V21`);
+  onReady?.(`BABYLON.JS ${BABYLON_VERSION} · GPU PREMIUM V2 · BALLISTICS · UNIT STANCE · CHARACTER ART V4 · OVERLAY V6 · MATERIAL V7 · HIDPI V9 · DEPTH V10 · WEAPON ART V11 · CAMERA V25 · OPERATOR MOMENTS V26 · INDUSTRIAL ARCHITECTURE V19 · LOADING BAYS V27 · FIELD KIT V20 · SILHOUETTE V23 · MILITARY TRUCK V21`);
 
   return {
     ...base,
@@ -80,6 +83,7 @@ export async function createChesscomBabylon(host, options = {}) {
       materialV7.destroy();
       overlayV6.destroy();
       artV4.destroy();
+      loadingV27.destroy();
       architectureV19.destroy();
       environmentV4.destroy();
       renderQualityV9.destroy();
@@ -91,6 +95,7 @@ export async function createChesscomBabylon(host, options = {}) {
       delete host.dataset.chesscomCharacterMaterials;
       delete host.dataset.chesscomEnvironment;
       delete host.dataset.chesscomArchitecture;
+      delete host.dataset.chesscomLoadingBays;
       delete host.dataset.chesscomVehicle;
       delete host.dataset.chesscomOverlay;
       delete host.dataset.chesscomMaterials;
