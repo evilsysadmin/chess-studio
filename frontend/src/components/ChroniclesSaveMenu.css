@@ -360,3 +360,11 @@
   color: var(--mm3-control-ink, #101014);
   -webkit-text-fill-color: var(--mm3-control-ink, #101014);
 }
+
+/* Icon and chevron slots have their own higher-specificity brown color from
+   the dark buttons. Keep the same ink as the light campaign button itself. */
+.chronicles-save-menu--expedition .chronicles-save-menu__actions button.is-primary .chronicles-save-menu__action-icon,
+.chronicles-save-menu--expedition .chronicles-save-menu__actions button.is-primary .chronicles-save-menu__chevron {
+  color: var(--mm3-control-ink, #101014);
+  -webkit-text-fill-color: var(--mm3-control-ink, #101014);
+}

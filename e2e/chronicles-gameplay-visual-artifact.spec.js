@@ -479,7 +479,8 @@ test('Chronicles · First Book equipment sheet · actual Android 390px', async (
 
 
 async function expectStoneButtonInk(container, selector, context) {
-  const ink = await container.locator(selector).first().evaluate((element) => {
+  const target = selector ? container.locator(selector).first() : container;
+  const ink = await target.evaluate((element) => {
     const children = [...element.querySelectorAll('b, span, small')];
     const styles = [element, ...children].map((node) => ({
       color: getComputedStyle(node).color,
@@ -522,7 +523,7 @@ async function expectAllMayorChoicesInView(audience, viewport) {
   expect(fit.lastHeight, viewport + ': last choice touch target').toBeGreaterThanOrEqual(44);
   const choices = audience.locator('[data-chronicles-dialogue-choice]');
   for (let i = 0; i < fit.count; i++) {
-    await expectStoneButtonInk(choices.nth(i), ':scope', viewport + ': Aldric answer ' + (i + 1));
+    await expectStoneButtonInk(choices.nth(i), null, viewport + ': Aldric answer ' + (i + 1));
   }
 }
 
