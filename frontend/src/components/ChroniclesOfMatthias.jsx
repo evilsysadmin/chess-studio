@@ -1175,13 +1175,13 @@ export default function ChroniclesOfMatthias({ onExit }) {
                 <button type="button" onClick={returnToSaveMenu} disabled={saveBusy}>Partidas guardadas</button>
                 <button type="button" onClick={() => void saveAndExit()} disabled={saveBusy}>Salir y guardar</button>
                 {!confirmExitWithoutSaving ? (
-                  <button type="button" onClick={() => setConfirmExitWithoutSaving(true)} disabled={saveBusy}>
+                  <button type="button" onClick={() => setConfirmExitWithoutSaving(true)}>
                     Salir sin guardar
                   </button>
                 ) : (
                   <div role="group" aria-label="Confirmar salida sin guardar">
                     <small>Perderás lo jugado desde el último guardado o cambio de área.</small>
-                    <button type="button" onClick={() => void discardAndExit()} disabled={saveBusy}>Sí, salir sin guardar</button>
+                    <button type="button" onClick={() => void discardAndExit()}>Sí, salir sin guardar</button>
                     <button type="button" onClick={() => setConfirmExitWithoutSaving(false)}>Cancelar</button>
                   </div>
                 )}
