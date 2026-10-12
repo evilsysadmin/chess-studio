@@ -733,6 +733,15 @@ for (const capture of CAPTURES) {
       expect(exitBox, `${capture.label}: menu exit action has bounds`).not.toBeNull();
       expect(exitBox.y, `${capture.label}: menu exit action below the top edge`).toBeGreaterThanOrEqual(0);
       expect(exitBox.y + exitBox.height, `${capture.label}: menu exit action above the bottom edge`).toBeLessThanOrEqual(capture.height);
+      // MM3's raised light stone requires DARK engraved glyphs, even when the
+      // browser requests a dark appearance. This was unreadable in real play.
+      const inks = await exitAction.evaluate((button) => ({
+        color: getComputedStyle(button).color,
+        fill: getComputedStyle(button).webkitTextFillColor,
+      }));
+      expect(inks.color, `${capture.label}: menu ink must be dark`).toBe('rgb(17, 16, 21)');
+      expect(inks.fill, `${capture.label}: WebKit must keep dark ink`).toBe('rgb(17, 16, 21)');
+      await captureElement(page, gameRoot, `${ARTIFACT_DIR}/chronicles-game-menu-${capture.label}.png`);
       await menuSummary.evaluate((summary) => summary.click());
       await expect(exitAction).toBeHidden();
 
