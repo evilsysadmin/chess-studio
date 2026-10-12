@@ -4,7 +4,7 @@ import { chroniclesQuestEntries } from '../chronicles/chroniclesContentRuntime.j
 
 // The main storyline is the authored «El rey desaparecido» thread; every
 // other quest a region hands out is a side contract.
-const MAIN_QUEST_IDS = new Set([intro.questId]);
+const MAIN_QUEST_IDS = new Set([intro.questId, 'lost-king']);
 
 export function chroniclesQuestLogEntries(state) {
   const quests = chroniclesQuestEntries(state);

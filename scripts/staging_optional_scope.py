@@ -17,6 +17,7 @@ CONTINUITY_PREFIXES = (
 )
 CONTINUITY_EXACT = frozenset({
     "scripts/staging_deploy_continuity_probe.py",
+    "scripts/staging_pvp_continuity_probe.py",
     "scripts/verify_backend_staging.py",
     "scripts/staging_release_identity.py",
     ".github/workflows/staging-deploy.yml",
@@ -77,6 +78,7 @@ def self_test() -> None:
     assert classify([RESEND_MARKER])["resend_bootstrap_required"]
     assert continuity_required(["backend-python/app.py"])
     assert continuity_required(["scripts/oci_release_deploy.py"])
+    assert continuity_required(["scripts/staging_pvp_continuity_probe.py"])
     assert continuity_required([".github/workflows/staging-deploy.yml"])
     assert not continuity_required(["frontend/src/components/GameScreen.jsx"])
     assert not classify(["docs/operations/pvp.md"])["resend_bootstrap_required"]

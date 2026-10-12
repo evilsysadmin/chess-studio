@@ -30,7 +30,11 @@ export function chroniclesAssertWorldReturnLinks(maps) {
 // A true region transition is never an expedition-end event. Legacy dungeon
 // gates still use their existing escape contract until explicitly migrated.
 export function chroniclesIsOverworldTravelExit(map, entry) {
-  return ['settlement', 'wilderness'].includes(map?.regionKind)
+  // A campaign dungeon (e.g. a town's sewers) climbs back out through a
+  // reciprocal exit: that is travel too, not the end of the expedition.
+  const travelRegion = ['settlement', 'wilderness'].includes(map?.regionKind)
+    || (map?.regionKind === 'dungeon' && entry?.requiresReturn === true);
+  return travelRegion
     && (entry?.action?.effects || []).some((effect) => (
       effect.type === 'transition-map' && typeof effect.mapId === 'string' && effect.mapId.length > 0
     ));

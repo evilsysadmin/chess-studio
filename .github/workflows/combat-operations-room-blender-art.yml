@@ -7,7 +7,6 @@ on:
       - 'scripts/blender/configure_eevee_premium.py'
       - 'scripts/blender/publish_combat_operations_room.py'
       - '.github/workflows/combat-operations-room-blender-art.yml'
-      - 'scripts/blender_required_scope.py'
   push:
     branches:
       - main
@@ -16,7 +15,6 @@ on:
       - 'scripts/blender/configure_eevee_premium.py'
       - 'scripts/blender/publish_combat_operations_room.py'
       - '.github/workflows/combat-operations-room-blender-art.yml'
-      - 'scripts/blender_required_scope.py'
   workflow_dispatch:
 
 permissions:

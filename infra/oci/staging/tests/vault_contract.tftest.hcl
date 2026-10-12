@@ -92,8 +92,8 @@ run "staging_vault_is_reproducible_without_secret_plaintext" {
   }
 
   assert {
-    condition     = length(oci_identity_policy.staging_runtime_config.statements) == 4
-    error_message = "A1 runtime IAM must remain limited to runtime-object read, self Run Command, read-only Vault bundles and the dedicated production-backup bucket."
+    condition     = length(oci_identity_policy.staging_runtime_config.statements) == 5
+    error_message = "A1 runtime IAM is restricted to runtime reads, self Run Command, Vault read-only, backup objects and backup bucket-metadata read."
   }
 
   assert {
@@ -114,6 +114,11 @@ run "staging_vault_is_reproducible_without_secret_plaintext" {
   assert {
     condition     = strcontains(oci_identity_policy.staging_runtime_config.statements[3], "to manage objects") && strcontains(oci_identity_policy.staging_runtime_config.statements[3], "target.bucket.name='chess-studio-production-backups'")
     error_message = "The A1 backup write permission must stay restricted to the dedicated production-backup bucket."
+  }
+
+  assert {
+    condition     = strcontains(oci_identity_policy.staging_runtime_config.statements[4], "to read buckets") && strcontains(oci_identity_policy.staging_runtime_config.statements[4], "target.bucket.name='chess-studio-production-backups'")
+    error_message = "A1 GetBucket preflight requires only narrowly scoped BUCKET_READ (not bucket administration)."
   }
 
   assert {

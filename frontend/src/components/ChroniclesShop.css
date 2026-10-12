@@ -1,0 +1,368 @@
+.chronicles-shop__backdrop {
+  position: fixed;
+  z-index: 10090;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: clamp(10px, 2.4vw, 26px);
+  background: rgba(4, 3, 2, .78);
+  backdrop-filter: blur(6px);
+}
+
+/* MM3 counter: the shop sits in the carved stone frame with rubies; the
+   merchant's tablet (name, greeting, purse, tabs) is sandstone on the right,
+   the wares are a dark slate niche on the left. */
+.chronicles-shop {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(230px, 300px);
+  grid-template-rows: auto auto auto minmax(0, 1fr) auto;
+  grid-template-areas:
+    'list head'
+    'list join'
+    'list tabs'
+    'list scene'
+    'foot foot';
+  gap: 10px 12px;
+  width: min(940px, 100%);
+  height: min(640px, calc(100dvh - 40px));
+  padding: 36px;
+  image-rendering: pixelated;
+  color: #e6e1d4;
+  background: #6f6f75 var(--mm3-stone) 0 0 / 128px 128px;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, .6);
+}
+
+/* Frame and rubies live inside the box (padding = frame + 4 px). */
+.chronicles-shop::after {
+  content: '';
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  pointer-events: none;
+  border: 32px solid transparent;
+  border-image: var(--mm3-frame) 16 / 32px round;
+}
+
+.chronicles-shop::before {
+  content: '';
+  position: absolute;
+  z-index: 2;
+  inset: 0;
+  pointer-events: none;
+  background:
+    var(--mm3-gem) left top / 28px 28px no-repeat,
+    var(--mm3-gem) right top / 28px 28px no-repeat,
+    var(--mm3-gem) left bottom / 28px 28px no-repeat,
+    var(--mm3-gem) right bottom / 28px 28px no-repeat;
+}
+
+.chronicles-shop__head {
+  grid-area: head;
+  position: relative;
+  display: grid;
+  gap: 8px;
+  padding: 14px 14px 12px;
+  border: 2px solid;
+  border-color: #f0c48a #5a2e12 #5a2e12 #f0c48a;
+  background: #b87033 var(--mm3-sand) 0 0 / 64px 64px;
+  box-shadow: 0 0 0 1px #141416;
+  color: #1f0f04;
+}
+
+.chronicles-shop__head span {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .18em;
+  color: #4a250b;
+}
+
+.chronicles-shop__head h2 {
+  margin: 2px 40px 6px 0;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: clamp(18px, 2.2vw, 22px);
+  line-height: 1.15;
+  color: #1f0f04;
+  text-shadow: 1px 1px 0 rgba(255, 220, 170, .45);
+}
+
+.chronicles-shop__head p {
+  margin: 0;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 13px;
+  font-style: italic;
+  line-height: 1.4;
+  color: #2e1606;
+}
+
+/* Purse plaque, as in the bank ledger: dark inset, gold figures. */
+.chronicles-shop__head b {
+  justify-self: stretch;
+  padding: 6px 10px;
+  border: 2px solid;
+  border-color: #5a2e12 #f0c48a #f0c48a #5a2e12;
+  background: #1a120b;
+  color: #ffd76a;
+  font-size: 15px;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.chronicles-shop__close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 34px;
+  height: 34px;
+  border: 2px solid;
+  border-color: var(--mm3-hi) var(--mm3-lo) var(--mm3-lo) var(--mm3-hi);
+  background: #9d9da2 var(--mm3-stone) 0 0 / 128px 128px;
+  box-shadow: 0 0 0 1px #141416;
+  color: var(--mm3-ink);
+  font: 700 18px/1 system-ui, sans-serif;
+  cursor: pointer;
+}
+
+.chronicles-shop__tabs {
+  grid-area: tabs;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  gap: 6px;
+}
+
+.chronicles-shop__tabs button {
+  min-height: 40px;
+  padding: 8px 10px;
+  border: 2px solid;
+  border-color: var(--mm3-hi) var(--mm3-lo) var(--mm3-lo) var(--mm3-hi);
+  background: #9d9da2 var(--mm3-stone) 0 0 / 128px 128px;
+  box-shadow: 0 0 0 1px #141416;
+  color: var(--mm3-ink);
+  font-weight: 700;
+  text-shadow: 1px 1px 0 rgba(255, 255, 255, .3);
+  cursor: pointer;
+}
+
+.chronicles-shop__tabs button:disabled {
+  color: #2a2a30;
+  cursor: not-allowed;
+}
+
+.chronicles-shop__tabs button[aria-selected='true'] {
+  border-color: var(--mm3-lo) var(--mm3-hi) var(--mm3-hi) var(--mm3-lo);
+  background-color: #e3b45c;
+  background-blend-mode: multiply;
+}
+
+.chronicles-shop__list {
+  grid-area: list;
+  min-height: 0;
+  margin: 0;
+  padding: 6px;
+  overflow-y: auto;
+  list-style: none;
+  border: 2px solid;
+  border-color: var(--mm3-lo) var(--mm3-hi) var(--mm3-hi) var(--mm3-lo);
+  background: #17171b;
+  box-shadow: inset 0 0 24px rgba(0, 0, 0, .55);
+}
+
+.chronicles-shop__list li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  padding: 9px 10px;
+  border-bottom: 1px solid #2c2c33;
+}
+
+.chronicles-shop__list li:nth-child(even) {
+  background: rgba(255, 255, 255, .025);
+}
+
+.chronicles-shop__list li.is-expensive .chronicles-shop__item {
+  opacity: .55;
+}
+
+.chronicles-shop__item {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.chronicles-shop__item small {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: #9c9ca6;
+}
+
+.chronicles-shop__item strong {
+  color: #ffe9a8;
+}
+
+.chronicles-shop__item span,
+.chronicles-shop__item em {
+  font-size: 12.5px;
+  color: #c9c6bd;
+}
+
+.chronicles-shop__item em {
+  font-style: normal;
+  color: #8fd18a;
+}
+
+/* Engraved stone price key with a gold tint. */
+.chronicles-shop__list button,
+.chronicles-shop__join button {
+  min-width: 82px;
+  min-height: 40px;
+  padding: 8px 12px;
+  border: 2px solid;
+  border-color: #ffeec2 #6b4510 #6b4510 #ffeec2;
+  background: #e3b45c var(--mm3-stone) 0 0 / 128px 128px;
+  background-blend-mode: multiply;
+  box-shadow: 0 0 0 1px #141416;
+  color: #1a0d00;
+  font-weight: 700;
+  text-shadow: 1px 1px 0 rgba(255, 240, 200, .3);
+  cursor: pointer;
+}
+
+.chronicles-shop__list button:hover:not(:disabled),
+.chronicles-shop__join button:hover:not(:disabled),
+.chronicles-shop__tabs button:hover,
+.chronicles-shop__close:hover {
+  outline: 2px solid #e9c25a;
+  outline-offset: 1px;
+}
+
+.chronicles-shop__list button:active:not(:disabled),
+.chronicles-shop__join button:active:not(:disabled) {
+  border-color: #6b4510 #ffeec2 #ffeec2 #6b4510;
+  transform: translateY(1px);
+}
+
+.chronicles-shop__list button:disabled,
+.chronicles-shop__join button:disabled {
+  border-color: #d4d4d8 #5a5a60 #5a5a60 #d4d4d8;
+  background-color: #a9a9ae;
+  background-blend-mode: normal;
+  color: #1c1c22;
+  text-shadow: 1px 1px 0 rgba(255, 255, 255, .25);
+  cursor: not-allowed;
+}
+
+.chronicles-shop__join {
+  grid-area: join;
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border: 2px solid;
+  border-color: var(--mm3-lo) var(--mm3-hi) var(--mm3-hi) var(--mm3-lo);
+  background: #1a1a1e;
+}
+
+.chronicles-shop__join p {
+  margin: 0;
+  font-size: 12.5px;
+  color: #c9c6bd;
+}
+
+.chronicles-shop__learners {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: stretch;
+}
+
+.chronicles-shop__empty {
+  display: block !important;
+  color: #a8a8b0;
+  font-style: italic;
+}
+
+.chronicles-shop__foot {
+  grid-area: foot;
+  padding: 7px 10px;
+  border: 2px solid;
+  border-color: var(--mm3-lo) var(--mm3-hi) var(--mm3-hi) var(--mm3-lo);
+  background: #1a1a1e;
+  font-size: 12px;
+  color: #a8a8b0;
+}
+
+/* Phones: the tablet goes on top, the wares below, one column. */
+/* The shopkeeper in their room, as MM3 shows on entering a shop. */
+.chronicles-shop__scene {
+  grid-area: scene;
+  min-height: 0;
+  margin: 0;
+  overflow: hidden;
+  border: 2px solid;
+  border-color: var(--mm3-lo) var(--mm3-hi) var(--mm3-hi) var(--mm3-lo);
+  background: #0c0b0a;
+  box-shadow: 0 0 0 1px #141416;
+}
+
+.chronicles-shop__scene img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 30%;
+  image-rendering: pixelated;
+}
+
+/* When the niche is short, keep each room's focus in frame. */
+.chronicles-shop__scene[data-chronicles-shop-room='guild-sanctum'] img { object-position: 50% 66%; }
+.chronicles-shop__scene[data-chronicles-shop-room='odo-forge'] img { object-position: 50% 45%; }
+
+@media (max-width: 680px) {
+  .chronicles-shop {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto auto auto auto minmax(0, 1fr) auto;
+    grid-template-areas:
+      'scene'
+      'head'
+      'join'
+      'tabs'
+      'list'
+      'foot';
+    gap: 8px;
+    height: calc(100dvh - 24px);
+    padding: 19px;
+  }
+
+  .chronicles-shop::after {
+    border-width: 16px;
+    border-image: var(--mm3-frame) 16 / 16px round;
+  }
+
+  .chronicles-shop::before { background-size: 20px 20px; }
+
+  .chronicles-shop__scene { height: clamp(96px, 18dvh, 150px); }
+
+  .chronicles-shop__head {
+    grid-template-columns: minmax(0, 1fr) auto;
+    padding: 10px 12px;
+  }
+
+  .chronicles-shop__head > div { grid-column: 1 / -1; }
+
+  .chronicles-shop__head b {
+    grid-column: 1;
+    justify-self: start;
+  }
+
+  .chronicles-shop__list li:has(.chronicles-shop__learners) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .chronicles-shop__learners {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+}

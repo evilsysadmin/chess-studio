@@ -47,7 +47,7 @@ function strength(players) {
   };
 }
 
-export function evaluateFootballLineup(roster, lineupIds) {
+export function evaluateFootballLineup(roster, lineupIds, baselineRoster = roster) {
   if (!Array.isArray(roster) || roster.length !== 9 || !Array.isArray(lineupIds)
     || lineupIds.length !== 5 || new Set(lineupIds).size !== 5) {
     throw new Error('Invalid football manager lineup');
@@ -60,7 +60,7 @@ export function evaluateFootballLineup(roster, lineupIds) {
   if (roles.POR !== 1 || roles.DEF !== 1 || roles.MED !== 2 || roles.DEL !== 1) {
     throw new Error('Invalid football manager lineup formation');
   }
-  const original = strength(roster.slice(0, 5));
+  const original = strength(baselineRoster.slice(0, 5));
   const selected = strength(players);
   // Deliberately bounded: a substitute matters without overpowering club
   // quality, home advantage, or the head coach's tactical plan.

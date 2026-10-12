@@ -1,0 +1,482 @@
+{
+  "id": "vigilia-del-norte",
+  "version": 1,
+  "progressionKey": "vigilia-del-norte-v1",
+  "title": "Vigilia del Norte",
+  "areaCode": "C1",
+  "regionKind": "settlement",
+  "layoutMode": "authored",
+  "grid": [
+    "###################",
+    "#.................#",
+    "#.###.###.###.###.#",
+    "#.###.###.###.###.#",
+    "#.................#",
+    "#.##...........##.#",
+    "#.##...........##.#",
+    "#.##...........##.#",
+    "#.................#",
+    "#........#........#",
+    "#.................#",
+    "#.###.###.###.###.#",
+    "#.###.###.###.###.#",
+    "#.................#",
+    "###################"
+  ],
+  "partyStart": {
+    "x": 9,
+    "y": 1,
+    "direction": 2
+  },
+  "initialFlags": {},
+  "enemies": [],
+  "triggers": [],
+  "interactables": [
+    {
+      "id": "vigilia-del-norte-inn",
+      "kind": "service",
+      "x": 7,
+      "y": 10,
+      "visualType": "building-tavern",
+      "label": "Posada · descansar y curar · 8 oro",
+      "lockedLabel": "Posada · necesitas 8 oro",
+      "requirements": [
+        {
+          "itemId": "crown-gold",
+          "quantity": 8,
+          "message": "El posadero cobra por adelantado."
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "consume-item",
+            "itemId": "crown-gold",
+            "quantity": 8
+          },
+          {
+            "type": "heal-party",
+            "amount": 12
+          },
+          {
+            "type": "refill-class-abilities"
+          },
+          {
+            "type": "restore-spell-points"
+          }
+        ],
+        "message": "La compañía duerme en la posada de Vigilia del Norte. Heridas curadas, puntos de hechizo recuperados."
+      }
+    },
+    {
+      "id": "vigilia-del-norte-weapons",
+      "kind": "merchant",
+      "x": 7,
+      "y": 4,
+      "visualType": "building-forge",
+      "label": "Armería de Vigilia del Norte",
+      "shop": {
+        "stock": [
+          "silver-spear",
+          "steel-sword",
+          "ivory-dagger",
+          "silver-staff"
+        ]
+      },
+      "action": {
+        "effects": [],
+        "message": "El armero no levanta la vista del afilador: «Mira lo que quieras. Rompes, pagas»."
+      }
+    },
+    {
+      "id": "vigilia-del-norte-armour",
+      "kind": "merchant",
+      "x": 11,
+      "y": 4,
+      "visualType": "building-armor",
+      "label": "Coracería de Vigilia del Norte",
+      "shop": {
+        "stock": [
+          "silver-chain",
+          "steel-ring",
+          "iron-plate",
+          "silver-shield"
+        ]
+      },
+      "action": {
+        "effects": [],
+        "message": "El forjador golpea una coraza al rojo: «Hecha a mano. Como mis precios»."
+      }
+    },
+    {
+      "id": "vigilia-del-norte-temple",
+      "kind": "service",
+      "x": 14,
+      "y": 6,
+      "visualType": "building-temple",
+      "label": "Templo · sanar a la compañía · 4 oro",
+      "lockedLabel": "Templo · necesitas 4 oro",
+      "requirements": [
+        {
+          "itemId": "crown-gold",
+          "quantity": 4,
+          "message": "El templo pide una ofrenda de cuatro monedas."
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "consume-item",
+            "itemId": "crown-gold",
+            "quantity": 4
+          },
+          {
+            "type": "heal-party",
+            "amount": 20
+          }
+        ],
+        "message": "Los sacerdotes rezan sobre la compañía. Las heridas se cierran."
+      }
+    },
+    {
+      "id": "vigilia-del-norte-guild",
+      "kind": "merchant",
+      "x": 15,
+      "y": 4,
+      "visualType": "building-guild",
+      "label": "Biblioteca de la Vigilia · hechizos",
+      "action": {
+        "effects": [],
+        "message": "Una archivista encapuchada señala el registro de socios de Biblioteca de la Vigilia."
+      },
+      "guild": {
+        "membership": 20,
+        "greeting": "«Biblioteca de la Vigilia. Firmad y pagad 20 de oro, y las estanterías son vuestras».",
+        "memberGreeting": "«Lo que quepa en vuestros libros, y en vuestra bolsa».",
+        "spells": [
+          "first-aid",
+          "flying-fist",
+          "elemental-arrow",
+          "detect-magic"
+        ]
+      }
+    },
+    {
+      "id": "osric-brief",
+      "kind": "lore",
+      "x": 11,
+      "y": 10,
+      "visualType": "building-hall",
+      "label": "Hablar con el archivero ciego Osric",
+      "when": [
+        {
+          "key": "ascuafriaHildeReported",
+          "truthy": true
+        },
+        {
+          "key": "vigiliaOsricBriefed",
+          "falsy": true
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "set",
+            "key": "vigiliaOsricBriefed",
+            "value": true
+          },
+          {
+            "type": "advance-quest",
+            "questId": "lost-king",
+            "title": "El rey desaparecido",
+            "description": "La Dama busca a sus caballeros desaparecidos.",
+            "order": 1,
+            "objective": "Desciende a los Túmulos del Primer Pacto (D1) y trae la tablilla del juramento antes que nadie."
+          }
+        ],
+        "message": "Osric recorre el sello con la yema de los dedos: «El Pacto. Alguien quiere jurar en nombre del Rey. Para eso necesita la tablilla que duerme en los Túmulos, al este»",
+        "journal": {
+          "id": "lost-king-osric",
+          "title": "El archivero ciego Osric",
+          "body": "Desciende a los Túmulos del Primer Pacto (D1) y trae la tablilla del juramento antes que nadie.",
+          "sigil": "♛"
+        }
+      }
+    },
+    {
+      "id": "osric-report",
+      "kind": "quest",
+      "x": 11,
+      "y": 10,
+      "visualType": "building-hall",
+      "label": "Informar a el archivero ciego Osric · 70 oro",
+      "when": [
+        {
+          "key": "vigiliaOsricBriefed",
+          "truthy": true
+        },
+        {
+          "key": "vigiliaOsricReported",
+          "falsy": true
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "claim-reward",
+            "rewardId": "terra:tumulos:v1",
+            "requirements": [
+              {
+                "key": "tumulos_primer_pactoBossDefeated",
+                "truthy": true
+              }
+            ],
+            "effects": [
+              {
+                "type": "set",
+                "key": "vigiliaOsricReported",
+                "value": true
+              },
+              {
+                "type": "grant-gold",
+                "amount": 70
+              },
+              {
+                "type": "award-xp",
+                "awardId": "terra:tumulos:v1",
+                "amount": 150
+              },
+              {
+                "type": "advance-quest",
+                "questId": "lost-king",
+                "title": "El rey desaparecido",
+                "description": "La Dama busca a sus caballeros desaparecidos.",
+                "order": 1,
+                "objective": "Lleva la tablilla del juramento a la Dama, en la Corte de Bronce (D6)."
+              }
+            ]
+          }
+        ],
+        "message": "Osric sostiene la tablilla contra el pecho: «Ahora nadie puede usurpar el juramento. Llevádsela a la Dama, a la Corte de Bronce. Y no os fiéis del Canciller»",
+        "journal": {
+          "id": "lost-king-osric-done",
+          "title": "El archivero ciego Osric ha hablado",
+          "body": "Lleva la tablilla del juramento a la Dama, en la Corte de Bronce (D6).",
+          "sigil": "♛"
+        }
+      },
+      "requirements": [
+        {
+          "key": "tumulos_primer_pactoBossDefeated",
+          "truthy": true,
+          "message": "El archivero ciego Osric espera: «Todavía no. Desciende a los Túmulos del Primer Pacto (D1) y trae la tablilla del juramento antes que nadie.»"
+        }
+      ],
+      "lockedLabel": "El archivero ciego Osric · «Desciende a los Túmulos del Primer Pacto (D1) y trae la tablilla del juramento antes que nadie.»"
+    },
+    {
+      "id": "vigilia-monk-errand-brief",
+      "kind": "lore",
+      "x": 15,
+      "y": 10,
+      "visualType": "building-store",
+      "label": "Hablar con el monje copista",
+      "when": [
+        {
+          "key": "vigilia_monkErrandStarted",
+          "falsy": true
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "set",
+            "key": "vigilia_monkErrandStarted",
+            "value": true
+          },
+          {
+            "type": "start-quest",
+            "questId": "vigilia-monk-errand",
+            "title": "La piedra del peregrino",
+            "description": "«En el Paso de los Juramentos (B1) los viajeros dejan piedras con su nombre. Tráeme la más antigua: quiero copiarla».",
+            "objective": "Busca la piedra del peregrino en B1 · Paso de los Juramentos y tráelo.",
+            "order": 45
+          }
+        ],
+        "message": "«En el Paso de los Juramentos (B1) los viajeros dejan piedras con su nombre. Tráeme la más antigua: quiero copiarla»."
+      }
+    },
+    {
+      "id": "vigilia-monk-errand-report",
+      "kind": "quest",
+      "x": 15,
+      "y": 10,
+      "visualType": "building-store",
+      "label": "Entregar la piedra del peregrino · 35 oro",
+      "when": [
+        {
+          "questId": "vigilia-monk-errand",
+          "questStatus": "active"
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "claim-reward",
+            "rewardId": "terra:vigilia-monk-errand:v1",
+            "requirements": [
+              {
+                "itemId": "pilgrim-stone"
+              }
+            ],
+            "effects": [
+              {
+                "type": "consume-item",
+                "itemId": "pilgrim-stone",
+                "quantity": 1
+              },
+              {
+                "type": "complete-quest",
+                "questId": "vigilia-monk-errand",
+                "objective": "Side quest completada."
+              },
+              {
+                "type": "grant-gold",
+                "amount": 35
+              },
+              {
+                "type": "award-xp",
+                "awardId": "terra:vigilia-monk-errand:v1",
+                "amount": 60
+              }
+            ]
+          }
+        ],
+        "message": "El monje acaricia la piedra: «Un nombre de antes del Pacto. Gracias»."
+      },
+      "requirements": [
+        {
+          "itemId": "pilgrim-stone",
+          "message": "«¿Y la piedra del peregrino? Está en B1»."
+        }
+      ],
+      "lockedLabel": "El monje copista · espera la piedra del peregrino"
+    },
+    {
+      "id": "vigilia-watch-hunt-brief",
+      "kind": "lore",
+      "x": 4,
+      "y": 6,
+      "visualType": "building-watch",
+      "label": "Hablar con el sargento de la Vigilia",
+      "when": [
+        {
+          "key": "vigilia_watchHuntStarted",
+          "falsy": true
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "set",
+            "key": "vigilia_watchHuntStarted",
+            "value": true
+          },
+          {
+            "type": "start-quest",
+            "questId": "vigilia-watch-hunt",
+            "title": "Caza: el Cuervo Blanco",
+            "description": "«Una bestia de hueso con plumas de cuervo caza en el Glaciar (A1). Ya van tres patrullas».",
+            "objective": "Acaba con el Cuervo Blanco en A1 · Glaciar del Cuervo.",
+            "order": 40
+          }
+        ],
+        "message": "«Una bestia de hueso con plumas de cuervo caza en el Glaciar (A1). Ya van tres patrullas»."
+      }
+    },
+    {
+      "id": "vigilia-watch-hunt-report",
+      "kind": "quest",
+      "x": 4,
+      "y": 6,
+      "visualType": "building-watch",
+      "label": "Cobrar la caza a el sargento de la Vigilia · 50 oro",
+      "when": [
+        {
+          "questId": "vigilia-watch-hunt",
+          "questStatus": "active"
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "claim-reward",
+            "rewardId": "terra:vigilia-watch-hunt:v1",
+            "requirements": [
+              {
+                "key": "vigilia_watchHunted",
+                "truthy": true
+              }
+            ],
+            "effects": [
+              {
+                "type": "complete-quest",
+                "questId": "vigilia-watch-hunt",
+                "objective": "Side quest completada."
+              },
+              {
+                "type": "grant-gold",
+                "amount": 50
+              },
+              {
+                "type": "award-xp",
+                "awardId": "terra:vigilia-watch-hunt:v1",
+                "amount": 100
+              }
+            ]
+          }
+        ],
+        "message": "«Que lo canten los bardos. Yo sólo pago»."
+      },
+      "requirements": [
+        {
+          "key": "vigilia_watchHunted",
+          "truthy": true,
+          "message": "«El Cuervo Blanco sigue vivo en A1»."
+        }
+      ],
+      "lockedLabel": "El sargento de la Vigilia · «¿Ya cayó el Cuervo Blanco?»"
+    }
+  ],
+  "treasures": [],
+  "traps": [],
+  "exits": [
+    {
+      "id": "town-gate",
+      "kind": "exit",
+      "x": 9,
+      "y": 1,
+      "requiresReturn": true,
+      "openLabel": "Salir a C1 · Llanura de la Vigilia",
+      "lockedLabel": "Las puertas están cerradas",
+      "requirements": [],
+      "action": {
+        "effects": [
+          {
+            "type": "transition-map",
+            "mapId": "terra-c1",
+            "entryExitId": "c1-to-town"
+          }
+        ],
+        "message": "La compañía sale de Vigilia del Norte."
+      }
+    }
+  ],
+  "initialJournal": {
+    "id": "vigilia-del-norte-arrival",
+    "title": "Vigilia del Norte",
+    "body": "Un burgo de piedra y nieve, con más libros que vecinos.",
+    "sigil": "C1"
+  },
+  "introMessage": "Vigilia del Norte. Un burgo de piedra y nieve, con más libros que vecinos."
+}

@@ -1,8 +1,9 @@
 name: Observability · Billing costs
 
 on:
-  schedule:
-    - cron: '17 */6 * * *'
+  # Automatic collection suspended 2026-10-11 (issue #5404): OCI reports
+  # costs in both EUR and USD, but the current ingest supports one currency
+  # per provider. Manual diagnostics remain available; never mix FX values.
   workflow_dispatch:
 
 permissions:

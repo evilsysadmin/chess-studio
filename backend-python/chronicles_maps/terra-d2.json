@@ -1,0 +1,232 @@
+{
+  "id": "terra-d2",
+  "version": 1,
+  "progressionKey": "terra-d2-v1",
+  "title": "Viñedos del Rey",
+  "areaCode": "D2",
+  "biome": "plains",
+  "regionKind": "wilderness",
+  "layoutMode": "authored",
+  "grid": [
+    "#####################",
+    "#.....##............#",
+    "#...................#",
+    "#...................#",
+    "#.#.................#",
+    "#...................#",
+    "#.................#.#",
+    "#...................#",
+    "#...................#",
+    "#...................#",
+    "##..................#",
+    "#.....#.............#",
+    "#...................#",
+    "#...................#",
+    "#####################"
+  ],
+  "partyStart": {
+    "x": 10,
+    "y": 7,
+    "direction": 0
+  },
+  "initialFlags": {},
+  "enemies": [
+    {
+      "id": "terra-d2-foe-0",
+      "visualType": "road-bandit",
+      "name": "salteador",
+      "x": 7,
+      "y": 3,
+      "hpKey": "terra_d2Foe0Hp",
+      "maxHp": 8,
+      "retaliation": 1,
+      "optional": true,
+      "activation": "always",
+      "ai": {
+        "movement": "hold",
+        "attackReach": 1,
+        "engagedMovement": "cardinal-chase",
+        "engageRange": 2
+      },
+      "onDefeat": {
+        "message": "{attacker} acaba con salteador usando {attack}.",
+        "effects": [
+          {
+            "type": "grant-gold",
+            "amount": 6
+          }
+        ]
+      }
+    },
+    {
+      "id": "terra-d2-foe-1",
+      "visualType": "ash-goblin",
+      "name": "goblin",
+      "x": 13,
+      "y": 11,
+      "hpKey": "terra_d2Foe1Hp",
+      "maxHp": 8,
+      "retaliation": 1,
+      "optional": true,
+      "activation": "always",
+      "ai": {
+        "movement": "cardinal-roam",
+        "attackReach": 1,
+        "engagedMovement": "cardinal-chase",
+        "engageRange": 2
+      },
+      "onDefeat": {
+        "message": "{attacker} acaba con goblin usando {attack}.",
+        "effects": [
+          {
+            "type": "grant-gold",
+            "amount": 6
+          }
+        ]
+      }
+    }
+  ],
+  "triggers": [],
+  "interactables": [
+    {
+      "id": "terra-d2-sign",
+      "kind": "lore",
+      "visualType": "signpost",
+      "x": 5,
+      "y": 4,
+      "persistentVisual": true,
+      "label": "Leer el cartel",
+      "action": {
+        "effects": [],
+        "message": "Cartel: al este, Ascuafría (F2), por las estribaciones. Al norte, la Vigilia (C1)."
+      }
+    }
+  ],
+  "treasures": [
+    {
+      "id": "terra-d2-chest",
+      "kind": "pickup",
+      "visualType": "chest",
+      "x": 15,
+      "y": 4,
+      "label": "Abrir el cofre",
+      "when": [
+        {
+          "key": "terra_d2ChestOpened",
+          "falsy": true
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "set",
+            "key": "terra_d2ChestOpened",
+            "value": true
+          },
+          {
+            "type": "grant-gold",
+            "amount": 18
+          },
+          {
+            "type": "grant-item",
+            "itemId": "iron-spear",
+            "name": "Iron spear",
+            "description": "Botín de un cofre de Terra.",
+            "quantity": 1
+          }
+        ],
+        "message": "El cofre guarda 18 monedas y algo de equipo."
+      }
+    }
+  ],
+  "traps": [],
+  "exits": [
+    {
+      "id": "d2-to-d1",
+      "kind": "exit",
+      "x": 10,
+      "y": 1,
+      "requiresReturn": true,
+      "openLabel": "Ir a D1 · Túmulos del Pacto",
+      "lockedLabel": "El paso está cortado",
+      "requirements": [],
+      "action": {
+        "effects": [
+          {
+            "type": "transition-map",
+            "mapId": "terra-d1",
+            "entryExitId": "d1-to-d2"
+          }
+        ],
+        "message": "La compañía entra en D1."
+      }
+    },
+    {
+      "id": "d2-to-d3",
+      "kind": "exit",
+      "x": 10,
+      "y": 13,
+      "requiresReturn": true,
+      "openLabel": "Ir a D3 · Rookwood",
+      "lockedLabel": "El paso está cortado",
+      "requirements": [],
+      "action": {
+        "effects": [
+          {
+            "type": "transition-map",
+            "mapId": "rookwood-first-book",
+            "entryExitId": "d3-to-d2"
+          }
+        ],
+        "message": "La compañía entra en D3."
+      }
+    },
+    {
+      "id": "d2-to-c2",
+      "kind": "exit",
+      "x": 1,
+      "y": 7,
+      "requiresReturn": true,
+      "openLabel": "Ir a C2 · Colinas de la Corona",
+      "lockedLabel": "El paso está cortado",
+      "requirements": [],
+      "action": {
+        "effects": [
+          {
+            "type": "transition-map",
+            "mapId": "terra-c2",
+            "entryExitId": "c2-to-d2"
+          }
+        ],
+        "message": "La compañía entra en C2."
+      }
+    },
+    {
+      "id": "d2-to-e2",
+      "kind": "exit",
+      "x": 19,
+      "y": 7,
+      "requiresReturn": true,
+      "openLabel": "Ir a E2 · Estribaciones de Escoria",
+      "lockedLabel": "El paso está cortado",
+      "requirements": [],
+      "action": {
+        "effects": [
+          {
+            "type": "transition-map",
+            "mapId": "terra-e2",
+            "entryExitId": "e2-to-d2"
+          }
+        ],
+        "message": "La compañía entra en E2."
+      }
+    }
+  ],
+  "initialJournal": {
+    "id": "terra-d2-arrival",
+    "title": "D2 · Viñedos del Rey",
+    "body": "Vides sin vendimiar. Las uvas se pudren desde que el Rey desapareció.",
+    "sigil": "D2"
+  },
+  "introMessage": "D2 · Viñedos del Rey. Vides sin vendimiar. Las uvas se pudren desde que el Rey desapareció."
+}

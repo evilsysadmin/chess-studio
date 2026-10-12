@@ -1,0 +1,218 @@
+{
+  "id": "terra-c1",
+  "version": 1,
+  "progressionKey": "terra-c1-v1",
+  "title": "Llanura de la Vigilia",
+  "areaCode": "C1",
+  "biome": "snow",
+  "regionKind": "wilderness",
+  "layoutMode": "authored",
+  "grid": [
+    "#####################",
+    "#.....#.#..........##",
+    "#...................#",
+    "#...##......##......#",
+    "#...#...............#",
+    "#....##.......##....#",
+    "##......#........#.##",
+    "#...................#",
+    "#.....#.............#",
+    "#.....##............#",
+    "#...................#",
+    "#.................#.#",
+    "#....#...#.......#..#",
+    "#........#..........#",
+    "#####################"
+  ],
+  "partyStart": {
+    "x": 10,
+    "y": 7,
+    "direction": 0
+  },
+  "initialFlags": {},
+  "enemies": [
+    {
+      "id": "terra-c1-foe-0",
+      "visualType": "bone-hound",
+      "name": "lobo de escarcha",
+      "x": 7,
+      "y": 3,
+      "hpKey": "terra_c1Foe0Hp",
+      "maxHp": 8,
+      "retaliation": 1,
+      "optional": true,
+      "activation": "always",
+      "ai": {
+        "movement": "cardinal-roam",
+        "attackReach": 1,
+        "engagedMovement": "cardinal-chase",
+        "engageRange": 4
+      },
+      "onDefeat": {
+        "message": "{attacker} acaba con lobo de escarcha usando {attack}.",
+        "effects": [
+          {
+            "type": "grant-gold",
+            "amount": 6
+          }
+        ]
+      }
+    },
+    {
+      "id": "terra-c1-foe-1",
+      "visualType": "scavenger-knight",
+      "name": "caballero helado",
+      "x": 13,
+      "y": 11,
+      "hpKey": "terra_c1Foe1Hp",
+      "maxHp": 8,
+      "retaliation": 1,
+      "optional": true,
+      "activation": "always",
+      "ai": {
+        "movement": "hold",
+        "attackReach": 1,
+        "engagedMovement": "cardinal-chase",
+        "engageRange": 2
+      },
+      "onDefeat": {
+        "message": "{attacker} acaba con caballero helado usando {attack}.",
+        "effects": [
+          {
+            "type": "grant-gold",
+            "amount": 6
+          }
+        ]
+      }
+    }
+  ],
+  "triggers": [],
+  "interactables": [],
+  "treasures": [
+    {
+      "id": "terra-c1-chest",
+      "kind": "pickup",
+      "visualType": "chest",
+      "x": 15,
+      "y": 4,
+      "label": "Abrir el cofre",
+      "when": [
+        {
+          "key": "terra_c1ChestOpened",
+          "falsy": true
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "set",
+            "key": "terra_c1ChestOpened",
+            "value": true
+          },
+          {
+            "type": "grant-gold",
+            "amount": 18
+          },
+          {
+            "type": "grant-item",
+            "itemId": "iron-spear",
+            "name": "Iron spear",
+            "description": "Botín de un cofre de Terra.",
+            "quantity": 1
+          }
+        ],
+        "message": "El cofre guarda 18 monedas y algo de equipo."
+      }
+    }
+  ],
+  "traps": [],
+  "exits": [
+    {
+      "id": "c1-to-c2",
+      "kind": "exit",
+      "x": 10,
+      "y": 13,
+      "requiresReturn": true,
+      "openLabel": "Ir a C2 · Colinas de la Corona",
+      "lockedLabel": "El paso está cortado",
+      "requirements": [],
+      "action": {
+        "effects": [
+          {
+            "type": "transition-map",
+            "mapId": "terra-c2",
+            "entryExitId": "c2-to-c1"
+          }
+        ],
+        "message": "La compañía entra en C2."
+      }
+    },
+    {
+      "id": "c1-to-b1",
+      "kind": "exit",
+      "x": 1,
+      "y": 7,
+      "requiresReturn": true,
+      "openLabel": "Ir a B1 · Paso de los Juramentos",
+      "lockedLabel": "El paso está cortado",
+      "requirements": [],
+      "action": {
+        "effects": [
+          {
+            "type": "transition-map",
+            "mapId": "terra-b1",
+            "entryExitId": "b1-to-c1"
+          }
+        ],
+        "message": "La compañía entra en B1."
+      }
+    },
+    {
+      "id": "c1-to-d1",
+      "kind": "exit",
+      "x": 19,
+      "y": 7,
+      "requiresReturn": true,
+      "openLabel": "Ir a D1 · Túmulos del Pacto",
+      "lockedLabel": "El paso está cortado",
+      "requirements": [],
+      "action": {
+        "effects": [
+          {
+            "type": "transition-map",
+            "mapId": "terra-d1",
+            "entryExitId": "d1-to-c1"
+          }
+        ],
+        "message": "La compañía entra en D1."
+      }
+    },
+    {
+      "id": "c1-to-town",
+      "kind": "exit",
+      "x": 5,
+      "y": 4,
+      "requiresReturn": true,
+      "openLabel": "Entrar en Vigilia del Norte",
+      "lockedLabel": "Vigilia del Norte · puertas cerradas",
+      "requirements": [],
+      "action": {
+        "effects": [
+          {
+            "type": "transition-map",
+            "mapId": "vigilia-del-norte",
+            "entryExitId": "town-gate"
+          }
+        ],
+        "message": "La compañía cruza las puertas de Vigilia del Norte."
+      }
+    }
+  ],
+  "initialJournal": {
+    "id": "terra-c1-arrival",
+    "title": "C1 · Llanura de la Vigilia",
+    "body": "Al fondo, las almenas de Vigilia del Norte humean contra el cielo blanco.",
+    "sigil": "C1"
+  },
+  "introMessage": "C1 · Llanura de la Vigilia. Al fondo, las almenas de Vigilia del Norte humean contra el cielo blanco."
+}

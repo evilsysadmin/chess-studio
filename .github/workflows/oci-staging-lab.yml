@@ -23,18 +23,18 @@ on:
         type: string
         required: false
 
+  # HOLD lab: only its own K3s/Flux sources can summon the dormant gate.
+  # Shared Dockerfiles, main Makefile and operational sudoers are protected by
+  # canonical Quality/OCI readiness, not by an extra experimental runner.
   pull_request:
     paths:
-      - 'backend-python/Dockerfile'
       - 'infra/oci/k3s/**'
       - 'infra/oci/gitops/staging2/**'
       - 'infra/oci/gitops/flux/**'
-      - 'infra/oci/runtime/ocarun.sudoers'
       - 'scripts/oci_k3s_*'
       - 'scripts/oci_k3s_readiness_contract.py'
       - 'scripts/oci_flux_*'
       - '.github/workflows/oci-staging-lab.yml'
-      - 'Makefile'
 
 permissions:
   contents: read

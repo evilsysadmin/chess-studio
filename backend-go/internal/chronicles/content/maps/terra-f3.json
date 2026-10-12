@@ -1,0 +1,291 @@
+{
+  "id": "terra-f3",
+  "version": 1,
+  "progressionKey": "terra-f3-v1",
+  "title": "Crestas Volcánicas",
+  "areaCode": "F3",
+  "biome": "ash",
+  "regionKind": "wilderness",
+  "layoutMode": "authored",
+  "grid": [
+    "#####################",
+    "#.##...#............#",
+    "#.##........#.......#",
+    "#...........#.......#",
+    "#.................#.#",
+    "#................#.##",
+    "##.#.#..........##..#",
+    "#...................#",
+    "#......#...#........#",
+    "#.....##..........#.#",
+    "#...........##...#..#",
+    "##............#.....#",
+    "##...##.............#",
+    "#...##......#.......#",
+    "#####################"
+  ],
+  "partyStart": {
+    "x": 10,
+    "y": 7,
+    "direction": 0
+  },
+  "initialFlags": {},
+  "enemies": [
+    {
+      "id": "terra-f3-foe-0",
+      "visualType": "gate-jailer",
+      "name": "guardián de escoria",
+      "x": 7,
+      "y": 3,
+      "hpKey": "terra_f3Foe0Hp",
+      "maxHp": 10,
+      "retaliation": 2,
+      "optional": true,
+      "activation": "always",
+      "ai": {
+        "movement": "hold",
+        "attackReach": 1,
+        "engagedMovement": "cardinal-chase",
+        "engageRange": 2
+      },
+      "onDefeat": {
+        "message": "{attacker} acaba con guardián de escoria usando {attack}.",
+        "effects": [
+          {
+            "type": "grant-gold",
+            "amount": 8
+          }
+        ]
+      }
+    },
+    {
+      "id": "terra-f3-foe-1",
+      "visualType": "ash-goblin",
+      "name": "goblin de ceniza",
+      "x": 13,
+      "y": 11,
+      "hpKey": "terra_f3Foe1Hp",
+      "maxHp": 10,
+      "retaliation": 2,
+      "optional": true,
+      "activation": "always",
+      "ai": {
+        "movement": "cardinal-roam",
+        "attackReach": 1,
+        "engagedMovement": "cardinal-chase",
+        "engageRange": 2
+      },
+      "onDefeat": {
+        "message": "{attacker} acaba con goblin de ceniza usando {attack}.",
+        "effects": [
+          {
+            "type": "grant-gold",
+            "amount": 8
+          }
+        ]
+      }
+    },
+    {
+      "id": "terra-f3-foe-2",
+      "visualType": "ember-wisp",
+      "name": "lumbre de ceniza",
+      "x": 3,
+      "y": 11,
+      "hpKey": "terra_f3Foe2Hp",
+      "maxHp": 10,
+      "retaliation": 2,
+      "optional": true,
+      "activation": "always",
+      "ai": {
+        "movement": "hold",
+        "attackReach": 2,
+        "requiresLineOfSight": true
+      },
+      "onDefeat": {
+        "message": "{attacker} acaba con lumbre de ceniza usando {attack}.",
+        "effects": [
+          {
+            "type": "grant-gold",
+            "amount": 8
+          }
+        ]
+      }
+    }
+  ],
+  "triggers": [],
+  "interactables": [
+    {
+      "id": "terra-f3-shrine",
+      "kind": "lore",
+      "visualType": "shrine",
+      "x": 5,
+      "y": 4,
+      "label": "Beber de la Fuente de Lava Dormida",
+      "when": [
+        {
+          "key": "terra_f3ShrineUsed",
+          "falsy": true
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "set",
+            "key": "terra_f3ShrineUsed",
+            "value": true
+          },
+          {
+            "type": "heal-party",
+            "amount": 8
+          },
+          {
+            "type": "restore-spell-points"
+          }
+        ],
+        "message": "El agua de la Fuente de Lava Dormida está helada y sabe a hierro. La compañía recupera fuerzas y puntos de hechizo."
+      }
+    }
+  ],
+  "treasures": [
+    {
+      "id": "ascua-smith-errand-item",
+      "kind": "pickup",
+      "visualType": "chest",
+      "label": "Recoger cristal de lava",
+      "when": [
+        {
+          "questId": "ascua-smith-errand",
+          "questStatus": "active"
+        },
+        {
+          "key": "ascua_smithErrandFound",
+          "falsy": true
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "set",
+            "key": "ascua_smithErrandFound",
+            "value": true
+          },
+          {
+            "type": "grant-item",
+            "itemId": "lava-glass",
+            "name": "Cristal de lava",
+            "description": "Lo que pidió el aprendiz Tomé.",
+            "quantity": 1
+          }
+        ],
+        "message": "Aquí está: cristal de lava."
+      },
+      "x": 15,
+      "y": 4
+    },
+    {
+      "id": "terra-f3-chest",
+      "kind": "pickup",
+      "visualType": "chest",
+      "x": 5,
+      "y": 10,
+      "label": "Abrir el cofre",
+      "when": [
+        {
+          "key": "terra_f3ChestOpened",
+          "falsy": true
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "set",
+            "key": "terra_f3ChestOpened",
+            "value": true
+          },
+          {
+            "type": "grant-gold",
+            "amount": 24
+          },
+          {
+            "type": "grant-item",
+            "itemId": "iron-mace",
+            "name": "Iron mace",
+            "description": "Botín de un cofre de Terra.",
+            "quantity": 1
+          }
+        ],
+        "message": "El cofre guarda 24 monedas y algo de equipo."
+      }
+    }
+  ],
+  "traps": [],
+  "exits": [
+    {
+      "id": "f3-to-f2",
+      "kind": "exit",
+      "x": 10,
+      "y": 1,
+      "requiresReturn": true,
+      "openLabel": "Ir a F2 · Ladera de Ascuafría",
+      "lockedLabel": "El paso está cortado",
+      "requirements": [],
+      "action": {
+        "effects": [
+          {
+            "type": "transition-map",
+            "mapId": "terra-f2",
+            "entryExitId": "f2-to-f3"
+          }
+        ],
+        "message": "La compañía entra en F2."
+      }
+    },
+    {
+      "id": "f3-to-f4",
+      "kind": "exit",
+      "x": 10,
+      "y": 13,
+      "requiresReturn": true,
+      "openLabel": "Ir a F4 · Fundición en Ruinas",
+      "lockedLabel": "El paso está cortado",
+      "requirements": [],
+      "action": {
+        "effects": [
+          {
+            "type": "transition-map",
+            "mapId": "terra-f4",
+            "entryExitId": "f4-to-f3"
+          }
+        ],
+        "message": "La compañía entra en F4."
+      }
+    },
+    {
+      "id": "f3-to-e3",
+      "kind": "exit",
+      "x": 1,
+      "y": 7,
+      "requiresReturn": true,
+      "openLabel": "Ir a E3 · Bocamina de Escoria",
+      "lockedLabel": "El paso está cortado",
+      "requirements": [],
+      "action": {
+        "effects": [
+          {
+            "type": "transition-map",
+            "mapId": "terra-e3",
+            "entryExitId": "e3-to-f3"
+          }
+        ],
+        "message": "La compañía entra en E3."
+      }
+    }
+  ],
+  "initialJournal": {
+    "id": "terra-f3-arrival",
+    "title": "F3 · Crestas Volcánicas",
+    "body": "Lava vieja convertida en piedra. Algo brilla en las grietas.",
+    "sigil": "F3"
+  },
+  "introMessage": "F3 · Crestas Volcánicas. Lava vieja convertida en piedra. Algo brilla en las grietas."
+}

@@ -1,0 +1,10 @@
+{
+  "_comment": "Creatures drawn by build_chronicles_procedural_sprites.py: placeholders until painted SpriteCook art replaces them.",
+  "sprites": [
+    "ash-goblin",
+    "drowned",
+    "mire-witch",
+    "salt-crab",
+    "sewer-rat"
+  ]
+}

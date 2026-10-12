@@ -166,7 +166,7 @@ test('recuperación · Desafío diario conserva su pantalla tras F5', async ({ p
   await expect(page.getByRole('region', { name: 'Modos principales' })).toHaveCount(0);
 });
 
-test('puzzles personales · Siguiente no recicla los ya dominados; el histórico sí permite revisarlos', async ({ page }) => {
+test('puzzles personales · al agotar la cola Siguiente avanza a clásicos sin reciclar dominados', async ({ page }) => {
   await mockApi(page);
   await login(page);
   await dismissHomeGuide(page);
@@ -184,8 +184,15 @@ test('puzzles personales · Siguiente no recicla los ya dominados; el histórico
   await clickBoardMove(page, 'a1', 'a8');
   await expect(page.getByText('¡Resuelto!', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Siguiente puzzle', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'Pendiente E2E', exact: true })).toBeVisible();
+  await expect(page.locator('.puzzle-screen-personal')).toHaveCount(0);
+  await expect(page.getByRole('heading', { name: 'Pendiente E2E', exact: true })).toHaveCount(0);
   await expect(page.getByRole('status').filter({ hasText: 'No quedan errores pendientes' })).toBeVisible();
+  await expect(page.locator('.puzzle-source-picker > summary')).toContainText('Puzzles clásicos');
+
+  // Los casos superados no reaparecen en la cola, pero su histórico sigue
+  // disponible al volver explícitamente al entrenamiento personal.
+  await page.locator('.puzzle-source-picker > summary').click();
+  await page.getByRole('button', { name: /Acciones inmediatas/ }).click();
   const history = page.locator('details.personal-puzzle-history');
   await history.locator('summary').click();
   await expect(history.getByText('Histórico previo', { exact: true })).toBeVisible();
@@ -268,7 +275,7 @@ test('deploy · una release nueva no fuerza reload mientras la partida está act
 
   const notice = page.getByRole('status').filter({ hasText: 'Nueva versión disponible' });
   await expect(notice).toBeVisible({ timeout: 5_000 });
-  await expect(notice.getByText(/Tu partida sigue intacta; actualiza al terminar/i)).toBeVisible();
+  await expect(notice.getByText(/Puedes continuar aquí\. Actualiza al volver al castillo\./i)).toBeVisible();
   await expect(notice.getByRole('button', { name: 'Actualizar', exact: true })).toHaveCount(0);
   await expect(notice.getByRole('button', { name: 'Después', exact: true })).toBeVisible();
 

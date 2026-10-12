@@ -1,0 +1,87 @@
+import { expect, test } from '@playwright/test';
+import { buttonWithHeading, login, mockApi } from './helpers.js';
+
+test('Escuela · el cuaderno de Matthias conserva contexto y se puede compactar', async ({ page }, testInfo) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await mockApi(page);
+  await login(page);
+  await buttonWithHeading(page, 'Escuela de Matthias').click();
+
+  const shell = page.locator('.matthias-school-shell');
+  const coach = shell.locator('.matthias-school-coach');
+  const detail = coach.locator('#matthias-school-coach-detail');
+  await expect(shell).toHaveAttribute('data-school-coach', 'expanded');
+  await expect(detail).toBeVisible();
+  await expect(coach.getByRole('button', { name: 'Compactar' })).toHaveAttribute('aria-expanded', 'true');
+  await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+  await testInfo.attach('school-coach-expanded-desktop', { body: await page.screenshot(), contentType: 'image/png' });
+
+  await page.locator('.matthias-school-board').getByRole('button', { name: /^Casilla a3, vacía/ }).click();
+  await expect(coach.getByRole('status')).toContainText(/a3 está vacía/i);
+  await page.getByRole('button', { name: 'Dame una pista', exact: true }).click();
+  await expect(coach.getByRole('status')).toContainText('Se lo marco en el tablero');
+  await expect(coach.locator('.matthias-school-coach-history')).toContainText(/a3 está vacía/i);
+
+  await coach.getByRole('button', { name: 'Compactar' }).click();
+  await expect(shell).toHaveAttribute('data-school-coach', 'compact');
+  await expect(detail).toBeHidden();
+  await expect(coach.getByRole('status')).toContainText('Se lo marco en el tablero');
+  await coach.getByRole('button', { name: 'Ampliar' }).click();
+  await expect(detail).toBeVisible();
+  await expect(coach.locator('.matthias-school-coach-history')).toContainText(/a3 está vacía/i);
+
+  const trail = coach.getByRole('region', { name: 'Jugadas realizadas en esta lección' });
+  await expect(trail).toHaveCount(0);
+  const board = page.locator('.matthias-school-board');
+  await board.getByRole('button', { name: /^Casilla e2, peón blanco/ }).click();
+  await board.getByRole('button', { name: /^Casilla e4, vacía/ }).click();
+  await expect(board).toHaveAttribute('data-school-playback', 'idle');
+  await expect(trail).toBeVisible();
+  await expect(trail).toContainText('1. e4');
+  await expect(trail).toContainText('Tú');
+  await expect(trail).not.toContainText('e5');
+  await testInfo.attach('school-coach-played-moves-desktop', { body: await page.screenshot(), contentType: 'image/png' });
+  await expect(trail.locator('details')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Repetir', exact: true }).click();
+  await expect(trail).toHaveCount(0);
+
+  // A real captured piece earns an opt-in explanation, not a generic verdict.
+  await board.getByRole('button', { name: /^Casilla e2, peón blanco/ }).click();
+  await board.getByRole('button', { name: /^Casilla e4, vacía/ }).click();
+  await expect(board).toHaveAttribute('data-school-playback', 'idle');
+  await coach.getByRole('button', { name: 'Siguiente lección' }).click();
+  await expect(trail).toHaveCount(0);
+  await board.getByRole('button', { name: /^Casilla e2, peón blanco/ }).click();
+  await board.getByRole('button', { name: /^Casilla f3, caballo negro/ }).click();
+  await expect(board).toHaveAttribute('data-school-playback', 'idle');
+  const detailCapture = trail.locator('.matthias-school-move-insight');
+  await expect(detailCapture).toHaveCount(1);
+  await expect(detailCapture).not.toHaveAttribute('open', '');
+  await detailCapture.locator('summary').click();
+  await expect(detailCapture).toContainText('caballo rival');
+  await expect(detailCapture).toHaveAttribute('open', '');
+  await testInfo.attach('school-coach-capture-context-desktop', { body: await page.screenshot(), contentType: 'image/png' });
+  await page.getByRole('button', { name: 'Repetir', exact: true }).click();
+  await expect(trail).toHaveCount(0);
+});
+
+test('Escuela · móvil empieza compacto y puede consultar el historial sin desbordar', async ({ page }, testInfo) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await mockApi(page);
+  await login(page);
+  await buttonWithHeading(page, 'Escuela de Matthias').click();
+
+  const shell = page.locator('.matthias-school-shell');
+  const coach = shell.locator('.matthias-school-coach');
+  await expect(shell).toHaveAttribute('data-school-coach', 'compact');
+  const expand = coach.getByRole('button', { name: 'Ampliar' });
+  expect(await expand.evaluate((node) => node.getBoundingClientRect().height)).toBeGreaterThanOrEqual(44);
+  await expand.click();
+  await expect(shell).toHaveAttribute('data-school-coach', 'expanded');
+  await expect(coach.locator('#matthias-school-coach-detail')).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+  await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+  await testInfo.attach('school-coach-expanded-mobile', { body: await page.screenshot(), contentType: 'image/png' });
+  await coach.getByRole('button', { name: 'Compactar' }).click();
+  await expect(coach.locator('#matthias-school-coach-detail')).toBeHidden();
+});

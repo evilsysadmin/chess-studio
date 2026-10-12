@@ -1,0 +1,308 @@
+{
+  "id": "swordhaven-sewers",
+  "version": 1,
+  "progressionKey": "campaign-swordhaven-sewers-v1",
+  "title": "Alcantarillas de Swordhaven",
+  "hudTitle": "Alcantarillas",
+  "regionKind": "dungeon",
+  "dungeonRole": "main",
+  "layoutMode": "authored",
+  "grid": [
+    "#################",
+    "#...#.....#.....#",
+    "#.#.#.###.#.###.#",
+    "#.#...#.....#...#",
+    "#.#####.#####.#.#",
+    "#.....#...#...#.#",
+    "###.#.###.#.###.#",
+    "#...#...#.....#.#",
+    "#.#####.#.###.#.#",
+    "#.......#...#...#",
+    "#################"
+  ],
+  "partyStart": {
+    "x": 1,
+    "y": 1,
+    "direction": 2
+  },
+  "initialFlags": {},
+  "enemies": [
+    {
+      "id": "sewers-goblin-west",
+      "visualType": "ash-goblin",
+      "name": "goblin de cloaca",
+      "x": 1,
+      "y": 5,
+      "hpKey": "sewersGoblinWestHp",
+      "maxHp": 4,
+      "retaliation": 1,
+      "optional": true,
+      "activation": "always",
+      "ai": {
+        "movement": "cardinal-roam",
+        "attackReach": 1,
+        "engagedMovement": "cardinal-chase",
+        "engageRange": 2
+      },
+      "visualScale": 0.9,
+      "visualMotion": "grounded"
+    },
+    {
+      "id": "sewers-goblin-mid",
+      "visualType": "ash-goblin",
+      "name": "goblin de cloaca",
+      "x": 7,
+      "y": 3,
+      "hpKey": "sewersGoblinMidHp",
+      "maxHp": 4,
+      "retaliation": 1,
+      "optional": true,
+      "activation": "always",
+      "ai": {
+        "movement": "cardinal-roam",
+        "attackReach": 1,
+        "engagedMovement": "cardinal-chase",
+        "engageRange": 2
+      },
+      "visualScale": 0.9,
+      "visualMotion": "grounded"
+    },
+    {
+      "id": "sewers-spider",
+      "visualType": "crypt-spider",
+      "name": "araña de cloaca",
+      "x": 15,
+      "y": 5,
+      "hpKey": "sewersSpiderHp",
+      "maxHp": 5,
+      "retaliation": 1,
+      "optional": true,
+      "activation": "always",
+      "ai": {
+        "movement": "cardinal-roam",
+        "attackReach": 1,
+        "engagedMovement": "knight-chase",
+        "engageRange": 3
+      },
+      "visualScale": 0.9,
+      "visualMotion": "skitter"
+    },
+    {
+      "id": "sewers-hound",
+      "visualType": "bone-hound",
+      "name": "sabueso del limo",
+      "x": 5,
+      "y": 9,
+      "hpKey": "sewersHoundHp",
+      "maxHp": 6,
+      "retaliation": 2,
+      "optional": true,
+      "activation": "always",
+      "ai": {
+        "movement": "cardinal-roam",
+        "attackReach": 1,
+        "engagedMovement": "cardinal-chase",
+        "engageRange": 4
+      },
+      "visualScale": 0.95,
+      "visualMotion": "grounded"
+    },
+    {
+      "id": "sewers-smuggler",
+      "visualType": "road-bandit",
+      "name": "Tobías, el contrabandista",
+      "x": 11,
+      "y": 9,
+      "hpKey": "sewersSmugglerHp",
+      "maxHp": 9,
+      "retaliation": 2,
+      "optional": true,
+      "activation": "always",
+      "ai": {
+        "movement": "hold",
+        "attackReach": 1,
+        "engagedMovement": "cardinal-chase",
+        "engageRange": 2
+      },
+      "visualMotion": "grounded",
+      "onDefeat": {
+        "message": "{attacker} derriba a Tobías con {attack}. Entre sus trastos asoma un libro de cuentas con lacre roto.",
+        "effects": [
+          {
+            "type": "set",
+            "key": "sewersSmugglerDefeated",
+            "value": true
+          },
+          {
+            "type": "grant-gold",
+            "amount": 4
+          },
+          {
+            "type": "grant-item",
+            "itemId": "smuggler-ledger",
+            "name": "Libro del contrabandista",
+            "description": "Cuentas de Tobías. Una entrada reciente: «Carro con lacre de la Dama, rumbo al Camino. Garrah se lo quedó. Mi parte, nunca»."
+          }
+        ],
+        "journal": {
+          "id": "sewers-smuggler-falls",
+          "title": "Cae Tobías",
+          "body": "El contrabandista de las cloacas ya no saldrá de noche. Su libro de cuentas habla de un carro con el lacre de la Dama.",
+          "sigil": "†"
+        }
+      },
+      "defeatedFlag": "sewersSmugglerDefeated",
+      "blockingMessage": "Tobías se interpone delante de su alijo: «Estas cloacas son mías. El alcalde puede venir a decírmelo él»."
+    }
+  ],
+  "triggers": [],
+  "interactables": [
+    {
+      "id": "sewers-sluice-wheel",
+      "kind": "lever",
+      "visualType": "sluice-wheel",
+      "x": 15,
+      "y": 9,
+      "label": "Cerrar la compuerta del desagüe",
+      "when": [
+        {
+          "key": "sewersSluiceClosed",
+          "falsy": true
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "set",
+            "key": "sewersSluiceClosed",
+            "value": true
+          }
+        ],
+        "message": "La rueda chirría y la compuerta baja. El agua negra deja de subir hacia las bodegas del pueblo.",
+        "journal": {
+          "id": "sewers-sluice-closed",
+          "title": "La compuerta del desagüe",
+          "body": "La compuerta está cerrada: las bodegas de Swordhaven dejarán de inundarse.",
+          "sigil": "≈"
+        }
+      }
+    }
+  ],
+  "treasures": [
+    {
+      "id": "sewers-smuggler-stash",
+      "kind": "pickup",
+      "visualType": "ember-cache",
+      "x": 11,
+      "y": 9,
+      "label": "Abrir el alijo de Tobías",
+      "when": [
+        {
+          "key": "sewersSmugglerHp",
+          "lte": 0
+        },
+        {
+          "key": "sewersStashOpened",
+          "falsy": true
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "set",
+            "key": "sewersStashOpened",
+            "value": true
+          },
+          {
+            "type": "grant-gold",
+            "amount": 10
+          },
+          {
+            "type": "grant-item",
+            "itemId": "bronze-dagger",
+            "name": "Daga de bronce",
+            "description": "Daga · acierto +2, daño +0.",
+            "quantity": 1
+          }
+        ],
+        "message": "El alijo guarda diez monedas y una daga de bronce. Matthias lo apunta como «devolución de impuestos».",
+        "journal": {
+          "id": "sewers-stash",
+          "title": "El alijo de Tobías",
+          "body": "Diez monedas y una daga de bronce en el escondrijo del contrabandista.",
+          "sigil": "◉"
+        }
+      }
+    },
+    {
+      "id": "sewers-dropped-purse",
+      "kind": "pickup",
+      "visualType": "ember-cache",
+      "x": 15,
+      "y": 1,
+      "label": "Recoger una bolsa empapada",
+      "when": [
+        {
+          "key": "sewersCoinsTaken",
+          "falsy": true
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "set",
+            "key": "sewersCoinsTaken",
+            "value": true
+          },
+          {
+            "type": "grant-gold",
+            "amount": 5
+          }
+        ],
+        "message": "Una bolsa empapada con cinco monedas. Alguien de arriba la echará de menos; nadie de abajo la reclamará."
+      }
+    }
+  ],
+  "traps": [],
+  "exits": [
+    {
+      "id": "sewers-to-swordhaven",
+      "kind": "exit",
+      "x": 1,
+      "y": 1,
+      "requiresReturn": true,
+      "openLabel": "Subir por la escalerilla a la plaza",
+      "lockedLabel": "La escalerilla está atascada",
+      "requirements": [],
+      "action": {
+        "effects": [
+          {
+            "type": "transition-map",
+            "mapId": "swordhaven-first-book",
+            "entryExitId": "swordhaven-to-sewers"
+          }
+        ],
+        "message": "La compañía sube a la plaza de Swordhaven, oliendo a cloaca."
+      }
+    }
+  ],
+  "initialJournal": {
+    "id": "swordhaven-sewers",
+    "title": "Alcantarillas de Swordhaven",
+    "body": "Túneles de ladrillo bajo la plaza. Algo ha estado subiendo de noche a las bodegas.",
+    "sigil": "≈"
+  },
+  "introMessage": "Las alcantarillas de Swordhaven. Agua negra hasta el tobillo y huellas recientes que no son de rata.",
+  "arrivalAction": {
+    "effects": [
+      {
+        "type": "advance-quest",
+        "questId": "lost-king",
+        "title": "El rey desaparecido",
+        "description": "La Dama busca a sus caballeros desaparecidos. Swordhaven es el primer paso.",
+        "order": 1,
+        "objective": "Limpia las alcantarillas: cierra la compuerta del desagüe y acaba con lo que sube a las bodegas."
+      }
+    ]
+  }
+}

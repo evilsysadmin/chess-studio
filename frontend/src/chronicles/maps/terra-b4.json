@@ -1,0 +1,343 @@
+{
+  "id": "terra-b4",
+  "version": 1,
+  "progressionKey": "terra-b4-v1",
+  "title": "Granjas del Trigo",
+  "areaCode": "B4",
+  "biome": "plains",
+  "regionKind": "wilderness",
+  "layoutMode": "authored",
+  "grid": [
+    "#####################",
+    "#...................#",
+    "#...................#",
+    "#...................#",
+    "##..................#",
+    "#...................#",
+    "#...............##..#",
+    "#...................#",
+    "#...................#",
+    "#..............#....#",
+    "#...................#",
+    "#...................#",
+    "#...................#",
+    "#............#......#",
+    "#####################"
+  ],
+  "partyStart": {
+    "x": 10,
+    "y": 7,
+    "direction": 0
+  },
+  "initialFlags": {},
+  "enemies": [
+    {
+      "id": "terra-b4-foe-0",
+      "visualType": "ash-goblin",
+      "name": "goblin",
+      "x": 7,
+      "y": 3,
+      "hpKey": "terra_b4Foe0Hp",
+      "maxHp": 8,
+      "retaliation": 1,
+      "optional": true,
+      "activation": "always",
+      "ai": {
+        "movement": "cardinal-roam",
+        "attackReach": 1,
+        "engagedMovement": "cardinal-chase",
+        "engageRange": 2
+      },
+      "onDefeat": {
+        "message": "{attacker} acaba con goblin usando {attack}.",
+        "effects": [
+          {
+            "type": "grant-gold",
+            "amount": 6
+          }
+        ]
+      }
+    },
+    {
+      "id": "terra-b4-foe-1",
+      "visualType": "sewer-rat",
+      "name": "rata gigante",
+      "x": 13,
+      "y": 11,
+      "hpKey": "terra_b4Foe1Hp",
+      "maxHp": 8,
+      "retaliation": 1,
+      "optional": true,
+      "activation": "always",
+      "ai": {
+        "movement": "cardinal-roam",
+        "attackReach": 1,
+        "engagedMovement": "cardinal-chase",
+        "engageRange": 3
+      },
+      "onDefeat": {
+        "message": "{attacker} acaba con rata gigante usando {attack}.",
+        "effects": [
+          {
+            "type": "grant-gold",
+            "amount": 6
+          }
+        ]
+      }
+    }
+  ],
+  "triggers": [],
+  "interactables": [
+    {
+      "id": "b4-farmer",
+      "kind": "lore",
+      "visualType": "rookwood-mourner",
+      "x": 5,
+      "y": 4,
+      "when": [
+        {
+          "key": "b4TaxLeadStarted",
+          "falsy": true
+        }
+      ],
+      "label": "Preguntar a Tesa por los impuestos de los ausentes",
+      "action": {
+        "effects": [
+          {
+            "type": "set",
+            "key": "b4TaxLeadStarted",
+            "value": true
+          },
+          {
+            "type": "start-quest",
+            "questId": "tax-of-the-forgotten",
+            "title": "El impuesto de los ausentes",
+            "description": "En B4 cobran tributos incluso a vecinos cuyo recuerdo se ha borrado. El carbonero Bruno transportó las cuentas selladas.",
+            "objective": "Busca a Bruno en el Bosque Ceniciento (E4) y recupera el libro de tasas.",
+            "order": 40
+          }
+        ],
+        "message": "Tesa se aferra al delantal: «Aún nos cobran por doce vecinos que nadie recuerda. Bruno llevaba sus nombres anotados. Encuéntralo en el Bosque Ceniciento, E4».",
+        "journal": {
+          "id": "b4-tax-whispers",
+          "title": "Doce nombres ausentes",
+          "body": "La cuenta real exige tributos a personas que nadie recuerda. Bruno, en E4, vio el libro.",
+          "sigil": "◆"
+        }
+      }
+    },
+    {
+      "id": "b4-farmer-proof",
+      "kind": "lore",
+      "visualType": "rookwood-mourner",
+      "x": 5,
+      "y": 4,
+      "when": [
+        {
+          "questId": "tax-of-the-forgotten",
+          "questStatus": "active"
+        }
+      ],
+      "label": "Entregar a Tesa el libro de tasas",
+      "lockedLabel": "Tesa espera el libro de Bruno",
+      "requirements": [
+        {
+          "itemId": "forgotten-tax-ledger",
+          "quantity": 1,
+          "message": "Bruno guarda las cuentas en el Bosque Ceniciento (E4)."
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "claim-reward",
+            "rewardId": "terra:b4:tax-absent:v1",
+            "requirements": [
+              {
+                "questId": "tax-of-the-forgotten",
+                "questStatus": "active"
+              },
+              {
+                "itemId": "forgotten-tax-ledger",
+                "quantity": 1
+              }
+            ],
+            "effects": [
+              {
+                "type": "consume-item",
+                "itemId": "forgotten-tax-ledger",
+                "quantity": 1
+              },
+              {
+                "type": "complete-quest",
+                "questId": "tax-of-the-forgotten",
+                "objective": "Tesa conserva la prueba de los nombres borrados."
+              },
+              {
+                "type": "grant-gold",
+                "amount": 22
+              },
+              {
+                "type": "award-xp",
+                "awardId": "terra:b4:tax-absent:xp:v1",
+                "amount": 40
+              }
+            ]
+          }
+        ],
+        "message": "Tesa reconoce un nombre en el libro y se le rompe la voz: «Mi hermano. Decían que nunca existió». Conserva la prueba contra el Canciller y entrega 22 monedas a la compañía.",
+        "journal": {
+          "id": "b4-taxes-restored",
+          "title": "Los que no fueron olvidados",
+          "body": "El libro demuestra que el Canciller sigue cobrando a quienes el Silencio ha borrado. Tesa custodia sus nombres.",
+          "sigil": "◆"
+        }
+      }
+    },
+    {
+      "id": "b4-farmer-after",
+      "kind": "lore",
+      "visualType": "rookwood-mourner",
+      "x": 5,
+      "y": 4,
+      "when": [
+        {
+          "questId": "tax-of-the-forgotten",
+          "questStatus": "completed"
+        }
+      ],
+      "label": "Volver a hablar con Tesa",
+      "action": {
+        "effects": [],
+        "message": "Tesa mantiene el libro envuelto bajo su camisa: «Ahora que recuerdo su nombre, no permitiré que lo borren otra vez»."
+      }
+    }
+  ],
+  "treasures": [
+    {
+      "id": "terra-b4-chest",
+      "kind": "pickup",
+      "visualType": "chest",
+      "x": 15,
+      "y": 4,
+      "label": "Abrir el cofre",
+      "when": [
+        {
+          "key": "terra_b4ChestOpened",
+          "falsy": true
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "set",
+            "key": "terra_b4ChestOpened",
+            "value": true
+          },
+          {
+            "type": "grant-gold",
+            "amount": 18
+          },
+          {
+            "type": "grant-item",
+            "itemId": "iron-axe",
+            "name": "Iron axe",
+            "description": "Botín de un cofre de Terra.",
+            "quantity": 1
+          }
+        ],
+        "message": "El cofre guarda 18 monedas y algo de equipo."
+      }
+    }
+  ],
+  "traps": [],
+  "exits": [
+    {
+      "id": "b4-to-b3",
+      "kind": "exit",
+      "x": 10,
+      "y": 1,
+      "requiresReturn": true,
+      "openLabel": "Ir a B3 · Calzada del Oeste",
+      "lockedLabel": "El paso está cortado",
+      "requirements": [],
+      "action": {
+        "effects": [
+          {
+            "type": "transition-map",
+            "mapId": "terra-b3",
+            "entryExitId": "b3-to-b4"
+          }
+        ],
+        "message": "La compañía entra en B3."
+      }
+    },
+    {
+      "id": "b4-to-b5",
+      "kind": "exit",
+      "x": 10,
+      "y": 13,
+      "requiresReturn": true,
+      "openLabel": "Ir a B5 · Molinos del Oeste",
+      "lockedLabel": "El paso está cortado",
+      "requirements": [],
+      "action": {
+        "effects": [
+          {
+            "type": "transition-map",
+            "mapId": "terra-b5",
+            "entryExitId": "b5-to-b4"
+          }
+        ],
+        "message": "La compañía entra en B5."
+      }
+    },
+    {
+      "id": "b4-to-a4",
+      "kind": "exit",
+      "x": 1,
+      "y": 7,
+      "requiresReturn": true,
+      "openLabel": "Ir a A4 · Calas de los Contrabandistas",
+      "lockedLabel": "El paso está cortado",
+      "requirements": [],
+      "action": {
+        "effects": [
+          {
+            "type": "transition-map",
+            "mapId": "terra-a4",
+            "entryExitId": "a4-to-b4"
+          }
+        ],
+        "message": "La compañía entra en A4."
+      }
+    },
+    {
+      "id": "b4-to-c4",
+      "kind": "exit",
+      "x": 19,
+      "y": 7,
+      "requiresReturn": true,
+      "openLabel": "Ir a C4 · Encrucijada del Ahorcado",
+      "lockedLabel": "El paso está cortado",
+      "requirements": [],
+      "action": {
+        "effects": [
+          {
+            "type": "transition-map",
+            "mapId": "terra-c4",
+            "entryExitId": "c4-to-b4"
+          }
+        ],
+        "message": "La compañía entra en C4."
+      }
+    }
+  ],
+  "initialJournal": {
+    "id": "terra-b4-arrival",
+    "title": "B4 · Granjas del Trigo",
+    "body": "Campos de trigo y graneros vacíos. Los granjeros hablan bajo.",
+    "sigil": "B4"
+  },
+  "introMessage": "B4 · Granjas del Trigo. Campos de trigo y graneros vacíos. Los granjeros hablan bajo."
+}

@@ -183,6 +183,69 @@ def breakdown_markdown(environment: str, rows: list[dict]) -> str:
     return "\n".join(lines) + "\n"
 
 
+def resolve_datasource_uids(api: GrafanaReadApi, metrics_uid: str, logs_uid: str, *, include_logs: bool) -> tuple[str, str]:
+    """Only use datasource discovery if a required UID was not configured.
+
+    A configured UID can be queried directly. Avoid making a successful
+    evidence report depend on Grafana's optional /api/datasources endpoint.
+    Actual Prometheus/Loki query failures still fail closed (never fake zero).
+    """
+    metrics_uid = str(metrics_uid or "").strip()
+    logs_uid = str(logs_uid or "").strip() if include_logs else ""
+    needs_discovery = not metrics_uid or (include_logs and not logs_uid)
+    datasources = api.get_list("/api/datasources") if needs_discovery else None
+    if datasources is not None:
+        metrics_uid = _resolve_datasource_uid(datasources, metrics_uid, "prometheus")
+        if include_logs:
+            logs_uid = _resolve_datasource_uid(datasources, logs_uid, "loki")
+    if not metrics_uid:
+        fail("missing GRAFANA_METRICS_DATASOURCE_UID")
+    if include_logs and not logs_uid:
+        fail("missing GRAFANA_LOGS_DATASOURCE_UID")
+    return metrics_uid, logs_uid
+
+
+
+def query_with_uid_recovery(
+    api: GrafanaReadApi, uid: str, kind: str, suffix: str,
+    params: dict[str, str], *, sleep=time.sleep,
+) -> tuple[dict, str]:
+    """Recover a stale configured UID after a *specific* Grafana 404.
+
+    No arbitrary 404, bad credential or unavailable metrics may become a
+    fabricated zero. Discovery retries cover short-lived Grafana startup 503s.
+    """
+    def query(candidate: str) -> dict:
+        path = f"/api/datasources/proxy/uid/{urllib.parse.quote(candidate, safe='')}{suffix}"
+        return api.get_json(path, params)
+
+    try:
+        return query(uid), uid
+    except SystemExit as original:
+        message = str(original)
+        if "HTTP 404" not in message or "Unable to find datasource" not in message:
+            raise
+
+    datasources = None
+    for attempt in range(3):
+        if attempt:
+            sleep(attempt)  # bounded: total three seconds maximum
+        try:
+            datasources = api.get_list("/api/datasources")
+            break
+        except SystemExit as exc:
+            # Grafana Cloud returns 503 while a stack is starting. Retry only
+            # this transient condition; auth/permission failures are fatal.
+            if "HTTP 503" not in str(exc) or attempt == 2:
+                raise
+    if datasources is None:
+        fail(f"stale {kind} datasource UID and discovery unavailable")
+    recovered = _resolve_datasource_uid(datasources, uid, kind)
+    if recovered == uid:
+        fail(f"stale {kind} datasource UID {uid!r} could not be recovered")
+    return query(recovered), recovered
+
+
 def self_test() -> int:
     query = fallback_query(14 * 86400)
     assert 'http_route=~"/api/pvp.*"' in query
@@ -211,6 +274,67 @@ def self_test() -> int:
                                                  "values": [[3600, "0"], [7200, "41.6"]]}]}})
     assert trows == [{"environment": "staging", "hour_end": 7200, "requests": 42}]
     assert "1970-01-01 02:00" in timeline_markdown(trows)
+    class StubGrafana:
+        calls = 0
+
+        def get_list(self, path: str) -> list[dict]:
+            assert path == "/api/datasources"
+            self.calls += 1
+            return [
+                {"type": "prometheus", "uid": "test-prom"},
+                {"type": "loki", "uid": "test-logs"},
+            ]
+
+    ready = StubGrafana()
+    assert resolve_datasource_uids(ready, "configured-prom", "configured-logs", include_logs=True) == (
+        "configured-prom", "configured-logs"
+    )
+    assert ready.calls == 0  # no fragile control-plane discovery on daily path
+    assert resolve_datasource_uids(ready, "configured-prom", "", include_logs=False) == ("configured-prom", "")
+    assert ready.calls == 0  # default schedule does not need Loki either
+    discovery = StubGrafana()
+    assert resolve_datasource_uids(discovery, "", "", include_logs=True) == ("test-prom", "test-logs")
+    assert discovery.calls == 1  # fallback discovers once, reused for both UIDs
+
+    class StaleGrafana:
+        discovery_calls = 0
+        queries = 0
+        sleeps: list[int] = []
+
+        def get_json(self, path: str, params: dict[str, str]) -> dict:
+            self.queries += 1
+            if "/old-prom/" in path:
+                raise SystemExit("grafana-live-check FAIL · HTTP 404: {'message': 'Unable to find datasource'}")
+            return {"data": {"result": []}}
+
+        def get_list(self, path: str) -> list[dict]:
+            assert path == "/api/datasources"
+            self.discovery_calls += 1
+            if self.discovery_calls == 1:
+                raise SystemExit("grafana-live-check FAIL · HTTP 503: instance loading")
+            return [{"type": "prometheus", "uid": "new-prom"}]
+
+    stale = StaleGrafana()
+    recovered_payload, recovered_uid = query_with_uid_recovery(
+        stale, "old-prom", "prometheus", "/api/v1/query", {"query": "up"},
+        sleep=lambda delay: stale.sleeps.append(delay),
+    )
+    assert recovered_uid == "new-prom" and recovered_payload == {"data": {"result": []}}
+    assert stale.queries == 2 and stale.discovery_calls == 2 and stale.sleeps == [1]
+
+    class DeniedGrafana(StaleGrafana):
+        def get_json(self, path: str, params: dict[str, str]) -> dict:
+            raise SystemExit("grafana-live-check FAIL · HTTP 403: Forbidden")
+
+    denied = DeniedGrafana()
+    try:
+        query_with_uid_recovery(denied, "old-prom", "prometheus", "/api/v1/query", {})
+    except SystemExit as exc:
+        assert "HTTP 403" in str(exc)
+    else:
+        raise AssertionError("auth failure must remain fatal")
+    assert denied.discovery_calls == 0
+
     print("pvp-python-fallback-report self-test OK")
     return 0
 
@@ -231,13 +355,14 @@ def main() -> int:
 
     window_seconds = _window_seconds(args.window)
     api = GrafanaReadApi(os.getenv("GRAFANA_URL", ""), os.getenv("GRAFANA_AUTH", ""))
-    preferred = os.getenv("GRAFANA_METRICS_DATASOURCE_UID", "")
-    datasources = api.get_list("/api/datasources")
-    metrics_uid = _resolve_datasource_uid(datasources, preferred, "prometheus") if datasources is not None else preferred
-    if not metrics_uid:
-        fail("missing GRAFANA_METRICS_DATASOURCE_UID")
-    payload = api.get_json(
-        f"/api/datasources/proxy/uid/{urllib.parse.quote(metrics_uid, safe='')}/api/v1/query",
+    metrics_uid, logs_uid = resolve_datasource_uids(
+        api,
+        os.getenv("GRAFANA_METRICS_DATASOURCE_UID", ""),
+        os.getenv("GRAFANA_LOGS_DATASOURCE_UID", ""),
+        include_logs=args.sources,
+    )
+    payload, metrics_uid = query_with_uid_recovery(
+        api, metrics_uid, "prometheus", "/api/v1/query",
         {"query": fallback_query(window_seconds), "time": str(int(time.time()))},
     )
     rows = parse_rows(payload)
@@ -252,8 +377,8 @@ def main() -> int:
     if args.timeline:
         now = int(time.time())
         span = min(window_seconds, 7 * 86400)
-        data = api.get_json(
-            f"/api/datasources/proxy/uid/{urllib.parse.quote(metrics_uid, safe='')}/api/v1/query_range",
+        data, metrics_uid = query_with_uid_recovery(
+            api, metrics_uid, "prometheus", "/api/v1/query_range",
             {"query": timeline_query(), "start": str(now - span), "end": str(now), "step": "3600"},
         )
         section = timeline_markdown(timeline_rows(data))
@@ -262,15 +387,11 @@ def main() -> int:
             with open(args.summary, "a", encoding="utf-8") as handle:
                 handle.write(section)
     if args.sources:
-        preferred_logs = os.getenv("GRAFANA_LOGS_DATASOURCE_UID", "")
-        logs_uid = _resolve_datasource_uid(datasources, preferred_logs, "loki") if datasources is not None else preferred_logs
-        if not logs_uid:
-            fail("missing GRAFANA_LOGS_DATASOURCE_UID")
         # Loki rejects very long ranges; the source breakdown is about now.
         log_window = min(window_seconds, 2 * 86400)
         for environment, service in LOG_SERVICES.items():
-            data = api.get_json(
-                f"/api/datasources/proxy/uid/{urllib.parse.quote(logs_uid, safe='')}/loki/api/v1/query",
+            data, logs_uid = query_with_uid_recovery(
+                api, logs_uid, "loki", "/loki/api/v1/query",
                 {"query": breakdown_query(service, log_window), "time": str(int(time.time()))},
             )
             section = breakdown_markdown(environment, breakdown_rows(data))

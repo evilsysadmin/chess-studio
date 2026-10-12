@@ -629,3 +629,61 @@ scopedTest('progress', 'Entrenar · Expediente de Matthias', async ({ page }) =>
     animations: 'disabled',
   });
 });
+
+
+// The canonical school screenshot is initial-state 3D. A second capture proves
+// that the expandable ledger actually renders played SAN in a real browser.
+scopedTest('school', 'Entrenar · Cuaderno de Matthias tras una jugada real', async ({ page }) => {
+  test.setTimeout(65_000);
+  await prepare(page);
+  await page.evaluate(() => {
+    localStorage.setItem('chess-study-device-board-renderer-v1', '2d');
+    sessionStorage.setItem('chess-study-current-view', 'tutorial');
+  });
+  await page.reload();
+
+  const shell = page.locator('.matthias-school-shell');
+  await expect(shell).toBeVisible();
+  const board = shell.locator('.matthias-school-board');
+  await expect(board).toHaveAttribute('data-school-renderer', '2d');
+  const trail = shell.getByRole('region', { name: 'Jugadas realizadas en esta lección' });
+  await expect(trail).toHaveCount(0);
+  await board.getByRole('button', { name: /^Casilla e2, peón blanco/ }).click();
+  await board.getByRole('button', { name: /^Casilla e4, vacía/ }).click();
+  await expect(board).toHaveAttribute('data-school-playback', 'idle');
+  await expect(trail).toContainText('1. e4');
+  await captureAt(page, 'school-played-moves', { width: 1440, height: 900, variant: 'desktop' });
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await shell.locator('.matthias-school-coach').getByRole('button', { name: 'Ampliar' }).click();
+  await expect(trail).toBeVisible();
+  await expect.poll(() => shell.locator('.matthias-school-coach-detail')
+    .evaluate((node) => node.scrollTop)).toBe(0);
+  const spacing = await shell.evaluate((root) => {
+    const coach = root.querySelector('.matthias-school-coach')?.getBoundingClientRect();
+    const actions = root.querySelector('.matthias-school-board-actions')?.getBoundingClientRect();
+    const buttons = Array.from(root.querySelectorAll('.matthias-school-board-actions > button'));
+    return {
+      coachBottom: coach?.bottom ?? 0,
+      actionsTop: actions?.top ?? 0,
+      overflowingButtons: buttons.filter((button) => button.scrollWidth > button.clientWidth + 1).length,
+    };
+  });
+  expect(spacing.coachBottom, 'Matthias must not overlap two rows of actions').toBeLessThanOrEqual(spacing.actionsTop + 1);
+  expect(spacing.overflowingButtons, 'all action labels must fit').toBe(0);
+  await captureAt(page, 'school-played-moves', { width: 390, height: 844, variant: 'mobile' });
+
+  await shell.locator('.matthias-school-coach').getByRole('button', { name: 'Compactar' }).click();
+  await shell.getByRole('button', { name: 'Siguiente lección' }).click();
+  await board.getByRole('button', { name: /^Casilla e2, peón blanco/ }).click();
+  await board.getByRole('button', { name: /^Casilla f3, caballo negro/ }).click();
+  await expect(board).toHaveAttribute('data-school-playback', 'idle');
+  await shell.locator('.matthias-school-coach').getByRole('button', { name: 'Ampliar' }).click();
+  const insight = shell.locator('.matthias-school-move-insight');
+  await expect(insight).toHaveCount(1);
+  await insight.locator('summary').click();
+  await expect(insight).toContainText('caballo rival');
+  await captureAt(page, 'school-verified-capture', { width: 390, height: 844, variant: 'mobile' });
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await captureAt(page, 'school-verified-capture', { width: 1440, height: 900, variant: 'desktop' });
+});

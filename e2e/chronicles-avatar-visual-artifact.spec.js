@@ -93,13 +93,10 @@ for (const capture of CAPTURES) {
       await openChronicles(page);
       const preview = page.locator('.chronicles-party-preview');
       const portrait = page.locator('[data-chronicles-party-renderer="authored"]');
-      if (capture.hasTouch) {
-        await expect(preview).toBeHidden();
-        await expect(portrait).toBeHidden();
-      } else {
-        await expect(preview).toBeVisible();
-        await expect(portrait).toBeVisible();
-      }
+      // MM3 chrome: the authored faces live in the party strip on every
+      // layout; the old large preview stays hidden.
+      await expect(preview).toBeHidden();
+      await expect(portrait).toBeHidden();
       await expect(preview.locator('canvas')).toHaveCount(0);
       await page.locator('.chronicles-stage').evaluate((node) => {
         node.style.display = 'none';
@@ -124,31 +121,18 @@ for (const capture of CAPTURES) {
         await page.keyboard.press(String(index + 1));
         await expect(memberButton).toHaveAttribute('aria-pressed', 'true');
 
-        if (capture.hasTouch) {
-          const thumbnail = memberButton.locator(`[data-chronicles-party-thumbnail="${member.id}"]`);
-          await expect(thumbnail).toBeVisible();
-          const thumbnailBox = await thumbnail.boundingBox();
-          expect(thumbnailBox, `${capture.label}/${member.name}: compact portrait bounds`).not.toBeNull();
-          expect(thumbnailBox.width, `${capture.label}/${member.name}: compact portrait width`).toBeGreaterThanOrEqual(32);
-          expect(thumbnailBox.height, `${capture.label}/${member.name}: compact portrait height`).toBeGreaterThanOrEqual(32);
-          await captureElement(
-            page,
-            memberButton,
-            `${ARTIFACT_DIR}/chronicles-avatar-${member.id}-${capture.label}.png`,
-          );
-        } else {
-          await expect(preview.locator('strong')).toHaveText(member.name);
-          await expect(portrait).toHaveAttribute('data-member-id', member.id);
-          const portraitBox = await portrait.boundingBox();
-          expect(portraitBox, `${capture.label}/${member.name}: portrait bounds`).not.toBeNull();
-          expect(portraitBox.width, `${capture.label}/${member.name}: portrait width`).toBeGreaterThan(80);
-          expect(portraitBox.height, `${capture.label}/${member.name}: portrait height`).toBeGreaterThan(80);
-          await captureElement(
-            page,
-            preview,
-            `${ARTIFACT_DIR}/chronicles-avatar-${member.id}-${capture.label}.png`,
-          );
-        }
+        const thumbnail = memberButton.locator(`[data-chronicles-party-thumbnail="${member.id}"]`);
+        await expect(thumbnail).toBeVisible();
+        const thumbnailBox = await thumbnail.boundingBox();
+        const minimum = capture.hasTouch ? 32 : 80;
+        expect(thumbnailBox, `${capture.label}/${member.name}: portrait bounds`).not.toBeNull();
+        expect(thumbnailBox.width, `${capture.label}/${member.name}: portrait width`).toBeGreaterThanOrEqual(minimum);
+        expect(thumbnailBox.height, `${capture.label}/${member.name}: portrait height`).toBeGreaterThanOrEqual(minimum);
+        await captureElement(
+          page,
+          memberButton,
+          `${ARTIFACT_DIR}/chronicles-avatar-${member.id}-${capture.label}.png`,
+        );
       }
     } finally {
       await context.close();
