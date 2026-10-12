@@ -5,7 +5,7 @@ import { footballStandings, FOOTBALL_MANAGER_TACTICS } from '../footballManagerS
 import { footballClubObjectiveReport } from '../footballManagerObjectives.js';
 import { FOOTBALL_TRAINING_PLANS } from '../footballManagerTraining.js';
 import { getDevelopedFootballRoster, FOOTBALL_MAX_GROWTH_PER_ATTRIBUTE } from '../footballManagerDevelopment.js';
-import { createFootballCareer, editFootballCareer, playFootballCareerRound, readFootballCareer, replayFootballCareer, writeFootballCareer } from '../footballManagerCareer.js';
+import { createFootballCareer, editFootballCareer, playFootballCareerRound, startNextFootballSeason, FOOTBALL_CAREER_MAX_SEASONS, readFootballCareer, replayFootballCareer, writeFootballCareer } from '../footballManagerCareer.js';
 import { getFootballClubRoster, getDefaultFootballLineup, FOOTBALL_FIVE_POSITIONS, getFootballFatigue } from '../footballManagerRoster.js';
 import './ChessFootballEntry.css';
 
@@ -36,6 +36,7 @@ export default function ChessFootballEntry({ onExit }) {
   const [tactic, setTactic] = useState('balanced');
   const [lineupIds, setLineupIds] = useState(null);
   const [journal, setJournal] = useState(null);
+  const [careerHistory, setCareerHistory] = useState([]);
   const [savedCareer, setSavedCareer] = useState(() => readFootballCareer());
   const [replacePending, setReplacePending] = useState(false);
   const [saveStatus, setSaveStatus] = useState(null);
@@ -46,6 +47,7 @@ export default function ChessFootballEntry({ onExit }) {
   const startingFive = lineupIds || defaultLineup;
   const standings = season ? footballStandings(season) : [];
   const objective = season && selectedClubId ? footballClubObjectiveReport(season, selectedClubId) : null;
+  const seasonNumber = (journal?.completedSeasons?.length || 0) + 1;
 
   // Each new room starts at its entrance. Reusing this mounted full-screen
   // scroller otherwise carries a deep standings offset back into Welcome.
@@ -53,7 +55,8 @@ export default function ChessFootballEntry({ onExit }) {
     if (view !== 'match' && scrollSurface.current) scrollSurface.current.scrollTop = 0;
   }, [view]);
 
-  const showCareer = ({ journal: nextJournal, season: nextSeason }) => {
+  const showCareer = ({ journal: nextJournal, season: nextSeason, history = [] }) => {
+    setCareerHistory(history);
     setSelectedClubId(nextJournal.clubId);
     setJournal(nextJournal);
     setSeason(nextSeason);
@@ -115,6 +118,15 @@ export default function ChessFootballEntry({ onExit }) {
     showCareer(next);
   };
 
+  const renewSeason = () => {
+    if (!journal || season?.currentRound !== 10 || seasonNumber >= FOOTBALL_CAREER_MAX_SEASONS) return;
+    const next = startNextFootballSeason(journal);
+    const outcome = persistCareer(next);
+    if (outcome.status === 'future' || outcome.status === 'unavailable') return;
+    showCareer(next);
+    if (scrollSurface.current) scrollSurface.current.scrollTop = 0;
+  };
+
   const startQuickMatch = () => {
     // Fullscreen/orientation require a real user gesture. Opening Football's
     // welcome screen should never rotate or lock the phone.
@@ -152,7 +164,7 @@ export default function ChessFootballEntry({ onExit }) {
             {savedCareer.status === 'available' ? (
               <div className="chess-football-entry__career-resume" aria-label="Temporada guardada">
                 <strong>{FOOTBALL_MANAGER_CLUBS.find((club) => club.id === savedCareer.journal.clubId)?.name}</strong>
-                <p>Jornada {savedCareer.season.currentRound} de 10. Clasificación, quinteto y fatiga listos para continuar.</p>
+                <p>Temporada {(savedCareer.journal.completedSeasons?.length || 0) + 1} · Jornada {savedCareer.season.currentRound} de 10. Clasificación, quinteto y evolución guardados.</p>
                 <button type="button" className="chess-football-entry__manager-return" onClick={continueCareer}>Continuar temporada</button>
               </div>
             ) : savedCareer.status === 'future' ? (
@@ -223,9 +235,19 @@ export default function ChessFootballEntry({ onExit }) {
           </section>
         ) : (
           <section className="chess-football-entry__manager chess-football-entry__manager--season" aria-labelledby="football-season-title">
-            <span className="chess-football-entry__eyebrow">Temporada de prueba · Carrera versionada</span>
+            <span className="chess-football-entry__eyebrow">Temporada {seasonNumber} de {FOOTBALL_CAREER_MAX_SEASONS} · Carrera del club</span>
             <h2 id="football-season-title">{selectedClub?.name || 'Mi club'}</h2>
             <p>Jornada {season?.currentRound || 0} de {season?.rounds.length || 10}. Los resultados pertenecen a esta simulación estadística, no a un partido jugado en Godot.</p>
+            {careerHistory.length ? (
+              <details className="chess-football-entry__history" aria-label="Historial del club">
+                <summary>Archivo de temporadas · {careerHistory.length} completadas</summary>
+                <ol>{careerHistory.map((year) => (
+                  <li key={year.number}>
+                    Temporada {year.number} · {year.position}.º puesto · {year.points} puntos · {year.objectiveMet ? 'Objetivo cumplido' : 'Objetivo no alcanzado'}
+                  </li>
+                ))}</ol>
+              </details>
+            ) : null}
             {saveStatus === 'saved' ? <p className="chess-football-entry__save-state" role="status">Progreso guardado en este dispositivo y pendiente de sincronización del perfil.</p> : null}
             {saveStatus === 'memory' ? <p className="chess-football-entry__career-warning" role="status">El almacenamiento está bloqueado: los cambios sólo están disponibles en esta pestaña.</p> : null}
             {objective ? (
@@ -338,6 +360,17 @@ export default function ChessFootballEntry({ onExit }) {
                 <FootballSquadDevelopment players={developedRoster} />
               </section>
             )}
+            {season?.currentRound === season?.rounds.length && season ? (
+              <section className="chess-football-entry__renewal" aria-label="Cierre de temporada">
+                <strong>Temporada {seasonNumber} completada · {objective?.position}.º puesto</strong>
+                <p>{objective?.statusLabel}. Tus futbolistas mantienen las mejoras ganadas, el cansancio se recupera en pretemporada y el calendario siguiente tendrá un nuevo sorteo reproducible.</p>
+                {seasonNumber < FOOTBALL_CAREER_MAX_SEASONS ? (
+                  <button type="button" className="chess-football-entry__manager-return" onClick={renewSeason}>
+                    Comenzar temporada {seasonNumber + 1}
+                  </button>
+                ) : <p>Has completado las {FOOTBALL_CAREER_MAX_SEASONS} temporadas de esta primera carrera. Su historial permanece guardado.</p>}
+              </section>
+            ) : null}
             {season?.results.length ? (
               <div className="chess-football-entry__fixture-list" aria-label="Resultados de la última jornada">
                 <h3>Últimos resultados</h3>
