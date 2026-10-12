@@ -153,7 +153,7 @@ def orient(obj,target):
 def render(output):
     palette=sculpt();output.mkdir(parents=True,exist_ok=True)
     scene=bpy.context.scene;scene.render.engine='BLENDER_EEVEE'
-    scene.render.resolution_x=512;scene.render.resolution_y=512
+    scene.render.resolution_x=320;scene.render.resolution_y=320
     scene.render.resolution_percentage=100;scene.render.film_transparent=True
     scene.render.image_settings.file_format='PNG'
     scene.render.image_settings.color_mode='RGBA'
@@ -188,6 +188,14 @@ def render(output):
         if len(data)<1500:raise RuntimeError('empty-review-image:'+direction)
         views[direction]={'file':file.name,'sha256':hashlib.sha256(data).hexdigest()}
     if len(set(v['sha256'] for v in views.values()))!=8:raise RuntimeError('duplicate-views')
+    # Blender can render curves even when glTF silently drops them. Convert all
+    # headset wires, brow edges and sewn seams to real meshes before export.
+    for detail in tuple(bpy.data.objects):
+        if detail.type != 'CURVE':continue
+        bpy.ops.object.select_all(action='DESELECT')
+        bpy.context.view_layer.objects.active=detail
+        detail.select_set(True)
+        bpy.ops.object.convert(target='MESH')
     bpy.ops.wm.save_as_mainfile(filepath=str(output/'sven-head-v43.blend'))
     bpy.ops.export_scene.gltf(filepath=str(output/'sven-head-v43.glb'),
           export_format='GLB',export_animations=False,export_cameras=False,export_lights=False)

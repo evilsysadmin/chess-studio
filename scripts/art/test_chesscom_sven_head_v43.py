@@ -16,7 +16,7 @@ def validate(path):
         png=path/f'sven-head-{d}.png'
         image=png.read_bytes()
         if image[:8]!=b'\x89PNG\r\n\x1a\n':raise ValueError('invalid-png')
-        if struct.unpack('>II',image[16:24])!=(512,512):raise ValueError('bad-resolution')
+        if struct.unpack('>II',image[16:24])!=(320,320):raise ValueError('bad-resolution')
         digest=hashlib.sha256(image).hexdigest()
         if m['directions'][d]!=dict(file=png.name,sha256=digest):raise ValueError('bad-hash')
         if digest in seen:raise ValueError('duplicate-views')
@@ -24,6 +24,12 @@ def validate(path):
     glb=(path/'sven-head-v43.glb').read_bytes()
     if glb[:4]!=b'glTF' or hashlib.sha256(glb).hexdigest()!=m.get('glb_sha256'):
         raise ValueError('invalid-glb')
+    length,kind=struct.unpack_from('<I4s',glb,12)
+    if kind!=b'JSON':raise ValueError('invalid-glb-document')
+    doc=json.loads(glb[20:20+length].decode('utf-8'))
+    names={str(mesh.get('name','')) for mesh in doc.get('meshes',[])}
+    if not any('Sven43_mic-boom' in name for name in names):
+        raise ValueError('headset-curves-were-not-exported')
     if not (path/'sven-head-v43.blend').is_file():raise ValueError('missing-editable-master')
     return m
 class Tests(unittest.TestCase):

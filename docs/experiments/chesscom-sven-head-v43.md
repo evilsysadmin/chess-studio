@@ -8,7 +8,7 @@ rechazada visualmente; sus ocho renders parecían un maniquí. Esta iteración
 Se modela únicamente el bust de Sven, de forma original en Blender, con
 superficies anatómicas de sección variable para cara, balaclava y casco;
 ranura real de ojos, NVG plegado, casco con reborde, auriculares, antena
-de micrófono, tela rugosa y cowl. Hay ocho vistas reales a 512×512 y fuentes
+de micrófono, tela rugosa y cowl. Hay ocho vistas reales a 320×320 y fuentes
 `.blend` / `.glb` como artifact efímero de CI.
 
 **No es un personaje terminado.** No se declara rig corporal, 96 frames,
