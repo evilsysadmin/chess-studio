@@ -1,0 +1,68 @@
+name: CHESSCOM · Sven authored GLB review V39
+on:
+  pull_request:
+    paths:
+      - scripts/blender/chesscom_sven_master_preview_v39.py
+      - scripts/art/test_chesscom_sven_master_v39.py
+      - .github/workflows/chesscom-sven-master-review.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: chesscom-sven-master-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  master-review:
+    name: Review pinned third-party SWAT master
+    runs-on: ubuntu-24.04
+    timeout-minutes: 28
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup-blender-canonical
+      - name: Download immutable external GLB and verify blob identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/chesscom-sven-v39
+          curl --fail --location --silent --show-error --retry 3 \
+            --output /tmp/chesscom-sven-v39/swat.glb \
+            'https://raw.githubusercontent.com/euuuuuuan/fatal-funnel-public/29a6bdfd01ad175c389cbd0bac80c30f926ff96b/packages/renderer/assets/models/quaternius-men/swat.glb'
+          python3 - <<'PY'
+          import hashlib
+          from pathlib import Path
+          blob=Path('/tmp/chesscom-sven-v39/swat.glb').read_bytes()
+          expected='280b2776eee2af7e131db22dd7a32b1e99764a12'
+          assert blob[:4]==b'glTF' and len(blob)>10000, 'not-GLB'
+          actual=hashlib.sha1(b'blob '+str(len(blob)).encode()+b'\0'+blob).hexdigest()
+          assert actual==expected, f'UNTRUSTED_MODEL_BLOB: {actual}'
+          print('Pinned source SHA256:', hashlib.sha256(blob).hexdigest())
+          PY
+      - name: Render eight orthographic turntable perspectives
+        env:
+          LIBGL_ALWAYS_SOFTWARE: '1'
+        run: |
+          blender --background -noaudio \
+            --python scripts/blender/chesscom_sven_master_preview_v39.py -- \
+            --source-glb /tmp/chesscom-sven-v39/swat.glb \
+            --output-dir /tmp/chesscom-sven-v39/previews
+      - name: Audit only non-published visual evidence
+        run: |
+          python3 -m unittest discover -s scripts/art -p 'test_chesscom_sven_master_v39.py' -v
+          python3 - <<'PY'
+          import sys
+          from pathlib import Path
+          sys.path.insert(0,'scripts/art')
+          from test_chesscom_sven_master_v39 import validate_previews
+          manifest=validate_previews(Path('/tmp/chesscom-sven-v39/previews'))
+          print('Views validated:',len(manifest['directions']))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: chesscom-sven-glb-candidate-${{ github.event.pull_request.number || github.run_number }}
+          path: /tmp/chesscom-sven-v39/previews/
+          if-no-files-found: warn
+          retention-days: 7

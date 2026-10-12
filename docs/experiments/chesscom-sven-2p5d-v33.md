@@ -41,3 +41,10 @@ python3 scripts/art/chesscom_sven_bank_v38.py \\
 ```
 
 Entrega candidato `sven-bank-v1.webp` (WebP **lossless**, SHA-256 comprobado, máximo 8 MiB) y `sven-bank-v1.json`, no copia ni publica automáticamente bajo `frontend/public`, R2 o producción. La estructura de atlas dispone seis strips horizontales con ocho direcciones en filas, 1536×1536 en total; el manifiesto mantiene las coordenadas escritas desde arriba e incluye pivote exacto para V37. No equivale a validación visual, aceptación humana, trazabilidad de licencias ni benchmark GPU, y el maestro GLB Quaternius sigue siendo solo candidato externo.
+
+
+## V39 · inspección visual de un maestro GLB existente (no aprobado)
+
+El workflow `chesscom-sven-master-review.yml` descarga para análisis un GLB SWAT de la revisión inmóvil `29a6bdfd01ad175c389cbd0bac80c30f926ff96b` del repositorio `euuuuuuan/fatal-funnel-public` y valida el Git blob SHA `280b2776eee2af7e131db22dd7a32b1e99764a12`. Se declara como candidato del paquete Ultimate Modular Characters de Quaternius (CC0-1.0 según la referencia pública; comprobar licencia y procedencia antes de redistribuirlo).
+
+Blender normaliza la estatura, mantiene el arte del GLB sin redibujarlo y renderiza ocho vistas isométricas/ortográficas estáticas, con iluminación de referencia azul nocturna y ámbar. Los PNG, sus hashes y las dimensiones del master quedan sólo como artifacts temporales de CI. La inspección humana de silueta, mochila, rostro, casco y arma contra la referencia de Dust Veil decidirá si el maestro es aceptable. **No hay 96 frames animados, ni atlas V38 generado, ni cambios de runtime, ni binarios nuevos en Git/R2**. Si el modelo es demasiado simple o falla procedencia/Blender, se descarta.
