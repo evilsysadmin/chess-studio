@@ -22,7 +22,18 @@ OK_MARKER = "CHESS_STUDIO_MONGO_BACKUP_OK"
 def backup_command() -> str:
     command = f"""set -euo pipefail
 test -x '{BACKUP_WRAPPER}' || {{ echo 'CHESS_STUDIO_MONGO_BACKUP_WRAPPER_MISSING' >&2; exit 44; }}
-sudo --non-interactive '{BACKUP_WRAPPER}'
+# OCI Run Command truncates verbose mongorestore output; keep the complete
+# diagnostic stream private on-host and return only end-to-end attestations.
+umask 077
+log="$(mktemp /tmp/chess-studio-mongo-backup.XXXXXX)"
+trap 'rm -f -- "$log"' EXIT
+if sudo --non-interactive '{BACKUP_WRAPPER}' >"$log" 2>&1; then
+  grep -E '^CHESS_STUDIO_MONGO_(BACKUP_OFFHOST_STAGED|RESTORE_DRILL_OK|BACKUP_OFFHOST_OK|BACKUP_OK) ' "$log"
+else
+  rc=$?
+  tail -n 18 "$log" >&2
+  exit "$rc"
+fi
 """
     assert_nonsecret_command(command)
     if len(command.encode("utf-8")) > RUN_COMMAND_INLINE_MAX_BYTES:
@@ -31,13 +42,24 @@ sudo --non-interactive '{BACKUP_WRAPPER}'
 
 
 def validate_output(output: str) -> str:
-    marker = next(
-        (line.strip() for line in output.splitlines() if line.strip().startswith(OK_MARKER + " ")),
-        "",
+    # A successful remote exit is not sufficient if Oracle truncates the log.
+    # Require all four phases before certifying the off-host restored backup.
+    markers = (
+        "CHESS_STUDIO_MONGO_BACKUP_OFFHOST_STAGED",
+        "CHESS_STUDIO_MONGO_RESTORE_DRILL_OK",
+        "CHESS_STUDIO_MONGO_BACKUP_OFFHOST_OK",
+        OK_MARKER,
     )
-    if not marker:
-        raise SystemExit("OCI production Mongo backup did not return success marker")
-    return marker
+    lines = [line.strip() for line in output.splitlines() if line.strip()]
+    evidence: dict[str, str] = {}
+    for name in markers:
+        matches = [line for line in lines if line.startswith(name + " ")]
+        if len(matches) != 1:
+            raise SystemExit(f"OCI Mongo backup missing or duplicated phase marker: {name}")
+        evidence[name] = matches[0]
+    if "source=oci-object-storage" not in evidence["CHESS_STUDIO_MONGO_RESTORE_DRILL_OK"]:
+        raise SystemExit("OCI Mongo restore was not proven from Object Storage")
+    return evidence[OK_MARKER]
 
 
 def run_backup(oci: Any) -> None:
@@ -62,10 +84,32 @@ def self_test() -> None:
     assert "MONGO_URL" not in command
     assert "backend.env" not in command
     assert len(command.encode("utf-8")) <= RUN_COMMAND_INLINE_MAX_BYTES
-    assert validate_output(
-        "noise\nCHESS_STUDIO_MONGO_BACKUP_OK timestamp=20260928T040000Z "
-        "bytes=123 retained=2 remote_retained=8 bucket=chess-studio-production-backups sha256=" + "a" * 64
-    ).startswith(OK_MARKER)
+    phases = (
+        "CHESS_STUDIO_MONGO_BACKUP_OFFHOST_STAGED bucket=chess-studio-production-backups timestamp=20260928T040000Z",
+        "CHESS_STUDIO_MONGO_RESTORE_DRILL_OK timestamp=20260928T040000Z source=oci-object-storage",
+        "CHESS_STUDIO_MONGO_BACKUP_OFFHOST_OK bucket=chess-studio-production-backups retained=1",
+        "CHESS_STUDIO_MONGO_BACKUP_OK timestamp=20260928T040000Z "
+        "bytes=123 retained=2 remote_retained=8 bucket=chess-studio-production-backups sha256=" + "a" * 64,
+    )
+    assert validate_output("\n".join(phases)).startswith(OK_MARKER)
+    for missing in phases:
+        try:
+            validate_output("\n".join(item for item in phases if item != missing))
+        except SystemExit as exc:
+            assert "phase marker" in str(exc)
+        else:
+            raise AssertionError(f"missing phase must fail closed: {missing}")
+    try:
+        validate_output("\n".join(phases).replace("source=oci-object-storage", "source=local-cache"))
+    except SystemExit as exc:
+        assert "not proven from Object Storage" in str(exc)
+    else:
+        raise AssertionError("backup must attest an actual remote restore")
+    assert "mktemp /tmp/chess-studio-mongo-backup.XXXXXX" in command
+    assert "umask 077" in command
+    assert "trap 'rm -f --" in command
+    assert "grep -E '^CHESS_STUDIO_MONGO_" in command
+    assert "tail -n 18" in command
     wrapper_source = Path(__file__).with_suffix(".sh").read_text(encoding="utf-8")
     for marker in (
         "chess-studio-production-backups",

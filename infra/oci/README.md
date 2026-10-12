@@ -80,6 +80,8 @@ Este scope existe para recuperar el contrato off-host de Mongo sin reciclar la A
 
 **Diagnóstico del 12-10-2026:** el apply one-shot del 07-10 creó el bucket privado y añadió `manage objects`, pero el backup off-host falló en `ObjectStorageClient.get_bucket` (404 `BucketNotFound`). `GetBucket` exige `BUCKET_READ` independientemente de `OBJECT_*`: se concede `read buckets` sólo donde `target.bucket.name='chess-studio-production-backups'`, nunca `manage buckets`. La reconciliación de Terraform y zero-drift **no acreditan** la copia: tras aplicar IAM hay que repetir `Production · Mongo weekly backup` y exigir upload, descarga, verificación y restauración scratch completos. El marcador one-shot se elimina únicamente después de esa prueba real.
 
+**Segunda incidencia del 12-10-2026:** tras corregir IAM, el reintento confirmó `CHESS_STUDIO_MONGO_BACKUP_OFFHOST_STAGED` y OCI Run Command terminó `SUCCEEDED`, pero la salida de `mongorestore` saturó el buffer de texto de OCI y ocultó `CHESS_STUDIO_MONGO_BACKUP_OK`. El orquestador captura los diagnósticos en un `mktemp` privado, emite sólo cuatro marcadores al completar y exige los cuatro, incluido `CHESS_STUDIO_MONGO_RESTORE_DRILL_OK source=oci-object-storage`. Un error real sigue mostrando las últimas líneas y conserva su código de salida. Sólo retirar el one-shot tras una ejecución del backup completamente verde.
+
 Operaciones:
 
 - `probe`: data-only; no state remoto y cero mutaciones.
