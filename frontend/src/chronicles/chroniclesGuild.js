@@ -8,6 +8,7 @@ import {
   chroniclesApplyContentEffects,
   chroniclesGoldBalance,
 } from './chroniclesContentRuntime.js';
+import { chroniclesTownCounterInReach } from './chroniclesTownCounterReach.js';
 import {
   CHRONICLES_SPELLS,
   chroniclesLearnSpell,
@@ -17,7 +18,7 @@ import {
 
 function guildEntry(state, map, guildId) {
   const entry = (map?.interactables || []).find((item) => item.id === guildId && item.guild);
-  if (!entry || entry.x !== state.x || entry.y !== state.y) return null;
+  if (!entry || !chroniclesTownCounterInReach(state, entry, map)) return null;
   return entry;
 }
 

@@ -107,11 +107,16 @@
 }
 .chronicles .chronicles-touch button.is-contextual small { color: #3a2304; }
 
-/* Map/menu captions and the mobile rotate key read as engraved too. */
-.chronicles .chronicles-statusbar .chronicles-map-trigger b,
+/* High-contrast ink on light stone, including Chromium/Brave forced-dark text.
+   Do not apply the override to attack, spell or contextual coloured slabs. */
+.chronicles .chronicles-statusbar .chronicles-map-trigger,
+.chronicles .chronicles-game-menu > summary,
+.chronicles .chronicles-touch button:not(.is-attack):not(.is-magic):not(.is-contextual),
+.chronicles .chronicles-statusbar .chronicles-map-trigger :is(b, i),
 .chronicles .chronicles-game-menu > summary b,
-.chronicles .chronicles-statusbar .chronicles-map-trigger i {
-  color: inherit;
+.chronicles .chronicles-touch button:not(.is-attack):not(.is-magic):not(.is-contextual) small {
+  color: #101014;
+  -webkit-text-fill-color: #101014;
 }
 .chronicles .chronicles-landscape-trigger {
   border: 2px solid;
