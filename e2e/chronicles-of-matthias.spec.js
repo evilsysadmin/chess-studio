@@ -278,9 +278,22 @@ test('Chronicles of Matthias · clic en un PJ abre una ficha RPG con retrato aut
   const sheet = page.getByRole('dialog', { name: 'Matthias', exact: true });
   await expect(sheet).toBeVisible();
   await expect(sheet.getByText('PROGRESIÓN', { exact: true })).toBeVisible();
+  const folio = sheet.getByRole('navigation', { name: 'Apartados de la ficha' });
+  await expect(folio).toBeVisible();
+  await expect(folio.getByRole('button', { name: /Estado/ })).toHaveAttribute('aria-pressed', 'true');
+  await expect(sheet.getByText('ESTADÍSTICAS', { exact: true })).toBeVisible();
+  await folio.getByRole('button', { name: /Equipo/ }).click();
   await expect(sheet.getByText('EQUIPO Y OBJETOS', { exact: true })).toBeVisible();
+  await expect(sheet.getByText('ESTADÍSTICAS', { exact: true })).toBeHidden();
+  await folio.getByRole('button', { name: /Mejoras/ }).click();
   await expect(sheet.getByText('ATRIBUTOS', { exact: true })).toBeVisible();
   await expect(sheet.getByText('TÉCNICAS Y GRIMORIO', { exact: true })).toBeVisible();
+  const partyDock = sheet.getByRole('navigation', { name: 'Seleccionar personaje de la compañía' });
+  await expect(partyDock.getByRole('button')).toHaveCount(4);
+  await partyDock.getByRole('button', { name: 'Ver ficha de Hildegard' }).click();
+  await expect(sheet.getByRole('heading', { name: 'Hildegard' })).toBeVisible();
+  await page.keyboard.press('1');
+  await expect(sheet.getByRole('heading', { name: 'Matthias' })).toBeVisible();
 
   const portrait = sheet.locator('.chronicles-character-sheet__portrait img');
   await expect(portrait).toBeVisible();
