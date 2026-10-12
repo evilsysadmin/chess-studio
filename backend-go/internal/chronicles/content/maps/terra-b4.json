@@ -94,11 +94,122 @@
       "visualType": "rookwood-mourner",
       "x": 5,
       "y": 4,
-      "persistentVisual": true,
-      "label": "Hablar con la granjera Tesa",
+      "when": [
+        {
+          "key": "b4TaxLeadStarted",
+          "falsy": true
+        }
+      ],
+      "label": "Preguntar a Tesa por los impuestos de los ausentes",
+      "action": {
+        "effects": [
+          {
+            "type": "set",
+            "key": "b4TaxLeadStarted",
+            "value": true
+          },
+          {
+            "type": "start-quest",
+            "questId": "tax-of-the-forgotten",
+            "title": "El impuesto de los ausentes",
+            "description": "En B4 cobran tributos incluso a vecinos cuyo recuerdo se ha borrado. El carbonero Bruno transportó las cuentas selladas.",
+            "objective": "Busca a Bruno en el Bosque Ceniciento (E4) y recupera el libro de tasas.",
+            "order": 40
+          }
+        ],
+        "message": "Tesa se aferra al delantal: «Aún nos cobran por doce vecinos que nadie recuerda. Bruno llevaba sus nombres anotados. Encuéntralo en el Bosque Ceniciento, E4».",
+        "journal": {
+          "id": "b4-tax-whispers",
+          "title": "Doce nombres ausentes",
+          "body": "La cuenta real exige tributos a personas que nadie recuerda. Bruno, en E4, vio el libro.",
+          "sigil": "◆"
+        }
+      }
+    },
+    {
+      "id": "b4-farmer-proof",
+      "kind": "lore",
+      "visualType": "rookwood-mourner",
+      "x": 5,
+      "y": 4,
+      "when": [
+        {
+          "questId": "tax-of-the-forgotten",
+          "questStatus": "active"
+        }
+      ],
+      "label": "Entregar a Tesa el libro de tasas",
+      "lockedLabel": "Tesa espera el libro de Bruno",
+      "requirements": [
+        {
+          "itemId": "forgotten-tax-ledger",
+          "quantity": 1,
+          "message": "Bruno guarda las cuentas en el Bosque Ceniciento (E4)."
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "claim-reward",
+            "rewardId": "terra:b4:tax-absent:v1",
+            "requirements": [
+              {
+                "questId": "tax-of-the-forgotten",
+                "questStatus": "active"
+              },
+              {
+                "itemId": "forgotten-tax-ledger",
+                "quantity": 1
+              }
+            ],
+            "effects": [
+              {
+                "type": "consume-item",
+                "itemId": "forgotten-tax-ledger",
+                "quantity": 1
+              },
+              {
+                "type": "complete-quest",
+                "questId": "tax-of-the-forgotten",
+                "objective": "Tesa conserva la prueba de los nombres borrados."
+              },
+              {
+                "type": "grant-gold",
+                "amount": 22
+              },
+              {
+                "type": "award-xp",
+                "awardId": "terra:b4:tax-absent:xp:v1",
+                "amount": 40
+              }
+            ]
+          }
+        ],
+        "message": "Tesa reconoce un nombre en el libro y se le rompe la voz: «Mi hermano. Decían que nunca existió». Conserva la prueba contra el Canciller y entrega 22 monedas a la compañía.",
+        "journal": {
+          "id": "b4-taxes-restored",
+          "title": "Los que no fueron olvidados",
+          "body": "El libro demuestra que el Canciller sigue cobrando a quienes el Silencio ha borrado. Tesa custodia sus nombres.",
+          "sigil": "◆"
+        }
+      }
+    },
+    {
+      "id": "b4-farmer-after",
+      "kind": "lore",
+      "visualType": "rookwood-mourner",
+      "x": 5,
+      "y": 4,
+      "when": [
+        {
+          "questId": "tax-of-the-forgotten",
+          "questStatus": "completed"
+        }
+      ],
+      "label": "Volver a hablar con Tesa",
       "action": {
         "effects": [],
-        "message": "La granjera Tesa: «Desde que el Rey falta, los recaudadores vienen dos veces. Uno de ellos llevaba un anillo de Ascuafría.»"
+        "message": "Tesa mantiene el libro envuelto bajo su camisa: «Ahora que recuerdo su nombre, no permitiré que lo borren otra vez»."
       }
     }
   ],
