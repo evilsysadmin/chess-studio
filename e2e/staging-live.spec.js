@@ -506,6 +506,12 @@ test('staging live · auth real → War Room v2 → recovery 3D → jugada real'
         && Boolean(gameId)
         && url.origin + url.pathname === `${STAGING_API_URL}/games/${gameId}`;
     }, { timeout: 60_000 });
+    // A successful lazy-import retry can recover the 3D board without an API reload.
+    const chunkRetryResponse = page.waitForResponse((response) => (
+      response.request().method() === 'GET'
+      && board3dChunkPattern.test(new URL(response.url()).pathname)
+      && response.status() === 200
+    ), { timeout: 60_000 });
     const errorBoundaryHeading = page.getByRole('heading', { name: 'La pantalla ha tropezado', exact: true });
 
     await page.getByRole('button', { name: 'Cambiar apariencia y piezas del tablero', exact: true }).click();
@@ -515,13 +521,13 @@ test('staging live · auth real → War Room v2 → recovery 3D → jugada real'
     await appearanceDialog.getByRole('button', { name: 'Cerrar', exact: true }).click();
 
     await expect.poll(() => failedBoard3DChunkOnce, { timeout: 10_000 }).toBe(true);
-    // Either recovery path can legitimately win. A hidden ErrorBoundary timing
-    // out must not reject the entire race while the API restore is still pending.
-    // Promise.any only fails if both recovery signals fail within their deadlines.
+    // A reload, explicit ErrorBoundary or successful same-page chunk retry
+    // can all be valid; the rendered board and real move below must still pass.
     const recovery = await Promise.any([
       restoreAfterChunkFailure.then((response) => ({ kind: 'restored', response })),
       errorBoundaryHeading.waitFor({ state: 'visible', timeout: 10_000 })
         .then(() => ({ kind: 'boundary', response: null })),
+      chunkRetryResponse.then((response) => ({ kind: 'retry', response })),
     ]);
 
     let restoredAfterChunkFailure = recovery.response;
@@ -532,9 +538,14 @@ test('staging live · auth real → War Room v2 → recovery 3D → jugada real'
       restoredAfterChunkFailure = await restoreAfterChunkFailure;
     }
 
-    expect(restoredAfterChunkFailure).toBeTruthy();
-    expect(restoredAfterChunkFailure.status()).toBe(200);
+    if (recovery.kind === 'retry') {
+      expect(recovery.response.status()).toBe(200);
+    } else {
+      expect(restoredAfterChunkFailure).toBeTruthy();
+      expect(restoredAfterChunkFailure.status()).toBe(200);
+    }
     await expect(warRoom3d).toBeVisible({ timeout: 30_000 });
+    await expect(warRoomCanvas).toBeVisible({ timeout: 30_000 });
     await expect(warRoomSignal).toBeVisible();
     await expect(warRoomGameStatus).not.toHaveText('');
     await expect(page.locator('.error-boundary-screen')).toHaveCount(0);
