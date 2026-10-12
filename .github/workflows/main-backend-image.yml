@@ -199,7 +199,7 @@ jobs:
         if: >-
           runner.arch == 'X64' &&
           (steps.reuse.outputs.hit == 'false' || steps.reuse_pvp.outputs.hit == 'false')
-        uses: docker/setup-qemu-action@v3
+        uses: docker/setup-qemu-action@v4
         with:
           platforms: arm64
 

@@ -109,7 +109,7 @@ jobs:
             --logical-id home.play.rook.runtime \
             --prefix home/play/rook
           python3 -S scripts/r2_asset_publish.py check-manifest
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: home-r2-manifest-${{ github.sha }}
           path: frontend/src/assets/r2-assets-manifest.json
