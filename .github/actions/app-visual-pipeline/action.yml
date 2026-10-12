@@ -104,6 +104,28 @@ runs:
             APP_VISUAL_BASE_SHA="$base_sha" APP_VISUAL_HEAD_SHA="$head_sha" \
             python3 -S scripts/app_visual_changed_files.py
         )"
+        # A PR touching only the expedition book plus visual-pipeline plumbing
+        # still receives real desktop / portrait / landscape screenshots and
+        # functional entry assertions, without rerunning every dungeon encounter.
+        # Any other product file fails closed into the complete Chronicles suite.
+        if [[ "$GITHUB_EVENT_NAME" == "pull_request" ]]; then
+          menu_only=true
+          menu_touched=false
+          while IFS= read -r changed; do
+            [[ -z "$changed" ]] && continue
+            case "$changed" in
+              frontend/src/components/ChroniclesSaveMenu.css|frontend/src/components/ChroniclesSaveMenu.jsx)
+                menu_touched=true ;;
+              scripts/app_visual_capture.sh|.github/actions/app-visual-pipeline/action.yml)
+                : ;;
+              *) menu_only=false ;;
+            esac
+          done <<< "$files"
+          if [[ "$menu_only" == true && "$menu_touched" == true ]]; then
+            echo "chronicles_save_only=true" >> "$GITHUB_OUTPUT"
+            echo "Chronicles visual scope: expedition-book-only, three live browser viewports."
+          fi
+        fi
         printf '%s\n' "$files"
         if [[ "$scoped_files" != "$files" ]]; then
           echo 'Normalized visual ownership:'
@@ -213,6 +235,7 @@ runs:
         APP_VISUAL_WARROOM_VARIANTS: ${{ steps.scope.outputs.warroom_variants }}
         APP_VISUAL_WARROOM_PROFILE_SCOPE: ${{ steps.scope.outputs.warroom_profile_scope }}
         APP_VISUAL_HOME_PROFILE_SCOPE: ${{ steps.scope.outputs.home_profile_scope }}
+        APP_VISUAL_CHRONICLES_SAVE_ONLY: ${{ steps.scope.outputs.chronicles_save_only }}
       shell: bash
       run: |
         set -euo pipefail

@@ -142,6 +142,14 @@ case "$mode" in
     fi
 
     playwright_args=(--workers=1 --retries=0)
+    # Only the expedition book changed: reuse three existing real-browser
+    # First Book cases. openChronicles() already asserts all six live actions,
+    # AVIF decoding, short-landscape bounds and captures each book PNG.
+    # Gameplay / shared-renderer changes still run the full 34+ test producer.
+    if [[ "${APP_VISUAL_CHRONICLES_SAVE_ONLY:-false}" == "true" && "$groups" == "experiments" && "$experiments_scope" == "chronicles" && "$producer_scope" == "chronicles-gameplay" ]]; then
+      playwright_args+=(--grep 'Chronicles · First Book actual authored city')
+      echo "Chronicles book-only proof: 1440×900 / 390×844 / 844×390 via existing First Book E2E."
+    fi
     if [[ "${GITHUB_EVENT_NAME:-}" == "pull_request" ]]; then
       playwright_args+=(--max-failures=1)
     fi
