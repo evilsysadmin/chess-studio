@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
-import './ChroniclesCharacterSheetMM3.css';
 import {
   CHRONICLES_GOLD_ITEM_ID,
   chroniclesGoldBalance,
