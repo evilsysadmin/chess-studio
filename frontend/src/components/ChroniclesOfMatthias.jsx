@@ -655,8 +655,8 @@ export default function ChroniclesOfMatthias({ onExit }) {
         };
         authoritativeRunRef.current = world;
         chroniclesMarkSavedRunRemote(FIRST_PERSON_RUN_SCOPE, operationId);
-        // Compare against the server snapshot so the new commission is written
-        // immediately and survives F5 even before the first movement.
+        // Record the authoritative bootstrap as our comparison baseline.
+        // New runs have no durable checkpoint until an explicit Save or area exit.
         checkpointFingerprintRef.current = chroniclesRunCheckpointFingerprint(restored);
         checkpointMapRef.current = next.mapId;
         checkpointExistsRef.current = remoteSelection || Number(world.worldVersion || 0) > 0;
@@ -748,7 +748,10 @@ export default function ChroniclesOfMatthias({ onExit }) {
     const request = checkpointQueueRef.current.catch(() => undefined).then(async () => {
       const currentRun = authoritativeRunRef.current;
       if (!currentRun?.runId || currentRun.runId !== requestedRunId) return false;
-      if (fingerprint !== checkpointFingerprintRef.current) {
+      // A pristine first-person run must still write its *first* checkpoint.
+      // Equal fingerprints only permit skipping a write if a durable
+      // authoritative world snapshot already exists.
+      if (!checkpointExistsRef.current || fingerprint !== checkpointFingerprintRef.current) {
         const updated = await chroniclesCheckpointState(
           requestedRunId, snapshot, currentRun.worldVersion,
           { terminalStatus: snapshot.phase === 'escaped' ? 'completed' : null },
