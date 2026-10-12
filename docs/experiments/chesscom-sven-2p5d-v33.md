@@ -41,3 +41,40 @@ python3 scripts/art/chesscom_sven_bank_v38.py \\
 ```
 
 Entrega candidato `sven-bank-v1.webp` (WebP **lossless**, SHA-256 comprobado, máximo 8 MiB) y `sven-bank-v1.json`, no copia ni publica automáticamente bajo `frontend/public`, R2 o producción. La estructura de atlas dispone seis strips horizontales con ocho direcciones en filas, 1536×1536 en total; el manifiesto mantiene las coordenadas escritas desde arriba e incluye pivote exacto para V37. No equivale a validación visual, aceptación humana, trazabilidad de licencias ni benchmark GPU, y el maestro GLB Quaternius sigue siendo solo candidato externo.
+
+
+## V40 — originales propios de Sven, auditoría de rig y turntable sin sustitutos
+
+**Nuestros diseños siguen siendo el canon.** En el repositorio están los originales versionados
+`frontend/public/chesscom/sven-portrait.svg`,
+`frontend/public/chesscom/dieter-portrait.svg` y
+`frontend/public/chesscom/sven-probe-ne.webp` (recorte experimental de la
+lámina aprobada). `scripts/art/chesscom_owned_master_v40.py --references-only`
+verifica sus tres Git blob SHA fijados y bloquea sustituciones accidentales.
+
+No consta todavía en el repositorio el **master GLB propio editable y riggeado**,
+ni el concept sheet completo como fuente editable. **No inferir un GLB a partir de un
+retrato o un único PNG frontal.** El recorte de Sven es evidencia visual parcial,
+no un banco de ocho vistas ni un modelo 3D completo.
+
+Cuando se prepare el GLB *basado en nuestro diseño*, registrar un SHA-256 inmutable
+del binario y ejecutar:
+
+```bash
+python3 scripts/art/chesscom_owned_master_v40.py \
+  --master-glb /ruta/al/sven-original.glb --sha256 SHA256_EXACTO
+blender --background -noaudio --python-exit-code 20 \
+  --python scripts/blender/chesscom_sven_owned_preview_v40.py -- \
+  --master-glb /ruta/al/sven-original.glb \
+  --sha256 SHA256_EXACTO --output-dir /tmp/chesscom-sven-owned-preview
+```
+
+El auditor exige un GLB 2.0 auténtico, rig con al menos 12 joints,
+cabeza/manos/pies de ambos lados, malla skinned con pesos, fusil como malla
+identificable y hash exacto. Detecta **capacidad técnica mínima**; no verifica
+autoría, calidad de modelado, buen contacto arma/manos, ni licencia del
+GLB por sí solo. El turntable de Blender produce ocho PNG de 256×384
+y manifiesto marcado `review_only`; **no descarga modelos de terceros,
+no produce fotogramas falsos, no publica nada a R2 ni cambia el runtime**.
+La comparación visual con nuestra referencia aprobada es obligatoria antes
+de avanzar a los 96 frames de V38. El 3D actual sigue siendo el fallback.
