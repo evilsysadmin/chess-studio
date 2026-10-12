@@ -1,4 +1,5 @@
 import { Chess } from 'chess.js';
+import { schoolVerifiedMoveConsequence } from './SchoolMoveConsequences.js';
 
 /**
  * Rebuild only the moves ALREADY applied on the real School board.
@@ -35,6 +36,7 @@ export function buildSchoolPlayedMoveTrail({ fen, line = [], lineIndex = 0 } = {
       san: move.san,
       auto: Boolean(step.auto),
       note: step.note || null,
+      insight: step.auto ? null : schoolVerifiedMoveConsequence(board, move),
     }));
   }
   return played;

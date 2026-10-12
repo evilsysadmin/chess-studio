@@ -10,6 +10,7 @@ import SchoolBoard, { getSchoolBoardRenderer } from './SchoolBoard.jsx';
 import { buildSchoolTeachingLayers } from './SchoolTeachingLayers.js';
 import { buildSchoolMovePlayback, schoolPlaybackDelay } from './SchoolMovePlayback.js';
 import { buildSchoolPlayedMoveTrail } from './SchoolPlayedMoveTrail.js';
+import { schoolRejectedMoveFact } from './SchoolMoveConsequences.js';
 import useSchoolExplanationDemo from './useSchoolExplanationDemo.js';
 import { SchoolExplanationActions, SchoolExplanationStatus } from './SchoolExplanationView.jsx';
 import {
@@ -220,7 +221,7 @@ export default function Tutorial({ onExit }) {
     }
   }
 
-  function recordMiss(kind, { danger = [], square = null, selectedSquare = selected } = {}) {
+  function recordMiss(kind, { danger = [], square = null, selectedSquare = selected, verifiedFact = null } = {}) {
     if (masteryReplay !== 'active') setSchoolProgress(incrementMatthiasSchoolAttempt(lesson.id));
     const consumesMistake = schoolCoachIncidentConsumesMistake(kind);
     const nextMistakes = mistakes + (consumesMistake ? 1 : 0);
@@ -234,16 +235,17 @@ export default function Tutorial({ onExit }) {
       repeatCount: nextContext.count,
       revealExpected: !lesson.exam && masteryReplay !== 'active',
     });
+    const groundedText = verifiedFact ? text + ' ' + verifiedFact : text;
     coachIncidentRef.current = nextContext;
     setMistakes(nextMistakes);
     setSelected(null);
     setHintActive(false);
     setDangerSquares(danger);
     if (lesson.exam && consumesMistake && nextMistakes > Number(lesson.maxMistakes || 0)) {
-      announceCoach({ tone: 'retry', text: `Suspendido. ${text} Ha agotado el margen del examen. Repita cuando quiera; prefiero eso a promocionarle por lástima.` });
+      announceCoach({ tone: 'retry', text: `Suspendido. ${groundedText} Ha agotado el margen del examen. Repita cuando quiera; prefiero eso a promocionarle por lástima.` });
       return;
     }
-    announceCoach({ tone: 'retry', text });
+    announceCoach({ tone: 'retry', text: groundedText });
   }
 
   function resetLesson({ keepCoach = false, clearFailure = true, announce = false, keepMastery = false } = {}) {
@@ -414,7 +416,14 @@ export default function Tutorial({ onExit }) {
     }
 
     if (selected !== expected.from || square !== expected.to) {
-      recordMiss('off-objective', { danger: [square], square, selectedSquare: selected });
+      const verifiedFact = schoolRejectedMoveFact({
+        fen: practiceFen,
+        from: selected,
+        to: square,
+        exam: lesson.exam,
+        noHints: masteryReplay === 'active',
+      });
+      recordMiss('off-objective', { danger: [square], square, selectedSquare: selected, verifiedFact });
       return;
     }
 
@@ -635,6 +644,12 @@ export default function Tutorial({ onExit }) {
                                 <span>{move.auto ? 'Rival' : 'Tú'}</span>
                                 <b>{move.moveNumber}{move.color === 'w' ? '.' : '…'} {move.san}</b>
                                 {move.note && <small>{move.note}</small>}
+                                {move.insight && (
+                                  <details className="matthias-school-move-insight">
+                                    <summary>Qué cambió</summary>
+                                    <p>{move.insight}</p>
+                                  </details>
+                                )}
                               </li>
                             ))}
                           </ol>
