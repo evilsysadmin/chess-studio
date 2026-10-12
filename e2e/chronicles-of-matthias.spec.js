@@ -66,6 +66,33 @@ test('Chronicles · primera partida sólo se escribe al guardar y Salir sin guar
   expect(checkpointRequests, 'discarding must not checkpoint unsaved movement').toHaveLength(1);
 });
 
+test('Chronicles · Salir sin guardar cierra incluso cuando DELETE de run nueva falla', async ({ page }) => {
+  test.setTimeout(180_000);
+  const checkpointRequests = [];
+  page.on('request', (request) => {
+    if (request.method() === 'PUT' && /\/api\/chronicles\/runs\/[^/]+\/checkpoint$/.test(new URL(request.url()).pathname)) {
+      checkpointRequests.push(request.url());
+    }
+  });
+  await openChronicles(page, { chroniclesCurrentMapId: 'swordhaven-first-book', newTown: true, newCampaign: true });
+  const game = page.locator('[data-chronicles="true"]');
+  await expect(game).toBeVisible();
+  let deleted = 0;
+  await page.route('**/api/chronicles/runs/*', async (route) => {
+    if (route.request().method() !== 'DELETE') return route.fallback();
+    deleted += 1;
+    return route.fulfill({ status: 503, contentType: 'application/json', body: '{"detail":"staging unavailable"}' });
+  });
+  await page.keyboard.press('Escape');
+  const menu = game.locator('.chronicles-game-menu');
+  await menu.getByRole('button', { name: 'Salir sin guardar', exact: true }).click();
+  await menu.getByRole('button', { name: 'Sí, salir sin guardar', exact: true }).click();
+  // UI exit is synchronous; backend deletion runs after navigation and cannot block it.
+  await expect(game).toHaveCount(0);
+  await expect.poll(() => deleted).toBe(1);
+  expect(checkpointRequests, 'discarding a fresh run must not create a checkpoint').toHaveLength(0);
+});
+
 test('Chronicles · nueva campaña crea una partida versionada de Swordhaven sin tocar el juego clásico', async ({ page }) => {
   test.setTimeout(180_000);
   const creationBodies = [];
