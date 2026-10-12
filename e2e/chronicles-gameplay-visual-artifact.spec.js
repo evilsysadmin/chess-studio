@@ -83,6 +83,22 @@ async function openChronicles(page, captureLabel, {
   const entry = page.locator('[data-chronicles-save-menu]');
   await expect(entry).toBeVisible({ timeout: 10_000 });
   await expect(entry.getByText('Consultando expediciones del servidor…')).toBeHidden({ timeout: 15_000 });
+  // Approved expedition study must really load from the built frontend, with
+  // accessible live controls layered over the decorative, browser-chrome-free art.
+  await expect(entry).toHaveAttribute('data-chronicles-art', 'approved-expedition-study-v1');
+  await expect(entry.locator('.chronicles-save-menu__actions > button')).toHaveCount(6);
+  for (const name of ['Nueva campaña', 'Nuevo juego', 'Continuar partida', 'Cargar juego', 'Gestionar partidas', 'Volver al castillo']) {
+    await expect(entry.getByRole('button', { name: new RegExp(name) })).toBeVisible();
+  }
+  expect(await entry.locator('.chronicles-save-menu__sky').evaluate(async (sky) => {
+    const bg = getComputedStyle(sky).backgroundImage;
+    const match = bg.match(/url\\(["']?([^"')]+)["']?\\)/);
+    if (!match) return false;
+    const image = new Image();
+    image.src = match[1];
+    await image.decode();
+    return image.naturalWidth >= 400 && image.naturalHeight >= 580;
+  }), 'approved AVIF scene loads in runtime').toBe(true);
   if (captureLabel.includes('android-landscape')) {
     // A 390px-high viewport must show all home actions without hidden scrolling.
     const returnButton = entry.getByRole('button', { name: 'Volver al castillo', exact: true });
