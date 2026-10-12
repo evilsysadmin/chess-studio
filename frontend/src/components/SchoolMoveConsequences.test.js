@@ -38,8 +38,8 @@ describe('Matthias verified School move consequences', () => {
 
   it('only describes an actually legal rejected move, and only with guidance allowed', () => {
     const input = { fen: '4k3/8/8/8/8/8/8/K2Q4 w - - 0 1', from: 'd1', to: 'h5' };
-    expect(schoolRejectedMoveFact(input)).toMatch(/Qh5\+ es legal/);
-    expect(schoolRejectedMoveFact(input)).toContain('no cumple el objetivo');
+    expect(schoolRejectedMoveFact(input)).toMatch(/Qh5\+: Jaque comprobado/);
+    expect(schoolRejectedMoveFact(input)).not.toMatch(/debe mover|jugada correcta|la solución/i);
     expect(schoolRejectedMoveFact({ ...input, exam: true })).toBeNull();
     expect(schoolRejectedMoveFact({ ...input, noHints: true })).toBeNull();
     expect(schoolRejectedMoveFact({ ...input, to: 'd2' })).toBeNull();

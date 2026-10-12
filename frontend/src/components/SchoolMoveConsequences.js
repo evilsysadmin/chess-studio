@@ -45,7 +45,7 @@ export function schoolRejectedMoveFact({ fen, from, to, exam = false, noHints = 
     const move = board.move({ from, to, promotion: 'q' });
     const fact = move && schoolVerifiedMoveConsequence(board, move);
     if (!fact) return null;
-    return move.san + ' es legal. ' + fact + ' Sin embargo, no cumple el objetivo de esta lección.';
+    return move.san + ': ' + fact;
   } catch {
     return null;
   }
