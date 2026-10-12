@@ -954,6 +954,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
   const activeQuests = chroniclesQuestLogEntries(state).filter((quest) => quest.status === 'active');
   const expeditionOver = state.phase === 'defeated' || state.phase === 'escaped';
   const contextualAction = chroniclesContextualContentAction(state);
+  const npcAtPosition = chroniclesNpcDialogueForState(state, contextualAction);
   const activeInitiativeActor = chroniclesCurrentInitiativeActor(state.initiative);
   // In combat the hero whose turn it is casts; exploring, the selected one.
   const caster = activeInitiativeActor?.kind === 'party'
@@ -1184,7 +1185,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
                     data-chronicles-touch-action="interact"
                     onClick={interactWithContext}
                     aria-label={contextualAction.label}
-                  >✦<small>{contextualAction.id === CHRONICLES_SWORDHAVEN_RETURN_PORTAL_ID ? 'VOLVER' : 'USAR'}</small></button>
+                  >✦<small>{contextualAction.id === CHRONICLES_SWORDHAVEN_RETURN_PORTAL_ID ? 'VOLVER' : npcAtPosition ? 'ENTRAR' : 'USAR'}</small></button>
                 )}
                 <button
                   type="button"
