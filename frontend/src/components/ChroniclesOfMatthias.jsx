@@ -331,9 +331,12 @@ export default function ChroniclesOfMatthias({ onExit }) {
     if (!current) return;
 
     const actionType = typeof action === 'string' ? action : action?.type;
+    // A held touch control must not keep moving the expedition behind an NPC.
+    // The deliberate dialogue quest option alone may invoke 'interact'.
+    if (audienceRef.current && actionType !== 'interact') return current;
     // A door in an MM3 town opens an audience instead of silently awarding
     // a quest from a stone wall. One more step into the facade enters.
-    if (actionType === 'forward') {
+    if (actionType === 'forward' && !current.initiative && current.phase === 'explore') {
       const face = CHRONICLES_DIRECTIONS[current.direction];
       const map = chroniclesMapForState(current);
       const nextTile = face ? map?.grid?.[current.y + face.dy]?.[current.x + face.dx] : null;
