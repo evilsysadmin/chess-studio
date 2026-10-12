@@ -113,6 +113,8 @@ import './ChroniclesPartyCondition.css';
 import './ChroniclesPartyThumbnails.css';
 import './ChroniclesRecoveredRelic.css';
 import './ChroniclesMM3Chrome.css';
+// The first-person folio must override both base and old MM3 chrome styles.
+import './ChroniclesCharacterSheetMM3.css';
 
 const KEY_ACTIONS = Object.freeze({
   ArrowUp: 'forward', w: 'forward', W: 'forward',
@@ -1245,6 +1247,12 @@ export default function ChroniclesOfMatthias({ onExit }) {
           member={sheetMember}
           mode="first-person"
           onClose={() => setSheetMemberId(null)}
+          onSelectMember={(memberId) => {
+            if (!stateRef.current?.party.some((candidate) => candidate.id === memberId)) return;
+            selectedMemberIdRef.current = memberId;
+            setSelectedMemberId(memberId);
+            setSheetMemberId(memberId);
+          }}
           onAllocateAttribute={allocateAttribute}
           onLearnSkill={learnSkill}
           onEquipmentAction={(action) => dispatch({ ...action, memberId: sheetMember.id })}
