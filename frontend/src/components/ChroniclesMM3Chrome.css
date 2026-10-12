@@ -176,7 +176,7 @@
   border: 2px solid;
   border-color: var(--mm3-hi) var(--mm3-lo) var(--mm3-lo) var(--mm3-hi);
   border-radius: 0;
-  background: #62626b var(--mm3-stone) 0 0 / 128px 128px;
+  background: #5d5d65 var(--mm3-stone) 0 0 / 128px 128px;
   background-blend-mode: multiply;
   image-rendering: pixelated;
   color: #f4f1e9;
@@ -185,7 +185,7 @@
 .chronicles .chronicles-party-member strong { color: #f4f1e9; text-shadow: 1px 1px 0 rgba(0, 0, 0, .7); }
 .chronicles .chronicles-party-member small { color: #dddde5; }
 .chronicles .chronicles-party-member b { color: #b8edb3; }
-.chronicles .chronicles-party-member .chronicles-party-sp { color: #abcfff; }
+.chronicles .chronicles-party-member .chronicles-party-sp { color: #c6dfff; }
 .chronicles .chronicles-party-member.is-leader {
   border-color: var(--mm3-hi) var(--mm3-lo) var(--mm3-lo) var(--mm3-hi);
 }
@@ -808,7 +808,7 @@
     color: #b8edb3;
     text-shadow: 1px 0 0 currentColor, 1px 1px 0 rgba(0, 0, 0, .7);
   }
-  .chronicles .chronicles-party-member > b .chronicles-party-sp { color: #abcfff; }
+  .chronicles .chronicles-party-member > b .chronicles-party-sp { color: #c6dfff; }
   .chronicles .chronicles-party-member.is-selected {
     border-color: #fff36a #8a6a00 #8a6a00 #fff36a;
     box-shadow: 0 0 0 1px #141416, 0 0 0 3px #f2e33a;
