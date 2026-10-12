@@ -41,6 +41,26 @@ test('Escuela · el cuaderno de Matthias conserva contexto y se puede compactar'
   await expect(trail).toContainText('Tú');
   await expect(trail).not.toContainText('e5');
   await testInfo.attach('school-coach-played-moves-desktop', { body: await page.screenshot(), contentType: 'image/png' });
+  await expect(trail.locator('details')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Repetir', exact: true }).click();
+  await expect(trail).toHaveCount(0);
+
+  // A real captured piece earns an opt-in explanation, not a generic verdict.
+  await board.getByRole('button', { name: /^Casilla e2, peón blanco/ }).click();
+  await board.getByRole('button', { name: /^Casilla e4, vacía/ }).click();
+  await expect(board).toHaveAttribute('data-school-playback', 'idle');
+  await coach.getByRole('button', { name: 'Siguiente lección' }).click();
+  await expect(trail).toHaveCount(0);
+  await board.getByRole('button', { name: /^Casilla e2, peón blanco/ }).click();
+  await board.getByRole('button', { name: /^Casilla f3, caballo negro/ }).click();
+  await expect(board).toHaveAttribute('data-school-playback', 'idle');
+  const detailCapture = trail.locator('.matthias-school-move-insight');
+  await expect(detailCapture).toHaveCount(1);
+  await expect(detailCapture).not.toHaveAttribute('open', '');
+  await detailCapture.locator('summary').click();
+  await expect(detailCapture).toContainText('caballo rival');
+  await expect(detailCapture).toHaveAttribute('open', '');
+  await testInfo.attach('school-coach-capture-context-desktop', { body: await page.screenshot(), contentType: 'image/png' });
   await page.getByRole('button', { name: 'Repetir', exact: true }).click();
   await expect(trail).toHaveCount(0);
 });

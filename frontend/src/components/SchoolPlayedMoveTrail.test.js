@@ -9,7 +9,7 @@ describe('School played move trail', () => {
     const opening = lesson('opening-development');
     expect(buildSchoolPlayedMoveTrail({ fen: opening.fen, line: opening.line, lineIndex: 0 })).toEqual([]);
     expect(buildSchoolPlayedMoveTrail({ fen: opening.fen, line: opening.line, lineIndex: 1 }))
-      .toMatchObject([{ moveNumber: 1, san: 'e4', color: 'w', auto: false }]);
+      .toMatchObject([{ moveNumber: 1, san: 'e4', color: 'w', auto: false, insight: null }]);
     expect(buildSchoolPlayedMoveTrail({ fen: opening.fen, line: opening.line, lineIndex: 2 }))
       .toMatchObject([
         { moveNumber: 1, san: 'e4', color: 'w', auto: false },
@@ -19,7 +19,9 @@ describe('School played move trail', () => {
 
   it('reconstructs SAN, including captures, promotion and mate, from legal chess', () => {
     const capture = lesson('pawn-capture');
-    expect(buildSchoolPlayedMoveTrail({ fen: capture.fen, line: capture.line, lineIndex: 1 })[0]?.san).toBe('exf3');
+    const captured = buildSchoolPlayedMoveTrail({ fen: capture.fen, line: capture.line, lineIndex: 1 })[0];
+    expect(captured?.san).toBe('exf3');
+    expect(captured?.insight).toMatch(/caballo rival/);
     const promo = lesson('promotion-capture');
     expect(buildSchoolPlayedMoveTrail({ fen: promo.fen, line: promo.line, lineIndex: 1 })[0]?.san).toMatch(/^gxh8=Q/);
     const exam = lesson('mate-one');
