@@ -7,6 +7,7 @@ import {
   chesscomSvenMovementFacingV36 as motionFacing,
   chesscomSvenEffectiveFacingV36 as effectiveFacing,
   chesscomSvenAtlasFrameV35 as frame,
+  chesscomSvenAtlasGroundPivotV37 as groundPivot,
   chesscomVerifySvenAtlasBytesV35 as verify,
   installChesscomSvenAtlasV35 as install,
 } from './chesscomSvenAtlasV35.js';
@@ -97,5 +98,44 @@ describe('CHESSCOM V36 real walking-direction sprite facing',()=>{
     expect(()=>motionFacing(null,cam)).toThrow(RangeError);
     expect(()=>motionFacing(move(0,0,1,0),null)).toThrow(RangeError);
     expect(()=>motionFacing(move(0,0,1,0),cam,'SIDE')).toThrow(RangeError);
+  });
+});
+
+describe('CHESSCOM V37 atlas feet remain on the tactical tile',()=>{
+  const cell={width:128,height:192};
+  const height=1.72;
+  it('places the authored foot pivot exactly at local unit ground for every valid padding',()=>{
+    for(const pivot of [
+      {x:64,y:180},
+      {x:64,y:150},
+      {x:46,y:175},
+      {x:90,y:183},
+    ]){
+      const center=groundPivot(cell,pivot,height);
+      // Pixel coordinates are top-left authored, while the Babylon quad has a
+      // centred local coordinate system with positive Y upward.
+      const localFootX=(pivot.x-cell.width/2)/cell.height*height;
+      const localFootY=(cell.height/2-pivot.y)/cell.height*height;
+      expect(center.x+localFootX).toBeCloseTo(0,10);
+      expect(center.y+localFootY).toBeCloseTo(0,10);
+      expect(center.z).toBe(0);
+      expect(Math.abs(center.x)).toBeLessThan(height);
+      expect(Math.abs(center.y)).toBeLessThan(height);
+    }
+  });
+  it('does not mistake blank pixels beneath the feet for additional character height',()=>{
+    const highPivot=groundPivot(cell,{x:64,y:150},height);
+    const lowPivot=groundPivot(cell,{x:64,y:180},height);
+    expect(highPivot.y).toBeLessThan(lowPivot.y);
+    expect(lowPivot.y).toBeLessThan(height*.5);
+    expect(groundPivot(cell,{x:64,y:96},height).y).toBe(0);
+  });
+  it('rejects unusable or corrupt geometry before creating Babylon meshes',()=>{
+    expect(()=>groundPivot(cell,{x:128,y:180})).toThrow(RangeError);
+    expect(()=>groundPivot(cell,{x:64,y:192})).toThrow(RangeError);
+    expect(()=>groundPivot(cell,{x:-1,y:180})).toThrow(RangeError);
+    expect(()=>groundPivot(cell,{x:64,y:NaN})).toThrow(RangeError);
+    expect(()=>groundPivot({width:0,height:192},{x:0,y:180})).toThrow(RangeError);
+    expect(()=>groundPivot(cell,{x:64,y:180},Infinity)).toThrow(RangeError);
   });
 });

@@ -91,6 +91,26 @@ export async function chesscomVerifySvenAtlasBytesV35(buffer,expected,subtle=glo
   return hex===expected.toLowerCase();
 }
 
+/**
+ * The pixel at pivot{x,y} is the character's ground anchor, not the sprite's
+ * canvas bottom. Convert authored top-left pixel coordinates into the centre
+ * of a Babylon quad. This keeps the feet on the unit tile regardless of how
+ * much transparent padding is below the authored pivot.
+ */
+export function chesscomSvenAtlasGroundPivotV37(cell,pivot,height=CHESSCOM_SVEN_ATLAS_V35.height){
+  if(!Number.isFinite(height)||height<=0
+    ||!Number.isSafeInteger(cell?.width)||cell.width<=0
+    ||!Number.isSafeInteger(cell?.height)||cell.height<=0
+    ||!Number.isSafeInteger(pivot?.x)||pivot.x<0||pivot.x>=cell.width
+    ||!Number.isSafeInteger(pivot?.y)||pivot.y<0||pivot.y>=cell.height)
+    throw new RangeError('Invalid authored sprite foot pivot');
+  return Object.freeze({
+    x:(cell.width/2-pivot.x)/cell.height*height,
+    y:(pivot.y-cell.height/2)/cell.height*height,
+    z:0,
+  });
+}
+
 export function installChesscomSvenAtlasV35(B,scene,{host,search='',loadManifest,loadAtlasBytes}={}){
   if(!chesscomSvenAtlasEnabledV35(search)){
     return {update(){},destroy(){},ready:Promise.resolve(false)};
@@ -125,11 +145,8 @@ export function installChesscomSvenAtlasV35(B,scene,{host,search='',loadManifest
     },scene);
     plane.parent=root;
     // Adjust the quad to the real bank's foot pivot, not canvas bottom.
-    plane.position.set(
-      (bank.cell.width/2-bank.pivot.x)/bank.cell.height*CHESSCOM_SVEN_ATLAS_V35.height,
-      (bank.cell.height/2+(bank.cell.height-bank.pivot.y))/bank.cell.height*CHESSCOM_SVEN_ATLAS_V35.height,
-      0,
-    );
+    const ground=chesscomSvenAtlasGroundPivotV37(bank.cell,bank.pivot);
+    plane.position.set(ground.x,ground.y,ground.z);
     plane.billboardMode=B.Mesh.BILLBOARDMODE_ALL;
     plane.material=material;
     plane.metadata={type:'unit',id:'sven',friendly:true,spriteBank:CHESSCOM_SVEN_ATLAS_V35.identity};
