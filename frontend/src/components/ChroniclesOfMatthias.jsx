@@ -113,6 +113,8 @@ import './ChroniclesPartyCondition.css';
 import './ChroniclesPartyThumbnails.css';
 import './ChroniclesRecoveredRelic.css';
 import './ChroniclesMM3Chrome.css';
+// The first-person folio must override both base and old MM3 chrome styles.
+import './ChroniclesCharacterSheetMM3.css';
 
 const KEY_ACTIONS = Object.freeze({
   ArrowUp: 'forward', w: 'forward', W: 'forward',
