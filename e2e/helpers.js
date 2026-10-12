@@ -70,6 +70,11 @@ async function chroniclesE2ERunPayload({
     worldVersion: 0,
     consumedContentIds: [],
     claimedRewards: [],
+    // Mirror server's one-time Book One creation purse; GET bootstrap reuses
+    // this persisted row, rather than granting gold every time React mounts.
+    inventory: currentMapId === 'swordhaven-first-book'
+      ? { 'crown-gold': { id: 'crown-gold', name: 'Monedas de oro', description: 'Moneda del reino, aceptada por los comerciantes.', quantity: 20 } }
+      : {},
     ...((worldFlags || defeated) ? {
       worldFlags: {
         ...(worldFlags && typeof worldFlags === 'object' ? worldFlags : {}),
