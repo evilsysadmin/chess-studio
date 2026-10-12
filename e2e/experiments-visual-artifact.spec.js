@@ -259,6 +259,24 @@ async function withChessFootballCapturePage(browser, capture, callback) {
     });
     await development.locator('summary').click();
     await lineupPanel.locator(':scope > details > summary').click();
+    for (let day = 5; day <= 10; day += 1) {
+      await welcome.getByRole('button', { name: 'Simular siguiente jornada', exact: true }).click();
+    }
+    const renewal = welcome.getByLabel('Cierre de temporada');
+    await expect(renewal).toContainText('Temporada 1 completada');
+    await captureFrozenFrame(page, {
+      path: `${ARTIFACT_DIR}/chess-football-renewal-${capture.label}.png`,
+      fullPage: true,
+    });
+    await welcome.getByRole('button', { name: 'Comenzar temporada 2', exact: true }).click();
+    await expect(welcome).toContainText('Temporada 2 de 4');
+    await expect(welcome.getByLabel('Historial del club')).toBeVisible();
+    expect(await welcome.evaluate(node => node.scrollWidth > node.clientWidth + 1),
+      'Manager second season: no horizontal overflow').toBe(false);
+    await captureFrozenFrame(page, {
+      path: `${ARTIFACT_DIR}/chess-football-second-season-${capture.label}.png`,
+      fullPage: true,
+    });
     await welcome.locator('.chess-football-entry__back').click();
     await welcome.locator('.chess-football-entry__back').click();
     await welcome.getByRole('button', { name: 'Volver a elegir modo' }).click();
@@ -273,7 +291,8 @@ async function withChessFootballCapturePage(browser, capture, callback) {
       fullPage: true,
     });
     await resume.click();
-    await expect(welcome).toContainText('Jornada 4 de 10');
+    await expect(welcome).toContainText('Temporada 2 de 4');
+    await expect(welcome).toContainText('Jornada 0 de 10');
     await welcome.locator('.chess-football-entry__back').click();
     await welcome.locator('.chess-football-entry__back').click();
     await welcome.locator('.chess-football-entry__back').click();
