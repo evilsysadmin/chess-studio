@@ -44,3 +44,30 @@ def test_authoritative_save_inventory_and_deletion_are_owner_scoped(monkeypatch)
         assert len(await chronicles_run_store.list_active_runs("bob")) == 1
 
     asyncio.run(scenario())
+
+
+def test_book_one_starting_purse_is_owned_by_run_not_regranted(monkeypatch):
+    async def no_collection():
+        return None
+
+    monkeypatch.setattr(chronicles_run_store, "_collection", no_collection)
+    chronicles_run_store._memory_runs.clear()
+
+    async def scenario():
+        args = dict(run_id="starter-gold", owner="tester", seed=21,
+                    map_id="swordhaven-first-book", content_version=1,
+                    manifest_revision="a" * 64, create_fingerprint="c" * 64)
+        first = await chronicles_run_store.create_or_replay_run(**args)
+        assert first["inventory"]["crown-gold"]["quantity"] == 20
+        assert first["inventory"]["crown-gold"]["name"] == "Monedas de oro"
+        replayed = await chronicles_run_store.create_or_replay_run(**args)
+        assert replayed["inventory"] == first["inventory"]
+        read = await chronicles_run_store.get_run("starter-gold", "tester")
+        assert read["inventory"]["crown-gold"]["quantity"] == 20
+
+        # Existing areas and runs do not receive surprise migration money.
+        legacy = await chronicles_run_store.create_or_replay_run(
+            **{**args, "run_id": "legacy-area", "map_id": "swordhaven-square"})
+        assert legacy["inventory"] == {}
+
+    asyncio.run(scenario())
