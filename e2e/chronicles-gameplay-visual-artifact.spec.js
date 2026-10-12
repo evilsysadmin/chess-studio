@@ -1155,3 +1155,43 @@ test('Chronicles · MM3 manual save menu · responsive Android 390px', async ({ 
     await context.close();
   }
 });
+
+for (const capture of [
+  { label: 'desktop-1440x900', width: 1440, height: 900, touch: false },
+  { label: 'android-390x844', width: 390, height: 844, touch: true },
+].flatMap((viewport) => [false, true].map((lit) => ({ ...viewport, lit })))) {
+  test(`Chronicles · F1 frozen lighthouse beacon · ${capture.label} · ${capture.lit ? 'lit' : 'dark'}`, async ({ browser }) => {
+    test.setTimeout(300_000);
+    await mkdir(ARTIFACT_DIR, { recursive: true });
+    const context = await browser.newContext({
+      viewport: { width: capture.width, height: capture.height },
+      hasTouch: capture.touch, isMobile: capture.touch,
+    });
+    const page = await context.newPage();
+    try {
+      await openChronicles(page, `f1-beacon-${capture.label}`, {
+        chroniclesCurrentMapId: 'terra-f1',
+        chroniclesWorldFlags: capture.lit
+          ? { f1OpticAligned: true, f1BeaconResolved: true, f1BeaconChoice: 'rescue' }
+          : {},
+      });
+      const game = page.locator('[data-chronicles="true"]');
+      await expect(game).toHaveAttribute('data-chronicles-map-id', 'terra-f1', { timeout: 30_000 });
+      await expect(game.locator('[data-chronicles-renderer="three"] canvas')).toBeVisible({ timeout: 30_000 });
+      await expect(game.locator('.chronicles-renderer-error')).toHaveCount(0);
+      // Authored start (10,7): look east across the safe crossroad.
+      // The new beacon at (16,7) is now in front, not behind the party.
+      await page.keyboard.press('ArrowRight');
+      await page.waitForTimeout(600);
+      const health = await captureChroniclesHealth(page);
+      expect(health.horizontalOverflow).toBe(false);
+      expect(health.gameCanvasCount).toBe(1);
+      await page.screenshot({
+        path: `${ARTIFACT_DIR}/chronicles-f1-frozen-beacon-${capture.lit ? 'lit' : 'dark'}-${capture.label}.png`,
+        animations: 'disabled', timeout: 60_000,
+      });
+    } finally {
+      await context.close();
+    }
+  });
+}

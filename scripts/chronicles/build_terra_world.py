@@ -629,6 +629,357 @@ def build_area(code: str, quests: dict) -> dict:
     grid = area_grid(code, biome, keep)
     for x, y in keep:
         assert grid[y][x] == ".", (code, x, y)
+    if code == "F1":
+        # Authored, spatially separate choices: first-person offers only one
+        # contextual action per position. Preserve the coast and old spawns.
+        lighthouse = [
+      {
+        "id": "f1-keepers-log",
+        "kind": "lore",
+        "visualType": "signpost",
+        "x": 15,
+        "y": 4,
+        "persistentVisual": True,
+        "label": "Leer la bitácora del último farero",
+        "action": {
+          "effects": [
+            {
+              "type": "set",
+              "key": "f1BeaconLogRead",
+              "value": True
+            }
+          ],
+          "message": "La última entrada dice: «No alumbres las casas. Los barcos perdidos buscan mar abierto. La lente duerme junto al casco varado, al suroeste. No dejes que el Silencio decida por ti».",
+          "journal": {
+            "id": "f1-keeper-log",
+            "title": "La luz que aún debe volver",
+            "body": "El farero escondió la lente cerca del naufragio, al suroeste del Faro Helado (F1). El espejo debe mirar a mar abierto.",
+            "sigil": "✦"
+          }
+        }
+      },
+      {
+        "id": "f1-frosted-lens",
+        "kind": "pickup",
+        "visualType": "chest",
+        "x": 5,
+        "y": 10,
+        "when": [
+          {
+            "key": "f1FrostLensRecovered",
+            "falsy": True
+          }
+        ],
+        "label": "Recuperar la lente del casco helado",
+        "action": {
+          "effects": [
+            {
+              "type": "set",
+              "key": "f1FrostLensRecovered",
+              "value": True
+            },
+            {
+              "type": "grant-item",
+              "itemId": "f1-frosted-lens",
+              "name": "Lente escarchada del farero",
+              "description": "Vidrio azulado de la linterna del Faro Helado. Encaja en los engranajes de F1.",
+              "quantity": 1
+            }
+          ],
+          "message": "Bajo las tablas de un barco encallado encuentras una lente intacta. En el borde alguien grabó doce nombres que el mar no consiguió borrar."
+        }
+      },
+      {
+        "id": "f1-mirror-gear",
+        "kind": "lore",
+        "visualType": "shrine",
+        "x": 15,
+        "y": 10,
+        "when": [
+          {
+            "key": "f1OpticAligned",
+            "falsy": True
+          }
+        ],
+        "label": "Montar la lente y orientar el espejo al mar",
+        "lockedLabel": "El espejo no tiene lente",
+        "requirements": [
+          {
+            "itemId": "f1-frosted-lens",
+            "quantity": 1,
+            "message": "Falta la lente que el farero escondió en el naufragio, al suroeste."
+          }
+        ],
+        "action": {
+          "effects": [
+            {
+              "type": "consume-item",
+              "itemId": "f1-frosted-lens",
+              "quantity": 1
+            },
+            {
+              "type": "set",
+              "key": "f1OpticAligned",
+              "value": True
+            }
+          ],
+          "message": "Montas la lente en el espejo y sigues las instrucciones de la bitácora: el cristal apunta a mar abierto. El mecanismo vuelve a respirar.",
+          "journal": {
+            "id": "f1-optic-aligned",
+            "title": "El mar espera una señal",
+            "body": "La lente vuelve a su sitio; la linterna del faro está lista. Falta decidir qué hacer con la última luz.",
+            "sigil": "✦"
+          }
+        }
+      },
+      {
+        "id": "f1-mirror-force",
+        "kind": "lore",
+        "visualType": "shrine",
+        "x": 10,
+        "y": 10,
+        "when": [
+          {
+            "key": "f1OpticAligned",
+            "falsy": True
+          },
+          {
+            "key": "f1MirrorScorched",
+            "falsy": True
+          }
+        ],
+        "label": "Forzar el mecanismo hacia las casas",
+        "requirements": [
+          {
+            "itemId": "f1-frosted-lens",
+            "quantity": 1,
+            "message": "Sin la lente, el engranaje está inmóvil."
+          }
+        ],
+        "action": {
+          "effects": [
+            {
+              "type": "set",
+              "key": "f1MirrorScorched",
+              "value": True
+            },
+            {
+              "type": "damage-party",
+              "amount": 3
+            }
+          ],
+          "message": "Fuerzas la manivela hacia tierra. El vidrio devuelve un destello helado: la compañía recibe daño. La bitácora avisaba de que el faro no busca las casas."
+        }
+      },
+      {
+        "id": "f1-beacon-before",
+        "kind": "lore",
+        "visualType": "rookwood-mourner-voice",
+        "x": 16,
+        "y": 7,
+        "label": "Examinar la linterna del faro",
+        "action": {
+          "effects": [],
+          "message": "Las juntas del faro sostienen un voto antiguo: «A quien no recuerden, una luz. A quien aún espere, un camino». Aquí se decide el destino de la linterna."
+        },
+        "when": [
+          {
+            "key": "f1OpticAligned",
+            "falsy": True
+          }
+        ]
+      },
+      {
+        "id": "f1-beacon-rescue",
+        "kind": "lore",
+        "visualType": "frozen-beacon",
+        "x": 16,
+        "y": 7,
+        "when": [
+          {
+            "key": "f1OpticAligned",
+            "truthy": True
+          },
+          {
+            "key": "f1BeaconResolved",
+            "falsy": True
+          }
+        ],
+        "label": "Devolver la luz a los navegantes olvidados",
+        "lockedLabel": "Aún falta orientar el espejo",
+        "requirements": [
+          {
+            "key": "f1OpticAligned",
+            "truthy": True,
+            "message": "Debes recuperar la lente y orientar el espejo hacia mar abierto."
+          }
+        ],
+        "action": {
+          "effects": [
+            {
+              "type": "claim-reward",
+              "rewardId": "terra:f1:beacon:v1",
+              "requirements": [
+                {
+                  "key": "f1BeaconResolved",
+                  "falsy": True
+                },
+                {
+                  "key": "f1OpticAligned",
+                  "truthy": True
+                }
+              ],
+              "effects": [
+                {
+                  "type": "set",
+                  "key": "f1BeaconResolved",
+                  "value": True
+                },
+                {
+                  "type": "set",
+                  "key": "f1BeaconChoice",
+                  "value": "rescue"
+                },
+                {
+                  "type": "grant-item",
+                  "itemId": "silver-staff",
+                  "name": "Bastón de plata",
+                  "description": "Un bastón real, templado por los últimos reflejos del Faro Helado.",
+                  "quantity": 1
+                },
+                {
+                  "type": "award-xp",
+                  "awardId": "terra:f1:beacon:rescued:v1",
+                  "amount": 35
+                }
+              ]
+            }
+          ],
+          "message": "La linterna rompe la niebla. Durante un instante, una hilera de velas invisibles responde desde el mar. Entre los útiles del farero queda un bastón de plata para la compañía.",
+          "journal": {
+            "id": "f1-beacon-lit",
+            "title": "Una luz para los que faltan",
+            "body": "La linterna guía a los barcos que nadie recuerda. La compañía renunció a vender el espejo y recuperó un bastón de plata.",
+            "sigil": "✦"
+          }
+        },
+        "persistentVisual": True,
+        "visualActivatedWhen": [
+          {
+            "key": "f1BeaconChoice",
+            "equals": "rescue"
+          }
+        ]
+      },
+      {
+        "id": "f1-beacon-salvage",
+        "kind": "lore",
+        "visualType": "signpost",
+        "x": 4,
+        "y": 7,
+        "when": [
+          {
+            "key": "f1BeaconResolved",
+            "falsy": True
+          }
+        ],
+        "label": "Desmontar el espejo y vender su plata",
+        "lockedLabel": "La lente aún no está en su sitio",
+        "requirements": [
+          {
+            "key": "f1OpticAligned",
+            "truthy": True,
+            "message": "La linterna sigue inservible sin la lente."
+          }
+        ],
+        "action": {
+          "effects": [
+            {
+              "type": "claim-reward",
+              "rewardId": "terra:f1:beacon:v1",
+              "requirements": [
+                {
+                  "key": "f1BeaconResolved",
+                  "falsy": True
+                },
+                {
+                  "key": "f1OpticAligned",
+                  "truthy": True
+                }
+              ],
+              "effects": [
+                {
+                  "type": "set",
+                  "key": "f1BeaconResolved",
+                  "value": True
+                },
+                {
+                  "type": "set",
+                  "key": "f1BeaconChoice",
+                  "value": "salvage"
+                },
+                {
+                  "type": "grant-gold",
+                  "amount": 75
+                },
+                {
+                  "type": "award-xp",
+                  "awardId": "terra:f1:beacon:salvaged:v1",
+                  "amount": 10
+                }
+              ]
+            }
+          ],
+          "message": "El faro se queda oscuro. Vendes las piezas de plata por 75 monedas; la niebla se traga, una a una, las luces que creíste ver mar adentro.",
+          "journal": {
+            "id": "f1-beacon-stripped",
+            "title": "El precio de una luz",
+            "body": "La compañía desmontó el espejo y cobró su valor. Ya nadie responderá a la linterna del Faro Helado.",
+            "sigil": "✦"
+          }
+        },
+        "persistentVisual": True
+      },
+      {
+        "id": "f1-beacon-rescued-after",
+        "kind": "lore",
+        "visualType": "rookwood-mourner-voice",
+        "x": 16,
+        "y": 7,
+        "when": [
+          {
+            "key": "f1BeaconChoice",
+            "equals": "rescue"
+          }
+        ],
+        "label": "Observar el faro encendido",
+        "action": {
+          "effects": [],
+          "message": "Al norte, luces de barcos sin nombre contestan al faro. Ninguna se acerca a costa; al menos ahora saben volver."
+        }
+      },
+      {
+        "id": "f1-beacon-salvaged-after",
+        "kind": "lore",
+        "visualType": "rookwood-mourner-voice",
+        "x": 16,
+        "y": 7,
+        "when": [
+          {
+            "key": "f1BeaconChoice",
+            "equals": "salvage"
+          }
+        ],
+        "label": "Examinar la linterna desmantelada",
+        "action": {
+          "effects": [],
+          "message": "Las tuercas vacías están frías. El mar calla: la plata ya no puede comprar aquella última luz."
+        }
+      }
+    ]
+        for entry in lighthouse:
+            assert grid[entry["y"]][entry["x"]] == ".", (code, entry["id"])
+        interactables.extend(lighthouse)
     return {
         "id": area, "version": 1, "progressionKey": f"terra-{code.lower()}-v1",
         "title": name, "areaCode": code, "biome": biome,
