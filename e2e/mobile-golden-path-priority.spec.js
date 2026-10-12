@@ -224,7 +224,8 @@ test.describe('Mobile golden path · postpartida con una decisión y revancha en
 test.describe('Mobile golden path · entrenar el error real en un toque', () => {
   test.use({ isMobile: true, hasTouch: true });
 
-  test('postpartida → error factual → puzzle exacto en 390x844', async ({ page }) => {
+  for (const nextAction of ['volver-a-jugar', 'siguiente-puzzle']) {
+    test(`postpartida → error factual → ${nextAction} en 390x844`, async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await mockApi(page, {
       gameScenario: 'foolsMateLoss',
@@ -297,10 +298,18 @@ test.describe('Mobile golden path · entrenar el error real en un toque', () => 
     const replayBox = await returnToPlay.boundingBox();
     expect(replayBox.height).toBeGreaterThanOrEqual(44);
     expect(replayBox.y + replayBox.height).toBeLessThanOrEqual(844);
-    await returnToPlay.tap();
-
-    await expect(page.getByRole('dialog', { name: 'Configurar partida rápida' })).toBeVisible({ timeout: 15_000 });
-  });
+    if (nextAction === 'siguiente-puzzle') {
+      await nextPuzzle.tap();
+      await expect(focusedTraining).not.toHaveClass(/puzzle-screen-personal/);
+      await expect(focusedTraining.getByRole('status').filter({ hasText: 'No quedan errores pendientes' })).toBeVisible();
+      await expect(focusedTraining.getByText('¡Resuelto!', { exact: true })).toHaveCount(0);
+      await expect(focusedTraining.locator('.puzzle-coach-chrome')).toContainText('TÁCTICA // ANÁLISIS');
+    } else {
+      await returnToPlay.tap();
+      await expect(page.getByRole('dialog', { name: 'Configurar partida rápida' })).toBeVisible({ timeout: 15_000 });
+    }
+    });
+  }
 });
 
 // GP-7 (#34): en el entrenamiento personal el tablero manda. Con la cámara real,
