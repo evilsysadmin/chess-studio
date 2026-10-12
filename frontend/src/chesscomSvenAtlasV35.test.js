@@ -73,17 +73,17 @@ describe('CHESSCOM Sven real directional atlas V35',()=>{
 });
 
 describe('CHESSCOM V36 real walking-direction sprite facing',()=>{
-  const cam={m:[1,0,0,0,0,1,0,0,1,0,1,0,0,0,0,1]};
+  const cam={m:[1,0,0,0,0,1,0,0,0,-1,1,0,0,0,0,1]};
   const move=(sx,sz,tx,tz)=>({start:{x:sx,z:sz},target:{x:tx,z:tz}});
   it('projects actual movement to camera, regardless of fixed team yaw',()=>{
     expect(motionFacing(move(1,1,2,1),cam)).toBe('E');
     expect(motionFacing(move(1,1,0,1),cam)).toBe('W');
-    expect(motionFacing(move(1,1,1,0),cam)).toBe('E');
+    expect(motionFacing(move(1,1,1,0),cam)).toBe('N');
     // With an orthographic view whose Z basis is diagonal, movement in Z
     // can produce an entirely different projected direction than movement X.
     const diag={m:[1,.5,0,0,0,1,0,0,-.5,1,1,0,0,0,0,1]};
-    expect(motionFacing(move(0,0,0,1),diag)).toBe('SE');
-    expect(motionFacing(move(0,0,0,-1),diag)).toBe('NW');
+    expect(motionFacing(move(0,0,0,1),diag)).toBe('NW');
+    expect(motionFacing(move(0,0,0,-1),diag)).toBe('SE');
   });
   it('holds last walking orientation after arriving, rather than snapping to the team yaw',()=>{
     const west=effectiveFacing({motion:move(2,0,1,0),yaw:-.58,viewMatrix:cam,previous:'E'});
