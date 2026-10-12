@@ -18,8 +18,8 @@ describe('Chronicles · salir sin guardar sin bloquear la UI', () => {
     const args = config({ deleteRun: vi.fn(() => neverSettles) });
     void chroniclesDiscardAndExit(args);
     expect(args.exit).toHaveBeenCalledOnce();
-    await Promise.resolve();
-    expect(args.deleteRun).toHaveBeenCalledWith('new-run');
+    await vi.waitFor(() => expect(args.deleteRun).toHaveBeenCalledWith('new-run'));
+    // The unresolved DELETE must not hold the screen or remove the local index.
     expect(args.forgetRun).not.toHaveBeenCalled();
   });
 
