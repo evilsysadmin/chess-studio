@@ -1245,6 +1245,12 @@ export default function ChroniclesOfMatthias({ onExit }) {
           member={sheetMember}
           mode="first-person"
           onClose={() => setSheetMemberId(null)}
+          onSelectMember={(memberId) => {
+            if (!stateRef.current?.party.some((candidate) => candidate.id === memberId)) return;
+            selectedMemberIdRef.current = memberId;
+            setSelectedMemberId(memberId);
+            setSheetMemberId(memberId);
+          }}
           onAllocateAttribute={allocateAttribute}
           onLearnSkill={learnSkill}
           onEquipmentAction={(action) => dispatch({ ...action, memberId: sheetMember.id })}
