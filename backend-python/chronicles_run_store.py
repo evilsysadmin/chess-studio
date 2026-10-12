@@ -148,7 +148,14 @@ async def create_or_replay_run(
         "consumedContentIds": [],
         "claimedRewards": [],
         "worldFlags": {},
-        "inventory": {},
+        # One-time travel purse for the Book One party; never apply on replay.
+        "inventory": (
+            {"crown-gold": {
+                "id": "crown-gold", "name": "Monedas de oro",
+                "description": "Moneda del reino, aceptada por los comerciantes.",
+                "quantity": 20,
+            }} if map_id == "swordhaven-first-book" else {}
+        ),
         "quests": {},
         "createdAt": now,
         "updatedAt": now,
