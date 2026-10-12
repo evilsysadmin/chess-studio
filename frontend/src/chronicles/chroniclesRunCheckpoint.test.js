@@ -131,6 +131,7 @@ describe('Chronicles run checkpoint recovery', () => {
       direction: 2,
       turns: 17,
       round: 6,
+      explorationEnemySteps: 9,
       turnPhase: 'party',
       phase: 'combat',
       initiative: {
@@ -181,6 +182,7 @@ describe('Chronicles run checkpoint recovery', () => {
     expect(recovered.direction).toBe(2);
     expect(recovered.turns).toBe(17);
     expect(recovered.round).toBe(6);
+    expect(recovered.explorationEnemySteps).toBe(9);
     expect(recovered.phase).toBe('combat');
     expect(recovered.initiative).toEqual(snapshot.initiative);
     expect(recovered.party[0].hp).toBe(snapshot.party[0].hp);
