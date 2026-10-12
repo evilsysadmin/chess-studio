@@ -1,5 +1,0 @@
-scope=backup-storage
-reason=grant-bucket-read-to-instance-principal-for-getbucket-preflight
-source_run=38133505086
-reconcile_attempt=20261012
-remove_after=successful-backup-restore-drill
