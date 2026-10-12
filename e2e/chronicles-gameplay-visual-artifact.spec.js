@@ -503,9 +503,10 @@ test('Chronicles · MM3 Alcalde Aldric · entrar en ayuntamiento y diálogo nume
     await expect(game).toHaveAttribute('data-chronicles-map-id', 'swordhaven-first-book');
     // Authored route: plaza (9,7) -> (11,7) -> (11,10), facing the
     // town hall door to the south. Walk the real gameplay input path.
-    for (const key of ['d', 'w', 'w', 'd', 'w', 'w', 'w']) await page.keyboard.press(key);
+    for (const key of ['d', 'w', 'w', 'd', 'w', 'w']) await page.keyboard.press(key);
     const turns = await game.getAttribute('data-chronicles-turns');
-    await page.keyboard.press('w');
+    // 'f' at the street tile *in front* of Aldric's entrance opens the same audience.
+    await page.keyboard.press('f');
     const audience = page.getByRole('dialog', { name: 'Conversación con Alcalde Aldric' });
     await expect(audience).toBeVisible({ timeout: 15_000 });
     await expect(game).toHaveAttribute('data-chronicles-turns', turns);
@@ -540,13 +541,42 @@ test('Chronicles · alcalde MM3 · cuatro respuestas sin scroll desktop 1280x720
     });
     const game = page.locator('[data-chronicles="true"]');
     await expect(game).toHaveAttribute('data-chronicles-map-id', 'swordhaven-first-book');
-    for (const key of ['d', 'w', 'w', 'd', 'w', 'w', 'w']) await page.keyboard.press(key);
-    await page.keyboard.press('w');
+    for (const key of ['d', 'w', 'w', 'd', 'w', 'w']) await page.keyboard.press(key);
+    await page.keyboard.press('f');
     const audience = page.getByRole('dialog', { name: 'Conversación con Alcalde Aldric' });
     await expect(audience).toBeVisible({ timeout: 15_000 });
     await expectAllMayorChoicesInView(audience, '1280x720');
     await page.screenshot({
       path: `${ARTIFACT_DIR}/chronicles-alcalde-dialogue-desktop-1280x720.png`,
+      animations: 'disabled', timeout: 60_000,
+    });
+  } finally {
+    await context.close();
+  }
+});
+
+test('Chronicles · MM3 Swordhaven weaponsmith opens from the neighboring street tile', async ({ browser }) => {
+  test.setTimeout(300_000);
+  await mkdir(ARTIFACT_DIR, { recursive: true });
+  const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+  const page = await context.newPage();
+  try {
+    await openChronicles(page, 'swordhaven-weaponsmith-front', {
+      newTown: true, newCampaign: true, chroniclesCurrentMapId: 'swordhaven-first-book',
+    });
+    const game = page.locator('[data-chronicles="true"]');
+    // Plaza (9,7) -> (9,5) -> (7,5); look north at Brunna's door on (7,4).
+    // The sealed letter underfoot must not steal the front-facing interaction.
+    for (const key of ['w', 'w', 'a', 'w', 'w', 'd']) await page.keyboard.press(key);
+    const use = game.locator('[data-chronicles-touch-action="interact"]');
+    await expect(use).toHaveAttribute('aria-label', 'Forja de Brunna · armas');
+    await page.keyboard.press('f');
+    const shop = page.locator('[data-chronicles-shop="first-book-weaponsmith"]');
+    await expect(shop).toBeVisible({ timeout: 15_000 });
+    await expect(shop.getByRole('tab', { name: 'Comprar', exact: true })).toBeVisible();
+    await expect(shop.locator('[data-chronicles-shop-item="wooden-staff"]')).toBeVisible();
+    await page.screenshot({
+      path: `${ARTIFACT_DIR}/chronicles-swordhaven-weaponsmith-street-desktop-1440x900.png`,
       animations: 'disabled', timeout: 60_000,
     });
   } finally {
@@ -777,6 +807,25 @@ for (const capture of CAPTURES) {
 
       // A browser «night mode» must not lighten the dark ink on the stone.
       expect(await gameRoot.evaluate((root) => getComputedStyle(root).colorScheme.split(' ').sort().join(' ')), `${capture.label}: Chronicles opts out of forced dark`).toBe('light only');
+
+      // Grey MM3 stone must use near-black ink on MAPA, MENÚ and movement arrows.
+      // Brave's automatic dark palette used to turn these glyphs white.
+      const engraved = await gameRoot.evaluate((root) => [
+        '.chronicles-statusbar .chronicles-map-trigger',
+        '.chronicles-game-menu > summary',
+        '[data-chronicles-touch-action="forward"]',
+        '[data-chronicles-touch-action="turn-left"]',
+      ].map((selector) => {
+        const node = root.querySelector(selector);
+        if (!node) return { selector, missing: true };
+        const style = getComputedStyle(node);
+        return { selector, color: style.color, fill: style.webkitTextFillColor };
+      }));
+      for (const control of engraved) {
+        expect(control.missing, `${capture.label}: ${control.selector} exists`).not.toBe(true);
+        expect(control.color, `${capture.label}: ${control.selector} dark ink`).toBe('rgb(16, 16, 20)');
+        expect(control.fill, `${capture.label}: ${control.selector} WebKit dark ink`).toBe('rgb(16, 16, 20)');
+      }
 
       // Every menu action stays on screen, «Salir y guardar» included.
       const menuDetails = page.locator('details.chronicles-game-menu');
