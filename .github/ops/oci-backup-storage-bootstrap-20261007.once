@@ -1,4 +1,5 @@
 scope=backup-storage
-reason=production-mongo-backup-bucket-not-found
-source_run=37628831185
-remove_after=first_successful_reconcile
+reason=grant-bucket-read-to-instance-principal-for-getbucket-preflight
+source_run=38133505086
+reconcile_attempt=20261012
+remove_after=successful-backup-restore-drill

@@ -78,6 +78,8 @@ El apply production-grade vive separado en `.github/workflows/oci-staging-deploy
 
 Este scope existe para recuperar el contrato off-host de Mongo sin reciclar la A1 por un recurso durable que quedó declarado en Terraform pero no materializado. Tras el apply debe quedar zero-drift en esos targets antes de considerarse verde.
 
+**Diagnóstico del 12-10-2026:** el apply one-shot del 07-10 creó el bucket privado y añadió `manage objects`, pero el backup off-host falló en `ObjectStorageClient.get_bucket` (404 `BucketNotFound`). `GetBucket` exige `BUCKET_READ` independientemente de `OBJECT_*`: se concede `read buckets` sólo donde `target.bucket.name='chess-studio-production-backups'`, nunca `manage buckets`. La reconciliación de Terraform y zero-drift **no acreditan** la copia: tras aplicar IAM hay que repetir `Production · Mongo weekly backup` y exigir upload, descarga, verificación y restauración scratch completos. El marcador one-shot se elimina únicamente después de esa prueba real.
+
 Operaciones:
 
 - `probe`: data-only; no state remoto y cero mutaciones.
