@@ -92,7 +92,7 @@ async function openChronicles(page, captureLabel, {
   }
   expect(await entry.locator('.chronicles-save-menu__sky').evaluate(async (sky) => {
     const bg = getComputedStyle(sky).backgroundImage;
-    const match = bg.match(/url\\(["']?([^"')]+)["']?\\)/);
+    const match = bg.match(/url\(["']?([^"')]+)["']?\)/);
     if (!match) return false;
     const image = new Image();
     image.src = match[1];
