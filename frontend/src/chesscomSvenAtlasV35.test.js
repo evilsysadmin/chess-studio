@@ -4,6 +4,8 @@ import {
   chesscomSvenAtlasEnabledV35 as enabled,
   chesscomSvenClipV35 as clip,
   chesscomSvenFacingV35 as facing,
+  chesscomSvenMovementFacingV36 as motionFacing,
+  chesscomSvenEffectiveFacingV36 as effectiveFacing,
   chesscomSvenAtlasFrameV35 as frame,
   chesscomVerifySvenAtlasBytesV35 as verify,
   installChesscomSvenAtlasV35 as install,
@@ -67,5 +69,33 @@ describe('CHESSCOM Sven real directional atlas V35',()=>{
     expect(await invalid.ready).toBe(false);
     expect(host.dataset.chesscomSvenAtlas).toBe('fallback');
     invalid.destroy();
+  });
+});
+
+describe('CHESSCOM V36 real walking-direction sprite facing',()=>{
+  const cam={m:[1,0,0,0,0,1,0,0,1,0,1,0,0,0,0,1]};
+  const move=(sx,sz,tx,tz)=>({start:{x:sx,z:sz},target:{x:tx,z:tz}});
+  it('projects actual movement to camera, regardless of fixed team yaw',()=>{
+    expect(motionFacing(move(1,1,2,1),cam)).toBe('E');
+    expect(motionFacing(move(1,1,0,1),cam)).toBe('W');
+    expect(motionFacing(move(1,1,1,0),cam)).toBe('E');
+    // With an orthographic view whose Z basis is diagonal, movement in Z
+    // can produce an entirely different projected direction than movement X.
+    const diag={m:[1,.5,0,0,0,1,0,0,-.5,1,1,0,0,0,0,1]};
+    expect(motionFacing(move(0,0,0,1),diag)).toBe('SE');
+    expect(motionFacing(move(0,0,0,-1),diag)).toBe('NW');
+  });
+  it('holds last walking orientation after arriving, rather than snapping to the team yaw',()=>{
+    const west=effectiveFacing({motion:move(2,0,1,0),yaw:-.58,viewMatrix:cam,previous:'E'});
+    expect(west).toBe('W');
+    expect(effectiveFacing({motion:null,yaw:-.58,viewMatrix:cam,previous:west,hasMoved:true})).toBe('W');
+    expect(effectiveFacing({motion:move(2,2,2,2),yaw:-.58,viewMatrix:cam,previous:'NW',hasMoved:true})).toBe('NW');
+    expect(effectiveFacing({motion:null,yaw:0,viewMatrix:cam,hasMoved:false})).toBe('E');
+  });
+  it('rejects corrupt motion metadata instead of corrupting UV direction',()=>{
+    expect(()=>motionFacing(move(0,0,Infinity,0),cam)).toThrow(RangeError);
+    expect(()=>motionFacing(null,cam)).toThrow(RangeError);
+    expect(()=>motionFacing(move(0,0,1,0),null)).toThrow(RangeError);
+    expect(()=>motionFacing(move(0,0,1,0),cam,'SIDE')).toThrow(RangeError);
   });
 });

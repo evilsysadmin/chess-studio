@@ -42,6 +42,36 @@ export function chesscomSvenFacingV35(yaw,viewMatrix,previous='S'){
   return chesscomScreenFacingV34(x,y,previous);
 }
 
+
+/**
+ * A V35 regression: canonical CHESSCOM unit yaw is fixed by team, even while
+ * the unit walks between tiles. During movement select the view from the
+ * *actual world-space displacement*, projected through Babylon's camera.
+ *
+ * Preserve the last walking direction on arrival; snapping back to the
+ * team's default yaw would cause an artificial sprite orientation pop.
+ */
+export function chesscomSvenMovementFacingV36(motion,viewMatrix,previous='S'){
+  const start=motion?.start,target=motion?.target,m=viewMatrix?.m;
+  if(!CHESSCOM_SPRITE_BANK_V34.directions.includes(previous)
+    ||!m||m.length<16||!start||!target
+    ||![start.x,start.z,target.x,target.z,m[0],m[1],m[8],m[9]].every(Number.isFinite))
+    throw new RangeError('Invalid unit motion or camera projection');
+  const worldX=target.x-start.x,worldZ=target.z-start.z;
+  if(Math.hypot(worldX,worldZ)<1e-5)return previous;
+  const screenX=worldX*m[0]+worldZ*m[8];
+  const screenY=-(worldX*m[1]+worldZ*m[9]);
+  return chesscomScreenFacingV34(screenX,screenY,previous);
+}
+
+export function chesscomSvenEffectiveFacingV36({
+  motion=null,yaw=0,viewMatrix,previous='S',hasMoved=false,
+}={}){
+  if(motion)return chesscomSvenMovementFacingV36(motion,viewMatrix,previous);
+  if(hasMoved)return previous;
+  return chesscomSvenFacingV35(yaw,viewMatrix,previous);
+}
+
 export function chesscomSvenAtlasFrameV35(bank,clip,direction,elapsedSeconds=0){
   if(!Number.isFinite(elapsedSeconds)||elapsedSeconds<0)throw new RangeError('Invalid frame elapsed');
   if(!CHESSCOM_SPRITE_BANK_V34.directions.includes(direction))throw new RangeError('Invalid direction');
@@ -67,6 +97,7 @@ export function installChesscomSvenAtlasV35(B,scene,{host,search='',loadManifest
   }
   let disposed=false,bank=null,plane=null,material=null,texture=null,objectUrl=null;
   let alive=true,previousFacing='S',previousClip='',previousDirection='',elapsed=0;
+  let hasMoved=false;
   const visibility=new Map();
   const controller=new AbortController();
   if(host)host.dataset.chesscomSvenAtlas='loading';
@@ -152,7 +183,14 @@ export function installChesscomSvenAtlasV35(B,scene,{host,search='',loadManifest
     const moving=Boolean(root.metadata?.motion);
     const now=performance.now();
     const clip=chesscomSvenClipV35({alive,moving,recoil:Number(root.metadata?.recoilUntil||0)>now});
-    const direction=chesscomSvenFacingV35(Number(root.rotation.y)||0,camera.getViewMatrix(),previousFacing);
+    const direction=chesscomSvenEffectiveFacingV36({
+      motion:root.metadata?.motion,
+      yaw:Number(root.rotation.y)||0,
+      viewMatrix:camera.getViewMatrix(),
+      previous:previousFacing,
+      hasMoved,
+    });
+    if(moving)hasMoved=true;
     previousFacing=direction;
     if(clip!==previousClip||direction!==previousDirection){
       previousClip=clip;
