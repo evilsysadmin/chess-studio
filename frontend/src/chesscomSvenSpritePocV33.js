@@ -1,9 +1,11 @@
+import { CHESSCOM_SPRITE_BANK_V34 } from './chesscomSpriteBankV34.js';
 // Opt-in 2.5D A/B pilot: Sven only. Single extracted NE concept pose, not an 8-way atlas.
 export const CHESSCOM_SVEN_SPRITE_POC_V33=Object.freeze({
   identity:'sven-sprite-poc-v33',
   asset:'/chesscom/sven-probe-ne.webp',assetWidth:100,assetHeight:141,
   height:1.72,queryKey:'chesscomSven',queryValue:'sprite',
   fallback:'character-art-v4',maxSpritePlanes:1,
+  futureBankContract:CHESSCOM_SPRITE_BANK_V34.identity,
 });
 
 export function chesscomSvenSpriteEnabled(search=''){
