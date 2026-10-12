@@ -505,7 +505,10 @@ test('staging live · auth real → War Room v2 → recovery 3D → jugada real'
     await appearanceDialog.getByRole('button', { name: 'Cerrar', exact: true }).click();
 
     await expect.poll(() => failedBoard3DChunkOnce, { timeout: 10_000 }).toBe(true);
-    const recovery = await Promise.race([
+    // Either recovery path can legitimately win. A hidden ErrorBoundary timing
+    // out must not reject the entire race while the API restore is still pending.
+    // Promise.any only fails if both recovery signals fail within their deadlines.
+    const recovery = await Promise.any([
       restoreAfterChunkFailure.then((response) => ({ kind: 'restored', response })),
       errorBoundaryHeading.waitFor({ state: 'visible', timeout: 10_000 })
         .then(() => ({ kind: 'boundary', response: null })),
