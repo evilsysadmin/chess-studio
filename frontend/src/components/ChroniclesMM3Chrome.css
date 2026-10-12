@@ -605,15 +605,37 @@
   box-shadow: 0 0 0 1px #141416, 0 18px 54px rgba(0, 0, 0, .58);
   backdrop-filter: none;
 }
-.chronicles .chronicles-game-menu__panel strong { color: #1f0f04; }
-.chronicles .chronicles-game-menu__panel small { color: #3b1e08; }
+/* Browser auto-dark themes and inherited button states must never paint
+   pale glyphs on the light VGA stone slab. Make the ink an explicit part of
+   the MM3 control, including WebKit text-fill. */
+.chronicles .chronicles-game-menu__panel strong { color: #251208; }
+.chronicles .chronicles-game-menu__panel small { color: #38200d; }
 .chronicles .chronicles-game-menu__panel button {
+  color-scheme: only light;
   border: 2px solid;
-  border-color: var(--mm3-hi) var(--mm3-lo) var(--mm3-lo) var(--mm3-hi);
-  background: #9d9da2 var(--mm3-stone) 0 0 / 128px 128px;
+  border-color: #f6f2e8 #4f4b4b #4f4b4b #f6f2e8;
+  background: #b1b0b1 var(--mm3-stone) 0 0 / 128px 128px;
   box-shadow: 0 0 0 1px #141416;
-  color: var(--mm3-ink);
-  font-weight: 700;
+  color: #111015;
+  -webkit-text-fill-color: #111015;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, .28);
+  font-weight: 800;
+  opacity: 1;
+}
+.chronicles .chronicles-game-menu__panel button:hover,
+.chronicles .chronicles-game-menu__panel button:focus-visible {
+  background-color: #d4c7a9;
+  background-blend-mode: multiply;
+  border-color: #fff0c6 #4c3312 #4c3312 #fff0c6;
+  outline: 3px solid #eac671;
+  outline-offset: 1px;
+}
+.chronicles .chronicles-game-menu__panel button:disabled {
+  cursor: not-allowed;
+  background-color: #929197;
+  color: #343039;
+  -webkit-text-fill-color: #343039;
+  opacity: 1;
 }
 
 /* ─── Isles of Terra details (desktop / wide landscape) ──────────────── */
