@@ -83,6 +83,22 @@ async function openChronicles(page, captureLabel, {
   const entry = page.locator('[data-chronicles-save-menu]');
   await expect(entry).toBeVisible({ timeout: 10_000 });
   await expect(entry.getByText('Consultando expediciones del servidor…')).toBeHidden({ timeout: 15_000 });
+  // Approved expedition study must really load from the built frontend, with
+  // accessible live controls layered over the decorative, browser-chrome-free art.
+  await expect(entry).toHaveAttribute('data-chronicles-art', 'approved-expedition-study-v1');
+  await expect(entry.locator('.chronicles-save-menu__actions > button')).toHaveCount(6);
+  for (const name of ['Nueva campaña', 'Nuevo juego', 'Continuar partida', 'Cargar juego', 'Gestionar partidas', 'Volver al castillo']) {
+    await expect(entry.getByRole('button', { name: new RegExp(name) })).toBeVisible();
+  }
+  expect(await entry.locator('.chronicles-save-menu__sky').evaluate(async (sky) => {
+    const bg = getComputedStyle(sky).backgroundImage;
+    const match = bg.match(/url\(["']?([^"')]+)["']?\)/);
+    if (!match) return false;
+    const image = new Image();
+    image.src = match[1];
+    await image.decode();
+    return image.naturalWidth >= 400 && image.naturalHeight >= 580;
+  }), 'approved AVIF scene loads in runtime').toBe(true);
   if (captureLabel.includes('android-landscape')) {
     // A 390px-high viewport must show all home actions without hidden scrolling.
     const returnButton = entry.getByRole('button', { name: 'Volver al castillo', exact: true });
@@ -166,6 +182,7 @@ async function captureChroniclesHealth(page) {
       gameCanvas: rect('[data-chronicles-renderer="three"] canvas'),
       authoredPortrait: rect('[data-chronicles-party-renderer="authored"]'),
       partyTarget: rect('.chronicles-party-member'),
+      partyFace: rect('[data-chronicles-party-thumbnail]'),
       forwardControl: rect('[data-chronicles-touch-action="forward"]'),
       attackControl: rect('.chronicles-touch .is-attack'),
       narration: rect('.chronicles-dm-overlay'),
@@ -429,6 +446,15 @@ test('Chronicles · First Book equipment sheet · actual Android 390px', async (
     const sheet = page.getByRole('dialog', { name: 'Matthias', exact: true });
     const gear = sheet.locator('.chronicles-character-sheet__equipment');
     await expect(sheet).toBeVisible();
+    // Capture the actual default MM3 slate with 7 stats and party portrait
+    // rail before opening the equipment chapter.
+    await expect(sheet.getByRole('navigation', { name: 'Seleccionar personaje de la compañía' })).toBeVisible();
+    await page.screenshot({
+      path: `${ARTIFACT_DIR}/chronicles-mm3-character-folio-android-390x844.png`,
+      animations: 'disabled', timeout: 60_000,
+    });
+    await sheet.getByRole('navigation', { name: 'Apartados de la ficha' })
+      .getByRole('button', { name: /Equipo/ }).click();
     await expect(gear).toBeVisible();
     await expect(gear).toContainText('Armas y armaduras equipadas');
     // Weapon, armour and shield.
@@ -442,6 +468,131 @@ test('Chronicles · First Book equipment sheet · actual Android 390px', async (
     expect(bounds.horizontalOverflow, 'equipment sheet must fit a 390px Android viewport').toBe(false);
     await page.screenshot({
       path: `${ARTIFACT_DIR}/chronicles-first-book-equipment-sheet-android-390x844.png`,
+      animations: 'disabled', timeout: 60_000,
+    });
+  } finally {
+    await context.close();
+  }
+});
+
+
+async function expectAllMayorChoicesInView(audience, viewport) {
+  const fit = await audience.evaluate((dialog) => {
+    const box = dialog.getBoundingClientRect();
+    const dialogue = dialog.querySelector('.chronicles-audience__dialogue');
+    const panel = dialogue.getBoundingClientRect();
+    const buttons = [...dialog.querySelectorAll('[data-chronicles-dialogue-choice]')];
+    const first = buttons[0]?.getBoundingClientRect();
+    const last = buttons.at(-1)?.getBoundingClientRect();
+    return {
+      dialogTop: box.top, dialogBottom: box.bottom,
+      panelBottom: panel.bottom, panelScrollHeight: dialogue.scrollHeight,
+      panelClientHeight: dialogue.clientHeight,
+      firstTop: first?.top ?? -1, lastBottom: last?.bottom ?? -1,
+      lastHeight: last?.height ?? 0, count: buttons.length,
+    };
+  });
+  expect(fit.count, viewport + ': all four numbered responses exist').toBe(4);
+  expect(fit.dialogTop, viewport + ': frame top within viewport').toBeGreaterThanOrEqual(0);
+  expect(fit.dialogBottom, viewport + ': frame bottom within viewport')
+    .toBeLessThanOrEqual(Number(viewport.split('x')[1]) + 1);
+  expect(fit.panelScrollHeight, viewport + ': no hidden fourth choice in panel scroll')
+    .toBeLessThanOrEqual(fit.panelClientHeight + 2);
+  expect(fit.firstTop, viewport + ': first choice visible').toBeGreaterThanOrEqual(0);
+  expect(fit.lastBottom, viewport + ': last response inside dialogue panel')
+    .toBeLessThanOrEqual(fit.panelBottom - 1);
+  expect(fit.lastHeight, viewport + ': last choice touch target').toBeGreaterThanOrEqual(44);
+}
+
+test('Chronicles · MM3 Alcalde Aldric · entrar en ayuntamiento y diálogo numerado Android', async ({ browser }) => {
+  test.setTimeout(300_000);
+  await mkdir(ARTIFACT_DIR, { recursive: true });
+  const context = await browser.newContext({
+    viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true,
+  });
+  const page = await context.newPage();
+  try {
+    await openChronicles(page, 'mayor-audience-android', {
+      newTown: true, newCampaign: true, chroniclesCurrentMapId: 'swordhaven-first-book',
+    });
+    const game = page.locator('[data-chronicles="true"]');
+    await expect(game).toHaveAttribute('data-chronicles-map-id', 'swordhaven-first-book');
+    // Authored route: plaza (9,7) -> (11,7) -> (11,10), facing the
+    // town hall door to the south. Walk the real gameplay input path.
+    for (const key of ['d', 'w', 'w', 'd', 'w', 'w']) await page.keyboard.press(key);
+    const turns = await game.getAttribute('data-chronicles-turns');
+    // 'f' at the street tile *in front* of Aldric's entrance opens the same audience.
+    await page.keyboard.press('f');
+    const audience = page.getByRole('dialog', { name: 'Conversación con Alcalde Aldric' });
+    await expect(audience).toBeVisible({ timeout: 15_000 });
+    await expect(game).toHaveAttribute('data-chronicles-turns', turns);
+    await expect(audience.locator('[data-chronicles-dialogue-choice]')).toHaveCount(4);
+    await page.keyboard.press('w');
+    await expect(game).toHaveAttribute('data-chronicles-turns', turns);
+    await expectAllMayorChoicesInView(audience, '390x844');
+    await page.screenshot({
+      path: `${ARTIFACT_DIR}/chronicles-alcalde-dialogue-android-390x844.png`,
+      animations: 'disabled', timeout: 60_000,
+    });
+    await page.keyboard.press('1');
+    await expect(audience.locator('[data-chronicles-dialogue-answer]')).toContainText('Dama');
+    await page.keyboard.press('3');
+    await expect(audience).toHaveAttribute('data-chronicles-audience-spoken', 'true');
+    await expect(audience.locator('[data-chronicles-dialogue-choice="quest"]')).toHaveCount(0);
+    await page.keyboard.press('Escape');
+    await expect(audience).toHaveCount(0);
+  } finally {
+    await context.close();
+  }
+});
+
+test('Chronicles · alcalde MM3 · cuatro respuestas sin scroll desktop 1280x720', async ({ browser }) => {
+  test.setTimeout(300_000);
+  await mkdir(ARTIFACT_DIR, { recursive: true });
+  const context = await browser.newContext({ viewport: { width: 1280, height: 720 } });
+  const page = await context.newPage();
+  try {
+    await openChronicles(page, 'mayor-audience-desktop-1280x720', {
+      newTown: true, newCampaign: true, chroniclesCurrentMapId: 'swordhaven-first-book',
+    });
+    const game = page.locator('[data-chronicles="true"]');
+    await expect(game).toHaveAttribute('data-chronicles-map-id', 'swordhaven-first-book');
+    for (const key of ['d', 'w', 'w', 'd', 'w', 'w']) await page.keyboard.press(key);
+    await page.keyboard.press('f');
+    const audience = page.getByRole('dialog', { name: 'Conversación con Alcalde Aldric' });
+    await expect(audience).toBeVisible({ timeout: 15_000 });
+    await expectAllMayorChoicesInView(audience, '1280x720');
+    await page.screenshot({
+      path: `${ARTIFACT_DIR}/chronicles-alcalde-dialogue-desktop-1280x720.png`,
+      animations: 'disabled', timeout: 60_000,
+    });
+  } finally {
+    await context.close();
+  }
+});
+
+test('Chronicles · MM3 Swordhaven weaponsmith opens from the neighboring street tile', async ({ browser }) => {
+  test.setTimeout(300_000);
+  await mkdir(ARTIFACT_DIR, { recursive: true });
+  const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+  const page = await context.newPage();
+  try {
+    await openChronicles(page, 'swordhaven-weaponsmith-front', {
+      newTown: true, newCampaign: true, chroniclesCurrentMapId: 'swordhaven-first-book',
+    });
+    const game = page.locator('[data-chronicles="true"]');
+    // Plaza (9,7) -> (9,5) -> (7,5); look north at Brunna's door on (7,4).
+    // The sealed letter underfoot must not steal the front-facing interaction.
+    for (const key of ['w', 'w', 'a', 'w', 'w', 'd']) await page.keyboard.press(key);
+    const use = game.locator('[data-chronicles-touch-action="interact"]');
+    await expect(use).toHaveAttribute('aria-label', 'Forja de Brunna · armas');
+    await page.keyboard.press('f');
+    const shop = page.locator('[data-chronicles-shop="first-book-weaponsmith"]');
+    await expect(shop).toBeVisible({ timeout: 15_000 });
+    await expect(shop.getByRole('tab', { name: 'Comprar', exact: true })).toBeVisible();
+    await expect(shop.locator('[data-chronicles-shop-item="wooden-staff"]')).toBeVisible();
+    await page.screenshot({
+      path: `${ARTIFACT_DIR}/chronicles-swordhaven-weaponsmith-street-desktop-1440x900.png`,
       animations: 'disabled', timeout: 60_000,
     });
   } finally {
@@ -602,8 +753,8 @@ for (const capture of CAPTURES) {
       await expect(chroniclesCanvas).toHaveCount(1, { timeout: 20_000 });
       await expect(chroniclesCanvas).toBeVisible();
       await expect(authoredPortrait).toHaveCount(1, { timeout: 20_000 });
-      if (capture.hasTouch) await expect(authoredPortrait).toBeHidden();
-      else await expect(authoredPortrait).toBeVisible();
+      // The MM3 chrome keeps the large preview hidden; faces are in the strip.
+      await expect(authoredPortrait).toBeHidden();
       await expect(stage).toBeVisible();
       await expect(gameMenu).toBeVisible();
       await page.waitForTimeout(450);
@@ -643,7 +794,12 @@ for (const capture of CAPTURES) {
       expect(health.automapButton?.height || 0, `${capture.label}: automap button height`).toBeGreaterThanOrEqual(capture.hasTouch ? 44 : 30);
       expect(health.localMinimap?.width || 0, `${capture.label}: local minimap visible`).toBeGreaterThanOrEqual(capture.hasTouch ? 100 : 120);
       expect(health.localMinimap?.height || 0, `${capture.label}: local minimap height`).toBeGreaterThanOrEqual(capture.hasTouch ? 100 : 120);
-      expect(health.localMinimap?.top ?? 0, `${capture.label}: local minimap clears top menu`).toBeGreaterThanOrEqual((health.gameMenu?.bottom ?? 0) - 2);
+      // The minimap must never sit on the menu: on mobile the menu is a top
+      // bar above it, on desktop it lives in the MM3 side panel.
+      const overlaps = (a, b, slack = 2) => Boolean(a && b
+        && a.left + slack < b.right && b.left + slack < a.right
+        && a.top + slack < b.bottom && b.top + slack < a.bottom);
+      expect(overlaps(health.localMinimap, health.gameMenu), `${capture.label}: local minimap clears the menu`).toBe(false);
       expect(health.stage?.width || 0, `${capture.label}: Chronicles stage visible`).toBeGreaterThan(0);
       expect(health.gameCanvas?.width || 0, `${capture.label}: Chronicles dungeon canvas visible`).toBeGreaterThan(0);
       expect(health.gameCanvas?.height || 0, `${capture.label}: Chronicles dungeon canvas height`).toBeGreaterThan(0);
@@ -659,11 +815,55 @@ for (const capture of CAPTURES) {
         expect(health.narration?.top ?? 0, `${capture.label}: narration clears compact party`).toBeGreaterThanOrEqual(health.partyTarget?.bottom ?? 0);
         expect(health.narration?.bottom ?? capture.height, `${capture.label}: narration clears thumb controls`).toBeLessThanOrEqual(health.forwardControl?.top ?? capture.height);
       } else {
-        expect(health.authoredPortrait?.width || 0, `${capture.label}: Chronicles portrait visible`).toBeGreaterThan(0);
-        expect(health.authoredPortrait?.height || 0, `${capture.label}: Chronicles portrait height`).toBeGreaterThan(0);
+        expect(health.partyFace?.width || 0, `${capture.label}: party face width`).toBeGreaterThanOrEqual(80);
+        expect(health.partyFace?.height || 0, `${capture.label}: party face height`).toBeGreaterThanOrEqual(80);
       }
 
       await captureElement(page, gameRoot, `${ARTIFACT_DIR}/chronicles-playing-${capture.label}.png`);
+
+      // A browser «night mode» must not lighten the dark ink on the stone.
+      expect(await gameRoot.evaluate((root) => getComputedStyle(root).colorScheme.split(' ').sort().join(' ')), `${capture.label}: Chronicles opts out of forced dark`).toBe('light only');
+
+      // Grey MM3 stone must use near-black ink on MAPA, MENÚ and movement arrows.
+      // Brave's automatic dark palette used to turn these glyphs white.
+      const engraved = await gameRoot.evaluate((root) => [
+        '.chronicles-statusbar .chronicles-map-trigger',
+        '.chronicles-game-menu > summary',
+        '[data-chronicles-touch-action="forward"]',
+        '[data-chronicles-touch-action="turn-left"]',
+      ].map((selector) => {
+        const node = root.querySelector(selector);
+        if (!node) return { selector, missing: true };
+        const style = getComputedStyle(node);
+        return { selector, color: style.color, fill: style.webkitTextFillColor };
+      }));
+      for (const control of engraved) {
+        expect(control.missing, `${capture.label}: ${control.selector} exists`).not.toBe(true);
+        expect(control.color, `${capture.label}: ${control.selector} dark ink`).toBe('rgb(16, 16, 20)');
+        expect(control.fill, `${capture.label}: ${control.selector} WebKit dark ink`).toBe('rgb(16, 16, 20)');
+      }
+
+      // Every menu action stays on screen, «Salir y guardar» included.
+      const menuDetails = page.locator('details.chronicles-game-menu');
+      const menuSummary = menuDetails.locator('> summary');
+      await menuSummary.evaluate((summary) => summary.click());
+      const exitAction = menuDetails.getByRole('button', { name: 'Salir y guardar', exact: true });
+      await expect(exitAction).toBeVisible();
+      const exitBox = await exitAction.boundingBox();
+      expect(exitBox, `${capture.label}: menu exit action has bounds`).not.toBeNull();
+      expect(exitBox.y, `${capture.label}: menu exit action below the top edge`).toBeGreaterThanOrEqual(0);
+      expect(exitBox.y + exitBox.height, `${capture.label}: menu exit action above the bottom edge`).toBeLessThanOrEqual(capture.height);
+      // MM3's raised light stone requires DARK engraved glyphs, even when the
+      // browser requests a dark appearance. This was unreadable in real play.
+      const inks = await exitAction.evaluate((button) => ({
+        color: getComputedStyle(button).color,
+        fill: getComputedStyle(button).webkitTextFillColor,
+      }));
+      expect(inks.color, `${capture.label}: menu ink must be dark`).toBe('rgb(17, 16, 21)');
+      expect(inks.fill, `${capture.label}: WebKit must keep dark ink`).toBe('rgb(17, 16, 21)');
+      await captureElement(page, gameRoot, `${ARTIFACT_DIR}/chronicles-game-menu-${capture.label}.png`);
+      await menuSummary.evaluate((summary) => summary.click());
+      await expect(exitAction).toBeHidden();
 
       await page.getByRole('button', { name: 'Minimapa local. Abrir automapa completo', exact: true }).click();
       const automap = page.getByRole('dialog', { name: 'Automapa de Chronicles', exact: true });
@@ -1046,6 +1246,79 @@ for (const capture of CAPTURES) {
       });
       await failure.getByRole('button', { name: 'Volver a expediciones' }).click();
       await expect(book).toBeVisible();
+    } finally {
+      await context.close();
+    }
+  });
+}
+
+test('Chronicles · MM3 manual save menu · responsive Android 390px', async ({ browser }) => {
+  test.setTimeout(300_000);
+  await mkdir(ARTIFACT_DIR, { recursive: true });
+  const context = await browser.newContext({
+    viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true,
+  });
+  const page = await context.newPage();
+  try {
+    await openChronicles(page, 'manual-save-menu-android', {
+      newTown: true, newCampaign: true, chroniclesCurrentMapId: 'swordhaven-first-book',
+    });
+    const game = page.locator('[data-chronicles="true"]');
+    const menu = game.locator('.chronicles-game-menu');
+    await menu.locator('summary').click();
+    await expect(menu).toHaveAttribute('open', '');
+    await expect(menu.getByRole('button', { name: 'Guardar partida', exact: true })).toBeVisible();
+    await expect(menu.getByRole('button', { name: 'Salir y guardar', exact: true })).toBeVisible();
+    await menu.getByRole('button', { name: 'Salir sin guardar', exact: true }).click();
+    const confirm = menu.getByRole('button', { name: 'Sí, salir sin guardar', exact: true });
+    await expect(confirm).toBeVisible();
+    const bounds = await confirm.boundingBox();
+    expect(bounds, 'confirm discard must be rendered').not.toBeNull();
+    expect(bounds.y + bounds.height, 'discard confirmation must be reachable without page scroll')
+      .toBeLessThanOrEqual(844);
+    await page.screenshot({
+      path: `${ARTIFACT_DIR}/chronicles-mm3-manual-save-menu-android-390x844.png`,
+      animations: 'disabled', timeout: 60_000,
+    });
+  } finally {
+    await context.close();
+  }
+});
+
+for (const capture of [
+  { label: 'desktop-1440x900', width: 1440, height: 900, touch: false },
+  { label: 'android-390x844', width: 390, height: 844, touch: true },
+].flatMap((viewport) => [false, true].map((lit) => ({ ...viewport, lit })))) {
+  test(`Chronicles · F1 frozen lighthouse beacon · ${capture.label} · ${capture.lit ? 'lit' : 'dark'}`, async ({ browser }) => {
+    test.setTimeout(300_000);
+    await mkdir(ARTIFACT_DIR, { recursive: true });
+    const context = await browser.newContext({
+      viewport: { width: capture.width, height: capture.height },
+      hasTouch: capture.touch, isMobile: capture.touch,
+    });
+    const page = await context.newPage();
+    try {
+      await openChronicles(page, `f1-beacon-${capture.label}`, {
+        chroniclesCurrentMapId: 'terra-f1',
+        chroniclesWorldFlags: capture.lit
+          ? { f1OpticAligned: true, f1BeaconResolved: true, f1BeaconChoice: 'rescue' }
+          : {},
+      });
+      const game = page.locator('[data-chronicles="true"]');
+      await expect(game).toHaveAttribute('data-chronicles-map-id', 'terra-f1', { timeout: 30_000 });
+      await expect(game.locator('[data-chronicles-renderer="three"] canvas')).toBeVisible({ timeout: 30_000 });
+      await expect(game.locator('.chronicles-renderer-error')).toHaveCount(0);
+      // Authored start (10,7): look east across the safe crossroad.
+      // The new beacon at (16,7) is now in front, not behind the party.
+      await page.keyboard.press('ArrowRight');
+      await page.waitForTimeout(600);
+      const health = await captureChroniclesHealth(page);
+      expect(health.horizontalOverflow).toBe(false);
+      expect(health.gameCanvasCount).toBe(1);
+      await page.screenshot({
+        path: `${ARTIFACT_DIR}/chronicles-f1-frozen-beacon-${capture.lit ? 'lit' : 'dark'}-${capture.label}.png`,
+        animations: 'disabled', timeout: 60_000,
+      });
     } finally {
       await context.close();
     }

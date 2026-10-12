@@ -1,0 +1,252 @@
+{
+  "id": "terra-c5",
+  "version": 1,
+  "progressionKey": "terra-c5-v1",
+  "title": "Orillas de Vado de Sal",
+  "areaCode": "C5",
+  "biome": "marsh",
+  "regionKind": "wilderness",
+  "layoutMode": "authored",
+  "grid": [
+    "#####################",
+    "#...##...#......##..#",
+    "#...............#...#",
+    "#...##..............#",
+    "#.................###",
+    "#..........#.......##",
+    "#..........#.###....#",
+    "#...................#",
+    "#............#..#..##",
+    "#..#........#....####",
+    "#...#......##.##..#.#",
+    "##..##.#......#.....#",
+    "#..#####..........###",
+    "#.#####............##",
+    "#####################"
+  ],
+  "partyStart": {
+    "x": 10,
+    "y": 7,
+    "direction": 0
+  },
+  "initialFlags": {},
+  "enemies": [
+    {
+      "id": "terra-c5-foe-0",
+      "visualType": "drowned",
+      "name": "ahogado",
+      "x": 7,
+      "y": 3,
+      "hpKey": "terra_c5Foe0Hp",
+      "maxHp": 8,
+      "retaliation": 1,
+      "optional": true,
+      "activation": "always",
+      "ai": {
+        "movement": "cardinal-chase",
+        "attackReach": 1,
+        "engagedMovement": "cardinal-chase",
+        "engageRange": 3
+      },
+      "onDefeat": {
+        "message": "{attacker} acaba con ahogado usando {attack}.",
+        "effects": [
+          {
+            "type": "grant-gold",
+            "amount": 6
+          }
+        ]
+      }
+    },
+    {
+      "id": "terra-c5-foe-1",
+      "visualType": "sewer-rat",
+      "name": "rata de marisma",
+      "x": 13,
+      "y": 11,
+      "hpKey": "terra_c5Foe1Hp",
+      "maxHp": 8,
+      "retaliation": 1,
+      "optional": true,
+      "activation": "always",
+      "ai": {
+        "movement": "cardinal-roam",
+        "attackReach": 1,
+        "engagedMovement": "cardinal-chase",
+        "engageRange": 3
+      },
+      "onDefeat": {
+        "message": "{attacker} acaba con rata de marisma usando {attack}.",
+        "effects": [
+          {
+            "type": "grant-gold",
+            "amount": 6
+          }
+        ]
+      }
+    }
+  ],
+  "triggers": [],
+  "interactables": [
+    {
+      "id": "terra-c5-sign",
+      "kind": "lore",
+      "visualType": "signpost",
+      "x": 15,
+      "y": 4,
+      "persistentVisual": true,
+      "label": "Leer el cartel",
+      "action": {
+        "effects": [],
+        "message": "Cartel: Vado de Sal, aquí mismo. Al sur, las Salinas Hundidas (C6)."
+      }
+    }
+  ],
+  "treasures": [
+    {
+      "id": "terra-c5-chest",
+      "kind": "pickup",
+      "visualType": "chest",
+      "x": 5,
+      "y": 10,
+      "label": "Abrir el cofre",
+      "when": [
+        {
+          "key": "terra_c5ChestOpened",
+          "falsy": true
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "set",
+            "key": "terra_c5ChestOpened",
+            "value": true
+          },
+          {
+            "type": "grant-gold",
+            "amount": 18
+          },
+          {
+            "type": "grant-item",
+            "itemId": "iron-axe",
+            "name": "Iron axe",
+            "description": "Botín de un cofre de Terra.",
+            "quantity": 1
+          }
+        ],
+        "message": "El cofre guarda 18 monedas y algo de equipo."
+      }
+    }
+  ],
+  "traps": [],
+  "exits": [
+    {
+      "id": "c5-to-c4",
+      "kind": "exit",
+      "x": 10,
+      "y": 1,
+      "requiresReturn": true,
+      "openLabel": "Ir a C4 · Encrucijada del Ahorcado",
+      "lockedLabel": "El paso está cortado",
+      "requirements": [],
+      "action": {
+        "effects": [
+          {
+            "type": "transition-map",
+            "mapId": "terra-c4",
+            "entryExitId": "c4-to-c5"
+          }
+        ],
+        "message": "La compañía entra en C4."
+      }
+    },
+    {
+      "id": "c5-to-c6",
+      "kind": "exit",
+      "x": 10,
+      "y": 13,
+      "requiresReturn": true,
+      "openLabel": "Ir a C6 · Salinas Hundidas",
+      "lockedLabel": "El paso está cortado",
+      "requirements": [],
+      "action": {
+        "effects": [
+          {
+            "type": "transition-map",
+            "mapId": "terra-c6",
+            "entryExitId": "c6-to-c5"
+          }
+        ],
+        "message": "La compañía entra en C6."
+      }
+    },
+    {
+      "id": "c5-to-b5",
+      "kind": "exit",
+      "x": 1,
+      "y": 7,
+      "requiresReturn": true,
+      "openLabel": "Ir a B5 · Molinos del Oeste",
+      "lockedLabel": "El paso está cortado",
+      "requirements": [],
+      "action": {
+        "effects": [
+          {
+            "type": "transition-map",
+            "mapId": "terra-b5",
+            "entryExitId": "b5-to-c5"
+          }
+        ],
+        "message": "La compañía entra en B5."
+      }
+    },
+    {
+      "id": "c5-to-d5",
+      "kind": "exit",
+      "x": 19,
+      "y": 7,
+      "requiresReturn": true,
+      "openLabel": "Ir a D5 · Marismas de Sal",
+      "lockedLabel": "El paso está cortado",
+      "requirements": [],
+      "action": {
+        "effects": [
+          {
+            "type": "transition-map",
+            "mapId": "terra-d5",
+            "entryExitId": "d5-to-c5"
+          }
+        ],
+        "message": "La compañía entra en D5."
+      }
+    },
+    {
+      "id": "c5-to-town",
+      "kind": "exit",
+      "x": 5,
+      "y": 4,
+      "requiresReturn": true,
+      "openLabel": "Entrar en Vado de Sal",
+      "lockedLabel": "Vado de Sal · puertas cerradas",
+      "requirements": [],
+      "action": {
+        "effects": [
+          {
+            "type": "transition-map",
+            "mapId": "vado-de-sal",
+            "entryExitId": "town-gate"
+          }
+        ],
+        "message": "La compañía cruza las puertas de Vado de Sal."
+      }
+    }
+  ],
+  "initialJournal": {
+    "id": "terra-c5-arrival",
+    "title": "C5 · Orillas de Vado de Sal",
+    "body": "Pasarelas de madera sobre el agua salobre; Vado de Sal al alcance.",
+    "sigil": "C5"
+  },
+  "introMessage": "C5 · Orillas de Vado de Sal. Pasarelas de madera sobre el agua salobre; Vado de Sal al alcance."
+}

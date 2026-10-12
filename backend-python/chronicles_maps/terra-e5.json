@@ -1,0 +1,266 @@
+{
+  "id": "terra-e5",
+  "version": 1,
+  "progressionKey": "terra-e5-v1",
+  "title": "Ciénaga Negra",
+  "areaCode": "E5",
+  "biome": "marsh",
+  "regionKind": "wilderness",
+  "layoutMode": "authored",
+  "grid": [
+    "#####################",
+    "##.#....##...#...#.##",
+    "#...............##..#",
+    "#..........###..##..#",
+    "##.#................#",
+    "#..#.....#........#.#",
+    "#.####...#....####..#",
+    "#...................#",
+    "##......##........###",
+    "#.......##.........##",
+    "#.##........#.......#",
+    "#.#..............#..#",
+    "#...##..#.........###",
+    "##.......#........###",
+    "#####################"
+  ],
+  "partyStart": {
+    "x": 10,
+    "y": 7,
+    "direction": 0
+  },
+  "initialFlags": {},
+  "enemies": [
+    {
+      "id": "terra-e5-foe-0",
+      "visualType": "sewer-rat",
+      "name": "rata de marisma",
+      "x": 7,
+      "y": 3,
+      "hpKey": "terra_e5Foe0Hp",
+      "maxHp": 12,
+      "retaliation": 2,
+      "optional": true,
+      "activation": "always",
+      "ai": {
+        "movement": "cardinal-roam",
+        "attackReach": 1,
+        "engagedMovement": "cardinal-chase",
+        "engageRange": 3
+      },
+      "onDefeat": {
+        "message": "{attacker} acaba con rata de marisma usando {attack}.",
+        "effects": [
+          {
+            "type": "grant-gold",
+            "amount": 10
+          }
+        ]
+      }
+    },
+    {
+      "id": "terra-e5-foe-1",
+      "visualType": "salt-crab",
+      "name": "cangrejo de salitre",
+      "x": 13,
+      "y": 11,
+      "hpKey": "terra_e5Foe1Hp",
+      "maxHp": 12,
+      "retaliation": 2,
+      "optional": true,
+      "activation": "always",
+      "ai": {
+        "movement": "cardinal-roam",
+        "attackReach": 1,
+        "engagedMovement": "knight-chase",
+        "engageRange": 2
+      },
+      "onDefeat": {
+        "message": "{attacker} acaba con cangrejo de salitre usando {attack}.",
+        "effects": [
+          {
+            "type": "grant-gold",
+            "amount": 10
+          }
+        ]
+      }
+    },
+    {
+      "id": "terra-e5-foe-2",
+      "visualType": "drowned",
+      "name": "ahogado",
+      "x": 3,
+      "y": 11,
+      "hpKey": "terra_e5Foe2Hp",
+      "maxHp": 12,
+      "retaliation": 2,
+      "optional": true,
+      "activation": "always",
+      "ai": {
+        "movement": "cardinal-chase",
+        "attackReach": 1,
+        "engagedMovement": "cardinal-chase",
+        "engageRange": 3
+      },
+      "onDefeat": {
+        "message": "{attacker} acaba con ahogado usando {attack}.",
+        "effects": [
+          {
+            "type": "grant-gold",
+            "amount": 10
+          }
+        ]
+      }
+    }
+  ],
+  "triggers": [],
+  "interactables": [],
+  "treasures": [
+    {
+      "id": "terra-e5-chest",
+      "kind": "pickup",
+      "visualType": "chest",
+      "x": 15,
+      "y": 4,
+      "label": "Abrir el cofre",
+      "when": [
+        {
+          "key": "terra_e5ChestOpened",
+          "falsy": true
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "set",
+            "key": "terra_e5ChestOpened",
+            "value": true
+          },
+          {
+            "type": "grant-gold",
+            "amount": 30
+          },
+          {
+            "type": "grant-item",
+            "itemId": "silver-staff",
+            "name": "Silver staff",
+            "description": "Botín de un cofre de Terra.",
+            "quantity": 1
+          }
+        ],
+        "message": "El cofre guarda 30 monedas y algo de equipo."
+      }
+    }
+  ],
+  "traps": [],
+  "exits": [
+    {
+      "id": "e5-to-e4",
+      "kind": "exit",
+      "x": 10,
+      "y": 1,
+      "requiresReturn": true,
+      "openLabel": "Ir a E4 · Bosque Ceniciento",
+      "lockedLabel": "El paso está cortado",
+      "requirements": [],
+      "action": {
+        "effects": [
+          {
+            "type": "transition-map",
+            "mapId": "terra-e4",
+            "entryExitId": "e4-to-e5"
+          }
+        ],
+        "message": "La compañía entra en E4."
+      }
+    },
+    {
+      "id": "e5-to-e6",
+      "kind": "exit",
+      "x": 10,
+      "y": 13,
+      "requiresReturn": true,
+      "openLabel": "Ir a E6 · Ruinas del Obispo",
+      "lockedLabel": "El paso está cortado",
+      "requirements": [],
+      "action": {
+        "effects": [
+          {
+            "type": "transition-map",
+            "mapId": "terra-e6",
+            "entryExitId": "e6-to-e5"
+          }
+        ],
+        "message": "La compañía entra en E6."
+      }
+    },
+    {
+      "id": "e5-to-d5",
+      "kind": "exit",
+      "x": 1,
+      "y": 7,
+      "requiresReturn": true,
+      "openLabel": "Ir a D5 · Marismas de Sal",
+      "lockedLabel": "El paso está cortado",
+      "requirements": [],
+      "action": {
+        "effects": [
+          {
+            "type": "transition-map",
+            "mapId": "terra-d5",
+            "entryExitId": "d5-to-e5"
+          }
+        ],
+        "message": "La compañía entra en D5."
+      }
+    },
+    {
+      "id": "e5-to-f5",
+      "kind": "exit",
+      "x": 19,
+      "y": 7,
+      "requiresReturn": true,
+      "openLabel": "Ir a F5 · Desierto de Ceniza",
+      "lockedLabel": "El paso está cortado",
+      "requirements": [],
+      "action": {
+        "effects": [
+          {
+            "type": "transition-map",
+            "mapId": "terra-f5",
+            "entryExitId": "f5-to-e5"
+          }
+        ],
+        "message": "La compañía entra en F5."
+      }
+    },
+    {
+      "id": "e5-to-dungeon",
+      "kind": "exit",
+      "visualType": "dungeon-arch",
+      "x": 5,
+      "y": 4,
+      "requiresReturn": true,
+      "openLabel": "Entrar en Choza de la Ciénaga Negra",
+      "lockedLabel": "Choza de la Ciénaga Negra · sellada",
+      "requirements": [],
+      "action": {
+        "effects": [
+          {
+            "type": "transition-map",
+            "mapId": "cienaga-negra",
+            "entryExitId": "dungeon-exit"
+          }
+        ],
+        "message": "La compañía desciende a Choza de la Ciénaga Negra."
+      }
+    }
+  ],
+  "initialJournal": {
+    "id": "terra-e5-arrival",
+    "title": "E5 · Ciénaga Negra",
+    "body": "Agua negra y quieta. Una choza sobre pilotes, con luz verde.",
+    "sigil": "E5"
+  },
+  "introMessage": "E5 · Ciénaga Negra. Agua negra y quieta. Una choza sobre pilotes, con luz verde."
+}

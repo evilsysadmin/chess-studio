@@ -1,4 +1,5 @@
 import { CHRONICLES_EQUIPMENT_SLOTS, chroniclesEquippedItem } from './chroniclesEquipment.js';
+import { chroniclesSpellAvailableTo } from './chroniclesMagic.js';
 import {
   chroniclesMapById,
   chroniclesMapIds,
@@ -10,22 +11,30 @@ const RUNTIME_VERSION = 1;
 const RUNTIME_VERSION_KEY = `${RUNTIME_PREFIX}version`;
 
 function authoredSetKeys(map) {
-  const contentEffects = CONTENT_GROUPS.flatMap((group) => (
-    (map?.[group] || []).flatMap((entry) => entry?.action?.effects || [])
+  // Reward outcomes must survive a checkpoint too: an atomic claim-reward
+  // can contain the only durable "set" for a branching world decision.
+  const setKeys = (effects) => (effects || []).flatMap((effect) => {
+    if (effect?.type === 'set' && typeof effect.key === 'string' && effect.key) return [effect.key];
+    if (effect?.type === 'claim-reward') return setKeys(effect.effects);
+    return [];
+  });
+  const content = CONTENT_GROUPS.flatMap((group) => (
+    (map?.[group] || []).flatMap((entry) => setKeys(entry?.action?.effects))
   ));
-  const defeatEffects = (map?.enemies || []).flatMap((enemy) => enemy?.onDefeat?.effects || []);
-  return [...contentEffects, ...defeatEffects]
-    .filter((effect) => effect?.type === 'set' && typeof effect.key === 'string' && effect.key)
-    .map((effect) => effect.key);
+  const defeats = (map?.enemies || []).flatMap((enemy) => setKeys(enemy?.onDefeat?.effects));
+  return [...content, ...defeats];
 }
 
-function checkpointFlagKeys() {
+// World flags persist for every region; enemy HP only for the current one,
+// because entering any other region resets its foes anyway. With dozens of
+// Terra areas, keeping every visited map's HP would overflow the checkpoint.
+function checkpointFlagKeys(currentMapId) {
   return chroniclesMapIds().flatMap((mapId) => {
     const map = chroniclesMapById(mapId);
     return [
       ...Object.keys(map.initialFlags || {}),
       ...authoredSetKeys(map),
-      ...(map.enemies || []).map((enemy) => enemy?.hpKey).filter(Boolean),
+      ...(mapId === currentMapId ? (map.enemies || []).map((enemy) => enemy?.hpKey).filter(Boolean) : []),
     ];
   });
 }
@@ -121,6 +130,7 @@ function runtimeCheckpointFlags(state) {
   const direction = integerOrNull(source.direction, 0, 3);
   const turns = integerOrNull(source.turns);
   const round = integerOrNull(source.round);
+  const explorationEnemySteps = integerOrNull(source.explorationEnemySteps);
   const phase = shortStringOrNull(source.phase, 32);
   const turnPhase = shortStringOrNull(source.turnPhase, 32);
 
@@ -129,6 +139,7 @@ function runtimeCheckpointFlags(state) {
   if (direction !== null) flags[runtimeKey('direction')] = direction;
   if (turns !== null) flags[runtimeKey('turns')] = turns;
   if (round !== null) flags[runtimeKey('round')] = round;
+  if (explorationEnemySteps !== null) flags[runtimeKey('explorationEnemySteps')] = explorationEnemySteps;
   if (phase !== null) flags[runtimeKey('phase')] = phase;
   if (turnPhase !== null) flags[runtimeKey('turnPhase')] = turnPhase;
   const initiative = normalizedInitiative(source.initiative);
@@ -152,6 +163,18 @@ function runtimeCheckpointFlags(state) {
       const equipped = chroniclesEquippedItem(source, member.id, slot);
       if (equipped) flags[runtimeKey('gear', member.id, slot)] = equipped.id;
     }
+  });
+
+  // MM3 magic: spent spell points, each caster's spellbook, guild memberships.
+  (source.party || []).forEach((member) => {
+    const sp = integerOrNull(source.spellPoints?.[member.id], 0, 999);
+    if (sp !== null) flags[runtimeKey('party', member.id, 'sp')] = sp;
+    const book = source.spellbook?.[member.id];
+    if (Array.isArray(book)) flags[runtimeKey('spells', member.id)] = book.join(',').slice(0, 256);
+  });
+  Object.entries(source.guildMemberships || {}).forEach(([guildId, joined]) => {
+    const safeGuildId = shortStringOrNull(guildId, 64);
+    if (safeGuildId && joined === true) flags[runtimeKey('guild', safeGuildId)] = true;
   });
 
   Object.entries(source.classAbilityCharges || {}).forEach(([memberId, rawCharges]) => {
@@ -194,6 +217,7 @@ function applyRuntimeCheckpoint(state, flags) {
   const direction = integerOrNull(flags[runtimeKey('direction')], 0, 3);
   const turns = integerOrNull(flags[runtimeKey('turns')]);
   const round = integerOrNull(flags[runtimeKey('round')]);
+  const explorationEnemySteps = integerOrNull(flags[runtimeKey('explorationEnemySteps')]);
   const phase = shortStringOrNull(flags[runtimeKey('phase')], 32);
   const turnPhase = shortStringOrNull(flags[runtimeKey('turnPhase')], 32);
 
@@ -205,6 +229,7 @@ function applyRuntimeCheckpoint(state, flags) {
   if (direction !== null) next.direction = direction;
   if (turns !== null) next.turns = turns;
   if (round !== null) next.round = round;
+  if (explorationEnemySteps !== null) next.explorationEnemySteps = explorationEnemySteps;
   if (phase !== null) next.phase = phase;
   if (turnPhase !== null) next.turnPhase = turnPhase;
   const serializedInitiative = flags[runtimeKey('initiative')];
@@ -245,6 +270,27 @@ function applyRuntimeCheckpoint(state, flags) {
     }
   });
   next.equipment = equipment;
+
+  const spellPoints = {};
+  const spellbook = {};
+  (next.party || []).forEach((member) => {
+    const sp = integerOrNull(flags[runtimeKey('party', member.id, 'sp')], 0, 999);
+    if (sp !== null) spellPoints[member.id] = sp;
+    const book = flags[runtimeKey('spells', member.id)];
+    if (typeof book === 'string') {
+      spellbook[member.id] = [...new Set(book.split(',').filter((id) => chroniclesSpellAvailableTo(member, id)))];
+    }
+  });
+  if (Object.keys(spellPoints).length) next.spellPoints = spellPoints;
+  else delete next.spellPoints;
+  if (Object.keys(spellbook).length) next.spellbook = spellbook;
+  else delete next.spellbook;
+  const guildPrefix = runtimeKey('guild', '');
+  const guildMemberships = Object.fromEntries(Object.entries(flags)
+    .filter(([key, value]) => key.startsWith(guildPrefix) && value === true)
+    .map(([key]) => [key.slice(guildPrefix.length), true]));
+  if (Object.keys(guildMemberships).length) next.guildMemberships = guildMemberships;
+  else delete next.guildMemberships;
 
   if (next.classAbilityCharges && typeof next.classAbilityCharges === 'object') {
     const charges = { ...next.classAbilityCharges };
@@ -291,7 +337,7 @@ export function chroniclesRunHasRuntimeCheckpoint(run) {
 export function chroniclesWorldFlagsForCheckpoint(state) {
   const source = state && typeof state === 'object' ? state : {};
   const authored = Object.fromEntries(
-    checkpointFlagKeys()
+    checkpointFlagKeys(source.mapId)
       .filter((key, index, keys) => keys.indexOf(key) === index)
       .filter((key) => Object.prototype.hasOwnProperty.call(source, key))
       .filter((key) => durableFlagValue(source[key]))

@@ -163,3 +163,190 @@
     line-height: 1.2;
   }
 }
+
+
+/* APPROVED EXPEDITION STUDY · mobile-first visual contract.
+   The environment is a cropped, lightweight derivative of the approved
+   Chronicles mock; all labels, saved expeditions and buttons are real DOM.
+   Do not ship the mock's browser chrome or its baked-in expedition ID. */
+.chronicles-save-menu--expedition {
+  padding: max(10px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right))
+    max(10px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
+  background: #0d101a;
+}
+.chronicles-save-menu--expedition .chronicles-save-menu__sky {
+  background:
+    linear-gradient(90deg, rgba(6, 7, 11, .22), transparent 24%, transparent 76%, rgba(6, 7, 11, .22)),
+    url('../assets/chronicles/expedition-study-approved.avif') center center / cover no-repeat,
+    linear-gradient(150deg, #3c2415, #0a1730 72%);
+}
+.chronicles-save-menu--expedition .chronicles-save-menu__sky::after {
+  inset: 0;
+  background: linear-gradient(180deg, rgba(5, 8, 14, .12), transparent 48%, rgba(7, 7, 11, .3));
+}
+.chronicles-save-menu--expedition .chronicles-save-menu__moon,
+.chronicles-save-menu--expedition .chronicles-save-menu__tower { display: none; }
+
+.chronicles-save-menu--expedition .chronicles-save-menu__panel {
+  width: min(590px, 100%);
+  max-height: calc(100dvh - 20px);
+  padding: clamp(17px, 3.6vw, 36px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: #a77946 #181318;
+  border: 3px solid #8b612f;
+  border-radius: 12px;
+  background:
+    radial-gradient(ellipse at 50% -20%, rgba(115, 76, 40, .25), transparent 63%),
+    repeating-linear-gradient(25deg, rgba(226, 178, 117, .015) 0 1px, transparent 1px 5px),
+    linear-gradient(160deg, #211b1d 0%, #14141a 54%, #0a0c12 100%);
+  box-shadow: inset 0 0 0 2px #291b14, inset 0 0 0 4px rgba(213, 166, 93, .18),
+    0 22px 75px rgba(0, 0, 0, .72);
+}
+.chronicles-save-menu--expedition .chronicles-save-menu__kicker {
+  margin: 4px 0 16px;
+  color: #dfb978;
+  font: 500 clamp(.58rem, 1.3vw, .71rem)/1.4 Georgia, serif;
+  letter-spacing: .25em;
+  text-align: center;
+}
+.chronicles-save-menu--expedition h1 {
+  font: 500 clamp(2.45rem, 8vw, 3.9rem)/1.02 Georgia, 'Times New Roman', serif;
+  letter-spacing: -.035em;
+  color: #f4dfbd;
+  text-align: center;
+  text-shadow: 0 2px 1px #2c180d, 0 0 28px rgba(248, 182, 91, .14);
+}
+.chronicles-save-menu--expedition h1 span {
+  margin-top: 8px;
+  font-size: .57em;
+  letter-spacing: .02em;
+  color: #dab685;
+}
+.chronicles-save-menu--expedition .chronicles-save-menu__intro {
+  max-width: 31rem;
+  margin: 20px auto 17px;
+  color: #e1caab;
+  font: italic clamp(.87rem, 2.2vw, 1.08rem)/1.45 Georgia, serif;
+  text-align: center;
+}
+.chronicles-save-menu--expedition .chronicles-save-menu__actions {
+  margin-top: clamp(16px, 3vh, 30px);
+  gap: 9px;
+}
+.chronicles-save-menu--expedition .chronicles-save-menu__actions button {
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr) 16px;
+  align-items: center;
+  column-gap: 11px;
+  width: 100%;
+  min-height: 56px;
+  padding: 9px 14px;
+  border: 2px solid #997044;
+  border-radius: 5px;
+  background: linear-gradient(180deg, #352921, #1a181a 72%, #111216);
+  box-shadow: inset 0 0 0 1px rgba(255, 215, 140, .14), 0 3px 0 rgba(0, 0, 0, .45);
+  color: #f0dfc0;
+  font: 500 clamp(.95rem, 2.3vw, 1.25rem)/1.15 Georgia, serif;
+  text-align: left;
+  transition: background-color .16s ease, border-color .16s ease, box-shadow .16s ease;
+}
+.chronicles-save-menu--expedition .chronicles-save-menu__actions button:hover,
+.chronicles-save-menu--expedition .chronicles-save-menu__actions button:focus-visible {
+  border-color: #ffe2a0;
+  outline: 3px solid #edc57b;
+  outline-offset: 2px;
+  box-shadow: 0 0 20px rgba(212, 160, 75, .22), inset 0 0 0 1px rgba(255, 232, 174, .28);
+}
+.chronicles-save-menu--expedition .chronicles-save-menu__action-icon {
+  display: grid;
+  place-items: center;
+  color: #d7a45e;
+}
+.chronicles-save-menu--expedition .chronicles-save-menu__action-copy { min-width: 0; overflow-wrap: anywhere; }
+.chronicles-save-menu--expedition .chronicles-save-menu__actions button small {
+  display: block;
+  margin-top: 5px;
+  color: inherit;
+  opacity: .78;
+  font: 400 .71em/1.3 Georgia, serif;
+}
+.chronicles-save-menu--expedition .chronicles-save-menu__chevron {
+  justify-self: end;
+  font: 400 2rem/1 Georgia, serif;
+  color: #ddbd83;
+}
+.chronicles-save-menu--expedition .chronicles-save-menu__actions button.is-primary {
+  border-color: #d1a361;
+  background:
+    linear-gradient(90deg, rgba(255, 247, 219, .95), rgba(226, 185, 118, .94)),
+    #e9cf9e;
+  color: #352416;
+}
+.chronicles-save-menu--expedition .chronicles-save-menu__actions .is-primary .chronicles-save-menu__action-icon,
+.chronicles-save-menu--expedition .chronicles-save-menu__actions .is-primary .chronicles-save-menu__chevron {
+  color: #754a20;
+}
+.chronicles-save-menu--expedition .chronicles-save-menu__actions button.is-resume:not(:disabled) {
+  border-color: #e5b66c;
+  background: linear-gradient(100deg, #16304e, #17406b 70%, #10253c);
+  color: #fff1d9;
+  box-shadow: 0 0 0 1px #5b8cb2, 0 0 17px rgba(45, 105, 168, .29);
+}
+.chronicles-save-menu--expedition .chronicles-save-menu__actions button:disabled {
+  opacity: .53;
+  cursor: not-allowed;
+}
+.chronicles-save-menu--expedition .chronicles-save-menu__actions button.is-exit {
+  margin-top: 6px;
+  min-height: 48px;
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+  color: #c5ad8f;
+}
+.chronicles-save-menu--expedition .chronicles-save-menu__actions button.is-exit:hover,
+.chronicles-save-menu--expedition .chronicles-save-menu__actions button.is-exit:focus-visible {
+  border-color: #ab824c;
+  background: rgba(123, 92, 57, .14);
+}
+.chronicles-save-menu--expedition .chronicles-save-menu__browser {
+  padding-top: 20px;
+  border-top: 1px solid rgba(226, 179, 100, .28);
+}
+@media (max-width: 520px) {
+  .chronicles-save-menu--expedition .chronicles-save-menu__panel {
+    max-height: calc(100dvh - 20px);
+    padding: clamp(15px, 4vw, 22px);
+  }
+  .chronicles-save-menu--expedition .chronicles-save-menu__actions { gap: 8px; }
+  .chronicles-save-menu--expedition .chronicles-save-menu__actions button {
+    min-height: 56px;
+    padding: 9px 11px;
+    column-gap: 8px;
+  }
+  .chronicles-save-menu--expedition .chronicles-save-menu__kicker { letter-spacing: .18em; }
+}
+@media (max-height: 480px) and (orientation: landscape) {
+  .chronicles-save-menu--expedition .chronicles-save-menu__panel { max-height: calc(100dvh - 12px); padding: 10px 20px; }
+  .chronicles-save-menu--expedition h1 { font-size: 1.8rem; }
+  .chronicles-save-menu--expedition h1 span { display: inline; margin-left: .25em; }
+  .chronicles-save-menu--expedition .chronicles-save-menu__kicker { margin: 0 0 6px; }
+  .chronicles-save-menu--expedition .chronicles-save-menu__actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    margin-top: 10px;
+    gap: 6px;
+  }
+  .chronicles-save-menu--expedition .chronicles-save-menu__actions button {
+    min-height: 48px;
+    grid-template-columns: 28px minmax(0, 1fr) 12px;
+    font-size: .84rem;
+    padding: 6px 8px;
+  }
+  .chronicles-save-menu--expedition .chronicles-save-menu__action-icon svg { width: 24px; height: 24px; }
+  .chronicles-save-menu--expedition .chronicles-save-menu__intro { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .chronicles-save-menu--expedition .chronicles-save-menu__actions button { transition: none; }
+}

@@ -1,16 +1,33 @@
 import { useState } from 'react';
 import './ChroniclesSaveMenu.css';
+import { chroniclesSavedExpeditionArea } from '../chronicles/chroniclesSavedExpeditionArea.js';
 
-function expeditionArea(save) {
-  switch (save.currentMapId || save.entryMapId) {
-    case 'swordhaven-square':
-    case 'swordhaven-campaign':
-    case 'swordhaven-first-book': return 'Swordhaven';
-    case 'banner-road-first-book': return 'Camino de los Estandartes';
-    case 'rookwood-first-book': return 'Rookwood';
-    case 'crypt-eight-squares': return 'Cripta de las Ocho Casillas';
-    default: return 'Expedición en curso';
-  }
+
+function ExpeditionMenuIcon({ kind }) {
+  const common = { fill: 'none', stroke: 'currentColor', strokeWidth: 1.6, strokeLinecap: 'round', strokeLinejoin: 'round' };
+  return (
+    <span className="chronicles-save-menu__action-icon" aria-hidden="true">
+      <svg viewBox="0 0 32 32" width="28" height="28" {...common}>
+        {kind === 'compass' && <>
+          <circle cx="16" cy="16" r="12" /><circle cx="16" cy="16" r="3" />
+          <path d="M16 2v28M2 16h28M20 12l-4 4-4 4 4-8z" />
+        </>}
+        {kind === 'scroll' && <>
+          <path d="M9 7h17v16H10a4 4 0 1 1-4-4V8a3 3 0 0 1 6 0v11" />
+          <path d="M12 12h10M12 16h9" />
+        </>}
+        {kind === 'folder' && <path d="M3 9h11l3 4h12v14H3zM3 9V6h12l3 4" />}
+        {kind === 'books' && <>
+          <path d="M5 5h8v22H5zM14 8h7v19h-7zM22 4l6 2-3 21-6-2z" />
+          <path d="M7 11h4M16 14h3M23 11l3 1" />
+        </>}
+        {kind === 'castle' && <>
+          <path d="M4 27V9l4 3V7l4 3 4-3 4 3 4-3v20zM2 27h28" />
+          <path d="M13 27v-9h6v9M7 15h2M23 15h2" />
+        </>}
+      </svg>
+    </span>
+  );
 }
 
 function saveWhen(value) {
@@ -36,7 +53,7 @@ export default function ChroniclesSaveMenu({
   }
 
   return (
-    <main className="chronicles-save-menu" data-chronicles-save-menu={screen}>
+    <main className="chronicles-save-menu chronicles-save-menu--expedition" data-chronicles-save-menu={screen} data-chronicles-art="approved-expedition-study-v1">
       <div className="chronicles-save-menu__sky" aria-hidden="true">
         <span className="chronicles-save-menu__moon" />
         <span className="chronicles-save-menu__tower chronicles-save-menu__tower--near" />
@@ -59,17 +76,41 @@ export default function ChroniclesSaveMenu({
         )}
 
         {screen === 'home' ? (
-          <div className="chronicles-save-menu__actions">
-            <button type="button" className="is-primary" onClick={() => onNew('swordhaven-first-book')}>Nueva campaña <small>El rey desaparecido · Primera misión</small></button>
-            <button type="button" onClick={() => onNew()}>Nuevo juego</button>
-            <button type="button" disabled={!resume || loading} onClick={() => onLoad(resume.id)}>
-              Continuar partida
-              {resume && <small>{resume.title} · {expeditionArea(resume)}</small>}
+          <nav className="chronicles-save-menu__actions" aria-label="Acciones de expedición">
+            <button type="button" className="is-primary is-campaign" onClick={() => onNew('swordhaven-first-book')}>
+              <ExpeditionMenuIcon kind="compass" />
+              <span className="chronicles-save-menu__action-copy">Nueva campaña <small>El rey desaparecido · Primera misión</small></span>
+              <span className="chronicles-save-menu__chevron" aria-hidden="true">›</span>
             </button>
-            <button type="button" disabled={!saves.length || loading} onClick={() => openList('load')}>Cargar juego</button>
-            <button type="button" onClick={() => openList('manage')}>Gestionar partidas</button>
-            <button type="button" className="is-exit" onClick={onExit}>Volver al castillo</button>
-          </div>
+            <button type="button" onClick={() => onNew()}>
+              <ExpeditionMenuIcon kind="scroll" />
+              <span className="chronicles-save-menu__action-copy">Nuevo juego</span>
+              <span className="chronicles-save-menu__chevron" aria-hidden="true">›</span>
+            </button>
+            <button type="button" className="is-resume" disabled={!resume || loading} onClick={() => onLoad(resume.id)}>
+              <ExpeditionMenuIcon kind="compass" />
+              <span className="chronicles-save-menu__action-copy">
+                Continuar partida
+                {resume && <small>{resume.title} · {chroniclesSavedExpeditionArea(resume)}</small>}
+              </span>
+              <span className="chronicles-save-menu__chevron" aria-hidden="true">›</span>
+            </button>
+            <button type="button" disabled={!saves.length || loading} onClick={() => openList('load')}>
+              <ExpeditionMenuIcon kind="folder" />
+              <span className="chronicles-save-menu__action-copy">Cargar juego</span>
+              <span className="chronicles-save-menu__chevron" aria-hidden="true">›</span>
+            </button>
+            <button type="button" onClick={() => openList('manage')}>
+              <ExpeditionMenuIcon kind="books" />
+              <span className="chronicles-save-menu__action-copy">Gestionar partidas</span>
+              <span className="chronicles-save-menu__chevron" aria-hidden="true">›</span>
+            </button>
+            <button type="button" className="is-exit" onClick={onExit}>
+              <ExpeditionMenuIcon kind="castle" />
+              <span className="chronicles-save-menu__action-copy">Volver al castillo</span>
+              <span className="chronicles-save-menu__chevron" aria-hidden="true">›</span>
+            </button>
+          </nav>
         ) : (
           <div className="chronicles-save-menu__browser">
             <div className="chronicles-save-menu__browser-heading">
@@ -84,7 +125,7 @@ export default function ChroniclesSaveMenu({
                   <li key={save.id}>
                     <div className="chronicles-save-menu__save">
                       <strong>{save.title}</strong>
-                      <span>{expeditionArea(save)} · {saveWhen(save.updatedAt)}</span>
+                      <span>{chroniclesSavedExpeditionArea(save)} · {saveWhen(save.updatedAt)}</span>
                       {save.active && <em>Última partida</em>}
                       {save.remote && <em>Guardada en servidor</em>}
                     </div>

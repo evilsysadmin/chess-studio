@@ -147,8 +147,10 @@ export default function ChroniclesOfMatthiasTactics({ onExit }) {
     })
       .then((world) => {
         if (!active) return;
+        const confirmedId = chroniclesMarkSavedRunRemote('tactics', operationId, world.runId);
+        if (!confirmedId) return;
+        activeRunIdRef.current = confirmedId;
         setBootstrapWorld(world);
-        chroniclesMarkSavedRunRemote('tactics', operationId);
         staleRunRecoveryAttemptedRef.current = false;
         setBootstrapError(null);
         setReady(true);

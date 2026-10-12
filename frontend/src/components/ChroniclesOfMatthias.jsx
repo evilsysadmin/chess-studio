@@ -24,7 +24,10 @@ import { chroniclesPartyPortraitUrl } from '../chronicles/chroniclesPartyPortrai
 import { chroniclesClearRuntimeMapDefinitions, chroniclesMapForState } from '../chronicles/chroniclesMapCatalog.js';
 import { chroniclesRegionHudLocation } from '../chronicles/chroniclesRegionHud.js';
 import { chroniclesGridExplorationStep } from '../chronicles/chroniclesGridExplorationStep.js';
+import { chroniclesCheckpointReason } from '../chronicles/chroniclesSavePolicy.js';
+import { chroniclesNpcDialogueForState } from '../chronicles/chroniclesNpcDialogue.js';
 import { chroniclesInitializeLostKingIntro } from '../chronicles/chroniclesLostKingIntro.js';
+import { chroniclesApplyArrival } from '../chronicles/chroniclesArrival.js';
 import { CHRONICLES_SWORDHAVEN_RETURN_PORTAL_ID } from '../chronicles/chroniclesSwordhavenReturnPortal.js';
 import {
   chroniclesCheckpointState,
@@ -45,6 +48,7 @@ import {
   beginChroniclesRun,
   chroniclesListSavedRuns,
   chroniclesMergeRemoteSavedRuns,
+  chroniclesRecoverLegacySavedRunIds,
   chroniclesSaveCatalogOwner,
   chroniclesMarkSavedRunRemote,
   chroniclesSelectedRunIsRemote,
@@ -73,7 +77,8 @@ import {
   unlockChroniclesSkill,
 } from '../chroniclesOfMatthiasProgression.js';
 import {
-  chroniclesAutomapMarkVisited,
+  chroniclesAutomapMarkSeen,
+  chroniclesMapCoordinatesLabel,
   clearChroniclesAutomapVisited,
   loadChroniclesAutomapVisited,
   saveChroniclesAutomapVisited,
@@ -81,7 +86,15 @@ import {
 import { useEscapeToClose } from '../useEscapeToClose.js';
 import ChroniclesAutomap from './ChroniclesAutomap.jsx';
 import ChroniclesCharacterSheet from './ChroniclesCharacterSheet.jsx';
+import ChroniclesShop from './ChroniclesShop.jsx';
+import ChroniclesAudience from './ChroniclesAudience.jsx';
+import ChroniclesGuild from './ChroniclesGuild.jsx';
+import ChroniclesSpellMenu from './ChroniclesSpellMenu.jsx';
+import {
+  CHRONICLES_SPELLS, chroniclesMemberMaxSp, chroniclesMemberSp, chroniclesMemberSpells,
+} from '../chronicles/chroniclesMagic.js';
 import ChroniclesMinimap from './ChroniclesMinimap.jsx';
+import ChroniclesCombatRoster, { chroniclesHealthBand } from './ChroniclesCombatRoster.jsx';
 import ChroniclesBookOneEpilogue from './ChroniclesBookOneEpilogue.jsx';
 import ChroniclesCharacterSetup from './ChroniclesCharacterSetup.jsx';
 import ChroniclesSaveMenu from './ChroniclesSaveMenu.jsx';
@@ -103,6 +116,9 @@ import './ChroniclesOfMatthiasJournal.css';
 import './ChroniclesPartyCondition.css';
 import './ChroniclesPartyThumbnails.css';
 import './ChroniclesRecoveredRelic.css';
+import './ChroniclesMM3Chrome.css';
+// The first-person folio must override both base and old MM3 chrome styles.
+import './ChroniclesCharacterSheetMM3.css';
 
 const KEY_ACTIONS = Object.freeze({
   ArrowUp: 'forward', w: 'forward', W: 'forward',
@@ -174,11 +190,12 @@ export default function ChroniclesOfMatthias({ onExit }) {
   const activeRunIdRef = useRef(null);
   const authoritativeRunRef = useRef(null);
   const checkpointFingerprintRef = useRef('');
-  const lastPersistedCheckpointRef = useRef('');
   const checkpointQueueRef = useRef(Promise.resolve());
-  const savingTransitionRef = useRef(false);
-  const [savingTransition, setSavingTransition] = useState(false);
-  const [saveError, setSaveError] = useState('');
+  const switchingRunRef = useRef(false);
+  const checkpointPendingRef = useRef(0);
+  const checkpointMapRef = useRef(null);
+  const checkpointExistsRef = useRef(false);
+  const automapVisitedRef = useRef({});
   const stateRef = useRef(null);
   const [state, setState] = useState(null);
   const [selectedMemberId, setSelectedMemberId] = useState('matthias');
@@ -190,6 +207,12 @@ export default function ChroniclesOfMatthias({ onExit }) {
   const [partyBark, setPartyBark] = useState(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [automapOpen, setAutomapOpen] = useState(false);
+  const [spellMenuOpen, setSpellMenuOpen] = useState(false);
+  const [saveBusy, setSaveBusy] = useState(false);
+  const [saveNotice, setSaveNotice] = useState('');
+  const [confirmExitWithoutSaving, setConfirmExitWithoutSaving] = useState(false);
+  const [audience, setAudience] = useState(null);
+  const audienceRef = useRef(null);
   const [automapVisitedByMap, setAutomapVisitedByMap] = useState({});
   const touchHoldRef = useRef({ delayId: null, repeatId: null });
   const { needsRotation, lockState, activateLandscape } = useChroniclesLandscape(characterSetupDone);
@@ -205,8 +228,13 @@ export default function ChroniclesOfMatthias({ onExit }) {
     setSaveMenuError('');
     setSaveInventory(chroniclesListSavedRuns(FIRST_PERSON_RUN_SCOPE));
     void chroniclesListRemoteRuns({ signal: controller.signal })
-      .then((rows) => {
+      .then(async (rows) => {
         if (!active) return;
+        await chroniclesRecoverLegacySavedRunIds(FIRST_PERSON_RUN_SCOPE, rows, {
+          expectedOwner: ownerAtRequest,
+          signal: controller.signal,
+        });
+        if (!active || controller.signal.aborted) return;
         setSaveInventory(chroniclesMergeRemoteSavedRuns(FIRST_PERSON_RUN_SCOPE, rows, { expectedOwner: ownerAtRequest }));
       })
       .catch(() => {
@@ -233,14 +261,13 @@ export default function ChroniclesOfMatthias({ onExit }) {
 
   useEffect(() => {
     if (!state?.mapId) return;
-    setAutomapVisitedByMap((visited) => chroniclesAutomapMarkVisited(visited, state));
+    setAutomapVisitedByMap((visited) => chroniclesAutomapMarkSeen(visited, chroniclesMapForState(state), state));
   }, [state?.mapId, state?.x, state?.y]);
 
+  // Map reveal is session-only until an explicit save or area transition.
   useEffect(() => {
-    const runId = activeRunIdRef.current;
-    if (!ready || !runId) return;
-    saveChroniclesAutomapVisited(runId, automapVisitedByMap);
-  }, [automapVisitedByMap, ready]);
+    automapVisitedRef.current = automapVisitedByMap;
+  }, [automapVisitedByMap]);
 
   useEffect(() => {
     const html = document.documentElement;
@@ -271,6 +298,11 @@ export default function ChroniclesOfMatthias({ onExit }) {
   }, [onExit]);
 
   useEscapeToClose(() => {
+    if (audienceRef.current) {
+      audienceRef.current = null;
+      setAudience(null);
+      return;
+    }
     if (automapOpen) {
       setAutomapOpen(false);
       return;
@@ -311,25 +343,44 @@ export default function ChroniclesOfMatthias({ onExit }) {
   }, []);
 
   const dispatch = useCallback((action) => {
-    // Freeze all input while the latest checkpoint is being confirmed.
-    if (savingTransitionRef.current) return;
+    if (switchingRunRef.current) return;
     const current = stateRef.current;
     if (!current) return;
 
     const actionType = typeof action === 'string' ? action : action?.type;
-    if (actionType === 'equip-item' || actionType === 'unequip-item') {
+    // A held touch control must not keep moving the expedition behind an NPC.
+    // The deliberate dialogue quest option alone may invoke 'interact'.
+    if (audienceRef.current && actionType !== 'interact') return current;
+    // A door in an MM3 town opens an audience instead of silently awarding
+    // a quest from a stone wall. One more step into the facade enters.
+    if (actionType === 'forward' && !current.initiative && current.phase === 'explore') {
+      const face = CHRONICLES_DIRECTIONS[current.direction];
+      const map = chroniclesMapForState(current);
+      const nextTile = face ? map?.grid?.[current.y + face.dy]?.[current.x + face.dx] : null;
+      const dialogue = nextTile === '#' ? chroniclesNpcDialogueForState(
+        current, chroniclesContextualContentAction(current),
+      ) : null;
+      if (dialogue) {
+        audienceRef.current = dialogue;
+        setAudience(dialogue);
+        return current;
+      }
+    }
+    if (actionType === 'equip-item' || actionType === 'unequip-item'
+      || actionType === 'shop-buy' || actionType === 'shop-sell' || actionType === 'shop-close'
+      || actionType === 'guild-join' || actionType === 'guild-learn' || actionType === 'guild-close') {
       const updated = chroniclesReduce(current, action);
       if (updated !== current) {
         stateRef.current = updated;
         setState(updated);
       }
-      return; // Equipping is not a movement tick or a combat action.
+      return; // Equipping and trading are not movement ticks or combat actions.
     }
     const activeActor = chroniclesCurrentInitiativeActor(current.initiative);
     if (current.initiative && activeActor?.kind === 'enemy') return;
     if (
       current.initiative
-      && actionType === 'attack'
+      && (actionType === 'attack' || actionType === 'cast')
       && activeActor?.kind === 'party'
       && typeof action === 'object'
       && action.memberId !== activeActor.id
@@ -337,12 +388,17 @@ export default function ChroniclesOfMatthias({ onExit }) {
 
     let next;
     if (!current.initiative) {
-      const exploratoryNext = actionType === 'attack' ? current : chroniclesGridExplorationStep(current, action);
-      const attackingMember = actionType === 'attack' && typeof action === 'object'
+      // An offensive spell opens combat exactly like a swing, at the spell's reach.
+      const offensiveSpell = actionType === 'cast' && CHRONICLES_SPELLS[action.spellId]?.kind === 'attack'
+        ? CHRONICLES_SPELLS[action.spellId]
+        : null;
+      const offensive = actionType === 'attack' || Boolean(offensiveSpell);
+      const exploratoryNext = offensive ? current : chroniclesGridExplorationStep(current, action);
+      const attackingMember = offensive && typeof action === 'object'
         ? current.party.find((member) => member.id === action.memberId)
         : null;
       const forcedTarget = attackingMember
-        ? chroniclesEnemyTargetAhead(current, chroniclesPartyAttackStats(current, attackingMember.id).reach)
+        ? chroniclesEnemyTargetAhead(current, offensiveSpell?.reach ?? chroniclesPartyAttackStats(current, attackingMember.id).reach)
         : null;
       // Entering an area is not a tactical movement inside it. The player
       // gets to see the new room/return portal before enemies can engage.
@@ -356,12 +412,14 @@ export default function ChroniclesOfMatthias({ onExit }) {
       );
       next = started !== exploratoryNext
         ? started
-        : actionType === 'attack'
+        : offensive
           ? chroniclesReduce(current, action)
           : exploratoryNext;
     } else {
       next = chroniclesReduce(current, action);
-      if (next !== current && next.phase !== 'defeated' && next.phase !== 'escaped') {
+      // A refused cast (no spell points, no target) keeps the hero's turn.
+      const spentTurn = actionType !== 'cast' || next.turns !== current.turns;
+      if (next !== current && spentTurn && next.phase !== 'defeated' && next.phase !== 'escaped') {
         next = chroniclesAdvanceCombatInitiative(next, chroniclesActiveEnemies(next));
       }
     }
@@ -382,10 +440,10 @@ export default function ChroniclesOfMatthias({ onExit }) {
       },
     );
     if (progressResult.awards.length || progressResult.levelUps.length) {
-      const saved = saveChroniclesProgression(progressResult.progression);
-      progressionRef.current = saved;
-      setProgression(saved);
-      next = reconcileChroniclesProgressionInTacticsState(next, saved);
+      // XP and attribute gains remain in this session until Save / area exit.
+      progressionRef.current = progressResult.progression;
+      setProgression(progressResult.progression);
+      next = reconcileChroniclesProgressionInTacticsState(next, progressResult.progression);
     }
 
     playChroniclesActionSound(current, next, action);
@@ -413,6 +471,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
         setRetaliationCue((active) => active?.token === token ? null : active);
       }, 1800);
     }
+    return next;
   }, []);
 
   const clearTouchHold = useCallback(() => {
@@ -450,12 +509,12 @@ export default function ChroniclesOfMatthias({ onExit }) {
   useEffect(() => {
     const current = stateRef.current;
     const actor = chroniclesCurrentInitiativeActor(current?.initiative);
-    if (sheetMemberId || menuOpen || savingTransition || !current?.initiative || actor?.kind !== 'enemy' || current.phase === 'defeated') return undefined;
+    if (sheetMemberId || !current?.initiative || actor?.kind !== 'enemy' || current.phase === 'defeated') return undefined;
 
     const timer = window.setTimeout(() => {
       const latest = stateRef.current;
       const latestActor = chroniclesCurrentInitiativeActor(latest?.initiative);
-      if (savingTransitionRef.current || !latest?.initiative || latestActor?.kind !== 'enemy' || latestActor.id !== actor.id) return;
+      if (!latest?.initiative || latestActor?.kind !== 'enemy' || latestActor.id !== actor.id) return;
       const acted = chroniclesResolveEnemyActor(latest, actor.id);
       const cue = chroniclesRetaliationCue(latest, acted);
       if (cue) {
@@ -474,7 +533,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
       setState(advanced);
     }, 280);
     return () => window.clearTimeout(timer);
-  }, [menuOpen, savingTransition, sheetMemberId, state?.initiative?.cursor, state?.initiative?.round, state?.phase]);
+  }, [sheetMemberId, state?.initiative?.cursor, state?.initiative?.round, state?.phase]);
 
   useEffect(() => {
     const actor = chroniclesCurrentInitiativeActor(state?.initiative);
@@ -486,6 +545,12 @@ export default function ChroniclesOfMatthias({ onExit }) {
   const interactWithContext = useCallback(() => {
     const current = stateRef.current;
     if (!current || current.phase === 'defeated' || current.phase === 'escaped') return;
+    const dialogue = chroniclesNpcDialogueForState(current, chroniclesContextualContentAction(current));
+    if (dialogue) {
+      audienceRef.current = dialogue;
+      setAudience(dialogue);
+      return;
+    }
     dispatch('interact');
   }, [dispatch]);
 
@@ -506,12 +571,13 @@ export default function ChroniclesOfMatthias({ onExit }) {
   }, [dispatch]);
 
   const applyLiveProgression = useCallback((nextProgression) => {
-    const saved = saveChroniclesProgression(nextProgression);
-    progressionRef.current = saved;
-    setProgression(saved);
+    if (switchingRunRef.current) return;
+    // Character-sheet spending is also part of the player's next saved game.
+    progressionRef.current = nextProgression;
+    setProgression(nextProgression);
     const current = stateRef.current;
     if (!current) return;
-    const reconciled = reconcileChroniclesProgressionInTacticsState(current, saved);
+    const reconciled = reconcileChroniclesProgressionInTacticsState(current, nextProgression);
     stateRef.current = reconciled;
     setState(reconciled);
   }, []);
@@ -540,53 +606,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
     setSheetMemberId(memberId);
   }, [clearTouchHold]);
 
-  // Leaving a run is a durable transition, not merely a navigation action.
-  // Auto-checkpoints are coalesced and can fail while the player keeps moving;
-  // flush the freshest snapshot before switching or exiting. A failed PUT
-  // leaves the current run mounted and the same server identity selected.
-  const saveBeforeLeaving = useCallback(async (onSaved) => {
-    if (savingTransitionRef.current) return;
-    savingTransitionRef.current = true;
-    setSavingTransition(true);
-    setSaveError('');
-    try {
-      const pending = checkpointQueueRef.current.catch(() => undefined).then(async () => {
-        const run = authoritativeRunRef.current;
-        const snapshot = stateRef.current;
-        if (!run?.runId || !snapshot) throw new Error('Chronicles has no authoritative run to save');
-        const fingerprint = chroniclesRunCheckpointFingerprint(snapshot);
-        if (!fingerprint) throw new Error('Chronicles state cannot be checkpointed');
-        if (lastPersistedCheckpointRef.current === fingerprint) return;
-        const updated = await chroniclesCheckpointState(
-          run.runId, snapshot, run.worldVersion,
-          { terminalStatus: snapshot.phase === 'escaped' ? 'completed' : null },
-        );
-        if (authoritativeRunRef.current?.runId !== run.runId) {
-          throw new Error('Chronicles run changed before save confirmation');
-        }
-        authoritativeRunRef.current = { ...run, ...updated };
-        lastPersistedCheckpointRef.current = fingerprint;
-        chroniclesNoteSavedRunCheckpoint(FIRST_PERSON_RUN_SCOPE, run.runId, snapshot.mapId);
-      });
-      checkpointQueueRef.current = pending;
-      await pending;
-      onSaved();
-    } catch (error) {
-      console.error('Chronicles save before leaving failed', error);
-      if (error?.status === 409) {
-        setReady(false);
-        setBootstrapError(error);
-      } else {
-        setSaveError('No se ha confirmado el guardado en el servidor. Sigues en tu partida; comprueba la conexión y vuelve a intentarlo.');
-      }
-    } finally {
-      savingTransitionRef.current = false;
-      setSavingTransition(false);
-    }
-  }, []);
-
-  const newExpedition = useCallback(() => {
-    void saveBeforeLeaving(() => {
+  const startAnotherExpedition = useCallback(() => {
     // Starting another game does not destroy the checkpoint of the old one.
     // The catalog keeps both identities loadable.
     const newRunId = beginChroniclesRun(FIRST_PERSON_RUN_SCOPE);
@@ -594,7 +614,8 @@ export default function ChroniclesOfMatthias({ onExit }) {
     authoritativeRunRef.current = null;
     checkpointFingerprintRef.current = '';
     checkpointQueueRef.current = Promise.resolve();
-    lastPersistedCheckpointRef.current = '';
+    checkpointMapRef.current = null;
+    checkpointExistsRef.current = false;
     stateRef.current = null;
     setState(null);
     setSelectedMemberId('matthias');
@@ -607,8 +628,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
     staleRunRecoveryAttemptedRef.current = false;
     setMenuOpen(false);
     setBootstrapRevision((revision) => revision + 1);
-    });
-  }, [saveBeforeLeaving]);
+  }, []);
 
   const restart = useCallback(() => {
     if (activeRunIdRef.current) {
@@ -672,19 +692,21 @@ export default function ChroniclesOfMatthias({ onExit }) {
         const restored = chroniclesApplyRunCheckpoint(progressed, world);
         // The run id seeds every MM3 die so F5 never rerolls a blow.
         const next = {
-          ...chroniclesInitializeLostKingIntro(restored, {
+          ...chroniclesApplyArrival(chroniclesInitializeLostKingIntro(restored, {
             fresh: !remoteSelection && world.worldVersion === 0,
-          }),
-          runSeed: operationId,
+          })),
+          runSeed: world.runId,
         };
+        const confirmedId = chroniclesMarkSavedRunRemote(FIRST_PERSON_RUN_SCOPE, operationId, world.runId);
+        if (!confirmedId) return;
+        activeRunIdRef.current = confirmedId;
         authoritativeRunRef.current = world;
-        chroniclesMarkSavedRunRemote(FIRST_PERSON_RUN_SCOPE, operationId);
-        // Compare against the server snapshot so the new commission is written
-        // immediately and survives F5 even before the first movement.
+        // Record the authoritative bootstrap as our comparison baseline.
+        // New runs have no durable checkpoint until an explicit Save or area exit.
         checkpointFingerprintRef.current = chroniclesRunCheckpointFingerprint(restored);
-        lastPersistedCheckpointRef.current = checkpointFingerprintRef.current;
-        setSaveError('');
-        setAutomapVisitedByMap(loadChroniclesAutomapVisited(operationId));
+        checkpointMapRef.current = next.mapId;
+        checkpointExistsRef.current = remoteSelection || Number(world.worldVersion || 0) > 0;
+        setAutomapVisitedByMap(loadChroniclesAutomapVisited(confirmedId));
         stateRef.current = next;
         staleRunRecoveryAttemptedRef.current = false;
         setSelectedMemberId('matthias');
@@ -733,7 +755,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
             const current = stateRef.current;
             const contextual = chroniclesContextualContentAction(current);
             if (contextual?.id !== contentId) return;
-            dispatch('interact');
+            interactWithContext();
           },
         });
         engineRef.current = engine;
@@ -751,52 +773,121 @@ export default function ChroniclesOfMatthias({ onExit }) {
       engine?.destroy();
       if (engineRef.current === engine) engineRef.current = null;
     };
-  }, [dispatch, ready, state?.mapId]);
+  }, [dispatch, interactWithContext, ready, state?.mapId]);
 
   useEffect(() => { engineRef.current?.renderState(state); }, [state]);
 
-  useEffect(() => {
-    const run = authoritativeRunRef.current;
-    if (!ready || !state || !run?.runId) return;
-    const fingerprint = chroniclesRunCheckpointFingerprint(state);
-    if (!fingerprint || fingerprint === checkpointFingerprintRef.current) return;
-    checkpointFingerprintRef.current = fingerprint;
-    const snapshot = state;
-    const scheduledRunId = run.runId;
-
-    checkpointQueueRef.current = checkpointQueueRef.current
-      .catch(() => undefined)
-      .then(async () => {
-        const currentRun = authoritativeRunRef.current;
-        if (!currentRun?.runId || currentRun.runId !== scheduledRunId) return;
+  const persistCheckpoint = useCallback((snapshot, reason = 'manual') => {
+    const requestedRunId = authoritativeRunRef.current?.runId;
+    if (!snapshot || !requestedRunId) return Promise.resolve(false);
+    const fingerprint = chroniclesRunCheckpointFingerprint(snapshot);
+    if (!fingerprint) return Promise.resolve(false);
+    // Capture the progression and visited tiles at precisely this snapshot,
+    // not later play while an earlier area checkpoint is still in flight.
+    const stagedProgression = progressionRef.current;
+    const visited = chroniclesAutomapMarkSeen(
+      automapVisitedRef.current, chroniclesMapForState(snapshot), snapshot,
+    );
+    checkpointPendingRef.current += 1;
+    setSaveBusy(true);
+    setSaveNotice('');
+    const request = checkpointQueueRef.current.catch(() => undefined).then(async () => {
+      const currentRun = authoritativeRunRef.current;
+      if (!currentRun?.runId || currentRun.runId !== requestedRunId) return false;
+      // A pristine first-person run must still write its *first* checkpoint.
+      // Equal fingerprints only permit skipping a write if a durable
+      // authoritative world snapshot already exists.
+      if (!checkpointExistsRef.current || fingerprint !== checkpointFingerprintRef.current) {
         const updated = await chroniclesCheckpointState(
-          scheduledRunId,
-          snapshot,
-          currentRun.worldVersion,
+          requestedRunId, snapshot, currentRun.worldVersion,
           { terminalStatus: snapshot.phase === 'escaped' ? 'completed' : null },
         );
-        if (authoritativeRunRef.current?.runId !== scheduledRunId) return;
+        if (authoritativeRunRef.current?.runId !== requestedRunId) return false;
         authoritativeRunRef.current = { ...currentRun, ...updated };
-        chroniclesNoteSavedRunCheckpoint(FIRST_PERSON_RUN_SCOPE, scheduledRunId, snapshot.mapId);
-        lastPersistedCheckpointRef.current = fingerprint;
-        setSaveError('');
-      })
-      .catch((error) => {
-        console.error('Chronicles checkpoint failed', error);
-        if (error?.status === 409) {
-          setReady(false);
-          setBootstrapError(error);
-        } else {
-          setSaveError('El último avance no se ha confirmado en el servidor. Vuelve a intentar guardar desde MENÚ antes de salir.');
-        }
-      });
-  }, [ready, state]);
+        checkpointFingerprintRef.current = fingerprint;
+      }
+      // The remote run commit must succeed before profile and automap progress
+      // become durable; failures leave both staged for a later manual retry.
+      checkpointExistsRef.current = true;
+      saveChroniclesAutomapVisited(requestedRunId, visited);
+      saveChroniclesProgression(stagedProgression);
+      chroniclesNoteSavedRunCheckpoint(FIRST_PERSON_RUN_SCOPE, requestedRunId, snapshot.mapId);
+      if (reason === 'manual') setSaveNotice('Partida guardada correctamente.');
+      return true;
+    }).catch((error) => {
+      console.error('Chronicles checkpoint failed', error);
+      setSaveNotice('No se pudo guardar la partida. Reinténtalo antes de salir.');
+      if (error?.status === 409) {
+        setReady(false);
+        setBootstrapError(error);
+      }
+      return false;
+    }).finally(() => {
+      checkpointPendingRef.current = Math.max(0, checkpointPendingRef.current - 1);
+      if (checkpointPendingRef.current === 0) setSaveBusy(false);
+    });
+    checkpointQueueRef.current = request;
+    return request;
+  }, []);
+
+  // Unlike an explicit discard, switching to another run must never drop the
+  // newest in-memory progress. Reuse the authoritative checkpoint queue and
+  // first-save/CAS contract; a failed write keeps the current run mounted.
+  const saveBeforeSwitch = useCallback(async (navigate) => {
+    if (switchingRunRef.current) return;
+    switchingRunRef.current = true;
+    try {
+      const snapshot = stateRef.current;
+      if (snapshot && !(await persistCheckpoint(snapshot, 'manual'))) return;
+      navigate();
+    } finally {
+      switchingRunRef.current = false;
+    }
+  }, [persistCheckpoint]);
+
+  const newExpedition = useCallback(() => {
+    void saveBeforeSwitch(startAnotherExpedition);
+  }, [saveBeforeSwitch, startAnotherExpedition]);
+
+  // No per-move/per-attack/per-dialogue autosave. Transitioning to another
+  // map is the only automatic checkpoint, per the MM3 save contract.
+  useEffect(() => {
+    if (!ready || !state?.mapId) return;
+    const previousMapId = checkpointMapRef.current;
+    checkpointMapRef.current = state.mapId;
+    if (chroniclesCheckpointReason(previousMapId, state.mapId) === 'area-change') {
+      void persistCheckpoint(state, 'area-change');
+    }
+  }, [ready, state?.mapId, persistCheckpoint]);
+
+  const saveAndExit = useCallback(async () => {
+    if (saveBusy) return;
+    const saved = await persistCheckpoint(stateRef.current, 'manual');
+    if (saved) exitChronicles();
+  }, [exitChronicles, persistCheckpoint, saveBusy]);
+
+  const discardAndExit = useCallback(async () => {
+    // Never discard a legitimate previous area checkpoint mid-flight.
+    await checkpointQueueRef.current.catch(() => undefined);
+    if (!checkpointExistsRef.current && activeRunIdRef.current) {
+      const runId = activeRunIdRef.current;
+      try {
+        await chroniclesDeleteRemoteRun(runId);
+        chroniclesForgetSavedRun(FIRST_PERSON_RUN_SCOPE, runId);
+      } catch {
+        setSaveNotice('No se ha podido descartar la expedición nueva. Vuelve a intentarlo.');
+        setConfirmExitWithoutSaving(false);
+        return;
+      }
+    }
+    exitChronicles();
+  }, [exitChronicles]);
 
   useEffect(() => {
     if (!ready || !stateRef.current) return undefined;
     const onKeyDown = (event) => {
       const current = stateRef.current;
-      if (!current || savingTransitionRef.current || menuOpen) return;
+      if (!current || audienceRef.current) return;
       if (event.key === 'm' || event.key === 'M') {
         event.preventDefault();
         clearTouchHold();
@@ -834,6 +925,11 @@ export default function ChroniclesOfMatthias({ onExit }) {
         attackWithSelected();
         return;
       }
+      if (event.key === 'c' || event.key === 'C') {
+        event.preventDefault();
+        setSpellMenuOpen((open) => !open);
+        return;
+      }
       const action = KEY_ACTIONS[event.key];
       if (!action) return;
       event.preventDefault();
@@ -842,7 +938,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
     };
     window.addEventListener('keydown', onKeyDown, { passive: false });
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [attackWithSelected, automapOpen, clearTouchHold, dispatch, interactWithContext, menuOpen, openMemberSheet, ready, sheetMemberId]);
+  }, [attackWithSelected, automapOpen, clearTouchHold, dispatch, interactWithContext, openMemberSheet, ready, sheetMemberId]);
 
   const startFreshGame = (entryMapId = null) => {
     beginChroniclesRun(FIRST_PERSON_RUN_SCOPE, { entryMapId });
@@ -859,12 +955,10 @@ export default function ChroniclesOfMatthias({ onExit }) {
     activeRunIdRef.current = null;
     authoritativeRunRef.current = null;
     checkpointFingerprintRef.current = '';
-    lastPersistedCheckpointRef.current = '';
     stateRef.current = null;
     setState(null);
     setReady(false);
     setBootstrapError(null);
-    setSaveError('');
     setCharacterSetupDone(true);
     setEntryView('playing');
     setBootstrapRevision((revision) => revision + 1);
@@ -872,30 +966,33 @@ export default function ChroniclesOfMatthias({ onExit }) {
 
   const returnToSaveMenu = () => {
     clearTouchHold();
-    const leave = () => {
+    const navigate = () => {
+      setMenuOpen(false);
       stateRef.current = null;
       activeRunIdRef.current = null;
       authoritativeRunRef.current = null;
+      checkpointMapRef.current = null;
+      checkpointExistsRef.current = false;
+      const durableProgression = loadChroniclesProgression();
+      progressionRef.current = durableProgression;
+      setProgression(durableProgression);
       setState(null);
       setReady(false);
       setBootstrapError(null);
       setRendererError('');
       checkpointFingerprintRef.current = '';
-      lastPersistedCheckpointRef.current = '';
       setCharacterSetupDone(false);
       setSaveInventory(null);
-      setMenuOpen(false);
       setEntryView('menu');
       refreshSaves((value) => value + 1);
     };
-    // Bootstrap failures have no mounted run to checkpoint. Preserve the
-    // existing recover-to-book path instead of trapping users on an error page.
-    if (bootstrapError || !stateRef.current || !authoritativeRunRef.current?.runId) {
-      leave();
+    // Bootstrap failures have no playable state to save. Do not trap the
+    // player on the error screen, but wait for any already queued work.
+    if (bootstrapError || !stateRef.current) {
+      void checkpointQueueRef.current.catch(() => undefined).then(navigate);
       return;
     }
-    // A playable run can leave only after the latest checkpoint is durable.
-    void saveBeforeLeaving(leave);
+    void saveBeforeSwitch(navigate);
   };
 
   if (entryView === 'menu') {
@@ -967,7 +1064,13 @@ export default function ChroniclesOfMatthias({ onExit }) {
   const activeQuests = chroniclesQuestLogEntries(state).filter((quest) => quest.status === 'active');
   const expeditionOver = state.phase === 'defeated' || state.phase === 'escaped';
   const contextualAction = chroniclesContextualContentAction(state);
+  const npcAtPosition = chroniclesNpcDialogueForState(state, contextualAction);
   const activeInitiativeActor = chroniclesCurrentInitiativeActor(state.initiative);
+  // In combat the hero whose turn it is casts; exploring, the selected one.
+  const caster = activeInitiativeActor?.kind === 'party'
+    ? state.party.find((member) => member.id === activeInitiativeActor.id) || selectedMember
+    : selectedMember;
+  const casterKnowsSpells = caster ? chroniclesMemberSpells(state, caster).length > 0 : false;
 
   return (
     <div
@@ -987,21 +1090,6 @@ export default function ChroniclesOfMatthias({ onExit }) {
       <div className="chronicles-shell">
         <aside className="chronicles-party" aria-label="Grupo de Matthias">
           <span className="chronicles-panel-kicker">GRUPO · 1–4 SELECCIONAR · DOBLE FICHA</span>
-          <div className="chronicles-party-preview" data-condition={selectedCondition} data-relic={selectedRelic || undefined}>
-            <img
-              className="chronicles-party-preview-image"
-              src={chroniclesPartyPortraitUrl(selectedMember.id)}
-              alt={`Retrato de ${selectedMember.name}`}
-              data-chronicles-party-renderer="authored"
-              data-member-id={selectedMember.id}
-              draggable="false"
-            />
-            <div className="chronicles-party-preview-copy">
-              <span>{selectedMember?.role}</span>
-              <strong>{selectedMember?.name}</strong>
-              <small>{selectedMember?.attackName} · daño {selectedAttackStats.damage} · alcance {selectedAttackStats.reach}</small>
-            </div>
-          </div>
           {state.party.map((member, index) => {
             return (
               <button
@@ -1011,7 +1099,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
                 onClick={() => openMemberSheet(member.id)}
                 disabled={expeditionOver}
                 aria-label={`Seleccionar ${member.name}`}
-                title={`Seleccionar y abrir ficha de ${member.name}`}
+                title={`${member.name} · ${member.hp}/${member.maxHp} PV${chroniclesMemberMaxSp(state, member) > 0 ? ` · ${chroniclesMemberSp(state, member)}/${chroniclesMemberMaxSp(state, member)} PH` : ''} · clic: ficha`}
                 aria-pressed={member.id === selectedMemberId}
                 data-member-hp={member.hp}
                 data-damage-hit={retaliationCue?.targetId === member.id ? 'true' : undefined}
@@ -1031,17 +1119,38 @@ export default function ChroniclesOfMatthias({ onExit }) {
                     />
                   ) : null}
                 </span>
-                <span><strong>{index + 1}. {member.name}</strong><small>Nv {chroniclesHeroProgress(progression, member.id).level} · {member.row === 'front' ? 'FRENTE' : 'RETAGUARDIA'} · clic · ficha</small></span>
-                <b>{member.hp}/{member.maxHp}</b>
+                <span><strong>{index + 1}. {member.name}</strong><small>Nv {chroniclesHeroProgress(progression, member.id).level} · {member.row === 'front' ? 'FRENTE' : 'RETAGUARDIA'}</small></span>
+                <span className="chronicles-party-bars" aria-hidden="true" data-band={chroniclesHealthBand(member.hp, member.maxHp)}>
+                  <i className="is-hp" style={{ '--fill': member.maxHp ? Math.max(0, member.hp) / member.maxHp : 0 }} />
+                  {chroniclesMemberMaxSp(state, member) > 0 && (
+                    <i className="is-sp" style={{ '--fill': chroniclesMemberSp(state, member) / chroniclesMemberMaxSp(state, member) }} />
+                  )}
+                </span>
+                <b>
+                  {member.hp}/{member.maxHp}
+                  {chroniclesMemberMaxSp(state, member) > 0 && (
+                    <i className="chronicles-party-sp" data-member-sp={chroniclesMemberSp(state, member)}>
+                      {chroniclesMemberSp(state, member)}/{chroniclesMemberMaxSp(state, member)} PH
+                    </i>
+                  )}
+                </b>
               </button>
             );
           })}
+          {/* MM3 keeps two places beside the company for hired hands. */}
+          {[1, 2].map((slot) => (
+            <div key={`hireling-${slot}`} className="chronicles-party-hireling" data-chronicles-hireling-slot={slot}
+              aria-label={`Hueco ${slot} para contratado, libre`}>
+              <span className="chronicles-party-hireling__face" aria-hidden="true" />
+              <span className="chronicles-party-hireling__label"><strong>Contratado</strong><small>Hueco libre</small></span>
+            </div>
+          ))}
         </aside>
 
         <main className="chronicles-stage-wrap">
           <div className="chronicles-statusbar" aria-live="polite">
             <span>{locationHud.kind} <b>{locationHud.value}</b></span>
-            <span>RUMBO <b>{direction.label}</b></span>
+            <span>RUMBO <b>{direction.label} · {chroniclesMapCoordinatesLabel(chroniclesMapForState(state), state)}</b></span>
             <span>ACTIVO <b>{selectedMember?.name}</b></span>
             <span>OBJETIVO <b>{objective}</b></span>
             {needsRotation && (
@@ -1080,14 +1189,26 @@ export default function ChroniclesOfMatthias({ onExit }) {
               </summary>
               <div className="chronicles-game-menu__panel">
                 <strong>Chronicles of Matthias</strong>
-                <small>Salir conserva esta run sólo después de confirmar el guardado en el servidor.</small>
-                {saveError && <p className="chronicles-game-menu__save-error" role="alert">{saveError}</p>}
-                <button type="button" disabled={savingTransition} onClick={() => setMenuOpen(false)}>Continuar</button>
-                <button type="button" disabled={savingTransition} onClick={newExpedition}>Nueva expedición</button>
-                <button type="button" disabled={savingTransition} onClick={returnToSaveMenu}>Partidas guardadas</button>
-                <button type="button" disabled={savingTransition} onClick={() => { void saveBeforeLeaving(exitChronicles); }}>
-                  {savingTransition ? 'Guardando…' : 'Salir y guardar'}
+                <small>Guardado manual · checkpoint automático al cambiar de área.</small>
+                {saveNotice && <small role="status">{saveNotice}</small>}
+                <button type="button" onClick={() => { setMenuOpen(false); setConfirmExitWithoutSaving(false); }}>Continuar</button>
+                <button type="button" onClick={() => void persistCheckpoint(stateRef.current, 'manual')} disabled={saveBusy}>
+                  {saveBusy ? 'Guardando…' : 'Guardar partida'}
                 </button>
+                <button type="button" onClick={newExpedition} disabled={saveBusy}>Nueva expedición</button>
+                <button type="button" onClick={returnToSaveMenu} disabled={saveBusy}>Partidas guardadas</button>
+                <button type="button" onClick={() => void saveAndExit()} disabled={saveBusy}>Salir y guardar</button>
+                {!confirmExitWithoutSaving ? (
+                  <button type="button" onClick={() => setConfirmExitWithoutSaving(true)} disabled={saveBusy}>
+                    Salir sin guardar
+                  </button>
+                ) : (
+                  <div role="group" aria-label="Confirmar salida sin guardar">
+                    <small>Perderás lo jugado desde el último guardado o cambio de área.</small>
+                    <button type="button" onClick={() => void discardAndExit()} disabled={saveBusy}>Sí, salir sin guardar</button>
+                    <button type="button" onClick={() => setConfirmExitWithoutSaving(false)}>Cancelar</button>
+                  </div>
+                )}
               </div>
             </details>
           </div>
@@ -1096,16 +1217,6 @@ export default function ChroniclesOfMatthias({ onExit }) {
             <div ref={hostRef} className="chronicles-three" data-chronicles-renderer="three" aria-label="Mazmorra 3D en primera persona de Chronicles of Matthias" />
             <div className="chronicles-vignette" aria-hidden="true" />
             <div className="chronicles-crosshair" aria-hidden="true">·</div>
-            <ChroniclesMinimap
-              state={state}
-              visitedCells={automapVisitedByMap[state.mapId] || []}
-              hidden={automapOpen || expeditionOver}
-              onExpand={() => {
-                clearTouchHold();
-                setMenuOpen(false);
-                setAutomapOpen(true);
-              }}
-            />
             <ChroniclesInitiativeRail initiative={state.initiative} />
             <ChroniclesNarratorOverlay message={state.message}>
               {activeQuests.length > 0 && <ChroniclesQuestLog state={state} />}
@@ -1117,6 +1228,19 @@ export default function ChroniclesOfMatthias({ onExit }) {
             {state.phase === 'defeated' && <ChroniclesDefeatOverlay onRestart={restart} onExit={exitChronicles} />}
             {state.phase === 'escaped' && <ChroniclesBookOneEpilogue state={state} onRestart={restart} />}
           </div>
+
+          {/* Desktop puts these in the MM3 panel; mobile floats them over the view. */}
+          <ChroniclesMinimap
+            state={state}
+            visitedCells={automapVisitedByMap[state.mapId] || []}
+            hidden={automapOpen || expeditionOver}
+            onExpand={() => {
+              clearTouchHold();
+              setMenuOpen(false);
+              setAutomapOpen(true);
+            }}
+          />
+          <ChroniclesCombatRoster state={state} />
 
           <details className="chronicles-journal" aria-label="Crónica de expedición">
             <summary>
@@ -1169,14 +1293,24 @@ export default function ChroniclesOfMatthias({ onExit }) {
                   onClick={attackWithSelected}
                   aria-label="Atacar"
                 >⚔<small>{selectedMember?.name?.toUpperCase() || 'ATACAR'}</small></button>
-                {contextualAction && (
+                {casterKnowsSpells && (
+                  <button
+                    type="button"
+                    className="is-magic"
+                    data-chronicles-touch-action="cast"
+                    aria-expanded={spellMenuOpen}
+                    onClick={() => setSpellMenuOpen((open) => !open)}
+                    aria-label={`Hechizos de ${caster.name}`}
+                  >✧<small>MAGIA</small></button>
+                )}
+                {(contextualAction || npcAtPosition) && (
                   <button
                     type="button"
                     className="is-contextual"
                     data-chronicles-touch-action="interact"
                     onClick={interactWithContext}
-                    aria-label={contextualAction.label}
-                  >✦<small>{contextualAction.id === CHRONICLES_SWORDHAVEN_RETURN_PORTAL_ID ? 'VOLVER' : 'USAR'}</small></button>
+                    aria-label={contextualAction?.label || `Hablar con ${npcAtPosition.name}`}
+                  >✦<small>{contextualAction?.id === CHRONICLES_SWORDHAVEN_RETURN_PORTAL_ID ? 'VOLVER' : npcAtPosition ? 'ENTRAR' : 'USAR'}</small></button>
                 )}
                 <button
                   type="button"
@@ -1208,12 +1342,71 @@ export default function ChroniclesOfMatthias({ onExit }) {
                 <span><kbd>1</kbd>–<kbd>4</kbd> pieza</span>
                 <span><kbd>ESPACIO</kbd> atacar</span>
                 <span><kbd>F</kbd> usar/recoger</span>
+                <span><kbd>C</kbd> hechizos</span>
                 <span><kbd>M</kbd> mapa</span>
               </div>
             </>
           )}
         </main>
+
+        {/* Legacy large portrait of the active hero; the MM3 chrome hides it (faces live in the strip). */}
+        <div className="chronicles-party-preview" data-condition={selectedCondition} data-relic={selectedRelic || undefined}>
+          <img
+            className="chronicles-party-preview-image"
+            src={chroniclesPartyPortraitUrl(selectedMember.id)}
+            alt={`Retrato de ${selectedMember.name}`}
+            data-chronicles-party-renderer="authored"
+            data-member-id={selectedMember.id}
+            draggable="false"
+          />
+          <div className="chronicles-party-preview-copy">
+            <span>{selectedMember?.role}</span>
+            <strong>{selectedMember?.name}</strong>
+            <small>{selectedMember?.attackName} · daño {selectedAttackStats.damage} · alcance {selectedAttackStats.reach}</small>
+          </div>
+        </div>
       </div>
+
+      {spellMenuOpen && casterKnowsSpells && !expeditionOver && !sheetMember && !state.shop && !state.guild && (
+        <ChroniclesSpellMenu
+          state={state}
+          member={caster}
+          onClose={() => setSpellMenuOpen(false)}
+          onCast={(spellId) => {
+            setSpellMenuOpen(false);
+            dispatch({ type: 'cast', memberId: caster.id, spellId });
+          }}
+        />
+      )}
+
+      {state.guild && !sheetMember && (
+        <ChroniclesGuild
+          state={state}
+          onAction={dispatch}
+          onClose={() => dispatch({ type: 'guild-close' })}
+        />
+      )}
+
+      {state.shop && !sheetMember && (
+        <ChroniclesShop
+          state={state}
+          onAction={dispatch}
+          onClose={() => dispatch({ type: 'shop-close' })}
+        />
+      )}
+
+      {audience && !sheetMember && (
+        <ChroniclesAudience
+          dialogue={audience}
+          onAction={(actionId) => {
+            const context = chroniclesContextualContentAction(stateRef.current);
+            if (context?.id !== actionId) return 'Ese asunto ya está resuelto.';
+            const next = dispatch('interact');
+            return next?.message || 'Aldric asiente.';
+          }}
+          onClose={() => { audienceRef.current = null; setAudience(null); }}
+        />
+      )}
 
       {sheetMember && (
         <ChroniclesCharacterSheet
@@ -1222,6 +1415,12 @@ export default function ChroniclesOfMatthias({ onExit }) {
           member={sheetMember}
           mode="first-person"
           onClose={() => setSheetMemberId(null)}
+          onSelectMember={(memberId) => {
+            if (!stateRef.current?.party.some((candidate) => candidate.id === memberId)) return;
+            selectedMemberIdRef.current = memberId;
+            setSelectedMemberId(memberId);
+            setSheetMemberId(memberId);
+          }}
           onAllocateAttribute={allocateAttribute}
           onLearnSkill={learnSkill}
           onEquipmentAction={(action) => dispatch({ ...action, memberId: sheetMember.id })}

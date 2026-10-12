@@ -1,0 +1,49 @@
+name: CHESSCOM · Sven Sprite Forge V38
+on:
+  pull_request:
+    paths:
+      - scripts/art/chesscom_sven_bank_v38.py
+      - scripts/art/chesscom_owned_master_v40.py
+      - scripts/art/chesscom_sven_source_handoff_v44.py
+      - scripts/art/test_chesscom_sven_source_handoff_v44.py
+      - docs/experiments/chesscom-sven-3d-source-v44.md
+      - scripts/art/chesscom_golden_reference_v41.py
+      - scripts/art/test_chesscom_golden_reference_v41.py
+      - docs/experiments/chesscom-golden-art-v41.json
+      - scripts/blender/chesscom_sven_owned_preview_v40.py
+      - scripts/art/test_chesscom_owned_master_v40.py
+      - scripts/art/test_chesscom_sven_bank_v38.py
+      - scripts/art/contracts/chesscom_sven_v38.json
+      - scripts/art/sprite_forge.py
+      - .github/workflows/chesscom-sven-sprite-forge.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: chesscom-sven-forge-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  python-contracts:
+    name: Strict authored-frames compiler · Python
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+      - name: Restore exact image-validation dependency
+        run: python3 -m pip install 'Pillow==12.3.0'
+      - name: Check canonical Dust Veil golden reference contract
+        run: python3 -m unittest discover -s scripts/art -p 'test_chesscom_golden_reference_v41.py' -v
+      - name: Verify first-party Chesscom art and rig contract
+        run: |
+          python3 scripts/art/chesscom_owned_master_v40.py --references-only
+          python3 -m unittest discover -s scripts/art -p 'test_chesscom_owned_master_v40.py' -v
+      - name: Audit Sven original source handoff V44 (offline, zero cost)
+        run: python3 -m unittest discover -s scripts/art -p 'test_chesscom_sven_source_handoff_v44.py' -v
+      - name: Validate Sven V38 authored bank pipeline
+        run: python3 -m unittest discover -s scripts/art -p 'test_chesscom_sven_bank_v38.py' -v

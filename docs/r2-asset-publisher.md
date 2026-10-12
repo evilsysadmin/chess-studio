@@ -54,7 +54,7 @@ python3 -S scripts/r2_asset_gc.py plan --report /tmp/r2-retention-plan.json
 python3 -S scripts/r2_asset_gc.py apply --report /tmp/r2-retention-report.json
 ```
 
-The collector is fail-closed. It never deletes a key referenced by the reviewed manifest, a hard-coded runtime R2 URL found in application/runtime source, a stable `current.*` alias, or a configured protected prefix. Objects younger than the grace window or objects it cannot classify safely are also retained. The general immutable grace is seven days; configured release bundles keep their own shorter grace while still retaining the active and previous releases.
+The collector is fail-closed. It never deletes a key referenced by the reviewed manifest, a hard-coded runtime R2 URL found in application/runtime source, a stable `current.*` alias, or a configured protected prefix. Objects younger than the grace window or objects it cannot classify safely are also retained. The general immutable grace is seven days; Godot release bundles retain the active release plus two earlier complete releases, and apply a seven-day age grace to any additional release. Their retained files are excluded from duplicate-content and capacity-pressure pruning even if storage remains above the soft budget.
 
 Its audit output classifies hard-coded repo URL pins by authority. Runtime references remain distinct from objects retained only by operational tooling (`scripts/`, `e2e/`, `.github/`); this is reporting only and does not make those tooling-only objects deletable automatically.
 
@@ -62,7 +62,7 @@ Eligible cleanup includes expired smoke objects, explicitly deprecated prefixes,
 
 The current policy emits an early warning at 5.0 GB, starts pressure cleanup at 7.0 GB, and targets 5.5 GB after cleanup. This leaves headroom below the 10 GB-month free-storage allowance without equating live capacity to cumulative billing GB-months. Each run is guarded by a maximum object count and maximum fraction of the bucket so one bad classification cannot empty the bucket in a single execution.
 
-Godot Web releases are treated as atomic directories rather than unrelated files. The collector validates each configured `current.json`, protects the full active release and one previous release, then retires older release directories after their grace period. A missing or malformed pointer protects that whole release family for the run.
+Godot Web releases are treated as atomic directories rather than unrelated files. The collector validates each configured `current.json`, protects the full active release and two previous complete releases, then retires older release directories only after seven days. A retained Godot release is never partially pruned. Already-eligible obsolete releases may be removed over multiple GC passes because per-run deletion caps still apply. A missing or malformed pointer protects that whole release family for the run.
 
 ## Matthias Pawn Slug canonical master
 

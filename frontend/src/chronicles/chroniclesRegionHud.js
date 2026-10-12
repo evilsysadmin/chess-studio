@@ -6,7 +6,15 @@ export function chroniclesRegionHudLocation(map) {
     return { kind: 'PUEBLO', value: String(map?.title || 'Swordhaven').split(' · ')[0].toUpperCase() };
   }
   if (kind === 'wilderness') {
-    return { kind: 'EXTERIOR', value: String(map?.title || 'Camino').split(' · ')[0].toUpperCase() };
+    // Terra areas carry their MM3-style grid code (A1–F6).
+    return {
+      kind: map?.areaCode ? `ÁREA ${map.areaCode}` : 'EXTERIOR',
+      value: String(map?.title || 'Camino').split(' · ')[0].toUpperCase(),
+    };
+  }
+  // Authored campaign dungeons carry their own name (e.g. a town's sewers).
+  if (kind === 'dungeon' && map?.layoutMode === 'authored' && map?.title) {
+    return { kind: 'MAZMORRA', value: String(map.hudTitle || map.title).toUpperCase() };
   }
   return { kind: 'CRIPTA', value: '01' };
 }

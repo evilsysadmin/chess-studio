@@ -37,3 +37,16 @@ describe('Chronicles 2.5D billboards', () => {
     expect(buildChroniclesEnemyVisual('crypt-spider', { sprites: true }).model.userData.chroniclesBillboard).toBeUndefined();
   });
 });
+
+describe('procedural placeholder creatures', () => {
+  it('every procedural sprite has a packed sheet and a 3D fallback for Tactics', async () => {
+    const procedural = (await import('../../../scripts/art/chronicles_sprites/procedural-sprites.json')).default;
+    const { chroniclesEnemyVisualSpec } = await import('../chroniclesEnemyVisualRegistry.js');
+    expect(procedural.sprites.length).toBeGreaterThanOrEqual(5);
+    procedural.sprites.forEach((id) => {
+      expect(chroniclesHasSpriteBillboard(id), id).toBe(true);
+      expect(spriteManifest[id].frames, id).toEqual(['idle-a', 'idle-b', 'attack', 'hurt', 'dead']);
+      expect(chroniclesEnemyVisualSpec(id), id).not.toBeNull();
+    });
+  });
+});

@@ -198,13 +198,13 @@ async function withChessFootballCapturePage(browser, capture, callback) {
       animations: 'disabled',
     });
     const lineupPanel = welcome.getByLabel('Alineación del míster');
-    await lineupPanel.locator('summary').click();
+    await lineupPanel.locator(':scope > details > summary').click();
     await lineupPanel.getByRole('combobox', { name: 'Titular 5 · DEL' }).selectOption('fc-matthias-del-2');
     await captureFrozenFrame(page, {
       path: `${ARTIFACT_DIR}/chess-football-lineup-${capture.label}.png`,
       fullPage: true,
     });
-    await lineupPanel.locator('summary').click();
+    await lineupPanel.locator(':scope > details > summary').click();
     const attacking = welcome.getByRole('button', { name: 'Ataque total', exact: true });
     await attacking.click();
     await expect(attacking).toHaveAttribute('aria-pressed', 'true');
@@ -214,10 +214,18 @@ async function withChessFootballCapturePage(browser, capture, callback) {
       path: `${ARTIFACT_DIR}/chess-football-tactics-${capture.label}.png`,
       fullPage: true,
     });
+    const training = welcome.getByLabel('Entrenamiento de la jornada');
+    await training.locator('summary').click();
+    await welcome.getByRole('group', { name: 'Plan de entrenamiento' }).getByRole('button', { name: 'Remates' }).click();
+    await captureFrozenFrame(page, {
+      path: `${ARTIFACT_DIR}/chess-football-training-${capture.label}.png`,
+      fullPage: true,
+    });
+    await training.locator('summary').click();
     await welcome.getByRole('button', { name: 'Simular siguiente jornada', exact: true }).click();
     await expect(welcome).toContainText('Jornada 1 de 10');
-    await lineupPanel.locator('summary').click();
-    await expect(lineupPanel).toContainText('Fatiga 17%');
+    await lineupPanel.locator(':scope > details > summary').click();
+    await expect(lineupPanel).toContainText('Fatiga 24%');
     await expect(lineupPanel.locator('.chess-football-entry__slot-fatigue')).toHaveCount(5);
     if (capture.portrait) {
       await lineupPanel.screenshot({
@@ -228,13 +236,47 @@ async function withChessFootballCapturePage(browser, capture, callback) {
       // A DOM element taller than 390px may produce an unpainted white strip
       // in headless Chromium's off-viewport element screenshot. Capture the
       // actual scrolled handset viewport instead of inventing white pixels.
-      await lineupPanel.locator('summary').scrollIntoViewIfNeeded();
+      await lineupPanel.locator(':scope > details > summary').scrollIntoViewIfNeeded();
       await page.screenshot({
         path: `${ARTIFACT_DIR}/chess-football-fatigue-${capture.label}.png`,
         animations: 'disabled',
       });
     }
-    await lineupPanel.locator('summary').click();
+    await lineupPanel.locator(':scope > details > summary').click();
+    for (let day = 2; day <= 4; day += 1) {
+      await welcome.getByRole('button', { name: 'Simular siguiente jornada', exact: true }).click();
+    }
+    const development = welcome.getByLabel('Evolución de la plantilla');
+    await lineupPanel.locator(':scope > details > summary').click();
+    await expect(development.locator('summary')).toContainText('5 mejorados');
+    await development.locator('summary').click();
+    await expect(development.locator('li')).toHaveCount(9);
+    const developmentOverflow = await welcome.evaluate(node => node.scrollWidth > node.clientWidth + 1);
+    expect(developmentOverflow, 'Manager development: no horizontal overflow').toBe(false);
+    await captureFrozenFrame(page, {
+      path: `${ARTIFACT_DIR}/chess-football-development-${capture.label}.png`,
+      fullPage: true,
+    });
+    await development.locator('summary').click();
+    await lineupPanel.locator(':scope > details > summary').click();
+    for (let day = 5; day <= 10; day += 1) {
+      await welcome.getByRole('button', { name: 'Simular siguiente jornada', exact: true }).click();
+    }
+    const renewal = welcome.getByLabel('Cierre de temporada');
+    await expect(renewal).toContainText('Temporada 1 completada');
+    await captureFrozenFrame(page, {
+      path: `${ARTIFACT_DIR}/chess-football-renewal-${capture.label}.png`,
+      fullPage: true,
+    });
+    await welcome.getByRole('button', { name: 'Comenzar temporada 2', exact: true }).click();
+    await expect(welcome).toContainText('Temporada 2 de 4');
+    await expect(welcome.getByLabel('Historial del club')).toBeVisible();
+    expect(await welcome.evaluate(node => node.scrollWidth > node.clientWidth + 1),
+      'Manager second season: no horizontal overflow').toBe(false);
+    await captureFrozenFrame(page, {
+      path: `${ARTIFACT_DIR}/chess-football-second-season-${capture.label}.png`,
+      fullPage: true,
+    });
     await welcome.locator('.chess-football-entry__back').click();
     await welcome.locator('.chess-football-entry__back').click();
     await welcome.getByRole('button', { name: 'Volver a elegir modo' }).click();
@@ -249,7 +291,8 @@ async function withChessFootballCapturePage(browser, capture, callback) {
       fullPage: true,
     });
     await resume.click();
-    await expect(welcome).toContainText('Jornada 1 de 10');
+    await expect(welcome).toContainText('Temporada 2 de 4');
+    await expect(welcome).toContainText('Jornada 0 de 10');
     await welcome.locator('.chess-football-entry__back').click();
     await welcome.locator('.chess-football-entry__back').click();
     await welcome.locator('.chess-football-entry__back').click();

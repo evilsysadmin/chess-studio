@@ -1,0 +1,232 @@
+{
+  "id": "terra-b3",
+  "version": 1,
+  "progressionKey": "terra-b3-v1",
+  "title": "Calzada del Oeste",
+  "areaCode": "B3",
+  "biome": "plains",
+  "regionKind": "wilderness",
+  "layoutMode": "authored",
+  "grid": [
+    "#####################",
+    "#...................#",
+    "#...#...............#",
+    "#...................#",
+    "#...................#",
+    "#...................#",
+    "#...................#",
+    "#...................#",
+    "#...................#",
+    "#.....##.........#..#",
+    "#...................#",
+    "#...................#",
+    "#...................#",
+    "#...................#",
+    "#####################"
+  ],
+  "partyStart": {
+    "x": 10,
+    "y": 7,
+    "direction": 0
+  },
+  "initialFlags": {},
+  "enemies": [
+    {
+      "id": "terra-b3-foe-0",
+      "visualType": "road-bandit",
+      "name": "salteador",
+      "x": 7,
+      "y": 3,
+      "hpKey": "terra_b3Foe0Hp",
+      "maxHp": 6,
+      "retaliation": 1,
+      "optional": true,
+      "activation": "always",
+      "ai": {
+        "movement": "hold",
+        "attackReach": 1,
+        "engagedMovement": "cardinal-chase",
+        "engageRange": 2
+      },
+      "onDefeat": {
+        "message": "{attacker} acaba con salteador usando {attack}.",
+        "effects": [
+          {
+            "type": "grant-gold",
+            "amount": 4
+          }
+        ]
+      }
+    },
+    {
+      "id": "terra-b3-foe-1",
+      "visualType": "ash-goblin",
+      "name": "goblin",
+      "x": 13,
+      "y": 11,
+      "hpKey": "terra_b3Foe1Hp",
+      "maxHp": 6,
+      "retaliation": 1,
+      "optional": true,
+      "activation": "always",
+      "ai": {
+        "movement": "cardinal-roam",
+        "attackReach": 1,
+        "engagedMovement": "cardinal-chase",
+        "engageRange": 2
+      },
+      "onDefeat": {
+        "message": "{attacker} acaba con goblin usando {attack}.",
+        "effects": [
+          {
+            "type": "grant-gold",
+            "amount": 4
+          }
+        ]
+      }
+    }
+  ],
+  "triggers": [],
+  "interactables": [
+    {
+      "id": "terra-b3-sign",
+      "kind": "lore",
+      "visualType": "signpost",
+      "x": 5,
+      "y": 4,
+      "persistentVisual": true,
+      "label": "Leer el cartel",
+      "action": {
+        "effects": [],
+        "message": "Cartel: al oeste, Puerto de Hollín (A3). Al este, el Camino de los Estandartes (C3)."
+      }
+    }
+  ],
+  "treasures": [
+    {
+      "id": "terra-b3-chest",
+      "kind": "pickup",
+      "visualType": "chest",
+      "x": 15,
+      "y": 4,
+      "label": "Abrir el cofre",
+      "when": [
+        {
+          "key": "terra_b3ChestOpened",
+          "falsy": true
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "set",
+            "key": "terra_b3ChestOpened",
+            "value": true
+          },
+          {
+            "type": "grant-gold",
+            "amount": 12
+          },
+          {
+            "type": "grant-item",
+            "itemId": "bronze-sword",
+            "name": "Bronze sword",
+            "description": "Botín de un cofre de Terra.",
+            "quantity": 1
+          }
+        ],
+        "message": "El cofre guarda 12 monedas y algo de equipo."
+      }
+    }
+  ],
+  "traps": [],
+  "exits": [
+    {
+      "id": "b3-to-b2",
+      "kind": "exit",
+      "x": 10,
+      "y": 1,
+      "requiresReturn": true,
+      "openLabel": "Ir a B2 · Brezal de los Lobos",
+      "lockedLabel": "El paso está cortado",
+      "requirements": [],
+      "action": {
+        "effects": [
+          {
+            "type": "transition-map",
+            "mapId": "terra-b2",
+            "entryExitId": "b2-to-b3"
+          }
+        ],
+        "message": "La compañía entra en B2."
+      }
+    },
+    {
+      "id": "b3-to-b4",
+      "kind": "exit",
+      "x": 10,
+      "y": 13,
+      "requiresReturn": true,
+      "openLabel": "Ir a B4 · Granjas del Trigo",
+      "lockedLabel": "El paso está cortado",
+      "requirements": [],
+      "action": {
+        "effects": [
+          {
+            "type": "transition-map",
+            "mapId": "terra-b4",
+            "entryExitId": "b4-to-b3"
+          }
+        ],
+        "message": "La compañía entra en B4."
+      }
+    },
+    {
+      "id": "b3-to-a3",
+      "kind": "exit",
+      "x": 1,
+      "y": 7,
+      "requiresReturn": true,
+      "openLabel": "Ir a A3 · Bahía de Hollín",
+      "lockedLabel": "El paso está cortado",
+      "requirements": [],
+      "action": {
+        "effects": [
+          {
+            "type": "transition-map",
+            "mapId": "terra-a3",
+            "entryExitId": "a3-to-b3"
+          }
+        ],
+        "message": "La compañía entra en A3."
+      }
+    },
+    {
+      "id": "b3-to-c3",
+      "kind": "exit",
+      "x": 19,
+      "y": 7,
+      "requiresReturn": true,
+      "openLabel": "Ir a C3 · Camino de los Estandartes",
+      "lockedLabel": "El paso está cortado",
+      "requirements": [],
+      "action": {
+        "effects": [
+          {
+            "type": "transition-map",
+            "mapId": "banner-road-first-book",
+            "entryExitId": "c3-to-b3"
+          }
+        ],
+        "message": "La compañía entra en C3."
+      }
+    }
+  ],
+  "initialJournal": {
+    "id": "terra-b3-arrival",
+    "title": "B3 · Calzada del Oeste",
+    "body": "Una calzada real con mojones rotos a martillazos.",
+    "sigil": "B3"
+  },
+  "introMessage": "B3 · Calzada del Oeste. Una calzada real con mojones rotos a martillazos."
+}

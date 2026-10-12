@@ -53,14 +53,14 @@
       {
         "pointerKey": "pawn-slug-godot/current.json",
         "releasePrefix": "pawn-slug-godot/releases",
-        "keepPreviousReleases": 1,
-        "minimumAgeDays": 1
+        "keepPreviousReleases": 2,
+        "minimumAgeDays": 7
       },
       {
         "pointerKey": "chess-football-godot/current.json",
         "releasePrefix": "chess-football-godot/releases",
-        "keepPreviousReleases": 1,
-        "minimumAgeDays": 1
+        "keepPreviousReleases": 2,
+        "minimumAgeDays": 7
       }
     ]
   }

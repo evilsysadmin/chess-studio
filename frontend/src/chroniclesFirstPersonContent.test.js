@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { chroniclesFirstPersonScenePlan } from './chronicles/chroniclesFirstPersonScenePlan.js';
 import { chroniclesApplyContentEffects } from './chronicles/chroniclesContentRuntime.js';
+import { chroniclesNpcDialogueForState } from './chronicles/chroniclesNpcDialogue.js';
 import { CHRONICLES_SWORDHAVEN_RETURN_PORTAL_ID } from './chronicles/chroniclesSwordhavenReturnPortal.js';
 import {
   chroniclesContextualContentAction,
@@ -125,6 +126,63 @@ describe('Chronicles first-person authored content', () => {
   });
 
 
+});
+
+describe('Swordhaven town entrances remain reachable in first person', () => {
+  const at = (x, y, direction) => ({ ...createChroniclesState('swordhaven-first-book'), x, y, direction });
+
+  it('opens the weaponsmith from the street even with the sealed letter on the current tile; buys from that counter', () => {
+    const before = at(7, 5, 0);
+    expect(chroniclesContextualContentAction(before)?.id).toBe('first-book-weaponsmith');
+    const counter = chroniclesReduce(before, 'interact');
+    expect(counter.shop?.id).toBe('first-book-weaponsmith');
+    const bought = chroniclesReduce({ ...counter, inventory: { ...counter.inventory, 'crown-gold': { quantity: 200 } } },
+      { type: 'shop-buy', itemId: 'wooden-staff' });
+    expect(bought.inventory['wooden-staff']?.quantity).toBe(1);
+  });
+
+  it('opens the armorer and guild when directly facing their entrance; guild membership works from the same tile', () => {
+    const armorer = at(11, 5, 0);
+    expect(chroniclesContextualContentAction(armorer)?.id).toBe('first-book-armorer');
+    expect(chroniclesReduce(armorer, 'interact').shop?.id).toBe('first-book-armorer');
+    const guild = at(15, 5, 0);
+    expect(chroniclesContextualContentAction(guild)?.id).toBe('first-book-guild');
+    const counter = chroniclesReduce(guild, 'interact');
+    expect(counter.guild?.id).toBe('first-book-guild');
+    const joined = chroniclesReduce({ ...counter, inventory: { ...counter.inventory, 'crown-gold': { quantity: 20 } } },
+      { type: 'guild-join' });
+    expect(joined.guildMemberships?.['first-book-guild']).toBe(true);
+  });
+
+  it('lets the party speak to Aldric, Brask and Ilse while facing the entry tile', () => {
+    for (const [x, y, direction, id, name] of [
+      [11, 9, 2, 'swordhaven-mayor', 'Alcalde Aldric'],
+      [4, 5, 2, 'first-book-watch-house', 'Sargento Brask'],
+      [14, 5, 2, 'first-book-temple', 'Sacerdotisa Ilse'],
+    ]) {
+      const before = at(x, y, direction);
+      expect(chroniclesContextualContentAction(before)?.id).toBe(id);
+      expect(chroniclesNpcDialogueForState(before, chroniclesContextualContentAction(before))?.name).toBe(name);
+    }
+  });
+
+  it('keeps the mayor available to talk even after all one-shot quest actions have expired', () => {
+    const finished = {
+      ...at(11, 9, 2),
+      swordhavenMayorMet: true, swordhavenSewersReported: true, swordhavenRouteReported: true,
+    };
+    const npc = chroniclesNpcDialogueForState(finished, chroniclesContextualContentAction(finished));
+    expect(npc?.name).toBe('Alcalde Aldric');
+    expect(npc.choices.map((choice) => choice.kind)).toEqual(['say', 'say', 'leave']);
+  });
+
+  it('preserves locked inn pricing and never opens a distant or wrong-facing counter', () => {
+    const before = at(7, 9, 2);
+    expect(chroniclesContextualContentAction(before)).toMatchObject({ id: 'first-book-healer', locked: true });
+    expect(chroniclesReduce(before, 'interact').message).toMatch(/crédito|oro|monedas/i);
+    expect(chroniclesContextualContentAction(at(7, 8, 2))).toBeNull();
+    expect(chroniclesContextualContentAction(at(11, 5, 1))).toBeNull();
+  });
 });
 
 describe('Swordhaven return portal without altering legacy crypt maps', () => {

@@ -387,6 +387,16 @@ test('staging live · auth real → War Room v2 → recovery 3D → jugada real'
     await expect(page.getByRole('region', { name: 'Modos principales', exact: true })).toBeVisible({ timeout: 25_000 });
     await expect(page.getByRole('complementary', { name: 'Rincón de Matthias' })).toBeVisible({ timeout: 10_000 });
 
+    // Home is atomically covered until its 3D first frame or safe static
+    // illustration is ready. A visible menu under that curtain is NOT yet
+    // clickable. On software GL, the gate's 6s preview / 30s safe fallback may
+    // outlive Playwright's 15s click timeout. Wait for genuine readiness,
+    // rather than forcing a click through the curtain and masking a real hang.
+    await expect(
+      page.locator('[data-home-loading="waiting-for-frame"]'),
+      'Home readiness curtain must clear before PvP navigation (3D or safe 2D)',
+    ).toHaveCount(0, { timeout: 45_000 });
+
     // P0 staging: acredita el 1v1 con fetch real de Chromium, no sólo curl.
     await assertLivePvpBrowserPath(page);
 
@@ -496,6 +506,12 @@ test('staging live · auth real → War Room v2 → recovery 3D → jugada real'
         && Boolean(gameId)
         && url.origin + url.pathname === `${STAGING_API_URL}/games/${gameId}`;
     }, { timeout: 60_000 });
+    // A successful lazy-import retry can recover the 3D board without an API reload.
+    const chunkRetryResponse = page.waitForResponse((response) => (
+      response.request().method() === 'GET'
+      && board3dChunkPattern.test(new URL(response.url()).pathname)
+      && response.status() === 200
+    ), { timeout: 60_000 });
     const errorBoundaryHeading = page.getByRole('heading', { name: 'La pantalla ha tropezado', exact: true });
 
     await page.getByRole('button', { name: 'Cambiar apariencia y piezas del tablero', exact: true }).click();
@@ -505,10 +521,13 @@ test('staging live · auth real → War Room v2 → recovery 3D → jugada real'
     await appearanceDialog.getByRole('button', { name: 'Cerrar', exact: true }).click();
 
     await expect.poll(() => failedBoard3DChunkOnce, { timeout: 10_000 }).toBe(true);
-    const recovery = await Promise.race([
+    // A reload, explicit ErrorBoundary or successful same-page chunk retry
+    // can all be valid; the rendered board and real move below must still pass.
+    const recovery = await Promise.any([
       restoreAfterChunkFailure.then((response) => ({ kind: 'restored', response })),
       errorBoundaryHeading.waitFor({ state: 'visible', timeout: 10_000 })
         .then(() => ({ kind: 'boundary', response: null })),
+      chunkRetryResponse.then((response) => ({ kind: 'retry', response })),
     ]);
 
     let restoredAfterChunkFailure = recovery.response;
@@ -519,9 +538,14 @@ test('staging live · auth real → War Room v2 → recovery 3D → jugada real'
       restoredAfterChunkFailure = await restoreAfterChunkFailure;
     }
 
-    expect(restoredAfterChunkFailure).toBeTruthy();
-    expect(restoredAfterChunkFailure.status()).toBe(200);
+    if (recovery.kind === 'retry') {
+      expect(recovery.response.status()).toBe(200);
+    } else {
+      expect(restoredAfterChunkFailure).toBeTruthy();
+      expect(restoredAfterChunkFailure.status()).toBe(200);
+    }
     await expect(warRoom3d).toBeVisible({ timeout: 30_000 });
+    await expect(warRoomCanvas).toBeVisible({ timeout: 30_000 });
     await expect(warRoomSignal).toBeVisible();
     await expect(warRoomGameStatus).not.toHaveText('');
     await expect(page.locator('.error-boundary-screen')).toHaveCount(0);

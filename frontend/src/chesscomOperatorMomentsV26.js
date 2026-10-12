@@ -6,8 +6,8 @@ export const CHESSCOM_OPERATOR_MOMENTS_V26=Object.freeze({
   hitDuration:820,
   shotDuration:470,
   selectionDuration:340,
-  selectedScale:1.16,
-  momentScale:1.22,
+  selectedScale:1.035,
+  momentScale:1.10,
 });
 
 export function chesscomMomentSnapshot(state,selectedId){

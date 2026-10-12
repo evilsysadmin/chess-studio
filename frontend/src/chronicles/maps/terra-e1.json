@@ -1,0 +1,257 @@
+{
+  "id": "terra-e1",
+  "version": 1,
+  "progressionKey": "terra-e1-v1",
+  "title": "Bosque de Escarcha",
+  "areaCode": "E1",
+  "biome": "forest",
+  "regionKind": "wilderness",
+  "layoutMode": "authored",
+  "grid": [
+    "#####################",
+    "#..........#..#.#####",
+    "#.....##.....#...####",
+    "#.#...#.....###.#####",
+    "#...#.............###",
+    "###.##.#..........###",
+    "#.....#....#.##...###",
+    "#...................#",
+    "#...####...#.#......#",
+    "#....###...#........#",
+    "###........###..#####",
+    "#................####",
+    "##....##........#####",
+    "###.#.##.....#..#####",
+    "#####################"
+  ],
+  "partyStart": {
+    "x": 10,
+    "y": 7,
+    "direction": 0
+  },
+  "initialFlags": {},
+  "enemies": [
+    {
+      "id": "terra-e1-foe-0",
+      "visualType": "weaver-spider",
+      "name": "araña tejedora",
+      "x": 7,
+      "y": 3,
+      "hpKey": "terra_e1Foe0Hp",
+      "maxHp": 12,
+      "retaliation": 2,
+      "optional": true,
+      "activation": "always",
+      "ai": {
+        "movement": "cardinal-roam",
+        "attackReach": 1,
+        "engagedMovement": "knight-chase",
+        "engageRange": 3
+      },
+      "onDefeat": {
+        "message": "{attacker} acaba con araña tejedora usando {attack}.",
+        "effects": [
+          {
+            "type": "grant-gold",
+            "amount": 10
+          }
+        ]
+      }
+    },
+    {
+      "id": "terra-e1-foe-1",
+      "visualType": "ash-goblin",
+      "name": "goblin del bosque",
+      "x": 13,
+      "y": 11,
+      "hpKey": "terra_e1Foe1Hp",
+      "maxHp": 12,
+      "retaliation": 2,
+      "optional": true,
+      "activation": "always",
+      "ai": {
+        "movement": "cardinal-roam",
+        "attackReach": 1,
+        "engagedMovement": "cardinal-chase",
+        "engageRange": 2
+      },
+      "onDefeat": {
+        "message": "{attacker} acaba con goblin del bosque usando {attack}.",
+        "effects": [
+          {
+            "type": "grant-gold",
+            "amount": 10
+          }
+        ]
+      }
+    },
+    {
+      "id": "terra-e1-foe-2",
+      "visualType": "bone-hound",
+      "name": "sabueso de hueso",
+      "x": 3,
+      "y": 11,
+      "hpKey": "terra_e1Foe2Hp",
+      "maxHp": 12,
+      "retaliation": 2,
+      "optional": true,
+      "activation": "always",
+      "ai": {
+        "movement": "cardinal-roam",
+        "attackReach": 1,
+        "engagedMovement": "cardinal-chase",
+        "engageRange": 4
+      },
+      "onDefeat": {
+        "message": "{attacker} acaba con sabueso de hueso usando {attack}.",
+        "effects": [
+          {
+            "type": "grant-gold",
+            "amount": 10
+          }
+        ]
+      }
+    }
+  ],
+  "triggers": [],
+  "interactables": [
+    {
+      "id": "terra-e1-shrine",
+      "kind": "lore",
+      "visualType": "shrine",
+      "x": 5,
+      "y": 4,
+      "label": "Beber de la Fuente de Escarcha",
+      "when": [
+        {
+          "key": "terra_e1ShrineUsed",
+          "falsy": true
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "set",
+            "key": "terra_e1ShrineUsed",
+            "value": true
+          },
+          {
+            "type": "heal-party",
+            "amount": 8
+          },
+          {
+            "type": "restore-spell-points"
+          }
+        ],
+        "message": "El agua de la Fuente de Escarcha está helada y sabe a hierro. La compañía recupera fuerzas y puntos de hechizo."
+      }
+    }
+  ],
+  "treasures": [
+    {
+      "id": "terra-e1-chest",
+      "kind": "pickup",
+      "visualType": "chest",
+      "x": 15,
+      "y": 4,
+      "label": "Abrir el cofre",
+      "when": [
+        {
+          "key": "terra_e1ChestOpened",
+          "falsy": true
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "set",
+            "key": "terra_e1ChestOpened",
+            "value": true
+          },
+          {
+            "type": "grant-gold",
+            "amount": 30
+          },
+          {
+            "type": "grant-item",
+            "itemId": "silver-axe",
+            "name": "Silver axe",
+            "description": "Botín de un cofre de Terra.",
+            "quantity": 1
+          }
+        ],
+        "message": "El cofre guarda 30 monedas y algo de equipo."
+      }
+    }
+  ],
+  "traps": [],
+  "exits": [
+    {
+      "id": "e1-to-e2",
+      "kind": "exit",
+      "x": 10,
+      "y": 13,
+      "requiresReturn": true,
+      "openLabel": "Ir a E2 · Estribaciones de Escoria",
+      "lockedLabel": "El paso está cortado",
+      "requirements": [],
+      "action": {
+        "effects": [
+          {
+            "type": "transition-map",
+            "mapId": "terra-e2",
+            "entryExitId": "e2-to-e1"
+          }
+        ],
+        "message": "La compañía entra en E2."
+      }
+    },
+    {
+      "id": "e1-to-d1",
+      "kind": "exit",
+      "x": 1,
+      "y": 7,
+      "requiresReturn": true,
+      "openLabel": "Ir a D1 · Túmulos del Pacto",
+      "lockedLabel": "El paso está cortado",
+      "requirements": [],
+      "action": {
+        "effects": [
+          {
+            "type": "transition-map",
+            "mapId": "terra-d1",
+            "entryExitId": "d1-to-e1"
+          }
+        ],
+        "message": "La compañía entra en D1."
+      }
+    },
+    {
+      "id": "e1-to-f1",
+      "kind": "exit",
+      "x": 19,
+      "y": 7,
+      "requiresReturn": true,
+      "openLabel": "Ir a F1 · Faro Helado",
+      "lockedLabel": "El paso está cortado",
+      "requirements": [],
+      "action": {
+        "effects": [
+          {
+            "type": "transition-map",
+            "mapId": "terra-f1",
+            "entryExitId": "f1-to-e1"
+          }
+        ],
+        "message": "La compañía entra en F1."
+      }
+    }
+  ],
+  "initialJournal": {
+    "id": "terra-e1-arrival",
+    "title": "E1 · Bosque de Escarcha",
+    "body": "Pinos cargados de hielo crujen como huesos viejos.",
+    "sigil": "E1"
+  },
+  "introMessage": "E1 · Bosque de Escarcha. Pinos cargados de hielo crujen como huesos viejos."
+}

@@ -63,16 +63,6 @@ GATES = (
         }),
     ),
     Gate(
-        workflow="war-room-blender-art.yml",
-        label="War Room premium art",
-        exact_paths=frozenset({
-            "scripts/blender/build_war_room_premium.py",
-            "scripts/blender/configure_eevee_premium.py",
-            "scripts/blender/publish_war_room_v2_staging.py",
-            ".github/workflows/war-room-blender-art.yml",
-        }),
-    ),
-    Gate(
         workflow="pvp-duel-room-blender-art.yml",
         label="PvP Duel Room art",
         exact_paths=frozenset({
@@ -164,6 +154,13 @@ def write_outputs(path: Path, gates: list[Gate]) -> None:
 
 
 def self_test() -> None:
+    # A gate-classifier-only change must not schedule an expensive, unrelated
+    # Combat Operations Room render before any art source is changed.
+    combat_workflow = (
+        Path(__file__).resolve().parents[1]
+        / ".github/workflows/combat-operations-room-blender-art.yml"
+    ).read_text(encoding="utf-8")
+    assert "'scripts/blender_required_scope.py'" not in combat_workflow
     assert classify(["frontend/src/components/Home.css"]) == []
     assert output_lines([]) == ["blender_required=false", "blender_workflows=[]"]
     assert [gate.workflow for gate in classify(["scripts/blender/build_home_matthias.py"])] == [
@@ -206,8 +203,11 @@ def self_test() -> None:
     # optional candidate/reference tooling and must not summon required CI.
     assert classify(["scripts/blender/render_pawn_slug_enemy_sheets_v1.py"]) == []
     assert classify(["scripts/blender/build_pawn_slug_pows_v2.py"]) == []
+    # Archived v2 stays explicitly rebuildable, not an automatic required gate.
+    # Shared foundations still receive both active War Room v3/v4 renders.
+    assert classify(["scripts/blender/publish_war_room_v2_staging.py"]) == []
+    assert classify([".github/workflows/war-room-blender-art.yml"]) == []
     assert [gate.workflow for gate in classify(["scripts/blender/build_war_room_premium.py"])] == [
-        "war-room-blender-art.yml",
         "war-room-v3-blender-art.yml",
         "war-room-v4-blender-art.yml",
     ]
@@ -220,7 +220,6 @@ def self_test() -> None:
     assert [gate.workflow for gate in classify(["scripts/blender/configure_eevee_premium.py"])] == [
         "home-matthias-blender-art.yml",
         "chronicles-party-blender-art.yml",
-        "war-room-blender-art.yml",
         "pvp-duel-room-blender-art.yml",
         "pvp-duel-hall-blender-art.yml",
         "combat-operations-room-blender-art.yml",
@@ -237,7 +236,7 @@ def self_test() -> None:
         pass
     else:
         raise AssertionError("blender scope debe rechazar rutas fuera del repo")
-    print("blender-required-scope self-test OK · CSS/Pawn Slug 2D no despiertan Blender; nueve lanes path-aware")
+    print("blender-required-scope self-test OK · CSS/Pawn Slug 2D no despiertan Blender; ocho lanes path-aware")
 
 
 def main() -> int:

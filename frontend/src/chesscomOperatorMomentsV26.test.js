@@ -63,3 +63,11 @@ describe('CHESSCOM operator moments v26',()=>{
     expect(host.dataset.chesscomOperatorMoments).toBeUndefined();
   });
 });
+
+describe('CHESSCOM discreet grounded focus v28',()=>{
+  it('does not grow into a bright arcade halo or pulse constantly',()=>{
+    expect(CHESSCOM_OPERATOR_MOMENTS_V26.selectedScale).toBeLessThanOrEqual(1.04);
+    expect(CHESSCOM_OPERATOR_MOMENTS_V26.momentScale).toBeLessThanOrEqual(1.11);
+    expect(CHESSCOM_OPERATOR_MOMENTS_V26.selectedScale).toBeGreaterThanOrEqual(1);
+  });
+});

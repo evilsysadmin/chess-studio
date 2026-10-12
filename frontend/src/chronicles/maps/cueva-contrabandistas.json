@@ -1,0 +1,266 @@
+{
+  "id": "cueva-contrabandistas",
+  "version": 1,
+  "progressionKey": "cueva-contrabandistas-v1",
+  "title": "Cueva de los Contrabandistas",
+  "hudTitle": "Cueva",
+  "areaCode": "A4",
+  "regionKind": "dungeon",
+  "dungeonRole": "main",
+  "layoutMode": "authored",
+  "grid": [
+    "#################",
+    "#.#...........#.#",
+    "#.###.#####.#.#.#",
+    "#...#.#.....#...#",
+    "###.#.#.#######.#",
+    "#...#.#.#.....#.#",
+    "#.#####.###.###.#",
+    "#...#...#...#...#",
+    "###...###.###.###",
+    "#.....#.........#",
+    "#################"
+  ],
+  "partyStart": {
+    "x": 1,
+    "y": 1,
+    "direction": 1
+  },
+  "initialFlags": {},
+  "enemies": [
+    {
+      "id": "cueva-contrabandistas-foe-0",
+      "visualType": "road-bandit",
+      "name": "contrabandista",
+      "x": 7,
+      "y": 4,
+      "hpKey": "cueva_contrabandistasFoe0Hp",
+      "maxHp": 12,
+      "retaliation": 2,
+      "optional": true,
+      "activation": "always",
+      "ai": {
+        "movement": "hold",
+        "attackReach": 1,
+        "engagedMovement": "cardinal-chase",
+        "engageRange": 2
+      },
+      "onDefeat": {
+        "message": "{attacker} acaba con contrabandista usando {attack}.",
+        "effects": [
+          {
+            "type": "grant-gold",
+            "amount": 10
+          }
+        ]
+      }
+    },
+    {
+      "id": "cueva-contrabandistas-foe-1",
+      "visualType": "salt-crab",
+      "name": "cangrejo de cueva",
+      "x": 7,
+      "y": 1,
+      "hpKey": "cueva_contrabandistasFoe1Hp",
+      "maxHp": 12,
+      "retaliation": 2,
+      "optional": true,
+      "activation": "always",
+      "ai": {
+        "movement": "cardinal-roam",
+        "attackReach": 1,
+        "engagedMovement": "knight-chase",
+        "engageRange": 2
+      },
+      "onDefeat": {
+        "message": "{attacker} acaba con cangrejo de cueva usando {attack}.",
+        "effects": [
+          {
+            "type": "grant-gold",
+            "amount": 10
+          }
+        ]
+      }
+    },
+    {
+      "id": "cueva-contrabandistas-foe-2",
+      "visualType": "sewer-rat",
+      "name": "rata de bodega",
+      "x": 15,
+      "y": 5,
+      "hpKey": "cueva_contrabandistasFoe2Hp",
+      "maxHp": 12,
+      "retaliation": 2,
+      "optional": true,
+      "activation": "always",
+      "ai": {
+        "movement": "cardinal-roam",
+        "attackReach": 1,
+        "engagedMovement": "cardinal-chase",
+        "engageRange": 3
+      },
+      "onDefeat": {
+        "message": "{attacker} acaba con rata de bodega usando {attack}.",
+        "effects": [
+          {
+            "type": "grant-gold",
+            "amount": 10
+          }
+        ]
+      }
+    },
+    {
+      "id": "cueva-contrabandistas-foe-3",
+      "visualType": "ember-wisp",
+      "name": "farol encantado",
+      "x": 10,
+      "y": 9,
+      "hpKey": "cueva_contrabandistasFoe3Hp",
+      "maxHp": 12,
+      "retaliation": 2,
+      "optional": true,
+      "activation": "always",
+      "ai": {
+        "movement": "hold",
+        "attackReach": 2,
+        "requiresLineOfSight": true
+      },
+      "onDefeat": {
+        "message": "{attacker} acaba con farol encantado usando {attack}.",
+        "effects": [
+          {
+            "type": "grant-gold",
+            "amount": 10
+          }
+        ]
+      }
+    },
+    {
+      "id": "cueva-contrabandistas-foe-9",
+      "visualType": "bandit-captain",
+      "name": "Mano Negra, jefa de contrabandistas",
+      "x": 13,
+      "y": 5,
+      "hpKey": "cueva_contrabandistasFoe9Hp",
+      "maxHp": 18,
+      "retaliation": 3,
+      "optional": true,
+      "activation": "always",
+      "ai": {
+        "movement": "hold",
+        "attackReach": 1,
+        "engagedMovement": "cardinal-chase",
+        "engageRange": 2
+      },
+      "onDefeat": {
+        "message": "{attacker} derriba a Mano Negra, jefa de contrabandistas con {attack}.",
+        "effects": [
+          {
+            "type": "set",
+            "key": "cueva_contrabandistasBossDefeated",
+            "value": true
+          },
+          {
+            "type": "grant-gold",
+            "amount": 26
+          },
+          {
+            "type": "grant-item",
+            "itemId": "bell-ledger",
+            "name": "Registro de la campana",
+            "description": "Los contrabandistas cobraban por tocar la campana. El último pago, en lingotes con marca de Ascuafría.",
+            "quantity": 1
+          }
+        ],
+        "journal": {
+          "id": "cueva-contrabandistas-boss",
+          "title": "Cae Mano Negra, jefa de contrabandistas",
+          "body": "Los contrabandistas cobraban por tocar la campana. El último pago, en lingotes con marca de Ascuafría.",
+          "sigil": "†"
+        }
+      },
+      "defeatedFlag": "cueva_contrabandistasBossDefeated",
+      "blockingMessage": "Mano Negra, jefa de contrabandistas cierra el paso."
+    }
+  ],
+  "triggers": [],
+  "interactables": [],
+  "treasures": [
+    {
+      "id": "cueva-contrabandistas-chest",
+      "kind": "pickup",
+      "visualType": "ember-cache",
+      "x": 5,
+      "y": 5,
+      "label": "Abrir el cofre",
+      "when": [
+        {
+          "key": "cueva_contrabandistasChestOpened",
+          "falsy": true
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "set",
+            "key": "cueva_contrabandistasChestOpened",
+            "value": true
+          },
+          {
+            "type": "grant-gold",
+            "amount": 47
+          },
+          {
+            "type": "grant-item",
+            "itemId": "silver-sword",
+            "name": "Silver sword",
+            "description": "Botín de mazmorra.",
+            "quantity": 1
+          },
+          {
+            "type": "grant-item",
+            "itemId": "silver-chain",
+            "name": "Silver chain",
+            "description": "Botín de mazmorra.",
+            "quantity": 1
+          }
+        ],
+        "message": "Un cofre con herrajes de bronce: oro y equipo de calidad."
+      }
+    }
+  ],
+  "traps": [],
+  "exits": [
+    {
+      "id": "dungeon-exit",
+      "kind": "exit",
+      "x": 1,
+      "y": 1,
+      "requiresReturn": true,
+      "openLabel": "Salir a A4 · Calas de los Contrabandistas",
+      "lockedLabel": "La salida está bloqueada",
+      "requirements": [],
+      "action": {
+        "effects": [
+          {
+            "type": "transition-map",
+            "mapId": "terra-a4",
+            "entryExitId": "a4-to-dungeon"
+          }
+        ],
+        "message": "La compañía sale a la luz."
+      }
+    }
+  ],
+  "initialJournal": {
+    "id": "cueva-contrabandistas-arrival",
+    "title": "Cueva de los Contrabandistas",
+    "body": "Cueva de los Contrabandistas, bajo A4.",
+    "sigil": "A4"
+  },
+  "introMessage": "Cueva de los Contrabandistas. El aire huele a cerrado y a algo que no quiere visitas.",
+  "arrivalAction": {
+    "effects": [],
+    "message": "Cueva de los Contrabandistas. Al fondo de los pasillos espera Mano Negra, jefa de contrabandistas."
+  }
+}
