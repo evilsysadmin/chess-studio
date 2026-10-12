@@ -213,8 +213,8 @@ run "runtime_config_channel_is_private_and_least_privilege" {
   }
 
   assert {
-    condition     = length(oci_identity_policy.staging_runtime_config.statements) == 4
-    error_message = "Runtime IAM should contain only runtime Object Storage read, self-scoped Run Command, read-only Vault and backup-object access."
+    condition     = length(oci_identity_policy.staging_runtime_config.statements) == 5
+    error_message = "Runtime IAM should contain only runtime Object Storage read, self-scoped Run Command, read-only Vault, dedicated backup-object access and backup bucket-metadata read."
   }
 
   assert {
@@ -255,6 +255,11 @@ run "runtime_config_channel_is_private_and_least_privilege" {
   assert {
     condition     = strcontains(oci_identity_policy.staging_runtime_config.statements[3], "to manage objects") && strcontains(oci_identity_policy.staging_runtime_config.statements[3], "target.bucket.name='chess-studio-production-backups'")
     error_message = "The A1 may manage backup objects only in the dedicated production-backup bucket."
+  }
+
+  assert {
+    condition     = strcontains(oci_identity_policy.staging_runtime_config.statements[4], "to read buckets") && strcontains(oci_identity_policy.staging_runtime_config.statements[4], "target.bucket.name='chess-studio-production-backups'")
+    error_message = "Backup preflight GetBucket needs BUCKET_READ strictly limited to the dedicated backup bucket, not manage buckets."
   }
 
   assert {

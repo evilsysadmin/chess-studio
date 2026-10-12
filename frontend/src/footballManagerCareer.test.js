@@ -35,7 +35,7 @@ describe('Football manager · versioned career journal', () => {
     const old = { ...current, version: 1, rounds: current.rounds.map(({ tactic, lineup }) => ({ tactic, lineup })) };
     delete old.nextTraining;
     const migrated = replayFootballCareer(old);
-    expect(migrated.journal.version).toBe(3);
+    expect(migrated.journal.version).toBe(4);
     expect(migrated.journal.legacyRounds).toBe(1);
     expect(migrated.journal.nextTraining).toBe('standard');
     expect(migrated.journal.rounds[0].training).toBe('standard');
@@ -86,7 +86,7 @@ describe('Football manager · versioned career journal', () => {
     current = editFootballCareer(current, { training: 'shooting' }).journal;
     for (let i = 0; i < 4; i += 1) current = playFootballCareerRound(current).journal;
     const played = replayFootballCareer(current);
-    expect(played.journal.version).toBe(3);
+    expect(played.journal.version).toBe(4);
     expect(played.journal.legacyRounds).toBe(0);
     expect(played.season.managerDevelopment[current.nextLineup[0]].starts).toBe(4);
     expect(writeFootballCareer(current).status).toBe('saved');

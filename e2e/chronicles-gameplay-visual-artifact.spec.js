@@ -430,6 +430,15 @@ test('Chronicles · First Book equipment sheet · actual Android 390px', async (
     const sheet = page.getByRole('dialog', { name: 'Matthias', exact: true });
     const gear = sheet.locator('.chronicles-character-sheet__equipment');
     await expect(sheet).toBeVisible();
+    // Capture the actual default MM3 slate with 7 stats and party portrait
+    // rail before opening the equipment chapter.
+    await expect(sheet.getByRole('navigation', { name: 'Seleccionar personaje de la compañía' })).toBeVisible();
+    await page.screenshot({
+      path: `${ARTIFACT_DIR}/chronicles-mm3-character-folio-android-390x844.png`,
+      animations: 'disabled', timeout: 60_000,
+    });
+    await sheet.getByRole('navigation', { name: 'Apartados de la ficha' })
+      .getByRole('button', { name: /Equipo/ }).click();
     await expect(gear).toBeVisible();
     await expect(gear).toContainText('Armas y armaduras equipadas');
     // Weapon, armour and shield.
@@ -445,6 +454,46 @@ test('Chronicles · First Book equipment sheet · actual Android 390px', async (
       path: `${ARTIFACT_DIR}/chronicles-first-book-equipment-sheet-android-390x844.png`,
       animations: 'disabled', timeout: 60_000,
     });
+  } finally {
+    await context.close();
+  }
+});
+
+test('Chronicles · MM3 Alcalde Aldric · entrar en ayuntamiento y diálogo numerado Android', async ({ browser }) => {
+  test.setTimeout(300_000);
+  await mkdir(ARTIFACT_DIR, { recursive: true });
+  const context = await browser.newContext({
+    viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true,
+  });
+  const page = await context.newPage();
+  try {
+    await openChronicles(page, 'mayor-audience-android', {
+      newTown: true, newCampaign: true, chroniclesCurrentMapId: 'swordhaven-first-book',
+    });
+    const game = page.locator('[data-chronicles="true"]');
+    await expect(game).toHaveAttribute('data-chronicles-map-id', 'swordhaven-first-book');
+    // Authored route: plaza (9,7) -> (11,7) -> (11,10), facing the
+    // town hall door to the south. Walk the real gameplay input path.
+    for (const key of ['d', 'w', 'w', 'd', 'w', 'w', 'w']) await page.keyboard.press(key);
+    const turns = await game.getAttribute('data-chronicles-turns');
+    await page.keyboard.press('w');
+    const audience = page.getByRole('dialog', { name: 'Conversación con Alcalde Aldric' });
+    await expect(audience).toBeVisible({ timeout: 15_000 });
+    await expect(game).toHaveAttribute('data-chronicles-turns', turns);
+    await expect(audience.locator('[data-chronicles-dialogue-choice]')).toHaveCount(4);
+    await page.keyboard.press('w');
+    await expect(game).toHaveAttribute('data-chronicles-turns', turns);
+    await page.screenshot({
+      path: `${ARTIFACT_DIR}/chronicles-alcalde-dialogue-android-390x844.png`,
+      animations: 'disabled', timeout: 60_000,
+    });
+    await page.keyboard.press('1');
+    await expect(audience.locator('[data-chronicles-dialogue-answer]')).toContainText('Dama');
+    await page.keyboard.press('3');
+    await expect(audience).toHaveAttribute('data-chronicles-audience-spoken', 'true');
+    await expect(audience.locator('[data-chronicles-dialogue-choice="quest"]')).toHaveCount(0);
+    await page.keyboard.press('Escape');
+    await expect(audience).toHaveCount(0);
   } finally {
     await context.close();
   }
@@ -1106,4 +1155,3 @@ test('Chronicles · MM3 manual save menu · responsive Android 390px', async ({ 
     await context.close();
   }
 });
-

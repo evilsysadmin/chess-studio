@@ -11,13 +11,6 @@ on:
         options:
           - full
           - backup-storage
-  # One-shot P0 bootstrap for the currently missing production backup bucket.
-  # Remove this trigger and marker immediately after one successful reconcile.
-  push:
-    branches: [main]
-    paths:
-      - ".github/ops/oci-backup-storage-bootstrap-20261007.once"
-
 permissions:
   contents: read
 
@@ -29,7 +22,7 @@ concurrency:
 
 jobs:
   apply:
-    name: OCI staging · apply infrastructure · ${{ github.event_name == 'push' && 'backup-storage' || inputs.scope }}
+    name: OCI staging · apply infrastructure · ${{ inputs.scope }}
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
     timeout-minutes: 45
@@ -75,7 +68,7 @@ jobs:
         run: make -C infra/oci apply
 
       - name: Reconcile production backup storage only
-        if: github.event_name == 'push' || inputs.scope == 'backup-storage'
+        if: inputs.scope == 'backup-storage'
         run: make -C infra/oci backup-storage
 
       # A newly-created/replaced A1 can take a few minutes to register the

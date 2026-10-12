@@ -553,3 +553,35 @@
 .chess-football-entry__development li strong { font-weight: 700; }
 .chess-football-entry__development li small { color: #c6d2ba; font-size: .76rem; }
 .chess-football-entry__development summary:focus-visible { outline: 3px solid #d8c28b; outline-offset: 2px; }
+
+/* A quiet manager's season ledger instead of a new permanent dashboard. */
+.chess-football-entry__history {
+  margin: .6rem 0 1rem;
+  padding: .65rem .9rem;
+  border: 1px solid rgba(218, 195, 143, .24);
+  border-radius: 11px;
+  background: rgba(17, 35, 24, .72);
+}
+.chess-football-entry__history summary { color: #eddbb5; font-weight: 700; cursor: pointer; }
+.chess-football-entry__history ol {
+  padding-left: 1.2rem;
+  margin: .65rem 0 .1rem;
+  color: #e5e9d9;
+  font-size: .83rem;
+  line-height: 1.65;
+}
+.chess-football-entry__renewal {
+  margin: .85rem 0 1rem;
+  padding: .95rem;
+  border: 1px solid rgba(235, 208, 132, .40);
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(42, 64, 39, .86), rgba(16, 37, 27, .93));
+  color: #f0ebdb;
+}
+.chess-football-entry__renewal > strong { color: #ffe5a9; font-size: 1.02rem; }
+.chess-football-entry__renewal p { font-size: .85rem; line-height: 1.55; margin: .65rem 0; }
+.chess-football-entry__renewal .chess-football-entry__manager-return {
+  margin-top: .45rem;
+  min-height: 44px;
+}
+.chess-football-entry__history summary:focus-visible { outline: 3px solid #e3d49a; outline-offset: 2px; }

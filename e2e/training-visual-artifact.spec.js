@@ -672,4 +672,18 @@ scopedTest('school', 'Entrenar · Cuaderno de Matthias tras una jugada real', as
   expect(spacing.coachBottom, 'Matthias must not overlap two rows of actions').toBeLessThanOrEqual(spacing.actionsTop + 1);
   expect(spacing.overflowingButtons, 'all action labels must fit').toBe(0);
   await captureAt(page, 'school-played-moves', { width: 390, height: 844, variant: 'mobile' });
+
+  await shell.locator('.matthias-school-coach').getByRole('button', { name: 'Compactar' }).click();
+  await shell.getByRole('button', { name: 'Siguiente lección' }).click();
+  await board.getByRole('button', { name: /^Casilla e2, peón blanco/ }).click();
+  await board.getByRole('button', { name: /^Casilla f3, caballo negro/ }).click();
+  await expect(board).toHaveAttribute('data-school-playback', 'idle');
+  await shell.locator('.matthias-school-coach').getByRole('button', { name: 'Ampliar' }).click();
+  const insight = shell.locator('.matthias-school-move-insight');
+  await expect(insight).toHaveCount(1);
+  await insight.locator('summary').click();
+  await expect(insight).toContainText('caballo rival');
+  await captureAt(page, 'school-verified-capture', { width: 390, height: 844, variant: 'mobile' });
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await captureAt(page, 'school-verified-capture', { width: 1440, height: 900, variant: 'desktop' });
 });
