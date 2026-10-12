@@ -40,7 +40,8 @@ test('Chronicles · primera partida sólo se escribe al guardar y Salir sin guar
   const checkpointRequests = [];
   page.on('request', (request) => {
     if (request.method() !== 'PUT') return;
-    if (/\\/api\\/chronicles\\/runs\\/[^/]+\\/checkpoint$/.test(new URL(request.url()).pathname)) {
+    const requestPath = new URL(request.url()).pathname;
+    if (requestPath.includes('/api/chronicles/runs/') && requestPath.endsWith('/checkpoint')) {
       checkpointRequests.push(request.postDataJSON());
     }
   });
