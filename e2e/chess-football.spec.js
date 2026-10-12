@@ -288,7 +288,7 @@ test('Chess Football manager can simulate ten reproducible matchdays without loa
   await page.getByRole('button', { name: 'Comenzar temporada 2', exact: true }).click();
   await expect(season).toContainText('Jornada 0 de 10');
   await expect(season).toContainText('Temporada 2 de 4');
-  await expect(season.getByLabel('Historial del club').locator('summary')).toContainText('1 completadas');
+  await expect(season.getByLabel('Historial del club').locator('summary')).toContainText('1 completada');
   await season.getByLabel('Historial del club').locator('summary').click();
   await expect(season.getByLabel('Historial del club')).toContainText('Temporada 1');
   expect(await season.locator('.chess-football-entry__standings tbody').innerText()).not.toBe(completedTable);
