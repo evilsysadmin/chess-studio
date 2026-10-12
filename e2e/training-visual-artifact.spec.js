@@ -657,5 +657,19 @@ scopedTest('school', 'Entrenar · Cuaderno de Matthias tras una jugada real', as
   await page.setViewportSize({ width: 390, height: 844 });
   await shell.locator('.matthias-school-coach').getByRole('button', { name: 'Ampliar' }).click();
   await expect(trail).toBeVisible();
+  await expect.poll(() => shell.locator('.matthias-school-coach-detail')
+    .evaluate((node) => node.scrollTop)).toBe(0);
+  const spacing = await shell.evaluate((root) => {
+    const coach = root.querySelector('.matthias-school-coach')?.getBoundingClientRect();
+    const actions = root.querySelector('.matthias-school-board-actions')?.getBoundingClientRect();
+    const buttons = Array.from(root.querySelectorAll('.matthias-school-board-actions > button'));
+    return {
+      coachBottom: coach?.bottom ?? 0,
+      actionsTop: actions?.top ?? 0,
+      overflowingButtons: buttons.filter((button) => button.scrollWidth > button.clientWidth + 1).length,
+    };
+  });
+  expect(spacing.coachBottom, 'Matthias must not overlap two rows of actions').toBeLessThanOrEqual(spacing.actionsTop + 1);
+  expect(spacing.overflowingButtons, 'all action labels must fit').toBe(0);
   await captureAt(page, 'school-played-moves', { width: 390, height: 844, variant: 'mobile' });
 });

@@ -211,3 +211,25 @@
   font-size: .65rem;
   line-height: 1.35;
 }
+
+
+/* Four actions cannot share one 390px pill without colliding. When a
+   completed lesson has four buttons, give them two proper touch rows and
+   lift Matthias accordingly instead of obscuring either surface. */
+@media (max-width: 520px) and (orientation: portrait) {
+  .tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode]:has(.matthias-school-board-actions > button:nth-of-type(4)) .matthias-school-board-actions {
+    width: min(350px, calc(100vw - 2 * var(--school-hud-side)));
+    flex-wrap: wrap;
+    border-radius: 14px;
+  }
+  .tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode]:has(.matthias-school-board-actions > button:nth-of-type(4)) .matthias-school-board-actions > button {
+    flex: 1 1 calc(50% - .3rem);
+    min-width: 0;
+    white-space: normal;
+    padding-inline: .36rem;
+    line-height: 1.15;
+  }
+  .tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode]:has(.matthias-school-board-actions > button:nth-of-type(4)) .matthias-school-coach {
+    bottom: calc(var(--school-hud-bottom) + 112px);
+  }
+}

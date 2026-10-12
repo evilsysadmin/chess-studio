@@ -114,11 +114,13 @@ export default function Tutorial({ onExit }) {
     return () => desktop.removeEventListener?.('change', sync);
   }, []);
 
+  // The newest reply already sits below the transcript. Keep the played
+  // moves visible when expanding the journal or completing a board move.
   useEffect(() => {
     if (coachExpanded && coachLogRef.current) {
-      coachLogRef.current.scrollTop = coachLogRef.current.scrollHeight;
+      coachLogRef.current.scrollTop = 0;
     }
-  }, [coachExpanded, coachHistory]);
+  }, [coachExpanded, lineIndex, index]);
 
   const schoolRenderer = getSchoolBoardRenderer();
 
