@@ -65,6 +65,11 @@ NON_RUNTIME_SCRIPT_PREFIXES = (
 FRONTEND_TEST_RE = re.compile(r"^frontend/src/.*\.(?:test|spec)\.(?:js|jsx|ts|tsx)$")
 
 
+# A change to the live admission smoke must exercise staging, not be skipped
+# along with unrelated offline test-only modifications.
+LIVE_STAGING_SMOKE = "e2e/staging-live.spec.js"
+
+
 def normalize(path: str) -> str:
     value = path.strip().replace("\\", "/")
     if not value or value.startswith("/") or ".." in PurePosixPath(value).parts:
@@ -75,6 +80,8 @@ def normalize(path: str) -> str:
 def non_runtime_path(path: str) -> bool:
     path = normalize(path)
     name = Path(path).name
+    if path == LIVE_STAGING_SMOKE:
+        return False
     if path in NON_RUNTIME_EXACT or path.startswith(NON_RUNTIME_PREFIXES):
         return True
     if path.startswith(NON_RUNTIME_ACTION_PREFIXES):
@@ -147,6 +154,8 @@ def emit(path: str, deploy_required: bool, reason: str) -> None:
 def self_test() -> None:
     assert deploy_required_for_paths(["docs/operations/pvp.md", "README.md"]) == (False, "non-runtime-only")
     assert deploy_required_for_paths(["e2e/smoke.spec.js", "backend-go/internal/pulse/pulse_test.go"]) == (False, "non-runtime-only")
+    assert deploy_required_for_paths([LIVE_STAGING_SMOKE]) == (True, f"runtime:{LIVE_STAGING_SMOKE}")
+    assert deploy_required_for_paths(["e2e/staging-live-other.spec.js"]) == (False, "non-runtime-only")
     assert deploy_required_for_paths(["scripts/quality_scope.py", ".github/workflows/cicd.yml"]) == (False, "non-runtime-only")
     assert deploy_required_for_paths(["scripts/dead_code_reachability_check.py"]) == (False, "non-runtime-only")
     assert deploy_required_for_paths(["scripts/grafana_dashboard_check.py", ".github/workflows/billing-cost-export.yml"]) == (False, "non-runtime-only")
