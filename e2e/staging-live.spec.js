@@ -387,6 +387,16 @@ test('staging live · auth real → War Room v2 → recovery 3D → jugada real'
     await expect(page.getByRole('region', { name: 'Modos principales', exact: true })).toBeVisible({ timeout: 25_000 });
     await expect(page.getByRole('complementary', { name: 'Rincón de Matthias' })).toBeVisible({ timeout: 10_000 });
 
+    // Home is atomically covered until its 3D first frame or safe static
+    // illustration is ready. A visible menu under that curtain is NOT yet
+    // clickable. On software GL, the gate's 6s preview / 30s safe fallback may
+    // outlive Playwright's 15s click timeout. Wait for genuine readiness,
+    // rather than forcing a click through the curtain and masking a real hang.
+    await expect(
+      page.locator('[data-home-loading="waiting-for-frame"]'),
+      'Home readiness curtain must clear before PvP navigation (3D or safe 2D)',
+    ).toHaveCount(0, { timeout: 45_000 });
+
     // P0 staging: acredita el 1v1 con fetch real de Chromium, no sólo curl.
     await assertLivePvpBrowserPath(page);
 
