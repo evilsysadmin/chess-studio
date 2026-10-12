@@ -48,6 +48,7 @@ import {
   beginChroniclesRun,
   chroniclesListSavedRuns,
   chroniclesMergeRemoteSavedRuns,
+  chroniclesRecoverLegacySavedRunIds,
   chroniclesSaveCatalogOwner,
   chroniclesMarkSavedRunRemote,
   chroniclesSelectedRunIsRemote,
@@ -226,8 +227,13 @@ export default function ChroniclesOfMatthias({ onExit }) {
     setSaveMenuError('');
     setSaveInventory(chroniclesListSavedRuns(FIRST_PERSON_RUN_SCOPE));
     void chroniclesListRemoteRuns({ signal: controller.signal })
-      .then((rows) => {
+      .then(async (rows) => {
         if (!active) return;
+        await chroniclesRecoverLegacySavedRunIds(FIRST_PERSON_RUN_SCOPE, rows, {
+          expectedOwner: ownerAtRequest,
+          signal: controller.signal,
+        });
+        if (!active || controller.signal.aborted) return;
         setSaveInventory(chroniclesMergeRemoteSavedRuns(FIRST_PERSON_RUN_SCOPE, rows, { expectedOwner: ownerAtRequest }));
       })
       .catch(() => {
@@ -687,16 +693,18 @@ export default function ChroniclesOfMatthias({ onExit }) {
           ...chroniclesApplyArrival(chroniclesInitializeLostKingIntro(restored, {
             fresh: !remoteSelection && world.worldVersion === 0,
           })),
-          runSeed: operationId,
+          runSeed: world.runId,
         };
+        const confirmedId = chroniclesMarkSavedRunRemote(FIRST_PERSON_RUN_SCOPE, operationId, world.runId);
+        if (!confirmedId) return;
+        activeRunIdRef.current = confirmedId;
         authoritativeRunRef.current = world;
-        chroniclesMarkSavedRunRemote(FIRST_PERSON_RUN_SCOPE, operationId);
         // Record the authoritative bootstrap as our comparison baseline.
         // New runs have no durable checkpoint until an explicit Save or area exit.
         checkpointFingerprintRef.current = chroniclesRunCheckpointFingerprint(restored);
         checkpointMapRef.current = next.mapId;
         checkpointExistsRef.current = remoteSelection || Number(world.worldVersion || 0) > 0;
-        setAutomapVisitedByMap(loadChroniclesAutomapVisited(operationId));
+        setAutomapVisitedByMap(loadChroniclesAutomapVisited(confirmedId));
         stateRef.current = next;
         staleRunRecoveryAttemptedRef.current = false;
         setSelectedMemberId('matthias');
