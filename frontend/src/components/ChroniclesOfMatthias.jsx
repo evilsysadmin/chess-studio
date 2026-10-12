@@ -24,6 +24,7 @@ import { chroniclesPartyPortraitUrl } from '../chronicles/chroniclesPartyPortrai
 import { chroniclesClearRuntimeMapDefinitions, chroniclesMapForState } from '../chronicles/chroniclesMapCatalog.js';
 import { chroniclesRegionHudLocation } from '../chronicles/chroniclesRegionHud.js';
 import { chroniclesGridExplorationStep } from '../chronicles/chroniclesGridExplorationStep.js';
+import { chroniclesNpcDialogueForState } from '../chronicles/chroniclesNpcDialogue.js';
 import { chroniclesInitializeLostKingIntro } from '../chronicles/chroniclesLostKingIntro.js';
 import { chroniclesApplyArrival } from '../chronicles/chroniclesArrival.js';
 import { CHRONICLES_SWORDHAVEN_RETURN_PORTAL_ID } from '../chronicles/chroniclesSwordhavenReturnPortal.js';
@@ -84,6 +85,7 @@ import { useEscapeToClose } from '../useEscapeToClose.js';
 import ChroniclesAutomap from './ChroniclesAutomap.jsx';
 import ChroniclesCharacterSheet from './ChroniclesCharacterSheet.jsx';
 import ChroniclesShop from './ChroniclesShop.jsx';
+import ChroniclesAudience from './ChroniclesAudience.jsx';
 import ChroniclesGuild from './ChroniclesGuild.jsx';
 import ChroniclesSpellMenu from './ChroniclesSpellMenu.jsx';
 import {
@@ -197,6 +199,8 @@ export default function ChroniclesOfMatthias({ onExit }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [automapOpen, setAutomapOpen] = useState(false);
   const [spellMenuOpen, setSpellMenuOpen] = useState(false);
+  const [audience, setAudience] = useState(null);
+  const audienceRef = useRef(null);
   const [automapVisitedByMap, setAutomapVisitedByMap] = useState({});
   const touchHoldRef = useRef({ delayId: null, repeatId: null });
   const { needsRotation, lockState, activateLandscape } = useChroniclesLandscape(characterSetupDone);
@@ -278,6 +282,11 @@ export default function ChroniclesOfMatthias({ onExit }) {
   }, [onExit]);
 
   useEscapeToClose(() => {
+    if (audienceRef.current) {
+      audienceRef.current = null;
+      setAudience(null);
+      return;
+    }
     if (automapOpen) {
       setAutomapOpen(false);
       return;
@@ -322,6 +331,21 @@ export default function ChroniclesOfMatthias({ onExit }) {
     if (!current) return;
 
     const actionType = typeof action === 'string' ? action : action?.type;
+    // A door in an MM3 town opens an audience instead of silently awarding
+    // a quest from a stone wall. One more step into the facade enters.
+    if (actionType === 'forward') {
+      const face = CHRONICLES_DIRECTIONS[current.direction];
+      const map = chroniclesMapForState(current);
+      const nextTile = face ? map?.grid?.[current.y + face.dy]?.[current.x + face.dx] : null;
+      const dialogue = nextTile === '#' ? chroniclesNpcDialogueForState(
+        current, chroniclesContextualContentAction(current),
+      ) : null;
+      if (dialogue) {
+        audienceRef.current = dialogue;
+        setAudience(dialogue);
+        return current;
+      }
+    }
     if (actionType === 'equip-item' || actionType === 'unequip-item'
       || actionType === 'shop-buy' || actionType === 'shop-sell' || actionType === 'shop-close'
       || actionType === 'guild-join' || actionType === 'guild-learn' || actionType === 'guild-close') {
@@ -427,6 +451,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
         setRetaliationCue((active) => active?.token === token ? null : active);
       }, 1800);
     }
+    return next;
   }, []);
 
   const clearTouchHold = useCallback(() => {
@@ -500,6 +525,12 @@ export default function ChroniclesOfMatthias({ onExit }) {
   const interactWithContext = useCallback(() => {
     const current = stateRef.current;
     if (!current || current.phase === 'defeated' || current.phase === 'escaped') return;
+    const dialogue = chroniclesNpcDialogueForState(current, chroniclesContextualContentAction(current));
+    if (dialogue) {
+      audienceRef.current = dialogue;
+      setAudience(dialogue);
+      return;
+    }
     dispatch('interact');
   }, [dispatch]);
 
@@ -698,7 +729,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
             const current = stateRef.current;
             const contextual = chroniclesContextualContentAction(current);
             if (contextual?.id !== contentId) return;
-            dispatch('interact');
+            interactWithContext();
           },
         });
         engineRef.current = engine;
@@ -716,7 +747,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
       engine?.destroy();
       if (engineRef.current === engine) engineRef.current = null;
     };
-  }, [dispatch, ready, state?.mapId]);
+  }, [dispatch, interactWithContext, ready, state?.mapId]);
 
   useEffect(() => { engineRef.current?.renderState(state); }, [state]);
 
@@ -757,7 +788,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
     if (!ready || !stateRef.current) return undefined;
     const onKeyDown = (event) => {
       const current = stateRef.current;
-      if (!current) return;
+      if (!current || audienceRef.current) return;
       if (event.key === 'm' || event.key === 'M') {
         event.preventDefault();
         clearTouchHold();
@@ -1235,6 +1266,19 @@ export default function ChroniclesOfMatthias({ onExit }) {
           state={state}
           onAction={dispatch}
           onClose={() => dispatch({ type: 'shop-close' })}
+        />
+      )}
+
+      {audience && !sheetMember && (
+        <ChroniclesAudience
+          dialogue={audience}
+          onAction={(actionId) => {
+            const context = chroniclesContextualContentAction(stateRef.current);
+            if (context?.id !== actionId) return 'Ese asunto ya está resuelto.';
+            const next = dispatch('interact');
+            return next?.message || 'Aldric asiente.';
+          }}
+          onClose={() => { audienceRef.current = null; setAudience(null); }}
         />
       )}
 
