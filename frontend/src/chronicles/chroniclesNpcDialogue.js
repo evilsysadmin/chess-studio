@@ -70,9 +70,13 @@ function isNpcEntry(entry) {
 export function chroniclesNpcDialogueForState(state, contextual = null) {
   if (!state?.mapId || !Number.isInteger(state.x) || !Number.isInteger(state.y)) return null;
   const map = chroniclesMapForState(state);
+  const facing = [{ dx: 0, dy: -1 }, { dx: 1, dy: 0 }, { dx: 0, dy: 1 }, { dx: -1, dy: 0 }][state.direction];
   const candidates = (map?.interactables || []).filter((entry) => (
     isNpcEntry(entry) && Boolean(npcScriptKey(state.mapId, entry))
-    && entry.x === state.x && entry.y === state.y
+    && ((entry.x === state.x && entry.y === state.y)
+      || (facing && entry.x === state.x + facing.dx
+        && entry.y === state.y + facing.dy
+        && map.grid?.[entry.y]?.[entry.x] !== '#'))
   ));
   const active = candidates.find((entry) => entry.id === contextual?.id) || null;
   // Once the one-shot content has resolved, the person still lives in the

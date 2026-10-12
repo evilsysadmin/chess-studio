@@ -73,6 +73,9 @@ const FIRST_PERSON_ADJACENT_INTERACTION_KINDS = new Set([
   'lever',
   'button',
   'lore',
+  'merchant',
+  'service',
+  'quest',
   'relic-socket',
   'secret-door',
 ]);
@@ -239,24 +242,30 @@ export function chroniclesContextualContentAction(state) {
   ).find((entry) => !['trigger', 'trap'].includes(entry.kind)
     && (entry.kind !== 'exit' || entry.requiresReturn === true));
 
-  if (!interaction) {
-    const front = chroniclesFrontCell(state);
-    if (!explorationCellBlocker(state, front.x, front.y)) {
-      const definition = (map?.interactables || []).find((entry) => {
-        if (!FIRST_PERSON_ADJACENT_INTERACTION_KINDS.has(entry.kind)) return false;
-        if (!chroniclesRequirementsMet(state, entry.when)) return false;
-        const position = chroniclesMapContentPosition(map, entry);
-        return position?.x === front.x && position?.y === front.y;
-      });
-      if (definition) {
-        interaction = {
-          id: definition.id,
-          kind: definition.kind,
-          label: definition.label,
-          x: front.x,
-          y: front.y,
-        };
-      }
+  // In towns the street square outside a building is the authored entrance.
+  // Facing its doorway must take priority over unrelated content underfoot,
+  // such as Swordhaven's sealed letter directly opposite the weaponsmith.
+  const front = chroniclesFrontCell(state);
+  if (!explorationCellBlocker(state, front.x, front.y)) {
+    const definition = (map?.interactables || []).find((entry) => {
+      if (!FIRST_PERSON_ADJACENT_INTERACTION_KINDS.has(entry.kind)) return false;
+      if (!chroniclesRequirementsMet(state, entry.when)) return false;
+      const position = chroniclesMapContentPosition(map, entry);
+      return position?.x === front.x && position?.y === front.y;
+    });
+    const here = chroniclesContentDefinition(map, interaction?.id);
+    const facingBuilding = String(definition?.visualType || '').startsWith('building-');
+    const standingAtBuilding = String(here?.visualType || '').startsWith('building-');
+    if (definition && (!interaction || (facingBuilding && !standingAtBuilding && interaction.kind !== 'exit'))) {
+      const locked = !chroniclesRequirementsMet(state, definition.requirements);
+      interaction = {
+        id: definition.id,
+        kind: definition.kind,
+        label: locked ? (definition.lockedLabel || definition.label) : definition.label,
+        locked,
+        x: front.x,
+        y: front.y,
+      };
     }
   }
 

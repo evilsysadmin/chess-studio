@@ -9,14 +9,15 @@ import {
   chroniclesGoldBalance,
 } from './chroniclesContentRuntime.js';
 import { CHRONICLES_EQUIPMENT } from './chroniclesEquipment.js';
+import { chroniclesTownCounterInReach } from './chroniclesTownCounterReach.js';
 
 const SELL_RATE = 0.5;
 
 function shopEntry(state, map, shopId) {
   const entry = (map?.interactables || []).find((item) => item.id === shopId && item.shop);
   if (!entry) return null;
-  // The counter only exists while the party stands at the merchant.
-  if (entry.x !== state.x || entry.y !== state.y) return null;
+  // Town entrances also work from the immediately adjacent, facing street tile.
+  if (!chroniclesTownCounterInReach(state, entry, map)) return null;
   return entry;
 }
 
