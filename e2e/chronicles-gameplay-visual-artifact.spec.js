@@ -430,6 +430,15 @@ test('Chronicles · First Book equipment sheet · actual Android 390px', async (
     const sheet = page.getByRole('dialog', { name: 'Matthias', exact: true });
     const gear = sheet.locator('.chronicles-character-sheet__equipment');
     await expect(sheet).toBeVisible();
+    // Capture the actual default MM3 slate with 7 stats and party portrait
+    // rail before opening the equipment chapter.
+    await expect(sheet.getByRole('navigation', { name: 'Seleccionar personaje de la compañía' })).toBeVisible();
+    await page.screenshot({
+      path: `${ARTIFACT_DIR}/chronicles-mm3-character-folio-android-390x844.png`,
+      animations: 'disabled', timeout: 60_000,
+    });
+    await sheet.getByRole('navigation', { name: 'Apartados de la ficha' })
+      .getByRole('button', { name: /Equipo/ }).click();
     await expect(gear).toBeVisible();
     await expect(gear).toContainText('Armas y armaduras equipadas');
     // Weapon, armour and shield.
