@@ -170,28 +170,27 @@
 .chronicles .chronicles-dm-quests .chronicles-quest-log h3,
 .chronicles .chronicles-dm-quests .chronicles-quest-log__quest small { color: #4a250b; }
 
-/* Party portraits: carved slab with the portrait set like a cameo. */
+/* Every playable hero uses the same dark stone slab. Selection is a golden
+   frame, never a different/lighter fill; the MM3 bitmap text stays readable. */
 .chronicles .chronicles-party-member {
   border: 2px solid;
   border-color: var(--mm3-hi) var(--mm3-lo) var(--mm3-lo) var(--mm3-hi);
   border-radius: 0;
-  background: #9d9da2 var(--mm3-stone) 0 0 / 128px 128px;
+  background: #5d5d65 var(--mm3-stone) 0 0 / 128px 128px;
+  background-blend-mode: multiply;
   image-rendering: pixelated;
-  color: var(--mm3-ink);
+  color: #f4f1e9;
   box-shadow: 0 0 0 1px #141416;
 }
-.chronicles .chronicles-party-member strong { color: #0c0c0e; text-shadow: 1px 1px 0 rgba(255, 255, 255, .3); }
-.chronicles .chronicles-party-member small { color: #141418; }
-.chronicles .chronicles-party-member b { color: #0c0c0e; }
-.chronicles .chronicles-party-member .chronicles-party-sp { color: #0a2470; }
+.chronicles .chronicles-party-member strong { color: #f4f1e9; text-shadow: 1px 1px 0 rgba(0, 0, 0, .7); }
+.chronicles .chronicles-party-member small { color: #dddde5; }
+.chronicles .chronicles-party-member b { color: #b8edb3; }
+.chronicles .chronicles-party-member .chronicles-party-sp { color: #c6dfff; }
 .chronicles .chronicles-party-member.is-leader {
   border-color: var(--mm3-hi) var(--mm3-lo) var(--mm3-lo) var(--mm3-hi);
-  background: #9d9da2 var(--mm3-stone) 0 0 / 128px 128px;
 }
 .chronicles .chronicles-party-member.is-selected {
   border-color: #fff1c4 #7a5512 #7a5512 #fff1c4;
-  background: #e7c46d var(--mm3-stone) 0 0 / 128px 128px;
-  background-blend-mode: multiply;
   box-shadow: 0 0 0 1px #141416, 0 0 0 3px #e9c25a;
 }
 .chronicles .chronicles-party-member:hover,
@@ -717,8 +716,8 @@
     grid-template-columns: repeat(6, minmax(0, 1fr));
     gap: 8px;
   }
-  /* Each tile: the face (MM3 proportions) and, beside it, name, level,
-     HP and SP in heavy dark bitmap lettering cut into the stone. */
+  /* Each tile: the face (MM3 proportions), readable light labels,
+     HP and SP on the same dark stone as every other hero. */
   .chronicles .chronicles-party-member,
   .chronicles .chronicles-party-hireling {
     --face: clamp(84px, 16.5vh, 170px);
@@ -795,9 +794,23 @@
     padding: 0 2px 2px;
   }
   .chronicles .chronicles-party-bars i { height: 9px; }
+  /* Wider MM3 strip keeps its proportions but not the old pale selected
+     background. All four hero slates inherit the identical dark stone. */
+  .chronicles .chronicles-party-member > span:nth-child(2) strong {
+    color: #f4f1e9;
+    text-shadow: 1px 0 0 currentColor, 1px 1px 0 rgba(0, 0, 0, .75);
+  }
+  .chronicles .chronicles-party-member > span:nth-child(2) small {
+    color: #dddde5;
+    text-shadow: 1px 1px 0 rgba(0, 0, 0, .65);
+  }
+  .chronicles .chronicles-party-member > b {
+    color: #b8edb3;
+    text-shadow: 1px 0 0 currentColor, 1px 1px 0 rgba(0, 0, 0, .7);
+  }
+  .chronicles .chronicles-party-member > b .chronicles-party-sp { color: #c6dfff; }
   .chronicles .chronicles-party-member.is-selected {
     border-color: #fff36a #8a6a00 #8a6a00 #fff36a;
-    background: #9d9da2 var(--mm3-stone) 0 0 / 128px 128px;
     box-shadow: 0 0 0 1px #141416, 0 0 0 3px #f2e33a;
   }
 
