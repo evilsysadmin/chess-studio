@@ -28,6 +28,7 @@ INVENTORY = {
     'chronicles-party-blender-art.yml': 'art-generation',
     'combat-operations-room-blender-art.yml': 'art-generation',
     'chess-football-godot-poc.yml': 'game-runtime-experiment',
+    'chesscom-sven-sprite-forge.yml': 'art-quality',
     'cicd.yml': 'quality-required',
     'cloudflare-prometheus-exporter.yml': 'observability',
     'coverage.yml': 'quality-scheduled',
