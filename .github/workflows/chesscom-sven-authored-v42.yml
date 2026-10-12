@@ -1,0 +1,67 @@
+name: CHESSCOM · Original Sven authored candidate V42
+on:
+  pull_request:
+    paths:
+      - scripts/blender/chesscom_sven_authored_master_v42.py
+      - scripts/blender/chesscom_sven_owned_preview_v40.py
+      - scripts/art/chesscom_owned_master_v40.py
+      - .github/workflows/chesscom-sven-authored-v42.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: chesscom-sven-authored-v42-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  authored-review:
+    name: Blender · own Sven GLB rig and eight review views
+    runs-on: ubuntu-24.04
+    timeout-minutes: 28
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup-blender-canonical
+      - name: Model and rig our original tactical Sven
+        env:
+          LIBGL_ALWAYS_SOFTWARE: '1'
+        run: |
+          blender --background -noaudio --python-exit-code 20 \
+            --python scripts/blender/chesscom_sven_authored_master_v42.py -- \
+            --output-dir /tmp/chesscom-sven-v42
+      - name: Verify actual GLB skin, hand and foot bones, weapon and SHA
+        run: |
+          python3 scripts/art/chesscom_owned_master_v40.py \
+            --master-glb /tmp/chesscom-sven-v42/sven-owned-v42.glb \
+            --sha256 "$(sha256sum /tmp/chesscom-sven-v42/sven-owned-v42.glb | cut -d' ' -f1)"
+      - name: Render eight candidate views from our unique model
+        env:
+          LIBGL_ALWAYS_SOFTWARE: '1'
+        run: |
+          blender --background -noaudio --python-exit-code 20 \
+            --python scripts/blender/chesscom_sven_owned_preview_v40.py -- \
+            --master-glb /tmp/chesscom-sven-v42/sven-owned-v42.glb \
+            --sha256 "$(sha256sum /tmp/chesscom-sven-v42/sven-owned-v42.glb | cut -d' ' -f1)" \
+            --output-dir /tmp/chesscom-sven-v42/views
+      - name: Assert eight distinct real model views, not animation frames
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          path=Path('/tmp/chesscom-sven-v42/views/candidate-manifest.json')
+          data=json.loads(path.read_text())
+          assert data['review_only'] is True
+          assert data['NOT_a_production_sprite_bank'] is True
+          assert len(data['directions']) == 8
+          assert len(set(item['sha256'] for item in data['directions'].values())) == 8
+          assert data['candidate']['artistic_approval'] is False
+          print('EIGHT_VIEWS_REVIEW_ONLY',data['candidate']['source_sha256'])
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: chesscom-original-sven-v42-${{ github.event.pull_request.number || github.run_number }}
+          path: /tmp/chesscom-sven-v42/
+          if-no-files-found: warn
+          retention-days: 7
