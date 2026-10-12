@@ -282,6 +282,17 @@ test('Chronicles of Matthias · clic en un PJ abre una ficha RPG con retrato aut
   await expect(folio).toBeVisible();
   await expect(folio.getByRole('button', { name: /Estado/ })).toHaveAttribute('aria-pressed', 'true');
   await expect(sheet.getByText('ESTADÍSTICAS', { exact: true })).toBeVisible();
+  // A previously green build still rendered black-on-black MM3 stats because
+  // the old first-person CSS was loaded after the new folio skin. Test the
+  // *computed* browser output, not the presence of a stylesheet class.
+  const statCell = sheet.locator('.chronicles-character-sheet__mm3-stats > div').first();
+  await expect(statCell).toBeVisible();
+  const statMaterials = await statCell.evaluate((element) => ({
+    background: getComputedStyle(element).backgroundImage,
+    ink: getComputedStyle(element.querySelector('span')).color,
+  }));
+  expect(statMaterials.background).toContain('mm3-sandstone');
+  expect(statMaterials.ink).toBe('rgb(44, 28, 18)');
   await folio.getByRole('button', { name: /Equipo/ }).click();
   await expect(sheet.getByText('EQUIPO Y OBJETOS', { exact: true })).toBeVisible();
   await expect(sheet.getByText('ESTADÍSTICAS', { exact: true })).toBeHidden();
