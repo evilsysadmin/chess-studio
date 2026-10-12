@@ -1,0 +1,712 @@
+{
+  "schema": 2,
+  "quality_contract": "chesscom-sven-8way-art-v38",
+  "surface": "chesscom",
+  "actor": "sven",
+  "variant": "master-v1",
+  "composition": "integrated",
+  "cell": {
+    "width": 128,
+    "height": 192
+  },
+  "parts": {
+    "idle": {
+      "columns": 2,
+      "rows": 8
+    },
+    "walk": {
+      "columns": 4,
+      "rows": 8
+    },
+    "aim": {
+      "columns": 1,
+      "rows": 8
+    },
+    "shoot": {
+      "columns": 2,
+      "rows": 8
+    },
+    "hit": {
+      "columns": 1,
+      "rows": 8
+    },
+    "die": {
+      "columns": 2,
+      "rows": 8
+    }
+  },
+  "animations": [
+    {
+      "name": "idle_N",
+      "part": "idle",
+      "row": 0,
+      "fps": 5,
+      "loop": true,
+      "authored_frames": 2,
+      "slots": [
+        0,
+        1
+      ],
+      "source_dir": "idle/N",
+      "allowed_detached_components": 0
+    },
+    {
+      "name": "idle_NE",
+      "part": "idle",
+      "row": 1,
+      "fps": 5,
+      "loop": true,
+      "authored_frames": 2,
+      "slots": [
+        0,
+        1
+      ],
+      "source_dir": "idle/NE",
+      "allowed_detached_components": 0
+    },
+    {
+      "name": "idle_E",
+      "part": "idle",
+      "row": 2,
+      "fps": 5,
+      "loop": true,
+      "authored_frames": 2,
+      "slots": [
+        0,
+        1
+      ],
+      "source_dir": "idle/E",
+      "allowed_detached_components": 0
+    },
+    {
+      "name": "idle_SE",
+      "part": "idle",
+      "row": 3,
+      "fps": 5,
+      "loop": true,
+      "authored_frames": 2,
+      "slots": [
+        0,
+        1
+      ],
+      "source_dir": "idle/SE",
+      "allowed_detached_components": 0
+    },
+    {
+      "name": "idle_S",
+      "part": "idle",
+      "row": 4,
+      "fps": 5,
+      "loop": true,
+      "authored_frames": 2,
+      "slots": [
+        0,
+        1
+      ],
+      "source_dir": "idle/S",
+      "allowed_detached_components": 0
+    },
+    {
+      "name": "idle_SW",
+      "part": "idle",
+      "row": 5,
+      "fps": 5,
+      "loop": true,
+      "authored_frames": 2,
+      "slots": [
+        0,
+        1
+      ],
+      "source_dir": "idle/SW",
+      "allowed_detached_components": 0
+    },
+    {
+      "name": "idle_W",
+      "part": "idle",
+      "row": 6,
+      "fps": 5,
+      "loop": true,
+      "authored_frames": 2,
+      "slots": [
+        0,
+        1
+      ],
+      "source_dir": "idle/W",
+      "allowed_detached_components": 0
+    },
+    {
+      "name": "idle_NW",
+      "part": "idle",
+      "row": 7,
+      "fps": 5,
+      "loop": true,
+      "authored_frames": 2,
+      "slots": [
+        0,
+        1
+      ],
+      "source_dir": "idle/NW",
+      "allowed_detached_components": 0
+    },
+    {
+      "name": "walk_N",
+      "part": "walk",
+      "row": 0,
+      "fps": 10,
+      "loop": true,
+      "authored_frames": 4,
+      "slots": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "source_dir": "walk/N",
+      "allowed_detached_components": 0
+    },
+    {
+      "name": "walk_NE",
+      "part": "walk",
+      "row": 1,
+      "fps": 10,
+      "loop": true,
+      "authored_frames": 4,
+      "slots": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "source_dir": "walk/NE",
+      "allowed_detached_components": 0
+    },
+    {
+      "name": "walk_E",
+      "part": "walk",
+      "row": 2,
+      "fps": 10,
+      "loop": true,
+      "authored_frames": 4,
+      "slots": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "source_dir": "walk/E",
+      "allowed_detached_components": 0
+    },
+    {
+      "name": "walk_SE",
+      "part": "walk",
+      "row": 3,
+      "fps": 10,
+      "loop": true,
+      "authored_frames": 4,
+      "slots": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "source_dir": "walk/SE",
+      "allowed_detached_components": 0
+    },
+    {
+      "name": "walk_S",
+      "part": "walk",
+      "row": 4,
+      "fps": 10,
+      "loop": true,
+      "authored_frames": 4,
+      "slots": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "source_dir": "walk/S",
+      "allowed_detached_components": 0
+    },
+    {
+      "name": "walk_SW",
+      "part": "walk",
+      "row": 5,
+      "fps": 10,
+      "loop": true,
+      "authored_frames": 4,
+      "slots": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "source_dir": "walk/SW",
+      "allowed_detached_components": 0
+    },
+    {
+      "name": "walk_W",
+      "part": "walk",
+      "row": 6,
+      "fps": 10,
+      "loop": true,
+      "authored_frames": 4,
+      "slots": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "source_dir": "walk/W",
+      "allowed_detached_components": 0
+    },
+    {
+      "name": "walk_NW",
+      "part": "walk",
+      "row": 7,
+      "fps": 10,
+      "loop": true,
+      "authored_frames": 4,
+      "slots": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "source_dir": "walk/NW",
+      "allowed_detached_components": 0
+    },
+    {
+      "name": "aim_N",
+      "part": "aim",
+      "row": 0,
+      "fps": 5,
+      "loop": true,
+      "authored_frames": 1,
+      "slots": [
+        0
+      ],
+      "source_dir": "aim/N",
+      "allowed_detached_components": 0
+    },
+    {
+      "name": "aim_NE",
+      "part": "aim",
+      "row": 1,
+      "fps": 5,
+      "loop": true,
+      "authored_frames": 1,
+      "slots": [
+        0
+      ],
+      "source_dir": "aim/NE",
+      "allowed_detached_components": 0
+    },
+    {
+      "name": "aim_E",
+      "part": "aim",
+      "row": 2,
+      "fps": 5,
+      "loop": true,
+      "authored_frames": 1,
+      "slots": [
+        0
+      ],
+      "source_dir": "aim/E",
+      "allowed_detached_components": 0
+    },
+    {
+      "name": "aim_SE",
+      "part": "aim",
+      "row": 3,
+      "fps": 5,
+      "loop": true,
+      "authored_frames": 1,
+      "slots": [
+        0
+      ],
+      "source_dir": "aim/SE",
+      "allowed_detached_components": 0
+    },
+    {
+      "name": "aim_S",
+      "part": "aim",
+      "row": 4,
+      "fps": 5,
+      "loop": true,
+      "authored_frames": 1,
+      "slots": [
+        0
+      ],
+      "source_dir": "aim/S",
+      "allowed_detached_components": 0
+    },
+    {
+      "name": "aim_SW",
+      "part": "aim",
+      "row": 5,
+      "fps": 5,
+      "loop": true,
+      "authored_frames": 1,
+      "slots": [
+        0
+      ],
+      "source_dir": "aim/SW",
+      "allowed_detached_components": 0
+    },
+    {
+      "name": "aim_W",
+      "part": "aim",
+      "row": 6,
+      "fps": 5,
+      "loop": true,
+      "authored_frames": 1,
+      "slots": [
+        0
+      ],
+      "source_dir": "aim/W",
+      "allowed_detached_components": 0
+    },
+    {
+      "name": "aim_NW",
+      "part": "aim",
+      "row": 7,
+      "fps": 5,
+      "loop": true,
+      "authored_frames": 1,
+      "slots": [
+        0
+      ],
+      "source_dir": "aim/NW",
+      "allowed_detached_components": 0
+    },
+    {
+      "name": "shoot_N",
+      "part": "shoot",
+      "row": 0,
+      "fps": 12,
+      "loop": false,
+      "authored_frames": 2,
+      "slots": [
+        0,
+        1
+      ],
+      "source_dir": "shoot/N",
+      "allowed_detached_components": 0
+    },
+    {
+      "name": "shoot_NE",
+      "part": "shoot",
+      "row": 1,
+      "fps": 12,
+      "loop": false,
+      "authored_frames": 2,
+      "slots": [
+        0,
+        1
+      ],
+      "source_dir": "shoot/NE",
+      "allowed_detached_components": 0
+    },
+    {
+      "name": "shoot_E",
+      "part": "shoot",
+      "row": 2,
+      "fps": 12,
+      "loop": false,
+      "authored_frames": 2,
+      "slots": [
+        0,
+        1
+      ],
+      "source_dir": "shoot/E",
+      "allowed_detached_components": 0
+    },
+    {
+      "name": "shoot_SE",
+      "part": "shoot",
+      "row": 3,
+      "fps": 12,
+      "loop": false,
+      "authored_frames": 2,
+      "slots": [
+        0,
+        1
+      ],
+      "source_dir": "shoot/SE",
+      "allowed_detached_components": 0
+    },
+    {
+      "name": "shoot_S",
+      "part": "shoot",
+      "row": 4,
+      "fps": 12,
+      "loop": false,
+      "authored_frames": 2,
+      "slots": [
+        0,
+        1
+      ],
+      "source_dir": "shoot/S",
+      "allowed_detached_components": 0
+    },
+    {
+      "name": "shoot_SW",
+      "part": "shoot",
+      "row": 5,
+      "fps": 12,
+      "loop": false,
+      "authored_frames": 2,
+      "slots": [
+        0,
+        1
+      ],
+      "source_dir": "shoot/SW",
+      "allowed_detached_components": 0
+    },
+    {
+      "name": "shoot_W",
+      "part": "shoot",
+      "row": 6,
+      "fps": 12,
+      "loop": false,
+      "authored_frames": 2,
+      "slots": [
+        0,
+        1
+      ],
+      "source_dir": "shoot/W",
+      "allowed_detached_components": 0
+    },
+    {
+      "name": "shoot_NW",
+      "part": "shoot",
+      "row": 7,
+      "fps": 12,
+      "loop": false,
+      "authored_frames": 2,
+      "slots": [
+        0,
+        1
+      ],
+      "source_dir": "shoot/NW",
+      "allowed_detached_components": 0
+    },
+    {
+      "name": "hit_N",
+      "part": "hit",
+      "row": 0,
+      "fps": 8,
+      "loop": false,
+      "authored_frames": 1,
+      "slots": [
+        0
+      ],
+      "source_dir": "hit/N",
+      "allowed_detached_components": 0
+    },
+    {
+      "name": "hit_NE",
+      "part": "hit",
+      "row": 1,
+      "fps": 8,
+      "loop": false,
+      "authored_frames": 1,
+      "slots": [
+        0
+      ],
+      "source_dir": "hit/NE",
+      "allowed_detached_components": 0
+    },
+    {
+      "name": "hit_E",
+      "part": "hit",
+      "row": 2,
+      "fps": 8,
+      "loop": false,
+      "authored_frames": 1,
+      "slots": [
+        0
+      ],
+      "source_dir": "hit/E",
+      "allowed_detached_components": 0
+    },
+    {
+      "name": "hit_SE",
+      "part": "hit",
+      "row": 3,
+      "fps": 8,
+      "loop": false,
+      "authored_frames": 1,
+      "slots": [
+        0
+      ],
+      "source_dir": "hit/SE",
+      "allowed_detached_components": 0
+    },
+    {
+      "name": "hit_S",
+      "part": "hit",
+      "row": 4,
+      "fps": 8,
+      "loop": false,
+      "authored_frames": 1,
+      "slots": [
+        0
+      ],
+      "source_dir": "hit/S",
+      "allowed_detached_components": 0
+    },
+    {
+      "name": "hit_SW",
+      "part": "hit",
+      "row": 5,
+      "fps": 8,
+      "loop": false,
+      "authored_frames": 1,
+      "slots": [
+        0
+      ],
+      "source_dir": "hit/SW",
+      "allowed_detached_components": 0
+    },
+    {
+      "name": "hit_W",
+      "part": "hit",
+      "row": 6,
+      "fps": 8,
+      "loop": false,
+      "authored_frames": 1,
+      "slots": [
+        0
+      ],
+      "source_dir": "hit/W",
+      "allowed_detached_components": 0
+    },
+    {
+      "name": "hit_NW",
+      "part": "hit",
+      "row": 7,
+      "fps": 8,
+      "loop": false,
+      "authored_frames": 1,
+      "slots": [
+        0
+      ],
+      "source_dir": "hit/NW",
+      "allowed_detached_components": 0
+    },
+    {
+      "name": "die_N",
+      "part": "die",
+      "row": 0,
+      "fps": 8,
+      "loop": false,
+      "authored_frames": 2,
+      "slots": [
+        0,
+        1
+      ],
+      "source_dir": "die/N",
+      "allowed_detached_components": 0
+    },
+    {
+      "name": "die_NE",
+      "part": "die",
+      "row": 1,
+      "fps": 8,
+      "loop": false,
+      "authored_frames": 2,
+      "slots": [
+        0,
+        1
+      ],
+      "source_dir": "die/NE",
+      "allowed_detached_components": 0
+    },
+    {
+      "name": "die_E",
+      "part": "die",
+      "row": 2,
+      "fps": 8,
+      "loop": false,
+      "authored_frames": 2,
+      "slots": [
+        0,
+        1
+      ],
+      "source_dir": "die/E",
+      "allowed_detached_components": 0
+    },
+    {
+      "name": "die_SE",
+      "part": "die",
+      "row": 3,
+      "fps": 8,
+      "loop": false,
+      "authored_frames": 2,
+      "slots": [
+        0,
+        1
+      ],
+      "source_dir": "die/SE",
+      "allowed_detached_components": 0
+    },
+    {
+      "name": "die_S",
+      "part": "die",
+      "row": 4,
+      "fps": 8,
+      "loop": false,
+      "authored_frames": 2,
+      "slots": [
+        0,
+        1
+      ],
+      "source_dir": "die/S",
+      "allowed_detached_components": 0
+    },
+    {
+      "name": "die_SW",
+      "part": "die",
+      "row": 5,
+      "fps": 8,
+      "loop": false,
+      "authored_frames": 2,
+      "slots": [
+        0,
+        1
+      ],
+      "source_dir": "die/SW",
+      "allowed_detached_components": 0
+    },
+    {
+      "name": "die_W",
+      "part": "die",
+      "row": 6,
+      "fps": 8,
+      "loop": false,
+      "authored_frames": 2,
+      "slots": [
+        0,
+        1
+      ],
+      "source_dir": "die/W",
+      "allowed_detached_components": 0
+    },
+    {
+      "name": "die_NW",
+      "part": "die",
+      "row": 7,
+      "fps": 8,
+      "loop": false,
+      "authored_frames": 2,
+      "slots": [
+        0,
+        1
+      ],
+      "source_dir": "die/NW",
+      "allowed_detached_components": 0
+    }
+  ]
+}

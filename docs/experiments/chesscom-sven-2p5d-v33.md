@@ -26,3 +26,18 @@ Se ha corregido un fallo del reproductor: el renderer táctico mantiene `root.ro
 ## V37 — pivote de apoyo real
 
 El atlas es un plano Babylon centrado, mientras que el manifiesto declara el pivote en píxeles desde la esquina superior izquierda. El centro del plano se desplaza ahora exactamente lo necesario para situar **ese píxel en Y=0**, con independencia del padding transparente bajo las botas. Tests de geometría prueban matemáticamente X/Y y entradas corruptas. Sólo afecta al futuro modo opt-in `?chesscomSven=atlas`; mientras no exista un atlas validado, el fallback 3D y el sprite NE experimental no cambian. No es aprobación visual de un banco artístico.
+
+
+## V38 — compilación de arte de ocho direcciones (sin assets ficticios)
+
+El compilador `scripts/art/chesscom_sven_bank_v38.py` adapta **Sprite Forge schema 2** al manifiesto V34 que consume Babylon. Contrato fuente: `scripts/art/contracts/chesscom_sven_v38.json`; tests: `scripts/art/test_chesscom_sven_bank_v38.py`. Requiere 96 PNG RGBA **auténticos** (idle 2, walk 4, aim 1, shoot 2, hit 1, die 2 por cada una de ocho direcciones), authored como `frames/idle/N/000.png`, `frames/walk/SE/003.png`, etc., celdas 128×192 y pivote (64,180). Reutiliza los lint geométricos, alpha y continuidad temporal de Sprite Forge; rechaza archivos extra, ausencia de direcciones, cambio de pie y copia de poses entre direcciones.
+
+Ejemplo, únicamente cuando exista un master canónico con fotogramas exportados y aprobados:
+
+```bash
+python3 scripts/art/chesscom_sven_bank_v38.py \\
+  --frames-root /tmp/sven-authored-frames \\
+  --output-dir /tmp/sven-bank-candidate
+```
+
+Entrega candidato `sven-bank-v1.webp` (WebP **lossless**, SHA-256 comprobado, máximo 8 MiB) y `sven-bank-v1.json`, no copia ni publica automáticamente bajo `frontend/public`, R2 o producción. La estructura de atlas dispone seis strips horizontales con ocho direcciones en filas, 1536×1536 en total; el manifiesto mantiene las coordenadas escritas desde arriba e incluye pivote exacto para V37. No equivale a validación visual, aceptación humana, trazabilidad de licencias ni benchmark GPU, y el maestro GLB Quaternius sigue siendo solo candidato externo.
