@@ -86,6 +86,19 @@ func strings(items []string) bson.A {
 	return out
 }
 
+// startingInventory is only used on first creation, never on a replay.
+func startingInventory(mapID string) bson.D {
+	if mapID != "swordhaven-first-book" {
+		return bson.D{}
+	}
+	return bson.D{{Key: "crown-gold", Value: bson.D{
+		{Key: "id", Value: "crown-gold"},
+		{Key: "name", Value: "Monedas de oro"},
+		{Key: "description", Value: "Moneda del reino, aceptada por los comerciantes."},
+		{Key: "quantity", Value: int32(20)},
+	}}}
+}
+
 // document is create_or_replay_run's insert document.
 func document(run NewRun) bson.D {
 	now := bson.NewDateTimeFromTime(run.Now)
@@ -105,7 +118,9 @@ func document(run NewRun) bson.D {
 		bson.E{Key: "consumedContentIds", Value: bson.A{}},
 		bson.E{Key: "claimedRewards", Value: bson.A{}},
 		bson.E{Key: "worldFlags", Value: bson.D{}},
-		bson.E{Key: "inventory", Value: bson.D{}},
+		// Swordhaven's first-book party begins with the Dama's modest travel purse.
+		// Only inserted at creation; replay/resume/checkpoint never re-grants it.
+		bson.E{Key: "inventory", Value: startingInventory(run.MapID)},
 		bson.E{Key: "quests", Value: bson.D{}},
 		bson.E{Key: "createdAt", Value: now},
 		bson.E{Key: "updatedAt", Value: now},
