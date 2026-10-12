@@ -104,9 +104,9 @@ def setup_scene():
     camera.location = (3, -5.3, 3)
     point_at(camera, target)
     scene.camera = camera
-    lamp("key-blue", (2, 1, 3), target, 400, (.4, .6, 1))
-    lamp("fill-amber", (-2, -2.8, 3), target, 550, (1, .7, .4))
-    lamp("rim", (1, 3, 2.5), target, 280, (.65, .78, 1))
+    lamp("key-blue", (2, 1, 3), target, 46, (.4, .6, 1))
+    lamp("fill-amber", (-2, -2.8, 3), target, 62, (1, .7, .4))
+    lamp("rim", (1, 3, 2.5), target, 35, (.65, .78, 1))
     return scene
 
 

@@ -89,10 +89,23 @@ def blob(name, location, radius, bone, rig, mat, *, ends=None, segments=16, ring
     obj.scale = radius
     if ends is not None:
         vector = Vector(ends[1]) - Vector(ends[0])
-        obj.location = (Vector(ends[1]) + Vector(ends[0])) / 2
-        obj.scale.z = vector.length / 2 + .04
-        obj.rotation_mode = "QUATERNION"
-        obj.rotation_quaternion = Vector((0,0,1)).rotation_difference(vector)
+        # Tapered sleeve/pant fabric should be continuous, not inflated pills.
+        # Swap the temporary sphere for a soft-bevel 20-sided tapered limb.
+        bpy.data.objects.remove(obj, do_unlink=True)
+        bpy.ops.mesh.primitive_cone_add(vertices=20, radius1=radius[0]*.80,
+                                        radius2=radius[0]*1.02,
+                                        depth=vector.length+.10,
+                                        location=(Vector(ends[1])+Vector(ends[0]))/2)
+        obj=bpy.context.object
+        obj.name=name
+        obj.scale.y = radius[1]/radius[0]
+        obj.rotation_mode="QUATERNION"
+        obj.rotation_quaternion=Vector((0,0,1)).rotation_difference(vector)
+        soft=obj.modifiers.new("fabric-rounded-seams","BEVEL")
+        soft.width=.03
+        soft.segments=2
+        bpy.context.view_layer.objects.active=obj
+        bpy.ops.object.modifier_apply(modifier=soft.name)
     bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
     bpy.ops.object.shade_smooth()
     return bind(obj,bone,rig,mat)
@@ -111,6 +124,40 @@ def bevel_box(name, location, scale, bone, rig, mat, bevel=.02):
     bpy.ops.object.modifier_apply(modifier=modifier.name)
     bpy.ops.object.shade_smooth()
     return bind(obj,bone,rig,mat)
+
+
+def tailored_torso(name, rig, mat, *, armor=False):
+    """One continuous, proportioned garment shell; avoid stacked-sphere toy chest."""
+    profile = (
+        (1.01,.277,.180),
+        (1.075,.301,.190),
+        (1.215,.345,.215),
+        (1.36,.356,.211),
+        (1.425,.289,.172),
+    )
+    segments=20
+    vertices=[]
+    for height,radius_x,radius_y in profile:
+        for i in range(segments):
+            angle=i*2*math.pi/segments
+            vertices.append((radius_x*math.cos(angle),
+                             -.017+radius_y*math.sin(angle),height))
+    faces=[]
+    faces.append(tuple(reversed(range(segments))))
+    for ring in range(len(profile)-1):
+        for i in range(segments):
+            a=ring*segments+i
+            b=ring*segments+(i+1)%segments
+            faces.append((a,b,b+segments,a+segments))
+    faces.append(tuple((len(profile)-1)*segments+i for i in range(segments)))
+    data=bpy.data.meshes.new(name+"_mesh")
+    data.from_pydata(vertices,[],faces)
+    data.update()
+    obj=bpy.data.objects.new(name,data)
+    bpy.context.collection.objects.link(obj)
+    for polygon in data.polygons:
+        polygon.use_smooth=True
+    return bind(obj,"Spine",rig,mat)
 
 
 def metal_rod(name, start, end, radius, rig, mat, bone="RightHand", vertices=12):
@@ -136,8 +183,7 @@ def build(out_dir):
     rig=make_armature()
     # Human anatomy. All pieces have actual bone weights, no dead decorative rig.
     blob("SvenPelvis",(0,0,.93),(.295,.20,.19),"Pelvis",rig,mats["dark_cloth"])
-    blob("SvenJacket",(0,-.015,1.22),(.365,.218,.30),"Spine",rig,mats["cloth"])
-    blob("SvenShoulderChest",(0,-.035,1.37),(.33,.215,.15),"Chest",rig,mats["cloth"])
+    tailored_torso("SvenJacketTailored",rig,mats["cloth"])
     blob("SvenNeck",(0,-.04,1.50),(.117,.11,.095),"Neck",rig,mats["dark_cloth"])
     blob("SvenBalaclava",(0,-.044,1.668),(.154,.132,.194),"Head",rig,mats["gloves"])
     # Helmet sits over the balaclava. Matte rather than toy-like plastic.
@@ -160,7 +206,7 @@ def build(out_dir):
              f"{side}UpperLeg",rig,mats["cloth"],ends=(top,knee))
         blob(f"Sven{side}Shin",(0,0,0),(.124,.12,1),
              f"{side}LowerLeg",rig,mats["dark_cloth"],ends=(knee,ankle))
-        blob(f"Sven{side}KneeArmour",knee,(.145,.14,.095),
+        blob(f"Sven{side}KneeArmour",knee,(.13,.115,.073),
              f"{side}LowerLeg",rig,mats["armour"])
         blob(f"Sven{side}Foot",foot,(.145,.22,.080),
              f"{side}Foot",rig,mats["boots"])
@@ -174,12 +220,12 @@ def build(out_dir):
              f"{side}UpperArm",rig,mats["cloth"],ends=upper)
         blob(f"Sven{side}Forearm",(0,0,0),(.103,.108,1),
              f"{side}ForeArm",rig,mats["dark_cloth"],ends=fore)
-        blob(f"Sven{side}Glove",tuple(hand[1]),(.088,.072,.071),
+        blob(f"Sven{side}Glove",tuple(hand[1]),(.077,.067,.068),
              f"{side}Hand",rig,mats["gloves"])
         blob(f"Sven{side}ShoulderPad",tuple(upper[0]),(.15,.134,.115),
              f"{side}UpperArm",rig,mats["armour"])
     # Form-fitted tactical vest, one visual silhouette rather than LEGO boxes.
-    blob("SvenProtectiveVest",(0,-.163,1.260),(.307,.086,.232),"Chest",rig,mats["armour"])
+    bevel_box("SvenProtectiveVest",(0,-.188,1.260),(.585,.145,.383),"Chest",rig,mats["armour"],.050)
     for x in (-.17,0,.17):
         bevel_box(f"SvenVestPlate_{x}",(x,-.247,1.30),
                   (.132,.035,.155),"Chest",rig,mats["armor_edge"],.012)
