@@ -60,7 +60,8 @@ def normalize_master(path):
 
 def setup():
     scene=bpy.context.scene
-    scene.render.engine='BLENDER_EEVEE_NEXT'
+    # Blender 5.2 uses BLENDER_EEVEE (the NEXT enum was retired).
+    scene.render.engine='BLENDER_EEVEE'
     scene.render.resolution_x=256; scene.render.resolution_y=384
     scene.render.resolution_percentage=100
     scene.render.image_settings.file_format='PNG'; scene.render.image_settings.color_mode='RGBA'

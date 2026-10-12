@@ -44,7 +44,7 @@ jobs:
         env:
           LIBGL_ALWAYS_SOFTWARE: '1'
         run: |
-          blender --background -noaudio \
+          blender --background -noaudio --python-exit-code 20 \
             --python scripts/blender/chesscom_sven_master_preview_v39.py -- \
             --source-glb /tmp/chesscom-sven-v39/swat.glb \
             --output-dir /tmp/chesscom-sven-v39/previews
