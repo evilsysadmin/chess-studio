@@ -111,5 +111,38 @@ class SvenProductionBankV38Tests(unittest.TestCase):
             self.assertFalse((root/"out"/"sven-bank-v1.webp").exists())
 
 
+    def test_full_authored_bank_compiles_losslessly_into_verified_runtime_pair(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            frames = root / "authored"
+            for clip in CLIPS:
+                for direction in DIRECTIONS:
+                    for i in range(CLIP_COUNTS[clip]):
+                        authored_fixture(frames / clip / direction / f"{i:03d}.png", clip, direction, i)
+            result = build_chesscom_sven_bank(CONTRACT, frames, root / "out")
+            image_path = root / "out" / "sven-bank-v1.webp"
+            manifest_path = root / "out" / "sven-bank-v1.json"
+            self.assertTrue(image_path.is_file())
+            self.assertTrue(manifest_path.is_file())
+            self.assertEqual(result["atlas"]["sha256"], hashlib.sha256(image_path.read_bytes()).hexdigest())
+            self.assertEqual(result["atlas"]["src"], "/chesscom/sven-bank-v1.webp")
+            self.assertEqual(result["atlas"]["width"], 1536)
+            self.assertEqual(result["atlas"]["height"], 1536)
+            import json
+            self.assertEqual(json.loads(manifest_path.read_text()), result)
+            # Test actual pixel contents and author-to-runtime positional mapping.
+            with Image.open(image_path) as atlas:
+                self.assertEqual(atlas.size, (1536, 1536))
+                atlas_rgba = atlas.convert("RGBA")
+                for clip, direction, index in [("idle", "N", 0),
+                    ("walk", "SE", 3), ("shoot", "W", 1), ("die", "NW", 1)]:
+                    rect = result["clips"][clip]["directions"][direction][index]
+                    box = (rect["x"], rect["y"], rect["x"] + rect["width"],
+                           rect["y"] + rect["height"])
+                    with Image.open(frames / clip / direction / f"{index:03d}.png") as source:
+                        self.assertEqual(atlas_rgba.crop(box).tobytes(),
+                                         source.convert("RGBA").tobytes())
+
+
 if __name__ == "__main__":
     unittest.main()
