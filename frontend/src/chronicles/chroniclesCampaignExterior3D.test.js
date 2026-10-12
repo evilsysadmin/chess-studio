@@ -25,7 +25,13 @@ describe('Chronicles file-authored exterior renderer', () => {
       coarsePointer: true,
     });
     const tower = scene.getObjectByName('chronicles-campaign-content-f1-beacon-rescue');
-    const bbox = new THREE.Box3().setFromObject(tower);
+    // Measure structural mesh bounds only. The optional, non-colliding
+    // light sprite intentionally extends beyond the one-cell tower.
+    const bbox = new THREE.Box3();
+    tower.updateWorldMatrix(true, true);
+    tower.children
+      .filter((child) => child !== result.contentProps[0].activatedRoot)
+      .forEach((child) => bbox.expandByObject(child));
     expect(bbox.max.y).toBeGreaterThan(10);
     expect(bbox.max.x - bbox.min.x).toBeLessThan(4);
     expect(bbox.max.z - bbox.min.z).toBeLessThan(4);
