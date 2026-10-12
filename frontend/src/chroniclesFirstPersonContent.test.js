@@ -166,6 +166,16 @@ describe('Swordhaven town entrances remain reachable in first person', () => {
     }
   });
 
+  it('keeps the mayor available to talk even after all one-shot quest actions have expired', () => {
+    const finished = {
+      ...at(11, 9, 2),
+      swordhavenMayorMet: true, swordhavenSewersReported: true, swordhavenRouteReported: true,
+    };
+    const npc = chroniclesNpcDialogueForState(finished, chroniclesContextualContentAction(finished));
+    expect(npc?.name).toBe('Alcalde Aldric');
+    expect(npc.choices.map((choice) => choice.kind)).toEqual(['say', 'say', 'leave']);
+  });
+
   it('preserves locked inn pricing and never opens a distant or wrong-facing counter', () => {
     const before = at(7, 9, 2);
     expect(chroniclesContextualContentAction(before)).toMatchObject({ id: 'first-book-healer', locked: true });
