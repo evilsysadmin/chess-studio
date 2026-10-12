@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CHESSCOM_CHARACTER_ART_V4, CHESSCOM_OPERATOR_READABILITY_V22, CHESSCOM_OPERATOR_SILHOUETTE_V23, CHESSCOM_OPERATOR_ANATOMY_V28, CHESSCOM_OPERATOR_CONTOUR_V29, chesscomOperatorContourV29Geometry, CHESSCOM_OPERATOR_POSE_V30, chesscomOperatorArmPoseV30Geometry, chesscomOperatorSilhouetteV23Parts, chesscomCharacterV4Profile, chesscomFieldKitV20Profile } from './chesscomCharacterArtV4.js';
+import { CHESSCOM_CHARACTER_ART_V4, CHESSCOM_OPERATOR_READABILITY_V22, CHESSCOM_OPERATOR_SILHOUETTE_V23, CHESSCOM_OPERATOR_ANATOMY_V28, CHESSCOM_OPERATOR_CONTOUR_V29, chesscomOperatorContourV29Geometry, CHESSCOM_OPERATOR_POSE_V30, chesscomOperatorArmPoseV30Geometry, CHESSCOM_OPERATOR_HELMET_V31, chesscomOperatorHelmetV31Geometry, chesscomOperatorPauldronV31Spec, chesscomOperatorSilhouetteV23Parts, chesscomCharacterV4Profile, chesscomFieldKitV20Profile } from './chesscomCharacterArtV4.js';
 
 describe('Chesscom character art v4', () => {
   it('declares the custom mesh and procedural PBR contract', () => {
@@ -185,5 +185,69 @@ describe('CHESSCOM human rifle-ready pose V30',()=>{
     expect(scout.anchors.wrist.x).toBeLessThan(rifle.anchors.wrist.x);
     expect(()=>chesscomOperatorArmPoseV30Geometry(0)).toThrow(RangeError);
     expect(()=>chesscomOperatorArmPoseV30Geometry(NaN)).toThrow(RangeError);
+  });
+});
+
+describe('CHESSCOM contoured human helmets V31',()=>{
+  it('replaces box helmets with one closed low-poly dome per human role',()=>{
+    expect(CHESSCOM_OPERATOR_HELMET_V31.identity).toBe('operator-helmet-dome-v31');
+    for(const role of CHESSCOM_OPERATOR_HELMET_V31.roles){
+      const mesh=chesscomOperatorHelmetV31Geometry(role);
+      expect(mesh.positions).toHaveLength(32*3);
+      expect(mesh.uvs).toHaveLength(32*2);
+      expect(mesh.indices).toHaveLength(180);
+      expect(mesh.positions.every(Number.isFinite)).toBe(true);
+      expect(mesh.indices.every(n=>Number.isInteger(n)&&n>=0&&n<32)).toBe(true);
+      const ringWidth=(r)=>{
+        const xs=Array.from({length:8},(_,i)=>mesh.positions[(r*8+i)*3]);
+        return Math.max(...xs)-Math.min(...xs);
+      };
+      expect(ringWidth(1)).toBeGreaterThan(ringWidth(0));
+      expect(ringWidth(1)).toBeGreaterThan(ringWidth(2));
+      expect(ringWidth(2)).toBeGreaterThan(ringWidth(3));
+      const ys=Array.from({length:4},(_,r)=>mesh.positions[r*8*3+1]);
+      expect(ys[0]).toBeLessThan(ys[1]);
+      expect(ys[1]).toBeLessThan(ys[2]);
+      expect(ys[2]).toBeLessThan(ys[3]);
+      expect(ys[3]).toBeLessThan(.15);
+    }
+  });
+  it('distinguishes scout, rifleman, hostile shells without oversized heads',()=>{
+    const width=role=>{
+      const g=chesscomOperatorHelmetV31Geometry(role);
+      const x=Array.from({length:8},(_,i)=>g.positions[(8+i)*3]);
+      return Math.max(...x)-Math.min(...x);
+    };
+    expect(width('scout')).toBeLessThan(width('rifleman'));
+    expect(width('rifleman')).toBeLessThan(width('hostile'));
+    expect(width('hostile')).toBeLessThan(.39);
+    expect(()=>chesscomOperatorHelmetV31Geometry('leader')).toThrow(RangeError);
+  });
+});
+
+describe('CHESSCOM tapered shoulder armour V31',()=>{
+  it('gives every human role low-profile tapered shoulders without new parts',()=>{
+    for(const role of ['scout','rifleman','hostile']){
+      const kit=chesscomFieldKitV20Profile(role);
+      const l=chesscomOperatorPauldronV31Spec(role,-1);
+      const r=chesscomOperatorPauldronV31Spec(role,1);
+      expect(l.contour).toBe(true);
+      expect(r.contour).toBe(true);
+      expect(l.h).toBeLessThan(.15);
+      expect(l.bd).toBeLessThan(.23);
+      expect(l.tw).toBeGreaterThan(l.bw);
+      expect(l.tw).toBeLessThan(kit.plates+.09);
+      expect(l.x).toBeCloseTo(-r.x);
+      expect(l.rz).toBeCloseTo(-r.rz);
+      for(const spec of [l,r]){
+        const mesh=chesscomOperatorContourV29Geometry({h:spec.h,bw:spec.bw,bd:spec.bd,tw:spec.tw,td:spec.td});
+        expect(mesh.positions).toHaveLength(72);
+        expect(mesh.positions.every(Number.isFinite)).toBe(true);
+      }
+    }
+    expect(()=>chesscomOperatorPauldronV31Spec('scout',0)).toThrow(RangeError);
+    const scoutSign=chesscomOperatorSilhouetteV23Parts('scout')[0].spec;
+    expect(scoutSign.h).toBeLessThan(.06);
+    expect(scoutSign.bw).toBeLessThan(.13);
   });
 });

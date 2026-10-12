@@ -81,8 +81,9 @@ export function chesscomOperatorSilhouetteV23Parts(role='rifleman') {
   for(const side of [-1,1]){
     parts.push({
       name:`shoulder-sign-${side}`,material:'accent',
-      spec:{h:.067,bw:size,bd:.24,tw:size*.91,td:.21,
-        x:side*(leader?.32:.30),y:leader?1.40:1.255,z:-.04},
+      spec:{h:leader?.067:.045,bw:leader?size:size*.70,bd:leader?.24:.18,
+        tw:leader?size*.91:size*.66,td:leader?.21:.16,
+        x:side*(leader?.32:.285),y:leader?1.40:1.245,z:-.04},
     });
   }
   if(leader){
@@ -293,6 +294,51 @@ export function chesscomOperatorArmPoseV30Geometry(side,role='rifleman'){
   return {...geometry,anchors};
 }
 
+
+/**
+ * A single faceted protective helmet shell, replacing the V28/V29 shallow box.
+ * The four octagonal rings create a brim, broad cranium and tapered crown.
+ * No new Babylon mesh, socket, material, light or picking volume.
+ */
+export const CHESSCOM_OPERATOR_HELMET_V31 = Object.freeze({
+  identity:'operator-helmet-dome-v31',rings:4,perimeter:8,vertices:32,
+  roles:Object.freeze(['rifleman','scout','hostile']),
+});
+
+export function chesscomOperatorHelmetV31Geometry(role='rifleman'){
+  if(!CHESSCOM_OPERATOR_HELMET_V31.roles.includes(role)){
+    throw new RangeError('Invalid human operator helmet role');
+  }
+  const compact=role==='scout',heavy=role==='hostile';
+  const scale=compact?.94:heavy?1.035:1;
+  const rings=[
+    {y:-.068,w:.332*scale,d:.312*scale,z:-.016},  // inset lower edge
+    {y:-.020,w:.362*scale,d:.354*scale,z:0},       // brow/helmet rim
+    {y:.066,w:.302*scale,d:.302*scale,z:.016},     // curved shell
+    {y:compact?.116:.129,w:.142*scale,d:.174*scale,z:.029}, // crown
+  ];
+  const perimeter=[
+    [-.35,-.5],[.35,-.5],[.5,-.35],[.5,.35],
+    [.35,.5],[-.35,.5],[-.5,.35],[-.5,-.35],
+  ];
+  const positions=[],indices=[],uvs=[];
+  for(const [r,ring] of rings.entries()){
+    for(const [i,[x,z]] of perimeter.entries()){
+      positions.push(x*ring.w,ring.y,z*ring.d+ring.z);
+      uvs.push(i/8,r/3);
+    }
+  }
+  for(let i=1;i<7;i++){
+    indices.push(0,i,i+1,24,24+i+1,24+i);
+  }
+  for(let ring=0;ring<3;ring++)for(let i=0;i<8;i++){
+    const a=ring*8+i,b=ring*8+(i+1)%8;
+    const c=(ring+1)*8+(i+1)%8,d=(ring+1)*8+i;
+    indices.push(a,c,b,a,d,c);
+  }
+  return {positions,indices,uvs};
+}
+
 function polyBlock(B, scene, name, parent, mat, spec, id, friendly, disposables) {
   const h = spec.h;
   const bw = spec.bw ?? spec.w;
@@ -396,6 +442,21 @@ function addWeapon(B,scene,root,profile,mats,disposables){
   root.metadata.weaponMuzzleLocalX=profile.muzzleX;
 }
 
+
+/**
+ * Low-profile, eight-sided shoulder plates replace the square shoulder blocks.
+ * Matches existing field-kit part count/parent/picking while reducing the
+ * rectangular toy silhouette at tactical zoom.
+ */
+export function chesscomOperatorPauldronV31Spec(role,side){
+  if(side!==-1&&side!==1)throw new RangeError('Invalid shoulder side');
+  const kit=chesscomFieldKitV20Profile(role);
+  return {
+    h:.12,bw:kit.plates+.02,bd:.185,tw:kit.plates+.072,td:.17,
+    x:side*.285,y:1.18,z:-.02,rz:side*.24,contour:true,
+  };
+}
+
 function addFieldKitV20(B,scene,root,profile,mats,disposables){
   const kit=chesscomFieldKitV20Profile(profile.role);
   const id=profile.id;
@@ -403,7 +464,7 @@ function addFieldKitV20(B,scene,root,profile,mats,disposables){
   // Front armour silhouette: shoulder pads, load-bearing straps, and a
   // prominent radio/identity tab visible at ordinary tactical zoom.
   for(const side of [-1,1]){
-    part(`pauldron-${side}`,mats.armour,{h:.15,bw:kit.plates+.09,bd:.23,tw:kit.plates+.035,td:.20,x:side*.29,y:1.18,z:-.02,rz:side*.15});
+    part(`pauldron-${side}`,mats.armour,chesscomOperatorPauldronV31Spec(profile.role,side));
     part(`webbing-${side}`,mats.accent,{h:.35,bw:.052,bd:.034,tw:.042,td:.03,x:side*.12,y:.92,z:-.257,rz:side*.31});
     part(`pouch-${side}`,mats.cloth2,{h:.18,bw:.17,bd:.095,tw:.16,td:.09,x:side*.17,y:.67,z:-.21});
     part(`knee-${side}`,mats.armour,{h:.13,bw:.14,bd:.075,tw:.125,td:.06,x:side*.14,y:.30,z:-.09});
@@ -422,7 +483,7 @@ function addMercenary(B,scene,root,profile,disposables,restorers,invisible){
   polyBlock(B,scene,`character-v4-${profile.id}-vest`,root,mats.armour,{h:.43,bw:profile.compact?.31:.35,bd:.075,tw:profile.compact?.37:.42,td:.067,y:.90,z:-.178,contour:true},profile.id,profile.friendly,disposables);
   polyBlock(B,scene,`character-v4-${profile.id}-pelvis`,root,mats.cloth2,{h:.24,bw:.35,bd:.265,tw:.32,td:.25,y:.53,contour:true},profile.id,profile.friendly,disposables);
   polyHead(B,scene,`character-v4-${profile.id}-head`,root,mats.skin,{rx:CHESSCOM_OPERATOR_ANATOMY_V28.headWidth,ry:.178,rz:.148,y:1.275,z:-.01},profile.id,profile.friendly,disposables);
-  polyBlock(B,scene,`character-v4-${profile.id}-helmet`,root,mats.armour,{h:CHESSCOM_OPERATOR_ANATOMY_V28.helmetHeight,bw:CHESSCOM_OPERATOR_ANATOMY_V28.helmetWidth,bd:.345,tw:.295,td:.29,y:1.41,z:.01,contour:true},profile.id,profile.friendly,disposables);
+  polyBlock(B,scene,`character-v4-${profile.id}-helmet`,root,mats.armour,{h:.20,w:.36,d:.35,y:1.41,z:.01,poseMesh:chesscomOperatorHelmetV31Geometry(profile.role)},profile.id,profile.friendly,disposables);
   for(const [part,side] of [[parts.armL,-1],[parts.armR,1]]){
     if(!part)continue;
     const arm=chesscomOperatorArmPoseV30Geometry(side,profile.role);
