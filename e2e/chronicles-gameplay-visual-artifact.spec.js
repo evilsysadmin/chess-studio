@@ -476,6 +476,22 @@ test('Chronicles · First Book equipment sheet · actual Android 390px', async (
 });
 
 
+async function expectStoneButtonInk(container, selector, context) {
+  const ink = await container.locator(selector).first().evaluate((element) => {
+    const children = [...element.querySelectorAll('b, span, small')];
+    const styles = [element, ...children].map((node) => ({
+      color: getComputedStyle(node).color,
+      fill: getComputedStyle(node).webkitTextFillColor,
+    }));
+    return { colorScheme: getComputedStyle(element).colorScheme, styles };
+  });
+  expect(ink.colorScheme, context + ': a light stone control opts out of auto-dark').toContain('light');
+  for (const style of ink.styles) {
+    expect(style.color, context + ': dark engraved text').toBe('rgb(16, 16, 20)');
+    expect(style.fill, context + ': dark WebKit text fill').toBe('rgb(16, 16, 20)');
+  }
+}
+
 async function expectAllMayorChoicesInView(audience, viewport) {
   const fit = await audience.evaluate((dialog) => {
     const box = dialog.getBoundingClientRect();
@@ -502,6 +518,10 @@ async function expectAllMayorChoicesInView(audience, viewport) {
   expect(fit.lastBottom, viewport + ': last response inside dialogue panel')
     .toBeLessThanOrEqual(fit.panelBottom - 1);
   expect(fit.lastHeight, viewport + ': last choice touch target').toBeGreaterThanOrEqual(44);
+  const choices = audience.locator('[data-chronicles-dialogue-choice]');
+  for (let i = 0; i < fit.count; i++) {
+    await expectStoneButtonInk(choices.nth(i), ':scope', viewport + ': Aldric answer ' + (i + 1));
+  }
 }
 
 test('Chronicles · MM3 Alcalde Aldric · entrar en ayuntamiento y diálogo numerado Android', async ({ browser }) => {
@@ -591,6 +611,9 @@ test('Chronicles · MM3 Swordhaven weaponsmith opens from the neighboring street
     await expect(shop).toBeVisible({ timeout: 15_000 });
     await expect(shop.getByRole('tab', { name: 'Comprar', exact: true })).toBeVisible();
     await expect(shop.locator('[data-chronicles-shop-item="wooden-staff"]')).toBeVisible();
+    await expectStoneButtonInk(shop, '.chronicles-shop__close', 'Brunna: close');
+    await expectStoneButtonInk(shop, '.chronicles-shop__tabs button', 'Brunna: tab');
+    await expectStoneButtonInk(shop, '.chronicles-shop__list button', 'Brunna: transaction');
     await page.screenshot({
       path: `${ARTIFACT_DIR}/chronicles-swordhaven-weaponsmith-street-desktop-1440x900.png`,
       animations: 'disabled', timeout: 60_000,

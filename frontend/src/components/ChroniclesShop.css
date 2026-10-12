@@ -366,3 +366,31 @@
     flex-wrap: wrap;
   }
 }
+
+/* NPC/shop headers are light parchment: never inherit the white text
+   from the outer dark dialogue. The gold-on-dark purse is excluded. */
+.chronicles-shop__backdrop .chronicles-shop__head :is(span, h2, p) {
+  color: var(--mm3-control-ink, #101014);
+  -webkit-text-fill-color: var(--mm3-control-ink, #101014);
+}
+
+/* Shared readable ink for ALL light stone controls in town shops, guilds
+   and audiences. Dialogues are portal siblings, not children of .chronicles;
+   explicit WebKit fill prevents Chromium/Brave's auto-dark white lettering. */
+.chronicles-shop__backdrop :is(.chronicles-shop__close, .chronicles-shop__tabs button,
+  .chronicles-shop__list button, .chronicles-shop__join button) {
+  color-scheme: only light;
+  color: var(--mm3-control-ink, #101014);
+  -webkit-text-fill-color: var(--mm3-control-ink, #101014);
+}
+.chronicles-shop__backdrop :is(.chronicles-shop__close, .chronicles-shop__tabs button,
+  .chronicles-shop__list button, .chronicles-shop__join button) :is(b, span, small) {
+  color: var(--mm3-control-ink, #101014);
+  -webkit-text-fill-color: var(--mm3-control-ink, #101014);
+}
+.chronicles-shop__backdrop :is(.chronicles-shop__tabs button:disabled,
+  .chronicles-shop__list button:disabled, .chronicles-shop__join button:disabled) {
+  color: var(--mm3-control-ink-disabled, #343039);
+  -webkit-text-fill-color: var(--mm3-control-ink-disabled, #343039);
+  opacity: 1;
+}
