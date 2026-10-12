@@ -74,7 +74,7 @@ function buildRounds(ids) {
   })))));
 }
 
-export function createFootballSeason({ clubs = FOOTBALL_MANAGER_CLUBS, seed = 1 } = {}) {
+export function createFootballSeason({ clubs = FOOTBALL_MANAGER_CLUBS, seed = 1, inheritedDevelopment = undefined } = {}) {
   if (!Number.isSafeInteger(seed) || seed < 0) {
     throw new Error('Chess Football season seed must be a non-negative safe integer');
   }
@@ -86,6 +86,7 @@ export function createFootballSeason({ clubs = FOOTBALL_MANAGER_CLUBS, seed = 1 
     rounds: buildRounds(participants.map((club) => club.id)),
     currentRound: 0,
     results: freeze([]),
+    ...(inheritedDevelopment ? { managerDevelopment: inheritedDevelopment } : {}),
   });
 }
 
