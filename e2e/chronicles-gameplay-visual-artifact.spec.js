@@ -450,6 +450,44 @@ test('Chronicles · First Book equipment sheet · actual Android 390px', async (
   }
 });
 
+test('Chronicles · MM3 Alcalde Aldric · entrar en ayuntamiento y diálogo numerado Android', async ({ browser }) => {
+  test.setTimeout(300_000);
+  await mkdir(ARTIFACT_DIR, { recursive: true });
+  const context = await browser.newContext({
+    viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true,
+  });
+  const page = await context.newPage();
+  try {
+    await openChronicles(page, 'mayor-audience-android', {
+      newTown: true, newCampaign: true, chroniclesCurrentMapId: 'swordhaven-first-book',
+    });
+    const game = page.locator('[data-chronicles="true"]');
+    await expect(game).toHaveAttribute('data-chronicles-map-id', 'swordhaven-first-book');
+    // Authored route: plaza (9,7) -> (11,7) -> (11,10), facing the
+    // town hall door to the south. Walk the real gameplay input path.
+    for (const key of ['d', 'w', 'w', 'd', 'w', 'w', 'w']) await page.keyboard.press(key);
+    const turns = await game.getAttribute('data-chronicles-turns');
+    await page.keyboard.press('w');
+    const audience = page.getByRole('dialog', { name: 'Conversación con Alcalde Aldric' });
+    await expect(audience).toBeVisible({ timeout: 15_000 });
+    await expect(game).toHaveAttribute('data-chronicles-turns', turns);
+    await expect(audience.locator('[data-chronicles-dialogue-choice]')).toHaveCount(4);
+    await page.screenshot({
+      path: `${ARTIFACT_DIR}/chronicles-alcalde-dialogue-android-390x844.png`,
+      animations: 'disabled', timeout: 60_000,
+    });
+    await page.keyboard.press('1');
+    await expect(audience.locator('[data-chronicles-dialogue-answer]')).toContainText('Dama');
+    await page.keyboard.press('3');
+    await expect(audience).toHaveAttribute('data-chronicles-audience-spoken', 'true');
+    await expect(audience.locator('[data-chronicles-dialogue-choice="quest"]')).toHaveCount(0);
+    await page.keyboard.press('Escape');
+    await expect(audience).toHaveCount(0);
+  } finally {
+    await context.close();
+  }
+});
+
 test('Chronicles · Swordhaven authored world · actual 3D desktop', async ({ browser }) => {
   // No synthetic gallery-of-forks disguise: the authoritative map catalog
   // and the real Three.js scene must agree on the actual town id and geometry.
