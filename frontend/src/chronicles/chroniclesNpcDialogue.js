@@ -71,7 +71,8 @@ export function chroniclesNpcDialogueForState(state, contextual = null) {
   if (!state?.mapId || !Number.isInteger(state.x) || !Number.isInteger(state.y)) return null;
   const map = chroniclesMapForState(state);
   const candidates = (map?.interactables || []).filter((entry) => (
-    isNpcEntry(entry) && entry.x === state.x && entry.y === state.y
+    isNpcEntry(entry) && Boolean(npcScriptKey(state.mapId, entry))
+    && entry.x === state.x && entry.y === state.y
   ));
   const active = candidates.find((entry) => entry.id === contextual?.id) || null;
   // Once the one-shot content has resolved, the person still lives in the
