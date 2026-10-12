@@ -3,6 +3,7 @@ import {
   chroniclesMapContentPosition,
   chroniclesMapForState,
 } from '../chronicles/chroniclesMapCatalog.js';
+import { chroniclesDiscoveredPois } from '../chronicles/chroniclesAutomapPoi.js';
 import {
   chroniclesAutomapCellKey,
   chroniclesAutomapFacingDegrees,
@@ -10,19 +11,6 @@ import {
   chroniclesMapCoordinatesLabel,
 } from '../chronicles/chroniclesAutomap.js';
 
-function discoveredMarkers(map, revealed) {
-  const groups = [
-    ['exit', map?.exits || []],
-    ['treasure', map?.treasures || []],
-    ['interactable', map?.interactables || []],
-  ];
-
-  return groups.flatMap(([kind, entries]) => entries.flatMap((entry) => {
-    const position = chroniclesMapContentPosition(map, entry);
-    if (!position || !revealed.has(chroniclesAutomapCellKey(position.x, position.y))) return [];
-    return [{ kind, entry, position }];
-  }));
-}
 
 function automapViewport(revealed, state) {
   const points = [...revealed].map((key) => {
@@ -54,20 +42,16 @@ function automapViewport(revealed, state) {
 
 function MapMarker({ marker }) {
   const { x, y } = marker.position;
-  const cx = x + 0.5;
-  const cy = y + 0.5;
-  if (marker.kind === 'exit') {
-    return (
-      <g className="chronicles-automap__marker is-exit" aria-label={marker.entry?.label || 'Salida'}>
-        <rect x={x + 0.22} y={y + 0.18} width="0.56" height="0.64" rx="0.08" />
-        <path d={`M ${x + 0.5} ${y + 0.29} V ${y + 0.71} M ${x + 0.41} ${y + 0.62} L ${x + 0.5} ${y + 0.71} L ${x + 0.59} ${y + 0.62}`} />
-      </g>
-    );
-  }
-  if (marker.kind === 'treasure') {
-    return <path className="chronicles-automap__marker is-treasure" d={`M ${cx} ${y + 0.2} L ${x + 0.8} ${cy} L ${cx} ${y + 0.8} L ${x + 0.2} ${cy} Z`} />;
-  }
-  return <circle className="chronicles-automap__marker is-interactable" cx={cx} cy={cy} r="0.18" />;
+  return (
+    <g className={`chronicles-automap__poi is-${marker.category}`}
+      data-chronicles-poi={marker.category}
+      data-chronicles-poi-id={marker.id}
+      aria-label={marker.label}>
+      <title>{marker.label}</title>
+      <rect x={x + 0.12} y={y + 0.12} width="0.76" height="0.76" rx="0.13" />
+      <text x={x + 0.5} y={y + 0.53} textAnchor="middle" dominantBaseline="middle">{marker.glyph}</text>
+    </g>
+  );
 }
 
 export default function ChroniclesAutomap({ open, state, visitedCells, onClose }) {
@@ -85,7 +69,7 @@ export default function ChroniclesAutomap({ open, state, visitedCells, onClose }
     [map, visited],
   );
   const viewport = useMemo(() => automapViewport(revealed, state), [revealed, state]);
-  const markers = useMemo(() => discoveredMarkers(map, revealed), [map, revealed]);
+  const markers = useMemo(() => chroniclesDiscoveredPois(map, revealed, chroniclesMapContentPosition), [map, revealed]);
 
   useEffect(() => {
     if (open) closeRef.current?.focus();
@@ -143,7 +127,7 @@ export default function ChroniclesAutomap({ open, state, visitedCells, onClose }
             }))}
             {markers.map((marker) => (
               <MapMarker
-                key={`${marker.kind}:${marker.entry?.id || chroniclesAutomapCellKey(marker.position.x, marker.position.y)}`}
+                key={marker.id}
                 marker={marker}
               />
             ))}
@@ -161,8 +145,9 @@ export default function ChroniclesAutomap({ open, state, visitedCells, onClose }
 
         <footer>
           <span><i className="is-party" aria-hidden="true">▲</i> grupo</span>
-          <span><i className="is-exit" aria-hidden="true">□</i> salida descubierta</span>
-          <span>Se dibuja al explorar · <kbd>M</kbd> cerrar</span>
+          <span><i className="is-exit" aria-hidden="true">□</i> salida · ↓ mazmorra</span>
+          <span>F forja · A armaduras · G gremio · P posada · C comercio · T templo · H ayuntamiento</span>
+          <span>Solo lugares descubiertos · <kbd>M</kbd> cerrar</span>
         </footer>
       </section>
     </div>
