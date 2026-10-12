@@ -591,6 +591,14 @@ test('Chronicles · MM3 Swordhaven weaponsmith opens from the neighboring street
     await expect(shop).toBeVisible({ timeout: 15_000 });
     await expect(shop.getByRole('tab', { name: 'Comprar', exact: true })).toBeVisible();
     await expect(shop.locator('[data-chronicles-shop-item="wooden-staff"]')).toBeVisible();
+    // Server-created first-book run owns a one-time 20-gold purse. The UI
+    // may spend it immediately, without any prior checkpoint or quest reward.
+    const purse = shop.locator('[aria-label^="Oro de la compañía:"]');
+    await expect(purse).toHaveAttribute('aria-label', 'Oro de la compañía: 20');
+    const woodenStaff = shop.locator('[data-chronicles-shop-item="wooden-staff"] button');
+    await expect(woodenStaff).toBeEnabled();
+    await woodenStaff.click();
+    await expect(purse).toHaveAttribute('aria-label', 'Oro de la compañía: 19');
     await page.screenshot({
       path: `${ARTIFACT_DIR}/chronicles-swordhaven-weaponsmith-street-desktop-1440x900.png`,
       animations: 'disabled', timeout: 60_000,
