@@ -486,12 +486,16 @@ async function expectStoneButtonInk(container, selector, context) {
       color: getComputedStyle(node).color,
       fill: getComputedStyle(node).webkitTextFillColor,
     }));
-    return { colorScheme: getComputedStyle(element).colorScheme, styles };
+    return { colorScheme: getComputedStyle(element).colorScheme, disabled: element.matches(':disabled'), styles };
   });
   expect(ink.colorScheme, context + ': a light stone control opts out of auto-dark').toContain('light');
+  // Disabled stone keys use deliberately darker grey ink (not white), whereas
+  // active controls must be the exact canonical near-black. Descendants may
+  // inherit the active ink while the disabled button itself uses subdued ink.
+  const allowed = ink.disabled ? ['rgb(16, 16, 20)', 'rgb(52, 48, 57)'] : ['rgb(16, 16, 20)'];
   for (const style of ink.styles) {
-    expect(style.color, context + ': dark engraved text').toBe('rgb(16, 16, 20)');
-    expect(style.fill, context + ': dark WebKit text fill').toBe('rgb(16, 16, 20)');
+    expect(allowed, context + ': dark engraved text').toContain(style.color);
+    expect(allowed, context + ': dark WebKit text fill').toContain(style.fill);
   }
 }
 
