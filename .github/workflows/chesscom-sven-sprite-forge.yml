@@ -3,6 +3,9 @@ on:
   pull_request:
     paths:
       - scripts/art/chesscom_sven_bank_v38.py
+      - scripts/art/chesscom_owned_master_v40.py
+      - scripts/blender/chesscom_sven_owned_preview_v40.py
+      - scripts/art/test_chesscom_owned_master_v40.py
       - scripts/art/test_chesscom_sven_bank_v38.py
       - scripts/art/contracts/chesscom_sven_v38.json
       - scripts/art/sprite_forge.py
@@ -28,5 +31,9 @@ jobs:
           python-version: '3.13'
       - name: Restore exact image-validation dependency
         run: python3 -m pip install 'Pillow==12.3.0'
+      - name: Verify first-party Chesscom art and rig contract
+        run: |
+          python3 scripts/art/chesscom_owned_master_v40.py --references-only
+          python3 -m unittest discover -s scripts/art -p 'test_chesscom_owned_master_v40.py' -v
       - name: Validate Sven V38 authored bank pipeline
         run: python3 -m unittest discover -s scripts/art -p 'test_chesscom_sven_bank_v38.py' -v
