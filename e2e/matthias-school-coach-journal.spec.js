@@ -29,6 +29,20 @@ test('Escuela · el cuaderno de Matthias conserva contexto y se puede compactar'
   await coach.getByRole('button', { name: 'Ampliar' }).click();
   await expect(detail).toBeVisible();
   await expect(coach.locator('.matthias-school-coach-history')).toContainText(/a3 está vacía/i);
+
+  const trail = coach.getByRole('region', { name: 'Jugadas realizadas en esta lección' });
+  await expect(trail).toHaveCount(0);
+  const board = page.locator('.matthias-school-board');
+  await board.getByRole('button', { name: /^Casilla e2, peón blanco/ }).click();
+  await board.getByRole('button', { name: /^Casilla e4, vacía/ }).click();
+  await expect(board).toHaveAttribute('data-school-playback', 'idle');
+  await expect(trail).toBeVisible();
+  await expect(trail).toContainText('1. e4');
+  await expect(trail).toContainText('Tú');
+  await expect(trail).not.toContainText('e5');
+  await testInfo.attach('school-coach-played-moves-desktop', { body: await page.screenshot(), contentType: 'image/png' });
+  await page.getByRole('button', { name: 'Repetir', exact: true }).click();
+  await expect(trail).toHaveCount(0);
 });
 
 test('Escuela · móvil empieza compacto y puede consultar el historial sin desbordar', async ({ page }, testInfo) => {

@@ -163,3 +163,51 @@
     width: min(290px,32vw);
   }
 }
+
+/* The ledger records demonstrated chess, never an upcoming line. */
+.tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode] .matthias-school-move-trail {
+  display: grid;
+  gap: .36rem;
+  min-width: 0;
+  padding: .56rem .05rem .58rem;
+  border-top: 1px solid rgba(215,183,111,.16);
+  border-bottom: 1px solid rgba(215,183,111,.16);
+}
+.tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode] .matthias-school-move-trail > strong {
+  color: var(--brass);
+  font-size: .66rem;
+  font-weight: 700;
+}
+.tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode] .matthias-school-move-trail ol {
+  display: grid;
+  gap: .24rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode] .matthias-school-move-trail li {
+  display: grid;
+  grid-template-columns: 3rem minmax(0,1fr);
+  align-items: baseline;
+  gap: .3rem;
+  padding: .3rem .45rem;
+  border-radius: 6px;
+  background: rgba(215,183,111,.055);
+}
+.tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode] .matthias-school-move-trail li.is-rival {
+  background: rgba(149,171,190,.065);
+}
+.tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode] .matthias-school-move-trail li span {
+  color: rgba(219,201,171,.72);
+  font-size: .66rem;
+}
+.tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode] .matthias-school-move-trail li b {
+  color: var(--parchment);
+  font: 700 .79rem var(--font-mono);
+}
+.tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode] .matthias-school-move-trail li small {
+  grid-column: 1 / -1;
+  color: rgba(226,211,187,.83);
+  font-size: .65rem;
+  line-height: 1.35;
+}

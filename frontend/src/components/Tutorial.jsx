@@ -9,6 +9,7 @@ import { Chess } from 'chess.js';
 import SchoolBoard, { getSchoolBoardRenderer } from './SchoolBoard.jsx';
 import { buildSchoolTeachingLayers } from './SchoolTeachingLayers.js';
 import { buildSchoolMovePlayback, schoolPlaybackDelay } from './SchoolMovePlayback.js';
+import { buildSchoolPlayedMoveTrail } from './SchoolPlayedMoveTrail.js';
 import useSchoolExplanationDemo from './useSchoolExplanationDemo.js';
 import { SchoolExplanationActions, SchoolExplanationStatus } from './SchoolExplanationView.jsx';
 import {
@@ -139,6 +140,7 @@ export default function Tutorial({ onExit }) {
   const lessonAccessible = isSchoolLessonAccessible(schoolProgress, lesson.id, { freeStudy });
   const line = useMemo(() => schoolLineForLesson(lesson), [lesson]);
   const expected = useMemo(() => nextHumanSchoolStep(lesson, lineIndex), [lesson, lineIndex]);
+  const playedMoveTrail = useMemo(() => buildSchoolPlayedMoveTrail({ fen: lesson.fen, line, lineIndex }), [lesson, line, lineIndex]);
   const boardGuideMove = useMemo(() => masteryReplay === 'active' ? null : schoolBoardGuideMove(lesson, expected, { hintActive }), [lesson, expected, hintActive, masteryReplay]);
   const teachingLayers = useMemo(() => buildSchoolTeachingLayers({ guideMove: boardGuideMove, dangerSquares }), [boardGuideMove, dangerSquares]);
   const completedHumanMoves = line.slice(0, lineIndex).filter((step) => !step.auto).length;
@@ -622,6 +624,20 @@ export default function Tutorial({ onExit }) {
                         <strong>{runComplete ? 'Secuencia completada' : completedHumanMoves + ' de ' + totalHumanMoves + ' movimientos resueltos'}</strong>
                       </div>
                       <progress value={completedHumanMoves} max={Math.max(1, totalHumanMoves)} aria-label="Progreso de la secuencia" />
+                      {playedMoveTrail.length > 0 && (
+                        <section className="matthias-school-move-trail" aria-label="Jugadas realizadas en esta lección">
+                          <strong>Jugadas realizadas</strong>
+                          <ol>
+                            {playedMoveTrail.map((move) => (
+                              <li key={move.id} className={move.auto ? 'is-rival' : 'is-player'}>
+                                <span>{move.auto ? 'Rival' : 'Tú'}</span>
+                                <b>{move.moveNumber}{move.color === 'w' ? '.' : '…'} {move.san}</b>
+                                {move.note && <small>{move.note}</small>}
+                              </li>
+                            ))}
+                          </ol>
+                        </section>
+                      )}
                       <ol className="matthias-school-coach-history" aria-label="Intervenciones anteriores de Matthias">
                         {coachHistory.slice(0, -1).map((entry, entryIndex) => (
                           <li key={lesson.id + '-' + entryIndex} className={'is-' + entry.tone}>
