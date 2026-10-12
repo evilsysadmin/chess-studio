@@ -4,6 +4,7 @@ import './MatthiasClassRoom.css';
 import './SchoolRoomImmersive.css';
 import './MatthiasClassRoomFocus.css';
 import './MatthiasClassRoomExplanation.css';
+import './SchoolCoachJournal.css';
 import { Chess } from 'chess.js';
 import SchoolBoard, { getSchoolBoardRenderer } from './SchoolBoard.jsx';
 import { buildSchoolTeachingLayers } from './SchoolTeachingLayers.js';
@@ -89,6 +90,35 @@ export default function Tutorial({ onExit }) {
   const playbackAbortRef = useRef(null);
   const coachIncidentRef = useRef({ kind: null, count: 0 });
   const [coach, setCoach] = useState(() => ({ tone: 'neutral', text: initialCoachText(MATTHIAS_SCHOOL_LESSONS[firstSchoolIndex(loadMatthiasSchoolProgress())] || MATTHIAS_SCHOOL_LESSONS[0]) }));
+  // A bounded, session-only teaching transcript; profile progress is unchanged.
+  const [coachHistory, setCoachHistory] = useState(() => [{
+    tone: 'neutral',
+    text: initialCoachText(MATTHIAS_SCHOOL_LESSONS[firstSchoolIndex(loadMatthiasSchoolProgress())] || MATTHIAS_SCHOOL_LESSONS[0]),
+  }]);
+  const [coachExpanded, setCoachExpanded] = useState(() => (
+    typeof window !== 'undefined' && Boolean(window.matchMedia?.('(min-width: 861px) and (pointer: fine)')?.matches)
+  ));
+  const coachLogRef = useRef(null);
+
+  function announceCoach(next, { clearHistory = false } = {}) {
+    setCoach(next);
+    setCoachHistory((history) => clearHistory ? [next] : [...history.slice(-15), next]);
+  }
+
+  useEffect(() => {
+    const desktop = window.matchMedia?.('(min-width: 861px) and (pointer: fine)');
+    if (!desktop) return undefined;
+    const sync = () => setCoachExpanded(desktop.matches);
+    desktop.addEventListener?.('change', sync);
+    return () => desktop.removeEventListener?.('change', sync);
+  }, []);
+
+  useEffect(() => {
+    if (coachExpanded && coachLogRef.current) {
+      coachLogRef.current.scrollTop = coachLogRef.current.scrollHeight;
+    }
+  }, [coachExpanded, coachHistory]);
+
   const schoolRenderer = getSchoolBoardRenderer();
 
   useEffect(() => () => {
@@ -162,7 +192,7 @@ export default function Tutorial({ onExit }) {
     setDangerSquares([]);
     if (closeCurriculum) setCurriculumOpen(false);
     setAttemptEpoch((current) => current + 1);
-    setCoach({ tone: 'neutral', text: initialCoachText(next) });
+    announceCoach({ tone: 'neutral', text: initialCoachText(next) }, { clearHistory: true });
   }
 
   const legalTargets = useMemo(() => {
@@ -206,10 +236,10 @@ export default function Tutorial({ onExit }) {
     setHintActive(false);
     setDangerSquares(danger);
     if (lesson.exam && consumesMistake && nextMistakes > Number(lesson.maxMistakes || 0)) {
-      setCoach({ tone: 'retry', text: `Suspendido. ${text} Ha agotado el margen del examen. Repita cuando quiera; prefiero eso a promocionarle por lástima.` });
+      announceCoach({ tone: 'retry', text: `Suspendido. ${text} Ha agotado el margen del examen. Repita cuando quiera; prefiero eso a promocionarle por lástima.` });
       return;
     }
-    setCoach({ tone: 'retry', text });
+    announceCoach({ tone: 'retry', text });
   }
 
   function resetLesson({ keepCoach = false, clearFailure = true, announce = false, keepMastery = false } = {}) {
@@ -230,7 +260,7 @@ export default function Tutorial({ onExit }) {
         : lesson.exam
           ? `Examen reiniciado. Errores a cero y posición inicial restaurada. ${lesson.objective}`
           : `Lección reiniciada. Volvemos a la posición inicial. ${lesson.objective}`;
-      setCoach({ tone: 'neutral', text: announce ? resetText : initialCoachText(lesson) });
+      announceCoach({ tone: 'neutral', text: announce ? resetText : initialCoachText(lesson) }, { clearHistory: true });
     }
   }
 
@@ -244,12 +274,12 @@ export default function Tutorial({ onExit }) {
 
     if (masteryReplay === 'active') {
       setMasteryReplay('complete');
-      setCoach({ tone: 'success', text: 'Ahora sí. La misma posición, sin luces ni ruedines. Eso ya cuenta como entenderla.' });
+      announceCoach({ tone: 'success', text: 'Ahora sí. La misma posición, sin luces ni ruedines. Eso ya cuenta como entenderla.' });
       return;
     }
 
     setSchoolProgress(markMatthiasSchoolLessonComplete(lesson.id));
-    setCoach({ tone: 'success', text: lesson.success });
+    announceCoach({ tone: 'success', text: lesson.success });
   }
 
   function startMasteryReplay() {
@@ -265,7 +295,7 @@ export default function Tutorial({ onExit }) {
     setHintActive(false);
     setDangerSquares([]);
     setAttemptEpoch((current) => current + 1);
-    setCoach({ tone: 'neutral', text: 'Bien. Ahora otra vez sin que le lleve de la mano. Mis luces se apagan; su cerebro, idealmente no.' });
+    announceCoach({ tone: 'neutral', text: 'Bien. Ahora otra vez sin que le lleve de la mano. Mis luces se apagan; su cerebro, idealmente no.' }, { clearHistory: true });
   }
 
   async function applyCorrectHumanMove(from, to) {
@@ -277,7 +307,7 @@ export default function Tutorial({ onExit }) {
       to,
     });
     if (!playback.ok) {
-      setCoach({ tone: 'retry', text: 'La línea de la lección dejó de ser legal. He parado el ejercicio para no enseñarle basura.' });
+      announceCoach({ tone: 'retry', text: 'La línea de la lección dejó de ser legal. He parado el ejercicio para no enseñarle basura.' });
       return;
     }
 
@@ -326,7 +356,7 @@ export default function Tutorial({ onExit }) {
     const done = line.slice(0, playback.cursor).filter((step) => !step.auto).length;
     const recovered = Boolean(coachIncidentRef.current?.kind);
     coachIncidentRef.current = { kind: null, count: 0 };
-    setCoach({
+    announceCoach({
       tone: 'neutral',
       text: schoolCoachStepMessage({
         autoReplies: playback.autoReplies,
@@ -355,7 +385,7 @@ export default function Tutorial({ onExit }) {
       }
       setSelected(square);
       setDangerSquares([]);
-      setCoach({
+      announceCoach({
         tone: 'neutral',
         text: schoolCoachSelectionMessage({
           square,
@@ -369,7 +399,7 @@ export default function Tutorial({ onExit }) {
 
     if (square === selected) {
       setSelected(null);
-      setCoach({ tone: 'neutral', text: 'Selección cancelada. Dramático, pero recuperable.' });
+      announceCoach({ tone: 'neutral', text: 'Selección cancelada. Dramático, pero recuperable.' });
       return;
     }
 
@@ -401,6 +431,7 @@ export default function Tutorial({ onExit }) {
       data-school-study-mode={freeStudy ? 'free' : 'guided'}
       data-school-focus={boardFocusMode ? 'board' : 'normal'}
       data-school-focus-rail={boardFocusRailCollapsed ? 'collapsed' : 'visible'}
+      data-school-coach={coachExpanded ? 'expanded' : 'compact'}
     >
       <div className="matthias-school-toolbar">
         <button className="back-link" onClick={section === 'school' ? onExit : () => setSection('school')}>
@@ -523,7 +554,7 @@ export default function Tutorial({ onExit }) {
                       >
                         {examFailed ? 'Reintentar examen' : runComplete ? 'Repetir' : 'Reiniciar'}
                       </button>
-                      {!lesson.exam && masteryReplay !== 'active' && <button type="button" className="secondary-btn" disabled={playbackActive} onClick={() => { setDangerSquares([]); setHintActive(true); setCoach({ tone: 'hint', text: schoolCoachHintMessage(lesson) }); }}>Dame una pista</button>}
+                      {!lesson.exam && masteryReplay !== 'active' && <button type="button" className="secondary-btn" disabled={playbackActive} onClick={() => { setDangerSquares([]); setHintActive(true); announceCoach({ tone: 'hint', text: schoolCoachHintMessage(lesson) }); }}>Dame una pista</button>}
                       {runComplete && !lesson.exam && masteryReplay === 'idle' && (
                         <button type="button" className="primary-btn" onClick={startMasteryReplay}>Ahora sin ayudas</button>
                       )}
@@ -535,7 +566,7 @@ export default function Tutorial({ onExit }) {
                           disabled={playbackActive}
                           onClick={() => {
                             if (!explanation.openDemo()) {
-                              setCoach({ tone: 'retry', text: 'Esta demostración ya no es legal. No voy a enseñarle una fantasía por rellenar espacio.' });
+                              announceCoach({ tone: 'retry', text: 'Esta demostración ya no es legal. No voy a enseñarle una fantasía por rellenar espacio.' });
                             }
                           }}
                         >
@@ -561,6 +592,15 @@ export default function Tutorial({ onExit }) {
                   <img src={CPU_IDENTITY.avatar} alt="" aria-hidden="true" />
                   <div><span className="section-label">{lesson.eyebrow}</span><h2>{lesson.title}</h2></div>
                   {lessonComplete && <span className="matthias-school-complete-badge">✓ {lesson.exam ? 'aprobado' : 'dominado'}</span>}
+                  <button
+                    type="button"
+                    className="matthias-school-coach-toggle"
+                    aria-expanded={coachExpanded}
+                    aria-controls="matthias-school-coach-detail"
+                    onClick={() => setCoachExpanded((expanded) => !expanded)}
+                  >
+                    {coachExpanded ? 'Compactar' : 'Ampliar'}
+                  </button>
                 </div>
                 <div className="matthias-school-objective"><b>{lesson.exam ? 'Examen' : 'Misión'}</b><p>{lesson.objective}</p></div>
                 {explanation.open ? (
@@ -570,6 +610,32 @@ export default function Tutorial({ onExit }) {
                     <div className="matthias-school-sequence-status" aria-label={`Secuencia ${Math.min(completedHumanMoves + (runComplete ? 0 : 1), totalHumanMoves)} de ${totalHumanMoves}`}>
                       <span>Secuencia</span><b>{runComplete ? totalHumanMoves : Math.min(completedHumanMoves + 1, totalHumanMoves)}/{totalHumanMoves}</b>
                       {lesson.exam && <em>{Number(lesson.maxMistakes || 0) > 0 ? `Errores ${mistakes}/${lesson.maxMistakes}` : mistakes > 0 ? 'Suspendido' : 'Sin margen de error'}</em>}
+                    </div>
+                    <div
+                      id="matthias-school-coach-detail"
+                      ref={coachLogRef}
+                      className="matthias-school-coach-detail"
+                      hidden={!coachExpanded}
+                    >
+                      <div className="matthias-school-journal-heading">
+                        <span>CUADERNO DE MATTHIAS</span>
+                        <strong>{runComplete ? 'Secuencia completada' : completedHumanMoves + ' de ' + totalHumanMoves + ' movimientos resueltos'}</strong>
+                      </div>
+                      <progress value={completedHumanMoves} max={Math.max(1, totalHumanMoves)} aria-label="Progreso de la secuencia" />
+                      <ol className="matthias-school-coach-history" aria-label="Intervenciones anteriores de Matthias">
+                        {coachHistory.slice(0, -1).map((entry, entryIndex) => (
+                          <li key={lesson.id + '-' + entryIndex} className={'is-' + entry.tone}>
+                            <span>{entryIndex === 0 ? 'Al comenzar' : 'Intervención ' + (entryIndex + 1)}</span>
+                            <p>{entry.text}</p>
+                          </li>
+                        ))}
+                      </ol>
+                      {runComplete && lessonComplete && !lesson.exam && masteryReplay !== 'active' && (
+                        <div className="matthias-school-journal-lesson">
+                          <strong>Lo que acaba de demostrar</strong>
+                          <p>{lesson.explanation}</p>
+                        </div>
+                      )}
                     </div>
                     <div className={`matthias-school-feedback is-${coach.tone}`} role="status" aria-live="polite"><b>Matthias</b><p>{coach.text}</p></div>
                   </>
