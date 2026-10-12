@@ -1,0 +1,46 @@
+name: CHESSCOM · Sven head first-party V43
+on:
+  pull_request:
+    paths:
+      - scripts/blender/chesscom_sven_head_v43.py
+      - scripts/art/test_chesscom_sven_head_v43.py
+      - .github/workflows/chesscom-sven-head-v43.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: chesscom-sven-head-v43-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  original-head:
+    name: Authored Sven head · eight review views
+    runs-on: ubuntu-24.04
+    timeout-minutes: 28
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup-blender-canonical
+      - name: Model first-party Sven head in Blender
+        env:
+          LIBGL_ALWAYS_SOFTWARE: '1'
+        run: |
+          blender --background -noaudio --python-exit-code 20 \
+            --python scripts/blender/chesscom_sven_head_v43.py -- \
+            --output-dir /tmp/chesscom-sven-head-v43
+      - name: Reject fake finished models and review artifacts
+        run: |
+          python3 -m unittest discover -s scripts/art -p 'test_chesscom_sven_head_v43.py' -v
+          python3 - <<'PY'
+          import sys
+          from pathlib import Path
+          sys.path.insert(0,'scripts/art')
+          from test_chesscom_sven_head_v43 import validate
+          record=validate(Path('/tmp/chesscom-sven-head-v43'))
+          print('SVEN_HEAD_REVIEW_ONLY',record['glb_sha256'])
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: chesscom-sven-head-v43-${{ github.event.pull_request.number || github.run_number }}
+          path: /tmp/chesscom-sven-head-v43/
+          if-no-files-found: warn
+          retention-days: 7

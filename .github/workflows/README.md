@@ -111,6 +111,7 @@ Render staging está retirado del plano de despliegue: el **release canónico y 
 | `war-room-v3-blender-art.yml` | Genera, valida y publica la sala cartográfica de War Room v3 sin reemplazar v1/v2. |
 | `coverage.yml` | Señales periódicas no bloqueantes: coverage frontend/backend mensual y CodeQL semanal; `workflow_dispatch` ejecuta ambos bajo demanda. CodeQL mantiene `security-events: write` limitado a su propio job. |
 | `chesscom-sven-sprite-forge.yml` | Contrato Python path-aware para el compiler de bancos de Sven: prueba compilación real de 96 fixtures, ausencia de direcciones/copias, WebP lossless y SHA antes de aceptar atlas authored; no genera ni publica arte de producción. |
+| `chesscom-sven-head-v43.yml` | Genera desde geometría propia un candidato exclusivo de cabeza/casco de Sven y ocho vistas para QA visual; sin runtime/publicación. |
 | `pawn-slug-matthias-sprite-smoke.yml` | Evidencia PNG de sprites runtime Pawn Slug. En PR separa Matthias/enemigos por ownership; tras staging omite deploys sin superficie sprite; manual conserva smoke completo. Matthias aplica además un gate fail-closed de continuidad de escala/footline para `idle` y overlays `run12`/`run13`. |
 
 ## Observabilidad y operación
