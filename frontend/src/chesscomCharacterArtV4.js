@@ -23,21 +23,41 @@ export function chesscomCharacterV4Profile(id, friendly = true) {
   if (!friendly) return Object.freeze({
     id:key || 'hostile', role:'hostile', friendly:false,
     identity:'hostile-operator-v4',
-    cloth:'#423a34', cloth2:'#52453e', armour:'#292d2e', accent:'#b46d54', skin:'#a98b72', compact:false,
+    cloth:'#625b53', cloth2:'#485254', armour:'#303d40', accent:'#b46d54', skin:'#b79878', compact:false,
     muzzleX:.91,
   });
   if (key === 'sven') return Object.freeze({
     id:'sven', role:'scout', friendly:true,
     identity:'scout-operator-v4',
-    cloth:'#36535c', cloth2:'#4a636a', armour:'#2c3f44', accent:'#70a5b0', skin:'#c09a79', compact:true,
+    cloth:'#53747b', cloth2:'#38525e', armour:'#2b414c', accent:'#80b4bd', skin:'#c09a79', compact:true,
     muzzleX:.82,
   });
   return Object.freeze({
     id:key || 'dieter', role:'rifleman', friendly:true,
     identity:'rifleman-operator-v4',
-    cloth:'#51534c', cloth2:'#66685d', armour:'#343b37', accent:'#b39d75', skin:'#c6a280', compact:false,
+    cloth:'#686c60', cloth2:'#46524a', armour:'#344540', accent:'#bda77e', skin:'#c6a280', compact:false,
     muzzleX:.91,
   });
+}
+
+// Tactical readability beats invisible microdetail. These palettes separate
+// fabric, matte armour and helmets under Kharif's warm/cool lights at game zoom.
+export const CHESSCOM_OPERATOR_STYLE_V32=Object.freeze({
+  identity:'operator-tactical-readability-v32',
+  roles:Object.freeze(['scout','rifleman','hostile']),
+  newMeshesPerUnit:0,
+  newMaterialsPerUnit:0,
+});
+export function chesscomOperatorStyleV32(role){
+  if(!CHESSCOM_OPERATOR_STYLE_V32.roles.includes(role)){
+    throw new RangeError('Invalid human operator style role');
+  }
+  const presets={
+    scout:{torsoBottom:.285,torsoTop:.375,vestBottom:.275,vestTop:.345,vestHeight:.405,helmetMaterial:'cloth2'},
+    rifleman:{torsoBottom:.335,torsoTop:.435,vestBottom:.325,vestTop:.390,vestHeight:.440,helmetMaterial:'armour'},
+    hostile:{torsoBottom:.355,torsoTop:.475,vestBottom:.345,vestTop:.430,vestHeight:.465,helmetMaterial:'cloth2'},
+  };
+  return Object.freeze({role,identity:CHESSCOM_OPERATOR_STYLE_V32.identity,...presets[role]});
 }
 
 // Extra silhouettes are deliberately attached to existing units. Their
@@ -400,11 +420,12 @@ function polyHead(B,scene,name,parent,mat,spec,id,friendly,disposables) {
 }
 
 function materialsFor(B,scene,profile,disposables){
+  const leader=profile.role==='leader';
   return {
-    cloth:pbr(B,scene,`character-v4-${profile.id}-cloth`,profile.cloth,'cloth',disposables,{roughness:.88}),
-    cloth2:pbr(B,scene,`character-v4-${profile.id}-cloth2`,profile.cloth2,'cloth',disposables,{roughness:.82}),
-    armour:pbr(B,scene,`character-v4-${profile.id}-armour`,profile.armour,'metal',disposables,{metallic:.36,roughness:.50}),
-    accent:pbr(B,scene,`character-v4-${profile.id}-accent`,profile.accent,'metal',disposables,{metallic:.43,roughness:.43,emissive:CHESSCOM_OPERATOR_READABILITY_V22.accentEmission}),
+    cloth:pbr(B,scene,`character-v4-${profile.id}-cloth`,profile.cloth,'cloth',disposables,{roughness:leader?.88:.96}),
+    cloth2:pbr(B,scene,`character-v4-${profile.id}-cloth2`,profile.cloth2,'cloth',disposables,{roughness:leader?.82:.91}),
+    armour:pbr(B,scene,`character-v4-${profile.id}-armour`,profile.armour,'metal',disposables,{metallic:leader?.36:.20,roughness:leader?.50:.71}),
+    accent:pbr(B,scene,`character-v4-${profile.id}-accent`,profile.accent,'metal',disposables,{metallic:leader?.43:.27,roughness:leader?.43:.59,emissive:CHESSCOM_OPERATOR_READABILITY_V22.accentEmission}),
     skin:pbr(B,scene,`character-v4-${profile.id}-skin`,profile.skin,'leather',disposables,{roughness:.70,emissive:CHESSCOM_OPERATOR_READABILITY_V22.faceEmission}),
     boot:pbr(B,scene,`character-v4-${profile.id}-boot`,'#101315','leather',disposables,{roughness:.78}),
     gun:pbr(B,scene,`character-v4-${profile.id}-gun`,'#111619','metal',disposables,{metallic:.62,roughness:.29}),
@@ -479,11 +500,12 @@ function addFieldKitV20(B,scene,root,profile,mats,disposables){
 function addMercenary(B,scene,root,profile,disposables,restorers,invisible){
   hideLegacyMercenary(scene,profile.id,root,invisible,restorers);
   const mats=materialsFor(B,scene,profile,disposables);const parts=root.metadata?.parts||{};
-  polyBlock(B,scene,`character-v4-${profile.id}-torso`,root,mats.cloth,{h:profile.compact?.66:.69,bw:profile.compact?.31:.35,bd:.27,tw:profile.compact?.40:.47,td:.29,y:.84,contour:true},profile.id,profile.friendly,disposables);
-  polyBlock(B,scene,`character-v4-${profile.id}-vest`,root,mats.armour,{h:.43,bw:profile.compact?.31:.35,bd:.075,tw:profile.compact?.37:.42,td:.067,y:.90,z:-.178,contour:true},profile.id,profile.friendly,disposables);
+  const style=chesscomOperatorStyleV32(profile.role);
+  polyBlock(B,scene,`character-v4-${profile.id}-torso`,root,mats.cloth,{h:profile.compact?.66:.69,bw:style.torsoBottom,bd:.27,tw:style.torsoTop,td:.29,y:.84,contour:true},profile.id,profile.friendly,disposables);
+  polyBlock(B,scene,`character-v4-${profile.id}-vest`,root,mats.armour,{h:style.vestHeight,bw:style.vestBottom,bd:.078,tw:style.vestTop,td:.071,y:.90,z:-.178,contour:true},profile.id,profile.friendly,disposables);
   polyBlock(B,scene,`character-v4-${profile.id}-pelvis`,root,mats.cloth2,{h:.24,bw:.35,bd:.265,tw:.32,td:.25,y:.53,contour:true},profile.id,profile.friendly,disposables);
   polyHead(B,scene,`character-v4-${profile.id}-head`,root,mats.skin,{rx:CHESSCOM_OPERATOR_ANATOMY_V28.headWidth,ry:.178,rz:.148,y:1.275,z:-.01},profile.id,profile.friendly,disposables);
-  polyBlock(B,scene,`character-v4-${profile.id}-helmet`,root,mats.armour,{h:.20,w:.36,d:.35,y:1.41,z:.01,poseMesh:chesscomOperatorHelmetV31Geometry(profile.role)},profile.id,profile.friendly,disposables);
+  polyBlock(B,scene,`character-v4-${profile.id}-helmet`,root,mats[style.helmetMaterial],{h:.20,w:.36,d:.35,y:1.41,z:.01,poseMesh:chesscomOperatorHelmetV31Geometry(profile.role)},profile.id,profile.friendly,disposables);
   for(const [part,side] of [[parts.armL,-1],[parts.armR,1]]){
     if(!part)continue;
     const arm=chesscomOperatorArmPoseV30Geometry(side,profile.role);
@@ -511,6 +533,7 @@ function addMercenary(B,scene,root,profile,disposables,restorers,invisible){
   addSilhouetteV23(B,scene,root,profile,mats,disposables);
   addWeapon(B,scene,root,profile,mats,disposables);
   root.metadata.humanArmPose=CHESSCOM_OPERATOR_POSE_V30.identity;
+  root.metadata.operatorReadability=style.identity;
   root.metadata.visualIdentity=profile.identity;
   root.metadata.characterArt='v4';
 }
