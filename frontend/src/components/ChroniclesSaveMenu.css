@@ -350,3 +350,13 @@
 @media (prefers-reduced-motion: reduce) {
   .chronicles-save-menu--expedition .chronicles-save-menu__actions button { transition: none; }
 }
+
+/* Gold campaign CTA is light parchment; all nested live labels stay dark.
+   Dark expedition/archive buttons and blue resume remain light-on-dark. */
+.chronicles-save-menu--expedition .chronicles-save-menu__actions button.is-primary,
+.chronicles-save-menu--expedition .chronicles-save-menu__actions button.is-primary :is(span, small, b, em),
+.chronicles-save-menu button.is-primary {
+  color-scheme: only light;
+  color: var(--mm3-control-ink, #101014);
+  -webkit-text-fill-color: var(--mm3-control-ink, #101014);
+}

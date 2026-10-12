@@ -498,3 +498,22 @@
 @media (prefers-reduced-motion: reduce) {
   .chronicles-character-sheet--mm3 .chronicles-character-sheet__xp-track i { transition: none; }
 }
+
+/* Character folio: gold/silver buttons and parchment stat tablets must use
+   readable dark ink even when Chromium/Brave attempts to auto-dark a page.
+   Dark vital slots and progression bars intentionally keep light lettering. */
+.chronicles-character-sheet--mm3 :is(.chronicles-character-sheet__head > button,
+  .chronicles-character-sheet__equipment button:not(:disabled)) {
+  color-scheme: only light;
+  color: var(--mm3-control-ink, #101014);
+  -webkit-text-fill-color: var(--mm3-control-ink, #101014);
+}
+.chronicles-character-sheet--mm3 .chronicles-character-sheet__equipment button:disabled {
+  color: var(--mm3-control-ink-disabled, #343039);
+  -webkit-text-fill-color: var(--mm3-control-ink-disabled, #343039);
+}
+.chronicles-character-sheet--mm3 .chronicles-character-sheet__section-head :is(span, small, b),
+.chronicles-character-sheet--mm3 .chronicles-character-sheet__mm3-stats :is(span, b, em, small) {
+  color: var(--mm3-control-ink, #101014);
+  -webkit-text-fill-color: var(--mm3-control-ink, #101014);
+}

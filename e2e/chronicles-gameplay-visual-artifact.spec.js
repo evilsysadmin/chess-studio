@@ -87,6 +87,7 @@ async function openChronicles(page, captureLabel, {
   // accessible live controls layered over the decorative, browser-chrome-free art.
   await expect(entry).toHaveAttribute('data-chronicles-art', 'approved-expedition-study-v1');
   await expect(entry.locator('.chronicles-save-menu__actions > button')).toHaveCount(6);
+  await expectStoneButtonInk(entry, '.chronicles-save-menu__actions button.is-primary', captureLabel + ': gold campaign key');
   for (const name of ['Nueva campaña', 'Nuevo juego', 'Continuar partida', 'Cargar juego', 'Gestionar partidas', 'Volver al castillo']) {
     await expect(entry.getByRole('button', { name: new RegExp(name) })).toBeVisible();
   }
@@ -457,6 +458,7 @@ test('Chronicles · First Book equipment sheet · actual Android 390px', async (
       .getByRole('button', { name: /Equipo/ }).click();
     await expect(gear).toBeVisible();
     await expect(gear).toContainText('Armas y armaduras equipadas');
+    await expectStoneButtonInk(sheet, '.chronicles-character-sheet__head > button', 'MM3 folio close key');
     // Weapon, armour and shield.
     await expect(gear.locator('.chronicles-character-sheet__gear-slot')).toHaveCount(3);
     await gear.evaluate((node) => node.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'instant' }));
