@@ -41,6 +41,9 @@ export default function ChroniclesNarratorOverlay({ message, children = null }) 
   const narration = isMeaningful ? message : lastNarration || 'Todavía no hay anotaciones en la crónica.';
 
   return (
+    <>
+    {/* MM3 desktop: the latest note always shows as a band in the view. */}
+    <div className="chronicles-dm-band" role="status" aria-live="polite">{narration}</div>
     <details className="chronicles-dm-overlay">
       <summary className="chronicles-dm-trigger" aria-label="Crónica de expedición">
         <span className="chronicles-dm-sigil" aria-hidden="true">✦</span>
@@ -54,5 +57,6 @@ export default function ChroniclesNarratorOverlay({ message, children = null }) 
         {children && <div className="chronicles-dm-quests">{children}</div>}
       </div>
     </details>
+    </>
   );
 }

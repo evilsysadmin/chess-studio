@@ -1,0 +1,246 @@
+{
+  "id": "terra-d1",
+  "version": 1,
+  "progressionKey": "terra-d1-v1",
+  "title": "Túmulos del Pacto",
+  "areaCode": "D1",
+  "biome": "snow",
+  "regionKind": "wilderness",
+  "layoutMode": "authored",
+  "grid": [
+    "#####################",
+    "#....#..............#",
+    "#...........#.......#",
+    "#.#.........##....###",
+    "#...................#",
+    "#........#......##..#",
+    "#...........#.......#",
+    "#...................#",
+    "#........#.....#....#",
+    "#...............#...#",
+    "#.....##......#.....#",
+    "#...................#",
+    "#...................#",
+    "#.#....#............#",
+    "#####################"
+  ],
+  "partyStart": {
+    "x": 10,
+    "y": 7,
+    "direction": 0
+  },
+  "initialFlags": {},
+  "enemies": [
+    {
+      "id": "terra-d1-foe-0",
+      "visualType": "drowned",
+      "name": "congelado",
+      "x": 7,
+      "y": 3,
+      "hpKey": "terra_d1Foe0Hp",
+      "maxHp": 10,
+      "retaliation": 2,
+      "optional": true,
+      "activation": "always",
+      "ai": {
+        "movement": "cardinal-chase",
+        "attackReach": 1,
+        "engagedMovement": "cardinal-chase",
+        "engageRange": 3
+      },
+      "onDefeat": {
+        "message": "{attacker} acaba con congelado usando {attack}.",
+        "effects": [
+          {
+            "type": "grant-gold",
+            "amount": 8
+          }
+        ]
+      }
+    },
+    {
+      "id": "terra-d1-foe-1",
+      "visualType": "bone-hound",
+      "name": "lobo de escarcha",
+      "x": 13,
+      "y": 11,
+      "hpKey": "terra_d1Foe1Hp",
+      "maxHp": 10,
+      "retaliation": 2,
+      "optional": true,
+      "activation": "always",
+      "ai": {
+        "movement": "cardinal-roam",
+        "attackReach": 1,
+        "engagedMovement": "cardinal-chase",
+        "engageRange": 4
+      },
+      "onDefeat": {
+        "message": "{attacker} acaba con lobo de escarcha usando {attack}.",
+        "effects": [
+          {
+            "type": "grant-gold",
+            "amount": 8
+          }
+        ]
+      }
+    },
+    {
+      "id": "terra-d1-foe-2",
+      "visualType": "scavenger-knight",
+      "name": "caballero helado",
+      "x": 3,
+      "y": 11,
+      "hpKey": "terra_d1Foe2Hp",
+      "maxHp": 10,
+      "retaliation": 2,
+      "optional": true,
+      "activation": "always",
+      "ai": {
+        "movement": "hold",
+        "attackReach": 1,
+        "engagedMovement": "cardinal-chase",
+        "engageRange": 2
+      },
+      "onDefeat": {
+        "message": "{attacker} acaba con caballero helado usando {attack}.",
+        "effects": [
+          {
+            "type": "grant-gold",
+            "amount": 8
+          }
+        ]
+      }
+    }
+  ],
+  "triggers": [],
+  "interactables": [],
+  "treasures": [
+    {
+      "id": "terra-d1-chest",
+      "kind": "pickup",
+      "visualType": "chest",
+      "x": 15,
+      "y": 4,
+      "label": "Abrir el cofre",
+      "when": [
+        {
+          "key": "terra_d1ChestOpened",
+          "falsy": true
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "set",
+            "key": "terra_d1ChestOpened",
+            "value": true
+          },
+          {
+            "type": "grant-gold",
+            "amount": 24
+          },
+          {
+            "type": "grant-item",
+            "itemId": "iron-mace",
+            "name": "Iron mace",
+            "description": "Botín de un cofre de Terra.",
+            "quantity": 1
+          }
+        ],
+        "message": "El cofre guarda 24 monedas y algo de equipo."
+      }
+    }
+  ],
+  "traps": [],
+  "exits": [
+    {
+      "id": "d1-to-d2",
+      "kind": "exit",
+      "x": 10,
+      "y": 13,
+      "requiresReturn": true,
+      "openLabel": "Ir a D2 · Viñedos del Rey",
+      "lockedLabel": "El paso está cortado",
+      "requirements": [],
+      "action": {
+        "effects": [
+          {
+            "type": "transition-map",
+            "mapId": "terra-d2",
+            "entryExitId": "d2-to-d1"
+          }
+        ],
+        "message": "La compañía entra en D2."
+      }
+    },
+    {
+      "id": "d1-to-c1",
+      "kind": "exit",
+      "x": 1,
+      "y": 7,
+      "requiresReturn": true,
+      "openLabel": "Ir a C1 · Llanura de la Vigilia",
+      "lockedLabel": "El paso está cortado",
+      "requirements": [],
+      "action": {
+        "effects": [
+          {
+            "type": "transition-map",
+            "mapId": "terra-c1",
+            "entryExitId": "c1-to-d1"
+          }
+        ],
+        "message": "La compañía entra en C1."
+      }
+    },
+    {
+      "id": "d1-to-e1",
+      "kind": "exit",
+      "x": 19,
+      "y": 7,
+      "requiresReturn": true,
+      "openLabel": "Ir a E1 · Bosque de Escarcha",
+      "lockedLabel": "El paso está cortado",
+      "requirements": [],
+      "action": {
+        "effects": [
+          {
+            "type": "transition-map",
+            "mapId": "terra-e1",
+            "entryExitId": "e1-to-d1"
+          }
+        ],
+        "message": "La compañía entra en E1."
+      }
+    },
+    {
+      "id": "d1-to-dungeon",
+      "kind": "exit",
+      "visualType": "dungeon-arch",
+      "x": 5,
+      "y": 4,
+      "requiresReturn": true,
+      "openLabel": "Entrar en Túmulos del Primer Pacto",
+      "lockedLabel": "Túmulos del Primer Pacto · sellada",
+      "requirements": [],
+      "action": {
+        "effects": [
+          {
+            "type": "transition-map",
+            "mapId": "tumulos-primer-pacto",
+            "entryExitId": "dungeon-exit"
+          }
+        ],
+        "message": "La compañía desciende a Túmulos del Primer Pacto."
+      }
+    }
+  ],
+  "initialJournal": {
+    "id": "terra-d1-arrival",
+    "title": "D1 · Túmulos del Pacto",
+    "body": "Siete túmulos en círculo. El viento no entra en el del centro.",
+    "sigil": "D1"
+  },
+  "introMessage": "D1 · Túmulos del Pacto. Siete túmulos en círculo. El viento no entra en el del centro."
+}

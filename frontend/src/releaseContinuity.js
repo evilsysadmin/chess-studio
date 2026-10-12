@@ -6,6 +6,13 @@ import {
 import { isLikelyModuleLoadError } from './moduleLoadRecovery.js';
 import { cooldownStateFromTimestamp } from './cooldownClock.js';
 
+// The castle is the only safe place to invite an intentional version switch.
+// New/future game modes default to protected: an update must never interrupt
+// puzzles, campaigns, an embedded runtime, a match or a pending local save.
+export function shouldDeferReleaseReload(view, { combatBattleUiActive = false } = {}) {
+  return view !== 'menu' || combatBattleUiActive;
+}
+
 const RELOAD_GUARD_KEY = 'chess-study-release-reload-at';
 const RELOAD_COOLDOWN_MS = 15_000;
 

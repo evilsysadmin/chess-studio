@@ -35,6 +35,37 @@ async function openChronicles(page, options = {}) {
   await expect(page.locator('[data-chronicles="true"]')).toBeVisible();
 }
 
+test('Chronicles · primera partida sólo se escribe al guardar y Salir sin guardar no escribe otra', async ({ page }) => {
+  test.setTimeout(180_000);
+  const checkpointRequests = [];
+  page.on('request', (request) => {
+    if (request.method() !== 'PUT') return;
+    const requestPath = new URL(request.url()).pathname;
+    if (requestPath.includes('/api/chronicles/runs/') && requestPath.endsWith('/checkpoint')) {
+      checkpointRequests.push(request.postDataJSON());
+    }
+  });
+  await openChronicles(page, { chroniclesCurrentMapId: 'swordhaven-first-book', newTown: true, newCampaign: true });
+  const mode = page.locator('[data-chronicles="true"]');
+  await expect(mode).toHaveAttribute('data-chronicles-map-id', 'swordhaven-first-book');
+  expect(checkpointRequests, 'bootstrap must not autosave').toHaveLength(0);
+  await page.keyboard.press('Escape');
+  const menu = mode.locator('.chronicles-game-menu');
+  await expect(menu).toHaveAttribute('open', '');
+  await menu.getByRole('button', { name: 'Guardar partida', exact: true }).click();
+  await expect(menu.getByText('Partida guardada correctamente.')).toBeVisible();
+  expect(checkpointRequests, 'first manual Save must commit an authoritative checkpoint').toHaveLength(1);
+  await menu.getByRole('button', { name: 'Continuar', exact: true }).click();
+  await page.keyboard.press('a');
+  await page.keyboard.press('a');
+  expect(checkpointRequests, 'turning in the same area must not autosave').toHaveLength(1);
+  await page.keyboard.press('Escape');
+  await menu.getByRole('button', { name: 'Salir sin guardar', exact: true }).click();
+  await menu.getByRole('button', { name: 'Sí, salir sin guardar', exact: true }).click();
+  await expect(mode).toHaveCount(0);
+  expect(checkpointRequests, 'discarding must not checkpoint unsaved movement').toHaveLength(1);
+});
+
 test('Chronicles · nueva campaña crea una partida versionada de Swordhaven sin tocar el juego clásico', async ({ page }) => {
   test.setTimeout(180_000);
   const creationBodies = [];
@@ -278,9 +309,33 @@ test('Chronicles of Matthias · clic en un PJ abre una ficha RPG con retrato aut
   const sheet = page.getByRole('dialog', { name: 'Matthias', exact: true });
   await expect(sheet).toBeVisible();
   await expect(sheet.getByText('PROGRESIÓN', { exact: true })).toBeVisible();
+  const folio = sheet.getByRole('navigation', { name: 'Apartados de la ficha' });
+  await expect(folio).toBeVisible();
+  await expect(folio.getByRole('button', { name: /Estado/ })).toHaveAttribute('aria-pressed', 'true');
+  await expect(sheet.getByText('ESTADÍSTICAS', { exact: true })).toBeVisible();
+  // A previously green build still rendered black-on-black MM3 stats because
+  // the old first-person CSS was loaded after the new folio skin. Test the
+  // *computed* browser output, not the presence of a stylesheet class.
+  const statCell = sheet.locator('.chronicles-character-sheet__mm3-stats > div').first();
+  await expect(statCell).toBeVisible();
+  const statMaterials = await statCell.evaluate((element) => ({
+    background: getComputedStyle(element).backgroundImage,
+    ink: getComputedStyle(element.querySelector('span')).color,
+  }));
+  expect(statMaterials.background).toContain('mm3-sandstone');
+  expect(statMaterials.ink).toBe('rgb(44, 28, 18)');
+  await folio.getByRole('button', { name: /Equipo/ }).click();
   await expect(sheet.getByText('EQUIPO Y OBJETOS', { exact: true })).toBeVisible();
+  await expect(sheet.getByText('ESTADÍSTICAS', { exact: true })).toBeHidden();
+  await folio.getByRole('button', { name: /Mejoras/ }).click();
   await expect(sheet.getByText('ATRIBUTOS', { exact: true })).toBeVisible();
   await expect(sheet.getByText('TÉCNICAS Y GRIMORIO', { exact: true })).toBeVisible();
+  const partyDock = sheet.getByRole('navigation', { name: 'Seleccionar personaje de la compañía' });
+  await expect(partyDock.getByRole('button')).toHaveCount(4);
+  await partyDock.getByRole('button', { name: 'Ver ficha de Hildegard' }).click();
+  await expect(sheet.getByRole('heading', { name: 'Hildegard' })).toBeVisible();
+  await page.keyboard.press('1');
+  await expect(sheet.getByRole('heading', { name: 'Matthias' })).toBeVisible();
 
   const portrait = sheet.locator('.chronicles-character-sheet__portrait img');
   await expect(portrait).toBeVisible();

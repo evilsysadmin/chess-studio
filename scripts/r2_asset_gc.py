@@ -377,13 +377,17 @@ def plan_cleanup(
     deprecated_prefixes = list(policy.get("deprecatedPrefixes", []))
     reasons: dict[str, str] = {}
     retained_hints: dict[str, str] = {}
+    # Release bundles must remain atomic. Other GC passes (duplicate SHA
+    # copies, version families, capacity pressure) may never prune individual
+    # files from a rollback or grace-protected Godot export.
+    release_guard_keys: set[str] = set()
 
     def old_enough(item: dict[str, Any], days: int = minimum_age) -> bool:
         age = _age_days(item, now)
         return age is not None and age >= days
 
     def mark(key: str, reason: str) -> None:
-        if key in protected or key in reasons:
+        if key in protected or key in release_guard_keys or key in reasons:
             return
         reasons[key] = reason
 
@@ -483,11 +487,19 @@ def plan_cleanup(
         if active_release:
             keep_releases.add(active_release)
 
+        def guard_release(group: list[dict[str, Any]], why: str) -> None:
+            for item in group:
+                key = item["key"]
+                release_guard_keys.add(key)
+                # Duplicate-hash and other generic passes run before release
+                # classification: undo their per-file deletion candidates.
+                reasons.pop(key, None)
+                retain_hint(key, why)
+
         for release, group in groups.items():
             if release in keep_releases:
                 if release != active_release:
-                    for item in group:
-                        retain_hint(item["key"], "release-rollback")
+                    guard_release(group, "release-rollback")
                 continue
             newest = max(
                 (
@@ -502,8 +514,7 @@ def plan_cleanup(
                     retain_hint(item["key"], "missing-age")
                 continue
             if (now - newest).total_seconds() / 86400.0 < int(bundle["minimumAgeDays"]):
-                for item in group:
-                    retain_hint(item["key"], "release-minimum-age")
+                guard_release(group, "release-minimum-age")
                 continue
             for item in group:
                 mark(item["key"], "stale-release-bundle")
@@ -546,6 +557,7 @@ def plan_cleanup(
             item
             for item in inventory
             if item["key"] not in protected
+            and item["key"] not in release_guard_keys
             and item["key"] not in reasons
             and old_enough(item)
             and (sha_token(item["key"]) or is_revision(item["key"]))
@@ -858,7 +870,12 @@ def self_test() -> None:
         ],
     }
     load_policy({"retention": policy})
-    load_policy(core.load_config(core.DEFAULT_CONFIG))
+    live_policy = load_policy(core.load_config(core.DEFAULT_CONFIG))
+    for bundle in live_policy["releaseBundles"]:
+        # Any older open tab must be able to fetch its *complete* export
+        # across several deployments; this is not a one-day single fallback.
+        assert bundle["keepPreviousReleases"] >= 2
+        assert bundle["minimumAgeDays"] >= 7
     assert sha_token("scene/runtime/scene-aaaaaaaaaaaaaaaa.glb") == "aaaaaaaaaaaaaaaa"
     rows = [
         row("scene/runtime/scene-aaaaaaaaaaaaaaaa.glb", 100, 2),
@@ -941,6 +958,66 @@ def self_test() -> None:
         for item in report["topRetainedUnprotectedPrefixes"]
     )
     assert report["topRetainedPrefixes"]
+
+    # A previous Godot export can share content-addressed files with the live
+    # one; duplicate-content and capacity pressure must not tear it apart.
+    release_ids = ("1111111111111111", "2222222222222222", "3333333333333333", "4444444444444444")
+    release_ages = (0, 12, 18, 28)
+    bundle_rows = [
+        row(f"game/releases/{release}/" + filename, size, age)
+        for release, age in zip(release_ids, release_ages)
+        for filename, size in (
+            ("game.pck", 400),
+            ("sprite-aaaaaaaaaaaaaaaa.png", 200),
+        )
+    ]
+    bundle_policy = {
+        **policy,
+        "targetBytes": 800,
+        "softLimitBytes": 1_000,
+        "releaseBundles": [{
+            "pointerKey": "game/current.json",
+            "releasePrefix": "game/releases",
+            "keepPreviousReleases": 2,
+            "minimumAgeDays": 7,
+        }],
+    }
+    guarded = plan_cleanup(
+        bundle_rows,
+        manifest_keys=set(),
+        repo_pins=set(),
+        policy=bundle_policy,
+        active_release_prefixes={"game/releases": f"game/releases/{release_ids[0]}"},
+        blocked_release_prefixes=set(),
+        now=now,
+    )
+    deleted = {item["key"] for item in guarded["deletions"]}
+    for release in release_ids[:3]:
+        assert not any(key.startswith(f"game/releases/{release}/") for key in deleted), release
+    assert {f"game/releases/{release_ids[3]}/{name}" for name in ("game.pck", "sprite-aaaaaaaaaaaaaaaa.png")} <= deleted
+    assert guarded["projectedBytes"] > bundle_policy["softLimitBytes"]
+    # A *third* rollback younger than its seven-day bundle grace survives
+    # despite being outside the two reserved rollbacks. Use a shorter global
+    # grace to force duplicate-SHA and capacity passes to challenge it.
+    young_ids = ("aaaaaaaaaaaaaaaa", "bbbbbbbbbbbbbbbb", "cccccccccccccccc", "dddddddddddddddd", "eeeeeeeeeeeeeeee")
+    young_rows = [
+        row(f"game/releases/{release}/{filename}", size, age)
+        for release, age in zip(young_ids, (0, 1, 1, 2, 28))
+        for filename, size in (("game.pck", 400), ("sprite-aaaaaaaaaaaaaaaa.png", 200))
+    ]
+    young = plan_cleanup(
+        young_rows,
+        manifest_keys=set(),
+        repo_pins=set(),
+        policy={**bundle_policy, "minimumAgeDays": 1},
+        active_release_prefixes={"game/releases": f"game/releases/{young_ids[0]}"},
+        blocked_release_prefixes=set(),
+        now=now,
+    )
+    young_deletions = {item["key"] for item in young["deletions"]}
+    for release in young_ids[:4]:
+        assert not any(key.startswith(f"game/releases/{release}/") for key in young_deletions), release
+    assert {f"game/releases/{young_ids[4]}/{name}" for name in ("game.pck", "sprite-aaaaaaaaaaaaaaaa.png")} <= young_deletions
     print("OK r2 retention self-test")
 
 

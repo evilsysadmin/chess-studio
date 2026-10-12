@@ -88,3 +88,29 @@ describe('Chronicles automap', () => {
 
 
 });
+
+describe('Chronicles automap remembers what the company saw', () => {
+  it('marks the line-of-sight cells, not only the one underfoot', async () => {
+    const { chroniclesAutomapMarkSeen, chroniclesAutomapRevealedCells } = await import('./chroniclesAutomap.js');
+    const map = { grid: ['#######', '#.....#', '#.###.#', '#.....#', '#######'] };
+    const seen = chroniclesAutomapMarkSeen({}, map, { mapId: 'm', x: 1, y: 1 }, 3);
+    // Stood on: plain key. Only seen: `:s`, so the walked path stays distinct.
+    expect(seen.m).toEqual(expect.arrayContaining(['1:1', '2:1:s', '3:1:s', '4:1:s', '1:2:s', '1:3:s', '2:3:s']));
+    expect(seen.m).not.toContain('2:1');
+    expect(seen.m.every((key) => { const [x, y] = key.split(':').map(Number); return map.grid[y][x] !== '#'; })).toBe(true);
+    const walked = chroniclesAutomapMarkSeen(seen, map, { mapId: 'm', x: 2, y: 1 }, 3);
+    expect(walked.m).toContain('2:1');
+    expect(chroniclesAutomapRevealedCells(map, seen.m).size).toBeGreaterThan(5);
+    expect(chroniclesAutomapMarkSeen(seen, map, { mapId: 'm', x: 1, y: 1 }, 3)).toBe(seen);
+  });
+});
+
+describe('Chronicles map coordinates, MM3 style', () => {
+  it('counts X east and Y north from the south-west corner', async () => {
+    const { chroniclesMapCoordinates, chroniclesMapCoordinatesLabel } = await import('./chroniclesAutomap.js');
+    const map = { grid: ['#####', '#...#', '#...#', '#####'] };
+    expect(chroniclesMapCoordinates(map, { x: 1, y: 2 })).toEqual({ x: 1, y: 1 });
+    expect(chroniclesMapCoordinatesLabel(map, { x: 3, y: 1 })).toBe('X3 Y2');
+    expect(chroniclesMapCoordinatesLabel(map, {})).toBe('');
+  });
+});

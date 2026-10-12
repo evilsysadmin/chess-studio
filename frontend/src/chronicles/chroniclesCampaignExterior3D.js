@@ -41,21 +41,23 @@ export function buildChroniclesCampaignExterior(scene, { scenePlan = {}, coarseP
   const height = Math.max(1, Number(scenePlan.height) || grid.length || 15);
   const sceneCenter = scenePlan.center || { x: Math.floor(width / 2), y: Math.floor(height / 2) };
   const roadMap = scenePlan.mapId === 'banner-road';
-  const forest = scenePlan.mapId === 'rookwood-first-book';
+  const forest = scenePlan.mapId === 'rookwood-first-book' || scenePlan.biome === 'forest';
+  // Terra biomes tint ground, rock and sky; collision is always the grid.
+  const biome = TERRA_BIOMES[scenePlan.biome] || null;
   // Authored towns (First Book Swordhaven) dress their interior blocks as the
   // same half-timbered houses as the legacy square; collision stays the grid.
   const settlement = scenePlan.regionKind === 'settlement';
   const village = settlement ? createSwordhavenMaterials() : null;
-  const earth = material(forest ? 0xaebc9e : 0xffffff, { map: swordhavenGrassTexture() });
+  const earth = material(biome?.ground ?? (forest ? 0xaebc9e : 0xffffff), { map: biome?.texture ? terraGroundTexture(biome.texture) : swordhavenGrassTexture() });
   const stone = village ? village.stone
-    : material(roadMap ? 0x8f8a7e : 0xb9b09f, { map: swordhavenSurfaceTexture('masonry') });
+    : material(biome?.rock ?? (roadMap ? 0x8f8a7e : 0xb9b09f), { map: swordhavenSurfaceTexture('masonry') });
   // Roads are pixel-art cobbles: one 64-px tile per 4 m cell.
   const paver = material(roadMap ? 0xcabfa6 : 0xddd3bf, { map: swordhavenSurfaceTexture('cobble') });
   const timber = material(0x4d3424);
   const linen = material(0x963f32, { side: THREE.DoubleSide });
   const plaque = material(0xc4aa70, { metalness: 0.47, roughness: 0.45 });
 
-  const skyTint = forest ? 0x9fb8a4 : 0xb4d4df;
+  const skyTint = biome?.sky ?? (forest ? 0x9fb8a4 : 0xb4d4df);
   scene.background = new THREE.Color(skyTint);
   scene.fog = forest
     ? new THREE.Fog(skyTint, 14, Math.max(width, height) * CELL * 0.95)
@@ -174,7 +176,7 @@ export function buildChroniclesCampaignExterior(scene, { scenePlan = {}, coarseP
 
   const contentProps = [];
   for (const entry of scenePlan.content || []) {
-    if (!entry.position || (entry.kind !== 'exit' && entry.kind !== 'lore')) continue;
+    if (!entry.position || !['exit', 'lore', 'pickup'].includes(entry.kind)) continue;
     // A second dialogue beat on an existing NPC has no body of its own.
     if (entry.visualType === 'rookwood-mourner-voice') continue;
     const [wx, wz] = gridToWorld(entry.position.x, entry.position.y, sceneCenter);
@@ -199,6 +201,151 @@ export function buildChroniclesCampaignExterior(scene, { scenePlan = {}, coarseP
       } else {
         buildMourner(root);
       }
+    } else if (entry.visualType === 'sewer-grate') {
+      // A town's dungeon mouth: iron grate in a stone ring, flush with the road.
+      const ring = new THREE.Mesh(new THREE.CylinderGeometry(1.05, 1.15, 0.12, 12), stone);
+      ring.position.y = 0.06;
+      root.add(ring);
+      const iron = material(0x2b2b30, { metalness: 0.6, roughness: 0.55 });
+      for (let bar = -3; bar <= 3; bar += 1) {
+        const rod = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.08, 1.5), iron);
+        rod.position.set(bar * 0.22, 0.14, 0);
+        root.add(rod);
+      }
+      const cross = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.08, 0.1), iron);
+      cross.position.y = 0.16;
+      root.add(cross);
+    } else if (entry.visualType === 'dungeon-arch') {
+      // A dungeon mouth in the open: two pillars, a lintel and the dark inside.
+      for (const side of [-1, 1]) {
+        const pillar = new THREE.Mesh(new THREE.BoxGeometry(0.55, 3.1, 0.55), stone);
+        pillar.position.set(side * 1.15, 1.55, 0);
+        root.add(pillar);
+      }
+      const lintel = new THREE.Mesh(new THREE.BoxGeometry(3.0, 0.5, 0.65), stone);
+      lintel.position.y = 3.3;
+      const dark = new THREE.Mesh(new THREE.PlaneGeometry(1.8, 3.0), material(0x050403, { side: THREE.DoubleSide }));
+      dark.position.set(0, 1.5, 0);
+      root.add(lintel, dark);
+    } else if (entry.visualType === 'chest') {
+      const chest = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.6, 0.7), timber);
+      chest.position.y = 0.3;
+      const lid = new THREE.Mesh(new THREE.BoxGeometry(1.04, 0.22, 0.74), timber);
+      lid.position.y = 0.71;
+      const band = new THREE.Mesh(new THREE.BoxGeometry(1.06, 0.1, 0.76), plaque);
+      band.position.y = 0.6;
+      root.add(chest, lid, band);
+    } else if (entry.visualType === 'signpost') {
+      const post = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.11, 2.2, 6), timber);
+      post.position.y = 1.1;
+      const board = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.42, 0.08), timber);
+      board.position.set(0.35, 1.85, 0);
+      board.rotation.z = -0.06;
+      root.add(post, board);
+    } else if (entry.visualType === 'frozen-beacon') {
+      // One recognisable, authored lighthouse in F1, not a roadside lamp.
+      // The whole silhouette fits a single authored walkable cell: the
+      // collision grid stays untouched and all light comes from world flags.
+      const frostStone = material(0xb5c5c9, {
+        map: swordhavenSurfaceTexture('masonry'), roughness: 0.93,
+      });
+      const coldSlate = material(0x344657, { roughness: 0.87 });
+      const darkMetal = material(0x23303d, { metalness: 0.57, roughness: 0.46 });
+      const weatheredBronze = material(0xb79b65, { metalness: 0.47, roughness: 0.43 });
+      const addCylinder = (top, bottom, height, y, finish, segments = 12) => {
+        const mesh = new THREE.Mesh(new THREE.CylinderGeometry(top, bottom, height, segments), finish);
+        mesh.position.y = y;
+        root.add(mesh);
+        return mesh;
+      };
+      // Battered foundation, tapered stone tower and its three weather-beaten
+      // bands provide a tall silhouette and clear scale even at six tiles.
+      addCylinder(1.31, 1.45, 0.8, 0.4, coldSlate);
+      addCylinder(0.91, 1.2, 6.8, 3.79, frostStone);
+      addCylinder(1.19, 1.24, 0.27, 1.18, coldSlate);
+      addCylinder(1.07, 1.12, 0.22, 3.63, coldSlate);
+      addCylinder(0.98, 1.03, 0.23, 6.68, coldSlate);
+      // A door towards the approaching company and two narrow arrow-slit
+      // windows: they make this a building rather than a stack of cylinders.
+      const door = new THREE.Mesh(new THREE.BoxGeometry(0.12, 1.58, 0.74), darkMetal);
+      door.position.set(-1.24, 0.87, 0);
+      root.add(door);
+      for (const y of [3.04, 5.35]) {
+        const window = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.8, 0.28), darkMetal);
+        window.position.set(-1.05 + (y > 4 ? 0.09 : 0), y, 0);
+        root.add(window);
+      }
+      // Lantern gallery: bronze deck, upright cage, coloured glass and a
+      // broad slate roof. The top is high enough to read on both mobile/PC.
+      addCylinder(1.45, 1.25, 0.3, 7.34, weatheredBronze);
+      addCylinder(1.55, 1.55, 0.12, 7.57, coldSlate);
+      const glass = new THREE.Mesh(new THREE.CylinderGeometry(0.95, 0.95, 1.45, 12),
+        material(0x6e96a9, { transparent: true, opacity: 0.72,
+          emissive: 0x101f2a, emissiveIntensity: 0.2 }));
+      glass.position.y = 8.38;
+      root.add(glass);
+      for (let index = 0; index < 8; index += 1) {
+        const angle = (index * Math.PI) / 4;
+        const upright = new THREE.Mesh(new THREE.CylinderGeometry(0.075, 0.075, 1.55, 6), darkMetal);
+        upright.position.set(Math.cos(angle) * 1.09, 8.37, Math.sin(angle) * 1.09);
+        root.add(upright);
+      }
+      addCylinder(1.38, 1.13, 0.19, 9.2, weatheredBronze);
+      const roof = new THREE.Mesh(new THREE.ConeGeometry(1.63, 0.95, 12), coldSlate);
+      roof.position.y = 9.72;
+      root.add(roof);
+      addCylinder(0.12, 0.15, 0.43, 10.39, weatheredBronze, 8);
+      // The visible light is a child of the existing activatedRoot contract,
+      // so it automatically follows the saved choice without introducing a
+      // second light state or animation clock.
+      activatedRoot = new THREE.Group();
+      activatedRoot.name = 'chronicles-f1-beacon-lit';
+      const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.78, 12, 10),
+        material(0xffefb0, { emissive: 0xffbc52, emissiveIntensity: 1.6 }));
+      lamp.position.y = 8.4;
+      const halo = new THREE.Mesh(new THREE.SphereGeometry(1.5, 12, 10),
+        material(0xfedc80, { transparent: true, opacity: 0.28,
+          emissive: 0xffc867, emissiveIntensity: 0.5, depthWrite: false }));
+      halo.position.y = 8.4;
+      // Procedural soft bloom: a small alpha texture keeps the distant
+      // lantern readable on mobile without an opaque square or fake collider.
+      const flareSize = 48;
+      const flarePixels = new Uint8Array(flareSize * flareSize * 4);
+      for (let py = 0; py < flareSize; py += 1) {
+        for (let px = 0; px < flareSize; px += 1) {
+          const dx = (px + 0.5 - flareSize / 2) / (flareSize / 2);
+          const dy = (py + 0.5 - flareSize / 2) / (flareSize / 2);
+          const radius = Math.sqrt(dx * dx + dy * dy);
+          const alpha = Math.pow(Math.max(0, 1 - radius), 1.45);
+          const i = (py * flareSize + px) * 4;
+          flarePixels[i] = 255;
+          flarePixels[i + 1] = 214;
+          flarePixels[i + 2] = 140;
+          flarePixels[i + 3] = Math.round(alpha * 237);
+        }
+      }
+      const texture = new THREE.DataTexture(flarePixels, flareSize, flareSize, THREE.RGBAFormat);
+      texture.needsUpdate = true;
+      const flare = new THREE.Sprite(new THREE.SpriteMaterial({
+        map: texture, transparent: true, depthWrite: false,
+        blending: THREE.AdditiveBlending, fog: false,
+      }));
+      flare.name = 'chronicles-f1-beacon-distance-bloom';
+      flare.position.y = 8.4;
+      flare.scale.set(9, 9, 1);
+      const lanternLight = new THREE.PointLight(0xffc76d, coarsePointer ? 70 : 52, 28, 2);
+      lanternLight.name = 'chronicles-f1-beacon-stone-wash';
+      lanternLight.position.y = 8.4;
+      activatedRoot.add(lamp, halo, flare, lanternLight);
+      activatedRoot.visible = false;
+      root.add(activatedRoot);
+    } else if (entry.visualType === 'shrine') {
+      const basin = new THREE.Mesh(new THREE.CylinderGeometry(0.75, 0.9, 0.7, 10), stone);
+      basin.position.y = 0.35;
+      const water = new THREE.Mesh(new THREE.CylinderGeometry(0.62, 0.62, 0.06, 10),
+        material(0x6fb4e0, { emissive: 0x1d5f8a, emissiveIntensity: 0.6 }));
+      water.position.y = 0.72;
+      root.add(basin, water);
     } else if (entry.kind === 'exit') {
       // Gate posts flank the road, so a gate on the west/east edge turns 90°
       // instead of planting one post straight in front of the arriving camera.
@@ -254,6 +401,22 @@ export function buildChroniclesCampaignExterior(scene, { scenePlan = {}, coarseP
 
 const FOREST_MARGIN_CELLS = 3;
 
+// Ground (multiplies the grass texture), rock and sky per Terra biome.
+const TERRA_BIOMES = Object.freeze({
+  plains: Object.freeze({ ground: 0xffffff, rock: 0xb9b09f, sky: 0xb4d4df }),
+  hills: Object.freeze({ ground: 0xd8d0a0, rock: 0x9a8e78, sky: 0xbcd2dc }),
+  marsh: Object.freeze({ ground: 0x8ea07c, rock: 0x5e6a52, sky: 0xa9b8ac }),
+  coast: Object.freeze({ ground: 0xffffff, rock: 0x8a8478, sky: 0xa6d0ea, texture: 'sand' }),
+  snow: Object.freeze({ ground: 0xffffff, rock: 0xd4dce4, sky: 0xdce6ee, texture: 'snow' }),
+  ash: Object.freeze({ ground: 0xffffff, rock: 0x3e3634, sky: 0xc0a894, texture: 'ashland' }),
+});
+
+function terraGroundTexture(kind) {
+  const texture = chroniclesPixelTexture(kind);
+  texture.repeat.set(20, 20);
+  return texture;
+}
+
 // A shop's style comes from the authored NPC standing at its door
 // (`visualType: building-<style>`); unclaimed blocks are homes.
 const TOWN_BUILDING_STYLES = Object.freeze({
@@ -263,7 +426,9 @@ const TOWN_BUILDING_STYLES = Object.freeze({
   temple: Object.freeze({ roof: 0x65758a, emblem: 'sun' }),
   store: Object.freeze({ roof: 0x7a6a3c, emblem: 'sack' }),
   apothecary: Object.freeze({ roof: 0x554481, emblem: 'crystal' }),
+  guild: Object.freeze({ roof: 0x3f4f8a, emblem: 'crystal' }),
   watch: Object.freeze({ roof: 0x5c3b38, emblem: 'shield' }),
+  hall: Object.freeze({ roof: 0x6e2e2a, emblem: 'sun' }),
 });
 const TOWN_HOME_STYLES = Object.freeze([
   Object.freeze({ roof: 0x7d4a36, emblem: 'home' }),

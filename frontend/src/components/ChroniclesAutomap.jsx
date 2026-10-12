@@ -7,6 +7,7 @@ import {
   chroniclesAutomapCellKey,
   chroniclesAutomapFacingDegrees,
   chroniclesAutomapRevealedCells,
+  chroniclesMapCoordinatesLabel,
 } from '../chronicles/chroniclesAutomap.js';
 
 function discoveredMarkers(map, revealed) {
@@ -111,7 +112,7 @@ export default function ChroniclesAutomap({ open, state, visitedCells, onClose }
       <section className="chronicles-automap__panel">
         <header>
           <div>
-            <span>AUTOMAPA · EXPLORACIÓN</span>
+            <span data-chronicles-coordinates>AUTOMAPA · {[map.areaCode, chroniclesMapCoordinatesLabel(map, state)].filter(Boolean).join(' · ') || 'EXPLORACIÓN'}</span>
             <strong>{map.title || 'Chronicles of Matthias'}</strong>
           </div>
           <button ref={closeRef} type="button" onClick={onClose} aria-label="Cerrar automapa">×</button>

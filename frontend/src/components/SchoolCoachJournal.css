@@ -1,0 +1,270 @@
+/* The board remains full-viewport. Matthias uses the spare left side as a
+   reading rail; the previous compact bubble remains one click away. */
+.tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode][data-school-focus="normal"] .matthias-school-coach-heading {
+  grid-template-columns: 28px minmax(0, 1fr) auto;
+  padding-right: 0;
+}
+.tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode][data-school-focus="normal"] .matthias-school-coach-heading > .matthias-school-complete-badge {
+  grid-column: 1 / -1;
+}
+.tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode][data-school-focus="normal"] .matthias-school-coach-toggle {
+  grid-column: 3;
+  grid-row: 1;
+  align-self: start;
+  min-height: 30px;
+  padding: .25rem .44rem;
+  border: 1px solid var(--school-hud-line);
+  border-radius: 8px;
+  background: rgba(205,178,110,.09);
+  color: var(--parchment);
+  font-size: .65rem;
+  cursor: pointer;
+}
+.tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode][data-school-focus="normal"] .matthias-school-coach-toggle:hover,
+.tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode][data-school-focus="normal"] .matthias-school-coach-toggle:focus-visible {
+  border-color: var(--brass);
+  outline-offset: 2px;
+}
+.tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode][data-school-focus="normal"] .matthias-school-sequence-status {
+  position: static;
+  justify-self: end;
+  width: max-content;
+  margin: 0;
+}
+.tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode][data-school-focus="normal"][data-school-coach="expanded"] .matthias-school-coach {
+  top: calc(var(--school-hud-top) + 50px);
+  bottom: auto;
+  display: flex;
+  flex-direction: column;
+  width: min(382px, calc(100vw - 2 * var(--school-hud-side)));
+  height: auto;
+  max-height: calc(100dvh - var(--school-hud-top) - var(--school-hud-bottom) - 124px);
+  min-height: min(275px,42dvh);
+  gap: .56rem;
+  padding: .63rem .7rem;
+  overflow: hidden;
+  border-color: rgba(215,183,111,.36);
+  background: linear-gradient(160deg,rgba(17,17,18,.94),rgba(9,11,14,.88));
+  box-shadow: 0 22px 50px rgba(0,0,0,.35);
+}
+.tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode][data-school-focus="normal"][data-school-coach="expanded"] .matthias-school-coach-heading,
+.tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode][data-school-focus="normal"][data-school-coach="expanded"] .matthias-school-objective,
+.tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode][data-school-focus="normal"][data-school-coach="expanded"] .matthias-school-feedback,
+.tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode][data-school-focus="normal"][data-school-coach="expanded"] .matthias-school-nav {
+  flex-shrink: 0;
+}
+.tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode] .matthias-school-coach-detail[hidden] {
+  display: none !important;
+}
+.tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode][data-school-focus="normal"][data-school-coach="expanded"] .matthias-school-coach-detail {
+  display: flex;
+  flex: 0 1 auto;
+  flex-direction: column;
+  gap: .55rem;
+  min-height: 0;
+  max-height: min(48dvh,440px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  padding: .7rem .2rem .7rem .12rem;
+  border-top: 1px solid var(--school-hud-line);
+  border-bottom: 1px solid var(--school-hud-line);
+}
+.tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode] .matthias-school-journal-heading {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: .35rem;
+}
+.tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode] .matthias-school-journal-heading span {
+  color: var(--brass);
+  font: 700 .58rem var(--font-mono);
+  letter-spacing: .1em;
+}
+.tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode] .matthias-school-journal-heading strong {
+  color: var(--parchment);
+  font-size: .65rem;
+  font-weight: 500;
+}
+.tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode] .matthias-school-coach-detail progress {
+  width: 100%;
+  height: 5px;
+  accent-color: var(--brass);
+}
+.tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode] .matthias-school-coach-history {
+  display: grid;
+  gap: .5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode] .matthias-school-coach-history li {
+  padding: .16rem .12rem .16rem .58rem;
+  border-left: 2px solid rgba(215,183,111,.25);
+}
+.tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode] .matthias-school-coach-history li.is-retry { border-left-color: rgba(211,121,111,.7); }
+.tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode] .matthias-school-coach-history li.is-success { border-left-color: rgba(142,192,152,.7); }
+.tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode] .matthias-school-coach-history span {
+  color: rgba(219,201,171,.68);
+  font-size: .58rem;
+  letter-spacing: .04em;
+}
+.tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode] .matthias-school-coach-history p {
+  margin: .16rem 0 0;
+  color: var(--parchment);
+  font-size: .74rem;
+  line-height: 1.4;
+}
+.tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode] .matthias-school-journal-lesson {
+  padding: .6rem 0 0;
+  border-top: 1px solid rgba(215,183,111,.18);
+}
+.tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode] .matthias-school-journal-lesson strong {
+  color: var(--brass);
+  font-size: .69rem;
+}
+.tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode] .matthias-school-journal-lesson p {
+  margin: .34rem 0 0;
+  color: var(--parchment);
+  font-size: .75rem;
+  line-height: 1.4;
+}
+.tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode][data-school-focus="normal"][data-school-coach="expanded"] .matthias-school-nav { margin-top: auto; }
+.tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-focus="board"] .matthias-school-coach-toggle { display: none; }
+@media (max-width: 860px), (pointer: coarse) {
+  .tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode][data-school-focus="normal"] .matthias-school-coach-toggle {
+    min-height: 44px;
+    min-width: 70px;
+  }
+  .tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode][data-school-focus="normal"][data-school-coach="compact"] .matthias-school-coach {
+    max-height: 35dvh;
+  }
+  /* Compact by default on phones; expanded becomes an opt-in bottom sheet. */
+  .tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode][data-school-focus="normal"][data-school-coach="expanded"] .matthias-school-coach {
+    top: auto;
+    bottom: calc(var(--school-hud-bottom) + 58px);
+    left: var(--school-hud-side);
+    width: min(400px, calc(100vw - 2 * var(--school-hud-side)));
+    height: min(55dvh,470px);
+    min-height: 0;
+    max-height: calc(100dvh - var(--school-hud-top) - var(--school-hud-bottom) - 120px);
+  }
+  .tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode][data-school-focus="normal"][data-school-coach="expanded"] .matthias-school-coach-detail {
+    flex: 1 1 auto;
+  }
+}
+@media (max-height: 520px) and (orientation: landscape) {
+  .tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode][data-school-focus="normal"][data-school-coach="expanded"] .matthias-school-coach {
+    top: calc(var(--school-hud-top) + 50px);
+    bottom: var(--school-hud-bottom);
+    height: auto;
+    max-height: none;
+    width: min(290px,32vw);
+  }
+}
+
+/* The ledger records demonstrated chess, never an upcoming line. */
+.tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode] .matthias-school-move-trail {
+  display: grid;
+  gap: .36rem;
+  min-width: 0;
+  padding: .56rem .05rem .58rem;
+  border-top: 1px solid rgba(215,183,111,.16);
+  border-bottom: 1px solid rgba(215,183,111,.16);
+}
+.tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode] .matthias-school-move-trail > strong {
+  color: var(--brass);
+  font-size: .66rem;
+  font-weight: 700;
+}
+.tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode] .matthias-school-move-trail ol {
+  display: grid;
+  gap: .24rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode] .matthias-school-move-trail li {
+  display: grid;
+  grid-template-columns: 3rem minmax(0,1fr);
+  align-items: baseline;
+  gap: .3rem;
+  padding: .3rem .45rem;
+  border-radius: 6px;
+  background: rgba(215,183,111,.055);
+}
+.tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode] .matthias-school-move-trail li.is-rival {
+  background: rgba(149,171,190,.065);
+}
+.tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode] .matthias-school-move-trail li span {
+  color: rgba(219,201,171,.72);
+  font-size: .66rem;
+}
+.tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode] .matthias-school-move-trail li b {
+  color: var(--parchment);
+  font: 700 .79rem var(--font-mono);
+}
+.tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode] .matthias-school-move-trail li small {
+  grid-column: 1 / -1;
+  color: rgba(226,211,187,.83);
+  font-size: .65rem;
+  line-height: 1.35;
+}
+
+
+/* Four actions cannot share one 390px pill without colliding. When a
+   completed lesson has four buttons, give them two proper touch rows and
+   lift Matthias accordingly instead of obscuring either surface. */
+@media (max-width: 520px) and (orientation: portrait) {
+  .tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode]:has(.matthias-school-board-actions > button:nth-of-type(4)) .matthias-school-board-actions {
+    width: min(350px, calc(100vw - 2 * var(--school-hud-side)));
+    flex-wrap: wrap;
+    border-radius: 14px;
+  }
+  .tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode]:has(.matthias-school-board-actions > button:nth-of-type(4)) .matthias-school-board-actions > button {
+    flex: 1 1 calc(50% - .3rem);
+    min-width: 0;
+    white-space: normal;
+    padding-inline: .36rem;
+    line-height: 1.15;
+  }
+  .tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode]:has(.matthias-school-board-actions > button:nth-of-type(4)) .matthias-school-coach {
+    bottom: calc(var(--school-hud-bottom) + 112px);
+  }
+}
+
+/* Context is on-demand, attached to verified SAN; never a live commentary feed. */
+.tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode] .matthias-school-move-insight {
+  grid-column: 1 / -1;
+  min-width: 0;
+  border-top: 1px solid rgba(215,183,111,.15);
+}
+.tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode] .matthias-school-move-insight summary {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  padding: .4rem .22rem;
+  color: var(--brass);
+  font-size: .73rem;
+  font-weight: 700;
+  cursor: pointer;
+  list-style: none;
+}
+.tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode] .matthias-school-move-insight summary::before {
+  content: '▸';
+  margin-right: .4rem;
+}
+.tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode] .matthias-school-move-insight[open] summary::before {
+  content: '▾';
+}
+.tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode] .matthias-school-move-insight summary:focus-visible {
+  outline: 2px solid var(--brass);
+  outline-offset: 2px;
+}
+.tutorial-shell.matthias-school-shell[data-school-section="school"][data-school-study-mode] .matthias-school-move-insight p {
+  margin: 0 0 .4rem;
+  color: var(--parchment);
+  font-size: .74rem;
+  line-height: 1.45;
+}

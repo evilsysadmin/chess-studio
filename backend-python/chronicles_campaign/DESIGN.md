@@ -68,6 +68,8 @@ checkpoints, and review real desktop/mobile gameplay PNGs.
 
 ## Estructura del juego: historia principal + side quests
 
+**Chronicles es un tributo a Might and Magic III.** Ante cualquier duda de diseño (reglas, progresión, economía, botín, magia, interfaz), la referencia es cómo lo resolvía MM3, adaptado a este mundo. El equipo bueno no se compra en el pueblo inicial: se saquea en mazmorras, cae de enemigos o se vende en pueblos posteriores.
+
 Chronicles no se divide en «libros» ni capítulos cerrados. Hay **una historia
 principal** («El rey desaparecido», que arranca con el sobre de la Dama) y
 **muchísimas side quests** repartidas por el mundo abierto: cada región,
@@ -99,3 +101,78 @@ El atlas sigue siendo la fuente de diseño; el manifiesto de runtime se edita en
 - **Seda para las vendas** (`weaver-silk`): la da la sacerdotisa Ilse en el templo (14,6). La tejedora de la hondonada de Rookwood (`rookwood-weaver`, `weaver-spider`) suelta `weaver-silk` al morir. La entrega en el templo consume la seda, paga 8 oro (`swordhaven:weaver-silk:v1`) y cura a la compañía.
 
 Los tres enemigos nuevos son opcionales y en primera persona se dibujan como billboards 2.5D generados con SpriteCook. En Tactics usan un modelo 3D procedural equivalente.
+
+## Hilo principal en el mundo abierto (estructura MM3)
+
+Regla de producto: **nunca «¿y ahora qué?»**. Desde el primer minuto hay una
+quest de Historia activa (♛) cuyo objetivo nombra a una persona o un lugar
+concreto. Cada pueblo tiene quien da el siguiente paso de la Historia y dos
+o tres side quests (◆). Explorar siempre suma (oro, botín, XP, rumores),
+pero nunca es la única pista. Cada paso de la Historia paga oro y XP a toda
+la compañía (efecto `award-xp` dentro de `claim-reward`, una vez por run).
+
+La Historia se llama `lost-king` («El rey desaparecido») y avanza por etapas
+con `advance-quest`. Como en MM3, la Historia lleva de pueblo en pueblo y
+cada pueblo tiene su mazmorra; las mazmorras históricas del catálogo se
+reaprovechan como mazmorra del pueblo que les toque.
+
+### Acto I · El trono vacío (Swordhaven y alrededores) — materializado
+1. **Llegada** (`arrivalAction` de `swordhaven-first-book`): la carta de la
+   Dama abre la Historia. Objetivo: preséntate al alcalde Aldric en el
+   ayuntamiento (puerta en (11,10), al sur de la fuente).
+2. **El alcalde** te da la llave de la reja y el primer trabajo: limpiar las
+   **Alcantarillas de Swordhaven** (`swordhaven-sewers`, la mazmorra del
+   pueblo; reja en (13,13)). También señala a Brask, Ilse y el tablón.
+3. **Alcantarillas**: ratas de cloaca, arañas y el contrabandista Tobías. Hay
+   que cerrar la compuerta del desagüe y acabar con Tobías, que suelta el
+   **libro de contrabando**: un carro con el sello de la Dama salió por el
+   Camino y Garrah lo asaltó. El alcalde paga 25 oro y 40 XP por cabeza.
+4. **Garrah** (Camino de los Estandartes; se cruza con la side quest de
+   Brask) suelta la **hoja de ruta adulterada**.
+5. **Informe al alcalde**: la hoja de ruta prueba que alguien desvió a los
+   caballeros hacia las Marismas de Sal. 30 oro y 60 XP por cabeza. Objetivo
+   siguiente: viajar a Vado de Sal.
+
+### Siguientes tramos (diseño, no materializado)
+| Tramo | Pueblo | Quién mueve la Historia | Mazmorra del pueblo | Pista |
+| --- | --- | --- | --- | --- |
+| Acto II | Vado de Sal (Marismas de Sal) | la barquera Nela | Cisterna de los Ecos (`echo-cistern`) | testimonio de los supervivientes |
+| Acto II | Puerto de Hollín (Litoral) | el campanero mudo | Torre de la Campana Hueca (`hollow-bell-tower`) | el eco de la campana |
+| Acto III | Ascuafría (Montes de Escoria) | la maestra fundidora | Fundición de Hierro (`iron-foundry`) | molde de la corona hueca |
+| Acto III | Vigilia del Norte (Marcas) | el archivero ciego | Archivo del Rey Ciego (`blind-king-archive`) | el Primer Pacto |
+| Acto IV | Corte de Bronce | la Dama | Basílica de Cadenas (`chain-basilica`) | apoyos de facciones |
+| Acto V | Bajo la Corona | — | Trono Bajo la Piedra | desenlace |
+
+Cada tramo se entrega en su PR: pueblo jugable con quien da la Historia, dos
+side quests locales, su mazmorra y un camino recíproco desde el tramo anterior.
+
+## Terra: áreas A1–F6 (primera pasada generada)
+
+Como en MM3, el exterior se divide en una cuadrícula de áreas: columnas A–F (oeste → este) y filas 1–6 (norte → sur). Las áreas se unen por puertas en los bordes, y los pueblos y las mazmorras se abren desde dentro de ellas. El HUD muestra «ÁREA C4».
+
+- **Fuente**: la tabla de `scripts/chronicles/build_terra_world.py`. El script genera los manifests en `chronicles_maps/` de forma determinista; después hay que ejecutar `make chronicles-contracts`. Con `--check`, falla si los manifests no coinciden con la tabla.
+- **C3 y D3** son el Camino de los Estandartes y Rookwood, ya existentes: el script solo les añade las puertas de borde. Swordhaven se entra desde el Camino.
+- **Biomas** (llanura, bosque, colinas, marisma, costa, nieve, ceniza): fijan los obstáculos, el suelo, el cielo y la fauna de cada área.
+- **Contenido de cada área**:
+  - siempre un cofre con oro y equipo del nivel de la zona;
+  - según el área, carteles con direcciones, fuentes que curan y devuelven PH, ermitaños con rumores y presas de side quests;
+  - 2–3 enemigos que se endurecen con la distancia a C3.
+- **Pueblos**: Puerto de Hollín (A3), Vado de Sal (C5), Ascuafría (F2), Vigilia del Norte (C1) y Corte de Bronce (D6). Comparten el plano de Swordhaven. Cada uno tiene posada, templo, armería, coracería, a veces gremio, quien mueve la Historia y dos side quests (una caza y un recado).
+- **Mazmorras** (laberintos sembrados con jefe que no revive):
+  - Salinas Hundidas (C6);
+  - Cueva de los Contrabandistas (A4);
+  - Minas de Escoria (E3);
+  - Túmulos del Primer Pacto (D1);
+  - Choza de la Ciénaga Negra (E5).
+- **Historia**: tras el alcalde de Swordhaven sigue esta cadena, y cada paso paga oro y XP:
+  1. Vado de Sal (Nela) → Salinas Hundidas;
+  2. Puerto de Hollín (Ulric) → Cueva de los Contrabandistas;
+  3. Ascuafría (Hilde) → Minas de Escoria;
+  4. Vigilia del Norte (Osric) → Túmulos del Primer Pacto;
+  5. la Dama en la Corte de Bronce, que abre el Templo Bajo la Corona (F6), el último acto, aún sin hacer.
+- **Pendiente de destilar**:
+  - planos propios para cada pueblo;
+  - arte de rocas por bioma;
+  - tenderos y criaturas pintados;
+  - el Templo Bajo la Corona;
+  - bootstrap por área: hoy la creación de run envía todos los mapas.

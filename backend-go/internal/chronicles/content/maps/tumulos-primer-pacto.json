@@ -1,0 +1,266 @@
+{
+  "id": "tumulos-primer-pacto",
+  "version": 1,
+  "progressionKey": "tumulos-primer-pacto-v1",
+  "title": "Túmulos del Primer Pacto",
+  "hudTitle": "Túmulos",
+  "areaCode": "D1",
+  "regionKind": "dungeon",
+  "dungeonRole": "main",
+  "layoutMode": "authored",
+  "grid": [
+    "#################",
+    "#.#.....#...#...#",
+    "#.###.#.#.#.#.#.#",
+    "#...#.#...#...#.#",
+    "###.#.#########.#",
+    "#...#...#.....#.#",
+    "#..######.##..#.#",
+    "#...#.....#...#.#",
+    "###.#.#####.###.#",
+    "#.....#.........#",
+    "#################"
+  ],
+  "partyStart": {
+    "x": 1,
+    "y": 1,
+    "direction": 1
+  },
+  "initialFlags": {},
+  "enemies": [
+    {
+      "id": "tumulos-primer-pacto-foe-0",
+      "visualType": "scavenger-knight",
+      "name": "guerrero del túmulo",
+      "x": 9,
+      "y": 5,
+      "hpKey": "tumulos_primer_pactoFoe0Hp",
+      "maxHp": 12,
+      "retaliation": 2,
+      "optional": true,
+      "activation": "always",
+      "ai": {
+        "movement": "hold",
+        "attackReach": 1,
+        "engagedMovement": "cardinal-chase",
+        "engageRange": 2
+      },
+      "onDefeat": {
+        "message": "{attacker} acaba con guerrero del túmulo usando {attack}.",
+        "effects": [
+          {
+            "type": "grant-gold",
+            "amount": 10
+          }
+        ]
+      }
+    },
+    {
+      "id": "tumulos-primer-pacto-foe-1",
+      "visualType": "spectral-bishop",
+      "name": "sacerdote espectral",
+      "x": 12,
+      "y": 9,
+      "hpKey": "tumulos_primer_pactoFoe1Hp",
+      "maxHp": 12,
+      "retaliation": 2,
+      "optional": true,
+      "activation": "always",
+      "ai": {
+        "movement": "hold",
+        "attackReach": 3,
+        "requiresLineOfSight": true
+      },
+      "onDefeat": {
+        "message": "{attacker} acaba con sacerdote espectral usando {attack}.",
+        "effects": [
+          {
+            "type": "grant-gold",
+            "amount": 10
+          }
+        ]
+      }
+    },
+    {
+      "id": "tumulos-primer-pacto-foe-2",
+      "visualType": "bone-hound",
+      "name": "lobo de hueso",
+      "x": 15,
+      "y": 1,
+      "hpKey": "tumulos_primer_pactoFoe2Hp",
+      "maxHp": 12,
+      "retaliation": 2,
+      "optional": true,
+      "activation": "always",
+      "ai": {
+        "movement": "cardinal-roam",
+        "attackReach": 1,
+        "engagedMovement": "cardinal-chase",
+        "engageRange": 4
+      },
+      "onDefeat": {
+        "message": "{attacker} acaba con lobo de hueso usando {attack}.",
+        "effects": [
+          {
+            "type": "grant-gold",
+            "amount": 10
+          }
+        ]
+      }
+    },
+    {
+      "id": "tumulos-primer-pacto-foe-3",
+      "visualType": "crypt-spider",
+      "name": "araña de túmulo",
+      "x": 8,
+      "y": 3,
+      "hpKey": "tumulos_primer_pactoFoe3Hp",
+      "maxHp": 12,
+      "retaliation": 2,
+      "optional": true,
+      "activation": "always",
+      "ai": {
+        "movement": "cardinal-roam",
+        "attackReach": 1,
+        "engagedMovement": "knight-chase",
+        "engageRange": 3
+      },
+      "onDefeat": {
+        "message": "{attacker} acaba con araña de túmulo usando {attack}.",
+        "effects": [
+          {
+            "type": "grant-gold",
+            "amount": 10
+          }
+        ]
+      }
+    },
+    {
+      "id": "tumulos-primer-pacto-foe-9",
+      "visualType": "spectral-bishop",
+      "name": "el Guardián del Túmulo",
+      "x": 7,
+      "y": 5,
+      "hpKey": "tumulos_primer_pactoFoe9Hp",
+      "maxHp": 24,
+      "retaliation": 3,
+      "optional": true,
+      "activation": "always",
+      "ai": {
+        "movement": "hold",
+        "attackReach": 1,
+        "engagedMovement": "cardinal-chase",
+        "engageRange": 2
+      },
+      "onDefeat": {
+        "message": "{attacker} derriba a el Guardián del Túmulo con {attack}.",
+        "effects": [
+          {
+            "type": "set",
+            "key": "tumulos_primer_pactoBossDefeated",
+            "value": true
+          },
+          {
+            "type": "grant-gold",
+            "amount": 26
+          },
+          {
+            "type": "grant-item",
+            "itemId": "oath-tablet",
+            "name": "Tablilla del juramento",
+            "description": "La tablilla del Primer Pacto. Quien la lea en voz alta puede reclamar el juramento del Rey.",
+            "quantity": 1
+          }
+        ],
+        "journal": {
+          "id": "tumulos-primer-pacto-boss",
+          "title": "Cae el Guardián del Túmulo",
+          "body": "La tablilla del Primer Pacto. Quien la lea en voz alta puede reclamar el juramento del Rey.",
+          "sigil": "†"
+        }
+      },
+      "defeatedFlag": "tumulos_primer_pactoBossDefeated",
+      "blockingMessage": "El Guardián del Túmulo cierra el paso."
+    }
+  ],
+  "triggers": [],
+  "interactables": [],
+  "treasures": [
+    {
+      "id": "tumulos-primer-pacto-chest",
+      "kind": "pickup",
+      "visualType": "ember-cache",
+      "x": 7,
+      "y": 9,
+      "label": "Abrir el cofre",
+      "when": [
+        {
+          "key": "tumulos_primer_pactoChestOpened",
+          "falsy": true
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "set",
+            "key": "tumulos_primer_pactoChestOpened",
+            "value": true
+          },
+          {
+            "type": "grant-gold",
+            "amount": 47
+          },
+          {
+            "type": "grant-item",
+            "itemId": "silver-sword",
+            "name": "Silver sword",
+            "description": "Botín de mazmorra.",
+            "quantity": 1
+          },
+          {
+            "type": "grant-item",
+            "itemId": "silver-chain",
+            "name": "Silver chain",
+            "description": "Botín de mazmorra.",
+            "quantity": 1
+          }
+        ],
+        "message": "Un cofre con herrajes de bronce: oro y equipo de calidad."
+      }
+    }
+  ],
+  "traps": [],
+  "exits": [
+    {
+      "id": "dungeon-exit",
+      "kind": "exit",
+      "x": 1,
+      "y": 1,
+      "requiresReturn": true,
+      "openLabel": "Salir a D1 · Túmulos del Pacto",
+      "lockedLabel": "La salida está bloqueada",
+      "requirements": [],
+      "action": {
+        "effects": [
+          {
+            "type": "transition-map",
+            "mapId": "terra-d1",
+            "entryExitId": "d1-to-dungeon"
+          }
+        ],
+        "message": "La compañía sale a la luz."
+      }
+    }
+  ],
+  "initialJournal": {
+    "id": "tumulos-primer-pacto-arrival",
+    "title": "Túmulos del Primer Pacto",
+    "body": "Túmulos del Primer Pacto, bajo D1.",
+    "sigil": "D1"
+  },
+  "introMessage": "Túmulos del Primer Pacto. El aire huele a cerrado y a algo que no quiere visitas.",
+  "arrivalAction": {
+    "effects": [],
+    "message": "Túmulos del Primer Pacto. Al fondo de los pasillos espera el Guardián del Túmulo."
+  }
+}

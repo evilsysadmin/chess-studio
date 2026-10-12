@@ -600,7 +600,9 @@ export function createChroniclesOfMatthiasGame(host, {
   scene.add(camera);
   const combatFx = createCombatFx(camera);
 
-  const campaignExterior = ['swordhaven-campaign', 'banner-road', 'swordhaven-first-book', 'banner-road-first-book', 'rookwood-first-book'].includes(scenePlan?.mapId);
+  // Every authored outdoor region uses the campaign exterior, except the
+  // legacy Swordhaven square, which keeps its own historic builder.
+  const campaignExterior = outdoors && scenePlan?.mapId !== 'swordhaven-square';
   const dungeon = campaignExterior
     ? buildChroniclesCampaignExterior(scene, { coarsePointer: coarse, scenePlan })
     : scenePlan?.regionKind === 'settlement'

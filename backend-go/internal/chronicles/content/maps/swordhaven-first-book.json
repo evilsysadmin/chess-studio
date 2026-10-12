@@ -110,9 +110,6 @@
         {
           "questId": "banner-contract",
           "questStatus": "active"
-        },
-        {
-          "itemId": "knight-banner"
         }
       ],
       "action": {
@@ -143,6 +140,11 @@
               {
                 "type": "grant-gold",
                 "amount": 18
+              },
+              {
+                "type": "award-xp",
+                "awardId": "swordhaven:banner-contract:v1",
+                "amount": 20
               }
             ]
           }
@@ -154,7 +156,14 @@
           "body": "Estandarte recuperado y entregado en Swordhaven. La compañía ha recibido 18 monedas de oro.",
           "sigil": "◆"
         }
-      }
+      },
+      "requirements": [
+        {
+          "itemId": "knight-banner",
+          "message": "El tablón sigue pidiendo el estandarte perdido. Sin él no hay recompensa."
+        }
+      ],
+      "lockedLabel": "Tablón · falta el estandarte perdido"
     },
     {
       "id": "first-book-quartermaster",
@@ -213,9 +222,12 @@
           },
           {
             "type": "refill-class-abilities"
+          },
+          {
+            "type": "restore-spell-points"
           }
         ],
-        "message": "La compañía descansa en la taberna de La Espada Mellada. Heridas tratadas y fuerzas renovadas."
+        "message": "La compañía descansa en la taberna de La Espada Mellada. Heridas tratadas, puntos de hechizo recuperados."
       },
       "visualType": "building-tavern"
     },
@@ -224,60 +236,70 @@
       "kind": "merchant",
       "x": 7,
       "y": 4,
-      "label": "Armero · sable de la guardia (12 oro)",
-      "lockedLabel": "Armero · faltan 12 monedas",
-      "requirements": [
-        {
-          "itemId": "crown-gold",
-          "quantity": 12,
-          "message": "El armero pide doce monedas. El acero templado no crece en las cunetas."
-        }
-      ],
+      "label": "Forja de Brunna · armas",
       "action": {
-        "effects": [
-          {
-            "type": "exchange-item",
-            "costItemId": "crown-gold",
-            "costQuantity": 12,
-            "itemId": "roadwatch-sabre",
-            "name": "Sable de la guardia",
-            "description": "Arma equipada: +2 daño para Matthias o Hildegard.",
-            "quantity": 1
-          }
-        ],
-        "message": "Compras un sable de guardia. Abre una ficha de personaje para equiparlo. La mochila no aumenta el daño."
+        "effects": [],
+        "message": "Brunna se encoge de hombros: «Madera y latón, lo que llega a un pueblo de frontera. El buen acero se gana ahí fuera, no se compra aquí»."
       },
-      "visualType": "building-forge"
+      "visualType": "building-forge",
+      "shop": {
+        "stock": [
+          "wooden-staff",
+          "wooden-mace",
+          "wooden-spear",
+          "brass-dagger",
+          "brass-mace",
+          "brass-spear",
+          "brass-sword",
+          "brass-axe"
+        ]
+      }
     },
     {
       "id": "first-book-armorer",
       "kind": "merchant",
       "x": 11,
       "y": 4,
-      "label": "Coracero · jubón de la guardia (9 oro)",
-      "lockedLabel": "Coracero · faltan 9 monedas",
-      "requirements": [
-        {
-          "itemId": "crown-gold",
-          "quantity": 9,
-          "message": "Nueve monedas por el jubón. Tu sonrisa no cuenta como pago."
-        }
-      ],
+      "label": "Coracería de Odo · armaduras y escudos",
       "action": {
-        "effects": [
-          {
-            "type": "exchange-item",
-            "costItemId": "crown-gold",
-            "costQuantity": 9,
-            "itemId": "roadwatch-vest",
-            "name": "Jubón de guardia",
-            "description": "Armadura equipada: reduce en 1 el daño recibido.",
-            "quantity": 1
-          }
-        ],
-        "message": "El coracero entrega un jubón de guardia. Hasta equiparlo en la ficha, no protege a nadie."
+        "effects": [],
+        "message": "Odo palmea un gambesón remendado: «Cuero y latón. Si quieres malla, quítasela a quien la lleve»."
       },
-      "visualType": "building-armor"
+      "visualType": "building-armor",
+      "shop": {
+        "stock": [
+          "leather-padded",
+          "leather-leather",
+          "roadwatch-vest",
+          "brass-scale",
+          "brass-ring",
+          "wooden-shield",
+          "brass-shield"
+        ]
+      }
+    },
+    {
+      "id": "first-book-guild",
+      "kind": "merchant",
+      "x": 15,
+      "y": 4,
+      "label": "Gremio de las Tres Fuerzas · hechizos",
+      "action": {
+        "effects": [],
+        "message": "La archivista Mirela levanta la vista del atril: «Cosmonium, Esoterica, Gaiam. Sólo los socios leen estas estanterías»."
+      },
+      "visualType": "building-guild",
+      "guild": {
+        "membership": 10,
+        "greeting": "La archivista Mirela levanta la vista del atril: «Cosmonium, Esoterica, Gaiam. Sólo los socios leen estas estanterías. Diez de oro y firmáis en el registro».",
+        "memberGreeting": "Mirela señala las estanterías: «Lo que quepa en vuestros libros, y en vuestra bolsa».",
+        "spells": [
+          "first-aid",
+          "flying-fist",
+          "elemental-arrow",
+          "detect-magic"
+        ]
+      }
     },
     {
       "id": "first-book-temple",
@@ -328,9 +350,6 @@
         {
           "questId": "weaver-silk",
           "questStatus": "active"
-        },
-        {
-          "itemId": "weaver-silk"
         }
       ],
       "action": {
@@ -361,6 +380,11 @@
               {
                 "type": "grant-gold",
                 "amount": 8
+              },
+              {
+                "type": "award-xp",
+                "awardId": "swordhaven:weaver-silk:v1",
+                "amount": 30
               }
             ]
           },
@@ -376,7 +400,14 @@
           "body": "El templo de Swordhaven ya tiene vendas. Ilse pagó 8 monedas y curó a la compañía.",
           "sigil": "☼"
         }
-      }
+      },
+      "requirements": [
+        {
+          "itemId": "weaver-silk",
+          "message": "Ilse cruza las manos: «Sin la seda de la tejedora de Rookwood no hay ofrenda que bendecir»."
+        }
+      ],
+      "lockedLabel": "Templo · Ilse espera la seda de la tejedora"
     },
     {
       "id": "first-book-watch-house",
@@ -427,14 +458,6 @@
         {
           "questId": "road-bandits",
           "questStatus": "active"
-        },
-        {
-          "key": "bannerRoadDeserterDefeated",
-          "truthy": true
-        },
-        {
-          "key": "bannerRoadCaptainDefeated",
-          "truthy": true
         }
       ],
       "action": {
@@ -465,6 +488,11 @@
               {
                 "type": "grant-gold",
                 "amount": 12
+              },
+              {
+                "type": "award-xp",
+                "awardId": "swordhaven:road-bandits:v1",
+                "amount": 30
               }
             ]
           }
@@ -475,6 +503,215 @@
           "title": "El Camino, en paz",
           "body": "El sargento Brask ha pagado 12 monedas por acabar con los desertores del Camino.",
           "sigil": "◆"
+        }
+      },
+      "requirements": [
+        {
+          "key": "bannerRoadDeserterDefeated",
+          "truthy": true,
+          "message": "Brask golpea el mapa: «El desertor sigue suelto en el Camino de los Estandartes»."
+        },
+        {
+          "key": "bannerRoadCaptainDefeated",
+          "truthy": true,
+          "message": "Brask niega con la cabeza: «Garrah sigue al mando de esos bandidos. Vuelve cuando caiga»."
+        }
+      ],
+      "lockedLabel": "Cuartel · Brask espera noticias de los bandidos"
+    },
+    {
+      "id": "swordhaven-mayor",
+      "kind": "lore",
+      "x": 11,
+      "y": 10,
+      "visualType": "building-hall",
+      "label": "Ayuntamiento · hablar con el alcalde Aldric",
+      "when": [
+        {
+          "key": "swordhavenMayorMet",
+          "falsy": true
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "set",
+            "key": "swordhavenMayorMet",
+            "value": true
+          },
+          {
+            "type": "grant-item",
+            "itemId": "sewer-key",
+            "name": "Llave de la reja",
+            "description": "Abre la reja de las alcantarillas, al sur de la plaza.",
+            "quantity": 1
+          },
+          {
+            "type": "advance-quest",
+            "questId": "lost-king",
+            "title": "El rey desaparecido",
+            "description": "La Dama busca a sus caballeros desaparecidos. Swordhaven es el primer paso.",
+            "order": 1,
+            "objective": "Baja a las alcantarillas por la reja del sur de la plaza y límpialas."
+          }
+        ],
+        "message": "El alcalde Aldric lee la carta y suspira: «Antes de hablar de caballeros, ayudadme con el pueblo. Algo sube de noche por las alcantarillas a las bodegas. Tomad la llave de la reja. Si os sobra tiempo, el sargento Brask, la sacerdotisa Ilse y el tablón de la plaza también tienen trabajo».",
+        "journal": {
+          "id": "lost-king-mayor",
+          "title": "El alcalde Aldric",
+          "body": "El alcalde pide limpiar las alcantarillas antes de hablar de los caballeros. Brask (cuartel), Ilse (templo) y el tablón de la plaza ofrecen más trabajo.",
+          "sigil": "♛"
+        }
+      }
+    },
+    {
+      "id": "swordhaven-mayor-sewers",
+      "kind": "quest",
+      "x": 11,
+      "y": 10,
+      "visualType": "building-hall",
+      "label": "Informar al alcalde: alcantarillas limpias · 25 oro",
+      "lockedLabel": "Alcalde Aldric · las alcantarillas siguen infestadas",
+      "when": [
+        {
+          "key": "swordhavenMayorMet",
+          "truthy": true
+        },
+        {
+          "key": "swordhavenSewersReported",
+          "falsy": true
+        }
+      ],
+      "requirements": [
+        {
+          "key": "sewersSluiceClosed",
+          "truthy": true,
+          "message": "Aldric frunce el ceño: «El agua sigue subiendo. Hay una compuerta en el extremo sureste de las cloacas»."
+        },
+        {
+          "key": "sewersSmugglerDefeated",
+          "truthy": true,
+          "message": "Aldric baja la voz: «Las bodegas siguen perdiendo cosas. Lo que sube de noche sigue ahí abajo»."
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "claim-reward",
+            "rewardId": "swordhaven:sewers:v1",
+            "requirements": [
+              {
+                "key": "sewersSluiceClosed",
+                "truthy": true
+              },
+              {
+                "key": "sewersSmugglerDefeated",
+                "truthy": true
+              }
+            ],
+            "effects": [
+              {
+                "type": "set",
+                "key": "swordhavenSewersReported",
+                "value": true
+              },
+              {
+                "type": "grant-gold",
+                "amount": 25
+              },
+              {
+                "type": "award-xp",
+                "awardId": "swordhaven:sewers:v1",
+                "amount": 40
+              },
+              {
+                "type": "advance-quest",
+                "questId": "lost-king",
+                "title": "El rey desaparecido",
+                "description": "La Dama busca a sus caballeros desaparecidos. Swordhaven es el primer paso.",
+                "order": 1,
+                "objective": "Garrah asaltó el carro de los caballeros. Búscalo en el Camino de los Estandartes, al norte."
+              }
+            ]
+          }
+        ],
+        "message": "Aldric hojea el libro de Tobías y palidece: «Un carro con el lacre de la Dama… y Garrah lo asaltó en el Camino. Si alguien sabe adónde iban los caballeros, es él». Cuenta veinticinco monedas.",
+        "journal": {
+          "id": "lost-king-sewers-reported",
+          "title": "El carro de los caballeros",
+          "body": "Según el libro del contrabandista, Garrah asaltó un carro con el lacre de la Dama en el Camino de los Estandartes.",
+          "sigil": "♛"
+        }
+      }
+    },
+    {
+      "id": "swordhaven-mayor-route",
+      "kind": "quest",
+      "x": 11,
+      "y": 10,
+      "visualType": "building-hall",
+      "label": "Enseñar al alcalde lo que llevaba Garrah · 30 oro",
+      "lockedLabel": "Alcalde Aldric · «¿Habéis encontrado a Garrah?»",
+      "when": [
+        {
+          "key": "swordhavenSewersReported",
+          "truthy": true
+        },
+        {
+          "key": "swordhavenRouteReported",
+          "falsy": true
+        }
+      ],
+      "requirements": [
+        {
+          "key": "bannerRoadCaptainDefeated",
+          "truthy": true,
+          "message": "Aldric niega con la cabeza: «Garrah acampa al suroeste del Camino de los Estandartes. Sin él no hay pista»."
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "claim-reward",
+            "rewardId": "swordhaven:garrah-route:v1",
+            "requirements": [
+              {
+                "key": "bannerRoadCaptainDefeated",
+                "truthy": true
+              }
+            ],
+            "effects": [
+              {
+                "type": "set",
+                "key": "swordhavenRouteReported",
+                "value": true
+              },
+              {
+                "type": "grant-gold",
+                "amount": 30
+              },
+              {
+                "type": "award-xp",
+                "awardId": "swordhaven:garrah-route:v1",
+                "amount": 60
+              },
+              {
+                "type": "advance-quest",
+                "questId": "lost-king",
+                "title": "El rey desaparecido",
+                "description": "La Dama busca a sus caballeros desaparecidos. Swordhaven es el primer paso.",
+                "order": 1,
+                "objective": "La hoja de ruta lleva a las Marismas de Sal. Viaja a Vado de Sal (C5): sal al Camino (C3) y baja al sur por C4."
+              }
+            ]
+          }
+        ],
+        "message": "Aldric extiende la hoja de ruta de Garrah sobre la mesa: «Esto no es el camino del rey. Alguien cambió las etapas y mandó a los caballeros a las Marismas de Sal. En Vado de Sal sabrán más». Treinta monedas para el viaje.",
+        "journal": {
+          "id": "lost-king-route-reported",
+          "title": "La hoja de ruta adulterada",
+          "body": "Alguien desvió a los caballeros hacia las Marismas de Sal. Próximo destino: Vado de Sal.",
+          "sigil": "♛"
         }
       }
     }
@@ -501,6 +738,33 @@
         ],
         "message": "La compañía llega a Camino de los Estandartes."
       }
+    },
+    {
+      "id": "swordhaven-to-sewers",
+      "kind": "exit",
+      "visualType": "sewer-grate",
+      "x": 13,
+      "y": 13,
+      "requiresReturn": true,
+      "openLabel": "Bajar a las alcantarillas",
+      "lockedLabel": "Reja de las alcantarillas · cerrada con candado",
+      "requirements": [
+        {
+          "itemId": "sewer-key",
+          "quantity": 1,
+          "message": "La reja tiene un candado nuevo. El alcalde Aldric guarda la llave."
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "transition-map",
+            "mapId": "swordhaven-sewers",
+            "entryExitId": "sewers-to-swordhaven"
+          }
+        ],
+        "message": "La compañía baja por la escalerilla oxidada a las alcantarillas."
+      }
     }
   ],
   "initialJournal": {
@@ -509,5 +773,24 @@
     "body": "La plaza de la fuente, el tablón de encargos, la taberna, el templo y los comerciantes te esperan. El Camino de los Estandartes queda al norte.",
     "sigil": "I"
   },
-  "introMessage": "Swordhaven. La Dama ha pedido noticias de sus caballeros; el tablón de la plaza ofrece la primera pista."
+  "introMessage": "Swordhaven. La carta de la Dama pide que te presentes al alcalde Aldric; el ayuntamiento está al sur de la fuente.",
+  "arrivalAction": {
+    "effects": [
+      {
+        "type": "start-quest",
+        "questId": "lost-king",
+        "title": "El rey desaparecido",
+        "description": "La Dama busca a sus caballeros desaparecidos. Swordhaven es el primer paso.",
+        "order": 1,
+        "objective": "Preséntate al alcalde Aldric en el ayuntamiento, al sur de la fuente."
+      }
+    ],
+    "message": "La carta de la Dama es breve: sus caballeros no han vuelto y el alcalde Aldric de Swordhaven sabe más de lo que cuenta. Matthias señala el ayuntamiento, al sur de la fuente.",
+    "journal": {
+      "id": "lost-king-arrival",
+      "title": "La carta de la Dama",
+      "body": "Los caballeros de la Dama han desaparecido. Primer paso: hablar con el alcalde Aldric en el ayuntamiento de Swordhaven.",
+      "sigil": "♛"
+    }
+  }
 }

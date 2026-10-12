@@ -486,3 +486,102 @@
 .chess-football-entry__objective-heading span { color: #d3ddac; font-size: .78rem; }
 .chess-football-entry__objective p { margin: .35rem 0; font-size: .84rem; line-height: 1.45; }
 .chess-football-entry__objective .chess-football-entry__objective-progress { color: #f0dbac; font-weight: 750; font-variant-numeric: tabular-nums; }
+
+/* Advanced coaching is collapsed by default: keep the next-match flow simple. */
+.chess-football-entry__training {
+  margin: .55rem 0;
+  padding: .7rem .9rem;
+  border: 1px solid rgba(209, 190, 134, .24);
+  border-radius: 12px;
+  background: rgba(9, 26, 16, .56);
+}
+.chess-football-entry__training summary { color: #e8d7ae; font-weight: 750; cursor: pointer; }
+.chess-football-entry__training p { font-size: .81rem; line-height: 1.5; }
+.chess-football-entry__training-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: .45rem;
+}
+.chess-football-entry__training-option {
+  min-height: 44px;
+  min-width: 0;
+  border: 1px solid rgba(230, 202, 141, .34);
+  border-radius: 9px;
+  padding: .45rem .5rem;
+  background: #1b2b1e;
+  color: #efe8d5;
+  font: inherit;
+  font-size: .83rem;
+  font-weight: 650;
+  cursor: pointer;
+}
+.chess-football-entry__training-option[aria-pressed="true"] {
+  border-color: #e9ca80;
+  background: #455b36;
+  color: #fff4ce;
+}
+.chess-football-entry__training-option:focus-visible,
+.chess-football-entry__training summary:focus-visible {
+  outline: 3px solid #d8c28b;
+  outline-offset: 2px;
+}
+
+/* Earned squad development lives inside the lineup details, not Home or a
+   permanent dashboard. Two-column rows wrap cleanly on narrow touch devices. */
+.chess-football-entry__development {
+  margin-top: .85rem;
+  border-top: 1px solid rgba(233, 211, 158, .19);
+  padding-top: .6rem;
+}
+.chess-football-entry__development summary { font-size: .88rem; }
+.chess-football-entry__development > p { color: #d9dfc8; }
+.chess-football-entry__development ul { display: grid; gap: .4rem; margin: .6rem 0 0; padding: 0; list-style: none; }
+.chess-football-entry__development li {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: .18rem .6rem;
+  padding: .55rem .65rem;
+  background: rgba(22, 39, 27, .78);
+  border-radius: 8px;
+  color: #eee8d2;
+  font-size: .79rem;
+  line-height: 1.45;
+  font-variant-numeric: tabular-nums;
+}
+.chess-football-entry__development li > span { min-width: 0; }
+.chess-football-entry__development li strong { font-weight: 700; }
+.chess-football-entry__development li small { color: #c6d2ba; font-size: .76rem; }
+.chess-football-entry__development summary:focus-visible { outline: 3px solid #d8c28b; outline-offset: 2px; }
+
+/* A quiet manager's season ledger instead of a new permanent dashboard. */
+.chess-football-entry__history {
+  margin: .6rem 0 1rem;
+  padding: .65rem .9rem;
+  border: 1px solid rgba(218, 195, 143, .24);
+  border-radius: 11px;
+  background: rgba(17, 35, 24, .72);
+}
+.chess-football-entry__history summary { color: #eddbb5; font-weight: 700; cursor: pointer; }
+.chess-football-entry__history ol {
+  padding-left: 1.2rem;
+  margin: .65rem 0 .1rem;
+  color: #e5e9d9;
+  font-size: .83rem;
+  line-height: 1.65;
+}
+.chess-football-entry__renewal {
+  margin: .85rem 0 1rem;
+  padding: .95rem;
+  border: 1px solid rgba(235, 208, 132, .40);
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(42, 64, 39, .86), rgba(16, 37, 27, .93));
+  color: #f0ebdb;
+}
+.chess-football-entry__renewal > strong { color: #ffe5a9; font-size: 1.02rem; }
+.chess-football-entry__renewal p { font-size: .85rem; line-height: 1.55; margin: .65rem 0; }
+.chess-football-entry__renewal .chess-football-entry__manager-return {
+  margin-top: .45rem;
+  min-height: 44px;
+}
+.chess-football-entry__history summary:focus-visible { outline: 3px solid #e3d49a; outline-offset: 2px; }

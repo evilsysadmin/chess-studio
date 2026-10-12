@@ -319,9 +319,66 @@ test('Combat Chess · una batalla activa sobrevive a reload y no vuelve a Setup'
   await quick.click({ timeout: 30_000 });
   await expect(page.getByRole('complementary', { name: 'Registro de batalla y estado táctico' })).toBeVisible();
 
+  // A genuine human/CPU turn must be durable before the new release appears.
+  await clickBoardMove(page, 'e2', 'e4');
+  await expect(page.locator('.combat-battle-screen .status-line')).toHaveText('Tu turno', { timeout: 20_000 });
+
+  const durableCombatState = () => page.evaluate(() => {
+    const campaign = JSON.parse(localStorage.getItem('chess-study-combat-campaign-v1') || 'null');
+    const roster = JSON.parse(localStorage.getItem('chess-study-combat-roster') || 'null');
+    const bucket = JSON.parse(sessionStorage.getItem('chess-study-active-combat-session-v1') || 'null');
+    const battle = Object.values(bucket?.sessions || {}).find((entry) => entry.phase === 'battle');
+    return {
+      campaign: campaign && {
+        seed: campaign.seed, phase: campaign.phase, currentNodeId: campaign.currentNodeId,
+        selectedNodeId: campaign.selectedNodeId, route: campaign.route,
+        operationalCredits: campaign.operationalCredits, intelligenceByNode: campaign.intelligenceByNode,
+      },
+      army: roster && {
+        identities: roster.identities, unitRecords: roster.unitRecords, memorial: roster.memorial,
+        pieces: roster.pieces,
+      },
+      battle: battle && {
+        sessionId: battle.sessionId, campaignId: battle.campaignId, encounterId: battle.encounterId,
+        fen: battle.fen, registry: battle.registry, humanColor: battle.humanColor,
+        combatLog: battle.combatLog, battleParticipants: battle.battleParticipants,
+        unitBattleStats: battle.unitBattleStats,
+      },
+    };
+  });
+
+  await expect.poll(async () => {
+    const state = await durableCombatState();
+    return Boolean(state.campaign?.seed && state.army?.identities &&
+      Object.keys(state.army.identities).length > 0 && state.battle?.fen &&
+      (state.battle.combatLog || []).length > 0);
+  }, { timeout: 10_000 }).toBe(true);
+  const beforeDeploy = await durableCombatState();
+  const originalDocument = await page.evaluate(() => performance.timeOrigin);
+
+  // A new deploy must not suggest an interrupting refresh while a battle is active.
+  await page.route('**/release.json?*', (route) => route.fulfill({
+    status: 200,
+    contentType: 'application/json',
+    body: JSON.stringify({ release: 'v99combat', build: 'f'.repeat(40) }),
+  }));
+  await page.evaluate(() => window.dispatchEvent(new Event('focus')));
+  const update = page.locator('.release-update-notice');
+  await expect(update).toContainText('Nueva versión disponible', { timeout: 10_000 });
+  await expect(update).toContainText('Puedes continuar aquí');
+  await expect(update.getByRole('button', { name: 'Actualizar', exact: true })).toHaveCount(0);
+  await expect(update.getByRole('button', { name: 'Después', exact: true })).toBeVisible();
+  expect(await page.evaluate(() => performance.timeOrigin)).toBe(originalDocument);
+  expect(await durableCombatState()).toEqual(beforeDeploy);
+  await update.getByRole('button', { name: 'Después', exact: true }).click();
+  await expect(update).toHaveCount(0);
+
+  // If the player then does refresh, this exact campaign, army and progressed
+  // battle must be restored; a new Setup/rookie army would be data loss.
   await page.reload();
   await expect(page.getByRole('complementary', { name: 'Registro de batalla y estado táctico' })).toBeVisible();
   await expect(page.getByRole('region', { name: 'Preparar despliegue de Combat Chess' })).toHaveCount(0);
+  expect(await durableCombatState()).toEqual(beforeDeploy);
 });
 
 

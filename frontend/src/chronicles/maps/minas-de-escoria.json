@@ -1,0 +1,266 @@
+{
+  "id": "minas-de-escoria",
+  "version": 1,
+  "progressionKey": "minas-de-escoria-v1",
+  "title": "Minas de Escoria",
+  "hudTitle": "Minas",
+  "areaCode": "E3",
+  "regionKind": "dungeon",
+  "dungeonRole": "main",
+  "layoutMode": "authored",
+  "grid": [
+    "#################",
+    "#.#.........#...#",
+    "#.#######.#.###.#",
+    "#.........#.....#",
+    "###############.#",
+    "#.....#.......#.#",
+    "###.###.##..###.#",
+    "#...#...#...#...#",
+    "#.###.###.###.###",
+    "#.......#.......#",
+    "#################"
+  ],
+  "partyStart": {
+    "x": 1,
+    "y": 1,
+    "direction": 1
+  },
+  "initialFlags": {},
+  "enemies": [
+    {
+      "id": "minas-de-escoria-foe-0",
+      "visualType": "ash-goblin",
+      "name": "goblin minero",
+      "x": 15,
+      "y": 3,
+      "hpKey": "minas_de_escoriaFoe0Hp",
+      "maxHp": 10,
+      "retaliation": 2,
+      "optional": true,
+      "activation": "always",
+      "ai": {
+        "movement": "cardinal-roam",
+        "attackReach": 1,
+        "engagedMovement": "cardinal-chase",
+        "engageRange": 2
+      },
+      "onDefeat": {
+        "message": "{attacker} acaba con goblin minero usando {attack}.",
+        "effects": [
+          {
+            "type": "grant-gold",
+            "amount": 8
+          }
+        ]
+      }
+    },
+    {
+      "id": "minas-de-escoria-foe-1",
+      "visualType": "ember-wisp",
+      "name": "lumbre de mina",
+      "x": 14,
+      "y": 9,
+      "hpKey": "minas_de_escoriaFoe1Hp",
+      "maxHp": 10,
+      "retaliation": 2,
+      "optional": true,
+      "activation": "always",
+      "ai": {
+        "movement": "hold",
+        "attackReach": 2,
+        "requiresLineOfSight": true
+      },
+      "onDefeat": {
+        "message": "{attacker} acaba con lumbre de mina usando {attack}.",
+        "effects": [
+          {
+            "type": "grant-gold",
+            "amount": 8
+          }
+        ]
+      }
+    },
+    {
+      "id": "minas-de-escoria-foe-2",
+      "visualType": "bone-hound",
+      "name": "sabueso de escoria",
+      "x": 11,
+      "y": 5,
+      "hpKey": "minas_de_escoriaFoe2Hp",
+      "maxHp": 10,
+      "retaliation": 2,
+      "optional": true,
+      "activation": "always",
+      "ai": {
+        "movement": "cardinal-roam",
+        "attackReach": 1,
+        "engagedMovement": "cardinal-chase",
+        "engageRange": 4
+      },
+      "onDefeat": {
+        "message": "{attacker} acaba con sabueso de escoria usando {attack}.",
+        "effects": [
+          {
+            "type": "grant-gold",
+            "amount": 8
+          }
+        ]
+      }
+    },
+    {
+      "id": "minas-de-escoria-foe-3",
+      "visualType": "crypt-spider",
+      "name": "araña de galería",
+      "x": 3,
+      "y": 9,
+      "hpKey": "minas_de_escoriaFoe3Hp",
+      "maxHp": 10,
+      "retaliation": 2,
+      "optional": true,
+      "activation": "always",
+      "ai": {
+        "movement": "cardinal-roam",
+        "attackReach": 1,
+        "engagedMovement": "knight-chase",
+        "engageRange": 3
+      },
+      "onDefeat": {
+        "message": "{attacker} acaba con araña de galería usando {attack}.",
+        "effects": [
+          {
+            "type": "grant-gold",
+            "amount": 8
+          }
+        ]
+      }
+    },
+    {
+      "id": "minas-de-escoria-foe-9",
+      "visualType": "gate-jailer",
+      "name": "el Capataz de Escoria",
+      "x": 5,
+      "y": 5,
+      "hpKey": "minas_de_escoriaFoe9Hp",
+      "maxHp": 22,
+      "retaliation": 3,
+      "optional": true,
+      "activation": "always",
+      "ai": {
+        "movement": "hold",
+        "attackReach": 1,
+        "engagedMovement": "cardinal-chase",
+        "engageRange": 2
+      },
+      "onDefeat": {
+        "message": "{attacker} derriba a el Capataz de Escoria con {attack}.",
+        "effects": [
+          {
+            "type": "set",
+            "key": "minas_de_escoriaBossDefeated",
+            "value": true
+          },
+          {
+            "type": "grant-gold",
+            "amount": 22
+          },
+          {
+            "type": "grant-item",
+            "itemId": "hollow-crown-mould",
+            "name": "Molde de la corona hueca",
+            "description": "Un molde de corona sin peso. Lleva un sello que no es de la Corona: el del Primer Pacto.",
+            "quantity": 1
+          }
+        ],
+        "journal": {
+          "id": "minas-de-escoria-boss",
+          "title": "Cae el Capataz de Escoria",
+          "body": "Un molde de corona sin peso. Lleva un sello que no es de la Corona: el del Primer Pacto.",
+          "sigil": "†"
+        }
+      },
+      "defeatedFlag": "minas_de_escoriaBossDefeated",
+      "blockingMessage": "El Capataz de Escoria cierra el paso."
+    }
+  ],
+  "triggers": [],
+  "interactables": [],
+  "treasures": [
+    {
+      "id": "minas-de-escoria-chest",
+      "kind": "pickup",
+      "visualType": "ember-cache",
+      "x": 13,
+      "y": 5,
+      "label": "Abrir el cofre",
+      "when": [
+        {
+          "key": "minas_de_escoriaChestOpened",
+          "falsy": true
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "set",
+            "key": "minas_de_escoriaChestOpened",
+            "value": true
+          },
+          {
+            "type": "grant-gold",
+            "amount": 39
+          },
+          {
+            "type": "grant-item",
+            "itemId": "silver-sword",
+            "name": "Silver sword",
+            "description": "Botín de mazmorra.",
+            "quantity": 1
+          },
+          {
+            "type": "grant-item",
+            "itemId": "silver-scale",
+            "name": "Silver scale",
+            "description": "Botín de mazmorra.",
+            "quantity": 1
+          }
+        ],
+        "message": "Un cofre con herrajes de bronce: oro y equipo de calidad."
+      }
+    }
+  ],
+  "traps": [],
+  "exits": [
+    {
+      "id": "dungeon-exit",
+      "kind": "exit",
+      "x": 1,
+      "y": 1,
+      "requiresReturn": true,
+      "openLabel": "Salir a E3 · Bocamina de Escoria",
+      "lockedLabel": "La salida está bloqueada",
+      "requirements": [],
+      "action": {
+        "effects": [
+          {
+            "type": "transition-map",
+            "mapId": "terra-e3",
+            "entryExitId": "e3-to-dungeon"
+          }
+        ],
+        "message": "La compañía sale a la luz."
+      }
+    }
+  ],
+  "initialJournal": {
+    "id": "minas-de-escoria-arrival",
+    "title": "Minas de Escoria",
+    "body": "Minas de Escoria, bajo E3.",
+    "sigil": "E3"
+  },
+  "introMessage": "Minas de Escoria. El aire huele a cerrado y a algo que no quiere visitas.",
+  "arrivalAction": {
+    "effects": [],
+    "message": "Minas de Escoria. Al fondo de los pasillos espera el Capataz de Escoria."
+  }
+}

@@ -46,7 +46,8 @@ HOME_WEBGL_GREP = 'Browser WebGL · Home 3D recupera el contexto perdido'
 SMOKE_GREP = (
     'login → menú|Partida rápida · una partida activa|Torneo · una partida activa|'
     'Partida rápida · un 503 al restaurar|Combat Chess · Campaña permite jugar con defaults|'
-    'Combat Chess · salir al menú conserva campaña'
+    'Combat Chess · salir al menú conserva campaña|'
+    'Combat Chess · una batalla activa sobrevive a reload'
 )
 
 
@@ -85,6 +86,10 @@ LANE_COMMANDS: dict[str, tuple[LaneCommand, ...]] = {
         LaneCommand(
             'regression-journeys.spec.js',
             ('--grep', REGRESSION_SCHOOL_GREP, '--workers=1', '--retries=0', '--max-failures=1', '--timeout=75000'),
+        ),
+        LaneCommand(
+            'matthias-school-coach-journal.spec.js',
+            ('--workers=1', '--retries=0', '--max-failures=1', '--timeout=75000'),
         ),
     ),
     'learning-golden': (
@@ -131,6 +136,9 @@ LANE_COMMANDS: dict[str, tuple[LaneCommand, ...]] = {
             ('--grep', HOME_WEBGL_GREP, '--workers=1', '--retries=0', '--max-failures=1', '--timeout=45000'),
             canonical_critical=False,
         ),
+        # New R2 current.json must not tear down an in-flight Godot iframe:
+        # the same browser session continues on A while a new one chooses B.
+        LaneCommand('godot-release-continuity.spec.js', ('--workers=1', '--retries=0', '--max-failures=1')),
     ),
 }
 
@@ -144,6 +152,10 @@ COMPOSITE_LANE_COMMANDS: dict[str, tuple[LaneCommand, ...]] = {
                 '--grep-invert', REGRESSION_STATE_INVERT,
                 '--workers=1', '--retries=0', '--max-failures=1', '--timeout=75000',
             ),
+        ),
+        LaneCommand(
+            'matthias-school-coach-journal.spec.js',
+            ('--workers=1', '--retries=0', '--max-failures=1', '--timeout=75000'),
         ),
     ),
     'learning-golden+learning-observation': (
@@ -195,6 +207,8 @@ def self_test() -> None:
     assert LANE_COMMANDS['tournament'][0].grep == TOURNAMENT_GREP
     assert LANE_COMMANDS['combat'][0].spec == 'smoke.spec.js'
     assert LANE_COMMANDS['combat'][0].grep == COMBAT_GREP
+    assert 'Combat Chess · una batalla activa sobrevive a reload' not in COMBAT_GREP
+    assert 'Combat Chess · una batalla activa sobrevive a reload' in SMOKE_GREP
     assert [command.spec for command in LANE_COMMANDS['home']] == [
         'regression-journeys.spec.js', 'mobile-final-interactions.spec.js', 'browser-runtime-health.spec.js'
     ]
@@ -203,6 +217,7 @@ def self_test() -> None:
     assert LANE_COMMANDS['home'][2].grep == HOME_WEBGL_GREP
     assert [command.spec for command in LANE_COMMANDS['smoke']] == [
         'smoke.spec.js', 'mobile-final-interactions.spec.js', 'browser-runtime-health.spec.js',
+        'godot-release-continuity.spec.js',
     ]
     assert LANE_COMMANDS['smoke'][2].grep == HOME_WEBGL_GREP
     assert LANE_COMMANDS['smoke'][2].canonical_critical is False
@@ -233,7 +248,9 @@ def self_test() -> None:
             '--grep', f'{REGRESSION_STATE_GREP}|{REGRESSION_SCHOOL_GREP}',
             '--grep-invert', REGRESSION_STATE_INVERT,
             '--workers=1', '--retries=0', '--max-failures=1', '--timeout=75000',
-        ], E2E_DIR, True)
+        ], E2E_DIR, True),
+        ([PLAYWRIGHT, 'test', 'matthias-school-coach-journal.spec.js',
+          '--workers=1', '--retries=0', '--max-failures=1', '--timeout=75000'], E2E_DIR, True),
     ]
     calls.clear()
     run_lane('learning-golden+learning-observation', fake_runner)
