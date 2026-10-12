@@ -472,6 +472,8 @@ test('Chronicles · MM3 Alcalde Aldric · entrar en ayuntamiento y diálogo nume
     await expect(audience).toBeVisible({ timeout: 15_000 });
     await expect(game).toHaveAttribute('data-chronicles-turns', turns);
     await expect(audience.locator('[data-chronicles-dialogue-choice]')).toHaveCount(4);
+    await page.keyboard.press('w');
+    await expect(game).toHaveAttribute('data-chronicles-turns', turns);
     await page.screenshot({
       path: `${ARTIFACT_DIR}/chronicles-alcalde-dialogue-android-390x844.png`,
       animations: 'disabled', timeout: 60_000,
