@@ -69,3 +69,11 @@
   .chesscom[data-chesscom-visual="premium-v1"] .chesscom-portrait-art.is-dieter,
   .chesscom[data-chesscom-visual="premium-v1"] .chesscom-portrait-art.is-sven{filter:saturate(.92) contrast(1.03) brightness(1.04)}
 }
+
+/* Opt-in Dust Veil V45 HUD portrait — crop of the EXISTING approved-candidate
+   concept sheet. Fallback and normal 3D HUD continue using the canonical SVG. */
+.chesscom[data-chesscom-sven-v45="ready"][data-chesscom-visual="premium-v1"] .chesscom-portrait-art.is-sven{
+  background-image:url('/chesscom/sven-v45-portrait.webp');
+  background-position:center 28%;
+  background-size:cover;
+}
