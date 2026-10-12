@@ -494,7 +494,6 @@ export default function PuzzleScreen({ onExit, onPlayAgain = null, points = 0, o
             {status === 'revealed' && 'Esta era la solución'}
             {status === 'playing' && (rushEnded ? `Tiempo. ${solvedCount} aciertos.` : busy ? 'El rival responde…' : boardObjective ? `Tu turno · ${boardObjective}` : 'Tu turno')}
           </div>
-          {queueHandoff && <p className="friendly-inline-note puzzle-queue-handoff" role="status">{queueHandoff}</p>}
           <TrainingRoomBoard
             fen={localChess ? fen : 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1'}
             onSquareClick={handleSquareClick}
@@ -555,6 +554,7 @@ export default function PuzzleScreen({ onExit, onPlayAgain = null, points = 0, o
             <span className="eyebrow">{source === 'personal' ? 'REPLAY // ANÁLISIS' : source === 'daily' ? 'DESAFÍO // ANÁLISIS' : 'TÁCTICA // ANÁLISIS'}</span>
             <span className={`puzzle-coach-state ${status === 'solved' ? 'is-success' : status === 'revealed' ? 'is-revealed' : ''}`}>{status === 'solved' ? 'RESUELTO' : status === 'revealed' ? 'REVISIÓN' : 'EN CURSO'}</span>
           </div>
+          {queueHandoff && <p className="friendly-inline-note puzzle-queue-handoff" role="status">{queueHandoff}</p>}
           <span className="eyebrow puzzle-coach-kind">{KIND_LABELS[puzzle.kind] || 'Puzzle'}{puzzle.difficulty ? ` · ${PUZZLE_DIFFICULTY_LABELS[puzzle.difficulty] || puzzle.difficulty}` : ''}</span>
           <div className="combat-heading-row"><h2>{puzzle.title}</h2><MechanicTutorialHelp tutorialId="puzzles" /></div>
           <p>{puzzle.description}</p>
