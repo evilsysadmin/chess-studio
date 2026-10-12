@@ -78,3 +78,31 @@ y manifiesto marcado `review_only`; **no descarga modelos de terceros,
 no produce fotogramas falsos, no publica nada a R2 ni cambia el runtime**.
 La comparación visual con nuestra referencia aprobada es obligatoria antes
 de avanzar a los 96 frames de V38. El 3D actual sigue siendo el fallback.
+
+
+## V41 — referencia visual original recuperada (Dust Veil)
+
+Se localizó en la Library del usuario el PNG original aprobado
+**`Operación Dust Veil: Chesscom.png`** (1536×1024, RGB,
+SHA-256 `001f58bcc46dfe2a3a7f901e141c186bf9149b524ac5476e44a2e89ae737ef01`).
+Es la referencia autoritativa de **Sven, Dieter y Matthias**, tanto en escena
+como en sus retratos. La ilustración panorámica no es un GLB ni aporta
+8 vistas reales; sólo fija siluetas, uniforme, armas, contacto de pies
+y jerarquía visual que los futuros modelos DEBEN respetar.
+
+`docs/experiments/chesscom-golden-art-v41.json` registra seis regiones
+semánticas y la huella SHA exacta. No se sube un binario pesado al repo.
+`scripts/art/chesscom_golden_reference_v41.py` genera una contact sheet
+**únicamente** a partir de ese PNG (SHA obligatorio), manteniéndola
+como evidencia local de revisión sin publicar automáticamente:
+
+```bash
+python3 scripts/art/chesscom_golden_reference_v41.py \
+  --source "/ruta/Operación Dust Veil: Chesscom.png" \
+  --output-dir /tmp/chesscom-golden-v41
+```
+
+La comparación posterior de las ocho perspectivas Blender del GLB propio V40
+ha de aprobarse **visual y manualmente** frente al original V41, a zoom de
+juego real y en móvil. Ni el PNG original ni los recortes se deben confundir
+con un atlas animado o sustituir el 3D actual por defecto.

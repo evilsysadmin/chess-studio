@@ -1,0 +1,102 @@
+{
+  "schema": 1,
+  "identity": "chesscom-dust-veil-first-party-golden-v41",
+  "reference": {
+    "title": "Operación Dust Veil: Chesscom.png",
+    "sha256": "001f58bcc46dfe2a3a7f901e141c186bf9149b524ac5476e44a2e89ae737ef01",
+    "width": 1536,
+    "height": 1024,
+    "origin": "User-approved Chesscom original image preserved in ChatGPT Library. Not in Git and never substituted by third-party SWAT.",
+    "status": "golden-reference"
+  },
+  "review_only": true,
+  "regions": [
+    {
+      "id": "sven-field",
+      "actor": "sven",
+      "kind": "field",
+      "box": [
+        88,
+        320,
+        263,
+        491
+      ]
+    },
+    {
+      "id": "dieter-field",
+      "actor": "dieter",
+      "kind": "field",
+      "box": [
+        35,
+        484,
+        255,
+        709
+      ]
+    },
+    {
+      "id": "matthias-field",
+      "actor": "matthias",
+      "kind": "field",
+      "box": [
+        411,
+        567,
+        649,
+        801
+      ]
+    },
+    {
+      "id": "sven-portrait",
+      "actor": "sven",
+      "kind": "portrait",
+      "box": [
+        398,
+        837,
+        560,
+        979
+      ]
+    },
+    {
+      "id": "dieter-portrait",
+      "actor": "dieter",
+      "kind": "portrait",
+      "box": [
+        236,
+        837,
+        394,
+        979
+      ]
+    },
+    {
+      "id": "matthias-portrait",
+      "actor": "matthias",
+      "kind": "portrait",
+      "box": [
+        26,
+        837,
+        231,
+        979
+      ]
+    }
+  ],
+  "identities": {
+    "sven": "Human scout; blue-black tactical armour, balaclava/helmet, compact firearm held at believable contact points, agile crouched silhouette; no generic unmasked plastic figure.",
+    "dieter": "Human rifleman; heavier olive/dark field gear, visibly distinct helmet and broad equipment silhouette, rifle ready with believable hand grips.",
+    "matthias": "Ivory chess-pawn-headed commander with peaked cap, pale officer coat, dark cloak trimmed red; NEVER replace with a generic human soldier."
+  },
+  "acceptance": {
+    "desktop": [
+      1600,
+      900
+    ],
+    "mobile": [
+      390,
+      844
+    ],
+    "requirements": [
+      "Match silhouette, face/head protection, outfit, equipment and rifle against the approved image at actual game zoom.",
+      "Feet grounded and natural crouch/locomotion; arms hold gun, no detached weapons.",
+      "Eight genuinely different Blender views of one authored rig, then 96 true authored frames; neither stage may silently publish or replace 3D fallback."
+    ],
+    "render_only_until_approved": true
+  }
+}
