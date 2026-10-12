@@ -154,7 +154,7 @@ export default function ChessFootballEntry({ onExit }) {
           ← {view === 'welcome' ? 'Experimentos geniales' : view === 'season' ? 'Volver a la ficha' : view === 'club' ? 'Volver a los clubes' : 'Volver a Football'}
         </button>
         <header className="chess-football-entry__masthead">
-          <span className="chess-football-entry__eyebrow">El vestuario · Temporada cero</span>
+          <span className="chess-football-entry__eyebrow">El vestuario · {view === "season" ? `Temporada ${seasonNumber}` : "Football"}</span>
           <h1>Chess <em>Football</em></h1>
           <p>Elige tu forma de vivir el fútbol. Un partido ahora, o la carrera de un club entero.</p>
         </header>
@@ -240,7 +240,7 @@ export default function ChessFootballEntry({ onExit }) {
             <p>Jornada {season?.currentRound || 0} de {season?.rounds.length || 10}. Los resultados pertenecen a esta simulación estadística, no a un partido jugado en Godot.</p>
             {careerHistory.length ? (
               <details className="chess-football-entry__history" aria-label="Historial del club">
-                <summary>Archivo de temporadas · {careerHistory.length} completadas</summary>
+                <summary>Archivo de temporadas · {careerHistory.length} {careerHistory.length === 1 ? "completada" : "completadas"}</summary>
                 <ol>{careerHistory.map((year) => (
                   <li key={year.number}>
                     Temporada {year.number} · {year.position}.º puesto · {year.points} puntos · {year.objectiveMet ? 'Objetivo cumplido' : 'Objetivo no alcanzado'}
