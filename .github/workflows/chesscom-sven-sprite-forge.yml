@@ -4,6 +4,9 @@ on:
     paths:
       - scripts/art/chesscom_sven_bank_v38.py
       - scripts/art/chesscom_owned_master_v40.py
+      - scripts/art/chesscom_sven_source_handoff_v44.py
+      - scripts/art/test_chesscom_sven_source_handoff_v44.py
+      - docs/experiments/chesscom-sven-3d-source-v44.md
       - scripts/art/chesscom_golden_reference_v41.py
       - scripts/art/test_chesscom_golden_reference_v41.py
       - docs/experiments/chesscom-golden-art-v41.json
@@ -40,5 +43,7 @@ jobs:
         run: |
           python3 scripts/art/chesscom_owned_master_v40.py --references-only
           python3 -m unittest discover -s scripts/art -p 'test_chesscom_owned_master_v40.py' -v
+      - name: Audit Sven original source handoff V44 (offline, zero cost)
+        run: python3 -m unittest discover -s scripts/art -p 'test_chesscom_sven_source_handoff_v44.py' -v
       - name: Validate Sven V38 authored bank pipeline
         run: python3 -m unittest discover -s scripts/art -p 'test_chesscom_sven_bank_v38.py' -v
