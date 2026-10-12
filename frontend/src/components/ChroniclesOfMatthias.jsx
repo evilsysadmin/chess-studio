@@ -24,6 +24,7 @@ import { chroniclesPartyPortraitUrl } from '../chronicles/chroniclesPartyPortrai
 import { chroniclesClearRuntimeMapDefinitions, chroniclesMapForState } from '../chronicles/chroniclesMapCatalog.js';
 import { chroniclesRegionHudLocation } from '../chronicles/chroniclesRegionHud.js';
 import { chroniclesGridExplorationStep } from '../chronicles/chroniclesGridExplorationStep.js';
+import { chroniclesCheckpointReason } from '../chronicles/chroniclesSavePolicy.js';
 import { chroniclesNpcDialogueForState } from '../chronicles/chroniclesNpcDialogue.js';
 import { chroniclesInitializeLostKingIntro } from '../chronicles/chroniclesLostKingIntro.js';
 import { chroniclesApplyArrival } from '../chronicles/chroniclesArrival.js';
@@ -189,6 +190,10 @@ export default function ChroniclesOfMatthias({ onExit }) {
   const authoritativeRunRef = useRef(null);
   const checkpointFingerprintRef = useRef('');
   const checkpointQueueRef = useRef(Promise.resolve());
+  const checkpointPendingRef = useRef(0);
+  const checkpointMapRef = useRef(null);
+  const checkpointExistsRef = useRef(false);
+  const automapVisitedRef = useRef({});
   const stateRef = useRef(null);
   const [state, setState] = useState(null);
   const [selectedMemberId, setSelectedMemberId] = useState('matthias');
@@ -201,6 +206,9 @@ export default function ChroniclesOfMatthias({ onExit }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [automapOpen, setAutomapOpen] = useState(false);
   const [spellMenuOpen, setSpellMenuOpen] = useState(false);
+  const [saveBusy, setSaveBusy] = useState(false);
+  const [saveNotice, setSaveNotice] = useState('');
+  const [confirmExitWithoutSaving, setConfirmExitWithoutSaving] = useState(false);
   const [audience, setAudience] = useState(null);
   const audienceRef = useRef(null);
   const [automapVisitedByMap, setAutomapVisitedByMap] = useState({});
@@ -249,11 +257,10 @@ export default function ChroniclesOfMatthias({ onExit }) {
     setAutomapVisitedByMap((visited) => chroniclesAutomapMarkSeen(visited, chroniclesMapForState(state), state));
   }, [state?.mapId, state?.x, state?.y]);
 
+  // Map reveal is session-only until an explicit save or area transition.
   useEffect(() => {
-    const runId = activeRunIdRef.current;
-    if (!ready || !runId) return;
-    saveChroniclesAutomapVisited(runId, automapVisitedByMap);
-  }, [automapVisitedByMap, ready]);
+    automapVisitedRef.current = automapVisitedByMap;
+  }, [automapVisitedByMap]);
 
   useEffect(() => {
     const html = document.documentElement;
@@ -425,10 +432,10 @@ export default function ChroniclesOfMatthias({ onExit }) {
       },
     );
     if (progressResult.awards.length || progressResult.levelUps.length) {
-      const saved = saveChroniclesProgression(progressResult.progression);
-      progressionRef.current = saved;
-      setProgression(saved);
-      next = reconcileChroniclesProgressionInTacticsState(next, saved);
+      // XP and attribute gains remain in this session until Save / area exit.
+      progressionRef.current = progressResult.progression;
+      setProgression(progressResult.progression);
+      next = reconcileChroniclesProgressionInTacticsState(next, progressResult.progression);
     }
 
     playChroniclesActionSound(current, next, action);
@@ -556,12 +563,12 @@ export default function ChroniclesOfMatthias({ onExit }) {
   }, [dispatch]);
 
   const applyLiveProgression = useCallback((nextProgression) => {
-    const saved = saveChroniclesProgression(nextProgression);
-    progressionRef.current = saved;
-    setProgression(saved);
+    // Character-sheet spending is also part of the player's next saved game.
+    progressionRef.current = nextProgression;
+    setProgression(nextProgression);
     const current = stateRef.current;
     if (!current) return;
-    const reconciled = reconcileChroniclesProgressionInTacticsState(current, saved);
+    const reconciled = reconcileChroniclesProgressionInTacticsState(current, nextProgression);
     stateRef.current = reconciled;
     setState(reconciled);
   }, []);
@@ -599,6 +606,8 @@ export default function ChroniclesOfMatthias({ onExit }) {
     authoritativeRunRef.current = null;
     checkpointFingerprintRef.current = '';
     checkpointQueueRef.current = Promise.resolve();
+    checkpointMapRef.current = null;
+    checkpointExistsRef.current = false;
     stateRef.current = null;
     setState(null);
     setSelectedMemberId('matthias');
@@ -682,9 +691,11 @@ export default function ChroniclesOfMatthias({ onExit }) {
         };
         authoritativeRunRef.current = world;
         chroniclesMarkSavedRunRemote(FIRST_PERSON_RUN_SCOPE, operationId);
-        // Compare against the server snapshot so the new commission is written
-        // immediately and survives F5 even before the first movement.
+        // Record the authoritative bootstrap as our comparison baseline.
+        // New runs have no durable checkpoint until an explicit Save or area exit.
         checkpointFingerprintRef.current = chroniclesRunCheckpointFingerprint(restored);
+        checkpointMapRef.current = next.mapId;
+        checkpointExistsRef.current = remoteSelection || Number(world.worldVersion || 0) > 0;
         setAutomapVisitedByMap(loadChroniclesAutomapVisited(operationId));
         stateRef.current = next;
         staleRunRecoveryAttemptedRef.current = false;
@@ -756,38 +767,92 @@ export default function ChroniclesOfMatthias({ onExit }) {
 
   useEffect(() => { engineRef.current?.renderState(state); }, [state]);
 
-  useEffect(() => {
-    const run = authoritativeRunRef.current;
-    if (!ready || !state || !run?.runId) return;
-    const fingerprint = chroniclesRunCheckpointFingerprint(state);
-    if (!fingerprint || fingerprint === checkpointFingerprintRef.current) return;
-    checkpointFingerprintRef.current = fingerprint;
-    const snapshot = state;
-    const scheduledRunId = run.runId;
-
-    checkpointQueueRef.current = checkpointQueueRef.current
-      .catch(() => undefined)
-      .then(async () => {
-        const currentRun = authoritativeRunRef.current;
-        if (!currentRun?.runId || currentRun.runId !== scheduledRunId) return;
+  const persistCheckpoint = useCallback((snapshot, reason = 'manual') => {
+    const requestedRunId = authoritativeRunRef.current?.runId;
+    if (!snapshot || !requestedRunId) return Promise.resolve(false);
+    const fingerprint = chroniclesRunCheckpointFingerprint(snapshot);
+    if (!fingerprint) return Promise.resolve(false);
+    // Capture the progression and visited tiles at precisely this snapshot,
+    // not later play while an earlier area checkpoint is still in flight.
+    const stagedProgression = progressionRef.current;
+    const visited = chroniclesAutomapMarkSeen(
+      automapVisitedRef.current, chroniclesMapForState(snapshot), snapshot,
+    );
+    checkpointPendingRef.current += 1;
+    setSaveBusy(true);
+    setSaveNotice('');
+    const request = checkpointQueueRef.current.catch(() => undefined).then(async () => {
+      const currentRun = authoritativeRunRef.current;
+      if (!currentRun?.runId || currentRun.runId !== requestedRunId) return false;
+      // A pristine first-person run must still write its *first* checkpoint.
+      // Equal fingerprints only permit skipping a write if a durable
+      // authoritative world snapshot already exists.
+      if (!checkpointExistsRef.current || fingerprint !== checkpointFingerprintRef.current) {
         const updated = await chroniclesCheckpointState(
-          scheduledRunId,
-          snapshot,
-          currentRun.worldVersion,
+          requestedRunId, snapshot, currentRun.worldVersion,
           { terminalStatus: snapshot.phase === 'escaped' ? 'completed' : null },
         );
-        if (authoritativeRunRef.current?.runId !== scheduledRunId) return;
+        if (authoritativeRunRef.current?.runId !== requestedRunId) return false;
         authoritativeRunRef.current = { ...currentRun, ...updated };
-        chroniclesNoteSavedRunCheckpoint(FIRST_PERSON_RUN_SCOPE, scheduledRunId, snapshot.mapId);
-      })
-      .catch((error) => {
-        console.error('Chronicles checkpoint failed', error);
-        if (error?.status === 409) {
-          setReady(false);
-          setBootstrapError(error);
-        }
-      });
-  }, [ready, state]);
+        checkpointFingerprintRef.current = fingerprint;
+      }
+      // The remote run commit must succeed before profile and automap progress
+      // become durable; failures leave both staged for a later manual retry.
+      checkpointExistsRef.current = true;
+      saveChroniclesAutomapVisited(requestedRunId, visited);
+      saveChroniclesProgression(stagedProgression);
+      chroniclesNoteSavedRunCheckpoint(FIRST_PERSON_RUN_SCOPE, requestedRunId, snapshot.mapId);
+      if (reason === 'manual') setSaveNotice('Partida guardada correctamente.');
+      return true;
+    }).catch((error) => {
+      console.error('Chronicles checkpoint failed', error);
+      setSaveNotice('No se pudo guardar la partida. Reinténtalo antes de salir.');
+      if (error?.status === 409) {
+        setReady(false);
+        setBootstrapError(error);
+      }
+      return false;
+    }).finally(() => {
+      checkpointPendingRef.current = Math.max(0, checkpointPendingRef.current - 1);
+      if (checkpointPendingRef.current === 0) setSaveBusy(false);
+    });
+    checkpointQueueRef.current = request;
+    return request;
+  }, []);
+
+  // No per-move/per-attack/per-dialogue autosave. Transitioning to another
+  // map is the only automatic checkpoint, per the MM3 save contract.
+  useEffect(() => {
+    if (!ready || !state?.mapId) return;
+    const previousMapId = checkpointMapRef.current;
+    checkpointMapRef.current = state.mapId;
+    if (chroniclesCheckpointReason(previousMapId, state.mapId) === 'area-change') {
+      void persistCheckpoint(state, 'area-change');
+    }
+  }, [ready, state?.mapId, persistCheckpoint]);
+
+  const saveAndExit = useCallback(async () => {
+    if (saveBusy) return;
+    const saved = await persistCheckpoint(stateRef.current, 'manual');
+    if (saved) exitChronicles();
+  }, [exitChronicles, persistCheckpoint, saveBusy]);
+
+  const discardAndExit = useCallback(async () => {
+    // Never discard a legitimate previous area checkpoint mid-flight.
+    await checkpointQueueRef.current.catch(() => undefined);
+    if (!checkpointExistsRef.current && activeRunIdRef.current) {
+      const runId = activeRunIdRef.current;
+      try {
+        await chroniclesDeleteRemoteRun(runId);
+        chroniclesForgetSavedRun(FIRST_PERSON_RUN_SCOPE, runId);
+      } catch {
+        setSaveNotice('No se ha podido descartar la expedición nueva. Vuelve a intentarlo.');
+        setConfirmExitWithoutSaving(false);
+        return;
+      }
+    }
+    exitChronicles();
+  }, [exitChronicles]);
 
   useEffect(() => {
     if (!ready || !stateRef.current) return undefined;
@@ -878,6 +943,11 @@ export default function ChroniclesOfMatthias({ onExit }) {
       stateRef.current = null;
       activeRunIdRef.current = null;
       authoritativeRunRef.current = null;
+      checkpointMapRef.current = null;
+      checkpointExistsRef.current = false;
+      const durableProgression = loadChroniclesProgression();
+      progressionRef.current = durableProgression;
+      setProgression(durableProgression);
       setState(null);
       setReady(false);
       setBootstrapError(null);
@@ -1084,11 +1154,26 @@ export default function ChroniclesOfMatthias({ onExit }) {
               </summary>
               <div className="chronicles-game-menu__panel">
                 <strong>Chronicles of Matthias</strong>
-                <small>Salir conserva esta run. Nueva expedición crea otra ruta aleatoria.</small>
-                <button type="button" onClick={() => setMenuOpen(false)}>Continuar</button>
-                <button type="button" onClick={newExpedition}>Nueva expedición</button>
-                <button type="button" onClick={returnToSaveMenu}>Partidas guardadas</button>
-                <button type="button" onClick={exitChronicles}>Salir y guardar</button>
+                <small>Guardado manual · checkpoint automático al cambiar de área.</small>
+                {saveNotice && <small role="status">{saveNotice}</small>}
+                <button type="button" onClick={() => { setMenuOpen(false); setConfirmExitWithoutSaving(false); }}>Continuar</button>
+                <button type="button" onClick={() => void persistCheckpoint(stateRef.current, 'manual')} disabled={saveBusy}>
+                  {saveBusy ? 'Guardando…' : 'Guardar partida'}
+                </button>
+                <button type="button" onClick={newExpedition} disabled={saveBusy}>Nueva expedición</button>
+                <button type="button" onClick={returnToSaveMenu} disabled={saveBusy}>Partidas guardadas</button>
+                <button type="button" onClick={() => void saveAndExit()} disabled={saveBusy}>Salir y guardar</button>
+                {!confirmExitWithoutSaving ? (
+                  <button type="button" onClick={() => setConfirmExitWithoutSaving(true)} disabled={saveBusy}>
+                    Salir sin guardar
+                  </button>
+                ) : (
+                  <div role="group" aria-label="Confirmar salida sin guardar">
+                    <small>Perderás lo jugado desde el último guardado o cambio de área.</small>
+                    <button type="button" onClick={() => void discardAndExit()} disabled={saveBusy}>Sí, salir sin guardar</button>
+                    <button type="button" onClick={() => setConfirmExitWithoutSaving(false)}>Cancelar</button>
+                  </div>
+                )}
               </div>
             </details>
           </div>

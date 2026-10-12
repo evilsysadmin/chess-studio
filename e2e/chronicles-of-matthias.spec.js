@@ -35,6 +35,37 @@ async function openChronicles(page, options = {}) {
   await expect(page.locator('[data-chronicles="true"]')).toBeVisible();
 }
 
+test('Chronicles · primera partida sólo se escribe al guardar y Salir sin guardar no escribe otra', async ({ page }) => {
+  test.setTimeout(180_000);
+  const checkpointRequests = [];
+  page.on('request', (request) => {
+    if (request.method() !== 'PUT') return;
+    const requestPath = new URL(request.url()).pathname;
+    if (requestPath.includes('/api/chronicles/runs/') && requestPath.endsWith('/checkpoint')) {
+      checkpointRequests.push(request.postDataJSON());
+    }
+  });
+  await openChronicles(page, { chroniclesCurrentMapId: 'swordhaven-first-book', newTown: true, newCampaign: true });
+  const mode = page.locator('[data-chronicles="true"]');
+  await expect(mode).toHaveAttribute('data-chronicles-map-id', 'swordhaven-first-book');
+  expect(checkpointRequests, 'bootstrap must not autosave').toHaveLength(0);
+  await page.keyboard.press('Escape');
+  const menu = mode.locator('.chronicles-game-menu');
+  await expect(menu).toHaveAttribute('open', '');
+  await menu.getByRole('button', { name: 'Guardar partida', exact: true }).click();
+  await expect(menu.getByText('Partida guardada correctamente.')).toBeVisible();
+  expect(checkpointRequests, 'first manual Save must commit an authoritative checkpoint').toHaveLength(1);
+  await menu.getByRole('button', { name: 'Continuar', exact: true }).click();
+  await page.keyboard.press('a');
+  await page.keyboard.press('a');
+  expect(checkpointRequests, 'turning in the same area must not autosave').toHaveLength(1);
+  await page.keyboard.press('Escape');
+  await menu.getByRole('button', { name: 'Salir sin guardar', exact: true }).click();
+  await menu.getByRole('button', { name: 'Sí, salir sin guardar', exact: true }).click();
+  await expect(mode).toHaveCount(0);
+  expect(checkpointRequests, 'discarding must not checkpoint unsaved movement').toHaveLength(1);
+});
+
 test('Chronicles · nueva campaña crea una partida versionada de Swordhaven sin tocar el juego clásico', async ({ page }) => {
   test.setTimeout(180_000);
   const creationBodies = [];

@@ -1122,3 +1122,36 @@ for (const capture of CAPTURES) {
     }
   });
 }
+
+test('Chronicles · MM3 manual save menu · responsive Android 390px', async ({ browser }) => {
+  test.setTimeout(300_000);
+  await mkdir(ARTIFACT_DIR, { recursive: true });
+  const context = await browser.newContext({
+    viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true,
+  });
+  const page = await context.newPage();
+  try {
+    await openChronicles(page, 'manual-save-menu-android', {
+      newTown: true, newCampaign: true, chroniclesCurrentMapId: 'swordhaven-first-book',
+    });
+    const game = page.locator('[data-chronicles="true"]');
+    const menu = game.locator('.chronicles-game-menu');
+    await menu.locator('summary').click();
+    await expect(menu).toHaveAttribute('open', '');
+    await expect(menu.getByRole('button', { name: 'Guardar partida', exact: true })).toBeVisible();
+    await expect(menu.getByRole('button', { name: 'Salir y guardar', exact: true })).toBeVisible();
+    await menu.getByRole('button', { name: 'Salir sin guardar', exact: true }).click();
+    const confirm = menu.getByRole('button', { name: 'Sí, salir sin guardar', exact: true });
+    await expect(confirm).toBeVisible();
+    const bounds = await confirm.boundingBox();
+    expect(bounds, 'confirm discard must be rendered').not.toBeNull();
+    expect(bounds.y + bounds.height, 'discard confirmation must be reachable without page scroll')
+      .toBeLessThanOrEqual(844);
+    await page.screenshot({
+      path: `${ARTIFACT_DIR}/chronicles-mm3-manual-save-menu-android-390x844.png`,
+      animations: 'disabled', timeout: 60_000,
+    });
+  } finally {
+    await context.close();
+  }
+});
