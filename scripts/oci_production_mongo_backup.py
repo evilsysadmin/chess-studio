@@ -158,14 +158,16 @@ def self_test() -> None:
         Path(__file__).resolve().parents[1] / ".github/workflows/production-mongo-backup.yml"
     ).read_text(encoding="utf-8")
     for marker in (
-        "Wait for staging wrapper generation containing this SHA",
-        "/compare/$GITHUB_SHA...$served_sha",
+        "Wait for staging generation containing latest backup wrapper source",
+        "/commits?path=scripts/oci_production_mongo_backup.sh&sha=$GITHUB_SHA&per_page=1",
+        "/compare/$wrapper_sha...$served_sha",
         '[[ "$compare_status" == "ahead" || "$compare_status" == "identical" ]]',
-        "which contains backup wrapper change $GITHUB_SHA",
+        "which contains backup wrapper change $wrapper_sha",
         "curl --fail --silent --show-error --max-time 10",
         "| jq -r '.build // empty'",
     ):
         assert marker in workflow_source, marker
+    assert "/compare/$GITHUB_SHA...$served_sha" not in workflow_source
     assert "Wait for exact staging wrapper generation" not in workflow_source
     assert "<<'PY'" not in workflow_source
 
