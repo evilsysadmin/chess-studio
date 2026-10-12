@@ -1,3 +1,4 @@
+import { request } from './http.js';
 import {
   CHESSCOM_SPRITE_BANK_V34,
   chesscomScreenFacingV34,
@@ -111,11 +112,11 @@ export function installChesscomSvenAtlasV35(B,scene,{host,search='',loadManifest
     plane.setEnabled(alive);
   };
 
-  const fetchJson=loadManifest||((url,signal)=>fetch(url,{signal,cache:'no-store'}).then(r=>{
+  const fetchJson=loadManifest||((url,signal)=>request(url,{signal,cache:'no-store'}).then(r=>{
     if(!r.ok)throw new Error('Missing sprite bank manifest');
     return r.json();
   }));
-  const fetchBytes=loadAtlasBytes||((url,signal)=>fetch(url,{signal,cache:'no-store'}).then(r=>{
+  const fetchBytes=loadAtlasBytes||((url,signal)=>request(url,{signal,cache:'no-store'}).then(r=>{
     if(!r.ok)throw new Error('Missing sprite bank atlas');
     return r.arrayBuffer();
   }));
