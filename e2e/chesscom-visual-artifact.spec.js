@@ -24,12 +24,23 @@ async function openChesscom(page) {
   await dismissGuide(page);
   const moreModes = await openMoreGameModes(page);
   await moreModes.getByRole('button').filter({ hasText: 'Experimentos geniales' }).click();
+  await page.evaluate(() => window.history.replaceState(null, '', window.location.pathname + '?chesscomSven=sprite'));
   await page.getByRole('button', { name: /Chesscom/ }).click();
   await expect(page.getByRole('heading', { name: 'CHESSCOM', exact: true })).toBeVisible();
 
   const mode = page.locator('[data-chesscom-poc="true"][data-chesscom-renderer="babylon"]');
   const host = mode.locator('.chesscom-babylon-host');
   await expect(host.locator('canvas')).toBeVisible({ timeout: 30_000 });
+  await expect(host).toHaveAttribute('data-chesscom-sven-sprite','ready',{timeout:30_000});
+  await expect.poll(() => host.evaluate(() => {
+    const B=window.BABYLON;
+    const m=B?.EngineStore?.LastCreatedScene?.getMeshByName?.('chesscom-sven-sprite-v33');
+    return Boolean(m&&m.parent?.name==='unit-sven'&&m.metadata?.type==='unit'
+      &&m.metadata?.id==='sven'&&m.billboardMode===B.Mesh.BILLBOARDMODE_ALL
+      &&m.material?.emissiveTexture===m.material?.diffuseTexture
+      &&m.material?.emissiveColor?.r>=1);
+  })).toBe(true);
+
   await expect(mode.getByText('BABYLON · ERROR', { exact: true })).toHaveCount(0);
   await expect.poll(() => host.getAttribute('data-chesscom-render-scale')).not.toBeNull();
   return { mode, host };
