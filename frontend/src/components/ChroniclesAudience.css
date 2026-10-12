@@ -6,13 +6,15 @@
   grid-template-areas:
     'scene head'
     'scene dialogue';
-  width: min(860px, 100%);
-  height: min(570px, calc(100dvh - 24px));
+  /* Four numbered answers should fit without hiding the last behind a scroll.
+     The decorative MM3 frame stays inside these viewport-safe bounds. */
+  width: min(960px, 100%);
+  height: min(700px, calc(100dvh - 52px));
   gap: 10px 12px;
 }
 
 .chronicles-audience__head {
-  min-height: 118px;
+  min-height: 108px;
   align-content: center;
 }
 
@@ -48,8 +50,8 @@
   min-height: 0;
   display: flex;
   flex-direction: column;
-  gap: 13px;
-  padding: clamp(12px, 2vw, 20px);
+  gap: 9px;
+  padding: clamp(10px, 1.4vw, 16px);
   overflow-y: auto;
   border: 2px solid;
   border-color: var(--mm3-lo) var(--mm3-hi) var(--mm3-hi) var(--mm3-lo);
@@ -74,13 +76,13 @@
 
 .chronicles-audience__actions {
   display: grid;
-  gap: 9px;
+  gap: 6px;
   margin-top: auto;
 }
 
 .chronicles-audience__actions button {
-  min-height: 48px;
-  padding: 9px 12px;
+  min-height: 44px;
+  padding: 8px 10px;
   border: 2px solid;
   border-color: #ffeec2 #6b4510 #6b4510 #ffeec2;
   background: #e3b45c var(--mm3-stone) 0 0 / 128px 128px;
@@ -103,11 +105,12 @@
 @media (max-width: 680px) {
   .chronicles-audience.chronicles-shop {
     grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: minmax(130px, 31dvh) auto minmax(0, 1fr);
+    /* Portrait art is secondary to the conversation and four choices. */
+    grid-template-rows: minmax(108px, 19dvh) auto minmax(0, 1fr);
     grid-template-areas: 'scene' 'head' 'dialogue';
-    height: calc(100dvh - 18px);
+    height: calc(100dvh - 24px);
     gap: 7px;
-    padding: 20px;
+    padding: 19px;
   }
 
   .chronicles-audience__head {
@@ -122,14 +125,17 @@
   .chronicles-audience__head h2 { margin-bottom: 1px; }
 
   .chronicles-audience__dialogue {
-    padding: 12px;
-    gap: 9px;
+    padding: 10px;
+    gap: 7px;
   }
 
   .chronicles-audience__dialogue p {
-    font-size: .93rem;
-    line-height: 1.42;
+    font-size: .91rem;
+    line-height: 1.36;
   }
+
+  .chronicles-audience__actions { gap: 5px; }
+  .chronicles-audience__actions button { min-height: 44px; padding: 6px 8px; }
 }
 
 @media (max-height: 560px) and (orientation: landscape) {

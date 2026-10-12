@@ -459,6 +459,35 @@ test('Chronicles · First Book equipment sheet · actual Android 390px', async (
   }
 });
 
+
+async function expectAllMayorChoicesInView(audience, viewport) {
+  const fit = await audience.evaluate((dialog) => {
+    const box = dialog.getBoundingClientRect();
+    const dialogue = dialog.querySelector('.chronicles-audience__dialogue');
+    const panel = dialogue.getBoundingClientRect();
+    const buttons = [...dialog.querySelectorAll('[data-chronicles-dialogue-choice]')];
+    const first = buttons[0]?.getBoundingClientRect();
+    const last = buttons.at(-1)?.getBoundingClientRect();
+    return {
+      dialogTop: box.top, dialogBottom: box.bottom,
+      panelBottom: panel.bottom, panelScrollHeight: dialogue.scrollHeight,
+      panelClientHeight: dialogue.clientHeight,
+      firstTop: first?.top ?? -1, lastBottom: last?.bottom ?? -1,
+      lastHeight: last?.height ?? 0, count: buttons.length,
+    };
+  });
+  expect(fit.count, viewport + ': all four numbered responses exist').toBe(4);
+  expect(fit.dialogTop, viewport + ': frame top within viewport').toBeGreaterThanOrEqual(0);
+  expect(fit.dialogBottom, viewport + ': frame bottom within viewport')
+    .toBeLessThanOrEqual(Number(viewport.split('x')[1]) + 1);
+  expect(fit.panelScrollHeight, viewport + ': no hidden fourth choice in panel scroll')
+    .toBeLessThanOrEqual(fit.panelClientHeight + 2);
+  expect(fit.firstTop, viewport + ': first choice visible').toBeGreaterThanOrEqual(0);
+  expect(fit.lastBottom, viewport + ': last response inside dialogue panel')
+    .toBeLessThanOrEqual(fit.panelBottom - 1);
+  expect(fit.lastHeight, viewport + ': last choice touch target').toBeGreaterThanOrEqual(44);
+}
+
 test('Chronicles · MM3 Alcalde Aldric · entrar en ayuntamiento y diálogo numerado Android', async ({ browser }) => {
   test.setTimeout(300_000);
   await mkdir(ARTIFACT_DIR, { recursive: true });
@@ -483,6 +512,7 @@ test('Chronicles · MM3 Alcalde Aldric · entrar en ayuntamiento y diálogo nume
     await expect(audience.locator('[data-chronicles-dialogue-choice]')).toHaveCount(4);
     await page.keyboard.press('w');
     await expect(game).toHaveAttribute('data-chronicles-turns', turns);
+    await expectAllMayorChoicesInView(audience, '390x844');
     await page.screenshot({
       path: `${ARTIFACT_DIR}/chronicles-alcalde-dialogue-android-390x844.png`,
       animations: 'disabled', timeout: 60_000,
@@ -494,6 +524,31 @@ test('Chronicles · MM3 Alcalde Aldric · entrar en ayuntamiento y diálogo nume
     await expect(audience.locator('[data-chronicles-dialogue-choice="quest"]')).toHaveCount(0);
     await page.keyboard.press('Escape');
     await expect(audience).toHaveCount(0);
+  } finally {
+    await context.close();
+  }
+});
+
+test('Chronicles · alcalde MM3 · cuatro respuestas sin scroll desktop 1280x720', async ({ browser }) => {
+  test.setTimeout(300_000);
+  await mkdir(ARTIFACT_DIR, { recursive: true });
+  const context = await browser.newContext({ viewport: { width: 1280, height: 720 } });
+  const page = await context.newPage();
+  try {
+    await openChronicles(page, 'mayor-audience-desktop-1280x720', {
+      newTown: true, newCampaign: true, chroniclesCurrentMapId: 'swordhaven-first-book',
+    });
+    const game = page.locator('[data-chronicles="true"]');
+    await expect(game).toHaveAttribute('data-chronicles-map-id', 'swordhaven-first-book');
+    for (const key of ['d', 'w', 'w', 'd', 'w', 'w', 'w']) await page.keyboard.press(key);
+    await page.keyboard.press('w');
+    const audience = page.getByRole('dialog', { name: 'Conversación con Alcalde Aldric' });
+    await expect(audience).toBeVisible({ timeout: 15_000 });
+    await expectAllMayorChoicesInView(audience, '1280x720');
+    await page.screenshot({
+      path: `${ARTIFACT_DIR}/chronicles-alcalde-dialogue-desktop-1280x720.png`,
+      animations: 'disabled', timeout: 60_000,
+    });
   } finally {
     await context.close();
   }
