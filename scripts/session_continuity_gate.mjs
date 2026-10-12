@@ -39,7 +39,8 @@ requireText(main, '<AppRootErrorBoundary>', 'App debe quedar bajo el ErrorBounda
 requireText(app, 'useActiveSessionRestore({', 'App debe conservar restauración de sesión activa');
 requireText(app, 'useActiveGameSessionPersistence({', 'App debe conservar persistencia de sesión activa');
 requireText(app, 'useGameReconnect({', 'App debe conservar reconciliación tras reconexión');
-requireText(app, '<ReleaseUpdateNotice deferReload={isBoardGameView} />', 'deploy/update debe diferir reload mientras hay tablero activo');
+requireText(app, '<ReleaseUpdateNotice deferReload={shouldDeferReleaseReload(view, { combatBattleUiActive })} />', 'deploy/update debe diferir reload en todos los modos activos');
+requireText(read('frontend/src/releaseContinuity.js'), "return view !== 'menu' || combatBattleUiActive;", 'todos los modos deben protegerse frente a actualizar durante el juego');
 requireText(app, 'Reintentar recuperación', 'ruta de partida sin modelo cargado debe ofrecer reintento explícito');
 requireText(app, 'La partida sigue guardada.', 'ruta de recuperación debe tranquilizar sin saltar a Home');
 requireText(outcome, "if (!explicitAction && recoverableSession) return 'resume';", 'reload/cierre recuperable no puede convertirse en rendición');

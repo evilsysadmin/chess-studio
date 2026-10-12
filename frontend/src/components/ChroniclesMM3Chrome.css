@@ -1,0 +1,918 @@
+/* Chronicles · MM3 chrome.
+   Carved grey stone around the first-person view, a ruby at each corner,
+   the company as a portrait strip with HP/SP gems under the view, and a stone
+   control panel on the right with engraved buttons — the early-90s VGA RPG
+   layout. Pixel art comes from scripts/art/build_chronicles_mm3_ui.py and is
+   always scaled by whole factors with nearest-neighbour. */
+
+/* VT323 (SIL OFL 1.1, see assets/chronicles/ui/fonts) stands in for MM3's
+   bitmap lettering: messages, combat list and plaques. */
+@font-face {
+  font-family: 'Chronicles Pixel';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('../assets/chronicles/ui/fonts/vt323-latin-400-normal.woff2') format('woff2');
+}
+
+:root {
+  --mm3-sapphire: url('../assets/chronicles/ui/mm3-sapphire.png');
+  --mm3-pixel-font: 'Chronicles Pixel', 'Trebuchet MS', sans-serif;
+  --mm3-stone: url('../assets/chronicles/ui/mm3-stone.png');
+  --mm3-sand: url('../assets/chronicles/ui/mm3-sandstone.png');
+  --mm3-frame: url('../assets/chronicles/ui/mm3-frame.png');
+  --mm3-gem: url('../assets/chronicles/ui/mm3-gem.png');
+  --mm3-ink: #0c0c0e;
+  --mm3-hi: #f4f4f2;
+  --mm3-lo: #47474e;
+}
+
+/* The MM3 screen is a light-stone palette by design. Browsers with a forced
+   «night mode» (Brave, Chrome auto dark theme) would lighten its dark ink
+   on the stone until it disappears, so Chronicles opts out explicitly. The
+   sheet is portalled outside the game root, hence its own selector. */
+.chronicles,
+.chronicles-character-sheet__backdrop,
+.chronicles-shop__backdrop {
+  color-scheme: only light;
+}
+
+/* HP/SP gems under each portrait: green life, blue spell points. */
+.chronicles .chronicles-party-bars {
+  display: none;
+}
+.chronicles .chronicles-party-bars i {
+  display: block;
+  height: 6px;
+  border: 1px solid #111;
+  background:
+    linear-gradient(90deg, var(--bar) calc(var(--fill) * 100%), #1b1b1e calc(var(--fill) * 100%));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .35);
+}
+.chronicles .chronicles-party-bars .is-hp { --bar: #3cc63f; }
+.chronicles .chronicles-party-bars[data-band='hurt'] .is-hp { --bar: #e8d23a; }
+.chronicles .chronicles-party-bars[data-band='critical'] .is-hp { --bar: #e2382c; }
+.chronicles .chronicles-party-bars .is-sp { --bar: #4f8df0; }
+
+/* Engraved stone button: grey slab, bevelled, dark carved glyph. */
+.chronicles .chronicles-touch button,
+.chronicles .chronicles-statusbar .chronicles-map-trigger,
+.chronicles .chronicles-game-menu > summary {
+  border: 2px solid;
+  border-color: var(--mm3-hi) var(--mm3-lo) var(--mm3-lo) var(--mm3-hi);
+  border-radius: 0;
+  background: #9d9da2 var(--mm3-stone) 0 0 / 128px 128px;
+  image-rendering: pixelated;
+  color: var(--mm3-ink);
+  text-shadow: 1px 1px 0 rgba(255, 255, 255, .3);
+  box-shadow: 0 0 0 1px #141416, 0 3px 0 rgba(0, 0, 0, .35);
+  backdrop-filter: none;
+}
+.chronicles .chronicles-touch button small {
+  color: #141418;
+  font-weight: 700;
+}
+.chronicles .chronicles-touch button:hover,
+.chronicles .chronicles-touch button:focus-visible {
+  border-color: #fff var(--mm3-lo) var(--mm3-lo) #fff;
+  background-color: #b4b4b8;
+  background-blend-mode: luminosity;
+  outline: 2px solid #e9c25a;
+  outline-offset: 1px;
+}
+.chronicles .chronicles-touch button:active {
+  border-color: var(--mm3-lo) var(--mm3-hi) var(--mm3-hi) var(--mm3-lo);
+  transform: translateY(1px);
+  box-shadow: 0 0 0 1px #141416;
+}
+.chronicles .chronicles-touch button.is-attack {
+  border-color: #ffd6cc #5a1d16 #5a1d16 #ffd6cc;
+  background-color: #f0a596;
+  background-blend-mode: multiply;
+  color: #2a0905;
+}
+.chronicles .chronicles-touch button.is-attack small { color: #3b0f0a; }
+.chronicles .chronicles-touch button.is-magic {
+  border-color: #dfe8ff #1e2c5c #1e2c5c #dfe8ff;
+  background-color: #b4c6f4;
+  background-blend-mode: multiply;
+  color: #0b1433;
+}
+.chronicles .chronicles-touch button.is-magic small { color: #101c46; }
+.chronicles .chronicles-touch button.is-contextual {
+  border-color: #ffeec2 #6b4510 #6b4510 #ffeec2;
+  background-color: #e3b45c;
+  background-blend-mode: multiply;
+  color: #2c1a03;
+}
+.chronicles .chronicles-touch button.is-contextual small { color: #3a2304; }
+
+/* Map/menu captions and the mobile rotate key read as engraved too. */
+.chronicles .chronicles-statusbar .chronicles-map-trigger b,
+.chronicles .chronicles-game-menu > summary b,
+.chronicles .chronicles-statusbar .chronicles-map-trigger i {
+  color: inherit;
+}
+.chronicles .chronicles-landscape-trigger {
+  border: 2px solid;
+  border-color: var(--mm3-hi) var(--mm3-lo) var(--mm3-lo) var(--mm3-hi);
+  border-radius: 0;
+  background: #9d9da2 var(--mm3-stone) 0 0 / 128px 128px;
+  color: var(--mm3-ink);
+  backdrop-filter: none;
+}
+
+/* Minimap set in a carved stone bezel. */
+.chronicles .chronicles-minimap {
+  border: 3px solid;
+  border-color: var(--mm3-hi) var(--mm3-lo) var(--mm3-lo) var(--mm3-hi);
+  border-radius: 0;
+  box-shadow: 0 0 0 1px #141416, 0 6px 18px rgba(0, 0, 0, .4);
+}
+
+/* The narrator speaks from a sandstone tablet under a stone tab. */
+.chronicles .chronicles-dm-trigger {
+  border: 2px solid;
+  border-color: var(--mm3-hi) var(--mm3-lo) var(--mm3-lo) var(--mm3-hi);
+  border-radius: 0;
+  background: #9d9da2 var(--mm3-stone) 0 0 / 128px 128px;
+  image-rendering: pixelated;
+  box-shadow: 0 0 0 1px #141416, 0 4px 12px rgba(0, 0, 0, .35);
+  backdrop-filter: none;
+  color: var(--mm3-ink);
+  text-shadow: 1px 1px 0 rgba(255, 255, 255, .3);
+}
+.chronicles .chronicles-dm-sigil {
+  border: 0;
+  background: var(--mm3-gem) center / 22px 22px no-repeat;
+  color: transparent;
+}
+.chronicles .chronicles-dm-chevron { color: #141418; }
+.chronicles .chronicles-dm-panel {
+  border: 2px solid;
+  border-color: #f0c48a #5a2e12 #5a2e12 #f0c48a;
+  border-radius: 0;
+  background: #b87033 var(--mm3-sand) 0 0 / 64px 64px;
+  image-rendering: pixelated;
+  box-shadow: 0 0 0 1px #141416, 0 12px 30px rgba(0, 0, 0, .43);
+  backdrop-filter: none;
+}
+.chronicles .chronicles-dm-kicker { color: #4a250b; }
+.chronicles .chronicles-dm-panel p { color: #1f0f04; text-shadow: 1px 1px 0 rgba(255, 220, 170, .35); }
+.chronicles .chronicles-dm-quests { border-top-color: rgba(60, 28, 8, .4); }
+.chronicles .chronicles-dm-quests .chronicles-quest-log__quest {
+  border: 1px solid rgba(60, 28, 8, .45);
+  border-left: 3px solid #5a2e12;
+  background: rgba(255, 232, 196, .22);
+}
+.chronicles .chronicles-dm-quests .chronicles-quest-log__quest strong { color: #1f0f04; }
+.chronicles .chronicles-dm-quests .chronicles-quest-log__quest p { color: #3b1e08; }
+.chronicles .chronicles-dm-quests .chronicles-quest-log h3,
+.chronicles .chronicles-dm-quests .chronicles-quest-log__quest small { color: #4a250b; }
+
+/* Every playable hero uses the same dark stone slab. Selection is a golden
+   frame, never a different/lighter fill; the MM3 bitmap text stays readable. */
+.chronicles .chronicles-party-member {
+  border: 2px solid;
+  border-color: var(--mm3-hi) var(--mm3-lo) var(--mm3-lo) var(--mm3-hi);
+  border-radius: 0;
+  background: #5d5d65 var(--mm3-stone) 0 0 / 128px 128px;
+  background-blend-mode: multiply;
+  image-rendering: pixelated;
+  color: #f4f1e9;
+  box-shadow: 0 0 0 1px #141416;
+}
+.chronicles .chronicles-party-member strong { color: #f4f1e9; text-shadow: 1px 1px 0 rgba(0, 0, 0, .7); }
+.chronicles .chronicles-party-member small { color: #dddde5; }
+.chronicles .chronicles-party-member b { color: #b8edb3; }
+.chronicles .chronicles-party-member .chronicles-party-sp { color: #c6dfff; }
+.chronicles .chronicles-party-member.is-leader {
+  border-color: var(--mm3-hi) var(--mm3-lo) var(--mm3-lo) var(--mm3-hi);
+}
+.chronicles .chronicles-party-member.is-selected {
+  border-color: #fff1c4 #7a5512 #7a5512 #fff1c4;
+  box-shadow: 0 0 0 1px #141416, 0 0 0 3px #e9c25a;
+}
+.chronicles .chronicles-party-member:hover,
+.chronicles .chronicles-party-member:focus-visible {
+  border-color: #fff var(--mm3-lo) var(--mm3-lo) #fff;
+  outline: none;
+}
+/* Hireling places only exist in the wide MM3 strip. */
+.chronicles .chronicles-party-hireling { display: none; }
+.chronicles .chronicles-party .chronicles-party-glyph.has-authored-portrait {
+  border: 1px solid;
+  border-color: var(--mm3-lo) var(--mm3-hi) var(--mm3-hi) var(--mm3-lo);
+  border-radius: 0;
+  box-shadow: 0 0 0 1px #141416;
+}
+
+/* ─── Desktop / wide landscape: the full MM3 screen ─────────────────────── */
+@media (min-width: 1025px), (min-width: 801px) and (min-height: 601px) {
+  .chronicles .chronicles-shell {
+    grid-template-columns: minmax(0, 1fr) clamp(244px, 21vw, 304px);
+    grid-template-rows: auto auto auto auto auto minmax(0, 1fr) auto;
+    grid-template-areas:
+      'view map'
+      'view touch'
+      'view status'
+      'view journal'
+      'view help'
+      'view .'
+      'party party';
+    gap: 10px 12px;
+    padding: 10px 12px 12px;
+    /* The big stone surface is toned down so the view stays the focus. */
+    background: #a3a3a8 var(--mm3-stone) 0 0 / 128px 128px;
+    background-blend-mode: multiply;
+    image-rendering: pixelated;
+  }
+
+  /* The stage column dissolves so its pieces sit in the MM3 panels. */
+  .chronicles .chronicles-stage-wrap {
+    display: contents;
+  }
+
+  .chronicles .chronicles-stage {
+    grid-area: view;
+    border: 32px solid transparent;
+    border-image: var(--mm3-frame) 16 / 32px round;
+    box-shadow: 0 6px 0 rgba(0, 0, 0, .35);
+    background: #050403;
+  }
+  .chronicles .chronicles-stage::before {
+    inset: 0;
+    border: 2px solid #141416;
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .08), inset 0 0 22px rgba(0, 0, 0, .28);
+  }
+  /* Four rubies set in the frame corners. */
+  .chronicles .chronicles-shell::after {
+    content: '';
+    grid-area: view;
+    z-index: 6;
+    margin: -2px;
+    pointer-events: none;
+    background:
+      var(--mm3-gem) left top / 28px 28px no-repeat,
+      var(--mm3-gem) right top / 28px 28px no-repeat,
+      var(--mm3-gem) left bottom / 28px 28px no-repeat,
+      var(--mm3-gem) right bottom / 28px 28px no-repeat,
+      var(--mm3-sapphire) center bottom 2px / 84px 54px no-repeat;
+    image-rendering: pixelated;
+  }
+
+  /* Portrait strip under the view. */
+  .chronicles .chronicles-party {
+    grid-area: party;
+    height: auto;
+    flex-direction: row;
+    align-items: stretch;
+    gap: 10px;
+    padding: 0;
+    overflow: visible;
+    border: 0;
+    background: none;
+    box-shadow: none;
+  }
+  .chronicles .chronicles-party::before,
+  .chronicles .chronicles-party .chronicles-panel-kicker {
+    display: none;
+  }
+
+  /* MM3 has no big portrait in the panel: the faces in the strip are it. */
+  .chronicles .chronicles-party-preview { display: none; }
+  .chronicles .chronicles-party-member {
+    flex: 1 1 0;
+    min-width: 0;
+    grid-template-columns: 58px minmax(0, 1fr);
+    grid-template-rows: auto auto auto;
+    grid-template-areas:
+      'portrait name'
+      'portrait stats'
+      'bars bars';
+    gap: 3px 9px;
+    padding: 6px 7px 7px;
+  }
+  .chronicles .chronicles-party-member > .chronicles-party-glyph { grid-area: portrait; width: 58px; height: 58px; border-width: 2px; }
+  .chronicles .chronicles-party-member > span:nth-child(2) { grid-area: name; justify-content: flex-end; }
+  .chronicles .chronicles-party-member > b {
+    grid-area: stats;
+    flex-direction: row;
+    justify-content: flex-start;
+    align-items: baseline;
+    gap: 8px;
+    font-size: .74rem;
+  }
+  .chronicles .chronicles-party-member .chronicles-party-bars {
+    grid-area: bars;
+    display: grid;
+    gap: 2px;
+  }
+
+  /* Right control panel: title plaque, location, engraved buttons. */
+  .chronicles .chronicles-statusbar {
+    grid-area: status;
+    min-height: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+    border: 0;
+    background: none;
+    box-shadow: none;
+  }
+  .chronicles .chronicles-statusbar::before {
+    content: 'Chronicles of Matthias';
+    grid-column: 1 / -1;
+    padding: 12px 8px 10px;
+    border: 2px solid;
+    border-color: var(--mm3-hi) var(--mm3-lo) var(--mm3-lo) var(--mm3-hi);
+    background: #a3a3a8 var(--mm3-stone) 0 0 / 128px 128px;
+    box-shadow: 0 0 0 1px #141416;
+    color: #0c0c0e;
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: clamp(1.15rem, 1.6vw, 1.5rem);
+    font-style: italic;
+    font-weight: 700;
+    line-height: 1.05;
+    text-align: center;
+    text-shadow: 1px 1px 0 rgba(255, 255, 255, .35);
+  }
+  .chronicles .chronicles-statusbar > span {
+    padding: 6px 8px;
+    border: 2px solid;
+    border-color: var(--mm3-lo) var(--mm3-hi) var(--mm3-hi) var(--mm3-lo);
+    background: #1a1a1e;
+    color: #d2d2d8;
+  }
+  .chronicles .chronicles-statusbar > span:first-child { padding-left: 8px; }
+  .chronicles .chronicles-statusbar > span:last-child { border-right: 2px solid var(--mm3-hi); }
+  .chronicles .chronicles-statusbar > span b { color: #f2e6c4; }
+  .chronicles .chronicles-statusbar > span:nth-child(4) { grid-column: 1 / -1; }
+  .chronicles .chronicles-statusbar > span:nth-child(4) b { white-space: nowrap; }
+  .chronicles .chronicles-statusbar .chronicles-map-trigger,
+  .chronicles .chronicles-game-menu > summary {
+    min-height: 40px;
+    justify-content: center;
+    font-weight: 700;
+  }
+  .chronicles .chronicles-game-menu { border-left: 0; }
+  /* MENÚ sits low in the panel: open the tablet upward over the controls so
+     «Salir y guardar» never falls below the screen. */
+  .chronicles .chronicles-game-menu__panel {
+    top: auto;
+    bottom: calc(100% + 6px);
+    right: 0;
+    max-height: calc(100dvh - 24px);
+    overflow-y: auto;
+  }
+
+  .chronicles .chronicles-touch {
+    grid-area: touch;
+    grid-template-columns: repeat(3, 1fr);
+    grid-auto-rows: 54px;
+    gap: 6px;
+    padding: 8px;
+    border: 2px solid;
+    border-color: var(--mm3-lo) var(--mm3-hi) var(--mm3-hi) var(--mm3-lo);
+    background: #2b2b30;
+  }
+  .chronicles .chronicles-touch button { min-height: 0; font-size: 1.3rem; }
+  .chronicles .chronicles-touch [data-chronicles-touch-action='turn-left'] { grid-area: 1 / 1; }
+  .chronicles .chronicles-touch [data-chronicles-touch-action='forward'] { grid-area: 1 / 2; }
+  .chronicles .chronicles-touch [data-chronicles-touch-action='turn-right'] { grid-area: 1 / 3; }
+  .chronicles .chronicles-touch [data-chronicles-touch-action='attack'] { grid-area: 2 / 1; }
+  .chronicles .chronicles-touch [data-chronicles-touch-action='backward'] { grid-area: 2 / 2; }
+  .chronicles .chronicles-touch [data-chronicles-touch-action='cast'] { grid-area: 2 / 3; }
+  .chronicles .chronicles-touch [data-chronicles-touch-action='interact'] { grid-area: 3 / 1 / 4 / 4; }
+
+  .chronicles .chronicles-keyboard-help {
+    grid-area: help;
+    gap: 4px 10px;
+    padding: 7px 8px;
+    border: 2px solid;
+    border-color: var(--mm3-lo) var(--mm3-hi) var(--mm3-hi) var(--mm3-lo);
+    background: #1a1a1e;
+    color: #dadae0;
+    font-size: .62rem;
+  }
+
+  /* The chronicle is a sandstone tablet, like the town ledgers. */
+  .chronicles .chronicles-journal {
+    grid-area: journal;
+    min-height: 0;
+    overflow: auto;
+    border: 2px solid;
+    border-color: #f0c48a #5a2e12 #5a2e12 #f0c48a;
+    background: #b87033 var(--mm3-sand) 0 0 / 64px 64px;
+    box-shadow: 0 0 0 1px #141416;
+    color: #1f0f04;
+  }
+  .chronicles .chronicles-journal summary { color: #2a1406; }
+  .chronicles .chronicles-journal summary b { color: #2a1406; text-shadow: 1px 1px 0 rgba(255, 220, 170, .45); }
+  .chronicles .chronicles-journal summary small,
+  .chronicles .chronicles-journal summary em { color: #4a250b; }
+  .chronicles .chronicles-journal summary i { color: #6e0a0e; text-shadow: none; }
+  .chronicles .chronicles-journal[open] summary {
+    border-bottom: 2px solid #5a2e12;
+    background: rgba(255, 220, 170, .18);
+  }
+  .chronicles .chronicles-journal__body { max-height: min(42vh, 360px); }
+  .chronicles .chronicles-journal li,
+  .chronicles .chronicles-quest-log__quest {
+    border: 1px solid rgba(60, 28, 8, .45);
+    border-left: 3px solid #5a2e12;
+    background: rgba(255, 232, 196, .22);
+  }
+  .chronicles .chronicles-journal li > span,
+  .chronicles .chronicles-quest-log__quest > span { color: #6e0a0e; border-color: rgba(60, 28, 8, .35); }
+  .chronicles .chronicles-journal li strong,
+  .chronicles .chronicles-quest-log__quest strong { color: #1f0f04; }
+  .chronicles .chronicles-journal li p,
+  .chronicles .chronicles-quest-log__quest p { color: #3b1e08; }
+  .chronicles .chronicles-quest-log h3,
+  .chronicles .chronicles-quest-log__quest small { color: #4a250b; }
+}
+
+/* ─── Character sheet (first person): framed in stone, sandstone header ── */
+/* Frame and gems are drawn by pseudo-elements inside the box (padding =
+   frame width), so nothing pokes out and the sheet never scrolls sideways. */
+.chronicles-character-sheet--mm3 {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 32px;
+  border: 0;
+  border-radius: 0;
+  image-rendering: pixelated;
+  background: #17171b;
+  box-shadow: 0 34px 110px rgba(0, 0, 0, .86);
+}
+.chronicles-character-sheet--mm3::after {
+  content: '';
+  position: absolute;
+  z-index: 2;
+  inset: 0;
+  pointer-events: none;
+  border: 32px solid transparent;
+  border-image: var(--mm3-frame) 16 / 32px round;
+}
+.chronicles-character-sheet--mm3::before {
+  inset: 0;
+  z-index: 3;
+  border: 0;
+  border-radius: 0;
+  background:
+    var(--mm3-gem) left top / 28px 28px no-repeat,
+    var(--mm3-gem) right top / 28px 28px no-repeat,
+    var(--mm3-gem) left bottom / 28px 28px no-repeat,
+    var(--mm3-gem) right bottom / 28px 28px no-repeat;
+}
+.chronicles-character-sheet--mm3 .chronicles-character-sheet__scroll {
+  min-height: 0;
+  overflow: auto;
+  scrollbar-color: #6c6c74 #17171b;
+}
+.chronicles-character-sheet--mm3 .chronicles-character-sheet__head {
+  border-bottom: 3px solid;
+  border-color: #5a2e12;
+  background: #b87033 var(--mm3-sand) 0 0 / 64px 64px;
+  color: #1f0f04;
+}
+.chronicles-character-sheet--mm3 .chronicles-character-sheet__identity span { color: #4a250b; }
+.chronicles-character-sheet--mm3 .chronicles-character-sheet__identity h3 {
+  color: #1f0f04;
+  text-shadow: 1px 1px 0 rgba(255, 220, 170, .45);
+}
+.chronicles-character-sheet--mm3 .chronicles-character-sheet__identity p { color: #3b1e08; }
+.chronicles-character-sheet--mm3 .chronicles-character-sheet__portrait {
+  border: 3px solid;
+  border-color: var(--mm3-lo) var(--mm3-hi) var(--mm3-hi) var(--mm3-lo);
+  border-radius: 0;
+  box-shadow: 0 0 0 1px #141416, 0 10px 24px rgba(0, 0, 0, .45);
+}
+.chronicles-character-sheet--mm3 .chronicles-character-sheet__head > button {
+  border: 2px solid;
+  border-color: var(--mm3-hi) var(--mm3-lo) var(--mm3-lo) var(--mm3-hi);
+  border-radius: 0;
+  background: #9d9da2 var(--mm3-stone) 0 0 / 128px 128px;
+  box-shadow: 0 0 0 1px #141416;
+  color: var(--mm3-ink);
+  font-weight: 700;
+}
+.chronicles-character-sheet--mm3 .chronicles-character-sheet__vitals,
+.chronicles-character-sheet--mm3 .chronicles-character-sheet__combat {
+  border: 2px solid;
+  border-color: var(--mm3-lo) var(--mm3-hi) var(--mm3-hi) var(--mm3-lo);
+  background: #2c2c33;
+}
+.chronicles-character-sheet--mm3 .chronicles-character-sheet__vitals > div,
+.chronicles-character-sheet--mm3 .chronicles-character-sheet__combat > div { background: #1d1d22; }
+.chronicles-character-sheet--mm3 .chronicles-character-sheet__vitals b { color: #ffe9a8; }
+.chronicles-character-sheet--mm3 .chronicles-character-sheet__section { border-top: 2px solid #2c2c33; }
+.chronicles-character-sheet--mm3 .chronicles-character-sheet__section-head span { color: #c9b27a; }
+.chronicles-character-sheet--mm3 .chronicles-character-sheet__loadout article,
+.chronicles-character-sheet--mm3 .chronicles-character-sheet__mm3-stats > div,
+.chronicles-character-sheet--mm3 .chronicles-character-sheet__attribute-grid > button,
+.chronicles-character-sheet--mm3 .chronicles-character-sheet__skill-grid > button {
+  border: 2px solid;
+  border-color: #45454c #6e6e76 #6e6e76 #45454c;
+  border-radius: 0;
+  background: #222228;
+}
+.chronicles-character-sheet--mm3 .chronicles-character-sheet__loadout article b { color: #ffe9a8; }
+.chronicles-character-sheet--mm3 .chronicles-character-sheet__inventory em { border-radius: 0; }
+/* Equip / stow keys are engraved stone with a gold tint, like the shops. */
+.chronicles-character-sheet--mm3 .chronicles-character-sheet__equipment button {
+  border: 2px solid;
+  border-color: #ffeec2 #6b4510 #6b4510 #ffeec2;
+  border-radius: 0;
+  background: #e3b45c var(--mm3-stone) 0 0 / 128px 128px;
+  background-blend-mode: multiply;
+  box-shadow: 0 0 0 1px #141416;
+  color: #2c1a03;
+  font-weight: 700;
+}
+.chronicles-character-sheet--mm3 .chronicles-character-sheet__equipment button:disabled {
+  border-color: #d4d4d8 #5a5a60 #5a5a60 #d4d4d8;
+  background-color: #a9a9ae;
+  background-blend-mode: normal;
+  color: #2a2a30;
+  text-shadow: 1px 1px 0 rgba(255, 255, 255, .25);
+  opacity: .8;
+}
+.chronicles-character-sheet--mm3 .chronicles-character-sheet__foot {
+  border-top: 2px solid #2c2c33;
+  color: #d2d2d8;
+}
+@media (max-width: 680px) {
+  .chronicles-character-sheet--mm3 { padding: 16px; }
+  .chronicles-character-sheet--mm3::after {
+    border-width: 16px;
+    border-image: var(--mm3-frame) 16 / 16px round;
+  }
+  .chronicles-character-sheet--mm3::before { background-size: 20px 20px; }
+}
+
+/* ─── Spell book: small framed slate with a sandstone heading ─────────── */
+.chronicles .chronicles-spell-menu {
+  border: 16px solid transparent;
+  border-radius: 0;
+  border-image: var(--mm3-frame) 16 / 16px round;
+  image-rendering: pixelated;
+  background: #17171b;
+  overflow: auto;
+}
+.chronicles .chronicles-spell-menu header {
+  border-bottom: 2px solid #5a2e12;
+  background: #b87033 var(--mm3-sand) 0 0 / 64px 64px;
+}
+.chronicles .chronicles-spell-menu header span { color: #4a250b; }
+.chronicles .chronicles-spell-menu header strong { color: #1f0f04; }
+.chronicles .chronicles-spell-menu header b {
+  padding: 3px 8px;
+  border: 2px solid;
+  border-color: #5a2e12 #f0c48a #f0c48a #5a2e12;
+  background: #10131f;
+  color: #9fc0ff;
+}
+.chronicles .chronicles-spell-menu__close {
+  border: 2px solid;
+  border-color: var(--mm3-hi) var(--mm3-lo) var(--mm3-lo) var(--mm3-hi);
+  border-radius: 0;
+  background: #9d9da2 var(--mm3-stone) 0 0 / 128px 128px;
+  color: var(--mm3-ink);
+  font-weight: 700;
+}
+.chronicles .chronicles-spell-menu li button {
+  border: 2px solid;
+  border-color: #45454c #6e6e76 #6e6e76 #45454c;
+  border-radius: 0;
+  background: #222228;
+}
+.chronicles .chronicles-spell-menu li button:hover:not(:disabled),
+.chronicles .chronicles-spell-menu li button:focus-visible {
+  border-color: #b4c6f4 #1e2c5c #1e2c5c #b4c6f4;
+  background: #26304f;
+}
+.chronicles .chronicles-spell-menu li strong { color: #ffe9a8; }
+
+/* ─── Game menu panel ──────────────────────────────────────────────────── */
+.chronicles .chronicles-game-menu__panel {
+  border: 2px solid;
+  border-color: #f0c48a #5a2e12 #5a2e12 #f0c48a;
+  background: #b87033 var(--mm3-sand) 0 0 / 64px 64px;
+  box-shadow: 0 0 0 1px #141416, 0 18px 54px rgba(0, 0, 0, .58);
+  backdrop-filter: none;
+}
+/* Browser auto-dark themes and inherited button states must never paint
+   pale glyphs on the light VGA stone slab. Make the ink an explicit part of
+   the MM3 control, including WebKit text-fill. */
+.chronicles .chronicles-game-menu__panel strong { color: #251208; }
+.chronicles .chronicles-game-menu__panel small { color: #38200d; }
+.chronicles .chronicles-game-menu__panel button {
+  color-scheme: only light;
+  border: 2px solid;
+  border-color: #f6f2e8 #4f4b4b #4f4b4b #f6f2e8;
+  background: #b1b0b1 var(--mm3-stone) 0 0 / 128px 128px;
+  box-shadow: 0 0 0 1px #141416;
+  color: #111015;
+  -webkit-text-fill-color: #111015;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, .28);
+  font-weight: 800;
+  opacity: 1;
+}
+.chronicles .chronicles-game-menu__panel button:hover,
+.chronicles .chronicles-game-menu__panel button:focus-visible {
+  background-color: #d4c7a9;
+  background-blend-mode: multiply;
+  border-color: #fff0c6 #4c3312 #4c3312 #fff0c6;
+  outline: 3px solid #eac671;
+  outline-offset: 1px;
+}
+.chronicles .chronicles-game-menu__panel button:disabled {
+  cursor: not-allowed;
+  background-color: #929197;
+  color: #343039;
+  -webkit-text-fill-color: #343039;
+  opacity: 1;
+}
+
+/* Short landscape phones cannot fit six 44px actions in a tall single
+   column. Keep every action visible at once; long confirmation text can scroll
+   inside the tablet rather than disappearing below the bottom edge. */
+@media (orientation: landscape) and (max-width: 1024px) and (max-height: 480px) {
+  .chronicles .chronicles-game-menu__panel {
+    width: min(460px, calc(100vw - 20px));
+    max-height: calc(100dvh - 68px - env(safe-area-inset-bottom));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+  }
+  .chronicles .chronicles-game-menu__panel > :not(button) {
+    grid-column: 1 / -1;
+  }
+  .chronicles .chronicles-game-menu__panel > button {
+    min-width: 0;
+    min-height: 44px;
+  }
+}
+
+/* ─── Isles of Terra details (desktop / wide landscape) ──────────────── */
+@media (min-width: 1025px), (min-width: 801px) and (min-height: 601px) {
+
+  /* The panel's top slot is the automap on a sandstone tablet… */
+  .chronicles .chronicles-minimap {
+    grid-area: map;
+    position: relative;
+    top: auto;
+    right: auto;
+    width: auto;
+    height: clamp(120px, 21vh, 214px);
+    padding: 8px;
+    border: 3px solid;
+    border-color: #f0c48a #5a2e12 #5a2e12 #f0c48a;
+    border-radius: 0;
+    background: #b87033 var(--mm3-sand) 0 0 / 64px 64px;
+    box-shadow: 0 0 0 1px #141416;
+    backdrop-filter: none;
+  }
+  .chronicles .chronicles-minimap svg {
+    border: 2px solid #3a1d08;
+    background: #0d1f6e;
+  }
+  .chronicles .chronicles-minimap__title { display: none; }
+  .chronicles .chronicles-minimap__cell.is-wall { fill: #0d1f6e; stroke: #2448c4; }
+  .chronicles .chronicles-minimap__cell.is-floor { fill: #3159c9; stroke: #4c78e0; }
+  .chronicles .chronicles-minimap__cell.is-floor.is-visited { fill: #8fd0ec; stroke: #c9ecff; }
+  .chronicles .chronicles-minimap__marker.is-exit { fill: #2a1404; stroke: #f0c48a; }
+  .chronicles .chronicles-minimap__marker.is-treasure { fill: #ffd447; stroke: #7a4a00; }
+  .chronicles .chronicles-minimap__marker.is-interactable { fill: #f2efe6; stroke: #3a1d08; }
+  .chronicles .chronicles-minimap__party { fill: #e8241c; stroke: #3b0303; filter: none; }
+
+  /* …which becomes the «Combate» list while initiative runs, as in MM3. */
+  .chronicles .chronicles-shell:has(.chronicles-combat-roster) .chronicles-minimap { display: none; }
+  .chronicles .chronicles-combat-roster {
+    grid-area: map;
+    display: grid;
+    align-content: start;
+    gap: 6px;
+    min-height: clamp(120px, 21vh, 214px);
+    padding: 10px 12px;
+    border: 3px solid;
+    border-color: #f0c48a #5a2e12 #5a2e12 #f0c48a;
+    background: #b87033 var(--mm3-sand) 0 0 / 64px 64px;
+    box-shadow: 0 0 0 1px #141416;
+    font-family: var(--mm3-pixel-font);
+  }
+  .chronicles .chronicles-combat-roster h3 {
+    margin: 0 0 4px;
+    color: #fff6e0;
+    font: 400 1.5rem/1 var(--mm3-pixel-font);
+    text-align: center;
+    text-shadow: 2px 2px 0 #3a1d08;
+  }
+  .chronicles .chronicles-combat-roster ol { margin: 0; padding: 0; list-style: none; display: grid; gap: 3px; }
+  .chronicles .chronicles-combat-roster li {
+    padding: 3px 8px;
+    border: 2px solid transparent;
+    font-size: 1.3rem;
+    line-height: 1.05;
+    text-align: center;
+    text-shadow: 1px 1px 0 #1d0c02;
+  }
+  .chronicles .chronicles-combat-roster li[data-band='healthy'] { color: #5cff5c; }
+  .chronicles .chronicles-combat-roster li[data-band='hurt'] { color: #ffe94a; }
+  .chronicles .chronicles-combat-roster li[data-band='critical'] { color: #ff5a4a; }
+  .chronicles .chronicles-combat-roster li[data-target='true'] {
+    border-color: #3a1d08;
+    background: rgba(29, 12, 2, .35);
+  }
+
+  /* No title plaque: the automap holds the top of the panel. */
+  .chronicles .chronicles-statusbar::before { content: none; }
+  /* The selected face already says who is active. */
+  .chronicles .chronicles-statusbar > span:nth-child(3) { display: none; }
+  .chronicles .chronicles-statusbar > span b { font-family: var(--mm3-pixel-font); font-size: 1.12rem; font-weight: 400; letter-spacing: .02em; }
+
+  /* Engraved pictograms on the blue field, no captions. */
+  .chronicles .chronicles-touch {
+    background: linear-gradient(180deg, #2f56d8, #1a34a8);
+    border-color: #0b1650 #8fb0ff #8fb0ff #0b1650;
+  }
+  .chronicles .chronicles-touch button { font-size: 1.7rem; }
+  .chronicles .chronicles-touch button small {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  /* Faces and gem bars only; numbers live in the tooltip and the sheet. */
+  /* The company fills the whole strip under the view, as MM3's faces do. */
+  /* Four heroes and two places for hirelings, as in MM3. */
+  .chronicles .chronicles-party {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 8px;
+  }
+  /* Each tile: the face (MM3 proportions), readable light labels,
+     HP and SP on the same dark stone as every other hero. */
+  .chronicles .chronicles-party-member,
+  .chronicles .chronicles-party-hireling {
+    --face: clamp(84px, 16.5vh, 170px);
+    --face-w: min(calc(var(--face) * .78), 44%);
+    position: relative;
+    flex: none;
+    width: auto;
+    min-width: 0;
+    display: grid;
+    grid-template-columns: var(--face-w) minmax(0, 1fr);
+    grid-template-rows: auto auto 1fr;
+    grid-template-areas:
+      'portrait name'
+      'portrait stats'
+      'portrait bars';
+    align-items: start;
+    gap: 3px 8px;
+    padding: 6px;
+  }
+  .chronicles .chronicles-party-member > .chronicles-party-glyph {
+    width: 100%;
+    height: var(--face);
+  }
+  .chronicles .chronicles-party-member .chronicles-party-thumbnail { object-position: 50% 18%; }
+  .chronicles .chronicles-party-member > span:nth-child(2) {
+    grid-area: name;
+    align-items: flex-start;
+    gap: 2px;
+    min-width: 0;
+    padding: 2px 2px 0;
+  }
+  .chronicles .chronicles-party-member > span:nth-child(2) strong,
+  .chronicles .chronicles-party-hireling__label strong {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font: 400 clamp(.95rem, 1.1vw, 1.4rem)/1 var(--mm3-pixel-font);
+    color: #0c0c0e;
+    /* VT323 has one weight: a 1px echo thickens the strokes. */
+    text-shadow: 1px 0 0 currentColor, 1px 1px 0 rgba(255, 255, 255, .3);
+  }
+  .chronicles .chronicles-party-member > span:nth-child(2) small,
+  .chronicles .chronicles-party-hireling__label small {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font: 400 clamp(.85rem, .8vw, 1rem)/1 var(--mm3-pixel-font);
+    letter-spacing: .02em;
+    color: #141418;
+    text-shadow: 1px 1px 0 rgba(255, 255, 255, .3);
+  }
+  .chronicles .chronicles-party-member > b {
+    grid-area: stats;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1px;
+    padding: 0 2px;
+    font: 400 clamp(1rem, 1vw, 1.25rem)/1.05 var(--mm3-pixel-font);
+    color: #0b3a0b;
+    text-shadow: 1px 0 0 currentColor, 1px 1px 0 rgba(255, 255, 255, .3);
+  }
+  .chronicles .chronicles-party-member > b::before {
+    content: 'PV ';
+    display: none;
+  }
+  .chronicles .chronicles-party-member > b .chronicles-party-sp { font: inherit; color: #0a2470; }
+  .chronicles .chronicles-party-member .chronicles-party-bars {
+    grid-area: bars;
+    align-self: end;
+    width: 100%;
+    padding: 0 2px 2px;
+  }
+  .chronicles .chronicles-party-bars i { height: 9px; }
+  /* Wider MM3 strip keeps its proportions but not the old pale selected
+     background. All four hero slates inherit the identical dark stone. */
+  .chronicles .chronicles-party-member > span:nth-child(2) strong {
+    color: #f4f1e9;
+    text-shadow: 1px 0 0 currentColor, 1px 1px 0 rgba(0, 0, 0, .75);
+  }
+  .chronicles .chronicles-party-member > span:nth-child(2) small {
+    color: #dddde5;
+    text-shadow: 1px 1px 0 rgba(0, 0, 0, .65);
+  }
+  .chronicles .chronicles-party-member > b {
+    color: #b8edb3;
+    text-shadow: 1px 0 0 currentColor, 1px 1px 0 rgba(0, 0, 0, .7);
+  }
+  .chronicles .chronicles-party-member > b .chronicles-party-sp { color: #c6dfff; }
+  .chronicles .chronicles-party-member.is-selected {
+    border-color: #fff36a #8a6a00 #8a6a00 #fff36a;
+    box-shadow: 0 0 0 1px #141416, 0 0 0 3px #f2e33a;
+  }
+
+  /* An empty hireling place: a bare carved niche, quieter than the heroes. */
+  .chronicles .chronicles-party-hireling {
+    border: 2px solid;
+    border-color: var(--mm3-hi) var(--mm3-lo) var(--mm3-lo) var(--mm3-hi);
+    background: #8e8e93 var(--mm3-stone) 0 0 / 128px 128px;
+    background-blend-mode: multiply;
+    image-rendering: pixelated;
+    box-shadow: 0 0 0 1px #141416;
+  }
+  .chronicles .chronicles-party-hireling__face {
+    grid-area: portrait;
+    width: 100%;
+    height: var(--face);
+    border: 2px solid;
+    border-color: var(--mm3-lo) var(--mm3-hi) var(--mm3-hi) var(--mm3-lo);
+    background: radial-gradient(ellipse at 50% 38%, #2a2a30 0 40%, #121215 75%);
+    box-shadow: 0 0 0 1px #141416, inset 0 0 18px rgba(0, 0, 0, .8);
+  }
+  .chronicles .chronicles-party-hireling__label {
+    grid-area: name;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+    padding: 2px 2px 0;
+  }
+  .chronicles .chronicles-party-hireling__label strong { color: #1d1d22; text-shadow: 1px 0 0 currentColor, 1px 1px 0 rgba(255, 255, 255, .3); }
+  .chronicles .chronicles-party-hireling__label small { color: #1d1d22; }
+
+  /* The chronicle speaks in a sandstone band along the bottom of the view. */
+  .chronicles .chronicles-stage .chronicles-dm-overlay { display: none; }
+  .chronicles .chronicles-stage .chronicles-dm-band {
+    position: absolute;
+    z-index: 6;
+    left: 50%;
+    bottom: 12px;
+    display: block;
+    width: calc(100% - 36px);
+    max-width: 860px;
+    padding: 9px 16px;
+    transform: translateX(-50%);
+    border: 2px solid;
+    border-color: #f0c48a #5a2e12 #5a2e12 #f0c48a;
+    background: #b87033 var(--mm3-sand) 0 0 / 64px 64px;
+    image-rendering: pixelated;
+    box-shadow: 0 0 0 1px #141416, 0 8px 22px rgba(0, 0, 0, .45);
+    color: #fff6e0;
+    font-family: var(--mm3-pixel-font);
+    font-size: clamp(1.25rem, 1.6vw, 1.5rem);
+    line-height: 1.1;
+    text-align: center;
+    text-shadow: 2px 2px 0 #3a1d08;
+    pointer-events: none;
+  }
+}
+
+/* Tall screens keep the key help in the panel; short ones give it to the hero. */
+@media (min-width: 801px) and (min-height: 601px) and (max-height: 999px) {
+  .chronicles .chronicles-keyboard-help { display: none; }
+}

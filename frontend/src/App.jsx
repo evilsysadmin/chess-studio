@@ -27,6 +27,7 @@ const GlobalMusicDock = React.lazy(() => import('./components/GlobalMusicDock.js
 const GlobalOverlayLayer = React.lazy(() => import('./components/GlobalOverlayLayer.jsx'));
 import SaveStatusBadge from './components/SaveStatusBadge.jsx';
 import ReleaseUpdateNotice from './components/ReleaseUpdateNotice.jsx';
+import { shouldDeferReleaseReload } from './releaseContinuity.js';
 import AdminFeedbackInboxButton from './components/AdminFeedbackInboxButton.jsx';
 import { useAdminFeedbackInbox } from './useAdminFeedbackInbox.js';
 import { SAVE_STATUS } from './saveStatus.js';
@@ -88,7 +89,6 @@ function AppInner({ isAdminUser }) {
   const { puzzleLaunch, quickMatchLaunchNonce, insightsLandingSection, openPuzzleMode, openPersonalTraining, openDailyChallengeSlot, openInsights, returnToQuickMatchFromPersonalTraining } = useLearningJourneyFlow({ navigateTo, resetNavigation });
 
   usePresenceHeartbeat(view);
-
   useEffect(() => {
     if (view !== 'lab') clearRememberedLabMode();
   }, [view]);
@@ -342,7 +342,7 @@ function AppInner({ isAdminUser }) {
     <>
       <a className="skip-link" href="#main-content">Saltar al contenido</a>
       {!isBoardGameView && <React.Suspense fallback={null}><GlobalMusicDock isAdminUser={isAdminUser} onAdmin={() => navigateTo('admin')} /></React.Suspense>}
-      <ReleaseUpdateNotice deferReload={isBoardGameView} />
+      <ReleaseUpdateNotice deferReload={shouldDeferReleaseReload(view, { combatBattleUiActive })} />
       <ErrorBoundary
         view={view}
         onReset={resetNavigation}

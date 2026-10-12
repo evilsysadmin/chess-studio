@@ -1,0 +1,232 @@
+{
+  "id": "terra-f6",
+  "version": 1,
+  "progressionKey": "terra-f6-v1",
+  "title": "Umbral Bajo la Corona",
+  "areaCode": "F6",
+  "biome": "ash",
+  "regionKind": "wilderness",
+  "layoutMode": "authored",
+  "grid": [
+    "#####################",
+    "#...##..............#",
+    "#.###.........#.....#",
+    "#.####........##....#",
+    "#.#.................#",
+    "#........#...#.#....#",
+    "#...#.##............#",
+    "#...................#",
+    "##......#.......#...#",
+    "#.......#..#........#",
+    "#......#....#.......#",
+    "#...................#",
+    "#.......#...#.......#",
+    "##......#....#......#",
+    "#####################"
+  ],
+  "partyStart": {
+    "x": 10,
+    "y": 7,
+    "direction": 0
+  },
+  "initialFlags": {},
+  "enemies": [
+    {
+      "id": "terra-f6-foe-0",
+      "visualType": "gate-jailer",
+      "name": "guardián de escoria",
+      "x": 7,
+      "y": 3,
+      "hpKey": "terra_f6Foe0Hp",
+      "maxHp": 16,
+      "retaliation": 3,
+      "optional": true,
+      "activation": "always",
+      "ai": {
+        "movement": "hold",
+        "attackReach": 1,
+        "engagedMovement": "cardinal-chase",
+        "engageRange": 2
+      },
+      "onDefeat": {
+        "message": "{attacker} acaba con guardián de escoria usando {attack}.",
+        "effects": [
+          {
+            "type": "grant-gold",
+            "amount": 14
+          }
+        ]
+      }
+    },
+    {
+      "id": "terra-f6-foe-1",
+      "visualType": "ash-goblin",
+      "name": "goblin de ceniza",
+      "x": 13,
+      "y": 11,
+      "hpKey": "terra_f6Foe1Hp",
+      "maxHp": 16,
+      "retaliation": 3,
+      "optional": true,
+      "activation": "always",
+      "ai": {
+        "movement": "cardinal-roam",
+        "attackReach": 1,
+        "engagedMovement": "cardinal-chase",
+        "engageRange": 2
+      },
+      "onDefeat": {
+        "message": "{attacker} acaba con goblin de ceniza usando {attack}.",
+        "effects": [
+          {
+            "type": "grant-gold",
+            "amount": 14
+          }
+        ]
+      }
+    },
+    {
+      "id": "terra-f6-foe-2",
+      "visualType": "ember-wisp",
+      "name": "lumbre de ceniza",
+      "x": 3,
+      "y": 11,
+      "hpKey": "terra_f6Foe2Hp",
+      "maxHp": 16,
+      "retaliation": 3,
+      "optional": true,
+      "activation": "always",
+      "ai": {
+        "movement": "hold",
+        "attackReach": 2,
+        "requiresLineOfSight": true
+      },
+      "onDefeat": {
+        "message": "{attacker} acaba con lumbre de ceniza usando {attack}.",
+        "effects": [
+          {
+            "type": "grant-gold",
+            "amount": 14
+          }
+        ]
+      }
+    }
+  ],
+  "triggers": [],
+  "interactables": [
+    {
+      "id": "f6-sealed-temple",
+      "kind": "lore",
+      "visualType": "dungeon-arch",
+      "x": 5,
+      "y": 4,
+      "persistentVisual": true,
+      "label": "Examinar las siete coronas",
+      "lockedLabel": "Las siete coronas no reconocen a la compañía",
+      "requirements": [
+        {
+          "key": "lostKingFinalActOpen",
+          "truthy": true,
+          "message": "La Dama aún no ha revelado el camino al Trono Bajo la Piedra."
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "set",
+            "key": "terraF6SealExamined",
+            "value": true
+          }
+        ],
+        "message": "Apoyas la mano sobre las siete coronas. Detrás de la piedra late el Silencio, pero ninguna cede: el juramento del Rey sigue incompleto."
+      }
+    }
+  ],
+  "treasures": [
+    {
+      "id": "terra-f6-chest",
+      "kind": "pickup",
+      "visualType": "chest",
+      "x": 15,
+      "y": 4,
+      "label": "Abrir el cofre",
+      "when": [
+        {
+          "key": "terra_f6ChestOpened",
+          "falsy": true
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "set",
+            "key": "terra_f6ChestOpened",
+            "value": true
+          },
+          {
+            "type": "grant-gold",
+            "amount": 42
+          },
+          {
+            "type": "grant-item",
+            "itemId": "steel-staff",
+            "name": "Steel staff",
+            "description": "Botín de un cofre de Terra.",
+            "quantity": 1
+          }
+        ],
+        "message": "El cofre guarda 42 monedas y algo de equipo."
+      }
+    }
+  ],
+  "traps": [],
+  "exits": [
+    {
+      "id": "f6-to-f5",
+      "kind": "exit",
+      "x": 10,
+      "y": 1,
+      "requiresReturn": true,
+      "openLabel": "Ir a F5 · Desierto de Ceniza",
+      "lockedLabel": "El paso está cortado",
+      "requirements": [],
+      "action": {
+        "effects": [
+          {
+            "type": "transition-map",
+            "mapId": "terra-f5",
+            "entryExitId": "f5-to-f6"
+          }
+        ],
+        "message": "La compañía entra en F5."
+      }
+    },
+    {
+      "id": "f6-to-e6",
+      "kind": "exit",
+      "x": 1,
+      "y": 7,
+      "requiresReturn": true,
+      "openLabel": "Ir a E6 · Ruinas del Obispo",
+      "lockedLabel": "El paso está cortado",
+      "requirements": [],
+      "action": {
+        "effects": [
+          {
+            "type": "transition-map",
+            "mapId": "terra-e6",
+            "entryExitId": "e6-to-f6"
+          }
+        ],
+        "message": "La compañía entra en E6."
+      }
+    }
+  ],
+  "initialJournal": {
+    "id": "terra-f6-arrival",
+    "title": "F6 · Umbral Bajo la Corona",
+    "body": "Una escalinata desciende a una puerta sellada con siete coronas.",
+    "sigil": "F6"
+  },
+  "introMessage": "F6 · Umbral Bajo la Corona. Una escalinata desciende a una puerta sellada con siete coronas."
+}

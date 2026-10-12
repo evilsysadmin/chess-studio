@@ -26,6 +26,10 @@ const VISUALS = Object.freeze({
   'road-bandit': Object.freeze({ build: buildScavengerKnight, scale: 0.96 }),
   'bandit-captain': Object.freeze({ build: buildScavengerKnight, scale: 1.18 }),
   'weaver-spider': Object.freeze({ build: buildCryptSpider, scale: 1.2 }),
+  'sewer-rat': Object.freeze({ build: buildBoneHound, scale: 0.72 }),
+  'salt-crab': Object.freeze({ build: buildCryptSpider, scale: 1.05 }),
+  drowned: Object.freeze({ build: buildScavengerKnight, scale: 0.94 }),
+  'mire-witch': Object.freeze({ build: buildSpectralBishop, scale: 1.06 }),
 });
 
 export function chroniclesEnemyVisualSpec(visualType) {

@@ -17,6 +17,8 @@ import re
 import urllib.error
 import urllib.request
 
+from staging_pvp_continuity_probe import companion_username
+
 CI_USER_RE = re.compile(r"^ci_smoke_[0-9a-f]{16}$")
 SYNTHETIC_SOURCE = "staging-smoke-cleanup"
 
@@ -130,6 +132,23 @@ def cleanup_identity(api: str, username: str, password: str, synthetic_secret: s
     return "deleted"
 
 
+def cleanup_pair(api: str, username: str, password: str, secret: str, *, cleanup=cleanup_identity) -> None:
+    """Both accounts are cleaned, even when the first deletion fails.
+
+    Non-PvP staging smokes harmlessly receive "absent" for the companion.
+    """
+    primary = validate_ci_username(username)
+    failures = []
+    for identity in (companion_username(primary), primary):
+        try:
+            result = cleanup(api, identity, password, secret)
+            print(f"Staging smoke janitor: {identity} · {result} · OK")
+        except (SystemExit, Exception) as exc:
+            failures.append(f"{identity}: {exc}")
+    if failures:
+        raise SystemExit("Staging smoke janitor failed: " + "; ".join(failures))
+
+
 def self_test() -> None:
     assert CI_USER_RE.fullmatch("ci_smoke_0123456789abcdef")
     signed = synthetic_headers("ci_smoke_0123456789abcdef", "synthetic-test-secret")
@@ -144,6 +163,22 @@ def self_test() -> None:
             pass
         else:
             raise AssertionError(f"El janitor aceptó un username no técnico: {invalid}")
+    companion = companion_username("ci_smoke_0123456789abcdef")
+    assert CI_USER_RE.fullmatch(companion)
+    seen = []
+    def deliberate_companion_failure(api, name, password, secret):
+        seen.append(name)
+        if name == companion:
+            raise SystemExit("synthetic companion failure")
+        return "deleted"
+    try:
+        cleanup_pair("https://example.invalid/api", "ci_smoke_0123456789abcdef",
+                     "pw", "secret", cleanup=deliberate_companion_failure)
+    except SystemExit as exc:
+        assert "synthetic companion failure" in str(exc)
+    else:
+        raise AssertionError("janitor hid companion cleanup failure")
+    assert seen == [companion, "ci_smoke_0123456789abcdef"], "primary cleanup skipped"
     print("staging-smoke-user-cleanup self-test OK · API-only")
 
 
@@ -168,8 +203,7 @@ def main() -> None:
     username = required("STAGING_E2E_USERNAME")
     password = required("STAGING_E2E_PASSWORD")
     synthetic_secret = required("STAGING_SYNTHETIC_SECRET")
-    result = cleanup_identity(api, username, password, synthetic_secret)
-    print(f"Staging smoke janitor: identidad actual · {result} · OK")
+    cleanup_pair(api, username, password, synthetic_secret)
 
 
 if __name__ == "__main__":

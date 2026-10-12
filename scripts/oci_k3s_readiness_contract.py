@@ -28,6 +28,11 @@ assert "'infra/oci/k3s/**'" not in workflow, "K3s HOLD must not trigger canonica
 assert "'scripts/oci_k3s_*'" not in workflow, "K3s HOLD scripts must not trigger canonical OCI readiness"
 assert "'infra/oci/k3s/**'" in lab, "K3s infra changes must stay validated by the lab workflow"
 assert "'scripts/oci_k3s_*'" in lab, "K3s script changes must stay validated by the lab workflow"
+assert "'infra/oci/gitops/staging2/**'" in lab
+assert "'infra/oci/gitops/flux/**'" in lab
+assert "'scripts/oci_flux_*'" in lab
+for unrelated_path in ("'backend-python/Dockerfile'", "'infra/oci/runtime/ocarun.sudoers'", "'Makefile'"):
+    assert unrelated_path not in lab, f"K3s HOLD lab must not wake for unrelated {unrelated_path}"
 assert "if: github.event_name == 'pull_request'" in lab
 assert "python3 scripts/oci_k3s_readiness_contract.py" in lab
 assert "github.event_name == 'workflow_dispatch' && !startsWith(inputs.operation, 'k3s-')" in lab

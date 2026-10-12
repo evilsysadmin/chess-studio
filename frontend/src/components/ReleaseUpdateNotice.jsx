@@ -86,7 +86,7 @@ export default function ReleaseUpdateNotice({ deferReload = false }) {
     <aside className="release-update-notice" role="status" aria-live="polite" title={`${APP_RELEASE} tiene un despliegue más reciente disponible`}>
       <div className="release-update-copy">
         <strong>Nueva versión disponible</strong>
-        <span>{deferReload ? 'Tu partida sigue intacta; actualiza al terminar.' : 'Hay mejoras nuevas listas para cargar.'}</span>
+        <span>{deferReload ? 'Puedes continuar aquí. Actualiza al volver al castillo.' : 'Hay mejoras nuevas listas para cargar.'}</span>
       </div>
       <div className="release-update-actions">
         {deferReload ? (

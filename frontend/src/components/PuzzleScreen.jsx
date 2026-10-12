@@ -79,6 +79,7 @@ export default function PuzzleScreen({ onExit, onPlayAgain = null, points = 0, o
   const [rushEnded, setRushEnded] = useState(false);
   const [aiGenerating, setAiGenerating] = useState(false);
   const [aiGenerationStatus, setAiGenerationStatus] = useState(null);
+  const [queueHandoff, setQueueHandoff] = useState(null);
   const aiGenerationInFlightRef = useRef(false);
 
   const humanColor = useMemo(() => chessFromFen(puzzle?.fen)?.turn() || 'w', [puzzle]);
@@ -164,6 +165,7 @@ export default function PuzzleScreen({ onExit, onPlayAgain = null, points = 0, o
 
   function changeSource(nextSource) {
     if (nextSource === 'personal' && filteredPersonalTotalCount === 0) return;
+    setQueueHandoff(null);
     setSource(nextSource);
     setPuzzle(choosePuzzle(nextSource));
   }
@@ -171,15 +173,23 @@ export default function PuzzleScreen({ onExit, onPlayAgain = null, points = 0, o
   function newPuzzle() {
     const refreshedPersonal = loadPersonalPuzzles();
     setPersonalPuzzles(refreshedPersonal);
+    setQueueHandoff(null);
     if (source === 'personal') {
       const nextActive = randomPersonalPuzzle(puzzle.id, initialFilter);
-      if (nextActive) {
+      if (nextActive && nextActive.id !== puzzle.id) {
         setAiGenerationStatus(null);
         setPuzzle(nextActive);
       } else {
-        // Un caso superado sólo reaparece cuando el usuario lo elige desde el
-        // histórico. "Siguiente" nunca convierte el archivo en una noria.
-        setAiGenerationStatus('No quedan errores pendientes en esta selección. Los casos superados siguen disponibles en el histórico de abajo.');
+        // "Siguiente" nunca debe ser un botón muerto ni reciclar el caso
+        // que acabas de superar. Sin otro error distinto, continuamos con
+        // táctica clásica y dejamos el archivo personal intacto.
+        const hasPending = refreshedPersonal.some((item) => matchesPersonalPuzzleFilter(item, initialFilter) && !isPersonalPuzzleMastered(item));
+        setAiGenerationStatus(null);
+        setSource('curated');
+        setPuzzle(randomPuzzle(recentCuratedIds));
+        setQueueHandoff(hasPending
+          ? 'No hay otro error personal distinto en esta selección. Seguimos con un puzzle clásico; tu error pendiente queda guardado en Así juegas.'
+          : 'No quedan errores pendientes en esta selección. Seguimos con un puzzle clásico; los superados permanecen en tu histórico.');
       }
       return;
     }
@@ -188,6 +198,7 @@ export default function PuzzleScreen({ onExit, onPlayAgain = null, points = 0, o
 
   function reviewPersonalPuzzle(item) {
     if (!item) return;
+    setQueueHandoff(null);
     setSource('personal');
     setPuzzle(item);
     setAiGenerationStatus(null);
@@ -436,12 +447,15 @@ export default function PuzzleScreen({ onExit, onPlayAgain = null, points = 0, o
       ? 'Desafío diario'
       : 'Puzzles clásicos';
 
+  const replayIsNextStep = focusedPostGameTraining && source === 'personal'
+    && status === 'solved' && typeof onPlayAgain === 'function';
+
   return (
     <div
       className={`tutorial-shell puzzle-screen ${source === 'personal' ? 'puzzle-screen-personal' : ''}`}
       data-training-origin={trainingOrigin || undefined}
     >
-      <button className="back-link" onClick={onExit}>{focusedInsightsTraining ? '← Volver a Así juegas' : focusedPostGameTraining ? '← Volver a la partida' : '← Volver al menú'}</button>
+      <button className="back-link" onClick={onExit}>{focusedInsightsTraining ? '← Volver a Así juegas' : focusedPostGameTraining ? '← Volver al resultado' : '← Volver al menú'}</button>
       {!rushMode && !focusedTrainingJourney && (
         <details
           className="puzzle-source-picker puzzle-source-disclosure"
@@ -520,8 +534,15 @@ export default function PuzzleScreen({ onExit, onPlayAgain = null, points = 0, o
             )}
             {/* Mientras se juega, la acción principal es el tablero: saltar el
                 puzzle no puede ser el CTA dorado (GP-7, #34). */}
-            {!rushMode && source !== 'daily' && <button className={status === 'playing' ? 'secondary-btn' : 'primary-btn'} onClick={newPuzzle}>Siguiente puzzle</button>}
-            {!rushMode && source === 'personal' && status === 'solved' && onPlayAgain && (
+            {/* Tras corregir un error real, la progresión natural es volver a
+                jugar. El siguiente puzzle sigue disponible sin competir. */}
+            {!rushMode && replayIsNextStep && (
+              <button className="primary-btn" onClick={onPlayAgain}>Volver a jugar</button>
+            )}
+            {!rushMode && source !== 'daily' && (
+              <button className={status === 'playing' || replayIsNextStep ? 'secondary-btn' : 'primary-btn'} onClick={newPuzzle}>Siguiente puzzle</button>
+            )}
+            {!rushMode && source === 'personal' && status === 'solved' && onPlayAgain && !replayIsNextStep && (
               <button className="secondary-btn" onClick={onPlayAgain}>Volver a jugar</button>
             )}
             {rushMode && rushEnded && <button className="primary-btn" onClick={onExit}>Guardar marca y salir</button>}
@@ -533,6 +554,7 @@ export default function PuzzleScreen({ onExit, onPlayAgain = null, points = 0, o
             <span className="eyebrow">{source === 'personal' ? 'REPLAY // ANÁLISIS' : source === 'daily' ? 'DESAFÍO // ANÁLISIS' : 'TÁCTICA // ANÁLISIS'}</span>
             <span className={`puzzle-coach-state ${status === 'solved' ? 'is-success' : status === 'revealed' ? 'is-revealed' : ''}`}>{status === 'solved' ? 'RESUELTO' : status === 'revealed' ? 'REVISIÓN' : 'EN CURSO'}</span>
           </div>
+          {queueHandoff && <p className="friendly-inline-note puzzle-queue-handoff" role="status">{queueHandoff}</p>}
           <span className="eyebrow puzzle-coach-kind">{KIND_LABELS[puzzle.kind] || 'Puzzle'}{puzzle.difficulty ? ` · ${PUZZLE_DIFFICULTY_LABELS[puzzle.difficulty] || puzzle.difficulty}` : ''}</span>
           <div className="combat-heading-row"><h2>{puzzle.title}</h2><MechanicTutorialHelp tutorialId="puzzles" /></div>
           <p>{puzzle.description}</p>

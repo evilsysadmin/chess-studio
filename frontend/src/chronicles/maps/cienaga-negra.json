@@ -1,0 +1,266 @@
+{
+  "id": "cienaga-negra",
+  "version": 1,
+  "progressionKey": "cienaga-negra-v1",
+  "title": "Choza de la Ciénaga Negra",
+  "hudTitle": "Ciénaga",
+  "areaCode": "E5",
+  "regionKind": "dungeon",
+  "dungeonRole": "main",
+  "layoutMode": "authored",
+  "grid": [
+    "#################",
+    "#...#...........#",
+    "###.#.#.###.###.#",
+    "#.#.#.#...#...#.#",
+    "#.#.#.###.#.#.###",
+    "#.#.#...#...#...#",
+    "#.#.#.#########.#",
+    "#.#.#.#.....#...#",
+    "#.#.###.###.#.#.#",
+    "#.......#.....#.#",
+    "#################"
+  ],
+  "partyStart": {
+    "x": 1,
+    "y": 1,
+    "direction": 1
+  },
+  "initialFlags": {},
+  "enemies": [
+    {
+      "id": "cienaga-negra-foe-0",
+      "visualType": "drowned",
+      "name": "ahogado",
+      "x": 9,
+      "y": 7,
+      "hpKey": "cienaga_negraFoe0Hp",
+      "maxHp": 14,
+      "retaliation": 2,
+      "optional": true,
+      "activation": "always",
+      "ai": {
+        "movement": "cardinal-chase",
+        "attackReach": 1,
+        "engagedMovement": "cardinal-chase",
+        "engageRange": 3
+      },
+      "onDefeat": {
+        "message": "{attacker} acaba con ahogado usando {attack}.",
+        "effects": [
+          {
+            "type": "grant-gold",
+            "amount": 12
+          }
+        ]
+      }
+    },
+    {
+      "id": "cienaga-negra-foe-1",
+      "visualType": "salt-crab",
+      "name": "cangrejo de salitre",
+      "x": 15,
+      "y": 8,
+      "hpKey": "cienaga_negraFoe1Hp",
+      "maxHp": 14,
+      "retaliation": 2,
+      "optional": true,
+      "activation": "always",
+      "ai": {
+        "movement": "cardinal-roam",
+        "attackReach": 1,
+        "engagedMovement": "knight-chase",
+        "engageRange": 2
+      },
+      "onDefeat": {
+        "message": "{attacker} acaba con cangrejo de salitre usando {attack}.",
+        "effects": [
+          {
+            "type": "grant-gold",
+            "amount": 12
+          }
+        ]
+      }
+    },
+    {
+      "id": "cienaga-negra-foe-2",
+      "visualType": "sewer-rat",
+      "name": "rata de salina",
+      "x": 10,
+      "y": 1,
+      "hpKey": "cienaga_negraFoe2Hp",
+      "maxHp": 14,
+      "retaliation": 2,
+      "optional": true,
+      "activation": "always",
+      "ai": {
+        "movement": "cardinal-roam",
+        "attackReach": 1,
+        "engagedMovement": "cardinal-chase",
+        "engageRange": 3
+      },
+      "onDefeat": {
+        "message": "{attacker} acaba con rata de salina usando {attack}.",
+        "effects": [
+          {
+            "type": "grant-gold",
+            "amount": 12
+          }
+        ]
+      }
+    },
+    {
+      "id": "cienaga-negra-foe-3",
+      "visualType": "ember-wisp",
+      "name": "fuego fatuo",
+      "x": 7,
+      "y": 2,
+      "hpKey": "cienaga_negraFoe3Hp",
+      "maxHp": 14,
+      "retaliation": 2,
+      "optional": true,
+      "activation": "always",
+      "ai": {
+        "movement": "hold",
+        "attackReach": 2,
+        "requiresLineOfSight": true
+      },
+      "onDefeat": {
+        "message": "{attacker} acaba con fuego fatuo usando {attack}.",
+        "effects": [
+          {
+            "type": "grant-gold",
+            "amount": 12
+          }
+        ]
+      }
+    },
+    {
+      "id": "cienaga-negra-foe-9",
+      "visualType": "mire-witch",
+      "name": "la Bruja del Cieno",
+      "x": 7,
+      "y": 5,
+      "hpKey": "cienaga_negraFoe9Hp",
+      "maxHp": 20,
+      "retaliation": 3,
+      "optional": true,
+      "activation": "always",
+      "ai": {
+        "movement": "hold",
+        "attackReach": 1,
+        "engagedMovement": "cardinal-chase",
+        "engageRange": 2
+      },
+      "onDefeat": {
+        "message": "{attacker} derriba a la Bruja del Cieno con {attack}.",
+        "effects": [
+          {
+            "type": "set",
+            "key": "cienaga_negraBossDefeated",
+            "value": true
+          },
+          {
+            "type": "grant-gold",
+            "amount": 30
+          },
+          {
+            "type": "grant-item",
+            "itemId": "witch-ladle",
+            "name": "Cucharón de la bruja",
+            "description": "Un cucharón de hueso, todavía tibio. Prueba de que la bruja no volverá a cocinar.",
+            "quantity": 1
+          }
+        ],
+        "journal": {
+          "id": "cienaga-negra-boss",
+          "title": "Cae la Bruja del Cieno",
+          "body": "Un cucharón de hueso, todavía tibio. Prueba de que la bruja no volverá a cocinar.",
+          "sigil": "†"
+        }
+      },
+      "defeatedFlag": "cienaga_negraBossDefeated",
+      "blockingMessage": "La Bruja del Cieno cierra el paso."
+    }
+  ],
+  "triggers": [],
+  "interactables": [],
+  "treasures": [
+    {
+      "id": "cienaga-negra-chest",
+      "kind": "pickup",
+      "visualType": "ember-cache",
+      "x": 15,
+      "y": 9,
+      "label": "Abrir el cofre",
+      "when": [
+        {
+          "key": "cienaga_negraChestOpened",
+          "falsy": true
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "set",
+            "key": "cienaga_negraChestOpened",
+            "value": true
+          },
+          {
+            "type": "grant-gold",
+            "amount": 55
+          },
+          {
+            "type": "grant-item",
+            "itemId": "steel-spear",
+            "name": "Steel spear",
+            "description": "Botín de mazmorra.",
+            "quantity": 1
+          },
+          {
+            "type": "grant-item",
+            "itemId": "steel-chain",
+            "name": "Steel chain",
+            "description": "Botín de mazmorra.",
+            "quantity": 1
+          }
+        ],
+        "message": "Un cofre con herrajes de bronce: oro y equipo de calidad."
+      }
+    }
+  ],
+  "traps": [],
+  "exits": [
+    {
+      "id": "dungeon-exit",
+      "kind": "exit",
+      "x": 1,
+      "y": 1,
+      "requiresReturn": true,
+      "openLabel": "Salir a E5 · Ciénaga Negra",
+      "lockedLabel": "La salida está bloqueada",
+      "requirements": [],
+      "action": {
+        "effects": [
+          {
+            "type": "transition-map",
+            "mapId": "terra-e5",
+            "entryExitId": "e5-to-dungeon"
+          }
+        ],
+        "message": "La compañía sale a la luz."
+      }
+    }
+  ],
+  "initialJournal": {
+    "id": "cienaga-negra-arrival",
+    "title": "Choza de la Ciénaga Negra",
+    "body": "Choza de la Ciénaga Negra, bajo E5.",
+    "sigil": "E5"
+  },
+  "introMessage": "Choza de la Ciénaga Negra. El aire huele a cerrado y a algo que no quiere visitas.",
+  "arrivalAction": {
+    "effects": [],
+    "message": "Choza de la Ciénaga Negra. Al fondo de los pasillos espera la Bruja del Cieno."
+  }
+}

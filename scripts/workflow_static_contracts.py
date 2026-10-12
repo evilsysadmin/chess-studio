@@ -86,6 +86,30 @@ def validate_staging_frontend_build_single_source(root: Path = ROOT) -> None:
 
 
 
+def validate_production_pages_asset_grace_checkout(root: Path = ROOT) -> None:
+    """Production runs from an artifact-only release-source directory.
+
+    The helper must resolve against the orchestrator checkout, not the
+    downloaded frontend artifact; otherwise the release fails before publish.
+    """
+    workflow = (root / ".github" / "workflows" / "production-promote.yml").read_text(encoding="utf-8")
+    marker = "      - name: Deploy tested frontend to Cloudflare Pages"
+    if workflow.count(marker) != 1:
+        raise SystemExit("production Pages publish step is missing or ambiguous")
+    step = workflow.split(marker, 1)[1].split("\n      - name:", 1)[0]
+    required = (
+        "working-directory: release-source/frontend",
+        'python3 -S "$GITHUB_WORKSPACE/scripts/pages_runtime_asset_grace.py" --dist dist --site production',
+        "wrangler pages deploy dist",
+    )
+    missing = [token for token in required if token not in step]
+    if missing:
+        raise SystemExit("production Pages asset grace checkout contract broken: " + ", ".join(missing))
+    if not (root / "scripts" / "pages_runtime_asset_grace.py").is_file():
+        raise SystemExit("production Pages asset grace helper is missing from the orchestrator")
+    print("production Pages asset grace checkout: OK")
+
+
 def validate_main_backend_image_non_runtime_gate(root: Path = ROOT) -> None:
     """Keep non-runtime and unchanged-backend generations off unnecessary ARM work."""
     workflow = (root / ".github" / "workflows" / "main-backend-image.yml").read_text(encoding="utf-8")
@@ -278,6 +302,7 @@ def validate_workflow_static_contracts(root: Path = ROOT) -> None:
     workflow_debt_self_test()
     validate_main_admission_fallback(root)
     validate_staging_frontend_build_single_source(root)
+    validate_production_pages_asset_grace_checkout(root)
     validate_main_backend_image_non_runtime_gate(root)
     validate_app_visual_product_trigger(root)
     validate_cloudflare_auth_rate_limit(root)

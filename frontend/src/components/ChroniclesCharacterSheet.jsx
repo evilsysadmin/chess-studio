@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
   CHRONICLES_GOLD_ITEM_ID,
@@ -30,6 +31,13 @@ import {
 } from '../chronicles/chroniclesMM3Rules.js';
 import { chroniclesTacticsEffectiveProfile } from '../chroniclesOfMatthiasTactics.js';
 import { chroniclesPartyPortraitUrl } from '../chronicles/chroniclesPartyPortraitAssets.js';
+import {
+  CHRONICLES_SPELL_SCHOOLS,
+  chroniclesMemberMaxSp,
+  chroniclesMemberSchool,
+  chroniclesMemberSp,
+  chroniclesMemberSpells,
+} from '../chronicles/chroniclesMagic.js';
 
 const RELIC_LABELS = Object.freeze({
   'spectral-lantern': Object.freeze({
@@ -85,7 +93,10 @@ export default function ChroniclesCharacterSheet({
   onAllocateAttribute = null,
   onLearnSkill = null,
   onEquipmentAction = null,
+  onSelectMember = null,
 }) {
+  // Navigation belongs to the sheet, not the durable campaign state.
+  const [activeFolio, setActiveFolio] = useState('record');
   if (!state || !progression || !member) return null;
 
   const profile = chroniclesTacticsEffectiveProfile(state, member.id);
@@ -115,10 +126,21 @@ export default function ChroniclesCharacterSheet({
     && member.hp > 0 && typeof onEquipmentAction === 'function';
 
   const closeOnEscape = (event) => {
-    if (event.key !== 'Escape') return;
-    event.preventDefault();
-    event.stopPropagation();
-    onClose?.();
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      event.stopPropagation();
+      onClose?.();
+      return;
+    }
+    // The classic party portraits are also hotkeys; they must never move
+    // the squad while a character sheet is open.
+    if (!tacticsMode && /^[1-4]$/.test(event.key) && !event.altKey && !event.metaKey && !event.ctrlKey) {
+      const hero = state.party[Number(event.key) - 1];
+      if (!hero || !onSelectMember) return;
+      event.preventDefault();
+      event.stopPropagation();
+      onSelectMember(hero.id);
+    }
   };
 
   const sheet = (
@@ -130,12 +152,14 @@ export default function ChroniclesCharacterSheet({
       }}
     >
       <section
-        className="chronicles-character-sheet"
+        className={`chronicles-character-sheet${tacticsMode ? '' : ' chronicles-character-sheet--mm3'}`}
         role="dialog"
         aria-modal="true"
         aria-labelledby="chronicles-character-sheet-title"
         onKeyDown={closeOnEscape}
       >
+        {/* The frame (and its corner gems) stays put; only the contents scroll. */}
+        <div className="chronicles-character-sheet__scroll">
         <header className="chronicles-character-sheet__head">
           <div className="chronicles-character-sheet__portrait">
             <img src={chroniclesPartyPortraitUrl(member.id)} alt={`Retrato de ${member.name}`} draggable="false" />
@@ -144,6 +168,15 @@ export default function ChroniclesCharacterSheet({
             <span>EXPEDIENTE DE CAMPAÑA</span>
             <h3 id="chronicles-character-sheet-title">{member.name}</h3>
             <p>{className} · Nivel {progress.level}{mm3 ? '' : ` · ${profile.weaponName}`}</p>
+            {!tacticsMode && (
+              <div className="chronicles-character-sheet__quick" aria-label="Recursos actuales">
+                <span>PV <b>{member.hp}/{member.maxHp}</b></span>
+                {chroniclesMemberSchool(member) && (
+                  <span>PH <b>{chroniclesMemberSp(state, member)}/{chroniclesMemberMaxSp(state, member)}</b></span>
+                )}
+                <span>ORO <b>{gold}</b></span>
+              </div>
+            )}
           </div>
           <button type="button" autoFocus onClick={onClose} aria-label="Cerrar ficha">×</button>
         </header>
@@ -159,7 +192,25 @@ export default function ChroniclesCharacterSheet({
           <small>{xpWindow.maxLevel ? 'Veterano al máximo' : `${xpWindow.remaining} XP para el siguiente nivel`}</small>
         </div>
 
-        <div className="chronicles-character-sheet__vitals">
+        {!tacticsMode && (
+          <nav className="chronicles-character-sheet__tabs" aria-label="Apartados de la ficha">
+            {[
+              { id: 'record', symbol: '◆', label: 'Estado' },
+              { id: 'equipment', symbol: '⚔', label: 'Equipo' },
+              { id: 'spells', symbol: '✧', label: 'Hechizos' },
+              { id: 'training', symbol: '✦', label: 'Mejoras' },
+            ].map((tab) => (
+              <button type="button" key={tab.id}
+                className={activeFolio === tab.id ? 'is-active' : ''}
+                aria-pressed={activeFolio === tab.id}
+                onClick={() => setActiveFolio(tab.id)}
+              ><span aria-hidden="true">{tab.symbol}</span>{tab.label}</button>
+            ))}
+          </nav>
+        )}
+
+        <div className="chronicles-character-sheet__vitals"
+          hidden={!tacticsMode && activeFolio !== 'record'}>
           <div><span>HP</span><b>{member.hp}/{member.maxHp}</b></div>
           {tacticsMode
             ? <div><span>RECURSO</span><b>{ability.charges}/{ability.max}</b></div>
@@ -171,7 +222,8 @@ export default function ChroniclesCharacterSheet({
           <div><span>ALCANCE</span><b>{reach}</b></div>
         </div>
 
-        <div className="chronicles-character-sheet__combat">
+        <div className="chronicles-character-sheet__combat"
+          hidden={!tacticsMode && activeFolio !== 'record'}>
           <div><span>Clase</span><b>{className}</b></div>
           <div><span>Arma</span><b>{profile.weaponName}</b></div>
           <div><span>Ataque</span><b>{member.attackName || profile.attackName}</b></div>
@@ -181,7 +233,8 @@ export default function ChroniclesCharacterSheet({
         </div>
 
         {mm3 && (
-          <div className="chronicles-character-sheet__section">
+          <div className="chronicles-character-sheet__section"
+            hidden={activeFolio !== 'record'}>
             <div className="chronicles-character-sheet__section-head">
               <div><span>ESTADÍSTICAS</span><small>Tiradas de creación · bonificador MM3 entre paréntesis</small></div>
             </div>
@@ -197,7 +250,38 @@ export default function ChroniclesCharacterSheet({
           </div>
         )}
 
-        <div className="chronicles-character-sheet__section">
+        {mm3 && chroniclesMemberSchool(member) && (
+          <div className="chronicles-character-sheet__section"
+            hidden={activeFolio !== 'spells'}
+            data-chronicles-spellbook={member.id}>
+            <div className="chronicles-character-sheet__section-head">
+              <div>
+                <span>LIBRO DE HECHIZOS</span>
+                <small>{CHRONICLES_SPELL_SCHOOLS[chroniclesMemberSchool(member)].label} · {CHRONICLES_SPELL_SCHOOLS[chroniclesMemberSchool(member)].summary} Más hechizos en el gremio.</small>
+              </div>
+              <b>{chroniclesMemberSp(state, member)}/{chroniclesMemberMaxSp(state, member)} PH</b>
+            </div>
+            <div className="chronicles-character-sheet__loadout">
+              {chroniclesMemberSpells(state, member).map((spell) => (
+                <article key={spell.id}>
+                  <span>{spell.cost} PH</span>
+                  <b>{spell.name}</b>
+                  <small>{spell.description}</small>
+                </article>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {!tacticsMode && !chroniclesMemberSchool(member) && activeFolio === 'spells' && (
+          <div className="chronicles-character-sheet__section chronicles-character-sheet__no-spells">
+            <span>✧</span>
+            <p>Este personaje no practica ninguna escuela de magia.</p>
+          </div>
+        )}
+
+        <div className="chronicles-character-sheet__section"
+          hidden={!tacticsMode && activeFolio !== 'equipment'}>
           <div className="chronicles-character-sheet__section-head">
             <div><span>EQUIPO Y OBJETOS</span><small>Equipo personal y botín de la expedición</small></div>
             <b aria-label={`Oro de la compañía: ${gold}`}>{gold} oro</b>
@@ -214,7 +298,7 @@ export default function ChroniclesCharacterSheet({
                 const worn = chroniclesEquippedItem(state, member.id, slot);
                 return (
                   <div className="chronicles-character-sheet__gear-slot" key={slot}>
-                    <small>{slot === 'weapon' ? 'Arma' : 'Armadura'}</small>
+                    <small>{{ weapon: 'Arma', armor: 'Armadura', shield: 'Escudo' }[slot]}</small>
                     <strong>{worn?.name || 'Sin equipar'}</strong>
                     {worn && <button type="button" disabled={!canChangeEquipment}
                       onClick={() => onEquipmentAction?.({ type: 'unequip-item', slot })}>
@@ -256,7 +340,8 @@ export default function ChroniclesCharacterSheet({
           </div>
         </div>
 
-        <div className="chronicles-character-sheet__section">
+        <div className="chronicles-character-sheet__section"
+          hidden={!tacticsMode && activeFolio !== 'training'}>
           <div className="chronicles-character-sheet__section-head">
             <div><span>ATRIBUTOS</span><small>Bonificadores persistentes entre niveles y expediciones</small></div>
             <b>{progress.attributePoints} punto{progress.attributePoints === 1 ? '' : 's'} libre{progress.attributePoints === 1 ? '' : 's'}</b>
@@ -285,7 +370,8 @@ export default function ChroniclesCharacterSheet({
           </div>
         </div>
 
-        <div className="chronicles-character-sheet__section">
+        <div className="chronicles-character-sheet__section"
+          hidden={!tacticsMode && activeFolio !== 'training'}>
           <div className="chronicles-character-sheet__section-head">
             <div><span>TÉCNICAS Y GRIMORIO</span><small>Doctrinas aprendidas y caminos de especialización</small></div>
             <b>{progress.skillPoints} punto{progress.skillPoints === 1 ? '' : 's'} libre{progress.skillPoints === 1 ? '' : 's'}</b>
@@ -331,6 +417,24 @@ export default function ChroniclesCharacterSheet({
           <span>{member.attackName || profile.attackName} · daño {damage} · alcance {reach}</span>
           <span>Esc · cerrar</span>
         </footer>
+        </div>
+        {!tacticsMode && (
+          <nav className="chronicles-character-sheet__party-dock" aria-label="Seleccionar personaje de la compañía">
+            {(state.party || []).slice(0, 4).map((hero, index) => (
+              <button type="button" key={hero.id}
+                disabled={!onSelectMember}
+                aria-label={`Ver ficha de ${hero.name}`}
+                aria-pressed={hero.id === member.id}
+                onClick={() => onSelectMember?.(hero.id)}
+              >
+                <span className="chronicles-character-sheet__party-number" aria-hidden="true">{index + 1}</span>
+                <img src={chroniclesPartyPortraitUrl(hero.id)} alt="" draggable="false" />
+                <span className="chronicles-character-sheet__party-name">{hero.name}</span>
+                <span className="chronicles-character-sheet__party-hp">{hero.hp}/{hero.maxHp} PV</span>
+              </button>
+            ))}
+          </nav>
+        )}
       </section>
     </div>
   );

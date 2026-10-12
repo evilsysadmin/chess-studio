@@ -231,8 +231,10 @@ test('Chess Football manager can simulate ten reproducible matchdays without loa
   const season = page.locator('.chess-football-entry__manager--season');
   await expect(season).toBeVisible();
   await expect(season).toContainText('Jornada 0 de 10');
+  await expect(page.getByLabel('Objetivo del club')).toContainText('Conquistar la liga');
+  await expect(page.getByLabel('Objetivo del club')).toContainText('En disputa');
   const lineupPanel = page.getByLabel('Alineación del míster');
-  await lineupPanel.locator('summary').click();
+  await lineupPanel.locator(':scope > details > summary').click();
   await lineupPanel.getByRole('combobox', { name: 'Titular 5 · DEL' }).selectOption('fc-matthias-del-2');
   await expect(lineupPanel.getByRole('combobox', { name: 'Titular 5 · DEL' })).toHaveValue('fc-matthias-del-2');
   const tactics = page.getByRole('group', { name: 'Táctica del siguiente partido' });
@@ -248,6 +250,10 @@ test('Chess Football manager can simulate ten reproducible matchdays without loa
       await expect(lineupPanel).toContainText('Fatiga 17%');
       await expect(lineupPanel.locator('.chess-football-entry__slot-fatigue')).toHaveCount(5);
       await expect(lineupPanel.locator('.chess-football-entry__slot-fatigue').first()).toHaveText('Fatiga 17%');
+      const training = page.getByLabel('Entrenamiento de la jornada');
+      await training.locator('summary').click();
+      await page.getByRole('group', { name: 'Plan de entrenamiento' }).getByRole('button', { name: 'Recuperación' }).click();
+      await expect(training.locator('summary')).toContainText('Recuperación');
       await tactics.getByRole('button', { name: 'Bloque bajo' }).click();
       await expect(tactics.getByRole('button', { name: 'Bloque bajo' })).toHaveAttribute('aria-pressed', 'true');
     }
@@ -259,11 +265,38 @@ test('Chess Football manager can simulate ten reproducible matchdays without loa
     }
     if (round === 2) {
       await expect(season.getByLabel('Resultados de la última jornada')).toContainText('Plan: Bloque bajo');
+      await expect(season.getByLabel('Resultados de la última jornada')).toContainText('Entreno: Recuperación');
+      await expect(season.getByLabel('Resultados de la última jornada')).toContainText('Fatiga inicial media: 5%');
+    }
+    if (round === 4) {
+      const development = page.getByLabel('Evolución de la plantilla');
+      await expect(development.locator('summary')).toContainText('5 mejorados');
+      await development.locator('summary').click();
+      await expect(development.locator('li')).toHaveCount(9);
+      await expect(development).toContainText('(+1)');
+      await expect(development).toContainText('titularidades');
     }
   }
   await expect(page.getByRole('button', { name: 'Liga completada', exact: true })).toBeDisabled();
+  await expect(page.getByLabel('Objetivo del club')).toContainText('Objetivo');
+  await expect(page.getByLabel('Objetivo del club')).not.toContainText('En disputa');
   await expect(season).toContainText('Temporada completada.');
+  await expect(season.getByLabel('Plantilla al cierre')).toBeVisible();
+  await expect(season.getByLabel('Evolución de la plantilla').locator('summary')).toContainText('5 mejorados');
   await expect(season.locator('[aria-label="Resultados de la última jornada"] p')).toHaveCount(3);
+  const completedTable = await season.locator('.chess-football-entry__standings tbody').innerText();
+  await page.getByRole('button', { name: 'Comenzar temporada 2', exact: true }).click();
+  await expect(season).toContainText('Jornada 0 de 10');
+  await expect(season).toContainText('Temporada 2 de 4');
+  await expect(season.getByLabel('Historial del club').locator('summary')).toContainText('1 completada');
+  await season.getByLabel('Historial del club').locator('summary').click();
+  await expect(season.getByLabel('Historial del club')).toContainText('Temporada 1');
+  expect(await season.locator('.chess-football-entry__standings tbody').innerText()).not.toBe(completedTable);
+  await page.getByLabel('Alineación del míster').locator(':scope > details > summary').click();
+  await expect(page.getByLabel('Evolución de la plantilla').locator('summary')).toContainText('5 mejorados');
+  await expect(page.getByLabel('Alineación del míster').locator('.chess-football-entry__slot-fatigue').first()).toHaveText('Fatiga 0%');
+  await page.getByRole('button', { name: 'Simular siguiente jornada', exact: true }).click();
+  await expect(season).toContainText('Jornada 1 de 10');
   await page.locator('.chess-football-entry__back').click();
   await expect(page.getByRole('heading', { name: 'FC Matthias', exact: true })).toBeVisible();
 });
@@ -275,7 +308,9 @@ test('Chess Football manager restores the authoritative journal after leaving th
   await page.getByRole('button', { name: 'Elegir FC Matthias' }).click();
   await page.getByRole('button', { name: 'Empezar temporada de prueba' }).click();
   await page.getByRole('button', { name: 'Ataque total' }).click();
-  await page.getByLabel('Alineación del míster').locator('summary').click();
+  await page.getByLabel('Entrenamiento de la jornada').locator('summary').click();
+  await page.getByRole('group', { name: 'Plan de entrenamiento' }).getByRole('button', { name: 'Remates' }).click();
+  await page.getByLabel('Alineación del míster').locator(':scope > details > summary').click();
   await page.getByRole('combobox', { name: 'Titular 5 · DEL' }).selectOption('fc-matthias-del-2');
   await page.getByRole('button', { name: 'Simular siguiente jornada' }).click();
   await expect(page.locator('.chess-football-entry__manager--season')).toContainText('Jornada 1 de 10');
@@ -286,10 +321,11 @@ test('Chess Football manager restores the authoritative journal after leaving th
   await page.getByRole('button', { name: 'Continuar temporada' }).click();
   await expect(page.locator('.chess-football-entry__manager--season')).toContainText('Jornada 1 de 10');
   expect(await page.locator('.chess-football-entry__standings tbody').innerText()).toBe(baseline);
-  await page.getByLabel('Alineación del míster').locator('summary').click();
+  await page.getByLabel('Alineación del míster').locator(':scope > details > summary').click();
   await expect(page.getByRole('combobox', { name: 'Titular 5 · DEL' })).toHaveValue('fc-matthias-del-2');
-  await expect(page.getByRole('combobox', { name: 'Titular 5 · DEL' })).toContainText('F17%');
+  await expect(page.getByRole('combobox', { name: 'Titular 5 · DEL' })).toContainText('F24%');
   await expect(page.getByRole('button', { name: 'Ataque total' })).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByLabel('Entrenamiento de la jornada').locator('summary')).toContainText('Remates');
   await page.locator('.chess-football-entry__back').click();
   await page.locator('.chess-football-entry__back').click();
   await page.locator('.chess-football-entry__back').click();

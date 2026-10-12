@@ -2,11 +2,31 @@ import { lazy, Suspense, useLayoutEffect, useRef, useState } from 'react';
 import { requestWarRoomLandscapeFullscreen } from './useWarRoomImmersive.js';
 import { FOOTBALL_MANAGER_CLUBS, getFootballManagerClub } from '../footballManagerClubs.js';
 import { footballStandings, FOOTBALL_MANAGER_TACTICS } from '../footballManagerSeason.js';
-import { createFootballCareer, editFootballCareer, playFootballCareerRound, readFootballCareer, replayFootballCareer, writeFootballCareer } from '../footballManagerCareer.js';
+import { footballClubObjectiveReport } from '../footballManagerObjectives.js';
+import { FOOTBALL_TRAINING_PLANS } from '../footballManagerTraining.js';
+import { getDevelopedFootballRoster, FOOTBALL_MAX_GROWTH_PER_ATTRIBUTE } from '../footballManagerDevelopment.js';
+import { createFootballCareer, editFootballCareer, playFootballCareerRound, startNextFootballSeason, FOOTBALL_CAREER_MAX_SEASONS, readFootballCareer, replayFootballCareer, writeFootballCareer } from '../footballManagerCareer.js';
 import { getFootballClubRoster, getDefaultFootballLineup, FOOTBALL_FIVE_POSITIONS, getFootballFatigue } from '../footballManagerRoster.js';
 import './ChessFootballEntry.css';
 
 const ChessFootballGodotHost = lazy(() => import('./ChessFootballGodotHost.jsx'));
+
+function FootballSquadDevelopment({ players }) {
+  return (
+  <details className="chess-football-entry__development" aria-label="Evolución de la plantilla">
+    <summary>Desarrollo de la plantilla · {players.filter((player) => player.attackGrowth || player.defenseGrowth).length} mejorados</summary>
+    <p>Tras cuatro titularidades: +1 en ataque y defensa. Dos sesiones de remates o repliegue: +1 adicional en su atributo. Máximo +{FOOTBALL_MAX_GROWTH_PER_ATTRIBUTE} por atributo. No se inventan estadísticas individuales.</p>
+    <ul>
+      {players.map((player) => (
+        <li key={player.id}>
+          <span><strong>{player.name}</strong> <small>{player.role} · {player.starts} titularidades</small></span>
+          <span>ATQ {player.attack}{player.attackGrowth ? ` (+${player.attackGrowth})` : ''} · DEF {player.defense}{player.defenseGrowth ? ` (+${player.defenseGrowth})` : ''}</span>
+        </li>
+      ))}
+    </ul>
+  </details>
+  );
+}
 
 export default function ChessFootballEntry({ onExit }) {
   const [view, setView] = useState('welcome');
@@ -16,14 +36,18 @@ export default function ChessFootballEntry({ onExit }) {
   const [tactic, setTactic] = useState('balanced');
   const [lineupIds, setLineupIds] = useState(null);
   const [journal, setJournal] = useState(null);
+  const [careerHistory, setCareerHistory] = useState([]);
   const [savedCareer, setSavedCareer] = useState(() => readFootballCareer());
   const [replacePending, setReplacePending] = useState(false);
   const [saveStatus, setSaveStatus] = useState(null);
   const selectedClub = getFootballManagerClub(selectedClubId);
   const roster = selectedClub ? getFootballClubRoster(selectedClub) : [];
+  const developedRoster = getDevelopedFootballRoster(roster, season?.managerDevelopment);
   const defaultLineup = selectedClub ? getDefaultFootballLineup(roster) : [];
   const startingFive = lineupIds || defaultLineup;
   const standings = season ? footballStandings(season) : [];
+  const objective = season && selectedClubId ? footballClubObjectiveReport(season, selectedClubId) : null;
+  const seasonNumber = (journal?.completedSeasons?.length || 0) + 1;
 
   // Each new room starts at its entrance. Reusing this mounted full-screen
   // scroller otherwise carries a deep standings offset back into Welcome.
@@ -31,7 +55,8 @@ export default function ChessFootballEntry({ onExit }) {
     if (view !== 'match' && scrollSurface.current) scrollSurface.current.scrollTop = 0;
   }, [view]);
 
-  const showCareer = ({ journal: nextJournal, season: nextSeason }) => {
+  const showCareer = ({ journal: nextJournal, season: nextSeason, history = [] }) => {
+    setCareerHistory(history);
     setSelectedClubId(nextJournal.clubId);
     setJournal(nextJournal);
     setSeason(nextSeason);
@@ -93,6 +118,15 @@ export default function ChessFootballEntry({ onExit }) {
     showCareer(next);
   };
 
+  const renewSeason = () => {
+    if (!journal || season?.currentRound !== 10 || seasonNumber >= FOOTBALL_CAREER_MAX_SEASONS) return;
+    const next = startNextFootballSeason(journal);
+    const outcome = persistCareer(next);
+    if (outcome.status === 'future' || outcome.status === 'unavailable') return;
+    showCareer(next);
+    if (scrollSurface.current) scrollSurface.current.scrollTop = 0;
+  };
+
   const startQuickMatch = () => {
     // Fullscreen/orientation require a real user gesture. Opening Football's
     // welcome screen should never rotate or lock the phone.
@@ -120,7 +154,7 @@ export default function ChessFootballEntry({ onExit }) {
           ← {view === 'welcome' ? 'Experimentos geniales' : view === 'season' ? 'Volver a la ficha' : view === 'club' ? 'Volver a los clubes' : 'Volver a Football'}
         </button>
         <header className="chess-football-entry__masthead">
-          <span className="chess-football-entry__eyebrow">El vestuario · Temporada cero</span>
+          <span className="chess-football-entry__eyebrow">El vestuario · {view === "season" ? `Temporada ${seasonNumber}` : "Football"}</span>
           <h1>Chess <em>Football</em></h1>
           <p>Elige tu forma de vivir el fútbol. Un partido ahora, o la carrera de un club entero.</p>
         </header>
@@ -130,7 +164,7 @@ export default function ChessFootballEntry({ onExit }) {
             {savedCareer.status === 'available' ? (
               <div className="chess-football-entry__career-resume" aria-label="Temporada guardada">
                 <strong>{FOOTBALL_MANAGER_CLUBS.find((club) => club.id === savedCareer.journal.clubId)?.name}</strong>
-                <p>Jornada {savedCareer.season.currentRound} de 10. Clasificación, quinteto y fatiga listos para continuar.</p>
+                <p>Temporada {(savedCareer.journal.completedSeasons?.length || 0) + 1} · Jornada {savedCareer.season.currentRound} de 10. Clasificación, quinteto y evolución guardados.</p>
                 <button type="button" className="chess-football-entry__manager-return" onClick={continueCareer}>Continuar temporada</button>
               </div>
             ) : savedCareer.status === 'future' ? (
@@ -201,11 +235,31 @@ export default function ChessFootballEntry({ onExit }) {
           </section>
         ) : (
           <section className="chess-football-entry__manager chess-football-entry__manager--season" aria-labelledby="football-season-title">
-            <span className="chess-football-entry__eyebrow">Temporada de prueba · Carrera versionada</span>
+            <span className="chess-football-entry__eyebrow">Temporada {seasonNumber} de {FOOTBALL_CAREER_MAX_SEASONS} · Carrera del club</span>
             <h2 id="football-season-title">{selectedClub?.name || 'Mi club'}</h2>
             <p>Jornada {season?.currentRound || 0} de {season?.rounds.length || 10}. Los resultados pertenecen a esta simulación estadística, no a un partido jugado en Godot.</p>
+            {careerHistory.length ? (
+              <details className="chess-football-entry__history" aria-label="Historial del club">
+                <summary>Archivo de temporadas · {careerHistory.length} {careerHistory.length === 1 ? "completada" : "completadas"}</summary>
+                <ol>{careerHistory.map((year) => (
+                  <li key={year.number}>
+                    Temporada {year.number} · {year.position}.º puesto · {year.points} puntos · {year.objectiveMet ? 'Objetivo cumplido' : 'Objetivo no alcanzado'}
+                  </li>
+                ))}</ol>
+              </details>
+            ) : null}
             {saveStatus === 'saved' ? <p className="chess-football-entry__save-state" role="status">Progreso guardado en este dispositivo y pendiente de sincronización del perfil.</p> : null}
             {saveStatus === 'memory' ? <p className="chess-football-entry__career-warning" role="status">El almacenamiento está bloqueado: los cambios sólo están disponibles en esta pestaña.</p> : null}
+            {objective ? (
+              <section className="chess-football-entry__objective" aria-label="Objetivo del club">
+                <div className="chess-football-entry__objective-heading">
+                  <strong>Objetivo del club · {objective.title}</strong>
+                  <span>{objective.statusLabel}</span>
+                </div>
+                <p>{objective.detail}</p>
+                <p className="chess-football-entry__objective-progress">{objective.progress}</p>
+              </section>
+            ) : null}
             <table className="chess-football-entry__standings" aria-label="Clasificación de liga">
               <thead><tr><th scope="col">#</th><th scope="col">Club</th><th scope="col">PJ</th><th scope="col">Pts</th></tr></thead>
               <tbody>
@@ -223,7 +277,7 @@ export default function ChessFootballEntry({ onExit }) {
                   <p>Fútbol 5: portero, defensa, dos medios y delantero. Cada jornada suma 17 puntos de cansancio a los titulares y recupera 22 a los suplentes. La fatiga reduce su rendimiento hasta que roten.</p>
                   <div className="chess-football-entry__lineup-slots">
                     {startingFive.map((playerId, index) => {
-                      const player = roster.find((entry) => entry.id === playerId);
+                      const player = developedRoster.find((entry) => entry.id === playerId);
                       if (!player) return null;
                       return (
                         <label key={index}>
@@ -241,7 +295,7 @@ export default function ChessFootballEntry({ onExit }) {
                               changeDraft({ lineup: next });
                             }}
                           >
-                            {roster.filter((candidate) => candidate.role === player.role).map((candidate) => (
+                            {developedRoster.filter((candidate) => candidate.role === player.role).map((candidate) => (
                               <option key={candidate.id} value={candidate.id} disabled={startingFive.includes(candidate.id) && candidate.id !== playerId}>
                                 {candidate.name} · ATQ {candidate.attack} / DEF {candidate.defense} · F{getFootballFatigue(season.managerFatigue, candidate.id)}%
                               </option>
@@ -251,6 +305,7 @@ export default function ChessFootballEntry({ onExit }) {
                       );
                     })}
                   </div>
+                  <FootballSquadDevelopment players={developedRoster} />
                 </details>
               </section>
             ) : null}
@@ -275,13 +330,47 @@ export default function ChessFootballEntry({ onExit }) {
               </section>
             ) : null}
             {season && season.currentRound < season.rounds.length ? (
+              <section className="chess-football-entry__training" aria-label="Entrenamiento de la jornada">
+                <details>
+                  <summary>Preparar entrenamiento · {FOOTBALL_TRAINING_PLANS.find((plan) => plan.id === journal?.nextTraining)?.label || 'Rutina normal'}</summary>
+                  <p>Una sesión antes del partido: más ataque, más defensa o recuperación. El esfuerzo también se paga con cansancio.</p>
+                  <div className="chess-football-entry__training-options" role="group" aria-label="Plan de entrenamiento">
+                    {FOOTBALL_TRAINING_PLANS.map((plan) => (
+                      <button type="button" key={plan.id}
+                        className="chess-football-entry__training-option"
+                        aria-pressed={journal?.nextTraining === plan.id}
+                        onClick={() => changeDraft({ training: plan.id })}
+                      >{plan.label}</button>
+                    ))}
+                  </div>
+                  <p role="status">{FOOTBALL_TRAINING_PLANS.find((plan) => plan.id === journal?.nextTraining)?.description}</p>
+                </details>
+              </section>
+            ) : null}
+            {season && season.currentRound < season.rounds.length ? (
               <div className="chess-football-entry__fixture-list" aria-label="Próxima jornada">
                 <h3>Próxima jornada</h3>
                 {season.rounds[season.currentRound].map((fixture) => (
                   <p key={fixture.id}>{season.clubs.find((club) => club.id === fixture.homeId)?.name} – {season.clubs.find((club) => club.id === fixture.awayId)?.name}</p>
                 ))}
               </div>
-            ) : <p>Temporada completada. La clasificación final ya está calculada.</p>}
+            ) : (
+              <section className="chess-football-entry__lineup" aria-label="Plantilla al cierre">
+                <p>Temporada completada. La clasificación final ya está calculada.</p>
+                <FootballSquadDevelopment players={developedRoster} />
+              </section>
+            )}
+            {season?.currentRound === season?.rounds.length && season ? (
+              <section className="chess-football-entry__renewal" aria-label="Cierre de temporada">
+                <strong>Temporada {seasonNumber} completada · {objective?.position}.º puesto</strong>
+                <p>{objective?.statusLabel}. Tus futbolistas mantienen las mejoras ganadas, el cansancio se recupera en pretemporada y el calendario siguiente tendrá un nuevo sorteo reproducible.</p>
+                {seasonNumber < FOOTBALL_CAREER_MAX_SEASONS ? (
+                  <button type="button" className="chess-football-entry__manager-return" onClick={renewSeason}>
+                    Comenzar temporada {seasonNumber + 1}
+                  </button>
+                ) : <p>Has completado las {FOOTBALL_CAREER_MAX_SEASONS} temporadas de esta primera carrera. Su historial permanece guardado.</p>}
+              </section>
+            ) : null}
             {season?.results.length ? (
               <div className="chess-football-entry__fixture-list" aria-label="Resultados de la última jornada">
                 <h3>Últimos resultados</h3>
@@ -293,6 +382,9 @@ export default function ChessFootballEntry({ onExit }) {
                     ) : null}
                     {result.managerFatigueAtKickoff > 0 ? (
                       <span className="chess-football-entry__used-plan"> · Fatiga inicial media: {Math.round(result.managerFatigueAtKickoff)}%</span>
+                    ) : null}
+                    {result.managerTraining && result.managerTraining !== 'standard' ? (
+                      <span className="chess-football-entry__used-plan"> · Entreno: {FOOTBALL_TRAINING_PLANS.find((plan) => plan.id === result.managerTraining)?.label}</span>
                     ) : null}
                     {result.managerTactic ? (
                       <span className="chess-football-entry__used-plan">

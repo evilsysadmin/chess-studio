@@ -1,0 +1,274 @@
+{
+  "id": "terra-a5",
+  "version": 1,
+  "progressionKey": "terra-a5-v1",
+  "title": "Arrecifes del Naufragio",
+  "areaCode": "A5",
+  "biome": "coast",
+  "regionKind": "wilderness",
+  "layoutMode": "authored",
+  "grid": [
+    "#####################",
+    "#........#.#..##..###",
+    "#..#.......#....#...#",
+    "#.##.......#........#",
+    "#.#.............#...#",
+    "#..#.........#.###..#",
+    "#.............#.....#",
+    "#...................#",
+    "#............#......#",
+    "##....##.....#.....##",
+    "##..................#",
+    "##..................#",
+    "#.......##......#...#",
+    "##......#........#..#",
+    "#####################"
+  ],
+  "partyStart": {
+    "x": 10,
+    "y": 7,
+    "direction": 0
+  },
+  "initialFlags": {},
+  "enemies": [
+    {
+      "id": "terra-a5-foe-0",
+      "visualType": "salt-crab",
+      "name": "cangrejo de roca",
+      "x": 7,
+      "y": 3,
+      "hpKey": "terra_a5Foe0Hp",
+      "maxHp": 12,
+      "retaliation": 2,
+      "optional": true,
+      "activation": "always",
+      "ai": {
+        "movement": "cardinal-roam",
+        "attackReach": 1,
+        "engagedMovement": "knight-chase",
+        "engageRange": 2
+      },
+      "onDefeat": {
+        "message": "{attacker} acaba con cangrejo de roca usando {attack}.",
+        "effects": [
+          {
+            "type": "grant-gold",
+            "amount": 10
+          }
+        ]
+      }
+    },
+    {
+      "id": "terra-a5-foe-1",
+      "visualType": "drowned",
+      "name": "náufrago ahogado",
+      "x": 13,
+      "y": 11,
+      "hpKey": "terra_a5Foe1Hp",
+      "maxHp": 12,
+      "retaliation": 2,
+      "optional": true,
+      "activation": "always",
+      "ai": {
+        "movement": "cardinal-chase",
+        "attackReach": 1,
+        "engagedMovement": "cardinal-chase",
+        "engageRange": 3
+      },
+      "onDefeat": {
+        "message": "{attacker} acaba con náufrago ahogado usando {attack}.",
+        "effects": [
+          {
+            "type": "grant-gold",
+            "amount": 10
+          }
+        ]
+      }
+    },
+    {
+      "id": "terra-a5-foe-2",
+      "visualType": "road-bandit",
+      "name": "pirata",
+      "x": 3,
+      "y": 11,
+      "hpKey": "terra_a5Foe2Hp",
+      "maxHp": 12,
+      "retaliation": 2,
+      "optional": true,
+      "activation": "always",
+      "ai": {
+        "movement": "hold",
+        "attackReach": 1,
+        "engagedMovement": "cardinal-chase",
+        "engageRange": 2
+      },
+      "onDefeat": {
+        "message": "{attacker} acaba con pirata usando {attack}.",
+        "effects": [
+          {
+            "type": "grant-gold",
+            "amount": 10
+          }
+        ]
+      }
+    }
+  ],
+  "triggers": [],
+  "interactables": [
+    {
+      "id": "a5-wrecker",
+      "kind": "lore",
+      "visualType": "rookwood-mourner",
+      "x": 5,
+      "y": 4,
+      "persistentVisual": true,
+      "label": "Hablar con el raquero Ismael",
+      "action": {
+        "effects": [],
+        "message": "El raquero Ismael: «Los contrabandistas de las calas tienen campana nueva. Una campana no se roba sola.»"
+      }
+    }
+  ],
+  "treasures": [
+    {
+      "id": "hollin-fisher-errand-item",
+      "kind": "pickup",
+      "visualType": "chest",
+      "label": "Recoger el amuleto de las redes",
+      "when": [
+        {
+          "questId": "hollin-fisher-errand",
+          "questStatus": "active"
+        },
+        {
+          "key": "hollin_fisherErrandFound",
+          "falsy": true
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "set",
+            "key": "hollin_fisherErrandFound",
+            "value": true
+          },
+          {
+            "type": "grant-item",
+            "itemId": "lost-net-charm",
+            "name": "El amuleto de las redes",
+            "description": "Lo que pidió la pescadera Iria.",
+            "quantity": 1
+          }
+        ],
+        "message": "Aquí está: el amuleto de las redes."
+      },
+      "x": 15,
+      "y": 4
+    },
+    {
+      "id": "terra-a5-chest",
+      "kind": "pickup",
+      "visualType": "chest",
+      "x": 5,
+      "y": 10,
+      "label": "Abrir el cofre",
+      "when": [
+        {
+          "key": "terra_a5ChestOpened",
+          "falsy": true
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "set",
+            "key": "terra_a5ChestOpened",
+            "value": true
+          },
+          {
+            "type": "grant-gold",
+            "amount": 30
+          },
+          {
+            "type": "grant-item",
+            "itemId": "silver-spear",
+            "name": "Silver spear",
+            "description": "Botín de un cofre de Terra.",
+            "quantity": 1
+          }
+        ],
+        "message": "El cofre guarda 30 monedas y algo de equipo."
+      }
+    }
+  ],
+  "traps": [],
+  "exits": [
+    {
+      "id": "a5-to-a4",
+      "kind": "exit",
+      "x": 10,
+      "y": 1,
+      "requiresReturn": true,
+      "openLabel": "Ir a A4 · Calas de los Contrabandistas",
+      "lockedLabel": "El paso está cortado",
+      "requirements": [],
+      "action": {
+        "effects": [
+          {
+            "type": "transition-map",
+            "mapId": "terra-a4",
+            "entryExitId": "a4-to-a5"
+          }
+        ],
+        "message": "La compañía entra en A4."
+      }
+    },
+    {
+      "id": "a5-to-a6",
+      "kind": "exit",
+      "x": 10,
+      "y": 13,
+      "requiresReturn": true,
+      "openLabel": "Ir a A6 · Isla del Faro Roto",
+      "lockedLabel": "El paso está cortado",
+      "requirements": [],
+      "action": {
+        "effects": [
+          {
+            "type": "transition-map",
+            "mapId": "terra-a6",
+            "entryExitId": "a6-to-a5"
+          }
+        ],
+        "message": "La compañía entra en A6."
+      }
+    },
+    {
+      "id": "a5-to-b5",
+      "kind": "exit",
+      "x": 19,
+      "y": 7,
+      "requiresReturn": true,
+      "openLabel": "Ir a B5 · Molinos del Oeste",
+      "lockedLabel": "El paso está cortado",
+      "requirements": [],
+      "action": {
+        "effects": [
+          {
+            "type": "transition-map",
+            "mapId": "terra-b5",
+            "entryExitId": "b5-to-a5"
+          }
+        ],
+        "message": "La compañía entra en B5."
+      }
+    }
+  ],
+  "initialJournal": {
+    "id": "terra-a5-arrival",
+    "title": "A5 · Arrecifes del Naufragio",
+    "body": "Costillares de barcos asoman entre las rocas.",
+    "sigil": "A5"
+  },
+  "introMessage": "A5 · Arrecifes del Naufragio. Costillares de barcos asoman entre las rocas."
+}

@@ -178,6 +178,9 @@ El mismo asset/contrato debe mantenerse coherente entre tarjeta grande, thumbnai
 
 ## Automap y ownership de viewport
 
+- Coordenadas al estilo MM3 (`chroniclesMapCoordinates`): X crece hacia el este e Y hacia el norte, con (0,0) en la esquina suroeste del mapa. Se muestran en la placa RUMBO («N · X9 Y7») en escritorio, sobre el minimapa en móvil y en la cabecera del automapa (con el código de área de Terra si lo hay).
+
+
 Chronicles first-person es una superficie **viewport-owned**: durante la expedición no existe un modo windowed interno.
 
 - El root de Chronicles ocupa siempre el viewport completo con layout propio (`100vw` + `100dvh`) en desktop, móvil vertical y móvil apaisado.
@@ -255,10 +258,30 @@ Any future haste/slow/surprise mechanic should modify the initiative contract ex
 ## Overworld quests, journal and landmarks (Rookwood slice)
 
 - The open world follows quests, not gates: on `settlement`/`wilderness` maps the HUD objective is the active quest with content on that map (else the first active quest), then any available quest giver's label, and only then the exit label.
-- Quest log: desktop shows «Encargos» inside the bottom expedition journal; touch layouts (where that journal is hidden) show the same list inside the floating «Crónica» panel. The story thread (`lost-king-prologue`) is labelled «Historia»; everything else is «Encargo secundario».
+- Quest log: desktop shows «Encargos» inside the bottom expedition journal; touch layouts (where that journal is hidden) show the same list inside the floating «Crónica» panel. The story threads (`lost-king`, legacy `lost-king-prologue`) are labelled «Historia»; everything else is «Side quest».
 - Authored visual hooks for overworld content (renderer-only, no gameplay effect): `visualType` (`name-plaque`, `name-oak`, `rookwood-mourner`; `rookwood-mourner-voice` has no body), `persistentVisual: true` keeps an NPC/landmark visible after its interaction is spent, `visualActivatedWhen` (requirements) drives an activated look when the outcome lives inside an atomic `claim-reward`, and `visualFacing` (0 N, 1 E, 2 S, 3 W) orients a character.
 - Overworld enemies are real bodies drawn from the shared enemy registry (they were previously invisible on exterior maps). A forest map (`rookwood-first-book`) dresses `#` cells as tree clumps and extends trees past the grid so gaps never show the void; collision is still only the grid.
 - Gates on the west/east map edge rotate 90° so their posts flank the road instead of blocking the arriving camera.
+
+## Main story thread and town dungeons (Swordhaven slice)
+
+- Product rule: never «¿y ahora qué?». The main story `lost-king` («El rey desaparecido», labelled «Historia») is active from arrival, and its objective always names a person or place. The full chain lives in `backend-python/chronicles_campaign/DESIGN.md` («Hilo principal en el mundo abierto»).
+- `arrivalAction` on a manifest (effects, optional message/journal) runs once per run when the company first stands in that region: on a fresh start, on restore and on entry through a transition. The receipt is `arrival:<mapId>` in `consumedContentIds` (durable, F5-safe).
+- Quest XP, MM3 style: `{ "type": "award-xp", "awardId", "amount" }` inside a `claim-reward` records the award in `state.xpAwards`. The shared progression then grants it to every living hero, once per run and hero (`<runId>:quest-xp:<awardId>:<hero>`). Every Swordhaven quest-giver pays XP as well as gold.
+- A town's dungeon is an authored campaign dungeon (`regionKind: dungeon`, `dungeonRole: main`, `layoutMode: authored`) joined to the town by reciprocal `requiresReturn` exits. Climbing out is travel, not the end of the expedition. Its HUD plaque reads «MAZMORRA · <hudTitle|title>», and the objective follows the active quest even while you stand on the ladder.
+- `defeatedFlag` on an enemy keeps a named foe down when the company comes back: re-entering an area restores its `initialFlags` and respawns its foes, except those whose flag is already set (Tobías, Garrah, the deserter).
+- `sewer-grate` (exit) draws an iron grate flush with the road, and `building-hall` gives the town hall its own roof.
+
+## Terra overworld (areas A1–F6)
+
+- The outdoors is a 6×6 grid of 21×15 areas joined by edge gates (reciprocal `requiresReturn` exits), MM3 style. It is generated from the design table in `scripts/chronicles/build_terra_world.py`, which writes the manifests to `backend-python/chronicles_maps/`; then run `make chronicles-contracts`.
+  - C3 is `banner-road-first-book` and D3 is `rookwood-first-book`; the script only adds their gates.
+  - Manifests carry `areaCode` (HUD «ÁREA C4») and `biome`, which drives ground texture, rock and sky tints, and forest canopy.
+- Every authored outdoor region uses the campaign exterior renderer. Only the legacy `swordhaven-square` keeps its historic builder.
+- Exterior props: `chest` (pickup), `signpost`, `shrine`, `dungeon-arch` and `sewer-grate`.
+- The frontend catalog bundles Terra manifests with `import.meta.glob`.
+- Checkpoints keep world flags for every region but enemy HP only for the current map. Python and Go accept up to 512 flags / 64 KB.
+- Debt: run creation still ships every bundled area (≈380 KB raw). Bootstrap per area once the world grows further.
 
 ## 2.5D billboards (first-person, MM3 style)
 
@@ -266,4 +289,22 @@ Any future haste/slow/surprise mechanic should modify the initiative contract ex
 - Sheets: one row of square frames (`idle-a`, `idle-b`, optional `menace`, `attack`, `hurt`, `dead`, `speak`, `grateful`) in `frontend/src/assets/chronicles/sprites/` plus `sprites.json`. Cue priority: dead → hurt → attack (a blow it just landed) → menace (engaged/adjacent) → grateful (the NPC entry's `visualActivatedWhen`) → speak (party adjacent) → alternating idle. Under reduced motion there is no idle loop, but state-driven frames still apply.
 - Source art is SpriteCook-generated pixel art (gpt-image-2, MM3/VGA style prompt) committed as one PNG per pose under `scripts/art/chronicles_sprites/source/` (`<sprite>.<pose>.png`), with provenance and reusable `asset_id`s in `scripts/art/chronicles_sprites/spritecook-assets.json`. New poses of an existing creature are generated as edits of its canonical `asset_id` so the subject stays consistent. `python3 scripts/art/pack_chronicles_sprites.py` packs them deterministically (bottom-aligned square cells, integer nearest upscale, lossless WebP); `idle-b` is derived from idle as a breathing squash. Review real in-game captures before accepting.
 - First slice: bone hound and Edda (Rookwood).
+- Procedural placeholders: creatures without painted art are drawn by `scripts/art/build_chronicles_procedural_sprites.py`. They are original pixel art with short ramps, Bayer dither and one contour per silhouette. The script writes the same `source/<sprite>.<pose>.png` files (idle, attack, hurt, dead) and lists them in `procedural-sprites.json`. Current set: sewer rat, goblin (`ash-goblin`), salt crab, drowned, mire witch.
+  - To replace one with SpriteCook art: put the painted PNGs on the same paths, record their asset ids in `spritecook-assets.json`, take the sprite out of the procedural script and its JSON, and pack again.
+  - Each placeholder needs a 3D stand-in in `chroniclesEnemyVisualRegistry.js` for Tactics. A test checks both.
 - World surfaces in the first-person overworld (meadow, cobbled roads, masonry, stucco, timber, roof tiles, bark and foliage) are MM3-style pixel art from `frontend/src/chronicles/chroniclesPixelTextures.js`: small tiles (32–64 px) with a short colour ramp per material, 4×4 Bayer dithering and `NearestFilter` magnification, generated deterministically in memory. Tinted surfaces stay near-neutral so each building keeps its material colour. Aim for roughly 16 texels per metre so the world shares the chunky pixel of the billboards.
+
+- Shops and the guild show the shopkeeper in their room, as MM3 does on entering a shop. The scenes are original pixel art at 128×144 from `scripts/art/build_chronicles_shop_rooms.py`: Odo, the muscular smith, at his anvil and forge; Brunna among her weapon racks; the hooded archivist with grimoires and a green cauldron. They live in `frontend/src/assets/chronicles/ui/shops/` and are chosen by the shop's `visualType` (`chroniclesShopRooms.js`). They are placeholders until painted SpriteCook art replaces them.
+- The first-person screen wears an MM3-style chrome (`frontend/src/components/ChroniclesMM3Chrome.css`). On desktop and wide landscape it has three parts:
+  - the 3D view inside a carved stone frame with a Greek-key band and a ruby at each corner;
+  - the company as a portrait strip under the view, with green HP and blue SP bars, plus two empty hireling places as in MM3 (desktop only). Text on stone is near-black ink (`--mm3-ink`); text on the black plaques is near-white;
+  - a stone control panel on the right with the title plaque, location plaques, a 3×3 grid of engraved buttons, the sandstone chronicle and the key help.
+
+  Tuned against Isles of Terra DOS screenshots:
+  - the panel's top slot is the automap on a sandstone tablet (blue walls, light-cyan visited floor, red party arrow); during initiative it becomes the «Combate» list, with foes in green, yellow or red by health and the one in front boxed;
+  - pictogram buttons sit on a blue field with no captions;
+  - the strip shows only faces with gem bars that turn yellow and then red; numbers are in the tooltip and the sheet;
+  - the latest meaningful note runs as a sandstone band along the bottom of the view, set in VT323 (SIL OFL, vendored under `assets/chronicles/ui/fonts`);
+  - a sapphire is set at the bottom centre of the frame.
+
+  Mobile keeps its overlay layout and only takes the stone look on the buttons, portraits, minimap and narrator. The pixel art (`mm3-stone`, `mm3-frame`, `mm3-gem`, `mm3-sandstone` under `frontend/src/assets/chronicles/ui/`) is original. It is generated deterministically by `python3 scripts/art/build_chronicles_mm3_ui.py` and always scaled by whole factors with `image-rendering: pixelated`.

@@ -1,17 +1,6 @@
 import { useState } from 'react';
 import './ChroniclesSaveMenu.css';
-
-function expeditionArea(save) {
-  switch (save.currentMapId || save.entryMapId) {
-    case 'swordhaven-square':
-    case 'swordhaven-campaign':
-    case 'swordhaven-first-book': return 'Swordhaven';
-    case 'banner-road-first-book': return 'Camino de los Estandartes';
-    case 'rookwood-first-book': return 'Rookwood';
-    case 'crypt-eight-squares': return 'Cripta de las Ocho Casillas';
-    default: return 'Expedición en curso';
-  }
-}
+import { chroniclesSavedExpeditionArea } from '../chronicles/chroniclesSavedExpeditionArea.js';
 
 function saveWhen(value) {
   const date = new Date(value);
@@ -64,7 +53,7 @@ export default function ChroniclesSaveMenu({
             <button type="button" onClick={() => onNew()}>Nuevo juego</button>
             <button type="button" disabled={!resume || loading} onClick={() => onLoad(resume.id)}>
               Continuar partida
-              {resume && <small>{resume.title} · {expeditionArea(resume)}</small>}
+              {resume && <small>{resume.title} · {chroniclesSavedExpeditionArea(resume)}</small>}
             </button>
             <button type="button" disabled={!saves.length || loading} onClick={() => openList('load')}>Cargar juego</button>
             <button type="button" onClick={() => openList('manage')}>Gestionar partidas</button>
@@ -84,7 +73,7 @@ export default function ChroniclesSaveMenu({
                   <li key={save.id}>
                     <div className="chronicles-save-menu__save">
                       <strong>{save.title}</strong>
-                      <span>{expeditionArea(save)} · {saveWhen(save.updatedAt)}</span>
+                      <span>{chroniclesSavedExpeditionArea(save)} · {saveWhen(save.updatedAt)}</span>
                       {save.active && <em>Última partida</em>}
                       {save.remote && <em>Guardada en servidor</em>}
                     </div>

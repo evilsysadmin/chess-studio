@@ -5,8 +5,8 @@
 // stat-bonus table. Races are not modelled yet.
 // Every number the character sheet shows here is wired into the first-person
 // rules: Endurance → HP, Might → damage, Accuracy → to-hit, Speed → AC and
-// initiative, Luck → trap saves. Intellect/Personality are rolled and gate
-// classes now; spell points arrive with spells (see the economy contract).
+// initiative, Luck → trap saves. Intellect/Personality gate classes and give
+// spell points through each class's `spellStat` (chroniclesMagic.js).
 
 export const CHRONICLES_MM3_STATS = Object.freeze([
   'might', 'intellect', 'personality', 'endurance', 'speed', 'accuracy', 'luck',
@@ -28,8 +28,8 @@ export const CHRONICLES_MM3_STAT_SHORT = Object.freeze({
 
 export const CHRONICLES_MM3_STAT_EFFECTS = Object.freeze({
   might: 'Daño cuerpo a cuerpo',
-  intellect: 'Requisito de clases arcanas',
-  personality: 'Requisito de clases clericales',
+  intellect: 'Puntos de hechizo arcanos',
+  personality: 'Puntos de hechizo clericales',
   endurance: 'Puntos de vida',
   speed: 'Clase de armadura e iniciativa',
   accuracy: 'Probabilidad de acertar',

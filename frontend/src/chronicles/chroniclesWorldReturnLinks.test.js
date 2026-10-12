@@ -41,13 +41,16 @@ describe('Chronicles opt-in overworld return links', () => {
 
 
 // New authored settlements and wilderness are region hops; dungeons retain
-// the historic exit = terminal expedition contract.
+// the historic exit = terminal expedition contract unless the exit is a
+// reciprocal campaign route (requiresReturn).
 describe('Chronicles region travel routing', () => {
   const exit = exitTo('north-gate', 'banner-road');
   it('routes settlement and wilderness exits without ending the expedition', () => {
     expect(chroniclesIsOverworldTravelExit({ regionKind: 'settlement' }, exit)).toBe(true);
     expect(chroniclesIsOverworldTravelExit({ regionKind: 'wilderness' }, exit)).toBe(true);
-    expect(chroniclesIsOverworldTravelExit({ regionKind: 'dungeon' }, exit)).toBe(false);
+    // A campaign dungeon climbs back out through its reciprocal exit.
+    expect(chroniclesIsOverworldTravelExit({ regionKind: 'dungeon' }, { ...exit, requiresReturn: true })).toBe(true);
+    expect(chroniclesIsOverworldTravelExit({ regionKind: 'dungeon' }, { ...exit, requiresReturn: false })).toBe(false);
     expect(chroniclesIsOverworldTravelExit({}, exit)).toBe(false);
     expect(chroniclesIsOverworldTravelExit({ regionKind: 'wilderness' }, { action: { effects: [] } })).toBe(false);
   });

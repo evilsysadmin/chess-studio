@@ -52,6 +52,17 @@ SHEETS = {
         "frames": [("idle-a", "idle"), ("idle-b", None), ("attack", "attack"),
                    ("dead", "dead")],
     },
+    # Procedural placeholders (build_chronicles_procedural_sprites.py) until
+    # painted SpriteCook art replaces them; see procedural-sprites.json.
+    **{
+        sprite: {
+            "cell": cell,
+            "frames": [("idle-a", "idle"), ("idle-b", None), ("attack", "attack"),
+                       ("hurt", "hurt"), ("dead", "dead")],
+        }
+        for sprite, cell in (("sewer-rat", 84), ("ash-goblin", 88), ("salt-crab", 92),
+                             ("drowned", 96), ("mire-witch", 104))
+    },
 }
 
 

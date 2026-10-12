@@ -1,0 +1,232 @@
+{
+  "id": "terra-c2",
+  "version": 1,
+  "progressionKey": "terra-c2-v1",
+  "title": "Colinas de la Corona",
+  "areaCode": "C2",
+  "biome": "hills",
+  "regionKind": "wilderness",
+  "layoutMode": "authored",
+  "grid": [
+    "#####################",
+    "#..#..###...#.......#",
+    "#........#..#.......#",
+    "#................#..#",
+    "#...................#",
+    "#.......#...........#",
+    "##.......#.#........#",
+    "#...................#",
+    "#....#...#.......#..#",
+    "#..##...##....##....#",
+    "#..####.....##......#",
+    "#.####..............#",
+    "#..#..........#.#...#",
+    "#..#..........#.....#",
+    "#####################"
+  ],
+  "partyStart": {
+    "x": 10,
+    "y": 7,
+    "direction": 0
+  },
+  "initialFlags": {},
+  "enemies": [
+    {
+      "id": "terra-c2-foe-0",
+      "visualType": "road-bandit",
+      "name": "bandolero",
+      "x": 7,
+      "y": 3,
+      "hpKey": "terra_c2Foe0Hp",
+      "maxHp": 6,
+      "retaliation": 1,
+      "optional": true,
+      "activation": "always",
+      "ai": {
+        "movement": "hold",
+        "attackReach": 1,
+        "engagedMovement": "cardinal-chase",
+        "engageRange": 2
+      },
+      "onDefeat": {
+        "message": "{attacker} acaba con bandolero usando {attack}.",
+        "effects": [
+          {
+            "type": "grant-gold",
+            "amount": 4
+          }
+        ]
+      }
+    },
+    {
+      "id": "terra-c2-foe-1",
+      "visualType": "bone-hound",
+      "name": "lobo de hueso",
+      "x": 13,
+      "y": 11,
+      "hpKey": "terra_c2Foe1Hp",
+      "maxHp": 6,
+      "retaliation": 1,
+      "optional": true,
+      "activation": "always",
+      "ai": {
+        "movement": "cardinal-roam",
+        "attackReach": 1,
+        "engagedMovement": "cardinal-chase",
+        "engageRange": 4
+      },
+      "onDefeat": {
+        "message": "{attacker} acaba con lobo de hueso usando {attack}.",
+        "effects": [
+          {
+            "type": "grant-gold",
+            "amount": 4
+          }
+        ]
+      }
+    }
+  ],
+  "triggers": [],
+  "interactables": [
+    {
+      "id": "terra-c2-sign",
+      "kind": "lore",
+      "visualType": "signpost",
+      "x": 5,
+      "y": 4,
+      "persistentVisual": true,
+      "label": "Leer el cartel",
+      "action": {
+        "effects": [],
+        "message": "Cartel: al norte, Vigilia del Norte (C1). Al sur, Swordhaven."
+      }
+    }
+  ],
+  "treasures": [
+    {
+      "id": "terra-c2-chest",
+      "kind": "pickup",
+      "visualType": "chest",
+      "x": 15,
+      "y": 4,
+      "label": "Abrir el cofre",
+      "when": [
+        {
+          "key": "terra_c2ChestOpened",
+          "falsy": true
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "set",
+            "key": "terra_c2ChestOpened",
+            "value": true
+          },
+          {
+            "type": "grant-gold",
+            "amount": 12
+          },
+          {
+            "type": "grant-item",
+            "itemId": "bronze-dagger",
+            "name": "Bronze dagger",
+            "description": "Botín de un cofre de Terra.",
+            "quantity": 1
+          }
+        ],
+        "message": "El cofre guarda 12 monedas y algo de equipo."
+      }
+    }
+  ],
+  "traps": [],
+  "exits": [
+    {
+      "id": "c2-to-c1",
+      "kind": "exit",
+      "x": 10,
+      "y": 1,
+      "requiresReturn": true,
+      "openLabel": "Ir a C1 · Llanura de la Vigilia",
+      "lockedLabel": "El paso está cortado",
+      "requirements": [],
+      "action": {
+        "effects": [
+          {
+            "type": "transition-map",
+            "mapId": "terra-c1",
+            "entryExitId": "c1-to-c2"
+          }
+        ],
+        "message": "La compañía entra en C1."
+      }
+    },
+    {
+      "id": "c2-to-c3",
+      "kind": "exit",
+      "x": 10,
+      "y": 13,
+      "requiresReturn": true,
+      "openLabel": "Ir a C3 · Camino de los Estandartes",
+      "lockedLabel": "El paso está cortado",
+      "requirements": [],
+      "action": {
+        "effects": [
+          {
+            "type": "transition-map",
+            "mapId": "banner-road-first-book",
+            "entryExitId": "c3-to-c2"
+          }
+        ],
+        "message": "La compañía entra en C3."
+      }
+    },
+    {
+      "id": "c2-to-b2",
+      "kind": "exit",
+      "x": 1,
+      "y": 7,
+      "requiresReturn": true,
+      "openLabel": "Ir a B2 · Brezal de los Lobos",
+      "lockedLabel": "El paso está cortado",
+      "requirements": [],
+      "action": {
+        "effects": [
+          {
+            "type": "transition-map",
+            "mapId": "terra-b2",
+            "entryExitId": "b2-to-c2"
+          }
+        ],
+        "message": "La compañía entra en B2."
+      }
+    },
+    {
+      "id": "c2-to-d2",
+      "kind": "exit",
+      "x": 19,
+      "y": 7,
+      "requiresReturn": true,
+      "openLabel": "Ir a D2 · Viñedos del Rey",
+      "lockedLabel": "El paso está cortado",
+      "requirements": [],
+      "action": {
+        "effects": [
+          {
+            "type": "transition-map",
+            "mapId": "terra-d2",
+            "entryExitId": "d2-to-c2"
+          }
+        ],
+        "message": "La compañía entra en D2."
+      }
+    }
+  ],
+  "initialJournal": {
+    "id": "terra-c2-arrival",
+    "title": "C2 · Colinas de la Corona",
+    "body": "Desde aquí se ven las torres de Swordhaven y, al norte, la nieve.",
+    "sigil": "C2"
+  },
+  "introMessage": "C2 · Colinas de la Corona. Desde aquí se ven las torres de Swordhaven y, al norte, la nieve."
+}

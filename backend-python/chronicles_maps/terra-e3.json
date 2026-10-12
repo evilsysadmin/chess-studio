@@ -1,0 +1,238 @@
+{
+  "id": "terra-e3",
+  "version": 1,
+  "progressionKey": "terra-e3-v1",
+  "title": "Bocamina de Escoria",
+  "areaCode": "E3",
+  "biome": "ash",
+  "regionKind": "wilderness",
+  "layoutMode": "authored",
+  "grid": [
+    "#####################",
+    "#......#...##.......#",
+    "#....#.......###....#",
+    "#...##......#.##....#",
+    "#...................#",
+    "#......#...#...#....#",
+    "#....###.#...##.....#",
+    "#...................#",
+    "#...................#",
+    "#...................#",
+    "#.............#....##",
+    "#.......##........#.#",
+    "#...................#",
+    "#.......##..#....#..#",
+    "#####################"
+  ],
+  "partyStart": {
+    "x": 10,
+    "y": 7,
+    "direction": 0
+  },
+  "initialFlags": {},
+  "enemies": [
+    {
+      "id": "terra-e3-foe-0",
+      "visualType": "ash-goblin",
+      "name": "goblin de ceniza",
+      "x": 7,
+      "y": 3,
+      "hpKey": "terra_e3Foe0Hp",
+      "maxHp": 8,
+      "retaliation": 1,
+      "optional": true,
+      "activation": "always",
+      "ai": {
+        "movement": "cardinal-roam",
+        "attackReach": 1,
+        "engagedMovement": "cardinal-chase",
+        "engageRange": 2
+      },
+      "onDefeat": {
+        "message": "{attacker} acaba con goblin de ceniza usando {attack}.",
+        "effects": [
+          {
+            "type": "grant-gold",
+            "amount": 6
+          }
+        ]
+      }
+    },
+    {
+      "id": "terra-e3-foe-1",
+      "visualType": "ember-wisp",
+      "name": "lumbre de ceniza",
+      "x": 13,
+      "y": 11,
+      "hpKey": "terra_e3Foe1Hp",
+      "maxHp": 8,
+      "retaliation": 1,
+      "optional": true,
+      "activation": "always",
+      "ai": {
+        "movement": "hold",
+        "attackReach": 2,
+        "requiresLineOfSight": true
+      },
+      "onDefeat": {
+        "message": "{attacker} acaba con lumbre de ceniza usando {attack}.",
+        "effects": [
+          {
+            "type": "grant-gold",
+            "amount": 6
+          }
+        ]
+      }
+    }
+  ],
+  "triggers": [],
+  "interactables": [],
+  "treasures": [
+    {
+      "id": "terra-e3-chest",
+      "kind": "pickup",
+      "visualType": "chest",
+      "x": 15,
+      "y": 4,
+      "label": "Abrir el cofre",
+      "when": [
+        {
+          "key": "terra_e3ChestOpened",
+          "falsy": true
+        }
+      ],
+      "action": {
+        "effects": [
+          {
+            "type": "set",
+            "key": "terra_e3ChestOpened",
+            "value": true
+          },
+          {
+            "type": "grant-gold",
+            "amount": 18
+          },
+          {
+            "type": "grant-item",
+            "itemId": "iron-spear",
+            "name": "Iron spear",
+            "description": "Botín de un cofre de Terra.",
+            "quantity": 1
+          }
+        ],
+        "message": "El cofre guarda 18 monedas y algo de equipo."
+      }
+    }
+  ],
+  "traps": [],
+  "exits": [
+    {
+      "id": "e3-to-e2",
+      "kind": "exit",
+      "x": 10,
+      "y": 1,
+      "requiresReturn": true,
+      "openLabel": "Ir a E2 · Estribaciones de Escoria",
+      "lockedLabel": "El paso está cortado",
+      "requirements": [],
+      "action": {
+        "effects": [
+          {
+            "type": "transition-map",
+            "mapId": "terra-e2",
+            "entryExitId": "e2-to-e3"
+          }
+        ],
+        "message": "La compañía entra en E2."
+      }
+    },
+    {
+      "id": "e3-to-e4",
+      "kind": "exit",
+      "x": 10,
+      "y": 13,
+      "requiresReturn": true,
+      "openLabel": "Ir a E4 · Bosque Ceniciento",
+      "lockedLabel": "El paso está cortado",
+      "requirements": [],
+      "action": {
+        "effects": [
+          {
+            "type": "transition-map",
+            "mapId": "terra-e4",
+            "entryExitId": "e4-to-e3"
+          }
+        ],
+        "message": "La compañía entra en E4."
+      }
+    },
+    {
+      "id": "e3-to-d3",
+      "kind": "exit",
+      "x": 1,
+      "y": 7,
+      "requiresReturn": true,
+      "openLabel": "Ir a D3 · Rookwood",
+      "lockedLabel": "El paso está cortado",
+      "requirements": [],
+      "action": {
+        "effects": [
+          {
+            "type": "transition-map",
+            "mapId": "rookwood-first-book",
+            "entryExitId": "d3-to-e3"
+          }
+        ],
+        "message": "La compañía entra en D3."
+      }
+    },
+    {
+      "id": "e3-to-f3",
+      "kind": "exit",
+      "x": 19,
+      "y": 7,
+      "requiresReturn": true,
+      "openLabel": "Ir a F3 · Crestas Volcánicas",
+      "lockedLabel": "El paso está cortado",
+      "requirements": [],
+      "action": {
+        "effects": [
+          {
+            "type": "transition-map",
+            "mapId": "terra-f3",
+            "entryExitId": "f3-to-e3"
+          }
+        ],
+        "message": "La compañía entra en F3."
+      }
+    },
+    {
+      "id": "e3-to-dungeon",
+      "kind": "exit",
+      "visualType": "dungeon-arch",
+      "x": 5,
+      "y": 4,
+      "requiresReturn": true,
+      "openLabel": "Entrar en Minas de Escoria",
+      "lockedLabel": "Minas de Escoria · sellada",
+      "requirements": [],
+      "action": {
+        "effects": [
+          {
+            "type": "transition-map",
+            "mapId": "minas-de-escoria",
+            "entryExitId": "dungeon-exit"
+          }
+        ],
+        "message": "La compañía desciende a Minas de Escoria."
+      }
+    }
+  ],
+  "initialJournal": {
+    "id": "terra-e3-arrival",
+    "title": "E3 · Bocamina de Escoria",
+    "body": "Raíles oxidados se pierden en la boca de una mina.",
+    "sigil": "E3"
+  },
+  "introMessage": "E3 · Bocamina de Escoria. Raíles oxidados se pierden en la boca de una mina."
+}

@@ -221,6 +221,8 @@ def _surface_groups(path: str) -> set[str] | None:
 
     if lower.endswith(".md"):
         return set()
+    if lower in {"makefile", ".github/workflows/staging-deploy.yml", ".github/workflows/production-promote.yml"}:
+        return set()
     if lower == "scripts/css_architecture_manifest.json":
         return set()
     if lower == "scripts/chronicles_area_parity_corpus.py":
@@ -235,6 +237,7 @@ def _surface_groups(path: str) -> set[str] | None:
         "scripts/chess_rules_gate.mjs",
         "scripts/quality_scope.py",
         "scripts/pwa_check.mjs",
+        "scripts/pages_runtime_asset_grace.py",
         "scripts/state_resilience_check.mjs",
         "scripts/visual_ux_contract_check.mjs",
         "scripts/run_core_e2e_lane.py",
