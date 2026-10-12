@@ -20,7 +20,7 @@ def sample_glb(*, rig=True, weapon=True, weights=True, missing_bone=False) -> by
         "LeftUpLeg", "RightUpLeg",
     ]
     if missing_bone:
-        names[6] = "MissingRightHand"
+        names[6] = "ElbowNotAHand"
     nodes = [{"name": name} for name in names]
     nodes.append({"name": "SvenBody", "mesh": 0, **({"skin": 0} if rig else {})})
     if weapon:
