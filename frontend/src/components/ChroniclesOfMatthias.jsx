@@ -205,6 +205,8 @@ export default function ChroniclesOfMatthias({ onExit }) {
   const [retaliationCue, setRetaliationCue] = useState(null);
   const [partyBark, setPartyBark] = useState(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const menuSummaryRef = useRef(null);
+  const [journalOpen, setJournalOpen] = useState(false);
   const [automapOpen, setAutomapOpen] = useState(false);
   const [spellMenuOpen, setSpellMenuOpen] = useState(false);
   const [saveBusy, setSaveBusy] = useState(false);
@@ -866,15 +868,45 @@ export default function ChroniclesOfMatthias({ onExit }) {
     if (!ready || !stateRef.current) return undefined;
     const onKeyDown = (event) => {
       const current = stateRef.current;
-      if (!current || audienceRef.current) return;
+      if (!current || audienceRef.current || event.defaultPrevented
+        || event.ctrlKey || event.altKey || event.metaKey) return;
+      // Let forms and modal dialogues own their keyboard events. Shift+Tab
+      // always retains browser focus navigation; once inside the game menu,
+      // plain Tab traverses its accessible controls rather than closing it.
+      const target = event.target;
+      if (target?.isContentEditable || target?.closest?.('input, textarea, select, [contenteditable="true"]')) return;
+      if (sheetMemberId || current.shop || current.guild || spellMenuOpen
+        || current.phase === 'defeated' || current.phase === 'escaped') return;
+      if (event.key === 'Tab') {
+        if (event.shiftKey || target?.closest?.('.chronicles-game-menu')) return;
+        event.preventDefault();
+        if (event.repeat) return;
+        clearTouchHold();
+        setAutomapOpen(false);
+        setJournalOpen(false);
+        setMenuOpen((open) => !open);
+        menuSummaryRef.current?.focus();
+        return;
+      }
+      if (event.key === 'j' || event.key === 'J') {
+        event.preventDefault();
+        if (event.repeat) return;
+        clearTouchHold();
+        setAutomapOpen(false);
+        setMenuOpen(false);
+        setJournalOpen((open) => !open);
+        return;
+      }
       if (event.key === 'm' || event.key === 'M') {
         event.preventDefault();
+        if (event.repeat) return;
         clearTouchHold();
         setMenuOpen(false);
+        setJournalOpen(false);
         setAutomapOpen((open) => !open);
         return;
       }
-      if (automapOpen || sheetMemberId || current.phase === 'defeated' || current.phase === 'escaped') return;
+      if (automapOpen || menuOpen || journalOpen) return;
       if (/^[1-4]$/.test(event.key)) {
         if (event.repeat) return;
         const member = current.party[Number(event.key) - 1];
@@ -917,7 +949,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
     };
     window.addEventListener('keydown', onKeyDown, { passive: false });
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [attackWithSelected, automapOpen, clearTouchHold, dispatch, interactWithContext, openMemberSheet, ready, sheetMemberId]);
+  }, [attackWithSelected, automapOpen, clearTouchHold, dispatch, interactWithContext, journalOpen, menuOpen, openMemberSheet, ready, sheetMemberId, spellMenuOpen]);
 
   const startFreshGame = (entryMapId = null) => {
     beginChroniclesRun(FIRST_PERSON_RUN_SCOPE, { entryMapId });
@@ -1144,9 +1176,11 @@ export default function ChroniclesOfMatthias({ onExit }) {
               aria-label={automapOpen ? 'Cerrar automapa' : 'Abrir automapa'}
               aria-expanded={automapOpen}
               aria-controls="chronicles-automap"
+              title="M · Mapa"
               onClick={() => {
                 clearTouchHold();
                 setMenuOpen(false);
+                setJournalOpen(false);
                 setAutomapOpen((open) => !open);
               }}
             >
@@ -1155,9 +1189,15 @@ export default function ChroniclesOfMatthias({ onExit }) {
             <details
               className="chronicles-game-menu"
               open={menuOpen}
-              onToggle={(event) => setMenuOpen(event.currentTarget.open)}
+              onToggle={(event) => {
+                setMenuOpen(event.currentTarget.open);
+                if (event.currentTarget.open) {
+                  setAutomapOpen(false);
+                  setJournalOpen(false);
+                }
+              }}
             >
-              <summary aria-label={menuOpen ? 'Cerrar menú de Chronicles' : 'Abrir menú de Chronicles'}>
+              <summary ref={menuSummaryRef} title="Tab · Menú" aria-label={menuOpen ? 'Cerrar menú de Chronicles' : 'Abrir menú de Chronicles'}>
                 ☰ <b>MENÚ</b>
               </summary>
               <div className="chronicles-game-menu__panel">
@@ -1210,13 +1250,22 @@ export default function ChroniclesOfMatthias({ onExit }) {
             onExpand={() => {
               clearTouchHold();
               setMenuOpen(false);
+              setJournalOpen(false);
               setAutomapOpen(true);
             }}
           />
           <ChroniclesCombatRoster state={state} />
 
-          <details className="chronicles-journal" aria-label="Crónica de expedición">
-            <summary>
+          <details className="chronicles-journal" aria-label="Crónica de expedición"
+            open={journalOpen}
+            onToggle={(event) => {
+              setJournalOpen(event.currentTarget.open);
+              if (event.currentTarget.open) {
+                setMenuOpen(false);
+                setAutomapOpen(false);
+              }
+            }}>
+            <summary title="J · Diario y misiones">
               <span><i aria-hidden="true">✦</i><b>Crónica de expedición</b><small>{activeQuests[0] ? `◆ ${activeQuests[0].title}` : latestJournalEntry?.title}</small></span>
               <em>
                 {activeQuests.length > 0 && `${activeQuests.length} ${activeQuests.length === 1 ? 'encargo' : 'encargos'} · `}

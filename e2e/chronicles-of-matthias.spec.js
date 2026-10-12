@@ -135,6 +135,43 @@ test('Chronicles · Escape opens and closes the in-game menu while the scene sta
   await expect(mode).toHaveCount(0);
 });
 
+test('Chronicles · MM3 hotkeys J diario, M mapa, Tab menú · sin mover grupo', async ({ page }) => {
+  test.setTimeout(180_000);
+  await openChronicles(page, { chroniclesCurrentMapId: 'swordhaven-square', newTown: true });
+  const mode = page.locator('[data-chronicles="true"]');
+  const turns = await mode.getAttribute('data-chronicles-turns');
+  const journal = mode.locator('details.chronicles-journal');
+  const menu = mode.locator('details.chronicles-game-menu');
+  const map = page.getByRole('dialog', { name: 'Automapa de Chronicles' });
+
+  await page.keyboard.press('j');
+  await expect(journal).toHaveAttribute('open', '');
+  await expect(journal.getByText('Crónica de expedición')).toBeVisible();
+  await page.keyboard.press('J');
+  await expect(journal).not.toHaveAttribute('open', '');
+
+  await page.keyboard.press('m');
+  await expect(map).toBeVisible();
+  await page.keyboard.press('M');
+  await expect(map).toHaveCount(0);
+
+  await page.keyboard.press('Tab');
+  await expect(menu).toHaveAttribute('open', '');
+  await expect(journal).not.toHaveAttribute('open', '');
+  // Standard browser Tab navigation must remain possible inside the menu.
+  await page.keyboard.press('Tab');
+  await expect(menu).toHaveAttribute('open', '');
+  await page.keyboard.press('Escape');
+  await expect(menu).not.toHaveAttribute('open', '');
+
+  await page.keyboard.press('j');
+  await expect(journal).toHaveAttribute('open', '');
+  await page.keyboard.press('m');
+  await expect(journal).not.toHaveAttribute('open', '');
+  await expect(map).toBeVisible();
+  await expect(mode).toHaveAttribute('data-chronicles-turns', turns);
+});
+
 test('Chronicles · Swordhaven → cripta → Swordhaven, desde el teclado y sin cerrar la run', async ({ page }) => {
   await openChronicles(page, { chroniclesCurrentMapId: 'swordhaven-square', newTown: true });
   const mode = page.locator('[data-chronicles="true"]');
