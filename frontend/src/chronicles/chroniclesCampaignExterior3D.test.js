@@ -15,6 +15,38 @@ const demo = {
 };
 
 describe('Chronicles file-authored exterior renderer', () => {
+
+  it('renders F1 as a tall single-cell lighthouse with light driven by activatedRoot', () => {
+    const scene = new THREE.Scene();
+    const content = [{ id: 'f1-beacon-rescue', kind: 'lore',
+      visualType: 'frozen-beacon', position: { x: 3, y: 2 }, visible: true }];
+    const result = buildChroniclesCampaignExterior(scene, {
+      scenePlan: { ...demo, grid: ['#####', '#...#', '#...#', '#...#', '#####'], content },
+      coarsePointer: true,
+    });
+    const tower = scene.getObjectByName('chronicles-campaign-content-f1-beacon-rescue');
+    // Measure structural mesh bounds only. The optional, non-colliding
+    // light sprite intentionally extends beyond the one-cell tower.
+    const bbox = new THREE.Box3();
+    tower.updateWorldMatrix(true, true);
+    tower.children
+      .filter((child) => child !== result.contentProps[0].activatedRoot)
+      .forEach((child) => bbox.expandByObject(child));
+    expect(bbox.max.y).toBeGreaterThan(10);
+    expect(bbox.max.x - bbox.min.x).toBeLessThan(4);
+    expect(bbox.max.z - bbox.min.z).toBeLessThan(4);
+    expect(result.contentProps).toHaveLength(1);
+    expect(result.contentProps[0].activatedRoot.name).toBe('chronicles-f1-beacon-lit');
+    expect(result.contentProps[0].activatedRoot.visible).toBe(false);
+    result.contentProps[0].activatedRoot.visible = true;
+    const lit = result.contentProps[0].activatedRoot;
+    const flare = lit.children.find((child) => child.name === 'chronicles-f1-beacon-distance-bloom');
+    expect(flare).toBeInstanceOf(THREE.Sprite);
+    expect(flare.material.map.image.width).toBe(48);
+    expect(lit.children.find((child) => child.name === 'chronicles-f1-beacon-stone-wash')).toBeInstanceOf(THREE.PointLight);
+    expect(lit.children.length).toBeGreaterThanOrEqual(4);
+    expect(scene.getObjectByName('chronicles-campaign-visible-blockers').count).toBe(16);
+  });
   it('builds the road without a dungeon ceiling, maps visible blockers only to wall cells', () => {
     const scene = new THREE.Scene();
     const built = buildChroniclesCampaignExterior(scene, { scenePlan: demo, coarsePointer: true });

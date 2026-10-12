@@ -11,13 +11,18 @@ const RUNTIME_VERSION = 1;
 const RUNTIME_VERSION_KEY = `${RUNTIME_PREFIX}version`;
 
 function authoredSetKeys(map) {
-  const contentEffects = CONTENT_GROUPS.flatMap((group) => (
-    (map?.[group] || []).flatMap((entry) => entry?.action?.effects || [])
+  // Reward outcomes must survive a checkpoint too: an atomic claim-reward
+  // can contain the only durable "set" for a branching world decision.
+  const setKeys = (effects) => (effects || []).flatMap((effect) => {
+    if (effect?.type === 'set' && typeof effect.key === 'string' && effect.key) return [effect.key];
+    if (effect?.type === 'claim-reward') return setKeys(effect.effects);
+    return [];
+  });
+  const content = CONTENT_GROUPS.flatMap((group) => (
+    (map?.[group] || []).flatMap((entry) => setKeys(entry?.action?.effects))
   ));
-  const defeatEffects = (map?.enemies || []).flatMap((enemy) => enemy?.onDefeat?.effects || []);
-  return [...contentEffects, ...defeatEffects]
-    .filter((effect) => effect?.type === 'set' && typeof effect.key === 'string' && effect.key)
-    .map((effect) => effect.key);
+  const defeats = (map?.enemies || []).flatMap((enemy) => setKeys(enemy?.onDefeat?.effects));
+  return [...content, ...defeats];
 }
 
 // World flags persist for every region; enemy HP only for the current one,

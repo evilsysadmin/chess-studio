@@ -242,6 +242,103 @@ export function buildChroniclesCampaignExterior(scene, { scenePlan = {}, coarseP
       board.position.set(0.35, 1.85, 0);
       board.rotation.z = -0.06;
       root.add(post, board);
+    } else if (entry.visualType === 'frozen-beacon') {
+      // One recognisable, authored lighthouse in F1, not a roadside lamp.
+      // The whole silhouette fits a single authored walkable cell: the
+      // collision grid stays untouched and all light comes from world flags.
+      const frostStone = material(0xb5c5c9, {
+        map: swordhavenSurfaceTexture('masonry'), roughness: 0.93,
+      });
+      const coldSlate = material(0x344657, { roughness: 0.87 });
+      const darkMetal = material(0x23303d, { metalness: 0.57, roughness: 0.46 });
+      const weatheredBronze = material(0xb79b65, { metalness: 0.47, roughness: 0.43 });
+      const addCylinder = (top, bottom, height, y, finish, segments = 12) => {
+        const mesh = new THREE.Mesh(new THREE.CylinderGeometry(top, bottom, height, segments), finish);
+        mesh.position.y = y;
+        root.add(mesh);
+        return mesh;
+      };
+      // Battered foundation, tapered stone tower and its three weather-beaten
+      // bands provide a tall silhouette and clear scale even at six tiles.
+      addCylinder(1.31, 1.45, 0.8, 0.4, coldSlate);
+      addCylinder(0.91, 1.2, 6.8, 3.79, frostStone);
+      addCylinder(1.19, 1.24, 0.27, 1.18, coldSlate);
+      addCylinder(1.07, 1.12, 0.22, 3.63, coldSlate);
+      addCylinder(0.98, 1.03, 0.23, 6.68, coldSlate);
+      // A door towards the approaching company and two narrow arrow-slit
+      // windows: they make this a building rather than a stack of cylinders.
+      const door = new THREE.Mesh(new THREE.BoxGeometry(0.12, 1.58, 0.74), darkMetal);
+      door.position.set(-1.24, 0.87, 0);
+      root.add(door);
+      for (const y of [3.04, 5.35]) {
+        const window = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.8, 0.28), darkMetal);
+        window.position.set(-1.05 + (y > 4 ? 0.09 : 0), y, 0);
+        root.add(window);
+      }
+      // Lantern gallery: bronze deck, upright cage, coloured glass and a
+      // broad slate roof. The top is high enough to read on both mobile/PC.
+      addCylinder(1.45, 1.25, 0.3, 7.34, weatheredBronze);
+      addCylinder(1.55, 1.55, 0.12, 7.57, coldSlate);
+      const glass = new THREE.Mesh(new THREE.CylinderGeometry(0.95, 0.95, 1.45, 12),
+        material(0x6e96a9, { transparent: true, opacity: 0.72,
+          emissive: 0x101f2a, emissiveIntensity: 0.2 }));
+      glass.position.y = 8.38;
+      root.add(glass);
+      for (let index = 0; index < 8; index += 1) {
+        const angle = (index * Math.PI) / 4;
+        const upright = new THREE.Mesh(new THREE.CylinderGeometry(0.075, 0.075, 1.55, 6), darkMetal);
+        upright.position.set(Math.cos(angle) * 1.09, 8.37, Math.sin(angle) * 1.09);
+        root.add(upright);
+      }
+      addCylinder(1.38, 1.13, 0.19, 9.2, weatheredBronze);
+      const roof = new THREE.Mesh(new THREE.ConeGeometry(1.63, 0.95, 12), coldSlate);
+      roof.position.y = 9.72;
+      root.add(roof);
+      addCylinder(0.12, 0.15, 0.43, 10.39, weatheredBronze, 8);
+      // The visible light is a child of the existing activatedRoot contract,
+      // so it automatically follows the saved choice without introducing a
+      // second light state or animation clock.
+      activatedRoot = new THREE.Group();
+      activatedRoot.name = 'chronicles-f1-beacon-lit';
+      const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.78, 12, 10),
+        material(0xffefb0, { emissive: 0xffbc52, emissiveIntensity: 1.6 }));
+      lamp.position.y = 8.4;
+      const halo = new THREE.Mesh(new THREE.SphereGeometry(1.5, 12, 10),
+        material(0xfedc80, { transparent: true, opacity: 0.28,
+          emissive: 0xffc867, emissiveIntensity: 0.5, depthWrite: false }));
+      halo.position.y = 8.4;
+      // Procedural soft bloom: a small alpha texture keeps the distant
+      // lantern readable on mobile without an opaque square or fake collider.
+      const flareSize = 48;
+      const flarePixels = new Uint8Array(flareSize * flareSize * 4);
+      for (let py = 0; py < flareSize; py += 1) {
+        for (let px = 0; px < flareSize; px += 1) {
+          const dx = (px + 0.5 - flareSize / 2) / (flareSize / 2);
+          const dy = (py + 0.5 - flareSize / 2) / (flareSize / 2);
+          const radius = Math.sqrt(dx * dx + dy * dy);
+          const alpha = Math.pow(Math.max(0, 1 - radius), 1.45);
+          const i = (py * flareSize + px) * 4;
+          flarePixels[i] = 255;
+          flarePixels[i + 1] = 214;
+          flarePixels[i + 2] = 140;
+          flarePixels[i + 3] = Math.round(alpha * 237);
+        }
+      }
+      const texture = new THREE.DataTexture(flarePixels, flareSize, flareSize, THREE.RGBAFormat);
+      texture.needsUpdate = true;
+      const flare = new THREE.Sprite(new THREE.SpriteMaterial({
+        map: texture, transparent: true, depthWrite: false,
+        blending: THREE.AdditiveBlending, fog: false,
+      }));
+      flare.name = 'chronicles-f1-beacon-distance-bloom';
+      flare.position.y = 8.4;
+      flare.scale.set(9, 9, 1);
+      const lanternLight = new THREE.PointLight(0xffc76d, coarsePointer ? 70 : 52, 28, 2);
+      lanternLight.name = 'chronicles-f1-beacon-stone-wash';
+      lanternLight.position.y = 8.4;
+      activatedRoot.add(lamp, halo, flare, lanternLight);
+      activatedRoot.visible = false;
+      root.add(activatedRoot);
     } else if (entry.visualType === 'shrine') {
       const basin = new THREE.Mesh(new THREE.CylinderGeometry(0.75, 0.9, 0.7, 10), stone);
       basin.position.y = 0.35;
