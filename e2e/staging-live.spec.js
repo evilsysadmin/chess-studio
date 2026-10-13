@@ -337,6 +337,15 @@ test('staging live · auth real → War Room v2 → recovery 3D → jugada real'
   const synthetic = stagingSyntheticHeaders(username);
   const uxRuntime = attachUxAuditProbe(page);
   const uxReport = { schema: 1, viewport: 'desktop-1440x900', checkpoints: [], runtime: uxRuntime };
+  // Diagnostic only: no sleeps, no relaxed assertions, no credentials.
+  // Separate real backend/browser/PvP/3D/screenshot costs in green CI logs.
+  const smokeStarted = Date.now();
+  let phaseStarted = smokeStarted;
+  const phase = (label) => {
+    const now = Date.now();
+    console.log(`STAGING_LIVE_PHASE ${label} duration_ms=${now - phaseStarted} total_ms=${now - smokeStarted}`);
+    phaseStarted = now;
+  };
   test.setTimeout(210_000);
   await page.setViewportSize({ width: 1440, height: 900 });
   // v3 is the product default, but this smoke runs on software GL where the
@@ -361,6 +370,7 @@ test('staging live · auth real → War Room v2 → recovery 3D → jugada real'
   // propagación concreta; cualquier asset roto de forma persistente sigue
   // haciendo fallar staging con diagnóstico explícito.
   await waitForFrontendAssetPropagation(request);
+  phase('asset-propagation');
 
   // Guardarraíl de producto: el endpoint sigue disponible para CI, pero nunca
   // debe aceptar una cuenta pública sin el secreto generado por el bootstrap.
@@ -369,6 +379,7 @@ test('staging live · auth real → War Room v2 → recovery 3D → jugada real'
   const session = await authenticateOrCreate(request, username, password, inviteCode);
   expect(session.token).toBeTruthy();
   await seedStableSmokeProfile(request, session.token);
+  phase('api-auth-and-profile');
 
   let gameId = null;
   try {
@@ -396,9 +407,11 @@ test('staging live · auth real → War Room v2 → recovery 3D → jugada real'
       page.locator('[data-home-loading="waiting-for-frame"]'),
       'Home readiness curtain must clear before PvP navigation (3D or safe 2D)',
     ).toHaveCount(0, { timeout: 45_000 });
+    phase('chromium-login-and-home-ready');
 
     // P0 staging: acredita el 1v1 con fetch real de Chromium, no sólo curl.
     await assertLivePvpBrowserPath(page);
+    phase('browser-pvp-pulses');
 
     await expect(buttonWithVisibleText(page, 'Partida rápida')).toBeVisible();
     await buttonWithVisibleText(page, 'Partida rápida').click();
@@ -426,6 +439,7 @@ test('staging live · auth real → War Room v2 → recovery 3D → jugada real'
     const warRoomGameStatus = warRoomSignal.getByRole('status', { name: 'Estado de la partida' });
     await expect(warRoom3d).toBeVisible({ timeout: 30_000 });
     await expect(warRoomCanvas).toBeVisible({ timeout: 30_000 });
+    phase('create-game-and-3d-ready');
 
     // Staging is the deliberate A/B surface for the Blender shell. Keep the
     // experiment behind the canonical overflow menu so the room itself remains
@@ -459,7 +473,9 @@ test('staging live · auth real → War Room v2 → recovery 3D → jugada real'
     await expect(warRoomSignal).toContainText('Matthias');
     await expect(warRoomSignal).not.toContainText(/CPU nivel \d+/);
     await expect(warRoomGameStatus).toHaveText(/Tu turno/i);
+    phase('war-room-v2-and-v1-switch');
     await captureUxCheckpoint(page, testInfo, uxReport, '01-quick-war-room');
+    phase('full-page-3d-ux-screenshot');
 
     // La autoridad F5 ya se acredita en paralelo en staging-war-room-restore.
     // Aquí sólo hacemos el reload 2D que necesita el sabotaje para garantizar
@@ -495,6 +511,7 @@ test('staging live · auth real → War Room v2 → recovery 3D → jugada real'
     expect((await restoreFresh2D).status()).toBe(200);
     await expect(page.locator('.square[aria-label^="Casilla e2,"]')).toBeVisible({ timeout: 30_000 });
     expect(failedBoard3DChunkOnce, '2D no debe cargar Board3D durante el reload fresco').toBe(false);
+    phase('fresh-2d-reload');
 
     // Guardarraíl directo para #286: provocamos el primer import lazy de Board3D
     // y lo fallamos una sola vez. Puede recuperarse mediante reload automático o
@@ -550,6 +567,7 @@ test('staging live · auth real → War Room v2 → recovery 3D → jugada real'
     await expect(warRoomGameStatus).not.toHaveText('');
     await expect(page.locator('.error-boundary-screen')).toHaveCount(0);
     await page.unroute(board3dChunkPattern);
+    phase('board3d-chunk-failure-recovery');
 
     // Finalmente volvemos a 2D sólo para usar el helper accesible/determinista
     // de casillas y acreditar que la misma partida todavía acepta una jugada real.
@@ -583,9 +601,11 @@ test('staging live · auth real → War Room v2 → recovery 3D → jugada real'
     expect(Array.isArray(moved.history)).toBe(true);
     expect(moved.history.length).toBeGreaterThanOrEqual(1);
     await expect(gameStatus(page).getByText('Tu turno', { exact: true })).toBeVisible({ timeout: 30_000 });
+    phase('move-and-cpu-reply');
 
     await leaveCurrentGameThroughUi(page);
     await expect(page.getByRole('region', { name: 'Modos principales', exact: true })).toBeVisible({ timeout: 30_000 });
+    phase('leave-game-home');
 
     // Staging deploy admission stops here: tournament, insights and broader UX
     // journeys stay in Quality/full-browser coverage instead of extending every
@@ -607,5 +627,6 @@ test('staging live · auth real → War Room v2 → recovery 3D → jugada real'
         throw new Error(`Cleanup de partida smoke devolvió HTTP ${cleanup.status()}: ${await cleanup.text()}`);
       }
     }
+    phase('final-game-cleanup');
   }
 });
