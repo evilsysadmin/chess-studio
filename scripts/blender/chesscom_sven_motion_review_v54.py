@@ -16,8 +16,9 @@ from mathutils import Vector
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from chesscom_sven_art_direction_v53 import (
-    arguments, import_and_normalize, add_design, make_studio, look_at
+    arguments, import_and_normalize, make_studio, look_at
 )
+from chesscom_sven_organic_v55 import add_design_v55
 
 CLIPS = (
     ("Idle_Gun", (0.12, 0.62)),
@@ -61,7 +62,7 @@ def main():
     args = arguments()
     args.output_dir.mkdir(parents=True, exist_ok=True)
     candidate = import_and_normalize(args.source_glb)
-    kit = add_design(candidate)
+    kit = add_design_v55(candidate)
     rig = next(obj for obj in candidate["objects"] if obj.type == "ARMATURE")
     expected = {name: next((a for a in bpy.data.actions
                             if a.name.startswith("CharacterArmature|" + name + "_")), None)
@@ -76,7 +77,7 @@ def main():
     camera.location = (2.5, -3.7, 2.4)
     look_at(camera, (0, 0, .95))
     report = {"schema": 1, "review_only": True, "promotable": False,
-              "actor": "quaternius-cc0-sven-art-direction-v53",
+              "actor": "quaternius-cc0-sven-organic-v55",
               "animations_are_authentic": True,
               "two_hand_rifle_contact_verified": False,
               "gun_muzzle_verified": False,
