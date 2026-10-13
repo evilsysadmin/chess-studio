@@ -865,6 +865,7 @@ for (const capture of CAPTURES) {
         expect(control.fill, `${capture.label}: ${control.selector} WebKit dark ink`).toBe('rgb(8, 8, 10)');
         expect(control.forced, `${capture.label}: ${control.selector} must resist forced colours`).toBe('none');
         expect(control.scheme, `${capture.label}: ${control.selector} uses the light stone palette`).toBe('light only');
+        expect(control.color, `${capture.label}: ${control.selector} black carved ink`).toBe('rgb(8, 8, 10)');
       }
 
       // Every menu action stays on screen, «Salir y guardar» included.
