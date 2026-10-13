@@ -69,6 +69,7 @@ INVENTORY = {
     'staging-pawn-slug-visual.yml': 'visual-staging-evidence',
     'staging-preview.yml': 'delivery-preview',
     'synthetic-health.yml': 'observability',
+    'weekly-actions-hygiene.yml': 'actions-maintenance',
     'war-room-blender-art.yml': 'art-generation',
     'war-room-v3-blender-art.yml': 'art-generation',
     'war-room-v4-blender-art.yml': 'art-generation',
