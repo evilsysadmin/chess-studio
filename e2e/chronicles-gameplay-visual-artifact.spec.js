@@ -921,7 +921,7 @@ for (const capture of CAPTURES) {
       );
       expect(menuInks.length, 'menu has actual actions').toBeGreaterThan(3);
       for (const ink of menuInks) {
-        expect(ink.inline, `menu action ${ink.label} inline ink`).toMatch(/^(?:#08080a|rgb\\(8,\\s*8,\\s*10\\))$/i);
+        expect(ink.inline, `menu action ${ink.label} inline ink`).toMatch(/^(?:#08080a|rgb\(8,\s*8,\s*10\))$/i);
         expect(ink.priority, `menu action ${ink.label} important ink`).toBe('important');
         expect(ink.computed, `menu action ${ink.label} black ink`).toBe('rgb(8, 8, 10)');
       }
@@ -934,7 +934,7 @@ for (const capture of CAPTURES) {
         expect(bounds.y, `${capture.label}: menu starts below browser viewport top`).toBeGreaterThanOrEqual(0);
         expect(bounds.x + bounds.width, `${capture.label}: menu fits viewport width`).toBeLessThanOrEqual(capture.width + 1);
         expect(bounds.y + bounds.height, `${capture.label}: menu fits viewport height`).toBeLessThanOrEqual(capture.height + 1);
-        await expect(menuDetails.getByRole('button', { name: 'Cerrar menú de Chronicles' })).toBeVisible();
+        await expect(menuDetails.locator('.chronicles-game-menu__close')).toBeVisible();
         await captureElement(page, menuPanel, `${ARTIFACT_DIR}/chronicles-game-menu-open-${capture.label}.png`);
         // Long menus may scroll internally: all actions must remain reachable.
         await exitAction.scrollIntoViewIfNeeded();
@@ -953,7 +953,7 @@ for (const capture of CAPTURES) {
       expect(inks.fill, `${capture.label}: WebKit must keep dark ink`).toBe('rgb(8, 8, 10)');
       await captureElement(page, gameRoot, `${ARTIFACT_DIR}/chronicles-game-menu-${capture.label}.png`);
       if (capture.hasTouch) {
-        await menuDetails.getByRole('button', { name: 'Cerrar menú de Chronicles' }).click();
+        await menuDetails.locator('.chronicles-game-menu__close').click();
       } else {
         await menuSummary.evaluate((summary) => summary.click());
       }
