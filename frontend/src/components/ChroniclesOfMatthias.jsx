@@ -98,7 +98,7 @@ import ChroniclesCombatRoster, { chroniclesHealthBand } from './ChroniclesCombat
 import ChroniclesBookOneEpilogue from './ChroniclesBookOneEpilogue.jsx';
 import ChroniclesCharacterSetup from './ChroniclesCharacterSetup.jsx';
 import ChroniclesSaveMenu from './ChroniclesSaveMenu.jsx';
-import { chroniclesQuestLogEntries } from './ChroniclesQuestLog.jsx';
+import ChroniclesQuestLog, { chroniclesQuestLogEntries } from './ChroniclesQuestLog.jsx';
 import ChroniclesJournalModal from './ChroniclesJournalModal.jsx';
 import ChroniclesDefeatOverlay from './ChroniclesDefeatOverlay.jsx';
 import ChroniclesEnemyRetaliationFx from './ChroniclesEnemyRetaliationFx.jsx';
