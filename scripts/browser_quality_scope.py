@@ -735,7 +735,7 @@ def self_test() -> None:
         "e2e/chronicles-of-matthias.spec.js",
         "e2e/chronicles-of-matthias-tactics.spec.js",
     ):
-        assert _ids(classify([chronicles_path])) == ["chronicles"]
+        assert _ids(classify([chronicles_path])) == ["chronicles", "chronicles-save-durability"]
 
     assert all(
         "--max-failures=1" in case["command"] or case["id"] == "mobile-golden-path"
@@ -749,10 +749,14 @@ def self_test() -> None:
     assert "arranca como action RPG isométrico" in chronicles_case["command"]
     assert "abre una cripta Three\\.js real" in chronicles_case["command"]
     assert "arranca como RPG táctico isométrico" in chronicles_case["command"]
+    save_case = next(case for case in build_matrix(BrowserScope(chronicles=True))["include"]
+                     if case["id"] == "chronicles-save-durability")
+    assert "503 al guardar bloquea la salida" in save_case["command"]
+    assert "Partidas guardadas no abandona" in save_case["command"]
 
     all_scope = classify([".github/actions/setup-browser-e2e/action.yml"])
     assert all_scope == BrowserScope.all()
-    assert len(_ids(all_scope)) == 20
+    assert len(_ids(all_scope)) == 21
     assert "hans-fire-call" not in _ids(all_scope)
 
     harness = classify([CICD_WORKFLOW])
