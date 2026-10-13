@@ -85,8 +85,17 @@ export function chesscomShouldHideSvenLegacyV50(mesh,imported=new Set()) {
     ||name.startsWith('canonical-unit-sven-');
 }
 
+export async function chesscomEnsureGlbLoaderV51(B,register=()=>import('babylonjs-loaders')){
+  const present=()=>B?.SceneLoader?.IsPluginForExtensionAvailable?.('.glb')===true;
+  if(present())return true;
+  try{
+    await register(); // UMD loader registers against the same pinned babylonjs namespace.
+    return present();
+  }catch{return false;}
+}
+
 export function installChesscomSvenAuthoredV49(B,scene,{
-  host,search='',fetchManifest,fetchBytes,loadContainer,subtle,
+  host,search='',fetchManifest,fetchBytes,loadContainer,subtle,registerGlbLoader,
 }={}){
   if(!chesscomSvenAuthoredEnabledV49(search)){
     if(host)host.dataset.chesscomSvenAuthored='off';
@@ -154,7 +163,7 @@ export function installChesscomSvenAuthoredV49(B,scene,{
     try{
       // Babylon core alone does not guarantee a registered glTF/.glb plugin.
       // Skip even the asset request when the installed runtime cannot import it.
-      if(!loadContainer&&B.SceneLoader?.IsPluginForExtensionAvailable?.('.glb')!==true){
+      if(!loadContainer&&!await chesscomEnsureGlbLoaderV51(B,registerGlbLoader)){
         if(!destroyed&&host)host.dataset.chesscomSvenAuthoredReason='missing-glb-loader';
         return fallback();
       }
