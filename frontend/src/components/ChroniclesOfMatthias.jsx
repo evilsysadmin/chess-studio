@@ -19,8 +19,12 @@ import {
   chroniclesStartInitiativeCombat,
 } from '../chronicles/chroniclesInitiative.js';
 import { chroniclesDeployedPartyLevel } from '../chronicles/chroniclesDifficultyPolicy.js';
-import { playChroniclesActionSound, getChroniclesSfxVolume, setChroniclesSfxVolume } from '../chronicles/chroniclesActionAudio.js';
+import { playChroniclesActionSound } from '../chronicles/chroniclesActionAudio.js';
 import { getAmbientVolume, setAmbientVolume } from '../sound.js';
+import {
+  getChroniclesFxVolume,
+  setChroniclesFxVolume,
+} from '../chronicles/chroniclesAudioSettings.js';
 import { chroniclesPartyPortraitUrl } from '../chronicles/chroniclesPartyPortraitAssets.js';
 import { chroniclesClearRuntimeMapDefinitions, chroniclesMapForState } from '../chronicles/chroniclesMapCatalog.js';
 import { chroniclesRegionHudLocation } from '../chronicles/chroniclesRegionHud.js';
@@ -61,7 +65,13 @@ import {
   finishChroniclesRun,
   renewChroniclesRun,
 } from '../chronicles/chroniclesRunIdentity.js';
+import {
+  chroniclesClearPlayingRun,
+  chroniclesRememberPlayingRun,
+  chroniclesShouldResumePlayingRun,
+} from '../chronicles/chroniclesRefreshResume.js';
 import { chroniclesPartyCondition } from '../chroniclesOfMatthiasPartyCondition.js';
+import { chroniclesEquippedItem } from '../chronicles/chroniclesEquipment.js';
 import { chroniclesPartyRelic } from '../chroniclesOfMatthiasRelics.js';
 import { chroniclesRetaliationCue } from '../chroniclesOfMatthiasRetaliation.js';
 import { chroniclesTargetAhead } from '../chroniclesOfMatthiasTargeting.js';
@@ -169,6 +179,7 @@ function BootstrapFailure({ error, onRetry, onMenu, onExit }) {
 
 export default function ChroniclesOfMatthias({ onExit }) {
   const hostRef = useRef(null);
+  const gameRootRef = useRef(null);
   const engineRef = useRef(null);
   const retaliationTimerRef = useRef(null);
   const retaliationSequenceRef = useRef(0);
@@ -176,10 +187,14 @@ export default function ChroniclesOfMatthias({ onExit }) {
   const partyBarkSequenceRef = useRef(0);
   const [progression, setProgression] = useState(() => loadChroniclesProgression());
   const progressionRef = useRef(progression);
-  const [characterSetupDone, setCharacterSetupDone] = useState(false);
-  // Restore an unfinished character editor draft; otherwise display the
-  // expedition book before allocating or loading any server run.
-  const [entryView, setEntryView] = useState(() => loadChroniclesCharacterDraft(CHRONICLES_PARTY) ? 'setup' : 'menu');
+  // A reload of a playing expedition must return straight to the server
+  // checkpoint. An intentional visit to the expedition book stays in 'menu'.
+  // Never create a new run as part of the initial render.
+  const [entryView, setEntryView] = useState(() => {
+    if (loadChroniclesCharacterDraft(CHRONICLES_PARTY)) return 'setup';
+    return chroniclesShouldResumePlayingRun(FIRST_PERSON_RUN_SCOPE) ? 'playing' : 'menu';
+  });
+  const [characterSetupDone, setCharacterSetupDone] = useState(entryView === 'playing');
   const [savesRefreshKey, refreshSaves] = useState(0);
   const [saveInventory, setSaveInventory] = useState(null);
   const [saveMenuLoading, setSaveMenuLoading] = useState(false);
@@ -207,7 +222,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
   const [retaliationCue, setRetaliationCue] = useState(null);
   const [partyBark, setPartyBark] = useState(null);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [sfxVolume, setSfxVolume] = useState(getChroniclesSfxVolume);
+  const [fxVolume, setFxVolume] = useState(() => getChroniclesFxVolume());
   const [musicVolume, setMusicVolume] = useState(getAmbientVolume);
   const menuSummaryRef = useRef(null);
   const [journalOpen, setJournalOpen] = useState(false);
@@ -222,6 +237,34 @@ export default function ChroniclesOfMatthias({ onExit }) {
   const [automapVisitedByMap, setAutomapVisitedByMap] = useState({});
   const touchHoldRef = useRef({ delayId: null, repeatId: null });
   const { needsRotation, lockState, activateLandscape } = useChroniclesLandscape(characterSetupDone);
+
+  // Real Brave/Chrome forced a light glyph despite matching !important CSS.
+  // Applying an inline important override to the concrete DOM nodes was
+  // verified to work in the affected browser. Never touch colored attack/
+  // magic/contextual controls or the rest of the game's typography.
+  useEffect(() => {
+    if (!ready || !state || !gameRootRef.current) return;
+    const nodes = gameRootRef.current.querySelectorAll([
+      '.chronicles-statusbar .chronicles-map-trigger',
+      '.chronicles-statusbar .chronicles-map-trigger b',
+      '.chronicles-statusbar .chronicles-map-trigger i',
+      '.chronicles-game-menu > summary',
+      '.chronicles-game-menu > summary b',
+      '.chronicles-touch button:not(.is-attack):not(.is-magic):not(.is-contextual)',
+      '.chronicles-game-menu__panel button',
+      '.chronicles-game-menu__panel button :is(b, span, small, strong, i)',
+      '.chronicles-game-menu__panel legend',
+      '.chronicles-game-menu__panel label',
+      '.chronicles-game-menu__panel > strong',
+      '.chronicles-game-menu__panel > small',
+    ].join(', '));
+    for (const node of nodes) {
+      node.style.setProperty('color', '#08080a', 'important');
+      node.style.setProperty('-webkit-text-fill-color', '#08080a', 'important');
+      node.style.setProperty('-webkit-text-stroke-color', '#08080a', 'important');
+      node.style.setProperty('color-scheme', 'light only', 'important');
+    }
+  }, [ready, state, menuOpen, confirmExitWithoutSaving]);
 
   // Reconcile server-owned expeditions only while browsing the save book.
   // Cleanup discards stale results after navigating away or switching flows.
@@ -289,6 +332,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
   }, []);
 
   const exitChronicles = useCallback(() => {
+    chroniclesClearPlayingRun();
     void releaseChroniclesLandscape();
     const current = stateRef.current;
     const runId = activeRunIdRef.current;
@@ -321,6 +365,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
     const selected = setChroniclesCharacterBuild(progression, build);
     if (!selected.updated) return;
     const saved = saveChroniclesProgression(selected.progression);
+    chroniclesRememberPlayingRun(FIRST_PERSON_RUN_SCOPE, ensureChroniclesRun(FIRST_PERSON_RUN_SCOPE));
     progressionRef.current = saved;
     stateRef.current = null;
     staleRunRecoveryAttemptedRef.current = false;
@@ -615,6 +660,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
     // Starting another game does not destroy the checkpoint of the old one.
     // The catalog keeps both identities loadable.
     const newRunId = beginChroniclesRun(FIRST_PERSON_RUN_SCOPE);
+    chroniclesRememberPlayingRun(FIRST_PERSON_RUN_SCOPE, newRunId);
     activeRunIdRef.current = newRunId;
     authoritativeRunRef.current = null;
     checkpointFingerprintRef.current = '';
@@ -636,6 +682,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
   }, []);
 
   const restart = useCallback(() => {
+    chroniclesClearPlayingRun();
     if (activeRunIdRef.current) {
       clearChroniclesAutomapVisited(activeRunIdRef.current);
       finishChroniclesRun(FIRST_PERSON_RUN_SCOPE, activeRunIdRef.current);
@@ -675,6 +722,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
     const operationId = ensureChroniclesRun(FIRST_PERSON_RUN_SCOPE);
     const remoteSelection = chroniclesSelectedRunIsRemote(FIRST_PERSON_RUN_SCOPE, operationId);
     activeRunIdRef.current = operationId;
+    chroniclesRememberPlayingRun(FIRST_PERSON_RUN_SCOPE, operationId);
 
     // Overlap renderer chunk loading with the authoritative world bootstrap.
     // Gameplay still stays fail-closed until the backend bundle validates.
@@ -705,6 +753,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
         const confirmedId = chroniclesMarkSavedRunRemote(FIRST_PERSON_RUN_SCOPE, operationId, world.runId);
         if (!confirmedId) return;
         activeRunIdRef.current = confirmedId;
+        chroniclesRememberPlayingRun(FIRST_PERSON_RUN_SCOPE, confirmedId);
         authoritativeRunRef.current = world;
         // Record the authoritative bootstrap as our comparison baseline.
         // New runs have no durable checkpoint until an explicit Save or area exit.
@@ -727,6 +776,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
           clearChroniclesAutomapVisited(operationId);
           const replacementRunId = renewChroniclesRun(FIRST_PERSON_RUN_SCOPE, operationId);
           activeRunIdRef.current = replacementRunId;
+          chroniclesRememberPlayingRun(FIRST_PERSON_RUN_SCOPE, replacementRunId);
           setReady(false);
           setBootstrapError(null);
           setBootstrapRevision((revision) => revision + 1);
@@ -957,6 +1007,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
   }, [attackWithSelected, automapOpen, chronicleModalOpen, clearTouchHold, dispatch, interactWithContext, journalOpen, menuOpen, openMemberSheet, ready, sheetMemberId, spellMenuOpen]);
 
   const startFreshGame = (entryMapId = null) => {
+    chroniclesClearPlayingRun();
     beginChroniclesRun(FIRST_PERSON_RUN_SCOPE, { entryMapId });
     setCharacterSetupDone(false);
     setEntryView('setup');
@@ -965,6 +1016,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
 
   const loadSavedGame = (runId) => {
     if (!chroniclesSelectSavedRun(FIRST_PERSON_RUN_SCOPE, runId)) return;
+    chroniclesRememberPlayingRun(FIRST_PERSON_RUN_SCOPE, runId);
     // Loading an existing expedition skips character setup; use this click to
     // request the same native fullscreen/orientation affordance as New game.
     void requestChroniclesLandscapeOnEntry();
@@ -981,6 +1033,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
   };
 
   const returnToSaveMenu = () => {
+    chroniclesClearPlayingRun();
     setMenuOpen(false);
     clearTouchHold();
     // Never switch the authoritative run pointer while a checkpoint is queued.
@@ -1083,6 +1136,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
 
   return (
     <div
+      ref={gameRootRef}
       className="chronicles"
       data-chronicles="true"
       data-chronicles-map-id={state.mapId}
@@ -1207,18 +1261,39 @@ export default function ChroniclesOfMatthias({ onExit }) {
               <div className="chronicles-game-menu__panel">
                 <strong>Chronicles of Matthias</strong>
                 <small>Guardado manual · checkpoint automático al cambiar de área.</small>
+                <fieldset className="chronicles-audio-controls" style={{ border: '1px solid #806d51', padding: '8px', display: 'grid', gap: '6px', minWidth: 0 }}>
+                  <legend>Audio</legend>
+                  <label htmlFor="chronicles-sfx-volume">Efectos (SFX) · {Math.round(fxVolume * 100)} %</label>
+                  <input
+                    id="chronicles-sfx-volume"
+                    aria-label="Volumen de efectos de Chronicles"
+                    type="range"
+                    min="0"
+                    max="100"
+                    step="5"
+                    value={Math.round(fxVolume * 100)}
+                    style={{ width: '100%', accentColor: '#88632d' }}
+                    onChange={(event) => setFxVolume(setChroniclesFxVolume(Number(event.target.value) / 100))}
+                    onKeyDown={(event) => event.stopPropagation()}
+                  />
+                  <label htmlFor="chronicles-music-volume">Música general · {Math.round(musicVolume * 100)} %</label>
+                  <input
+                    id="chronicles-music-volume"
+                    aria-label="Volumen de música"
+                    type="range"
+                    min="0"
+                    max="100"
+                    step="5"
+                    value={Math.round(musicVolume * 100)}
+                    style={{ width: '100%', accentColor: '#88632d' }}
+                    onChange={(event) => setMusicVolume(setAmbientVolume(Number(event.target.value) / 100))}
+                    onKeyDown={(event) => event.stopPropagation()}
+                  />
+                  <small>Ajusta la música general; Chronicles aún no dispone de pista propia.</small>
+                </fieldset>
                 {saveNotice && <small role="status">{saveNotice}</small>}
                 <button type="button" onClick={() => { setMenuOpen(false); setConfirmExitWithoutSaving(false); }}>Continuar</button>
                 <button type="button" onClick={() => { setMenuOpen(false); setAutomapOpen(false); setJournalOpen(true); }}>Crónica · J</button>
-                <fieldset className="chronicles-audio-controls">
-                  <legend>SONIDO</legend>
-                  <label htmlFor="chronicles-sfx-volume">Efectos (SFX) · {Math.round(sfxVolume * 100)}%</label>
-                  <input id="chronicles-sfx-volume" type="range" min="0" max="1" step="0.05"
-                    value={sfxVolume} onChange={(event) => setSfxVolume(setChroniclesSfxVolume(event.target.value))} />
-                  <label htmlFor="chronicles-music-volume">Música · {Math.round(musicVolume * 100)}%</label>
-                  <input id="chronicles-music-volume" type="range" min="0" max="1" step="0.05"
-                    value={musicVolume} onChange={(event) => setMusicVolume(setAmbientVolume(event.target.value))} />
-                </fieldset>
                 <button type="button" onClick={() => void persistCheckpoint(stateRef.current, 'manual')} disabled={saveBusy}>
                   {saveBusy ? 'Guardando…' : 'Guardar partida'}
                 </button>
@@ -1380,7 +1455,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
           <div className="chronicles-party-preview-copy">
             <span>{selectedMember?.role}</span>
             <strong>{selectedMember?.name}</strong>
-            <small>{selectedMember?.attackName} · daño {selectedAttackStats.damage} · alcance {selectedAttackStats.reach}</small>
+            <small>{state.combatRules === 'mm3' ? (chroniclesEquippedItem(state, selectedMember?.id, 'weapon')?.name || 'Sin arma') : selectedMember?.attackName} · daño {selectedAttackStats.damage} · alcance {selectedAttackStats.reach}</small>
           </div>
         </div>
       </div>

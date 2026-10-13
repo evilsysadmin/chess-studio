@@ -1,22 +1,5 @@
 import { getAudioContext } from '../audioContext.js';
-import { isFxMuted } from '../soundPreferences.js';
-import { STORAGE_LOCAL, getStorageItem } from '../safeStorage.js';
-import { setProfileStorageItem } from '../profileKeys.js';
-
-const CHRONICLES_SFX_VOLUME_KEY = 'chess-study-chronicles-sfx-volume';
-
-export function getChroniclesSfxVolume() {
-  const raw = getStorageItem(STORAGE_LOCAL, CHRONICLES_SFX_VOLUME_KEY);
-  if (raw === null) return 1;
-  const value = Number(raw);
-  return Number.isFinite(value) ? Math.min(1, Math.max(0, value)) : 1;
-}
-
-export function setChroniclesSfxVolume(value) {
-  const volume = Math.min(1, Math.max(0, Number(value) || 0));
-  setProfileStorageItem(CHRONICLES_SFX_VOLUME_KEY, String(volume));
-  return volume;
-}
+import { getChroniclesFxVolume } from './chroniclesAudioSettings.js';
 import { chroniclesMapForState } from './chroniclesMapCatalog.js';
 
 function actionType(action) {
@@ -107,14 +90,14 @@ function connectNoise(ctx, destination, { duration, gain, centerHz, delay = 0, t
 }
 
 function playCue(cue) {
-  const sfxVolume = getChroniclesSfxVolume();
-  if (!cue || isFxMuted() || sfxVolume === 0) return;
+  const volume = getChroniclesFxVolume();
+  if (!cue || volume <= 0) return;
   const ctx = getAudioContext();
   if (!ctx) return;
   if (ctx.state === 'suspended') ctx.resume?.().catch(() => {});
 
   const bus = ctx.createGain();
-  bus.gain.value = 0.82 * sfxVolume;
+  bus.gain.value = 0.82 * volume;
   bus.connect(ctx.destination);
 
   if (cue === 'step') {

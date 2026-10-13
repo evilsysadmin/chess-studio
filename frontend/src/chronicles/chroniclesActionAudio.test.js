@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { chroniclesActionAudioCue, getChroniclesSfxVolume, setChroniclesSfxVolume } from './chroniclesActionAudio.js';
+import { chroniclesActionAudioCue } from './chroniclesActionAudio.js';
 import { createChroniclesState, chroniclesReduce } from '../chroniclesOfMatthias.js';
 
 describe('Chronicles action audio cues', () => {
@@ -31,20 +31,5 @@ describe('Chronicles action audio cues', () => {
     const almostDead = { ...close, enemyHp: 1 };
     const defeated = chroniclesReduce(almostDead, { type: 'attack', memberId: 'matthias' });
     expect(chroniclesActionAudioCue(almostDead, defeated, { type: 'attack', memberId: 'matthias' })).toBe('defeat');
-  });
-});
-
-describe('Chronicles audio level preference', () => {
-  it('persists SFX volume, clamps inputs, and supports complete silence', () => {
-    const before = getChroniclesSfxVolume();
-    try {
-      expect(setChroniclesSfxVolume(0.35)).toBe(0.35);
-      expect(getChroniclesSfxVolume()).toBe(0.35);
-      expect(setChroniclesSfxVolume(-5)).toBe(0);
-      expect(getChroniclesSfxVolume()).toBe(0);
-      expect(setChroniclesSfxVolume(5)).toBe(1);
-    } finally {
-      setChroniclesSfxVolume(before);
-    }
   });
 });

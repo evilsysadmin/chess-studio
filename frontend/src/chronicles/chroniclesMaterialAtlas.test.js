@@ -21,6 +21,7 @@ describe('Chronicles semantic material atlas', () => {
     expect(chroniclesMaterialEnvironmentForMapId('crypt-eight-squares')).toBe('dungeon');
     expect(chroniclesMaterialEnvironmentForMapId('gallery-of-forks')).toBe('castle-interior');
     expect(chroniclesMaterialEnvironmentForMapId('echo-cistern')).toBe('cave-water');
+    expect(chroniclesMaterialEnvironmentForMapId('swordhaven-sewers')).toBe('sewer-masonry');
     expect(chroniclesMaterialEnvironmentForMapId('hollow-bell-tower')).toBe('exterior');
     expect(chroniclesMaterialEnvironmentForMapId('iron-foundry')).toBe('iron-foundry');
     expect(chroniclesMaterialEnvironmentForMapId('black-glass-chapel')).toBe('black-glass');
@@ -33,6 +34,16 @@ describe('Chronicles semantic material atlas', () => {
     [...CHRONICLES_MATERIAL_ENVIRONMENTS['cave-water'].wall, ...CHRONICLES_MATERIAL_ENVIRONMENTS['cave-water'].floor]
       .forEach((id) => expect(id.startsWith('N')).toBe(true));
     expect(CHRONICLES_MATERIAL_ENVIRONMENTS['cave-water'].floor).toEqual(['N01', 'N05', 'N06']);
+  });
+
+  it('gives Swordhaven sewers damp masonry walls and worn stone floors without cave-rock walls', () => {
+    const environment = CHRONICLES_MATERIAL_ENVIRONMENTS['sewer-masonry'];
+    expect(environment.wall).toEqual(['D03', 'D04', 'V05']);
+    expect(environment.floor).toEqual(['D02', 'D05', 'D01']);
+    const scene = chroniclesMaterialPlanForScene({ mapId: 'swordhaven-sewers', width: 17, height: 11 });
+    expect(scene.environmentId).toBe('sewer-masonry');
+    scene.wallProfileIds.forEach((id) => expect(environment.wall).toContain(id));
+    scene.floorProfileIds.forEach((id) => expect(environment.floor).toContain(id));
   });
 
   it('derives deterministic profile variation from the actual procedural layout', () => {

@@ -178,6 +178,30 @@ describe('Chronicles initiative', () => {
     expect(next.initiative).toBeNull();
   });
 
+  it('finishes combat without teleporting the exploration anchor to a hero tactical tile', () => {
+    const state = {
+      phase: 'combat',
+      x: 1,
+      y: 5,
+      party: [{ id: 'matthias', hp: 4, agility: 4 }],
+      partyPositions: { matthias: { x: 2, y: 4 } },
+      enemyHp: 0,
+      initiative: {
+        version: 1,
+        die: '1d8',
+        round: 2,
+        cursor: 0,
+        order: [
+          { id: 'matthias', kind: 'party', initiative: 8 },
+          { id: 'enemy', kind: 'enemy', initiative: 5 },
+        ],
+      },
+    };
+    const next = chroniclesAdvanceCombatInitiative(state, [{ id: 'enemy', hpKey: 'enemyHp' }]);
+    expect(next).toMatchObject({ x: 1, y: 5, phase: 'explore', partyPositions: {} });
+    expect(next.initiative).toBeNull();
+  });
+
   it('preserves enemy turns after a living party member and rolls into the next round', () => {
     const state = {
       phase: 'combat',

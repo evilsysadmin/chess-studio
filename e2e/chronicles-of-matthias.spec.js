@@ -35,6 +35,32 @@ async function openChronicles(page, options = {}) {
   await expect(page.locator('[data-chronicles="true"]')).toBeVisible();
 }
 
+test('Chronicles · F5 retoma la misma run guardada y regresar al libro conserva el menú', async ({ page }) => {
+  test.setTimeout(180_000);
+  await openChronicles(page, { chroniclesCurrentMapId: 'swordhaven-square', newTown: true });
+  const mode = page.locator('[data-chronicles="true"]');
+  await expect(mode).toHaveAttribute('data-chronicles-map-id', 'swordhaven-square');
+  const runBefore = await page.evaluate(() => JSON.parse(localStorage.getItem('chess-study-chronicles-run-v1')).id);
+  await page.keyboard.press('Escape');
+  const menu = mode.locator('.chronicles-game-menu');
+  await menu.getByRole('button', { name: 'Guardar partida', exact: true }).click();
+  await expect(menu.getByText('Partida guardada correctamente.')).toBeVisible();
+
+  await page.reload();
+  await expect(mode).toBeVisible({ timeout: 45_000 });
+  await expect(mode).toHaveAttribute('data-chronicles-map-id', 'swordhaven-square');
+  const runAfter = await page.evaluate(() => JSON.parse(localStorage.getItem('chess-study-chronicles-run-v1')).id);
+  expect(runAfter).toBe(runBefore);
+
+  await page.keyboard.press('Escape');
+  await mode.locator('.chronicles-game-menu').getByRole('button', { name: 'Partidas guardadas' }).click();
+  const book = page.locator('[data-chronicles-save-menu]');
+  await expect(book).toBeVisible();
+  await page.reload();
+  await expect(book).toBeVisible();
+  await expect(mode).toHaveCount(0);
+});
+
 test('Chronicles · primera partida sólo se escribe al guardar y Salir sin guardar no escribe otra', async ({ page }) => {
   test.setTimeout(180_000);
   const checkpointRequests = [];

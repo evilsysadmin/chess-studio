@@ -278,7 +278,12 @@ describe('Chronicles of Matthias Tactics · player turns', () => {
     const afterEnemy = chroniclesTacticsFinishTurn(afterAttack);
     expect(afterEnemy.round).toBe(2);
     expect(afterEnemy.turnPhase).toBe('party');
-    expect(afterEnemy.party.map((member) => member.hp)).toEqual(state.party.map((member) => member.hp));
+    // A creature may now land a legitimate hit during its own phase, but
+    // never heal the company or cause damage during the preceding hero action.
+    afterEnemy.party.forEach((member, index) => {
+      expect(member.hp).toBeLessThanOrEqual(state.party[index].hp);
+      expect(member.hp).toBeGreaterThanOrEqual(0);
+    });
     expect(afterEnemy.enemyTurnEvents).toContainEqual(expect.objectContaining({
       type: 'move',
       enemyId: 'corrupted-pawn',
