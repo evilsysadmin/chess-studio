@@ -214,24 +214,17 @@ def add_organic_detail(candidate):
                                 [(-.139,.002,1.618),(-.144,.054,1.609),
                                  (-.122,.083,1.636),(-.100,.086,1.650)],
                                 .0029, charcoal, "Head"))
-    details.append(soft_object(candidate, "radio_body", (.145,.127,1.373),
-                               (.029,.024,.067), nylon, "Chest"))
-    details.append(soft_object(candidate, "radio_knob", (.151,.127,1.446),
-                               (.010,.010,.011), muted_orange, "Chest"))
+    details.append(soft_object(candidate, "radio_body", (.091,.188,1.347),
+                               (.025,.016,.054), nylon, "Chest"))
+    details.append(soft_object(candidate, "radio_knob", (.092,.190,1.407),
+                               (.008,.008,.009), muted_orange, "Chest"))
     details.append(curved_detail(candidate, "radio_whip",
-                                [(.147,.137,1.439),(.157,.162,1.48),
-                                 (.165,.169,1.535),(.160,.153,1.581)],
-                                .0027, charcoal, "Chest"))
+                                [(.091,.191,1.401),(.099,.200,1.436),
+                                 (.104,.201,1.488),(.098,.189,1.530)],
+                                .0022, charcoal, "Chest"))
 
-    # Softer uneven pouch outlines + seam curves on the front, all same
-    # torso bone (no cross-bone rubber tubes that tear during animations).
-    details.append(soft_object(candidate, "offset_admin_pouch",
-                               (-.085,-.145,1.330), (.051,.016,.035),
-                               nylon, "Chest"))
-    details.append(curved_detail(candidate, "admin_seam",
-                                [(-.12,-.16,1.345),(-.087,-.164,1.358),
-                                 (-.05,-.16,1.345)],
-                                .0028, webbing, "Chest"))
+    # Small fabric seams on the backpack, all on Chest rather than spanning
+    # bones or adding floating ellipsoids over the original garment.
     details.append(curved_detail(candidate, "backpack_seam_L",
                                 [(-.069,.188,1.267),(-.081,.197,1.338),
                                  (-.069,.191,1.430)],
@@ -240,16 +233,10 @@ def add_organic_detail(candidate):
                                 [(.061,.186,1.27),(.071,.195,1.335),
                                  (.064,.187,1.427)],
                                 .0027, webbing, "Chest"))
-    # Gentle knee pad surface variation, moving with the lower leg bones.
-    for side, direction in (("L",-1),("R",1)):
-        # The source lower-leg bone rest offset is not a reliable location
-        # for a kneepad without a pose-specific fit. Use restrained shoulder
-        # reinforcement until real kneepad fitting is validated across clips.
-        details.append(soft_object(candidate,"sleeve_reinforcement_"+side,
-                     (direction*.204,-.015,1.443),
-                     (.025,.027,.045),nylon,"Shoulder."+side))
-
-    if len(sculpted) != 7 or len(details) != 13:
+    # Do not attach decorative spheres to the sleeves or knees: the first
+    # two visual runs exposed detached silhouettes at 72px. Sleeve armor
+    # belongs in the skinned garment, not as unrelated bone-parented blobs.
+    if len(sculpted) != 7 or len(details) != 9:
         raise RuntimeError("v55-detail-inventory-changed")
     if not all(obj.parent_type=="BONE" for obj in details):
         raise RuntimeError("v55-floating-piece")
