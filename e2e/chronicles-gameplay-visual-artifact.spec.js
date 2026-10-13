@@ -130,6 +130,10 @@ async function openChronicles(page, captureLabel, {
     await chroniclesEntry.click({ force: true });
     await expect(setup).toBeVisible({ timeout: 20_000 });
   }
+  // All important choices remain reachable without scrolling, even on a
+  // 844×390 landscape phone. Screenshot-only coverage missed this regression.
+  const leaveButton = setup.getByRole('button', { name: '← Salir', exact: true });
+  await expect(leaveButton).toBeInViewport({ ratio: 1 });
   await captureElement(
     page,
     setup,
