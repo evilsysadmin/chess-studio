@@ -143,6 +143,17 @@ def self_test() -> None:
     assert 'ref: ${{ env.TEST_SOURCE_SHA }}' in workflow
     assert 'smoke_sha || needs.prepare.outputs.deploy_sha' in workflow
     assert "Verify smoke-only runtime and source stayed unchanged" in workflow
+    # The summary runs on a fresh runner. Missing checkout previously turned
+    # optional timing metrics into a hard failure and blocked accreditation.
+    summary_block = workflow.split("\n  summary:\n", 1)[1]
+    summary_steps = summary_block.split("\n    steps:\n", 1)[1]
+    assert summary_steps.index("- name: Summary") < summary_steps.index("- name: Checkout staging metrics scripts")
+    assert summary_steps.index("- name: Checkout staging metrics scripts") < summary_steps.index("- name: Diagnostic staging timings (non-blocking)")
+    assert summary_steps.count("continue-on-error: true") >= 2
+    assert "uses: actions/checkout@v7" in summary_steps
+    assert "ref: ${{ env.DEPLOY_SHA }}" in summary_steps
+    assert "if: steps.metrics_checkout.outcome == 'success'" in summary_steps
+    assert "scripts/staging_deploy_metrics.py --self-test" in summary_steps
     main_workflow = (Path(__file__).resolve().parents[1] / ".github/workflows/main-admission.yml").read_text(encoding="utf-8")
     assert "prebuild_required: ${{ steps.deploy_scope.outputs.prebuild_required }}" in main_workflow
     assert "needs.source.outputs.prebuild_required == 'true'" in main_workflow
