@@ -19,7 +19,8 @@ import {
   chroniclesStartInitiativeCombat,
 } from '../chronicles/chroniclesInitiative.js';
 import { chroniclesDeployedPartyLevel } from '../chronicles/chroniclesDifficultyPolicy.js';
-import { playChroniclesActionSound } from '../chronicles/chroniclesActionAudio.js';
+import { playChroniclesActionSound, getChroniclesSfxVolume, setChroniclesSfxVolume } from '../chronicles/chroniclesActionAudio.js';
+import { getAmbientVolume, setAmbientVolume } from '../sound.js';
 import { chroniclesPartyPortraitUrl } from '../chronicles/chroniclesPartyPortraitAssets.js';
 import { chroniclesClearRuntimeMapDefinitions, chroniclesMapForState } from '../chronicles/chroniclesMapCatalog.js';
 import { chroniclesRegionHudLocation } from '../chronicles/chroniclesRegionHud.js';
@@ -206,6 +207,8 @@ export default function ChroniclesOfMatthias({ onExit }) {
   const [retaliationCue, setRetaliationCue] = useState(null);
   const [partyBark, setPartyBark] = useState(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [sfxVolume, setSfxVolume] = useState(getChroniclesSfxVolume);
+  const [musicVolume, setMusicVolume] = useState(getAmbientVolume);
   const menuSummaryRef = useRef(null);
   const [journalOpen, setJournalOpen] = useState(false);
   const [chronicleModalOpen, setChronicleModalOpen] = useState(false);
@@ -1207,6 +1210,15 @@ export default function ChroniclesOfMatthias({ onExit }) {
                 {saveNotice && <small role="status">{saveNotice}</small>}
                 <button type="button" onClick={() => { setMenuOpen(false); setConfirmExitWithoutSaving(false); }}>Continuar</button>
                 <button type="button" onClick={() => { setMenuOpen(false); setAutomapOpen(false); setJournalOpen(true); }}>Crónica · J</button>
+                <fieldset className="chronicles-audio-controls">
+                  <legend>SONIDO</legend>
+                  <label htmlFor="chronicles-sfx-volume">Efectos (SFX) · {Math.round(sfxVolume * 100)}%</label>
+                  <input id="chronicles-sfx-volume" type="range" min="0" max="1" step="0.05"
+                    value={sfxVolume} onChange={(event) => setSfxVolume(setChroniclesSfxVolume(event.target.value))} />
+                  <label htmlFor="chronicles-music-volume">Música · {Math.round(musicVolume * 100)}%</label>
+                  <input id="chronicles-music-volume" type="range" min="0" max="1" step="0.05"
+                    value={musicVolume} onChange={(event) => setMusicVolume(setAmbientVolume(event.target.value))} />
+                </fieldset>
                 <button type="button" onClick={() => void persistCheckpoint(stateRef.current, 'manual')} disabled={saveBusy}>
                   {saveBusy ? 'Guardando…' : 'Guardar partida'}
                 </button>
