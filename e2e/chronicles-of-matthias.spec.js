@@ -73,7 +73,7 @@ test('Chronicles · 503 al guardar bloquea la salida y reintento confirma la mis
     if (attempts === 1) return route.fulfill({
       status: 503, contentType: 'application/json',
       headers: { 'X-Request-ID': 'chronicles-save-503-e2e' },
-      body: JSON.stringify({ detail: 'Guardado no disponible temporalmente' }),
+      body: JSON.stringify({ detail: 'Guardado no disponible temporalmente', requestId: 'chronicles-save-503-e2e' }),
     });
     return route.fallback();
   });
