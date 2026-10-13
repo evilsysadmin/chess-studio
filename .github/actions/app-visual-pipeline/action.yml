@@ -128,6 +128,33 @@ runs:
             echo "chronicles_save_only=true" >> "$GITHUB_OUTPUT"
             echo "Chronicles visual scope: expedition-book-only, three live browser viewports."
           fi
+          # Only the pre-game party selector and its setup assertions changed.
+          # Unknown/shared changes retain the full Chronicles visual suite.
+          setup_only=true
+          setup_touched=false
+          while IFS= read -r changed; do
+            [[ -z "$changed" ]] && continue
+            case "$changed" in
+              frontend/src/components/ChroniclesCharacterSetup.jsx|frontend/src/components/ChroniclesCharacterSetup.css|frontend/src/components/ChroniclesCharacterSetup.test.jsx)
+                setup_touched=true ;;
+              e2e/chronicles-gameplay-visual-artifact.spec.js)
+                # Only lines within the existing setup helper (33-163).
+                hunks="$(git diff --unified=0 "$merge_base" "$head_sha" -- "$changed" | sed -nE "s/^@@ -([0-9]+)(,[0-9]+)? [.].*$/\1/p")"
+                [[ -n "$hunks" ]] || setup_only=false
+                while IFS= read -r line; do
+                  [[ -z "$line" ]] && continue
+                  if (( line < 33 || line > 163 )); then setup_only=false; fi
+                done <<< "$hunks" ;;
+              scripts/app_visual_capture.sh|.github/actions/app-visual-pipeline/action.yml)
+                : ;;
+              *) setup_only=false ;;
+            esac
+          done <<< "$files"
+          if [[ "$setup_only" == true && "$setup_touched" == true ]]; then
+            echo "chronicles_setup_only=true" >> "$GITHUB_OUTPUT"
+            scoped_files="frontend/src/components/ChroniclesCharacterSetup.jsx"
+            echo "Chronicles visual scope: character setup only, three First Book viewports."
+          fi
         fi
         printf '%s\n' "$files"
         if [[ "$scoped_files" != "$files" ]]; then
@@ -239,6 +266,7 @@ runs:
         APP_VISUAL_WARROOM_PROFILE_SCOPE: ${{ steps.scope.outputs.warroom_profile_scope }}
         APP_VISUAL_HOME_PROFILE_SCOPE: ${{ steps.scope.outputs.home_profile_scope }}
         APP_VISUAL_CHRONICLES_SAVE_ONLY: ${{ steps.scope.outputs.chronicles_save_only }}
+        APP_VISUAL_CHRONICLES_SETUP_ONLY: ${{ steps.scope.outputs.chronicles_setup_only }}
       shell: bash
       run: |
         set -euo pipefail
