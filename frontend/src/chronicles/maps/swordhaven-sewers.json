@@ -109,6 +109,7 @@
     },
     {
       "id": "sewers-smuggler",
+      "rangedWeapon": "crossbow",
       "visualType": "road-bandit",
       "name": "Tobías, el contrabandista",
       "x": 11,
@@ -120,9 +121,11 @@
       "activation": "always",
       "ai": {
         "movement": "hold",
-        "attackReach": 1,
+        "attackReach": 4,
         "engagedMovement": "cardinal-chase",
-        "engageRange": 2
+        "engageRange": 5,
+        "disengageRange": 1,
+        "requiresLineOfSight": true
       },
       "visualMotion": "grounded",
       "onDefeat": {
