@@ -132,7 +132,7 @@ def make_studio():
 
     cam_data = bpy.data.cameras.new("CC0_8view_camera")
     cam_data.type = "ORTHO"
-    cam_data.ortho_scale = 2.35
+    cam_data.ortho_scale = 1.55
     camera = bpy.data.objects.new("CC0_8view_camera", cam_data)
     bpy.context.collection.objects.link(camera)
     scene.camera = camera
