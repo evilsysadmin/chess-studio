@@ -1275,56 +1275,12 @@ export default function ChroniclesOfMatthias({ onExit }) {
                   <button type="button" className="chronicles-game-menu__close" aria-label="Cerrar menú de Chronicles"
                     onClick={() => { setMenuOpen(false); setConfirmExitWithoutSaving(false); menuSummaryRef.current?.focus(); }}>×</button>
                 </div>
-                <small>Guardado manual · checkpoint automático al cambiar de área.</small>
-                <fieldset className="chronicles-audio-controls" style={{ border: '1px solid #806d51', padding: '8px', display: 'grid', gap: '6px', minWidth: 0 }}>
-                  <legend>Audio</legend>
-                  <label htmlFor="chronicles-sfx-volume">Efectos (SFX) · {Math.round(fxVolume * 100)} %</label>
-                  <input
-                    id="chronicles-sfx-volume"
-                    aria-label="Volumen de efectos de Chronicles"
-                    type="range"
-                    min="0"
-                    max="100"
-                    step="5"
-                    value={Math.round(fxVolume * 100)}
-                    style={{ width: '100%', accentColor: '#88632d' }}
-                    onChange={(event) => setFxVolume(setChroniclesFxVolume(Number(event.target.value) / 100))}
-                    onKeyDown={(event) => event.stopPropagation()}
-                  />
-                  <label htmlFor="chronicles-music-volume">Música general · {Math.round(musicVolume * 100)} %</label>
-                  <input
-                    id="chronicles-music-volume"
-                    aria-label="Volumen de música"
-                    type="range"
-                    min="0"
-                    max="100"
-                    step="5"
-                    value={Math.round(musicVolume * 100)}
-                    style={{ width: '100%', accentColor: '#88632d' }}
-                    onChange={(event) => setMusicVolume(setAmbientVolume(Number(event.target.value) / 100))}
-                    onKeyDown={(event) => event.stopPropagation()}
-                  />
-                  <small>Ajusta la música general; Chronicles aún no dispone de pista propia.</small>
-                </fieldset>
                 {saveNotice && <small role="status">{saveNotice}</small>}
                 <button type="button" onClick={() => { setMenuOpen(false); setConfirmExitWithoutSaving(false); }}>Continuar</button>
-                <button type="button" onClick={() => {
-                  clearTouchHold();
-                  setMenuOpen(false);
-                  setAutomapOpen(false);
-                  if (window.matchMedia('(max-width: 800px), (max-width: 1024px) and (max-height: 600px)').matches) {
-                    setJournalOpen(false);
-                    setChronicleModalOpen(true);
-                  } else {
-                    setJournalOpen(true);
-                  }
-                }}>Crónica · J</button>
                 <button type="button" onClick={() => void persistCheckpoint(stateRef.current, 'manual')} disabled={saveBusy}>
                   {saveBusy ? 'Guardando…' : 'Guardar partida'}
                 </button>
-                <button type="button" onClick={newExpedition} disabled={saveBusy}>Nueva expedición</button>
-                <button type="button" onClick={returnToSaveMenu} disabled={saveBusy}>Partidas guardadas</button>
-                <button type="button" onClick={() => void saveAndExit()} disabled={saveBusy}>Salir y guardar</button>
+                <button type="button" onClick={() => void saveAndExit()} disabled={saveBusy}>Guardar y salir</button>
                 {!confirmExitWithoutSaving ? (
                   <button type="button" onClick={() => setConfirmExitWithoutSaving(true)} disabled={saveBusy}>
                     Salir sin guardar
@@ -1336,6 +1292,37 @@ export default function ChroniclesOfMatthias({ onExit }) {
                     <button type="button" onClick={() => setConfirmExitWithoutSaving(false)}>Cancelar</button>
                   </div>
                 )}
+                <details className="chronicles-audio-options">
+                  <summary>Opciones de audio</summary>
+                  <fieldset className="chronicles-audio-controls">
+                    <legend>Volumen</legend>
+                    <label htmlFor="chronicles-sfx-volume">Efectos (SFX) · {Math.round(fxVolume * 100)} %</label>
+                    <input
+                      id="chronicles-sfx-volume"
+                      aria-label="Volumen de efectos de Chronicles"
+                      type="range"
+                      min="0"
+                      max="100"
+                      step="5"
+                      value={Math.round(fxVolume * 100)}
+                      onChange={(event) => setFxVolume(setChroniclesFxVolume(Number(event.target.value) / 100))}
+                      onKeyDown={(event) => event.stopPropagation()}
+                    />
+                    <label htmlFor="chronicles-music-volume">Música general · {Math.round(musicVolume * 100)} %</label>
+                    <input
+                      id="chronicles-music-volume"
+                      aria-label="Volumen de música"
+                      type="range"
+                      min="0"
+                      max="100"
+                      step="5"
+                      value={Math.round(musicVolume * 100)}
+                      onChange={(event) => setMusicVolume(setAmbientVolume(Number(event.target.value) / 100))}
+                      onKeyDown={(event) => event.stopPropagation()}
+                    />
+                    <small>La música se ajusta globalmente; Chronicles aún no dispone de pista propia.</small>
+                  </fieldset>
+                </details>
               </div>
             </details>
           </div>
