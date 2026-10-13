@@ -884,7 +884,7 @@ for (const capture of CAPTURES) {
           priority: element.style.getPropertyPriority('color'),
           computed: getComputedStyle(element).color,
         }));
-        expect(ink.value, `${capture.label}: ${selector} inline ink`).toBe('#08080a');
+        expect(ink.value, `${capture.label}: ${selector} inline ink`).toMatch(/^(?:#08080a|rgb\(8,\s*8,\s*10\))$/i);
         expect(ink.priority, `${capture.label}: ${selector} priority`).toBe('important');
         expect(ink.computed, `${capture.label}: ${selector} final ink`).toBe('rgb(8, 8, 10)');
       }
