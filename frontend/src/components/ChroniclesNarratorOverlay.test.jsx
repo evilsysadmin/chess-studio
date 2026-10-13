@@ -5,13 +5,14 @@ import React from 'react';
 import ChroniclesNarratorOverlay, { shouldShowChroniclesNarration } from './ChroniclesNarratorOverlay.jsx';
 
 describe('ChroniclesNarratorOverlay', () => {
-  it('starts as an accessible, compact, closed chronicle toggle instead of a permanent narration banner', () => {
+  it('keeps only an accessible dialog trigger in the HUD while the reader is closed', () => {
     const html = renderToStaticMarkup(<ChroniclesNarratorOverlay message="Swordhaven: sol, calles empedradas y cinco puertas esperando viajeros." />);
-    expect(html).toContain('<details class="chronicles-dm-overlay">');
-    expect(html).toContain('<summary class="chronicles-dm-trigger" aria-label="Crónica de expedición">');
-    expect(html).toContain('role="region"');
-    expect(html).toContain('CRÓNICA DE EXPEDICIÓN');
-    expect(html).not.toContain('CRÓNICA DE LA CRIPTA');
+    expect(html).toContain('class="chronicles-dm-overlay"');
+    expect(html).toContain('class="chronicles-dm-trigger"');
+    expect(html).toContain('aria-label="Crónica de expedición"');
+    expect(html).toContain('aria-haspopup="dialog"');
+    expect(html).toContain('aria-expanded="false"');
+    expect(html).not.toContain('class="chronicles-dm-dialog"');
     expect(html).toContain('Swordhaven: sol, calles empedradas y cinco puertas esperando viajeros.');
     expect(html).toContain('aria-live="polite"');
   });

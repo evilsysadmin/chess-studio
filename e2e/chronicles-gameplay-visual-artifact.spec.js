@@ -348,16 +348,32 @@ for (const capture of [
       // Desktop keeps quests in the bottom journal; touch layouts carry them
       // inside the floating chronicle.
       const questToggle = capture.touch ? game.locator('.chronicles-dm-trigger') : game.locator('.chronicles-journal summary');
-      const visibleQuest = capture.touch ? game.locator('.chronicles-dm-quests [data-chronicles-quest-id="names-in-wood"]') : game.locator('.chronicles-journal [data-chronicles-quest-id="names-in-wood"]');
+      const visibleQuest = capture.touch
+        ? page.locator('.chronicles-dm-quests [data-chronicles-quest-id="names-in-wood"]')
+        : game.locator('.chronicles-journal [data-chronicles-quest-id="names-in-wood"]');
       await questToggle.evaluate((node) => node.click());
       await expect(visibleQuest).toBeVisible();
+      if (capture.touch) {
+        const reader = page.getByRole('dialog', { name: 'Crónica', exact: true });
+        await expect(reader).toBeVisible();
+        await expect(reader.getByRole('button', { name: 'Cerrar crónica' })).toBeVisible();
+        const turnsBefore = await game.getAttribute('data-chronicles-turns');
+        await page.keyboard.press('ArrowUp');
+        expect(await game.getAttribute('data-chronicles-turns'), 'reading must not move the party').toBe(turnsBefore);
+      }
       const health = await captureChroniclesHealth(page);
       expect(health.horizontalOverflow).toBe(false);
       await page.screenshot({
         path: `${ARTIFACT_DIR}/chronicles-rookwood-quest-log-${capture.label}.png`,
         animations: 'disabled', timeout: 60_000,
       });
-      await questToggle.evaluate((node) => node.click());
+      if (capture.touch) {
+        await page.getByRole('button', { name: 'Cerrar crónica' }).click();
+        await expect(page.getByRole('dialog', { name: 'Crónica', exact: true })).toHaveCount(0);
+        await expect(questToggle).toHaveAttribute('aria-expanded', 'false');
+      } else {
+        await questToggle.evaluate((node) => node.click());
+      }
 
       await pressSequence(page, ROOKWOOD_WALK_TO_OAK);
       await expect(game).toHaveAttribute('data-chronicles-phase', 'explore');
