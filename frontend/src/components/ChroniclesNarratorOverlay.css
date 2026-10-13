@@ -21,7 +21,10 @@
   background: linear-gradient(125deg, rgba(40, 28, 20, .94), rgba(13, 11, 9, .91));
   box-shadow: 0 8px 20px rgba(0, 0, 0, .3);
   color: #eadcc4;
-  font: 700 .76rem/1.2 inherit;
+  font-family: inherit;
+  font-size: .76rem;
+  font-weight: 700;
+  line-height: 1.2;
   letter-spacing: .04em;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;

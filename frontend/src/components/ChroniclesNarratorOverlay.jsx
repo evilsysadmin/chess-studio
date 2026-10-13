@@ -61,7 +61,7 @@ export default function ChroniclesNarratorOverlay({ message, children = null, op
   function onDialogKeyDown(event) {
     // No movement, attack or game-menu hotkeys while the reader owns focus.
     event.stopPropagation();
-    if (event.key === 'Escape') {
+    if (event.key === 'Escape' || event.key === 'j' || event.key === 'J') {
       event.preventDefault();
       onOpenChange(false);
       return;
