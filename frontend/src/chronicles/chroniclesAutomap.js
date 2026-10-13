@@ -7,8 +7,8 @@ import {
 
 const AUTOMAP_STORAGE_PREFIX = 'chess-study-chronicles-automap-v1:';
 
-const CARDINAL_NEIGHBORS = Object.freeze([
-  Object.freeze({ dx: 0, dy: 0 }),
+// N/E/S/W follow the same orientation as the first-person camera.
+const FACING_VECTORS = Object.freeze([
   Object.freeze({ dx: 0, dy: -1 }),
   Object.freeze({ dx: 1, dy: 0 }),
   Object.freeze({ dx: 0, dy: 1 }),
@@ -42,10 +42,9 @@ export function chroniclesAutomapMarkVisited(visitedByMap, state) {
   };
 }
 
-// The automap remembers everything the company has seen, not only the cells
-// it stood on: the same line-of-sight radius the minimap shows.
-// Cells only seen (never stood on) are stored as `x:y:s`: they reveal the
-// map but are not drawn as visited, so the walked path stays distinct.
+// The automap remembers only geometry that entered the camera's field of view.
+// Seen-but-unvisited floors AND walls use `x:y:s`, preserving the walked route
+// separately and preventing unseen corners from leaking into the map.
 const SEEN_SUFFIX = ':s';
 
 export function chroniclesAutomapMarkSeen(visitedByMap, map, state, radius = 3) {
@@ -55,7 +54,7 @@ export function chroniclesAutomapMarkSeen(visitedByMap, map, state, radius = 3) 
   const known = new Set(visited.map((key) => String(key).replace(SEEN_SUFFIX, '')));
   const seen = [...chroniclesAutomapLocalVisibleCells(map, state, radius)].filter((key) => {
     const cell = parseCellKey(key);
-    return cell && map.grid[cell.y]?.[cell.x] !== '#' && !known.has(key);
+    return cell && !known.has(key);
   }).map((key) => `${key}${SEEN_SUFFIX}`);
   if (!seen.length) return marked;
   return { ...marked, [state.mapId]: [...visited, ...seen] };
@@ -67,20 +66,52 @@ export function chroniclesAutomapRevealedCells(map, visitedCells) {
   const height = Number(map?.grid?.length || 0);
   if (!width || !height) return revealed;
 
+  // Previously, every recorded tile implicitly exposed its four neighbors.
+  // That revealed passages behind corners even when the party had never seen
+  // them. Explicit sight and footsteps are now the only sources of knowledge.
   (Array.isArray(visitedCells) ? visitedCells : []).forEach((key) => {
     const cell = parseCellKey(key);
-    if (!cell) return;
-    CARDINAL_NEIGHBORS.forEach(({ dx, dy }) => {
-      const x = cell.x + dx;
-      const y = cell.y + dy;
-      if (x < 0 || y < 0 || x >= width || y >= height) return;
-      revealed.add(chroniclesAutomapCellKey(x, y));
-    });
+    if (cell && cell.x >= 0 && cell.y >= 0 && cell.x < width && cell.y < height) {
+      revealed.add(chroniclesAutomapCellKey(cell.x, cell.y));
+    }
   });
-
   return revealed;
 }
 
+// Cast a ray from the centers of two cells, stopping at the first opaque tile.
+// At exact diagonal corners, the side cells must both be clear: an angled
+// glimpse cannot slip through the join between two pieces of masonry.
+function chroniclesAutomapClearSight(map, startX, startY, targetX, targetY) {
+  const dx = targetX - startX;
+  const dy = targetY - startY;
+  const stepX = Math.sign(dx);
+  const stepY = Math.sign(dy);
+  const deltaX = dx ? 1 / Math.abs(dx) : Infinity;
+  const deltaY = dy ? 1 / Math.abs(dy) : Infinity;
+  let nextX = deltaX / 2;
+  let nextY = deltaY / 2;
+  let x = startX;
+  let y = startY;
+  const opaque = (col, row) => map.grid[row]?.[col] === '#' || map.grid[row]?.[col] === undefined;
+
+  while (x !== targetX || y !== targetY) {
+    if (nextX + 1e-9 < nextY) {
+      x += stepX;
+      nextX += deltaX;
+    } else if (nextY + 1e-9 < nextX) {
+      y += stepY;
+      nextY += deltaY;
+    } else {
+      if (opaque(x + stepX, y) || opaque(x, y + stepY)) return false;
+      x += stepX;
+      y += stepY;
+      nextX += deltaX;
+      nextY += deltaY;
+    }
+    if (opaque(x, y) && (x !== targetX || y !== targetY)) return false;
+  }
+  return true;
+}
 
 export function chroniclesAutomapLocalVisibleCells(map, state, radius = 3) {
   const visible = new Set();
@@ -90,36 +121,27 @@ export function chroniclesAutomapLocalVisibleCells(map, state, radius = 3) {
   const startY = Number(state?.y);
   const safeRadius = Math.max(0, Math.min(8, Math.trunc(Number(radius) || 0)));
   if (
-    !width
-    || !height
-    || !Number.isInteger(startX)
-    || !Number.isInteger(startY)
-    || startX < 0
-    || startY < 0
-    || startX >= width
-    || startY >= height
+    !width || !height
+    || !Number.isInteger(startX) || !Number.isInteger(startY)
+    || startX < 0 || startY < 0 || startX >= width || startY >= height
   ) return visible;
 
-  const queue = [{ x: startX, y: startY, distance: 0 }];
-  const traversed = new Set([chroniclesAutomapCellKey(startX, startY)]);
-
-  while (queue.length) {
-    const current = queue.shift();
-    visible.add(chroniclesAutomapCellKey(current.x, current.y));
-    if (current.distance >= safeRadius) continue;
-
-    CARDINAL_NEIGHBORS.slice(1).forEach(({ dx, dy }) => {
-      const x = current.x + dx;
-      const y = current.y + dy;
-      if (x < 0 || y < 0 || x >= width || y >= height) return;
-      const key = chroniclesAutomapCellKey(x, y);
-      visible.add(key);
-      if (map.grid[y]?.[x] === '#' || traversed.has(key)) return;
-      traversed.add(key);
-      queue.push({ x, y, distance: current.distance + 1 });
-    });
+  // 120° forward field of view, including the current tile. Looking/turning
+  // reveals the actual corridor geometry, not reachable paths around bends.
+  const direction = ((Math.trunc(Number(state?.direction) || 0) % 4) + 4) % 4;
+  const facing = FACING_VECTORS[direction];
+  for (let y = Math.max(0, startY - safeRadius); y <= Math.min(height - 1, startY + safeRadius); y += 1) {
+    for (let x = Math.max(0, startX - safeRadius); x <= Math.min(width - 1, startX + safeRadius); x += 1) {
+      const dx = x - startX;
+      const dy = y - startY;
+      const distance = Math.hypot(dx, dy);
+      if (distance > safeRadius) continue;
+      if (distance && (dx * facing.dx + dy * facing.dy) / distance < 0.5) continue;
+      if (chroniclesAutomapClearSight(map, startX, startY, x, y)) {
+        visible.add(chroniclesAutomapCellKey(x, y));
+      }
+    }
   }
-
   return visible;
 }
 
