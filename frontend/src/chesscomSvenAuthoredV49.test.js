@@ -7,6 +7,7 @@ import {
   chesscomVerifySvenGlbV49,
   chesscomValidateAuthoredContainerV49,
   chesscomShouldHideSvenLegacyV50,
+  chesscomEnsureGlbLoaderV51,
   installChesscomSvenAuthoredV49,
 } from './chesscomSvenAuthoredV49.js';
 
@@ -144,11 +145,40 @@ describe('CHESSCOM authored Sven GLB V49 safety contract',()=>{
     expect(chesscomShouldHideSvenLegacyV50({name:'canonical-unit-sven-fallen',isDisposed:()=>true},imported)).toBe(false);
   });
 
+  it('registers pinned Babylon glTF loader once, not eagerly at boot',async()=>{
+    const loader={SceneLoader:{
+      IsPluginForExtensionAvailable:vi.fn(()=>false),
+    }};
+    const register=vi.fn(async()=>{
+      loader.SceneLoader.IsPluginForExtensionAvailable=vi.fn(()=>true);
+    });
+    expect(await chesscomEnsureGlbLoaderV51(loader,register)).toBe(true);
+    expect(register).toHaveBeenCalledOnce();
+    expect(await chesscomEnsureGlbLoaderV51(loader,register)).toBe(true);
+    expect(register).toHaveBeenCalledOnce();
+  });
+
+  it('does not call app fetch if dynamic loader installation fails',async()=>{
+    const f=fixture(),fetchManifest=vi.fn();
+    const renderer=installChesscomSvenAuthoredV49({
+      SceneLoader:{IsPluginForExtensionAvailable:()=>false}
+    },f.scene,{
+      host:f.host,search:'?chesscomSven=authored',
+      fetchManifest,registerGlbLoader:async()=>{throw Error('loader bundle missing');}
+    });
+    expect(await renderer.ready).toBe(false);
+    expect(fetchManifest).not.toHaveBeenCalled();
+    expect(f.host.dataset.chesscomSvenAuthoredReason).toBe('missing-glb-loader');
+    renderer.destroy();
+  });
+
   it('fails closed before downloading anything when Babylon has no GLB importer',async()=>{
     const f=fixture(),fetchManifest=vi.fn(),fetchBytes=vi.fn();
     const renderer=installChesscomSvenAuthoredV49({SceneLoader:{
       IsPluginForExtensionAvailable:()=>false,
-    }},f.scene,{host:f.host,search:'?chesscomSven=authored',fetchManifest,fetchBytes});
+    }},f.scene,{host:f.host,search:'?chesscomSven=authored',fetchManifest,fetchBytes,
+      registerGlbLoader:async()=>{},
+    });
     expect(await renderer.ready).toBe(false);
     expect(f.host.dataset.chesscomSvenAuthored).toBe('fallback');
     expect(f.host.dataset.chesscomSvenAuthoredReason).toBe('missing-glb-loader');
