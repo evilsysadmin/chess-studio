@@ -895,6 +895,10 @@ for (const capture of CAPTURES) {
       await menuSummary.evaluate((summary) => summary.click());
       const exitAction = menuDetails.getByRole('button', { name: 'Guardar y salir', exact: true });
       await expect(exitAction).toBeVisible();
+      const menuPanelBox = await menuDetails.locator('.chronicles-game-menu__panel').boundingBox();
+      expect(menuPanelBox, `${capture.label}: pause menu has bounds`).not.toBeNull();
+      expect(menuPanelBox.y, `${capture.label}: pause menu does not clip above viewport`).toBeGreaterThanOrEqual(0);
+      expect(menuPanelBox.y + menuPanelBox.height, `${capture.label}: pause menu does not clip below viewport`).toBeLessThanOrEqual(capture.height);
       await captureElement(page, gameRoot, `${ARTIFACT_DIR}/chronicles-game-menu-${capture.label}.png`);
       // Both controls belong to the current menu; keyboard-adjusting them
       // must not trigger dungeon movement hotkeys.
@@ -905,6 +909,10 @@ for (const capture of CAPTURES) {
       await audioToggle.click();
       await expect(musicSlider).toBeVisible();
       await expect(fxSlider).toBeVisible();
+      const audioPanelBox = await menuDetails.locator('.chronicles-game-menu__panel').boundingBox();
+      expect(audioPanelBox, `${capture.label}: audio panel has bounds`).not.toBeNull();
+      expect(audioPanelBox.y, `${capture.label}: audio panel does not clip above viewport`).toBeGreaterThanOrEqual(0);
+      expect(audioPanelBox.y + audioPanelBox.height, `${capture.label}: audio panel does not clip below viewport`).toBeLessThanOrEqual(capture.height);
       const turnsBeforeAudio = await gameRoot.getAttribute('data-chronicles-turns');
       await musicSlider.focus();
       await musicSlider.press('Home');
