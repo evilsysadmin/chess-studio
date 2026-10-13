@@ -127,6 +127,22 @@ def self_test() -> None:
     assert not safe_changes([("M", ".github/workflows/staging-deploy.yml"), ("M", "e2e/staging-live.spec.js")])
     assert select(a, "direct")[0] == ""
     assert not comparison_ahead("", a, b, "")
+    # Fail loudly in preflight if an unrelated refactor removes the no-deploy or
+    # no-accredit safety contract. The proof requires every runtime job success.
+    from pathlib import Path
+    workflow = (Path(__file__).resolve().parents[1] / ".github/workflows/staging-deploy.yml").read_text(encoding="utf-8")
+    assert "needs.prepare.outputs.smoke_only != 'true'" in workflow
+    assert "needs.prepare.outputs.smoke_only == 'true'" in workflow
+    assert "needs.backend.result == 'skipped'" in workflow
+    assert "needs.frontend.result == 'skipped'" in workflow
+    assert "needs.worker.result == 'skipped'" in workflow
+    assert "TEST_SOURCE_SHA: ${{ needs.prepare.outputs.deploy_sha }}" in workflow
+    assert 'ref: ${{ env.TEST_SOURCE_SHA }}' in workflow
+    assert 'smoke_sha || needs.prepare.outputs.deploy_sha' in workflow
+    assert "Verify smoke-only runtime and source stayed unchanged" in workflow
+    assert "Staging generation complete" in proof.REQUIRED_JOBS
+    for name in ("Backend · exact OCI generation", "Frontend · exact Pages generation", "Worker · exact AI generation"):
+        assert name in proof.REQUIRED_JOBS
     print("staging-smoke-only self-test: OK")
 
 
