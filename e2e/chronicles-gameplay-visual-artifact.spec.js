@@ -925,7 +925,7 @@ for (const capture of CAPTURES) {
       );
       expect(menuInks.length, 'menu has actual actions').toBeGreaterThan(3);
       for (const ink of menuInks) {
-        expect(ink.inline, `menu action ${ink.label} inline ink`).toMatch(/^(?:#08080a|rgb\(8,\s*8,\s*10\))$/i);
+        expect(ink.inline, `menu action ${ink.label} inline ink`).toBe('#08080a');
         expect(ink.priority, `menu action ${ink.label} important ink`).toBe('important');
         expect(ink.computed, `menu action ${ink.label} black ink`).toBe('rgb(8, 8, 10)');
       }
@@ -940,13 +940,8 @@ for (const capture of CAPTURES) {
         color: getComputedStyle(button).color,
         fill: getComputedStyle(button).webkitTextFillColor,
       }));
-      // Both approved near-black inks are readable on the raised stone.
-      // Chrome may pick the new inline override (#08080a), while legacy
-      // surfaces retain the former #111015. WebKit text fill must agree.
-      expect(inks.color, `${capture.label}: menu ink must be dark`)
-        .toEqual(expect.stringMatching(/^rgb\((?:8, 8, 10|17, 16, 21)\)$/));
-      expect(inks.fill, `${capture.label}: WebKit must keep the same dark ink`)
-        .toBe(inks.color);
+      expect(inks.color, `${capture.label}: menu ink must be dark`).toBe('rgb(17, 16, 21)');
+      expect(inks.fill, `${capture.label}: WebKit must keep dark ink`).toBe('rgb(17, 16, 21)');
       await captureElement(page, gameRoot, `${ARTIFACT_DIR}/chronicles-game-menu-${capture.label}.png`);
       await menuSummary.evaluate((summary) => summary.click());
       await expect(exitAction).toBeHidden();
