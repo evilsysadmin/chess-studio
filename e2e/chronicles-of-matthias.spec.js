@@ -100,6 +100,30 @@ test('Chronicles first-person · nueva expedición pide Swordhaven sin alterar T
   await expect(mode.locator('[data-chronicles-renderer="three"] canvas')).toHaveCount(1);
 });
 
+test('Chronicles · F5 mantiene la expedición activa abierta sin crear otra run', async ({ page }) => {
+  test.setTimeout(180_000);
+  let runCreates = 0;
+  page.on('request', (request) => {
+    if (request.method() === 'POST' && new URL(request.url()).pathname.endsWith('/api/chronicles/runs')) {
+      runCreates += 1;
+    }
+  });
+
+  await openChronicles(page, { chroniclesCurrentMapId: 'swordhaven-square', newTown: true });
+  const mode = page.locator('[data-chronicles="true"]');
+  await expect(mode).toHaveAttribute('data-chronicles-map-id', 'swordhaven-square');
+  await expect.poll(() => runCreates, { timeout: 20_000 }).toBe(1);
+
+  await page.reload();
+
+  await expect(page.locator('[data-chronicles-save-menu]')).toHaveCount(0);
+  const restored = page.locator('[data-chronicles="true"]');
+  await expect(restored).toBeVisible({ timeout: 30_000 });
+  await expect(restored).toHaveAttribute('data-chronicles-map-id', 'swordhaven-square');
+  await expect(restored.locator('[data-chronicles-renderer="three"] canvas')).toHaveCount(1);
+  expect(runCreates, 'reload must resume the confirmed run instead of creating another expedition').toBe(1);
+});
+
 test('Chronicles · Escape opens and closes the in-game menu while the scene stays fullscreen', async ({ page }) => {
   // Count every attempt to engage browser-native fullscreen, including entry
   // via Experimentos and character setup. Escape must own the game menu instead.
