@@ -250,7 +250,7 @@ export default function LabScreen({ onExit, onStart }){
               <span>Selecciona una pieza y pulsa una casilla</span>
             </div>
             <div className="lab-board-editor">
-              <PreferredBoard fen={fen} orientation="white" onSquareClick={editSquare} />
+              <PreferredBoard fen={fen} orientation="white" onSquareClick={editSquare} cameraProfile="classroom" warRoomVariantOverride="classic" />
             </div>
           </div>
           <aside className="lab-position-controls" aria-label="Instrumentos de la posición">
