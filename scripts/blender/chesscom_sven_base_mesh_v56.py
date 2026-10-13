@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Sven V56: seam-safe microbevel of ORIGINAL skinned fabric, no extra boxes.
+"""Sven V56: UV-safe custom normals on real skinned fabric, no extra boxes.
 
 Review-only Blender CPU experiment. Keep Quaternius source, bones and 24
 authentic actions. V55 kit is preserved; never invent a rifle or IK claim.
@@ -22,7 +22,6 @@ from chesscom_oss_turntable_v52 import (
 from chesscom_sven_organic_v55 import add_design_v55
 
 GARMENTS = ("Swat_Body", "Swat_Legs")
-MAX_SMOOTHED_TRIANGLES = 60000
 
 
 def triangles(obj):
@@ -37,76 +36,117 @@ def weighted_fraction(obj):
 
 
 def refine_source_garments(candidate):
-    """Conservative seam-safe microbevel, NEVER Catmull-Clark on source islands.
+    """Create continuous-looking textile NORMALS across duplicated triangles.
 
-    Source body/leg pieces are disconnected low-poly armor/textile islands.
-    Catmull-Clark shrinks them away from each other and reveals black gaps,
-    as V56's first real 8-view render proved. A tiny sharp-edge bevel adds
-    believable light-catching edges without changing island silhouettes.
+    The CC0 SWAT source intentionally duplicates almost every corner vertex.
+    Catmull-Clark breaks disconnected shell pieces, while edge-bevel has no
+    manifold edges to bevel. Reconstruct smoothed split normals by *position*
+    and material instead. Vertex POSITION/UV/weights stay byte-for-byte stable
+    in Blender, avoiding gaps, broken gear and corrupted skeletons.
     """
-    rig = next((o for o in candidate["objects"] if o.type == "ARMATURE"), None)
-    if rig is None:
-        raise RuntimeError("v56-no-cc0-skeleton")
+    from collections import defaultdict
+    from mathutils import Vector
+
     bpy.context.scene.frame_set(1)
     bpy.context.view_layer.update()
-    outcome = []
-    for name, bevel_mm in (("Swat_Body", 1.6), ("Swat_Legs", 1.2)):
+    report = []
+    cutoff_cos = math.cos(math.radians(50))
+    for name in GARMENTS:
         obj = next((o for o in candidate["objects"] if o.name == name), None)
-        if obj is None or obj.type != "MESH":
-            raise RuntimeError("v56-missing-original-garment:" + name)
-        if obj.data.shape_keys or not obj.vertex_groups:
-            raise RuntimeError("v56-unexpected-unskinned-or-morphed-mesh:" + name)
-        armatures_before = [m.name for m in obj.modifiers if m.type == "ARMATURE"]
-        if len(armatures_before) != 1:
-            raise RuntimeError("v56-source-armature-missing:" + name)
-        before = {"vertices": len(obj.data.vertices),
-                  "triangles": triangles(obj),
+        if obj is None or obj.type != "MESH" or not obj.vertex_groups:
+            raise RuntimeError("v56-original-garment-missing:" + name)
+        mesh = obj.data
+        if mesh.shape_keys:
+            raise RuntimeError("v56-morph-source-unexpected:" + name)
+        before_armature = [m.name for m in obj.modifiers if m.type == "ARMATURE"]
+        if len(before_armature) != 1:
+            raise RuntimeError("v56-original-armature-missing:" + name)
+        positions = [tuple(v.co) for v in mesh.vertices]
+        before = {"vertices": len(mesh.vertices), "triangles": triangles(obj),
                   "weighted_fraction": weighted_fraction(obj)}
         if before["weighted_fraction"] < .99:
-            raise RuntimeError("v56-original-weights-incomplete:" + name)
+            raise RuntimeError("v56-weights-incomplete:" + name)
 
-        bpy.ops.object.select_all(action="DESELECT")
-        obj.select_set(True)
-        bpy.context.view_layer.objects.active = obj
-        bevel = obj.modifiers.new("V56_small_source_edge_bevel", "BEVEL")
-        bevel.width = bevel_mm / 1000
-        bevel.segments = 2
-        bevel.limit_method = "ANGLE"
-        bevel.angle_limit = math.radians(55)
-        bevel.loop_slide = True
-        bevel.use_clamp_overlap = True
-        while obj.modifiers.find(bevel.name) > 0:
-            bpy.ops.object.modifier_move_up(modifier=bevel.name)
-        bpy.ops.object.modifier_apply(modifier=bevel.name)
-        if [m.name for m in obj.modifiers if m.type == "ARMATURE"] != armatures_before:
-            raise RuntimeError("v56-lost-source-armature:" + name)
+        group = defaultdict(list)
+        normals = [(0.0, 0.0, 1.0)] * len(mesh.loops)
+        for polygon in mesh.polygons:
+            normal = Vector(polygon.normal)
+            for index in polygon.loop_indices:
+                vertex_index = mesh.loops[index].vertex_index
+                normals[index] = tuple(normal)
+                if polygon.material_index == 0:  # SWAT jacket/pants textile
+                    pos = positions[vertex_index]
+                    key = tuple(round(x, 5) for x in pos)
+                    group[key].append((index, normal))
 
-        # Smooth textiles only. Hard inserts, gloves and polymer parts keep
-        # their authored faceted normals and all source components intact.
-        for face in obj.data.polygons:
-            face.use_smooth = (face.material_index == 0)
-        after = {"vertices": len(obj.data.vertices),
-                 "triangles": triangles(obj),
+        paired = 0
+        changed = 0
+        displacement = 0.0
+        for corners in group.values():
+            if len(corners) < 2:
+                continue
+            paired += len(corners)
+            for index, normal in corners:
+                neighbors = [other for _, other in corners
+                             if normal.dot(other) >= cutoff_cos]
+                if len(neighbors) < 2:
+                    continue
+                averaged = sum(neighbors, Vector((0,0,0))).normalized()
+                shift_deg = math.degrees(normal.angle(averaged))
+                if shift_deg > 0.15:
+                    normals[index] = tuple(averaged)
+                    changed += 1
+                    displacement = max(displacement, shift_deg)
+
+        if paired < 100 or changed < 100 or displacement > 40:
+            raise RuntimeError(
+                f"v56-normal-rebuild-not-meaningful:{name}:{paired}:{changed}:{displacement:.2f}"
+            )
+        for polygon in mesh.polygons:
+            if polygon.material_index == 0:
+                polygon.use_smooth = True
+        # Blender 4.0 supports custom split normals (not material-specific
+        # baked procedural textures that glTF would silently drop).
+        mesh.use_auto_smooth = True
+        mesh.normals_split_custom_set(normals)
+        mesh.update()
+
+        after = {"vertices": len(mesh.vertices), "triangles": triangles(obj),
                  "weighted_fraction": weighted_fraction(obj)}
-        if (after["vertices"] <= before["vertices"]
-                or after["weighted_fraction"] < .99):
-            raise RuntimeError("v56-microbevel-damaged-original:" + name)
-        if after["triangles"] > 60000:
-            raise RuntimeError("v56-bevel-triangle-budget:" + name)
-        obj["v56_refined_source_mesh"] = "microbevel"
-        outcome.append({"mesh": name, "bevel_mm": bevel_mm,
-                        "before": before, "after": after})
+        if (before != after or positions != [tuple(v.co) for v in mesh.vertices]
+                or [m.name for m in obj.modifiers if m.type == "ARMATURE"] != before_armature):
+            raise RuntimeError("v56-garment-geometry-or-skin-modified:" + name)
+        obj["v56_refined_source_mesh"] = "custom-split-normals"
+        report.append({
+            "mesh": name, "before": before, "after": after,
+            "matching_textile_corners": paired,
+            "adjusted_split_normals": changed,
+            "maximum_shading_change_degrees": round(displacement, 3),
+        })
 
-    all_originals = [o for o in candidate["objects"]
-                     if o.name in {"Swat_Body","Swat_Legs","Swat_Head","Swat_Feet"}]
-    if len(all_originals) != 4 or any(not o.vertex_groups for o in all_originals):
-        raise RuntimeError("v56-lost-original-skinned-parts")
+    originals = [o for o in candidate["objects"]
+                 if o.name in {"Swat_Body","Swat_Legs","Swat_Head","Swat_Feet"}]
+    if len(originals) != 4 or any(not o.vertex_groups for o in originals):
+        raise RuntimeError("v56-skinned-originals-lost")
+
+    # Distinguish soft cloth from harder polymer without adding surface
+    # objects, textures that fail glTF baking, or intrusive bright patches.
+    tuned = []
+    for mat in bpy.data.materials:
+        if mat.name != "Swat":
+            continue
+        bsdf = mat.node_tree.nodes.get("Principled BSDF") if mat.use_nodes else None
+        if bsdf:
+            bsdf.inputs["Roughness"].default_value = 0.92
+            tuned.append(mat.name)
     return {
-        "source_garments": outcome,
-        "refinement_method": "microbevel-angle-limited",
-        "total_refined_triangles": sum(o["after"]["triangles"] for o in outcome),
-        "original_skinned_parts_preserved": [o.name for o in all_originals],
+        "source_garments": report,
+        "refinement_method": "uv-safe-custom-split-normals",
+        "unchanged_original_geometry": True,
+        "unchanged_source_skinning": True,
+        "original_skinned_parts_preserved": [o.name for o in originals],
         "head_and_boots_unmodified": True,
+        "matte_textile_materials": tuned,
     }
 
 
@@ -164,8 +204,8 @@ def main():
     }
     (args.output_dir / "blender-report.json").write_text(
         json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-    print("V56_MICROBEVEL_REAL_SKINNED_GARMENTS_REVIEW_ONLY",
-          art["v56"]["total_refined_triangles"], sha)
+    print("V56_UV_SAFE_NORMALS_REVIEW_ONLY",
+          [x["adjusted_split_normals"] for x in art["v56"]["source_garments"]], sha)
 
 
 if __name__ == "__main__":
