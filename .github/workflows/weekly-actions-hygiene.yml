@@ -1,0 +1,205 @@
+name: Maintenance · weekly retired Actions hygiene
+
+# Purge run history only for workflows whose YAML was removed from main and
+# whose runs have been inactive for 30 days. Do not touch current CI.
+on:
+  schedule:
+    - cron: '17 4 * * 0'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Preview candidates without deleting run history
+        type: boolean
+        required: true
+        default: true
+
+permissions:
+  contents: read
+  actions: write
+  pull-requests: read
+
+concurrency:
+  group: chess-studio-weekly-actions-hygiene
+  cancel-in-progress: false
+
+jobs:
+  prune-retired-history:
+    name: Clean up retired workflow runs
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - name: Inspect retired workflows and purge safely
+        uses: actions/github-script@v8
+        env:
+          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || false }}
+        with:
+          script: |
+            const {owner, repo} = context.repo;
+            if (context.ref !== 'refs/heads/main' ||
+                !['schedule', 'workflow_dispatch'].includes(context.eventName)) {
+              throw new Error('Weekly hygiene only runs on main via schedule/dispatch.');
+            }
+
+            const dryRun = process.env.DRY_RUN === 'true';
+            const minInactiveDays = 30;
+            const cutoff = Date.now() - minInactiveDays * 24 * 60 * 60 * 1000;
+            const maxDeletes = 100;
+            const maxRunsPerWorkflow = 100;
+            const maxBranchesPerWorkflow = 12;
+            const workflowPattern = /^\.github\/workflows\/[^/]+\.ya?ml$/;
+            const pathOf = run => String(run.path || '').split('@')[0];
+            const results = [];
+            let deleted = 0;
+            let eligible = 0;
+
+            // Always inspect the canonical, protected main branch rather than
+            // the checkout/ref that might be used by an old historical run.
+            const directory = await github.rest.repos.getContent({
+              owner, repo, path: '.github/workflows', ref: 'main'
+            });
+            if (!Array.isArray(directory.data)) {
+              throw new Error('Cannot enumerate the canonical workflow directory.');
+            }
+            const live = new Set(directory.data
+              .filter(f => f.type === 'file' && workflowPattern.test(f.path))
+              .map(f => f.path));
+            const all = await github.paginate(github.rest.actions.listRepoWorkflows, {
+              owner, repo, per_page: 100
+            });
+            const openPRs = await github.paginate(github.rest.pulls.list, {
+              owner, repo, state: 'open', per_page: 100
+            });
+            const openBranches = new Set(openPRs
+              .filter(pr => pr.head?.repo?.full_name === owner + '/' + repo)
+              .map(pr => pr.head.ref));
+
+            const candidates = all.filter(w =>
+              workflowPattern.test(w.path) && !live.has(w.path)
+            ).sort((a,b) => a.path.localeCompare(b.path));
+
+            // The workflow registry may still mark deleted YAML as "active".
+            // Consequently, state alone is NOT proof that a workflow is live.
+            for (const workflow of candidates) {
+              if (deleted >= maxDeletes) {
+                results.push({path: workflow.path, status: 'budget reached', count: 0});
+                break;
+              }
+              const first = await github.rest.actions.listWorkflowRuns({
+                owner, repo, workflow_id: workflow.id, per_page: 100, page: 1
+              });
+              const runs = first.data.workflow_runs || [];
+              const total = first.data.total_count ?? runs.length;
+              const skip = reason => results.push({
+                path: workflow.path, status: reason, count: 0
+              });
+
+              if (!total) {
+                skip('no run history');
+                continue;
+              }
+              if (total > maxRunsPerWorkflow || runs.length !== total) {
+                skip('over per-workflow review limit');
+                continue;
+              }
+              if (runs.some(run => run.status !== 'completed' ||
+                  run.workflow_id !== workflow.id ||
+                  pathOf(run) !== workflow.path ||
+                  run.id === context.runId)) {
+                skip('active or mismatched run');
+                continue;
+              }
+              const newest = Math.max(...runs.map(r =>
+                Date.parse(r.created_at || '') || Date.now()));
+              if (newest > cutoff) {
+                skip('active within 30 days');
+                continue;
+              }
+              if (runs.some(r =>
+                  !r.head_branch ||
+                  (r.head_repository?.full_name &&
+                   r.head_repository.full_name !== owner + '/' + repo))) {
+                skip('unverifiable or external branch');
+                continue;
+              }
+              const branches = [...new Set(runs.map(r => r.head_branch))];
+              if (branches.length > maxBranchesPerWorkflow ||
+                  branches.some(b => b !== 'main' && openBranches.has(b))) {
+                skip('active PR or too many branches to check');
+                continue;
+              }
+
+              let preserved = false;
+              for (const branch of branches) {
+                if (branch === 'main') continue;
+                try {
+                  await github.rest.repos.getContent({
+                    owner, repo, path: workflow.path, ref: branch
+                  });
+                  preserved = true;
+                  break;
+                } catch (e) {
+                  if (e.status !== 404) throw e; // fail closed
+                }
+              }
+              if (preserved) {
+                skip('workflow still exists on a branch');
+                continue;
+              }
+
+              // Check main again immediately before destructive calls, since
+              // new PRs may have merged while this cleanup was enumerating.
+              try {
+                await github.rest.repos.getContent({
+                  owner, repo, path: workflow.path, ref: 'main'
+                });
+                skip('workflow restored on main');
+                continue;
+              } catch (e) {
+                if (e.status !== 404) throw e;
+              }
+
+              eligible++;
+              if (dryRun) {
+                results.push({path: workflow.path, status: 'would delete',
+                              count: Math.min(runs.length, maxDeletes - deleted)});
+                continue;
+              }
+
+              let count = 0;
+              for (const run of runs) {
+                if (deleted >= maxDeletes) break;
+                try {
+                  await github.rest.actions.deleteWorkflowRun({
+                    owner, repo, run_id: run.id
+                  });
+                  deleted++;
+                  count++;
+                  core.info('Deleted obsolete run ' + run.id +
+                            ' from ' + workflow.path);
+                } catch (e) {
+                  if (e.status !== 404) throw e;
+                }
+              }
+              results.push({path: workflow.path, status: 'deleted', count});
+            }
+
+            const lines = [
+              '## Weekly retired Actions hygiene',
+              '',
+              '- Mode: **' + (dryRun ? 'dry run' : 'delete') + '**',
+              '- Workflows still on main: **' + live.size + '** (protected)',
+              '- Registered workflows absent from main: **' + candidates.length + '**',
+              '- Eligible after safety checks: **' + eligible + '**',
+              '- Run histories deleted: **' + deleted + '** / ' + maxDeletes + ' max',
+              '- Inactivity threshold: **' + minInactiveDays + ' days**',
+              '',
+              '| Retired workflow | Decision | Runs |',
+              '| --- | --- | ---: |',
+              ...results.map(r => '| `' + r.path + '` | ' + r.status +
+                ' | ' + r.count + ' |')
+            ];
+            await core.summary.addRaw(lines.join('\n') + '\n').write();
+            core.info('Retired Actions hygiene: ' + JSON.stringify({
+              dryRun, live: live.size, candidates: candidates.length,
+              eligible, deleted, summaryRows: results.length
+            }));
