@@ -1,4 +1,5 @@
 import { CHRONICLES_EQUIPMENT_SLOTS, chroniclesEquippedItem } from './chroniclesEquipment.js';
+import { chroniclesApplyStartingKit } from './chroniclesStartingKit.js';
 import { chroniclesSpellAvailableTo } from './chroniclesMagic.js';
 import {
   chroniclesMapById,
@@ -413,7 +414,7 @@ export function chroniclesApplyRunCheckpoint(state, run) {
     consumedContentIds: normalizedLedger(run.consumedContentIds),
     claimedRewards: normalizedLedger(run.claimedRewards),
   };
-  const restored = applyRuntimeCheckpoint(durable, worldFlags);
+  const restored = chroniclesApplyStartingKit(applyRuntimeCheckpoint(durable, worldFlags), run);
   const runStatus = run.runStatus || run.status || 'active';
   if (runStatus === 'completed') return { ...restored, phase: 'escaped' };
   if (runStatus === 'defeated') return { ...restored, phase: 'defeated', turnPhase: 'party' };
