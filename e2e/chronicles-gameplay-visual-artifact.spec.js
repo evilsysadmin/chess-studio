@@ -905,6 +905,22 @@ for (const capture of CAPTURES) {
       const menuDetails = page.locator('details.chronicles-game-menu');
       const menuSummary = menuDetails.locator('> summary');
       await menuSummary.evaluate((summary) => summary.click());
+      // The previously pale menu action labels must receive the same
+      // browser-verified runtime ink as MAPA and MENÚ.
+      const menuInks = await menuDetails.locator('.chronicles-game-menu__panel button').evaluateAll((buttons) =>
+        buttons.map((button) => ({
+          label: button.textContent.trim(),
+          inline: button.style.getPropertyValue('color'),
+          priority: button.style.getPropertyPriority('color'),
+          computed: getComputedStyle(button).color,
+        }))
+      );
+      expect(menuInks.length, 'menu has actual actions').toBeGreaterThan(3);
+      for (const ink of menuInks) {
+        expect(ink.inline, `menu action ${ink.label} inline ink`).toBe('#08080a');
+        expect(ink.priority, `menu action ${ink.label} important ink`).toBe('important');
+        expect(ink.computed, `menu action ${ink.label} black ink`).toBe('rgb(8, 8, 10)');
+      }
       const exitAction = menuDetails.getByRole('button', { name: 'Salir y guardar', exact: true });
       await expect(exitAction).toBeVisible();
       const exitBox = await exitAction.boundingBox();
