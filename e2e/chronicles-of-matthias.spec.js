@@ -390,6 +390,27 @@ test('Chronicles of Matthias · clic en un PJ abre una ficha RPG con retrato aut
   expect(statMaterials.background).toBe('none');
   expect(statMaterials.ink).toBe('rgb(219, 184, 137)');
   expect(inactiveTabBackground).toBe('none');
+  const desktopFolioGeometry = await sheet.evaluate((node) => {
+    const viewport = document.documentElement.clientWidth;
+    const stats = node.querySelector('.chronicles-character-sheet__mm3-stats');
+    const combat = node.querySelector('.chronicles-character-sheet__combat');
+    const statsPanel = node.querySelector('.chronicles-character-sheet__section--core-stats');
+    return {
+      viewport,
+      isWide: matchMedia('(min-width: 1050px) and (min-height: 600px)').matches,
+      width: node.getBoundingClientRect().width,
+      columns: getComputedStyle(stats).gridTemplateColumns.split(' ').length,
+      combatRight: combat.getBoundingClientRect().right,
+      statsLeft: statsPanel.getBoundingClientRect().left,
+      overflow: document.documentElement.scrollWidth > viewport + 1,
+    };
+  });
+  if (desktopFolioGeometry.isWide) {
+    expect(desktopFolioGeometry.width).toBeGreaterThan(desktopFolioGeometry.viewport * .88);
+    expect(desktopFolioGeometry.columns).toBe(3);
+    expect(desktopFolioGeometry.combatRight).toBeLessThan(desktopFolioGeometry.statsLeft);
+    expect(desktopFolioGeometry.overflow).toBe(false);
+  }
   await folio.getByRole('button', { name: /Equipo/ }).click();
   await expect(sheet.getByText('EQUIPO Y OBJETOS', { exact: true })).toBeVisible();
   await expect(sheet.getByText('ESTADÍSTICAS', { exact: true })).toBeHidden();
