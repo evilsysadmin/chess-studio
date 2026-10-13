@@ -11,6 +11,7 @@ import main_ci_admission as admission
 import staging_deploy_scope as deploy_scope
 import staging_generation as generation
 import staging_optional_scope as optional_scope
+import staging_smoke_only as smoke_only
 from main_ci_source import SourceError
 
 
@@ -70,6 +71,8 @@ def prepare(sha: str) -> dict[str, str]:
     values = {
         "deploy_sha": head,
         "admitted": "false",
+        "smoke_only": "false",
+        "smoke_sha": "",
         "pawn_slug_visual_required": "false",
         "resend_bootstrap_required": "false",
         "continuity_required": "false",
@@ -102,6 +105,14 @@ def prepare(sha: str) -> dict[str, str]:
             raise RuntimeError("Manual staging refused: exact-SHA Main admission is not green")
 
     values["admitted"] = "true"
+    # A test-only commit can exercise the last immutable deployed runtime.
+    # This does not issue new deployment/promotion credit.
+    smoke_sha, smoke_reason = smoke_only.select(head, source)
+    if smoke_sha:
+        values["smoke_only"] = "true"
+        values["smoke_sha"] = smoke_sha
+        append_summary(f"### Staging smoke-only · tests {head} · runtime {smoke_sha} · {smoke_reason}")
+        return values
     values.update(optional_scope.decide(head))
     return values
 
@@ -139,6 +150,7 @@ def self_test() -> None:
     deploy_scope.self_test()
     generation.self_test()
     optional_scope.self_test()
+    smoke_only.self_test()
     print("staging-deploy-prepare self-test: OK")
 
 
