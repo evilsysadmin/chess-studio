@@ -895,6 +895,7 @@ for (const capture of CAPTURES) {
       await menuSummary.evaluate((summary) => summary.click());
       const exitAction = menuDetails.getByRole('button', { name: 'Guardar y salir', exact: true });
       await expect(exitAction).toBeVisible();
+      await captureElement(page, gameRoot, `${ARTIFACT_DIR}/chronicles-game-menu-${capture.label}.png`);
       // Both controls belong to the current menu; keyboard-adjusting them
       // must not trigger dungeon movement hotkeys.
       const musicSlider = menuDetails.locator('#chronicles-music-volume');
@@ -912,7 +913,8 @@ for (const capture of CAPTURES) {
       await expect(musicSlider).toHaveValue('5');
       await expect(gameRoot).toHaveAttribute('data-chronicles-turns', turnsBeforeAudio);
       await captureElement(page, gameRoot, `${ARTIFACT_DIR}/chronicles-game-menu-audio-${capture.label}.png`);
-      await audioToggle.click();
+      await expect(menuDetails.getByRole('button', { name: 'Guardar y salir', exact: true })).toHaveCount(0);
+      await menuDetails.getByRole('button', { name: 'Volver al menú' }).click();
       await expect(musicSlider).toHaveCount(0);
 
       // The previously pale menu action labels must receive the same
@@ -927,7 +929,7 @@ for (const capture of CAPTURES) {
       );
       expect(menuInks.length, 'menu has actual actions').toBeGreaterThan(3);
       for (const ink of menuInks) {
-        expect(ink.inline, `menu action ${ink.label} inline ink`).toBe('#08080a');
+        expect(ink.inline, `menu action ${ink.label} inline ink`).toMatch(/^(?:#08080a|rgb\(8,\s*8,\s*10\))$/i);
         expect(ink.priority, `menu action ${ink.label} important ink`).toBe('important');
         expect(ink.computed, `menu action ${ink.label} black ink`).toBe('rgb(8, 8, 10)');
       }
@@ -944,7 +946,6 @@ for (const capture of CAPTURES) {
       }));
       expect(inks.color, `${capture.label}: menu ink must be dark`).toBe('rgb(17, 16, 21)');
       expect(inks.fill, `${capture.label}: WebKit must keep dark ink`).toBe('rgb(17, 16, 21)');
-      await captureElement(page, gameRoot, `${ARTIFACT_DIR}/chronicles-game-menu-${capture.label}.png`);
       await menuSummary.evaluate((summary) => summary.click());
       await expect(exitAction).toBeHidden();
 
