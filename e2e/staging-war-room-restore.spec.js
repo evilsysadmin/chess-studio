@@ -207,6 +207,21 @@ test('staging authority · F5 3D descarta snapshot viejo y rehidrata la partida 
     await expect(warRoomGameStatus).toHaveText(/Tu turno/i);
     await expect(page.locator('.error-boundary-screen')).toHaveCount(0);
 
+    // Recovering Mongo's FEN is not enough if the local fallback remains stale:
+    // an eventual second reload could resurrect the pre-F5 position. The
+    // persistence hook must rewrite the same active game with server state.
+    await expect.poll(async () => page.evaluate((key) => {
+      try {
+        const saved = JSON.parse(localStorage.getItem(key) || 'null');
+        return saved ? { gameId: saved.gameId, fen: saved.gameSnapshot?.fen } : null;
+      } catch {
+        return null;
+      }
+    }, ACTIVE_GAME_SESSION_KEY), { timeout: 15_000 }).toEqual({
+      gameId,
+      fen: mutated.fen,
+    });
+
     // 2D actúa sólo como sonda accesible del estado común: la posición visible
     // debe corresponder al FEN rehidratado, no al snapshot local deliberadamente viejo.
     const utilityMenu = page.getByRole('button', { name: 'Más acciones de partida', exact: true });
