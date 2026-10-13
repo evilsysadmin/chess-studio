@@ -983,6 +983,11 @@ for (const capture of CAPTURES) {
         expect(ink.computed, `menu action ${ink.label} black ink`).toBe('rgb(8, 8, 10)');
       }
 
+      // On a 390px-high phone a scrollable menu is legitimate, but the last
+      // action must be reachable and remain entirely inside the viewport.
+      if (capture.label === 'android-landscape-844x390') {
+        await exitAction.scrollIntoViewIfNeeded();
+      }
       const exitBox = await exitAction.boundingBox();
       expect(exitBox, `${capture.label}: menu exit action has bounds`).not.toBeNull();
       expect(exitBox.y, `${capture.label}: menu exit action below the top edge`).toBeGreaterThanOrEqual(0);
