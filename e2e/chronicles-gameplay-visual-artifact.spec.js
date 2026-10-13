@@ -907,6 +907,23 @@ for (const capture of CAPTURES) {
       await menuSummary.evaluate((summary) => summary.click());
       const exitAction = menuDetails.getByRole('button', { name: 'Salir y guardar', exact: true });
       await expect(exitAction).toBeVisible();
+      // The previously pale menu action labels must receive the same
+      // browser-verified runtime ink as MAPA and MENÚ.
+      const menuInks = await menuDetails.locator('.chronicles-game-menu__panel button').evaluateAll((buttons) =>
+        buttons.map((button) => ({
+          label: button.textContent.trim(),
+          inline: button.style.getPropertyValue('color'),
+          priority: button.style.getPropertyPriority('color'),
+          computed: getComputedStyle(button).color,
+        }))
+      );
+      expect(menuInks.length, 'menu has actual actions').toBeGreaterThan(3);
+      for (const ink of menuInks) {
+        expect(ink.inline, `menu action ${ink.label} inline ink`).toBe('#08080a');
+        expect(ink.priority, `menu action ${ink.label} important ink`).toBe('important');
+        expect(ink.computed, `menu action ${ink.label} black ink`).toBe('rgb(8, 8, 10)');
+      }
+
       const exitBox = await exitAction.boundingBox();
       expect(exitBox, `${capture.label}: menu exit action has bounds`).not.toBeNull();
       expect(exitBox.y, `${capture.label}: menu exit action below the top edge`).toBeGreaterThanOrEqual(0);

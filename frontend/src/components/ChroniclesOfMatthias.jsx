@@ -234,6 +234,12 @@ export default function ChroniclesOfMatthias({ onExit }) {
       '.chronicles-game-menu > summary',
       '.chronicles-game-menu > summary b',
       '.chronicles-touch button:not(.is-attack):not(.is-magic):not(.is-contextual)',
+      '.chronicles-game-menu__panel button',
+      '.chronicles-game-menu__panel button :is(b, span, small, strong, i)',
+      '.chronicles-game-menu__panel legend',
+      '.chronicles-game-menu__panel label',
+      '.chronicles-game-menu__panel > strong',
+      '.chronicles-game-menu__panel > small',
     ].join(', '));
     for (const node of nodes) {
       node.style.setProperty('color', '#08080a', 'important');
@@ -241,7 +247,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
       node.style.setProperty('-webkit-text-stroke-color', '#08080a', 'important');
       node.style.setProperty('color-scheme', 'light only', 'important');
     }
-  }, [ready, state]);
+  }, [ready, state, menuOpen, confirmExitWithoutSaving]);
 
   // Reconcile server-owned expeditions only while browsing the save book.
   // Cleanup discards stale results after navigating away or switching flows.
