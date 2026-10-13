@@ -440,6 +440,47 @@ test('Chronicles of Matthias · clic en un PJ abre una ficha RPG con retrato aut
   await page.keyboard.press('w');
   await expect(mode).toHaveAttribute('data-chronicles-turns', turnsBefore || '0');
 
+  // Landscape phones cannot spend the entire viewport on header + XP.
+  await page.setViewportSize({ width: 768, height: 354 });
+  await expect(folio.getByRole('button', { name: /Estado/ })).toBeVisible();
+  const landscape = await sheet.evaluate((node) => {
+    const box = (selector) => node.querySelector(selector)?.getBoundingClientRect();
+    const header = box('.chronicles-character-sheet__head');
+    const progression = box('.chronicles-character-sheet__progression');
+    const tabs = box('.chronicles-character-sheet__tabs');
+    const dock = box('.chronicles-character-sheet__party-dock');
+    const scroll = box('.chronicles-character-sheet__scroll');
+    return {
+      viewportWidth: document.documentElement.clientWidth,
+      viewportHeight: document.documentElement.clientHeight,
+      sheetWidth: node.getBoundingClientRect().width,
+      headerHeight: header.height,
+      progressionHeight: progression.height,
+      tabsHeight: tabs.height,
+      dockHeight: dock.height,
+      scrollHeight: scroll.height,
+      dockBottom: dock.bottom,
+      partyButtons: Array.from(node.querySelectorAll('.chronicles-character-sheet__party-dock button')).map((button) => ({
+        width: button.getBoundingClientRect().width,
+        height: button.getBoundingClientRect().height,
+        name: getComputedStyle(button.querySelector('.chronicles-character-sheet__party-name')).display,
+      })),
+    };
+  });
+  expect(landscape.sheetWidth).toBeLessThanOrEqual(landscape.viewportWidth);
+  expect(landscape.headerHeight).toBeLessThan(100);
+  expect(landscape.progressionHeight).toBeLessThan(55);
+  expect(landscape.tabsHeight).toBeLessThan(48);
+  expect(landscape.dockHeight).toBeLessThan(68);
+  expect(landscape.scrollHeight).toBeGreaterThan(120);
+  expect(landscape.dockBottom).toBeLessThanOrEqual(landscape.viewportHeight);
+  expect(landscape.partyButtons).toHaveLength(4);
+  for (const button of landscape.partyButtons) {
+    expect(button.width).toBeGreaterThan(100);
+    expect(button.height).toBeGreaterThanOrEqual(44);
+    expect(button.name).not.toBe('none');
+  }
+
   await sheet.getByRole('button', { name: 'Cerrar ficha', exact: true }).click();
   await expect(sheet).toHaveCount(0);
 });
