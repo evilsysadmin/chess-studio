@@ -1,0 +1,104 @@
+{
+  "identity": "chesscom-sven-eight-view-reference-v48",
+  "review_only": true,
+  "golden": {
+    "name": "Operación Dust Veil: Chesscom.png",
+    "sha256": "001f58bcc46dfe2a3a7f901e141c186bf9149b524ac5476e44a2e89ae737ef01",
+    "size": [
+      1536,
+      1024
+    ],
+    "status": "approved-v41-visual-contract"
+  },
+  "sheet": {
+    "name": "Operation Dust Veil: Sven Character Sheet.png",
+    "sha256": "76a66453e9eb68179b25eb2b1e3a792c8c3b29b86cb6f7e20a2aa055b3de6694",
+    "size": [
+      1536,
+      1024
+    ],
+    "status": "candidate-reference-not-approved-3d-master",
+    "location": "User ChatGPT Library; source bytes are not checked into Git"
+  },
+  "views": [
+    {
+      "direction": "front",
+      "box": [
+        0,
+        90,
+        192,
+        540
+      ]
+    },
+    {
+      "direction": "front-right",
+      "box": [
+        192,
+        90,
+        384,
+        540
+      ]
+    },
+    {
+      "direction": "right",
+      "box": [
+        384,
+        90,
+        576,
+        540
+      ]
+    },
+    {
+      "direction": "back-right",
+      "box": [
+        576,
+        90,
+        768,
+        540
+      ]
+    },
+    {
+      "direction": "back",
+      "box": [
+        768,
+        90,
+        960,
+        540
+      ]
+    },
+    {
+      "direction": "back-left",
+      "box": [
+        960,
+        90,
+        1152,
+        540
+      ]
+    },
+    {
+      "direction": "left",
+      "box": [
+        1152,
+        90,
+        1344,
+        540
+      ]
+    },
+    {
+      "direction": "front-left",
+      "box": [
+        1344,
+        90,
+        1536,
+        540
+      ]
+    }
+  ],
+  "acceptance": {
+    "source_is_not_a_3d_mesh": true,
+    "source_is_not_an_animation_bank": true,
+    "no_upscale_or_inpaint": true,
+    "requires_authored_glb_and_visual_review": true,
+    "render_only_until_approved": true
+  }
+}
