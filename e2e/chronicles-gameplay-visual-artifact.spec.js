@@ -754,12 +754,18 @@ for (const capture of CAPTURES) {
       const stage = page.locator('.chronicles-stage');
       const gameMenu = page.locator('summary[aria-label="Abrir menú de Chronicles"]');
       await expect(gameRoot).toBeVisible();
-      // Escape is reserved for the in-game menu. Browser-native fullscreen
-      // would intercept it, so viewport-owned immersion must not use that API.
-      expect(
-        await page.evaluate(() => Boolean(document.fullscreenElement)),
-        `${capture.label}: Chronicles leaves native fullscreen to the browser`,
-      ).toBe(false);
+      // Android's launch gesture intentionally requests browser fullscreen to
+      // unlock landscape orientation (#5492). Browsers may reject that API;
+      // if it succeeds, only the page root may own fullscreen. Desktop never
+      // claims it. The in-game menu remains reachable by its touch control.
+      const fullscreenOwner = await page.evaluate(() => document.fullscreenElement?.tagName ?? null);
+      if (capture.hasTouch) {
+        expect([null, 'HTML'], `${capture.label}: only the page root may own mobile fullscreen`)
+          .toContain(fullscreenOwner);
+      } else {
+        expect(fullscreenOwner, `${capture.label}: desktop remains outside native fullscreen`)
+          .toBeNull();
+      }
       const landscapeTrigger = page.getByRole('button', { name: 'Activar apaisado', exact: true });
       if (capture.hasTouch && capture.width < capture.height) {
         await expect(landscapeTrigger).toBeVisible();
