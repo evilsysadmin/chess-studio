@@ -457,6 +457,41 @@ test('Chronicles · First Book equipment sheet · actual Android 390px', async (
       path: `${ARTIFACT_DIR}/chronicles-mm3-character-folio-android-390x844.png`,
       animations: 'disabled', timeout: 60_000,
     });
+    // Real landscape phone evidence: the four hero selectors must remain
+    // actionable and the header/XP must not consume the entire short viewport.
+    await page.setViewportSize({ width: 844, height: 390 });
+    await expect(sheet).toBeVisible();
+    const landscapeGeometry = await sheet.evaluate((node) => {
+      const measure = (selector) => node.querySelector(selector)?.getBoundingClientRect();
+      const head = measure('.chronicles-character-sheet__head');
+      const progress = measure('.chronicles-character-sheet__progression');
+      const dock = measure('.chronicles-character-sheet__party-dock');
+      return {
+        width: node.getBoundingClientRect().width,
+        headHeight: head.height,
+        progressHeight: progress.height,
+        dockBottom: dock.bottom,
+        heroButtons: [...node.querySelectorAll('.chronicles-character-sheet__party-dock button')]
+          .map((button) => ({
+            height: button.getBoundingClientRect().height,
+            name: getComputedStyle(button.querySelector('.chronicles-character-sheet__party-name')).display,
+          })),
+      };
+    });
+    expect(landscapeGeometry.width).toBeLessThanOrEqual(844);
+    expect(landscapeGeometry.headHeight).toBeLessThan(100);
+    expect(landscapeGeometry.progressHeight).toBeLessThan(55);
+    expect(landscapeGeometry.dockBottom).toBeLessThanOrEqual(390);
+    expect(landscapeGeometry.heroButtons).toHaveLength(4);
+    for (const hero of landscapeGeometry.heroButtons) {
+      expect(hero.height).toBeGreaterThanOrEqual(44);
+      expect(hero.name).not.toBe('none');
+    }
+    await page.screenshot({
+      path: `${ARTIFACT_DIR}/chronicles-mm3-character-folio-android-landscape-844x390.png`,
+      animations: 'disabled', timeout: 60_000,
+    });
+    await page.setViewportSize({ width: 390, height: 844 });
     await sheet.getByRole('navigation', { name: 'Apartados de la ficha' })
       .getByRole('button', { name: /Equipo/ }).click();
     await expect(gear).toBeVisible();
