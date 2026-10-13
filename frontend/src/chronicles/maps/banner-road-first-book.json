@@ -31,6 +31,7 @@
   "enemies": [
     {
       "id": "banner-road-deserter",
+      "rangedWeapon": "bow",
       "visualType": "road-bandit",
       "name": "bandido desertor",
       "explorationObjective": "La patrulla desertora protege el botín del Camino.",
@@ -43,9 +44,11 @@
       "activation": "always",
       "ai": {
         "movement": "cardinal-roam",
-        "attackReach": 1,
+        "attackReach": 4,
         "engagedMovement": "cardinal-chase",
-        "engageRange": 2
+        "engageRange": 5,
+        "disengageRange": 1,
+        "requiresLineOfSight": true
       },
       "blockingMessage": "Un saqueador bloquea el camino. No parece dispuesto a compartir el botín sin resistencia.",
       "onDefeat": {
