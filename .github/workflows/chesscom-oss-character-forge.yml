@@ -114,7 +114,7 @@ jobs:
           organic=details["v55"]
           assert len(organic["sculpted_parts"])==7
           assert len(organic["extra_rigged_details"])==9
-          assert len(organic["new_distinct_bones"])>=3
+          assert set(organic["new_distinct_bones"])=={"Head","Chest"}
           assert organic["low_poly_source_preserved"] and organic["no_rifle_claim"]
           named={n["name"] for n in document["nodes"] if "name" in n}
           assert {"V55_left_earcup","V55_radio_body","V55_headset_band",
