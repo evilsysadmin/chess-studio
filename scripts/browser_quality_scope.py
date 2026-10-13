@@ -493,6 +493,15 @@ def build_matrix(scope: BrowserScope) -> dict[str, list[dict[str, str]]]:
                 "command": "./node_modules/.bin/playwright test chronicles-of-matthias.spec.js chronicles-of-matthias-tactics.spec.js --grep \"arranca como action RPG isométrico|abre una cripta Three\\.js real|arranca como RPG táctico isométrico\" --workers=1 --retries=0 --max-failures=1 --timeout=90000",
             }
         )
+        cases.append(
+            {
+                "id": "chronicles-save-durability",
+                "label": "Chronicles · save 503 retry and navigation",
+                # Run real browser P0 checkpoint error/retry tests, not just
+                # syntax checks or unit mocks, whenever Chronicles changes.
+                "command": "./node_modules/.bin/playwright test chronicles-of-matthias.spec.js --grep \"503 al guardar bloquea la salida|Partidas guardadas no abandona\" --workers=1 --retries=0 --max-failures=1 --timeout=90000",
+            }
+        )
     for enabled, case in (
         (scope.pawn_slug, ("pawn-slug", "Pawn Slug · browser", "pawn-slug.spec.js")),
         (scope.chesscom, ("chesscom", "Chesscom · browser", "chesscom.spec.js")),

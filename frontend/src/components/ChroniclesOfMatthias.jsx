@@ -395,12 +395,13 @@ export default function ChroniclesOfMatthias({ onExit }) {
     setBootstrapRevision((revision) => revision + 1);
   }, []);
 
-  // Keyboard and touch input must not mutate a snapshot while the menu is
-  // open or a checkpoint is waiting for the server. Keep dispatch stable so
-  // toggling the menu never recreates the WebGL renderer.
+  // An explicit game menu pauses touch/keyboard action and the enemy turn.
+  // An automatic area checkpoint MUST NOT swallow subsequent exploration
+  // inputs while its remote PUT is in flight. Keep dispatch stable so menu
+  // toggles do not recreate the WebGL renderer.
   useEffect(() => {
-    pausedGameInputRef.current = menuOpen || saveBusy;
-  }, [menuOpen, saveBusy]);
+    pausedGameInputRef.current = menuOpen;
+  }, [menuOpen]);
 
   const dispatch = useCallback((action) => {
     const current = stateRef.current;
@@ -569,7 +570,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
   useEffect(() => {
     const current = stateRef.current;
     const actor = chroniclesCurrentInitiativeActor(current?.initiative);
-    if (sheetMemberId || menuOpen || saveBusy || !current?.initiative || actor?.kind !== 'enemy' || current.phase === 'defeated') return undefined;
+    if (sheetMemberId || menuOpen || !current?.initiative || actor?.kind !== 'enemy' || current.phase === 'defeated') return undefined;
 
     const timer = window.setTimeout(() => {
       const latest = stateRef.current;
@@ -593,7 +594,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
       setState(advanced);
     }, 280);
     return () => window.clearTimeout(timer);
-  }, [sheetMemberId, menuOpen, saveBusy, state?.initiative?.cursor, state?.initiative?.round, state?.phase]);
+  }, [sheetMemberId, menuOpen, state?.initiative?.cursor, state?.initiative?.round, state?.phase]);
 
   useEffect(() => {
     const actor = chroniclesCurrentInitiativeActor(state?.initiative);
