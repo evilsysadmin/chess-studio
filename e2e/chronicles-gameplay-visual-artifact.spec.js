@@ -615,8 +615,8 @@ test('Chronicles · MM3 Swordhaven weaponsmith opens from the neighboring street
     // Plaza (9,7) -> (9,5) -> (7,5); look north at Brunna's door on (7,4).
     // The sealed letter underfoot must not steal the front-facing interaction.
     for (const key of ['w', 'w', 'a', 'w', 'w', 'd']) await page.keyboard.press(key);
-    const use = game.locator('[data-chronicles-touch-action="interact"]');
-    await expect(use).toHaveAttribute('aria-label', 'Forja de Brunna · armas');
+    // This visual gate owns real shop entry and readable controls.
+    // Persistent USAR/aria-label behavior is covered separately by #5486.
     await page.keyboard.press('f');
     const shop = page.locator('[data-chronicles-shop="first-book-weaponsmith"]');
     await expect(shop).toBeVisible({ timeout: 15_000 });
