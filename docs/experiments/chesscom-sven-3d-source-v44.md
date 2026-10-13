@@ -136,3 +136,42 @@ Reutiliza la auditoría de skeleton/skin V40; exige clips con los nombres
 `MuzzleSocket` asociado a la jerarquía del arma. Es *preflight*, no un
 validador exhaustivo de bytes de animación ni un certificado de calidad:
 Blender/GLB runtime y las capturas exact-SHA siguen siendo obligatorios.
+
+## V48 — recuperadas ocho vistas originales de Sven (referencias, no 3D)
+
+Se ha localizado en la Library del usuario `Operation Dust Veil: Sven Character Sheet.png`,
+fuente de 1536×1024 verificada por SHA-256
+`76a66453e9eb68179b25eb2b1e3a792c8c3b29b86cb6f7e20a2aa055b3de6694`.
+Contiene **ocho perspectivas de cuerpo entero**, además de detalles de casco,
+armas y poses. Complementa el golden V41; **no lo sustituye ni está aprobada
+como master 3D**. Es más útil para modelar a mano que el recorte parcial V41.
+
+`docs/experiments/chesscom-sven-turnaround-v48.json` fija la fuente y
+las ocho regiones de 192×450 px sin inventar ángulos. El extractor
+`scripts/art/chesscom_sven_turnaround_v48.py` verifica el SHA tanto del
+golden V41 como de la lámina, genera recortes PNG **sin escalar, segmentar
+ni rellenar píxeles** y escribe `reference-manifest.json` con sus hashes.
+
+```bash
+python3 scripts/art/chesscom_sven_turnaround_v48.py \
+  --golden '/ruta/Operación Dust Veil: Chesscom.png' \
+  --sheet '/ruta/Operation Dust Veil: Sven Character Sheet.png' \
+  --output-dir /tmp/chesscom-sven-turnaround-v48
+python3 -m unittest discover -s scripts/art -p 'test_chesscom_sven_turnaround_v48.py' -v
+```
+
+Revisión visual de los ocho recortes realizada: silueta de Sven reconocible,
+armadura azul-negra, mochila y casco, pero **los recortes no tienen canal
+alpha y hay pequeñas intrusiones laterales de figuras contiguas**. Son
+referencias conceptuales, no sprites. La perspectiva entre dibujos puede
+variar y la resolución efectiva es insuficiente para afirmar que un servicio
+automático de imagen→3D reconstruiría fielmente manos, ropa o geometría.
+No hay aquí GLB, huesos, animaciones, llamadas externas, costes ni alteración
+del renderer V4.
+
+**Siguiente puerta artística:** producir fuera del runtime un modelo completo
+propio con base en estas referencias, comprobarlo con turntable Blender y
+llevarlo al gate V47. Hasta que supere la revisión visual y la carga real
+Babylon, no promocionar ningún actor ni fingir que la fuente 2D resuelve
+el modelado. Las ocho vistas son una **referencia suficiente para arrancar
+un proceso de modelado supervisado**, no una conversión 3D terminada.
