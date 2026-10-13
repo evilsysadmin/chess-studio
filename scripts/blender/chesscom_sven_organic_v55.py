@@ -118,6 +118,13 @@ def curved_detail(candidate, name, coordinates, radius, mat, bone):
     obj = bpy.data.objects.new("V55_" + name, curve)
     bpy.context.collection.objects.link(obj)
     curve.materials.append(mat)
+    # glTF cannot export Blender curve primitives. Make genuine mesh tubes,
+    # retaining material and bone parenting, not missing silent cables.
+    bpy.ops.object.select_all(action="DESELECT")
+    obj.select_set(True)
+    bpy.context.view_layer.objects.active = obj
+    bpy.ops.object.convert(target="MESH")
+    obj = bpy.context.object
     candidate["objects"].append(obj)
     rig = next(o for o in candidate["objects"] if o.type == "ARMATURE")
     bone_mount(rig, obj, bone)
