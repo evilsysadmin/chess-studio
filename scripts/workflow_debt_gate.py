@@ -29,6 +29,7 @@ INVENTORY = {
     'combat-operations-room-blender-art.yml': 'art-generation',
     'chess-football-godot-poc.yml': 'game-runtime-experiment',
     'chesscom-sven-sprite-forge.yml': 'art-quality',
+    'chesscom-oss-character-forge.yml': 'art-generation-preview',
     'cicd.yml': 'quality-required',
     'cloudflare-prometheus-exporter.yml': 'observability',
     'coverage.yml': 'quality-scheduled',
@@ -78,7 +79,7 @@ INVENTORY = {
 BUDGETS = (
     Budget('.github/workflows/production-promote.yml', 34643),
     Budget('.github/workflows/cicd.yml', 19454),
-    Budget('.github/workflows/staging-deploy.yml', 15624),
+    Budget('.github/workflows/staging-deploy.yml', 17792),
     Budget('.github/workflows/oci-resend-bootstrap.yml', 4601),
     Budget('.github/workflows/staging-deploy-continuity.yml', 7390),
     Budget('.github/workflows/staging-pawn-slug-visual.yml', 3919),

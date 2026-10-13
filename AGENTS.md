@@ -35,6 +35,8 @@ El contrato de entrega está en [`docs/auto-merge-delivery.md`](docs/auto-merge-
 - Si GitHub/conector empieza a colgarse, degradarse o encadenar llamadas lentas, **dejar de insistir con lecturas remotas**: trabajar sobre el checkout y artefactos ya disponibles localmente, conservar lo ya leído y volver a GitHub sólo para las escrituras, metadata/checks y commit/PR mínimos imprescindibles.
 - En ese modo degradado, evitar relecturas de archivos grandes, búsquedas amplias y sondeos repetitivos; si falta una pieza concreta, hacer una única lectura pequeña y dirigida. Si no hay checkout local utilizable, no simularlo: limitarse a la llamada remota mínima necesaria.
 
+- Para experimentos de actores 3D de Chesscom, mantener separados modelo técnico OSS y Sven aprobado; ver [OSS Character Forge V52](docs/experiments/chesscom-oss-character-forge-v52.md).
+
 ## Enrutado por tarea
 
 | Tarea | Documentos que hay que leer |
@@ -101,6 +103,10 @@ El contrato de entrega está en [`docs/auto-merge-delivery.md`](docs/auto-merge-
 - [`skills/oci-release-observability/SKILL.md`](skills/oci-release-observability/SKILL.md) — exact-SHA staging, generaciones superseded y diagnóstico seguro de observabilidad.
 
 ### Diseño, producto y experimentos
+
+- [`docs/experiments/chesscom-oss-character-forge-v52.md`](docs/experiments/chesscom-oss-character-forge-v52.md) — pipeline CPU y revisión 3D CC0, sin sustitución automática de Sven.
+- [`docs/experiments/chesscom-sven-art-direction-v53.md`](docs/experiments/chesscom-sven-art-direction-v53.md) — equipamiento modelado en Blender sobre rig CC0; evidencia de animación antes de promover.
+- [`docs/experiments/chesscom-sven-motion-v54.md`](docs/experiments/chesscom-sven-motion-v54.md) — clips de fuente no son automáticamente apoyo bimanual; validar frames y separación entre manos.
 
 - [`docs/music.md`](docs/music.md) — criterio duradero de composición, instrumentos, interpretación, percusión, riffs, humanización y anti-regresiones musicales.
 - [`docs/VISUAL_LANGUAGE.md`](docs/VISUAL_LANGUAGE.md) — lenguaje visual.

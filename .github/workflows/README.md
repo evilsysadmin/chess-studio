@@ -46,6 +46,10 @@ Lección operativa: no resolver falsos positivos de CI debilitando el gate a cie
 | `../actions/setup-wrangler/action.yml` | Wrangler exacto por versión; npm sólo en cache miss. |
 | `../actions/setup-oci-sdk/action.yml` | OCI SDK pinneado/cacheado para los workflows que realmente hablan con OCI. |
 
+## Chesscom · fabricación 3D OSS experimental
+
+- `chesscom-oss-character-forge.yml`: flujo CPU Blender de **artefactos de revisión**, fuente Quaternius SWAT CC0 fijada por hash y ocho vistas reales. Solo PRs de su superficie o ejecución manual; sin secretos, R2, despliegue ni sustitución de Sven. Consultar [`docs/experiments/chesscom-oss-character-forge-v52.md`](../../docs/experiments/chesscom-oss-character-forge-v52.md).
+
 ## Cadena de entrega
 
 | Workflow | Responsabilidad |

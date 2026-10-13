@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import os
 from pathlib import Path
 from urllib.parse import quote
@@ -11,7 +12,23 @@ import main_ci_admission as admission
 import staging_deploy_scope as deploy_scope
 import staging_generation as generation
 import staging_optional_scope as optional_scope
+import staging_smoke_only as smoke_only
 from main_ci_source import SourceError
+
+
+SMOKE_VARIANTS = {
+    "live": {"key": "live", "label": "War Room live", "spec": "staging-live.spec.js"},
+    "restore": {"key": "restore", "label": "authoritative F5 restore", "spec": "staging-war-room-restore.spec.js"},
+}
+
+
+def browser_smoke_matrix(keys: tuple[str, ...]) -> str:
+    """Single-line GITHUB_OUTPUT JSON. Invalid selection is a hard error."""
+    if not keys or len(set(keys)) != len(keys) or any(key not in SMOKE_VARIANTS for key in keys):
+        raise ValueError("invalid staging smoke selection")
+    # Use canonical order, independent of diff order; full deploy always both.
+    return json.dumps({"include": [value for key, value in SMOKE_VARIANTS.items() if key in keys]},
+                      separators=(",", ":"))
 
 
 def append_summary(text: str) -> None:
@@ -70,6 +87,9 @@ def prepare(sha: str) -> dict[str, str]:
     values = {
         "deploy_sha": head,
         "admitted": "false",
+        "smoke_only": "false",
+        "smoke_sha": "",
+        "smoke_matrix": browser_smoke_matrix(smoke_only.SMOKE_KEYS),
         "pawn_slug_visual_required": "false",
         "resend_bootstrap_required": "false",
         "continuity_required": "false",
@@ -102,6 +122,15 @@ def prepare(sha: str) -> dict[str, str]:
             raise RuntimeError("Manual staging refused: exact-SHA Main admission is not green")
 
     values["admitted"] = "true"
+    # A test-only commit can exercise the last immutable deployed runtime.
+    # This does not issue new deployment/promotion credit.
+    smoke_sha, smoke_reason, smoke_keys = smoke_only.select(head, source)
+    if smoke_sha:
+        values["smoke_only"] = "true"
+        values["smoke_sha"] = smoke_sha
+        values["smoke_matrix"] = browser_smoke_matrix(smoke_keys)
+        append_summary(f"### Staging smoke-only · tests {head} · runtime {smoke_sha} · {smoke_reason} · tests {','.join(smoke_keys)}")
+        return values
     values.update(optional_scope.decide(head))
     return values
 
@@ -115,6 +144,16 @@ def emit(path: str, values: dict[str, str]) -> None:
 
 
 def self_test() -> None:
+    assert [entry["key"] for entry in json.loads(browser_smoke_matrix(("restore",)))["include"]] == ["restore"]
+    assert [entry["key"] for entry in json.loads(browser_smoke_matrix(("live",)))["include"]] == ["live"]
+    assert [entry["key"] for entry in json.loads(browser_smoke_matrix(smoke_only.SMOKE_KEYS))["include"]] == ["live", "restore"]
+    for bad in ((), ("live", "live"), ("unknown",)):
+        try:
+            browser_smoke_matrix(bad)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError(f"accepted invalid smoke selection: {bad}")
     sha = "a" * 40
     approved = {"workflow_runs": [{
         "head_sha": sha, "event": "push", "status": "completed", "conclusion": "success",
@@ -139,6 +178,7 @@ def self_test() -> None:
     deploy_scope.self_test()
     generation.self_test()
     optional_scope.self_test()
+    smoke_only.self_test()
     print("staging-deploy-prepare self-test: OK")
 
 

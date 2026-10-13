@@ -30,6 +30,7 @@ import { chroniclesClearRuntimeMapDefinitions, chroniclesMapForState } from '../
 import { chroniclesRegionHudLocation } from '../chronicles/chroniclesRegionHud.js';
 import { chroniclesGridExplorationStep } from '../chronicles/chroniclesGridExplorationStep.js';
 import { chroniclesCheckpointReason } from '../chronicles/chroniclesSavePolicy.js';
+import { chroniclesDiscardAndExit } from '../chronicles/chroniclesDiscardExit.js';
 import { chroniclesNpcDialogueForState } from '../chronicles/chroniclesNpcDialogue.js';
 import { chroniclesInitializeLostKingIntro } from '../chronicles/chroniclesLostKingIntro.js';
 import { chroniclesApplyArrival } from '../chronicles/chroniclesArrival.js';
@@ -314,7 +315,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
   useEffect(() => {
     if (!state?.mapId) return;
     setAutomapVisitedByMap((visited) => chroniclesAutomapMarkSeen(visited, chroniclesMapForState(state), state));
-  }, [state?.mapId, state?.x, state?.y]);
+  }, [state?.mapId, state?.x, state?.y, state?.direction]);
 
   // Map reveal is session-only until an explicit save or area transition.
   useEffect(() => {
@@ -936,21 +937,23 @@ export default function ChroniclesOfMatthias({ onExit }) {
   const saveAndExit = useCallback(() => saveBeforeSwitch(exitChronicles), [saveBeforeSwitch, exitChronicles]);
   const newExpeditionSafely = useCallback(() => saveBeforeSwitch(newExpedition), [saveBeforeSwitch, newExpedition]);
 
-  const discardAndExit = useCallback(async () => {
-    // Never discard a legitimate previous area checkpoint mid-flight.
-    await checkpointQueueRef.current.catch(() => undefined);
-    if (!checkpointExistsRef.current && activeRunIdRef.current) {
-      const runId = activeRunIdRef.current;
-      try {
-        await chroniclesDeleteRemoteRun(runId);
-        chroniclesForgetSavedRun(FIRST_PERSON_RUN_SCOPE, runId);
-      } catch {
-        setSaveNotice('No se ha podido descartar la expedición nueva. Vuelve a intentarlo.');
-        setConfirmExitWithoutSaving(false);
-        return;
-      }
-    }
-    exitChronicles();
+  const discardAndExit = useCallback(() => {
+    // Exiting the game never waits for DELETE: a failed/slow server request
+    // must not trap the player inside Chronicles. Checkpoint cleanup remains
+    // serialized and never removes an existing durable area/manual save.
+    void chroniclesDiscardAndExit({
+      runId: activeRunIdRef.current,
+      checkpointQueue: checkpointQueueRef.current,
+      hasCheckpoint: () => checkpointExistsRef.current,
+      deleteRun: chroniclesDeleteRemoteRun,
+      forgetRun: (runId) => chroniclesForgetSavedRun(FIRST_PERSON_RUN_SCOPE, runId),
+      exit: exitChronicles,
+      onCleanupError: (error) => {
+        // Preserve the server/local entry on transient failures so players
+        // can retry deletion from the save book without losing a real run.
+        console.warn('Chronicles: exit completed; unsaved run cleanup deferred', error);
+      },
+    });
   }, [exitChronicles]);
 
   useEffect(() => {
@@ -1351,13 +1354,13 @@ export default function ChroniclesOfMatthias({ onExit }) {
                   {saveBusy ? 'Guardando antes de salir…' : saveFailure ? 'Reintentar guardar y salir' : 'Salir y guardar'}
                 </button>
                 {!confirmExitWithoutSaving ? (
-                  <button type="button" onClick={() => setConfirmExitWithoutSaving(true)} disabled={saveBusy}>
+                  <button type="button" onClick={() => setConfirmExitWithoutSaving(true)}>
                     Salir sin guardar
                   </button>
                 ) : (
                   <div role="group" aria-label="Confirmar salida sin guardar">
                     <small>Perderás lo jugado desde el último guardado o cambio de área.</small>
-                    <button type="button" onClick={() => void discardAndExit()} disabled={saveBusy}>Sí, salir sin guardar</button>
+                    <button type="button" onClick={() => void discardAndExit()}>Sí, salir sin guardar</button>
                     <button type="button" onClick={() => setConfirmExitWithoutSaving(false)}>Cancelar</button>
                   </div>
                 )}

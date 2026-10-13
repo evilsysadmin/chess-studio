@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
+import './ChroniclesCharacterSheetFolioV2.css';
 import {
   CHRONICLES_GOLD_ITEM_ID,
   chroniclesGoldBalance,
@@ -153,10 +154,11 @@ export default function ChroniclesCharacterSheet({
       }}
     >
       <section
-        className={`chronicles-character-sheet${tacticsMode ? '' : ' chronicles-character-sheet--mm3'}`}
+        className={`chronicles-character-sheet${tacticsMode ? '' : ' chronicles-character-sheet--mm3 chronicles-character-sheet--folio-v2'}`}
         role="dialog"
         aria-modal="true"
         aria-labelledby="chronicles-character-sheet-title"
+        data-chronicles-folio={tacticsMode ? undefined : 'v2'}
         onKeyDown={closeOnEscape}
       >
         {/* The frame (and its corner gems) stays put; only the contents scroll. */}
@@ -240,7 +242,7 @@ export default function ChroniclesCharacterSheet({
         </div>
 
         {mm3 && (
-          <div className="chronicles-character-sheet__section"
+          <div className="chronicles-character-sheet__section chronicles-character-sheet__section--core-stats"
             hidden={activeFolio !== 'record'}>
             <div className="chronicles-character-sheet__section-head">
               <div><span>ESTADÍSTICAS</span><small>Tiradas de creación · bonificador MM3 entre paréntesis</small></div>
