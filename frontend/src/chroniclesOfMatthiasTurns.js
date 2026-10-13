@@ -240,7 +240,7 @@ function usesEnemyAwareness(enemy) {
 }
 
 function awarenessPhase(state) {
-  return state.initiative?.order?.length ? 'combat' : 'explore';
+  return state.phase === 'combat' || state.initiative?.order?.length ? 'combat' : 'explore';
 }
 
 function awarenessTick(state) {
