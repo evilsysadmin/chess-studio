@@ -22,7 +22,10 @@ describe('ChroniclesCharacterSetup', () => {
   it('keeps the canonical party as the obvious one-click path', () => {
     const html = render(createCanonicalChroniclesCharacterBuild(CHRONICLES_PARTY));
 
-    expect(html).toContain('¿Con quién bajamos ahí?');
+    expect(html).toContain('Elige tus personajes');
+    expect(html).toContain('chronicles-character-setup__hero-grid');
+    expect((html.match(/chronicles-character-setup__hero-plaque/g) || []).length).toBe(4);
+    expect(html).toContain('matthias-chronicles-canonical-v3');
     expect(html).toContain('Entrar con grupo canónico');
     expect(html).toContain('Crear PJs');
     expect(html).not.toContain('COMPAÑÍA GUARDADA');

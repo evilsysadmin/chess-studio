@@ -142,6 +142,13 @@ case "$mode" in
     fi
 
     playwright_args=(--workers=1 --retries=0)
+    # The party-choice surface also has canonical setup + editor screenshots
+    # in these same three First Book journeys, plus a real game-entry proof.
+    # Functional Chronicles WebGL canaries stay required in Quality CI.
+    if [[ "${APP_VISUAL_CHRONICLES_SETUP_ONLY:-false}" == "true" && "$groups" == "experiments" && "$experiments_scope" == "chronicles" && "$producer_scope" == "chronicles-gameplay" ]]; then
+      playwright_args+=(--grep 'Chronicles · First Book actual authored city')
+      echo "Chronicles party-choice proof: desktop/portrait/landscape, editor and game entry."
+    fi
     # Only the expedition book changed: reuse three existing real-browser
     # First Book cases. openChronicles() already asserts all six live actions,
     # AVIF decoding, short-landscape bounds and captures each book PNG.

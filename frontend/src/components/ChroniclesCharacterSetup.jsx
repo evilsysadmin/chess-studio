@@ -134,49 +134,52 @@ export default function ChroniclesCharacterSetup({
   if (!editing) {
     const hasCustom = normalizedCurrent.mode === 'custom';
     return (
-      <div className="chronicles-character-setup" data-chronicles-character-setup="choice">
-        <section className="chronicles-character-setup__panel" aria-labelledby="chronicles-character-setup-title">
-          <span className="section-label">FORMAR COMPAÑÍA</span>
-          <h2 id="chronicles-character-setup-title">¿Con quién bajamos ahí?</h2>
-          <p>
-            Puedes entrar con Matthias, Hildegard, Aziz y Faust tal como vienen de fábrica
-            (Caballero, Paladín, Clérigo y Arquero), o tirar los dados y elegir sus clases.
-          </p>
-
-          {hasCustom ? (
+      <div className="chronicles-character-setup chronicles-character-setup--choice" data-chronicles-character-setup="choice">
+        <section className="chronicles-character-setup__panel chronicles-character-setup__panel--choice" aria-labelledby="chronicles-character-setup-title">
+          <header className="chronicles-character-setup__choice-head">
+            <span className="chronicles-character-setup__eyebrow">FORMAR COMPAÑÍA</span>
+            <h2 id="chronicles-character-setup-title">Elige tus personajes</h2>
+            <p>Cuatro aventureros aguardan tu decisión. Entra con la compañía canónica o tira los dados para forjar tu propia historia.</p>
+          </header>
+          <div className="chronicles-character-setup__hero-grid" aria-label="Personajes de la compañía">
+            {(hasCustom ? normalizedCurrent.characters : createCanonicalChroniclesCharacterBuild(CHRONICLES_PARTY).characters).map((character) => (
+              <article className="chronicles-character-setup__hero" key={character.slotId}>
+                <img src={chroniclesPartyPortraitUrl(character.slotId)} alt={`Retrato canónico de ${character.name}`} draggable="false" />
+                <div className="chronicles-character-setup__hero-plaque">
+                  <strong>{character.name}</strong>
+                  <span>{CHRONICLES_MM3_CLASSES[character.classId]?.label || 'Aventurero'}</span>
+                </div>
+              </article>
+            ))}
+          </div>
+          {hasCustom && (
             <div className="chronicles-character-setup__saved" data-testid="chronicles-custom-party-summary">
               <span>COMPAÑÍA GUARDADA</span>
               <strong>{normalizedCurrent.characters.map((character) => character.name).join(' · ')}</strong>
             </div>
-          ) : null}
-
-          <div className="chronicles-character-setup__actions">
-            {hasCustom ? (
-              <button type="button" className="primary-btn" onClick={() => confirmBuild(normalizedCurrent)}>
-                Continuar con mi compañía
+          )}
+          <div className="chronicles-character-setup__choice-actions">
+            <div className="chronicles-character-setup__choice-main-actions">
+              {hasCustom ? (
+                <button type="button" className="primary-btn" onClick={() => confirmBuild(normalizedCurrent)}>
+                  Continuar con mi compañía
+                </button>
+              ) : (
+                <button type="button" className="primary-btn"
+                  onClick={() => confirmBuild(createCanonicalChroniclesCharacterBuild(CHRONICLES_PARTY))}>
+                  Entrar con grupo canónico
+                </button>
+              )}
+              <button type="button" className="secondary-btn" onClick={beginCustom}>
+                {hasCustom ? 'Editar PJs' : 'Crear PJs'}
               </button>
-            ) : (
-              <button
-                type="button"
-                className="primary-btn"
-                onClick={() => confirmBuild(createCanonicalChroniclesCharacterBuild(CHRONICLES_PARTY))}
-              >
-                Entrar con grupo canónico
-              </button>
-            )}
-            <button type="button" className="secondary-btn" onClick={beginCustom}>
-              {hasCustom ? 'Editar PJs' : 'Crear PJs'}
-            </button>
-            {hasCustom ? (
-              <button
-                type="button"
-                className="ghost-btn"
-                onClick={() => confirmBuild(createCanonicalChroniclesCharacterBuild(CHRONICLES_PARTY))}
-              >
+            </div>
+            {hasCustom && (
+              <button type="button" className="ghost-btn" onClick={() => confirmBuild(createCanonicalChroniclesCharacterBuild(CHRONICLES_PARTY))}>
                 Volver al grupo canónico
               </button>
-            ) : null}
-            <button type="button" className="ghost-btn" onClick={leaveSetup}>← Salir</button>
+            )}
+            <button type="button" className="ghost-btn chronicles-character-setup__choice-exit" onClick={leaveSetup}>← Salir</button>
           </div>
         </section>
       </div>
