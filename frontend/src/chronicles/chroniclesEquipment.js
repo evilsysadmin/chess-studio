@@ -58,6 +58,8 @@ const BASE_WEAPONS = Object.freeze({
   spear: { name: 'Lanza', family: 'spear', basePrice: 5, baseDamageBonus: 2, twoHanded: true, allowed: LEGACY_MARTIAL },
   sword: { name: 'Espada', family: 'sword', basePrice: 6, baseDamageBonus: 1, allowed: LEGACY_MARTIAL },
   axe: { name: 'Hacha', family: 'axe', basePrice: 7, baseDamageBonus: 2, allowed: LEGACY_MARTIAL },
+  bow: { name: 'Arco', family: 'bow', basePrice: 17, baseDamageBonus: 3, twoHanded: true, range: 5, projectile: 'arrow', allowed: LEGACY_MARTIAL },
+  crossbow: { name: 'Ballesta', family: 'crossbow', basePrice: 24, baseDamageBonus: 4, twoHanded: true, range: 4, projectile: 'bolt', allowed: LEGACY_MARTIAL },
 });
 
 const BASE_ARMORS = Object.freeze({
@@ -99,8 +101,9 @@ function weaponItem(baseId, materialId) {
     baseItemId: baseId, materialId, basePrice: base.basePrice,
     baseDamageBonus: base.baseDamageBonus, baseDamageReduction: 0, materialDamageScale: 0.5,
     weaponFamily: base.family, twoHanded: Boolean(base.twoHanded),
+    ...(base.range ? { attackReach: base.range, projectile: base.projectile } : {}),
     allowedMembers: base.allowed,
-    description: `${base.name}${base.twoHanded ? ' a dos manos' : ''} · acierto ${signed(material.toHit)}, daño ${signed(damage)}.`,
+    description: `${base.name}${base.twoHanded ? ' a dos manos' : ''} · acierto ${signed(material.toHit)}, daño ${signed(damage)}${base.range ? `, alcance ${base.range} casillas` : ''}.`,
   });
 }
 
@@ -152,7 +155,10 @@ function catalog() {
   for (const baseId of Object.keys(BASE_WEAPONS)) {
     const carved = baseId === 'dagger' || baseId === 'staff' ? CARVED_MATERIALS : [];
     const wooden = WOODEN_WEAPONS.includes(baseId) ? ['wooden'] : [];
-    for (const materialId of [...wooden, ...WEAPON_MATERIALS, ...carved]) {
+    const materials = baseId === 'bow' ? ['wooden']
+      : baseId === 'crossbow' ? ['wooden', 'iron']
+        : [...wooden, ...WEAPON_MATERIALS, ...carved];
+    for (const materialId of materials) {
       items[`${materialId}-${baseId}`] = weaponItem(baseId, materialId);
     }
   }
