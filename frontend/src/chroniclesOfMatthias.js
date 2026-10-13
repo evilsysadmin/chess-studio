@@ -19,7 +19,7 @@ import {
   chroniclesRequirementsMet,
 } from './chronicles/chroniclesContentRuntime.js';
 import { resolveChroniclesCharacterParty } from './chronicles/chroniclesCharacterBuilds.js';
-import { chroniclesEquipItem, chroniclesUnequipItem, chroniclesEquipmentBonuses } from './chronicles/chroniclesEquipment.js';
+import { chroniclesEquipItem, chroniclesUnequipItem, chroniclesEquipmentBonuses, chroniclesEquippedItem } from './chronicles/chroniclesEquipment.js';
 import {
   chroniclesCloseShop, chroniclesOpenShop, chroniclesShopBuy, chroniclesShopSell,
 } from './chronicles/chroniclesShops.js';
@@ -86,7 +86,14 @@ function enemiesFor(state) {
 
 function partyState(characterBuild = null, rules = null) {
   return resolveChroniclesCharacterParty(CHRONICLES_PARTY, characterBuild, { rules })
-    .map((member) => ({ ...member, hp: member.maxHp }));
+    .map((member) => ({
+      ...member,
+      hp: member.maxHp,
+      ...(rules === 'mm3' ? {
+        role: member.mm3?.classLabel || member.role,
+        attackName: 'Golpe desarmado',
+      } : {}),
+    }));
 }
 
 function appendJournal(state, entry) {
@@ -327,9 +334,14 @@ export function chroniclesPartyAttackStats(state, memberId) {
     Number(modifiers.reachBonus || 0) - Number(creator.reachBonus || 0),
   );
   const equipment = chroniclesEquipmentBonuses(state, memberId);
+  const weapon = chroniclesEquippedItem(state, memberId, 'weapon');
   return {
     damage: Math.max(0, Number(member.damage || 0) + persistentDamageBonus + equipment.attackDamageBonus),
-    reach: Math.max(1, Number(member.reach || 1) + persistentReachBonus),
+    // MM3 is a weapon-based RPG: melee can strike adjacent enemies, bows
+    // reach further. Tactics retains its chess-piece attack reach.
+    reach: Math.max(1, Number(
+      chroniclesUsesMM3Combat(state) ? (weapon?.reach || 1) : (member.reach || 1),
+    ) + persistentReachBonus),
     // MM to-hit: level + Accuracy bonus + weapon (material) to-hit.
     toHit: Math.max(1, Number(modifiers.level || 1))
       + Number(member.mm3?.bonuses?.accuracy || 0)
@@ -440,7 +452,11 @@ function resolveAttack(state, memberId, spell = null) {
   const member = partyMember(state, memberId);
   if (!member) return state;
   if (member.hp <= 0) return withMessage(state, `${member.name} está fuera de combate. Incluso la épica tiene límites médicos.`);
-  const attacker = spell ? { ...member, attackName: spell.name } : member;
+  const attacker = spell
+    ? { ...member, attackName: spell.name }
+    : chroniclesUsesMM3Combat(state)
+      ? { ...member, attackName: chroniclesEquippedItem(state, member.id, 'weapon')?.name || 'golpe desarmado' }
+      : member;
 
   const weaponStats = chroniclesPartyAttackStats(state, attacker.id);
   const attackStats = spell ? { ...weaponStats, reach: spell.reach } : weaponStats;
