@@ -1438,7 +1438,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
           <div className="chronicles-party-preview-copy">
             <span>{selectedMember?.role}</span>
             <strong>{selectedMember?.name}</strong>
-            <small>{selectedMember?.attackName} · daño {selectedAttackStats.damage} · alcance {selectedAttackStats.reach}</small>
+            <small>{selectedAttackStats.attackLabel || selectedMember?.attackName} · daño {selectedAttackStats.damage} · alcance {selectedAttackStats.reach}</small>
           </div>
         </div>
       </div>
