@@ -6,6 +6,7 @@ import {
   chesscomSvenAuthoredClipV49,
   chesscomVerifySvenGlbV49,
   chesscomValidateAuthoredContainerV49,
+  chesscomShouldHideSvenLegacyV50,
   installChesscomSvenAuthoredV49,
 } from './chesscomSvenAuthoredV49.js';
 
@@ -20,6 +21,8 @@ const emptyHash={digest:vi.fn(async()=>new Uint8Array(32).buffer)};
 function fixture(){
   const old={name:'character-v4-sven-body',visibility:1,metadata:{type:'unit',id:'sven'},isDisposed:()=>false};
   const imported={name:'SvenSkin',skeleton:{},metadata:{},isDisposed:()=>false};
+  const oldKit={name:'canonical-unit-sven-rounded-chest',visibility:.7,isDisposed:()=>false};
+  const marker={name:'marker-sven',visibility:1,metadata:{selectionStyle:'ground-brackets-v28'},isDisposed:()=>false};
   const socket={name:'MuzzleSocket',parent:{name:'SvenCarbine'},getAbsolutePosition:()=>({x:.5,y:1,z:0,clone(){return this;}})};
   const groups=['Idle','Walk','Fire','Damage','Death'].map(name=>({
     name,start:vi.fn(),stop:vi.fn(),
@@ -29,14 +32,14 @@ function fixture(){
     transformNodes:[socket],animationGroups:groups,
     addAllToScene:vi.fn(),dispose:vi.fn(),
   };
-  const root={metadata:{},getChildMeshes:()=>[old,imported]};
+  const root={metadata:{},getChildMeshes:()=>[old,oldKit,marker,imported]};
   let render=null;
   const scene={
     getTransformNodeByName:vi.fn(name=>name==='unit-sven'?root:null),
     onBeforeRenderObservable:{add:vi.fn(fn=>{render=fn;return fn;}),remove:vi.fn()},
   };
   const host={dataset:{}};
-  return {old,imported,socket,groups,container,root,scene,host,render:()=>render?.()};
+  return {old,oldKit,marker,imported,socket,groups,container,root,scene,host,render:()=>render?.()};
 }
 
 describe('CHESSCOM authored Sven GLB V49 safety contract',()=>{
@@ -110,6 +113,8 @@ describe('CHESSCOM authored Sven GLB V49 safety contract',()=>{
       expect(loadContainer).toHaveBeenCalledOnce();
       expect(f.host.dataset.chesscomSvenAuthored).toBe('ready');
       expect(f.old.visibility).toBe(0);
+      expect(f.oldKit.visibility).toBe(0);
+      expect(f.marker.visibility).toBe(1);
       expect(f.root.metadata.authoredMuzzleSocket).toBe(f.socket);
       expect(f.imported.metadata).toMatchObject({type:'unit',id:'sven',friendly:true});
       renderer.update({friendlies:[{id:'sven',hp:7}]});
@@ -120,10 +125,56 @@ describe('CHESSCOM authored Sven GLB V49 safety contract',()=>{
       expect(f.groups[1].start).toHaveBeenCalledWith(true);
       renderer.destroy();
       expect(f.old.visibility).toBe(1);
+      expect(f.oldKit.visibility).toBe(.7);
+      expect(f.marker.visibility).toBe(1);
       expect(f.root.metadata.authoredMuzzleSocket).toBeUndefined();
       expect(f.container.dispose).toHaveBeenCalledOnce();
       expect(f.scene.onBeforeRenderObservable.remove).toHaveBeenCalledOnce();
       expect(f.host.dataset.chesscomSvenAuthored).toBeUndefined();
+    }finally{blob.mockRestore();revoke.mockRestore();}
+  });
+
+  it('recognizes untagged canonical visual kit but preserves tactical overlay and imported GLB',()=>{
+    const f=fixture(),imported=new Set([f.imported]);
+    expect(chesscomShouldHideSvenLegacyV50(f.old,imported)).toBe(true);
+    expect(chesscomShouldHideSvenLegacyV50(f.oldKit,imported)).toBe(true);
+    expect(chesscomShouldHideSvenLegacyV50(f.imported,imported)).toBe(false);
+    expect(chesscomShouldHideSvenLegacyV50(f.marker,imported)).toBe(false);
+    expect(chesscomShouldHideSvenLegacyV50({name:'canonical-unit-dieter-rounded-chest'},imported)).toBe(false);
+    expect(chesscomShouldHideSvenLegacyV50({name:'canonical-unit-sven-fallen',isDisposed:()=>true},imported)).toBe(false);
+  });
+
+  it('fails closed before downloading anything when Babylon has no GLB importer',async()=>{
+    const f=fixture(),fetchManifest=vi.fn(),fetchBytes=vi.fn();
+    const renderer=installChesscomSvenAuthoredV49({SceneLoader:{
+      IsPluginForExtensionAvailable:()=>false,
+    }},f.scene,{host:f.host,search:'?chesscomSven=authored',fetchManifest,fetchBytes});
+    expect(await renderer.ready).toBe(false);
+    expect(f.host.dataset.chesscomSvenAuthored).toBe('fallback');
+    expect(f.host.dataset.chesscomSvenAuthoredReason).toBe('missing-glb-loader');
+    expect(fetchManifest).not.toHaveBeenCalled();
+    expect(fetchBytes).not.toHaveBeenCalled();
+    renderer.destroy();
+    expect(f.host.dataset.chesscomSvenAuthoredReason).toBeUndefined();
+  });
+
+  it('does not report success if a valid imported container fails during attachment',async()=>{
+    const f=fixture();
+    const blob=vi.spyOn(URL,'createObjectURL').mockReturnValue('blob:test-sven-failing');
+    const revoke=vi.spyOn(URL,'revokeObjectURL').mockImplementation(()=>{});
+    f.container.addAllToScene.mockImplementation(()=>{throw Error('GPU attach failed');});
+    try{
+      const renderer=installChesscomSvenAuthoredV49({},f.scene,{
+        host:f.host,search:'?chesscomSven=authored',
+        fetchManifest:async()=>manifest(),fetchBytes:async()=>new Uint8Array(20).buffer,
+        loadContainer:async()=>f.container,subtle:emptyHash,
+      });
+      expect(await renderer.ready).toBe(false);
+      expect(f.host.dataset.chesscomSvenAuthored).toBe('fallback');
+      expect(f.old.visibility).toBe(1);
+      expect(f.oldKit.visibility).toBe(.7);
+      expect(f.container.dispose).toHaveBeenCalledOnce();
+      renderer.destroy();
     }finally{blob.mockRestore();revoke.mockRestore();}
   });
 
