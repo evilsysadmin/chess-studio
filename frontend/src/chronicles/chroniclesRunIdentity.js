@@ -389,6 +389,11 @@ export function chroniclesRunEntryMapId(scope) {
   return run && !run.ended ? run.entryMapId : null;
 }
 
+export function chroniclesActiveRunId(scope) {
+  const run = readRunState(scope);
+  return run && !run.ended ? run.id : null;
+}
+
 export function ensureChroniclesRun(scope) {
   const current = readRunState(scope);
   if (current && !current.ended) return current.id;
