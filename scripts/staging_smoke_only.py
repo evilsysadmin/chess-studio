@@ -19,6 +19,15 @@ import staging_generation_diff as diff
 import staging_deploy_proof as proof
 
 
+# The matrix in staging-deploy runs only the War Room live + F5 restore
+# contracts. Pawn Slug and Playwright's shared config retain full staging.
+SMOKE_ONLY_PATHS = frozenset({
+    "e2e/staging-live.spec.js",
+    "e2e/staging-war-room-restore.spec.js",
+    "e2e/staging-synthetic.js",
+})
+
+
 def safe_changes(rows: list[tuple[str, str]]) -> bool:
     """Allow only pure acceptance/test/documentation changes since deployment."""
     if not rows:
@@ -27,9 +36,9 @@ def safe_changes(rows: list[tuple[str, str]]) -> bool:
     for status, path in rows:
         if status not in {"M", "A", "D"}:
             return False
-        if path in scope.STAGING_ACCEPTANCE_FILES:
+        if path in SMOKE_ONLY_PATHS:
             acceptance = True
-        elif not scope.non_runtime_path(path):
+        elif path in scope.STAGING_ACCEPTANCE_FILES or not scope.non_runtime_path(path):
             return False
     return acceptance
 
@@ -121,6 +130,9 @@ def self_test() -> None:
     assert safe_changes([("D", "e2e/staging-synthetic.js"), ("M", "docs/staging.md")])
     assert not safe_changes([])
     assert not safe_changes([("M", "docs/staging.md")])
+    assert not safe_changes([("M", "e2e/staging-pawn-slug-godot.spec.js")])
+    assert not safe_changes([("M", "e2e/playwright.staging.config.js")])
+    assert not safe_changes([("M", "e2e/staging-live.spec.js"), ("M", "e2e/staging-pawn-slug-godot.spec.js")])
     assert not safe_changes([("M", "frontend/src/App.jsx"), ("M", "e2e/staging-live.spec.js")])
     assert not safe_changes([("D", "backend-go/go.mod"), ("M", "e2e/staging-live.spec.js")])
     assert not safe_changes([("R100", "e2e/staging-live.spec.js")])
