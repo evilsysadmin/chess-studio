@@ -109,6 +109,7 @@ export default function ChroniclesCharacterSheet({
   const skills = chroniclesSkillsForMember(member.id);
   const modifiers = state.rpgModifiers?.[member.id] || {};
   const firstPersonStats = chroniclesPartyAttackStats(state, member.id);
+  const equippedWeapon = chroniclesEquippedItem(state, member.id, 'weapon');
   const reach = tacticsMode
     ? Number(profile.reach || 1) + Number(modifiers.reachBonus || 0)
     : firstPersonStats.reach;
@@ -225,10 +226,16 @@ export default function ChroniclesCharacterSheet({
         <div className="chronicles-character-sheet__combat"
           hidden={!tacticsMode && activeFolio !== 'record'}>
           <div><span>Clase</span><b>{className}</b></div>
-          <div><span>Arma</span><b>{profile.weaponName}</b></div>
-          <div><span>Ataque</span><b>{member.attackName || profile.attackName}</b></div>
-          <div><span>Geometría</span><b>{profile.kindLabel}</b></div>
-          <div><span>{tacticsMode ? 'Habilidad' : 'Habilidad táctica'}</span><b>{profile.abilityName}</b></div>
+          <div><span>Arma</span><b>{mm3 ? (equippedWeapon?.name || 'Sin arma') : profile.weaponName}</b></div>
+          {mm3 ? (
+            <div><span>Tipo</span><b>{equippedWeapon?.reach > 1 ? 'A distancia' : 'Cuerpo a cuerpo'}</b></div>
+          ) : (
+            <>
+              <div><span>Ataque</span><b>{member.attackName || profile.attackName}</b></div>
+              <div><span>Geometría</span><b>{profile.kindLabel}</b></div>
+              <div><span>{tacticsMode ? 'Habilidad' : 'Habilidad táctica'}</span><b>{profile.abilityName}</b></div>
+            </>
+          )}
           <div><span>Estado</span><b>{member.hp > 0 ? 'Operativo' : 'Fuera de combate'}</b></div>
         </div>
 

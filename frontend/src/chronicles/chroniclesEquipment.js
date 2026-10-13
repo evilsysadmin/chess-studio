@@ -58,6 +58,7 @@ const BASE_WEAPONS = Object.freeze({
   spear: { name: 'Lanza', family: 'spear', basePrice: 5, baseDamageBonus: 2, twoHanded: true, allowed: LEGACY_MARTIAL },
   sword: { name: 'Espada', family: 'sword', basePrice: 6, baseDamageBonus: 1, allowed: LEGACY_MARTIAL },
   axe: { name: 'Hacha', family: 'axe', basePrice: 7, baseDamageBonus: 2, allowed: LEGACY_MARTIAL },
+  bow: { name: 'Arco corto', family: 'bow', basePrice: 8, baseDamageBonus: 3, twoHanded: true, reach: 3, allowed: LEGACY_ALL },
 });
 
 const BASE_ARMORS = Object.freeze({
@@ -74,7 +75,7 @@ const BASE_ARMORS = Object.freeze({
 // armour; ivory (our extension) is carved into daggers, staves and shields.
 const WEAPON_MATERIALS = Object.freeze(['brass', 'bronze', 'iron', 'silver', 'steel']);
 // Wood makes staves, clubs (wooden maces) and spears; ivory is carved.
-const WOODEN_WEAPONS = Object.freeze(['staff', 'mace', 'spear']);
+const WOODEN_WEAPONS = Object.freeze(['staff', 'mace', 'spear', 'bow']);
 const CARVED_MATERIALS = Object.freeze(['ivory']);
 const SOFT_ARMOR_MATERIALS = Object.freeze(['leather', 'bronze', 'iron', 'steel']);
 const METAL_ARMOR_MATERIALS = Object.freeze(['brass', 'bronze', 'iron', 'silver', 'steel']);
@@ -99,6 +100,7 @@ function weaponItem(baseId, materialId) {
     baseItemId: baseId, materialId, basePrice: base.basePrice,
     baseDamageBonus: base.baseDamageBonus, baseDamageReduction: 0, materialDamageScale: 0.5,
     weaponFamily: base.family, twoHanded: Boolean(base.twoHanded),
+    reach: Number(base.reach || 1),
     allowedMembers: base.allowed,
     description: `${base.name}${base.twoHanded ? ' a dos manos' : ''} · acierto ${signed(material.toHit)}, daño ${signed(damage)}.`,
   });
@@ -152,7 +154,9 @@ function catalog() {
   for (const baseId of Object.keys(BASE_WEAPONS)) {
     const carved = baseId === 'dagger' || baseId === 'staff' ? CARVED_MATERIALS : [];
     const wooden = WOODEN_WEAPONS.includes(baseId) ? ['wooden'] : [];
-    for (const materialId of [...wooden, ...WEAPON_MATERIALS, ...carved]) {
+    // Wooden bows are real bows, not a fictitious solid brass/steel bow.
+    const forged = baseId === 'bow' ? [] : WEAPON_MATERIALS;
+    for (const materialId of [...wooden, ...forged, ...carved]) {
       items[`${materialId}-${baseId}`] = weaponItem(baseId, materialId);
     }
   }
