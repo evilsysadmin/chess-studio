@@ -175,3 +175,71 @@ llevarlo al gate V47. Hasta que supere la revisión visual y la carga real
 Babylon, no promocionar ningún actor ni fingir que la fuente 2D resuelve
 el modelado. Las ocho vistas son una **referencia suficiente para arrancar
 un proceso de modelado supervisado**, no una conversión 3D terminada.
+
+## V49 — Babylon A/B para el futuro Sven authored GLB
+
+La fuente de ocho vistas V48 es suficiente para iniciar authoring supervisado;
+no es un modelo exportado, aunque una de las láminas lleve etiquetas
+«3D MODEL», «UV» o «TEXTURES». **No hay ningún nuevo GLB en esta PR.**
+
+El renderer Babylon opt-in `?chesscomSven=authored` sólo busca
+`/chesscom/sven-authored-v1.json` después de pedirlo expresamente el usuario.
+Sin manifiesto/GLB, vuelve a V4. Es independiente de los experimentos
+`sprite`, `atlas` y `v45`; nunca cambia el renderer por defecto.
+
+### Contrato del arte que se necesita producir
+
+- Sven original V41/V48, armadura azul-negra y casco con balaclava.
+  Pie de suelo en el origen; eje Y arriba, dirección local +X para
+  apuntar y arma verdaderamente agarrada por manos. Escala objetivo
+  **1,72 unidades Babylon** (metros de juego).
+- GLB glTF 2.0 con skin/skeleton, una o más mallas skinned,
+  `Idle`, `Walk`, `Fire`, `Damage`, `Death` completos; `Aim`
+  y `Reload` opcionales. El nodo `MuzzleSocket` debe descender
+  de la jerarquía `Weapon`/`Carbine`/`Rifle` o equivalente.
+- Revisar el contacto de ambas manos con el arma y pies en suelo
+  en todas las animaciones y ocho ángulos. Sin cruces de equipamiento
+  ni rifle flotante. Esto requiere fuente 3D editable legítima;
+  los PNG de concept no son geometría ni bake real.
+- Preparar texturas/PBR optimizadas, visibilidad de silueta a
+  zoom real, y presupuesto de malla/draw calls/memoria móvil.
+  El GLB y su rig necesitan auditor V40/V47 y una importación
+  Babylon comprobada; el validador sólo estructural no basta.
+
+### Manifiesto del candidato (NO publicar hasta disponer del asset)
+
+El futuro recurso local **exacto** bajo `frontend/public/chesscom/actors/`
+tendrá un manifiesto de la siguiente forma:
+
+```json
+{
+  "schema": 1,
+  "actor": "sven",
+  "review_only": true,
+  "asset": {
+    "src": "/chesscom/actors/sven/sven-v1.glb",
+    "sha256": "REEMPLAZAR_POR_SHA256_REAL_DE_64_HEX",
+    "bytes": 0
+  }
+}
+```
+
+El ejemplo NO pasa validación intencionadamente. En runtime se comprueba
+ruta local, tamaño exacto, máximo 14 MiB y SHA-256 de los bytes antes
+de cargar un Blob como GLB. Se exige la presencia de skeleton, las cinco
+animaciones nombradas y un `MuzzleSocket` descendiente del arma. Si todo
+pasa se cuelga del mismo `unit-sven`, conserva picking/estado táctico,
+oculta mallas visuales antiguas **sólo para Sven** y usa el socket
+real para la trayectoria visible del disparo. Errores mantienen V4.
+No se altera Dieter, Matthias ni hostiles.
+
+**Detalle técnico pendiente:** confirmar en el build final que el cargador
+glTF de Babylon está registrado y funciona con GLB verificado; el
+importador opt-in falla cerrado si ese plugin falta. Un preflight
+estructural no equivale a un runtime funcional con un asset real.
+También quedan por inspeccionar clips/luces/cover/picking/retorno y
+capturas desktop y móvil del mismo SHA antes de cualquier promoción.
+
+El camino de producción será: modelado 3D externo → master propio
+auditable → GLB + manifiesto con hash → flag A/B → PNG runtime &
+comparativa visual → aprobación → promoción reversible por actor.
