@@ -416,6 +416,7 @@ function damageParty(state, enemy, enemyIndex, events, target = null) {
   events.push({
     type: 'attack',
     enemyId: enemy.id,
+    ...(enemy.rangedWeapon ? { projectile: enemy.rangedWeapon } : {}),
     targetId: target.id,
     damage,
     fromHp: previousHp,
@@ -446,6 +447,11 @@ function turnSummary(state, events) {
   const attacks = swings.filter((event) => !event.missed);
   if (partyDefeated(state)) return 'La compañía cae. La cripta, con notable falta de deportividad, permanece en pie.';
   if (swings.length && !attacks.length) return `Turno de las criaturas: ${swings.length === 1 ? 'el golpe rebota en la armadura' : `${swings.length} golpes fallan contra la formación`}.`;
+  if (attacks.length === 1 && attacks[0].projectile) {
+    return attacks[0].projectile === 'crossbow'
+      ? 'Turno de las criaturas: un virote de ballesta alcanza a la compañía.'
+      : 'Turno de las criaturas: una flecha alcanza a la compañía.';
+  }
   if (attacks.length) return `Turno de las criaturas: ${attacks.length === 1 ? 'un impacto encuentra carne, piedra o dignidad' : `${attacks.length} impactos sacuden la formación`}.`;
   if (events.some((event) => event.type === 'move')) return 'Turno de las criaturas: piedra contra piedra; algo cambia de casilla en la oscuridad.';
   return state.message;
