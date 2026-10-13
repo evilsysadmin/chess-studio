@@ -30,27 +30,49 @@ describe('Chronicles immersive entry', () => {
     expect(lock).not.toHaveBeenCalled();
   });
 
-  it('requests landscape but never native fullscreen on a mobile entry gesture', async () => {
-    const requestFullscreen = vi.fn(async () => {});
+  it('requests fullscreen then landscape on a mobile entry gesture', async () => {
+    const root = {};
+    const doc = { documentElement: root, fullscreenElement: null, exitFullscreen: vi.fn(async () => {}) };
+    const requestFullscreen = vi.fn(async () => { doc.fullscreenElement = root; });
+    root.requestFullscreen = requestFullscreen;
     const lock = vi.fn(async () => {});
+    const unlock = vi.fn();
     const win = { innerWidth: 390, matchMedia: vi.fn(() => ({ matches: true })) };
-    const doc = { documentElement: { requestFullscreen }, fullscreenElement: null };
-    const screenApi = { orientation: { lock } };
+    const screenApi = { orientation: { lock, unlock } };
 
     await expect(requestChroniclesLandscapeOnEntry({ win, doc, screenApi })).resolves.toEqual({
-      requested: true, fullscreen: false, landscape: true,
+      requested: true, fullscreen: true, landscape: true,
     });
-    expect(requestFullscreen).not.toHaveBeenCalled();
-    expect(lock).toHaveBeenCalledOnce();
+    expect(requestFullscreen).toHaveBeenCalledOnce();
     expect(lock).toHaveBeenCalledWith('landscape');
+    expect(requestFullscreen.mock.invocationCallOrder[0]).toBeLessThan(lock.mock.invocationCallOrder[0]);
+    await expect(releaseChroniclesLandscape({ doc, screenApi })).resolves.toEqual({
+      unlocked: true, fullscreen: true,
+    });
+    expect(doc.exitFullscreen).toHaveBeenCalledOnce();
   });
 
-  it('degrades gracefully when mobile landscape lock requires native fullscreen', async () => {
+  it('degrades gracefully when fullscreen is unavailable and landscape lock rejects', async () => {
     const lock = vi.fn().mockRejectedValue(new Error('fullscreen required'));
     const win = { innerWidth: 390, matchMedia: vi.fn(() => ({ matches: true })) };
     await expect(requestChroniclesLandscapeOnEntry({
       win, screenApi: { orientation: { lock } },
     })).resolves.toEqual({ requested: true, fullscreen: false, landscape: false });
+  });
+
+  it('does not exit fullscreen already owned by the browser or user', async () => {
+    const root = { requestFullscreen: vi.fn() };
+    const doc = { documentElement: root, fullscreenElement: root, exitFullscreen: vi.fn() };
+    const win = { innerWidth: 390, matchMedia: vi.fn(() => ({ matches: true })) };
+    const screenApi = { orientation: { lock: vi.fn(async () => {}), unlock: vi.fn() } };
+    await expect(requestChroniclesLandscapeOnEntry({ win, doc, screenApi })).resolves.toEqual({
+      requested: true, fullscreen: false, landscape: true,
+    });
+    await expect(releaseChroniclesLandscape({ doc, screenApi })).resolves.toEqual({
+      unlocked: true, fullscreen: false,
+    });
+    expect(root.requestFullscreen).not.toHaveBeenCalled();
+    expect(doc.exitFullscreen).not.toHaveBeenCalled();
   });
 
   it('releases its orientation lock without exiting user-owned native fullscreen', async () => {
