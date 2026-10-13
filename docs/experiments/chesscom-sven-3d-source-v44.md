@@ -119,3 +119,20 @@ nuevo sustituirá a todos los actores por defecto.
 o crearla de forma controlada. Hasta entonces, más cilindros PBR o un
 "GLB" improvisado no resuelven el defecto visible de la captura. Esta
 decisión no cambia el runtime por sí sola.
+
+### Preflight técnico V47 (sin promoción)
+
+El primer corte de código acompaña a esta decisión con un gate **estructural
+y manual**, que se ejecutará sobre el GLB propio una vez exista:
+
+```bash
+python3 scripts/art/test_chesscom_actor_rig_gate_v47.py
+python3 scripts/art/chesscom_actor_rig_gate_v47.py \
+  --master-glb /ruta/al/personaje-riggeado.glb --sha256 SHA256_EXACTO
+```
+
+Reutiliza la auditoría de skeleton/skin V40; exige clips con los nombres
+`Idle/Walk/Fire/Damage/Death`, animación dirigida a huesos reales y un
+`MuzzleSocket` asociado a la jerarquía del arma. Es *preflight*, no un
+validador exhaustivo de bytes de animación ni un certificado de calidad:
+Blender/GLB runtime y las capturas exact-SHA siguen siendo obligatorios.
