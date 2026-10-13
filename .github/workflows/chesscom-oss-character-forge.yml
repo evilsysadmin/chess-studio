@@ -1,0 +1,86 @@
+name: CHESSCOM · OSS Character Forge V52
+
+on:
+  pull_request:
+    paths:
+      - .github/workflows/chesscom-oss-character-forge.yml
+      - scripts/art/chesscom_oss_source_v52.py
+      - scripts/art/test_chesscom_oss_source_v52.py
+      - scripts/art/chesscom_oss_contact_v52.py
+      - scripts/blender/chesscom_oss_turntable_v52.py
+      - docs/experiments/chesscom-oss-character-forge-v52.md
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: chesscom-oss-forge-\${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  cc0-eight-view-preview:
+    name: CC0 3D technical candidate · CPU Blender · 8 views
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+      - name: Prove source intake fail-closed offline
+        run: python3 -m unittest discover -s scripts/art -p 'test_chesscom_oss_source_v52.py' -v
+      - name: Fetch immutable CC0 Quaternius SWAT candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .artifacts/chesscom-oss-v52/source .artifacts/chesscom-oss-v52/review
+          # Pinned, first-party Quaternius CC0 mirror; not the Sven design.
+          curl --fail --location --retry 3 --retry-delay 2 --max-time 120 \
+            --output .artifacts/chesscom-oss-v52/source/swat.glb \
+            https://raw.githubusercontent.com/euuuuuuan/fatal-funnel-public/29a6bdfd01ad175c389cbd0bac80c30f926ff96b/packages/renderer/assets/models/quaternius-men/swat.glb
+          python3 scripts/art/chesscom_oss_source_v52.py \
+            --source-glb .artifacts/chesscom-oss-v52/source/swat.glb \
+            --receipt .artifacts/chesscom-oss-v52/review/source-receipt.json
+      - name: Install CPU Blender and contact sheet dependency
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq blender
+          python3 -m pip install 'Pillow==12.3.0'
+          blender --version | head -n 2
+      - name: Render 8 genuine directions and export an actual GLB
+        shell: bash
+        run: |
+          set -euo pipefail
+          blender --background --noaudio --threads 2 --python-exit-code 19 \
+            --python scripts/blender/chesscom_oss_turntable_v52.py -- \
+            --source-glb .artifacts/chesscom-oss-v52/source/swat.glb \
+            --output-dir .artifacts/chesscom-oss-v52/review
+          python3 scripts/art/chesscom_oss_contact_v52.py \
+            --output-dir .artifacts/chesscom-oss-v52/review
+      - name: Assert candidate remains review-only
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          folder=Path(".artifacts/chesscom-oss-v52/review")
+          source=json.loads((folder/"source-receipt.json").read_text())
+          blender=json.loads((folder/"blender-report.json").read_text())
+          assert not source["promotion_allowed"] and not source["is_canonical_sven"]
+          assert blender["review_only"] and not blender["approved_for_runtime"]
+          assert len(blender["views"])==8
+          assert (folder/"eight-view-contact.png").stat().st_size>1024
+          assert (folder/"tactical-72px-contact.png").stat().st_size>1024
+          print("CHESSCOM_CC0_ARTIFACT_ONLY - Visual review mandatory, production unchanged.")
+          PY
+      - name: Upload renders and provenance (no automatic publication)
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: chesscom-oss-cc0-v52-review-\${{ github.run_id }}
+          path: |
+            .artifacts/chesscom-oss-v52/review/
+          if-no-files-found: warn
+          retention-days: 7
