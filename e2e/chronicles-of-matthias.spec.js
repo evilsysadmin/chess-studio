@@ -194,6 +194,45 @@ test('Chronicles · Swordhaven → cripta → Swordhaven, desde el teclado y sin
   await expect(mode).toHaveAttribute('data-chronicles-phase', 'explore');
 });
 
+test('Chronicles · F5 reabre la expedición activa en su checkpoint sin volver al libro', async ({ page }) => {
+  test.setTimeout(180_000);
+  const creationBodies = [];
+  const checkpointBodies = [];
+  page.on('request', (request) => {
+    const requestPath = new URL(request.url()).pathname;
+    if (request.method() === 'POST' && requestPath.endsWith('/api/chronicles/runs')) {
+      creationBodies.push(request.postDataJSON());
+    }
+    if (request.method() === 'PUT' && requestPath.includes('/api/chronicles/runs/') && requestPath.endsWith('/checkpoint')) {
+      checkpointBodies.push(request.postDataJSON());
+    }
+  });
+
+  await openChronicles(page, { chroniclesCurrentMapId: 'swordhaven-square', newTown: true });
+  const mode = page.locator('[data-chronicles="true"]');
+  await expect(mode).toHaveAttribute('data-chronicles-map-id', 'swordhaven-square');
+  const runBefore = await page.evaluate(() => JSON.parse(localStorage.getItem('chess-study-chronicles-run-v1') || 'null'));
+  expect(runBefore?.id).toBeTruthy();
+
+  // Area transitions are semantic checkpoints. Reload must resume this same
+  // run at the authoritative checkpoint, not reopen the Chronicles save book.
+  await page.keyboard.press('ArrowDown');
+  await expect(mode).toHaveAttribute('data-chronicles-map-id', 'crypt-eight-squares', { timeout: 20_000 });
+  await expect.poll(() => checkpointBodies.length, { timeout: 20_000 }).toBe(1);
+
+  await page.reload();
+
+  await expect(page.locator('[data-chronicles-save-menu]')).toHaveCount(0);
+  const restored = page.locator('[data-chronicles="true"]');
+  await expect(restored).toBeVisible({ timeout: 30_000 });
+  await expect(restored).toHaveAttribute('data-chronicles-map-id', 'crypt-eight-squares', { timeout: 30_000 });
+  await expect(restored).toHaveAttribute('data-chronicles-phase', 'explore');
+
+  const runAfter = await page.evaluate(() => JSON.parse(localStorage.getItem('chess-study-chronicles-run-v1') || 'null'));
+  expect(runAfter?.id).toBe(runBefore.id);
+  expect(creationBodies, 'F5 must GET/resume the selected run instead of creating another').toHaveLength(1);
+});
+
 test('Chronicles creator · recupera el borrador tras F5 sin confirmar progreso', async ({ page }) => {
   const setup = await openChroniclesSetup(page);
   await setup.getByRole('button', { name: 'Crear PJs', exact: true }).click();
