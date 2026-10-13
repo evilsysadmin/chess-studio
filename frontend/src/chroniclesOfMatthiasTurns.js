@@ -228,11 +228,125 @@ export function chroniclesChooseEnemyDisengageStep(state, enemy) {
   return chooseRetreatCardinalStep(state, enemy, from);
 }
 
+// Only roaming/patrolling species use awareness; scripted guards and special
+// chess movers keep their authored policies. A sighting is local to this map.
+const ENEMY_MEMORY_ROUNDS = 2;
+
+function usesEnemyAwareness(enemy) {
+  return ['cardinal-roam', 'patrol-route'].includes(enemy.ai?.movement)
+    && ['cardinal-chase', 'knight-chase'].includes(enemy.ai?.engagedMovement)
+    && Number.isFinite(Number(enemy.ai?.engageRange))
+    && Number(enemy.ai.engageRange) >= 1;
+}
+
+function awarenessPhase(state) {
+  return state.initiative?.order?.length ? 'combat' : 'explore';
+}
+
+function awarenessTick(state) {
+  return awarenessPhase(state) === 'explore'
+    ? Math.floor(Math.max(0, Number(state.explorationEnemySteps || 0)) / 3)
+    : Math.max(0, Number(state.round || 0));
+}
+
+// Discrete grid ray: walls and solid diagonal corners stop sight. Creatures
+// cannot magically detect the party through masonry.
+export function chroniclesEnemyHasSightline(state, from, to) {
+  let x = from.x;
+  let y = from.y;
+  const dx = Math.abs(to.x - x);
+  const dy = Math.abs(to.y - y);
+  const sx = x < to.x ? 1 : -1;
+  const sy = y < to.y ? 1 : -1;
+  let error = dx - dy;
+  while (x !== to.x || y !== to.y) {
+    const beforeX = x;
+    const beforeY = y;
+    const twice = 2 * error;
+    if (twice > -dy) { error -= dy; x += sx; }
+    if (twice < dx) { error += dx; y += sy; }
+    if (x !== to.x || y !== to.y) {
+      if (chroniclesTileAt(x, y, state) === '#') return false;
+    }
+    if (x !== beforeX && y !== beforeY
+      && chroniclesTileAt(x, beforeY, state) === '#'
+      && chroniclesTileAt(beforeX, y, state) === '#') return false;
+  }
+  return true;
+}
+
+function visiblePartyPosition(state, enemy, from) {
+  if (!usesEnemyAwareness(enemy)) return null;
+  const range = Number(enemy.ai.engageRange);
+  return partyTargetPositions(state)
+    .filter((target) => distance(from, target) <= range && chroniclesEnemyHasSightline(state, from, target))
+    .sort((a, b) => distance(from, a) - distance(from, b))[0] || null;
+}
+
+function lastKnownPartyPosition(state, enemy, from) {
+  const sighting = state.enemyAwareness?.[enemy.id];
+  if (!sighting || sighting.mapId !== state.mapId || sighting.phase !== awarenessPhase(state)) return null;
+  const age = awarenessTick(state) - Number(sighting.tick);
+  if (!Number.isFinite(age) || age < 0 || age > ENEMY_MEMORY_ROUNDS) return null;
+  if (sameCell(from, sighting)) return null; // The investigated tile is empty.
+  return { x: sighting.x, y: sighting.y };
+}
+
+// Persist only a short, bounded sighting; do not reveal the current party
+// position if it disappears behind walls or goes outside perception range.
+export function chroniclesRememberEnemySight(state, enemy) {
+  if (!usesEnemyAwareness(enemy)) return state;
+  const from = chroniclesRuntimeEnemyPosition(state, enemy);
+  const visible = visiblePartyPosition(state, enemy, from);
+  const memory = lastKnownPartyPosition(state, enemy, from);
+  const old = state.enemyAwareness?.[enemy.id];
+  if (!visible && !old) return state;
+  if (!visible && memory) return state;
+  const awareness = { ...(state.enemyAwareness || {}) };
+  if (visible) {
+    awareness[enemy.id] = {
+      x: visible.x, y: visible.y, tick: awarenessTick(state),
+      phase: awarenessPhase(state), mapId: state.mapId,
+    };
+  } else {
+    delete awareness[enemy.id];
+  }
+  return { ...state, enemyAwareness: awareness };
+}
+
+function chooseStepTowardSighting(state, enemy, from, target, knight = false) {
+  if (knight) {
+    return KNIGHT_STEPS.map((step, index) => ({
+      x: from.x + step.dx, y: from.y + step.dy, index,
+    })).filter((point) => canOccupy(state, enemy, point))
+      .sort((a, b) => distance(a, target) - distance(b, target) || a.index - b.index)[0] || null;
+  }
+  const queue = [{ position: from, firstStep: null }];
+  const visited = new Set([positionKey(from)]);
+  const goalDistance = canOccupy(state, enemy, target) ? 0 : 1;
+  while (queue.length) {
+    const current = queue.shift();
+    if (current.firstStep && distance(current.position, target) <= goalDistance) return current.firstStep;
+    for (const step of CHRONICLES_DIRECTIONS) {
+      const point = { x: current.position.x + step.dx, y: current.position.y + step.dy };
+      const key = positionKey(point);
+      if (visited.has(key) || !canOccupy(state, enemy, point)) continue;
+      visited.add(key);
+      queue.push({ position: point, firstStep: current.firstStep || point });
+    }
+  }
+  return null;
+}
+
 function enemyMovementForDistance(state, enemy, from) {
   const movement = enemy.ai?.movement || 'cardinal-chase';
   const engagedMovement = enemy.ai?.engagedMovement;
   const engageRange = Number(enemy.ai?.engageRange);
   if (!engagedMovement || !Number.isFinite(engageRange) || engageRange < 1) return movement;
+  if (usesEnemyAwareness(enemy)) {
+    return visiblePartyPosition(state, enemy, from) || lastKnownPartyPosition(state, enemy, from)
+      ? engagedMovement : movement;
+  }
   const targets = partyTargetPositions(state);
   const nearestDistance = targets.length
     ? Math.min(...targets.map((target) => distance(from, target)))
@@ -244,6 +358,11 @@ export function chroniclesChooseEnemyStep(state, enemy) {
   const from = chroniclesRuntimeEnemyPosition(state, enemy);
   const movement = enemyMovementForDistance(state, enemy, from);
   if (movement === 'hold') return null;
+  if (usesEnemyAwareness(enemy) && !visiblePartyPosition(state, enemy, from)) {
+    const memory = lastKnownPartyPosition(state, enemy, from);
+    if (memory && movement === 'cardinal-chase') return chooseStepTowardSighting(state, enemy, from, memory);
+    if (memory && movement === 'knight-chase') return chooseStepTowardSighting(state, enemy, from, memory, true);
+  }
   if (movement === 'knight-chase') return chooseKnightStep(state, enemy, from);
   if (movement === 'patrol-route') return choosePatrolRouteStep(state, enemy, from);
   if (movement === 'cardinal-roam') return chooseRoamingCardinalStep(state, enemy, from);
@@ -331,7 +450,7 @@ export function chroniclesResolveEnemyActor(state, enemyId) {
   if (enemyIndex < 0) return state;
   const enemy = activeEnemies[enemyIndex];
   const events = [];
-  let next = { ...state, turnPhase: 'enemy', enemyTurnEvents: events };
+  let next = chroniclesRememberEnemySight({ ...state, turnPhase: 'enemy', enemyTurnEvents: events }, enemy);
   const position = chroniclesRuntimeEnemyPosition(next, enemy);
   const disengageStep = chroniclesChooseEnemyDisengageStep(next, enemy);
   const target = chroniclesEnemyAttackTarget(next, enemy, position);
@@ -376,6 +495,7 @@ export function chroniclesResolveEnemyTurn(state) {
 
   activeEnemies.forEach((enemy, enemyIndex) => {
     if (partyDefeated(next)) return;
+    next = chroniclesRememberEnemySight(next, enemy);
     const position = chroniclesRuntimeEnemyPosition(next, enemy);
     const disengageStep = chroniclesChooseEnemyDisengageStep(next, enemy);
     const target = chroniclesEnemyAttackTarget(next, enemy, position);
