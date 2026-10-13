@@ -107,10 +107,14 @@ def export_candidate(candidate, path):
 def make_studio():
     scene = bpy.context.scene
     available = {entry.identifier for entry in scene.render.bl_rna.properties["engine"].enum_items}
-    for name in ("BLENDER_EEVEE_NEXT", "BLENDER_EEVEE", "BLENDER_WORKBENCH"):
+    # Cycles CPU avoids EGL/GPU initialization crashes on headless GitHub runners.
+    for name in ("CYCLES", "BLENDER_WORKBENCH"):
         if name in available:
             scene.render.engine = name
             break
+    if scene.render.engine == "CYCLES":
+        scene.cycles.device = "CPU"
+        scene.cycles.samples = 12
     scene.render.resolution_x = 256
     scene.render.resolution_y = 384
     scene.render.resolution_percentage = 100
