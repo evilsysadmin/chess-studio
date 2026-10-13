@@ -71,7 +71,7 @@ test('Chronicles · menú de pausa mínimo con audio recuperable', async ({ page
   const actions = menu.locator('.chronicles-game-menu__panel > button');
   await expect(actions).toHaveCount(4);
   for (const label of ['Continuar', 'Guardar partida', 'Guardar y salir', 'Salir sin guardar']) {
-    await expect(actions.getByText(label, { exact: true })).toBeVisible();
+    await expect(menu.getByRole('button', { name: label, exact: true })).toBeVisible();
   }
   for (const removed of ['Crónica · J', 'Nueva expedición', 'Partidas guardadas']) {
     await expect(menu.getByRole('button', { name: removed, exact: true })).toHaveCount(0);
