@@ -1335,7 +1335,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
               setAutomapOpen(true);
             }}
           />
-          <ChroniclesCombatRoster state={state} />
+          <ChroniclesCombatRoster state={state} selectedMemberId={selectedMember?.id} />
 
           <ChroniclesJournalModal open={journalOpen} state={state} entries={journalEntries} onClose={() => setJournalOpen(false)} />
 
