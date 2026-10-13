@@ -154,7 +154,7 @@ def main():
     for index, direction in enumerate(DIRECTIONS):
         angle = index * math.pi / 4
         camera.location = (3.1 * math.sin(angle), -3.1 * math.cos(angle), 2.3)
-        look_at(camera, (0, 0, .93))
+        look_at(camera, (0, 0, 1.17))
         image = args.output_dir / f"view-{index:02d}-{direction}.png"
         scene.render.filepath = str(image)
         bpy.ops.render.render(write_still=True)
