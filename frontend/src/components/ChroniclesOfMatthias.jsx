@@ -168,6 +168,7 @@ function BootstrapFailure({ error, onRetry, onMenu, onExit }) {
 
 export default function ChroniclesOfMatthias({ onExit }) {
   const hostRef = useRef(null);
+  const gameRootRef = useRef(null);
   const engineRef = useRef(null);
   const retaliationTimerRef = useRef(null);
   const retaliationSequenceRef = useRef(0);
@@ -219,6 +220,28 @@ export default function ChroniclesOfMatthias({ onExit }) {
   const [automapVisitedByMap, setAutomapVisitedByMap] = useState({});
   const touchHoldRef = useRef({ delayId: null, repeatId: null });
   const { needsRotation, lockState, activateLandscape } = useChroniclesLandscape(characterSetupDone);
+
+  // Real Brave/Chrome forced a light glyph despite matching !important CSS.
+  // Applying an inline important override to the concrete DOM nodes was
+  // verified to work in the affected browser. Never touch colored attack/
+  // magic/contextual controls or the rest of the game's typography.
+  useEffect(() => {
+    if (!ready || !state || !gameRootRef.current) return;
+    const nodes = gameRootRef.current.querySelectorAll([
+      '.chronicles-statusbar .chronicles-map-trigger',
+      '.chronicles-statusbar .chronicles-map-trigger b',
+      '.chronicles-statusbar .chronicles-map-trigger i',
+      '.chronicles-game-menu > summary',
+      '.chronicles-game-menu > summary b',
+      '.chronicles-touch button:not(.is-attack):not(.is-magic):not(.is-contextual)',
+    ].join(', '));
+    for (const node of nodes) {
+      node.style.setProperty('color', '#08080a', 'important');
+      node.style.setProperty('-webkit-text-fill-color', '#08080a', 'important');
+      node.style.setProperty('-webkit-text-stroke-color', '#08080a', 'important');
+      node.style.setProperty('color-scheme', 'light only', 'important');
+    }
+  }, [ready, state]);
 
   // Reconcile server-owned expeditions only while browsing the save book.
   // Cleanup discards stale results after navigating away or switching flows.
@@ -1080,6 +1103,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
 
   return (
     <div
+      ref={gameRootRef}
       className="chronicles"
       data-chronicles="true"
       data-chronicles-map-id={state.mapId}

@@ -882,6 +882,25 @@ for (const capture of CAPTURES) {
         expect(ink.fill, `${capture.label}: ${selector} text fill must be black`).toBe('rgb(8, 8, 10)');
       }
 
+      // Browser regression: stylesheet declarations alone lost in Brave;
+      // the actual mounted control must have an inline important override.
+      for (const selector of [
+        '.chronicles-statusbar .chronicles-map-trigger',
+        '.chronicles-statusbar .chronicles-map-trigger b',
+        '.chronicles-game-menu > summary',
+        '.chronicles-game-menu > summary b',
+        '.chronicles-touch button:not(.is-attack):not(.is-magic):not(.is-contextual)',
+      ]) {
+        const ink = await gameRoot.locator(selector).first().evaluate((element) => ({
+          value: element.style.getPropertyValue('color'),
+          priority: element.style.getPropertyPriority('color'),
+          computed: getComputedStyle(element).color,
+        }));
+        expect(ink.value, `${capture.label}: ${selector} inline ink`).toBe('#08080a');
+        expect(ink.priority, `${capture.label}: ${selector} priority`).toBe('important');
+        expect(ink.computed, `${capture.label}: ${selector} final ink`).toBe('rgb(8, 8, 10)');
+      }
+
       // Every menu action stays on screen, «Salir y guardar» included.
       const menuDetails = page.locator('details.chronicles-game-menu');
       const menuSummary = menuDetails.locator('> summary');
