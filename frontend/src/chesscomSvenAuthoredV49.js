@@ -131,7 +131,7 @@ export function installChesscomSvenAuthoredV49(B,scene,{
         if(!mesh.isDisposed?.())mesh.visibility=visibility;
       }
       originalVisibility.clear();
-      if(root?.metadata?.authoredMuzzleSocket===validated?.socket)delete root.metadata.authoredMuzzleSocket;
+      if(root?.metadata && validated?.socket && root.metadata.authoredMuzzleSocket===validated.socket)delete root.metadata.authoredMuzzleSocket;
       try{container?.dispose?.();}catch{}
       container=null;
       validated=null;
@@ -185,7 +185,7 @@ export function installChesscomSvenAuthoredV49(B,scene,{
       if(destroyed)return;
       destroyed=true;controller.abort();
       scene.onBeforeRenderObservable?.remove(observer);
-      if(root?.metadata?.authoredMuzzleSocket===validated?.socket)delete root.metadata.authoredMuzzleSocket;
+      if(root?.metadata && validated?.socket && root.metadata.authoredMuzzleSocket===validated.socket)delete root.metadata.authoredMuzzleSocket;
       for(const [mesh,visibility] of originalVisibility){
         try{if(!mesh.isDisposed?.())mesh.visibility=visibility;}catch{}
       }
