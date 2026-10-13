@@ -8,6 +8,7 @@ on:
       - scripts/art/test_chesscom_oss_source_v52.py
       - scripts/art/chesscom_oss_contact_v52.py
       - scripts/blender/chesscom_oss_turntable_v52.py
+      - scripts/blender/chesscom_sven_art_direction_v53.py
       - docs/experiments/chesscom-oss-character-forge-v52.md
   workflow_dispatch:
 
@@ -56,7 +57,7 @@ jobs:
         run: |
           set -euo pipefail
           blender --background --threads 2 --python-exit-code 19 \
-            --python scripts/blender/chesscom_oss_turntable_v52.py -- \
+            --python scripts/blender/chesscom_sven_art_direction_v53.py -- \
             --source-glb .artifacts/chesscom-oss-v52/source/swat.glb \
             --output-dir .artifacts/chesscom-oss-v52/review
           python3 scripts/art/chesscom_oss_contact_v52.py \
@@ -83,6 +84,18 @@ jobs:
               with Image.open(frame) as image:
                   bounds=image.convert("RGBA").getchannel("A").getbbox()
                   assert bounds and bounds[1]>=5 and bounds[3]<=379, (frame.name,bounds)
+          # The exported GLB, not a report claim, must include actual authored geometry.
+          data=(folder/"quaternius-cc0-preview.glb").read_bytes()
+          import struct
+          chunk_size,kind=struct.unpack_from("<I4s",data,12)
+          assert kind==b"JSON"
+          document=json.loads(data[20:20+chunk_size])
+          v53=[n for n in document.get("nodes",[]) if n.get("name","").startswith("V53_")]
+          assert len(v53)>=30, len(v53)
+          details=blender["art_direction"]
+          assert details["pieces"]>=30 and len(details["distinct_bones"])>=4
+          assert any("nvg_tube" in n["name"] for n in v53)
+          assert any("backpack_main" in n["name"] for n in v53)
           assert len(blender["views"])==8
           assert (folder/"eight-view-contact.png").stat().st_size>1024
           assert (folder/"tactical-72px-contact.png").stat().st_size>1024
