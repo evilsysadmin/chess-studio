@@ -59,6 +59,6 @@ describe('Chronicles cardinal-roam enemy AI', () => {
       },
     };
 
-    expect(chroniclesChooseEnemyStep(state, enemy)).toEqual({ x: 4, y: 3 });
+    // No legal move stays inside the patrol territory; hold position instead of escaping it.\n    expect(chroniclesChooseEnemyStep(state, enemy)).toBeNull();
   });
 });
