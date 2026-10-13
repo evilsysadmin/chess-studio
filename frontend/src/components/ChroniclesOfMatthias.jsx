@@ -98,7 +98,8 @@ import ChroniclesCombatRoster, { chroniclesHealthBand } from './ChroniclesCombat
 import ChroniclesBookOneEpilogue from './ChroniclesBookOneEpilogue.jsx';
 import ChroniclesCharacterSetup from './ChroniclesCharacterSetup.jsx';
 import ChroniclesSaveMenu from './ChroniclesSaveMenu.jsx';
-import ChroniclesQuestLog, { chroniclesQuestLogEntries } from './ChroniclesQuestLog.jsx';
+import { chroniclesQuestLogEntries } from './ChroniclesQuestLog.jsx';
+import ChroniclesJournalModal from './ChroniclesJournalModal.jsx';
 import ChroniclesDefeatOverlay from './ChroniclesDefeatOverlay.jsx';
 import ChroniclesEnemyRetaliationFx from './ChroniclesEnemyRetaliationFx.jsx';
 import ChroniclesInitiativeRail from './ChroniclesInitiativeRail.jsx';
@@ -895,12 +896,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
         clearTouchHold();
         setAutomapOpen(false);
         setMenuOpen(false);
-        if (window.matchMedia('(max-width: 800px), (max-width: 1024px) and (max-height: 600px)').matches) {
-          setJournalOpen(false);
-          setChronicleModalOpen((open) => !open);
-        } else {
-          setJournalOpen((open) => !open);
-        }
+        setJournalOpen((open) => !open);
         return;
       }
       if (event.key === 'm' || event.key === 'M') {
@@ -1071,7 +1067,6 @@ export default function ChroniclesOfMatthias({ onExit }) {
     ? state.party.find((member) => member.id === sheetMemberId) || null
     : null;
   const journalEntries = chroniclesJournalEntries(state);
-  const latestJournalEntry = journalEntries[journalEntries.length - 1];
   const activeQuests = chroniclesQuestLogEntries(state).filter((quest) => quest.status === 'active');
   const expeditionOver = state.phase === 'defeated' || state.phase === 'escaped';
   const contextualAction = chroniclesContextualContentAction(state);
@@ -1211,6 +1206,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
                 <small>Guardado manual · checkpoint automático al cambiar de área.</small>
                 {saveNotice && <small role="status">{saveNotice}</small>}
                 <button type="button" onClick={() => { setMenuOpen(false); setConfirmExitWithoutSaving(false); }}>Continuar</button>
+                <button type="button" onClick={() => { setMenuOpen(false); setAutomapOpen(false); setJournalOpen(true); }}>Crónica · J</button>
                 <button type="button" onClick={() => void persistCheckpoint(stateRef.current, 'manual')} disabled={saveBusy}>
                   {saveBusy ? 'Guardando…' : 'Guardar partida'}
                 </button>
@@ -1271,34 +1267,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
           />
           <ChroniclesCombatRoster state={state} />
 
-          <details className="chronicles-journal" aria-label="Crónica de expedición"
-            open={journalOpen}
-            onToggle={(event) => {
-              setJournalOpen(event.currentTarget.open);
-              if (event.currentTarget.open) {
-                setMenuOpen(false);
-                setAutomapOpen(false);
-              }
-            }}>
-            <summary title="J · Diario y misiones">
-              <span><i aria-hidden="true">✦</i><b>Crónica de expedición</b><small>{activeQuests[0] ? `◆ ${activeQuests[0].title}` : latestJournalEntry?.title}</small></span>
-              <em>
-                {activeQuests.length > 0 && `${activeQuests.length} ${activeQuests.length === 1 ? 'encargo' : 'encargos'} · `}
-                {journalEntries.length} {journalEntries.length === 1 ? 'folio' : 'folios'}
-              </em>
-            </summary>
-            <div className="chronicles-journal__body">
-              <ChroniclesQuestLog state={state} />
-              <ol>
-                {journalEntries.map((entry) => (
-                  <li key={entry.id}>
-                    <span aria-hidden="true">{entry.sigil}</span>
-                    <div><strong>{entry.title}</strong><p>{entry.body}</p></div>
-                  </li>
-                ))}
-              </ol>
-            </div>
-          </details>
+          <ChroniclesJournalModal open={journalOpen} state={state} entries={journalEntries} onClose={() => setJournalOpen(false)} />
 
           {!expeditionOver && (
             <>

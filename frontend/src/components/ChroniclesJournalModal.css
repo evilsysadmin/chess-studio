@@ -1,0 +1,19 @@
+.chronicles-journal-modal__backdrop{position:fixed;inset:0;z-index:11000;display:grid;place-items:center;padding:clamp(10px,3vw,30px);background:rgba(0,0,0,.75);color-scheme:only light}
+.chronicles-journal-modal{display:flex;flex-direction:column;width:min(760px,100%);max-height:min(90dvh,900px);min-height:0;overflow:hidden;background:linear-gradient(135deg,#292015,#0e0b09 70%);border:1px solid #80603a;border-radius:9px;box-shadow:0 25px 80px #000b;color:#e9d3ad}
+.chronicles-journal-modal__header{display:flex;align-items:center;justify-content:space-between;gap:15px;padding:15px 20px;border-bottom:1px solid #72512d;background:linear-gradient(90deg,#342719,#1d160e)}
+.chronicles-journal-modal__header small{font-size:.68rem;letter-spacing:.16em;color:#bb9861}
+.chronicles-journal-modal__header h2{margin:3px 0 0;font:700 1.45rem Georgia,serif;color:#f4d8a7}
+.chronicles-journal-modal__header button{font-size:1.8rem;line-height:1;width:40px;height:40px;cursor:pointer;background:#0b0907;color:#f4d8a7;border:1px solid #63431f;border-radius:7px}
+.chronicles-journal-modal__scroll{min-height:0;flex:1;overflow:auto;overscroll-behavior:contain;padding:14px 19px 22px;scrollbar-width:thin}
+.chronicles-journal-modal__scroll:focus-visible{outline:2px solid #dcb46e;outline-offset:-2px}
+.chronicles-journal-modal__scroll h3{font:700 .9rem Georgia,serif;color:#e2bf86;margin:17px 0 9px}
+.chronicles-journal-modal__scroll ol{list-style:none;margin:0;padding:0;display:grid;gap:9px}
+.chronicles-journal-modal__scroll li{display:flex;gap:13px;padding:12px;background:#241a11;border:1px solid #53402a}
+.chronicles-journal-modal__scroll li>span{color:#bd965a;min-width:24px;text-align:center}
+.chronicles-journal-modal__scroll li strong{color:#efd6ad;font:700 .92rem Georgia,serif}
+.chronicles-journal-modal__scroll li p{margin:5px 0 0;font-size:.83rem;line-height:1.5;color:#cdbb9e}
+.chronicles-journal-modal__scroll .chronicles-quest-log{padding:0}
+.chronicles-journal-modal__scroll .chronicles-quest-log__quest{padding:11px}
+.chronicles-journal-modal__scroll .chronicles-quest-log__quest p{font-size:.82rem}
+.chronicles-journal-modal footer{padding:8px 20px;text-align:right;border-top:1px solid #42301c;font-size:.7rem;color:#9d825f}
+@media(max-width:600px){.chronicles-journal-modal__header{padding:11px 13px}.chronicles-journal-modal__scroll{padding:11px}.chronicles-journal-modal__header h2{font-size:1.2rem}}
