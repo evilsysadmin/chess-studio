@@ -75,6 +75,8 @@
       2px max(7px,env(safe-area-inset-left));
     display: flex;
     align-items: center;
+    position: relative;
+    z-index: 9; /* Keep Exit above the Babylon canvas (real mobile input). */
   }
   .chesscom[data-chesscom-poc="true"] .chesscom-brand { align-items: center; gap: .35rem; }
   .chesscom[data-chesscom-poc="true"] .chesscom-rook { font-size: 1.3rem; margin: 0; }
