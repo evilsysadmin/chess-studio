@@ -896,12 +896,27 @@ for (const capture of CAPTURES) {
       const menuDetails = page.locator('details.chronicles-game-menu');
       const menuSummary = menuDetails.locator('> summary');
       await menuSummary.evaluate((summary) => summary.click());
-      const exitAction = menuDetails.getByRole('button', { name: 'Salir y guardar', exact: true });
+      const exitAction = menuDetails.getByRole('button', { name: 'Guardar y salir', exact: true });
       await expect(exitAction).toBeVisible();
-      // Both controls belong to the current menu; keyboard-adjusting them
-      // must not trigger dungeon movement hotkeys.
+      const expectedActions = ['Continuar', 'Guardar partida', 'Guardar y salir', 'Salir sin guardar'];
+      const visibleActions = menuDetails.locator('.chronicles-game-menu__panel > button');
+      await expect(visibleActions).toHaveCount(4);
+      for (const name of expectedActions) {
+        await expect(visibleActions.filter({ hasText: name }).first()).toBeVisible();
+      }
+      for (const removed of ['Crónica · J', 'Nueva expedición', 'Partidas guardadas']) {
+        await expect(menuDetails.getByRole('button', { name: removed, exact: true })).toHaveCount(0);
+      }
+      // Audio is easy to find without pushing the core four actions off screen.
+      const audio = menuDetails.locator('details.chronicles-audio-options');
+      const audioTrigger = audio.locator('> summary');
+      await expect(audioTrigger).toContainText('Opciones de audio');
+      await expect(audio).not.toHaveAttribute('open');
       const musicSlider = menuDetails.locator('#chronicles-music-volume');
       const fxSlider = menuDetails.locator('#chronicles-sfx-volume');
+      await expect(musicSlider).toBeHidden();
+      await audioTrigger.evaluate((node) => node.click());
+      await expect(audio).toHaveAttribute('open');
       await expect(musicSlider).toBeVisible();
       await expect(fxSlider).toBeVisible();
       const turnsBeforeAudio = await gameRoot.getAttribute('data-chronicles-turns');
@@ -911,6 +926,9 @@ for (const capture of CAPTURES) {
       await musicSlider.press('ArrowRight');
       await expect(musicSlider).toHaveValue('5');
       await expect(gameRoot).toHaveAttribute('data-chronicles-turns', turnsBeforeAudio);
+      await audioTrigger.evaluate((node) => node.click());
+      await expect(audio).not.toHaveAttribute('open');
+      await expect(musicSlider).toBeHidden();
 
       // The previously pale menu action labels must receive the same
       // browser-verified runtime ink as MAPA and MENÚ.
@@ -940,7 +958,7 @@ for (const capture of CAPTURES) {
         await expect(menuDetails.locator('.chronicles-game-menu__close')).toBeVisible();
         await captureElement(page, menuPanel, `${ARTIFACT_DIR}/chronicles-game-menu-open-${capture.label}.png`);
       }
-      // Long menus may scroll internally: all actions must remain reachable.
+      // Core actions should be accessible even with the audio settings collapsed.
       await exitAction.scrollIntoViewIfNeeded();
       const exitBox = await exitAction.boundingBox();
       expect(exitBox, `${capture.label}: menu exit action has bounds`).not.toBeNull();
@@ -966,14 +984,12 @@ for (const capture of CAPTURES) {
       await expect(exitAction).toBeHidden();
       await expect(menuDetails, `${capture.label}: menu is truly closed before opening map`).not.toHaveAttribute('open');
 
-      // The menu's «Crónica · J» must open the actual mobile reader, not the
-      // desktop sidebar (which is hidden by the mobile MM3 layout).
+      // The Crónica reader is accessed from its dedicated HUD control / J;
+      // it is deliberately not duplicated in the five-action pause menu.
       if (capture.hasTouch) {
-        await menuSummary.evaluate((summary) => summary.click());
-        await menuDetails.getByRole('button', { name: 'Crónica · J', exact: true }).evaluate((button) => button.click());
+        await page.keyboard.press('j');
         const chronicle = page.getByRole('dialog', { name: 'Crónica', exact: true });
         await expect(chronicle).toBeVisible();
-        await expect(menuDetails).not.toHaveAttribute('open');
         await chronicle.getByRole('button', { name: 'Cerrar crónica', exact: true }).evaluate((button) => button.click());
         await expect(chronicle).toHaveCount(0);
       }
