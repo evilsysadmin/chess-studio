@@ -140,6 +140,12 @@ function absolutePosition(B, root, fallback) {
 }
 
 function muzzleWorld(B, root, fallback) {
+  const socket = root?.metadata?.authoredMuzzleSocket;
+  if (socket?.getAbsolutePosition) {
+    socket.computeWorldMatrix?.(true);
+    const position = socket.getAbsolutePosition();
+    if (position && [position.x, position.y, position.z].every(Number.isFinite)) return position.clone();
+  }
   const weapon = root?.metadata?.parts?.weapon;
   if (weapon?.getWorldMatrix && B?.Vector3?.TransformCoordinates) {
     weapon.computeWorldMatrix?.(true);
