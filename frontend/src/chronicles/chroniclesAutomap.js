@@ -126,8 +126,8 @@ export function chroniclesAutomapLocalVisibleCells(map, state, radius = 3) {
     || startX < 0 || startY < 0 || startX >= width || startY >= height
   ) return visible;
 
-  // 120° forward field of view, including the current tile. Looking/turning
-  // reveals the actual corridor geometry, not reachable paths around bends.
+  // Conservative 90° forward field of view (inside the 3D camera's 96°
+  // maximum horizontal FOV). Turns expose new geometry without leaking bends.
   const direction = ((Math.trunc(Number(state?.direction) || 0) % 4) + 4) % 4;
   const facing = FACING_VECTORS[direction];
   for (let y = Math.max(0, startY - safeRadius); y <= Math.min(height - 1, startY + safeRadius); y += 1) {
@@ -136,7 +136,7 @@ export function chroniclesAutomapLocalVisibleCells(map, state, radius = 3) {
       const dy = y - startY;
       const distance = Math.hypot(dx, dy);
       if (distance > safeRadius) continue;
-      if (distance && (dx * facing.dx + dy * facing.dy) / distance < 0.5) continue;
+      if (distance && (dx * facing.dx + dy * facing.dy) / distance < Math.SQRT1_2) continue;
       if (chroniclesAutomapClearSight(map, startX, startY, x, y)) {
         visible.add(chroniclesAutomapCellKey(x, y));
       }
