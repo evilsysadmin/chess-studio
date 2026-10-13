@@ -117,8 +117,8 @@ jobs:
           assert len(organic["new_distinct_bones"])>=3
           assert organic["low_poly_source_preserved"] and organic["no_rifle_claim"]
           named={n["name"] for n in document["nodes"] if "name" in n}
-          assert {"V55_left_earcup","V55_radio_body","V55_kneepad_L",
-                  "V55_kneepad_R","V55_backpack_seam_L"}.issubset(named)
+          assert {"V55_left_earcup","V55_radio_body","V55_sleeve_reinforcement_L",
+                  "V55_sleeve_reinforcement_R","V55_backpack_seam_L"}.issubset(named)
           assert not any("MuzzleSocket" in name for name in named)
           assert not blender["two_hand_rifle_contact_verified"]
           motion=json.loads((folder/"motion-report.json").read_text())
