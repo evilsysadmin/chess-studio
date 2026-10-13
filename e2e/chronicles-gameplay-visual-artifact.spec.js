@@ -857,12 +857,14 @@ for (const capture of CAPTURES) {
         const node = root.querySelector(selector);
         if (!node) return { selector, missing: true };
         const style = getComputedStyle(node);
-        return { selector, color: style.color, fill: style.webkitTextFillColor };
+        return { selector, color: style.color, fill: style.webkitTextFillColor, forced: style.forcedColorAdjust, scheme: style.colorScheme };
       }));
       for (const control of engraved) {
         expect(control.missing, `${capture.label}: ${control.selector} exists`).not.toBe(true);
-        expect(control.color, `${capture.label}: ${control.selector} dark ink`).toBe('rgb(16, 16, 20)');
-        expect(control.fill, `${capture.label}: ${control.selector} WebKit dark ink`).toBe('rgb(16, 16, 20)');
+        expect(control.color, `${capture.label}: ${control.selector} dark ink`).toBe('rgb(8, 8, 10)');
+        expect(control.fill, `${capture.label}: ${control.selector} WebKit dark ink`).toBe('rgb(8, 8, 10)');
+        expect(control.forced, `${capture.label}: ${control.selector} must resist forced colours`).toBe('none');
+        expect(control.scheme, `${capture.label}: ${control.selector} uses the light stone palette`).toBe('light only');
       }
 
       // Every menu action stays on screen, «Salir y guardar» included.
