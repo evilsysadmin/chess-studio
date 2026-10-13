@@ -396,3 +396,15 @@
   .chronicles-save-menu--expedition .chronicles-save-menu__actions button { transition: none; }
   .chronicles-save-menu--expedition .chronicles-save-menu__actions button:not(:disabled):active { transform: none; }
 }
+
+/* Desktop / landscape expedition-study artwork: 1280×720 AVIF, ~17 KiB.
+   Keep the approved portrait mock for narrow touch devices. This only
+   replaces decorative scenery, never the actual book or live save actions. */
+@media (min-width: 760px) and (orientation: landscape) {
+  .chronicles-save-menu--expedition .chronicles-save-menu__sky {
+    background:
+      linear-gradient(90deg, rgba(6, 7, 11, .15), transparent 24%, transparent 76%, rgba(6, 7, 11, .15)),
+      url('../assets/chronicles/expedition-study-desktop-v2.avif') center center / cover no-repeat,
+      linear-gradient(150deg, #3c2415, #0a1730 72%);
+  }
+}

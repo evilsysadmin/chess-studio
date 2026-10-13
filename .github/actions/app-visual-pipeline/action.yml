@@ -116,6 +116,9 @@ runs:
             case "$changed" in
               frontend/src/components/ChroniclesSaveMenu.css|frontend/src/components/ChroniclesSaveMenu.jsx)
                 menu_touched=true ;;
+              frontend/src/assets/chronicles/expedition-study-desktop-v2.avif)
+                # Decorative sibling of the book CSS, no gameplay ownership.
+                : ;;
               scripts/app_visual_capture.sh|.github/actions/app-visual-pipeline/action.yml)
                 : ;;
               *) menu_only=false ;;
