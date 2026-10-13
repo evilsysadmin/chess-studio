@@ -188,7 +188,9 @@ function choosePatrolRouteStep(state, enemy, from) {
 
 function roamingDirectionOffset(state, enemy) {
   const salt = [...String(enemy.id || '')].reduce((total, char) => total + char.charCodeAt(0), 0);
-  return (Math.max(0, Number(state.round || 0)) + salt) % CHRONICLES_DIRECTIONS.length;
+  // Keep one patrol heading for a few rounds rather than selecting a new
+  // direction every single turn (the old zombie-like jitter).
+  return (Math.floor(Math.max(0, Number(state.round || 0)) / 4) + salt) % CHRONICLES_DIRECTIONS.length;
 }
 
 function chooseRoamingCardinalStep(state, enemy, from) {
@@ -196,7 +198,10 @@ function chooseRoamingCardinalStep(state, enemy, from) {
   for (let index = 0; index < CHRONICLES_DIRECTIONS.length; index += 1) {
     const step = CHRONICLES_DIRECTIONS[(offset + index) % CHRONICLES_DIRECTIONS.length];
     const position = { x: from.x + step.dx, y: from.y + step.dy };
-    if (canOccupy(state, enemy, position)) return position;
+    // Unalerted guards patrol their own area, not the entire dungeon.
+    // Engagement still switches to the species' authored pursuit policy.
+    const home = { x: enemy.x, y: enemy.y };
+    if (distance(position, home) <= 3 && canOccupy(state, enemy, position)) return position;
   }
   return null;
 }
