@@ -151,6 +151,20 @@
   text-shadow: none;
 }
 
+/* Browser-verified fix: inline important changed the carved arrows to black.
+   Also address the nested labels (MAPA/MENÚ) rather than relying on inheritance. */
+.chronicles .chronicles-touch button:not(.is-attack):not(.is-magic):not(.is-contextual),
+.chronicles .chronicles-touch button:not(.is-attack):not(.is-magic):not(.is-contextual) :is(b, i, span, small),
+.chronicles .chronicles-statusbar .chronicles-map-trigger,
+.chronicles .chronicles-statusbar .chronicles-map-trigger :is(b, i, span),
+.chronicles .chronicles-game-menu > summary,
+.chronicles .chronicles-game-menu > summary :is(b, i, span) {
+  color: #08080a !important;
+  -webkit-text-fill-color: #08080a !important;
+  -webkit-text-stroke-color: #08080a !important;
+  color-scheme: only light !important;
+}
+
 /* Minimap set in a carved stone bezel. */
 .chronicles .chronicles-minimap {
   border: 3px solid;
