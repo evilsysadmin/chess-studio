@@ -9,6 +9,9 @@ on:
       - scripts/art/chesscom_oss_contact_v52.py
       - scripts/blender/chesscom_oss_turntable_v52.py
       - scripts/blender/chesscom_sven_art_direction_v53.py
+      - scripts/blender/chesscom_sven_motion_review_v54.py
+      - scripts/art/chesscom_sven_motion_contact_v54.py
+      - docs/experiments/chesscom-sven-motion-v54.md
       - docs/experiments/chesscom-oss-character-forge-v52.md
   workflow_dispatch:
 
@@ -62,6 +65,16 @@ jobs:
             --output-dir .artifacts/chesscom-oss-v52/review
           python3 scripts/art/chesscom_oss_contact_v52.py \
             --output-dir .artifacts/chesscom-oss-v52/review
+      - name: Render original rig animation poses (anti-floating rifle check)
+        shell: bash
+        run: |
+          set -euo pipefail
+          blender --background --threads 2 --python-exit-code 19 \
+            --python scripts/blender/chesscom_sven_motion_review_v54.py -- \
+            --source-glb .artifacts/chesscom-oss-v52/source/swat.glb \
+            --output-dir .artifacts/chesscom-oss-v52/review
+          python3 scripts/art/chesscom_sven_motion_contact_v54.py \
+            --output-dir .artifacts/chesscom-oss-v52/review
       - name: Assert candidate remains review-only
         shell: bash
         run: |
@@ -96,6 +109,13 @@ jobs:
           assert details["pieces"]>=30 and len(details["distinct_bones"])>=4
           assert any("nvg_tube" in n["name"] for n in v53)
           assert any("backpack_main" in n["name"] for n in v53)
+          motion=json.loads((folder/"motion-report.json").read_text())
+          assert motion["review_only"] and not motion["promotable"]
+          assert motion["animations_are_authentic"]
+          assert not motion["two_hand_rifle_contact_verified"] and not motion["gun_muzzle_verified"]
+          assert set(motion["poses"])=={"Idle_Gun","Gun_Shoot","Run_Shoot","Walk","Death"}
+          assert all(len(p["samples"])==2 for p in motion["poses"].values())
+          assert (folder/"animation-contact.png").stat().st_size>1024
           assert len(blender["views"])==8
           assert (folder/"eight-view-contact.png").stat().st_size>1024
           assert (folder/"tactical-72px-contact.png").stat().st_size>1024
