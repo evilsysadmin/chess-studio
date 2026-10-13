@@ -1069,10 +1069,13 @@
   margin: 0;
   min-width: 0;
 }
-@media (max-width: 1024px) {
+/* The mobile viewport owns a TOP-right menu trigger. Its tablet must open
+   downwards, unlike the bottom-right control panel on wide desktop. */
+@media (max-width: 800px), (max-width: 1024px) and (max-height: 600px) {
   .chronicles .chronicles-game-menu__panel {
-    top: auto;
-    bottom: calc(100% + 6px);
+    top: calc(100% + 6px);
+    bottom: auto;
+    right: 0;
   }
 }
 @media (orientation: landscape) and (max-width: 1024px) and (max-height: 480px) {
