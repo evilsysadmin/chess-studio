@@ -966,6 +966,18 @@ for (const capture of CAPTURES) {
       await expect(exitAction).toBeHidden();
       await expect(menuDetails, `${capture.label}: menu is truly closed before opening map`).not.toHaveAttribute('open');
 
+      // The menu's «Crónica · J» must open the actual mobile reader, not the
+      // desktop sidebar (which is hidden by the mobile MM3 layout).
+      if (capture.hasTouch) {
+        await menuSummary.evaluate((summary) => summary.click());
+        await menuDetails.getByRole('button', { name: 'Crónica · J', exact: true }).evaluate((button) => button.click());
+        const chronicle = page.getByRole('dialog', { name: 'Crónica', exact: true });
+        await expect(chronicle).toBeVisible();
+        await expect(menuDetails).not.toHaveAttribute('open');
+        await chronicle.getByRole('button', { name: 'Cerrar crónica', exact: true }).evaluate((button) => button.click());
+        await expect(chronicle).toHaveCount(0);
+      }
+
       await page.getByRole('button', { name: 'Minimapa local. Abrir automapa completo', exact: true }).click();
       await expect(menuDetails, `${capture.label}: opening minimap must not reopen menu`).not.toHaveAttribute('open');
       const automap = page.getByRole('dialog', { name: 'Automapa de Chronicles', exact: true });
