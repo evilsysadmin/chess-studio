@@ -1,6 +1,7 @@
 import { chroniclesActiveEnemies } from '../chroniclesOfMatthias.js';
 import {
   chroniclesChooseEnemyStep,
+  chroniclesRememberEnemySight,
   chroniclesRuntimeEnemyPosition,
 } from '../chroniclesOfMatthiasTurns.js';
 
@@ -38,7 +39,8 @@ export function chroniclesAdvanceExplorationEnemies(previous, next) {
   );
 
   enemies.forEach((enemy) => {
-    const decisionState = { ...working, round: explorationRound };
+    const decisionState = chroniclesRememberEnemySight({ ...working, round: explorationRound }, enemy);
+    working = { ...working, enemyAwareness: decisionState.enemyAwareness };
     const step = chroniclesChooseEnemyStep(decisionState, enemy);
     if (!step) return;
 
