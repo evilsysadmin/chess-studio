@@ -359,7 +359,11 @@ export function buildChroniclesCampaignExterior(scene, { scenePlan = {}, coarseP
         banner.position.set(side * 1.25 + 0.34 * side, 3.18, 0);
         root.add(banner);
       }
-    } else {
+    } else if (!village || !String(entry.visualType || '').startsWith('building-')) {
+      // Town services already have authored shopfronts, doorways and emblems
+      // on their buildings. Do not plant the generic stone debug-like marker
+      // directly in front of an otherwise recognizable establishment.
+      // Keep the content root and ID registered for interaction by cell.
       const marker = new THREE.Mesh(new THREE.CylinderGeometry(0.48, 0.64, 1.05, 8), stone);
       marker.position.y = 0.53;
       const emblem = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.45, 0.12), plaque);
