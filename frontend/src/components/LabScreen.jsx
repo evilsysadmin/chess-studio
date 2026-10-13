@@ -298,7 +298,7 @@ export default function LabScreen({ onExit, onStart }){
               </div>
               {error&&<p className="error-text" role="alert">{error}</p>}
               <button type="button" className="primary-btn friendly-main-cta lab-position-launch" onClick={launch}>
-                Jugar esta posición →
+                Jugar esta posición
               </button>
               <small className="lab-position-rating-note">Partida libre · no afecta a tu rating competitivo.</small>
             </div>
