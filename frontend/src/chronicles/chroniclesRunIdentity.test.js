@@ -10,6 +10,7 @@ import {
   finishChroniclesRun,
   renewChroniclesRun,
   chroniclesRunEntryMapId,
+  chroniclesActiveRunId,
   CHRONICLES_SAVE_CATALOG_KEY,
   chroniclesListSavedRuns,
   chroniclesMergeRemoteSavedRuns,
@@ -124,6 +125,22 @@ describe('Chronicles shared run identity', () => {
     const first = beginChroniclesRun('first-person');
     expect(ensureChroniclesRun('first-person')).toBe(first);
     expect(ensureChroniclesRun('tactics')).toBe(first);
+  });
+
+  it('reads the active expedition for F5 restore without minting a replacement', () => {
+    expect(chroniclesActiveRunId('first-person')).toBeNull();
+    expect(localStorage.getItem(CHRONICLES_RUN_STORAGE_KEY)).toBeNull();
+
+    const first = beginChroniclesRun('first-person');
+    expect(chroniclesActiveRunId('first-person')).toBe(first);
+    expect(chroniclesActiveRunId('tactics')).toBe(first);
+
+    expect(finishChroniclesRun('first-person', first)).toBe(true);
+    expect(chroniclesActiveRunId('first-person')).toBeNull();
+    expect(JSON.parse(localStorage.getItem(CHRONICLES_RUN_STORAGE_KEY))).toMatchObject({
+      id: first,
+      ended: true,
+    });
   });
 
   it('finishes an expedition so the next entry gets a fresh shared identity', () => {
