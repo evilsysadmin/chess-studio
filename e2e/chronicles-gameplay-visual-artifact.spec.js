@@ -956,8 +956,11 @@ for (const capture of CAPTURES) {
         color: getComputedStyle(button).color,
         fill: getComputedStyle(button).webkitTextFillColor,
       }));
-      expect(inks.color, `${capture.label}: menu ink must be dark`).toBe('rgb(17, 16, 21)');
-      expect(inks.fill, `${capture.label}: WebKit must keep dark ink`).toBe('rgb(17, 16, 21)');
+      // The runtime enforces #08080a important for Brave/Chrome auto-dark;
+      // CSS still provides #111015 as the light-stone fallback.
+      for (const [kind, value] of Object.entries(inks)) {
+        expect(['rgb(8, 8, 10)', 'rgb(17, 16, 21)'], `${capture.label}: ${kind} keeps dark engraved ink`).toContain(value);
+      }
       await menuSummary.evaluate((summary) => summary.click());
       await expect(exitAction).toBeHidden();
 
