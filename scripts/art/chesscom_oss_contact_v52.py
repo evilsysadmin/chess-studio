@@ -37,9 +37,14 @@ def create_contact(output_dir: Path):
         draw.text((x + 105, y + 405), label, fill="#e4c89c")
         tx, ty = 16 + 220 * col, 52 + 214 * row
         td.rectangle((tx, ty, tx + 205, ty + 183), fill=(24, 35, 43))
-        # At actual tactical size, the character is 72 pixels tall.
-        small = source.resize((48, 72), Image.Resampling.LANCZOS)
-        tactical.paste(small, (tx + 77, ty + 45), small)
+        # Scale the visible alpha silhouette, not the empty 256x384 canvas, to 72px.
+        alpha_bounds = source.getchannel('A').getbbox()
+        if not alpha_bounds:
+            raise ValueError('empty-character-alpha:' + label)
+        cropped = source.crop(alpha_bounds)
+        small_width = max(1, round(72 * cropped.width / cropped.height))
+        small = cropped.resize((small_width, 72), Image.Resampling.LANCZOS)
+        tactical.paste(small, (tx + (205 - small_width) // 2, ty + 45), small)
         td.text((tx + 96, ty + 165), label, fill="#c1d7df")
     sheet.convert("RGB").save(output_dir / "eight-view-contact.png", optimize=True)
     tactical.save(output_dir / "tactical-72px-contact.png", optimize=True)
