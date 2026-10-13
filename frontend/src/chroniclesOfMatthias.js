@@ -19,7 +19,7 @@ import {
   chroniclesRequirementsMet,
 } from './chronicles/chroniclesContentRuntime.js';
 import { resolveChroniclesCharacterParty } from './chronicles/chroniclesCharacterBuilds.js';
-import { chroniclesEquipItem, chroniclesUnequipItem, chroniclesEquipmentBonuses } from './chronicles/chroniclesEquipment.js';
+import { chroniclesEquipItem, chroniclesUnequipItem, chroniclesEquipmentBonuses, chroniclesEquippedItem } from './chronicles/chroniclesEquipment.js';
 import {
   chroniclesCloseShop, chroniclesOpenShop, chroniclesShopBuy, chroniclesShopSell,
 } from './chronicles/chroniclesShops.js';
@@ -327,9 +327,12 @@ export function chroniclesPartyAttackStats(state, memberId) {
     Number(modifiers.reachBonus || 0) - Number(creator.reachBonus || 0),
   );
   const equipment = chroniclesEquipmentBonuses(state, memberId);
+  const weapon = chroniclesEquippedItem(state, memberId, 'weapon');
   return {
     damage: Math.max(0, Number(member.damage || 0) + persistentDamageBonus + equipment.attackDamageBonus),
-    reach: Math.max(1, Number(member.reach || 1) + persistentReachBonus),
+    reach: Math.max(1, Number(weapon?.attackReach ?? member.reach ?? 1) + persistentReachBonus),
+    attackLabel: weapon?.projectile ? weapon.name : member.attackName,
+    projectile: weapon?.projectile || null,
     // MM to-hit: level + Accuracy bonus + weapon (material) to-hit.
     toHit: Math.max(1, Number(modifiers.level || 1))
       + Number(member.mm3?.bonuses?.accuracy || 0)
@@ -440,7 +443,9 @@ function resolveAttack(state, memberId, spell = null) {
   const member = partyMember(state, memberId);
   if (!member) return state;
   if (member.hp <= 0) return withMessage(state, `${member.name} está fuera de combate. Incluso la épica tiene límites médicos.`);
-  const attacker = spell ? { ...member, attackName: spell.name } : member;
+  const equippedWeapon = spell ? null : chroniclesEquippedItem(state, memberId, 'weapon');
+  const attacker = spell ? { ...member, attackName: spell.name }
+    : equippedWeapon?.projectile ? { ...member, attackName: equippedWeapon.name } : member;
 
   const weaponStats = chroniclesPartyAttackStats(state, attacker.id);
   const attackStats = spell ? { ...weaponStats, reach: spell.reach } : weaponStats;
@@ -457,7 +462,7 @@ function resolveAttack(state, memberId, spell = null) {
       return {
         ...state,
         turns: state.turns + 1,
-        message: `${attacker.name} lanza ${attacker.attackName.toLowerCase()} y falla. ${enemy.name[0].toUpperCase()}${enemy.name.slice(1)} esquiva (d20: ${roll}).`,
+        message: `${attacker.name} ${equippedWeapon?.projectile ? 'dispara con' : 'lanza'} ${attacker.attackName.toLowerCase()} y falla. ${enemy.name[0].toUpperCase()}${enemy.name.slice(1)} esquiva (d20: ${roll}).`,
       };
     }
   }
