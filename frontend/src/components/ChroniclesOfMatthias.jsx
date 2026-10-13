@@ -208,6 +208,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
   const authoritativeRunRef = useRef(null);
   const checkpointFingerprintRef = useRef('');
   const checkpointQueueRef = useRef(Promise.resolve());
+  const switchingRunRef = useRef(false);
   const checkpointPendingRef = useRef(0);
   const pausedGameInputRef = useRef(false);
   const checkpointMapRef = useRef(null);
@@ -404,6 +405,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
   }, [menuOpen]);
 
   const dispatch = useCallback((action) => {
+    if (switchingRunRef.current) return stateRef.current;
     const current = stateRef.current;
     if (!current) return;
 
@@ -632,6 +634,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
   }, [dispatch]);
 
   const applyLiveProgression = useCallback((nextProgression) => {
+    if (switchingRunRef.current) return;
     // Character-sheet spending is also part of the player's next saved game.
     progressionRef.current = nextProgression;
     setProgression(nextProgression);
@@ -916,11 +919,18 @@ export default function ChroniclesOfMatthias({ onExit }) {
   // Explicit navigation is never allowed to abandon a newer, unsaved world.
   // The server's checkpoint response, not the local optimistic state, gates it.
   const saveBeforeSwitch = useCallback(async (navigate) => {
-    if (saveBusy || checkpointPendingRef.current > 0) return false;
-    const snapshot = stateRef.current;
-    if (!snapshot || !(await persistCheckpoint(snapshot, 'manual'))) return false;
-    navigate();
-    return true;
+    // A double click must not queue two saves or mint two expeditions while
+    // the first authoritative checkpoint is still in flight.
+    if (switchingRunRef.current || saveBusy || checkpointPendingRef.current > 0) return false;
+    switchingRunRef.current = true;
+    try {
+      const snapshot = stateRef.current;
+      if (!snapshot || !(await persistCheckpoint(snapshot, 'manual'))) return false;
+      navigate();
+      return true;
+    } finally {
+      switchingRunRef.current = false;
+    }
   }, [persistCheckpoint, saveBusy]);
 
   const saveAndExit = useCallback(() => saveBeforeSwitch(exitChronicles), [saveBeforeSwitch, exitChronicles]);
