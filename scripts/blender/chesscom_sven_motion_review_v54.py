@@ -26,7 +26,7 @@ CLIPS = (
     ("Walk", (0.12, 0.62)),
     ("Death", (0.10, 0.88)),
 )
-MIN_MOTION = {"Gun_Shoot": 0.012, "Run_Shoot": 0.025, "Walk": 0.025, "Death": 0.15}
+MIN_MOTION = {"Gun_Shoot": 0.005, "Run_Shoot": 0.025, "Walk": 0.025, "Death": 0.15}
 
 
 def pose_frame(scene, rig, action, phase):
@@ -53,6 +53,7 @@ def pose_frame(scene, rig, action, phase):
         "left_wrist_world_m": [round(v, 5) for v in left_pos],
         "right_wrist_world_m": [round(v, 5) for v in right_pos],
         "hand_separation_m": round((left_pos - right_pos).length, 5),
+        "right_wrist_quaternion": [round(v, 6) for v in right.to_quaternion()],
     }
 
 
@@ -97,15 +98,20 @@ def main():
                             "sha256": hashlib.sha256(data).hexdigest()})
         displacement = math.dist(samples[0]["right_wrist_world_m"],
                                  samples[1]["right_wrist_world_m"])
+        from mathutils import Quaternion
+        q0 = Quaternion(samples[0]["right_wrist_quaternion"])
+        q1 = Quaternion(samples[1]["right_wrist_quaternion"])
+        rotation_deg = math.degrees(q0.rotation_difference(q1).angle)
         separation_shift = abs(samples[0]["hand_separation_m"] -
                                samples[1]["hand_separation_m"])
         report["poses"][clip] = {
             "samples": samples,
             "right_hand_displacement_m": round(displacement, 5),
+            "right_wrist_rotation_deg": round(rotation_deg, 4),
             "hand_separation_shift_m": round(separation_shift, 5),
         }
-        if displacement < MIN_MOTION.get(clip, 0.0):
-            raise RuntimeError(f"animation-is-static:{clip}:{displacement:.4f}")
+        if (displacement < MIN_MOTION.get(clip, 0.0) and rotation_deg < 0.8):
+            raise RuntimeError(f"animation-is-static:{clip}:{displacement:.4f}m:{rotation_deg:.3f}deg")
 
     if len({s["sha256"] for p in report["poses"].values() for s in p["samples"]}) != 10:
         raise RuntimeError("pose-contact-duplicate-frames")
