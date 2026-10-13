@@ -135,6 +135,13 @@ function loadChroniclesFirstPersonRenderer() {
   return import('../chroniclesOfMatthiasThree.js');
 }
 
+function initialChroniclesEntryView() {
+  if (loadChroniclesCharacterDraft(CHRONICLES_PARTY)) return 'setup';
+  return chroniclesListSavedRuns(FIRST_PERSON_RUN_SCOPE).some((run) => run.active)
+    ? 'playing'
+    : 'menu';
+}
+
 function BootstrapStatus() {
   return (
     <div className="menu chronicles-bootstrap" role="status" aria-live="polite">
@@ -175,10 +182,10 @@ export default function ChroniclesOfMatthias({ onExit }) {
   const partyBarkSequenceRef = useRef(0);
   const [progression, setProgression] = useState(() => loadChroniclesProgression());
   const progressionRef = useRef(progression);
-  const [characterSetupDone, setCharacterSetupDone] = useState(false);
-  // Restore an unfinished character editor draft; otherwise display the
-  // expedition book before allocating or loading any server run.
-  const [entryView, setEntryView] = useState(() => loadChroniclesCharacterDraft(CHRONICLES_PARTY) ? 'setup' : 'menu');
+  // Drafts resume in the creator; an owned active run resumes directly into
+  // gameplay. Only users without either state land in the expedition book.
+  const [entryView, setEntryView] = useState(initialChroniclesEntryView);
+  const [characterSetupDone, setCharacterSetupDone] = useState(() => entryView === 'playing');
   const [savesRefreshKey, refreshSaves] = useState(0);
   const [saveInventory, setSaveInventory] = useState(null);
   const [saveMenuLoading, setSaveMenuLoading] = useState(false);
