@@ -26,7 +26,7 @@ CLIPS = (
     ("Walk", (0.12, 0.62)),
     ("Death", (0.10, 0.88)),
 )
-MIN_MOTION = {"Gun_Shoot": 0.025, "Run_Shoot": 0.025, "Walk": 0.025, "Death": 0.15}
+MIN_MOTION = {"Gun_Shoot": 0.012, "Run_Shoot": 0.025, "Walk": 0.025, "Death": 0.15}
 
 
 def pose_frame(scene, rig, action, phase):
