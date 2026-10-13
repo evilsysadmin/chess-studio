@@ -47,7 +47,7 @@ jobs:
           set -euo pipefail
           sudo apt-get update -qq
           # Ubuntu Blender 4.0 apt does not declare the glTF add-on numpy runtime dep.
-          sudo apt-get install -y -qq blender python3-numpy python3-pil
+          sudo apt-get install -y -qq blender python3-numpy python3-pil libegl1 libgl1-mesa-dri
           blender --background --python-exit-code 19 --python-expr "import numpy; from PIL import Image; print('Blender glTF dependencies OK')"
           python3 -m pip install 'Pillow==12.3.0'
           blender --version | head -n 2
