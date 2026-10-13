@@ -949,7 +949,12 @@ export default function ChroniclesOfMatthias({ onExit }) {
         clearTouchHold();
         setAutomapOpen(false);
         setMenuOpen(false);
-        setJournalOpen((open) => !open);
+        if (window.matchMedia('(max-width: 800px), (max-width: 1024px) and (max-height: 600px)').matches) {
+          setJournalOpen(false);
+          setChronicleModalOpen((open) => !open);
+        } else {
+          setJournalOpen((open) => !open);
+        }
         return;
       }
       if (event.key === 'm' || event.key === 'M') {
@@ -1303,7 +1308,17 @@ export default function ChroniclesOfMatthias({ onExit }) {
                 </fieldset>
                 {saveNotice && <small role="status">{saveNotice}</small>}
                 <button type="button" onClick={() => { setMenuOpen(false); setConfirmExitWithoutSaving(false); }}>Continuar</button>
-                <button type="button" onClick={() => { setMenuOpen(false); setAutomapOpen(false); setJournalOpen(true); }}>Crónica · J</button>
+                <button type="button" onClick={() => {
+                  clearTouchHold();
+                  setMenuOpen(false);
+                  setAutomapOpen(false);
+                  if (window.matchMedia('(max-width: 800px), (max-width: 1024px) and (max-height: 600px)').matches) {
+                    setJournalOpen(false);
+                    setChronicleModalOpen(true);
+                  } else {
+                    setJournalOpen(true);
+                  }
+                }}>Crónica · J</button>
                 <button type="button" onClick={() => void persistCheckpoint(stateRef.current, 'manual')} disabled={saveBusy}>
                   {saveBusy ? 'Guardando…' : 'Guardar partida'}
                 </button>
