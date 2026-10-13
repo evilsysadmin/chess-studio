@@ -311,7 +311,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
   useEffect(() => {
     if (!state?.mapId) return;
     setAutomapVisitedByMap((visited) => chroniclesAutomapMarkSeen(visited, chroniclesMapForState(state), state));
-  }, [state?.mapId, state?.x, state?.y]);
+  }, [state?.mapId, state?.x, state?.y, state?.direction]);
 
   // Map reveal is session-only until an explicit save or area transition.
   useEffect(() => {
