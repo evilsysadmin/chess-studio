@@ -54,3 +54,68 @@ Cualquier candidato deberá superar auditoría GLB V40 y ocho vistas Blender
 **visualmente comparadas** con V41, luego pruebas reales Babylon de
 manos/fusil, cobertura, móvil y FPS. El runtime 3D y fallback actuales
 permanecen intocados hasta una aceptación visual explícita.
+
+## V47 — decisión de pipeline para personajes y enemigos
+
+**Diagnóstico:** Dust Veil ya tiene un entorno convincente, pero los actores
+V4 siguen siendo mallas humanas construidas en Babylon con geometría y
+materiales procedurales. Los sucesivos parches de proporciones y accesorios
+no sustituyen modelado, skinning y animaciones authored. V42/V43 ya fallaron
+en comparación visual. El prototipo 2.5D V33/V45 es un recorte frontal
+estático; aún no soporta movimiento, ocho direcciones ni iluminación 3D.
+
+### Decisión
+
+Conservar Babylon.js, la escena, posiciones de unidades, IA, balística,
+cover, picking y gameplay. Cambiar la **fuente visual** de los actores a
+modelos 3D originales con skeleton/skin, clips y sockets exportados a GLB
+desde Blender u otra herramienta de authoring. Dejar V4 de fallback y
+conservar 2.5D como experimento aislado, no como nueva pipeline principal.
+No sustituir el canon propio con un soldado SWAT genérico ni dar por buena
+una reconstrucción de cuerpo entero a partir de un recorte.
+
+Priorizar **Sven como vertical slice**: primero referencia original aprobada
+de cuerpo entero y vistas suficientes (la V41 solo enseña una figura parcial);
+después master editable, rig con controles de manos y pies, arma parentada,
+socket de salida del arma y animaciones reales (idle, walk, aim, fire,
+damage, death, opcional reload). Producir turntable de ocho vistas y captura
+de movimiento antes de escribir código de integración. El auditor V40 solo
+valida estructura mínima, no acredita calidad artística o animación.
+
+El importador Babylon debe conservar el mismo transform de unidad y la
+autoridad del estado táctico. Los sockets authored, no offsets mágicos de
+fusil, deberán gobernar manos, arma y efectos. La importación será A/B
+opt-in, con retorno a V4 si falla GLB, hash, rig o animación; ningún modelo
+nuevo sustituirá a todos los actores por defecto.
+
+### Extensión al escuadrón y los enemigos
+
+- **Sven:** explorador de silueta ágil, protección azul-negra y arma compacta
+  según V41.
+- **Dieter:** fusilero de equipamiento oliva, más pesado y con perfil
+  inequívocamente distinto; usar el mismo rig base sólo si no borra identidad.
+- **Matthias:** cabeza de peón marfil, gorra y uniforme oficiales propios.
+  Nunca convertirlo en un humano genérico con otros colores.
+- **Hostiles:** dos o tres arquetipos authored y variantes creíbles de
+  equipamiento/rostro. No duplicar la geometría de Dieter y teñirla de gris.
+
+### Condiciones para promocionar un solo personaje
+
+1. Modelo propio con procedencia/permiso verificables y SHA de fuente.
+2. Rig y clips exportados, pies apoyados, agarre convincente y arma alineada
+   en todas las acciones; revisión del GLB real, no solo de sus nodos.
+3. Evidencia authored (ocho vistas/animación) y runtime Babylon del **mismo
+   asset y revisión** en 1600×900 y 390×844, incluyendo movimiento, giro,
+   tiro, daño, muerte y oclusión tras cobertura.
+4. Comparativa contra golden V41 a zoom táctico: siluetas, materiales,
+   sombras, tamaño relativo y contraste. Revisar una secuencia temporal,
+   no solo un fotograma.
+5. Coste GPU medido en escritorio y móvil: batches/materiales compartidos,
+   mallas/texturas razonables, precarga no bloqueante y fallback.
+6. Sólo tras aceptación visual, promocionar por actor con asset versionado
+   en R2 y mantener rollback reversible.
+
+**Primer siguiente paso real:** obtener/aprobar la fuente completa de Sven
+o crearla de forma controlada. Hasta entonces, más cilindros PBR o un
+"GLB" improvisado no resuelven el defecto visible de la captura. Esta
+decisión no cambia el runtime por sí sola.
