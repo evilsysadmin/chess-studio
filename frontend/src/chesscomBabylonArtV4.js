@@ -16,6 +16,7 @@ import { CHESSCOM_CAMERA_V25, installChesscomCameraV25 } from './chesscomCameraV
 import { CHESSCOM_OPERATOR_MOMENTS_V26, installChesscomOperatorMomentsV26 } from './chesscomOperatorMomentsV26.js';
 import { installChesscomSvenSpritePocV33 } from './chesscomSvenSpritePocV33.js';
 import { installChesscomSvenAtlasV35 } from './chesscomSvenAtlasV35.js';
+import { installChesscomSvenAuthoredV49 } from './chesscomSvenAuthoredV49.js';
 
 function sceneFromBabylon(B) {
   return B.EngineStore?.LastCreatedScene
@@ -47,6 +48,7 @@ export async function createChesscomBabylon(host, options = {}) {
   const artV4 = installChesscomCharacterArtV4(B,scene);
   const svenPoc=installChesscomSvenSpritePocV33(B,scene,{host,search:window.location.search});
   const svenAtlas=installChesscomSvenAtlasV35(B,scene,{host,search:window.location.search});
+  const svenAuthored=installChesscomSvenAuthoredV49(B,scene,{host,search:window.location.search});
   const environmentV4 = installChesscomEnvironmentArtV4(B,scene,{ tier });
   const architectureV19 = installChesscomIndustrialArchitectureV19(B,scene,{ tier,host });
   const loadingV27 = installChesscomKharifLoadingBaysV27(B,scene,{ tier,host });
@@ -79,6 +81,7 @@ export async function createChesscomBabylon(host, options = {}) {
       artV4.update(state);
       svenPoc.update(state);
       svenAtlas.update(state);
+      svenAuthored.update(state);
       momentsV26.update(state,ui);
     },
     destroy() {
@@ -88,6 +91,7 @@ export async function createChesscomBabylon(host, options = {}) {
       depthToneV10.destroy();
       materialV7.destroy();
       overlayV6.destroy();
+      svenAuthored.destroy();
       svenAtlas.destroy();
       svenPoc.destroy();
       artV4.destroy();
