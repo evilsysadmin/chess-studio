@@ -20,6 +20,10 @@ import {
 } from '../chronicles/chroniclesInitiative.js';
 import { chroniclesDeployedPartyLevel } from '../chronicles/chroniclesDifficultyPolicy.js';
 import { playChroniclesActionSound } from '../chronicles/chroniclesActionAudio.js';
+import {
+  getChroniclesFxVolume,
+  setChroniclesFxVolume,
+} from '../chronicles/chroniclesAudioSettings.js';
 import { chroniclesPartyPortraitUrl } from '../chronicles/chroniclesPartyPortraitAssets.js';
 import { chroniclesClearRuntimeMapDefinitions, chroniclesMapForState } from '../chronicles/chroniclesMapCatalog.js';
 import { chroniclesRegionHudLocation } from '../chronicles/chroniclesRegionHud.js';
@@ -207,6 +211,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
   const [retaliationCue, setRetaliationCue] = useState(null);
   const [partyBark, setPartyBark] = useState(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [fxVolume, setFxVolume] = useState(() => getChroniclesFxVolume());
   const menuSummaryRef = useRef(null);
   const [journalOpen, setJournalOpen] = useState(false);
   const [chronicleModalOpen, setChronicleModalOpen] = useState(false);
@@ -1234,6 +1239,22 @@ export default function ChroniclesOfMatthias({ onExit }) {
               <div className="chronicles-game-menu__panel">
                 <strong>Chronicles of Matthias</strong>
                 <small>Guardado manual · checkpoint automático al cambiar de área.</small>
+                <fieldset className="chronicles-audio-controls" style={{ border: '1px solid #806d51', padding: '8px', display: 'grid', gap: '6px', minWidth: 0 }}>
+                  <legend>Audio</legend>
+                  <label htmlFor="chronicles-sfx-volume">Efectos (SFX) · {Math.round(fxVolume * 100)} %</label>
+                  <input
+                    id="chronicles-sfx-volume"
+                    aria-label="Volumen de efectos de Chronicles"
+                    type="range"
+                    min="0"
+                    max="100"
+                    step="5"
+                    value={Math.round(fxVolume * 100)}
+                    style={{ width: '100%', accentColor: '#88632d' }}
+                    onChange={(event) => setFxVolume(setChroniclesFxVolume(Number(event.target.value) / 100))}
+                  />
+                  <small>Música: Chronicles todavía no tiene una pista propia conectada.</small>
+                </fieldset>
                 {saveNotice && <small role="status">{saveNotice}</small>}
                 <button type="button" onClick={() => { setMenuOpen(false); setConfirmExitWithoutSaving(false); }}>Continuar</button>
                 <button type="button" onClick={() => { setMenuOpen(false); setAutomapOpen(false); setJournalOpen(true); }}>Crónica · J</button>
