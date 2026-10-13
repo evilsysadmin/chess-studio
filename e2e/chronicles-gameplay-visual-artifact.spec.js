@@ -457,9 +457,49 @@ test('Chronicles · First Book equipment sheet · actual Android 390px', async (
       path: `${ARTIFACT_DIR}/chronicles-mm3-character-folio-android-390x844.png`,
       animations: 'disabled', timeout: 60_000,
     });
+    await sheet.getByRole('navigation', { name: 'Apartados de la ficha' })
+      .getByRole('button', { name: /Equipo/ }).click();
+    await expect(gear).toBeVisible();
+    await expect(gear).toContainText('Armas y armaduras equipadas');
+    // Weapon, armour and shield.
+    await expect(gear.locator('.chronicles-character-sheet__gear-slot')).toHaveCount(3);
+    await gear.evaluate((node) => node.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'instant' }));
+    const bounds = await sheet.evaluate((node) => ({
+      width: node.getBoundingClientRect().width,
+      horizontalOverflow: node.scrollWidth > node.clientWidth + 1,
+    }));
+    expect(bounds.width).toBeLessThanOrEqual(390);
+    expect(bounds.horizontalOverflow, 'equipment sheet must fit a 390px Android viewport').toBe(false);
+    await page.screenshot({
+      path: `${ARTIFACT_DIR}/chronicles-first-book-equipment-sheet-android-390x844.png`,
+      animations: 'disabled', timeout: 60_000,
+    });
+  } finally {
+    await context.close();
+  }
+});
+
+
+test('Chronicles · First Book MM3 folio · real landscape Android 844x390', async ({ browser }) => {
+  test.setTimeout(180_000);
+  await mkdir(ARTIFACT_DIR, { recursive: true });
+  // Open a fresh landscape-sized mobile context. Android's fullscreen API
+  // prevents resizing an already-fullscreen portrait Chromium window.
+  const context = await browser.newContext({
+    viewport: { width: 844, height: 390 }, hasTouch: true, isMobile: true,
+  });
+  const page = await context.newPage();
+  try {
+    await openChronicles(page, 'first-book-folio-landscape-mobile', {
+      newTown: true, newCampaign: true, chroniclesCurrentMapId: 'swordhaven-first-book',
+    });
+    const game = page.locator('[data-chronicles="true"]');
+    await game.getByRole('button', { name: 'Seleccionar Matthias', exact: true })
+      .evaluate((button) => button.click());
+    const sheet = page.getByRole('dialog', { name: 'Matthias', exact: true });
+    await expect(sheet).toBeVisible();
     // Real landscape phone evidence: the four hero selectors must remain
     // actionable and the header/XP must not consume the entire short viewport.
-    await page.setViewportSize({ width: 844, height: 390 });
     await expect(sheet).toBeVisible();
     const landscapeGeometry = await sheet.evaluate((node) => {
       const measure = (selector) => node.querySelector(selector)?.getBoundingClientRect();
@@ -489,24 +529,6 @@ test('Chronicles · First Book equipment sheet · actual Android 390px', async (
     }
     await page.screenshot({
       path: `${ARTIFACT_DIR}/chronicles-mm3-character-folio-android-landscape-844x390.png`,
-      animations: 'disabled', timeout: 60_000,
-    });
-    await page.setViewportSize({ width: 390, height: 844 });
-    await sheet.getByRole('navigation', { name: 'Apartados de la ficha' })
-      .getByRole('button', { name: /Equipo/ }).click();
-    await expect(gear).toBeVisible();
-    await expect(gear).toContainText('Armas y armaduras equipadas');
-    // Weapon, armour and shield.
-    await expect(gear.locator('.chronicles-character-sheet__gear-slot')).toHaveCount(3);
-    await gear.evaluate((node) => node.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'instant' }));
-    const bounds = await sheet.evaluate((node) => ({
-      width: node.getBoundingClientRect().width,
-      horizontalOverflow: node.scrollWidth > node.clientWidth + 1,
-    }));
-    expect(bounds.width).toBeLessThanOrEqual(390);
-    expect(bounds.horizontalOverflow, 'equipment sheet must fit a 390px Android viewport').toBe(false);
-    await page.screenshot({
-      path: `${ARTIFACT_DIR}/chronicles-first-book-equipment-sheet-android-390x844.png`,
       animations: 'disabled', timeout: 60_000,
     });
   } finally {
