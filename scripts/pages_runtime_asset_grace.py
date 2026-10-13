@@ -14,6 +14,7 @@ import json
 import pathlib
 import re
 import tempfile
+import time
 import urllib.error
 import urllib.request
 from typing import Callable
@@ -88,7 +89,7 @@ def validate_manifest(payload: object) -> list[dict]:
     return result
 
 
-def fetch_from_origin(origin: str, path: str, limit: int, *, optional: bool = False) -> bytes | None:
+def fetch_from_origin(origin: str, path: str, limit: int, *, optional: bool = False, opener=None, sleep=time.sleep) -> bytes | None:
     if not re.fullmatch(r"https://[A-Za-z0-9.-]+", origin):
         raise ValueError("asset grace origin must be an HTTPS hostname")
     url = origin + "/" + path
@@ -99,16 +100,29 @@ def fetch_from_origin(origin: str, path: str, limit: int, *, optional: bool = Fa
         "Cache-Control": "no-cache, no-store",
         "Accept": "application/json" if path.startswith(("release.json", MANIFEST)) else "*/*",
     })
-    try:
-        with urllib.request.urlopen(request, timeout=15) as response:
-            if response.status != 200:
-                raise ValueError(f"unexpected HTTP status for {path}: {response.status}")
-            data = response.read(limit + 1)
-            mime = response.headers.get("Content-Type", "").split(";", 1)[0].lower()
-    except urllib.error.HTTPError as error:
-        if error.code == 404 and optional:
-            return None
-        raise
+    # Historical immutable chunks are mandatory. Retry only a temporary
+    # network timeout or a transient origin response; never turn a missing,
+    # forbidden, malformed or mismatched chunk into a successful deploy.
+    for attempt in range(3):
+        try:
+            with (opener or urllib.request.urlopen)(request, timeout=15) as response:
+                if response.status != 200:
+                    raise ValueError(f"unexpected HTTP status for {path}: {response.status}")
+                data = response.read(limit + 1)
+                mime = response.headers.get("Content-Type", "").split(";", 1)[0].lower()
+            break
+        except urllib.error.HTTPError as error:
+            if error.code == 404 and optional:
+                return None
+            if error.code not in {429, 500, 502, 503, 504} or attempt == 2:
+                raise
+        except (TimeoutError, urllib.error.URLError) as error:
+            if isinstance(error, urllib.error.URLError) and not isinstance(error.reason, TimeoutError):
+                raise
+            if attempt == 2:
+                raise
+        print(f"::notice title=Pages asset grace retry::{path} · temporary origin failure · attempt {attempt + 2}/3")
+        sleep(attempt + 1)
     if len(data) > limit:
         raise ValueError(f"oversized remote response for {path}")
     # On the first deployment of this feature, Pages may serve the actual SPA
@@ -211,6 +225,42 @@ def self_test() -> None:
         assert fetch_from_origin("https://example.com", MANIFEST, 2048, optional=True) is not None
     finally:
         urllib.request.urlopen = original_urlopen
+    # Transient origin errors must be retried, but a persistent outage or
+    # a missing required chunk may never produce an incomplete manifest.
+    calls = []
+    delays = []
+    def flaky(request, timeout=15):
+        calls.append(timeout)
+        if len(calls) == 1:
+            raise TimeoutError("origin read timed out")
+        return FakeResponse(b"unchanged immutable asset")
+    assert fetch_from_origin("https://example.com", "assets/Old-12345678.js", 1024,
+                             opener=flaky, sleep=delays.append) == b"unchanged immutable asset"
+    assert calls == [15, 15] and delays == [1]
+    failures = []
+    def never_ready(request, timeout=15):
+        failures.append(timeout)
+        raise TimeoutError("origin read timed out")
+    try:
+        fetch_from_origin("https://example.com", "assets/Old-12345678.js", 1024,
+                          opener=never_ready, sleep=lambda _: None)
+    except TimeoutError:
+        pass
+    else:
+        raise AssertionError("persistent timeout bypassed historical chunk retention")
+    assert len(failures) == 3
+    forbidden = []
+    def forbidden_asset(request, timeout=15):
+        forbidden.append(timeout)
+        raise urllib.error.HTTPError(request.full_url, 403, "Forbidden", {}, None)
+    try:
+        fetch_from_origin("https://example.com", "assets/Old-12345678.js", 1024,
+                          opener=forbidden_asset, sleep=lambda _: None)
+    except urllib.error.HTTPError as error:
+        assert error.code == 403
+    else:
+        raise AssertionError("forbidden immutable chunk was accepted")
+    assert len(forbidden) == 1
     for item in ("../env.js", "assets/../secrets-aabbccdd.js", "/assets/a-abc12345.js", "assets/raw.js"):
         try:
             check_path(item)
