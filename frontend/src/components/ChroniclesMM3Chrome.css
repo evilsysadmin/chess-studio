@@ -127,6 +127,30 @@
   backdrop-filter: none;
 }
 
+/* Treat engraved controls as light-theme islands even under browser colour
+   overrides. Apply to descendants too: MAPA/MENÚ use nested b/i glyphs. */
+.chronicles .chronicles-touch button,
+.chronicles .chronicles-touch button :is(span, b, i, small),
+.chronicles .chronicles-statusbar .chronicles-map-trigger,
+.chronicles .chronicles-statusbar .chronicles-map-trigger :is(span, b, i),
+.chronicles .chronicles-game-menu > summary,
+.chronicles .chronicles-game-menu > summary :is(span, b, i) {
+  color-scheme: only light;
+  forced-color-adjust: none;
+}
+.chronicles .chronicles-touch button:not(.is-attack):not(.is-magic):not(.is-contextual),
+.chronicles .chronicles-touch button:not(.is-attack):not(.is-magic):not(.is-contextual) :is(span, b, i, small),
+.chronicles .chronicles-statusbar .chronicles-map-trigger,
+.chronicles .chronicles-statusbar .chronicles-map-trigger :is(span, b, i),
+.chronicles .chronicles-game-menu > summary,
+.chronicles .chronicles-game-menu > summary :is(span, b, i) {
+  color: #08080a;
+  -webkit-text-fill-color: #08080a;
+  /* A physical dark outline preserves the engraved silhouette on grey. */
+  -webkit-text-stroke: .35px #08080a;
+  text-shadow: none;
+}
+
 /* Minimap set in a carved stone bezel. */
 .chronicles .chronicles-minimap {
   border: 3px solid;
