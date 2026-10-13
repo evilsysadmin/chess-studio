@@ -65,13 +65,19 @@ jobs:
         shell: bash
         run: |
           python3 - <<'PY'
-          import json
+          import json,sys
           from pathlib import Path
+          sys.path.insert(0, "scripts/art")
+          from chesscom_oss_source_v52 import glb_summary
           folder=Path(".artifacts/chesscom-oss-v52/review")
           source=json.loads((folder/"source-receipt.json").read_text())
           blender=json.loads((folder/"blender-report.json").read_text())
           assert not source["promotion_allowed"] and not source["is_canonical_sven"]
           assert blender["review_only"] and not blender["approved_for_runtime"]
+          exported=glb_summary((folder/"quaternius-cc0-preview.glb").read_bytes())
+          assert exported["skinned"] and exported["animation_count"]==24, exported
+          assert any("Gun_Shoot" in name for name in exported["animation_names"])
+          assert any("Death" in name for name in exported["animation_names"])
           assert len(blender["views"])==8
           assert (folder/"eight-view-contact.png").stat().st_size>1024
           assert (folder/"tactical-72px-contact.png").stat().st_size>1024
