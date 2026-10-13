@@ -63,7 +63,7 @@ def main():
     kit = add_design(candidate)
     rig = next(obj for obj in candidate["objects"] if obj.type == "ARMATURE")
     expected = {name: next((a for a in bpy.data.actions
-                            if a.name.endswith("|" + name)), None)
+                            if a.name.startswith("CharacterArmature|" + name + "_")), None)
                 for name, _ in CLIPS}
     if any(action is None for action in expected.values()):
         raise RuntimeError("source-action-missing:" +
