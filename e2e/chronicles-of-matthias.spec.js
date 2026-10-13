@@ -403,6 +403,8 @@ test('Chronicles of Matthias · clic en un PJ abre una ficha RPG con retrato aut
       combatRight: combat.getBoundingClientRect().right,
       statsLeft: statsPanel.getBoundingClientRect().left,
       overflow: document.documentElement.scrollWidth > viewport + 1,
+      quickBottom: node.querySelector('.chronicles-character-sheet__quick').getBoundingClientRect().bottom,
+      headerBottom: node.querySelector('.chronicles-character-sheet__head').getBoundingClientRect().bottom,
     };
   });
   if (desktopFolioGeometry.isWide) {
@@ -410,6 +412,7 @@ test('Chronicles of Matthias · clic en un PJ abre una ficha RPG con retrato aut
     expect(desktopFolioGeometry.columns).toBe(3);
     expect(desktopFolioGeometry.combatRight).toBeLessThan(desktopFolioGeometry.statsLeft);
     expect(desktopFolioGeometry.overflow).toBe(false);
+    expect(desktopFolioGeometry.quickBottom).toBeLessThanOrEqual(desktopFolioGeometry.headerBottom - 3);
   }
   await folio.getByRole('button', { name: /Equipo/ }).click();
   await expect(sheet.getByText('EQUIPO Y OBJETOS', { exact: true })).toBeVisible();
