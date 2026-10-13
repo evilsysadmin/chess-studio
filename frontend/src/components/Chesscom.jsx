@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useEscapeToClose } from '../useEscapeToClose.js';
+import { releaseChesscomLandscape, requestChesscomLandscapeOnEntry, useChesscomLandscape } from './chesscomLandscape.js';
 import { request } from '../http.js';
 import { createChesscomAudio } from '../chesscomAudio.js';
 import {
@@ -21,6 +22,7 @@ import {
 } from '../chesscom.js';
 import './Chesscom.css';
 import './ChesscomFireControl.css';
+import './ChesscomLandscape.css';
 
 const ROLE_LABELS = Object.freeze({ Leader:'Líder', Rifleman:'Fusilero', Scout:'Explorador' });
 const ACTION_LABELS = Object.freeze({ move:'MOVER', shoot:'DISPARAR', overwatch:'VIGILANCIA', interact:'INTERACTUAR' });
@@ -50,7 +52,7 @@ function Objective({ done, children }) {
 
 function SquadPortrait({ unit, selected, matthiasArt, onSelect }) {
   return (
-    <button type="button" className={`chesscom-squad-card ${selected ? 'is-selected' : ''} ${unit.hp <= 0 ? 'is-down' : ''}`} onClick={onSelect}>
+    <button type="button" className={`chesscom-squad-card ${selected ? 'is-selected' : ''} ${unit.hp <= 0 ? 'is-down' : ''}`} onClick={onSelect} aria-label={`Seleccionar ${unit.name}`}>
       <span className="chesscom-portrait" aria-hidden="true">
         {unit.id === 'matthias' && matthiasArt
           ? <img src={matthiasArt} alt="" />
@@ -110,7 +112,22 @@ function WeaponPanel({ unit, status, onFireMode }) {
 }
 
 export default function Chesscom({ onExit }) {
-  useEscapeToClose(onExit);
+  const { needsRotation, activateLandscape } = useChesscomLandscape();
+  const exitChesscom = () => {
+    void releaseChesscomLandscape();
+    onExit?.();
+  };
+  useEscapeToClose(exitChesscom);
+
+  useEffect(() => () => {
+    // StrictMode immediately unmounts/remounts effects in development. Only
+    // release a lock if the actual Chesscom surface has truly disappeared.
+    window.setTimeout(() => {
+      if (!document.querySelector('[data-chesscom-poc="true"]')) {
+        void releaseChesscomLandscape();
+      }
+    }, 0);
+  }, []);
   const hostRef = useRef(null);
   const engineRef = useRef(null);
   const audioRef = useRef(null);
@@ -295,12 +312,23 @@ export default function Chesscom({ onExit }) {
 
   return (
     <div className="chesscom" data-chesscom-poc="true" data-chesscom-renderer="babylon" data-chesscom-visual="premium-v1" data-chesscom-layout="dust-veil-canonical-v1">
+      {needsRotation ? (
+        <div className="chesscom-landscape-gate" role="dialog" aria-modal="true" aria-label="Chesscom necesita apaisado">
+          <div className="chesscom-landscape-gate__card">
+            <small>CHESSCOM · MÓVIL</small>
+            <h2>Gira el móvil</h2>
+            <p>El campo táctico se juega en apaisado. Gíralo a mano o intenta activar la orientación horizontal.</p>
+            <button type="button" onClick={() => { void activateLandscape(); }}>Activar apaisado</button>
+            <button type="button" className="is-secondary" onClick={exitChesscom}>Salir de Chesscom</button>
+          </div>
+        </div>
+      ) : null}
       <header className="chesscom-topbar">
         <div className="chesscom-brand">
           <span className="chesscom-rook" aria-hidden="true">♜</span>
           <div><h2>CHESSCOM</h2><strong>BLACK OPERATIONS</strong><small>TACTICAL POC · NO FLAGS · NO RECORDS</small></div>
         </div>
-        <div className="chesscom-top-actions"><span className="chesscom-classified">CLASSIFIED // DUST VEIL</span><button type="button" className="chesscom-exit" onClick={onExit}>← Experimentos</button></div>
+        <div className="chesscom-top-actions"><span className="chesscom-classified">CLASSIFIED // DUST VEIL</span><button type="button" className="chesscom-exit" onClick={exitChesscom}>← Experimentos</button></div>
       </header>
 
       <section className="chesscom-frame">
