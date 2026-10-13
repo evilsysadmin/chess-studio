@@ -1,14 +1,17 @@
 import { createWarRoomBlenderVariantShell } from './WarRoomBlenderShellRuntime.js';
+import { warRoomVariantRuntimeModelUrl } from './WarRoomVariant.js';
 import { installWarRoomV2FireSprites } from './WarRoomFireSprites.js';
 
-export const WAR_ROOM_V2_RUNTIME_MODEL_URL =
-  'https://assets.chess-studio.shadowops.dpdns.org/war-room/v2/runtime/current.glb';
+// Use the same content-addressed GLB as the selector's intent prefetch. The
+// legacy current.glb?build=... alias defeated browser/CDN caching every release.
+export const WAR_ROOM_V2_RUNTIME_MODEL_URL = warRoomVariantRuntimeModelUrl('v2');
 
 const WAR_ROOM_V2 = createWarRoomBlenderVariantShell({
   variant: 'v2',
   runtimeModelUrl: WAR_ROOM_V2_RUNTIME_MODEL_URL,
   rootName: 'war-room-v2-blender-shell',
   runtimeFinish: 'gltf-pbr-cinematic-gothic-v11',
+  cacheBustBuild: false,
   installRuntimeEffects: (root, { coarsePointer }) => installWarRoomV2FireSprites(root, { coarsePointer }),
 });
 
