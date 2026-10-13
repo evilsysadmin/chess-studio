@@ -21,6 +21,9 @@ def audit_playable_structure(path: Path, sha256: str) -> dict:
     base = audit_candidate(path, sha256)
     doc = glb_document(Path(path).read_bytes())
     nodes, skins = doc["nodes"], doc["skins"]
+    accessors = doc.get("accessors", [])
+    if not isinstance(accessors, list) or not accessors:
+        raise ValueError("missing-animation-accessors")
     animations = doc.get("animations", [])
     if not isinstance(animations, list) or not animations:
         raise ValueError("missing-animation-bank")
@@ -36,6 +39,16 @@ def audit_playable_structure(path: Path, sha256: str) -> dict:
         samplers, channels = animation.get("samplers"), animation.get("channels")
         if not isinstance(samplers, list) or not samplers or not isinstance(channels, list) or not channels:
             raise ValueError("empty-clip:" + clip)
+        for sampler in samplers:
+            if not isinstance(sampler, dict):
+                raise ValueError("invalid-animation-sampler:" + clip)
+            for key in ("input", "output"):
+                index = sampler.get(key)
+                if type(index) is not int or not 0 <= index < len(accessors):
+                    raise ValueError("invalid-animation-accessor:" + clip)
+                accessor = accessors[index]
+                if not isinstance(accessor, dict) or type(accessor.get("count")) is not int or accessor["count"] < 2:
+                    raise ValueError("empty-animation-accessor:" + clip)
         rig_animated = False
         for channel in channels:
             if not isinstance(channel, dict) or not isinstance(channel.get("target"), dict):
