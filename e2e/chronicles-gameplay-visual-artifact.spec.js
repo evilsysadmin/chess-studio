@@ -944,7 +944,7 @@ for (const capture of CAPTURES) {
       // Chrome may pick the new inline override (#08080a), while legacy
       // surfaces retain the former #111015. WebKit text fill must agree.
       expect(inks.color, `${capture.label}: menu ink must be dark`)
-        .toMatch(/^rgb\\((?:8, 8, 10|17, 16, 21)\\)$/);
+        .toEqual(expect.stringMatching(/^rgb\((?:8, 8, 10|17, 16, 21)\)$/));
       expect(inks.fill, `${capture.label}: WebKit must keep the same dark ink`)
         .toBe(inks.color);
       await captureElement(page, gameRoot, `${ARTIFACT_DIR}/chronicles-game-menu-${capture.label}.png`);
