@@ -78,6 +78,11 @@ jobs:
           assert exported["skinned"] and exported["animation_count"]==24, exported
           assert any("Gun_Shoot" in name for name in exported["animation_names"])
           assert any("Death" in name for name in exported["animation_names"])
+          from PIL import Image
+          for frame in sorted(folder.glob("view-*.png")):
+              with Image.open(frame) as image:
+                  bounds=image.convert("RGBA").getchannel("A").getbbox()
+                  assert bounds and bounds[1]>=5 and bounds[3]<=379, (frame.name,bounds)
           assert len(blender["views"])==8
           assert (folder/"eight-view-contact.png").stat().st_size>1024
           assert (folder/"tactical-72px-contact.png").stat().st_size>1024
