@@ -408,7 +408,7 @@
   }
 
   .chronicles-character-sheet--mm3.chronicles-character-sheet--folio-v2 .chronicles-character-sheet__head {
-    min-height: 146px;
+    min-height: 178px;
     grid-template-columns: 104px minmax(0, 1fr) 42px;
     gap: 19px;
     padding: 12px 22px;
