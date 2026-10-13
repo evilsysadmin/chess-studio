@@ -392,3 +392,163 @@
   }
 }
 
+
+/* Choice screen: castle antechamber. Existing canonical portraits are always
+   runtime assets, especially Matthias' canonical pawn form. */
+.chronicles-character-setup--choice {
+  isolation: isolate;
+  padding: clamp(12px, 2.5vw, 36px);
+  background:
+    linear-gradient(90deg, rgba(5, 7, 13, .65), transparent 26%, transparent 74%, rgba(5, 7, 13, .7)),
+    radial-gradient(ellipse at 50% 65%, rgba(157, 90, 30, .28), transparent 53%),
+    repeating-linear-gradient(90deg, transparent 0 11%, rgba(12, 9, 9, .86) 11.1% 11.8%, transparent 12% 23%),
+    linear-gradient(145deg, #252020, #0c1118 59%, #21170f);
+}
+.chronicles-character-setup--choice::before {
+  content: '';
+  position: fixed;
+  z-index: -1;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at 7% 27%, rgba(255, 156, 54, .32), transparent 22%),
+    radial-gradient(ellipse at 91% 24%, rgba(255, 152, 51, .26), transparent 23%),
+    linear-gradient(180deg, transparent 54%, rgba(15, 9, 5, .8) 100%);
+}
+.chronicles-character-setup__panel--choice {
+  width: min(1240px, 100%);
+  padding: clamp(16px, 2.8vw, 38px);
+  display: grid;
+  gap: clamp(12px, 2.4vh, 26px);
+  border: 1px solid rgba(203, 153, 73, .44);
+  background: linear-gradient(180deg, rgba(10, 12, 16, .81), rgba(19, 13, 12, .91));
+  box-shadow: 0 26px 90px #000a, inset 0 0 0 2px #100d0b, inset 0 0 0 3px #8a612f55;
+}
+.chronicles-character-setup__choice-head { text-align: center; }
+.chronicles-character-setup__eyebrow {
+  display: inline-block;
+  padding: 0 32px 8px;
+  border-bottom: 1px solid #a77b3f;
+  font: 700 12px Georgia,serif;
+  letter-spacing: .34em;
+  color: #edc778;
+}
+.chronicles-character-setup__panel--choice h2 {
+  margin: 10px 0 6px;
+  font: 700 clamp(32px, 4.9vw, 66px)/1.06 Georgia,serif;
+  color: #f4e9d5;
+  text-shadow: 0 3px 20px #000;
+}
+.chronicles-character-setup__choice-head p {
+  max-width: 62ch;
+  margin: 0 auto;
+  font: clamp(13px, 1.35vw, 17px)/1.45 Georgia,serif;
+  color: #d1c4b0;
+}
+.chronicles-character-setup__hero-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: clamp(8px, 1.5vw, 20px);
+}
+.chronicles-character-setup__hero {
+  position: relative;
+  min-width: 0;
+  aspect-ratio: 3 / 3.8;
+  overflow: hidden;
+  border: 3px double #d5a557;
+  background: #17151a;
+  box-shadow: inset 0 0 0 3px #2d1c0b, 0 10px 30px #000a, 0 0 0 1px #3d2713;
+}
+.chronicles-character-setup__hero::after {
+  content: '';
+  position: absolute;
+  inset: 6px;
+  pointer-events: none;
+  border: 1px solid #e1bd7255;
+}
+.chronicles-character-setup__hero img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 26%;
+  filter: saturate(.9) contrast(1.05);
+}
+.chronicles-character-setup__hero-plaque {
+  position: absolute;
+  inset: auto 0 0;
+  z-index: 1;
+  display: grid;
+  gap: 2px;
+  padding: 11px 5px 12px;
+  text-align: center;
+  background: linear-gradient(180deg, #151315ed, #090b10fa);
+  border-top: 2px ridge #bd8a40;
+}
+.chronicles-character-setup__hero-plaque strong {
+  color: #f1dbac;
+  font: 700 clamp(15px, 1.8vw, 25px) Georgia,serif;
+}
+.chronicles-character-setup__hero-plaque span {
+  color: #d5aa64;
+  font: 700 10px Georgia,serif;
+  letter-spacing: .15em;
+  text-transform: uppercase;
+}
+.chronicles-character-setup__choice-actions {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+}
+.chronicles-character-setup__choice-main-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+}
+.chronicles-character-setup__choice-actions button {
+  min-height: 48px;
+  padding: 10px 24px;
+  border: 2px ridge #b98640;
+  font: 700 16px Georgia,serif;
+}
+.chronicles-character-setup__choice-main-actions .primary-btn {
+  background: linear-gradient(145deg,#d9a947,#8b5b15);
+  color: #170f05;
+  box-shadow: 0 0 25px #b47d2640;
+}
+.chronicles-character-setup__choice-main-actions .secondary-btn {
+  background: linear-gradient(150deg,#30343b,#11151d);
+  color: #f0e0c0;
+}
+.chronicles-character-setup__choice-exit {
+  background: #171518b8;
+  color: #d9c6a5;
+}
+.chronicles-character-setup__choice-actions button:focus-visible {
+  outline: 3px solid #f8dd94;
+  outline-offset: 4px;
+}
+.chronicles-character-setup__panel--choice .chronicles-character-setup__saved {
+  margin: 0;
+  text-align: center;
+  padding: 7px;
+  background: #181411bc;
+}
+@media (max-width: 720px) {
+  .chronicles-character-setup--choice { place-items: start center; }
+  .chronicles-character-setup__panel--choice { padding: 14px; gap: 14px; }
+  .chronicles-character-setup__hero-grid { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 10px; }
+  .chronicles-character-setup__hero { aspect-ratio: 4 / 3.6; }
+  .chronicles-character-setup__hero-plaque { padding: 6px 3px; }
+  .chronicles-character-setup__choice-main-actions { width: 100%; }
+  .chronicles-character-setup__choice-main-actions button { width: 100%; }
+}
+@media (max-height: 650px) and (min-width: 721px) {
+  .chronicles-character-setup--choice { place-items: start center; }
+  .chronicles-character-setup__hero { aspect-ratio: 4 / 3; }
+  .chronicles-character-setup__panel--choice { gap: 9px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .chronicles-character-setup--choice * { animation: none !important; transition: none !important; }
+}
