@@ -790,8 +790,14 @@
    inside the tablet rather than disappearing below the bottom edge. */
 @media (orientation: landscape) and (max-width: 1024px) and (max-height: 480px) {
   .chronicles .chronicles-game-menu__panel {
+    /* The menu may be anchored below the top HUD on mobile. Give it an
+       independent viewport boundary so actions are scrollable in 390px height. */
+    position: fixed;
+    top: max(8px, env(safe-area-inset-top));
+    right: max(8px, env(safe-area-inset-right));
+    bottom: auto;
     width: min(460px, calc(100vw - 20px));
-    max-height: calc(100dvh - 68px - env(safe-area-inset-bottom));
+    max-height: calc(100dvh - 16px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
     grid-template-columns: repeat(2, minmax(0, 1fr));
     overflow-y: auto;
     overscroll-behavior-y: contain;
