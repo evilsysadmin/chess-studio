@@ -35,7 +35,7 @@ async function openChronicles(page, options = {}) {
   await expect(page.locator('[data-chronicles="true"]')).toBeVisible();
 }
 
-test('Chronicles · F5 retoma la misma run guardada y regresar al libro conserva el menú', async ({ page }) => {
+test('Chronicles · F5 retoma la misma run guardada y guardar y salir abandona sin perderla', async ({ page }) => {
   test.setTimeout(180_000);
   await openChronicles(page, { chroniclesCurrentMapId: 'swordhaven-square', newTown: true });
   const mode = page.locator('[data-chronicles="true"]');
@@ -53,11 +53,9 @@ test('Chronicles · F5 retoma la misma run guardada y regresar al libro conserva
   expect(runAfter).toBe(runBefore);
 
   await page.keyboard.press('Escape');
-  await mode.locator('.chronicles-game-menu').getByRole('button', { name: 'Partidas guardadas' }).click();
-  const book = page.locator('[data-chronicles-save-menu]');
-  await expect(book).toBeVisible();
+  await mode.locator('.chronicles-game-menu').getByRole('button', { name: 'Guardar y salir' }).click();
+  await expect(mode).toHaveCount(0);
   await page.reload();
-  await expect(book).toBeVisible();
   await expect(mode).toHaveCount(0);
 });
 
@@ -157,7 +155,22 @@ test('Chronicles · Escape opens and closes the in-game menu while the scene sta
 
   await page.keyboard.press('Escape');
   await expect(menu).toHaveAttribute('open', '');
-  await menu.getByRole('button', { name: 'Salir y guardar' }).click();
+  await expect(menu.locator('.chronicles-game-menu__panel > button')).toHaveText([
+    'Continuar', 'Guardar partida', 'Guardar y salir', 'Salir sin guardar', 'Opciones de audio',
+  ]);
+  await expect(menu.getByRole('button', { name: 'Crónica · J' })).toHaveCount(0);
+  await expect(menu.getByRole('button', { name: 'Nueva expedición' })).toHaveCount(0);
+  await expect(menu.getByRole('button', { name: 'Partidas guardadas' })).toHaveCount(0);
+  const audio = menu.getByRole('button', { name: 'Opciones de audio' });
+  await expect(audio).toHaveAttribute('aria-expanded', 'false');
+  await expect(menu.locator('#chronicles-sfx-volume')).toHaveCount(0);
+  await audio.click();
+  await expect(audio).toHaveAttribute('aria-expanded', 'true');
+  await expect(menu.getByRole('slider', { name: 'Volumen de efectos de Chronicles' })).toBeVisible();
+  await expect(menu.getByRole('slider', { name: 'Volumen de música' })).toBeVisible();
+  await audio.click();
+  await expect(menu.locator('#chronicles-music-volume')).toHaveCount(0);
+  await menu.getByRole('button', { name: 'Guardar y salir' }).click();
   await expect(mode).toHaveCount(0);
 });
 
