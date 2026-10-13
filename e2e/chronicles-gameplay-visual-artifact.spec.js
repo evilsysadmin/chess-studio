@@ -346,11 +346,11 @@ for (const capture of [
       // The expedition Chronicle moved to one modal on desktop and touch.
       // The old bottom journal/DM selectors were removed deliberately.
       await page.keyboard.press('j');
-      const reader = page.getByRole('dialog', { name: 'Crónica de expedición' });
+      const reader = page.getByRole('dialog', { name: 'Crónica', exact: true });
       await expect(reader).toBeVisible();
       const quest = reader.locator('[data-chronicles-quest-id="names-in-wood"]');
       await expect(quest).toHaveAttribute('data-chronicles-quest-status', 'active');
-      await expect(reader.getByRole('button', { name: 'Cerrar Crónica' })).toBeVisible();
+      await expect(reader.getByRole('button', { name: 'Cerrar crónica', exact: true })).toBeVisible();
       const turnsBefore = await game.getAttribute('data-chronicles-turns');
       await page.keyboard.press('ArrowUp');
       expect(await game.getAttribute('data-chronicles-turns'), 'reading must not move the party').toBe(turnsBefore);
@@ -360,7 +360,7 @@ for (const capture of [
         path: `${ARTIFACT_DIR}/chronicles-rookwood-quest-log-${capture.label}.png`,
         animations: 'disabled', timeout: 60_000,
       });
-      await reader.getByRole('button', { name: 'Cerrar Crónica' }).click();
+      await reader.getByRole('button', { name: 'Cerrar crónica', exact: true }).click();
       await expect(reader).toHaveCount(0);
 
       await pressSequence(page, ROOKWOOD_WALK_TO_OAK);
