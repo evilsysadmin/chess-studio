@@ -34,6 +34,28 @@ def safe_changes(rows: list[tuple[str, str]]) -> bool:
     return acceptance
 
 
+SMOKE_KEYS = ("live", "restore")
+
+
+def required_smokes(rows: list[tuple[str, str]]) -> tuple[str, ...]:
+    """Select only changed browser contracts, never narrow a suspicious diff.
+
+    Eligible smoke-only merges are already bounded to the last complete
+    accredited runtime. Shared synthetic helpers affect both smoke specs.
+    Every full runtime deployment still runs both irrespective of this helper.
+    """
+    if not safe_changes(rows):
+        return SMOKE_KEYS
+    paths = {path for _, path in rows}
+    if "e2e/staging-synthetic.js" in paths:
+        return SMOKE_KEYS
+    keys = tuple(key for key, path in (
+        ("live", "e2e/staging-live.spec.js"),
+        ("restore", "e2e/staging-war-room-restore.spec.js"),
+    ) if path in paths)
+    return keys or SMOKE_KEYS
+
+
 def diff_status(base: str, head: str) -> list[tuple[str, str]]:
     """Disable rename detection: never hide a runtime deletion behind a test rename."""
     fetched = subprocess.run(
@@ -85,37 +107,46 @@ def surfaces_are_exact(sha: str) -> bool:
     )
 
 
-def select(head: str, source: str) -> tuple[str, str]:
-    """(deployed SHA or '', diagnostic reason). Never raise for a missing fast path."""
+def select(head: str, source: str) -> tuple[str, str, tuple[str, ...]]:
+    """(runtime SHA or '', reason, smoke keys); ambiguous cases deploy fully."""
     if source != "pr" or os.environ.get("GITHUB_EVENT_NAME") != "workflow_run":
-        return "", "not-an-automatic-pr-merge"
+        return "", "not-an-automatic-pr-merge", SMOKE_KEYS
     repo = os.environ.get("GITHUB_REPOSITORY", "")
     token = os.environ.get("GITHUB_TOKEN", "")
     if not token or repo.count("/") != 1:
-        return "", "missing-readonly-api-access"
+        return "", "missing-readonly-api-access", SMOKE_KEYS
     try:
         base, run_id = latest_automatic_generation(repo, token)
         if base == head:
-            return "", "already-deployed"
+            return "", "already-deployed", SMOKE_KEYS
         if not comparison_ahead(repo, base, head, token):
-            return "", "not-in-accredited-lineage"
-        if not safe_changes(diff_status(base, head)):
-            return "", "runtime-diff-needs-deploy"
+            return "", "not-in-accredited-lineage", SMOKE_KEYS
+        changes = diff_status(base, head)
+        if not safe_changes(changes):
+            return "", "runtime-diff-needs-deploy", SMOKE_KEYS
         if not surfaces_are_exact(base):
-            return "", "three-surface-parity-not-proven"
+            return "", "three-surface-parity-not-proven", SMOKE_KEYS
         # A new main may have merged during external reads. Re-check before
         # electing the no-mutation route; the job also guards its test source.
         if generation.current_main() != head:
-            return "", "superseded"
-        return base, f"complete-automatic-run:{run_id}"
+            return "", "superseded", SMOKE_KEYS
+        return base, f"complete-automatic-run:{run_id}", required_smokes(changes)
     except (OSError, ValueError, RuntimeError, subprocess.SubprocessError,
             generation.GenerationError, admission.AdmissionError, HTTPError, URLError) as exc:
-        return "", f"fallback-full-deploy:{type(exc).__name__}"
+        return "", f"fallback-full-deploy:{type(exc).__name__}", SMOKE_KEYS
 
 
 def self_test() -> None:
     a = "a" * 40
     b = "b" * 40
+    assert required_smokes([("M", "e2e/staging-live.spec.js")]) == ("live",)
+    assert required_smokes([("M", "e2e/staging-war-room-restore.spec.js"), ("A", "README.md")]) == ("restore",)
+    assert required_smokes([("M", "e2e/staging-live.spec.js"), ("M", "e2e/staging-war-room-restore.spec.js")]) == SMOKE_KEYS
+    assert required_smokes([("D", "e2e/staging-synthetic.js")]) == SMOKE_KEYS
+    assert required_smokes([("M", "e2e/staging-synthetic.js"), ("M", "e2e/staging-live.spec.js")]) == SMOKE_KEYS
+    assert required_smokes([("M", "frontend/src/App.jsx"), ("M", "e2e/staging-live.spec.js")]) == SMOKE_KEYS
+    assert required_smokes([("M", "e2e/staging-pawn-slug-godot.spec.js")]) == SMOKE_KEYS
+    assert required_smokes([("M", "docs/staging.md")]) == SMOKE_KEYS
     assert safe_changes([("M", "e2e/staging-live.spec.js")])
     assert safe_changes([("M", "e2e/staging-war-room-restore.spec.js"), ("A", "README.md")])
     assert safe_changes([("D", "e2e/staging-synthetic.js"), ("M", "docs/staging.md")])
@@ -139,6 +170,12 @@ def self_test() -> None:
     assert "needs.backend.result == 'skipped'" in workflow
     assert "needs.frontend.result == 'skipped'" in workflow
     assert "needs.worker.result == 'skipped'" in workflow
+    assert "smoke_matrix: ${{ steps.admission.outputs.smoke_matrix }}" in workflow
+    assert "matrix: ${{ fromJSON(needs.prepare.outputs.smoke_matrix) }}" in workflow
+    assert "staging-live.spec.js" in workflow and "staging-war-room-restore.spec.js" in workflow
+    assert "Staging generation complete" in proof.REQUIRED_JOBS
+    assert "Browser smoke · War Room live" in proof.REQUIRED_JOBS
+    assert "Browser smoke · authoritative F5 restore" in proof.REQUIRED_JOBS
     assert "TEST_SOURCE_SHA: ${{ needs.prepare.outputs.deploy_sha }}" in workflow
     assert 'ref: ${{ env.TEST_SOURCE_SHA }}' in workflow
     assert 'smoke_sha || needs.prepare.outputs.deploy_sha' in workflow
