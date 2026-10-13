@@ -14,6 +14,10 @@ inputs:
     description: Manual cache namespace bump.
     required: false
     default: 'v2'
+  cache-layout:
+    description: 'venv (legacy default) or portable (location-independent site-packages)'
+    required: false
+    default: 'venv'
 
 outputs:
   cache-hit:
@@ -29,6 +33,7 @@ runs:
         python-version: ${{ inputs.python-version }}
 
     - name: Restore exact OCI SDK virtualenv
+      if: inputs.cache-layout != 'portable'
       id: oci-cache
       uses: actions/cache@v6
       with:
@@ -36,6 +41,7 @@ runs:
         key: oci-sdk-${{ runner.os }}-${{ runner.arch }}-py${{ inputs.python-version }}-${{ inputs.cache-version }}-${{ inputs.version }}
 
     - name: Ensure usable OCI SDK virtualenv
+      if: inputs.cache-layout != 'portable'
       shell: bash
       env:
         OCI_VERSION: ${{ inputs.version }}
@@ -65,3 +71,44 @@ runs:
         echo "OCI SDK ready: $installed"
         echo "$tool_dir/bin" >> "$GITHUB_PATH"
         echo "OCI_PYTHON=$tool_dir/bin/python" >> "$GITHUB_ENV"
+# Cached virtualenv interpreter paths are not necessarily portable between
+    # hosted runners. Keep the original layout for other OCI jobs, but allow
+    # staging browser smokes to cache a pure pip --target package tree.
+    - name: Restore portable OCI SDK package tree
+      if: inputs.cache-layout == 'portable'
+      id: oci-portable-cache
+      uses: actions/cache@v6
+      with:
+        path: ${{ runner.tool_cache }}/chess-studio-oci-sdk-portable/py${{ inputs.python-version }}/oci-${{ inputs.version }}
+        key: oci-sdk-portable-${{ runner.os }}-${{ runner.arch }}-py${{ inputs.python-version }}-v1-${{ inputs.version }}
+
+    - name: Validate or rebuild portable OCI SDK
+      if: inputs.cache-layout == 'portable'
+      shell: bash
+      env:
+        OCI_VERSION: ${{ inputs.version }}
+        PY_VERSION: ${{ inputs.python-version }}
+      run: |
+        set -euo pipefail
+        target="$RUNNER_TOOL_CACHE/chess-studio-oci-sdk-portable/py${PY_VERSION}/oci-${OCI_VERSION}"
+        stamp="$(cat "$target/.chess-oci-version" 2>/dev/null || true)"
+        installed=""
+        if [[ -f "$target/oci/__init__.py" ]]; then
+          installed="$(PYTHONPATH="$target" python3 -c 'import oci; print(oci.__version__)' 2>/dev/null || true)"
+        fi
+        if [[ "$stamp" != "$OCI_VERSION" || "$installed" != "$OCI_VERSION" ]]; then
+          echo "::notice title=OCI portable cache miss::Installing exact SDK package tree (cache may be cold or invalid)."
+          rm -rf "$target"
+          mkdir -p "$target"
+          python3 -m pip install --disable-pip-version-check --no-cache-dir --target "$target" "oci==$OCI_VERSION"
+          printf '%s\n' "$OCI_VERSION" > "$target/.chess-oci-version"
+        else
+          echo "::notice title=OCI portable cache hit::Reusing valid OCI SDK $OCI_VERSION without pip."
+        fi
+        installed="$(PYTHONPATH="$target" python3 -c 'import oci; print(oci.__version__)')"
+        [[ "$installed" == "$OCI_VERSION" ]] || {
+          echo "::error::Portable OCI SDK import/version verification failed."
+          exit 1
+        }
+        echo "PYTHONPATH=$target${PYTHONPATH:+:$PYTHONPATH}" >> "$GITHUB_ENV"
+        echo "OCI_PYTHON=$(command -v python3)" >> "$GITHUB_ENV"
