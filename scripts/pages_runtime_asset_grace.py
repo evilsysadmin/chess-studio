@@ -9,11 +9,13 @@ historic chunks).
 from __future__ import annotations
 
 import argparse
+from concurrent.futures import ThreadPoolExecutor
 import hashlib
 import json
 import pathlib
 import re
 import tempfile
+import threading
 import time
 import urllib.error
 import urllib.request
@@ -21,6 +23,9 @@ from typing import Callable
 
 MANIFEST = "asset-grace.json"
 MAX_PREVIOUS_GENERATIONS = 2
+# Independent content-addressed chunks: bounded parallel I/O, not parallel deploys.
+# Release identity / manifest reads and final lineage check remain serialized.
+MAX_ASSET_FETCH_WORKERS = 4
 MAX_FILES = 1200
 MAX_HISTORY_BYTES = 64 * 1024 * 1024
 MAX_FILE_BYTES = 16 * 1024 * 1024
@@ -170,19 +175,29 @@ def prepare(dist: pathlib.Path, fetch: Callable, *, max_previous: int = MAX_PREV
     retained = []
     bytes_kept = 0
     files_seen = {item["path"]: item for item in current["assets"]}
+
+    def fetch_checked_chunk(entry: dict) -> bytes:
+        data = fetch(entry["path"], MAX_FILE_BYTES, optional=False)
+        if data is None or len(data) != entry["size"] or digest(data) != entry["sha256"]:
+            raise ValueError(f"previous chunk integrity failed: {entry['path']}")
+        return data
+
     for generation in old_generations[:max_previous]:
         additional = [item for item in generation["assets"] if item["path"] not in files_seen]
         new_bytes = sum(item["size"] for item in additional)
         if bytes_kept + new_bytes > MAX_HISTORY_BYTES or len(files_seen) + len(additional) > MAX_FILES:
             raise ValueError("previous generation exceeds bounded asset retention budget")
-        for entry in additional:
-            data = fetch(entry["path"], MAX_FILE_BYTES, optional=False)
-            if data is None or len(data) != entry["size"] or digest(data) != entry["sha256"]:
-                raise ValueError(f"previous chunk integrity failed: {entry['path']}")
-            target = dist / entry["path"]
-            target.parent.mkdir(parents=True, exist_ok=True)
-            target.write_bytes(data)
-            files_seen[entry["path"]] = entry
+        # Old hashed assets are immutable and independently verified. Fetch at
+        # most four simultaneously instead of serial RTTs for every old chunk.
+        # map yields in input order, so writes/inventory remain deterministic;
+        # any missing, oversized or mismatched chunk aborts before manifest.
+        if additional:
+            with ThreadPoolExecutor(max_workers=MAX_ASSET_FETCH_WORKERS) as pool:
+                for entry, data in zip(additional, pool.map(fetch_checked_chunk, additional)):
+                    target = dist / entry["path"]
+                    target.parent.mkdir(parents=True, exist_ok=True)
+                    target.write_bytes(data)
+                    files_seen[entry["path"]] = entry
         retained.append(generation)
         bytes_kept += new_bytes
 
@@ -200,6 +215,7 @@ def prepare(dist: pathlib.Path, fetch: Callable, *, max_previous: int = MAX_PREV
 
 def self_test() -> None:
     assert check_path("assets/Board3D-aBcDeF01.js").endswith(".js")
+    assert MAX_ASSET_FETCH_WORKERS == 4
     # A missing Pages file can return index.html with HTTP 200. The initial
     # upload must bootstrap, not abort or cache the document as an asset.
     original_urlopen = urllib.request.urlopen
@@ -290,10 +306,26 @@ def self_test() -> None:
                     remote[item.relative_to(dist).as_posix()] = item.read_bytes()
 
         first = make_dist("a" * 40, "a")
+        # Two independently hashed historical files must really be fetched
+        # concurrently: a serial implementation deadlocks the test barrier.
+        (first / "assets" / "Extra-aaaaaaaa.js").write_bytes(b"immutable extra")
         assert prepare(first, fake_fetch)["retained"] == 0
         publish(first)
         second = make_dist("b" * 40, "b")
-        assert prepare(second, fake_fetch)["retained"] == 1
+        fetch_barrier = threading.Barrier(2, timeout=5)
+        historical_paths = []
+
+        def fetch_in_parallel(path: str, limit: int, *, optional: bool = False):
+            if path.startswith("assets/"):
+                historical_paths.append(path)
+                fetch_barrier.wait()
+            return fake_fetch(path, limit, optional=optional)
+
+        assert prepare(second, fetch_in_parallel)["retained"] == 1
+        assert set(historical_paths) == {
+            "assets/Game-aaaaaaaa.js", "assets/Extra-aaaaaaaa.js",
+        }
+        assert (second / "assets/Extra-aaaaaaaa.js").read_bytes() == b"immutable extra"
         assert (second / "assets/Game-aaaaaaaa.js").read_bytes() == b"export default a"
         publish(second)
         third = make_dist("c" * 40, "c")
