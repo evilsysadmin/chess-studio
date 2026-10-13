@@ -22,7 +22,7 @@ inputs:
 outputs:
   cache-hit:
     description: Whether the exact cache key was restored by Actions cache.
-    value: ${{ steps.oci-cache.outputs.cache-hit }}
+    value: ${{ inputs.cache-layout == 'portable' && steps.oci-portable-cache.outputs.cache-hit || steps.oci-cache.outputs.cache-hit }}
 
 runs:
   using: composite
@@ -71,7 +71,7 @@ runs:
         echo "OCI SDK ready: $installed"
         echo "$tool_dir/bin" >> "$GITHUB_PATH"
         echo "OCI_PYTHON=$tool_dir/bin/python" >> "$GITHUB_ENV"
-# Cached virtualenv interpreter paths are not necessarily portable between
+    # Cached virtualenv interpreter paths are not necessarily portable between
     # hosted runners. Keep the original layout for other OCI jobs, but allow
     # staging browser smokes to cache a pure pip --target package tree.
     - name: Restore portable OCI SDK package tree
