@@ -57,6 +57,7 @@ import {
   chroniclesForgetSavedRun,
   chroniclesNoteSavedRunCheckpoint,
   chroniclesRunEntryMapId,
+  chroniclesActiveRunId,
   finishChroniclesRun,
   renewChroniclesRun,
 } from '../chronicles/chroniclesRunIdentity.js';
@@ -175,10 +176,20 @@ export default function ChroniclesOfMatthias({ onExit }) {
   const partyBarkSequenceRef = useRef(0);
   const [progression, setProgression] = useState(() => loadChroniclesProgression());
   const progressionRef = useRef(progression);
-  const [characterSetupDone, setCharacterSetupDone] = useState(false);
-  // Restore an unfinished character editor draft; otherwise display the
-  // expedition book before allocating or loading any server run.
-  const [entryView, setEntryView] = useState(() => loadChroniclesCharacterDraft(CHRONICLES_PARTY) ? 'setup' : 'menu');
+  const initialEntryRef = useRef(null);
+  if (!initialEntryRef.current) {
+    // Draft authoring wins over gameplay restore. Otherwise an already-selected
+    // active run resumes directly after F5 instead of dumping the player back
+    // into the expedition book. Reading the active id never mints a new run.
+    const hasDraft = Boolean(loadChroniclesCharacterDraft(CHRONICLES_PARTY));
+    const activeRunId = hasDraft ? null : chroniclesActiveRunId(FIRST_PERSON_RUN_SCOPE);
+    initialEntryRef.current = {
+      characterSetupDone: Boolean(activeRunId),
+      entryView: hasDraft ? 'setup' : activeRunId ? 'playing' : 'menu',
+    };
+  }
+  const [characterSetupDone, setCharacterSetupDone] = useState(initialEntryRef.current.characterSetupDone);
+  const [entryView, setEntryView] = useState(initialEntryRef.current.entryView);
   const [savesRefreshKey, refreshSaves] = useState(0);
   const [saveInventory, setSaveInventory] = useState(null);
   const [saveMenuLoading, setSaveMenuLoading] = useState(false);
