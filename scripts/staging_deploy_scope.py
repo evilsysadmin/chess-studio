@@ -65,9 +65,15 @@ NON_RUNTIME_SCRIPT_PREFIXES = (
 FRONTEND_TEST_RE = re.compile(r"^frontend/src/.*\.(?:test|spec)\.(?:js|jsx|ts|tsx)$")
 
 
-# A change to the live admission smoke must exercise staging, not be skipped
-# along with unrelated offline test-only modifications.
-LIVE_STAGING_SMOKE = "e2e/staging-live.spec.js"
+# Changes to staging's deployed acceptance contract must exercise staging.
+# Keep this allowlist narrow: ordinary offline E2E tests remain non-runtime.
+STAGING_ACCEPTANCE_FILES = frozenset({
+    "e2e/staging-live.spec.js",
+    "e2e/staging-war-room-restore.spec.js",
+    "e2e/staging-pawn-slug-godot.spec.js",
+    "e2e/playwright.staging.config.js",
+    "e2e/staging-synthetic.js",
+})
 
 
 def normalize(path: str) -> str:
@@ -80,7 +86,7 @@ def normalize(path: str) -> str:
 def non_runtime_path(path: str) -> bool:
     path = normalize(path)
     name = Path(path).name
-    if path == LIVE_STAGING_SMOKE:
+    if path in STAGING_ACCEPTANCE_FILES:
         return False
     if path in NON_RUNTIME_EXACT or path.startswith(NON_RUNTIME_PREFIXES):
         return True
@@ -154,7 +160,9 @@ def emit(path: str, deploy_required: bool, reason: str) -> None:
 def self_test() -> None:
     assert deploy_required_for_paths(["docs/operations/pvp.md", "README.md"]) == (False, "non-runtime-only")
     assert deploy_required_for_paths(["e2e/smoke.spec.js", "backend-go/internal/pulse/pulse_test.go"]) == (False, "non-runtime-only")
-    assert deploy_required_for_paths([LIVE_STAGING_SMOKE]) == (True, f"runtime:{LIVE_STAGING_SMOKE}")
+    for staging_path in sorted(STAGING_ACCEPTANCE_FILES):
+        assert deploy_required_for_paths([staging_path]) == (True, f"runtime:{staging_path}")
+    assert deploy_required_for_paths(["e2e/ordinary-browser.spec.js"]) == (False, "non-runtime-only")
     assert deploy_required_for_paths(["e2e/staging-live-other.spec.js"]) == (False, "non-runtime-only")
     assert deploy_required_for_paths(["scripts/quality_scope.py", ".github/workflows/cicd.yml"]) == (False, "non-runtime-only")
     assert deploy_required_for_paths(["scripts/dead_code_reachability_check.py"]) == (False, "non-runtime-only")
