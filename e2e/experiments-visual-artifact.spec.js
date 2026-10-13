@@ -736,3 +736,44 @@ if (scopeEnabled('pawnslug')) {
     );
   });
 }
+
+if (scopeEnabled('landing')) {
+  test('Laboratorio libre · tablero protagonista en desktop y móvil', async ({ browser }) => {
+    test.setTimeout(180_000);
+    await mkdir(ARTIFACT_DIR, { recursive: true });
+    for (const capture of CAPTURES) {
+      await withCapturePage(browser, capture, async (page) => {
+        await page.locator('.lab-workshop-tool:not(.lab-workshop-tool--arena)').click();
+        const root = page.locator('.lab-screen--position');
+        await expect(root.getByRole('heading', { name: 'Prepara una posición y juega' })).toBeVisible();
+        await expect(root.locator('.lab-board-editor [data-board3d-war-room="true"]'))
+          .toBeVisible({ timeout: 45_000 });
+        const geom = await root.evaluate((node) => {
+          const rect = (selector) => {
+            const bounds = node.querySelector(selector).getBoundingClientRect();
+            return { left: bounds.left, right: bounds.right, top: bounds.top, bottom: bounds.bottom };
+          };
+          return {
+            overflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
+            board: rect('.lab-position-stage'),
+            tools: rect('.lab-position-controls'),
+          };
+        });
+        expect(geom.overflow, `${capture.label}: no horizontal overflow`).toBe(false);
+        expect(geom.board.top, `${capture.label}: board starts in first viewport`)
+          .toBeLessThan(capture.height);
+        if (capture.width > 900) {
+          expect(geom.tools.left, `${capture.label}: tools beside board`)
+            .toBeGreaterThanOrEqual(geom.board.right - 2);
+        } else {
+          expect(geom.tools.top, `${capture.label}: tools follow board on phone`)
+            .toBeGreaterThanOrEqual(geom.board.top);
+        }
+        await captureFrozenFrame(page, {
+          path: `${ARTIFACT_DIR}/lab-position-editor-${capture.label}.png`,
+          fullPage: true,
+        });
+      });
+    }
+  });
+}
