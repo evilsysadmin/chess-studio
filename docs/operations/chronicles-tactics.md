@@ -167,6 +167,7 @@ El mismo asset/contrato debe mantenerse coherente entre tarjeta grande, thumbnai
 - setup compartido funciona en ambos modos;
 - draft sobrevive F5 sin convertirse en progreso;
 - bootstrap conserva idempotencia y recupera 409 stale de forma controlada;
+- F5 con run activa del mismo usuario reabre la misma expedición en su checkpoint autoritativo y no crea una segunda run; un borrador de personajes sin confirmar mantiene prioridad.
 - colisión, targeting, IA y escena comparten las posiciones runtime actuales, sin blockers fantasma de spawns antiguos;
 - mapas procedurales no contienen celdas invisiblemente bloqueadas y mantienen conectividad exigida;
 - checkpoints durables hidratan antes del primer frame y escriben con CAS/versionado sólo en hitos semánticos;
