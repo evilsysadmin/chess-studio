@@ -4,6 +4,7 @@ import { stagingSyntheticHeaders } from './staging-synthetic.js';
 
 const STAGING_URL = process.env.STAGING_URL || 'https://staging.chess-studio.shadowops.dpdns.org';
 const STAGING_API_URL = process.env.STAGING_API_URL || 'https://api-staging.chess-studio.shadowops.dpdns.org/api';
+const EXPECTED_DEPLOY_SHA = process.env.DEPLOY_SHA || '';
 const ACTIVE_GAME_SESSION_KEY = 'chess-study-active-game-session-v1';
 
 function requiredEnv(name) {
@@ -186,6 +187,20 @@ test('staging authority · F5 3D descarta snapshot viejo y rehidrata la partida 
     const restored = await restoredResponse.json();
     expect(restored.fen).toBe(mutated.fen);
     expect(restored.turn).toBe(mutated.turn);
+
+    // A correct API restore is insufficient if F5 has silently loaded a
+    // different Pages release. Verify the same immutable deployed frontend
+    // after reloading, with an uncached public release receipt.
+    if (EXPECTED_DEPLOY_SHA) {
+      const releaseUrl = new URL('/release.json', STAGING_URL);
+      releaseUrl.searchParams.set('staging-restore-f5-identity', String(Date.now()));
+      const releaseResponse = await request.get(releaseUrl.toString(), {
+        headers: { 'Cache-Control': 'no-cache, no-store', Pragma: 'no-cache' },
+      });
+      expect(releaseResponse.status(), 'Frontend release receipt after F5').toBe(200);
+      const release = await releaseResponse.json();
+      expect(String(release.build || '').toLowerCase()).toBe(EXPECTED_DEPLOY_SHA.toLowerCase());
+    }
 
     await expect(warRoom3d).toBeVisible({ timeout: 30_000 });
     await expect(warRoomSignal).toBeVisible();
