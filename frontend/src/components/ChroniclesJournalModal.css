@@ -1,19 +1,318 @@
-.chronicles-journal-modal__backdrop{position:fixed;inset:0;z-index:11000;display:grid;place-items:center;padding:clamp(10px,3vw,30px);background:rgba(0,0,0,.75);color-scheme:only light}
-.chronicles-journal-modal{display:flex;flex-direction:column;width:min(760px,100%);max-height:min(90dvh,900px);min-height:0;overflow:hidden;background:linear-gradient(135deg,#292015,#0e0b09 70%);border:1px solid #80603a;border-radius:9px;box-shadow:0 25px 80px #000b;color:#e9d3ad}
-.chronicles-journal-modal__header{display:flex;align-items:center;justify-content:space-between;gap:15px;padding:15px 20px;border-bottom:1px solid #72512d;background:linear-gradient(90deg,#342719,#1d160e)}
-.chronicles-journal-modal__header small{font-size:.68rem;letter-spacing:.16em;color:#bb9861}
-.chronicles-journal-modal__header h2{margin:3px 0 0;font:700 1.45rem Georgia,serif;color:#f4d8a7}
-.chronicles-journal-modal__header button{font-size:1.8rem;line-height:1;width:40px;height:40px;cursor:pointer;background:#0b0907;color:#f4d8a7;border:1px solid #63431f;border-radius:7px}
-.chronicles-journal-modal__scroll{min-height:0;flex:1;overflow:auto;overscroll-behavior:contain;padding:14px 19px 22px;scrollbar-width:thin}
-.chronicles-journal-modal__scroll:focus-visible{outline:2px solid #dcb46e;outline-offset:-2px}
-.chronicles-journal-modal__scroll h3{font:700 .9rem Georgia,serif;color:#e2bf86;margin:17px 0 9px}
-.chronicles-journal-modal__scroll ol{list-style:none;margin:0;padding:0;display:grid;gap:9px}
-.chronicles-journal-modal__scroll li{display:flex;gap:13px;padding:12px;background:#241a11;border:1px solid #53402a}
-.chronicles-journal-modal__scroll li>span{color:#bd965a;min-width:24px;text-align:center}
-.chronicles-journal-modal__scroll li strong{color:#efd6ad;font:700 .92rem Georgia,serif}
-.chronicles-journal-modal__scroll li p{margin:5px 0 0;font-size:.83rem;line-height:1.5;color:#cdbb9e}
-.chronicles-journal-modal__scroll .chronicles-quest-log{padding:0}
-.chronicles-journal-modal__scroll .chronicles-quest-log__quest{padding:11px}
-.chronicles-journal-modal__scroll .chronicles-quest-log__quest p{font-size:.82rem}
-.chronicles-journal-modal footer{padding:8px 20px;text-align:right;border-top:1px solid #42301c;font-size:.7rem;color:#9d825f}
-@media(max-width:600px){.chronicles-journal-modal__header{padding:11px 13px}.chronicles-journal-modal__scroll{padding:11px}.chronicles-journal-modal__header h2{font-size:1.2rem}}
+/* The company journal is an open field book, not a generic dark dialog.
+   Everything here is scoped because the quest list is also used elsewhere. */
+.chronicles-journal-modal__backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 11000;
+  display: grid;
+  place-items: center;
+  padding: clamp(8px, 2.5vw, 28px);
+  background: rgba(3, 3, 3, .81);
+  color-scheme: only light;
+}
+.chronicles-journal-modal {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: min(940px, 100%);
+  min-height: 0;
+  max-height: min(88dvh, 850px);
+  overflow: hidden;
+  color: #2d1b0f;
+  border: 2px solid #ad854b;
+  border-radius: 10px;
+  background: #302014;
+  box-shadow: 0 0 0 5px #1b110b, 0 0 0 6px #6d4c2b, 0 28px 85px #000d;
+}
+.chronicles-journal-modal__header {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: clamp(12px, 2vw, 20px);
+  padding: 19px 23px 17px;
+  border-bottom: 1px solid #bf9958;
+  background:
+    radial-gradient(ellipse at 10% 0%, rgba(195, 143, 63, .18), transparent 58%),
+    repeating-linear-gradient(92deg, transparent 0 26px, rgba(0, 0, 0, .027) 27px 29px),
+    linear-gradient(120deg, #372315, #20150e 80%);
+}
+.chronicles-journal-modal__crest {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  flex: none;
+  border: 1px solid #c4a165;
+  border-radius: 50%;
+  background: radial-gradient(circle, #6b4723, #22150c 72%);
+  box-shadow: inset 0 0 0 4px #29190e, inset 0 0 0 5px #84613a;
+  color: #f0cd84;
+  font-size: 2rem;
+  line-height: 1;
+}
+.chronicles-journal-modal__heading { min-width: 0; flex: 1; }
+.chronicles-journal-modal__heading small,
+.chronicles-journal-modal__page-intro > span {
+  font: 400 .88rem/1.1 var(--mm3-pixel-font, monospace);
+  letter-spacing: .13em;
+}
+.chronicles-journal-modal__heading small { color: #ceae79; }
+.chronicles-journal-modal__heading h2 {
+  margin: 2px 0 0;
+  color: #ffdf9f;
+  font: 700 clamp(1.5rem, 3vw, 2.1rem)/1.13 Georgia, 'Times New Roman', serif;
+  letter-spacing: -.025em;
+  text-shadow: 0 2px 1px #130c09;
+}
+.chronicles-journal-modal__heading p {
+  margin: 6px 0 0;
+  color: #cfb79a;
+  font-size: .83rem;
+  line-height: 1.3;
+}
+.chronicles-journal-modal__header button {
+  align-self: flex-start;
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  cursor: pointer;
+  border: 2px solid #9e793e;
+  border-radius: 6px;
+  background: #1c130d;
+  color: #ffe4ab;
+  font: 400 2rem/1 Georgia, serif;
+  box-shadow: inset 0 0 0 2px #312117;
+}
+.chronicles-journal-modal__header button:hover,
+.chronicles-journal-modal__header button:focus-visible {
+  border-color: #f0c780;
+  background: #52331b;
+  outline: 2px solid #ffd990;
+  outline-offset: 2px;
+}
+.chronicles-journal-modal__overview {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(9px, 3vw, 28px);
+  padding: 9px 14px;
+  border-bottom: 1px solid #735131;
+  background: linear-gradient(180deg, #604026, #3e2a1b);
+  color: #f1d9aa;
+  font: 400 1.1rem/1 var(--mm3-pixel-font, monospace);
+  letter-spacing: .035em;
+  text-align: center;
+}
+.chronicles-journal-modal__overview b { color: #fff1cb; font-weight: 400; font-size: 1.35rem; }
+.chronicles-journal-modal__overview-divider { color: #ca9750; font-size: .85rem; }
+.chronicles-journal-modal__scroll {
+  min-height: 0;
+  flex: 1;
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: #a17945 #e1c99e;
+  background: #e4cda5;
+}
+.chronicles-journal-modal__scroll:focus-visible { outline: 2px solid #754a1d; outline-offset: -3px; }
+.chronicles-journal-modal__pages {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  min-height: 370px;
+}
+.chronicles-journal-modal__page {
+  min-width: 0;
+  padding: clamp(19px, 2.5vw, 27px) clamp(15px, 2.5vw, 29px) 34px;
+  background:
+    radial-gradient(ellipse at 10% 10%, rgba(255, 248, 222, .75), transparent 80%),
+    repeating-linear-gradient(0deg, rgba(92, 61, 28, .025) 0 1px, transparent 1px 4px),
+    #e7d3ac;
+}
+.chronicles-journal-modal__page--quests {
+  border-right: 1px solid #aa8758;
+  box-shadow: inset -13px 0 22px -15px rgba(59, 31, 13, .45);
+}
+.chronicles-journal-modal__page--folios {
+  background:
+    radial-gradient(ellipse at 90% 10%, rgba(255, 247, 224, .7), transparent 80%),
+    repeating-linear-gradient(0deg, rgba(92, 61, 28, .025) 0 1px, transparent 1px 4px),
+    #e5cea3;
+  box-shadow: inset 13px 0 22px -15px rgba(59, 31, 13, .43);
+}
+.chronicles-journal-modal__page-intro {
+  display: grid;
+  gap: 4px;
+  margin-bottom: 16px;
+  padding-bottom: 13px;
+  border-bottom: 1px solid #b99b6b;
+}
+.chronicles-journal-modal__page-intro > span { color: #795024; font-size: .94rem; }
+.chronicles-journal-modal__page-intro p {
+  margin: 0;
+  color: #68492f;
+  font: italic .86rem/1.35 Georgia, 'Times New Roman', serif;
+}
+.chronicles-journal-modal__scroll h3 {
+  margin: 0 0 13px;
+  color: #39210f;
+  font: 700 1.24rem/1.18 Georgia, 'Times New Roman', serif;
+  letter-spacing: -.02em;
+}
+.chronicles-journal-modal__scroll h3::after {
+  content: '';
+  display: block;
+  width: 46px;
+  height: 2px;
+  margin-top: 8px;
+  background: #9d6d34;
+}
+.chronicles-journal-modal__scroll .chronicles-quest-log { padding: 0; }
+.chronicles-journal-modal__scroll .chronicles-quest-log ul,
+.chronicles-journal-modal__folios {
+  display: grid;
+  gap: 12px;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+.chronicles-journal-modal__scroll .chronicles-quest-log__quest,
+.chronicles-journal-modal__folios > li {
+  position: relative;
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  gap: 11px;
+  align-items: start;
+  padding: 15px 14px;
+  background: rgba(255, 248, 225, .59);
+  border: 1px solid #bc9865;
+  border-left: 4px solid #9c6b30;
+  border-radius: 2px;
+  box-shadow: 0 3px 0 rgba(96, 60, 21, .055);
+  color: #302017;
+}
+.chronicles-journal-modal__scroll .chronicles-quest-log__quest.is-main {
+  border-left-color: #8c491e;
+  background: rgba(255, 244, 210, .81);
+}
+.chronicles-journal-modal__scroll .chronicles-quest-log__quest.is-completed {
+  border-left-color: #4f7849;
+}
+.chronicles-journal-modal__scroll .chronicles-quest-log__quest > span,
+.chronicles-journal-modal__folio-sigil {
+  display: grid;
+  place-items: center;
+  width: 25px;
+  height: 25px;
+  padding: 0;
+  margin: 0;
+  color: #805323;
+  background: #dfc79b;
+  border: 1px solid #bb9868;
+  border-radius: 50%;
+  font-size: 1rem;
+  line-height: 1;
+}
+.chronicles-journal-modal__scroll .chronicles-quest-log__quest.is-completed > span {
+  color: #3c6237;
+  border-color: #819c79;
+}
+.chronicles-journal-modal__scroll .chronicles-quest-log__quest > div,
+.chronicles-journal-modal__folios > li > div { min-width: 0; }
+.chronicles-journal-modal__scroll .chronicles-quest-log__quest small {
+  display: block;
+  margin: 1px 0 5px;
+  color: #81592d;
+  font: 400 .9rem/1 var(--mm3-pixel-font, monospace);
+  letter-spacing: .09em;
+  text-transform: uppercase;
+}
+.chronicles-journal-modal__scroll .chronicles-quest-log__quest strong,
+.chronicles-journal-modal__folios > li strong {
+  display: block;
+  color: #35200d;
+  font: 700 1.02rem/1.27 Georgia, 'Times New Roman', serif;
+  overflow-wrap: anywhere;
+}
+.chronicles-journal-modal__scroll .chronicles-quest-log__quest p,
+.chronicles-journal-modal__folios > li p {
+  margin: 8px 0 0;
+  color: #61472d;
+  font: 400 .9rem/1.52 system-ui, -apple-system, sans-serif;
+  overflow-wrap: anywhere;
+}
+.chronicles-journal-modal__scroll .chronicles-quest-log__quest.is-completed strong { color: #52664a; }
+.chronicles-journal-modal__empty {
+  margin: 0;
+  padding: 18px 16px;
+  border: 1px dashed #b29161;
+  color: #674e30;
+  font: italic .95rem/1.5 Georgia, serif;
+}
+.chronicles-journal-modal footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 22px;
+  border-top: 1px solid #ad854b;
+  background: #2c1d13;
+  color: #d5b685;
+  font: 400 .95rem/1 var(--mm3-pixel-font, monospace);
+  letter-spacing: .06em;
+}
+.chronicles-journal-modal footer kbd {
+  display: inline-block;
+  padding: 3px 6px;
+  border: 1px solid #765638;
+  border-bottom-width: 2px;
+  border-radius: 3px;
+  color: #f4dbab;
+  background: #1a120d;
+  font: inherit;
+}
+@media (max-width: 720px) {
+  .chronicles-journal-modal { max-height: calc(100dvh - 20px); }
+  .chronicles-journal-modal__pages { grid-template-columns: minmax(0, 1fr); min-height: 0; }
+  .chronicles-journal-modal__page--quests {
+    border-right: 0;
+    border-bottom: 2px solid #a78049;
+    box-shadow: inset 0 -12px 18px -18px #321d0c;
+  }
+  .chronicles-journal-modal__page--folios { box-shadow: none; }
+  .chronicles-journal-modal__page { padding: 19px 17px 23px; }
+  .chronicles-journal-modal__header { padding: 14px 15px; }
+  .chronicles-journal-modal__crest { width: 42px; height: 42px; font-size: 1.5rem; }
+  .chronicles-journal-modal__heading h2 { font-size: 1.47rem; }
+  .chronicles-journal-modal__heading p { font-size: .76rem; }
+  .chronicles-journal-modal footer { padding: 8px 13px; }
+}
+@media (max-width: 420px) {
+  .chronicles-journal-modal__backdrop { padding: 7px; }
+  .chronicles-journal-modal { max-height: calc(100dvh - 14px); }
+  .chronicles-journal-modal__header { gap: 9px; padding: 12px; }
+  .chronicles-journal-modal__crest { display: none; }
+  .chronicles-journal-modal__heading h2 { font-size: 1.3rem; }
+  .chronicles-journal-modal__heading p { display: none; }
+  .chronicles-journal-modal__header button { width: 42px; height: 42px; }
+  .chronicles-journal-modal__overview { padding: 6px 10px; }
+  .chronicles-journal-modal footer > span:first-child { display: none; }
+  .chronicles-journal-modal footer { justify-content: flex-end; }
+}
+@media (max-height: 480px) {
+  .chronicles-journal-modal { max-height: calc(100dvh - 12px); }
+  .chronicles-journal-modal__header { padding-block: 9px; }
+  .chronicles-journal-modal__heading p { display: none; }
+  .chronicles-journal-modal__crest { width: 40px; height: 40px; font-size: 1.5rem; }
+  .chronicles-journal-modal__overview { padding-block: 4px; }
+  .chronicles-journal-modal__page { padding-block: 14px; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .chronicles-journal-modal { animation: chronicles-journal-unfold .18s ease-out both; }
+  @keyframes chronicles-journal-unfold {
+    from { opacity: .5; transform: translateY(6px) scale(.985); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+}
