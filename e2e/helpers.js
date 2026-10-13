@@ -285,6 +285,39 @@ export async function mockApi(page, {
       const payload = Array.from(chroniclesRuns.values()).find((run) => run.runId === decodeURIComponent(bootstrapSave[1]));
       return payload ? json(payload) : json({ detail: 'Run not found' }, 404);
     }
+    // Match the authoritative CAS checkpoint contract. Tests must not "retry"
+    // a failed save into an unrelated unmocked 404, nor silently bump versions
+    // when the server rejected the first request.
+    const checkpointSave = path.match(/\/chronicles\/runs\/([^/]+)\/checkpoint$/);
+    if (checkpointSave && method === 'PUT') {
+      const runId = decodeURIComponent(checkpointSave[1]);
+      const located = Array.from(chroniclesRuns.entries()).find(([, run]) => run.runId === runId);
+      if (!located) return json({ detail: 'Run not found' }, 404);
+      const [key, run] = located;
+      const checkpoint = route.request().postDataJSON?.() ?? {};
+      if (checkpoint.expectedWorldVersion !== run.worldVersion) {
+        return json({ detail: 'Chronicles checkpoint world-version conflict' }, 409);
+      }
+      if (run.status !== 'active') return json({ detail: 'Chronicles run is terminal' }, 409);
+      const area = run.areas?.find((entry) => entry.mapId === checkpoint.currentMapId);
+      if (!area) return json({ detail: 'Chronicles map not in this run' }, 409);
+      const updated = {
+        ...run,
+        worldVersion: run.worldVersion + 1,
+        currentMapId: area.mapId,
+        area,
+        contentVersion: area.contentVersion,
+        manifestRevision: area.manifestRevision,
+        worldFlags: checkpoint.worldFlags || {},
+        inventory: checkpoint.inventory || {},
+        quests: checkpoint.quests || {},
+        consumedContentIds: checkpoint.consumedContentIds || [],
+        claimedRewards: checkpoint.claimedRewards || [],
+        status: checkpoint.terminalStatus || run.status,
+      };
+      chroniclesRuns.set(key, updated);
+      return json(updated);
+    }
     const deleteSave = path.match(/\/chronicles\/runs\/([^/]+)$/);
     if (deleteSave && method === 'DELETE') {
       const key = Array.from(chroniclesRuns.entries())

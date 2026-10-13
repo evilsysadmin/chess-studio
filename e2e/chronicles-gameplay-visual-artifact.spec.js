@@ -884,7 +884,9 @@ for (const capture of CAPTURES) {
           priority: element.style.getPropertyPriority('color'),
           computed: getComputedStyle(element).color,
         }));
-        expect(ink.value, `${capture.label}: ${selector} inline ink`).toBe('#08080a');
+        // Browser CSSOM may canonicalize #08080a to rgb(8, 8, 10).
+        // Keep the important inline contract and rendered color strict.
+        expect(['#08080a', 'rgb(8, 8, 10)'], `${capture.label}: ${selector} equivalent inline ink`).toContain(ink.value);
         expect(ink.priority, `${capture.label}: ${selector} priority`).toBe('important');
         expect(ink.computed, `${capture.label}: ${selector} final ink`).toBe('rgb(8, 8, 10)');
       }
