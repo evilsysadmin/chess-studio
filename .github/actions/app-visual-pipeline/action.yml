@@ -119,7 +119,7 @@ runs:
               frontend/src/assets/chronicles/expedition-study-desktop-v2.avif)
                 # Decorative sibling of the book CSS, no gameplay ownership.
                 : ;;
-              scripts/app_visual_capture.sh|.github/actions/app-visual-pipeline/action.yml)
+              scripts/app_visual_capture.sh|scripts/app_visual_producer_scope.py|.github/actions/app-visual-pipeline/action.yml)
                 : ;;
               *) menu_only=false ;;
             esac
