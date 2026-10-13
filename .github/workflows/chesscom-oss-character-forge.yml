@@ -9,6 +9,8 @@ on:
       - scripts/art/chesscom_oss_contact_v52.py
       - scripts/blender/chesscom_oss_turntable_v52.py
       - scripts/blender/chesscom_sven_art_direction_v53.py
+      - scripts/blender/chesscom_sven_organic_v55.py
+      - docs/experiments/chesscom-sven-organic-v55.md
       - scripts/blender/chesscom_sven_motion_review_v54.py
       - scripts/art/chesscom_sven_motion_contact_v54.py
       - docs/experiments/chesscom-sven-motion-v54.md
@@ -60,7 +62,7 @@ jobs:
         run: |
           set -euo pipefail
           blender --background --threads 2 --python-exit-code 19 \
-            --python scripts/blender/chesscom_sven_art_direction_v53.py -- \
+            --python scripts/blender/chesscom_sven_organic_v55.py -- \
             --source-glb .artifacts/chesscom-oss-v52/source/swat.glb \
             --output-dir .artifacts/chesscom-oss-v52/review
           python3 scripts/art/chesscom_oss_contact_v52.py \
@@ -109,6 +111,16 @@ jobs:
           assert details["pieces"]>=30 and len(details["distinct_bones"])>=4
           assert any("nvg_tube" in n["name"] for n in v53)
           assert any("backpack_main" in n["name"] for n in v53)
+          organic=details["v55"]
+          assert len(organic["sculpted_parts"])==7
+          assert len(organic["extra_rigged_details"])==13
+          assert len(organic["new_distinct_bones"])>=3
+          assert organic["low_poly_source_preserved"] and organic["no_rifle_claim"]
+          named={n["name"] for n in document["nodes"] if "name" in n}
+          assert {"V55_left_earcup","V55_radio_body","V55_kneepad_L",
+                  "V55_kneepad_R","V55_backpack_seam_L"}.issubset(named)
+          assert not any("MuzzleSocket" in name for name in named)
+          assert not blender["two_hand_rifle_contact_verified"]
           motion=json.loads((folder/"motion-report.json").read_text())
           assert motion["review_only"] and not motion["promotable"]
           assert motion["animations_are_authentic"]
