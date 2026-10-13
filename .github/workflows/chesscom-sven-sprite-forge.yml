@@ -14,6 +14,8 @@ on:
       - scripts/art/test_chesscom_golden_reference_v41.py
       - docs/experiments/chesscom-golden-art-v41.json
       - scripts/blender/chesscom_sven_owned_preview_v40.py
+      - scripts/art/chesscom_actor_rig_gate_v47.py
+      - scripts/art/test_chesscom_actor_rig_gate_v47.py
       - scripts/art/test_chesscom_owned_master_v40.py
       - scripts/art/test_chesscom_sven_bank_v38.py
       - scripts/art/contracts/chesscom_sven_v38.json
@@ -46,6 +48,8 @@ jobs:
         run: |
           python3 scripts/art/chesscom_owned_master_v40.py --references-only
           python3 -m unittest discover -s scripts/art -p 'test_chesscom_owned_master_v40.py' -v
+      - name: Check CHESSCOM authored 3D rig / animation gate V47
+        run: python3 -m unittest discover -s scripts/art -p 'test_chesscom_actor_rig_gate_v47.py' -v
       - name: Audit Sven original source handoff V44 (offline, zero cost)
         run: python3 -m unittest discover -s scripts/art -p 'test_chesscom_sven_source_handoff_v44.py' -v
       - name: Verify existing Sven V45 derivatives, alpha and immutable SHA
