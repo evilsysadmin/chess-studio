@@ -390,3 +390,90 @@
 @media (prefers-reduced-motion: reduce) {
   .chronicles-character-sheet--mm3.chronicles-character-sheet--folio-v2 .chronicles-character-sheet__tabs button { transition: none; }
 }
+
+
+/* Wide MM3 desktop folio V3: use the whole practical screen width.
+   No synthetic resistances or invented equipment stats. Existing portrait,
+   party navigation, spellbook and mobile layout keep their own authority. */
+@media (min-width: 1050px) and (min-height: 600px) {
+  .chronicles-character-sheet.chronicles-character-sheet--mm3.chronicles-character-sheet--folio-v2 {
+    width: min(1540px, calc(100vw - 32px));
+    max-width: none;
+    padding: 14px;
+  }
+
+  .chronicles-character-sheet--mm3.chronicles-character-sheet--folio-v2 .chronicles-character-sheet__scroll {
+    grid-template-columns: minmax(235px, 27fr) minmax(0, 73fr);
+    column-gap: 10px;
+  }
+
+  .chronicles-character-sheet--mm3.chronicles-character-sheet--folio-v2 .chronicles-character-sheet__head {
+    min-height: 146px;
+    grid-template-columns: 104px minmax(0, 1fr) 42px;
+    gap: 19px;
+    padding: 12px 22px;
+  }
+
+  .chronicles-character-sheet--mm3.chronicles-character-sheet--folio-v2 .chronicles-character-sheet__portrait {
+    width: 100px;
+  }
+
+  .chronicles-character-sheet--mm3.chronicles-character-sheet--folio-v2 .chronicles-character-sheet__identity h3 {
+    font-size: clamp(2rem, 3vw, 2.85rem);
+  }
+
+  .chronicles-character-sheet--mm3.chronicles-character-sheet--folio-v2 .chronicles-character-sheet__progression {
+    padding-block: 8px;
+  }
+
+  .chronicles-character-sheet--mm3.chronicles-character-sheet--folio-v2 .chronicles-character-sheet__tabs button {
+    min-height: 46px;
+  }
+
+  .chronicles-character-sheet--mm3.chronicles-character-sheet--folio-v2 .chronicles-character-sheet__vitals > div {
+    padding: 10px 16px;
+  }
+
+  .chronicles-character-sheet--mm3.chronicles-character-sheet--folio-v2 .chronicles-character-sheet__combat {
+    margin: 12px 0 12px 12px;
+    padding: 8px 13px;
+  }
+
+  .chronicles-character-sheet--mm3.chronicles-character-sheet--folio-v2 .chronicles-character-sheet__combat > div {
+    padding: 7px 3px;
+  }
+
+  .chronicles-character-sheet--mm3.chronicles-character-sheet--folio-v2 .chronicles-character-sheet__section--core-stats {
+    margin: 12px 12px 12px 0;
+    padding: 0 16px 8px;
+  }
+
+  .chronicles-character-sheet--mm3.chronicles-character-sheet--folio-v2 .chronicles-character-sheet__mm3-stats {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    column-gap: 18px;
+  }
+
+  .chronicles-character-sheet--mm3.chronicles-character-sheet--folio-v2 .chronicles-character-sheet__mm3-stats > div {
+    min-width: 0;
+    min-height: 74px;
+    padding: 9px 3px;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-content: center;
+  }
+
+  .chronicles-character-sheet--mm3.chronicles-character-sheet--folio-v2 .chronicles-character-sheet__mm3-stats span {
+    overflow-wrap: anywhere;
+    font-size: 1.05rem;
+  }
+
+  .chronicles-character-sheet--mm3.chronicles-character-sheet--folio-v2 .chronicles-character-sheet__mm3-stats b {
+    font-size: 1.58rem;
+  }
+
+  .chronicles-character-sheet--mm3.chronicles-character-sheet--folio-v2 .chronicles-character-sheet__mm3-stats small {
+    line-height: 1.12;
+  }
+}
+
+/* 1050px viewport with a short landscape height: retain the existing
+   stacked/touch layout; never force the three-column desktop grid. */
