@@ -74,6 +74,17 @@ export function chesscomValidateAuthoredContainerV49(container) {
   return {clips,socket};
 }
 
+// The V4 visual model includes non-pickable canonical accessories (gloves,
+ // scarf, boot polish, etc.) without unit metadata. They must disappear with
+ // the procedural soldier; selection/targeting overlays stay unaffected.
+export function chesscomShouldHideSvenLegacyV50(mesh,imported=new Set()) {
+  if(!mesh||imported.has(mesh)||mesh.isDisposed?.())return false;
+  const name=String(mesh.name||'');
+  const tag=mesh.metadata;
+  return (tag?.type==='unit'&&tag?.id==='sven')
+    ||name.startsWith('canonical-unit-sven-');
+}
+
 export function installChesscomSvenAuthoredV49(B,scene,{
   host,search='',fetchManifest,fetchBytes,loadContainer,subtle,
 }={}){
@@ -101,7 +112,7 @@ export function installChesscomSvenAuthoredV49(B,scene,{
     if(!root||!container)return;
     const imported=new Set(container.meshes);
     for(const mesh of root.getChildMeshes?.()||[]){
-      if(imported.has(mesh)||mesh.isDisposed?.()||mesh?.metadata?.type!=='unit')continue;
+      if(!chesscomShouldHideSvenLegacyV50(mesh,imported))continue;
       if(!originalVisibility.has(mesh))originalVisibility.set(mesh,mesh.visibility);
       mesh.visibility=0;
     }
@@ -141,6 +152,12 @@ export function installChesscomSvenAuthoredV49(B,scene,{
   }
   const ready=(async()=>{
     try{
+      // Babylon core alone does not guarantee a registered glTF/.glb plugin.
+      // Skip even the asset request when the installed runtime cannot import it.
+      if(!loadContainer&&B.SceneLoader?.IsPluginForExtensionAvailable?.('.glb')!==true){
+        if(!destroyed&&host)host.dataset.chesscomSvenAuthoredReason='missing-glb-loader';
+        return fallback();
+      }
       const manifest=await getManifest(CHESSCOM_SVEN_AUTHORED_V49.manifest,controller.signal);
       if(destroyed||!chesscomSvenAuthoredManifestV49(manifest))return fallback();
       const bytes=await getBytes(manifest.asset.src,controller.signal);
@@ -153,7 +170,9 @@ export function installChesscomSvenAuthoredV49(B,scene,{
       if(!validated){imported?.dispose?.();return fallback();}
       container=imported;
       attach();
-      return true;
+      // An attach exception disposes the candidate and resets container.
+      // A missing tactical root may arrive on the next state update.
+      return Boolean(container);
     }catch{return fallback();}
     finally{
       if(objectUrl){URL.revokeObjectURL(objectUrl);objectUrl=null;}
@@ -192,7 +211,7 @@ export function installChesscomSvenAuthoredV49(B,scene,{
       originalVisibility.clear();
       try{container?.dispose?.();}catch{}
       if(objectUrl)URL.revokeObjectURL(objectUrl);
-      if(host)delete host.dataset.chesscomSvenAuthored;
+      if(host){delete host.dataset.chesscomSvenAuthored;delete host.dataset.chesscomSvenAuthoredReason;}
     },
   };
 }
