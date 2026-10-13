@@ -233,6 +233,9 @@ export function chroniclesChooseEnemyDisengageStep(state, enemy) {
 const ENEMY_MEMORY_ROUNDS = 2;
 
 function usesEnemyAwareness(enemy) {
+  // Boss/chess-piece movement is rule-authored: never replace its cadence
+  // with the organic-creature sight/investigate state machine.
+  if (['corrupted-pawn', 'gate-jailer', 'spectral-bishop', 'scavenger-knight'].includes(enemy.visualType)) return false;
   return ['cardinal-roam', 'patrol-route'].includes(enemy.ai?.movement)
     && ['cardinal-chase', 'knight-chase'].includes(enemy.ai?.engagedMovement)
     && Number.isFinite(Number(enemy.ai?.engageRange))
