@@ -889,16 +889,19 @@ for (const capture of CAPTURES) {
         expect(ink.computed, `${capture.label}: ${selector} final ink`).toBe('rgb(8, 8, 10)');
       }
 
-      // Every menu action stays on screen, «Salir y guardar» included.
+      // The five pause actions fit the viewport, with the sound mixer opt-in.
       const menuDetails = page.locator('details.chronicles-game-menu');
       const menuSummary = menuDetails.locator('> summary');
       await menuSummary.evaluate((summary) => summary.click());
-      const exitAction = menuDetails.getByRole('button', { name: 'Salir y guardar', exact: true });
+      const exitAction = menuDetails.getByRole('button', { name: 'Guardar y salir', exact: true });
       await expect(exitAction).toBeVisible();
       // Both controls belong to the current menu; keyboard-adjusting them
       // must not trigger dungeon movement hotkeys.
       const musicSlider = menuDetails.locator('#chronicles-music-volume');
       const fxSlider = menuDetails.locator('#chronicles-sfx-volume');
+      const audioToggle = menuDetails.getByRole('button', { name: 'Opciones de audio' });
+      await expect(musicSlider).toHaveCount(0);
+      await audioToggle.click();
       await expect(musicSlider).toBeVisible();
       await expect(fxSlider).toBeVisible();
       const turnsBeforeAudio = await gameRoot.getAttribute('data-chronicles-turns');
@@ -908,6 +911,9 @@ for (const capture of CAPTURES) {
       await musicSlider.press('ArrowRight');
       await expect(musicSlider).toHaveValue('5');
       await expect(gameRoot).toHaveAttribute('data-chronicles-turns', turnsBeforeAudio);
+      await captureElement(page, gameRoot, `${ARTIFACT_DIR}/chronicles-game-menu-audio-${capture.label}.png`);
+      await audioToggle.click();
+      await expect(musicSlider).toHaveCount(0);
 
       // The previously pale menu action labels must receive the same
       // browser-verified runtime ink as MAPA and MENÚ.
