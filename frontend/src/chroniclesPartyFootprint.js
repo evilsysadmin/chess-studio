@@ -331,16 +331,12 @@ export function chroniclesDeployPartyForCombat(state) {
 
 export function chroniclesCollapsePartyAfterCombat(state) {
   if (!state) return state;
-  const positions = chroniclesLivingPartyPositions(state);
-  const aliveIds = new Set((state.party || []).filter((member) => Number(member.hp || 0) > 0).map((member) => member.id));
-  const preferredId = aliveIds.has('matthias') ? 'matthias' : positions[0]?.memberId;
-  const anchor = positions.find(({ memberId }) => memberId === preferredId)?.position
-    || positions[0]?.position
-    || { x: Number(state.x), y: Number(state.y) };
+  // Finishing an encounter is not a movement action. Previously the camera/
+  // exploration anchor teleported to Matthias' tactical cell, making combat
+  // damage or a final blow look like an unsolicited tile knockback.
+  // Preserve the exploration anchor until the player actually moves.
   return {
     ...state,
-    x: Number(anchor.x),
-    y: Number(anchor.y),
     partyPositions: {},
   };
 }
