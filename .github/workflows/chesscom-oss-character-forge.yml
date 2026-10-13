@@ -123,14 +123,14 @@ jobs:
                   "V55_radio_whip","V55_backpack_seam_L"}.issubset(named)
           assert not any("MuzzleSocket" in name for name in named)
           smoothed=details["v56"]
-          assert smoothed["subdivision_level"]==1
+          assert smoothed["refinement_method"]=="microbevel-angle-limited"
           assert len(smoothed["source_garments"])==2
           assert {g["mesh"] for g in smoothed["source_garments"]}=={"Swat_Body","Swat_Legs"}
           assert smoothed["head_and_boots_unmodified"]
-          assert smoothed["total_refined_triangles"]<=150000
+          assert smoothed["total_refined_triangles"]<=120000
           assert all(g["after"]["weighted_fraction"]>=.99 for g in smoothed["source_garments"])
-          assert all(g["after"]["vertices"]>g["before"]["vertices"]*2 for g in smoothed["source_garments"])
-          assert all(g["after"]["triangles"]<=75000 for g in smoothed["source_garments"])
+          assert all(g["after"]["vertices"]>g["before"]["vertices"] for g in smoothed["source_garments"])
+          assert all(g["after"]["triangles"]<=60000 for g in smoothed["source_garments"])
           assert (folder/"cloth-detail.png").stat().st_size>1024
           # Check exported core skinned geometry, not just counters from bpy.
           core=[n for n in document.get("nodes",[]) if n.get("name") in ("Swat_Body","Swat_Legs")]
