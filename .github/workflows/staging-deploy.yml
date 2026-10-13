@@ -348,7 +348,7 @@ jobs:
       GH_REPO: ${{ github.repository }}
     steps:
       - name: Summary
-        run: echo "### Staging $DEPLOY_SHA · backend=$BACKEND · frontend=$FRONTEND · worker=$WORKER · smoke=$SMOKE" >> "$GITHUB_STEP_SUMMARY"
+        run: python3 -S scripts/staging_deploy_metrics.py --self-test && python3 -S scripts/staging_deploy_metrics.py
       - name: Dispatch scoped post-staging work
         shell: bash
         run: |
