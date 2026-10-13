@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Sven V56: soften ORIGINAL skinned fabric geometry, not overlay more boxes.
+"""Sven V56: seam-safe microbevel of ORIGINAL skinned fabric, no extra boxes.
 
 Review-only Blender CPU experiment. Keep Quaternius source, bones and 24
 authentic actions. V55 kit is preserved; never invent a rifle or IK claim.
@@ -22,7 +22,7 @@ from chesscom_oss_turntable_v52 import (
 from chesscom_sven_organic_v55 import add_design_v55
 
 GARMENTS = ("Swat_Body", "Swat_Legs")
-MAX_SMOOTHED_TRIANGLES = 75000
+MAX_SMOOTHED_TRIANGLES = 60000
 
 
 def triangles(obj):
@@ -37,11 +37,12 @@ def weighted_fraction(obj):
 
 
 def refine_source_garments(candidate):
-    """Bake one modest Catmull-Clark subdivision BEFORE armature deformation.
+    """Conservative seam-safe microbevel, NEVER Catmull-Clark on source islands.
 
-    Applying only the new subdivision is intentional: applying Armature
-    would destroy genuine source animation. Original sole and helmet remain
-    hard-edged so boots/optics do not melt.
+    Source body/leg pieces are disconnected low-poly armor/textile islands.
+    Catmull-Clark shrinks them away from each other and reveals black gaps,
+    as V56's first real 8-view render proved. A tiny sharp-edge bevel adds
+    believable light-catching edges without changing island silhouettes.
     """
     rig = next((o for o in candidate["objects"] if o.type == "ARMATURE"), None)
     if rig is None:
@@ -49,58 +50,60 @@ def refine_source_garments(candidate):
     bpy.context.scene.frame_set(1)
     bpy.context.view_layer.update()
     outcome = []
-    for name in GARMENTS:
+    for name, bevel_mm in (("Swat_Body", 1.6), ("Swat_Legs", 1.2)):
         obj = next((o for o in candidate["objects"] if o.name == name), None)
         if obj is None or obj.type != "MESH":
             raise RuntimeError("v56-missing-original-garment:" + name)
-        if obj.data.shape_keys:
-            raise RuntimeError("v56-unexpected-source-morphs:" + name)
-        if not obj.vertex_groups:
-            raise RuntimeError("v56-original-not-skinned:" + name)
+        if obj.data.shape_keys or not obj.vertex_groups:
+            raise RuntimeError("v56-unexpected-unskinned-or-morphed-mesh:" + name)
         armatures_before = [m.name for m in obj.modifiers if m.type == "ARMATURE"]
         if len(armatures_before) != 1:
-            raise RuntimeError("v56-skin-modifier-missing:" + name)
+            raise RuntimeError("v56-source-armature-missing:" + name)
         before = {"vertices": len(obj.data.vertices),
                   "triangles": triangles(obj),
                   "weighted_fraction": weighted_fraction(obj)}
         if before["weighted_fraction"] < .99:
-            raise RuntimeError("v56-incomplete-source-weights:" + name)
+            raise RuntimeError("v56-original-weights-incomplete:" + name)
 
         bpy.ops.object.select_all(action="DESELECT")
         obj.select_set(True)
         bpy.context.view_layer.objects.active = obj
-        subd = obj.modifiers.new("V56_baked_cloth_surface", "SUBSURF")
-        subd.subdivision_type = "CATMULL_CLARK"
-        subd.levels = 1
-        subd.render_levels = 1
-        # Keep subdivision before the animated armature (not after it).
-        while obj.modifiers.find(subd.name) > 0:
-            bpy.ops.object.modifier_move_up(modifier=subd.name)
-        bpy.ops.object.modifier_apply(modifier=subd.name)
+        bevel = obj.modifiers.new("V56_small_source_edge_bevel", "BEVEL")
+        bevel.width = bevel_mm / 1000
+        bevel.segments = 2
+        bevel.limit_method = "ANGLE"
+        bevel.angle_limit = math.radians(55)
+        bevel.loop_slide = True
+        bevel.use_clamp_overlap = True
+        while obj.modifiers.find(bevel.name) > 0:
+            bpy.ops.object.modifier_move_up(modifier=bevel.name)
+        bpy.ops.object.modifier_apply(modifier=bevel.name)
         if [m.name for m in obj.modifiers if m.type == "ARMATURE"] != armatures_before:
-            raise RuntimeError("v56-armature-changed:" + name)
+            raise RuntimeError("v56-lost-source-armature:" + name)
 
+        # Smooth textiles only. Hard inserts, gloves and polymer parts keep
+        # their authored faceted normals and all source components intact.
         for face in obj.data.polygons:
-            face.use_smooth = True
+            face.use_smooth = (face.material_index == 0)
         after = {"vertices": len(obj.data.vertices),
                  "triangles": triangles(obj),
                  "weighted_fraction": weighted_fraction(obj)}
-        if after["vertices"] <= before["vertices"] * 2 or after["weighted_fraction"] < .99:
-            raise RuntimeError("v56-subdivision-damaged-skinned-mesh:" + name)
-        if after["triangles"] > MAX_SMOOTHED_TRIANGLES:
-            raise RuntimeError("v56-garment-triangle-budget:" + name)
-        obj["v56_refined_source_mesh"] = True
-        outcome.append({"mesh": name, "before": before, "after": after})
+        if (after["vertices"] <= before["vertices"]
+                or after["weighted_fraction"] < .99):
+            raise RuntimeError("v56-microbevel-damaged-original:" + name)
+        if after["triangles"] > 60000:
+            raise RuntimeError("v56-bevel-triangle-budget:" + name)
+        obj["v56_refined_source_mesh"] = "microbevel"
+        outcome.append({"mesh": name, "bevel_mm": bevel_mm,
+                        "before": before, "after": after})
 
-    # The original four source meshes remain skinned. We have merely edited
-    # the existing body's and legs' vertex topology, not forged a skin.
     all_originals = [o for o in candidate["objects"]
                      if o.name in {"Swat_Body","Swat_Legs","Swat_Head","Swat_Feet"}]
     if len(all_originals) != 4 or any(not o.vertex_groups for o in all_originals):
         raise RuntimeError("v56-lost-original-skinned-parts")
     return {
         "source_garments": outcome,
-        "subdivision_level": 1,
+        "refinement_method": "microbevel-angle-limited",
         "total_refined_triangles": sum(o["after"]["triangles"] for o in outcome),
         "original_skinned_parts_preserved": [o.name for o in all_originals],
         "head_and_boots_unmodified": True,
@@ -161,7 +164,7 @@ def main():
     }
     (args.output_dir / "blender-report.json").write_text(
         json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-    print("V56_REAL_SKINNED_GARMENTS_REVIEW_ONLY",
+    print("V56_MICROBEVEL_REAL_SKINNED_GARMENTS_REVIEW_ONLY",
           art["v56"]["total_refined_triangles"], sha)
 
 
