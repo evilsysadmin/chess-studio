@@ -85,6 +85,21 @@ def softly_sculpt_existing(obj, rings):
     return {"name": obj.name, "rings": len(rings), "radial_sides": RIBS}
 
 
+def stable_bone_mount(rig, obj, bone):
+    # Blender 4.0 may use stale depsgraph transforms just after mesh conversion
+    # or apply-scale. Check the actual evaluated world position after parenting.
+    bpy.context.view_layer.update()
+    desired = obj.matrix_world.copy()
+    bone_mount(rig, obj, bone)
+    bpy.context.view_layer.update()
+    obj.matrix_world = desired
+    bpy.context.view_layer.update()
+    error = (obj.matrix_world.translation - desired.translation).length
+    if error > .002:
+        raise RuntimeError(f"v55-bone-world-drift:{obj.name}:{error:.5f}")
+    return obj
+
+
 def soft_object(candidate, name, xyz, halfsize, mat, bone, segments=20, rings=12):
     bpy.ops.mesh.primitive_uv_sphere_add(segments=segments, ring_count=rings, location=xyz)
     obj = bpy.context.object
@@ -96,7 +111,8 @@ def soft_object(candidate, name, xyz, halfsize, mat, bone, segments=20, rings=12
         p.use_smooth = True
     candidate["objects"].append(obj)
     rig = next(o for o in candidate["objects"] if o.type == "ARMATURE")
-    bone_mount(rig, obj, bone)
+    stable_bone_mount(rig, obj, bone)
+    obj["v55_expected_world_z"] = float(xyz[2])
     return obj
 
 
@@ -127,7 +143,7 @@ def curved_detail(candidate, name, coordinates, radius, mat, bone):
     obj = bpy.context.object
     candidate["objects"].append(obj)
     rig = next(o for o in candidate["objects"] if o.type == "ARMATURE")
-    bone_mount(rig, obj, bone)
+    stable_bone_mount(rig, obj, bone)
     return obj
 
 
@@ -226,9 +242,12 @@ def add_organic_detail(candidate):
                                 .0027, webbing, "Chest"))
     # Gentle knee pad surface variation, moving with the lower leg bones.
     for side, direction in (("L",-1),("R",1)):
-        details.append(soft_object(candidate,"kneepad_"+side,
-                     (direction*.103,-.09,.655),
-                     (.051,.026,.068),nylon,"LowerLeg."+side))
+        # The source lower-leg bone rest offset is not a reliable location
+        # for a kneepad without a pose-specific fit. Use restrained shoulder
+        # reinforcement until real kneepad fitting is validated across clips.
+        details.append(soft_object(candidate,"sleeve_reinforcement_"+side,
+                     (direction*.204,-.015,1.443),
+                     (.025,.027,.045),nylon,"Shoulder."+side))
 
     if len(sculpted) != 7 or len(details) != 13:
         raise RuntimeError("v55-detail-inventory-changed")
@@ -245,6 +264,8 @@ def add_organic_detail(candidate):
 
 def add_design_v55(candidate):
     v53 = add_design(candidate)
+    bpy.context.scene.frame_set(1)
+    bpy.context.view_layer.update()
     v55 = add_organic_detail(candidate)
     return {**v53, "v55": v55}
 
