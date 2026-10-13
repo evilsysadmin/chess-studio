@@ -1,24 +1,24 @@
-# CHESSCOM · Sven V56 — la base corporal ya no debe parecer de cartón
+# CHESSCOM · Sven V56 — continuidad visual sin romper el skinning
 
-## Problema observado
+## Diagnóstico del modelo real
 
-Las ocho vistas de V55 muestran progresos en mochila, casco y radio, pero el aspecto robótico procede principalmente de la geometría del **actor CC0 de origen**, no del número de accesorios. El GLB exportado contiene cuatro meshes skinned: `Swat_Body`, `Swat_Head`, `Swat_Legs` y `Swat_Feet`.
+El SWAT CC0 contiene cuatro mallas skinned, y el grueso de sus triángulos son **islas desconectadas con vértices duplicados**. En el GLB V55, `Swat_Body` tiene 6.302 vértices de render y `Swat_Legs` tiene 3.620. Una comprobación de los accessors mostró posiciones duplicadas del mismo material para casi todos: **6.294/6.302** y **3.597/3.620**. Esto explica por qué la malla parece robótica incluso con accesorios V55 mejorados.
 
-La primera ejecución de V56 pasó CI pero **FRACASÓ en revisión visual**: aplicar Catmull-Clark a un cuerpo compuesto por numerosas islas de geometría sueltas contrajo los componentes y creó agujeros negros entre guantes, tela y protecciones. Esa versión no se aceptó y ha sido reemplazada por una operación no destructiva para las islas originales.
+### Experimentos rechazados antes de fusionar
 
-V56 aplica una prueba controlada **en el propio modelo deformable**:
+1. Catmull-Clark nivel 1, aprobado por CI técnica pero **rechazado visualmente**: contrajo islas de geometría y creó huecos negros por todo el uniforme.
+2. Microbisel de 1–1,6 mm, rechazado por el gate: sin aristas compartidas/manifold no puede modificar correctamente las mallas de origen.
 
-- Un **microbisel de 1,6 mm en `Swat_Body` y 1,2 mm en `Swat_Legs`**, limitado a aristas pronunciadas y horneado ANTES del deformador Armature. No contrae superficies individuales como Catmull-Clark.
-- Shading suave solo en caras del material textil; los componentes de goma y polímero mantienen sus normales duras y sus contornos.
-- El casco/cara y las botas permanecen tal cual para preservar aristas funcionales, suela y lectura del material duro.
-- Las siete superficies orgánicas y nueve detalles de V55 se mantienen. No se añaden accesorios ni cuerpos procedural nuevos.
-- Guardarraíles en Blender: cuatro meshes de fuente skinned presentes, vertex weights ≥99 %, modificador Armature intacto, aumento real de topología en ambas mallas, máximo 60k triángulos por malla refinada.
-- El workflow comprueba el **GLB reexportado**, conserva las 24 animaciones reales e inspecciona las mismas 10 poses del rig V54, además de ocho vistas, 72 px y un closeup auténtico de la ropa.
+Los dos experimentos se han retirado de la rama. No se deben recuperar sin soldar primero correctamente la topología y revisar UV/skin.
 
-El efecto de subdividir NO se confunde con animación authored: los 24 clips siguen siendo los de Quaternius. El agarre bimanual y la carabina siguen sin estar implementados ni certificados.
+## Operación V56 actualmente propuesta
 
-## Criterio visual
+Reconstruir **solo las normales de sombreado de la tela** por agrupación de vértices en la misma posición y material, con un límite angular de 50°. Esto permite continuidad visual entre triángulos sin mover vértices ni cambiar sus UV, pesos o huesos. Material textil algo más mate, polímero y botas sin tratamiento geométrico.
 
-La mejora solo se acepta si se ve menos robótica **sin volver blandos los accesorios rígidos**, aumentar demasiado polígonos, alterar la silueta a 72 px ni producir penetraciones visibles entre manos, torso y accesorios en las diez poses. Si el microbisel genera huecos, facetas rotas o cambios de silueta a 72px, descartarlo: una CI verde no basta.
+Los gates comprueban que cada malla de tela tenga ≥100 esquinas comunes y ≥100 normales modificadas, que no haya giros artificiales mayores de 40°, que posiciones, número de triángulos y pesos se preserven, y que el GLB todavía tenga 24 animaciones auténticas. El mismo candidato se examina en ocho cámaras, un closeup y las diez poses del QA V54, con imagen adicional a 72 px.
 
-Los resultados se publican únicamente como artifact de revisión, nunca como cambio en runtime, manifiesto o R2. Conservamos V55 en `main` hasta aprobar renders de V56. El siguiente salto mayor es un ciclo artístico real de retargeting/IK con fusil de procedencia verificada.
+**Límite explícito:** la operación de normales no mejora la silueta ni equivale a retopología humana. Si el efecto es escaso o aparecen manchas, se rechazará también y habrá que buscar una fuente corporal de mayor calidad / retopología authored. No hay rifle de dos manos, MuzzleSocket verificado, nuevo personaje desplegado, ni publicación a R2.
+
+## Política
+
+Esta PR es un experimento visual Draft y no debe ponerse Ready hasta inspeccionar los PNG/GLB del SHA exacto. La CI es condición necesaria, no aprobación estética. V55 permanece baseline seguro.
