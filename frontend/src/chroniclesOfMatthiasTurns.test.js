@@ -33,6 +33,26 @@ describe('Chronicles alternating creature turns', () => {
     expect(next.party.find((member) => member.id === 'matthias')?.hp).toBe(6);
   });
 
+  it('applies an ordinary enemy hit without moving the party or its tactical tiles', () => {
+    const pawn = enemy('corrupted-pawn');
+    const base = createChroniclesState();
+    const state = {
+      ...base,
+      phase: 'combat',
+      partyPositions: {
+        matthias: { x: 1, y: 4 },
+        rook: { x: 2, y: 5 },
+        bishop: { x: 2, y: 4 },
+        knight: { x: 1, y: 3 },
+      },
+    };
+    const next = chroniclesResolveEnemyActor(state, pawn.id);
+    expect(next.enemyTurnEvents.some((event) => event.type === 'attack')).toBe(true);
+    expect(next.party.some((member, index) => member.hp < state.party[index].hp)).toBe(true);
+    expect({ x: next.x, y: next.y }).toEqual({ x: state.x, y: state.y });
+    expect(next.partyPositions).toEqual(state.partyPositions);
+  });
+
   it('keeps aggregate enemy turns on the same move-then-attack contract', () => {
     const pawn = enemy('corrupted-pawn');
     const next = chroniclesResolveEnemyTurn(createChroniclesState());
