@@ -60,6 +60,11 @@ import {
   finishChroniclesRun,
   renewChroniclesRun,
 } from '../chronicles/chroniclesRunIdentity.js';
+import {
+  chroniclesClearPlayingRun,
+  chroniclesRememberPlayingRun,
+  chroniclesShouldResumePlayingRun,
+} from '../chronicles/chroniclesRefreshResume.js';
 import { chroniclesPartyCondition } from '../chroniclesOfMatthiasPartyCondition.js';
 import { chroniclesPartyRelic } from '../chroniclesOfMatthiasRelics.js';
 import { chroniclesRetaliationCue } from '../chroniclesOfMatthiasRetaliation.js';
@@ -176,10 +181,14 @@ export default function ChroniclesOfMatthias({ onExit }) {
   const partyBarkSequenceRef = useRef(0);
   const [progression, setProgression] = useState(() => loadChroniclesProgression());
   const progressionRef = useRef(progression);
-  const [characterSetupDone, setCharacterSetupDone] = useState(false);
-  // Restore an unfinished character editor draft; otherwise display the
-  // expedition book before allocating or loading any server run.
-  const [entryView, setEntryView] = useState(() => loadChroniclesCharacterDraft(CHRONICLES_PARTY) ? 'setup' : 'menu');
+  // A reload of a playing expedition must return straight to the server
+  // checkpoint. An intentional visit to the expedition book stays in 'menu'.
+  // Never create a new run as part of the initial render.
+  const [entryView, setEntryView] = useState(() => {
+    if (loadChroniclesCharacterDraft(CHRONICLES_PARTY)) return 'setup';
+    return chroniclesShouldResumePlayingRun(FIRST_PERSON_RUN_SCOPE) ? 'playing' : 'menu';
+  });
+  const [characterSetupDone, setCharacterSetupDone] = useState(entryView === 'playing');
   const [savesRefreshKey, refreshSaves] = useState(0);
   const [saveInventory, setSaveInventory] = useState(null);
   const [saveMenuLoading, setSaveMenuLoading] = useState(false);
@@ -315,6 +324,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
   }, []);
 
   const exitChronicles = useCallback(() => {
+    chroniclesClearPlayingRun();
     void releaseChroniclesLandscape();
     const current = stateRef.current;
     const runId = activeRunIdRef.current;
@@ -347,6 +357,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
     const selected = setChroniclesCharacterBuild(progression, build);
     if (!selected.updated) return;
     const saved = saveChroniclesProgression(selected.progression);
+    chroniclesRememberPlayingRun(FIRST_PERSON_RUN_SCOPE, ensureChroniclesRun(FIRST_PERSON_RUN_SCOPE));
     progressionRef.current = saved;
     stateRef.current = null;
     staleRunRecoveryAttemptedRef.current = false;
@@ -641,6 +652,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
     // Starting another game does not destroy the checkpoint of the old one.
     // The catalog keeps both identities loadable.
     const newRunId = beginChroniclesRun(FIRST_PERSON_RUN_SCOPE);
+    chroniclesRememberPlayingRun(FIRST_PERSON_RUN_SCOPE, newRunId);
     activeRunIdRef.current = newRunId;
     authoritativeRunRef.current = null;
     checkpointFingerprintRef.current = '';
@@ -662,6 +674,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
   }, []);
 
   const restart = useCallback(() => {
+    chroniclesClearPlayingRun();
     if (activeRunIdRef.current) {
       clearChroniclesAutomapVisited(activeRunIdRef.current);
       finishChroniclesRun(FIRST_PERSON_RUN_SCOPE, activeRunIdRef.current);
@@ -701,6 +714,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
     const operationId = ensureChroniclesRun(FIRST_PERSON_RUN_SCOPE);
     const remoteSelection = chroniclesSelectedRunIsRemote(FIRST_PERSON_RUN_SCOPE, operationId);
     activeRunIdRef.current = operationId;
+    chroniclesRememberPlayingRun(FIRST_PERSON_RUN_SCOPE, operationId);
 
     // Overlap renderer chunk loading with the authoritative world bootstrap.
     // Gameplay still stays fail-closed until the backend bundle validates.
@@ -731,6 +745,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
         const confirmedId = chroniclesMarkSavedRunRemote(FIRST_PERSON_RUN_SCOPE, operationId, world.runId);
         if (!confirmedId) return;
         activeRunIdRef.current = confirmedId;
+        chroniclesRememberPlayingRun(FIRST_PERSON_RUN_SCOPE, confirmedId);
         authoritativeRunRef.current = world;
         // Record the authoritative bootstrap as our comparison baseline.
         // New runs have no durable checkpoint until an explicit Save or area exit.
@@ -753,6 +768,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
           clearChroniclesAutomapVisited(operationId);
           const replacementRunId = renewChroniclesRun(FIRST_PERSON_RUN_SCOPE, operationId);
           activeRunIdRef.current = replacementRunId;
+          chroniclesRememberPlayingRun(FIRST_PERSON_RUN_SCOPE, replacementRunId);
           setReady(false);
           setBootstrapError(null);
           setBootstrapRevision((revision) => revision + 1);
@@ -983,6 +999,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
   }, [attackWithSelected, automapOpen, chronicleModalOpen, clearTouchHold, dispatch, interactWithContext, journalOpen, menuOpen, openMemberSheet, ready, sheetMemberId, spellMenuOpen]);
 
   const startFreshGame = (entryMapId = null) => {
+    chroniclesClearPlayingRun();
     beginChroniclesRun(FIRST_PERSON_RUN_SCOPE, { entryMapId });
     setCharacterSetupDone(false);
     setEntryView('setup');
@@ -991,6 +1008,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
 
   const loadSavedGame = (runId) => {
     if (!chroniclesSelectSavedRun(FIRST_PERSON_RUN_SCOPE, runId)) return;
+    chroniclesRememberPlayingRun(FIRST_PERSON_RUN_SCOPE, runId);
     // Loading an existing expedition skips character setup; use this click to
     // request the same native fullscreen/orientation affordance as New game.
     void requestChroniclesLandscapeOnEntry();
@@ -1007,6 +1025,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
   };
 
   const returnToSaveMenu = () => {
+    chroniclesClearPlayingRun();
     setMenuOpen(false);
     clearTouchHold();
     // Never switch the authoritative run pointer while a checkpoint is queued.
