@@ -921,3 +921,25 @@
 @media (min-width: 801px) and (min-height: 601px) and (max-height: 999px) {
   .chronicles .chronicles-keyboard-help { display: none; }
 }
+
+/* Audio controls live inside the MM3 game menu, not in the global music dock. */
+.chronicles .chronicles-audio-controls {
+  display: grid;
+  gap: 5px;
+  margin: 8px 0;
+  padding: 10px;
+  border: 1px solid #77777d;
+  color: #101014;
+  background: #c2c2c5;
+}
+.chronicles .chronicles-audio-controls legend,
+.chronicles .chronicles-audio-controls label {
+  color: #101014;
+  -webkit-text-fill-color: #101014;
+  font-family: var(--mm3-pixel-font);
+}
+.chronicles .chronicles-audio-controls input[type="range"] {
+  width: 100%;
+  accent-color: #202b63;
+  cursor: pointer;
+}
