@@ -53,12 +53,45 @@ test('Chronicles · F5 retoma la misma run guardada y regresar al libro conserva
   expect(runAfter).toBe(runBefore);
 
   await page.keyboard.press('Escape');
-  await mode.locator('.chronicles-game-menu').getByRole('button', { name: 'Partidas guardadas' }).click();
+  await mode.locator('.chronicles-game-menu').getByRole('button', { name: 'Guardar y salir', exact: true }).click();
   const book = page.locator('[data-chronicles-save-menu]');
   await expect(book).toBeVisible();
   await page.reload();
   await expect(book).toBeVisible();
   await expect(mode).toHaveCount(0);
+});
+
+test('Chronicles · menú de pausa mínimo con audio recuperable', async ({ page }) => {
+  test.setTimeout(180_000);
+  await openChronicles(page, { chroniclesCurrentMapId: 'swordhaven-square', newTown: true });
+  const mode = page.locator('[data-chronicles="true"]');
+  await page.keyboard.press('Escape');
+  const menu = mode.locator('details.chronicles-game-menu');
+  await expect(menu).toHaveAttribute('open');
+  const actions = menu.locator('.chronicles-game-menu__panel > button');
+  await expect(actions).toHaveCount(4);
+  for (const label of ['Continuar', 'Guardar partida', 'Guardar y salir', 'Salir sin guardar']) {
+    await expect(actions.getByText(label, { exact: true })).toBeVisible();
+  }
+  for (const removed of ['Crónica · J', 'Nueva expedición', 'Partidas guardadas']) {
+    await expect(menu.getByRole('button', { name: removed, exact: true })).toHaveCount(0);
+  }
+  const audio = menu.locator('details.chronicles-audio-options');
+  const trigger = audio.locator('> summary');
+  await expect(trigger).toContainText('Opciones de audio');
+  await expect(audio).not.toHaveAttribute('open');
+  await trigger.click();
+  await expect(audio).toHaveAttribute('open');
+  await expect(audio.getByRole('slider', { name: 'Volumen de efectos de Chronicles' })).toBeVisible();
+  await expect(audio.getByRole('slider', { name: 'Volumen de música' })).toBeVisible();
+  await trigger.click();
+  await expect(audio).not.toHaveAttribute('open');
+  await menu.getByRole('button', { name: 'Salir sin guardar', exact: true }).click();
+  await expect(menu.getByRole('group', { name: 'Confirmar salida sin guardar' })).toBeVisible();
+  await menu.getByRole('button', { name: 'Cancelar', exact: true }).click();
+  await expect(menu.getByRole('button', { name: 'Salir sin guardar', exact: true })).toBeVisible();
+  await menu.getByRole('button', { name: 'Continuar', exact: true }).click();
+  await expect(menu).not.toHaveAttribute('open');
 });
 
 test('Chronicles · primera partida sólo se escribe al guardar y Salir sin guardar no escribe otra', async ({ page }) => {
@@ -157,7 +190,7 @@ test('Chronicles · Escape opens and closes the in-game menu while the scene sta
 
   await page.keyboard.press('Escape');
   await expect(menu).toHaveAttribute('open', '');
-  await menu.getByRole('button', { name: 'Salir y guardar' }).click();
+  await menu.getByRole('button', { name: 'Guardar y salir', exact: true }).click();
   await expect(mode).toHaveCount(0);
 });
 
