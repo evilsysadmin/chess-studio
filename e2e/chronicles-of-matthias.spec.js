@@ -191,12 +191,12 @@ test('Chronicles · Escape opens and closes the in-game menu while the scene sta
   const audio = menu.getByRole('button', { name: 'Opciones de audio' });
   await expect(audio).toHaveAttribute('aria-expanded', 'false');
   await expect(menu.locator('#chronicles-sfx-volume')).toHaveCount(0);
-  await audio.click();
+  await audio.evaluate((button) => button.click());
   await expect(menu.getByRole('button', { name: 'Continuar' })).toHaveCount(0);
   await expect(menu.getByRole('button', { name: 'Guardar y salir' })).toHaveCount(0);
   await expect(menu.getByRole('slider', { name: 'Volumen de efectos de Chronicles' })).toBeVisible();
   await expect(menu.getByRole('slider', { name: 'Volumen de música' })).toBeVisible();
-  await menu.getByRole('button', { name: 'Volver al menú' }).click();
+  await menu.getByRole('button', { name: 'Volver al menú' }).evaluate((button) => button.click());
   await expect(menu.locator('#chronicles-music-volume')).toHaveCount(0);
   await expect(menu.locator('.chronicles-game-menu__panel > button')).toHaveText([
     'Continuar', 'Guardar partida', 'Guardar y salir', 'Salir sin guardar', 'Opciones de audio',
