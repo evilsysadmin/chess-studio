@@ -725,7 +725,10 @@ for (const capture of CAPTURES) {
     // Hosted SwiftShader makes large WebGL readbacks expensive. Keep this
     // producer to one canonical readback per viewport; Tactics owns a separate
     // focused producer so neither surface can starve the other of its budget.
-    test.setTimeout(360_000);
+    // The desktop SwiftShader producer can exceed six minutes after a large
+    // scene capture; leave headroom for UI/automap assertions instead of
+    // misreporting the last assertion as a gameplay failure.
+    test.setTimeout(capture.hasTouch ? 360_000 : 540_000);
     await mkdir(ARTIFACT_DIR, { recursive: true });
 
     const context = await browser.newContext({
@@ -951,7 +954,10 @@ for (const capture of CAPTURES) {
       }));
       expect(inks.color, `${capture.label}: menu ink must be dark`).toBe('rgb(8, 8, 10)');
       expect(inks.fill, `${capture.label}: WebKit must keep dark ink`).toBe('rgb(8, 8, 10)');
-      await captureElement(page, gameRoot, `${ARTIFACT_DIR}/chronicles-game-menu-${capture.label}.png`);
+      // We already captured the full 3D scene as chronicles-playing above.
+      // Crop this proof to the DOM tablet: a second full-scene WebGL readback
+      // can starve the runner and hide real menu/automap regressions.
+      await captureElement(page, menuPanel, `${ARTIFACT_DIR}/chronicles-game-menu-${capture.label}.png`);
       if (capture.hasTouch) {
         await menuDetails.locator('.chronicles-game-menu__close').click();
       } else {
