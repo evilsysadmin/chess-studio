@@ -15,7 +15,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: chesscom-oss-forge-\${{ github.event.pull_request.number || github.ref }}
+  group: chesscom-oss-forge-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -53,7 +53,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          blender --background --noaudio --threads 2 --python-exit-code 19 \
+          blender --background --threads 2 --python-exit-code 19 \
             --python scripts/blender/chesscom_oss_turntable_v52.py -- \
             --source-glb .artifacts/chesscom-oss-v52/source/swat.glb \
             --output-dir .artifacts/chesscom-oss-v52/review
@@ -79,7 +79,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v6
         with:
-          name: chesscom-oss-cc0-v52-review-\${{ github.run_id }}
+          name: chesscom-oss-cc0-v52-review-${{ github.run_id }}
           path: |
             .artifacts/chesscom-oss-v52/review/
           if-no-files-found: warn
