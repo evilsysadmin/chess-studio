@@ -38,6 +38,7 @@ jobs:
       admitted: ${{ steps.admission.outputs.admitted }}
       smoke_only: ${{ steps.admission.outputs.smoke_only }}
       smoke_sha: ${{ steps.admission.outputs.smoke_sha }}
+      smoke_matrix: ${{ steps.admission.outputs.smoke_matrix }}
       pawn_slug_visual_required: ${{ steps.admission.outputs.pawn_slug_visual_required }}
       resend_bootstrap_required: ${{ steps.admission.outputs.resend_bootstrap_required }}
       continuity_required: ${{ steps.admission.outputs.continuity_required }}
@@ -259,14 +260,10 @@ jobs:
       url: https://staging.chess-studio.shadowops.dpdns.org
     strategy:
       fail-fast: false
-      matrix:
-        include:
-          - key: live
-            label: War Room live
-            spec: staging-live.spec.js
-          - key: restore
-            label: authoritative F5 restore
-            spec: staging-war-room-restore.spec.js
+      # For full deployment, stage both staging-live.spec.js and
+      # staging-war-room-restore.spec.js. Narrow the smoke-only matrix only
+      # when the exact diff touches a single isolated smoke spec; helpers run both.
+      matrix: ${{ fromJSON(needs.prepare.outputs.smoke_matrix) }}
     env:
       DEPLOY_SHA: ${{ needs.prepare.outputs.smoke_sha || needs.prepare.outputs.deploy_sha }}
       TEST_SOURCE_SHA: ${{ needs.prepare.outputs.deploy_sha }}
