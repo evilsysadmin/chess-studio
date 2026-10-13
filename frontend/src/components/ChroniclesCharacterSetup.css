@@ -552,3 +552,50 @@
 @media (prefers-reduced-motion: reduce) {
   .chronicles-character-setup--choice * { animation: none !important; transition: none !important; }
 }
+
+/* Phone landscape: all three decisions must fit without forcing a scroll. */
+@media (orientation: landscape) and (max-height: 480px) {
+  .chronicles-character-setup--choice {
+    place-items: start center;
+    padding: 7px 10px;
+  }
+  .chronicles-character-setup__panel--choice {
+    width: min(100%, 900px);
+    padding: 9px 12px;
+    gap: 6px;
+  }
+  .chronicles-character-setup__eyebrow {
+    font-size: 9px;
+    padding-bottom: 3px;
+    letter-spacing: .2em;
+  }
+  .chronicles-character-setup__panel--choice h2 {
+    font-size: clamp(23px, 4vw, 32px);
+    margin: 3px 0 0;
+  }
+  .chronicles-character-setup__choice-head p { display: none; }
+  .chronicles-character-setup__hero-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 7px;
+  }
+  .chronicles-character-setup__hero { aspect-ratio: 3 / 1.65; }
+  .chronicles-character-setup__hero-plaque { padding: 3px 2px; }
+  .chronicles-character-setup__hero-plaque strong { font-size: 13px; }
+  .chronicles-character-setup__hero-plaque span { font-size: 8px; }
+  .chronicles-character-setup__choice-actions { gap: 5px; }
+  .chronicles-character-setup__choice-main-actions {
+    width: auto;
+    gap: 7px;
+  }
+  .chronicles-character-setup__choice-main-actions button {
+    width: auto;
+    min-height: 38px;
+    padding: 5px 13px;
+    font-size: 13px;
+  }
+  .chronicles-character-setup__choice-exit {
+    min-height: 34px !important;
+    padding: 4px 16px !important;
+    font-size: 12px !important;
+  }
+}
