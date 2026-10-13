@@ -47,7 +47,18 @@ def required_smokes(rows: list[tuple[str, str]]) -> tuple[str, ...]:
     if not safe_changes(rows):
         return SMOKE_KEYS
     paths = {path for _, path in rows}
-    if "e2e/staging-synthetic.js" in paths:
+    # An unrelated E2E helper/config/test (or a CI support script) can affect
+    # both browser contracts. The existing safe_changes() permits these
+    # *non-runtime* edits, but they are not proof of per-smoke independence.
+    # Only plain documentation is inert enough to preserve single-spec scope.
+    docs_exact = {"README.md", "AGENTS.md", ".github/workflows/README.md"}
+    shared_or_unknown = any(
+        path not in scope.SMOKE_ONLY_PATHS
+        and path not in docs_exact
+        and not (path.startswith("docs/") and path.endswith(".md"))
+        for path in paths
+    )
+    if shared_or_unknown or "e2e/staging-synthetic.js" in paths:
         return SMOKE_KEYS
     keys = tuple(key for key, path in (
         ("live", "e2e/staging-live.spec.js"),
@@ -143,6 +154,13 @@ def self_test() -> None:
     assert required_smokes([("M", "e2e/staging-war-room-restore.spec.js"), ("A", "README.md")]) == ("restore",)
     assert required_smokes([("M", "e2e/staging-live.spec.js"), ("M", "e2e/staging-war-room-restore.spec.js")]) == SMOKE_KEYS
     assert required_smokes([("D", "e2e/staging-synthetic.js")]) == SMOKE_KEYS
+    assert required_smokes([("M", "e2e/staging-war-room-restore.spec.js"), ("M", "e2e/helpers.js")]) == SMOKE_KEYS
+    assert required_smokes([("M", "e2e/staging-live.spec.js"), ("M", "e2e/helpers.js")]) == SMOKE_KEYS
+    assert required_smokes([("M", "e2e/staging-live.spec.js"), ("M", "scripts/quality_scope.py")]) == SMOKE_KEYS
+    assert required_smokes([("M", "e2e/staging-war-room-restore.spec.js"), ("M", "e2e/other.spec.js")]) == SMOKE_KEYS
+    assert required_smokes([("M", "e2e/staging-war-room-restore.spec.js"), ("M", "docs/staging.json")]) == SMOKE_KEYS
+    assert required_smokes([("M", "e2e/staging-war-room-restore.spec.js"), ("M", ".github/workflows/README.md")]) == ("restore",)
+
     assert required_smokes([("M", "e2e/staging-synthetic.js"), ("M", "e2e/staging-live.spec.js")]) == SMOKE_KEYS
     assert required_smokes([("M", "frontend/src/App.jsx"), ("M", "e2e/staging-live.spec.js")]) == SMOKE_KEYS
     assert required_smokes([("M", "e2e/staging-pawn-slug-godot.spec.js")]) == SMOKE_KEYS
