@@ -77,7 +77,10 @@ export default function ChroniclesCharacterSetup({
   };
 
   const confirmBuild = (build) => {
-    clearRecovery();
+    // The character draft is finished, but the player is still inside
+    // Chronicles. Keep the Lab mode across F5 so the active run can resume.
+    clearChroniclesCharacterDraft();
+    if (recoveryLabMode) rememberLabMode(recoveryLabMode);
     onConfirm(build);
   };
 
