@@ -55,8 +55,7 @@ export default function LabScreen({ onExit, onStart }){
   const [error,setError]=useState('');
 
   useEffect(() => {
-    const remembered = loadRememberedLabMode();
-    if (labMode === 'pawnslug-godot' || labMode === 'chess-football-godot' || remembered === labMode) rememberLabMode(labMode);
+    if (labMode !== 'hub') rememberLabMode(labMode);
     else clearRememberedLabMode();
   }, [labMode]);
 
