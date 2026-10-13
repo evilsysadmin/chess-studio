@@ -905,6 +905,8 @@ for (const capture of CAPTURES) {
       const menuDetails = page.locator('details.chronicles-game-menu');
       const menuSummary = menuDetails.locator('> summary');
       await menuSummary.evaluate((summary) => summary.click());
+      const exitAction = menuDetails.getByRole('button', { name: 'Salir y guardar', exact: true });
+      await expect(exitAction).toBeVisible();
       // The previously pale menu action labels must receive the same
       // browser-verified runtime ink as MAPA and MENÚ.
       const menuInks = await menuDetails.locator('.chronicles-game-menu__panel button').evaluateAll((buttons) =>
@@ -921,8 +923,7 @@ for (const capture of CAPTURES) {
         expect(ink.priority, `menu action ${ink.label} important ink`).toBe('important');
         expect(ink.computed, `menu action ${ink.label} black ink`).toBe('rgb(8, 8, 10)');
       }
-      const exitAction = menuDetails.getByRole('button', { name: 'Salir y guardar', exact: true });
-      await expect(exitAction).toBeVisible();
+
       const exitBox = await exitAction.boundingBox();
       expect(exitBox, `${capture.label}: menu exit action has bounds`).not.toBeNull();
       expect(exitBox.y, `${capture.label}: menu exit action below the top edge`).toBeGreaterThanOrEqual(0);
