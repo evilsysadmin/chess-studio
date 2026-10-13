@@ -65,6 +65,15 @@ describe('labLaunchIntent', () => {
     expect(loadRememberedLabMode()).toBeNull();
   });
 
+  it('restores each game mode after a reload, and clears it when leaving to the hub', () => {
+    for (const mode of ['chronicles', 'chronicles-tactics', 'chess-football-godot', 'chesscom']) {
+      expect(rememberLabMode(mode)).toBe(mode);
+      expect(loadRememberedLabMode()).toBe(mode);
+    }
+    expect(rememberLabMode('hub')).toBeNull();
+    expect(loadRememberedLabMode()).toBeNull();
+  });
+
   it('remembers Chess Football across a browser refresh', () => {
     expect(rememberLabMode('chess-football-godot')).toBe('chess-football-godot');
     expect(loadRememberedLabMode()).toBe('chess-football-godot');
