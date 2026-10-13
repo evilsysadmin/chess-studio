@@ -115,6 +115,35 @@ test('Chronicles · Partidas guardadas no abandona una expedición si falla su c
   expect(attempts).toBe(2);
 });
 
+test('Chronicles · Nueva expedición falla con 503 y conserva la run hasta reintentar', async ({ page }) => {
+  test.setTimeout(180_000);
+  await openChronicles(page, { chroniclesCurrentMapId: 'swordhaven-square', newTown: true });
+  const mode = page.locator('[data-chronicles="true"]');
+  const activeRun = () => page.evaluate(() => JSON.parse(localStorage.getItem('chess-study-chronicles-run-v1') || 'null')?.id);
+  const oldRunId = await activeRun();
+  expect(oldRunId).toBeTruthy();
+  let attempts = 0;
+  await page.route('**/api/chronicles/runs/*/checkpoint', (route) => {
+    if (route.request().method() !== 'PUT') return route.fallback();
+    attempts += 1;
+    if (attempts === 1) return route.fulfill({
+      status: 503,
+      contentType: 'application/json',
+      body: JSON.stringify({ detail: 'Server temporarily unavailable' }),
+    });
+    return route.fallback();
+  });
+  await page.keyboard.press('Escape');
+  const menu = mode.locator('.chronicles-game-menu');
+  await menu.getByRole('button', { name: 'Nueva expedición', exact: true }).click();
+  await expect(menu.getByRole('alert')).toContainText('HTTP 503');
+  await expect(mode).toBeVisible();
+  expect(await activeRun(), 'failed checkpoint must preserve previous run').toBe(oldRunId);
+  await menu.getByRole('button', { name: 'Nueva expedición', exact: true }).click();
+  await expect.poll(activeRun).not.toBe(oldRunId);
+  expect(attempts).toBe(2);
+});
+
 test('Chronicles · primera partida sólo se escribe al guardar y Salir sin guardar no escribe otra', async ({ page }) => {
   test.setTimeout(180_000);
   const checkpointRequests = [];
