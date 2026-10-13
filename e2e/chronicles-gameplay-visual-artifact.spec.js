@@ -865,6 +865,21 @@ for (const capture of CAPTURES) {
         expect(control.fill, `${capture.label}: ${control.selector} WebKit dark ink`).toBe('rgb(8, 8, 10)');
         expect(control.forced, `${capture.label}: ${control.selector} must resist forced colours`).toBe('none');
         expect(control.scheme, `${capture.label}: ${control.selector} uses the light stone palette`).toBe('light only');
+
+      }
+
+      // MAPA and MENÚ are nested labels: a dark parent is insufficient if
+      // their actual glyph elements are overridden by another style.
+      for (const selector of [
+        '.chronicles-statusbar .chronicles-map-trigger b',
+        '.chronicles-game-menu > summary b',
+      ]) {
+        const ink = await gameRoot.locator(selector).evaluate((node) => {
+          const style = getComputedStyle(node);
+          return { color: style.color, fill: style.webkitTextFillColor };
+        });
+        expect(ink.color, `${capture.label}: ${selector} label must be black`).toBe('rgb(8, 8, 10)');
+        expect(ink.fill, `${capture.label}: ${selector} text fill must be black`).toBe('rgb(8, 8, 10)');
       }
 
       // Every menu action stays on screen, «Salir y guardar» included.
