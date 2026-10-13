@@ -19,12 +19,12 @@ from chesscom_oss_turntable_v52 import (arguments, import_and_normalize,
                                          export_candidate, make_studio, look_at, DIRECTIONS)
 
 NAVY = (0.028, 0.048, 0.077, 1)
-ARMOR = (0.047, 0.063, 0.084, 1)
+ARMOR = (0.024, 0.035, 0.050, 1)
 POLYMER = (0.019, 0.025, 0.035, 1)
-FABRIC = (0.052, 0.060, 0.066, 1)
-COYOTE = (0.21, 0.165, 0.118, 1)
+FABRIC = (0.029, 0.036, 0.043, 1)
+COYOTE = (0.115, 0.091, 0.070, 1)
 BLUE = (0.055, 0.25, 0.44, 1)
-WHITE = (0.70, 0.75, 0.77, 1)
+WHITE = (0.48, 0.55, 0.58, 1)
 GLASS = (0.015, 0.067, 0.11, 1)
 
 
@@ -132,68 +132,68 @@ def add_design(candidate):
 
     # Helmet shroud: two milled NVG tubes, a genuine distinct silhouette
     # rather than re-coloring the source SWAT helmet.
-    mount(solid(candidate, "helmet_nv_bridge", (0, -.134, 1.725),
-                (.18, .052, .045), helmet, .014), "Head")
+    mount(solid(candidate, "helmet_nv_bridge", (0, -.121, 1.742),
+                (.118, .031, .028), helmet, .014), "Head")
     for side, direction in (("L", -1), ("R", 1)):
-        x = direction * .061
-        tube, front = optics(candidate, "nvg_tube_" + side, (x, -.184, 1.752),
-                             .034, .116, rubber, glass)
+        x = direction * .045
+        tube, front = optics(candidate, "nvg_tube_" + side, (x, -.157, 1.765),
+                             .025, .070, rubber, glass)
         mount(tube, "Head")
         mount(front, "Head")
         mount(solid(candidate, "nvg_mount_" + side,
-                    (direction * .057, -.123, 1.778), (.050, .070, .025),
+                    (direction * .044, -.110, 1.786), (.033, .044, .016),
                     helmet, .006), "Head")
-    mount(solid(candidate, "helmet_top_rail", (0, -.027, 1.787),
-                (.083, .13, .025), helmet, .009), "Head")
+    mount(solid(candidate, "helmet_top_rail", (0, -.024, 1.792),
+                (.056, .086, .013), helmet, .009), "Head")
     for side, d in (("L",-1), ("R",1)):
         mount(solid(candidate, "helmet_side_rail_" + side,
-                    (d * .116, -.001, 1.686), (.032,.115,.026),
+                    (d * .103, -.007, 1.691), (.019,.078,.014),
                     helmet, .006), "Head")
 
     # Chest protection, equipment carrier and physically distinct MOLLE rows.
-    mount(solid(candidate, "armor_upper_plate", (0, -.148, 1.403),
-                (.285, .053, .183), ballistic, .018), "Chest")
-    mount(solid(candidate, "armor_lower_plate", (0, -.159, 1.290),
-                (.282, .051, .099), ballistic, .014), "Torso")
+    mount(solid(candidate, "armor_upper_plate", (0, -.127, 1.402),
+                (.219, .026, .136), ballistic, .018), "Chest")
+    mount(solid(candidate, "armor_lower_plate", (0, -.139, 1.287),
+                (.205, .020, .060), ballistic, .014), "Torso")
     for j in range(2):
-        mount(solid(candidate, "carrier_row_" + str(j), (0, -.190, 1.395 - j*.052),
-                    (.27,.009,.012), nylon, .003), "Chest")
-    for i, x in enumerate((-.095,0,.095)):
-        mount(solid(candidate, "magazine_" + str(i), (x, -.204, 1.253),
-                    (.073,.066,.106), contrast if i==1 else nylon, .012), "Torso")
-        mount(solid(candidate, "magazine_flap_" + str(i), (x, -.240, 1.295),
-                    (.069,.013,.025), rubber, .003), "Torso")
+        mount(solid(candidate, "carrier_row_" + str(j), (0, -.150, 1.390 - j*.045),
+                    (.210,.007,.009), nylon, .003), "Chest")
+    for i, x in enumerate((-.068,0,.068)):
+        mount(solid(candidate, "magazine_" + str(i), (x, -.167, 1.247),
+                    (.050,.044,.070), contrast if i==1 else nylon, .012), "Torso")
+        mount(solid(candidate, "magazine_flap_" + str(i), (x, -.191, 1.270),
+                    (.048,.008,.019), rubber, .003), "Torso")
     for side, direction in (("L", -1), ("R", 1)):
         mount(solid(candidate, "shoulder_strap_" + side,
-                    (direction * .118, -.079, 1.445), (.051,.060,.184),
+                    (direction * .101, -.070, 1.443), (.035,.044,.115),
                     nylon, .009), "Chest")
         mount(solid(candidate, "waist_pouch_" + side,
-                    (direction*.151, -.004, 1.203), (.095,.11,.103),
+                    (direction*.134, -.011, 1.203), (.068,.069,.075),
                     nylon, .012), "Hips")
 
     # Backpack with stepped textile silhouette and contrasting straps.
-    mount(solid(candidate, "backpack_main", (0, .168, 1.36),
-                (.29,.157,.340), nylon, .035), "Chest")
-    mount(solid(candidate, "backpack_flap", (0, .257, 1.448),
-                (.265,.022,.105), ballistic, .013), "Chest")
+    mount(solid(candidate, "backpack_main", (0, .140, 1.36),
+                (.205,.086,.245), nylon, .035), "Chest")
+    mount(solid(candidate, "backpack_flap", (0, .192, 1.435),
+                (.185,.015,.065), ballistic, .013), "Chest")
     for side, d in (("L",-1), ("R",1)):
         mount(solid(candidate, "pack_webbing_" + side,
-                    (d*.08, .262, 1.355), (.025,.015,.235),
+                    (d*.056, .193, 1.350), (.014,.009,.160),
                     contrast, .004), "Chest")
-    mount(solid(candidate, "pack_lower_pouch", (0, .246, 1.222),
-                (.232,.054,.068), ballistic, .011), "Chest")
+    mount(solid(candidate, "pack_lower_pouch", (0, .192, 1.263),
+                (.156,.029,.045), ballistic, .011), "Chest")
 
     # Finnish-coloured identification patch — material layers, not UI badge.
     # Bone-anchored to shoulders so it follows arms; keep subtle at zoom.
     for side, d, bone in (("L",-1,"Shoulder.L"), ("R",1,"Shoulder.R")):
-        x = d * .208
+        x = d * .153
         patch = solid(candidate, "flag_back_" + side, (x, .006, 1.489),
-                      (.009,.063,.042), flag_white, .002)
+                      (.008,.047,.033), flag_white, .002)
         mount(patch, bone)
         mount(solid(candidate, "flag_cross_v_" + side, (x + d*.006,.006,1.489),
-                    (.004,.012,.042), flag_blue), bone)
+                    (.005,.009,.033), flag_blue), bone)
         mount(solid(candidate, "flag_cross_h_" + side, (x + d*.008,.006,1.489),
-                    (.004,.063,.010), flag_blue), bone)
+                    (.005,.047,.008), flag_blue), bone)
 
     if len(mounts) < 30 or any(b not in rig.pose.bones for b in mounts.values()):
         raise RuntimeError("insufficient-authored-kit-or-broken-mounts")
