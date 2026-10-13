@@ -108,6 +108,7 @@ El contrato de entrega está en [`docs/auto-merge-delivery.md`](docs/auto-merge-
 - [`docs/experiments/chesscom-sven-art-direction-v53.md`](docs/experiments/chesscom-sven-art-direction-v53.md) — equipamiento modelado en Blender sobre rig CC0; evidencia de animación antes de promover.
 - [`docs/experiments/chesscom-sven-motion-v54.md`](docs/experiments/chesscom-sven-motion-v54.md) — clips de fuente no son automáticamente apoyo bimanual; validar frames y separación entre manos.
 - [`docs/experiments/chesscom-sven-organic-v55.md`](docs/experiments/chesscom-sven-organic-v55.md) — diseño V55 sobre rig CC0: materiales, superficies curvas, asimetría, prueba 72 px y poses reales.
+- [`docs/experiments/chesscom-sven-base-mesh-v56.md`](docs/experiments/chesscom-sven-base-mesh-v56.md) — refinamiento del cuerpo skinned, presupuesto de polígonos y revisión real de poses y renders.
 
 - [`docs/music.md`](docs/music.md) — criterio duradero de composición, instrumentos, interpretación, percusión, riffs, humanización y anti-regresiones musicales.
 - [`docs/VISUAL_LANGUAGE.md`](docs/VISUAL_LANGUAGE.md) — lenguaje visual.
