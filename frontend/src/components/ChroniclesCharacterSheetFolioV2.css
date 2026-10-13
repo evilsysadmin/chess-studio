@@ -496,32 +496,32 @@
   }
   .chronicles-character-sheet--mm3.chronicles-character-sheet--folio-v2 .chronicles-character-sheet__head {
     min-height: 0;
-    grid-template-columns: 58px minmax(0, 1fr) 38px;
-    gap: 9px;
-    padding: 6px 10px;
+    grid-template-columns: 46px minmax(0, 1fr) 38px;
+    gap: 7px;
+    padding: 3px 8px;
   }
   .chronicles-character-sheet--mm3.chronicles-character-sheet--folio-v2 .chronicles-character-sheet__portrait {
-    width: 54px;
+    width: 44px;
     aspect-ratio: 1;
   }
   .chronicles-character-sheet--mm3.chronicles-character-sheet--folio-v2 .chronicles-character-sheet__identity h3 {
     margin: 1px 0;
-    font-size: 1.72rem;
+    font-size: 1.5rem;
     line-height: 1;
   }
   .chronicles-character-sheet--mm3.chronicles-character-sheet--folio-v2 .chronicles-character-sheet__identity > span {
-    font-size: .64rem;
+    font-size: .6rem;
   }
   .chronicles-character-sheet--mm3.chronicles-character-sheet--folio-v2 .chronicles-character-sheet__identity p {
     font-size: .84rem;
   }
   .chronicles-character-sheet--mm3.chronicles-character-sheet--folio-v2 .chronicles-character-sheet__quick {
-    margin-top: 3px;
-    gap: 5px;
+    margin-top: 1px;
+    gap: 4px;
   }
   .chronicles-character-sheet--mm3.chronicles-character-sheet--folio-v2 .chronicles-character-sheet__quick > span {
-    padding: 2px 5px;
-    font-size: .83rem;
+    padding: 1px 5px;
+    font-size: .76rem;
   }
   .chronicles-character-sheet--mm3.chronicles-character-sheet--folio-v2 .chronicles-character-sheet__head > button {
     width: 38px;
