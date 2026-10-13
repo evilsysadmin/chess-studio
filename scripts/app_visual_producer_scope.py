@@ -503,8 +503,9 @@ def classify_path(path: str) -> set[str] | None:
     if lower in {
         "frontend/src/components/chroniclessavemenu.jsx",
         "frontend/src/components/chroniclessavemenu.css",
+        "frontend/src/assets/chronicles/expedition-study-desktop-v2.avif",
     }:
-        # Both layout and styling of the save book belong exclusively to
+        # The book and its decorative desktop art belong exclusively to
         # first-person Chronicles: Tactics never mounts this menu.
         return {"chronicles-gameplay"}
     if lower in {
@@ -916,6 +917,8 @@ def self_test() -> None:
     assert classify(["frontend/src/components/ChroniclesOfMatthiasTactics.jsx"]) == "chronicles-tactics"
     assert classify(["frontend/src/components/ChroniclesSaveMenu.jsx"]) == "chronicles-gameplay"
     assert classify(["frontend/src/components/ChroniclesSaveMenu.css"]) == "chronicles-gameplay"
+    assert classify(["frontend/src/assets/chronicles/expedition-study-desktop-v2.avif"]) == "chronicles-gameplay"
+    assert project_chronicles_lane(classify(["frontend/src/assets/chronicles/expedition-study-desktop-v2.avif"]), "tactics") == "none"
     for first_person_css in (
         "ChroniclesOfMatthias.css",
         "ChroniclesOfMatthiasArt.css",
