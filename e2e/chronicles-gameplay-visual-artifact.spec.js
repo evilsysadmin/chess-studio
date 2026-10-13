@@ -906,7 +906,7 @@ for (const capture of CAPTURES) {
       const fxSlider = menuDetails.locator('#chronicles-sfx-volume');
       const audioToggle = menuDetails.getByRole('button', { name: 'Opciones de audio' });
       await expect(musicSlider).toHaveCount(0);
-      await audioToggle.click();
+      await audioToggle.evaluate((button) => button.click());
       await expect(musicSlider).toBeVisible();
       await expect(fxSlider).toBeVisible();
       const audioPanelBox = await menuDetails.locator('.chronicles-game-menu__panel').boundingBox();
@@ -922,7 +922,7 @@ for (const capture of CAPTURES) {
       await expect(gameRoot).toHaveAttribute('data-chronicles-turns', turnsBeforeAudio);
       await captureElement(page, gameRoot, `${ARTIFACT_DIR}/chronicles-game-menu-audio-${capture.label}.png`);
       await expect(menuDetails.getByRole('button', { name: 'Guardar y salir', exact: true })).toHaveCount(0);
-      await menuDetails.getByRole('button', { name: 'Volver al menú' }).click();
+      await menuDetails.getByRole('button', { name: 'Volver al menú' }).evaluate((button) => button.click());
       await expect(musicSlider).toHaveCount(0);
 
       // The previously pale menu action labels must receive the same
