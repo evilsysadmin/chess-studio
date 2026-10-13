@@ -1,8 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
-  requestWarRoomLandscape,
+  requestWarRoomLandscapeFullscreen,
+  exitWarRoomBrowserFullscreen,
   unlockWarRoomOrientation,
 } from './useWarRoomImmersive.js';
+
+// Only fullscreen initiated by Chronicles may be dismissed when the game exits.
+let chroniclesFullscreenOwned = false;
 
 export const CHRONICLES_PHONE_QUERY = '(pointer: coarse) and (max-width: 920px)';
 export const CHRONICLES_LANDSCAPE_QUERY = '(orientation: landscape) and (max-width: 920px) and (max-height: 620px)';
@@ -15,28 +19,33 @@ export function shouldAutoRotateChroniclesOnEntry({ win = globalThis.window } = 
   );
 }
 
-// Native browser fullscreen consumes Escape before the game can reliably
-// process it. Chronicles therefore owns the entire visual viewport via its
-// fixed 100dvh root, leaving Escape exclusively to the in-game menu.
-// On supported standalone/mobile contexts we can still request landscape
-// without claiming ownership of the browser fullscreen state.
+// Mobile browsers commonly refuse orientation.lock() unless the document is
+// fullscreen. The user gesture that launches Chronicles is our chance to
+// request both. Native fullscreen may consume the first Escape; the in-game
+// menu remains reachable using touch controls.
 export async function requestChroniclesLandscapeOnEntry({
   win = globalThis.window,
+  doc = globalThis.document,
   screenApi = globalThis.screen,
 } = {}) {
   if (!shouldAutoRotateChroniclesOnEntry({ win })) {
     return { requested: false, fullscreen: false, landscape: false };
   }
-  const landscape = await requestWarRoomLandscape(screenApi);
-  return { requested: true, fullscreen: false, landscape };
+  const result = await requestWarRoomLandscapeFullscreen({ doc, screenApi });
+  if (result.fullscreen) chroniclesFullscreenOwned = true;
+  return { requested: true, ...result };
 }
 
 export async function releaseChroniclesLandscape({
+  doc = globalThis.document,
   screenApi = globalThis.screen,
 } = {}) {
+  const ownedFullscreen = chroniclesFullscreenOwned;
+  chroniclesFullscreenOwned = false;
   const unlocked = unlockWarRoomOrientation(screenApi);
-  // Do not exit fullscreen owned by the user or another game.
-  return { unlocked, fullscreen: false };
+  // Never dismiss pre-existing or user-owned fullscreen.
+  const fullscreen = ownedFullscreen ? await exitWarRoomBrowserFullscreen(doc) : false;
+  return { unlocked, fullscreen };
 }
 
 export default function useChroniclesLandscape(enabled = true) {
