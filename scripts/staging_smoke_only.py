@@ -154,6 +154,20 @@ def self_test() -> None:
     assert "ref: ${{ env.DEPLOY_SHA }}" in summary_steps
     assert "if: steps.metrics_checkout.outcome == 'success'" in summary_steps
     assert "scripts/staging_deploy_metrics.py --self-test" in summary_steps
+    # OCI SDK venv cache restores but is unusable on fresh hosted runners.
+    # The browser-only package tree can be imported from PYTHONPATH without
+    # embedding an interpreter path in the cache; other OCI jobs retain venv.
+    smoke_block = workflow.split("\n  smoke:\n", 1)[1].split("\n  pawn_slug_visual:\n", 1)[0]
+    assert "cache-layout: portable" in smoke_block
+    assert smoke_block.count("Restore cached OCI SDK toolchain") == 1
+    sdk_action = (Path(__file__).resolve().parents[1] / ".github/actions/setup-oci-sdk/action.yml").read_text(encoding="utf-8")
+    assert "default: 'venv'" in sdk_action
+    assert "if: inputs.cache-layout != 'portable'" in sdk_action
+    assert "if: inputs.cache-layout == 'portable'" in sdk_action
+    assert "python3 -m pip install --disable-pip-version-check --no-cache-dir --target" in sdk_action
+    assert 'PYTHONPATH="$target" python3 -c' in sdk_action
+    assert 'echo "PYTHONPATH=$target' in sdk_action
+    assert 'echo "OCI_PYTHON=$(command -v python3)"' in sdk_action
     main_workflow = (Path(__file__).resolve().parents[1] / ".github/workflows/main-admission.yml").read_text(encoding="utf-8")
     assert "prebuild_required: ${{ steps.deploy_scope.outputs.prebuild_required }}" in main_workflow
     assert "needs.source.outputs.prebuild_required == 'true'" in main_workflow

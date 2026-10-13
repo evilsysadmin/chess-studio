@@ -287,6 +287,7 @@ jobs:
         with:
           version: '2.185.2'
           python-version: '3.13'
+          cache-layout: portable
       - name: Load ephemeral staging invite code from OCI runtime
         run: python3 scripts/staging_smoke_env.py secrets
       - name: Prepare and sweep staging smoke janitor
