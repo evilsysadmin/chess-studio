@@ -655,32 +655,6 @@ export default function ChroniclesOfMatthias({ onExit }) {
     setSheetMemberId(memberId);
   }, [clearTouchHold]);
 
-  const newExpedition = useCallback(() => {
-    const runId = activeRunIdRef.current;
-    // Starting another game does not destroy the checkpoint of the old one.
-    // The catalog keeps both identities loadable.
-    const newRunId = beginChroniclesRun(FIRST_PERSON_RUN_SCOPE);
-    chroniclesRememberPlayingRun(FIRST_PERSON_RUN_SCOPE, newRunId);
-    activeRunIdRef.current = newRunId;
-    authoritativeRunRef.current = null;
-    checkpointFingerprintRef.current = '';
-    checkpointQueueRef.current = Promise.resolve();
-    checkpointMapRef.current = null;
-    checkpointExistsRef.current = false;
-    stateRef.current = null;
-    setState(null);
-    setSelectedMemberId('matthias');
-    setSheetMemberId(null);
-    setReady(false);
-    setBootstrapError(null);
-    setRendererError('');
-    setAutomapOpen(false);
-    setAutomapVisitedByMap({});
-    staleRunRecoveryAttemptedRef.current = false;
-    setMenuOpen(false);
-    setBootstrapRevision((revision) => revision + 1);
-  }, []);
-
   const restart = useCallback(() => {
     chroniclesClearPlayingRun();
     if (activeRunIdRef.current) {
@@ -1292,7 +1266,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
                     <button type="button" onClick={() => setConfirmExitWithoutSaving(false)}>Cancelar</button>
                   </div>
                 )}
-                <details className="chronicles-audio-options">
+                <details key={menuOpen ? 'open' : 'closed'} className="chronicles-audio-options">
                   <summary>Opciones de audio</summary>
                   <fieldset className="chronicles-audio-controls">
                     <legend>Volumen</legend>
