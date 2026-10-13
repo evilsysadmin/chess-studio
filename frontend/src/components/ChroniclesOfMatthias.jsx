@@ -1244,18 +1244,24 @@ export default function ChroniclesOfMatthias({ onExit }) {
             >
               <i aria-hidden="true">⌖</i><b>MAPA</b>
             </button>
-            <details
-              className="chronicles-game-menu"
-              open={menuOpen}
-              onToggle={(event) => {
-                setMenuOpen(event.currentTarget.open);
-                if (event.currentTarget.open) {
-                  setAutomapOpen(false);
-                  setJournalOpen(false);
-                }
-              }}
-            >
-              <summary ref={menuSummaryRef} title="Tab · Menú" aria-label={menuOpen ? 'Cerrar menú de Chronicles' : 'Abrir menú de Chronicles'}>
+            <details className="chronicles-game-menu" open={menuOpen}>
+              <summary
+                ref={menuSummaryRef}
+                title="Tab · Menú"
+                aria-label={menuOpen ? 'Cerrar menú de Chronicles' : 'Abrir menú de Chronicles'}
+                onClick={(event) => {
+                  // React owns the open state. Native <details> toggling fires
+                  // asynchronously and can close the automap after a fast
+                  // menu-close → minimap-open sequence on mobile and desktop.
+                  event.preventDefault();
+                  clearTouchHold();
+                  if (!menuOpen) {
+                    setAutomapOpen(false);
+                    setJournalOpen(false);
+                  }
+                  setMenuOpen((open) => !open);
+                }}
+              >
                 ☰ <b>MENÚ</b>
               </summary>
               <div className="chronicles-game-menu__panel">

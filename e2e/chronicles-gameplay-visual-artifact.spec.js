@@ -926,19 +926,19 @@ for (const capture of CAPTURES) {
         expect(ink.computed, `menu action ${ink.label} black ink`).toBe('rgb(8, 8, 10)');
       }
 
+      const menuPanel = menuDetails.locator('.chronicles-game-menu__panel');
+      const bounds = await menuPanel.boundingBox();
+      expect(bounds, `${capture.label}: menu has bounds`).not.toBeNull();
+      expect(bounds.x, `${capture.label}: menu starts inside viewport`).toBeGreaterThanOrEqual(0);
+      expect(bounds.y, `${capture.label}: menu starts below browser viewport top`).toBeGreaterThanOrEqual(0);
+      expect(bounds.x + bounds.width, `${capture.label}: menu fits viewport width`).toBeLessThanOrEqual(capture.width + 1);
+      expect(bounds.y + bounds.height, `${capture.label}: menu fits viewport height`).toBeLessThanOrEqual(capture.height + 1);
       if (capture.hasTouch) {
-        const menuPanel = menuDetails.locator('.chronicles-game-menu__panel');
-        const bounds = await menuPanel.boundingBox();
-        expect(bounds, `${capture.label}: menu has bounds`).not.toBeNull();
-        expect(bounds.x, `${capture.label}: menu starts inside viewport`).toBeGreaterThanOrEqual(0);
-        expect(bounds.y, `${capture.label}: menu starts below browser viewport top`).toBeGreaterThanOrEqual(0);
-        expect(bounds.x + bounds.width, `${capture.label}: menu fits viewport width`).toBeLessThanOrEqual(capture.width + 1);
-        expect(bounds.y + bounds.height, `${capture.label}: menu fits viewport height`).toBeLessThanOrEqual(capture.height + 1);
         await expect(menuDetails.locator('.chronicles-game-menu__close')).toBeVisible();
         await captureElement(page, menuPanel, `${ARTIFACT_DIR}/chronicles-game-menu-open-${capture.label}.png`);
-        // Long menus may scroll internally: all actions must remain reachable.
-        await exitAction.scrollIntoViewIfNeeded();
       }
+      // Long menus may scroll internally: all actions must remain reachable.
+      await exitAction.scrollIntoViewIfNeeded();
       const exitBox = await exitAction.boundingBox();
       expect(exitBox, `${capture.label}: menu exit action has bounds`).not.toBeNull();
       expect(exitBox.y, `${capture.label}: menu exit action below the top edge`).toBeGreaterThanOrEqual(0);
@@ -958,8 +958,10 @@ for (const capture of CAPTURES) {
         await menuSummary.evaluate((summary) => summary.click());
       }
       await expect(exitAction).toBeHidden();
+      await expect(menuDetails, `${capture.label}: menu is truly closed before opening map`).not.toHaveAttribute('open');
 
       await page.getByRole('button', { name: 'Minimapa local. Abrir automapa completo', exact: true }).click();
+      await expect(menuDetails, `${capture.label}: opening minimap must not reopen menu`).not.toHaveAttribute('open');
       const automap = page.getByRole('dialog', { name: 'Automapa de Chronicles', exact: true });
       await expect(automap).toBeVisible();
       const automapCells = automap.locator('.chronicles-automap__cell');

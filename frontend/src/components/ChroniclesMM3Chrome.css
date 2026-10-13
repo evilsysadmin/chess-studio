@@ -483,13 +483,14 @@
     font-weight: 700;
   }
   .chronicles .chronicles-game-menu { border-left: 0; }
-  /* MENÚ sits low in the panel: open the tablet upward over the controls so
-     «Salir y guardar» never falls below the screen. */
+  /* MENÚ sits low in the panel. Bound the upward-opening tablet to the
+     space above the trigger: an uncapped tall audio menu clipped its heading
+     outside a 900px desktop viewport. Keep actions reachable by scrolling. */
   .chronicles .chronicles-game-menu__panel {
     top: auto;
     bottom: calc(100% + 6px);
     right: 0;
-    max-height: calc(100dvh - 24px);
+    max-height: min(420px, calc(100dvh - 24px));
     overflow-y: auto;
   }
 
