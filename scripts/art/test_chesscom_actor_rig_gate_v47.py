@@ -11,8 +11,9 @@ from chesscom_actor_rig_gate_v47 import audit_playable_structure
 from chesscom_owned_master_v40 import glb_document
 from test_chesscom_owned_master_v40 import sample_glb
 
-def fixture(*, omit=None, duplicate=False, bad_joint=False, detach=False, empty=False):
+def fixture(*, omit=None, duplicate=False, bad_joint=False, detach=False, empty=False, bad_accessor=False):
     doc = glb_document(sample_glb())
+    doc["accessors"] = [{"count": 3}, {"count": 3}]
     weapon = len(doc["nodes"]) - 1
     muzzle = len(doc["nodes"])
     doc["nodes"].append({"name": "MuzzleSocket", "translation": [0.8, 0, 0]})
@@ -23,7 +24,7 @@ def fixture(*, omit=None, duplicate=False, bad_joint=False, detach=False, empty=
         if clip == omit:
             continue
         doc["animations"].append({
-            "name": clip, "samplers": [{}],
+            "name": clip, "samplers": [{"input": 99 if bad_accessor and clip == "Idle" else 0, "output": 1}],
             "channels": [] if empty and clip == "Idle" else [
                 {"sampler": 0, "target": {"node": weapon if bad_joint and clip == "Idle" else 5,
                                           "path": "rotation"}}
@@ -61,6 +62,10 @@ class AuthoredActorGateTests(unittest.TestCase):
     def test_rejects_animations_not_targeting_skeleton(self):
         with self.assertRaisesRegex(ValueError, "clip-misses-skeleton"):
             audit_bytes(fixture(bad_joint=True))
+
+    def test_rejects_invalid_sampler(self):
+        with self.assertRaisesRegex(ValueError, "invalid-animation-accessor"):
+            audit_bytes(fixture(bad_accessor=True))
 
     def test_rejects_unattached_muzzle(self):
         with self.assertRaisesRegex(ValueError, "weapon-muzzle-socket-required"):
