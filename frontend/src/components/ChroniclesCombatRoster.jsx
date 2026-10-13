@@ -1,4 +1,4 @@
-import { chroniclesActiveEnemies, chroniclesEnemyTargetAhead } from '../chroniclesOfMatthias.js';
+import { chroniclesActiveEnemies, chroniclesEnemyTargetAhead, chroniclesPartyAttackStats } from '../chroniclesOfMatthias.js';
 
 // The combat roster is supplementary to the automap, never a replacement for it.
 // Keep the currently faced enemy visible, and reveal the complete enemy list on demand.
@@ -9,12 +9,12 @@ export function chroniclesHealthBand(hp, maxHp) {
   return 'critical';
 }
 
-export default function ChroniclesCombatRoster({ state }) {
+export default function ChroniclesCombatRoster({ state, selectedMemberId }) {
   if (!state?.initiative) return null;
   const foes = chroniclesActiveEnemies(state).filter((enemy) => Number(state[enemy.hpKey] || 0) > 0);
   if (!foes.length) return null;
 
-  const targetId = chroniclesEnemyTargetAhead(state, 3)?.enemy?.id;
+  const targetId = chroniclesEnemyTargetAhead(state, chroniclesPartyAttackStats(state, selectedMemberId).reach || 3)?.enemy?.id;
   const target = foes.find((enemy) => enemy.id === targetId);
 
   return (
@@ -37,9 +37,9 @@ export default function ChroniclesCombatRoster({ state }) {
                 key={enemy.id}
                 data-band={chroniclesHealthBand(hp, enemy.maxHp)}
                 data-target={enemy.id === targetId ? 'true' : undefined}
-                title={`${enemy.name}: ${hp}/${enemy.maxHp} PV`}
+                title={`${enemy.name}: ${hp}/${enemy.maxHp} PV${enemy.rangedWeapon ? ` · ${enemy.rangedWeapon === 'crossbow' ? 'Ballesta' : 'Arco'}` : ''}`}
               >
-                {enemy.name}
+                {enemy.name}{enemy.rangedWeapon && <small> · {enemy.rangedWeapon === 'crossbow' ? 'ballesta' : 'arco'}</small>}
               </li>
             );
           })}
