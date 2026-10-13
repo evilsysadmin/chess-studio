@@ -1,21 +1,17 @@
-/* Only the MM3 desktop chrome shows the always-on band. */
+/* A small, persistent HUD entry; the journal never expands into the cruceta. */
 .chronicles-dm-band { display: none; }
-
-/* The chronicle is opt-in: only its 44px trigger occupies the HUD by default. */
 .chronicles-dm-overlay {
   position: absolute;
   z-index: 6;
   top: 16px;
   left: 50%;
-  width: max-content;
   max-width: calc(100% - 32px);
   transform: translateX(-50%);
-  color: #dbcbb2;
 }
-
 .chronicles-dm-trigger {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
   min-height: 44px;
   box-sizing: border-box;
@@ -24,25 +20,17 @@
   border-radius: 999px;
   background: linear-gradient(125deg, rgba(40, 28, 20, .94), rgba(13, 11, 9, .91));
   box-shadow: 0 8px 20px rgba(0, 0, 0, .3);
-  backdrop-filter: blur(5px);
-  -webkit-backdrop-filter: blur(5px);
   color: #eadcc4;
+  font-family: inherit;
   font-size: .76rem;
   font-weight: 700;
+  line-height: 1.2;
   letter-spacing: .04em;
   cursor: pointer;
-  user-select: none;
-  list-style: none;
   -webkit-tap-highlight-color: transparent;
 }
-
-.chronicles-dm-trigger::-webkit-details-marker { display: none; }
-.chronicles-dm-trigger:hover { border-color: rgba(235, 187, 109, .8); }
-.chronicles-dm-trigger:focus-visible {
-  outline: 2px solid #e4bd7a;
-  outline-offset: 3px;
-}
-
+.chronicles-dm-trigger:hover { border-color: #e4bd7a; }
+.chronicles-dm-trigger:focus-visible { outline: 3px solid #e4bd7a; outline-offset: 2px; }
 .chronicles-dm-sigil {
   width: 28px;
   height: 28px;
@@ -51,94 +39,138 @@
   flex: none;
   border: 1px solid rgba(216, 166, 90, .28);
   border-radius: 50%;
-  color: #e4bd7a;
   background: radial-gradient(circle, rgba(102, 62, 28, .44), rgba(22, 16, 11, .7) 70%);
-  font-size: .76rem;
+  color: #e4bd7a;
 }
+.chronicles-dm-chevron { color: #c49b65; font-size: 1.05rem; }
 
-.chronicles-dm-chevron {
-  display: inline-block;
-  margin-left: 2px;
-  color: #c49b65;
-  font-size: 1.05rem;
-  transition: transform 160ms ease;
-}
-.chronicles-dm-overlay[open] .chronicles-dm-chevron { transform: rotate(180deg); }
-
-/* Open content floats beneath the trigger; it never pushes the game or HUD. */
-.chronicles-dm-panel {
-  position: absolute;
-  top: calc(100% + 8px);
-  left: 50%;
-  width: min(520px, calc(100vw - 32px));
+/* Portalled out of the clipped WebGL stage. No HUD or touch control can
+   cover the book, nor does the book remain on top during normal gameplay. */
+.chronicles-dm-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 21000;
   box-sizing: border-box;
-  padding: 14px 17px 16px;
-  transform: translateX(-50%);
-  border: 1px solid rgba(214, 169, 98, .42);
-  border-left: 2px solid rgba(224, 177, 100, .65);
-  border-radius: 9px;
-  background: linear-gradient(110deg, rgba(34, 23, 14, .97), rgba(9, 8, 7, .95));
-  box-shadow: 0 12px 30px rgba(0, 0, 0, .43);
-  backdrop-filter: blur(5px);
-  -webkit-backdrop-filter: blur(5px);
+  display: grid;
+  place-items: center;
+  padding: max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right))
+    max(12px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
+  background: rgba(5, 7, 12, .79);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  color-scheme: only light;
 }
-.chronicles-dm-overlay:not([open]) .chronicles-dm-panel { display: none; }
-
+.chronicles-dm-dialog {
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  width: min(650px, 100%);
+  max-height: min(84dvh, 710px);
+  min-height: 0;
+  overflow: hidden;
+  border: 3px solid #8b5527;
+  border-radius: 8px;
+  background: #d8a369 url('../assets/chronicles/ui/mm3-sandstone.png') 0 0 / 64px 64px;
+  box-shadow: inset 0 0 0 2px #f1c18b, 0 24px 80px rgba(0, 0, 0, .75);
+  color: #231408;
+  image-rendering: auto;
+}
+.chronicles-dm-dialog-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex: none;
+  gap: 12px;
+  padding: 16px 16px 13px 22px;
+  border-bottom: 2px solid #8f5427;
+  background: rgba(255, 220, 165, .47);
+}
 .chronicles-dm-kicker {
   display: block;
-  margin-bottom: 6px;
-  font-size: .65rem;
+  font-size: .67rem;
+  font-weight: 700;
   letter-spacing: .16em;
-  color: #c6a06a;
+  color: #734014;
 }
-
-.chronicles-dm-panel p {
-  margin: 0;
-  font-family: Georgia, 'Times New Roman', serif;
-  font-size: .95rem;
-  line-height: 1.48;
-  color: #eadcc4;
+.chronicles-dm-dialog h2 {
+  margin: 4px 0 0;
+  color: #2b1608;
+  font: 600 clamp(1.5rem, 4vw, 2.1rem)/1.1 Georgia, serif;
+}
+.chronicles-dm-close {
+  display: grid;
+  place-items: center;
+  flex: none;
+  min-width: 48px;
+  min-height: 48px;
+  border: 2px solid #865020;
+  border-radius: 6px;
+  background: #f1c893;
+  color: #32190a;
+  font: 700 2rem/1 Georgia, serif;
+  cursor: pointer;
+}
+.chronicles-dm-close:hover,
+.chronicles-dm-close:focus-visible {
+  outline: 3px solid #3f2410;
+  outline-offset: 2px;
+  background: #ffe5b7;
+}
+.chronicles-dm-dialog-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+  scrollbar-width: thin;
+  padding: 18px 23px 23px;
+}
+.chronicles-dm-dialog-body:focus-visible { outline: 3px solid #70441e; outline-offset: -3px; }
+.chronicles-dm-dialog-body > p {
+  margin: 7px 0 0;
+  color: #2d1809;
+  font: 400 1rem/1.5 Georgia, serif;
   overflow-wrap: anywhere;
-  text-shadow: 0 1px 7px rgba(0, 0, 0, .66);
 }
-
-/* Desktop already shows quests in the bottom journal. */
-.chronicles-dm-quests { display: none; }
-
+.chronicles-dm-quests {
+  display: block;
+  margin-top: 19px;
+  padding-top: 14px;
+  border-top: 2px solid rgba(94, 48, 19, .48);
+}
+.chronicles-dm-quests .chronicles-quest-log { padding: 0; }
+.chronicles-dm-quests .chronicles-quest-log__quest {
+  border: 1px solid rgba(79, 43, 16, .45);
+  border-left: 3px solid #83431c;
+  background: rgba(255, 231, 190, .36);
+}
+.chronicles-dm-quests .chronicles-quest-log__quest strong { color: #261407; }
+.chronicles-dm-quests .chronicles-quest-log__quest p { color: #45270f; font-size: .9rem; }
+.chronicles-dm-quests .chronicles-quest-log h3,
+.chronicles-dm-quests .chronicles-quest-log__quest small { color: #673a16; }
 @media (max-width: 800px), (max-width: 1024px) and (max-height: 600px) {
-  .chronicles-dm-quests {
-    display: block;
-    max-height: min(46vh, 320px);
-    overflow: auto;
-    margin: 10px -4px 0;
-    border-top: 1px solid rgba(214, 169, 98, .2);
-    scrollbar-width: thin;
-  }
-  .chronicles-dm-quests .chronicles-quest-log { padding: 8px 4px 0; }
-  .chronicles-dm-quests .chronicles-quest-log__quest { grid-template-columns: 20px 1fr; gap: 6px; padding: 6px 7px; }
-  .chronicles-dm-quests .chronicles-quest-log__quest p { font-family: inherit; font-size: .68rem; text-shadow: none; color: #c2b195; }
   .chronicles-dm-overlay {
     top: 112px;
     left: max(10px, env(safe-area-inset-left));
     transform: none;
   }
-  /* Keep the opened chronicle left of the interactive local minimap. */
-  .chronicles-dm-panel {
-    left: 0;
-    width: min(390px, calc(100vw - 160px));
-    transform: none;
-    padding: 11px 12px 12px;
-  }
-  .chronicles-dm-panel p { font-size: .82rem; }
+  .chronicles-dm-dialog { max-height: calc(100dvh - 24px); }
+  .chronicles-dm-dialog-header { padding: 10px 12px 10px 16px; }
+  .chronicles-dm-dialog-body { padding: 14px 16px 16px; }
 }
-
 @media (max-width: 520px) {
   .chronicles-dm-overlay { top: 120px; }
-  .chronicles-dm-kicker { font-size: .56rem; }
-  .chronicles-dm-panel p { font-size: .78rem; }
 }
-
-/* Combat initiative claims a deeper band, including when the chronicle is closed. */
+@media (max-height: 480px) and (orientation: landscape) {
+  .chronicles-dm-backdrop { padding: 6px max(8px, env(safe-area-inset-right)) 6px max(8px, env(safe-area-inset-left)); }
+  .chronicles-dm-dialog { width: min(760px, 100%); max-height: calc(100dvh - 12px); }
+  .chronicles-dm-dialog-header { padding: 6px 12px; }
+  .chronicles-dm-dialog h2 { font-size: 1.35rem; }
+  .chronicles-dm-close { min-height: 44px; min-width: 44px; }
+  .chronicles-dm-dialog-body { padding: 10px 16px; }
+}
+/* Combat initiative claims the upper part of the view; the reader remains fixed. */
 .chronicles:has(.chronicles-initiative-rail) .chronicles-dm-overlay { top: 148px; }
 @media (max-width: 800px), (max-width: 1024px) and (max-height: 600px) {
   .chronicles:has(.chronicles-initiative-rail) .chronicles-dm-overlay { top: 238px; }
@@ -147,5 +179,5 @@
   .chronicles:has(.chronicles-initiative-rail) .chronicles-dm-overlay { top: 252px; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .chronicles-dm-chevron { transition: none; }
+  .chronicles-dm-backdrop { backdrop-filter: none; -webkit-backdrop-filter: none; }
 }

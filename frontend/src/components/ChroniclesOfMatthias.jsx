@@ -207,6 +207,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuSummaryRef = useRef(null);
   const [journalOpen, setJournalOpen] = useState(false);
+  const [chronicleModalOpen, setChronicleModalOpen] = useState(false);
   const [automapOpen, setAutomapOpen] = useState(false);
   const [spellMenuOpen, setSpellMenuOpen] = useState(false);
   const [saveBusy, setSaveBusy] = useState(false);
@@ -309,7 +310,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
       return;
     }
     setMenuOpen((open) => !open);
-  }, { contextMenu: false });
+  }, { contextMenu: false, disabled: chronicleModalOpen });
 
   const confirmCharacterBuild = useCallback((build) => {
     void requestChroniclesLandscapeOnEntry();
@@ -875,7 +876,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
       // plain Tab traverses its accessible controls rather than closing it.
       const target = event.target;
       if (target?.isContentEditable || target?.closest?.('input, textarea, select, [contenteditable="true"]')) return;
-      if (sheetMemberId || current.shop || current.guild || spellMenuOpen
+      if (chronicleModalOpen || sheetMemberId || current.shop || current.guild || spellMenuOpen
         || current.phase === 'defeated' || current.phase === 'escaped') return;
       if (event.key === 'Tab') {
         if (event.shiftKey || target?.closest?.('.chronicles-game-menu')) return;
@@ -894,7 +895,12 @@ export default function ChroniclesOfMatthias({ onExit }) {
         clearTouchHold();
         setAutomapOpen(false);
         setMenuOpen(false);
-        setJournalOpen((open) => !open);
+        if (window.matchMedia('(max-width: 800px), (max-width: 1024px) and (max-height: 600px)').matches) {
+          setJournalOpen(false);
+          setChronicleModalOpen((open) => !open);
+        } else {
+          setJournalOpen((open) => !open);
+        }
         return;
       }
       if (event.key === 'm' || event.key === 'M') {
@@ -949,7 +955,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
     };
     window.addEventListener('keydown', onKeyDown, { passive: false });
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [attackWithSelected, automapOpen, clearTouchHold, dispatch, interactWithContext, journalOpen, menuOpen, openMemberSheet, ready, sheetMemberId, spellMenuOpen]);
+  }, [attackWithSelected, automapOpen, chronicleModalOpen, clearTouchHold, dispatch, interactWithContext, journalOpen, menuOpen, openMemberSheet, ready, sheetMemberId, spellMenuOpen]);
 
   const startFreshGame = (entryMapId = null) => {
     beginChroniclesRun(FIRST_PERSON_RUN_SCOPE, { entryMapId });
@@ -1231,7 +1237,16 @@ export default function ChroniclesOfMatthias({ onExit }) {
             <div className="chronicles-vignette" aria-hidden="true" />
             <div className="chronicles-crosshair" aria-hidden="true">·</div>
             <ChroniclesInitiativeRail initiative={state.initiative} />
-            <ChroniclesNarratorOverlay message={state.message}>
+            <ChroniclesNarratorOverlay message={state.message} open={chronicleModalOpen}
+              onOpenChange={(next) => {
+                clearTouchHold();
+                if (next) {
+                  setJournalOpen(false);
+                  setMenuOpen(false);
+                  setAutomapOpen(false);
+                }
+                setChronicleModalOpen(next);
+              }}>
               {activeQuests.length > 0 && <ChroniclesQuestLog state={state} />}
             </ChroniclesNarratorOverlay>
             <ChroniclesPartyBark key={partyBark?.token || 'none'} bark={partyBark} />
