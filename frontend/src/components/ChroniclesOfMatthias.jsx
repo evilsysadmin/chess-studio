@@ -228,6 +228,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
   const [spellMenuOpen, setSpellMenuOpen] = useState(false);
   const [saveBusy, setSaveBusy] = useState(false);
   const [saveNotice, setSaveNotice] = useState('');
+  const [saveFailure, setSaveFailure] = useState(null);
   const [confirmExitWithoutSaving, setConfirmExitWithoutSaving] = useState(false);
   const [audience, setAudience] = useState(null);
   const audienceRef = useRef(null);
@@ -843,6 +844,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
     checkpointPendingRef.current += 1;
     setSaveBusy(true);
     setSaveNotice('');
+    setSaveFailure(null);
     const request = checkpointQueueRef.current.catch(() => undefined).then(async () => {
       const currentRun = authoritativeRunRef.current;
       if (!currentRun?.runId || currentRun.runId !== requestedRunId) return false;
@@ -865,10 +867,15 @@ export default function ChroniclesOfMatthias({ onExit }) {
       saveChroniclesProgression(stagedProgression);
       chroniclesNoteSavedRunCheckpoint(FIRST_PERSON_RUN_SCOPE, requestedRunId, snapshot.mapId);
       if (reason === 'manual') setSaveNotice('Partida guardada correctamente.');
+      setSaveFailure(null);
       return true;
     }).catch((error) => {
       console.error('Chronicles checkpoint failed', error);
-      setSaveNotice('No se pudo guardar la partida. Reinténtalo antes de salir.');
+      const status = Number.isInteger(error?.status) ? error.status : null;
+      const requestId = typeof error?.requestId === 'string' ? error.requestId : null;
+      const message = typeof error?.message === 'string' ? error.message : 'Error de conexión o del servidor.';
+      setSaveFailure({ status, requestId, message });
+      setSaveNotice('No se ha podido guardar. La expedición sigue abierta para evitar perder progreso.');
       if (error?.status === 409) {
         setReady(false);
         setBootstrapError(error);
@@ -1275,14 +1282,22 @@ export default function ChroniclesOfMatthias({ onExit }) {
                   <small>Música: Chronicles todavía no tiene una pista propia conectada.</small>
                 </fieldset>
                 {saveNotice && <small role="status">{saveNotice}</small>}
+                {saveFailure && (
+                  <small role="alert" data-chronicles-save-error>
+                    {saveFailure.status ? `HTTP ${saveFailure.status} · ` : ''}{saveFailure.message}
+                    {saveFailure.requestId ? ` · Solicitud ${saveFailure.requestId}` : ''}
+                  </small>
+                )}
                 <button type="button" onClick={() => { setMenuOpen(false); setConfirmExitWithoutSaving(false); }}>Continuar</button>
                 <button type="button" onClick={() => { setMenuOpen(false); setAutomapOpen(false); setJournalOpen(true); }}>Crónica · J</button>
                 <button type="button" onClick={() => void persistCheckpoint(stateRef.current, 'manual')} disabled={saveBusy}>
-                  {saveBusy ? 'Guardando…' : 'Guardar partida'}
+                  {saveBusy ? 'Guardando…' : saveFailure ? 'Reintentar guardar' : 'Guardar partida'}
                 </button>
                 <button type="button" onClick={newExpedition} disabled={saveBusy}>Nueva expedición</button>
                 <button type="button" onClick={returnToSaveMenu} disabled={saveBusy}>Partidas guardadas</button>
-                <button type="button" onClick={() => void saveAndExit()} disabled={saveBusy}>Salir y guardar</button>
+                <button type="button" onClick={() => void saveAndExit()} disabled={saveBusy}>
+                  {saveBusy ? 'Guardando antes de salir…' : saveFailure ? 'Reintentar guardar y salir' : 'Salir y guardar'}
+                </button>
                 {!confirmExitWithoutSaving ? (
                   <button type="button" onClick={() => setConfirmExitWithoutSaving(true)} disabled={saveBusy}>
                     Salir sin guardar
