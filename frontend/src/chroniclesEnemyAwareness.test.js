@@ -53,6 +53,18 @@ describe('Chronicles enemy perception and short-term memory', () => {
     expect(next.enemyAwareness['bone-hound']).toBeUndefined();
   });
 
+  it('also expires memory by tactical combat rounds without an initiative rail', () => {
+    const witnessed = chroniclesRememberEnemySight({
+      ...scenario(), phase: 'combat', turnPhase: 'enemy', round: 1,
+    }, hound);
+    expect(witnessed.enemyAwareness['bone-hound']).toMatchObject({ phase: 'combat', tick: 1 });
+    const later = chroniclesRememberEnemySight({
+      ...witnessed, x: 1, y: 1, partyPositions: { matthias: { x: 1, y: 1 } },
+      round: 4,
+    }, hound);
+    expect(later.enemyAwareness['bone-hound']).toBeUndefined();
+  });
+
   it('keeps a bounded sighting through the authoritative checkpoint without changing its schema', () => {
     const witnessed = chroniclesRememberEnemySight(scenario(), hound);
     const payload = chroniclesRunCheckpointPayload(witnessed, 0);
