@@ -75,6 +75,14 @@ STAGING_ACCEPTANCE_FILES = frozenset({
     "e2e/staging-synthetic.js",
 })
 
+# Only the two mandatory browser specs and their synthetic helper are
+# covered by staging-deploy's always-on smoke matrix.
+SMOKE_ONLY_PATHS = frozenset({
+    "e2e/staging-live.spec.js",
+    "e2e/staging-war-room-restore.spec.js",
+    "e2e/staging-synthetic.js",
+})
+
 
 def normalize(path: str) -> str:
     value = path.strip().replace("\\", "/")
@@ -115,6 +123,30 @@ def deploy_required_for_paths(paths: list[str]) -> tuple[bool, str]:
     return False, "non-runtime-only"
 
 
+def speculative_prebuild_required_for_paths(paths: list[str]) -> bool:
+    """Skip speculative compilation only for obvious browser-smoke edits.
+
+    The actual staging fast path independently proves the last complete SHA,
+    ancestry, full baseline diff and three live surfaces. If it declines,
+    staging's existing frontend fallback builds the artifact locally.
+    """
+    cleaned = [normalize(path) for path in paths if path.strip()]
+    return not (
+        bool(cleaned)
+        and any(path in SMOKE_ONLY_PATHS for path in cleaned)
+        and all(path in SMOKE_ONLY_PATHS or non_runtime_path(path) for path in cleaned)
+    )
+
+
+def speculative_prebuild_required(sha: str, source: str | None) -> bool:
+    if source != "pr":
+        return True
+    try:
+        return speculative_prebuild_required_for_paths(changed_files(sha))
+    except (OSError, subprocess.SubprocessError, ValueError):
+        return True
+
+
 def changed_files(sha: str) -> list[str]:
     parent = subprocess.run(
         ["git", "rev-parse", f"{sha}^1"],
@@ -148,13 +180,15 @@ def decide(sha: str, source: str | None) -> tuple[bool, str]:
         return True, f"diff-fail-open:{type(exc).__name__}"
 
 
-def emit(path: str, deploy_required: bool, reason: str) -> None:
+def emit(path: str, deploy_required: bool, reason: str, prebuild_required: bool = True) -> None:
     if path:
         with open(path, "a", encoding="utf-8") as handle:
             handle.write(f"deploy_required={'true' if deploy_required else 'false'}\n")
             handle.write(f"deploy_reason={reason}\n")
+            handle.write(f"prebuild_required={'true' if prebuild_required else 'false'}\n")
     print(f"deploy_required={'true' if deploy_required else 'false'}")
     print(f"deploy_reason={reason}")
+    print(f"prebuild_required={'true' if prebuild_required else 'false'}")
 
 
 def self_test() -> None:
@@ -164,6 +198,14 @@ def self_test() -> None:
         assert deploy_required_for_paths([staging_path]) == (True, f"runtime:{staging_path}")
     assert deploy_required_for_paths(["e2e/ordinary-browser.spec.js"]) == (False, "non-runtime-only")
     assert deploy_required_for_paths(["e2e/staging-live-other.spec.js"]) == (False, "non-runtime-only")
+    assert not speculative_prebuild_required_for_paths(["e2e/staging-live.spec.js"])
+    assert not speculative_prebuild_required_for_paths(["e2e/staging-war-room-restore.spec.js", "README.md"])
+    assert not speculative_prebuild_required_for_paths(["e2e/staging-synthetic.js", "docs/release.md"])
+    assert speculative_prebuild_required_for_paths(["e2e/staging-pawn-slug-godot.spec.js"])
+    assert speculative_prebuild_required_for_paths(["e2e/playwright.staging.config.js"])
+    assert speculative_prebuild_required_for_paths(["e2e/staging-live.spec.js", "frontend/src/App.jsx"])
+    assert speculative_prebuild_required_for_paths(["scripts/staging_deploy_scope.py", "e2e/staging-live.spec.js"])
+    assert speculative_prebuild_required_for_paths([])
     assert deploy_required_for_paths(["scripts/quality_scope.py", ".github/workflows/cicd.yml"]) == (False, "non-runtime-only")
     assert deploy_required_for_paths(["scripts/dead_code_reachability_check.py"]) == (False, "non-runtime-only")
     assert deploy_required_for_paths(["scripts/grafana_dashboard_check.py", ".github/workflows/billing-cost-export.yml"]) == (False, "non-runtime-only")
@@ -216,7 +258,8 @@ def main() -> int:
             return 0
 
     deploy_required, reason = decide(sha, source)
-    emit(args.github_output, deploy_required, reason)
+    prebuild_required = speculative_prebuild_required(sha, source) if deploy_required else True
+    emit(args.github_output, deploy_required, reason, prebuild_required)
     if not deploy_required:
         print("::notice title=Staging no-op::Cambio PR inequívocamente no-runtime; se omite la generación de staging.")
     return 0

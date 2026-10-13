@@ -19,15 +19,6 @@ import staging_generation_diff as diff
 import staging_deploy_proof as proof
 
 
-# The matrix in staging-deploy runs only the War Room live + F5 restore
-# contracts. Pawn Slug and Playwright's shared config retain full staging.
-SMOKE_ONLY_PATHS = frozenset({
-    "e2e/staging-live.spec.js",
-    "e2e/staging-war-room-restore.spec.js",
-    "e2e/staging-synthetic.js",
-})
-
-
 def safe_changes(rows: list[tuple[str, str]]) -> bool:
     """Allow only pure acceptance/test/documentation changes since deployment."""
     if not rows:
@@ -36,7 +27,7 @@ def safe_changes(rows: list[tuple[str, str]]) -> bool:
     for status, path in rows:
         if status not in {"M", "A", "D"}:
             return False
-        if path in SMOKE_ONLY_PATHS:
+        if path in scope.SMOKE_ONLY_PATHS:
             acceptance = True
         elif path in scope.STAGING_ACCEPTANCE_FILES or not scope.non_runtime_path(path):
             return False
@@ -152,6 +143,9 @@ def self_test() -> None:
     assert 'ref: ${{ env.TEST_SOURCE_SHA }}' in workflow
     assert 'smoke_sha || needs.prepare.outputs.deploy_sha' in workflow
     assert "Verify smoke-only runtime and source stayed unchanged" in workflow
+    main_workflow = (Path(__file__).resolve().parents[1] / ".github/workflows/main-admission.yml").read_text(encoding="utf-8")
+    assert "prebuild_required: ${{ steps.deploy_scope.outputs.prebuild_required }}" in main_workflow
+    assert "needs.source.outputs.prebuild_required == 'true'" in main_workflow
     assert "Staging generation complete" in proof.REQUIRED_JOBS
     for name in ("Backend · exact OCI generation", "Frontend · exact Pages generation", "Worker · exact AI generation"):
         assert name in proof.REQUIRED_JOBS
