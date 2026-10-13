@@ -1,5 +1,5 @@
 import { getAudioContext } from '../audioContext.js';
-import { isFxMuted } from '../soundPreferences.js';
+import { getChroniclesFxVolume } from './chroniclesAudioSettings.js';
 import { chroniclesMapForState } from './chroniclesMapCatalog.js';
 
 function actionType(action) {
@@ -90,13 +90,14 @@ function connectNoise(ctx, destination, { duration, gain, centerHz, delay = 0, t
 }
 
 function playCue(cue) {
-  if (!cue || isFxMuted()) return;
+  const volume = getChroniclesFxVolume();
+  if (!cue || volume <= 0) return;
   const ctx = getAudioContext();
   if (!ctx) return;
   if (ctx.state === 'suspended') ctx.resume?.().catch(() => {});
 
   const bus = ctx.createGain();
-  bus.gain.value = 0.82;
+  bus.gain.value = 0.82 * volume;
   bus.connect(ctx.destination);
 
   if (cue === 'step') {
