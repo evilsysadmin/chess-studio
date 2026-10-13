@@ -10,6 +10,8 @@ on:
       - scripts/blender/chesscom_oss_turntable_v52.py
       - scripts/blender/chesscom_sven_art_direction_v53.py
       - scripts/blender/chesscom_sven_organic_v55.py
+      - scripts/blender/chesscom_sven_base_mesh_v56.py
+      - docs/experiments/chesscom-sven-base-mesh-v56.md
       - docs/experiments/chesscom-sven-organic-v55.md
       - scripts/blender/chesscom_sven_motion_review_v54.py
       - scripts/art/chesscom_sven_motion_contact_v54.py
@@ -62,7 +64,7 @@ jobs:
         run: |
           set -euo pipefail
           blender --background --threads 2 --python-exit-code 19 \
-            --python scripts/blender/chesscom_sven_organic_v55.py -- \
+            --python scripts/blender/chesscom_sven_base_mesh_v56.py -- \
             --source-glb .artifacts/chesscom-oss-v52/source/swat.glb \
             --output-dir .artifacts/chesscom-oss-v52/review
           python3 scripts/art/chesscom_oss_contact_v52.py \
@@ -120,6 +122,20 @@ jobs:
           assert {"V55_left_earcup","V55_radio_body","V55_headset_band",
                   "V55_radio_whip","V55_backpack_seam_L"}.issubset(named)
           assert not any("MuzzleSocket" in name for name in named)
+          smoothed=details["v56"]
+          assert smoothed["refinement_method"]=="uv-safe-custom-split-normals"
+          assert smoothed["unchanged_original_geometry"] and smoothed["unchanged_source_skinning"]
+          assert len(smoothed["source_garments"])==2
+          assert {g["mesh"] for g in smoothed["source_garments"]}=={"Swat_Body","Swat_Legs"}
+          assert smoothed["head_and_boots_unmodified"]
+          assert all(g["before"]==g["after"] for g in smoothed["source_garments"])
+          assert all(g["matching_textile_corners"]>100 for g in smoothed["source_garments"])
+          assert all(g["adjusted_split_normals"]>100 for g in smoothed["source_garments"])
+          assert all(g["maximum_shading_change_degrees"]<=40 for g in smoothed["source_garments"])
+          assert (folder/"cloth-detail.png").stat().st_size>1024
+          # Check exported core skinned geometry, not just counters from bpy.
+          core=[n for n in document.get("nodes",[]) if n.get("name") in ("Swat_Body","Swat_Legs")]
+          assert len(core)==2 and all("skin" in n and "mesh" in n for n in core)
           assert not blender["two_hand_rifle_contact_verified"]
           motion=json.loads((folder/"motion-report.json").read_text())
           assert motion["review_only"] and not motion["promotable"]
