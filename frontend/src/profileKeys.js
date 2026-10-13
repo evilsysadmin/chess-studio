@@ -80,6 +80,7 @@ export const PROFILE_PREFERENCE_KEYS = Object.freeze([
   'chess-study-music-excluded',
   'chess-study-user-release-notes-seen',
   'chess-study-fx-muted',
+  'chess-study-chronicles-sfx-volume', // per-user Chronicles sound effects level
   'chess-study-voice-enabled',
   'chess-study-mechanic-tutorial-progress-v1',
   'chess-study-home-guide-dismissed-v1',
