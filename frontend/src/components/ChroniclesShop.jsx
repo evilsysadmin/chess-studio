@@ -143,7 +143,7 @@ export default function ChroniclesShop({ state, onAction, onClose }) {
                   <div className="chronicles-shop__actions">
                     <button type="button" className="chronicles-shop__compare-button"
                       aria-expanded={comparedItemId === item.id}
-                      aria-controls={`chronicles-shop-compare-${item.id}`}
+                      aria-controls={comparedItemId === item.id ? `chronicles-shop-compare-${item.id}` : undefined}
                       onClick={() => setComparedItemId((selected) => selected === item.id ? null : item.id)}>
                       {comparedItemId === item.id ? 'Ocultar' : 'Comparar'}
                     </button>
