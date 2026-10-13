@@ -222,6 +222,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
   const [retaliationCue, setRetaliationCue] = useState(null);
   const [partyBark, setPartyBark] = useState(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [audioOptionsOpen, setAudioOptionsOpen] = useState(false);
   const [fxVolume, setFxVolume] = useState(() => getChroniclesFxVolume());
   const [musicVolume, setMusicVolume] = useState(getAmbientVolume);
   const menuSummaryRef = useRef(null);
@@ -264,7 +265,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
       node.style.setProperty('-webkit-text-stroke-color', '#08080a', 'important');
       node.style.setProperty('color-scheme', 'light only', 'important');
     }
-  }, [ready, state, menuOpen, confirmExitWithoutSaving]);
+  }, [ready, state, menuOpen, audioOptionsOpen, confirmExitWithoutSaving]);
 
   // Reconcile server-owned expeditions only while browsing the save book.
   // Cleanup discards stale results after navigating away or switching flows.
@@ -654,32 +655,6 @@ export default function ChroniclesOfMatthias({ onExit }) {
     }
     setSheetMemberId(memberId);
   }, [clearTouchHold]);
-
-  const newExpedition = useCallback(() => {
-    const runId = activeRunIdRef.current;
-    // Starting another game does not destroy the checkpoint of the old one.
-    // The catalog keeps both identities loadable.
-    const newRunId = beginChroniclesRun(FIRST_PERSON_RUN_SCOPE);
-    chroniclesRememberPlayingRun(FIRST_PERSON_RUN_SCOPE, newRunId);
-    activeRunIdRef.current = newRunId;
-    authoritativeRunRef.current = null;
-    checkpointFingerprintRef.current = '';
-    checkpointQueueRef.current = Promise.resolve();
-    checkpointMapRef.current = null;
-    checkpointExistsRef.current = false;
-    stateRef.current = null;
-    setState(null);
-    setSelectedMemberId('matthias');
-    setSheetMemberId(null);
-    setReady(false);
-    setBootstrapError(null);
-    setRendererError('');
-    setAutomapOpen(false);
-    setAutomapVisitedByMap({});
-    staleRunRecoveryAttemptedRef.current = false;
-    setMenuOpen(false);
-    setBootstrapRevision((revision) => revision + 1);
-  }, []);
 
   const restart = useCallback(() => {
     chroniclesClearPlayingRun();
@@ -1252,6 +1227,9 @@ export default function ChroniclesOfMatthias({ onExit }) {
                 if (event.currentTarget.open) {
                   setAutomapOpen(false);
                   setJournalOpen(false);
+                } else {
+                  setAudioOptionsOpen(false);
+                  setConfirmExitWithoutSaving(false);
                 }
               }}
             >
@@ -1259,9 +1237,34 @@ export default function ChroniclesOfMatthias({ onExit }) {
                 ☰ <b>MENÚ</b>
               </summary>
               <div className="chronicles-game-menu__panel">
-                <strong>Chronicles of Matthias</strong>
-                <small>Guardado manual · checkpoint automático al cambiar de área.</small>
-                <fieldset className="chronicles-audio-controls" style={{ border: '1px solid #806d51', padding: '8px', display: 'grid', gap: '6px', minWidth: 0 }}>
+                <strong>Menú de pausa</strong>
+                {saveNotice && <small role="status">{saveNotice}</small>}
+                <button type="button" onClick={() => { setMenuOpen(false); setConfirmExitWithoutSaving(false); }}>Continuar</button>
+                <button type="button" onClick={() => void persistCheckpoint(stateRef.current, 'manual')} disabled={saveBusy}>
+                  {saveBusy ? 'Guardando…' : 'Guardar partida'}
+                </button>
+                <button type="button" onClick={() => void saveAndExit()} disabled={saveBusy}>Guardar y salir</button>
+                {!confirmExitWithoutSaving ? (
+                  <button type="button" onClick={() => setConfirmExitWithoutSaving(true)} disabled={saveBusy}>
+                    Salir sin guardar
+                  </button>
+                ) : (
+                  <div role="group" aria-label="Confirmar salida sin guardar">
+                    <small>Perderás lo jugado desde el último guardado o cambio de área.</small>
+                    <button type="button" onClick={() => void discardAndExit()} disabled={saveBusy}>Sí, salir sin guardar</button>
+                    <button type="button" onClick={() => setConfirmExitWithoutSaving(false)}>Cancelar</button>
+                  </div>
+                )}
+                <button
+                  type="button"
+                  aria-expanded={audioOptionsOpen}
+                  aria-controls="chronicles-audio-options"
+                  onClick={() => setAudioOptionsOpen((open) => !open)}
+                >
+                  Opciones de audio
+                </button>
+                {audioOptionsOpen && (
+                  <fieldset id="chronicles-audio-options" className="chronicles-audio-controls" style={{ border: '1px solid #806d51', padding: '8px', display: 'grid', gap: '6px', minWidth: 0 }}>
                   <legend>Audio</legend>
                   <label htmlFor="chronicles-sfx-volume">Efectos (SFX) · {Math.round(fxVolume * 100)} %</label>
                   <input
@@ -1291,25 +1294,6 @@ export default function ChroniclesOfMatthias({ onExit }) {
                   />
                   <small>Ajusta la música general; Chronicles aún no dispone de pista propia.</small>
                 </fieldset>
-                {saveNotice && <small role="status">{saveNotice}</small>}
-                <button type="button" onClick={() => { setMenuOpen(false); setConfirmExitWithoutSaving(false); }}>Continuar</button>
-                <button type="button" onClick={() => { setMenuOpen(false); setAutomapOpen(false); setJournalOpen(true); }}>Crónica · J</button>
-                <button type="button" onClick={() => void persistCheckpoint(stateRef.current, 'manual')} disabled={saveBusy}>
-                  {saveBusy ? 'Guardando…' : 'Guardar partida'}
-                </button>
-                <button type="button" onClick={newExpedition} disabled={saveBusy}>Nueva expedición</button>
-                <button type="button" onClick={returnToSaveMenu} disabled={saveBusy}>Partidas guardadas</button>
-                <button type="button" onClick={() => void saveAndExit()} disabled={saveBusy}>Salir y guardar</button>
-                {!confirmExitWithoutSaving ? (
-                  <button type="button" onClick={() => setConfirmExitWithoutSaving(true)} disabled={saveBusy}>
-                    Salir sin guardar
-                  </button>
-                ) : (
-                  <div role="group" aria-label="Confirmar salida sin guardar">
-                    <small>Perderás lo jugado desde el último guardado o cambio de área.</small>
-                    <button type="button" onClick={() => void discardAndExit()} disabled={saveBusy}>Sí, salir sin guardar</button>
-                    <button type="button" onClick={() => setConfirmExitWithoutSaving(false)}>Cancelar</button>
-                  </div>
                 )}
               </div>
             </details>
