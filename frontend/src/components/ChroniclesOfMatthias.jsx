@@ -70,6 +70,7 @@ import {
   chroniclesShouldResumePlayingRun,
 } from '../chronicles/chroniclesRefreshResume.js';
 import { chroniclesPartyCondition } from '../chroniclesOfMatthiasPartyCondition.js';
+import { chroniclesEquippedItem } from '../chronicles/chroniclesEquipment.js';
 import { chroniclesPartyRelic } from '../chroniclesOfMatthiasRelics.js';
 import { chroniclesRetaliationCue } from '../chroniclesOfMatthiasRetaliation.js';
 import { chroniclesTargetAhead } from '../chroniclesOfMatthiasTargeting.js';
@@ -1438,7 +1439,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
           <div className="chronicles-party-preview-copy">
             <span>{selectedMember?.role}</span>
             <strong>{selectedMember?.name}</strong>
-            <small>{selectedMember?.attackName} · daño {selectedAttackStats.damage} · alcance {selectedAttackStats.reach}</small>
+            <small>{state.combatRules === 'mm3' ? (chroniclesEquippedItem(state, selectedMember?.id, 'weapon')?.name || 'Sin arma') : selectedMember?.attackName} · daño {selectedAttackStats.damage} · alcance {selectedAttackStats.reach}</small>
           </div>
         </div>
       </div>
