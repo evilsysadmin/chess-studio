@@ -363,6 +363,20 @@ jobs:
       GH_REPO: ${{ github.repository }}
     steps:
       - name: Summary
+        run: echo "### Staging $DEPLOY_SHA · backend=$BACKEND · frontend=$FRONTEND · worker=$WORKER · smoke=$SMOKE" >> "$GITHUB_STEP_SUMMARY"
+      # Diagnostics must never invalidate a successfully deployed generation.
+      # The summary job has no checkout by default: the first metrics revision
+      # forgot this and blocked accreditation even when all smokes were green.
+      - name: Checkout staging metrics scripts
+        id: metrics_checkout
+        continue-on-error: true
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ env.DEPLOY_SHA }}
+          fetch-depth: 1
+      - name: Diagnostic staging timings (non-blocking)
+        if: steps.metrics_checkout.outcome == 'success'
+        continue-on-error: true
         run: python3 -S scripts/staging_deploy_metrics.py --self-test && python3 -S scripts/staging_deploy_metrics.py
       - name: Dispatch scoped post-staging work
         shell: bash
