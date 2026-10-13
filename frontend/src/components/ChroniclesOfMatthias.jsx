@@ -20,6 +20,7 @@ import {
 } from '../chronicles/chroniclesInitiative.js';
 import { chroniclesDeployedPartyLevel } from '../chronicles/chroniclesDifficultyPolicy.js';
 import { playChroniclesActionSound } from '../chronicles/chroniclesActionAudio.js';
+import { getAmbientVolume, setAmbientVolume } from '../sound.js';
 import {
   getChroniclesFxVolume,
   setChroniclesFxVolume,
@@ -222,6 +223,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
   const [partyBark, setPartyBark] = useState(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [fxVolume, setFxVolume] = useState(() => getChroniclesFxVolume());
+  const [musicVolume, setMusicVolume] = useState(getAmbientVolume);
   const menuSummaryRef = useRef(null);
   const [journalOpen, setJournalOpen] = useState(false);
   const [chronicleModalOpen, setChronicleModalOpen] = useState(false);
@@ -1272,8 +1274,22 @@ export default function ChroniclesOfMatthias({ onExit }) {
                     value={Math.round(fxVolume * 100)}
                     style={{ width: '100%', accentColor: '#88632d' }}
                     onChange={(event) => setFxVolume(setChroniclesFxVolume(Number(event.target.value) / 100))}
+                    onKeyDown={(event) => event.stopPropagation()}
                   />
-                  <small>Música: Chronicles todavía no tiene una pista propia conectada.</small>
+                  <label htmlFor="chronicles-music-volume">Música general · {Math.round(musicVolume * 100)} %</label>
+                  <input
+                    id="chronicles-music-volume"
+                    aria-label="Volumen de música"
+                    type="range"
+                    min="0"
+                    max="100"
+                    step="5"
+                    value={Math.round(musicVolume * 100)}
+                    style={{ width: '100%', accentColor: '#88632d' }}
+                    onChange={(event) => setMusicVolume(setAmbientVolume(Number(event.target.value) / 100))}
+                    onKeyDown={(event) => event.stopPropagation()}
+                  />
+                  <small>Ajusta la música general; Chronicles aún no dispone de pista propia.</small>
                 </fieldset>
                 {saveNotice && <small role="status">{saveNotice}</small>}
                 <button type="button" onClick={() => { setMenuOpen(false); setConfirmExitWithoutSaving(false); }}>Continuar</button>

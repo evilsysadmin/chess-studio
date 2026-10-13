@@ -895,6 +895,20 @@ for (const capture of CAPTURES) {
       await menuSummary.evaluate((summary) => summary.click());
       const exitAction = menuDetails.getByRole('button', { name: 'Salir y guardar', exact: true });
       await expect(exitAction).toBeVisible();
+      // Both controls belong to the current menu; keyboard-adjusting them
+      // must not trigger dungeon movement hotkeys.
+      const musicSlider = menuDetails.locator('#chronicles-music-volume');
+      const fxSlider = menuDetails.locator('#chronicles-sfx-volume');
+      await expect(musicSlider).toBeVisible();
+      await expect(fxSlider).toBeVisible();
+      const turnsBeforeAudio = await gameRoot.getAttribute('data-chronicles-turns');
+      await musicSlider.focus();
+      await musicSlider.press('Home');
+      await expect(musicSlider).toHaveValue('0');
+      await musicSlider.press('ArrowRight');
+      await expect(musicSlider).toHaveValue('5');
+      await expect(gameRoot).toHaveAttribute('data-chronicles-turns', turnsBeforeAudio);
+
       // The previously pale menu action labels must receive the same
       // browser-verified runtime ink as MAPA and MENÚ.
       const menuInks = await menuDetails.locator('.chronicles-game-menu__panel button').evaluateAll((buttons) =>
