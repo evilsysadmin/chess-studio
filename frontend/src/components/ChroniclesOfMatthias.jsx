@@ -209,6 +209,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
   const checkpointFingerprintRef = useRef('');
   const checkpointQueueRef = useRef(Promise.resolve());
   const checkpointPendingRef = useRef(0);
+  const pausedGameInputRef = useRef(false);
   const checkpointMapRef = useRef(null);
   const checkpointExistsRef = useRef(false);
   const automapVisitedRef = useRef({});
@@ -231,6 +232,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
   const [spellMenuOpen, setSpellMenuOpen] = useState(false);
   const [saveBusy, setSaveBusy] = useState(false);
   const [saveNotice, setSaveNotice] = useState('');
+  const [saveFailure, setSaveFailure] = useState(null);
   const [confirmExitWithoutSaving, setConfirmExitWithoutSaving] = useState(false);
   const [audience, setAudience] = useState(null);
   const audienceRef = useRef(null);
@@ -393,11 +395,19 @@ export default function ChroniclesOfMatthias({ onExit }) {
     setBootstrapRevision((revision) => revision + 1);
   }, []);
 
+  // Keyboard and touch input must not mutate a snapshot while the menu is
+  // open or a checkpoint is waiting for the server. Keep dispatch stable so
+  // toggling the menu never recreates the WebGL renderer.
+  useEffect(() => {
+    pausedGameInputRef.current = menuOpen || saveBusy;
+  }, [menuOpen, saveBusy]);
+
   const dispatch = useCallback((action) => {
     const current = stateRef.current;
     if (!current) return;
 
     const actionType = typeof action === 'string' ? action : action?.type;
+    if (pausedGameInputRef.current) return current;
     // A held touch control must not keep moving the expedition behind an NPC.
     // The deliberate dialogue quest option alone may invoke 'interact'.
     if (audienceRef.current && actionType !== 'interact') return current;
@@ -559,7 +569,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
   useEffect(() => {
     const current = stateRef.current;
     const actor = chroniclesCurrentInitiativeActor(current?.initiative);
-    if (sheetMemberId || !current?.initiative || actor?.kind !== 'enemy' || current.phase === 'defeated') return undefined;
+    if (sheetMemberId || menuOpen || saveBusy || !current?.initiative || actor?.kind !== 'enemy' || current.phase === 'defeated') return undefined;
 
     const timer = window.setTimeout(() => {
       const latest = stateRef.current;
@@ -583,7 +593,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
       setState(advanced);
     }, 280);
     return () => window.clearTimeout(timer);
-  }, [sheetMemberId, state?.initiative?.cursor, state?.initiative?.round, state?.phase]);
+  }, [sheetMemberId, menuOpen, saveBusy, state?.initiative?.cursor, state?.initiative?.round, state?.phase]);
 
   useEffect(() => {
     const actor = chroniclesCurrentInitiativeActor(state?.initiative);
@@ -846,6 +856,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
     checkpointPendingRef.current += 1;
     setSaveBusy(true);
     setSaveNotice('');
+    setSaveFailure(null);
     const request = checkpointQueueRef.current.catch(() => undefined).then(async () => {
       const currentRun = authoritativeRunRef.current;
       if (!currentRun?.runId || currentRun.runId !== requestedRunId) return false;
@@ -868,10 +879,15 @@ export default function ChroniclesOfMatthias({ onExit }) {
       saveChroniclesProgression(stagedProgression);
       chroniclesNoteSavedRunCheckpoint(FIRST_PERSON_RUN_SCOPE, requestedRunId, snapshot.mapId);
       if (reason === 'manual') setSaveNotice('Partida guardada correctamente.');
+      setSaveFailure(null);
       return true;
     }).catch((error) => {
       console.error('Chronicles checkpoint failed', error);
-      setSaveNotice('No se pudo guardar la partida. Reinténtalo antes de salir.');
+      const status = Number.isInteger(error?.status) ? error.status : null;
+      const requestId = typeof error?.requestId === 'string' ? error.requestId : null;
+      const message = typeof error?.message === 'string' ? error.message : 'Error de conexión o del servidor.';
+      setSaveFailure({ status, requestId, message });
+      setSaveNotice('No se ha confirmado el guardado. La expedición sigue abierta para evitar perder progreso.');
       if (error?.status === 409) {
         setReady(false);
         setBootstrapError(error);
@@ -896,11 +912,18 @@ export default function ChroniclesOfMatthias({ onExit }) {
     }
   }, [ready, state?.mapId, persistCheckpoint]);
 
-  const saveAndExit = useCallback(async () => {
-    if (saveBusy) return;
-    const saved = await persistCheckpoint(stateRef.current, 'manual');
-    if (saved) exitChronicles();
-  }, [exitChronicles, persistCheckpoint, saveBusy]);
+  // Explicit navigation is never allowed to abandon a newer, unsaved world.
+  // The server's checkpoint response, not the local optimistic state, gates it.
+  const saveBeforeSwitch = useCallback(async (navigate) => {
+    if (saveBusy || checkpointPendingRef.current > 0) return false;
+    const snapshot = stateRef.current;
+    if (!snapshot || !(await persistCheckpoint(snapshot, 'manual'))) return false;
+    navigate();
+    return true;
+  }, [persistCheckpoint, saveBusy]);
+
+  const saveAndExit = useCallback(() => saveBeforeSwitch(exitChronicles), [saveBeforeSwitch, exitChronicles]);
+  const newExpeditionSafely = useCallback(() => saveBeforeSwitch(newExpedition), [saveBeforeSwitch, newExpedition]);
 
   const discardAndExit = useCallback(async () => {
     // Never discard a legitimate previous area checkpoint mid-flight.
@@ -1033,11 +1056,12 @@ export default function ChroniclesOfMatthias({ onExit }) {
   };
 
   const returnToSaveMenu = () => {
-    chroniclesClearPlayingRun();
-    setMenuOpen(false);
-    clearTouchHold();
-    // Never switch the authoritative run pointer while a checkpoint is queued.
-    void checkpointQueueRef.current.catch(() => undefined).then(() => {
+    const navigate = () => {
+      chroniclesClearPlayingRun();
+      setMenuOpen(false);
+      clearTouchHold();
+      // The server has confirmed the latest checkpoint. Reopen the book.
+
       stateRef.current = null;
       activeRunIdRef.current = null;
       authoritativeRunRef.current = null;
@@ -1055,7 +1079,14 @@ export default function ChroniclesOfMatthias({ onExit }) {
       setSaveInventory(null);
       setEntryView('menu');
       refreshSaves((value) => value + 1);
-    });
+    };
+    // Broken bootstrap offers a safe route back to the save book without a
+    // playable snapshot; an active expedition must be durably checkpointed.
+    if (bootstrapError || !stateRef.current) {
+      void checkpointQueueRef.current.catch(() => undefined).then(navigate);
+    } else {
+      void saveBeforeSwitch(navigate);
+    }
   };
 
   if (entryView === 'menu') {
@@ -1292,14 +1323,22 @@ export default function ChroniclesOfMatthias({ onExit }) {
                   <small>Ajusta la música general; Chronicles aún no dispone de pista propia.</small>
                 </fieldset>
                 {saveNotice && <small role="status">{saveNotice}</small>}
+                {saveFailure && (
+                  <small role="alert" className="chronicles-save-error">
+                    {saveFailure.status ? `HTTP ${saveFailure.status} · ` : ''}{saveFailure.message}
+                    {saveFailure.requestId ? ` · Solicitud ${saveFailure.requestId}` : ''}
+                  </small>
+                )}
                 <button type="button" onClick={() => { setMenuOpen(false); setConfirmExitWithoutSaving(false); }}>Continuar</button>
                 <button type="button" onClick={() => { setMenuOpen(false); setAutomapOpen(false); setJournalOpen(true); }}>Crónica · J</button>
                 <button type="button" onClick={() => void persistCheckpoint(stateRef.current, 'manual')} disabled={saveBusy}>
-                  {saveBusy ? 'Guardando…' : 'Guardar partida'}
+                  {saveBusy ? 'Guardando…' : saveFailure ? 'Reintentar guardar' : 'Guardar partida'}
                 </button>
-                <button type="button" onClick={newExpedition} disabled={saveBusy}>Nueva expedición</button>
+                <button type="button" onClick={() => void newExpeditionSafely()} disabled={saveBusy}>Nueva expedición</button>
                 <button type="button" onClick={returnToSaveMenu} disabled={saveBusy}>Partidas guardadas</button>
-                <button type="button" onClick={() => void saveAndExit()} disabled={saveBusy}>Salir y guardar</button>
+                <button type="button" onClick={() => void saveAndExit()} disabled={saveBusy}>
+                  {saveBusy ? 'Guardando antes de salir…' : saveFailure ? 'Reintentar guardar y salir' : 'Salir y guardar'}
+                </button>
                 {!confirmExitWithoutSaving ? (
                   <button type="button" onClick={() => setConfirmExitWithoutSaving(true)} disabled={saveBusy}>
                     Salir sin guardar
