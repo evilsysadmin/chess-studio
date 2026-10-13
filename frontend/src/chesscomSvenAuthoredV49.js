@@ -131,6 +131,10 @@ export function installChesscomSvenAuthoredV49(B,scene,{
         if(!mesh.isDisposed?.())mesh.visibility=visibility;
       }
       originalVisibility.clear();
+      if(root?.metadata?.authoredMuzzleSocket===validated?.socket)delete root.metadata.authoredMuzzleSocket;
+      try{container?.dispose?.();}catch{}
+      container=null;
+      validated=null;
       attached=false;
       return fallback();
     }
