@@ -3,37 +3,13 @@ import {
   chroniclesMapContentPosition,
   chroniclesMapForState,
 } from '../chronicles/chroniclesMapCatalog.js';
+import { chroniclesDiscoveredPois } from '../chronicles/chroniclesAutomapPoi.js';
 import {
   chroniclesAutomapCellKey,
   chroniclesAutomapFacingDegrees,
   chroniclesAutomapRevealedCells,
   chroniclesMapCoordinatesLabel,
 } from '../chronicles/chroniclesAutomap.js';
-
-function markerCategory(kind, entry) {
-  if (kind === 'exit') return 'exit';
-  if (kind === 'treasure') return 'treasure';
-  const text = [entry?.kind, entry?.id, entry?.label, entry?.name].filter(Boolean).join(' ').toLowerCase();
-  if (/tienda|armer[ií]a|armaduras|fragua|forja|mercader|shop|vendor|merchant|tavern|taberna|posada|inn|comercio/.test(text)) return 'shop';
-  if (/mazmorra|dungeon|cueva|cripta|sewer|alcantarilla|portal|escalera|stairs|entrada|salida/.test(text)) return 'passage';
-  if (/templo|temple|santuario|shrine|altar/.test(text)) return 'temple';
-  if (/quest|encargo|alcalde|npc|dialog|guild|gremio/.test(text)) return 'quest';
-  return 'interactable';
-}
-
-function discoveredMarkers(map, revealed) {
-  const groups = [
-    ['exit', map?.exits || []],
-    ['treasure', map?.treasures || []],
-    ['interactable', map?.interactables || []],
-  ];
-
-  return groups.flatMap(([kind, entries]) => entries.flatMap((entry) => {
-    const position = chroniclesMapContentPosition(map, entry);
-    if (!position || !revealed.has(chroniclesAutomapCellKey(position.x, position.y))) return [];
-    return [{ kind: markerCategory(kind, entry), entry, position }];
-  }));
-}
 
 function automapViewport(revealed, state) {
   const points = [...revealed].map((key) => {
@@ -65,29 +41,16 @@ function automapViewport(revealed, state) {
 
 function MapMarker({ marker }) {
   const { x, y } = marker.position;
-  const cx = x + 0.5;
-  const cy = y + 0.5;
-  if (marker.kind === 'exit') {
-    return (
-      <g className="chronicles-automap__marker is-exit" aria-label={marker.entry?.label || 'Salida'}>
-        <rect x={x + 0.22} y={y + 0.18} width="0.56" height="0.64" rx="0.08" />
-        <path d={`M ${x + 0.5} ${y + 0.29} V ${y + 0.71} M ${x + 0.41} ${y + 0.62} L ${x + 0.5} ${y + 0.71} L ${x + 0.59} ${y + 0.62}`} />
-      </g>
-    );
-  }
-  if (marker.kind === 'shop') {
-    return <g className="chronicles-automap__marker is-shop" aria-label={marker.entry?.label || 'Comercio'}><rect x={x + 0.2} y={y + 0.37} width="0.6" height="0.4" rx="0.04" /><path d={`M ${x + 0.16} ${y + 0.37} L ${cx} ${y + 0.14} L ${x + 0.84} ${y + 0.37}`} /></g>;
-  }
-  if (marker.kind === 'passage') {
-    return <g className="chronicles-automap__marker is-passage" aria-label={marker.entry?.label || 'Entrada de mazmorra'}><path d={`M ${x + 0.2} ${y + 0.8} V ${y + 0.48} Q ${cx} ${y + 0.02} ${x + 0.8} ${y + 0.48} V ${y + 0.8} Z`} /></g>;
-  }
-  if (marker.kind === 'temple' || marker.kind === 'quest') {
-    return <g className={`chronicles-automap__marker is-${marker.kind}`} aria-label={marker.entry?.label || 'Punto de interés'}><path d={`M ${cx} ${y + 0.13} V ${y + 0.83} M ${x + 0.2} ${y + 0.45} H ${x + 0.8}`} /></g>;
-  }
-  if (marker.kind === 'treasure') {
-    return <path className="chronicles-automap__marker is-treasure" d={`M ${cx} ${y + 0.2} L ${x + 0.8} ${cy} L ${cx} ${y + 0.8} L ${x + 0.2} ${cy} Z`} />;
-  }
-  return <circle className="chronicles-automap__marker is-interactable" cx={cx} cy={cy} r="0.18" />;
+  return (
+    <g className={`chronicles-automap__poi is-${marker.category}`}
+      data-chronicles-poi={marker.category}
+      data-chronicles-poi-id={marker.id}
+      aria-label={marker.label}>
+      <title>{marker.label}</title>
+      <rect x={x + 0.12} y={y + 0.12} width="0.76" height="0.76" rx="0.13" />
+      <text x={x + 0.5} y={y + 0.53} textAnchor="middle" dominantBaseline="middle">{marker.glyph}</text>
+    </g>
+  );
 }
 
 export default function ChroniclesAutomap({ open, state, visitedCells, onClose }) {
@@ -105,7 +68,7 @@ export default function ChroniclesAutomap({ open, state, visitedCells, onClose }
     [map, visited],
   );
   const viewport = useMemo(() => automapViewport(revealed, state), [revealed, state]);
-  const markers = useMemo(() => discoveredMarkers(map, revealed), [map, revealed]);
+  const markers = useMemo(() => chroniclesDiscoveredPois(map, revealed, chroniclesMapContentPosition), [map, revealed]);
 
   useEffect(() => {
     if (open) closeRef.current?.focus();
@@ -163,7 +126,7 @@ export default function ChroniclesAutomap({ open, state, visitedCells, onClose }
             }))}
             {markers.map((marker) => (
               <MapMarker
-                key={`${marker.kind}:${marker.entry?.id || chroniclesAutomapCellKey(marker.position.x, marker.position.y)}`}
+                key={marker.id}
                 marker={marker}
               />
             ))}
@@ -181,11 +144,9 @@ export default function ChroniclesAutomap({ open, state, visitedCells, onClose }
 
         <footer>
           <span><i className="is-party" aria-hidden="true">▲</i> grupo</span>
-          <span><i className="is-exit" aria-hidden="true">□</i> salida descubierta</span>
-          <span><i aria-hidden="true">⌂</i> comercio</span>
-          <span><i aria-hidden="true">⌒</i> acceso</span>
-          <span><i aria-hidden="true">✦</i> lugares de interés</span>
-          <span>Se dibuja al explorar · <kbd>M</kbd> cerrar</span>
+          <span><i className="is-exit" aria-hidden="true">↗</i> salida · ↓ mazmorra</span>
+          <span>F forja · A armaduras · G gremio · P posada · C comercio · T templo · H ayuntamiento</span>
+          <span>Solo lugares descubiertos · <kbd>M</kbd> cerrar</span>
         </footer>
       </section>
     </div>
