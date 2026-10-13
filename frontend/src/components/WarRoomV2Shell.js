@@ -1,10 +1,10 @@
 import { createWarRoomBlenderVariantShell } from './WarRoomBlenderShellRuntime.js';
-import { warRoomVariantRuntimeModelUrl } from './WarRoomVariant.js';
+import { r2AssetUrl } from '../r2Assets.js';
 import { installWarRoomV2FireSprites } from './WarRoomFireSprites.js';
 
 // Use the same content-addressed GLB as the selector's intent prefetch. The
 // legacy current.glb?build=... alias defeated browser/CDN caching every release.
-export const WAR_ROOM_V2_RUNTIME_MODEL_URL = warRoomVariantRuntimeModelUrl('v2');
+export const WAR_ROOM_V2_RUNTIME_MODEL_URL = r2AssetUrl('warRoom.v2.runtime');
 
 const WAR_ROOM_V2 = createWarRoomBlenderVariantShell({
   variant: 'v2',
