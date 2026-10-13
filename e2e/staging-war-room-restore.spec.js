@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { buttonWithVisibleText } from './helpers.js';
+import { buttonWithVisibleText, waitForHomeInteractive } from './helpers.js';
 import { stagingSyntheticHeaders } from './staging-synthetic.js';
 
 const STAGING_URL = process.env.STAGING_URL || 'https://staging.chess-studio.shadowops.dpdns.org';
@@ -90,7 +90,9 @@ async function loginBrowser(page, username, password) {
     submit.click(),
   ]);
   expect(browserLogin.status()).toBe(200);
-  await expect(page.getByRole('region', { name: 'Modos principales', exact: true })).toBeVisible({ timeout: 25_000 });
+  // The route region may be visible while the first 3D frame is still
+  // compositing; LOADING legitimately intercepts clicks until Home is ready.
+  await waitForHomeInteractive(page);
 }
 
 test('staging authority · F5 3D descarta snapshot viejo y rehidrata la partida desde API', async ({ page, request }) => {
