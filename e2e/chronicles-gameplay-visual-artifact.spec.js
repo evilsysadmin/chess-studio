@@ -921,11 +921,24 @@ for (const capture of CAPTURES) {
       );
       expect(menuInks.length, 'menu has actual actions').toBeGreaterThan(3);
       for (const ink of menuInks) {
-        expect(ink.inline, `menu action ${ink.label} inline ink`).toBe('#08080a');
+        expect(ink.inline, `menu action ${ink.label} inline ink`).toMatch(/^(?:#08080a|rgb\\(8,\\s*8,\\s*10\\))$/i);
         expect(ink.priority, `menu action ${ink.label} important ink`).toBe('important');
         expect(ink.computed, `menu action ${ink.label} black ink`).toBe('rgb(8, 8, 10)');
       }
 
+      if (capture.hasTouch) {
+        const menuPanel = menuDetails.locator('.chronicles-game-menu__panel');
+        const bounds = await menuPanel.boundingBox();
+        expect(bounds, `${capture.label}: menu has bounds`).not.toBeNull();
+        expect(bounds.x, `${capture.label}: menu starts inside viewport`).toBeGreaterThanOrEqual(0);
+        expect(bounds.y, `${capture.label}: menu starts below browser viewport top`).toBeGreaterThanOrEqual(0);
+        expect(bounds.x + bounds.width, `${capture.label}: menu fits viewport width`).toBeLessThanOrEqual(capture.width + 1);
+        expect(bounds.y + bounds.height, `${capture.label}: menu fits viewport height`).toBeLessThanOrEqual(capture.height + 1);
+        await expect(menuDetails.getByRole('button', { name: 'Cerrar menú de Chronicles' })).toBeVisible();
+        await captureElement(page, menuPanel, `${ARTIFACT_DIR}/chronicles-game-menu-open-${capture.label}.png`);
+        // Long menus may scroll internally: all actions must remain reachable.
+        await exitAction.scrollIntoViewIfNeeded();
+      }
       const exitBox = await exitAction.boundingBox();
       expect(exitBox, `${capture.label}: menu exit action has bounds`).not.toBeNull();
       expect(exitBox.y, `${capture.label}: menu exit action below the top edge`).toBeGreaterThanOrEqual(0);
@@ -936,10 +949,14 @@ for (const capture of CAPTURES) {
         color: getComputedStyle(button).color,
         fill: getComputedStyle(button).webkitTextFillColor,
       }));
-      expect(inks.color, `${capture.label}: menu ink must be dark`).toBe('rgb(17, 16, 21)');
-      expect(inks.fill, `${capture.label}: WebKit must keep dark ink`).toBe('rgb(17, 16, 21)');
+      expect(inks.color, `${capture.label}: menu ink must be dark`).toBe('rgb(8, 8, 10)');
+      expect(inks.fill, `${capture.label}: WebKit must keep dark ink`).toBe('rgb(8, 8, 10)');
       await captureElement(page, gameRoot, `${ARTIFACT_DIR}/chronicles-game-menu-${capture.label}.png`);
-      await menuSummary.evaluate((summary) => summary.click());
+      if (capture.hasTouch) {
+        await menuDetails.getByRole('button', { name: 'Cerrar menú de Chronicles' }).click();
+      } else {
+        await menuSummary.evaluate((summary) => summary.click());
+      }
       await expect(exitAction).toBeHidden();
 
       await page.getByRole('button', { name: 'Minimapa local. Abrir automapa completo', exact: true }).click();

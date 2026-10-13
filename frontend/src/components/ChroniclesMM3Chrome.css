@@ -1142,3 +1142,58 @@
   }
   .chronicles .chronicles-game-menu__panel > :not(button) { grid-column: 1 / -1; }
 }
+
+/* The mobile menu keeps a real close target visible when its content scrolls.
+   On desktop the heading behaves as before (plain title in the dropdown). */
+.chronicles .chronicles-game-menu__heading { display: contents; }
+.chronicles .chronicles-game-menu__close { display: none; }
+@media (max-width: 800px), (max-width: 1024px) and (max-height: 600px) {
+  .chronicles .chronicles-game-menu[open] .chronicles-game-menu__panel {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+  .chronicles .chronicles-game-menu__heading {
+    display: flex;
+    flex: none;
+    position: sticky;
+    z-index: 2;
+    top: -12px;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin: -12px -12px 0;
+    padding: 9px 10px 8px 12px;
+    background: #b87033 var(--mm3-sand) 0 0 / 64px 64px;
+    border-bottom: 1px solid #815021;
+  }
+  .chronicles .chronicles-game-menu__heading strong {
+    font-size: 18px;
+    line-height: 1.2;
+    min-width: 0;
+  }
+  .chronicles .chronicles-game-menu__close {
+    display: grid;
+    place-items: center;
+    flex: none;
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
+    min-height: 44px;
+    padding: 0;
+    border: 2px solid #624226;
+    background: #d4c6af var(--mm3-stone) 0 0 / 128px 128px;
+    color: #08080a;
+    font: 700 27px/1 Arial, sans-serif;
+    cursor: pointer;
+  }
+  .chronicles .chronicles-game-menu__close:focus-visible {
+    outline: 3px solid #f3e3b7;
+    outline-offset: 2px;
+  }
+}
+@media (orientation: landscape) and (max-width: 1024px) and (max-height: 480px) {
+  .chronicles .chronicles-game-menu__heading {
+    grid-column: 1 / -1;
+    top: -12px;
+  }
+}

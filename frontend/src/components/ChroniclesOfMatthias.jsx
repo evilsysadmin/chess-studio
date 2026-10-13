@@ -1259,7 +1259,11 @@ export default function ChroniclesOfMatthias({ onExit }) {
                 ☰ <b>MENÚ</b>
               </summary>
               <div className="chronicles-game-menu__panel">
-                <strong>Chronicles of Matthias</strong>
+                <div className="chronicles-game-menu__heading">
+                  <strong>Chronicles of Matthias</strong>
+                  <button type="button" className="chronicles-game-menu__close" aria-label="Cerrar menú de Chronicles"
+                    onClick={() => { setMenuOpen(false); setConfirmExitWithoutSaving(false); menuSummaryRef.current?.focus(); }}>×</button>
+                </div>
                 <small>Guardado manual · checkpoint automático al cambiar de área.</small>
                 <fieldset className="chronicles-audio-controls" style={{ border: '1px solid #806d51', padding: '8px', display: 'grid', gap: '6px', minWidth: 0 }}>
                   <legend>Audio</legend>
