@@ -9,17 +9,23 @@ historic chunks).
 from __future__ import annotations
 
 import argparse
+from concurrent.futures import ThreadPoolExecutor
 import hashlib
 import json
 import pathlib
 import re
 import tempfile
+import threading
+import time
 import urllib.error
 import urllib.request
 from typing import Callable
 
 MANIFEST = "asset-grace.json"
 MAX_PREVIOUS_GENERATIONS = 2
+# Independent content-addressed chunks: bounded parallel I/O, not parallel deploys.
+# Release identity / manifest reads and final lineage check remain serialized.
+MAX_ASSET_FETCH_WORKERS = 4
 MAX_FILES = 1200
 MAX_HISTORY_BYTES = 64 * 1024 * 1024
 MAX_FILE_BYTES = 16 * 1024 * 1024
@@ -88,7 +94,7 @@ def validate_manifest(payload: object) -> list[dict]:
     return result
 
 
-def fetch_from_origin(origin: str, path: str, limit: int, *, optional: bool = False) -> bytes | None:
+def fetch_from_origin(origin: str, path: str, limit: int, *, optional: bool = False, opener=None, sleep=time.sleep) -> bytes | None:
     if not re.fullmatch(r"https://[A-Za-z0-9.-]+", origin):
         raise ValueError("asset grace origin must be an HTTPS hostname")
     url = origin + "/" + path
@@ -99,16 +105,29 @@ def fetch_from_origin(origin: str, path: str, limit: int, *, optional: bool = Fa
         "Cache-Control": "no-cache, no-store",
         "Accept": "application/json" if path.startswith(("release.json", MANIFEST)) else "*/*",
     })
-    try:
-        with urllib.request.urlopen(request, timeout=15) as response:
-            if response.status != 200:
-                raise ValueError(f"unexpected HTTP status for {path}: {response.status}")
-            data = response.read(limit + 1)
-            mime = response.headers.get("Content-Type", "").split(";", 1)[0].lower()
-    except urllib.error.HTTPError as error:
-        if error.code == 404 and optional:
-            return None
-        raise
+    # Historical immutable chunks are mandatory. Retry only a temporary
+    # network timeout or a transient origin response; never turn a missing,
+    # forbidden, malformed or mismatched chunk into a successful deploy.
+    for attempt in range(3):
+        try:
+            with (opener or urllib.request.urlopen)(request, timeout=15) as response:
+                if response.status != 200:
+                    raise ValueError(f"unexpected HTTP status for {path}: {response.status}")
+                data = response.read(limit + 1)
+                mime = response.headers.get("Content-Type", "").split(";", 1)[0].lower()
+            break
+        except urllib.error.HTTPError as error:
+            if error.code == 404 and optional:
+                return None
+            if error.code not in {429, 500, 502, 503, 504} or attempt == 2:
+                raise
+        except (TimeoutError, urllib.error.URLError) as error:
+            if isinstance(error, urllib.error.URLError) and not isinstance(error.reason, TimeoutError):
+                raise
+            if attempt == 2:
+                raise
+        print(f"::notice title=Pages asset grace retry::{path} · temporary origin failure · attempt {attempt + 2}/3")
+        sleep(attempt + 1)
     if len(data) > limit:
         raise ValueError(f"oversized remote response for {path}")
     # On the first deployment of this feature, Pages may serve the actual SPA
@@ -156,19 +175,29 @@ def prepare(dist: pathlib.Path, fetch: Callable, *, max_previous: int = MAX_PREV
     retained = []
     bytes_kept = 0
     files_seen = {item["path"]: item for item in current["assets"]}
+
+    def fetch_checked_chunk(entry: dict) -> bytes:
+        data = fetch(entry["path"], MAX_FILE_BYTES, optional=False)
+        if data is None or len(data) != entry["size"] or digest(data) != entry["sha256"]:
+            raise ValueError(f"previous chunk integrity failed: {entry['path']}")
+        return data
+
     for generation in old_generations[:max_previous]:
         additional = [item for item in generation["assets"] if item["path"] not in files_seen]
         new_bytes = sum(item["size"] for item in additional)
         if bytes_kept + new_bytes > MAX_HISTORY_BYTES or len(files_seen) + len(additional) > MAX_FILES:
             raise ValueError("previous generation exceeds bounded asset retention budget")
-        for entry in additional:
-            data = fetch(entry["path"], MAX_FILE_BYTES, optional=False)
-            if data is None or len(data) != entry["size"] or digest(data) != entry["sha256"]:
-                raise ValueError(f"previous chunk integrity failed: {entry['path']}")
-            target = dist / entry["path"]
-            target.parent.mkdir(parents=True, exist_ok=True)
-            target.write_bytes(data)
-            files_seen[entry["path"]] = entry
+        # Old hashed assets are immutable and independently verified. Fetch at
+        # most four simultaneously instead of serial RTTs for every old chunk.
+        # map yields in input order, so writes/inventory remain deterministic;
+        # any missing, oversized or mismatched chunk aborts before manifest.
+        if additional:
+            with ThreadPoolExecutor(max_workers=MAX_ASSET_FETCH_WORKERS) as pool:
+                for entry, data in zip(additional, pool.map(fetch_checked_chunk, additional)):
+                    target = dist / entry["path"]
+                    target.parent.mkdir(parents=True, exist_ok=True)
+                    target.write_bytes(data)
+                    files_seen[entry["path"]] = entry
         retained.append(generation)
         bytes_kept += new_bytes
 
@@ -186,6 +215,7 @@ def prepare(dist: pathlib.Path, fetch: Callable, *, max_previous: int = MAX_PREV
 
 def self_test() -> None:
     assert check_path("assets/Board3D-aBcDeF01.js").endswith(".js")
+    assert MAX_ASSET_FETCH_WORKERS == 4
     # A missing Pages file can return index.html with HTTP 200. The initial
     # upload must bootstrap, not abort or cache the document as an asset.
     original_urlopen = urllib.request.urlopen
@@ -211,6 +241,42 @@ def self_test() -> None:
         assert fetch_from_origin("https://example.com", MANIFEST, 2048, optional=True) is not None
     finally:
         urllib.request.urlopen = original_urlopen
+    # Transient origin errors must be retried, but a persistent outage or
+    # a missing required chunk may never produce an incomplete manifest.
+    calls = []
+    delays = []
+    def flaky(request, timeout=15):
+        calls.append(timeout)
+        if len(calls) == 1:
+            raise TimeoutError("origin read timed out")
+        return FakeResponse(b"unchanged immutable asset")
+    assert fetch_from_origin("https://example.com", "assets/Old-12345678.js", 1024,
+                             opener=flaky, sleep=delays.append) == b"unchanged immutable asset"
+    assert calls == [15, 15] and delays == [1]
+    failures = []
+    def never_ready(request, timeout=15):
+        failures.append(timeout)
+        raise TimeoutError("origin read timed out")
+    try:
+        fetch_from_origin("https://example.com", "assets/Old-12345678.js", 1024,
+                          opener=never_ready, sleep=lambda _: None)
+    except TimeoutError:
+        pass
+    else:
+        raise AssertionError("persistent timeout bypassed historical chunk retention")
+    assert len(failures) == 3
+    forbidden = []
+    def forbidden_asset(request, timeout=15):
+        forbidden.append(timeout)
+        raise urllib.error.HTTPError(request.full_url, 403, "Forbidden", {}, None)
+    try:
+        fetch_from_origin("https://example.com", "assets/Old-12345678.js", 1024,
+                          opener=forbidden_asset, sleep=lambda _: None)
+    except urllib.error.HTTPError as error:
+        assert error.code == 403
+    else:
+        raise AssertionError("forbidden immutable chunk was accepted")
+    assert len(forbidden) == 1
     for item in ("../env.js", "assets/../secrets-aabbccdd.js", "/assets/a-abc12345.js", "assets/raw.js"):
         try:
             check_path(item)
@@ -240,10 +306,26 @@ def self_test() -> None:
                     remote[item.relative_to(dist).as_posix()] = item.read_bytes()
 
         first = make_dist("a" * 40, "a")
+        # Two independently hashed historical files must really be fetched
+        # concurrently: a serial implementation deadlocks the test barrier.
+        (first / "assets" / "Extra-aaaaaaaa.js").write_bytes(b"immutable extra")
         assert prepare(first, fake_fetch)["retained"] == 0
         publish(first)
         second = make_dist("b" * 40, "b")
-        assert prepare(second, fake_fetch)["retained"] == 1
+        fetch_barrier = threading.Barrier(2, timeout=5)
+        historical_paths = []
+
+        def fetch_in_parallel(path: str, limit: int, *, optional: bool = False):
+            if path.startswith("assets/"):
+                historical_paths.append(path)
+                fetch_barrier.wait()
+            return fake_fetch(path, limit, optional=optional)
+
+        assert prepare(second, fetch_in_parallel)["retained"] == 1
+        assert set(historical_paths) == {
+            "assets/Game-aaaaaaaa.js", "assets/Extra-aaaaaaaa.js",
+        }
+        assert (second / "assets/Extra-aaaaaaaa.js").read_bytes() == b"immutable extra"
         assert (second / "assets/Game-aaaaaaaa.js").read_bytes() == b"export default a"
         publish(second)
         third = make_dist("c" * 40, "c")

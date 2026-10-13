@@ -764,6 +764,27 @@
   stroke: rgba(236, 202, 143, .82);
 }
 
+/* Semantic POI glyphs remain distinguishable at normal map zoom. */
+.chronicles-automap__poi rect {
+  fill: #181712;
+  stroke: #e1bd7d;
+  stroke-width: .065;
+  vector-effect: non-scaling-stroke;
+}
+.chronicles-automap__poi text {
+  fill: #ffe3a8;
+  stroke: none;
+  font-size: .54px;
+  font-family: Georgia, serif;
+  font-weight: 800;
+  pointer-events: none;
+}
+.chronicles-automap__poi.is-dungeon rect,
+.chronicles-automap__poi.is-exit rect { stroke: #ffc25f; fill: #473018; }
+.chronicles-automap__poi.is-quest rect,
+.chronicles-automap__poi.is-mayor rect { stroke: #fff0a7; fill: #594023; }
+.chronicles-automap__poi.is-healer rect { stroke: #a3e5bd; }
+
 .chronicles-automap__party-marker {
   fill: #f4dba8;
   stroke: #5a3517;

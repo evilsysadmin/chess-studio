@@ -24,7 +24,7 @@ async function openChesscom(page) {
   await dismissGuide(page);
   const moreModes = await openMoreGameModes(page);
   await moreModes.getByRole('button').filter({ hasText: 'Experimentos geniales' }).click();
-  await page.evaluate(() => window.history.replaceState(null, '', window.location.pathname + '?chesscomSven=sprite'));
+  await page.evaluate(() => window.history.replaceState(null, '', window.location.pathname + '?chesscomSven=v45'));
   await page.getByRole('button', { name: /Chesscom/ }).click();
   await expect(page.getByRole('heading', { name: 'CHESSCOM', exact: true })).toBeVisible();
 
@@ -32,13 +32,17 @@ async function openChesscom(page) {
   const host = mode.locator('.chesscom-babylon-host');
   await expect(host.locator('canvas')).toBeVisible({ timeout: 30_000 });
   await expect(host).toHaveAttribute('data-chesscom-sven-sprite','ready',{timeout:30_000});
+  await expect(host).toHaveAttribute('data-chesscom-sven-source','v45');
+  await expect(mode).toHaveAttribute('data-chesscom-sven-v45','ready');
+  await expect(mode.locator('.chesscom-portrait-art.is-sven').first()).toHaveCSS('background-image',/sven-v45-portrait\.webp/);
   await expect.poll(() => host.evaluate(() => {
     const B=window.BABYLON;
-    const m=B?.EngineStore?.LastCreatedScene?.getMeshByName?.('chesscom-sven-sprite-v33');
+    const m=B?.EngineStore?.LastCreatedScene?.getMeshByName?.('chesscom-sven-sprite-v45');
     return Boolean(m&&m.parent?.name==='unit-sven'&&m.metadata?.type==='unit'
       &&m.metadata?.id==='sven'&&m.billboardMode===B.Mesh.BILLBOARDMODE_ALL
       &&m.material?.emissiveTexture===m.material?.diffuseTexture
-      &&m.material?.emissiveColor?.r>=1);
+      &&m.material?.emissiveColor?.r>=1
+      &&m.metadata?.spritePoc==='sven-v45-existing-sheet-front');
   })).toBe(true);
 
   await expect(mode.getByText('BABYLON · ERROR', { exact: true })).toHaveCount(0);
@@ -122,11 +126,15 @@ async function collectRenderMetadata(page, host, label) {
       lighting:node.dataset.chesscomLighting || null,
       materials:node.dataset.chesscomMaterials || null,
       overlay:node.dataset.chesscomOverlay || null,
+      svenSprite:node.dataset.chesscomSvenSprite || null,
+      svenSource:node.dataset.chesscomSvenSource || null,
     };
   }, label);
 }
 
 function expectHealthyCapture(capture) {
+  expect(capture.svenSprite).toBe('ready');
+  expect(capture.svenSource).toBe('v45');
   expect(capture.canvas).not.toBeNull();
   expect(capture.canvas?.width).toBeGreaterThan(0);
   expect(capture.canvas?.height).toBeGreaterThan(0);

@@ -46,6 +46,10 @@ Lección operativa: no resolver falsos positivos de CI debilitando el gate a cie
 | `../actions/setup-wrangler/action.yml` | Wrangler exacto por versión; npm sólo en cache miss. |
 | `../actions/setup-oci-sdk/action.yml` | OCI SDK pinneado/cacheado para los workflows que realmente hablan con OCI. |
 
+## Chesscom · fabricación 3D OSS experimental
+
+- `chesscom-oss-character-forge.yml`: flujo CPU Blender de **artefactos de revisión**, fuente Quaternius SWAT CC0 fijada por hash y ocho vistas reales. Solo PRs de su superficie o ejecución manual; sin secretos, R2, despliegue ni sustitución de Sven. Consultar [`docs/experiments/chesscom-oss-character-forge-v52.md`](../../docs/experiments/chesscom-oss-character-forge-v52.md).
+
 ## Cadena de entrega
 
 | Workflow | Responsabilidad |
@@ -123,6 +127,7 @@ Para producción pública, un fallo del synthetic es una señal operativa, no ru
 | `grafana-dashboards.yml` | Publica cuatro dashboards idempotentemente con la Grafana HTTP API. **Sin Terraform, provider, state, import, plan ni apply.** |
 | `cloudflare-prometheus-exporter.yml` | Valida/despliega el exporter oficial Cloudflare cuando cambia su superficie. |
 | `synthetic-health.yml` | Canary sintético de producción cada 15 minutos (minutos 07/22/37/52 para evitar el top-of-hour herd). Valida liveness, readiness y gameplay autenticado; vive separado para funcionar aunque no haya releases. |
+| `weekly-actions-hygiene.yml` | Higiene semanal (domingos 04:17 UTC) de historiales de workflows cuyo YAML ya no existe en `main`: 30 días sin actividad, protege ramas/PR vivas, sólo runs completados, máximo 100 eliminaciones por pasada. Manual con `dry_run=true` por defecto. Sólo borra historiales, nunca YAML ni workflows vigentes. |
 | `production-mongo-backup.yml` | Backup semanal de `chess_study` desde la A1 OCI. Genera `mongodump --archive --gzip`, valida con `mongorestore --dryRun`, sube el archive+manifest a `chess-studio-production-backups`, lo descarga y restaura en scratch aislado antes de podar. Conserva 2 copias locales y 8 generaciones off-host. |
 | `pvp-python-fallback.yml` | Evidencia para retirar el respaldo Python del PvP: cuenta en Grafana las peticiones públicas `/api/pvp` que aún llegan a FastAPI (todas tienen handler Go), por entorno y ruta. Diario y manual; con `max_requests` actúa como puerta. Sólo lectura. |
 | `billing-cost-export.yml` | Diagnóstico manual de costes OCI + Cloudflare; cron suspendido desde 2026-10-11 por fallo multimoneda EUR/USD ([#5404](https://github.com/evilsysadmin/chess-studio/issues/5404)). Mantiene `workflow_dispatch`, no bloquea releases y los paneles P0 deben indicar SIN DATOS cuando caduquen las muestras. |

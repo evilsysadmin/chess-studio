@@ -35,6 +35,32 @@ async function openChronicles(page, options = {}) {
   await expect(page.locator('[data-chronicles="true"]')).toBeVisible();
 }
 
+test('Chronicles · F5 retoma la misma run guardada y regresar al libro conserva el menú', async ({ page }) => {
+  test.setTimeout(180_000);
+  await openChronicles(page, { chroniclesCurrentMapId: 'swordhaven-square', newTown: true });
+  const mode = page.locator('[data-chronicles="true"]');
+  await expect(mode).toHaveAttribute('data-chronicles-map-id', 'swordhaven-square');
+  const runBefore = await page.evaluate(() => JSON.parse(localStorage.getItem('chess-study-chronicles-run-v1')).id);
+  await page.keyboard.press('Escape');
+  const menu = mode.locator('.chronicles-game-menu');
+  await menu.getByRole('button', { name: 'Guardar partida', exact: true }).click();
+  await expect(menu.getByText('Partida guardada correctamente.')).toBeVisible();
+
+  await page.reload();
+  await expect(mode).toBeVisible({ timeout: 45_000 });
+  await expect(mode).toHaveAttribute('data-chronicles-map-id', 'swordhaven-square');
+  const runAfter = await page.evaluate(() => JSON.parse(localStorage.getItem('chess-study-chronicles-run-v1')).id);
+  expect(runAfter).toBe(runBefore);
+
+  await page.keyboard.press('Escape');
+  await mode.locator('.chronicles-game-menu').getByRole('button', { name: 'Partidas guardadas' }).click();
+  const book = page.locator('[data-chronicles-save-menu]');
+  await expect(book).toBeVisible();
+  await page.reload();
+  await expect(book).toBeVisible();
+  await expect(mode).toHaveCount(0);
+});
+
 test('Chronicles · primera partida sólo se escribe al guardar y Salir sin guardar no escribe otra', async ({ page }) => {
   test.setTimeout(180_000);
   const checkpointRequests = [];
@@ -64,6 +90,33 @@ test('Chronicles · primera partida sólo se escribe al guardar y Salir sin guar
   await menu.getByRole('button', { name: 'Sí, salir sin guardar', exact: true }).click();
   await expect(mode).toHaveCount(0);
   expect(checkpointRequests, 'discarding must not checkpoint unsaved movement').toHaveLength(1);
+});
+
+test('Chronicles · Salir sin guardar cierra incluso cuando DELETE de run nueva falla', async ({ page }) => {
+  test.setTimeout(180_000);
+  const checkpointRequests = [];
+  page.on('request', (request) => {
+    if (request.method() === 'PUT' && /\/api\/chronicles\/runs\/[^/]+\/checkpoint$/.test(new URL(request.url()).pathname)) {
+      checkpointRequests.push(request.url());
+    }
+  });
+  await openChronicles(page, { chroniclesCurrentMapId: 'swordhaven-first-book', newTown: true, newCampaign: true });
+  const game = page.locator('[data-chronicles="true"]');
+  await expect(game).toBeVisible();
+  let deleted = 0;
+  await page.route('**/api/chronicles/runs/*', async (route) => {
+    if (route.request().method() !== 'DELETE') return route.fallback();
+    deleted += 1;
+    return route.fulfill({ status: 503, contentType: 'application/json', body: '{"detail":"staging unavailable"}' });
+  });
+  await page.keyboard.press('Escape');
+  const menu = game.locator('.chronicles-game-menu');
+  await menu.getByRole('button', { name: 'Salir sin guardar', exact: true }).click();
+  await menu.getByRole('button', { name: 'Sí, salir sin guardar', exact: true }).click();
+  // UI exit is synchronous; backend deletion runs after navigation and cannot block it.
+  await expect(game).toHaveCount(0);
+  await expect.poll(() => deleted).toBe(1);
+  expect(checkpointRequests, 'discarding a fresh run must not create a checkpoint').toHaveLength(0);
 });
 
 test('Chronicles · nueva campaña crea una partida versionada de Swordhaven sin tocar el juego clásico', async ({ page }) => {
@@ -133,6 +186,43 @@ test('Chronicles · Escape opens and closes the in-game menu while the scene sta
   await expect(menu).toHaveAttribute('open', '');
   await menu.getByRole('button', { name: 'Salir y guardar' }).click();
   await expect(mode).toHaveCount(0);
+});
+
+test('Chronicles · MM3 hotkeys J diario, M mapa, Tab menú · sin mover grupo', async ({ page }) => {
+  test.setTimeout(180_000);
+  await openChronicles(page, { chroniclesCurrentMapId: 'swordhaven-square', newTown: true });
+  const mode = page.locator('[data-chronicles="true"]');
+  const turns = await mode.getAttribute('data-chronicles-turns');
+  const journal = mode.locator('details.chronicles-journal');
+  const menu = mode.locator('details.chronicles-game-menu');
+  const map = page.getByRole('dialog', { name: 'Automapa de Chronicles' });
+
+  await page.keyboard.press('j');
+  await expect(journal).toHaveAttribute('open', '');
+  await expect(journal.getByText('Crónica de expedición')).toBeVisible();
+  await page.keyboard.press('J');
+  await expect(journal).not.toHaveAttribute('open', '');
+
+  await page.keyboard.press('m');
+  await expect(map).toBeVisible();
+  await page.keyboard.press('M');
+  await expect(map).toHaveCount(0);
+
+  await page.keyboard.press('Tab');
+  await expect(menu).toHaveAttribute('open', '');
+  await expect(journal).not.toHaveAttribute('open', '');
+  // Standard browser Tab navigation must remain possible inside the menu.
+  await page.keyboard.press('Tab');
+  await expect(menu).toHaveAttribute('open', '');
+  await page.keyboard.press('Escape');
+  await expect(menu).not.toHaveAttribute('open', '');
+
+  await page.keyboard.press('j');
+  await expect(journal).toHaveAttribute('open', '');
+  await page.keyboard.press('m');
+  await expect(journal).not.toHaveAttribute('open', '');
+  await expect(map).toBeVisible();
+  await expect(mode).toHaveAttribute('data-chronicles-turns', turns);
 });
 
 test('Chronicles · Swordhaven → cripta → Swordhaven, desde el teclado y sin cerrar la run', async ({ page }) => {
@@ -313,17 +403,20 @@ test('Chronicles of Matthias · clic en un PJ abre una ficha RPG con retrato aut
   await expect(folio).toBeVisible();
   await expect(folio.getByRole('button', { name: /Estado/ })).toHaveAttribute('aria-pressed', 'true');
   await expect(sheet.getByText('ESTADÍSTICAS', { exact: true })).toBeVisible();
-  // A previously green build still rendered black-on-black MM3 stats because
-  // the old first-person CSS was loaded after the new folio skin. Test the
-  // *computed* browser output, not the presence of a stylesheet class.
+  // Guard against a stale or late-loaded MM3 skin: check what Chromium
+  // actually paints instead of merely checking an imported stylesheet.
+  await expect(sheet).toHaveAttribute('data-chronicles-folio', 'v2');
   const statCell = sheet.locator('.chronicles-character-sheet__mm3-stats > div').first();
   await expect(statCell).toBeVisible();
   const statMaterials = await statCell.evaluate((element) => ({
     background: getComputedStyle(element).backgroundImage,
     ink: getComputedStyle(element.querySelector('span')).color,
   }));
-  expect(statMaterials.background).toContain('mm3-sandstone');
-  expect(statMaterials.ink).toBe('rgb(44, 28, 18)');
+  const inactiveTabBackground = await folio.getByRole('button', { name: /Equipo/ })
+    .evaluate((element) => getComputedStyle(element).backgroundImage);
+  expect(statMaterials.background).toBe('none');
+  expect(statMaterials.ink).toBe('rgb(219, 184, 137)');
+  expect(inactiveTabBackground).toBe('none');
   await folio.getByRole('button', { name: /Equipo/ }).click();
   await expect(sheet.getByText('EQUIPO Y OBJETOS', { exact: true })).toBeVisible();
   await expect(sheet.getByText('ESTADÍSTICAS', { exact: true })).toBeHidden();

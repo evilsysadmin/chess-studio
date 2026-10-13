@@ -106,3 +106,37 @@ La comparación posterior de las ocho perspectivas Blender del GLB propio V40
 ha de aprobarse **visual y manualmente** frente al original V41, a zoom de
 juego real y en móvil. Ni el PNG original ni los recortes se deben confundir
 con un atlas animado o sustituir el 3D actual por defecto.
+
+
+## V46 · V45 en Chesscom (A/B 2.5D, no un GLB)
+
+Se integra **la lámina V45 ya creada por el usuario** (no se genera ni inventa
+arte nuevo). Se extraen sólo los píxeles del Sven frontal real del panel
+superior, con segmentación de fondo y retoque manual del contorno de botas;
+además un recorte real de retrato sin títulos. El WebP final contiene
+canal alpha, no un rectángulo negro, y ambos derivados quedan en Git:
+`frontend/public/chesscom/sven-v45-front.webp` (179×410, 14.424 bytes,
+SHA256 `58c7cd696af5adf5c08395bbf8c7b2446209d830a686b0499a9b51782631d5bd`),
+`frontend/public/chesscom/sven-v45-portrait.webp` (256×256, 8.508 bytes,
+SHA256 `a3fa7fef04cc1c930a79a754924fe6750d4f86e395d539c0dbc50fdea35b85b0`).
+
+La fuente original está en Library:
+`Chesscom_Sven_V45_turnaround_CANDIDATO.png` 1536×1024,
+SHA256 `8d28a63ee9ef2ad7571ba88bb5c499fe5addb2bb3c7e394c6c67f9c21e0379bd`.
+No se sube el montaje completo al repo y no se finge que sus paneles
+wireframe/UV son geometría o textura PBR reales.
+
+**Para probar:** entrar en Experimentos geniales → Chesscom con la URL
+`?chesscomSven=v45`. El flag activa un solo billboard de Sven, con pivot
+en el suelo, depth test y metadata de selección originales. Cambia su
+retrato de HUD únicamente una vez cargado el sprite. Si falla el asset
+se mantiene el Sven 3D y el retrato canónico. Sin flag, sigue el 3D
+original; `?chesscomSven=sprite` conserva el experimento V33 y
+`?chesscomSven=atlas` su fallback del V35.
+
+**Limitación fundamental:** imagen frontal **estática**, billboard orientado
+a cámara. No hay caminata, 8 direcciones, daño, disparos articulados ni
+modelo riggeado. Los overlays de gameplay/cover funcionan igual porque
+no se modifican coordenadas, reglas ni la IA. Comprobar desktop 1600×900,
+móvil 390×844, picking, clipping y silueta respecto al 3D antes de
+promocionarlo como default. Este es un A/B verificable, no aprobación artística.

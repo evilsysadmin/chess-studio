@@ -12,6 +12,7 @@ import {
   releaseChroniclesLandscape,
   requestChroniclesLandscapeOnEntry,
 } from './useChroniclesLandscape.js';
+import { requestChesscomLandscapeOnEntry } from './chesscomLandscape.js';
 import './LabScreen.css';
 import './LabArcade.css';
 import './LabWorkshop.css';
@@ -54,8 +55,7 @@ export default function LabScreen({ onExit, onStart }){
   const [error,setError]=useState('');
 
   useEffect(() => {
-    const remembered = loadRememberedLabMode();
-    if (labMode === 'pawnslug-godot' || labMode === 'chess-football-godot' || remembered === labMode) rememberLabMode(labMode);
+    if (labMode !== 'hub') rememberLabMode(labMode);
     else clearRememberedLabMode();
   }, [labMode]);
 
@@ -107,6 +107,12 @@ export default function LabScreen({ onExit, onStart }){
   function exitChronicles() {
     void releaseChroniclesLandscape();
     setLabMode('hub');
+  }
+
+  function enterChesscom() {
+    // Orientation requests need the actual tap; a mounted effect is too late.
+    void requestChesscomLandscapeOnEntry();
+    setLabMode('chesscom');
   }
 
   function enterChessFootball() {
@@ -199,7 +205,7 @@ export default function LabScreen({ onExit, onStart }){
             <p>Táctica, posiciones imposibles y geometría sospechosa. Aquí las normas entran con casco.</p>
           </div>
           <div className="lab-workshop-ops">
-            <button type="button" className="lab-workshop-map-table" onClick={()=>setLabMode('chesscom')}>
+            <button type="button" className="lab-workshop-map-table" onClick={enterChesscom}>
               <small>{experimentMaturityLabel(EXPERIMENT_MATURITY.EXPERIMENTAL, 'en pulido')}</small>
               <strong>Chesscom</strong>
               <span>Escaramuzas tácticas con cobertura, AP, intel y extracción. La presentación sigue en fase de pulido.</span>

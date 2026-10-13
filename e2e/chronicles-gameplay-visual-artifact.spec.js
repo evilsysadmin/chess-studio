@@ -344,21 +344,25 @@ for (const capture of [
       });
 
       await pressSequence(page, ['ArrowUp', 'ArrowUp', 'f']);
-      const quest = game.locator('[data-chronicles-quest-id="names-in-wood"]');
-      await expect(quest.first()).toHaveAttribute('data-chronicles-quest-status', 'active');
-      // Desktop keeps quests in the bottom journal; touch layouts carry them
-      // inside the floating chronicle.
-      const questToggle = capture.touch ? game.locator('.chronicles-dm-trigger') : game.locator('.chronicles-journal summary');
-      const visibleQuest = capture.touch ? game.locator('.chronicles-dm-quests [data-chronicles-quest-id="names-in-wood"]') : game.locator('.chronicles-journal [data-chronicles-quest-id="names-in-wood"]');
-      await questToggle.evaluate((node) => node.click());
-      await expect(visibleQuest).toBeVisible();
+      // The expedition Chronicle moved to one modal on desktop and touch.
+      // The old bottom journal/DM selectors were removed deliberately.
+      await page.keyboard.press('j');
+      const reader = page.getByRole('dialog', { name: 'Crónica de expedición' });
+      await expect(reader).toBeVisible();
+      const quest = reader.locator('[data-chronicles-quest-id="names-in-wood"]');
+      await expect(quest).toHaveAttribute('data-chronicles-quest-status', 'active');
+      await expect(reader.getByRole('button', { name: 'Cerrar Crónica' })).toBeVisible();
+      const turnsBefore = await game.getAttribute('data-chronicles-turns');
+      await page.keyboard.press('ArrowUp');
+      expect(await game.getAttribute('data-chronicles-turns'), 'reading must not move the party').toBe(turnsBefore);
       const health = await captureChroniclesHealth(page);
       expect(health.horizontalOverflow).toBe(false);
       await page.screenshot({
         path: `${ARTIFACT_DIR}/chronicles-rookwood-quest-log-${capture.label}.png`,
         animations: 'disabled', timeout: 60_000,
       });
-      await questToggle.evaluate((node) => node.click());
+      await reader.getByRole('button', { name: 'Cerrar Crónica' }).click();
+      await expect(reader).toHaveCount(0);
 
       await pressSequence(page, ROOKWOOD_WALK_TO_OAK);
       await expect(game).toHaveAttribute('data-chronicles-phase', 'explore');
@@ -768,12 +772,18 @@ for (const capture of CAPTURES) {
       const stage = page.locator('.chronicles-stage');
       const gameMenu = page.locator('summary[aria-label="Abrir menú de Chronicles"]');
       await expect(gameRoot).toBeVisible();
-      // Escape is reserved for the in-game menu. Browser-native fullscreen
-      // would intercept it, so viewport-owned immersion must not use that API.
-      expect(
-        await page.evaluate(() => Boolean(document.fullscreenElement)),
-        `${capture.label}: Chronicles leaves native fullscreen to the browser`,
-      ).toBe(false);
+      // Android's launch gesture intentionally requests browser fullscreen to
+      // unlock landscape orientation (#5492). Browsers may reject that API;
+      // if it succeeds, only the page root may own fullscreen. Desktop never
+      // claims it. The in-game menu remains reachable by its touch control.
+      const fullscreenOwner = await page.evaluate(() => document.fullscreenElement?.tagName ?? null);
+      if (capture.hasTouch) {
+        expect([null, 'HTML'], `${capture.label}: only the page root may own mobile fullscreen`)
+          .toContain(fullscreenOwner);
+      } else {
+        expect(fullscreenOwner, `${capture.label}: desktop remains outside native fullscreen`)
+          .toBeNull();
+      }
       const landscapeTrigger = page.getByRole('button', { name: 'Activar apaisado', exact: true });
       if (capture.hasTouch && capture.width < capture.height) {
         await expect(landscapeTrigger).toBeVisible();
@@ -865,12 +875,48 @@ for (const capture of CAPTURES) {
         const node = root.querySelector(selector);
         if (!node) return { selector, missing: true };
         const style = getComputedStyle(node);
-        return { selector, color: style.color, fill: style.webkitTextFillColor };
+        return { selector, color: style.color, fill: style.webkitTextFillColor, forced: style.forcedColorAdjust, scheme: style.colorScheme };
       }));
       for (const control of engraved) {
         expect(control.missing, `${capture.label}: ${control.selector} exists`).not.toBe(true);
-        expect(control.color, `${capture.label}: ${control.selector} dark ink`).toBe('rgb(16, 16, 20)');
-        expect(control.fill, `${capture.label}: ${control.selector} WebKit dark ink`).toBe('rgb(16, 16, 20)');
+        expect(control.color, `${capture.label}: ${control.selector} dark ink`).toBe('rgb(8, 8, 10)');
+        expect(control.fill, `${capture.label}: ${control.selector} WebKit dark ink`).toBe('rgb(8, 8, 10)');
+        expect(control.forced, `${capture.label}: ${control.selector} must resist forced colours`).toBe('none');
+        expect(control.scheme, `${capture.label}: ${control.selector} uses the light stone palette`).toBe('light only');
+
+      }
+
+      // MAPA and MENÚ are nested labels: a dark parent is insufficient if
+      // their actual glyph elements are overridden by another style.
+      for (const selector of [
+        '.chronicles-statusbar .chronicles-map-trigger b',
+        '.chronicles-game-menu > summary b',
+      ]) {
+        const ink = await gameRoot.locator(selector).evaluate((node) => {
+          const style = getComputedStyle(node);
+          return { color: style.color, fill: style.webkitTextFillColor };
+        });
+        expect(ink.color, `${capture.label}: ${selector} label must be black`).toBe('rgb(8, 8, 10)');
+        expect(ink.fill, `${capture.label}: ${selector} text fill must be black`).toBe('rgb(8, 8, 10)');
+      }
+
+      // Browser regression: stylesheet declarations alone lost in Brave;
+      // the actual mounted control must have an inline important override.
+      for (const selector of [
+        '.chronicles-statusbar .chronicles-map-trigger',
+        '.chronicles-statusbar .chronicles-map-trigger b',
+        '.chronicles-game-menu > summary',
+        '.chronicles-game-menu > summary b',
+        '.chronicles-touch button:not(.is-attack):not(.is-magic):not(.is-contextual)',
+      ]) {
+        const ink = await gameRoot.locator(selector).first().evaluate((element) => ({
+          value: element.style.getPropertyValue('color'),
+          priority: element.style.getPropertyPriority('color'),
+          computed: getComputedStyle(element).color,
+        }));
+        expect(ink.value, `${capture.label}: ${selector} inline ink`).toMatch(/^(?:#08080a|rgb\(8,\s*8,\s*10\))$/i);
+        expect(ink.priority, `${capture.label}: ${selector} priority`).toBe('important');
+        expect(ink.computed, `${capture.label}: ${selector} final ink`).toBe('rgb(8, 8, 10)');
       }
 
       // Every menu action stays on screen, «Salir y guardar» included.
@@ -879,6 +925,37 @@ for (const capture of CAPTURES) {
       await menuSummary.evaluate((summary) => summary.click());
       const exitAction = menuDetails.getByRole('button', { name: 'Salir y guardar', exact: true });
       await expect(exitAction).toBeVisible();
+      // Both controls belong to the current menu; keyboard-adjusting them
+      // must not trigger dungeon movement hotkeys.
+      const musicSlider = menuDetails.locator('#chronicles-music-volume');
+      const fxSlider = menuDetails.locator('#chronicles-sfx-volume');
+      await expect(musicSlider).toBeVisible();
+      await expect(fxSlider).toBeVisible();
+      const turnsBeforeAudio = await gameRoot.getAttribute('data-chronicles-turns');
+      await musicSlider.focus();
+      await musicSlider.press('Home');
+      await expect(musicSlider).toHaveValue('0');
+      await musicSlider.press('ArrowRight');
+      await expect(musicSlider).toHaveValue('5');
+      await expect(gameRoot).toHaveAttribute('data-chronicles-turns', turnsBeforeAudio);
+
+      // The previously pale menu action labels must receive the same
+      // browser-verified runtime ink as MAPA and MENÚ.
+      const menuInks = await menuDetails.locator('.chronicles-game-menu__panel button').evaluateAll((buttons) =>
+        buttons.map((button) => ({
+          label: button.textContent.trim(),
+          inline: button.style.getPropertyValue('color'),
+          priority: button.style.getPropertyPriority('color'),
+          computed: getComputedStyle(button).color,
+        }))
+      );
+      expect(menuInks.length, 'menu has actual actions').toBeGreaterThan(3);
+      for (const ink of menuInks) {
+        expect(ink.inline, `menu action ${ink.label} inline ink`).toBe('#08080a');
+        expect(ink.priority, `menu action ${ink.label} important ink`).toBe('important');
+        expect(ink.computed, `menu action ${ink.label} black ink`).toBe('rgb(8, 8, 10)');
+      }
+
       const exitBox = await exitAction.boundingBox();
       expect(exitBox, `${capture.label}: menu exit action has bounds`).not.toBeNull();
       expect(exitBox.y, `${capture.label}: menu exit action below the top edge`).toBeGreaterThanOrEqual(0);

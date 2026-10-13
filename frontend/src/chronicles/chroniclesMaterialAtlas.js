@@ -70,6 +70,7 @@ export const CHRONICLES_MATERIAL_ENVIRONMENTS = Object.freeze({
   exterior: freezeEnvironment('exterior', ['E01', 'E02', 'E03', 'E04', 'E06'], ['E02', 'E05', 'V04']),
   cave: freezeEnvironment('cave', ['N01', 'N02', 'N03', 'N05', 'N06'], ['N01', 'N02', 'N03', 'N05', 'V04']),
   'cave-water': freezeEnvironment('cave-water', ['N06'], ['N01', 'N05', 'N06']),
+  'sewer-masonry': freezeEnvironment('sewer-masonry', ['D03', 'D04', 'V05'], ['D02', 'D05', 'D01']),
   'ash-ruin': freezeEnvironment('ash-ruin', ['D01', 'D05', 'V05', 'N03', 'E04'], ['D02', 'N03', 'V04', 'E05']),
   'iron-foundry': freezeEnvironment('iron-foundry', ['D03', 'V05', 'E04', 'D01', 'E06'], ['D01', 'V04', 'E05']),
   'black-glass': freezeEnvironment('black-glass', ['N03', 'D01', 'C03', 'E06'], ['N03', 'C03', 'D01']),
@@ -87,7 +88,7 @@ const MAP_ENVIRONMENT = Object.freeze({
   'black-glass-chapel': 'black-glass',
   'echo-cistern': 'cave-water',
   // Named after its town, but it is wet brick underground, not the town.
-  'swordhaven-sewers': 'cave-water',
+  'swordhaven-sewers': 'sewer-masonry',
   // Terra dungeons.
   'salinas-hundidas': 'cave-water',
   'cueva-contrabandistas': 'cave',

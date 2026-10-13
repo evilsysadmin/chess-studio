@@ -1,0 +1,219 @@
+/* CHESSCOM: true phone landscape battlefield; desktop stays untouched. */
+.chesscom-landscape-gate {
+  position: fixed;
+  inset: 0;
+  z-index: 10010;
+  display: grid;
+  place-items: center;
+  padding: max(1rem, env(safe-area-inset-top))
+    max(1rem, env(safe-area-inset-right))
+    max(1rem, env(safe-area-inset-bottom))
+    max(1rem, env(safe-area-inset-left));
+  background: radial-gradient(circle at 50% 25%, #233b43, #060a0d 75%);
+  color: #e8f1f2;
+}
+.chesscom-landscape-gate__card {
+  width: min(26rem, 100%);
+  max-height: 100%;
+  overflow: auto;
+  padding: 1.25rem;
+  border: 1px solid #67858c;
+  border-radius: 12px;
+  background: #0a151af7;
+  text-align: center;
+  box-shadow: 0 20px 55px #000a;
+}
+.chesscom-landscape-gate__card small {
+  color: #91cbd3;
+  font-weight: 900;
+  letter-spacing: .16em;
+}
+.chesscom-landscape-gate__card h2 {
+  margin: .5rem 0;
+  font-size: clamp(1.6rem, 7vw, 2.5rem);
+}
+.chesscom-landscape-gate__card p {
+  margin: .45rem auto 1rem;
+  max-width: 34ch;
+  line-height: 1.45;
+}
+.chesscom-landscape-gate__card button {
+  display: block;
+  width: 100%;
+  min-height: 46px;
+  margin: .5rem 0;
+  border: 1px solid #659caa;
+  border-radius: 8px;
+  background: #1b4453;
+  color: #f1f5f4;
+  font-weight: 800;
+}
+.chesscom-landscape-gate__card button.is-secondary {
+  background: #141b1f;
+  border-color: #6b777b;
+}
+@media (pointer: coarse) and (orientation: landscape) and (max-height: 620px) and (max-width: 960px) {
+  .chesscom[data-chesscom-poc="true"][data-chesscom-visual="premium-v1"] {
+    position: fixed;
+    inset: 0;
+    z-index: 10000;
+    width: 100vw;
+    max-width: 100vw;
+    height: 100dvh;
+    min-height: 0;
+    padding: 0;
+    margin: 0;
+    box-sizing: border-box;
+    display: grid;
+    grid-template-rows: 37px minmax(0,1fr);
+    overflow: hidden;
+  }
+  .chesscom[data-chesscom-poc="true"] .chesscom-topbar {
+    height: 37px;
+    min-height: 0;
+    padding: 2px max(7px,env(safe-area-inset-right))
+      2px max(7px,env(safe-area-inset-left));
+    display: flex;
+    align-items: center;
+    position: relative;
+    z-index: 9; /* Keep Exit above the Babylon canvas (real mobile input). */
+  }
+  .chesscom[data-chesscom-poc="true"] .chesscom-brand { align-items: center; gap: .35rem; }
+  .chesscom[data-chesscom-poc="true"] .chesscom-rook { font-size: 1.3rem; margin: 0; }
+  .chesscom[data-chesscom-poc="true"] .chesscom-brand h2 {
+    font-size: 1.35rem;
+    line-height: 1;
+  }
+  .chesscom[data-chesscom-poc="true"] .chesscom-brand strong,
+  .chesscom[data-chesscom-poc="true"] .chesscom-brand small,
+  .chesscom[data-chesscom-poc="true"] .chesscom-classified { display: none; }
+  .chesscom[data-chesscom-poc="true"] .chesscom-top-actions { margin: 0; }
+  .chesscom[data-chesscom-poc="true"] .chesscom-exit {
+    min-height: 32px;
+    padding: .24rem .5rem;
+    font-size: .68rem;
+  }
+  .chesscom[data-chesscom-poc="true"] .chesscom-frame {
+    position: relative;
+    display: grid;
+    grid-template-columns: minmax(0,1fr) !important;
+    grid-template-rows: minmax(0,1fr);
+    gap: 0;
+    min-height: 0;
+    height: 100%;
+    max-width: 100%;
+    overflow: hidden;
+  }
+  .chesscom[data-chesscom-poc="true"] .chesscom-stage-wrap {
+    grid-column: 1;
+    grid-row: 1;
+    order: 0;
+    min-height: 0;
+    height: 100%;
+    display: grid;
+    grid-template-rows: minmax(0,1fr) 49px;
+    gap: 0;
+  }
+  .chesscom[data-chesscom-poc="true"] .chesscom-stage-shell {
+    min-height: 0 !important;
+    height: 100%;
+    min-width: 0;
+    border-radius: 0;
+  }
+  .chesscom[data-chesscom-poc="true"] .chesscom-babylon-host,
+  .chesscom[data-chesscom-poc="true"] .chesscom-babylon-canvas {
+    width: 100% !important;
+    max-width: 100% !important;
+    height: 100% !important;
+    min-height: 0 !important;
+  }
+  .chesscom[data-chesscom-poc="true"] .chesscom-left {
+    position: absolute;
+    z-index: 7;
+    top: 49px;
+    left: max(5px,env(safe-area-inset-left));
+    width: 49px;
+    max-width: 49px;
+    display: block;
+    pointer-events: none;
+  }
+  .chesscom[data-chesscom-poc="true"] .chesscom-objectives,
+  .chesscom[data-chesscom-poc="true"] .chesscom-contact-card,
+  .chesscom[data-chesscom-poc="true"] .chesscom-squad-copy { display: none; }
+  .chesscom[data-chesscom-poc="true"] .chesscom-squad {
+    display: flex;
+    flex-direction: column;
+    width: 49px;
+    gap: 4px;
+    pointer-events: auto;
+  }
+  .chesscom[data-chesscom-poc="true"] .chesscom-squad-card {
+    min-height: 0;
+    width: 49px;
+    max-width: 49px;
+    height: 47px;
+    padding: 3px;
+    display: block;
+    transform: none;
+  }
+  .chesscom[data-chesscom-poc="true"] .chesscom-portrait {
+    width: 41px;
+    height: 39px;
+    display: block;
+  }
+  .chesscom[data-chesscom-poc="true"] .chesscom-right {
+    position: absolute;
+    right: max(5px,env(safe-area-inset-right));
+    top: 45px;
+    z-index: 7;
+    display: block;
+    width: 150px;
+    max-width: 150px;
+    pointer-events: none;
+  }
+  .chesscom[data-chesscom-poc="true"] .chesscom-weapon {
+    pointer-events: auto;
+    width: 100%;
+    padding: .32rem;
+  }
+  .chesscom[data-chesscom-poc="true"] .chesscom-weapon-title {
+    padding: 0;
+    margin: 0;
+    border: none;
+  }
+  .chesscom[data-chesscom-poc="true"] .chesscom-weapon-title strong { font-size: .65rem; }
+  .chesscom[data-chesscom-poc="true"] .chesscom-weapon-art { display: none; }
+  .chesscom[data-chesscom-poc="true"] .chesscom-weapon-advanced {
+    max-height: min(165px, 37dvh);
+    overflow: auto;
+  }
+  .chesscom[data-chesscom-poc="true"] .chesscom-mission-details,
+  .chesscom[data-chesscom-poc="true"] .chesscom-operation,
+  .chesscom[data-chesscom-poc="true"] .chesscom-hover-card,
+  .chesscom[data-chesscom-poc="true"] .chesscom-footer { display: none; }
+  .chesscom[data-chesscom-poc="true"] .chesscom-actionbar {
+    min-width: 0;
+    width: 100%;
+    height: 49px;
+    padding: 2px max(4px, env(safe-area-inset-right))
+      max(2px,env(safe-area-inset-bottom)) max(4px,env(safe-area-inset-left));
+    justify-content: center;
+    gap: 3px;
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
+  .chesscom[data-chesscom-poc="true"] .chesscom-actionbar button {
+    min-width: 0;
+    flex: 0 0 clamp(48px,11.5vw,67px);
+    min-height: 42px;
+    height: 42px;
+    padding: 2px;
+    gap: 0;
+  }
+  .chesscom[data-chesscom-poc="true"] .chesscom-actionbar button span {
+    font-size: 1.02rem;
+  }
+  .chesscom[data-chesscom-poc="true"] .chesscom-actionbar button small {
+    font-size: .53rem;
+  }
+}

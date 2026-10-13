@@ -811,16 +811,17 @@ export function createChroniclesOfMatthiasGame(host, {
         const moveStartedAt = enemyMoveStartedAt.get(enemyDefinition.id) ?? -1;
         const moveFrom = enemyMoveFrom.get(enemyDefinition.id);
         const moveElapsed = time - moveStartedAt;
-        let jumpLift = 0;
-        let jumpTwist = 0;
+        const moving = Boolean(moveFrom && moveElapsed >= 0 && moveElapsed < 0.46);
+        let gaitSway = 0;
 
-        if (moveFrom && moveElapsed >= 0 && moveElapsed < 0.46) {
+        if (moving) {
           const progress = moveElapsed / 0.46;
+          // A grounded stride, not a ballistic jump: the creature advances
+          // along the grid while keeping its feet on the dungeon floor.
           const eased = progress * progress * (3 - 2 * progress);
           enemy.position.x = THREE.MathUtils.lerp(moveFrom.x, target.x, eased);
           enemy.position.z = THREE.MathUtils.lerp(moveFrom.z, target.z, eased);
-          jumpLift = Math.sin(progress * Math.PI) * 1.35;
-          jumpTwist = Math.sin(progress * Math.PI) * 1.05;
+          gaitSway = Math.sin(progress * Math.PI * 4) * Math.sin(progress * Math.PI) * 0.035;
         } else {
           enemy.position.x = target.x;
           enemy.position.z = target.z;
@@ -843,9 +844,9 @@ export function createChroniclesOfMatthiasGame(host, {
             });
           }
           enemy.visible = true;
-          enemy.rotation.y = baseYaw + Math.sin(time * 0.9 + index) * 0.1 + hitKick * 0.16 + jumpTwist;
+          enemy.rotation.y = baseYaw + Math.sin(time * 0.9 + index) * 0.1 + hitKick * 0.16 + gaitSway;
           enemy.rotation.z = hitKick * -0.08;
-          enemy.position.y = jumpLift + Math.sin(time * 1.7 + index * 0.8) * 0.018;
+          enemy.position.y = 0;
           enemy.scale.setScalar(baseScale + hitKick * 0.07);
         } else if (active && deathStartedAt != null) {
           const deathElapsed = time - deathStartedAt;

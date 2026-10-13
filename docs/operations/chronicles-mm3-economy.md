@@ -30,6 +30,13 @@ This does **not** allow corrupting Chess Studio profiles outside Chronicles, or 
 - Wire class-sensitive effective mechanics rather than cosmetic numbers: Intellect/Personality for spell points by class, Endurance for HP, Might for physical damage, Accuracy for hit chance, Speed for AC/initiative, Luck for saving throws and traps.
 - New level-up spending, starting stat budgets, and equipment modifiers should be internally consistent; do not preserve deprecated v1 caps or point ledgers solely for old saves.
 
+## First-person starting company (fresh runs)
+
+- **Only a pristine server run** (worldVersion 0, no world flags, inventory or claims) receives the one-time MM3 starter kit. The starting company has **40 gold in the shared party purse** and one ordinary equipped weapon per class: Caballero espada de bronce, Paladín y Clérigo maza de bronce, Arquero arco corto de madera; remaining classes use a class-permitted dagger, staff, axe or bow. Tactics does not receive this kit.
+- Starter gear is **actually equipped** and contributes to hit/damage; bows attack at range, melee weapons at adjacent distance. First-person combat narration and the character folio show the real equipment instead of chess-piece move names/geometry.
+- **No reload duplication:** after the first manual/area checkpoint, the server's inventory and equipped-slot flags are the only truth. Restoring the same first checkpoint must neither regenerate gold nor re-equip discarded/sold gear. A still-pristine unsaved run may reconstruct the same kit until first save.
+- Canonical first-person party creation remains class-editable; the loadout is determined by the final selected MM3 classes. Gold is party-wide, not awarded separately to four portraits.
+
 ## Economy & equipment ownership
 
 Gold belongs to a run/campaign as a party wallet, not a particular portrait or a decorative item; choose an explicit versioned checkpoint field before making it permanent. Existing inventory item exchange is a transitional primitive only. Implement atomic gold/payment + item/equipment delivery and server CAS/idempotent shop ledgers (same purchase cannot be claimed twice on F5/retry). Gold sinks must matter: equipment, inns/rest, training and spells. Do not multiply currency across repeated checkpoints.

@@ -1,9 +1,10 @@
 import { expect, test } from '@playwright/test';
-import { buttonWithVisibleText } from './helpers.js';
+import { buttonWithVisibleText, waitForHomeInteractive } from './helpers.js';
 import { stagingSyntheticHeaders } from './staging-synthetic.js';
 
 const STAGING_URL = process.env.STAGING_URL || 'https://staging.chess-studio.shadowops.dpdns.org';
 const STAGING_API_URL = process.env.STAGING_API_URL || 'https://api-staging.chess-studio.shadowops.dpdns.org/api';
+const EXPECTED_DEPLOY_SHA = process.env.DEPLOY_SHA || '';
 const ACTIVE_GAME_SESSION_KEY = 'chess-study-active-game-session-v1';
 
 function requiredEnv(name) {
@@ -90,7 +91,9 @@ async function loginBrowser(page, username, password) {
     submit.click(),
   ]);
   expect(browserLogin.status()).toBe(200);
-  await expect(page.getByRole('region', { name: 'Modos principales', exact: true })).toBeVisible({ timeout: 25_000 });
+  // The route region may be visible while the first 3D frame is still
+  // compositing; LOADING legitimately intercepts clicks until Home is ready.
+  await waitForHomeInteractive(page);
 }
 
 test('staging authority · F5 3D descarta snapshot viejo y rehidrata la partida desde API', async ({ page, request }) => {
@@ -185,10 +188,39 @@ test('staging authority · F5 3D descarta snapshot viejo y rehidrata la partida 
     expect(restored.fen).toBe(mutated.fen);
     expect(restored.turn).toBe(mutated.turn);
 
+    // A correct API restore is insufficient if F5 has silently loaded a
+    // different Pages release. Verify the same immutable deployed frontend
+    // after reloading, with an uncached public release receipt.
+    if (EXPECTED_DEPLOY_SHA) {
+      const releaseUrl = new URL('/release.json', STAGING_URL);
+      releaseUrl.searchParams.set('staging-restore-f5-identity', String(Date.now()));
+      const releaseResponse = await request.get(releaseUrl.toString(), {
+        headers: { 'Cache-Control': 'no-cache, no-store', Pragma: 'no-cache' },
+      });
+      expect(releaseResponse.status(), 'Frontend release receipt after F5').toBe(200);
+      const release = await releaseResponse.json();
+      expect(String(release.build || '').toLowerCase()).toBe(EXPECTED_DEPLOY_SHA.toLowerCase());
+    }
+
     await expect(warRoom3d).toBeVisible({ timeout: 30_000 });
     await expect(warRoomSignal).toBeVisible();
     await expect(warRoomGameStatus).toHaveText(/Tu turno/i);
     await expect(page.locator('.error-boundary-screen')).toHaveCount(0);
+
+    // Recovering Mongo's FEN is not enough if the local fallback remains stale:
+    // an eventual second reload could resurrect the pre-F5 position. The
+    // persistence hook must rewrite the same active game with server state.
+    await expect.poll(async () => page.evaluate((key) => {
+      try {
+        const saved = JSON.parse(localStorage.getItem(key) || 'null');
+        return saved ? { gameId: saved.gameId, fen: saved.gameSnapshot?.fen } : null;
+      } catch {
+        return null;
+      }
+    }, ACTIVE_GAME_SESSION_KEY), { timeout: 15_000 }).toEqual({
+      gameId,
+      fen: mutated.fen,
+    });
 
     // 2D actúa sólo como sonda accesible del estado común: la posición visible
     // debe corresponder al FEN rehidratado, no al snapshot local deliberadamente viejo.

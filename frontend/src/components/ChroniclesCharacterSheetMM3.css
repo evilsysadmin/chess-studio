@@ -517,3 +517,262 @@
   color: var(--mm3-control-ink, #101014);
   -webkit-text-fill-color: var(--mm3-control-ink, #101014);
 }
+
+
+/* Chronicles character folio visual pass: retain MM3 framing, remove the
+   grey button chrome and noisy texture behind primary reading surfaces. */
+.chronicles-character-sheet.chronicles-character-sheet--mm3 {
+  color: #f2e4c7;
+  background: #191613;
+}
+.chronicles-character-sheet--mm3 .chronicles-character-sheet__scroll {
+  background: linear-gradient(180deg, #241e1b 0%, #171515 45%, #201b18 100%);
+}
+.chronicles-character-sheet--mm3 .chronicles-character-sheet__head {
+  min-height: 146px;
+  grid-template-columns: 116px minmax(0, 1fr) 42px;
+  gap: 20px;
+  padding: 14px 23px;
+  border-bottom: 1px solid #88633d;
+  background:
+    radial-gradient(ellipse at 12% 0%, rgba(173, 119, 58, .24), transparent 55%),
+    linear-gradient(115deg, #423022, #271e1b 65%, #211b19);
+}
+.chronicles-character-sheet--mm3 .chronicles-character-sheet__portrait {
+  width: 112px;
+  border: 2px solid #bf9258;
+  box-shadow: 0 0 0 3px #201813, 0 0 0 4px #6d4d2d, 0 12px 22px #100c0b;
+}
+.chronicles-character-sheet--mm3 .chronicles-character-sheet__identity > span {
+  color: #cfa86f;
+  font-size: .84rem;
+  letter-spacing: .16em;
+}
+.chronicles-character-sheet--mm3 .chronicles-character-sheet__identity h3 {
+  margin: 8px 0 5px;
+  color: #fff0c8;
+  font: 600 clamp(2rem, 3.6vw, 3rem)/1 Georgia, 'Times New Roman', serif;
+  letter-spacing: .025em;
+  text-shadow: 0 2px 2px #120c09;
+}
+.chronicles-character-sheet--mm3 .chronicles-character-sheet__identity p {
+  color: #dfc8a2;
+  font-size: 1.05rem;
+  line-height: 1.3;
+}
+.chronicles-character-sheet--mm3 .chronicles-character-sheet__quick { margin-top: 10px; gap: 8px; }
+.chronicles-character-sheet--mm3 .chronicles-character-sheet__quick > span {
+  padding: 5px 10px;
+  border: 1px solid #7e6344;
+  background: rgba(14, 12, 11, .58);
+  color: #d4b58a;
+  font-size: .96rem;
+}
+.chronicles-character-sheet--mm3 .chronicles-character-sheet__head > button {
+  width: 42px;
+  min-width: 42px;
+  height: 42px;
+  border: 1px solid #8c7358;
+  background: rgba(23, 19, 18, .8);
+  color: #f3ddb5;
+  text-shadow: none;
+  box-shadow: none;
+}
+.chronicles-character-sheet--mm3 .chronicles-character-sheet__progression {
+  grid-template-columns: auto minmax(80px, 1fr) auto;
+  gap: 16px;
+  padding: 10px 20px;
+  border-bottom: 1px solid #59432e;
+  background: #211b18;
+}
+.chronicles-character-sheet--mm3 .chronicles-character-sheet__progression span,
+.chronicles-character-sheet--mm3 .chronicles-character-sheet__progression b,
+.chronicles-character-sheet--mm3 .chronicles-character-sheet__progression small {
+  color: #d8bd93;
+  font-size: .9rem;
+  line-height: 1.2;
+}
+.chronicles-character-sheet--mm3 .chronicles-character-sheet__xp-track {
+  height: 10px;
+  border: 1px solid #785b36;
+  background: #0e0c0d;
+}
+.chronicles-character-sheet--mm3 .chronicles-character-sheet__xp-track i {
+  background: linear-gradient(90deg, #986b32, #ddb565);
+}
+.chronicles-character-sheet--mm3 .chronicles-character-sheet__tabs {
+  gap: 0;
+  padding: 0 14px;
+  border-bottom: 1px solid #725639;
+  background: #201b19;
+}
+.chronicles-character-sheet--mm3 .chronicles-character-sheet__tabs button {
+  position: relative;
+  min-height: 49px;
+  padding: 10px 8px;
+  border: 0;
+  border-bottom: 3px solid transparent;
+  background: transparent;
+  color: #af9b81;
+  font-size: 1.15rem;
+  text-shadow: none;
+  transition: color .15s, background-color .15s;
+}
+.chronicles-character-sheet--mm3 .chronicles-character-sheet__tabs button > span { color: #94734d; }
+.chronicles-character-sheet--mm3 .chronicles-character-sheet__tabs button.is-active {
+  border: 0;
+  border-bottom: 3px solid #dfb26e;
+  background: linear-gradient(180deg, rgba(162, 103, 41, .16), rgba(162, 103, 41, .04));
+  color: #ffe6b8;
+  box-shadow: inset 0 1px rgba(234, 187, 119, .2);
+  text-shadow: none;
+}
+.chronicles-character-sheet--mm3 .chronicles-character-sheet__tabs button.is-active > span { color: #e6b777; }
+.chronicles-character-sheet--mm3 .chronicles-character-sheet__tabs button:hover:not(.is-active) {
+  color: #f1d7a9;
+  background: rgba(213, 168, 109, .07);
+}
+.chronicles-character-sheet--mm3 .chronicles-character-sheet__vitals,
+.chronicles-character-sheet--mm3 .chronicles-character-sheet__combat {
+  margin: 14px 16px 0;
+  border: 1px solid #5e4b38;
+  background: #282420;
+}
+.chronicles-character-sheet--mm3 .chronicles-character-sheet__combat {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin-top: 8px;
+}
+.chronicles-character-sheet--mm3 .chronicles-character-sheet__vitals > div,
+.chronicles-character-sheet--mm3 .chronicles-character-sheet__combat > div {
+  min-width: 0;
+  padding: 12px 13px;
+  border-right: 1px solid #584738;
+  background: linear-gradient(180deg, #302a25, #26221f);
+}
+.chronicles-character-sheet--mm3 .chronicles-character-sheet__vitals > div:last-child,
+.chronicles-character-sheet--mm3 .chronicles-character-sheet__combat > div:last-child { border-right: 0; }
+.chronicles-character-sheet--mm3 .chronicles-character-sheet__vitals span,
+.chronicles-character-sheet--mm3 .chronicles-character-sheet__combat span {
+  color: #c49b63;
+  font-size: .88rem;
+  letter-spacing: .06em;
+}
+.chronicles-character-sheet--mm3 .chronicles-character-sheet__vitals b {
+  color: #fff0c8;
+  font-size: 1.62rem;
+}
+.chronicles-character-sheet--mm3 .chronicles-character-sheet__vitals > div:first-child b { color: #bde4a1; }
+.chronicles-character-sheet--mm3 .chronicles-character-sheet__combat b {
+  color: #f4dfb9;
+  font-size: 1.12rem;
+  overflow-wrap: anywhere;
+  line-height: 1.18;
+}
+.chronicles-character-sheet--mm3 .chronicles-character-sheet__section { margin: 18px 16px 16px; }
+.chronicles-character-sheet--mm3 .chronicles-character-sheet__section-head {
+  margin-bottom: 10px;
+  padding: 4px 0 9px;
+  border: 0;
+  border-bottom: 1px solid #725637;
+  background: transparent;
+  color: #e6c99d;
+}
+.chronicles-character-sheet--mm3 .chronicles-character-sheet__section-head div span {
+  color: #f1d4a2;
+  font-size: 1.2rem;
+}
+.chronicles-character-sheet--mm3 .chronicles-character-sheet__section-head div small,
+.chronicles-character-sheet--mm3 .chronicles-character-sheet__section-head > b {
+  color: #bba98e;
+  font-size: .95rem;
+  line-height: 1.4;
+}
+.chronicles-character-sheet--mm3 .chronicles-character-sheet__mm3-stats { gap: 8px; }
+.chronicles-character-sheet--mm3 .chronicles-character-sheet__mm3-stats > div {
+  min-height: 90px;
+  padding: 12px 14px 11px;
+  border: 1px solid #896b47;
+  border-top: 2px solid #b58a52;
+  background: linear-gradient(130deg, #dec29a, #c5a77e);
+  color: #33251b;
+  box-shadow: inset 0 1px rgba(255, 239, 204, .55);
+}
+.chronicles-character-sheet--mm3 .chronicles-character-sheet__mm3-stats span {
+  color: #54351d;
+  font-size: 1.06rem;
+}
+.chronicles-character-sheet--mm3 .chronicles-character-sheet__mm3-stats b {
+  color: #211911;
+  font-size: 2rem;
+}
+.chronicles-character-sheet--mm3 .chronicles-character-sheet__mm3-stats em { color: #86502c; }
+.chronicles-character-sheet--mm3 .chronicles-character-sheet__mm3-stats small {
+  color: #5c4634;
+  font-size: .95rem;
+  line-height: 1.25;
+}
+.chronicles-character-sheet--mm3 .chronicles-character-sheet__party-dock {
+  gap: 4px;
+  padding: 8px;
+  border-top: 1px solid #80603e;
+  background: #191719;
+}
+.chronicles-character-sheet--mm3 .chronicles-character-sheet__party-dock button {
+  border: 1px solid #695943;
+  background: linear-gradient(125deg, #38312c, #252323);
+  color: #f1dfbf;
+}
+.chronicles-character-sheet--mm3 .chronicles-character-sheet__party-dock button[aria-pressed='true'] {
+  border-color: #dcb36f;
+  background: linear-gradient(125deg, #5b412a, #292521);
+  box-shadow: inset 0 0 0 1px #c08a4c;
+}
+.chronicles-character-sheet--mm3 .chronicles-character-sheet__party-dock img { border-color: #9a7951; }
+.chronicles-character-sheet--mm3 .chronicles-character-sheet__party-hp { color: #b6dfa8; }
+.chronicles-character-sheet--mm3 .chronicles-character-sheet__loadout article,
+.chronicles-character-sheet--mm3 .chronicles-character-sheet__attribute-grid > button,
+.chronicles-character-sheet--mm3 .chronicles-character-sheet__skill-grid > button {
+  border: 1px solid #6c5641;
+  background: #292420;
+}
+.chronicles-character-sheet--mm3 .chronicles-character-sheet__equipment button,
+.chronicles-character-sheet--mm3 .chronicles-character-sheet__attribute-grid > button:not(:disabled),
+.chronicles-character-sheet--mm3 .chronicles-character-sheet__skill-grid > button:not(:disabled) {
+  border: 1px solid #aa8454;
+  background: #ad8656;
+  color: #241a10;
+}
+@media (max-width: 700px), (max-height: 560px) {
+  .chronicles-character-sheet--mm3 .chronicles-character-sheet__head {
+    grid-template-columns: 73px minmax(0, 1fr) 40px;
+    min-height: 112px;
+    gap: 10px;
+    padding: 9px;
+  }
+  .chronicles-character-sheet--mm3 .chronicles-character-sheet__portrait { width: 70px; }
+  .chronicles-character-sheet--mm3 .chronicles-character-sheet__identity h3 { font-size: 1.75rem; }
+  .chronicles-character-sheet--mm3 .chronicles-character-sheet__identity > span { font-size: .7rem; }
+  .chronicles-character-sheet--mm3 .chronicles-character-sheet__identity p { font-size: .95rem; }
+  .chronicles-character-sheet--mm3 .chronicles-character-sheet__quick > span { padding: 3px 5px; font-size: .86rem; }
+  .chronicles-character-sheet--mm3 .chronicles-character-sheet__progression {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 5px;
+    padding: 8px 10px;
+  }
+  .chronicles-character-sheet--mm3 .chronicles-character-sheet__tabs { padding: 0 4px; }
+  .chronicles-character-sheet--mm3 .chronicles-character-sheet__tabs button { min-height: 44px; font-size: .94rem; padding: 4px 2px; }
+  .chronicles-character-sheet--mm3 .chronicles-character-sheet__vitals { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .chronicles-character-sheet--mm3 .chronicles-character-sheet__combat { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .chronicles-character-sheet--mm3 .chronicles-character-sheet__vitals,
+  .chronicles-character-sheet--mm3 .chronicles-character-sheet__combat { margin-left: 8px; margin-right: 8px; }
+  .chronicles-character-sheet--mm3 .chronicles-character-sheet__section { margin-left: 8px; margin-right: 8px; }
+  .chronicles-character-sheet--mm3 .chronicles-character-sheet__mm3-stats > div { padding: 9px 10px; }
+}
+@media (max-width: 360px) {
+  .chronicles-character-sheet--mm3 .chronicles-character-sheet__head { grid-template-columns: 61px minmax(0, 1fr) 38px; }
+  .chronicles-character-sheet--mm3 .chronicles-character-sheet__portrait { width: 59px; }
+  .chronicles-character-sheet--mm3 .chronicles-character-sheet__identity h3 { font-size: 1.5rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .chronicles-character-sheet--mm3 .chronicles-character-sheet__tabs button { transition: none; }
+}

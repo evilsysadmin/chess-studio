@@ -130,12 +130,133 @@
   backdrop-filter: none;
 }
 
+/* Treat engraved controls as light-theme islands even under browser colour
+   overrides. Apply to descendants too: MAPA/MENÚ use nested b/i glyphs. */
+.chronicles .chronicles-touch button,
+.chronicles .chronicles-touch button :is(span, b, i, small),
+.chronicles .chronicles-statusbar .chronicles-map-trigger,
+.chronicles .chronicles-statusbar .chronicles-map-trigger :is(span, b, i),
+.chronicles .chronicles-game-menu > summary,
+.chronicles .chronicles-game-menu > summary :is(span, b, i) {
+  color-scheme: only light;
+  forced-color-adjust: none;
+}
+.chronicles .chronicles-touch button:not(.is-attack):not(.is-magic):not(.is-contextual),
+.chronicles .chronicles-touch button:not(.is-attack):not(.is-magic):not(.is-contextual) :is(span, b, i, small),
+.chronicles .chronicles-statusbar .chronicles-map-trigger,
+.chronicles .chronicles-statusbar .chronicles-map-trigger :is(span, b, i),
+.chronicles .chronicles-game-menu > summary,
+.chronicles .chronicles-game-menu > summary :is(span, b, i) {
+  color: #08080a;
+  -webkit-text-fill-color: #08080a;
+  /* A physical dark outline preserves the engraved silhouette on grey. */
+  -webkit-text-stroke: .35px #08080a;
+  text-shadow: none;
+}
+
+/* Browser-verified fix: inline important changed the carved arrows to black.
+   Also address the nested labels (MAPA/MENÚ) rather than relying on inheritance. */
+.chronicles .chronicles-touch button:not(.is-attack):not(.is-magic):not(.is-contextual),
+.chronicles .chronicles-touch button:not(.is-attack):not(.is-magic):not(.is-contextual) :is(b, i, span, small),
+.chronicles .chronicles-statusbar .chronicles-map-trigger,
+.chronicles .chronicles-statusbar .chronicles-map-trigger :is(b, i, span),
+.chronicles .chronicles-game-menu > summary,
+.chronicles .chronicles-game-menu > summary :is(b, i, span) {
+  color: #08080a !important;
+  -webkit-text-fill-color: #08080a !important;
+  -webkit-text-stroke-color: #08080a !important;
+  color-scheme: only light !important;
+}
+
 /* Minimap set in a carved stone bezel. */
 .chronicles .chronicles-minimap {
   border: 3px solid;
   border-color: var(--mm3-hi) var(--mm3-lo) var(--mm3-lo) var(--mm3-hi);
   border-radius: 0;
   box-shadow: 0 0 0 1px #141416, 0 6px 18px rgba(0, 0, 0, .4);
+}
+
+/* Combat is a separate, compact, expandable enemy roster. The minimap
+   remains visible while initiative runs; the full list overlays on demand. */
+.chronicles .chronicles-combat-roster {
+  min-width: 0;
+  border: 3px solid;
+  border-color: #f0c48a #5a2e12 #5a2e12 #f0c48a;
+  background: #b87033 var(--mm3-sand) 0 0 / 64px 64px;
+  box-shadow: 0 0 0 1px #141416;
+  font-family: var(--mm3-pixel-font);
+}
+.chronicles .chronicles-combat-roster details { position: relative; min-width: 0; }
+.chronicles .chronicles-combat-roster summary {
+  list-style: none;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 18px;
+  grid-template-areas: 'heading chevron' 'target chevron';
+  gap: 2px 6px;
+  min-height: 52px;
+  padding: 5px 10px;
+  align-items: center;
+  cursor: pointer;
+  color: #fff6e0;
+  text-shadow: 1px 1px 0 #3a1d08;
+}
+.chronicles .chronicles-combat-roster summary::-webkit-details-marker { display: none; }
+.chronicles .chronicles-combat-roster summary:hover,
+.chronicles .chronicles-combat-roster summary:focus-visible {
+  background: rgba(40, 18, 5, .22);
+  outline: 2px solid #fff0c0;
+  outline-offset: -2px;
+}
+.chronicles .chronicles-combat-roster__heading {
+  grid-area: heading;
+  min-width: 0;
+  font: 400 1.22rem/1 var(--mm3-pixel-font);
+}
+.chronicles .chronicles-combat-roster__target {
+  grid-area: target;
+  min-width: 0;
+  overflow: hidden;
+  color: #f9e79c;
+  font: 400 1.12rem/1 var(--mm3-pixel-font);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.chronicles .chronicles-combat-roster__chevron { grid-area: chevron; text-align: center; font-size: 1.2rem; }
+.chronicles .chronicles-combat-roster details[open] .chronicles-combat-roster__chevron { transform: rotate(180deg); }
+.chronicles .chronicles-combat-roster ol {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 3px);
+  left: -3px;
+  right: -3px;
+  max-height: min(185px, 32dvh);
+  margin: 0;
+  padding: 6px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  list-style: none;
+  display: grid;
+  gap: 3px;
+  border: 3px solid;
+  border-color: #f0c48a #5a2e12 #5a2e12 #f0c48a;
+  background: #b87033 var(--mm3-sand) 0 0 / 64px 64px;
+  box-shadow: 0 0 0 1px #141416, 0 9px 20px rgba(0, 0, 0, .4);
+}
+.chronicles .chronicles-combat-roster li {
+  min-width: 0;
+  padding: 3px 6px;
+  border: 2px solid transparent;
+  font: 400 1.18rem/1.05 var(--mm3-pixel-font);
+  text-align: center;
+  text-shadow: 1px 1px 0 #1d0c02;
+  overflow-wrap: anywhere;
+}
+.chronicles .chronicles-combat-roster li[data-band='healthy'] { color: #5cff5c; }
+.chronicles .chronicles-combat-roster li[data-band='hurt'] { color: #ffe94a; }
+.chronicles .chronicles-combat-roster li[data-band='critical'] { color: #ff5a4a; }
+.chronicles .chronicles-combat-roster li[data-target='true'] {
+  border-color: #3a1d08;
+  background: rgba(29, 12, 2, .45);
 }
 
 /* The narrator speaks from a sandstone tablet under a stone tab. */
@@ -442,6 +563,27 @@
   .chronicles .chronicles-quest-log__quest small { color: #4a250b; }
 }
 
+/* On touch layouts the minimap stays in its usual floating position.
+   Combat gets a separate short tab just below it, never over the map. */
+@media (max-width: 800px), (max-width: 1024px) and (max-height: 600px) {
+  .chronicles .chronicles-combat-roster {
+    position: absolute;
+    z-index: 32;
+    top: calc(max(6px, env(safe-area-inset-top)) + 178px);
+    right: max(8px, env(safe-area-inset-right));
+    width: min(210px, 48vw);
+  }
+  .chronicles .chronicles-combat-roster summary { padding: 5px 7px; min-height: 48px; }
+  .chronicles .chronicles-combat-roster__heading { font-size: 1.05rem; }
+  .chronicles .chronicles-combat-roster__target { font-size: 1rem; }
+  .chronicles .chronicles-combat-roster ol { max-height: min(145px, 30dvh); }
+}
+@media (min-width: 521px) and (max-width: 1024px) and (max-height: 600px) {
+  .chronicles .chronicles-combat-roster {
+    top: calc(max(4px, env(safe-area-inset-top)) + 162px);
+  }
+}
+
 /* ─── Character sheet (first person): framed in stone, sandstone header ── */
 /* Frame and gems are drawn by pseudo-elements inside the box (padding =
    frame width), so nothing pokes out and the sheet never scrolls sideways. */
@@ -698,43 +840,26 @@
   .chronicles .chronicles-minimap__marker.is-interactable { fill: #f2efe6; stroke: #3a1d08; }
   .chronicles .chronicles-minimap__party { fill: #e8241c; stroke: #3b0303; filter: none; }
 
-  /* …which becomes the «Combate» list while initiative runs, as in MM3. */
-  .chronicles .chronicles-shell:has(.chronicles-combat-roster) .chronicles-minimap { display: none; }
+  /* In combat the minimap keeps its slot; the roster gets a small row of its own. */
+  .chronicles .chronicles-shell:has(.chronicles-combat-roster) {
+    grid-template-rows: auto auto auto auto auto auto minmax(0, 1fr) auto;
+    grid-template-areas:
+      'view map'
+      'view combat'
+      'view touch'
+      'view status'
+      'view journal'
+      'view help'
+      'view .'
+      'party party';
+  }
   .chronicles .chronicles-combat-roster {
-    grid-area: map;
-    display: grid;
-    align-content: start;
-    gap: 6px;
-    min-height: clamp(120px, 21vh, 214px);
-    padding: 10px 12px;
-    border: 3px solid;
-    border-color: #f0c48a #5a2e12 #5a2e12 #f0c48a;
-    background: #b87033 var(--mm3-sand) 0 0 / 64px 64px;
-    box-shadow: 0 0 0 1px #141416;
-    font-family: var(--mm3-pixel-font);
-  }
-  .chronicles .chronicles-combat-roster h3 {
-    margin: 0 0 4px;
-    color: #fff6e0;
-    font: 400 1.5rem/1 var(--mm3-pixel-font);
-    text-align: center;
-    text-shadow: 2px 2px 0 #3a1d08;
-  }
-  .chronicles .chronicles-combat-roster ol { margin: 0; padding: 0; list-style: none; display: grid; gap: 3px; }
-  .chronicles .chronicles-combat-roster li {
-    padding: 3px 8px;
-    border: 2px solid transparent;
-    font-size: 1.3rem;
-    line-height: 1.05;
-    text-align: center;
-    text-shadow: 1px 1px 0 #1d0c02;
-  }
-  .chronicles .chronicles-combat-roster li[data-band='healthy'] { color: #5cff5c; }
-  .chronicles .chronicles-combat-roster li[data-band='hurt'] { color: #ffe94a; }
-  .chronicles .chronicles-combat-roster li[data-band='critical'] { color: #ff5a4a; }
-  .chronicles .chronicles-combat-roster li[data-target='true'] {
-    border-color: #3a1d08;
-    background: rgba(29, 12, 2, .35);
+    grid-area: combat;
+    position: relative;
+    top: auto;
+    right: auto;
+    width: auto;
+    z-index: 7;
   }
 
   /* No title plaque: the automap holds the top of the panel. */
@@ -923,4 +1048,15 @@
 /* Tall screens keep the key help in the panel; short ones give it to the hero. */
 @media (min-width: 801px) and (min-height: 601px) and (max-height: 999px) {
   .chronicles .chronicles-keyboard-help { display: none; }
+}
+
+/* Stone menu audio controls: maintain contrast even under forced dark schemes. */
+.chronicles .chronicles-game-menu__panel .chronicles-audio-controls :is(legend, label, small) {
+  color: #08080a !important;
+  -webkit-text-fill-color: #08080a !important;
+}
+.chronicles .chronicles-game-menu__panel .chronicles-audio-controls input[type="range"] {
+  width: 100%;
+  min-width: 0;
+  accent-color: #88632d;
 }

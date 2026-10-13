@@ -188,6 +188,8 @@
 .chronicles-save-menu--expedition .chronicles-save-menu__tower { display: none; }
 
 .chronicles-save-menu--expedition .chronicles-save-menu__panel {
+  position: relative;
+  isolation: isolate;
   width: min(590px, 100%);
   max-height: calc(100dvh - 20px);
   padding: clamp(17px, 3.6vw, 36px);
@@ -203,6 +205,41 @@
     linear-gradient(160deg, #211b1d 0%, #14141a 54%, #0a0c12 100%);
   box-shadow: inset 0 0 0 2px #291b14, inset 0 0 0 4px rgba(213, 166, 93, .18),
     0 22px 75px rgba(0, 0, 0, .72);
+}
+/* The book has a physical spine and discreet corner tooling. These are
+   decorative layers only: the live, accessible actions remain untouched. */
+.chronicles-save-menu--expedition .chronicles-save-menu__panel::before {
+  content: '';
+  position: absolute;
+  z-index: 1;
+  pointer-events: none;
+  top: 8px;
+  bottom: 8px;
+  left: 6px;
+  width: 12px;
+  border: 1px solid rgba(161, 103, 48, .4);
+  border-left-color: rgba(244, 195, 112, .5);
+  border-radius: 5px 2px 2px 5px;
+  background:
+    repeating-linear-gradient(180deg, transparent 0 31px, rgba(226, 169, 83, .35) 31px 33px,
+      rgba(47, 27, 17, .8) 33px 39px, transparent 39px 67px),
+    linear-gradient(90deg, rgba(0, 0, 0, .75), rgba(156, 101, 49, .55) 58%, rgba(0, 0, 0, .16));
+  box-shadow: inset -1px 0 rgba(233, 175, 97, .3), 2px 0 6px rgba(0, 0, 0, .35);
+}
+.chronicles-save-menu--expedition .chronicles-save-menu__panel::after {
+  content: '';
+  position: absolute;
+  z-index: 1;
+  pointer-events: none;
+  inset: 8px;
+  border: 1px solid rgba(212, 160, 80, .16);
+  border-radius: 7px;
+  background:
+    radial-gradient(circle, #dab67c 0 2px, transparent 3px) top left / 28px 28px no-repeat,
+    radial-gradient(circle, #dab67c 0 2px, transparent 3px) top right / 28px 28px no-repeat,
+    radial-gradient(circle, #dab67c 0 2px, transparent 3px) bottom left / 28px 28px no-repeat,
+    radial-gradient(circle, #dab67c 0 2px, transparent 3px) bottom right / 28px 28px no-repeat;
+  opacity: .74;
 }
 .chronicles-save-menu--expedition .chronicles-save-menu__kicker {
   margin: 4px 0 16px;
@@ -250,9 +287,13 @@
   color: #f0dfc0;
   font: 500 clamp(.95rem, 2.3vw, 1.25rem)/1.15 Georgia, serif;
   text-align: left;
-  transition: background-color .16s ease, border-color .16s ease, box-shadow .16s ease;
+  transition: background-color .16s ease, border-color .16s ease, box-shadow .16s ease, transform .12s ease;
 }
-.chronicles-save-menu--expedition .chronicles-save-menu__actions button:hover,
+.chronicles-save-menu--expedition .chronicles-save-menu__actions button:not(:disabled):active {
+  transform: translateY(2px);
+  box-shadow: inset 0 2px 7px rgba(0, 0, 0, .55);
+}
+.chronicles-save-menu--expedition .chronicles-save-menu__actions button:not(:disabled):hover,
 .chronicles-save-menu--expedition .chronicles-save-menu__actions button:focus-visible {
   border-color: #ffe2a0;
   outline: 3px solid #edc57b;
@@ -316,6 +357,10 @@
   border-top: 1px solid rgba(226, 179, 100, .28);
 }
 @media (max-width: 520px) {
+  .chronicles-save-menu--expedition .chronicles-save-menu__panel::before {
+    left: 4px;
+    width: 7px;
+  }
   .chronicles-save-menu--expedition .chronicles-save-menu__panel {
     max-height: calc(100dvh - 20px);
     padding: clamp(15px, 4vw, 22px);
@@ -349,6 +394,19 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .chronicles-save-menu--expedition .chronicles-save-menu__actions button { transition: none; }
+  .chronicles-save-menu--expedition .chronicles-save-menu__actions button:not(:disabled):active { transform: none; }
+}
+
+/* Desktop / landscape expedition-study artwork: 1280×720 AVIF, ~17 KiB.
+   Keep the approved portrait mock for narrow touch devices. This only
+   replaces decorative scenery, never the actual book or live save actions. */
+@media (min-width: 760px) and (orientation: landscape) {
+  .chronicles-save-menu--expedition .chronicles-save-menu__sky {
+    background:
+      linear-gradient(90deg, rgba(6, 7, 11, .15), transparent 24%, transparent 76%, rgba(6, 7, 11, .15)),
+      url('../assets/chronicles/expedition-study-desktop-v2.avif') center center / cover no-repeat,
+      linear-gradient(150deg, #3c2415, #0a1730 72%);
+  }
 }
 
 /* Gold campaign CTA is light parchment; all nested live labels stay dark.

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
+import './ChroniclesCharacterSheetFolioV2.css';
 import {
   CHRONICLES_GOLD_ITEM_ID,
   chroniclesGoldBalance,
@@ -109,6 +110,7 @@ export default function ChroniclesCharacterSheet({
   const skills = chroniclesSkillsForMember(member.id);
   const modifiers = state.rpgModifiers?.[member.id] || {};
   const firstPersonStats = chroniclesPartyAttackStats(state, member.id);
+  const equippedWeapon = chroniclesEquippedItem(state, member.id, 'weapon');
   const reach = tacticsMode
     ? Number(profile.reach || 1) + Number(modifiers.reachBonus || 0)
     : firstPersonStats.reach;
@@ -152,10 +154,11 @@ export default function ChroniclesCharacterSheet({
       }}
     >
       <section
-        className={`chronicles-character-sheet${tacticsMode ? '' : ' chronicles-character-sheet--mm3'}`}
+        className={`chronicles-character-sheet${tacticsMode ? '' : ' chronicles-character-sheet--mm3 chronicles-character-sheet--folio-v2'}`}
         role="dialog"
         aria-modal="true"
         aria-labelledby="chronicles-character-sheet-title"
+        data-chronicles-folio={tacticsMode ? undefined : 'v2'}
         onKeyDown={closeOnEscape}
       >
         {/* The frame (and its corner gems) stays put; only the contents scroll. */}
@@ -225,15 +228,21 @@ export default function ChroniclesCharacterSheet({
         <div className="chronicles-character-sheet__combat"
           hidden={!tacticsMode && activeFolio !== 'record'}>
           <div><span>Clase</span><b>{className}</b></div>
-          <div><span>Arma</span><b>{profile.weaponName}</b></div>
-          <div><span>Ataque</span><b>{member.attackName || profile.attackName}</b></div>
-          <div><span>Geometría</span><b>{profile.kindLabel}</b></div>
-          <div><span>{tacticsMode ? 'Habilidad' : 'Habilidad táctica'}</span><b>{profile.abilityName}</b></div>
+          <div><span>Arma</span><b>{mm3 ? (equippedWeapon?.name || 'Sin arma') : profile.weaponName}</b></div>
+          {mm3 ? (
+            <div><span>Tipo</span><b>{equippedWeapon?.reach > 1 ? 'A distancia' : 'Cuerpo a cuerpo'}</b></div>
+          ) : (
+            <>
+              <div><span>Ataque</span><b>{member.attackName || profile.attackName}</b></div>
+              <div><span>Geometría</span><b>{profile.kindLabel}</b></div>
+              <div><span>{tacticsMode ? 'Habilidad' : 'Habilidad táctica'}</span><b>{profile.abilityName}</b></div>
+            </>
+          )}
           <div><span>Estado</span><b>{member.hp > 0 ? 'Operativo' : 'Fuera de combate'}</b></div>
         </div>
 
         {mm3 && (
-          <div className="chronicles-character-sheet__section"
+          <div className="chronicles-character-sheet__section chronicles-character-sheet__section--core-stats"
             hidden={activeFolio !== 'record'}>
             <div className="chronicles-character-sheet__section-head">
               <div><span>ESTADÍSTICAS</span><small>Tiradas de creación · bonificador MM3 entre paréntesis</small></div>

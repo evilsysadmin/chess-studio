@@ -1,4 +1,5 @@
 import { CHRONICLES_EQUIPMENT_SLOTS, chroniclesEquippedItem } from './chroniclesEquipment.js';
+import { chroniclesApplyStartingKit } from './chroniclesStartingKit.js';
 import { chroniclesSpellAvailableTo } from './chroniclesMagic.js';
 import {
   chroniclesMapById,
@@ -185,6 +186,19 @@ function runtimeCheckpointFlags(state) {
 
   const map = source.mapId ? chroniclesMapById(source.mapId) : null;
   (map?.enemies || []).forEach((enemy) => {
+    const sighting = source.enemyAwareness?.[enemy.id];
+    const seenX = integerOrNull(sighting?.x);
+    const seenY = integerOrNull(sighting?.y);
+    const seenTick = integerOrNull(sighting?.tick);
+    if (sighting?.mapId === source.mapId
+      && ['explore', 'combat'].includes(sighting?.phase)
+      && seenX !== null && seenY !== null && seenTick !== null
+      && validWalkablePosition(map, seenX, seenY)) {
+      flags[runtimeKey('enemy', enemy.id, 'seenX')] = seenX;
+      flags[runtimeKey('enemy', enemy.id, 'seenY')] = seenY;
+      flags[runtimeKey('enemy', enemy.id, 'seenTick')] = seenTick;
+      flags[runtimeKey('enemy', enemy.id, 'seenPhase')] = sighting.phase;
+    }
     const position = source.enemyPositions?.[enemy.id];
     const enemyX = integerOrNull(position?.x);
     const enemyY = integerOrNull(position?.y);
@@ -314,6 +328,19 @@ function applyRuntimeCheckpoint(state, flags) {
   });
   if (restoredEnemyPosition) next.enemyPositions = enemyPositions;
 
+  const enemyAwareness = {};
+  (map?.enemies || []).forEach((enemy) => {
+    const seenX = integerOrNull(flags[runtimeKey('enemy', enemy.id, 'seenX')]);
+    const seenY = integerOrNull(flags[runtimeKey('enemy', enemy.id, 'seenY')]);
+    const tick = integerOrNull(flags[runtimeKey('enemy', enemy.id, 'seenTick')]);
+    const seenPhase = flags[runtimeKey('enemy', enemy.id, 'seenPhase')];
+    if (seenX === null || seenY === null || tick === null
+      || !validWalkablePosition(map, seenX, seenY)
+      || !['explore', 'combat'].includes(seenPhase)) return;
+    enemyAwareness[enemy.id] = { x: seenX, y: seenY, tick, phase: seenPhase, mapId: state.mapId };
+  });
+  next.enemyAwareness = enemyAwareness;
+
   if (
     Array.isArray(next.party)
     && next.party.length > 0
@@ -387,7 +414,7 @@ export function chroniclesApplyRunCheckpoint(state, run) {
     consumedContentIds: normalizedLedger(run.consumedContentIds),
     claimedRewards: normalizedLedger(run.claimedRewards),
   };
-  const restored = applyRuntimeCheckpoint(durable, worldFlags);
+  const restored = chroniclesApplyStartingKit(applyRuntimeCheckpoint(durable, worldFlags), run);
   const runStatus = run.runStatus || run.status || 'active';
   if (runStatus === 'completed') return { ...restored, phase: 'escaped' };
   if (runStatus === 'defeated') return { ...restored, phase: 'defeated', turnPhase: 'party' };

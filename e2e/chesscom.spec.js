@@ -163,3 +163,72 @@ test('Chesscom · no hereda el scroll del Hangar al entrar', async ({ page }) =>
   const brandTop = await page.getByRole('heading', { name: 'CHESSCOM', exact: true }).evaluate((node) => node.getBoundingClientRect().top);
   expect(brandTop).toBeGreaterThanOrEqual(0);
 });
+
+
+test('Chesscom · entrada móvil solicita apaisado y el campo táctico llena el viewport horizontal', async ({ browser }) => {
+  test.setTimeout(120_000);
+  const context = await browser.newContext({
+    viewport:{width:390,height:844},hasTouch:true,isMobile:true,deviceScaleFactor:1,
+  });
+  const page = await context.newPage();
+  try {
+    await page.addInitScript(() => {
+      window.__chesscomLandscape = { requests:0,locks:0,unlocks:0,exits:0 };
+      // Headless mobile emulation cannot rotate the physical screen via the
+      // Screen Orientation API. Model the browser permission and rotate viewport
+      // explicitly to exercise the real responsive game without mock screenshots.
+      Element.prototype.requestFullscreen = function () {
+        window.__chesscomLandscape.requests++;
+        Object.defineProperty(document,'fullscreenElement',{configurable:true,value:document.documentElement});
+        return Promise.resolve();
+      };
+      document.exitFullscreen = function () {
+        window.__chesscomLandscape.exits++;
+        Object.defineProperty(document,'fullscreenElement',{configurable:true,value:null});
+        return Promise.resolve();
+      };
+      Object.defineProperty(screen,'orientation',{configurable:true,value:{
+        lock: async mode => { if(mode === 'landscape')window.__chesscomLandscape.locks++; },
+        unlock: () => {window.__chesscomLandscape.unlocks++;},
+      }});
+    });
+    await openExperimentsHub(page);
+    await page.getByRole('button',{name:/Chesscom/}).click();
+    const mode = page.locator('[data-chesscom-poc="true"]');
+    await expect(mode).toBeVisible();
+    await expect(page.getByRole('dialog',{name:'Chesscom necesita apaisado'})).toBeVisible();
+    await expect(page.getByRole('button',{name:'Activar apaisado'})).toBeVisible();
+    await expect.poll(() => page.evaluate(() => window.__chesscomLandscape))
+      .toMatchObject({requests:1,locks:1});
+    await page.setViewportSize({width:844,height:390});
+    await expect(page.getByRole('dialog',{name:'Chesscom necesita apaisado'})).toHaveCount(0);
+    const host=mode.locator('.chesscom-babylon-host');
+    await expect(host.locator('canvas')).toBeVisible({timeout:30_000});
+    const sizes=await mode.evaluate(node=>{
+      const bounds=element=>element.getBoundingClientRect();
+      const canvas=bounds(node.querySelector('canvas'));
+      const frame=bounds(node.querySelector('.chesscom-stage-shell'));
+      const stage=bounds(node);
+      return {
+        stageTop:stage.top,stageBottom:stage.bottom,viewportWidth:innerWidth,viewportHeight:innerHeight,
+        canvasWidth:canvas.width,canvasHeight:canvas.height,frameHeight:frame.height,
+        documentWidth:document.documentElement.scrollWidth,
+      };
+    });
+    expect(sizes.stageBottom).toBeLessThanOrEqual(391);
+    expect(sizes.documentWidth).toBeLessThanOrEqual(845);
+    expect(sizes.canvasWidth).toBeGreaterThan(800);
+    expect(sizes.canvasHeight).toBeGreaterThan(180);
+    expect(sizes.frameHeight).toBeLessThanOrEqual(390);
+    await expect(mode.getByRole('button',{name:'Seleccionar Sven'})).toBeVisible();
+    await mode.getByRole('button',{name:'Seleccionar Sven'}).click();
+    await expect(host).toHaveAttribute('data-chesscom-focus-unit','sven');
+    await expect(mode.getByRole('button',{name:'Fin de turno',exact:true})).toBeVisible();
+    await mode.getByRole('button',{name:'← Experimentos'}).click();
+    await expect(page.getByRole('heading',{name:'Experimentos geniales',exact:true})).toBeVisible();
+    await expect.poll(() => page.evaluate(() => window.__chesscomLandscape))
+      .toMatchObject({unlocks:1,exits:1});
+  } finally {
+    await context.close();
+  }
+});

@@ -27,8 +27,23 @@ describe('Chronicles cardinal-roam enemy AI', () => {
 
     expect(enemy.ai.movement).toBe('cardinal-roam');
     expect(chroniclesChooseEnemyStep({ ...base, round: 0 }, enemy)).toEqual({ x: 2, y: 3 });
-    expect(chroniclesChooseEnemyStep({ ...base, round: 1 }, enemy)).toEqual({ x: 3, y: 2 });
+    expect(chroniclesChooseEnemyStep({ ...base, round: 1 }, enemy)).toEqual({ x: 2, y: 3 });
+    expect(chroniclesChooseEnemyStep({ ...base, round: 4 }, enemy)).toEqual({ x: 3, y: 2 });
     expect(chroniclesChooseEnemyStep({ ...base, round: 0 }, enemy)).toEqual({ x: 2, y: 3 });
+  });
+
+  it('keeps unalerted patrols near their spawn instead of wandering across the map', () => {
+    const enemy = rawRoamingEnemy();
+    const base = createChroniclesState('menagerie-of-ash');
+    const from = { x: enemy.x + 3, y: enemy.y };
+    const state = {
+      ...base, round: 0, x: 9, y: 9,
+      enemyPositions: { 'bone-hound': from },
+    };
+    const next = chroniclesChooseEnemyStep(state, enemy);
+    if (next) {
+      expect(Math.abs(next.x - enemy.x) + Math.abs(next.y - enemy.y)).toBeLessThanOrEqual(3);
+    }
   });
 
   it('skips blocked choices instead of walking through walls, the party or another enemy', () => {
@@ -44,6 +59,6 @@ describe('Chronicles cardinal-roam enemy AI', () => {
       },
     };
 
-    expect(chroniclesChooseEnemyStep(state, enemy)).toEqual({ x: 4, y: 3 });
+    // No legal move stays inside the patrol territory; hold position instead of escaping it.\n    expect(chroniclesChooseEnemyStep(state, enemy)).toBeNull();
   });
 });

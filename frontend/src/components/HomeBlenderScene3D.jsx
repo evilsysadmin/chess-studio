@@ -846,6 +846,28 @@ export function homeBlenderFireFramePlan({
   return { enabled: true, intervalMs: Math.min(HOME_BLENDER_FIRE_MAX_INTERVAL_MS, Math.max(baseIntervalMs, cost * 3)) };
 }
 
+// Match the display's RAF cadence on fast GPUs; keep the existing cost-based
+// planner responsible for slowing down expensive full-room draws.
+export const HOME_BLENDER_FIRE_FULL_INTERVAL_MS = 1000 / 60;
+export const HOME_BLENDER_FIRE_LITE_INTERVAL_MS = 1000 / 30;
+const HOME_BLENDER_FIRE_DEADLINE_TOLERANCE_MS = 1.5;
+
+export function homeBlenderFireFrameDue(timestamp, nextDeadline) {
+  return Number.isFinite(timestamp)
+    && (!Number.isFinite(nextDeadline)
+      || timestamp + HOME_BLENDER_FIRE_DEADLINE_TOLERANCE_MS >= nextDeadline);
+}
+
+// Advance from the ideal deadline, not from the actual RAF arrival. At 120/144 Hz
+// this distributes frames instead of quantizing every update to 2 or 3 RAF ticks.
+// A suspended tab/long hitch can never accumulate a queue of catch-up renders.
+export function homeBlenderFireNextDeadline(timestamp, previousDeadline, intervalMs) {
+  const interval = Number.isFinite(intervalMs) && intervalMs > 0
+    ? intervalMs : HOME_BLENDER_FIRE_FULL_INTERVAL_MS;
+  const last = Number.isFinite(previousDeadline) ? previousDeadline : timestamp;
+  return Math.max(timestamp + interval * 0.75, last + interval);
+}
+
 // The exported flame materials are dark orange *lit* surfaces with an almost zero
 // emissive term, so the hearth point light sitting on top of them floods the
 // panels, and AgX tone mapping then desaturates any bright value to pink-white.
@@ -1648,7 +1670,6 @@ export default function HomeBlenderScene3D({
       attr.needsUpdate = true;
     };
     let fireFrame = null;
-    let lastFireRenderedAt = Number.NEGATIVE_INFINITY;
     let frame = null;
     let loadTimer = null;
     let contextRecoveryTimer = null;
@@ -1717,8 +1738,10 @@ export default function HomeBlenderScene3D({
     };
     renderRequestRef.current = requestRender;
 
-    const baseFireIntervalMs = initialPolicy.lod === 'full' ? 42 : 66;
+    const baseFireIntervalMs = initialPolicy.lod === 'full'
+      ? HOME_BLENDER_FIRE_FULL_INTERVAL_MS : HOME_BLENDER_FIRE_LITE_INTERVAL_MS;
     let fireIntervalMs = baseFireIntervalMs;
+    let nextFireRenderAt = Number.NEGATIVE_INFINITY;
     let fireRenderCostMs = 0;
     let fireSamples = 0;
     let fireFrameGapMs = 0;
@@ -1762,7 +1785,7 @@ export default function HomeBlenderScene3D({
         }
       }
       lastFireRafAt = timestamp;
-      if (timestamp - lastFireRenderedAt >= fireIntervalMs) {
+      if (homeBlenderFireFrameDue(timestamp, nextFireRenderAt)) {
         moveDust(timestamp);
         moveFireParticles(timestamp);
         applyHomeBlenderKlausMotion(klausRig, timestamp);
@@ -1789,7 +1812,6 @@ export default function HomeBlenderScene3D({
         const cost = performance.now() - startedAt;
         fireRenderCostMs = fireSamples === 0 ? cost : fireRenderCostMs * 0.8 + cost * 0.2;
         fireSamples += 1;
-        lastFireRenderedAt = timestamp;
         const plan = homeBlenderFireFramePlan({
           baseIntervalMs: baseFireIntervalMs,
           renderCostMs: fireRenderCostMs,
@@ -1797,6 +1819,7 @@ export default function HomeBlenderScene3D({
           samples: fireSamples,
         });
         fireIntervalMs = plan.intervalMs;
+        nextFireRenderAt = homeBlenderFireNextDeadline(timestamp, nextFireRenderAt, fireIntervalMs);
         canvas.dataset.homeFireCostMs = fireRenderCostMs.toFixed(1);
         canvas.dataset.homeFireGapMs = fireFrameGapMs.toFixed(1);
         // The frame planner only throttles. It intentionally never terminates
