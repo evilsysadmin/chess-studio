@@ -1315,3 +1315,15 @@
   .chronicles .chronicles-game-menu__panel > .chronicles-game-menu__actions { grid-column: 1; }
   .chronicles .chronicles-game-menu__panel > .chronicles-audio-controls { grid-column: 2; }
 }
+
+/* The sapphire's hovering label is a bright tooltip, not a dark engraving:
+   it must overrule the forced dark-ink rules for the old MENÚ stone button. */
+.chronicles .chronicles-game-menu > summary .chronicles-menu-gem__hint {
+  color: #fff6dc !important;
+  -webkit-text-fill-color: #fff6dc !important;
+  -webkit-text-stroke: 0 !important;
+}
+@media (min-width: 1025px), (min-width: 801px) and (min-height: 601px) {
+  /* With MENÚ removed the map plaque uses the whole statusbar width. */
+  .chronicles .chronicles-statusbar .chronicles-map-trigger { grid-column: 1 / -1; }
+}

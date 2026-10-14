@@ -868,11 +868,9 @@ for (const capture of CAPTURES) {
 
       }
 
-      // MAPA and MENÚ are nested labels: a dark parent is insufficient if
-      // their actual glyph elements are overridden by another style.
+      // MAPA keeps black engraved ink, while sapphire's hover label is bright.
       for (const selector of [
         '.chronicles-statusbar .chronicles-map-trigger b',
-        '.chronicles-game-menu > summary .chronicles-menu-gem__hint',
       ]) {
         const ink = await gameRoot.locator(selector).evaluate((node) => {
           const style = getComputedStyle(node);
@@ -888,7 +886,6 @@ for (const capture of CAPTURES) {
         '.chronicles-statusbar .chronicles-map-trigger',
         '.chronicles-statusbar .chronicles-map-trigger b',
         '.chronicles-game-menu > summary',
-        '.chronicles-game-menu > summary .chronicles-menu-gem__hint',
         '.chronicles-touch button:not(.is-attack):not(.is-magic):not(.is-contextual)',
       ]) {
         const ink = await gameRoot.locator(selector).first().evaluate((element) => ({
@@ -900,6 +897,13 @@ for (const capture of CAPTURES) {
         expect(ink.priority, `${capture.label}: ${selector} priority`).toBe('important');
         expect(ink.computed, `${capture.label}: ${selector} final ink`).toBe('rgb(8, 8, 10)');
       }
+
+      const sapphire = await gameRoot.locator('.chronicles-game-menu > summary').evaluate((summary) => ({
+        art: getComputedStyle(summary).backgroundImage,
+        tooltipInk: getComputedStyle(summary.querySelector('.chronicles-menu-gem__hint')).color,
+      }));
+      expect(sapphire.art, `${capture.label}: sapphire artwork is the menu trigger`).toContain('mm3-sapphire.png');
+      expect(sapphire.tooltipInk, `${capture.label}: sapphire tooltip remains legible`).toBe('rgb(255, 246, 220)');
 
       // One complete real Three.js screenshot per viewport, then stop.
       // Menu/audio and automap snapshots live in isolated browser contexts

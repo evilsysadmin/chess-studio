@@ -1334,7 +1334,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
                   </div>
                   <small>Música general del juego y efectos de Chronicles, guardados por separado.</small>
                 </fieldset>
-                <small className="chronicles-game-menu__hint">ESC / TAB · cerrar menú</small>
+                <small className="chronicles-game-menu__hint">ESC · cerrar · TAB · navegar</small>
               </div>
             </details>
 
