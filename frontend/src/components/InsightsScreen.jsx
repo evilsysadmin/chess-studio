@@ -165,7 +165,7 @@ export default function InsightsScreen(props) {
 
         <p className="insights-workspace-lead">
           {isTask
-            ? 'Matthias ha revisado tus datos y ha dejado una tarea concreta sobre la mesa. Empieza por ella; el resto del expediente puede esperar.'
+            ? 'Aquí sólo entran tareas respaldadas por partidas y posiciones reales. El resto queda en el archivo.'
             : isCareer
               ? 'Tu evolución e historial viven en la misma sala, pero fuera del camino de entrenamiento de hoy.'
               : diagnosisView === 'errors'
@@ -174,7 +174,7 @@ export default function InsightsScreen(props) {
         </p>
 
         <details className="insights-room-archive-drawer" open={!isTask} data-insights-archive="room-objects-v2">
-          <summary>{isTask ? 'Abrir archivo de Matthias' : 'Archivo de Matthias'}</summary>
+          <summary>{isTask ? 'Ver errores y progreso' : 'Explorar el expediente'}</summary>
           <div className="insights-room-tools insights-room-archive" role="group" aria-label="Material de la Training Room">
           {!isTask ? (
             <button id="insights-view-now" type="button" className="insights-room-tool insights-room-tool-return insights-room-object insights-room-object--task" onClick={openTask}>

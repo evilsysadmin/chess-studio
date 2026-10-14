@@ -68,6 +68,8 @@ def report_path(jobs: list[dict], upstream_jobs: list[dict]) -> tuple[str, str, 
     sdk = step_conclusion(backend, "Restore cached OCI SDK toolchain")
     if watcher == "success" and admission == "skipped":
         backend_path = "watcher acreditado (sin SDK)"
+    elif admission == "success" and sdk == "skipped":
+        backend_path = "acreditación pública tardía; SDK/Run Command evitados"
     elif sdk == "success":
         backend_path = "fallback OCI preparado; Run Command no confirmado"
     elif admission == "success" and sdk == "skipped":
@@ -188,6 +190,11 @@ def self_test() -> None:
     assert totals(jobs, STAGING_JOBS) == (180.0, 60.0)
     assert "| Backend · exact OCI generation | success | 1.00 |" in render(sha, jobs, main)
     assert "accumulated job-min" in render(sha, jobs, main)
+    backend["steps"] = [
+        step("Re-check main before OCI fallback", "success"),
+        step("Restore cached OCI SDK toolchain", "skipped"),
+    ]
+    assert "acreditación pública tardía" in report_path(jobs, main)[1]
     backend["steps"] = [step("Restore cached OCI SDK toolchain", "success")]
     frontend["steps"] = [step("Build frontend for staging", "success")]
     assert "fallback OCI preparado" in report_path(jobs, main)[1]
