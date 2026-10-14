@@ -843,6 +843,14 @@ for (const capture of CAPTURES) {
 
       await captureElement(page, gameRoot, `${ARTIFACT_DIR}/chronicles-playing-${capture.label}.png`);
 
+      // Runtime contract: commentary fades away on desktop and touch, without
+      // changing the last narration retained for the journal.
+      const narratorToast = gameRoot.locator('.chronicles-dm-band');
+      await expect(narratorToast, `${capture.label}: transient narration disappears`)
+        .toBeHidden({ timeout: 9000 });
+      expect(await narratorToast.evaluate((node) => getComputedStyle(node).opacity),
+        `${capture.label}: narration fades fully out`).toBe('0');
+
       // A browser «night mode» must not lighten the dark ink on the stone.
       expect(await gameRoot.evaluate((root) => getComputedStyle(root).colorScheme.split(' ').sort().join(' ')), `${capture.label}: Chronicles opts out of forced dark`).toBe('light only');
 
