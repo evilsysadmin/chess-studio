@@ -1308,3 +1308,10 @@
 @media (prefers-reduced-motion: reduce) {
   .chronicles .chronicles-game-menu > summary { transition: none; }
 }
+
+/* An older landscape layout made every non-button a full-width grid row.
+   Explicitly preserve the two-column pause / mixer layout on short phones. */
+@media (orientation: landscape) and (max-width: 1024px) and (max-height: 480px) and (min-width: 601px) {
+  .chronicles .chronicles-game-menu__panel > .chronicles-game-menu__actions { grid-column: 1; }
+  .chronicles .chronicles-game-menu__panel > .chronicles-audio-controls { grid-column: 2; }
+}

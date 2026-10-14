@@ -961,27 +961,28 @@ for (const capture of CAPTURES) {
           }
         }
       };
-      await expect(panel.locator('> button')).toHaveText([
-        'Continuar', 'Guardar partida', 'Guardar y salir', 'Salir sin guardar', 'Opciones de audio',
+      await expect(panel.locator('.chronicles-game-menu__actions > button')).toHaveText([
+        'Continuar', 'Guardar partida', 'Guardar y salir', 'Salir sin guardar',
       ]);
-      await expect(menu.locator('#chronicles-music-volume')).toHaveCount(0);
+      await expect(menu.locator('#chronicles-music-volume')).toBeVisible();
+      await expect(menu.locator('#chronicles-sfx-volume')).toBeVisible();
       await checkTablet('pause');
       if (capture.label === 'android-landscape-844x390') {
         const scroll = await panel.evaluate((node) => ({
           content: node.scrollHeight, visible: node.clientHeight,
         }));
-        expect(scroll.content, 'landscape pause needs no hidden vertical scrolling')
+        expect(scroll.content, 'landscape pause must show actions and audio without scrolling')
           .toBeLessThanOrEqual(scroll.visible + 1);
       }
-      // The panel may fit while its children overflow/clamp outside a short
-      // landscape phone. Verify EVERY action without scrolling, especially
-      // Guardar y salir (historically ended at y=475 on a 390px viewport).
-      const pauseActions = await panel.locator('> button').evaluateAll((buttons) => buttons.map((button) => {
-        const box = button.getBoundingClientRect();
-        return { name: button.textContent.trim(), x: box.x, y: box.y, right: box.right, bottom: box.bottom };
-      }));
+      // Four game actions plus both mixer sliders must remain inside the
+      // dialog at 844×390 (one integrated tablet, not an audio sub-menu).
+      const pauseActions = await panel.locator('.chronicles-game-menu__actions > button').evaluateAll((buttons) =>
+        buttons.map((button) => {
+          const box = button.getBoundingClientRect();
+          return { name: button.textContent.trim(), x: box.x, y: box.y, right: box.right, bottom: box.bottom };
+        }));
       expect(pauseActions.map((action) => action.name)).toEqual([
-        'Continuar', 'Guardar partida', 'Guardar y salir', 'Salir sin guardar', 'Opciones de audio',
+        'Continuar', 'Guardar partida', 'Guardar y salir', 'Salir sin guardar',
       ]);
       const tabletBounds = await panel.boundingBox();
       expect(tabletBounds, `${capture.label}: pause tablet bounds`).not.toBeNull();
@@ -990,15 +991,12 @@ for (const capture of CAPTURES) {
         expect(action.y, `${capture.label}: ${action.name} top`).toBeGreaterThanOrEqual(0);
         expect(action.right, `${capture.label}: ${action.name} right`).toBeLessThanOrEqual(capture.width);
         expect(action.bottom, `${capture.label}: ${action.name} bottom`).toBeLessThanOrEqual(capture.height);
-        expect(action.bottom, `${capture.label}: ${action.name} remains inside pause tablet`)
+        expect(action.bottom, `${capture.label}: ${action.name} inside pause tablet`)
           .toBeLessThanOrEqual(tabletBounds.y + tabletBounds.height);
       }
       await captureElement(page, panel, `${ARTIFACT_DIR}/chronicles-game-menu-${capture.label}.png`);
-      await menu.getByRole('button', { name: 'Opciones de audio' }).evaluate((button) => button.click());
-      await expect(menu.getByRole('slider', { name: 'Volumen de música' })).toBeVisible();
-      await expect(menu.getByRole('slider', { name: 'Volumen de efectos de Chronicles' })).toBeVisible();
-      await expect(menu.getByRole('button', { name: 'Volver al menú' })).toBeVisible();
-      await expect(menu.getByRole('button', { name: 'Guardar y salir' })).toHaveCount(0);
+      const musicMute = menu.getByRole('button', { name: /^(Silenciar|Activar) música$/ });
+      await musicMute.click();
       await checkTablet('audio');
       await captureElement(page, panel, `${ARTIFACT_DIR}/chronicles-game-menu-audio-${capture.label}.png`);
     } finally {
