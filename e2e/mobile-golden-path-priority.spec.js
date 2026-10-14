@@ -47,6 +47,41 @@ for (const viewport of [
   });
 }
 
+test('Quick Match · desktop separates the briefing from the start console', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await mockApi(page, {
+    profileSeed: {
+      'matthias.onboarded': '2',
+      'chess-study-home-guide-dismissed-v1': '1',
+    },
+  });
+  await login(page);
+  await buttonWithVisibleText(page, 'Partida rápida').click();
+  const dialog = page.getByRole('dialog', { name: 'Configurar partida rápida' });
+  const launch = dialog.locator('.quick-match-ready-room__launch');
+  const summary = dialog.getByRole('group', { name: 'Configuración actual' });
+  await expect(summary.locator('.quick-match-ready-room__detail')).toHaveCount(3);
+  await expect(summary).toContainText('Rival');
+  await expect(summary).toContainText('Color');
+  await expect(summary).toContainText('Reloj');
+  const start = dialog.getByRole('button', { name: 'Empezar partida', exact: true });
+  const settings = dialog.locator('details.quick-match-settings > summary');
+  const [launchBox, startBox, settingsBox, briefingBox] = await Promise.all([
+    launch.boundingBox(), start.boundingBox(), settings.boundingBox(),
+    dialog.locator('.quick-match-ready-room__briefing').boundingBox(),
+  ]);
+  expect(launchBox).not.toBeNull();
+  expect(startBox).not.toBeNull();
+  expect(settingsBox).not.toBeNull();
+  expect(launchBox.x).toBeGreaterThan(1440 / 2);
+  expect(startBox.y).toBeGreaterThan(launchBox.y);
+  expect(startBox.y + startBox.height).toBeLessThanOrEqual(900);
+  expect(settingsBox.y).toBeGreaterThanOrEqual(startBox.y - 1);
+  expect(settingsBox.height).toBeGreaterThanOrEqual(44);
+  if (briefingBox) expect(briefingBox.x + briefingBox.width).toBeLessThan(launchBox.x);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+});
+
 // GP-5 (#34): con la barra del navegador el alto útil de un móvil real ronda
 // 560–700 px. Con Ajustes abierto el modal debe hacer scroll y todos sus
 // controles tienen que poder alcanzarse (antes `overflow: hidden` los cortaba).
