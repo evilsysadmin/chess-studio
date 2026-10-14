@@ -304,8 +304,19 @@
 
 .friendly-modal.quick-match-ready-room[aria-label='Configurar partida rápida'] .quick-match-secondary-row {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: .5rem;
+}
+
+/* The shared Quick Match flex layout sets these selects to width: 0.
+ * The Ready Room uses a grid instead: fill the cells or only the
+ * dropdown arrows remain visible on desktop. */
+.friendly-modal.quick-match-ready-room[aria-label='Configurar partida rápida'] .quick-match-secondary-row :is(.quick-match-clock-select, .quick-match-series-select) {
+  width: 100%;
+  min-width: 0;
+  max-width: none;
+  box-sizing: border-box;
+  justify-self: stretch;
 }
 
 .friendly-modal.quick-match-ready-room[aria-label='Configurar partida rápida'] .quick-match-secondary-row .color-row {
