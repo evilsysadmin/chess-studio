@@ -950,8 +950,15 @@ for (const capture of CAPTURES) {
       // Every menu action stays on screen, «Salir y guardar» included.
       const menuDetails = page.locator('details.chronicles-game-menu');
       const menuSummary = menuDetails.locator('> summary');
-      await menuSummary.evaluate((summary) => summary.click());
+      await menuSummary.evaluate((summary) => {
+        if (!summary.parentElement.open) summary.click();
+      });
       const exitAction = menuDetails.getByRole('button', { name: 'Salir y guardar', exact: true });
+      // A short landscape viewport legitimately scrolls the menu panel;
+      // reveal the final option before checking visibility and hit bounds.
+      if (capture.label === 'android-landscape-844x390') {
+        await exitAction.evaluate((button) => button.scrollIntoView({ block: 'nearest', inline: 'nearest' }));
+      }
       await expect(exitAction).toBeVisible();
       // Both controls belong to the current menu; keyboard-adjusting them
       // must not trigger dungeon movement hotkeys.
