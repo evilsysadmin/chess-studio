@@ -779,10 +779,11 @@ for (const scene of [
 
 for (const capture of CAPTURES) {
   test(`Chronicles · gameplay visual · ${capture.label}`, async ({ browser }) => {
-    // Hosted SwiftShader makes large WebGL readbacks expensive. Keep this
-    // producer to one canonical readback per viewport; Tactics owns a separate
-    // focused producer so neither surface can starve the other of its budget.
-    test.setTimeout(360_000);
+    // Hosted SwiftShader can exceed six minutes when desktop screenshot,
+    // menu and automap readbacks share a single Chromium context. Keep the
+    // complete evidence and assertions; give the capture its actual budget.
+    // Required gameplay canaries remain on their separate bounded lane.
+    test.setTimeout(600_000);
     await mkdir(ARTIFACT_DIR, { recursive: true });
 
     const context = await browser.newContext({
