@@ -848,8 +848,17 @@ for (const capture of CAPTURES) {
       const narratorToast = gameRoot.locator('.chronicles-dm-band');
       await expect(narratorToast, `${capture.label}: transient narration disappears`)
         .toBeHidden({ timeout: 9000 });
-      expect(await narratorToast.evaluate((node) => getComputedStyle(node).opacity),
-        `${capture.label}: narration fades fully out`).toBe('0');
+      const toastPresentation = await narratorToast.evaluate((node) => {
+        const style = getComputedStyle(node);
+        return { display: style.display, opacity: style.opacity };
+      });
+      if (toastPresentation.display === 'none') {
+        // The compact touch HUD intentionally omits the sandstone band.
+        // Hidden-by-layout is not proof that its fade completed.
+        expect(capture.hasTouch, `${capture.label}: hidden narrator belongs to compact HUD`).toBe(true);
+      } else {
+        expect(toastPresentation.opacity, `${capture.label}: narration fades fully out`).toBe('0');
+      }
 
       // A browser «night mode» must not lighten the dark ink on the stone.
       expect(await gameRoot.evaluate((root) => getComputedStyle(root).colorScheme.split(' ').sort().join(' ')), `${capture.label}: Chronicles opts out of forced dark`).toBe('light only');
