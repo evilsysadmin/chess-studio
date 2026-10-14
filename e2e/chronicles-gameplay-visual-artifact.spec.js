@@ -1412,7 +1412,7 @@ test('Chronicles · MM3 manual save menu · responsive Android 390px', async ({ 
     await menu.locator('summary').click();
     await expect(menu).toHaveAttribute('open', '');
     await expect(menu.getByRole('button', { name: 'Guardar partida', exact: true })).toBeVisible();
-    await expect(menu.getByRole('button', { name: 'Salir y guardar', exact: true })).toBeVisible();
+    await expect(menu.getByRole('button', { name: 'Guardar y salir', exact: true })).toBeVisible();
     await menu.getByRole('button', { name: 'Salir sin guardar', exact: true }).click();
     const confirm = menu.getByRole('button', { name: 'Sí, salir sin guardar', exact: true });
     await expect(confirm).toBeVisible();
