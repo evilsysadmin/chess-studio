@@ -355,7 +355,7 @@ def main() -> int:
         if min(late, sdk, stale) < 0 or not stale < late < sdk:
             errors.append("staging backend: public late accreditation must follow stale guard and precede SDK")
         for label in ("Restore cached OCI SDK toolchain", "Validate OCI deploy contracts", "Deploy exact backend commit to OCI staging"):
-            marker = f"      - name: {label}\\n"
+            marker = f"      - name: {label}\n"
             section = backend_block.split(marker, 1)[-1].split("\n      - name: ", 1)[0]
             if "steps.already_live.outputs.converged != 'true'" not in section:
                 errors.append(f"staging backend: {label} must skip on late public accreditation")
