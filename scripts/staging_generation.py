@@ -203,6 +203,11 @@ def backend_accredited(sha: str) -> bool:
     return result.returncode == 0
 
 
+def needs_oci_fallback(sha: str, head: str, accredited: Callable[[], bool]) -> bool:
+    """Only current main without full public accreditation may use OCI SDK."""
+    return head == sha and not accredited()
+
+
 def self_test() -> None:
     sha = "a" * 40
     other = "b" * 40
@@ -290,6 +295,10 @@ def self_test() -> None:
     assert not watch_committed(sha, attempts=20, interval=0, main_every=2, fetch=committed(other),
                                accredited=lambda: True, main_head=head, sleep=quiet)
     assert seen["n"] == 1, "un main nuevo corta la espera en la primera comprobación"
+    assert not needs_oci_fallback(sha, other, lambda: (_ for _ in ()).throw(AssertionError("stale probed")))
+    assert not needs_oci_fallback(sha, sha, lambda: True)
+    assert needs_oci_fallback(sha, sha, lambda: False)
+
     try:
         valid_sha("abc")
         raise AssertionError("SHA corto debería fallar")
@@ -304,6 +313,7 @@ def main(argv: list[str]) -> int:
     sub = parser.add_subparsers(dest="command")
     p = sub.add_parser("main-head")
     p.add_argument("--sha", required=True)
+    p.add_argument("--probe-backend", action="store_true")
     p.add_argument("--github-output")
     p = sub.add_parser("dist-identity")
     p.add_argument("--sha", required=True)
@@ -332,7 +342,8 @@ def main(argv: list[str]) -> int:
             superseded = head != sha
             if superseded:
                 print(f"::notice title=Staging superseded::{sha} != main {head}; sin mutación.")
-            write_output(args.github_output, superseded=str(superseded).lower(), current_main=head)
+            extra = {"requires_sdk": str(needs_oci_fallback(sha, head, lambda: backend_accredited(sha))).lower()} if args.probe_backend else {}
+            write_output(args.github_output, superseded=str(superseded).lower(), current_main=head, **extra)
             return 0
         if args.command == "dist-identity":
             return 0 if dist_identity(valid_sha(args.sha), pathlib.Path(args.path)) else 1
