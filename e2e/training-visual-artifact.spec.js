@@ -55,7 +55,7 @@ async function assertInsightsActionableFold(room, label) {
   const geometry = await room.evaluate((root) => {
     const tools = root.querySelector('.insights-room-tools')?.getBoundingClientRect();
     const session = root.querySelector('.insights-guided-session:not(.active)')?.getBoundingClientRect();
-    const recommended = root.querySelector('.insights-guided-focus .primary-btn')?.getBoundingClientRect();
+    const recommended = root.querySelector('.insights-guided-start')?.getBoundingClientRect();
     return {
       viewportHeight: window.innerHeight,
       toolsBottom: tools?.bottom || 0,
@@ -532,7 +532,22 @@ scopedTest('progress', 'Entrenar · Así juegas y Mi progreso', async ({ page })
   await page.setViewportSize({ width: 1440, height: 900 });
   await settle(page);
 
-  const recommendedSession = trainingRoom.getByRole('button', { name: /^Empezar sesión recomendada de (5|15|30) min$/ });
+  const preview = trainingRoom.locator('[data-training-preview-minutes]');
+  const choose15 = trainingRoom.getByRole('button', { name: 'Tengo 15 min' });
+  const choose30 = trainingRoom.getByRole('button', { name: 'Tengo 30 min' });
+  await choose15.click();
+  await expect(preview).toHaveAttribute('data-training-preview-minutes', '15');
+  await expect(choose15).toHaveAttribute('aria-pressed', 'true');
+  await expect(trainingRoom.locator('.insights-guided-session.active')).toHaveCount(0);
+  await expect(trainingRoom.getByRole('button', { name: 'Empezar sesión recomendada de 15 min' })).toBeVisible();
+  await trainingRoom.locator('.insights-guided-preview-details > summary').click();
+  await expect(trainingRoom.locator('.insights-guided-preview-details li').first()).toBeVisible();
+  await choose30.click();
+  await expect(preview).toHaveAttribute('data-training-preview-minutes', '30');
+  await expect(trainingRoom.getByRole('button', { name: 'Empezar sesión recomendada de 30 min' })).toBeVisible();
+  await trainingRoom.getByRole('button', { name: 'Tengo 5 min' }).click();
+  await expect(preview).toHaveAttribute('data-training-preview-minutes', '5');
+  const recommendedSession = trainingRoom.getByRole('button', { name: 'Empezar sesión recomendada de 5 min' });
   await expect(recommendedSession).toBeVisible();
   await recommendedSession.click();
 
