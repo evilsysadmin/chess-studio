@@ -646,3 +646,41 @@
     overflow: hidden;
   }
 }
+
+
+/* Prevent legacy MM3 horizontal offsets from placing text under the stone
+   frame at phone-landscape sizes. The scroll viewport owns the available
+   inline size; each section must shrink instead of overflowing invisibly. */
+@media (max-height: 580px) and (min-width: 540px) {
+  .chronicles-character-sheet--mm3.chronicles-character-sheet--folio-v2 .chronicles-character-sheet__scroll {
+    inline-size: 100%;
+    max-inline-size: 100%;
+    overflow-x: hidden;
+    overscroll-behavior-x: none;
+  }
+  .chronicles-character-sheet--mm3.chronicles-character-sheet--folio-v2 .chronicles-character-sheet__head,
+  .chronicles-character-sheet--mm3.chronicles-character-sheet--folio-v2 .chronicles-character-sheet__progression,
+  .chronicles-character-sheet--mm3.chronicles-character-sheet--folio-v2 .chronicles-character-sheet__tabs,
+  .chronicles-character-sheet--mm3.chronicles-character-sheet--folio-v2 .chronicles-character-sheet__vitals,
+  .chronicles-character-sheet--mm3.chronicles-character-sheet--folio-v2 .chronicles-character-sheet__combat,
+  .chronicles-character-sheet--mm3.chronicles-character-sheet--folio-v2 .chronicles-character-sheet__section {
+    inline-size: 100%;
+    min-inline-size: 0;
+    max-inline-size: 100%;
+    margin-inline: 0;
+    box-sizing: border-box;
+  }
+  .chronicles-character-sheet--mm3.chronicles-character-sheet--folio-v2 .chronicles-character-sheet__progression {
+    padding-inline: 12px;
+  }
+  .chronicles-character-sheet--mm3.chronicles-character-sheet--folio-v2 .chronicles-character-sheet__vitals > div:first-child,
+  .chronicles-character-sheet--mm3.chronicles-character-sheet--folio-v2 .chronicles-character-sheet__combat > div:first-of-type {
+    padding-inline-start: 12px;
+  }
+  .chronicles-character-sheet--mm3.chronicles-character-sheet--folio-v2 .chronicles-character-sheet__combat {
+    padding-inline: 12px;
+  }
+  .chronicles-character-sheet--mm3.chronicles-character-sheet--folio-v2 .chronicles-character-sheet__head > button {
+    justify-self: end;
+  }
+}
