@@ -178,14 +178,14 @@ export function chroniclesStartInitiativeCombat(state, enemies, options = {}) {
   };
 }
 
-export function chroniclesAdvanceCombatInitiative(state, enemies) {
+export function chroniclesAdvanceCombatInitiative(state, enemies, { disengageWhenUnseen = false } = {}) {
   if (!state?.initiative?.order?.length) return state;
   const enemyById = new Map((Array.isArray(enemies) ? enemies : []).map((enemy) => [enemy.id, enemy]));
   const livingOrder = state.initiative.order.filter((actor) => actorIsAlive(state, enemyById, actor));
   const enemiesRemain = livingOrder.some((actor) => actor.kind === 'enemy');
   // A fight must also end if surviving opponents wander out of sight and
   // cannot reach the group. Do not hold the party hostage in empty corridors.
-  const disengaged = state.mapId && Number.isInteger(state.x) && Number.isInteger(state.y)
+  const disengaged = disengageWhenUnseen && state.mapId && Number.isInteger(state.x) && Number.isInteger(state.y)
     && Number.isInteger(state.direction)
     && !chroniclesEngagedEnemies(state, [...enemyById.values()].filter((enemy) => (
       livingOrder.some((actor) => actor.kind === 'enemy' && actor.id === enemy.id)
