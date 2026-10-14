@@ -11,7 +11,12 @@ export function chroniclesHealthBand(hp, maxHp) {
 
 export default function ChroniclesCombatRoster({ state }) {
   if (!state?.initiative) return null;
-  const foes = chroniclesActiveEnemies(state).filter((enemy) => Number(state[enemy.hpKey] || 0) > 0);
+  const combatEnemyIds = new Set(
+    state.initiative.order.filter((actor) => actor.kind === 'enemy').map((actor) => actor.id),
+  );
+  const foes = chroniclesActiveEnemies(state).filter(
+    (enemy) => combatEnemyIds.has(enemy.id) && Number(state[enemy.hpKey] || 0) > 0,
+  );
   if (!foes.length) return null;
 
   const targetId = chroniclesEnemyTargetAhead(state, 3)?.enemy?.id;
