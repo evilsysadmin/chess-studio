@@ -944,7 +944,29 @@ for (const capture of CAPTURES) {
       // WebKit fill must match the computed foreground color.
       expect(['rgb(8, 8, 10)', 'rgb(17, 16, 21)'], `${capture.label}: menu ink must be dark`).toContain(inks.color);
       expect(inks.fill, `${capture.label}: WebKit fill matches dark ink`).toBe(inks.color);
-      await captureElement(page, gameRoot, `${ARTIFACT_DIR}/chronicles-game-menu-${capture.label}.png`);
+      // The full dungeon has already been captured above. Capture only the
+      // visible menu panel here: a second full 1440px WebGL readback on CI's
+      // SwiftShader renderer can consume several minutes and exhaust the
+      // viewport's six-minute budget before the automap can be captured.
+      // Keep all visible actions and their actual computed styles asserted.
+      const panelBounds = await menuDetails.locator('.chronicles-game-menu__panel').boundingBox();
+      expect(panelBounds, `${capture.label}: menu panel screenshot has bounds`).not.toBeNull();
+      const clipX = Math.max(0, Math.floor(panelBounds.x));
+      const clipY = Math.max(0, Math.floor(panelBounds.y));
+      const panelClip = {
+        x: clipX,
+        y: clipY,
+        width: Math.min(capture.width, Math.ceil(panelBounds.x + panelBounds.width)) - clipX,
+        height: Math.min(capture.height, Math.ceil(panelBounds.y + panelBounds.height)) - clipY,
+      };
+      expect(panelClip.width, `${capture.label}: menu visible capture width`).toBeGreaterThan(40);
+      expect(panelClip.height, `${capture.label}: menu visible capture height`).toBeGreaterThan(40);
+      await page.screenshot({
+        path: `${ARTIFACT_DIR}/chronicles-game-menu-${capture.label}.png`,
+        animations: 'disabled',
+        timeout: 30_000,
+        clip: panelClip,
+      });
       await menuSummary.evaluate((summary) => summary.click());
       await expect(exitAction).toBeHidden();
 
