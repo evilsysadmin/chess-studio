@@ -93,3 +93,59 @@
     touch-action: manipulation;
   }
 }
+
+/* Training Room V2 · editorial hierarchy, not another dashboard header.
+   Loaded after the room stylesheet so this compact heading remains effective
+   on the canonical 3D scene and the mobile 2D fallback alike. */
+.insights-training-room.insights-workspace-view-now .insights-workspace-title-row h2 {
+  font-size: clamp(2.45rem, 3.9vw, 3.45rem);
+  line-height: 1.03;
+  letter-spacing: -.035em;
+}
+
+.insights-training-room.insights-workspace-view-now .insights-workspace-lead {
+  max-width: 49ch;
+  margin: .45rem 0 .5rem;
+  color: #e4d6ba;
+  font-size: clamp(.89rem, 1.25vw, 1rem);
+  line-height: 1.42;
+}
+
+.insights-training-room .insights-room-archive-drawer > summary {
+  border-color: rgba(213, 174, 109, .54);
+  color: #f0d9ad;
+  background: linear-gradient(145deg, rgba(83, 59, 35, .96), rgba(32, 23, 17, .94));
+}
+
+.insights-training-room .insights-room-archive-drawer > summary:focus-visible {
+  outline: 2px solid #f2cc81;
+  outline-offset: 3px;
+}
+
+@media (max-width: 760px) {
+  .insights-training-room.insights-workspace-view-now .insights-workspace-header {
+    min-height: 0;
+    padding-bottom: .52rem;
+  }
+
+  .insights-training-room.insights-workspace-view-now .insights-workspace-title-row h2 {
+    font-size: clamp(2.15rem, 10vw, 2.7rem);
+    line-height: 1.04;
+  }
+
+  .insights-training-room.insights-workspace-view-now .insights-workspace-lead {
+    max-width: 37ch;
+    margin-block: .32rem .45rem;
+    font-size: .88rem;
+    line-height: 1.37;
+  }
+
+  .insights-training-room .insights-room-archive-drawer {
+    margin-top: .25rem;
+  }
+
+  .insights-training-room .insights-room-archive-drawer > summary {
+    width: 100%;
+    min-height: 44px;
+  }
+}
