@@ -37,6 +37,7 @@ async function openChronicles(page, captureLabel, {
   chroniclesAreaTransform = null,
   newTown = false,
   newCampaign = false,
+  retryVisualHomeLogin = false,
 } = {}) {
   await mockApi(page, {
     profileSeed: {
@@ -48,7 +49,16 @@ async function openChronicles(page, captureLabel, {
     chroniclesWorldFlags,
     chroniclesAreaTransform,
   });
-  await login(page);
+  // Visual tablet snapshots occasionally begin while the Home compositor is
+  // still overloaded by previous SwiftShader cases. Retry ONE fresh login
+  // only for those snapshots; repeated failures still fail the test.
+  try {
+    await login(page);
+  } catch (error) {
+    if (!retryVisualHomeLogin || !String(error).includes('Modos principales')) throw error;
+    console.warn('[Chronicles visual] Home not ready on first login; retrying once');
+    await login(page);
+  }
   const speech = page.getByRole('region', { name: 'Mensaje de Matthias', exact: true });
   if (await speech.isVisible().catch(() => false)) {
     const close = speech.getByRole('button', { name: 'Cerrar comentario de Matthias', exact: true });
@@ -923,7 +933,7 @@ for (const capture of CAPTURES) {
     });
     try {
       const page = await context.newPage();
-      await openChronicles(page, capture.label);
+      await openChronicles(page, capture.label, { retryVisualHomeLogin: true });
       const game = page.locator('[data-chronicles="true"]');
       await expect(game).toBeVisible();
       await page.addStyleTag({ content: 'canvas {visibility:hidden !important}' });
