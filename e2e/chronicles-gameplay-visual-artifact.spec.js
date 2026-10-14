@@ -925,7 +925,7 @@ for (const capture of CAPTURES) {
       );
       expect(menuInks.length, 'menu has actual actions').toBeGreaterThan(3);
       for (const ink of menuInks) {
-        expect(ink.inline, `menu action ${ink.label} inline ink`).toBe('#08080a');
+        expect(ink.inline, `menu action ${ink.label} inline ink`).toMatch(/^(?:#08080a|rgb\(8,\s*8,\s*10\))$/i);
         expect(ink.priority, `menu action ${ink.label} important ink`).toBe('important');
         expect(ink.computed, `menu action ${ink.label} black ink`).toBe('rgb(8, 8, 10)');
       }
@@ -940,9 +940,33 @@ for (const capture of CAPTURES) {
         color: getComputedStyle(button).color,
         fill: getComputedStyle(button).webkitTextFillColor,
       }));
-      expect(inks.color, `${capture.label}: menu ink must be dark`).toBe('rgb(17, 16, 21)');
-      expect(inks.fill, `${capture.label}: WebKit must keep dark ink`).toBe('rgb(17, 16, 21)');
-      await captureElement(page, gameRoot, `${ARTIFACT_DIR}/chronicles-game-menu-${capture.label}.png`);
+      // Both resolved shades are dark against raised MM3 stone; the
+      // WebKit fill must match the computed foreground color.
+      expect(['rgb(8, 8, 10)', 'rgb(17, 16, 21)'], `${capture.label}: menu ink must be dark`).toContain(inks.color);
+      expect(inks.fill, `${capture.label}: WebKit fill matches dark ink`).toBe(inks.color);
+      // The full dungeon has already been captured above. Capture only the
+      // visible menu panel here: a second full 1440px WebGL readback on CI's
+      // SwiftShader renderer can consume several minutes and exhaust the
+      // viewport's six-minute budget before the automap can be captured.
+      // Keep all visible actions and their actual computed styles asserted.
+      const panelBounds = await menuDetails.locator('.chronicles-game-menu__panel').boundingBox();
+      expect(panelBounds, `${capture.label}: menu panel screenshot has bounds`).not.toBeNull();
+      const clipX = Math.max(0, Math.floor(panelBounds.x));
+      const clipY = Math.max(0, Math.floor(panelBounds.y));
+      const panelClip = {
+        x: clipX,
+        y: clipY,
+        width: Math.min(capture.width, Math.ceil(panelBounds.x + panelBounds.width)) - clipX,
+        height: Math.min(capture.height, Math.ceil(panelBounds.y + panelBounds.height)) - clipY,
+      };
+      expect(panelClip.width, `${capture.label}: menu visible capture width`).toBeGreaterThan(40);
+      expect(panelClip.height, `${capture.label}: menu visible capture height`).toBeGreaterThan(40);
+      await page.screenshot({
+        path: `${ARTIFACT_DIR}/chronicles-game-menu-${capture.label}.png`,
+        animations: 'disabled',
+        timeout: 30_000,
+        clip: panelClip,
+      });
       await menuSummary.evaluate((summary) => summary.click());
       await expect(exitAction).toBeHidden();
 

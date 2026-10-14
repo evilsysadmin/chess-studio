@@ -1399,15 +1399,17 @@ export default function ChroniclesOfMatthias({ onExit }) {
                     aria-label={`Hechizos de ${caster.name}`}
                   >✧<small>MAGIA</small></button>
                 )}
-                {(contextualAction || npcAtPosition) && (
-                  <button
-                    type="button"
-                    className="is-contextual"
-                    data-chronicles-touch-action="interact"
-                    onClick={interactWithContext}
-                    aria-label={contextualAction?.label || `Hablar con ${npcAtPosition.name}`}
-                  >✦<small>{contextualAction?.id === CHRONICLES_SWORDHAVEN_RETURN_PORTAL_ID ? 'VOLVER' : npcAtPosition ? 'ENTRAR' : 'USAR'}</small></button>
-                )}
+                {/* Keep USAR mounted throughout exploration. Hiding it without
+                    contextual content made the command vanish and shifted the
+                    mobile controls; pressing it mirrors the F-key fallback. */}
+                <button
+                  type="button"
+                  className="is-contextual"
+                  data-chronicles-touch-action="interact"
+                  data-chronicles-interaction-available={contextualAction || npcAtPosition ? 'true' : 'false'}
+                  onClick={interactWithContext}
+                  aria-label={contextualAction?.label || (npcAtPosition ? `Hablar con ${npcAtPosition.name}` : 'Usar')}
+                >✦<small>{contextualAction?.id === CHRONICLES_SWORDHAVEN_RETURN_PORTAL_ID ? 'VOLVER' : npcAtPosition ? 'ENTRAR' : 'USAR'}</small></button>
                 <button
                   type="button"
                   data-chronicles-touch-action="backward"

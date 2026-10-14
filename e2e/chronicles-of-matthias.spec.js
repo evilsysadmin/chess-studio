@@ -639,3 +639,44 @@ test('Chronicles · fallos de red permiten reintentar el libro y regresar desde 
   await expect(page.getByRole('heading', { name: 'No se pudo preparar Chronicles' })).toHaveCount(0);
   await expect(menu.getByRole('button', { name: 'Nuevo juego' })).toBeEnabled();
 });
+
+test('Chronicles · USAR nunca desaparece, funciona sin contexto y abre la forja en móvil', async ({ page }) => {
+  test.setTimeout(180_000);
+  await openChronicles(page, {
+    chroniclesCurrentMapId: 'swordhaven-first-book', newTown: true, newCampaign: true,
+  });
+  const game = page.locator('[data-chronicles="true"]');
+  const use = game.locator('[data-chronicles-touch-action="interact"]');
+  // Spawn plaza has no contextual entry. The action must still exist.
+  await expect(use).toHaveCount(1);
+  await expect(use).toBeVisible();
+  await expect(use).toBeEnabled();
+  await expect(use).toContainText('USAR');
+  await expect(use).toHaveAttribute('aria-label', 'Usar');
+  await expect(use).toHaveAttribute('data-chronicles-interaction-available', 'false');
+
+  const startTurns = Number(await game.getAttribute('data-chronicles-turns'));
+  await use.click();
+  await expect(game).toHaveAttribute('data-chronicles-turns', String(startTurns + 1));
+  await expect(game).toContainText('No hay nada útil que manipular aquí');
+
+  // Resizing the actual game must never hide or clip the permanent control.
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(use).toBeVisible();
+  const bounds = await use.boundingBox();
+  expect(bounds, 'USAR retains an actual touch target').not.toBeNull();
+  expect(bounds.width).toBeGreaterThanOrEqual(44);
+  expect(bounds.height).toBeGreaterThanOrEqual(44);
+  expect(bounds.x).toBeGreaterThanOrEqual(0);
+  expect(bounds.x + bounds.width).toBeLessThanOrEqual(391);
+
+  // Street → Brunna: same permanent button becomes contextual, then works.
+  for (const key of ['w', 'w', 'a', 'w', 'w', 'd']) await page.keyboard.press(key);
+  await expect(use).toHaveCount(1);
+  await expect(use).toBeVisible();
+  await expect(use).toHaveAttribute('data-chronicles-interaction-available', 'true');
+  await expect(use).toHaveAttribute('aria-label', 'Forja de Brunna · armas');
+  await use.click();
+  await expect(page.locator('[data-chronicles-shop="first-book-weaponsmith"]')).toBeVisible({ timeout: 15_000 });
+});
+
