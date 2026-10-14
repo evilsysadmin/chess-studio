@@ -2,8 +2,10 @@ import { CHRONICLES_EQUIPMENT_SLOTS, chroniclesEquippedItem } from './chronicles
 import { chroniclesApplyStartingKit } from './chroniclesStartingKit.js';
 import { chroniclesSpellAvailableTo } from './chroniclesMagic.js';
 import {
+  CHRONICLES_DEFEATED_DUNGEON_PREFIX,
   chroniclesMapById,
   chroniclesMapIds,
+  chroniclesRecordDungeonDefeats,
 } from './chroniclesMapCatalog.js';
 
 const CONTENT_GROUPS = Object.freeze(['triggers', 'interactables', 'treasures', 'traps', 'exits']);
@@ -26,9 +28,9 @@ function authoredSetKeys(map) {
   return [...content, ...defeats];
 }
 
-// World flags persist for every region; enemy HP only for the current one,
-// because entering any other region resets its foes anyway. With dozens of
-// Terra areas, keeping every visited map's HP would overflow the checkpoint.
+// Authored flags persist across regions; wounded-foe HP is transient and
+// checkpointed only for the active map. A compact durable tombstone ledger
+// records defeated dungeon foes so revisits never resurrect them.
 function checkpointFlagKeys(currentMapId) {
   return chroniclesMapIds().flatMap((mapId) => {
     const map = chroniclesMapById(mapId);
@@ -363,6 +365,11 @@ export function chroniclesRunHasRuntimeCheckpoint(run) {
 
 export function chroniclesWorldFlagsForCheckpoint(state) {
   const source = state && typeof state === 'object' ? state : {};
+  const current = source.mapId ? chroniclesMapById(source.mapId) : null;
+  const withDefeats = current ? chroniclesRecordDungeonDefeats(source, current) : source;
+  const tombstones = Object.fromEntries(Object.entries(withDefeats).filter(([key, value]) =>
+    key.startsWith(CHRONICLES_DEFEATED_DUNGEON_PREFIX)
+    && key.length <= 96 && typeof value === 'string' && value.length <= 256));
   const authored = Object.fromEntries(
     checkpointFlagKeys(source.mapId)
       .filter((key, index, keys) => keys.indexOf(key) === index)
@@ -372,6 +379,7 @@ export function chroniclesWorldFlagsForCheckpoint(state) {
   );
   return {
     ...authored,
+    ...tombstones,
     ...runtimeCheckpointFlags(source),
   };
 }
