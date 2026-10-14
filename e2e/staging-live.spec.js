@@ -218,6 +218,34 @@ function assertPvpBrowserResponse(response, { suffix, native }) {
   expect(headers['x-chess-pvp-native'], `GET ${suffix} debe acreditar la ruta nativa`).toBe(native);
 }
 
+// DevTools samples are diagnostic only: never log complete URLs, tokens, DOM,
+// response bodies, usernames or the unsanitized CPU profile.
+function summarizePvpOpenCpuProfile(profile) {
+  const frames = new Map((profile?.nodes || []).map((node) => [node.id, node.callFrame]));
+  const costs = new Map();
+  let sampledMs = 0;
+  for (let i = 0; i < (profile?.samples || []).length; i += 1) {
+    const frame = frames.get(profile.samples[i]);
+    const ms = Math.max(0, Number(profile.timeDeltas?.[i]) || 0) / 1000;
+    sampledMs += ms;
+    let moduleName = 'browser';
+    try {
+      moduleName = new URL(frame?.url).pathname.split('/').pop() || 'browser';
+    } catch {
+      // V8 built-ins / idle / anonymous frames are not loaded scripts.
+    }
+    const functionName = String(frame?.functionName || '(anonymous)')
+      .replace(/[^\w.$()<> -]/g, '').slice(0, 55);
+    const key = moduleName.slice(0, 72) + ':' + functionName;
+    costs.set(key, (costs.get(key) || 0) + ms);
+  }
+  const top = [...costs].sort((a, b) => b[1] - a[1]).slice(0, 8)
+    .map(([name, ms]) => name + '=' + Math.round(ms)).join(',');
+  return 'sampled_ms=' + Math.round(sampledMs) +
+    ' samples=' + (profile?.samples?.length || 0) +
+    ' top_self_ms=' + (top || 'none');
+}
+
 async function assertLivePvpBrowserPath(page) {
   // Read-only phase diagnostics: preserve real lobby/pulse cadence and counts.
   // Never log credentials, tokens, roster contents, or response bodies.
@@ -343,11 +371,36 @@ async function assertLivePvpBrowserPath(page) {
   page.on('request', onOpenRequest);
   page.on('response', onOpenResponse);
 
+  // Best-effort, short-lived CPU sampling on this Chromium smoke only.
+  // LongTask says *when* the main thread stalls; V8 frames reveal *where*.
+  let cpuSession = null;
+  let cpuSampling = false;
+  try {
+    cpuSession = await page.context().newCDPSession(page);
+    await cpuSession.send('Profiler.enable');
+    await cpuSession.send('Profiler.setSamplingInterval', { interval: 1000 });
+    await cpuSession.send('Profiler.start');
+    cpuSampling = true;
+  } catch {
+    console.log('STAGING_PVP_CPU unavailable=cdp-start');
+  }
+  const stopCpuSampling = async () => {
+    if (!cpuSession || !cpuSampling) return;
+    cpuSampling = false;
+    try {
+      const { profile } = await cpuSession.send('Profiler.stop');
+      console.log('STAGING_PVP_CPU ' + summarizePvpOpenCpuProfile(profile));
+    } catch {
+      console.log('STAGING_PVP_CPU unavailable=cdp-stop');
+    }
+  };
+
   try {
     const firstLobby = waitLobby();
     await openDuelHall(page);
     const homeNavigationDoneMs = openMs();
     assertPvpBrowserResponse(await firstLobby, { suffix: '/lobby', native: 'lobby-read' });
+    await stopCpuSampling();
 
     const lobby = page.getByRole('dialog', { name: 'Duelo 1 contra 1 · War Room' });
     await expect(lobby).toBeVisible();
@@ -461,6 +514,8 @@ async function assertLivePvpBrowserPath(page) {
     await expect(lobby).toBeHidden();
     logPhase('leave-lobby');
   } finally {
+    await stopCpuSampling();
+    if (cpuSession) await cpuSession.detach().catch(() => {});
     if (!page.isClosed()) {
       await page.evaluate(() => {
         window.__stagingDuelHallTiming?.close();
