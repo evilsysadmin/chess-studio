@@ -203,6 +203,12 @@
 }
 
 @media (max-width: 760px) {
+  /* Even a sparse/empty archive page must have enough scroll range to
+     align its heading with the top. Without this, scrollIntoView bottoms
+     out early and leaves users staring at the room's intro. */
+  .insights-training-room:not(.insights-workspace-view-now) .insights-workspace-panel {
+    min-height: 100dvh;
+  }
   .insights-training-room .insights-archive-context {
     gap: .42rem;
     padding: .66rem .72rem;
