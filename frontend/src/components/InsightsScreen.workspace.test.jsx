@@ -115,7 +115,9 @@ describe('InsightsScreen Matthias-led coaching workspace', () => {
 
     expect(html).toContain('Así juegas');
     expect(html).toContain('Matthias · mesa de trabajo');
-    expect(html).toContain('ha dejado una tarea concreta sobre la mesa');
+    expect(html).toContain('tareas respaldadas por partidas y posiciones reales');
+    expect(html).toContain('Ver errores y progreso');
+    expect(html).toContain('class="insights-room-archive-drawer"');
     expect(html).toContain('Errores');
     expect(html).toContain('Expediente');
     expect(html).toContain('Mi progreso');
