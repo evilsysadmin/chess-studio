@@ -259,7 +259,7 @@ async function assertLivePvpBrowserPath(page) {
     hallSceneChunkRequestMs: null,
     hallSceneChunkResponseMs: null,
   };
-  const isHallSceneChunk = (url) => /(?:PvPDuelHallScene3D|PvpDuelHallShell)[^/]*\\.js(?:[?#]|$)/i.test(url);
+  const isHallSceneChunk = (url) => /(?:PvPDuelHallScene3D|PvpDuelHallShell)[^/]*\.js(?:[?#]|$)/i.test(url);
   const onOpenRequest = (request) => {
     if (request.method() === 'GET' && isPvpApiPath(request.url(), '/lobby') && openTimeline.firstLobbyRequestMs === null) {
       openTimeline.firstLobbyRequestMs = openMs();
