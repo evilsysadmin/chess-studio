@@ -21,6 +21,7 @@ import {
 import { chroniclesDeployedPartyLevel } from '../chronicles/chroniclesDifficultyPolicy.js';
 import { playChroniclesActionSound } from '../chronicles/chroniclesActionAudio.js';
 import { getAmbientVolume, setAmbientVolume } from '../sound.js';
+import { useChroniclesSoundtrack } from '../chronicles/useChroniclesSoundtrack.js';
 import {
   getChroniclesFxVolume,
   setChroniclesFxVolume,
@@ -196,6 +197,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
     return chroniclesShouldResumePlayingRun(FIRST_PERSON_RUN_SCOPE) ? 'playing' : 'menu';
   });
   const [characterSetupDone, setCharacterSetupDone] = useState(entryView === 'playing');
+  useChroniclesSoundtrack(entryView);
   const [savesRefreshKey, refreshSaves] = useState(0);
   const [saveInventory, setSaveInventory] = useState(null);
   const [saveMenuLoading, setSaveMenuLoading] = useState(false);
