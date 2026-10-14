@@ -460,6 +460,16 @@ test('Chronicles of Matthias · clic en un PJ abre una ficha RPG con retrato aut
       dockHeight: dock.height,
       scrollHeight: scroll.height,
       dockBottom: dock.bottom,
+      sideBounds: {
+        scrollLeft: document.querySelector('.chronicles-character-sheet__scroll')?.scrollLeft,
+        contentLeft: scroll.left,
+        contentRight: scroll.right,
+        headerTextLeft: box('.chronicles-character-sheet__identity').left,
+        xpTextLeft: box('.chronicles-character-sheet__xp-copy').left,
+        vitalTextLeft: box('.chronicles-character-sheet__vitals > div').left,
+        partyTextLeft: box('.chronicles-character-sheet__party-dock button').left,
+        closeRight: box('.chronicles-character-sheet__head > button').right,
+      },
       partyButtons: Array.from(node.querySelectorAll('.chronicles-character-sheet__party-dock button')).map((button) => ({
         width: button.getBoundingClientRect().width,
         height: button.getBoundingClientRect().height,
@@ -475,6 +485,11 @@ test('Chronicles of Matthias · clic en un PJ abre una ficha RPG con retrato aut
   expect(landscape.scrollHeight).toBeGreaterThan(120);
   expect(landscape.dockBottom).toBeLessThanOrEqual(landscape.viewportHeight);
   expect(landscape.partyButtons).toHaveLength(4);
+  expect(landscape.sideBounds.scrollLeft).toBe(0);
+  for (const item of ['headerTextLeft', 'xpTextLeft', 'vitalTextLeft', 'partyTextLeft']) {
+    expect(landscape.sideBounds[item], item).toBeGreaterThanOrEqual(landscape.sideBounds.contentLeft - 1);
+  }
+  expect(landscape.sideBounds.closeRight).toBeLessThanOrEqual(landscape.sideBounds.contentRight + 1);
   for (const button of landscape.partyButtons) {
     expect(button.width).toBeGreaterThan(100);
     expect(button.height).toBeGreaterThanOrEqual(44);
