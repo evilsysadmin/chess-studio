@@ -684,3 +684,20 @@
     justify-self: end;
   }
 }
+
+
+/* Phone landscape: scale the actual ornamental frame to the inset.
+   Previous 7px padding sat UNDER the 32px border-image overlay and cropped
+   the first 25px of HP, PROGRESIÓN and the combat heading. */
+@media (max-height: 580px) and (min-width: 540px) {
+  .chronicles-character-sheet.chronicles-character-sheet--mm3.chronicles-character-sheet--folio-v2 {
+    padding: 16px;
+  }
+  .chronicles-character-sheet.chronicles-character-sheet--mm3.chronicles-character-sheet--folio-v2::after {
+    border-width: 14px;
+    border-image-width: 14px;
+  }
+  .chronicles-character-sheet.chronicles-character-sheet--mm3.chronicles-character-sheet--folio-v2::before {
+    background-size: 14px 14px;
+  }
+}
