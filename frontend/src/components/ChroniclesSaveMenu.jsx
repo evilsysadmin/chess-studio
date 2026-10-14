@@ -41,6 +41,7 @@ export default function ChroniclesSaveMenu({
   loading = false, error = '', busyRunId = null, onRetrySync,
 }) {
   const [screen, setScreen] = useState('home');
+  const [showMore, setShowMore] = useState(false);
   const [editing, setEditing] = useState(null);
   const [draftName, setDraftName] = useState('');
   const [confirmForget, setConfirmForget] = useState(null);
@@ -77,34 +78,55 @@ export default function ChroniclesSaveMenu({
 
         {screen === 'home' ? (
           <nav className="chronicles-save-menu__actions" aria-label="Acciones de expedición">
-            <button type="button" className="is-primary is-campaign" onClick={() => onNew('swordhaven-first-book')}>
-              <ExpeditionMenuIcon kind="compass" />
-              <span className="chronicles-save-menu__action-copy">Nueva campaña <small>El rey desaparecido · Primera misión</small></span>
-              <span className="chronicles-save-menu__chevron" aria-hidden="true">›</span>
-            </button>
-            <button type="button" onClick={() => onNew()}>
-              <ExpeditionMenuIcon kind="scroll" />
-              <span className="chronicles-save-menu__action-copy">Nuevo juego</span>
-              <span className="chronicles-save-menu__chevron" aria-hidden="true">›</span>
-            </button>
-            <button type="button" className="is-resume" disabled={!resume || loading} onClick={() => onLoad(resume.id)}>
-              <ExpeditionMenuIcon kind="compass" />
-              <span className="chronicles-save-menu__action-copy">
-                Continuar partida
-                {resume && <small>{resume.title} · {chroniclesSavedExpeditionArea(resume)}</small>}
-              </span>
-              <span className="chronicles-save-menu__chevron" aria-hidden="true">›</span>
-            </button>
-            <button type="button" disabled={!saves.length || loading} onClick={() => openList('load')}>
-              <ExpeditionMenuIcon kind="folder" />
-              <span className="chronicles-save-menu__action-copy">Cargar juego</span>
-              <span className="chronicles-save-menu__chevron" aria-hidden="true">›</span>
-            </button>
-            <button type="button" onClick={() => openList('manage')}>
+            {resume ? (
+              <button type="button" className="is-primary is-resume" disabled={loading || busyRunId !== null || Boolean(error)} onClick={() => onLoad(resume.id)}>
+                <ExpeditionMenuIcon kind="compass" />
+                <span className="chronicles-save-menu__action-copy">
+                  Continuar expedición
+                  <small>{resume.title} · {chroniclesSavedExpeditionArea(resume)}</small>
+                </span>
+                <span className="chronicles-save-menu__chevron" aria-hidden="true">›</span>
+              </button>
+            ) : (
+              <button type="button" className="is-primary is-campaign" disabled={loading || Boolean(error)} onClick={() => onNew('swordhaven-first-book')}>
+                <ExpeditionMenuIcon kind="compass" />
+                <span className="chronicles-save-menu__action-copy">Nueva campaña <small>El rey desaparecido · Primera misión</small></span>
+                <span className="chronicles-save-menu__chevron" aria-hidden="true">›</span>
+              </button>
+            )}
+            <button type="button" className="chronicles-save-menu__more-trigger"
+              aria-expanded={showMore} aria-controls="chronicles-save-menu-more"
+              onClick={() => setShowMore((value) => !value)}>
               <ExpeditionMenuIcon kind="books" />
-              <span className="chronicles-save-menu__action-copy">Gestionar partidas</span>
-              <span className="chronicles-save-menu__chevron" aria-hidden="true">›</span>
+              <span className="chronicles-save-menu__action-copy">Más opciones de juego</span>
+              <span className="chronicles-save-menu__chevron" aria-hidden="true">{showMore ? '⌃' : '›'}</span>
             </button>
+            {showMore && (
+              <div id="chronicles-save-menu-more" className="chronicles-save-menu__more-actions">
+                {resume && (
+                  <button type="button" onClick={() => onNew('swordhaven-first-book')}>
+                    <ExpeditionMenuIcon kind="compass" />
+                    <span className="chronicles-save-menu__action-copy">Nueva campaña</span>
+                    <span className="chronicles-save-menu__chevron" aria-hidden="true">›</span>
+                  </button>
+                )}
+                <button type="button" onClick={() => onNew()}>
+                  <ExpeditionMenuIcon kind="scroll" />
+                  <span className="chronicles-save-menu__action-copy">Nuevo juego</span>
+                  <span className="chronicles-save-menu__chevron" aria-hidden="true">›</span>
+                </button>
+                <button type="button" disabled={!saves.length || loading || Boolean(error)} onClick={() => openList('load')}>
+                  <ExpeditionMenuIcon kind="folder" />
+                  <span className="chronicles-save-menu__action-copy">Cargar otra partida</span>
+                  <span className="chronicles-save-menu__chevron" aria-hidden="true">›</span>
+                </button>
+                <button type="button" disabled={loading || Boolean(error)} onClick={() => openList('manage')}>
+                  <ExpeditionMenuIcon kind="books" />
+                  <span className="chronicles-save-menu__action-copy">Gestionar partidas</span>
+                  <span className="chronicles-save-menu__chevron" aria-hidden="true">›</span>
+                </button>
+              </div>
+            )}
             <button type="button" className="is-exit" onClick={onExit}>
               <ExpeditionMenuIcon kind="castle" />
               <span className="chronicles-save-menu__action-copy">Volver al castillo</span>

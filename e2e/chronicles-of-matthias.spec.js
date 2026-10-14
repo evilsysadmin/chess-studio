@@ -21,6 +21,9 @@ async function openChroniclesSetup(page, options = {}) {
   await descend.click();
   const entry = page.locator('[data-chronicles-save-menu]');
   await expect(entry).toBeVisible();
+  if (!options.newCampaign) {
+    await entry.getByRole('button', { name: 'Más opciones de juego', exact: true }).click();
+  }
   await entry.getByRole('button', options.newCampaign
     ? { name: /Nueva campaña/ }
     : { name: 'Nuevo juego', exact: true }).click();

@@ -18,15 +18,15 @@ function menu(saves, props = {}) {
 }
 
 describe('Chronicles expedition entry', () => {
-  it('shows New, Load and Save management without allocating a new run on mount', () => {
+  it('prioritizes a new campaign when there are no saves and hides secondary options', () => {
     const html = menu([]);
-    expect(html).toContain('Nuevo juego');
-    expect(html).toContain('Continuar partida');
-    expect(html).toContain('Cargar juego');
-    expect(html).toContain('Gestionar partidas');
+    expect(html).toContain('Nueva campaña');
+    expect(html).toContain('Más opciones de juego');
+    expect(html).not.toContain('Continuar expedición');
+    expect(html).toContain('aria-expanded="false"');
     expect(html).toContain('Volver al castillo');
     expect(html).toContain('data-chronicles-save-menu="home"');
-    expect(html).toContain('disabled=""');
+    expect(html).not.toContain('id="chronicles-save-menu-more"');
   });
 
   it('shows an explicit retry only for failed catalog sync, disabled while busy', () => {
@@ -46,6 +46,7 @@ describe('Chronicles expedition entry', () => {
       id: 'run-123', active: true, title: 'Swordhaven y compañía',
       currentMapId: 'swordhaven-square', createdAt: 1, updatedAt: 1_760_000_000_000,
     }]);
+    expect(html).toContain('Continuar expedición');
     expect(html).toContain('Swordhaven y compañía');
     expect(html).toContain('Swordhaven');
     expect(html).not.toContain('worldFlags');

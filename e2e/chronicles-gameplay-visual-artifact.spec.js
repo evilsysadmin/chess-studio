@@ -86,8 +86,15 @@ async function openChronicles(page, captureLabel, {
   // Approved expedition study must really load from the built frontend, with
   // accessible live controls layered over the decorative, browser-chrome-free art.
   await expect(entry).toHaveAttribute('data-chronicles-art', 'approved-expedition-study-v1');
-  await expect(entry.locator('.chronicles-save-menu__actions > button')).toHaveCount(6);
-  for (const name of ['Nueva campaña', 'Nuevo juego', 'Continuar partida', 'Cargar juego', 'Gestionar partidas', 'Volver al castillo']) {
+  // The common route has one clear primary action; secondary actions live
+  // behind an explicit disclosure instead of six equally weighted rows.
+  await expect(entry.locator('.chronicles-save-menu__actions > button')).toHaveCount(3);
+  await expect(entry.getByRole('button', { name: /Más opciones de juego/ })).toHaveAttribute('aria-expanded', 'false');
+  await expect(entry.getByRole('button', { name: /Nueva campaña/ })).toBeVisible();
+  await expect(entry.getByRole('button', { name: /Volver al castillo/ })).toBeVisible();
+  await entry.getByRole('button', { name: /Más opciones de juego/ }).click();
+  await expect(entry.getByRole('button', { name: /Más opciones de juego/ })).toHaveAttribute('aria-expanded', 'true');
+  for (const name of ['Nuevo juego', 'Cargar otra partida', 'Gestionar partidas']) {
     await expect(entry.getByRole('button', { name: new RegExp(name) })).toBeVisible();
   }
   expect(await entry.locator('.chronicles-save-menu__sky').evaluate(async (sky) => {
@@ -115,6 +122,10 @@ async function openChronicles(page, captureLabel, {
     path: `${ARTIFACT_DIR}/chronicles-save-menu-${captureLabel}.png`,
     animations: 'disabled', timeout: 30_000,
   });
+  if (!newCampaign) {
+    const more = entry.getByRole('button', { name: 'Más opciones de juego', exact: true });
+    if (await more.getAttribute('aria-expanded') !== 'true') await more.click();
+  }
   await entry.getByRole('button', newCampaign
     ? { name: /Nueva campaña/ }
     : { name: 'Nuevo juego', exact: true }).click();
@@ -835,6 +846,32 @@ for (const capture of CAPTURES) {
 
       await captureElement(page, gameRoot, `${ARTIFACT_DIR}/chronicles-playing-${capture.label}.png`);
 
+      await writeFile(
+        `${ARTIFACT_DIR}/chronicles-visual-health-${capture.label}.json`,
+        `${JSON.stringify({ schema: 4, scope: 'chronicles', capture: { label: capture.label, ...health } }, null, 2)}\n`,
+        'utf8',
+      );
+    } finally {
+      await context.close();
+    }
+  });
+
+  // Capture these controls in their own Chromium/WebGL context. A previous
+  // in-context full-screen readback could starve menu/automap interactions
+  // until the 360s timeout, without any UI assertion failing.
+  test(`Chronicles · chrome and automap visual · ${capture.label}`, async ({ browser }) => {
+    test.setTimeout(240_000);
+    await mkdir(ARTIFACT_DIR, { recursive: true });
+    const context = await browser.newContext({
+      viewport: { width: capture.width, height: capture.height },
+      hasTouch: capture.hasTouch,
+      isMobile: capture.hasTouch,
+    });
+    const page = await context.newPage();
+    try {
+      await openChronicles(page, capture.label);
+      const gameRoot = page.locator('[data-chronicles="true"]');
+      await expect(gameRoot).toBeVisible();
       // A browser «night mode» must not lighten the dark ink on the stone.
       expect(await gameRoot.evaluate((root) => getComputedStyle(root).colorScheme.split(' ').sort().join(' ')), `${capture.label}: Chronicles opts out of forced dark`).toBe('light only');
 
@@ -893,6 +930,8 @@ for (const capture of CAPTURES) {
         expect(ink.computed, `${capture.label}: ${selector} final ink`).toBe('rgb(8, 8, 10)');
       }
 
+      // Capture only the menu panel: reading the full WebGL framebuffer here
+      // can stall Chromium software rendering without exercising the menu.
       // Every menu action stays on screen, «Salir y guardar» included.
       const menuDetails = page.locator('details.chronicles-game-menu');
       const menuSummary = menuDetails.locator('> summary');
@@ -925,7 +964,7 @@ for (const capture of CAPTURES) {
       );
       expect(menuInks.length, 'menu has actual actions').toBeGreaterThan(3);
       for (const ink of menuInks) {
-        expect(ink.inline, `menu action ${ink.label} inline ink`).toBe('#08080a');
+        expect(['#08080a', 'rgb(8, 8, 10)'], `menu action ${ink.label} inline ink`).toContain(ink.inline);
         expect(ink.priority, `menu action ${ink.label} important ink`).toBe('important');
         expect(ink.computed, `menu action ${ink.label} black ink`).toBe('rgb(8, 8, 10)');
       }
@@ -940,9 +979,9 @@ for (const capture of CAPTURES) {
         color: getComputedStyle(button).color,
         fill: getComputedStyle(button).webkitTextFillColor,
       }));
-      expect(inks.color, `${capture.label}: menu ink must be dark`).toBe('rgb(17, 16, 21)');
-      expect(inks.fill, `${capture.label}: WebKit must keep dark ink`).toBe('rgb(17, 16, 21)');
-      await captureElement(page, gameRoot, `${ARTIFACT_DIR}/chronicles-game-menu-${capture.label}.png`);
+      expect(inks.color, `${capture.label}: menu ink must be dark`).toBe('rgb(8, 8, 10)');
+      expect(inks.fill, `${capture.label}: WebKit must keep dark ink`).toBe('rgb(8, 8, 10)');
+      await captureElement(page, menuDetails.locator('.chronicles-game-menu__panel'), `${ARTIFACT_DIR}/chronicles-game-menu-${capture.label}.png`);
       await menuSummary.evaluate((summary) => summary.click());
       await expect(exitAction).toBeHidden();
 
@@ -978,11 +1017,6 @@ for (const capture of CAPTURES) {
       // heavyweight visual capture; the menu's actual bounds were asserted
       // above without another GPU round trip.
 
-      await writeFile(
-        `${ARTIFACT_DIR}/chronicles-visual-health-${capture.label}.json`,
-        `${JSON.stringify({ schema: 4, scope: 'chronicles', capture: { label: capture.label, ...health } }, null, 2)}\n`,
-        'utf8',
-      );
     } finally {
       await context.close();
     }
