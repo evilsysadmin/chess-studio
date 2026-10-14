@@ -130,6 +130,20 @@ describe('Chronicles initiative', () => {
     expect(forced.initiative.order.map((actor) => actor.id).sort()).toEqual(['far', 'matthias']);
   });
 
+  it('does not announce combat for a nearby enemy behind the party until visible or in striking range', () => {
+    const state = {
+      mapId: 'swordhaven-sewers', x: 1, y: 1, direction: 1,
+      phase: 'explore',
+      party: [{ id: 'matthias', hp: 7, agility: 4 }],
+      rearHp: 3, frontHp: 3,
+    };
+    const rear = { id: 'rear', hpKey: 'rearHp', x: 1, y: 3, ai: { engageRange: 3, attackReach: 1 } };
+    const front = { id: 'front', hpKey: 'frontHp', x: 3, y: 1, ai: { engageRange: 3, attackReach: 1 } };
+    expect(chroniclesStartInitiativeCombat(state, [rear])).toBe(state);
+    const engaged = chroniclesStartInitiativeCombat(state, [rear, front], { random: () => 0 });
+    expect(engaged.initiative.order.filter((actor) => actor.kind === 'enemy').map((actor) => actor.id)).toEqual(['front']);
+  });
+
   it('continues after a fallen current actor instead of restarting the round', () => {
     const state = {
       phase: 'combat',
