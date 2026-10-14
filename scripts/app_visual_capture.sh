@@ -101,8 +101,13 @@ case "$mode" in
     fi
     if (( ${#specs[@]} == 0 )) && [[ "$warroom_core_selected" != "true" ]]; then
       echo "App visual capture: groups '$groups' + producers '$producer_scope' resolved to no canonical specs."
+      # The app lane may receive a Chronicles-only group after its independent
+      # producer is routed to the dedicated Chronicles workflow. This is a
+      # successful no-op, not a missing-PNG failure.
+      if [[ -n "${GITHUB_OUTPUT:-}" ]]; then echo "has_specs=false" >> "$GITHUB_OUTPUT"; fi
       exit 0
     fi
+    if [[ -n "${GITHUB_OUTPUT:-}" ]]; then echo "has_specs=true" >> "$GITHUB_OUTPUT"; fi
 
     playwright_experiments_scope="$experiments_scope"
     if [[ "$experiments_scope" != "chronicles" ]] && has_group experiments && has_producer experiments-hub && has_producer chronicles-gameplay && has_experiment_scope chronicles; then
