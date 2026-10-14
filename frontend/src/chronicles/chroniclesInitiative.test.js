@@ -158,7 +158,7 @@ describe('Chronicles initiative', () => {
       },
     };
     const rear = { id: 'rear', hpKey: 'rearHp', x: 1, y: 3, ai: { engageRange: 3, attackReach: 1 } };
-    const next = chroniclesAdvanceCombatInitiative(state, [rear]);
+    const next = chroniclesAdvanceCombatInitiative(state, [rear], { disengageWhenUnseen: true });
     expect(next.phase).toBe('explore');
     expect(next.initiative).toBeNull();
   });
