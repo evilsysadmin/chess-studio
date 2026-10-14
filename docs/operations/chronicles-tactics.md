@@ -56,6 +56,13 @@ XP, niveles, atributos, skills y la build compartida de Chronicles/Tactics perte
 - El checkpoint de run conserva estado **de la expedición actual** (mundo, posición, HP, cargas, enemigos, ledgers). La progresión entre expediciones sigue perteneciendo al perfil.
 - Un cambio de dispositivo o una caché local vacía debe poder rehidratar XP/atributos/skills desde el perfil remoto antes de usar esa progresión como base de juego.
 
+## Catálogo de expediciones por usuario
+
+- Los documentos `chronicles_runs` de Mongo son la autoridad exclusiva de la identidad, mundo, checkpoint y estados de las expediciones, filtrados por propietario autenticado.
+- Los títulos personalizados y el identificador de la última expedición seleccionada pertenecen al perfil Mongo mediante `chess-study-chronicles-save-metadata-v1`, limitado por usuario y sin datos de mundo.
+- El índice local de IDs sirve de caché/recovery, no puede revivir una expedición eliminada del servidor ni sobrescribir títulos sincronizados de otro dispositivo.
+- El flujo de Continuar consulta primero el catálogo remoto; ante un fallo de red ofrece reintento sin crear otra expedición ni tratar la caché como un guardado remoto confirmado.
+
 ## Ficha canónica de personaje y progresión visible
 
 Chronicles first-person y Tactics comparten una única ficha RPG. No deben divergir en retrato, XP, atributos, skills ni reglas de gasto.

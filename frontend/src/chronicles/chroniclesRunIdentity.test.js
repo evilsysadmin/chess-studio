@@ -11,6 +11,7 @@ import {
   renewChroniclesRun,
   chroniclesRunEntryMapId,
   CHRONICLES_SAVE_CATALOG_KEY,
+  CHRONICLES_SAVE_METADATA_PROFILE_KEY,
   chroniclesListSavedRuns,
   chroniclesMergeRemoteSavedRuns,
   chroniclesRecoverLegacySavedRunIds,
@@ -227,6 +228,73 @@ describe('Chronicles shared run identity', () => {
     // Server no longer reports the run: a complete list removes its stale slot.
     expect(chroniclesMergeRemoteSavedRuns('first-person', []).some((save) => save.id === remoteId)).toBe(false);
     expect(chroniclesSelectedRunIsRemote('first-person', remoteId)).toBe(false);
+  });
+
+  it('stores display names and preferred saved expedition in owner-synced Mongo profile metadata', () => {
+    const provisionalId = beginChroniclesRun('first-person');
+    const serverId = 'named-remote-run-01';
+    expect(chroniclesMarkSavedRunRemote('first-person', provisionalId, serverId)).toBe(serverId);
+    expect(chroniclesRenameSavedRun('first-person', serverId, 'Los viajeros de Swordhaven')).toBe(true);
+    expect(chroniclesSelectSavedRun('first-person', serverId)).toBe(true);
+    const saved = JSON.parse(localStorage.getItem(CHRONICLES_SAVE_METADATA_PROFILE_KEY));
+    expect(saved).toMatchObject({
+      version: 1, owner: 'alice',
+      preferredRunId: serverId,
+      titles: { [serverId]: 'Los viajeros de Swordhaven' },
+    });
+    expect(JSON.stringify(saved)).not.toContain('worldFlags');
+    expect(localStorage.getItem('chess-study-profile-dirty-keys')).toContain(CHRONICLES_SAVE_METADATA_PROFILE_KEY);
+
+    // Another device receives the Mongo-backed profile but has no local save
+    // catalog or active-session pointer, so it can still display and select
+    // the saved title and preferred expedition from the owner-scoped list.
+    localStorage.removeItem(CHRONICLES_SAVE_CATALOG_KEY);
+    localStorage.removeItem(CHRONICLES_RUN_STORAGE_KEY);
+    const saves = chroniclesMergeRemoteSavedRuns('first-person', [{
+      runId: serverId, status: 'active', updatedAtMs: 1760000000000,
+      currentMapId: 'swordhaven-square',
+    }]);
+    expect(saves).toEqual([expect.objectContaining({
+      id: serverId, title: 'Los viajeros de Swordhaven', remote: true, active: true,
+    })]);
+    expect(chroniclesSelectSavedRun('first-person', serverId)).toBe(true);
+    expect(chroniclesSelectedRunIsRemote('first-person', serverId)).toBe(true);
+  });
+
+  it('prefers the last expedition selected by the account over an older device pointer', () => {
+    const local = beginChroniclesRun('first-person');
+    chroniclesMarkSavedRunRemote('first-person', local);
+    const other = 'saved-on-other-device';
+    chroniclesMergeRemoteSavedRuns('first-person', [
+      { runId: local, status: 'active', updatedAtMs: 1760000000000 },
+      { runId: other, status: 'active', updatedAtMs: 1760000000001 },
+    ]);
+    localStorage.setItem(CHRONICLES_SAVE_METADATA_PROFILE_KEY, JSON.stringify({
+      version: 1, owner: 'alice', titles: { [other]: 'Campaña remota' },
+      preferredRunId: other,
+    }));
+    const saves = chroniclesListSavedRuns('first-person');
+    expect(saves.find((run) => run.id === other)).toMatchObject({
+      title: 'Campaña remota', active: true,
+    });
+    expect(saves.find((run) => run.id === local).active).toBe(false);
+  });
+
+  it('does not leak another owner profile metadata into a saved-run catalog', () => {
+    const aliceRun = 'alice-private-run';
+    chroniclesMergeRemoteSavedRuns('first-person', [{
+      runId: aliceRun, status: 'active', updatedAtMs: 1760000000000,
+    }]);
+    expect(chroniclesRenameSavedRun('first-person', aliceRun, 'Secreto de Alice')).toBe(true);
+    localStorage.setItem('chess-study-auth-username', 'bob');
+    localStorage.removeItem(CHRONICLES_RUN_STORAGE_KEY);
+    localStorage.removeItem(CHRONICLES_SAVE_CATALOG_KEY);
+    const bobRuns = chroniclesMergeRemoteSavedRuns('first-person', [{
+      runId: 'bob-run', status: 'active', updatedAtMs: 1760000000001,
+    }]);
+    expect(bobRuns[0].id).toBe('bob-run');
+    expect(bobRuns[0].title).not.toBe('Secreto de Alice');
+    expect(bobRuns[0].active).toBe(false);
   });
 
   it('never accepts malformed remote inventories or leaks them across owners', () => {
