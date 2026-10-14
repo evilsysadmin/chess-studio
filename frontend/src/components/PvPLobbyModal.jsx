@@ -83,6 +83,14 @@ export default function PvPLobbyModal({
   }, []);
   const [lobby, setLobby] = useState(EMPTY_LOBBY);
   const [loading, setLoading] = useState(true);
+  // The authoritative roster is the first meaningful paint; loading the
+  // decorative GLB before its initial GET completes causes multi-second main
+  // thread stalls on software WebGL runners. Enable 3D after the first roster
+  // result (or error), and keep it mounted across later refreshes.
+  const [hallSceneEligible, setHallSceneEligible] = useState(false);
+  useEffect(() => {
+    if (!loading) setHallSceneEligible(true);
+  }, [loading]);
   const [busyKey, setBusyKey] = useState('');
   const [messageText, setMessageText] = useState('');
   const [chatOpen, setChatOpen] = useState(false);
@@ -209,7 +217,7 @@ export default function PvPLobbyModal({
       <section ref={lobbyRef} className="pvp-lobby pvp-duel-hall" role="dialog" aria-modal="true" aria-label="Duelo 1 contra 1 · War Room">
         <div className="pvp-duel-hall__room" aria-hidden="true">
           <Suspense fallback={null}>
-            <PvpDuelHallScene3D />
+            {hallSceneEligible && <PvpDuelHallScene3D />}
           </Suspense>
           <div className="pvp-duel-hall__architecture">
             <span className="pvp-duel-hall__arch pvp-duel-hall__arch--left" />

@@ -415,6 +415,17 @@ async function assertLivePvpBrowserPath(page) {
     await expect(lobby.locator('.pvp-lobby__error')).toHaveCount(0);
     expect(failed, `PvP browser requestfailed: ${JSON.stringify(failed)}`).toEqual([]);
 
+    // Product gate: begin the *authoritative* roster request before any
+    // decorative GLB. This is an ordering assertion, not a time budget:
+    // a slow runner must never make the result flaky.
+    if (openTimeline.modelRequestMs !== null) {
+      expect(
+        openTimeline.firstLobbyRequestMs,
+        'PvP lobby network must begin before decorative model work',
+      ).not.toBeNull();
+      expect(openTimeline.firstLobbyRequestMs).toBeLessThanOrEqual(openTimeline.modelRequestMs);
+    }
+
     // Do not wait for a 3D frame. Sample the state achieved while running
     // the same two mandatory browser-visible native polling cycles as before.
     const settled = await page.evaluate(() => {
