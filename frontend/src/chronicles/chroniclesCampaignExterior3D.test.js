@@ -106,6 +106,8 @@ describe('Chronicles file-authored exterior renderer', () => {
       const lettering = nameplate.getObjectByName('shop-nameplate-lettering');
       expect(lettering.material.map).toBeInstanceOf(THREE.DataTexture);
       expect(lettering.material.map.magFilter).toBe(THREE.NearestFilter);
+      expect(lettering.material.map.image.width).toBe(256);
+      expect(lettering.material.map.image.height).toBe(64);
       expect(nameplate.position.z).toBeLessThan(5); // Within the blocking building footprint.
     }
     for (const house of town.children.filter(child => child.name.includes('-home-'))) {
