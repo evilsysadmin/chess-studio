@@ -319,90 +319,94 @@ async function pressSequence(page, keys) {
 // states share ONE Home/login per viewport; six cold logins unnecessarily
 // overload SwiftShader CI. Suppress all canvas compositing only for these DOM
 // tablet captures; game rendering and interaction retain separate real tests.
-for (const capture of CAPTURES) {
-  test(`Chronicles · pause + audio tablets visual · ${capture.label}`, async ({ browser }) => {
-    test.setTimeout(240_000);
-    await mkdir(ARTIFACT_DIR, { recursive: true });
-    const context = await browser.newContext({
-      viewport: { width: capture.width, height: capture.height },
-      hasTouch: capture.hasTouch, isMobile: capture.hasTouch,
-    });
-    try {
-      const page = await context.newPage();
-      await openChronicles(page, capture.label, { retryVisualHomeLogin: true });
-      const game = page.locator('[data-chronicles="true"]');
-      await expect(game).toBeVisible();
-      await page.addStyleTag({ content: 'canvas {visibility:hidden !important}' });
-      const menu = game.locator('details.chronicles-game-menu');
-      await menu.locator('> summary').evaluate((summary) => summary.click());
-      await expect(menu).toHaveAttribute('open', '');
-      const panel = menu.locator('.chronicles-game-menu__panel');
-      const checkTablet = async (variant) => {
-        const rect = await panel.boundingBox();
-        expect(rect, `${capture.label}: ${variant} panel exists`).not.toBeNull();
-        expect(rect.x, `${capture.label}: ${variant} left`).toBeGreaterThanOrEqual(0);
-        expect(rect.y, `${capture.label}: ${variant} top`).toBeGreaterThanOrEqual(0);
-        expect(rect.x + rect.width, `${capture.label}: ${variant} right`).toBeLessThanOrEqual(capture.width);
-        expect(rect.y + rect.height, `${capture.label}: ${variant} bottom`).toBeLessThanOrEqual(capture.height);
-        const inks = await panel.locator('button').evaluateAll((buttons) => buttons.map((button) => ({
-          label: button.textContent.trim(),
-          inline: button.style.getPropertyValue('color'),
-          priority: button.style.getPropertyPriority('color'),
-          computed: getComputedStyle(button).color,
-        })));
-        expect(inks.length).toBeGreaterThan(0);
-        for (const ink of inks) {
-          expect(['rgb(8, 8, 10)', 'rgb(17, 16, 21)'], `${capture.label}: ${ink.label} dark ink`).toContain(ink.computed);
-          if (variant === 'pause') {
-            expect(ink.inline, `${capture.label}: ${ink.label} inline ink`).toMatch(/^(?:#08080a|rgb\(8,\s*8,\s*10\))$/i);
-            expect(ink.priority, `${capture.label}: ${ink.label} important ink`).toBe('important');
+test.describe('Chronicles · sapphire pause tablet visual proof', () => {
+  // Heavy WebGL visual workers can intermittently stall Home on a cold
+  // Android context. One fresh-worker retry is safer than skipping evidence.
+  test.describe.configure({ retries: 1 });
+  for (const capture of CAPTURES) {
+    test(`Chronicles · pause + audio tablets visual · ${capture.label}`, async ({ browser }) => {
+      test.setTimeout(240_000);
+      await mkdir(ARTIFACT_DIR, { recursive: true });
+      const context = await browser.newContext({
+        viewport: { width: capture.width, height: capture.height },
+        hasTouch: capture.hasTouch, isMobile: capture.hasTouch,
+      });
+      try {
+        const page = await context.newPage();
+        await openChronicles(page, capture.label, { retryVisualHomeLogin: true });
+        const game = page.locator('[data-chronicles="true"]');
+        await expect(game).toBeVisible();
+        await page.addStyleTag({ content: 'canvas {visibility:hidden !important}' });
+        const menu = game.locator('details.chronicles-game-menu');
+        await menu.locator('> summary').evaluate((summary) => summary.click());
+        await expect(menu).toHaveAttribute('open', '');
+        const panel = menu.locator('.chronicles-game-menu__panel');
+        const checkTablet = async (variant) => {
+          const rect = await panel.boundingBox();
+          expect(rect, `${capture.label}: ${variant} panel exists`).not.toBeNull();
+          expect(rect.x, `${capture.label}: ${variant} left`).toBeGreaterThanOrEqual(0);
+          expect(rect.y, `${capture.label}: ${variant} top`).toBeGreaterThanOrEqual(0);
+          expect(rect.x + rect.width, `${capture.label}: ${variant} right`).toBeLessThanOrEqual(capture.width);
+          expect(rect.y + rect.height, `${capture.label}: ${variant} bottom`).toBeLessThanOrEqual(capture.height);
+          const inks = await panel.locator('button').evaluateAll((buttons) => buttons.map((button) => ({
+            label: button.textContent.trim(),
+            inline: button.style.getPropertyValue('color'),
+            priority: button.style.getPropertyPriority('color'),
+            computed: getComputedStyle(button).color,
+          })));
+          expect(inks.length).toBeGreaterThan(0);
+          for (const ink of inks) {
+            expect(['rgb(8, 8, 10)', 'rgb(17, 16, 21)'], `${capture.label}: ${ink.label} dark ink`).toContain(ink.computed);
+            if (variant === 'pause') {
+              expect(ink.inline, `${capture.label}: ${ink.label} inline ink`).toMatch(/^(?:#08080a|rgb\(8,\s*8,\s*10\))$/i);
+              expect(ink.priority, `${capture.label}: ${ink.label} important ink`).toBe('important');
+            }
           }
+        };
+        await expect(panel.locator('.chronicles-game-menu__actions > button')).toHaveText([
+          'Continuar', 'Guardar partida', 'Guardar y salir', 'Salir sin guardar',
+        ]);
+        await expect(menu.locator('#chronicles-music-volume')).toBeVisible();
+        await expect(menu.locator('#chronicles-sfx-volume')).toBeVisible();
+        await checkTablet('pause');
+        if (capture.label === 'android-landscape-844x390') {
+          const scroll = await panel.evaluate((node) => ({
+            content: node.scrollHeight, visible: node.clientHeight,
+          }));
+          expect(scroll.content, 'landscape pause must show actions and audio without scrolling')
+            .toBeLessThanOrEqual(scroll.visible + 1);
         }
-      };
-      await expect(panel.locator('.chronicles-game-menu__actions > button')).toHaveText([
-        'Continuar', 'Guardar partida', 'Guardar y salir', 'Salir sin guardar',
-      ]);
-      await expect(menu.locator('#chronicles-music-volume')).toBeVisible();
-      await expect(menu.locator('#chronicles-sfx-volume')).toBeVisible();
-      await checkTablet('pause');
-      if (capture.label === 'android-landscape-844x390') {
-        const scroll = await panel.evaluate((node) => ({
-          content: node.scrollHeight, visible: node.clientHeight,
-        }));
-        expect(scroll.content, 'landscape pause must show actions and audio without scrolling')
-          .toBeLessThanOrEqual(scroll.visible + 1);
+        // Four game actions plus both mixer sliders must remain inside the
+        // dialog at 844×390 (one integrated tablet, not an audio sub-menu).
+        const pauseActions = await panel.locator('.chronicles-game-menu__actions > button').evaluateAll((buttons) =>
+          buttons.map((button) => {
+            const box = button.getBoundingClientRect();
+            return { name: button.textContent.trim(), x: box.x, y: box.y, right: box.right, bottom: box.bottom };
+          }));
+        expect(pauseActions.map((action) => action.name)).toEqual([
+          'Continuar', 'Guardar partida', 'Guardar y salir', 'Salir sin guardar',
+        ]);
+        const tabletBounds = await panel.boundingBox();
+        expect(tabletBounds, `${capture.label}: pause tablet bounds`).not.toBeNull();
+        for (const action of pauseActions) {
+          expect(action.x, `${capture.label}: ${action.name} left`).toBeGreaterThanOrEqual(0);
+          expect(action.y, `${capture.label}: ${action.name} top`).toBeGreaterThanOrEqual(0);
+          expect(action.right, `${capture.label}: ${action.name} right`).toBeLessThanOrEqual(capture.width);
+          expect(action.bottom, `${capture.label}: ${action.name} bottom`).toBeLessThanOrEqual(capture.height);
+          expect(action.bottom, `${capture.label}: ${action.name} inside pause tablet`)
+            .toBeLessThanOrEqual(tabletBounds.y + tabletBounds.height);
+        }
+        await captureElement(page, panel, `${ARTIFACT_DIR}/chronicles-game-menu-${capture.label}.png`);
+        const musicMute = menu.getByRole('button', { name: /^(Silenciar|Activar) música$/ });
+        await musicMute.click();
+        await checkTablet('audio');
+        await captureElement(page, panel, `${ARTIFACT_DIR}/chronicles-game-menu-audio-${capture.label}.png`);
+      } finally {
+        await context.close();
       }
-      // Four game actions plus both mixer sliders must remain inside the
-      // dialog at 844×390 (one integrated tablet, not an audio sub-menu).
-      const pauseActions = await panel.locator('.chronicles-game-menu__actions > button').evaluateAll((buttons) =>
-        buttons.map((button) => {
-          const box = button.getBoundingClientRect();
-          return { name: button.textContent.trim(), x: box.x, y: box.y, right: box.right, bottom: box.bottom };
-        }));
-      expect(pauseActions.map((action) => action.name)).toEqual([
-        'Continuar', 'Guardar partida', 'Guardar y salir', 'Salir sin guardar',
-      ]);
-      const tabletBounds = await panel.boundingBox();
-      expect(tabletBounds, `${capture.label}: pause tablet bounds`).not.toBeNull();
-      for (const action of pauseActions) {
-        expect(action.x, `${capture.label}: ${action.name} left`).toBeGreaterThanOrEqual(0);
-        expect(action.y, `${capture.label}: ${action.name} top`).toBeGreaterThanOrEqual(0);
-        expect(action.right, `${capture.label}: ${action.name} right`).toBeLessThanOrEqual(capture.width);
-        expect(action.bottom, `${capture.label}: ${action.name} bottom`).toBeLessThanOrEqual(capture.height);
-        expect(action.bottom, `${capture.label}: ${action.name} inside pause tablet`)
-          .toBeLessThanOrEqual(tabletBounds.y + tabletBounds.height);
-      }
-      await captureElement(page, panel, `${ARTIFACT_DIR}/chronicles-game-menu-${capture.label}.png`);
-      const musicMute = menu.getByRole('button', { name: /^(Silenciar|Activar) música$/ });
-      await musicMute.click();
-      await checkTablet('audio');
-      await captureElement(page, panel, `${ARTIFACT_DIR}/chronicles-game-menu-audio-${capture.label}.png`);
-    } finally {
-      await context.close();
-    }
-  });
-}
-
+    });
+  }
+});
 
 // New campaigns always start in Swordhaven. Walk the real route: north gate,
 // then the Banner Road's northern verge east and down to the Rookwood trail
