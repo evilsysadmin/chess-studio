@@ -208,9 +208,10 @@
      out early and leaves users staring at the room's intro. */
   .insights-training-room:not(.insights-workspace-view-now) .insights-workspace-panel {
     min-height: 100dvh;
-    /* The floating session radio occupies the mobile top-right corner.
-       Leave the archival heading beneath it after programmatic focus. */
-    scroll-margin-top: max(4.75rem, calc(env(safe-area-inset-top) + 4rem));
+    /* Reserve room for the archive's own tab row above the heading.
+       Focusing an archive panel must not scroll "Mi progreso" under the
+       fixed session radio on narrow phones. */
+    scroll-margin-top: max(9.5rem, calc(env(safe-area-inset-top) + 9rem));
   }
   .insights-training-room .insights-archive-context {
     gap: .42rem;
