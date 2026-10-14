@@ -860,7 +860,9 @@ for (const capture of CAPTURES) {
   // in-context full-screen readback could starve menu/automap interactions
   // until the 360s timeout, without any UI assertion failing.
   test(`Chronicles · chrome and automap visual · ${capture.label}`, async ({ browser }) => {
-    test.setTimeout(240_000);
+    // Slow SwiftShader WebGL contexts may require more than 4 minutes for a separate
+    // menu+automap screenshot lane; keep all visual checks and captures enabled.
+    test.setTimeout(360_000);
     await mkdir(ARTIFACT_DIR, { recursive: true });
     const context = await browser.newContext({
       viewport: { width: capture.width, height: capture.height },
@@ -1010,6 +1012,7 @@ for (const capture of CAPTURES) {
         automap.locator('.chronicles-automap__panel'),
         `${ARTIFACT_DIR}/chronicles-automap-${capture.label}.png`,
       );
+      console.log(`[Chronicles chrome visual] ${capture.label}: automap screenshot captured`);
       // Keep this producer limited to its PNG/geometry contract. After
       // software-WebGL readbacks the runner may stall on synthetic key input
       // and exhaust the entire 360s budget. Automap/Escape lifecycle belongs
