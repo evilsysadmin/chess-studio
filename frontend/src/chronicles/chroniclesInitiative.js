@@ -1,7 +1,7 @@
 import { chroniclesMapForState } from './chroniclesMapCatalog.js';
 import { chroniclesAutomapCellKey, chroniclesAutomapLocalVisibleCells } from './chroniclesAutomap.js';
 import { resolveChroniclesEnemyBuildDefinition } from './chroniclesEnemyBuilds.js';
-import { chroniclesRuntimeEnemyPosition } from '../chroniclesOfMatthiasTurns.js';
+import { chroniclesEnemyCanAttackParty, chroniclesRuntimeEnemyPosition } from '../chroniclesOfMatthiasTurns.js';
 import {
   chroniclesCollapsePartyAfterCombat,
   chroniclesDeployPartyForCombat,
@@ -139,9 +139,10 @@ export function chroniclesEngagedEnemies(state, enemies) {
     const reach = enemyEngagementRange(enemy);
     // A nearby enemy is not necessarily an encounter: intervening walls and
     // facing matter. Direct attack range still engages even outside the FOV.
-    const attackReach = Math.max(1, Number(enemy?.ai?.attackReach ?? enemy?.retaliationReach ?? 1));
     const visibleToParty = visible?.has(chroniclesAutomapCellKey(enemyPosition.x, enemyPosition.y)) ?? true;
-    return distance <= reach && (visibleToParty || distance <= attackReach);
+    // Reuse actual targeting: ranged enemies do not attack diagonally or
+    // through walls just because Manhattan distance is within attackReach.
+    return distance <= reach && (visibleToParty || chroniclesEnemyCanAttackParty(state, enemy, enemyPosition));
   });
 }
 
