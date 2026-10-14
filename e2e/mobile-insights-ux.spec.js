@@ -72,3 +72,36 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 
     expect(eyebrowBox.x - portraitBox.x).toBeGreaterThanOrEqual(8);
   });
 }
+
+test('Así juegas móvil · archivo despejado de la radio tras navegar a Errores', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await mockApi(page);
+  await login(page);
+
+  const player = page.locator('.global-music-dock .music-deck-collapsed');
+  await expect(player).toBeVisible();
+  await page.locator('.illustrated-home__matthias').click();
+  const workspace = page.locator('.insights-coach-workspace');
+  const archive = workspace.locator('details[data-insights-archive]');
+  if (await archive.getAttribute('open') === null) {
+    await archive.locator(':scope > summary').click();
+  }
+
+  await archive.getByRole('button', { name: 'Errores', exact: true }).click();
+  const panel = workspace.getByRole('region', { name: 'Errores recurrentes' });
+  await expect(panel).toBeFocused();
+
+  // The radio stays fixed near the upper-right corner. The tabs must remain
+  // reachable when the archive panel scrolls into view after a real tap.
+  const progressTab = archive.getByRole('button', { name: 'Mi progreso', exact: true });
+  await expect.poll(async () => {
+    const [tab, dock] = await Promise.all([progressTab.boundingBox(), player.boundingBox()]);
+    if (!tab || !dock) return false;
+    const separated = tab.y >= dock.y + dock.height + 4 ||
+      tab.x + tab.width <= dock.x - 4 ||
+      tab.x >= dock.x + dock.width + 4;
+    return separated && tab.y >= 0 && tab.y + tab.height <= 844;
+  }, { message: 'Mi progreso must stay clear of the floating radio after archive navigation' }).toBe(true);
+  await progressTab.click();
+  await expect(workspace.getByRole('region', { name: 'Mi progreso' })).toBeFocused();
+});
