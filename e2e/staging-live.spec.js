@@ -253,11 +253,62 @@ async function assertLivePvpBrowserPath(page) {
   // Diagnostics are one-shot and contain only timing, not URLs or identities.
   const openedAt = Date.now();
   const openMs = () => Date.now() - openedAt;
+  // Measure DOM milestones from *inside* Chromium. Playwright's own locator
+  // commands can be delayed by a busy main thread, even after React has
+  // inserted the dialog. Keep the observer read-only and stop it after open.
+  const browserOriginMs = await page.evaluate(() => {
+    const origin = performance.now();
+    const marks = { dialogMountMs: null, sceneMountMs: null, sceneReadyMs: null, sceneFallbackMs: null };
+    const longTasks = { count: 0, totalMs: 0, maxMs: 0 };
+    const elapsed = () => Math.round(performance.now() - origin);
+    const captureDom = () => {
+      if (marks.dialogMountMs === null && document.querySelector('.pvp-lobby[role="dialog"]')) {
+        marks.dialogMountMs = elapsed();
+      }
+      const scene = document.querySelector('[data-pvp-duel-hall-3d]');
+      if (!scene) return;
+      if (marks.sceneMountMs === null) marks.sceneMountMs = elapsed();
+      const state = scene.getAttribute('data-pvp-duel-hall-3d');
+      if (state === 'ready' && marks.sceneReadyMs === null) marks.sceneReadyMs = elapsed();
+      if (state?.startsWith('fallback') && marks.sceneFallbackMs === null) marks.sceneFallbackMs = elapsed();
+    };
+    const domObserver = new MutationObserver(captureDom);
+    domObserver.observe(document.body, {
+      childList: true, subtree: true, attributes: true,
+      attributeFilter: ['data-pvp-duel-hall-3d'],
+    });
+    let taskObserver = null;
+    if (PerformanceObserver.supportedEntryTypes?.includes('longtask')) {
+      taskObserver = new PerformanceObserver((list) => {
+        for (const entry of list.getEntries()) {
+          longTasks.count += 1;
+          longTasks.totalMs += entry.duration;
+          longTasks.maxMs = Math.max(longTasks.maxMs, entry.duration);
+        }
+      });
+      taskObserver.observe({ type: 'longtask' });
+    }
+    captureDom();
+    window.__stagingDuelHallTiming = {
+      marks, longTasks,
+      close: () => { domObserver.disconnect(); taskObserver?.disconnect(); },
+    };
+    return Date.now();
+  });
+  const browserMs = (value) => value === null ? 'not-seen' : Math.round(browserOriginMs - openedAt + value);
   const openTimeline = {
     firstLobbyRequestMs: null,
     firstLobbyResponseMs: null,
     hallSceneChunkRequestMs: null,
     hallSceneChunkResponseMs: null,
+    modelRequestMs: null,
+    modelHeadersMs: null,
+    modelFinishedMs: null,
+    modelRequests: 0,
+  };
+  const isModelGlb = (url) => {
+    try { return new URL(url).pathname.toLowerCase().endsWith('.glb'); }
+    catch { return false; }
   };
   const isHallSceneChunk = (url) => /(?:PvPDuelHallScene3D|PvpDuelHallShell)[^/]*\.js(?:[?#]|$)/i.test(url);
   const onOpenRequest = (request) => {
@@ -267,6 +318,10 @@ async function assertLivePvpBrowserPath(page) {
     if (isHallSceneChunk(request.url()) && openTimeline.hallSceneChunkRequestMs === null) {
       openTimeline.hallSceneChunkRequestMs = openMs();
     }
+    if (request.method() === 'GET' && isModelGlb(request.url())) {
+      openTimeline.modelRequests += 1;
+      if (openTimeline.modelRequestMs === null) openTimeline.modelRequestMs = openMs();
+    }
   };
   const onOpenResponse = (response) => {
     if (response.request().method() === 'GET' && isPvpApiPath(response.url(), '/lobby') && openTimeline.firstLobbyResponseMs === null) {
@@ -275,7 +330,16 @@ async function assertLivePvpBrowserPath(page) {
     if (isHallSceneChunk(response.url()) && openTimeline.hallSceneChunkResponseMs === null) {
       openTimeline.hallSceneChunkResponseMs = openMs();
     }
+    if (response.request().method() === 'GET' && isModelGlb(response.url()) && openTimeline.modelHeadersMs === null) {
+      openTimeline.modelHeadersMs = openMs();
+    }
   };
+  const onOpenFinished = (request) => {
+    if (request.method() === 'GET' && isModelGlb(request.url()) && openTimeline.modelFinishedMs === null) {
+      openTimeline.modelFinishedMs = openMs();
+    }
+  };
+  page.on('requestfinished', onOpenFinished);
   page.on('request', onOpenRequest);
   page.on('response', onOpenResponse);
 
@@ -301,6 +365,28 @@ async function assertLivePvpBrowserPath(page) {
       ` scene_chunk_response_ms=${openTimeline.hallSceneChunkResponseMs ?? 'not-seen'}` +
       ` dialog_ready_ms=${dialogReadyMs} scene_state=${sceneStatus}`,
     );
+    const timing = await page.evaluate(() => {
+      const probe = window.__stagingDuelHallTiming;
+      return probe ? { marks: { ...probe.marks }, longTasks: { ...probe.longTasks } } : null;
+    });
+    if (timing) {
+      const { marks, longTasks } = timing;
+      console.log(
+        `STAGING_PVP_RENDER dialog_mount_ms=${browserMs(marks.dialogMountMs)}` +
+        ` scene_mount_ms=${browserMs(marks.sceneMountMs)}` +
+        ` scene_ready_ms=${browserMs(marks.sceneReadyMs)}` +
+        ` scene_fallback_ms=${browserMs(marks.sceneFallbackMs)}` +
+        ` glb_requests=${openTimeline.modelRequests}` +
+        ` glb_start_ms=${openTimeline.modelRequestMs ?? 'not-seen'}` +
+        ` glb_headers_ms=${openTimeline.modelHeadersMs ?? 'not-seen'}` +
+        ` glb_finished_ms=${openTimeline.modelFinishedMs ?? 'not-seen'}` +
+        ` longtask_count=${longTasks.count}` +
+        ` longtask_total_ms=${Math.round(longTasks.totalMs)}` +
+        ` longtask_max_ms=${Math.round(longTasks.maxMs)}`,
+      );
+    }
+    // Stop sampling as soon as opening is measured, not through later PvP.
+    await page.evaluate(() => window.__stagingDuelHallTiming?.close());
     logPhase('open-lobby');
 
     // Enrolarnos fuerza el mismo polling que usa una sesión humana real:
@@ -339,6 +425,13 @@ async function assertLivePvpBrowserPath(page) {
     await expect(lobby).toBeHidden();
     logPhase('leave-lobby');
   } finally {
+    if (!page.isClosed()) {
+      await page.evaluate(() => {
+        window.__stagingDuelHallTiming?.close();
+        delete window.__stagingDuelHallTiming;
+      }).catch(() => {});
+    }
+    page.off('requestfinished', onOpenFinished);
     page.off('request', onOpenRequest);
     page.off('response', onOpenResponse);
     page.off('requestfailed', onRequestFailed);
