@@ -1321,7 +1321,6 @@ export default function ChroniclesOfMatthias({ onExit }) {
           <div className="chronicles-stage">
             <div ref={hostRef} className="chronicles-three" data-chronicles-renderer="three" aria-label="Mazmorra 3D en primera persona de Chronicles of Matthias" />
             <div className="chronicles-vignette" aria-hidden="true" />
-            <div className="chronicles-crosshair" aria-hidden="true">·</div>
             <ChroniclesInitiativeRail initiative={state.initiative} />
             <ChroniclesNarratorOverlay message={state.message} open={chronicleModalOpen}
               onOpenChange={(next) => {
