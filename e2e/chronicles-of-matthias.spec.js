@@ -454,6 +454,9 @@ test('Chronicles of Matthias · clic en un PJ abre una ficha RPG con retrato aut
       viewportWidth: document.documentElement.clientWidth,
       viewportHeight: document.documentElement.clientHeight,
       sheetWidth: node.getBoundingClientRect().width,
+      frameInset: parseFloat(getComputedStyle(node).paddingLeft),
+      frameWidth: parseFloat(getComputedStyle(node, '::after').borderLeftWidth),
+      gemSize: getComputedStyle(node, '::before').backgroundSize,
       headerHeight: header.height,
       progressionHeight: progression.height,
       tabsHeight: tabs.height,
@@ -478,6 +481,8 @@ test('Chronicles of Matthias · clic en un PJ abre una ficha RPG con retrato aut
     };
   });
   expect(landscape.sheetWidth).toBeLessThanOrEqual(landscape.viewportWidth);
+  expect(landscape.frameWidth).toBeLessThanOrEqual(landscape.frameInset);
+  expect(landscape.frameWidth).toBeLessThan(20);
   expect(landscape.headerHeight).toBeLessThan(100);
   expect(landscape.progressionHeight).toBeLessThan(55);
   expect(landscape.tabsHeight).toBeLessThan(48);
