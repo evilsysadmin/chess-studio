@@ -954,6 +954,14 @@ for (const capture of CAPTURES) {
       await expect(automapCells.first()).toBeVisible();
       await expect(automapMarker).toBeVisible();
       expect(await automapCells.count(), `${capture.label}: automap reveals geometry`).toBeGreaterThanOrEqual(3);
+      const fog = await automap.locator('[data-chronicles-discovery]').evaluateAll((cells) => {
+        const colors = {};
+        cells.forEach((cell) => { colors[cell.dataset.chroniclesDiscovery] ||= getComputedStyle(cell).fill; });
+        return colors;
+      });
+      expect(fog.unknown, `${capture.label}: unknown terrain is uniform fog`).toBeTruthy();
+      expect(fog.visited, `${capture.label}: visited terrain is present`).toBeTruthy();
+      expect(fog.unknown, `${capture.label}: fog must contrast explored floor`).not.toBe(fog.visited);
       const markerBox = await automapMarker.boundingBox();
       const automapCanvas = automap.locator('.chronicles-automap__canvas');
       const canvasBox = await automapCanvas.boundingBox();
