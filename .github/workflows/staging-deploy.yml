@@ -87,22 +87,22 @@ jobs:
       - name: Re-check main before OCI fallback
         id: fallback_admission
         if: steps.watcher.outputs.converged != 'true'
-        run: python3 -S scripts/staging_generation.py main-head --sha "$DEPLOY_SHA" --github-output "$GITHUB_OUTPUT"
+        run: python3 -S scripts/staging_generation.py main-head --sha "$DEPLOY_SHA" --github-output "$GITHUB_OUTPUT" --probe-backend
       - name: Restore cached OCI SDK toolchain
-        if: steps.watcher.outputs.converged != 'true' && steps.fallback_admission.outputs.superseded != 'true'
+        if: steps.fallback_admission.outputs.requires_sdk == 'true'
         uses: ./.github/actions/setup-oci-sdk
         with:
           version: '2.185.2'
           python-version: '3.13'
       - name: Validate OCI deploy contracts
-        if: steps.watcher.outputs.converged != 'true' && steps.fallback_admission.outputs.superseded != 'true'
+        if: steps.fallback_admission.outputs.requires_sdk == 'true'
         run: |
           python3 -S scripts/oci_run_command.py --self-test
           python3 -S scripts/oci_runtime_config.py --self-test
           python3 -S scripts/oci_vault_sync.py --self-test
           python3 -S scripts/verify_backend_staging.py --self-test
       - name: Deploy exact backend commit to OCI staging
-        if: steps.watcher.outputs.converged != 'true' && steps.fallback_admission.outputs.superseded != 'true'
+        if: steps.fallback_admission.outputs.requires_sdk == 'true'
         shell: bash
         env:
           OCI_TENANCY_OCID: ${{ secrets.OCI_TENANCY_OCID }}

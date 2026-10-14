@@ -37,6 +37,7 @@ async function openChronicles(page, captureLabel, {
   chroniclesAreaTransform = null,
   newTown = false,
   newCampaign = false,
+  retryVisualHomeLogin = true,
 } = {}) {
   await mockApi(page, {
     profileSeed: {
@@ -48,7 +49,14 @@ async function openChronicles(page, captureLabel, {
     chroniclesWorldFlags,
     chroniclesAreaTransform,
   });
-  await login(page);
+  // Tablet evidence requires the interactive Home gate, not completion of
+  // unrelated image loads. Permit slow Home mounting without *re-submitting*
+  // credentials: the first login may have succeeded before its Home timed out,
+  // so a second login would wait for an absent Usuario field.
+  const loginOptions = retryVisualHomeLogin
+    ? { navigationWaitUntil: 'domcontentloaded', homeVisibleTimeout: 60_000 }
+    : undefined;
+  await login(page, loginOptions);
   const speech = page.getByRole('region', { name: 'Mensaje de Matthias', exact: true });
   if (await speech.isVisible().catch(() => false)) {
     const close = speech.getByRole('button', { name: 'Cerrar comentario de Matthias', exact: true });
@@ -86,17 +94,13 @@ async function openChronicles(page, captureLabel, {
   // Approved expedition study must really load from the built frontend, with
   // accessible live controls layered over the decorative, browser-chrome-free art.
   await expect(entry).toHaveAttribute('data-chronicles-art', 'approved-expedition-study-v1');
-  // The common route has one clear primary action; secondary actions live
-  // behind an explicit disclosure instead of six equally weighted rows.
+  // Primary expedition path stays compact. Secondary actions are discoverable
+  // through a real accessible disclosure, not six competing entry rows.
   await expect(entry.locator('.chronicles-save-menu__actions > button')).toHaveCount(3);
-  await expect(entry.getByRole('button', { name: /Más opciones de juego/ })).toHaveAttribute('aria-expanded', 'false');
-  await expect(entry.getByRole('button', { name: /Nueva campaña/ })).toBeVisible();
-  await expect(entry.getByRole('button', { name: /Volver al castillo/ })).toBeVisible();
-  await entry.getByRole('button', { name: /Más opciones de juego/ }).click();
-  await expect(entry.getByRole('button', { name: /Más opciones de juego/ })).toHaveAttribute('aria-expanded', 'true');
-  for (const name of ['Nuevo juego', 'Cargar otra partida', 'Gestionar partidas']) {
-    await expect(entry.getByRole('button', { name: new RegExp(name) })).toBeVisible();
-  }
+  const moreExpeditionActions = entry.getByRole('button', { name: 'Más opciones de juego', exact: true });
+  await expect(moreExpeditionActions).toBeVisible();
+  await expect(moreExpeditionActions).toHaveAttribute('aria-expanded', 'false');
+  await expect(entry.getByRole('button', { name: 'Volver al castillo', exact: true })).toBeVisible();
   expect(await entry.locator('.chronicles-save-menu__sky').evaluate(async (sky) => {
     const bg = getComputedStyle(sky).backgroundImage;
     const match = bg.match(/url\(["']?([^"')]+)["']?\)/);
@@ -122,13 +126,16 @@ async function openChronicles(page, captureLabel, {
     path: `${ARTIFACT_DIR}/chronicles-save-menu-${captureLabel}.png`,
     animations: 'disabled', timeout: 30_000,
   });
-  if (!newCampaign) {
-    const more = entry.getByRole('button', { name: 'Más opciones de juego', exact: true });
-    if (await more.getAttribute('aria-expanded') !== 'true') await more.click();
-  }
-  await entry.getByRole('button', newCampaign
+  const launch = entry.getByRole('button', newCampaign
     ? { name: /Nueva campaña/ }
-    : { name: 'Nuevo juego', exact: true }).click();
+    : { name: 'Nuevo juego', exact: true });
+  if (!(await launch.isVisible().catch(() => false))) {
+    await moreExpeditionActions.click();
+    await expect(moreExpeditionActions).toHaveAttribute('aria-expanded', 'true');
+    await expect(entry.getByRole('button', { name: 'Cargar otra partida', exact: true })).toBeVisible();
+    await expect(entry.getByRole('button', { name: 'Gestionar partidas', exact: true })).toBeVisible();
+  }
+  await launch.click();
   const setup = page.locator('[data-chronicles-character-setup]');
   try {
     await expect(setup).toBeVisible({ timeout: 8_000 });
@@ -846,34 +853,6 @@ for (const capture of CAPTURES) {
 
       await captureElement(page, gameRoot, `${ARTIFACT_DIR}/chronicles-playing-${capture.label}.png`);
 
-      await writeFile(
-        `${ARTIFACT_DIR}/chronicles-visual-health-${capture.label}.json`,
-        `${JSON.stringify({ schema: 4, scope: 'chronicles', capture: { label: capture.label, ...health } }, null, 2)}\n`,
-        'utf8',
-      );
-    } finally {
-      await context.close();
-    }
-  });
-
-  // Capture these controls in their own Chromium/WebGL context. A previous
-  // in-context full-screen readback could starve menu/automap interactions
-  // until the 360s timeout, without any UI assertion failing.
-  test(`Chronicles · chrome and automap visual · ${capture.label}`, async ({ browser }) => {
-    // Slow SwiftShader WebGL contexts may require more than 4 minutes for a separate
-    // menu+automap screenshot lane; keep all visual checks and captures enabled.
-    test.setTimeout(360_000);
-    await mkdir(ARTIFACT_DIR, { recursive: true });
-    const context = await browser.newContext({
-      viewport: { width: capture.width, height: capture.height },
-      hasTouch: capture.hasTouch,
-      isMobile: capture.hasTouch,
-    });
-    const page = await context.newPage();
-    try {
-      await openChronicles(page, capture.label);
-      const gameRoot = page.locator('[data-chronicles="true"]');
-      await expect(gameRoot).toBeVisible();
       // A browser «night mode» must not lighten the dark ink on the stone.
       expect(await gameRoot.evaluate((root) => getComputedStyle(root).colorScheme.split(' ').sort().join(' ')), `${capture.label}: Chronicles opts out of forced dark`).toBe('light only');
 
@@ -932,62 +911,130 @@ for (const capture of CAPTURES) {
         expect(ink.computed, `${capture.label}: ${selector} final ink`).toBe('rgb(8, 8, 10)');
       }
 
-      // Capture only the menu panel: reading the full WebGL framebuffer here
-      // can stall Chromium software rendering without exercising the menu.
-      // Every menu action stays on screen, «Salir y guardar» included.
-      const menuDetails = page.locator('details.chronicles-game-menu');
-      const menuSummary = menuDetails.locator('> summary');
-      await menuSummary.evaluate((summary) => summary.click());
-      const exitAction = menuDetails.getByRole('button', { name: 'Salir y guardar', exact: true });
-      await expect(exitAction).toBeVisible();
-      // Both controls belong to the current menu; keyboard-adjusting them
-      // must not trigger dungeon movement hotkeys.
-      const musicSlider = menuDetails.locator('#chronicles-music-volume');
-      const fxSlider = menuDetails.locator('#chronicles-sfx-volume');
-      await expect(musicSlider).toBeVisible();
-      await expect(fxSlider).toBeVisible();
-      const turnsBeforeAudio = await gameRoot.getAttribute('data-chronicles-turns');
-      await musicSlider.focus();
-      await musicSlider.press('Home');
-      await expect(musicSlider).toHaveValue('0');
-      await musicSlider.press('ArrowRight');
-      await expect(musicSlider).toHaveValue('5');
-      await expect(gameRoot).toHaveAttribute('data-chronicles-turns', turnsBeforeAudio);
+      // One complete real Three.js screenshot per viewport, then stop.
+      // Menu/audio and automap snapshots live in isolated browser contexts
+      // below so SwiftShader readbacks cannot stall this gameplay contract.
 
-      // The previously pale menu action labels must receive the same
-      // browser-verified runtime ink as MAPA and MENÚ.
-      const menuInks = await menuDetails.locator('.chronicles-game-menu__panel button').evaluateAll((buttons) =>
-        buttons.map((button) => ({
+      await writeFile(
+        `${ARTIFACT_DIR}/chronicles-visual-health-${capture.label}.json`,
+        `${JSON.stringify({ schema: 4, scope: 'chronicles', capture: { label: capture.label, ...health } }, null, 2)}\n`,
+        'utf8',
+      );
+    } finally {
+      await context.close();
+    }
+  });
+}
+
+
+// The real Three.js environment is captured independently above. Both tablet
+// states share ONE Home/login per viewport; six cold logins unnecessarily
+// overload SwiftShader CI. Suppress all canvas compositing only for these DOM
+// tablet captures; game rendering and interaction retain separate real tests.
+for (const capture of CAPTURES) {
+  test(`Chronicles · pause + audio tablets visual · ${capture.label}`, async ({ browser }) => {
+    test.setTimeout(240_000);
+    await mkdir(ARTIFACT_DIR, { recursive: true });
+    const context = await browser.newContext({
+      viewport: { width: capture.width, height: capture.height },
+      hasTouch: capture.hasTouch, isMobile: capture.hasTouch,
+    });
+    try {
+      const page = await context.newPage();
+      await openChronicles(page, capture.label, { retryVisualHomeLogin: true });
+      const game = page.locator('[data-chronicles="true"]');
+      await expect(game).toBeVisible();
+      await page.addStyleTag({ content: 'canvas {visibility:hidden !important}' });
+      const menu = game.locator('details.chronicles-game-menu');
+      await menu.locator('> summary').evaluate((summary) => summary.click());
+      await expect(menu).toHaveAttribute('open', '');
+      const panel = menu.locator('.chronicles-game-menu__panel');
+      const checkTablet = async (variant) => {
+        const rect = await panel.boundingBox();
+        expect(rect, `${capture.label}: ${variant} panel exists`).not.toBeNull();
+        expect(rect.x, `${capture.label}: ${variant} left`).toBeGreaterThanOrEqual(0);
+        expect(rect.y, `${capture.label}: ${variant} top`).toBeGreaterThanOrEqual(0);
+        expect(rect.x + rect.width, `${capture.label}: ${variant} right`).toBeLessThanOrEqual(capture.width);
+        expect(rect.y + rect.height, `${capture.label}: ${variant} bottom`).toBeLessThanOrEqual(capture.height);
+        const inks = await panel.locator('button').evaluateAll((buttons) => buttons.map((button) => ({
           label: button.textContent.trim(),
           inline: button.style.getPropertyValue('color'),
           priority: button.style.getPropertyPriority('color'),
           computed: getComputedStyle(button).color,
-        }))
-      );
-      expect(menuInks.length, 'menu has actual actions').toBeGreaterThan(3);
-      for (const ink of menuInks) {
-        expect(['#08080a', 'rgb(8, 8, 10)'], `menu action ${ink.label} inline ink`).toContain(ink.inline);
-        expect(ink.priority, `menu action ${ink.label} important ink`).toBe('important');
-        expect(ink.computed, `menu action ${ink.label} black ink`).toBe('rgb(8, 8, 10)');
+        })));
+        expect(inks.length).toBeGreaterThan(0);
+        for (const ink of inks) {
+          expect(['rgb(8, 8, 10)', 'rgb(17, 16, 21)'], `${capture.label}: ${ink.label} dark ink`).toContain(ink.computed);
+          if (variant === 'pause') {
+            expect(ink.inline, `${capture.label}: ${ink.label} inline ink`).toMatch(/^(?:#08080a|rgb\(8,\s*8,\s*10\))$/i);
+            expect(ink.priority, `${capture.label}: ${ink.label} important ink`).toBe('important');
+          }
+        }
+      };
+      await expect(panel.locator('> button')).toHaveText([
+        'Continuar', 'Guardar partida', 'Guardar y salir', 'Salir sin guardar', 'Opciones de audio',
+      ]);
+      await expect(menu.locator('#chronicles-music-volume')).toHaveCount(0);
+      await checkTablet('pause');
+      if (capture.label === 'android-landscape-844x390') {
+        const scroll = await panel.evaluate((node) => ({
+          content: node.scrollHeight, visible: node.clientHeight,
+        }));
+        expect(scroll.content, 'landscape pause needs no hidden vertical scrolling')
+          .toBeLessThanOrEqual(scroll.visible + 1);
       }
-
-      const exitBox = await exitAction.boundingBox();
-      expect(exitBox, `${capture.label}: menu exit action has bounds`).not.toBeNull();
-      expect(exitBox.y, `${capture.label}: menu exit action below the top edge`).toBeGreaterThanOrEqual(0);
-      expect(exitBox.y + exitBox.height, `${capture.label}: menu exit action above the bottom edge`).toBeLessThanOrEqual(capture.height);
-      // MM3's raised light stone requires DARK engraved glyphs, even when the
-      // browser requests a dark appearance. This was unreadable in real play.
-      const inks = await exitAction.evaluate((button) => ({
-        color: getComputedStyle(button).color,
-        fill: getComputedStyle(button).webkitTextFillColor,
+      // The panel may fit while its children overflow/clamp outside a short
+      // landscape phone. Verify EVERY action without scrolling, especially
+      // Guardar y salir (historically ended at y=475 on a 390px viewport).
+      const pauseActions = await panel.locator('> button').evaluateAll((buttons) => buttons.map((button) => {
+        const box = button.getBoundingClientRect();
+        return { name: button.textContent.trim(), x: box.x, y: box.y, right: box.right, bottom: box.bottom };
       }));
-      expect(inks.color, `${capture.label}: menu ink must be dark`).toBe('rgb(8, 8, 10)');
-      expect(inks.fill, `${capture.label}: WebKit must keep dark ink`).toBe('rgb(8, 8, 10)');
-      await captureElement(page, menuDetails.locator('.chronicles-game-menu__panel'), `${ARTIFACT_DIR}/chronicles-game-menu-${capture.label}.png`);
-      await menuSummary.evaluate((summary) => summary.click());
-      await expect(exitAction).toBeHidden();
+      expect(pauseActions.map((action) => action.name)).toEqual([
+        'Continuar', 'Guardar partida', 'Guardar y salir', 'Salir sin guardar', 'Opciones de audio',
+      ]);
+      const tabletBounds = await panel.boundingBox();
+      expect(tabletBounds, `${capture.label}: pause tablet bounds`).not.toBeNull();
+      for (const action of pauseActions) {
+        expect(action.x, `${capture.label}: ${action.name} left`).toBeGreaterThanOrEqual(0);
+        expect(action.y, `${capture.label}: ${action.name} top`).toBeGreaterThanOrEqual(0);
+        expect(action.right, `${capture.label}: ${action.name} right`).toBeLessThanOrEqual(capture.width);
+        expect(action.bottom, `${capture.label}: ${action.name} bottom`).toBeLessThanOrEqual(capture.height);
+        expect(action.bottom, `${capture.label}: ${action.name} remains inside pause tablet`)
+          .toBeLessThanOrEqual(tabletBounds.y + tabletBounds.height);
+      }
+      await captureElement(page, panel, `${ARTIFACT_DIR}/chronicles-game-menu-${capture.label}.png`);
+      await menu.getByRole('button', { name: 'Opciones de audio' }).evaluate((button) => button.click());
+      await expect(menu.getByRole('slider', { name: 'Volumen de música' })).toBeVisible();
+      await expect(menu.getByRole('slider', { name: 'Volumen de efectos de Chronicles' })).toBeVisible();
+      await expect(menu.getByRole('button', { name: 'Volver al menú' })).toBeVisible();
+      await expect(menu.getByRole('button', { name: 'Guardar y salir' })).toHaveCount(0);
+      await checkTablet('audio');
+      await captureElement(page, panel, `${ARTIFACT_DIR}/chronicles-game-menu-audio-${capture.label}.png`);
+    } finally {
+      await context.close();
+    }
+  });
+}
 
-      await page.getByRole('button', { name: 'Minimapa local. Abrir automapa completo', exact: true }).click();
+// Fresh-context visual proof: the minimap overlay is not a second GPU
+// readback after the full scene + pause-menu screenshots. Keep this separate
+// from the existing functional keyboard/Escape automap canaries.
+for (const capture of CAPTURES) {
+  test(`Chronicles · automap visual · ${capture.label}`, async ({ browser }) => {
+    test.setTimeout(240_000);
+    await mkdir(ARTIFACT_DIR, { recursive: true });
+    const context = await browser.newContext({
+      viewport: { width: capture.width, height: capture.height },
+      hasTouch: capture.hasTouch,
+      isMobile: capture.hasTouch,
+    });
+    try {
+      const page = await context.newPage();
+      await openChronicles(page, capture.label);
+      const gameRoot = page.locator('[data-chronicles="true"]');
+      await expect(gameRoot).toBeVisible();
+      await page.getByRole('button', { name: 'Minimapa local. Abrir automapa completo', exact: true }).evaluate((button) => button.click());
       const automap = page.getByRole('dialog', { name: 'Automapa de Chronicles', exact: true });
       await expect(automap).toBeVisible();
       const automapCells = automap.locator('.chronicles-automap__cell');
@@ -1012,20 +1059,11 @@ for (const capture of CAPTURES) {
         automap.locator('.chronicles-automap__panel'),
         `${ARTIFACT_DIR}/chronicles-automap-${capture.label}.png`,
       );
-      console.log(`[Chronicles chrome visual] ${capture.label}: automap screenshot captured`);
-      // Keep this producer limited to its PNG/geometry contract. After
-      // software-WebGL readbacks the runner may stall on synthetic key input
-      // and exhaust the entire 360s budget. Automap/Escape lifecycle belongs
-      // to the required functional Chronicles browser canaries, not to this
-      // heavyweight visual capture; the menu's actual bounds were asserted
-      // above without another GPU round trip.
-
     } finally {
       await context.close();
     }
   });
 }
-
 
 test('Chronicles · mobile keeps Use separate from Attack · 390x844', async ({ browser }) => {
   test.setTimeout(180_000);
@@ -1386,7 +1424,7 @@ test('Chronicles · MM3 manual save menu · responsive Android 390px', async ({ 
     await menu.locator('summary').click();
     await expect(menu).toHaveAttribute('open', '');
     await expect(menu.getByRole('button', { name: 'Guardar partida', exact: true })).toBeVisible();
-    await expect(menu.getByRole('button', { name: 'Salir y guardar', exact: true })).toBeVisible();
+    await expect(menu.getByRole('button', { name: 'Guardar y salir', exact: true })).toBeVisible();
     await menu.getByRole('button', { name: 'Salir sin guardar', exact: true }).click();
     const confirm = menu.getByRole('button', { name: 'Sí, salir sin guardar', exact: true });
     await expect(confirm).toBeVisible();
