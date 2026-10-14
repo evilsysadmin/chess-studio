@@ -110,8 +110,9 @@ export default function ChroniclesAutomap({ open, state, visitedCells, onClose }
           >
             {map.grid.flatMap((row, y) => Array.from(row).map((tile, x) => {
               const key = chroniclesAutomapCellKey(x, y);
-              if (!revealed.has(key)) return null;
+              const discovered = revealed.has(key);
               const wall = tile === '#';
+              const stateName = !discovered ? 'unknown' : visited.has(key) && !wall ? 'visited' : 'revealed';
               return (
                 <rect
                   key={key}
@@ -120,7 +121,8 @@ export default function ChroniclesAutomap({ open, state, visitedCells, onClose }
                   width="0.94"
                   height="0.94"
                   rx="0.07"
-                  className={`chronicles-automap__cell ${wall ? 'is-wall' : 'is-floor'} ${visited.has(key) ? 'is-visited' : ''}`}
+                  data-chronicles-discovery={stateName}
+                  className={`chronicles-automap__cell ${!discovered ? 'is-undiscovered' : wall ? 'is-wall' : 'is-floor'} ${stateName === 'visited' ? 'is-visited' : ''}`}
                 />
               );
             }))}
@@ -144,6 +146,7 @@ export default function ChroniclesAutomap({ open, state, visitedCells, onClose }
 
         <footer>
           <span><i className="is-party" aria-hidden="true">▲</i> grupo</span>
+          <span>Oscuro: sin descubrir · claro: explorado</span>
           <span><i className="is-exit" aria-hidden="true">↗</i> salida · ↓ mazmorra</span>
           <span>F forja · A armaduras · G gremio · P posada · C comercio · T templo · H ayuntamiento</span>
           <span>Solo lugares descubiertos · <kbd>M</kbd> cerrar</span>
