@@ -118,18 +118,24 @@ def wait_for_surfaces(
     for attempt in range(1, attempts + 1):
         results = [observe(surface, sha, fetch) for surface in surfaces]
         if all(ok for ok, _ in results):
-            if root:
-                status, _ = fetch(f"{url('STAGING_URL')}/")
-                if status != 200:
-                    print(f"::error::Frontend staging raíz devuelve HTTP {status or 'error'}")
-                    return False
-            print(f"Staging sirve {sha} en {', '.join(surfaces)}")
-            return True
-        detail = ", ".join(text for _, text in results)
+            if not root:
+                print(f"Staging sirve {sha} en {', '.join(surfaces)}")
+                return True
+            status, _ = fetch(f"{url('STAGING_URL')}/")
+            if status == 200:
+                print(f"Staging sirve {sha} en {', '.join(surfaces)} con raíz HTTP 200")
+                return True
+            # The release receipt may propagate before the Pages root. A
+            # transient 503/transport error must consume the remaining polling
+            # budget, not fail a correctly deployed SHA on the first mismatch.
+            detail = f"frontend raíz HTTP {status or 'error'} (esperado 200)"
+        else:
+            detail = ", ".join(text for _, text in results)
         print(f"Aún no converge: {detail}; esperado {sha} (intento {attempt}/{attempts})")
         if attempt < attempts:
             sleep(interval)
-    print(f"::error::{'/'.join(surfaces)} no sirvió {sha} tras {attempts} intentos")
+    print(f"::error::{'/'.join(surfaces)} no sirvió {sha} con raíz HTTP 200 tras {attempts} intentos" if root
+          else f"::error::{'/'.join(surfaces)} no sirvió {sha} tras {attempts} intentos")
     return False
 
 
@@ -226,6 +232,24 @@ def self_test() -> None:
                              fetch=fake({**all_new, "backend": other}), sleep=quiet)
     assert not wait_for_surfaces(sha, ["frontend"], attempts=1, interval=0,
                                  fetch=fake(all_new, root_status=503), sleep=quiet, root=True)
+    # Pages can publish the exact release.json receipt slightly before the
+    # root CDN route. Retry the 503 but never accept it as green.
+    root_hits = {"n": 0}
+    def transient_root(target: str) -> tuple[int, str]:
+        if target.endswith("/"):
+            root_hits["n"] += 1
+            return (503 if root_hits["n"] < 3 else 200), ""
+        return fake(all_new)(target)
+    assert wait_for_surfaces(sha, ["frontend"], attempts=3, interval=0,
+                             fetch=transient_root, sleep=quiet, root=True)
+    assert root_hits["n"] == 3
+    root_hits["n"] = 0
+    assert not wait_for_surfaces(sha, ["frontend"], attempts=2, interval=0,
+                                 fetch=transient_root, sleep=quiet, root=True)
+    assert root_hits["n"] == 2, "un root sin 200 nunca acredita el deploy"
+    # A green root cannot conceal a stale frontend release receipt.
+    assert not wait_for_surfaces(sha, ["frontend"], attempts=2, interval=0,
+                                 fetch=fake({**all_new, "frontend": other}), sleep=quiet, root=True)
     # A Worker serving the SHA but with broken routing is not converged.
     broken = lambda target: (200, json.dumps({**health, "models": {}})) if target.endswith("/health") else fake(all_new)(target)  # noqa: E731
     assert not observe("worker", sha, broken)[0]
