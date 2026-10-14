@@ -1,4 +1,4 @@
-import { Suspense, lazy, useMemo, useState, useTransition } from 'react';
+import { Suspense, lazy, useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import { useEscapeToClose } from '../useEscapeToClose.js';
 import MechanicTutorialHelp from './MechanicTutorialHelp.jsx';
 import InsightsGuidedSession from './InsightsGuidedSession.jsx';
@@ -82,6 +82,8 @@ export default function InsightsScreen(props) {
   const [section, setSection] = useState(() => normalizeInsightsSection(props.initialSection));
   const [diagnosisView, setDiagnosisView] = useState(() => normalizeInsightsDiagnosisView(props.initialDiagnosisView));
   const [secondaryPending, startSecondaryTransition] = useTransition();
+  const contentPanelRef = useRef(null);
+  const focusRequestedRef = useRef(false);
   const isCareer = section === 'career';
   const gameHistoryLength = Array.isArray(props.gameHistory) ? props.gameHistory.length : 0;
   const personalPuzzles = useMemo(() => loadPersonalPuzzles(), [gameHistoryLength]);
@@ -103,6 +105,17 @@ export default function InsightsScreen(props) {
         ? 'Expediente'
         : 'Tarea de Matthias';
 
+  // Only user-initiated archive navigation moves focus. Initial mount, F5,
+  // profile refreshes and storage restoration must never steal the viewport.
+  useEffect(() => {
+    if (!focusRequestedRef.current) return;
+    focusRequestedRef.current = false;
+    const panel = contentPanelRef.current;
+    if (!panel) return;
+    panel.focus({ preventScroll: true });
+    panel.scrollIntoView({ behavior: 'auto', block: 'start' });
+  }, [section, diagnosisView]);
+
   function preloadDiagnosis(view) {
     if (view === 'errors') void loadInsightsErrorsPanel();
     if (view === 'dossier') void loadInsightsDossierPanel();
@@ -117,6 +130,7 @@ export default function InsightsScreen(props) {
   }
 
   function openTask() {
+    focusRequestedRef.current = true;
     startSecondaryTransition(() => {
       setSection('diagnosis');
       setDiagnosisView('now');
@@ -125,6 +139,7 @@ export default function InsightsScreen(props) {
 
   function openDiagnosis(view) {
     preloadDiagnosis(view);
+    focusRequestedRef.current = true;
     startSecondaryTransition(() => {
       setSection('diagnosis');
       setDiagnosisView(view);
@@ -133,6 +148,7 @@ export default function InsightsScreen(props) {
 
   function openCareer() {
     preloadCareer();
+    focusRequestedRef.current = true;
     startSecondaryTransition(() => setSection('career'));
   }
 
@@ -222,11 +238,22 @@ export default function InsightsScreen(props) {
       </header>
 
       <div
+        ref={contentPanelRef}
         className="insights-workspace-panel"
         role="region"
         aria-label={panelLabel}
         aria-busy={secondaryPending || undefined}
+        tabIndex={-1}
+        data-insights-section={isTask ? 'task' : isCareer ? 'career' : diagnosisView}
       >
+        {!isTask ? (
+          <div className="insights-archive-context">
+            <span className="insights-archive-context-label">Archivo de Matthias · {panelLabel}</span>
+            <button type="button" className="secondary-btn insights-archive-return" onClick={openTask}>
+              ← Volver a mi tarea
+            </button>
+          </div>
+        ) : null}
         <Suspense fallback={null}>
         {isTask ? (
           <>
