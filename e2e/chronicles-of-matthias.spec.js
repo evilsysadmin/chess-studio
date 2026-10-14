@@ -195,7 +195,17 @@ test('Chronicles · Escape opens and closes the in-game menu while the scene sta
   await expect(menu.getByRole('button', { name: 'Continuar' })).toHaveCount(0);
   await expect(menu.getByRole('button', { name: 'Guardar y salir' })).toHaveCount(0);
   await expect(menu.getByRole('slider', { name: 'Volumen de efectos de Chronicles' })).toBeVisible();
-  await expect(menu.getByRole('slider', { name: 'Volumen de música' })).toBeVisible();
+  const musicSlider = menu.getByRole('slider', { name: 'Volumen de música' });
+  await expect(musicSlider).toBeVisible();
+  // Keep real keyboard input in a separate functional canary instead of the
+  // visual producer, whose SwiftShader screenshots may block input for minutes.
+  const turnsBeforeAudio = await mode.getAttribute('data-chronicles-turns');
+  await musicSlider.focus();
+  await musicSlider.press('Home');
+  await expect(musicSlider).toHaveValue('0');
+  await musicSlider.press('ArrowRight');
+  await expect(musicSlider).toHaveValue('5');
+  await expect(mode).toHaveAttribute('data-chronicles-turns', turnsBeforeAudio);
   await menu.getByRole('button', { name: 'Volver al menú' }).evaluate((button) => button.click());
   await expect(menu.locator('#chronicles-music-volume')).toHaveCount(0);
   await expect(menu.locator('.chronicles-game-menu__panel > button')).toHaveText([
