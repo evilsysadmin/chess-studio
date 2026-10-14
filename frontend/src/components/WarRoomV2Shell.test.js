@@ -1,24 +1,22 @@
 import { describe, expect, it } from 'vitest';
+import { warRoomVariantRuntimeModelUrl } from './WarRoomVariant.js';
 import {
   WAR_ROOM_V2_RUNTIME_MODEL_URL,
   warRoomV2ModelUrl,
 } from './WarRoomV2Shell.js';
 
 describe('War Room v2 runtime asset URL', () => {
-  it('versions the stable runtime current.glb alias with the frontend build SHA', () => {
-    expect(WAR_ROOM_V2_RUNTIME_MODEL_URL).toContain('/war-room/v2/runtime/current.glb');
-    expect(warRoomV2ModelUrl({ buildSha: 'abc123' }))
-      .toBe(`${WAR_ROOM_V2_RUNTIME_MODEL_URL}?build=abc123`);
+  it('uses the exact content-addressed GLB that intent prefetch warms', () => {
+    const expected = warRoomVariantRuntimeModelUrl('v2', { buildSha: 'abc123' });
+    expect(expected).toContain('/war-room/v2/runtime/war-room-premium-shell-');
+    expect(WAR_ROOM_V2_RUNTIME_MODEL_URL).toBe(expected);
+    expect(warRoomV2ModelUrl({ buildSha: 'abc123' })).toBe(expected);
+    expect(warRoomV2ModelUrl({ buildSha: 'another-release' })).toBe(expected);
+    expect(warRoomV2ModelUrl({ buildSha: '' })).toBe(expected);
   });
 
-  it('keeps explicit query parameters intact and encodes the build token', () => {
-    expect(warRoomV2ModelUrl({
-      buildSha: 'main/abc 123',
-      baseUrl: 'https://assets.example.test/current.glb?source=staging',
-    })).toBe('https://assets.example.test/current.glb?source=staging&build=main%2Fabc%20123');
-  });
-
-  it('falls back to the bare alias only when no build SHA exists', () => {
-    expect(warRoomV2ModelUrl({ buildSha: '' })).toBe(WAR_ROOM_V2_RUNTIME_MODEL_URL);
+  it('does not append a frontend build SHA to an explicit versioned asset URL', () => {
+    const url = 'https://assets.example.test/war-room/v2/runtime/shell-0123456789abcdef.glb?source=staging';
+    expect(warRoomV2ModelUrl({ buildSha: 'main/abc 123', baseUrl: url })).toBe(url);
   });
 });
