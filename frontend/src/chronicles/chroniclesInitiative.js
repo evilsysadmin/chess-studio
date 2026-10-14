@@ -1,3 +1,5 @@
+import { chroniclesMapForState } from './chroniclesMapCatalog.js';
+import { chroniclesAutomapCellKey, chroniclesAutomapLocalVisibleCells } from './chroniclesAutomap.js';
 import { resolveChroniclesEnemyBuildDefinition } from './chroniclesEnemyBuilds.js';
 import { chroniclesRuntimeEnemyPosition } from '../chroniclesOfMatthiasTurns.js';
 import {
@@ -126,10 +128,20 @@ function enemyEngagementRange(enemy) {
 export function chroniclesEngagedEnemies(state, enemies) {
   if (!state || state.phase === 'escaped' || state.phase === 'defeated') return [];
   const partyPosition = { x: state.x, y: state.y };
+  const map = chroniclesMapForState(state);
+  const visible = map?.grid && Number.isInteger(state.direction)
+    ? chroniclesAutomapLocalVisibleCells(map, state, 8)
+    : null;
   return (Array.isArray(enemies) ? enemies : []).filter((enemy) => {
     if (Number(state?.[enemy?.hpKey] || 0) <= 0) return false;
     const enemyPosition = chroniclesRuntimeEnemyPosition(state, enemy);
-    return manhattanDistance(partyPosition, enemyPosition) <= enemyEngagementRange(enemy);
+    const distance = manhattanDistance(partyPosition, enemyPosition);
+    const reach = enemyEngagementRange(enemy);
+    // A nearby enemy is not necessarily an encounter: intervening walls and
+    // facing matter. Direct attack range still engages even outside the FOV.
+    const attackReach = Math.max(1, Number(enemy?.ai?.attackReach ?? enemy?.retaliationReach ?? 1));
+    const visibleToParty = visible?.has(chroniclesAutomapCellKey(enemyPosition.x, enemyPosition.y)) ?? true;
+    return distance <= reach && (visibleToParty || distance <= attackReach);
   });
 }
 
