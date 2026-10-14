@@ -34,7 +34,10 @@ describe('ChroniclesCombatRoster', () => {
     const aliveCount = chroniclesActiveEnemies(hurt).filter(
       (enemy) => Number(hurt[enemy.hpKey] || 0) > 0,
     ).length;
-    expect(html).toContain(`Combate · ${aliveCount} ${aliveCount === 1 ? 'enemigo' : 'enemigos'}`);
+    expect(aliveCount).toBeGreaterThan(1);
+    // Other living inhabitants of the map do not belong to this encounter.
+    expect(html).toContain('Combate · 1 enemigo');
+    expect(html).not.toContain(`Combate · ${aliveCount} enemigos`);
     expect(html).toContain(`Objetivo: ${deserter.name}`);
     expect(html).toContain('aria-label="Enemigos en combate"');
 
