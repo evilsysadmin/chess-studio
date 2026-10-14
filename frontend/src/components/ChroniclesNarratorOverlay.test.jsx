@@ -5,6 +5,12 @@ import React from 'react';
 import ChroniclesNarratorOverlay, { shouldShowChroniclesNarration } from './ChroniclesNarratorOverlay.jsx';
 
 describe('ChroniclesNarratorOverlay', () => {
+  it('starts meaningful narration visible without losing the full message', () => {
+    const html = renderToStaticMarkup(<ChroniclesNarratorOverlay message="El alijo guarda diez monedas y una daga de bronce." />);
+    expect(html).toContain('chronicles-dm-band is-visible');
+    expect(html).toContain('El alijo guarda diez monedas y una daga de bronce.');
+  });
+
   it('keeps only an accessible dialog trigger in the HUD while the reader is closed', () => {
     const html = renderToStaticMarkup(<ChroniclesNarratorOverlay message="Swordhaven: sol, calles empedradas y cinco puertas esperando viajeros." />);
     expect(html).toContain('class="chronicles-dm-overlay"');
