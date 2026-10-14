@@ -124,7 +124,7 @@ export function buildChroniclesCampaignExterior(scene, { scenePlan = {}, coarseP
       const styleId = contentAt.get(door.x + ',' + door.y);
       const style = TOWN_BUILDING_STYLES[styleId] || TOWN_HOME_STYLES[homeIndex++ % TOWN_HOME_STYLES.length];
       const { root } = buildSwordhavenHouse(
-        { id: 'first-book-' + (styleId || 'home') + '-' + index, x: block.cx, y: block.cy, roof: style.roof, emblem: style.emblem },
+        { id: 'first-book-' + (styleId || 'home') + '-' + index, x: block.cx, y: block.cy, roof: style.roof, emblem: style.emblem, label: style.label },
         village, coarsePointer, new Set(), sceneCenter,
       );
       root.rotation.y = facing.yaw;
@@ -424,20 +424,20 @@ function terraGroundTexture(kind) {
 // A shop's style comes from the authored NPC standing at its door
 // (`visualType: building-<style>`); unclaimed blocks are homes.
 const TOWN_BUILDING_STYLES = Object.freeze({
-  forge: Object.freeze({ roof: 0x8a4632, emblem: 'swords' }),
-  armor: Object.freeze({ roof: 0x4a657e, emblem: 'shield' }),
-  tavern: Object.freeze({ roof: 0x995e37, emblem: 'mug' }),
-  temple: Object.freeze({ roof: 0x65758a, emblem: 'sun' }),
-  store: Object.freeze({ roof: 0x7a6a3c, emblem: 'sack' }),
-  apothecary: Object.freeze({ roof: 0x554481, emblem: 'crystal' }),
-  guild: Object.freeze({ roof: 0x3f4f8a, emblem: 'crystal' }),
-  watch: Object.freeze({ roof: 0x5c3b38, emblem: 'shield' }),
-  hall: Object.freeze({ roof: 0x6e2e2a, emblem: 'sun' }),
+  forge: Object.freeze({ roof: 0x8a4632, emblem: 'swords', label: 'ARMERÍA' }),
+  armor: Object.freeze({ roof: 0x4a657e, emblem: 'shield', label: 'ARMADURAS' }),
+  tavern: Object.freeze({ roof: 0x995e37, emblem: 'mug', label: 'TABERNA' }),
+  temple: Object.freeze({ roof: 0x65758a, emblem: 'sun', label: 'TEMPLO' }),
+  store: Object.freeze({ roof: 0x7a6a3c, emblem: 'sack', label: 'TIENDA' }),
+  apothecary: Object.freeze({ roof: 0x554481, emblem: 'crystal', label: 'BOTICA' }),
+  guild: Object.freeze({ roof: 0x3f4f8a, emblem: 'crystal', label: 'GREMIO' }),
+  watch: Object.freeze({ roof: 0x5c3b38, emblem: 'shield', label: 'GUARDIA' }),
+  hall: Object.freeze({ roof: 0x6e2e2a, emblem: 'sun', label: 'AYUNTAMIENTO' }),
 });
 const TOWN_HOME_STYLES = Object.freeze([
   Object.freeze({ roof: 0x7d4a36, emblem: 'home' }),
   Object.freeze({ roof: 0x5d6b52, emblem: 'home' }),
-  Object.freeze({ roof: 0x6e5a74, emblem: 'crystal' }),
+  Object.freeze({ roof: 0x6e5a74, emblem: 'home' }),
   Object.freeze({ roof: 0x8b5b3a, emblem: 'home' }),
 ]);
 
