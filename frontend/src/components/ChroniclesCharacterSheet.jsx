@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import './ChroniclesCharacterSheetFolioV2.css';
 import {
@@ -127,6 +127,13 @@ export default function ChroniclesCharacterSheet({
   const canChangeEquipment = !tacticsMode && state.phase === 'explore' && !state.initiative
     && member.hp > 0 && typeof onEquipmentAction === 'function';
 
+  const closeButtonRef = useRef(null);
+  useEffect(() => {
+    // Chromium may horizontally scroll the folio to reveal autoFocus near
+    // the right edge; this made the entire left column clip on phones.
+    closeButtonRef.current?.focus({ preventScroll: true });
+  }, []);
+
   const closeOnEscape = (event) => {
     if (event.key === 'Escape') {
       event.preventDefault();
@@ -181,7 +188,7 @@ export default function ChroniclesCharacterSheet({
               </div>
             )}
           </div>
-          <button type="button" autoFocus onClick={onClose} aria-label="Cerrar ficha">×</button>
+          <button type="button" ref={closeButtonRef} onClick={onClose} aria-label="Cerrar ficha">×</button>
         </header>
 
         <div className="chronicles-character-sheet__progression">
