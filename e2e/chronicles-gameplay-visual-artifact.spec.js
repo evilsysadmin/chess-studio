@@ -872,7 +872,7 @@ for (const capture of CAPTURES) {
       // their actual glyph elements are overridden by another style.
       for (const selector of [
         '.chronicles-statusbar .chronicles-map-trigger b',
-        '.chronicles-game-menu > summary b',
+        '.chronicles-game-menu > summary .chronicles-menu-gem__hint',
       ]) {
         const ink = await gameRoot.locator(selector).evaluate((node) => {
           const style = getComputedStyle(node);
@@ -888,7 +888,7 @@ for (const capture of CAPTURES) {
         '.chronicles-statusbar .chronicles-map-trigger',
         '.chronicles-statusbar .chronicles-map-trigger b',
         '.chronicles-game-menu > summary',
-        '.chronicles-game-menu > summary b',
+        '.chronicles-game-menu > summary .chronicles-menu-gem__hint',
         '.chronicles-touch button:not(.is-attack):not(.is-magic):not(.is-contextual)',
       ]) {
         const ink = await gameRoot.locator(selector).first().evaluate((element) => ({
