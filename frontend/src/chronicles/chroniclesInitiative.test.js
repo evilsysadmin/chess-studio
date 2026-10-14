@@ -144,6 +144,22 @@ describe('Chronicles initiative', () => {
     expect(engaged.initiative.order.filter((actor) => actor.kind === 'enemy').map((actor) => actor.id)).toEqual(['front']);
   });
 
+  it('still enters combat when an unseen adjacent enemy can strike the party', () => {
+    const state = {
+      mapId: 'swordhaven-sewers', x: 1, y: 1, direction: 1,
+      phase: 'explore',
+      party: [{ id: 'matthias', hp: 7, agility: 4 }],
+      attackerHp: 4,
+    };
+    const attacker = {
+      id: 'attacker', hpKey: 'attackerHp', x: 1, y: 2,
+      ai: { engageRange: 2, attackReach: 1 },
+    };
+    const next = chroniclesStartInitiativeCombat(state, [attacker], { random: () => 0 });
+    expect(next.phase).toBe('combat');
+    expect(next.initiative.order.some((actor) => actor.id === 'attacker')).toBe(true);
+  });
+
   it('does not enter combat against a ranged enemy shooting through a wall', () => {
     // Sewers row 1: the fourth interior step is a wall at (4,1).
     const state = {
