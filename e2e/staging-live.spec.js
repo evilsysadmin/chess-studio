@@ -385,8 +385,8 @@ async function assertLivePvpBrowserPath(page) {
         ` longtask_max_ms=${Math.round(longTasks.maxMs)}`,
       );
     }
-    // Stop sampling as soon as opening is measured, not through later PvP.
-    await page.evaluate(() => window.__stagingDuelHallTiming?.close());
+    // Keep the passive observer alive through the existing real PvP pulses:
+    // 3D may still be loading when the first lobby response becomes visible.
     logPhase('open-lobby');
 
     // Enrolarnos fuerza el mismo polling que usa una sesión humana real:
@@ -414,6 +414,31 @@ async function assertLivePvpBrowserPath(page) {
     }
     await expect(lobby.locator('.pvp-lobby__error')).toHaveCount(0);
     expect(failed, `PvP browser requestfailed: ${JSON.stringify(failed)}`).toEqual([]);
+
+    // Do not wait for a 3D frame. Sample the state achieved while running
+    // the same two mandatory browser-visible native polling cycles as before.
+    const settled = await page.evaluate(() => {
+      const probe = window.__stagingDuelHallTiming;
+      if (!probe) return null;
+      probe.close();
+      return {
+        marks: { ...probe.marks },
+        longTasks: { ...probe.longTasks },
+        sceneState: document.querySelector('[data-pvp-duel-hall-3d]')?.getAttribute('data-pvp-duel-hall-3d') || 'not-mounted',
+      };
+    });
+    if (settled) {
+      console.log(
+        `STAGING_PVP_RENDER_SETTLED scene_ready_ms=${browserMs(settled.marks.sceneReadyMs)}` +
+        ` scene_fallback_ms=${browserMs(settled.marks.sceneFallbackMs)}` +
+        ` scene_state=${settled.sceneState}` +
+        ` glb_requests=${openTimeline.modelRequests}` +
+        ` glb_finished_ms=${openTimeline.modelFinishedMs ?? 'not-seen'}` +
+        ` longtask_count=${settled.longTasks.count}` +
+        ` longtask_total_ms=${Math.round(settled.longTasks.totalMs)}` +
+        ` longtask_max_ms=${Math.round(settled.longTasks.maxMs)}`,
+      );
+    }
 
     const leave = page.waitForResponse(
       (response) => response.request().method() === 'DELETE' && isPvpApiPath(response.url(), '/roster'),
