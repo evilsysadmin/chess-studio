@@ -525,7 +525,9 @@ export async function mockApi(page, {
   });
 }
 
-export async function login(page, { navigationWaitUntil = 'load', homeVisibleTimeout = 5_000 } = {}) {
+// Home's 3D/compositor mount is async even after a successful form submit.
+// This timeout is for the Home landmark, not a replacement for the readiness gate.
+export async function login(page, { navigationWaitUntil = 'load', homeVisibleTimeout = 30_000 } = {}) {
   if (process.env.CHESS_E2E_LIGHTWEIGHT === '1') {
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await page.addInitScript(() => localStorage.setItem('chess-study-device-board-renderer-v1', '2d'));
