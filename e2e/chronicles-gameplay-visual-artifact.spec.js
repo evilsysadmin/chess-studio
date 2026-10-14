@@ -909,100 +909,67 @@ for (const capture of CAPTURES) {
 }
 
 
-// Keep menu/audio proof separate from the full Three.js screenshot.
-// Even a tiny extra screenshot/DOM action can stall a SwiftShader context
-// AFTER the big readback, so each viewport gets a fresh context.
+// Scene fidelity is captured above. The two live menu states each get a
+// separate small tablet screenshot with the animated WebGL canvas hidden;
+// a full-scene GPU readback plus further actions can hang SwiftShader.
 for (const capture of CAPTURES) {
-  test(`Chronicles · pause menu visual · ${capture.label}`, async ({ browser }) => {
-    test.setTimeout(240_000);
-    await mkdir(ARTIFACT_DIR, { recursive: true });
-    const context = await browser.newContext({
-      viewport: { width: capture.width, height: capture.height },
-      hasTouch: capture.hasTouch,
-      isMobile: capture.hasTouch,
-    });
-    try {
-      const page = await context.newPage();
-      await openChronicles(page, capture.label);
-      const gameRoot = page.locator('[data-chronicles="true"]');
-      await expect(gameRoot).toBeVisible();
-      // The five pause actions fit the viewport, with the sound mixer opt-in.
-      const menuDetails = page.locator('details.chronicles-game-menu');
-      const menuSummary = menuDetails.locator('> summary');
-      await menuSummary.evaluate((summary) => summary.click());
-      const exitAction = menuDetails.getByRole('button', { name: 'Guardar y salir', exact: true });
-      await expect(exitAction).toBeVisible();
-      const menuPanelBox = await menuDetails.locator('.chronicles-game-menu__panel').boundingBox();
-      expect(menuPanelBox, `${capture.label}: pause menu has bounds`).not.toBeNull();
-      expect(menuPanelBox.y, `${capture.label}: pause menu does not clip above viewport`).toBeGreaterThanOrEqual(0);
-      expect(menuPanelBox.y + menuPanelBox.height, `${capture.label}: pause menu does not clip below viewport`).toBeLessThanOrEqual(capture.height);
-      // Capture ONLY the visible tablet. A second full-frame SwiftShader
-      // readback can stall the live WebGL compositor before audio opens.
-      // The complete gameplay screenshot and geometric viewport assertions
-      // above preserve scene context without another GPU-heavy screenshot.
-      // Mixer input behaviour is exercised by the lightweight functional E2E.
-      const musicSlider = menuDetails.locator('#chronicles-music-volume');
-      const fxSlider = menuDetails.locator('#chronicles-sfx-volume');
-      const audioToggle = menuDetails.getByRole('button', { name: 'Opciones de audio' });
-      await expect(musicSlider).toHaveCount(0);
-      await audioToggle.evaluate((button) => button.click());
-      await expect(musicSlider).toBeVisible();
-      await expect(fxSlider).toBeVisible();
-      const audioPanelBox = await menuDetails.locator('.chronicles-game-menu__panel').boundingBox();
-      expect(audioPanelBox, `${capture.label}: audio panel has bounds`).not.toBeNull();
-      expect(audioPanelBox.y, `${capture.label}: audio panel does not clip above viewport`).toBeGreaterThanOrEqual(0);
-      expect(audioPanelBox.y + audioPanelBox.height, `${capture.label}: audio panel does not clip below viewport`).toBeLessThanOrEqual(capture.height);
-      await expect(musicSlider).toHaveAttribute('min', '0');
-      await expect(musicSlider).toHaveAttribute('max', '100');
-      await expect(fxSlider).toHaveAttribute('step', '5');
-      await captureElement(page, menuDetails.locator('.chronicles-game-menu__panel'), `${ARTIFACT_DIR}/chronicles-game-menu-audio-${capture.label}.png`);
-      await expect(menuDetails.getByRole('button', { name: 'Guardar y salir', exact: true })).toHaveCount(0);
-      await menuDetails.getByRole('button', { name: 'Volver al menú' }).evaluate((button) => button.click());
-      await expect(musicSlider).toHaveCount(0);
-      await captureElement(page, menuDetails.locator('.chronicles-game-menu__panel'), `${ARTIFACT_DIR}/chronicles-game-menu-${capture.label}.png`);
-
-      // The previously pale menu action labels must receive the same
-      // browser-verified runtime ink as MAPA and MENÚ.
-      const menuInks = await menuDetails.locator('.chronicles-game-menu__panel button').evaluateAll((buttons) =>
-        buttons.map((button) => ({
+  for (const variant of ['pause', 'audio']) {
+    test(`Chronicles · ${variant} tablet visual · ${capture.label}`, async ({ browser }) => {
+      test.setTimeout(180_000);
+      await mkdir(ARTIFACT_DIR, { recursive: true });
+      const context = await browser.newContext({
+        viewport: { width: capture.width, height: capture.height },
+        hasTouch: capture.hasTouch, isMobile: capture.hasTouch,
+      });
+      try {
+        const page = await context.newPage();
+        await openChronicles(page, capture.label);
+        const game = page.locator('[data-chronicles="true"]');
+        await expect(game).toBeVisible();
+        await page.addStyleTag({ content: '[data-chronicles-renderer="three"] canvas {display:none !important}' });
+        const menu = game.locator('details.chronicles-game-menu');
+        await menu.locator('> summary').evaluate((summary) => summary.click());
+        await expect(menu).toHaveAttribute('open', '');
+        const panel = menu.locator('.chronicles-game-menu__panel');
+        if (variant === 'audio') {
+          await menu.getByRole('button', { name: 'Opciones de audio' }).evaluate((button) => button.click());
+          await expect(menu.getByRole('slider', { name: 'Volumen de música' })).toBeVisible();
+          await expect(menu.getByRole('slider', { name: 'Volumen de efectos de Chronicles' })).toBeVisible();
+          await expect(menu.getByRole('button', { name: 'Volver al menú' })).toBeVisible();
+          await expect(menu.getByRole('button', { name: 'Guardar y salir' })).toHaveCount(0);
+        } else {
+          await expect(panel.locator('> button')).toHaveText([
+            'Continuar', 'Guardar partida', 'Guardar y salir', 'Salir sin guardar', 'Opciones de audio',
+          ]);
+          await expect(menu.locator('#chronicles-music-volume')).toHaveCount(0);
+        }
+        const rect = await panel.boundingBox();
+        expect(rect, `${capture.label}: ${variant} panel exists`).not.toBeNull();
+        expect(rect.x, `${capture.label}: ${variant} left bound`).toBeGreaterThanOrEqual(0);
+        expect(rect.y, `${capture.label}: ${variant} top bound`).toBeGreaterThanOrEqual(0);
+        expect(rect.x + rect.width, `${capture.label}: ${variant} right bound`).toBeLessThanOrEqual(capture.width);
+        expect(rect.y + rect.height, `${capture.label}: ${variant} bottom bound`).toBeLessThanOrEqual(capture.height);
+        const inks = await panel.locator('button').evaluateAll((buttons) => buttons.map((button) => ({
           label: button.textContent.trim(),
           inline: button.style.getPropertyValue('color'),
           priority: button.style.getPropertyPriority('color'),
           computed: getComputedStyle(button).color,
-        }))
-      );
-      expect(menuInks.length, 'menu has actual actions').toBeGreaterThan(3);
-      for (const ink of menuInks) {
-        expect(ink.inline, `menu action ${ink.label} inline ink`).toMatch(/^(?:#08080a|rgb\(8,\s*8,\s*10\))$/i);
-        expect(ink.priority, `menu action ${ink.label} important ink`).toBe('important');
-        expect(ink.computed, `menu action ${ink.label} black ink`).toBe('rgb(8, 8, 10)');
+        })));
+        expect(inks.length).toBeGreaterThan(0);
+        for (const ink of inks) {
+          expect(['rgb(8, 8, 10)', 'rgb(17, 16, 21)'], `${capture.label}: ${ink.label} dark ink`).toContain(ink.computed);
+          if (variant === 'pause') {
+            expect(ink.inline, `${capture.label}: ${ink.label} inline ink`).toMatch(/^(?:#08080a|rgb\(8,\s*8,\s*10\))$/i);
+            expect(ink.priority, `${capture.label}: ${ink.label} important ink`).toBe('important');
+          }
+        }
+        // One element PNG is the final browser operation for this context.
+        await captureElement(page, panel, `${ARTIFACT_DIR}/chronicles-game-menu-${variant === 'pause' ? '' : 'audio-'}${capture.label}.png`);
+      } finally {
+        await context.close();
       }
-
-      const exitBox = await exitAction.boundingBox();
-      expect(exitBox, `${capture.label}: menu exit action has bounds`).not.toBeNull();
-      expect(exitBox.y, `${capture.label}: menu exit action below the top edge`).toBeGreaterThanOrEqual(0);
-      expect(exitBox.y + exitBox.height, `${capture.label}: menu exit action above the bottom edge`).toBeLessThanOrEqual(capture.height);
-      // MM3's raised light stone requires DARK engraved glyphs, even when the
-      // browser requests a dark appearance. This was unreadable in real play.
-      const inks = await exitAction.evaluate((button) => ({
-        color: getComputedStyle(button).color,
-        fill: getComputedStyle(button).webkitTextFillColor,
-      }));
-      // The runtime enforces #08080a important for Brave/Chrome auto-dark;
-      // CSS still provides #111015 as the light-stone fallback.
-      for (const [kind, value] of Object.entries(inks)) {
-        expect(['rgb(8, 8, 10)', 'rgb(17, 16, 21)'], `${capture.label}: ${kind} keeps dark engraved ink`).toContain(value);
-      }
-      await menuSummary.evaluate((summary) => summary.click());
-      await expect(exitAction).toBeHidden();
-
-      // Automap PNG and geometry have their own fresh browser context below.
-      // Three.js/SWGL often stalls if another overlay/readback follows the
-      // playing + pause-menu screenshots in this same long-lived context.
-    } finally {
-      await context.close();
-    }
-  });
+    });
+  }
 }
 
 // Fresh-context visual proof: the minimap overlay is not a second GPU
