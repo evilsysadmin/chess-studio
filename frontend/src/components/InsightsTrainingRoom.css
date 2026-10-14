@@ -892,3 +892,171 @@ body:has(.insights-training-room) .global-music-dock {
     flex: 1 1 0;
   }
 }
+
+/* Training Room V2 · one evidence-backed assignment, one start action.
+   The physical parchment belongs on the desk; controls are part of it,
+   not a second toolbar floating underneath the scene. */
+.insights-training-room .insights-guided-focus {
+  grid-template-columns: minmax(0, 1fr);
+  gap: .72rem;
+  padding: clamp(.9rem, 1.55vw, 1.25rem) clamp(1rem, 1.65vw, 1.4rem);
+  border: 1px solid rgba(234, 193, 118, .66);
+  border-radius: 9px;
+  background: linear-gradient(117deg, rgba(240, 224, 184, .98), rgba(203, 178, 132, .97));
+  box-shadow: 0 20px 42px rgba(0, 0, 0, .36), inset 5px 0 rgba(110, 74, 30, .44), inset 0 1px rgba(255, 248, 217, .72);
+}
+
+.insights-training-room .insights-guided-focus-heading h3 {
+  margin: .28rem 0 .36rem;
+  max-width: 32ch;
+  font-size: clamp(1.25rem, 2vw, 1.68rem);
+  line-height: 1.13;
+}
+
+.insights-training-room .insights-guided-focus-heading p {
+  max-width: 64ch;
+  font-size: clamp(.88rem, 1.1vw, 1rem);
+  line-height: 1.45;
+}
+
+.insights-training-room .insights-guided-focus-meta {
+  display: flex;
+  gap: .48rem;
+  flex-wrap: wrap;
+}
+
+.insights-training-room .insights-guided-focus-meta span {
+  padding: .2rem .5rem;
+  border: 1px solid rgba(91, 66, 34, .21);
+  border-radius: 4px;
+  background: rgba(255, 248, 221, .35);
+  color: #50391e;
+  font: 750 .69rem/1.25 var(--font-mono, monospace);
+}
+
+.insights-training-room .insights-guided-focus-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: .65rem;
+  padding-top: .65rem;
+  border-top: 1px solid rgba(115, 83, 45, .24);
+}
+
+.insights-training-room .insights-guided-focus .insights-duration-quick {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .35rem;
+  margin: 0;
+}
+
+.insights-training-room .insights-guided-focus .insights-duration-quick > span {
+  width: 100%;
+  margin: 0 0 .08rem;
+  color: #655033;
+  font: 780 .66rem var(--font-mono, monospace);
+}
+
+.insights-training-room .insights-guided-focus .insights-duration-chip {
+  min-height: 44px;
+  min-width: 62px;
+  border: 1px solid rgba(107, 75, 37, .35);
+  border-radius: 5px;
+  background: rgba(255, 250, 231, .42);
+  color: #493319;
+  font: 800 .81rem var(--font-mono, monospace);
+  box-shadow: none;
+}
+
+.insights-training-room .insights-guided-focus .insights-duration-chip[aria-pressed="true"] {
+  border-color: #765223;
+  background: #795421;
+  color: #fff0cb;
+  box-shadow: inset 0 1px rgba(255, 255, 255, .18);
+}
+
+.insights-training-room .insights-guided-focus .insights-guided-start {
+  min-width: 172px;
+  min-height: 48px;
+  padding-inline: .85rem;
+  border-radius: 6px;
+  background: linear-gradient(165deg, #835923, #593b19);
+  color: #fff0cd;
+  font-weight: 800;
+  box-shadow: 0 8px 15px rgba(54, 34, 13, .24);
+}
+
+.insights-training-room .insights-guided-preview-details {
+  padding-top: .45rem;
+  border-top: 1px solid rgba(115, 83, 45, .19);
+  color: #443320;
+}
+
+.insights-training-room .insights-guided-preview-details > summary {
+  width: fit-content;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  color: #67471d;
+  font-size: .79rem;
+  font-weight: 750;
+}
+
+.insights-training-room .insights-guided-preview-details ol {
+  margin: .2rem 0 .5rem;
+  padding-left: 1.4rem;
+}
+
+.insights-training-room .insights-guided-preview-details li {
+  padding: .2rem .1rem;
+  line-height: 1.35;
+}
+
+.insights-training-room .insights-guided-preview-details li small {
+  margin-left: .5rem;
+  white-space: nowrap;
+}
+
+.insights-training-room .insights-guided-preview-details p {
+  font-size: .75rem;
+  color: #6a5638;
+  line-height: 1.4;
+}
+
+.insights-training-room .insights-guided-empty {
+  padding: 1.1rem;
+  border: 1px solid rgba(200, 163, 102, .38);
+  background: rgba(23, 17, 13, .87);
+  color: #e9d9ba;
+}
+
+@media (max-width: 760px) {
+  .insights-training-room .insights-guided-focus {
+    padding: .8rem .85rem;
+    gap: .5rem;
+  }
+  .insights-training-room .insights-guided-focus-actions {
+    grid-template-columns: 1fr;
+    gap: .45rem;
+    padding-top: .48rem;
+  }
+  .insights-training-room .insights-guided-focus .insights-duration-chip {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+  .insights-training-room .insights-guided-focus .insights-guided-start {
+    width: 100%;
+    min-width: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .insights-training-room .insights-guided-focus :where(button, summary) { transition: none; }
+}
+
+/* A closed diegetic archive must not leave its navigation laid out below the
+   summary. Explicitly enforce this against author-level display:grid/flex. */
+.insights-training-room .insights-room-archive-drawer:not([open]) > .insights-room-tools {
+  display: none;
+}

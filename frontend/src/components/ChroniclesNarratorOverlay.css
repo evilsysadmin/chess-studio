@@ -108,6 +108,7 @@
   background: #f1c893;
   color: #32190a;
   font: 700 2rem/1 Georgia, serif;
+  touch-action: manipulation;
   cursor: pointer;
 }
 .chronicles-dm-close:hover,

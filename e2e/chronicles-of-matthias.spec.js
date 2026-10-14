@@ -35,7 +35,7 @@ async function openChronicles(page, options = {}) {
   await expect(page.locator('[data-chronicles="true"]')).toBeVisible();
 }
 
-test('Chronicles · F5 retoma la misma run guardada y regresar al libro conserva el menú', async ({ page }) => {
+test('Chronicles · F5 retoma la misma run guardada y guardar y salir abandona sin perderla', async ({ page }) => {
   test.setTimeout(180_000);
   await openChronicles(page, { chroniclesCurrentMapId: 'swordhaven-square', newTown: true });
   const mode = page.locator('[data-chronicles="true"]');
@@ -53,11 +53,9 @@ test('Chronicles · F5 retoma la misma run guardada y regresar al libro conserva
   expect(runAfter).toBe(runBefore);
 
   await page.keyboard.press('Escape');
-  await mode.locator('.chronicles-game-menu').getByRole('button', { name: 'Partidas guardadas' }).click();
-  const book = page.locator('[data-chronicles-save-menu]');
-  await expect(book).toBeVisible();
+  await mode.locator('.chronicles-game-menu').getByRole('button', { name: 'Guardar y salir' }).click();
+  await expect(mode).toHaveCount(0);
   await page.reload();
-  await expect(book).toBeVisible();
   await expect(mode).toHaveCount(0);
 });
 
@@ -184,7 +182,36 @@ test('Chronicles · Escape opens and closes the in-game menu while the scene sta
 
   await page.keyboard.press('Escape');
   await expect(menu).toHaveAttribute('open', '');
-  await menu.getByRole('button', { name: 'Salir y guardar' }).click();
+  await expect(menu.locator('.chronicles-game-menu__panel > button')).toHaveText([
+    'Continuar', 'Guardar partida', 'Guardar y salir', 'Salir sin guardar', 'Opciones de audio',
+  ]);
+  await expect(menu.getByRole('button', { name: 'Crónica · J' })).toHaveCount(0);
+  await expect(menu.getByRole('button', { name: 'Nueva expedición' })).toHaveCount(0);
+  await expect(menu.getByRole('button', { name: 'Partidas guardadas' })).toHaveCount(0);
+  const audio = menu.getByRole('button', { name: 'Opciones de audio' });
+  await expect(audio).toHaveAttribute('aria-expanded', 'false');
+  await expect(menu.locator('#chronicles-sfx-volume')).toHaveCount(0);
+  await audio.evaluate((button) => button.click());
+  await expect(menu.getByRole('button', { name: 'Continuar' })).toHaveCount(0);
+  await expect(menu.getByRole('button', { name: 'Guardar y salir' })).toHaveCount(0);
+  await expect(menu.getByRole('slider', { name: 'Volumen de efectos de Chronicles' })).toBeVisible();
+  const musicSlider = menu.getByRole('slider', { name: 'Volumen de música' });
+  await expect(musicSlider).toBeVisible();
+  // Keep real keyboard input in a separate functional canary instead of the
+  // visual producer, whose SwiftShader screenshots may block input for minutes.
+  const turnsBeforeAudio = await mode.getAttribute('data-chronicles-turns');
+  await musicSlider.focus();
+  await musicSlider.press('Home');
+  await expect(musicSlider).toHaveValue('0');
+  await musicSlider.press('ArrowRight');
+  await expect(musicSlider).toHaveValue('5');
+  await expect(mode).toHaveAttribute('data-chronicles-turns', turnsBeforeAudio);
+  await menu.getByRole('button', { name: 'Volver al menú' }).evaluate((button) => button.click());
+  await expect(menu.locator('#chronicles-music-volume')).toHaveCount(0);
+  await expect(menu.locator('.chronicles-game-menu__panel > button')).toHaveText([
+    'Continuar', 'Guardar partida', 'Guardar y salir', 'Salir sin guardar', 'Opciones de audio',
+  ]);
+  await menu.getByRole('button', { name: 'Guardar y salir' }).click();
   await expect(mode).toHaveCount(0);
 });
 
@@ -318,17 +345,15 @@ test('Chronicles of Matthias · abre una cripta Three.js real y usa combate posi
     .evaluate((button) => button.click());
   await expect(hildegardSheet).toHaveCount(0);
 
-  // The pawn is two squares ahead in clear view. Combat now starts on
-  // visual contact (before the unarmed Hildegard can strike), even without
-  // standing in the enemy's passive engage radius. No free attack or turn.
+  // The pawn two squares ahead is visible; combat must start before
+  // an unearned attack, even while it remains beyond melee reach.
   await page.keyboard.press('Space');
   await expect(mode).toHaveAttribute('data-chronicles-turns', '0');
   await expect(mode).toHaveAttribute('data-chronicles-phase', 'combat');
   await expect(mode).toHaveAttribute('data-chronicles-initiative-die', '1d8');
   await expect(mode).toHaveAttribute('data-chronicles-initiative-actor', 'knight');
 
-  // Combat movement consumes the currently active hero's turn. Moving a
-  // square closer enables the next actual melee action.
+  // Approaching now consumes the active hero's combat turn.
   await page.keyboard.press('w');
   await expect(mode).toHaveAttribute('data-chronicles-turns', '1');
   await expect(mode).toHaveAttribute('data-chronicles-phase', 'combat');

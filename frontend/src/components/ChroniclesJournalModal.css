@@ -78,6 +78,7 @@
   width: 44px;
   height: 44px;
   padding: 0;
+  touch-action: manipulation;
   cursor: pointer;
   border: 2px solid #9e793e;
   border-radius: 6px;
@@ -296,7 +297,7 @@
   .chronicles-journal-modal__crest { display: none; }
   .chronicles-journal-modal__heading h2 { font-size: 1.3rem; }
   .chronicles-journal-modal__heading p { display: none; }
-  .chronicles-journal-modal__header button { width: 42px; height: 42px; }
+  .chronicles-journal-modal__header button { width: 44px; height: 44px; }
   .chronicles-journal-modal__overview { padding: 6px 10px; }
   .chronicles-journal-modal footer > span:first-child { display: none; }
   .chronicles-journal-modal footer { justify-content: flex-end; }

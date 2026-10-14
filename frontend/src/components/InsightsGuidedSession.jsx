@@ -30,6 +30,8 @@ export default function InsightsGuidedSession({
 }) {
   const [session, setSession] = useState(() => loadGuidedTrainingSession());
   const [completion, setCompletion] = useState(() => loadGuidedTrainingCompletion());
+  // A time choice previews a plan; only the single primary CTA starts it.
+  const [selectedMinutes, setSelectedMinutes] = useState(5);
   const plans = useMemo(() => ({
     5: buildGuidedTrainingPlan({ minutes: 5, history: gameHistory, playerModel, puzzles: personalPuzzles, cleanGameRecords }),
     15: buildGuidedTrainingPlan({ minutes: 15, history: gameHistory, playerModel, puzzles: personalPuzzles, cleanGameRecords }),
@@ -96,9 +98,17 @@ export default function InsightsGuidedSession({
 
   if (!session) {
     const recommendedMinutes = plans[5].available ? 5 : plans[15].available ? 15 : plans[30].available ? 30 : null;
-    const recommendedPlan = recommendedMinutes ? plans[recommendedMinutes] : null;
-    const focus = recommendedPlan?.steps?.[0] || null;
-    const available = Boolean(recommendedPlan?.available);
+    const previewMinutes = plans[selectedMinutes]?.available ? selectedMinutes : recommendedMinutes;
+    const previewPlan = previewMinutes ? plans[previewMinutes] : null;
+    const focus = previewPlan?.steps?.[0] || null;
+    const available = Boolean(previewPlan?.available);
+    const evidenceLabel = focus?.kind === 'debt'
+      ? 'Patrón registrado'
+      : focus?.kind === 'personal-errors'
+        ? 'Posiciones personales'
+        : focus?.kind === 'nemesis'
+          ? 'Partidas guardadas'
+          : 'Plan basado en datos';
 
     return (
       <section
@@ -109,46 +119,66 @@ export default function InsightsGuidedSession({
         <div className="insights-guided-session-intro">
           <span className="section-label">Nota de Matthias</span>
           <h2 id="guided-session-title">Tu siguiente tarea</h2>
-          <p className="hint-text">Una prioridad, elegida sólo a partir de evidencia guardada. El tiempo y el expediente completo quedan en segundo plano.</p>
+          <p className="hint-text">Un encargo concreto. Tú eliges cuánto tiempo dedicarle; Matthias pone las posiciones y los hechos, no las excusas.</p>
         </div>
 
         {available ? (
-          <div className="insights-guided-focus">
-            <div>
-              <small>Recomendación · {recommendedMinutes} min</small>
+          <div className="insights-guided-focus" data-training-preview-minutes={previewMinutes}>
+            <div className="insights-guided-focus-heading">
+              <small>ENCARGO DE MATTHIAS <span aria-hidden="true">·</span> {previewMinutes} MIN</small>
               <h3>{focus?.title || 'Sesión personal'}</h3>
               <p>{focus?.detail || 'Matthias ha preparado un recorrido con tu material de entrenamiento disponible.'}</p>
             </div>
-            <button
-              type="button"
-              className="primary-btn"
-              aria-label={`Empezar sesión recomendada de ${recommendedMinutes} min`}
-              onClick={() => begin(recommendedMinutes)}
-            >
-              Empezar · {recommendedMinutes} min →
-            </button>
+            <div className="insights-guided-focus-meta" aria-label="Datos del plan seleccionado">
+              <span>{evidenceLabel}</span>
+              <span>{previewPlan.steps.length} {previewPlan.steps.length === 1 ? 'bloque' : 'bloques'} de práctica</span>
+            </div>
+            <div className="insights-guided-focus-actions">
+              <div className="insights-duration-quick" role="group" aria-label="Cambiar tiempo">
+                <span>Tu tiempo</span>
+                {[5, 15, 30].map((minutes) => (
+                  <button
+                    key={minutes}
+                    type="button"
+                    className={minutes === previewMinutes ? 'primary-btn insights-duration-chip' : 'secondary-btn insights-duration-chip'}
+                    aria-label={`Tengo ${minutes} min`}
+                    aria-pressed={minutes === previewMinutes}
+                    disabled={!plans[minutes].available}
+                    onClick={() => setSelectedMinutes(minutes)}
+                  >
+                    {minutes} min
+                  </button>
+                ))}
+              </div>
+              <button
+                type="button"
+                className="primary-btn insights-guided-start"
+                aria-label={`Empezar sesión recomendada de ${previewMinutes} min`}
+                onClick={() => begin(previewMinutes)}
+              >
+                Empezar · {previewMinutes} min →
+              </button>
+            </div>
+            <details className="insights-guided-preview-details">
+              <summary>Ver el recorrido de {previewMinutes} min</summary>
+              <ol>
+                {previewPlan.steps.map((step) => (
+                  <li key={step.id}>
+                    <span>{step.title}</span>
+                    <small>~{step.minutes} min</small>
+                  </li>
+                ))}
+              </ol>
+              <p>Basado en el material disponible. Terminar los pasos no demuestra por sí solo una mejora.</p>
+            </details>
           </div>
         ) : (
-          <p className="hint-text">{plans[5].reason || plans[15].reason || plans[30].reason}</p>
-        )}
-
-        {available ? (
-          <div className="insights-duration-quick" role="group" aria-label="Cambiar tiempo">
-            <span>Tiempo</span>
-            {[5, 15, 30].map((minutes) => (
-              <button
-                key={minutes}
-                type="button"
-                className={minutes === recommendedMinutes ? 'primary-btn insights-duration-chip' : 'secondary-btn insights-duration-chip'}
-                aria-label={`Tengo ${minutes} min`}
-                disabled={!plans[minutes].available}
-                onClick={() => begin(minutes)}
-              >
-                {minutes} min
-              </button>
-            ))}
+          <div className="insights-guided-empty" role="status">
+            <strong>El expediente aún no tiene un encargo verificable.</strong>
+            <p>{plans[5].reason || plans[15].reason || plans[30].reason}</p>
+            <p>Juega partidas o practica con posiciones reales y vuelve cuando haya material suficiente.</p>
           </div>
-        ) : null}
+        )}
 
         {completion ? (
           <details className="friendly-disclosure insights-guided-completion">

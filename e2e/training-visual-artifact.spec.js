@@ -55,7 +55,7 @@ async function assertInsightsActionableFold(room, label) {
   const geometry = await room.evaluate((root) => {
     const tools = root.querySelector('.insights-room-tools')?.getBoundingClientRect();
     const session = root.querySelector('.insights-guided-session:not(.active)')?.getBoundingClientRect();
-    const recommended = root.querySelector('.insights-guided-focus .primary-btn')?.getBoundingClientRect();
+    const recommended = root.querySelector('.insights-guided-start')?.getBoundingClientRect();
     return {
       viewportHeight: window.innerHeight,
       toolsBottom: tools?.bottom || 0,
@@ -481,7 +481,7 @@ scopedTest('tournament', 'Entrenar · Torneo', async ({ page }) => {
 });
 
 scopedTest('progress', 'Entrenar · Así juegas y Mi progreso', async ({ page }) => {
-  test.setTimeout(70_000);
+  test.setTimeout(100_000);
   await prepare(page);
 
   await page.evaluate(() => {
@@ -529,10 +529,45 @@ scopedTest('progress', 'Entrenar · Así juegas y Mi progreso', async ({ page })
   await captureAt(page, 'insights', { width: 1800, height: 900, variant: 'wide' });
   await captureAt(page, 'insights', { width: 390, height: 844, variant: 'mobile' });
   await assertInsightsActionableFold(trainingRoom, 'insights-mobile');
+  // A tap on a physical archive tab must reveal its content immediately:
+  // no silent view switch stranded above a full-page background on phones.
+  const archiveOnMobile = trainingRoom.locator('details[data-insights-archive]');
+  await archiveOnMobile.locator('> summary').click();
+  await archiveOnMobile.getByRole('button', { name: 'Errores', exact: true }).click();
+  const errorRegion = trainingRoom.getByRole('region', { name: 'Errores recurrentes' });
+  await expect(errorRegion).toHaveAttribute('data-insights-section', 'errors');
+  await expect(errorRegion).toBeFocused();
+  await expect.poll(() => errorRegion.evaluate((node) => {
+    const rect = node.getBoundingClientRect();
+    return rect.top >= -8 && rect.top < window.innerHeight / 3 && rect.bottom > 0;
+  }), { message: 'Archive content must be in mobile viewport after selecting it' }).toBe(true);
+  await expect(errorRegion.getByRole('button', { name: 'Volver a mi tarea' })).toBeVisible();
+  await captureAt(page, 'insights-errors-navigation', { width: 390, height: 844, variant: 'mobile' });
+  await errorRegion.getByRole('button', { name: 'Volver a mi tarea' }).click();
+  const taskRegion = trainingRoom.getByRole('region', { name: 'Tarea de Matthias' });
+  await expect(taskRegion).toBeFocused();
+  await expect(taskRegion).toHaveAttribute('data-insights-section', 'task');
+  await expect(trainingRoom.getByRole('button', { name: 'Empezar sesión recomendada de 5 min' })).toBeVisible();
+
   await page.setViewportSize({ width: 1440, height: 900 });
   await settle(page);
 
-  const recommendedSession = trainingRoom.getByRole('button', { name: /^Empezar sesión recomendada de (5|15|30) min$/ });
+  const preview = trainingRoom.locator('[data-training-preview-minutes]');
+  const choose15 = trainingRoom.getByRole('button', { name: 'Tengo 15 min' });
+  const choose30 = trainingRoom.getByRole('button', { name: 'Tengo 30 min' });
+  await choose15.click();
+  await expect(preview).toHaveAttribute('data-training-preview-minutes', '15');
+  await expect(choose15).toHaveAttribute('aria-pressed', 'true');
+  await expect(trainingRoom.locator('.insights-guided-session.active')).toHaveCount(0);
+  await expect(trainingRoom.getByRole('button', { name: 'Empezar sesión recomendada de 15 min' })).toBeVisible();
+  await trainingRoom.locator('.insights-guided-preview-details > summary').click();
+  await expect(trainingRoom.locator('.insights-guided-preview-details li').first()).toBeVisible();
+  await choose30.click();
+  await expect(preview).toHaveAttribute('data-training-preview-minutes', '30');
+  await expect(trainingRoom.getByRole('button', { name: 'Empezar sesión recomendada de 30 min' })).toBeVisible();
+  await trainingRoom.getByRole('button', { name: 'Tengo 5 min' }).click();
+  await expect(preview).toHaveAttribute('data-training-preview-minutes', '5');
+  const recommendedSession = trainingRoom.getByRole('button', { name: 'Empezar sesión recomendada de 5 min' });
   await expect(recommendedSession).toBeVisible();
   await recommendedSession.click();
 

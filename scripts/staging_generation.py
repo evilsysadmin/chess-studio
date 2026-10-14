@@ -118,18 +118,24 @@ def wait_for_surfaces(
     for attempt in range(1, attempts + 1):
         results = [observe(surface, sha, fetch) for surface in surfaces]
         if all(ok for ok, _ in results):
-            if root:
-                status, _ = fetch(f"{url('STAGING_URL')}/")
-                if status != 200:
-                    print(f"::error::Frontend staging raíz devuelve HTTP {status or 'error'}")
-                    return False
-            print(f"Staging sirve {sha} en {', '.join(surfaces)}")
-            return True
-        detail = ", ".join(text for _, text in results)
+            if not root:
+                print(f"Staging sirve {sha} en {', '.join(surfaces)}")
+                return True
+            status, _ = fetch(f"{url('STAGING_URL')}/")
+            if status == 200:
+                print(f"Staging sirve {sha} en {', '.join(surfaces)} con raíz HTTP 200")
+                return True
+            # The release receipt may propagate before the Pages root. A
+            # transient 503/transport error must consume the remaining polling
+            # budget, not fail a correctly deployed SHA on the first mismatch.
+            detail = f"frontend raíz HTTP {status or 'error'} (esperado 200)"
+        else:
+            detail = ", ".join(text for _, text in results)
         print(f"Aún no converge: {detail}; esperado {sha} (intento {attempt}/{attempts})")
         if attempt < attempts:
             sleep(interval)
-    print(f"::error::{'/'.join(surfaces)} no sirvió {sha} tras {attempts} intentos")
+    print(f"::error::{'/'.join(surfaces)} no sirvió {sha} con raíz HTTP 200 tras {attempts} intentos" if root
+          else f"::error::{'/'.join(surfaces)} no sirvió {sha} tras {attempts} intentos")
     return False
 
 
@@ -197,6 +203,11 @@ def backend_accredited(sha: str) -> bool:
     return result.returncode == 0
 
 
+def needs_oci_fallback(sha: str, head: str, accredited: Callable[[], bool]) -> bool:
+    """Only current main without full public accreditation may use OCI SDK."""
+    return head == sha and not accredited()
+
+
 def self_test() -> None:
     sha = "a" * 40
     other = "b" * 40
@@ -226,6 +237,24 @@ def self_test() -> None:
                              fetch=fake({**all_new, "backend": other}), sleep=quiet)
     assert not wait_for_surfaces(sha, ["frontend"], attempts=1, interval=0,
                                  fetch=fake(all_new, root_status=503), sleep=quiet, root=True)
+    # Pages can publish the exact release.json receipt slightly before the
+    # root CDN route. Retry the 503 but never accept it as green.
+    root_hits = {"n": 0}
+    def transient_root(target: str) -> tuple[int, str]:
+        if target.endswith("/"):
+            root_hits["n"] += 1
+            return (503 if root_hits["n"] < 3 else 200), ""
+        return fake(all_new)(target)
+    assert wait_for_surfaces(sha, ["frontend"], attempts=3, interval=0,
+                             fetch=transient_root, sleep=quiet, root=True)
+    assert root_hits["n"] == 3
+    root_hits["n"] = 0
+    assert not wait_for_surfaces(sha, ["frontend"], attempts=2, interval=0,
+                                 fetch=transient_root, sleep=quiet, root=True)
+    assert root_hits["n"] == 2, "un root sin 200 nunca acredita el deploy"
+    # A green root cannot conceal a stale frontend release receipt.
+    assert not wait_for_surfaces(sha, ["frontend"], attempts=2, interval=0,
+                                 fetch=fake({**all_new, "frontend": other}), sleep=quiet, root=True)
     # A Worker serving the SHA but with broken routing is not converged.
     broken = lambda target: (200, json.dumps({**health, "models": {}})) if target.endswith("/health") else fake(all_new)(target)  # noqa: E731
     assert not observe("worker", sha, broken)[0]
@@ -266,6 +295,10 @@ def self_test() -> None:
     assert not watch_committed(sha, attempts=20, interval=0, main_every=2, fetch=committed(other),
                                accredited=lambda: True, main_head=head, sleep=quiet)
     assert seen["n"] == 1, "un main nuevo corta la espera en la primera comprobación"
+    assert not needs_oci_fallback(sha, other, lambda: (_ for _ in ()).throw(AssertionError("stale probed")))
+    assert not needs_oci_fallback(sha, sha, lambda: True)
+    assert needs_oci_fallback(sha, sha, lambda: False)
+
     try:
         valid_sha("abc")
         raise AssertionError("SHA corto debería fallar")
@@ -280,6 +313,7 @@ def main(argv: list[str]) -> int:
     sub = parser.add_subparsers(dest="command")
     p = sub.add_parser("main-head")
     p.add_argument("--sha", required=True)
+    p.add_argument("--probe-backend", action="store_true")
     p.add_argument("--github-output")
     p = sub.add_parser("dist-identity")
     p.add_argument("--sha", required=True)
@@ -308,7 +342,8 @@ def main(argv: list[str]) -> int:
             superseded = head != sha
             if superseded:
                 print(f"::notice title=Staging superseded::{sha} != main {head}; sin mutación.")
-            write_output(args.github_output, superseded=str(superseded).lower(), current_main=head)
+            extra = {"requires_sdk": str(needs_oci_fallback(sha, head, lambda: backend_accredited(sha))).lower()} if args.probe_backend else {}
+            write_output(args.github_output, superseded=str(superseded).lower(), current_main=head, **extra)
             return 0
         if args.command == "dist-identity":
             return 0 if dist_identity(valid_sha(args.sha), pathlib.Path(args.path)) else 1

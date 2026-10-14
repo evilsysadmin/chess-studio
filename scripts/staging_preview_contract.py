@@ -146,6 +146,8 @@ def main() -> int:
         # complete public accreditation live in staging_generation.py and are
         # proven by its self-test (run below), not by matching inline bash.
         ("staging_generation.py watch-committed --sha \"$DEPLOY_SHA\"", "generation zero-cost watcher helper"),
+        ("--probe-backend", "late public probe after stale-main guard"),
+        ("steps.fallback_admission.outputs.requires_sdk == 'true'", "SDK gated by exact public accreditation"),
         ("OCI fallback avoided", "late watcher completion re-check"),
         ("A1 terminó y acreditó $DEPLOY_SHA", "late fallback skip requires complete public accreditation"),
         ("Re-check main before OCI fallback", "late stale-generation guard"),
@@ -343,6 +345,17 @@ def main() -> int:
         require(blocks["backend"], "id: watcher", "backend watcher convergence output", errors)
         require(blocks["backend"], "steps.watcher.outputs.converged != 'true'", "backend Run Command fallback condicional", errors)
         require(blocks["backend"], "Validate zero-cost host watcher contract", "backend watcher self-test", errors)
+        # The three fallback steps depend on the prior exact-SHA, stale-safe probe.
+        backend_block = blocks["backend"]
+        for label in ("Restore cached OCI SDK toolchain", "Validate OCI deploy contracts", "Deploy exact backend commit to OCI staging"):
+            marker = f"      - name: {label}\n"
+            if marker not in backend_block:
+                errors.append(f"staging backend: missing fallback step {label}")
+                continue
+            section = backend_block.split(marker, 1)[1].split("\n      - name: ", 1)[0]
+            if "if: steps.fallback_admission.outputs.requires_sdk == 'true'" not in section:
+                errors.append(f"staging backend: {label} requires exact public probe and stale-main admission")
+
         forbid(
             blocks["backend"],
             "python3 scripts/oci_vault_sync.py sync-current",

@@ -76,13 +76,23 @@ export default function PvPLobbyModal({
   onMarkChatRead = null,
 }) {
   useEscapeToClose(onClose);
-  useEffect(() => {
-    // The lobby is intent: warm the immutable Duel Room GLB before a challenge
-    // becomes a live match instead of making mobile wait on the game screen.
-    void prefetchWarRoomVariant('duel');
-  }, []);
   const [lobby, setLobby] = useState(EMPTY_LOBBY);
   const [loading, setLoading] = useState(true);
+  // The authoritative roster is the first meaningful paint; loading the
+  // decorative GLB before its initial GET completes causes multi-second main
+  // thread stalls on software WebGL runners. Enable 3D after the first roster
+  // result (or error), and keep it mounted across later refreshes.
+  const [hallSceneEligible, setHallSceneEligible] = useState(false);
+  useEffect(() => {
+    if (!loading) setHallSceneEligible(true);
+  }, [loading]);
+  useEffect(() => {
+    if (!hallSceneEligible) return;
+    // The prefetch is speculative; the first authoritative roster response
+    // must win before the Duel Room JS/GLB and its WebGL dependencies compete
+    // for Chromium's main thread. Warm only once after the initial result.
+    void prefetchWarRoomVariant('duel');
+  }, [hallSceneEligible]);
   const [busyKey, setBusyKey] = useState('');
   const [messageText, setMessageText] = useState('');
   const [chatOpen, setChatOpen] = useState(false);
@@ -209,7 +219,7 @@ export default function PvPLobbyModal({
       <section ref={lobbyRef} className="pvp-lobby pvp-duel-hall" role="dialog" aria-modal="true" aria-label="Duelo 1 contra 1 · War Room">
         <div className="pvp-duel-hall__room" aria-hidden="true">
           <Suspense fallback={null}>
-            <PvpDuelHallScene3D />
+            {hallSceneEligible && <PvpDuelHallScene3D />}
           </Suspense>
           <div className="pvp-duel-hall__architecture">
             <span className="pvp-duel-hall__arch pvp-duel-hall__arch--left" />
