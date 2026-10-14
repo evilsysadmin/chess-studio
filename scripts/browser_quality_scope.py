@@ -493,6 +493,15 @@ def build_matrix(scope: BrowserScope) -> dict[str, list[dict[str, str]]]:
                 "command": "./node_modules/.bin/playwright test chronicles-of-matthias.spec.js chronicles-of-matthias-tactics.spec.js --grep \"arranca como action RPG isométrico|abre una cripta Three\\.js real|arranca como RPG táctico isométrico\" --workers=1 --retries=0 --max-failures=1 --timeout=90000",
             }
         )
+        cases.append(
+            {
+                "id": "chronicles-save-durability",
+                "label": "Chronicles · save 503 retry and navigation",
+                # Run real browser P0 checkpoint error/retry tests, not just
+                # syntax checks or unit mocks, whenever Chronicles changes.
+                "command": "./node_modules/.bin/playwright test chronicles-of-matthias.spec.js --grep \"503 al guardar bloquea la salida|Partidas guardadas no abandona\" --workers=1 --retries=0 --max-failures=1 --timeout=90000",
+            }
+        )
     for enabled, case in (
         (scope.pawn_slug, ("pawn-slug", "Pawn Slug · browser", "pawn-slug.spec.js")),
         (scope.chesscom, ("chesscom", "Chesscom · browser", "chesscom.spec.js")),
@@ -726,7 +735,7 @@ def self_test() -> None:
         "e2e/chronicles-of-matthias.spec.js",
         "e2e/chronicles-of-matthias-tactics.spec.js",
     ):
-        assert _ids(classify([chronicles_path])) == ["chronicles"]
+        assert _ids(classify([chronicles_path])) == ["chronicles", "chronicles-save-durability"]
 
     assert all(
         "--max-failures=1" in case["command"] or case["id"] == "mobile-golden-path"
@@ -740,10 +749,14 @@ def self_test() -> None:
     assert "arranca como action RPG isométrico" in chronicles_case["command"]
     assert "abre una cripta Three\\.js real" in chronicles_case["command"]
     assert "arranca como RPG táctico isométrico" in chronicles_case["command"]
+    save_case = next(case for case in build_matrix(BrowserScope(chronicles=True))["include"]
+                     if case["id"] == "chronicles-save-durability")
+    assert "503 al guardar bloquea la salida" in save_case["command"]
+    assert "Partidas guardadas no abandona" in save_case["command"]
 
     all_scope = classify([".github/actions/setup-browser-e2e/action.yml"])
     assert all_scope == BrowserScope.all()
-    assert len(_ids(all_scope)) == 20
+    assert len(_ids(all_scope)) == 21
     assert "hans-fire-call" not in _ids(all_scope)
 
     harness = classify([CICD_WORKFLOW])

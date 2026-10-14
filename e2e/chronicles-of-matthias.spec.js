@@ -61,6 +61,89 @@ test('Chronicles · F5 retoma la misma run guardada y regresar al libro conserva
   await expect(mode).toHaveCount(0);
 });
 
+test('Chronicles · 503 al guardar bloquea la salida y reintento confirma la misma expedición', async ({ page }) => {
+  test.setTimeout(180_000);
+  await openChronicles(page, { chroniclesCurrentMapId: 'swordhaven-square', newTown: true });
+  const mode = page.locator('[data-chronicles="true"]');
+  const runBefore = await page.evaluate(() => JSON.parse(localStorage.getItem('chess-study-chronicles-run-v1')).id);
+  let attempts = 0;
+  await page.route('**/api/chronicles/runs/*/checkpoint', (route) => {
+    if (route.request().method() !== 'PUT') return route.fallback();
+    attempts += 1;
+    if (attempts === 1) return route.fulfill({
+      status: 503, contentType: 'application/json',
+      headers: { 'X-Request-ID': 'chronicles-save-503-e2e' },
+      body: JSON.stringify({ detail: 'Guardado no disponible temporalmente', requestId: 'chronicles-save-503-e2e' }),
+    });
+    return route.fallback();
+  });
+  await page.keyboard.press('Escape');
+  const menu = mode.locator('.chronicles-game-menu');
+  await menu.getByRole('button', { name: 'Salir y guardar', exact: true }).click();
+  await expect(menu.getByRole('alert')).toContainText('HTTP 503');
+  await expect(menu.getByRole('alert')).toContainText('chronicles-save-503-e2e');
+  await expect(menu.getByRole('button', { name: 'Reintentar guardar y salir' })).toBeVisible();
+  await expect(mode).toBeVisible();
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('chess-study-chronicles-run-v1')).id)).toBe(runBefore);
+  await menu.getByRole('button', { name: 'Reintentar guardar y salir' }).click();
+  await expect(mode).toHaveCount(0);
+  expect(attempts).toBe(2);
+});
+
+test('Chronicles · Partidas guardadas no abandona una expedición si falla su checkpoint', async ({ page }) => {
+  test.setTimeout(180_000);
+  await openChronicles(page, { chroniclesCurrentMapId: 'swordhaven-square', newTown: true });
+  const mode = page.locator('[data-chronicles="true"]');
+  let attempts = 0;
+  await page.route('**/api/chronicles/runs/*/checkpoint', (route) => {
+    if (route.request().method() !== 'PUT') return route.fallback();
+    attempts += 1;
+    if (attempts === 1) return route.fulfill({
+      status: 503, contentType: 'application/json',
+      body: JSON.stringify({ detail: 'Servidor ocupado' }),
+    });
+    return route.fallback();
+  });
+  await page.keyboard.press('Escape');
+  const menu = mode.locator('.chronicles-game-menu');
+  await menu.getByRole('button', { name: 'Partidas guardadas', exact: true }).click();
+  await expect(menu.getByRole('alert')).toContainText('HTTP 503');
+  await expect(mode).toBeVisible();
+  await expect(page.locator('[data-chronicles-save-menu]')).toHaveCount(0);
+  await menu.getByRole('button', { name: 'Partidas guardadas', exact: true }).click();
+  await expect(page.locator('[data-chronicles-save-menu]')).toBeVisible();
+  expect(attempts).toBe(2);
+});
+
+test('Chronicles · Nueva expedición falla con 503 y conserva la run hasta reintentar', async ({ page }) => {
+  test.setTimeout(180_000);
+  await openChronicles(page, { chroniclesCurrentMapId: 'swordhaven-square', newTown: true });
+  const mode = page.locator('[data-chronicles="true"]');
+  const activeRun = () => page.evaluate(() => JSON.parse(localStorage.getItem('chess-study-chronicles-run-v1') || 'null')?.id);
+  const oldRunId = await activeRun();
+  expect(oldRunId).toBeTruthy();
+  let attempts = 0;
+  await page.route('**/api/chronicles/runs/*/checkpoint', (route) => {
+    if (route.request().method() !== 'PUT') return route.fallback();
+    attempts += 1;
+    if (attempts === 1) return route.fulfill({
+      status: 503,
+      contentType: 'application/json',
+      body: JSON.stringify({ detail: 'Server temporarily unavailable' }),
+    });
+    return route.fallback();
+  });
+  await page.keyboard.press('Escape');
+  const menu = mode.locator('.chronicles-game-menu');
+  await menu.getByRole('button', { name: 'Nueva expedición', exact: true }).click();
+  await expect(menu.getByRole('alert')).toContainText('HTTP 503');
+  await expect(mode).toBeVisible();
+  expect(await activeRun(), 'failed checkpoint must preserve previous run').toBe(oldRunId);
+  await menu.getByRole('button', { name: 'Nueva expedición', exact: true }).click();
+  await expect.poll(activeRun).not.toBe(oldRunId);
+  expect(attempts).toBe(2);
+});
+
 test('Chronicles · primera partida sólo se escribe al guardar y Salir sin guardar no escribe otra', async ({ page }) => {
   test.setTimeout(180_000);
   const checkpointRequests = [];
