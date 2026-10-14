@@ -1054,3 +1054,9 @@ body:has(.insights-training-room) .global-music-dock {
 @media (prefers-reduced-motion: reduce) {
   .insights-training-room .insights-guided-focus :where(button, summary) { transition: none; }
 }
+
+/* A closed diegetic archive must not leave its navigation laid out below the
+   summary. Explicitly enforce this against author-level display:grid/flex. */
+.insights-training-room .insights-room-archive-drawer:not([open]) > .insights-room-tools {
+  display: none;
+}
