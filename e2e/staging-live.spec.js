@@ -60,20 +60,31 @@ async function waitForFrontendAssetPropagation(request) {
         if (!assets.length) {
           lastProblem = 'index.html no contiene JS/CSS versionados';
         } else {
+          // Entry chunks are independent immutable URLs. Bound origin load to
+          // four parallel GETs; still inspect every HTTP/MIME result, even if
+          // another entry asset fails or times out.
           const failures = [];
-          for (const assetUrl of assets) {
-            const cacheBusted = new URL(assetUrl);
-            cacheBusted.searchParams.set('staging-asset-gate', `${Date.now()}-${attempt}`);
-            const response = await request.get(cacheBusted.toString(), {
-              headers: {
-                'Cache-Control': 'no-cache, no-store',
-                Pragma: 'no-cache',
-              },
-            });
-            const contentType = response.headers()['content-type'] || '';
-            if (!response.ok() || !assetMimeIsValid(assetUrl, contentType)) {
-              failures.push(`${new URL(assetUrl).pathname}: HTTP ${response.status()} · ${contentType || 'sin content-type'}`);
-            }
+          for (let offset = 0; offset < assets.length; offset += 4) {
+            const batch = assets.slice(offset, offset + 4);
+            const checked = await Promise.all(batch.map(async (assetUrl) => {
+              const cacheBusted = new URL(assetUrl);
+              cacheBusted.searchParams.set('staging-asset-gate', `${Date.now()}-${attempt}`);
+              try {
+                const response = await request.get(cacheBusted.toString(), {
+                  headers: {
+                    'Cache-Control': 'no-cache, no-store',
+                    Pragma: 'no-cache',
+                  },
+                });
+                const contentType = response.headers()['content-type'] || '';
+                return response.ok() && assetMimeIsValid(assetUrl, contentType)
+                  ? null
+                  : `${new URL(assetUrl).pathname}: HTTP ${response.status()} · ${contentType || 'sin content-type'}`;
+              } catch (error) {
+                return `${new URL(assetUrl).pathname}: ${error instanceof Error ? error.message : String(error)}`;
+              }
+            }));
+            failures.push(...checked.filter(Boolean));
           }
 
           if (!failures.length) return;
@@ -208,6 +219,15 @@ function assertPvpBrowserResponse(response, { suffix, native }) {
 }
 
 async function assertLivePvpBrowserPath(page) {
+  // Read-only phase diagnostics: preserve real lobby/pulse cadence and counts.
+  // Never log credentials, tokens, roster contents, or response bodies.
+  const started = Date.now();
+  let phaseStart = started;
+  const logPhase = (name) => {
+    const now = Date.now();
+    console.log(`STAGING_PVP_PHASE ${name} duration_ms=${now - phaseStart} total_ms=${now - started}`);
+    phaseStart = now;
+  };
   const failed = [];
   const onRequestFailed = (request) => {
     if (request.url().includes('/api/pvp/')) {
@@ -229,15 +249,145 @@ async function assertLivePvpBrowserPath(page) {
     { timeout: 25_000 },
   );
 
+  // Observe the actual browser sequence rather than timing a mocked API.
+  // Diagnostics are one-shot and contain only timing, not URLs or identities.
+  const openedAt = Date.now();
+  const openMs = () => Date.now() - openedAt;
+  // Measure DOM milestones from *inside* Chromium. Playwright's own locator
+  // commands can be delayed by a busy main thread, even after React has
+  // inserted the dialog. Keep the observer read-only and stop it after open.
+  const browserOriginMs = await page.evaluate(() => {
+    const origin = performance.now();
+    const marks = { dialogMountMs: null, sceneMountMs: null, sceneReadyMs: null, sceneFallbackMs: null };
+    const longTasks = { count: 0, totalMs: 0, maxMs: 0 };
+    const elapsed = () => Math.round(performance.now() - origin);
+    const captureDom = () => {
+      if (marks.dialogMountMs === null && document.querySelector('.pvp-lobby[role="dialog"]')) {
+        marks.dialogMountMs = elapsed();
+      }
+      const scene = document.querySelector('[data-pvp-duel-hall-3d]');
+      if (!scene) return;
+      if (marks.sceneMountMs === null) marks.sceneMountMs = elapsed();
+      const state = scene.getAttribute('data-pvp-duel-hall-3d');
+      if (state === 'ready' && marks.sceneReadyMs === null) marks.sceneReadyMs = elapsed();
+      if (state?.startsWith('fallback') && marks.sceneFallbackMs === null) marks.sceneFallbackMs = elapsed();
+    };
+    const domObserver = new MutationObserver(captureDom);
+    domObserver.observe(document.body, {
+      childList: true, subtree: true, attributes: true,
+      attributeFilter: ['data-pvp-duel-hall-3d'],
+    });
+    let taskObserver = null;
+    if (PerformanceObserver.supportedEntryTypes?.includes('longtask')) {
+      taskObserver = new PerformanceObserver((list) => {
+        for (const entry of list.getEntries()) {
+          longTasks.count += 1;
+          longTasks.totalMs += entry.duration;
+          longTasks.maxMs = Math.max(longTasks.maxMs, entry.duration);
+        }
+      });
+      taskObserver.observe({ type: 'longtask' });
+    }
+    captureDom();
+    window.__stagingDuelHallTiming = {
+      marks, longTasks,
+      close: () => { domObserver.disconnect(); taskObserver?.disconnect(); },
+    };
+    return Date.now();
+  });
+  const browserMs = (value) => value === null ? 'not-seen' : Math.round(browserOriginMs - openedAt + value);
+  const openTimeline = {
+    firstLobbyRequestMs: null,
+    firstLobbyResponseMs: null,
+    hallSceneChunkRequestMs: null,
+    hallSceneChunkResponseMs: null,
+    modelRequestMs: null,
+    modelHeadersMs: null,
+    modelFinishedMs: null,
+    modelRequests: 0,
+  };
+  const isModelGlb = (url) => {
+    try { return new URL(url).pathname.toLowerCase().endsWith('.glb'); }
+    catch { return false; }
+  };
+  const isHallSceneChunk = (url) => /(?:PvPDuelHallScene3D|PvpDuelHallShell)[^/]*\.js(?:[?#]|$)/i.test(url);
+  const onOpenRequest = (request) => {
+    if (request.method() === 'GET' && isPvpApiPath(request.url(), '/lobby') && openTimeline.firstLobbyRequestMs === null) {
+      openTimeline.firstLobbyRequestMs = openMs();
+    }
+    if (isHallSceneChunk(request.url()) && openTimeline.hallSceneChunkRequestMs === null) {
+      openTimeline.hallSceneChunkRequestMs = openMs();
+    }
+    if (request.method() === 'GET' && isModelGlb(request.url())) {
+      openTimeline.modelRequests += 1;
+      if (openTimeline.modelRequestMs === null) openTimeline.modelRequestMs = openMs();
+    }
+  };
+  const onOpenResponse = (response) => {
+    if (response.request().method() === 'GET' && isPvpApiPath(response.url(), '/lobby') && openTimeline.firstLobbyResponseMs === null) {
+      openTimeline.firstLobbyResponseMs = openMs();
+    }
+    if (isHallSceneChunk(response.url()) && openTimeline.hallSceneChunkResponseMs === null) {
+      openTimeline.hallSceneChunkResponseMs = openMs();
+    }
+    if (response.request().method() === 'GET' && isModelGlb(response.url()) && openTimeline.modelHeadersMs === null) {
+      openTimeline.modelHeadersMs = openMs();
+    }
+  };
+  const onOpenFinished = (request) => {
+    if (request.method() === 'GET' && isModelGlb(request.url()) && openTimeline.modelFinishedMs === null) {
+      openTimeline.modelFinishedMs = openMs();
+    }
+  };
+  page.on('requestfinished', onOpenFinished);
+  page.on('request', onOpenRequest);
+  page.on('response', onOpenResponse);
+
   try {
     const firstLobby = waitLobby();
     await openDuelHall(page);
+    const homeNavigationDoneMs = openMs();
     assertPvpBrowserResponse(await firstLobby, { suffix: '/lobby', native: 'lobby-read' });
 
     const lobby = page.getByRole('dialog', { name: 'Duelo 1 contra 1 · War Room' });
     await expect(lobby).toBeVisible();
     await expect(lobby.getByRole('heading', { name: 'Sala de Duelos' })).toBeVisible();
     await expect(lobby.locator('.pvp-lobby__error')).toHaveCount(0);
+    const dialogReadyMs = openMs();
+    const sceneStatus = await page.evaluate(() =>
+      document.querySelector('[data-pvp-duel-hall-3d]')?.getAttribute('data-pvp-duel-hall-3d') || 'not-mounted'
+    );
+    console.log(
+      `STAGING_PVP_OPEN home_navigation_ms=${homeNavigationDoneMs}` +
+      ` native_request_ms=${openTimeline.firstLobbyRequestMs ?? 'not-seen'}` +
+      ` native_response_ms=${openTimeline.firstLobbyResponseMs ?? 'not-seen'}` +
+      ` scene_chunk_request_ms=${openTimeline.hallSceneChunkRequestMs ?? 'not-seen'}` +
+      ` scene_chunk_response_ms=${openTimeline.hallSceneChunkResponseMs ?? 'not-seen'}` +
+      ` dialog_ready_ms=${dialogReadyMs} scene_state=${sceneStatus}`,
+    );
+    const timing = await page.evaluate(() => {
+      const probe = window.__stagingDuelHallTiming;
+      return probe ? { marks: { ...probe.marks }, longTasks: { ...probe.longTasks } } : null;
+    });
+    if (timing) {
+      const { marks, longTasks } = timing;
+      console.log(
+        `STAGING_PVP_RENDER dialog_mount_ms=${browserMs(marks.dialogMountMs)}` +
+        ` scene_mount_ms=${browserMs(marks.sceneMountMs)}` +
+        ` scene_ready_ms=${browserMs(marks.sceneReadyMs)}` +
+        ` scene_fallback_ms=${browserMs(marks.sceneFallbackMs)}` +
+        ` glb_requests=${openTimeline.modelRequests}` +
+        ` glb_start_ms=${openTimeline.modelRequestMs ?? 'not-seen'}` +
+        ` glb_headers_ms=${openTimeline.modelHeadersMs ?? 'not-seen'}` +
+        ` glb_finished_ms=${openTimeline.modelFinishedMs ?? 'not-seen'}` +
+        ` longtask_count=${longTasks.count}` +
+        ` longtask_total_ms=${Math.round(longTasks.totalMs)}` +
+        ` longtask_max_ms=${Math.round(longTasks.maxMs)}`,
+      );
+    }
+    // Keep the passive observer alive through the existing real PvP pulses:
+    // 3D may still be loading when the first lobby response becomes visible.
+    logPhase('open-lobby');
 
     // Enrolarnos fuerza el mismo polling que usa una sesión humana real:
     // pulse nativo + reconciliación full-lobby. El antiguo gate con curl podía
@@ -254,14 +404,41 @@ async function assertLivePvpBrowserPath(page) {
     expect((await join).status(), 'POST /roster debe confirmar disponibilidad').toBe(200);
     assertPvpBrowserResponse(await firstPulse, { suffix: '/lobby/pulse', native: 'lobby-pulse' });
     assertPvpBrowserResponse(await reconciledLobby, { suffix: '/lobby', native: 'lobby-read' });
+    logPhase('join-and-first-pulse');
 
     // Dos ciclos adicionales evitan acreditar sólo la primera respuesta feliz
     // del sidecar y reproducen el patrón repetido que ve el navegador.
     for (let cycle = 0; cycle < 2; cycle += 1) {
       assertPvpBrowserResponse(await waitPulse(), { suffix: '/lobby/pulse', native: 'lobby-pulse' });
+      logPhase(`repeat-pulse-${cycle + 1}`);
     }
     await expect(lobby.locator('.pvp-lobby__error')).toHaveCount(0);
     expect(failed, `PvP browser requestfailed: ${JSON.stringify(failed)}`).toEqual([]);
+
+    // Do not wait for a 3D frame. Sample the state achieved while running
+    // the same two mandatory browser-visible native polling cycles as before.
+    const settled = await page.evaluate(() => {
+      const probe = window.__stagingDuelHallTiming;
+      if (!probe) return null;
+      probe.close();
+      return {
+        marks: { ...probe.marks },
+        longTasks: { ...probe.longTasks },
+        sceneState: document.querySelector('[data-pvp-duel-hall-3d]')?.getAttribute('data-pvp-duel-hall-3d') || 'not-mounted',
+      };
+    });
+    if (settled) {
+      console.log(
+        `STAGING_PVP_RENDER_SETTLED scene_ready_ms=${browserMs(settled.marks.sceneReadyMs)}` +
+        ` scene_fallback_ms=${browserMs(settled.marks.sceneFallbackMs)}` +
+        ` scene_state=${settled.sceneState}` +
+        ` glb_requests=${openTimeline.modelRequests}` +
+        ` glb_finished_ms=${openTimeline.modelFinishedMs ?? 'not-seen'}` +
+        ` longtask_count=${settled.longTasks.count}` +
+        ` longtask_total_ms=${Math.round(settled.longTasks.totalMs)}` +
+        ` longtask_max_ms=${Math.round(settled.longTasks.maxMs)}`,
+      );
+    }
 
     const leave = page.waitForResponse(
       (response) => response.request().method() === 'DELETE' && isPvpApiPath(response.url(), '/roster'),
@@ -271,7 +448,17 @@ async function assertLivePvpBrowserPath(page) {
     expect((await leave).status(), 'DELETE /roster debe limpiar la identidad técnica').toBe(204);
     await lobby.getByRole('button', { name: 'Cerrar ventana de rivales', exact: true }).click();
     await expect(lobby).toBeHidden();
+    logPhase('leave-lobby');
   } finally {
+    if (!page.isClosed()) {
+      await page.evaluate(() => {
+        window.__stagingDuelHallTiming?.close();
+        delete window.__stagingDuelHallTiming;
+      }).catch(() => {});
+    }
+    page.off('requestfinished', onOpenFinished);
+    page.off('request', onOpenRequest);
+    page.off('response', onOpenResponse);
     page.off('requestfailed', onRequestFailed);
   }
 }

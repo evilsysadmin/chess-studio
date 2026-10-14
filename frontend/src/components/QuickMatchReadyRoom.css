@@ -80,20 +80,20 @@
   position: relative;
   z-index: 2;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(350px, 440px);
-  grid-template-rows: auto 1fr auto;
-  gap: 1.2rem 2.4rem;
+  grid-template-columns: minmax(0, 1fr) minmax(365px, 460px);
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: 1.1rem 2rem;
   width: min(1520px, 100%);
   height: 100%;
   margin: 0 auto;
-  padding: clamp(2rem, 4vw, 3.8rem) clamp(2rem, 5vw, 5rem) clamp(1.8rem, 3vw, 3rem);
+  padding: clamp(1.4rem, 3vw, 2.7rem) clamp(1.5rem, 4.5vw, 4rem) clamp(1rem, 2.2vw, 1.8rem);
 }
 
 .quick-match-ready-room__heading {
-  grid-column: 1 / -1;
+  grid-column: 1;
   align-self: start;
-  max-width: 660px;
-  padding-right: 4.2rem;
+  max-width: 510px;
+  padding-right: 0;
   text-shadow: 0 3px 20px rgba(0, 0, 0, .72);
 }
 
@@ -110,25 +110,26 @@
 .friendly-modal.quick-match-ready-room[aria-label='Configurar partida rápida'] .quick-match-ready-room__heading .combat-heading-row h3 {
   flex: 0 1 auto;
   color: #f3e3c6;
-  font-size: clamp(2rem, 4.2vw, 4.1rem);
+  font-size: clamp(2rem, 3.25vw, 3.2rem);
   line-height: .98;
   text-wrap: balance;
 }
 
 .friendly-modal.quick-match-ready-room[aria-label='Configurar partida rápida'] .quick-match-ready-room__heading .friendly-lead {
-  max-width: 54ch;
-  margin: .55rem 0 0;
-  color: rgba(244, 229, 202, .84);
-  font-size: .9rem;
+  max-width: 46ch;
+  margin: .65rem 0 0;
+  color: rgba(244, 229, 202, .88);
+  font-size: .94rem;
+  line-height: 1.45;
 }
 
 .friendly-modal.quick-match-ready-room[aria-label='Configurar partida rápida'] .quick-match-ready-room__briefing {
   grid-column: 1;
   grid-row: 3;
   align-self: end;
-  width: min(100%, 430px);
+  width: min(100%, 440px);
   margin: 0;
-  padding: .78rem .95rem;
+  padding: .85rem 1rem;
   border: 1px solid rgba(220, 175, 95, .24);
   border-left: 3px solid rgba(224, 176, 87, .72);
   border-radius: 8px;
@@ -141,48 +142,68 @@
 }
 
 .quick-match-ready-room__launch {
-  grid-column: 1 / -1;
+  grid-column: 2;
   grid-row: 3;
   align-self: end;
-  justify-self: center;
+  justify-self: end;
   position: relative;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 142px;
-  align-items: center;
-  gap: 0 .6rem;
-  width: min(500px, 42vw);
-  min-width: 430px;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  box-shadow: none;
-  backdrop-filter: none;
-  transform: translateX(4.5rem);
+  grid-template-columns: minmax(0, 1fr) 136px;
+  align-items: stretch;
+  gap: .7rem .65rem;
+  width: 100%;
+  min-width: 0;
+  padding: .9rem;
+  border: 1px solid rgba(221, 173, 91, .38);
+  border-radius: 12px;
+  background: linear-gradient(145deg, rgba(31, 22, 15, .93), rgba(13, 10, 8, .91));
+  box-shadow: 0 14px 40px rgba(0, 0, 0, .42), inset 0 1px rgba(253, 221, 157, .08);
+  backdrop-filter: blur(8px);
 }
 
 .quick-match-ready-room__summary {
-  pointer-events: none;
   grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) repeat(2, minmax(0, 1fr));
+  gap: .5rem;
+  margin: 0;
+}
+
+.quick-match-ready-room__detail {
   display: flex;
-  flex-wrap: wrap;
-  gap: .24rem .38rem;
-  margin: 0 0 .48rem;
-  padding-left: .25rem;
-  color: rgba(244, 229, 202, .76);
-  font: 600 .72rem/1.35 var(--font-body);
-}
-
-.quick-match-ready-room__summary > span:nth-child(even) {
-  color: rgba(215, 174, 94, .62);
-}
-
-.quick-match-ready-room__summary > span:not([aria-hidden='true']) {
+  flex-direction: column;
+  justify-content: center;
   min-width: 0;
+  min-height: 54px;
+  gap: .23rem;
+  padding: .42rem .58rem;
+  border: 1px solid rgba(222, 177, 100, .15);
+  border-radius: 6px;
+  background: rgba(6, 5, 4, .35);
+}
+
+.quick-match-ready-room__launch > .quick-match-error {
+  grid-column: 1 / -1;
+  min-width: 0;
+}
+
+.quick-match-ready-room__detail small {
+  color: #d6ae71;
+  font: 700 .61rem/1 var(--font-mono);
+  letter-spacing: .09em;
+  text-transform: uppercase;
+}
+
+.quick-match-ready-room__detail b {
+  min-width: 0;
+  color: #f1e2c9;
+  font: 600 .85rem/1.35 var(--font-body);
+  overflow-wrap: anywhere;
 }
 
 .friendly-modal.quick-match-ready-room[aria-label='Configurar partida rápida'] .quick-match-ready-room__play {
   width: 100%;
-  min-height: 52px !important;
+  min-height: 56px !important;
   margin: 0;
   border: 1px solid rgba(236, 194, 108, .74);
   border-radius: 4px;
@@ -194,7 +215,7 @@
     inset 0 1px rgba(255, 239, 194, .28),
     inset 0 -1px rgba(44, 25, 8, .48);
   text-shadow: 0 1px 2px rgba(38, 21, 6, .78);
-  font: 700 1rem/1 Georgia, 'Times New Roman', serif;
+  font: 700 1.05rem/1 Georgia, 'Times New Roman', serif;
   letter-spacing: .02em;
 }
 
@@ -211,7 +232,7 @@
 
 .friendly-modal.quick-match-ready-room[aria-label='Configurar partida rápida'] .quick-match-ready-room__settings > summary {
   justify-content: center;
-  min-height: 52px !important;
+  min-height: 56px !important;
   padding: .35rem .72rem;
   border: 1px solid rgba(220, 174, 89, .28);
   border-radius: 4px;
@@ -283,8 +304,19 @@
 
 .friendly-modal.quick-match-ready-room[aria-label='Configurar partida rápida'] .quick-match-secondary-row {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: .5rem;
+}
+
+/* The shared Quick Match flex layout sets these selects to width: 0.
+ * The Ready Room uses a grid instead: fill the cells or only the
+ * dropdown arrows remain visible on desktop. */
+.friendly-modal.quick-match-ready-room[aria-label='Configurar partida rápida'] .quick-match-secondary-row :is(.quick-match-clock-select, .quick-match-series-select) {
+  width: 100%;
+  min-width: 0;
+  max-width: none;
+  box-sizing: border-box;
+  justify-self: stretch;
 }
 
 .friendly-modal.quick-match-ready-room[aria-label='Configurar partida rápida'] .quick-match-secondary-row .color-row {
@@ -378,12 +410,36 @@
     display: block;
     width: 100%;
     min-width: 0;
-    padding: .18rem 0 0;
+    padding: .7rem;
     transform: none;
   }
 
+  .quick-match-ready-room__summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: .35rem;
+    margin-bottom: .55rem;
+  }
+
+  .quick-match-ready-room__detail:first-child {
+    grid-column: 1 / -1;
+  }
+
+  .quick-match-ready-room__detail {
+    min-height: 0;
+    padding: .3rem .5rem;
+  }
+
+  .quick-match-ready-room__detail b {
+    font-size: .81rem;
+  }
+
+  /* Opening settings turns the mobile panel into the sole focus. */
+  .quick-match-ready-room__content:has(.quick-match-ready-room__settings[open]) .quick-match-ready-room__briefing {
+    display: none;
+  }
+
   .friendly-modal.quick-match-ready-room[aria-label='Configurar partida rápida'] .quick-match-ready-room__settings {
-    margin-top: .35rem;
+    margin-top: .45rem;
   }
 
   .friendly-modal.quick-match-ready-room[aria-label='Configurar partida rápida'] .quick-match-ready-room__play {
@@ -458,4 +514,17 @@
   .friendly-modal.quick-match-ready-room[aria-label='Configurar partida rápida'] .quick-match-ready-room__settings > summary::marker {
     font-size: .7em;
   }
+}
+
+/* Narrow landscape: compact copy and keep the setup actions above the fold. */
+@media (min-width: 821px) and (max-height: 650px) {
+  .quick-match-ready-room__content { padding-top: 1rem; padding-bottom: .8rem; }
+  .friendly-modal.quick-match-ready-room[aria-label='Configurar partida rápida'] .quick-match-ready-room__heading .combat-heading-row h3 {
+    font-size: clamp(1.8rem, 3vw, 2.5rem);
+  }
+  .friendly-modal.quick-match-ready-room[aria-label='Configurar partida rápida'] .quick-match-ready-room__briefing {
+    padding: .5rem .7rem;
+  }
+  .quick-match-ready-room__launch { padding: .6rem; gap: .45rem; }
+  .quick-match-ready-room__detail { min-height: 42px; }
 }
