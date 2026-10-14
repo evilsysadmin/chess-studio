@@ -58,10 +58,10 @@ XP, niveles, atributos, skills y la build compartida de Chronicles/Tactics perte
 
 ## Catálogo de expediciones por usuario
 
-- Los documentos `chronicles_runs` de Mongo son la autoridad exclusiva de la identidad, mundo, checkpoint y estados de las expediciones, filtrados por propietario autenticado.
-- Los títulos personalizados y el identificador de la última expedición seleccionada pertenecen al perfil Mongo mediante `chess-study-chronicles-save-metadata-v1`, limitado por usuario y sin datos de mundo.
-- El índice local de IDs sirve de caché/recovery, no puede revivir una expedición eliminada del servidor ni sobrescribir títulos sincronizados de otro dispositivo.
-- El flujo de Continuar consulta primero el catálogo remoto; ante un fallo de red ofrece reintento sin crear otra expedición ni tratar la caché como un guardado remoto confirmado.
+- Los documentos `chronicles_runs` de Mongo son la autoridad de identidad, mundo, checkpoints y estado de cada expedición, filtrados por propietario autenticado.
+- Los títulos personalizados y la última expedición seleccionada pertenecen al perfil Mongo mediante `chess-study-chronicles-save-metadata-v1`; nunca contienen un snapshot de mundo.
+- El índice local de IDs es sólo caché/recovery: no puede revivir expediciones eliminadas en el servidor ni sobrescribir títulos sincronizados de otro dispositivo.
+- «Continuar» consulta primero el catálogo remoto; ante fallos de red ofrece reintento sin fingir que un guardado local es un remoto confirmado.
 
 ## Ficha canónica de personaje y progresión visible
 
@@ -194,7 +194,7 @@ Chronicles first-person es una superficie **viewport-owned**: durante la expedic
 - El fullscreen del gameplay es **viewport-owned**, sin petición automática de fullscreen nativo del navegador. La API fullscreen nativa siempre permite a `Escape` abandonar ese estado y no puede ofrecer simultáneamente un `Escape` exclusivo para el menú. En escritorio puede quedar visible la barra del navegador; el juego ocupa todo el viewport útil. Fullscreen real sin barra queda a elección del navegador/usuario (p. ej. F11 o modo PWA).
 - En móvil/coarse pointer se puede intentar `screen.orientation.lock('landscape')` sin solicitar fullscreen nativo. Si el navegador exige fullscreen para bloquear orientación, se degrada sin bloquear la partida, dejando el control «Apaisado» y la escena viewport-owned.
 - Al salir de Chronicles se libera el lock de orientación que se haya solicitado; nunca se sale de un fullscreen nativo activado por el usuario u otra superficie.
-- `Escape` cierra primero el automap si está abierto. En caso contrario abre/cierra el menú del juego, desde el que se puede continuar, volver a partidas guardadas o salir. No solicita fullscreen ni sale de Chronicles por sí solo.
+- `Escape` cierra primero el automap si está abierto. En caso contrario abre/cierra el menú de pausa, limitado a Continuar, Guardar partida, Guardar y salir, Salir sin guardar y Opciones de audio. La música general y los SFX se ajustan dentro de Opciones de audio, cerrada inicialmente. Nueva campaña y gestión de partidas pertenecen al libro de expediciones, no al menú de pausa. Guardar y salir sólo abandona tras confirmar un checkpoint duradero; salir sin guardar exige confirmación. `Escape` no solicita fullscreen ni sale de Chronicles por sí solo.
 - El automap es un overlay diegético de la expedición, accesible con `M` y con un control táctil/desktop visible. Mientras está abierto, los controles de locomoción/combate no actúan por debajo.
 - La posición y orientación del marcador del grupo derivan exclusivamente de `state.x`, `state.y` y `state.direction`; el automap no mantiene una segunda posición ni una segunda lógica de facing.
 - El grupo se representa como una flecha/chevron orientada con la dirección canónica N/E/S/O. Girar el grupo rota inmediatamente ese marcador.

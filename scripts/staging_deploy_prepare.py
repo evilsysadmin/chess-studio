@@ -38,6 +38,18 @@ def append_summary(text: str) -> None:
             handle.write(text.rstrip() + "\n")
 
 
+def optional_scope_receipt(sha: str, values: dict[str, str]) -> str:
+    """Read-only receipt: expose why optional work was scheduled, even on fail-open."""
+    reason = values["optional_scope_reason"]
+    return (
+        f"### Staging optional follow-ups · {sha[:12]}\n\n"
+        f"- Scope: `{reason}`\n"
+        f"- Pawn Slug visual: `{values['pawn_slug_visual_required']}`\n"
+        f"- Resend recovery: `{values['resend_bootstrap_required']}`\n"
+        f"- Continuity drill: `{values['continuity_required']}`"
+    )
+
+
 def resolve_source(sha: str) -> str:
     repository = os.environ.get("GITHUB_REPOSITORY", "").strip()
     token = os.environ.get("GITHUB_TOKEN", "").strip()
@@ -132,6 +144,12 @@ def prepare(sha: str) -> dict[str, str]:
         append_summary(f"### Staging smoke-only · tests {head} · runtime {smoke_sha} · {smoke_reason} · tests {','.join(smoke_keys)}")
         return values
     values.update(optional_scope.decide(head))
+    # Observability is explicitly non-blocking; never turn a valid deploy red
+    # because writing the GitHub Step Summary failed.
+    try:
+        append_summary(optional_scope_receipt(head, values))
+    except OSError as exc:
+        print(f"::warning title=Staging follow-ups receipt unavailable::{type(exc).__name__}")
     return values
 
 
@@ -175,6 +193,22 @@ def self_test() -> None:
             {"head_sha": sha, "event": "workflow_dispatch", "status": "completed", "conclusion": "success"},
         ]},
     )
+    receipt_flags = {
+        "optional_scope_reason": "complete-staging:123:" + sha[:12] + ".." + sha[:12],
+        "pawn_slug_visual_required": "false",
+        "resend_bootstrap_required": "false",
+        "continuity_required": "true",
+    }
+    receipt = optional_scope_receipt(sha, receipt_flags)
+    assert "complete-staging:123:" in receipt
+    assert "Continuity drill: `true`" in receipt
+    receipt_flags.update({
+        "optional_scope_reason": "fail-open:GenerationError",
+        "pawn_slug_visual_required": "true",
+        "resend_bootstrap_required": "true",
+    })
+    assert "fail-open:GenerationError" in optional_scope_receipt(sha, receipt_flags)
+    assert "Resend recovery: `true`" in optional_scope_receipt(sha, receipt_flags)
     deploy_scope.self_test()
     generation.self_test()
     optional_scope.self_test()

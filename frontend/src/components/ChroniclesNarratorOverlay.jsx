@@ -105,7 +105,16 @@ export default function ChroniclesNarratorOverlay({ message, children = null, op
                 <h2 id={dialogId + '-title'}>Crónica</h2>
               </div>
               <button type="button" className="chronicles-dm-close" aria-label="Cerrar crónica"
-                onClick={() => onOpenChange(false)}>×</button>
+                onPointerDown={(event) => {
+                  if (event.button !== 0) return;
+                  event.preventDefault();
+                  event.stopPropagation();
+                  onOpenChange(false);
+                }}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  if (event.detail === 0) onOpenChange(false);
+                }}>×</button>
             </header>
             <div ref={scrollRef} className="chronicles-dm-dialog-body" tabIndex={0}>
               <span className="chronicles-dm-kicker">CRÓNICA DE EXPEDICIÓN</span>

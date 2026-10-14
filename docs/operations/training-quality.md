@@ -78,6 +78,17 @@ Canon visual aprobado:
 
 El mock nocturno aprobado en la conversación del 2026-10-04 es la referencia de composición. No generar variaciones conceptuales nuevas para sustituirla durante esta línea de trabajo; las siguientes iteraciones se comparan contra ese canon y contra PNG runtime reales.
 
+## UX del encargo de Matthias
+
+- «Así juegas» abre con **una única tarea principal**, procedente de `buildGuidedTrainingPlan` y del Player Model; el despacho es contexto diegético y no otra fuente de verdad.
+- Los controles 5/15/30 **previsualizan** duración, foco, número y nombres de bloques. Elegir una duración no arranca ni escribe una sesión; sólo `Empezar` llama al owner de sesión guiada.
+- La evidencia que sustenta el foco se presenta con el detalle factual del plan. El recorrido ampliado es opcional y no afirma un impacto futuro ni progreso que no haya sido medido.
+- Si no hay posiciones personales/Némesis suficientes, mostrar un estado honesto en vez de una recomendación artificial o un CTA inútil.
+- Desktop y móvil deben mantener CTA en el primer viewport, targets táctiles accesibles y cero overflow horizontal. Cualquier ajuste del material/escena 3D necesita PNGs en los tamaños afectados.
+- La navegación contextual del archivo (Errores, Expediente, Mi progreso) mueve foco y viewport al contenido seleccionado **solo tras una interacción explícita**, nunca por render inicial/F5. El panel es una región accesible con su nombre actual.
+- Las subpáginas muestran un retorno directo a la tarea en el propio panel, de modo que un teléfono no obliga a remontar toda la estancia. Los enlaces entre vistas no cambian las fuentes de datos ni fabrican conclusiones.
+- El control de navegación y retorno debe pasar Playwright en móvil: foco real, contenido visible, sin scroll horizontal y con captura del archivo abierto.
+
 ## “Entrenar este error”
 
 El CTA aparece sólo cuando existe una posición personal real que coincide con el filtro del consejo.
