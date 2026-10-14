@@ -9,7 +9,7 @@ import {
 } from './chroniclesRunCheckpoint.js';
 import { createChroniclesState } from '../chroniclesOfMatthias.js';
 import { chroniclesApplyContentEffects, chroniclesGoldBalance } from './chroniclesContentRuntime.js';
-import { chroniclesMapById } from './chroniclesMapCatalog.js';
+import { chroniclesMapById, chroniclesMapTransitionState } from './chroniclesMapCatalog.js';
 
 function anotherWalkableCell(map, occupied = []) {
   const blocked = new Set(occupied.map(({ x, y }) => `${x},${y}`));
@@ -107,6 +107,59 @@ describe('Chronicles checkpoint projection', () => {
   it('rejects missing map identity or invalid CAS versions', () => {
     expect(() => chroniclesRunCheckpointPayload({}, 0)).toThrow(/current map/i);
     expect(() => chroniclesRunCheckpointPayload({ mapId: 'crypt-eight-squares' }, -1)).toThrow(/worldVersion/i);
+  });
+});
+
+describe('Chronicles dungeon no-grind persistence', () => {
+  it('remembers each killed dungeon foe across travel, F5 and re-entry without resetting the living foe permanently', () => {
+    const map = chroniclesMapById('swordhaven-sewers');
+    const dead = map.enemies.find((enemy) => enemy.id === 'sewers-goblin-west');
+    const survivor = map.enemies.find((enemy) => enemy.id === 'sewers-spider');
+    expect(dead).toBeTruthy();
+    expect(survivor).toBeTruthy();
+    const original = {
+      ...createChroniclesState(map.id),
+      [dead.hpKey]: 0,
+      [survivor.hpKey]: 2,
+    };
+
+    // A semantic checkpoint records the same deaths even before leaving.
+    const localSave = chroniclesRunCheckpointPayload(original, 2);
+    expect(Object.keys(localSave.worldFlags).some((key) => key.startsWith('__chrDungeonDefeats.swordhaven-sewers.'))).toBe(true);
+    const localReload = chroniclesApplyRunCheckpoint(createChroniclesState(map.id), localSave);
+    expect(localReload[dead.hpKey]).toBe(0);
+    expect(localReload[survivor.hpKey]).toBe(2);
+
+    const outside = chroniclesMapTransitionState(localReload, 'swordhaven-first-book');
+    const savedOutside = chroniclesRunCheckpointPayload(outside, 3);
+    const recoveredOutside = chroniclesApplyRunCheckpoint(createChroniclesState('swordhaven-first-book'), savedOutside);
+    const revisit = chroniclesMapTransitionState(recoveredOutside, map.id);
+    expect(revisit[dead.hpKey]).toBe(0);
+    expect(revisit[survivor.hpKey]).toBe(survivor.maxHp);
+    expect(map.enemies.filter((enemy) => Number(revisit[enemy.hpKey]) > 0).map((enemy) => enemy.id))
+      .not.toContain(dead.id);
+
+    // Repeated entrance/exit does not revive a corpse or create new kills.
+    const secondRevisit = chroniclesMapTransitionState(
+      chroniclesMapTransitionState(revisit, 'swordhaven-first-book'),
+      map.id,
+    );
+    expect(secondRevisit[dead.hpKey]).toBe(0);
+    expect(chroniclesRunCheckpointPayload(secondRevisit, 4).worldFlags)
+      .toMatchObject({ '__chrDungeonDefeats.swordhaven-sewers.0': dead.id });
+  });
+
+  it('keeps separate map ledgers per run and does not carry deaths into a fresh expedition', () => {
+    const dungeon = chroniclesMapById('gallery-of-forks');
+    const victim = dungeon.enemies[0];
+    const world = chroniclesMapTransitionState({
+      ...createChroniclesState(dungeon.id),
+      [victim.hpKey]: 0,
+    }, 'swordhaven-first-book');
+    const another = chroniclesMapTransitionState(world, 'swordhaven-sewers');
+    const back = chroniclesMapTransitionState(another, dungeon.id);
+    expect(back[victim.hpKey]).toBe(0);
+    expect(createChroniclesState(dungeon.id)[victim.hpKey]).toBe(victim.maxHp);
   });
 });
 
