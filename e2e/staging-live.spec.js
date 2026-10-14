@@ -249,15 +249,58 @@ async function assertLivePvpBrowserPath(page) {
     { timeout: 25_000 },
   );
 
+  // Observe the actual browser sequence rather than timing a mocked API.
+  // Diagnostics are one-shot and contain only timing, not URLs or identities.
+  const openedAt = Date.now();
+  const openMs = () => Date.now() - openedAt;
+  const openTimeline = {
+    firstLobbyRequestMs: null,
+    firstLobbyResponseMs: null,
+    hallSceneChunkRequestMs: null,
+    hallSceneChunkResponseMs: null,
+  };
+  const isHallSceneChunk = (url) => /(?:PvPDuelHallScene3D|PvpDuelHallShell)[^/]*\\.js(?:[?#]|$)/i.test(url);
+  const onOpenRequest = (request) => {
+    if (request.method() === 'GET' && isPvpApiPath(request.url(), '/lobby') && openTimeline.firstLobbyRequestMs === null) {
+      openTimeline.firstLobbyRequestMs = openMs();
+    }
+    if (isHallSceneChunk(request.url()) && openTimeline.hallSceneChunkRequestMs === null) {
+      openTimeline.hallSceneChunkRequestMs = openMs();
+    }
+  };
+  const onOpenResponse = (response) => {
+    if (response.request().method() === 'GET' && isPvpApiPath(response.url(), '/lobby') && openTimeline.firstLobbyResponseMs === null) {
+      openTimeline.firstLobbyResponseMs = openMs();
+    }
+    if (isHallSceneChunk(response.url()) && openTimeline.hallSceneChunkResponseMs === null) {
+      openTimeline.hallSceneChunkResponseMs = openMs();
+    }
+  };
+  page.on('request', onOpenRequest);
+  page.on('response', onOpenResponse);
+
   try {
     const firstLobby = waitLobby();
     await openDuelHall(page);
+    const homeNavigationDoneMs = openMs();
     assertPvpBrowserResponse(await firstLobby, { suffix: '/lobby', native: 'lobby-read' });
 
     const lobby = page.getByRole('dialog', { name: 'Duelo 1 contra 1 · War Room' });
     await expect(lobby).toBeVisible();
     await expect(lobby.getByRole('heading', { name: 'Sala de Duelos' })).toBeVisible();
     await expect(lobby.locator('.pvp-lobby__error')).toHaveCount(0);
+    const dialogReadyMs = openMs();
+    const sceneStatus = await page.evaluate(() =>
+      document.querySelector('[data-pvp-duel-hall-3d]')?.getAttribute('data-pvp-duel-hall-3d') || 'not-mounted'
+    );
+    console.log(
+      `STAGING_PVP_OPEN home_navigation_ms=${homeNavigationDoneMs}` +
+      ` native_request_ms=${openTimeline.firstLobbyRequestMs ?? 'not-seen'}` +
+      ` native_response_ms=${openTimeline.firstLobbyResponseMs ?? 'not-seen'}` +
+      ` scene_chunk_request_ms=${openTimeline.hallSceneChunkRequestMs ?? 'not-seen'}` +
+      ` scene_chunk_response_ms=${openTimeline.hallSceneChunkResponseMs ?? 'not-seen'}` +
+      ` dialog_ready_ms=${dialogReadyMs} scene_state=${sceneStatus}`,
+    );
     logPhase('open-lobby');
 
     // Enrolarnos fuerza el mismo polling que usa una sesión humana real:
@@ -296,6 +339,8 @@ async function assertLivePvpBrowserPath(page) {
     await expect(lobby).toBeHidden();
     logPhase('leave-lobby');
   } finally {
+    page.off('request', onOpenRequest);
+    page.off('response', onOpenResponse);
     page.off('requestfailed', onRequestFailed);
   }
 }
