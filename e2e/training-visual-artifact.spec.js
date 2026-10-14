@@ -481,7 +481,7 @@ scopedTest('tournament', 'Entrenar · Torneo', async ({ page }) => {
 });
 
 scopedTest('progress', 'Entrenar · Así juegas y Mi progreso', async ({ page }) => {
-  test.setTimeout(70_000);
+  test.setTimeout(100_000);
   await prepare(page);
 
   await page.evaluate(() => {
@@ -529,6 +529,26 @@ scopedTest('progress', 'Entrenar · Así juegas y Mi progreso', async ({ page })
   await captureAt(page, 'insights', { width: 1800, height: 900, variant: 'wide' });
   await captureAt(page, 'insights', { width: 390, height: 844, variant: 'mobile' });
   await assertInsightsActionableFold(trainingRoom, 'insights-mobile');
+  // A tap on a physical archive tab must reveal its content immediately:
+  // no silent view switch stranded above a full-page background on phones.
+  const archiveOnMobile = trainingRoom.locator('details[data-insights-archive]');
+  await archiveOnMobile.locator('> summary').click();
+  await archiveOnMobile.getByRole('button', { name: 'Errores', exact: true }).click();
+  const errorRegion = trainingRoom.getByRole('region', { name: 'Errores recurrentes' });
+  await expect(errorRegion).toHaveAttribute('data-insights-section', 'errors');
+  await expect(errorRegion).toBeFocused();
+  await expect.poll(() => errorRegion.evaluate((node) => {
+    const rect = node.getBoundingClientRect();
+    return rect.top >= -8 && rect.top < window.innerHeight / 3 && rect.bottom > 0;
+  }), { message: 'Archive content must be in mobile viewport after selecting it' }).toBe(true);
+  await expect(errorRegion.getByRole('button', { name: 'Volver a mi tarea' })).toBeVisible();
+  await captureAt(page, 'insights-errors-navigation', { width: 390, height: 844, variant: 'mobile' });
+  await errorRegion.getByRole('button', { name: 'Volver a mi tarea' }).click();
+  const taskRegion = trainingRoom.getByRole('region', { name: 'Tarea de Matthias' });
+  await expect(taskRegion).toBeFocused();
+  await expect(taskRegion).toHaveAttribute('data-insights-section', 'task');
+  await expect(trainingRoom.getByRole('button', { name: 'Empezar sesión recomendada de 5 min' })).toBeVisible();
+
   await page.setViewportSize({ width: 1440, height: 900 });
   await settle(page);
 
