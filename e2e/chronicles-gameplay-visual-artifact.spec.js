@@ -37,7 +37,7 @@ async function openChronicles(page, captureLabel, {
   chroniclesAreaTransform = null,
   newTown = false,
   newCampaign = false,
-  retryVisualHomeLogin = false,
+  retryVisualHomeLogin = true,
 } = {}) {
   await mockApi(page, {
     profileSeed: {
