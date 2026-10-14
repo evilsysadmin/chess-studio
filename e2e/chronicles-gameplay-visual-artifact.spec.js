@@ -909,46 +909,35 @@ for (const capture of CAPTURES) {
 }
 
 
-// Scene fidelity is captured above. The two live menu states each get a
-// separate small tablet screenshot with the animated WebGL canvas hidden;
-// a full-scene GPU readback plus further actions can hang SwiftShader.
+// The real Three.js environment is captured independently above. Both tablet
+// states share ONE Home/login per viewport; six cold logins unnecessarily
+// overload SwiftShader CI. Suppress all canvas compositing only for these DOM
+// tablet captures; game rendering and interaction retain separate real tests.
 for (const capture of CAPTURES) {
-  for (const variant of ['pause', 'audio']) {
-    test(`Chronicles · ${variant} tablet visual · ${capture.label}`, async ({ browser }) => {
-      test.setTimeout(180_000);
-      await mkdir(ARTIFACT_DIR, { recursive: true });
-      const context = await browser.newContext({
-        viewport: { width: capture.width, height: capture.height },
-        hasTouch: capture.hasTouch, isMobile: capture.hasTouch,
-      });
-      try {
-        const page = await context.newPage();
-        await openChronicles(page, capture.label);
-        const game = page.locator('[data-chronicles="true"]');
-        await expect(game).toBeVisible();
-        await page.addStyleTag({ content: '[data-chronicles-renderer="three"] canvas {display:none !important}' });
-        const menu = game.locator('details.chronicles-game-menu');
-        await menu.locator('> summary').evaluate((summary) => summary.click());
-        await expect(menu).toHaveAttribute('open', '');
-        const panel = menu.locator('.chronicles-game-menu__panel');
-        if (variant === 'audio') {
-          await menu.getByRole('button', { name: 'Opciones de audio' }).evaluate((button) => button.click());
-          await expect(menu.getByRole('slider', { name: 'Volumen de música' })).toBeVisible();
-          await expect(menu.getByRole('slider', { name: 'Volumen de efectos de Chronicles' })).toBeVisible();
-          await expect(menu.getByRole('button', { name: 'Volver al menú' })).toBeVisible();
-          await expect(menu.getByRole('button', { name: 'Guardar y salir' })).toHaveCount(0);
-        } else {
-          await expect(panel.locator('> button')).toHaveText([
-            'Continuar', 'Guardar partida', 'Guardar y salir', 'Salir sin guardar', 'Opciones de audio',
-          ]);
-          await expect(menu.locator('#chronicles-music-volume')).toHaveCount(0);
-        }
+  test(`Chronicles · pause + audio tablets visual · ${capture.label}`, async ({ browser }) => {
+    test.setTimeout(240_000);
+    await mkdir(ARTIFACT_DIR, { recursive: true });
+    const context = await browser.newContext({
+      viewport: { width: capture.width, height: capture.height },
+      hasTouch: capture.hasTouch, isMobile: capture.hasTouch,
+    });
+    try {
+      const page = await context.newPage();
+      await openChronicles(page, capture.label);
+      const game = page.locator('[data-chronicles="true"]');
+      await expect(game).toBeVisible();
+      await page.addStyleTag({ content: 'canvas {visibility:hidden !important}' });
+      const menu = game.locator('details.chronicles-game-menu');
+      await menu.locator('> summary').evaluate((summary) => summary.click());
+      await expect(menu).toHaveAttribute('open', '');
+      const panel = menu.locator('.chronicles-game-menu__panel');
+      const checkTablet = async (variant) => {
         const rect = await panel.boundingBox();
         expect(rect, `${capture.label}: ${variant} panel exists`).not.toBeNull();
-        expect(rect.x, `${capture.label}: ${variant} left bound`).toBeGreaterThanOrEqual(0);
-        expect(rect.y, `${capture.label}: ${variant} top bound`).toBeGreaterThanOrEqual(0);
-        expect(rect.x + rect.width, `${capture.label}: ${variant} right bound`).toBeLessThanOrEqual(capture.width);
-        expect(rect.y + rect.height, `${capture.label}: ${variant} bottom bound`).toBeLessThanOrEqual(capture.height);
+        expect(rect.x, `${capture.label}: ${variant} left`).toBeGreaterThanOrEqual(0);
+        expect(rect.y, `${capture.label}: ${variant} top`).toBeGreaterThanOrEqual(0);
+        expect(rect.x + rect.width, `${capture.label}: ${variant} right`).toBeLessThanOrEqual(capture.width);
+        expect(rect.y + rect.height, `${capture.label}: ${variant} bottom`).toBeLessThanOrEqual(capture.height);
         const inks = await panel.locator('button').evaluateAll((buttons) => buttons.map((button) => ({
           label: button.textContent.trim(),
           inline: button.style.getPropertyValue('color'),
@@ -963,13 +952,24 @@ for (const capture of CAPTURES) {
             expect(ink.priority, `${capture.label}: ${ink.label} important ink`).toBe('important');
           }
         }
-        // One element PNG is the final browser operation for this context.
-        await captureElement(page, panel, `${ARTIFACT_DIR}/chronicles-game-menu-${variant === 'pause' ? '' : 'audio-'}${capture.label}.png`);
-      } finally {
-        await context.close();
-      }
-    });
-  }
+      };
+      await expect(panel.locator('> button')).toHaveText([
+        'Continuar', 'Guardar partida', 'Guardar y salir', 'Salir sin guardar', 'Opciones de audio',
+      ]);
+      await expect(menu.locator('#chronicles-music-volume')).toHaveCount(0);
+      await checkTablet('pause');
+      await captureElement(page, panel, `${ARTIFACT_DIR}/chronicles-game-menu-${capture.label}.png`);
+      await menu.getByRole('button', { name: 'Opciones de audio' }).evaluate((button) => button.click());
+      await expect(menu.getByRole('slider', { name: 'Volumen de música' })).toBeVisible();
+      await expect(menu.getByRole('slider', { name: 'Volumen de efectos de Chronicles' })).toBeVisible();
+      await expect(menu.getByRole('button', { name: 'Volver al menú' })).toBeVisible();
+      await expect(menu.getByRole('button', { name: 'Guardar y salir' })).toHaveCount(0);
+      await checkTablet('audio');
+      await captureElement(page, panel, `${ARTIFACT_DIR}/chronicles-game-menu-audio-${capture.label}.png`);
+    } finally {
+      await context.close();
+    }
+  });
 }
 
 // Fresh-context visual proof: the minimap overlay is not a second GPU
