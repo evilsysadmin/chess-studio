@@ -144,6 +144,25 @@ describe('Chronicles initiative', () => {
     expect(engaged.initiative.order.filter((actor) => actor.kind === 'enemy').map((actor) => actor.id)).toEqual(['front']);
   });
 
+  it('ends an existing encounter when its surviving enemy leaves sight and attack range', () => {
+    const state = {
+      mapId: 'swordhaven-sewers', x: 1, y: 1, direction: 1,
+      phase: 'combat', party: [{ id: 'matthias', hp: 7 }],
+      rearHp: 3,
+      initiative: {
+        version: 1, die: '1d8', round: 28, cursor: 0,
+        order: [
+          { kind: 'party', id: 'matthias', initiative: 9 },
+          { kind: 'enemy', id: 'rear', initiative: 8 },
+        ],
+      },
+    };
+    const rear = { id: 'rear', hpKey: 'rearHp', x: 1, y: 3, ai: { engageRange: 3, attackReach: 1 } };
+    const next = chroniclesAdvanceCombatInitiative(state, [rear]);
+    expect(next.phase).toBe('explore');
+    expect(next.initiative).toBeNull();
+  });
+
   it('continues after a fallen current actor instead of restarting the round', () => {
     const state = {
       phase: 'combat',
