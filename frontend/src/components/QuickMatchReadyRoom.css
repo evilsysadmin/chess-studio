@@ -182,6 +182,11 @@
   background: rgba(6, 5, 4, .35);
 }
 
+.quick-match-ready-room__launch > .quick-match-error {
+  grid-column: 1 / -1;
+  min-width: 0;
+}
+
 .quick-match-ready-room__detail small {
   color: #d6ae71;
   font: 700 .61rem/1 var(--font-mono);
@@ -192,7 +197,7 @@
 .quick-match-ready-room__detail b {
   min-width: 0;
   color: #f1e2c9;
-  font: 600 .79rem/1.35 var(--font-body);
+  font: 600 .85rem/1.35 var(--font-body);
   overflow-wrap: anywhere;
 }
 
@@ -414,7 +419,7 @@
   }
 
   .quick-match-ready-room__detail b {
-    font-size: .76rem;
+    font-size: .81rem;
   }
 
   /* Opening settings turns the mobile panel into the sole focus. */
