@@ -49,15 +49,16 @@ async function openChronicles(page, captureLabel, {
     chroniclesWorldFlags,
     chroniclesAreaTransform,
   });
-  // Visual tablet snapshots occasionally begin while the Home compositor is
-  // still overloaded by previous SwiftShader cases. Retry ONE fresh login
-  // only for those snapshots; repeated failures still fail the test.
+  // Tablet evidence needs the mounted DOM, not the completion of every
+  // unrelated Home image/asset load. login() still waits for the interactive
+  // Home gate after DOMContentLoaded before navigating to Chronicles.
+  const loginOptions = retryVisualHomeLogin ? { navigationWaitUntil: 'domcontentloaded' } : undefined;
   try {
-    await login(page);
+    await login(page, loginOptions);
   } catch (error) {
-    if (!retryVisualHomeLogin || !String(error).includes('Modos principales')) throw error;
-    console.warn('[Chronicles visual] Home not ready on first login; retrying once');
-    await login(page);
+    if (!retryVisualHomeLogin || !/Modos principales|page\.goto: Timeout/.test(String(error))) throw error;
+    console.warn('[Chronicles visual] Home navigation was slow; retrying the same login once');
+    await login(page, loginOptions);
   }
   const speech = page.getByRole('region', { name: 'Mensaje de Matthias', exact: true });
   if (await speech.isVisible().catch(() => false)) {
@@ -968,6 +969,22 @@ for (const capture of CAPTURES) {
       ]);
       await expect(menu.locator('#chronicles-music-volume')).toHaveCount(0);
       await checkTablet('pause');
+      // The panel may fit while its children overflow/clamp outside a short
+      // landscape phone. Verify EVERY action without scrolling, especially
+      // Guardar y salir (historically ended at y=475 on a 390px viewport).
+      const pauseActions = await panel.locator('> button').evaluateAll((buttons) => buttons.map((button) => {
+        const box = button.getBoundingClientRect();
+        return { name: button.textContent.trim(), x: box.x, y: box.y, right: box.right, bottom: box.bottom };
+      }));
+      expect(pauseActions.map((action) => action.name)).toEqual([
+        'Continuar', 'Guardar partida', 'Guardar y salir', 'Salir sin guardar', 'Opciones de audio',
+      ]);
+      for (const action of pauseActions) {
+        expect(action.x, `${capture.label}: ${action.name} left`).toBeGreaterThanOrEqual(0);
+        expect(action.y, `${capture.label}: ${action.name} top`).toBeGreaterThanOrEqual(0);
+        expect(action.right, `${capture.label}: ${action.name} right`).toBeLessThanOrEqual(capture.width);
+        expect(action.bottom, `${capture.label}: ${action.name} bottom`).toBeLessThanOrEqual(capture.height);
+      }
       await captureElement(page, panel, `${ARTIFACT_DIR}/chronicles-game-menu-${capture.label}.png`);
       await menu.getByRole('button', { name: 'Opciones de audio' }).evaluate((button) => button.click());
       await expect(menu.getByRole('slider', { name: 'Volumen de música' })).toBeVisible();
