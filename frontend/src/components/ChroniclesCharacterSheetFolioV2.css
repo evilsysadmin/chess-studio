@@ -390,3 +390,314 @@
 @media (prefers-reduced-motion: reduce) {
   .chronicles-character-sheet--mm3.chronicles-character-sheet--folio-v2 .chronicles-character-sheet__tabs button { transition: none; }
 }
+
+
+/* Wide MM3 desktop folio V3: use the whole practical screen width.
+   No synthetic resistances or invented equipment stats. Existing portrait,
+   party navigation, spellbook and mobile layout keep their own authority. */
+@media (min-width: 1050px) and (min-height: 600px) {
+  .chronicles-character-sheet.chronicles-character-sheet--mm3.chronicles-character-sheet--folio-v2 {
+    width: min(1540px, calc(100vw - 32px));
+    max-width: none;
+    padding: 14px;
+  }
+
+  .chronicles-character-sheet--mm3.chronicles-character-sheet--folio-v2 .chronicles-character-sheet__scroll {
+    grid-template-columns: minmax(235px, 27fr) minmax(0, 73fr);
+    column-gap: 10px;
+  }
+
+  .chronicles-character-sheet--mm3.chronicles-character-sheet--folio-v2 .chronicles-character-sheet__head {
+    min-height: 178px;
+    grid-template-columns: 104px minmax(0, 1fr) 42px;
+    gap: 19px;
+    padding: 12px 22px;
+  }
+
+  .chronicles-character-sheet--mm3.chronicles-character-sheet--folio-v2 .chronicles-character-sheet__portrait {
+    width: 100px;
+  }
+
+  .chronicles-character-sheet--mm3.chronicles-character-sheet--folio-v2 .chronicles-character-sheet__identity h3 {
+    font-size: clamp(2rem, 3vw, 2.85rem);
+  }
+
+  .chronicles-character-sheet--mm3.chronicles-character-sheet--folio-v2 .chronicles-character-sheet__progression {
+    padding-block: 8px;
+  }
+
+  .chronicles-character-sheet--mm3.chronicles-character-sheet--folio-v2 .chronicles-character-sheet__tabs button {
+    min-height: 46px;
+  }
+
+  .chronicles-character-sheet--mm3.chronicles-character-sheet--folio-v2 .chronicles-character-sheet__vitals > div {
+    padding: 10px 16px;
+  }
+
+  .chronicles-character-sheet--mm3.chronicles-character-sheet--folio-v2 .chronicles-character-sheet__combat {
+    margin: 12px 0 12px 12px;
+    padding: 8px 13px;
+  }
+
+  .chronicles-character-sheet--mm3.chronicles-character-sheet--folio-v2 .chronicles-character-sheet__combat > div {
+    padding: 7px 3px;
+  }
+
+  .chronicles-character-sheet--mm3.chronicles-character-sheet--folio-v2 .chronicles-character-sheet__section--core-stats {
+    margin: 12px 12px 12px 0;
+    padding: 0 16px 8px;
+  }
+
+  .chronicles-character-sheet--mm3.chronicles-character-sheet--folio-v2 .chronicles-character-sheet__mm3-stats {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    column-gap: 18px;
+  }
+
+  .chronicles-character-sheet--mm3.chronicles-character-sheet--folio-v2 .chronicles-character-sheet__mm3-stats > div {
+    min-width: 0;
+    min-height: 74px;
+    padding: 9px 3px;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-content: center;
+  }
+
+  .chronicles-character-sheet--mm3.chronicles-character-sheet--folio-v2 .chronicles-character-sheet__mm3-stats span {
+    overflow-wrap: anywhere;
+    font-size: 1.05rem;
+  }
+
+  .chronicles-character-sheet--mm3.chronicles-character-sheet--folio-v2 .chronicles-character-sheet__mm3-stats b {
+    font-size: 1.58rem;
+  }
+
+  .chronicles-character-sheet--mm3.chronicles-character-sheet--folio-v2 .chronicles-character-sheet__mm3-stats small {
+    line-height: 1.12;
+  }
+}
+
+/* 1050px viewport with a short landscape height: retain the existing
+   stacked/touch layout; never force the three-column desktop grid. */
+
+
+/* Landscape phone: preserve a usable dossier and the four hero selectors.
+   Height, not desktop width, determines this treatment. */
+@media (max-height: 580px) and (min-width: 540px) {
+  .chronicles-character-sheet.chronicles-character-sheet--mm3.chronicles-character-sheet--folio-v2 {
+    width: min(100%, calc(100vw - 8px));
+    height: calc(100dvh - 8px);
+    max-height: calc(100dvh - 8px);
+    padding: 7px;
+  }
+  .chronicles-character-sheet--mm3.chronicles-character-sheet--folio-v2 .chronicles-character-sheet__scroll {
+    display: block;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+  .chronicles-character-sheet--mm3.chronicles-character-sheet--folio-v2 .chronicles-character-sheet__head {
+    min-height: 0;
+    grid-template-columns: 46px minmax(0, 1fr) 38px;
+    gap: 7px;
+    padding: 3px 8px;
+  }
+  .chronicles-character-sheet--mm3.chronicles-character-sheet--folio-v2 .chronicles-character-sheet__portrait {
+    width: 44px;
+    aspect-ratio: 1;
+  }
+  .chronicles-character-sheet--mm3.chronicles-character-sheet--folio-v2 .chronicles-character-sheet__identity h3 {
+    margin: 1px 0;
+    font-size: 1.5rem;
+    line-height: 1;
+  }
+  .chronicles-character-sheet--mm3.chronicles-character-sheet--folio-v2 .chronicles-character-sheet__identity > span {
+    font-size: .6rem;
+  }
+  .chronicles-character-sheet--mm3.chronicles-character-sheet--folio-v2 .chronicles-character-sheet__identity p {
+    font-size: .84rem;
+  }
+  .chronicles-character-sheet--mm3.chronicles-character-sheet--folio-v2 .chronicles-character-sheet__quick {
+    margin-top: 1px;
+    gap: 4px;
+  }
+  .chronicles-character-sheet--mm3.chronicles-character-sheet--folio-v2 .chronicles-character-sheet__quick > span {
+    padding: 1px 5px;
+    font-size: .76rem;
+  }
+  .chronicles-character-sheet--mm3.chronicles-character-sheet--folio-v2 .chronicles-character-sheet__head > button {
+    width: 38px;
+    min-width: 38px;
+    height: 38px;
+  }
+  .chronicles-character-sheet--mm3.chronicles-character-sheet--folio-v2 .chronicles-character-sheet__progression {
+    display: grid;
+    grid-template-columns: minmax(0, auto) minmax(60px, 1fr) minmax(0, auto);
+    align-items: center;
+    gap: 8px;
+    padding: 5px 10px;
+  }
+  .chronicles-character-sheet--mm3.chronicles-character-sheet--folio-v2 .chronicles-character-sheet__progression span,
+  .chronicles-character-sheet--mm3.chronicles-character-sheet--folio-v2 .chronicles-character-sheet__progression b,
+  .chronicles-character-sheet--mm3.chronicles-character-sheet--folio-v2 .chronicles-character-sheet__progression small {
+    font-size: .8rem;
+    line-height: 1.1;
+  }
+  .chronicles-character-sheet--mm3.chronicles-character-sheet--folio-v2 .chronicles-character-sheet__tabs button,
+  .chronicles-character-sheet--mm3.chronicles-character-sheet--folio-v2 .chronicles-character-sheet__tabs button.is-active {
+    min-height: 37px;
+    flex-direction: row;
+    gap: 5px;
+    padding: 4px 3px;
+    font-size: .88rem;
+  }
+  .chronicles-character-sheet--mm3.chronicles-character-sheet--folio-v2 .chronicles-character-sheet__vitals {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+  .chronicles-character-sheet--mm3.chronicles-character-sheet--folio-v2 .chronicles-character-sheet__vitals > div {
+    padding: 6px 8px;
+    border-bottom: 0;
+  }
+  .chronicles-character-sheet--mm3.chronicles-character-sheet--folio-v2 .chronicles-character-sheet__vitals b {
+    font-size: 1.15rem;
+  }
+  .chronicles-character-sheet--mm3.chronicles-character-sheet--folio-v2 .chronicles-character-sheet__combat {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    margin: 8px;
+    padding: 7px;
+  }
+  .chronicles-character-sheet--mm3.chronicles-character-sheet--folio-v2 .chronicles-character-sheet__combat > div {
+    padding: 5px;
+  }
+  .chronicles-character-sheet--mm3.chronicles-character-sheet--folio-v2 .chronicles-character-sheet__section--core-stats {
+    margin: 8px;
+  }
+  .chronicles-character-sheet--mm3.chronicles-character-sheet--folio-v2 .chronicles-character-sheet__party-dock {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    padding: 3px;
+    gap: 3px;
+  }
+  .chronicles-character-sheet--mm3.chronicles-character-sheet--folio-v2 .chronicles-character-sheet__party-dock button {
+    display: grid;
+    grid-template-columns: 36px minmax(0, 1fr);
+    grid-template-rows: 1fr 1fr;
+    align-items: center;
+    justify-content: initial;
+    height: 50px;
+    padding: 2px;
+    gap: 0 5px;
+    text-align: left;
+  }
+  .chronicles-character-sheet--mm3.chronicles-character-sheet--folio-v2 .chronicles-character-sheet__party-dock img {
+    grid-column: 1;
+    grid-row: 1 / 3;
+    width: 35px;
+    height: 43px;
+  }
+  .chronicles-character-sheet--mm3.chronicles-character-sheet--folio-v2 .chronicles-character-sheet__party-name,
+  .chronicles-character-sheet--mm3.chronicles-character-sheet--folio-v2 .chronicles-character-sheet__party-hp {
+    display: block;
+    grid-column: 2;
+    min-width: 0;
+    max-width: 100%;
+    font-size: .85rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+
+/* Landscape viewport clipping guard: the frame is a flex column, not an
+   independent horizontal scroller. Keep every grid child inside its own box. */
+@media (max-height: 580px) and (min-width: 540px) {
+  .chronicles-character-sheet.chronicles-character-sheet--mm3.chronicles-character-sheet--folio-v2 {
+    display: flex;
+    flex-direction: column;
+    box-sizing: border-box;
+    overflow: hidden;
+    min-width: 0;
+  }
+  .chronicles-character-sheet--mm3.chronicles-character-sheet--folio-v2 .chronicles-character-sheet__scroll {
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 0;
+    flex: 1 1 0;
+    overflow-x: clip;
+    overflow-y: auto;
+    scrollbar-gutter: auto;
+  }
+  .chronicles-character-sheet--mm3.chronicles-character-sheet--folio-v2 .chronicles-character-sheet__scroll > *,
+  .chronicles-character-sheet--mm3.chronicles-character-sheet--folio-v2 .chronicles-character-sheet__progression > *,
+  .chronicles-character-sheet--mm3.chronicles-character-sheet--folio-v2 .chronicles-character-sheet__head > * {
+    box-sizing: border-box;
+    min-width: 0;
+    max-width: 100%;
+  }
+  .chronicles-character-sheet--mm3.chronicles-character-sheet--folio-v2 .chronicles-character-sheet__progression {
+    grid-template-columns: minmax(125px, auto) minmax(32px, 1fr) minmax(115px, auto);
+    padding-inline: 12px;
+  }
+  .chronicles-character-sheet--mm3.chronicles-character-sheet--folio-v2 .chronicles-character-sheet__party-dock {
+    box-sizing: border-box;
+    width: 100%;
+    flex: 0 0 auto;
+    min-width: 0;
+    overflow: hidden;
+  }
+}
+
+
+/* Prevent legacy MM3 horizontal offsets from placing text under the stone
+   frame at phone-landscape sizes. The scroll viewport owns the available
+   inline size; each section must shrink instead of overflowing invisibly. */
+@media (max-height: 580px) and (min-width: 540px) {
+  .chronicles-character-sheet--mm3.chronicles-character-sheet--folio-v2 .chronicles-character-sheet__scroll {
+    inline-size: 100%;
+    max-inline-size: 100%;
+    overflow-x: hidden;
+    overscroll-behavior-x: none;
+  }
+  .chronicles-character-sheet--mm3.chronicles-character-sheet--folio-v2 .chronicles-character-sheet__head,
+  .chronicles-character-sheet--mm3.chronicles-character-sheet--folio-v2 .chronicles-character-sheet__progression,
+  .chronicles-character-sheet--mm3.chronicles-character-sheet--folio-v2 .chronicles-character-sheet__tabs,
+  .chronicles-character-sheet--mm3.chronicles-character-sheet--folio-v2 .chronicles-character-sheet__vitals,
+  .chronicles-character-sheet--mm3.chronicles-character-sheet--folio-v2 .chronicles-character-sheet__combat,
+  .chronicles-character-sheet--mm3.chronicles-character-sheet--folio-v2 .chronicles-character-sheet__section {
+    inline-size: 100%;
+    min-inline-size: 0;
+    max-inline-size: 100%;
+    margin-inline: 0;
+    box-sizing: border-box;
+  }
+  .chronicles-character-sheet--mm3.chronicles-character-sheet--folio-v2 .chronicles-character-sheet__progression {
+    padding-inline: 12px;
+  }
+  .chronicles-character-sheet--mm3.chronicles-character-sheet--folio-v2 .chronicles-character-sheet__vitals > div:first-child,
+  .chronicles-character-sheet--mm3.chronicles-character-sheet--folio-v2 .chronicles-character-sheet__combat > div:first-of-type {
+    padding-inline-start: 12px;
+  }
+  .chronicles-character-sheet--mm3.chronicles-character-sheet--folio-v2 .chronicles-character-sheet__combat {
+    padding-inline: 12px;
+  }
+  .chronicles-character-sheet--mm3.chronicles-character-sheet--folio-v2 .chronicles-character-sheet__head > button {
+    justify-self: end;
+  }
+}
+
+
+/* Phone landscape: scale the actual ornamental frame to the inset.
+   Previous 7px padding sat UNDER the 32px border-image overlay and cropped
+   the first 25px of HP, PROGRESIÓN and the combat heading. */
+@media (max-height: 580px) and (min-width: 540px) {
+  .chronicles-character-sheet.chronicles-character-sheet--mm3.chronicles-character-sheet--folio-v2 {
+    padding: 16px;
+  }
+  .chronicles-character-sheet.chronicles-character-sheet--mm3.chronicles-character-sheet--folio-v2::after {
+    border-width: 14px;
+    border-image-width: 14px;
+  }
+  .chronicles-character-sheet.chronicles-character-sheet--mm3.chronicles-character-sheet--folio-v2::before {
+    background-size: 14px 14px;
+  }
+}

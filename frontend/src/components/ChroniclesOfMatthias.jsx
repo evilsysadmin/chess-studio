@@ -1247,18 +1247,25 @@ export default function ChroniclesOfMatthias({ onExit }) {
             >
               <i aria-hidden="true">⌖</i><b>MAPA</b>
             </button>
-            <details
-              className="chronicles-game-menu"
-              open={menuOpen}
-              onToggle={(event) => {
-                setMenuOpen(event.currentTarget.open);
-                if (event.currentTarget.open) {
-                  setAutomapOpen(false);
-                  setJournalOpen(false);
-                }
-              }}
-            >
-              <summary ref={menuSummaryRef} title="Tab · Menú" aria-label={menuOpen ? 'Cerrar menú de Chronicles' : 'Abrir menú de Chronicles'}>
+            <details className="chronicles-game-menu" open={menuOpen}>
+              <summary
+                ref={menuSummaryRef}
+                title="Tab · Menú"
+                aria-label={menuOpen ? 'Cerrar menú de Chronicles' : 'Abrir menú de Chronicles'}
+                onClick={(event) => {
+                  // Keep React as the only owner of <details>.open.
+                  // Native summary toggles race with rerenders and can close
+                  // the landscape menu immediately after the user opens it.
+                  event.preventDefault();
+                  clearTouchHold();
+                  const nextOpen = !menuOpen;
+                  setMenuOpen(nextOpen);
+                  if (nextOpen) {
+                    setAutomapOpen(false);
+                    setJournalOpen(false);
+                  }
+                }}
+              >
                 ☰ <b>MENÚ</b>
               </summary>
               <div className="chronicles-game-menu__panel">

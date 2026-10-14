@@ -417,6 +417,30 @@ test('Chronicles of Matthias · clic en un PJ abre una ficha RPG con retrato aut
   expect(statMaterials.background).toBe('none');
   expect(statMaterials.ink).toBe('rgb(219, 184, 137)');
   expect(inactiveTabBackground).toBe('none');
+  const desktopFolioGeometry = await sheet.evaluate((node) => {
+    const viewport = document.documentElement.clientWidth;
+    const stats = node.querySelector('.chronicles-character-sheet__mm3-stats');
+    const combat = node.querySelector('.chronicles-character-sheet__combat');
+    const statsPanel = node.querySelector('.chronicles-character-sheet__section--core-stats');
+    return {
+      viewport,
+      isWide: matchMedia('(min-width: 1050px) and (min-height: 600px)').matches,
+      width: node.getBoundingClientRect().width,
+      columns: getComputedStyle(stats).gridTemplateColumns.split(' ').length,
+      combatRight: combat.getBoundingClientRect().right,
+      statsLeft: statsPanel.getBoundingClientRect().left,
+      overflow: document.documentElement.scrollWidth > viewport + 1,
+      quickBottom: node.querySelector('.chronicles-character-sheet__quick').getBoundingClientRect().bottom,
+      headerBottom: node.querySelector('.chronicles-character-sheet__head').getBoundingClientRect().bottom,
+    };
+  });
+  if (desktopFolioGeometry.isWide) {
+    expect(desktopFolioGeometry.width).toBeGreaterThan(desktopFolioGeometry.viewport * .88);
+    expect(desktopFolioGeometry.columns).toBe(3);
+    expect(desktopFolioGeometry.combatRight).toBeLessThan(desktopFolioGeometry.statsLeft);
+    expect(desktopFolioGeometry.overflow).toBe(false);
+    expect(desktopFolioGeometry.quickBottom).toBeLessThanOrEqual(desktopFolioGeometry.headerBottom - 3);
+  }
   await folio.getByRole('button', { name: /Equipo/ }).click();
   await expect(sheet.getByText('EQUIPO Y OBJETOS', { exact: true })).toBeVisible();
   await expect(sheet.getByText('ESTADÍSTICAS', { exact: true })).toBeHidden();
@@ -442,6 +466,67 @@ test('Chronicles of Matthias · clic en un PJ abre una ficha RPG con retrato aut
 
   await page.keyboard.press('w');
   await expect(mode).toHaveAttribute('data-chronicles-turns', turnsBefore || '0');
+
+  // Landscape phones cannot spend the entire viewport on header + XP.
+  await page.setViewportSize({ width: 768, height: 354 });
+  await expect(folio.getByRole('button', { name: /Estado/ })).toBeVisible();
+  const landscape = await sheet.evaluate((node) => {
+    const box = (selector) => node.querySelector(selector)?.getBoundingClientRect();
+    const header = box('.chronicles-character-sheet__head');
+    const progression = box('.chronicles-character-sheet__progression');
+    const tabs = box('.chronicles-character-sheet__tabs');
+    const dock = box('.chronicles-character-sheet__party-dock');
+    const scroll = box('.chronicles-character-sheet__scroll');
+    return {
+      viewportWidth: document.documentElement.clientWidth,
+      viewportHeight: document.documentElement.clientHeight,
+      sheetWidth: node.getBoundingClientRect().width,
+      frameInset: parseFloat(getComputedStyle(node).paddingLeft),
+      frameWidth: parseFloat(getComputedStyle(node, '::after').borderLeftWidth),
+      gemSize: getComputedStyle(node, '::before').backgroundSize,
+      headerHeight: header.height,
+      progressionHeight: progression.height,
+      tabsHeight: tabs.height,
+      dockHeight: dock.height,
+      scrollHeight: scroll.height,
+      dockBottom: dock.bottom,
+      sideBounds: {
+        scrollLeft: document.querySelector('.chronicles-character-sheet__scroll')?.scrollLeft,
+        contentLeft: scroll.left,
+        contentRight: scroll.right,
+        headerTextLeft: box('.chronicles-character-sheet__identity').left,
+        xpTextLeft: box('.chronicles-character-sheet__xp-copy').left,
+        vitalTextLeft: box('.chronicles-character-sheet__vitals > div').left,
+        partyTextLeft: box('.chronicles-character-sheet__party-dock button').left,
+        closeRight: box('.chronicles-character-sheet__head > button').right,
+      },
+      partyButtons: Array.from(node.querySelectorAll('.chronicles-character-sheet__party-dock button')).map((button) => ({
+        width: button.getBoundingClientRect().width,
+        height: button.getBoundingClientRect().height,
+        name: getComputedStyle(button.querySelector('.chronicles-character-sheet__party-name')).display,
+      })),
+    };
+  });
+  expect(landscape.sheetWidth).toBeLessThanOrEqual(landscape.viewportWidth);
+  expect(landscape.frameWidth).toBeLessThanOrEqual(landscape.frameInset);
+  expect(landscape.frameWidth).toBeLessThan(20);
+  expect(landscape.headerHeight).toBeLessThan(100);
+  expect(landscape.progressionHeight).toBeLessThan(55);
+  expect(landscape.tabsHeight).toBeLessThan(48);
+  expect(landscape.dockHeight).toBeLessThan(68);
+  expect(landscape.scrollHeight).toBeGreaterThan(120);
+  expect(landscape.dockBottom).toBeLessThanOrEqual(landscape.viewportHeight);
+  expect(landscape.partyButtons).toHaveLength(4);
+  expect(landscape.sideBounds.scrollLeft).toBe(0);
+  for (const item of ['headerTextLeft', 'xpTextLeft', 'vitalTextLeft', 'partyTextLeft']) {
+    expect(landscape.sideBounds[item], item).toBeGreaterThanOrEqual(landscape.sideBounds.contentLeft - 1);
+  }
+  expect(landscape.sideBounds.closeRight).toBeLessThanOrEqual(landscape.sideBounds.contentRight + 1);
+  for (const button of landscape.partyButtons) {
+    expect(button.width).toBeGreaterThan(100);
+    expect(button.height).toBeGreaterThanOrEqual(44);
+    expect(button.name).not.toBe('none');
+  }
 
   await sheet.getByRole('button', { name: 'Cerrar ficha', exact: true }).click();
   await expect(sheet).toHaveCount(0);

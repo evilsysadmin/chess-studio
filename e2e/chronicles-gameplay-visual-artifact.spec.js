@@ -484,6 +484,63 @@ test('Chronicles · First Book equipment sheet · actual Android 390px', async (
 });
 
 
+test('Chronicles · First Book MM3 folio · real landscape Android 844x390', async ({ browser }) => {
+  test.setTimeout(180_000);
+  await mkdir(ARTIFACT_DIR, { recursive: true });
+  // Open a fresh landscape-sized mobile context. Android's fullscreen API
+  // prevents resizing an already-fullscreen portrait Chromium window.
+  const context = await browser.newContext({
+    viewport: { width: 844, height: 390 }, hasTouch: true, isMobile: true,
+  });
+  const page = await context.newPage();
+  try {
+    await openChronicles(page, 'first-book-folio-landscape-mobile', {
+      newTown: true, newCampaign: true, chroniclesCurrentMapId: 'swordhaven-first-book',
+    });
+    const game = page.locator('[data-chronicles="true"]');
+    await game.getByRole('button', { name: 'Seleccionar Matthias', exact: true })
+      .evaluate((button) => button.click());
+    const sheet = page.getByRole('dialog', { name: 'Matthias', exact: true });
+    await expect(sheet).toBeVisible();
+    // Real landscape phone evidence: the four hero selectors must remain
+    // actionable and the header/XP must not consume the entire short viewport.
+    await expect(sheet).toBeVisible();
+    const landscapeGeometry = await sheet.evaluate((node) => {
+      const measure = (selector) => node.querySelector(selector)?.getBoundingClientRect();
+      const head = measure('.chronicles-character-sheet__head');
+      const progress = measure('.chronicles-character-sheet__progression');
+      const dock = measure('.chronicles-character-sheet__party-dock');
+      return {
+        width: node.getBoundingClientRect().width,
+        headHeight: head.height,
+        progressHeight: progress.height,
+        dockBottom: dock.bottom,
+        heroButtons: [...node.querySelectorAll('.chronicles-character-sheet__party-dock button')]
+          .map((button) => ({
+            height: button.getBoundingClientRect().height,
+            name: getComputedStyle(button.querySelector('.chronicles-character-sheet__party-name')).display,
+          })),
+      };
+    });
+    expect(landscapeGeometry.width).toBeLessThanOrEqual(844);
+    expect(landscapeGeometry.headHeight).toBeLessThan(100);
+    expect(landscapeGeometry.progressHeight).toBeLessThan(55);
+    expect(landscapeGeometry.dockBottom).toBeLessThanOrEqual(390);
+    expect(landscapeGeometry.heroButtons).toHaveLength(4);
+    for (const hero of landscapeGeometry.heroButtons) {
+      expect(hero.height).toBeGreaterThanOrEqual(44);
+      expect(hero.name).not.toBe('none');
+    }
+    await page.screenshot({
+      path: `${ARTIFACT_DIR}/chronicles-mm3-character-folio-android-landscape-844x390.png`,
+      animations: 'disabled', timeout: 60_000,
+    });
+  } finally {
+    await context.close();
+  }
+});
+
+
 async function expectAllMayorChoicesInView(audience, viewport) {
   const fit = await audience.evaluate((dialog) => {
     const box = dialog.getBoundingClientRect();
@@ -726,10 +783,11 @@ for (const scene of [
 
 for (const capture of CAPTURES) {
   test(`Chronicles · gameplay visual · ${capture.label}`, async ({ browser }) => {
-    // Hosted SwiftShader makes large WebGL readbacks expensive. Keep this
-    // producer to one canonical readback per viewport; Tactics owns a separate
-    // focused producer so neither surface can starve the other of its budget.
-    test.setTimeout(360_000);
+    // Hosted SwiftShader can exceed six minutes when desktop screenshot,
+    // menu and automap readbacks share a single Chromium context. Keep the
+    // complete evidence and assertions; give the capture its actual budget.
+    // Required gameplay canaries remain on their separate bounded lane.
+    test.setTimeout(600_000);
     await mkdir(ARTIFACT_DIR, { recursive: true });
 
     const context = await browser.newContext({
@@ -896,8 +954,19 @@ for (const capture of CAPTURES) {
       // Every menu action stays on screen, «Salir y guardar» included.
       const menuDetails = page.locator('details.chronicles-game-menu');
       const menuSummary = menuDetails.locator('> summary');
-      await menuSummary.evaluate((summary) => summary.click());
+      // React controls the details.open property through onToggle.
+      // A synthetic DOM click while an old toggle event is pending can
+      // immediately close it again; prefer the real user interaction.
+      if (!(await menuDetails.evaluate((details) => details.open))) {
+        await menuSummary.click();
+      }
+      await expect(menuDetails).toHaveAttribute('open', '');
       const exitAction = menuDetails.getByRole('button', { name: 'Salir y guardar', exact: true });
+      // A short landscape viewport legitimately scrolls the menu panel;
+      // reveal the final option before checking visibility and hit bounds.
+      if (capture.label === 'android-landscape-844x390') {
+        await exitAction.evaluate((button) => button.scrollIntoView({ block: 'nearest', inline: 'nearest' }));
+      }
       await expect(exitAction).toBeVisible();
       // Both controls belong to the current menu; keyboard-adjusting them
       // must not trigger dungeon movement hotkeys.
@@ -925,11 +994,16 @@ for (const capture of CAPTURES) {
       );
       expect(menuInks.length, 'menu has actual actions').toBeGreaterThan(3);
       for (const ink of menuInks) {
-        expect(ink.inline, `menu action ${ink.label} inline ink`).toBe('#08080a');
+        expect(['#08080a', 'rgb(8, 8, 10)'], `menu action ${ink.label} inline ink`).toContain(ink.inline);
         expect(ink.priority, `menu action ${ink.label} important ink`).toBe('important');
         expect(ink.computed, `menu action ${ink.label} black ink`).toBe('rgb(8, 8, 10)');
       }
 
+      // On a 390px-high phone a scrollable menu is legitimate, but the last
+      // action must be reachable and remain entirely inside the viewport.
+      if (capture.label === 'android-landscape-844x390') {
+        await exitAction.scrollIntoViewIfNeeded();
+      }
       const exitBox = await exitAction.boundingBox();
       expect(exitBox, `${capture.label}: menu exit action has bounds`).not.toBeNull();
       expect(exitBox.y, `${capture.label}: menu exit action below the top edge`).toBeGreaterThanOrEqual(0);
@@ -940,8 +1014,8 @@ for (const capture of CAPTURES) {
         color: getComputedStyle(button).color,
         fill: getComputedStyle(button).webkitTextFillColor,
       }));
-      expect(inks.color, `${capture.label}: menu ink must be dark`).toBe('rgb(17, 16, 21)');
-      expect(inks.fill, `${capture.label}: WebKit must keep dark ink`).toBe('rgb(17, 16, 21)');
+      expect(inks.color, `${capture.label}: menu ink must be dark`).toBe('rgb(8, 8, 10)');
+      expect(inks.fill, `${capture.label}: WebKit must keep dark ink`).toBe('rgb(8, 8, 10)');
       await captureElement(page, gameRoot, `${ARTIFACT_DIR}/chronicles-game-menu-${capture.label}.png`);
       await menuSummary.evaluate((summary) => summary.click());
       await expect(exitAction).toBeHidden();
