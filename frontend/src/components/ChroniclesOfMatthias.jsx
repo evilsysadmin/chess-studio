@@ -471,7 +471,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
       // A refused cast (no spell points, no target) keeps the hero's turn.
       const spentTurn = actionType !== 'cast' || next.turns !== current.turns;
       if (next !== current && spentTurn && next.phase !== 'defeated' && next.phase !== 'escaped') {
-        next = chroniclesAdvanceCombatInitiative(next, chroniclesActiveEnemies(next));
+        next = chroniclesAdvanceCombatInitiative(next, chroniclesActiveEnemies(next), { disengageWhenUnseen: true });
       }
     }
 
