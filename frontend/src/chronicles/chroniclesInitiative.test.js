@@ -144,6 +144,21 @@ describe('Chronicles initiative', () => {
     expect(engaged.initiative.order.filter((actor) => actor.kind === 'enemy').map((actor) => actor.id)).toEqual(['front']);
   });
 
+  it('does not enter combat against a ranged enemy shooting through a wall', () => {
+    // Sewers row 1: the fourth interior step is a wall at (4,1).
+    const state = {
+      mapId: 'swordhaven-sewers', x: 3, y: 1, direction: 3,
+      phase: 'explore',
+      party: [{ id: 'matthias', hp: 7, agility: 4 }],
+      rangedHp: 4,
+    };
+    const ranged = {
+      id: 'ranged', hpKey: 'rangedHp', x: 5, y: 1,
+      ai: { engageRange: 3, attackReach: 3, requiresLineOfSight: true },
+    };
+    expect(chroniclesStartInitiativeCombat(state, [ranged])).toBe(state);
+  });
+
   it('ends an existing encounter when its surviving enemy leaves sight and attack range', () => {
     const state = {
       mapId: 'swordhaven-sewers', x: 1, y: 1, direction: 1,
