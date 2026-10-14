@@ -41,6 +41,19 @@ describe('Chronicles exploration authored content', () => {
     expect(next.y).toBe(2);
   });
 
+  it('requires USAR on the sewers ladder after walking onto its exit tile', () => {
+    const state = {
+      ...createChroniclesState('swordhaven-sewers'),
+      x: 1, y: 2, direction: 0,
+    };
+    const stepped = chroniclesReduce(state, 'forward');
+    expect(stepped.mapId).toBe('swordhaven-sewers');
+    expect([stepped.x, stepped.y]).toEqual([1, 1]);
+    const used = chroniclesReduce(stepped, 'interact');
+    expect(used.mapId).toBe('swordhaven-first-book');
+    expect(used.phase).toBe('explore');
+  });
+
   it('finishes standalone Chronicles only after USAR at the gate, without leaking Tactics travel', () => {
     const state = stateAt(3, 2, {
       direction: 0,
