@@ -695,13 +695,15 @@ test('Chronicles · MM3 Swordhaven weaponsmith opens from the neighboring street
     // A missing first key must not become a mysterious "no interact button" timeout.
     const rumbo = game.locator('.chronicles-statusbar > span').nth(1);
     await expect(rumbo).toContainText('N · X9 Y7');
+    // The MM3 HUD counts Y northward, opposite to row indices in the
+    // underlying grid: moving north from internal row 7 shows Y8, then Y9.
     for (const [key, expected] of [
-      ['w', 'N · X9 Y6'],
-      ['w', 'N · X9 Y5'],
-      ['a', 'O · X9 Y5'],
-      ['w', 'O · X8 Y5'],
-      ['w', 'O · X7 Y5'],
-      ['d', 'N · X7 Y5'],
+      ['w', 'N · X9 Y8'],
+      ['w', 'N · X9 Y9'],
+      ['a', 'O · X9 Y9'],
+      ['w', 'O · X8 Y9'],
+      ['w', 'O · X7 Y9'],
+      ['d', 'N · X7 Y9'],
     ]) {
       // Wait for the real game position; retry a lost key at most once.
       for (let attempt = 0; attempt < 2; attempt += 1) {
