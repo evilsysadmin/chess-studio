@@ -963,6 +963,46 @@ for (const capture of CAPTURES) {
       await menuSummary.evaluate((summary) => summary.click());
       await expect(exitAction).toBeHidden();
 
+      // Automap PNG and geometry have their own fresh browser context below.
+      // Three.js/SWGL often stalls if another overlay/readback follows the
+      // playing + pause-menu screenshots in this same long-lived context.
+
+      // Keep this producer limited to its PNG/geometry contract. After
+      // software-WebGL readbacks the runner may stall on synthetic key input
+      // and exhaust the entire 360s budget. Automap/Escape lifecycle belongs
+      // to the required functional Chronicles browser canaries, not to this
+      // heavyweight visual capture; the menu's actual bounds were asserted
+      // above without another GPU round trip.
+
+      await writeFile(
+        `${ARTIFACT_DIR}/chronicles-visual-health-${capture.label}.json`,
+        `${JSON.stringify({ schema: 4, scope: 'chronicles', capture: { label: capture.label, ...health } }, null, 2)}\n`,
+        'utf8',
+      );
+    } finally {
+      await context.close();
+    }
+  });
+}
+
+
+// Fresh-context visual proof: the minimap overlay is not a second GPU
+// readback after the full scene + pause-menu screenshots. Keep this separate
+// from the existing functional keyboard/Escape automap canaries.
+for (const capture of CAPTURES) {
+  test(`Chronicles · automap visual · ${capture.label}`, async ({ browser }) => {
+    test.setTimeout(240_000);
+    await mkdir(ARTIFACT_DIR, { recursive: true });
+    const context = await browser.newContext({
+      viewport: { width: capture.width, height: capture.height },
+      hasTouch: capture.hasTouch,
+      isMobile: capture.hasTouch,
+    });
+    try {
+      const page = await context.newPage();
+      await openChronicles(page, capture.label);
+      const gameRoot = page.locator('[data-chronicles="true"]');
+      await expect(gameRoot).toBeVisible();
       await page.getByRole('button', { name: 'Minimapa local. Abrir automapa completo', exact: true }).evaluate((button) => button.click());
       const automap = page.getByRole('dialog', { name: 'Automapa de Chronicles', exact: true });
       await expect(automap).toBeVisible();
@@ -988,24 +1028,11 @@ for (const capture of CAPTURES) {
         automap.locator('.chronicles-automap__panel'),
         `${ARTIFACT_DIR}/chronicles-automap-${capture.label}.png`,
       );
-      // Keep this producer limited to its PNG/geometry contract. After
-      // software-WebGL readbacks the runner may stall on synthetic key input
-      // and exhaust the entire 360s budget. Automap/Escape lifecycle belongs
-      // to the required functional Chronicles browser canaries, not to this
-      // heavyweight visual capture; the menu's actual bounds were asserted
-      // above without another GPU round trip.
-
-      await writeFile(
-        `${ARTIFACT_DIR}/chronicles-visual-health-${capture.label}.json`,
-        `${JSON.stringify({ schema: 4, scope: 'chronicles', capture: { label: capture.label, ...health } }, null, 2)}\n`,
-        'utf8',
-      );
     } finally {
       await context.close();
     }
   });
 }
-
 
 test('Chronicles · mobile keeps Use separate from Attack · 390x844', async ({ browser }) => {
   test.setTimeout(180_000);
