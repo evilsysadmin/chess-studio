@@ -525,12 +525,14 @@ export async function mockApi(page, {
   });
 }
 
-export async function login(page) {
+export async function login(page, { navigationWaitUntil = 'load' } = {}) {
   if (process.env.CHESS_E2E_LIGHTWEIGHT === '1') {
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await page.addInitScript(() => localStorage.setItem('chess-study-device-board-renderer-v1', '2d'));
   }
-  await page.goto('./');
+  // Visual captures may wait for DOM readiness instead of all heavyweight assets.
+  // The explicit Home-ready gate below still checks real app interactivity.
+  await page.goto('./', { waitUntil: navigationWaitUntil });
   await page.getByLabel('Usuario').fill('e2e');
   const password = page.getByLabel('Contraseña');
   await password.fill('clave123456');
