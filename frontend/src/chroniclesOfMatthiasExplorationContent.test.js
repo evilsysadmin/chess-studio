@@ -41,7 +41,7 @@ describe('Chronicles exploration authored content', () => {
     expect(next.y).toBe(2);
   });
 
-  it('finishes standalone Chronicles without leaking the Tactics map transition', () => {
+  it('finishes standalone Chronicles only after USAR at the gate, without leaking Tactics travel', () => {
     const state = stateAt(3, 2, {
       direction: 0,
       sigilAwake: true,
@@ -49,7 +49,10 @@ describe('Chronicles exploration authored content', () => {
       scavengerHp: 0,
       blackGateKey: true,
     });
-    const next = chroniclesReduce(state, 'forward');
+    const atGate = chroniclesReduce(state, 'forward');
+    expect(atGate.phase).toBe('explore');
+    expect([atGate.x, atGate.y]).toEqual([3, 1]);
+    const next = chroniclesReduce(atGate, 'interact');
 
     expect(next.phase).toBe('escaped');
     expect(next.mapId).toBe('crypt-eight-squares');
