@@ -87,36 +87,22 @@ jobs:
       - name: Re-check main before OCI fallback
         id: fallback_admission
         if: steps.watcher.outputs.converged != 'true'
-        run: python3 -S scripts/staging_generation.py main-head --sha "$DEPLOY_SHA" --github-output "$GITHUB_OUTPUT"
-      # The watcher can time out just before OCI finishes public attestation.
-      # Check that full exact-SHA contract before spending seconds on the SDK.
-      - name: Accredit late OCI convergence before SDK setup
-        id: already_live
-        if: steps.watcher.outputs.converged != 'true' && steps.fallback_admission.outputs.superseded != 'true'
-        shell: bash
-        run: |
-          set -euo pipefail
-          if python3 scripts/verify_backend_staging.py --api-url "$STAGING_API_URL" --sha "$DEPLOY_SHA" --attempts 1 --interval 0 >/dev/null 2>&1; then
-            echo 'converged=true' >> "$GITHUB_OUTPUT"
-            echo "::notice title=OCI SDK avoided::A1 terminó y acreditó $DEPLOY_SHA; skip Run Command."
-          else
-            echo 'converged=false' >> "$GITHUB_OUTPUT"
-          fi
+        run: python3 -S scripts/staging_generation.py main-head --sha "$DEPLOY_SHA" --github-output "$GITHUB_OUTPUT" --probe-backend
       - name: Restore cached OCI SDK toolchain
-        if: steps.watcher.outputs.converged != 'true' && steps.fallback_admission.outputs.superseded != 'true' && steps.already_live.outputs.converged != 'true'
+        if: steps.fallback_admission.outputs.requires_sdk == 'true'
         uses: ./.github/actions/setup-oci-sdk
         with:
           version: '2.185.2'
           python-version: '3.13'
       - name: Validate OCI deploy contracts
-        if: steps.watcher.outputs.converged != 'true' && steps.fallback_admission.outputs.superseded != 'true' && steps.already_live.outputs.converged != 'true'
+        if: steps.fallback_admission.outputs.requires_sdk == 'true'
         run: |
           python3 -S scripts/oci_run_command.py --self-test
           python3 -S scripts/oci_runtime_config.py --self-test
           python3 -S scripts/oci_vault_sync.py --self-test
           python3 -S scripts/verify_backend_staging.py --self-test
       - name: Deploy exact backend commit to OCI staging
-        if: steps.watcher.outputs.converged != 'true' && steps.fallback_admission.outputs.superseded != 'true' && steps.already_live.outputs.converged != 'true'
+        if: steps.fallback_admission.outputs.requires_sdk == 'true'
         shell: bash
         env:
           OCI_TENANCY_OCID: ${{ secrets.OCI_TENANCY_OCID }}

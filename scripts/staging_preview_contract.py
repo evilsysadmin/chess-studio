@@ -146,9 +146,8 @@ def main() -> int:
         # complete public accreditation live in staging_generation.py and are
         # proven by its self-test (run below), not by matching inline bash.
         ("staging_generation.py watch-committed --sha \"$DEPLOY_SHA\"", "generation zero-cost watcher helper"),
-        ("Accredit late OCI convergence before SDK setup", "late public accreditation before SDK"),
-        ("id: already_live", "late accreditation step output"),
-        ("steps.already_live.outputs.converged != 'true'", "skip SDK on fully accredited backend"),
+        ("--probe-backend", "late public probe after stale-main guard"),
+        ("steps.fallback_admission.outputs.requires_sdk == 'true'", "SDK gated by exact public accreditation"),
         ("OCI fallback avoided", "late watcher completion re-check"),
         ("A1 terminó y acreditó $DEPLOY_SHA", "late fallback skip requires complete public accreditation"),
         ("Re-check main before OCI fallback", "late stale-generation guard"),
@@ -189,7 +188,7 @@ def main() -> int:
     if prepare_selftest.returncode != 0:
         errors.append("staging_deploy_prepare.py self-test falla: " + (prepare_selftest.stdout + prepare_selftest.stderr).strip()[-300:])
 
-    if staging_deploy.count("python3 scripts/verify_backend_staging.py") < 3:
+    if staging_deploy.count("python3 scripts/verify_backend_staging.py") < 2:
         errors.append("staging fast-path/fallback must reuse full public backend accreditation before skipping Run Command")
     scope_selftest = subprocess.run(
         [sys.executable, "-S", str(STAGING_DEPLOY_SCOPE), "--self-test"],
@@ -346,23 +345,17 @@ def main() -> int:
         require(blocks["backend"], "id: watcher", "backend watcher convergence output", errors)
         require(blocks["backend"], "steps.watcher.outputs.converged != 'true'", "backend Run Command fallback condicional", errors)
         require(blocks["backend"], "Validate zero-cost host watcher contract", "backend watcher self-test", errors)
-        # All three expensive fallback steps must respect late full public
-        # accreditation; only the exact-SHA probe may run before the SDK.
+        # The three fallback steps depend on the prior exact-SHA, stale-safe probe.
         backend_block = blocks["backend"]
-        late = backend_block.find("      - name: Accredit late OCI convergence before SDK setup")
-        sdk = backend_block.find("      - name: Restore cached OCI SDK toolchain")
-        stale = backend_block.find("      - name: Re-check main before OCI fallback")
-        if min(late, sdk, stale) < 0 or not stale < late < sdk:
-            errors.append("staging backend: public late accreditation must follow stale guard and precede SDK")
         for label in ("Restore cached OCI SDK toolchain", "Validate OCI deploy contracts", "Deploy exact backend commit to OCI staging"):
             marker = f"      - name: {label}\n"
-            section = backend_block.split(marker, 1)[-1].split("\n      - name: ", 1)[0]
-            if "steps.already_live.outputs.converged != 'true'" not in section:
-                errors.append(f"staging backend: {label} must skip on late public accreditation")
-        pre_sdk = backend_block.split("      - name: Accredit late OCI convergence before SDK setup", 1)[-1].split("\n      - name: ", 1)[0]
-        for needle in ('--attempts 1 --interval 0', 'echo \'converged=true\'', 'echo \'converged=false\''):
-            if needle not in pre_sdk:
-                errors.append(f"staging backend: missing late public accreditation contract {needle}")
+            if marker not in backend_block:
+                errors.append(f"staging backend: missing fallback step {label}")
+                continue
+            section = backend_block.split(marker, 1)[1].split("\n      - name: ", 1)[0]
+            if "if: steps.fallback_admission.outputs.requires_sdk == 'true'" not in section:
+                errors.append(f"staging backend: {label} requires exact public probe and stale-main admission")
+
         forbid(
             blocks["backend"],
             "python3 scripts/oci_vault_sync.py sync-current",
