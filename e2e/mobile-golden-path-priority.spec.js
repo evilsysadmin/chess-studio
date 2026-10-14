@@ -80,6 +80,18 @@ test('Quick Match · desktop separates the briefing from the start console', asy
   expect(settingsBox.height).toBeGreaterThanOrEqual(44);
   if (briefingBox) expect(briefingBox.x + briefingBox.width).toBeLessThan(launchBox.x);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+
+  // The global Quick Match flex styles give selects width: 0. Ready Room uses
+  // grid and must override this so the actual choice is visible, not just ▼.
+  await settings.click();
+  await expect(dialog.locator('details.quick-match-settings')).toHaveAttribute('open', '');
+  for (const label of ['Ritmo de reloj', 'Formato de serie']) {
+    const select = dialog.getByRole('combobox', { name: label });
+    await expect(select).toBeVisible();
+    const bounds = await select.boundingBox();
+    expect(bounds, `${label} must be rendered`).not.toBeNull();
+    expect(bounds.width, `${label} must show selected text`).toBeGreaterThan(150);
+  }
 });
 
 // GP-5 (#34): con la barra del navegador el alto útil de un móvil real ronda
