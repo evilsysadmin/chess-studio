@@ -318,20 +318,20 @@ test('Chronicles of Matthias · abre una cripta Three.js real y usa combate posi
     .evaluate((button) => button.click());
   await expect(hildegardSheet).toHaveCount(0);
 
-  // At the canonical start Hildegard is still one square short of the pawn:
-  // prove the keyboard attack path without starting combat yet.
+  // The pawn is two squares ahead in clear view. Combat now starts on
+  // visual contact (before the unarmed Hildegard can strike), even without
+  // standing in the enemy's passive engage radius. No free attack or turn.
   await page.keyboard.press('Space');
-  await expect(mode).toHaveAttribute('data-chronicles-turns', '1');
-  await expect(mode).toHaveAttribute('data-chronicles-phase', 'explore');
-  await expect(hildegard).toHaveAttribute('aria-pressed', 'true');
-
-  // Advancing one square enters the pawn's engagement radius. The exploration
-  // action completes, then Chronicles freezes into the AGI + 1d8 initiative
-  // scheduler instead of performing the legacy immediate-retaliation flow.
-  await page.keyboard.press('w');
-  await expect(mode).toHaveAttribute('data-chronicles-turns', '2');
+  await expect(mode).toHaveAttribute('data-chronicles-turns', '0');
   await expect(mode).toHaveAttribute('data-chronicles-phase', 'combat');
   await expect(mode).toHaveAttribute('data-chronicles-initiative-die', '1d8');
+  await expect(mode).toHaveAttribute('data-chronicles-initiative-actor', 'knight');
+
+  // Combat movement consumes the currently active hero's turn. Moving a
+  // square closer enables the next actual melee action.
+  await page.keyboard.press('w');
+  await expect(mode).toHaveAttribute('data-chronicles-turns', '1');
+  await expect(mode).toHaveAttribute('data-chronicles-phase', 'combat');
 
   // A real damaging attack awards persistent XP. That progression update must
   // not tear down/recreate the Three.js renderer: doing so blanks the viewport.
@@ -340,7 +340,7 @@ test('Chronicles of Matthias · abre una cripta Three.js real y usa combate posi
     node.dataset.chroniclesRendererSentinel = 'stable-before-xp';
   });
   await page.keyboard.press('Space');
-  await expect(mode).toHaveAttribute('data-chronicles-turns', '3');
+  await expect(mode).toHaveAttribute('data-chronicles-turns', '2');
   await expect(canvas).toHaveCount(1);
   await expect(canvas).toHaveAttribute('data-chronicles-renderer-sentinel', 'stable-before-xp');
   await expect(mode.locator('.chronicles-renderer-error')).toHaveCount(0);

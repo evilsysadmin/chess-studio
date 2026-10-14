@@ -1,5 +1,6 @@
 import { resolveChroniclesEnemyBuildDefinition } from './chroniclesEnemyBuilds.js';
-import { chroniclesRuntimeEnemyPosition } from '../chroniclesOfMatthiasTurns.js';
+import { chroniclesRuntimeEnemyPosition, chroniclesEnemyHasSightline, chroniclesEnemyCanAttackParty } from '../chroniclesOfMatthiasTurns.js';
+import { chroniclesMapForState, chroniclesMapTileAt } from './chroniclesMapCatalog.js';
 import {
   chroniclesCollapsePartyAfterCombat,
   chroniclesDeployPartyForCombat,
@@ -123,13 +124,75 @@ function enemyEngagementRange(enemy) {
     : attackReach;
 }
 
-export function chroniclesEngagedEnemies(state, enemies) {
+// Engagement uses actual walkable tile distance, not Manhattan distance through
+// walls. Bounded BFS keeps close enemies responsive without aggroing behind stone.
+function reachableWithinEngagement(state, from, to, range) {
+  if (manhattanDistance(from, to) > range) return false;
+  // Unit/legacy states without an area have no authoritative topology.
+  if (!state.mapId) return true;
+  const map = chroniclesMapForState(state);
+  const open = (point) => chroniclesMapTileAt(map, point.x, point.y) !== '#';
+  if (!open(from) || !open(to)) return false;
+  if (from.x === to.x && from.y === to.y) return true;
+  const visited = new Set([`${from.x}:${from.y}`]);
+  let frontier = [from];
+  for (let distance = 1; distance <= Math.floor(range); distance += 1) {
+    const next = [];
+    for (const point of frontier) {
+      for (const [dx, dy] of [[0, -1], [1, 0], [0, 1], [-1, 0]]) {
+        const candidate = { x: point.x + dx, y: point.y + dy };
+        const key = `${candidate.x}:${candidate.y}`;
+        if (visited.has(key) || !open(candidate)) continue;
+        if (candidate.x === to.x && candidate.y === to.y) return true;
+        visited.add(key);
+        next.push(candidate);
+      }
+    }
+    if (!next.length) return false;
+    frontier = next;
+  }
+  return false;
+}
+
+const FIRST_PERSON_VISIBLE_TILES = 6;
+// Match the 67° vertical / 96° capped horizontal lens used by the first-person
+// Three.js renderer. The actual viewport aspect is passed by its host.
+function firstPersonHorizontalHalfFov(aspect) {
+  const safeAspect = Number.isFinite(aspect) && aspect > 0 ? aspect : 1;
+  const maxHalfH = (96 * Math.PI) / 360;
+  const halfV = Math.min((67 * Math.PI) / 360, Math.atan(Math.tan(maxHalfH) / safeAspect));
+  return Math.atan(Math.tan(halfV) * safeAspect);
+}
+
+export function chroniclesEnemyVisibleToParty(state, enemy, { viewAspect = 1 } = {}) {
+  if (!state || !enemy) return false;
+  const facing = [{ dx: 0, dy: -1 }, { dx: 1, dy: 0 }, { dx: 0, dy: 1 }, { dx: -1, dy: 0 }][state.direction];
+  if (!facing) return false;
+  const position = chroniclesRuntimeEnemyPosition(state, enemy);
+  const dx = position.x - state.x;
+  const dy = position.y - state.y;
+  const depth = dx * facing.dx + dy * facing.dy;
+  const side = dx * -facing.dy + dy * facing.dx;
+  if (depth <= 0 || Math.hypot(dx, dy) > FIRST_PERSON_VISIBLE_TILES) return false;
+  if (Math.atan2(Math.abs(side), depth) > firstPersonHorizontalHalfFov(viewAspect)) return false;
+  return chroniclesEnemyHasSightline(state, { x: state.x, y: state.y }, position);
+}
+
+export function chroniclesEngagedEnemies(state, enemies, options = {}) {
   if (!state || state.phase === 'escaped' || state.phase === 'defeated') return [];
   const partyPosition = { x: state.x, y: state.y };
   return (Array.isArray(enemies) ? enemies : []).filter((enemy) => {
     if (Number(state?.[enemy?.hpKey] || 0) <= 0) return false;
     const enemyPosition = chroniclesRuntimeEnemyPosition(state, enemy);
-    return manhattanDistance(partyPosition, enemyPosition) <= enemyEngagementRange(enemy);
+    if (state.combatRules === 'mm3') {
+      // First person: only something the party actually sees or a creature
+      // able to hit the party can interrupt exploration. Aggro range alone
+      // cannot trigger turn combat, even in a nearby corridor.
+      return chroniclesEnemyVisibleToParty(state, enemy, options)
+        || chroniclesEnemyCanAttackParty(state, enemy, enemyPosition);
+    }
+    // Tactics retains its authored engagement radius and full-room scheduler.
+    return reachableWithinEngagement(state, partyPosition, enemyPosition, enemyEngagementRange(enemy));
   });
 }
 
@@ -146,7 +209,7 @@ export function chroniclesStartInitiativeCombat(state, enemies, options = {}) {
   const forceEnemyIds = new Set(Array.isArray(options.forceEnemyIds) ? options.forceEnemyIds : []);
   const candidates = Array.isArray(enemies) ? enemies : [];
   const engagedById = new Map(
-    chroniclesEngagedEnemies(state, candidates).map((enemy) => [enemy.id, enemy]),
+    chroniclesEngagedEnemies(state, candidates, options).map((enemy) => [enemy.id, enemy]),
   );
   candidates.forEach((enemy) => {
     if (forceEnemyIds.has(enemy.id) && Number(state?.[enemy.hpKey] || 0) > 0) {
@@ -163,6 +226,25 @@ export function chroniclesStartInitiativeCombat(state, enemies, options = {}) {
     phase: 'combat',
     initiative,
     message: `Combate por turnos · iniciativa = AGI + 1d8: ${initiative.order.map((actor) => `${actor.name} ${actor.initiative}`).join(' · ')}.`,
+  };
+}
+
+// A saved first-person encounter, or a foe that leaves sight/attack range, must
+// not trap exploration in initiative indefinitely. Tactics is unaffected.
+export function chroniclesReconcileFirstPersonCombat(state, enemies, options = {}) {
+  if (state?.combatRules !== 'mm3' || !state?.initiative?.order?.length || state.phase !== 'combat') return state;
+  const participantIds = new Set(state.initiative.order
+    .filter((actor) => actor.kind === 'enemy').map((actor) => actor.id));
+  const participants = (Array.isArray(enemies) ? enemies : [])
+    .filter((enemy) => participantIds.has(enemy.id));
+  if (chroniclesEngagedEnemies(state, participants, options).length) return state;
+  const collapsed = chroniclesCollapsePartyAfterCombat(state);
+  return {
+    ...collapsed,
+    phase: 'explore',
+    turnPhase: 'party',
+    initiative: null,
+    message: 'No hay enemigos a la vista ni amenazas que puedan atacarte. La exploración continúa.',
   };
 }
 

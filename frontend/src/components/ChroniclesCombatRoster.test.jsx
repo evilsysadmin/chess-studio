@@ -4,7 +4,7 @@ import React from 'react';
 
 import { chroniclesActiveEnemies, createChroniclesState } from '../chroniclesOfMatthias.js';
 import { chroniclesStartInitiativeCombat } from '../chronicles/chroniclesInitiative.js';
-import ChroniclesCombatRoster, { chroniclesHealthBand } from './ChroniclesCombatRoster.jsx';
+import ChroniclesCombatRoster, { chroniclesCombatFoeBearing, chroniclesHealthBand } from './ChroniclesCombatRoster.jsx';
 import ChroniclesMinimap from './ChroniclesMinimap.jsx';
 
 describe('ChroniclesCombatRoster', () => {
@@ -31,14 +31,15 @@ describe('ChroniclesCombatRoster', () => {
     expect(html).toContain('Combate');
     expect(html).toContain('<details>');
     expect(html).toContain('<summary>');
-    const aliveCount = chroniclesActiveEnemies(hurt).filter(
-      (enemy) => Number(hurt[enemy.hpKey] || 0) > 0,
-    ).length;
+    const aliveCount = hurt.initiative.order.filter((actor) => actor.kind === 'enemy').length;
     expect(html).toContain(`Combate · ${aliveCount} ${aliveCount === 1 ? 'enemigo' : 'enemigos'}`);
     expect(html).toContain(`Objetivo: ${deserter.name}`);
     expect(html).toContain('aria-label="Enemigos en combate"');
 
     expect(html).toContain(deserter.name);
+    expect(aliveCount).toBe(1);
+    expect(chroniclesCombatFoeBearing({ ...hurt, direction: 2 }, deserter)).toBe('A tu espalda');
+    expect(renderToStaticMarkup(<ChroniclesCombatRoster state={{ ...hurt, direction: 2 }} />)).toContain('A tu espalda');
     expect(html).toContain('data-band="critical"');
     expect(html).toContain('data-target="true"');
     // Both widgets remain mounted during initiative: combat does not take over

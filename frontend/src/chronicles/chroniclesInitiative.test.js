@@ -1,9 +1,13 @@
 import { describe, expect, it } from 'vitest';
+import { createChroniclesState } from '../chroniclesOfMatthias.js';
 import {
   chroniclesAdvanceCombatInitiative,
   chroniclesAdvanceInitiative,
   chroniclesCurrentInitiativeActor,
   chroniclesEnemyInitiativeAgility,
+  chroniclesEngagedEnemies,
+  chroniclesEnemyVisibleToParty,
+  chroniclesReconcileFirstPersonCombat,
   chroniclesPartyInitiativeAgility,
   chroniclesRollInitiative,
   chroniclesStartInitiativeCombat,
@@ -128,6 +132,94 @@ describe('Chronicles initiative', () => {
     );
     expect(forced.phase).toBe('combat');
     expect(forced.initiative.order.map((actor) => actor.id).sort()).toEqual(['far', 'matthias']);
+  });
+
+  it('does not start a first-person fight through a nearby solid wall', () => {
+    const state = {
+      ...createChroniclesState('crypt-eight-squares', null, { rules: 'mm3' }),
+      x: 1,
+      y: 4,
+      hiddenHp: 3,
+    };
+    // (2,4) is a wall. The alternate route needs four steps, not two.
+    const behindWall = {
+      id: 'hidden', hpKey: 'hiddenHp', maxHp: 3, x: 3, y: 4,
+      ai: { movement: 'hold', engageRange: 2 },
+    };
+    expect(chroniclesEngagedEnemies(state, [behindWall])).toEqual([]);
+    expect(chroniclesStartInitiativeCombat(state, [behindWall])).toBe(state);
+
+    const inCorridor = { ...behindWall, x: 1, y: 3 };
+    expect(chroniclesEngagedEnemies(state, [inCorridor]).map((foe) => foe.id)).toEqual(['hidden']);
+  });
+
+  it('only begins first-person combat when a foe is actually in view or can strike', () => {
+    const state = {
+      ...createChroniclesState('crypt-eight-squares', null, { rules: 'mm3' }),
+      x: 1, y: 4, direction: 2, hiddenHp: 3,
+    };
+    const distant = {
+      id: 'hidden', hpKey: 'hiddenHp', maxHp: 3,
+      x: 1, y: 1,
+      ai: { movement: 'hold', engageRange: 6, attackReach: 1 },
+    };
+    // Close enough to aggro by the old radius, but behind the camera and
+    // too far to attack: exploration continues.
+    expect(chroniclesEngagedEnemies(state, [distant])).toEqual([]);
+    expect(chroniclesStartInitiativeCombat(state, [distant])).toBe(state);
+
+    // Turning to face a foe with clear sightline triggers initiative.
+    const lookingNorth = { ...state, direction: 0 };
+    expect(chroniclesEnemyVisibleToParty(lookingNorth, distant)).toBe(true);
+    expect(chroniclesStartInitiativeCombat(lookingNorth, [distant]).initiative?.order
+      .some((actor) => actor.id === 'hidden')).toBe(true);
+
+    // A genuine ranged attacker may trigger combat even behind the camera.
+    const shooter = {
+      ...distant, x: 1, y: 2,
+      ai: { movement: 'hold', engageRange: 6, attackReach: 3, requiresLineOfSight: true },
+    };
+    expect(chroniclesEnemyVisibleToParty(state, shooter)).toBe(false);
+    expect(chroniclesEngagedEnemies(state, [shooter]).map((enemy) => enemy.id)).toEqual(['hidden']);
+  });
+
+  it('uses the actual first-person camera width rather than a 360-degree alert radius', () => {
+    const state = {
+      ...createChroniclesState('crypt-eight-squares', null, { rules: 'mm3' }),
+      x: 1, y: 4, direction: 0, flankHp: 4,
+    };
+    const flank = {
+      id: 'flank', hpKey: 'flankHp', maxHp: 4,
+      x: 2, y: 3,
+      ai: { movement: 'hold', engageRange: 6, attackReach: 1 },
+    };
+    expect(chroniclesEnemyVisibleToParty(state, flank, { viewAspect: 0.5 })).toBe(false);
+    expect(chroniclesEnemyVisibleToParty(state, flank, { viewAspect: 2 })).toBe(true);
+  });
+
+  it('releases a stale first-person combat after an enemy disappears behind a wall', () => {
+    const state = {
+      ...createChroniclesState('crypt-eight-squares', null, { rules: 'mm3' }),
+      x: 1, y: 4, direction: 0, foeHp: 3,
+    };
+    const foe = {
+      id: 'foe', name: 'Foe', hpKey: 'foeHp', maxHp: 3,
+      x: 1, y: 1, ai: { movement: 'hold', engageRange: 6, attackReach: 1 },
+    };
+    const fighting = chroniclesStartInitiativeCombat(state, [foe], { random: () => 0 });
+    expect(fighting.phase).toBe('combat');
+    expect(chroniclesReconcileFirstPersonCombat(fighting, [foe])).toBe(fighting);
+
+    const lostContact = { ...fighting, enemyPositions: { foe: { x: 3, y: 4 } } };
+    const resumed = chroniclesReconcileFirstPersonCombat(lostContact, [foe]);
+    expect(resumed).toMatchObject({ phase: 'explore', initiative: null, partyPositions: {} });
+    expect(resumed.x).toBe(1);
+    expect(resumed.y).toBe(4);
+    expect(resumed.foeHp).toBe(3);
+
+    // Tactical encounters preserve their own independent lifecycle.
+    expect(chroniclesReconcileFirstPersonCombat({ ...lostContact, combatRules: null }, [foe]))
+      .toEqual({ ...lostContact, combatRules: null });
   });
 
   it('continues after a fallen current actor instead of restarting the round', () => {
