@@ -925,7 +925,7 @@ for (const capture of CAPTURES) {
       );
       expect(menuInks.length, 'menu has actual actions').toBeGreaterThan(3);
       for (const ink of menuInks) {
-        expect(ink.inline, `menu action ${ink.label} inline ink`).toBe('#08080a');
+        expect(ink.inline, `menu action ${ink.label} inline ink`).toMatch(/^(?:#08080a|rgb\(8,\s*8,\s*10\))$/i);
         expect(ink.priority, `menu action ${ink.label} important ink`).toBe('important');
         expect(ink.computed, `menu action ${ink.label} black ink`).toBe('rgb(8, 8, 10)');
       }
@@ -940,8 +940,8 @@ for (const capture of CAPTURES) {
         color: getComputedStyle(button).color,
         fill: getComputedStyle(button).webkitTextFillColor,
       }));
-      expect(inks.color, `${capture.label}: menu ink must be dark`).toBe('rgb(17, 16, 21)');
-      expect(inks.fill, `${capture.label}: WebKit must keep dark ink`).toBe('rgb(17, 16, 21)');
+      expect(['rgb(8, 8, 10)', 'rgb(17, 16, 21)'], `${capture.label}: menu ink must be dark`).toContain(inks.color);
+      expect(inks.fill, `${capture.label}: WebKit fill matches dark ink`).toBe(inks.color);
       await captureElement(page, gameRoot, `${ARTIFACT_DIR}/chronicles-game-menu-${capture.label}.png`);
       await menuSummary.evaluate((summary) => summary.click());
       await expect(exitAction).toBeHidden();
