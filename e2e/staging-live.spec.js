@@ -288,6 +288,10 @@ async function assertLivePvpBrowserPath(page) {
     const origin = performance.now();
     const marks = { dialogMountMs: null, sceneMountMs: null, sceneReadyMs: null, sceneFallbackMs: null };
     const longTasks = { count: 0, totalMs: 0, maxMs: 0 };
+    const longFrames = {
+      supported: PerformanceObserver.supportedEntryTypes?.includes('long-animation-frame') || false,
+      top: [],
+    };
     const elapsed = () => Math.round(performance.now() - origin);
     const captureDom = () => {
       if (marks.dialogMountMs === null && document.querySelector('.pvp-lobby[role="dialog"]')) {
@@ -316,10 +320,39 @@ async function assertLivePvpBrowserPath(page) {
       });
       taskObserver.observe({ type: 'longtask' });
     }
+    let frameObserver = null;
+    if (longFrames.supported) {
+      frameObserver = new PerformanceObserver((list) => {
+        for (const entry of list.getEntries()) {
+          if (entry.duration < 100) continue;
+          const scripts = Array.from(entry.scripts || [])
+            .sort((a, b) => b.duration - a.duration).slice(0, 2)
+            .map((script) => ({
+              // Basename and function only. Never leak CDN URLs / query params.
+              module: String(script.sourceURL || '').split(/[?#]/)[0].split('/').pop()
+                .replace(/[^\w.-]/g, '').slice(0, 60) || 'browser',
+              function: String(script.sourceFunctionName || '(native)')
+                .replace(/[^\w.$()-]/g, '').slice(0, 45),
+              ms: Math.round(script.duration || 0),
+              layoutMs: Math.round(script.forcedStyleAndLayoutDuration || 0),
+            }));
+          longFrames.top.push({
+            startMs: Math.round(entry.startTime - origin),
+            durationMs: Math.round(entry.duration),
+            blockingMs: Math.round(entry.blockingDuration || 0),
+            scripts,
+          });
+        }
+        // Keep only five worst frames in memory for bounded safe telemetry.
+        longFrames.top.sort((a, b) => b.durationMs - a.durationMs);
+        longFrames.top.length = Math.min(longFrames.top.length, 5);
+      });
+      frameObserver.observe({ type: 'long-animation-frame' });
+    }
     captureDom();
     window.__stagingDuelHallTiming = {
-      marks, longTasks,
-      close: () => { domObserver.disconnect(); taskObserver?.disconnect(); },
+      marks, longTasks, longFrames,
+      close: () => { domObserver.disconnect(); taskObserver?.disconnect(); frameObserver?.disconnect(); },
     };
     return Date.now();
   });
@@ -488,10 +521,15 @@ async function assertLivePvpBrowserPath(page) {
       return {
         marks: { ...probe.marks },
         longTasks: { ...probe.longTasks },
+        longFrames: { supported: probe.longFrames.supported, top: [...probe.longFrames.top] },
         sceneState: document.querySelector('[data-pvp-duel-hall-3d]')?.getAttribute('data-pvp-duel-hall-3d') || 'not-mounted',
       };
     });
     if (settled) {
+      console.log(
+        'STAGING_PVP_LOAF supported=' + settled.longFrames.supported +
+        ' top_frames=' + JSON.stringify(settled.longFrames.top),
+      );
       console.log(
         `STAGING_PVP_RENDER_SETTLED scene_ready_ms=${browserMs(settled.marks.sceneReadyMs)}` +
         ` scene_fallback_ms=${browserMs(settled.marks.sceneFallbackMs)}` +
