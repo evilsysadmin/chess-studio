@@ -950,9 +950,13 @@ for (const capture of CAPTURES) {
       // Every menu action stays on screen, «Salir y guardar» included.
       const menuDetails = page.locator('details.chronicles-game-menu');
       const menuSummary = menuDetails.locator('> summary');
-      await menuSummary.evaluate((summary) => {
-        if (!summary.parentElement.open) summary.click();
-      });
+      // React controls the details.open property through onToggle.
+      // A synthetic DOM click while an old toggle event is pending can
+      // immediately close it again; prefer the real user interaction.
+      if (!(await menuDetails.evaluate((details) => details.open))) {
+        await menuSummary.click();
+      }
+      await expect(menuDetails).toHaveAttribute('open', '');
       const exitAction = menuDetails.getByRole('button', { name: 'Salir y guardar', exact: true });
       // A short landscape viewport legitimately scrolls the menu panel;
       // reveal the final option before checking visibility and hit bounds.
