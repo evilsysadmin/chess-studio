@@ -52,6 +52,12 @@ describe('InsightsGuidedSession time budgets', () => {
     expect(html).toContain('Tengo 5 min');
     expect(html).toContain('Tengo 15 min');
     expect(html).toContain('Tengo 30 min');
+    expect(html).toContain('data-training-preview-minutes="5"');
+    expect(html).toContain('aria-pressed="true"');
+    expect(html).toContain('Ver el recorrido de 5 min');
+    expect(html).toContain('1 bloque de práctica');
+    expect(html).toContain('Patrón registrado');
+    expect(html).not.toContain('Hoy toca esto');
   });
 
   it('resume sólo los bloques que el usuario marcó como hechos y no vende mejora', () => {
