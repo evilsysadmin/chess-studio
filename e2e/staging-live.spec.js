@@ -60,20 +60,31 @@ async function waitForFrontendAssetPropagation(request) {
         if (!assets.length) {
           lastProblem = 'index.html no contiene JS/CSS versionados';
         } else {
+          // Entry chunks are independent immutable URLs. Bound origin load to
+          // four parallel GETs; still inspect every HTTP/MIME result, even if
+          // another entry asset fails or times out.
           const failures = [];
-          for (const assetUrl of assets) {
-            const cacheBusted = new URL(assetUrl);
-            cacheBusted.searchParams.set('staging-asset-gate', `${Date.now()}-${attempt}`);
-            const response = await request.get(cacheBusted.toString(), {
-              headers: {
-                'Cache-Control': 'no-cache, no-store',
-                Pragma: 'no-cache',
-              },
-            });
-            const contentType = response.headers()['content-type'] || '';
-            if (!response.ok() || !assetMimeIsValid(assetUrl, contentType)) {
-              failures.push(`${new URL(assetUrl).pathname}: HTTP ${response.status()} · ${contentType || 'sin content-type'}`);
-            }
+          for (let offset = 0; offset < assets.length; offset += 4) {
+            const batch = assets.slice(offset, offset + 4);
+            const checked = await Promise.all(batch.map(async (assetUrl) => {
+              const cacheBusted = new URL(assetUrl);
+              cacheBusted.searchParams.set('staging-asset-gate', `${Date.now()}-${attempt}`);
+              try {
+                const response = await request.get(cacheBusted.toString(), {
+                  headers: {
+                    'Cache-Control': 'no-cache, no-store',
+                    Pragma: 'no-cache',
+                  },
+                });
+                const contentType = response.headers()['content-type'] || '';
+                return response.ok() && assetMimeIsValid(assetUrl, contentType)
+                  ? null
+                  : `${new URL(assetUrl).pathname}: HTTP ${response.status()} · ${contentType || 'sin content-type'}`;
+              } catch (error) {
+                return `${new URL(assetUrl).pathname}: ${error instanceof Error ? error.message : String(error)}`;
+              }
+            }));
+            failures.push(...checked.filter(Boolean));
           }
 
           if (!failures.length) return;
@@ -208,6 +219,15 @@ function assertPvpBrowserResponse(response, { suffix, native }) {
 }
 
 async function assertLivePvpBrowserPath(page) {
+  // Read-only phase diagnostics: preserve real lobby/pulse cadence and counts.
+  // Never log credentials, tokens, roster contents, or response bodies.
+  const started = Date.now();
+  let phaseStart = started;
+  const logPhase = (name) => {
+    const now = Date.now();
+    console.log(`STAGING_PVP_PHASE ${name} duration_ms=${now - phaseStart} total_ms=${now - started}`);
+    phaseStart = now;
+  };
   const failed = [];
   const onRequestFailed = (request) => {
     if (request.url().includes('/api/pvp/')) {
@@ -238,6 +258,7 @@ async function assertLivePvpBrowserPath(page) {
     await expect(lobby).toBeVisible();
     await expect(lobby.getByRole('heading', { name: 'Sala de Duelos' })).toBeVisible();
     await expect(lobby.locator('.pvp-lobby__error')).toHaveCount(0);
+    logPhase('open-lobby');
 
     // Enrolarnos fuerza el mismo polling que usa una sesión humana real:
     // pulse nativo + reconciliación full-lobby. El antiguo gate con curl podía
@@ -254,11 +275,13 @@ async function assertLivePvpBrowserPath(page) {
     expect((await join).status(), 'POST /roster debe confirmar disponibilidad').toBe(200);
     assertPvpBrowserResponse(await firstPulse, { suffix: '/lobby/pulse', native: 'lobby-pulse' });
     assertPvpBrowserResponse(await reconciledLobby, { suffix: '/lobby', native: 'lobby-read' });
+    logPhase('join-and-first-pulse');
 
     // Dos ciclos adicionales evitan acreditar sólo la primera respuesta feliz
     // del sidecar y reproducen el patrón repetido que ve el navegador.
     for (let cycle = 0; cycle < 2; cycle += 1) {
       assertPvpBrowserResponse(await waitPulse(), { suffix: '/lobby/pulse', native: 'lobby-pulse' });
+      logPhase(`repeat-pulse-${cycle + 1}`);
     }
     await expect(lobby.locator('.pvp-lobby__error')).toHaveCount(0);
     expect(failed, `PvP browser requestfailed: ${JSON.stringify(failed)}`).toEqual([]);
@@ -271,6 +294,7 @@ async function assertLivePvpBrowserPath(page) {
     expect((await leave).status(), 'DELETE /roster debe limpiar la identidad técnica').toBe(204);
     await lobby.getByRole('button', { name: 'Cerrar ventana de rivales', exact: true }).click();
     await expect(lobby).toBeHidden();
+    logPhase('leave-lobby');
   } finally {
     page.off('requestfailed', onRequestFailed);
   }
