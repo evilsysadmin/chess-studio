@@ -49,17 +49,14 @@ async function openChronicles(page, captureLabel, {
     chroniclesWorldFlags,
     chroniclesAreaTransform,
   });
-  // Tablet evidence needs the mounted DOM, not the completion of every
-  // unrelated Home image/asset load. login() still waits for the interactive
-  // Home gate after DOMContentLoaded before navigating to Chronicles.
-  const loginOptions = retryVisualHomeLogin ? { navigationWaitUntil: 'domcontentloaded' } : undefined;
-  try {
-    await login(page, loginOptions);
-  } catch (error) {
-    if (!retryVisualHomeLogin || !/Modos principales|page\.goto: Timeout/.test(String(error))) throw error;
-    console.warn('[Chronicles visual] Home navigation was slow; retrying the same login once');
-    await login(page, loginOptions);
-  }
+  // Tablet evidence requires the interactive Home gate, not completion of
+  // unrelated image loads. Permit slow Home mounting without *re-submitting*
+  // credentials: the first login may have succeeded before its Home timed out,
+  // so a second login would wait for an absent Usuario field.
+  const loginOptions = retryVisualHomeLogin
+    ? { navigationWaitUntil: 'domcontentloaded', homeVisibleTimeout: 60_000 }
+    : undefined;
+  await login(page, loginOptions);
   const speech = page.getByRole('region', { name: 'Mensaje de Matthias', exact: true });
   if (await speech.isVisible().catch(() => false)) {
     const close = speech.getByRole('button', { name: 'Cerrar comentario de Matthias', exact: true });
@@ -969,6 +966,13 @@ for (const capture of CAPTURES) {
       ]);
       await expect(menu.locator('#chronicles-music-volume')).toHaveCount(0);
       await checkTablet('pause');
+      if (capture.label === 'android-landscape-844x390') {
+        const scroll = await panel.evaluate((node) => ({
+          content: node.scrollHeight, visible: node.clientHeight,
+        }));
+        expect(scroll.content, 'landscape pause needs no hidden vertical scrolling')
+          .toBeLessThanOrEqual(scroll.visible + 1);
+      }
       // The panel may fit while its children overflow/clamp outside a short
       // landscape phone. Verify EVERY action without scrolling, especially
       // Guardar y salir (historically ended at y=475 on a 390px viewport).
@@ -979,11 +983,15 @@ for (const capture of CAPTURES) {
       expect(pauseActions.map((action) => action.name)).toEqual([
         'Continuar', 'Guardar partida', 'Guardar y salir', 'Salir sin guardar', 'Opciones de audio',
       ]);
+      const tabletBounds = await panel.boundingBox();
+      expect(tabletBounds, `${capture.label}: pause tablet bounds`).not.toBeNull();
       for (const action of pauseActions) {
         expect(action.x, `${capture.label}: ${action.name} left`).toBeGreaterThanOrEqual(0);
         expect(action.y, `${capture.label}: ${action.name} top`).toBeGreaterThanOrEqual(0);
         expect(action.right, `${capture.label}: ${action.name} right`).toBeLessThanOrEqual(capture.width);
         expect(action.bottom, `${capture.label}: ${action.name} bottom`).toBeLessThanOrEqual(capture.height);
+        expect(action.bottom, `${capture.label}: ${action.name} remains inside pause tablet`)
+          .toBeLessThanOrEqual(tabletBounds.y + tabletBounds.height);
       }
       await captureElement(page, panel, `${ARTIFACT_DIR}/chronicles-game-menu-${capture.label}.png`);
       await menu.getByRole('button', { name: 'Opciones de audio' }).evaluate((button) => button.click());

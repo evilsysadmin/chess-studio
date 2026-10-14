@@ -525,7 +525,7 @@ export async function mockApi(page, {
   });
 }
 
-export async function login(page, { navigationWaitUntil = 'load' } = {}) {
+export async function login(page, { navigationWaitUntil = 'load', homeVisibleTimeout = 5_000 } = {}) {
   if (process.env.CHESS_E2E_LIGHTWEIGHT === '1') {
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await page.addInitScript(() => localStorage.setItem('chess-study-device-board-renderer-v1', '2d'));
@@ -543,7 +543,10 @@ export async function login(page, { navigationWaitUntil = 'load' } = {}) {
   // while fonts/layout settle during the login screen's first frames.
   await password.press('Enter');
   // Stable Home-ready landmark shared by immersive desktop and compact mobile.
-  await expect(page.getByRole('region', { name: 'Modos principales', exact: true })).toBeVisible();
+  // Slow isolated Chromium/SwiftShader visual runs may need more time *after*
+  // successful authentication; never resubmit the login form on this timeout.
+  await expect(page.getByRole('region', { name: 'Modos principales', exact: true }))
+    .toBeVisible({ timeout: homeVisibleTimeout });
   // From this release the visible Home is intentionally non-interactive while
   // the real scene is compositing. Functional journeys wait for that single
   // contract (Blender ready OR complete static fallback) before clicking.
