@@ -80,20 +80,37 @@
   margin-top: auto;
 }
 
-.chronicles-audience__actions button {
+/* The choices live on light stone: never allow app night-mode/Brave to
+   inherit white glyphs from the dark dialogue panel. The number and label
+   are separate descendants, so enforce their effective text fill too. */
+.chronicles-audience.chronicles-shop .chronicles-audience__actions button {
   min-height: 44px;
   padding: 8px 10px;
   border: 2px solid;
   border-color: #ffeec2 #6b4510 #6b4510 #ffeec2;
   background: #e3b45c var(--mm3-stone) 0 0 / 128px 128px;
-  color: #211308;
+  color-scheme: only light;
+  color: var(--mm3-control-ink, #101014);
+  -webkit-text-fill-color: var(--mm3-control-ink, #101014);
+  text-shadow: 0 1px 0 rgba(255, 255, 255, .24);
   font: 700 .89rem/1.2 system-ui, sans-serif;
   cursor: pointer;
+}
+.chronicles-audience.chronicles-shop .chronicles-audience__actions button :is(b, span) {
+  color: var(--mm3-control-ink, #101014);
+  -webkit-text-fill-color: var(--mm3-control-ink, #101014);
 }
 
 .chronicles-audience__actions button:last-child:not(:first-child) {
   border-color: var(--mm3-hi) var(--mm3-lo) var(--mm3-lo) var(--mm3-hi);
   background-color: #9d9da2;
+}
+/* A disabled answer remains readable on grey, instead of becoming white
+   or fading into the textured button. */
+.chronicles-audience__actions button:disabled {
+  color: var(--mm3-control-ink-disabled, #343039);
+  -webkit-text-fill-color: var(--mm3-control-ink-disabled, #343039);
+  opacity: 1;
 }
 
 .chronicles-audience__actions button:focus-visible,

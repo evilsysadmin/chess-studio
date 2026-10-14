@@ -87,6 +87,7 @@ async function openChronicles(page, captureLabel, {
   // accessible live controls layered over the decorative, browser-chrome-free art.
   await expect(entry).toHaveAttribute('data-chronicles-art', 'approved-expedition-study-v1');
   await expect(entry.locator('.chronicles-save-menu__actions > button')).toHaveCount(6);
+  await expectStoneButtonInk(entry, '.chronicles-save-menu__actions button.is-primary', captureLabel + ': gold campaign key');
   for (const name of ['Nueva campaña', 'Nuevo juego', 'Continuar partida', 'Cargar juego', 'Gestionar partidas', 'Volver al castillo']) {
     await expect(entry.getByRole('button', { name: new RegExp(name) })).toBeVisible();
   }
@@ -465,6 +466,7 @@ test('Chronicles · First Book equipment sheet · actual Android 390px', async (
       .getByRole('button', { name: /Equipo/ }).click();
     await expect(gear).toBeVisible();
     await expect(gear).toContainText('Armas y armaduras equipadas');
+    await expectStoneButtonInk(sheet, '.chronicles-character-sheet__head > button', 'MM3 folio close key');
     // Weapon, armour and shield.
     await expect(gear.locator('.chronicles-character-sheet__gear-slot')).toHaveCount(3);
     await gear.evaluate((node) => node.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'instant' }));
@@ -483,6 +485,27 @@ test('Chronicles · First Book equipment sheet · actual Android 390px', async (
   }
 });
 
+
+async function expectStoneButtonInk(container, selector, context) {
+  const target = selector ? container.locator(selector).first() : container;
+  const ink = await target.evaluate((element) => {
+    const children = [...element.querySelectorAll('b, span, small')];
+    const styles = [element, ...children].map((node) => ({
+      color: getComputedStyle(node).color,
+      fill: getComputedStyle(node).webkitTextFillColor,
+    }));
+    return { colorScheme: getComputedStyle(element).colorScheme, disabled: element.matches(':disabled'), styles };
+  });
+  expect(ink.colorScheme, context + ': a light stone control opts out of auto-dark').toContain('light');
+  // Disabled stone keys use deliberately darker grey ink (not white), whereas
+  // active controls must be the exact canonical near-black. Descendants may
+  // inherit the active ink while the disabled button itself uses subdued ink.
+  const allowed = ink.disabled ? ['rgb(16, 16, 20)', 'rgb(52, 48, 57)'] : ['rgb(16, 16, 20)'];
+  for (const style of ink.styles) {
+    expect(allowed, context + ': dark engraved text').toContain(style.color);
+    expect(allowed, context + ': dark WebKit text fill').toContain(style.fill);
+  }
+}
 
 async function expectAllMayorChoicesInView(audience, viewport) {
   const fit = await audience.evaluate((dialog) => {
@@ -510,6 +533,10 @@ async function expectAllMayorChoicesInView(audience, viewport) {
   expect(fit.lastBottom, viewport + ': last response inside dialogue panel')
     .toBeLessThanOrEqual(fit.panelBottom - 1);
   expect(fit.lastHeight, viewport + ': last choice touch target').toBeGreaterThanOrEqual(44);
+  const choices = audience.locator('[data-chronicles-dialogue-choice]');
+  for (let i = 0; i < fit.count; i++) {
+    await expectStoneButtonInk(choices.nth(i), null, viewport + ': Aldric answer ' + (i + 1));
+  }
 }
 
 test('Chronicles · MM3 Alcalde Aldric · entrar en ayuntamiento y diálogo numerado Android', async ({ browser }) => {
@@ -592,13 +619,16 @@ test('Chronicles · MM3 Swordhaven weaponsmith opens from the neighboring street
     // Plaza (9,7) -> (9,5) -> (7,5); look north at Brunna's door on (7,4).
     // The sealed letter underfoot must not steal the front-facing interaction.
     for (const key of ['w', 'w', 'a', 'w', 'w', 'd']) await page.keyboard.press(key);
-    const use = game.locator('[data-chronicles-touch-action="interact"]');
-    await expect(use).toHaveAttribute('aria-label', 'Forja de Brunna · armas');
+    // This visual gate owns real shop entry and readable controls.
+    // Persistent USAR/aria-label behavior is covered separately by #5486.
     await page.keyboard.press('f');
     const shop = page.locator('[data-chronicles-shop="first-book-weaponsmith"]');
     await expect(shop).toBeVisible({ timeout: 15_000 });
     await expect(shop.getByRole('tab', { name: 'Comprar', exact: true })).toBeVisible();
     await expect(shop.locator('[data-chronicles-shop-item="wooden-staff"]')).toBeVisible();
+    await expectStoneButtonInk(shop, '.chronicles-shop__close', 'Brunna: close');
+    await expectStoneButtonInk(shop, '.chronicles-shop__tabs button', 'Brunna: tab');
+    await expectStoneButtonInk(shop, '.chronicles-shop__list button', 'Brunna: transaction');
     await page.screenshot({
       path: `${ARTIFACT_DIR}/chronicles-swordhaven-weaponsmith-street-desktop-1440x900.png`,
       animations: 'disabled', timeout: 60_000,
@@ -925,7 +955,7 @@ for (const capture of CAPTURES) {
       );
       expect(menuInks.length, 'menu has actual actions').toBeGreaterThan(3);
       for (const ink of menuInks) {
-        expect(ink.inline, `menu action ${ink.label} inline ink`).toBe('#08080a');
+        expect(ink.inline, `menu action ${ink.label} inline ink`).toMatch(/^(?:#08080a|rgb\(8,\s*8,\s*10\))$/i);
         expect(ink.priority, `menu action ${ink.label} important ink`).toBe('important');
         expect(ink.computed, `menu action ${ink.label} black ink`).toBe('rgb(8, 8, 10)');
       }
@@ -940,8 +970,10 @@ for (const capture of CAPTURES) {
         color: getComputedStyle(button).color,
         fill: getComputedStyle(button).webkitTextFillColor,
       }));
-      expect(inks.color, `${capture.label}: menu ink must be dark`).toBe('rgb(17, 16, 21)');
-      expect(inks.fill, `${capture.label}: WebKit must keep dark ink`).toBe('rgb(17, 16, 21)');
+      // Both resolved shades are dark against raised MM3 stone; the
+      // WebKit fill must match the computed foreground color.
+      expect(['rgb(8, 8, 10)', 'rgb(17, 16, 21)'], `${capture.label}: menu ink must be dark`).toContain(inks.color);
+      expect(inks.fill, `${capture.label}: WebKit fill matches dark ink`).toBe(inks.color);
       await captureElement(page, gameRoot, `${ARTIFACT_DIR}/chronicles-game-menu-${capture.label}.png`);
       await menuSummary.evaluate((summary) => summary.click());
       await expect(exitAction).toBeHidden();

@@ -23,6 +23,9 @@
   --mm3-frame: url('../assets/chronicles/ui/mm3-frame.png');
   --mm3-gem: url('../assets/chronicles/ui/mm3-gem.png');
   --mm3-ink: #0c0c0e;
+  /* Accessible dark ink reserved for the light grey/gold engraved controls. */
+  --mm3-control-ink: #101014;
+  --mm3-control-ink-disabled: #343039;
   --mm3-hi: #f4f4f2;
   --mm3-lo: #47474e;
 }
@@ -115,8 +118,8 @@
 .chronicles .chronicles-statusbar .chronicles-map-trigger :is(b, i),
 .chronicles .chronicles-game-menu > summary b,
 .chronicles .chronicles-touch button:not(.is-attack):not(.is-magic):not(.is-contextual) small {
-  color: #101014;
-  -webkit-text-fill-color: #101014;
+  color: var(--mm3-control-ink);
+  -webkit-text-fill-color: var(--mm3-control-ink);
 }
 .chronicles .chronicles-landscape-trigger {
   border: 2px solid;
