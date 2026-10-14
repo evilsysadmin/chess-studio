@@ -893,6 +893,39 @@ for (const capture of CAPTURES) {
         expect(ink.computed, `${capture.label}: ${selector} final ink`).toBe('rgb(8, 8, 10)');
       }
 
+      // One complete real Three.js screenshot per viewport, then stop.
+      // Menu/audio and automap snapshots live in isolated browser contexts
+      // below so SwiftShader readbacks cannot stall this gameplay contract.
+
+      await writeFile(
+        `${ARTIFACT_DIR}/chronicles-visual-health-${capture.label}.json`,
+        `${JSON.stringify({ schema: 4, scope: 'chronicles', capture: { label: capture.label, ...health } }, null, 2)}\n`,
+        'utf8',
+      );
+    } finally {
+      await context.close();
+    }
+  });
+}
+
+
+// Keep menu/audio proof separate from the full Three.js screenshot.
+// Even a tiny extra screenshot/DOM action can stall a SwiftShader context
+// AFTER the big readback, so each viewport gets a fresh context.
+for (const capture of CAPTURES) {
+  test(`Chronicles · pause menu visual · ${capture.label}`, async ({ browser }) => {
+    test.setTimeout(240_000);
+    await mkdir(ARTIFACT_DIR, { recursive: true });
+    const context = await browser.newContext({
+      viewport: { width: capture.width, height: capture.height },
+      hasTouch: capture.hasTouch,
+      isMobile: capture.hasTouch,
+    });
+    try {
+      const page = await context.newPage();
+      await openChronicles(page, capture.label);
+      const gameRoot = page.locator('[data-chronicles="true"]');
+      await expect(gameRoot).toBeVisible();
       // The five pause actions fit the viewport, with the sound mixer opt-in.
       const menuDetails = page.locator('details.chronicles-game-menu');
       const menuSummary = menuDetails.locator('> summary');
@@ -966,25 +999,11 @@ for (const capture of CAPTURES) {
       // Automap PNG and geometry have their own fresh browser context below.
       // Three.js/SWGL often stalls if another overlay/readback follows the
       // playing + pause-menu screenshots in this same long-lived context.
-
-      // Keep this producer limited to its PNG/geometry contract. After
-      // software-WebGL readbacks the runner may stall on synthetic key input
-      // and exhaust the entire 360s budget. Automap/Escape lifecycle belongs
-      // to the required functional Chronicles browser canaries, not to this
-      // heavyweight visual capture; the menu's actual bounds were asserted
-      // above without another GPU round trip.
-
-      await writeFile(
-        `${ARTIFACT_DIR}/chronicles-visual-health-${capture.label}.json`,
-        `${JSON.stringify({ schema: 4, scope: 'chronicles', capture: { label: capture.label, ...health } }, null, 2)}\n`,
-        'utf8',
-      );
     } finally {
       await context.close();
     }
   });
 }
-
 
 // Fresh-context visual proof: the minimap overlay is not a second GPU
 // readback after the full scene + pause-menu screenshots. Keep this separate
