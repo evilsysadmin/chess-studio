@@ -424,7 +424,8 @@ export default function ChroniclesOfMatthias({ onExit }) {
     }
     if (actionType === 'equip-item' || actionType === 'unequip-item'
       || actionType === 'shop-buy' || actionType === 'shop-sell' || actionType === 'shop-close'
-      || actionType === 'guild-join' || actionType === 'guild-learn' || actionType === 'guild-close') {
+      || actionType === 'guild-join' || actionType === 'guild-learn' || actionType === 'guild-close'
+      || actionType === 'tavern-use' || actionType === 'tavern-close') {
       const updated = chroniclesReduce(current, action);
       if (updated !== current) {
         stateRef.current = updated;
