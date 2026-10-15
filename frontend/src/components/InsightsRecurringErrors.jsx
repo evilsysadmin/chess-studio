@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { loadCleanGameRecords } from '../cleanGames.js';
 import { patternProgressCopy } from '../factualLanguage.js';
-import { focusPersonalPuzzle, loadPersonalPuzzles } from '../personalPuzzles.js';
+import { focusPersonalPuzzle, isPlayablePersonalPuzzle, loadPersonalPuzzles } from '../personalPuzzles.js';
 import { buildPlayerModel, PATTERN_IMPROVEMENT_STATES } from '../playerModel.js';
 import { selectRecurringPatternExample } from '../insightsRecurringErrors.js';
 import InsightsPositionAutopsy from './InsightsPositionAutopsy.jsx';
@@ -21,7 +21,7 @@ export default function InsightsRecurringErrors({
   const patterns = playerModel.recurringErrors;
   const [selectedKey, setSelectedKey] = useState(null);
   const selected = patterns.find((item) => item.incidentKey === selectedKey) || patterns[0] || null;
-  const example = selected ? selectRecurringPatternExample(selected, puzzles) : null;
+  const example = selected ? selectRecurringPatternExample(selected, puzzles, isPlayablePersonalPuzzle) : null;
   const canTrain = Boolean(example && !example.masteredAt && Number(example.solves || 0) === 0 && selected?.pending > 0 && onOpenPuzzles);
 
   function trainPattern() {
