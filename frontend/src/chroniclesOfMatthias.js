@@ -285,7 +285,9 @@ export function chroniclesContextualContentAction(state) {
   return {
     id: interaction.id,
     kind: interaction.kind,
-    label: chroniclesIsTavernEntry(definition) ? definition.label : (interaction.label || definition.label || 'Interactuar'),
+    label: chroniclesIsTavernEntry(definition)
+      ? `Entrar a ${buildingName(definition)}`
+      : (interaction.label || definition.label || 'Interactuar'),
     // A tavern is always open to visitors; only paid services require gold.
     locked: interaction.locked === true && !chroniclesIsTavernEntry(definition),
   };
