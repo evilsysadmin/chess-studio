@@ -456,11 +456,21 @@ const ROOKWOOD_WALK_TO_OAK = [
   'ArrowLeft', 'ArrowUp', 'ArrowUp', 'ArrowUp',
 ];
 
-async function pressSequence(page, keys) {
+async function pressSequence(page, keys, onTiming = null) {
+  // Preserve actual keyboard input and the 240ms camera/turn pacing.
+  // Node-side timings (only when requested) separate Chromium key latency
+  // from intentional settle delays without extra browser/CDP probes.
+  let pressMs = 0;
+  let settleMs = 0;
   for (const key of keys) {
+    const pressedAt = onTiming ? Date.now() : 0;
     await page.keyboard.press(key);
+    if (onTiming) pressMs += Date.now() - pressedAt;
+    const settleAt = onTiming ? Date.now() : 0;
     await page.waitForTimeout(240);
+    if (onTiming) settleMs += Date.now() - settleAt;
   }
+  onTiming?.({ keys: keys.length, pressMs, settleMs });
 }
 
 // The real Three.js environment is captured independently above. Both tablet
@@ -563,13 +573,15 @@ test.describe('Chronicles · sapphire pause tablet visual proof', () => {
 // New campaigns always start in Swordhaven. Walk the real route: north gate,
 // then the Banner Road's northern verge east and down to the Rookwood trail
 // (away from the optional deserter), arriving at Rookwood facing east.
-async function walkToRookwood(page, game) {
+async function walkToRookwood(page, game, onRouteTiming = null) {
   await expect(game).toHaveAttribute('data-chronicles-map-id', 'swordhaven-first-book', { timeout: 30_000 });
-  await pressSequence(page, Array(6).fill('ArrowUp'));
+  await pressSequence(page, Array(6).fill('ArrowUp'), onRouteTiming ? (stats) => onRouteTiming('town-to-road', stats) : null);
   await expect(game).toHaveAttribute('data-chronicles-map-id', 'banner-road-first-book', { timeout: 30_000 });
-  await pressSequence(page, ['ArrowRight', ...Array(9).fill('ArrowUp'), 'ArrowRight', ...Array(9).fill('ArrowUp')]);
+  onRouteTiming?.('banner-road-entered');
+  await pressSequence(page, ['ArrowRight', ...Array(9).fill('ArrowUp'), 'ArrowRight', ...Array(9).fill('ArrowUp')], onRouteTiming ? (stats) => onRouteTiming('road-to-rookwood', stats) : null);
   await expect(game).toHaveAttribute('data-chronicles-map-id', 'rookwood-first-book', { timeout: 30_000 });
   await expect(game).toHaveAttribute('data-chronicles-phase', 'explore');
+  onRouteTiming?.('rookwood-entered');
 }
 
 for (const capture of [
@@ -585,21 +597,29 @@ for (const capture of [
       isMobile: capture.touch,
     });
     const page = await context.newPage();
+    const started = Date.now();
+    const phase = (step, stats = null) => console.log(
+      `Chronicles Rookwood timing | ${capture.label} | ${step} | ${Date.now() - started}ms`
+      + (stats ? ` | ${stats.keys} keys: press ${stats.pressMs}ms, settle ${stats.settleMs}ms` : ''),
+    );
     try {
       await openChronicles(page, `rookwood-${capture.label}`, {
         newTown: true, newCampaign: true, chroniclesCurrentMapId: 'swordhaven-first-book',
       });
+      phase('gameplay-ready');
       const game = page.locator('[data-chronicles="true"]');
       await expect(game.locator('[data-chronicles-renderer="three"] canvas')).toBeVisible({ timeout: 30_000 });
-      await walkToRookwood(page, game);
+      await walkToRookwood(page, game, phase);
       await expect(game.locator('.chronicles-renderer-error')).toHaveCount(0);
       await page.waitForTimeout(700);
+      phase('arrival-readback-begin');
       await page.screenshot({
         path: `${ARTIFACT_DIR}/chronicles-rookwood-arrival-${capture.label}.png`,
         animations: 'disabled', timeout: 60_000,
       });
+      phase('arrival-readback-finish');
 
-      await pressSequence(page, ['ArrowUp', 'ArrowUp', 'f']);
+      await pressSequence(page, ['ArrowUp', 'ArrowUp', 'f'], (stats) => phase('eddas-approach', stats));
       // The expedition Chronicle moved to one modal on desktop and touch.
       // The old bottom journal/DM selectors were removed deliberately.
       await page.keyboard.press('j');
@@ -608,27 +628,34 @@ for (const capture of [
       const quest = reader.locator('[data-chronicles-quest-id="names-in-wood"]');
       await expect(quest).toHaveAttribute('data-chronicles-quest-status', 'active');
       await expect(reader.getByRole('button', { name: 'Cerrar Crónica' })).toBeVisible();
+      phase('journal-open-and-verified');
       const turnsBefore = await game.getAttribute('data-chronicles-turns');
       await page.keyboard.press('ArrowUp');
       expect(await game.getAttribute('data-chronicles-turns'), 'reading must not move the party').toBe(turnsBefore);
       const health = await captureChroniclesHealth(page);
       expect(health.horizontalOverflow).toBe(false);
+      phase('journal-readback-begin');
       await page.screenshot({
         path: `${ARTIFACT_DIR}/chronicles-rookwood-quest-log-${capture.label}.png`,
         animations: 'disabled', timeout: 60_000,
       });
+      phase('journal-readback-finish');
       await reader.getByRole('button', { name: 'Cerrar Crónica' }).click();
       await expect(reader).toHaveCount(0);
 
-      await pressSequence(page, ROOKWOOD_WALK_TO_OAK);
+      await pressSequence(page, ROOKWOOD_WALK_TO_OAK, (stats) => phase('oak-approach', stats));
       await expect(game).toHaveAttribute('data-chronicles-phase', 'explore');
       await page.waitForTimeout(500);
+      phase('oak-readback-begin');
       await page.screenshot({
         path: `${ARTIFACT_DIR}/chronicles-rookwood-name-oak-${capture.label}.png`,
         animations: 'disabled', timeout: 60_000,
       });
+      phase('oak-readback-finish');
     } finally {
+      phase('context-close-begin');
       await context.close();
+      phase('context-close-finish');
     }
   });
 }
