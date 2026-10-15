@@ -23,8 +23,9 @@ export default function ChroniclesJournalModal({ open, state, entries = [], onCl
 
   return createPortal(
     <div className="chronicles-journal-modal__backdrop" onPointerDown={(event) => {
+      event.stopPropagation();
       if (event.target === event.currentTarget) onClose();
-    }}>
+    }} onClick={(event) => event.stopPropagation()}>
       <section ref={dialogRef} className="chronicles-journal-modal" role="dialog" aria-modal="true"
         aria-labelledby="chronicles-journal-modal-title"
         onKeyDown={(event) => {
@@ -48,15 +49,11 @@ export default function ChroniclesJournalModal({ open, state, entries = [], onCl
             <p>El rastro de nuestra aventura, escrito página a página.</p>
           </div>
           <button ref={closeRef} type="button" aria-label="Cerrar Crónica" title="Cerrar (J o Esc)"
-            onPointerDown={(event) => {
-              if (event.button !== 0) return;
+            onPointerDown={(event) => event.stopPropagation()}
+            onClick={(event) => {
               event.preventDefault();
               event.stopPropagation();
               onClose();
-            }}
-            onClick={(event) => {
-              event.stopPropagation();
-              if (event.detail === 0) onClose();
             }}>×</button>
         </header>
         <div className="chronicles-journal-modal__overview" aria-label="Resumen de la expedición">
