@@ -119,8 +119,8 @@ shard 2 = 6,5 min), el menú móvil de pausa/audio se ejecuta como **canary temp
 un proceso Playwright nuevo del **runner 3**, y la captura WebGL desktop de 4 min se
 ejecuta en otro proceso nuevo del mismo runner. El resto de pruebas se reparte mediante `--shard` con un filtro
 complementario `--grep-invert`. Se usan **ocho subshards** ponderados de acuerdo
-con el tiempo observado en la #5595: runner 1 recibe `1,2,3,7`; runner 2 recibe
-`4,5`; runner 3 recibe `6,8` además de los dos canaries. Cada proceso contiene
+con las mediciones del gate de tres runners en la #5606: runner 1 recibe `1,4,7,8`;
+runner 2 recibe `2,3,5`; runner 3 recibe `6` más los dos canaries. Cada proceso contiene
 un máximo aproximado de cinco casos:
 reiniciar Chromium periódicamente limita la acumulación de contextos SwiftShader
 y aísla el fallo que aparecía al final de una serie larga de capturas.
@@ -154,3 +154,12 @@ camino crítico a ~10 minutos, pagando un tercer runner por ejecución completa.
 El objetivo **no está acreditado** hasta medir los nuevos logs; no confundir un gate
 verde con la demostración de reducción de latencia. La distribución se reevalúa
 cuando se añadan tests o se modifiquen los costes del productor.
+
+
+Reequilibrio posterior a #5606: en el primer gate verde de tres runners se midieron
+**8m18s / 11m37s / 10m14s** de wall-clock total (incluida la preparación),
+frente a unos 14m30s del camino crítico con dos runners. La asignación reequilibrada
+mueve el grupo 4 (~6m30s) al runner 1 y los grupos 2/3 al 2, dejando el runner 3
+para el canary WebGL desktop (~4m), el canary menú y el grupo 6 (~4m36s).
+Es una hipótesis de ~10m basada en esos tiempos, no un resultado acreditado:
+volver a medir los tres runners y revisar los 141 PNG del SHA exacto.
