@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { isPlayablePersonalPuzzle } from './personalPuzzles.js';
 import { buildRecurringErrorPatterns, selectRecurringPatternExample } from './insightsRecurringErrors.js';
 
 describe('buildRecurringErrorPatterns', () => {
@@ -143,21 +144,22 @@ describe('selectRecurringPatternExample · expediente sin datos inventados', () 
       { ...actual, id: 'already-solved', solves: 1, createdAt: '2026-10-13T10:00:00Z' },
       { ...actual, id: 'other-incident', incidentKeys: ['cpu:KNIGHT_FORK'] },
       actual,
-    ]);
+    ], isPlayablePersonalPuzzle);
     expect(sample?.id).toBe('real-pending');
   });
   it('rechaza FEN inválido, soluciones ilegales, evidencia ausente y listas vacías', () => {
-    expect(selectRecurringPatternExample(pattern, [{ ...actual, fen: 'not-a-fen' }])).toBeNull();
-    expect(selectRecurringPatternExample(pattern, [{ ...actual, solution: ['Qxe8#'] }])).toBeNull();
-    expect(selectRecurringPatternExample(pattern, [{ ...actual, incidentKeys: [] }])).toBeNull();
-    expect(selectRecurringPatternExample(pattern, [])).toBeNull();
-    expect(selectRecurringPatternExample(null, [actual])).toBeNull();
+    expect(selectRecurringPatternExample(pattern, [{ ...actual, fen: 'not-a-fen' }], isPlayablePersonalPuzzle)).toBeNull();
+    expect(selectRecurringPatternExample(pattern, [{ ...actual, solution: ['Qxe8#'] }], isPlayablePersonalPuzzle)).toBeNull();
+    expect(selectRecurringPatternExample(pattern, [{ ...actual, incidentKeys: [] }], isPlayablePersonalPuzzle)).toBeNull();
+    expect(selectRecurringPatternExample(pattern, [], isPlayablePersonalPuzzle)).toBeNull();
+    expect(selectRecurringPatternExample(null, [actual], isPlayablePersonalPuzzle)).toBeNull();
+    expect(selectRecurringPatternExample(pattern, [actual])).toBeNull();
   });
   it('no altera el orden original de puzzles al seleccionar el ejemplo', () => {
     const first = { ...actual, id: 'a', createdAt: '2026-10-11T10:00:00Z' };
     const second = { ...actual, id: 'b' };
     const list = [first, second];
-    expect(selectRecurringPatternExample(pattern, list)?.id).toBe('b');
+    expect(selectRecurringPatternExample(pattern, list, isPlayablePersonalPuzzle)?.id).toBe('b');
     expect(list.map((item) => item.id)).toEqual(['a', 'b']);
   });
 });
