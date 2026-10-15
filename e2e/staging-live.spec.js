@@ -260,6 +260,7 @@ function createPvpNativeTraceSummary() {
     'V8.Execute', 'V8.CompileCode', 'ParseHTML',
   ]);
   const totals = new Map();
+  const longest = new Map();
   let events = 0;
   return {
     add(entries) {
@@ -271,6 +272,10 @@ function createPvpNativeTraceSummary() {
         current.totalMs += durationMs;
         current.maxMs = Math.max(current.maxMs, durationMs);
         totals.set(event.name, current);
+        if (Number.isFinite(event.ts) && event.dur > (longest.get(event.name)?.dur || 0)) {
+          // Retain only numeric time/thread identity; never raw trace args.
+          longest.set(event.name, { ts: event.ts, dur: event.dur, pid: event.pid, tid: event.tid });
+        }
         events += 1;
       }
     },
@@ -278,7 +283,15 @@ function createPvpNativeTraceSummary() {
       const top = [...totals].sort((a, b) => b[1].maxMs - a[1].maxMs).slice(0, 10)
         .map(([name, x]) => name + ':' + x.count + '/' + Math.round(x.totalMs) + '/' + Math.round(x.maxMs))
         .join(',');
-      return 'events=' + events + ' top_count_total_max_ms=' + (top || 'none');
+      const commit = longest.get('Commit');
+      const task = longest.get('RunTask');
+      const sameThread = Boolean(commit && task && commit.pid === task.pid && commit.tid === task.tid);
+      const overlap = sameThread
+        ? Math.max(0, Math.min(commit.ts + commit.dur, task.ts + task.dur) - Math.max(commit.ts, task.ts))
+        : 0;
+      return 'events=' + events + ' top_count_total_max_ms=' + (top || 'none') +
+        ' critical_commit_task_same_thread=' + sameThread +
+        ' critical_commit_task_overlap_ms=' + Math.round(overlap / 1000);
     },
   };
 }
