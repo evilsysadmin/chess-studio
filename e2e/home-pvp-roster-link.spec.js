@@ -23,6 +23,12 @@ test('Home · el roster 1 vs 1 abre la sala y puede minimizarse', async ({ page 
 
   const lobby = page.getByRole('dialog', { name: 'Duelo 1 contra 1 · War Room' });
   await expect(lobby).toBeVisible();
+  const homeCanvas = page.locator('canvas.illustrated-home__castle-3d');
+  const hasHomeCanvas = (await homeCanvas.count()) === 1;
+  if (hasHomeCanvas) {
+    await expect(homeCanvas, 'Home stays mounted but is not composited under Duel Hall')
+      .toHaveCSS('visibility', 'hidden');
+  }
   await expect(lobby.getByRole('heading', { name: 'Sala de Duelos' })).toBeVisible();
   await expect(lobby.getByRole('list', { name: 'Cómo jugar 1 contra 1' })).toContainText('Ponte disponible');
   await expect(lobby.getByRole('list', { name: 'Cómo jugar 1 contra 1' })).toContainText('Pulsa Retar');
@@ -35,6 +41,10 @@ test('Home · el roster 1 vs 1 abre la sala y puede minimizarse', async ({ page 
   await minimizeButton.click();
 
   await expect(lobby).toBeHidden();
+  if (hasHomeCanvas) {
+    await expect(homeCanvas, 'Closing Duel Hall restores the existing Home canvas')
+      .toHaveCSS('visibility', 'visible');
+  }
   // Available but nobody waiting on him: still no floating card.
   await expect(page.locator('.menu.menu-illustrated > .home-pvp-roster-link')).toHaveCount(0);
   const more = page.locator('.illustrated-home__play-more');
