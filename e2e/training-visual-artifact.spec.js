@@ -558,6 +558,47 @@ scopedTest('progress', 'Mi progreso · Atlas de aperturas de partidas reales', a
   }
 });
 
+scopedTest('progress', 'Mi progreso · Crónica de carrera acreditada', async ({ page }) => {
+  test.setTimeout(100_000);
+  const records = Array.from({ length: 24 }, (_, index) => ({
+    id: 'career-chronicle-evidence-' + index,
+    sourceGameId: 'career-chronicle-evidence-' + index,
+    date: new Date(Date.UTC(2026, 7 + Math.floor(index / 20), 1 + index % 20)).toISOString(),
+    outcome: index % 3 === 0 ? 'win' : index % 3 === 1 ? 'draw' : 'loss',
+    mode: 'casual', difficulty: 20 + (index % 7), humanColor: 'w',
+    opening: 'Apertura italiana',
+    moves: ['e4', 'e5', 'Nf3', 'Nc6'], captured: [],
+  }));
+  await prepare(page, {
+    profileSeed: { 'chess-study-game-history': JSON.stringify(records) },
+  });
+  await page.locator('.illustrated-home__matthias').click();
+  const room = page.locator('[data-insights-room="training-room-v1"]');
+  const drawer = room.locator('details[data-insights-archive]');
+  if (await drawer.getAttribute('open') === null) await drawer.locator('summary').click();
+  await drawer.getByRole('button', { name: 'Mi progreso', exact: true }).click();
+  const chronicle = room.locator('[data-career-chronicle="v1"]');
+  await expect(chronicle.getByRole('heading', { name: 'Tus temporadas, capítulo a capítulo' })).toBeVisible();
+  await expect(chronicle).toContainText('Capítulo 2');
+  await expect(chronicle).toContainText('4/20 partidas');
+  await chronicle.getByLabel('Consultar temporada').selectOption('1');
+  await expect(chronicle).toContainText('Capítulo 1');
+  await expect(chronicle).toContainText('20/20 partidas');
+  await expect(chronicle.getByRole('button', { name: 'Revisar esta partida →' })).toBeVisible();
+  for (const { width, height, variant } of [
+    { width: 1440, height: 900, variant: 'desktop' },
+    { width: 360, height: 800, variant: 'mobile-compact' },
+    { width: 390, height: 844, variant: 'mobile' },
+    { width: 430, height: 932, variant: 'mobile-wide' },
+  ]) {
+    await page.setViewportSize({ width, height });
+    await chronicle.scrollIntoViewIfNeeded();
+    await expect(chronicle).toBeVisible();
+    await assertNoHorizontalOverflow(page, 'career-chronicle-' + variant);
+    await captureAt(page, 'career-chronicle', { width, height, variant });
+  }
+});
+
 scopedTest('progress', 'Entrenar · Así juegas y Mi progreso', async ({ page }) => {
   test.setTimeout(100_000);
   await prepare(page);
