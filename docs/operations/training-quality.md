@@ -85,6 +85,9 @@ El mock nocturno aprobado en la conversación del 2026-10-04 es la referencia de
 - La evidencia que sustenta el foco se presenta con el detalle factual del plan. El recorrido ampliado es opcional y no afirma un impacto futuro ni progreso que no haya sido medido.
 - Si no hay posiciones personales/Némesis suficientes, mostrar un estado honesto en vez de una recomendación artificial o un CTA inútil.
 - Desktop y móvil deben mantener CTA en el primer viewport, targets táctiles accesibles y cero overflow horizontal. Cualquier ajuste del material/escena 3D necesita PNGs en los tamaños afectados.
+- La navegación contextual del archivo (Errores, Expediente, Mi progreso) mueve foco y viewport al contenido seleccionado **solo tras una interacción explícita**, nunca por render inicial/F5. El panel es una región accesible con su nombre actual.
+- Las subpáginas muestran un retorno directo a la tarea en el propio panel, de modo que un teléfono no obliga a remontar toda la estancia. Los enlaces entre vistas no cambian las fuentes de datos ni fabrican conclusiones.
+- El control de navegación y retorno debe pasar Playwright en móvil: foco real, contenido visible, sin scroll horizontal y con captura del archivo abierto.
 
 ## “Entrenar este error”
 

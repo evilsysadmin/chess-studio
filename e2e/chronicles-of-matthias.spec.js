@@ -192,7 +192,7 @@ test('Chronicles · Escape opens and closes the in-game menu while the scene sta
   await expect(menu.getByRole('button', { name: 'Nueva expedición' })).toHaveCount(0);
   await expect(menu.getByRole('button', { name: 'Partidas guardadas' })).toHaveCount(0);
   const fxSlider = menu.getByRole('slider', { name: 'Volumen de efectos de Chronicles' });
-  const musicSlider = menu.getByRole('slider', { name: 'Volumen de música' });
+  const musicSlider = menu.getByRole('slider', { name: 'Volumen de música de Chronicles' });
   await expect(fxSlider).toBeVisible();
   await expect(musicSlider).toBeVisible();
   const turnsBeforeAudio = await mode.getAttribute('data-chronicles-turns');
@@ -228,7 +228,7 @@ for (const viewport of [
     await expect(menu).toHaveAttribute('open', '');
     const dialog = menu.getByRole('dialog', { name: 'Menú de aventura' });
     await expect(dialog).toBeVisible();
-    await expect(dialog.getByRole('slider', { name: 'Volumen de música' })).toBeVisible();
+    await expect(dialog.getByRole('slider', { name: 'Volumen de música de Chronicles' })).toBeVisible();
     await expect(dialog.getByRole('slider', { name: 'Volumen de efectos de Chronicles' })).toBeVisible();
     const rect = await dialog.evaluate((el) => {
       const bounds = el.getBoundingClientRect();

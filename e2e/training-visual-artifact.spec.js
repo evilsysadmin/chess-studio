@@ -55,17 +55,23 @@ async function assertInsightsActionableFold(room, label) {
   const geometry = await room.evaluate((root) => {
     const tools = root.querySelector('.insights-room-tools')?.getBoundingClientRect();
     const session = root.querySelector('.insights-guided-session:not(.active)')?.getBoundingClientRect();
+    // Direct practice owns the first viewport when a real FEN exists.
+    // The guided time budget is secondary and may continue below the fold.
+    const direct = root.querySelector('.insights-guided-direct-button')?.getBoundingClientRect();
     const recommended = root.querySelector('.insights-guided-start')?.getBoundingClientRect();
     return {
       viewportHeight: window.innerHeight,
       toolsBottom: tools?.bottom || 0,
       sessionTop: session?.top || 0,
-      recommendedBottom: recommended?.bottom || 0,
+      primaryBottom: direct?.bottom || recommended?.bottom || 0,
+      teaserSquares: root.querySelectorAll('.insights-guided-position .insights-position-square').length,
+      hasDirect: Boolean(direct),
     };
   });
 
   expect(geometry.sessionTop, `${label}: training action starts too low`).toBeLessThan(geometry.viewportHeight * .7);
-  expect(geometry.recommendedBottom, `${label}: recommended task CTA falls below the first viewport`).toBeLessThanOrEqual(geometry.viewportHeight - 8);
+  expect(geometry.primaryBottom, `${label}: primary training action falls below the first viewport`).toBeLessThanOrEqual(geometry.viewportHeight - 8);
+  if (geometry.hasDirect) expect(geometry.teaserSquares, `${label}: real position preview`).toBe(64);
   expect(geometry.toolsBottom, `${label}: archive tools should sit before the task`).toBeLessThanOrEqual(geometry.sessionTop + 8);
 }
 
@@ -481,7 +487,7 @@ scopedTest('tournament', 'Entrenar · Torneo', async ({ page }) => {
 });
 
 scopedTest('progress', 'Entrenar · Así juegas y Mi progreso', async ({ page }) => {
-  test.setTimeout(70_000);
+  test.setTimeout(100_000);
   await prepare(page);
 
   await page.evaluate(() => {
@@ -527,8 +533,43 @@ scopedTest('progress', 'Entrenar · Así juegas y Mi progreso', async ({ page })
   await assertInsightsActionableFold(trainingRoom, 'insights-desktop');
   await captureAt(page, 'insights', { width: 1440, height: 900, variant: 'desktop' });
   await captureAt(page, 'insights', { width: 1800, height: 900, variant: 'wide' });
+  await captureAt(page, 'insights', { width: 360, height: 800, variant: 'mobile-compact' });
   await captureAt(page, 'insights', { width: 390, height: 844, variant: 'mobile' });
   await assertInsightsActionableFold(trainingRoom, 'insights-mobile');
+  await captureAt(page, 'insights', { width: 430, height: 932, variant: 'mobile-wide' });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await settle(page);
+  // A tap on a physical archive tab must reveal its content immediately:
+  // no silent view switch stranded above a full-page background on phones.
+  const archiveOnMobile = trainingRoom.locator('details[data-insights-archive]');
+  await archiveOnMobile.locator('> summary').click();
+  await archiveOnMobile.getByRole('button', { name: 'Errores', exact: true }).click();
+  const errorRegion = trainingRoom.getByRole('region', { name: 'Errores recurrentes' });
+  await expect(errorRegion).toHaveAttribute('data-insights-section', 'errors');
+  await expect(errorRegion).toBeFocused();
+  await expect.poll(() => errorRegion.evaluate((node) => {
+    const rect = node.getBoundingClientRect();
+    return rect.top >= -8 && rect.top < window.innerHeight / 3 && rect.bottom > 0;
+  }), { message: 'Archive content must be in mobile viewport after selecting it' }).toBe(true);
+  await expect(errorRegion.getByRole('button', { name: 'Volver a mi tarea' })).toBeVisible();
+  await captureAt(page, 'insights-errors-navigation', { width: 390, height: 844, variant: 'mobile' });
+  await errorRegion.getByRole('button', { name: 'Volver a mi tarea' }).click();
+  const taskRegion = trainingRoom.getByRole('region', { name: 'Tarea de Matthias' });
+  await expect(taskRegion).toBeFocused();
+  await expect(taskRegion).toHaveAttribute('data-insights-section', 'task');
+  await expect(trainingRoom.getByRole('button', { name: 'Empezar sesión recomendada de 5 min' })).toBeVisible();
+  const directPractice = trainingRoom.getByRole('button', { name: 'Entrenar esta posición real ahora' });
+  await expect(directPractice).toBeVisible();
+  await directPractice.click();
+  const actualPosition = page.locator('.puzzle-screen[data-training-origin="insights-action"]');
+  await expect(actualPosition).toBeVisible();
+  // On touch viewports the back button becomes icon-only via ::before,
+  // so Playwright's computed accessible name differs from the desktop label.
+  const backToStudy = actualPosition.locator('> .back-link');
+  await expect(backToStudy).toBeVisible();
+  await backToStudy.click();
+  await expect(trainingRoom.getByRole('heading', { name: 'Tu siguiente tarea' })).toBeVisible();
+
   await page.setViewportSize({ width: 1440, height: 900 });
   await settle(page);
 

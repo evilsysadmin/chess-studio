@@ -149,3 +149,75 @@
     min-height: 44px;
   }
 }
+
+/* Archive navigation belongs to the same desk, not a disconnected dashboard.
+   A second, close-by return path matters after focus/scroll on tall phones. */
+.insights-training-room .insights-workspace-panel {
+  scroll-margin-top: max(.8rem, env(safe-area-inset-top));
+}
+
+.insights-training-room .insights-workspace-panel:focus {
+  outline: none;
+}
+
+.insights-training-room .insights-workspace-panel:focus-visible {
+  outline: 2px solid #d7ad57;
+  outline-offset: 4px;
+}
+
+.insights-training-room .insights-archive-context {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .7rem;
+  flex-wrap: wrap;
+  max-width: 100%;
+  margin: 0 0 .8rem;
+  padding: .72rem .9rem;
+  border: 1px solid rgba(196, 156, 88, .37);
+  border-left: 4px solid rgba(224, 172, 87, .85);
+  border-radius: 6px;
+  background: linear-gradient(115deg, rgba(44, 32, 23, .94), rgba(21, 20, 21, .89));
+  box-shadow: 0 10px 25px rgba(0, 0, 0, .25);
+}
+
+.insights-training-room .insights-archive-context-label {
+  color: #f0dbad;
+  font: 780 .78rem/1.3 var(--font-mono, monospace);
+}
+
+.insights-training-room .insights-archive-return {
+  min-height: 44px;
+  padding: .53rem .85rem;
+  border: 1px solid rgba(222, 179, 105, .49);
+  border-radius: 5px;
+  background: rgba(110, 75, 33, .26);
+  color: #f5dbad;
+  font-size: .8rem;
+  font-weight: 760;
+}
+
+.insights-training-room .insights-archive-return:focus-visible {
+  outline: 2px solid #f5dbad;
+  outline-offset: 3px;
+}
+
+@media (max-width: 760px) {
+  /* Even a sparse/empty archive page must have enough scroll range to
+     align its heading with the top. Without this, scrollIntoView bottoms
+     out early and leaves users staring at the room's intro. */
+  .insights-training-room:not(.insights-workspace-view-now) .insights-workspace-panel {
+    min-height: 100dvh;
+    /* Reserve room for the archive's own tab row above the heading.
+       Focusing an archive panel must not scroll "Mi progreso" under the
+       fixed session radio on narrow phones. */
+    scroll-margin-top: max(9.5rem, calc(env(safe-area-inset-top) + 9rem));
+  }
+  .insights-training-room .insights-archive-context {
+    gap: .42rem;
+    padding: .66rem .72rem;
+  }
+  .insights-training-room .insights-archive-return {
+    width: 100%;
+  }
+}

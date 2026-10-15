@@ -367,6 +367,7 @@ test.describe('Chronicles · sapphire pause tablet visual proof', () => {
           'Continuar', 'Guardar partida', 'Guardar y salir', 'Salir sin guardar',
         ]);
         await expect(menu.locator('#chronicles-music-volume')).toBeVisible();
+        await expect(menu.getByText('First Verse en el libro de expediciones; Second Verse durante la aventura.')).toBeVisible();
         await expect(menu.locator('#chronicles-sfx-volume')).toBeVisible();
         await checkTablet('pause');
         if (capture.label === 'android-landscape-844x390') {

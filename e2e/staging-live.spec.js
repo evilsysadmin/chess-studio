@@ -218,9 +218,112 @@ function assertPvpBrowserResponse(response, { suffix, native }) {
   expect(headers['x-chess-pvp-native'], `GET ${suffix} debe acreditar la ruta nativa`).toBe(native);
 }
 
+// DevTools samples are diagnostic only: never log complete URLs, tokens, DOM,
+// response bodies, usernames or the unsanitized CPU profile.
+function summarizePvpOpenCpuProfile(profile) {
+  const frames = new Map((profile?.nodes || []).map((node) => [node.id, node.callFrame]));
+  const costs = new Map();
+  let sampledMs = 0;
+  for (let i = 0; i < (profile?.samples || []).length; i += 1) {
+    const frame = frames.get(profile.samples[i]);
+    const ms = Math.max(0, Number(profile.timeDeltas?.[i]) || 0) / 1000;
+    sampledMs += ms;
+    let moduleName = 'browser';
+    try {
+      moduleName = new URL(frame?.url).pathname.split('/').pop() || 'browser';
+    } catch {
+      // V8 built-ins / idle / anonymous frames are not loaded scripts.
+    }
+    const functionName = String(frame?.functionName || '(anonymous)')
+      .replace(/[^\w.$()<> -]/g, '').slice(0, 55);
+    const key = moduleName.slice(0, 72) + ':' + functionName;
+    costs.set(key, (costs.get(key) || 0) + ms);
+  }
+  const top = [...costs].sort((a, b) => b[1] - a[1]).slice(0, 8)
+    .map(([name, ms]) => name + '=' + Math.round(ms)).join(',');
+  return 'sampled_ms=' + Math.round(sampledMs) +
+    ' samples=' + (profile?.samples?.length || 0) +
+    ' top_self_ms=' + (top || 'none');
+}
+
+// Aggregate selected native DevTools event durations in memory. Raw trace
+// records and args are never retained, uploaded or emitted in CI logs.
+function createPvpNativeTraceSummary() {
+  const allowed = new Set([
+    'RunTask', 'ThreadControllerImpl::RunTask',
+    'ThreadController::RunTask', 'TaskQueueManager::ProcessTaskFromWorkQueue',
+    'SequenceManagerImpl::SelectNextTask', 'ThreadPool_RunTask',
+    'EvaluateScript', 'FunctionCall', 'EventDispatch', 'Layout', 'UpdateLayoutTree',
+    'RecalculateStyles', 'Paint', 'CompositeLayers', 'UpdateLayerTree',
+    'DrawFrame', 'BeginMainThreadFrame', 'Commit', 'RasterTask',
+    'GpuCommandBufferStub::OnAsyncFlush', 'GLES2DecoderImpl::DoCommands',
+    'V8.Execute', 'V8.CompileCode', 'ParseHTML',
+  ]);
+  const totals = new Map();
+  const longest = new Map();
+  let events = 0;
+  return {
+    add(entries) {
+      for (const event of entries || []) {
+        if (event.ph !== 'X' || !allowed.has(event.name) || !Number.isFinite(event.dur)) continue;
+        const durationMs = Math.max(0, event.dur / 1000);
+        const current = totals.get(event.name) || { count: 0, totalMs: 0, maxMs: 0 };
+        current.count += 1;
+        current.totalMs += durationMs;
+        current.maxMs = Math.max(current.maxMs, durationMs);
+        totals.set(event.name, current);
+        if (Number.isFinite(event.ts) && event.dur > (longest.get(event.name)?.dur || 0)) {
+          // Retain only numeric time/thread identity; never raw trace args.
+          longest.set(event.name, { ts: event.ts, dur: event.dur, pid: event.pid, tid: event.tid });
+        }
+        events += 1;
+      }
+    },
+    report() {
+      const top = [...totals].sort((a, b) => b[1].maxMs - a[1].maxMs).slice(0, 10)
+        .map(([name, x]) => name + ':' + x.count + '/' + Math.round(x.totalMs) + '/' + Math.round(x.maxMs))
+        .join(',');
+      const commit = longest.get('Commit');
+      const task = longest.get('RunTask');
+      const sameThread = Boolean(commit && task && commit.pid === task.pid && commit.tid === task.tid);
+      const overlap = sameThread
+        ? Math.max(0, Math.min(commit.ts + commit.dur, task.ts + task.dur) - Math.max(commit.ts, task.ts))
+        : 0;
+      return 'events=' + events + ' top_count_total_max_ms=' + (top || 'none') +
+        ' critical_commit_task_same_thread=' + sameThread +
+        ' critical_commit_task_overlap_ms=' + Math.round(overlap / 1000);
+    },
+  };
+}
+
 async function assertLivePvpBrowserPath(page) {
   // Read-only phase diagnostics: preserve real lobby/pulse cadence and counts.
   // Never log credentials, tokens, roster contents, or response bodies.
+  // A/B evidence: report the *actual* WebGL implementation, never infer it
+  // from launch flags. No user/session data is included in this marker.
+  const rendererMode = process.env.CHESS_STAGING_RENDERER || 'default';
+  const renderer = await page.evaluate(() => {
+    const canvas = document.createElement('canvas');
+    const gl = canvas.getContext('webgl2') || canvas.getContext('webgl');
+    if (!gl) return 'unavailable';
+    const info = gl.getExtension('WEBGL_debug_renderer_info');
+    const value = info ? gl.getParameter(info.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER);
+    gl.getExtension('WEBGL_lose_context')?.loseContext();
+    return String(value || 'unknown');
+  });
+  // Avoid full driver strings in CI; only the coarse verified class.
+  const rendererClass = /swiftshader|llvmpipe|softpipe|software/i.test(renderer)
+    ? 'software'
+    : /nvidia|radeon|amd|intel|apple|mesa|angle/i.test(renderer)
+      ? 'hardware'
+      : 'unknown';
+  console.log(`STAGING_PVP_GPU requested=${rendererMode} actual=${rendererClass}`);
+  if (rendererMode === 'hardware') {
+    expect(rendererClass, 'GPU A/B hardware leg requires verified hardware renderer').toBe('hardware');
+  }
+  if (rendererMode === 'software') {
+    expect(rendererClass, 'GPU A/B software leg requires verified software renderer').toBe('software');
+  }
   const started = Date.now();
   let phaseStart = started;
   const logPhase = (name) => {
@@ -260,6 +363,10 @@ async function assertLivePvpBrowserPath(page) {
     const origin = performance.now();
     const marks = { dialogMountMs: null, sceneMountMs: null, sceneReadyMs: null, sceneFallbackMs: null };
     const longTasks = { count: 0, totalMs: 0, maxMs: 0 };
+    const longFrames = {
+      supported: PerformanceObserver.supportedEntryTypes?.includes('long-animation-frame') || false,
+      top: [],
+    };
     const elapsed = () => Math.round(performance.now() - origin);
     const captureDom = () => {
       if (marks.dialogMountMs === null && document.querySelector('.pvp-lobby[role="dialog"]')) {
@@ -288,10 +395,39 @@ async function assertLivePvpBrowserPath(page) {
       });
       taskObserver.observe({ type: 'longtask' });
     }
+    let frameObserver = null;
+    if (longFrames.supported) {
+      frameObserver = new PerformanceObserver((list) => {
+        for (const entry of list.getEntries()) {
+          if (entry.duration < 100) continue;
+          const scripts = Array.from(entry.scripts || [])
+            .sort((a, b) => b.duration - a.duration).slice(0, 2)
+            .map((script) => ({
+              // Basename and function only. Never leak CDN URLs / query params.
+              module: String(script.sourceURL || '').split(/[?#]/)[0].split('/').pop()
+                .replace(/[^\w.-]/g, '').slice(0, 60) || 'browser',
+              function: String(script.sourceFunctionName || '(native)')
+                .replace(/[^\w.$()-]/g, '').slice(0, 45),
+              ms: Math.round(script.duration || 0),
+              layoutMs: Math.round(script.forcedStyleAndLayoutDuration || 0),
+            }));
+          longFrames.top.push({
+            startMs: Math.round(entry.startTime - origin),
+            durationMs: Math.round(entry.duration),
+            blockingMs: Math.round(entry.blockingDuration || 0),
+            scripts,
+          });
+        }
+        // Keep only five worst frames in memory for bounded safe telemetry.
+        longFrames.top.sort((a, b) => b.durationMs - a.durationMs);
+        longFrames.top.length = Math.min(longFrames.top.length, 5);
+      });
+      frameObserver.observe({ type: 'long-animation-frame' });
+    }
     captureDom();
     window.__stagingDuelHallTiming = {
-      marks, longTasks,
-      close: () => { domObserver.disconnect(); taskObserver?.disconnect(); },
+      marks, longTasks, longFrames,
+      close: () => { domObserver.disconnect(); taskObserver?.disconnect(); frameObserver?.disconnect(); },
     };
     return Date.now();
   });
@@ -343,11 +479,71 @@ async function assertLivePvpBrowserPath(page) {
   page.on('request', onOpenRequest);
   page.on('response', onOpenResponse);
 
+  // Best-effort, short-lived CPU sampling on this Chromium smoke only.
+  // LongTask says *when* the main thread stalls; V8 frames reveal *where*.
+  let cpuSession = null;
+  let cpuSampling = false;
+  try {
+    cpuSession = await page.context().newCDPSession(page);
+    await cpuSession.send('Profiler.enable');
+    await cpuSession.send('Profiler.setSamplingInterval', { interval: 1000 });
+    await cpuSession.send('Profiler.start');
+    cpuSampling = true;
+  } catch {
+    console.log('STAGING_PVP_CPU unavailable=cdp-start');
+  }
+  const stopCpuSampling = async () => {
+    if (!cpuSession || !cpuSampling) return;
+    cpuSampling = false;
+    try {
+      const { profile } = await cpuSession.send('Profiler.stop');
+      console.log('STAGING_PVP_CPU ' + summarizePvpOpenCpuProfile(profile));
+    } catch {
+      console.log('STAGING_PVP_CPU unavailable=cdp-stop');
+    }
+  };
+
+  // CDP tracing is local to the test browser. Summarize an allowlisted set
+  // of renderer/native events; never preserve raw trace event args or URLs.
+  const nativeSummary = createPvpNativeTraceSummary();
+  let nativeTracing = false;
+  const onTraceData = ({ value }) => nativeSummary.add(value);
+  if (cpuSession) {
+    try {
+      cpuSession.on('Tracing.dataCollected', onTraceData);
+      await cpuSession.send('Tracing.start', {
+        // Toplevel enables native renderer task envelopes that the timeline-only
+        // selection omits (the earlier 4.6 s task appeared only as V8 program).
+        categories: 'toplevel,devtools.timeline,disabled-by-default-devtools.timeline,v8,blink,cc,gpu',
+        transferMode: 'ReportEvents',
+      });
+      nativeTracing = true;
+    } catch {
+      console.log('STAGING_PVP_NATIVE unavailable=cdp-start');
+    }
+  }
+  const stopNativeTracing = async () => {
+    if (!cpuSession || !nativeTracing) return;
+    nativeTracing = false;
+    try {
+      const complete = new Promise((resolve) => {
+        cpuSession.once('Tracing.tracingComplete', resolve);
+      });
+      await cpuSession.send('Tracing.end');
+      await Promise.race([complete, new Promise((resolve) => setTimeout(resolve, 2500))]);
+      console.log('STAGING_PVP_NATIVE ' + nativeSummary.report());
+    } catch {
+      console.log('STAGING_PVP_NATIVE unavailable=cdp-stop');
+    }
+  };
+
   try {
     const firstLobby = waitLobby();
     await openDuelHall(page);
     const homeNavigationDoneMs = openMs();
     assertPvpBrowserResponse(await firstLobby, { suffix: '/lobby', native: 'lobby-read' });
+    await stopNativeTracing();
+    await stopCpuSampling();
 
     const lobby = page.getByRole('dialog', { name: 'Duelo 1 contra 1 · War Room' });
     await expect(lobby).toBeVisible();
@@ -435,10 +631,15 @@ async function assertLivePvpBrowserPath(page) {
       return {
         marks: { ...probe.marks },
         longTasks: { ...probe.longTasks },
+        longFrames: { supported: probe.longFrames.supported, top: [...probe.longFrames.top] },
         sceneState: document.querySelector('[data-pvp-duel-hall-3d]')?.getAttribute('data-pvp-duel-hall-3d') || 'not-mounted',
       };
     });
     if (settled) {
+      console.log(
+        'STAGING_PVP_LOAF supported=' + settled.longFrames.supported +
+        ' top_frames=' + JSON.stringify(settled.longFrames.top),
+      );
       console.log(
         `STAGING_PVP_RENDER_SETTLED scene_ready_ms=${browserMs(settled.marks.sceneReadyMs)}` +
         ` scene_fallback_ms=${browserMs(settled.marks.sceneFallbackMs)}` +
@@ -461,6 +662,9 @@ async function assertLivePvpBrowserPath(page) {
     await expect(lobby).toBeHidden();
     logPhase('leave-lobby');
   } finally {
+    await stopNativeTracing();
+    await stopCpuSampling();
+    if (cpuSession) await cpuSession.detach().catch(() => {});
     if (!page.isClosed()) {
       await page.evaluate(() => {
         window.__stagingDuelHallTiming?.close();

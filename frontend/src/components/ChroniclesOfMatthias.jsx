@@ -21,6 +21,7 @@ import {
 import { chroniclesDeployedPartyLevel } from '../chronicles/chroniclesDifficultyPolicy.js';
 import { playChroniclesActionSound } from '../chronicles/chroniclesActionAudio.js';
 import { getAmbientVolume, setAmbientVolume } from '../sound.js';
+import { useChroniclesSoundtrack } from '../chronicles/useChroniclesSoundtrack.js';
 import {
   getChroniclesFxVolume,
   setChroniclesFxVolume,
@@ -196,6 +197,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
     return chroniclesShouldResumePlayingRun(FIRST_PERSON_RUN_SCOPE) ? 'playing' : 'menu';
   });
   const [characterSetupDone, setCharacterSetupDone] = useState(entryView === 'playing');
+  useChroniclesSoundtrack(entryView);
   const [savesRefreshKey, refreshSaves] = useState(0);
   const [saveInventory, setSaveInventory] = useState(null);
   const [saveMenuLoading, setSaveMenuLoading] = useState(false);
@@ -1270,7 +1272,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
                   <legend>SONIDO</legend>
                   <div className="chronicles-audio-row">
                     <div className="chronicles-audio-row__label">
-                      <label htmlFor="chronicles-music-volume">Música</label>
+                      <label htmlFor="chronicles-music-volume">Música de Chronicles</label>
                       <output htmlFor="chronicles-music-volume">{Math.round(musicVolume * 100)} %</output>
                     </div>
                     <div className="chronicles-audio-row__slider">
@@ -1285,7 +1287,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
                       >{musicVolume > 0 ? '♫' : '×'}</button>
                       <input
                         id="chronicles-music-volume"
-                        aria-label="Volumen de música"
+                        aria-label="Volumen de música de Chronicles"
                         type="range"
                         min="0"
                         max="100"
@@ -1332,7 +1334,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
                       />
                     </div>
                   </div>
-                  <small>Música general del juego y efectos de Chronicles, guardados por separado.</small>
+                  <small>First Verse en el libro de expediciones; Second Verse durante la aventura.</small>
                 </fieldset>
                 <small className="chronicles-game-menu__hint">ESC · cerrar · TAB · navegar</small>
               </div>
