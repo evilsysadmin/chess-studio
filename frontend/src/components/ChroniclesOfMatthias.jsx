@@ -100,6 +100,7 @@ import { useEscapeToClose } from '../useEscapeToClose.js';
 import ChroniclesAutomap from './ChroniclesAutomap.jsx';
 import ChroniclesCharacterSheet from './ChroniclesCharacterSheet.jsx';
 import ChroniclesShop from './ChroniclesShop.jsx';
+import ChroniclesTavern from './ChroniclesTavern.jsx';
 import ChroniclesAudience from './ChroniclesAudience.jsx';
 import ChroniclesGuild from './ChroniclesGuild.jsx';
 import ChroniclesSpellMenu from './ChroniclesSpellMenu.jsx';
@@ -423,7 +424,8 @@ export default function ChroniclesOfMatthias({ onExit }) {
     }
     if (actionType === 'equip-item' || actionType === 'unequip-item'
       || actionType === 'shop-buy' || actionType === 'shop-sell' || actionType === 'shop-close'
-      || actionType === 'guild-join' || actionType === 'guild-learn' || actionType === 'guild-close') {
+      || actionType === 'guild-join' || actionType === 'guild-learn' || actionType === 'guild-close'
+      || actionType === 'tavern-use' || actionType === 'tavern-close') {
       const updated = chroniclesReduce(current, action);
       if (updated !== current) {
         stateRef.current = updated;
@@ -911,7 +913,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
       // plain Tab traverses its accessible controls rather than closing it.
       const target = event.target;
       if (target?.isContentEditable || target?.closest?.('input, textarea, select, [contenteditable="true"]')) return;
-      if (chronicleModalOpen || sheetMemberId || current.shop || current.guild || spellMenuOpen
+      if (chronicleModalOpen || sheetMemberId || current.shop || current.guild || current.tavern || spellMenuOpen
         || current.phase === 'defeated' || current.phase === 'escaped') return;
       if (event.key === 'Tab') {
         if (event.shiftKey || target?.closest?.('.chronicles-game-menu')) return;
@@ -1494,6 +1496,14 @@ export default function ChroniclesOfMatthias({ onExit }) {
           state={state}
           onAction={dispatch}
           onClose={() => dispatch({ type: 'shop-close' })}
+        />
+      )}
+
+      {state.tavern && !sheetMember && (
+        <ChroniclesTavern
+          state={state}
+          onAction={dispatch}
+          onClose={() => dispatch({ type: 'tavern-close' })}
         />
       )}
 

@@ -1,0 +1,160 @@
+.chronicles-tavern__backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 10091;
+  display: grid;
+  place-items: center;
+  padding: clamp(8px, 2.5vw, 28px);
+  background: rgba(7, 5, 8, .83);
+  backdrop-filter: blur(5px);
+}
+.chronicles-tavern {
+  width: min(790px, 100%);
+  max-height: calc(100dvh - 18px);
+  overflow-y: auto;
+  padding: clamp(18px, 3vw, 32px);
+  border: 9px ridge #a8a4a0;
+  background: #66666b var(--mm3-stone) center / 128px 128px;
+  color: #e6d8b8;
+  box-shadow: 0 14px 45px #000b, inset 0 0 0 2px #242027;
+}
+.chronicles-tavern__header {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: start;
+  justify-content: space-between;
+  padding: 12px 46px 12px 14px;
+  background: #b9813e var(--mm3-sand) center / 64px 64px;
+  border: 3px ridge #d6b47b;
+  color: #261708;
+}
+.chronicles-tavern__header small {
+  font-size: .7rem;
+  letter-spacing: .15em;
+}
+.chronicles-tavern__header h2 {
+  margin: 2px 0;
+  color: #231608;
+  font: 700 clamp(1.3rem, 3vw, 1.8rem)/1.2 Georgia, serif;
+}
+.chronicles-tavern__header p { margin: 3px 0 0; font: italic .9rem/1.35 Georgia, serif; }
+.chronicles-tavern__header > b {
+  padding: 7px 9px;
+  background: #201811;
+  border: 2px inset #d7b783;
+  color: #ffe292;
+  white-space: nowrap;
+}
+.chronicles-tavern__close {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 34px;
+  height: 34px;
+  background: #aaa8ad;
+  border: 2px outset #e8e7e9;
+  color: #121216;
+  font-size: 23px;
+  cursor: pointer;
+}
+.chronicles-tavern__scene {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  align-items: center;
+  min-height: 58px;
+  margin: 9px 0;
+  background: linear-gradient(#432718, #191218);
+  color: #f4d18c;
+  border: 2px ridge #b17d3e;
+  font: 700 .85rem Georgia, serif;
+  letter-spacing: .16em;
+  text-align: center;
+}
+.chronicles-tavern__scene span { color: #f2ac4a; }
+.chronicles-tavern__message {
+  min-height: 52px;
+  margin: 0 0 10px;
+  padding: 10px 12px;
+  background: #222026;
+  border: 2px inset #919099;
+  color: #eed6a8;
+  font: italic .94rem/1.4 Georgia, serif;
+}
+.chronicles-tavern__choices {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px;
+}
+.chronicles-tavern__choices button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+  min-height: 82px;
+  padding: 12px;
+  border: 3px outset #e9d5a3;
+  background: #bfa37d;
+  color: #21170b;
+  text-align: left;
+  cursor: pointer;
+}
+.chronicles-tavern__choices button > span { display: grid; gap: 4px; }
+.chronicles-tavern__choices strong { font-size: .93rem; }
+.chronicles-tavern__choices small { font-size: .76rem; line-height: 1.3; }
+.chronicles-tavern__choices b {
+  flex-shrink: 0;
+  font-size: .85rem;
+  color: #492508;
+}
+.chronicles-tavern__choices button:disabled { opacity: .55; cursor: not-allowed; }
+.chronicles-tavern__choices button:hover:not(:disabled),
+.chronicles-tavern__choices button:focus-visible { outline: 3px solid #f4d074; outline-offset: 1px; }
+.chronicles-tavern__choices button:active:not(:disabled) { border-style: inset; }
+.chronicles-tavern footer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  font-size: .8rem;
+}
+.chronicles-tavern footer button {
+  padding: 8px 16px;
+  min-height: 40px;
+  border: 2px outset #eee;
+  background: #b0b0b7;
+  color: #141414;
+  font-weight: 700;
+  cursor: pointer;
+}
+@media (max-width: 540px) {
+  .chronicles-tavern { padding: 15px; border-width: 5px; }
+  .chronicles-tavern__choices { grid-template-columns: 1fr; }
+  .chronicles-tavern__choices button { min-height: 56px; padding: 8px 10px; }
+  .chronicles-tavern__scene { min-height: 38px; }
+}
+/* MM3 landscape is only 390px tall: all actions, including exit, must
+   remain in the viewport without clipping the carved bottom rail. */
+@media (max-height: 560px) {
+  .chronicles-tavern { padding: 9px; border-width: 4px; }
+  .chronicles-tavern__header { padding: 6px 42px 6px 9px; gap: 4px; }
+  .chronicles-tavern__header h2 { margin: 0; line-height: 1.07; font-size: 1.22rem; }
+  .chronicles-tavern__header p { margin: 1px 0 0; font-size: .77rem; line-height: 1.2; }
+  .chronicles-tavern__header > b { padding: 5px 7px; }
+  .chronicles-tavern__close { top: 5px; right: 5px; width: 31px; height: 31px; }
+  .chronicles-tavern__scene { display: none; }
+  .chronicles-tavern__message { min-height: 0; margin-bottom: 5px; padding: 6px 9px; font-size: .82rem; line-height: 1.23; }
+  .chronicles-tavern__choices { gap: 5px; }
+  .chronicles-tavern__choices button { min-height: 52px; padding: 5px 8px; gap: 5px; }
+  .chronicles-tavern__choices button > span { gap: 2px; }
+  .chronicles-tavern__choices strong { font-size: .86rem; }
+  .chronicles-tavern__choices small { font-size: .69rem; line-height: 1.18; }
+  .chronicles-tavern footer { margin-top: 5px; }
+  .chronicles-tavern footer button { min-height: 30px; padding: 4px 10px; }
+}
+.chronicles-tavern footer small { color: #1b1410; background: #c2b5a0; padding: 3px 5px; }

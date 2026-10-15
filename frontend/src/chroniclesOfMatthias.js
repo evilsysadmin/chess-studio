@@ -27,6 +27,9 @@ import {
   chroniclesCloseGuild, chroniclesGuildJoin, chroniclesGuildLearn, chroniclesOpenGuild,
 } from './chronicles/chroniclesGuild.js';
 import {
+  chroniclesCloseTavern, chroniclesIsTavernEntry, chroniclesOpenTavern, chroniclesTavernAction,
+} from './chronicles/chroniclesTavern.js';
+import {
   CHRONICLES_ELEMENT_LABELS,
   CHRONICLES_SPELLS,
   chroniclesDetectMagicMessage,
@@ -282,8 +285,11 @@ export function chroniclesContextualContentAction(state) {
   return {
     id: interaction.id,
     kind: interaction.kind,
-    label: interaction.label || definition.label || 'Interactuar',
-    locked: interaction.locked === true,
+    label: chroniclesIsTavernEntry(definition)
+      ? `Entrar a ${buildingName(definition)}`
+      : (interaction.label || definition.label || 'Interactuar'),
+    // A tavern is always open to visitors; only paid services require gold.
+    locked: interaction.locked === true && !chroniclesIsTavernEntry(definition),
   };
 }
 
@@ -306,6 +312,7 @@ function resolveContextualContentAction(state) {
   const definition = chroniclesContentDefinition(map, contextual.id);
   // A merchant with a stock list opens its counter instead of a scripted trade.
   if (definition?.shop && Array.isArray(definition.shop.stock)) return chroniclesOpenShop(state, definition);
+  if (chroniclesIsTavernEntry(definition)) return chroniclesOpenTavern(state, definition);
   if (definition?.guild && Array.isArray(definition.guild.spells)) return chroniclesOpenGuild(state, definition);
   if (!definition?.action) return state;
   if (contextual.locked) {
@@ -639,6 +646,19 @@ function stepsWord(count) {
 
 function bumpIntoBuilding(state, front) {
   const map = chroniclesMapForState(state);
+  // Explicit street entrance beats connected-component wall classification.
+  // Swordhaven's inn shares stone tiles with the perimeter, so the old
+  // flood fill marks its wall as "town boundary" and silently loses the door.
+  const entrance = (map.interactables || []).find((entry) => (
+    String(entry.visualType || '').startsWith('building-')
+    && entry.x === state.x && entry.y === state.y
+  ));
+  if (entrance) {
+    const contextual = chroniclesContextualContentAction(state);
+    if (contextual?.id === entrance.id) {
+      return chroniclesArriveOnTransition(state, chroniclesAdvanceLostKingIntro(state, resolveContextualContentAction(state)));
+    }
+  }
   const doors = buildingDoorsFor(map, front.x, front.y);
   if (!doors.length) return null;
   const here = doors.find((entry) => entry.x === state.x && entry.y === state.y);
@@ -687,14 +707,16 @@ export function chroniclesReduce(state, action) {
   if (actionType === 'shop-buy') return chroniclesShopBuy(state, chroniclesMapForState(state), action.itemId);
   if (actionType === 'shop-sell') return chroniclesShopSell(state, chroniclesMapForState(state), action.itemId);
   if (actionType === 'shop-close') return chroniclesCloseShop(state);
+  if (actionType === 'tavern-use') return chroniclesTavernAction(state, chroniclesMapForState(state), action.choice);
+  if (actionType === 'tavern-close') return chroniclesCloseTavern(state);
   if (actionType === 'guild-join') return chroniclesGuildJoin(state, chroniclesMapForState(state));
   if (actionType === 'guild-learn') {
     return chroniclesGuildLearn(state, chroniclesMapForState(state), action.memberId, action.spellId);
   }
   if (actionType === 'guild-close') return chroniclesCloseGuild(state);
   // Any other action (moving, turning, fighting) walks away from the counter.
-  if ((state.shop || state.guild) && actionType !== 'equip-item' && actionType !== 'unequip-item') {
-    return chroniclesReduce(chroniclesCloseGuild(chroniclesCloseShop(state)), action);
+  if ((state.shop || state.guild || state.tavern) && actionType !== 'equip-item' && actionType !== 'unequip-item') {
+    return chroniclesReduce(chroniclesCloseTavern(chroniclesCloseGuild(chroniclesCloseShop(state))), action);
   }
   if (actionType === 'equip-item') return chroniclesEquipItem(state, action.memberId, action.itemId);
   if (actionType === 'unequip-item') return chroniclesUnequipItem(state, action.memberId, action.slot);
