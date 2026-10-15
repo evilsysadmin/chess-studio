@@ -102,3 +102,22 @@ Revisar específicamente:
 - **Reentrada:** una escena puede cerrarse y volver a abrirse sin duplicar canvases, audio ni pérdida de partida.
 
 Para una PR que altera una sola sala, la tira transversal no obliga a rediseñar todas las demás: basta inspeccionar los puntos de contacto afectados. Si la comprobación depende de dispositivos físicos, reportar explícitamente que está pendiente; no sustituir su firma por Playwright. Un documento de intención o mockup no acredita ninguna de estas condiciones.
+
+## Chronicles: partición del gate visual y coste del renderer
+
+El gate `Chronicles · visual artifact` mantiene `Chronicles · capture` como contexto requerido estable,
+pero ejecuta la suite canónica mediante `--shard=1/2` y `--shard=2/2` en **dos runners independientes**.
+Es una partición de las mismas pruebas, sin recortar viewports, casos, assertions ni PNG. Cada shard
+usa **un solo worker** para no saturar SwiftShader dentro del runner; los artifacts se publican con
+sufijos `-part-1` y `-part-2` para inspección conjunta del mismo SHA.
+
+El job agregado `Chronicles · capture` sólo pasa si **ambos** shards terminan verdes; fallos,
+cancelaciones y skips cierran el gate. Esto separa la carga y el ciclo de vida del renderer,
+reduce el wall-clock crítico y evita que un solo navegador secuencial concentre todas las capturas.
+No acredita visualmente el resultado: ambos conjuntos de PNG necesitan la inspección habitual.
+
+Motivo medido (PR #5586, 2026-10-14): 42 tests con un worker, 21 verdes y fallo del caso 22
+después de 15,4 minutos; una captura desktop tardó 4 minutos. Comparar los tiempos posteriores
+por shard en CI antes de atribuir una reducción concreta; crear dos runners tiene coste total
+de compute/build superior aunque reduzca latencia de entrega. La partición no corrige por sí
+misma los fallos de entrada en Home, que siguen siendo errores bloqueantes reales del producer.
