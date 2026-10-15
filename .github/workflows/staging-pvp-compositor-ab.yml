@@ -63,8 +63,12 @@ jobs:
           echo "DEPLOY_SHA=$runtime" >> "$GITHUB_ENV"
           git fetch --no-tags --depth=1 origin "$runtime"
           git -c advice.detachedHead=false checkout --detach "$runtime"
-          grep -Fq "stopDeepDiagnostics('settled')" e2e/staging-live.spec.js ||
-            { echo "::error::Deployed SHA predates the late CDP probe"; exit 1; }
+          # Keep runtime files pinned, but use the current main diagnostic spec.
+          # Otherwise a smoke-only test improvement disappears on checkout.
+          git show "$GITHUB_SHA:e2e/staging-live.spec.js" > e2e/staging-live.spec.js
+          grep -Fq "stopDeepDiagnostics('settled')" e2e/staging-live.spec.js &&
+            grep -Fq 'STAGING_PVP_WEBGL ' e2e/staging-live.spec.js ||
+            { echo "::error::Current native diagnostic spec is missing CDP/WebGL markers"; exit 1; }
 
       - name: Reject stale or non-main runtime
         shell: bash
@@ -131,7 +135,7 @@ jobs:
             python3 -S scripts/staging_smoke_user_cleanup.py
             cleanup_rc="$?"
             set -e
-            grep -E 'STAGING_PVP_(ABLATION|GPU|OPEN|INPUT_FRAME|RENDER|PHASE|DIAGNOSTICS|CPU|NATIVE|LOAF)' "$leg_log" >> "$summary" || true
+            grep -E 'STAGING_PVP_(ABLATION|GPU|OPEN|INPUT_FRAME|RENDER|PHASE|DIAGNOSTICS|CPU|NATIVE|WEBGL|LOAF)' "$leg_log" >> "$summary" || true
             rm -f "$leg_log"
             echo "::endgroup::"
             unset STAGING_E2E_USERNAME STAGING_E2E_PASSWORD
@@ -146,7 +150,7 @@ jobs:
             echo '### PvP manual diagnostic — no deployment or accreditation'
             echo "Source: $GITHUB_SHA; deployed runtime: $DEPLOY_SHA; renderer: $CHESS_STAGING_RENDERER"
             if [[ "$PVP_COMPARISON" == native ]]; then
-              echo 'Native: one full staging-live smoke, opt-in CDP 20s max.'
+              echo 'Native: runtime generation pinned; diagnostic spec from current main SHA; one full staging-live smoke, CDP 20s max.'
             else
               echo "A/B: keep / $control / $control / keep, opening-only."
             fi
