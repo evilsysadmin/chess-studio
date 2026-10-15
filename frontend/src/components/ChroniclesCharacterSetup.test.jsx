@@ -49,7 +49,7 @@ describe('ChroniclesCharacterSetup', () => {
       expect(html).toContain('Raza');
       expect(html).toContain('Semiorco');
       expect(html).toContain('Alineamiento');
-      expect(html).toContain('Volver a tirar');
+      expect(html).toContain('Tirar dados');
       expect((html.match(/data-class-id=/g) || []).length).toBe(10);
       expect(html).toContain('Hechizos');
       expect(html).toContain('Confirmar compañía');

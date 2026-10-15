@@ -299,7 +299,7 @@ export default function ChroniclesCharacterSetup({
                 <strong>{rolls > 0 ? `${rolls} ${rolls === 1 ? 'tirada' : 'tiradas'} en esta sesión` : 'Tirada inicial'}</strong>
               </div>
               <button type="button" className="secondary-btn" onClick={rerollStats}>
-                🎲 Volver a tirar
+                🎲 Tirar dados
               </button>
             </div>
             {CHRONICLES_MM3_STATS.map((key) => {

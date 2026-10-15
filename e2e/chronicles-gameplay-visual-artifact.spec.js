@@ -154,9 +154,15 @@ async function openChronicles(page, captureLabel, {
   // MM3 roller: real dice, then the class grid only offers what they allow.
   await editor.getByRole('button', { name: /Tirar dados/ }).click();
   await expect(editor.locator('.chronicles-character-setup__class-grid button[aria-pressed="true"]')).toHaveCount(1);
+  // Race must alter a derived, playable quantity; screenshots alone are not enough.
+  const life = editor.locator('.chronicles-character-setup__derived dd').first();
+  const humanHp = Number(await life.innerText());
+  await editor.getByRole('combobox', { name: 'Raza' }).selectOption('halfOrc');
+  await expect(life).toHaveText(String(humanHp + 2));
+  await expect(editor.locator('.chronicles-character-setup__race-effect')).toContainText('Semiorco');
   const mechanics = editor.locator('.chronicles-character-setup__mechanics');
   await expect(mechanics).toBeVisible();
-  await expect(mechanics).toContainText(/Vida \d+ · Armadura \d+/);
+  await expect(mechanics).toContainText(/Vida \d+ · PH \d+ · Armadura \d+/);
   await page.screenshot({
     path: `${ARTIFACT_DIR}/chronicles-character-editor-${captureLabel}.png`,
     animations: 'disabled',
