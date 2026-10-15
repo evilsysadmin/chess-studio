@@ -164,8 +164,9 @@ case "$mode" in
           *) echo "::error::Chronicles shard cannot own other visual producer: $spec"; exit 2 ;;
         esac
       done
-      playwright_args+=(--shard="${APP_VISUAL_CHRONICLES_SHARD}/2")
-      echo "Chronicles visual partition ${APP_VISUAL_CHRONICLES_SHARD}/2: all canonical tests distributed across isolated runners."
+      # Full producer is sliced further below into short-lived Chromium groups;
+      # focused paths still use the original 1/2 split.
+      echo "Chronicles visual partition ${APP_VISUAL_CHRONICLES_SHARD}/2: independent runners."
     fi
     # The party-choice surface also has canonical setup + editor screenshots
     # in these same three First Book journeys, plus a real game-entry proof.
@@ -237,11 +238,27 @@ case "$mode" in
             --grep 'Chronicles · gameplay visual · desktop-1440x900$'
         fi
         playwright_args+=(--grep-invert 'Chronicles · (pause \+ audio tablets visual · android-390x844|gameplay visual · desktop-1440x900)$')
-        echo "Chronicles visual balanced partition ${APP_VISUAL_CHRONICLES_SHARD}/2: complement plus isolated canaries, no test omission."
+        # In both prior runs the LAST tablet capture failed after 18-19
+        # earlier 3D captures, independently of portrait/landscape. Reset
+        # Chromium after 4-5 captures, with no retries or missing tests.
+        # Eight complementary shards: four processes on each of two runners.
+        first_subshard=$(( (APP_VISUAL_CHRONICLES_SHARD - 1) * 4 + 1 ))
+        last_subshard=$(( first_subshard + 3 ))
+        for (( subshard = first_subshard; subshard <= last_subshard; subshard++ )); do
+          echo "Chronicles visual bounded renderer: isolated process ${subshard}/8."
+          ./node_modules/.bin/playwright test \
+            "${specs[@]}" \
+            "${playwright_args[@]}" \
+            "--shard=${subshard}/8"
+        done
+      else
+        if [[ -n "${APP_VISUAL_CHRONICLES_SHARD:-}" ]]; then
+          playwright_args+=(--shard="${APP_VISUAL_CHRONICLES_SHARD}/2")
+        fi
+        ./node_modules/.bin/playwright test \
+          "${specs[@]}" \
+          "${playwright_args[@]}"
       fi
-      ./node_modules/.bin/playwright test \
-        "${specs[@]}" \
-        "${playwright_args[@]}"
     fi
 
     if [[ "$warroom_core_selected" == "true" ]]; then
