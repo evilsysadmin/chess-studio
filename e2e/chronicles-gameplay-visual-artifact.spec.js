@@ -1031,6 +1031,7 @@ for (const capture of CAPTURES) {
       await captureElement(page, gameRoot, `${ARTIFACT_DIR}/chronicles-playing-${capture.label}.png`);
       visualPhase('gameplay-readback-finish');
 
+      visualPhase('post-readback-contracts-begin');
       // A browser «night mode» must not lighten the dark ink on the stone.
       expect(await gameRoot.evaluate((root) => getComputedStyle(root).colorScheme.split(' ').sort().join(' ')), `${capture.label}: Chronicles opts out of forced dark`).toBe('light only');
 
@@ -1068,19 +1069,26 @@ for (const capture of CAPTURES) {
         expect(ink.fill, `${capture.label}: ${selector} text fill must be black`).toBe('rgb(8, 8, 10)');
       }
 
-      // Browser regression: stylesheet declarations alone lost in Brave;
-      // the actual mounted control must have an inline important override.
-      for (const selector of [
+      // Browser regression: Brave ignored stylesheet ink declarations.
+      // One browser round trip reads the same four live controls, retaining
+      // all of the old per-selector assertions and their actual inline values.
+      const inlineControls = await gameRoot.evaluate((root) => [
         '.chronicles-statusbar .chronicles-map-trigger',
         '.chronicles-statusbar .chronicles-map-trigger b',
         '.chronicles-game-menu > summary',
         '.chronicles-touch button:not(.is-attack):not(.is-magic):not(.is-contextual)',
-      ]) {
-        const ink = await gameRoot.locator(selector).first().evaluate((element) => ({
+      ].map((selector) => {
+        const element = root.querySelector(selector);
+        if (!element) throw new Error(`Missing required MM3 control: ${selector}`);
+        return {
+          selector,
           value: element.style.getPropertyValue('color'),
           priority: element.style.getPropertyPriority('color'),
           computed: getComputedStyle(element).color,
-        }));
+        };
+      }));
+      for (const ink of inlineControls) {
+        const selector = ink.selector;
         expect(ink.value, `${capture.label}: ${selector} inline ink`).toMatch(/^(?:#08080a|rgb\(8,\s*8,\s*10\))$/i);
         expect(ink.priority, `${capture.label}: ${selector} priority`).toBe('important');
         expect(ink.computed, `${capture.label}: ${selector} final ink`).toBe('rgb(8, 8, 10)');
@@ -1116,6 +1124,7 @@ for (const capture of CAPTURES) {
       expect(sapphire.engravingInk, `${capture.label}: sapphire engraving contrast`).toBe('rgb(255, 246, 220)');
       expect(sapphire.engravingBackground, `${capture.label}: cobalt backdrop behind text`).toBe('rgba(5, 27, 78, 0.86)');
       expect(sapphire.isCentered, `${capture.label}: engraving within sapphire hit target`).toBe(true);
+      visualPhase('post-readback-contracts-finish');
 
       // One complete real Three.js screenshot per viewport, then stop.
       // Menu/audio and automap snapshots live in isolated browser contexts
@@ -1126,8 +1135,11 @@ for (const capture of CAPTURES) {
         `${JSON.stringify({ schema: 4, scope: 'chronicles', capture: { label: capture.label, ...health } }, null, 2)}\n`,
         'utf8',
       );
+      visualPhase('health-json-written');
     } finally {
+      visualPhase('context-close-begin');
       await context.close();
+      visualPhase('context-close-finish');
     }
   });
 }
