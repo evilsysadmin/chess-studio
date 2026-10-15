@@ -22,7 +22,7 @@ export default function InsightsRecurringErrors({
   const [selectedKey, setSelectedKey] = useState(null);
   const selected = patterns.find((item) => item.incidentKey === selectedKey) || patterns[0] || null;
   const example = selected ? selectRecurringPatternExample(selected, puzzles) : null;
-  const canTrain = Boolean(example && selected?.pending > 0 && onOpenPuzzles);
+  const canTrain = Boolean(example && !example.masteredAt && Number(example.solves || 0) === 0 && selected?.pending > 0 && onOpenPuzzles);
 
   function trainPattern() {
     if (!canTrain) return;
