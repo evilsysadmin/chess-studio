@@ -241,15 +241,16 @@ case "$mode" in
         # In both prior runs the LAST tablet capture failed after 18-19
         # earlier 3D captures, independently of portrait/landscape. Reset
         # Chromium after 4-5 captures, with no retries or missing tests.
-        # Rebalanced after measuring ALL three runners on PR #5606:
-        # 1: subshards 1/4/7/8 (~9.6 min), 2: 2/3/5 (~9.6 min),
-        # 3: 6 + cold-menu/desktop canaries (~8.7 min). This moves the
-        # expensive group 4 away from the previously slowest runner.
-        # Every subshard remains uniquely owned with a fresh Playwright
-        # process; newly added cases still enter the full eight-way suite.
+        # #5642 full exact-SHA CI measured runner 1=6m54s, 2=9m55s,
+        # 3=4m17s. Moving heavy group 2 behind the runner 3 WebGL canary
+        # caused Rookwood/Home to time out under LOADING (failed SHA ebc6a329).
+        # Keep runner 3's proven isolated canaries/group 6 unchanged; move
+        # lighter group 3 (~1m24s) to runner 1, BEFORE expensive group 4.
+        # Expected bottleneck ~8m30s; only exact-SHA CI can confirm it.
+        # Every one of eight subshards remains uniquely owned.
         case "$APP_VISUAL_CHRONICLES_SHARD" in
-          1) subshards=(1 4 7 8) ;;
-          2) subshards=(2 3 5) ;;
+          1) subshards=(1 3 4 7 8) ;;
+          2) subshards=(2 5) ;;
           3) subshards=(6) ;;
         esac
         for subshard in "${subshards[@]}"; do
