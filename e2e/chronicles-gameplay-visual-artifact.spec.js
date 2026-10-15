@@ -315,6 +315,100 @@ async function pressSequence(page, keys) {
   }
 }
 
+// The real Three.js environment is captured independently above. Both tablet
+// states share ONE Home/login per viewport; six cold logins unnecessarily
+// overload SwiftShader CI. Suppress all canvas compositing only for these DOM
+// tablet captures; game rendering and interaction retain separate real tests.
+test.describe('Chronicles · sapphire pause tablet visual proof', () => {
+  // Heavy WebGL visual workers can intermittently stall Home on a cold
+  // Android context. One fresh-worker retry is safer than skipping evidence.
+  test.describe.configure({ retries: 1 });
+  for (const capture of CAPTURES) {
+    test(`Chronicles · pause + audio tablets visual · ${capture.label}`, async ({ browser }) => {
+      test.setTimeout(240_000);
+      await mkdir(ARTIFACT_DIR, { recursive: true });
+      const context = await browser.newContext({
+        viewport: { width: capture.width, height: capture.height },
+        hasTouch: capture.hasTouch, isMobile: capture.hasTouch,
+      });
+      try {
+        const page = await context.newPage();
+        await openChronicles(page, capture.label, { retryVisualHomeLogin: true });
+        const game = page.locator('[data-chronicles="true"]');
+        await expect(game).toBeVisible();
+        await page.addStyleTag({ content: 'canvas {visibility:hidden !important}' });
+        const menu = game.locator('details.chronicles-game-menu');
+        await menu.locator('> summary').evaluate((summary) => summary.click());
+        await expect(menu).toHaveAttribute('open', '');
+        const panel = menu.locator('.chronicles-game-menu__panel');
+        const checkTablet = async (variant) => {
+          const rect = await panel.boundingBox();
+          expect(rect, `${capture.label}: ${variant} panel exists`).not.toBeNull();
+          expect(rect.x, `${capture.label}: ${variant} left`).toBeGreaterThanOrEqual(0);
+          expect(rect.y, `${capture.label}: ${variant} top`).toBeGreaterThanOrEqual(0);
+          expect(rect.x + rect.width, `${capture.label}: ${variant} right`).toBeLessThanOrEqual(capture.width);
+          expect(rect.y + rect.height, `${capture.label}: ${variant} bottom`).toBeLessThanOrEqual(capture.height);
+          const inks = await panel.locator('button').evaluateAll((buttons) => buttons.map((button) => ({
+            label: button.textContent.trim(),
+            inline: button.style.getPropertyValue('color'),
+            priority: button.style.getPropertyPriority('color'),
+            computed: getComputedStyle(button).color,
+          })));
+          expect(inks.length).toBeGreaterThan(0);
+          for (const ink of inks) {
+            expect(['rgb(8, 8, 10)', 'rgb(17, 16, 21)'], `${capture.label}: ${ink.label} dark ink`).toContain(ink.computed);
+            if (variant === 'pause') {
+              expect(ink.inline, `${capture.label}: ${ink.label} inline ink`).toMatch(/^(?:#08080a|rgb\(8,\s*8,\s*10\))$/i);
+              expect(ink.priority, `${capture.label}: ${ink.label} important ink`).toBe('important');
+            }
+          }
+        };
+        await expect(panel.locator('.chronicles-game-menu__actions > button')).toHaveText([
+          'Continuar', 'Guardar partida', 'Guardar y salir', 'Salir sin guardar',
+        ]);
+        await expect(menu.locator('#chronicles-music-volume')).toBeVisible();
+        await expect(menu.getByText('First Verse en el libro de expediciones; Second Verse durante la aventura.')).toBeVisible();
+        await expect(menu.locator('#chronicles-sfx-volume')).toBeVisible();
+        await checkTablet('pause');
+        if (capture.label === 'android-landscape-844x390') {
+          const scroll = await panel.evaluate((node) => ({
+            content: node.scrollHeight, visible: node.clientHeight,
+          }));
+          expect(scroll.content, 'landscape pause must show actions and audio without scrolling')
+            .toBeLessThanOrEqual(scroll.visible + 1);
+        }
+        // Four game actions plus both mixer sliders must remain inside the
+        // dialog at 844×390 (one integrated tablet, not an audio sub-menu).
+        const pauseActions = await panel.locator('.chronicles-game-menu__actions > button').evaluateAll((buttons) =>
+          buttons.map((button) => {
+            const box = button.getBoundingClientRect();
+            return { name: button.textContent.trim(), x: box.x, y: box.y, right: box.right, bottom: box.bottom };
+          }));
+        expect(pauseActions.map((action) => action.name)).toEqual([
+          'Continuar', 'Guardar partida', 'Guardar y salir', 'Salir sin guardar',
+        ]);
+        const tabletBounds = await panel.boundingBox();
+        expect(tabletBounds, `${capture.label}: pause tablet bounds`).not.toBeNull();
+        for (const action of pauseActions) {
+          expect(action.x, `${capture.label}: ${action.name} left`).toBeGreaterThanOrEqual(0);
+          expect(action.y, `${capture.label}: ${action.name} top`).toBeGreaterThanOrEqual(0);
+          expect(action.right, `${capture.label}: ${action.name} right`).toBeLessThanOrEqual(capture.width);
+          expect(action.bottom, `${capture.label}: ${action.name} bottom`).toBeLessThanOrEqual(capture.height);
+          expect(action.bottom, `${capture.label}: ${action.name} inside pause tablet`)
+            .toBeLessThanOrEqual(tabletBounds.y + tabletBounds.height);
+        }
+        await captureElement(page, panel, `${ARTIFACT_DIR}/chronicles-game-menu-${capture.label}.png`);
+        const musicMute = menu.getByRole('button', { name: /^(Silenciar|Activar) música$/ });
+        await musicMute.click();
+        await checkTablet('audio');
+        await captureElement(page, panel, `${ARTIFACT_DIR}/chronicles-game-menu-audio-${capture.label}.png`);
+      } finally {
+        await context.close();
+      }
+    });
+  }
+});
+
 // New campaigns always start in Swordhaven. Walk the real route: north gate,
 // then the Banner Road's northern verge east and down to the Rookwood trail
 // (away from the optional deserter), arriving at Rookwood facing east.
@@ -598,8 +692,32 @@ test('Chronicles · MM3 Swordhaven weaponsmith opens from the neighboring street
     });
     const game = page.locator('[data-chronicles="true"]');
     // Plaza (9,7) -> (9,5) -> (7,5); look north at Brunna's door on (7,4).
-    // The sealed letter underfoot must not steal the front-facing interaction.
-    for (const key of ['w', 'w', 'a', 'w', 'w', 'd']) await page.keyboard.press(key);
+    // Verify each step instead of racing six keys through initial WebGL mounting.
+    // A missing first key must not become a mysterious "no interact button" timeout.
+    const rumbo = game.locator('.chronicles-statusbar > span').nth(1);
+    await expect(rumbo).toContainText('N · X9 Y7');
+    // The MM3 HUD counts Y northward, opposite to row indices in the
+    // underlying grid: moving north from internal row 7 shows Y8, then Y9.
+    for (const [key, expected] of [
+      ['w', 'N · X9 Y8'],
+      ['w', 'N · X9 Y9'],
+      ['a', 'O · X9 Y9'],
+      ['w', 'O · X8 Y9'],
+      ['w', 'O · X7 Y9'],
+      ['d', 'N · X7 Y9'],
+    ]) {
+      // Wait for the real game position; retry a lost key at most once.
+      for (let attempt = 0; attempt < 2; attempt += 1) {
+        await page.keyboard.press(key);
+        try {
+          await expect(rumbo).toContainText(expected, { timeout: 2000 });
+          break;
+        } catch (error) {
+          if (attempt === 1) throw new Error(`Brunna route: expected ${expected}, received ${await rumbo.textContent()}`, { cause: error });
+        }
+      }
+    }
+    // The sealed letter underfoot must not steal the front-facing merchant.
     const use = game.locator('[data-chronicles-touch-action="interact"]');
     await expect(use).toHaveAttribute('aria-label', 'Forja de Brunna · armas');
     await page.keyboard.press('f');
@@ -868,11 +986,9 @@ for (const capture of CAPTURES) {
 
       }
 
-      // MAPA and MENÚ are nested labels: a dark parent is insufficient if
-      // their actual glyph elements are overridden by another style.
+      // MAPA keeps black engraved ink, while sapphire's hover label is bright.
       for (const selector of [
         '.chronicles-statusbar .chronicles-map-trigger b',
-        '.chronicles-game-menu > summary b',
       ]) {
         const ink = await gameRoot.locator(selector).evaluate((node) => {
           const style = getComputedStyle(node);
@@ -888,7 +1004,6 @@ for (const capture of CAPTURES) {
         '.chronicles-statusbar .chronicles-map-trigger',
         '.chronicles-statusbar .chronicles-map-trigger b',
         '.chronicles-game-menu > summary',
-        '.chronicles-game-menu > summary b',
         '.chronicles-touch button:not(.is-attack):not(.is-magic):not(.is-contextual)',
       ]) {
         const ink = await gameRoot.locator(selector).first().evaluate((element) => ({
@@ -900,6 +1015,13 @@ for (const capture of CAPTURES) {
         expect(ink.priority, `${capture.label}: ${selector} priority`).toBe('important');
         expect(ink.computed, `${capture.label}: ${selector} final ink`).toBe('rgb(8, 8, 10)');
       }
+
+      const sapphire = await gameRoot.locator('.chronicles-game-menu > summary').evaluate((summary) => ({
+        art: getComputedStyle(summary).backgroundImage,
+        tooltipInk: getComputedStyle(summary.querySelector('.chronicles-menu-gem__hint')).color,
+      }));
+      expect(sapphire.art, `${capture.label}: sapphire artwork is the menu trigger`).toMatch(/^url\(["']?data:image\/png;base64,/);
+      expect(sapphire.tooltipInk, `${capture.label}: sapphire tooltip remains legible`).toBe('rgb(255, 246, 220)');
 
       // One complete real Three.js screenshot per viewport, then stop.
       // Menu/audio and automap snapshots live in isolated browser contexts
@@ -916,97 +1038,6 @@ for (const capture of CAPTURES) {
   });
 }
 
-
-// The real Three.js environment is captured independently above. Both tablet
-// states share ONE Home/login per viewport; six cold logins unnecessarily
-// overload SwiftShader CI. Suppress all canvas compositing only for these DOM
-// tablet captures; game rendering and interaction retain separate real tests.
-for (const capture of CAPTURES) {
-  test(`Chronicles · pause + audio tablets visual · ${capture.label}`, async ({ browser }) => {
-    test.setTimeout(240_000);
-    await mkdir(ARTIFACT_DIR, { recursive: true });
-    const context = await browser.newContext({
-      viewport: { width: capture.width, height: capture.height },
-      hasTouch: capture.hasTouch, isMobile: capture.hasTouch,
-    });
-    try {
-      const page = await context.newPage();
-      await openChronicles(page, capture.label, { retryVisualHomeLogin: true });
-      const game = page.locator('[data-chronicles="true"]');
-      await expect(game).toBeVisible();
-      await page.addStyleTag({ content: 'canvas {visibility:hidden !important}' });
-      const menu = game.locator('details.chronicles-game-menu');
-      await menu.locator('> summary').evaluate((summary) => summary.click());
-      await expect(menu).toHaveAttribute('open', '');
-      const panel = menu.locator('.chronicles-game-menu__panel');
-      const checkTablet = async (variant) => {
-        const rect = await panel.boundingBox();
-        expect(rect, `${capture.label}: ${variant} panel exists`).not.toBeNull();
-        expect(rect.x, `${capture.label}: ${variant} left`).toBeGreaterThanOrEqual(0);
-        expect(rect.y, `${capture.label}: ${variant} top`).toBeGreaterThanOrEqual(0);
-        expect(rect.x + rect.width, `${capture.label}: ${variant} right`).toBeLessThanOrEqual(capture.width);
-        expect(rect.y + rect.height, `${capture.label}: ${variant} bottom`).toBeLessThanOrEqual(capture.height);
-        const inks = await panel.locator('button').evaluateAll((buttons) => buttons.map((button) => ({
-          label: button.textContent.trim(),
-          inline: button.style.getPropertyValue('color'),
-          priority: button.style.getPropertyPriority('color'),
-          computed: getComputedStyle(button).color,
-        })));
-        expect(inks.length).toBeGreaterThan(0);
-        for (const ink of inks) {
-          expect(['rgb(8, 8, 10)', 'rgb(17, 16, 21)'], `${capture.label}: ${ink.label} dark ink`).toContain(ink.computed);
-          if (variant === 'pause') {
-            expect(ink.inline, `${capture.label}: ${ink.label} inline ink`).toMatch(/^(?:#08080a|rgb\(8,\s*8,\s*10\))$/i);
-            expect(ink.priority, `${capture.label}: ${ink.label} important ink`).toBe('important');
-          }
-        }
-      };
-      await expect(panel.locator('> button')).toHaveText([
-        'Continuar', 'Guardar partida', 'Guardar y salir', 'Salir sin guardar', 'Opciones de audio',
-      ]);
-      await expect(menu.locator('#chronicles-music-volume')).toHaveCount(0);
-      await checkTablet('pause');
-      if (capture.label === 'android-landscape-844x390') {
-        const scroll = await panel.evaluate((node) => ({
-          content: node.scrollHeight, visible: node.clientHeight,
-        }));
-        expect(scroll.content, 'landscape pause needs no hidden vertical scrolling')
-          .toBeLessThanOrEqual(scroll.visible + 1);
-      }
-      // The panel may fit while its children overflow/clamp outside a short
-      // landscape phone. Verify EVERY action without scrolling, especially
-      // Guardar y salir (historically ended at y=475 on a 390px viewport).
-      const pauseActions = await panel.locator('> button').evaluateAll((buttons) => buttons.map((button) => {
-        const box = button.getBoundingClientRect();
-        return { name: button.textContent.trim(), x: box.x, y: box.y, right: box.right, bottom: box.bottom };
-      }));
-      expect(pauseActions.map((action) => action.name)).toEqual([
-        'Continuar', 'Guardar partida', 'Guardar y salir', 'Salir sin guardar', 'Opciones de audio',
-      ]);
-      const tabletBounds = await panel.boundingBox();
-      expect(tabletBounds, `${capture.label}: pause tablet bounds`).not.toBeNull();
-      for (const action of pauseActions) {
-        expect(action.x, `${capture.label}: ${action.name} left`).toBeGreaterThanOrEqual(0);
-        expect(action.y, `${capture.label}: ${action.name} top`).toBeGreaterThanOrEqual(0);
-        expect(action.right, `${capture.label}: ${action.name} right`).toBeLessThanOrEqual(capture.width);
-        expect(action.bottom, `${capture.label}: ${action.name} bottom`).toBeLessThanOrEqual(capture.height);
-        expect(action.bottom, `${capture.label}: ${action.name} remains inside pause tablet`)
-          .toBeLessThanOrEqual(tabletBounds.y + tabletBounds.height);
-      }
-      await captureElement(page, panel, `${ARTIFACT_DIR}/chronicles-game-menu-${capture.label}.png`);
-      await menu.getByRole('button', { name: 'Opciones de audio' }).evaluate((button) => button.click());
-      await expect(menu.getByRole('slider', { name: 'Volumen de música de Chronicles' })).toBeVisible();
-      await expect(menu.getByText('First Verse en el libro de expediciones; Second Verse durante la aventura.')).toBeVisible();
-      await expect(menu.getByRole('slider', { name: 'Volumen de efectos de Chronicles' })).toBeVisible();
-      await expect(menu.getByRole('button', { name: 'Volver al menú' })).toBeVisible();
-      await expect(menu.getByRole('button', { name: 'Guardar y salir' })).toHaveCount(0);
-      await checkTablet('audio');
-      await captureElement(page, panel, `${ARTIFACT_DIR}/chronicles-game-menu-audio-${capture.label}.png`);
-    } finally {
-      await context.close();
-    }
-  });
-}
 
 // Fresh-context visual proof: the minimap overlay is not a second GPU
 // readback after the full scene + pause-menu screenshots. Keep this separate

@@ -182,24 +182,19 @@ test('Chronicles · Escape opens and closes the in-game menu while the scene sta
 
   await page.keyboard.press('Escape');
   await expect(menu).toHaveAttribute('open', '');
-  await expect(menu.locator('.chronicles-game-menu__panel > button')).toHaveText([
-    'Continuar', 'Guardar partida', 'Guardar y salir', 'Salir sin guardar', 'Opciones de audio',
+  await expect(menu.locator('.chronicles-game-menu__actions > button')).toHaveText([
+    'Continuar', 'Guardar partida', 'Guardar y salir', 'Salir sin guardar',
   ]);
+  const gem = menu.locator('> summary');
+  await expect(gem).toHaveAttribute('title', /Gema azul/);
+  await expect(menu.getByRole('dialog', { name: 'Menú de aventura' })).toBeVisible();
   await expect(menu.getByRole('button', { name: 'Crónica · J' })).toHaveCount(0);
   await expect(menu.getByRole('button', { name: 'Nueva expedición' })).toHaveCount(0);
   await expect(menu.getByRole('button', { name: 'Partidas guardadas' })).toHaveCount(0);
-  const audio = menu.getByRole('button', { name: 'Opciones de audio' });
-  await expect(audio).toHaveAttribute('aria-expanded', 'false');
-  await expect(menu.locator('#chronicles-sfx-volume')).toHaveCount(0);
-  await audio.evaluate((button) => button.click());
-  await expect(menu.getByRole('button', { name: 'Continuar' })).toHaveCount(0);
-  await expect(menu.getByRole('button', { name: 'Guardar y salir' })).toHaveCount(0);
-  await expect(menu.getByRole('slider', { name: 'Volumen de efectos de Chronicles' })).toBeVisible();
+  const fxSlider = menu.getByRole('slider', { name: 'Volumen de efectos de Chronicles' });
   const musicSlider = menu.getByRole('slider', { name: 'Volumen de música de Chronicles' });
-  await expect(menu.getByText('First Verse en el libro de expediciones; Second Verse durante la aventura.')).toBeVisible();
+  await expect(fxSlider).toBeVisible();
   await expect(musicSlider).toBeVisible();
-  // Keep real keyboard input in a separate functional canary instead of the
-  // visual producer, whose SwiftShader screenshots may block input for minutes.
   const turnsBeforeAudio = await mode.getAttribute('data-chronicles-turns');
   await musicSlider.focus();
   await musicSlider.press('Home');
@@ -207,14 +202,48 @@ test('Chronicles · Escape opens and closes the in-game menu while the scene sta
   await musicSlider.press('ArrowRight');
   await expect(musicSlider).toHaveValue('5');
   await expect(mode).toHaveAttribute('data-chronicles-turns', turnsBeforeAudio);
-  await menu.getByRole('button', { name: 'Volver al menú' }).evaluate((button) => button.click());
-  await expect(menu.locator('#chronicles-music-volume')).toHaveCount(0);
-  await expect(menu.locator('.chronicles-game-menu__panel > button')).toHaveText([
-    'Continuar', 'Guardar partida', 'Guardar y salir', 'Salir sin guardar', 'Opciones de audio',
-  ]);
+  await menu.getByRole('button', { name: 'Silenciar música' }).click();
+  await expect(musicSlider).toHaveValue('0');
+  await menu.getByRole('button', { name: 'Activar música' }).click();
+  await expect(musicSlider).toHaveValue('5');
   await menu.getByRole('button', { name: 'Guardar y salir' }).click();
   await expect(mode).toHaveCount(0);
 });
+
+for (const viewport of [
+  { width: 1440, height: 900 },
+  { width: 844, height: 390 },
+  { width: 390, height: 844 },
+]) {
+  test(`Chronicles · gema azul abre menú modal y cabe en ${viewport.width}×${viewport.height}`, async ({ page }) => {
+    await page.setViewportSize(viewport);
+    await openChronicles(page, { chroniclesCurrentMapId: 'swordhaven-square', newTown: true });
+    const game = page.locator('[data-chronicles="true"]');
+    const menu = game.locator('details.chronicles-game-menu');
+    const gem = menu.locator('> summary');
+    await expect(gem).toBeVisible();
+    await expect(gem).toHaveAttribute('aria-label', 'Abrir menú de Chronicles');
+    const originalTurns = await game.getAttribute('data-chronicles-turns');
+    await gem.click();
+    await expect(menu).toHaveAttribute('open', '');
+    const dialog = menu.getByRole('dialog', { name: 'Menú de aventura' });
+    await expect(dialog).toBeVisible();
+    await expect(dialog.getByRole('slider', { name: 'Volumen de música de Chronicles' })).toBeVisible();
+    await expect(dialog.getByRole('slider', { name: 'Volumen de efectos de Chronicles' })).toBeVisible();
+    const rect = await dialog.evaluate((el) => {
+      const bounds = el.getBoundingClientRect();
+      return { left: bounds.left, top: bounds.top, right: bounds.right, bottom: bounds.bottom };
+    });
+    expect(rect.left).toBeGreaterThanOrEqual(0);
+    expect(rect.top).toBeGreaterThanOrEqual(0);
+    expect(rect.right).toBeLessThanOrEqual(viewport.width + 1);
+    expect(rect.bottom).toBeLessThanOrEqual(viewport.height + 1);
+    await page.keyboard.press('w');
+    await expect(game).toHaveAttribute('data-chronicles-turns', originalTurns);
+    await dialog.getByRole('button', { name: 'Continuar' }).click();
+    await expect(menu).not.toHaveAttribute('open', '');
+  });
+}
 
 test('Chronicles · MM3 hotkeys J diario, M mapa, Tab menú · sin mover grupo', async ({ page }) => {
   test.setTimeout(180_000);

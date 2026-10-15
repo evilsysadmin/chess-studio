@@ -225,9 +225,10 @@ export default function ChroniclesOfMatthias({ onExit }) {
   const [retaliationCue, setRetaliationCue] = useState(null);
   const [partyBark, setPartyBark] = useState(null);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [audioOptionsOpen, setAudioOptionsOpen] = useState(false);
   const [fxVolume, setFxVolume] = useState(() => getChroniclesFxVolume());
   const [musicVolume, setMusicVolume] = useState(getAmbientVolume);
+  const lastFxVolumeRef = useRef(fxVolume || 0.75);
+  const lastMusicVolumeRef = useRef(musicVolume || 0.75);
   const menuSummaryRef = useRef(null);
   const [journalOpen, setJournalOpen] = useState(false);
   const [chronicleModalOpen, setChronicleModalOpen] = useState(false);
@@ -268,7 +269,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
       node.style.setProperty('-webkit-text-stroke-color', '#08080a', 'important');
       node.style.setProperty('color-scheme', 'light only', 'important');
     }
-  }, [ready, state, menuOpen, audioOptionsOpen, confirmExitWithoutSaving]);
+  }, [ready, state, menuOpen, confirmExitWithoutSaving]);
 
   // Reconcile server-owned expeditions only while browsing the save book.
   // Cleanup discards stale results after navigating away or switching flows.
@@ -1224,6 +1225,8 @@ export default function ChroniclesOfMatthias({ onExit }) {
             >
               <i aria-hidden="true">⌖</i><b>MAPA</b>
             </button>
+          </div>
+
             <details
               className="chronicles-game-menu"
               open={menuOpen}
@@ -1233,84 +1236,109 @@ export default function ChroniclesOfMatthias({ onExit }) {
                   setAutomapOpen(false);
                   setJournalOpen(false);
                 } else {
-                  setAudioOptionsOpen(false);
                   setConfirmExitWithoutSaving(false);
                 }
               }}
             >
-              <summary ref={menuSummaryRef} title="Tab · Menú" aria-label={menuOpen ? 'Cerrar menú de Chronicles' : 'Abrir menú de Chronicles'}>
-                ☰ <b>MENÚ</b>
+              <summary ref={menuSummaryRef} title="Gema azul · Menú (Tab / Esc)" aria-label={menuOpen ? 'Cerrar menú de Chronicles' : 'Abrir menú de Chronicles'}>
+                <span className="chronicles-menu-gem__hint" aria-hidden="true">MENÚ</span>
               </summary>
-              <div className="chronicles-game-menu__panel">
-                <strong>{audioOptionsOpen ? 'Opciones de audio' : 'Menú de pausa'}</strong>
-                {audioOptionsOpen ? (
-                  <>
-                    <fieldset id="chronicles-audio-options" className="chronicles-audio-controls" style={{ border: '1px solid #806d51', padding: '8px', display: 'grid', gap: '6px', minWidth: 0 }}>
-                    <legend>Audio</legend>
-                    <label htmlFor="chronicles-sfx-volume">Efectos (SFX) · {Math.round(fxVolume * 100)} %</label>
-                    <input
-                      id="chronicles-sfx-volume"
-                      aria-label="Volumen de efectos de Chronicles"
-                      type="range"
-                      min="0"
-                      max="100"
-                      step="5"
-                      value={Math.round(fxVolume * 100)}
-                      style={{ width: '100%', accentColor: '#88632d' }}
-                      onChange={(event) => setFxVolume(setChroniclesFxVolume(Number(event.target.value) / 100))}
-                      onKeyDown={(event) => event.stopPropagation()}
-                    />
-                    <label htmlFor="chronicles-music-volume">Música de Chronicles · {Math.round(musicVolume * 100)} %</label>
-                    <input
-                      id="chronicles-music-volume"
-                      aria-label="Volumen de música de Chronicles"
-                      type="range"
-                      min="0"
-                      max="100"
-                      step="5"
-                      value={Math.round(musicVolume * 100)}
-                      style={{ width: '100%', accentColor: '#88632d' }}
-                      onChange={(event) => setMusicVolume(setAmbientVolume(Number(event.target.value) / 100))}
-                      onKeyDown={(event) => event.stopPropagation()}
-                    />
-                    <small>First Verse en el libro de expediciones; Second Verse durante la aventura.</small>
-                  </fieldset>
-                    <button type="button" className="chronicles-audio-back" onClick={() => setAudioOptionsOpen(false)}>
-                      Volver al menú
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    {saveNotice && <small role="status">{saveNotice}</small>}
-                    <button type="button" onClick={() => { setMenuOpen(false); setConfirmExitWithoutSaving(false); }}>Continuar</button>
-                    <button type="button" onClick={() => void persistCheckpoint(stateRef.current, 'manual')} disabled={saveBusy}>
-                      {saveBusy ? 'Guardando…' : 'Guardar partida'}
-                    </button>
-                    <button type="button" onClick={() => void saveAndExit()} disabled={saveBusy}>Guardar y salir</button>
-                    {!confirmExitWithoutSaving ? (
-                      <button type="button" onClick={() => setConfirmExitWithoutSaving(true)}>
-                        Salir sin guardar
-                      </button>
-                    ) : (
-                      <div role="group" aria-label="Confirmar salida sin guardar">
-                        <small>Perderás lo jugado desde el último guardado o cambio de área.</small>
-                        <button type="button" onClick={() => void discardAndExit()}>Sí, salir sin guardar</button>
-                        <button type="button" onClick={() => setConfirmExitWithoutSaving(false)}>Cancelar</button>
-                      </div>
-                    )}
-                    <button
-                      type="button"
-                      aria-expanded="false"
-                      aria-controls="chronicles-audio-options"
-                      onClick={() => setAudioOptionsOpen(true)}
-                    >
-                      Opciones de audio
-                    </button>
-                  </>
-                )}
+              <div className="chronicles-game-menu__panel" role="dialog" aria-modal="true" aria-label="Menú de aventura">
+                <div className="chronicles-game-menu__heading">
+                  <div>
+                    <small>CHRONICLES OF MATTHIAS · PAUSA</small>
+                    <strong>MENÚ DE AVENTURA</strong>
+                  </div>
+                  <button type="button" className="chronicles-game-menu__close" aria-label="Cerrar menú" onClick={() => setMenuOpen(false)}>×</button>
+                </div>
+                {saveNotice && <small role="status">{saveNotice}</small>}
+                <div className="chronicles-game-menu__actions">
+                  <button type="button" className="chronicles-game-menu__continue" onClick={() => { setMenuOpen(false); setConfirmExitWithoutSaving(false); }}>Continuar</button>
+                  <button type="button" onClick={() => void persistCheckpoint(stateRef.current, 'manual')} disabled={saveBusy}>
+                    {saveBusy ? 'Guardando…' : 'Guardar partida'}
+                  </button>
+                  <button type="button" onClick={() => void saveAndExit()} disabled={saveBusy}>Guardar y salir</button>
+                  {!confirmExitWithoutSaving ? (
+                    <button type="button" onClick={() => setConfirmExitWithoutSaving(true)}>Salir sin guardar</button>
+                  ) : (
+                    <div className="chronicles-game-menu__exit-confirm" role="group" aria-label="Confirmar salida sin guardar">
+                      <small>Perderás lo jugado desde el último guardado o cambio de área.</small>
+                      <button type="button" onClick={() => void discardAndExit()}>Sí, salir sin guardar</button>
+                      <button type="button" onClick={() => setConfirmExitWithoutSaving(false)}>Cancelar</button>
+                    </div>
+                  )}
+                </div>
+                <fieldset id="chronicles-audio-options" className="chronicles-audio-controls">
+                  <legend>SONIDO</legend>
+                  <div className="chronicles-audio-row">
+                    <div className="chronicles-audio-row__label">
+                      <label htmlFor="chronicles-music-volume">Música de Chronicles</label>
+                      <output htmlFor="chronicles-music-volume">{Math.round(musicVolume * 100)} %</output>
+                    </div>
+                    <div className="chronicles-audio-row__slider">
+                      <button
+                        type="button"
+                        aria-label={musicVolume > 0 ? 'Silenciar música' : 'Activar música'}
+                        aria-pressed={musicVolume === 0}
+                        onClick={() => {
+                          if (musicVolume > 0) lastMusicVolumeRef.current = musicVolume;
+                          setMusicVolume(setAmbientVolume(musicVolume > 0 ? 0 : lastMusicVolumeRef.current));
+                        }}
+                      >{musicVolume > 0 ? '♫' : '×'}</button>
+                      <input
+                        id="chronicles-music-volume"
+                        aria-label="Volumen de música de Chronicles"
+                        type="range"
+                        min="0"
+                        max="100"
+                        step="5"
+                        value={Math.round(musicVolume * 100)}
+                        onChange={(event) => {
+                          const volume = Number(event.target.value) / 100;
+                          if (volume > 0) lastMusicVolumeRef.current = volume;
+                          setMusicVolume(setAmbientVolume(volume));
+                        }}
+                        onKeyDown={(event) => event.stopPropagation()}
+                      />
+                    </div>
+                  </div>
+                  <div className="chronicles-audio-row">
+                    <div className="chronicles-audio-row__label">
+                      <label htmlFor="chronicles-sfx-volume">Efectos · SFX</label>
+                      <output htmlFor="chronicles-sfx-volume">{Math.round(fxVolume * 100)} %</output>
+                    </div>
+                    <div className="chronicles-audio-row__slider">
+                      <button
+                        type="button"
+                        aria-label={fxVolume > 0 ? 'Silenciar efectos' : 'Activar efectos'}
+                        aria-pressed={fxVolume === 0}
+                        onClick={() => {
+                          if (fxVolume > 0) lastFxVolumeRef.current = fxVolume;
+                          setFxVolume(setChroniclesFxVolume(fxVolume > 0 ? 0 : lastFxVolumeRef.current));
+                        }}
+                      >{fxVolume > 0 ? '✦' : '×'}</button>
+                      <input
+                        id="chronicles-sfx-volume"
+                        aria-label="Volumen de efectos de Chronicles"
+                        type="range"
+                        min="0"
+                        max="100"
+                        step="5"
+                        value={Math.round(fxVolume * 100)}
+                        onChange={(event) => {
+                          const volume = Number(event.target.value) / 100;
+                          if (volume > 0) lastFxVolumeRef.current = volume;
+                          setFxVolume(setChroniclesFxVolume(volume));
+                        }}
+                        onKeyDown={(event) => event.stopPropagation()}
+                      />
+                    </div>
+                  </div>
+                  <small>First Verse en el libro de expediciones; Second Verse durante la aventura.</small>
+                </fieldset>
+                <small className="chronicles-game-menu__hint">ESC · cerrar · TAB · navegar</small>
               </div>
             </details>
-          </div>
 
           <div className="chronicles-stage">
             <div ref={hostRef} className="chronicles-three" data-chronicles-renderer="three" aria-label="Mazmorra 3D en primera persona de Chronicles of Matthias" />
