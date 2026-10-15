@@ -40,6 +40,28 @@ describe('Career archive extraction', () => {
     expect(onThemeChange).toHaveBeenCalledWith('midnight');
   });
 
+  it('routes special-run start and resume actions to the parent without owning session state', () => {
+    const onStartRun = vi.fn();
+    const onContinueRun = vi.fn();
+    const savedRun = { active: true, mode: 'cup', difficulty: 55, completedStages: 2, points: 1 };
+    const root = InsightsCareerArchiveSection({
+      ...base, run: savedRun, onStartRun, onContinueRun,
+    });
+    const visit = (element) => React.isValidElement(element)
+      ? [element, ...React.Children.toArray(element.props.children).flatMap(visit)]
+      : [];
+    const buttons = visit(root).filter((element) => element.type === 'button');
+    const pressure = buttons.filter((element) => element.props.className === 'career-action danger');
+    expect(pressure).toHaveLength(2);
+    pressure[0].props.onClick();
+    pressure[1].props.onClick();
+    expect(onStartRun.mock.calls).toEqual([['streak'], ['boss']]);
+    const resume = buttons.find((element) => element.props.className === 'career-action active');
+    expect(resume).toBeDefined();
+    resume.props.onClick();
+    expect(onContinueRun).toHaveBeenCalledExactlyOnceWith(savedRun);
+  });
+
   it('keeps real saved runs, records, modes and milestones visible', () => {
     const html = renderToStaticMarkup(<InsightsCareerArchiveSection {...base}
       career={{
