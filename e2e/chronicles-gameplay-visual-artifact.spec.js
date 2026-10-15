@@ -38,6 +38,7 @@ async function openChronicles(page, captureLabel, {
   newTown = false,
   newCampaign = false,
   retryVisualHomeLogin = true,
+  onVisualPhase = null,
 } = {}) {
   await mockApi(page, {
     profileSeed: {
@@ -102,6 +103,7 @@ async function openChronicles(page, captureLabel, {
     page.off('pageerror', onPageError);
     page.off('console', onConsole);
   }
+  onVisualPhase?.('home-interactive');
   const speech = page.getByRole('region', { name: 'Mensaje de Matthias', exact: true });
   if (await speech.isVisible().catch(() => false)) {
     const close = speech.getByRole('button', { name: 'Cerrar comentario de Matthias', exact: true });
@@ -122,6 +124,7 @@ async function openChronicles(page, captureLabel, {
   }
 
   await openVisualMoreModes(page);
+  onVisualPhase?.('modes-open');
   const tools = page.locator('#illustrated-home-tools');
   await expect(tools).toBeVisible();
   if (await pvpLobby.isVisible().catch(() => false)) {
@@ -168,6 +171,7 @@ async function openChronicles(page, captureLabel, {
     path: `${ARTIFACT_DIR}/chronicles-save-menu-${captureLabel}.png`,
     animations: 'disabled', timeout: 30_000,
   });
+  onVisualPhase?.('expedition-book-captured');
   await entry.getByRole('button', newCampaign
     ? { name: /Nueva campaña/ }
     : { name: 'Nuevo juego', exact: true }).click();
@@ -192,6 +196,7 @@ async function openChronicles(page, captureLabel, {
     setup,
     `${ARTIFACT_DIR}/chronicles-character-setup-${captureLabel}.png`,
   );
+  onVisualPhase?.('character-setup-captured');
 
   await setup.getByRole('button', { name: 'Crear PJs', exact: true }).click();
   const editor = page.locator('[data-chronicles-character-setup="editor"]');
@@ -208,9 +213,11 @@ async function openChronicles(page, captureLabel, {
     fullPage: true,
     timeout: 30_000,
   });
+  onVisualPhase?.('character-editor-captured');
   await editor.getByRole('button', { name: '← Volver', exact: true }).click();
 
   await confirmChroniclesCharacterSetup(page, { newTown });
+  onVisualPhase?.('characters-confirmed');
   await expect(page.locator('[data-chronicles="true"]')).toBeVisible();
 }
 
@@ -901,6 +908,14 @@ for (const capture of CAPTURES) {
     // producer to one canonical readback per viewport; Tactics owns a separate
     // focused producer so neither surface can starve the other of its budget.
     test.setTimeout(360_000);
+    // Observe this expensive desktop canary without extra browser calls,
+    // additional screenshots, relaxed assertions or changed timeouts.
+    const visualStart = Date.now();
+    const visualPhase = (phase) => {
+      if (capture.label === 'desktop-1440x900') {
+        console.log(`Chronicles visual timing | ${phase} | ${Date.now() - visualStart}ms`);
+      }
+    };
     await mkdir(ARTIFACT_DIR, { recursive: true });
 
     const context = await browser.newContext({
@@ -910,7 +925,8 @@ for (const capture of CAPTURES) {
     });
     const page = await context.newPage();
     try {
-      await openChronicles(page, capture.label);
+      await openChronicles(page, capture.label, { onVisualPhase: visualPhase });
+      visualPhase('gameplay-mounted');
       const gameRoot = page.locator('[data-chronicles="true"]');
       const chroniclesCanvas = page.locator('[data-chronicles-renderer="three"] canvas');
       const authoredPortrait = page.locator('[data-chronicles-party-renderer="authored"]');
@@ -943,6 +959,7 @@ for (const capture of CAPTURES) {
       await expect(stage).toBeVisible();
       await expect(gameMenu).toBeVisible();
       await page.waitForTimeout(450);
+      visualPhase('renderer-verified');
 
       if (capture.label === 'desktop-1440x900') {
         const matthias = gameRoot.getByRole('button', { name: 'Seleccionar Matthias', exact: true });
@@ -965,6 +982,7 @@ for (const capture of CAPTURES) {
         );
         await sheet.getByRole('button', { name: 'Cerrar ficha', exact: true }).evaluate((button) => button.click());
         await expect(sheet).toBeHidden();
+        visualPhase('character-sheet-captured');
       }
 
       const health = await captureChroniclesHealth(page);
@@ -1006,7 +1024,9 @@ for (const capture of CAPTURES) {
         expect(health.partyFace?.height || 0, `${capture.label}: party face height`).toBeGreaterThanOrEqual(80);
       }
 
+      visualPhase('gameplay-readback-begin');
       await captureElement(page, gameRoot, `${ARTIFACT_DIR}/chronicles-playing-${capture.label}.png`);
+      visualPhase('gameplay-readback-finish');
 
       // A browser «night mode» must not lighten the dark ink on the stone.
       expect(await gameRoot.evaluate((root) => getComputedStyle(root).colorScheme.split(' ').sort().join(' ')), `${capture.label}: Chronicles opts out of forced dark`).toBe('light only');
