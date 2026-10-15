@@ -13,7 +13,9 @@ export default function InsightsRecurringErrors({
   playerModel: sharedPlayerModel = null,
   personalPuzzles: sharedPuzzles = null,
 }) {
-  const puzzles = sharedPuzzles || loadPersonalPuzzles();
+  // InsightsScreen supplies both model and bank. Do not re-read storage if it
+  // supplied only the model; the evidence pane honestly remains empty.
+  const puzzles = sharedPuzzles || (sharedPlayerModel ? [] : loadPersonalPuzzles());
   const playerModel = sharedPlayerModel || buildPlayerModel({
     personalPuzzles: puzzles,
     cleanGameRecords: loadCleanGameRecords(),
