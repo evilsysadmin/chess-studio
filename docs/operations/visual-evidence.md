@@ -111,7 +111,20 @@ Es una partición de las mismas pruebas, sin recortar viewports, casos, assertio
 usa **un solo worker** para no saturar SwiftShader dentro del runner; los artifacts se publican con
 sufijos `-part-1` y `-part-2` para inspección conjunta del mismo SHA.
 
-Al cambiar el propio workflow, la acción compartida o el capturador, el gate fuerza la ejecución\nreal del productor de Chronicles (evita el falso verde de un shard sin pruebas).\n\nEl job agregado `Chronicles · capture` sólo pasa si **ambos** shards terminan verdes; fallos,
+Al cambiar el propio workflow, la acción compartida o el capturador, el gate fuerza la ejecución\nreal del productor de Chronicles (evita el falso verde de un shard sin pruebas).\n\nPara evitar el desequilibrio observado en la primera ejecución (shard 1 = 14,2 min,
+shard 2 = 6,5 min), el menú móvil de pausa/audio se ejecuta como **canary temprano** en
+un proceso Playwright nuevo del shard 2, y la captura WebGL desktop de 4 min se
+ejecuta en otro proceso nuevo de ese shard. El resto de pruebas se reparte
+mediante `--shard` con un filtro complementario `--grep-invert`; los dos
+selectores son complementarios, así que ninguna prueba queda sin dueño.
+Los filtros sólo aplican al productor completo de Chronicles: los fast paths
+de libro de expediciones/setup y el productor de avatar conservan su selección.
+
+El canary de menú sigue comprobando navegación, DOM y PNG reales; **no es una
+captura falsa ni un retry**. Fallar cerrado al principio evita consumir
+toda la suite cuando Home no permite entrar a Chronicles.
+
+El job agregado `Chronicles · capture` sólo pasa si **ambos** shards terminan verdes; fallos,
 cancelaciones y skips cierran el gate. Esto separa la carga y el ciclo de vida del renderer,
 reduce el wall-clock crítico y evita que un solo navegador secuencial concentre todas las capturas.
 No acredita visualmente el resultado: ambos conjuntos de PNG necesitan la inspección habitual.
