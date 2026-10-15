@@ -80,7 +80,7 @@ Para reproducir CI (por ejemplo, tiempos de las specs) sí conviene lanzar **sin
 ## A/B local de apertura PvP: GPU real frente a SwiftShader
 
 Con credenciales efímeras de staging **ya autorizadas** en el entorno local
-(`STAGING_E2E_USERNAME`, `STAGING_E2E_PASSWORD`, `STAGING_E2E_INVITE_CODE`
+(`STAGING_E2E_USERNAME`, `STAGING_E2E_PASSWORD`, `STAGING_INVITE_CODE`
 y las demás variables exigidas por el smoke) se puede ejecutar el recorrido
 **real** y comparar dos renderizadores. No copiar secretos a comandos,
 issues ni logs.
