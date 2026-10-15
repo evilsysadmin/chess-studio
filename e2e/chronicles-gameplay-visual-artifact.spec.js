@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { chromium, expect, test } from '@playwright/test';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { confirmChroniclesCharacterSetup, login, mockApi, openMoreGameModes } from './helpers.js';
 
@@ -640,20 +640,19 @@ for (const capture of [
   { label: 'desktop-1440x900', width: 1440, height: 900, touch: false },
   { label: 'android-390x844', width: 390, height: 844, touch: true },
 ]) {
-  // Do not force the alternative software backend for DOM-only tablet tests:
-  // the global probe timed out their PNG captures even after retries.
-  test.describe(() => {
-    if (!capture.touch && process.env.CI && process.env.APP_VISUAL_ARTIFACT === '1') {
-      test.use({
-        launchOptions: {
-          args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'],
-        },
-      });
-    }
-    test(`Chronicles · Rookwood side quest walk · ${capture.label}`, async ({ browser }) => {
+  // Chromium launchOptions is worker-scoped and cannot live in describe().
+  // Own one separate browser for this desktop-only renderer experiment, while
+  // all tablet/móvil screenshots continue using their untouched fixture.
+  test(`Chronicles · Rookwood side quest walk · ${capture.label}`, async ({ browser }) => {
     test.setTimeout(300_000);
     await mkdir(ARTIFACT_DIR, { recursive: true });
-    const context = await browser.newContext({
+    const alternateBrowser = (!capture.touch && process.env.CI && process.env.APP_VISUAL_ARTIFACT === '1')
+      ? await chromium.launch({
+        headless: true,
+        args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'],
+      })
+      : null;
+    const context = await (alternateBrowser || browser).newContext({
       viewport: { width: capture.width, height: capture.height },
       hasTouch: capture.touch,
       isMobile: capture.touch,
@@ -718,10 +717,13 @@ for (const capture of [
       phase('oak-readback-finish');
     } finally {
       phase('context-close-begin');
-      await context.close();
+      try {
+        await context.close();
+      } finally {
+        await alternateBrowser?.close();
+      }
       phase('context-close-finish');
     }
-  });
   });
 }
 
