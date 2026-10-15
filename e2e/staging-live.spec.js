@@ -16,6 +16,17 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+// Playwright request.timing() offsets are milliseconds since startTime, with
+// -1 for phases unavailable to the browser. Emit only bounded durations:
+// no request URLs, response bodies, identities, IDs or trace payloads.
+function safeNetworkDelta(timing, start, end) {
+  const from = Number(timing?.[start]);
+  const to = Number(timing?.[end]);
+  return Number.isFinite(from) && Number.isFinite(to) && from >= 0 && to >= from
+    ? Math.round(to - from)
+    : 'unavailable';
+}
+
 function frontendEntryAssets(html) {
   const assets = new Set();
   const pattern = /(?:src|href)=["']([^"']+\.(?:js|css)(?:\?[^"']*)?)["']/gi;
@@ -680,7 +691,19 @@ async function assertLivePvpBrowserPath(page) {
     const firstLobby = waitLobby();
     await openDuelHall(page);
     const homeNavigationDoneMs = openMs();
-    assertPvpBrowserResponse(await firstLobby, { suffix: '/lobby', native: 'lobby-read' });
+    const firstLobbyResponse = await firstLobby;
+    assertPvpBrowserResponse(firstLobbyResponse, { suffix: '/lobby', native: 'lobby-read' });
+    // One passive read of the same real GET, after its response event. TTFB
+    // includes edge/backend and transit; it must not be labeled server CPU.
+    const requestTiming = firstLobbyResponse.request().timing();
+    console.log(
+      'STAGING_PVP_NETWORK status=' + firstLobbyResponse.status() +
+      ' dns_ms=' + safeNetworkDelta(requestTiming, 'domainLookupStart', 'domainLookupEnd') +
+      ' connect_ms=' + safeNetworkDelta(requestTiming, 'connectStart', 'connectEnd') +
+      ' request_to_first_byte_ms=' + safeNetworkDelta(requestTiming, 'requestStart', 'responseStart') +
+      ' elapsed_from_start_ms=' + (Number.isFinite(requestTiming?.responseStart) && requestTiming.responseStart >= 0
+        ? Math.round(requestTiming.responseStart) : 'unavailable'),
+    );
     await stopNativeTracing();
     await stopCpuSampling();
 
