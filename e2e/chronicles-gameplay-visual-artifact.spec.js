@@ -39,6 +39,7 @@ async function openChronicles(page, captureLabel, {
   newCampaign = false,
   retryVisualHomeLogin = true,
   onVisualPhase = null,
+  verifyHomeSoftwareShadows = false,
 } = {}) {
   // Node-side phase markers only; no new Chromium calls or changed assertions.
   onVisualPhase?.('mock-api-begin');
@@ -146,6 +147,22 @@ async function openChronicles(page, captureLabel, {
     page.off('requestfailed', onRequestFailed);
   }
   onVisualPhase?.('home-interactive');
+  if (verifyHomeSoftwareShadows) {
+    // The expensive 3D Home is still mounted here. Check the actual browser
+    // rather than relying on a pure unit-test policy or a green empty shard.
+    const shadowProof = await page.evaluate(() => {
+      const canvas = document.querySelector('canvas.illustrated-home__castle-3d');
+      return {
+        software: canvas?.dataset.homeBlenderSoftware ?? null,
+        shadows: canvas?.dataset.homeBlenderShadows ?? null,
+        phase: canvas?.dataset.homeBlenderPhase ?? null,
+      };
+    });
+    console.log(`Chronicles Home shadows | ${captureLabel} | ${JSON.stringify(shadowProof)}`);
+    if (shadowProof.software === 'true') {
+      expect(shadowProof.shadows, 'software WebGL must skip the initial Home shadow map').toBe('disabled');
+    }
+  }
   const speech = page.getByRole('region', { name: 'Mensaje de Matthias', exact: true });
   if (await speech.isVisible().catch(() => false)) {
     const close = speech.getByRole('button', { name: 'Cerrar comentario de Matthias', exact: true });
@@ -617,6 +634,7 @@ for (const capture of [
       await openChronicles(page, `rookwood-${capture.label}`, {
         newTown: true, newCampaign: true, chroniclesCurrentMapId: 'swordhaven-first-book',
         onVisualPhase: (step) => phase(`bootstrap-${step}`),
+        verifyHomeSoftwareShadows: true,
       });
       phase('gameplay-ready');
       const game = page.locator('[data-chronicles="true"]');
