@@ -4,6 +4,10 @@ import { login, mockApi } from './helpers.js';
 
 const ARTIFACT_DIR = '../.artifacts/app-visual/pvp-handoff';
 const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
+// Screenshot canaries can spend minutes setting up SwiftShader. Keep the same
+// authoritative POST /ready transition, but prevent test-clock expiry while
+// checking the `opening` animation. No product clock semantics are changed.
+const HANDOFF_VISUAL_START_LEAD_MS = 5 * 60_000;
 
 function startingMatch() {
   return {
@@ -49,7 +53,7 @@ async function prepareHandoff(page, { holdReady = false } = {}) {
     released = true;
     // A single server timestamp for the entire simulated match: polling must
     // never re-arm the countdown. Leave room for slow CI screenshots.
-    activationStartsAt ||= new Date(Date.now() + 45_000).toISOString();
+    activationStartsAt ||= new Date(Date.now() + HANDOFF_VISUAL_START_LEAD_MS).toISOString();
   };
   let releaseReady = () => {};
   const readyGate = new Promise((resolve) => { releaseReady = resolve; });
@@ -141,8 +145,8 @@ test('PvP handoff · Android landscape opens the gate on authoritative start', a
   await page.setViewportSize({ width: 844, height: 390 });
   const { handoff } = await prepareHandoff(page);
 
-  await expect(handoff).toHaveAttribute('data-handoff-phase', 'opening');
-  await expect(handoff.getByText('PORTÓN ABRIENDO', { exact: true })).toBeVisible();
+  await expect(handoff).toHaveAttribute('data-handoff-phase', 'opening', { timeout: 60_000 });
+  await expect(handoff.getByText('PORTÓN ABRIENDO', { exact: true })).toBeVisible({ timeout: 60_000 });
   await expect(handoff.getByText(/Entrando en 1 vs 1 en/)).toBeVisible();
 
   const box = await handoff.boundingBox();
