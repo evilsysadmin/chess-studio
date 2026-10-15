@@ -687,6 +687,30 @@ async function assertLivePvpBrowserPath(page) {
     }
   };
 
+  // A software WebGL stall can block Chromium for seconds. Limit optional CDP
+  // capture to 20 seconds even if a polling assertion hangs; never persist raw
+  // traces, enlarge canonical test timeouts or turn diagnostics on by default.
+  // Share one stop promise across settled, deadline and finally, so concurrent
+  // cleanup cannot race Tracing.end / Profiler.stop on the same CDP session.
+  const diagnosticMaxMs = 20_000;
+  let diagnosticDeadline = null;
+  let diagnosticStopPromise = null;
+  const stopDeepDiagnostics = (reason) => {
+    if (!deepDiagnostics) return Promise.resolve();
+    if (!diagnosticStopPromise) {
+      if (diagnosticDeadline !== null) clearTimeout(diagnosticDeadline);
+      console.log('STAGING_PVP_DIAGNOSTICS stop=' + reason + ' max_ms=' + diagnosticMaxMs);
+      diagnosticStopPromise = (async () => {
+        await stopNativeTracing();
+        await stopCpuSampling();
+      })();
+    }
+    return diagnosticStopPromise;
+  };
+  if (deepDiagnostics) {
+    diagnosticDeadline = setTimeout(() => { void stopDeepDiagnostics('deadline'); }, diagnosticMaxMs);
+  }
+
   try {
     const firstLobby = waitLobby();
     await openDuelHall(page);
@@ -704,8 +728,8 @@ async function assertLivePvpBrowserPath(page) {
       ' elapsed_from_start_ms=' + (Number.isFinite(requestTiming?.responseStart) && requestTiming.responseStart >= 0
         ? Math.round(requestTiming.responseStart) : 'unavailable'),
     );
-    await stopNativeTracing();
-    await stopCpuSampling();
+    // Keep opt-in native/CPU evidence through the deferred 3D initialization.
+    // Stopping at the first GET missed the 4–6s LongTask *after* scene ready.
 
     const lobby = page.getByRole('dialog', { name: 'Duelo 1 contra 1 · War Room' });
     await expect(lobby).toBeVisible();
@@ -860,6 +884,11 @@ async function assertLivePvpBrowserPath(page) {
       );
     }
 
+    // The passive browser sample above is canonical and unprofiled by default.
+    // When explicitly enabled, finish CDP only AFTER that same scene-settled
+    // checkpoint. This captures native work following GLB decode/first paint.
+    await stopDeepDiagnostics('settled');
+
     const leave = page.waitForResponse(
       (response) => response.request().method() === 'DELETE' && isPvpApiPath(response.url(), '/roster'),
       { timeout: 25_000 },
@@ -874,8 +903,7 @@ async function assertLivePvpBrowserPath(page) {
     }
     logPhase('leave-lobby');
   } finally {
-    await stopNativeTracing();
-    await stopCpuSampling();
+    await stopDeepDiagnostics('finally');
     if (cpuSession) await cpuSession.detach().catch(() => {});
     if (!page.isClosed()) {
       await page.evaluate(() => {
