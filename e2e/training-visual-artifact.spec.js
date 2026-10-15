@@ -522,8 +522,15 @@ scopedTest('progress', 'Mi progreso · Salón de la Gloria con partida demostrab
 
 scopedTest('progress', 'Mi progreso · Atlas de aperturas de partidas reales', async ({ page }) => {
   test.setTimeout(100_000);
+  // The archive stores Move objects with SAN. The Hall fixture uses bare SAN
+  // strings, which buildOpeningTree treats as legacy from/to-less records.
+  // Give the opening explorer a genuinely reconstructible four-ply history.
+  const openingHistory = INSIGHTS_DOSSIER_HISTORY.map((record) => ({
+    ...record,
+    moves: record.moves.map((san) => ({ san })),
+  }));
   await prepare(page, {
-    profileSeed: { 'chess-study-game-history': JSON.stringify(INSIGHTS_DOSSIER_HISTORY) },
+    profileSeed: { 'chess-study-game-history': JSON.stringify(openingHistory) },
   });
   await page.locator('.illustrated-home__matthias').click();
   const room = page.locator('[data-insights-room="training-room-v1"]');
