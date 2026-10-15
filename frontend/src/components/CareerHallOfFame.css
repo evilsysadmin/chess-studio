@@ -1,0 +1,68 @@
+/* Hall of Glory lives in career summary; physical museum, not a KPI wall. */
+.career-screen .career-hall-of-fame {
+  padding: clamp(.9rem, 2vw, 1.4rem);
+  border: 1px solid rgba(184, 144, 83, .4);
+  border-radius: 10px;
+  background: linear-gradient(115deg, rgba(48, 32, 23, .94), rgba(20, 19, 19, .97));
+  box-shadow: inset 0 1px rgba(246, 205, 133, .1), 0 14px 35px rgba(0, 0, 0, .22);
+}
+.career-hall-heading {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+.career-hall-heading h2 { margin: .22rem 0; color: var(--parchment); font-size: clamp(1.3rem, 2.4vw, 2.1rem); }
+.career-hall-heading p { max-width: 62ch; margin: .3rem 0; font-size: .84rem; }
+.career-hall-count { color: var(--brass); font: 700 .73rem/1.4 var(--font-mono); white-space: nowrap; }
+.career-hall-entries { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .65rem; }
+.career-hall-entry {
+  display: grid;
+  grid-template-columns: 2.8rem minmax(0, 1fr);
+  align-items: start;
+  min-width: 0;
+  gap: .75rem;
+  padding: .95rem;
+  border: 1px solid rgba(201, 157, 94, .3);
+  border-radius: 8px;
+  background: rgba(19, 17, 16, .65);
+}
+.career-hall-medallion {
+  display: grid;
+  place-items: center;
+  width: 2.8rem;
+  height: 2.8rem;
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 25%, #b89a67, #74542e 55%, #2a211c);
+  color: #fff0c8;
+  box-shadow: inset 0 0 0 2px rgba(233, 186, 107, .5), 0 3px 12px rgba(0, 0, 0, .3);
+  font-size: 1.35rem;
+}
+.career-hall-entry-copy { display: grid; gap: .2rem; min-width: 0; }
+.career-hall-label { color: var(--brass-dim); font: 700 .67rem/1.25 var(--font-mono); letter-spacing: .03em; }
+.career-hall-entry-copy > strong { color: var(--parchment); font: 700 clamp(1.18rem, 2vw, 1.55rem)/1.2 var(--font-display); }
+.career-hall-entry-copy > small, .career-hall-no-replay { color: var(--parchment-dim); font-size: .72rem; line-height: 1.5; }
+.career-hall-actions { display: flex; flex-wrap: wrap; gap: .35rem .75rem; margin-top: .55rem; }
+.career-hall-actions button {
+  min-height: 44px;
+  padding: .35rem .5rem;
+  border: 1px solid rgba(205, 159, 90, .45);
+  border-radius: 4px;
+  background: rgba(96, 65, 34, .38);
+  color: #f4d69c;
+  font-size: .75rem;
+  cursor: pointer;
+}
+.career-hall-actions button:hover { background: rgba(133, 84, 34, .6); }
+.career-hall-actions button:focus-visible { outline: 2px solid #ffd89f; outline-offset: 2px; }
+.career-hall-no-replay { margin-top: .4rem; }
+.career-hall-empty { padding: 1rem; color: var(--parchment-dim); font-size: .85rem; }
+@media (max-width: 760px) {
+  .career-hall-heading { display: block; }
+  .career-hall-entries { grid-template-columns: minmax(0, 1fr); }
+  .career-hall-entry { padding: .75rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .career-hall-actions button { transition: none; }
+}

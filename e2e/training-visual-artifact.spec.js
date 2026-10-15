@@ -486,6 +486,40 @@ scopedTest('tournament', 'Entrenar · Torneo', async ({ page }) => {
   await captureAt(page, 'tournament', { width: 390, height: 844, variant: 'mobile' });
 });
 
+scopedTest('progress', 'Mi progreso · Salón de la Gloria con partida demostrable', async ({ page }) => {
+  test.setTimeout(100_000);
+  await prepare(page, {
+    profileSeed: { 'chess-study-game-history': JSON.stringify(INSIGHTS_DOSSIER_HISTORY) },
+  });
+  await page.locator('.illustrated-home__matthias').click();
+  await expect(page.getByRole('heading', { name: 'Así juegas', exact: true })).toBeVisible();
+  const trainingRoom = page.locator('[data-insights-room="training-room-v1"]');
+  const drawer = trainingRoom.locator('details[data-insights-archive]');
+  if (await drawer.getAttribute('open') === null) await drawer.locator('summary').click();
+  await drawer.getByRole('button', { name: 'Mi progreso', exact: true }).click();
+  const hall = trainingRoom.locator('.career-hall-of-fame');
+  await expect(hall.getByRole('heading', { name: 'Salón de la Gloria' })).toBeVisible();
+  await expect(hall.locator('[data-career-honor="hardest"]')).toContainText('CPU nivel 10');
+  await expect(hall.getByRole('button', { name: 'Revisar partida →' }).first()).toBeVisible();
+  // A page-level screenshot is not visual evidence of the hall if the
+  // selected archive view is mounted below the viewport. Frame it explicitly.
+  async function captureHall(width, height, variant) {
+    await page.setViewportSize({ width, height });
+    await hall.scrollIntoViewIfNeeded();
+    await expect.poll(() => hall.evaluate((root) => {
+      const bounds = root.getBoundingClientRect();
+      return bounds.width > 0 && bounds.height > 0
+        && bounds.top < window.innerHeight - 44
+        && bounds.bottom > 44;
+    }), { message: `career-hall-${variant}: museum must be inside screenshot` }).toBe(true);
+    await captureAt(page, 'career-hall', { width, height, variant });
+  }
+  await captureHall(1440, 900, 'desktop');
+  await captureHall(360, 800, 'mobile-compact');
+  await captureHall(390, 844, 'mobile');
+  await captureHall(430, 932, 'mobile-wide');
+});
+
 scopedTest('progress', 'Entrenar · Así juegas y Mi progreso', async ({ page }) => {
   test.setTimeout(100_000);
   await prepare(page);

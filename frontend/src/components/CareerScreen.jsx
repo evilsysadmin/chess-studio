@@ -64,6 +64,7 @@ export default function CareerScreen({ history, ratingHistory, onExit, onOpenRec
     </nav>
 
     {careerSection==='summary'&&<>
+    <CareerHallOfFame hall={hall} history={history} onOpenRecord={onOpenRecord} onMovie={onMovie} />
     <RivalryDossier rivalry={rivalry} />
 
     <div className="menu-section survival-run-card">
@@ -134,7 +135,6 @@ export default function CareerScreen({ history, ratingHistory, onExit, onOpenRec
 
     <div className="menu-section"><h2>🗺 Heatmaps de tu tablero</h2><p className="hint-text">Actividad, capturas y bajas calculadas únicamente desde las casillas de destino registradas. No evalúan si la jugada fue buena: enseñan dónde ocurre tu ajedrez.</p><div className="career-heatmap-grid"><HeatmapBoard counts={heatmaps.activity} max={heatmaps.maxima.activity} label={`Actividad · ${heatmaps.totals.humanMoves} movimientos`} /><HeatmapBoard counts={heatmaps.captures} max={heatmaps.maxima.captures} tone="capture" label={`Tus capturas · ${heatmaps.totals.humanCaptures}`} /><HeatmapBoard counts={heatmaps.losses} max={heatmaps.maxima.losses} tone="loss" label={`Tus bajas · ${heatmaps.totals.humanLosses}`} /></div></div>
 
-    <CareerHallOfFame hall={hall} />
     <div className="menu-section"><h2>☠ Hall of Shame</h2><div className="museum-grid"><div className="museum-card"><span>💥</span><strong>{hall.worst?<>{`−${hall.worst.worst.loss} `}<GlossaryTerm term="cp">cp</GlossaryTerm></>:'—'}</strong><small>peor <GlossaryTerm term="Blunder">blunder</GlossaryTerm> analizado</small></div><div className="museum-card"><span>📉</span><strong>{hall.missedConversion?`+${(hall.missedConversion.peakPerspectiveEval/100).toFixed(1)}`:'—'}</strong><small>mayor ventaja no convertida</small></div><div className="museum-card"><span>🏚</span><strong>{donations.queens}</strong><small>damas entregadas a la contabilidad rival</small></div><div className="museum-card"><span>🧾</span><strong>{recurrence.repeated}</strong><small>errores reincidentes</small></div></div></div>
     {evolution.length>0&&<div className="menu-section"><h2>Evolución</h2><div className="career-evolution">{evolution.map(b=><div className="career-evolution-row" key={b.label}><span>{b.label}</span><div><i style={{width:`${b.winPct}%`}}/></div><b>{b.winPct}%</b><small>CPU · nivel medio {b.avgDifficulty}</small></div>)}</div>{ratingHistory?.length>1&&<p className="hint-text">Rating: {ratingHistory[0]?.rating??ratingHistory[0]} → {ratingHistory.at(-1)?.rating??ratingHistory.at(-1)}.</p>}</div>}
     {profile.length>0&&<details className="friendly-disclosure career-profile-details"><summary>Ver perfil ajedrecístico automático</summary><div className="friendly-disclosure-body"><ul className="roast-list">{profile.map((x,i)=><li key={i}>{x}</li>)}</ul></div></details>}
