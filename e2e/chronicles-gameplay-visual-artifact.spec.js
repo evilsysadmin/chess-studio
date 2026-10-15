@@ -343,6 +343,50 @@ for (const capture of [
   });
 }
 
+// The tavern must be a playable MM3 counter, not just a facade. Exercise the
+// exact authored route and produce visual evidence for wide and low landscape.
+for (const capture of [
+  { label: 'desktop-1440x900', width: 1440, height: 900, touch: false },
+  { label: 'landscape-844x390', width: 844, height: 390, touch: true },
+]) {
+  test(`Chronicles · La Espada Mellada counter · ${capture.label}`, async ({ browser }) => {
+    test.setTimeout(300_000);
+    await mkdir(ARTIFACT_DIR, { recursive: true });
+    const context = await browser.newContext({
+      viewport: { width: capture.width, height: capture.height },
+      hasTouch: capture.touch, isMobile: capture.touch,
+    });
+    const page = await context.newPage();
+    try {
+      await openChronicles(page, `tavern-${capture.label}`, {
+        newTown: true, newCampaign: true, chroniclesCurrentMapId: 'swordhaven-first-book',
+      });
+      const game = page.locator('[data-chronicles="true"]');
+      await expect(game).toHaveAttribute('data-chronicles-map-id', 'swordhaven-first-book');
+      // Plaza (9,7) -> west twice -> south to tavern entrance (7,10).
+      // The final forward bumps its south wall and must ENTER the tavern.
+      for (const key of ['a', 'w', 'w', 'a', 'w', 'w', 'w', 'w']) await page.keyboard.press(key);
+      const inn = page.getByRole('dialog', { name: 'Taberna · La Espada Mellada' });
+      await expect(inn).toBeVisible({ timeout: 15_000 });
+      for (const choice of ['food', 'drink', 'rumor', 'rest']) {
+        await expect(inn.locator(`[data-tavern-choice="${choice}"]`)).toBeVisible();
+      }
+      await inn.locator('[data-tavern-choice="rumor"]').click();
+      await expect(inn.getByRole('status')).toContainText('Camino de los Estandartes');
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
+      await page.screenshot({
+        path: `${ARTIFACT_DIR}/chronicles-tavern-${capture.label}.png`,
+        animations: 'disabled', timeout: 60_000,
+      });
+      await inn.getByRole('button', { name: 'Volver a la calle' }).click();
+      await expect(inn).toBeHidden();
+      await expect(game).toHaveAttribute('data-chronicles-map-id', 'swordhaven-first-book');
+    } finally {
+      await context.close();
+    }
+  });
+}
+
 // Rookwood side quest «Los nombres del bosque»: real keyboard walk from the
 // Banner Road gate to Edda, the quest log, and the Oak of Names.
 const ROOKWOOD_WALK_TO_OAK = [
