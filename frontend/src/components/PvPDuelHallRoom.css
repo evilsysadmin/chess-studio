@@ -2,6 +2,15 @@
    The authoritative PvP state remains in PvPLobbyModal; this file only turns
    that projection into a spatial castle room instead of a dashboard. */
 
+/* The Duel Hall covers Home with an opaque backdrop. Keep Home's WebGL
+   mounted for an instant return, but omit its invisible canvas from Chromium
+   composition while this modal exists. Matched browser A/B: 4.3–5.3s pre-GET
+   stall with Home visible vs 0.43–0.51s when hidden (software renderer).
+   No scene/GLB/render loop is removed; visibility restores on close. */
+body:has(.pvp-lobby-backdrop) canvas.illustrated-home__castle-3d {
+  visibility: hidden !important;
+}
+
 .pvp-lobby-backdrop {
   padding: clamp(.45rem, 1.4vw, 1.3rem);
   background:
