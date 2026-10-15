@@ -1246,6 +1246,12 @@ for (const capture of CAPTURES) {
 for (const capture of CAPTURES) {
   test(`Chronicles · automap visual · ${capture.label}`, async ({ browser }) => {
     test.setTimeout(240_000);
+    const automapStarted = Date.now();
+    const automapPhase = (name) => {
+      if (capture.label === 'desktop-1440x900') {
+        console.log(`Chronicles automap timing | ${name} | ${Date.now() - automapStarted}ms`);
+      }
+    };
     await mkdir(ARTIFACT_DIR, { recursive: true });
     const context = await browser.newContext({
       viewport: { width: capture.width, height: capture.height },
@@ -1255,6 +1261,7 @@ for (const capture of CAPTURES) {
     try {
       const page = await context.newPage();
       await openChronicles(page, capture.label);
+      automapPhase('gameplay-ready');
       const gameRoot = page.locator('[data-chronicles="true"]');
       await expect(gameRoot).toBeVisible();
       // Crypt spawn (1,5) faces east. Turn twice to face west: tile (0,5)
@@ -1267,22 +1274,40 @@ for (const capture of CAPTURES) {
       await page.getByRole('button', { name: 'Minimapa local. Abrir automapa completo', exact: true }).evaluate((button) => button.click());
       const automap = page.getByRole('dialog', { name: 'Automapa de Chronicles', exact: true });
       await expect(automap).toBeVisible();
+      automapPhase('automap-visible');
       const automapCells = automap.locator('.chronicles-automap__cell');
       const revealedWall = automap.locator('.chronicles-automap__cell.is-wall');
       const revealedFloor = automap.locator('.chronicles-automap__cell.is-floor');
       await expect(revealedWall.first(), `${capture.label}: revealed blocked tile must actually render`).toBeVisible();
       await expect(revealedFloor.first(), `${capture.label}: revealed walkable tile must actually render`).toBeVisible();
-      const wallArt = await revealedWall.first().evaluate((node) => getComputedStyle(node).fill);
-      const floorArt = await revealedFloor.first().evaluate((node) => getComputedStyle(node).fill);
-      expect(wallArt, `${capture.label}: blocked masonry shade`).toBe('rgb(53, 38, 29)');
-      expect(floorArt, `${capture.label}: walkable floor shade`).toMatch(/^rgb\((180, 138, 82|205, 165, 105)\)$/);
       const automapMarker = automap.locator('[data-chronicles-map-facing]');
       await expect(automapCells.first()).toBeVisible();
       await expect(automapMarker).toBeVisible();
-      expect(await automapCells.count(), `${capture.label}: automap reveals geometry`).toBeGreaterThanOrEqual(3);
-      const markerBox = await automapMarker.boundingBox();
-      const automapCanvas = automap.locator('.chronicles-automap__canvas');
-      const canvasBox = await automapCanvas.boundingBox();
+      // On SwiftShader each separate CDP evaluate/boundingBox may block the
+      // renderer for several seconds. Preserve ALL style/count/geometry checks
+      // while reading the same mounted elements in one browser evaluation.
+      const { wallArt, floorArt, cellCount, markerBox, canvasBox } = await automap.evaluate((root) => {
+        const required = (selector) => {
+          const node = root.querySelector(selector);
+          if (!node) throw new Error(`Automap proof missing required element: ${selector}`);
+          return node;
+        };
+        const bounds = (node) => {
+          const box = node.getBoundingClientRect();
+          return { x: box.x, y: box.y, width: box.width, height: box.height };
+        };
+        return {
+          wallArt: getComputedStyle(required('.chronicles-automap__cell.is-wall')).fill,
+          floorArt: getComputedStyle(required('.chronicles-automap__cell.is-floor')).fill,
+          cellCount: root.querySelectorAll('.chronicles-automap__cell').length,
+          markerBox: bounds(required('[data-chronicles-map-facing]')),
+          canvasBox: bounds(required('.chronicles-automap__canvas')),
+        };
+      });
+      automapPhase('automap-contract-probed');
+      expect(wallArt, `${capture.label}: blocked masonry shade`).toBe('rgb(53, 38, 29)');
+      expect(floorArt, `${capture.label}: walkable floor shade`).toMatch(/^rgb\((180, 138, 82|205, 165, 105)\)$/);
+      expect(cellCount, `${capture.label}: automap reveals geometry`).toBeGreaterThanOrEqual(3);
       expect(markerBox?.width || 0, `${capture.label}: automap marker width`).toBeGreaterThan(0);
       expect(markerBox?.height || 0, `${capture.label}: automap marker height`).toBeGreaterThan(0);
       expect(canvasBox?.height || 0, `${capture.label}: automap canvas height`).toBeGreaterThan(80);
@@ -1292,13 +1317,18 @@ for (const capture of CAPTURES) {
       expect(markerCenterX, `${capture.label}: automap marker inside canvas horizontally`).toBeLessThan((canvasBox?.x || 0) + (canvasBox?.width || 0) - 8);
       expect(markerCenterY, `${capture.label}: automap marker inside canvas vertically`).toBeGreaterThan((canvasBox?.y || 0) + 8);
       expect(markerCenterY, `${capture.label}: automap marker inside canvas vertically`).toBeLessThan((canvasBox?.y || 0) + (canvasBox?.height || 0) - 8);
+      automapPhase('automap-readback-begin');
       await captureElement(
         page,
         automap.locator('.chronicles-automap__panel'),
         `${ARTIFACT_DIR}/chronicles-automap-${capture.label}.png`,
+        { combinedGeometry: true },
       );
+      automapPhase('automap-readback-finish');
     } finally {
+      automapPhase('context-close-begin');
       await context.close();
+      automapPhase('context-close-finish');
     }
   });
 }
