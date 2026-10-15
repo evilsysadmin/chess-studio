@@ -12,6 +12,7 @@ import MechanicTutorialHelp from './MechanicTutorialHelp.jsx';
 import { buildCareerHeatmaps, deriveRpgProfile, summarizeRpgProfile } from '../careerVisuals.js';
 import RivalryDossier from './RivalryDossier.jsx';
 import CareerHallOfFame from './CareerHallOfFame.jsx';
+import CareerChronicle from './CareerChronicle.jsx';
 import CareerOpeningsSection from './CareerOpeningsSection.jsx';
 import { buildPersonalSeasons } from '../personalSeasons.js';
 
@@ -44,7 +45,6 @@ export default function CareerScreen({ history, ratingHistory, onExit, onOpenRec
   const rpgSummary=useMemo(()=>summarizeRpgProfile(rpg),[rpg]);
   const personalSeasons=useMemo(()=>buildPersonalSeasons(history,ratingHistory,archive),[history,ratingHistory,archive]);
   const personalSeason=personalSeasons.at(-1);
-  const lastCompletedPersonalSeason=[...personalSeasons].reverse().find((row)=>row.complete&&row.number!==personalSeason.number)||null;
 
   return <div className={embedded ? 'career-screen insights-embedded-page' : 'menu tournament-panel career-screen'}>
     {!embedded && (<>
@@ -64,6 +64,7 @@ export default function CareerScreen({ history, ratingHistory, onExit, onOpenRec
     </nav>
 
     {careerSection==='summary'&&<>
+    <CareerChronicle seasons={personalSeasons} history={history} onOpenRecord={onOpenRecord} />
     <CareerHallOfFame hall={hall} history={history} onOpenRecord={onOpenRecord} onMovie={onMovie} />
     <RivalryDossier rivalry={rivalry} />
 
@@ -79,18 +80,6 @@ export default function CareerScreen({ history, ratingHistory, onExit, onOpenRec
         <button className="primary-btn" disabled={conflictingRun} onClick={()=>survivalRun?.active?onContinueRun(survivalRun):onStartRun('streak')}>{survivalRun?.active?'Continuar supervivencia →':'Empezar supervivencia →'}</button>
         {conflictingRun?<span>Ya tienes una {run.mode==='boss'?'Boss Run':'Copa'} activa. Termínala antes de abrir otra expedición.</span>:<span>{survivalRun?.active?'Tu próxima partida continúa exactamente la run guardada.':'No hay vidas extra ni tablas salvadoras. Ganas o vuelves al cuartel.'}</span>}
       </div>
-    </div>
-
-    <div className="menu-section career-personal-season">
-      <div className="career-section-heading"><div><span className="section-label">CICLOS DE 20 PARTIDAS</span><h2>Temporada personal #{personalSeason.number}</h2></div><small>{personalSeason.games}/{personalSeason.target} · {personalSeason.scorePct}% puntuación</small></div>
-      <div className="career-mini-grid">
-        <span><b>{personalSeason.wins}V · {personalSeason.draws}T · {personalSeason.losses}D</b><small>balance competitivo</small></span>
-        <span><b>{personalSeason.rating ? `${personalSeason.rating.delta>=0?'+':''}${personalSeason.rating.delta}` : '—'}</b><small>rating {personalSeason.rating?.exactBaseline===false ? 'desde primer checkpoint' : 'en el ciclo'}</small></span>
-        <span><b>{personalSeason.bestOpening?.opening || '—'}</b><small>{personalSeason.bestOpening ? `${personalSeason.bestOpening.scorePct}% · ${personalSeason.bestOpening.games} partidas` : 'faltan 2 muestras de una apertura'}</small></span>
-        <span><b>{personalSeason.bestWin ? `CPU ${personalSeason.bestWin.difficulty}` : '—'}</b><small>mejor victoria del ciclo</small></span>
-      </div>
-      {personalSeason.worstBlunder && <p className="hint-text">Peor blunder analizado del ciclo: <b>−{personalSeason.worstBlunder.loss} cp</b>{personalSeason.worstBlunder.opening ? ` · ${personalSeason.worstBlunder.opening}` : ''}. Sólo aparece si existe autopsia real.</p>}
-      {lastCompletedPersonalSeason && <details className="friendly-disclosure"><summary>Ver informe de la temporada #{lastCompletedPersonalSeason.number}</summary><div className="friendly-disclosure-body"><p><b>{lastCompletedPersonalSeason.wins}V · {lastCompletedPersonalSeason.draws}T · {lastCompletedPersonalSeason.losses}D</b> · {lastCompletedPersonalSeason.scorePct}% de puntuación{lastCompletedPersonalSeason.rating ? ` · rating ${lastCompletedPersonalSeason.rating.delta>=0?'+':''}${lastCompletedPersonalSeason.rating.delta}` : ''}.</p><p>Mejor apertura: <b>{lastCompletedPersonalSeason.bestOpening?.opening || 'sin muestra suficiente'}</b>{lastCompletedPersonalSeason.bestWin ? ` · mejor victoria contra CPU ${lastCompletedPersonalSeason.bestWin.difficulty}` : ''}{lastCompletedPersonalSeason.worstBlunder ? ` · peor blunder analizado −${lastCompletedPersonalSeason.worstBlunder.loss} cp` : ''}.</p></div></details>}
     </div>
 
     <div className="menu-section"><h2>📅 Informe semanal</h2><div className="career-mini-grid"><span><b>{weekly.current.games}</b><small>partidas últimos 7 días</small></span><span><b>{weekly.current.winPct}%</b><small>victorias · {weekly.winDelta===null?'sin comparación':`${weekly.winDelta>=0?'+':''}${weekly.winDelta} pts vs semana anterior`}</small></span><span><b>{pct(weekly.current.accuracy)}</b><small><GlossaryTerm term="Accuracy">accuracy</GlossaryTerm> media {weekly.accuracyDelta===null?'':`· ${weekly.accuracyDelta>=0?'+':''}${weekly.accuracyDelta} vs anterior`}</small></span><span><b>{topIncident?`${topIncident.count}×`:'—'}</b><small>{topIncident?.label||'sin pecado dominante registrado'}</small></span></div><p className="hint-text">{weekly.current.games===0?'Semana sospechosamente silenciosa. El tablero no puede juzgar lo que no ve.':weekly.winDelta!==null&&weekly.winDelta>10?'Mejora clara. Molesto para el departamento de sarcasmo; excelente para ti.':weekly.winDelta!==null&&weekly.winDelta<-10?'La semana ha venido con pendientes. Conviene revisar autopsias antes de convertir la tendencia en tradición.':'Semana estable. Sigue acumulando datos antes de declarar una revolución ajedrecística.'}</p></div>
