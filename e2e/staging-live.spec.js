@@ -727,6 +727,23 @@ async function assertLivePvpBrowserPath(page) {
     // 3D may still be loading when the first lobby response becomes visible.
     logPhase('open-lobby');
 
+    // Experimental opening-only A/B: validate the first *real browser* PvP
+    // request and readable dialog, then close before the deferred Three/GLB
+    // startup and three separate roster/heartbeat cycles contaminate the
+    // measurement. The canonical staging smoke (AB=off) is unchanged.
+    if (process.env.CHESS_STAGING_PVP_OPEN_ONLY === '1' &&
+        ['keep-home-canvas', 'hide-home-canvas'].includes(ablation)) {
+      expect(failed, 'Opening-only PvP request failures').toEqual([]);
+      if (openTimeline.modelRequestMs !== null) {
+        expect(openTimeline.firstLobbyRequestMs).toBeLessThanOrEqual(openTimeline.modelRequestMs);
+      }
+      await lobby.getByRole('button', { name: 'Cerrar ventana de rivales', exact: true }).click();
+      await expect(lobby).toBeHidden();
+      console.log('STAGING_PVP_ABLATION phase=complete scope=open-only');
+      logPhase('close-after-first-lobby');
+      return;
+    }
+
     // Enrolarnos fuerza el mismo polling que usa una sesión humana real:
     // pulse nativo + reconciliación full-lobby. El antiguo gate con curl podía
     // quedar verde aunque Chromium terminara viendo exactamente estos GET como
