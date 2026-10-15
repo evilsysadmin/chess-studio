@@ -2,8 +2,10 @@
 
 The stable GitHub Actions check is **`Football · required visual gate`** in
 [`chess-football-godot-poc.yml`](../../.github/workflows/chess-football-godot-poc.yml).
-Its workflow runs on every pull request so the check never disappears because
-of `pull_request.paths`.
+The workflow appears as **`Football · filtro de cambios (Godot si aplica)`**
+on every pull request so the check never disappears because of
+`pull_request.paths`. This workflow title is informational; the mandatory
+check is still **`Football · required visual gate`**.
 
 ## Behavior
 

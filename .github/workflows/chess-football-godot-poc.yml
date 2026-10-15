@@ -1,4 +1,4 @@
-name: Build · Chess Football Godot Web
+name: Football · filtro de cambios (Godot si aplica)
 
 # Required Football gate exists on every PR. Cheap path detection below
 # skips Godot for unrelated changes; no path-filtered missing check.
