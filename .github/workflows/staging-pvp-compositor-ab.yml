@@ -46,8 +46,10 @@ jobs:
           [[ "$GITHUB_REF" == "refs/heads/main" ]] || { echo "::error::A/B must run on main"; exit 1; }
           if [[ "$GITHUB_EVENT_NAME" == push ]]; then
             DEPLOY_SHA="$(git rev-parse HEAD^1)"
-            [[ "$(git diff --name-only "$DEPLOY_SHA" HEAD)" == '.github/workflows/staging-pvp-compositor-ab.yml' ]] ||
-              { echo "::error::One-shot A/B requires workflow-only diff"; exit 1; }
+            actual="$(git diff --name-only "$DEPLOY_SHA" HEAD)"
+            expected="$(printf '%s\n' '.github/workflows/staging-pvp-compositor-ab.yml' 'e2e/staging-live.spec.js')"
+            [[ "$actual" == "$expected" ]] ||
+              { echo "::error::One-shot A/B requires exactly two diagnostic files"; exit 1; }
             echo "DEPLOY_SHA=$DEPLOY_SHA" >> "$GITHUB_ENV"
           fi
           [[ "$DEPLOY_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::Invalid SHA"; exit 1; }
@@ -78,7 +80,6 @@ jobs:
           set -euo pipefail
           summary="$RUNNER_TEMP/staging-pvp-ab.txt"
           printf 'source_sha=%s renderer_requested=software\n' "$DEPLOY_SHA" > "$summary"
-          # Counterbalance warm-up in one runner; separate smoke identities.
           for mode in keep-home-canvas hide-home-canvas hide-home-canvas keep-home-canvas; do
             python3 -S scripts/staging_generation.py wait \
               --sha "$DEPLOY_SHA" --surfaces backend,frontend,worker --attempts 1 --interval 0 --root
