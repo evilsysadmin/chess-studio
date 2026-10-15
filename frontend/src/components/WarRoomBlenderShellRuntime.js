@@ -212,6 +212,15 @@ export function createWarRoomBlenderVariantShell({
   return Object.freeze({ modelUrl, install });
 }
 
+// Defaults to the long-standing War Room behavior; the separate PvP Hall
+// opts out when its WebGL renderer has shadow maps disabled.
+export function shouldPrepareWarRoomShadowPass({
+  coarsePointer = false,
+  shadowMapsEnabled = true,
+} = {}) {
+  return !coarsePointer && Boolean(shadowMapsEnabled);
+}
+
 export async function installWarRoomBlenderShell(
   scene,
   {
@@ -288,7 +297,7 @@ export async function installWarRoomBlenderShell(
   root.userData.warRoomBlenderRuntimeLeatherTextures = Object.keys(runtimeLeatherTextures).length;
   // Existing War Rooms preserve their default shadow pass. The PvP Hall is
   // the only caller that explicitly has no WebGL shadow maps.
-  const needsShadowPass = !coarsePointer && shadowMapsEnabled;
+  const needsShadowPass = shouldPrepareWarRoomShadowPass({ coarsePointer, shadowMapsEnabled });
   root.userData.warRoomBlenderShadowWarmup = needsShadowPass
     ? 'deferred-after-first-paint'
     : (coarsePointer ? 'disabled-lite' : 'disabled-no-shadow-maps');
