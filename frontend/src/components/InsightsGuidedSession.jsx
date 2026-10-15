@@ -12,7 +12,7 @@ import {
   saveGuidedTrainingCompletion,
 } from '../guidedTrainingCompletion.js';
 import { focusPersonalPuzzle, isPersonalPuzzleMastered, matchesPersonalPuzzleFilter } from '../personalPuzzles.js';
-import InsightsPositionPreview from './InsightsPositionPreview.jsx';
+import InsightsPositionAutopsy from './InsightsPositionAutopsy.jsx';
 
 function actionLabel(step) {
   if (step?.action === 'nemesis-position') return 'Abrir posición Némesis →';
@@ -136,7 +136,7 @@ export default function InsightsGuidedSession({
           <p className="hint-text">Una posición auténtica, una oportunidad de jugarla mejor. Lo demás puede esperar.</p>
           {directPracticeAvailable ? (
             <figure className="insights-guided-position" data-featured-source={featuredPuzzle ? 'personal' : 'nemesis'}>
-              <InsightsPositionPreview fen={featuredFen} />
+              <InsightsPositionAutopsy key={featuredPuzzle?.id || featuredFen} puzzle={featuredPuzzle} fen={featuredFen} />
               <figcaption>{featuredPuzzle ? 'De tu archivo personal · sin mostrar la solución' : 'De una partida contra tu Némesis'}</figcaption>
             </figure>
           ) : null}

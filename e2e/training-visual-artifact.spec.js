@@ -510,6 +510,7 @@ scopedTest('progress', 'Entrenar · Así juegas y Mi progreso', async ({ page })
         description: 'Material de fixture para acreditar la sesión guiada.',
         fen: '6k1/5ppp/8/8/8/8/5PPP/R5K1 w - - 0 1',
         solution: ['Ra8#'],
+        played: 'Kf1',
         incidentKeys: ['human:MISSED_MATE'],
         sourceGameId: 'visual-guided-source',
         loss: 420,
@@ -531,6 +532,17 @@ scopedTest('progress', 'Entrenar · Así juegas y Mi progreso', async ({ page })
     { timeout: 20_000 },
   );
   await assertInsightsActionableFold(trainingRoom, 'insights-desktop');
+  const openAutopsy = trainingRoom.getByRole('button', { name: /Abrir autopsia/ });
+  await expect(openAutopsy).toBeVisible();
+  await expect(trainingRoom.locator('.insights-position-arrow')).toHaveCount(0);
+  await openAutopsy.click();
+  await trainingRoom.getByRole('button', { name: 'Tu jugada', exact: true }).click();
+  await expect(trainingRoom.locator('.insights-position-arrow')).toBeVisible();
+  await expect(trainingRoom.locator('.insights-position-autopsy-fact')).toContainText('Kf1');
+  await trainingRoom.getByRole('button', { name: 'Alternativa', exact: true }).click();
+  await expect(trainingRoom.locator('.insights-position-autopsy-fact')).toContainText('Ra8#');
+  await trainingRoom.getByRole('button', { name: 'Ocultar autopsia' }).click();
+  await expect(trainingRoom.locator('.insights-position-arrow')).toHaveCount(0);
   await captureAt(page, 'insights', { width: 1440, height: 900, variant: 'desktop' });
   await captureAt(page, 'insights', { width: 1800, height: 900, variant: 'wide' });
   await captureAt(page, 'insights', { width: 360, height: 800, variant: 'mobile-compact' });
