@@ -1532,6 +1532,7 @@ export default function HomeBlenderScene3D({
 
     canvas.classList.remove('is-ready');
     canvas.dataset.homeBlenderRuntime = 'loading';
+    canvas.dataset.homeBlenderPhase = 'initializing';
 
     let disposed = false;
     let fallbackRequested = false;
@@ -1688,6 +1689,7 @@ export default function HomeBlenderScene3D({
     }
 
     const gl = renderer.getContext();
+    canvas.dataset.homeBlenderPhase = 'renderer-created';
     glContextRef.current = gl;
     glLoseContextRef.current = gl?.getExtension?.('WEBGL_lose_context') || null;
     renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -1714,6 +1716,7 @@ export default function HomeBlenderScene3D({
     // rear architecture picks up a restrained warm atmospheric falloff.
     scene.fog = new THREE.Fog(0x170d09, 20, 34);
     const runtimeLights = addRuntimeLights(scene, initialPolicy.lod === 'full', ambient);
+    canvas.dataset.homeBlenderPhase = 'scene-created';
 
     const camera = new THREE.PerspectiveCamera(
       HOME_BLENDER_CAMERA_FOV,
@@ -1955,10 +1958,12 @@ export default function HomeBlenderScene3D({
       matthiasLayoutRef.current?.(null);
       canvas.classList.remove('is-ready');
       canvas.dataset.homeBlenderRuntime = 'fallback';
+      canvas.dataset.homeBlenderPhase = 'fallback';
       onUnavailable?.();
     };
     loadTimer = window.setTimeout(() => failToFallback(), 20_000);
 
+    canvas.dataset.homeBlenderPhase = 'model-loading';
     const loader = new GLTFLoader();
     // The runtime scene is published Meshopt-compressed; uncompressed files still load.
     loader.setMeshoptDecoder(MeshoptDecoder);
@@ -1978,6 +1983,7 @@ export default function HomeBlenderScene3D({
         window.clearTimeout(loadTimer);
         loadTimer = null;
       }
+      canvas.dataset.homeBlenderPhase = 'model-preparing';
       model = root;
       prepareRuntimeScene(model, initialPolicy.lod === 'full', renderer);
       applyHomeBlenderPieceLift(model);
@@ -1989,7 +1995,9 @@ export default function HomeBlenderScene3D({
       resize();
       applyRuntimeFireMotion(fireRig, 0);
       renderer.shadowMap.needsUpdate = true;
+      canvas.dataset.homeBlenderPhase = 'first-frame-rendering';
       renderFrame();
+      canvas.dataset.homeBlenderPhase = 'ready';
       canvas.dataset.homeBlenderRuntime = 'ready';
       canvas.classList.add('is-ready');
       startFireAnimation();
