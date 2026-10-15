@@ -520,6 +520,37 @@ scopedTest('progress', 'Mi progreso · Salón de la Gloria con partida demostrab
   await captureHall(430, 932, 'mobile-wide');
 });
 
+scopedTest('progress', 'Mi progreso · Atlas de aperturas de partidas reales', async ({ page }) => {
+  test.setTimeout(100_000);
+  await prepare(page, {
+    profileSeed: { 'chess-study-game-history': JSON.stringify(INSIGHTS_DOSSIER_HISTORY) },
+  });
+  await page.locator('.illustrated-home__matthias').click();
+  const room = page.locator('[data-insights-room="training-room-v1"]');
+  const drawer = room.locator('details[data-insights-archive]');
+  if (await drawer.getAttribute('open') === null) await drawer.locator('summary').click();
+  await drawer.getByRole('button', { name: 'Mi progreso', exact: true }).click();
+  await room.getByRole('button', { name: 'Aperturas', exact: true }).click();
+  const atlas = room.getByRole('region', { name: 'Explorar aperturas de mis partidas' });
+  await expect(atlas).toBeVisible();
+  await expect(atlas.getByRole('img', { name: /Vista previa de una posición real/ })).toBeVisible();
+  await expect(atlas.getByRole('button', { name: /e5.*4 partidas/ })).toBeVisible();
+  await atlas.getByRole('button', { name: /e5.*4 partidas/ }).click();
+  await expect(atlas).toContainText('e4 · e5');
+  await expect(atlas.getByRole('button', { name: 'Revisar partida de esta línea →' })).toBeVisible();
+  for (const { width, height, variant } of [
+    { width: 1440, height: 900, variant: 'desktop' },
+    { width: 360, height: 800, variant: 'mobile-compact' },
+    { width: 390, height: 844, variant: 'mobile' },
+    { width: 430, height: 932, variant: 'mobile-wide' },
+  ]) {
+    await page.setViewportSize({ width, height });
+    await atlas.scrollIntoViewIfNeeded();
+    await expect(atlas).toBeVisible();
+    await captureAt(page, 'career-opening-atlas', { width, height, variant });
+  }
+});
+
 scopedTest('progress', 'Entrenar · Así juegas y Mi progreso', async ({ page }) => {
   test.setTimeout(100_000);
   await prepare(page);
