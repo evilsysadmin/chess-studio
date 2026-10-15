@@ -303,13 +303,23 @@ async function captureChroniclesHealth(page) {
   });
 }
 
-async function captureElement(page, locator, path) {
-  // DOM scrolling avoids Playwright's stability wait, which is unreliable on a
-  // continuously rendered WebGL surface. boundingBox() is viewport-relative,
-  // so do not add window.scrollX/Y a second time when clipping the screenshot.
-  await locator.evaluate((node) => node.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'instant' }));
+async function captureElement(page, locator, path, { combinedGeometry = false } = {}) {
+  // DOM scrolling avoids Playwright stability waits under continuous WebGL.
+  // With combinedGeometry the target's viewport rect is measured immediately
+  // after the SAME synchronous instant scroll, saving an extra CDP round trip.
+  // Default behavior remains identical for every other visual screenshot.
+  let box;
+  if (combinedGeometry) {
+    box = await locator.evaluate((node) => {
+      node.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'instant' });
+      const rect = node.getBoundingClientRect();
+      return { x: rect.x, y: rect.y, width: rect.width, height: rect.height };
+    });
+  } else {
+    await locator.evaluate((node) => node.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'instant' }));
+  }
   await page.waitForTimeout(100);
-  const box = await locator.boundingBox();
+  if (!combinedGeometry) box = await locator.boundingBox();
   expect(box, `${path}: capture bounds`).not.toBeNull();
   await page.screenshot({
     path,
@@ -1037,6 +1047,7 @@ for (const capture of CAPTURES) {
           page,
           sheet,
           `${ARTIFACT_DIR}/chronicles-character-sheet-desktop-1440x900.png`,
+          { combinedGeometry: true },
         );
         visualPhase('character-sheet-readback-finish');
         visualPhase('character-sheet-close-begin');
