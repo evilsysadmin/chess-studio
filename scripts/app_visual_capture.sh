@@ -241,17 +241,18 @@ case "$mode" in
         # In both prior runs the LAST tablet capture failed after 18-19
         # earlier 3D captures, independently of portrait/landscape. Reset
         # Chromium after 4-5 captures, with no retries or missing tests.
-        # #5642 full exact-SHA CI measured runner 1=6m54s, 2=9m55s,
-        # 3=4m17s. Moving heavy group 2 behind the runner 3 WebGL canary
-        # caused Rookwood/Home to time out under LOADING (failed SHA ebc6a329).
-        # Keep runner 3's proven isolated canaries/group 6 unchanged; move
-        # lighter group 3 (~1m24s) to runner 1, BEFORE expensive group 4.
-        # Expected bottleneck ~8m30s; only exact-SHA CI can confirm it.
-        # Every one of eight subshards remains uniquely owned.
+        # Exact-SHA #5647 and #5650 show runner 1 as the persistent
+        # critical path: its light tail groups 7/8 take 74-93 seconds.
+        # Place them on runner 3 after the isolated canaries + group 6,
+        # where the previous runs have spare capacity; keep heavy Rookwood
+        # group 2 FIRST on runner 2 (placing it after a WebGL canary caused
+        # an observable Home LOADING failure in failed #5643).
+        # Do not drop or duplicate any of the eight subshards.
+        # Only exact-SHA CI and the 169-PNG comparison establish a win.
         case "$APP_VISUAL_CHRONICLES_SHARD" in
-          1) subshards=(1 3 4 7 8) ;;
+          1) subshards=(1 3 4) ;;
           2) subshards=(2 5) ;;
-          3) subshards=(6) ;;
+          3) subshards=(6 7 8) ;;
         esac
         for subshard in "${subshards[@]}"; do
           echo "Chronicles visual bounded renderer: isolated process ${subshard}/8."
