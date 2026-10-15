@@ -5,7 +5,9 @@ const tree = {
   count: 3, wins: 2,
   children: { e4: { move: 'e4', count: 3, wins: 2, children: {
     e5: { move: 'e5', count: 2, wins: 2, children: {
-      Nf3: { move: 'Nf3', count: 2, wins: 2, children: {} },
+      Nf3: { move: 'Nf3', count: 2, wins: 2, children: {
+        Nc6: { move: 'Nc6', count: 2, wins: 2, children: {} },
+      } },
     } },
     c5: { move: 'c5', count: 1, wins: 0, children: {} },
   } } },
