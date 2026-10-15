@@ -40,6 +40,8 @@ async function openChronicles(page, captureLabel, {
   retryVisualHomeLogin = true,
   onVisualPhase = null,
 } = {}) {
+  // Node-side phase markers only; no new Chromium calls or changed assertions.
+  onVisualPhase?.('mock-api-begin');
   await mockApi(page, {
     profileSeed: {
       'matthias.onboarded': '2',
@@ -50,6 +52,7 @@ async function openChronicles(page, captureLabel, {
     chroniclesWorldFlags,
     chroniclesAreaTransform,
   });
+  onVisualPhase?.('mock-api-ready');
   // Tablet evidence requires the interactive Home gate, not completion of
   // unrelated image loads. Permit slow Home mounting without *re-submitting*
   // credentials: the first login may have succeeded before its Home timed out,
@@ -87,6 +90,7 @@ async function openChronicles(page, captureLabel, {
   page.on('console', onConsole);
   page.on('response', onResponse);
   page.on('requestfailed', onRequestFailed);
+  onVisualPhase?.('home-login-begin');
   try {
     await login(page, loginOptions);
   } catch (error) {
@@ -172,10 +176,12 @@ async function openChronicles(page, captureLabel, {
   await expect(page.getByRole('heading', { name: 'Experimentos geniales', exact: true })).toBeVisible();
   const chroniclesEntry = page.locator('.lab-workshop-portal--chronicles');
   await expect(chroniclesEntry).toBeVisible();
+  onVisualPhase?.('chronicles-portal-click-begin');
   await chroniclesEntry.click();
   const entry = page.locator('[data-chronicles-save-menu]');
   await expect(entry).toBeVisible({ timeout: 10_000 });
   await expect(entry.getByText('Consultando expediciones del servidor…')).toBeHidden({ timeout: 15_000 });
+  onVisualPhase?.('expedition-book-interactive');
   // Approved expedition study must really load from the built frontend, with
   // accessible live controls layered over the decorative, browser-chrome-free art.
   await expect(entry).toHaveAttribute('data-chronicles-art', 'approved-expedition-study-v1');
@@ -204,11 +210,13 @@ async function openChronicles(page, captureLabel, {
     expect(buttonBox.y + buttonBox.height, 'landscape entry menu does not clip the last action')
       .toBeLessThanOrEqual(Math.min(panelBox.y + panelBox.height, page.viewportSize().height) - 6);
   }
+  onVisualPhase?.('expedition-book-readback-begin');
   await page.screenshot({
     path: `${ARTIFACT_DIR}/chronicles-save-menu-${captureLabel}.png`,
     animations: 'disabled', timeout: 30_000,
   });
   onVisualPhase?.('expedition-book-captured');
+  onVisualPhase?.('character-setup-navigation-begin');
   await entry.getByRole('button', newCampaign
     ? { name: /Nueva campaña/ }
     : { name: 'Nuevo juego', exact: true }).click();
@@ -224,6 +232,7 @@ async function openChronicles(page, captureLabel, {
     await chroniclesEntry.click({ force: true });
     await expect(setup).toBeVisible({ timeout: 20_000 });
   }
+  onVisualPhase?.('character-setup-visible');
   // All important choices remain reachable without scrolling, even on a
   // 844×390 landscape phone. Screenshot-only coverage missed this regression.
   const leaveButton = setup.getByRole('button', { name: '← Salir', exact: true });
@@ -302,6 +311,7 @@ async function openChronicles(page, captureLabel, {
   onVisualPhase?.('character-editor-captured');
   await editor.getByRole('button', { name: '← Volver', exact: true }).click();
 
+  onVisualPhase?.('confirm-characters-begin');
   await confirmChroniclesCharacterSetup(page, { newTown });
   onVisualPhase?.('characters-confirmed');
   await expect(page.locator('[data-chronicles="true"]')).toBeVisible();
@@ -605,6 +615,7 @@ for (const capture of [
     try {
       await openChronicles(page, `rookwood-${capture.label}`, {
         newTown: true, newCampaign: true, chroniclesCurrentMapId: 'swordhaven-first-book',
+        onVisualPhase: (step) => phase(`bootstrap-${step}`),
       });
       phase('gameplay-ready');
       const game = page.locator('[data-chronicles="true"]');
