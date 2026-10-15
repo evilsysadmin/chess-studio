@@ -212,6 +212,15 @@ export function createWarRoomBlenderVariantShell({
   return Object.freeze({ modelUrl, install });
 }
 
+// Defaults to the long-standing War Room behavior; the separate PvP Hall
+// opts out when its WebGL renderer has shadow maps disabled.
+export function shouldPrepareWarRoomShadowPass({
+  coarsePointer = false,
+  shadowMapsEnabled = true,
+} = {}) {
+  return !coarsePointer && Boolean(shadowMapsEnabled);
+}
+
 export async function installWarRoomBlenderShell(
   scene,
   {
@@ -219,6 +228,7 @@ export async function installWarRoomBlenderShell(
     coarsePointer = false,
     url,
     onRefine,
+    shadowMapsEnabled = true,
     variant = 'blender',
     rootName = `war-room-${variant}-blender-shell`,
     runtimeFinish = 'gltf-pbr-runtime',
@@ -285,17 +295,25 @@ export async function installWarRoomBlenderShell(
   root.userData.warRoomBlenderRuntimeFabricTextures = Object.keys(runtimeFabricTextures).length;
   root.userData.warRoomBlenderRuntimeLeatherMaterials = runtimeLeatherMaterials;
   root.userData.warRoomBlenderRuntimeLeatherTextures = Object.keys(runtimeLeatherTextures).length;
-  root.userData.warRoomBlenderShadowWarmup = coarsePointer ? 'disabled-lite' : 'deferred-after-first-paint';
-  root.userData.warRoomBlenderShadowCasterBudget = coarsePointer ? 0 : WAR_ROOM_BLENDER_SHADOW_CASTER_LIMIT;
+  // Existing War Rooms preserve their default shadow pass. The PvP Hall is
+  // the only caller that explicitly has no WebGL shadow maps.
+  const needsShadowPass = shouldPrepareWarRoomShadowPass({ coarsePointer, shadowMapsEnabled });
+  root.userData.warRoomBlenderShadowWarmup = needsShadowPass
+    ? 'deferred-after-first-paint'
+    : (coarsePointer ? 'disabled-lite' : 'disabled-no-shadow-maps');
+  root.userData.warRoomBlenderShadowCasterBudget = needsShadowPass ? WAR_ROOM_BLENDER_SHADOW_CASTER_LIMIT : 0;
   root.userData.warRoomBlenderShadowCasterCandidates = shadowCandidateMeshes.length;
   root.userData.warRoomBlenderShadowCasterCount = 0;
   const disposeRuntimeEffects = installRuntimeEffects?.(root, { coarsePointer }) || (() => {});
   scene.add(root);
   root.updateMatrixWorld?.(true);
-  const projectedShadowCasters = selectWarRoomBlenderShadowCasters(shadowCandidateMeshes);
+  const projectedShadowCasters = needsShadowPass ? selectWarRoomBlenderShadowCasters(shadowCandidateMeshes) : [];
   root.userData.warRoomBlenderShadowProjectedCount = projectedShadowCasters.length;
 
-  const cancelShadowWarmup = coarsePointer ? () => {} : scheduleWarRoomAfterFirstPaint(() => {
+  // Do not schedule *any* idle shadow-caster ranking or matrix traversal when
+  // the consumer renderer cannot display shadow maps. Avoiding only onRefine
+  // did not prevent a 6-second post-ready native task in software Chromium.
+  const cancelShadowWarmup = !needsShadowPass ? () => {} : scheduleWarRoomAfterFirstPaint(() => {
     if (!root.parent) return;
     root.updateMatrixWorld?.(true);
     const selectedShadowCasters = selectWarRoomBlenderShadowCasters(shadowCandidateMeshes);
