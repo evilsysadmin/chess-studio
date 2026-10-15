@@ -56,7 +56,52 @@ async function openChronicles(page, captureLabel, {
   const loginOptions = retryVisualHomeLogin
     ? { navigationWaitUntil: 'domcontentloaded', homeVisibleTimeout: 60_000 }
     : undefined;
-  await login(page, loginOptions);
+  // Preserve the failing Home/login state instead of merely reporting a
+  // 60-second missing landmark. Diagnostics are only written on failure.
+  const bootstrapErrors = [];
+  const onPageError = (error) => bootstrapErrors.push(`pageerror: ${error.message}`);
+  const onConsole = (message) => {
+    if (message.type() === 'error') bootstrapErrors.push(`console: ${message.text()}`);
+  };
+  page.on('pageerror', onPageError);
+  page.on('console', onConsole);
+  try {
+    await login(page, loginOptions);
+  } catch (error) {
+    const diagnostic = await page.evaluate(() => ({
+      url: location.href,
+      title: document.title,
+      readyState: document.readyState,
+      bodyText: document.body?.innerText?.slice(0, 1800) || '',
+      loginVisible: [...document.querySelectorAll('input')].some((input) => input.labels?.[0]?.textContent?.includes('Usuario')),
+      homeRegions: [...document.querySelectorAll('[role="region"]')].map((region) => ({
+        label: region.getAttribute('aria-label'),
+        hidden: region.hidden,
+      })),
+      loadingVisible: Boolean(document.querySelector('.home-3d-loading')),
+    })).catch((inspectionError) => ({ inspectionError: String(inspectionError) }));
+    // CI logs must retain the evidence even when artifact ZIPs cannot be inspected.
+    // Keep it bounded and avoid logging input values or authentication secrets.
+    console.error('[Chronicles visual] Home bootstrap failed', JSON.stringify({
+      captureLabel,
+      diagnostic,
+      errors: bootstrapErrors.slice(-20),
+    }));
+    await mkdir(ARTIFACT_DIR, { recursive: true });
+    await writeFile(
+      `${ARTIFACT_DIR}/chronicles-home-bootstrap-failure-${captureLabel}.json`,
+      JSON.stringify({ captureLabel, error: String(error), diagnostic, errors: bootstrapErrors.slice(-40) }, null, 2),
+      'utf8',
+    );
+    await page.screenshot({
+      path: `${ARTIFACT_DIR}/chronicles-home-bootstrap-failure-${captureLabel}.png`,
+      timeout: 10_000,
+    }).catch(() => {});
+    throw error;
+  } finally {
+    page.off('pageerror', onPageError);
+    page.off('console', onConsole);
+  }
   const speech = page.getByRole('region', { name: 'Mensaje de Matthias', exact: true });
   if (await speech.isVisible().catch(() => false)) {
     const close = speech.getByRole('button', { name: 'Cerrar comentario de Matthias', exact: true });
