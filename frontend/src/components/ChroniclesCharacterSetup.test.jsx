@@ -1,6 +1,6 @@
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import {
   createCanonicalChroniclesCharacterBuild,
   createSeededChroniclesCharacterBuild,
@@ -20,6 +20,11 @@ function render(build) {
 }
 
 describe('ChroniclesCharacterSetup', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    sessionStorage.clear();
+  });
+
   it('keeps the canonical party as the obvious one-click path', () => {
     const html = render(createCanonicalChroniclesCharacterBuild(CHRONICLES_PARTY));
 
