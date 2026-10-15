@@ -152,14 +152,15 @@ async function openChronicles(page, captureLabel, {
   const editor = page.locator('[data-chronicles-character-setup="editor"]');
   await expect(editor).toBeVisible();
   // MM3 roller: real dice, then the class grid only offers what they allow.
-  await editor.getByRole('button', { name: /Tirar dados/ }).click();
-  await expect(editor.locator('.chronicles-character-setup__class-grid button[aria-pressed="true"]')).toHaveCount(1);
-  // Race must alter a derived, playable quantity; screenshots alone are not enough.
+  // Check a known canonical stat line before rerolling: a random Sorcerer
+  // with minimum HP would be clamped at 1, so +2 HP need not yield +2 max HP.
   const life = editor.locator('.chronicles-character-setup__derived dd').first();
   const humanHp = Number(await life.innerText());
   await editor.getByRole('combobox', { name: 'Raza' }).selectOption('halfOrc');
   await expect(life).toHaveText(String(humanHp + 2));
   await expect(editor.locator('.chronicles-character-setup__race-effect')).toContainText('Semiorco');
+  await editor.getByRole('button', { name: /Tirar dados/ }).click();
+  await expect(editor.locator('.chronicles-character-setup__class-grid button[aria-pressed="true"]')).toHaveCount(1);
   const mechanics = editor.locator('.chronicles-character-setup__mechanics');
   await expect(mechanics).toBeVisible();
   await expect(mechanics).toContainText(/Vida \d+ · PH \d+ · Armadura \d+/);
