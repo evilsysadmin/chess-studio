@@ -284,6 +284,31 @@ function createPvpNativeTraceSummary() {
 async function assertLivePvpBrowserPath(page) {
   // Read-only phase diagnostics: preserve real lobby/pulse cadence and counts.
   // Never log credentials, tokens, roster contents, or response bodies.
+  // A/B evidence: report the *actual* WebGL implementation, never infer it
+  // from launch flags. No user/session data is included in this marker.
+  const rendererMode = process.env.CHESS_STAGING_RENDERER || 'default';
+  const renderer = await page.evaluate(() => {
+    const canvas = document.createElement('canvas');
+    const gl = canvas.getContext('webgl2') || canvas.getContext('webgl');
+    if (!gl) return 'unavailable';
+    const info = gl.getExtension('WEBGL_debug_renderer_info');
+    const value = info ? gl.getParameter(info.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER);
+    gl.getExtension('WEBGL_lose_context')?.loseContext();
+    return String(value || 'unknown');
+  });
+  // Avoid full driver strings in CI; only the coarse verified class.
+  const rendererClass = /swiftshader|llvmpipe|softpipe|software/i.test(renderer)
+    ? 'software'
+    : /nvidia|radeon|amd|intel|apple|mesa|angle/i.test(renderer)
+      ? 'hardware'
+      : 'unknown';
+  console.log(`STAGING_PVP_GPU requested=${rendererMode} actual=${rendererClass}`);
+  if (rendererMode === 'hardware') {
+    expect(rendererClass, 'GPU A/B hardware leg requires verified hardware renderer').toBe('hardware');
+  }
+  if (rendererMode === 'software') {
+    expect(rendererClass, 'GPU A/B software leg requires verified software renderer').toBe('software');
+  }
   const started = Date.now();
   let phaseStart = started;
   const logPhase = (name) => {
