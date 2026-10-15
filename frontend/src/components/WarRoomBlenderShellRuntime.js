@@ -120,6 +120,16 @@ function installAuthoredPracticalLights(root, { coarsePointer = false } = {}) {
 
 export const WAR_ROOM_BLENDER_SHADOW_CASTER_LIMIT = 32;
 
+// Most War Rooms retain the post-paint shadow pass. The separate PvP Hall
+// renderer has shadow maps disabled: enabling castShadow and rerendering then
+// does no visual work, and can trigger an expensive native WebGL task.
+export function shouldWarmWarRoomBlenderShadows({
+  coarsePointer = false,
+  enableShadowWarmup = true,
+} = {}) {
+  return !coarsePointer && Boolean(enableShadowWarmup);
+}
+
 function warRoomBlenderShadowCasterScore(node) {
   if (!node?.isMesh || !node.geometry) return Number.NEGATIVE_INFINITY;
 
@@ -219,6 +229,7 @@ export async function installWarRoomBlenderShell(
     coarsePointer = false,
     url,
     onRefine,
+    enableShadowWarmup = true,
     variant = 'blender',
     rootName = `war-room-${variant}-blender-shell`,
     runtimeFinish = 'gltf-pbr-runtime',
@@ -285,17 +296,20 @@ export async function installWarRoomBlenderShell(
   root.userData.warRoomBlenderRuntimeFabricTextures = Object.keys(runtimeFabricTextures).length;
   root.userData.warRoomBlenderRuntimeLeatherMaterials = runtimeLeatherMaterials;
   root.userData.warRoomBlenderRuntimeLeatherTextures = Object.keys(runtimeLeatherTextures).length;
-  root.userData.warRoomBlenderShadowWarmup = coarsePointer ? 'disabled-lite' : 'deferred-after-first-paint';
-  root.userData.warRoomBlenderShadowCasterBudget = coarsePointer ? 0 : WAR_ROOM_BLENDER_SHADOW_CASTER_LIMIT;
+  const warmShadows = shouldWarmWarRoomBlenderShadows({ coarsePointer, enableShadowWarmup });
+  root.userData.warRoomBlenderShadowWarmup = warmShadows
+    ? 'deferred-after-first-paint'
+    : (coarsePointer ? 'disabled-lite' : 'disabled-no-shadow-map');
+  root.userData.warRoomBlenderShadowCasterBudget = warmShadows ? WAR_ROOM_BLENDER_SHADOW_CASTER_LIMIT : 0;
   root.userData.warRoomBlenderShadowCasterCandidates = shadowCandidateMeshes.length;
   root.userData.warRoomBlenderShadowCasterCount = 0;
   const disposeRuntimeEffects = installRuntimeEffects?.(root, { coarsePointer }) || (() => {});
   scene.add(root);
   root.updateMatrixWorld?.(true);
-  const projectedShadowCasters = selectWarRoomBlenderShadowCasters(shadowCandidateMeshes);
+  const projectedShadowCasters = warmShadows ? selectWarRoomBlenderShadowCasters(shadowCandidateMeshes) : [];
   root.userData.warRoomBlenderShadowProjectedCount = projectedShadowCasters.length;
 
-  const cancelShadowWarmup = coarsePointer ? () => {} : scheduleWarRoomAfterFirstPaint(() => {
+  const cancelShadowWarmup = !warmShadows ? () => {} : scheduleWarRoomAfterFirstPaint(() => {
     if (!root.parent) return;
     root.updateMatrixWorld?.(true);
     const selectedShadowCasters = selectWarRoomBlenderShadowCasters(shadowCandidateMeshes);
