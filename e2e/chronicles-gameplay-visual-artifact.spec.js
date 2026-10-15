@@ -2,18 +2,6 @@ import { expect, test } from '@playwright/test';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { confirmChroniclesCharacterSetup, login, mockApi, openMoreGameModes } from './helpers.js';
 
-// All canonical Chronicles evidence is already rendered under software WebGL
-// on GPU-less CI. Select that backend directly, rather than letting Chromium
-// probe unavailable host GPU paths during an expensive cold context creation.
-// This does not affect local GPU development, regular E2E or production users.
-if (process.env.CI && process.env.APP_VISUAL_ARTIFACT === '1') {
-  test.use({
-    launchOptions: {
-      args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'],
-    },
-  });
-}
-
 const ARTIFACT_DIR = '../.artifacts/app-visual';
 const CAPTURES = [
   { label: 'desktop-1440x900', width: 1440, height: 900, hasTouch: false },
@@ -652,7 +640,17 @@ for (const capture of [
   { label: 'desktop-1440x900', width: 1440, height: 900, touch: false },
   { label: 'android-390x844', width: 390, height: 844, touch: true },
 ]) {
-  test(`Chronicles · Rookwood side quest walk · ${capture.label}`, async ({ browser }) => {
+  // Do not force the alternative software backend for DOM-only tablet tests:
+  // the global probe timed out their PNG captures even after retries.
+  test.describe(() => {
+    if (!capture.touch && process.env.CI && process.env.APP_VISUAL_ARTIFACT === '1') {
+      test.use({
+        launchOptions: {
+          args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'],
+        },
+      });
+    }
+    test(`Chronicles · Rookwood side quest walk · ${capture.label}`, async ({ browser }) => {
     test.setTimeout(300_000);
     await mkdir(ARTIFACT_DIR, { recursive: true });
     const context = await browser.newContext({
@@ -723,6 +721,7 @@ for (const capture of [
       await context.close();
       phase('context-close-finish');
     }
+  });
   });
 }
 
