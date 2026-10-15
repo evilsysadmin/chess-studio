@@ -437,11 +437,59 @@ export function chroniclesMapInteractable(mapOrState, id) {
   return map.interactables.find((entry) => entry.id === id) || null;
 }
 
+// Run-local tombstones: one short string per dungeon/chunk, not one world flag
+// per monster. Map IDs and authored enemy IDs make revisits deterministic and
+// avoid exhausting the backend's 512-flag checkpoint ceiling on Terra routes.
+export const CHRONICLES_DEFEATED_DUNGEON_PREFIX = '__chrDungeonDefeats.';
+
+export function chroniclesDungeonEnemiesStayDead(map) {
+  return Boolean(map && (map.regionKind === 'dungeon' || !map.regionKind));
+}
+
+function dungeonDeathIds(map, world) {
+  if (!chroniclesDungeonEnemiesStayDead(map)) return new Set();
+  const prefix = `${CHRONICLES_DEFEATED_DUNGEON_PREFIX}${map.id}.`;
+  const valid = new Set(map.enemies.map((enemy) => enemy.id));
+  const defeated = new Set();
+  Object.entries(world || {}).forEach(([key, value]) => {
+    const part = key.startsWith(prefix) ? key.slice(prefix.length) : '';
+    if (!/^(0|[1-9][0-9]{0,2})$/.test(part) || typeof value !== 'string') return;
+    value.split('|').forEach((id) => { if (valid.has(id)) defeated.add(id); });
+  });
+  return defeated;
+}
+
+export function chroniclesRecordDungeonDefeats(world, map) {
+  if (!chroniclesDungeonEnemiesStayDead(map)) return world;
+  const dead = dungeonDeathIds(map, world);
+  (map.enemies || []).forEach((enemy) => {
+    if (Number.isFinite(Number(world?.[enemy.hpKey])) && Number(world[enemy.hpKey]) === 0) dead.add(enemy.id);
+  });
+  const current = dungeonDeathIds(map, world);
+  if (dead.size === current.size) return world;
+  // Chunks are bounded by the backend's 256-character per-flag limit.
+  const chunks = [];
+  let chunk = '';
+  map.enemies.forEach((enemy) => {
+    if (!dead.has(enemy.id)) return;
+    const candidate = chunk ? `${chunk}|${enemy.id}` : enemy.id;
+    if (candidate.length > 256) {
+      if (chunk) chunks.push(chunk);
+      chunk = enemy.id;
+    } else chunk = candidate;
+  });
+  if (chunk) chunks.push(chunk);
+  const next = { ...world };
+  chunks.forEach((value, index) => { next[`${CHRONICLES_DEFEATED_DUNGEON_PREFIX}${map.id}.${index}`] = value; });
+  return next;
+}
+
 export function chroniclesMapInitialEnemyState(mapId = DEFAULT_CHRONICLES_MAP_ID, world = null) {
   const map = chroniclesMapById(mapId);
+  const dead = dungeonDeathIds(map, world);
   return map.enemies.reduce((state, enemy) => {
-    // A named foe whose defeat the world remembers stays down on re-entry.
-    state[enemy.hpKey] = enemy.defeatedFlag && world?.[enemy.defeatedFlag] ? 0 : enemy.maxHp;
+    // Legacy authored boss flags and run-local tombstones are both monotonic.
+    state[enemy.hpKey] = dead.has(enemy.id) || (enemy.defeatedFlag && world?.[enemy.defeatedFlag]) ? 0 : enemy.maxHp;
     if (enemy.positionKey && enemy.initialPosition) state[enemy.positionKey] = enemy.initialPosition;
     return state;
   }, {});
@@ -457,15 +505,16 @@ function clearedEnemyState(map) {
 
 export function chroniclesMapTransitionState(state, mapId) {
   const previousMap = chroniclesMapForState(state);
+  const world = chroniclesRecordDungeonDefeats(state, previousMap);
   const map = chroniclesMapById(mapId);
   return {
-    ...state,
+    ...world,
     ...clearedEnemyState(previousMap),
     mapId: map.id,
     x: map.partyStart.x,
     y: map.partyStart.y,
     direction: map.partyStart.direction,
-    ...chroniclesMapInitialEnemyState(map.id, state),
+    ...chroniclesMapInitialEnemyState(map.id, world),
     ...map.initialFlags,
     phase: 'explore',
     turnPhase: 'party',

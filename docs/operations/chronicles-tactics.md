@@ -45,6 +45,13 @@ Una vez creada la run, la posición runtime actual de cada entidad es la única 
 - En mapas random/procedurales, toda casilla no transitable debe explicarse por topología visible, obstáculo explícito u ocupación runtime. Un blocker invisible o una celda fantasma es una regresión aunque el mapa global siga conectado.
 - Los gates de generación deben conservar conectividad entre entradas/salidas y regiones obligatorias, además de validar que scenery y props no alteran la walkability lógica.
 
+## Mazmorras sin farmeo y navegación consciente
+
+- Cada enemigo authored de una mazmorra pertenece a una única aparición por run. Una baja queda registrada por mapa e ID en tombstones compactos de worldFlags, sobreviviendo al checkpoint CAS, F5, viajar a otro nivel y regresar. En otra run nueva los enemigos vuelven a existir.
+- Las heridas de enemigos todavía vivos pueden reiniciarse al reentrar en el nivel, pero una baja jamás regenera HP ni concede botín/XP de nuevo. Los mapas de exterior conservan su comportamiento propio.
+- Las escaleras, portales y salidas de mazmorra nunca activan cambio de zona sólo por caminar sobre la casilla: requieren la acción contextual **USAR**, desde la casilla de salida o su adyacente. Los requisitos de apertura siguen siendo obligatorios.
+- El punto fijo del centro de la vista 3D queda retirado. El automapa representa lo desconocido con niebla uniforme, suelo descubierto con un tono cálido claramente más luminoso y paredes descubiertas con un tono frío diferenciado; no debe revelar topología ni POI ocultos.
+
 ## Autoridad de progresión RPG
 
 XP, niveles, atributos, skills y la build compartida de Chronicles/Tactics pertenecen al **perfil persistente del usuario**, no al documento de una run.

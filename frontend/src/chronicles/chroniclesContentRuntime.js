@@ -104,6 +104,11 @@ function adjacentExit(state, entry, tileAt) {
     ));
     return { x: entry.x, y: entry.y, direction: facing?.key || null };
   }
+  // A player standing on dungeon stairs can still press USAR; do not force
+  // an awkward step backwards before interacting with the same tile.
+  if (entry.tile && tileAt(state.x, state.y) === entry.tile) {
+    return { x: state.x, y: state.y, direction: null };
+  }
   return CARDINAL_DIRECTIONS
     .map((direction) => ({
       x: state.x + direction.dx,

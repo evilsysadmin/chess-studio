@@ -270,6 +270,8 @@ describe('Chronicles of Matthias vertical slice', () => {
     expect(chroniclesJournalEntries(state).some((entry) => entry.id === 'scavenger-knight-falls')).toBe(true);
 
     state = chroniclesReduce(state, 'forward');
+    expect(state.phase).toBe('explore');
+    state = chroniclesReduce(state, 'interact');
     expect(state.phase).toBe('escaped');
     expect(chroniclesJournalEntries(state).at(-1)?.id).toBe('escape');
   });
@@ -300,6 +302,8 @@ describe('Chronicles of Matthias vertical slice', () => {
     expect(chroniclesJournalEntries(state).some((entry) => entry.id === 'scavenger-knight-falls')).toBe(true);
 
     state = chroniclesReduce(state, 'forward');
+    expect(chroniclesJournalEntries(state).at(-1)?.id).not.toBe('escape');
+    state = chroniclesReduce(state, 'interact');
     expect(chroniclesJournalEntries(state).at(-1)?.id).toBe('escape');
   });
 

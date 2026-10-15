@@ -3,6 +3,7 @@ import {
   chroniclesMapById,
   chroniclesMapForState,
   chroniclesMapContentPosition,
+  chroniclesDungeonEnemiesStayDead,
   chroniclesMapInitialEnemyState,
   chroniclesMapTileAt,
   chroniclesRuntimeEntryMapId,
@@ -220,11 +221,10 @@ function enterTile(state, x, y) {
   }
 
   const exit = contentEntryAt(state, 'exits', x, y);
-  if (exit && chroniclesRequirementsMet(state, exit.requirements)) {
-    const currentMap = chroniclesMapForState(state);
-    // Authored settlement gates genuinely enter the next region. Keep the
-    // historical dungeon-end contract untouched, so legacy runs/checkpoints
-    // do not suddenly switch map or terminal behaviour.
+  const currentMap = chroniclesMapForState(state);
+  // Dungeon stairs, gates and portals must be used explicitly. Walking onto
+  // them remains ordinary movement and never extracts the party by accident.
+  if (exit && !chroniclesDungeonEnemiesStayDead(currentMap) && chroniclesRequirementsMet(state, exit.requirements)) {
     const route = chroniclesIsOverworldTravelExit(currentMap, exit);
     next = chroniclesApplyContentAction(
       next,
@@ -247,7 +247,7 @@ export function chroniclesContextualContentAction(state) {
     map,
     (x, y) => chroniclesTileAt(x, y, state),
   ).find((entry) => !['trigger', 'trap'].includes(entry.kind)
-    && (entry.kind !== 'exit' || entry.requiresReturn === true));
+    && (entry.kind !== 'exit' || entry.requiresReturn === true || chroniclesDungeonEnemiesStayDead(map)));
 
   // In towns the street square outside a building is the authored entrance.
   // Facing its doorway must take priority over unrelated content underfoot,
@@ -278,7 +278,7 @@ export function chroniclesContextualContentAction(state) {
 
   if (!interaction) return null;
   const definition = chroniclesContentDefinition(map, interaction.id);
-  if (!definition?.action) return null;
+  if (!definition?.action && definition?.kind !== 'exit') return null;
   return {
     id: interaction.id,
     kind: interaction.kind,
@@ -312,7 +312,15 @@ function resolveContextualContentAction(state) {
     const blocked = chroniclesRequirementFailure(state, definition.requirements);
     return withMessage(state, blocked?.message || 'El paso sigue cerrado.');
   }
-  const next = chroniclesApplyContentAction(state, definition.action, { appendJournal });
+  // A dungeon exit uses the SAME exit action/legacy escape contract as
+  // stepping onto it used to, but only after the explicit USAR command.
+  const exitingDungeon = definition.kind === 'exit' && chroniclesDungeonEnemiesStayDead(map);
+  const action = exitingDungeon
+    ? chroniclesIsOverworldTravelExit(map, definition)
+      ? definition.action
+      : explorationAction(definition, [{ type: 'set', key: 'phase', value: 'escaped' }])
+    : definition.action;
+  const next = chroniclesApplyContentAction(state, action, { appendJournal });
   return next === state ? state : { ...next, turns: state.turns + 1 };
 }
 

@@ -365,25 +365,6 @@
     inset 0 -58px 96px rgba(0, 0, 0, .34),
     inset 0 24px 50px rgba(107, 69, 32, .06);
 }
-.chronicles-crosshair {
-  position: absolute;
-  z-index: 3;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
-  width: 13px;
-  height: 13px;
-  display: grid;
-  place-items: center;
-  border: 1px solid rgba(236, 202, 143, .18);
-  border-radius: 50%;
-  font-size: 1.35rem;
-  line-height: 1;
-  color: rgba(236, 202, 143, .64);
-  text-shadow: 0 0 8px #000, 0 0 9px rgba(206, 130, 51, .2);
-  box-shadow: 0 0 14px rgba(0, 0, 0, .38);
-  pointer-events: none;
-}
 .chronicles-renderer-error,
 .chronicles-finish {
   position: absolute;
@@ -725,19 +706,26 @@
   stroke-width: .035;
 }
 
+/* Fog-of-war uses distinct lightness bands, not near-identical browns.
+   Undiscovered cells reveal no wall/floor geometry or points of interest. */
+.chronicles-automap__cell.is-undiscovered {
+  fill: #10151b;
+  stroke: #242b32;
+}
+
 .chronicles-automap__cell.is-wall {
-  fill: rgba(65, 55, 44, .92);
-  stroke: rgba(166, 139, 103, .28);
+  fill: #465361;
+  stroke: #82919e;
 }
 
 .chronicles-automap__cell.is-floor {
-  fill: rgba(76, 55, 34, .54);
-  stroke: rgba(207, 168, 108, .26);
+  fill: #bc925e;
+  stroke: #f5cf93;
 }
 
 .chronicles-automap__cell.is-floor.is-visited {
-  fill: rgba(133, 91, 45, .62);
-  stroke: rgba(232, 190, 120, .46);
+  fill: #e6c58c;
+  stroke: #ffe6b4;
 }
 
 .chronicles-automap__marker {
