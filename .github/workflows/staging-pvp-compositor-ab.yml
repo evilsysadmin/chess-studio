@@ -18,6 +18,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 concurrency:
   group: chess-studio-staging-pvp-compositor-ab
@@ -49,6 +50,21 @@ jobs:
         with:
           ref: ${{ github.sha }}
           fetch-depth: 1
+
+      - name: Pin native CDP to the last complete staging generation
+        if: inputs.comparison == 'native'
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -S scripts/staging_pvp_native_generation.py --self-test
+          runtime="$(python3 -S scripts/staging_pvp_native_generation.py --source-sha "$GITHUB_SHA")"
+          echo "DEPLOY_SHA=$runtime" >> "$GITHUB_ENV"
+          git fetch --no-tags --depth=1 origin "$runtime"
+          git -c advice.detachedHead=false checkout --detach "$runtime"
+          grep -Fq "stopDeepDiagnostics('settled')" e2e/staging-live.spec.js ||
+            { echo "::error::Deployed SHA predates the late CDP probe"; exit 1; }
 
       - name: Reject stale or non-main runtime
         shell: bash
@@ -82,7 +98,7 @@ jobs:
         run: |
           set -euo pipefail
           summary="$RUNNER_TEMP/staging-pvp-ab.txt"
-          printf 'source_sha=%s renderer_requested=%s\n' "$DEPLOY_SHA" "$CHESS_STAGING_RENDERER" > "$summary"
+          printf 'source_sha=%s runtime_sha=%s renderer_requested=%s\n' "$GITHUB_SHA" "$DEPLOY_SHA" "$CHESS_STAGING_RENDERER" > "$summary"
           if [[ "$PVP_COMPARISON" == native ]]; then
             modes=(off)
             export CHESS_STAGING_PVP_OPEN_ONLY=0 CHESS_STAGING_CDP_DIAGNOSTICS=1
@@ -128,7 +144,7 @@ jobs:
           done
           {
             echo '### PvP manual diagnostic — no deployment or accreditation'
-            echo "Exact SHA: $DEPLOY_SHA; renderer requested: $CHESS_STAGING_RENDERER"
+            echo "Source: $GITHUB_SHA; deployed runtime: $DEPLOY_SHA; renderer: $CHESS_STAGING_RENDERER"
             if [[ "$PVP_COMPARISON" == native ]]; then
               echo 'Native: one full staging-live smoke, opt-in CDP 20s max.'
             else
