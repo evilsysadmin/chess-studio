@@ -25,7 +25,7 @@ jobs:
     env:
       STAGING_URL: https://staging.chess-studio.shadowops.dpdns.org
       STAGING_API_URL: https://api-staging.chess-studio.shadowops.dpdns.org/api
-      DEPLOY_SHA: ${{ github.event_name == 'push' && '01c612b6020c2772e54428844d5c63a83e8ce95f' || github.sha }}
+      DEPLOY_SHA: ${{ github.sha }}
       CHESS_STAGING_RENDERER: software
       OCI_TENANCY_OCID: ${{ secrets.OCI_TENANCY_OCID }}
       OCI_USER_OCID: ${{ secrets.OCI_USER_OCID }}
@@ -37,7 +37,7 @@ jobs:
         uses: actions/checkout@v7
         with:
           ref: ${{ github.sha }}
-          fetch-depth: 1
+          fetch-depth: 2
 
       - name: Reject stale or non-main runtime
         shell: bash
@@ -45,13 +45,14 @@ jobs:
           set -euo pipefail
           [[ "$GITHUB_REF" == "refs/heads/main" ]] || { echo "::error::A/B must run on main"; exit 1; }
           if [[ "$GITHUB_EVENT_NAME" == push ]]; then
-            git fetch --no-tags origin "$DEPLOY_SHA"
-            [[ "$(git diff --name-only "$DEPLOY_SHA" "$GITHUB_SHA")" == '.github/workflows/staging-pvp-compositor-ab.yml' ]] ||
+            DEPLOY_SHA="$(git rev-parse HEAD^1)"
+            [[ "$(git diff --name-only "$DEPLOY_SHA" HEAD)" == '.github/workflows/staging-pvp-compositor-ab.yml' ]] ||
               { echo "::error::One-shot A/B requires workflow-only diff"; exit 1; }
+            echo "DEPLOY_SHA=$DEPLOY_SHA" >> "$GITHUB_ENV"
           fi
           [[ "$DEPLOY_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::Invalid SHA"; exit 1; }
           python3 -S scripts/staging_generation.py wait \
-            --sha "$DEPLOY_SHA" --surfaces backend,frontend,worker --attempts 1 --interval 0 --root
+            --sha "$DEPLOY_SHA" --surfaces backend,frontend,worker --attempts 100 --interval 3 --root
 
       - name: Restore cached OCI SDK toolchain
         uses: ./.github/actions/setup-oci-sdk
