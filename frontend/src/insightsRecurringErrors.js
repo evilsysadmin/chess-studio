@@ -1,5 +1,4 @@
 import { personalTrainingDebts } from './trainingDebt.js';
-import { isPlayablePersonalPuzzle } from './personalPuzzles.js';
 
 const INCIDENT_LABELS = Object.freeze({
   'human:MISSED_MATE': 'Mates que dejaste escapar',
@@ -108,10 +107,10 @@ export { INCIDENT_LABELS };
 
 // This selection never constructs a new FEN. The caller supplies the validated
 // personal-puzzle bank; prefer a pending case with reconstructible provenance.
-export function selectRecurringPatternExample(pattern, puzzles = []) {
-  if (!pattern?.incidentKey || !Array.isArray(puzzles)) return null;
+export function selectRecurringPatternExample(pattern, puzzles = [], validatePuzzle = null) {
+  if (!pattern?.incidentKey || !Array.isArray(puzzles) || typeof validatePuzzle !== 'function') return null;
   const matching = puzzles.filter((puzzle) => (
-    isPlayablePersonalPuzzle(puzzle)
+    validatePuzzle(puzzle)
     && Array.isArray(puzzle?.solution)
     && puzzle.solution.length > 0
     && Array.isArray(puzzle?.incidentKeys)
