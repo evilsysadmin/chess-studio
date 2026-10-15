@@ -408,3 +408,11 @@
       linear-gradient(150deg, #3c2415, #0a1730 72%);
   }
 }
+
+/* Resume-first entry: progressive disclosure without another modal. */
+.chronicles-save-menu__more-actions { display: grid; gap: 7px; margin: -3px 0 3px 18px; padding: 0 0 0 12px; border-left: 1px solid rgba(217, 163, 87, .33); }
+.chronicles-save-menu__more-actions > button { display: flex; gap: 12px; align-items: center; width: 100%; min-height: 44px; text-align: left; }
+.chronicles-save-menu__more-trigger[aria-expanded='true'] { border-color: rgba(235, 189, 117, .8); background: rgba(89, 65, 37, .4); }
+@media (max-width: 600px), (max-height: 580px) {
+  .chronicles-save-menu__more-actions { margin-left: 8px; padding-left: 8px; }
+}

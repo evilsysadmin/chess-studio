@@ -21,9 +21,16 @@ async function openChroniclesSetup(page, options = {}) {
   await descend.click();
   const entry = page.locator('[data-chronicles-save-menu]');
   await expect(entry).toBeVisible();
-  await entry.getByRole('button', options.newCampaign
+  const start = entry.getByRole('button', options.newCampaign
     ? { name: /Nueva campaña/ }
-    : { name: 'Nuevo juego', exact: true }).click();
+    : { name: 'Nuevo juego', exact: true });
+  if (!(await start.isVisible().catch(() => false))) {
+    const more = entry.getByRole('button', { name: 'Más opciones de juego', exact: true });
+    await expect(more).toHaveAttribute('aria-expanded', 'false');
+    await more.click();
+    await expect(more).toHaveAttribute('aria-expanded', 'true');
+  }
+  await start.click();
   const setup = page.locator('[data-chronicles-character-setup]');
   await expect(setup).toBeVisible();
   return setup;

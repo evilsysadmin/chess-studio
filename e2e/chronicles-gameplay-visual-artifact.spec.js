@@ -94,10 +94,13 @@ async function openChronicles(page, captureLabel, {
   // Approved expedition study must really load from the built frontend, with
   // accessible live controls layered over the decorative, browser-chrome-free art.
   await expect(entry).toHaveAttribute('data-chronicles-art', 'approved-expedition-study-v1');
-  await expect(entry.locator('.chronicles-save-menu__actions > button')).toHaveCount(6);
-  for (const name of ['Nueva campaña', 'Nuevo juego', 'Continuar partida', 'Cargar juego', 'Gestionar partidas', 'Volver al castillo']) {
-    await expect(entry.getByRole('button', { name: new RegExp(name) })).toBeVisible();
-  }
+  // Primary expedition path stays compact. Secondary actions are discoverable
+  // through a real accessible disclosure, not six competing entry rows.
+  await expect(entry.locator('.chronicles-save-menu__actions > button')).toHaveCount(3);
+  const moreExpeditionActions = entry.getByRole('button', { name: 'Más opciones de juego', exact: true });
+  await expect(moreExpeditionActions).toBeVisible();
+  await expect(moreExpeditionActions).toHaveAttribute('aria-expanded', 'false');
+  await expect(entry.getByRole('button', { name: 'Volver al castillo', exact: true })).toBeVisible();
   expect(await entry.locator('.chronicles-save-menu__sky').evaluate(async (sky) => {
     const bg = getComputedStyle(sky).backgroundImage;
     const match = bg.match(/url\(["']?([^"')]+)["']?\)/);
@@ -123,9 +126,16 @@ async function openChronicles(page, captureLabel, {
     path: `${ARTIFACT_DIR}/chronicles-save-menu-${captureLabel}.png`,
     animations: 'disabled', timeout: 30_000,
   });
-  await entry.getByRole('button', newCampaign
+  const launch = entry.getByRole('button', newCampaign
     ? { name: /Nueva campaña/ }
-    : { name: 'Nuevo juego', exact: true }).click();
+    : { name: 'Nuevo juego', exact: true });
+  if (!(await launch.isVisible().catch(() => false))) {
+    await moreExpeditionActions.click();
+    await expect(moreExpeditionActions).toHaveAttribute('aria-expanded', 'true');
+    await expect(entry.getByRole('button', { name: 'Cargar otra partida', exact: true })).toBeVisible();
+    await expect(entry.getByRole('button', { name: 'Gestionar partidas', exact: true })).toBeVisible();
+  }
+  await launch.click();
   const setup = page.locator('[data-chronicles-character-setup]');
   try {
     await expect(setup).toBeVisible({ timeout: 8_000 });
