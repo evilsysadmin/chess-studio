@@ -22,7 +22,8 @@ describe('CareerOpeningsSection', () => {
     const html = renderToStaticMarkup(<CareerOpeningsSection
       tree={{ count: 2, children: { e4: { move: 'e4', count: 2, wins: 1, children: { e5: { move: 'e5', count: 1, wins: 1, children: {} } } } } }}
     />);
-    expect(html).toContain('Mapa de aperturas');
+    expect(html).toContain('Atlas de aperturas')
+    expect(html).toContain('Ver árbol de aperturas completo');
     expect(html).toContain('e4');
     expect(html).toContain('e5');
     expect(html).not.toContain('Clínica de aperturas');
