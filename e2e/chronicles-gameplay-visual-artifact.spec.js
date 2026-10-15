@@ -390,6 +390,9 @@ test.describe('Chronicles · sapphire pause tablet visual proof', () => {
         await expect(game).toBeVisible();
         await page.addStyleTag({ content: 'canvas {visibility:hidden !important}' });
         const menu = game.locator('details.chronicles-game-menu');
+        const engraving = menu.locator('> summary .chronicles-menu-gem__hint');
+        await expect(engraving).toBeVisible();
+        await expect(engraving).toHaveText('MENÚ');
         await menu.locator('> summary').evaluate((summary) => summary.click());
         await expect(menu).toHaveAttribute('open', '');
         const panel = menu.locator('.chronicles-game-menu__panel');
@@ -1083,12 +1086,36 @@ for (const capture of CAPTURES) {
         expect(ink.computed, `${capture.label}: ${selector} final ink`).toBe('rgb(8, 8, 10)');
       }
 
-      const sapphire = await gameRoot.locator('.chronicles-game-menu > summary').evaluate((summary) => ({
-        art: getComputedStyle(summary).backgroundImage,
-        tooltipInk: getComputedStyle(summary.querySelector('.chronicles-menu-gem__hint')).color,
-      }));
+      const sapphire = await gameRoot.locator('.chronicles-game-menu > summary').evaluate(async (summary) => {
+        const art = getComputedStyle(summary).backgroundImage;
+        const src = art.match(/url\(["']?(data:image\/png;base64,[^"')]+)/)?.[1];
+        const image = new Image();
+        if (src) {
+          image.src = src;
+          await image.decode();
+        }
+        const engraving = summary.querySelector('.chronicles-menu-gem__hint');
+        const frame = summary.getBoundingClientRect();
+        const label = engraving.getBoundingClientRect();
+        return {
+          art,
+          imageWidth: image.naturalWidth,
+          imageHeight: image.naturalHeight,
+          engraving: engraving.textContent,
+          engravingOpacity: getComputedStyle(engraving).opacity,
+          engravingInk: getComputedStyle(engraving).color,
+          engravingBackground: getComputedStyle(engraving).backgroundColor,
+          isCentered: label.left >= frame.left && label.right <= frame.right
+            && label.top >= frame.top && label.bottom <= frame.bottom,
+        };
+      });
       expect(sapphire.art, `${capture.label}: sapphire artwork is the menu trigger`).toMatch(/^url\(["']?data:image\/png;base64,/);
-      expect(sapphire.tooltipInk, `${capture.label}: sapphire tooltip remains legible`).toBe('rgb(255, 246, 220)');
+      expect([sapphire.imageWidth, sapphire.imageHeight], `${capture.label}: optimized MM3 sapphire`).toEqual([84, 54]);
+      expect(sapphire.engraving, `${capture.label}: permanent menu label`).toBe('MENÚ');
+      expect(sapphire.engravingOpacity, `${capture.label}: visible without hover`).toBe('1');
+      expect(sapphire.engravingInk, `${capture.label}: sapphire engraving contrast`).toBe('rgb(255, 246, 220)');
+      expect(sapphire.engravingBackground, `${capture.label}: cobalt backdrop behind text`).toBe('rgba(5, 27, 78, 0.86)');
+      expect(sapphire.isCentered, `${capture.label}: engraving within sapphire hit target`).toBe(true);
 
       // One complete real Three.js screenshot per viewport, then stop.
       // Menu/audio and automap snapshots live in isolated browser contexts
