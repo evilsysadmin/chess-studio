@@ -1024,9 +1024,13 @@ for (const capture of CAPTURES) {
       await openChronicles(page, capture.label);
       const gameRoot = page.locator('[data-chronicles="true"]');
       await expect(gameRoot).toBeVisible();
-      // Starting facing east only uncovers corridor floor. Turn north to reveal
-      // masonry through the canonical visibility cone before judging the art.
-      await page.keyboard.press('ArrowLeft');
+      // Crypt spawn (1,5) faces east. Turn twice to face west: tile (0,5)
+      // is an authored masonry wall one square ahead, and (1,5) is floor.
+      // Reveal through the real facing/visibility system, not seeded map data.
+      await page.keyboard.press('ArrowRight');
+      await page.keyboard.press('ArrowRight');
+      await expect(gameRoot.locator('[data-chronicles-minimap-facing]')).toHaveAttribute('data-chronicles-minimap-facing', '3');
+      await expect(gameRoot.locator('.chronicles-minimap__cell.is-wall').first()).toBeVisible();
       await page.getByRole('button', { name: 'Minimapa local. Abrir automapa completo', exact: true }).evaluate((button) => button.click());
       const automap = page.getByRole('dialog', { name: 'Automapa de Chronicles', exact: true });
       await expect(automap).toBeVisible();
