@@ -11,6 +11,8 @@ import {
   loadGuidedTrainingCompletion,
   saveGuidedTrainingCompletion,
 } from '../guidedTrainingCompletion.js';
+import { focusPersonalPuzzle, isPersonalPuzzleMastered, matchesPersonalPuzzleFilter } from '../personalPuzzles.js';
+import InsightsPositionPreview from './InsightsPositionPreview.jsx';
 
 function actionLabel(step) {
   if (step?.action === 'nemesis-position') return 'Abrir posición Némesis →';
@@ -102,6 +104,18 @@ export default function InsightsGuidedSession({
     const previewPlan = previewMinutes ? plans[previewMinutes] : null;
     const focus = previewPlan?.steps?.[0] || null;
     const available = Boolean(previewPlan?.available);
+    // Preview only puzzles already admitted by the playable personal bank.
+    const personalFocus = focus?.action === 'personal' || focus?.action === 'personal-filter';
+    const featuredPuzzle = personalFocus && Array.isArray(personalPuzzles)
+      ? personalPuzzles.find((puzzle) => (
+        puzzle?.fen && !isPersonalPuzzleMastered(puzzle)
+        && Number(puzzle?.cleanSolves || 0) === 0
+        && matchesPersonalPuzzleFilter(puzzle, focus?.filter || null)
+      ))
+      : null;
+    const featuredFen = featuredPuzzle?.fen || (focus?.action === 'nemesis-position' ? focus.training?.fen : null);
+    const directPracticeAvailable = Boolean(featuredFen);
+    const featuredTitle = focus?.title === 'Acciones inmediatas' ? 'Tus posiciones pendientes' : focus?.title;
     const evidenceLabel = focus?.kind === 'debt'
       ? 'Patrón registrado'
       : focus?.kind === 'personal-errors'
@@ -117,25 +131,47 @@ export default function InsightsGuidedSession({
         data-guided-session-home="desk-task"
       >
         <div className="insights-guided-session-intro">
-          <span className="section-label">Nota de Matthias</span>
+          <span className="section-label">Matthias · sobre el tablero</span>
           <h2 id="guided-session-title">Tu siguiente tarea</h2>
-          <p className="hint-text">Un encargo concreto. Tú eliges cuánto tiempo dedicarle; Matthias pone las posiciones y los hechos, no las excusas.</p>
+          <p className="hint-text">Una posición auténtica, una oportunidad de jugarla mejor. Lo demás puede esperar.</p>
+          {directPracticeAvailable ? (
+            <figure className="insights-guided-position" data-featured-source={featuredPuzzle ? 'personal' : 'nemesis'}>
+              <InsightsPositionPreview fen={featuredFen} />
+              <figcaption>{featuredPuzzle ? 'De tu archivo personal · sin mostrar la solución' : 'De una partida contra tu Némesis'}</figcaption>
+            </figure>
+          ) : null}
         </div>
 
         {available ? (
           <div className="insights-guided-focus" data-training-preview-minutes={previewMinutes}>
             <div className="insights-guided-focus-heading">
-              <small>ENCARGO DE MATTHIAS <span aria-hidden="true">·</span> {previewMinutes} MIN</small>
-              <h3>{focus?.title || 'Sesión personal'}</h3>
+              <small>HALLAZGO DE MATTHIAS <span aria-hidden="true">·</span> MATERIAL REAL</small>
+              <h3>{featuredTitle || 'Sesión personal'}</h3>
               <p>{focus?.detail || 'Matthias ha preparado un recorrido con tu material de entrenamiento disponible.'}</p>
             </div>
             <div className="insights-guided-focus-meta" aria-label="Datos del plan seleccionado">
               <span>{evidenceLabel}</span>
               <span>{previewPlan.steps.length} {previewPlan.steps.length === 1 ? 'bloque' : 'bloques'} de práctica</span>
             </div>
+            {directPracticeAvailable ? (
+              <div className="insights-guided-direct">
+                <button
+                  type="button"
+                  className="primary-btn insights-guided-direct-button"
+                  aria-label="Entrenar esta posición real ahora"
+                  onClick={() => {
+                    if (featuredPuzzle?.id) focusPersonalPuzzle(featuredPuzzle.id);
+                    runStep(focus);
+                  }}
+                >
+                  Entrenar esta posición <span aria-hidden="true">→</span>
+                </button>
+                <p>Te llevamos al tablero con esta misma posición. Sin cronómetro ni trámites.</p>
+              </div>
+            ) : null}
             <div className="insights-guided-focus-actions">
               <div className="insights-duration-quick" role="group" aria-label="Cambiar tiempo">
-                <span>Tu tiempo</span>
+                <span>O elige un recorrido guiado</span>
                 {[5, 15, 30].map((minutes) => (
                   <button
                     key={minutes}
