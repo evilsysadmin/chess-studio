@@ -30,6 +30,8 @@ test('Home · el roster 1 vs 1 abre la sala y puede minimizarse', async ({ page 
       .toHaveCSS('visibility', 'hidden');
   }
   await expect(lobby.getByRole('heading', { name: 'Sala de Duelos' })).toBeVisible();
+  // Passive browsing must not preload the separate gameplay Duel Room scene.
+  await expect(page.locator('link[data-war-room-prefetch="duel"]')).toHaveCount(0);
   await expect(lobby.getByRole('list', { name: 'Cómo jugar 1 contra 1' })).toContainText('Ponte disponible');
   await expect(lobby.getByRole('list', { name: 'Cómo jugar 1 contra 1' })).toContainText('Pulsa Retar');
   await expect(rosterLink).toBeHidden();
@@ -89,8 +91,11 @@ test('Roster 1v1 · retar a un rival es una acción directa sin selección inter
 
   await expect(lobby.getByText('RIVAL SELECCIONADO', { exact: true })).toHaveCount(0);
   await expect(bobRow.getByText('VS TI · 1V 0T 1D', { exact: true })).toBeVisible();
+  await expect(page.locator('link[data-war-room-prefetch="duel"]')).toHaveCount(0);
   await bobRow.getByRole('button', { name: 'Retar a bob', exact: true }).click();
   await expect.poll(() => challengePosts).toBe(1);
+  // The deliberate challenge starts the game-room warmup, without blocking the POST.
+  await expect(page.locator('link[data-war-room-prefetch="duel"]')).toHaveCount(1);
 });
 
 
