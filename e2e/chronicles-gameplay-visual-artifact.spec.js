@@ -1080,84 +1080,86 @@ for (const capture of CAPTURES) {
       visualPhase('gameplay-readback-finish');
 
       visualPhase('post-readback-contracts-begin');
-      // A browser «night mode» must not lighten the dark ink on the stone.
-      expect(await gameRoot.evaluate((root) => getComputedStyle(root).colorScheme.split(' ').sort().join(' ')), `${capture.label}: Chronicles opts out of forced dark`).toBe('light only');
-      visualPhase('color-scheme-verified');
+      // A continuously rendered SwiftShader surface can stall Playwright's
+      // CDP bridge ~10 seconds PER independent evaluate() after a screenshot.
+      // Measure all the same mounted nodes in one browser round trip and keep
+      // EVERY original assertion below, fail-closed for absent selectors.
+      const { colorScheme, engraved, inlineControls, sapphire, browserProbeMs } =
+        await gameRoot.evaluate(async (root) => {
+          const started = performance.now();
+          const colorScheme = getComputedStyle(root).colorScheme.split(' ').sort().join(' ');
+          const engraved = [
+            '.chronicles-game-menu > summary',
+            '[data-chronicles-touch-action="forward"]',
+            '[data-chronicles-touch-action="turn-left"]',
+          ].map((selector) => {
+            const node = root.querySelector(selector);
+            if (!node) return { selector, missing: true };
+            const style = getComputedStyle(node);
+            return { selector, color: style.color, fill: style.webkitTextFillColor,
+              forced: style.forcedColorAdjust, scheme: style.colorScheme };
+          });
+          const inlineControls = [
+            '.chronicles-game-menu > summary',
+            '.chronicles-touch button:not(.is-attack):not(.is-magic):not(.is-contextual)',
+          ].map((selector) => {
+            const element = root.querySelector(selector);
+            if (!element) throw new Error(`Missing required MM3 control: ${selector}`);
+            return { selector, value: element.style.getPropertyValue('color'),
+              priority: element.style.getPropertyPriority('color'),
+              computed: getComputedStyle(element).color };
+          });
+          const summary = root.querySelector('.chronicles-game-menu > summary');
+          if (!summary) throw new Error('Missing MM3 sapphire menu trigger');
+          const art = getComputedStyle(summary).backgroundImage;
+          const src = art.match(/url\(["']?(data:image\/png;base64,[^"')]+)/)?.[1];
+          const image = new Image();
+          const decodeStart = performance.now();
+          if (src) {
+            image.src = src;
+            await image.decode();
+          }
+          const decodeMs = Math.round(performance.now() - decodeStart);
+          const engraving = summary.querySelector('.chronicles-menu-gem__hint');
+          if (!engraving) throw new Error('Missing permanent sapphire menu label');
+          const frame = summary.getBoundingClientRect();
+          const label = engraving.getBoundingClientRect();
+          return {
+            colorScheme, engraved, inlineControls,
+            sapphire: {
+              art, decodeMs,
+              imageWidth: image.naturalWidth, imageHeight: image.naturalHeight,
+              engraving: engraving.textContent,
+              engravingOpacity: getComputedStyle(engraving).opacity,
+              engravingInk: getComputedStyle(engraving).color,
+              engravingBackground: getComputedStyle(engraving).backgroundColor,
+              isCentered: label.left >= frame.left && label.right <= frame.right
+                && label.top >= frame.top && label.bottom <= frame.bottom,
+            },
+            browserProbeMs: Math.round(performance.now() - started),
+          };
+        });
+      visualPhase('post-readback-browser-probe-finished');
+      if (capture.label === 'desktop-1440x900') {
+        console.log(`Chronicles visual timing | post-readback-browser-probe | ${browserProbeMs}ms`);
+        console.log(`Chronicles visual timing | sapphire-image-decode-browser | ${sapphire.decodeMs}ms`);
+      }
 
-      // Grey MM3 stone must use near-black ink on MENÚ and movement arrows.
-      // Brave's automatic dark palette used to turn these glyphs white.
-      const engraved = await gameRoot.evaluate((root) => [
-        '.chronicles-game-menu > summary',
-        '[data-chronicles-touch-action="forward"]',
-        '[data-chronicles-touch-action="turn-left"]',
-      ].map((selector) => {
-        const node = root.querySelector(selector);
-        if (!node) return { selector, missing: true };
-        const style = getComputedStyle(node);
-        return { selector, color: style.color, fill: style.webkitTextFillColor, forced: style.forcedColorAdjust, scheme: style.colorScheme };
-      }));
+      // Night-mode, Brave inline priority, rendered MM3 ink and approved gem:
+      // same assertions and selectors as before; only CDP transport changed.
+      expect(colorScheme, `${capture.label}: Chronicles opts out of forced dark`).toBe('light only');
       for (const control of engraved) {
         expect(control.missing, `${capture.label}: ${control.selector} exists`).not.toBe(true);
         expect(control.color, `${capture.label}: ${control.selector} dark ink`).toBe('rgb(8, 8, 10)');
         expect(control.fill, `${capture.label}: ${control.selector} WebKit dark ink`).toBe('rgb(8, 8, 10)');
         expect(control.forced, `${capture.label}: ${control.selector} must resist forced colours`).toBe('none');
         expect(control.scheme, `${capture.label}: ${control.selector} uses the light stone palette`).toBe('light only');
-
       }
-      visualPhase('engraved-styles-verified');
-
-      // The map is opened via the minimap, not a separate MAPA button.
-      // Read the same two live controls in one browser round trip.
-      const inlineControls = await gameRoot.evaluate((root) => [
-        '.chronicles-game-menu > summary',
-        '.chronicles-touch button:not(.is-attack):not(.is-magic):not(.is-contextual)',
-      ].map((selector) => {
-        const element = root.querySelector(selector);
-        if (!element) throw new Error(`Missing required MM3 control: ${selector}`);
-        return {
-          selector,
-          value: element.style.getPropertyValue('color'),
-          priority: element.style.getPropertyPriority('color'),
-          computed: getComputedStyle(element).color,
-        };
-      }));
       for (const ink of inlineControls) {
         const selector = ink.selector;
         expect(ink.value, `${capture.label}: ${selector} inline ink`).toMatch(/^(?:#08080a|rgb\(8,\s*8,\s*10\))$/i);
         expect(ink.priority, `${capture.label}: ${selector} priority`).toBe('important');
         expect(ink.computed, `${capture.label}: ${selector} final ink`).toBe('rgb(8, 8, 10)');
-      }
-      visualPhase('inline-styles-verified');
-
-      const sapphire = await gameRoot.locator('.chronicles-game-menu > summary').evaluate(async (summary) => {
-        const art = getComputedStyle(summary).backgroundImage;
-        const src = art.match(/url\(["']?(data:image\/png;base64,[^"')]+)/)?.[1];
-        const image = new Image();
-        const decodeStart = performance.now();
-        if (src) {
-          image.src = src;
-          await image.decode();
-        }
-        const decodeMs = Math.round(performance.now() - decodeStart);
-        const engraving = summary.querySelector('.chronicles-menu-gem__hint');
-        const frame = summary.getBoundingClientRect();
-        const label = engraving.getBoundingClientRect();
-        return {
-          art,
-          decodeMs,
-          imageWidth: image.naturalWidth,
-          imageHeight: image.naturalHeight,
-          engraving: engraving.textContent,
-          engravingOpacity: getComputedStyle(engraving).opacity,
-          engravingInk: getComputedStyle(engraving).color,
-          engravingBackground: getComputedStyle(engraving).backgroundColor,
-          isCentered: label.left >= frame.left && label.right <= frame.right
-            && label.top >= frame.top && label.bottom <= frame.bottom,
-        };
-      });
-      visualPhase('sapphire-dom-evaluated');
-      if (capture.label === 'desktop-1440x900') {
-        console.log(`Chronicles visual timing | sapphire-image-decode-browser | ${sapphire.decodeMs}ms`);
       }
       expect(sapphire.art, `${capture.label}: sapphire artwork is the menu trigger`).toMatch(/^url\(["']?data:image\/png;base64,/);
       expect([sapphire.imageWidth, sapphire.imageHeight], `${capture.label}: optimized MM3 sapphire`).toEqual([84, 54]);
