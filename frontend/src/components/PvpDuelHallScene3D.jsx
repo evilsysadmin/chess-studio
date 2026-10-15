@@ -83,10 +83,10 @@ export default function PvpDuelHallScene3D() {
         const cleanup = await installPvpDuelHallShell(scene, {
           coarsePointer,
           whiteSide: true,
-          // The Hall intentionally uses no shadow-map pass. Deferred shadow
-          // caster selection and its second WebGL render cannot affect pixels.
-          enableShadowWarmup: Boolean(renderer.shadowMap?.enabled),
-          onRefine: render,
+          // The Hall has no shadow maps: a post-paint shadow-caster pass
+          // cannot alter its pixels. Avoid only that extra WebGL render;
+          // leave the shared War Room shell and all other variants untouched.
+          onRefine: renderer.shadowMap?.enabled ? render : undefined,
         });
         if (disposed) {
           cleanup?.();
