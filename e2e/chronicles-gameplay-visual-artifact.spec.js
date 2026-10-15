@@ -901,7 +901,8 @@ for (const capture of CAPTURES) {
 
       if (capture.label === 'desktop-1440x900') {
         const matthias = gameRoot.getByRole('button', { name: 'Seleccionar Matthias', exact: true });
-        await matthias.click();
+        // DOM dispatch avoids pointer stability stalls from software WebGL.
+        await matthias.evaluate((button) => button.click());
         const sheet = page.getByRole('dialog', { name: 'Matthias', exact: true });
         await expect(sheet).toBeVisible();
         const sheetPortrait = sheet.locator('.chronicles-character-sheet__portrait img');
@@ -917,7 +918,8 @@ for (const capture of CAPTURES) {
           sheet,
           `${ARTIFACT_DIR}/chronicles-character-sheet-desktop-1440x900.png`,
         );
-        await sheet.getByRole('button', { name: 'Cerrar ficha', exact: true }).click();
+        await sheet.getByRole('button', { name: 'Cerrar ficha', exact: true }).evaluate((button) => button.click());
+        await expect(sheet).toBeHidden();
       }
 
       const health = await captureChroniclesHealth(page);

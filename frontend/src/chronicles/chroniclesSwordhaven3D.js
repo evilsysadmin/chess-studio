@@ -135,6 +135,75 @@ function worldPoint(x, y, center) {
   return [(x - center.x) * CELL, (y - center.y) * CELL];
 }
 
+
+const SHOP_LETTERS = Object.freeze({
+  A: [14,17,17,31,17,17,17], B: [30,17,17,30,17,17,30],
+  C: [15,16,16,16,16,16,15], D: [30,17,17,17,17,17,30],
+  E: [31,16,16,30,16,16,31], F: [31,16,16,30,16,16,16],
+  G: [15,16,16,23,17,17,15], H: [17,17,17,31,17,17,17],
+  I: [31,4,4,4,4,4,31], J: [7,2,2,2,18,18,12],
+  K: [17,18,20,24,20,18,17], L: [16,16,16,16,16,16,31],
+  M: [17,27,21,21,17,17,17], N: [17,25,21,19,17,17,17],
+  O: [14,17,17,17,17,17,14], P: [30,17,17,30,16,16,16],
+  Q: [14,17,17,17,21,18,13], R: [30,17,17,30,20,18,17],
+  S: [15,16,16,14,1,1,30], T: [31,4,4,4,4,4,4],
+  U: [17,17,17,17,17,17,14], V: [17,17,17,17,17,10,4],
+  W: [17,17,17,21,21,21,10], X: [17,17,10,4,10,17,17],
+  Y: [17,17,10,4,4,4,4], Z: [31,1,2,4,8,16,31],
+});
+const SHOP_SIGN_TEXTURES = new Map();
+const SHOP_EMBLEM_LABELS = Object.freeze({
+  swords: 'ARMERIA', shield: 'ARMADURAS', mug: 'TABERNA',
+  crystal: 'MAGIA', sun: 'TEMPLO', sack: 'TIENDA',
+});
+
+function swordhavenShopName(spec) {
+  return String(spec.label || SHOP_EMBLEM_LABELS[spec.emblem] || 'COMERCIO')
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .toUpperCase().replace(/[^A-Z ]/g, ' ').trim().slice(0, 18);
+}
+
+// A tiny deterministic pixel-font atlas: no web fonts, canvas or per-frame
+// texture generation. Shared by houses with the same service label.
+function swordhavenShopLabelTexture(label) {
+  if (SHOP_SIGN_TEXTURES.has(label)) return SHOP_SIGN_TEXTURES.get(label);
+  const width = 256;
+  const height = 64;
+  const pixels = new Uint8Array(width * height * 4);
+  function paint(x, y, color) {
+    const offset = (y * width + x) * 4;
+    pixels[offset] = color[0]; pixels[offset + 1] = color[1];
+    pixels[offset + 2] = color[2]; pixels[offset + 3] = 255;
+  }
+  for (let y = 0; y < height; y += 1) for (let x = 0; x < width; x += 1) {
+    const edge = x < 4 || y < 4 || x >= width - 4 || y >= height - 4;
+    paint(x, y, edge ? [165, 116, 55] : [43, 30, 20]);
+  }
+  const scale = Math.max(2, Math.min(4, Math.floor(236 / (Math.max(1, label.length) * 6))));
+  const startX = Math.floor((width - (label.length * 6 - 1) * scale) / 2);
+  const startY = Math.floor((height - 7 * scale) / 2);
+  for (let charIndex = 0; charIndex < label.length; charIndex += 1) {
+    const rows = SHOP_LETTERS[label[charIndex]] || [];
+    rows.forEach((bits, row) => {
+      for (let col = 0; col < 5; col += 1) {
+        if (!(bits & (1 << (4 - col)))) continue;
+        for (let dy = 0; dy < scale; dy += 1) for (let dx = 0; dx < scale; dx += 1) {
+          paint(startX + (charIndex * 6 + col) * scale + dx,
+            startY + (6 - row) * scale + dy, [247, 219, 164]);
+        }
+      }
+    });
+  }
+  const texture = new THREE.DataTexture(pixels, width, height, THREE.RGBAFormat);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.magFilter = THREE.NearestFilter;
+  texture.minFilter = THREE.LinearMipmapLinearFilter;
+  texture.generateMipmaps = true;
+  texture.needsUpdate = true;
+  SHOP_SIGN_TEXTURES.set(label, texture);
+  return texture;
+}
+
 function emblem(group, kind, mats) {
   const gold = mats.gold;
   if (kind === 'swords') {
@@ -371,7 +440,7 @@ export function buildSwordhavenHouse(spec, mats, coarse, contentIds, center) {
       'forge-brazier', [-width * 0.40, 0.65, facadeZ + 0.23]);
     mesh(root, new THREE.SphereGeometry(0.32, 9, 8), mats.embers,
       'forge-brazier-embers', [-width * 0.40, 1.42, facadeZ + 0.23]);
-  } else {
+  } else if (spec.emblem === 'shield') {
     for (const x of [-width * 0.35, width * 0.35]) mesh(root,
       new THREE.BoxGeometry(0.67, 1.48, 0.22), mats.steel,
       'armor-display', [x, 1.12, facadeZ + 0.24]);
@@ -386,6 +455,24 @@ export function buildSwordhavenHouse(spec, mats, coarse, contentIds, center) {
   mesh(sign, new THREE.BoxGeometry(1.66, 1.26, 0.08), mats.stone, 'sign-inset', [0, 0, 0.1]);
   emblem(sign, spec.emblem, mats);
   root.add(sign);
+  // The emblem is heraldry; the shorter engraved plaque below it names the
+  // service at real street distance. Both are attached to the same facade.
+  // Residential buildings must never display a fictitious shop sign.
+  if (spec.label || SHOP_EMBLEM_LABELS[spec.emblem]) {
+    const name = swordhavenShopName(spec);
+    const nameplate = new THREE.Group();
+    nameplate.name = 'swordhaven-shop-nameplate';
+    nameplate.userData.shopLabel = name;
+    nameplate.position.set(0, 3.82, facadeZ + 0.52);
+    mesh(nameplate, new THREE.BoxGeometry(3.36, 0.62, 0.14), mats.timber,
+      'shop-nameplate-wood', [0, 0, 0]);
+    mesh(nameplate, new THREE.BoxGeometry(3.14, 0.47, 0.08), mats.gold,
+      'shop-nameplate-brass', [0, 0, 0.085]);
+    mesh(nameplate, new THREE.PlaneGeometry(3.02, 0.40),
+      new THREE.MeshBasicMaterial({ map: swordhavenShopLabelTexture(name), toneMapped: false }),
+      'shop-nameplate-lettering', [0, 0, 0.132]);
+    root.add(nameplate);
+  }
   return { root, sign, interactive: contentIds.has(spec.id) };
 }
 

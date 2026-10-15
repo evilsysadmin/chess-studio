@@ -95,6 +95,25 @@ describe('Chronicles file-authored exterior renderer', () => {
     for (const style of ['forge', 'armor', 'tavern', 'temple', 'store', 'watch']) {
       expect(names.some(name => name.startsWith('swordhaven-building-first-book-' + style + '-'))).toBe(true);
     }
+    // Named facades are readable objects, never generic pavement monoliths.
+    const labels = { forge: 'ARMERIA', armor: 'ARMADURAS', tavern: 'TABERNA',
+      temple: 'TEMPLO', store: 'TIENDA', watch: 'GUARDIA' };
+    for (const [style, expected] of Object.entries(labels)) {
+      const building = town.children.find(child =>
+        child.name.startsWith('swordhaven-building-first-book-' + style + '-'));
+      const nameplate = building.getObjectByName('swordhaven-shop-nameplate');
+      expect(nameplate.userData.shopLabel).toBe(expected);
+      const lettering = nameplate.getObjectByName('shop-nameplate-lettering');
+      expect(lettering.material.map).toBeInstanceOf(THREE.DataTexture);
+      expect(lettering.material.map.magFilter).toBe(THREE.NearestFilter);
+      expect(lettering.material.map.image.width).toBe(256);
+      expect(lettering.material.map.image.height).toBe(64);
+      expect(nameplate.position.z).toBeLessThan(5); // Within the blocking building footprint.
+    }
+    for (const house of town.children.filter(child => child.name.includes('-home-'))) {
+      expect(house.getObjectByName('swordhaven-shop-nameplate')).toBeFalsy();
+      expect(house.getObjectByName('armor-display')).toBeFalsy();
+    }
     // Only the town wall stays as plain blockers; the lone plaza cell is the fountain.
     const wall = grid.reduce((sum, row, y) => sum + [...row].filter((tile, x) => (
       tile === '#' && (x === 0 || y === 0 || x === width - 1 || y === height - 1))).length, 0);
