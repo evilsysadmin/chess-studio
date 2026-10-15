@@ -98,6 +98,7 @@ export default function ChroniclesCharacterSheet({
 }) {
   // Navigation belongs to the sheet, not the durable campaign state.
   const [activeFolio, setActiveFolio] = useState('record');
+  const [selectedItemId, setSelectedItemId] = useState(null);
   if (!state || !progression || !member) return null;
 
   const profile = chroniclesTacticsEffectiveProfile(state, member.id);
@@ -123,6 +124,10 @@ export default function ChroniclesCharacterSheet({
   const relic = relicDetails(state, member.id);
   const inventory = chroniclesInventoryEntries(state).filter((item) => item.id !== CHRONICLES_GOLD_ITEM_ID);
   const gold = chroniclesGoldBalance(state);
+  const selectedInventoryItem = inventory.find((item) => item.id === selectedItemId);
+  const selectedEquipment = selectedInventoryItem && CHRONICLES_EQUIPMENT[selectedInventoryItem.id];
+  const currentlyEquipped = selectedEquipment ? chroniclesEquippedItem(state, member.id, selectedEquipment.slot) : null;
+  const canEquipSelected = selectedEquipment && chroniclesMemberCanEquip(member, selectedEquipment);
   const gearBonus = chroniclesEquipmentBonuses(state, member.id);
   const canChangeEquipment = !tacticsMode && state.phase === 'explore' && !state.initiative
     && member.hp > 0 && typeof onEquipmentAction === 'function';
@@ -337,13 +342,42 @@ export default function ChroniclesCharacterSheet({
               {inventory.length ? (
                 <div className="chronicles-character-sheet__inventory">
                   {inventory.map((item) => (
-                    <em key={item.id} title={item.description || item.name}>
+                    <button type="button" key={item.id}
+                      className={selectedItemId === item.id ? 'is-selected' : ''}
+                      aria-pressed={selectedItemId === item.id}
+                      onClick={() => setSelectedItemId(item.id)}
+                    >
                       {item.name}{item.quantity > 1 ? ` ×${item.quantity}` : ''}
-                    </em>
+                    </button>
                   ))}
                 </div>
               ) : (
                 <small>Sin objetos recuperados en esta expedición.</small>
+              )}
+              {!tacticsMode && selectedInventoryItem && (
+                <aside className="chronicles-character-sheet__item-details" aria-live="polite">
+                  <strong>{selectedInventoryItem.name}</strong>
+                  <p>{selectedEquipment?.description || selectedInventoryItem.description || 'Objeto de expedición.'}</p>
+                  <dl>
+                    <div><dt>Cantidad</dt><dd>{selectedInventoryItem.quantity}</dd></div>
+                    {selectedEquipment && <>
+                      <div><dt>Tipo</dt><dd>{{ weapon: 'Arma', armor: 'Armadura', shield: 'Escudo' }[selectedEquipment.slot]}</dd></div>
+                      <div><dt>Daño adicional</dt><dd>{signed(selectedEquipment.attackDamageBonus)}</dd></div>
+                      <div><dt>Acierto</dt><dd>{signed(selectedEquipment.toHitBonus)}</dd></div>
+                      <div><dt>Armadura</dt><dd>{signed(selectedEquipment.armorClassBonus)}</dd></div>
+                      <div><dt>Valor</dt><dd>{selectedEquipment.price} oro</dd></div>
+                      <div><dt>Puede usarlo</dt><dd>{canEquipSelected ? 'Sí' : 'No, clase incompatible'}</dd></div>
+                    </>}
+                  </dl>
+                  {selectedEquipment && <>
+                    <small>Actualmente: {currentlyEquipped?.name || 'Sin equipar'}.</small>
+                    {currentlyEquipped && <small> Diferencia respecto al equipo actual: daño {signed(selectedEquipment.attackDamageBonus - currentlyEquipped.attackDamageBonus)}, acierto {signed(selectedEquipment.toHitBonus - currentlyEquipped.toHitBonus)}, armadura {signed(selectedEquipment.armorClassBonus - currentlyEquipped.armorClassBonus)}.</small>}
+                    <button type="button" disabled={!canChangeEquipment || !canEquipSelected}
+                      onClick={() => onEquipmentAction?.({ type: 'equip-item', itemId: selectedEquipment.id })}>
+                      Equipar {selectedEquipment.name}
+                    </button>
+                  </>}
+                </aside>
               )}
             </article>
           </div>

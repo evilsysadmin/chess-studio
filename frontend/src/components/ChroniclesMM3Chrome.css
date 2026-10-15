@@ -1116,31 +1116,32 @@
 .chronicles .chronicles-game-menu > summary:hover,
 .chronicles .chronicles-game-menu > summary:focus-visible,
 .chronicles .chronicles-game-menu[open] > summary {
-  filter: brightness(1.3) drop-shadow(0 0 7px rgba(105, 181, 255, .8));
+  filter: brightness(1.15) drop-shadow(0 0 5px rgba(105, 181, 255, .65));
   outline: none;
 }
 .chronicles .chronicles-game-menu > summary:focus-visible {
   outline: 3px solid #ffe3a0;
   outline-offset: 0;
 }
+/* An always-readable engraving within the sapphire, rather than a tooltip
+   outside the viewport. The stone remains the one actual hit target. */
 .chronicles .chronicles-menu-gem__hint {
   position: absolute;
-  bottom: calc(100% - 3px);
+  top: 53%;
   left: 50%;
-  transform: translateX(-50%);
-  padding: 4px 8px;
-  background: #111425;
-  border: 1px solid #7c9bce;
+  transform: translate(-50%, -50%);
+  padding: 2px 3px 1px;
+  background: rgba(5, 27, 78, .86);
+  border: 1px solid rgba(171, 210, 255, .8);
+  box-shadow: inset 0 0 0 1px rgba(14, 61, 144, .9);
   color: #fff6dc !important;
   -webkit-text-fill-color: #fff6dc !important;
-  font: 1.05rem/1 var(--mm3-pixel-font);
-  letter-spacing: .08em;
+  font: 0.92rem/1 var(--mm3-pixel-font);
+  letter-spacing: .035em;
   white-space: nowrap;
-  opacity: 0;
+  opacity: 1;
   pointer-events: none;
 }
-.chronicles .chronicles-game-menu > summary:hover .chronicles-menu-gem__hint,
-.chronicles .chronicles-game-menu > summary:focus-visible .chronicles-menu-gem__hint { opacity: 1; }
 
 /* Paused game under a centered MM3 tablet; backdrop intercepts game clicks. */
 .chronicles .chronicles-game-menu[open]::before {
@@ -1284,6 +1285,7 @@
     min-height: 48px;
     background-size: 66px 44px !important;
   }
+  .chronicles .chronicles-menu-gem__hint { font-size: 0.79rem; }
   .chronicles .chronicles-statusbar .chronicles-map-trigger {
     margin-right: 64px;
   }
@@ -1316,12 +1318,13 @@
   .chronicles .chronicles-game-menu__panel > .chronicles-audio-controls { grid-column: 2; }
 }
 
-/* The sapphire's hovering label is a bright tooltip, not a dark engraving:
-   it must overrule the forced dark-ink rules for the old MENÚ stone button. */
+/* The permanent MENÚ engraving is pale ivory on cobalt, not the dark
+   forced-color ink used by neighboring stone controls. */
 .chronicles .chronicles-game-menu > summary .chronicles-menu-gem__hint {
   color: #fff6dc !important;
   -webkit-text-fill-color: #fff6dc !important;
   -webkit-text-stroke: 0 !important;
+  text-shadow: 0 1px 0 #00163e !important;
 }
 @media (min-width: 1025px), (min-width: 801px) and (min-height: 601px) {
   /* With MENÚ removed the map plaque uses the whole statusbar width. */

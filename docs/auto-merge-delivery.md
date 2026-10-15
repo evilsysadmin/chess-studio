@@ -19,7 +19,7 @@ The normal release chain is intentionally boring:
 
 When tooling or an operator opens a **non-visual** PR that does not require human inspection of captured PNGs, screenshots or other visual evidence, it enables GitHub native auto-merge **as part of PR creation**. The PR still starts as Draft: arming auto-merge early does not bypass Draft state, branch protection or required checks; it only removes the need for a later manual merge action. If GitHub refuses to arm native auto-merge while the PR is Draft, treat that as a deferred arm and retry automatically at the first moment GitHub permits it, normally when the PR becomes Ready.
 
-Visual PRs, or any PR whose acceptance requires human inspection of PNG/screenshot/render evidence, are the exception: do **not** arm auto-merge at creation. Keep them Draft until the required visual evidence has been reviewed against the relevant baseline and accepted. Only then may they become Ready and have native auto-merge enabled.
+Visual PRs, or any PR whose acceptance requires human inspection of PNG/screenshot/render evidence, are the exception: do **not** arm auto-merge at creation. Keep them Draft until the required visual evidence has been reviewed against the relevant baseline **and displayed as real, embedded images to the user in the same chat where the PR is iterated** (not merely linked as Actions artifacts). Only then may they become Ready and have native auto-merge enabled. If the images cannot be rendered in chat, report the blocker and keep the visual PR Draft; see `docs/operations/visual-evidence.md`.
 
 No Actions runner needs to stay alive waiting for required checks, and the expensive Quality suite is paid once per normal change rather than once on the PR and again on `main`.
 

@@ -38,6 +38,7 @@ async function openChronicles(page, captureLabel, {
   newTown = false,
   newCampaign = false,
   retryVisualHomeLogin = true,
+  onVisualPhase = null,
 } = {}) {
   await mockApi(page, {
     profileSeed: {
@@ -56,7 +57,53 @@ async function openChronicles(page, captureLabel, {
   const loginOptions = retryVisualHomeLogin
     ? { navigationWaitUntil: 'domcontentloaded', homeVisibleTimeout: 60_000 }
     : undefined;
-  await login(page, loginOptions);
+  // Preserve the failing Home/login state instead of merely reporting a
+  // 60-second missing landmark. Diagnostics are only written on failure.
+  const bootstrapErrors = [];
+  const onPageError = (error) => bootstrapErrors.push(`pageerror: ${error.message}`);
+  const onConsole = (message) => {
+    if (message.type() === 'error') bootstrapErrors.push(`console: ${message.text()}`);
+  };
+  page.on('pageerror', onPageError);
+  page.on('console', onConsole);
+  try {
+    await login(page, loginOptions);
+  } catch (error) {
+    const diagnostic = await page.evaluate(() => ({
+      url: location.href,
+      title: document.title,
+      readyState: document.readyState,
+      bodyText: document.body?.innerText?.slice(0, 1800) || '',
+      loginVisible: [...document.querySelectorAll('input')].some((input) => input.labels?.[0]?.textContent?.includes('Usuario')),
+      homeRegions: [...document.querySelectorAll('[role="region"]')].map((region) => ({
+        label: region.getAttribute('aria-label'),
+        hidden: region.hidden,
+      })),
+      loadingVisible: Boolean(document.querySelector('.home-3d-loading')),
+    })).catch((inspectionError) => ({ inspectionError: String(inspectionError) }));
+    // CI logs must retain the evidence even when artifact ZIPs cannot be inspected.
+    // Keep it bounded and avoid logging input values or authentication secrets.
+    console.error('[Chronicles visual] Home bootstrap failed', JSON.stringify({
+      captureLabel,
+      diagnostic,
+      errors: bootstrapErrors.slice(-20),
+    }));
+    await mkdir(ARTIFACT_DIR, { recursive: true });
+    await writeFile(
+      `${ARTIFACT_DIR}/chronicles-home-bootstrap-failure-${captureLabel}.json`,
+      JSON.stringify({ captureLabel, error: String(error), diagnostic, errors: bootstrapErrors.slice(-40) }, null, 2),
+      'utf8',
+    );
+    await page.screenshot({
+      path: `${ARTIFACT_DIR}/chronicles-home-bootstrap-failure-${captureLabel}.png`,
+      timeout: 10_000,
+    }).catch(() => {});
+    throw error;
+  } finally {
+    page.off('pageerror', onPageError);
+    page.off('console', onConsole);
+  }
+  onVisualPhase?.('home-interactive');
   const speech = page.getByRole('region', { name: 'Mensaje de Matthias', exact: true });
   if (await speech.isVisible().catch(() => false)) {
     const close = speech.getByRole('button', { name: 'Cerrar comentario de Matthias', exact: true });
@@ -77,6 +124,7 @@ async function openChronicles(page, captureLabel, {
   }
 
   await openVisualMoreModes(page);
+  onVisualPhase?.('modes-open');
   const tools = page.locator('#illustrated-home-tools');
   await expect(tools).toBeVisible();
   if (await pvpLobby.isVisible().catch(() => false)) {
@@ -123,6 +171,7 @@ async function openChronicles(page, captureLabel, {
     path: `${ARTIFACT_DIR}/chronicles-save-menu-${captureLabel}.png`,
     animations: 'disabled', timeout: 30_000,
   });
+  onVisualPhase?.('expedition-book-captured');
   await entry.getByRole('button', newCampaign
     ? { name: /Nueva campaña/ }
     : { name: 'Nuevo juego', exact: true }).click();
@@ -147,6 +196,7 @@ async function openChronicles(page, captureLabel, {
     setup,
     `${ARTIFACT_DIR}/chronicles-character-setup-${captureLabel}.png`,
   );
+  onVisualPhase?.('character-setup-captured');
 
   await setup.getByRole('button', { name: 'Crear PJs', exact: true }).click();
   const editor = page.locator('[data-chronicles-character-setup="editor"]');
@@ -199,9 +249,11 @@ async function openChronicles(page, captureLabel, {
       animations: 'disabled', timeout: 30_000,
     });
   }
+  onVisualPhase?.('character-editor-captured');
   await editor.getByRole('button', { name: '← Volver', exact: true }).click();
 
   await confirmChroniclesCharacterSetup(page, { newTown });
+  onVisualPhase?.('characters-confirmed');
   await expect(page.locator('[data-chronicles="true"]')).toBeVisible();
 }
 
@@ -374,6 +426,9 @@ test.describe('Chronicles · sapphire pause tablet visual proof', () => {
         await expect(game).toBeVisible();
         await page.addStyleTag({ content: 'canvas {visibility:hidden !important}' });
         const menu = game.locator('details.chronicles-game-menu');
+        const engraving = menu.locator('> summary .chronicles-menu-gem__hint');
+        await expect(engraving).toBeVisible();
+        await expect(engraving).toHaveText('MENÚ');
         await menu.locator('> summary').evaluate((summary) => summary.click());
         await expect(menu).toHaveAttribute('open', '');
         const panel = menu.locator('.chronicles-game-menu__panel');
@@ -892,6 +947,14 @@ for (const capture of CAPTURES) {
     // producer to one canonical readback per viewport; Tactics owns a separate
     // focused producer so neither surface can starve the other of its budget.
     test.setTimeout(360_000);
+    // Observe this expensive desktop canary without extra browser calls,
+    // additional screenshots, relaxed assertions or changed timeouts.
+    const visualStart = Date.now();
+    const visualPhase = (phase) => {
+      if (capture.label === 'desktop-1440x900') {
+        console.log(`Chronicles visual timing | ${phase} | ${Date.now() - visualStart}ms`);
+      }
+    };
     await mkdir(ARTIFACT_DIR, { recursive: true });
 
     const context = await browser.newContext({
@@ -901,7 +964,8 @@ for (const capture of CAPTURES) {
     });
     const page = await context.newPage();
     try {
-      await openChronicles(page, capture.label);
+      await openChronicles(page, capture.label, { onVisualPhase: visualPhase });
+      visualPhase('gameplay-mounted');
       const gameRoot = page.locator('[data-chronicles="true"]');
       const chroniclesCanvas = page.locator('[data-chronicles-renderer="three"] canvas');
       const authoredPortrait = page.locator('[data-chronicles-party-renderer="authored"]');
@@ -934,6 +998,7 @@ for (const capture of CAPTURES) {
       await expect(stage).toBeVisible();
       await expect(gameMenu).toBeVisible();
       await page.waitForTimeout(450);
+      visualPhase('renderer-verified');
 
       if (capture.label === 'desktop-1440x900') {
         const matthias = gameRoot.getByRole('button', { name: 'Seleccionar Matthias', exact: true });
@@ -956,6 +1021,7 @@ for (const capture of CAPTURES) {
         );
         await sheet.getByRole('button', { name: 'Cerrar ficha', exact: true }).evaluate((button) => button.click());
         await expect(sheet).toBeHidden();
+        visualPhase('character-sheet-captured');
       }
 
       const health = await captureChroniclesHealth(page);
@@ -997,7 +1063,9 @@ for (const capture of CAPTURES) {
         expect(health.partyFace?.height || 0, `${capture.label}: party face height`).toBeGreaterThanOrEqual(80);
       }
 
+      visualPhase('gameplay-readback-begin');
       await captureElement(page, gameRoot, `${ARTIFACT_DIR}/chronicles-playing-${capture.label}.png`);
+      visualPhase('gameplay-readback-finish');
 
       // A browser «night mode» must not lighten the dark ink on the stone.
       expect(await gameRoot.evaluate((root) => getComputedStyle(root).colorScheme.split(' ').sort().join(' ')), `${capture.label}: Chronicles opts out of forced dark`).toBe('light only');
@@ -1054,12 +1122,36 @@ for (const capture of CAPTURES) {
         expect(ink.computed, `${capture.label}: ${selector} final ink`).toBe('rgb(8, 8, 10)');
       }
 
-      const sapphire = await gameRoot.locator('.chronicles-game-menu > summary').evaluate((summary) => ({
-        art: getComputedStyle(summary).backgroundImage,
-        tooltipInk: getComputedStyle(summary.querySelector('.chronicles-menu-gem__hint')).color,
-      }));
+      const sapphire = await gameRoot.locator('.chronicles-game-menu > summary').evaluate(async (summary) => {
+        const art = getComputedStyle(summary).backgroundImage;
+        const src = art.match(/url\(["']?(data:image\/png;base64,[^"')]+)/)?.[1];
+        const image = new Image();
+        if (src) {
+          image.src = src;
+          await image.decode();
+        }
+        const engraving = summary.querySelector('.chronicles-menu-gem__hint');
+        const frame = summary.getBoundingClientRect();
+        const label = engraving.getBoundingClientRect();
+        return {
+          art,
+          imageWidth: image.naturalWidth,
+          imageHeight: image.naturalHeight,
+          engraving: engraving.textContent,
+          engravingOpacity: getComputedStyle(engraving).opacity,
+          engravingInk: getComputedStyle(engraving).color,
+          engravingBackground: getComputedStyle(engraving).backgroundColor,
+          isCentered: label.left >= frame.left && label.right <= frame.right
+            && label.top >= frame.top && label.bottom <= frame.bottom,
+        };
+      });
       expect(sapphire.art, `${capture.label}: sapphire artwork is the menu trigger`).toMatch(/^url\(["']?data:image\/png;base64,/);
-      expect(sapphire.tooltipInk, `${capture.label}: sapphire tooltip remains legible`).toBe('rgb(255, 246, 220)');
+      expect([sapphire.imageWidth, sapphire.imageHeight], `${capture.label}: optimized MM3 sapphire`).toEqual([84, 54]);
+      expect(sapphire.engraving, `${capture.label}: permanent menu label`).toBe('MENÚ');
+      expect(sapphire.engravingOpacity, `${capture.label}: visible without hover`).toBe('1');
+      expect(sapphire.engravingInk, `${capture.label}: sapphire engraving contrast`).toBe('rgb(255, 246, 220)');
+      expect(sapphire.engravingBackground, `${capture.label}: cobalt backdrop behind text`).toBe('rgba(5, 27, 78, 0.86)');
+      expect(sapphire.isCentered, `${capture.label}: engraving within sapphire hit target`).toBe(true);
 
       // One complete real Three.js screenshot per viewport, then stop.
       // Menu/audio and automap snapshots live in isolated browser contexts

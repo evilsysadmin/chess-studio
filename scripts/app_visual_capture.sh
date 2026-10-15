@@ -241,15 +241,16 @@ case "$mode" in
         # In both prior runs the LAST tablet capture failed after 18-19
         # earlier 3D captures, independently of portrait/landscape. Reset
         # Chromium after 4-5 captures, with no retries or missing tests.
-        # Cost-based assignment measured on PR #5595's green SHA:
-        # groups 1/2/3/7 = ~6m, groups 4/5 = ~9m, groups 6/8 +
-        # isolated canaries = ~10m. Each group remains one fresh process.
-        # All eight subshards belong to exactly one runner. New tests still
-        # enter the complete partition via Playwright, never a name allowlist.
+        # Rebalanced after measuring ALL three runners on PR #5606:
+        # 1: subshards 1/4/7/8 (~9.6 min), 2: 2/3/5 (~9.6 min),
+        # 3: 6 + cold-menu/desktop canaries (~8.7 min). This moves the
+        # expensive group 4 away from the previously slowest runner.
+        # Every subshard remains uniquely owned with a fresh Playwright
+        # process; newly added cases still enter the full eight-way suite.
         case "$APP_VISUAL_CHRONICLES_SHARD" in
-          1) subshards=(1 2 3 7) ;;
-          2) subshards=(4 5) ;;
-          3) subshards=(6 8) ;;
+          1) subshards=(1 4 7 8) ;;
+          2) subshards=(2 3 5) ;;
+          3) subshards=(6) ;;
         esac
         for subshard in "${subshards[@]}"; do
           echo "Chronicles visual bounded renderer: isolated process ${subshard}/8."

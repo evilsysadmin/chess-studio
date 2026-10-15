@@ -65,6 +65,18 @@ Usar contact strip, secuencia, vídeo corto o múltiples capturas cuando haya qu
 - transiciones de estado;
 - timing narrativo.
 
+## Entrega visual en el chat de iteración (obligatoria)
+
+**Toda PR visual debe enseñar su evidencia al usuario en el mismo chat donde se trabaja esa PR.** No es suficiente que los PNG existan en GitHub Actions, estén disponibles en la PR o hayan sido inspeccionados internamente.
+
+1. **Capturar la realidad:** obtener screenshots PNG/renders reales del pipeline de authoring **y del runtime consumidor** cuando ambas fases estén afectadas. Asociar cada prueba al PR head SHA exacto y a la pantalla, estado y viewport. No sustituir una captura por un mockup, una imagen generada o una versión vieja de staging.
+2. **Mostrarla aquí:** insertar las imágenes **visibles en el cuerpo del chat de iteración**, no solamente URLs, paths, nombres de artifacts, tablas de resultados o «capturas revisadas». Mostrar una selección representativa de cada superficie cambiada; incluir desktop y móvil si varía la composición. Si hay muchas capturas, presentar una tira/contact sheet legible y enlazar además el artifact completo; no inundar el chat con decenas de PNG casi idénticos.
+3. **Hacer legible la comparación:** cuando exista baseline comparable, enseñar **antes y después** claramente identificados; etiquetar PR, SHA, escenario y viewport. Para animación, enseñar una secuencia/contact sheet o vídeo real cuando un frame aislado no baste.
+4. **Compartir mientras se itera:** publicar el primer conjunto de evidencias en cuanto esté disponible y volver a mostrar las imágenes modificadas tras cambios visuales relevantes. Dar oportunidad al usuario de inspeccionar/comentar en esa misma conversación. No es obligatorio esperar una respuesta expresa si el usuario ha pedido iterar sin input, pero sí **mostrarle** la evidencia antes de darla por aceptada.
+5. **Fallar con transparencia:** si GitHub no ofrece los PNG, no se pueden descargar/materializar, o el canal no permite incrustarlos, explicar exactamente qué evidencia falta o no puede mostrarse. No afirmar que se ha enseñado, no sustituirla silenciosamente por un enlace y **no** pasar a Ready ni habilitar automerge de esa PR visual hasta resolver la evidencia.
+
+El enlace al run/PR sigue siendo útil como **complemento** para los artifacts completos, nunca como sustituto de las imágenes visibles en chat. Esta regla aplica a Home, War Room, Chronicles, Tactics, Football, Pawn Slug, ilustraciones, sprites y cualquier otra PR de aceptación visual.
+
 ## CI
 
 CI puede generar artifacts de review, pero no convierte automáticamente una visual en aceptada.
@@ -119,8 +131,8 @@ shard 2 = 6,5 min), el menú móvil de pausa/audio se ejecuta como **canary temp
 un proceso Playwright nuevo del **runner 3**, y la captura WebGL desktop de 4 min se
 ejecuta en otro proceso nuevo del mismo runner. El resto de pruebas se reparte mediante `--shard` con un filtro
 complementario `--grep-invert`. Se usan **ocho subshards** ponderados de acuerdo
-con el tiempo observado en la #5595: runner 1 recibe `1,2,3,7`; runner 2 recibe
-`4,5`; runner 3 recibe `6,8` además de los dos canaries. Cada proceso contiene
+con las mediciones del gate de tres runners en la #5606: runner 1 recibe `1,4,7,8`;
+runner 2 recibe `2,3,5`; runner 3 recibe `6` más los dos canaries. Cada proceso contiene
 un máximo aproximado de cinco casos:
 reiniciar Chromium periódicamente limita la acumulación de contextos SwiftShader
 y aísla el fallo que aparecía al final de una serie larga de capturas.
@@ -154,3 +166,12 @@ camino crítico a ~10 minutos, pagando un tercer runner por ejecución completa.
 El objetivo **no está acreditado** hasta medir los nuevos logs; no confundir un gate
 verde con la demostración de reducción de latencia. La distribución se reevalúa
 cuando se añadan tests o se modifiquen los costes del productor.
+
+
+Reequilibrio posterior a #5606: en el primer gate verde de tres runners se midieron
+**8m18s / 11m37s / 10m14s** de wall-clock total (incluida la preparación),
+frente a unos 14m30s del camino crítico con dos runners. La asignación reequilibrada
+mueve el grupo 4 (~6m30s) al runner 1 y los grupos 2/3 al 2, dejando el runner 3
+para el canary WebGL desktop (~4m), el canary menú y el grupo 6 (~4m36s).
+Es una hipótesis de ~10m basada en esos tiempos, no un resultado acreditado:
+volver a medir los tres runners y revisar los 141 PNG del SHA exacto.
