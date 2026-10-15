@@ -405,3 +405,45 @@
     height: calc(100dvh - 8px);
   }
 }
+
+/* Interactive backpack: keyboard/touch selection and real catalog comparisons. */
+.chronicles-character-sheet--folio-v2 .chronicles-character-sheet__inventory button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 10px 12px;
+  border: 1px solid #72583a;
+  background: #29221c;
+  color: #f1dfbe;
+  cursor: pointer;
+  font: inherit;
+}
+.chronicles-character-sheet--folio-v2 .chronicles-character-sheet__inventory button.is-selected {
+  border-color: #e9bf79;
+  background: #54402a;
+}
+.chronicles-character-sheet--folio-v2 .chronicles-character-sheet__inventory button:focus-visible,
+.chronicles-character-sheet--folio-v2 .chronicles-character-sheet__item-details button:focus-visible {
+  outline: 2px solid #f6d28c;
+  outline-offset: 2px;
+}
+.chronicles-character-sheet--folio-v2 .chronicles-character-sheet__item-details {
+  margin-top: 12px;
+  padding: 14px;
+  border: 1px solid #9c7849;
+  background: #191511;
+  color: #f1ddba;
+}
+.chronicles-character-sheet--folio-v2 .chronicles-character-sheet__item-details strong { color: #f6d393; }
+.chronicles-character-sheet--folio-v2 .chronicles-character-sheet__item-details p { margin: 8px 0; }
+.chronicles-character-sheet--folio-v2 .chronicles-character-sheet__item-details dl { margin: 10px 0; }
+.chronicles-character-sheet--folio-v2 .chronicles-character-sheet__item-details dl div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid #564331;
+  padding: 5px 0;
+}
+.chronicles-character-sheet--folio-v2 .chronicles-character-sheet__item-details dd { margin: 0; text-align: right; }
+.chronicles-character-sheet--folio-v2 .chronicles-character-sheet__item-details small { display: block; margin: 8px 0; }
+.chronicles-character-sheet--folio-v2 .chronicles-character-sheet__item-details button { min-height: 44px; margin-top: 8px; }
