@@ -111,12 +111,19 @@ Es una partición de las mismas pruebas, sin recortar viewports, casos, assertio
 usa **un solo worker** para no saturar SwiftShader dentro del runner; los artifacts se publican con
 sufijos `-part-1` y `-part-2` para inspección conjunta del mismo SHA.
 
-Al cambiar el propio workflow, la acción compartida o el capturador, el gate fuerza la ejecución\nreal del productor de Chronicles (evita el falso verde de un shard sin pruebas).\n\nPara evitar el desequilibrio observado en la primera ejecución (shard 1 = 14,2 min,
+Al cambiar el propio workflow, la acción compartida o el capturador, el gate fuerza la ejecución
+real del productor de Chronicles (evita el falso verde de un shard sin pruebas).
+
+Para evitar el desequilibrio observado en la primera ejecución (shard 1 = 14,2 min,
 shard 2 = 6,5 min), el menú móvil de pausa/audio se ejecuta como **canary temprano** en
 un proceso Playwright nuevo del shard 2, y la captura WebGL desktop de 4 min se
-ejecuta en otro proceso nuevo de ese shard. El resto de pruebas se reparte
-mediante `--shard` con un filtro complementario `--grep-invert`; los dos
-selectores son complementarios, así que ninguna prueba queda sin dueño.
+ejecuta en otro proceso nuevo de ese shard. El resto de pruebas se reparte mediante `--shard` con un filtro
+complementario `--grep-invert`. Se usan **ocho subshards** (cuatro procesos
+Playwright por runner) con un máximo aproximado de cinco casos por proceso:
+reiniciar Chromium periódicamente limita la acumulación de contextos SwiftShader
+y aísla el fallo que aparecía al final de una serie larga de capturas.
+Los selectores son complementarios y ningún caso queda sin dueño; siguen
+sin existir retries ni aserciones relajadas.
 Los filtros sólo aplican al productor completo de Chronicles: los fast paths
 de libro de expediciones/setup y el productor de avatar conservan su selección.
 
