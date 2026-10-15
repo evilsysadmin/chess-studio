@@ -502,18 +502,23 @@ async function assertLivePvpBrowserPath(page) {
   page.on('request', onOpenRequest);
   page.on('response', onOpenResponse);
 
+  // Uninstrumented CI smoke gives a clean baseline. Opt in to deep CDP
+  // profiling for investigations; profiling itself may perturb native timings.
+  const deepDiagnostics = process.env.CHESS_STAGING_CDP_DIAGNOSTICS === '1';
+  console.log('STAGING_PVP_DIAGNOSTICS cdp=' + (deepDiagnostics ? 'on' : 'off'));
   // Best-effort, short-lived CPU sampling on this Chromium smoke only.
   // LongTask says *when* the main thread stalls; V8 frames reveal *where*.
   let cpuSession = null;
   let cpuSampling = false;
   try {
+    if (!deepDiagnostics) throw new Error('CDP diagnostics disabled');
     cpuSession = await page.context().newCDPSession(page);
     await cpuSession.send('Profiler.enable');
     await cpuSession.send('Profiler.setSamplingInterval', { interval: 1000 });
     await cpuSession.send('Profiler.start');
     cpuSampling = true;
   } catch {
-    console.log('STAGING_PVP_CPU unavailable=cdp-start');
+    if (deepDiagnostics) console.log('STAGING_PVP_CPU unavailable=cdp-start');
   }
   const stopCpuSampling = async () => {
     if (!cpuSession || !cpuSampling) return;
@@ -531,7 +536,7 @@ async function assertLivePvpBrowserPath(page) {
   const nativeSummary = createPvpNativeTraceSummary();
   let nativeTracing = false;
   const onTraceData = ({ value }) => nativeSummary.add(value);
-  if (cpuSession) {
+  if (cpuSession && deepDiagnostics) {
     try {
       cpuSession.on('Tracing.dataCollected', onTraceData);
       await cpuSession.send('Tracing.start', {
