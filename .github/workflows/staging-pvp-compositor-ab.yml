@@ -11,10 +11,10 @@ on:
         default: default
         options: [default, software]
       comparison:
-        description: 'prehidden tests forced hide; product tests actual modal-scoped CSS'
+        description: 'product/prehidden: opening A/B; native: full post-ready CDP'
         type: choice
         default: product
-        options: [product, prehidden]
+        options: [product, prehidden, native]
 
 permissions:
   contents: read
@@ -25,7 +25,7 @@ concurrency:
 
 jobs:
   compare:
-    name: Compare first PvP GET · Home visible/hidden
+    name: Compare PvP A/B or trace post-ready native stall
     runs-on: ubuntu-24.04
     timeout-minutes: 25
     environment:
@@ -76,15 +76,21 @@ jobs:
           restore-frontend-deps: 'false'
           build-frontend: 'false'
 
-      - name: Run paired opening-only A/B with real browser GET and dialog
+      - name: Run A/B openings or one full native CDP diagnosis
         shell: bash
         timeout-minutes: 21
         run: |
           set -euo pipefail
           summary="$RUNNER_TEMP/staging-pvp-ab.txt"
           printf 'source_sha=%s renderer_requested=%s\n' "$DEPLOY_SHA" "$CHESS_STAGING_RENDERER" > "$summary"
-          if [[ "$PVP_COMPARISON" == product ]]; then control=product-home-canvas; else control=hide-home-canvas; fi
-          for mode in keep-home-canvas "$control" "$control" keep-home-canvas; do
+          if [[ "$PVP_COMPARISON" == native ]]; then
+            modes=(off)
+            export CHESS_STAGING_PVP_OPEN_ONLY=0 CHESS_STAGING_CDP_DIAGNOSTICS=1
+          else
+            if [[ "$PVP_COMPARISON" == product ]]; then control=product-home-canvas; else control=hide-home-canvas; fi
+            modes=(keep-home-canvas "$control" "$control" keep-home-canvas)
+          fi
+          for mode in "${modes[@]}"; do
             python3 -S scripts/staging_generation.py wait \
               --sha "$DEPLOY_SHA" --surfaces backend,frontend,worker --attempts 1 --interval 0 --root
             env_file="$(mktemp "$RUNNER_TEMP/staging-pvp-identity.XXXXXXXX")"
@@ -109,7 +115,7 @@ jobs:
             python3 -S scripts/staging_smoke_user_cleanup.py
             cleanup_rc="$?"
             set -e
-            grep -E 'STAGING_PVP_(ABLATION|GPU|OPEN|INPUT_FRAME|RENDER|PHASE)' "$leg_log" >> "$summary" || true
+            grep -E 'STAGING_PVP_(ABLATION|GPU|OPEN|INPUT_FRAME|RENDER|PHASE|DIAGNOSTICS|CPU|NATIVE|LOAF)' "$leg_log" >> "$summary" || true
             rm -f "$leg_log"
             echo "::endgroup::"
             unset STAGING_E2E_USERNAME STAGING_E2E_PASSWORD
@@ -121,9 +127,13 @@ jobs:
               --sha "$DEPLOY_SHA" --surfaces backend,frontend,worker --attempts 1 --interval 0 --root
           done
           {
-            echo '### PvP compositor A/B — diagnostic only, NOT staging accreditation'
+            echo '### PvP manual diagnostic — no deployment or accreditation'
             echo "Exact SHA: $DEPLOY_SHA; renderer requested: $CHESS_STAGING_RENDERER"
-            echo "Order: keep / $control / $control / keep. Opening-only, NOT canonical smoke."
+            if [[ "$PVP_COMPARISON" == native ]]; then
+              echo 'Native: one full staging-live smoke, opt-in CDP 20s max.'
+            else
+              echo "A/B: keep / $control / $control / keep, opening-only."
+            fi
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Retry cleanup after any interrupted leg

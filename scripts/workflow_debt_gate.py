@@ -84,7 +84,7 @@ BUDGETS = (
     Budget('.github/workflows/oci-resend-bootstrap.yml', 4601),
     Budget('.github/workflows/staging-deploy-continuity.yml', 7390),
     Budget('.github/workflows/staging-pawn-slug-visual.yml', 3919),
-    Budget('.github/workflows/staging-pvp-compositor-ab.yml', 6000),
+    Budget('.github/workflows/staging-pvp-compositor-ab.yml', 6300),
     Budget('.github/workflows/staging-ai-worker.yml', 7227),
     Budget('.github/workflows/cloudflare-prometheus-exporter.yml', 5964),
     Budget('.github/workflows/oci-readiness.yml', 2840),
