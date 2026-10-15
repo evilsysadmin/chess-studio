@@ -12,10 +12,10 @@ import MechanicTutorialHelp from './MechanicTutorialHelp.jsx';
 import { buildCareerHeatmaps, deriveRpgProfile, summarizeRpgProfile } from '../careerVisuals.js';
 import RivalryDossier from './RivalryDossier.jsx';
 import CareerHallOfFame from './CareerHallOfFame.jsx';
+import CareerOpeningsSection from './CareerOpeningsSection.jsx';
 import { buildPersonalSeasons } from '../personalSeasons.js';
 
 const TIME_LABEL = { none:'Sin reloj','1+0':'1+0 Bullet','3+2':'3+2 Blitz','5+0':'5+0','10+0':'10+0','15+10':'15+10' };
-function TreeRows({ node, depth=0 }) { const rows=Object.values(node?.children||{}).sort((a,b)=>b.count-a.count).slice(0,depth===0?5:2);return <ul className={`career-tree-level depth-${depth}`}>{rows.map(r=><li key={`${depth}-${r.move}-${r.count}`}><div className="career-tree-row"><span>{r.move}</span><b>{r.count}×</b><small>{Math.round((r.wins||0)/Math.max(1,r.count)*100)}% victorias</small></div>{depth<2&&<TreeRows node={r} depth={depth+1}/>}</li>)}</ul>; }
 function pct(n){return n===null||n===undefined?'—':`${n}%`;}
 
 const HEAT_RANKS=['8','7','6','5','4','3','2','1'];
@@ -146,10 +146,7 @@ export default function CareerScreen({ history, ratingHistory, onExit, onOpenRec
     {Object.keys(career.byTimeControl||{}).length>0&&<div className="menu-section"><h2>Rivalidad por ritmo</h2><div className="career-rhythm-grid">{Object.entries(career.byTimeControl).map(([id,row])=><div className="career-rhythm" key={id}><b>{TIME_LABEL[id]||id}</b><span>{row.wins}V · {row.draws}T · {row.losses}D</span><small>{row.games} partidas</small></div>)}</div></div>}
     </>}
 
-    {careerSection==='openings'&&<>
-    {openings.length>0&&<div className="menu-section"><h2>⚔ Rivalidad por aperturas</h2><div className="career-rhythm-grid">{openings.slice(0,8).map(row=><div className="career-rhythm" key={row.opening}><b>{row.opening}</b><span>{row.wins}V · {row.draws}T · {row.losses}D · {row.scorePct}%</span><small>{row.games} partidas · CPU · nivel medio {row.avgDifficulty}</small></div>)}</div>{clinic.length>0&&<><h3>🩺 Clínica de aperturas</h3><p className="hint-text">Aperturas con al menos 3 muestras y rendimiento inferior al 50%. Aquí sí hay prueba, no horóscopo.</p><div className="career-training-list">{clinic.map(row=><div key={row.opening}><b>{row.opening} · {row.scorePct}%</b><p>Revisa tus primeras 10–12 jugadas de estas {row.games} partidas y compara el primer punto donde sales de tus líneas habituales. El nivel medio de CPU era {row.avgDifficulty}.</p></div>)}</div></>}</div>}
-    {tree.count>0&&<div className="menu-section career-opening-map"><div className="career-section-heading"><div><span className="section-label">PRIMERAS DECISIONES</span><h2>Mapa de aperturas</h2></div><small>Top 5 líneas · hasta 3 jugadas</small></div><div className="career-tree"><TreeRows node={tree}/></div></div>}
-    </>}
+    {careerSection==='openings'&&<CareerOpeningsSection openings={openings} clinic={clinic} tree={tree} />}
 
     {careerSection==='archive'&&<>
     <div className="menu-section"><h2>🎨 Tableros desbloqueables</h2><p className="hint-text">Cosmética pura. El <GlossaryTerm term="ELO">ELO</GlossaryTerm> no mejora por pintar las casillas, aunque algunas derrotas quedan más elegantes.</p><div className="board-theme-list">{BOARD_THEMES.map(t=>{const unlocked=themes.some(x=>x.id===t.id);return <button key={t.id} disabled={!unlocked} className={`secondary-btn ${theme===t.id?'active':''}`} onClick={()=>{const next=saveBoardTheme(t.id);setTheme(next);}}>{unlocked?t.label:`🔒 ${t.label}`}</button>})}</div></div>
