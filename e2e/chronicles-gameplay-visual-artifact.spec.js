@@ -364,8 +364,22 @@ for (const capture of [
       const game = page.locator('[data-chronicles="true"]');
       await expect(game).toHaveAttribute('data-chronicles-map-id', 'swordhaven-first-book');
       // Plaza (9,7) -> west twice -> south to tavern entrance (7,10).
+      // Verify each step so WebGL startup cannot silently swallow keys.
+      const rumbo = game.locator('.chronicles-statusbar > span').nth(1);
+      for (const [key, directionAndCoords] of [
+        ['a', 'O · X9 Y7'],
+        ['w', 'O · X8 Y7'],
+        ['w', 'O · X7 Y7'],
+        ['a', 'S · X7 Y7'],
+        ['w', 'S · X7 Y6'],
+        ['w', 'S · X7 Y5'],
+        ['w', 'S · X7 Y4'],
+      ]) {
+        await page.keyboard.press(key);
+        await expect(rumbo).toContainText(directionAndCoords);
+      }
       // The final forward bumps its south wall and must ENTER the tavern.
-      for (const key of ['a', 'w', 'w', 'a', 'w', 'w', 'w', 'w']) await page.keyboard.press(key);
+      await page.keyboard.press('w');
       const inn = page.getByRole('dialog', { name: 'Taberna · La Espada Mellada' });
       await expect(inn).toBeVisible({ timeout: 15_000 });
       for (const choice of ['food', 'drink', 'rumor', 'rest']) {
