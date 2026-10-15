@@ -8,6 +8,7 @@ This is a conservative static audit, not a complete bundler resolution pass.
 """
 from __future__ import annotations
 
+import argparse
 import json
 import re
 from pathlib import Path
@@ -18,6 +19,7 @@ ENTRYPOINTS = (
     SRC / "components" / "ChroniclesOfMatthias.jsx",
     SRC / "chroniclesOfMatthias.js",
     SRC / "chronicles" / "chroniclesRunClient.js",
+    SRC / "components" / "ChroniclesOfMatthiasTactics.jsx",
 )
 IMPORT = re.compile(
     r"""(?:\bfrom\s*|\bimport\s*\(\s*|\bimport\s*)(['"])([^'"]+)\1""",
@@ -75,9 +77,18 @@ def inventory() -> dict:
         files.append({"path": path.relative_to(ROOT).as_posix(),
                       "ownership": classify(path), "imports": imports})
     files.sort(key=lambda item: item["path"])
+    shared = sorted(item["path"] for item in files if item["ownership"] == "shared")
+    packages = sorted({edge["specifier"] for item in files for edge in item["imports"] if edge["kind"] == "package"})
     return {"entrypoints": [p.relative_to(ROOT).as_posix() for p in ENTRYPOINTS],
-            "files": files, "unresolved": sorted(unresolved, key=lambda x: (x["from"], x["specifier"]))}
+            "files": files, "shared_files": shared, "packages": packages,
+            "unresolved": sorted(unresolved, key=lambda x: (x["from"], x["specifier"]))}
 
 
 if __name__ == "__main__":
-    print(json.dumps(inventory(), indent=2, ensure_ascii=False))
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--fail-unresolved", action="store_true")
+    args = parser.parse_args()
+    report = inventory()
+    print(json.dumps(report, indent=2, ensure_ascii=False))
+    if args.fail_unresolved and report["unresolved"]:
+        raise SystemExit(1)
