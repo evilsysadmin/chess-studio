@@ -261,6 +261,9 @@ function createPvpNativeTraceSummary() {
   ]);
   const totals = new Map();
   const longest = new Map();
+  // Only aggregate allowlisted native event names overlapping the longest
+  // Commit on its exact process/thread. Never store raw trace event args.
+  const nativeIntervals = [];
   let events = 0;
   return {
     add(entries) {
@@ -272,6 +275,11 @@ function createPvpNativeTraceSummary() {
         current.totalMs += durationMs;
         current.maxMs = Math.max(current.maxMs, durationMs);
         totals.set(event.name, current);
+        if (Number.isFinite(event.ts) && Number.isFinite(event.pid) && Number.isFinite(event.tid) &&
+            nativeIntervals.length < 30000) {
+          nativeIntervals.push({ name: event.name, ts: event.ts, dur: event.dur,
+            pid: event.pid, tid: event.tid });
+        }
         if (Number.isFinite(event.ts) && event.dur > (longest.get(event.name)?.dur || 0)) {
           // Retain only numeric time/thread identity; never raw trace args.
           longest.set(event.name, { ts: event.ts, dur: event.dur, pid: event.pid, tid: event.tid });
@@ -289,7 +297,22 @@ function createPvpNativeTraceSummary() {
       const overlap = sameThread
         ? Math.max(0, Math.min(commit.ts + commit.dur, task.ts + task.dur) - Math.max(commit.ts, task.ts))
         : 0;
+      const nested = new Map();
+      if (commit) {
+        for (const event of nativeIntervals) {
+          if (event.pid !== commit.pid || event.tid !== commit.tid ||
+              event.name === 'Commit' || event.name === 'RunTask' ||
+              event.name === 'ThreadControllerImpl::RunTask') continue;
+          const inside = Math.max(0, Math.min(commit.ts + commit.dur, event.ts + event.dur) -
+            Math.max(commit.ts, event.ts));
+          if (inside >= 1000) nested.set(event.name,
+            (nested.get(event.name) || 0) + inside / 1000);
+        }
+      }
+      const nestedTop = [...nested].sort((a, b) => b[1] - a[1]).slice(0, 8)
+        .map(([name, ms]) => name + ':' + Math.round(ms)).join(',');
       return 'events=' + events + ' top_count_total_max_ms=' + (top || 'none') +
+        ' critical_commit_child_ms=' + (nestedTop || 'none') +
         ' critical_commit_task_same_thread=' + sameThread +
         ' critical_commit_task_overlap_ms=' + Math.round(overlap / 1000);
     },
