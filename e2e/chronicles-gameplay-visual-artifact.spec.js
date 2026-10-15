@@ -240,7 +240,7 @@ async function captureChroniclesHealth(page) {
       authoredPortraitCount: document.querySelectorAll('[data-chronicles-party-renderer="authored"]').length,
       gameRoot: rect('[data-chronicles="true"]'),
       gameMenu: rect('summary[aria-label="Abrir menú de Chronicles"]'),
-      automapButton: rect('button[aria-label="Abrir automapa"]'),
+      redundantMapButton: rect('button[aria-label="Abrir automapa"]'),
       localMinimap: rect('[data-chronicles-minimap="visible"]'),
       stage: rect('.chronicles-stage'),
       gameCanvas: rect('[data-chronicles-renderer="three"] canvas'),
@@ -998,8 +998,7 @@ for (const capture of CAPTURES) {
       expect(health.gameRoot?.height || 0, `${capture.label}: fullscreen root height`).toBeGreaterThanOrEqual(capture.height - 2);
       expect(health.gameMenu?.width || 0, `${capture.label}: in-game menu visible`).toBeGreaterThan(0);
       expect(health.gameMenu?.height || 0, `${capture.label}: in-game menu height`).toBeGreaterThanOrEqual(30);
-      expect(health.automapButton?.width || 0, `${capture.label}: automap button visible`).toBeGreaterThan(0);
-      expect(health.automapButton?.height || 0, `${capture.label}: automap button height`).toBeGreaterThanOrEqual(capture.hasTouch ? 44 : 30);
+      expect(health.redundantMapButton, `${capture.label}: redundant MAPA button removed`).toBeNull();
       expect(health.localMinimap?.width || 0, `${capture.label}: local minimap visible`).toBeGreaterThanOrEqual(capture.hasTouch ? 100 : 120);
       expect(health.localMinimap?.height || 0, `${capture.label}: local minimap height`).toBeGreaterThanOrEqual(capture.hasTouch ? 100 : 120);
       // The minimap must never sit on the menu: on mobile the menu is a top
@@ -1034,10 +1033,9 @@ for (const capture of CAPTURES) {
       // A browser «night mode» must not lighten the dark ink on the stone.
       expect(await gameRoot.evaluate((root) => getComputedStyle(root).colorScheme.split(' ').sort().join(' ')), `${capture.label}: Chronicles opts out of forced dark`).toBe('light only');
 
-      // Grey MM3 stone must use near-black ink on MAPA, MENÚ and movement arrows.
+      // Grey MM3 stone must use near-black ink on MENÚ and movement arrows.
       // Brave's automatic dark palette used to turn these glyphs white.
       const engraved = await gameRoot.evaluate((root) => [
-        '.chronicles-statusbar .chronicles-map-trigger',
         '.chronicles-game-menu > summary',
         '[data-chronicles-touch-action="forward"]',
         '[data-chronicles-touch-action="turn-left"]',
@@ -1056,23 +1054,9 @@ for (const capture of CAPTURES) {
 
       }
 
-      // MAPA keeps black engraved ink, while sapphire's hover label is bright.
-      for (const selector of [
-        '.chronicles-statusbar .chronicles-map-trigger b',
-      ]) {
-        const ink = await gameRoot.locator(selector).evaluate((node) => {
-          const style = getComputedStyle(node);
-          return { color: style.color, fill: style.webkitTextFillColor };
-        });
-        expect(ink.color, `${capture.label}: ${selector} label must be black`).toBe('rgb(8, 8, 10)');
-        expect(ink.fill, `${capture.label}: ${selector} text fill must be black`).toBe('rgb(8, 8, 10)');
-      }
-
       // Browser regression: stylesheet declarations alone lost in Brave;
       // the actual mounted control must have an inline important override.
       for (const selector of [
-        '.chronicles-statusbar .chronicles-map-trigger',
-        '.chronicles-statusbar .chronicles-map-trigger b',
         '.chronicles-game-menu > summary',
         '.chronicles-touch button:not(.is-attack):not(.is-magic):not(.is-contextual)',
       ]) {

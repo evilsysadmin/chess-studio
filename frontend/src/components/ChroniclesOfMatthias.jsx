@@ -1209,22 +1209,6 @@ export default function ChroniclesOfMatthias({ onExit }) {
                 <span aria-hidden="true">↻</span>
               </button>
             )}
-            <button
-              type="button"
-              className="chronicles-map-trigger"
-              aria-label={automapOpen ? 'Cerrar automapa' : 'Abrir automapa'}
-              aria-expanded={automapOpen}
-              aria-controls="chronicles-automap"
-              title="M · Mapa"
-              onClick={() => {
-                clearTouchHold();
-                setMenuOpen(false);
-                setJournalOpen(false);
-                setAutomapOpen((open) => !open);
-              }}
-            >
-              <i aria-hidden="true">⌖</i><b>MAPA</b>
-            </button>
           </div>
 
             <details
