@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildInsightsPositionAutopsy } from './insightsPositionAutopsy.js';
+import { buildInsightsPositionAutopsy } from './puzzleReveal.js';
 
 const puzzle = {
   id: 'personal-real-1',
