@@ -387,6 +387,8 @@ for (const capture of [
       }
       await inn.locator('[data-tavern-choice="rumor"]').click();
       await expect(inn.getByRole('status')).toContainText('Camino de los Estandartes');
+      const exit = inn.getByRole('button', { name: 'Volver a la calle' });
+      await expect(exit, 'the tavern exit stays fully visible even at 844x390').toBeInViewport({ ratio: 1 });
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
       await page.screenshot({
         path: `${ARTIFACT_DIR}/chronicles-tavern-${capture.label}.png`,
