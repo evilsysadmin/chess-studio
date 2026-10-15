@@ -959,6 +959,15 @@ test('staging live · auth real → War Room v2 → recovery 3D → jugada real'
     // P0 staging: acredita el 1v1 con fetch real de Chromium, no sólo curl.
     await assertLivePvpBrowserPath(page);
     phase('browser-pvp-pulses');
+    // Explicit opt-in A/B observes only Home → PvP. The rest of the standard
+    // War Room/F5 journey still runs in *every* canonical smoke (mode=off).
+    // On software GL, opening a different 3D room after PvP adds unrelated
+    // renderer contention and can invalidate the paired compositor sample.
+    if (['keep-home-canvas', 'hide-home-canvas'].includes(process.env.CHESS_STAGING_PVP_ABLATION)) {
+      expect(uxRuntime.serverErrors, JSON.stringify(uxRuntime.serverErrors, null, 2)).toEqual([]);
+      console.log('STAGING_PVP_ABLATION phase=complete scope=pvp-only');
+      return;
+    }
 
     await expect(buttonWithVisibleText(page, 'Partida rápida')).toBeVisible();
     await buttonWithVisibleText(page, 'Partida rápida').click();
