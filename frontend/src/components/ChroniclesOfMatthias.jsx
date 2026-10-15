@@ -17,6 +17,7 @@ import {
   chroniclesAdvanceCombatInitiative,
   chroniclesCurrentInitiativeActor,
   chroniclesStartInitiativeCombat,
+  chroniclesReconcileFirstPersonCombat,
 } from '../chronicles/chroniclesInitiative.js';
 import { chroniclesDeployedPartyLevel } from '../chronicles/chroniclesDifficultyPolicy.js';
 import { playChroniclesActionSound } from '../chronicles/chroniclesActionAudio.js';
@@ -462,6 +463,9 @@ export default function ChroniclesOfMatthias({ onExit }) {
         chroniclesActiveEnemies(exploratoryNext),
         {
           forceEnemyIds: forcedTarget ? [forcedTarget.enemy.id] : [],
+          // Match the Three.js camera on portrait and landscape displays.
+          viewAspect: hostRef.current?.clientWidth && hostRef.current?.clientHeight
+            ? hostRef.current.clientWidth / hostRef.current.clientHeight : 1,
         },
       );
       next = started !== exploratoryNext
@@ -476,6 +480,14 @@ export default function ChroniclesOfMatthias({ onExit }) {
       if (next !== current && spentTurn && next.phase !== 'defeated' && next.phase !== 'escaped') {
         next = chroniclesAdvanceCombatInitiative(next, chroniclesActiveEnemies(next));
       }
+    }
+
+    // Don't leave the party trapped in an unseen, non-threatening encounter.
+    if (current.initiative && next?.initiative) {
+      next = chroniclesReconcileFirstPersonCombat(next, chroniclesActiveEnemies(next), {
+        viewAspect: hostRef.current?.clientWidth && hostRef.current?.clientHeight
+          ? hostRef.current.clientWidth / hostRef.current.clientHeight : 1,
+      });
     }
 
     const actorMemberId = typeof action === 'object' && action?.memberId
@@ -583,8 +595,12 @@ export default function ChroniclesOfMatthias({ onExit }) {
       const advanced = acted.phase === 'defeated'
         ? acted
         : chroniclesAdvanceCombatInitiative(acted, chroniclesActiveEnemies(acted));
-      stateRef.current = advanced;
-      setState(advanced);
+      const reconciled = chroniclesReconcileFirstPersonCombat(advanced, chroniclesActiveEnemies(advanced), {
+        viewAspect: hostRef.current?.clientWidth && hostRef.current?.clientHeight
+          ? hostRef.current.clientWidth / hostRef.current.clientHeight : 1,
+      });
+      stateRef.current = reconciled;
+      setState(reconciled);
     }, 280);
     return () => window.clearTimeout(timer);
   }, [sheetMemberId, state?.initiative?.cursor, state?.initiative?.round, state?.phase]);
@@ -722,12 +738,15 @@ export default function ChroniclesOfMatthias({ onExit }) {
         );
         const restored = chroniclesApplyRunCheckpoint(progressed, world);
         // The run id seeds every MM3 die so F5 never rerolls a blow.
-        const next = {
+        const next = chroniclesReconcileFirstPersonCombat({
           ...chroniclesApplyArrival(chroniclesInitializeLostKingIntro(restored, {
             fresh: !remoteSelection && world.worldVersion === 0,
           })),
           runSeed: world.runId,
-        };
+        }, chroniclesActiveEnemies(restored), {
+          viewAspect: hostRef.current?.clientWidth && hostRef.current?.clientHeight
+            ? hostRef.current.clientWidth / hostRef.current.clientHeight : 1,
+        });
         const confirmedId = chroniclesMarkSavedRunRemote(FIRST_PERSON_RUN_SCOPE, operationId, world.runId);
         if (!confirmedId) return;
         activeRunIdRef.current = confirmedId;
