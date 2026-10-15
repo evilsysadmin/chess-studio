@@ -1,0 +1,137 @@
+name: Staging · PvP compositor A/B
+
+# Explicit operator diagnostic only. No deploy, mutation, accreditation or
+# promotion listeners. Both legs run on one runner to limit hardware variance.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: chess-studio-staging-pvp-compositor-ab
+  cancel-in-progress: false
+
+jobs:
+  compare:
+    name: Compare Home canvas visible/hidden · SwiftShader
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    environment:
+      name: staging
+      url: https://staging.chess-studio.shadowops.dpdns.org
+    env:
+      STAGING_URL: https://staging.chess-studio.shadowops.dpdns.org
+      STAGING_API_URL: https://api-staging.chess-studio.shadowops.dpdns.org/api
+      DEPLOY_SHA: ${{ github.sha }}
+      CHESS_STAGING_RENDERER: software
+      OCI_TENANCY_OCID: ${{ secrets.OCI_TENANCY_OCID }}
+      OCI_USER_OCID: ${{ secrets.OCI_USER_OCID }}
+      OCI_FINGERPRINT: ${{ secrets.OCI_FINGERPRINT }}
+      OCI_PRIVATE_KEY: ${{ secrets.OCI_PRIVATE_KEY }}
+      OCI_REGION: ${{ vars.OCI_REGION || 'eu-frankfurt-1' }}
+    steps:
+      - name: Checkout the exact main SHA
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 1
+
+      - name: Reject stale or non-main runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$GITHUB_REF" == "refs/heads/main" ]] || { echo "::error::A/B must run on main"; exit 1; }
+          [[ "$DEPLOY_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::Invalid SHA"; exit 1; }
+          python3 -S scripts/staging_generation.py wait \
+            --sha "$DEPLOY_SHA" --surfaces backend,frontend,worker --attempts 1 --interval 0 --root
+
+      - name: Restore cached OCI SDK toolchain
+        uses: ./.github/actions/setup-oci-sdk
+        with:
+          version: '2.185.2'
+          python-version: '3.13'
+          cache-layout: portable
+
+      - name: Load protected ephemeral staging credentials
+        run: python3 scripts/staging_smoke_env.py secrets
+
+      - name: Prepare staging browser
+        uses: ./.github/actions/setup-browser-e2e
+        with:
+          browser-scope: chromium
+          restore-frontend-deps: 'false'
+          build-frontend: 'false'
+
+      - name: Run paired A/B/A controls with real browser assertions
+        shell: bash
+        timeout-minutes: 21
+        run: |
+          set -euo pipefail
+          summary="$RUNNER_TEMP/staging-pvp-ab.txt"
+          printf 'source_sha=%s renderer_requested=software\n' "$DEPLOY_SHA" > "$summary"
+          # Counterbalance some warming/order effects; all four runs share the
+          # same host, source SHA and deployed generation. Each creates its own
+          # disposable smoke identity and executes the full live smoke.
+          for mode in keep-home-canvas hide-home-canvas hide-home-canvas keep-home-canvas; do
+            python3 -S scripts/staging_generation.py wait \
+              --sha "$DEPLOY_SHA" --surfaces backend,frontend,worker --attempts 1 --interval 0 --root
+            env_file="$(mktemp "$RUNNER_TEMP/staging-pvp-identity.XXXXXXXX")"
+            GITHUB_ENV="$env_file" python3 -S scripts/staging_smoke_env.py identity
+            cat "$env_file" >> "$GITHUB_ENV"
+            set -a
+            # Helper-generated credentials contain only URL-safe characters,
+            # and are masked before they enter GitHub's process environment.
+            source "$env_file"
+            set +a
+            rm -f "$env_file"
+            printf 'leg=%s\n' "$mode" >> "$summary"
+            echo "::group::PvP compositor A/B: $mode"
+            leg_log="$(mktemp "$RUNNER_TEMP/staging-pvp-leg.XXXXXXXX")"
+            set +e
+            (
+              cd e2e
+              CHESS_STAGING_PVP_ABLATION="$mode" \
+                ./node_modules/.bin/playwright test staging-live.spec.js \
+                  --config=playwright.staging.config.js
+            ) 2>&1 | tee "$leg_log"
+            browser_rc="${PIPESTATUS[0]}"
+            python3 -S scripts/staging_smoke_user_cleanup.py
+            cleanup_rc="$?"
+            set -e
+            grep -E 'STAGING_PVP_(ABLATION|GPU|OPEN|INPUT_FRAME|RENDER|PHASE)' "$leg_log" >> "$summary" || true
+            rm -f "$leg_log"
+            echo "::endgroup::"
+            unset STAGING_E2E_USERNAME STAGING_E2E_PASSWORD
+            if [[ "$browser_rc" -ne 0 || "$cleanup_rc" -ne 0 ]]; then
+              echo "::error::PvP A/B leg $mode: browser=$browser_rc cleanup=$cleanup_rc"
+              exit 1
+            fi
+            # Never compare an old runtime to a newly deployed generation.
+            python3 -S scripts/staging_generation.py wait \
+              --sha "$DEPLOY_SHA" --surfaces backend,frontend,worker --attempts 1 --interval 0 --root
+          done
+          {
+            echo '### PvP compositor A/B — diagnostic only, NOT staging accreditation'
+            echo "Exact SHA: $DEPLOY_SHA; renderer requested: software"
+            echo 'Order: keep / hide / hide / keep. Review repeated long-task timings before drawing conclusions.'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Retry cleanup after any interrupted leg
+        if: always()
+        shell: bash
+        run: |
+          if [[ -z "${STAGING_E2E_USERNAME:-}" ]]; then
+            echo 'No synthetic identity to clean.'
+          else
+            python3 -S scripts/staging_smoke_user_cleanup.py
+          fi
+
+      - name: Upload bounded timing receipts
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: staging-pvp-compositor-ab-${{ github.sha }}
+          path: ${{ runner.temp }}/staging-pvp-ab.txt
+          if-no-files-found: ignore
+          retention-days: 7
