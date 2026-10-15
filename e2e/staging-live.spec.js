@@ -360,18 +360,26 @@ async function assertLivePvpBrowserPath(page) {
     await expect(homeCanvas, 'A/B requires the real Home 3D canvas').toHaveCount(1);
     await expect(homeCanvas, 'Both A/B legs require a ready Home compositor')
       .toHaveAttribute('data-home-blender-runtime', 'ready');
-    // Explicit keep/hide modes override product CSS; product-home-canvas is
-    // the unmodified modal-scoped CSS itself, with the same ready precondition.
-    if (ablation !== 'product-home-canvas') {
+    // Three different interventions, never conflate their timing:
+    // keep: force visible only once the modal exists (counterfactual).
+    // hide: hide *before* the click (historical prehidden ablation).
+    // product: no injected CSS; actual app rule takes effect on modal mount.
+    if (ablation === 'keep-home-canvas' || ablation === 'hide-home-canvas') {
+      const selector = ablation === 'keep-home-canvas'
+        ? 'html body:has(.pvp-lobby-backdrop) canvas.illustrated-home__castle-3d'
+        : 'html body canvas.illustrated-home__castle-3d';
+      const visibility = ablation === 'keep-home-canvas' ? 'visible' : 'hidden';
       homeCanvasStyle = await page.addStyleTag({
-        content: 'html body:has(.pvp-lobby-backdrop) canvas.illustrated-home__castle-3d {' +
-          ' visibility: ' + (ablation === 'keep-home-canvas' ? 'visible' : 'hidden') + ' !important; }',
+        content: selector + ' { visibility: ' + visibility + ' !important; }',
       });
     }
-    // Equally settle two composited frames for the keep/hide legs, excluding
-    // style insertion overhead from the modal-opening interval.
+    // Settle the same two frames before measuring any opening interval.
     await page.evaluate(() => new Promise((resolve) =>
       requestAnimationFrame(() => requestAnimationFrame(resolve))));
+    if (ablation === 'hide-home-canvas') {
+      await expect(homeCanvas, 'Historical prehidden control must hide before the click')
+        .toHaveCSS('visibility', 'hidden');
+    }
   }
   console.log('STAGING_PVP_ABLATION mode=' + ablation +
     ' matched_home_ready=' + (ablation !== 'off'));
