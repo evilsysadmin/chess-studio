@@ -29,15 +29,15 @@ permissions: {contents: read}
 jobs:
   # Isolate long-lived SwiftShader/Three.js sessions on separate runners,
   # without introducing two contending workers on the same shared GPU-less VM.
-  # Playwright shards the same canonical test set: no tests or PNGs are skipped.
+  # Weighted by measured test cost; all canonical tests and PNGs remain.
   capture_shards:
-    name: Chronicles · shard ${{ matrix.shard }}/2
+    name: Chronicles · shard ${{ matrix.shard }}/3
     runs-on: ubuntu-24.04
     timeout-minutes: 50
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2]
+        shard: [1, 2, 3]
     steps:
       - uses: actions/checkout@v7
         with: {fetch-depth: 2}
@@ -48,7 +48,7 @@ jobs:
           chronicles-shard: ${{ matrix.shard }}
 
   # Preserve the existing stable required check; only a green result from
-  # BOTH isolated partitions can satisfy branch protection.
+  # ALL three isolated partitions can satisfy branch protection.
   capture:
     name: Chronicles · capture
     if: ${{ always() }}
@@ -56,7 +56,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
-      - name: Require both exact-SHA visual shards
+      - name: Require three exact-SHA visual shards
         env:
           SHARD_RESULT: ${{ needs.capture_shards.result }}
         shell: bash
@@ -65,4 +65,4 @@ jobs:
             echo "::error::Chronicles visual shards not fully green: $SHARD_RESULT"
             exit 1
           fi
-          echo "Both independent Chronicles visual shards passed."
+          echo "All three independent Chronicles visual shards passed."
