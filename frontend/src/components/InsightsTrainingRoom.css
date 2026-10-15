@@ -1060,3 +1060,148 @@ body:has(.insights-training-room) .global-music-dock {
 .insights-training-room .insights-room-archive-drawer:not([open]) > .insights-room-tools {
   display: none;
 }
+
+/* Board-first Training Room: one stable study surface, not competing floating cards. */
+.insights-training-room .insights-guided-session[data-guided-session-home='desk-task'] {
+  display: grid;
+  grid-template-columns: minmax(0, .72fr) minmax(0, 1.4fr);
+  align-items: start;
+  gap: clamp(.9rem, 1.8vw, 1.7rem);
+  width: min(1180px, 96%);
+  margin: clamp(.7rem, 2vh, 1.4rem) auto 0;
+  padding: clamp(.9rem, 1.5vw, 1.4rem);
+  border: 1px solid rgba(204, 151, 75, .56);
+  border-radius: 12px;
+  background: linear-gradient(112deg, rgba(21, 17, 15, .94), rgba(39, 28, 20, .91));
+  box-shadow: 0 24px 65px rgba(0, 0, 0, .48), inset 0 1px rgba(255, 218, 152, .13);
+  backdrop-filter: blur(8px);
+  transform: none;
+}
+.insights-training-room .insights-guided-session[data-guided-session-home='desk-task'] > .insights-guided-session-intro {
+  grid-column: 1;
+  grid-row: 1;
+  min-width: 0;
+  padding: .4rem clamp(.15rem, .9vw, .7rem);
+}
+.insights-training-room .insights-guided-session[data-guided-session-home='desk-task'] > .insights-guided-focus,
+.insights-training-room .insights-guided-session[data-guided-session-home='desk-task'] > .insights-guided-empty {
+  grid-column: 2;
+  grid-row: 1;
+  min-width: 0;
+}
+.insights-training-room .insights-guided-session[data-guided-session-home='desk-task'] > .insights-guided-completion { grid-column: 1 / -1; }
+.insights-training-room .insights-guided-session[data-guided-session-home='desk-task'] .insights-guided-session-intro h2 {
+  margin: .28rem 0 .5rem;
+  font-size: clamp(1.35rem, 2.2vw, 1.8rem);
+}
+.insights-training-room .insights-guided-session[data-guided-session-home='desk-task'] .insights-guided-session-intro .hint-text {
+  max-width: 34ch;
+  color: #d6c5a6;
+  font-size: .86rem;
+}
+.insights-guided-position { width: min(100%, 260px); margin: 1rem 0 .25rem; }
+.insights-position-preview {
+  display: grid;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  width: 100%;
+  aspect-ratio: 1;
+  overflow: hidden;
+  border: 5px solid #9c7949;
+  border-radius: 4px;
+  box-shadow: 0 16px 32px rgba(0, 0, 0, .38), 0 0 0 1px #d5b77e;
+}
+.insights-position-square {
+  display: grid;
+  place-items: center;
+  min-width: 0;
+  min-height: 0;
+  font-family: 'DejaVu Sans', 'Segoe UI Symbol', sans-serif;
+  font-size: clamp(12px, 1.6vw, 29px);
+  line-height: 1;
+}
+.insights-position-square.light { background: #dac8a7; }
+.insights-position-square.dark { background: #886a4c; }
+.insights-position-square .is-white {
+  color: #fff9e6;
+  -webkit-text-stroke: .5px #30251f;
+  text-shadow: 0 2px 1px #30251f, 0 0 2px #30251f;
+}
+.insights-position-square .is-black { color: #201b1c; text-shadow: 0 1px 1px rgba(255, 255, 255, .22); }
+.insights-guided-position figcaption {
+  margin-top: .55rem;
+  color: #c5b08b;
+  font: 650 .67rem/1.4 var(--font-mono, monospace);
+}
+.insights-training-room .insights-guided-focus {
+  background: linear-gradient(145deg, rgba(243, 226, 190, .985), rgba(207, 181, 137, .98));
+}
+.insights-training-room .insights-guided-direct {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: .45rem .95rem;
+  padding-block: .55rem .25rem;
+}
+.insights-training-room .insights-guided-direct-button {
+  min-height: 52px;
+  padding: .75rem 1.05rem;
+  border: 1px solid #5b3915;
+  border-radius: 6px;
+  background: linear-gradient(145deg, #6c441d, #432a14);
+  color: #fff0d0;
+  font-weight: 850;
+  box-shadow: 0 8px 19px rgba(50, 32, 14, .25);
+}
+.insights-training-room .insights-guided-direct p {
+  flex: 1 1 180px;
+  font-size: .78rem;
+  color: #644b2e;
+}
+.insights-training-room .insights-guided-direct-button:focus-visible,
+.insights-training-room .insights-guided-direct-button:hover { outline: 2px solid #8b642e; outline-offset: 3px; }
+@media (max-width: 1099px) {
+  .insights-training-room .insights-guided-session[data-guided-session-home='desk-task'] {
+    width: min(780px, 100%);
+    grid-template-columns: minmax(0, 1fr);
+    padding: .85rem;
+    gap: .75rem;
+  }
+  .insights-training-room .insights-guided-session[data-guided-session-home='desk-task'] > .insights-guided-session-intro,
+  .insights-training-room .insights-guided-session[data-guided-session-home='desk-task'] > .insights-guided-focus,
+  .insights-training-room .insights-guided-session[data-guided-session-home='desk-task'] > .insights-guided-empty {
+    grid-column: 1;
+    grid-row: auto;
+  }
+  .insights-guided-position { width: min(190px, 45%); margin-block: .7rem .1rem; }
+}
+@media (max-width: 760px) {
+  .insights-training-room.insights-workspace-view-now .insights-workspace-header { min-height: 0; }
+  .insights-training-room .insights-guided-session[data-guided-session-home='desk-task'] {
+    width: 100%;
+    padding: .7rem;
+    gap: .65rem;
+    backdrop-filter: none;
+  }
+  .insights-training-room .insights-guided-session[data-guided-session-home='desk-task'] > .insights-guided-session-intro {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(104px, 36%);
+    align-items: start;
+    gap: .1rem .55rem;
+    padding: .12rem;
+  }
+  .insights-training-room .insights-guided-session-intro > :not(.insights-guided-position) { grid-column: 1; }
+  .insights-training-room .insights-guided-session[data-guided-session-home='desk-task'] .insights-guided-session-intro h2 {
+    font-size: clamp(1.2rem, 5.5vw, 1.6rem);
+  }
+  .insights-training-room .insights-guided-session[data-guided-session-home='desk-task'] .insights-guided-session-intro .hint-text {
+    font-size: .76rem;
+    line-height: 1.36;
+  }
+  .insights-guided-position { grid-column: 2; grid-row: 1 / span 3; width: 100%; margin: .12rem 0 0; }
+  .insights-position-preview { border-width: 3px; }
+  .insights-position-square { font-size: clamp(10px, 3.7vw, 17px); }
+  .insights-guided-position figcaption { font-size: .59rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .insights-training-room .insights-guided-direct-button { transition: none; }
+}
