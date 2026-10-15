@@ -201,7 +201,11 @@ async function openChronicles(page, captureLabel, {
   await setup.getByRole('button', { name: 'Crear PJs', exact: true }).click();
   const editor = page.locator('[data-chronicles-character-setup="editor"]');
   await expect(editor).toBeVisible();
-  const mobileEditor = captureLabel.includes('android');
+  // Responsive behavior depends on the actual viewport, never a test-case
+  // label: several real 390px scenes use names such as equipment-sheet.
+  const editorViewport = page.viewportSize();
+  const mobileEditor = editorViewport.width <= 720
+    || (editorViewport.width <= 1024 && editorViewport.height <= 480);
   const tabs = editor.getByRole('tablist', { name: 'Etapas del personaje' });
   if (mobileEditor) {
     await expect(tabs).toBeVisible();
