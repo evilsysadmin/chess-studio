@@ -19,6 +19,21 @@ describe('Chronicles recorded soundtrack', () => {
     expect(chroniclesSoundtrackIdForView('setup')).toBe('chronicles.music.firstVerse');
   });
 
+  it('resolves the actual manually uploaded R2 filenames, preserving their hashes', async () => {
+    const { r2AssetEntry, r2AssetUrl } = await import('../r2Assets.js');
+    for (const [id, basename, expectedSize] of [
+      ['chronicles.music.firstVerse', 'Chronicles of matthias - First verse.mp3', 4871666],
+      ['chronicles.music.secondVerse', 'Chronicles of matthias - Second verse.mp3', 4997378],
+    ]) {
+      const entry = r2AssetEntry(id);
+      expect(entry.key).toBe(`chronicles/music/${basename}`);
+      expect(entry.bytes).toBe(expectedSize);
+      expect(entry.contentType).toBe('audio/mpeg');
+      expect(entry.sha256).toMatch(/^[0-9a-f]{64}$/);
+      expect(r2AssetUrl(id)).toContain(encodeURIComponent(basename));
+    }
+  });
+
   it('plays the second verse only during a run', () => {
     expect(chroniclesSoundtrackIdForView('playing')).toBe('chronicles.music.secondVerse');
   });
