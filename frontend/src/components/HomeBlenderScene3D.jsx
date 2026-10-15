@@ -1704,6 +1704,7 @@ export default function HomeBlenderScene3D({
     glLoseContextRef.current = gl?.getExtension?.('WEBGL_lose_context') || null;
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.shadowMap.enabled = homeBlenderShouldRenderShadows(initialPolicy.lod, rendererName);
+    canvas.dataset.homeBlenderShadows = renderer.shadowMap.enabled ? 'enabled' : 'disabled';
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     // The room is static and only emissive flames move, so the shadow map is
     // computed once instead of re-rasterising every mesh on each animated frame.
