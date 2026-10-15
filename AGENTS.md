@@ -14,6 +14,7 @@ Las reglas detalladas viven en los `.md` especializados enlazados aquí. Antes d
 - Para assets grandes de runtime, preferir R2/CDN y mantener Git centrado en código, manifests y contratos.
 - Trabajar incrementalmente, con cambios pequeños, reversibles y verificables. No dar por buena una iteración visual sólo porque el build o CI estén verdes.
 - Cuando haya artefactos PNG de una pipeline visual, revisarlos y compararlos con el último baseline validado antes de integrar.
+- **Regla obligatoria de visibilidad en chat para toda PR visual:** mostrar al usuario las capturas/renders **reales y embebidos directamente en el mismo chat donde se itera la PR**, con PR/SHA y viewport/estado. No basta un enlace a GitHub, un nombre de artifact, una descripción o un mockup. Mostrar un antes/después cuando exista baseline comparable. Si no se pueden obtener o mostrar las imágenes, decirlo explícitamente y conservar la PR en Draft, sin aprobarla ni armar automerge. Procedimiento: [`docs/operations/visual-evidence.md`](docs/operations/visual-evidence.md).
 - En Chess Football, el tamaño proyectado de ambos equipos/porteros, la luminosidad entre orientaciones, el apoyo de botas/sombras y los atlas canónicos son **contratos de producto**; ver [`docs/operations/chess-football-product.md`](docs/operations/chess-football-product.md).
 
 ## Flujo global de PR
