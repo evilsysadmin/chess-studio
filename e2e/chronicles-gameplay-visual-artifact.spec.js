@@ -1015,11 +1015,15 @@ for (const capture of CAPTURES) {
 
       if (capture.label === 'desktop-1440x900') {
         const matthias = gameRoot.getByRole('button', { name: 'Seleccionar Matthias', exact: true });
-        // DOM dispatch avoids pointer stability stalls from software WebGL.
+        // Preserve the real sheet interaction; markers add no browser calls.
+        visualPhase('character-sheet-trigger-begin');
         await matthias.evaluate((button) => button.click());
+        visualPhase('character-sheet-trigger-clicked');
         const sheet = page.getByRole('dialog', { name: 'Matthias', exact: true });
         await expect(sheet).toBeVisible();
+        visualPhase('character-sheet-visible');
         const sheetPortrait = sheet.locator('.chronicles-character-sheet__portrait img');
+        visualPhase('character-sheet-portrait-check-begin');
         const authoredSheetPortrait = await sheetPortrait.evaluate((image) => (
           image.complete
           && image.naturalWidth >= 128
@@ -1027,12 +1031,17 @@ for (const capture of CAPTURES) {
           && !image.src.startsWith('data:')
         ));
         expect(authoredSheetPortrait, 'desktop sheet uses canonical authored portrait').toBe(true);
+        visualPhase('character-sheet-portrait-validated');
+        visualPhase('character-sheet-readback-begin');
         await captureElement(
           page,
           sheet,
           `${ARTIFACT_DIR}/chronicles-character-sheet-desktop-1440x900.png`,
         );
+        visualPhase('character-sheet-readback-finish');
+        visualPhase('character-sheet-close-begin');
         await sheet.getByRole('button', { name: 'Cerrar ficha', exact: true }).evaluate((button) => button.click());
+        visualPhase('character-sheet-close-triggered');
         await expect(sheet).toBeHidden();
         visualPhase('character-sheet-captured');
       }
