@@ -115,6 +115,7 @@ async function openChronicles(page, captureLabel, {
           canvasReady: Boolean(canvas?.classList.contains('is-ready')),
           canvasResolution: canvas ? [canvas.width, canvas.height] : null,
           blenderState: canvas?.dataset.homeBlenderRuntime ?? null,
+          blenderPhase: canvas?.dataset.homeBlenderPhase ?? null,
           compositor: canvas?.dataset.homeCastleCompositor ?? null,
           fallbackAvailable: Boolean(document.querySelector('.illustrated-home__backdrop')),
         };
