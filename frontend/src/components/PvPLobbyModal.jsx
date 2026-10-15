@@ -86,13 +86,16 @@ export default function PvPLobbyModal({
   useEffect(() => {
     if (!loading) setHallSceneEligible(true);
   }, [loading]);
-  useEffect(() => {
-    if (!hallSceneEligible) return;
-    // The prefetch is speculative; the first authoritative roster response
-    // must win before the Duel Room JS/GLB and its WebGL dependencies compete
-    // for Chromium's main thread. Warm only once after the initial result.
+  // The Hall and the game-time Duel Room are two separate 3D assets.
+  // Avoid importing/preloading the latter for a passive roster visit: after
+  // the first GET it competes with the Hall's first meaningful 3D frame.
+  // Preload once, only on genuine PvP intent (challenge or active match).
+  const duelRoomPrefetched = useRef(false);
+  const warmDuelRoomOnIntent = useCallback(() => {
+    if (duelRoomPrefetched.current) return;
+    duelRoomPrefetched.current = true;
     void prefetchWarRoomVariant('duel');
-  }, [hallSceneEligible]);
+  }, []);
   const [busyKey, setBusyKey] = useState('');
   const [messageText, setMessageText] = useState('');
   const [chatOpen, setChatOpen] = useState(false);
@@ -107,6 +110,13 @@ export default function PvPLobbyModal({
   const outgoing = useMemo(() => liveLobby.challenges.filter((row) => row.direction === 'outgoing' && row.status === 'pending'), [liveLobby.challenges]);
   const opponent = opponentForMatch(liveLobby.activeMatch);
   const messages = Array.isArray(liveLobby.messages) ? liveLobby.messages : [];
+  useEffect(() => {
+    // A real pending challenge is the first signal that a match may start soon.
+    // Keep the authoritative first roster response ahead of speculative work.
+    if (hallSceneEligible && (incoming.length || outgoing.length || liveLobby.activeMatch)) {
+      warmDuelRoomOnIntent();
+    }
+  }, [hallSceneEligible, incoming.length, outgoing.length, liveLobby.activeMatch, warmDuelRoomOnIntent]);
   useEffect(() => {
     const node = lobbyRef.current;
     if (!node) return;
@@ -183,11 +193,13 @@ export default function PvPLobbyModal({
   }, [busyKey, refresh]);
 
   async function accept(challenge) {
+    warmDuelRoomOnIntent();
     const result = await run(`accept:${challenge.id}`, () => onAcceptChallenge ? onAcceptChallenge(challenge) : pvpApi.acceptChallenge(challenge.id));
     if (result?.match) onMatchReady(result.match);
   }
 
   async function challengePlayer(username) {
+    warmDuelRoomOnIntent();
     await run(`challenge:${username}`, async () => {
       if (!self) {
         if (onJoinRoster) await onJoinRoster();
@@ -272,7 +284,7 @@ export default function PvPLobbyModal({
               <strong>{opponent.username} · {opponent.rating}</strong>
               <span>{liveLobby.activeMatch.yourTurn ? 'Tu turno' : `Turno de ${opponent.username}`}</span>
             </div>
-            <button type="button" className="primary-btn" onClick={() => onMatchReady(liveLobby.activeMatch)}>Entrar en War Room</button>
+            <button type="button" className="primary-btn" onClick={() => { warmDuelRoomOnIntent(); onMatchReady(liveLobby.activeMatch); }}>Entrar en War Room</button>
           </aside>
         )}
 
