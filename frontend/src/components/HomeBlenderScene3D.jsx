@@ -1540,6 +1540,16 @@ export default function HomeBlenderScene3D({
     canvas.classList.remove('is-ready');
     canvas.dataset.homeBlenderRuntime = 'loading';
     canvas.dataset.homeBlenderPhase = 'initializing';
+    // Record relative phase durations in the scene itself. All marks are
+    // synchronous and bounded, and do not cause extra CDP/network requests.
+    // They remain inspectable even when the first frame stalls under SwiftShader.
+    const startupAt = performance.now();
+    const startupTimes = {};
+    const markStartup = (step) => {
+      startupTimes[step] = Math.round(performance.now() - startupAt);
+      canvas.dataset.homeBlenderStartup = JSON.stringify(startupTimes);
+    };
+    markStartup('effect-start');
 
     let disposed = false;
     let fallbackRequested = false;
@@ -1700,6 +1710,7 @@ export default function HomeBlenderScene3D({
     const softwareRenderer = homeBlenderIsSoftwareRenderer(rendererName);
     canvas.dataset.homeBlenderSoftware = softwareRenderer ? 'true' : 'false';
     canvas.dataset.homeBlenderPhase = 'renderer-created';
+    markStartup('renderer-created');
     glContextRef.current = gl;
     glLoseContextRef.current = gl?.getExtension?.('WEBGL_lose_context') || null;
     renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -1728,6 +1739,7 @@ export default function HomeBlenderScene3D({
     scene.fog = new THREE.Fog(0x170d09, 20, 34);
     const runtimeLights = addRuntimeLights(scene, initialPolicy.lod === 'full', ambient);
     canvas.dataset.homeBlenderPhase = 'scene-created';
+    markStartup('scene-created');
 
     const camera = new THREE.PerspectiveCamera(
       HOME_BLENDER_CAMERA_FOV,
@@ -1968,11 +1980,13 @@ export default function HomeBlenderScene3D({
       canvas.classList.remove('is-ready');
       canvas.dataset.homeBlenderRuntime = 'fallback';
       canvas.dataset.homeBlenderPhase = 'fallback';
+      markStartup('fallback');
       onUnavailable?.();
     };
     loadTimer = window.setTimeout(() => failToFallback(), 20_000);
 
     canvas.dataset.homeBlenderPhase = 'model-loading';
+    markStartup('model-loading');
     const loader = new GLTFLoader();
     // The runtime scene is published Meshopt-compressed; uncompressed files still load.
     loader.setMeshoptDecoder(MeshoptDecoder);
@@ -1993,22 +2007,28 @@ export default function HomeBlenderScene3D({
         loadTimer = null;
       }
       canvas.dataset.homeBlenderPhase = 'model-preparing';
+      markStartup('model-decoded');
       model = root;
       prepareRuntimeScene(model, renderer.shadowMap.enabled, renderer);
+      markStartup('materials-prepared');
       applyHomeBlenderPieceLift(model);
       applyHomeBlenderMoonVisibility(model, ambient);
       fireRig = prepareRuntimeFireRig(model);
       klausRig = prepareHomeBlenderKlausRig(model);
       canvas.dataset.homeKlausMotion = klausRig ? 'ready' : 'missing';
+      markStartup('rigs-prepared');
       scene.add(model);
       resize();
       applyRuntimeFireMotion(fireRig, 0);
       renderer.shadowMap.needsUpdate = true;
       canvas.dataset.homeBlenderPhase = 'first-frame-rendering';
+      markStartup('first-frame-start');
       renderFrame();
+      markStartup('first-frame-end');
       canvas.dataset.homeBlenderPhase = 'ready';
       canvas.dataset.homeBlenderRuntime = 'ready';
       canvas.classList.add('is-ready');
+      markStartup('ready');
       startFireAnimation();
       loadMatthiasActor();
     });
