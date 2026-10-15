@@ -65,6 +65,18 @@ Usar contact strip, secuencia, vídeo corto o múltiples capturas cuando haya qu
 - transiciones de estado;
 - timing narrativo.
 
+## Entrega visual en el chat de iteración (obligatoria)
+
+**Toda PR visual debe enseñar su evidencia al usuario en el mismo chat donde se trabaja esa PR.** No es suficiente que los PNG existan en GitHub Actions, estén disponibles en la PR o hayan sido inspeccionados internamente.
+
+1. **Capturar la realidad:** obtener screenshots PNG/renders reales del pipeline de authoring **y del runtime consumidor** cuando ambas fases estén afectadas. Asociar cada prueba al PR head SHA exacto y a la pantalla, estado y viewport. No sustituir una captura por un mockup, una imagen generada o una versión vieja de staging.
+2. **Mostrarla aquí:** insertar las imágenes **visibles en el cuerpo del chat de iteración**, no solamente URLs, paths, nombres de artifacts, tablas de resultados o «capturas revisadas». Mostrar una selección representativa de cada superficie cambiada; incluir desktop y móvil si varía la composición. Si hay muchas capturas, presentar una tira/contact sheet legible y enlazar además el artifact completo; no inundar el chat con decenas de PNG casi idénticos.
+3. **Hacer legible la comparación:** cuando exista baseline comparable, enseñar **antes y después** claramente identificados; etiquetar PR, SHA, escenario y viewport. Para animación, enseñar una secuencia/contact sheet o vídeo real cuando un frame aislado no baste.
+4. **Compartir mientras se itera:** publicar el primer conjunto de evidencias en cuanto esté disponible y volver a mostrar las imágenes modificadas tras cambios visuales relevantes. Dar oportunidad al usuario de inspeccionar/comentar en esa misma conversación. No es obligatorio esperar una respuesta expresa si el usuario ha pedido iterar sin input, pero sí **mostrarle** la evidencia antes de darla por aceptada.
+5. **Fallar con transparencia:** si GitHub no ofrece los PNG, no se pueden descargar/materializar, o el canal no permite incrustarlos, explicar exactamente qué evidencia falta o no puede mostrarse. No afirmar que se ha enseñado, no sustituirla silenciosamente por un enlace y **no** pasar a Ready ni habilitar automerge de esa PR visual hasta resolver la evidencia.
+
+El enlace al run/PR sigue siendo útil como **complemento** para los artifacts completos, nunca como sustituto de las imágenes visibles en chat. Esta regla aplica a Home, War Room, Chronicles, Tactics, Football, Pawn Slug, ilustraciones, sprites y cualquier otra PR de aceptación visual.
+
 ## CI
 
 CI puede generar artifacts de review, pero no convierte automáticamente una visual en aceptada.
