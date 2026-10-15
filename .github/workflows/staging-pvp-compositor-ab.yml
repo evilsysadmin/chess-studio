@@ -3,6 +3,13 @@ name: Staging · PvP compositor A/B
 # Manual-only diagnostic; no deployment or promotion.
 on:
   workflow_dispatch:
+    inputs:
+      renderer:
+        description: 'Chromium flags: default matches canonical CI; software forces ANGLE SwiftShader'
+        type: choice
+        required: true
+        default: default
+        options: [default, software]
 
 permissions:
   contents: read
@@ -13,7 +20,7 @@ concurrency:
 
 jobs:
   compare:
-    name: Compare Home canvas visible/hidden · SwiftShader
+    name: Compare Home canvas visible/hidden · Chromium
     runs-on: ubuntu-24.04
     timeout-minutes: 25
     environment:
@@ -23,7 +30,7 @@ jobs:
       STAGING_URL: https://staging.chess-studio.shadowops.dpdns.org
       STAGING_API_URL: https://api-staging.chess-studio.shadowops.dpdns.org/api
       DEPLOY_SHA: ${{ github.sha }}
-      CHESS_STAGING_RENDERER: software
+      CHESS_STAGING_RENDERER: ${{ inputs.renderer || 'default' }}
       OCI_TENANCY_OCID: ${{ secrets.OCI_TENANCY_OCID }}
       OCI_USER_OCID: ${{ secrets.OCI_USER_OCID }}
       OCI_FINGERPRINT: ${{ secrets.OCI_FINGERPRINT }}
@@ -68,7 +75,7 @@ jobs:
         run: |
           set -euo pipefail
           summary="$RUNNER_TEMP/staging-pvp-ab.txt"
-          printf 'source_sha=%s renderer_requested=software\n' "$DEPLOY_SHA" > "$summary"
+          printf 'source_sha=%s renderer_requested=%s\n' "$DEPLOY_SHA" "$CHESS_STAGING_RENDERER" > "$summary"
           for mode in keep-home-canvas hide-home-canvas hide-home-canvas keep-home-canvas; do
             python3 -S scripts/staging_generation.py wait \
               --sha "$DEPLOY_SHA" --surfaces backend,frontend,worker --attempts 1 --interval 0 --root
@@ -109,7 +116,7 @@ jobs:
           done
           {
             echo '### PvP compositor A/B — diagnostic only, NOT staging accreditation'
-            echo "Exact SHA: $DEPLOY_SHA; renderer requested: software"
+            echo "Exact SHA: $DEPLOY_SHA; renderer requested: $CHESS_STAGING_RENDERER"
             echo 'Order: keep / hide / hide / keep. Review repeated long-task timings before drawing conclusions.'
           } >> "$GITHUB_STEP_SUMMARY"
 
