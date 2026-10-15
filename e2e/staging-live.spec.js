@@ -347,6 +347,24 @@ async function assertLivePvpBrowserPath(page) {
   if (rendererMode === 'software') {
     expect(rendererClass, 'GPU A/B software leg requires verified software renderer').toBe('software');
   }
+  // Optional compositor A/B, limited to this synthetic Chromium smoke.
+  // The renderer remains mounted and keeps rendering; only Home's canvas
+  // visibility is changed while opening the PvP dialog. The canonical smoke
+  // and product runtime do not change when the opt-in is absent.
+  const ablation = process.env.CHESS_STAGING_PVP_ABLATION || 'off';
+  expect(['off', 'hide-home-canvas'], 'recognized staging compositor A/B mode').toContain(ablation);
+  let homeCanvasStyle = null;
+  if (ablation === 'hide-home-canvas') {
+    const homeCanvas = page.locator('canvas.illustrated-home__castle-3d');
+    await expect(homeCanvas, 'A/B requires the real Home 3D canvas').toHaveCount(1);
+    await expect(homeCanvas, 'A/B requires a fully initialized Home compositor')
+      .toHaveAttribute('data-home-blender-runtime', 'ready');
+    homeCanvasStyle = await page.addStyleTag({
+      content: 'canvas.illustrated-home__castle-3d { visibility: hidden !important; }',
+    });
+  }
+  console.log('STAGING_PVP_ABLATION mode=' + ablation +
+    ' home_canvas_present=' + (await page.locator('canvas.illustrated-home__castle-3d').count() === 1));
   const started = Date.now();
   let phaseStart = started;
   const logPhase = (name) => {
@@ -787,6 +805,9 @@ async function assertLivePvpBrowserPath(page) {
         window.__stagingDuelHallTiming?.close();
         delete window.__stagingDuelHallTiming;
       }).catch(() => {});
+    }
+    if (homeCanvasStyle && !page.isClosed()) {
+      await homeCanvasStyle.evaluate((node) => node.remove()).catch(() => {});
     }
     page.off('requestfinished', onOpenFinished);
     page.off('request', onOpenRequest);
