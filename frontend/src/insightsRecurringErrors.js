@@ -1,4 +1,5 @@
 import { personalTrainingDebts } from './trainingDebt.js';
+import { isPlayablePersonalPuzzle } from './personalPuzzles.js';
 
 const INCIDENT_LABELS = Object.freeze({
   'human:MISSED_MATE': 'Mates que dejaste escapar',
@@ -110,7 +111,7 @@ export { INCIDENT_LABELS };
 export function selectRecurringPatternExample(pattern, puzzles = []) {
   if (!pattern?.incidentKey || !Array.isArray(puzzles)) return null;
   const matching = puzzles.filter((puzzle) => (
-    puzzle?.fen
+    isPlayablePersonalPuzzle(puzzle)
     && Array.isArray(puzzle?.solution)
     && puzzle.solution.length > 0
     && Array.isArray(puzzle?.incidentKeys)
