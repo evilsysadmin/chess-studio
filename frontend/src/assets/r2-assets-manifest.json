@@ -1,5 +1,19 @@
 {
   "assets": {
+    "chronicles.music.firstVerse": {
+      "bytes": 4871666,
+      "contentType": "audio/mpeg",
+      "key": "chronicles/music/Chronicles of matthias - First verse.mp3",
+      "sha256": "5e545865cf16504e93482d380ead4c33dd77b794e85d7ee5afb400d3d0fbe2c5",
+      "url": "https://assets.chess-studio.shadowops.dpdns.org/chronicles/music/Chronicles of matthias - First verse.mp3"
+    },
+    "chronicles.music.secondVerse": {
+      "bytes": 4997378,
+      "contentType": "audio/mpeg",
+      "key": "chronicles/music/Chronicles of matthias - Second verse.mp3",
+      "sha256": "1f55001289415bfe1c6b01b7d1d73b8d963b0dbbadc90b07505efa2ffa263af4",
+      "url": "https://assets.chess-studio.shadowops.dpdns.org/chronicles/music/Chronicles of matthias - Second verse.mp3"
+    },
     "chronicles.tactics.party.master": {
       "bytes": 501446,
       "contentType": "application/octet-stream",

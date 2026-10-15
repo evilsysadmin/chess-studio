@@ -21,6 +21,7 @@ import {
 import { chroniclesDeployedPartyLevel } from '../chronicles/chroniclesDifficultyPolicy.js';
 import { playChroniclesActionSound } from '../chronicles/chroniclesActionAudio.js';
 import { getAmbientVolume, setAmbientVolume } from '../sound.js';
+import { useChroniclesSoundtrack } from '../chronicles/useChroniclesSoundtrack.js';
 import {
   getChroniclesFxVolume,
   setChroniclesFxVolume,
@@ -196,6 +197,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
     return chroniclesShouldResumePlayingRun(FIRST_PERSON_RUN_SCOPE) ? 'playing' : 'menu';
   });
   const [characterSetupDone, setCharacterSetupDone] = useState(entryView === 'playing');
+  useChroniclesSoundtrack(entryView);
   const [savesRefreshKey, refreshSaves] = useState(0);
   const [saveInventory, setSaveInventory] = useState(null);
   const [saveMenuLoading, setSaveMenuLoading] = useState(false);
@@ -1258,10 +1260,10 @@ export default function ChroniclesOfMatthias({ onExit }) {
                       onChange={(event) => setFxVolume(setChroniclesFxVolume(Number(event.target.value) / 100))}
                       onKeyDown={(event) => event.stopPropagation()}
                     />
-                    <label htmlFor="chronicles-music-volume">Música general · {Math.round(musicVolume * 100)} %</label>
+                    <label htmlFor="chronicles-music-volume">Música de Chronicles · {Math.round(musicVolume * 100)} %</label>
                     <input
                       id="chronicles-music-volume"
-                      aria-label="Volumen de música"
+                      aria-label="Volumen de música de Chronicles"
                       type="range"
                       min="0"
                       max="100"
@@ -1271,7 +1273,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
                       onChange={(event) => setMusicVolume(setAmbientVolume(Number(event.target.value) / 100))}
                       onKeyDown={(event) => event.stopPropagation()}
                     />
-                    <small>Ajusta la música general; Chronicles aún no dispone de pista propia.</small>
+                    <small>First Verse en el libro de expediciones; Second Verse durante la aventura.</small>
                   </fieldset>
                     <button type="button" className="chronicles-audio-back" onClick={() => setAudioOptionsOpen(false)}>
                       Volver al menú
