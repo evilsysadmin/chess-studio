@@ -8,6 +8,10 @@ inputs:
     description: "app, chronicles or tactics selects one independent visual workflow; default keeps the legacy CLI behavior."
     default: default
     required: false
+  chronicles-shard:
+    description: "Dedicated Chronicles Playwright partition (1 or 2); empty keeps other visual lanes unchanged."
+    default: ''
+    required: false
 runs:
   using: composite
   steps:
@@ -104,6 +108,14 @@ runs:
             APP_VISUAL_BASE_SHA="$base_sha" APP_VISUAL_HEAD_SHA="$head_sha" \
             python3 -S scripts/app_visual_changed_files.py
         )"
+        # Workflow/tooling changes are normally no-op in product routing.
+        # Only the sharded Chronicles workflow must exercise its full real
+        # producer when it changes, so an empty successful shard is not proof.
+        if [[ "${{ inputs.chronicles-lane }}" == 'chronicles' && -n "${{ inputs.chronicles-shard }}" ]] &&
+           printf '%s\n' "$files" | grep -Eq '^(\.github/workflows/chronicles-visual-artifact\.yml|\.github/actions/app-visual-pipeline/action\.yml|scripts/app_visual_capture\.sh)$'; then
+          scoped_files="$(printf '%s\n%s\n' "$scoped_files" 'e2e/chronicles-gameplay-visual-artifact.spec.js')"
+          echo 'Chronicles visual shard self-test: execute real gameplay producer.'
+        fi
         # A PR touching only the expedition book plus visual-pipeline plumbing
         # still receives real desktop / portrait / landscape screenshots and
         # functional entry assertions, without rerunning every dungeon encounter.
@@ -268,6 +280,7 @@ runs:
         APP_VISUAL_HOME_PROFILE_SCOPE: ${{ steps.scope.outputs.home_profile_scope }}
         APP_VISUAL_CHRONICLES_SAVE_ONLY: ${{ steps.scope.outputs.chronicles_save_only }}
         APP_VISUAL_CHRONICLES_SETUP_ONLY: ${{ steps.scope.outputs.chronicles_setup_only }}
+        APP_VISUAL_CHRONICLES_SHARD: ${{ inputs.chronicles-shard }}
       shell: bash
       run: |
         set -euo pipefail
@@ -321,7 +334,7 @@ runs:
       if: always() && steps.scope.outcome == 'success' && inputs.mode == 'canonical' && steps.scope.outputs.capture_groups != 'none' && steps.scope.outputs.producer_scope != 'none' && steps.canonical_capture.outputs.has_specs == 'true'
       uses: actions/upload-artifact@v7
       with:
-        name: ${{ inputs.chronicles-lane == 'tactics' && 'tactics-visual' || inputs.chronicles-lane == 'chronicles' && 'chronicles-visual' || 'app-visual' }}-${{ github.event.pull_request.number || github.run_id }}
+        name: ${{ inputs.chronicles-lane == 'tactics' && 'tactics-visual' || inputs.chronicles-lane == 'chronicles' && 'chronicles-visual' || 'app-visual' }}-${{ github.event.pull_request.number || github.run_id }}${{ inputs.chronicles-shard && format('-part-{0}', inputs.chronicles-shard) || '' }}
         path: .artifacts/app-visual/
         if-no-files-found: error
         retention-days: 7

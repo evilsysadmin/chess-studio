@@ -17,18 +17,52 @@ on:
       - '!frontend/public/audio/**'
       - e2e/*visual*.spec.js
       - e2e/browser-*-health.spec.js
+      # Exercise the partition itself on CI-only delivery changes.
+      - .github/workflows/chronicles-visual-artifact.yml
+      - .github/actions/app-visual-pipeline/action.yml
+      - scripts/app_visual_capture.sh
   workflow_dispatch:
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 permissions: {contents: read}
 jobs:
-  capture:
-    name: Chronicles · capture
+  # Isolate long-lived SwiftShader/Three.js sessions on separate runners,
+  # without introducing two contending workers on the same shared GPU-less VM.
+  # Playwright shards the same canonical test set: no tests or PNGs are skipped.
+  capture_shards:
+    name: Chronicles · shard ${{ matrix.shard }}/2
     runs-on: ubuntu-24.04
-    timeout-minutes: 75
+    timeout-minutes: 50
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2]
     steps:
       - uses: actions/checkout@v7
         with: {fetch-depth: 2}
       - uses: ./.github/actions/app-visual-pipeline
-        with: {mode: canonical, chronicles-lane: chronicles}
+        with:
+          mode: canonical
+          chronicles-lane: chronicles
+          chronicles-shard: ${{ matrix.shard }}
+
+  # Preserve the existing stable required check; only a green result from
+  # BOTH isolated partitions can satisfy branch protection.
+  capture:
+    name: Chronicles · capture
+    if: ${{ always() }}
+    needs: [capture_shards]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Require both exact-SHA visual shards
+        env:
+          SHARD_RESULT: ${{ needs.capture_shards.result }}
+        shell: bash
+        run: |
+          if [[ "$SHARD_RESULT" != 'success' ]]; then
+            echo "::error::Chronicles visual shards not fully green: $SHARD_RESULT"
+            exit 1
+          fi
+          echo "Both independent Chronicles visual shards passed."
