@@ -563,8 +563,11 @@ scopedTest('progress', 'Entrenar · Así juegas y Mi progreso', async ({ page })
   await directPractice.click();
   const actualPosition = page.locator('.puzzle-screen[data-training-origin="insights-action"]');
   await expect(actualPosition).toBeVisible();
-  await expect(actualPosition.getByRole('button', { name: '← Volver a Así juegas', exact: true })).toBeVisible();
-  await actualPosition.getByRole('button', { name: '← Volver a Así juegas', exact: true }).click();
+  // On touch viewports the back button becomes icon-only via ::before,
+  // so Playwright's computed accessible name differs from the desktop label.
+  const backToStudy = actualPosition.locator('> .back-link');
+  await expect(backToStudy).toBeVisible();
+  await backToStudy.click();
   await expect(trainingRoom.getByRole('heading', { name: 'Tu siguiente tarea' })).toBeVisible();
 
   await page.setViewportSize({ width: 1440, height: 900 });
