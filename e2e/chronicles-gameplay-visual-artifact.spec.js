@@ -80,6 +80,13 @@ async function openChronicles(page, captureLabel, {
       })),
       loadingVisible: Boolean(document.querySelector('.home-3d-loading')),
     })).catch((inspectionError) => ({ inspectionError: String(inspectionError) }));
+    // CI logs must retain the evidence even when artifact ZIPs cannot be inspected.
+    // Keep it bounded and avoid logging input values or authentication secrets.
+    console.error('[Chronicles visual] Home bootstrap failed', JSON.stringify({
+      captureLabel,
+      diagnostic,
+      errors: bootstrapErrors.slice(-20),
+    }));
     await mkdir(ARTIFACT_DIR, { recursive: true });
     await writeFile(
       `${ARTIFACT_DIR}/chronicles-home-bootstrap-failure-${captureLabel}.json`,
