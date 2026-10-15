@@ -1,17 +1,19 @@
 name: Staging · PvP compositor A/B
 
-# Manual-only diagnostic; no deployment or promotion.
 on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/staging-pvp-compositor-ab.yml']
   workflow_dispatch:
     inputs:
       renderer:
-        description: 'Chromium flags: default matches canonical CI; software forces ANGLE SwiftShader'
+        description: 'Chromium flags; default matches CI'
         type: choice
         required: true
         default: default
         options: [default, software]
       comparison:
-        description: 'prehidden tests forced hide; product tests actual modal-scoped CSS'
+        description: 'Actual product CSS vs prehidden control'
         type: choice
         default: product
         options: [product, prehidden]
@@ -48,16 +50,21 @@ jobs:
         uses: actions/checkout@v7
         with:
           ref: ${{ github.sha }}
-          fetch-depth: 1
+          fetch-depth: 2
 
       - name: Reject stale or non-main runtime
         shell: bash
         run: |
           set -euo pipefail
           [[ "$GITHUB_REF" == "refs/heads/main" ]] || { echo "::error::A/B must run on main"; exit 1; }
+          if [[ "$GITHUB_EVENT_NAME" == push ]]; then
+            DEPLOY_SHA="$(git rev-parse HEAD^1)"
+            [[ "$(git diff --name-only "$DEPLOY_SHA" HEAD)" == '.github/workflows/staging-pvp-compositor-ab.yml' ]] || exit 1
+            echo "DEPLOY_SHA=$DEPLOY_SHA" >> "$GITHUB_ENV"
+          fi
           [[ "$DEPLOY_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::Invalid SHA"; exit 1; }
           python3 -S scripts/staging_generation.py wait \
-            --sha "$DEPLOY_SHA" --surfaces backend,frontend,worker --attempts 1 --interval 0 --root
+            --sha "$DEPLOY_SHA" --surfaces backend,frontend,worker --attempts 100 --interval 3 --root
 
       - name: Restore cached OCI SDK toolchain
         uses: ./.github/actions/setup-oci-sdk
@@ -76,7 +83,7 @@ jobs:
           restore-frontend-deps: 'false'
           build-frontend: 'false'
 
-      - name: Run paired opening-only A/B with real browser GET and dialog
+      - name: Paired PvP open GET
         shell: bash
         timeout-minutes: 21
         run: |
@@ -91,7 +98,6 @@ jobs:
             GITHUB_ENV="$env_file" python3 -S scripts/staging_smoke_env.py identity
             cat "$env_file" >> "$GITHUB_ENV"
             set -a
-            # Already masked helper-generated credentials.
             source "$env_file"
             set +a
             rm -f "$env_file"
@@ -121,9 +127,9 @@ jobs:
               --sha "$DEPLOY_SHA" --surfaces backend,frontend,worker --attempts 1 --interval 0 --root
           done
           {
-            echo '### PvP compositor A/B — diagnostic only, NOT staging accreditation'
+            echo '### Diagnostic A/B (not staging accreditation)'
             echo "Exact SHA: $DEPLOY_SHA; renderer requested: $CHESS_STAGING_RENDERER"
-            echo "Order: keep / $control / $control / keep. Opening-only, NOT canonical smoke."
+            echo "Order: keep / $control / $control / keep."
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Retry cleanup after any interrupted leg
