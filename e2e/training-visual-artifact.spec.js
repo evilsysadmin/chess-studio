@@ -519,6 +519,23 @@ scopedTest('progress', 'Entrenar · Así juegas y Mi progreso', async ({ page })
         solves: 0,
         cleanSolves: 0,
       },
+      {
+        id: 'visual-guided-session-second',
+        kind: 'personal',
+        source: 'autopsy',
+        title: 'Segunda reincidencia real',
+        description: 'Segundo caso registrado para el expediente visual.',
+        fen: '6k1/5ppp/8/8/8/8/5PPP/R5K1 w - - 0 1',
+        solution: ['Ra8#'],
+        played: 'Kf1',
+        incidentKeys: ['human:MISSED_MATE'],
+        sourceGameId: 'visual-guided-source-second',
+        loss: 270,
+        createdAt: '2026-09-30T10:00:00Z',
+        attempts: 0,
+        solves: 0,
+        cleanSolves: 0,
+      },
     ]));
   });
   await page.getByRole('button', { name: 'Abrir menú de cuenta', exact: true }).click();
@@ -558,12 +575,16 @@ scopedTest('progress', 'Entrenar · Así juegas y Mi progreso', async ({ page })
   await archiveOnMobile.getByRole('button', { name: 'Errores', exact: true }).click();
   const errorRegion = trainingRoom.getByRole('region', { name: 'Errores recurrentes' });
   await expect(errorRegion).toHaveAttribute('data-insights-section', 'errors');
+  await expect(errorRegion.getByText('El libro negro de Matthias', { exact: true })).toBeVisible();
+  await expect(errorRegion.locator('.insights-blackbook-position .insights-position-preview')).toBeVisible();
+  await expect(errorRegion.getByRole('button', { name: 'Entrenar este patrón →' })).toBeVisible();
   await expect(errorRegion).toBeFocused();
   await expect.poll(() => errorRegion.evaluate((node) => {
     const rect = node.getBoundingClientRect();
     return rect.top >= -8 && rect.top < window.innerHeight / 3 && rect.bottom > 0;
   }), { message: 'Archive content must be in mobile viewport after selecting it' }).toBe(true);
   await expect(errorRegion.getByRole('button', { name: 'Volver a mi tarea' })).toBeVisible();
+  await assertNoHorizontalOverflow(page, 'insights-blackbook-mobile-390');
   await captureAt(page, 'insights-errors-navigation', { width: 390, height: 844, variant: 'mobile' });
   await errorRegion.getByRole('button', { name: 'Volver a mi tarea' }).click();
   const taskRegion = trainingRoom.getByRole('region', { name: 'Tarea de Matthias' });
