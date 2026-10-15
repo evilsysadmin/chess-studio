@@ -64,8 +64,29 @@ async function openChronicles(page, captureLabel, {
   const onConsole = (message) => {
     if (message.type() === 'error') bootstrapErrors.push(`console: ${message.text()}`);
   };
+  // A console 404 alone cannot distinguish an optional icon from the GLB
+  // blocking the Home compositor. Record bounded resource-type/path/status;
+  // never log querystrings, credentials or response bodies.
+  const onResponse = (response) => {
+    if (response.status() < 400 || bootstrapErrors.length >= 40) return;
+    try {
+      bootstrapErrors.push(`http: ${response.status()} ${response.request().resourceType()} ${new URL(response.url()).pathname}`);
+    } catch {
+      bootstrapErrors.push(`http: ${response.status()} (invalid URL)`);
+    }
+  };
+  const onRequestFailed = (request) => {
+    if (bootstrapErrors.length >= 40) return;
+    try {
+      bootstrapErrors.push(`network: ${request.resourceType()} ${new URL(request.url()).pathname}: ${request.failure()?.errorText || 'unknown'}`);
+    } catch {
+      bootstrapErrors.push('network: failed request (invalid URL)');
+    }
+  };
   page.on('pageerror', onPageError);
   page.on('console', onConsole);
+  page.on('response', onResponse);
+  page.on('requestfailed', onRequestFailed);
   try {
     await login(page, loginOptions);
   } catch (error) {
@@ -80,6 +101,20 @@ async function openChronicles(page, captureLabel, {
         hidden: region.hidden,
       })),
       loadingVisible: Boolean(document.querySelector('.home-3d-loading')),
+      homeRenderer: (() => {
+        const stage = document.querySelector('.illustrated-home__stage');
+        const canvas = document.querySelector('canvas.illustrated-home__castle-3d');
+        return {
+          stageMounted: Boolean(stage),
+          stagePreview: stage?.dataset.home3dPreview ?? null,
+          canvasMounted: Boolean(canvas),
+          canvasReady: Boolean(canvas?.classList.contains('is-ready')),
+          canvasResolution: canvas ? [canvas.width, canvas.height] : null,
+          blenderState: canvas?.dataset.homeBlenderRuntime ?? null,
+          compositor: canvas?.dataset.homeCastleCompositor ?? null,
+          fallbackAvailable: Boolean(document.querySelector('.illustrated-home__backdrop')),
+        };
+      })(),
     })).catch((inspectionError) => ({ inspectionError: String(inspectionError) }));
     // CI logs must retain the evidence even when artifact ZIPs cannot be inspected.
     // Keep it bounded and avoid logging input values or authentication secrets.
@@ -102,6 +137,8 @@ async function openChronicles(page, captureLabel, {
   } finally {
     page.off('pageerror', onPageError);
     page.off('console', onConsole);
+    page.off('response', onResponse);
+    page.off('requestfailed', onRequestFailed);
   }
   onVisualPhase?.('home-interactive');
   const speech = page.getByRole('region', { name: 'Mensaje de Matthias', exact: true });
