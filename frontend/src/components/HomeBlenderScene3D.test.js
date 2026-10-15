@@ -20,6 +20,7 @@ import {
   applyHomeBlenderMoonVisibility,
   HOME_BLENDER_TIME_OF_DAY,
   homeBlenderIsSoftwareRenderer,
+  homeBlenderShouldRenderShadows,
   applyFlameLook,
   HOME_BLENDER_FLAME_LOOK,
   HOME_BLENDER_FIRE_MAX_RENDER_MS,
@@ -549,6 +550,24 @@ describe('HomeBlenderScene3D live flame animation', () => {
   });
 
   describe('software renderer detection', () => {
+    it('avoids the first full shadow pass only on software WebGL', () => {
+      for (const name of [
+        'ANGLE (Google, Vulkan (SwiftShader Device (Subzero)), SwiftShader driver)',
+        'Mesa llvmpipe (LLVM 15)',
+        'Software Rasterizer',
+      ]) {
+        expect(homeBlenderShouldRenderShadows('full', name)).toBe(false);
+      }
+      for (const name of [
+        'NVIDIA GeForce RTX 5070 Ti',
+        'AMD Radeon RX 7800 XT',
+        'Apple M2',
+      ]) {
+        expect(homeBlenderShouldRenderShadows('full', name)).toBe(true);
+        expect(homeBlenderShouldRenderShadows('lite', name)).toBe(false);
+        expect(homeBlenderShouldRenderShadows('2d', name)).toBe(false);
+      }
+    });
     it('recognises CPU rasterisers by name', () => {
       for (const name of [
         'ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)',
