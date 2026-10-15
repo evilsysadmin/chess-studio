@@ -100,6 +100,9 @@ test('Así juegas · Errores reabre una deuda cuando aparece una reincidencia re
   await page.getByRole('button', { name: 'Errores', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'No vuelvas a hacer esto', exact: true })).toBeVisible();
   await expect(page.getByText('Horquillas de caballo sufridas', { exact: true })).toBeVisible();
+  await expect(page.getByText('El libro negro de Matthias', { exact: true })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Expediente del patrón seleccionado' })).toBeVisible();
+  await expect(page.locator('.insights-blackbook-position .insights-position-preview')).toBeVisible();
   await expect(page.getByText('3 posiciones reales · 3 partidas fuente · peor pérdida ~330 cp', { exact: true })).toBeVisible();
   await expect(page.getByText('Deuda activa · últimos 2: 1/2 limpios', { exact: true })).toBeVisible();
   await expect(page.locator('[data-training-debt="active"]')).toHaveCount(1);

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { buildRecurringErrorPatterns } from './insightsRecurringErrors.js';
+import { isPlayablePersonalPuzzle } from './personalPuzzles.js';
+import { buildRecurringErrorPatterns, selectRecurringPatternExample } from './insightsRecurringErrors.js';
 
 describe('buildRecurringErrorPatterns', () => {
   it('sólo convierte en patrón los incidentes respaldados por al menos dos posiciones reales', () => {
@@ -122,5 +123,43 @@ describe('buildRecurringErrorPatterns', () => {
       'cpu:PAWN_FORK',
       'human:STALEMATE_BLUNDER',
     ]);
+  });
+});
+
+describe('selectRecurringPatternExample · expediente sin datos inventados', () => {
+  const pattern = { incidentKey: 'human:MISSED_MATE' };
+  const fen = '6k1/5ppp/8/8/8/8/5PPP/R5K1 w - - 0 1';
+  const actual = {
+    id: 'real-pending',
+    source: 'autopsy',
+    fen,
+    solution: ['Ra8#'],
+    incidentKeys: ['human:MISSED_MATE'],
+    sourceGameId: 'a-recorded-game',
+    createdAt: '2026-10-12T10:00:00Z',
+    attempts: 0,
+  };
+  it('muestra primero un caso pendiente verdadero, no uno resuelto ni una coincidencia de otro patrón', () => {
+    const sample = selectRecurringPatternExample(pattern, [
+      { ...actual, id: 'already-solved', solves: 1, createdAt: '2026-10-13T10:00:00Z' },
+      { ...actual, id: 'other-incident', incidentKeys: ['cpu:KNIGHT_FORK'] },
+      actual,
+    ], isPlayablePersonalPuzzle);
+    expect(sample?.id).toBe('real-pending');
+  });
+  it('rechaza FEN inválido, soluciones ilegales, evidencia ausente y listas vacías', () => {
+    expect(selectRecurringPatternExample(pattern, [{ ...actual, fen: 'not-a-fen' }], isPlayablePersonalPuzzle)).toBeNull();
+    expect(selectRecurringPatternExample(pattern, [{ ...actual, solution: ['Qxe8#'] }], isPlayablePersonalPuzzle)).toBeNull();
+    expect(selectRecurringPatternExample(pattern, [{ ...actual, incidentKeys: [] }], isPlayablePersonalPuzzle)).toBeNull();
+    expect(selectRecurringPatternExample(pattern, [], isPlayablePersonalPuzzle)).toBeNull();
+    expect(selectRecurringPatternExample(null, [actual], isPlayablePersonalPuzzle)).toBeNull();
+    expect(selectRecurringPatternExample(pattern, [actual])).toBeNull();
+  });
+  it('no altera el orden original de puzzles al seleccionar el ejemplo', () => {
+    const first = { ...actual, id: 'a', createdAt: '2026-10-11T10:00:00Z' };
+    const second = { ...actual, id: 'b' };
+    const list = [first, second];
+    expect(selectRecurringPatternExample(pattern, list, isPlayablePersonalPuzzle)?.id).toBe('b');
+    expect(list.map((item) => item.id)).toEqual(['a', 'b']);
   });
 });

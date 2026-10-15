@@ -279,7 +279,7 @@ export default function InsightsScreen(props) {
         ) : null}
 
         {!isCareer && diagnosisView === 'errors' ? (
-          <InsightsErrorsPanel onOpenPuzzles={openTrainingPuzzles} playerModel={playerModel} />
+          <InsightsErrorsPanel onOpenPuzzles={openTrainingPuzzles} playerModel={playerModel} personalPuzzles={personalPuzzles} />
         ) : null}
 
         {!isCareer && diagnosisView === 'dossier' ? (
