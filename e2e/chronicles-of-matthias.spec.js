@@ -35,6 +35,32 @@ async function openChronicles(page, options = {}) {
   await expect(page.locator('[data-chronicles="true"]')).toBeVisible();
 }
 
+test('Chronicles · cerrar Crónica no abre el mapa detrás y el minimapa es el único acceso visual', async ({ page }) => {
+  await page.setViewportSize({ width: 844, height: 390 });
+  await openChronicles(page, { chroniclesCurrentMapId: 'swordhaven-square', newTown: true });
+  const game = page.locator('[data-chronicles="true"]');
+  const map = page.getByRole('dialog', { name: 'Automapa de Chronicles' });
+  const minimap = game.getByRole('button', { name: 'Minimapa local. Abrir automapa completo', exact: true });
+  await expect(game.locator('.chronicles-map-trigger')).toHaveCount(0);
+  await expect(minimap).toBeVisible();
+  const turnsBefore = await game.getAttribute('data-chronicles-turns');
+
+  await page.keyboard.press('j');
+  const journal = page.getByRole('dialog', { name: 'Crónica de expedición' });
+  await expect(journal).toBeVisible();
+  // A complete pointer sequence must land on the close button, not on the
+  // minimap newly uncovered by the modal's unmount.
+  await journal.getByRole('button', { name: 'Cerrar Crónica' }).click();
+  await expect(journal).toHaveCount(0);
+  await expect(map).toHaveCount(0);
+  await expect(game).toHaveAttribute('data-chronicles-turns', turnsBefore);
+
+  await minimap.click();
+  await expect(map).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(map).toHaveCount(0);
+});
+
 test('Chronicles · F5 retoma la misma run guardada y guardar y salir abandona sin perderla', async ({ page }) => {
   test.setTimeout(180_000);
   await openChronicles(page, { chroniclesCurrentMapId: 'swordhaven-square', newTown: true });
@@ -514,7 +540,7 @@ test('Chronicles of Matthias · móvil mantiene party y mandos sin overflow', as
   expect(modeBox?.width || 0).toBeGreaterThanOrEqual(388);
   expect(modeBox?.height || 0).toBeGreaterThanOrEqual(842);
   // Browser-native fullscreen is best-effort; viewport ownership is the gameplay contract.
-  await expect(mode.getByRole('button', { name: 'Abrir automapa', exact: true })).toBeVisible();
+  await expect(mode.getByRole('button', { name: 'Minimapa local. Abrir automapa completo', exact: true })).toBeVisible();
   await expect(mode.getByLabel('Controles de la mazmorra')).toBeVisible();
   for (const name of ['Girar a la izquierda', 'Avanzar', 'Atacar', 'Retroceder', 'Girar a la derecha']) {
     await expect(mode.getByRole('button', { name, exact: true })).toBeVisible();
@@ -529,7 +555,7 @@ test('Chronicles of Matthias · automapa conserva fullscreen, bloquea input y or
   await openChronicles(page);
 
   const mode = page.locator('[data-chronicles="true"]');
-  const mapButton = mode.getByRole('button', { name: 'Abrir automapa', exact: true });
+  const mapButton = mode.getByRole('button', { name: 'Minimapa local. Abrir automapa completo', exact: true });
   await expect(mapButton).toBeVisible();
   await mapButton.click();
 
@@ -622,7 +648,7 @@ test('Chronicles of Matthias · automap sigue el rumbo real y ESC no abandona el
   await openChronicles(page);
 
   const mode = page.locator('[data-chronicles="true"]');
-  const mapButton = mode.getByRole('button', { name: 'Abrir automapa', exact: true });
+  const mapButton = mode.getByRole('button', { name: 'Minimapa local. Abrir automapa completo', exact: true });
   await expect(mapButton).toBeVisible();
 
   const turnsBeforeMap = Number(await mode.getAttribute('data-chronicles-turns'));
