@@ -1163,6 +1163,15 @@ def self_test() -> None:
     assert classify(["frontend/src/tutorialRoute.js"]).capture_groups == "training"
     assert classify(["frontend/src/components/trainingSchoolIntentPreload.js"]).capture_groups == "training"
     assert classify(["frontend/src/components/HomeIllustrated.jsx"]).capture_groups == "home"
+    assert classify(["frontend/src/careerOpeningAtlas.js"]).capture_groups == "training"
+    assert classify(["frontend/src/components/CareerOpeningAtlas.jsx"]).capture_groups == "training"
+    assert classify(["frontend/src/components/CareerOpeningAtlas.css"]).capture_groups == "training"
+    assert classify(["frontend/src/components/CareerOpeningsSection.jsx"]).capture_groups == "training"
+    assert classify(["frontend/src/components/CareerChronicle.jsx"]).capture_groups == "training"
+    assert classify(["frontend/src/components/CareerChronicle.css"]).capture_groups == "training"
+    assert classify(["frontend/src/components/CareerPerformanceSection.jsx"]).capture_groups == "training"
+    assert classify(["frontend/src/components/CareerOpeningAtlas.jsx", "e2e/training-visual-artifact.spec.js"]).capture_groups == "training"
+    assert classify(["frontend/src/components/CareerOpeningAtlas.jsx", "frontend/src/components/SomeUnknownGlobalWidget.jsx"]).capture_groups == ",".join(GROUP_ORDER)
     print("app visual scope self-test: OK")
 
 
