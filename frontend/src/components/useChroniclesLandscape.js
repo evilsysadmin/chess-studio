@@ -76,6 +76,35 @@ export default function useChroniclesLandscape(enabled = true) {
     };
   }, []);
 
+  useEffect(() => {
+    if (!enabled || typeof document === 'undefined' || typeof window === 'undefined') return undefined;
+    // Mobile browsers may restore a tab in portrait after an app switch.
+    // Recheck the viewport, and retry the lock only if fullscreen survives;
+    // requesting fullscreen without a fresh user gesture is not reliable.
+    let active = true;
+    const resume = () => {
+      if (document.visibilityState === 'hidden') return;
+      setViewport(readViewport());
+      if (!shouldAutoRotateChroniclesOnEntry() || !document.fullscreenElement) return;
+      const orientation = globalThis.screen?.orientation;
+      if (typeof orientation?.lock !== 'function') return;
+      Promise.resolve().then(() => orientation.lock('landscape')).then(() => {
+        if (active) setLockState('locked');
+      }).catch(() => {
+        if (active) setLockState('rejected');
+      });
+    };
+    document.addEventListener('visibilitychange', resume);
+    window.addEventListener('pageshow', resume);
+    window.addEventListener('focus', resume);
+    return () => {
+      active = false;
+      document.removeEventListener('visibilitychange', resume);
+      window.removeEventListener('pageshow', resume);
+      window.removeEventListener('focus', resume);
+    };
+  }, [enabled, readViewport]);
+
   useEffect(() => () => {
     void releaseChroniclesLandscape();
   }, []);
