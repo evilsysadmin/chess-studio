@@ -4,6 +4,7 @@ import {
   createWarRoomBlenderVariantShell,
   scheduleWarRoomAfterFirstPaint,
   selectWarRoomBlenderShadowCasters,
+  shouldWarmWarRoomBlenderShadows,
   WAR_ROOM_BLENDER_SHADOW_CASTER_LIMIT,
   warRoomBlenderPracticalLightProfile,
 } from './WarRoomBlenderShellRuntime.js';
@@ -91,6 +92,14 @@ describe('War Room shared Blender runtime', () => {
     release();
     frame();
     expect(refinements).toBe(0);
+  });
+
+  it('preserves default War Room shadows but skips nonexistent PvP Hall shadow-map refinements', () => {
+    expect(shouldWarmWarRoomBlenderShadows()).toBe(true);
+    expect(shouldWarmWarRoomBlenderShadows({ coarsePointer: false, enableShadowWarmup: true })).toBe(true);
+    expect(shouldWarmWarRoomBlenderShadows({ coarsePointer: true, enableShadowWarmup: true })).toBe(false);
+    expect(shouldWarmWarRoomBlenderShadows({ coarsePointer: false, enableShadowWarmup: false })).toBe(false);
+    expect(shouldWarmWarRoomBlenderShadows({ coarsePointer: true, enableShadowWarmup: false })).toBe(false);
   });
 
   it('caps decorative Blender-shell shadow casters and prioritizes useful nearby geometry', () => {
