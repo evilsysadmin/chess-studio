@@ -147,6 +147,26 @@ case "$mode" in
     fi
 
     playwright_args=(--workers=1 --retries=0)
+    # Split the full Chronicles producer across independent GHA runners.
+    # No second worker on the same SwiftShader runner (GPU contention), no
+    # test-name grep and no relaxed assertions: Playwright owns the partition.
+    if [[ -n "${APP_VISUAL_CHRONICLES_SHARD:-}" ]]; then
+      case "$APP_VISUAL_CHRONICLES_SHARD" in
+        1|2) ;;
+        *) echo "::error::Invalid Chronicles visual shard: $APP_VISUAL_CHRONICLES_SHARD"; exit 2 ;;
+      esac
+      [[ "$warroom_core_selected" == "false" && "${#specs[@]}" -gt 0 ]] || {
+        echo "::error::Chronicles shard requested without Chronicles visual specs"; exit 2;
+      }
+      for spec in "${specs[@]}"; do
+        case "$spec" in
+          chronicles-gameplay-visual-artifact.spec.js|chronicles-avatar-visual-artifact.spec.js) ;;
+          *) echo "::error::Chronicles shard cannot own other visual producer: $spec"; exit 2 ;;
+        esac
+      done
+      playwright_args+=(--shard="${APP_VISUAL_CHRONICLES_SHARD}/2")
+      echo "Chronicles visual partition ${APP_VISUAL_CHRONICLES_SHARD}/2: all canonical tests distributed across isolated runners."
+    fi
     # The party-choice surface also has canonical setup + editor screenshots
     # in these same three First Book journeys, plus a real game-entry proof.
     # Functional Chronicles WebGL canaries stay required in Quality CI.
