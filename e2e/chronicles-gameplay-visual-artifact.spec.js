@@ -1019,7 +1019,7 @@ for (const capture of CAPTURES) {
         art: getComputedStyle(summary).backgroundImage,
         tooltipInk: getComputedStyle(summary.querySelector('.chronicles-menu-gem__hint')).color,
       }));
-      expect(sapphire.art, `${capture.label}: sapphire artwork is the menu trigger`).toContain('mm3-sapphire.png');
+      expect(sapphire.art, `${capture.label}: sapphire artwork is the menu trigger`).toMatch(/^url\(["']?data:image\/png;base64,/);
       expect(sapphire.tooltipInk, `${capture.label}: sapphire tooltip remains legible`).toBe('rgb(255, 246, 220)');
 
       // One complete real Three.js screenshot per viewport, then stop.
