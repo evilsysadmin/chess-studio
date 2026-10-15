@@ -415,6 +415,18 @@ def _surface_groups(path: str) -> set[str] | None:
         return {"experiments"}
     if _is_noncanonical_admin_surface(path):
         return set()
+    # Career modules are owned by the Training Room / Mi progreso. Exact
+    # runtime paths only; unknown modules must still fail closed to all.
+    if lower in {
+        "frontend/src/careeropeningatlas.js",
+        "frontend/src/components/careeropeningatlas.jsx",
+        "frontend/src/components/careeropeningatlas.css",
+        "frontend/src/components/careeropeningssection.jsx",
+        "frontend/src/components/careerchronicle.jsx",
+        "frontend/src/components/careerchronicle.css",
+        "frontend/src/components/careerperformancesection.jsx",
+    }:
+        return {"training"}
     if lower.startswith("frontend/src/components/homematthias"):
         return {"home"}
 
