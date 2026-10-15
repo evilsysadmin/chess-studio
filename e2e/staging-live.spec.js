@@ -330,6 +330,69 @@ function createPvpNativeTraceSummary() {
   };
 }
 
+
+// Optional native-run microscope: measure synchronous WebGL API calls only.
+// Never capture WebGL arguments, shaders, scene contents, URLs or identities.
+// Deliberately NOT enabled by the normal, unprofiled staging smoke.
+async function installPvpWebGlCallProbe(page) {
+  await page.evaluate(() => {
+    const methods = [
+      'compileShader', 'linkProgram', 'getProgramInfoLog', 'getShaderInfoLog',
+      'getProgramParameter', 'getShaderParameter', 'useProgram', 'validateProgram',
+      'bufferData', 'bufferSubData', 'texImage2D', 'texSubImage2D',
+      'compressedTexImage2D', 'drawElements', 'drawArrays',
+      'drawElementsInstanced', 'drawArraysInstanced', 'clear', 'flush', 'finish',
+    ];
+    const stats = new Map();
+    const restored = [];
+    const protoNames = ['WebGLRenderingContext', 'WebGL2RenderingContext'];
+    for (const name of protoNames) {
+      const proto = globalThis[name]?.prototype;
+      if (!proto) continue;
+      for (const method of methods) {
+        const descriptor = Object.getOwnPropertyDescriptor(proto, method);
+        if (!descriptor?.configurable || typeof descriptor.value !== 'function') continue;
+        try {
+          Object.defineProperty(proto, method, {
+            ...descriptor,
+            value: function (...args) {
+              const start = performance.now();
+              try {
+                return Reflect.apply(descriptor.value, this, args);
+              } finally {
+                const ms = Math.max(0, performance.now() - start);
+                const row = stats.get(method) || { calls: 0, totalMs: 0, maxMs: 0 };
+                row.calls += 1;
+                row.totalMs += ms;
+                row.maxMs = Math.max(row.maxMs, ms);
+                stats.set(method, row);
+              }
+            },
+          });
+          restored.push({ proto, method, descriptor });
+        } catch {
+          // Some GL implementations expose non-replaceable native methods.
+        }
+      }
+    }
+    globalThis.__stagingPvpWebGlProbe = {
+      snapshot() {
+        const top = [...stats].sort((a, b) => b[1].totalMs - a[1].totalMs)
+          .slice(0, 12).map(([method, row]) => ({
+            method, calls: row.calls,
+            totalMs: Math.round(row.totalMs), maxMs: Math.round(row.maxMs),
+          }));
+        return { hooks: restored.length, top };
+      },
+      stop() {
+        for (const { proto, method, descriptor } of restored.reverse()) {
+          try { Object.defineProperty(proto, method, descriptor); } catch { /* best effort */ }
+        }
+      },
+    };
+  });
+}
+
 async function assertLivePvpBrowserPath(page) {
   // Read-only phase diagnostics: preserve real lobby/pulse cadence and counts.
   // Never log credentials, tokens, roster contents, or response bodies.
@@ -426,6 +489,10 @@ async function assertLivePvpBrowserPath(page) {
   // Diagnostics are one-shot and contain only timing, not URLs or identities.
   const openedAt = Date.now();
   const openMs = () => Date.now() - openedAt;
+  if (process.env.CHESS_STAGING_CDP_DIAGNOSTICS === '1') {
+    await installPvpWebGlCallProbe(page).catch(() =>
+      console.log('STAGING_PVP_WEBGL unavailable=probe-install'));
+  }
   // Measure DOM milestones from *inside* Chromium. Playwright's own locator
   // commands can be delayed by a busy main thread, even after React has
   // inserted the dialog. Keep the observer read-only and stop it after open.
@@ -887,6 +954,13 @@ async function assertLivePvpBrowserPath(page) {
     // The passive browser sample above is canonical and unprofiled by default.
     // When explicitly enabled, finish CDP only AFTER that same scene-settled
     // checkpoint. This captures native work following GLB decode/first paint.
+    if (deepDiagnostics) {
+      const webgl = await page.evaluate(() =>
+        globalThis.__stagingPvpWebGlProbe?.snapshot() || null).catch(() => null);
+      console.log('STAGING_PVP_WEBGL ' + (webgl
+        ? JSON.stringify(webgl)
+        : 'unavailable=probe-snapshot'));
+    }
     await stopDeepDiagnostics('settled');
 
     const leave = page.waitForResponse(
@@ -909,6 +983,8 @@ async function assertLivePvpBrowserPath(page) {
       await page.evaluate(() => {
         window.__stagingDuelHallTiming?.close();
         delete window.__stagingDuelHallTiming;
+        window.__stagingPvpWebGlProbe?.stop();
+        delete window.__stagingPvpWebGlProbe;
       }).catch(() => {});
     }
     if (homeCanvasStyle && !page.isClosed()) {
