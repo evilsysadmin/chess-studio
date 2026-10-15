@@ -20,7 +20,7 @@ concurrency:
 
 jobs:
   compare:
-    name: Compare Home canvas visible/hidden · Chromium
+    name: Compare first PvP GET · Home visible/hidden
     runs-on: ubuntu-24.04
     timeout-minutes: 25
     environment:
@@ -31,6 +31,7 @@ jobs:
       STAGING_API_URL: https://api-staging.chess-studio.shadowops.dpdns.org/api
       DEPLOY_SHA: ${{ github.sha }}
       CHESS_STAGING_RENDERER: ${{ inputs.renderer || 'default' }}
+      CHESS_STAGING_PVP_OPEN_ONLY: '1'
       OCI_TENANCY_OCID: ${{ secrets.OCI_TENANCY_OCID }}
       OCI_USER_OCID: ${{ secrets.OCI_USER_OCID }}
       OCI_FINGERPRINT: ${{ secrets.OCI_FINGERPRINT }}
@@ -69,7 +70,7 @@ jobs:
           restore-frontend-deps: 'false'
           build-frontend: 'false'
 
-      - name: Run paired A/B/A controls with real browser assertions
+      - name: Run paired opening-only A/B with real browser GET and dialog
         shell: bash
         timeout-minutes: 21
         run: |
@@ -83,8 +84,7 @@ jobs:
             GITHUB_ENV="$env_file" python3 -S scripts/staging_smoke_env.py identity
             cat "$env_file" >> "$GITHUB_ENV"
             set -a
-            # Helper-generated credentials contain only URL-safe characters,
-            # and are masked before they enter GitHub's process environment.
+            # Already masked helper-generated credentials.
             source "$env_file"
             set +a
             rm -f "$env_file"
@@ -110,14 +110,13 @@ jobs:
               echo "::error::PvP A/B leg $mode: browser=$browser_rc cleanup=$cleanup_rc"
               exit 1
             fi
-            # Never compare an old runtime to a newly deployed generation.
             python3 -S scripts/staging_generation.py wait \
               --sha "$DEPLOY_SHA" --surfaces backend,frontend,worker --attempts 1 --interval 0 --root
           done
           {
             echo '### PvP compositor A/B — diagnostic only, NOT staging accreditation'
             echo "Exact SHA: $DEPLOY_SHA; renderer requested: $CHESS_STAGING_RENDERER"
-            echo 'Order: keep / hide / hide / keep. Review repeated long-task timings before drawing conclusions.'
+            echo 'Order: keep / hide / hide / keep. Opening-only diagnostics, NOT the full canonical smoke.'
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Retry cleanup after any interrupted leg

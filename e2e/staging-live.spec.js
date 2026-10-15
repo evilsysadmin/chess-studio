@@ -360,11 +360,13 @@ async function assertLivePvpBrowserPath(page) {
     await expect(homeCanvas, 'A/B requires the real Home 3D canvas').toHaveCount(1);
     await expect(homeCanvas, 'Both A/B legs require a ready Home compositor')
       .toHaveAttribute('data-home-blender-runtime', 'ready');
-    if (ablation === 'hide-home-canvas') {
-      homeCanvasStyle = await page.addStyleTag({
-        content: 'canvas.illustrated-home__castle-3d { visibility: hidden !important; }',
-      });
-    }
+    // Force the visible control above the product's modal-scoped rule.
+    // Both legs now use the same :has() transition as actual Duel Hall;
+    // keep always means visible even after the product optimization ships.
+    homeCanvasStyle = await page.addStyleTag({
+      content: 'html body:has(.pvp-lobby-backdrop) canvas.illustrated-home__castle-3d {' +
+        ' visibility: ' + (ablation === 'keep-home-canvas' ? 'visible' : 'hidden') + ' !important; }',
+    });
     // Equally settle two composited frames for the keep/hide legs, excluding
     // style insertion overhead from the modal-opening interval.
     await page.evaluate(() => new Promise((resolve) =>
@@ -677,6 +679,13 @@ async function assertLivePvpBrowserPath(page) {
     await expect(lobby).toBeVisible();
     await expect(lobby.getByRole('heading', { name: 'Sala de Duelos' })).toBeVisible();
     await expect(lobby.locator('.pvp-lobby__error')).toHaveCount(0);
+    // If Home exposes a real WebGL canvas, it must leave the compositor while
+    // the opaque Duel Hall covers it (normal smoke, not the A/B visible control).
+    const homeCanvasCovered = page.locator('canvas.illustrated-home__castle-3d');
+    if (ablation === 'off' && await homeCanvasCovered.count()) {
+      await expect(homeCanvasCovered, 'Home canvas must be excluded while Duel Hall covers it')
+        .toHaveCSS('visibility', 'hidden');
+    }
     const dialogReadyMs = openMs();
     const sceneStatus = await page.evaluate(() =>
       document.querySelector('[data-pvp-duel-hall-3d]')?.getAttribute('data-pvp-duel-hall-3d') || 'not-mounted'
@@ -726,6 +735,23 @@ async function assertLivePvpBrowserPath(page) {
     // Keep the passive observer alive through the existing real PvP pulses:
     // 3D may still be loading when the first lobby response becomes visible.
     logPhase('open-lobby');
+
+    // Experimental opening-only A/B: validate the first *real browser* PvP
+    // request and readable dialog, then close before the deferred Three/GLB
+    // startup and three separate roster/heartbeat cycles contaminate the
+    // measurement. The canonical staging smoke (AB=off) is unchanged.
+    if (process.env.CHESS_STAGING_PVP_OPEN_ONLY === '1' &&
+        ['keep-home-canvas', 'hide-home-canvas'].includes(ablation)) {
+      expect(failed, 'Opening-only PvP request failures').toEqual([]);
+      if (openTimeline.modelRequestMs !== null) {
+        expect(openTimeline.firstLobbyRequestMs).toBeLessThanOrEqual(openTimeline.modelRequestMs);
+      }
+      await lobby.getByRole('button', { name: 'Cerrar ventana de rivales', exact: true }).click();
+      await expect(lobby).toBeHidden();
+      console.log('STAGING_PVP_ABLATION phase=complete scope=open-only');
+      logPhase('close-after-first-lobby');
+      return;
+    }
 
     // Enrolarnos fuerza el mismo polling que usa una sesión humana real:
     // pulse nativo + reconciliación full-lobby. El antiguo gate con curl podía
@@ -802,6 +828,10 @@ async function assertLivePvpBrowserPath(page) {
     expect((await leave).status(), 'DELETE /roster debe limpiar la identidad técnica').toBe(204);
     await lobby.getByRole('button', { name: 'Cerrar ventana de rivales', exact: true }).click();
     await expect(lobby).toBeHidden();
+    if (ablation === 'off' && await homeCanvasCovered.count()) {
+      await expect(homeCanvasCovered, 'Home canvas must restore on closing Duel Hall')
+        .toHaveCSS('visibility', 'visible');
+    }
     logPhase('leave-lobby');
   } finally {
     await stopNativeTracing();
