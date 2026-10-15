@@ -1037,6 +1037,7 @@ for (const capture of CAPTURES) {
           engraving: engraving.textContent,
           engravingOpacity: getComputedStyle(engraving).opacity,
           engravingInk: getComputedStyle(engraving).color,
+          engravingBackground: getComputedStyle(engraving).backgroundColor,
           isCentered: label.left >= frame.left && label.right <= frame.right
             && label.top >= frame.top && label.bottom <= frame.bottom,
         };
@@ -1046,6 +1047,7 @@ for (const capture of CAPTURES) {
       expect(sapphire.engraving, `${capture.label}: permanent menu label`).toBe('MENÚ');
       expect(sapphire.engravingOpacity, `${capture.label}: visible without hover`).toBe('1');
       expect(sapphire.engravingInk, `${capture.label}: sapphire engraving contrast`).toBe('rgb(255, 246, 220)');
+      expect(sapphire.engravingBackground, `${capture.label}: cobalt backdrop behind text`).toBe('rgba(5, 27, 78, 0.86)');
       expect(sapphire.isCentered, `${capture.label}: engraving within sapphire hit target`).toBe(true);
 
       // One complete real Three.js screenshot per viewport, then stop.
