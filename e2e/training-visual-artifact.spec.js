@@ -585,7 +585,12 @@ scopedTest('progress', 'Entrenar · Así juegas y Mi progreso', async ({ page })
   }), { message: 'Archive content must be in mobile viewport after selecting it' }).toBe(true);
   await expect(errorRegion.getByRole('button', { name: 'Volver a mi tarea' })).toBeVisible();
   await assertNoHorizontalOverflow(page, 'insights-blackbook-mobile-390');
+  await captureAt(page, 'insights-errors-navigation', { width: 1440, height: 900, variant: 'desktop' });
+  await captureAt(page, 'insights-errors-navigation', { width: 360, height: 800, variant: 'mobile-compact' });
   await captureAt(page, 'insights-errors-navigation', { width: 390, height: 844, variant: 'mobile' });
+  await captureAt(page, 'insights-errors-navigation', { width: 430, height: 932, variant: 'mobile-wide' });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await settle(page);
   await errorRegion.getByRole('button', { name: 'Volver a mi tarea' }).click();
   const taskRegion = trainingRoom.getByRole('region', { name: 'Tarea de Matthias' });
   await expect(taskRegion).toBeFocused();
