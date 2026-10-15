@@ -848,7 +848,15 @@ async function assertLivePvpBrowserPath(page) {
         ` glb_finished_ms=${openTimeline.modelFinishedMs ?? 'not-seen'}` +
         ` longtask_count=${settled.longTasks.count}` +
         ` longtask_total_ms=${Math.round(settled.longTasks.totalMs)}` +
-        ` longtask_max_ms=${Math.round(settled.longTasks.maxMs)}`,
+        ` longtask_max_ms=${Math.round(settled.longTasks.maxMs)}` +
+        // Five bounded longtask envelopes on the click clock, so native
+        // stalls can be placed before/after first GET, GLB finish and 3D ready.
+        ` top_longtasks_click_ms=${JSON.stringify(
+          (settled.longTasks.top || []).slice(0, 5).map((task) => ({
+            startMs: browserMs(task.startMs),
+            durationMs: Math.round(task.durationMs),
+          })),
+        )}`,
       );
     }
 
