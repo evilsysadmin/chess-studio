@@ -928,11 +928,14 @@ for (const scene of [
       isMobile: scene.touch,
     });
     const page = await context.newPage();
+    const started = Date.now();
+    const phase = (name) => console.log(`Chronicles Swordhaven route timing | ${scene.label} | ${name} | ${Date.now() - started}ms`);
     try {
       await openChronicles(page, `swordhaven-route-${scene.label}`, {
         chroniclesCurrentMapId: 'swordhaven-square',
         newTown: true,
       });
+      phase('gameplay-ready');
       const game = page.locator('[data-chronicles="true"]');
       const canvas = game.locator('[data-chronicles-renderer="three"] canvas');
       await expect(game).toHaveAttribute('data-chronicles-map-id', 'swordhaven-square');
@@ -943,27 +946,45 @@ for (const scene of [
         const minimap = game.locator('[data-chronicles-minimap="visible"]');
         await expect(narrator).toBeVisible();
         await expect(minimap).toBeVisible();
-        const [messageBox, minimapBox] = await Promise.all([
-          narrator.boundingBox(), minimap.boundingBox(),
-        ]);
+        const objective = game.locator('.chronicles-statusbar > span:nth-child(4) b');
+        await expect(objective).toContainText('Explora Swordhaven');
+        // SwiftShader can delay every independent CDP read. Probe all required
+        // HUD geometry and the objective line clamp in one browser evaluation,
+        // preserving the existing visibility, overlap, and typography asserts.
+        const { messageBox, minimapBox, lineClamp } = await game.evaluate((root) => {
+          const bounds = (selector) => {
+            const element = root.querySelector(selector);
+            if (!element) throw new Error(`Swordhaven HUD required node missing: ${selector}`);
+            const rect = element.getBoundingClientRect();
+            return { x: rect.x, y: rect.y, width: rect.width, height: rect.height };
+          };
+          const objectiveNode = root.querySelector('.chronicles-statusbar > span:nth-child(4) b');
+          if (!objectiveNode) throw new Error('Swordhaven HUD objective node missing');
+          return {
+            messageBox: bounds('.chronicles-dm-overlay'),
+            minimapBox: bounds('[data-chronicles-minimap="visible"]'),
+            lineClamp: getComputedStyle(objectiveNode).webkitLineClamp,
+          };
+        });
         expect(messageBox && minimapBox, 'Swordhaven has inspectable mobile HUD boxes').toBeTruthy();
         expect(messageBox.x + messageBox.width, 'narration must not paint beneath the minimap')
           .toBeLessThanOrEqual(minimapBox.x - 2);
-        const objective = game.locator('.chronicles-statusbar > span:nth-child(4) b');
-        await expect(objective).toContainText('Explora Swordhaven');
-        const lineClamp = await objective.evaluate((node) => getComputedStyle(node).webkitLineClamp);
         expect(lineClamp, 'mobile objective can display two lines').toBe('2');
+        phase('mobile-hud-probed');
       }
+      phase('entry-readback-begin');
       await page.screenshot({
         path: `${ARTIFACT_DIR}/chronicles-swordhaven-entry-${scene.label}.png`,
         animations: 'disabled',
         timeout: 60_000,
       });
+      phase('entry-readback-finish');
 
       // The starting tile is adjacent to the real south gate. Crossing it
       // must reach the crypt without ending or replacing the current run.
       await page.keyboard.press('ArrowDown');
       await expect(game).toHaveAttribute('data-chronicles-map-id', 'crypt-eight-squares', { timeout: 20_000 });
+      phase('crypt-entered');
       await expect(game).toHaveAttribute('data-chronicles-phase', 'explore');
       const returnAction = game.locator('[data-chronicles-touch-action="interact"]');
       await expect(returnAction).toHaveAttribute('aria-label', 'Regresar a Swordhaven');
@@ -981,11 +1002,13 @@ for (const scene of [
       // Give the real first-person camera enough rendered frames to settle on
       // portrait SwiftShader: a half-turned camera clips the entrance plaque.
       await page.waitForTimeout(1750);
+      phase('portal-readback-begin');
       await page.screenshot({
         path: `${ARTIFACT_DIR}/chronicles-swordhaven-return-portal-${scene.label}.png`,
         animations: 'disabled',
         timeout: 60_000,
       });
+      phase('portal-readback-finish');
       if (scene.touch) {
         await expect(returnAction).toBeVisible();
         await returnAction.tap({ force: true });
@@ -993,10 +1016,13 @@ for (const scene of [
         await page.keyboard.press('f');
       }
       await expect(game).toHaveAttribute('data-chronicles-map-id', 'swordhaven-square', { timeout: 20_000 });
+      phase('returned-to-town');
       await expect(game).toHaveAttribute('data-chronicles-phase', 'explore');
       await expect(game.locator('.chronicles-renderer-error')).toHaveCount(0);
     } finally {
+      phase('context-close-begin');
       await context.close();
+      phase('context-close-finish');
     }
   });
 }
