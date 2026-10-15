@@ -1134,6 +1134,15 @@ def self_test() -> None:
     assert classify(["frontend/src/tutorialRoute.js"]) == "training-school"
     assert classify(["frontend/src/components/trainingSchoolIntentPreload.js"]) == "training-school"
     assert classify(["frontend/src/components/HomeIllustrated.jsx"]) == "home-base"
+    assert classify(["frontend/src/careerOpeningAtlas.js"]) == "training-progress"
+    assert classify(["frontend/src/components/CareerOpeningAtlas.jsx"]) == "training-progress"
+    assert classify(["frontend/src/components/CareerOpeningAtlas.css"]) == "training-progress"
+    assert classify(["frontend/src/components/CareerOpeningsSection.jsx"]) == "training-progress"
+    assert classify(["frontend/src/components/CareerChronicle.jsx"]) == "training-progress"
+    assert classify(["frontend/src/components/CareerChronicle.css"]) == "training-progress"
+    assert classify(["frontend/src/components/CareerPerformanceSection.jsx"]) == "training-progress"
+    assert classify(["frontend/src/components/CareerOpeningAtlas.jsx", "e2e/training-visual-artifact.spec.js"]) == "training-progress"
+    assert classify(["frontend/src/components/CareerOpeningAtlas.jsx", "frontend/src/components/SomeUnknownGlobalWidget.jsx"]) == "all"
     print("app visual producer scope self-test: OK")
 
 
