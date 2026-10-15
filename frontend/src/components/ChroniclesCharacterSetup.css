@@ -793,3 +793,158 @@
 @media (prefers-reduced-motion: reduce) {
   .chronicles-character-setup__panel--editor * { transition: none !important; }
 }
+
+/* Mobile creation is a three-page character book, not an endless form.
+   Keep every rule and its exact backing values intact in the DOM. */
+.chronicles-character-setup__editor-tabs,
+.chronicles-character-setup__mobile-overview,
+.chronicles-character-setup__step-actions { display: none; }
+@media (max-width: 720px), (max-width: 1024px) and (max-height: 480px) {
+  .chronicles-character-setup[data-chronicles-character-setup="editor"] {
+    padding: 0;
+    display: block;
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+    scroll-padding-top: 6px;
+  }
+  .chronicles-character-setup__panel--editor {
+    width: 100%;
+    min-height: 100dvh;
+    padding: 12px 12px 90px;
+    border-left: none;
+    border-right: none;
+  }
+  .chronicles-character-setup__panel--editor .chronicles-character-setup__head {
+    flex-direction: row;
+    align-items: center;
+    gap: 10px;
+  }
+  .chronicles-character-setup__panel--editor .chronicles-character-setup__head h2 {
+    font-size: clamp(23px, 5vw, 28px);
+    margin: 3px 0;
+  }
+  .chronicles-character-setup__panel--editor .chronicles-character-setup__head p { display: none; }
+  .chronicles-character-setup__panel--editor .chronicles-character-setup__head > button {
+    flex-shrink: 0;
+    min-height: 44px;
+  }
+  .chronicles-character-setup__panel--editor .chronicles-character-setup__slots {
+    margin: 10px 0;
+    gap: 6px;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+  .chronicles-character-setup__panel--editor .chronicles-character-setup__slots button {
+    min-height: 62px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: 32px auto;
+    align-items: center;
+    justify-items: center;
+    padding: 5px 2px;
+    text-align: center;
+    gap: 3px;
+  }
+  .chronicles-character-setup__panel--editor .chronicles-character-setup__slots img {
+    grid-row: auto;
+    width: 32px;
+    height: 32px;
+  }
+  .chronicles-character-setup__panel--editor .chronicles-character-setup__slots button span { display: none; }
+  .chronicles-character-setup__panel--editor .chronicles-character-setup__slots button strong {
+    max-width: 100%;
+    font-size: 10px;
+    white-space: nowrap;
+  }
+  .chronicles-character-setup__editor-tabs {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 5px;
+    scroll-margin-top: 5px;
+    margin-bottom: 8px;
+  }
+  .chronicles-character-setup__editor-tabs button {
+    min-width: 0;
+    min-height: 44px;
+    border: 1px solid #96744580;
+    border-radius: 3px;
+    background: #101923;
+    color: #c9c1ae;
+    font-size: 12px;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+  .chronicles-character-setup__editor-tabs button small {
+    color: #b89156;
+    margin-right: 6px;
+  }
+  .chronicles-character-setup__editor-tabs button[aria-selected="true"] {
+    border-color: #edc07a;
+    background: #76532c70;
+    color: #ffe6bc;
+  }
+  .chronicles-character-setup__mobile-overview {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    padding: 7px 10px;
+    background: #151b20;
+    border: 1px solid #98744955;
+    font-size: 12px;
+    margin-bottom: 8px;
+  }
+  .chronicles-character-setup__mobile-overview strong { color: #f3dbb0; }
+  .chronicles-character-setup__mobile-overview span { color: #d2bf9e; }
+  .chronicles-character-setup__panel--editor .chronicles-character-setup__sheet { display: block; }
+  .chronicles-character-setup__panel--editor .chronicles-character-setup__sheet > section { display: none; }
+  .chronicles-character-setup[data-editor-step="identity"] .chronicles-character-setup__identity,
+  .chronicles-character-setup[data-editor-step="stats"] .chronicles-character-setup__attributes,
+  .chronicles-character-setup[data-editor-step="class"] .chronicles-character-setup__classes {
+    display: block;
+  }
+  .chronicles-character-setup__portrait-preview { height: 112px; }
+  .chronicles-character-setup__panel--editor .chronicles-character-setup__classes .chronicles-character-setup__class-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .chronicles-character-setup__panel--editor .chronicles-character-setup__footer {
+    position: sticky;
+    bottom: 0;
+    z-index: 4;
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+    margin: 10px -12px -90px;
+    padding: 9px 12px max(10px, env(safe-area-inset-bottom));
+    border-top: 1px solid #ae844e;
+    background: #10151df5;
+    box-shadow: 0 -9px 24px #0008;
+  }
+  .chronicles-character-setup__panel--editor .chronicles-character-setup__mechanics { display: none; }
+  .chronicles-character-setup__step-actions { display: block; flex: 1; min-width: 0; }
+  .chronicles-character-setup__step-actions > button { min-height: 44px; width: 100%; font-size: 12px; }
+  .chronicles-character-setup__panel--editor .chronicles-character-setup__footer > .primary-btn {
+    min-height: 44px;
+    font-size: 12px;
+    padding: 6px 11px;
+    flex: 1;
+  }
+  .chronicles-character-setup__panel--editor .chronicles-character-setup__footer > .primary-btn:only-child { width: 100%; }
+}
+@media (max-height: 480px) and (min-width: 721px) {
+  .chronicles-character-setup__panel--editor .chronicles-character-setup__slots {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+  .chronicles-character-setup__panel--editor .chronicles-character-setup__slots button {
+    grid-template-columns: 30px minmax(0, 1fr);
+    grid-template-rows: 1fr;
+    padding: 4px 7px;
+    min-height: 44px;
+    text-align: left;
+    gap: 5px;
+    justify-items: stretch;
+  }
+  .chronicles-character-setup__panel--editor .chronicles-character-setup__slots img { width: 30px; height: 30px; }
+  .chronicles-character-setup__panel--editor .chronicles-character-setup__slots button strong { font-size: 12px; }
+  .chronicles-character-setup__portrait-preview { height: 70px; }
+}

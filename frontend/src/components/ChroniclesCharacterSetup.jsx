@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { CHRONICLES_PARTY } from '../chroniclesOfMatthias.js';
 import {
   chroniclesRollCharacterStats,
@@ -65,6 +65,8 @@ export default function ChroniclesCharacterSetup({
   const [recoveredDraft, setRecoveredDraft] = useState(() => loadChroniclesCharacterDraft(CHRONICLES_PARTY));
   const [editing, setEditing] = useState(() => Boolean(recoveredDraft));
   const [rolls, setRolls] = useState(0);
+  const [editorStep, setEditorStep] = useState(() => recoveredDraft?.editorStep || 'identity');
+  const editorTabsRef = useRef(null);
   const [activeSlot, setActiveSlot] = useState(() => recoveredDraft?.activeSlot || 'matthias');
   const [draft, setDraft] = useState(() => (
     recoveredDraft?.build ? customFrom(recoveredDraft.build) : customFrom(normalizedCurrent)
@@ -72,9 +74,9 @@ export default function ChroniclesCharacterSetup({
 
   useEffect(() => {
     if (!editing) return;
-    const saved = saveChroniclesCharacterDraft({ activeSlot, build: draft }, CHRONICLES_PARTY);
+    const saved = saveChroniclesCharacterDraft({ activeSlot, editorStep, build: draft }, CHRONICLES_PARTY);
     if (saved && recoveryLabMode) rememberLabMode(recoveryLabMode);
-  }, [activeSlot, draft, editing, recoveryLabMode]);
+  }, [activeSlot, editorStep, draft, editing, recoveryLabMode]);
 
   const clearRecovery = () => {
     clearChroniclesCharacterDraft();
@@ -99,6 +101,7 @@ export default function ChroniclesCharacterSetup({
     setRecoveredDraft(null);
     setDraft(customFrom(normalizedCurrent));
     setActiveSlot('matthias');
+    setEditorStep('identity');
     setEditing(false);
   };
 
@@ -113,6 +116,7 @@ export default function ChroniclesCharacterSetup({
     setRecoveredDraft(null);
     setDraft(customFrom(normalizedCurrent));
     setActiveSlot('matthias');
+    setEditorStep('identity');
     setEditing(true);
   };
 
@@ -132,6 +136,15 @@ export default function ChroniclesCharacterSetup({
     const { stats, classId } = chroniclesRollCharacterStats(Math.random, activeCharacter.classId);
     patchCharacter(activeCharacter.slotId, { stats, classId });
     setRolls((count) => count + 1);
+  };
+
+  const jumpToStep = (step) => {
+    setEditorStep(step);
+    // Only the stacked mobile composer needs a scroll reset. The desktop
+    // three-column ledger should never jump on a stage change.
+    if (typeof window !== 'undefined' && window.matchMedia?.('(max-width: 720px), (max-width: 1024px) and (max-height: 480px)').matches) {
+      editorTabsRef.current?.scrollIntoView({ block: 'start', behavior: 'instant' });
+    }
   };
 
   const chooseRace = (raceId) => {
@@ -200,7 +213,7 @@ export default function ChroniclesCharacterSetup({
   }
 
   return (
-    <div className="chronicles-character-setup" data-chronicles-character-setup="editor">
+    <div className="chronicles-character-setup" data-chronicles-character-setup="editor" data-editor-step={editorStep}>
       <section className="chronicles-character-setup__panel chronicles-character-setup__panel--editor">
         <div className="chronicles-character-setup__head">
           <div>
@@ -220,7 +233,10 @@ export default function ChroniclesCharacterSetup({
               type="button"
               key={character.slotId}
               className={character.slotId === activeCharacter.slotId ? 'is-active' : ''}
-              onClick={() => setActiveSlot(character.slotId)}
+              onClick={() => {
+                setActiveSlot(character.slotId);
+                jumpToStep('identity');
+              }}
               aria-pressed={character.slotId === activeCharacter.slotId}
             >
               <img src={chroniclesPartyPortraitUrl(character.slotId)} alt="" aria-hidden="true" />
@@ -230,8 +246,28 @@ export default function ChroniclesCharacterSetup({
           ))}
         </nav>
 
+        <nav className="chronicles-character-setup__editor-tabs" aria-label="Etapas del personaje" role="tablist" ref={editorTabsRef}>
+          {[
+            { id: 'identity', label: 'Identidad', next: '1' },
+            { id: 'stats', label: 'Atributos', next: '2' },
+            { id: 'class', label: 'Clase', next: '3' },
+          ].map((step) => (
+            <button type="button" key={step.id} role="tab"
+              id={`chronicles-step-tab-${step.id}`}
+              aria-controls={`chronicles-step-panel-${step.id}`}
+              aria-selected={editorStep === step.id}
+              onClick={() => jumpToStep(step.id)}>
+              <small>{step.next}</small>{step.label}
+            </button>
+          ))}
+        </nav>
+        <div className="chronicles-character-setup__mobile-overview" aria-live="polite">
+          <strong>{activeCharacter.name} · {CHRONICLES_MM3_CLASSES[activeCharacter.classId]?.label}</strong>
+          <span>{racialProfile.label} · {derived.maxHp} PV · {spellPoints} PH</span>
+        </div>
         <div className="chronicles-character-setup__sheet">
-          <section className="chronicles-character-setup__identity" aria-label="Identidad del aventurero">
+          <section id="chronicles-step-panel-identity" role="tabpanel" aria-labelledby="chronicles-step-tab-identity"
+            className="chronicles-character-setup__identity" aria-label="Identidad del aventurero">
             <div className="chronicles-character-setup__portrait-preview">
               <img
                 src={chroniclesPartyPortraitUrl(activeCharacter.slotId)}
@@ -292,7 +328,8 @@ export default function ChroniclesCharacterSetup({
             </small>
           </section>
 
-          <section className="chronicles-character-setup__attributes" aria-label={`Estadísticas de ${activeCharacter.name}`}>
+          <section id="chronicles-step-panel-stats" role="tabpanel" aria-labelledby="chronicles-step-tab-stats"
+            className="chronicles-character-setup__attributes" aria-label={`Estadísticas de ${activeCharacter.name}`}>
             <div className="chronicles-character-setup__section-head">
               <div>
                 <span>ESTADÍSTICAS · 3D6</span>
@@ -320,7 +357,8 @@ export default function ChroniclesCharacterSetup({
             })}
           </section>
 
-          <section className="chronicles-character-setup__classes" aria-label={`Clase de ${activeCharacter.name}`}>
+          <section id="chronicles-step-panel-class" role="tabpanel" aria-labelledby="chronicles-step-tab-class"
+            className="chronicles-character-setup__classes" aria-label={`Clase de ${activeCharacter.name}`}>
             <div className="chronicles-character-setup__section-head">
               <div>
                 <span>CLASE · 10 PROFESIONES</span>
@@ -363,6 +401,14 @@ export default function ChroniclesCharacterSetup({
         ) : null}
 
         <footer className="chronicles-character-setup__footer">
+          <div className="chronicles-character-setup__step-actions">
+            {editorStep !== 'class' && (
+              <button type="button" className="secondary-btn"
+                onClick={() => jumpToStep(editorStep === 'identity' ? 'stats' : 'class')}>
+                {editorStep === 'identity' ? 'Siguiente: atributos →' : 'Siguiente: clase →'}
+              </button>
+            )}
+          </div>
           <details className="chronicles-character-setup__mechanics">
             <summary>Resumen de la compañía</summary>
             <div>

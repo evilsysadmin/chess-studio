@@ -151,25 +151,54 @@ async function openChronicles(page, captureLabel, {
   await setup.getByRole('button', { name: 'Crear PJs', exact: true }).click();
   const editor = page.locator('[data-chronicles-character-setup="editor"]');
   await expect(editor).toBeVisible();
-  // MM3 roller: real dice, then the class grid only offers what they allow.
-  // Check a known canonical stat line before rerolling: a random Sorcerer
-  // with minimum HP would be clamped at 1, so +2 HP need not yield +2 max HP.
+  const mobileEditor = captureLabel.includes('android');
+  const tabs = editor.getByRole('tablist', { name: 'Etapas del personaje' });
+  if (mobileEditor) {
+    await expect(tabs).toBeVisible();
+    await expect(editor.getByRole('tab', { name: /Identidad/ })).toHaveAttribute('aria-selected', 'true');
+    await expect(editor.locator('.chronicles-character-setup__identity')).toBeVisible();
+    await expect(editor.locator('.chronicles-character-setup__attributes')).toBeHidden();
+    await expect(editor.getByRole('button', { name: 'Confirmar compañía' })).toBeInViewport();
+  } else {
+    await expect(tabs).toBeHidden();
+  }
+  // Canonical first hero has enough HP for a clear racial +2 delta.
   const life = editor.locator('.chronicles-character-setup__derived dd').first();
   const humanHp = Number(await life.innerText());
   await editor.getByRole('combobox', { name: 'Raza' }).selectOption('halfOrc');
   await expect(life).toHaveText(String(humanHp + 2));
   await expect(editor.locator('.chronicles-character-setup__race-effect')).toContainText('Semiorco');
-  await editor.getByRole('button', { name: /Tirar dados/ }).click();
-  await expect(editor.locator('.chronicles-character-setup__class-grid button[aria-pressed="true"]')).toHaveCount(1);
-  const mechanics = editor.locator('.chronicles-character-setup__mechanics');
-  await expect(mechanics).toBeVisible();
-  await expect(mechanics).toContainText(/Vida \d+ · PH \d+ · Armadura \d+/);
   await page.screenshot({
     path: `${ARTIFACT_DIR}/chronicles-character-editor-${captureLabel}.png`,
     animations: 'disabled',
-    fullPage: true,
     timeout: 30_000,
   });
+  if (mobileEditor) {
+    await editor.getByRole('tab', { name: /Atributos/ }).click();
+    await expect(editor.locator('.chronicles-character-setup__attributes')).toBeVisible();
+    await expect(editor.locator('.chronicles-character-setup__identity')).toBeHidden();
+    await expect(editor.getByRole('button', { name: 'Confirmar compañía' })).toBeInViewport();
+  }
+  // MM3 roller: all seven dice actually change and class requirements apply.
+  await editor.getByRole('button', { name: /Tirar dados/ }).click();
+  if (mobileEditor) {
+    await page.screenshot({
+      path: `${ARTIFACT_DIR}/chronicles-character-editor-stats-${captureLabel}.png`,
+      animations: 'disabled', timeout: 30_000,
+    });
+    await editor.getByRole('tab', { name: /Clase/ }).click();
+    await expect(editor.locator('.chronicles-character-setup__classes')).toBeVisible();
+    await expect(editor.locator('.chronicles-character-setup__attributes')).toBeHidden();
+    await expect(editor.getByRole('button', { name: 'Confirmar compañía' })).toBeInViewport();
+  }
+  await expect(editor.locator('.chronicles-character-setup__class-grid button[aria-pressed="true"]')).toHaveCount(1);
+  await expect(editor.locator('.chronicles-character-setup__mechanics')).toContainText(/Vida \d+ · PH \d+ · Armadura \d+/);
+  if (mobileEditor) {
+    await page.screenshot({
+      path: `${ARTIFACT_DIR}/chronicles-character-editor-classes-${captureLabel}.png`,
+      animations: 'disabled', timeout: 30_000,
+    });
+  }
   await editor.getByRole('button', { name: '← Volver', exact: true }).click();
 
   await confirmChroniclesCharacterSetup(page, { newTown });

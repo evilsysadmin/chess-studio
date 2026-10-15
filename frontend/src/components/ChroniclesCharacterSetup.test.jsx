@@ -46,6 +46,11 @@ describe('ChroniclesCharacterSetup', () => {
       expect(html).toContain('data-chronicles-character-setup="editor"');
       expect(html).toContain('Forja tu compañía');
       expect(html).toContain('Identidad del aventurero');
+      expect(html).toContain('data-editor-step="identity"');
+      expect(html).toContain('role="tablist"');
+      expect(html).toContain('aria-controls="chronicles-step-panel-stats"');
+      expect(html).toContain('Siguiente: atributos');
+      expect(html).toContain('chronicles-character-setup__mobile-overview');
       expect(html).toContain('Raza');
       expect(html).toContain('Semiorco');
       expect(html).toContain('Alineamiento');
