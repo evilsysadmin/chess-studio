@@ -1693,6 +1693,7 @@ export default function HomeBlenderScene3D({
     let contextRecoveryTimer = null;
 
     let renderer;
+    markStartup('before-webgl-constructor');
     try {
       renderer = new THREE.WebGLRenderer({
         canvas,
@@ -1700,13 +1701,16 @@ export default function HomeBlenderScene3D({
         antialias: initialPolicy.antialias,
         powerPreference: initialPolicy.powerPreference,
       });
+      markStartup('webgl-constructor-finished');
     } catch {
       onUnavailable?.();
       return undefined;
     }
 
     const gl = renderer.getContext();
+    markStartup('webgl-context-accessed');
     const rendererName = readRendererName(renderer);
+    markStartup('webgl-renderer-identified');
     const softwareRenderer = homeBlenderIsSoftwareRenderer(rendererName);
     canvas.dataset.homeBlenderSoftware = softwareRenderer ? 'true' : 'false';
     canvas.dataset.homeBlenderPhase = 'renderer-created';
