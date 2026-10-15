@@ -132,7 +132,7 @@ un proceso Playwright nuevo del **runner 3**, y la captura WebGL desktop de 4 mi
 ejecuta en otro proceso nuevo del mismo runner. El resto de pruebas se reparte mediante `--shard` con un filtro
 complementario `--grep-invert`. Se usan **ocho subshards** ponderados de acuerdo
 con las mediciones del gate de tres runners en la #5606: runner 1 recibe `1,4,7,8`;
-runner 2 recibe `2,3,5`; runner 3 recibe `6` más los dos canaries. Cada proceso contiene
+runner 2 recibe ahora `3,5`; runner 3 recibe `2,6` más los dos canaries (reequilibrio #5642). Cada proceso contiene
 un máximo aproximado de cinco casos:
 reiniciar Chromium periódicamente limita la acumulación de contextos SwiftShader
 y aísla el fallo que aparecía al final de una serie larga de capturas.
@@ -175,3 +175,13 @@ mueve el grupo 4 (~6m30s) al runner 1 y los grupos 2/3 al 2, dejando el runner 3
 para el canary WebGL desktop (~4m), el canary menú y el grupo 6 (~4m36s).
 Es una hipótesis de ~10m basada en esos tiempos, no un resultado acreditado:
 volver a medir los tres runners y revisar los 141 PNG del SHA exacto.
+
+Nuevo reequilibrio tras #5642 (15-10-2026): con la ficha y las consultas CDP optimizadas,
+las mediciones de wall-clock por runner pasaron a **6m54s / 9m55s / 4m17s**.
+El grupo 2 de Playwright (5 casos, ~3m54s en ese SHA) pasa del runner 2 al runner 3:
+**runner 1: `1,4,7,8`; runner 2: `3,5`; runner 3: canaries aislados + `2,6`**.
+Los ocho grupos siguen siendo exclusivos, los canaries continúan al comienzo, y
+cada grupo usa Chromium nuevo. La reducción del camino crítico a ~8m10s es una
+**hipótesis**, no una métrica confirmada: se aceptará únicamente con los tres jobs
+verdes, el agregador requerido verde y las **169 rutas PNG actuales** intactas
+(más cualesquiera imágenes nuevas que se generen en `main`).
