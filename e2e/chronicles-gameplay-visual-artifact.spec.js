@@ -1027,19 +1027,50 @@ for (const capture of CAPTURES) {
         const matthias = gameRoot.getByRole('button', { name: 'Seleccionar Matthias', exact: true });
         // Preserve the real sheet interaction; markers add no browser calls.
         visualPhase('character-sheet-trigger-begin');
-        await matthias.evaluate((button) => button.click());
-        visualPhase('character-sheet-trigger-clicked');
+        // One CDP trip owns the real React click AND the resulting canonical
+        // portrait check. Observe the portal instead of issuing a second remote
+        // evaluate against continuously rendered SwiftShader.
+        const authoredSheetPortrait = await matthias.evaluate(async (button) => {
+          button.click();
+          const image = await new Promise((resolve, reject) => {
+            const findImage = () => {
+              const dialog = document.querySelector('section.chronicles-character-sheet[role="dialog"]');
+              if (dialog?.querySelector('#chronicles-character-sheet-title')?.textContent?.trim() !== 'Matthias') return null;
+              return dialog.querySelector('.chronicles-character-sheet__portrait img');
+            };
+            const existing = findImage();
+            if (existing) { resolve(existing); return; }
+            const observer = new MutationObserver(() => {
+              const found = findImage();
+              if (!found) return;
+              observer.disconnect();
+              clearTimeout(timeout);
+              resolve(found);
+            });
+            observer.observe(document.body, { childList: true, subtree: true });
+            const timeout = setTimeout(() => {
+              observer.disconnect();
+              reject(new Error('Matthias character-sheet portal failed to mount'));
+            }, 8_000);
+          });
+          // Images already decoded on Home return immediately; for cold cache,
+          // wait for their actual load before preserving the original check.
+          if (!image.complete) {
+            await Promise.race([
+              image.decode().catch(() => {}),
+              new Promise((resolve) => setTimeout(resolve, 5_000)),
+            ]);
+          }
+          return image.complete
+            && image.naturalWidth >= 128
+            && image.naturalHeight >= 128
+            && !image.src.startsWith('data:');
+        });
+        visualPhase('character-sheet-trigger-portrait-probed');
         const sheet = page.getByRole('dialog', { name: 'Matthias', exact: true });
         await expect(sheet).toBeVisible();
         visualPhase('character-sheet-visible');
-        const sheetPortrait = sheet.locator('.chronicles-character-sheet__portrait img');
-        visualPhase('character-sheet-portrait-check-begin');
-        const authoredSheetPortrait = await sheetPortrait.evaluate((image) => (
-          image.complete
-          && image.naturalWidth >= 128
-          && image.naturalHeight >= 128
-          && !image.src.startsWith('data:')
-        ));
+        // Keep BOTH strict checks: named accessible dialog and authored img.
         expect(authoredSheetPortrait, 'desktop sheet uses canonical authored portrait').toBe(true);
         visualPhase('character-sheet-portrait-validated');
         visualPhase('character-sheet-readback-begin');
