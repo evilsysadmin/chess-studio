@@ -1505,12 +1505,19 @@ test('Chronicles · initiative rail visual · android-390x844', async ({ browser
   }
 });
 
+
+function chronicleCombatCaptureTiming(label) {
+  const started = Date.now();
+  return (phase) => console.log(`Chronicles group6 timing | ${label} | ${phase} | ${Date.now() - started}ms`);
+}
+
 test('Chronicles · Gallery of Forks first-person material proof · desktop-1440x900', async ({ browser }) => {
   test.setTimeout(180_000);
   await mkdir(ARTIFACT_DIR, { recursive: true });
 
   const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
   const page = await context.newPage();
+  const timing = chronicleCombatCaptureTiming('gallery-desktop');
   try {
     await openChronicles(page, 'gallery-of-forks-desktop-1440x900', {
       chroniclesCurrentMapId: 'gallery-of-forks',
@@ -1527,6 +1534,7 @@ test('Chronicles · Gallery of Forks first-person material proof · desktop-1440
         '__chrRuntime.turnPhase': 'party',
       },
     });
+    timing('gameplay-ready');
     const gameRoot = page.locator('[data-chronicles="true"]');
     const canvas = page.locator('[data-chronicles-renderer="three"] canvas');
     await expect(gameRoot).toHaveAttribute('data-chronicles-map-id', 'gallery-of-forks');
@@ -1541,16 +1549,21 @@ test('Chronicles · Gallery of Forks first-person material proof · desktop-1440
     const health = await captureChroniclesHealth(page);
     expect(health.horizontalOverflow, 'gallery-of-forks: Chronicles overflow').toBe(false);
     expect(health.gameCanvasCount, 'gallery-of-forks: dungeon canvas').toBe(1);
+    timing('readback-begin');
     await captureElement(
       page,
       gameRoot,
       `${ARTIFACT_DIR}/chronicles-gallery-of-forks-desktop-1440x900.png`,
+      { combinedGeometry: true },
     );
+    timing('readback-finish');
     await contextualAction.click();
     await expect(page.locator('.chronicles-statusbar')).toContainText('Abrir salida de la galería');
     await expect(page.getByRole('button', { name: 'Recoger reliquia de ceniza', exact: true })).toHaveCount(0);
   } finally {
+    timing('context-close-begin');
     await context.close();
+    timing('context-close-finish');
   }
 });
 
@@ -1561,11 +1574,13 @@ test('Chronicles · attack keeps first-person scene visible · desktop-1440x900'
 
   const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
   const page = await context.newPage();
+  const timing = chronicleCombatCaptureTiming('attack-desktop');
   await page.addInitScript(() => {
     Math.random = () => 0.5;
   });
   try {
     await openChronicles(page, 'attack-stability-desktop-1440x900');
+    timing('gameplay-ready');
     const gameRoot = page.locator('[data-chronicles="true"]');
     const canvas = page.locator('[data-chronicles-renderer="three"] canvas');
     await expect(canvas).toHaveCount(1, { timeout: 20_000 });
@@ -1583,13 +1598,18 @@ test('Chronicles · attack keeps first-person scene visible · desktop-1440x900'
     await expect(gameRoot).toHaveAttribute('data-chronicles-turns', '3');
     await expect(canvas).toHaveAttribute('data-chronicles-renderer-sentinel', 'stable-before-xp');
     await page.waitForTimeout(180);
+    timing('readback-begin');
     await captureElement(
       page,
       gameRoot,
       `${ARTIFACT_DIR}/chronicles-attack-after-hit-desktop-1440x900.png`,
+      { combinedGeometry: true },
     );
+    timing('readback-finish');
   } finally {
+    timing('context-close-begin');
     await context.close();
+    timing('context-close-finish');
   }
 });
 
@@ -1605,8 +1625,10 @@ for (const capture of CAPTURES) {
       isMobile: capture.hasTouch,
     });
     const page = await context.newPage();
+    const timing = chronicleCombatCaptureTiming(`defeat-${capture.label}`);
     try {
       await openChronicles(page, `defeat-${capture.label}`, { runStatus: 'defeated' });
+      timing('gameplay-ready');
       const gameRoot = page.locator('[data-chronicles="true"]');
       const defeat = page.getByRole('dialog', { name: 'Expedición terminada', exact: true });
 
@@ -1624,7 +1646,9 @@ for (const capture of CAPTURES) {
       expect(health.gameRoot?.width || 0, `${capture.label}: terminal fullscreen width`).toBeGreaterThanOrEqual(capture.width - 2);
       expect(health.gameRoot?.height || 0, `${capture.label}: terminal fullscreen height`).toBeGreaterThanOrEqual(capture.height - 2);
 
-      await captureElement(page, gameRoot, `${ARTIFACT_DIR}/chronicles-defeated-${capture.label}.png`);
+      timing('readback-begin');
+      await captureElement(page, gameRoot, `${ARTIFACT_DIR}/chronicles-defeated-${capture.label}.png`, { combinedGeometry: true });
+      timing('readback-finish');
       await writeFile(
         `${ARTIFACT_DIR}/chronicles-defeated-health-${capture.label}.json`,
         `${JSON.stringify({
@@ -1635,7 +1659,9 @@ for (const capture of CAPTURES) {
         'utf8',
       );
     } finally {
+      timing('context-close-begin');
       await context.close();
+      timing('context-close-finish');
     }
   });
 }
