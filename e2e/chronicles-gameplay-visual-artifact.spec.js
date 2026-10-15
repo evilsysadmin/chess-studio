@@ -2,6 +2,18 @@ import { expect, test } from '@playwright/test';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { confirmChroniclesCharacterSetup, login, mockApi, openMoreGameModes } from './helpers.js';
 
+// All canonical Chronicles evidence is already rendered under software WebGL
+// on GPU-less CI. Select that backend directly, rather than letting Chromium
+// probe unavailable host GPU paths during an expensive cold context creation.
+// This does not affect local GPU development, regular E2E or production users.
+if (process.env.CI && process.env.APP_VISUAL_ARTIFACT === '1') {
+  test.use({
+    launchOptions: {
+      args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'],
+    },
+  });
+}
+
 const ARTIFACT_DIR = '../.artifacts/app-visual';
 const CAPTURES = [
   { label: 'desktop-1440x900', width: 1440, height: 900, hasTouch: false },
@@ -163,6 +175,11 @@ async function openChronicles(page, captureLabel, {
     console.log(`Chronicles Home shadows | ${captureLabel} | ${JSON.stringify({
       software: shadowProof.software, shadows: shadowProof.shadows, phase: shadowProof.phase,
     })}`);
+    if (captureLabel.startsWith('rookwood-desktop-')) {
+      // Never confuse a faster static fallback with a faster real 3D Home.
+      expect(shadowProof.software, 'desktop CI must use real software WebGL').toBe('true');
+      expect(shadowProof.phase, 'desktop Blender must finish its first frame').toBe('ready');
+    }
     if (shadowProof.software === 'true') {
       expect(shadowProof.shadows, 'software WebGL must skip the initial Home shadow map').toBe('disabled');
       // One read of a bounded DOM dataset measures internal phases without
