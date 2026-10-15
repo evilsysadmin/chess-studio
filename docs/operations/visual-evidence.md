@@ -111,7 +111,7 @@ Es una partición de las mismas pruebas, sin recortar viewports, casos, assertio
 usa **un solo worker** para no saturar SwiftShader dentro del runner; los artifacts se publican con
 sufijos `-part-1` y `-part-2` para inspección conjunta del mismo SHA.
 
-El job agregado `Chronicles · capture` sólo pasa si **ambos** shards terminan verdes; fallos,
+Al cambiar el propio workflow, la acción compartida o el capturador, el gate fuerza la ejecución\nreal del productor de Chronicles (evita el falso verde de un shard sin pruebas).\n\nEl job agregado `Chronicles · capture` sólo pasa si **ambos** shards terminan verdes; fallos,
 cancelaciones y skips cierran el gate. Esto separa la carga y el ciclo de vida del renderer,
 reduce el wall-clock crítico y evita que un solo navegador secuencial concentre todas las capturas.
 No acredita visualmente el resultado: ambos conjuntos de PNG necesitan la inspección habitual.
