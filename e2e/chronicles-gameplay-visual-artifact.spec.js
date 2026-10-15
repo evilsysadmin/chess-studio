@@ -169,7 +169,9 @@ async function openChronicles(page, captureLabel, {
       // slowing down the already expensive GPU software bootstrap.
       const startup = shadowProof.startup;
       const steps = [
-        'effect-start', 'renderer-created', 'scene-created', 'model-loading',
+        'effect-start', 'before-webgl-constructor', 'webgl-constructor-finished',
+        'webgl-context-accessed', 'webgl-renderer-identified',
+        'renderer-created', 'scene-created', 'model-loading',
         'model-decoded', 'materials-prepared', 'rigs-prepared',
         'first-frame-start', 'first-frame-end', 'ready',
       ];
