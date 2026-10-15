@@ -16,7 +16,9 @@ export function atlasPosition(tree, trail = []) {
     node = node.children[san];
   }
   const choices = [];
-  for (const next of Object.values(node.children || {})) {
+  // The study preview is intentionally limited to the first three plies.
+  // The underlying tree may contain 8+; never offer an unplayable fourth choice.
+  if (trail.length < 3) for (const next of Object.values(node.children || {})) {
     if (!next?.move || typeof next.move !== 'string') continue;
     try {
       const candidate = new Chess(board.fen());
