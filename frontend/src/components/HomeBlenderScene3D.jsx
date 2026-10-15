@@ -799,6 +799,13 @@ export function homeBlenderIsSoftwareRenderer(rendererName = '') {
   return /swiftshader|llvmpipe|softpipe|software|basic render/i.test(String(rendererName));
 }
 
+// The first full shadow-map pass can block a CPU rasteriser before Home's
+// LOADING/fallback timers get a chance to run. Keep every hardware-GPU shadow;
+// software WebGL still gets the real 3D room, without the costly shadow pass.
+export function homeBlenderShouldRenderShadows(lod, rendererName = '') {
+  return lod === 'full' && !homeBlenderIsSoftwareRenderer(rendererName);
+}
+
 function readRendererName(renderer) {
   try {
     const gl = renderer?.getContext?.();
@@ -1689,11 +1696,14 @@ export default function HomeBlenderScene3D({
     }
 
     const gl = renderer.getContext();
+    const rendererName = readRendererName(renderer);
+    const softwareRenderer = homeBlenderIsSoftwareRenderer(rendererName);
+    canvas.dataset.homeBlenderSoftware = softwareRenderer ? 'true' : 'false';
     canvas.dataset.homeBlenderPhase = 'renderer-created';
     glContextRef.current = gl;
     glLoseContextRef.current = gl?.getExtension?.('WEBGL_lose_context') || null;
     renderer.outputColorSpace = THREE.SRGBColorSpace;
-    renderer.shadowMap.enabled = initialPolicy.lod === 'full';
+    renderer.shadowMap.enabled = homeBlenderShouldRenderShadows(initialPolicy.lod, rendererName);
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     // The room is static and only emissive flames move, so the shadow map is
     // computed once instead of re-rasterising every mesh on each animated frame.
@@ -1833,8 +1843,6 @@ export default function HomeBlenderScene3D({
     };
 
     const prefersReducedMotion = getEffectiveReducedMotion();
-
-    const softwareRenderer = homeBlenderIsSoftwareRenderer(readRendererName(renderer));
 
     const startFireAnimation = () => {
       if (prefersReducedMotion) {
@@ -1985,7 +1993,7 @@ export default function HomeBlenderScene3D({
       }
       canvas.dataset.homeBlenderPhase = 'model-preparing';
       model = root;
-      prepareRuntimeScene(model, initialPolicy.lod === 'full', renderer);
+      prepareRuntimeScene(model, renderer.shadowMap.enabled, renderer);
       applyHomeBlenderPieceLift(model);
       applyHomeBlenderMoonVisibility(model, ambient);
       fireRig = prepareRuntimeFireRig(model);
