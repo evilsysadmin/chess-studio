@@ -138,7 +138,23 @@
   .chronicles-tavern__choices button { min-height: 56px; padding: 8px 10px; }
   .chronicles-tavern__scene { min-height: 38px; }
 }
+/* MM3 landscape is only 390px tall: all actions, including exit, must
+   remain in the viewport without clipping the carved bottom rail. */
 @media (max-height: 560px) {
+  .chronicles-tavern { padding: 9px; border-width: 4px; }
+  .chronicles-tavern__header { padding: 6px 42px 6px 9px; gap: 4px; }
+  .chronicles-tavern__header h2 { margin: 0; line-height: 1.07; font-size: 1.22rem; }
+  .chronicles-tavern__header p { margin: 1px 0 0; font-size: .77rem; line-height: 1.2; }
+  .chronicles-tavern__header > b { padding: 5px 7px; }
+  .chronicles-tavern__close { top: 5px; right: 5px; width: 31px; height: 31px; }
   .chronicles-tavern__scene { display: none; }
-  .chronicles-tavern__choices button { min-height: 58px; }
+  .chronicles-tavern__message { min-height: 0; margin-bottom: 5px; padding: 6px 9px; font-size: .82rem; line-height: 1.23; }
+  .chronicles-tavern__choices { gap: 5px; }
+  .chronicles-tavern__choices button { min-height: 52px; padding: 5px 8px; gap: 5px; }
+  .chronicles-tavern__choices button > span { gap: 2px; }
+  .chronicles-tavern__choices strong { font-size: .86rem; }
+  .chronicles-tavern__choices small { font-size: .69rem; line-height: 1.18; }
+  .chronicles-tavern footer { margin-top: 5px; }
+  .chronicles-tavern footer button { min-height: 30px; padding: 4px 10px; }
 }
+.chronicles-tavern footer small { color: #1b1410; background: #c2b5a0; padding: 3px 5px; }
