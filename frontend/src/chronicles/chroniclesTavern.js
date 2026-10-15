@@ -43,7 +43,7 @@ export function chroniclesOpenTavern(state, entry) {
   return {
     ...state,
     tavern: { id: entry.id, rumorIndex: 0 },
-    message: 'La Espada Mellada huele a pan caliente, cerveza y decisiones cuestionables. La posadera os da la bienvenida.',
+    message: 'La posada huele a pan caliente, cerveza y decisiones cuestionables. La posadera os da la bienvenida.',
   };
 }
 
