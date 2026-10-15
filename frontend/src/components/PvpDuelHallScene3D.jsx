@@ -83,6 +83,9 @@ export default function PvpDuelHallScene3D() {
         const cleanup = await installPvpDuelHallShell(scene, {
           coarsePointer,
           whiteSide: true,
+          // The Hall intentionally uses no shadow-map pass. Deferred shadow
+          // caster selection and its second WebGL render cannot affect pixels.
+          enableShadowWarmup: Boolean(renderer.shadowMap?.enabled),
           onRefine: render,
         });
         if (disposed) {
