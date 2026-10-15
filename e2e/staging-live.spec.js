@@ -386,6 +386,13 @@ async function assertLivePvpBrowserPath(page) {
     const origin = performance.now();
     const marks = { dialogMountMs: null, sceneMountMs: null, sceneReadyMs: null, sceneFallbackMs: null };
     const longTasks = { count: 0, totalMs: 0, maxMs: 0, top: [] };
+    // Test-only, read-only signals around the unprofiled native Commit stall.
+    // No DOM text, event targets, URLs, GPU hooks, or continuous CDP profiling.
+    const firstFrame = {
+      canvasAtOpen: document.querySelectorAll('canvas').length,
+      canvasAtDialog: null, canvasAddedMs: null, gaps: [], clicks: [],
+      eventTimingSupported: PerformanceObserver.supportedEntryTypes?.includes('event') || false,
+    };
     const longFrames = {
       supported: PerformanceObserver.supportedEntryTypes?.includes('long-animation-frame') || false,
       top: [],
@@ -394,6 +401,7 @@ async function assertLivePvpBrowserPath(page) {
     const captureDom = () => {
       if (marks.dialogMountMs === null && document.querySelector('.pvp-lobby[role="dialog"]')) {
         marks.dialogMountMs = elapsed();
+        firstFrame.canvasAtDialog = document.querySelectorAll('canvas').length;
       }
       const scene = document.querySelector('[data-pvp-duel-hall-3d]');
       if (!scene) return;
@@ -402,7 +410,18 @@ async function assertLivePvpBrowserPath(page) {
       if (state === 'ready' && marks.sceneReadyMs === null) marks.sceneReadyMs = elapsed();
       if (state?.startsWith('fallback') && marks.sceneFallbackMs === null) marks.sceneFallbackMs = elapsed();
     };
-    const domObserver = new MutationObserver(captureDom);
+    const domObserver = new MutationObserver((mutations) => {
+      if (firstFrame.canvasAddedMs === null) {
+        for (const mutation of mutations) {
+          if ([...mutation.addedNodes].some((node) =>
+            node.nodeType === 1 && (node.tagName === 'CANVAS' || node.querySelector?.('canvas')))) {
+            firstFrame.canvasAddedMs = elapsed();
+            break;
+          }
+        }
+      }
+      captureDom();
+    });
     domObserver.observe(document.body, {
       childList: true, subtree: true, attributes: true,
       attributeFilter: ['data-pvp-duel-hall-3d'],
@@ -451,10 +470,62 @@ async function assertLivePvpBrowserPath(page) {
       });
       frameObserver.observe({ type: 'long-animation-frame' });
     }
+    // A single diagnostic rAF observes gaps without wrapping application
+    // renderers or forcing style/layout. Stages derive from DOM marks above.
+    const stage = () => marks.dialogMountMs === null ? 'home'
+      : marks.sceneMountMs === null ? 'dialog' : 'hall-3d';
+    let previousFrame = null;
+    let previousStage = stage();
+    let frameId = null;
+    const frameTick = (now) => {
+      if (previousFrame !== null && now - previousFrame >= 80) {
+        firstFrame.gaps.push({
+          startMs: Math.round(previousFrame - origin),
+          endMs: Math.round(now - origin),
+          durationMs: Math.round(now - previousFrame),
+          before: previousStage, after: stage(),
+        });
+        firstFrame.gaps.sort((a, b) => b.durationMs - a.durationMs);
+        firstFrame.gaps.length = Math.min(firstFrame.gaps.length, 5);
+      }
+      previousFrame = now;
+      previousStage = stage();
+      if (now - origin < 12_000) frameId = requestAnimationFrame(frameTick);
+    };
+    frameId = requestAnimationFrame(frameTick);
+
+    // Event Timing separates click handler time from time awaiting the next
+    // presented frame; a large presentation delay implicates rendering rather
+    // than a multi-second JavaScript click handler. These are diagnostics,
+    // never pass/fail gates (unsupported browsers simply report false).
+    let eventObserver = null;
+    if (firstFrame.eventTimingSupported) {
+      try {
+        eventObserver = new PerformanceObserver((list) => {
+          for (const entry of list.getEntries()) {
+            if (entry.name !== 'click' || firstFrame.clicks.length >= 6) continue;
+            firstFrame.clicks.push({
+              startMs: Math.round(entry.startTime - origin),
+              durationMs: Math.round(entry.duration),
+              inputDelayMs: Math.max(0, Math.round(entry.processingStart - entry.startTime)),
+              handlerMs: Math.max(0, Math.round(entry.processingEnd - entry.processingStart)),
+              presentationMs: Math.max(0, Math.round(entry.startTime + entry.duration - entry.processingEnd)),
+            });
+          }
+        });
+        eventObserver.observe({ type: 'event', durationThreshold: 40 });
+      } catch {
+        firstFrame.eventTimingSupported = false;
+      }
+    }
     captureDom();
     window.__stagingDuelHallTiming = {
-      marks, longTasks, longFrames,
-      close: () => { domObserver.disconnect(); taskObserver?.disconnect(); frameObserver?.disconnect(); },
+      marks, longTasks, longFrames, firstFrame,
+      close: () => {
+        domObserver.disconnect(); taskObserver?.disconnect(); frameObserver?.disconnect();
+        eventObserver?.disconnect();
+        if (frameId !== null) cancelAnimationFrame(frameId);
+      },
     };
     return Date.now();
   });
@@ -595,10 +666,21 @@ async function assertLivePvpBrowserPath(page) {
     );
     const timing = await page.evaluate(() => {
       const probe = window.__stagingDuelHallTiming;
-      return probe ? { marks: { ...probe.marks }, longTasks: { ...probe.longTasks } } : null;
+      return probe ? {
+        marks: { ...probe.marks }, longTasks: { ...probe.longTasks },
+        firstFrame: { ...probe.firstFrame, gaps: [...probe.firstFrame.gaps], clicks: [...probe.firstFrame.clicks] },
+      } : null;
     });
     if (timing) {
-      const { marks, longTasks } = timing;
+      const { marks, longTasks, firstFrame } = timing;
+      console.log(
+        'STAGING_PVP_INPUT_FRAME event_timing=' + firstFrame.eventTimingSupported +
+        ' canvas_at_open=' + firstFrame.canvasAtOpen +
+        ' canvas_at_dialog=' + (firstFrame.canvasAtDialog ?? 'not-seen') +
+        ' canvas_added_ms=' + (firstFrame.canvasAddedMs ?? 'not-seen') +
+        ' clicks=' + JSON.stringify(firstFrame.clicks) +
+        ' frame_gaps=' + JSON.stringify(firstFrame.gaps),
+      );
       console.log(
         `STAGING_PVP_RENDER dialog_mount_ms=${browserMs(marks.dialogMountMs)}` +
         ` scene_mount_ms=${browserMs(marks.sceneMountMs)}` +
