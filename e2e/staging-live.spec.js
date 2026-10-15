@@ -385,7 +385,7 @@ async function assertLivePvpBrowserPath(page) {
   const browserOriginMs = await page.evaluate(() => {
     const origin = performance.now();
     const marks = { dialogMountMs: null, sceneMountMs: null, sceneReadyMs: null, sceneFallbackMs: null };
-    const longTasks = { count: 0, totalMs: 0, maxMs: 0 };
+    const longTasks = { count: 0, totalMs: 0, maxMs: 0, top: [] };
     const longFrames = {
       supported: PerformanceObserver.supportedEntryTypes?.includes('long-animation-frame') || false,
       top: [],
@@ -414,6 +414,10 @@ async function assertLivePvpBrowserPath(page) {
           longTasks.count += 1;
           longTasks.totalMs += entry.duration;
           longTasks.maxMs = Math.max(longTasks.maxMs, entry.duration);
+          longTasks.top.push({ startMs: Math.round(entry.startTime - origin),
+            durationMs: Math.round(entry.duration) });
+          longTasks.top.sort((a, b) => b.durationMs - a.durationMs);
+          longTasks.top.length = Math.min(longTasks.top.length, 5);
         }
       });
       taskObserver.observe({ type: 'longtask' });
@@ -606,7 +610,10 @@ async function assertLivePvpBrowserPath(page) {
         ` glb_finished_ms=${openTimeline.modelFinishedMs ?? 'not-seen'}` +
         ` longtask_count=${longTasks.count}` +
         ` longtask_total_ms=${Math.round(longTasks.totalMs)}` +
-        ` longtask_max_ms=${Math.round(longTasks.maxMs)}`,
+        ` longtask_max_ms=${Math.round(longTasks.maxMs)}` +
+        ` longtask_before_request=${longTasks.top.some((task) => task.startMs +
+          task.durationMs <= (openTimeline.firstLobbyRequestMs ?? -1))}` +
+        ` top_longtasks=${JSON.stringify(longTasks.top)}`,
       );
     }
     // Keep the passive observer alive through the existing real PvP pulses:
