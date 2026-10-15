@@ -995,7 +995,8 @@ for (const capture of CAPTURES) {
       }
       await captureElement(page, panel, `${ARTIFACT_DIR}/chronicles-game-menu-${capture.label}.png`);
       await menu.getByRole('button', { name: 'Opciones de audio' }).evaluate((button) => button.click());
-      await expect(menu.getByRole('slider', { name: 'Volumen de música' })).toBeVisible();
+      await expect(menu.getByRole('slider', { name: 'Volumen de música de Chronicles' })).toBeVisible();
+      await expect(menu.getByText('First Verse en el libro de expediciones; Second Verse durante la aventura.')).toBeVisible();
       await expect(menu.getByRole('slider', { name: 'Volumen de efectos de Chronicles' })).toBeVisible();
       await expect(menu.getByRole('button', { name: 'Volver al menú' })).toBeVisible();
       await expect(menu.getByRole('button', { name: 'Guardar y salir' })).toHaveCount(0);
