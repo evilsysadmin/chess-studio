@@ -250,7 +250,9 @@ function summarizePvpOpenCpuProfile(profile) {
 // records and args are never retained, uploaded or emitted in CI logs.
 function createPvpNativeTraceSummary() {
   const allowed = new Set([
-    'RunTask', 'ThreadControllerImpl::RunTask', 'ThreadPool_RunTask',
+    'RunTask', 'ThreadControllerImpl::RunTask',
+    'ThreadController::RunTask', 'TaskQueueManager::ProcessTaskFromWorkQueue',
+    'SequenceManagerImpl::SelectNextTask', 'ThreadPool_RunTask',
     'EvaluateScript', 'FunctionCall', 'EventDispatch', 'Layout', 'UpdateLayoutTree',
     'RecalculateStyles', 'Paint', 'CompositeLayers', 'UpdateLayerTree',
     'DrawFrame', 'BeginMainThreadFrame', 'Commit', 'RasterTask',
@@ -497,7 +499,9 @@ async function assertLivePvpBrowserPath(page) {
     try {
       cpuSession.on('Tracing.dataCollected', onTraceData);
       await cpuSession.send('Tracing.start', {
-        categories: 'devtools.timeline,v8,blink,cc,gpu',
+        // Toplevel enables native renderer task envelopes that the timeline-only
+        // selection omits (the earlier 4.6 s task appeared only as V8 program).
+        categories: 'toplevel,devtools.timeline,disabled-by-default-devtools.timeline,v8,blink,cc,gpu',
         transferMode: 'ReportEvents',
       });
       nativeTracing = true;
