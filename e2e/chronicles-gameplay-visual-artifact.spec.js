@@ -156,11 +156,28 @@ async function openChronicles(page, captureLabel, {
         software: canvas?.dataset.homeBlenderSoftware ?? null,
         shadows: canvas?.dataset.homeBlenderShadows ?? null,
         phase: canvas?.dataset.homeBlenderPhase ?? null,
+        startup: canvas?.dataset.homeBlenderStartup
+          ? JSON.parse(canvas.dataset.homeBlenderStartup) : null,
       };
     });
-    console.log(`Chronicles Home shadows | ${captureLabel} | ${JSON.stringify(shadowProof)}`);
+    console.log(`Chronicles Home shadows | ${captureLabel} | ${JSON.stringify({
+      software: shadowProof.software, shadows: shadowProof.shadows, phase: shadowProof.phase,
+    })}`);
     if (shadowProof.software === 'true') {
       expect(shadowProof.shadows, 'software WebGL must skip the initial Home shadow map').toBe('disabled');
+      // One read of a bounded DOM dataset measures internal phases without
+      // slowing down the already expensive GPU software bootstrap.
+      const startup = shadowProof.startup;
+      const steps = [
+        'effect-start', 'renderer-created', 'scene-created', 'model-loading',
+        'model-decoded', 'materials-prepared', 'rigs-prepared',
+        'first-frame-start', 'first-frame-end', 'ready',
+      ];
+      const times = steps.map((step) => startup?.[step]);
+      expect(times.every((time) => Number.isFinite(time)), 'Home Blender emits all startup phases').toBe(true);
+      expect(times.every((time, index) => index === 0 || time >= times[index - 1]),
+        'Home Blender phase timings must be chronological').toBe(true);
+      console.log(`Chronicles Home startup | ${captureLabel} | ${JSON.stringify(startup)}`);
     }
   }
   const speech = page.getByRole('region', { name: 'Mensaje de Matthias', exact: true });
