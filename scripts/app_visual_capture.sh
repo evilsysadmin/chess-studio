@@ -152,7 +152,7 @@ case "$mode" in
     # test-name grep and no relaxed assertions: Playwright owns the partition.
     if [[ -n "${APP_VISUAL_CHRONICLES_SHARD:-}" ]]; then
       case "$APP_VISUAL_CHRONICLES_SHARD" in
-        1|2) ;;
+        1|2|3) ;;
         *) echo "::error::Invalid Chronicles visual shard: $APP_VISUAL_CHRONICLES_SHARD"; exit 2 ;;
       esac
       [[ "$warroom_core_selected" == "false" && "${#specs[@]}" -gt 0 ]] || {
@@ -165,8 +165,8 @@ case "$mode" in
         esac
       done
       # Full producer is sliced further below into short-lived Chromium groups;
-      # focused paths still use the original 1/2 split.
-      echo "Chronicles visual partition ${APP_VISUAL_CHRONICLES_SHARD}/2: independent runners."
+      # focused paths use a 3-way split (avatar-only 2-viewpoint special case).
+      echo "Chronicles visual partition ${APP_VISUAL_CHRONICLES_SHARD}/3: independent runners."
     fi
     # The party-choice surface also has canonical setup + editor screenshots
     # in these same three First Book journeys, plus a real game-entry proof.
@@ -209,9 +209,9 @@ case "$mode" in
     fi
 
     if (( ${#specs[@]} > 0 )); then
-      # Two pathological high-cost tests must not sit behind the other 18 tests
+      # Two pathological high-cost tests must not sit behind other tests
       # on the same 1-worker Chromium process. Place them at the START of the
-      # second runner in fresh Playwright/browser invocations. The complement
+      # third runner in fresh Playwright/browser invocations. The complement
       # is then sharded normally: grep + grep-invert partition the EXACT same
       # test set, so new tests default into the common coverage automatically.
       # Only full Chronicles gameplay runs are eligible; scoped 3-viewport
@@ -227,7 +227,7 @@ case "$mode" in
         # Keep each expensive or flaky scene isolated from all prior WebGL
         # contexts. Fail fast: a broken menu no longer waits behind 14 min of
         # screenshots and cannot be accidentally masked as a timeout retry.
-        if [[ "$APP_VISUAL_CHRONICLES_SHARD" == '2' ]]; then
+        if [[ "$APP_VISUAL_CHRONICLES_SHARD" == '3' ]]; then
           echo 'Chronicles visual early canary: portrait pause + audio, fresh browser.'
           ./node_modules/.bin/playwright test chronicles-gameplay-visual-artifact.spec.js \
             --workers=1 --retries=0 --max-failures=1 \
@@ -241,10 +241,17 @@ case "$mode" in
         # In both prior runs the LAST tablet capture failed after 18-19
         # earlier 3D captures, independently of portrait/landscape. Reset
         # Chromium after 4-5 captures, with no retries or missing tests.
-        # Eight complementary shards: four processes on each of two runners.
-        first_subshard=$(( (APP_VISUAL_CHRONICLES_SHARD - 1) * 4 + 1 ))
-        last_subshard=$(( first_subshard + 3 ))
-        for (( subshard = first_subshard; subshard <= last_subshard; subshard++ )); do
+        # Cost-based assignment measured on PR #5595's green SHA:
+        # groups 1/2/3/7 = ~6m, groups 4/5 = ~9m, groups 6/8 +
+        # isolated canaries = ~10m. Each group remains one fresh process.
+        # All eight subshards belong to exactly one runner. New tests still
+        # enter the complete partition via Playwright, never a name allowlist.
+        case "$APP_VISUAL_CHRONICLES_SHARD" in
+          1) subshards=(1 2 3 7) ;;
+          2) subshards=(4 5) ;;
+          3) subshards=(6 8) ;;
+        esac
+        for subshard in "${subshards[@]}"; do
           echo "Chronicles visual bounded renderer: isolated process ${subshard}/8."
           ./node_modules/.bin/playwright test \
             "${specs[@]}" \
@@ -253,7 +260,17 @@ case "$mode" in
         done
       else
         if [[ -n "${APP_VISUAL_CHRONICLES_SHARD:-}" ]]; then
-          playwright_args+=(--shard="${APP_VISUAL_CHRONICLES_SHARD}/2")
+          # Avatar-only has exactly two canonical viewports. They run once
+          # each on runners 1 and 2; runner 3 is a documented/visible no-op,
+          # NOT a third test that can spuriously pass without evidence.
+          if [[ "$APP_VISUAL_CHRONICLES_SHARD" == '3' &&
+                "${#specs[@]}" == 1 &&
+                "${specs[0]}" == 'chronicles-avatar-visual-artifact.spec.js' ]]; then
+            echo 'Chronicles avatar-only: third shard idle; 2 of 2 viewports owned by runners 1/2.'
+            if [[ -n "${GITHUB_OUTPUT:-}" ]]; then echo 'has_specs=false' >> "$GITHUB_OUTPUT"; fi
+            exit 0
+          fi
+          playwright_args+=(--shard="${APP_VISUAL_CHRONICLES_SHARD}/3")
         fi
         ./node_modules/.bin/playwright test \
           "${specs[@]}" \
