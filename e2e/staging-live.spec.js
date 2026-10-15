@@ -347,6 +347,31 @@ async function assertLivePvpBrowserPath(page) {
   if (rendererMode === 'software') {
     expect(rendererClass, 'GPU A/B software leg requires verified software renderer').toBe('software');
   }
+  // Opt-in compositor A/B uses a *matched* Home-ready precondition on both
+  // comparison legs. Do not compare the canonical 'off' smoke with a leg that
+  // waited for a different Home initialization state.
+  // Hidden canvases remain mounted with their original WebGL render loop.
+  const ablation = process.env.CHESS_STAGING_PVP_ABLATION || 'off';
+  expect(['off', 'keep-home-canvas', 'hide-home-canvas'],
+    'recognized staging compositor A/B mode').toContain(ablation);
+  let homeCanvasStyle = null;
+  if (ablation !== 'off') {
+    const homeCanvas = page.locator('canvas.illustrated-home__castle-3d');
+    await expect(homeCanvas, 'A/B requires the real Home 3D canvas').toHaveCount(1);
+    await expect(homeCanvas, 'Both A/B legs require a ready Home compositor')
+      .toHaveAttribute('data-home-blender-runtime', 'ready');
+    if (ablation === 'hide-home-canvas') {
+      homeCanvasStyle = await page.addStyleTag({
+        content: 'canvas.illustrated-home__castle-3d { visibility: hidden !important; }',
+      });
+    }
+    // Equally settle two composited frames for the keep/hide legs, excluding
+    // style insertion overhead from the modal-opening interval.
+    await page.evaluate(() => new Promise((resolve) =>
+      requestAnimationFrame(() => requestAnimationFrame(resolve))));
+  }
+  console.log('STAGING_PVP_ABLATION mode=' + ablation +
+    ' matched_home_ready=' + (ablation !== 'off'));
   const started = Date.now();
   let phaseStart = started;
   const logPhase = (name) => {
@@ -787,6 +812,9 @@ async function assertLivePvpBrowserPath(page) {
         window.__stagingDuelHallTiming?.close();
         delete window.__stagingDuelHallTiming;
       }).catch(() => {});
+    }
+    if (homeCanvasStyle && !page.isClosed()) {
+      await homeCanvasStyle.evaluate((node) => node.remove()).catch(() => {});
     }
     page.off('requestfinished', onOpenFinished);
     page.off('request', onOpenRequest);
