@@ -826,12 +826,13 @@
   }
   .chronicles .chronicles-minimap svg {
     border: 2px solid #3a1d08;
-    background: #0d1f6e;
+    background: #171321;
   }
   .chronicles .chronicles-minimap__title { display: none; }
-  .chronicles .chronicles-minimap__cell.is-wall { fill: #0d1f6e; stroke: #2448c4; }
-  .chronicles .chronicles-minimap__cell.is-floor { fill: #3159c9; stroke: #4c78e0; }
-  .chronicles .chronicles-minimap__cell.is-floor.is-visited { fill: #8fd0ec; stroke: #c9ecff; }
+  /* Consistent walkability semantics across desktop MM3 and mobile. */
+  .chronicles .chronicles-minimap__cell.is-wall { fill: #35261d; stroke: #17110e; stroke-width: .085; }
+  .chronicles .chronicles-minimap__cell.is-floor { fill: #b48a52; stroke: #d9b477; }
+  .chronicles .chronicles-minimap__cell.is-floor.is-visited { fill: #cda569; stroke: #f1d29b; }
   .chronicles .chronicles-minimap__marker.is-exit { fill: #2a1404; stroke: #f0c48a; }
   .chronicles .chronicles-minimap__marker.is-treasure { fill: #ffd447; stroke: #7a4a00; }
   .chronicles .chronicles-minimap__marker.is-interactable { fill: #f2efe6; stroke: #3a1d08; }
