@@ -1130,12 +1130,13 @@
   top: 53%;
   left: 50%;
   transform: translate(-50%, -50%);
-  padding: 0;
-  background: transparent;
-  border: 0;
+  padding: 2px 3px 1px;
+  background: rgba(5, 27, 78, .86);
+  border: 1px solid rgba(171, 210, 255, .8);
+  box-shadow: inset 0 0 0 1px rgba(14, 61, 144, .9);
   color: #fff6dc !important;
   -webkit-text-fill-color: #fff6dc !important;
-  font: 0.83rem/1 var(--mm3-pixel-font);
+  font: 0.92rem/1 var(--mm3-pixel-font);
   letter-spacing: .035em;
   white-space: nowrap;
   opacity: 1;
@@ -1284,7 +1285,7 @@
     min-height: 48px;
     background-size: 66px 44px !important;
   }
-  .chronicles .chronicles-menu-gem__hint { font-size: 0.7rem; }
+  .chronicles .chronicles-menu-gem__hint { font-size: 0.79rem; }
   .chronicles .chronicles-statusbar .chronicles-map-trigger {
     margin-right: 64px;
   }
@@ -1322,8 +1323,8 @@
 .chronicles .chronicles-game-menu > summary .chronicles-menu-gem__hint {
   color: #fff6dc !important;
   -webkit-text-fill-color: #fff6dc !important;
-  -webkit-text-stroke: 0.35px #152f6f !important;
-  text-shadow: 1px 1px 0 #10235b, -1px -1px 0 #10235b !important;
+  -webkit-text-stroke: 0 !important;
+  text-shadow: 0 1px 0 #00163e !important;
 }
 @media (min-width: 1025px), (min-width: 801px) and (min-height: 601px) {
   /* With MENÚ removed the map plaque uses the whole statusbar width. */
