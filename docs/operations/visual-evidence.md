@@ -106,32 +106,37 @@ Para una PR que altera una sola sala, la tira transversal no obliga a rediseñar
 ## Chronicles: partición del gate visual y coste del renderer
 
 El gate `Chronicles · visual artifact` mantiene `Chronicles · capture` como contexto requerido estable,
-pero ejecuta la suite canónica mediante `--shard=1/2` y `--shard=2/2` en **dos runners independientes**.
-Es una partición de las mismas pruebas, sin recortar viewports, casos, assertions ni PNG. Cada shard
-usa **un solo worker** para no saturar SwiftShader dentro del runner; los artifacts se publican con
-sufijos `-part-1` y `-part-2` para inspección conjunta del mismo SHA.
+pero distribuye la suite canónica en **tres runners independientes**, con grupos de pruebas
+ponderados según el coste observado en CI. No se eliminan viewports, casos, assertions ni PNG.
+Cada runner usa **un solo worker** para no saturar SwiftShader; los artifacts se publican con
+sufijos `-part-1`, `-part-2` y `-part-3` y deben inspeccionarse conjuntamente en el mismo SHA.
 
 Al cambiar el propio workflow, la acción compartida o el capturador, el gate fuerza la ejecución
 real del productor de Chronicles (evita el falso verde de un shard sin pruebas).
 
 Para evitar el desequilibrio observado en la primera ejecución (shard 1 = 14,2 min,
 shard 2 = 6,5 min), el menú móvil de pausa/audio se ejecuta como **canary temprano** en
-un proceso Playwright nuevo del shard 2, y la captura WebGL desktop de 4 min se
-ejecuta en otro proceso nuevo de ese shard. El resto de pruebas se reparte mediante `--shard` con un filtro
-complementario `--grep-invert`. Se usan **ocho subshards** (cuatro procesos
-Playwright por runner) con un máximo aproximado de cinco casos por proceso:
+un proceso Playwright nuevo del **runner 3**, y la captura WebGL desktop de 4 min se
+ejecuta en otro proceso nuevo del mismo runner. El resto de pruebas se reparte mediante `--shard` con un filtro
+complementario `--grep-invert`. Se usan **ocho subshards** ponderados de acuerdo
+con el tiempo observado en la #5595: runner 1 recibe `1,2,3,7`; runner 2 recibe
+`4,5`; runner 3 recibe `6,8` además de los dos canaries. Cada proceso contiene
+un máximo aproximado de cinco casos:
 reiniciar Chromium periódicamente limita la acumulación de contextos SwiftShader
 y aísla el fallo que aparecía al final de una serie larga de capturas.
 Los selectores son complementarios y ningún caso queda sin dueño; siguen
 sin existir retries ni aserciones relajadas.
 Los filtros sólo aplican al productor completo de Chronicles: los fast paths
-de libro de expediciones/setup y el productor de avatar conservan su selección.
+de libro de expediciones/setup usan `--shard=1/3`, `2/3` y `3/3`.
+El productor **avatar-only** tiene únicamente dos tests (desktop y Android):
+los runners 1/2 ejecutan uno cada uno y el tercero declara explícitamente
+`has_specs=false`, sin fabricar un tercer test ni publicar un artifact vacío.
 
 El canary de menú sigue comprobando navegación, DOM y PNG reales; **no es una
 captura falsa ni un retry**. Fallar cerrado al principio evita consumir
 toda la suite cuando Home no permite entrar a Chronicles.
 
-El job agregado `Chronicles · capture` sólo pasa si **ambos** shards terminan verdes; fallos,
+El job agregado `Chronicles · capture` sólo pasa si **los tres** runners terminan verdes; fallos,
 cancelaciones y skips cierran el gate. Esto separa la carga y el ciclo de vida del renderer,
 reduce el wall-clock crítico y evita que un solo navegador secuencial concentre todas las capturas.
 No acredita visualmente el resultado: ambos conjuntos de PNG necesitan la inspección habitual.
@@ -141,3 +146,11 @@ después de 15,4 minutos; una captura desktop tardó 4 minutos. Comparar los tie
 por shard en CI antes de atribuir una reducción concreta; crear dos runners tiene coste total
 de compute/build superior aunque reduzca latencia de entrega. La partición no corrige por sí
 misma los fallos de entrada en Home, que siguen siendo errores bloqueantes reales del producer.
+
+
+Iteración de rendimiento posterior a #5595: la suite de 40/40 casos pasó en dos runners,
+pero el más lento consumió ~14 minutos. La agrupación ponderada pretende acercar el
+camino crítico a ~10 minutos, pagando un tercer runner por ejecución completa.
+El objetivo **no está acreditado** hasta medir los nuevos logs; no confundir un gate
+verde con la demostración de reducción de latencia. La distribución se reevalúa
+cuando se añadan tests o se modifiquen los costes del productor.
