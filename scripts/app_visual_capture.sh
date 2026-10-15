@@ -230,13 +230,13 @@ case "$mode" in
           echo 'Chronicles visual early canary: portrait pause + audio, fresh browser.'
           ./node_modules/.bin/playwright test chronicles-gameplay-visual-artifact.spec.js \
             --workers=1 --retries=0 --max-failures=1 \
-            --grep 'Chronicles · pause \\+ audio tablets visual · android-390x844$'
+            --grep 'Chronicles · pause \+ audio tablets visual · android-390x844$'
           echo 'Chronicles visual isolated expensive scene: desktop gameplay, fresh browser.'
           ./node_modules/.bin/playwright test chronicles-gameplay-visual-artifact.spec.js \
             --workers=1 --retries=0 --max-failures=1 \
             --grep 'Chronicles · gameplay visual · desktop-1440x900$'
         fi
-        playwright_args+=(--grep-invert 'Chronicles · (pause \\+ audio tablets visual · android-390x844|gameplay visual · desktop-1440x900)$')
+        playwright_args+=(--grep-invert 'Chronicles · (pause \+ audio tablets visual · android-390x844|gameplay visual · desktop-1440x900)$')
         echo "Chronicles visual balanced partition ${APP_VISUAL_CHRONICLES_SHARD}/2: complement plus isolated canaries, no test omission."
       fi
       ./node_modules/.bin/playwright test \
