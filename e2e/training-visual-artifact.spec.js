@@ -486,6 +486,30 @@ scopedTest('tournament', 'Entrenar · Torneo', async ({ page }) => {
   await captureAt(page, 'tournament', { width: 390, height: 844, variant: 'mobile' });
 });
 
+scopedTest('progress', 'Mi progreso · Salón de la Gloria con partida demostrable', async ({ page }) => {
+  test.setTimeout(100_000);
+  await prepare(page, {
+    profileSeed: { 'chess-study-game-history': JSON.stringify(INSIGHTS_DOSSIER_HISTORY) },
+  });
+  await page.locator('.illustrated-home__matthias').click();
+  await expect(page.getByRole('heading', { name: 'Así juegas', exact: true })).toBeVisible();
+  const trainingRoom = page.locator('[data-insights-room="training-room-v1"]');
+  const drawer = trainingRoom.locator('details[data-insights-archive]');
+  if (await drawer.getAttribute('open') === null) await drawer.locator('summary').click();
+  await drawer.getByRole('button', { name: 'Mi progreso', exact: true }).click();
+  const hall = trainingRoom.locator('.career-hall-of-fame');
+  await expect(hall.getByRole('heading', { name: 'Salón de la Gloria' })).toBeVisible();
+  await expect(hall.locator('[data-career-honor="hardest"]')).toContainText('CPU nivel 10');
+  await expect(hall.getByRole('button', { name: 'Revisar partida →' }).first()).toBeVisible();
+  await captureAt(page, 'career-hall', { width: 1440, height: 900, variant: 'desktop' });
+  await captureAt(page, 'career-hall', { width: 360, height: 800, variant: 'mobile-compact' });
+  await assertNoHorizontalOverflow(page, 'career-hall-mobile-360');
+  await captureAt(page, 'career-hall', { width: 390, height: 844, variant: 'mobile' });
+  await assertNoHorizontalOverflow(page, 'career-hall-mobile-390');
+  await captureAt(page, 'career-hall', { width: 430, height: 932, variant: 'mobile-wide' });
+  await assertNoHorizontalOverflow(page, 'career-hall-mobile-430');
+});
+
 scopedTest('progress', 'Entrenar · Así juegas y Mi progreso', async ({ page }) => {
   test.setTimeout(100_000);
   await prepare(page);
