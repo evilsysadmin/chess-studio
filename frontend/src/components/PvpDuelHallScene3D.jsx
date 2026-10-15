@@ -10,6 +10,13 @@ export const PVP_DUEL_HALL_CAMERA = Object.freeze({
   target: Object.freeze([0, 2.18, -0.8]),
 });
 
+// ResizeObserver fires at least once on observation, even when the element
+// has not changed size. An unchanged-size callback does not need another
+// WebGL frame; the model-ready paint explicitly bypasses this guard.
+export function shouldPaintPvpHallResize(previous, next, forcePaint = false) {
+  return forcePaint === true || previous.width !== next.width || previous.height !== next.height;
+}
+
 export default function PvpDuelHallScene3D() {
   const canvasRef = useRef(null);
   const [status, setStatus] = useState('loading');
@@ -68,13 +75,22 @@ export default function PvpDuelHallScene3D() {
       if (!disposed) renderer.render(scene, camera);
     };
 
-    const resize = () => {
+    let lastWidth = 0;
+    let lastHeight = 0;
+    const resize = (forcePaint = false) => {
       if (disposed) return;
       const width = Math.max(1, host?.clientWidth || canvas.clientWidth || 1);
       const height = Math.max(1, host?.clientHeight || canvas.clientHeight || 1);
-      renderer.setSize(width, height, false);
-      camera.aspect = width / height;
-      camera.updateProjectionMatrix();
+      if (!shouldPaintPvpHallResize(
+        { width: lastWidth, height: lastHeight }, { width, height }, forcePaint,
+      )) return;
+      if (width !== lastWidth || height !== lastHeight) {
+        lastWidth = width;
+        lastHeight = height;
+        renderer.setSize(width, height, false);
+        camera.aspect = width / height;
+        camera.updateProjectionMatrix();
+      }
       render();
     };
 
@@ -94,7 +110,9 @@ export default function PvpDuelHallScene3D() {
         }
         disposeShell = cleanup || (() => {});
         setStatus('ready');
-        resize();
+        // A loaded GLB must always receive its first frame, even if the
+        // canvas dimensions match those of the initial empty scene.
+        resize(true);
       } catch {
         if (!disposed) setStatus('fallback');
       }
