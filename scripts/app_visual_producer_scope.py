@@ -490,6 +490,18 @@ def classify_path(path: str) -> set[str] | None:
         return {"training-school"}
     if lower == "frontend/src/components/homeillustrated.jsx":
         return {"home-base"}
+    # Career visual modules belong to the scoped training-progress producer.
+    # No wildcard: unrelated frontend files retain the full visual fallback.
+    if lower in {
+        "frontend/src/careeropeningatlas.js",
+        "frontend/src/components/careeropeningatlas.jsx",
+        "frontend/src/components/careeropeningatlas.css",
+        "frontend/src/components/careeropeningssection.jsx",
+        "frontend/src/components/careerchronicle.jsx",
+        "frontend/src/components/careerchronicle.css",
+        "frontend/src/components/careerperformancesection.jsx",
+    }:
+        return {"training-progress"}
     if lower in TRAINING_EXACT_PRODUCERS:
         return set(TRAINING_EXACT_PRODUCERS[lower])
 
@@ -1122,6 +1134,15 @@ def self_test() -> None:
     assert classify(["frontend/src/tutorialRoute.js"]) == "training-school"
     assert classify(["frontend/src/components/trainingSchoolIntentPreload.js"]) == "training-school"
     assert classify(["frontend/src/components/HomeIllustrated.jsx"]) == "home-base"
+    assert classify(["frontend/src/careerOpeningAtlas.js"]) == "training-progress"
+    assert classify(["frontend/src/components/CareerOpeningAtlas.jsx"]) == "training-progress"
+    assert classify(["frontend/src/components/CareerOpeningAtlas.css"]) == "training-progress"
+    assert classify(["frontend/src/components/CareerOpeningsSection.jsx"]) == "training-progress"
+    assert classify(["frontend/src/components/CareerChronicle.jsx"]) == "training-progress"
+    assert classify(["frontend/src/components/CareerChronicle.css"]) == "training-progress"
+    assert classify(["frontend/src/components/CareerPerformanceSection.jsx"]) == "training-progress"
+    assert classify(["frontend/src/components/CareerOpeningAtlas.jsx", "e2e/training-visual-artifact.spec.js"]) == "training-progress"
+    assert classify(["frontend/src/components/CareerOpeningAtlas.jsx", "frontend/src/components/SomeUnknownGlobalWidget.jsx"]) == "all"
     print("app visual producer scope self-test: OK")
 
 

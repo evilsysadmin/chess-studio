@@ -415,6 +415,18 @@ def _surface_groups(path: str) -> set[str] | None:
         return {"experiments"}
     if _is_noncanonical_admin_surface(path):
         return set()
+    # Career modules are owned by the Training Room / Mi progreso. Exact
+    # runtime paths only; unknown modules must still fail closed to all.
+    if lower in {
+        "frontend/src/careeropeningatlas.js",
+        "frontend/src/components/careeropeningatlas.jsx",
+        "frontend/src/components/careeropeningatlas.css",
+        "frontend/src/components/careeropeningssection.jsx",
+        "frontend/src/components/careerchronicle.jsx",
+        "frontend/src/components/careerchronicle.css",
+        "frontend/src/components/careerperformancesection.jsx",
+    }:
+        return {"training"}
     if lower.startswith("frontend/src/components/homematthias"):
         return {"home"}
 
@@ -1151,6 +1163,15 @@ def self_test() -> None:
     assert classify(["frontend/src/tutorialRoute.js"]).capture_groups == "training"
     assert classify(["frontend/src/components/trainingSchoolIntentPreload.js"]).capture_groups == "training"
     assert classify(["frontend/src/components/HomeIllustrated.jsx"]).capture_groups == "home"
+    assert classify(["frontend/src/careerOpeningAtlas.js"]).capture_groups == "training"
+    assert classify(["frontend/src/components/CareerOpeningAtlas.jsx"]).capture_groups == "training"
+    assert classify(["frontend/src/components/CareerOpeningAtlas.css"]).capture_groups == "training"
+    assert classify(["frontend/src/components/CareerOpeningsSection.jsx"]).capture_groups == "training"
+    assert classify(["frontend/src/components/CareerChronicle.jsx"]).capture_groups == "training"
+    assert classify(["frontend/src/components/CareerChronicle.css"]).capture_groups == "training"
+    assert classify(["frontend/src/components/CareerPerformanceSection.jsx"]).capture_groups == "training"
+    assert classify(["frontend/src/components/CareerOpeningAtlas.jsx", "e2e/training-visual-artifact.spec.js"]).capture_groups == "training"
+    assert classify(["frontend/src/components/CareerOpeningAtlas.jsx", "frontend/src/components/SomeUnknownGlobalWidget.jsx"]).capture_groups == ",".join(GROUP_ORDER)
     print("app visual scope self-test: OK")
 
 

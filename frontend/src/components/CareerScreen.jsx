@@ -146,7 +146,7 @@ export default function CareerScreen({ history, ratingHistory, onExit, onOpenRec
     {Object.keys(career.byTimeControl||{}).length>0&&<div className="menu-section"><h2>Rivalidad por ritmo</h2><div className="career-rhythm-grid">{Object.entries(career.byTimeControl).map(([id,row])=><div className="career-rhythm" key={id}><b>{TIME_LABEL[id]||id}</b><span>{row.wins}V · {row.draws}T · {row.losses}D</span><small>{row.games} partidas</small></div>)}</div></div>}
     </>}
 
-    {careerSection==='openings'&&<CareerOpeningsSection openings={openings} clinic={clinic} tree={tree} />}
+    {careerSection==='openings'&&<CareerOpeningsSection openings={openings} clinic={clinic} tree={tree} history={history} onOpenRecord={onOpenRecord} />}
 
     {careerSection==='archive'&&<>
     <div className="menu-section"><h2>🎨 Tableros desbloqueables</h2><p className="hint-text">Cosmética pura. El <GlossaryTerm term="ELO">ELO</GlossaryTerm> no mejora por pintar las casillas, aunque algunas derrotas quedan más elegantes.</p><div className="board-theme-list">{BOARD_THEMES.map(t=>{const unlocked=themes.some(x=>x.id===t.id);return <button key={t.id} disabled={!unlocked} className={`secondary-btn ${theme===t.id?'active':''}`} onClick={()=>{const next=saveBoardTheme(t.id);setTheme(next);}}>{unlocked?t.label:`🔒 ${t.label}`}</button>})}</div></div>
