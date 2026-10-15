@@ -104,3 +104,30 @@ export function buildRecurringErrorPatterns(puzzles = []) {
 }
 
 export { INCIDENT_LABELS };
+
+// This selection never constructs a new FEN. The caller supplies the validated
+// personal-puzzle bank; prefer a pending case with reconstructible provenance.
+export function selectRecurringPatternExample(pattern, puzzles = []) {
+  if (!pattern?.incidentKey || !Array.isArray(puzzles)) return null;
+  const matching = puzzles.filter((puzzle) => (
+    puzzle?.fen
+    && Array.isArray(puzzle?.solution)
+    && puzzle.solution.length > 0
+    && Array.isArray(puzzle?.incidentKeys)
+    && puzzle.incidentKeys.includes(pattern.incidentKey)
+  ));
+  matching.sort((a, b) => {
+    const pendingA = !a.masteredAt && Number(a.solves || 0) === 0;
+    const pendingB = !b.masteredAt && Number(b.solves || 0) === 0;
+    if (pendingA !== pendingB) return Number(pendingB) - Number(pendingA);
+    const gameA = Boolean(a.sourceGameId);
+    const gameB = Boolean(b.sourceGameId);
+    if (gameA !== gameB) return Number(gameB) - Number(gameA);
+    const autopsyA = a.source === 'autopsy';
+    const autopsyB = b.source === 'autopsy';
+    if (autopsyA !== autopsyB) return Number(autopsyB) - Number(autopsyA);
+    const diff = Date.parse(b.createdAt || '') - Date.parse(a.createdAt || '');
+    return Number.isFinite(diff) && diff !== 0 ? diff : String(a.id || '').localeCompare(String(b.id || ''));
+  });
+  return matching[0] || null;
+}
