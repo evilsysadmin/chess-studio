@@ -308,7 +308,7 @@ test('Home · el avatar residente de Matthias abre Así juegas · entrenamiento 
   if (await archive2.getAttribute('open') === null) await archive2.locator('summary').click();
   await page.getByRole('button', { name: 'Errores', exact: true }).click();
 
-  const pattern = page.locator('.insights-recurring-error-card').filter({ hasText: 'Horquillas de caballo sufridas' });
+  const pattern = page.locator('.insights-blackbook-entry').filter({ hasText: 'Horquillas de caballo sufridas' });
   await expect(pattern).toHaveCount(1);
   await expect(pattern.locator('[data-improvement-state="no-sample"]')).toContainText('falta observar nuevas partidas');
   await expect(pattern).not.toContainText('Mejora probable');
