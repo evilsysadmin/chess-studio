@@ -1,6 +1,6 @@
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import InsightsCareerArchiveSection from './InsightsCareerArchiveSection.jsx';
 
 const base = {
@@ -19,6 +19,25 @@ describe('Career archive extraction', () => {
     expect(html).toContain('Cementerio de partidas');
     expect(html).toContain('Vacío. Sospechosamente saludable');
     expect(html).toContain('disabled');
+  });
+
+  it('keeps board theme changes wired to the owning CareerScreen callback', () => {
+    const onThemeChange = vi.fn();
+    const root = InsightsCareerArchiveSection({
+      ...base,
+      themes: [{ id: 'classic' }, { id: 'midnight' }],
+      onThemeChange,
+    });
+    const visit = (element) => React.isValidElement(element)
+      ? [element, ...React.Children.toArray(element.props.children).flatMap(visit)]
+      : [];
+    const themeButton = visit(root).find((element) =>
+      element.type === 'button' && element.props.children === 'Medianoche');
+    expect(themeButton).toBeDefined();
+    expect(themeButton.props.disabled).toBe(false);
+    themeButton.props.onClick();
+    expect(onThemeChange).toHaveBeenCalledOnce();
+    expect(onThemeChange).toHaveBeenCalledWith('midnight');
   });
 
   it('keeps real saved runs, records, modes and milestones visible', () => {
