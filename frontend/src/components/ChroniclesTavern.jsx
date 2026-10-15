@@ -8,7 +8,8 @@ import './ChroniclesTavern.css';
 // the authored street entrance while the overlay owns input and focus.
 export default function ChroniclesTavern({ state, onAction, onClose }) {
   const closeRef = useRef(null);
-  const entry = chroniclesMapForState(state)?.interactables?.find((item) => item.id === state.tavern?.id);
+  const map = chroniclesMapForState(state);
+  const entry = map?.interactables?.find((item) => item.id === state.tavern?.id);
   const gold = chroniclesGoldBalance(state);
 
   useEffect(() => {
@@ -24,6 +25,7 @@ export default function ChroniclesTavern({ state, onAction, onClose }) {
   }, [onClose]);
 
   if (!entry) return null;
+  const innName = state.mapId === 'swordhaven-first-book' ? 'La Espada Mellada' : (entry.label || 'Posada').split(' · ')[0];
   const restPrice = chroniclesTavernRestPrice(entry);
   const choices = [
     { id: 'food', name: 'Comprar comida', detail: 'Una ración de viaje para el inventario de la compañía.', price: CHRONICLES_TAVERN_PRICES.food },
@@ -33,12 +35,12 @@ export default function ChroniclesTavern({ state, onAction, onClose }) {
   ];
   return (
     <div className="chronicles-tavern__backdrop" onClick={onClose}>
-      <section className="chronicles-tavern" role="dialog" aria-modal="true" aria-label="Taberna · La Espada Mellada"
+      <section className="chronicles-tavern" role="dialog" aria-modal="true" aria-label={`Taberna · ${innName}`}
         data-chronicles-tavern={entry.id} onClick={(event) => event.stopPropagation()}>
         <header className="chronicles-tavern__header">
           <div>
-            <small>CHRONICLES · SWORDHAVEN</small>
-            <h2>La Espada Mellada</h2>
+            <small>CHRONICLES · {map.title}</small>
+            <h2>{innName}</h2>
             <p>Comida, cerveza, rumores y camas. Aquí sí se permite descansar.</p>
           </div>
           <b aria-label={`Oro de la compañía: ${gold}`}>{gold} oro</b>
@@ -46,7 +48,7 @@ export default function ChroniclesTavern({ state, onAction, onClose }) {
             onClick={onClose} aria-label="Salir de la taberna">×</button>
         </header>
         <div className="chronicles-tavern__scene" aria-hidden="true">
-          <span>✦</span><strong>LA ESPADA MELLADA</strong><span>✦</span>
+          <span>✦</span><strong>{innName.toUpperCase()}</strong><span>✦</span>
         </div>
         <p className="chronicles-tavern__message" role="status" aria-live="polite">{state.message}</p>
         <div className="chronicles-tavern__choices">
