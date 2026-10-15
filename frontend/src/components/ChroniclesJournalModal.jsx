@@ -22,10 +22,10 @@ export default function ChroniclesJournalModal({ open, state, entries = [], onCl
   const activeCount = quests.filter((quest) => quest.status === 'active').length;
 
   return createPortal(
-    <div className="chronicles-journal-modal__backdrop" onPointerDown={(event) => {
+    <div className="chronicles-journal-modal__backdrop" onPointerDown={(event) => event.stopPropagation()} onClick={(event) => {
       event.stopPropagation();
       if (event.target === event.currentTarget) onClose();
-    }} onClick={(event) => event.stopPropagation()}>
+    }}>
       <section ref={dialogRef} className="chronicles-journal-modal" role="dialog" aria-modal="true"
         aria-labelledby="chronicles-journal-modal-title"
         onKeyDown={(event) => {
