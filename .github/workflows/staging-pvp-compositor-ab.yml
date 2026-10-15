@@ -10,6 +10,11 @@ on:
         required: true
         default: default
         options: [default, software]
+      comparison:
+        description: 'prehidden tests forced hide; product tests actual modal-scoped CSS'
+        type: choice
+        default: product
+        options: [product, prehidden]
 
 permissions:
   contents: read
@@ -32,6 +37,7 @@ jobs:
       DEPLOY_SHA: ${{ github.sha }}
       CHESS_STAGING_RENDERER: ${{ inputs.renderer || 'default' }}
       CHESS_STAGING_PVP_OPEN_ONLY: '1'
+      PVP_COMPARISON: ${{ inputs.comparison || 'product' }}
       OCI_TENANCY_OCID: ${{ secrets.OCI_TENANCY_OCID }}
       OCI_USER_OCID: ${{ secrets.OCI_USER_OCID }}
       OCI_FINGERPRINT: ${{ secrets.OCI_FINGERPRINT }}
@@ -77,7 +83,8 @@ jobs:
           set -euo pipefail
           summary="$RUNNER_TEMP/staging-pvp-ab.txt"
           printf 'source_sha=%s renderer_requested=%s\n' "$DEPLOY_SHA" "$CHESS_STAGING_RENDERER" > "$summary"
-          for mode in keep-home-canvas hide-home-canvas hide-home-canvas keep-home-canvas; do
+          if [[ "$PVP_COMPARISON" == product ]]; then control=product-home-canvas; else control=hide-home-canvas; fi
+          for mode in keep-home-canvas "$control" "$control" keep-home-canvas; do
             python3 -S scripts/staging_generation.py wait \
               --sha "$DEPLOY_SHA" --surfaces backend,frontend,worker --attempts 1 --interval 0 --root
             env_file="$(mktemp "$RUNNER_TEMP/staging-pvp-identity.XXXXXXXX")"
@@ -116,7 +123,7 @@ jobs:
           {
             echo '### PvP compositor A/B — diagnostic only, NOT staging accreditation'
             echo "Exact SHA: $DEPLOY_SHA; renderer requested: $CHESS_STAGING_RENDERER"
-            echo 'Order: keep / hide / hide / keep. Opening-only diagnostics, NOT the full canonical smoke.'
+            echo "Order: keep / $control / $control / keep. Opening-only, NOT canonical smoke."
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Retry cleanup after any interrupted leg
