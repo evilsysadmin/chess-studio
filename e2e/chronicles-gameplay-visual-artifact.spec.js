@@ -240,7 +240,7 @@ async function captureChroniclesHealth(page) {
       authoredPortraitCount: document.querySelectorAll('[data-chronicles-party-renderer="authored"]').length,
       gameRoot: rect('[data-chronicles="true"]'),
       gameMenu: rect('summary[aria-label="Abrir menú de Chronicles"]'),
-      legacyMapButtonCount: document.querySelectorAll('.chronicles-map-trigger').length,
+      redundantMapButton: rect('button[aria-label="Abrir automapa"]'),
       localMinimap: rect('[data-chronicles-minimap="visible"]'),
       stage: rect('.chronicles-stage'),
       gameCanvas: rect('[data-chronicles-renderer="three"] canvas'),
@@ -1058,7 +1058,7 @@ for (const capture of CAPTURES) {
       expect(health.gameRoot?.height || 0, `${capture.label}: fullscreen root height`).toBeGreaterThanOrEqual(capture.height - 2);
       expect(health.gameMenu?.width || 0, `${capture.label}: in-game menu visible`).toBeGreaterThan(0);
       expect(health.gameMenu?.height || 0, `${capture.label}: in-game menu height`).toBeGreaterThanOrEqual(30);
-      expect(health.legacyMapButtonCount, `${capture.label}: redundant map control removed`).toBe(0);
+      expect(health.redundantMapButton, `${capture.label}: redundant MAPA button removed`).toBeNull();
       expect(health.localMinimap?.width || 0, `${capture.label}: local minimap visible`).toBeGreaterThanOrEqual(capture.hasTouch ? 100 : 120);
       expect(health.localMinimap?.height || 0, `${capture.label}: local minimap height`).toBeGreaterThanOrEqual(capture.hasTouch ? 100 : 120);
       // The minimap must never sit on the menu: on mobile the menu is a top
@@ -1194,10 +1194,25 @@ for (const capture of CAPTURES) {
       await openChronicles(page, capture.label);
       const gameRoot = page.locator('[data-chronicles="true"]');
       await expect(gameRoot).toBeVisible();
+      // Crypt spawn (1,5) faces east. Turn twice to face west: tile (0,5)
+      // is an authored masonry wall one square ahead, and (1,5) is floor.
+      // Reveal through the real facing/visibility system, not seeded map data.
+      await page.keyboard.press('ArrowRight');
+      await page.keyboard.press('ArrowRight');
+      await expect(gameRoot.locator('[data-chronicles-minimap-facing]')).toHaveAttribute('data-chronicles-minimap-facing', '3');
+      await expect(gameRoot.locator('.chronicles-minimap__cell.is-wall').first()).toBeVisible();
       await page.getByRole('button', { name: 'Minimapa local. Abrir automapa completo', exact: true }).evaluate((button) => button.click());
       const automap = page.getByRole('dialog', { name: 'Automapa de Chronicles', exact: true });
       await expect(automap).toBeVisible();
       const automapCells = automap.locator('.chronicles-automap__cell');
+      const revealedWall = automap.locator('.chronicles-automap__cell.is-wall');
+      const revealedFloor = automap.locator('.chronicles-automap__cell.is-floor');
+      await expect(revealedWall.first(), `${capture.label}: revealed blocked tile must actually render`).toBeVisible();
+      await expect(revealedFloor.first(), `${capture.label}: revealed walkable tile must actually render`).toBeVisible();
+      const wallArt = await revealedWall.first().evaluate((node) => getComputedStyle(node).fill);
+      const floorArt = await revealedFloor.first().evaluate((node) => getComputedStyle(node).fill);
+      expect(wallArt, `${capture.label}: blocked masonry shade`).toBe('rgb(53, 38, 29)');
+      expect(floorArt, `${capture.label}: walkable floor shade`).toMatch(/^rgb\((180, 138, 82|205, 165, 105)\)$/);
       const automapMarker = automap.locator('[data-chronicles-map-facing]');
       await expect(automapCells.first()).toBeVisible();
       await expect(automapMarker).toBeVisible();

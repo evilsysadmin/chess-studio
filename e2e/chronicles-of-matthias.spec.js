@@ -35,6 +35,32 @@ async function openChronicles(page, options = {}) {
   await expect(page.locator('[data-chronicles="true"]')).toBeVisible();
 }
 
+test('Chronicles · cerrar Crónica no abre el mapa detrás y el minimapa es el único acceso visual', async ({ page }) => {
+  await page.setViewportSize({ width: 844, height: 390 });
+  await openChronicles(page, { chroniclesCurrentMapId: 'swordhaven-square', newTown: true });
+  const game = page.locator('[data-chronicles="true"]');
+  const map = page.getByRole('dialog', { name: 'Automapa de Chronicles' });
+  const minimap = game.getByRole('button', { name: 'Minimapa local. Abrir automapa completo', exact: true });
+  await expect(game.locator('.chronicles-map-trigger')).toHaveCount(0);
+  await expect(minimap).toBeVisible();
+  const turnsBefore = await game.getAttribute('data-chronicles-turns');
+
+  await page.keyboard.press('j');
+  const journal = page.getByRole('dialog', { name: 'Crónica de expedición' });
+  await expect(journal).toBeVisible();
+  // A complete pointer sequence must land on the close button, not on the
+  // minimap newly uncovered by the modal's unmount.
+  await journal.getByRole('button', { name: 'Cerrar Crónica' }).click();
+  await expect(journal).toHaveCount(0);
+  await expect(map).toHaveCount(0);
+  await expect(game).toHaveAttribute('data-chronicles-turns', turnsBefore);
+
+  await minimap.click();
+  await expect(map).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(map).toHaveCount(0);
+});
+
 test('Chronicles · F5 retoma la misma run guardada y guardar y salir abandona sin perderla', async ({ page }) => {
   test.setTimeout(180_000);
   await openChronicles(page, { chroniclesCurrentMapId: 'swordhaven-square', newTown: true });
