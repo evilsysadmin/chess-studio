@@ -575,10 +575,10 @@ test.describe('Chronicles · sapphire pause tablet visual proof', () => {
 // (away from the optional deserter), arriving at Rookwood facing east.
 async function walkToRookwood(page, game, onRouteTiming = null) {
   await expect(game).toHaveAttribute('data-chronicles-map-id', 'swordhaven-first-book', { timeout: 30_000 });
-  await pressSequence(page, Array(6).fill('ArrowUp'), (stats) => onRouteTiming?.('town-to-road', stats));
+  await pressSequence(page, Array(6).fill('ArrowUp'), onRouteTiming ? (stats) => onRouteTiming('town-to-road', stats) : null);
   await expect(game).toHaveAttribute('data-chronicles-map-id', 'banner-road-first-book', { timeout: 30_000 });
   onRouteTiming?.('banner-road-entered');
-  await pressSequence(page, ['ArrowRight', ...Array(9).fill('ArrowUp'), 'ArrowRight', ...Array(9).fill('ArrowUp')], (stats) => onRouteTiming?.('road-to-rookwood', stats));
+  await pressSequence(page, ['ArrowRight', ...Array(9).fill('ArrowUp'), 'ArrowRight', ...Array(9).fill('ArrowUp')], onRouteTiming ? (stats) => onRouteTiming('road-to-rookwood', stats) : null);
   await expect(game).toHaveAttribute('data-chronicles-map-id', 'rookwood-first-book', { timeout: 30_000 });
   await expect(game).toHaveAttribute('data-chronicles-phase', 'explore');
   onRouteTiming?.('rookwood-entered');
