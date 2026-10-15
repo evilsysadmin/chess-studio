@@ -100,6 +100,7 @@ import { useEscapeToClose } from '../useEscapeToClose.js';
 import ChroniclesAutomap from './ChroniclesAutomap.jsx';
 import ChroniclesCharacterSheet from './ChroniclesCharacterSheet.jsx';
 import ChroniclesShop from './ChroniclesShop.jsx';
+import ChroniclesTavern from './ChroniclesTavern.jsx';
 import ChroniclesAudience from './ChroniclesAudience.jsx';
 import ChroniclesGuild from './ChroniclesGuild.jsx';
 import ChroniclesSpellMenu from './ChroniclesSpellMenu.jsx';
@@ -911,7 +912,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
       // plain Tab traverses its accessible controls rather than closing it.
       const target = event.target;
       if (target?.isContentEditable || target?.closest?.('input, textarea, select, [contenteditable="true"]')) return;
-      if (chronicleModalOpen || sheetMemberId || current.shop || current.guild || spellMenuOpen
+      if (chronicleModalOpen || sheetMemberId || current.shop || current.guild || current.tavern || spellMenuOpen
         || current.phase === 'defeated' || current.phase === 'escaped') return;
       if (event.key === 'Tab') {
         if (event.shiftKey || target?.closest?.('.chronicles-game-menu')) return;
@@ -1209,22 +1210,6 @@ export default function ChroniclesOfMatthias({ onExit }) {
                 <span aria-hidden="true">↻</span>
               </button>
             )}
-            <button
-              type="button"
-              className="chronicles-map-trigger"
-              aria-label={automapOpen ? 'Cerrar automapa' : 'Abrir automapa'}
-              aria-expanded={automapOpen}
-              aria-controls="chronicles-automap"
-              title="M · Mapa"
-              onClick={() => {
-                clearTouchHold();
-                setMenuOpen(false);
-                setJournalOpen(false);
-                setAutomapOpen((open) => !open);
-              }}
-            >
-              <i aria-hidden="true">⌖</i><b>MAPA</b>
-            </button>
           </div>
 
             <details
@@ -1510,6 +1495,14 @@ export default function ChroniclesOfMatthias({ onExit }) {
           state={state}
           onAction={dispatch}
           onClose={() => dispatch({ type: 'shop-close' })}
+        />
+      )}
+
+      {state.tavern && !sheetMember && (
+        <ChroniclesTavern
+          state={state}
+          onAction={dispatch}
+          onClose={() => dispatch({ type: 'tavern-close' })}
         />
       )}
 
