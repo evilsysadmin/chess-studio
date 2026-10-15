@@ -12,6 +12,7 @@ import {
 } from './chroniclesCharacterBuilds.js';
 
 export const CHRONICLES_CHARACTER_DRAFT_VERSION = 1;
+export const CHRONICLES_CHARACTER_EDITOR_STEPS = Object.freeze(['identity', 'stats', 'class']);
 const AUTH_USERNAME_KEY = 'chess-study-auth-username';
 const DRAFT_KEY_PREFIX = 'chess-study-chronicles-character-draft-v2';
 
@@ -21,6 +22,10 @@ function currentOwner() {
 
 function storageKey(owner) {
   return `${DRAFT_KEY_PREFIX}:${encodeURIComponent(owner)}`;
+}
+
+function normalizedEditorStep(value) {
+  return CHRONICLES_CHARACTER_EDITOR_STEPS.includes(value) ? value : 'identity';
 }
 
 function normalizedActiveSlot(value) {
@@ -44,6 +49,7 @@ export function loadChroniclesCharacterDraft(partyTemplates) {
     version: CHRONICLES_CHARACTER_DRAFT_VERSION,
     seed: String(raw.seed ?? build.seed ?? '').slice(0, 48),
     activeSlot: normalizedActiveSlot(raw.activeSlot),
+    editorStep: normalizedEditorStep(raw.editorStep),
     build,
   };
 }
@@ -51,6 +57,7 @@ export function loadChroniclesCharacterDraft(partyTemplates) {
 export function saveChroniclesCharacterDraft({
   seed = '',
   activeSlot = CHRONICLES_CHARACTER_SLOTS[0],
+  editorStep = 'identity',
   build,
 } = {}, partyTemplates) {
   const owner = currentOwner();
@@ -64,6 +71,7 @@ export function saveChroniclesCharacterDraft({
     owner,
     seed: String(seed ?? normalizedBuild.seed ?? '').slice(0, 48),
     activeSlot: normalizedActiveSlot(activeSlot),
+    editorStep: normalizedEditorStep(editorStep),
     build: normalizedBuild,
   });
 }

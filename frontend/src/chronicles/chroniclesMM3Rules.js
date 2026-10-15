@@ -1,8 +1,8 @@
 // Chronicles character rules, Might and Magic III style.
 //
-// Seven stats rolled 3-18 (3d6) with unlimited rerolls at creation, the ten
-// MM3 classes with their stat minimums and HP per level, and the classic MM3
-// stat-bonus table. Races are not modelled yet.
+// Seven stats rolled 3-18 (3d6), ten class requirements and five racial
+// HP/SP growth profiles. Race resistances/skills are not advertised until
+// their actual combat and exploration mechanics exist.
 // Every number the character sheet shows here is wired into the first-person
 // rules: Endurance → HP, Might → damage, Accuracy → to-hit, Speed → AC and
 // initiative, Luck → trap saves. Intellect/Personality gate classes and give
@@ -35,6 +35,24 @@ export const CHRONICLES_MM3_STAT_EFFECTS = Object.freeze({
   accuracy: 'Probabilidad de acertar',
   luck: 'Salvación contra trampas',
 });
+
+// MM3 racial HP/SP adjustments, independent from the 3d6 class requirements.
+ // Remaining racial resistances and exploration skills are intentionally not
+ // represented as active bonuses until a runtime system consumes them.
+export const CHRONICLES_MM3_RACES = Object.freeze({
+  human: Object.freeze({ id: 'human', label: 'Humano', hpPerLevel: 0, spPerLevel: 0, description: 'Equilibrado; sin ajustes a vida ni magia.' }),
+  elf: Object.freeze({ id: 'elf', label: 'Elfo', hpPerLevel: -2, spPerLevel: 2, description: 'Menos vida; más magia arcana para hechiceros y arqueros.' }),
+  dwarf: Object.freeze({ id: 'dwarf', label: 'Enano', hpPerLevel: 1, spPerLevel: -1, description: 'Más vida a costa de puntos de hechizo.' }),
+  gnome: Object.freeze({ id: 'gnome', label: 'Gnomo', hpPerLevel: -1, spPerLevel: 1, description: 'Menos vida, más puntos de hechizo.' }),
+  halfOrc: Object.freeze({ id: 'halfOrc', label: 'Semiorco', hpPerLevel: 2, spPerLevel: -2, description: 'Muy resistente; menos recursos mágicos.' }),
+});
+export const CHRONICLES_MM3_RACE_IDS = Object.freeze(Object.keys(CHRONICLES_MM3_RACES));
+export const CHRONICLES_MM3_SEXES = Object.freeze({ unspecified: 'Sin indicar', female: 'Mujer', male: 'Hombre' });
+export const CHRONICLES_MM3_ALIGNMENTS = Object.freeze({ good: 'Bueno', neutral: 'Neutral', evil: 'Malvado' });
+
+export function chroniclesMM3Race(raceId) {
+  return CHRONICLES_MM3_RACES[raceId] || CHRONICLES_MM3_RACES.human;
+}
 
 export const CHRONICLES_MM3_STAT_MIN = 3;
 export const CHRONICLES_MM3_STAT_MAX = 18;
@@ -125,6 +143,21 @@ export const CHRONICLES_MM3_CLASSES = Object.freeze({
 
 export const CHRONICLES_MM3_CLASS_IDS = Object.freeze(Object.keys(CHRONICLES_MM3_CLASSES));
 
+// MM3: race modifies spell points per level; elf +2 applies only to
+// Sorcerers and Archers. Half-casters retain the current Chronicles
+// approximation (half, rounded down). One function owns the UI/runtime math.
+export function chroniclesMM3MaxSpellPoints(classId, stats, raceId = 'human', level = 1) {
+  const definition = CHRONICLES_MM3_CLASSES[classId];
+  if (!definition?.spellStat) return 0;
+  const bonus = chroniclesMM3StatBonus(stats?.[definition.spellStat]);
+  const race = chroniclesMM3Race(raceId);
+  const racialBonus = race.id === 'elf' && !['sorcerer', 'archer'].includes(classId) ? 0 : race.spPerLevel;
+  const perLevel = Math.max(1, 3 + bonus + racialBonus);
+  const total = perLevel * Math.max(1, Math.floor(Number(level) || 1));
+  return ['paladin', 'archer', 'ranger'].includes(classId) ? Math.max(1, Math.floor(total / 2)) : total;
+}
+
+
 export function chroniclesMM3Class(classId) {
   return CHRONICLES_MM3_CLASSES[classId] || null;
 }
@@ -164,7 +197,7 @@ export function chroniclesMM3RollStats(random = Math.random) {
 }
 
 // Level-1 derived sheet. HP, AC and to-hit are the numbers combat uses.
-export function chroniclesMM3Derived(classId, stats, { level = 1, armorClassBonus = 0, toHitBonus = 0 } = {}) {
+export function chroniclesMM3Derived(classId, stats, { level = 1, armorClassBonus = 0, toHitBonus = 0, raceId = 'human' } = {}) {
   const definition = chroniclesMM3Class(classId) || CHRONICLES_MM3_CLASSES.knight;
   const bonuses = Object.fromEntries(CHRONICLES_MM3_STATS.map((key) => [key, chroniclesMM3StatBonus(stats?.[key])]));
   const safeLevel = Math.max(1, Math.floor(Number(level) || 1));
@@ -172,7 +205,7 @@ export function chroniclesMM3Derived(classId, stats, { level = 1, armorClassBonu
     classId: definition.id,
     classLabel: definition.label,
     bonuses,
-    maxHp: Math.max(1, definition.hpBase + bonuses.endurance),
+    maxHp: Math.max(1, definition.hpBase + bonuses.endurance + chroniclesMM3Race(raceId).hpPerLevel * safeLevel),
     armorClass: Math.max(0, bonuses.speed + Number(armorClassBonus || 0)),
     toHit: safeLevel + bonuses.accuracy + Number(toHitBonus || 0),
     damageBonus: bonuses.might,

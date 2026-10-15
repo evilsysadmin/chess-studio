@@ -20,6 +20,7 @@ Un draft no es progreso de juego.
 - Sólo builds custom no confirmadas usan el draft.
 - Confirmar, volver/salir o completar el flujo limpia el draft según el contrato.
 - Restaurar F5 debe reabrir en el personaje/step correcto sin convertir el borrador en una compañía confirmada.
+- Editor MM3 en teléfono (portrait y landscape): tres apartados táctiles — Identidad, Atributos, Clase — con acción de confirmar siempre accesible; escritorio conserva tres columnas. Las etapas se guardan con el draft por usuario y deben tener capturas PNG separadas por apartado, no una sola captura del scroll intermedio.
 - El resumen de build deriva de modificadores mecánicos reales. No inventar penalizadores/debilidades que el sistema no mida.
 
 ## Bootstrap autoritativo de Tactics

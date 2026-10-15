@@ -9,6 +9,8 @@ import { chroniclesApplyContentEffects } from './chroniclesContentRuntime.js';
 import { chroniclesPartyInitiativeAgility } from './chroniclesInitiative.js';
 import {
   CHRONICLES_MM3_CLASS_IDS,
+  CHRONICLES_MM3_RACE_IDS,
+  chroniclesMM3MaxSpellPoints,
   chroniclesMM3AttackHits,
   chroniclesMM3Derived,
   chroniclesMM3Roll,
@@ -28,6 +30,18 @@ describe('Chronicles MM3 rules', () => {
     expect(chroniclesMM3UnmetRequirements('knight', { might: 14 })).toEqual([{ stat: 'might', need: 15, have: 14 }]);
     expect(chroniclesMM3Derived('barbarian', { endurance: 15 }).maxHp).toBe(14);
     expect(chroniclesMM3Derived('sorcerer', { endurance: 5 }).maxHp).toBe(1);
+  });
+
+  it('models all five MM3 races with honest HP/SP consequences', () => {
+    expect(CHRONICLES_MM3_RACE_IDS).toEqual(['human', 'elf', 'dwarf', 'gnome', 'halfOrc']);
+    const s = { intellect: 15, personality: 15, endurance: 12 };
+    expect(chroniclesMM3Derived('sorcerer', s, { raceId: 'elf' }).maxHp).toBe(2);
+    expect(chroniclesMM3Derived('barbarian', s, { raceId: 'halfOrc' }).maxHp).toBe(14);
+    expect(chroniclesMM3MaxSpellPoints('sorcerer', s, 'elf')).toBe(7);
+    expect(chroniclesMM3MaxSpellPoints('cleric', s, 'elf')).toBe(5); // elf SP bonus is arcane-only
+    expect(chroniclesMM3MaxSpellPoints('cleric', s, 'dwarf')).toBe(4);
+    expect(chroniclesMM3MaxSpellPoints('knight', s, 'elf')).toBe(0);
+    expect(chroniclesMM3MaxSpellPoints('archer', s, 'elf', 2)).toBe(7);
   });
 
   it('rolls a deterministic d20 per moment: natural 20 hits, natural 1 misses', () => {

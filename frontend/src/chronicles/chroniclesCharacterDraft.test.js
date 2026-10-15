@@ -31,14 +31,22 @@ describe('Chronicles character draft', () => {
     expect(saveChroniclesCharacterDraft({
       seed: 'vault-7',
       activeSlot: 'bishop',
+      editorStep: 'class',
       build,
     }, PARTY)).toBe(true);
 
     expect(loadChroniclesCharacterDraft(PARTY)).toEqual(expect.objectContaining({
       seed: 'vault-7',
       activeSlot: 'bishop',
+      editorStep: 'class',
       build: expect.objectContaining({ mode: 'custom' }),
     }));
+  });
+
+  it('defaults missing/unknown editor step to identity without rejecting older drafts', () => {
+    const build = createSeededChroniclesCharacterBuild('step-backcompat', PARTY);
+    saveChroniclesCharacterDraft({ editorStep: 'corrupted', build }, PARTY);
+    expect(loadChroniclesCharacterDraft(PARTY)?.editorStep).toBe('identity');
   });
 
   it('keeps drafts isolated by authenticated user in the same tab session', () => {
