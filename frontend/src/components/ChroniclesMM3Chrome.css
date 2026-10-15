@@ -1039,6 +1039,13 @@
     text-align: center;
     text-shadow: 2px 2px 0 #3a1d08;
     pointer-events: none;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity .32s ease, visibility .32s ease;
+  }
+  .chronicles .chronicles-stage .chronicles-dm-band.is-visible {
+    opacity: 1;
+    visibility: visible;
   }
 }
 
@@ -1082,4 +1089,8 @@
   .chronicles .chronicles-game-menu__panel > :is(button[aria-controls="chronicles-audio-options"], .chronicles-audio-back) {
     grid-column: 1 / -1;
   }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chronicles .chronicles-stage .chronicles-dm-band { transition: none; }
 }

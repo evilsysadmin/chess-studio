@@ -33,14 +33,24 @@ export function shouldShowChroniclesNarration(message) {
 export default function ChroniclesNarratorOverlay({ message, children = null, open = false, onOpenChange = () => {} }) {
   const isMeaningful = shouldShowChroniclesNarration(message);
   const [lastNarration, setLastNarration] = useState(() => (isMeaningful ? message : ''));
+  const [toastVisible, setToastVisible] = useState(isMeaningful);
   const dialogId = useId();
   const triggerRef = useRef(null);
   const dialogRef = useRef(null);
   const scrollRef = useRef(null);
 
   useEffect(() => {
-    if (isMeaningful) setLastNarration(message);
+    if (isMeaningful) {
+      setLastNarration(message);
+      setToastVisible(true);
+    }
   }, [isMeaningful, message]);
+
+  useEffect(() => {
+    if (!toastVisible) return undefined;
+    const timeout = setTimeout(() => setToastVisible(false), 5200);
+    return () => clearTimeout(timeout);
+  }, [toastVisible, lastNarration]);
 
   useEffect(() => {
     if (!open || typeof document === 'undefined') return undefined;
@@ -83,7 +93,7 @@ export default function ChroniclesNarratorOverlay({ message, children = null, op
   return (
     <>
       {/* The desktop MM3 note stays as a passive band; the reader is opt-in. */}
-      <div className="chronicles-dm-band" role="status" aria-live="polite">{narration}</div>
+      <div className={`chronicles-dm-band ${toastVisible ? "is-visible" : ""}`} role="status" aria-live="polite">{narration}</div>
       <div className="chronicles-dm-overlay">
         <button ref={triggerRef} type="button" className="chronicles-dm-trigger"
           aria-label="Crónica de expedición" aria-haspopup="dialog" aria-expanded={open}
