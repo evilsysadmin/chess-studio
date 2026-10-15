@@ -59,6 +59,10 @@
     "authority": "backend:/api/features",
     "recovery": "frontend:defaults"
   },
+  "chroniclesSavedRunMetadata": {
+    "authority": "profileStorage:chess-study-chronicles-save-metadata-v1",
+    "recovery": "backend:/api/chronicles/runs"
+  },
   "footballManagerCareer": {
     "authority": "profileStorage:chess-study-football-manager-career-v1",
     "recovery": null

@@ -1,4 +1,5 @@
 import { chroniclesCanonicalRunIdForKey } from './chroniclesCanonicalRunId.js';
+import { setProfileStorageItem } from '../profileKeys.js';
 import {
   STORAGE_LOCAL,
   getStorageItem,
@@ -63,11 +64,53 @@ function readStoredRun(storageKey) {
 
 export const CHRONICLES_SAVE_CATALOG_KEY = 'chess-study-chronicles-save-catalog-v1';
 
+/** Profile-synced display metadata. The server owns saved runs and checkpoints;
+ * this bounded user preference never contains a world/checkpoint snapshot. */
+export const CHRONICLES_SAVE_METADATA_PROFILE_KEY = 'chess-study-chronicles-save-metadata-v1';
+
+function readSaveMetadata() {
+  const blank = { titles: {}, preferredRunId: null };
+  const owner = currentOwner();
+  if (!owner) return blank;
+  try {
+    const raw = getStorageItem(STORAGE_LOCAL, CHRONICLES_SAVE_METADATA_PROFILE_KEY);
+    const value = raw ? JSON.parse(raw) : null;
+    if (value?.version !== 1 || value.owner !== owner || !value.titles
+      || typeof value.titles !== 'object' || Array.isArray(value.titles)) return blank;
+    const titles = Object.fromEntries(Object.entries(value.titles).slice(0, 30)
+      .filter(([id, name]) => typeof id === 'string' && id.length <= 100
+        && typeof name === 'string' && name.trim() && name.length <= 56));
+    return {
+      titles,
+      preferredRunId: typeof value.preferredRunId === 'string' && value.preferredRunId.length <= 100
+        ? value.preferredRunId : null,
+    };
+  } catch {
+    return blank;
+  }
+}
+
+function updateSaveMetadata(change) {
+  const owner = currentOwner();
+  if (!owner) return false;
+  const before = readSaveMetadata();
+  const next = change({ titles: { ...before.titles }, preferredRunId: before.preferredRunId });
+  if (!next) return false;
+  if (JSON.stringify(before) === JSON.stringify(next)) return true;
+  return setProfileStorageItem(CHRONICLES_SAVE_METADATA_PROFILE_KEY, JSON.stringify({
+    version: 1, owner,
+    titles: Object.fromEntries(Object.entries(next.titles).slice(-30)),
+    preferredRunId: next.preferredRunId || null,
+  }));
+}
+
+
 // This is an index of authoritative server run IDs, never a client-side
 // copy of world/checkpoint state. The owner is checked on every read.
 function readSaveCatalog() {
   const owner = currentOwner();
   if (!owner) return [];
+  const metadata = readSaveMetadata();
   try {
     const raw = getStorageItem(STORAGE_LOCAL, CHRONICLES_SAVE_CATALOG_KEY);
     const parsed = raw ? JSON.parse(raw) : null;
@@ -81,7 +124,7 @@ function readSaveCatalog() {
       return true;
     }).map((item) => ({
       id: item.id,
-      title: item.title.slice(0, 56),
+      title: metadata.titles[item.id] || item.title.slice(0, 56),
       entryMapId: typeof item.entryMapId === 'string' ? item.entryMapId : null,
       currentMapId: typeof item.currentMapId === 'string' ? item.currentMapId : null,
       createdAt: Number.isFinite(item.createdAt) ? item.createdAt : 0,
@@ -126,8 +169,13 @@ function unindexRun(runId) {
 export function chroniclesListSavedRuns(scope) {
   const current = readRunState(scope); // Migrate pre-catalog active sessions.
   if (current && !current.ended) indexActiveRun(current);
+  const syncedPreferred = readSaveMetadata().preferredRunId;
+  // Pending, unconfirmed runs are device-local until POST succeeds. Otherwise
+  // the per-user Mongo preference wins over an older local active pointer.
+  const preferredRunId = current && !current.ended && current.pending
+    ? current.id : (syncedPreferred || (current && !current.ended ? current.id : null));
   return readSaveCatalog()
-    .map((item) => ({ ...item, active: item.id === current?.id && !current.ended }))
+    .map((item) => ({ ...item, active: item.id === preferredRunId }))
     .sort((a, b) => b.updatedAt - a.updatedAt || a.id.localeCompare(b.id));
 }
 
@@ -149,6 +197,7 @@ export function chroniclesMergeRemoteSavedRuns(scope, remoteRuns, { expectedOwne
   if (!expectedOwner || expectedOwner !== currentOwner()) return chroniclesListSavedRuns(scope);
   const active = readRunState(scope);
   const previous = readSaveCatalog();
+  const metadata = readSaveMetadata();
   const byId = new Map(previous.map((row) => [row.id, row]));
   const seen = new Set();
   const incoming = remoteRuns.slice(0, 30).flatMap((row) => {
@@ -160,7 +209,7 @@ export function chroniclesMergeRemoteSavedRuns(scope, remoteRuns, { expectedOwne
     const updatedAt = remoteTimestamp(row.updatedAtMs ?? row.updatedAt);
     return [{
       id,
-      title: local?.title || `Expedición ${id.slice(0, 8)}`,
+      title: metadata.titles[id] || local?.title || `Expedición ${id.slice(0, 8)}`,
       entryMapId: local?.entryMapId || null,
       currentMapId: typeof row.currentMapId === 'string' ? row.currentMapId : null,
       createdAt: createdAt || local?.createdAt || 0,
@@ -174,6 +223,18 @@ export function chroniclesMergeRemoteSavedRuns(scope, remoteRuns, { expectedOwne
   const complete = remoteRuns.length < 30;
   const pendingLocal = previous.filter((row) => (!row.remote || !complete) && !seen.has(row.id));
   writeSaveCatalog([...incoming, ...pendingLocal]);
+  // The Mongo profile is authoritative for names. Never silently upload old
+  // device-local labels during inventory sync: remote profile hydration can
+  // still be in flight, and a stale local title must not win a dirty-key race.
+  // Explicit Rename / server confirmation are the write paths for metadata.
+  const staleTitles = complete ? Object.keys(metadata.titles).filter((id) => !seen.has(id)) : [];
+  if (staleTitles.length || (complete && metadata.preferredRunId && !seen.has(metadata.preferredRunId))) {
+    updateSaveMetadata((meta) => {
+      for (const id of staleTitles) delete meta.titles[id];
+      if (meta.preferredRunId && !seen.has(meta.preferredRunId)) meta.preferredRunId = null;
+      return meta;
+    });
+  }
   if (active && !active.ended && active.remote && complete && !seen.has(active.id)) {
     writeRunState({ ...active, ended: true });
   } else if (active && !active.ended && seen.has(active.id) && !active.remote) {
@@ -253,6 +314,12 @@ export function chroniclesMarkSavedRunRemote(scope, runId, authoritativeRunId = 
       pending: false,
     };
     writeSaveCatalog([confirmed, ...runs.filter((item) => item.id !== runId && item.id !== serverId)]);
+    updateSaveMetadata((meta) => {
+      delete meta.titles[runId];
+      meta.titles[serverId] = confirmed.title;
+      meta.preferredRunId = serverId;
+      return meta;
+    });
     writeRunState({ ...active, id: serverId, remote: true, pending: false });
     return serverId;
   }
@@ -265,6 +332,11 @@ export function chroniclesMarkSavedRunRemote(scope, runId, authoritativeRunId = 
   if (!active.remote || active.pending) {
     writeRunState({ ...active, remote: true, pending: false });
   }
+  updateSaveMetadata((meta) => {
+    if (row?.title) meta.titles[serverId] = row.title;
+    meta.preferredRunId = serverId;
+    return meta;
+  });
   return serverId;
 }
 
@@ -286,6 +358,7 @@ export function chroniclesSelectSavedRun(scope, runId) {
     remote: row.remote === true,
     pending: row.pending === true,
   });
+  if (row.remote) updateSaveMetadata((meta) => ({ ...meta, preferredRunId: row.id }));
   return true;
 }
 
@@ -298,6 +371,10 @@ export function chroniclesRenameSavedRun(scope, runId, title) {
   if (!row) return false;
   row.title = name;
   writeSaveCatalog(runs);
+  if (row.remote) return updateSaveMetadata((meta) => {
+    meta.titles[runId] = name;
+    return meta;
+  });
   return true;
 }
 
@@ -308,6 +385,11 @@ export function chroniclesForgetSavedRun(scope, runId) {
   const runs = readSaveCatalog();
   if (!runs.some((item) => item.id === runId)) return false;
   unindexRun(runId);
+  updateSaveMetadata((meta) => {
+    delete meta.titles[runId];
+    if (meta.preferredRunId === runId) meta.preferredRunId = null;
+    return meta;
+  });
   if (current && current.id === runId) {
     setStorageItem(STORAGE_LOCAL, CHRONICLES_RUN_STORAGE_KEY, JSON.stringify({
       ...current, ended: true,
@@ -328,6 +410,10 @@ export function chroniclesNoteSavedRunCheckpoint(scope, runId, currentMapId) {
   row.remote = true;
   row.pending = false;
   writeSaveCatalog(runs);
+  if (readRunState(scope)?.id === runId) updateSaveMetadata((meta) => {
+    meta.preferredRunId = runId;
+    return meta;
+  });
   return true;
 }
 
