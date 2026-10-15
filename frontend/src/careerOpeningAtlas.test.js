@@ -1,3 +1,4 @@
+import { buildOpeningTree } from './metaProgress.js';
 import { describe, expect, it } from 'vitest';
 import { atlasExample, atlasInitialTrail, atlasPosition } from './careerOpeningAtlas.js';
 
@@ -32,6 +33,17 @@ describe('Career opening atlas is built only from legal saved paths', () => {
     expect(atlasPosition({count:1,children:{Qh5:{move:'Qh5',count:1}}},['Qh5'])).toBeNull();
     expect(atlasPosition(null, [])).toBeNull();
   });
+  it('consumes the actual saved move-object shape emitted by the history archive', () => {
+    const games = Array.from({ length: 4 }, (_, i) => ({
+      id: 'game-' + i, outcome: i % 2 ? 'loss' : 'win',
+      moves: [{ san: 'e4' }, { san: 'e5' }, { san: 'Nf3' }, { san: 'Nc6' }],
+    }));
+    const stored = buildOpeningTree(games, 8);
+    expect(atlasInitialTrail(stored)).toEqual(['e4']);
+    expect(atlasPosition(stored, ['e4'])?.choices).toEqual([{ san: 'e5', count: 4, wins: 2 }]);
+    expect(atlasExample(games, ['e4', 'e5'])?.id).toBe('game-0');
+  });
+
   it('uses only explicit archived games matching every displayed move', () => {
     const history=[
       {id:'a',date:'2026-01-01',moves:['e4','c5','Nf3']},
