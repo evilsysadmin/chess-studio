@@ -243,10 +243,12 @@ async function openChronicles(page, captureLabel, {
     await expect(confirm).toBeInViewport();
     const buttonBox = await confirm.boundingBox();
     const footerBox = await editor.locator('.chronicles-character-setup__footer').boundingBox();
+    const viewport = page.viewportSize();
+    expect(viewport, 'Playwright mobile viewport is known').not.toBeNull();
     expect(footerBox.y + footerBox.height, 'mobile confirmation dock reaches viewport bottom')
-      .toBeGreaterThanOrEqual(capture.height - 2);
+      .toBeGreaterThanOrEqual(viewport.height - 2);
     expect(buttonBox.width, 'final stage uses the whole available width')
-      .toBeGreaterThan(capture.width - 35);
+      .toBeGreaterThan(viewport.width - 35);
   }
   await expect(editor.locator('.chronicles-character-setup__class-grid button[aria-pressed="true"]')).toHaveCount(1);
   await expect(editor.locator('.chronicles-character-setup__mechanics')).toContainText(/Vida \d+ · PH \d+ · Armadura \d+/);
