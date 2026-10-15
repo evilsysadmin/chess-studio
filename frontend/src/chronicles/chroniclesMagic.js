@@ -10,7 +10,7 @@
 //
 // State: `spellPoints[memberId]` (missing = full) and `spellbook[memberId]`
 // (missing = the school's starting spells). Both persist in the checkpoint.
-import { chroniclesMM3Class, chroniclesMM3StatBonus } from './chroniclesMM3Rules.js';
+import { chroniclesMM3MaxSpellPoints } from './chroniclesMM3Rules.js';
 
 export const CHRONICLES_SPELL_SCHOOLS = Object.freeze({
   cosmonium: Object.freeze({ id: 'cosmonium', label: 'Cosmonium', summary: 'Los elementos: magia arcana.' }),
@@ -23,8 +23,6 @@ const CLASS_SCHOOL = Object.freeze({
   cleric: 'esoterica', paladin: 'esoterica',
   druid: 'gaiam', ranger: 'gaiam',
 });
-const FULL_CASTERS = new Set(['sorcerer', 'cleric', 'druid']);
-
 function spell(spec) {
   return Object.freeze({ ...spec, schools: Object.freeze([...spec.schools]) });
 }
@@ -81,10 +79,10 @@ export function chroniclesMemberLevel(state, memberId) {
 export function chroniclesMemberMaxSp(state, member) {
   const school = chroniclesMemberSchool(member);
   if (!school) return 0;
-  const definition = chroniclesMM3Class(classIdOf(member));
-  const bonus = chroniclesMM3StatBonus(member.mm3?.stats?.[definition?.spellStat]);
-  const full = chroniclesMemberLevel(state, member.id) * Math.max(1, 3 + bonus);
-  return FULL_CASTERS.has(classIdOf(member)) ? full : Math.max(1, Math.floor(full / 2));
+  return chroniclesMM3MaxSpellPoints(
+    classIdOf(member), member.mm3?.stats, member.mm3?.raceId,
+    chroniclesMemberLevel(state, member.id),
+  );
 }
 
 export function chroniclesMemberSp(state, member) {

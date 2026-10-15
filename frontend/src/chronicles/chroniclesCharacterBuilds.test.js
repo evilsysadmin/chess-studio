@@ -46,6 +46,7 @@ describe('Chronicles character builds · MM3 company', () => {
       expect(chroniclesMM3ClassAllowed(character.classId, character.stats)).toBe(true);
     });
     expect(validateChroniclesCharacterBuild(a).valid).toBe(true);
+    expect(a.characters.map((character) => character.raceId)).toEqual(['human', 'human', 'human', 'human']);
 
     // A reroll keeps the preferred class when the new dice still allow it.
     const always18 = () => 0.999;
@@ -65,6 +66,29 @@ describe('Chronicles character builds · MM3 company', () => {
     expect(validateChroniclesCharacterBuild(customBuild({
       rook: { name: 'matthias' },
     })).errors.join(' ')).toMatch(/duplicado/);
+  });
+
+  it('persists racial/presentation choices while defaulting historical v2 builds safely', () => {
+    const selected = customBuild({
+      bishop: { raceId: 'elf', sex: 'female', alignment: 'evil' },
+      rook: { raceId: 'dwarf' },
+    });
+    const normalized = normalizeChroniclesCharacterBuild(selected, CHRONICLES_PARTY);
+    expect(normalized.characters[2]).toMatchObject({ raceId: 'elf', sex: 'female', alignment: 'evil' });
+    const runtime = resolveChroniclesCharacterParty(CHRONICLES_PARTY, selected, { rules: 'mm3' });
+    expect(runtime.find((entry) => entry.id === 'bishop').mm3.raceId).toBe('elf');
+    expect(runtime.find((entry) => entry.id === 'bishop').maxHp).toBe(3); // cleric 5 + END 0 - elf 2
+    expect(runtime.find((entry) => entry.id === 'rook').maxHp).toBe(11); // paladin 8 + END 2 + dwarf 1
+    expect(validateChroniclesCharacterBuild(customBuild({ bishop: { raceId: 'dragon' } })).valid).toBe(false);
+
+    const legacy = customBuild();
+    legacy.characters.forEach((character) => {
+      delete character.raceId;
+      delete character.sex;
+      delete character.alignment;
+    });
+    expect(validateChroniclesCharacterBuild(legacy).valid).toBe(true);
+    expect(normalizeChroniclesCharacterBuild(legacy, CHRONICLES_PARTY).characters[0].raceId).toBe('human');
   });
 
   it('drops v1 point-buy builds and corrupt data to the canonical company', () => {

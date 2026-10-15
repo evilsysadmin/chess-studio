@@ -7,6 +7,9 @@
 // canonical company. Tactics shares this company through the same party.
 import {
   CHRONICLES_MM3_CLASS_IDS,
+  CHRONICLES_MM3_RACE_IDS,
+  CHRONICLES_MM3_SEXES,
+  CHRONICLES_MM3_ALIGNMENTS,
   CHRONICLES_MM3_STATS,
   chroniclesMM3ClassAllowed,
   chroniclesMM3Derived,
@@ -73,6 +76,9 @@ function canonicalCharacter(slotId, partyTemplates) {
     classId: canonical.classId,
     name: template?.name || fallbackName(slotId),
     stats: { ...canonical.stats },
+    raceId: 'human',
+    sex: slotId === 'rook' ? 'female' : 'male',
+    alignment: 'neutral',
   };
 }
 
@@ -138,6 +144,10 @@ export function createSeededChroniclesCharacterBuild(seed, partyTemplates) {
   };
 }
 
+function normalizedChoice(value, choices, fallback) {
+  return Object.prototype.hasOwnProperty.call(choices, value) ? value : fallback;
+}
+
 function normalizeCharacter(slotId, raw, partyTemplates) {
   const canonical = canonicalCharacter(slotId, partyTemplates);
   const source = raw && typeof raw === 'object' ? raw : {};
@@ -150,6 +160,9 @@ function normalizeCharacter(slotId, raw, partyTemplates) {
     classId,
     name: cleanName(source.name, canonical.name),
     stats,
+    raceId: normalizedChoice(source.raceId, Object.fromEntries(CHRONICLES_MM3_RACE_IDS.map((id) => [id, true])), canonical.raceId),
+    sex: normalizedChoice(source.sex, CHRONICLES_MM3_SEXES, canonical.sex),
+    alignment: normalizedChoice(source.alignment, CHRONICLES_MM3_ALIGNMENTS, canonical.alignment),
   };
 }
 
@@ -207,6 +220,12 @@ export function validateChroniclesCharacterBuild(raw) {
       names.add(key);
     }
 
+    // Pre-identity v2 builds deliberately use human/default presentation.
+    // Unknown identity IDs must not be silently accepted as legitimate picks.
+    if (character.raceId != null && !CHRONICLES_MM3_RACE_IDS.includes(character.raceId)) errors.push(`Raza desconocida para ${name || slotId}`);
+    if (character.sex != null && !Object.hasOwn(CHRONICLES_MM3_SEXES, character.sex)) errors.push(`Sexo desconocido para ${name || slotId}`);
+    if (character.alignment != null && !Object.hasOwn(CHRONICLES_MM3_ALIGNMENTS, character.alignment)) errors.push(`Alineamiento desconocido para ${name || slotId}`);
+
     const stats = normalizeChroniclesMM3Stats(character.stats);
     const exact = stats && CHRONICLES_MM3_STATS.every((key) => stats[key] === character.stats?.[key]);
     if (!exact) {
@@ -249,7 +268,7 @@ export function resolveChroniclesCharacterParty(partyTemplates, rawBuild, { rule
 
   return (Array.isArray(partyTemplates) ? partyTemplates : []).map((template) => {
     const character = characters.get(template.id) || canonicalCharacter(template.id, partyTemplates);
-    const derived = chroniclesMM3Derived(character.classId, character.stats);
+    const derived = chroniclesMM3Derived(character.classId, character.stats, { raceId: character.raceId });
     return {
       ...template,
       name: character.name,
@@ -260,6 +279,9 @@ export function resolveChroniclesCharacterParty(partyTemplates, rawBuild, { rule
         mm3: {
           classId: derived.classId,
           classLabel: derived.classLabel,
+          raceId: character.raceId,
+          sex: character.sex,
+          alignment: character.alignment,
           stats: { ...character.stats },
           bonuses: { ...derived.bonuses },
         },
@@ -269,6 +291,9 @@ export function resolveChroniclesCharacterParty(partyTemplates, rawBuild, { rule
         mode: normalized.mode,
         slotId: template.id,
         classId: character.classId,
+        raceId: character.raceId,
+        sex: character.sex,
+        alignment: character.alignment,
         stats: { ...character.stats },
         creatorModifiers: chroniclesCreatorRuntimeModifiers(),
       },

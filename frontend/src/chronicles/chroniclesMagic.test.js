@@ -33,6 +33,15 @@ describe('Chronicles · MM3 magic', () => {
     expect(chroniclesMemberSpells(state, member(state, 'knight')).map((spell) => spell.id)).toEqual(['detect-magic']);
   });
 
+  it('applies chosen race to real magic capacity without giving noncasters PH', () => {
+    const state = town();
+    const cleric = member(state, 'bishop');
+    const archer = member(state, 'knight');
+    expect(chroniclesMemberMaxSp(state, { ...cleric, mm3: { ...cleric.mm3, raceId: 'gnome' } })).toBe(6);
+    expect(chroniclesMemberMaxSp(state, { ...cleric, mm3: { ...cleric.mm3, raceId: 'elf' } })).toBe(5);
+    expect(chroniclesMemberMaxSp(state, { ...archer, mm3: { ...archer.mm3, raceId: 'elf' } })).toBe(3);
+  });
+
   it('heals the most wounded ally with First Aid and the inn restores spell points', () => {
     let state = town(20);
     state = { ...state, party: state.party.map((entry) => entry.id === 'rook' ? { ...entry, hp: 2 } : entry) };
