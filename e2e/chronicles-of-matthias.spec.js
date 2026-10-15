@@ -514,7 +514,7 @@ test('Chronicles of Matthias · móvil mantiene party y mandos sin overflow', as
   expect(modeBox?.width || 0).toBeGreaterThanOrEqual(388);
   expect(modeBox?.height || 0).toBeGreaterThanOrEqual(842);
   // Browser-native fullscreen is best-effort; viewport ownership is the gameplay contract.
-  await expect(mode.getByRole('button', { name: 'Abrir automapa', exact: true })).toBeVisible();
+  await expect(mode.getByRole('button', { name: 'Minimapa local. Abrir automapa completo', exact: true })).toBeVisible();
   await expect(mode.getByLabel('Controles de la mazmorra')).toBeVisible();
   for (const name of ['Girar a la izquierda', 'Avanzar', 'Atacar', 'Retroceder', 'Girar a la derecha']) {
     await expect(mode.getByRole('button', { name, exact: true })).toBeVisible();
@@ -529,7 +529,7 @@ test('Chronicles of Matthias · automapa conserva fullscreen, bloquea input y or
   await openChronicles(page);
 
   const mode = page.locator('[data-chronicles="true"]');
-  const mapButton = mode.getByRole('button', { name: 'Abrir automapa', exact: true });
+  const mapButton = mode.getByRole('button', { name: 'Minimapa local. Abrir automapa completo', exact: true });
   await expect(mapButton).toBeVisible();
   await mapButton.click();
 
@@ -622,7 +622,7 @@ test('Chronicles of Matthias · automap sigue el rumbo real y ESC no abandona el
   await openChronicles(page);
 
   const mode = page.locator('[data-chronicles="true"]');
-  const mapButton = mode.getByRole('button', { name: 'Abrir automapa', exact: true });
+  const mapButton = mode.getByRole('button', { name: 'Minimapa local. Abrir automapa completo', exact: true });
   await expect(mapButton).toBeVisible();
 
   const turnsBeforeMap = Number(await mode.getAttribute('data-chronicles-turns'));
