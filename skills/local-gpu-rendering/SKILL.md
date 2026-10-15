@@ -75,3 +75,34 @@ Para reproducir CI (por ejemplo, tiempos de las specs) sí conviene lanzar **sin
 3. ¿Sirvo mi `dist` actual, en mi puerto, con el `index-*.js` correcto?
 4. ¿Comparo con `prefers-reduced-motion` cuando quiero un diff fiable?
 5. ¿Anoto en la PR qué se validó en GPU y qué queda para CI (software, Blender portátil con meshopt)?
+
+
+## A/B local de apertura PvP: GPU real frente a SwiftShader
+
+Con credenciales efímeras de staging **ya autorizadas** en el entorno local
+(`STAGING_E2E_USERNAME`, `STAGING_E2E_PASSWORD`, `STAGING_E2E_INVITE_CODE`
+y las demás variables exigidas por el smoke) se puede ejecutar el recorrido
+**real** y comparar dos renderizadores. No copiar secretos a comandos,
+issues ni logs.
+
+```bash
+cd e2e
+CHESS_STAGING_RENDERER=software ./node_modules/.bin/playwright test staging-live.spec.js --config=playwright.staging.config.js --project=chromium
+__NV_PRIME_RENDER_OFFLOAD=1 __GLX_VENDOR_LIBRARY_NAME=nvidia CHESS_STAGING_RENDERER=hardware ./node_modules/.bin/playwright test staging-live.spec.js --config=playwright.staging.config.js --project=chromium
+```
+
+- `default` (sin variable) deja CI y sus flags **intactos**; `software`
+  selecciona explícitamente SwiftShader; `hardware` solicita ANGLE GL y
+  rasterización GPU. En AMD/Intel se puede usar `DRI_PRIME=1` en vez de las
+  variables NVIDIA.
+- El smoke publica `STAGING_PVP_GPU requested=... actual=...` y **falla
+  cerrado** si se pidió `hardware` pero WebGL revela software/unknown (o
+  viceversa). Los flags por sí solos no garantizan aceleración.
+- Comparar **varias ejecuciones** de `STAGING_PVP_OPEN`,
+  `STAGING_PVP_CPU`, `STAGING_PVP_NATIVE`, `STAGING_PVP_LOAF` y
+  `STAGING_PVP_RENDER` en el mismo host/perfil, misma red, SHA y condiciones
+  de caché. Los marcadores de profiler introducen sobrecoste y una sola
+  diferencia entre runners no prueba causalidad.
+- El smoke interactúa con el backend de staging y crea una sesión temporal.
+  Requiere acceso autorizado y cleanup normal; no sirve como prueba pública
+  anónima. No se ejecuta GPU real desde GitHub Actions hosted.
