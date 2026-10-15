@@ -9,11 +9,16 @@ import {
 import {
   CHRONICLES_MM3_CLASSES,
   CHRONICLES_MM3_CLASS_IDS,
+  CHRONICLES_MM3_RACES,
+  CHRONICLES_MM3_RACE_IDS,
+  CHRONICLES_MM3_SEXES,
+  CHRONICLES_MM3_ALIGNMENTS,
   CHRONICLES_MM3_STATS,
   CHRONICLES_MM3_STAT_EFFECTS,
   CHRONICLES_MM3_STAT_LABELS,
   CHRONICLES_MM3_STAT_SHORT,
   chroniclesMM3Derived,
+  chroniclesMM3MaxSpellPoints,
   chroniclesMM3UnmetRequirements,
 } from '../chronicles/chroniclesMM3Rules.js';
 import { chroniclesPartyPortraitUrl } from '../chronicles/chroniclesPartyPortraitAssets.js';
@@ -98,7 +103,10 @@ export default function ChroniclesCharacterSetup({
   };
 
   const activeCharacter = draft.characters.find((character) => character.slotId === activeSlot) || draft.characters[0];
-  const derived = chroniclesMM3Derived(activeCharacter.classId, activeCharacter.stats);
+  const derived = chroniclesMM3Derived(activeCharacter.classId, activeCharacter.stats, { raceId: activeCharacter.raceId });
+  const racialProfile = CHRONICLES_MM3_RACES[activeCharacter.raceId] || CHRONICLES_MM3_RACES.human;
+  const spellPoints = chroniclesMM3MaxSpellPoints(activeCharacter.classId, activeCharacter.stats, activeCharacter.raceId);
+  const activeIndex = draft.characters.findIndex((character) => character.slotId === activeCharacter.slotId);
   const validation = validateChroniclesCharacterBuild(draft);
 
   const beginCustom = () => {
@@ -124,6 +132,11 @@ export default function ChroniclesCharacterSetup({
     const { stats, classId } = chroniclesRollCharacterStats(Math.random, activeCharacter.classId);
     patchCharacter(activeCharacter.slotId, { stats, classId });
     setRolls((count) => count + 1);
+  };
+
+  const chooseRace = (raceId) => {
+    if (!CHRONICLES_MM3_RACE_IDS.includes(raceId)) return;
+    patchCharacter(activeCharacter.slotId, { raceId });
   };
 
   const chooseClass = (classId) => {
@@ -191,9 +204,9 @@ export default function ChroniclesCharacterSetup({
       <section className="chronicles-character-setup__panel chronicles-character-setup__panel--editor">
         <div className="chronicles-character-setup__head">
           <div>
-            <span className="section-label">CREAR PERSONAJES · REGLAS MM3</span>
-            <h2>Forma la compañía</h2>
-            <p>Tira los dados de cada héroe tantas veces como quieras y elige una de las diez clases que su tirada permita.</p>
+            <span className="section-label">LIBRO DE AVENTUREROS · INSPIRADO EN MM3</span>
+            <h2>Forja tu compañía</h2>
+            <p>Cuatro héroes. Siete atributos, cinco razas y diez clases. El dado decide qué profesiones puedes elegir.</p>
             {recoveredDraft ? (
               <small className="chronicles-character-setup__recovered">Borrador recuperado de esta sesión.</small>
             ) : null}
@@ -218,8 +231,16 @@ export default function ChroniclesCharacterSetup({
         </nav>
 
         <div className="chronicles-character-setup__sheet">
-          <div className="chronicles-character-setup__identity">
-            <span>{CHRONICLES_MM3_CLASSES[activeCharacter.classId]?.label}</span>
+          <section className="chronicles-character-setup__identity" aria-label="Identidad del aventurero">
+            <div className="chronicles-character-setup__portrait-preview">
+              <img
+                src={chroniclesPartyPortraitUrl(activeCharacter.slotId)}
+                alt={`Retrato canónico de ${activeCharacter.name}`}
+                draggable="false"
+              />
+              <span>HÉROE {activeIndex + 1} / {draft.characters.length}</span>
+            </div>
+            <span>IDENTIDAD · {CHRONICLES_MM3_CLASSES[activeCharacter.classId]?.label}</span>
             <label>
               Nombre
               <input
@@ -229,16 +250,47 @@ export default function ChroniclesCharacterSetup({
                 onChange={(event) => patchCharacter(activeCharacter.slotId, { name: event.target.value })}
               />
             </label>
+            <div className="chronicles-character-setup__identity-fields">
+              <label>
+                Raza
+                <select value={activeCharacter.raceId} onChange={(event) => chooseRace(event.target.value)}>
+                  {CHRONICLES_MM3_RACE_IDS.map((id) => (
+                    <option value={id} key={id}>{CHRONICLES_MM3_RACES[id].label}</option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Sexo
+                <select value={activeCharacter.sex} onChange={(event) => patchCharacter(activeCharacter.slotId, { sex: event.target.value })}>
+                  {Object.entries(CHRONICLES_MM3_SEXES).map(([id, label]) => (
+                    <option value={id} key={id}>{label}</option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Alineamiento
+                <select value={activeCharacter.alignment} onChange={(event) => patchCharacter(activeCharacter.slotId, { alignment: event.target.value })}>
+                  {Object.entries(CHRONICLES_MM3_ALIGNMENTS).map(([id, label]) => (
+                    <option value={id} key={id}>{label}</option>
+                  ))}
+                </select>
+              </label>
+            </div>
+            <div className="chronicles-character-setup__race-effect" aria-live="polite">
+              <strong>{racialProfile.label} · Origen</strong>
+              <p>{racialProfile.description}</p>
+              <small>Los retratos son canónicos. Sexo y alineamiento son narrativos; las resistencias raciales aún no están implementadas.</small>
+            </div>
             <dl className="chronicles-character-setup__derived" aria-label={`Valores de combate de ${activeCharacter.name}`}>
               <div><dt>Vida</dt><dd>{derived.maxHp}</dd></div>
+              <div><dt>Hechizos</dt><dd>{spellPoints} PH</dd></div>
               <div><dt>Armadura</dt><dd>{derived.armorClass}</dd></div>
               <div><dt>Acierto</dt><dd>{signed(derived.toHit)}</dd></div>
-              <div><dt>Daño</dt><dd>{signed(derived.damageBonus)}</dd></div>
             </dl>
             <small className="chronicles-character-setup__derived-note">
-              La armadura sube con el equipo. Intelecto y Personalidad darán puntos de hechizo cuando llegue la magia.
+              Valores iniciales sin equipamiento. La clase y la raza ya afectan a la vida y a la magia reales.
             </small>
-          </div>
+          </section>
 
           <section className="chronicles-character-setup__attributes" aria-label={`Estadísticas de ${activeCharacter.name}`}>
             <div className="chronicles-character-setup__section-head">
@@ -247,7 +299,7 @@ export default function ChroniclesCharacterSetup({
                 <strong>{rolls > 0 ? `${rolls} ${rolls === 1 ? 'tirada' : 'tiradas'} en esta sesión` : 'Tirada inicial'}</strong>
               </div>
               <button type="button" className="secondary-btn" onClick={rerollStats}>
-                🎲 Tirar dados
+                🎲 Volver a tirar
               </button>
             </div>
             {CHRONICLES_MM3_STATS.map((key) => {
@@ -271,8 +323,8 @@ export default function ChroniclesCharacterSetup({
           <section className="chronicles-character-setup__classes" aria-label={`Clase de ${activeCharacter.name}`}>
             <div className="chronicles-character-setup__section-head">
               <div>
-                <span>CLASE</span>
-                <strong>Sólo las que permite la tirada.</strong>
+                <span>CLASE · 10 PROFESIONES</span>
+                <strong>Elige entre las habilitadas.</strong>
               </div>
             </div>
             <div className="chronicles-character-setup__class-grid">
@@ -291,11 +343,15 @@ export default function ChroniclesCharacterSetup({
                     onClick={() => chooseClass(classId)}
                   >
                     <strong>{definition.label}</strong>
-                    <small>{definition.summary}</small>
-                    <em>{unmet.length ? `Necesita ${requirementText(classId)}` : `Vida base ${definition.hpBase} · ${requirementText(classId)}`}</em>
+                    <em>{unmet.length ? `Requiere ${requirementText(classId)}` : `✓ ${requirementText(classId) || 'Sin requisitos'}`}</em>
                   </button>
                 );
               })}
+            </div>
+            <div className="chronicles-character-setup__class-detail" aria-live="polite">
+              <strong>{CHRONICLES_MM3_CLASSES[activeCharacter.classId]?.label}</strong>
+              <p>{CHRONICLES_MM3_CLASSES[activeCharacter.classId]?.summary}</p>
+              <small>Vida base {CHRONICLES_MM3_CLASSES[activeCharacter.classId]?.hpBase} · Daño {signed(derived.damageBonus)} · PH {spellPoints}</small>
             </div>
           </section>
         </div>
@@ -307,15 +363,15 @@ export default function ChroniclesCharacterSetup({
         ) : null}
 
         <footer className="chronicles-character-setup__footer">
-          <details className="chronicles-character-setup__mechanics" open>
+          <details className="chronicles-character-setup__mechanics">
             <summary>Resumen de la compañía</summary>
             <div>
               {draft.characters.map((character) => {
-                const sheet = chroniclesMM3Derived(character.classId, character.stats);
+                const sheet = chroniclesMM3Derived(character.classId, character.stats, { raceId: character.raceId });
                 return (
                   <span key={character.slotId}>
-                    <strong>{character.name} · {sheet.classLabel}</strong>
-                    <small>Vida {sheet.maxHp} · Armadura {sheet.armorClass} · Acierto {signed(sheet.toHit)} · Daño {signed(sheet.damageBonus)}</small>
+                    <strong>{character.name} · {sheet.classLabel} · {CHRONICLES_MM3_RACES[character.raceId]?.label || 'Humano'}</strong>
+                    <small>Vida {sheet.maxHp} · PH {chroniclesMM3MaxSpellPoints(character.classId, character.stats, character.raceId)} · Armadura {sheet.armorClass} · Acierto {signed(sheet.toHit)}</small>
                   </span>
                 );
               })}

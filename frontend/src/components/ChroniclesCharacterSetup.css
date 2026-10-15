@@ -599,3 +599,197 @@
     font-size: 12px !important;
   }
 }
+
+/* MM3-inspired creation ledger: portrait, seven dice, class eligibility.
+   The four authored portraits remain the only character imagery. */
+.chronicles-character-setup__panel--editor {
+  width: min(1280px, 100%);
+  padding: clamp(14px, 2.2vw, 26px);
+  border: 2px ridge #997447;
+  background: linear-gradient(140deg, #181e24f5, #13151a 65%, #211916);
+  box-shadow: 0 24px 70px #000b, inset 0 0 0 3px #0b0b10, inset 0 0 0 4px #82643b55;
+}
+.chronicles-character-setup__panel--editor h2 {
+  font: 700 clamp(26px, 3.3vw, 42px)/1.12 Georgia, serif;
+  color: #f3deb3;
+}
+.chronicles-character-setup__panel--editor .chronicles-character-setup__slots {
+  margin: 14px 0;
+}
+.chronicles-character-setup__panel--editor .chronicles-character-setup__slots button {
+  min-height: 66px;
+  grid-template-columns: 52px minmax(0, 1fr);
+  grid-template-rows: auto auto;
+  align-content: center;
+  gap: 2px 9px;
+  border: 1px solid #9b79534f;
+  border-radius: 4px;
+  background: #0d111a80;
+}
+.chronicles-character-setup__panel--editor .chronicles-character-setup__slots img {
+  grid-row: span 2;
+  width: 48px;
+  height: 48px;
+}
+.chronicles-character-setup__panel--editor .chronicles-character-setup__slots button.is-active {
+  border-color: #ecc17c;
+  background: #74502040;
+  box-shadow: inset 0 0 0 1px #d3a55a6b;
+}
+.chronicles-character-setup__panel--editor .chronicles-character-setup__sheet {
+  grid-template-columns: minmax(205px, .84fr) minmax(265px, 1.03fr) minmax(280px, 1.23fr);
+  gap: 12px;
+  align-items: stretch;
+}
+.chronicles-character-setup__panel--editor .chronicles-character-setup__identity,
+.chronicles-character-setup__panel--editor .chronicles-character-setup__attributes,
+.chronicles-character-setup__panel--editor .chronicles-character-setup__classes {
+  grid-row: auto;
+  grid-column: auto;
+  padding: 14px;
+  border: 1px solid #a17a4c55;
+  background: linear-gradient(145deg, #12242b88, #0e111bd9);
+  border-radius: 4px;
+  min-width: 0;
+}
+.chronicles-character-setup__portrait-preview {
+  position: relative;
+  width: 100%;
+  height: clamp(112px, 14vh, 158px);
+  margin-bottom: 13px;
+  overflow: hidden;
+  border: 2px ridge #b38b4a;
+  background: #141820;
+}
+.chronicles-character-setup__portrait-preview img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+  object-position: center 28%;
+}
+.chronicles-character-setup__portrait-preview span {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  padding: 5px 9px;
+  background: #0c141be6;
+  color: #f2d39c;
+  font-size: 10px;
+  letter-spacing: .14em;
+}
+.chronicles-character-setup__identity-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+  margin-top: 10px;
+}
+.chronicles-character-setup__identity-fields label:last-child { grid-column: 1 / -1; }
+.chronicles-character-setup__identity label {
+  font-size: 12px;
+  letter-spacing: .04em;
+  margin-top: 9px;
+}
+.chronicles-character-setup__identity select {
+  width: 100%;
+  min-height: 38px;
+  padding: 6px 8px;
+  border: 1px solid #ad8d5f65;
+  color: #f2e9d9;
+  background: #17252a;
+}
+.chronicles-character-setup__identity input { min-height: 38px; padding: 8px; }
+.chronicles-character-setup__race-effect {
+  padding: 9px 10px;
+  margin-top: 11px;
+  border-left: 2px solid #c49c5b;
+  background: #ac804e0e;
+}
+.chronicles-character-setup__race-effect strong {
+  color: #e5c38a;
+  font-size: 12px;
+}
+.chronicles-character-setup__race-effect p {
+  margin: 5px 0;
+  font-size: 12px;
+  line-height: 1.4;
+}
+.chronicles-character-setup__race-effect small {
+  display: block;
+  line-height: 1.45;
+  font-size: 11px;
+  color: #a6b0ac;
+}
+.chronicles-character-setup__panel--editor .chronicles-character-setup__derived {
+  gap: 5px;
+  margin-top: 10px;
+}
+.chronicles-character-setup__panel--editor .chronicles-character-setup__derived > div { padding: 6px 8px; }
+.chronicles-character-setup__panel--editor .chronicles-character-setup__derived dd { font-size: 19px; }
+.chronicles-character-setup__panel--editor .chronicles-character-setup__class-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+}
+.chronicles-character-setup__panel--editor .chronicles-character-setup__class-grid > button {
+  min-height: 65px;
+  padding: 8px 9px;
+  border-radius: 4px;
+  border: 1px solid #a9845450;
+  background: #0a161ec0;
+  transition: border-color .14s ease, background-color .14s ease;
+}
+.chronicles-character-setup__panel--editor .chronicles-character-setup__class-grid > button.is-selected {
+  border-color: #f0c071;
+  background: #99703b3f;
+  box-shadow: inset 0 0 0 1px #b08d57;
+}
+.chronicles-character-setup__panel--editor .chronicles-character-setup__class-grid > button:disabled { opacity: .48; }
+.chronicles-character-setup__panel--editor .chronicles-character-setup__class-grid > button strong {
+  font-size: 13px;
+  color: #f0e2c8;
+}
+.chronicles-character-setup__panel--editor .chronicles-character-setup__class-grid > button em {
+  color: #c6ad88;
+  font-size: 10px;
+  font-style: normal;
+}
+.chronicles-character-setup__class-detail {
+  padding: 11px;
+  margin-top: 10px;
+  border: 1px solid #9b795344;
+  background: #ddae6930;
+}
+.chronicles-character-setup__class-detail strong { color: #ecd19e; }
+.chronicles-character-setup__class-detail p {
+  margin: 5px 0;
+  font-size: 12px;
+  line-height: 1.45;
+}
+.chronicles-character-setup__class-detail small { color: #d7bd93; }
+.chronicles-character-setup__panel--editor button:focus-visible,
+.chronicles-character-setup__panel--editor select:focus-visible,
+.chronicles-character-setup__panel--editor input:focus-visible {
+  outline: 2px solid #ffe2a4;
+  outline-offset: 2px;
+}
+@media (max-width: 1100px) and (min-width: 721px) {
+  .chronicles-character-setup__panel--editor .chronicles-character-setup__sheet {
+    grid-template-columns: minmax(225px, .9fr) minmax(300px, 1.1fr);
+  }
+  .chronicles-character-setup__panel--editor .chronicles-character-setup__classes {
+    grid-column: 1 / -1;
+  }
+  .chronicles-character-setup__portrait-preview { height: 140px; }
+}
+@media (max-width: 720px) {
+  .chronicles-character-setup__panel--editor .chronicles-character-setup__sheet { grid-template-columns: 1fr; }
+  .chronicles-character-setup__panel--editor .chronicles-character-setup__slots button {
+    min-height: 58px;
+    grid-template-columns: 40px minmax(0, 1fr);
+  }
+  .chronicles-character-setup__panel--editor .chronicles-character-setup__slots img { width: 35px; height: 35px; }
+  .chronicles-character-setup__portrait-preview { height: 130px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .chronicles-character-setup__panel--editor * { transition: none !important; }
+}

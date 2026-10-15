@@ -6,6 +6,7 @@ import {
   createSeededChroniclesCharacterBuild,
 } from '../chronicles/chroniclesCharacterBuilds.js';
 import { CHRONICLES_PARTY } from '../chroniclesOfMatthias.js';
+import { saveChroniclesCharacterDraft, clearChroniclesCharacterDraft } from '../chronicles/chroniclesCharacterDraft.js';
 import ChroniclesCharacterSetup from './ChroniclesCharacterSetup.jsx';
 
 function render(build) {
@@ -29,6 +30,28 @@ describe('ChroniclesCharacterSetup', () => {
     expect(html).toContain('Entrar con grupo canónico');
     expect(html).toContain('Crear PJs');
     expect(html).not.toContain('COMPAÑÍA GUARDADA');
+  });
+
+  it('offers the full MM3-inspired identity, dice and class editor from a recovered draft', () => {
+    localStorage.setItem('chess-study-auth-username', 'chronicles-editor-test');
+    const build = createSeededChroniclesCharacterBuild('creator-ui', CHRONICLES_PARTY);
+    expect(saveChroniclesCharacterDraft({ activeSlot: 'bishop', build }, CHRONICLES_PARTY)).toBe(true);
+    try {
+      const html = render(build);
+      expect(html).toContain('data-chronicles-character-setup="editor"');
+      expect(html).toContain('Forja tu compañía');
+      expect(html).toContain('Identidad del aventurero');
+      expect(html).toContain('Raza');
+      expect(html).toContain('Semiorco');
+      expect(html).toContain('Alineamiento');
+      expect(html).toContain('Volver a tirar');
+      expect((html.match(/data-class-id=/g) || []).length).toBe(10);
+      expect(html).toContain('Hechizos');
+      expect(html).toContain('Confirmar compañía');
+    } finally {
+      clearChroniclesCharacterDraft();
+      localStorage.removeItem('chess-study-auth-username');
+    }
   });
 
   it('surfaces a persisted custom party without hiding the canonical fallback', () => {
