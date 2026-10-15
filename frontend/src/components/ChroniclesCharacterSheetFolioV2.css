@@ -390,3 +390,18 @@
 @media (prefers-reduced-motion: reduce) {
   .chronicles-character-sheet--mm3.chronicles-character-sheet--folio-v2 .chronicles-character-sheet__tabs button { transition: none; }
 }
+/* The character dossier is a room-sized interface, not a narrow popup.
+   Keep a small safe-area gutter and let the inner folio own scrolling. */
+.chronicles-character-sheet.chronicles-character-sheet--mm3.chronicles-character-sheet--folio-v2 {
+  width: calc(100vw - 16px);
+  max-width: none;
+  height: calc(100dvh - 16px);
+  max-height: none;
+  box-sizing: border-box;
+}
+@media (max-width: 850px), (max-height: 580px) {
+  .chronicles-character-sheet.chronicles-character-sheet--mm3.chronicles-character-sheet--folio-v2 {
+    width: calc(100vw - 8px);
+    height: calc(100dvh - 8px);
+  }
+}
