@@ -19,6 +19,22 @@ export function shouldAutoRotateChroniclesOnEntry({ win = globalThis.window } = 
   );
 }
 
+// A foreground resume is not a user gesture. Never try to enter fullscreen
+// here; only restore an existing mobile fullscreen session in portrait.
+export function shouldRestoreChroniclesLandscapeOnResume({
+  win = globalThis.window,
+  doc = globalThis.document,
+  screenApi = globalThis.screen,
+} = {}) {
+  return Boolean(
+    win && doc && doc.visibilityState !== 'hidden'
+    && doc.fullscreenElement
+    && shouldAutoRotateChroniclesOnEntry({ win })
+    && !win.matchMedia(CHRONICLES_LANDSCAPE_QUERY).matches
+    && typeof screenApi?.orientation?.lock === 'function'
+  );
+}
+
 // Mobile browsers commonly refuse orientation.lock() unless the document is
 // fullscreen. The user gesture that launches Chronicles is our chance to
 // request both. Native fullscreen may consume the first Escape; the in-game
@@ -75,6 +91,39 @@ export default function useChroniclesLandscape(enabled = true) {
       landscapeMedia.removeEventListener?.('change', refresh);
     };
   }, []);
+
+  useEffect(() => {
+    if (!enabled || typeof document === 'undefined' || typeof window === 'undefined') return undefined;
+    // Browser task switches may drop the landscape lock or native fullscreen.
+    // Restore the lock only when fullscreen remains; otherwise the existing
+    // rotation control provides the required fresh user gesture.
+    let active = true;
+    let retrying = false;
+    const resume = () => {
+      if (document.visibilityState === 'hidden') return;
+      setViewport(readViewport());
+      if (retrying || !shouldRestoreChroniclesLandscapeOnResume()) return;
+      retrying = true;
+      try {
+        Promise.resolve(globalThis.screen.orientation.lock('landscape')).then(
+          () => { if (active) setLockState('locked'); },
+          () => { if (active) setLockState('rejected'); },
+        ).finally(() => { retrying = false; });
+      } catch {
+        retrying = false;
+        if (active) setLockState('rejected');
+      }
+    };
+    document.addEventListener('visibilitychange', resume);
+    window.addEventListener('pageshow', resume);
+    window.addEventListener('focus', resume);
+    return () => {
+      active = false;
+      document.removeEventListener('visibilitychange', resume);
+      window.removeEventListener('pageshow', resume);
+      window.removeEventListener('focus', resume);
+    };
+  }, [enabled, readViewport]);
 
   useEffect(() => () => {
     void releaseChroniclesLandscape();

@@ -3,6 +3,7 @@ import {
   releaseChroniclesLandscape,
   requestChroniclesLandscapeOnEntry,
   shouldAutoRotateChroniclesOnEntry,
+  shouldRestoreChroniclesLandscapeOnResume,
 } from './useChroniclesLandscape.js';
 
 describe('Chronicles immersive entry', () => {
@@ -14,6 +15,35 @@ describe('Chronicles immersive entry', () => {
     expect(shouldAutoRotateChroniclesOnEntry({ win: mobile })).toBe(true);
     expect(shouldAutoRotateChroniclesOnEntry({ win: desktop })).toBe(false);
     expect(shouldAutoRotateChroniclesOnEntry({ win: wideTouch })).toBe(false);
+  });
+
+  it('relocks only a resumed portrait phone with an existing fullscreen session', () => {
+    let landscape = false;
+    const win = {
+      innerWidth: 390,
+      matchMedia: vi.fn((query) => ({
+        matches: query.includes('orientation: landscape') ? landscape : true,
+      })),
+    };
+    const doc = { visibilityState: 'visible', fullscreenElement: {} };
+    const lock = vi.fn(async () => {});
+    const screenApi = { orientation: { lock } };
+    const options = { win, doc, screenApi };
+
+    expect(shouldRestoreChroniclesLandscapeOnResume(options)).toBe(true);
+    landscape = true;
+    expect(shouldRestoreChroniclesLandscapeOnResume(options)).toBe(false);
+    landscape = false;
+    doc.visibilityState = 'hidden';
+    expect(shouldRestoreChroniclesLandscapeOnResume(options)).toBe(false);
+    doc.visibilityState = 'visible';
+    doc.fullscreenElement = null;
+    expect(shouldRestoreChroniclesLandscapeOnResume(options)).toBe(false);
+    doc.fullscreenElement = {};
+    expect(shouldRestoreChroniclesLandscapeOnResume({ ...options, screenApi: {} })).toBe(false);
+    expect(shouldRestoreChroniclesLandscapeOnResume({
+      ...options, win: { ...win, innerWidth: 1440 },
+    })).toBe(false);
   });
 
   it('uses viewport-owned immersion on desktop without requesting browser fullscreen', async () => {
