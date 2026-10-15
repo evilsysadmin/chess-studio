@@ -46,10 +46,15 @@ describe('Chronicles · MM3 magic', () => {
     // A spell the caster does not know is refused.
     const unknown = chroniclesReduce(state, { type: 'cast', memberId: 'bishop', spellId: 'flying-fist' });
     expect(unknown.message).toMatch(/no conoce/);
-    // Resting at the tavern refills the book.
+    // Entering the tavern is free: spell points recover only after the
+    // player chooses and pays for the authored rest service.
     const tavern = chroniclesReduce({ ...state, x: 7, y: 10 }, 'interact');
-    expect(chroniclesMemberSp(tavern, member(tavern, 'bishop'))).toBe(5);
-    expect(tavern.spellPoints).toBeUndefined();
+    expect(tavern.tavern?.id).toBe('first-book-healer');
+    expect(chroniclesMemberSp(tavern, member(tavern, 'bishop'))).toBe(4);
+    const rested = chroniclesReduce(tavern, { type: 'tavern-use', choice: 'rest' });
+    expect(chroniclesMemberSp(rested, member(rested, 'bishop'))).toBe(5);
+    expect(rested.spellPoints).toBeUndefined();
+    expect(rested.inventory['crown-gold'].quantity).toBe(15);
   });
 
   it('sells membership and spells at the guild, only to casters of the matching force', () => {
