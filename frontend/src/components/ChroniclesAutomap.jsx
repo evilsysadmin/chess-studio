@@ -108,20 +108,29 @@ export default function ChroniclesAutomap({ open, state, visitedCells, onClose }
             aria-label={`Mapa explorado de ${map.title || 'la zona'}`}
             preserveAspectRatio="xMidYMid meet"
           >
+            <defs>
+              <pattern id="chronicles-automap-wall-hatch" patternUnits="userSpaceOnUse" width=".24" height=".24">
+                <path d="M -.08 .08 L .08 -.08 M 0 .24 L .24 0 M .16 .32 L .32 .16"
+                  stroke="#ae8d70" strokeWidth=".045" opacity=".54" fill="none" />
+              </pattern>
+            </defs>
             {map.grid.flatMap((row, y) => Array.from(row).map((tile, x) => {
               const key = chroniclesAutomapCellKey(x, y);
               if (!revealed.has(key)) return null;
               const wall = tile === '#';
               return (
-                <rect
-                  key={key}
-                  x={x + 0.03}
-                  y={y + 0.03}
-                  width="0.94"
-                  height="0.94"
-                  rx="0.07"
-                  className={`chronicles-automap__cell ${wall ? 'is-wall' : 'is-floor'} ${visited.has(key) ? 'is-visited' : ''}`}
-                />
+                <g key={key}>
+                  <rect
+                    x={x + 0.03}
+                    y={y + 0.03}
+                    width="0.94"
+                    height="0.94"
+                    rx="0.07"
+                    className={`chronicles-automap__cell ${wall ? 'is-wall' : 'is-floor'} ${visited.has(key) ? 'is-visited' : ''}`}
+                  />
+                  {wall && <rect x={x + 0.09} y={y + 0.09} width="0.82" height="0.82"
+                    rx="0.03" fill="url(#chronicles-automap-wall-hatch)" pointerEvents="none" />}
+                </g>
               );
             }))}
             {markers.map((marker) => (

@@ -117,20 +117,29 @@ export default function ChroniclesMinimap({
         role="img"
         aria-label={`Entorno explorado en un radio de ${radius} casillas`}
       >
+        <defs>
+          <pattern id="chronicles-minimap-wall-hatch" patternUnits="userSpaceOnUse" width=".24" height=".24">
+            <path d="M -.08 .08 L .08 -.08 M 0 .24 L .24 0 M .16 .32 L .32 .16"
+              stroke="#ae8d70" strokeWidth=".045" opacity=".54" fill="none" />
+          </pattern>
+        </defs>
         {map.grid.flatMap((row, y) => Array.from(row).map((tile, x) => {
           if (Math.abs(x - state.x) > radius || Math.abs(y - state.y) > radius) return null;
           const key = chroniclesAutomapCellKey(x, y);
           if (!revealed.has(key)) return null;
           return (
-            <rect
-              key={key}
-              x={x + .04}
-              y={y + .04}
-              width=".92"
-              height=".92"
-              rx=".08"
-              className={`chronicles-minimap__cell ${tile === '#' ? 'is-wall' : 'is-floor'} ${visited.has(key) ? 'is-visited' : ''}`}
-            />
+            <g key={key}>
+              <rect
+                x={x + .04}
+                y={y + .04}
+                width=".92"
+                height=".92"
+                rx=".08"
+                className={`chronicles-minimap__cell ${tile === '#' ? 'is-wall' : 'is-floor'} ${visited.has(key) ? 'is-visited' : ''}`}
+              />
+              {tile === '#' && <rect x={x + .09} y={y + .09} width=".82" height=".82"
+                rx=".03" fill="url(#chronicles-minimap-wall-hatch)" pointerEvents="none" />}
+            </g>
           );
         }))}
         {markers.map((marker) => (

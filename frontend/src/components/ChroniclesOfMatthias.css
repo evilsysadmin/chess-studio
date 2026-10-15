@@ -726,18 +726,19 @@
 }
 
 .chronicles-automap__cell.is-wall {
-  fill: rgba(65, 55, 44, .92);
-  stroke: rgba(166, 139, 103, .28);
+  fill: #35261d;
+  stroke: #17110e;
+  stroke-width: .085;
 }
 
 .chronicles-automap__cell.is-floor {
-  fill: rgba(76, 55, 34, .54);
-  stroke: rgba(207, 168, 108, .26);
+  fill: #b48a52;
+  stroke: #d9b477;
 }
 
 .chronicles-automap__cell.is-floor.is-visited {
-  fill: rgba(133, 91, 45, .62);
-  stroke: rgba(232, 190, 120, .46);
+  fill: #cda569;
+  stroke: #f1d29b;
 }
 
 .chronicles-automap__marker {
@@ -895,18 +896,19 @@
 }
 
 .chronicles-minimap__cell.is-wall {
-  fill: rgba(61, 53, 44, .9);
-  stroke: rgba(175, 149, 111, .3);
+  fill: #35261d;
+  stroke: #17110e;
+  stroke-width: .085;
 }
 
 .chronicles-minimap__cell.is-floor {
-  fill: rgba(71, 51, 32, .48);
-  stroke: rgba(199, 160, 101, .22);
+  fill: #b48a52;
+  stroke: #d9b477;
 }
 
 .chronicles-minimap__cell.is-floor.is-visited {
-  fill: rgba(130, 88, 43, .68);
-  stroke: rgba(232, 190, 120, .5);
+  fill: #cda569;
+  stroke: #f1d29b;
 }
 
 .chronicles-minimap__marker {
