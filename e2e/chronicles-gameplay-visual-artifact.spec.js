@@ -1033,6 +1033,7 @@ for (const capture of CAPTURES) {
       visualPhase('post-readback-contracts-begin');
       // A browser «night mode» must not lighten the dark ink on the stone.
       expect(await gameRoot.evaluate((root) => getComputedStyle(root).colorScheme.split(' ').sort().join(' ')), `${capture.label}: Chronicles opts out of forced dark`).toBe('light only');
+      visualPhase('color-scheme-verified');
 
       // Grey MM3 stone must use near-black ink on MENÚ and movement arrows.
       // Brave's automatic dark palette used to turn these glyphs white.
@@ -1054,6 +1055,7 @@ for (const capture of CAPTURES) {
         expect(control.scheme, `${capture.label}: ${control.selector} uses the light stone palette`).toBe('light only');
 
       }
+      visualPhase('engraved-styles-verified');
 
       // The map is opened via the minimap, not a separate MAPA button.
       // Read the same two live controls in one browser round trip.
@@ -1076,20 +1078,24 @@ for (const capture of CAPTURES) {
         expect(ink.priority, `${capture.label}: ${selector} priority`).toBe('important');
         expect(ink.computed, `${capture.label}: ${selector} final ink`).toBe('rgb(8, 8, 10)');
       }
+      visualPhase('inline-styles-verified');
 
       const sapphire = await gameRoot.locator('.chronicles-game-menu > summary').evaluate(async (summary) => {
         const art = getComputedStyle(summary).backgroundImage;
         const src = art.match(/url\(["']?(data:image\/png;base64,[^"')]+)/)?.[1];
         const image = new Image();
+        const decodeStart = performance.now();
         if (src) {
           image.src = src;
           await image.decode();
         }
+        const decodeMs = Math.round(performance.now() - decodeStart);
         const engraving = summary.querySelector('.chronicles-menu-gem__hint');
         const frame = summary.getBoundingClientRect();
         const label = engraving.getBoundingClientRect();
         return {
           art,
+          decodeMs,
           imageWidth: image.naturalWidth,
           imageHeight: image.naturalHeight,
           engraving: engraving.textContent,
@@ -1100,6 +1106,10 @@ for (const capture of CAPTURES) {
             && label.top >= frame.top && label.bottom <= frame.bottom,
         };
       });
+      visualPhase('sapphire-dom-evaluated');
+      if (capture.label === 'desktop-1440x900') {
+        console.log(`Chronicles visual timing | sapphire-image-decode-browser | ${sapphire.decodeMs}ms`);
+      }
       expect(sapphire.art, `${capture.label}: sapphire artwork is the menu trigger`).toMatch(/^url\(["']?data:image\/png;base64,/);
       expect([sapphire.imageWidth, sapphire.imageHeight], `${capture.label}: optimized MM3 sapphire`).toEqual([84, 54]);
       expect(sapphire.engraving, `${capture.label}: permanent menu label`).toBe('MENÚ');
