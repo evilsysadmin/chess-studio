@@ -246,6 +246,41 @@ function summarizePvpOpenCpuProfile(profile) {
     ' top_self_ms=' + (top || 'none');
 }
 
+// Aggregate selected native DevTools event durations in memory. Raw trace
+// records and args are never retained, uploaded or emitted in CI logs.
+function createPvpNativeTraceSummary() {
+  const allowed = new Set([
+    'RunTask', 'ThreadControllerImpl::RunTask', 'ThreadPool_RunTask',
+    'EvaluateScript', 'FunctionCall', 'EventDispatch', 'Layout', 'UpdateLayoutTree',
+    'RecalculateStyles', 'Paint', 'CompositeLayers', 'UpdateLayerTree',
+    'DrawFrame', 'BeginMainThreadFrame', 'Commit', 'RasterTask',
+    'GpuCommandBufferStub::OnAsyncFlush', 'GLES2DecoderImpl::DoCommands',
+    'V8.Execute', 'V8.CompileCode', 'ParseHTML',
+  ]);
+  const totals = new Map();
+  let events = 0;
+  return {
+    add(entries) {
+      for (const event of entries || []) {
+        if (event.ph !== 'X' || !allowed.has(event.name) || !Number.isFinite(event.dur)) continue;
+        const durationMs = Math.max(0, event.dur / 1000);
+        const current = totals.get(event.name) || { count: 0, totalMs: 0, maxMs: 0 };
+        current.count += 1;
+        current.totalMs += durationMs;
+        current.maxMs = Math.max(current.maxMs, durationMs);
+        totals.set(event.name, current);
+        events += 1;
+      }
+    },
+    report() {
+      const top = [...totals].sort((a, b) => b[1].maxMs - a[1].maxMs).slice(0, 10)
+        .map(([name, x]) => name + ':' + x.count + '/' + Math.round(x.totalMs) + '/' + Math.round(x.maxMs))
+        .join(',');
+      return 'events=' + events + ' top_count_total_max_ms=' + (top || 'none');
+    },
+  };
+}
+
 async function assertLivePvpBrowserPath(page) {
   // Read-only phase diagnostics: preserve real lobby/pulse cadence and counts.
   // Never log credentials, tokens, roster contents, or response bodies.
@@ -428,11 +463,44 @@ async function assertLivePvpBrowserPath(page) {
     }
   };
 
+  // CDP tracing is local to the test browser. Summarize an allowlisted set
+  // of renderer/native events; never preserve raw trace event args or URLs.
+  const nativeSummary = createPvpNativeTraceSummary();
+  let nativeTracing = false;
+  const onTraceData = ({ value }) => nativeSummary.add(value);
+  if (cpuSession) {
+    try {
+      cpuSession.on('Tracing.dataCollected', onTraceData);
+      await cpuSession.send('Tracing.start', {
+        categories: 'devtools.timeline,v8,blink,cc,gpu',
+        transferMode: 'ReportEvents',
+      });
+      nativeTracing = true;
+    } catch {
+      console.log('STAGING_PVP_NATIVE unavailable=cdp-start');
+    }
+  }
+  const stopNativeTracing = async () => {
+    if (!cpuSession || !nativeTracing) return;
+    nativeTracing = false;
+    try {
+      const complete = new Promise((resolve) => {
+        cpuSession.once('Tracing.tracingComplete', resolve);
+      });
+      await cpuSession.send('Tracing.end');
+      await Promise.race([complete, new Promise((resolve) => setTimeout(resolve, 2500))]);
+      console.log('STAGING_PVP_NATIVE ' + nativeSummary.report());
+    } catch {
+      console.log('STAGING_PVP_NATIVE unavailable=cdp-stop');
+    }
+  };
+
   try {
     const firstLobby = waitLobby();
     await openDuelHall(page);
     const homeNavigationDoneMs = openMs();
     assertPvpBrowserResponse(await firstLobby, { suffix: '/lobby', native: 'lobby-read' });
+    await stopNativeTracing();
     await stopCpuSampling();
 
     const lobby = page.getByRole('dialog', { name: 'Duelo 1 contra 1 · War Room' });
@@ -552,6 +620,7 @@ async function assertLivePvpBrowserPath(page) {
     await expect(lobby).toBeHidden();
     logPhase('leave-lobby');
   } finally {
+    await stopNativeTracing();
     await stopCpuSampling();
     if (cpuSession) await cpuSession.detach().catch(() => {});
     if (!page.isClosed()) {
