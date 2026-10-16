@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { mkdir } from 'node:fs/promises';
 import {
   activateSetupControl,
   buttonWithVisibleText,
@@ -200,6 +201,21 @@ for (const variant of ['v3', 'v4']) {
       warm = await enterAndMeasure(page, requestLog, variant, 'warm', assetProbe);
     } finally {
       await assetProbe?.close();
+    }
+
+    // Visual evidence for the V4 loader change: capture the real interactive
+    // room after timing has finished, never counting screenshot cost as latency.
+    // Canonical V1/V2/V3 screenshots are owned by the existing visual producer.
+    if (variant === 'v4' && process.env.APP_VISUAL_ARTIFACT === '1') {
+      const viewport = page.viewportSize();
+      const dimensions = viewport ? `${viewport.width}x${viewport.height}` : 'viewport';
+      const directory = '../.artifacts/app-visual';
+      await mkdir(directory, { recursive: true });
+      await page.screenshot({
+        path: `${directory}/war-room-v4-entry-${dimensions}.png`,
+        animations: 'disabled',
+        timeout: 30_000,
+      });
     }
 
     if (assetProbe) {
