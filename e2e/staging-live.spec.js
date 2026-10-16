@@ -500,6 +500,22 @@ async function assertLivePvpBrowserPath(page) {
   // comparison legs. Do not compare the canonical 'off' smoke with a leg that
   // waited for a different Home initialization state.
   // Hidden canvases remain mounted with their original WebGL render loop.
+  // Diagnostic-only counterfactual: bypass only the authored Duel Hall GLB.
+  // Both legs retain the same real lobby/PvP API, Home, and browser profile.
+  const hallAblation = process.env.CHESS_STAGING_PVP_HALL_ABLATION || 'normal';
+  expect(['normal', 'block-glb'], 'known diagnostic Hall ablation').toContain(hallAblation);
+  if (hallAblation !== 'normal') {
+    expect(process.env.CHESS_STAGING_CDP_DIAGNOSTICS,
+      'Hall asset ablation must never run in canonical staging smoke').toBe('1');
+  }
+  let hallBlocked = 0;
+  const isHallGlb = (url) => url.hostname === 'assets.chess-studio.shadowops.dpdns.org' &&
+    url.pathname.startsWith('/pvp/duel-hall/runtime/') && url.pathname.endsWith('.glb');
+  const blockHallGlb = async (route) => {
+    hallBlocked += 1;
+    await route.abort('blockedbyclient');
+  };
+  if (hallAblation === 'block-glb') await page.route(isHallGlb, blockHallGlb);
   const ablation = process.env.CHESS_STAGING_PVP_ABLATION || 'off';
   expect(['off', 'keep-home-canvas', 'hide-home-canvas', 'product-home-canvas'],
     'recognized staging compositor A/B mode').toContain(ablation);
@@ -1054,6 +1070,12 @@ async function assertLivePvpBrowserPath(page) {
         ? JSON.stringify(webgl)
         : 'unavailable=probe-snapshot'));
     }
+    if (hallAblation === 'block-glb') {
+      expect(hallBlocked, 'only the Duel Hall runtime GLB may be aborted').toBe(1);
+      expect(settled?.sceneState, 'blocked GLB should reveal the existing 2D fallback').toBe('fallback');
+    }
+    console.log('STAGING_PVP_HALL_ABLATION mode=' + hallAblation +
+      ' intercepted=' + hallBlocked + ' scene=' + (settled?.sceneState || 'not-seen'));
     await stopDeepDiagnostics('settled');
 
     const leave = page.waitForResponse(
@@ -1084,6 +1106,7 @@ async function assertLivePvpBrowserPath(page) {
     if (homeCanvasStyle && !page.isClosed()) {
       await homeCanvasStyle.evaluate((node) => node.remove()).catch(() => {});
     }
+    if (hallAblation === 'block-glb') await page.unroute(isHallGlb, blockHallGlb).catch(() => {});
     page.off('requestfinished', onOpenFinished);
     page.off('request', onOpenRequest);
     page.off('response', onOpenResponse);
