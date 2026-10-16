@@ -60,11 +60,18 @@ def self_test() -> None:
     from pathlib import Path
     workflow = (Path(__file__).resolve().parents[1] / ".github/workflows/staging-pvp-compositor-ab.yml").read_text(encoding="utf-8")
     assert 'git show "$GITHUB_SHA:e2e/staging-live.spec.js" > e2e/staging-live.spec.js' in workflow
-    assert '|NATIVE|WEBGL|LAYERS|LOAF)' in workflow
+    assert '|NATIVE|WEBGL|LAYERS|HALL_ABLATION|LOAF)' in workflow
+    assert "options: [product, prehidden, native, native-hall-ab]" in workflow
+    assert "if: inputs.comparison == 'native' || inputs.comparison == 'native-hall-ab'" in workflow
+    assert "modes=(normal block-glb block-glb normal)" in workflow
     # The optional native-only trace must keep thread CPU and elapsed-wall
     # clocks distinct: a missing tdur is not equivalent to zero CPU cost.
     spec = (Path(__file__).resolve().parents[1] / "e2e/staging-live.spec.js").read_text(encoding="utf-8")
     for marker in (
+        "CHESS_STAGING_PVP_HALL_ABLATION",
+        "url.pathname.startsWith('/pvp/duel-hall/runtime/')",
+        "expect(hallBlocked, 'only the Duel Hall runtime GLB may be aborted').toBe(1)",
+        "STAGING_PVP_HALL_ABLATION mode=",
         "Number.isFinite(event.tdur) && event.tdur >= 0",
         "critical_commit_thread_cpu_ms=",
         "critical_commit_non_cpu_wall_ms=",
