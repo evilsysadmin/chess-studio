@@ -2,6 +2,7 @@ import { expect, test } from '@playwright/test';
 import { mkdir } from 'node:fs/promises';
 import { r2AssetEntry } from '../frontend/src/r2Assets.js';
 import { WAR_ROOM_V4_RUNTIME_ALIAS_URL } from '../frontend/src/components/WarRoomV4Asset.js';
+import { WAR_ROOM_V3_RUNTIME_ALIAS_URL } from '../frontend/src/components/WarRoomV3Asset.js';
 import {
   activateSetupControl,
   buttonWithVisibleText,
@@ -224,20 +225,15 @@ for (const variant of ['v3', 'v4']) {
     }
 
     if (assetProbe) {
-      // V3 uses immutable manifest assets; V4 deliberately retains the actual
-      // live mutable alias until its newer contents are republished under SHA.
-      // Both MUST use the exact same URL for intent preload and scene loading.
+      // V3 and V4 must preload their actual authored runtime revisions, not
+      // stale content-addressed manifest snapshots lacking later scene updates.
       expect(cold.runtimeAsset.requestCount).toBeGreaterThan(0);
-      if (variant === 'v3') {
-        const hashedRoom = /\/war-room\/v3\/runtime\/[^/?#]+-[a-f0-9]{16}\.glb(?:[?#]|$)/;
-        expect(cold.runtimeAsset.urls.every((url) => hashedRoom.test(url))).toBe(true);
-      } else {
-        // Local/e2e builds may omit VITE_BUILD_SHA; production appends it.
-        // In both cases the preload and installer must agree exactly.
-        expect(cold.runtimeAsset.urls.every((url) =>
-          url === WAR_ROOM_V4_RUNTIME_ALIAS_URL
-          || url.startsWith(`${WAR_ROOM_V4_RUNTIME_ALIAS_URL}?build=`))).toBe(true);
-      }
+      const runtimeAlias = variant === 'v3'
+        ? WAR_ROOM_V3_RUNTIME_ALIAS_URL
+        : WAR_ROOM_V4_RUNTIME_ALIAS_URL;
+      // Local/e2e builds may omit VITE_BUILD_SHA; production appends it.
+      expect(cold.runtimeAsset.urls.every((url) =>
+        url === runtimeAlias || url.startsWith(`${runtimeAlias}?build=`))).toBe(true);
       if (cold.prefetchHref) {
         expect(cold.runtimeAsset.urls).toEqual([cold.prefetchHref]);
       }
@@ -264,14 +260,13 @@ test('War Room · real browser HTTP cache probe without request interception', a
   test.setTimeout(120_000);
   // Login surface needs no simulated backend/game state. Keep the browser's
   // normal cache behavior while fetching the *actual* runtime model URLs.
-  // V4 uses a mutable alias keyed by frontend build; the manifest's older
-  // content-addressed V4 asset is NOT the current authored scene.
+  // V3/V4 currently use mutable aliases keyed by frontend build because the
+  // content-addressed manifest snapshots can omit newer authored scene nodes.
   await page.goto('./', { waitUntil: 'domcontentloaded' });
   for (const variant of ['v3', 'v4']) {
     const entry = r2AssetEntry(`warRoom.${variant}.runtime`);
-    const modelUrl = variant === 'v4'
-      ? `${WAR_ROOM_V4_RUNTIME_ALIAS_URL}?build=cache-probe`
-      : entry?.url;
+    const modelUrl = `${variant === 'v3'
+      ? WAR_ROOM_V3_RUNTIME_ALIAS_URL : WAR_ROOM_V4_RUNTIME_ALIAS_URL}?build=cache-probe`;
     expect(modelUrl).toContain(`/war-room/${variant}/runtime/`);
     const probe = await installRuntimeGlbProbe(page, variant);
     const load = () => page.evaluate(async (url) => {
@@ -315,8 +310,7 @@ test('War Room · real browser HTTP cache probe without request interception', a
     } finally {
       await probe.close();
     }
-    if (variant === 'v3') expect(first.response.decodedBytes).toBe(entry.bytes);
-    else expect(first.response.decodedBytes).toBeGreaterThan(60_000);
+    expect(first.response.decodedBytes).toBeGreaterThan(60_000);
     expect(second.response.decodedBytes).toBe(first.response.decodedBytes);
     console.log(`War Room R2 unmapped browser cache ${JSON.stringify({
       variant,
@@ -326,22 +320,20 @@ test('War Room · real browser HTTP cache probe without request interception', a
       cacheValidated: second.cacheHits > 0 && second.transferredBytes === 0,
     })}`);
 
-    if (variant === 'v4') {
-      // Compare the current V4 model SHA to the older manifest revision.
-      // Do not silently promote the older one; preserve the live alias.
-      const alias = await page.evaluate(async () => {
-        const response = await fetch(
-          'https://assets.chess-studio.shadowops.dpdns.org/war-room/v4/runtime/current.glb',
-          { cache: 'no-store', mode: 'cors' },
-        );
+    {
+      // Compare each live GLB against the manifest snapshot. Missing Hans
+      // stage anchors in V3 are a functional regression, not cosmetic.
+      const alias = await page.evaluate(async (url) => {
+        const response = await fetch(url, { cache: 'no-store', mode: 'cors' });
         if (!response.ok) throw new Error(`V4 alias HTTP ${response.status}`);
         const bytes = await response.arrayBuffer();
         const digest = await crypto.subtle.digest('SHA-256', bytes);
         const sha256 = [...new Uint8Array(digest)]
           .map((byte) => byte.toString(16).padStart(2, '0')).join('');
         return { bytes: bytes.byteLength, sha256 };
-      });
-      console.log(`War Room V4 source-asset parity ${JSON.stringify({
+      }, modelUrl);
+      console.log(`War Room source-asset parity ${JSON.stringify({
+        variant,
         immutableSha256: entry.sha256,
         mutableAlias: alias,
         byteIdentical: alias.sha256 === entry.sha256,
