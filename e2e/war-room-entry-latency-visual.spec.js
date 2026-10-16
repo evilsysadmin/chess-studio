@@ -46,6 +46,8 @@ async function installRuntimeGlbProbe(page, variant) {
       encodedBytes: null,
       cacheHit: false,
       status: null,
+      cacheControl: null,
+      ageSeconds: null,
       failed: false,
     });
   });
@@ -53,6 +55,11 @@ async function installRuntimeGlbProbe(page, variant) {
     const entry = requests.get(requestId);
     if (!entry) return;
     entry.status = response.status;
+    const headers = Object.fromEntries(
+      Object.entries(response.headers || {}).map(([name, value]) => [name.toLowerCase(), value]),
+    );
+    entry.cacheControl = headers['cache-control'] || null;
+    entry.ageSeconds = headers.age === undefined ? null : Number(headers.age);
     entry.cacheHit ||= response.fromDiskCache === true || response.fromPrefetchCache === true;
   });
   cdp.on('Network.requestServedFromCache', ({ requestId }) => {
@@ -81,8 +88,8 @@ async function installRuntimeGlbProbe(page, variant) {
         transferredBytes: matches.reduce((sum, entry) => sum + (entry.encodedBytes || 0), 0),
         failedRequests: matches.filter((entry) => entry.failed).length,
         urls: [...new Set(matches.map((entry) => entry.url))],
-        requests: matches.map(({ initiator, status, cacheHit, encodedBytes, elapsedMs }) => ({
-          initiator, status, cacheHit, encodedBytes, elapsedMs,
+        requests: matches.map(({ initiator, status, cacheControl, ageSeconds, cacheHit, encodedBytes, elapsedMs }) => ({
+          initiator, status, cacheControl, ageSeconds, cacheHit, encodedBytes, elapsedMs,
         })),
       };
     },
@@ -195,12 +202,12 @@ for (const variant of ['v3', 'v4']) {
       await assetProbe?.close();
     }
 
-    if (variant === 'v3' && assetProbe) {
-      // Guard the #5717 network contract: the installer must not silently
-      // return to mutable current.glb?build=... or diverge from intent preload.
+    if (assetProbe) {
+      // Guard both immutable manifest URLs (#5717 V3, new V4); any mutable
+      // current.glb fetch repeats bytes already warmed by intent prefetch.
       expect(cold.runtimeAsset.requestCount).toBeGreaterThan(0);
-      const hashedV3 = /\/war-room\/v3\/runtime\/[^/?#]+-[a-f0-9]{16}\.glb(?:[?#]|$)/;
-      expect(cold.runtimeAsset.urls.every((url) => hashedV3.test(url))).toBe(true);
+      const hashedRoom = new RegExp(`/war-room/${variant}/runtime/[^/?#]+-[a-f0-9]{16}\\.glb(?:[?#]|$)`);
+      expect(cold.runtimeAsset.urls.every((url) => hashedRoom.test(url))).toBe(true);
       if (cold.prefetchHref) {
         expect(cold.runtimeAsset.urls).toEqual([cold.prefetchHref]);
       }
