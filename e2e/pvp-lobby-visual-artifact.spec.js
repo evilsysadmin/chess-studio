@@ -73,6 +73,10 @@ test('PvP lobby · desktop prioritizes challenges over rivals', async ({ page })
   await page.setViewportSize({ width: 1440, height: 900 });
   const lobby = await openLobby(page);
   await assertPriorityHierarchy(lobby);
+  // The authored GLB remains intact, but its first complete frame and the
+  // retiring 2D backdrop must not be cross-faded over a full-room canvas.
+  await expect(lobby.locator('.pvp-duel-hall__3d')).toHaveCSS('transition-duration', '0s');
+  await expect(lobby.locator('.pvp-duel-hall__architecture')).toHaveCSS('transition-duration', '0s');
   await mkdir(ARTIFACT_DIR, { recursive: true });
   await page.screenshot({
     path: ARTIFACT_DIR + '/pvp-lobby-desktop-1440x900.png',
