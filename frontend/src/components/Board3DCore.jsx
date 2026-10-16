@@ -315,7 +315,7 @@ function Board3DCanvas({
         exposure: renderer.toneMappingExposure,
       });
       const firstPaint = beginWarRoomFirstReadyPaintTiming(renderer.domElement);
-      renderer.render(scene, camera); firstPaint?.afterRender(); applyBoard3DRendererMemoryDiagnostics(renderer.domElement, renderer);
+      renderer.render(scene, camera); firstPaint?.afterRender(renderer.info.render); applyBoard3DRendererMemoryDiagnostics(renderer.domElement, renderer);
       applyBoard3DProjectionDiagnostics(renderer.domElement, camera);
       if (!cachedHansDriver && latestPropsRef.current.hansDiagnosticsRequested) {
         cachedHansDriver = scene.getObjectByName('war-room-hans-fireplace-driver');

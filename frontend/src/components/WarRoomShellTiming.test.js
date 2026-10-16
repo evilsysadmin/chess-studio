@@ -27,6 +27,10 @@ describe('War Room Blender shell timing', () => {
     const canvas = { dataset: {
       warRoomShellTimingGlbMs: '900',
       warRoomShellTimingReadyPaintMs: '30',
+      warRoomFirstReadyRenderCalls: '901',
+      warRoomFirstReadyRenderTriangles: '87654',
+      warRoomFirstReadyRenderLines: '0',
+      warRoomFirstReadyRenderPoints: '0',
       unrelatedMetric: 'keep',
     } };
     const timing = createWarRoomShellTiming({ canvas, now: () => 1 });
