@@ -59,7 +59,9 @@ async function openCanonicalWarRoom(page) {
   // SwiftShader la caja del modal puede seguir moviéndose unos frames y hacer
   // que Playwright espere "stable" aunque el handler ya esté listo.
   await start.evaluate((button) => button.click());
-  await expect(gameStatus(page)).toBeVisible({ timeout: 60_000 });
+  // This producer captures the real WebGL room. The game status pill can be
+  // folded away by immersive presentation even while the board is playable.
+  await expect(page.locator('[data-board3d-war-room="true"]')).toBeVisible({ timeout: 60_000 });
   await open3DFromAppearance(page);
 
   const canvas = page.locator('.board3d-main-canvas');

@@ -31,6 +31,7 @@ import { clearObjectGroup, makeObjectTranslucent } from './Board3DObjectLifecycl
 import { fitBoardCamera, makeTextSprite } from './Board3DScene.js';
 import { resolveStableBoardViewportForHost } from './Board3DViewportSize.js';
 import { applyBoard3DProjectionDiagnostics, applyBoard3DRendererMemoryDiagnostics } from './Board3DProjectionDiagnostics.js';
+import { beginWarRoomFirstReadyPaintTiming } from './WarRoomFirstReadyPaintTiming.js';
 import { board3DForensicGhost, board3DTechniqueTargetCount, board3DTerrainSquares, buildBoard3DLegalMap } from './Board3DParityVisuals.js';
 import useWarRoomVariant from './useWarRoomVariant.js';
 import { resolveBoard3DPresentation } from './Board3DPresentation.js';
@@ -318,7 +319,8 @@ function Board3DCanvas({
         keyIntensity: key.intensity,
         exposure: renderer.toneMappingExposure,
       });
-      renderer.render(scene, camera); applyBoard3DRendererMemoryDiagnostics(renderer.domElement, renderer);
+      const firstPaint = beginWarRoomFirstReadyPaintTiming(renderer.domElement);
+      renderer.render(scene, camera); firstPaint?.afterRender(); applyBoard3DRendererMemoryDiagnostics(renderer.domElement, renderer);
       applyBoard3DProjectionDiagnostics(renderer.domElement, camera);
       if (!cachedHansDriver && latestPropsRef.current.hansDiagnosticsRequested) {
         cachedHansDriver = scene.getObjectByName('war-room-hans-fireplace-driver');
@@ -331,7 +333,7 @@ function Board3DCanvas({
         if (hansReadyFrames >= 2) renderer.domElement.dataset.warRoomHansSceneReady = 'true';
       }
       exposeHansScreenDiagnostics(latestPropsRef.current);
-      ambientScheduler?.markPaint();
+      ambientScheduler?.markPaint(); firstPaint?.afterDiagnostics();
     }
 
     const renderBatcher = createWarRoomRenderBatcher({
@@ -341,7 +343,6 @@ function Board3DCanvas({
     });
     const requestRender = renderBatcher.request;
     const paintNow = renderBatcher.flush;
-
     function resize() {
       const viewport = resolveStableBoardViewportForHost(host, { immersive, viewport: window }); renderer.setSize(viewport.width, viewport.height, false);
       fitBoardCamera(camera, viewport.width, viewport.height, whiteSide, { profile: trainingRoom ? 'training-room' : cameraProfile === 'classroom' || cameraProfile === 'warroom' || (latestPropsRef.current.warRoomVariant || 'classic') !== 'classic' ? cameraProfile : 'classic', immersive });
