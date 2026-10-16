@@ -71,6 +71,9 @@ async function sample(page, requestLog, mode, iteration) {
 
 test('War Room V3 · bench-only ABBA measures actual WebGLRenderer paints', async ({ page }) => {
   test.setTimeout(420_000);
+  await page.addInitScript(({ key, variant }) => {
+    window.localStorage.setItem(key, variant);
+  }, { key: VARIANT_KEY, variant: 'v3' });
   await page.addInitScript(() => {
     window.__chessWarRoomRenderAB = {
       mode: 'legacy',
