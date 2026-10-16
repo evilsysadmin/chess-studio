@@ -114,6 +114,8 @@ describe('War Room v3 side-wall torches', () => {
   it('shares only the three static GPU geometries across V3 sconces and disposes once', () => {
     const root = build();
     const release = installWarRoomV3Torches(root);
+    const disposalSpies = [];
+    const firstMountRivetGeometry = root.getObjectByName('war-room-side-torch-rivet').geometry;
     for (const name of [
       'war-room-side-torch-rivet',
       'war-room-side-torch-cage-bar',
@@ -129,15 +131,14 @@ describe('War Room v3 side-wall torches', () => {
       // Every torch retains its own instanced node for accurate culling.
       expect(new Set(root.children.map((anchor) => anchor.children[0].getObjectByName(name))).size).toBe(6);
       expect(root.children.every((anchor) => anchor.children[0].getObjectByName(name).isInstancedMesh)).toBe(true);
-      if (!root.userData.testGeometryDisposeSpies) root.userData.testGeometryDisposeSpies = [];
-      root.userData.testGeometryDisposeSpies.push(dispose);
+      disposalSpies.push(dispose);
     }
     release();
-    expect(root.userData.testGeometryDisposeSpies.every((spy) => spy.mock.calls.length === 1)).toBe(true);
+    expect(disposalSpies.every((spy) => spy.mock.calls.length === 1)).toBe(true);
     const nextRoot = build();
     const nextRelease = installWarRoomV3Torches(nextRoot);
     expect(nextRoot.getObjectByName('war-room-side-torch-rivet').geometry)
-      .not.toBe(root.getObjectByName('war-room-side-torch-rivet')?.geometry);
+      .not.toBe(firstMountRivetGeometry);
     nextRelease();
   });
 
