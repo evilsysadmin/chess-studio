@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
 import Board from './Board.jsx';
 import { isMatthiasRivalKing } from './MatthiasKing3D.js';
-import { installPremiumEnvironment, makePremiumTileMaterial } from './Board3DSurfaces.js';
+import { applyWarRoomPixelRatioIfChanged, installPremiumEnvironment, makePremiumTileMaterial } from './Board3DSurfaces.js';
 import { loadBoardTheme } from '../career.js';
 import { loadSelectedSkin } from '../tournamentRewards.js';
 import { USER_PREFERENCES_CHANGED_EVENT, getEffectiveReducedMotion } from '../userPreferences.js';
@@ -199,7 +199,6 @@ function Board3DCanvas({
     host.appendChild(renderer.domElement);
 
     const releaseEnvironment = installPremiumEnvironment(renderer, scene, { coarsePointer: sceneLite, renderProfile: sceneProfile });
-
     scene.add(new THREE.HemisphereLight(0xffefd0, 0x10192b, 1.35));
     const key = new THREE.DirectionalLight(0xffe1aa, initialLights.key);
     key.position.set(-5.4, 10, whiteSide ? 6.6 : -6.6);
@@ -803,9 +802,10 @@ function Board3DCanvas({
       const cappedScale = Math.min(window.devicePixelRatio || 1, requestedScale);
       if (cappedScale + 0.05 < state.renderScale) {
         state.renderScale = cappedScale;
-        state.renderer.setPixelRatio(cappedScale);
-        const host = hostRef.current;
-        if (host) state.renderer.setSize(Math.max(280, host.clientWidth || 280), Math.max(300, host.clientHeight || 300), false);
+        // Three.js setPixelRatio already resizes its existing logical viewport.
+        // Repeating setSize(host) would reallocate GPU storage and replace the
+        // immersive viewport with narrower layout dimensions mid-animation.
+        applyWarRoomPixelRatioIfChanged(state.renderer, cappedScale);
       }
 
       state.render();
