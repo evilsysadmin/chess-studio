@@ -303,5 +303,28 @@ test('War Room · real browser HTTP cache probe without request interception', a
       second,
       cacheValidated: second.cacheHits > 0 || second.transferredBytes === 0,
     })}`);
+
+    if (variant === 'v4') {
+      // An immutable URL only preserves V4's visual if it identifies exactly
+      // the same GLB as today's runtime/current.glb. Observe the SHA-256 of
+      // that live alias rather than inferring parity from similar byte counts.
+      const alias = await page.evaluate(async () => {
+        const response = await fetch(
+          'https://assets.chess-studio.shadowops.dpdns.org/war-room/v4/runtime/current.glb',
+          { cache: 'no-store', mode: 'cors' },
+        );
+        if (!response.ok) throw new Error(`V4 alias HTTP ${response.status}`);
+        const bytes = await response.arrayBuffer();
+        const digest = await crypto.subtle.digest('SHA-256', bytes);
+        const sha256 = [...new Uint8Array(digest)]
+          .map((byte) => byte.toString(16).padStart(2, '0')).join('');
+        return { bytes: bytes.byteLength, sha256 };
+      });
+      console.log(`War Room V4 source-asset parity ${JSON.stringify({
+        immutableSha256: entry.sha256,
+        mutableAlias: alias,
+        byteIdentical: alias.sha256 === entry.sha256,
+      })}`);
+    }
   }
 });
