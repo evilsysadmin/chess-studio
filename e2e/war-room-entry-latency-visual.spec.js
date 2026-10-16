@@ -177,12 +177,13 @@ for (const variant of ['v3', 'v4']) {
         }),
       },
     });
-    await login(page);
-    // CDP is Chromium-only; cross-browser runs retain existing entry latency
-    // assertions but omit network-byte diagnostics instead of failing.
+    // Listen before Home appears: pointer/intent prefetch can start while
+    // login finishes, and cold bytes must include that earliest GLB request.
+    // CDP is Chromium-only; other projects retain the latency assertions.
     const assetProbe = test.info().project.name === 'chromium'
       ? await installRuntimeGlbProbe(page, variant)
       : null;
+    await login(page);
 
     let cold;
     let warm;
