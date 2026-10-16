@@ -92,7 +92,10 @@ async function installWarRoomV3RevisionRoute(page) {
   }
   if (!body) throw new Error('War Room v3 revision GLB timeout: ' + expected);
 
-  await page.route('**/war-room/v3/runtime/current.glb*', async (route) => {
+  // Runtime V3 uses a content-addressed R2 GLB. Match that same URL as
+  // intent prefetch (and tolerate the legacy current.glb alias) so a staged
+  // Blender revision is actually exercised by the canonical visual capture.
+  await page.route('**/war-room/v3/runtime/*.glb*', async (route) => {
     await route.fulfill({
       status: 200,
       contentType: 'model/gltf-binary',
