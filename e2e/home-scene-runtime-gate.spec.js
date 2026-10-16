@@ -2,7 +2,7 @@
 // zero-tolerance, text-only heuristic for "tests that read implementation as
 // text" that matches the raw Node file-read call by name, with no allowance
 // for loading a binary fixture (the GLB under test) instead of source code.
-import { readFile as loadBinaryAsset } from 'node:fs/promises';
+import { readFile as loadBinaryAsset, mkdir, writeFile } from 'node:fs/promises';
 import { expect, test } from '@playwright/test';
 import { login, mockApi } from './helpers.js';
 import { decodePng } from './png-pixels.js';
@@ -116,6 +116,12 @@ test('Home runtime gate: freshly published GLB mounts without regression', async
   const box = await castle.boundingBox({ timeout: 45_000 });
   if (!box) throw new Error('Could not resolve the castle canvas bounding box');
   const png = await page.screenshot({ clip: box, timeout: 150_000 });
+  // PR-only visual evidence of the exact candidate GLB, from the real app.
+  // Never confuse this SwiftShader screenshot with hardware GPU profiling.
+  if (process.env.HOME_RUNTIME_GATE_CAPTURE_DIR) {
+    await mkdir(process.env.HOME_RUNTIME_GATE_CAPTURE_DIR, { recursive: true });
+    await writeFile(`${process.env.HOME_RUNTIME_GATE_CAPTURE_DIR}/home-runtime-preview.png`, png);
+  }
   const { width, height, pixels } = decodePng(png);
 
   let total = 0;
