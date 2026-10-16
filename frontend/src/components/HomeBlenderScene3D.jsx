@@ -1455,12 +1455,14 @@ export const HOME_BLENDER_PIECE_LIFT = Object.freeze({
 
 export function applyHomeBlenderPieceLift(root) {
   let lifted = 0;
+  const prepared = new Set();
   root?.traverse?.((object) => {
     if (!object?.isMesh) return;
     const materials = Array.isArray(object.material) ? object.material : [object.material];
     for (const material of materials) {
       const match = /piece_(light|dark)/i.exec(String(material?.name || ''));
-      if (!match || !material.emissive) continue;
+      if (!match || !material.emissive || prepared.has(material)) continue;
+      prepared.add(material);
       const lift = HOME_BLENDER_PIECE_LIFT[match[1].toLowerCase()];
       material.emissive.setHex(lift.color);
       material.emissiveIntensity = lift.intensity;
@@ -1471,48 +1473,47 @@ export function applyHomeBlenderPieceLift(root) {
   return lifted;
 }
 
-function prepareRuntimeScene(root, shadowsEnabled = true, renderer = null) {
+// GLTFLoader reuses material/texture objects across meshes. Configure every
+// unique resource once: needsUpdate increments the resource version and must
+// not be repeated hundreds of times during Home startup.
+export function prepareHomeBlenderRuntimeMaterials(root, shadowsEnabled = true, renderer = null) {
   const maxAnisotropy = Math.min(
     8,
     renderer?.capabilities?.getMaxAnisotropy?.() || 1,
   );
+  const materials = new Set();
+  const textures = new Set();
+  let meshCount = 0;
+
   root.traverse((object) => {
     if (!object.isMesh) return;
+    meshCount += 1;
     object.castShadow = shadowsEnabled;
     object.receiveShadow = shadowsEnabled;
-    if (Array.isArray(object.material)) {
-      object.material.forEach((material) => {
-        if (!material) return;
-        for (const texture of [
-          material.map,
-          material.normalMap,
-          material.roughnessMap,
-          material.metalnessMap,
-          material.aoMap,
-        ]) {
-          if (!texture?.isTexture) continue;
-          texture.anisotropy = Math.max(texture.anisotropy || 1, maxAnisotropy);
-          texture.needsUpdate = true;
-        }
-        material.dithering = true;
-        material.needsUpdate = true;
-      });
-    } else if (object.material) {
-      for (const texture of [
-        object.material.map,
-        object.material.normalMap,
-        object.material.roughnessMap,
-        object.material.metalnessMap,
-        object.material.aoMap,
-      ]) {
-        if (!texture?.isTexture) continue;
-        texture.anisotropy = Math.max(texture.anisotropy || 1, maxAnisotropy);
-        texture.needsUpdate = true;
-      }
-      object.material.dithering = true;
-      object.material.needsUpdate = true;
+    const meshMaterials = Array.isArray(object.material) ? object.material : [object.material];
+    for (const material of meshMaterials) {
+      if (material) materials.add(material);
     }
   });
+
+  for (const material of materials) {
+    for (const texture of [
+      material.map,
+      material.normalMap,
+      material.roughnessMap,
+      material.metalnessMap,
+      material.aoMap,
+    ]) {
+      if (!texture?.isTexture || textures.has(texture)) continue;
+      textures.add(texture);
+      texture.anisotropy = Math.max(texture.anisotropy || 1, maxAnisotropy);
+      texture.needsUpdate = true;
+    }
+    material.dithering = true;
+    material.needsUpdate = true;
+  }
+
+  return { meshCount, materialCount: materials.size, textureCount: textures.size };
 }
 
 export function homeBlenderShouldRender({ documentHidden = false, intersecting = true } = {}) {
@@ -2104,7 +2105,10 @@ export default function HomeBlenderScene3D({
       canvas.dataset.homeBlenderPhase = 'model-preparing';
       markStartup('model-decoded');
       model = root;
-      prepareRuntimeScene(model, renderer.shadowMap.enabled, renderer);
+      const resourceStats = prepareHomeBlenderRuntimeMaterials(model, renderer.shadowMap.enabled, renderer);
+      canvas.dataset.homeBlenderMeshes = String(resourceStats.meshCount);
+      canvas.dataset.homeBlenderMaterials = String(resourceStats.materialCount);
+      canvas.dataset.homeBlenderTextures = String(resourceStats.textureCount);
       markStartup('materials-prepared');
       applyHomeBlenderPieceLift(model);
       applyHomeBlenderMoonVisibility(model, ambient);
@@ -2119,6 +2123,16 @@ export default function HomeBlenderScene3D({
       canvas.dataset.homeBlenderPhase = 'first-frame-rendering';
       markStartup('first-frame-start');
       renderFrame();
+      // One-time, actual WebGL draw calls (including any initial shadow pass),
+      // not the mesh count. Browser profiling can read these without tracing
+      // every animation frame or changing the visual.
+      const firstFrameInfo = renderer.info?.render;
+      if (Number.isFinite(firstFrameInfo?.calls)) {
+        canvas.dataset.homeBlenderFirstFrameDrawCalls = String(firstFrameInfo.calls);
+      }
+      if (Number.isFinite(firstFrameInfo?.triangles)) {
+        canvas.dataset.homeBlenderFirstFrameTriangles = String(firstFrameInfo.triangles);
+      }
       markStartup('first-frame-end');
       canvas.dataset.homeBlenderPhase = 'ready';
       canvas.dataset.homeBlenderRuntime = 'ready';
