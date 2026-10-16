@@ -221,6 +221,26 @@ export function shouldPrepareWarRoomShadowPass({
   return !coarsePointer && Boolean(shadowMapsEnabled);
 }
 
+// Shadow ranking needs world transforms; neither belongs on the first room paint.
+// Schedule the census once, then enable the same budgeted casters when idle.
+export function deferWarRoomBlenderShadowPass({
+  root,
+  meshes,
+  onRefine,
+  schedule = scheduleWarRoomAfterFirstPaint,
+} = {}) {
+  return schedule(() => {
+    if (!root?.parent) return;
+    root.updateMatrixWorld?.(true);
+    const selectedShadowCasters = selectWarRoomBlenderShadowCasters(meshes);
+    selectedShadowCasters.forEach((node) => { node.castShadow = true; });
+    root.userData.warRoomBlenderShadowProjectedCount = selectedShadowCasters.length;
+    root.userData.warRoomBlenderShadowWarmup = 'ready-budgeted';
+    root.userData.warRoomBlenderShadowCasterCount = selectedShadowCasters.length;
+    onRefine?.();
+  });
+}
+
 export async function installWarRoomBlenderShell(
   scene,
   {
@@ -306,21 +326,16 @@ export async function installWarRoomBlenderShell(
   root.userData.warRoomBlenderShadowCasterCount = 0;
   const disposeRuntimeEffects = installRuntimeEffects?.(root, { coarsePointer }) || (() => {});
   scene.add(root);
-  root.updateMatrixWorld?.(true);
-  const projectedShadowCasters = needsShadowPass ? selectWarRoomBlenderShadowCasters(shadowCandidateMeshes) : [];
-  root.userData.warRoomBlenderShadowProjectedCount = projectedShadowCasters.length;
+  // Until the deferred census, zero means "not ranked yet", not "no casters".
+  root.userData.warRoomBlenderShadowProjectedCount = 0;
 
   // Do not schedule *any* idle shadow-caster ranking or matrix traversal when
   // the consumer renderer cannot display shadow maps. Avoiding only onRefine
   // did not prevent a 6-second post-ready native task in software Chromium.
-  const cancelShadowWarmup = !needsShadowPass ? () => {} : scheduleWarRoomAfterFirstPaint(() => {
-    if (!root.parent) return;
-    root.updateMatrixWorld?.(true);
-    const selectedShadowCasters = selectWarRoomBlenderShadowCasters(shadowCandidateMeshes);
-    selectedShadowCasters.forEach((node) => { node.castShadow = true; });
-    root.userData.warRoomBlenderShadowWarmup = 'ready-budgeted';
-    root.userData.warRoomBlenderShadowCasterCount = selectedShadowCasters.length;
-    onRefine?.();
+  const cancelShadowWarmup = !needsShadowPass ? () => {} : deferWarRoomBlenderShadowPass({
+    root,
+    meshes: shadowCandidateMeshes,
+    onRefine,
   });
 
   return () => {
