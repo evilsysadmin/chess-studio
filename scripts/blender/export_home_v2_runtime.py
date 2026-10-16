@@ -366,6 +366,70 @@ def simplify_distant_garden_panels() -> dict:
     }
 
 
+# The two ceremonial banners each have an inner/outer gilded outline.
+# Their 40-point circular paths are worth retaining, but the thin tubing
+# uses an unnecessarily dense 3-step bevel cross-section. Lower ONLY the
+# radial section in the browser GLB, leaving its centreline, thickness,
+# materials and the authored Blender review scene untouched.
+BANNER_MEDALLION_CURVES = frozenset({
+    "HOME_PROP_banner_medallion_left",
+    "HOME_PROP_banner_medallion_right",
+    "HOME_PROP_banner_medallion_inner_left",
+    "HOME_PROP_banner_medallion_inner_right",
+})
+
+
+def simplify_banner_medallion_tubes() -> dict:
+    objects = sorted(
+        (obj for obj in bpy.context.scene.objects if obj.name in BANNER_MEDALLION_CURVES),
+        key=lambda obj: obj.name,
+    )
+    if {obj.name for obj in objects} != BANNER_MEDALLION_CURVES:
+        raise SystemExit(
+            f"Banner medallion LOD found {len(objects)} instead of four exact curves"
+        )
+    depsgraph = bpy.context.evaluated_depsgraph_get()
+
+    def evaluated_triangles(obj) -> int:
+        evaluated = obj.evaluated_get(depsgraph)
+        mesh = evaluated.to_mesh()
+        if mesh is None:
+            raise SystemExit(f"Banner medallion {obj.name} did not evaluate")
+        try:
+            return sum(len(face.vertices) - 2 for face in mesh.polygons)
+        finally:
+            evaluated.to_mesh_clear()
+
+    before = sum(evaluated_triangles(obj) for obj in objects)
+    for obj in objects:
+        curve = obj.data
+        if (
+            obj.type != "CURVE"
+            or curve.dimensions != "3D"
+            or curve.bevel_resolution != 3
+            or not (0 < curve.bevel_depth <= 0.0121)
+            or len(curve.splines) != 1
+            or curve.splines[0].type != "POLY"
+            or len(curve.splines[0].points) != 41
+        ):
+            raise SystemExit(f"Unexpected banner medallion geometry on {obj.name}")
+        # One level gives a smooth, low-cost cross-section at the normal
+        # Home view distance. All forty path segments remain unchanged.
+        curve.bevel_resolution = 1
+
+    bpy.context.view_layer.update()
+    after = sum(evaluated_triangles(obj) for obj in objects)
+    if not 300 <= before - after <= before:
+        raise SystemExit(
+            f"Banner medallion LOD has insufficient savings: {before} -> {after}"
+        )
+    return {
+        "objects": len(objects),
+        "triangles_before": before,
+        "triangles_after": after,
+    }
+
+
 def consolidate_static_architecture() -> tuple[int, int, int, int, int]:
     """Batch static HOME_ARCH_ and HOME_PROP_ meshes by material for draw-call efficiency.
 
@@ -527,6 +591,7 @@ def main() -> None:
     )
 
     flatten_runtime_materials()
+    banner_medallion_lod = simplify_banner_medallion_tubes()
     converted_curves = convert_curves_to_meshes()
     moon_detail_lod = simplify_tiny_moon_details()
     garden_crown_lod = simplify_distant_garden_crowns()
@@ -607,6 +672,7 @@ def main() -> None:
         "moon_detail_lod": moon_detail_lod,
         "garden_crown_lod": garden_crown_lod,
         "garden_panel_lod": garden_panel_lod,
+        "banner_medallion_lod": banner_medallion_lod,
         "architecture_meshes_before": architecture_meshes_before,
         "architecture_meshes_after": architecture_meshes_after,
         "static_prop_meshes_before": prop_meshes_before,
