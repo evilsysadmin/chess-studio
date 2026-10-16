@@ -40,7 +40,7 @@ async function openCanonicalWarRoom(page) {
   await buttonWithVisibleText(page, 'Partida rápida').click();
   const quickMatch = page.getByRole('dialog', { name: 'Configurar partida rápida' });
   await expect(quickMatch).toBeVisible();
-  const board = await launchWarRoomVisualQuickMatch(page, quickMatch);
+  await launchWarRoomVisualQuickMatch(page, quickMatch);
   await expect(quickMatch).toBeHidden({ timeout: 30_000 });
   const board3d = await open3DFromAppearance(page);
   const canvas = page.locator('.board3d-main-canvas');
