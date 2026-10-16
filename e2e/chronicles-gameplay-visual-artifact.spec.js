@@ -158,6 +158,8 @@ async function openChronicles(page, captureLabel, {
         phase: canvas?.dataset.homeBlenderPhase ?? null,
         startup: canvas?.dataset.homeBlenderStartup
           ? JSON.parse(canvas.dataset.homeBlenderStartup) : null,
+        contextMethodRestored: canvas
+          ? !Object.prototype.hasOwnProperty.call(canvas, 'getContext') : false,
       };
     });
     console.log(`Chronicles Home shadows | ${captureLabel} | ${JSON.stringify({
@@ -169,13 +171,16 @@ async function openChronicles(page, captureLabel, {
       // slowing down the already expensive GPU software bootstrap.
       const startup = shadowProof.startup;
       const steps = [
-        'effect-start', 'before-webgl-constructor', 'webgl-constructor-finished',
+        'effect-start', 'before-webgl-constructor',
+        'webgl-context-request-start', 'webgl-context-request-end',
+        'webgl-constructor-finished',
         'webgl-context-accessed', 'webgl-renderer-identified',
         'renderer-created', 'scene-created', 'model-loading',
         'model-decoded', 'materials-prepared', 'rigs-prepared',
         'first-frame-start', 'first-frame-end', 'ready',
       ];
       const times = steps.map((step) => startup?.[step]);
+      expect(shadowProof.contextMethodRestored, 'Home canvas uses its native getContext after constructor').toBe(true);
       expect(times.every((time) => Number.isFinite(time)), 'Home Blender emits all startup phases').toBe(true);
       expect(times.every((time, index) => index === 0 || time >= times[index - 1]),
         'Home Blender phase timings must be chronological').toBe(true);

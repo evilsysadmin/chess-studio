@@ -1692,6 +1692,20 @@ export default function HomeBlenderScene3D({
     let loadTimer = null;
     let contextRecoveryTimer = null;
 
+    // WebGLRenderer includes both the browser's WebGL context acquisition
+    // and Three's own renderer setup. Observe the original getContext call
+    // without changing its arguments, context, or the browser's GL backend.
+    // Restore the canvas method even if WebGLRenderer throws.
+    const getNativeContext = canvas.getContext;
+    canvas.getContext = function timedHomeContext(...args) {
+      const isWebgl = args[0] === 'webgl2' || args[0] === 'webgl';
+      if (isWebgl) markStartup('webgl-context-request-start');
+      try {
+        return getNativeContext.apply(this, args);
+      } finally {
+        if (isWebgl) markStartup('webgl-context-request-end');
+      }
+    };
     let renderer;
     markStartup('before-webgl-constructor');
     try {
@@ -1705,6 +1719,8 @@ export default function HomeBlenderScene3D({
     } catch {
       onUnavailable?.();
       return undefined;
+    } finally {
+      delete canvas.getContext;
     }
 
     const gl = renderer.getContext();
