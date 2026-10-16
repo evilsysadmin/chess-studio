@@ -522,7 +522,7 @@ async function captureWarRoomHealth(page, label) {
           return [name.toLowerCase(), value === undefined ? null : Number(value)];
         }),
       ) : null,
-      firstReadyMemory: canvas ? {
+      capturedRendererMemory: canvas ? {
         geometries: Number(canvas.dataset.board3dMemoryGeometries || 0),
         textures: Number(canvas.dataset.board3dMemoryTextures || 0),
         programs: Number(canvas.dataset.board3dMemoryPrograms || 0),
@@ -761,7 +761,7 @@ async function assertAndCaptureProfile(page, profile, board3d) {
       profile: profile.label,
       shellTiming: health.shellTiming,
       firstReadyRender: health.firstReadyRender,
-      firstReadyMemory: health.firstReadyMemory,
+      capturedRendererMemory: health.capturedRendererMemory,
       blenderShadow: health.blenderShadow,
     })}`);
   }
