@@ -459,6 +459,8 @@ _DEFAULT_CORS_ORIGINS = {
     # dependen de que un runtime concreto haya conservado bien CORS_ORIGINS.
     "https://chess-studio.shadowops.dpdns.org",
     "https://staging.chess-studio.shadowops.dpdns.org",
+    # Chronicles of Matthias standalone (iteración 1): espejo de corspolicy Go.
+    "https://staging.chronicles.shadowops.dpdns.org",
 }
 _CONFIGURED_CORS_ORIGINS = {
     normalized
