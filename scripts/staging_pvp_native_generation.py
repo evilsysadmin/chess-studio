@@ -70,6 +70,10 @@ def self_test() -> None:
         "critical_commit_non_cpu_wall_ms=",
         "critical_commit_cpu_pct=",
         "critical_task_thread_cpu_ms=",
+        "critical_commit_peer_threads=",
+        "critical_commit_peer_top_overlap_ms=",
+        "critical_commit_peer_graphics_coverage_ms=",
+        "'not-observed'",
         "'unavailable'",
     ):
         assert marker in spec, f"native CPU/wall probe missing: {marker}"

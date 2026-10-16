@@ -341,6 +341,54 @@ function createPvpNativeTraceSummary() {
         : 'unavailable';
       const nestedTop = [...nested].sort((a, b) => b[1] - a[1]).slice(0, 8)
         .map(([name, ms]) => name + ':' + Math.round(ms)).join(',');
+      // Correlate allowlisted *other-thread* activity with the exact native
+      // Commit time window. Enclosing RunTask frames are intentionally omitted:
+      // they are generic wrappers, not evidence of GPU or raster work.
+      // Totals across threads may overlap one another; never treat their sum
+      // as accounted-for Commit wall time or as proof of a GPU dependency.
+      const peerNames = new Map();
+      const peerThreads = new Set();
+      const targetedIntervals = [];
+      const targetedNames = new Set([
+        'GpuCommandBufferStub::OnAsyncFlush', 'GLES2DecoderImpl::DoCommands',
+        'RasterTask', 'DrawFrame', 'CompositeLayers', 'UpdateLayerTree',
+      ]);
+      const taskWrappers = new Set([
+        'RunTask', 'ThreadControllerImpl::RunTask',
+        'ThreadController::RunTask', 'TaskQueueManager::ProcessTaskFromWorkQueue',
+        'SequenceManagerImpl::SelectNextTask',
+      ]);
+      if (commit) {
+        const end = commit.ts + commit.dur;
+        for (const event of nativeIntervals) {
+          if (event.pid === commit.pid && event.tid === commit.tid) continue;
+          if (taskWrappers.has(event.name)) continue;
+          const from = Math.max(commit.ts, event.ts);
+          const to = Math.min(end, event.ts + event.dur);
+          if (to - from < 1000) continue;
+          peerThreads.add(event.pid + ':' + event.tid);
+          const row = peerNames.get(event.name) || { count: 0, totalUs: 0, maxUs: 0 };
+          row.count += 1;
+          row.totalUs += to - from;
+          row.maxUs = Math.max(row.maxUs, to - from);
+          peerNames.set(event.name, row);
+          if (targetedNames.has(event.name)) targetedIntervals.push([from, to]);
+        }
+      }
+      // Union of only explicitly traced GPU/raster/layer intervals, clipped to
+      // Commit. If none were recorded, report "not-observed", NOT zero GPU work.
+      targetedIntervals.sort((a, b) => a[0] - b[0]);
+      let targetedUs = 0;
+      let coverageEnd = -Infinity;
+      for (const [from, to] of targetedIntervals) {
+        targetedUs += Math.max(0, to - Math.max(from, coverageEnd));
+        coverageEnd = Math.max(coverageEnd, to);
+      }
+      const peerTop = [...peerNames].sort((a, b) => b[1].totalUs - a[1].totalUs)
+        .slice(0, 8)
+        .map(([name, row]) => name + ':' + row.count + '/' +
+          Math.round(row.totalUs / 1000) + '/' + Math.round(row.maxUs / 1000))
+        .join(',');
       return 'events=' + events + ' top_count_total_max_ms=' + (top || 'none') +
         ' critical_commit_child_ms=' + (nestedTop || 'none') +
         ' critical_commit_task_same_thread=' + sameThread +
@@ -348,7 +396,11 @@ function createPvpNativeTraceSummary() {
         ' critical_commit_thread_cpu_ms=' + commitCpuMs +
         ' critical_commit_non_cpu_wall_ms=' + commitNonCpuMs +
         ' critical_commit_cpu_pct=' + commitCpuPct +
-        ' critical_task_thread_cpu_ms=' + taskCpuMs;
+        ' critical_task_thread_cpu_ms=' + taskCpuMs +
+        ' critical_commit_peer_threads=' + (commit ? peerThreads.size : 'unavailable') +
+        ' critical_commit_peer_top_overlap_ms=' + (peerTop || 'none') +
+        ' critical_commit_peer_graphics_coverage_ms=' +
+          (targetedIntervals.length ? Math.round(targetedUs / 1000) : 'not-observed');
     },
   };
 }
