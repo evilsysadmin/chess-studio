@@ -507,6 +507,15 @@ async function captureWarRoomHealth(page, label) {
       renderer: canvas?.dataset.board3dRenderer || null,
       rendererClass: canvas?.dataset.board3dRendererClass || null,
       renderPath: canvas?.dataset.board3dRenderPath || null,
+      // Five one-shot measurements per Blender shell; null until completed.
+      // Reported in canonical visual JSON without running a second 3D session.
+      shellTiming: canvas ? Object.fromEntries(
+        ['import', 'glb', 'materials', 'effects', 'readyPaint'].map((phase) => {
+          const key = `warRoomShellTiming${phase[0].toUpperCase()}${phase.slice(1)}Ms`;
+          const raw = canvas.dataset[key];
+          return [phase, raw === undefined ? null : Number(raw)];
+        }),
+      ) : null,
       blenderShadow: canvas ? {
         budget: Number(canvas.dataset.warRoomShadowCasterBudget || 0),
         candidates: Number(canvas.dataset.warRoomShadowCasterCandidates || 0),
@@ -735,6 +744,9 @@ async function assertAndCaptureProfile(page, profile, board3d) {
   await page.waitForTimeout(350);
 
   const health = await captureWarRoomHealth(page, profile.label);
+  if (['v2', 'v3', 'v4'].includes(profile.variant)) {
+    console.log(`WAR_ROOM_SHELL_PHASES ${JSON.stringify({ variant: profile.variant, profile: profile.label, shellTiming: health.shellTiming })}`);
+  }
   await writeFile(
     `${ARTIFACT_DIR}/${profile.label}-health.json`,
     `${JSON.stringify({ schema: 3, capture: health }, null, 2)}\n`,

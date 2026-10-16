@@ -53,9 +53,22 @@ async function enterAndMeasure(page, requestLog, variant, visit) {
     programs: Number(element.dataset.board3dMemoryPrograms || 0),
   }));
 
+  // Diagnostics are emitted once per shell phase, and are not CPU-clock
+  // measurements. This separates GLB transfer/parse, material setup,
+  // effects install and the synchronous ready paint.
+  const shellPhases = await canvas.evaluate((element) => {
+    const names = ['import', 'glb', 'materials', 'effects', 'readyPaint'];
+    return Object.fromEntries(names.map((phase) => {
+      const key = `warRoomShellTiming${phase[0].toUpperCase()}${phase.slice(1)}Ms`;
+      const raw = element.dataset[key];
+      return [phase, raw === undefined ? null : Number(raw)];
+    }));
+  });
+
   const row = {
     variant,
     visit,
+    shellPhases,
     firstFrameMs: Math.round(firstFrame),
     shellReadyMs: Math.round(shellReady),
     interactiveMs: Math.round(interactive),

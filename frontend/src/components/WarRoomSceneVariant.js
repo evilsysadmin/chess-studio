@@ -3,6 +3,7 @@ import {
   loadWarRoomVariantInstaller,
   warRoomVariantSupportsHans,
 } from './WarRoomVariant.js';
+import { createWarRoomShellTiming } from './WarRoomShellTiming.js';
 
 export function shouldShowClassicWarRoomShell(options = {}) {
   return isClassicWarRoomVariant(options);
@@ -120,16 +121,21 @@ export function startWarRoomVariantScene({
   setStatus('loading', `${variant}-loading`);
   onPaint?.();
   const shellCoarsePointer = warRoomVariantShellCoarsePointer({ renderLite });
+  const shellTiming = createWarRoomShellTiming({ canvas });
   const onShellRefine = () => {
     syncBlenderShadowTelemetry(scene, variant, canvas);
     onPaint?.();
   };
   void loadVariantInstaller(variant)
-    .then((installShell) => installShell(scene, {
-      whiteSide,
-      coarsePointer: shellCoarsePointer,
-      onRefine: onShellRefine,
-    }))
+    .then((installShell) => {
+      if (!cancelled) shellTiming.mark('import');
+      return installShell(scene, {
+        whiteSide,
+        coarsePointer: shellCoarsePointer,
+        onRefine: onShellRefine,
+        onTiming: (phase) => { if (!cancelled) shellTiming.mark(phase); },
+      });
+    })
     .then((release) => {
       if (cancelled) return release?.();
       releaseShell = release;
@@ -175,6 +181,7 @@ export function startWarRoomVariantScene({
       scene.userData.warRoomRenderedVariant = variant;
       setStatus('ready', variant);
       onPaint?.();
+      shellTiming.mark('readyPaint');
     })
     .catch((error) => {
       if (cancelled) return;
