@@ -40,7 +40,16 @@ async function openChronicles(page, captureLabel, {
   retryVisualHomeLogin = true,
   onVisualPhase = null,
   verifyHomeSoftwareShadows = false,
+  entryRoute = 'lab',
 } = {}) {
+  // The real Home→Lab→Chronicles route is kept for both Rookwood viewport
+  // journeys and an explicit landscape canary. Other tests restore the
+  // genuine authorized Lab view and click its real Chronicles portal; this
+  // avoids repeatedly acquiring the unrelated Home WebGL context.
+  if (entryRoute !== 'lab' && entryRoute !== 'home') {
+    throw new Error(`Unknown Chronicles visual entry route: ${entryRoute}`);
+  }
+  const useFullHomeRoute = entryRoute === 'home' || verifyHomeSoftwareShadows;
   // Node-side phase markers only; no new Chromium calls or changed assertions.
   onVisualPhase?.('mock-api-begin');
   await mockApi(page, {
@@ -58,9 +67,12 @@ async function openChronicles(page, captureLabel, {
   // unrelated image loads. Permit slow Home mounting without *re-submitting*
   // credentials: the first login may have succeeded before its Home timed out,
   // so a second login would wait for an absent Usuario field.
-  const loginOptions = retryVisualHomeLogin
-    ? { navigationWaitUntil: 'domcontentloaded', homeVisibleTimeout: 60_000 }
-    : undefined;
+  const loginOptions = {
+    ...(retryVisualHomeLogin
+      ? { navigationWaitUntil: 'domcontentloaded', homeVisibleTimeout: 60_000 }
+      : {}),
+    initialView: useFullHomeRoute ? 'menu' : 'lab',
+  };
   // Preserve the failing Home/login state instead of merely reporting a
   // 60-second missing landmark. Diagnostics are only written on failure.
   const bootstrapErrors = [];
@@ -187,35 +199,41 @@ async function openChronicles(page, captureLabel, {
       console.log(`Chronicles Home startup | ${captureLabel} | ${JSON.stringify(startup)}`);
     }
   }
-  const speech = page.getByRole('region', { name: 'Mensaje de Matthias', exact: true });
-  if (await speech.isVisible().catch(() => false)) {
-    const close = speech.getByRole('button', { name: 'Cerrar comentario de Matthias', exact: true });
-    if (await close.isVisible().catch(() => false)) {
-      // This is a non-gameplay Home overlay. Avoid SwiftShader stalls in
-      // Playwright pointer stability checks; trigger the actual close handler.
-      await close.evaluate((button) => button.click());
+  if (useFullHomeRoute) {
+    const speech = page.getByRole('region', { name: 'Mensaje de Matthias', exact: true });
+    if (await speech.isVisible().catch(() => false)) {
+      const close = speech.getByRole('button', { name: 'Cerrar comentario de Matthias', exact: true });
+      if (await close.isVisible().catch(() => false)) {
+        // This is a non-gameplay Home overlay. Avoid SwiftShader stalls in
+        // Playwright pointer stability checks; trigger the actual close handler.
+        await close.evaluate((button) => button.click());
+      }
     }
-  }
 
-  // This producer owns Chronicles evidence, not PvP. A restored/mock lobby can
-  // legitimately cover Home on touch viewports, so dismiss it explicitly
-  // instead of forcing clicks through an unrelated modal.
-  const pvpLobby = page.getByRole('dialog', { name: 'Duelo 1 contra 1 · War Room', exact: true });
-  if (await pvpLobby.isVisible().catch(() => false)) {
-    await pvpLobby.getByRole('button', { name: /Cerrar ventana/ }).click();
-    await expect(pvpLobby).toBeHidden();
-  }
+    // This producer owns Chronicles evidence, not PvP. A restored/mock lobby can
+    // legitimately cover Home on touch viewports, so dismiss it explicitly
+    // instead of forcing clicks through an unrelated modal.
+    const pvpLobby = page.getByRole('dialog', { name: 'Duelo 1 contra 1 · War Room', exact: true });
+    if (await pvpLobby.isVisible().catch(() => false)) {
+      await pvpLobby.getByRole('button', { name: /Cerrar ventana/ }).click();
+      await expect(pvpLobby).toBeHidden();
+    }
 
-  await openVisualMoreModes(page);
+    await openVisualMoreModes(page);
+    const tools = page.locator('#illustrated-home-tools');
+    await expect(tools).toBeVisible();
+    if (await pvpLobby.isVisible().catch(() => false)) {
+      await pvpLobby.getByRole('button', { name: /Cerrar ventana/ }).click({ force: true });
+      await expect(pvpLobby).toBeHidden();
+    }
+    await tools.getByRole('button').filter({ hasText: 'Experimentos geniales' }).evaluate((button) => button.click());
+    await expect(page.getByRole('heading', { name: 'Experimentos geniales', exact: true })).toBeVisible();
+    // Home's 3D-to-Lab journey remains covered by dedicated real Chromium
+    // routes. Avoid opening or closing any Home overlay in restored Lab mode.
+  } else {
+    await expect(page.getByRole('heading', { name: 'Experimentos geniales', exact: true })).toBeVisible();
+  }
   onVisualPhase?.('modes-open');
-  const tools = page.locator('#illustrated-home-tools');
-  await expect(tools).toBeVisible();
-  if (await pvpLobby.isVisible().catch(() => false)) {
-    await pvpLobby.getByRole('button', { name: /Cerrar ventana/ }).click({ force: true });
-    await expect(pvpLobby).toBeHidden();
-  }
-  await tools.getByRole('button').filter({ hasText: 'Experimentos geniales' }).evaluate((button) => button.click());
-  await expect(page.getByRole('heading', { name: 'Experimentos geniales', exact: true })).toBeVisible();
   const chroniclesEntry = page.locator('.lab-workshop-portal--chronicles');
   await expect(chroniclesEntry).toBeVisible();
   onVisualPhase?.('chronicles-portal-click-begin');
@@ -478,6 +496,7 @@ for (const capture of [
     const page = await context.newPage();
     try {
       await openChronicles(page, `first-book-${capture.label}`, {
+        entryRoute: capture.label === 'android-landscape-844x390' ? 'home' : 'lab',
         newTown: true,
         newCampaign: true,
         chroniclesCurrentMapId: 'swordhaven-first-book',

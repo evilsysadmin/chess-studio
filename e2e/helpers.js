@@ -527,7 +527,21 @@ export async function mockApi(page, {
 
 // Home's 3D/compositor mount is async even after a successful form submit.
 // This timeout is for the Home landmark, not a replacement for the readiness gate.
-export async function login(page, { navigationWaitUntil = 'load', homeVisibleTimeout = 30_000 } = {}) {
+export async function login(page, { navigationWaitUntil = 'load', homeVisibleTimeout = 30_000, initialView = 'menu' } = {}) {
+  // Exercise the same persisted-authentication session that F5/reopening a
+  // tab restores in production. Explicit login clears restorable view state;
+  // these dungeon-only captures intentionally reuse a previously authenticated
+  // user instead. Independent Home canaries still exercise the actual form
+  // login, full WebGL compositor and Home→Lab click route.
+  if (initialView === 'lab') {
+    await page.addInitScript(() => {
+      localStorage.setItem('chess-study-auth-token', 'e2e-token');
+      localStorage.setItem('chess-study-auth-username', 'e2e');
+      sessionStorage.setItem('chess-study-current-view', 'lab');
+    });
+  } else if (initialView !== 'menu') {
+    throw new Error(`Unsupported E2E initial view: ${initialView}`);
+  }
   if (process.env.CHESS_E2E_LIGHTWEIGHT === '1') {
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await page.addInitScript(() => localStorage.setItem('chess-study-device-board-renderer-v1', '2d'));
@@ -535,6 +549,15 @@ export async function login(page, { navigationWaitUntil = 'load', homeVisibleTim
   // Visual captures may wait for DOM readiness instead of all heavyweight assets.
   // The explicit Home-ready gate below still checks real app interactivity.
   await page.goto('./', { waitUntil: navigationWaitUntil });
+  if (initialView === 'lab') {
+    test.setTimeout(Math.max(test.info().timeout, 90_000));
+    // The real persisted session must open the genuine production Lab
+    // without mounting the expensive Home castle in the background.
+    await expect(page.locator('.lab-workshop-portal--chronicles'))
+      .toBeVisible({ timeout: homeVisibleTimeout });
+    await expect(page.locator('.illustrated-home__stage')).toHaveCount(0);
+    return;
+  }
   await page.getByLabel('Usuario').fill('e2e');
   const password = page.getByLabel('Contraseña');
   await password.fill('clave123456');
@@ -544,6 +567,7 @@ export async function login(page, { navigationWaitUntil = 'load', homeVisibleTim
   // handleSubmit contract without coupling CI to transient button geometry
   // while fonts/layout settle during the login screen's first frames.
   await password.press('Enter');
+  test.setTimeout(Math.max(test.info().timeout, 90_000));
   // Stable Home-ready landmark shared by immersive desktop and compact mobile.
   // Slow isolated Chromium/SwiftShader visual runs may need more time *after*
   // successful authentication; never resubmit the login form on this timeout.
@@ -553,7 +577,6 @@ export async function login(page, { navigationWaitUntil = 'load', homeVisibleTim
   // the real scene is compositing. Functional journeys wait for that single
   // contract (Blender ready OR complete static fallback) before clicking.
   // Dedicated Home loading/readiness tests log in manually to inspect the gate.
-  test.setTimeout(Math.max(test.info().timeout, 90_000));
   await waitForHomeInteractive(page);
 }
 
