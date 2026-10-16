@@ -1,6 +1,7 @@
 import { chromium, expect, test } from '@playwright/test';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { buttonWithVisibleText, login, mockApi } from './helpers.js';
+import { launchWarRoomVisualQuickMatch } from './war-room-visual-quick-match.js';
 
 const ARTIFACT_DIR = '../.artifacts/app-visual';
 const SEEN_WAR_ROOM_TUTORIAL_PROFILE = Object.freeze({
@@ -52,16 +53,7 @@ async function openCanonicalWarRoom(page) {
   await buttonWithVisibleText(page, 'Partida rápida').click();
   const quickMatch = page.getByRole('dialog', { name: 'Configurar partida rápida' });
   await expect(quickMatch).toBeVisible();
-  const start = quickMatch.getByRole('button', { name: 'Empezar partida', exact: true });
-  await expect(start).toBeVisible({ timeout: 20_000 });
-  await expect(start).toBeEnabled();
-  // Este productor valida decoración/escena, no actionability del CTA. Bajo
-  // SwiftShader la caja del modal puede seguir moviéndose unos frames y hacer
-  // que Playwright espere "stable" aunque el handler ya esté listo.
-  await start.evaluate((button) => button.click());
-  // This producer captures the real WebGL room. The game status pill can be
-  // folded away by immersive presentation even while the board is playable.
-  await expect(page.locator('[data-board3d-war-room="true"]')).toBeVisible({ timeout: 60_000 });
+  await launchWarRoomVisualQuickMatch(page, quickMatch);
   await open3DFromAppearance(page);
 
   const canvas = page.locator('.board3d-main-canvas');
