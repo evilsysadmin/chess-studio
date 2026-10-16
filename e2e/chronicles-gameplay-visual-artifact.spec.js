@@ -1073,12 +1073,25 @@ for (const scene of [
       await page.keyboard.press('ArrowDown');
       await expect(game).toHaveAttribute('data-chronicles-map-id', 'crypt-eight-squares', { timeout: 20_000 });
       phase('crypt-entered');
-      await expect(game).toHaveAttribute('data-chronicles-phase', 'explore');
-      phase('crypt-explore-ready');
       const returnAction = game.locator('[data-chronicles-touch-action="interact"]');
-      await expect(returnAction).toHaveAttribute('aria-label', 'Regresar a Swordhaven');
-      await expect(returnAction).toContainText('VOLVER');
-      phase('return-action-ready');
+      // Test the same phase, accessibility label and visible action text in
+      // one retryable browser snapshot. Each CDP round trip can cost ~1s on
+      // desktop SwiftShader; polling preserves readiness instead of racing it.
+      const portalState = () => game.evaluate((root) => {
+        const action = root.querySelector('[data-chronicles-touch-action="interact"]');
+        return {
+          phase: root.getAttribute('data-chronicles-phase'),
+          turns: root.getAttribute('data-chronicles-turns'),
+          returnLabel: action?.getAttribute('aria-label') ?? null,
+          hasReturnText: action?.textContent?.includes('VOLVER') ?? false,
+        };
+      });
+      await expect.poll(portalState, { message: 'crypt return portal ready' }).toMatchObject({
+        phase: 'explore',
+        returnLabel: 'Regresar a Swordhaven',
+        hasReturnText: true,
+      });
+      phase('crypt-state-and-return-action-ready');
       await expect(canvas).toBeVisible();
       phase('crypt-canvas-ready');
       // The party faces into the crypt, so the real exit arch is naturally
@@ -1090,11 +1103,13 @@ for (const scene of [
       phase('first-turn-finished');
       await page.keyboard.press('ArrowRight');
       phase('second-turn-finished');
-      await expect(game).toHaveAttribute('data-chronicles-turns', String(beforeTurn + 2));
-      phase('turn-count-verified');
-      await expect(game).toHaveAttribute('data-chronicles-phase', 'explore');
-      await expect(returnAction).toHaveAttribute('aria-label', 'Regresar a Swordhaven');
-      phase('return-action-still-ready');
+      await expect.poll(portalState, { message: 'two real turns preserve crypt return portal' }).toMatchObject({
+        turns: String(beforeTurn + 2),
+        phase: 'explore',
+        returnLabel: 'Regresar a Swordhaven',
+        hasReturnText: true,
+      });
+      phase('turn-phase-and-return-action-verified');
       // Give the real first-person camera enough rendered frames to settle on
       // portrait SwiftShader: a half-turned camera clips the entrance plaque.
       await page.waitForTimeout(1750);
