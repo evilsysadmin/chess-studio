@@ -21,7 +21,77 @@ async function leaveGame(page) {
   await expect(page.getByRole('region', { name: 'Modos principales', exact: true })).toBeVisible({ timeout: 30_000 });
 }
 
-async function enterAndMeasure(page, requestLog, variant, visit) {
+
+/**
+ * Observe actual GLB requests without changing cache policy or buffering the
+ * response in JS. CDP's encodedDataLength is wire traffic (including protocol
+ * overhead), NOT decoded model bytes, GPU memory, or a hardware GPU benchmark.
+ * Each Playwright test starts in a fresh browser context: first visit is cold;
+ * the return to the room is warm in the same browser/cache context.
+ */
+async function installRuntimeGlbProbe(page, variant) {
+  const cdp = await page.context().newCDPSession(page);
+  const requests = new Map();
+  let currentVisit = 'cold';
+  const relevant = (url) => url.includes(`/war-room/${variant}/`) && /\.glb(?:[?#]|$)/.test(url);
+
+  cdp.on('Network.requestWillBeSent', ({ requestId, request, initiator, timestamp }) => {
+    if (!relevant(request.url)) return;
+    requests.set(requestId, {
+      visit: currentVisit,
+      url: request.url,
+      initiator: initiator?.type || 'unknown',
+      startedAt: timestamp,
+      elapsedMs: null,
+      encodedBytes: null,
+      cacheHit: false,
+      status: null,
+      failed: false,
+    });
+  });
+  cdp.on('Network.responseReceived', ({ requestId, response }) => {
+    const entry = requests.get(requestId);
+    if (!entry) return;
+    entry.status = response.status;
+    entry.cacheHit ||= response.fromDiskCache === true || response.fromPrefetchCache === true;
+  });
+  cdp.on('Network.requestServedFromCache', ({ requestId }) => {
+    const entry = requests.get(requestId);
+    if (entry) entry.cacheHit = true;
+  });
+  cdp.on('Network.loadingFinished', ({ requestId, encodedDataLength, timestamp }) => {
+    const entry = requests.get(requestId);
+    if (!entry) return;
+    entry.encodedBytes = Math.max(0, Math.round(encodedDataLength || 0));
+    entry.elapsedMs = Math.round(Math.max(0, timestamp - entry.startedAt) * 1000);
+  });
+  cdp.on('Network.loadingFailed', ({ requestId }) => {
+    const entry = requests.get(requestId);
+    if (entry) entry.failed = true;
+  });
+  await cdp.send('Network.enable');
+
+  return {
+    begin(visit) { currentVisit = visit; },
+    snapshot(visit) {
+      const matches = [...requests.values()].filter((entry) => entry.visit === visit);
+      return {
+        requestCount: matches.length,
+        cacheHits: matches.filter((entry) => entry.cacheHit).length,
+        transferredBytes: matches.reduce((sum, entry) => sum + (entry.encodedBytes || 0), 0),
+        failedRequests: matches.filter((entry) => entry.failed).length,
+        urls: [...new Set(matches.map((entry) => entry.url))],
+        requests: matches.map(({ initiator, status, cacheHit, encodedBytes, elapsedMs }) => ({
+          initiator, status, cacheHit, encodedBytes, elapsedMs,
+        })),
+      };
+    },
+    close: () => cdp.detach(),
+  };
+}
+
+async function enterAndMeasure(page, requestLog, variant, visit, assetProbe) {
+  assetProbe?.begin(visit);
   await buttonWithVisibleText(page, 'Partida rápida').click();
   const start = await page.evaluate(() => performance.now());
   await activateSetupControl(page.getByRole('button', { name: 'Empezar partida', exact: true }));
@@ -65,9 +135,16 @@ async function enterAndMeasure(page, requestLog, variant, visit) {
     }));
   });
 
+  const prefetchHref = await page.evaluate((id) => (
+    document.querySelector(`link[data-war-room-prefetch="${id}"]`)?.href || null
+  ), variant);
+  const runtimeAsset = assetProbe?.snapshot(visit) || null;
+
   const row = {
     variant,
     visit,
+    prefetchHref,
+    runtimeAsset,
     shellPhases,
     firstFrameMs: Math.round(firstFrame),
     shellReadyMs: Math.round(shellReady),
@@ -101,10 +178,35 @@ for (const variant of ['v3', 'v4']) {
       },
     });
     await login(page);
+    // CDP is Chromium-only; cross-browser runs retain existing entry latency
+    // assertions but omit network-byte diagnostics instead of failing.
+    const assetProbe = test.info().project.name === 'chromium'
+      ? await installRuntimeGlbProbe(page, variant)
+      : null;
 
-    const cold = await enterAndMeasure(page, requestLog, variant, 'cold');
-    await leaveGame(page);
-    const warm = await enterAndMeasure(page, requestLog, variant, 'warm');
+    let cold;
+    let warm;
+    try {
+      cold = await enterAndMeasure(page, requestLog, variant, 'cold', assetProbe);
+      await leaveGame(page);
+      warm = await enterAndMeasure(page, requestLog, variant, 'warm', assetProbe);
+    } finally {
+      await assetProbe?.close();
+    }
+
+    if (variant === 'v3' && assetProbe) {
+      // Guard the #5717 network contract: the installer must not silently
+      // return to mutable current.glb?build=... or diverge from intent preload.
+      expect(cold.runtimeAsset.requestCount).toBeGreaterThan(0);
+      const hashedV3 = /\/war-room\/v3\/runtime\/[^/?#]+-[a-f0-9]{16}\.glb(?:[?#]|$)/;
+      expect(cold.runtimeAsset.urls.every((url) => hashedV3.test(url))).toBe(true);
+      if (cold.prefetchHref) {
+        expect(cold.runtimeAsset.urls).toEqual([cold.prefetchHref]);
+      }
+      if (warm.runtimeAsset.urls.length && warm.prefetchHref) {
+        expect(warm.runtimeAsset.urls).toEqual([warm.prefetchHref]);
+      }
+    }
 
     // Diagnostic baseline only: do not invent latency budgets before hardware
     // and software-rendered numbers are observed. Guard only against session
