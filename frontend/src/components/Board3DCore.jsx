@@ -30,6 +30,7 @@ import { addCoarsePieceHitTarget, applyMatthiasCheckPose, buildPiece, disposeObj
 import { clearObjectGroup, makeObjectTranslucent } from './Board3DObjectLifecycle.js';
 import { fitBoardCamera, makeTextSprite } from './Board3DScene.js';
 import { resolveStableBoardViewportForHost } from './Board3DViewportSize.js';
+import { createWarRoomCanvasSizeGate } from './WarRoomCanvasSizeGate.js';
 import { applyBoard3DProjectionDiagnostics, applyBoard3DRendererMemoryDiagnostics } from './Board3DProjectionDiagnostics.js';
 import { beginWarRoomFirstReadyPaintTiming } from './WarRoomFirstReadyPaintTiming.js';
 import { board3DForensicGhost, board3DTechniqueTargetCount, board3DTerrainSquares, buildBoard3DLegalMap } from './Board3DParityVisuals.js';
@@ -99,11 +100,9 @@ function Board3DCanvas({
     warRoomVariant,
     selectedSquare, legalTargets, fen,
   };
-
   useEffect(() => {
     sceneStateRef.current?.ambientScheduler?.wake();
   }, [hansFireCallEnabled]);
-
   useEffect(() => {
     const refreshSkin = (event) => setSkinId(event?.detail || loadSelectedSkin());
     const refreshPreferences = () => setBoardTheme(loadBoardTheme());
@@ -114,13 +113,11 @@ function Board3DCanvas({
       window.removeEventListener(USER_PREFERENCES_CHANGED_EVENT, refreshPreferences);
     };
   }, []);
-
   useEffect(() => {
     setFocusedSquare(orientation === 'black' ? 'e8' : 'e1');
     setHoveredSquare(null);
     hoveredPieceRef.current = null;
   }, [orientation]);
-
 
   useEffect(() => {
     const host = hostRef.current;
@@ -342,8 +339,11 @@ function Board3DCanvas({
     });
     const requestRender = renderBatcher.request;
     const paintNow = renderBatcher.flush;
+    const sizeGate = createWarRoomCanvasSizeGate();
     function resize() {
-      const viewport = resolveStableBoardViewportForHost(host, { immersive, viewport: window }); renderer.setSize(viewport.width, viewport.height, false);
+      const viewport = resolveStableBoardViewportForHost(host, { immersive, viewport: window });
+      if (!sizeGate(viewport)) return;
+      renderer.setSize(viewport.width, viewport.height, false);
       fitBoardCamera(camera, viewport.width, viewport.height, whiteSide, { profile: trainingRoom ? 'training-room' : cameraProfile === 'classroom' || cameraProfile === 'warroom' || (latestPropsRef.current.warRoomVariant || 'classic') !== 'classic' ? cameraProfile : 'classic', immersive });
       requestRender();
     }

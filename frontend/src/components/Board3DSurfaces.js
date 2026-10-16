@@ -490,6 +490,12 @@ function scheduleAfterFirstPaint(tasks) {
   };
 }
 
+export function applyWarRoomPixelRatioIfChanged(renderer, ratio) {
+  if (!renderer?.setPixelRatio || renderer.getPixelRatio?.() === ratio) return false;
+  renderer.setPixelRatio(ratio);
+  return true;
+}
+
 export function installPremiumEnvironment(renderer, scene, { coarsePointer = false, renderProfile = null } = {}) {
   if (!renderer || !scene) return () => {};
   let cancelled = false;
@@ -506,7 +512,7 @@ export function installPremiumEnvironment(renderer, scene, { coarsePointer = fal
   // Board3D historically started above the sustained War Room budget. Apply the
   // effective cap before the first meaningful room render instead of waiting for
   // animation heuristics to discover that fill-rate is hot.
-  renderer.setPixelRatio?.(budget.pixelRatio);
+  applyWarRoomPixelRatioIfChanged(renderer, budget.pixelRatio);
   scene.userData.warRoomRenderBudget = budget;
 
   if (coarsePointer) {
