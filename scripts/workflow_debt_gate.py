@@ -69,7 +69,6 @@ INVENTORY = {
     'staging-deploy-continuity.yml': 'delivery-staging-resilience',
     'staging-pawn-slug-visual.yml': 'visual-staging-evidence',
     'staging-pvp-compositor-ab.yml': 'performance-diagnostics',
-    'staging-pvp-native-once.yml': 'performance-diagnostics-one-shot',
     'staging-preview.yml': 'delivery-preview',
     'synthetic-health.yml': 'observability',
     'weekly-actions-hygiene.yml': 'actions-maintenance',
