@@ -48,7 +48,6 @@ INVENTORY = {
     'oci-staging-deploy.yml': 'infra-staging-delivery',
     'oci-staging-lab.yml': 'infra-staging-lifecycle',
     'oci-staging-service.yml': 'infra-staging-service-control',
-    'shadowops-oci-handoff.yml': 'infra-credential-handoff',
     'oci-staging-tunnel.yml': 'infra-staging-edge',
     'observability-live.yml': 'observability',
     'pawn-slug-enemy-cast-v2.yml': 'visual-staging-evidence',
