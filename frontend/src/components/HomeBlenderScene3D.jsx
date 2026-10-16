@@ -1520,6 +1520,17 @@ export function homeBlenderShouldRender({ documentHidden = false, intersecting =
   return threeSurfaceShouldRender({ documentHidden, intersecting });
 }
 
+// ResizeObserver and window.resize can report the same viewport repeatedly,
+// especially when mobile browser chrome changes. A redundant setSize() can
+// clear/reallocate the backing canvas and schedule unnecessary full-room draws.
+export function homeBlenderViewportChanged(previous, next) {
+  if (!previous || !next) return true;
+  return previous.width !== next.width
+    || previous.height !== next.height
+    || previous.pixelRatio !== next.pixelRatio
+    || previous.lod !== next.lod;
+}
+
 export default function HomeBlenderScene3D({
   ambient = 'day',
   onUnavailable = null,
@@ -1570,6 +1581,8 @@ export default function HomeBlenderScene3D({
     markStartup('effect-start');
 
     let disposed = false;
+    let lastViewport = null;
+    let viewportUpdateCount = 0;
     let intersecting = true;
     const isVisible = () => homeBlenderShouldRender({
       documentHidden: document.hidden,
@@ -1997,8 +2010,25 @@ export default function HomeBlenderScene3D({
         failToFallback(true);
         return;
       }
-      renderer.setPixelRatio(Math.min(policy.pixelRatio || 1, 1.5));
-      renderer.setSize(width, height, false);
+      const viewport = {
+        width,
+        height,
+        pixelRatio: Math.min(policy.pixelRatio || 1, 1.5),
+        lod: policy.lod,
+      };
+      if (!homeBlenderViewportChanged(lastViewport, viewport)) return;
+
+      // Three.setPixelRatio() already updates the drawing buffer. Never
+      // repeat it for a plain CSS resize, nor setSize() just because a
+      // LOD/effects state changed while physical dimensions stayed fixed.
+      if (renderer.getPixelRatio() !== viewport.pixelRatio) {
+        renderer.setPixelRatio(viewport.pixelRatio);
+      }
+      if (!lastViewport || lastViewport.width !== width || lastViewport.height !== height) {
+        renderer.setSize(width, height, false);
+      }
+      lastViewport = viewport;
+      canvas.dataset.homeBlenderViewportUpdates = String(++viewportUpdateCount);
       camera.aspect = width / height;
       camera.fov = homeBlenderCameraFovForAspect(camera.aspect);
       canvas.dataset.homeBlenderCamera = camera.aspect < 1 ? 'portrait-wide' : 'canonical';
