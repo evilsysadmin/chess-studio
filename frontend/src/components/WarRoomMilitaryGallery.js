@@ -427,8 +427,16 @@ export function createWarRoomSideTorch({
   // horizontal forged arm and an open basket brazier. The old thin shaft/cup
   // silhouette read as a Roman pilum; this keeps the mass close to the wall.
   addBox(torch, [0.22, 0.94, 0.075], iron, [0, -0.14, 0], 'war-room-side-torch-backplate');
-  addGothicFinial(torch, ironHighlight, 0.43, false);
-  addGothicFinial(torch, ironHighlight, -0.71, true);
+  if (batchStaticHardware) {
+    addInstancedTorchHardware(torch, 'war-room-side-torch-backplate-finial',
+      () => new THREE.ConeGeometry(0.115, 0.22, 4), ironHighlight, [
+        { position: [0, 0.43, 0.018], rotation: [0, Math.PI / 4, 0] },
+        { position: [0, -0.71, 0.018], rotation: [0, Math.PI / 4, Math.PI] },
+      ], sharedStaticHardwareGeometries);
+  } else {
+    addGothicFinial(torch, ironHighlight, 0.43, false);
+    addGothicFinial(torch, ironHighlight, -0.71, true);
+  }
 
   if (batchStaticHardware) {
     addInstancedTorchHardware(torch, 'war-room-side-torch-rivet',

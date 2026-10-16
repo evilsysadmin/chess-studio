@@ -79,6 +79,7 @@ describe('War Room v3 side-wall torches', () => {
       ['war-room-side-torch-rivet', 3],
       ['war-room-side-torch-cage-bar', 6],
       ['war-room-side-torch-crown-spike', 6],
+      ['war-room-side-torch-backplate-finial', 2],
     ];
     for (const [name, count] of families) {
       const original = classicTorch.children.filter((child) => child.name === name);
@@ -105,13 +106,13 @@ describe('War Room v3 side-wall torches', () => {
       group.traverse((node) => { if (node.isMesh) count += 1; });
       return count;
     };
-    expect(meshCount(classicTorch) - meshCount(batchedTorch)).toBe(12);
+    expect(meshCount(classicTorch) - meshCount(batchedTorch)).toBe(13);
     expect(Boolean(batchedTorch.getObjectByName('war-room-side-torch-flame-outer')?.isInstancedMesh)).toBe(false);
     expect(Boolean(batchedTorch.getObjectByName('war-room-side-torch-wall-halo')?.isInstancedMesh)).toBe(false);
     release();
   });
 
-  it('shares only the three static GPU geometries across V3 sconces and disposes once', () => {
+  it('shares only the four static GPU geometries across V3 sconces and disposes once', () => {
     const root = build();
     const release = installWarRoomV3Torches(root);
     const disposalSpies = [];
@@ -120,6 +121,7 @@ describe('War Room v3 side-wall torches', () => {
       'war-room-side-torch-rivet',
       'war-room-side-torch-cage-bar',
       'war-room-side-torch-crown-spike',
+      'war-room-side-torch-backplate-finial',
     ]) {
       const geometryByTorch = root.children.map((anchor) => (
         anchor.children[0].getObjectByName(name)?.geometry
