@@ -64,6 +64,7 @@ export function installWarRoomV3Torches(root, { coarsePointer = false } = {}) {
   anchors.sort((a, b) => a.name.localeCompare(b.name));
   const touchLightAnchors = coarsePointer ? selectWarRoomV3TouchTorchAnchors(anchors) : new Set();
   const lightProfile = coarsePointer ? WAR_ROOM_V3_TOUCH_TORCH_LIGHT : WAR_ROOM_V3_TORCH_LIGHT;
+  const sharedStaticHardwareGeometries = new Map();
   const torches = anchors.map((anchor, index) => {
     const torch = createWarRoomSideTorch({
       side: anchor.position.x < 0 ? -1 : 1,
@@ -72,6 +73,7 @@ export function installWarRoomV3Torches(root, { coarsePointer = false } = {}) {
       lightIntensity: lightProfile.intensity,
       lightDistance: lightProfile.distance,
       batchStaticHardware: true,
+      sharedStaticHardwareGeometries,
     });
     torch.userData.warRoomV3Torch = anchor.name;
     anchor.add(torch);
@@ -82,17 +84,32 @@ export function installWarRoomV3Torches(root, { coarsePointer = false } = {}) {
     if (coarsePointer) root.userData.warRoomV3TouchTorchLights = touchLightAnchors.size;
   }
   return () => {
+    const disposedGeometries = new Set();
+    const disposedTextures = new Set();
+    const disposedMaterials = new Set();
     torches.forEach((torch) => {
       torch.removeFromParent();
       torch.traverse((node) => {
-        node.geometry?.dispose?.();
+        const geometry = node.geometry;
+        if (geometry && !disposedGeometries.has(geometry)) {
+          disposedGeometries.add(geometry);
+          geometry.dispose?.();
+        }
         const materials = Array.isArray(node.material) ? node.material : [node.material];
         materials.forEach((material) => {
-          material?.map?.dispose?.();
-          material?.dispose?.();
+          if (!material) return;
+          if (material.map && !disposedTextures.has(material.map)) {
+            disposedTextures.add(material.map);
+            material.map.dispose?.();
+          }
+          if (!disposedMaterials.has(material)) {
+            disposedMaterials.add(material);
+            material.dispose?.();
+          }
         });
       });
     });
+    sharedStaticHardwareGeometries.clear();
     if (root?.userData) {
       delete root.userData.warRoomV3Torches;
       delete root.userData.warRoomV3TouchTorchLights;

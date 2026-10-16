@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import * as THREE from 'three';
 import { createWarRoomSideTorch } from './WarRoomMilitaryGallery.js';
 import {
@@ -109,6 +109,36 @@ describe('War Room v3 side-wall torches', () => {
     expect(Boolean(batchedTorch.getObjectByName('war-room-side-torch-flame-outer')?.isInstancedMesh)).toBe(false);
     expect(Boolean(batchedTorch.getObjectByName('war-room-side-torch-wall-halo')?.isInstancedMesh)).toBe(false);
     release();
+  });
+
+  it('shares only the three static GPU geometries across V3 sconces and disposes once', () => {
+    const root = build();
+    const release = installWarRoomV3Torches(root);
+    for (const name of [
+      'war-room-side-torch-rivet',
+      'war-room-side-torch-cage-bar',
+      'war-room-side-torch-crown-spike',
+    ]) {
+      const geometryByTorch = root.children.map((anchor) => (
+        anchor.children[0].getObjectByName(name)?.geometry
+      ));
+      expect(geometryByTorch).toHaveLength(6);
+      expect(geometryByTorch.every((geometry) => geometry === geometryByTorch[0])).toBe(true);
+      expect(geometryByTorch[0]).toBeTruthy();
+      const dispose = vi.spyOn(geometryByTorch[0], 'dispose');
+      // Every torch retains its own instanced node for accurate culling.
+      expect(new Set(root.children.map((anchor) => anchor.children[0].getObjectByName(name))).size).toBe(6);
+      expect(root.children.every((anchor) => anchor.children[0].getObjectByName(name).isInstancedMesh)).toBe(true);
+      if (!root.userData.testGeometryDisposeSpies) root.userData.testGeometryDisposeSpies = [];
+      root.userData.testGeometryDisposeSpies.push(dispose);
+    }
+    release();
+    expect(root.userData.testGeometryDisposeSpies.every((spy) => spy.mock.calls.length === 1)).toBe(true);
+    const nextRoot = build();
+    const nextRelease = installWarRoomV3Torches(nextRoot);
+    expect(nextRoot.getObjectByName('war-room-side-torch-rivet').geometry)
+      .not.toBe(root.getObjectByName('war-room-side-torch-rivet')?.geometry);
+    nextRelease();
   });
 
   it('keeps every flame but only one real torch light per side wall on touch devices', () => {

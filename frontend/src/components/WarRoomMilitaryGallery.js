@@ -283,7 +283,14 @@ function addGothicFinial(group, material, y, flip = false) {
 
 // Preserve the authored shape of repeated small hardware while submitting each
 // group in one draw. Only V3 opts in; existing gallery torches stay unchanged.
-function addInstancedTorchHardware(torch, name, geometry, material, transforms) {
+function addInstancedTorchHardware(torch, name, createGeometry, material, transforms, sharedGeometries) {
+  // V3 owns this map for one mounted hall. Reusing the GPU buffers across its
+  // six torches preserves individual mesh culling and flame animation.
+  let geometry = sharedGeometries?.get(name);
+  if (!geometry) {
+    geometry = createGeometry();
+    sharedGeometries?.set(name, geometry);
+  }
   const mesh = new THREE.InstancedMesh(geometry, material, transforms.length);
   mesh.name = name;
   mesh.castShadow = false;
@@ -302,7 +309,9 @@ function addInstancedTorchHardware(torch, name, geometry, material, transforms) 
   return mesh;
 }
 
-function addBrazierCage(torch, iron, ironHighlight, emberMat, { batchedHardware = false } = {}) {
+function addBrazierCage(torch, iron, ironHighlight, emberMat, {
+  batchedHardware = false, sharedGeometries = null,
+} = {}) {
   const z = 0.47;
 
   addMesh(torch, new THREE.CylinderGeometry(0.12, 0.095, 0.17, 12), iron, [0, 0.1, z], [0, 0, 0], 'war-room-side-torch-neck');
@@ -350,9 +359,9 @@ function addBrazierCage(torch, iron, ironHighlight, emberMat, { batchedHardware 
   }
   if (batchedHardware) {
     addInstancedTorchHardware(torch, 'war-room-side-torch-cage-bar',
-      new THREE.CylinderGeometry(0.014, 0.018, 0.28, 7), iron, bars);
+      () => new THREE.CylinderGeometry(0.014, 0.018, 0.28, 7), iron, bars, sharedGeometries);
     addInstancedTorchHardware(torch, 'war-room-side-torch-crown-spike',
-      new THREE.ConeGeometry(0.028, 0.11, 4), ironHighlight, crowns);
+      () => new THREE.ConeGeometry(0.028, 0.11, 4), ironHighlight, crowns, sharedGeometries);
   }
 }
 
@@ -366,6 +375,7 @@ export function createWarRoomSideTorch({
   lightIntensity = 9.2,
   lightDistance = 11.0,
   batchStaticHardware = false,
+  sharedStaticHardwareGeometries = null,
 } = {}) {
   const torch = new THREE.Group();
   torch.name = side < 0 ? 'war-room-side-torch-left' : 'war-room-side-torch-right';
@@ -422,11 +432,11 @@ export function createWarRoomSideTorch({
 
   if (batchStaticHardware) {
     addInstancedTorchHardware(torch, 'war-room-side-torch-rivet',
-      new THREE.SphereGeometry(0.034, 8, 6), ironHighlight,
+      () => new THREE.SphereGeometry(0.034, 8, 6), ironHighlight,
       [0.19, -0.14, -0.47].map((y) => ({
         position: [0, y, 0.055],
         scale: [1, 1, 0.4],
-      })));
+      })), sharedStaticHardwareGeometries);
   } else {
     for (const y of [0.19, -0.14, -0.47]) {
       const rivet = addMesh(torch, new THREE.SphereGeometry(0.034, 8, 6), ironHighlight, [0, y, 0.055], [0, 0, 0], 'war-room-side-torch-rivet');
@@ -437,7 +447,10 @@ export function createWarRoomSideTorch({
 
   addBox(torch, [0.105, 0.105, 0.47], iron, [0, -0.03, 0.27], 'war-room-side-torch-wall-arm');
   addMesh(torch, new THREE.CylinderGeometry(0.09, 0.09, 0.12, 12), ironHighlight, [0, -0.03, 0.115], [Math.PI / 2, 0, 0], 'war-room-side-torch-arm-collar');
-  addBrazierCage(torch, iron, ironHighlight, emberMat, { batchedHardware: batchStaticHardware });
+  addBrazierCage(torch, iron, ironHighlight, emberMat, {
+    batchedHardware: batchStaticHardware,
+    sharedGeometries: sharedStaticHardwareGeometries,
+  });
 
   const haloMaterial = new THREE.MeshBasicMaterial({
     color: 0xff8d3d,
