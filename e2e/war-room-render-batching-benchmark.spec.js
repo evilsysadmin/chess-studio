@@ -7,7 +7,7 @@ const VARIANT_KEY = 'chess-study-war-room-variant-v1';
 const OUTPUT = '../.artifacts/war-room-render-ab/war-room-v3.json';
 
 function moveCount(log) {
-  return log.filter((row) => row.method === 'POST' && /\\/games\\/[^/]+\\/move$/.test(row.path)).length;
+  return log.filter((row) => row.method === 'POST' && /\/games\/[^/]+\/move$/.test(row.path)).length;
 }
 
 async function goHome(page) {
@@ -110,6 +110,6 @@ test('War Room V3 · bench-only ABBA measures actual WebGLRenderer paints', asyn
     }];
   }));
   const receipt = { schema: 1, control: 'legacy direct React effect draws', treatment: 'batched RAF draws', rows, totals };
-  await writeFile(OUTPUT, JSON.stringify(receipt, null, 2) + '\\n', 'utf8');
+  await writeFile(OUTPUT, JSON.stringify(receipt, null, 2) + '\n', 'utf8');
   console.log('WAR_ROOM_RENDER_AB_SUMMARY ' + JSON.stringify(totals));
 });
