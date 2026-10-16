@@ -1944,7 +1944,7 @@ export default function HomeBlenderScene3D({
         if (klausRig) canvas.dataset.homeKlausMotion = 'off-software';
         return;
       }
-      if (disposed || !model || !isVisible() || fireFrame !== null) return;
+      if (disposed || !model || !isVisible() || fireFrame !== null || fireWakeTimer !== null) return;
       canvas.dataset.homeFireMotion = 'live';
       if (klausRig) canvas.dataset.homeKlausMotion = 'live';
       if (effectsAllowed()) {
