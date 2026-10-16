@@ -15,6 +15,7 @@ import {
   warRoomSceneProfile,
 } from './WarRoom3DAnimation.js';
 import { createWarRoomAmbientScheduler } from './WarRoomAmbientScheduler.js';
+import { createWarRoomRenderBatcher } from './WarRoomRenderBatcher.js';
 import { applyWarRoomLightDiagnostics } from './WarRoomDomDiagnostics.js';
 import { createWarRoomHansScreenProbe } from './WarRoomHansScreenProbe.js';
 import { resolveBoardTap, selectBoardSquareOnTouch } from './WarRoom3DTouch.js';
@@ -26,6 +27,7 @@ import { buildBoard3DTileInstances } from './Board3DTileInstances.js';
 import { pickBoard3DSquare } from './Board3DPointerPicking.js';
 import { planBoard3DPieceReconciliation } from './Board3DPieceReconciliation.js';
 import { addCoarsePieceHitTarget, applyMatthiasCheckPose, buildPiece, disposeObject } from './Board3DPieces.js';
+import { clearObjectGroup, makeObjectTranslucent } from './Board3DObjectLifecycle.js';
 import { fitBoardCamera, makeTextSprite } from './Board3DScene.js';
 import { resolveStableBoardViewportForHost } from './Board3DViewportSize.js';
 import { applyBoard3DProjectionDiagnostics, applyBoard3DRendererMemoryDiagnostics } from './Board3DProjectionDiagnostics.js';
@@ -38,26 +40,6 @@ import './Board3D.css';
 import './Board3DViewportTuning.css';
 import './Board3DParity.css';
 import './WarRoomSharedViewport.css';
-function clearObjectGroup(group) {
-  if (!group) return;
-  for (const child of [...group.children]) {
-    group.remove(child);
-    disposeObject(child);
-  }
-}
-
-function makeObjectTranslucent(group, opacity) {
-  group?.traverse?.((object) => {
-    const materials = Array.isArray(object.material) ? object.material : [object.material];
-    materials.forEach((material) => {
-      if (!material) return;
-      material.transparent = true;
-      material.opacity = opacity;
-      material.depthWrite = false;
-    });
-  });
-}
-
 function Board3DCanvas({
   fen,
   onSquareClick,
@@ -328,7 +310,7 @@ function Board3DCanvas({
     const exposeHansScreenDiagnostics = createWarRoomHansScreenProbe({ scene, camera, canvas: renderer.domElement });
 
     let hansReadyFrames = 0;
-    function render() {
+    function renderNow() {
       scene.userData.warRoomHansCallReleased = !latestPropsRef.current.hansFireCallEnabled
         || renderer.domElement.dataset.warRoomHansCallReleased === 'true';
       applyWarRoomLightDiagnostics(renderer.domElement, {
@@ -352,10 +334,18 @@ function Board3DCanvas({
       ambientScheduler?.markPaint();
     }
 
+    const renderBatcher = createWarRoomRenderBatcher({
+      requestFrame: (callback) => window.requestAnimationFrame(callback),
+      cancelFrame: (id) => window.cancelAnimationFrame(id),
+      draw: renderNow,
+    });
+    const requestRender = renderBatcher.request;
+    const paintNow = renderBatcher.flush;
+
     function resize() {
       const viewport = resolveStableBoardViewportForHost(host, { immersive, viewport: window }); renderer.setSize(viewport.width, viewport.height, false);
       fitBoardCamera(camera, viewport.width, viewport.height, whiteSide, { profile: trainingRoom ? 'training-room' : cameraProfile === 'classroom' || cameraProfile === 'warroom' || (latestPropsRef.current.warRoomVariant || 'classic') !== 'classic' ? cameraProfile : 'classic', immersive });
-      render();
+      requestRender();
     }
     resize();
     const observer = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(resize) : null;
@@ -509,7 +499,7 @@ function Board3DCanvas({
         onFrame: () => {
           // Fire and premium interaction pulses update from onBeforeRender, so
           // one quiet heartbeat paints both without another animation loop.
-          render();
+          paintNow();
         },
       });
       renderer.domElement.dataset.warRoomAmbientScheduler = 'deadline-v1';
@@ -538,7 +528,8 @@ function Board3DCanvas({
       key,
       rim,
       warm,
-      render,
+      render: paintNow,
+      requestRender,
       ambientScheduler,
       renderScale: Math.min(window.devicePixelRatio || 1, sceneProfile.pixelRatioCap),
       slowFrameCount: 0,
@@ -548,7 +539,7 @@ function Board3DCanvas({
     const noMsaa = rendererAttempt.id === 'gpu-noaa' ? ' · NO MSAA' : '';
     const liteLabel = sceneProfile.lite ? ' · LITE' : '';
     setRendererLabel(`${rendererApi} · ${rendererClass}${noMsaa}${liteLabel}`);
-    render();
+    requestRender();
     ambientScheduler?.start();
 
     return () => {
@@ -556,6 +547,7 @@ function Board3DCanvas({
       animationFrameRef.current = 0;
       ambientScheduler?.dispose();
       ambientScheduler = null;
+      renderBatcher.dispose();
       renderer.domElement.removeEventListener('warroom-hans-call-release', wakeAmbientScheduler);
       document.removeEventListener('visibilitychange', wakeAmbientScheduler);
       window.removeEventListener(USER_PREFERENCES_CHANGED_EVENT, wakeAmbientScheduler);
@@ -600,7 +592,7 @@ function Board3DCanvas({
     const state = sceneStateRef.current, host = hostRef.current;
     if (!state || !host) return;
     const viewport = resolveStableBoardViewportForHost(host, { immersive, viewport: window }); fitBoardCamera(state.camera, viewport.width, viewport.height, state.whiteSide, { profile: trainingRoom ? 'training-room' : cameraProfile === 'classroom' || cameraProfile === 'warroom' || warRoomVariant !== 'classic' ? cameraProfile : 'classic', immersive });
-    state.render();
+    state.requestRender();
   }, [warRoomVariant, cameraProfile, immersive, trainingRoom]);
 
   useEffect(() => {
@@ -708,7 +700,7 @@ function Board3DCanvas({
     if (!shouldAnimate) {
       if (animate?.seq) lastAnimatedSeqRef.current = animate.seq;
       applyMatthiasCheckPose(state, checkSquare, orientation);
-      state.render();
+      state.requestRender();
       return undefined;
     }
 
@@ -869,7 +861,7 @@ function Board3DCanvas({
       makeObjectTranslucent(ghost, 0.3);
       state.forensicGroup.add(ghost);
     }
-    state.render();
+    state.requestRender();
   }, [forensicGhost, skinId, orientation, matthiasKingColor]);
 
   useEffect(() => {
@@ -895,7 +887,7 @@ function Board3DCanvas({
       obstacle.userData.terrainBlocked = square;
       state.terrainGroup.add(obstacle);
     }
-    state.render();
+    state.requestRender();
   }, [terrainSquares, effectiveThemeId]);
 
   const legalMap = useMemo(() => buildBoard3DLegalMap(legalTargets), [legalTargets]);
@@ -949,7 +941,7 @@ function Board3DCanvas({
     }
 
     applyMatthiasCheckPose(state, checkSquare, orientation);
-    state.render();
+    state.requestRender();
   }, [fen, selectedSquare, legalMap, lastMove, hintMove, checkSquare, focusedSquare, hoveredSquare, effectiveThemeId, orientation, showCoordinates]);
 
   useEffect(() => {
@@ -962,7 +954,7 @@ function Board3DCanvas({
     state.renderer.toneMappingExposure = lights.exposure;
     if (state.scene.fog?.isFogExp2) state.scene.fog.density = lights.fogDensity;
     applyMatthiasCheckPose(state, checkSquare, orientation);
-    state.render();
+    state.requestRender();
   }, [checkSquare, gameOver, effectiveThemeId, orientation, showCoordinates, warRoomVariant]);
 
   function handleKeyDown(event) {
