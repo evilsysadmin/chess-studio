@@ -141,11 +141,33 @@ async function captureHealth(page, label) {
           && rect.top < viewport.height;
       }).length;
     const castle3d = document.querySelector('.illustrated-home__castle-3d.is-ready');
+    // This artifact runs with SwiftShader on GitHub runners. Snapshot *actual*
+    // WebGL geometry and canvas resolution, but never label it real-GPU FPS.
+    const numericSceneStat = (name) => {
+      const value = castle3d?.dataset?.[name];
+      if (value == null || value === '') return null;
+      const parsed = Number(value);
+      return Number.isFinite(parsed) ? parsed : null;
+    };
     const castle3dDiagnostics = castle3d ? {
       compositor:castle3d.getAttribute('data-home-castle-compositor'),
       blenderRuntime:castle3d.getAttribute('data-home-blender-runtime'),
       lod:castle3d.getAttribute('data-home-castle-lod'),
       camera:castle3d.getAttribute('data-home-blender-camera'),
+      softwareRenderer:castle3d.getAttribute('data-home-blender-software') === 'true',
+      framebufferWidth:castle3d.width ?? null,
+      framebufferHeight:castle3d.height ?? null,
+      meshes:numericSceneStat('homeBlenderMeshes'),
+      materials:numericSceneStat('homeBlenderMaterials'),
+      textures:numericSceneStat('homeBlenderTextures'),
+      firstFrameDrawCalls:numericSceneStat('homeBlenderFirstFrameDrawCalls'),
+      firstFrameTriangles:numericSceneStat('homeBlenderFirstFrameTriangles'),
+      viewportUpdates:numericSceneStat('homeBlenderViewportUpdates'),
+      animatedFrameCpuMs:numericSceneStat('homeFireCostMs'),
+      animatedFrameCadenceMs:numericSceneStat('homeFireIntervalMs'),
+      animatedDrawnFps:numericSceneStat('homeBlenderDrawnFps'),
+      animatedDrawCalls:numericSceneStat('homeBlenderDrawCalls'),
+      animatedTriangles:numericSceneStat('homeBlenderTriangles'),
     } : null;
     const matthiasNode = document.querySelector('.illustrated-home__matthias');
     const matthiasRect = matthiasNode?.getBoundingClientRect();
@@ -388,7 +410,7 @@ test('App · captura visual canónica desktop + Android normal/desktop-site', as
 
   await writeFile(
     `${ARTIFACT_DIR}/visual-health.json`,
-    `${JSON.stringify({ schema:10, minimumTouchTarget:MIN_TOUCH_TARGET, captures }, null, 2)}\n`,
+    `${JSON.stringify({ schema:11, minimumTouchTarget:MIN_TOUCH_TARGET, rendererBenchmark:'SwiftShader (CPU software GL), not physical GPU', captures }, null, 2)}\n`,
     'utf8',
   );
 
@@ -402,6 +424,10 @@ test('App · captura visual canónica desktop + Android normal/desktop-site', as
     if (capture.expectedBlenderRuntime) {
       expect(capture.castle3dDiagnostics?.compositor, `${capture.label}: Blender compositor`).toBe('blender-runtime');
       expect(capture.castle3dDiagnostics?.blenderRuntime, `${capture.label}: Blender runtime ready`).toBe('ready');
+      expect(capture.castle3dDiagnostics?.firstFrameDrawCalls, `${capture.label}: first frame actually draws geometry`).toBeGreaterThan(0);
+      expect(capture.castle3dDiagnostics?.firstFrameTriangles, `${capture.label}: first frame has actual triangles`).toBeGreaterThan(0);
+      expect(capture.castle3dDiagnostics?.framebufferWidth, `${capture.label}: backing canvas allocated`).toBeGreaterThan(0);
+      expect(capture.castle3dDiagnostics?.framebufferHeight, `${capture.label}: backing canvas allocated`).toBeGreaterThan(0);
     }
     if (capture.expectedCoarsePointer) {
       expect(capture.coarsePointer, `${capture.label}: coarse pointer emulation`).toBe(true);
