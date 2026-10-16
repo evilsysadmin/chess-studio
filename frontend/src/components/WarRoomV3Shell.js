@@ -71,6 +71,7 @@ export function installWarRoomV3Torches(root, { coarsePointer = false } = {}) {
       withLight: !coarsePointer || touchLightAnchors.has(anchor),
       lightIntensity: lightProfile.intensity,
       lightDistance: lightProfile.distance,
+      batchStaticHardware: true,
     });
     torch.userData.warRoomV3Torch = anchor.name;
     anchor.add(torch);
