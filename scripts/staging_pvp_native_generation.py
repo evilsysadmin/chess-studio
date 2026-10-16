@@ -60,7 +60,7 @@ def self_test() -> None:
     from pathlib import Path
     workflow = (Path(__file__).resolve().parents[1] / ".github/workflows/staging-pvp-compositor-ab.yml").read_text(encoding="utf-8")
     assert 'git show "$GITHUB_SHA:e2e/staging-live.spec.js" > e2e/staging-live.spec.js' in workflow
-    assert '|NATIVE|WEBGL|LOAF)' in workflow
+    assert '|NATIVE|WEBGL|LAYERS|LOAF)' in workflow
     print("staging-pvp-native-generation self-test: OK")
 
 

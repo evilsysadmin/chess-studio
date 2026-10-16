@@ -135,7 +135,7 @@ jobs:
             python3 -S scripts/staging_smoke_user_cleanup.py
             cleanup_rc="$?"
             set -e
-            grep -E 'STAGING_PVP_(ABLATION|GPU|OPEN|INPUT_FRAME|RENDER|PHASE|DIAGNOSTICS|CPU|NATIVE|WEBGL|LOAF)' "$leg_log" >> "$summary" || true
+            grep -E 'STAGING_PVP_(ABLATION|GPU|OPEN|INPUT_FRAME|RENDER|PHASE|DIAGNOSTICS|CPU|NATIVE|WEBGL|LAYERS|LOAF)' "$leg_log" >> "$summary" || true
             rm -f "$leg_log"
             echo "::endgroup::"
             unset STAGING_E2E_USERNAME STAGING_E2E_PASSWORD
