@@ -307,7 +307,6 @@ function Board3DCanvas({
 
     let cachedHansDriver = null;
     let ambientScheduler = null;
-
     const exposeHansScreenDiagnostics = createWarRoomHansScreenProbe({ scene, camera, canvas: renderer.domElement });
 
     let hansReadyFrames = 0;
