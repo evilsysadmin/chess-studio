@@ -120,6 +120,10 @@ function installAuthoredPracticalLights(root, { coarsePointer = false } = {}) {
 
 export const WAR_ROOM_BLENDER_SHADOW_CASTER_LIMIT = 32;
 
+function warRoomBlenderMaterialIsTranslucent(material) {
+  return material?.transparent && Number(material.opacity) < 0.9;
+}
+
 function warRoomBlenderShadowCasterScore(node, position, scale) {
   if (!node?.isMesh || !node.geometry) return Number.NEGATIVE_INFINITY;
 
@@ -142,10 +146,9 @@ function warRoomBlenderShadowCasterScore(node, position, scale) {
   const proximity = 1 / (1 + boardDistance * 0.18);
   const nearBoardBoost = boardDistance <= 8 ? 1.6 : 1;
   const elevatedBoost = position.y >= 0.25 ? 1.15 : 0.8;
-  const isTranslucent = (material) => material?.transparent && Number(material.opacity) < 0.9;
   const translucent = Array.isArray(node.material)
-    ? node.material.some(isTranslucent)
-    : Boolean(isTranslucent(node.material));
+    ? node.material.some(warRoomBlenderMaterialIsTranslucent)
+    : Boolean(warRoomBlenderMaterialIsTranslucent(node.material));
   const transparencyPenalty = translucent ? 0.35 : 1;
 
   return sizeScore * proximity * nearBoardBoost * elevatedBoost * transparencyPenalty;
