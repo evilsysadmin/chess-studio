@@ -1,0 +1,69 @@
+name: One-time OCI handoff to ShadowOps
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  transfer:
+    if: >-
+      github.repository == 'evilsysadmin/chess-studio' &&
+      github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+
+    env:
+      GH_TOKEN: ${{ secrets.SHADOWOPS_BOOTSTRAP_TOKEN }}
+      OCI_TENANCY_OCID: ${{ secrets.OCI_TENANCY_OCID }}
+      OCI_USER_OCID: ${{ secrets.OCI_USER_OCID }}
+      OCI_FINGERPRINT: ${{ secrets.OCI_FINGERPRINT }}
+      OCI_PRIVATE_KEY: ${{ secrets.OCI_PRIVATE_KEY }}
+
+    steps:
+      - name: Transfer OCI secrets securely
+        shell: bash
+        run: |
+          set -euo pipefail
+          set +x
+
+          target="evilsysadmin/shadowops-infra"
+
+          names=(
+            OCI_TENANCY_OCID
+            OCI_USER_OCID
+            OCI_FINGERPRINT
+            OCI_PRIVATE_KEY
+          )
+
+          test -n "${GH_TOKEN:-}"
+
+          for name in "${names[@]}"; do
+            test -n "${!name:-}" || {
+              echo "Missing source secret: $name" >&2
+              exit 1
+            }
+          done
+
+          # Verify destination access.
+          gh api \
+            "repos/$target/actions/secrets/public-key" \
+            --jq '.key_id' >/dev/null
+
+          # gh encrypts each value with the destination
+          # repository's public key before uploading.
+          for name in "${names[@]}"; do
+            printf '%s' "${!name}" |
+              gh secret set "$name" \
+                --repo "$target" >/dev/null
+          done
+
+          # Verify names only. Never read secret values.
+          for name in "${names[@]}"; do
+            gh secret list --repo "$target" \
+              --json name --jq '.[].name' |
+              grep -Fxq "$name"
+          done
+
+          echo "SHADOWOPS_OCI_HANDOFF_OK"
