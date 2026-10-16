@@ -224,16 +224,40 @@ case "$mode" in
         chronicle_full_shard=true
       fi
       if [[ "$chronicle_full_shard" == 'true' ]]; then
+        # Measure every existing Chromium process, including failed canaries;
+        # preserve the original test exit code and never hide test failures.
+        run_chronicles_segment() {
+          local label="$1"
+          shift
+          local started=$SECONDS status=0
+          "$@" || status=$?
+          local elapsed=$((SECONDS - started))
+          printf 'Chronicles CI segment | runner %s/3 | %s | %ss | exit=%s\n' \
+            "$APP_VISUAL_CHRONICLES_SHARD" "$label" "$elapsed" "$status"
+          if [[ -n "${GITHUB_STEP_SUMMARY:-}" ]]; then
+            printf '| %s | %s s | %s |\n' "$label" "$elapsed" "$status" \
+              >> "$GITHUB_STEP_SUMMARY" || true
+          fi
+          return "$status"
+        }
+        if [[ -n "${GITHUB_STEP_SUMMARY:-}" ]]; then
+          {
+            printf '\n### Chronicles visual · runner %s/3\n\n' "$APP_VISUAL_CHRONICLES_SHARD"
+            printf '| Segment | Duration | Exit code |\n| --- | ---: | ---: |\n'
+          } >> "$GITHUB_STEP_SUMMARY" || true
+        fi
         # Keep each expensive or flaky scene isolated from all prior WebGL
         # contexts. Fail fast: a broken menu no longer waits behind 14 min of
         # screenshots and cannot be accidentally masked as a timeout retry.
         if [[ "$APP_VISUAL_CHRONICLES_SHARD" == '3' ]]; then
           echo 'Chronicles visual early canary: portrait pause + audio, fresh browser.'
-          ./node_modules/.bin/playwright test chronicles-gameplay-visual-artifact.spec.js \
+          run_chronicles_segment 'portrait pause canary' \
+            ./node_modules/.bin/playwright test chronicles-gameplay-visual-artifact.spec.js \
             --workers=1 --retries=0 --max-failures=1 \
             --grep 'Chronicles · pause \+ audio tablets visual · android-390x844$'
           echo 'Chronicles visual isolated expensive scene: desktop gameplay, fresh browser.'
-          ./node_modules/.bin/playwright test chronicles-gameplay-visual-artifact.spec.js \
+          run_chronicles_segment 'desktop gameplay canary' \
+            ./node_modules/.bin/playwright test chronicles-gameplay-visual-artifact.spec.js \
             --workers=1 --retries=0 --max-failures=1 \
             --grep 'Chronicles · gameplay visual · desktop-1440x900$'
         fi
@@ -256,7 +280,8 @@ case "$mode" in
         esac
         for subshard in "${subshards[@]}"; do
           echo "Chronicles visual bounded renderer: isolated process ${subshard}/8."
-          ./node_modules/.bin/playwright test \
+          run_chronicles_segment "subshard ${subshard}/8" \
+            ./node_modules/.bin/playwright test \
             "${specs[@]}" \
             "${playwright_args[@]}" \
             "--shard=${subshard}/8"
