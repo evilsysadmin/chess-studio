@@ -249,7 +249,7 @@ for (const variant of ['v3', 'v4']) {
 // The existing first/return chess journeys measure rendering and interaction;
 // only this unmapped browser context can assess actual HTTP cache reuse.
 test('War Room · real browser HTTP cache probe without request interception', async ({ page }, testInfo) => {
-  test.skip(testInfo.project.name !== 'chromium', 'CDP network cache diagnostics are Chromium-only');
+  if (testInfo.project.name !== 'chromium') return; // CDP probe applies to Chromium only.
   test.setTimeout(120_000);
   const manifest = JSON.parse(await readFile(
     new URL('../frontend/src/assets/r2-assets-manifest.json', import.meta.url),
