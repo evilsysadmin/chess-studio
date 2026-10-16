@@ -325,7 +325,7 @@ test('War Room · real browser HTTP cache probe without request interception', a
       // stage anchors in V3 are a functional regression, not cosmetic.
       const alias = await page.evaluate(async (url) => {
         const response = await fetch(url, { cache: 'no-store', mode: 'cors' });
-        if (!response.ok) throw new Error(`V4 alias HTTP ${response.status}`);
+        if (!response.ok) throw new Error(`War Room alias HTTP ${response.status}`);
         const bytes = await response.arrayBuffer();
         const digest = await crypto.subtle.digest('SHA-256', bytes);
         const sha256 = [...new Uint8Array(digest)]
