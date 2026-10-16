@@ -10,9 +10,11 @@ const visualArtifactMode = Boolean(
   process.env.APP_VISUAL_ARTIFACT || process.env.APP_VISUAL_EXPERIMENTS_SCOPE,
 );
 const stagingLiveSpec = '**/staging-live.spec.js';
+// Hardware comparison is strictly local/opt-in, never a hosted CI gate.
+const pvpGpuSpec = '**/pvp-hall-gpu-benchmark.spec.js';
 const testIgnore = chaosMode
-  ? [stagingLiveSpec]
-  : ['**/chaos-local.spec.js', stagingLiveSpec];
+  ? [stagingLiveSpec, pvpGpuSpec]
+  : ['**/chaos-local.spec.js', stagingLiveSpec, pvpGpuSpec];
 if (fullSweep) {
   // Artifact producers already have scoped Chromium capture workflows. Replaying
   // screenshot/video generation in Chromium + Firefox + WebKit adds runner cost
