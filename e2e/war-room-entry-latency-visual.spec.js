@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { mkdir } from 'node:fs/promises';
+import { mkdir, readFile } from 'node:fs/promises';
 import {
   activateSetupControl,
   buttonWithVisibleText,
@@ -153,6 +153,9 @@ async function enterAndMeasure(page, requestLog, variant, visit, assetProbe) {
     visit,
     prefetchHref,
     runtimeAsset,
+    // mockApi(page) installs page.route(); Playwright disables HTTP caching
+    // whenever routing is active. These are first/return scene timings only.
+    cacheMeasurement: 'disabled-by-mocked-routes',
     shellPhases,
     firstFrameMs: Math.round(firstFrame),
     shellReadyMs: Math.round(shellReady),
@@ -238,3 +241,67 @@ for (const variant of ['v3', 'v4']) {
     expect(warm.interactiveMs).toBeLessThanOrEqual(Math.round(cold.interactiveMs * 1.25 + 1000));
   });
 }
+
+
+// This isolated test deliberately NEVER calls mockApi, page.route, context.route,
+// routeFromHAR, or a request interception helper. Playwright disables HTTP cache
+// as soon as routing is enabled, even when the GLB itself is not intercepted.
+// The existing first/return chess journeys measure rendering and interaction;
+// only this unmapped browser context can assess actual HTTP cache reuse.
+test('War Room · real browser HTTP cache probe without request interception', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'chromium', 'CDP network cache diagnostics are Chromium-only');
+  test.setTimeout(120_000);
+  const manifest = JSON.parse(await readFile(
+    new URL('../frontend/src/assets/r2-assets-manifest.json', import.meta.url),
+    'utf8',
+  ));
+
+  // Login surface needs no simulated backend/game state. Keep the browser's
+  // normal cache behavior while fetching the exact manifest URLs from the
+  // same frontend origin used in production (rather than an opaque file://).
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  for (const variant of ['v3', 'v4']) {
+    const entry = manifest.assets[`warRoom.${variant}.runtime`];
+    expect(entry?.url).toContain(`/war-room/${variant}/runtime/`);
+    const probe = await installRuntimeGlbProbe(page, variant);
+    const load = () => page.evaluate(async (url) => {
+      const response = await fetch(url, { cache: 'default', mode: 'cors' });
+      if (!response.ok || !response.body) {
+        throw new Error(`R2 model fetch failed: HTTP ${response.status}`);
+      }
+      let decodedBytes = 0;
+      const reader = response.body.getReader();
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        decodedBytes += value?.byteLength || 0;
+      }
+      return {
+        status: response.status,
+        decodedBytes,
+        cacheControl: response.headers.get('cache-control'),
+      };
+    }, entry.url);
+
+    let first;
+    let second;
+    try {
+      probe.begin('cold');
+      const coldResponse = await load();
+      first = { ...probe.snapshot('cold'), response: coldResponse };
+      probe.begin('warm');
+      const warmResponse = await load();
+      second = { ...probe.snapshot('warm'), response: warmResponse };
+    } finally {
+      await probe.close();
+    }
+    expect(first.response.decodedBytes).toBe(entry.bytes);
+    expect(second.response.decodedBytes).toBe(entry.bytes);
+    console.log(`War Room R2 unmapped browser cache ${JSON.stringify({
+      variant,
+      first,
+      second,
+      cacheValidated: second.cacheHits > 0 || second.transferredBytes === 0,
+    })}`);
+  }
+});
