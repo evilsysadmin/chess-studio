@@ -1074,22 +1074,31 @@ for (const scene of [
       await expect(game).toHaveAttribute('data-chronicles-map-id', 'crypt-eight-squares', { timeout: 20_000 });
       phase('crypt-entered');
       await expect(game).toHaveAttribute('data-chronicles-phase', 'explore');
+      phase('crypt-explore-ready');
       const returnAction = game.locator('[data-chronicles-touch-action="interact"]');
       await expect(returnAction).toHaveAttribute('aria-label', 'Regresar a Swordhaven');
       await expect(returnAction).toContainText('VOLVER');
+      phase('return-action-ready');
       await expect(canvas).toBeVisible();
+      phase('crypt-canvas-ready');
       // The party faces into the crypt, so the real exit arch is naturally
       // BEHIND them on the entrance wall. Turn around for visual proof rather
       // than capturing the enemy corridor and calling it a portal screenshot.
       const beforeTurn = Number(await game.getAttribute('data-chronicles-turns'));
+      phase('turn-count-read');
       await page.keyboard.press('ArrowRight');
+      phase('first-turn-finished');
       await page.keyboard.press('ArrowRight');
+      phase('second-turn-finished');
       await expect(game).toHaveAttribute('data-chronicles-turns', String(beforeTurn + 2));
+      phase('turn-count-verified');
       await expect(game).toHaveAttribute('data-chronicles-phase', 'explore');
       await expect(returnAction).toHaveAttribute('aria-label', 'Regresar a Swordhaven');
+      phase('return-action-still-ready');
       // Give the real first-person camera enough rendered frames to settle on
       // portrait SwiftShader: a half-turned camera clips the entrance plaque.
       await page.waitForTimeout(1750);
+      phase('camera-settled');
       phase('portal-readback-begin');
       await page.screenshot({
         path: `${ARTIFACT_DIR}/chronicles-swordhaven-return-portal-${scene.label}.png`,
