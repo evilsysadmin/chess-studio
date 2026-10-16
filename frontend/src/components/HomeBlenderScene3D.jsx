@@ -832,6 +832,15 @@ export const HOME_BLENDER_FIRE_MAX_RENDER_MS = 80;
 export const HOME_BLENDER_FIRE_MAX_FRAME_GAP_MS = 60;
 export const HOME_BLENDER_FIRE_MAX_INTERVAL_MS = 200;
 export const HOME_BLENDER_FIRE_WARMUP_FRAMES = 20;
+export const HOME_BLENDER_FRAME_TELEMETRY_INTERVAL_MS = 1000;
+
+// Keep observability cheap: DOM attribute mutations are not free, particularly
+// on mobile. Refresh frame diagnostics at 1Hz, not every animated draw.
+export function homeBlenderFrameTelemetryDue(timestamp, lastPublishedAt) {
+  return Number.isFinite(timestamp)
+    && Number.isFinite(lastPublishedAt)
+    && timestamp - lastPublishedAt >= HOME_BLENDER_FRAME_TELEMETRY_INTERVAL_MS;
+}
 
 // A slow scene has no reason to wake on every vsync just to reject most frames.
 // Retain one adjacent RAF pair per rendered frame to observe real frame pacing;
@@ -1835,6 +1844,8 @@ export default function HomeBlenderScene3D({
     let fireRafCount = 0;
     let lastFireRafAt = null;
     let sampledRafClock = 0;
+    let frameTelemetryStartAt = null;
+    let frameTelemetryDraws = 0;
     // Drop the extra GPU effects and shadows in place (no scene reload), then re-read the
     // capped policy for pixel ratio; '2d' hands the Home back to the painted master.
     const applyLodCap = (next) => {
@@ -1914,8 +1925,25 @@ export default function HomeBlenderScene3D({
         });
         fireIntervalMs = plan.intervalMs;
         nextFireRenderAt = homeBlenderFireNextDeadline(timestamp, nextFireRenderAt, fireIntervalMs);
-        canvas.dataset.homeFireCostMs = fireRenderCostMs.toFixed(1);
-        canvas.dataset.homeFireGapMs = fireFrameGapMs.toFixed(1);
+        if (frameTelemetryStartAt === null) frameTelemetryStartAt = timestamp;
+        frameTelemetryDraws += 1;
+        if (homeBlenderFrameTelemetryDue(timestamp, frameTelemetryStartAt)) {
+          // CPU-side renderer call duration != GPU execution time. Keep the
+          // renderer backend flag alongside this diagnostic in visual-health.
+          const elapsedMs = timestamp - frameTelemetryStartAt;
+          canvas.dataset.homeFireCostMs = fireRenderCostMs.toFixed(1);
+          canvas.dataset.homeFireGapMs = fireFrameGapMs.toFixed(1);
+          canvas.dataset.homeFireIntervalMs = fireIntervalMs.toFixed(1);
+          canvas.dataset.homeBlenderDrawnFps = (frameTelemetryDraws * 1000 / elapsedMs).toFixed(1);
+          if (Number.isFinite(renderer.info?.render?.calls)) {
+            canvas.dataset.homeBlenderDrawCalls = String(renderer.info.render.calls);
+          }
+          if (Number.isFinite(renderer.info?.render?.triangles)) {
+            canvas.dataset.homeBlenderTriangles = String(renderer.info.render.triangles);
+          }
+          frameTelemetryStartAt = timestamp;
+          frameTelemetryDraws = 0;
+        }
         // The frame planner only throttles. It intentionally never terminates
         // this shared loop, because doing so freezes Matthias and every ambient
         // animation until the Home is remounted.
@@ -1978,6 +2006,8 @@ export default function HomeBlenderScene3D({
       if (fireWakeTimer !== null) window.clearTimeout(fireWakeTimer);
       fireFrame = null;
       fireWakeTimer = null;
+      frameTelemetryStartAt = null;
+      frameTelemetryDraws = 0;
     };
 
     const onVisibilityChange = () => {
