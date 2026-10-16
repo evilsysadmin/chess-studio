@@ -232,8 +232,11 @@ for (const variant of ['v3', 'v4']) {
         const hashedRoom = /\/war-room\/v3\/runtime\/[^/?#]+-[a-f0-9]{16}\.glb(?:[?#]|$)/;
         expect(cold.runtimeAsset.urls.every((url) => hashedRoom.test(url))).toBe(true);
       } else {
+        // Local/e2e builds may omit VITE_BUILD_SHA; production appends it.
+        // In both cases the preload and installer must agree exactly.
         expect(cold.runtimeAsset.urls.every((url) =>
-          url.startsWith(`${WAR_ROOM_V4_RUNTIME_ALIAS_URL}?build=`))).toBe(true);
+          url === WAR_ROOM_V4_RUNTIME_ALIAS_URL
+          || url.startsWith(`${WAR_ROOM_V4_RUNTIME_ALIAS_URL}?build=`))).toBe(true);
       }
       if (cold.prefetchHref) {
         expect(cold.runtimeAsset.urls).toEqual([cold.prefetchHref]);
