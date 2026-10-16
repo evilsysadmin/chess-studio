@@ -13,18 +13,20 @@ import {
 } from './WarRoomV3Shell.js';
 
 describe('War Room v3 runtime asset URL', () => {
-  it('loads the same content-addressed R2 GLB as variant intent prefetch', () => {
+  it('preloads the actual authored V3 GLB with the exact same build URL as the installer', () => {
     const expected = warRoomVariantRuntimeModelUrl('v3', { buildSha: 'abc123' });
-    expect(expected).toContain('/war-room/v3/runtime/war-room-v3-shell-');
-    expect(WAR_ROOM_V3_RUNTIME_MODEL_URL).toBe(expected);
+    expect(WAR_ROOM_V3_RUNTIME_MODEL_URL).toContain('/war-room/v3/runtime/current.glb');
+    expect(expected).toBe(`${WAR_ROOM_V3_RUNTIME_MODEL_URL}?build=abc123`);
     expect(warRoomV3ModelUrl({ buildSha: 'abc123' })).toBe(expected);
-    expect(warRoomV3ModelUrl({ buildSha: 'new-deploy' })).toBe(expected);
-    expect(warRoomV3ModelUrl({ buildSha: '' })).toBe(expected);
+    expect(warRoomV3ModelUrl({ buildSha: 'new-deploy' }))
+      .toBe(warRoomVariantRuntimeModelUrl('v3', { buildSha: 'new-deploy' }));
+    expect(warRoomV3ModelUrl({ buildSha: '' })).toBe(WAR_ROOM_V3_RUNTIME_MODEL_URL);
   });
 
-  it('preserves explicit content-addressed URLs without appending build tokens', () => {
-    const url = 'https://assets.example.test/war-room/v3/runtime/shell-0123456789abcdef.glb?source=staging';
-    expect(warRoomV3ModelUrl({ buildSha: 'main/abc 123', baseUrl: url })).toBe(url);
+  it('preserves URL queries when adding build tokens', () => {
+    const url = 'https://assets.example.test/war-room/v3/runtime/current.glb?source=staging';
+    expect(warRoomV3ModelUrl({ buildSha: 'main/abc 123', baseUrl: url }))
+      .toBe(`${url}&build=main%2Fabc%20123`);
   });
 });
 

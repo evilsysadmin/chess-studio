@@ -1,4 +1,8 @@
 import { expect, test } from '@playwright/test';
+import { mkdir } from 'node:fs/promises';
+import { r2AssetEntry } from '../frontend/src/r2Assets.js';
+import { WAR_ROOM_V4_RUNTIME_ALIAS_URL } from '../frontend/src/components/WarRoomV4Asset.js';
+import { WAR_ROOM_V3_RUNTIME_ALIAS_URL } from '../frontend/src/components/WarRoomV3Asset.js';
 import {
   activateSetupControl,
   buttonWithVisibleText,
@@ -46,6 +50,8 @@ async function installRuntimeGlbProbe(page, variant) {
       encodedBytes: null,
       cacheHit: false,
       status: null,
+      cacheControl: null,
+      ageSeconds: null,
       failed: false,
     });
   });
@@ -53,6 +59,11 @@ async function installRuntimeGlbProbe(page, variant) {
     const entry = requests.get(requestId);
     if (!entry) return;
     entry.status = response.status;
+    const headers = Object.fromEntries(
+      Object.entries(response.headers || {}).map(([name, value]) => [name.toLowerCase(), value]),
+    );
+    entry.cacheControl = headers['cache-control'] || null;
+    entry.ageSeconds = headers.age === undefined ? null : Number(headers.age);
     entry.cacheHit ||= response.fromDiskCache === true || response.fromPrefetchCache === true;
   });
   cdp.on('Network.requestServedFromCache', ({ requestId }) => {
@@ -81,8 +92,8 @@ async function installRuntimeGlbProbe(page, variant) {
         transferredBytes: matches.reduce((sum, entry) => sum + (entry.encodedBytes || 0), 0),
         failedRequests: matches.filter((entry) => entry.failed).length,
         urls: [...new Set(matches.map((entry) => entry.url))],
-        requests: matches.map(({ initiator, status, cacheHit, encodedBytes, elapsedMs }) => ({
-          initiator, status, cacheHit, encodedBytes, elapsedMs,
+        requests: matches.map(({ initiator, status, cacheControl, ageSeconds, cacheHit, encodedBytes, elapsedMs }) => ({
+          initiator, status, cacheControl, ageSeconds, cacheHit, encodedBytes, elapsedMs,
         })),
       };
     },
@@ -145,6 +156,9 @@ async function enterAndMeasure(page, requestLog, variant, visit, assetProbe) {
     visit,
     prefetchHref,
     runtimeAsset,
+    // mockApi(page) installs page.route(); Playwright disables HTTP caching
+    // whenever routing is active. These are first/return scene timings only.
+    cacheMeasurement: 'disabled-by-mocked-routes',
     shellPhases,
     firstFrameMs: Math.round(firstFrame),
     shellReadyMs: Math.round(shellReady),
@@ -195,12 +209,31 @@ for (const variant of ['v3', 'v4']) {
       await assetProbe?.close();
     }
 
-    if (variant === 'v3' && assetProbe) {
-      // Guard the #5717 network contract: the installer must not silently
-      // return to mutable current.glb?build=... or diverge from intent preload.
+    // Visual evidence for the V4 loader change: capture the real interactive
+    // room after timing has finished, never counting screenshot cost as latency.
+    // Canonical V1/V2/V3 screenshots are owned by the existing visual producer.
+    if (variant === 'v4' && process.env.APP_VISUAL_ARTIFACT === '1') {
+      const viewport = page.viewportSize();
+      const dimensions = viewport ? `${viewport.width}x${viewport.height}` : 'viewport';
+      const directory = '../.artifacts/app-visual';
+      await mkdir(directory, { recursive: true });
+      await page.screenshot({
+        path: `${directory}/war-room-v4-entry-${dimensions}.png`,
+        animations: 'disabled',
+        timeout: 30_000,
+      });
+    }
+
+    if (assetProbe) {
+      // V3 and V4 must preload their actual authored runtime revisions, not
+      // stale content-addressed manifest snapshots lacking later scene updates.
       expect(cold.runtimeAsset.requestCount).toBeGreaterThan(0);
-      const hashedV3 = /\/war-room\/v3\/runtime\/[^/?#]+-[a-f0-9]{16}\.glb(?:[?#]|$)/;
-      expect(cold.runtimeAsset.urls.every((url) => hashedV3.test(url))).toBe(true);
+      const runtimeAlias = variant === 'v3'
+        ? WAR_ROOM_V3_RUNTIME_ALIAS_URL
+        : WAR_ROOM_V4_RUNTIME_ALIAS_URL;
+      // Local/e2e builds may omit VITE_BUILD_SHA; production appends it.
+      expect(cold.runtimeAsset.urls.every((url) =>
+        url === runtimeAlias || url.startsWith(`${runtimeAlias}?build=`))).toBe(true);
       if (cold.prefetchHref) {
         expect(cold.runtimeAsset.urls).toEqual([cold.prefetchHref]);
       }
@@ -215,3 +248,96 @@ for (const variant of ['v3', 'v4']) {
     expect(warm.interactiveMs).toBeLessThanOrEqual(Math.round(cold.interactiveMs * 1.25 + 1000));
   });
 }
+
+
+// This isolated test deliberately NEVER calls mockApi, page.route, context.route,
+// routeFromHAR, or a request interception helper. Playwright disables HTTP cache
+// as soon as routing is enabled, even when the GLB itself is not intercepted.
+// The existing first/return chess journeys measure rendering and interaction;
+// only this unmapped browser context can assess actual HTTP cache reuse.
+test('War Room · real browser HTTP cache probe without request interception', async ({ page }, testInfo) => {
+  if (testInfo.project.name !== 'chromium') return; // CDP probe applies to Chromium only.
+  test.setTimeout(120_000);
+  // Login surface needs no simulated backend/game state. Keep the browser's
+  // normal cache behavior while fetching the *actual* runtime model URLs.
+  // V3/V4 currently use mutable aliases keyed by frontend build because the
+  // content-addressed manifest snapshots can omit newer authored scene nodes.
+  await page.goto('./', { waitUntil: 'domcontentloaded' });
+  for (const variant of ['v3', 'v4']) {
+    const entry = r2AssetEntry(`warRoom.${variant}.runtime`);
+    const modelUrl = `${variant === 'v3'
+      ? WAR_ROOM_V3_RUNTIME_ALIAS_URL : WAR_ROOM_V4_RUNTIME_ALIAS_URL}?build=cache-probe`;
+    expect(modelUrl).toContain(`/war-room/${variant}/runtime/`);
+    const probe = await installRuntimeGlbProbe(page, variant);
+    const load = () => page.evaluate(async (url) => {
+      const response = await fetch(url, { cache: 'default', mode: 'cors' });
+      if (!response.ok || !response.body) {
+        throw new Error(`R2 model fetch failed: HTTP ${response.status}`);
+      }
+      let decodedBytes = 0;
+      const reader = response.body.getReader();
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        decodedBytes += value?.byteLength || 0;
+      }
+      return {
+        status: response.status,
+        decodedBytes,
+        cacheControl: response.headers.get('cache-control'),
+      };
+    }, modelUrl);
+
+    // Read measurements only after CDP loadingFinished. A 0-byte value for
+    // an *unfinished* request is not evidence of a browser cache hit.
+    const finishedSnapshot = async (visit) => {
+      await expect.poll(() => {
+        const report = probe.snapshot(visit);
+        return report.requestCount > 0 && report.requests.every((request) =>
+          request.encodedBytes !== null || request.failed);
+      }, { timeout: 20_000 }).toBe(true);
+      return probe.snapshot(visit);
+    };
+    let first;
+    let second;
+    try {
+      probe.begin('cold');
+      const coldResponse = await load();
+      first = { ...(await finishedSnapshot('cold')), response: coldResponse };
+      probe.begin('warm');
+      const warmResponse = await load();
+      second = { ...(await finishedSnapshot('warm')), response: warmResponse };
+    } finally {
+      await probe.close();
+    }
+    expect(first.response.decodedBytes).toBeGreaterThan(60_000);
+    expect(second.response.decodedBytes).toBe(first.response.decodedBytes);
+    console.log(`War Room R2 unmapped browser cache ${JSON.stringify({
+      variant,
+      modelUrl,
+      first,
+      second,
+      cacheValidated: second.cacheHits > 0 && second.transferredBytes === 0,
+    })}`);
+
+    {
+      // Compare each live GLB against the manifest snapshot. Missing Hans
+      // stage anchors in V3 are a functional regression, not cosmetic.
+      const alias = await page.evaluate(async (url) => {
+        const response = await fetch(url, { cache: 'no-store', mode: 'cors' });
+        if (!response.ok) throw new Error(`War Room alias HTTP ${response.status}`);
+        const bytes = await response.arrayBuffer();
+        const digest = await crypto.subtle.digest('SHA-256', bytes);
+        const sha256 = [...new Uint8Array(digest)]
+          .map((byte) => byte.toString(16).padStart(2, '0')).join('');
+        return { bytes: bytes.byteLength, sha256 };
+      }, modelUrl);
+      console.log(`War Room source-asset parity ${JSON.stringify({
+        variant,
+        immutableSha256: entry.sha256,
+        mutableAlias: alias,
+        byteIdentical: alias.sha256 === entry.sha256,
+      })}`);
+    }
+  }
+});

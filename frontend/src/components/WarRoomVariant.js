@@ -6,6 +6,8 @@ import { setProfileStorageItem } from '../profileKeys.js';
 import { PVP_DUEL_ROOM_RUNTIME_MODEL_URL } from './PvpDuelRoomAsset.js';
 import { COMBAT_OPERATIONS_ROOM_RUNTIME_MODEL_URL } from './CombatOperationsRoomAsset.js';
 import { r2AssetUrl } from '../r2Assets.js';
+import { WAR_ROOM_V4_RUNTIME_ALIAS_URL } from './WarRoomV4Asset.js';
+import { WAR_ROOM_V3_RUNTIME_ALIAS_URL } from './WarRoomV3Asset.js';
 
 export const WAR_ROOM_VARIANT_STORAGE_KEY = 'chess-study-war-room-variant-v1';
 export const WAR_ROOM_VARIANT_CHANGED_EVENT = 'chess-war-room-variant-changed';
@@ -33,8 +35,10 @@ export const WAR_ROOM_VARIANTS = Object.freeze([
     id: 'v3',
     label: 'War Room v3',
     shell: 'blender',
-    runtimeModelUrl: r2AssetUrl('warRoom.v3.runtime'),
-    cacheBustBuild: false,
+    // Current authored V3 stage is newer than the manifest GLB. Do not lose
+    // Hans anchors to a stale hashed preload; runtime and intent match.
+    runtimeModelUrl: WAR_ROOM_V3_RUNTIME_ALIAS_URL,
+    cacheBustBuild: true,
     hansStage: true,
     loadInstaller: () => import('./WarRoomV3Shell.js').then(({ installWarRoomV3Shell }) => installWarRoomV3Shell),
   }),
@@ -45,8 +49,10 @@ export const WAR_ROOM_VARIANTS = Object.freeze([
     // Selectable explicitly while it is validated on device; never drawn by
     // the «Aleatoria» preference until it graduates.
     randomPool: false,
-    runtimeModelUrl: r2AssetUrl('warRoom.v4.runtime'),
-    cacheBustBuild: false,
+    // Preserve the live V4 revision: the old hashed manifest asset has a
+    // different SHA-256 from current.glb. Preload and runtime now agree.
+    runtimeModelUrl: WAR_ROOM_V4_RUNTIME_ALIAS_URL,
+    cacheBustBuild: true,
     hansStage: true,
     loadInstaller: () => import('./WarRoomV4Shell.js').then(({ installWarRoomV4Shell }) => installWarRoomV4Shell),
   }),

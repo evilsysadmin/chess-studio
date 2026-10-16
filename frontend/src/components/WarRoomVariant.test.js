@@ -112,7 +112,7 @@ describe('War Room staging variant', () => {
     expect(WAR_ROOM_VARIANTS.map(({ id }) => id)).toEqual(['classic', 'v2', 'v3', 'v4']);
     expect(warRoomVariantDefinition('v4').shell).toBe('blender');
     expect(warRoomVariantRuntimeModelUrl('v4', { buildSha: 'abc123' }))
-      .toBe('https://assets.chess-studio.shadowops.dpdns.org/war-room/v4/runtime/war-room-v4-shell-58e5243dcf0b39d7.glb');
+      .toBe('https://assets.chess-studio.shadowops.dpdns.org/war-room/v4/runtime/current.glb?build=abc123');
     expect(warRoomVariantDefinition('classic').shell).toBe('procedural');
     expect(warRoomVariantDefinition('v2').shell).toBe('blender');
     expect(warRoomVariantDefinition('v3').shell).toBe('blender');
@@ -134,11 +134,16 @@ describe('War Room staging variant', () => {
     expect(warRoomVariantRuntimeModelUrl('v2', { buildSha: 'abc123' }))
       .toBe('https://assets.chess-studio.shadowops.dpdns.org/war-room/v2/runtime/war-room-premium-shell-c8c6d324d0dec87e.glb');
     expect(warRoomVariantRuntimeModelUrl('v3', { buildSha: 'abc123' }))
-      .toBe('https://assets.chess-studio.shadowops.dpdns.org/war-room/v3/runtime/war-room-v3-shell-5f7b69a8b8681b37.glb');
+      .toBe('https://assets.chess-studio.shadowops.dpdns.org/war-room/v3/runtime/current.glb?build=abc123');
     expect(warRoomVariantRuntimeModelUrl('duel', { buildSha: 'abc123' }))
       .toBe('https://assets.chess-studio.shadowops.dpdns.org/pvp/duel-room/runtime/pvp-duel-room-shell-b644b06d0c522690.glb');
-    for (const id of ['v2', 'v3', 'v4', 'duel']) {
+    for (const id of ['v2', 'duel']) {
       expect(warRoomVariantDefinition(id)).toMatchObject({ cacheBustBuild: false });
+    }
+    // Mutable V3/V4 keep the frontend build token until their authored
+    // current.glb assets are fingerprinted and republished under immutable URLs.
+    for (const id of ['v3', 'v4']) {
+      expect(warRoomVariantDefinition(id)).toMatchObject({ cacheBustBuild: true });
     }
     expect(warRoomVariantRuntimeModelUrl('classic', { buildSha: 'abc123' })).toBeNull();
   });
