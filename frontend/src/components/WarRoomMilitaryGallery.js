@@ -281,7 +281,28 @@ function addGothicFinial(group, material, y, flip = false) {
   return finial;
 }
 
-function addBrazierCage(torch, iron, ironHighlight, emberMat) {
+// Preserve the authored shape of repeated small hardware while submitting each
+// group in one draw. Only V3 opts in; existing gallery torches stay unchanged.
+function addInstancedTorchHardware(torch, name, geometry, material, transforms) {
+  const mesh = new THREE.InstancedMesh(geometry, material, transforms.length);
+  mesh.name = name;
+  mesh.castShadow = false;
+  mesh.receiveShadow = true;
+  const dummy = new THREE.Object3D();
+  transforms.forEach(({ position, rotation = [0, 0, 0], scale = [1, 1, 1] }, index) => {
+    dummy.position.set(...position);
+    dummy.rotation.set(...rotation);
+    dummy.scale.set(...scale);
+    dummy.updateMatrix();
+    mesh.setMatrixAt(index, dummy.matrix);
+  });
+  mesh.instanceMatrix.needsUpdate = true;
+  mesh.computeBoundingSphere();
+  torch.add(mesh);
+  return mesh;
+}
+
+function addBrazierCage(torch, iron, ironHighlight, emberMat, { batchedHardware = false } = {}) {
   const z = 0.47;
 
   addMesh(torch, new THREE.CylinderGeometry(0.12, 0.095, 0.17, 12), iron, [0, 0.1, z], [0, 0, 0], 'war-room-side-torch-neck');
@@ -292,22 +313,31 @@ function addBrazierCage(torch, iron, ironHighlight, emberMat) {
   coal.scale.set(1, 0.28, 0.8);
   coal.castShadow = false;
 
+  const bars = [];
+  const crowns = [];
   for (let index = 0; index < 6; index += 1) {
     const angle = (index / 6) * Math.PI * 2;
     const x = Math.cos(angle) * 0.145;
     const cageZ = z + Math.sin(angle) * 0.145;
+    if (batchedHardware) {
+      bars.push({
+        position: [x, 0.43, cageZ],
+        rotation: [Math.sin(angle) * 0.12, 0, -Math.cos(angle) * 0.12],
+      });
+      crowns.push({
+        position: [x * 1.04, 0.615, z + Math.sin(angle) * 0.151],
+        rotation: [0, Math.PI / 4, 0],
+      });
+      continue;
+    }
     const bar = addMesh(
       torch,
       new THREE.CylinderGeometry(0.014, 0.018, 0.28, 7),
-      iron,
-      [x, 0.43, cageZ],
-      [0, 0, 0],
-      'war-room-side-torch-cage-bar',
+      iron, [x, 0.43, cageZ], [0, 0, 0], 'war-room-side-torch-cage-bar',
     );
     bar.rotation.z = -Math.cos(angle) * 0.12;
     bar.rotation.x = Math.sin(angle) * 0.12;
     bar.castShadow = false;
-
     const crown = addMesh(
       torch,
       new THREE.ConeGeometry(0.028, 0.11, 4),
@@ -317,6 +347,12 @@ function addBrazierCage(torch, iron, ironHighlight, emberMat) {
       'war-room-side-torch-crown-spike',
     );
     crown.castShadow = false;
+  }
+  if (batchedHardware) {
+    addInstancedTorchHardware(torch, 'war-room-side-torch-cage-bar',
+      new THREE.CylinderGeometry(0.014, 0.018, 0.28, 7), iron, bars);
+    addInstancedTorchHardware(torch, 'war-room-side-torch-crown-spike',
+      new THREE.ConeGeometry(0.028, 0.11, 4), ironHighlight, crowns);
   }
 }
 
@@ -329,6 +365,7 @@ export function createWarRoomSideTorch({
   withLight = true,
   lightIntensity = 9.2,
   lightDistance = 11.0,
+  batchStaticHardware = false,
 } = {}) {
   const torch = new THREE.Group();
   torch.name = side < 0 ? 'war-room-side-torch-left' : 'war-room-side-torch-right';
@@ -383,15 +420,24 @@ export function createWarRoomSideTorch({
   addGothicFinial(torch, ironHighlight, 0.43, false);
   addGothicFinial(torch, ironHighlight, -0.71, true);
 
-  for (const y of [0.19, -0.14, -0.47]) {
-    const rivet = addMesh(torch, new THREE.SphereGeometry(0.034, 8, 6), ironHighlight, [0, y, 0.055], [0, 0, 0], 'war-room-side-torch-rivet');
-    rivet.scale.z = 0.4;
-    rivet.castShadow = false;
+  if (batchStaticHardware) {
+    addInstancedTorchHardware(torch, 'war-room-side-torch-rivet',
+      new THREE.SphereGeometry(0.034, 8, 6), ironHighlight,
+      [0.19, -0.14, -0.47].map((y) => ({
+        position: [0, y, 0.055],
+        scale: [1, 1, 0.4],
+      })));
+  } else {
+    for (const y of [0.19, -0.14, -0.47]) {
+      const rivet = addMesh(torch, new THREE.SphereGeometry(0.034, 8, 6), ironHighlight, [0, y, 0.055], [0, 0, 0], 'war-room-side-torch-rivet');
+      rivet.scale.z = 0.4;
+      rivet.castShadow = false;
+    }
   }
 
   addBox(torch, [0.105, 0.105, 0.47], iron, [0, -0.03, 0.27], 'war-room-side-torch-wall-arm');
   addMesh(torch, new THREE.CylinderGeometry(0.09, 0.09, 0.12, 12), ironHighlight, [0, -0.03, 0.115], [Math.PI / 2, 0, 0], 'war-room-side-torch-arm-collar');
-  addBrazierCage(torch, iron, ironHighlight, emberMat);
+  addBrazierCage(torch, iron, ironHighlight, emberMat, { batchedHardware: batchStaticHardware });
 
   const haloMaterial = new THREE.MeshBasicMaterial({
     color: 0xff8d3d,

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
+import { createWarRoomSideTorch } from './WarRoomMilitaryGallery.js';
 import {
   WAR_ROOM_V3_HEARTH_FIRE_SHAPE,
   WAR_ROOM_V3_TOUCH_HEARTH_WASH,
@@ -67,6 +68,47 @@ describe('War Room v3 side-wall torches', () => {
     release();
     expect(root.getObjectByName('WR3_ANCHOR_torch_0').children).toHaveLength(0);
     expect(root.userData.warRoomV3Torches).toBeUndefined();
+  });
+
+  it('instances V3 static torch metal without changing geometry, transforms or animated flames', () => {
+    const root = build();
+    const release = installWarRoomV3Torches(root);
+    const batchedTorch = root.getObjectByName('WR3_ANCHOR_torch_0').children[0];
+    const classicTorch = createWarRoomSideTorch({ withLight: false });
+    const families = [
+      ['war-room-side-torch-rivet', 3],
+      ['war-room-side-torch-cage-bar', 6],
+      ['war-room-side-torch-crown-spike', 6],
+    ];
+    for (const [name, count] of families) {
+      const original = classicTorch.children.filter((child) => child.name === name);
+      const batch = batchedTorch.getObjectByName(name);
+      expect(original).toHaveLength(count);
+      expect(batch?.isInstancedMesh).toBe(true);
+      expect(batch.count).toBe(count);
+      expect(batch.material).toBeTruthy();
+      expect(batch.castShadow).toBe(false);
+      expect(batch.receiveShadow).toBe(true);
+      original.forEach((node, index) => {
+        node.updateMatrix();
+        const instance = new THREE.Matrix4();
+        batch.getMatrixAt(index, instance);
+        instance.elements.forEach((value, offset) => {
+          expect(value).toBeCloseTo(node.matrix.elements[offset], 5);
+        });
+        expect(batch.geometry.type).toBe(node.geometry.type);
+        expect(batch.geometry.parameters).toEqual(node.geometry.parameters);
+      });
+    }
+    const meshCount = (group) => {
+      let count = 0;
+      group.traverse((node) => { if (node.isMesh) count += 1; });
+      return count;
+    };
+    expect(meshCount(classicTorch) - meshCount(batchedTorch)).toBe(12);
+    expect(Boolean(batchedTorch.getObjectByName('war-room-side-torch-flame-outer')?.isInstancedMesh)).toBe(false);
+    expect(Boolean(batchedTorch.getObjectByName('war-room-side-torch-wall-halo')?.isInstancedMesh)).toBe(false);
+    release();
   });
 
   it('keeps every flame but only one real torch light per side wall on touch devices', () => {
