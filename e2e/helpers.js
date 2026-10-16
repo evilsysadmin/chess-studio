@@ -528,12 +528,15 @@ export async function mockApi(page, {
 // Home's 3D/compositor mount is async even after a successful form submit.
 // This timeout is for the Home landmark, not a replacement for the readiness gate.
 export async function login(page, { navigationWaitUntil = 'load', homeVisibleTimeout = 30_000, initialView = 'menu' } = {}) {
-  // Scoped E2E shortcut through the *real* restorable Lab session view. It
-  // still authenticates and clicks the real Chronicles portal, but avoids
-  // remounting Home's costly WebGL context for unrelated dungeon captures.
-  // The default remains the complete, independently covered 3D Home route.
+  // Exercise the same persisted-authentication session that F5/reopening a
+  // tab restores in production. Explicit login clears restorable view state;
+  // these dungeon-only captures intentionally reuse a previously authenticated
+  // user instead. Independent Home canaries still exercise the actual form
+  // login, full WebGL compositor and Home→Lab click route.
   if (initialView === 'lab') {
     await page.addInitScript(() => {
+      localStorage.setItem('chess-study-auth-token', 'e2e-token');
+      localStorage.setItem('chess-study-auth-username', 'e2e');
       sessionStorage.setItem('chess-study-current-view', 'lab');
     });
   } else if (initialView !== 'menu') {
@@ -546,6 +549,15 @@ export async function login(page, { navigationWaitUntil = 'load', homeVisibleTim
   // Visual captures may wait for DOM readiness instead of all heavyweight assets.
   // The explicit Home-ready gate below still checks real app interactivity.
   await page.goto('./', { waitUntil: navigationWaitUntil });
+  if (initialView === 'lab') {
+    test.setTimeout(Math.max(test.info().timeout, 90_000));
+    // The real persisted session must open the genuine production Lab
+    // without mounting the expensive Home castle in the background.
+    await expect(page.locator('.lab-workshop-portal--chronicles'))
+      .toBeVisible({ timeout: homeVisibleTimeout });
+    await expect(page.locator('.illustrated-home__stage')).toHaveCount(0);
+    return;
+  }
   await page.getByLabel('Usuario').fill('e2e');
   const password = page.getByLabel('Contraseña');
   await password.fill('clave123456');
@@ -556,14 +568,6 @@ export async function login(page, { navigationWaitUntil = 'load', homeVisibleTim
   // while fonts/layout settle during the login screen's first frames.
   await password.press('Enter');
   test.setTimeout(Math.max(test.info().timeout, 90_000));
-  if (initialView === 'lab') {
-    // A real authorized session must render the production Lab, not an E2E
-    // fake screen or a Home that is silently bootstrapping in the background.
-    await expect(page.locator('.lab-workshop-portal--chronicles'))
-      .toBeVisible({ timeout: homeVisibleTimeout });
-    await expect(page.locator('.illustrated-home__stage')).toHaveCount(0);
-    return;
-  }
   // Stable Home-ready landmark shared by immersive desktop and compact mobile.
   // Slow isolated Chromium/SwiftShader visual runs may need more time *after*
   // successful authentication; never resubmit the login form on this timeout.
