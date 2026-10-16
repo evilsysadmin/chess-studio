@@ -522,6 +522,11 @@ async function captureWarRoomHealth(page, label) {
           return [name.toLowerCase(), value === undefined ? null : Number(value)];
         }),
       ) : null,
+      capturedRendererMemory: canvas ? {
+        geometries: Number(canvas.dataset.board3dMemoryGeometries || 0),
+        textures: Number(canvas.dataset.board3dMemoryTextures || 0),
+        programs: Number(canvas.dataset.board3dMemoryPrograms || 0),
+      } : null,
       blenderShadow: canvas ? {
         budget: Number(canvas.dataset.warRoomShadowCasterBudget || 0),
         candidates: Number(canvas.dataset.warRoomShadowCasterCandidates || 0),
@@ -756,6 +761,7 @@ async function assertAndCaptureProfile(page, profile, board3d) {
       profile: profile.label,
       shellTiming: health.shellTiming,
       firstReadyRender: health.firstReadyRender,
+      capturedRendererMemory: health.capturedRendererMemory,
       blenderShadow: health.blenderShadow,
     })}`);
   }
