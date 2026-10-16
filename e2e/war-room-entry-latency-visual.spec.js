@@ -57,7 +57,7 @@ async function enterAndMeasure(page, requestLog, variant, visit) {
   // measurements. This separates GLB transfer/parse, material setup,
   // effects install and the synchronous ready paint.
   const shellPhases = await canvas.evaluate((element) => {
-    const names = ['import', 'glb', 'materials', 'effects', 'readyPaint'];
+    const names = ['import', 'glb', 'materials', 'effects', 'render', 'postRender', 'readyPaint'];
     return Object.fromEntries(names.map((phase) => {
       const key = `warRoomShellTiming${phase[0].toUpperCase()}${phase.slice(1)}Ms`;
       const raw = element.dataset[key];

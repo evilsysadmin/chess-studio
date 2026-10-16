@@ -16,7 +16,7 @@ export function createWarRoomShellTiming({
   // A variant switch reuses the canvas. Never attribute old phases to the
   // next room, especially if this room fails before its GLB becomes ready.
   if (canvas?.dataset) {
-    for (const phase of WAR_ROOM_SHELL_TIMING_PHASES) {
+    for (const phase of [...WAR_ROOM_SHELL_TIMING_PHASES, 'render', 'postRender']) {
       delete canvas.dataset[`warRoomShellTiming${phase[0].toUpperCase()}${phase.slice(1)}Ms`];
     }
   }

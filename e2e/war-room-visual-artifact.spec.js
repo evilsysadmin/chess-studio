@@ -510,7 +510,7 @@ async function captureWarRoomHealth(page, label) {
       // Five one-shot measurements per Blender shell; null until completed.
       // Reported in canonical visual JSON without running a second 3D session.
       shellTiming: canvas ? Object.fromEntries(
-        ['import', 'glb', 'materials', 'effects', 'readyPaint'].map((phase) => {
+        ['import', 'glb', 'materials', 'effects', 'render', 'postRender', 'readyPaint'].map((phase) => {
           const key = `warRoomShellTiming${phase[0].toUpperCase()}${phase.slice(1)}Ms`;
           const raw = canvas.dataset[key];
           return [phase, raw === undefined ? null : Number(raw)];
