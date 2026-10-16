@@ -585,6 +585,11 @@ function Board3DCanvas({
       canvas: state.renderer.domElement,
       onStatus: setWarRoomVariantStatus,
       onPaint: state.render,
+      prepareShaders: () => {
+        const bench = globalThis.__chessWarRoomShaderAB;
+        if (bench) bench.parallelCompile = Boolean(state.renderer.getContext().getExtension('KHR_parallel_shader_compile'));
+        return state.renderer.compileAsync(state.scene, state.camera);
+      },
     });
   }, [warRoomVariant, warRoomVariantSelectable, setWarRoomVariantStatus, effectiveThemeId, orientation, showCoordinates, trainingRoom]);
 

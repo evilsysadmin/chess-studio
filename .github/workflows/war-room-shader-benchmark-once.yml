@@ -1,0 +1,40 @@
+name: War Room shader A/B · temporary
+on:
+  pull_request:
+    paths:
+      - 'frontend/src/components/WarRoomSceneVariant.js'
+      - 'frontend/src/components/Board3DCore.jsx'
+      - 'e2e/war-room-shader-compile-benchmark.spec.js'
+      - '.github/workflows/war-room-shader-benchmark-once.yml'
+
+permissions: { contents: read }
+concurrency:
+  group: war-room-shader-benchmark-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+jobs:
+  chromium:
+    name: Real Chromium · V3 shader preparation A/B
+    runs-on: ubuntu-24.04
+    timeout-minutes: 16
+    env:
+      VITE_WARROOM_SHADER_AB: '1'
+      VITE_WAR_ROOM_VARIANTS_ENABLE: '1'
+    steps:
+      - uses: actions/checkout@v7
+      - name: Setup isolated Chromium diagnostic build
+        uses: ./.github/actions/setup-browser-e2e
+        with:
+          browser-scope: chromium
+      - name: Same-bundle ABBA (no latency threshold)
+        working-directory: e2e
+        env:
+          CI: '1'
+        run: ./node_modules/.bin/playwright test war-room-shader-compile-benchmark.spec.js --workers=1 --retries=0 --timeout=420000
+      - name: Upload measurements
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: war-room-shader-ab-${{ github.event.pull_request.number }}
+          path: .artifacts/war-room-shader-ab/v3.json
+          if-no-files-found: ignore
+          retention-days: 7

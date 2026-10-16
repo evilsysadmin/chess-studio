@@ -55,12 +55,14 @@ export function startWarRoomVariantScene({
   canvas,
   onStatus,
   onPaint,
+  prepareShaders,
   loadVariantInstaller = loadWarRoomVariantInstaller,
   loadHansStage = () => import('./WarRoomHansStage.js'),
 }) {
   let cancelled = false;
   let releaseShell = null;
   let releaseHans = null;
+  let shaderTimer = null;
   const classicShellObjects = classicShellController?.current?.() || [];
   const ensureClassicShell = classicShellController?.ensure;
   const setStatus = (status, renderedVariant) => {
@@ -140,7 +142,9 @@ export function startWarRoomVariantScene({
       if (cancelled) return release?.();
       releaseShell = release;
       syncBlenderShadowTelemetry(scene, variant, canvas);
-      if (warRoomVariantSupportsHans(variant)) {
+      const finishReady = () => {
+        if (cancelled) return;
+        if (warRoomVariantSupportsHans(variant)) {
         // Hans is decorative/narrative rather than a prerequisite for board
         // interaction. Keep his sizeable stage/routine graph off the initial
         // Blender-room path and load it only after the shell itself is ready.
@@ -182,6 +186,30 @@ export function startWarRoomVariantScene({
       setStatus('ready', variant);
       onPaint?.();
       shellTiming.mark('readyPaint');
+      };
+      // Diagnostic build only: evaluate parallel shader preparation against the
+      // canonical immediate first paint. Never gate normal/product builds.
+      const bench = import.meta.env.VITE_WARROOM_SHADER_AB === '1'
+        ? globalThis.__chessWarRoomShaderAB : null;
+      if (bench?.mode === 'prepared' && typeof prepareShaders === 'function') {
+        const started = performance.now();
+        const outcome = Promise.resolve().then(() => prepareShaders())
+          .then(() => 'completed', () => 'rejected');
+        const deadline = new Promise((resolve) => {
+          shaderTimer = setTimeout(() => resolve('timeout'), 3000);
+        });
+        void Promise.race([outcome, deadline]).then((status) => {
+          if (shaderTimer !== null) clearTimeout(shaderTimer);
+          shaderTimer = null;
+          if (cancelled) return;
+          bench.samples.push({
+            status,
+            elapsedMs: Math.round(performance.now() - started),
+            parallelCompile: bench.parallelCompile ?? null,
+          });
+          finishReady();
+        });
+      } else finishReady();
     })
     .catch((error) => {
       if (cancelled) return;
@@ -220,6 +248,7 @@ export function startWarRoomVariantScene({
 
   return () => {
     cancelled = true;
+    if (shaderTimer !== null) clearTimeout(shaderTimer);
     releaseHans?.();
     releaseHans = null;
     if (canvas) {
