@@ -6,6 +6,7 @@ import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { loadHomeCastleR2Scene } from './HomeCastle3DR2Asset.js';
 import { FIRE_SPRITE_DEFAULTS, createFireSprites, createSteamSprites, disposeFireSprites, fireSpriteSeeds } from './fireSprites.js';
 import { getEffectiveReducedMotion } from '../userPreferences.js';
+import { threeSurfaceShouldRender } from '../threeRenderPolicy.js';
 import {
   HOME_CASTLE_3D_MOBILE_ENABLE_MIN_WIDTH,
   homeCastle3DRenderPolicy,
@@ -1502,6 +1503,10 @@ function prepareRuntimeScene(root, shadowsEnabled = true, renderer = null) {
   });
 }
 
+export function homeBlenderShouldRender({ documentHidden = false, intersecting = true } = {}) {
+  return threeSurfaceShouldRender({ documentHidden, intersecting });
+}
+
 export default function HomeBlenderScene3D({
   ambient = 'day',
   onUnavailable = null,
@@ -1552,6 +1557,11 @@ export default function HomeBlenderScene3D({
     markStartup('effect-start');
 
     let disposed = false;
+    let intersecting = true;
+    const isVisible = () => homeBlenderShouldRender({
+      documentHidden: document.hidden,
+      intersecting,
+    });
     let fallbackRequested = false;
     let model = null;
     let fireRig = [];
@@ -1776,11 +1786,15 @@ export default function HomeBlenderScene3D({
     };
 
     const requestRender = () => {
-      if (frame !== null) return;
+      if (!isVisible() || frame !== null) return;
       frame = window.requestAnimationFrame(() => {
         frame = null;
-        renderFrame();
+        if (isVisible()) renderFrame();
       });
+    };
+    const cancelPendingRender = () => {
+      if (frame !== null) window.cancelAnimationFrame(frame);
+      frame = null;
     };
     renderRequestRef.current = requestRender;
 
@@ -1816,7 +1830,7 @@ export default function HomeBlenderScene3D({
     };
     const animateFire = (timestamp) => {
       fireFrame = null;
-      if (disposed || !model || document.hidden) return;
+      if (disposed || !model || !isVisible()) return;
       const degradeTo = performanceGovernor.observe(timestamp);
       if (degradeTo) {
         applyLodCap(degradeTo);
@@ -1888,7 +1902,7 @@ export default function HomeBlenderScene3D({
         if (klausRig) canvas.dataset.homeKlausMotion = 'off-software';
         return;
       }
-      if (disposed || !model || document.hidden || fireFrame !== null) return;
+      if (disposed || !model || !isVisible() || fireFrame !== null) return;
       canvas.dataset.homeFireMotion = 'live';
       if (klausRig) canvas.dataset.homeKlausMotion = 'live';
       if (effectsAllowed()) {
@@ -1908,8 +1922,24 @@ export default function HomeBlenderScene3D({
     };
 
     const onVisibilityChange = () => {
-      if (document.hidden) stopFireAnimation();
-      else startFireAnimation();
+      if (!isVisible()) {
+        stopFireAnimation();
+        cancelPendingRender();
+      } else {
+        requestRender();
+        startFireAnimation();
+      }
+    };
+    const onIntersectionChange = (entries) => {
+      intersecting = entries[0]?.isIntersecting !== false;
+      if (!isVisible()) {
+        stopFireAnimation();
+        cancelPendingRender();
+        if (!document.hidden) canvas.dataset.homeFireMotion = 'paused-offscreen';
+      } else {
+        requestRender();
+        startFireAnimation();
+      }
     };
 
     const resize = () => {
@@ -2079,6 +2109,10 @@ export default function HomeBlenderScene3D({
     canvas.addEventListener('webglcontextrestored', onContextRestored);
     document.addEventListener('visibilitychange', onVisibilityChange);
 
+    const intersectionObserver = typeof IntersectionObserver === 'function'
+      ? new IntersectionObserver(onIntersectionChange, { threshold: 0.01 })
+      : null;
+    intersectionObserver?.observe(canvas);
     const resizeObserver = typeof ResizeObserver !== 'undefined'
       ? new ResizeObserver(resize)
       : null;
@@ -2089,11 +2123,12 @@ export default function HomeBlenderScene3D({
     return () => {
       disposed = true;
       renderRequestRef.current = null;
-      if (frame !== null) window.cancelAnimationFrame(frame);
+      cancelPendingRender();
       stopFireAnimation();
       if (loadTimer !== null) window.clearTimeout(loadTimer);
       if (contextRecoveryTimer !== null) window.clearTimeout(contextRecoveryTimer);
       resizeObserver?.disconnect();
+      intersectionObserver?.disconnect();
       window.removeEventListener('resize', resize);
       document.removeEventListener('visibilitychange', onVisibilityChange);
       canvas.removeEventListener('webglcontextlost', onContextLost);
