@@ -61,6 +61,18 @@ def self_test() -> None:
     workflow = (Path(__file__).resolve().parents[1] / ".github/workflows/staging-pvp-compositor-ab.yml").read_text(encoding="utf-8")
     assert 'git show "$GITHUB_SHA:e2e/staging-live.spec.js" > e2e/staging-live.spec.js' in workflow
     assert '|NATIVE|WEBGL|LAYERS|LOAF)' in workflow
+    # The optional native-only trace must keep thread CPU and elapsed-wall
+    # clocks distinct: a missing tdur is not equivalent to zero CPU cost.
+    spec = (Path(__file__).resolve().parents[1] / "e2e/staging-live.spec.js").read_text(encoding="utf-8")
+    for marker in (
+        "Number.isFinite(event.tdur) && event.tdur >= 0",
+        "critical_commit_thread_cpu_ms=",
+        "critical_commit_non_cpu_wall_ms=",
+        "critical_commit_cpu_pct=",
+        "critical_task_thread_cpu_ms=",
+        "'unavailable'",
+    ):
+        assert marker in spec, f"native CPU/wall probe missing: {marker}"
     print("staging-pvp-native-generation self-test: OK")
 
 
