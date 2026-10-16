@@ -833,6 +833,18 @@ export const HOME_BLENDER_FIRE_MAX_FRAME_GAP_MS = 60;
 export const HOME_BLENDER_FIRE_MAX_INTERVAL_MS = 200;
 export const HOME_BLENDER_FIRE_WARMUP_FRAMES = 20;
 
+// A slow scene has no reason to wake on every vsync just to reject most frames.
+// Retain one adjacent RAF pair per rendered frame to observe real frame pacing;
+// planned timeout gaps must never masquerade as GPU jank for the LOD governor.
+export const HOME_BLENDER_FIRE_SLEEP_THRESHOLD_MS = 32;
+export function homeBlenderFireWakeDelay(timestamp, deadline, vsyncMs = 1000 / 60) {
+  if (!Number.isFinite(timestamp) || !Number.isFinite(deadline)) return 0;
+  const remaining = deadline - timestamp;
+  if (remaining < HOME_BLENDER_FIRE_SLEEP_THRESHOLD_MS) return 0;
+  const lead = Math.max(8, Math.min(20, Number.isFinite(vsyncMs) ? vsyncMs : 1000 / 60));
+  return Math.max(0, Math.floor(remaining - lead - 2));
+}
+
 export function homeBlenderFireFramePlan({
   baseIntervalMs = 42,
   renderCostMs = 0,
@@ -1698,6 +1710,7 @@ export default function HomeBlenderScene3D({
       attr.needsUpdate = true;
     };
     let fireFrame = null;
+    let fireWakeTimer = null;
     let frame = null;
     let loadTimer = null;
     let contextRecoveryTimer = null;
@@ -1807,6 +1820,7 @@ export default function HomeBlenderScene3D({
     let fireFrameGapMs = 0;
     let fireRafCount = 0;
     let lastFireRafAt = null;
+    let sampledRafClock = 0;
     // Drop the extra GPU effects and shadows in place (no scene reload), then re-read the
     // capped policy for pixel ratio; '2d' hands the Home back to the painted master.
     const applyLodCap = (next) => {
@@ -1828,23 +1842,29 @@ export default function HomeBlenderScene3D({
         resize();
       }
     };
-    const animateFire = (timestamp) => {
-      fireFrame = null;
-      if (disposed || !model || !isVisible()) return;
-      const degradeTo = performanceGovernor.observe(timestamp);
-      if (degradeTo) {
-        applyLodCap(degradeTo);
-        if (lodCap === '2d') return;
-      }
+    const observeNaturalFrame = (timestamp) => {
       if (lastFireRafAt !== null) {
-        fireRafCount += 1;
-        // Ignore the warm-up: decoding the scene legitimately delays the first frames.
-        if (fireRafCount > HOME_BLENDER_FIRE_WARMUP_FRAMES) {
-          const gap = timestamp - lastFireRafAt;
-          fireFrameGapMs = fireFrameGapMs ? fireFrameGapMs * 0.9 + gap * 0.1 : gap;
+        const gap = timestamp - lastFireRafAt;
+        if (Number.isFinite(gap) && gap > 0 && gap <= 250) {
+          // Only adjacent RAF timestamps measure browser/GPU pacing. The
+          // intentional timer sleep is excluded from both the quality governor
+          // and the fire frame-gap EWMA.
+          sampledRafClock += gap;
+          const degradeTo = performanceGovernor.observe(sampledRafClock);
+          if (degradeTo) applyLodCap(degradeTo);
+          fireRafCount += 1;
+          if (fireRafCount > HOME_BLENDER_FIRE_WARMUP_FRAMES) {
+            fireFrameGapMs = fireFrameGapMs ? fireFrameGapMs * 0.9 + gap * 0.1 : gap;
+          }
         }
       }
       lastFireRafAt = timestamp;
+    };
+    const animateFire = (timestamp) => {
+      fireFrame = null;
+      if (disposed || !model || !isVisible()) return;
+      observeNaturalFrame(timestamp);
+      if (lodCap === '2d') return;
       if (homeBlenderFireFrameDue(timestamp, nextFireRenderAt)) {
         moveDust(timestamp);
         moveFireParticles(timestamp);
@@ -1886,7 +1906,29 @@ export default function HomeBlenderScene3D({
         // this shared loop, because doing so freezes Matthias and every ambient
         // animation until the Home is remounted.
       }
-      fireFrame = window.requestAnimationFrame(animateFire);
+      if (homeBlenderFireWakeDelay(timestamp, nextFireRenderAt, fireFrameGapMs || 1000 / 60) > 0) {
+        // A second, adjacent RAF samples real vsync without adding a room draw.
+        // Wake close to the desired draw deadline, then align the draw to RAF.
+        fireFrame = window.requestAnimationFrame((probeAt) => {
+          fireFrame = null;
+          if (disposed || !model || !isVisible()) return;
+          observeNaturalFrame(probeAt);
+          if (lodCap === '2d') return;
+          const delay = homeBlenderFireWakeDelay(probeAt, nextFireRenderAt, fireFrameGapMs || 1000 / 60);
+          if (delay > 0) {
+            fireWakeTimer = window.setTimeout(() => {
+              fireWakeTimer = null;
+              if (!isVisible() || disposed || !model) return;
+              lastFireRafAt = null;
+              fireFrame = window.requestAnimationFrame(animateFire);
+            }, delay);
+          } else {
+            fireFrame = window.requestAnimationFrame(animateFire);
+          }
+        });
+      } else {
+        fireFrame = window.requestAnimationFrame(animateFire);
+      }
     };
 
     const prefersReducedMotion = getEffectiveReducedMotion();
@@ -1902,7 +1944,7 @@ export default function HomeBlenderScene3D({
         if (klausRig) canvas.dataset.homeKlausMotion = 'off-software';
         return;
       }
-      if (disposed || !model || !isVisible() || fireFrame !== null) return;
+      if (disposed || !model || !isVisible() || fireFrame !== null || fireWakeTimer !== null) return;
       canvas.dataset.homeFireMotion = 'live';
       if (klausRig) canvas.dataset.homeKlausMotion = 'live';
       if (effectsAllowed()) {
@@ -1913,12 +1955,15 @@ export default function HomeBlenderScene3D({
       ensureCandleParticles();
       ensureSteamSprites();
       lastFireRafAt = null;
+      lastActorTickAt = null;
       fireFrame = window.requestAnimationFrame(animateFire);
     };
 
     const stopFireAnimation = () => {
       if (fireFrame !== null) window.cancelAnimationFrame(fireFrame);
+      if (fireWakeTimer !== null) window.clearTimeout(fireWakeTimer);
       fireFrame = null;
+      fireWakeTimer = null;
     };
 
     const onVisibilityChange = () => {
