@@ -248,6 +248,63 @@ def simplify_tiny_moon_details() -> dict:
     return {"objects": len(targets), "triangles_before": before, "triangles_after": after}
 
 
+# Three distant trees, each with three low-contrast silhouette panels and one
+# hairline moonlit rim. The 2-4 mm edge bevels cost thousands of triangles
+# even though the trees are tiny behind the window. Preserve the silhouette,
+# image UVs and Blender review scene; remove *only* these live modifiers when
+# exporting the browser runtime.
+DISTANT_GARDEN_CROWN_NAME = re.compile(
+    r"^HOME_PROP_window_garden_crown_(?:[0-2]_[0-2]|rim_[0-2])$"
+)
+
+
+def simplify_distant_garden_crowns() -> dict:
+    targets = sorted(
+        (
+            obj for obj in bpy.context.scene.objects
+            if obj.type == "MESH" and DISTANT_GARDEN_CROWN_NAME.fullmatch(obj.name)
+        ),
+        key=lambda obj: obj.name,
+    )
+    if len(targets) != 12:
+        raise SystemExit(
+            f"Garden crown LOD expected 12 silhouette panels, got {len(targets)}"
+        )
+    depsgraph = bpy.context.evaluated_depsgraph_get()
+
+    def triangle_count(obj):
+        evaluated = obj.evaluated_get(depsgraph)
+        mesh = evaluated.to_mesh()
+        if mesh is None:
+            raise SystemExit(f"Garden crown {obj.name} cannot evaluate its mesh")
+        try:
+            return sum(len(face.vertices) - 2 for face in mesh.polygons)
+        finally:
+            evaluated.to_mesh_clear()
+
+    before = sum(triangle_count(obj) for obj in targets)
+    for obj in targets:
+        mods = list(obj.modifiers)
+        if len(mods) != 1 or mods[0].type != "BEVEL" or not (0 < mods[0].width <= 0.0041):
+            raise SystemExit(
+                f"Unexpected garden crown modifiers on {obj.name}: "
+                f"{[(mod.name, mod.type) for mod in mods]}"
+            )
+        obj.modifiers.remove(mods[0])
+
+    bpy.context.view_layer.update()
+    after = sum(triangle_count(obj) for obj in targets)
+    if not 1000 <= before - after <= before:
+        raise SystemExit(
+            f"Garden crown LOD failed triangle saving contract: {before} -> {after}"
+        )
+    return {
+        "objects": len(targets),
+        "triangles_before": before,
+        "triangles_after": after,
+    }
+
+
 def consolidate_static_architecture() -> tuple[int, int, int, int, int]:
     """Batch static HOME_ARCH_ and HOME_PROP_ meshes by material for draw-call efficiency.
 
@@ -411,6 +468,7 @@ def main() -> None:
     flatten_runtime_materials()
     converted_curves = convert_curves_to_meshes()
     moon_detail_lod = simplify_tiny_moon_details()
+    garden_crown_lod = simplify_distant_garden_crowns()
     (
         architecture_meshes_before,
         architecture_meshes_after,
@@ -485,6 +543,7 @@ def main() -> None:
         "converted_curves": converted_curves,
         "klaus_parts": klaus_parts,
         "moon_detail_lod": moon_detail_lod,
+        "garden_crown_lod": garden_crown_lod,
         "architecture_meshes_before": architecture_meshes_before,
         "architecture_meshes_after": architecture_meshes_after,
         "static_prop_meshes_before": prop_meshes_before,
