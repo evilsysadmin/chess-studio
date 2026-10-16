@@ -305,6 +305,67 @@ def simplify_distant_garden_crowns() -> dict:
     }
 
 
+# Other strictly background-only shapes behind the moonlit window. These
+# tiny bevels give no readable contour at the Home camera distance, unlike
+# the scene's foreground architectural edges. The silhouettes and material
+# assignments are kept identical to the authored review scene.
+DISTANT_GARDEN_PANEL_NAME = re.compile(
+    r"^HOME_PROP_window_garden_(?:hills|tower|tower_roof|"
+    r"conifer_[01]|lawn|path|stepstone_[0-2]|hedge_[01])$"
+)
+
+
+def simplify_distant_garden_panels() -> dict:
+    targets = sorted(
+        (
+            obj for obj in bpy.context.scene.objects
+            if obj.type == "MESH" and DISTANT_GARDEN_PANEL_NAME.fullmatch(obj.name)
+        ),
+        key=lambda obj: obj.name,
+    )
+    if len(targets) != 12:
+        raise SystemExit(
+            f"Distant garden panel LOD expected 12 silhouette panels, got {len(targets)}"
+        )
+    depsgraph = bpy.context.evaluated_depsgraph_get()
+
+    def triangle_count(obj):
+        evaluated = obj.evaluated_get(depsgraph)
+        mesh = evaluated.to_mesh()
+        if mesh is None:
+            raise SystemExit(f"Garden panel {obj.name} cannot evaluate its mesh")
+        try:
+            return sum(len(face.vertices) - 2 for face in mesh.polygons)
+        finally:
+            evaluated.to_mesh_clear()
+
+    before = sum(triangle_count(obj) for obj in targets)
+    for obj in targets:
+        mods = list(obj.modifiers)
+        if (
+            len(mods) != 1
+            or mods[0].type != "BEVEL"
+            or not (0 < mods[0].width <= 0.0041)
+            or len(obj.data.materials) != 1
+        ):
+            raise SystemExit(
+                f"Unexpected garden panel modifiers/material slots on {obj.name}"
+            )
+        obj.modifiers.remove(mods[0])
+
+    bpy.context.view_layer.update()
+    after = sum(triangle_count(obj) for obj in targets)
+    if not 1000 <= before - after <= before:
+        raise SystemExit(
+            f"Distant garden panel LOD failed triangle saving contract: {before} -> {after}"
+        )
+    return {
+        "objects": len(targets),
+        "triangles_before": before,
+        "triangles_after": after,
+    }
+
+
 def consolidate_static_architecture() -> tuple[int, int, int, int, int]:
     """Batch static HOME_ARCH_ and HOME_PROP_ meshes by material for draw-call efficiency.
 
@@ -469,6 +530,7 @@ def main() -> None:
     converted_curves = convert_curves_to_meshes()
     moon_detail_lod = simplify_tiny_moon_details()
     garden_crown_lod = simplify_distant_garden_crowns()
+    garden_panel_lod = simplify_distant_garden_panels()
     (
         architecture_meshes_before,
         architecture_meshes_after,
@@ -544,6 +606,7 @@ def main() -> None:
         "klaus_parts": klaus_parts,
         "moon_detail_lod": moon_detail_lod,
         "garden_crown_lod": garden_crown_lod,
+        "garden_panel_lod": garden_panel_lod,
         "architecture_meshes_before": architecture_meshes_before,
         "architecture_meshes_after": architecture_meshes_after,
         "static_prop_meshes_before": prop_meshes_before,
