@@ -1,6 +1,7 @@
 import { chromium, expect, test } from '@playwright/test';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { buttonWithVisibleText, login, mockApi } from './helpers.js';
+import { launchWarRoomVisualQuickMatch } from './war-room-visual-quick-match.js';
 
 const ARTIFACT_DIR = '../.artifacts/app-visual';
 const SEEN_WAR_ROOM_TUTORIAL_PROFILE = Object.freeze({
@@ -39,16 +40,7 @@ async function openCanonicalWarRoom(page) {
   await buttonWithVisibleText(page, 'Partida rápida').click();
   const quickMatch = page.getByRole('dialog', { name: 'Configurar partida rápida' });
   await expect(quickMatch).toBeVisible();
-  const start = quickMatch.getByRole('button', { name: 'Empezar partida', exact: true });
-  await expect(start).toBeVisible({ timeout: 20_000 });
-  await expect(start).toBeEnabled();
-  // SwiftShader can keep modal layout in motion during a real scene bootstrap.
-  // Match the already-validated decor visual producer: native button click
-  // avoids actionability/stale setup-event races without bypassing React.
-  await start.evaluate((button) => button.click());
-  // The immersive status pill is optional. Require a real, visible WebGL board
-  // and closed setup dialog before photographing either armor.
-  await expect(page.locator('[data-board3d-war-room="true"]')).toBeVisible({ timeout: 60_000 });
+  const board = await launchWarRoomVisualQuickMatch(page, quickMatch);
   await expect(quickMatch).toBeHidden({ timeout: 30_000 });
   const board3d = await open3DFromAppearance(page);
   const canvas = page.locator('.board3d-main-canvas');
