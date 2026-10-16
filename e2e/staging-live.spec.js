@@ -293,7 +293,12 @@ function createPvpNativeTraceSummary() {
         }
         if (Number.isFinite(event.ts) && event.dur > (longest.get(event.name)?.dur || 0)) {
           // Retain only numeric time/thread identity; never raw trace args.
-          longest.set(event.name, { ts: event.ts, dur: event.dur, pid: event.pid, tid: event.tid });
+          // Thread CPU time is a separate Chromium trace clock. Missing tdur
+          // must stay "unavailable": it does not mean a 0ms CPU cost.
+          longest.set(event.name, {
+            ts: event.ts, dur: event.dur, pid: event.pid, tid: event.tid,
+            tdur: Number.isFinite(event.tdur) && event.tdur >= 0 ? event.tdur : null,
+          });
         }
         events += 1;
       }
@@ -320,12 +325,30 @@ function createPvpNativeTraceSummary() {
             (nested.get(event.name) || 0) + inside / 1000);
         }
       }
+      // Distinguish CPU-intensive native commits from blocked/suspended wall
+      // time on the *same* renderer thread. The trace clocks are optional;
+      // report absent clocks explicitly and never infer a GPU from timings.
+      const threadCpuMs = (event) => event && event.tdur !== null &&
+        Number.isFinite(event.tdur) && Number.isFinite(event.dur) && event.dur > 0
+        ? Math.round(event.tdur / 1000) : 'unavailable';
+      const commitCpuMs = threadCpuMs(commit);
+      const taskCpuMs = threadCpuMs(task);
+      const commitNonCpuMs = typeof commitCpuMs === 'number'
+        ? Math.max(0, Math.round((commit.dur - commit.tdur) / 1000))
+        : 'unavailable';
+      const commitCpuPct = typeof commitCpuMs === 'number'
+        ? Math.round(100 * commit.tdur / commit.dur)
+        : 'unavailable';
       const nestedTop = [...nested].sort((a, b) => b[1] - a[1]).slice(0, 8)
         .map(([name, ms]) => name + ':' + Math.round(ms)).join(',');
       return 'events=' + events + ' top_count_total_max_ms=' + (top || 'none') +
         ' critical_commit_child_ms=' + (nestedTop || 'none') +
         ' critical_commit_task_same_thread=' + sameThread +
-        ' critical_commit_task_overlap_ms=' + Math.round(overlap / 1000);
+        ' critical_commit_task_overlap_ms=' + Math.round(overlap / 1000) +
+        ' critical_commit_thread_cpu_ms=' + commitCpuMs +
+        ' critical_commit_non_cpu_wall_ms=' + commitNonCpuMs +
+        ' critical_commit_cpu_pct=' + commitCpuPct +
+        ' critical_task_thread_cpu_ms=' + taskCpuMs;
     },
   };
 }
