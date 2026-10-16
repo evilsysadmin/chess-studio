@@ -168,7 +168,7 @@ def consolidate_klaus() -> int:
     return len(parts)
 
 
-def consolidate_static_architecture() -> tuple[int, int, int, int]:
+def consolidate_static_architecture() -> tuple[int, int, int, int, int]:
     """Batch static HOME_ARCH_ and HOME_PROP_ meshes by material for draw-call efficiency.
 
     The scene ships ~2000 individual props (books, chairs, armour, board...). Each
@@ -176,6 +176,11 @@ def consolidate_static_architecture() -> tuple[int, int, int, int]:
     software-rendered browsers. Runtime interaction is owned by DOM/UI overlays and
     only the animated nodes (ANIMATED_PROP_NAME) are looked up by name, so static
     meshes are merged per material and the animated ones are left untouched.
+
+    Architecture and static set dressing can share a material signature. Keeping
+    separate ARCH/PROP buckets caused redundant GLB primitives / draw calls.
+    Joining across those two *static* families preserves geometry and materials,
+    while animated props and Klaus's rig remain excluded by _is_static_batchable.
     """
     candidates = [
         obj for obj in bpy.context.scene.objects
@@ -183,6 +188,10 @@ def consolidate_static_architecture() -> tuple[int, int, int, int]:
     ]
     arch_before = sum(1 for obj in candidates if obj.name.startswith("HOME_ARCH_"))
     prop_before = len(candidates) - arch_before
+    protected_before = {
+        obj.name for obj in bpy.context.scene.objects
+        if obj.type == "MESH" and not _is_static_batchable(obj.name)
+    }
     # Joining would otherwise discard non-active modifiers. Bake every static
     # modifier stack in one Blender operator instead of paying select/context
     # invalidation once per ~2k object.
@@ -201,21 +210,28 @@ def consolidate_static_architecture() -> tuple[int, int, int, int]:
         obj for obj in bpy.context.scene.objects
         if obj.type == "MESH" and _is_static_batchable(obj.name)
     ]
-    groups: dict[tuple[str, tuple[str, ...]], list] = {}
+    groups: dict[tuple[str, ...], list] = {}
     for obj in candidates:
         signature = tuple(mat.name if mat else "" for mat in obj.data.materials)
-        kind = "ARCH" if obj.name.startswith("HOME_ARCH_") else "PROP"
-        groups.setdefault((kind, signature), []).append(obj)
+        # A material slot has the same rendering cost regardless of whether
+        # the original static object was an arch or a prop.
+        groups.setdefault(signature, []).append(obj)
 
     batch_index = 0
+    mixed_batches = 0
     bpy.ops.object.select_all(action="DESELECT")
-    for (kind, signature), group in groups.items():
+    for signature, group in groups.items():
         live = [obj for obj in group if obj.name in bpy.context.scene.objects]
         if len(live) < 2:
             continue
+        kinds = {"ARCH" if obj.name.startswith("HOME_ARCH_") else "PROP" for obj in live}
+        if len(kinds) > 1:
+            mixed_batches += 1
         for obj in live:
             obj.select_set(True)
         active = live[0]
+        # Preserve an original-family prefix for the existing after-counts.
+        kind = "ARCH" if active.name.startswith("HOME_ARCH_") else "PROP"
         bpy.context.view_layer.objects.active = active
         bpy.ops.object.join()
         material_label = signature[0].replace("HOME_MAT_", "").lower() if signature else "mixed"
@@ -231,7 +247,19 @@ def consolidate_static_architecture() -> tuple[int, int, int, int]:
         1 for obj in bpy.context.scene.objects
         if obj.type == "MESH" and obj.name.startswith("HOME_PROP_")
     )
-    return arch_before, arch_after, prop_before, prop_after
+    protected_after = {
+        obj.name for obj in bpy.context.scene.objects
+        if obj.type == "MESH" and not _is_static_batchable(obj.name)
+    }
+    missing = protected_before - protected_after
+    if missing:
+        raise SystemExit(
+            f"Static batching destroyed {len(missing)} protected animated/rig nodes: "
+            f"{sorted(missing)[:12]}"
+        )
+    if arch_after + prop_after > arch_before + prop_before:
+        raise SystemExit("Static batching increased the number of static meshes")
+    return arch_before, arch_after, prop_before, prop_after, mixed_batches
 
 
 def select_runtime_geometry() -> int:
@@ -266,7 +294,7 @@ def meshopt_export_kwargs() -> dict:
     }
 
 
-def glb_extensions_used(path: Path) -> set:
+def glb_json_document(path: Path) -> dict:
     raw = Path(path).read_bytes()
     if len(raw) < 20 or raw[:4] != b"glTF":
         raise SystemExit(f"invalid GLB header: {path}")
@@ -274,7 +302,11 @@ def glb_extensions_used(path: Path) -> set:
     if chunk_type != 0x4E4F534A:
         raise SystemExit(f"GLB JSON chunk missing: {path}")
     document = json.loads(raw[20:20 + chunk_length].decode("utf-8").rstrip("\x00 \t\r\n"))
-    return set(document.get("extensionsUsed", []))
+    return document
+
+
+def glb_extensions_used(path: Path) -> set:
+    return set(glb_json_document(path).get("extensionsUsed", []))
 
 
 def main() -> None:
@@ -298,7 +330,13 @@ def main() -> None:
 
     flatten_runtime_materials()
     converted_curves = convert_curves_to_meshes()
-    architecture_meshes_before, architecture_meshes_after, prop_meshes_before, prop_meshes_after = consolidate_static_architecture()
+    (
+        architecture_meshes_before,
+        architecture_meshes_after,
+        prop_meshes_before,
+        prop_meshes_after,
+        mixed_static_batches,
+    ) = consolidate_static_architecture()
     klaus_parts = consolidate_klaus()
     mesh_count = select_runtime_geometry()
     if mesh_count < 80:
@@ -322,7 +360,28 @@ def main() -> None:
     if not glb_path.is_file() or glb_path.stat().st_size < 100_000:
         raise SystemExit(f"Home runtime GLB missing or unexpectedly small: {glb_path}")
 
-    meshopt = MESH_COMPRESSION_EXTENSION in glb_extensions_used(glb_path)
+    glb_document = glb_json_document(glb_path)
+    meshopt = MESH_COMPRESSION_EXTENSION in glb_document.get("extensionsUsed", [])
+    # A glTF mesh can contain several material primitives; a single Blender
+    # mesh is therefore not necessarily one WebGL draw call. Count the actual
+    # exported primitives for future before/after measurements.
+    primitive_count = sum(
+        len(mesh.get("primitives", [])) for mesh in glb_document.get("meshes", [])
+    )
+    if primitive_count == 0:
+        raise SystemExit("Suspicious GLB: no drawable mesh primitives")
+    # Mesh data may be referenced by multiple glTF nodes. Count those
+    # references separately: this is a pre-culling draw-call estimate, not
+    # a measurement of actual frame rendering (recorded by Three.js).
+    primitives_per_mesh = [
+        len(mesh.get("primitives", [])) for mesh in glb_document.get("meshes", [])
+    ]
+    primitive_instances = sum(
+        primitives_per_mesh[node["mesh"]]
+        for node in glb_document.get("nodes", [])
+        if isinstance(node.get("mesh"), int)
+        and 0 <= node["mesh"] < len(primitives_per_mesh)
+    )
     if os.environ.get("HOME_RUNTIME_REQUIRE_MESHOPT") == "1" and not meshopt:
         raise SystemExit(
             f"Home runtime GLB was exported without {MESH_COMPRESSION_EXTENSION}; "
@@ -348,6 +407,10 @@ def main() -> None:
         "architecture_meshes_after": architecture_meshes_after,
         "static_prop_meshes_before": prop_meshes_before,
         "prop_meshes_after": prop_meshes_after,
+        "mixed_static_batches": mixed_static_batches,
+        "glb_meshes": len(glb_document.get("meshes", [])),
+        "glb_primitives": primitive_count,
+        "glb_primitive_instances": primitive_instances,
         "materials": len(bpy.data.materials),
         "bytes": glb_path.stat().st_size,
         "meshopt": meshopt,
