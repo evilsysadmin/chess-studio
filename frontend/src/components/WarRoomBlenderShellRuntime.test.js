@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   configureWarRoomBlenderLoader,
   createWarRoomBlenderVariantShell,
+  deferWarRoomBlenderShadowPass,
   scheduleWarRoomAfterFirstPaint,
   selectWarRoomBlenderShadowCasters,
   shouldPrepareWarRoomShadowPass,
@@ -147,6 +148,79 @@ describe('War Room shared Blender runtime', () => {
     const projected = selectWarRoomBlenderShadowCasters(meshes);
     expect(projected).toHaveLength(WAR_ROOM_BLENDER_SHADOW_CASTER_LIMIT);
     expect(projected).toContain(meshes[0]);
+  });
+
+  it('leaves first paint free of shadow ranking and runs the census once after idle', () => {
+    let deferred = null;
+    let matrixPasses = 0;
+    let shadowScores = 0;
+    let refinements = 0;
+    const mesh = {
+      isMesh: true,
+      castShadow: false,
+      geometry: { boundingSphere: { radius: 0.8 } },
+      material: { transparent: false, opacity: 1 },
+      getWorldPosition(target) {
+        shadowScores += 1;
+        return target.set(0, 1, 0);
+      },
+      getWorldScale(target) {
+        return target.set(1, 1, 1);
+      },
+    };
+    const root = {
+      parent: {},
+      userData: {
+        warRoomBlenderShadowWarmup: 'deferred-after-first-paint',
+        warRoomBlenderShadowProjectedCount: 0,
+        warRoomBlenderShadowCasterCount: 0,
+      },
+      updateMatrixWorld() { matrixPasses += 1; },
+    };
+    deferWarRoomBlenderShadowPass({
+      root,
+      meshes: [mesh],
+      onRefine: () => { refinements += 1; },
+      schedule: (task) => {
+        deferred = task;
+        return () => {};
+      },
+    });
+
+    expect(matrixPasses).toBe(0);
+    expect(shadowScores).toBe(0);
+    expect(mesh.castShadow).toBe(false);
+    expect(root.userData.warRoomBlenderShadowProjectedCount).toBe(0);
+    expect(refinements).toBe(0);
+
+    deferred();
+    expect(matrixPasses).toBe(1);
+    expect(shadowScores).toBe(1);
+    expect(mesh.castShadow).toBe(true);
+    expect(root.userData.warRoomBlenderShadowWarmup).toBe('ready-budgeted');
+    expect(root.userData.warRoomBlenderShadowProjectedCount).toBe(1);
+    expect(root.userData.warRoomBlenderShadowCasterCount).toBe(1);
+    expect(refinements).toBe(1);
+  });
+
+  it('does not rank shadows for a shell removed before its idle callback', () => {
+    let deferred = null;
+    const root = {
+      parent: null,
+      userData: { warRoomBlenderShadowWarmup: 'deferred-after-first-paint' },
+      updateMatrixWorld() { throw new Error('detached shell should not update matrices'); },
+    };
+    deferWarRoomBlenderShadowPass({
+      root,
+      meshes: [],
+      onRefine: () => { throw new Error('detached shell should not repaint'); },
+      schedule: (task) => {
+        deferred = task;
+        return () => {};
+      },
+    });
+    deferred();
+    expect(root.userData.warRoomBlenderShadowWarmup).toBe('deferred-after-first-paint');
   });
 
   it('keeps authored practicals cinematic and cheaper on coarse pointers', () => {
