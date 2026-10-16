@@ -254,12 +254,15 @@ export async function installWarRoomBlenderShell(
     runtimeFinish = 'gltf-pbr-runtime',
     boardAnchorY = WAR_ROOM_BLENDER_BOARD_ANCHOR_Y,
     installRuntimeEffects,
+    onTiming,
   } = {},
 ) {
   if (!scene?.add) throw new Error(`War Room ${variant} requires a Three.js scene`);
   if (!url) throw new Error(`War Room ${variant} requires a GLB URL`);
+  const markTiming = typeof onTiming === 'function' ? onTiming : () => {};
   const loader = configureWarRoomBlenderLoader(new GLTFLoader());
   const gltf = await loader.loadAsync(url);
+  markTiming('glb');
   const root = gltf?.scene;
   if (!root) throw new Error(`War Room ${variant} GLB has no scene`);
 
@@ -301,6 +304,7 @@ export async function installWarRoomBlenderShell(
       if (installRuntimeLeatherSurface(material, runtimeLeatherTextures, { coarsePointer })) runtimeLeatherMaterials += 1;
     });
   });
+  markTiming('materials');
   const practicalLights = installAuthoredPracticalLights(root, { coarsePointer });
   root.userData.warRoomVariant = variant;
   root.userData.warRoomRuntimeFinish = runtimeFinish;
@@ -337,6 +341,7 @@ export async function installWarRoomBlenderShell(
     meshes: shadowCandidateMeshes,
     onRefine,
   });
+  markTiming('effects');
 
   return () => {
     cancelShadowWarmup();

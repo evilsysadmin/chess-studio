@@ -110,6 +110,31 @@ describe('War Room shared scene variants', () => {
     release();
   });
 
+  it('reports independent import, GLB, material, effect and ready-paint phases on the same canvas', async () => {
+    const scene = { userData: {}, children: [{ userData: { warRoomVariant: 'v3' } }] };
+    const canvas = { dataset: { warRoomShellTimingGlbMs: '999' } };
+    const release = startWarRoomVariantScene({
+      scene, classicShellController: { current: () => [] },
+      variant: 'v3', selectable: true, canvas,
+      onPaint: () => {},
+      loadVariantInstaller: async () => async (target, options) => {
+        expect(target).toBe(scene);
+        options.onTiming('glb');
+        options.onTiming('materials');
+        options.onTiming('effects');
+        return () => {};
+      },
+      loadHansStage: () => new Promise(() => {}),
+    });
+    for (let i = 0; i < 5; i += 1) await Promise.resolve();
+    for (const phase of ['Import', 'Glb', 'Materials', 'Effects', 'ReadyPaint']) {
+      expect(canvas.dataset[`warRoomShellTiming${phase}Ms`]).toMatch(/^\\d+$/);
+    }
+    expect(canvas.dataset.warRoomShellTimingGlbMs).not.toBe('999');
+    expect(canvas.dataset.warRoomVariantStatus).toBe('ready');
+    release();
+  });
+
   it('marks a Blender room ready before loading Hans and installs him asynchronously', async () => {
     const scene = {
       userData: {},
