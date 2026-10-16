@@ -1,6 +1,6 @@
 import { chromium, expect, test } from '@playwright/test';
 import { mkdir, writeFile } from 'node:fs/promises';
-import { buttonWithVisibleText, gameStatus, login, mockApi } from './helpers.js';
+import { buttonWithVisibleText, login, mockApi } from './helpers.js';
 
 const ARTIFACT_DIR = '../.artifacts/app-visual';
 const SEEN_WAR_ROOM_TUTORIAL_PROFILE = Object.freeze({
