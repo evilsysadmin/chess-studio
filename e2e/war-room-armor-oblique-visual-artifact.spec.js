@@ -1,6 +1,6 @@
 import { chromium, expect, test } from '@playwright/test';
 import { mkdir, writeFile } from 'node:fs/promises';
-import { activateSetupControl, buttonWithVisibleText, login, mockApi } from './helpers.js';
+import { buttonWithVisibleText, login, mockApi } from './helpers.js';
 
 const ARTIFACT_DIR = '../.artifacts/app-visual';
 const SEEN_WAR_ROOM_TUTORIAL_PROFILE = Object.freeze({
@@ -39,11 +39,17 @@ async function openCanonicalWarRoom(page) {
   await buttonWithVisibleText(page, 'Partida rápida').click();
   const quickMatch = page.getByRole('dialog', { name: 'Configurar partida rápida' });
   await expect(quickMatch).toBeVisible();
-  await activateSetupControl(quickMatch.getByRole('button', { name: 'Empezar partida', exact: true }));
-  // Immersive War Room can hide its status pill while the real 3D game is
-  // already visible. Fail closed on the board itself, not on optional HUD.
-  await expect(quickMatch).toBeHidden({ timeout: 60_000 });
+  const start = quickMatch.getByRole('button', { name: 'Empezar partida', exact: true });
+  await expect(start).toBeVisible({ timeout: 20_000 });
+  await expect(start).toBeEnabled();
+  // SwiftShader can keep modal layout in motion during a real scene bootstrap.
+  // Match the already-validated decor visual producer: native button click
+  // avoids actionability/stale setup-event races without bypassing React.
+  await start.evaluate((button) => button.click());
+  // The immersive status pill is optional. Require a real, visible WebGL board
+  // and closed setup dialog before photographing either armor.
   await expect(page.locator('[data-board3d-war-room="true"]')).toBeVisible({ timeout: 60_000 });
+  await expect(quickMatch).toBeHidden({ timeout: 30_000 });
   const board3d = await open3DFromAppearance(page);
   const canvas = page.locator('.board3d-main-canvas');
   await expect(canvas).toBeVisible({ timeout: 30_000 });
