@@ -30,6 +30,33 @@ function disposeMaterial(material) {
 }
 
 describe('Board3D premium surfaces', () => {
+  it('keeps the immersive logical viewport when adaptive DPR changes', () => {
+    // Three.js setPixelRatio calls setSize using the renderer's own stored
+    // logical width/height. It must not be followed by another host-sized call.
+    const actualSize = { width: 1440, height: 900 };
+    const conflictingHostSize = { width: 883, height: 659 };
+    const calls = [];
+    let ratio = 1.35;
+    const renderer = {
+      getPixelRatio: () => ratio,
+      setSize(width, height, updateStyle) {
+        calls.push([width, height, updateStyle]);
+        actualSize.width = width;
+        actualSize.height = height;
+      },
+      setPixelRatio(value) {
+        ratio = value;
+        this.setSize(actualSize.width, actualSize.height, false);
+      },
+    };
+    expect(applyWarRoomPixelRatioIfChanged(renderer, 0.85)).toBe(true);
+    expect(calls).toEqual([[1440, 900, false]]);
+    expect(actualSize).toEqual({ width: 1440, height: 900 });
+    expect(actualSize).not.toEqual(conflictingHostSize);
+    expect(applyWarRoomPixelRatioIfChanged(renderer, 0.85)).toBe(false);
+    expect(calls).toHaveLength(1);
+  });
+
   it('does not reallocate an unchanged drawing-buffer pixel ratio on environment setup', () => {
     let ratio = 1.2;
     const writes = [];
