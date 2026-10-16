@@ -756,6 +756,7 @@ async function assertAndCaptureProfile(page, profile, board3d) {
       profile: profile.label,
       shellTiming: health.shellTiming,
       firstReadyRender: health.firstReadyRender,
+      blenderShadow: health.blenderShadow,
     })}`);
   }
   await writeFile(
