@@ -93,7 +93,7 @@ export function warRoomBlenderPracticalLightProfile({ coarsePointer = false } = 
   };
 }
 
-function installAuthoredPracticalLights(root, { coarsePointer = false } = {}) {
+export function installAuthoredPracticalLights(root, { coarsePointer = false } = {}) {
   const profile = warRoomBlenderPracticalLightProfile({ coarsePointer });
   const entries = [
     ['WR_ANCHOR_fireplace_practical', 'war-room-blender-fire-practical', profile.fire],
@@ -102,10 +102,19 @@ function installAuthoredPracticalLights(root, { coarsePointer = false } = {}) {
     ['WR_ANCHOR_window_moonlight', 'war-room-blender-moon-practical', profile.moon],
   ];
 
+  // getObjectByName recursively walks the full hierarchy. The four authored
+  // practicals share one lookup census instead of repeatedly walking every
+  // decorative mesh on room install. First encounter retains Three.js DFS
+  // semantics when a GLB contains duplicate anchor names.
+  const wanted = new Set(entries.filter(([, , spec]) => spec?.intensity > 0).map(([name]) => name));
+  const anchors = new Map();
+  root.traverse((node) => {
+    if (wanted.has(node.name) && !anchors.has(node.name)) anchors.set(node.name, node);
+  });
   let installed = 0;
   for (const [anchorName, lightName, spec] of entries) {
     if (!spec || spec.intensity <= 0) continue;
-    const authoredAnchor = root.getObjectByName(anchorName);
+    const authoredAnchor = anchors.get(anchorName);
     if (!authoredAnchor) continue;
     const practical = new THREE.PointLight(spec.color, spec.intensity, spec.distance, spec.decay);
     practical.name = lightName;

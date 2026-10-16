@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
+import * as THREE from 'three';
 import {
   configureWarRoomBlenderLoader,
   createWarRoomBlenderVariantShell,
   deferWarRoomBlenderShadowPass,
+  installAuthoredPracticalLights,
   scheduleWarRoomAfterFirstPaint,
   selectWarRoomBlenderShadowCasters,
   shouldPrepareWarRoomShadowPass,
@@ -221,6 +223,57 @@ describe('War Room shared Blender runtime', () => {
     });
     deferred();
     expect(root.userData.warRoomBlenderShadowWarmup).toBe('deferred-after-first-paint');
+  });
+
+  it('installs authored lights with one hierarchy traversal, preserving first duplicate anchor and specs', () => {
+    const root = new THREE.Group();
+    const fire = new THREE.Group();
+    fire.name = 'WR_ANCHOR_fireplace_practical';
+    const duplicate = new THREE.Group();
+    duplicate.name = fire.name;
+    const right = new THREE.Group();
+    right.name = 'WR_ANCHOR_right_fireplace_practical';
+    const chandelier = new THREE.Group();
+    chandelier.name = 'WR_ANCHOR_chandelier_practical';
+    const moon = new THREE.Group();
+    moon.name = 'WR_ANCHOR_window_moonlight';
+    const nested = new THREE.Group();
+    nested.add(right, chandelier, moon);
+    root.add(fire, duplicate, nested);
+
+    let traversals = 0;
+    const visit = root.traverse.bind(root);
+    root.traverse = (callback) => { traversals += 1; return visit(callback); };
+    root.getObjectByName = () => { throw new Error('recursive lookup is redundant'); };
+    expect(installAuthoredPracticalLights(root)).toBe(4);
+    expect(traversals).toBe(1);
+    expect(fire.children[0]?.name).toBe('war-room-blender-fire-practical');
+    expect(duplicate.children).toHaveLength(0);
+    expect(right.children[0]?.name).toBe('war-room-blender-right-fire-practical');
+    expect(chandelier.children[0]?.name).toBe('war-room-blender-chandelier-practical');
+    expect(moon.children[0]?.name).toBe('war-room-blender-moon-practical');
+    for (const anchor of [fire, right, chandelier, moon]) {
+      const light = anchor.children[0];
+      expect(light?.isPointLight).toBe(true);
+      expect(light.castShadow).toBe(false);
+      expect(light.userData.warRoomBlenderPractical).toBe(anchor.name);
+    }
+    expect(fire.children[0].intensity).toBeCloseTo(2.30);
+    expect(moon.children[0].intensity).toBeCloseTo(3.42);
+    expect(root.userData.warRoomBlenderPracticalLights).toBe(4);
+  });
+
+  it('skips disabled coarse-pointer chandelier and ignores duplicate missing anchors', () => {
+    const root = new THREE.Group();
+    const moon = new THREE.Group();
+    moon.name = 'WR_ANCHOR_window_moonlight';
+    const chandelier = new THREE.Group();
+    chandelier.name = 'WR_ANCHOR_chandelier_practical';
+    root.add(moon, chandelier);
+    expect(installAuthoredPracticalLights(root, { coarsePointer: true })).toBe(1);
+    expect(moon.children[0].intensity).toBeCloseTo(2.65);
+    expect(chandelier.children).toHaveLength(0);
+    expect(root.userData.warRoomBlenderPracticalLights).toBe(1);
   });
 
   it('keeps authored practicals cinematic and cheaper on coarse pointers', () => {
