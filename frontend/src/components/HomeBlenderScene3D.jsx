@@ -2182,6 +2182,12 @@ export default function HomeBlenderScene3D({
       renderer.shadowMap.needsUpdate = true;
       canvas.dataset.homeBlenderPhase = 'first-frame-rendering';
       markStartup('first-frame-start');
+      // resize() requested an on-demand RAF for this newly attached model.
+      // The explicit first-frame draw below supersedes it; otherwise the
+      // startup path draws the whole room twice (plus the ambient loop).
+      const hadPendingInitialFrame = frame !== null;
+      cancelPendingRender();
+      canvas.dataset.homeBlenderInitialFrameCoalesced = hadPendingInitialFrame ? 'true' : 'false';
       renderFrame();
       // One-time, actual WebGL draw calls (including any initial shadow pass),
       // not the mesh count. Browser profiling can read these without tracing
