@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import * as THREE from 'three';
 import { createWarRoomSideTorch } from './WarRoomMilitaryGallery.js';
+import { warRoomVariantRuntimeModelUrl } from './WarRoomVariant.js';
 import {
   WAR_ROOM_V3_HEARTH_FIRE_SHAPE,
   WAR_ROOM_V3_TOUCH_HEARTH_WASH,
@@ -12,17 +13,18 @@ import {
 } from './WarRoomV3Shell.js';
 
 describe('War Room v3 runtime asset URL', () => {
-  it('owns a stable runtime alias separate from v2', () => {
-    expect(WAR_ROOM_V3_RUNTIME_MODEL_URL).toContain('/war-room/v3/runtime/current.glb');
-    expect(warRoomV3ModelUrl({ buildSha: 'abc123' }))
-      .toBe(`${WAR_ROOM_V3_RUNTIME_MODEL_URL}?build=abc123`);
+  it('loads the same content-addressed R2 GLB as variant intent prefetch', () => {
+    const expected = warRoomVariantRuntimeModelUrl('v3', { buildSha: 'abc123' });
+    expect(expected).toContain('/war-room/v3/runtime/war-room-v3-shell-');
+    expect(WAR_ROOM_V3_RUNTIME_MODEL_URL).toBe(expected);
+    expect(warRoomV3ModelUrl({ buildSha: 'abc123' })).toBe(expected);
+    expect(warRoomV3ModelUrl({ buildSha: 'new-deploy' })).toBe(expected);
+    expect(warRoomV3ModelUrl({ buildSha: '' })).toBe(expected);
   });
 
-  it('keeps explicit query parameters and encodes the build token', () => {
-    expect(warRoomV3ModelUrl({
-      buildSha: 'main/abc 123',
-      baseUrl: 'https://assets.example.test/current.glb?source=staging',
-    })).toBe('https://assets.example.test/current.glb?source=staging&build=main%2Fabc%20123');
+  it('preserves explicit content-addressed URLs without appending build tokens', () => {
+    const url = 'https://assets.example.test/war-room/v3/runtime/shell-0123456789abcdef.glb?source=staging';
+    expect(warRoomV3ModelUrl({ buildSha: 'main/abc 123', baseUrl: url })).toBe(url);
   });
 });
 
