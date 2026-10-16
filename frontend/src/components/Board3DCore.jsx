@@ -334,7 +334,6 @@ function Board3DCanvas({
       exposeHansScreenDiagnostics(latestPropsRef.current);
       ambientScheduler?.markPaint(); firstPaint?.afterDiagnostics();
     }
-
     const renderBatcher = createWarRoomRenderBatcher({
       requestFrame: (callback) => window.requestAnimationFrame(callback),
       cancelFrame: (id) => window.cancelAnimationFrame(id),
@@ -350,14 +349,12 @@ function Board3DCanvas({
     resize();
     const observer = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(resize) : null;
     observer?.observe(host);
-
     function squareFromPointer(event, { preferLegalTargets = false } = {}) {
       return pickBoard3DSquare({
         event, canvas: renderer.domElement, pointer, raycaster, camera, pickTargets,
         latestProps: latestPropsRef.current, preferLegalTargets,
       });
     }
-
     function updatePieceHover(nextSquare, event) {
       const previous = hoveredPieceRef.current;
       if (previous === nextSquare) return;
@@ -409,7 +406,6 @@ function Board3DCanvas({
       renderer.domElement.style.cursor = 'default';
       updatePieceHover(null, event);
     }
-
     function releasePointer(event) {
       try {
         if (renderer.domElement.hasPointerCapture?.(event.pointerId)) {
@@ -419,7 +415,6 @@ function Board3DCanvas({
         // Android/WebView can already have released capture on cancellation.
       }
     }
-
     function onPointerCancel(event) {
       pointerStartRef.current = null;
       renderer.domElement.dataset.warRoomTouchStage = 'cancel';
