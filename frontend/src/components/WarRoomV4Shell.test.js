@@ -11,19 +11,21 @@ import { WAR_ROOM_V3_RUNTIME_MODEL_URL } from './WarRoomV3Shell.js';
 import { installWarRoomV3FireAnimation } from './WarRoomV3Fire.js';
 
 describe('War Room v4 runtime shell', () => {
-  it('loads the exact hashed R2 GLB already warmed by intent prefetch', () => {
+  it('preloads exactly the live V4 alias with the same build token as the installer', () => {
     const expected = warRoomVariantRuntimeModelUrl('v4', { buildSha: 'abc123' });
-    expect(expected).toMatch(/\/war-room\/v4\/runtime\/[^/?#]+-[a-f0-9]{16}\.glb$/);
-    expect(expected).not.toBe(WAR_ROOM_V3_RUNTIME_MODEL_URL);
-    expect(WAR_ROOM_V4_RUNTIME_MODEL_URL).toBe(expected);
+    expect(WAR_ROOM_V4_RUNTIME_MODEL_URL).toContain('/war-room/v4/runtime/current.glb');
+    expect(WAR_ROOM_V4_RUNTIME_MODEL_URL).not.toBe(WAR_ROOM_V3_RUNTIME_MODEL_URL);
+    expect(expected).toBe(`${WAR_ROOM_V4_RUNTIME_MODEL_URL}?build=abc123`);
     expect(warRoomV4ModelUrl({ buildSha: 'abc123' })).toBe(expected);
-    expect(warRoomV4ModelUrl({ buildSha: 'next-deploy' })).toBe(expected);
-    expect(warRoomV4ModelUrl({ buildSha: '' })).toBe(expected);
+    expect(warRoomV4ModelUrl({ buildSha: 'next-deploy' }))
+      .toBe(warRoomVariantRuntimeModelUrl('v4', { buildSha: 'next-deploy' }));
+    expect(warRoomV4ModelUrl({ buildSha: '' })).toBe(WAR_ROOM_V4_RUNTIME_MODEL_URL);
   });
 
-  it('keeps query-bearing explicit hashed URLs intact without build token', () => {
-    const url = 'https://assets.example.test/war-room/v4/runtime/shell-0123456789abcdef.glb?source=staging';
-    expect(warRoomV4ModelUrl({ baseUrl: url, buildSha: 'new/sha' })).toBe(url);
+  it('preserves explicit query parameters when adding the build version', () => {
+    const url = 'https://assets.example.test/war-room/v4/runtime/current.glb?source=staging';
+    expect(warRoomV4ModelUrl({ baseUrl: url, buildSha: 'new/sha' }))
+      .toBe(`${url}&build=new%2Fsha`);
   });
 
   it('drives the authored v4 fireplace flames with the shared flicker', () => {
