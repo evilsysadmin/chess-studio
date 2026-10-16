@@ -120,13 +120,15 @@ function installAuthoredPracticalLights(root, { coarsePointer = false } = {}) {
 
 export const WAR_ROOM_BLENDER_SHADOW_CASTER_LIMIT = 32;
 
-function warRoomBlenderShadowCasterScore(node) {
+function warRoomBlenderShadowCasterScore(node, position, scale) {
   if (!node?.isMesh || !node.geometry) return Number.NEGATIVE_INFINITY;
 
   if (!node.geometry.boundingSphere) node.geometry.computeBoundingSphere?.();
   const radiusLocal = Math.max(0.05, Number(node.geometry.boundingSphere?.radius) || 0.25);
-  const position = new THREE.Vector3();
-  const scale = new THREE.Vector3(1, 1, 1);
+  // The deferred census is synchronous. Share scratch vectors across meshes
+  // rather than allocating two Three objects for every decorative candidate.
+  position.set(0, 0, 0);
+  scale.set(1, 1, 1);
   node.getWorldPosition?.(position);
   node.getWorldScale?.(scale);
 
@@ -140,8 +142,10 @@ function warRoomBlenderShadowCasterScore(node) {
   const proximity = 1 / (1 + boardDistance * 0.18);
   const nearBoardBoost = boardDistance <= 8 ? 1.6 : 1;
   const elevatedBoost = position.y >= 0.25 ? 1.15 : 0.8;
-  const materials = (Array.isArray(node.material) ? node.material : [node.material]).filter(Boolean);
-  const translucent = materials.some((material) => material.transparent && Number(material.opacity) < 0.9);
+  const isTranslucent = (material) => material?.transparent && Number(material.opacity) < 0.9;
+  const translucent = Array.isArray(node.material)
+    ? node.material.some(isTranslucent)
+    : Boolean(isTranslucent(node.material));
   const transparencyPenalty = translucent ? 0.35 : 1;
 
   return sizeScore * proximity * nearBoardBoost * elevatedBoost * transparencyPenalty;
@@ -154,8 +158,14 @@ export function selectWarRoomBlenderShadowCasters(
   const maxCasters = Math.max(0, Math.floor(Number(limit) || 0));
   if (!maxCasters) return [];
 
+  const position = new THREE.Vector3();
+  const scale = new THREE.Vector3(1, 1, 1);
   return (meshes || [])
-    .map((node, index) => ({ node, index, score: warRoomBlenderShadowCasterScore(node) }))
+    .map((node, index) => ({
+      node,
+      index,
+      score: warRoomBlenderShadowCasterScore(node, position, scale),
+    }))
     .filter((entry) => Number.isFinite(entry.score))
     .sort((a, b) => b.score - a.score || a.index - b.index)
     .slice(0, maxCasters)
