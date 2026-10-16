@@ -267,16 +267,18 @@ case "$mode" in
         # Chromium after 4-5 captures, with no retries or missing tests.
         # Exact-SHA #5647 and #5650 show runner 1 as the persistent
         # critical path: its light tail groups 7/8 take 74-93 seconds.
-        # Place them on runner 3 after the isolated canaries + group 6,
-        # where the previous runs have spare capacity; keep heavy Rookwood
-        # group 2 FIRST on runner 2 (placing it after a WebGL canary caused
-        # an observable Home LOADING failure in failed #5643).
+        # Five exact-SHA runs identify runner 3 as critical in three cases.
+        # Shift only short group 7 (~30-40s) to runner 2 after Rookwood and
+        # group 5. Keep Rookwood FIRST on runner 2 (moving it behind a WebGL
+        # canary caused the Home LOADING failure in #5643); keep the desktop
+        # gameplay/portrait canaries isolated at the start of runner 3.
+        # The full 169-PNG gate must still pass on the new assignment.
         # Do not drop or duplicate any of the eight subshards.
         # Only exact-SHA CI and the 169-PNG comparison establish a win.
         case "$APP_VISUAL_CHRONICLES_SHARD" in
           1) subshards=(1 3 4) ;;
-          2) subshards=(2 5) ;;
-          3) subshards=(6 7 8) ;;
+          2) subshards=(2 5 7) ;;
+          3) subshards=(6 8) ;;
         esac
         for subshard in "${subshards[@]}"; do
           echo "Chronicles visual bounded renderer: isolated process ${subshard}/8."
