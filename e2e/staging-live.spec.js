@@ -723,6 +723,23 @@ async function assertLivePvpBrowserPath(page) {
   // CDP tracing is local to the test browser. Summarize an allowlisted set
   // of renderer/native events; never preserve raw trace event args or URLs.
   const nativeSummary = createPvpNativeTraceSummary();
+  // CDP layer observations are metadata-only: never retain layer identifiers,
+  // DOM node IDs, geometry, paint rectangles or raw protocol payloads.
+  const layers = { changes: 0, paints: 0, maxLayers: 0 };
+  let layerTreeEnabled = false;
+  if (cpuSession && deepDiagnostics) {
+    try {
+      cpuSession.on('LayerTree.layerTreeDidChange', ({ layers: entries }) => {
+        layers.changes += 1;
+        layers.maxLayers = Math.max(layers.maxLayers, entries?.length || 0);
+      });
+      cpuSession.on('LayerTree.layerPainted', () => { layers.paints += 1; });
+      await cpuSession.send('LayerTree.enable');
+      layerTreeEnabled = true;
+    } catch {
+      console.log('STAGING_PVP_LAYERS unavailable=cdp-enable');
+    }
+  }
   let nativeTracing = false;
   const onTraceData = ({ value }) => nativeSummary.add(value);
   if (cpuSession && deepDiagnostics) {
@@ -749,6 +766,7 @@ async function assertLivePvpBrowserPath(page) {
       await cpuSession.send('Tracing.end');
       await Promise.race([complete, new Promise((resolve) => setTimeout(resolve, 2500))]);
       console.log('STAGING_PVP_NATIVE ' + nativeSummary.report());
+      if (layerTreeEnabled) console.log('STAGING_PVP_LAYERS ' + JSON.stringify(layers));
     } catch {
       console.log('STAGING_PVP_NATIVE unavailable=cdp-stop');
     }
@@ -978,6 +996,7 @@ async function assertLivePvpBrowserPath(page) {
     logPhase('leave-lobby');
   } finally {
     await stopDeepDiagnostics('finally');
+    if (cpuSession && layerTreeEnabled) await cpuSession.send('LayerTree.disable').catch(() => {});
     if (cpuSession) await cpuSession.detach().catch(() => {});
     if (!page.isClosed()) {
       await page.evaluate(() => {
