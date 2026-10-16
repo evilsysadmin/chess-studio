@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import {
   PREMIUM_SURFACE_VERSION,
   applyPremiumDecorSurfacePass,
+  applyWarRoomPixelRatioIfChanged,
   createMicroSurfaceMap,
   getCameraFramingProfile,
   makePremiumDecorMaterial,
@@ -29,6 +30,23 @@ function disposeMaterial(material) {
 }
 
 describe('Board3D premium surfaces', () => {
+  it('does not reallocate an unchanged drawing-buffer pixel ratio on environment setup', () => {
+    let ratio = 1.2;
+    const writes = [];
+    const renderer = {
+      getPixelRatio: () => ratio,
+      setPixelRatio(value) { writes.push(value); ratio = value; },
+    };
+    expect(applyWarRoomPixelRatioIfChanged(renderer, 1.2)).toBe(false);
+    expect(writes).toEqual([]);
+    expect(applyWarRoomPixelRatioIfChanged(renderer, 0.85)).toBe(true);
+    expect(writes).toEqual([0.85]);
+    expect(applyWarRoomPixelRatioIfChanged(renderer, 0.85)).toBe(false);
+    expect(writes).toEqual([0.85]);
+    expect(applyWarRoomPixelRatioIfChanged({ setPixelRatio: (value) => writes.push(value) }, 0.9)).toBe(true);
+    expect(writes).toEqual([0.85, 0.9]);
+  });
+
   it('genera microtextura determinista y más ligera para puntero grueso', () => {
     const first = createMicroSurfaceMap({ seed: 77, kind: 'wood' });
     const second = createMicroSurfaceMap({ seed: 77, kind: 'wood' });
