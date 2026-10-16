@@ -130,11 +130,11 @@ export function startWarRoomVariantScene({
     .then((installShell) => {
       if (!cancelled) shellTiming.mark('import');
       return installShell(scene, {
-      whiteSide,
-      coarsePointer: shellCoarsePointer,
-      onRefine: onShellRefine,
-      onTiming: (phase) => { if (!cancelled) shellTiming.mark(phase); },
-    });
+        whiteSide,
+        coarsePointer: shellCoarsePointer,
+        onRefine: onShellRefine,
+        onTiming: (phase) => { if (!cancelled) shellTiming.mark(phase); },
+      });
     })
     .then((release) => {
       if (cancelled) return release?.();
