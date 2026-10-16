@@ -1,6 +1,13 @@
 name: Home · publish Blender runtime scene
 
 on:
+  pull_request:
+    paths:
+      - 'scripts/blender/build_home_v2_blockout.py'
+      - 'scripts/blender/export_home_v2_runtime.py'
+      - 'scripts/blender/references/home_canon_20260918.webp.b64'
+      - '.github/workflows/home-blender-v2-runtime.yml'
+      - 'e2e/home-scene-runtime-gate.spec.js'
   push:
     branches: [main]
     paths:
@@ -117,7 +124,9 @@ jobs:
   gate:
     name: Gate · Home runtime regression check
     needs: build
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.build.outputs.published == 'true'
+    # PR candidates are built and tested without publishing to R2. The
+    # existing production gate still runs after a main push/publish.
+    if: github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.build.outputs.published == 'true')
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     permissions:
@@ -133,7 +142,21 @@ jobs:
           browser-scope: chromium
           restore-frontend-deps: 'true'
           build-frontend: 'true'
+      - uses: actions/download-artifact@v8
+        if: github.event_name == 'pull_request'
+        with:
+          name: home-blender-runtime-${{ github.run_number }}
+          path: /tmp/home-pr-export
+      - name: Use the actual unpromoted GLB built from this PR
+        if: github.event_name == 'pull_request'
+        run: |
+          set -euo pipefail
+          candidate="$(find /tmp/home-pr-export -type f -name home-v2-runtime.glb -print -quit)"
+          test -n "$candidate"
+          cp "$candidate" /tmp/home-v2-runtime-candidate.glb
+          test "$(head -c 4 /tmp/home-v2-runtime-candidate.glb)" = 'glTF'
       - name: Fetch the just-published runtime GLB
+        if: github.event_name == 'push'
         run: |
           set -euo pipefail
           curl --fail --silent --show-error --location --retry 5 --retry-delay 3 --max-time 30 \
@@ -143,7 +166,15 @@ jobs:
         working-directory: e2e
         env:
           HOME_RUNTIME_GATE_GLB: /tmp/home-v2-runtime-candidate.glb
+          HOME_RUNTIME_GATE_CAPTURE_DIR: /tmp/home-runtime-visual
         run: ./node_modules/.bin/playwright test home-scene-runtime-gate.spec.js
+      - uses: actions/upload-artifact@v7
+        if: always() && github.event_name == 'pull_request'
+        with:
+          name: home-runtime-pr-preview-${{ github.run_number }}
+          path: /tmp/home-runtime-visual/
+          if-no-files-found: ignore
+          retention-days: 7
       - uses: actions/upload-artifact@v7
         if: failure()
         with:
