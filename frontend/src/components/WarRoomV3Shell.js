@@ -1,13 +1,12 @@
 import * as THREE from 'three';
 import { createWarRoomBlenderVariantShell } from './WarRoomBlenderShellRuntime.js';
-import { r2AssetUrl } from '../r2Assets.js';
+import { WAR_ROOM_V3_RUNTIME_ALIAS_URL } from './WarRoomV3Asset.js';
 import { installWarRoomV3FireAnimation } from './WarRoomV3Fire.js';
 import { createWarRoomSideTorch } from './WarRoomMilitaryGallery.js';
 
-// Match the versioned R2 URL already warmed by WarRoomVariant on user intent.
-// The previous current.glb?build=<frontend SHA> caused a second GLB request
-// and defeated browser/CDN reuse across frontend deployments.
-export const WAR_ROOM_V3_RUNTIME_MODEL_URL = r2AssetUrl('warRoom.v3.runtime');
+// Use the authored live V3 revision, whose Hans stage can differ from the
+// older content-hashed manifest object. Prefetch uses this same alias/build URL.
+export const WAR_ROOM_V3_RUNTIME_MODEL_URL = WAR_ROOM_V3_RUNTIME_ALIAS_URL;
 
 // The armory hall burns a wide log fire in a great hearth, not a small stove.
 export const WAR_ROOM_V3_HEARTH_FIRE_SHAPE = Object.freeze({
@@ -250,7 +249,7 @@ export function tuneWarRoomV3Lighting(root, { coarsePointer = false } = {}) {
 const WAR_ROOM_V3 = createWarRoomBlenderVariantShell({
   variant: 'v3',
   runtimeModelUrl: WAR_ROOM_V3_RUNTIME_MODEL_URL,
-  cacheBustBuild: false,
+  cacheBustBuild: true,
   rootName: 'war-room-v3-armory-hall-shell',
   runtimeFinish: 'gltf-pbr-armory-hall-v1',
   installRuntimeEffects: (root, { coarsePointer }) => {
