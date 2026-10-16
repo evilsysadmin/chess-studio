@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { mkdir } from 'node:fs/promises';
-import { confirmChroniclesCharacterSetup, login, mockApi, openMoreGameModes } from './helpers.js';
+import { confirmChroniclesCharacterSetup, login, mockApi } from './helpers.js';
 
 const ARTIFACT_DIR = '../.artifacts/app-visual';
 const CAPTURES = [
@@ -25,22 +25,12 @@ async function openChronicles(page) {
       'chess-study-home-guide-dismissed-v1': '1',
     },
   });
-  await login(page);
-  const speech = page.getByRole('region', { name: 'Mensaje de Matthias', exact: true });
-  if (await speech.isVisible().catch(() => false)) {
-    const close = speech.getByRole('button', { name: 'Cerrar comentario de Matthias', exact: true });
-    if (await close.isVisible().catch(() => false)) await close.click({ force: true });
-  }
-  const pvpLobby = page.getByRole('dialog', { name: 'Duelo 1 contra 1 · War Room', exact: true });
-  if (await pvpLobby.isVisible().catch(() => false)) {
-    await pvpLobby.getByRole('button', { name: /Cerrar ventana/ }).click();
-    await expect(pvpLobby).toBeHidden();
-  }
-  await openMoreGameModes(page);
-  const tools = page.locator('#illustrated-home-tools');
-  await expect(tools).toBeVisible();
-  await tools.getByRole('button').filter({ hasText: 'Experimentos geniales' }).click();
-  await expect(page.getByRole('heading', { name: 'Experimentos geniales', exact: true })).toBeVisible();
+  // The avatar producer owns authored faces inside real Chronicles, not the
+  // expensive Home WebGL compositor. Restore a genuine persisted Lab session
+  // (the same production path used by F5), then click its real portal. The
+  // gameplay producer separately keeps full desktop/portrait/landscape Home
+  // login→Lab→Chronicles canaries on every relevant product change.
+  await login(page, { initialView: 'lab', navigationWaitUntil: 'domcontentloaded' });
   const chroniclesEntry = page.locator('.lab-workshop-portal--chronicles');
   await expect(chroniclesEntry).toBeVisible();
   await chroniclesEntry.click();
