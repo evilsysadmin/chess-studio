@@ -19,6 +19,9 @@ export function createWarRoomShellTiming({
     for (const phase of [...WAR_ROOM_SHELL_TIMING_PHASES, 'render', 'postRender']) {
       delete canvas.dataset[`warRoomShellTiming${phase[0].toUpperCase()}${phase.slice(1)}Ms`];
     }
+    for (const name of ['Calls', 'Triangles', 'Lines', 'Points']) {
+      delete canvas.dataset[`warRoomFirstReadyRender${name}`];
+    }
   }
 
   const mark = (phase) => {

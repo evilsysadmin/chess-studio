@@ -8,10 +8,16 @@ describe('War Room first ready-frame timing', () => {
     const capture = beginWarRoomFirstReadyPaintTiming({ dataset }, () => clock);
     expect(capture).not.toBeNull();
     clock = 137.8;
-    capture.afterRender();
+    capture.afterRender({ calls: 417, triangles: 194321, lines: 9, points: 0 });
     clock = 144.1;
     capture.afterDiagnostics();
     expect(dataset.warRoomShellTimingRenderMs).toBe('38');
+    expect(dataset.warRoomFirstReadyRenderCalls).toBe('417');
+    expect(dataset.warRoomFirstReadyRenderTriangles).toBe('194321');
+    expect(dataset.warRoomFirstReadyRenderLines).toBe('9');
+    expect(dataset.warRoomFirstReadyRenderPoints).toBe('0');
+    capture.afterRender({ calls: 999 });
+    expect(dataset.warRoomFirstReadyRenderCalls).toBe('417');
     expect(dataset.warRoomShellTimingPostRenderMs).toBe('6');
     expect(beginWarRoomFirstReadyPaintTiming({ dataset }, () => 200)).toBeNull();
   });
@@ -23,6 +29,20 @@ describe('War Room first ready-frame timing', () => {
     expect(beginWarRoomFirstReadyPaintTiming({ dataset: {
       warRoomVariantStatus: 'ready', warRoomShellTimingReadyPaintMs: '80',
     } })).toBeNull();
+  });
+
+  it('does not fabricate WebGL counters when render info is absent or invalid', () => {
+    const absent = { dataset: { warRoomVariantStatus: 'ready' } };
+    beginWarRoomFirstReadyPaintTiming(absent, () => 1).afterRender();
+    expect(absent.dataset.warRoomFirstReadyRenderCalls).toBeUndefined();
+    const invalid = { dataset: { warRoomVariantStatus: 'ready' } };
+    beginWarRoomFirstReadyPaintTiming(invalid, () => 1).afterRender({
+      calls: Infinity, triangles: -1, points: 1.5, lines: 3,
+    });
+    expect(invalid.dataset.warRoomFirstReadyRenderCalls).toBeUndefined();
+    expect(invalid.dataset.warRoomFirstReadyRenderTriangles).toBeUndefined();
+    expect(invalid.dataset.warRoomFirstReadyRenderPoints).toBeUndefined();
+    expect(invalid.dataset.warRoomFirstReadyRenderLines).toBe('3');
   });
 
   it('ignores post-diagnostics before draw and allows a fresh variant', () => {

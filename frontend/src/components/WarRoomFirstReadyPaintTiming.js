@@ -13,10 +13,21 @@ export function beginWarRoomFirstReadyPaintTiming(
   const startedAt = now();
   let renderedAt = null;
   return {
-    afterRender() {
+    afterRender(renderInfo) {
       if (renderedAt !== null) return;
       renderedAt = now();
       dataset.warRoomShellTimingRenderMs = String(Math.round(Math.max(0, renderedAt - startedAt)));
+      // WebGLRenderer.info.render reports the most recent render's submitted
+      // primitives. Capture once without GPU readbacks, no scene traversal.
+      for (const [field, name] of [
+        ['calls', 'Calls'], ['triangles', 'Triangles'],
+        ['lines', 'Lines'], ['points', 'Points'],
+      ]) {
+        const value = renderInfo?.[field];
+        if (Number.isSafeInteger(value) && value >= 0) {
+          dataset[`warRoomFirstReadyRender${name}`] = String(value);
+        }
+      }
     },
     afterDiagnostics() {
       if (renderedAt === null || dataset.warRoomShellTimingPostRenderMs !== undefined) return;

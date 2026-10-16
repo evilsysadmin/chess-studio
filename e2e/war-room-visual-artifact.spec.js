@@ -516,6 +516,12 @@ async function captureWarRoomHealth(page, label) {
           return [phase, raw === undefined ? null : Number(raw)];
         }),
       ) : null,
+      firstReadyRender: canvas ? Object.fromEntries(
+        ['Calls', 'Triangles', 'Lines', 'Points'].map((name) => {
+          const value = canvas.dataset[`warRoomFirstReadyRender${name}`];
+          return [name.toLowerCase(), value === undefined ? null : Number(value)];
+        }),
+      ) : null,
       blenderShadow: canvas ? {
         budget: Number(canvas.dataset.warRoomShadowCasterBudget || 0),
         candidates: Number(canvas.dataset.warRoomShadowCasterCandidates || 0),
@@ -745,7 +751,12 @@ async function assertAndCaptureProfile(page, profile, board3d) {
 
   const health = await captureWarRoomHealth(page, profile.label);
   if (['v2', 'v3', 'v4'].includes(profile.variant)) {
-    console.log(`WAR_ROOM_SHELL_PHASES ${JSON.stringify({ variant: profile.variant, profile: profile.label, shellTiming: health.shellTiming })}`);
+    console.log(`WAR_ROOM_SHELL_PHASES ${JSON.stringify({
+      variant: profile.variant,
+      profile: profile.label,
+      shellTiming: health.shellTiming,
+      firstReadyRender: health.firstReadyRender,
+    })}`);
   }
   await writeFile(
     `${ARTIFACT_DIR}/${profile.label}-health.json`,
