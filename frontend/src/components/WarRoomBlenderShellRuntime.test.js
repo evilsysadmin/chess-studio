@@ -130,6 +130,35 @@ describe('War Room shared Blender runtime', () => {
     expect(selectWarRoomBlenderShadowCasters(meshes, { limit: 0 })).toEqual([]);
   });
 
+  it('reuses the two shadow census scratch vectors and keeps stable ranks across repeated passes', () => {
+    const positions = new Set();
+    const scales = new Set();
+    const rows = Array.from({ length: 128 }, (_, index) => ({
+      isMesh: true,
+      geometry: { boundingSphere: { radius: index % 5 === 0 ? 0.9 : 0.4 } },
+      material: index % 7 === 0
+        ? [{ transparent: false, opacity: 1 }, { transparent: true, opacity: 0.5 }]
+        : { transparent: false, opacity: 1 },
+      getWorldPosition(target) {
+        positions.add(target);
+        return target.set(index * 0.22, index % 3, 0);
+      },
+      getWorldScale(target) {
+        scales.add(target);
+        return target.set(1, 1, 1);
+      },
+    }));
+    const selected = selectWarRoomBlenderShadowCasters(rows);
+    expect(selected).toHaveLength(WAR_ROOM_BLENDER_SHADOW_CASTER_LIMIT);
+    expect(positions.size).toBe(1);
+    expect(scales.size).toBe(1);
+    expect(selectWarRoomBlenderShadowCasters(rows)).toEqual(selected);
+    // A fresh census gets fresh scratch vectors without sharing mutable
+    // positions across rooms or over asynchronous idle callbacks.
+    expect(positions.size).toBe(2);
+    expect(scales.size).toBe(2);
+  });
+
   it('can census projected shadow casters without enabling shadows on lite/coarse profiles', () => {
     const meshes = Array.from({ length: 48 }, (_, index) => ({
       isMesh: true,
