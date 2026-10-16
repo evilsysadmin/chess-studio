@@ -106,8 +106,8 @@ describe('War Room v3 side-wall torches', () => {
       return count;
     };
     expect(meshCount(classicTorch) - meshCount(batchedTorch)).toBe(12);
-    expect(batchedTorch.getObjectByName('war-room-side-torch-flame-outer')?.isInstancedMesh).toBe(false);
-    expect(batchedTorch.getObjectByName('war-room-side-torch-wall-halo')?.isInstancedMesh).toBe(false);
+    expect(Boolean(batchedTorch.getObjectByName('war-room-side-torch-flame-outer')?.isInstancedMesh)).toBe(false);
+    expect(Boolean(batchedTorch.getObjectByName('war-room-side-torch-wall-halo')?.isInstancedMesh)).toBe(false);
     release();
   });
 
