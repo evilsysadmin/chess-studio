@@ -16,6 +16,7 @@ import sys
 from pathlib import Path
 
 import bpy
+import bmesh
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 if str(SCRIPT_DIR) not in sys.path:
@@ -166,6 +167,85 @@ def consolidate_klaus() -> int:
     body.name = KLAUS_BODY_NAME
     body.select_set(False)
     return len(parts)
+
+
+# Only sub-pixel stars and small moon surface markings; the visible
+# moon disc, dynamic hearth flames and every other protected prop keep their
+# authored geometry, transforms, pivots and materials.
+TINY_MOON_DETAIL_NAME = re.compile(r"^HOME_PROP_window_moon_(?:star|mare)_\d+$")
+TINY_MOON_SEGMENTS = 16
+TINY_MOON_RINGS = 10
+
+
+def simplify_tiny_moon_details() -> dict:
+    """Runtime-only LOD for the 40x20 UV spheres used by tiny moon details.
+
+    These were given the full 1,520-triangle animated-moon budget merely
+    because their names contain "moon". The original authored Blender review
+    render remains unchanged. Rebuild only the small meshes, retaining
+    object identity, local bounds, material and pivot for Three.js.
+    """
+    targets = sorted(
+        (
+            obj for obj in bpy.context.scene.objects
+            if obj.type == "MESH" and TINY_MOON_DETAIL_NAME.fullmatch(obj.name)
+        ),
+        key=lambda obj: obj.name,
+    )
+    if len(targets) < 10:
+        raise SystemExit(f"Moon detail LOD found only {len(targets)} targets; refusing unsafe export")
+
+    before = after = 0
+    for obj in targets:
+        original = obj.data
+        if obj.modifiers or len(original.materials) != 1:
+            raise SystemExit(f"Moon detail {obj.name} has modifiers or unexpected materials")
+        material = original.materials[0]
+        if material is None:
+            raise SystemExit(f"Moon detail {obj.name} lacks a material")
+        if material.use_nodes and material.node_tree and any(
+            node.type == "TEX_IMAGE" for node in material.node_tree.nodes
+        ):
+            raise SystemExit(f"Moon detail {obj.name} has a texture requiring original UVs")
+
+        mins = [min(vertex.co[axis] for vertex in original.vertices) for axis in range(3)]
+        maxs = [max(vertex.co[axis] for vertex in original.vertices) for axis in range(3)]
+        if any(maxs[axis] - mins[axis] <= 0 for axis in range(3)):
+            raise SystemExit(f"Moon detail {obj.name} has degenerate bounds")
+        # The largest mare is only ~0.13 scene units across. Do not ever
+        # silently simplify the main moon or an accidentally renamed prop.
+        if max(maxs[axis] - mins[axis] for axis in range(3)) > 0.16:
+            raise SystemExit(f"Moon detail {obj.name} is unexpectedly large")
+
+        before += sum(len(face.vertices) - 2 for face in original.polygons)
+        bm = bmesh.new()
+        replacement = bpy.data.meshes.new(f"{obj.name}_runtime_lod")
+        try:
+            bmesh.ops.create_uvsphere(
+                bm, u_segments=TINY_MOON_SEGMENTS, v_segments=TINY_MOON_RINGS, radius=1.0
+            )
+            bm.to_mesh(replacement)
+        finally:
+            bm.free()
+        # The canonical helper bakes object scale into each mesh. Preserve
+        # the original LOCAL bounds; object location/rotation are untouched.
+        for vertex in replacement.vertices:
+            for axis in range(3):
+                vertex.co[axis] = (mins[axis] + maxs[axis]) * 0.5 + (
+                    maxs[axis] - mins[axis]
+                ) * 0.5 * vertex.co[axis]
+        replacement.materials.append(material)
+        for face in replacement.polygons:
+            face.use_smooth = True
+        replacement.update()
+        after += sum(len(face.vertices) - 2 for face in replacement.polygons)
+        obj.data = replacement
+        if original.users == 0:
+            bpy.data.meshes.remove(original)
+
+    if after >= before // 2:
+        raise SystemExit(f"Moon detail LOD not effective: {before} -> {after} triangles")
+    return {"objects": len(targets), "triangles_before": before, "triangles_after": after}
 
 
 def consolidate_static_architecture() -> tuple[int, int, int, int, int]:
@@ -330,6 +410,7 @@ def main() -> None:
 
     flatten_runtime_materials()
     converted_curves = convert_curves_to_meshes()
+    moon_detail_lod = simplify_tiny_moon_details()
     (
         architecture_meshes_before,
         architecture_meshes_after,
@@ -403,6 +484,7 @@ def main() -> None:
         "mesh_count": mesh_count,
         "converted_curves": converted_curves,
         "klaus_parts": klaus_parts,
+        "moon_detail_lod": moon_detail_lod,
         "architecture_meshes_before": architecture_meshes_before,
         "architecture_meshes_after": architecture_meshes_after,
         "static_prop_meshes_before": prop_meshes_before,
