@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
-import { mkdir, readFile } from 'node:fs/promises';
+import { mkdir } from 'node:fs/promises';
+import { r2AssetEntry } from '../frontend/src/r2Assets.js';
 import {
   activateSetupControl,
   buttonWithVisibleText,
@@ -251,17 +252,12 @@ for (const variant of ['v3', 'v4']) {
 test('War Room · real browser HTTP cache probe without request interception', async ({ page }, testInfo) => {
   if (testInfo.project.name !== 'chromium') return; // CDP probe applies to Chromium only.
   test.setTimeout(120_000);
-  const manifest = JSON.parse(await readFile(
-    new URL('../frontend/src/assets/r2-assets-manifest.json', import.meta.url),
-    'utf8',
-  ));
-
   // Login surface needs no simulated backend/game state. Keep the browser's
   // normal cache behavior while fetching the exact manifest URLs from the
   // same frontend origin used in production (rather than an opaque file://).
   await page.goto('./', { waitUntil: 'domcontentloaded' });
   for (const variant of ['v3', 'v4']) {
-    const entry = manifest.assets[`warRoom.${variant}.runtime`];
+    const entry = r2AssetEntry(`warRoom.${variant}.runtime`);
     expect(entry?.url).toContain(`/war-room/${variant}/runtime/`);
     const probe = await installRuntimeGlbProbe(page, variant);
     const load = () => page.evaluate(async (url) => {
