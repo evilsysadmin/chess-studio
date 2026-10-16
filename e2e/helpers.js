@@ -527,7 +527,18 @@ export async function mockApi(page, {
 
 // Home's 3D/compositor mount is async even after a successful form submit.
 // This timeout is for the Home landmark, not a replacement for the readiness gate.
-export async function login(page, { navigationWaitUntil = 'load', homeVisibleTimeout = 30_000 } = {}) {
+export async function login(page, { navigationWaitUntil = 'load', homeVisibleTimeout = 30_000, initialView = 'menu' } = {}) {
+  // Scoped E2E shortcut through the *real* restorable Lab session view. It
+  // still authenticates and clicks the real Chronicles portal, but avoids
+  // remounting Home's costly WebGL context for unrelated dungeon captures.
+  // The default remains the complete, independently covered 3D Home route.
+  if (initialView === 'lab') {
+    await page.addInitScript(() => {
+      sessionStorage.setItem('chess-study-current-view', 'lab');
+    });
+  } else if (initialView !== 'menu') {
+    throw new Error(`Unsupported E2E initial view: ${initialView}`);
+  }
   if (process.env.CHESS_E2E_LIGHTWEIGHT === '1') {
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await page.addInitScript(() => localStorage.setItem('chess-study-device-board-renderer-v1', '2d'));
@@ -544,6 +555,15 @@ export async function login(page, { navigationWaitUntil = 'load', homeVisibleTim
   // handleSubmit contract without coupling CI to transient button geometry
   // while fonts/layout settle during the login screen's first frames.
   await password.press('Enter');
+  test.setTimeout(Math.max(test.info().timeout, 90_000));
+  if (initialView === 'lab') {
+    // A real authorized session must render the production Lab, not an E2E
+    // fake screen or a Home that is silently bootstrapping in the background.
+    await expect(page.locator('.lab-workshop-portal--chronicles'))
+      .toBeVisible({ timeout: homeVisibleTimeout });
+    await expect(page.locator('.illustrated-home__stage')).toHaveCount(0);
+    return;
+  }
   // Stable Home-ready landmark shared by immersive desktop and compact mobile.
   // Slow isolated Chromium/SwiftShader visual runs may need more time *after*
   // successful authentication; never resubmit the login form on this timeout.
@@ -553,7 +573,6 @@ export async function login(page, { navigationWaitUntil = 'load', homeVisibleTim
   // the real scene is compositing. Functional journeys wait for that single
   // contract (Blender ready OR complete static fallback) before clicking.
   // Dedicated Home loading/readiness tests log in manually to inspect the gate.
-  test.setTimeout(Math.max(test.info().timeout, 90_000));
   await waitForHomeInteractive(page);
 }
 
