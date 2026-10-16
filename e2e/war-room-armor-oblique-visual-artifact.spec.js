@@ -1,6 +1,6 @@
 import { chromium, expect, test } from '@playwright/test';
 import { mkdir, writeFile } from 'node:fs/promises';
-import { activateSetupControl, buttonWithVisibleText, gameStatus, login, mockApi } from './helpers.js';
+import { activateSetupControl, buttonWithVisibleText, login, mockApi } from './helpers.js';
 
 const ARTIFACT_DIR = '../.artifacts/app-visual';
 const SEEN_WAR_ROOM_TUTORIAL_PROFILE = Object.freeze({
@@ -40,7 +40,10 @@ async function openCanonicalWarRoom(page) {
   const quickMatch = page.getByRole('dialog', { name: 'Configurar partida rápida' });
   await expect(quickMatch).toBeVisible();
   await activateSetupControl(quickMatch.getByRole('button', { name: 'Empezar partida', exact: true }));
-  await expect(gameStatus(page)).toBeVisible({ timeout: 60_000 });
+  // Immersive War Room can hide its status pill while the real 3D game is
+  // already visible. Fail closed on the board itself, not on optional HUD.
+  await expect(quickMatch).toBeHidden({ timeout: 60_000 });
+  await expect(page.locator('[data-board3d-war-room="true"]')).toBeVisible({ timeout: 60_000 });
   const board3d = await open3DFromAppearance(page);
   const canvas = page.locator('.board3d-main-canvas');
   await expect(canvas).toBeVisible({ timeout: 30_000 });
