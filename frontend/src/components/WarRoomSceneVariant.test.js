@@ -128,7 +128,7 @@ describe('War Room shared scene variants', () => {
     });
     for (let i = 0; i < 5; i += 1) await Promise.resolve();
     for (const phase of ['Import', 'Glb', 'Materials', 'Effects', 'ReadyPaint']) {
-      expect(canvas.dataset[`warRoomShellTiming${phase}Ms`]).toMatch(/^\\d+$/);
+      expect(canvas.dataset[`warRoomShellTiming${phase}Ms`]).toMatch(/^\d+$/);
     }
     expect(canvas.dataset.warRoomShellTimingGlbMs).not.toBe('999');
     expect(canvas.dataset.warRoomVariantStatus).toBe('ready');
