@@ -134,15 +134,17 @@ describe('War Room staging variant', () => {
     expect(warRoomVariantRuntimeModelUrl('v2', { buildSha: 'abc123' }))
       .toBe('https://assets.chess-studio.shadowops.dpdns.org/war-room/v2/runtime/war-room-premium-shell-c8c6d324d0dec87e.glb');
     expect(warRoomVariantRuntimeModelUrl('v3', { buildSha: 'abc123' }))
-      .toBe('https://assets.chess-studio.shadowops.dpdns.org/war-room/v3/runtime/war-room-v3-shell-5f7b69a8b8681b37.glb');
+      .toBe('https://assets.chess-studio.shadowops.dpdns.org/war-room/v3/runtime/current.glb?build=abc123');
     expect(warRoomVariantRuntimeModelUrl('duel', { buildSha: 'abc123' }))
       .toBe('https://assets.chess-studio.shadowops.dpdns.org/pvp/duel-room/runtime/pvp-duel-room-shell-b644b06d0c522690.glb');
-    for (const id of ['v2', 'v3', 'duel']) {
+    for (const id of ['v2', 'duel']) {
       expect(warRoomVariantDefinition(id)).toMatchObject({ cacheBustBuild: false });
     }
-    // Mutable V4 stays pinned to the frontend build until the latest GLB can
-    // be republished as a truly immutable asset.
-    expect(warRoomVariantDefinition('v4')).toMatchObject({ cacheBustBuild: true });
+    // Mutable V3/V4 keep the frontend build token until their authored
+    // current.glb assets are fingerprinted and republished under immutable URLs.
+    for (const id of ['v3', 'v4']) {
+      expect(warRoomVariantDefinition(id)).toMatchObject({ cacheBustBuild: true });
+    }
     expect(warRoomVariantRuntimeModelUrl('classic', { buildSha: 'abc123' })).toBeNull();
   });
 
