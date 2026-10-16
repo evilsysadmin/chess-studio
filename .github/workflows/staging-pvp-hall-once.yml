@@ -1,0 +1,51 @@
+name: Staging · PvP Hall GLB A/B one-shot
+
+# Temporary one-shot bridge: GitHub connector cannot dispatch workflows.
+# Delete this workflow after the one intended native capture.
+on:
+  push:
+    branches: [main]
+    paths: [.github/workflows/staging-pvp-hall-once.yml]
+
+permissions:
+  contents: read
+  actions: write
+
+jobs:
+  request-native-capture:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - name: Wait for this commit's staging deployment
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          result=waiting
+          for attempt in $(seq 1 72); do
+            result="$(gh run list --repo "$GITHUB_REPOSITORY" \
+              --workflow 'Deploy to staging' --commit "$GITHUB_SHA" \
+              --limit 5 --json status,conclusion \
+              --jq '.[0] | if .status == "completed" then .conclusion else "waiting" end' || true)"
+            case "$result" in
+              success) break ;;
+              failure|cancelled|timed_out|action_required)
+                echo "::error::Staging deploy failed: $result"; exit 1 ;;
+            esac
+            sleep 15
+          done
+          [[ "$result" == success ]] || {
+            echo "::error::Staging did not finish within the bounded window"
+            exit 1
+          }
+      - name: Dispatch native Hall GLB normal/blocked A/B once
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh workflow run staging-pvp-compositor-ab.yml \
+            --repo "$GITHUB_REPOSITORY" --ref main \
+            -f renderer=default -f comparison=native-hall-ab
+          echo 'Hall GLB matched native A/B dispatched; no credentials read here.'
