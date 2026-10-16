@@ -1,0 +1,40 @@
+name: War Room render A/B · temporary
+on:
+  pull_request:
+    paths:
+      - 'frontend/src/components/WarRoomRenderBatcher.js'
+      - 'frontend/src/components/WarRoomRenderBatcher.test.js'
+      - 'e2e/war-room-render-batching-benchmark.spec.js'
+      - '.github/workflows/war-room-render-benchmark-once.yml'
+
+permissions: { contents: read }
+concurrency:
+  group: war-room-render-benchmark-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  browser-benchmark:
+    name: Real Chromium · War Room V3 A/B
+    runs-on: ubuntu-24.04
+    timeout-minutes: 16
+    env:
+      VITE_WARROOM_RENDER_AB: '1'
+    steps:
+      - uses: actions/checkout@v7
+      - name: Setup isolated Chromium benchmark build
+        uses: ./.github/actions/setup-browser-e2e
+        with:
+          browser-scope: chromium
+      - name: Run same-bundle ABBA diagnostic (no performance threshold)
+        working-directory: e2e
+        env:
+          CI: '1'
+        run: ./node_modules/.bin/playwright test war-room-render-batching-benchmark.spec.js --workers=1 --retries=0 --timeout=420000
+      - name: Upload bounded A/B counters
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: war-room-render-ab-${{ github.event.pull_request.number }}
+          path: .artifacts/war-room-render-ab/war-room-v3.json
+          if-no-files-found: ignore
+          retention-days: 7

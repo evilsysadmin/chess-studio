@@ -53,6 +53,37 @@ describe('War Room render batching', () => {
     expect(h.draw).toHaveBeenCalledTimes(3);
   });
 
+
+  it('bench-only legacy mode counts unbatched scene paints without changing direct paints', () => {
+    const frames = new Map();
+    const calls = [];
+    const draw = vi.fn();
+    const probe = { mode: 'legacy', onDraw: (sample) => calls.push(sample) };
+    const batcher = createWarRoomRenderBatcher({
+      requestFrame: (callback) => { frames.set(1, callback); return 1; },
+      cancelFrame: () => {},
+      draw,
+      benchmarkProbe: probe,
+    });
+
+    batcher.request();
+    batcher.request();
+    batcher.request();
+    expect(draw).toHaveBeenCalledTimes(3);
+    expect(frames.size).toBe(0);
+    expect(calls.map((row) => row.source)).toEqual(['effect', 'effect', 'effect']);
+    batcher.flush();
+    expect(calls.at(-1).source).toBe('direct');
+    probe.mode = 'batched';
+    batcher.request();
+    batcher.request();
+    expect(draw).toHaveBeenCalledTimes(4);
+    frames.get(1)();
+    expect(draw).toHaveBeenCalledTimes(5);
+    expect(calls.at(-1).source).toBe('effect');
+    expect(calls.every((row) => row.synchronousMs >= 0)).toBe(true);
+  });
+
   it('cancels queued work when WebGL unmounts', () => {
     const h = harness();
     h.batcher.request();
