@@ -550,18 +550,36 @@ test.describe('Chronicles · sapphire pause tablet visual proof', () => {
         await expect(menu).toHaveAttribute('open', '');
         const panel = menu.locator('.chronicles-game-menu__panel');
         const checkTablet = async (variant) => {
-          const rect = await panel.boundingBox();
+          // Snapshot everything from the same layout frame: bounds, button
+          // ink, action hit targets and scroll, without extra CDP round trips.
+          const snapshot = await panel.evaluate((node) => {
+            const box = node.getBoundingClientRect();
+            const buttons = [...node.querySelectorAll('button')];
+            const actions = [...node.querySelectorAll('.chronicles-game-menu__actions > button')];
+            return {
+              rect: { x: box.x, y: box.y, width: box.width, height: box.height },
+              scroll: { content: node.scrollHeight, visible: node.clientHeight },
+              inks: buttons.map((button) => ({
+                label: button.textContent.trim(),
+                inline: button.style.getPropertyValue('color'),
+                priority: button.style.getPropertyPriority('color'),
+                computed: getComputedStyle(button).color,
+              })),
+              actions: actions.map((button) => {
+                const bounds = button.getBoundingClientRect();
+                return {
+                  name: button.textContent.trim(), x: bounds.x, y: bounds.y,
+                  right: bounds.right, bottom: bounds.bottom,
+                };
+              }),
+            };
+          });
+          const { rect, inks } = snapshot;
           expect(rect, `${capture.label}: ${variant} panel exists`).not.toBeNull();
           expect(rect.x, `${capture.label}: ${variant} left`).toBeGreaterThanOrEqual(0);
           expect(rect.y, `${capture.label}: ${variant} top`).toBeGreaterThanOrEqual(0);
           expect(rect.x + rect.width, `${capture.label}: ${variant} right`).toBeLessThanOrEqual(capture.width);
           expect(rect.y + rect.height, `${capture.label}: ${variant} bottom`).toBeLessThanOrEqual(capture.height);
-          const inks = await panel.locator('button').evaluateAll((buttons) => buttons.map((button) => ({
-            label: button.textContent.trim(),
-            inline: button.style.getPropertyValue('color'),
-            priority: button.style.getPropertyPriority('color'),
-            computed: getComputedStyle(button).color,
-          })));
           expect(inks.length).toBeGreaterThan(0);
           for (const ink of inks) {
             expect(['rgb(8, 8, 10)', 'rgb(17, 16, 21)'], `${capture.label}: ${ink.label} dark ink`).toContain(ink.computed);
@@ -570,6 +588,7 @@ test.describe('Chronicles · sapphire pause tablet visual proof', () => {
               expect(ink.priority, `${capture.label}: ${ink.label} important ink`).toBe('important');
             }
           }
+          return snapshot;
         };
         await expect(panel.locator('.chronicles-game-menu__actions > button')).toHaveText([
           'Continuar', 'Guardar partida', 'Guardar y salir', 'Salir sin guardar',
@@ -577,25 +596,18 @@ test.describe('Chronicles · sapphire pause tablet visual proof', () => {
         await expect(menu.locator('#chronicles-music-volume')).toBeVisible();
         await expect(menu.getByText('First Verse en el libro de expediciones; Second Verse durante la aventura.')).toBeVisible();
         await expect(menu.locator('#chronicles-sfx-volume')).toBeVisible();
-        await checkTablet('pause');
+        const pauseSnapshot = await checkTablet('pause');
         if (capture.label === 'android-landscape-844x390') {
-          const scroll = await panel.evaluate((node) => ({
-            content: node.scrollHeight, visible: node.clientHeight,
-          }));
-          expect(scroll.content, 'landscape pause must show actions and audio without scrolling')
-            .toBeLessThanOrEqual(scroll.visible + 1);
+          expect(pauseSnapshot.scroll.content, 'landscape pause must show actions and audio without scrolling')
+            .toBeLessThanOrEqual(pauseSnapshot.scroll.visible + 1);
         }
         // Four game actions plus both mixer sliders must remain inside the
         // dialog at 844×390 (one integrated tablet, not an audio sub-menu).
-        const pauseActions = await panel.locator('.chronicles-game-menu__actions > button').evaluateAll((buttons) =>
-          buttons.map((button) => {
-            const box = button.getBoundingClientRect();
-            return { name: button.textContent.trim(), x: box.x, y: box.y, right: box.right, bottom: box.bottom };
-          }));
+        const pauseActions = pauseSnapshot.actions;
         expect(pauseActions.map((action) => action.name)).toEqual([
           'Continuar', 'Guardar partida', 'Guardar y salir', 'Salir sin guardar',
         ]);
-        const tabletBounds = await panel.boundingBox();
+        const tabletBounds = pauseSnapshot.rect;
         expect(tabletBounds, `${capture.label}: pause tablet bounds`).not.toBeNull();
         for (const action of pauseActions) {
           expect(action.x, `${capture.label}: ${action.name} left`).toBeGreaterThanOrEqual(0);
