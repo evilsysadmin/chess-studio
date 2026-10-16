@@ -19,6 +19,7 @@ jobs:
     timeout-minutes: 16
     env:
       VITE_WARROOM_RENDER_AB: '1'
+      VITE_WAR_ROOM_VARIANTS_ENABLE: '1'
     steps:
       - uses: actions/checkout@v7
       - name: Setup isolated Chromium benchmark build
