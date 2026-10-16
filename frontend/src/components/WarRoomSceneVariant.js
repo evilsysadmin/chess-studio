@@ -1,3 +1,4 @@
+import { abortableDelay } from '../asyncControl.js';
 import {
   isClassicWarRoomVariant,
   loadWarRoomVariantInstaller,
@@ -62,7 +63,7 @@ export function startWarRoomVariantScene({
   let cancelled = false;
   let releaseShell = null;
   let releaseHans = null;
-  let shaderTimer = null;
+  let shaderDeadline = null;
   const classicShellObjects = classicShellController?.current?.() || [];
   const ensureClassicShell = classicShellController?.ensure;
   const setStatus = (status, renderedVariant) => {
@@ -195,12 +196,13 @@ export function startWarRoomVariantScene({
         const started = performance.now();
         const outcome = Promise.resolve().then(() => prepareShaders())
           .then(() => 'completed', () => 'rejected');
-        const deadline = new Promise((resolve) => {
-          shaderTimer = setTimeout(() => resolve('timeout'), 3000);
-        });
+        const deadlineController = new AbortController();
+        shaderDeadline = deadlineController;
+        const deadline = abortableDelay(3000, deadlineController.signal)
+          .then(() => 'timeout', () => 'cancelled');
         void Promise.race([outcome, deadline]).then((status) => {
-          if (shaderTimer !== null) clearTimeout(shaderTimer);
-          shaderTimer = null;
+          deadlineController.abort();
+          if (shaderDeadline === deadlineController) shaderDeadline = null;
           if (cancelled) return;
           bench.samples.push({
             status,
@@ -248,7 +250,7 @@ export function startWarRoomVariantScene({
 
   return () => {
     cancelled = true;
-    if (shaderTimer !== null) clearTimeout(shaderTimer);
+    shaderDeadline?.abort();
     releaseHans?.();
     releaseHans = null;
     if (canvas) {
