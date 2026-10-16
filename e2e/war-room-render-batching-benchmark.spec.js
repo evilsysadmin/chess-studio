@@ -22,7 +22,9 @@ async function sample(page, requestLog, mode, iteration) {
     window.__chessWarRoomRenderAB.mode = nextMode;
     window.__chessWarRoomRenderAB.draws.length = 0;
   }, mode);
-  await buttonWithVisibleText(page, 'Partida rápida').click();
+  // The Home 3D loading cover may still exist after returning from a game.
+  // Benchmark the real quick-match handler, not Playwright's pointer hit-testing of Home.
+  await buttonWithVisibleText(page, 'Partida rápida').dispatchEvent('click');
   const startAt = await page.evaluate(() => performance.now());
   await activateSetupControl(page.getByRole('button', { name: 'Empezar partida', exact: true }));
 
