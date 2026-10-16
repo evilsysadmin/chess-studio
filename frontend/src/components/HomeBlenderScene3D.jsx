@@ -1455,12 +1455,14 @@ export const HOME_BLENDER_PIECE_LIFT = Object.freeze({
 
 export function applyHomeBlenderPieceLift(root) {
   let lifted = 0;
+  const prepared = new Set();
   root?.traverse?.((object) => {
     if (!object?.isMesh) return;
     const materials = Array.isArray(object.material) ? object.material : [object.material];
     for (const material of materials) {
       const match = /piece_(light|dark)/i.exec(String(material?.name || ''));
-      if (!match || !material.emissive) continue;
+      if (!match || !material.emissive || prepared.has(material)) continue;
+      prepared.add(material);
       const lift = HOME_BLENDER_PIECE_LIFT[match[1].toLowerCase()];
       material.emissive.setHex(lift.color);
       material.emissiveIntensity = lift.intensity;

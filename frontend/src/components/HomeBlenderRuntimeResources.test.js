@@ -1,6 +1,9 @@
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
-import { prepareHomeBlenderRuntimeMaterials } from './HomeBlenderScene3D.jsx';
+import {
+  applyHomeBlenderPieceLift,
+  prepareHomeBlenderRuntimeMaterials,
+} from './HomeBlenderScene3D.jsx';
 
 describe('Home Blender shared GLTF resource preparation', () => {
   it('updates a shared material and texture only once across many meshes', () => {
@@ -29,6 +32,26 @@ describe('Home Blender shared GLTF resource preparation', () => {
     geometry.dispose();
     material.dispose();
     texture.dispose();
+  });
+
+  it('lifts shared light and dark chess-piece materials only once each', () => {
+    const light = new THREE.MeshStandardMaterial({ name: 'piece_light' });
+    const dark = new THREE.MeshStandardMaterial({ name: 'piece_dark' });
+    const geometry = new THREE.BoxGeometry();
+    const root = new THREE.Group();
+    for (let index = 0; index < 16; index += 1) {
+      root.add(new THREE.Mesh(geometry, index % 2 === 0 ? light : dark));
+    }
+    const lightVersion = light.version;
+    const darkVersion = dark.version;
+
+    expect(applyHomeBlenderPieceLift(root)).toBe(2);
+    expect(light.version).toBe(lightVersion + 1);
+    expect(dark.version).toBe(darkVersion + 1);
+    expect(light.emissive.getHex()).not.toBe(dark.emissive.getHex());
+    geometry.dispose();
+    light.dispose();
+    dark.dispose();
   });
 
   it('handles multi-material meshes and shared maps with shadows disabled', () => {
