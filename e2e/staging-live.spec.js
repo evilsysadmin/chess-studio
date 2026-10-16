@@ -399,7 +399,7 @@ function createPvpNativeTraceSummary() {
         ' critical_task_thread_cpu_ms=' + taskCpuMs +
         ' critical_commit_peer_threads=' + (commit ? peerThreads.size : 'unavailable') +
         ' critical_commit_peer_top_overlap_ms=' + (peerTop || 'none') +
-        ' critical_commit_peer_gpu_raster_coverage_ms=' +
+        ' critical_commit_peer_graphics_coverage_ms=' +
           (targetedIntervals.length ? Math.round(targetedUs / 1000) : 'not-observed');
     },
   };
