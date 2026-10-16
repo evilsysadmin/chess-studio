@@ -259,7 +259,7 @@ test('War Room · real browser HTTP cache probe without request interception', a
   // Login surface needs no simulated backend/game state. Keep the browser's
   // normal cache behavior while fetching the exact manifest URLs from the
   // same frontend origin used in production (rather than an opaque file://).
-  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await page.goto('./', { waitUntil: 'domcontentloaded' });
   for (const variant of ['v3', 'v4']) {
     const entry = manifest.assets[`warRoom.${variant}.runtime`];
     expect(entry?.url).toContain(`/war-room/${variant}/runtime/`);
