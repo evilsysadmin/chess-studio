@@ -27,6 +27,7 @@ import { buildBoard3DTileInstances } from './Board3DTileInstances.js';
 import { pickBoard3DSquare } from './Board3DPointerPicking.js';
 import { planBoard3DPieceReconciliation } from './Board3DPieceReconciliation.js';
 import { addCoarsePieceHitTarget, applyMatthiasCheckPose, buildPiece, disposeObject } from './Board3DPieces.js';
+import { clearObjectGroup, makeObjectTranslucent } from './Board3DObjectLifecycle.js';
 import { fitBoardCamera, makeTextSprite } from './Board3DScene.js';
 import { resolveStableBoardViewportForHost } from './Board3DViewportSize.js';
 import { applyBoard3DProjectionDiagnostics, applyBoard3DRendererMemoryDiagnostics } from './Board3DProjectionDiagnostics.js';
@@ -39,26 +40,6 @@ import './Board3D.css';
 import './Board3DViewportTuning.css';
 import './Board3DParity.css';
 import './WarRoomSharedViewport.css';
-function clearObjectGroup(group) {
-  if (!group) return;
-  for (const child of [...group.children]) {
-    group.remove(child);
-    disposeObject(child);
-  }
-}
-
-function makeObjectTranslucent(group, opacity) {
-  group?.traverse?.((object) => {
-    const materials = Array.isArray(object.material) ? object.material : [object.material];
-    materials.forEach((material) => {
-      if (!material) return;
-      material.transparent = true;
-      material.opacity = opacity;
-      material.depthWrite = false;
-    });
-  });
-}
-
 function Board3DCanvas({
   fen,
   onSquareClick,
