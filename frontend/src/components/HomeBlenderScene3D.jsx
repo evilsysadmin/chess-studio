@@ -1806,6 +1806,7 @@ export default function HomeBlenderScene3D({
       software: softwareRenderer,
     });
     canvas.dataset.homeBlenderGpuStatus = gpuTimer.status;
+    canvas.dataset.homeBlenderGpuSampleCount = String(gpuTimer.completedSamples);
     canvas.dataset.homeBlenderPhase = 'renderer-created';
     markStartup('renderer-created');
     glContextRef.current = gl;
@@ -1990,6 +1991,9 @@ export default function HomeBlenderScene3D({
           if (frameStats.vsyncP95Ms !== null) canvas.dataset.homeBlenderVsyncP95Ms = frameStats.vsyncP95Ms.toFixed(2);
           // Real GPU timer queries are opt-in and asynchronously resolved, never inferred from CPU time.
           canvas.dataset.homeBlenderGpuStatus = gpuTimer.status;
+          // Distinguish a fresh query result from a previously published value.
+          // Read/write only once per telemetry window, never every frame.
+          canvas.dataset.homeBlenderGpuSampleCount = String(gpuTimer.completedSamples);
           if (gpuTimer.status === 'ready' && gpuTimer.lastMs !== null) {
             canvas.dataset.homeBlenderGpuMs = gpuTimer.lastMs.toFixed(2);
           } else {
