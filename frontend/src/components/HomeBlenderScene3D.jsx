@@ -1499,8 +1499,12 @@ export function prepareHomeBlenderRuntimeMaterials(root, shadowsEnabled = true, 
   root.traverse((object) => {
     if (!object.isMesh) return;
     meshCount += 1;
-    object.castShadow = shadowsEnabled;
-    object.receiveShadow = shadowsEnabled;
+    // These emissive flame/ember/steam meshes are visual light effects, not
+    // solid occluders. Keep them out of the initial shadow-map depth pass.
+    // Architectural fire surrounds and other meshes still cast shadows.
+    const isFireEffect = homeBlenderFireKind(object.name) !== null;
+    object.castShadow = shadowsEnabled && !isFireEffect;
+    object.receiveShadow = shadowsEnabled && !isFireEffect;
     const meshMaterials = Array.isArray(object.material) ? object.material : [object.material];
     for (const material of meshMaterials) {
       if (material) materials.add(material);
