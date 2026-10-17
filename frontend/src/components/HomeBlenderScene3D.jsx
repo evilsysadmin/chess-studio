@@ -1486,10 +1486,12 @@ export function applyHomeBlenderPieceLift(root) {
 // unique resource once: needsUpdate increments the resource version and must
 // not be repeated hundreds of times during Home startup.
 export function prepareHomeBlenderRuntimeMaterials(root, shadowsEnabled = true, renderer = null) {
-  const maxAnisotropy = Math.min(
-    8,
-    renderer?.capabilities?.getMaxAnisotropy?.() || 1,
-  );
+  const deviceAnisotropy = renderer?.capabilities?.getMaxAnisotropy?.() || 1;
+  // Colour textures benefit most from grazing-angle clarity. In the lite
+  // renderer, and on auxiliary PBR maps, keep sampling bounded without
+  // changing any image content, material parameters or shader features.
+  const colorAnisotropy = Math.min(shadowsEnabled ? 8 : 2, deviceAnisotropy);
+  const pbrAnisotropy = Math.min(2, deviceAnisotropy);
   const materials = new Set();
   const textures = new Set();
   let meshCount = 0;
@@ -1515,7 +1517,8 @@ export function prepareHomeBlenderRuntimeMaterials(root, shadowsEnabled = true, 
     ]) {
       if (!texture?.isTexture || textures.has(texture)) continue;
       textures.add(texture);
-      texture.anisotropy = Math.max(texture.anisotropy || 1, maxAnisotropy);
+      const targetAnisotropy = texture === material.map ? colorAnisotropy : pbrAnisotropy;
+      texture.anisotropy = targetAnisotropy;
       texture.needsUpdate = true;
     }
     material.dithering = true;
