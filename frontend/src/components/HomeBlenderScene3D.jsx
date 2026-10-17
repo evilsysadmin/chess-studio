@@ -1598,6 +1598,21 @@ export function homeBlenderShouldRender({ documentHidden = false, intersecting =
   return threeSurfaceShouldRender({ documentHidden, intersecting });
 }
 
+// An active animation loop owns the next visible room draw. Scheduling an
+// independent on-demand RAF for a resize, resume or Matthias routine change
+// would submit the same full 3D scene twice on adjacent callbacks. Reduced
+// motion and software rendering have no ambient RAF and still need the
+// on-demand draw. A wake timer counts as an active animation: it leads to a
+// new RAF at the next bounded animation deadline.
+export function homeBlenderNeedsOnDemandFrame({
+  visible = true,
+  onDemandQueued = false,
+  ambientFrameQueued = false,
+  ambientWakeQueued = false,
+} = {}) {
+  return visible && !onDemandQueued && !ambientFrameQueued && !ambientWakeQueued;
+}
+
 // ResizeObserver and window.resize can report the same viewport repeatedly,
 // especially when mobile browser chrome changes. A redundant setSize() can
 // clear/reallocate the backing canvas and schedule unnecessary full-room draws.
@@ -1911,11 +1926,19 @@ export default function HomeBlenderScene3D({
       }
     };
 
+    const needsOnDemandFrame = () => homeBlenderNeedsOnDemandFrame({
+      visible: isVisible(),
+      onDemandQueued: frame !== null,
+      ambientFrameQueued: fireFrame !== null,
+      ambientWakeQueued: fireWakeTimer !== null,
+    });
     const requestRender = () => {
-      if (!isVisible() || frame !== null) return;
+      if (!needsOnDemandFrame()) return;
       frame = window.requestAnimationFrame(() => {
         frame = null;
-        if (isVisible()) renderFrame();
+        // The ambient loop might have started after this RAF was queued.
+        // Never draw a second full room if an animation RAF owns the frame.
+        if (needsOnDemandFrame()) renderFrame();
       });
     };
     const cancelPendingRender = () => {
@@ -2106,6 +2129,9 @@ export default function HomeBlenderScene3D({
       ensureSteamSprites();
       lastFireRafAt = null;
       lastActorTickAt = null;
+      // A queued resize/resume draw is superseded by the imminent ambient
+      // frame. Cancel it instead of submitting the whole GLTF scene twice.
+      cancelPendingRender();
       fireFrame = window.requestAnimationFrame(animateFire);
     };
 
@@ -2123,8 +2149,8 @@ export default function HomeBlenderScene3D({
         stopFireAnimation();
         cancelPendingRender();
       } else {
-        requestRender();
         startFireAnimation();
+        requestRender();
       }
     };
     const onIntersectionChange = (entries) => {
@@ -2134,8 +2160,8 @@ export default function HomeBlenderScene3D({
         cancelPendingRender();
         if (!document.hidden) canvas.dataset.homeFireMotion = 'paused-offscreen';
       } else {
-        requestRender();
         startFireAnimation();
+        requestRender();
       }
     };
 
