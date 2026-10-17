@@ -117,20 +117,32 @@ def prepare_worktree(root, temporary, label, sha, harness_blobs):
     return target
 
 
-def exercise_once(label, target, sha, renderer, env, destination, ordinal, total):
-    require_port_free()
-    print(f'==> Run {ordinal}/{total}: {label} at {sha[:12]} ({renderer})', flush=True)
-    prior = set((target / '.artifacts/war-room-gpu-benchmark').glob('*.json'))
-    local_env = env.copy()
-    local_env['WAR_ROOM_GPU_BENCH_SHA'] = sha
-    run(('./node_modules/.bin/playwright', 'test', 'war-room-gpu-benchmark.spec.js',
-         '--config=playwright.config.js', '--project=chromium', '--workers=1'),
-        cwd=target / 'e2e', env=local_env)
-    produced = sorted(set((target / '.artifacts/war-room-gpu-benchmark').glob('*.json')) - prior)
-    require(len(produced) == len(PROFILES),
-            f'{label}: expected {len(PROFILES)} fresh JSON captures; got {len(produced)}')
+def run_playwright_logged(command, *, cwd, env, log_path):
+    """Stream test output AND retain full logs, even on a failed browser run."""
+    with log_path.open('wb') as logfile:
+        with subprocess.Popen(
+            [str(part) for part in command], cwd=cwd, env=env,
+            stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+        ) as process:
+            for line in process.stdout:
+                logfile.write(line)
+                # Avoid buffering away operator-visible progress.
+                sys.stdout.buffer.write(line)
+                sys.stdout.buffer.flush()
+            return process.wait()
+
+
+def preserve_fresh_captures(target, prior, destination, sha, renderer, *, strict):
+    """Copy first, validate afterward. Failed runs must retain partial evidence."""
+    directory = target / '.artifacts/war-room-gpu-benchmark'
+    produced = sorted(set(directory.glob('*.json')) - prior)
     names = set()
     for path in produced:
+        copied = destination / path.name
+        require(not copied.exists(), f'Collision while preserving A/B capture: {copied}')
+        shutil.copy2(path, copied)
+        if not strict:
+            continue  # Partial/invalid JSON is diagnostics, never an accepted sample.
         try:
             report = json.loads(path.read_text(encoding='utf-8'))
         except (OSError, ValueError) as exc:
@@ -139,10 +151,35 @@ def exercise_once(label, target, sha, renderer, env, destination, ordinal, total
                 f'{path}: invalid capture schema/revision')
         require(report.get('requestedRenderer') == renderer, f'{path}: renderer mismatch')
         names.add(report.get('profile'))
-        copied = destination / path.name
-        require(not copied.exists(), f'Collision while preserving A/B capture: {copied}')
-        shutil.copy2(path, copied)
-    require(names == set(PROFILES), f'{label}: missing/duplicate profile {names}')
+    if strict:
+        require(len(produced) == len(PROFILES),
+                f'Expected {len(PROFILES)} fresh JSON captures; got {len(produced)}')
+        require(names == set(PROFILES), f'Missing/duplicate profile: {names}')
+    return len(produced)
+
+
+def exercise_once(label, target, sha, renderer, env, destination, ordinal, total):
+    require_port_free()
+    print(f'==> Run {ordinal}/{total}: {label} at {sha[:12]} ({renderer})', flush=True)
+    prior = set((target / '.artifacts/war-room-gpu-benchmark').glob('*.json'))
+    local_env = env.copy()
+    local_env['WAR_ROOM_GPU_BENCH_SHA'] = sha
+    log_path = destination / f'playwright-{ordinal:02d}-{label}.log'
+    result = run_playwright_logged(
+        ('./node_modules/.bin/playwright', 'test', 'war-room-gpu-benchmark.spec.js',
+         '--config=playwright.config.js', '--project=chromium', '--workers=1'),
+        cwd=target / 'e2e', env=local_env, log_path=log_path,
+    )
+    # Preserve every profile recorded so far before propagating a failed test
+    # or deleting the detached worktree in the caller's finally block.
+    count = preserve_fresh_captures(
+        target, prior, destination, sha, renderer, strict=result == 0,
+    )
+    if result:
+        raise BenchError(
+            f'Playwright failed (exit {result}); retained {count} partial capture(s) '
+            f'and diagnostic log in {destination}',
+        )
 
 
 def self_test():
@@ -161,6 +198,48 @@ def self_test():
     assert nvidia['__GLX_VENDOR_LIBRARY_NAME'] == 'nvidia' and 'DRI_PRIME' not in nvidia
     assert mesa['DRI_PRIME'] == '1' and '__GLX_VENDOR_LIBRARY_NAME' not in mesa
     assert '__NV_PRIME_RENDER_OFFLOAD' not in clean and 'DRI_PRIME' not in clean
+
+    # Reproduce a failed Playwright process without a browser or GPU.
+    with tempfile.TemporaryDirectory(prefix='warroom-runner-selftest-') as tmp:
+        root = Path(tmp)
+        target = root / 'worktree'
+        sources = target / '.artifacts/war-room-gpu-benchmark'
+        sources.mkdir(parents=True)
+        destination = root / 'retained'
+        destination.mkdir()
+        log = destination / 'playwright.log'
+        exit_code = run_playwright_logged(
+            (sys.executable, '-c', "print('synthetic Playwright failure');raise SystemExit(23)"),
+            cwd=root, env=os.environ.copy(), log_path=log,
+        )
+        assert exit_code == 23
+        assert b'synthetic Playwright failure' in log.read_bytes()
+        valid = sources / 'partial.json'
+        valid.write_text(json.dumps({
+            'schema': 2, 'revision': 'a' * 40,
+            'requestedRenderer': 'software',
+            'profile': PROFILES[0],
+        }), encoding='utf-8')
+        malformed = sources / 'incomplete.json'
+        malformed.write_text('{', encoding='utf-8')
+        count = preserve_fresh_captures(
+            target, set(), destination, 'a' * 40, 'software', strict=False,
+        )
+        assert count == 2
+        assert (destination / valid.name).is_file()
+        assert (destination / malformed.name).read_text() == '{'
+        # A successful invocation must reject truncated/invalid output, not
+        # accidentally count diagnostics as clean benchmark measurements.
+        accepted = root / 'accepted'
+        accepted.mkdir()
+        try:
+            preserve_fresh_captures(
+                target, set(), accepted, 'a' * 40, 'software', strict=True,
+            )
+        except BenchError:
+            pass
+        else:
+            raise AssertionError('Invalid benchmark JSON was accepted')
     print('War Room GPU A/B local runner self-test: OK')
 
 
@@ -209,6 +288,18 @@ def main():
         destination_root.mkdir(parents=True, exist_ok=False)
         (destination_root / 'A').mkdir()
         (destination_root / 'B').mkdir()
+        # Persist provenance immediately so interrupted/failed sessions never
+        # masquerade as a completed comparison or become unattributed JSON.
+        session_metadata = {
+            'schema': 1, 'baseline': baseline, 'candidate': candidate,
+            'harness': harness, 'renderer': args.renderer, 'offload': args.offload,
+            'sequence': order, 'repetitions': args.repetitions,
+            'physicalAndroidVerified': False,
+            'metric': 'browser rAF cadence (not GPU frame time)',
+            'status': 'incomplete',
+        }
+        manifest = destination_root / 'session.json'
+        manifest.write_text(json.dumps(session_metadata, indent=2) + '\n', encoding='utf-8')
         print(f'==> Permanent benchmark results: {destination_root}', flush=True)
 
         with tempfile.TemporaryDirectory(prefix='chess-warroom-gpu-ab-') as tmp:
@@ -233,14 +324,9 @@ def main():
                      '--baseline-sha', baseline, '--candidate-sha', candidate,
                      '--renderer', args.renderer, '--min-runs', str(args.repetitions),
                      '--output', str(report_path)), cwd=root)
-                (destination_root / 'session.json').write_text(
-                    json.dumps({
-                        'schema': 1, 'baseline': baseline, 'candidate': candidate,
-                        'harness': harness, 'renderer': args.renderer, 'offload': args.offload,
-                        'sequence': order, 'repetitions': args.repetitions,
-                        'physicalAndroidVerified': False,
-                        'metric': 'browser rAF cadence (not GPU frame time)',
-                    }, indent=2) + '\n', encoding='utf-8',
+                session_metadata['status'] = 'complete'
+                manifest.write_text(
+                    json.dumps(session_metadata, indent=2) + '\n', encoding='utf-8',
                 )
                 print(f'==> A/B report complete: {report_path}', flush=True)
             finally:

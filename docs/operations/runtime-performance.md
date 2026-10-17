@@ -189,7 +189,13 @@ un directorio inmutable de resultados en
 `session.json` y `comparison.md`. Rechaza un servidor previo en
 `127.0.0.1:4173`; elimina los worktrees temporales al terminar,
 también ante errores, pero **conserva las capturas obtenidas** para
-diagnóstico. No se ejecuta automáticamente en GitHub Actions.
+diagnóstico. En caso de que Playwright falle a mitad de pasada, los JSON
+parciales se copian antes de eliminar el worktree y cada ejecución conserva
+el log `playwright-XX-A.log` / `playwright-XX-B.log`. El archivo
+`session.json` nace con `status: incomplete` y solo pasa a
+`status: complete` cuando la comparación termina correctamente: un fallo
+nunca se contabiliza como muestra A/B válida. No se ejecuta
+automáticamente en GitHub Actions.
 
 Las dos revisiones ejemplo son el estado anterior y posterior al batching
 por pared de #5763. Si se comparan otras versiones, aportar sus SHAs
