@@ -780,6 +780,23 @@ export function homeBlenderFireMotion({
   };
 }
 
+// Torch lights only consume .light from homeBlenderFireMotion('candle').
+// Skip six unused scale/lean/emission fields, the unused shared gust and
+// flick/lean lattice samples, and one ephemeral motion object per torch/draw.
+// Keep the *same arithmetic order* as the canonical candle expression so
+// candlelight intensity remains bit-for-bit identical.
+export function homeBlenderCandleLightFactor(timeMs = 0, phase = 0) {
+  const seconds = Math.max(0, Number(timeMs) || 0) / 1000;
+  const seed = Math.floor(Math.abs(Number(phase) || 0) * 997) + 13;
+  const body = (
+    fireNoise(seconds, 4.4, seed) * 0.60
+    + fireNoise(seconds, 7.3, seed + 101) * 0.28
+    + fireNoise(seconds, 10.9, seed + 211) * 0.12
+  );
+  const drift = fireNoise(seconds, 0.9, seed + 307);
+  return 0.90 + body * 0.09 + drift * 0.07;
+}
+
 // Coffee steam: each wisp loops (fade in, rise, swell, sway, fade out) on its own
 // phase so the cup never pulses in unison. `height` is the wisp's own height, so
 // the motion scales with whatever size the GLB ships.
@@ -1978,8 +1995,9 @@ export default function HomeBlenderScene3D({
         runtimeLights.leftHearth.intensity = runtimeLights.leftHearthBase * lightFactor.left;
         runtimeLights.rightHearth.intensity = runtimeLights.rightHearthBase * lightFactor.right;
         for (const torch of runtimeLights.torches) {
-          torch.light.intensity = torch.base
-            * homeBlenderFireMotion({ timeMs: timestamp, phase: torch.phase, kind: 'candle', commonGust }).light;
+          // These torch meshes only use the candle's light intensity, not
+          // its geometry/emission motion. Avoid creating an unused motion object.
+          torch.light.intensity = torch.base * homeBlenderCandleLightFactor(timestamp, torch.phase);
         }
         for (const glow of runtimeLights.glows) {
           glow.sprite.material.opacity = homeBlenderGlowOpacity(
