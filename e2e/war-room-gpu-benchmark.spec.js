@@ -1,4 +1,5 @@
 import { chromium, expect, test } from '@playwright/test';
+import { randomUUID } from 'node:crypto';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { activateSetupControl, buttonWithVisibleText, login, mockApi } from './helpers.js';
@@ -7,6 +8,8 @@ import { navigateWarRoomKeyboard } from './war-room-board-input.js';
 // Opt-in local benchmark only. rAF is not GPU time; emulated touch is not a phone GPU.
 const requested = process.env.WAR_ROOM_GPU_BENCH_RENDERER;
 const revision = process.env.WAR_ROOM_GPU_BENCH_SHA || '';
+// One ID per invocation: repeated A/B runs must never overwrite old samples.
+const runId = randomUUID();
 if (process.env.WAR_ROOM_GPU_BENCH !== '1'
     || !['hardware', 'software'].includes(requested)
     || !/^[0-9a-f]{40}$/i.test(revision)) {
@@ -236,15 +239,16 @@ for (const profile of profiles) {
       await context.close();
     }
     const report = {
-      schema: 1, revision, requestedRenderer: requested,
+      schema: 2, revision, runId, capturedAtUtc: new Date().toISOString(),
+      requestedRenderer: requested,
       profile: profile.id, viewport: profile.viewport,
       emulatedTouch: profile.touch, physicalAndroidVerified: false,
       browserFramePacingOnly: true, visits,
     };
     await mkdir(outputDir, { recursive: true });
-    await writeFile(resolve(outputDir, revision + '-' + requested + '-' + profile.id + '.json'), JSON.stringify(report, null, 2) + '\n');
+    await writeFile(resolve(outputDir, revision + '-' + requested + '-' + profile.id + '-' + runId + '.json'), JSON.stringify(report, null, 2) + '\n');
     console.log('WAR_ROOM_GPU_BENCH ' + JSON.stringify({
-      revision, profile: profile.id, renderer: requested,
+      revision, runId, profile: profile.id, renderer: requested,
       visits: visits.map(({ visitType, idle, move }) => ({
         visitType, idleRafP95Ms: idle.rafP95Ms, moveRafP95Ms: move.rafP95Ms,
         moveConfirmationMs: move.inputToConfirmationMs,
