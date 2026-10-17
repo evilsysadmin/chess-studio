@@ -665,6 +665,55 @@ def simplify_chandelier_thin_tubes() -> dict:
     return {"objects": len(objects), "triangles_before": before, "triangles_after": after}
 
 
+# Ten distant banner header studs use small UV spheres. Reduce only
+# their radial tessellation; retain placement, materials and local bounds.
+BANNER_STUD_NAME = re.compile(r"^HOME_PROP_banner_chief_stud_.*_[0-4]$")
+
+
+def simplify_banner_chief_studs() -> dict:
+    objects = sorted(
+        (obj for obj in bpy.context.scene.objects if BANNER_STUD_NAME.fullmatch(obj.name)),
+        key=lambda obj: obj.name,
+    )
+    if len(objects) != 10:
+        raise SystemExit(f"Banner stud LOD expected 10 objects, found {len(objects)}")
+    before = after = 0
+    for obj in objects:
+        if obj.type != "MESH" or obj.modifiers or len(obj.data.materials) != 1:
+            raise SystemExit(f"Unexpected banner stud mesh: {obj.name}")
+        old = obj.data
+        if old.materials[0] is None:
+            raise SystemExit(f"Banner stud without material: {obj.name}")
+        bounds = [(min(v.co[i] for v in old.vertices), max(v.co[i] for v in old.vertices)) for i in range(3)]
+        if max(b - a for a, b in bounds) > 0.04:
+            raise SystemExit(f"Unexpected banner stud bounds: {obj.name}")
+        before += sum(len(p.vertices) - 2 for p in old.polygons)
+        # Collapse the *existing* textured mesh rather than replacing it
+        # with a UV-less sphere. Blender retains per-loop UV layers.
+        decimate = obj.modifiers.new("Runtime banner stud LOD", "DECIMATE")
+        decimate.decimate_type = "COLLAPSE"
+        decimate.ratio = 0.55
+        bpy.ops.object.select_all(action="DESELECT")
+        obj.select_set(True)
+        bpy.context.view_layer.objects.active = obj
+        bpy.ops.object.modifier_apply(modifier=decimate.name)
+        obj.select_set(False)
+        mesh = obj.data
+        if len(mesh.uv_layers) < len(old.uv_layers):
+            raise SystemExit(f"Banner stud lost UVs: {obj.name}")
+        after += sum(len(p.vertices) - 2 for p in mesh.polygons)
+        for axis, (lo, hi) in enumerate(bounds):
+            new_lo = min(v.co[axis] for v in mesh.vertices)
+            new_hi = max(v.co[axis] for v in mesh.vertices)
+            if abs(lo - new_lo) > 0.003 or abs(hi - new_hi) > 0.003:
+                raise SystemExit(f"Banner stud LOD moved bounds: {obj.name}")
+        for face in mesh.polygons:
+            face.use_smooth = True
+    if before - after < 200:
+        raise SystemExit(f"Banner studs LOD saved too little: {before} -> {after}")
+    return {"objects": len(objects), "triangles_before": before, "triangles_after": after}
+
+
 def consolidate_static_architecture() -> tuple[int, int, int, int, int]:
     """Batch static HOME_ARCH_ and HOME_PROP_ meshes by material for draw-call efficiency.
 
@@ -878,6 +927,7 @@ def main() -> None:
     moon_detail_lod = simplify_tiny_moon_details()
     garden_crown_lod = simplify_distant_garden_crowns()
     garden_panel_lod = simplify_distant_garden_panels()
+    banner_studs_lod = simplify_banner_chief_studs()
     klaus_cushion_lod = simplify_klaus_cushion()
     (
         architecture_meshes_before,
@@ -963,6 +1013,7 @@ def main() -> None:
         "moon_detail_lod": moon_detail_lod,
         "garden_crown_lod": garden_crown_lod,
         "garden_panel_lod": garden_panel_lod,
+        "banner_studs_lod": banner_studs_lod,
         "banner_medallion_lod": banner_medallion_lod,
         "chandelier_tube_lod": chandelier_tube_lod,
         "architecture_meshes_before": architecture_meshes_before,
