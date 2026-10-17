@@ -559,6 +559,25 @@ export function homeBlenderDustPosition(seed, timeMs = 0) {
   ];
 }
 
+// The live Home updates the same Float32BufferAttribute every animated draw.
+// Write directly into its persistent backing array: no [x, y, z] allocation
+// for every mote and no repeated division/span calculation per mote. Keep the
+// public homeBlenderDustPosition() helper for scalar consumers and reference tests.
+export function homeBlenderWriteDustPositions(seeds, timeMs, positions) {
+  const box = HOME_BLENDER_DUST;
+  const t = timeMs / 1000;
+  const span = box.yMax - box.yMin;
+  for (let i = 0; i < seeds.length; i += 1) {
+    const seed = seeds[i];
+    const fall = ((seed.y - box.yMin - seed.speed * t) % span + span) % span;
+    const offset = i * 3;
+    positions[offset] = seed.x + Math.sin(t * 0.21 + seed.phase) * 0.22;
+    positions[offset + 1] = box.yMin + fall;
+    positions[offset + 2] = seed.z + Math.cos(t * 0.17 + seed.phase * 1.3) * 0.18;
+  }
+  return positions;
+}
+
 // Blender window centre (7.82, 6.5, 4.3) -> three (7.82, 4.3, -6.5); the moon light lands near (4.35, 1.25, -1.85).
 export const HOME_BLENDER_MOON_SHAFT = {
   from: [7.9, 4.3, -6.35],
@@ -701,15 +720,22 @@ function fireNoise(seconds, rate, seed) {
   return value * 2 - 1;
 }
 
+// Compute the shared draught once per draw rather than repeating identical
+// lattice-noise work for each flame mesh and every dynamic torch.
+export function homeBlenderSharedFireGust(timeMs = 0) {
+  return fireNoise(Math.max(0, Number(timeMs) || 0) / 1000, 0.33, 7);
+}
+
 export function homeBlenderFireMotion({
   timeMs = 0,
   phase = 0,
   kind = 'flame',
+  commonGust,
 } = {}) {
   const seconds = Math.max(0, Number(timeMs) || 0) / 1000;
   const seed = Math.floor(Math.abs(Number(phase) || 0) * 997) + 13;
-  // One slow draught shared by every flame, so a hearth leans together.
-  const gust = fireNoise(seconds, 0.33, 7);
+  // Standalone callers retain their original deterministic output.
+  const gust = commonGust === undefined ? fireNoise(seconds, 0.33, 7) : commonGust;
   const body = (
     fireNoise(seconds, 4.4, seed) * 0.60
     + fireNoise(seconds, 7.3, seed + 101) * 0.28
@@ -1065,7 +1091,7 @@ function prepareRuntimeFireRig(root) {
   return nodes;
 }
 
-function applyRuntimeFireMotion(nodes, timeMs) {
+function applyRuntimeFireMotion(nodes, timeMs, commonGust = homeBlenderSharedFireGust(timeMs)) {
   const light = { left: { sum: 0, count: 0 }, right: { sum: 0, count: 0 } };
   for (const node of nodes) {
     if (node.kind === 'steam') {
@@ -1087,6 +1113,7 @@ function applyRuntimeFireMotion(nodes, timeMs) {
       timeMs,
       phase: node.phase,
       kind: node.kind,
+      commonGust,
     });
     node.object.scale.set(
       node.baseScale.x * motion.scaleX,
@@ -1751,10 +1778,7 @@ export default function HomeBlenderScene3D({
     const moveDust = (timestamp) => {
       if (!dust) return;
       const attr = dust.geometry.getAttribute('position');
-      dustSeeds.forEach((seed, i) => {
-        const [x, y, z] = homeBlenderDustPosition(seed, timestamp);
-        attr.setXYZ(i, x, y, z);
-      });
+      homeBlenderWriteDustPositions(dustSeeds, timestamp, attr.array);
       attr.needsUpdate = true;
     };
     let fireFrame = null;
@@ -1949,12 +1973,13 @@ export default function HomeBlenderScene3D({
           lastActorTickAt = timestamp;
           matthiasActor.update(dt);
         }
-        const lightFactor = applyRuntimeFireMotion(fireRig, timestamp);
+        const commonGust = homeBlenderSharedFireGust(timestamp);
+        const lightFactor = applyRuntimeFireMotion(fireRig, timestamp, commonGust);
         runtimeLights.leftHearth.intensity = runtimeLights.leftHearthBase * lightFactor.left;
         runtimeLights.rightHearth.intensity = runtimeLights.rightHearthBase * lightFactor.right;
         for (const torch of runtimeLights.torches) {
           torch.light.intensity = torch.base
-            * homeBlenderFireMotion({ timeMs: timestamp, phase: torch.phase, kind: 'candle' }).light;
+            * homeBlenderFireMotion({ timeMs: timestamp, phase: torch.phase, kind: 'candle', commonGust }).light;
         }
         for (const glow of runtimeLights.glows) {
           glow.sprite.material.opacity = homeBlenderGlowOpacity(
