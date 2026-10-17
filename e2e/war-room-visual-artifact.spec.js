@@ -525,6 +525,10 @@ async function captureWarRoomHealth(page, label) {
           return [name.toLowerCase(), value === undefined ? null : Number(value)];
         }),
       ) : null,
+      // Read the installed V3 hardware batch count from the actual GLB
+      // session, not a synthetic unit-test root.
+      v3StaticTorchBatches: canvas?.dataset.warRoomV3StaticTorchBatches === undefined
+        ? null : Number(canvas.dataset.warRoomV3StaticTorchBatches),
       capturedRendererMemory: canvas ? {
         geometries: Number(canvas.dataset.board3dMemoryGeometries || 0),
         textures: Number(canvas.dataset.board3dMemoryTextures || 0),
@@ -776,6 +780,9 @@ async function assertAndCaptureProfile(page, profile, board3d) {
 
   expectSharedHealth(health);
   expectDefaultImmersiveShell(health);
+  if (profile.variant === 'v3') {
+    expect(health.v3StaticTorchBatches).toBe(profile.hasTouch ? 0 : 11);
+  }
   if (profile.hasTouch) {
     expect(health.coarsePointer, `${profile.title} must emulate a coarse pointer`).toBe(true);
     expect(health.touchPoints, `${profile.title} must expose touch points`).toBeGreaterThan(0);

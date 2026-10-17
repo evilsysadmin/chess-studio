@@ -43,6 +43,10 @@ function syncBlenderShadowTelemetry(scene, variant, canvas) {
     if (value === undefined || value === null) continue;
     canvas.dataset[target] = String(value);
   }
+  // One-shot V3 mount diagnostic. This is not a per-frame DOM write.
+  if (variant === 'v3' && Number.isInteger(userData.warRoomV3StaticTorchBatches)) {
+    canvas.dataset.warRoomV3StaticTorchBatches = String(userData.warRoomV3StaticTorchBatches);
+  }
 }
 
 export function startWarRoomVariantScene({
@@ -225,6 +229,7 @@ export function startWarRoomVariantScene({
     if (canvas) {
       delete canvas.dataset.warRoomHansStage;
       delete canvas.dataset.warRoomHansStageError;
+      delete canvas.dataset.warRoomV3StaticTorchBatches;
     }
     releaseShell?.();
     releaseShell = null;
