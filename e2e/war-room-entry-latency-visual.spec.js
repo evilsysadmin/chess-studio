@@ -1,8 +1,8 @@
 import { expect, test } from '@playwright/test';
 import { mkdir } from 'node:fs/promises';
 import { r2AssetEntry } from '../frontend/src/r2Assets.js';
-import { WAR_ROOM_V4_RUNTIME_ALIAS_URL } from '../frontend/src/components/WarRoomV4Asset.js';
-import { WAR_ROOM_V3_RUNTIME_ALIAS_URL } from '../frontend/src/components/WarRoomV3Asset.js';
+import { WAR_ROOM_V4_RUNTIME_ASSET_URL } from '../frontend/src/components/WarRoomV4Asset.js';
+import { WAR_ROOM_V3_RUNTIME_ASSET_URL } from '../frontend/src/components/WarRoomV3Asset.js';
 import {
   activateSetupControl,
   buttonWithVisibleText,
@@ -225,15 +225,15 @@ for (const variant of ['v3', 'v4']) {
     }
 
     if (assetProbe) {
-      // V3 and V4 must preload their actual authored runtime revisions, not
-      // stale content-addressed manifest snapshots lacking later scene updates.
+      // Guard the exact content-hash revision, not merely any GLB under the
+      // same directory. Neither preload nor runtime may revisit current.glb.
       expect(cold.runtimeAsset.requestCount).toBeGreaterThan(0);
-      const runtimeAlias = variant === 'v3'
-        ? WAR_ROOM_V3_RUNTIME_ALIAS_URL
-        : WAR_ROOM_V4_RUNTIME_ALIAS_URL;
-      // Local/e2e builds may omit VITE_BUILD_SHA; production appends it.
-      expect(cold.runtimeAsset.urls.every((url) =>
-        url === runtimeAlias || url.startsWith(`${runtimeAlias}?build=`))).toBe(true);
+      const immutableUrl = variant === 'v3'
+        ? WAR_ROOM_V3_RUNTIME_ASSET_URL : WAR_ROOM_V4_RUNTIME_ASSET_URL;
+      const published = r2AssetEntry(`warRoom.${variant}.runtime`);
+      expect(immutableUrl).toBe(published.url);
+      expect(cold.runtimeAsset.urls).toEqual([immutableUrl]);
+      expect(warm.runtimeAsset.urls).toEqual([immutableUrl]);
       if (cold.prefetchHref) {
         expect(cold.runtimeAsset.urls).toEqual([cold.prefetchHref]);
       }
@@ -260,13 +260,14 @@ test('War Room · real browser HTTP cache probe without request interception', a
   test.setTimeout(120_000);
   // Login surface needs no simulated backend/game state. Keep the browser's
   // normal cache behavior while fetching the *actual* runtime model URLs.
-  // V3/V4 currently use mutable aliases keyed by frontend build because the
-  // content-addressed manifest snapshots can omit newer authored scene nodes.
+  // V3/V4 use SHA-pinned copies of the exact approved #5721 runtime bytes.
+  // Their older content-addressed manifest snapshots were NOT Hans-ready.
   await page.goto('./', { waitUntil: 'domcontentloaded' });
   for (const variant of ['v3', 'v4']) {
     const entry = r2AssetEntry(`warRoom.${variant}.runtime`);
-    const modelUrl = `${variant === 'v3'
-      ? WAR_ROOM_V3_RUNTIME_ALIAS_URL : WAR_ROOM_V4_RUNTIME_ALIAS_URL}?build=cache-probe`;
+    const modelUrl = variant === 'v3'
+      ? WAR_ROOM_V3_RUNTIME_ASSET_URL : WAR_ROOM_V4_RUNTIME_ASSET_URL;
+    expect(modelUrl).toBe(entry.url);
     expect(modelUrl).toContain(`/war-room/${variant}/runtime/`);
     const probe = await installRuntimeGlbProbe(page, variant);
     const load = () => page.evaluate(async (url) => {
@@ -310,7 +311,7 @@ test('War Room · real browser HTTP cache probe without request interception', a
     } finally {
       await probe.close();
     }
-    expect(first.response.decodedBytes).toBeGreaterThan(60_000);
+    expect(first.response.decodedBytes).toBe(entry.bytes);
     expect(second.response.decodedBytes).toBe(first.response.decodedBytes);
     console.log(`War Room R2 unmapped browser cache ${JSON.stringify({
       variant,
@@ -321,22 +322,22 @@ test('War Room · real browser HTTP cache probe without request interception', a
     })}`);
 
     {
-      // Compare each live GLB against the manifest snapshot. Missing Hans
-      // stage anchors in V3 are a functional regression, not cosmetic.
-      const alias = await page.evaluate(async (url) => {
+      // The model fetched from the browser must prove the manifest's exact
+      // SHA-256, not just a matching URL/length or a successfully drawn frame.
+      const immutable = await page.evaluate(async (url) => {
         const response = await fetch(url, { cache: 'no-store', mode: 'cors' });
-        if (!response.ok) throw new Error(`War Room alias HTTP ${response.status}`);
+        if (!response.ok) throw new Error(`War Room immutable GLB HTTP ${response.status}`);
         const bytes = await response.arrayBuffer();
         const digest = await crypto.subtle.digest('SHA-256', bytes);
         const sha256 = [...new Uint8Array(digest)]
           .map((byte) => byte.toString(16).padStart(2, '0')).join('');
         return { bytes: bytes.byteLength, sha256 };
       }, modelUrl);
-      console.log(`War Room source-asset parity ${JSON.stringify({
-        variant,
-        immutableSha256: entry.sha256,
-        mutableAlias: alias,
-        byteIdentical: alias.sha256 === entry.sha256,
+      expect(immutable.sha256).toBe(entry.sha256);
+      expect(immutable.bytes).toBe(entry.bytes);
+      console.log(`War Room immutable GLB content parity ${JSON.stringify({
+        variant, url: modelUrl, sha256: immutable.sha256, bytes: immutable.bytes,
+        manifestMatched: true,
       })}`);
     }
   }
