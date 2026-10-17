@@ -58,6 +58,76 @@ function selectWarRoomV3TouchTorchAnchors(anchors) {
   return new Set(selected.slice(0, WAR_ROOM_V3_TOUCH_TORCH_LIGHT.maxLights));
 }
 
+// The six authored torch anchors never animate: one desktop instanced draw
+// per metal-hardware family can replace six identical per-sconce submissions.
+// Flame meshes and independent light/material/kinetics nodes remain untouched.
+export const WAR_ROOM_V3_STATIC_TORCH_FAMILIES = Object.freeze([
+  'war-room-side-torch-backplate-finial',
+  'war-room-side-torch-rivet',
+  'war-room-side-torch-cage-bar',
+  'war-room-side-torch-crown-spike',
+]);
+
+function sameHardwareMaterial(a, b) {
+  // These four families use only the common, untextured iron/ironHighlight
+  // finish. Fail closed if an authored material is customized per torch.
+  return a?.type === b?.type
+    && a?.color?.getHex() === b?.color?.getHex()
+    && a?.metalness === b?.metalness
+    && a?.roughness === b?.roughness
+    && a?.clearcoat === b?.clearcoat
+    && a?.map === b?.map
+    && a?.transparent === b?.transparent
+    && a?.side === b?.side;
+}
+
+export function batchWarRoomV3StaticTorchHardware(root, torches) {
+  const merged = [];
+  const detached = [];
+  if (!root?.isObject3D || torches.length < 2) return { merged, detached };
+
+  // Compute all transforms in *root local* space, so the complete hall may
+  // move later without desynchronizing the authored wall anchors.
+  root.updateWorldMatrix(true, true);
+  const rootInverse = root.matrixWorld.clone().invert();
+  const torchToRoot = new THREE.Matrix4();
+  const local = new THREE.Matrix4();
+  const final = new THREE.Matrix4();
+
+  for (const name of WAR_ROOM_V3_STATIC_TORCH_FAMILIES) {
+    const parts = torches.map((torch) => torch.getObjectByName(name));
+    if (parts.some((part) => !part?.isInstancedMesh)) continue;
+    const geometry = parts[0].geometry;
+    const material = parts[0].material;
+    if (parts.some((part) => part.geometry !== geometry || !sameHardwareMaterial(part.material, material))) continue;
+
+    const combined = new THREE.InstancedMesh(
+      geometry, material, parts.reduce((total, part) => total + part.count, 0),
+    );
+    combined.name = name;
+    combined.userData.warRoomV3MergedTorchHardware = true;
+    combined.castShadow = false;
+    combined.receiveShadow = true;
+    let cursor = 0;
+    for (const part of parts) {
+      torchToRoot.multiplyMatrices(rootInverse, part.matrixWorld);
+      for (let index = 0; index < part.count; index += 1) {
+        part.getMatrixAt(index, local);
+        final.multiplyMatrices(torchToRoot, local);
+        combined.setMatrixAt(cursor, final);
+        cursor += 1;
+      }
+      part.removeFromParent();
+      detached.push(part);
+    }
+    combined.instanceMatrix.needsUpdate = true;
+    combined.computeBoundingSphere();
+    root.add(combined);
+    merged.push(combined);
+  }
+  return { merged, detached };
+}
+
 export function installWarRoomV3Torches(root, { coarsePointer = false } = {}) {
   const anchors = [];
   root?.traverse?.((node) => {
@@ -81,7 +151,13 @@ export function installWarRoomV3Torches(root, { coarsePointer = false } = {}) {
     anchor.add(torch);
     return torch;
   });
+  // On desktop, batch only the fully static metal hardware across anchors.
+  // Touch retains per-sconce culling (and its reduced practical-light budget).
+  const { merged, detached } = coarsePointer
+    ? { merged: [], detached: [] }
+    : batchWarRoomV3StaticTorchHardware(root, torches);
   if (root?.userData) {
+    root.userData.warRoomV3StaticTorchBatches = merged.length;
     root.userData.warRoomV3Torches = torches.length;
     if (coarsePointer) root.userData.warRoomV3TouchTorchLights = touchLightAnchors.size;
   }
@@ -89,7 +165,7 @@ export function installWarRoomV3Torches(root, { coarsePointer = false } = {}) {
     const disposedGeometries = new Set();
     const disposedTextures = new Set();
     const disposedMaterials = new Set();
-    torches.forEach((torch) => {
+    [...torches, ...merged, ...detached].forEach((torch) => {
       torch.removeFromParent();
       torch.traverse((node) => {
         const geometry = node.geometry;
@@ -114,6 +190,7 @@ export function installWarRoomV3Torches(root, { coarsePointer = false } = {}) {
     sharedStaticHardwareGeometries.clear();
     if (root?.userData) {
       delete root.userData.warRoomV3Torches;
+      delete root.userData.warRoomV3StaticTorchBatches;
       delete root.userData.warRoomV3TouchTorchLights;
     }
   };
