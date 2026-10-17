@@ -81,6 +81,27 @@ describe('HomeBlenderScene3D GLTF lifecycle', () => {
     expect(disposeMaterial).toHaveBeenCalledTimes(1);
     expect(disposeTexture).toHaveBeenCalledTimes(1);
   });
+
+  it('disposes shared GLTF GPU resources only once, including multi-material meshes', () => {
+    const texture = new THREE.Texture();
+    const sharedGeometry = new THREE.BoxGeometry();
+    const extraGeometry = new THREE.SphereGeometry(1, 8, 6);
+    const primary = new THREE.MeshStandardMaterial({ map: texture, roughnessMap: texture });
+    const secondary = new THREE.MeshBasicMaterial({ map: texture });
+    const scene = new THREE.Group();
+    scene.add(
+      new THREE.Mesh(sharedGeometry, primary),
+      new THREE.Mesh(sharedGeometry, [primary, secondary]),
+      new THREE.Mesh(extraGeometry, secondary),
+    );
+    const disposals = [texture, sharedGeometry, extraGeometry, primary, secondary]
+      .map((resource) => vi.spyOn(resource, 'dispose'));
+
+    expect(disposeStaleHomeBlenderGltf({ scene }, true)).toBe(true);
+    for (const dispose of disposals) {
+      expect(dispose).toHaveBeenCalledTimes(1);
+    }
+  });
 });
 
 describe('HomeBlenderScene3D mobile runtime policy', () => {

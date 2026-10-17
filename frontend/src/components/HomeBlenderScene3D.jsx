@@ -1430,20 +1430,27 @@ function installHomeEnvironment(renderer, scene, enabled = true) {
 }
 
 
-function disposeMaterial(material) {
-  if (!material) return;
-  for (const value of Object.values(material)) {
-    if (value?.isTexture) value.dispose();
-  }
-  material.dispose?.();
-}
-
 function disposeRuntimeScene(root) {
+  // GLTFLoader shares materials, textures and often geometries between mesh
+  // instances. Release each GPU resource exactly once per scene teardown,
+  // including when an async GLTF arrives after Home has unmounted.
+  const geometries = new Set();
+  const materials = new Set();
+  const textures = new Set();
   root?.traverse?.((object) => {
-    object.geometry?.dispose?.();
-    if (Array.isArray(object.material)) object.material.forEach(disposeMaterial);
-    else disposeMaterial(object.material);
+    if (object.geometry) geometries.add(object.geometry);
+    const entries = Array.isArray(object.material) ? object.material : [object.material];
+    for (const material of entries) {
+      if (!material || materials.has(material)) continue;
+      materials.add(material);
+      for (const value of Object.values(material)) {
+        if (value?.isTexture) textures.add(value);
+      }
+    }
   });
+  for (const geometry of geometries) geometry.dispose?.();
+  for (const texture of textures) texture.dispose?.();
+  for (const material of materials) material.dispose?.();
 }
 
 export function disposeStaleHomeBlenderGltf(gltf, stale) {
