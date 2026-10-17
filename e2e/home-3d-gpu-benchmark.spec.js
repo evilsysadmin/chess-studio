@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { mockApi } from './helpers.js';
+import { homeBlenderDistinctGpuSamplesMs } from '../frontend/src/components/HomeBlenderPerformanceDiagnostics.js';
 
 // Explicit, local-only hardware diagnostic. CI excludes this file from its
 // standard Playwright matrix; no identity, passwords or raw GPU names are logged.
@@ -81,6 +82,7 @@ async function readRealCanvas(castle) {
       actual, vendor, software, lod: d.homeCastleLod || null,
       gpuStatus: d.homeBlenderGpuStatus || 'missing',
       gpuMs: num('homeBlenderGpuMs'),
+      gpuSampleCount: num('homeBlenderGpuSampleCount'),
       drawCalls: num('homeBlenderDrawCalls'),
       triangles: num('homeBlenderTriangles'),
       initialDrawCalls: num('homeBlenderFirstFrameDrawCalls'),
@@ -129,10 +131,10 @@ test('Home 3D physical GPU benchmark · three cold independent visits', async ({
         snapshots.push(await readRealCanvas(castle));
       }
       const last = snapshots[snapshots.length - 1];
-      const gpuSamplesMs = snapshots
-        .filter((sample) => sample.gpuStatus === 'ready')
-        .map((sample) => sample.gpuMs)
-        .filter((value) => Number.isFinite(value));
+      // The same most-recent GPU result may survive several 2s reads.
+      // Count only new completed WebGL queries: duplicated reads must not
+      // artificially inflate the sample size or bias the median.
+      const gpuSamplesMs = homeBlenderDistinctGpuSamplesMs(snapshots);
       const row = {
         visit: index + 1,
         ...last,
