@@ -29,8 +29,11 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - run: python3 -S scripts/cloudflare_war_room_glb_cache.py self-test
-      - name: Verify both exact public source GLBs (SHA, Meshopt, Hans)
-        run: python3 -S scripts/r2_war_room_live_freeze.py public-verify
+      - name: Verify exact public GLBs with the merged CDN SHA observer
+        shell: bash
+        run: |
+          python3 -S scripts/r2_war_room_cache_probe.py self-test
+          python3 -S scripts/r2_war_room_cache_probe.py probe
 
   reconcile:
     name: Reconcile narrow Cloudflare GLB Cache Rule
