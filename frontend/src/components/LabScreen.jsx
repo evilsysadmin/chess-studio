@@ -8,10 +8,7 @@ import experimentsRoomCanonical from '../assets/lab-arcade-dungeon-canon-q70.web
 import PreferredBoard from './PreferredBoard.jsx';
 import GlossaryTerm from './GlossaryTerm.jsx';
 import MechanicTutorialHelp from './MechanicTutorialHelp.jsx';
-import {
-  releaseChroniclesLandscape,
-  requestChroniclesLandscapeOnEntry,
-} from './useChroniclesLandscape.js';
+import { openChroniclesStandalone } from '../labChroniclesLink.js';
 import { requestChesscomLandscapeOnEntry } from './chesscomLandscape.js';
 import './LabScreen.css';
 import './LabArcade.css';
@@ -24,8 +21,6 @@ const PawnTrailblazer = lazy(() => import('./PawnTrailblazer.jsx'));
 const PawnSlugGodotHost = lazy(() => import('./PawnSlugGodotHost.jsx'));
 const ChessFootballEntry = lazy(() => import('./ChessFootballEntry.jsx'));
 const Chesscom = lazy(() => import('./Chesscom.jsx'));
-const ChroniclesOfMatthias = lazy(() => import('./ChroniclesOfMatthias.jsx'));
-const ChroniclesOfMatthiasTactics = lazy(() => import('./ChroniclesOfMatthiasTactics.jsx'));
 
 const GLYPH={K:'♔',Q:'♕',R:'♖',B:'♗',N:'♘',P:'♙',k:'♚',q:'♛',r:'♜',b:'♝',n:'♞',p:'♟','':''};
 const BRUSHES=['','K','Q','R','B','N','P','k','q','r','b','n','p'];
@@ -67,7 +62,7 @@ export default function LabScreen({ onExit, onStart }){
     setLabMode(mode);
   }), []);
 
-  const childOwnsBack = labMode==='trailblazer' || labMode==='pawnslug-godot' || labMode==='chess-football-godot' || labMode==='chesscom' || labMode==='chronicles' || labMode==='chronicles-tactics';
+  const childOwnsBack = labMode==='trailblazer' || labMode==='pawnslug-godot' || labMode==='chess-football-godot' || labMode==='chesscom';
   useEscapeToClose(() => labMode==='hub' ? onExit() : setLabMode('hub'), { disabled: childOwnsBack });
 
   const fen=useMemo(()=>fenFromLabState({map,turn,castling,ep,halfmove,fullmove}),[map,turn,castling,ep,halfmove,fullmove]);
@@ -94,19 +89,13 @@ export default function LabScreen({ onExit, onStart }){
     setMap({e1:'K',e8:'k'}); setCastling('-'); setEp('-'); setHalfmove('0'); setFullmove('1'); setError('');
   }
 
+  // Chronicles and Tactics live on their own site now; the Lab only opens it.
   function enterChronicles() {
-    void requestChroniclesLandscapeOnEntry();
-    setLabMode('chronicles');
+    openChroniclesStandalone('chronicles');
   }
 
   function enterChroniclesTactics() {
-    void requestChroniclesLandscapeOnEntry();
-    setLabMode('chronicles-tactics');
-  }
-
-  function exitChronicles() {
-    void releaseChroniclesLandscape();
-    setLabMode('hub');
+    openChroniclesStandalone('chronicles-tactics');
   }
 
   function enterChesscom() {
@@ -130,8 +119,6 @@ export default function LabScreen({ onExit, onStart }){
   if (labMode==='pawnslug-godot') return <Suspense fallback={<LabModeFallback />}><PawnSlugGodotHost onExit={()=>setLabMode('hub')} /></Suspense>;
   if (labMode==='chess-football-godot') return <Suspense fallback={<LabModeFallback />}><ChessFootballEntry onExit={()=>setLabMode('hub')} /></Suspense>;
   if (labMode==='chesscom') return <Suspense fallback={<LabModeFallback />}><Chesscom onExit={()=>setLabMode('hub')} /></Suspense>;
-  if (labMode==='chronicles') return <Suspense fallback={<LabModeFallback />}><ChroniclesOfMatthias onExit={exitChronicles} /></Suspense>;
-  if (labMode==='chronicles-tactics') return <Suspense fallback={<LabModeFallback />}><ChroniclesOfMatthiasTactics onExit={exitChronicles} /></Suspense>;
 
   return <div className="menu tournament-panel lab-screen">
     <button className="back-link" onClick={labMode==='hub'?onExit:()=>setLabMode('hub')}>← {labMode==='hub'?'Volver al menú':'Experimentos geniales'}</button>

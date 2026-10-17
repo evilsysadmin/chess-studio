@@ -19,9 +19,6 @@ PRODUCER_ORDER = (
     "pvp-lobby",
     "pvp-handoff",
     "experiments-hub",
-    "chronicles-tactics",
-    "chronicles-gameplay",
-    "chronicles-avatar",
     "training-school",
     "training-openings",
     "training-puzzles",
@@ -175,7 +172,6 @@ WARROOM_VARIANT_CORE_FILES = {
     "frontend/src/components/warroomvariant.js",
 }
 HOME_ALL = {"home-base", "home-matthias", "home-focus"}
-CHRONICLES_SHARED = {"chronicles-tactics", "chronicles-gameplay"}
 TRAINING_ALL = {
     "training-school",
     "training-openings",
@@ -287,9 +283,14 @@ def _e2e_producer(name: str) -> set[str] | None:
         "experiments-visual-artifact.spec.js": {"experiments-hub"},
         "lab-mobile-room.spec.js": {"experiments-hub"},
         "pawn-slug-godot-visual-artifact.spec.js": {"experiments-hub"},
-        "chronicles-tactics-visual-artifact.spec.js": {"chronicles-tactics"},
-        "chronicles-gameplay-visual-artifact.spec.js": {"chronicles-gameplay"},
-        "chronicles-avatar-visual-artifact.spec.js": {"chronicles-avatar"},
+        # Chronicles and Tactics moved to their own repository: their old
+        # visual specs no longer exist and wake no producer.
+        "chronicles-tactics-visual-artifact.spec.js": set(),
+        "chronicles-gameplay-visual-artifact.spec.js": set(),
+        "chronicles-avatar-visual-artifact.spec.js": set(),
+        "chronicles-of-matthias.spec.js": set(),
+        "chronicles-of-matthias-tactics.spec.js": set(),
+        "chronicles-runtime-mount.spec.js": set(),
         # This monolithic spec contains independently scoped training
         # producers. Treat it as a neutral companion when product-owned files
         # are present; classify() falls back to TRAINING_ALL for spec-only edits.
@@ -388,7 +389,7 @@ def classify_path(path: str) -> set[str] | None:
     if lower in PUBLIC_NONCANONICAL_PATHS:
         return set()
     if lower == "frontend/public/models/chronicles-tactics-party.glb":
-        return {"chronicles-tactics"}
+        return set()  # Left over from Tactics, which moved to its own repo.
     if lower in {
         "frontend/public/models/matthias-home-canonical.glb",
         "frontend/public/matthias-home-canonical.b64",
@@ -413,6 +414,9 @@ def classify_path(path: str) -> set[str] | None:
         if lower in {
             "scripts/css_architecture_manifest.json",
             "scripts/chronicles_area_parity_corpus.py",  # Backend fixture data, no render code.
+            "scripts/chronicles_contracts.py",  # Backend/Go manifest parity, no render code.
+            "scripts/validate_chronicles_campaign.py",  # Backend campaign atlas, no render code.
+            "scripts/dead_code_reachability_check.py",  # Static gate, no render code.
             "scripts/architecture_debt_budget.py",
             "scripts/async_resilience_gate.mjs",
             "scripts/visual_ux_contract_check.mjs",
@@ -437,7 +441,7 @@ def classify_path(path: str) -> set[str] | None:
         return set()
 
     if name == "experimentalthreerenderer.js":
-        return set(CHRONICLES_SHARED)
+        return set()  # Chronicles' renderer, gone with it to its own repo.
 
     if lower in {
         "frontend/src/lablaunchintent.js",
@@ -505,41 +509,10 @@ def classify_path(path: str) -> set[str] | None:
     if lower in TRAINING_EXACT_PRODUCERS:
         return set(TRAINING_EXACT_PRODUCERS[lower])
 
-    if lower in {
-        "frontend/src/chronicles/chroniclesrunclient.js",
-        "frontend/src/chronicles/chroniclesrunidentity.js",
-    }:
-        # Owner-scoped IDs and authenticated transport never paint the scene;
-        # functional save/restore/ownership tests are their quality gate.
-        return set()
-    if lower in {
-        "frontend/src/components/chroniclessavemenu.jsx",
-        "frontend/src/components/chroniclessavemenu.css",
-        "frontend/src/assets/chronicles/expedition-study-desktop-v2.avif",
-    }:
-        # The book and its decorative desktop art belong exclusively to
-        # first-person Chronicles: Tactics never mounts this menu.
-        return {"chronicles-gameplay"}
-    if lower in {
-        "frontend/src/components/chroniclesofmatthias.css",
-        "frontend/src/components/chroniclesofmatthiasart.css",
-        "frontend/src/components/chroniclesofmatthiasjournal.css",
-    }:
-        # Authored first-person overlays, not the Tactics renderer. Keep the
-        # avatar consumer covered: HUD/portrait styling is still visual work.
-        return {"chronicles-gameplay", "chronicles-avatar"}
     if "chronicles" in lower:
-        if "tactics" in lower or "isometric" in lower:
-            return {"chronicles-tactics"}
-        if any(token in lower for token in ("scavenger", "spectral", "blenderart", "enemyart")):
-            return set(CHRONICLES_SHARED)
-        if any(token in lower for token in ("portrait", "party", "avatar")):
-            return {"chronicles-gameplay", "chronicles-avatar"}
-        if name == "chroniclesofmatthias.jsx":
-            return {"chronicles-gameplay", "chronicles-avatar"}
-        if any(token in lower for token in ("three", "dungeon", "atmosphere", "patina", "turn", "encounter", "event", "treasure")):
-            return {"chronicles-gameplay"}
-        return set(CHRONICLES_SHARED)
+        # Chronicles and Tactics live in their own repository now; the Lab only
+        # links to them, so nothing named after them paints a scene here.
+        return set()
 
     if any(token in lower for token in (
         "pawnslug", "pawn-slug", "trailblazer", "arcade", "chessfootball", "chess-football", "footballmanager",
@@ -817,29 +790,22 @@ def self_test() -> None:
     assert classify_path("scripts/art/build_chronicles_procedural_sprites.py") == set()
     assert classify_path("scripts/art/chronicles_sprites/source/drowned.idle.png") == set()
     assert project_chronicles_lane("all", "combined") == "all"
-    assert project_chronicles_lane("chronicles-tactics,chronicles-gameplay", "default") == "chronicles-gameplay"
-    assert project_chronicles_lane("chronicles-tactics,chronicles-gameplay", "tactics") == "chronicles-tactics"
-    assert project_chronicles_lane("chronicles-gameplay", "tactics") == "none"
-    assert project_chronicles_lane("chronicles-tactics", "default") == "none"
-    assert project_chronicles_lane("all", "tactics") == "chronicles-tactics"
-    assert project_chronicles_lane("chronicles-tactics,chronicles-gameplay", "chronicles") == "chronicles-gameplay"
-    assert project_chronicles_lane("chronicles-tactics,chronicles-gameplay", "app") == "none"
-    assert project_chronicles_lane("chronicles-gameplay,chronicles-avatar", "app") == "none"
-    assert project_chronicles_lane("chronicles-avatar", "chronicles") == "chronicles-avatar"
-    assert project_chronicles_lane("pvp-duel", "chronicles") == "none"
-    assert project_chronicles_lane("pvp-duel", "tactics") == "none"
+    # Chronicles and Tactics left for their own repository: their lanes stay
+    # empty whatever is asked, and App keeps every remaining producer.
+    for lane in ("chronicles", "tactics"):
+        assert project_chronicles_lane("all", lane) == "none"
+        assert project_chronicles_lane("pvp-duel", lane) == "none"
     assert project_chronicles_lane("pvp-duel", "app") == "pvp-duel"
-    assert project_chronicles_lane("all", "app") != "all"
-    assert "chronicles-gameplay" in project_chronicles_lane("all", "chronicles")
-    assert "chronicles-tactics" not in project_chronicles_lane("all", "chronicles")
+    assert project_chronicles_lane("all", "app") == project_chronicles_lane("all", "default")
     assert project_chronicles_lane("scripts", "tactics") == "none"
     assert classify([".github/workflows/chronicles-visual-artifact.yml"]) == "none"
     assert classify([".github/workflows/tactics-visual-artifact.yml"]) == "none"
     assert project_chronicles_lane("all", "default") != "all"
-    assert "chronicles-gameplay" in project_chronicles_lane("all", "default")
+    assert "chronicles" not in project_chronicles_lane("all", "default")
     assert classify(["e2e/staging-live.spec.js"]) == "none"
     assert classify(["scripts/chronicles_area_parity_corpus.py"]) == "none"
-    assert classify(["scripts/chronicles_area_parity_corpus.py", "frontend/src/chronicles/chroniclesMapCatalog.js"]) == "chronicles-tactics,chronicles-gameplay"
+    assert classify(["scripts/chronicles_contracts.py", "scripts/validate_chronicles_campaign.py"]) == "none"
+    assert classify(["scripts/chronicles_area_parity_corpus.py", "frontend/src/chronicles/chroniclesMapCatalog.js"]) == "none"
     assert classify(["scripts/unknown_unowned_generator.py"]) == "all"
     assert classify(["e2e/staging-live.spec.js", "frontend/src/components/PvpHandoffModal.jsx"]) == "pvp-handoff"
     assert classify([
@@ -925,27 +891,19 @@ def self_test() -> None:
     ]) == "training-school"
     assert classify([".github/actions/app-visual-pipeline/action.yml"]) == "none"
     assert classify([".github/workflows/app-visual-artifact.yml"]) == "none"
-    assert classify(["frontend/src/chroniclesOfMatthiasIsometric.js"]) == "chronicles-tactics"
-    assert classify(["frontend/src/components/ChroniclesOfMatthiasTactics.jsx"]) == "chronicles-tactics"
-    assert classify(["frontend/src/components/ChroniclesSaveMenu.jsx"]) == "chronicles-gameplay"
-    assert classify(["frontend/src/components/ChroniclesSaveMenu.css"]) == "chronicles-gameplay"
-    assert classify(["frontend/src/assets/chronicles/expedition-study-desktop-v2.avif"]) == "chronicles-gameplay"
-    assert project_chronicles_lane(classify(["frontend/src/assets/chronicles/expedition-study-desktop-v2.avif"]), "tactics") == "none"
-    for first_person_css in (
-        "ChroniclesOfMatthias.css",
-        "ChroniclesOfMatthiasArt.css",
-        "ChroniclesOfMatthiasJournal.css",
+    for retired in (
+        "frontend/src/chroniclesOfMatthiasIsometric.js",
+        "frontend/src/components/ChroniclesOfMatthiasTactics.jsx",
+        "frontend/src/components/ChroniclesSaveMenu.css",
+        "frontend/src/components/ChroniclesOfMatthias.css",
+        "frontend/src/assets/chronicles/expedition-study-desktop-v2.avif",
+        "frontend/src/chronicles/chroniclesGameBootstrap.js",
+        "frontend/src/experimentalThreeRenderer.js",
+        "e2e/chronicles-gameplay-visual-artifact.spec.js",
     ):
-        producers = classify([f"frontend/src/components/{first_person_css}"])
-        assert producers == "chronicles-gameplay,chronicles-avatar"
-        assert project_chronicles_lane(producers, "tactics") == "none"
-    assert classify(["frontend/src/components/ChroniclesOfMatthiasTactics.css"]) == "chronicles-tactics"
-    assert project_chronicles_lane(classify(["frontend/src/components/ChroniclesSaveMenu.css"]), "tactics") == "none"
-    assert classify(["frontend/src/chronicles/chroniclesRunClient.js"]) == "none"
-    assert classify(["frontend/src/chronicles/chroniclesRunIdentity.js"]) == "none"
-    assert classify(["frontend/src/chronicles/chroniclesGameBootstrap.js"]) == "chronicles-tactics,chronicles-gameplay"
-    assert classify(["frontend/src/chroniclesDungeon.js"]) == "chronicles-gameplay"
-    assert classify(["frontend/src/experimentalThreeRenderer.js"]) == "chronicles-tactics,chronicles-gameplay"
+        assert classify([retired]) in {"none", "all"}, retired
+        assert project_chronicles_lane(classify([retired]), "chronicles") == "none"
+    assert classify(["frontend/src/labChroniclesLink.js"]) == "none"
     assert classify(["frontend/src/components/LabScreen.jsx"]) == "experiments-hub"
     assert classify([
         "frontend/src/components/ChessFootballGodotHost.jsx",
@@ -1063,7 +1021,6 @@ def self_test() -> None:
     assert classify(["scripts/war_room_visual_freeze_check.mjs"]) == "none"
     assert classify(["scripts/app_visual_summary.mjs"]) == "none"
     assert classify(["scripts/hans_visual_artifact_summary.mjs"]) == "none"
-    assert classify(["frontend/src/chroniclesOfMatthiasSpectralBishop.js"]) == "chronicles-tactics,chronicles-gameplay"
     assert classify(["scripts/blender/build_war_room_premium.py"]) == "warroom-core"
     assert classify(["scripts/blender/publish_war_room_v2_staging.py"]) == "warroom-core"
     assert classify([".github/workflows/war-room-blender-art.yml"]) == "warroom-core"
@@ -1115,7 +1072,7 @@ def self_test() -> None:
     assert classify(["frontend/public/chesscom/piece.glb"]) == "none"
     for public_meta in PUBLIC_NONCANONICAL_PATHS:
         assert classify([public_meta]) == "none"
-    assert classify(["frontend/public/models/chronicles-tactics-party.glb"]) == "chronicles-tactics"
+    assert classify(["frontend/public/models/chronicles-tactics-party.glb"]) == "none"
     assert classify(["frontend/public/models/matthias-home-canonical.glb"]) == "home-matthias"
     assert classify(["frontend/public/matthias-home-canonical.b64"]) == "home-matthias"
     assert classify(["frontend/src/components/HomeMatthias3D.jsx"]) == "home-matthias"
@@ -1123,14 +1080,6 @@ def self_test() -> None:
     assert classify(["frontend/src/components/HomeMatthiasStations.js"]) == "home-matthias"
     assert classify(["e2e/matthias-home-visual-critical.spec.js"]) == "home-matthias"
     assert classify(["frontend/public/support-pawn.png"]) == "all"
-    assert classify([
-        "frontend/src/chroniclesOfMatthiasIsometric.js",
-        "frontend/public/audio/theme.ogg",
-    ]) == "chronicles-tactics"
-    assert classify([
-        "frontend/src/chroniclesOfMatthiasIsometric.js",
-        "frontend/src/chroniclesDungeon.js",
-    ]) == "chronicles-tactics,chronicles-gameplay"
     assert classify(["frontend/src/tutorialRoute.js"]) == "training-school"
     assert classify(["frontend/src/components/trainingSchoolIntentPreload.js"]) == "training-school"
     assert classify(["frontend/src/components/HomeIllustrated.jsx"]) == "home-base"

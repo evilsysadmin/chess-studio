@@ -167,17 +167,19 @@ def test_unknown_map_and_invalid_seed_are_rejected():
     assert client.get("/api/chronicles/maps/crypt-eight-squares?seed=-1", headers=headers).status_code == 422
 
 
-def test_backend_manifests_match_the_frontend_fallbacks_byte_for_byte():
+def test_backend_manifests_match_the_go_mirror_byte_for_byte():
+    # The frontend fallback copy moved with Chronicles to its own repository;
+    # the Go edge still embeds the authored bytes.
     repo_root = Path(__file__).resolve().parents[1]
     backend_root = Path(__file__).with_name("chronicles_maps")
-    frontend_root = repo_root / "frontend" / "src" / "chronicles" / "maps"
+    go_root = repo_root / "backend-go" / "internal" / "chronicles" / "content" / "maps"
     backend_paths = _shipped_map_paths(backend_root)
-    frontend_paths = _shipped_map_paths(frontend_root)
+    go_paths = _shipped_map_paths(go_root)
 
-    assert [path.name for path in backend_paths] == [path.name for path in frontend_paths]
+    assert [path.name for path in backend_paths] == [path.name for path in go_paths]
     assert backend_paths
-    for backend_path, frontend_path in zip(backend_paths, frontend_paths, strict=True):
-        assert backend_path.read_bytes() == frontend_path.read_bytes()
+    for backend_path, go_path in zip(backend_paths, go_paths, strict=True):
+        assert backend_path.read_bytes() == go_path.read_bytes()
 
 
 def test_all_shipped_manifests_validate():
