@@ -71,7 +71,11 @@ jobs:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
     steps:
+      # The one-shot SHA freeze checks paths touched by the main push.
+      # A depth-1 checkout cannot diff the squash commit against its parent.
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 2
       - name: Require Cloudflare credentials
         shell: bash
         run: |
