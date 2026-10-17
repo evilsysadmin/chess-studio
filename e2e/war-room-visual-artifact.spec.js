@@ -781,7 +781,7 @@ async function assertAndCaptureProfile(page, profile, board3d) {
   expectSharedHealth(health);
   expectDefaultImmersiveShell(health);
   if (profile.variant === 'v3') {
-    expect(health.v3StaticTorchBatches).toBe(profile.hasTouch ? 0 : 11);
+    expect(health.v3StaticTorchBatches).toBe(profile.hasTouch ? 0 : 12);
   }
   if (profile.hasTouch) {
     expect(health.coarsePointer, `${profile.title} must emulate a coarse pointer`).toBe(true);
