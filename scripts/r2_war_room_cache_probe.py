@@ -16,15 +16,9 @@ import urllib.error
 import urllib.request
 
 import r2_war_room_live_freeze as freeze
-import r2_asset_publisher as publisher
 
 USER_AGENT = "chess-studio-r2-warroom-cache-observer/1"
 ORIGIN = "https://assets.chess-studio.shadowops.dpdns.org"
-CACHE_STATES = frozenset({
-    "HIT", "MISS", "DYNAMIC", "BYPASS", "EXPIRED", "STALE", "REVALIDATED",
-    "UPDATING", "NONE", "UNKNOWN",
-})
-
 
 def read_get(room: freeze.Room, *, open_url=urllib.request.urlopen, clock=time.perf_counter):
     url = f"{ORIGIN}/{room.immutable_key}"
@@ -88,7 +82,7 @@ def probe(*, get=read_get):
         "schema": "warroom-r2-cdn-v1",
         "source": "#5733 exact immutable source hashes",
         "browserCacheDisabledByDesign": True,
-        "edgeCacheConfigured": False,  # observer cannot establish zone config
+        "edgeCacheConfigurationInspected": False,  # observer cannot establish zone config
         "rooms": result,
     }
 
@@ -137,7 +131,7 @@ def self_test() -> None:
     report = probe(get=fake_get)
     assert not any(row["edgeHitConfirmed"] for row in report["rooms"])
     assert all(row["interpretation"] == "no-confirmed-edge-hit" for row in report["rooms"])
-    assert report["edgeCacheConfigured"] is False
+    assert report["edgeCacheConfigurationInspected"] is False
     print("War Room R2 edge-cache observer self-test OK")
 
 
