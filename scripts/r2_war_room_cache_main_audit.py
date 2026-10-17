@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -80,7 +81,7 @@ def api_get(path: str, *, token: str, request_open=urllib.request.urlopen) -> ob
 
 
 def audit(repo: str, *, token: str, get=api_get) -> dict:
-    if repo.count("/") != 1 or any(ch not in "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_./" for ch in repo):
+    if not re.fullmatch(r"[A-Za-z0-9_][A-Za-z0-9_.-]*/[A-Za-z0-9_][A-Za-z0-9_.-]*", repo):
         raise ValueError("Invalid repository")
     project = "/repos/" + repo
     workflow = urllib.parse.quote(WORKFLOW, safe="")
