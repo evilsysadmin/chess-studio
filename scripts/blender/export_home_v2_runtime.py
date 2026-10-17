@@ -231,6 +231,56 @@ def simplify_klaus_undercoat() -> dict:
     return {"triangles_before": before, "triangles_after": after, "ratio": 0.82}
 
 
+# The three tiny smooth paw masses are authored as 32x16 UV spheres.
+# Their tiny screen footprint does not justify this tessellation. Keep their
+# bounds, orientations, material and joins; never touch the face/rig.
+KLAUS_PAW_NAMES = frozenset({"HOME_PROP_cat_hind_foot", "HOME_PROP_cat_paw_l", "HOME_PROP_cat_paw_r"})
+
+
+def simplify_klaus_paws() -> dict:
+    objects = sorted(
+        (obj for obj in bpy.context.scene.objects if obj.name in KLAUS_PAW_NAMES),
+        key=lambda obj: obj.name,
+    )
+    if {obj.name for obj in objects} != KLAUS_PAW_NAMES:
+        raise SystemExit("Klaus paw LOD requires three specific paw meshes")
+    before = after = 0
+    for obj in objects:
+        if obj.type != "MESH" or obj.modifiers or len(obj.data.materials) != 1:
+            raise SystemExit(f"Klaus paw mesh changed: {obj.name}")
+        original = obj.data
+        material = original.materials[0]
+        if material is None or (material.use_nodes and any(n.type == "TEX_IMAGE" for n in material.node_tree.nodes)):
+            raise SystemExit(f"Klaus paw needs UVs: {obj.name}")
+        old_triangles = sum(len(p.vertices) - 2 for p in original.polygons)
+        if old_triangles != 960:
+            raise SystemExit(f"Unexpected Klaus paw triangles on {obj.name}: {old_triangles}")
+        lo = [min(v.co[i] for v in original.vertices) for i in range(3)]
+        hi = [max(v.co[i] for v in original.vertices) for i in range(3)]
+        bm = bmesh.new()
+        replacement = bpy.data.meshes.new(f"{obj.name}_runtime_lod")
+        try:
+            bmesh.ops.create_uvsphere(bm, u_segments=24, v_segments=12, radius=1.0)
+            bm.to_mesh(replacement)
+        finally:
+            bm.free()
+        for vertex in replacement.vertices:
+            for i in range(3):
+                vertex.co[i] = (hi[i] + lo[i]) * 0.5 + vertex.co[i] * (hi[i] - lo[i]) * 0.5
+        replacement.materials.append(material)
+        for poly in replacement.polygons:
+            poly.use_smooth = True
+        replacement.update()
+        before += old_triangles
+        after += sum(len(p.vertices) - 2 for p in replacement.polygons)
+        obj.data = replacement
+        if original.users == 0:
+            bpy.data.meshes.remove(original)
+    if before - after < 1000:
+        raise SystemExit(f"Klaus paw LOD saved insufficient triangles: {before} -> {after}")
+    return {"objects": 3, "triangles_before": before, "triangles_after": after}
+
+
 def consolidate_klaus() -> int:
     """Join Klaus into one node (plus the landmarks); returns the parts joined."""
     parts = [
@@ -753,6 +803,7 @@ def main() -> None:
     ) = consolidate_static_architecture()
     klaus_tail_lod = simplify_klaus_tail_tip()
     klaus_undercoat_lod = simplify_klaus_undercoat()
+    klaus_paw_lod = simplify_klaus_paws()
     klaus_parts = consolidate_klaus()
     mesh_count = select_runtime_geometry()
     if mesh_count < 80:
@@ -821,6 +872,7 @@ def main() -> None:
         "klaus_parts": klaus_parts,
         "klaus_tail_lod": klaus_tail_lod,
         "klaus_undercoat_lod": klaus_undercoat_lod,
+        "klaus_paw_lod": klaus_paw_lod,
         "moon_detail_lod": moon_detail_lod,
         "garden_crown_lod": garden_crown_lod,
         "garden_panel_lod": garden_panel_lod,
