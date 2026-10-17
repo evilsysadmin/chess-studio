@@ -8,12 +8,6 @@ const requested = process.env.CHESS_HOME_GPU_MODE;
 const requireTimer = process.env.CHESS_HOME_GPU_REQUIRE_TIMER === '1';
 const artifactDir = '../.artifacts/home-gpu-benchmark';
 
-function finiteNumber(value) {
-  if (value == null || value === '') return null;
-  const number = Number(value);
-  return Number.isFinite(number) ? number : null;
-}
-
 function median(numbers) {
   const values = numbers.filter((value) => Number.isFinite(value)).sort((a, b) => a - b);
   if (!values.length) return null;
