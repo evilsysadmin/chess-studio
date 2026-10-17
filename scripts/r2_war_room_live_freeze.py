@@ -128,13 +128,21 @@ def self_test() -> None:
     ) + raw
     sample_room = Room(room.variant, hashlib.sha256(sample).hexdigest(), len(sample), room.flame)
     verify_bytes(sample_room, sample)
-    for broken in (sample[:-1], sample.replace(b"WR_ANCHOR_hans_hearth", b"WR_ANCHOR_hans_ABSENT")):
-        try:
-            verify_bytes(sample_room, broken)
-        except ValueError:
-            pass
-        else:
-            raise AssertionError("bad source was not rejected")
+    # Hash/size mismatches and missing Hans anchors are independent errors.
+    try:
+        verify_bytes(sample_room, sample[:-1])
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("truncated GLB was not rejected")
+    broken = sample.replace(b"WR_ANCHOR_hans_hearth", b"WR_ANCHOR_hans_Xearth")
+    broken_room = Room(room.variant, hashlib.sha256(broken).hexdigest(), len(broken), room.flame)
+    try:
+        verify_bytes(broken_room, broken)
+    except ValueError as exc:
+        assert "faltan anclas" in str(exc), str(exc)
+    else:
+        raise AssertionError("missing Hans anchor was not rejected")
     print("war-room immutable freeze self-test OK")
 
 
