@@ -3,6 +3,8 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   HOME_BLENDER_RUNTIME_MIN_WIDTH,
   homeBlenderCameraFovForAspect,
+  homeBlenderCameraPoseForAspect,
+  createHomeBlenderRenderCameraReset,
   homeBlenderFireKind,
   homeBlenderSteamMotion,
   applyHomeBlenderPieceLift,
@@ -56,6 +58,71 @@ import {
   releaseHomeBlenderWebglContext,
 } from './HomeBlenderScene3D.jsx';
 import { tighterRuntimeLodCap } from './HomeCastle3DRenderPolicy.js';
+
+describe('Home Blender stationary render camera', () => {
+  const canonical = homeBlenderCameraPoseForAspect(16 / 9);
+
+  it('restores the same position and quaternion as the original per-frame camera setup', () => {
+    const baseline = new THREE.PerspectiveCamera(22.9, 16 / 9, 0.1, 80);
+    baseline.position.set(canonical.position.x, canonical.position.y, canonical.position.z);
+    baseline.lookAt(canonical.target.x, canonical.target.y, canonical.target.z);
+
+    const camera = new THREE.PerspectiveCamera(22.9, 16 / 9, 0.1, 80);
+    const lookAt = vi.spyOn(camera, 'lookAt');
+    const reset = createHomeBlenderRenderCameraReset(camera);
+    expect(reset.restore()).toBe(true);
+    expect(camera.position.equals(baseline.position)).toBe(true);
+    expect(camera.quaternion.equals(baseline.quaternion)).toBe(true);
+    expect(lookAt).toHaveBeenCalledTimes(1);
+
+    for (let frame = 0; frame < 240; frame += 1) expect(reset.restore()).toBe(false);
+    expect(lookAt).toHaveBeenCalledTimes(1);
+    expect(camera.position.equals(baseline.position)).toBe(true);
+    expect(camera.quaternion.equals(baseline.quaternion)).toBe(true);
+  });
+
+  it('reapplies the exact canonical rendering pose after viewport and actor projections', () => {
+    const camera = new THREE.PerspectiveCamera(22.9, 16 / 9, 0.1, 80);
+    const baseline = new THREE.PerspectiveCamera(22.9, 16 / 9, 0.1, 80);
+    baseline.position.set(canonical.position.x, canonical.position.y, canonical.position.z);
+    baseline.lookAt(canonical.target.x, canonical.target.y, canonical.target.z);
+    const reset = createHomeBlenderRenderCameraReset(camera);
+    reset.restore();
+    const lookAt = vi.spyOn(camera, 'lookAt');
+    for (const aspect of [0.45, 0.8, 1, 1.5]) {
+      // The Home projects hotspots and Matthias using a temporary framing,
+      // then the next render returns to the existing stationary view.
+      const pose = homeBlenderCameraPoseForAspect(aspect);
+      camera.aspect = aspect;
+      camera.updateProjectionMatrix();
+      camera.position.set(pose.position.x, pose.position.y, pose.position.z);
+      camera.lookAt(pose.target.x, pose.target.y, pose.target.z);
+      reset.invalidate();
+      expect(reset.restore()).toBe(true);
+      expect(camera.position.equals(baseline.position)).toBe(true);
+      expect(camera.quaternion.equals(baseline.quaternion)).toBe(true);
+      expect(camera.aspect).toBe(aspect);
+      expect(reset.restore()).toBe(false);
+    }
+    expect(lookAt).toHaveBeenCalledTimes(8); // 4 temporary projections, 4 restorations
+  });
+
+  it('does not reset after a redundant request but invalidates after an actor update', () => {
+    const camera = new THREE.PerspectiveCamera();
+    const reset = createHomeBlenderRenderCameraReset(camera);
+    expect(reset.restore()).toBe(true);
+    expect(reset.restore()).toBe(false);
+    // A routine change temporarily aims at Matthias; restoration is deferred
+    // until the next actual room draw, never during the projection callback.
+    camera.position.set(8, 3, 9);
+    camera.lookAt(0, 1, 0);
+    reset.invalidate();
+    expect(camera.position.x).toBe(8);
+    expect(reset.restore()).toBe(true);
+    expect(camera.position.x).toBe(canonical.position.x);
+    expect(reset.restore()).toBe(false);
+  });
+});
 
 describe('HomeBlenderScene3D GLTF lifecycle', () => {
   it('releases the cached WebGL context exactly once when teardown owns it', () => {
