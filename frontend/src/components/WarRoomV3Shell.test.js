@@ -88,8 +88,15 @@ describe('War Room v3 side-wall torches', () => {
       ['war-room-side-torch-cage-bar', 6],
       ['war-room-side-torch-crown-spike', 6],
       ['war-room-side-torch-backplate-finial', 2],
+      ['war-room-side-torch-backplate', 1],
+      ['war-room-side-torch-wall-arm', 1],
+      ['war-room-side-torch-arm-collar', 1],
+      ['war-room-side-torch-neck', 1],
+      ['war-room-side-torch-brazier-bowl', 1],
+      ['war-room-side-torch-brazier-rim', 1],
+      ['war-room-side-torch-embers', 1],
     ];
-    expect(root.userData.warRoomV3StaticTorchBatches).toBe(4);
+    expect(root.userData.warRoomV3StaticTorchBatches).toBe(11);
     for (const [name, perTorch] of families) {
       const batch = root.children.find((child) => child.name === name);
       const classic = original.children.filter((child) => child.name === name);
@@ -116,7 +123,7 @@ describe('War Room v3 side-wall torches', () => {
         }
       }
     }
-    expect(root.children.filter((node) => node.isInstancedMesh)).toHaveLength(4);
+    expect(root.children.filter((node) => node.isInstancedMesh)).toHaveLength(11);
     // Animated fire and halo retain their own nodes and material/texture state.
     for (const anchor of anchors) {
       expect(anchor.getObjectByName('war-room-side-torch-flame-outer')?.isMesh).toBe(true);
@@ -136,6 +143,10 @@ describe('War Room v3 side-wall torches', () => {
     const staticNames = [
       'war-room-side-torch-rivet', 'war-room-side-torch-cage-bar',
       'war-room-side-torch-crown-spike', 'war-room-side-torch-backplate-finial',
+      'war-room-side-torch-backplate', 'war-room-side-torch-wall-arm',
+      'war-room-side-torch-arm-collar', 'war-room-side-torch-neck',
+      'war-room-side-torch-brazier-bowl', 'war-room-side-torch-brazier-rim',
+      'war-room-side-torch-embers',
     ];
     const names = [
       ...staticNames,
