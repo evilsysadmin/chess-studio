@@ -150,7 +150,12 @@ export function batchWarRoomV3StaticTorchHardware(root, torches) {
   return { merged, detached };
 }
 
-export function installWarRoomV3Torches(root, { coarsePointer = false } = {}) {
+export function installWarRoomV3Torches(root, {
+  coarsePointer = false,
+  // Software-renderer "lite" also enables coarsePointer for lighting, even
+  // on desktop. Keep touch frustum culling independent of that quality flag.
+  touchHardwareCulling = Boolean(globalThis.matchMedia?.('(pointer: coarse)')?.matches),
+} = {}) {
   const anchors = [];
   root?.traverse?.((node) => {
     if (node.name?.startsWith(WAR_ROOM_V3_TORCH_ANCHOR_PREFIX)) anchors.push(node);
@@ -173,9 +178,9 @@ export function installWarRoomV3Torches(root, { coarsePointer = false } = {}) {
     anchor.add(torch);
     return torch;
   });
-  // On desktop, batch only the fully static metal hardware across anchors.
-  // Touch retains per-sconce culling (and its reduced practical-light budget).
-  const { merged, detached } = coarsePointer
+  // Rendering-lite is not evidence of a touch device. Desktop SwiftShader
+  // still batches; actual touch devices retain separate per-torch culling.
+  const { merged, detached } = touchHardwareCulling
     ? { merged: [], detached: [] }
     : batchWarRoomV3StaticTorchHardware(root, torches);
   if (root?.userData) {
