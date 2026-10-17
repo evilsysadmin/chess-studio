@@ -10,6 +10,7 @@ import {
   homeBlenderProjectAnchors,
   HOME_BLENDER_BEACON_ANCHORS,
   homeBlenderFireMotion,
+  homeBlenderCandleLightFactor,
   homeBlenderSharedFireGust,
   rebaseFlameToPivot,
   homeBlenderFireFramePlan,
@@ -369,6 +370,23 @@ describe('HomeBlenderScene3D live flame animation', () => {
         expect(motion.light).toBeGreaterThan(0.72);
         expect(motion.light).toBeLessThan(1.12);
       }
+    }
+  });
+
+  it('computes torch-only light intensity with exact candle-motion equivalence', () => {
+    // Verify the actual runtime optimization, not an approximation: the same
+    // intensity reaches each existing Three.js light for every sampled phase.
+    for (const timeMs of [0, 16.7, 250, 1010, 4321, 12345, 40000, 90000, 1e7, -4, NaN]) {
+      for (const phase of [0, 0.137, 1.234, 3.9, -1.2, NaN]) {
+        const oldIntensity = homeBlenderFireMotion({ timeMs, phase, kind: 'candle' }).light;
+        const newIntensity = homeBlenderCandleLightFactor(timeMs, phase);
+        expect(Object.is(newIntensity, oldIntensity)).toBe(true);
+      }
+    }
+    // Non-candle motion is unaffected by the specialised scalar path.
+    for (const kind of ['flame', 'ember', 'hot']) {
+      expect(homeBlenderFireMotion({ timeMs: 1234, phase: 1, kind }))
+        .toEqual(homeBlenderFireMotion({ timeMs: 1234, phase: 1, kind }));
     }
   });
 
