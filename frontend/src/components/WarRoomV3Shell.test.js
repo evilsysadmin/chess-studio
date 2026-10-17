@@ -13,20 +13,18 @@ import {
 } from './WarRoomV3Shell.js';
 
 describe('War Room v3 runtime asset URL', () => {
-  it('preloads the actual authored V3 GLB with the exact same build URL as the installer', () => {
+  it('prefetches the identical Hans-ready content-addressed GLB with no build token', () => {
     const expected = warRoomVariantRuntimeModelUrl('v3', { buildSha: 'abc123' });
-    expect(WAR_ROOM_V3_RUNTIME_MODEL_URL).toContain('/war-room/v3/runtime/current.glb');
-    expect(expected).toBe(`${WAR_ROOM_V3_RUNTIME_MODEL_URL}?build=abc123`);
+    expect(expected).toBe('https://assets.chess-studio.shadowops.dpdns.org/war-room/v3/runtime/war-room-v3-shell-0df589c2fa839a26.glb');
+    expect(WAR_ROOM_V3_RUNTIME_MODEL_URL).toBe(expected);
     expect(warRoomV3ModelUrl({ buildSha: 'abc123' })).toBe(expected);
-    expect(warRoomV3ModelUrl({ buildSha: 'new-deploy' }))
-      .toBe(warRoomVariantRuntimeModelUrl('v3', { buildSha: 'new-deploy' }));
-    expect(warRoomV3ModelUrl({ buildSha: '' })).toBe(WAR_ROOM_V3_RUNTIME_MODEL_URL);
+    expect(warRoomV3ModelUrl({ buildSha: 'new-deploy' })).toBe(expected);
+    expect(warRoomV3ModelUrl({ buildSha: '' })).toBe(expected);
   });
 
-  it('preserves URL queries when adding build tokens', () => {
-    const url = 'https://assets.example.test/war-room/v3/runtime/current.glb?source=staging';
-    expect(warRoomV3ModelUrl({ buildSha: 'main/abc 123', baseUrl: url }))
-      .toBe(`${url}&build=main%2Fabc%20123`);
+  it('never build-busts an explicit immutable GLB URL with existing queries', () => {
+    const url = 'https://assets.example.test/war-room/v3/runtime/shell-0123456789abcdef.glb?source=staging';
+    expect(warRoomV3ModelUrl({ buildSha: 'main/abc 123', baseUrl: url })).toBe(url);
   });
 });
 

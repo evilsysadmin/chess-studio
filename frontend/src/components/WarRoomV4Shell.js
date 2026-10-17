@@ -1,10 +1,10 @@
 import { createWarRoomBlenderVariantShell } from './WarRoomBlenderShellRuntime.js';
-import { WAR_ROOM_V4_RUNTIME_ALIAS_URL } from './WarRoomV4Asset.js';
+import { WAR_ROOM_V4_RUNTIME_ASSET_URL } from './WarRoomV4Asset.js';
 import { installWarRoomV3FireAnimation } from './WarRoomV3Fire.js';
 
-// Keep the currently deployed V4 GLB (not the older manifest revision).
-// Intent prefetch uses this exact same URL with the frontend build token.
-export const WAR_ROOM_V4_RUNTIME_MODEL_URL = WAR_ROOM_V4_RUNTIME_ALIAS_URL;
+// Content-addressed copy of the exact verified live V4 observatory. Both
+// installer and prefetch share this immutable URL, without build cache busts.
+export const WAR_ROOM_V4_RUNTIME_MODEL_URL = WAR_ROOM_V4_RUNTIME_ASSET_URL;
 
 // Fireplace flames authored by scripts/blender/build_war_room_v4.py (validated
 // as runtime nodes there); they reuse the proven v3 flicker + sprite driver.
@@ -45,7 +45,7 @@ export function tuneWarRoomV4PracticalLights(root) {
 const WAR_ROOM_V4 = createWarRoomBlenderVariantShell({
   variant: 'v4',
   runtimeModelUrl: WAR_ROOM_V4_RUNTIME_MODEL_URL,
-  cacheBustBuild: true,
+  cacheBustBuild: false,
   rootName: 'war-room-v4-moonlit-royal-observatory-shell',
   runtimeFinish: 'gltf-pbr-moonlit-royal-observatory-v1',
   installRuntimeEffects: (root, { coarsePointer }) => {
