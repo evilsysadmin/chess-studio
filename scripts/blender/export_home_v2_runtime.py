@@ -193,6 +193,44 @@ def simplify_klaus_tail_tip() -> dict:
     return {"objects": len(targets), "triangles_before": before, "triangles_after": after}
 
 
+# Only the smooth metaball undercoat, never eye/nose/ear landmarks or
+# directional fur details. The native Blender review scene stays canonical.
+def simplify_klaus_undercoat() -> dict:
+    obj = bpy.context.scene.objects.get(KLAUS_BODY_NAME)
+    if obj is None or obj.type != "MESH" or obj.modifiers:
+        raise SystemExit("Klaus undercoat missing or already modified")
+    mesh = obj.data
+    if len(mesh.materials) != 1 or len(mesh.vertices) < 500:
+        raise SystemExit("Unexpected Klaus undercoat material/topology")
+    before = sum(len(poly.vertices) - 2 for poly in mesh.polygons)
+    prior_bounds = [
+        (min(v.co[axis] for v in mesh.vertices), max(v.co[axis] for v in mesh.vertices))
+        for axis in range(3)
+    ]
+    decimate = obj.modifiers.new("Runtime undercoat LOD", "DECIMATE")
+    decimate.decimate_type = "COLLAPSE"
+    decimate.ratio = 0.82
+    bpy.context.view_layer.objects.active = obj
+    bpy.ops.object.select_all(action="DESELECT")
+    obj.select_set(True)
+    bpy.ops.object.modifier_apply(modifier=decimate.name)
+    obj.select_set(False)
+    new_mesh = obj.data
+    after = sum(len(poly.vertices) - 2 for poly in new_mesh.polygons)
+    current_bounds = [
+        (min(v.co[axis] for v in new_mesh.vertices), max(v.co[axis] for v in new_mesh.vertices))
+        for axis in range(3)
+    ]
+    if before - after < 200 or any(
+        abs(a-b) > 0.008 for old, new in zip(prior_bounds, current_bounds)
+        for a, b in zip(old, new)
+    ):
+        raise SystemExit(f"Klaus undercoat LOD violated bounds/savings: {before} -> {after}")
+    for face in new_mesh.polygons:
+        face.use_smooth = True
+    return {"triangles_before": before, "triangles_after": after, "ratio": 0.82}
+
+
 def consolidate_klaus() -> int:
     """Join Klaus into one node (plus the landmarks); returns the parts joined."""
     parts = [
@@ -714,6 +752,7 @@ def main() -> None:
         mixed_static_batches,
     ) = consolidate_static_architecture()
     klaus_tail_lod = simplify_klaus_tail_tip()
+    klaus_undercoat_lod = simplify_klaus_undercoat()
     klaus_parts = consolidate_klaus()
     mesh_count = select_runtime_geometry()
     if mesh_count < 80:
@@ -781,6 +820,7 @@ def main() -> None:
         "converted_curves": converted_curves,
         "klaus_parts": klaus_parts,
         "klaus_tail_lod": klaus_tail_lod,
+        "klaus_undercoat_lod": klaus_undercoat_lod,
         "moon_detail_lod": moon_detail_lod,
         "garden_crown_lod": garden_crown_lod,
         "garden_panel_lod": garden_panel_lod,
