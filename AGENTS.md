@@ -48,7 +48,7 @@ El contrato de entrega está en [`docs/auto-merge-delivery.md`](docs/auto-merge-
 | Música / radio de sesión / Pawn Slug OST / composición y mezcla | [`docs/music.md`](docs/music.md), [`skills/pawn-slug-synthwave/SKILL.md`](skills/pawn-slug-synthwave/SKILL.md) |
 | Publicación/migración de assets a R2 | [`docs/r2-asset-publisher.md`](docs/r2-asset-publisher.md), [`docs/r2-assets.md`](docs/r2-assets.md), [`docs/visual-assets-r2-flow.md`](docs/visual-assets-r2-flow.md) |
 | War Room visual / Blender / v2 | [`docs/operations/war-room-blender-pipeline.md`](docs/operations/war-room-blender-pipeline.md), [`docs/operations/war-room-parity.md`](docs/operations/war-room-parity.md), [`docs/operations/war-room-visual-freeze.md`](docs/operations/war-room-visual-freeze.md), [`skills/local-gpu-rendering/SKILL.md`](skills/local-gpu-rendering/SKILL.md) |
-| Home / Castillo / Blender | [`skills/home-blender/SKILL.md`](skills/home-blender/SKILL.md), [`docs/VISUAL_LANGUAGE.md`](docs/VISUAL_LANGUAGE.md), [`docs/home-castle-life-minimal.md`](docs/home-castle-life-minimal.md), [`docs/visual-assets-r2-flow.md`](docs/visual-assets-r2-flow.md), [`skills/local-gpu-rendering/SKILL.md`](skills/local-gpu-rendering/SKILL.md) |
+| Home / Castillo / Blender | [`skills/home-blender/SKILL.md`](skills/home-blender/SKILL.md), [`docs/VISUAL_LANGUAGE.md`](docs/VISUAL_LANGUAGE.md), [`docs/home-castle-life-minimal.md`](docs/home-castle-life-minimal.md), [`docs/visual-assets-r2-flow.md`](docs/visual-assets-r2-flow.md), [`docs/operations/home-3d-performance.md`](docs/operations/home-3d-performance.md), [`skills/local-gpu-rendering/SKILL.md`](skills/local-gpu-rendering/SKILL.md) |
 | Chronicles / Tactics | [`docs/operations/chronicles-tactics.md`](docs/operations/chronicles-tactics.md) |
 | Chronicles · estadísticas MM3 y economía | [`docs/operations/chronicles-mm3-economy.md`](docs/operations/chronicles-mm3-economy.md) |
 | Chronicles campaña y atlas narrativo | [`backend-python/chronicles_campaign/DESIGN.md`](backend-python/chronicles_campaign/DESIGN.md) |
@@ -139,6 +139,7 @@ El contrato de entrega está en [`docs/auto-merge-delivery.md`](docs/auto-merge-
 - [`docs/operations/presence-admin.md`](docs/operations/presence-admin.md)
 - [`docs/operations/pvp.md`](docs/operations/pvp.md)
 - [`docs/operations/resilience-degraded-mode.md`](docs/operations/resilience-degraded-mode.md)
+- [`docs/operations/home-3d-performance.md`](docs/operations/home-3d-performance.md) — perfilado opt-in de GPU real, contadores Three.js y comparación sin confundir SwiftShader.
 - [`docs/operations/runtime-performance.md`](docs/operations/runtime-performance.md)
 - [`docs/operations/visual-evidence.md`](docs/operations/visual-evidence.md)
 - [`docs/operations/spectator.md`](docs/operations/spectator.md)
