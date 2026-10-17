@@ -66,6 +66,15 @@ export const WAR_ROOM_V3_STATIC_TORCH_FAMILIES = Object.freeze([
   'war-room-side-torch-rivet',
   'war-room-side-torch-cage-bar',
   'war-room-side-torch-crown-spike',
+  // Larger, still-inert metal shapes are the visible draw-call offenders.
+  // Halos have per-torch textures; flame meshes have independent callbacks.
+  'war-room-side-torch-backplate',
+  'war-room-side-torch-wall-arm',
+  'war-room-side-torch-arm-collar',
+  'war-room-side-torch-neck',
+  'war-room-side-torch-brazier-bowl',
+  'war-room-side-torch-brazier-rim',
+  'war-room-side-torch-embers',
 ]);
 
 function sameHardwareMaterial(a, b) {
@@ -76,8 +85,15 @@ function sameHardwareMaterial(a, b) {
     && a?.metalness === b?.metalness
     && a?.roughness === b?.roughness
     && a?.clearcoat === b?.clearcoat
+    && a?.clearcoatRoughness === b?.clearcoatRoughness
+    && a?.emissive?.getHex?.() === b?.emissive?.getHex?.()
+    && a?.emissiveIntensity === b?.emissiveIntensity
+    && a?.specularIntensity === b?.specularIntensity
     && a?.map === b?.map
     && a?.transparent === b?.transparent
+    && a?.opacity === b?.opacity
+    && a?.blending === b?.blending
+    && a?.depthWrite === b?.depthWrite
     && a?.side === b?.side;
 }
 
@@ -96,23 +112,29 @@ export function batchWarRoomV3StaticTorchHardware(root, torches) {
 
   for (const name of WAR_ROOM_V3_STATIC_TORCH_FAMILIES) {
     const parts = torches.map((torch) => torch.getObjectByName(name));
-    if (parts.some((part) => !part?.isInstancedMesh)) continue;
+    if (parts.some((part) => !part?.isMesh || part.onBeforeRender)) continue;
     const geometry = parts[0].geometry;
     const material = parts[0].material;
-    if (parts.some((part) => part.geometry !== geometry || !sameHardwareMaterial(part.material, material))) continue;
+    if (parts.some((part) => (
+      part.geometry !== geometry
+      || part.castShadow !== parts[0].castShadow
+      || part.receiveShadow !== parts[0].receiveShadow
+      || !sameHardwareMaterial(part.material, material)
+    ))) continue;
 
     const combined = new THREE.InstancedMesh(
-      geometry, material, parts.reduce((total, part) => total + part.count, 0),
+      geometry, material, parts.reduce((total, part) => total + (part.isInstancedMesh ? part.count : 1), 0),
     );
     combined.name = name;
     combined.userData.warRoomV3MergedTorchHardware = true;
-    combined.castShadow = false;
-    combined.receiveShadow = true;
+    combined.castShadow = parts[0].castShadow;
+    combined.receiveShadow = parts[0].receiveShadow;
     let cursor = 0;
     for (const part of parts) {
       torchToRoot.multiplyMatrices(rootInverse, part.matrixWorld);
-      for (let index = 0; index < part.count; index += 1) {
-        part.getMatrixAt(index, local);
+      for (let index = 0, count = part.isInstancedMesh ? part.count : 1; index < count; index += 1) {
+        if (part.isInstancedMesh) part.getMatrixAt(index, local);
+        else local.identity();
         final.multiplyMatrices(torchToRoot, local);
         combined.setMatrixAt(cursor, final);
         cursor += 1;
