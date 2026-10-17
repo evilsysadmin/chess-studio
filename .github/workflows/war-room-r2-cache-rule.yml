@@ -1,0 +1,92 @@
+name: War Room · immutable GLB edge cache rule
+
+on:
+  pull_request:
+    paths:
+      - scripts/cloudflare_war_room_glb_cache.py
+      - .github/workflows/war-room-r2-cache-rule.yml
+      - scripts/r2_war_room_cache_probe.py
+      - scripts/r2_war_room_live_freeze.py
+  push:
+    branches: [main]
+    paths:
+      - scripts/cloudflare_war_room_glb_cache.py
+      - .github/workflows/war-room-r2-cache-rule.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: chess-studio-warroom-cache-rule
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    name: Validate exact V3/V4-only cache expression
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      - run: python3 -S scripts/cloudflare_war_room_glb_cache.py self-test
+      - name: Verify exact public GLBs with the merged CDN SHA observer
+        shell: bash
+        run: |
+          python3 -S scripts/r2_war_room_cache_probe.py self-test
+          python3 -S scripts/r2_war_room_cache_probe.py probe
+
+  reconcile:
+    name: Reconcile narrow Cloudflare GLB Cache Rule
+    if: github.event_name != 'pull_request'
+    needs: validate
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v7
+      - name: Require actual Zone Cache Rules permission
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+      - name: Idempotently add/update only our exact hash-key rule
+        run: python3 -S scripts/cloudflare_war_room_glb_cache.py apply
+      - name: Read back the active Cloudflare Cache Rule
+        run: python3 -S scripts/cloudflare_war_room_glb_cache.py check
+      - name: Verify real edge HIT on BOTH GLBs (not browser cache)
+        shell: bash
+        run: |
+          set -euo pipefail
+          for attempt in 1 2 3; do
+            python3 -S scripts/r2_war_room_cache_probe.py probe --output "$RUNNER_TEMP/warroom-edge-after-rule.json"
+            if python3 - "$RUNNER_TEMP/warroom-edge-after-rule.json" <<'PY'
+          import json
+          import sys
+          result = json.load(open(sys.argv[1], encoding="utf-8"))
+          rows = result.get("rooms", [])
+          for row in rows:
+              print(row["variant"], "first", row["first"]["cfCacheStatus"],
+                    "second", row["second"]["cfCacheStatus"],
+                    "colo", row["second"]["cfRayColo"])
+          if len(rows) != 2 or not all(row["edgeHitConfirmed"] for row in rows):
+              raise SystemExit("Cloudflare has not returned HIT for both exact GLBs")
+          PY
+            then
+              echo "Both exact immutable GLBs served from Cloudflare edge cache."
+              exit 0
+            fi
+            sleep 3
+          done
+          echo "::error::The narrow rule was written but CDN HIT was not confirmed; do not claim completion."
+          exit 1
+      - name: Save edge response evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: warroom-r2-cache-rule-check
+          path: ${{ runner.temp }}/warroom-edge-after-rule.json
+          if-no-files-found: warn
+          retention-days: 14
