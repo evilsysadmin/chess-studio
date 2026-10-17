@@ -160,6 +160,44 @@ No fusionar una nueva optimización de luces, materiales o GLB basándose exclus
 
 ### Repeticiones A/B/B/A sin sobrescribir JSON (#5765)
 
+
+#### Vía recomendada: un comando local y seguro
+
+Desde un checkout de Chess Studio con la versión actual de la instrumentación,
+en el portátil Nobara con GPU NVIDIA:
+
+```bash
+python3 -S scripts/run_war_room_gpu_ab.py \
+  --baseline-sha 1278a5d1a8b9e82e193cb002374b261f1908d298 \
+  --candidate-sha 39980d211ff1b5864baec52ced0035648e8bdd0d \
+  --renderer hardware --offload nvidia --repetitions 2
+```
+
+Primero se puede ejecutar con `--dry-run` para verificar SHAs y el
+orden A/B/B/A sin crear worktrees. Usar `--offload mesa` en un sistema
+con AMD/Intel, o `--offload none` cuando la GPU ya sea la predeterminada.
+`--renderer software` es solo un control de compatibilidad, no una medición
+GPU; incluso con `--renderer hardware` el benchmark comprueba el renderer
+WebGL efectivo y falla si es SwiftShader.
+
+El runner `scripts/run_war_room_gpu_ab.py` crea worktrees temporales
+separados y usa **el mismo harness** de Playwright, test y lockfile E2E
+para ambas versiones, sin copiar sus fuentes de producción. Instala y
+compila cada frontend real, ejecuta A/B/B/A en serie y conserva
+un directorio inmutable de resultados en
+`.artifacts/war-room-gpu-ab/<sesión>/` con JSON por versión/perfil,
+`session.json` y `comparison.md`. Rechaza un servidor previo en
+`127.0.0.1:4173`; elimina los worktrees temporales al terminar,
+también ante errores, pero **conserva las capturas obtenidas** para
+diagnóstico. No se ejecuta automáticamente en GitHub Actions.
+
+Las dos revisiones ejemplo son el estado anterior y posterior al batching
+por pared de #5763. Si se comparan otras versiones, aportar sus SHAs
+completos. El `--harness-sha` opcional permite fijar explícitamente
+la versión de los tests cuando se comparen revisiones más antiguas.
+El procedimiento manual que sigue es equivalente y queda disponible
+para investigaciones específicas.
+
 Desde la versión 2 del informe, cada invocación lleva un `runId` UUID único y escribe
 `SHA-renderer-perfil-runId.json`. No se pierden las muestras al repetir;
 `capturedAtUtc` señala cuándo se capturó cada perfil. El comparador
