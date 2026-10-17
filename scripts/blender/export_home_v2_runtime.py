@@ -665,6 +665,54 @@ def simplify_chandelier_thin_tubes() -> dict:
     return {"objects": len(objects), "triangles_before": before, "triangles_after": after}
 
 
+# Ten distant banner header studs use small UV spheres. Reduce only
+# their radial tessellation; retain placement, materials and local bounds.
+BANNER_STUD_NAME = re.compile(r"^HOME_PROP_banner_chief_stud_.*_[0-4]$")
+
+
+def simplify_banner_chief_studs() -> dict:
+    objects = sorted(
+        (obj for obj in bpy.context.scene.objects if BANNER_STUD_NAME.fullmatch(obj.name)),
+        key=lambda obj: obj.name,
+    )
+    if len(objects) != 10:
+        raise SystemExit(f"Banner stud LOD expected 10 objects, found {len(objects)}")
+    before = after = 0
+    for obj in objects:
+        if obj.type != "MESH" or obj.modifiers or len(obj.data.materials) != 1:
+            raise SystemExit(f"Unexpected banner stud mesh: {obj.name}")
+        old = obj.data
+        mat = old.materials[0]
+        if mat is None or (mat.use_nodes and any(n.type == "TEX_IMAGE" for n in mat.node_tree.nodes)):
+            raise SystemExit(f"UV mapped banner stud: {obj.name}")
+        lo = [min(v.co[i] for v in old.vertices) for i in range(3)]
+        hi = [max(v.co[i] for v in old.vertices) for i in range(3)]
+        if max(hi[i] - lo[i] for i in range(3)) > 0.04:
+            raise SystemExit(f"Unexpected banner stud bounds: {obj.name}")
+        before += sum(len(p.vertices)-2 for p in old.polygons)
+        bm = bmesh.new()
+        mesh = bpy.data.meshes.new(f"{obj.name}_runtime_lod")
+        try:
+            bmesh.ops.create_uvsphere(bm, u_segments=8, v_segments=4, radius=1.0)
+            bm.to_mesh(mesh)
+        finally:
+            bm.free()
+        for vertex in mesh.vertices:
+            for i in range(3):
+                vertex.co[i] = (lo[i]+hi[i])*0.5 + vertex.co[i]*(hi[i]-lo[i])*0.5
+        mesh.materials.append(mat)
+        for face in mesh.polygons:
+            face.use_smooth = True
+        mesh.update()
+        after += sum(len(p.vertices)-2 for p in mesh.polygons)
+        obj.data = mesh
+        if old.users == 0:
+            bpy.data.meshes.remove(old)
+    if before - after < 200:
+        raise SystemExit(f"Banner studs LOD saved too little: {before} -> {after}")
+    return {"objects": len(objects), "triangles_before": before, "triangles_after": after}
+
+
 def consolidate_static_architecture() -> tuple[int, int, int, int, int]:
     """Batch static HOME_ARCH_ and HOME_PROP_ meshes by material for draw-call efficiency.
 
@@ -832,6 +880,7 @@ def main() -> None:
     moon_detail_lod = simplify_tiny_moon_details()
     garden_crown_lod = simplify_distant_garden_crowns()
     garden_panel_lod = simplify_distant_garden_panels()
+    banner_studs_lod = simplify_banner_chief_studs()
     klaus_cushion_lod = simplify_klaus_cushion()
     (
         architecture_meshes_before,
@@ -916,6 +965,7 @@ def main() -> None:
         "moon_detail_lod": moon_detail_lod,
         "garden_crown_lod": garden_crown_lod,
         "garden_panel_lod": garden_panel_lod,
+        "banner_studs_lod": banner_studs_lod,
         "banner_medallion_lod": banner_medallion_lod,
         "chandelier_tube_lod": chandelier_tube_lod,
         "architecture_meshes_before": architecture_meshes_before,
