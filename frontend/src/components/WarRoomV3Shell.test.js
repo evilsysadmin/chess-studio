@@ -153,7 +153,7 @@ describe('War Room v3 side-wall torches', () => {
     const animations = root.children.map((anchor) => (
       anchor.children[0].getObjectByName('war-room-side-torch-flame-outer')
     ));
-    expect(animations.every((mesh) => mesh.isInstancedMesh === false)).toBe(true);
+    expect(animations.every((mesh) => !mesh.isInstancedMesh)).toBe(true);
     expect(new Set(animations.map((mesh) => mesh.material)).size).toBe(6);
     expect(new Set(animations.map((mesh) => mesh.onBeforeRender)).size).toBe(6);
     const halos = root.children.map((anchor) => (
