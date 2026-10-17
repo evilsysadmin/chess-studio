@@ -60,6 +60,8 @@ jobs:
         run: python3 -S scripts/r2_storage_governance.py self-test
       - name: Validate asset manifest
         run: python3 -S scripts/r2_asset_publish.py check-manifest
+      - name: Verify immutable War Room GLBs through public CDN
+        run: python3 -S scripts/r2_war_room_live_freeze.py public-verify
 
   reconcile:
     name: Reconcile · R2 assets
