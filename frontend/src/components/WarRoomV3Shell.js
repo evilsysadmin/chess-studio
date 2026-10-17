@@ -75,6 +75,9 @@ export const WAR_ROOM_V3_STATIC_TORCH_FAMILIES = Object.freeze([
   'war-room-side-torch-brazier-bowl',
   'war-room-side-torch-brazier-rim',
   'war-room-side-torch-embers',
+  // Six identical static additive wall glows; real-touch keeps per-sconce
+  // culling. Flame meshes remain unbatched to preserve per-flame flicker.
+  'war-room-side-torch-wall-halo',
 ]);
 
 function sameHardwareMaterial(a, b) {
@@ -129,6 +132,7 @@ export function batchWarRoomV3StaticTorchHardware(root, torches) {
     combined.userData.warRoomV3MergedTorchHardware = true;
     combined.castShadow = parts[0].castShadow;
     combined.receiveShadow = parts[0].receiveShadow;
+    combined.renderOrder = parts[0].renderOrder;
     let cursor = 0;
     for (const part of parts) {
       torchToRoot.multiplyMatrices(rootInverse, part.matrixWorld);
@@ -164,6 +168,7 @@ export function installWarRoomV3Torches(root, {
   const touchLightAnchors = coarsePointer ? selectWarRoomV3TouchTorchAnchors(anchors) : new Set();
   const lightProfile = coarsePointer ? WAR_ROOM_V3_TOUCH_TORCH_LIGHT : WAR_ROOM_V3_TORCH_LIGHT;
   const sharedStaticHardwareGeometries = new Map();
+  let hallHaloTexture = null;
   const torches = anchors.map((anchor, index) => {
     const torch = createWarRoomSideTorch({
       side: anchor.position.x < 0 ? -1 : 1,
@@ -173,7 +178,11 @@ export function installWarRoomV3Torches(root, {
       lightDistance: lightProfile.distance,
       batchStaticHardware: true,
       sharedStaticHardwareGeometries,
+      sharedHaloTexture: touchHardwareCulling ? null : hallHaloTexture,
     });
+    if (!touchHardwareCulling && !hallHaloTexture) {
+      hallHaloTexture = torch.getObjectByName('war-room-side-torch-wall-halo')?.material?.map || null;
+    }
     torch.userData.warRoomV3Torch = anchor.name;
     anchor.add(torch);
     return torch;
