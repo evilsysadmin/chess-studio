@@ -288,6 +288,18 @@ def main():
         destination_root.mkdir(parents=True, exist_ok=False)
         (destination_root / 'A').mkdir()
         (destination_root / 'B').mkdir()
+        # Persist provenance immediately so interrupted/failed sessions never
+        # masquerade as a completed comparison or become unattributed JSON.
+        session_metadata = {
+            'schema': 1, 'baseline': baseline, 'candidate': candidate,
+            'harness': harness, 'renderer': args.renderer, 'offload': args.offload,
+            'sequence': order, 'repetitions': args.repetitions,
+            'physicalAndroidVerified': False,
+            'metric': 'browser rAF cadence (not GPU frame time)',
+            'status': 'incomplete',
+        }
+        manifest = destination_root / 'session.json'
+        manifest.write_text(json.dumps(session_metadata, indent=2) + '\n', encoding='utf-8')
         print(f'==> Permanent benchmark results: {destination_root}', flush=True)
 
         with tempfile.TemporaryDirectory(prefix='chess-warroom-gpu-ab-') as tmp:
@@ -312,14 +324,9 @@ def main():
                      '--baseline-sha', baseline, '--candidate-sha', candidate,
                      '--renderer', args.renderer, '--min-runs', str(args.repetitions),
                      '--output', str(report_path)), cwd=root)
-                (destination_root / 'session.json').write_text(
-                    json.dumps({
-                        'schema': 1, 'baseline': baseline, 'candidate': candidate,
-                        'harness': harness, 'renderer': args.renderer, 'offload': args.offload,
-                        'sequence': order, 'repetitions': args.repetitions,
-                        'physicalAndroidVerified': False,
-                        'metric': 'browser rAF cadence (not GPU frame time)',
-                    }, indent=2) + '\n', encoding='utf-8',
+                session_metadata['status'] = 'complete'
+                manifest.write_text(
+                    json.dumps(session_metadata, indent=2) + '\n', encoding='utf-8',
                 )
                 print(f'==> A/B report complete: {report_path}', flush=True)
             finally:
