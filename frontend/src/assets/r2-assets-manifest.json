@@ -50,11 +50,11 @@
       "url": "https://assets.chess-studio.shadowops.dpdns.org/home/play/rook/play-rook-v1-3f49c19ffd8cb894.glb"
     },
     "home.scene.runtime": {
-      "bytes": 10339692,
+      "bytes": 10335672,
       "contentType": "model/gltf-binary",
-      "key": "home/scene/canonical/home-v2-runtime-3dd22b7e8d27dad1.glb",
-      "sha256": "3dd22b7e8d27dad1e422b21a3f438271392e0495d547735beb68c14b66b388ba",
-      "url": "https://assets.chess-studio.shadowops.dpdns.org/home/scene/canonical/home-v2-runtime-3dd22b7e8d27dad1.glb"
+      "key": "home/scene/canonical/home-v2-runtime-229e9ca690316fcf.glb",
+      "sha256": "229e9ca690316fcfb4203987fd828fe6740dcb542204c54c9fedfe36e4928469",
+      "url": "https://assets.chess-studio.shadowops.dpdns.org/home/scene/canonical/home-v2-runtime-229e9ca690316fcf.glb"
     },
     "home.tournament.trophy.runtime": {
       "bytes": 10128,
