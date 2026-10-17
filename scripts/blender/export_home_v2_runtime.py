@@ -802,6 +802,52 @@ def glb_json_document(path: Path) -> dict:
     return document
 
 
+def glb_geometry_budget(document: dict) -> dict:
+    """Actual glTF indexed triangles by material and named node, not FPS."""
+    accessors = document.get("accessors", [])
+    meshes = document.get("meshes", [])
+    materials = document.get("materials", [])
+    grouped = {}
+    node_totals = []
+    total = 0
+    for node in document.get("nodes", []):
+        mesh_index = node.get("mesh")
+        if not isinstance(mesh_index, int) or not 0 <= mesh_index < len(meshes):
+            continue
+        count = 0
+        for primitive in meshes[mesh_index].get("primitives", []):
+            if primitive.get("mode", 4) != 4:
+                raise SystemExit("Unexpected non-triangle GLB primitive")
+            accessor_index = primitive.get("indices")
+            if not isinstance(accessor_index, int) or not 0 <= accessor_index < len(accessors):
+                raise SystemExit("GLB primitive lacks indexed triangles")
+            indices = accessors[accessor_index]["count"]
+            if indices % 3:
+                raise SystemExit("Non-triangular GLB index count")
+            triangles = indices // 3
+            material_index = primitive.get("material")
+            material_name = (
+                materials[material_index].get("name", f"material_{material_index}")
+                if isinstance(material_index, int) and 0 <= material_index < len(materials)
+                else "(unassigned)"
+            )
+            grouped[material_name] = grouped.get(material_name, 0) + triangles
+            count += triangles
+        name = node.get("name", f"node_{mesh_index}")
+        node_totals.append({"name": name, "triangles": count})
+        total += count
+    if total <= 100_000:
+        raise SystemExit(f"Suspicious Home GLB triangle budget: {total}")
+    return {
+        "triangles": total,
+        "by_material": [
+            {"name": name, "triangles": count}
+            for name, count in sorted(grouped.items(), key=lambda item: (-item[1], item[0]))
+        ],
+        "top_nodes": sorted(node_totals, key=lambda item: (-item["triangles"], item["name"]))[:30],
+    }
+
+
 def glb_extensions_used(path: Path) -> set:
     return set(glb_json_document(path).get("extensionsUsed", []))
 
@@ -867,6 +913,7 @@ def main() -> None:
         raise SystemExit(f"Home runtime GLB missing or unexpectedly small: {glb_path}")
 
     glb_document = glb_json_document(glb_path)
+    geometry_budget = glb_geometry_budget(glb_document)
     meshopt = MESH_COMPRESSION_EXTENSION in glb_document.get("extensionsUsed", [])
     # A glTF mesh can contain several material primitives; a single Blender
     # mesh is therefore not necessarily one WebGL draw call. Count the actual
@@ -924,6 +971,7 @@ def main() -> None:
         "prop_meshes_after": prop_meshes_after,
         "mixed_static_batches": mixed_static_batches,
         "glb_meshes": len(glb_document.get("meshes", [])),
+        "geometry_budget": geometry_budget,
         "glb_primitives": primitive_count,
         "glb_primitive_instances": primitive_instances,
         "materials": len(bpy.data.materials),
