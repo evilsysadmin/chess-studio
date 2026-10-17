@@ -4,6 +4,7 @@ export function createHomeBlenderGpuTimer(gl, { enabled = false, software = fals
   const inactive = (status) => ({
     get status() { return status; },
     get lastMs() { return null; },
+    get completedSamples() { return 0; },
     begin: noop, end: noop, poll: () => null, dispose: noop,
   });
   if (!enabled) return inactive('disabled');
@@ -22,6 +23,7 @@ export function createHomeBlenderGpuTimer(gl, { enabled = false, software = fals
 
   let status = 'sampling';
   let lastMs = null;
+  let completedSamples = 0;
   let frame = 0;
   let active = null;
   let pending = null;
@@ -51,6 +53,9 @@ export function createHomeBlenderGpuTimer(gl, { enabled = false, software = fals
         return null;
       }
       lastMs = nanoseconds / 1_000_000;
+      // The last successful result remains readable while the next query is
+      // pending. Benchmark consumers need an identity to avoid counting it twice.
+      completedSamples += 1;
       status = 'ready';
       return lastMs;
     } catch {
@@ -64,6 +69,7 @@ export function createHomeBlenderGpuTimer(gl, { enabled = false, software = fals
   return {
     get status() { return status; },
     get lastMs() { return lastMs; },
+    get completedSamples() { return completedSamples; },
     poll,
     begin() {
       if (disposed || status === 'error') return;
@@ -142,4 +148,26 @@ export function homeBlenderGpuResourceCounts(renderer) {
     geometries: finite(memory?.geometries),
     programs: Array.isArray(renderer?.info?.programs) ? renderer.info.programs.length : null,
   };
+}
+
+/**
+ * Extract only distinct, successful asynchronous GPU timing results from
+ * diagnostic snapshots. A browser can publish the same last-result value
+ * for several seconds while a subsequent query is pending: repeating that
+ * value does not create another independent observation.
+ */
+export function homeBlenderDistinctGpuSamplesMs(snapshots) {
+  let lastAcceptedCount = 0;
+  const samples = [];
+  for (const snapshot of snapshots) {
+    const { gpuSampleCount, gpuStatus, gpuMs } = snapshot || {};
+    if (gpuStatus !== 'ready'
+      || !Number.isSafeInteger(gpuSampleCount)
+      || gpuSampleCount <= lastAcceptedCount
+      || !Number.isFinite(gpuMs)
+      || gpuMs < 0) continue;
+    lastAcceptedCount = gpuSampleCount;
+    samples.push(gpuMs);
+  }
+  return samples;
 }
