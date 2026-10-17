@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Synchronize and validate the committed Chronicles cross-runtime contracts.
 
-The Python backend owns the authored map manifests. Frontend JSON files are
-offline/fallback mirrors and Go embeds the same authored bytes. The two Python
+The Python backend owns the authored map manifests and Go embeds the same
+authored bytes (the frontend copy moved with Chronicles to its own repo). The two Python
 parity generators then pin the derived area envelopes and run/API behavior for
 Go.
 
@@ -19,8 +19,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 CANONICAL_MAPS = ROOT / "backend-python" / "chronicles_maps"
+# The frontend mirror left with Chronicles' move to its own repository.
 MIRROR_MAP_DIRS = (
-    ROOT / "frontend" / "src" / "chronicles" / "maps",
     ROOT / "backend-go" / "internal" / "chronicles" / "content" / "maps",
 )
 PARITY_GENERATORS = (
@@ -112,7 +112,7 @@ def main() -> int:
     mode = "OK" if args.check else "synced"
     print(
         f"chronicles-contracts {mode} · "
-        f"{len(json_files(CANONICAL_MAPS))} manifests × 3 + "
+        f"{len(json_files(CANONICAL_MAPS))} manifests × {1 + len(MIRROR_MAP_DIRS)} + "
         f"{len(PARITY_GENERATORS)} parity corpora"
     )
     return 0

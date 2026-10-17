@@ -28,7 +28,6 @@ class BrowserScope:
     matthias_insights: bool = False
     quick_2d: bool = False
     network_race: bool = False
-    chronicles: bool = False
     tournament_mobile: bool = False
     pawn_slug: bool = False
     chesscom: bool = False
@@ -42,7 +41,7 @@ class BrowserScope:
         # Broad Matthias already includes Home + War Room + Insights. Keep the
         # narrow specific bits false in the fail-closed aggregate to avoid
         # duplicating the same canaries.
-        return cls(True, True, True, True, True, False, False, True, True, True, True, True, True, True, True, True, True)
+        return cls(True, True, True, True, True, False, False, True, True, True, True, True, True, True, True, True)
 
 
 FRONTEND_TEST_RE = re.compile(r"^frontend/src/.*\.(?:test|spec)\.(?:js|jsx|ts|tsx)$")
@@ -135,19 +134,8 @@ MATTHIAS_INSIGHTS_PATTERNS = (
     "frontend/src/components/InsightsMatthiasMotion.jsx",
     "e2e/insights-matthias-motion.spec.js",
 )
-CHRONICLES_ART_ONLY_PATHS = frozenset({
-    "frontend/src/chroniclesFantasyEnemyArt.js",
-})
-
-CHRONICLES_PATTERNS = (
-    "frontend/src/chronicles/*",
-    "frontend/src/chronicles*.js",
-    "frontend/src/components/Chronicles*.jsx",
-    "frontend/src/components/Chronicles*.js",
-    "frontend/src/components/Chronicles*.css",
-    "e2e/chronicles-of-matthias.spec.js",
-    "e2e/chronicles-of-matthias-tactics.spec.js",
-)
+# Chronicles of Matthias moved to its own repository (the Lab links to it),
+# so there is no Chronicles browser lane here any more.
 TOURNAMENT_MOBILE_PATTERNS = (
     "frontend/src/components/TournamentScreen.jsx",
     "frontend/src/components/TournamentMobilePolish.css",
@@ -220,7 +208,6 @@ _SPECIALIZED_PATTERN_GROUPS = (
     MATTHIAS_PATTERNS,
     MATTHIAS_HOME_PATTERNS,
     MATTHIAS_INSIGHTS_PATTERNS,
-    CHRONICLES_PATTERNS,
     TOURNAMENT_MOBILE_PATTERNS,
     PAWN_SLUG_PATTERNS,
     CHESSCOM_PATTERNS,
@@ -268,16 +255,10 @@ def _matches(path: str, patterns: tuple[str, ...]) -> bool:
 
 
 def classify(paths: Iterable[str]) -> BrowserScope:
-    full_logic = special_states = visual = focus = matthias = matthias_home = matthias_insights = quick_2d = network_race = chronicles = tournament_mobile = pawn_slug = chesscom = trailblazer = matthias_priority = pvp_duel = pvp_lobby = False
+    full_logic = special_states = visual = focus = matthias = matthias_home = matthias_insights = quick_2d = network_race = tournament_mobile = pawn_slug = chesscom = trailblazer = matthias_priority = pvp_duel = pvp_lobby = False
 
     for path in _clean_paths(paths):
         if FRONTEND_TEST_RE.search(path):
-            continue
-
-        # Pure enemy-material tuning is already covered by the dedicated app
-        # visual artifact. Do not wake the unrelated long Tactics gameplay
-        # canary for a palette-only change.
-        if path in CHRONICLES_ART_ONLY_PATHS:
             continue
 
         if _matches(path, VISUAL_PATTERNS):
@@ -317,16 +298,13 @@ def classify(paths: Iterable[str]) -> BrowserScope:
         if _matches(path, TOURNAMENT_MOBILE_PATTERNS):
             tournament_mobile = True
 
-        if _matches(path, CHRONICLES_PATTERNS):
-            chronicles = True
-
         pawn_slug = pawn_slug or _matches(path, PAWN_SLUG_PATTERNS) or path in {LAB_SCREEN_PATH, LAB_LAUNCH_INTENT_PATH}
         chesscom = chesscom or _matches(path, CHESSCOM_PATTERNS) or path == LAB_SCREEN_PATH
         trailblazer = trailblazer or _matches(path, TRAILBLAZER_PATTERNS) or path == LAB_SCREEN_PATH
         matthias_priority = matthias_priority or _matches(path, MATTHIAS_PRIORITY_PATTERNS)
 
         if path in BROWSER_ACTION_PATHS:
-            full_logic = special_states = visual = focus = matthias = quick_2d = network_race = chronicles = tournament_mobile = True
+            full_logic = special_states = visual = focus = matthias = quick_2d = network_race = tournament_mobile = True
             pawn_slug = chesscom = trailblazer = matthias_priority = pvp_duel = pvp_lobby = True
             matthias_home = matthias_insights = False
 
@@ -345,7 +323,7 @@ def classify(paths: Iterable[str]) -> BrowserScope:
 
     return BrowserScope(
         full_logic, special_states, visual, focus, matthias, matthias_home, matthias_insights,
-        quick_2d, network_race, chronicles, tournament_mobile,
+        quick_2d, network_race, tournament_mobile,
         pawn_slug, chesscom, trailblazer, matthias_priority, pvp_duel, pvp_lobby,
     )
 
@@ -481,18 +459,6 @@ def build_matrix(scope: BrowserScope) -> dict[str, list[dict[str, str]]]:
                 "command": "./node_modules/.bin/playwright test home-pvp-roster-link.spec.js --grep \"retar a un rival es una acción directa\" --workers=1 --retries=0 --max-failures=1 --timeout=45000",
             }
         )
-    if scope.chronicles:
-        cases.append(
-            {
-                "id": "chronicles",
-                "label": "Chronicles · gameplay + WebGL canaries",
-                # Keep the required lane focused on renderer integration plus one real
-                # Tactics state transition. Progression, disclosure and responsive
-                # contracts remain in cheaper frontend/full-browser coverage; the
-                # required lane must still prove that Tactics can actually move.
-                "command": "./node_modules/.bin/playwright test chronicles-of-matthias.spec.js chronicles-of-matthias-tactics.spec.js --grep \"arranca como action RPG isométrico|abre una cripta Three\\.js real|arranca como RPG táctico isométrico\" --workers=1 --retries=0 --max-failures=1 --timeout=90000",
-            }
-        )
     for enabled, case in (
         (scope.pawn_slug, ("pawn-slug", "Pawn Slug · browser", "pawn-slug.spec.js")),
         (scope.chesscom, ("chesscom", "Chesscom · browser", "chesscom.spec.js")),
@@ -605,7 +571,6 @@ def render_summary(scope: BrowserScope) -> str:
             f"- Game network races: `{yn(scope.network_race)}`",
             f"- PvP Duel Room authoritative flow: `{yn(scope.pvp_duel)}`",
             f"- PvP Duel Hall direct challenge flow: `{yn(scope.pvp_lobby)}`",
-            f"- Chronicles dungeon: `{yn(scope.chronicles)}`",
             "- Estas lanes forman parte del check requerido Tests · Playwright.",
             "",
         ]
@@ -623,13 +588,11 @@ def _job_ids(scope: BrowserScope) -> list[str]:
 def self_test() -> None:
     assert classify([]) == BrowserScope()
     assert _job_ids(BrowserScope()) == []
-    assert "e2e/chronicles-of-matthias-tactics.spec.js" in SPECIALIZED_E2E_SPEC_PATHS
     assert "e2e/mobile-tournament-ux.spec.js" in SPECIALIZED_E2E_SPEC_PATHS
     assert "e2e/war-room-pvp.spec.js" in SPECIALIZED_E2E_SPEC_PATHS
     assert output_lines(BrowserScope())[1] == "has_cases=false"
     assert "mobile-golden-path-war-room-invariants.spec.js" in MOBILE_GOLDEN_PATH_CASE["command"]
     assert "mobile-golden-path-priority.spec.js" in MOBILE_GOLDEN_PATH_CASE["command"]
-    assert classify(["frontend/src/chroniclesFantasyEnemyArt.js"]) == BrowserScope()
     assert classify(["frontend/src/components/WarRoomPracticalLighting.js"]) == BrowserScope(visual=True)
     assert classify(["frontend/src/components/WarRoomApprovedMockContract.js"]) == BrowserScope(visual=True)
     assert classify(["frontend/src/components/WarRoomCommandDeskLuxury.js"]) == BrowserScope(visual=True)
@@ -713,20 +676,8 @@ def self_test() -> None:
     pvp_lobby_case = build_matrix(BrowserScope(pvp_lobby=True))["include"][0]
     assert "retar a un rival es una acción directa" in pvp_lobby_case["command"]
     assert "war-room-pvp.spec.js" not in pvp_lobby_case["command"]
-    for chronicles_path in (
-        "frontend/src/chronicles/chroniclesMapCatalog.js",
-        "frontend/src/chronicles/chroniclesContentRuntime.js",
-        "frontend/src/chronicles/maps/crypt-eight-squares.json",
-        "frontend/src/chroniclesOfMatthias.js",
-        "frontend/src/chroniclesOfMatthiasDungeonArt.js",
-        "frontend/src/chroniclesPartyFootprint.js",
-        "frontend/src/chroniclesEnemyMotionArt.js",
-        "frontend/src/components/ChroniclesOfMatthias.jsx",
-        "frontend/src/components/ChroniclesOfMatthias.css",
-        "e2e/chronicles-of-matthias.spec.js",
-        "e2e/chronicles-of-matthias-tactics.spec.js",
-    ):
-        assert _ids(classify([chronicles_path])) == ["chronicles"]
+    # Chronicles left for its own repository: its old paths wake no lane.
+    assert _ids(classify(["e2e/chronicles-of-matthias.spec.js"])) == []
 
     assert all(
         "--max-failures=1" in case["command"] or case["id"] == "mobile-golden-path"
@@ -734,16 +685,10 @@ def self_test() -> None:
     )
     mobile_golden = next(case for case in build_matrix(full)["include"] if case["id"] == "mobile-golden-path")
     assert "--max-failures=1" not in mobile_golden["command"]
-    chronicles_case = build_matrix(BrowserScope(chronicles=True))["include"][0]
-    assert "chronicles-of-matthias.spec.js" in chronicles_case["command"]
-    assert "chronicles-of-matthias-tactics.spec.js" in chronicles_case["command"]
-    assert "arranca como action RPG isométrico" in chronicles_case["command"]
-    assert "abre una cripta Three\\.js real" in chronicles_case["command"]
-    assert "arranca como RPG táctico isométrico" in chronicles_case["command"]
 
     all_scope = classify([".github/actions/setup-browser-e2e/action.yml"])
     assert all_scope == BrowserScope.all()
-    assert len(_ids(all_scope)) == 20
+    assert len(_ids(all_scope)) == 19
     assert "hans-fire-call" not in _ids(all_scope)
 
     harness = classify([CICD_WORKFLOW])
@@ -785,7 +730,6 @@ def self_test() -> None:
     assert "Tournament mobile UX: `true`" in render_summary(BrowserScope(tournament_mobile=True))
     assert "Game network races: `true`" in render_summary(BrowserScope(network_race=True))
     assert "PvP Duel Room authoritative flow: `true`" in render_summary(BrowserScope(pvp_duel=True))
-    assert "Chronicles dungeon: `true`" in render_summary(BrowserScope(chronicles=True))
 
     try:
         classify(["../outside"])

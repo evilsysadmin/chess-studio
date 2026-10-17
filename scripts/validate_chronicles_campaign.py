@@ -80,11 +80,9 @@ def validate():
             assert set(rule["of"]) <= known_events and 0 < rule["count"] <= len(rule["of"])
     for q in side:
         assert q["at"] in maps and q["eventId"] in known_events
-    # The playable prologue is canonical in Python content; keep the frontend
-    # runtime copy byte-identical and its event IDs anchored to Act I.
+    # The playable prologue is canonical in Python content; keep its event
+    # IDs anchored to Act I.
     intro = load("quests/intro.json")
-    mirror = ROOT.parents[1] / "frontend/src/chronicles/campaign/intro.json"
-    assert (ROOT / "quests/intro.json").read_bytes() == mirror.read_bytes()
     first = main["acts"][0]
     assert intro["schemaVersion"] == 1 and intro["campaignId"] == world["campaignId"]
     assert intro["actId"] == first["id"]
