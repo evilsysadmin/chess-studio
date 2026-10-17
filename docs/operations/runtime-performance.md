@@ -156,3 +156,70 @@ Cada SHA produce tres JSON en `.artifacts/war-room-gpu-benchmark/`: escritorio 1
 Repetir cada revisión en el mismo host en órdenes alternos A/B/B/A (varias repeticiones); comparar distribuciones y no un único p95 ruidoso. No lanzar varios navegadores o renders en paralelo. Comprobar con GPU profiler/EXT timer query independientes cualquier hipótesis de saturación real. **El modo touch emulado en GPU de escritorio no acredita Android físico**: probar también un móvil real con navegador, rotación y fluidez durante varias jugadas antes de considerar cerrado el coste móvil.
 
 No fusionar una nueva optimización de luces, materiales o GLB basándose exclusivamente en un JSON de este benchmark; conservar captura visual, comparación de triángulos/draw calls y paridad de jugabilidad. La issue #5765 permanece abierta hasta tener medidas repetidas sobre hardware.
+
+
+### Repeticiones A/B/B/A sin sobrescribir JSON (#5765)
+
+Desde la versión 2 del informe, cada invocación lleva un `runId` UUID único y escribe
+`SHA-renderer-perfil-runId.json`. No se pierden las muestras al repetir;
+`capturedAtUtc` señala cuándo se capturó cada perfil. El comparador
+`scripts/compare_war_room_gpu.py` se comprueba con
+`python3 -S scripts/compare_war_room_gpu.py --self-test` (también en CI).
+
+**Importante:** las revisiones anteriores a la introducción del benchmark
+NO contienen el script. Para compararlas con honestidad, utilizar **exactamente
+el mismo script y la misma configuración de Playwright** provenientes de un
+único SHA moderno; copiar *solo el harness de test* a dos worktrees separados,
+sin alterar sus bundles de producción ni sus assets:
+
+```bash
+ROOT="$(git rev-parse --show-toplevel)"
+HARNESS_SHA="$(git -C "$ROOT" rev-parse HEAD)"
+BASE_SHA="1278a5d1a8b9e82e193cb002374b261f1908d298"  # Antes de #5763
+NEXT_SHA="39980d211ff1b5864baec52ced0035648e8bdd0d"  # Después de #5763
+A="$ROOT/../warroom-gpu-A"
+B="$ROOT/../warroom-gpu-B"
+git -C "$ROOT" worktree add --detach "$A" "$BASE_SHA"
+git -C "$ROOT" worktree add --detach "$B" "$NEXT_SHA"
+for tree in "$A" "$B"; do
+  git -C "$ROOT" show "$HARNESS_SHA:e2e/war-room-gpu-benchmark.spec.js" > "$tree/e2e/war-room-gpu-benchmark.spec.js"
+  git -C "$ROOT" show "$HARNESS_SHA:e2e/playwright.config.js" > "$tree/e2e/playwright.config.js"
+  npm --prefix "$tree/frontend" ci
+  npm --prefix "$tree/frontend" run build
+  npm --prefix "$tree/e2e" ci
+done
+
+bench() {
+  ( cd "$1/e2e" &&
+    WAR_ROOM_GPU_BENCH=1 \
+    WAR_ROOM_GPU_BENCH_RENDERER=hardware \
+    WAR_ROOM_GPU_BENCH_SHA="$(git -C "$1" rev-parse HEAD)" \
+    __NV_PRIME_RENDER_OFFLOAD=1 __GLX_VENDOR_LIBRARY_NAME=nvidia \
+    ./node_modules/.bin/playwright test war-room-gpu-benchmark.spec.js \
+      --config=playwright.config.js --project=chromium --workers=1 )
+}
+bench "$A"; bench "$B"; bench "$B"; bench "$A"
+
+python3 -S "$ROOT/scripts/compare_war_room_gpu.py" \
+  --baseline-dir "$A/.artifacts/war-room-gpu-benchmark" \
+  --candidate-dir "$B/.artifacts/war-room-gpu-benchmark" \
+  --baseline-sha "$BASE_SHA" --candidate-sha "$NEXT_SHA" \
+  --output "$ROOT/war-room-gpu-ab.md"
+```
+
+Para AMD/Intel usar las variables de offload apropiadas (p. ej.
+`DRI_PRIME=1`) en lugar de las de NVIDIA. No ejecutar dos instancias
+simultáneas ni dejar un servidor ajeno en `127.0.0.1:4173` (ahora el
+harness rechaza reutilizarlo). Conservar siempre el mismo browser, flags,
+GPU/driver, viewport, carga de fondo y GLB real. Comprobar que cada worktree
+es realmente el SHA indicado; el `HARNESS_SHA` debe contener el schema 2.
+
+El comparador **falla cerrado** si faltan perfiles, quedan menos de dos
+runs independientes por SHA/perfil, algún JSON está corrupto, una muestra
+no tiene dos visitas/frames suficientes, cambia el renderer, no coinciden
+los viewports o se mezclan datos de GPU/software. Por defecto solo compara
+hardware. `--renderer software` produce un diagnóstico de **software**,
+nunca evidencia de FPS GPU. El Markdown enseña medianas de los p95 rAF
+de cada visita, confirmación end-to-end y draw calls/triángulos sin afirmar
+significancia estadística. **El hardware móvil real sigue siendo una
+validación separada**.
