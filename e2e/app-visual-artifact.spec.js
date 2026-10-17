@@ -168,6 +168,14 @@ async function captureHealth(page, label) {
       animatedDrawnFps:numericSceneStat('homeBlenderDrawnFps'),
       animatedDrawCalls:numericSceneStat('homeBlenderDrawCalls'),
       animatedTriangles:numericSceneStat('homeBlenderTriangles'),
+      // Three GPU allocations are counts, not estimated VRAM megabytes.
+      gpuTextures:numericSceneStat('homeBlenderGpuTextures'),
+      gpuGeometries:numericSceneStat('homeBlenderGpuGeometries'),
+      gpuPrograms:numericSceneStat('homeBlenderGpuPrograms'),
+      renderCpuP95Ms:numericSceneStat('homeBlenderCpuP95Ms'),
+      naturalVsyncP95Ms:numericSceneStat('homeBlenderVsyncP95Ms'),
+      gpuTimerStatus:castle3d.dataset.homeBlenderGpuStatus ?? null,
+      gpuTimerMs:numericSceneStat('homeBlenderGpuMs'),
     } : null;
     const matthiasNode = document.querySelector('.illustrated-home__matthias');
     const matthiasRect = matthiasNode?.getBoundingClientRect();
@@ -426,6 +434,10 @@ test('App · captura visual canónica desktop + Android normal/desktop-site', as
       expect(capture.castle3dDiagnostics?.blenderRuntime, `${capture.label}: Blender runtime ready`).toBe('ready');
       expect(capture.castle3dDiagnostics?.firstFrameDrawCalls, `${capture.label}: first frame actually draws geometry`).toBeGreaterThan(0);
       expect(capture.castle3dDiagnostics?.firstFrameTriangles, `${capture.label}: first frame has actual triangles`).toBeGreaterThan(0);
+      expect(capture.castle3dDiagnostics?.gpuTextures, `${capture.label}: actual GPU texture allocations`).toBeGreaterThan(0);
+      expect(capture.castle3dDiagnostics?.gpuGeometries, `${capture.label}: actual GPU geometry allocations`).toBeGreaterThan(0);
+      expect(capture.castle3dDiagnostics?.gpuTimerStatus, `${capture.label}: default profiling remains off`).toBe('disabled');
+      expect(capture.castle3dDiagnostics?.gpuTimerMs, `${capture.label}: no fabricated GPU milliseconds from SwiftShader`).toBe(null);
       expect(capture.castle3dDiagnostics?.framebufferWidth, `${capture.label}: backing canvas allocated`).toBeGreaterThan(0);
       expect(capture.castle3dDiagnostics?.framebufferHeight, `${capture.label}: backing canvas allocated`).toBeGreaterThan(0);
     }
