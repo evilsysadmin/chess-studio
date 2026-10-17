@@ -682,32 +682,33 @@ def simplify_banner_chief_studs() -> dict:
         if obj.type != "MESH" or obj.modifiers or len(obj.data.materials) != 1:
             raise SystemExit(f"Unexpected banner stud mesh: {obj.name}")
         old = obj.data
-        mat = old.materials[0]
-        if mat is None or (mat.use_nodes and any(n.type == "TEX_IMAGE" for n in mat.node_tree.nodes)):
-            raise SystemExit(f"UV mapped banner stud: {obj.name}")
-        lo = [min(v.co[i] for v in old.vertices) for i in range(3)]
-        hi = [max(v.co[i] for v in old.vertices) for i in range(3)]
-        if max(hi[i] - lo[i] for i in range(3)) > 0.04:
+        if old.materials[0] is None:
+            raise SystemExit(f"Banner stud without material: {obj.name}")
+        bounds = [(min(v.co[i] for v in old.vertices), max(v.co[i] for v in old.vertices)) for i in range(3)]
+        if max(b - a for a, b in bounds) > 0.04:
             raise SystemExit(f"Unexpected banner stud bounds: {obj.name}")
-        before += sum(len(p.vertices)-2 for p in old.polygons)
-        bm = bmesh.new()
-        mesh = bpy.data.meshes.new(f"{obj.name}_runtime_lod")
-        try:
-            bmesh.ops.create_uvsphere(bm, u_segments=8, v_segments=4, radius=1.0)
-            bm.to_mesh(mesh)
-        finally:
-            bm.free()
-        for vertex in mesh.vertices:
-            for i in range(3):
-                vertex.co[i] = (lo[i]+hi[i])*0.5 + vertex.co[i]*(hi[i]-lo[i])*0.5
-        mesh.materials.append(mat)
+        before += sum(len(p.vertices) - 2 for p in old.polygons)
+        # Collapse the *existing* textured mesh rather than replacing it
+        # with a UV-less sphere. Blender retains per-loop UV layers.
+        decimate = obj.modifiers.new("Runtime banner stud LOD", "DECIMATE")
+        decimate.decimate_type = "COLLAPSE"
+        decimate.ratio = 0.55
+        bpy.ops.object.select_all(action="DESELECT")
+        obj.select_set(True)
+        bpy.context.view_layer.objects.active = obj
+        bpy.ops.object.modifier_apply(modifier=decimate.name)
+        obj.select_set(False)
+        mesh = obj.data
+        if len(mesh.uv_layers) < len(old.uv_layers):
+            raise SystemExit(f"Banner stud lost UVs: {obj.name}")
+        after += sum(len(p.vertices) - 2 for p in mesh.polygons)
+        for axis, (lo, hi) in enumerate(bounds):
+            new_lo = min(v.co[axis] for v in mesh.vertices)
+            new_hi = max(v.co[axis] for v in mesh.vertices)
+            if abs(lo - new_lo) > 0.003 or abs(hi - new_hi) > 0.003:
+                raise SystemExit(f"Banner stud LOD moved bounds: {obj.name}")
         for face in mesh.polygons:
             face.use_smooth = True
-        mesh.update()
-        after += sum(len(p.vertices)-2 for p in mesh.polygons)
-        obj.data = mesh
-        if old.users == 0:
-            bpy.data.meshes.remove(old)
     if before - after < 200:
         raise SystemExit(f"Banner studs LOD saved too little: {before} -> {after}")
     return {"objects": len(objects), "triangles_before": before, "triangles_after": after}
