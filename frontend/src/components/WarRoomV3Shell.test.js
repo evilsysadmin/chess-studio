@@ -196,9 +196,24 @@ describe('War Room v3 side-wall torches', () => {
     secondRelease();
   });
 
+  it('still merges static hardware for a lite software-rendered desktop', () => {
+    const root = build();
+    const release = installWarRoomV3Torches(root, {
+      coarsePointer: true, touchHardwareCulling: false,
+    });
+    expect(root.userData.warRoomV3StaticTorchBatches).toBe(11);
+    expect(root.userData.warRoomV3TouchTorchLights).toBe(2);
+    const hardware = root.children.filter((node) => node.userData.warRoomV3MergedTorchHardware);
+    expect(hardware).toHaveLength(11);
+    // Render-lite and real touch are independent: the real touch path below
+    // retains per-torch culling; the desktop can still consolidate draws.
+    release();
+    expect(root.children).toHaveLength(6);
+  });
+
   it('keeps every flame but only one real torch light per side wall on touch devices', () => {
     const root = build();
-    const release = installWarRoomV3Torches(root, { coarsePointer: true });
+    const release = installWarRoomV3Torches(root, { coarsePointer: true, touchHardwareCulling: true });
     expect(root.getObjectByName('war-room-side-torch-flame-outer')).toBeTruthy();
     expect(lights(root)).toBe(WAR_ROOM_V3_TOUCH_TORCH_LIGHT.maxLights);
     expect(root.userData.warRoomV3TouchTorchLights).toBe(2);
