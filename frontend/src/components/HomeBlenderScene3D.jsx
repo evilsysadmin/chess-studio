@@ -4,6 +4,11 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { loadHomeCastleR2Scene } from './HomeCastle3DR2Asset.js';
+import {
+  createHomeBlenderGpuTimer,
+  createHomeBlenderFrameSamples,
+  homeBlenderGpuResourceCounts,
+} from './HomeBlenderPerformanceDiagnostics.js';
 import { FIRE_SPRITE_DEFAULTS, createFireSprites, createSteamSprites, disposeFireSprites, fireSpriteSeeds } from './fireSprites.js';
 import { getEffectiveReducedMotion } from '../userPreferences.js';
 import { threeSurfaceShouldRender } from '../threeRenderPolicy.js';
@@ -1795,6 +1800,12 @@ export default function HomeBlenderScene3D({
     markStartup('webgl-renderer-identified');
     const softwareRenderer = homeBlenderIsSoftwareRenderer(rendererName);
     canvas.dataset.homeBlenderSoftware = softwareRenderer ? 'true' : 'false';
+    // Explicit opt-in, never run timer queries on SwiftShader or in ordinary sessions.
+    const gpuTimer = createHomeBlenderGpuTimer(gl, {
+      enabled: new URLSearchParams(window.location.search).get('homeGpuProfile') === '1',
+      software: softwareRenderer,
+    });
+    canvas.dataset.homeBlenderGpuStatus = gpuTimer.status;
     canvas.dataset.homeBlenderPhase = 'renderer-created';
     markStartup('renderer-created');
     glContextRef.current = gl;
@@ -1834,11 +1845,28 @@ export default function HomeBlenderScene3D({
       80,
     );
 
+    const frameSamples = createHomeBlenderFrameSamples();
+    const publishResourceCounts = () => {
+      const resources = homeBlenderGpuResourceCounts(renderer);
+      for (const [key, count] of [
+        ['homeBlenderGpuTextures', resources.textures],
+        ['homeBlenderGpuGeometries', resources.geometries],
+        ['homeBlenderGpuPrograms', resources.programs],
+      ]) {
+        if (count !== null && canvas.dataset[key] !== String(count)) canvas.dataset[key] = String(count);
+      }
+    };
     const renderFrame = () => {
       if (disposed || !model) return;
       camera.position.set(CAMERA_BASE.x, CAMERA_BASE.y, CAMERA_BASE.z);
       camera.lookAt(CAMERA_TARGET.x, CAMERA_TARGET.y, CAMERA_TARGET.z);
-      renderer.render(scene, camera);
+      gpuTimer.begin();
+      try {
+        renderer.render(scene, camera);
+      } finally {
+        gpuTimer.end();
+        gpuTimer.poll();
+      }
     };
 
     const requestRender = () => {
@@ -1900,6 +1928,7 @@ export default function HomeBlenderScene3D({
           fireRafCount += 1;
           if (fireRafCount > HOME_BLENDER_FIRE_WARMUP_FRAMES) {
             fireFrameGapMs = fireFrameGapMs ? fireFrameGapMs * 0.9 + gap * 0.1 : gap;
+            frameSamples.addVsyncGap(gap);
           }
         }
       }
@@ -1935,6 +1964,7 @@ export default function HomeBlenderScene3D({
         const startedAt = performance.now();
         renderFrame();
         const cost = performance.now() - startedAt;
+        frameSamples.addCpu(cost);
         fireRenderCostMs = fireSamples === 0 ? cost : fireRenderCostMs * 0.8 + cost * 0.2;
         fireSamples += 1;
         const plan = homeBlenderFireFramePlan({
@@ -1955,6 +1985,17 @@ export default function HomeBlenderScene3D({
           canvas.dataset.homeFireGapMs = fireFrameGapMs.toFixed(1);
           canvas.dataset.homeFireIntervalMs = fireIntervalMs.toFixed(1);
           canvas.dataset.homeBlenderDrawnFps = (frameTelemetryDraws * 1000 / elapsedMs).toFixed(1);
+          const frameStats = frameSamples.snapshot();
+          if (frameStats.cpuP95Ms !== null) canvas.dataset.homeBlenderCpuP95Ms = frameStats.cpuP95Ms.toFixed(2);
+          if (frameStats.vsyncP95Ms !== null) canvas.dataset.homeBlenderVsyncP95Ms = frameStats.vsyncP95Ms.toFixed(2);
+          // Real GPU timer queries are opt-in and asynchronously resolved, never inferred from CPU time.
+          canvas.dataset.homeBlenderGpuStatus = gpuTimer.status;
+          if (gpuTimer.status === 'ready' && gpuTimer.lastMs !== null) {
+            canvas.dataset.homeBlenderGpuMs = gpuTimer.lastMs.toFixed(2);
+          } else {
+            delete canvas.dataset.homeBlenderGpuMs;
+          }
+          publishResourceCounts();
           if (Number.isFinite(renderer.info?.render?.calls)) {
             canvas.dataset.homeBlenderDrawCalls = String(renderer.info.render.calls);
           }
@@ -2219,6 +2260,7 @@ export default function HomeBlenderScene3D({
       if (Number.isFinite(firstFrameInfo?.triangles)) {
         canvas.dataset.homeBlenderFirstFrameTriangles = String(firstFrameInfo.triangles);
       }
+      publishResourceCounts();
       markStartup('first-frame-end');
       canvas.dataset.homeBlenderPhase = 'ready';
       canvas.dataset.homeBlenderRuntime = 'ready';
@@ -2230,6 +2272,9 @@ export default function HomeBlenderScene3D({
 
     const onContextLost = (event) => {
       event.preventDefault();
+      gpuTimer.dispose();
+      canvas.dataset.homeBlenderGpuStatus = 'context-lost';
+      delete canvas.dataset.homeBlenderGpuMs;
       canvas.classList.remove('is-ready');
       canvas.dataset.homeBlenderRuntime = 'recovering';
       stopFireAnimation();
@@ -2313,6 +2358,7 @@ export default function HomeBlenderScene3D({
       }
       runtimeLights.disposeGlows?.();
       releaseEnvironment();
+      gpuTimer.dispose();
       renderer.dispose();
     };
   }, [ambient, contextGeneration, onUnavailable]);
