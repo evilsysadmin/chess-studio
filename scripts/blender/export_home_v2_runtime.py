@@ -281,6 +281,44 @@ def simplify_klaus_paws() -> dict:
     return {"objects": 3, "triangles_before": before, "triangles_after": after}
 
 
+# Klaus's flattened velvet cushion is mostly concealed by the cat.
+# Runtime-only tessellation reduction; piping, seams, tassels, cat and
+# authored Blender review scene remain untouched.
+def simplify_klaus_cushion() -> dict:
+    obj = bpy.context.scene.objects.get("HOME_PROP_cat_cushion")
+    if obj is None or obj.type != "MESH" or obj.modifiers:
+        raise SystemExit("Klaus cushion changed or missing")
+    original = obj.data
+    if len(original.materials) != 1 or original.materials[0] is None:
+        raise SystemExit("Unexpected Klaus cushion material")
+    before = sum(len(p.vertices) - 2 for p in original.polygons)
+    if not 1700 <= before <= 2100:
+        raise SystemExit(f"Unexpected Klaus cushion topology: {before}")
+    lo = [min(v.co[i] for v in original.vertices) for i in range(3)]
+    hi = [max(v.co[i] for v in original.vertices) for i in range(3)]
+    bm = bmesh.new()
+    replacement = bpy.data.meshes.new("HOME_PROP_cat_cushion_runtime_lod")
+    try:
+        bmesh.ops.create_uvsphere(bm, u_segments=32, v_segments=16, radius=1.0)
+        bm.to_mesh(replacement)
+    finally:
+        bm.free()
+    for vertex in replacement.vertices:
+        for i in range(3):
+            vertex.co[i] = (lo[i] + hi[i]) * 0.5 + vertex.co[i] * (hi[i] - lo[i]) * 0.5
+    replacement.materials.append(original.materials[0])
+    for polygon in replacement.polygons:
+        polygon.use_smooth = True
+    replacement.update()
+    after = sum(len(p.vertices) - 2 for p in replacement.polygons)
+    if before - after < 500:
+        raise SystemExit(f"Klaus cushion did not save enough triangles: {before} -> {after}")
+    obj.data = replacement
+    if original.users == 0:
+        bpy.data.meshes.remove(original)
+    return {"objects": 1, "triangles_before": before, "triangles_after": after}
+
+
 def consolidate_klaus() -> int:
     """Join Klaus into one node (plus the landmarks); returns the parts joined."""
     parts = [
@@ -804,6 +842,7 @@ def main() -> None:
     klaus_tail_lod = simplify_klaus_tail_tip()
     klaus_undercoat_lod = simplify_klaus_undercoat()
     klaus_paw_lod = simplify_klaus_paws()
+    klaus_cushion_lod = simplify_klaus_cushion()
     klaus_parts = consolidate_klaus()
     mesh_count = select_runtime_geometry()
     if mesh_count < 80:
@@ -873,6 +912,7 @@ def main() -> None:
         "klaus_tail_lod": klaus_tail_lod,
         "klaus_undercoat_lod": klaus_undercoat_lod,
         "klaus_paw_lod": klaus_paw_lod,
+        "klaus_cushion_lod": klaus_cushion_lod,
         "moon_detail_lod": moon_detail_lod,
         "garden_crown_lod": garden_crown_lod,
         "garden_panel_lod": garden_panel_lod,
