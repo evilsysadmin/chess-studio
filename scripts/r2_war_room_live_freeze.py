@@ -95,7 +95,9 @@ def verify_bytes(room: Room, data: bytes) -> None:
         raise ValueError(f"{room.variant}: se perdió compresión Meshopt")
 
 
-def public_readback(room: Room, data: bytes, domain: str) -> None:
+def fetch_public_immutable(room: Room, domain: str) -> bytes:
+    """Fetch the new immutable URL through the actual public CDN, no R2 token."""
+
     url = f"https://{domain}/{room.immutable_key}?verify={room.sha256[:16]}"
     request = urllib.request.Request(url, headers={"Cache-Control": "no-cache",
                                                     "User-Agent": "chess-studio-warroom-freeze/1"})
@@ -106,6 +108,11 @@ def public_readback(room: Room, data: bytes, domain: str) -> None:
             published = response.read()
     except (urllib.error.URLError, TimeoutError) as exc:
         raise RuntimeError(f"{room.variant}: immutable no legible públicamente: {exc}") from exc
+    return published
+
+
+def public_readback(room: Room, data: bytes, domain: str) -> None:
+    published = fetch_public_immutable(room, domain)
     if published != data:
         raise ValueError(f"{room.variant}: R2 público no devuelve bytes idénticos")
 
@@ -148,15 +155,30 @@ def self_test() -> None:
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("command", choices=("self-test", "publish", "verify"))
+    parser.add_argument("command", choices=("self-test", "publish", "verify", "public-verify"))
     args = parser.parse_args()
     if args.command == "self-test":
         self_test()
         return 0
 
+    config = core.load_config(core.DEFAULT_CONFIG)
+    if args.command == "public-verify":
+        # No credentials required on a PR. Fail closed unless BOTH exact
+        # versioned objects are publicly readable, byte-true, Meshopt-compressed
+        # and preserve every critical authored Hans node.
+        for room in ROOMS:
+            actual = fetch_public_immutable(room, config["customDomain"])
+            verify_bytes(room, actual)
+            print(json.dumps({
+                "publicVerified": True, "variant": room.variant,
+                "url": f'https://{config["customDomain"]}/{room.immutable_key}',
+                "sha256": room.sha256, "bytes": room.size,
+                "hansAnchorsVerified": True,
+            }, sort_keys=True))
+        return 0
+
     # No other source of truth: read authenticated R2 aliases, not stale CDN
     # responses or a fresh Blender build with possibly different output.
-    config = core.load_config(core.DEFAULT_CONFIG)
     token, account_id = core.require_env()
     bucket = config["bucket"]
     source = {}
