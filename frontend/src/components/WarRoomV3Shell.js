@@ -187,11 +187,25 @@ export function installWarRoomV3Torches(root, {
     anchor.add(torch);
     return torch;
   });
-  // Rendering-lite is not evidence of a touch device. Desktop SwiftShader
-  // still batches; actual touch devices retain separate per-torch culling.
-  const { merged, detached } = touchHardwareCulling
-    ? { merged: [], detached: [] }
-    : batchWarRoomV3StaticTorchHardware(root, torches);
+  // Render-lite is not evidence of touch. Desktop still batches the whole
+  // hall; actual touch groups immutable metal only by *wall*. This retains
+  // independent left/right frustum culling rather than putting all six
+  // sconces into one room-spanning bounding sphere. Animated flames, wall
+  // halos and their touch textures remain per-sconce.
+  const batches = touchHardwareCulling
+    ? [
+      ['left', torches.filter((torch) => torch.parent?.position.x < 0)],
+      ['right', torches.filter((torch) => torch.parent?.position.x >= 0)],
+    ]
+    : [['hall', torches]];
+  const merged = [];
+  const detached = [];
+  for (const [zone, members] of batches) {
+    const batch = batchWarRoomV3StaticTorchHardware(root, members);
+    batch.merged.forEach((mesh) => { mesh.userData.warRoomV3TorchZone = zone; });
+    merged.push(...batch.merged);
+    detached.push(...batch.detached);
+  }
   if (root?.userData) {
     root.userData.warRoomV3StaticTorchBatches = merged.length;
     root.userData.warRoomV3Torches = torches.length;
