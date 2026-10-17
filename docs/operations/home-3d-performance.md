@@ -18,10 +18,11 @@ On a ready Home canvas, inspect `document.querySelector('.illustrated-home__cast
 | `homeBlenderDrawnFps` | **Scheduled** animated scene draws/sec; **not** physical monitor FPS |
 | `homeBlenderGpuStatus` | `disabled`, `software`, `unsupported`, `sampling`, `ready`, `disjoint` or `error` |
 | `homeBlenderGpuMs` | Last async elapsed WebGL GPU-timer sample in milliseconds; **only** with status `ready` |
+| `homeBlenderGpuSampleCount` | Monotonic number of **valid completed GPU queries**, used to distinguish newly measured values from a still-published previous result |
 
 ## Opt-in GPU timer (physical device)
 
-Open the Home with `?homeGpuProfile=1` on a capable non-software WebGL2 browser. The profiler samples at most one `EXT_disjoint_timer_query_webgl2` elapsed query per 30 **rendered** frames, without `gl.finish` or blocking for the result. Queries cover `renderer.render(scene, camera)`, including any shadow-map work within that invocation. Do **not** claim that these values include browser layout, JavaScript animation updates or final screen composition.
+Open the Home with `?homeGpuProfile=1` on a capable non-software WebGL2 browser. The profiler samples at most one `EXT_disjoint_timer_query_webgl2` elapsed query per 30 **rendered** frames, without `gl.finish` or blocking for the result. Its most recent value can remain unchanged between query completions; use `homeBlenderGpuSampleCount` to avoid counting repeated reads of that same result as fresh samples. Queries cover `renderer.render(scene, camera)`, including any shadow-map work within that invocation. Do **not** claim that these values include browser layout, JavaScript animation updates or final screen composition.
 
 Sample after initial shader compilation/asset loading. Reduced-motion or offscreen paused scenes may not render enough frames to produce any GPU sample. `unsupported`, `disjoint`, `software` and `error` mean **no valid hardware GPU measurement**. Queries are disposed when the Home unmounts or its WebGL context is lost.
 
@@ -51,7 +52,7 @@ GitHub App Visual captures the allocation counts at its canonical viewports but 
 
 ## Local physical-GPU benchmark (Nobara / workstation)
 
-The dedicated Playwright benchmark validates the actual Home GLTF canvas (not a dummy context) and performs **three independent cold-context visits** at 1440×900 / DPR 1. It writes `.artifacts/home-gpu-benchmark/home-3d-hardware.json` (or `...-software.json`), reporting model requests, time-to-first-ready, draw calls, Three allocation counts, CPU p95 and—**only when the WebGL2 extension responds**—asynchronous GPU elapsed milliseconds.
+The dedicated Playwright benchmark validates the actual Home GLTF canvas (not a dummy context) and performs **three independent cold-context visits** at 1440×900 / DPR 1. It writes `.artifacts/home-gpu-benchmark/home-3d-hardware.json` (or `...-software.json`), reporting model requests, time-to-first-ready, draw calls, Three allocation counts, CPU p95 and—**only when the WebGL2 extension responds**—asynchronous GPU elapsed milliseconds. GPU medians use distinct completed query IDs seen in the scheduled snapshots, not repeated reads of a previous result. If multiple queries complete between snapshots, the harness observes only the latest; it never fabricates the missed values.
 
 This is deliberately **not** in the hosted CI matrix. It needs a working graphical session, built frontend, npm dependencies and access to the actual Home runtime GLB. On Nobara with NVIDIA PRIME offload:
 
