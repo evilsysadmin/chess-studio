@@ -242,6 +242,7 @@ jobs:
           git push origin "$branch" --force-with-lease
           pr_url="$(gh pr create --base main --head "$branch" \
             --title "chore(home): auto-promote runtime scene to ${short_hash}" \
+            --label ux-desktop \
             --body-file /tmp/promote-commit-message.txt)"
           echo "Opened $pr_url"
           gh pr merge "$branch" --auto --squash
