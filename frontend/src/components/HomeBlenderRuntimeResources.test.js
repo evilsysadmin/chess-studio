@@ -61,6 +61,31 @@ describe('Home Blender shared GLTF resource preparation', () => {
     color.dispose(); normal.dispose(); roughness.dispose(); metalness.dispose();
   });
 
+  it('does not invalidate already prepared shared GPU resources on a second pass', () => {
+    const map = new THREE.Texture();
+    const normal = new THREE.Texture();
+    const material = new THREE.MeshStandardMaterial({ map, normalMap: normal });
+    const mesh = new THREE.Mesh(new THREE.BoxGeometry(), material);
+    const root = new THREE.Group();
+    root.add(mesh);
+    const gpu = { capabilities: { getMaxAnisotropy: () => 16 } };
+    prepareHomeBlenderRuntimeMaterials(root, true, gpu);
+    const versions = [map.version, normal.version, material.version];
+
+    prepareHomeBlenderRuntimeMaterials(root, true, gpu);
+    expect([map.version, normal.version, material.version]).toEqual(versions);
+
+    prepareHomeBlenderRuntimeMaterials(root, false, gpu);
+    expect(map.version).toBe(versions[0] + 1);
+    expect(normal.version).toBe(versions[1]);
+    expect(material.version).toBe(versions[2]);
+
+    mesh.geometry.dispose();
+    material.dispose();
+    map.dispose();
+    normal.dispose();
+  });
+
   it('lifts shared light and dark chess-piece materials only once each', () => {
     const light = new THREE.MeshStandardMaterial({ name: 'piece_light' });
     const dark = new THREE.MeshStandardMaterial({ name: 'piece_dark' });

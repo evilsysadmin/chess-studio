@@ -1518,11 +1518,17 @@ export function prepareHomeBlenderRuntimeMaterials(root, shadowsEnabled = true, 
       if (!texture?.isTexture || textures.has(texture)) continue;
       textures.add(texture);
       const targetAnisotropy = texture === material.map ? colorAnisotropy : pbrAnisotropy;
-      texture.anisotropy = targetAnisotropy;
-      texture.needsUpdate = true;
+      if (texture.anisotropy !== targetAnisotropy || !texture.userData.homeBlenderPrepared) {
+        texture.anisotropy = targetAnisotropy;
+        texture.needsUpdate = true;
+        texture.userData.homeBlenderPrepared = true;
+      }
     }
-    material.dithering = true;
-    material.needsUpdate = true;
+    if (!material.userData.homeBlenderPrepared || !material.dithering) {
+      material.dithering = true;
+      material.needsUpdate = true;
+      material.userData.homeBlenderPrepared = true;
+    }
   }
 
   return { meshCount, materialCount: materials.size, textureCount: textures.size };
