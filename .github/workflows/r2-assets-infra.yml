@@ -73,11 +73,7 @@ jobs:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
     steps:
-      # The one-shot SHA freeze checks paths touched by the main push.
-      # A depth-1 checkout cannot diff the squash commit against its parent.
       - uses: actions/checkout@v7
-        with:
-          fetch-depth: 2
       - name: Require Cloudflare credentials
         shell: bash
         run: |
@@ -90,19 +86,6 @@ jobs:
         run: python3 -S scripts/cloudflare_r2_assets.py check
       - name: Smoke object upload/get/delete
         run: python3 -S scripts/r2_asset_publish.py smoke
-      # Run publication only on the push that modifies the pinned freeze
-      # contract. Subsequent manifest edits/daily schedules must NOT republish
-      # mutable aliases or fail on a newer authored GLB.
-      - name: Freeze reviewed V3/V4 runtime GLBs (one-shot)
-        if: github.event_name == 'push'
-        shell: bash
-        run: |
-          set -euo pipefail
-          if git diff-tree --no-commit-id --name-only -r "$GITHUB_SHA" | grep -Fxq 'scripts/r2_war_room_live_freeze.py'; then
-            python3 -S scripts/r2_war_room_live_freeze.py publish
-          else
-            echo "War Room immutable freeze unchanged; no publication."
-          fi
       - name: Emit reviewed R2 manifest
         run: cat frontend/src/assets/r2-assets-manifest.json
       - name: Summary
