@@ -73,6 +73,7 @@ INVENTORY = {
     'synthetic-health.yml': 'observability',
     'weekly-actions-hygiene.yml': 'actions-maintenance',
     'war-room-r2-cache-observer.yml': 'performance-diagnostics',
+    'war-room-r2-cache-rule.yml': 'infra-assets',
     'war-room-blender-art.yml': 'art-generation',
     'war-room-v3-blender-art.yml': 'art-generation',
     'war-room-v4-blender-art.yml': 'art-generation',
