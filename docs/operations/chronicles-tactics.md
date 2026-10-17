@@ -4,6 +4,8 @@ Chronicles = **Chronicles of Matthias**. Tactics = **Chronicles of Matthias Tact
 
 Ambos comparten creación/personajes y parte del estado de expedición, pero Tactics añade su propio mapa/progresión. Este documento evita que cada iteración reinvente esa frontera.
 
+> **Estado (octubre 2026):** Chronicles y Tactics viven ahora en su propio repo (`evilsysadmin/chronicles-of-matthias`) y dominio. Los portales del Lab abren ese sitio (`frontend/src/labChroniclesLink.js`; `VITE_CHRONICLES_URL`, por defecto staging; Tactics en `#tactics`) y ya no montan la copia embebida. El código de Chronicles de este repo queda congelado hasta su retirada completa: no se itera aquí, y las suites e2e/visuales que entran por el portal sólo aplican a esa copia.
+
 ## Character setup compartido
 
 - La antesala/creator es común a Chronicles y Tactics.
