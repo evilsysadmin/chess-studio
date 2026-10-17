@@ -114,35 +114,64 @@ describe('War Room v3 side-wall torches', () => {
     release();
   });
 
-  it('shares only the four static GPU geometries across V3 sconces and disposes once', () => {
+  it('shares all fifteen fixed sconce geometries, but keeps flame animations and materials independent', () => {
     const root = build();
     const release = installWarRoomV3Torches(root);
-    const disposalSpies = [];
-    const firstMountRivetGeometry = root.getObjectByName('war-room-side-torch-rivet').geometry;
-    for (const name of [
+    const classicTorch = createWarRoomSideTorch({ withLight: false });
+    const names = [
       'war-room-side-torch-rivet',
       'war-room-side-torch-cage-bar',
       'war-room-side-torch-crown-spike',
       'war-room-side-torch-backplate-finial',
-    ]) {
-      const geometryByTorch = root.children.map((anchor) => (
-        anchor.children[0].getObjectByName(name)?.geometry
+      'war-room-side-torch-backplate',
+      'war-room-side-torch-wall-arm',
+      'war-room-side-torch-arm-collar',
+      'war-room-side-torch-neck',
+      'war-room-side-torch-brazier-bowl',
+      'war-room-side-torch-brazier-rim',
+      'war-room-side-torch-embers',
+      'war-room-side-torch-wall-halo',
+      'war-room-side-torch-flame-outer',
+      'war-room-side-torch-flame-side',
+      'war-room-side-torch-flame-inner',
+    ];
+    const disposeSpies = [];
+    const firstMountGeometry = root.getObjectByName('war-room-side-torch-flame-outer').geometry;
+    for (const name of names) {
+      const meshes = root.children.map((anchor) => (
+        anchor.children[0].getObjectByName(name)
       ));
-      expect(geometryByTorch).toHaveLength(6);
-      expect(geometryByTorch.every((geometry) => geometry === geometryByTorch[0])).toBe(true);
-      expect(geometryByTorch[0]).toBeTruthy();
-      const dispose = vi.spyOn(geometryByTorch[0], 'dispose');
-      // Every torch retains its own instanced node for accurate culling.
-      expect(new Set(root.children.map((anchor) => anchor.children[0].getObjectByName(name))).size).toBe(6);
-      expect(root.children.every((anchor) => anchor.children[0].getObjectByName(name).isInstancedMesh)).toBe(true);
-      disposalSpies.push(dispose);
+      expect(meshes).toHaveLength(6);
+      expect(new Set(meshes).size).toBe(6); // individual frustum culling
+      expect(meshes.every((mesh) => mesh.geometry === meshes[0].geometry)).toBe(true);
+      const classic = classicTorch.getObjectByName(name);
+      expect(meshes[0].geometry.type).toBe(classic.geometry.type);
+      expect(meshes[0].geometry.parameters).toEqual(classic.geometry.parameters);
+      disposeSpies.push(vi.spyOn(meshes[0].geometry, 'dispose'));
     }
+
+    const animations = root.children.map((anchor) => (
+      anchor.children[0].getObjectByName('war-room-side-torch-flame-outer')
+    ));
+    expect(animations.every((mesh) => mesh.isInstancedMesh === false)).toBe(true);
+    expect(new Set(animations.map((mesh) => mesh.material)).size).toBe(6);
+    expect(new Set(animations.map((mesh) => mesh.onBeforeRender)).size).toBe(6);
+    const halos = root.children.map((anchor) => (
+      anchor.children[0].getObjectByName('war-room-side-torch-wall-halo')
+    ));
+    expect(new Set(halos.map((mesh) => mesh.material.map)).size).toBe(6);
+    // One upload per geometry family in the mounted hall; not one per torch.
+    const uniqueGeometry = new Set();
+    root.traverse((node) => { if (node.geometry) uniqueGeometry.add(node.geometry); });
+    expect(uniqueGeometry.size).toBe(names.length);
+
     release();
-    expect(disposalSpies.every((spy) => spy.mock.calls.length === 1)).toBe(true);
+    expect(disposeSpies.every((spy) => spy.mock.calls.length === 1)).toBe(true);
+    expect(root.children.every((anchor) => anchor.children.length === 0)).toBe(true);
     const nextRoot = build();
     const nextRelease = installWarRoomV3Torches(nextRoot);
-    expect(nextRoot.getObjectByName('war-room-side-torch-rivet').geometry)
-      .not.toBe(firstMountRivetGeometry);
+    expect(nextRoot.getObjectByName('war-room-side-torch-flame-outer').geometry)
+      .not.toBe(firstMountGeometry);
     nextRelease();
   });
 
