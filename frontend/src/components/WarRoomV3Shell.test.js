@@ -72,107 +72,117 @@ describe('War Room v3 side-wall torches', () => {
     expect(root.userData.warRoomV3Torches).toBeUndefined();
   });
 
-  it('instances V3 static torch metal without changing geometry, transforms or animated flames', () => {
+  it('merges four static metal families across all six desktop torches in root-local space', () => {
     const root = build();
+    // Authored anchors are rotated in the GLB; the merge must respect the
+    // complete nested transform, including a transform on the scene root.
+    root.position.set(2, -1, 4);
+    root.rotation.y = 0.27;
+    root.children[0].rotation.y = Math.PI / 2;
+    root.children[3].rotation.y = -Math.PI / 2;
+    const anchors = [...root.children];
     const release = installWarRoomV3Torches(root);
-    const batchedTorch = root.getObjectByName('WR3_ANCHOR_torch_0').children[0];
-    const classicTorch = createWarRoomSideTorch({ withLight: false });
+    const original = createWarRoomSideTorch({ withLight: false });
     const families = [
       ['war-room-side-torch-rivet', 3],
       ['war-room-side-torch-cage-bar', 6],
       ['war-room-side-torch-crown-spike', 6],
       ['war-room-side-torch-backplate-finial', 2],
     ];
-    for (const [name, count] of families) {
-      const original = classicTorch.children.filter((child) => child.name === name);
-      const batch = batchedTorch.getObjectByName(name);
-      expect(original).toHaveLength(count);
+    expect(root.userData.warRoomV3StaticTorchBatches).toBe(4);
+    for (const [name, perTorch] of families) {
+      const batch = root.children.find((child) => child.name === name);
+      const classic = original.children.filter((child) => child.name === name);
+      expect(classic).toHaveLength(perTorch);
       expect(batch?.isInstancedMesh).toBe(true);
-      expect(batch.count).toBe(count);
-      expect(batch.material).toBeTruthy();
+      expect(batch.userData.warRoomV3MergedTorchHardware).toBe(true);
+      expect(batch.count).toBe(perTorch * 6);
       expect(batch.castShadow).toBe(false);
       expect(batch.receiveShadow).toBe(true);
-      original.forEach((node, index) => {
-        node.updateMatrix();
-        const instance = new THREE.Matrix4();
-        batch.getMatrixAt(index, instance);
-        instance.elements.forEach((value, offset) => {
-          expect(value).toBeCloseTo(node.matrix.elements[offset], 5);
-        });
-        expect(batch.geometry.type).toBe(node.geometry.type);
-        expect(batch.geometry.parameters).toEqual(node.geometry.parameters);
-      });
+      for (let anchorIndex = 0; anchorIndex < anchors.length; anchorIndex += 1) {
+        const anchor = anchors[anchorIndex];
+        anchor.updateMatrix();
+        expect(anchor.children[0].getObjectByName(name)).toBeUndefined();
+        for (let index = 0; index < perTorch; index += 1) {
+          classic[index].updateMatrix();
+          const expected = new THREE.Matrix4().multiplyMatrices(anchor.matrix, classic[index].matrix);
+          const actual = new THREE.Matrix4();
+          batch.getMatrixAt(anchorIndex * perTorch + index, actual);
+          actual.elements.forEach((value, offset) => {
+            expect(value).toBeCloseTo(expected.elements[offset], 5);
+          });
+          expect(batch.geometry.type).toBe(classic[index].geometry.type);
+          expect(batch.geometry.parameters).toEqual(classic[index].geometry.parameters);
+        }
+      }
     }
-    const meshCount = (group) => {
-      let count = 0;
-      group.traverse((node) => { if (node.isMesh) count += 1; });
-      return count;
-    };
-    expect(meshCount(classicTorch) - meshCount(batchedTorch)).toBe(13);
-    expect(Boolean(batchedTorch.getObjectByName('war-room-side-torch-flame-outer')?.isInstancedMesh)).toBe(false);
-    expect(Boolean(batchedTorch.getObjectByName('war-room-side-torch-wall-halo')?.isInstancedMesh)).toBe(false);
+    expect(root.children.filter((node) => node.isInstancedMesh)).toHaveLength(4);
+    // Animated fire and halo retain their own nodes and material/texture state.
+    for (const anchor of anchors) {
+      expect(anchor.getObjectByName('war-room-side-torch-flame-outer')?.isMesh).toBe(true);
+      expect(anchor.getObjectByName('war-room-side-torch-flame-inner')?.isMesh).toBe(true);
+      expect(anchor.getObjectByName('war-room-side-torch-wall-halo')?.isMesh).toBe(true);
+    }
     release();
+    expect(root.children).toEqual(anchors);
+    expect(root.userData.warRoomV3StaticTorchBatches).toBeUndefined();
   });
 
-  it('shares all fifteen fixed sconce geometries, but keeps flame animations and materials independent', () => {
+  it('owns fifteen GPU shapes per V3 hall, disposes once and re-creates on remount', () => {
     const root = build();
+    const anchors = [...root.children];
     const release = installWarRoomV3Torches(root);
-    const classicTorch = createWarRoomSideTorch({ withLight: false });
+    const original = createWarRoomSideTorch({ withLight: false });
+    const staticNames = [
+      'war-room-side-torch-rivet', 'war-room-side-torch-cage-bar',
+      'war-room-side-torch-crown-spike', 'war-room-side-torch-backplate-finial',
+    ];
     const names = [
-      'war-room-side-torch-rivet',
-      'war-room-side-torch-cage-bar',
-      'war-room-side-torch-crown-spike',
-      'war-room-side-torch-backplate-finial',
-      'war-room-side-torch-backplate',
-      'war-room-side-torch-wall-arm',
-      'war-room-side-torch-arm-collar',
-      'war-room-side-torch-neck',
-      'war-room-side-torch-brazier-bowl',
-      'war-room-side-torch-brazier-rim',
-      'war-room-side-torch-embers',
-      'war-room-side-torch-wall-halo',
-      'war-room-side-torch-flame-outer',
-      'war-room-side-torch-flame-side',
+      ...staticNames,
+      'war-room-side-torch-backplate', 'war-room-side-torch-wall-arm',
+      'war-room-side-torch-arm-collar', 'war-room-side-torch-neck',
+      'war-room-side-torch-brazier-bowl', 'war-room-side-torch-brazier-rim',
+      'war-room-side-torch-embers', 'war-room-side-torch-wall-halo',
+      'war-room-side-torch-flame-outer', 'war-room-side-torch-flame-side',
       'war-room-side-torch-flame-inner',
     ];
-    const disposeSpies = [];
-    const firstMountGeometry = root.getObjectByName('war-room-side-torch-flame-outer').geometry;
+    const disposalSpies = [];
+    const initialFlameGeometry = root.getObjectByName('war-room-side-torch-flame-outer').geometry;
     for (const name of names) {
-      const meshes = root.children.map((anchor) => (
-        anchor.children[0].getObjectByName(name)
-      ));
-      expect(meshes).toHaveLength(6);
-      expect(new Set(meshes).size).toBe(6); // individual frustum culling
-      expect(meshes.every((mesh) => mesh.geometry === meshes[0].geometry)).toBe(true);
-      const classic = classicTorch.getObjectByName(name);
-      expect(meshes[0].geometry.type).toBe(classic.geometry.type);
-      expect(meshes[0].geometry.parameters).toEqual(classic.geometry.parameters);
-      disposeSpies.push(vi.spyOn(meshes[0].geometry, 'dispose'));
+      const batched = staticNames.includes(name);
+      const nodes = batched
+        ? [root.children.find((node) => node.name === name)]
+        : anchors.map((anchor) => anchor.children[0].getObjectByName(name));
+      expect(nodes.length).toBe(batched ? 1 : 6);
+      expect(nodes.every((node) => node?.geometry === nodes[0].geometry)).toBe(true);
+      expect(nodes[0].geometry.type).toBe(original.getObjectByName(name).geometry.type);
+      expect(nodes[0].geometry.parameters).toEqual(original.getObjectByName(name).geometry.parameters);
+      disposalSpies.push(vi.spyOn(nodes[0].geometry, 'dispose'));
     }
 
-    const animations = root.children.map((anchor) => (
-      anchor.children[0].getObjectByName('war-room-side-torch-flame-outer')
+    const flames = anchors.map((anchor) => (
+      anchor.getObjectByName('war-room-side-torch-flame-outer')
     ));
-    expect(animations.every((mesh) => !mesh.isInstancedMesh)).toBe(true);
-    expect(new Set(animations.map((mesh) => mesh.material)).size).toBe(6);
-    expect(new Set(animations.map((mesh) => mesh.onBeforeRender)).size).toBe(6);
-    const halos = root.children.map((anchor) => (
-      anchor.children[0].getObjectByName('war-room-side-torch-wall-halo')
+    expect(flames.every((mesh) => !mesh.isInstancedMesh)).toBe(true);
+    expect(new Set(flames.map((mesh) => mesh.material)).size).toBe(6);
+    expect(new Set(flames.map((mesh) => mesh.onBeforeRender)).size).toBe(6);
+    const halos = anchors.map((anchor) => (
+      anchor.getObjectByName('war-room-side-torch-wall-halo')
     ));
     expect(new Set(halos.map((mesh) => mesh.material.map)).size).toBe(6);
-    // One upload per geometry family in the mounted hall; not one per torch.
-    const uniqueGeometry = new Set();
-    root.traverse((node) => { if (node.geometry) uniqueGeometry.add(node.geometry); });
-    expect(uniqueGeometry.size).toBe(names.length);
+    const allGeometries = new Set();
+    root.traverse((node) => { if (node.geometry) allGeometries.add(node.geometry); });
+    expect(allGeometries.size).toBe(names.length);
 
     release();
-    expect(disposeSpies.every((spy) => spy.mock.calls.length === 1)).toBe(true);
-    expect(root.children.every((anchor) => anchor.children.length === 0)).toBe(true);
-    const nextRoot = build();
-    const nextRelease = installWarRoomV3Torches(nextRoot);
-    expect(nextRoot.getObjectByName('war-room-side-torch-flame-outer').geometry)
-      .not.toBe(firstMountGeometry);
-    nextRelease();
+    expect(disposalSpies.every((spy) => spy.mock.calls.length === 1)).toBe(true);
+    expect(root.children).toEqual(anchors);
+    expect(anchors.every((anchor) => anchor.children.length === 0)).toBe(true);
+    const secondRoot = build();
+    const secondRelease = installWarRoomV3Torches(secondRoot);
+    expect(secondRoot.getObjectByName('war-room-side-torch-flame-outer').geometry)
+      .not.toBe(initialFlameGeometry);
+    secondRelease();
   });
 
   it('keeps every flame but only one real torch light per side wall on touch devices', () => {
@@ -181,6 +191,9 @@ describe('War Room v3 side-wall torches', () => {
     expect(root.getObjectByName('war-room-side-torch-flame-outer')).toBeTruthy();
     expect(lights(root)).toBe(WAR_ROOM_V3_TOUCH_TORCH_LIGHT.maxLights);
     expect(root.userData.warRoomV3TouchTorchLights).toBe(2);
+    expect(root.userData.warRoomV3StaticTorchBatches).toBe(0);
+    expect(root.children.filter((node) => node.userData.warRoomV3MergedTorchHardware)).toHaveLength(0);
+    expect(root.children.every((anchor) => anchor.getObjectByName('war-room-side-torch-cage-bar')?.isInstancedMesh)).toBe(true);
     const litAnchors = root.children
       .filter((anchor) => anchor.getObjectByName('war-room-side-torch-light'))
       .map((anchor) => anchor.name);
