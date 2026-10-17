@@ -1,6 +1,6 @@
-// Runtime V3 can receive authored updates outside the frontend manifest.
-// Preserve the live stage/anchors needed by Hans until the exact current GLB
-// is fingerprinted and republished as a corresponding immutable R2 asset.
-// The variant prefetch and scene installer share this same source URL.
-export const WAR_ROOM_V3_RUNTIME_ALIAS_URL =
-  'https://assets.chess-studio.shadowops.dpdns.org/war-room/v3/runtime/current.glb';
+import { r2AssetUrl } from '../r2Assets.js';
+
+// The manifest points to an immutable clone of the exact live #5721 GLB,
+// including Hans' authored stage. Both intent prefetch and the installer
+// consume this constant; never restore the older stale manifest generation.
+export const WAR_ROOM_V3_RUNTIME_ASSET_URL = r2AssetUrl('warRoom.v3.runtime');
