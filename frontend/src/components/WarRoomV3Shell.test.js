@@ -208,24 +208,44 @@ describe('War Room v3 side-wall torches', () => {
     const hardware = root.children.filter((node) => node.userData.warRoomV3MergedTorchHardware);
     expect(hardware).toHaveLength(12);
     // Render-lite and real touch are independent: the real touch path below
-    // retains per-torch culling; the desktop can still consolidate draws.
+    // gets two wall zones; the desktop still consolidates the full hall.
     release();
     expect(root.children).toHaveLength(6);
   });
 
-  it('keeps every flame but only one real torch light per side wall on touch devices', () => {
+  it('batches touch metal by wall without merging flames, halos or lights across walls', () => {
     const root = build();
+    const anchors = [...root.children];
     const release = installWarRoomV3Torches(root, { coarsePointer: true, touchHardwareCulling: true });
     expect(root.getObjectByName('war-room-side-torch-flame-outer')).toBeTruthy();
     expect(lights(root)).toBe(WAR_ROOM_V3_TOUCH_TORCH_LIGHT.maxLights);
     expect(root.userData.warRoomV3TouchTorchLights).toBe(2);
-    expect(root.userData.warRoomV3StaticTorchBatches).toBe(0);
-    expect(root.children.filter((node) => node.userData.warRoomV3MergedTorchHardware)).toHaveLength(0);
-    expect(root.children.every((anchor) => anchor.getObjectByName('war-room-side-torch-cage-bar')?.isInstancedMesh)).toBe(true);
-    const touchHalos = root.children.map((anchor) => anchor.getObjectByName('war-room-side-torch-wall-halo'));
+    // The eleven untextured metal/ember families get one batch per wall.
+    // Halo maps are deliberately unique on touch and cannot be combined.
+    expect(root.userData.warRoomV3StaticTorchBatches).toBe(22);
+    const batches = root.children.filter((node) => node.userData.warRoomV3MergedTorchHardware);
+    expect(batches).toHaveLength(22);
+    expect(batches.filter((batch) => batch.userData.warRoomV3TorchZone === 'left')).toHaveLength(11);
+    expect(batches.filter((batch) => batch.userData.warRoomV3TorchZone === 'right')).toHaveLength(11);
+    for (const zone of ['left', 'right']) {
+      const cage = batches.find((batch) => (
+        batch.userData.warRoomV3TorchZone === zone
+        && batch.name === 'war-room-side-torch-cage-bar'
+      ));
+      expect(cage?.isInstancedMesh).toBe(true);
+      expect(cage.count).toBe(18);
+      const bounds = new THREE.Box3().setFromObject(cage);
+      expect(Math.sign(bounds.getCenter(new THREE.Vector3()).x)).toBe(zone === 'left' ? -1 : 1);
+    }
+    expect(anchors.every((anchor) => (
+      anchor.getObjectByName('war-room-side-torch-cage-bar') == null
+    ))).toBe(true);
+    const touchHalos = anchors.map((anchor) => anchor.getObjectByName('war-room-side-torch-wall-halo'));
     expect(touchHalos.every((halo) => Boolean(halo?.material?.map))).toBe(true);
     expect(new Set(touchHalos.map((halo) => halo.material.map)).size).toBe(6);
-    const litAnchors = root.children
+    const flameOuters = anchors.map((anchor) => anchor.getObjectByName('war-room-side-torch-flame-outer'));
+    expect(new Set(flameOuters.map((mesh) => mesh.onBeforeRender)).size).toBe(6);
+    const litAnchors = anchors
       .filter((anchor) => anchor.getObjectByName('war-room-side-torch-light'))
       .map((anchor) => anchor.name);
     expect(litAnchors).toEqual(['WR3_ANCHOR_torch_2', 'WR3_ANCHOR_torch_3']);
@@ -234,6 +254,8 @@ describe('War Room v3 side-wall torches', () => {
     expect(touchLight.intensity).toBeCloseTo(WAR_ROOM_V3_TOUCH_TORCH_LIGHT.intensity);
     expect(touchLight.distance).toBeCloseTo(WAR_ROOM_V3_TOUCH_TORCH_LIGHT.distance);
     release();
+    expect(root.children).toEqual(anchors);
+    expect(anchors.every((anchor) => anchor.children.length === 0)).toBe(true);
     expect(root.userData.warRoomV3TouchTorchLights).toBeUndefined();
   });
 });
