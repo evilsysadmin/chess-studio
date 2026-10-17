@@ -34,6 +34,33 @@ describe('Home Blender shared GLTF resource preparation', () => {
     texture.dispose();
   });
 
+  it('keeps colour map quality on desktop while bounding auxiliary PBR sampling', () => {
+    const color = new THREE.Texture();
+    const normal = new THREE.Texture();
+    const roughness = new THREE.Texture();
+    const metalness = new THREE.Texture();
+    const material = new THREE.MeshStandardMaterial({
+      map: color, normalMap: normal, roughnessMap: roughness, metalnessMap: metalness,
+    });
+    const mesh = new THREE.Mesh(new THREE.BoxGeometry(), material);
+    const root = new THREE.Group();
+    root.add(mesh);
+    const gpu = { capabilities: { getMaxAnisotropy: () => 16 } };
+
+    expect(prepareHomeBlenderRuntimeMaterials(root, true, gpu)).toEqual({
+      meshCount: 1, materialCount: 1, textureCount: 4,
+    });
+    expect([color.anisotropy, normal.anisotropy, roughness.anisotropy, metalness.anisotropy])
+      .toEqual([8, 2, 2, 2]);
+    expect(prepareHomeBlenderRuntimeMaterials(root, false, gpu).textureCount).toBe(4);
+    expect([color.anisotropy, normal.anisotropy, roughness.anisotropy, metalness.anisotropy])
+      .toEqual([2, 2, 2, 2]);
+    expect(mesh.castShadow).toBe(false);
+    mesh.geometry.dispose();
+    material.dispose();
+    color.dispose(); normal.dispose(); roughness.dispose(); metalness.dispose();
+  });
+
   it('lifts shared light and dark chess-piece materials only once each', () => {
     const light = new THREE.MeshStandardMaterial({ name: 'piece_light' });
     const dark = new THREE.MeshStandardMaterial({ name: 'piece_dark' });
