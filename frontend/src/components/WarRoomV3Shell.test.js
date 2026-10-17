@@ -72,7 +72,7 @@ describe('War Room v3 side-wall torches', () => {
     expect(root.userData.warRoomV3Torches).toBeUndefined();
   });
 
-  it('merges four static metal families across all six desktop torches in root-local space', () => {
+  it('merges eleven static metal families and one additive halo across all six desktop torches', () => {
     const root = build();
     // Authored anchors are rotated in the GLB; the merge must respect the
     // complete nested transform, including a transform on the scene root.
@@ -95,8 +95,9 @@ describe('War Room v3 side-wall torches', () => {
       ['war-room-side-torch-brazier-bowl', 1],
       ['war-room-side-torch-brazier-rim', 1],
       ['war-room-side-torch-embers', 1],
+      ['war-room-side-torch-wall-halo', 1],
     ];
-    expect(root.userData.warRoomV3StaticTorchBatches).toBe(11);
+    expect(root.userData.warRoomV3StaticTorchBatches).toBe(12);
     for (const [name, perTorch] of families) {
       const batch = root.children.find((child) => child.name === name);
       const classic = original.children.filter((child) => child.name === name);
@@ -105,7 +106,8 @@ describe('War Room v3 side-wall torches', () => {
       expect(batch.userData.warRoomV3MergedTorchHardware).toBe(true);
       expect(batch.count).toBe(perTorch * 6);
       expect(batch.castShadow).toBe(classic[0].castShadow);
-      expect(batch.receiveShadow).toBe(true);
+      expect(batch.receiveShadow).toBe(classic[0].receiveShadow);
+      expect(batch.renderOrder).toBe(classic[0].renderOrder);
       for (let anchorIndex = 0; anchorIndex < anchors.length; anchorIndex += 1) {
         const anchor = anchors[anchorIndex];
         anchor.updateMatrix();
@@ -123,12 +125,12 @@ describe('War Room v3 side-wall torches', () => {
         }
       }
     }
-    expect(root.children.filter((node) => node.isInstancedMesh)).toHaveLength(11);
-    // Animated fire and halo retain their own nodes and material/texture state.
+    expect(root.children.filter((node) => node.isInstancedMesh)).toHaveLength(12);
+    // Animated fire retains its independent nodes and callbacks; wall glows share one map.
     for (const anchor of anchors) {
       expect(anchor.getObjectByName('war-room-side-torch-flame-outer')?.isMesh).toBe(true);
       expect(anchor.getObjectByName('war-room-side-torch-flame-inner')?.isMesh).toBe(true);
-      expect(anchor.getObjectByName('war-room-side-torch-wall-halo')?.isMesh).toBe(true);
+      expect(anchor.getObjectByName('war-room-side-torch-wall-halo')).toBeUndefined();
     }
     release();
     expect(root.children).toEqual(anchors);
@@ -146,11 +148,11 @@ describe('War Room v3 side-wall torches', () => {
       'war-room-side-torch-backplate', 'war-room-side-torch-wall-arm',
       'war-room-side-torch-arm-collar', 'war-room-side-torch-neck',
       'war-room-side-torch-brazier-bowl', 'war-room-side-torch-brazier-rim',
-      'war-room-side-torch-embers',
+      'war-room-side-torch-embers', 'war-room-side-torch-wall-halo',
     ];
     const names = [
       ...staticNames,
-      'war-room-side-torch-wall-halo', 'war-room-side-torch-flame-outer',
+      'war-room-side-torch-flame-outer',
       'war-room-side-torch-flame-side', 'war-room-side-torch-flame-inner',
     ];
     const disposalSpies = [];
@@ -173,16 +175,20 @@ describe('War Room v3 side-wall torches', () => {
     expect(flames.every((mesh) => !mesh.isInstancedMesh)).toBe(true);
     expect(new Set(flames.map((mesh) => mesh.material)).size).toBe(6);
     expect(new Set(flames.map((mesh) => mesh.onBeforeRender)).size).toBe(6);
-    const halos = anchors.map((anchor) => (
-      anchor.getObjectByName('war-room-side-torch-wall-halo')
-    ));
-    expect(new Set(halos.map((mesh) => mesh.material.map)).size).toBe(6);
+    const halo = root.children.find((node) => node.name === 'war-room-side-torch-wall-halo');
+    expect(halo?.isInstancedMesh).toBe(true);
+    expect(halo?.material?.map?.userData?.warRoomTorchHalo).toBe('radial-amber-v1');
+    expect(halo.material.blending).toBe(THREE.AdditiveBlending);
+    expect(halo.material.transparent).toBe(true);
+    expect(halo.renderOrder).toBe(1);
+    const haloTextureDispose = vi.spyOn(halo.material.map, 'dispose');
     const allGeometries = new Set();
     root.traverse((node) => { if (node.geometry) allGeometries.add(node.geometry); });
     expect(allGeometries.size).toBe(names.length);
 
     release();
     expect(disposalSpies.every((spy) => spy.mock.calls.length === 1)).toBe(true);
+    expect(haloTextureDispose).toHaveBeenCalledTimes(1);
     expect(root.children).toEqual(anchors);
     expect(anchors.every((anchor) => anchor.children.length === 0)).toBe(true);
     const secondRoot = build();
@@ -197,10 +203,10 @@ describe('War Room v3 side-wall torches', () => {
     const release = installWarRoomV3Torches(root, {
       coarsePointer: true, touchHardwareCulling: false,
     });
-    expect(root.userData.warRoomV3StaticTorchBatches).toBe(11);
+    expect(root.userData.warRoomV3StaticTorchBatches).toBe(12);
     expect(root.userData.warRoomV3TouchTorchLights).toBe(2);
     const hardware = root.children.filter((node) => node.userData.warRoomV3MergedTorchHardware);
-    expect(hardware).toHaveLength(11);
+    expect(hardware).toHaveLength(12);
     // Render-lite and real touch are independent: the real touch path below
     // retains per-torch culling; the desktop can still consolidate draws.
     release();
@@ -216,6 +222,9 @@ describe('War Room v3 side-wall torches', () => {
     expect(root.userData.warRoomV3StaticTorchBatches).toBe(0);
     expect(root.children.filter((node) => node.userData.warRoomV3MergedTorchHardware)).toHaveLength(0);
     expect(root.children.every((anchor) => anchor.getObjectByName('war-room-side-torch-cage-bar')?.isInstancedMesh)).toBe(true);
+    const touchHalos = root.children.map((anchor) => anchor.getObjectByName('war-room-side-torch-wall-halo'));
+    expect(touchHalos.every((halo) => Boolean(halo?.material?.map))).toBe(true);
+    expect(new Set(touchHalos.map((halo) => halo.material.map)).size).toBe(6);
     const litAnchors = root.children
       .filter((anchor) => anchor.getObjectByName('war-room-side-torch-light'))
       .map((anchor) => anchor.name);
