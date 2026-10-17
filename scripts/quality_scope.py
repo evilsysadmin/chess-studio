@@ -645,13 +645,12 @@ def self_test() -> None:
     _expect_core(["e2e/learning-golden-path.spec.js"], lanes=("learning-golden",))
     _expect_core(["e2e/learning-second-observation.spec.js"], lanes=("learning-observation",))
     _expect_core(["e2e/smoke.spec.js"], lanes=("smoke",))
-    _expect(["e2e/chronicles-of-matthias-tactics.spec.js"])
     _expect(["e2e/mobile-tournament-ux.spec.js"])
     _expect(["e2e/war-room-pvp.spec.js"])
     _expect(["e2e/quick-match-2d.spec.js"])
     _expect_core(
         [
-            "e2e/chronicles-of-matthias-tactics.spec.js",
+            "e2e/mobile-tournament-ux.spec.js",
             "frontend/src/chroniclesTacticsTurnMode.js",
         ],
         lanes=("app-boot",),
