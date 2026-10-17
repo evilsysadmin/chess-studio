@@ -1187,6 +1187,24 @@ export function homeBlenderCameraFovForAspect(aspect = 16 / 9) {
   );
 }
 
+// The rendering camera uses one canonical stationary pose. Projection helpers
+// temporarily move it to the aspect-dependent beacon/actor pose; restore only
+// after those helpers invalidate it. Avoid a camera lookAt/matrix recalculation
+// on every ambient draw while keeping the *exact same* rendered framing.
+export function createHomeBlenderRenderCameraReset(camera, position = CAMERA_BASE, target = CAMERA_TARGET) {
+  let dirty = true;
+  return {
+    invalidate() { dirty = true; },
+    restore() {
+      if (!dirty) return false;
+      camera.position.set(position.x, position.y, position.z);
+      camera.lookAt(target.x, target.y, target.z);
+      dirty = false;
+      return true;
+    },
+  };
+}
+
 export function homeBlenderCameraPoseForAspect(aspect = 16 / 9) {
   const safeAspect = Number.isFinite(Number(aspect)) && Number(aspect) > 0
     ? Number(aspect)
@@ -1903,6 +1921,7 @@ export default function HomeBlenderScene3D({
     );
 
     const frameSamples = createHomeBlenderFrameSamples();
+    const renderCameraReset = createHomeBlenderRenderCameraReset(camera);
     const publishResourceCounts = () => {
       const resources = homeBlenderGpuResourceCounts(renderer);
       for (const [key, count] of [
@@ -1915,8 +1934,7 @@ export default function HomeBlenderScene3D({
     };
     const renderFrame = () => {
       if (disposed || !model) return;
-      camera.position.set(CAMERA_BASE.x, CAMERA_BASE.y, CAMERA_BASE.z);
-      camera.lookAt(CAMERA_TARGET.x, CAMERA_TARGET.y, CAMERA_TARGET.z);
+      renderCameraReset.restore();
       gpuTimer.begin();
       try {
         renderer.render(scene, camera);
@@ -2201,6 +2219,7 @@ export default function HomeBlenderScene3D({
         const pose = homeBlenderCameraPoseForAspect(camera.aspect);
         camera.position.set(pose.position.x, pose.position.y, pose.position.z);
         camera.lookAt(pose.target.x, pose.target.y, pose.target.z);
+        renderCameraReset.invalidate();
         onAnchorLayout(homeBlenderProjectAnchors(camera));
       }
       reportMatthiasLayout();
@@ -2220,6 +2239,7 @@ export default function HomeBlenderScene3D({
       const pose = homeBlenderCameraPoseForAspect(camera.aspect);
       camera.position.set(pose.position.x, pose.position.y, pose.position.z);
       camera.lookAt(pose.target.x, pose.target.y, pose.target.z);
+      renderCameraReset.invalidate();
       const rect = homeMatthiasProjectBounds(matthiasActor.bounds(), camera);
       const routine = matthiasActor.routine;
       report(rect ? { ...rect, station: routine.stationId, posture: routine.posture, profile: routine.profile } : null);
