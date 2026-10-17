@@ -128,3 +128,31 @@ Comparar **cold**, **warm**, dispositivo móvil representativo y escritorio. Sep
 La precarga se permite sólo cuando hay intención razonable del usuario y no penaliza la escena activa: no precargar indiscriminadamente todos los experimentos al entrar en Home. Toda nueva precarga debe demostrar consumo acotado y cancelar o reutilizar trabajo al navegar rápidamente. Una escena descargada pero no utilizada no debe mantener innecesariamente render loops, listeners ni contexto WebGL.
 
 **Acceptance adicional para cambios de transición:** ejecutar el ciclo A → B → A al menos repetidamente con y sin cache; observar que la latencia no crece sesión tras sesión, que el primer toque funciona y que se liberan recursos al desmontar. Registrar el SHA, entorno, viewport, renderer y los números de antes/después. Cualquier optimización que mejore FPS pero empeore perceptiblemente intent-to-interactive requiere justificación explícita.
+
+
+## War Room V3 · benchmark local de cadencia sostenida (#5765)
+
+La prueba optativa `e2e/war-room-gpu-benchmark.spec.js` usa la **app y WebGL reales** con backend de juego simulado, sin alterar el renderer de producción. Queda **excluida de CI ordinaria**, porque GitHub hosted usa SwiftShader: el hardware debe comprobarse en el equipo que ejecuta el benchmark.
+
+Desde un checkout limpio de **cada SHA** a comparar (mismos assets R2, misma máquina, navegador, resolución y configuración):
+
+```bash
+cd frontend && npm ci && npm run build && cd ..
+cd e2e && npm ci
+WAR_ROOM_GPU_BENCH=1 \
+WAR_ROOM_GPU_BENCH_RENDERER=hardware \
+WAR_ROOM_GPU_BENCH_SHA="$(git rev-parse HEAD)" \
+__NV_PRIME_RENDER_OFFLOAD=1 __GLX_VENDOR_LIBRARY_NAME=nvidia \
+./node_modules/.bin/playwright test war-room-gpu-benchmark.spec.js \
+  --config=playwright.config.js --project=chromium --workers=1
+```
+
+AMD/Intel Mesa: usar `DRI_PRIME=1` cuando corresponda en vez del offload NVIDIA. Para diagnóstico control de compatibilidad puede usarse `WAR_ROOM_GPU_BENCH_RENDERER=software`; **nunca** se mezclan sus métricas con las de hardware. Un renderer desconocido, SwiftShader inesperado o falta de WebGL real hace fallar la prueba.
+
+Cada SHA produce tres JSON en `.artifacts/war-room-gpu-benchmark/`: escritorio 1440×900, touch **emulado** vertical 390×844 y horizontal 844×390. En cada perfil abre primero la sala en una pestaña nueva (first visit) y después vuelve a entrar dentro del mismo contexto del navegador (return visit), con caché de navegador compartida; este etiquetado no demuestra por sí solo un HIT de red. Los dos recorridos montan una **War Room V3 real con GLB real**, registran identidad de renderer GPU, primera carga/contadores WebGL, memoria expuesta al ready, una muestra de 2,5 s de cadencia rAF inactiva y otra durante una jugada e2→e4 real con confirmación de la API simulada. Se cuentan pausas >33 ms y >50 ms y tareas largas cuando el navegador permite PerformanceObserver.
+
+**Semántica de métricas**: intervalos entre callbacks `requestAnimationFrame` = cadencia de oportunidades del navegador, **no** tiempos de GPU ni FPS exactos de los draws. `inputToConfirmationMs` incluye automatización de teclado, mutación y aserción de estado, no latencia exclusiva del dispositivo. `openToReadyWallMs` abarca login y navegación de prueba, no equivale a tiempo de descarga GLB. `snapshotMemory` son los contadores que la sala publica al ready, no consumo VRAM. `gpuFrameTimeMs: null` y `gpuTimerQueryMeasured: false` evitan atribuir números GPU no medidos.
+
+Repetir cada revisión en el mismo host en órdenes alternos A/B/B/A (varias repeticiones); comparar distribuciones y no un único p95 ruidoso. No lanzar varios navegadores o renders en paralelo. Comprobar con GPU profiler/EXT timer query independientes cualquier hipótesis de saturación real. **El modo touch emulado en GPU de escritorio no acredita Android físico**: probar también un móvil real con navegador, rotación y fluidez durante varias jugadas antes de considerar cerrado el coste móvil.
+
+No fusionar una nueva optimización de luces, materiales o GLB basándose exclusivamente en un JSON de este benchmark; conservar captura visual, comparación de triángulos/draw calls y paridad de jugabilidad. La issue #5765 permanece abierta hasta tener medidas repetidas sobre hardware.
