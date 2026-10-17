@@ -198,6 +198,48 @@ def self_test():
     assert nvidia['__GLX_VENDOR_LIBRARY_NAME'] == 'nvidia' and 'DRI_PRIME' not in nvidia
     assert mesa['DRI_PRIME'] == '1' and '__GLX_VENDOR_LIBRARY_NAME' not in mesa
     assert '__NV_PRIME_RENDER_OFFLOAD' not in clean and 'DRI_PRIME' not in clean
+
+    # Reproduce a failed Playwright process without a browser or GPU.
+    with tempfile.TemporaryDirectory(prefix='warroom-runner-selftest-') as tmp:
+        root = Path(tmp)
+        target = root / 'worktree'
+        sources = target / '.artifacts/war-room-gpu-benchmark'
+        sources.mkdir(parents=True)
+        destination = root / 'retained'
+        destination.mkdir()
+        log = destination / 'playwright.log'
+        exit_code = run_playwright_logged(
+            (sys.executable, '-c', "print('synthetic Playwright failure');raise SystemExit(23)"),
+            cwd=root, env=os.environ.copy(), log_path=log,
+        )
+        assert exit_code == 23
+        assert b'synthetic Playwright failure' in log.read_bytes()
+        valid = sources / 'partial.json'
+        valid.write_text(json.dumps({
+            'schema': 2, 'revision': 'a' * 40,
+            'requestedRenderer': 'software',
+            'profile': PROFILES[0],
+        }), encoding='utf-8')
+        malformed = sources / 'incomplete.json'
+        malformed.write_text('{', encoding='utf-8')
+        count = preserve_fresh_captures(
+            target, set(), destination, 'a' * 40, 'software', strict=False,
+        )
+        assert count == 2
+        assert (destination / valid.name).is_file()
+        assert (destination / malformed.name).read_text() == '{'
+        # A successful invocation must reject truncated/invalid output, not
+        # accidentally count diagnostics as clean benchmark measurements.
+        accepted = root / 'accepted'
+        accepted.mkdir()
+        try:
+            preserve_fresh_captures(
+                target, set(), accepted, 'a' * 40, 'software', strict=True,
+            )
+        except BenchError:
+            pass
+        else:
+            raise AssertionError('Invalid benchmark JSON was accepted')
     print('War Room GPU A/B local runner self-test: OK')
 
 
