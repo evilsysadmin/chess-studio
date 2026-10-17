@@ -430,6 +430,55 @@ def simplify_banner_medallion_tubes() -> dict:
     }
 
 
+# Runtime-only tubing LOD for the small stationary chandelier framing the
+# far wall. Keep centreline, thickness, material and original Blender scene.
+CHANDELIER_THIN_TUBES = frozenset({
+    "HOME_PROP_chandelier_inner_ring",
+    "HOME_PROP_chandelier_lower_ring",
+    *(f"HOME_PROP_chandelier_dropbar_{i}" for i in range(8)),
+    *(f"HOME_PROP_chandelier_spoke_{i}" for i in range(4)),
+})
+
+
+def simplify_chandelier_thin_tubes() -> dict:
+    objects = sorted(
+        (obj for obj in bpy.context.scene.objects if obj.name in CHANDELIER_THIN_TUBES),
+        key=lambda obj: obj.name,
+    )
+    if {obj.name for obj in objects} != CHANDELIER_THIN_TUBES:
+        raise SystemExit(f"Chandelier LOD expected {len(CHANDELIER_THIN_TUBES)} tubes, found {len(objects)}")
+    depsgraph = bpy.context.evaluated_depsgraph_get()
+
+    def tris(obj):
+        evaluated = obj.evaluated_get(depsgraph)
+        mesh = evaluated.to_mesh()
+        if mesh is None:
+            raise SystemExit(f"Cannot evaluate chandelier tube {obj.name}")
+        try:
+            return sum(len(poly.vertices) - 2 for poly in mesh.polygons)
+        finally:
+            evaluated.to_mesh_clear()
+
+    before = sum(tris(obj) for obj in objects)
+    for obj in objects:
+        curve = obj.data
+        if (
+            obj.type != "CURVE"
+            or curve.dimensions != "3D"
+            or curve.bevel_resolution != 3
+            or not 0 < curve.bevel_depth <= 0.0211
+            or len(curve.splines) != 1
+            or curve.splines[0].type != "POLY"
+        ):
+            raise SystemExit(f"Unexpected chandelier tube structure: {obj.name}")
+        curve.bevel_resolution = 1
+    bpy.context.view_layer.update()
+    after = sum(tris(obj) for obj in objects)
+    if before - after < 250:
+        raise SystemExit(f"Chandelier tube LOD did not save enough triangles: {before} -> {after}")
+    return {"objects": len(objects), "triangles_before": before, "triangles_after": after}
+
+
 def consolidate_static_architecture() -> tuple[int, int, int, int, int]:
     """Batch static HOME_ARCH_ and HOME_PROP_ meshes by material for draw-call efficiency.
 
@@ -592,6 +641,7 @@ def main() -> None:
 
     flatten_runtime_materials()
     banner_medallion_lod = simplify_banner_medallion_tubes()
+    chandelier_tube_lod = simplify_chandelier_thin_tubes()
     converted_curves = convert_curves_to_meshes()
     moon_detail_lod = simplify_tiny_moon_details()
     garden_crown_lod = simplify_distant_garden_crowns()
@@ -673,6 +723,7 @@ def main() -> None:
         "garden_crown_lod": garden_crown_lod,
         "garden_panel_lod": garden_panel_lod,
         "banner_medallion_lod": banner_medallion_lod,
+        "chandelier_tube_lod": chandelier_tube_lod,
         "architecture_meshes_before": architecture_meshes_before,
         "architecture_meshes_after": architecture_meshes_after,
         "static_prop_meshes_before": prop_meshes_before,
