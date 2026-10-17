@@ -133,6 +133,66 @@ def _is_static_batchable(name: str) -> bool:
     return name.startswith("HOME_PROP_") and not ANIMATED_PROP_NAME.search(name)
 
 
+# The last 21 overlapping tail-tip segments are each a 20x10 UV sphere
+# although they read as a continuous fuzzy curve at the Home camera distance.
+# Replace ONLY these small spheres for the runtime GLB; keep the organic body,
+# face, ear landmarks and authored Blender render completely unchanged.
+KLAUS_TAIL_TIP = re.compile(r"^HOME_PROP_cat_tail_seg_(?:3[5-9]|4[0-9]|5[0-5])$")
+KLAUS_TAIL_SEGMENTS = 12
+KLAUS_TAIL_RINGS = 6
+
+
+def simplify_klaus_tail_tip() -> dict:
+    targets = sorted(
+        (
+            obj for obj in bpy.context.scene.objects
+            if obj.type == "MESH" and KLAUS_TAIL_TIP.fullmatch(obj.name)
+        ),
+        key=lambda obj: obj.name,
+    )
+    if len(targets) != 21:
+        raise SystemExit(f"Klaus tail LOD expected 21 segments, found {len(targets)}")
+
+    before = after = 0
+    for obj in targets:
+        original = obj.data
+        if obj.modifiers or len(original.materials) != 1 or original.materials[0] is None:
+            raise SystemExit(f"Klaus tail {obj.name} has unsupported geometry or materials")
+        mat = original.materials[0]
+        if mat.use_nodes and mat.node_tree and any(
+            node.type == "TEX_IMAGE" for node in mat.node_tree.nodes
+        ):
+            raise SystemExit(f"Klaus tail {obj.name} uses UV-dependent texture")
+        lo = [min(v.co[axis] for v in original.vertices) for axis in range(3)]
+        hi = [max(v.co[axis] for v in original.vertices) for axis in range(3)]
+        if any(hi[i] - lo[i] <= 0 for i in range(3)) or max(hi[i] - lo[i] for i in range(3)) > 0.12:
+            raise SystemExit(f"Klaus tail {obj.name} has unexpected bounds")
+        before += sum(len(p.vertices) - 2 for p in original.polygons)
+
+        bm = bmesh.new()
+        replacement = bpy.data.meshes.new(f"{obj.name}_runtime_lod")
+        try:
+            bmesh.ops.create_uvsphere(bm, u_segments=KLAUS_TAIL_SEGMENTS, v_segments=KLAUS_TAIL_RINGS, radius=1.0)
+            bm.to_mesh(replacement)
+        finally:
+            bm.free()
+        for vertex in replacement.vertices:
+            for axis in range(3):
+                vertex.co[axis] = (lo[axis] + hi[axis]) * 0.5 + (hi[axis] - lo[axis]) * 0.5 * vertex.co[axis]
+        replacement.materials.append(mat)
+        for polygon in replacement.polygons:
+            polygon.use_smooth = True
+        replacement.update()
+        after += sum(len(p.vertices) - 2 for p in replacement.polygons)
+        obj.data = replacement
+        if original.users == 0:
+            bpy.data.meshes.remove(original)
+
+    if before - after < 4000:
+        raise SystemExit(f"Klaus tail LOD failed minimum savings: {before} -> {after}")
+    return {"objects": len(targets), "triangles_before": before, "triangles_after": after}
+
+
 def consolidate_klaus() -> int:
     """Join Klaus into one node (plus the landmarks); returns the parts joined."""
     parts = [
@@ -653,6 +713,7 @@ def main() -> None:
         prop_meshes_after,
         mixed_static_batches,
     ) = consolidate_static_architecture()
+    klaus_tail_lod = simplify_klaus_tail_tip()
     klaus_parts = consolidate_klaus()
     mesh_count = select_runtime_geometry()
     if mesh_count < 80:
@@ -719,6 +780,7 @@ def main() -> None:
         "mesh_count": mesh_count,
         "converted_curves": converted_curves,
         "klaus_parts": klaus_parts,
+        "klaus_tail_lod": klaus_tail_lod,
         "moon_detail_lod": moon_detail_lod,
         "garden_crown_lod": garden_crown_lod,
         "garden_panel_lod": garden_panel_lod,
