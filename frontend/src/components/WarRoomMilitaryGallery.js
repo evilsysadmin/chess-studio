@@ -382,6 +382,9 @@ export function createWarRoomSideTorch({
   lightDistance = 11.0,
   batchStaticHardware = false,
   sharedStaticHardwareGeometries = null,
+  // Optional per-hall atlas: V3 shares identical deterministic radial halo
+  // bytes without sharing animated flames, materials or cross-room lifetime.
+  sharedHaloTexture = null,
 } = {}) {
   const torch = new THREE.Group();
   torch.name = side < 0 ? 'war-room-side-torch-left' : 'war-room-side-torch-right';
@@ -474,7 +477,7 @@ export function createWarRoomSideTorch({
 
   const haloMaterial = new THREE.MeshBasicMaterial({
     color: 0xff8d3d,
-    map: torchHaloTexture(),
+    map: sharedHaloTexture || torchHaloTexture(),
     transparent: true,
     opacity: 0.44,
     blending: THREE.AdditiveBlending,
