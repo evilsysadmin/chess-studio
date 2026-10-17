@@ -34,6 +34,35 @@ describe('Home Blender shared GLTF resource preparation', () => {
     texture.dispose();
   });
 
+  it('excludes flame and ember effects from shadow rendering without affecting solid surrounds', () => {
+    const material = new THREE.MeshStandardMaterial();
+    const geometry = new THREE.BoxGeometry();
+    const flame = new THREE.Mesh(geometry, material);
+    flame.name = 'HOME_PROP_fireplace_left_flame_1';
+    const ember = new THREE.Mesh(geometry, material);
+    ember.name = 'HOME_PROP_fireplace_right_ember_0';
+    const candle = new THREE.Mesh(geometry, material);
+    candle.name = 'HOME_PROP_chandelier_flame_2';
+    const surround = new THREE.Mesh(geometry, material);
+    surround.name = 'HOME_PROP_fireplace_left_mantel';
+    const root = new THREE.Group();
+    root.add(flame, ember, candle, surround);
+
+    expect(prepareHomeBlenderRuntimeMaterials(root, true)).toEqual({
+      meshCount: 4, materialCount: 1, textureCount: 0,
+    });
+    for (const effect of [flame, ember, candle]) {
+      expect(effect.castShadow).toBe(false);
+      expect(effect.receiveShadow).toBe(false);
+    }
+    expect(surround.castShadow).toBe(true);
+    expect(surround.receiveShadow).toBe(true);
+    prepareHomeBlenderRuntimeMaterials(root, false);
+    expect(surround.castShadow).toBe(false);
+    geometry.dispose();
+    material.dispose();
+  });
+
   it('keeps colour map quality on desktop while bounding auxiliary PBR sampling', () => {
     const color = new THREE.Texture();
     const normal = new THREE.Texture();
