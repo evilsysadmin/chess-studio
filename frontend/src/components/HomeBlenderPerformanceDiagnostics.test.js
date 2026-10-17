@@ -4,6 +4,7 @@ import {
   createHomeBlenderFrameSamples,
   homeBlenderP95Ms,
   homeBlenderGpuResourceCounts,
+  homeBlenderDistinctGpuSamplesMs,
 } from './HomeBlenderPerformanceDiagnostics.js';
 
 function fakeGpu() {
@@ -31,6 +32,8 @@ describe('Home Blender optional GPU profiler', () => {
     const software = createHomeBlenderGpuTimer(gl, { enabled: true, software: true });
     expect(disabled.status).toBe('disabled');
     expect(software.status).toBe('software');
+    expect(disabled.completedSamples).toBe(0);
+    expect(software.completedSamples).toBe(0);
     disabled.begin();
     software.begin();
     expect(gl.getExtension).not.toHaveBeenCalled();
@@ -55,9 +58,11 @@ describe('Home Blender optional GPU profiler', () => {
     expect(gl.endQuery).toHaveBeenCalledWith(0x88bf);
     expect(timer.poll()).toBe(null); // Result not available: no synchronous GPU wait.
     expect(timer.status).toBe('sampling');
+    expect(timer.completedSamples).toBe(0);
     ready();
     expect(timer.poll()).toBe(4.25);
     expect(timer.lastMs).toBe(4.25);
+    expect(timer.completedSamples).toBe(1);
     expect(timer.status).toBe('ready');
     expect(gl.deleteQuery).toHaveBeenCalledTimes(1);
     timer.dispose();
@@ -73,6 +78,7 @@ describe('Home Blender optional GPU profiler', () => {
     expect(timer.poll()).toBe(null);
     expect(timer.lastMs).toBe(null);
     expect(timer.status).toBe('disjoint');
+    expect(timer.completedSamples).toBe(0);
     expect(gl.deleteQuery).toHaveBeenCalledTimes(1);
   });
 
@@ -117,6 +123,46 @@ describe('Home Blender bounded performance diagnostics', () => {
       cpuSamples: 3,
       vsyncSamples: 2,
     });
+  });
+
+  it('counts only distinct completed GPU measurements, never repeated polling reads', () => {
+    const { gl, ready } = fakeGpu();
+    const timer = createHomeBlenderGpuTimer(gl, { enabled: true, sampleEvery: 1 });
+    timer.begin();
+    timer.end();
+    ready();
+    expect(timer.poll()).toBe(4.25);
+    expect(timer.completedSamples).toBe(1);
+    expect(timer.poll()).toBe(null);
+    expect(timer.completedSamples).toBe(1);
+    timer.begin();
+    timer.end();
+    // A new query is pending but the last known valid GPU result is unchanged.
+    expect(timer.lastMs).toBe(4.25);
+    expect(timer.completedSamples).toBe(1);
+    expect(timer.poll()).toBe(4.25);
+    expect(timer.completedSamples).toBe(2);
+  });
+
+  it('accepts independent GPU query completions, not duplicate snapshots of the last result', () => {
+    expect(homeBlenderDistinctGpuSamplesMs([
+      { gpuStatus: 'sampling', gpuSampleCount: 0, gpuMs: null },
+      { gpuStatus: 'ready', gpuSampleCount: 1, gpuMs: 3.25 },
+      { gpuStatus: 'ready', gpuSampleCount: 1, gpuMs: 3.25 }, // Same old result.
+      { gpuStatus: 'sampling', gpuSampleCount: 2, gpuMs: null },
+      { gpuStatus: 'ready', gpuSampleCount: 2, gpuMs: 5.25 },
+      { gpuStatus: 'ready', gpuSampleCount: 2, gpuMs: 5.25 },
+      { gpuStatus: 'disjoint', gpuSampleCount: 2, gpuMs: null },
+      { gpuStatus: 'ready', gpuSampleCount: 3, gpuMs: 7.25 },
+      { gpuStatus: 'ready', gpuSampleCount: 4, gpuMs: NaN },
+      { gpuStatus: 'ready', gpuSampleCount: 5, gpuMs: -1 },
+      { gpuStatus: 'ready', gpuSampleCount: 6, gpuMs: 9.25 },
+    ])).toEqual([3.25, 5.25, 7.25, 9.25]);
+    expect(homeBlenderDistinctGpuSamplesMs([])).toEqual([]);
+    expect(homeBlenderDistinctGpuSamplesMs([
+      { gpuStatus: 'ready', gpuSampleCount: null, gpuMs: 2 },
+      { gpuStatus: 'ready', gpuSampleCount: 0, gpuMs: 2 },
+    ])).toEqual([]);
   });
 
   it('reports Three GPU allocation counts, never guesses texture VRAM bytes', () => {
