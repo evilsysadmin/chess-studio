@@ -10,6 +10,7 @@ import {
   homeBlenderProjectAnchors,
   HOME_BLENDER_BEACON_ANCHORS,
   homeBlenderFireMotion,
+  homeBlenderSharedFireGust,
   rebaseFlameToPivot,
   homeBlenderFireFramePlan,
   homeBlenderGlowOpacity,
@@ -32,6 +33,7 @@ import {
   homeBlenderRuntimePolicy,
   homeBlenderDustSeeds,
   homeBlenderDustPosition,
+  homeBlenderWriteDustPositions,
   HOME_BLENDER_DUST,
   homeBlenderMoonShaftPose,
   HOME_BLENDER_MOON_SHAFT,
@@ -366,6 +368,20 @@ describe('HomeBlenderScene3D live flame animation', () => {
         expect(motion.emission).toBeLessThan(1.10);
         expect(motion.light).toBeGreaterThan(0.72);
         expect(motion.light).toBeLessThan(1.12);
+      }
+    }
+  });
+
+  it('shares one wind sample across every flame kind without changing their motion', () => {
+    // Pixel-equivalent contract: the canonical scalar path and the batched
+    // runtime path must return exactly the same floats, not merely be close.
+    for (const timeMs of [0, 16.7, 555, 5000, 12345, 90000]) {
+      const commonGust = homeBlenderSharedFireGust(timeMs);
+      for (const kind of ['flame', 'hot', 'ember', 'candle']) {
+        for (const phase of [0, 0.137, 1.234, 3.9]) {
+          expect(homeBlenderFireMotion({ timeMs, kind, phase, commonGust }))
+            .toEqual(homeBlenderFireMotion({ timeMs, kind, phase }));
+        }
       }
     }
   });
@@ -929,6 +945,27 @@ describe('home dust motes', () => {
       expect(seed.y).toBeGreaterThanOrEqual(HOME_BLENDER_DUST.yMin);
       expect(seed.y).toBeLessThanOrEqual(HOME_BLENDER_DUST.yMax);
     }
+  });
+
+  it('writes the exact original positions to the persistent float32 buffer without replacing it', () => {
+    const seeds = homeBlenderDustSeeds(64);
+    const buffer = new Float32Array(seeds.length * 3);
+    const original = buffer;
+    for (const timeMs of [0, 16.7, 555, 5000, 90000, 1e7]) {
+      buffer.fill(NaN);
+      expect(homeBlenderWriteDustPositions(seeds, timeMs, buffer)).toBe(original);
+      const reference = new Float32Array(seeds.length * 3);
+      seeds.forEach((seed, i) => {
+        const [x, y, z] = homeBlenderDustPosition(seed, timeMs);
+        reference[i * 3] = x;
+        reference[i * 3 + 1] = y;
+        reference[i * 3 + 2] = z;
+      });
+      expect(buffer).toEqual(reference);
+    }
+    const sentinel = new Float32Array([42, 43, 44]);
+    homeBlenderWriteDustPositions([], 123, sentinel);
+    expect(sentinel).toEqual(new Float32Array([42, 43, 44]));
   });
 
   it('drifts slowly and wraps vertically', () => {
