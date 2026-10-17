@@ -104,7 +104,7 @@ describe('War Room v3 side-wall torches', () => {
       expect(batch?.isInstancedMesh).toBe(true);
       expect(batch.userData.warRoomV3MergedTorchHardware).toBe(true);
       expect(batch.count).toBe(perTorch * 6);
-      expect(batch.castShadow).toBe(false);
+      expect(batch.castShadow).toBe(classic[0].castShadow);
       expect(batch.receiveShadow).toBe(true);
       for (let anchorIndex = 0; anchorIndex < anchors.length; anchorIndex += 1) {
         const anchor = anchors[anchorIndex];
@@ -150,12 +150,8 @@ describe('War Room v3 side-wall torches', () => {
     ];
     const names = [
       ...staticNames,
-      'war-room-side-torch-backplate', 'war-room-side-torch-wall-arm',
-      'war-room-side-torch-arm-collar', 'war-room-side-torch-neck',
-      'war-room-side-torch-brazier-bowl', 'war-room-side-torch-brazier-rim',
-      'war-room-side-torch-embers', 'war-room-side-torch-wall-halo',
-      'war-room-side-torch-flame-outer', 'war-room-side-torch-flame-side',
-      'war-room-side-torch-flame-inner',
+      'war-room-side-torch-wall-halo', 'war-room-side-torch-flame-outer',
+      'war-room-side-torch-flame-side', 'war-room-side-torch-flame-inner',
     ];
     const disposalSpies = [];
     const initialFlameGeometry = root.getObjectByName('war-room-side-torch-flame-outer').geometry;
