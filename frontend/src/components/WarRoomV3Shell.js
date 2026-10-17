@@ -112,7 +112,7 @@ export function batchWarRoomV3StaticTorchHardware(root, torches) {
 
   for (const name of WAR_ROOM_V3_STATIC_TORCH_FAMILIES) {
     const parts = torches.map((torch) => torch.getObjectByName(name));
-    if (parts.some((part) => !part?.isMesh || part.onBeforeRender)) continue;
+    if (parts.some((part) => !part?.isMesh)) continue;
     const geometry = parts[0].geometry;
     const material = parts[0].material;
     if (parts.some((part) => (
