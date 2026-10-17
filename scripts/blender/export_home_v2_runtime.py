@@ -832,6 +832,7 @@ def main() -> None:
     moon_detail_lod = simplify_tiny_moon_details()
     garden_crown_lod = simplify_distant_garden_crowns()
     garden_panel_lod = simplify_distant_garden_panels()
+    klaus_cushion_lod = simplify_klaus_cushion()
     (
         architecture_meshes_before,
         architecture_meshes_after,
@@ -842,7 +843,6 @@ def main() -> None:
     klaus_tail_lod = simplify_klaus_tail_tip()
     klaus_undercoat_lod = simplify_klaus_undercoat()
     klaus_paw_lod = simplify_klaus_paws()
-    klaus_cushion_lod = simplify_klaus_cushion()
     klaus_parts = consolidate_klaus()
     mesh_count = select_runtime_geometry()
     if mesh_count < 80:
