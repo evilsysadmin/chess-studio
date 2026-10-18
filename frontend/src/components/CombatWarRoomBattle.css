@@ -116,6 +116,7 @@
 
 .combat-battle-screen .combat-warroom-ops {
   position: absolute !important;
+  pointer-events: auto;
   z-index: 45;
   right: max(.7rem, env(safe-area-inset-right));
   bottom: max(.7rem, env(safe-area-inset-bottom));
@@ -145,6 +146,14 @@
 }
 
 .combat-battle-screen .combat-warroom-log-summary {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  position: relative;
+  z-index: 2;
+  pointer-events: auto;
   min-height: 44px;
   display: flex;
   align-items: center;
