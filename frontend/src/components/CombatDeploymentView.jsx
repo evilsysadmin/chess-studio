@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import './CombatDeploymentRoute.css';
 import './CombatDeploymentWarTable.css';
 import { CombatDeploymentPresetDrawer, CombatDeploymentWarTableHeader } from './CombatDeploymentWarTableChrome.jsx';
+import { CombatDeploymentFooter, CombatDeploymentGuidance } from './CombatDeploymentDecisionChrome.jsx';
 import { createPortal } from 'react-dom';
 import Board2D from './Board2D.jsx';
 import { pieceRankForLevel } from '../combatRanks.js';
@@ -817,13 +818,7 @@ export default function CombatDeploymentView({
               <span>FORMACIÓN PROPIA</span>
               <small title="Fila superior: piezas mayores. Fila inferior: ocho slots de peón.">16 puestos</small>
             </div>
-            <p className="deployment-board-guidance" role="status" aria-live="polite">
-              {selectedUnitKey && roster.identities?.[selectedUnitKey]
-                ? reverseDeployment[selectedUnitKey]
-                  ? `${roster.identities[selectedUnitKey].alias || 'Unidad'} seleccionada. Elige una casilla resaltada para recolocarla.`
-                  : `${roster.identities[selectedUnitKey].alias || 'Unidad'} en reserva. Elige una casilla resaltada para intercambiarla.`
-                : 'Selecciona una pieza para recolocarla, o pulsa «Desplegar» junto a una reserva.'}
-            </p>
+            <CombatDeploymentGuidance selectedUnitKey={selectedUnitKey} roster={roster} reverseDeployment={reverseDeployment} />
             <Board2D
               fen={fen}
               orientation="white"
@@ -904,39 +899,10 @@ export default function CombatDeploymentView({
           document.body,
         )}
 
-        <footer className="combat-deployment-footer">
-          <div className="deployment-auto-actions">
-            <button type="button" className="secondary-btn" title="Reorganiza toda la formación priorizando veteranos, no solo los huecos." onClick={() => onAutoFill?.(true)}>Auto · veteranos</button>
-            <button type="button" className="secondary-btn" title="Reorganiza toda la formación priorizando reclutas, no solo los huecos." onClick={() => onAutoFill?.(false)}>Auto · reclutas</button>
-            <button type="button" className="secondary-btn" title="Recupera la formación base; conserva identidad y progresión." onClick={onResetDeployment}>Restablecer</button>
-          </div>
-          <div className="deployment-footer-copy" role="status">
-            <span>{summary.fallenCount > 0
-              ? `${summary.fallenCount} baja${summary.fallenCount === 1 ? '' : 's'} pendiente${summary.fallenCount === 1 ? '' : 's'}`
-              : summary.ready ? 'Formación completa · 16/16'
-                : `Faltan ${summary.missingSlots.length} puesto${summary.missingSlots.length === 1 ? '' : 's'}`}</span>
-          </div>
-          {!summary.ready && summary.fallenCount === 0 && (
-            <button type="button" className="secondary-btn deployment-mobile-autofill"
-              aria-label="Rehacer formación automática priorizando veteranos"
-              title="Reorganiza toda la formación, no solo los huecos libres."
-              onClick={() => onAutoFill?.(true)}>Auto · veteranos</button>
-          )}
-          {summary.fallenCount > 0 ? (
-            <button type="button" className="primary-btn" onClick={() => casualtiesRef.current?.scrollIntoView({ block: 'center' })}>
-              REVISAR {summary.fallenCount} BAJA{summary.fallenCount === 1 ? '' : 'S'} →
-            </button>
-          ) : (
-            <button type="button" className="primary-btn" disabled={!canConfirm} onClick={() => {
-              if (!canConfirm) return;
-              if (onConfirm) onConfirm();
-              else onClose();
-            }}>
-              {summary.ready ? (requireExplicitConfirmation ? 'CONFIRMAR DESPLIEGUE' : 'Confirmar despliegue')
-                : `FALTAN ${summary.missingSlots.length} PUESTOS`}
-            </button>
-          )}
-        </footer>
+        <CombatDeploymentFooter summary={summary} canConfirm={canConfirm}
+          requireExplicitConfirmation={requireExplicitConfirmation} onAutoFill={onAutoFill}
+          onResetDeployment={onResetDeployment} onConfirm={onConfirm || onClose}
+          onReviewCasualties={() => casualtiesRef.current?.scrollIntoView({ block: 'center' })} />
         {showTutorial && <MechanicTutorialModal tutorialId="combat-deployment" onClose={() => setShowTutorial(false)} />}
       </section>
     </div>
