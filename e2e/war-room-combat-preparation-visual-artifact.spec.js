@@ -329,6 +329,59 @@ test('Combat campaign map · desktop is a diegetic Operations Room instrument', 
   await captureWarRoomFrame(page, ARTIFACT_DIR + '/combat-campaign-mission-room-desktop-1440x900.png');
 });
 
+// Real casualty state, not a mockup. The persisted veteran's history is
+// measured in the roster and appears in the actual campaign modal.
+async function openFallenVeteranWarTable(page) {
+  const veteranRoster = {
+      pieces: { 'n-b': { alive: false, strengthPoints: 4, speedPoints: 2, bankedXp: 3 } },
+      identities: { 'n-b': { identityId: 'visual-veteran-konrad', alias: 'Konrad', createdAt: '2026-08-20T00:00:00Z' } },
+      unitRecords: { 'visual-veteran-konrad': {
+        identityId: 'visual-veteran-konrad', alias: 'Konrad', slotKey: 'n-b',
+        stats: { battles: 11, survivals: 8, kills: 4 },
+        decorations: [{ id: 'veteran' }],
+      } },
+      credits: 60,
+  };
+  await verifyCombatOperationsRuntimeAsset(page);
+  await mockApi(page, { profileSeed: { 'chess-study-combat-roster': JSON.stringify(veteranRoster) } });
+  await login(page);
+  await openCampaignBriefing(page);
+  await page.getByRole('button', { name: /PREPARAR EJÉRCITO/i }).click();
+  await dismissTutorialIfVisible(page);
+  const resolve = page.getByRole('button', { name: /RESOLVER BAJAS/i });
+  await expect(resolve).toBeVisible({ timeout: 25_000 });
+  await resolve.click();
+  const table = page.locator('[data-combat-deployment="war-table"]');
+  const casualties = table.locator('[data-combat-casualties="true"]');
+  await expect(casualties).toBeVisible();
+  await expect(casualties.getByText('11 batallas')).toBeVisible();
+  await expect(casualties.getByText(/nv.7 → nv.4/)).toBeVisible();
+  await expect(casualties.locator('details.deployment-casualty-mechanics')).not.toHaveAttribute('open');
+  return table;
+}
+
+test('Combat casualties · desktop shows two clear paths and the veteran in context', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const table = await openFallenVeteranWarTable(page);
+  await expect(table.getByText('¿Qué hacemos con Konrad?')).toBeVisible();
+  const result = await deploymentHealth(page);
+  expect(result.horizontalOverflow).toBe(false);
+  await mkdir(ARTIFACT_DIR, { recursive: true });
+  await captureWarRoomFrame(page, ARTIFACT_DIR + '/combat-casualties-desktop-1440x900.png');
+});
+
+test('Combat casualties · 390x844 keeps character decision first without overflow', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  const table = await openFallenVeteranWarTable(page);
+  const snapshot = await deploymentHealth(page);
+  expect(snapshot.horizontalOverflow).toBe(false);
+  const casualties = table.locator('[data-combat-casualties="true"]');
+  await expect(casualties.getByRole('button', { name: /Revivir ·/ })).toBeVisible();
+  await expect(casualties.getByRole('button', { name: 'Reemplazar…' })).toBeVisible();
+  await mkdir(ARTIFACT_DIR, { recursive: true });
+  await captureWarRoomFrame(page, ARTIFACT_DIR + '/combat-casualties-android-390x844.png');
+});
+
 test('Combat deployment · desktop is a diegetic War Table over the Operations Room', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await openWarTable(page);
