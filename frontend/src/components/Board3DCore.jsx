@@ -31,6 +31,7 @@ import { clearObjectGroup, makeObjectTranslucent } from './Board3DObjectLifecycl
 import { fitBoardCamera, makeTextSprite } from './Board3DScene.js';
 import { resolveStableBoardViewportForHost } from './Board3DViewportSize.js';
 import { createWarRoomCanvasSizeGate } from './WarRoomCanvasSizeGate.js';
+import { createWarRoomGpuProfile, WAR_ROOM_GPU_PROFILE_STORAGE_KEY } from './WarRoomGpuProfile.js';
 import { applyBoard3DProjectionDiagnostics, applyBoard3DRendererMemoryDiagnostics } from './Board3DProjectionDiagnostics.js';
 import { beginWarRoomFirstReadyPaintTiming } from './WarRoomFirstReadyPaintTiming.js';
 import { board3DForensicGhost, board3DTechniqueTargetCount, board3DTerrainSquares, buildBoard3DLegalMap } from './Board3DParityVisuals.js';
@@ -301,6 +302,20 @@ function Board3DCanvas({
       });
     }
 
+    // Explicitly opt-in diagnostic only, reusing Home's asynchronous WebGL2
+    // GPU query implementation. Read the flag once at mount; normal games
+    // allocate no timer queries and do not publish per-frame GPU telemetry.
+    let gpuProfileStorageFlag = '';
+    try {
+      gpuProfileStorageFlag = window.localStorage.getItem(WAR_ROOM_GPU_PROFILE_STORAGE_KEY) || '';
+    } catch {
+      // Browsers that block storage must still play normally.
+    }
+    const gpuProfile = createWarRoomGpuProfile(renderer, {
+      search: window.location.search,
+      storageFlag: gpuProfileStorageFlag,
+      softwareRenderer,
+    });
     let cachedHansDriver = null;
     let ambientScheduler = null;
     const exposeHansScreenDiagnostics = createWarRoomHansScreenProbe({ scene, camera, canvas: renderer.domElement });
@@ -315,7 +330,15 @@ function Board3DCanvas({
         exposure: renderer.toneMappingExposure,
       });
       const firstPaint = beginWarRoomFirstReadyPaintTiming(renderer.domElement);
-      renderer.render(scene, camera); firstPaint?.afterRender(renderer.info.render); applyBoard3DRendererMemoryDiagnostics(renderer.domElement, renderer);
+      gpuProfile?.begin();
+      try {
+        renderer.render(scene, camera);
+      } finally {
+        gpuProfile?.end();
+        gpuProfile?.poll();
+      }
+      firstPaint?.afterRender(renderer.info.render);
+      applyBoard3DRendererMemoryDiagnostics(renderer.domElement, renderer);
       applyBoard3DProjectionDiagnostics(renderer.domElement, camera);
       if (!cachedHansDriver && latestPropsRef.current.hansDiagnosticsRequested) {
         cachedHansDriver = scene.getObjectByName('war-room-hans-fireplace-driver');
@@ -546,6 +569,7 @@ function Board3DCanvas({
       animationFrameRef.current = 0;
       ambientScheduler?.dispose();
       ambientScheduler = null;
+      gpuProfile?.dispose();
       renderBatcher.dispose();
       renderer.domElement.removeEventListener('warroom-hans-call-release', wakeAmbientScheduler);
       document.removeEventListener('visibilitychange', wakeAmbientScheduler);
