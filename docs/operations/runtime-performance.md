@@ -176,6 +176,16 @@ para rAF, pero muestra `n/a` para sus deltas GPU sin procedencia
 completa de Hans o cuando el estado montado cambia entre revisiones.
 Esto **no** modifica la carga normal de la sala ni añade espera a las partidas.
 
+En `comparison.md` también se comparan tres medidas **de reloj de pared**
+en primera y segunda visita: `open→shell-ready`, `shell-ready→Hans-ready`
+y `open→Hans-ready`. La tercera se calcula **por visita** sumando los dos
+tramos observados antes de tomar la mediana; no suma medianas de cohortes
+distintas. Incluyen login/navegación automatizados, por lo que **no**
+representan únicamente descarga GLB ni render GPU. Los JSON antiguos sin
+`hansReadyAfterShellMs` conservan su tiempo de shell, pero el retraso
+de Hans y el tiempo total de escena aparecen como `n/a` en lugar de
+presuponerse cero.
+
 **Semántica de métricas**: intervalos entre callbacks `requestAnimationFrame` = cadencia de oportunidades del navegador, **no** tiempos de GPU ni FPS exactos de los draws. `inputToConfirmationMs` incluye automatización de teclado, mutación y aserción de estado, no latencia exclusiva del dispositivo. `openToReadyWallMs` abarca login y navegación de prueba, no equivale a tiempo de descarga GLB. `snapshotMemory` son los contadores que la sala publica al ready, no consumo VRAM. `gpuFrameTimeMs: null` y `gpuTimerQueryMeasured: false` evitan atribuir números GPU no medidos.
 
 Repetir cada revisión en el mismo host en órdenes alternos A/B/B/A (varias repeticiones); comparar distribuciones y no un único p95 ruidoso. No lanzar varios navegadores o renders en paralelo. Comprobar con GPU profiler/EXT timer query independientes cualquier hipótesis de saturación real. **El modo touch emulado en GPU de escritorio no acredita Android físico**: probar también un móvil real con navegador, rotación y fluidez durante varias jugadas antes de considerar cerrado el coste móvil.

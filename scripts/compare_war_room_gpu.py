@@ -188,6 +188,15 @@ def summarize(reports, visit_type, metric):
             values.append(visit[metric]['rafP95Ms'])
         elif metric == 'input':
             values.append(visit['move']['inputToConfirmationMs'])
+        elif metric == 'shell':
+            values.append(visit['openToReadyWallMs'])
+        elif metric in ('hans', 'scene'):
+            # Legacy records predate delayed-stage measurements. Never
+            # backfill a guessed wait or confuse shell ready with scene ready.
+            delay = visit.get('hansReadyAfterShellMs')
+            if delay is None:
+                return None
+            values.append(delay if metric == 'hans' else visit['openToReadyWallMs'] + delay)
         elif metric == 'calls':
             values.append(visit['firstReady']['calls'])
         elif metric == 'triangles':
@@ -275,12 +284,20 @@ def compare(baseline, candidate, base_sha, candidate_sha, *, mode='hardware', mi
     for profile in PROFILES:
         for visit in VISITS:
             for metric, label in (('idle', 'idle rAF p95 (ms)'), ('move', 'move rAF p95 (ms)'),
-                                  ('input', 'input→confirmation (ms)'), ('calls', 'first-ready draw calls'),
+                                  ('input', 'input→confirmation (ms)'),
+                                  ('shell', 'open→shell-ready wall (ms)'),
+                                  ('hans', 'shell-ready→Hans-ready wall (ms)'),
+                                  ('scene', 'open→Hans-ready wall (ms)'),
+                                  ('calls', 'first-ready draw calls'),
                                   ('triangles', 'first-ready triangles')):
                 a = summarize(before[profile], visit, metric)
                 b = summarize(after[profile], visit, metric)
-                lines.append(f'| {profile} · {visit} · {label} | {a:.2f} | {b:.2f} | '
-                             f'{b-a:+.2f} | {len(before[profile])}/{len(after[profile])} |')
+                if a is None or b is None:
+                    lines.append(f'| {profile} · {visit} · {label} | n/a | n/a | n/a | '
+                                 f'{len(before[profile])}/{len(after[profile])} |')
+                else:
+                    lines.append(f'| {profile} · {visit} · {label} | {a:.2f} | {b:.2f} | '
+                                 f'{b-a:+.2f} | {len(before[profile])}/{len(after[profile])} |')
     lines.extend([
         '', '## GPU TIME_ELAPSED_EXT (ms): only valid measured queries',
         '',
@@ -333,6 +350,21 @@ def fake_report(sha, profile, run_id, renderer='ANGLE (NVIDIA GeForce test)'):
 
 def self_test():
     a, b = 'a' * 40, 'b' * 40
+    # Median of per-visit scene-ready duration must NOT be reconstructed
+    # by summing independent medians of shell and Hans times.
+    staggered = [fake_report(a, 'desktop-1440x900',
+                             f'00000000-0000-4000-8000-{i:012x}')
+                 for i in range(3)]
+    for report, (shell, hans) in zip(staggered, [(1000, 100), (1200, 800), (1600, 0)]):
+        report['visits'][0]['openToReadyWallMs'] = shell
+        report['visits'][0]['hansReadyAfterShellMs'] = hans
+    assert summarize(staggered, 'first-visit', 'shell') == 1200
+    assert summarize(staggered, 'first-visit', 'hans') == 100
+    assert summarize(staggered, 'first-visit', 'scene') == 1600  # not 1200 + 100
+    staggered[0]['visits'][0].pop('hansReadyAfterShellMs')
+    assert summarize(staggered, 'first-visit', 'scene') is None
+    assert summarize(staggered, 'first-visit', 'shell') == 1200
+
     with tempfile.TemporaryDirectory() as folder:
         base, candidate = Path(folder) / 'base', Path(folder) / 'candidate'
         base.mkdir(); candidate.mkdir()
@@ -345,6 +377,9 @@ def self_test():
         assert 'first-ready draw calls' in output and 'not GPU time' in output
         assert 'Missing/incomparable GPU queries' in output
         assert '# War Room V3' in output  # Legacy missing variant means V3.
+        assert '| desktop-1440x900 · first-visit · open→shell-ready wall (ms) | 3000.00 | 3000.00 | +0.00 |' in output
+        assert '| desktop-1440x900 · first-visit · shell-ready→Hans-ready wall (ms) | 120.00 | 120.00 | +0.00 |' in output
+        assert '| desktop-1440x900 · first-visit · open→Hans-ready wall (ms) | 3120.00 | 3120.00 | +0.00 |' in output
 
         # V4 is comparable to itself, but never silently compared to V3.
         for directory in (base, candidate):
@@ -422,6 +457,9 @@ def self_test():
         stage_path.write_text(json.dumps(stage_report))
         old_report = compare(base, candidate, a, b)
         assert '| desktop-1440x900 · first-visit · idle | n/a | n/a |' in old_report
+        assert '| desktop-1440x900 · first-visit · shell-ready→Hans-ready wall (ms) | n/a | n/a | n/a |' in old_report
+        assert '| desktop-1440x900 · first-visit · open→Hans-ready wall (ms) | n/a | n/a | n/a |' in old_report
+        assert '| desktop-1440x900 · first-visit · open→shell-ready wall (ms) | 3000.00 |' in old_report
         stage_report['visits'][0]['hansStage'] = 'v3-armory-hall:quick'
         stage_report['visits'][0]['hansReadyAfterShellMs'] = 120
         stage_path.write_text(json.dumps(stage_report))
