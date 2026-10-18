@@ -5,6 +5,7 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { loadHomeCastleR2Scene } from './HomeCastle3DR2Asset.js';
+import { homeBlenderLightProbeMode, applyHomeBlenderLightProbe } from './HomeBlenderLightProbe.js';
 import {
   createHomeBlenderGpuTimer,
   createHomeBlenderFrameSamples,
@@ -1918,6 +1919,8 @@ export default function HomeBlenderScene3D({
     // Explicit opt-in, never run timer queries or the model draw inventory
     // in ordinary sessions. Diagnostics must not affect production startup.
     const gpuProfiling = new URLSearchParams(window.location.search).get('homeGpuProfile') === '1';
+    const lightProbeMode = homeBlenderLightProbeMode(window.location.search);
+    if (gpuProfiling) canvas.dataset.homeBlenderLightProbe = lightProbeMode;
     const gpuTimer = createHomeBlenderGpuTimer(gl, {
       enabled: gpuProfiling,
       software: softwareRenderer,
@@ -1959,6 +1962,14 @@ export default function HomeBlenderScene3D({
     // rear architecture picks up a restrained warm atmospheric falloff.
     scene.fog = new THREE.Fog(0x170d09, 20, 34);
     const runtimeLights = addRuntimeLights(scene, initialPolicy.lod === 'full', ambient);
+    // Explicit benchmark-only variant: remove ancillary non-shadow lights
+    // from the shader's light list. Keep key shadows, fireplaces, glows and
+    // all production lighting entirely unchanged. Never used for users
+    // without BOTH ?homeGpuProfile=1 and ?homeLightProbe=aux-off.
+    if (gpuProfiling) {
+      const disabled = applyHomeBlenderLightProbe(runtimeLights.torches, lightProbeMode);
+      canvas.dataset.homeBlenderLightProbeDisabled = String(disabled);
+    }
     canvas.dataset.homeBlenderPhase = 'scene-created';
     markStartup('scene-created');
 
