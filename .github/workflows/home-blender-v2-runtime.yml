@@ -5,6 +5,8 @@ on:
     paths:
       - 'scripts/blender/build_home_v2_blockout.py'
       - 'scripts/blender/export_home_v2_runtime.py'
+      - 'scripts/blender/home_batch_signatures.py'
+      - 'scripts/blender/test_home_batch_signatures.py'
       - 'scripts/blender/references/home_canon_20260918.webp.b64'
       - '.github/workflows/home-blender-v2-runtime.yml'
       - 'e2e/home-scene-runtime-gate.spec.js'
@@ -15,6 +17,8 @@ on:
       # rebuilding a non-deterministic Home GLB here would only create churn.
       - 'scripts/blender/build_home_v2_blockout.py'
       - 'scripts/blender/export_home_v2_runtime.py'
+      - 'scripts/blender/home_batch_signatures.py'
+      - 'scripts/blender/test_home_batch_signatures.py'
       - 'scripts/blender/references/home_canon_20260918.webp.b64'
       - '.github/workflows/home-blender-v2-runtime.yml'
       - 'e2e/home-scene-runtime-gate.spec.js'
@@ -41,8 +45,10 @@ jobs:
       contentType: ${{ steps.entry.outputs.contentType }}
     steps:
       - uses: actions/checkout@v7
-      - name: Reject broken exporter syntax before Blender setup
-        run: python3 -m py_compile scripts/blender/export_home_v2_runtime.py
+      - name: Static Home material batching contracts
+        run: |
+          python3 -S -m unittest discover -s scripts/blender -p 'test_home_batch_signatures.py' -v
+          python3 -m py_compile scripts/blender/home_batch_signatures.py scripts/blender/export_home_v2_runtime.py
       - uses: ./.github/actions/setup-blender-canonical
         with:
           extra-packages: webp
