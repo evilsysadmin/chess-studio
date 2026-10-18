@@ -6,7 +6,10 @@ import { homeBlenderDistinctGpuSamplesMs } from '../frontend/src/components/Home
 // Explicit, local-only hardware diagnostic. CI excludes this file from its
 // standard Playwright matrix; no identity, passwords or raw GPU names are logged.
 const requested = process.env.CHESS_HOME_GPU_MODE;
-const requireTimer = process.env.CHESS_HOME_GPU_REQUIRE_TIMER === '1';
+const lightProbe = process.env.CHESS_HOME_GPU_LIGHT_PROBE === '1';
+// A/B/B/A trials require a real timer. Do not substitute browser CPU timing
+// or software GPU for fragment-shading costs.
+const requireTimer = lightProbe || process.env.CHESS_HOME_GPU_REQUIRE_TIMER === '1';
 const artifactDir = '../.artifacts/home-gpu-benchmark';
 
 function median(numbers) {
@@ -16,7 +19,7 @@ function median(numbers) {
   return values.length % 2 ? values[middle] : (values[middle - 1] + values[middle]) / 2;
 }
 
-async function openRealHome(page) {
+async function openRealHome(page, lightMode = 'normal') {
   await page.addInitScript(() => {
     // Home's desktop GLTF policy needs a capable CPU report. This does not
     // change the renderer and must never be used to claim a physical GPU.
@@ -31,7 +34,9 @@ async function openRealHome(page) {
       'chess-study-home-guide-dismissed-v1': '1',
     },
   });
-  await page.goto('./?homeGpuProfile=1', { waitUntil: 'domcontentloaded' });
+  const query = lightMode === 'aux-off'
+    ? './?homeGpuProfile=1&homeLightProbe=aux-off' : './?homeGpuProfile=1';
+  await page.goto(query, { waitUntil: 'domcontentloaded' });
   await page.getByLabel('Usuario').fill('e2e');
   const password = page.getByLabel('Contraseña');
   await password.fill('clave123456');
@@ -95,6 +100,9 @@ async function readRealCanvas(castle) {
     } catch { /* Retain null. */ }
     return {
       actual, vendor, software, lod: d.homeCastleLod || null,
+      shadows: d.homeBlenderShadows || null,
+      lightProbe: d.homeBlenderLightProbe || null,
+      auxiliaryLightsDisabled: num('homeBlenderLightProbeDisabled'),
       ambient: d.homeBlenderAmbient || null, rendererFingerprint,
       gpuStatus: d.homeBlenderGpuStatus || 'missing',
       gpuMs: num('homeBlenderGpuMs'),
@@ -117,13 +125,21 @@ async function readRealCanvas(castle) {
   });
 }
 
-test('Home 3D physical GPU benchmark · three cold independent visits', async ({ browser, baseURL }) => {
-  test.setTimeout(450_000);
+test('Home 3D physical GPU benchmark · three visits or opt-in light A/B/B/A', async ({ browser, baseURL }) => {
+  test.setTimeout(lightProbe ? 600_000 : 450_000);
+  if (lightProbe && requested !== 'hardware') {
+    throw new Error('CHESS_HOME_GPU_LIGHT_PROBE=1 requires CHESS_HOME_GPU_MODE=hardware');
+  }
   if (process.env.CHESS_E2E_LIGHTWEIGHT === '1') {
     throw new Error('CHESS_E2E_LIGHTWEIGHT=1 forces a 2D Home and cannot benchmark GPU rendering');
   }
   const visits = [];
-  for (let index = 0; index < 3; index += 1) {
+  // Alternating order counters warmup/drift and always uses a fresh browser
+  // context, identical build, camera, viewport and ambient period.
+  const sequence = lightProbe
+    ? ['normal', 'aux-off', 'aux-off', 'normal']
+    : ['normal', 'normal', 'normal'];
+  for (let index = 0; index < sequence.length; index += 1) {
     const context = await browser.newContext({
       baseURL,
       viewport: { width: 1440, height: 900 },
@@ -139,7 +155,7 @@ test('Home 3D physical GPU benchmark · three cold independent visits', async ({
       } catch { /* Do not log request URLs. */ }
     });
     try {
-      const castle = await openRealHome(page);
+      const castle = await openRealHome(page, sequence[index]);
       const snapshots = [];
       // Sample after the Home is ready, not the loading/compilation spike.
       // The scene throttles animation by design, so "draws/s" != display FPS.
@@ -164,6 +180,19 @@ test('Home 3D physical GPU benchmark · three cold independent visits', async ({
       console.log('HOME_3D_GPU_BENCH ' + JSON.stringify(row));
       expect(row.actual, 'Verify the renderer of the actual Home canvas, not browser launch flags')
         .toBe(requested);
+      if (lightProbe) {
+        expect(row.lightProbe).toBe(sequence[index]);
+        expect(row.lod, 'Compare fully lit full-LOD Home only').toBe('full');
+        expect(row.shadows, 'Both variants must keep the key shadow pass').toBe('enabled');
+        if (sequence[index] === 'aux-off') {
+          expect(row.auxiliaryLightsDisabled, 'The probe must actually exclude auxiliary lights')
+            .toBeGreaterThan(0);
+        } else {
+          expect(row.auxiliaryLightsDisabled).toBe(0);
+        }
+        expect(row.gpuSamplesMs.length, 'A/B requires fresh hardware GPU timer results in every visit')
+          .toBeGreaterThan(0);
+      }
       expect(row.canvasWidth * row.canvasHeight).toBeGreaterThan(0);
       expect(row.initialDrawCalls).toBeGreaterThan(0);
       expect(row.initialTriangles).toBeGreaterThan(0);
@@ -182,6 +211,55 @@ test('Home 3D physical GPU benchmark · three cold independent visits', async ({
     } finally {
       await context.close();
     }
+  }
+  if (lightProbe) {
+    const reference = visits[0];
+    for (const row of visits.slice(1)) {
+      for (const key of ['actual', 'vendor', 'rendererFingerprint', 'lod', 'shadows',
+        'ambient', 'canvasWidth', 'canvasHeight', 'initialTriangles']) {
+        expect(row[key], `Home A/B/B/A is not comparable: mismatched ${key}`).toEqual(reference[key]);
+      }
+    }
+    expect(visits[1].auxiliaryLightsDisabled).toBe(visits[2].auxiliaryLightsDisabled);
+    const normal = visits.filter((row) => row.lightProbe === 'normal');
+    const auxOff = visits.filter((row) => row.lightProbe === 'aux-off');
+    const baseGpuMs = median(normal.map((row) => row.gpuMedianMs));
+    const auxOffGpuMs = median(auxOff.map((row) => row.gpuMedianMs));
+    const result = {
+      schema: 1,
+      surface: 'Home Blender 3D auxiliary light isolation',
+      revision: process.env.CHESS_HOME_GPU_REVISION || null,
+      mode: requested,
+      browserVersion: browser.version(),
+      viewport: { width: 1440, height: 900, dpr: 1 },
+      sequence,
+      matchingRendererFingerprint: reference.rendererFingerprint,
+      ambient: reference.ambient,
+      lod: reference.lod,
+      shadows: reference.shadows,
+      auxiliaryLightsExcluded: visits[1].auxiliaryLightsDisabled,
+      // Contrast between *different rendered scenes*, not an FPS estimate
+      // or a recommendation to remove lights in production.
+      gpuMedianMs: { normal: baseGpuMs, auxOff: auxOffGpuMs },
+      gpuDifferenceMs: baseGpuMs - auxOffGpuMs,
+      gpuContrastPct: baseGpuMs > 0
+        ? 100 * (baseGpuMs - auxOffGpuMs) / baseGpuMs : null,
+      cpuP95MedianMs: {
+        normal: median(normal.map((row) => row.cpuP95MedianMs)),
+        auxOff: median(auxOff.map((row) => row.cpuP95MedianMs)),
+      },
+      visits,
+    };
+    await mkdir(artifactDir, { recursive: true });
+    await writeFile(`${artifactDir}/home-3d-light-probe-hardware.json`,
+      `${JSON.stringify(result, null, 2)}\n`, 'utf8');
+    console.log('HOME_3D_LIGHT_PROBE ' + JSON.stringify({
+      sequence, auxiliaryLightsExcluded: result.auxiliaryLightsExcluded,
+      gpuMedianMs: result.gpuMedianMs,
+      gpuDifferenceMs: result.gpuDifferenceMs,
+      gpuContrastPct: result.gpuContrastPct,
+    }));
+    return;
   }
   const summary = {
     schema: 2,
