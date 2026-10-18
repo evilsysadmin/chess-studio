@@ -69,6 +69,16 @@ async function readRealCanvas(castle) {
               : /mali/i.test(rawRenderer) ? 'mali'
                 : /powervr/i.test(rawRenderer) ? 'powervr' : 'unknown';
     const actual = software ? 'software' : vendor !== 'unknown' ? 'hardware' : 'unknown';
+    // A coarse, repeatable renderer-model fingerprint; raw GPU model/driver
+    // strings never leave this page or appear in the artifact/logs.
+    // This is not a device ID: two machines with the same model may match.
+    let fingerprint = 2166136261;
+    for (const char of rawRenderer) {
+      fingerprint ^= char.charCodeAt(0);
+      fingerprint = Math.imul(fingerprint, 16777619);
+    }
+    const rendererFingerprint = rawRenderer
+      ? (fingerprint >>> 0).toString(16).padStart(8, '0') : null;
     const num = (key) => {
       const value = d[key];
       return value == null || value === '' || !Number.isFinite(Number(value)) ? null : Number(value);
@@ -80,6 +90,7 @@ async function readRealCanvas(castle) {
     } catch { /* Retain null. */ }
     return {
       actual, vendor, software, lod: d.homeCastleLod || null,
+      ambient: d.homeBlenderAmbient || null, rendererFingerprint,
       gpuStatus: d.homeBlenderGpuStatus || 'missing',
       gpuMs: num('homeBlenderGpuMs'),
       gpuSampleCount: num('homeBlenderGpuSampleCount'),
@@ -165,10 +176,11 @@ test('Home 3D physical GPU benchmark · three cold independent visits', async ({
     }
   }
   const summary = {
-    schema: 1,
+    schema: 2,
     surface: 'Home Blender 3D',
     mode: requested,
     revision: process.env.CHESS_HOME_GPU_REVISION || null,
+    browserVersion: browser.version(),
     viewport: { width: 1440, height: 900, dpr: 1 },
     requireTimer,
     // Only medians of physical observations, never inferred GPU ms or VRAM MB.
