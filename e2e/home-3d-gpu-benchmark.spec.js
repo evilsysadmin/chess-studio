@@ -197,6 +197,12 @@ test('Home 3D physical GPU benchmark · three cold independent visits', async ({
       initialDrawCalls: median(visits.map((visit) => visit.initialDrawCalls)),
       allocatedTextures: median(visits.map((visit) => visit.allocatedTextures)),
       allocatedGeometries: median(visits.map((visit) => visit.allocatedGeometries)),
+      // One-time authored-model draw candidates, never actual GL submissions.
+      modelDrawSlots: median(visits.map((visit) => visit.modelDrawInventory?.drawSlotCandidates)),
+      modelShadowCasterSlots: median(visits.map((visit) => visit.modelDrawInventory?.shadowCasterSlots)),
+      modelTransparentSlots: median(visits.map((visit) => visit.modelDrawInventory?.transparentSlots)),
+      modelUniqueGeometries: median(visits.map((visit) => visit.modelDrawInventory?.uniqueGeometries)),
+      modelUniqueMaterials: median(visits.map((visit) => visit.modelDrawInventory?.uniqueMaterials)),
       cpuP95Ms: median(visits.map((visit) => visit.cpuP95MedianMs)),
       rafGapP95Ms: median(visits.map((visit) => visit.rafGapP95MedianMs)),
       gpuMs: median(visits.map((visit) => visit.gpuMedianMs)),
