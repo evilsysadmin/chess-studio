@@ -299,6 +299,35 @@ harness rechaza reutilizarlo). Conservar siempre el mismo browser, flags,
 GPU/driver, viewport, carga de fondo y GLB real. Comprobar que cada worktree
 es realmente el SHA indicado; el `HARNESS_SHA` debe contener el schema 2.
 
+### GPU elapsed medido en el benchmark local (a partir de #5780)
+
+El mismo A/B/B/A ahora intenta activar el temporizador WebGL2 **solo** en
+las dos revisiones locales mediante `localStorage['war-room-gpu-profile']='1'`.
+El harness observa los contadores de consultas completadas del propio
+`canvas.board3d-main-canvas` durante las fases `idle` y `move`; solo
+recoge valores realmente publicados por `EXT_disjoint_timer_query_webgl2`.
+Cada muestra aparece en `idle.gpuTimer.samplesMs` o
+`move.gpuTimer.samplesMs` junto con estado, disjoint y consultas
+perdidas. No se sustituye una muestra faltante por un valor rAF/CPU.
+
+El comparador conserva la compatibilidad con los informes **schema 2**
+anteriores, pero solo presenta una fila GPU numérica si, **en ambas
+revisiones y para todas las repeticiones** de ese perfil/visita/fase,
+existen al menos dos consultas completadas, el estado es `ready` y no
+hay disjoint ni consultas omitidas. En cualquier otro caso muestra
+`n/a` y mantiene la comparación rAF por separado. No mide Android
+físico aunque el perfil emule su viewport o touch.
+
+**Atención con las revisiones de ejemplo anteriores a #5780:** no
+incluyen la instrumentación interna y, aunque compartan el harness,
+sus columnas GPU serán `n/a`. Para analizar mejoras GPU a partir de
+#5780, seleccionar **dos revisiones que incorporen la instrumentación**;
+no inyectar código de producción moderno en una baseline antigua,
+porque adulteraría el A/B. El temporizador WebGL2 no supone
+sincronización `gl.finish`, pero puede introducir algo de carga de
+instrumentación: comparar rAF y GPU con el mismo harness, GPU, driver,
+browser y sesión de energía.
+
 El comparador **falla cerrado** si faltan perfiles, quedan menos de dos
 runs independientes por SHA/perfil, algún JSON está corrupto, una muestra
 no tiene dos visitas/frames suficientes, cambia el renderer, no coinciden

@@ -28,6 +28,8 @@ const onboarding = {
   'matthias.onboarded': '2',
   'chess-study-home-guide-dismissed-v1': '1',
   [variantKey]: 'v3',
+  // Opt-in only in this local benchmark. Production/regular E2E stays inert.
+  'war-room-gpu-profile': '1',
 };
 let browser;
 
@@ -43,12 +45,41 @@ async function startProbe(page) {
     const probe = {
       started: performance.now(), intervals: [], longTasks: [],
       longTaskSupported: false, lastFrame: null, raf: null, observer: null,
+      gpu: {
+        lastCount: null, samplesMs: [], droppedQueries: 0,
+        disjointObserved: false, status: 'absent',
+      },
     };
+    // Sample only actually completed WebGL2 elapsed timer queries published
+    // by the War Room canvas. Never infer GPU time from rAF/CPU stats.
+    const readGpu = () => {
+      const dataset = document.querySelector('canvas.board3d-main-canvas')?.dataset;
+      if (!dataset?.warRoomGpuProfileStatus) return;
+      const gpu = probe.gpu;
+      gpu.status = dataset.warRoomGpuProfileStatus;
+      if (gpu.status === 'disjoint') gpu.disjointObserved = true;
+      const count = Number(dataset.warRoomGpuProfileSamples);
+      if (!Number.isSafeInteger(count) || count < 0) return;
+      if (gpu.lastCount === null) {
+        gpu.lastCount = count;
+        return;
+      }
+      if (count <= gpu.lastCount) return;
+      // A missed query must not be fabricated from the most recent sample.
+      if (count > gpu.lastCount + 1) gpu.droppedQueries += count - gpu.lastCount - 1;
+      gpu.lastCount = count;
+      const elapsed = Number(dataset.warRoomGpuProfileLastMs);
+      if (gpu.status === 'ready' && Number.isFinite(elapsed) && elapsed >= 0) {
+        if (gpu.samplesMs.length < 500) gpu.samplesMs.push(elapsed);
+      }
+    };
+    readGpu();
     const tick = (stamp) => {
       if (probe.lastFrame !== null && probe.intervals.length < 5000) {
         probe.intervals.push(stamp - probe.lastFrame);
       }
       probe.lastFrame = stamp;
+      readGpu();
       probe.raf = requestAnimationFrame(tick);
     };
     probe.raf = requestAnimationFrame(tick);
@@ -83,6 +114,12 @@ async function stopProbe(page) {
       intervals: probe.intervals,
       longTasks: probe.longTasks,
       longTaskSupported: probe.longTaskSupported,
+      gpuTimer: {
+        status: probe.gpu.status,
+        samplesMs: probe.gpu.samplesMs,
+        droppedQueries: probe.gpu.droppedQueries,
+        disjointObserved: probe.gpu.disjointObserved,
+      },
     };
   });
   expect(raw.visibility, 'Foreground session required for rAF pacing').toBe('visible');
@@ -95,6 +132,7 @@ async function stopProbe(page) {
     rafGapsOver33Ms: raw.intervals.filter((ms) => ms > 33.34).length,
     rafGapsOver50Ms: raw.intervals.filter((ms) => ms > 50).length,
     longTaskSupported: raw.longTaskSupported,
+    gpuTimer: raw.gpuTimer,
     longTaskCount: raw.longTaskSupported ? raw.longTasks.length : null,
     longTaskMaxMs: raw.longTaskSupported && raw.longTasks.length
       ? Number(Math.max(...raw.longTasks).toFixed(2)) : null,
@@ -225,11 +263,15 @@ for (const profile of profiles) {
           expect(renderer.firstReady.calls).toBeGreaterThan(0);
           const idle = await sampleIdle(page);
           const move = await sampleConfirmedMove(page, board, canvas, requestLog);
+          const gpuTimerQueryMeasured = Boolean(
+            idle.gpuTimer.samplesMs.length || move.gpuTimer.samplesMs.length,
+          );
           visits.push({
             visitType, openToReadyWallMs,
             ...renderer, idle, move,
-            // Not inferred from rAF or WebGLRenderer.info: requires true GPU timer queries.
-            gpuFrameTimeMs: null, gpuTimerQueryMeasured: false,
+            // GPU elapsed is phase-specific: an aggregated frame time would
+            // conflate idle and move; retain null rather than manufacture it.
+            gpuFrameTimeMs: null, gpuTimerQueryMeasured,
           });
         } finally {
           await page.close();
@@ -243,7 +285,8 @@ for (const profile of profiles) {
       requestedRenderer: requested,
       profile: profile.id, viewport: profile.viewport,
       emulatedTouch: profile.touch, physicalAndroidVerified: false,
-      browserFramePacingOnly: true, visits,
+      browserFramePacingOnly: !visits.some(({ gpuTimerQueryMeasured }) => gpuTimerQueryMeasured),
+      visits,
     };
     await mkdir(outputDir, { recursive: true });
     await writeFile(resolve(outputDir, revision + '-' + requested + '-' + profile.id + '-' + runId + '.json'), JSON.stringify(report, null, 2) + '\n');
@@ -251,6 +294,8 @@ for (const profile of profiles) {
       revision, runId, profile: profile.id, renderer: requested,
       visits: visits.map(({ visitType, idle, move }) => ({
         visitType, idleRafP95Ms: idle.rafP95Ms, moveRafP95Ms: move.rafP95Ms,
+        idleGpuQueries: idle.gpuTimer.samplesMs.length,
+        moveGpuQueries: move.gpuTimer.samplesMs.length,
         moveConfirmationMs: move.inputToConfirmationMs,
       })),
     }));
