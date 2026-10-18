@@ -158,6 +158,47 @@ Repetir cada revisión en el mismo host en órdenes alternos A/B/B/A (varias rep
 No fusionar una nueva optimización de luces, materiales o GLB basándose exclusivamente en un JSON de este benchmark; conservar captura visual, comparación de triángulos/draw calls y paridad de jugabilidad. La issue #5765 permanece abierta hasta tener medidas repetidas sobre hardware.
 
 
+### Diagnóstico GPU real de War Room, opt-in (WebGL2)
+
+Home ya usa `EXT_disjoint_timer_query_webgl2` para observar tiempo de GPU
+sin bloquearla. War Room reutiliza exactamente ese temporizador cuando se
+solicita explícitamente en el navegador, en la propia escena Three.js
+(juego real, **no** una canvas de prueba).
+
+Para una sesión manual en Nobara, abrir la app con
+`?warRoomGpuProfile=1` en la URL **antes de entrar en la partida**;
+alternativamente, desde DevTools establecer
+`localStorage.setItem('war-room-gpu-profile', '1')` y **volver a montar
+la sala 3D**. En DevTools puede inspeccionarse:
+
+```js
+const d = document.querySelector('canvas.board3d-main-canvas')?.dataset;
+({
+  status: d?.warRoomGpuProfileStatus,
+  completedGpuQueries: d?.warRoomGpuProfileSamples,
+  lastGpuRenderMs: d?.warRoomGpuProfileLastMs,
+});
+```
+
+El perfilador consulta un resultado asíncrono como máximo cada ocho
+**renders reales de Three.js**, nunca en cada `requestAnimationFrame`,
+y elimina las queries pendientes al desmontar la sala. Solo publica un
+valor cuando finaliza una consulta `TIME_ELAPSED_EXT` válida: estados
+`unsupported`, `software`, `disjoint`, `error` o
+`sampling` no acreditan un tiempo GPU. En un renderizador software
+no se crean consultas de medición. Una respuesta WebGL1 o una extensión
+deshabilitada no se sustituye por CPU/rAF ni por ceros inventados.
+
+El resultado es **tiempo de GPU de un render elegido**, no FPS ni tiempo
+de CPU, y no mide por sí solo la pantalla completa ni el compositor.
+El juego normal no emite consultas, no tiene timer activo y no escribe
+atributos de GPU por fotograma. Tras desactivar la bandera basta
+recargar/remontar el tablero. La captura y el comparador A/B/B/A
+existentes siguen recogiendo solo cadencia rAF (schema 2):
+**todavía no incorporan los resultados de este temporizador**.
+No interpretar `gpuFrameTimeMs: null` del JSON como tiempo GPU cero.
+La medición física reproducible sigue abierta en #5765.
+
 ### Repeticiones A/B/B/A sin sobrescribir JSON (#5765)
 
 
