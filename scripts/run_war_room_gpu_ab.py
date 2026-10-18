@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run reproducible A/B/B/A War Room V3 frame-pacing captures on one local GPU.
+"""Run reproducible A/B/B/A War Room V3/V4 frame-pacing captures on one local GPU.
 
 Local operator tool, NEVER an unattended GitHub Actions GPU benchmark.
 Uses detached git worktrees and an identical benchmark harness for both
@@ -132,7 +132,7 @@ def run_playwright_logged(command, *, cwd, env, log_path):
             return process.wait()
 
 
-def preserve_fresh_captures(target, prior, destination, sha, renderer, *, strict):
+def preserve_fresh_captures(target, prior, destination, sha, renderer, *, strict, variant='v3'):
     """Copy first, validate afterward. Failed runs must retain partial evidence."""
     directory = target / '.artifacts/war-room-gpu-benchmark'
     produced = sorted(set(directory.glob('*.json')) - prior)
@@ -150,6 +150,7 @@ def preserve_fresh_captures(target, prior, destination, sha, renderer, *, strict
         require(report.get('schema') == 2 and report.get('revision') == sha,
                 f'{path}: invalid capture schema/revision')
         require(report.get('requestedRenderer') == renderer, f'{path}: renderer mismatch')
+        require(report.get('variant', 'v3') == variant, f'{path}: War Room variant mismatch')
         names.add(report.get('profile'))
     if strict:
         require(len(produced) == len(PROFILES),
@@ -174,6 +175,7 @@ def exercise_once(label, target, sha, renderer, env, destination, ordinal, total
     # or deleting the detached worktree in the caller's finally block.
     count = preserve_fresh_captures(
         target, prior, destination, sha, renderer, strict=result == 0,
+        variant=local_env['WAR_ROOM_GPU_BENCH_VARIANT'],
     )
     if result:
         raise BenchError(
@@ -249,6 +251,7 @@ def main():
     parser.add_argument('--candidate-sha', required=False)
     parser.add_argument('--harness-sha', help='SHA providing ONE identical Playwright harness for A+B (default: HEAD)')
     parser.add_argument('--renderer', choices=('hardware', 'software'), default='hardware')
+    parser.add_argument('--variant', choices=('v3', 'v4'), default='v3', help='Room measured by both revisions, default V3')
     parser.add_argument('--offload', choices=('nvidia', 'mesa', 'none'), default='nvidia')
     parser.add_argument('--repetitions', type=int, default=2, help='Independent captures per revision, min 2; default 2')
     parser.add_argument('--output-root', type=Path, help='Parent for immutable session results (default .artifacts/war-room-gpu-ab)')
@@ -270,8 +273,9 @@ def main():
         order = execution_order(args.repetitions)
         require(args.renderer == 'software' or args.renderer == 'hardware', 'Renderer invalid')
         env = gpu_env(args.renderer, args.offload)
+        env['WAR_ROOM_GPU_BENCH_VARIANT'] = args.variant
         print(f'War Room benchmark: A={baseline} B={candidate} harness={harness}', flush=True)
-        print('Sequence: ' + ' → '.join(order) + f' · renderer={args.renderer} offload={args.offload}', flush=True)
+        print('Sequence: ' + ' → '.join(order) + f' · variant={args.variant} renderer={args.renderer} offload={args.offload}', flush=True)
         if args.dry_run:
             print('Dry run: no worktrees, build, browser or GPU comparison executed')
             return 0
@@ -281,7 +285,8 @@ def main():
         for filename in (*HARNESS_FILES, COMPARE_PATH):
             harness_blobs[filename] = capture(('git', 'show', harness + ':' + filename), cwd=root)
         require(b'schema: 2' in harness_blobs[HARNESS_FILES[0]]
-                and b'runId' in harness_blobs[HARNESS_FILES[0]],
+                and b'runId' in harness_blobs[HARNESS_FILES[0]]
+                and (args.variant == 'v3' or b'WAR_ROOM_GPU_BENCH_VARIANT' in harness_blobs[HARNESS_FILES[0]]),
                 'Harness must produce schema 2, per-run JSON')
         session = dt.datetime.now(dt.timezone.utc).strftime('%Y%m%dT%H%M%SZ') + '-' + uuid.uuid4().hex[:8]
         destination_root = (args.output_root or root / '.artifacts/war-room-gpu-ab') / session
@@ -292,7 +297,8 @@ def main():
         # masquerade as a completed comparison or become unattributed JSON.
         session_metadata = {
             'schema': 1, 'baseline': baseline, 'candidate': candidate,
-            'harness': harness, 'renderer': args.renderer, 'offload': args.offload,
+            'harness': harness, 'variant': args.variant,
+            'renderer': args.renderer, 'offload': args.offload,
             'sequence': order, 'repetitions': args.repetitions,
             'physicalAndroidVerified': False,
             'metric': 'browser rAF cadence (not GPU frame time)',
