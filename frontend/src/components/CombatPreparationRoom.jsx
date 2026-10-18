@@ -12,7 +12,7 @@ function levelForSaved(saved) {
     + Math.max(0, Number(saved?.speedPoints) || 0);
 }
 
-export default function CombatPreparationRoom({ roster }) {
+export default function CombatPreparationRoom({ roster, onCustomize }) {
   const fen = useMemo(() => deploymentFen(roster), [roster]);
   const pieceRankLevels = useMemo(() => {
     const ranks = {};
@@ -56,6 +56,14 @@ export default function CombatPreparationRoom({ roster }) {
         loadingClassName="combat-preparation-room-loading"
       />
       <div className="combat-preparation-room-vignette" aria-hidden="true" />
+      {onCustomize && (
+        <div className="combat-preparation-edit">
+          <span>VISTA PREVIA DE TU FORMACIÓN</span>
+          <button type="button" onClick={onCustomize} aria-label="Editar formación desde el tablero">
+            ✎ Editar piezas →
+          </button>
+        </div>
+      )}
     </div>
   );
 }

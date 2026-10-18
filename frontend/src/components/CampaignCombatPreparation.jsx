@@ -71,7 +71,7 @@ export default function CampaignCombatPreparation({
   return (
     <div className={`menu combat-setup campaign-preparation-screen combat-operations-screen${showDeployment ? ' combat-deployment-active' : ''}`}>
       <section className="campaign-preparation-shell simplified-stage combat-operations-shell" aria-label="Preparación de Combat Chess">
-        <CombatPreparationRoom roster={roster} />
+        <CombatPreparationRoom roster={roster} onCustomize={() => setShowDeployment(true)} />
 
         <div className="combat-operations-topbar">
           <button className="back-link combat-operations-exit" onClick={onExit}>← Salir de Combat Chess</button>
@@ -101,21 +101,10 @@ export default function CampaignCombatPreparation({
           <button type="button" className="campaign-market-link" onClick={onOpenMarket}>Mercado · {roster.credits || 0} cr →</button>
         </div>
 
-        <div className={`campaign-situation-banner combat-operations-order ${deploymentConfirmed ? 'ready' : deadCount ? 'danger' : ''}`}>
-          <span>ORDEN ACTUAL</span>
-          <strong>{nextAction}</strong>
-        </div>
-
         <div className="campaign-operation-primary-zone campaign-preparation-primary-zone friendly-primary-zone combat-operations-primary">
           <div>
             <span>{deadCount > 0 ? 'BAJAS PENDIENTES' : deploymentConfirmed ? 'LISTO PARA COMBATIR' : 'FORMACIÓN DE COMBATE'}</span>
-            <small>{deadCount > 0
-              ? 'Una baja puede implicar perder una identidad. Decide antes de avanzar.'
-              : deploymentConfirmed
-                ? 'La formación ya está confirmada.'
-                : deploy.ready
-                  ? 'Puedes entrar ya con esta formación o ajustarla antes.'
-                  : 'La recomendada cubre los puestos vacíos sin tocar reservas innecesarias.'}</small>
+            <small role="status">{nextAction}</small>
           </div>
           <div className="combat-operations-primary-actions">
             {deadCount > 0 ? (
