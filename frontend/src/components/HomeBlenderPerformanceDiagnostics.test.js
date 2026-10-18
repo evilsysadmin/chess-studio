@@ -69,6 +69,26 @@ describe('Home Blender optional GPU profiler', () => {
     expect(gl.deleteQuery).toHaveBeenCalledTimes(1);
   });
 
+  it('binds a completed GPU result to the query start tag, not its later poll', () => {
+    const { gl, ready, setDisjoint } = fakeGpu();
+    const timer = createHomeBlenderGpuTimer(gl, { enabled: true, sampleEvery: 1 });
+    timer.begin(142.5);
+    timer.end();
+    expect(timer.lastCompletedTag).toBe(null);
+    expect(timer.poll()).toBe(null);
+    ready();
+    expect(timer.poll()).toBe(4.25);
+    expect(timer.lastCompletedTag).toBe(142.5);
+    timer.begin(205);
+    timer.end();
+    expect(timer.lastCompletedTag).toBe(142.5);
+    setDisjoint();
+    expect(timer.poll()).toBe(null);
+    expect(timer.lastCompletedTag).toBe(null);
+    timer.dispose();
+    expect(timer.lastCompletedTag).toBe(null);
+  });
+
   it('rejects disjoint results rather than publishing a fabricated GPU time', () => {
     const { gl, setDisjoint } = fakeGpu();
     const timer = createHomeBlenderGpuTimer(gl, { enabled: true, sampleEvery: 1 });
