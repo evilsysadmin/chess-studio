@@ -341,7 +341,7 @@ function Board3DCanvas({
       const viewport = resolveStableBoardViewportForHost(host, { immersive, viewport: window });
       if (!sizeGate(viewport)) return;
       renderer.setSize(viewport.width, viewport.height, false);
-      fitBoardCamera(camera, viewport.width, viewport.height, whiteSide, { profile: trainingRoom ? 'training-room' : cameraProfile === 'classroom' || cameraProfile === 'warroom' || (latestPropsRef.current.warRoomVariant || 'classic') !== 'classic' ? cameraProfile : 'classic', immersive });
+      fitBoardCamera(camera, viewport.width, viewport.height, whiteSide, { profile: trainingRoom ? 'training-room' : cameraProfile === 'classroom' || cameraProfile === 'warroom' || (latestPropsRef.current.warRoomVariant || 'classic') !== 'classic' ? cameraProfile : 'classic', immersive, variant: latestPropsRef.current.warRoomVariant });
       requestRender();
     }
     resize();
@@ -589,7 +589,7 @@ function Board3DCanvas({
   useEffect(() => {
     const state = sceneStateRef.current, host = hostRef.current;
     if (!state || !host) return;
-    const viewport = resolveStableBoardViewportForHost(host, { immersive, viewport: window }); fitBoardCamera(state.camera, viewport.width, viewport.height, state.whiteSide, { profile: trainingRoom ? 'training-room' : cameraProfile === 'classroom' || cameraProfile === 'warroom' || warRoomVariant !== 'classic' ? cameraProfile : 'classic', immersive });
+    const viewport = resolveStableBoardViewportForHost(host, { immersive, viewport: window }); fitBoardCamera(state.camera, viewport.width, viewport.height, state.whiteSide, { profile: trainingRoom ? 'training-room' : cameraProfile === 'classroom' || cameraProfile === 'warroom' || warRoomVariant !== 'classic' ? cameraProfile : 'classic', immersive, variant: warRoomVariant });
     state.requestRender();
   }, [warRoomVariant, cameraProfile, immersive, trainingRoom]);
 
