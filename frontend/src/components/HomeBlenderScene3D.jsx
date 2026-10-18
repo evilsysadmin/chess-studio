@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
+import { freezeHomeBlenderStaticTransforms } from './HomeBlenderStaticTransforms.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
@@ -1945,6 +1946,10 @@ export default function HomeBlenderScene3D({
     renderer.setClearColor(0x000000, 0);
 
     const scene = new THREE.Scene();
+    // Stationary world origin: moving actors/lights still update themselves,
+    // but a fresh frame no longer forces the entire static room to recompute
+    // matrixWorld through the Scene parent.
+    freezeHomeBlenderStaticTransforms(scene);
     const releaseEnvironment = installHomeEnvironment(
       renderer,
       scene,
@@ -2374,6 +2379,12 @@ export default function HomeBlenderScene3D({
       fireRig = prepareRuntimeFireRig(model);
       klausRig = prepareHomeBlenderKlausRig(model);
       canvas.dataset.homeKlausMotion = klausRig ? 'ready' : 'missing';
+      // Only authored GLB stationary nodes are frozen. Flame/steam meshes,
+      // the whole Klaus rig and the separately mounted Matthias remain live.
+      const frozenTransforms = freezeHomeBlenderStaticTransforms(
+        model, [...fireRig.map((node) => node.object), klausRig],
+      );
+      canvas.dataset.homeBlenderFrozenTransforms = String(frozenTransforms);
       markStartup('rigs-prepared');
       scene.add(model);
       resize();
