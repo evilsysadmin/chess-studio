@@ -375,6 +375,8 @@ def self_test():
         for path in base.glob('*.json'):
             report = json.loads(path.read_text())
             report['variant'] = 'v3'
+            for visit in report['visits']:
+                visit['hansStage'] = 'v3-armory-hall:quick'
             path.write_text(json.dumps(report))
         try:
             compare(base, candidate, a, b)
