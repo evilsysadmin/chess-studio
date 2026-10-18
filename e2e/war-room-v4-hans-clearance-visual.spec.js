@@ -2,9 +2,9 @@ import { chromium, expect, test } from '@playwright/test';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { buttonWithVisibleText, login, mockApi } from './helpers.js';
 import { warRoomHansEventForGame } from '../frontend/src/components/WarRoomHansEventContract.js';
+import { installManifestPinnedV4Model } from './v4-immutable-model.js';
 
 const DIR = '../.artifacts/app-visual';
-const REVISION_BASE = 'https://assets.chess-studio.shadowops.dpdns.org/war-room/v4/staging/revisions';
 const REVISION = String(process.env.APP_VISUAL_EXPECTED_WAR_ROOM_V4_REVISION || '').trim();
 
 function firstFireGameIndex() {
@@ -26,15 +26,7 @@ test('War Room V4 · Hans realmente atraviesa su nuevo pasillo en WebGL', async 
   const context = await browser.newContext({ viewport: { width: 1280, height: 720 }, hasTouch: false });
   const page = await context.newPage();
   try {
-    const url = REVISION_BASE + '/' + encodeURIComponent(REVISION) + '.glb';
-    const response = await page.request.get(url, { timeout: 20_000 });
-    expect(response.ok(), 'V4 screenshot must use published PR GLB').toBe(true);
-    const body = await response.body();
-    expect(body.length).toBeGreaterThan(60_000);
-    await page.route('**/war-room/v4/runtime/*.glb*', (route) => route.fulfill({
-      status: 200, body, contentType: 'model/gltf-binary',
-      headers: { 'cache-control': 'no-store' },
-    }));
+    const pinned = await installManifestPinnedV4Model(page);
     await page.emulateMedia({ reducedMotion: 'no-preference' });
     await mockApi(page, {
       profileSeed: { 'matthias.onboarded': '2', 'chess-study-home-guide-dismissed-v1': '1' },
@@ -66,6 +58,7 @@ test('War Room V4 · Hans realmente atraviesa su nuevo pasillo en WebGL', async 
     await expect(canvas).toHaveAttribute('data-war-room-hans-call-released', 'true', { timeout: 90_000 });
     await expect(canvas).toHaveAttribute('data-war-room-hans-reply-seen', 'true', { timeout: 90_000 });
     await expect(canvas).toHaveAttribute('data-war-room-hans-screen', /^(onscreen|edge)$/, { timeout: 25_000 });
+    await expect(canvas).toHaveAttribute('data-war-room-hans-ground-gap', /^[0-9]/, { timeout: 25_000 });
 
     // Snapshot while an actual moving actor is onscreen: the normal V4 scene
     // screenshots only show an empty service aisle and a Matthias dialogue card.
@@ -93,10 +86,12 @@ test('War Room V4 · Hans realmente atraviesa su nuevo pasillo en WebGL', async 
     const png = await page.screenshot({ animations: 'disabled', fullPage: false });
     await writeFile(DIR + '/war-room-v4-hans-walking-1280x720.png', png);
     await writeFile(DIR + '/war-room-v4-hans-walking-1280x720.json', JSON.stringify({
-      revision: REVISION, viewport: { width: 1280, height: 720 }, samples: captures,
+      revision: REVISION, pinnedSha256: pinned.sha256,
+      viewport: { width: 1280, height: 720 }, samples: captures,
     }, null, 2));
     console.log('V4_HANS_MOVING ' + JSON.stringify({
-      revision: REVISION, samples: captures.length, visible: captures.filter((x) => x.screen === 'onscreen').length,
+      revision: REVISION, pinnedSha256: pinned.sha256,
+      samples: captures.length, visible: captures.filter((x) => x.screen === 'onscreen').length,
     }));
   } finally {
     await context.close();
