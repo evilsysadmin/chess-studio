@@ -77,7 +77,14 @@ describe('War Room v3 authored stove fire', () => {
     root.add(anchor);
 
     const driver = root.getObjectByName('WR3_ARM_hearth_flame_body');
+    const secondary = root.getObjectByName('WR3_ARM_hearth_flame_0');
+    const initiallyVisible = secondary.visible;
     const release = installWarRoomV3FireAnimation(root);
+    // The invisible authored meshes are not submitted as redundant draws;
+    // the first mesh must stay live to drive all fire/Hans callbacks.
+    expect(driver.visible).toBe(true);
+    expect(secondary.visible).toBe(false);
+    expect(driver.material.opacity).toBe(0);
     driver.onBeforeRender({ userData: { board3DMotionNowMs: 840 } });
 
     expect(driver.userData.warRoomV3FireDriver).toBe(true);
@@ -86,10 +93,36 @@ describe('War Room v3 authored stove fire', () => {
     expect(root.userData.warRoomV3FireAnimation).toBe('authored-flicker-v2-hans-dimmer');
 
     release();
+    expect(secondary.visible).toBe(initiallyVisible);
     expect(driver.scale.toArray()).toEqual([1, 1, 1]);
     expect(practical.intensity).toBe(2.3);
     expect(practical.color.getHex()).toBe(practicalColor);
     expect(driver.userData.warRoomV3FireDriver).toBeUndefined();
     expect(root.userData.warRoomV3FireAnimation).toBeUndefined();
   });
+  it('retains previously hidden secondary flames on teardown and keeps reduced-motion authored fire', () => {
+    const root = new THREE.Group();
+    const names = ['WR3_ARM_hearth_flame_body', 'WR3_ARM_hearth_flame_0', 'WR3_ARM_hearth_flame_1'];
+    const flames = names.map((name) => {
+      const mesh = new THREE.Mesh(new THREE.SphereGeometry(0.2), new THREE.MeshStandardMaterial());
+      mesh.name = name;
+      root.add(mesh);
+      return mesh;
+    });
+    flames[1].visible = false;
+    const originalMaterials = flames.map((flame) => flame.material);
+    const release = installWarRoomV3FireAnimation(root);
+    expect(flames.map((flame) => flame.visible)).toEqual([true, false, false]);
+    expect(root.getObjectByName('war-room-v3-stove-fire-sprites')).toBeTruthy();
+    release();
+    expect(flames.map((flame) => flame.visible)).toEqual([true, false, true]);
+    expect(flames.map((flame) => flame.material)).toEqual(originalMaterials);
+
+    const releaseReduced = installWarRoomV3FireAnimation(root, { reducedMotion: true });
+    expect(flames.map((flame) => flame.visible)).toEqual([true, false, true]);
+    expect(root.getObjectByName('war-room-v3-stove-fire-sprites')).toBeUndefined();
+    releaseReduced();
+    expect(flames.map((flame) => flame.visible)).toEqual([true, false, true]);
+  });
+
 });

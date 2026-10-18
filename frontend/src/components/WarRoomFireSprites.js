@@ -104,11 +104,17 @@ export function installWarRoomV3StoveFireSprites(flames, { coarsePointer = false
     ...shape,
   });
   parent.add(points);
-  // The authored stove flames would be a second fire under the sprites: keep them rendering
-  // (their onBeforeRender drives the flicker and light) but fully transparent.
-  const restore = flames.map((flame) => {
+  // The authored GLB flame meshes are fully transparent once the particle
+  // fire is installed. Only the first flame must still be submitted: its
+  // onBeforeRender drives flicker/Hans' dimmer for the whole hearth. The other
+  // three have no animation callback and need not consume WebGL draw calls.
+  // Keep the driver intact, including its alpha-zero material, and restore
+  // pre-existing per-mesh visibility when the room is unmounted.
+  const restore = flames.map((flame, index) => {
     const original = flame.material;
-    if (!original) return () => {};
+    const wasVisible = flame.visible;
+    if (index > 0) flame.visible = false;
+    if (!original) return () => { flame.visible = wasVisible; };
     const faded = (Array.isArray(original) ? original : [original]).map((material) => {
       const clone = material.clone();
       clone.transparent = true;
@@ -118,6 +124,7 @@ export function installWarRoomV3StoveFireSprites(flames, { coarsePointer = false
     });
     flame.material = Array.isArray(original) ? faded : faded[0];
     return () => {
+      flame.visible = wasVisible;
       flame.material = original;
       faded.forEach((material) => material.dispose?.());
     };
