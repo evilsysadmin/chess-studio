@@ -67,7 +67,9 @@ def _check_report(report, label):
     if not isinstance(medians, dict):
         raise IncomparableBenchmarks(f"{label}: medians missing")
     for key in ("startupMs", "initialDrawCalls", "allocatedTextures", "allocatedGeometries",
-                "cpuP95Ms", "rafGapP95Ms", "gpuMs"):
+                "cpuP95Ms", "rafGapP95Ms", "gpuMs", "modelDrawSlots",
+                "modelShadowCasterSlots", "modelTransparentSlots",
+                "modelUniqueGeometries", "modelUniqueMaterials"):
         value = medians.get(key)
         if value is not None and (not _finite_number(value) or value < 0):
             raise IncomparableBenchmarks(f"{label}: invalid {key} median")
@@ -94,6 +96,11 @@ def compare_reports(baseline, candidate):
         ("initialDrawCalls", "Initial draw calls", "calls"),
         ("allocatedTextures", "Three GPU textures", "count"),
         ("allocatedGeometries", "Three GPU geometries", "count"),
+        ("modelDrawSlots", "GLB candidate draw slots", "count"),
+        ("modelShadowCasterSlots", "GLB shadow candidates", "count"),
+        ("modelTransparentSlots", "GLB transparent slots", "count"),
+        ("modelUniqueGeometries", "GLB unique geometries", "count"),
+        ("modelUniqueMaterials", "GLB unique materials", "count"),
     ):
         before = baseline["medians"].get(key)
         after = candidate["medians"].get(key)
@@ -139,6 +146,7 @@ def format_comparison(result):
     lines.append("A matching renderer fingerprint is not proof of the same physical machine.")
     lines.append("Recheck driver, GPU, browser, power mode, assets/network and repeat A/B runs before claiming a gain.")
     lines.append("Draw counts and Three allocations are counts, not GPU FPS or VRAM usage.")
+    lines.append("GLB candidate slots are a one-time scene-graph inventory, NOT measured GPU draw calls; they exclude Matthias, particles and sprites.")
     return "\n".join(lines)
 
 
