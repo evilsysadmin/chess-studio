@@ -93,6 +93,22 @@ describe('GameWarRoomCommandColumn', () => {
     }
   });
 
+  it('señala reintentos reales de conexión sin duplicar confirmación ni ocultar mate', () => {
+    const game = { turn: 'w', humanColor: 'w', isGameOver: false };
+    for (const compactViewport of [false, true]) {
+      const render = (status, match = game) => renderToStaticMarkup(
+        <GameWarRoomCommandColumn game={match} status={status} board={{}} compactViewport={compactViewport} />,
+      );
+      const retry = render({ statusText: 'Reintentando conexión…', busy: true, pendingMove: true });
+      expect(retry).toContain(compactViewport ? 'game-3d-turn-pill is-compact is-amber' : 'game-3d-turn-pill is-amber');
+      expect(retry).toContain('>Reconectando…</strong>');
+      expect(retry).not.toContain('>Confirmando jugada…</strong>');
+      expect(render({ statusText: 'La CPU está pensando…', busy: true, pendingMove: true })).toContain('>Confirmando jugada…</strong>');
+      expect(render({ statusText: 'Tu turno', busy: false, pendingMove: false })).toContain('>Tu turno</strong>');
+      expect(render({ statusText: 'Jaque mate', busy: true, pendingMove: true }, { ...game, isGameOver: true })).toContain('>Jaque mate</strong>');
+    }
+  });
+
   it('señala en ámbar la recuperación tras una jugada sin confirmar, también en móvil', () => {
     const game = { turn: 'w', humanColor: 'w', isGameOver: false };
     for (const compactViewport of [false, true]) {
