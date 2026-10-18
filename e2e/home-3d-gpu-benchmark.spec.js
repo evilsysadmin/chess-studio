@@ -83,6 +83,11 @@ async function readRealCanvas(castle) {
       const value = d[key];
       return value == null || value === '' || !Number.isFinite(Number(value)) ? null : Number(value);
     };
+    let modelDrawInventory = null;
+    try {
+      const candidate = JSON.parse(d.homeBlenderModelDrawInventory || 'null');
+      if (candidate && typeof candidate === 'object') modelDrawInventory = candidate;
+    } catch { /* Keep missing inventory explicit. */ }
     let startupMs = null;
     try {
       const events = JSON.parse(d.homeBlenderStartup || '{}');
