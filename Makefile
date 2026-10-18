@@ -373,7 +373,7 @@ home-gpu-light-probe: ensure-e2e-deps frontend-build
 	cd e2e && ./node_modules/.bin/playwright install chromium
 	@cd e2e && $(HOME_GPU_ENV) CHESS_HOME_GPU_MODE=hardware \
 		CHESS_HOME_GPU_LIGHT_PROBE=1 CHESS_HOME_GPU_HEADLESS=$(HOME_GPU_HEADLESS) \
-		CHESS_HOME_GPU_REVISION="$(git rev-parse HEAD)" \
+		CHESS_HOME_GPU_REVISION="$$(git rev-parse HEAD)" \
 		./node_modules/.bin/playwright test --config=playwright.home-gpu.config.js
 	@echo "Home A/B/B/A: .artifacts/home-gpu-benchmark/home-3d-light-probe-hardware.json"
 
