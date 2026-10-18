@@ -474,7 +474,7 @@ def classify_path(path: str) -> set[str] | None:
     if lower == "frontend/src/components/shareresultmodal.jsx":
         return {"warroom-core"}
     if lower == "frontend/src/components/warroomselectionannouncement.js":
-        return {"warroom-core"},
+        return {"warroom-core"}
     if lower == "frontend/src/components/profilebackupmodal.jsx":
         return {"home-base"}
     if lower == "frontend/src/components/homemobilegoldenpath.css":
