@@ -350,6 +350,21 @@ def fake_report(sha, profile, run_id, renderer='ANGLE (NVIDIA GeForce test)'):
 
 def self_test():
     a, b = 'a' * 40, 'b' * 40
+    # Median of per-visit scene-ready duration must NOT be reconstructed
+    # by summing independent medians of shell and Hans times.
+    staggered = [fake_report(a, 'desktop-1440x900',
+                             f'00000000-0000-4000-8000-{i:012x}')
+                 for i in range(3)]
+    for report, (shell, hans) in zip(staggered, [(1000, 100), (1200, 800), (1600, 0)]):
+        report['visits'][0]['openToReadyWallMs'] = shell
+        report['visits'][0]['hansReadyAfterShellMs'] = hans
+    assert summarize(staggered, 'first-visit', 'shell') == 1200
+    assert summarize(staggered, 'first-visit', 'hans') == 100
+    assert summarize(staggered, 'first-visit', 'scene') == 1600  # not 1200 + 100
+    staggered[0]['visits'][0].pop('hansReadyAfterShellMs')
+    assert summarize(staggered, 'first-visit', 'scene') is None
+    assert summarize(staggered, 'first-visit', 'shell') == 1200
+
     with tempfile.TemporaryDirectory() as folder:
         base, candidate = Path(folder) / 'base', Path(folder) / 'candidate'
         base.mkdir(); candidate.mkdir()
