@@ -137,7 +137,7 @@ La prueba optativa `e2e/war-room-gpu-benchmark.spec.js` usa la **app y WebGL rea
 Desde un checkout limpio de **cada SHA** a comparar (mismos assets R2, misma máquina, navegador, resolución y configuración):
 
 ```bash
-cd frontend && npm ci && npm run build && cd ..
+cd frontend && npm ci && VITE_WAR_ROOM_VARIANTS_ENABLE=1 npm run build && cd ..
 cd e2e && npm ci
 WAR_ROOM_GPU_BENCH=1 \
 WAR_ROOM_GPU_BENCH_RENDERER=hardware \
