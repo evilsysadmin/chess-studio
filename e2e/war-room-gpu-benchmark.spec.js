@@ -185,6 +185,9 @@ async function inspectActualRenderer(canvas) {
       actual, renderer,
       webgl2: Boolean(gl && typeof WebGL2RenderingContext !== 'undefined' && gl instanceof WebGL2RenderingContext),
       canvasPixels: element.width * element.height,
+      canvasWidth: element.width,
+      canvasHeight: element.height,
+      devicePixelRatio: window.devicePixelRatio,
       coarsePointer: matchMedia('(pointer: coarse)').matches,
       firstReady: {
         calls: Number(element.dataset.warRoomFirstReadyRenderCalls || 0),
@@ -283,6 +286,7 @@ for (const profile of profiles) {
     const report = {
       schema: 2, revision, runId, capturedAtUtc: new Date().toISOString(),
       requestedRenderer: requested,
+      browserVersion: browser.version(),
       profile: profile.id, viewport: profile.viewport,
       emulatedTouch: profile.touch, physicalAndroidVerified: false,
       browserFramePacingOnly: !visits.some(({ gpuTimerQueryMeasured }) => gpuTimerQueryMeasured),
