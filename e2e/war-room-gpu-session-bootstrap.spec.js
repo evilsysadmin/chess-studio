@@ -23,7 +23,7 @@ test('War Room benchmark restores an authenticated Home without the sign-in form
       .toBeVisible({ timeout: 45_000 });
     await waitForHomeInteractive(page);
     await expect(page.getByLabel('Usuario')).toHaveCount(0);
-    await expect(page.getByRole('button', { name: /Partida rápida/ })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Partida rápida', exact: true })).toBeVisible();
   } finally {
     await context.close();
   }
