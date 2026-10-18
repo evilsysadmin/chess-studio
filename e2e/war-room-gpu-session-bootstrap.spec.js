@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { mockApi, waitForHomeInteractive } from './helpers.js';
+import { buttonWithVisibleText, mockApi, waitForHomeInteractive } from './helpers.js';
 
 // Lightweight software/CI regression for the exact session-restoration route
 // used by the local GPU A/B harness. GPU timings remain local-only.
@@ -23,7 +23,7 @@ test('War Room benchmark restores an authenticated Home without the sign-in form
       .toBeVisible({ timeout: 45_000 });
     await waitForHomeInteractive(page);
     await expect(page.getByLabel('Usuario')).toHaveCount(0);
-    await expect(page.getByRole('button', { name: 'Partida rápida', exact: true })).toBeVisible();
+    await expect(buttonWithVisibleText(page, 'Partida rápida')).toBeVisible();
   } finally {
     await context.close();
   }
