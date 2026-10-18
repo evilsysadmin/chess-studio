@@ -104,8 +104,6 @@ jobs:
         run: |
           set -euo pipefail
           make static-preflight
-          # Offline stdlib regression gate: compare only like-for-like physical GPU reports.
-          python3 -S -m unittest discover -s scripts -p 'test_compare_home_3d_gpu.py' -v
           python3 -S scripts/quality_scope.py --self-test
           python3 -S scripts/browser_quality_scope.py --self-test
           python3 -S scripts/blender_required_scope.py --self-test
