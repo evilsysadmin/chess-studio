@@ -53,7 +53,7 @@ def _check_report(report, label):
             raise IncomparableBenchmarks(f"{label}: visit {index} has no stable renderer fingerprint")
         if vendor not in {"nvidia", "amd", "intel", "apple", "adreno", "mali", "powervr"}:
             raise IncomparableBenchmarks(f"{label}: visit {index} renderer vendor is unknown")
-        if lod not in {"full", "lite"} or ambient not in {"day", "night"}:
+        if lod not in {"full", "lite"} or ambient not in {"dawn", "day", "dusk", "night"}:
             raise IncomparableBenchmarks(f"{label}: visit {index} LOD or ambient period is unknown")
         if not all(_finite_number(visit.get(k)) and visit[k] > 0 for k in (
             "canvasWidth", "canvasHeight", "initialDrawCalls", "initialTriangles",
@@ -131,9 +131,9 @@ def format_comparison(result):
         f"{'Metric':<26} {'Baseline':>12} {'Candidate':>12} {'Delta':>12} {'Change %':>12}",
     ]
     for metric in result["metrics"]:
+        percent = "n/a" if metric["percent"] is None else "{:+.2f}%".format(metric["percent"])
         lines.append(f"{metric['label']:<26} {_cell(metric['before']):>12} {_cell(metric['after']):>12} "
-                     f"{_cell(metric['delta']):>12} "
-                     f"{('n/a' if metric['percent'] is None else f'{metric["percent"]:+.2f}%'):>12}")
+                     f"{_cell(metric['delta']):>12} {percent:>12}")
     if not result["gpuTimingAvailable"]:
         lines.append("GPU timing: UNAVAILABLE on one/both revisions; CPU times are NOT GPU measurements.")
     lines.append("A matching renderer fingerprint is not proof of the same physical machine.")
