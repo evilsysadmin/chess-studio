@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   homeBlenderLightProbeMode,
+  homeBlenderLightProbeLocksFullLod,
   applyHomeBlenderLightProbe,
 } from './HomeBlenderLightProbe.js';
 
