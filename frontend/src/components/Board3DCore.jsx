@@ -28,10 +28,11 @@ import { pickBoard3DSquare } from './Board3DPointerPicking.js';
 import { planBoard3DPieceReconciliation } from './Board3DPieceReconciliation.js';
 import { addCoarsePieceHitTarget, applyMatthiasCheckPose, buildPiece, disposeObject } from './Board3DPieces.js';
 import { clearObjectGroup, makeObjectTranslucent } from './Board3DObjectLifecycle.js';
-import { fitBoardCamera, makeTextSprite } from './Board3DScene.js';
+import { fitBoardCamera } from './Board3DScene.js';
 import { resolveStableBoardViewportForHost } from './Board3DViewportSize.js';
 import { createWarRoomCanvasSizeGate } from './WarRoomCanvasSizeGate.js';
-import { createWarRoomGpuProfile, WAR_ROOM_GPU_PROFILE_STORAGE_KEY } from './WarRoomGpuProfile.js';
+import { createWarRoomGpuProfile } from './WarRoomGpuProfile.js';
+import { installBoard3DCoordinates } from './Board3DCoordinates.js';
 import { applyBoard3DProjectionDiagnostics, applyBoard3DRendererMemoryDiagnostics } from './Board3DProjectionDiagnostics.js';
 import { beginWarRoomFirstReadyPaintTiming } from './WarRoomFirstReadyPaintTiming.js';
 import { board3DForensicGhost, board3DTechniqueTargetCount, board3DTerrainSquares, buildBoard3DLegalMap } from './Board3DParityVisuals.js';
@@ -287,35 +288,9 @@ function Board3DCanvas({
     boardGroup.add(coordinateGroup);
     boardGroup.scale.setScalar(warRoomVariant === 'v3' ? 1.08 : 1); scene.add(boardGroup);
 
-    if (showCoordinates) {
-      const fileOrder = whiteSide ? FILES : [...FILES].reverse();
-      const rankOrder = whiteSide ? ['1','2','3','4','5','6','7','8'] : ['8','7','6','5','4','3','2','1'];
-      fileOrder.forEach((file, index) => {
-        const sprite = makeTextSprite(file.toUpperCase(), '#d4aa54');
-        sprite.position.set(index - 3.5, 0.16, whiteSide ? 4.68 : -4.68);
-        coordinateGroup.add(sprite);
-      });
-      rankOrder.forEach((rank, index) => {
-        const sprite = makeTextSprite(rank, '#d4aa54');
-        sprite.position.set(whiteSide ? -4.68 : 4.68, 0.16, whiteSide ? 3.5 - index : -3.5 + index);
-        coordinateGroup.add(sprite);
-      });
-    }
+    if (showCoordinates) installBoard3DCoordinates(coordinateGroup, whiteSide);
 
-    // Explicitly opt-in diagnostic only, reusing Home's asynchronous WebGL2
-    // GPU query implementation. Read the flag once at mount; normal games
-    // allocate no timer queries and do not publish per-frame GPU telemetry.
-    let gpuProfileStorageFlag = '';
-    try {
-      gpuProfileStorageFlag = window.localStorage.getItem(WAR_ROOM_GPU_PROFILE_STORAGE_KEY) || '';
-    } catch {
-      // Browsers that block storage must still play normally.
-    }
-    const gpuProfile = createWarRoomGpuProfile(renderer, {
-      search: window.location.search,
-      storageFlag: gpuProfileStorageFlag,
-      softwareRenderer,
-    });
+    const gpuProfile = createWarRoomGpuProfile(renderer, { softwareRenderer });
     let cachedHansDriver = null;
     let ambientScheduler = null;
     const exposeHansScreenDiagnostics = createWarRoomHansScreenProbe({ scene, camera, canvas: renderer.domElement });
