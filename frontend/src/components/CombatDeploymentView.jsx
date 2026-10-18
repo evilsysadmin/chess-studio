@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import './CombatDeploymentRoute.css';
 import './CombatDeploymentWarTable.css';
 import { CombatDeploymentPresetDrawer, CombatDeploymentWarTableHeader } from './CombatDeploymentWarTableChrome.jsx';
+import { CombatDeploymentFooter, CombatDeploymentGuidance } from './CombatDeploymentDecisionChrome.jsx';
 import { createPortal } from 'react-dom';
 import Board2D from './Board2D.jsx';
 import { pieceRankForLevel } from '../combatRanks.js';
@@ -376,13 +377,14 @@ export default function CombatDeploymentView({
   const canConfirm = summary.ready && (!requireExplicitConfirmation || summary.fallenCount === 0);
   const [query, setQuery] = useState('');
   const draggingUnitRef = useRef(null);
+  const casualtiesRef = useRef(null);
   const previewTimerRef = useRef(null);
   const previewHideTimerRef = useRef(null);
   const [dragHoverSquare, setDragHoverSquare] = useState(null);
   const [typeFilter, setTypeFilter] = useState('all');
   const [sortBy, setSortBy] = useState('rank');
   const [showTutorial, setShowTutorial] = useState(() => !loadMechanicTutorialProgress()?.['combat-deployment']?.seen);
-  const [selectedUnitKey, setSelectedUnitKey] = useState(() => summary.reserveKeys[0] || summary.deployedKeys[0] || null);
+  const [selectedUnitKey, setSelectedUnitKey] = useState(null);
   const [hoveredDossierUnitKey, setHoveredDossierUnitKey] = useState(null);
   const [pinnedDossierUnitKey, setPinnedDossierUnitKey] = useState(null);
   const [dossierAnchorRect, setDossierAnchorRect] = useState(null);
@@ -683,7 +685,7 @@ export default function CombatDeploymentView({
               <small>{summary.fallenCount > 0 ? `${summary.fallenCount} caídas pendientes` : 'Fuera de la formación'}</small>
             </div>
             {summary.fallenCount > 0 && (
-              <section className="deployment-casualties" aria-label="Bajas pendientes">
+              <section ref={casualtiesRef} className="deployment-casualties" aria-label="Bajas pendientes">
                 <div className="deployment-casualties-heading">
                   <div><span>BAJAS PENDIENTES</span><b>{summary.fallenCount}</b></div>
                   <div className="deployment-casualties-xp" title="Créditos disponibles para recuperar veteranos caídos">
@@ -759,7 +761,8 @@ export default function CombatDeploymentView({
 
             <div className="deployment-list-heading">
               <div><span>UNIDADES EN RESERVA</span><b>{summary.reserveCount}</b></div>
-              <small>Arrastra una unidad a un slot compatible.</small>
+              <small>Pulsa «Desplegar» para ocupar un puesto libre, o selecciona una pieza y una casilla resaltada para intercambiarla.</small>
+              {onOpenMarket && <button type="button" className="deployment-reserve-market" onClick={onOpenMarket}>Mercado →</button>}
             </div>
             {summary.reserveCount > 0 && <div className="deployment-filters">
                 <input aria-label="Buscar unidad en reserva" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar en reserva…" />
@@ -779,29 +782,43 @@ export default function CombatDeploymentView({
                   {summary.reserveCount === 0 ? 'No hay unidades en el banquillo.' : 'Ninguna reserva coincide con esos filtros.'}
                 </p>
               )}
-              {reserveUnits.map((unitKey) => (
-                <UnitCard
-                  key={unitKey}
-                  roster={roster}
-                  unitKey={unitKey}
-                  deployedSlotKey={null}
-                  selected={selectedUnitKey === unitKey}
-                  dossierVisible={dossierUnitKey === unitKey}
-                  onPreview={previewUnitDossier}
-                  onPreviewEnd={hideUnitDossierPreview}
-                  onPin={pinUnitDossier}
-                  onDoubleClick={deployReserveUnitToFirstFreeSlot}
-                  onDragStart={handleDragStart}
-                  onDragEnd={handleDragEnd}
-                />
-              ))}
+              {reserveUnits.map((unitKey) => {
+                const freeSlot = firstFreeDeploymentSlotForUnit(roster, unitKey);
+                const alias = roster.identities?.[unitKey]?.alias || 'Unidad';
+                return (
+                  <div className="deployment-reserve-entry" key={unitKey}>
+                    <UnitCard
+                      roster={roster}
+                      unitKey={unitKey}
+                      deployedSlotKey={null}
+                      selected={selectedUnitKey === unitKey}
+                      dossierVisible={dossierUnitKey === unitKey}
+                      onPreview={previewUnitDossier}
+                      onPreviewEnd={hideUnitDossierPreview}
+                      onPin={pinUnitDossier}
+                      onDoubleClick={deployReserveUnitToFirstFreeSlot}
+                      onDragStart={handleDragStart}
+                      onDragEnd={handleDragEnd}
+                    />
+                    <button type="button" className="secondary-btn deployment-quick-deploy"
+                      disabled={!freeSlot}
+                      aria-label={`Desplegar ${alias} en primer puesto libre`}
+                      title={freeSlot
+                        ? `Ocupar ${slotLabel(freeSlot.key)} sin desplazar a nadie`
+                        : 'No hay hueco compatible libre. Selecciona una pieza y una casilla resaltada para intercambiar.'}
+                      onClick={(event) => deployReserveUnitToFirstFreeSlot(unitKey, event)}
+                    >+ Desplegar</button>
+                  </div>
+                );
+              })}
             </div>
           </aside>
           <main className="deployment-board-zone">
             <div className="deployment-board-caption">
               <span>FORMACIÓN PROPIA</span>
-              <small title="Fila superior: piezas mayores. Fila inferior: ocho slots de peón.">16 slots</small>
+              <small title="Fila superior: piezas mayores. Fila inferior: ocho slots de peón.">16 puestos</small>
             </div>
+            <CombatDeploymentGuidance selectedUnitKey={selectedUnitKey} roster={roster} reverseDeployment={reverseDeployment} />
             <Board2D
               fen={fen}
               orientation="white"
@@ -882,29 +899,10 @@ export default function CombatDeploymentView({
           document.body,
         )}
 
-        <footer className="combat-deployment-footer">
-          <div className="deployment-auto-actions">
-            <button type="button" className="secondary-btn" onClick={() => onAutoFill?.(true)}>Auto · veteranos</button>
-            <button type="button" className="secondary-btn" onClick={() => onAutoFill?.(false)}>Auto · reclutas</button>
-            <button type="button" className="secondary-btn" onClick={onResetDeployment}>Restablecer</button>
-          </div>
-          <div className="deployment-footer-copy">
-            <span>Reservas: <b>{summary.reserveCount}</b></span>
-            <span>Créditos: <b>{Number(roster.credits || 0)}</b></span>
-            {summary.fallenCount > 0 && <span>Bajas pendientes: <b>{summary.fallenCount}</b></span>}
-          </div>
-          <button type="button" className="primary-btn" disabled={!canConfirm} onClick={() => {
-            if (!canConfirm) return;
-            if (onConfirm) onConfirm();
-            else onClose();
-          }}>
-            {requireExplicitConfirmation && summary.fallenCount > 0
-              ? `Resuelve ${summary.fallenCount} baja${summary.fallenCount === 1 ? '' : 's'}`
-              : summary.ready
-                ? (requireExplicitConfirmation ? 'CONFIRMAR DESPLIEGUE' : 'Confirmar despliegue')
-                : 'Completa los 16 puestos'}
-          </button>
-        </footer>
+        <CombatDeploymentFooter summary={summary} canConfirm={canConfirm}
+          requireExplicitConfirmation={requireExplicitConfirmation} onAutoFill={onAutoFill}
+          onResetDeployment={onResetDeployment} onConfirm={onConfirm || onClose}
+          onReviewCasualties={() => casualtiesRef.current?.scrollIntoView({ block: 'center' })} />
         {showTutorial && <MechanicTutorialModal tutorialId="combat-deployment" onClose={() => setShowTutorial(false)} />}
       </section>
     </div>
