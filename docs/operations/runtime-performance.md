@@ -314,9 +314,16 @@ El comparador conserva la compatibilidad con los informes **schema 2**
 anteriores, pero solo presenta una fila GPU numérica si, **en ambas
 revisiones y para todas las repeticiones** de ese perfil/visita/fase,
 existen al menos dos consultas completadas, el estado es `ready` y no
-hay disjoint ni consultas omitidas. En cualquier otro caso muestra
-`n/a` y mantiene la comparación rAF por separado. No mide Android
-físico aunque el perfil emule su viewport o touch.
+hay disjoint ni consultas omitidas. Además, los informes nuevos registran
+la versión real de Chromium, el `devicePixelRatio` del navegador y
+las dimensiones físicas (en píxeles) del canvas Three.js de cada visita:
+el comparador **rechaza versiones, DPR o tamaños incompatibles** y exige
+proveniencia completa para publicar cifras de GPU. Informes antiguos sin
+estos campos siguen permitiendo estudiar cadencia rAF, pero las filas
+de GPU se muestran como `n/a`, **aunque contengan muestras GPU**.
+Este control impide atribuir a una optimización diferencias debidas al
+navegador o a cambiar resolución efectiva. El perfil touch emulado
+tampoco acredita Android físico.
 
 **Atención con las revisiones de ejemplo anteriores a #5780:** no
 incluyen la instrumentación interna y, aunque compartan el harness,
