@@ -54,6 +54,11 @@ def load_group(directory, expected_sha, mode, minimum):
         prefix = str(path) + ': '
         require(type(data) is dict, prefix + 'object required')
         require(data.get('schema') == 2, prefix + 'schema 2 with collision-safe runId required')
+        # Legacy captures included form login; new runs restore E2E auth and
+        # start from Home. They cannot be mixed for wall-clock comparisons.
+        bootstrap_mode = data.get('bootstrapMode', 'form-login-v1')
+        require(bootstrap_mode in ('form-login-v1', 'persisted-e2e-session-v1'),
+                prefix + 'invalid benchmark bootstrap mode')
         # Legacy schema-2 captures predate explicit V4; they always measured V3.
         variant = data.get('variant', 'v3')
         require(type(variant) is str and variant in ('v3', 'v4'),
@@ -215,9 +220,11 @@ def validate_capture_provenance(before, after):
     """
     verified = True
     versions = set()
+    bootstrap_modes = set()
     for profile in PROFILES:
         reports = before[profile] + after[profile]
         for report in reports:
+            bootstrap_modes.add(report.get('bootstrapMode', 'form-login-v1'))
             version = report.get('browserVersion')
             if version is None:
                 verified = False
@@ -238,6 +245,8 @@ def validate_capture_provenance(before, after):
                 if len(values) == 0 or any(visit.get(field) is None for visit in observed):
                     verified = False
     require(len(versions) <= 1, 'Different Chromium/browser versions between A/B runs')
+    require(len(bootstrap_modes) == 1,
+            'Cannot compare form-login and persisted-session bootstrap captures in one A/B')
     return verified
 
 
@@ -377,6 +386,26 @@ def self_test():
         assert 'first-ready draw calls' in output and 'not GPU time' in output
         assert 'Missing/incomparable GPU queries' in output
         assert '# War Room V3' in output  # Legacy missing variant means V3.
+        # Old captures still work as a cohort, but login-form timings must
+        # never be compared against the direct persisted-session harness.
+        for directory in (base, candidate):
+            for path in directory.glob('*.json'):
+                report = json.loads(path.read_text())
+                report['bootstrapMode'] = 'persisted-e2e-session-v1'
+                path.write_text(json.dumps(report))
+        assert '# War Room V3' in compare(base, candidate, a, b)
+        candidate_path = candidate / 'desktop-1440x900-0.json'
+        mixed = json.loads(candidate_path.read_text())
+        mixed['bootstrapMode'] = 'form-login-v1'
+        candidate_path.write_text(json.dumps(mixed))
+        try:
+            compare(base, candidate, a, b)
+        except BadReport as exc:
+            assert 'Cannot compare form-login and persisted-session' in str(exc)
+        else:
+            raise AssertionError('Mixed login/session A/B bootstrap accepted')
+        mixed['bootstrapMode'] = 'persisted-e2e-session-v1'
+        candidate_path.write_text(json.dumps(mixed))
         assert '| desktop-1440x900 · first-visit · open→shell-ready wall (ms) | 3000.00 | 3000.00 | +0.00 |' in output
         assert '| desktop-1440x900 · first-visit · shell-ready→Hans-ready wall (ms) | 120.00 | 120.00 | +0.00 |' in output
         assert '| desktop-1440x900 · first-visit · open→Hans-ready wall (ms) | 3120.00 | 3120.00 | +0.00 |' in output

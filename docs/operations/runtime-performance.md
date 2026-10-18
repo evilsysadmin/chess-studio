@@ -150,7 +150,7 @@ __NV_PRIME_RENDER_OFFLOAD=1 __GLX_VENDOR_LIBRARY_NAME=nvidia \
 
 AMD/Intel Mesa: usar `DRI_PRIME=1` cuando corresponda en vez del offload NVIDIA. Para diagnóstico control de compatibilidad puede usarse `WAR_ROOM_GPU_BENCH_RENDERER=software`; **nunca** se mezclan sus métricas con las de hardware. Un renderer desconocido, SwiftShader inesperado o falta de WebGL real hace fallar la prueba.
 
-Cada SHA produce tres JSON en `.artifacts/war-room-gpu-benchmark/`: escritorio 1440×900, touch **emulado** vertical 390×844 y horizontal 844×390. En cada perfil abre primero la sala en una pestaña nueva (first visit) y después vuelve a entrar dentro del mismo contexto del navegador (return visit), con caché de navegador compartida; este etiquetado no demuestra por sí solo un HIT de red. Los dos recorridos montan la **War Room V3 o V4 seleccionada con su GLB real**, registran identidad de renderer GPU, primera carga/contadores WebGL, memoria expuesta al ready, una muestra de 2,5 s de cadencia rAF inactiva y otra durante una jugada e2→e4 real con confirmación de la API simulada. Se cuentan pausas >33 ms y >50 ms y tareas largas cuando el navegador permite PerformanceObserver.
+Cada SHA produce tres JSON en `.artifacts/war-room-gpu-benchmark/`: escritorio 1440×900, touch **emulado** vertical 390×844 y horizontal 844×390. En cada perfil abre primero la sala en una pestaña nueva (first visit) y después vuelve a entrar dentro del mismo contexto del navegador (return visit), con caché de navegador compartida; este etiquetado no demuestra por sí solo un HIT de red. Los dos recorridos inician una sesión E2E autenticada y restaurada (sin depender del formulario «Usuario»), montan la **War Room V3 o V4 seleccionada con su GLB real**, registran identidad de renderer GPU, primera carga/contadores WebGL, memoria expuesta al ready, una muestra de 2,5 s de cadencia rAF inactiva y otra durante una jugada e2→e4 real con confirmación de la API simulada. Se cuentan pausas >33 ms y >50 ms y tareas largas cuando el navegador permite PerformanceObserver.
 
 
 Para V4, establecer `WAR_ROOM_GPU_BENCH_VARIANT=v4`. El runner aislado de A/B/B/A acepta `--variant v3|v4` (por defecto V3), conserva los mismos SHAs/harness y guarda la variante en el manifiesto de sesión y en los JSON individuales. Por ejemplo, tras elegir dos SHAs completos que contengan la variante V4:
@@ -162,7 +162,7 @@ python3 scripts/run_war_room_gpu_ab.py \\
   --variant v4 --renderer hardware --offload nvidia --repetitions 2
 ```
 
-El comparador **rechaza cohortes mezcladas V3/V4**, incluida una mezcla entre A y B. Los antiguos JSON schema 2 sin `variant` siguen interpretándose como V3. Una comparación V3 frente a V4 requiere un experimento diferente; el A/B de regresión solo compara una sala consigo misma. Igual que antes, rAF no es tiempo GPU; los datos GPU se publican únicamente con queries reales y procedencia verificada.
+El comparador **rechaza cohortes mezcladas V3/V4**, incluida una mezcla entre A y B. Los antiguos JSON schema 2 sin `variant` siguen interpretándose como V3. Una comparación V3 frente a V4 requiere un experimento diferente; el A/B de regresión solo compara una sala consigo misma. Los JSON sin `bootstrapMode` corresponden al flujo antiguo con formulario; los nuevos declaran `persisted-e2e-session-v1`. El comparador **rechaza mezclar ambas estrategias de inicio**, porque sus tiempos de apertura no son comparables. El runner fija también `helpers.js`, los controles de teclado y el servidor de dist con el mismo SHA de harness para A y B. Igual que antes, rAF no es tiempo GPU; los datos GPU se publican únicamente con queries reales y procedencia verificada.
 
 **Estabilidad del escenario Hans (V3/V4):** el shell puede declarar
 `ready` antes de que se complete la instalación asíncrona de Hans.
@@ -180,13 +180,14 @@ En `comparison.md` también se comparan tres medidas **de reloj de pared**
 en primera y segunda visita: `open→shell-ready`, `shell-ready→Hans-ready`
 y `open→Hans-ready`. La tercera se calcula **por visita** sumando los dos
 tramos observados antes de tomar la mediana; no suma medianas de cohortes
-distintas. Incluyen login/navegación automatizados, por lo que **no**
-representan únicamente descarga GLB ni render GPU. Los JSON antiguos sin
+distintas. Incluyen navegación y preparación de Home automatizadas, pero
+**no** el formulario de login, por lo que no representan únicamente
+descarga GLB ni render GPU. Los JSON antiguos sin
 `hansReadyAfterShellMs` conservan su tiempo de shell, pero el retraso
 de Hans y el tiempo total de escena aparecen como `n/a` en lugar de
 presuponerse cero.
 
-**Semántica de métricas**: intervalos entre callbacks `requestAnimationFrame` = cadencia de oportunidades del navegador, **no** tiempos de GPU ni FPS exactos de los draws. `inputToConfirmationMs` incluye automatización de teclado, mutación y aserción de estado, no latencia exclusiva del dispositivo. `openToReadyWallMs` abarca login y navegación de prueba, no equivale a tiempo de descarga GLB. `snapshotMemory` son los contadores que la sala publica al ready, no consumo VRAM. `gpuFrameTimeMs: null` y `gpuTimerQueryMeasured: false` evitan atribuir números GPU no medidos.
+**Semántica de métricas**: intervalos entre callbacks `requestAnimationFrame` = cadencia de oportunidades del navegador, **no** tiempos de GPU ni FPS exactos de los draws. `inputToConfirmationMs` incluye automatización de teclado, mutación y aserción de estado, no latencia exclusiva del dispositivo. `openToReadyWallMs` abarca navegación/preparación desde una sesión E2E restaurada, no equivale a tiempo de descarga GLB. `snapshotMemory` son los contadores que la sala publica al ready, no consumo VRAM. `gpuFrameTimeMs: null` y `gpuTimerQueryMeasured: false` evitan atribuir números GPU no medidos.
 
 Repetir cada revisión en el mismo host en órdenes alternos A/B/B/A (varias repeticiones); comparar distribuciones y no un único p95 ruidoso. No lanzar varios navegadores o renders en paralelo. Comprobar con GPU profiler/EXT timer query independientes cualquier hipótesis de saturación real. **El modo touch emulado en GPU de escritorio no acredita Android físico**: probar también un móvil real con navegador, rotación y fluidez durante varias jugadas antes de considerar cerrado el coste móvil.
 

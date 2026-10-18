@@ -2,7 +2,7 @@ import { chromium, expect, test } from '@playwright/test';
 import { randomUUID } from 'node:crypto';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
-import { activateSetupControl, buttonWithVisibleText, login, mockApi } from './helpers.js';
+import { activateSetupControl, buttonWithVisibleText, mockApi, waitForHomeInteractive } from './helpers.js';
 import { navigateWarRoomKeyboard } from './war-room-board-input.js';
 
 // Opt-in local benchmark only. rAF is not GPU time; emulated touch is not a phone GPU.
@@ -169,7 +169,36 @@ async function sampleIdle(page) {
 
 async function openWarRoom(page, requestLog) {
   await mockApi(page, { requestLog, profileSeed: onboarding });
-  await login(page);
+  // Page navigation uses the existing authenticated E2E session. The test
+  // measures the 3D room, not a login form whose 12-second actionability
+  // timeout can fail before the first GPU/renderer check even starts.
+  const bootErrors = [];
+  const onPageError = (error) => {
+    if (bootErrors.length < 4) bootErrors.push(String(error?.message || error).slice(0, 200));
+  };
+  page.on('pageerror', onPageError);
+  try {
+    const response = await page.goto('./', { waitUntil: 'domcontentloaded' });
+    await expect(page.getByRole('region', { name: 'Modos principales', exact: true }))
+      .toBeVisible({ timeout: 45_000 });
+    await waitForHomeInteractive(page);
+    if (response && !response.ok()) {
+      throw new Error('Home document HTTP ' + response.status());
+    }
+  } catch (error) {
+    const snapshot = await page.evaluate(() => ({
+      path: location.pathname,
+      title: document.title,
+      readyState: document.readyState,
+      loginPresent: Boolean(document.querySelector('input[type="password"]')),
+      bodyText: (document.body?.innerText || '').slice(0, 240),
+    })).catch(() => ({ path: 'unavailable', readyState: 'unavailable' }));
+    throw new Error('War Room GPU benchmark: authenticated Home did not become interactive; '
+      + JSON.stringify({ ...snapshot, pageErrors: bootErrors })
+      + '; original: ' + String(error?.message || error).slice(0, 450));
+  } finally {
+    page.off('pageerror', onPageError);
+  }
   await buttonWithVisibleText(page, 'Partida rápida').click();
   await activateSetupControl(page.getByRole('button', { name: 'Empezar partida', exact: true }));
   const board = page.locator('[data-board3d-war-room="true"]');
@@ -279,6 +308,13 @@ for (const profile of profiles) {
     });
     await context.addInitScript((seed) => {
       for (const [key, value] of Object.entries(seed)) localStorage.setItem(key, value);
+      // Auth belongs only to localStorage, never to the mocked profile payload.
+      // This is the same persisted E2E identity used by the Lab restore test.
+      localStorage.setItem('chess-study-auth-token', 'e2e-token');
+      localStorage.setItem('chess-study-auth-username', 'e2e');
+      // The second visit must also start on Home, not restore an unrelated
+      // saved UI route from the first visit in the same browser context.
+      sessionStorage.setItem('chess-study-current-view', 'menu');
     }, onboarding);
     const visits = [];
     try {
@@ -316,6 +352,9 @@ for (const profile of profiles) {
     }
     const report = {
       schema: 2, revision, variant, runId, capturedAtUtc: new Date().toISOString(),
+      // Wall-clock opening timings from this harness exclude UI form login.
+      // Older reports (without this field) used 'form-login-v1'.
+      bootstrapMode: 'persisted-e2e-session-v1',
       requestedRenderer: requested,
       browserVersion: browser.version(),
       profile: profile.id, viewport: profile.viewport,
