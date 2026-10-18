@@ -62,6 +62,7 @@ type nativeRuntime struct {
 	authSession         http.Handler
 	// login is built in edgeConfig, once request telemetry exists.
 	login    *gamesapi.LoginConfig
+	sso      http.Handler
 	account  http.Handler
 	recovery http.Handler
 	feedback http.Handler
@@ -431,6 +432,22 @@ func buildNativeRuntime(features nativeFeatureFlags, upstream string) (runtime n
 		}
 		runtime.authSession = sessionHandler
 	}
+	if features.sso {
+		telemetryCfg := telemetry.ConfigFromEnv(os.LookupEnv)
+		ssoHandler, ssoErr := gamesapi.NewSSO(gamesapi.SSOConfig{
+			Config: gamesapi.Config{
+				Accounts:        accountstore.New(mongoRuntime.Database(), pvpMongoTimeout),
+				JWTSecret:       jwtSecret,
+				AllowedOrigins:  splitCSV(os.Getenv("CORS_ORIGINS")),
+				TrustCloudflare: telemetryCfg.TrustCloudflare,
+			},
+			Environment: os.Getenv("ENVIRONMENT"),
+		})
+		if ssoErr != nil {
+			return runtime, fmt.Errorf("native SSO API: %w", ssoErr)
+		}
+		runtime.sso = ssoHandler
+	}
 	if features.login {
 		telemetryCfg := telemetry.ConfigFromEnv(os.LookupEnv)
 		toucher := presence.New(mongoRuntime.Database(), telemetryCfg.TrustCloudflare, 2*time.Second)
@@ -798,6 +815,7 @@ func (r nativeRuntime) edgeConfig(upstream, release string, requestTelemetry *te
 		NativeProfile:             r.profile,
 		NativeSession:             r.authSession,
 		NativeLogin:               login,
+		NativeSSO:                 r.sso,
 		NativeAccount:             r.account,
 		NativeRecovery:            r.recovery,
 		NativeFeedback:            r.feedback,
