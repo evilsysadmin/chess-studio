@@ -156,3 +156,36 @@ jobs:
           if-no-files-found: error
           retention-days: 7
           compression-level: 0
+
+  runtime-visual-proof:
+    name: V4 · exact GLB in real browser
+    needs: render
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      VITE_WAR_ROOM_VARIANTS_ENABLE: '1'
+      APP_VISUAL_ARTIFACT: '1'
+      APP_VISUAL_WARROOM_VARIANTS: 'v4'
+      APP_VISUAL_EXPECTED_WAR_ROOM_V4_REVISION: ${{ github.event.pull_request.head.sha }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - uses: ./.github/actions/setup-browser-e2e
+        with:
+          browser-scope: chromium
+
+      - name: Capture V4 with exact authored PR model · desktop and Android
+        working-directory: e2e
+        run: ./node_modules/.bin/playwright test war-room-visual-artifact.spec.js --workers=1
+
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: war-room-v4-runtime-${{ github.event.pull_request.number }}
+          path: .artifacts/app-visual/war-room-v4*
+          if-no-files-found: warn
+          retention-days: 7
+          compression-level: 0
