@@ -20,6 +20,12 @@ On a ready Home canvas, inspect `document.querySelector('.illustrated-home__cast
 | `homeBlenderGpuMs` | Last async elapsed WebGL GPU-timer sample in milliseconds; **only** with status `ready` |
 | `homeBlenderGpuSampleCount` | Monotonic number of **valid completed GPU queries**, used to distinguish newly measured values from a still-published previous result |
 
+## Runtime-only hearth flame geometry LOD
+
+The 28 explicitly named camera-facing flame/hot/tongue/base spheres on the two Home fireplaces use an isolated **runtime GLB-only** 24×12 sphere instead of the authored 40×20 topology. The canonical Blender builder and its Eevee review render remain unchanged. The exporter fails closed unless the exact 28 known object names, expected original 1,520-triangle spheres, material identities, UV-free fire materials and local bounding boxes match. After replacement it verifies unchanged per-axis local bounds, vertex smoothing, and a minimum reduction of 25,000 triangles; GLTFLoader still finds the same animated mesh names and pivots.
+
+The export metadata field `hearth_front_flame_lod` reports actual triangles before, after, saved and the number of modified nodes. This **reduces vertex/index geometry**, not the number of GLB primitive instances or the number of draw submissions: do not claim extra FPS without a physical GPU A/B test. Because fewer vertices can subtly alter shader flutter/silhouettes, the unpromoted candidate must pass the Home browser runtime gate and its captured PNG must be reviewed before enabling automerge; the old content-addressed GLB remains the rollback baseline.
+
 ## Opt-in authored-GLB draw inventory
 
 Open the Home with `?homeGpuProfile=1`. After the authored GLB is prepared, the canvas publishes `dataset.homeBlenderModelDrawInventory`, a compact JSON object. This adds **one scene-graph traversal only when profiling**, after the original first-ready time is recorded. The production Home does not do this work.
