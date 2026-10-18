@@ -36,10 +36,14 @@ describe('War Room v4 runtime shell', () => {
     }
     const release = installWarRoomV3FireAnimation(root, { flameNames: WAR_ROOM_V4_FLAME_NAMES });
     const driver = root.getObjectByName('WR4_OBS_fireplace_flame_body');
+    const extraFlames = WAR_ROOM_V4_FLAME_NAMES.slice(1).map((name) => root.getObjectByName(name));
+    expect(driver.visible).toBe(true);
+    expect(extraFlames.every((flame) => flame.visible === false)).toBe(true);
     driver.onBeforeRender({ userData: { board3DMotionNowMs: 840 } });
     expect(driver.userData.warRoomV3FireDriver).toBe(true);
     expect(driver.scale.y).not.toBe(1);
     release();
+    expect(extraFlames.every((flame) => flame.visible === true)).toBe(true);
     expect(driver.scale.y).toBe(1);
   });
 
