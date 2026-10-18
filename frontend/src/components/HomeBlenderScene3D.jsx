@@ -5,7 +5,11 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { loadHomeCastleR2Scene } from './HomeCastle3DR2Asset.js';
-import { homeBlenderLightProbeMode, applyHomeBlenderLightProbe } from './HomeBlenderLightProbe.js';
+import {
+  homeBlenderLightProbeMode,
+  homeBlenderLightProbeLocksFullLod,
+  applyHomeBlenderLightProbe,
+} from './HomeBlenderLightProbe.js';
 import {
   createHomeBlenderGpuTimer,
   createHomeBlenderFrameSamples,
