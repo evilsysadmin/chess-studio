@@ -461,6 +461,8 @@ _DEFAULT_CORS_ORIGINS = {
     "https://staging.chess-studio.shadowops.dpdns.org",
     # Chronicles of Matthias standalone (iteración 1): espejo de corspolicy Go.
     "https://staging.chronicles.shadowops.dpdns.org",
+    # Chronicles producción: entra con la cuenta ShadowOps (espejo de corspolicy Go).
+    "https://chronicles.shadowops.dpdns.org",
 }
 _CONFIGURED_CORS_ORIGINS = {
     normalized
