@@ -1140,6 +1140,8 @@ function applyRuntimeFireMotion(
   nodes, timeMs, commonGust = homeBlenderSharedFireGust(timeMs),
   seconds = Math.max(0, Number(timeMs) || 0) / 1000,
 ) {
+  // Do not normalize shader clock: the WebGL uniform historically uses raw ms.
+  const shaderSeconds = timeMs / 1000;
   const light = { left: { sum: 0, count: 0 }, right: { sum: 0, count: 0 } };
   for (const node of nodes) {
     if (node.kind === 'steam') {
@@ -1166,7 +1168,7 @@ function applyRuntimeFireMotion(
     node.object.rotation.z = node.baseRotationZ + motion.lean;
     // Shader uniforms use the original raw timestamp, including the first frame.
     for (const { material } of node.materials) {
-      if (material.userData?.flameTime) material.userData.flameTime.value = timeMs / 1000;
+      if (material.userData?.flameTime) material.userData.flameTime.value = shaderSeconds;
     }
     for (const { material, emissiveIntensity } of node.materials) {
       if ('emissiveIntensity' in material) {
