@@ -168,7 +168,19 @@ describe('WarRoomHansStage', () => {
     leaf.getWorldPosition(world);
     expect(world.x).toBeCloseTo(-8.48);
 
+    const meshes = [];
+    scene.getObjectByName('war-room-hans-stage').traverse((node) => {
+      if (node.isMesh && node.geometry) meshes.push(node);
+    });
+    expect(meshes.length).toBeGreaterThan(50);
+    const trackedGeometry = meshes[0].geometry;
+    const trackedMaterial = meshes[0].material;
+    const disposeGeometry = vi.spyOn(trackedGeometry, 'dispose');
+    const disposeMaterial = vi.spyOn(trackedMaterial, 'dispose');
+
     hans.release();
+    expect(disposeGeometry).toHaveBeenCalledOnce();
+    expect(disposeMaterial).toHaveBeenCalledOnce();
     expect(scene.getObjectByName('war-room-fireplace')).toBeUndefined();
     expect(leaf.parent).toBe(root);
     expect(leaf.position.x).toBeCloseTo(-8.48);

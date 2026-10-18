@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { disposeObject } from './Board3DPieces.js';
 import { runWarRoomHansBlenderPostInstall } from './WarRoomHansBlenderPostInstall.js';
 import { WAR_ROOM_HANS_CLASSIC_STAGE, installWarRoomHansSceneRoutine } from './WarRoomHansIteration.js';
 
@@ -196,6 +197,10 @@ export function installWarRoomHansVariantStage(scene, {
     status: `${room.id}:${armed ? 'quick' : 'idle'}`,
     release: () => {
       stageGroup.removeFromParent();
+      // The Blender shell's disposer does not own Hans' separately allocated
+      // actor/hearth-kit meshes. Detaching the stage without disposing them
+      // leaked ~86 WebGL geometries on each variant-switch cycle.
+      disposeObject(stageGroup);
       door.release();
       if (shellRoot?.userData) delete shellRoot.userData.warRoomHansFireDimmer;
       if (scene.userData) {

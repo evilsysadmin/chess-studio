@@ -10,6 +10,7 @@ import {
 import {
   canonicalWarRoomCameraFramingProfile,
   classicWarRoomCameraFramingProfile,
+  v4WarRoomHybridCameraFramingProfile,
 } from './Board3DCameraProfiles.js';
 
 
@@ -221,11 +222,11 @@ export function fitBoardCamera(camera, width, height, whiteSide, { profile: requ
     ? Number(window.innerWidth) || width
     : width;
   const duelRoomProfile = requestedProfile === 'duel';
-  // One deliberately isolated A/B experiment: give only selectable V4 the
-  // actual School camera. Other War Rooms retain the approved common optics.
-  const v4SchoolCameraExperiment = requestedProfile === 'warroom' && variant === 'v4';
-  const teachingProfile = requestedProfile === 'classroom' || requestedProfile === 'training-room' || v4SchoolCameraExperiment;
-  const usesWarRoomContract = (requestedProfile === 'warroom' || duelRoomProfile) && !v4SchoolCameraExperiment;
+  // V4 experiments with a modest board-forward camera, still framed as a
+  // physical War Room. School's low-target close-up must never leak here.
+  const v4HybridCamera = requestedProfile === 'warroom' && variant === 'v4';
+  const teachingProfile = requestedProfile === 'classroom' || requestedProfile === 'training-room';
+  const usesWarRoomContract = requestedProfile === 'warroom' || duelRoomProfile;
   const canonicalMobileProfile = usesWarRoomContract
     ? getWarRoomMobileFramingProfile({ aspect, coarsePointer, viewportWidth })
     : null;
@@ -234,11 +235,8 @@ export function fitBoardCamera(camera, width, height, whiteSide, { profile: requ
     : null;
   const mobileProfile = canonicalMobileProfile || legacyMobileProfile;
 
-  const baseProfile = v4SchoolCameraExperiment
-    ? {
-        ...classRoomCameraFramingProfile({ aspect, coarsePointer, viewportWidth }),
-        version: 'warroom-v4-school-angle-experiment-v1',
-      }
+  const baseProfile = v4HybridCamera
+    ? v4WarRoomHybridCameraFramingProfile({ aspect, mobileProfile: canonicalMobileProfile })
     : requestedProfile === 'training-room'
     ? trainingRoomCameraFramingProfile({ aspect, coarsePointer, viewportWidth })
     : requestedProfile === 'classroom'

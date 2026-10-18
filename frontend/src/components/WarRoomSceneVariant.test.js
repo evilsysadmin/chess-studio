@@ -1,3 +1,4 @@
+import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
 import {
   shouldShowClassicWarRoomShell,
@@ -132,6 +133,64 @@ describe('War Room shared scene variants', () => {
     }
     expect(canvas.dataset.warRoomShellTimingGlbMs).not.toBe('999');
     expect(canvas.dataset.warRoomVariantStatus).toBe('ready');
+    release();
+  });
+
+  it('parks an invisible V1 fireplace so Hans can mount in V4; restores V1 on return', async () => {
+    const scene = new THREE.Scene();
+    const legacy = new THREE.Group();
+    legacy.name = 'premium-war-room-layer';
+    const legacyFireplace = new THREE.Group();
+    legacyFireplace.name = 'war-room-fireplace';
+    legacy.add(legacyFireplace);
+    legacy.userData.premiumWarRoom = true;
+    scene.add(legacy);
+    const controller = { current: () => [legacy], ensure: () => [legacy] };
+    const canvas = { dataset: {} };
+    let stageLookups = 0;
+    const release = startWarRoomVariantScene({
+      scene, classicShellController: controller, variant: 'v4', selectable: true,
+      canvas,
+      loadVariantInstaller: async () => (root) => {
+        const shell = new THREE.Group();
+        shell.userData.warRoomVariant = 'v4';
+        root.add(shell);
+        return () => shell.removeFromParent();
+      },
+      loadHansStage: async () => ({
+        installWarRoomHansVariantStage: (root) => {
+          stageLookups += 1;
+          expect(root.getObjectByName('war-room-fireplace')).toBeUndefined();
+          return { status: 'v4-tower-study:idle', release: () => {} };
+        },
+      }),
+    });
+    for (let i = 0; i < 12; i += 1) await Promise.resolve();
+
+    expect(stageLookups).toBe(1);
+    expect(legacy.parent).toBeNull();
+    expect(canvas.dataset.warRoomHansStage).toBe('v4-tower-study:idle');
+    release();
+    expect(legacy.parent).toBe(scene);
+    expect(legacy.visible).toBe(false);
+    expect(scene.getObjectByName('war-room-fireplace')).toBe(legacyFireplace);
+  });
+
+  it('restores parked classic objects before revealing fallback on V4 shell error', async () => {
+    const scene = new THREE.Scene();
+    const legacy = new THREE.Group();
+    scene.add(legacy);
+    const canvas = { dataset: {} };
+    const release = startWarRoomVariantScene({
+      scene,
+      classicShellController: { current: () => [legacy], ensure: () => [legacy] },
+      variant: 'v4', selectable: true, canvas,
+      loadVariantInstaller: async () => { throw new Error('offline GLB'); },
+    });
+    for (let i = 0; i < 12; i += 1) await Promise.resolve();
+    expect(canvas.dataset.warRoomVariantStatus).toBe('fallback');
+    expect(legacy.parent).toBe(scene);
+    expect(legacy.visible).toBe(true);
     release();
   });
 
