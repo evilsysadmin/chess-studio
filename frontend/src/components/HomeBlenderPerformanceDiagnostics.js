@@ -167,6 +167,7 @@ export function createHomeBlenderFrameSamples(maxSamples = 120) {
 export function homeBlenderModelDrawInventory(root) {
   const geometries = new Set();
   const materials = new Set();
+  const materialDrawSlots = new Map();
   const stats = {
     meshes: 0,
     drawSlotCandidates: 0,
@@ -175,6 +176,7 @@ export function homeBlenderModelDrawInventory(root) {
     sharedGeometryMeshes: 0,
     uniqueGeometries: 0,
     uniqueMaterials: 0,
+    topMaterials: [],
   };
   if (typeof root?.traverse !== 'function') return stats;
   root.traverse((object) => {
@@ -200,10 +202,25 @@ export function homeBlenderModelDrawInventory(root) {
       stats.drawSlotCandidates += 1;
       if (material.transparent) stats.transparentSlots += 1;
       if (object.castShadow) stats.shadowCasterSlots += 1;
+      // A bounded opt-in ranking reveals *where* authored draw candidates
+      // concentrate before attempting GLB batching or shadow changes. Different
+      // material instances with the same authored name share a diagnostic row.
+      const name = String(material.name || '').trim() || '(unnamed)';
+      let entry = materialDrawSlots.get(name);
+      if (!entry) {
+        entry = { material: name, slots: 0, transparentSlots: 0, shadowCasterSlots: 0 };
+        materialDrawSlots.set(name, entry);
+      }
+      entry.slots += 1;
+      if (material.transparent) entry.transparentSlots += 1;
+      if (object.castShadow) entry.shadowCasterSlots += 1;
     }
   });
   stats.uniqueGeometries = geometries.size;
   stats.uniqueMaterials = materials.size;
+  stats.topMaterials = [...materialDrawSlots.values()]
+    .sort((a, b) => b.slots - a.slots || a.material.localeCompare(b.material))
+    .slice(0, 10);
   return stats;
 }
 
