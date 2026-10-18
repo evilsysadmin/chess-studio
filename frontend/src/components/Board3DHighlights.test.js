@@ -110,6 +110,26 @@ describe('War Room 3D premium highlight visibility', () => {
     expect(technique.color).not.toBe(normal.color);
   });
 
+  it('keeps focused legal targets visible when navigating with the keyboard', () => {
+    const targets = new Map([['e4', false], ['d5', true]]);
+    const plainLegal = board3DHighlightStyle({ square: 'e4', legalMap: targets });
+    const focusedLegal = board3DHighlightStyle({ square: 'e4', legalMap: targets, focusedSquare: 'e4' });
+    const plainCapture = board3DHighlightStyle({ square: 'd5', legalMap: targets });
+    const focusedCapture = board3DHighlightStyle({ square: 'd5', legalMap: targets, focusedSquare: 'd5' });
+    const hoveredCapture = board3DHighlightStyle({ square: 'd5', legalMap: targets, hoveredSquare: 'd5' });
+
+    expect(focusedLegal).toMatchObject({ kind: 'legal', color: plainLegal.color });
+    expect(focusedLegal.opacity).toBeGreaterThan(plainLegal.opacity);
+    expect(focusedLegal.scale).toBeGreaterThan(plainLegal.scale);
+    expect(focusedCapture).toMatchObject({ kind: 'capture', color: plainCapture.color });
+    expect(focusedCapture.opacity).toBeGreaterThan(plainCapture.opacity);
+    expect(focusedCapture.scale).toBeGreaterThan(plainCapture.scale);
+    expect(hoveredCapture).toEqual(focusedCapture);
+    expect(board3DHighlightStyle({ square: 'e4', legalMap: targets, focusedSquare: 'e4', selectedSquare: 'e4' }).kind).toBe('selected');
+    expect(board3DHighlightStyle({ square: 'd5', legalMap: targets, focusedSquare: 'd5', checkSquare: 'd5' }).kind).toBe('check');
+    expect(board3DHighlightStyle({ square: 'e4', legalMap: targets, focusedSquare: 'd5' })).toEqual(plainLegal);
+  });
+
   it('keeps semantic precedence: parity < capture/technique < selection < check', () => {
     const parity = { parityHighlights: { d5: 'mistake', e2: 'terrain', e8: 'veteran', f5: 'xp' } };
     const capture = board3DHighlightStyle({ square: 'd5', hintMove: parity, legalMap: new Map([['d5', true]]) });
