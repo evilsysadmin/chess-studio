@@ -2,7 +2,8 @@ import { chromium, expect, test } from '@playwright/test';
 import { randomUUID } from 'node:crypto';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
-import { activateSetupControl, buttonWithVisibleText, mockApi, waitForHomeInteractive } from './helpers.js';
+import { mockApi, waitForHomeInteractive } from './helpers.js';
+import { enterWarRoomGpuQuickMatch } from './war-room-gpu-quick-match.js';
 import { navigateWarRoomKeyboard } from './war-room-board-input.js';
 
 // Opt-in local benchmark only. rAF is not GPU time; emulated touch is not a phone GPU.
@@ -199,9 +200,10 @@ async function openWarRoom(page, requestLog) {
   } finally {
     page.off('pageerror', onPageError);
   }
-  await buttonWithVisibleText(page, 'Partida rápida').click();
-  await activateSetupControl(page.getByRole('button', { name: 'Empezar partida', exact: true }));
-  const board = page.locator('[data-board3d-war-room="true"]');
+  // Verify the real modal/CTA before waiting for GPU readiness. The previous
+  // benchmark clicked a Home hotspot and silently waited 45 s for a CTA
+  // even when no quick-match dialog had opened.
+  const { board } = await enterWarRoomGpuQuickMatch(page);
   const canvas = page.locator('canvas.board3d-main-canvas');
   await expect(board).toBeVisible({ timeout: 60_000 });
   await expect(canvas).toBeVisible({ timeout: 60_000 });
