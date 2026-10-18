@@ -43,6 +43,7 @@ def load_group(directory, expected_sha, mode, minimum):
     reports = {key: [] for key in PROFILES}
     seen = set()
     renderers = set()
+    variants = set()
     paths = sorted(directory.glob('*.json'))
     require(paths, f'No JSON captures in {directory}')
     for path in paths:
@@ -53,6 +54,11 @@ def load_group(directory, expected_sha, mode, minimum):
         prefix = str(path) + ': '
         require(type(data) is dict, prefix + 'object required')
         require(data.get('schema') == 2, prefix + 'schema 2 with collision-safe runId required')
+        # Legacy schema-2 captures predate explicit V4; they always measured V3.
+        variant = data.get('variant', 'v3')
+        require(type(variant) is str and variant in ('v3', 'v4'),
+                prefix + 'invalid War Room variant')
+        variants.add(variant)
         require(data.get('revision') == expected_sha, prefix + 'revision differs from requested SHA')
         require(data.get('requestedRenderer') == mode, prefix + 'requested renderer mismatch')
         require(type(data.get('browserFramePacingOnly')) is bool, prefix + 'frame-pacing mode declaration missing')
@@ -157,9 +163,10 @@ def load_group(directory, expected_sha, mode, minimum):
                 prefix + 'GPU/frame-pacing declaration inconsistent with real query samples')
         reports[profile].append(data)
     require(len(renderers) == 1, f'{directory}: renderer identity differs between runs: {sorted(renderers)}')
+    require(len(variants) == 1, f'{directory}: mixed V3/V4 variants in a single cohort')
     for profile, items in reports.items():
         require(len(items) >= minimum, f'{directory}: {profile} has {len(items)} runs, needs >= {minimum}')
-    return reports, next(iter(renderers))
+    return reports, next(iter(renderers)), next(iter(variants))
 
 
 def summarize(reports, visit_type, metric):
@@ -227,12 +234,13 @@ def gpu_phase_median(reports, visit_type, phase):
 def compare(baseline, candidate, base_sha, candidate_sha, *, mode='hardware', minimum=2):
     require(mode in ('hardware', 'software'), 'Mode must be hardware or software')
     require(minimum >= 2, 'At least two independent runs per revision/profile required')
-    before, old_renderer = load_group(Path(baseline), base_sha, mode, minimum)
-    after, new_renderer = load_group(Path(candidate), candidate_sha, mode, minimum)
+    before, old_renderer, base_variant = load_group(Path(baseline), base_sha, mode, minimum)
+    after, new_renderer, candidate_variant = load_group(Path(candidate), candidate_sha, mode, minimum)
+    require(base_variant == candidate_variant, 'Cannot compare V3 and V4 in an A/B performance regression')
     require(old_renderer == new_renderer, 'Different physical renderer/driver strings: no valid A/B')
     provenance_verified = validate_capture_provenance(before, after)
     lines = [
-        '# War Room V3 · repeated browser pacing + optional measured GPU A/B',
+        f'# War Room {base_variant.upper()} · repeated browser pacing + optional measured GPU A/B',
         '',
         f'Baseline {base_sha} → candidate {candidate_sha}',
         f'Renderer: {old_renderer} · requested mode: {mode}',
@@ -319,6 +327,30 @@ def self_test():
         output = compare(base, candidate, a, b)
         assert 'first-ready draw calls' in output and 'not GPU time' in output
         assert 'Missing/incomparable GPU queries' in output
+        assert '# War Room V3' in output  # Legacy missing variant means V3.
+
+        # V4 is comparable to itself, but never silently compared to V3.
+        for directory in (base, candidate):
+            for path in directory.glob('*.json'):
+                report = json.loads(path.read_text())
+                report['variant'] = 'v4'
+                path.write_text(json.dumps(report))
+        assert '# War Room V4' in compare(base, candidate, a, b)
+        mismatched = candidate / 'desktop-1440x900-0.json'
+        report = json.loads(mismatched.read_text())
+        report['variant'] = 'v3'
+        mismatched.write_text(json.dumps(report))
+        try:
+            compare(base, candidate, a, b)
+        except BadReport as exc:
+            assert 'mixed V3/V4' in str(exc)
+        else:
+            raise AssertionError('Mixed variants were accepted')
+        for directory in (base, candidate):
+            for path in directory.glob('*.json'):
+                report = json.loads(path.read_text())
+                report.pop('variant', None)
+                path.write_text(json.dumps(report))
 
         # Schema-2 reports with genuine timer data are still compatible with
         # older rAF-only JSON; no measured GPU is invented for missing data.
