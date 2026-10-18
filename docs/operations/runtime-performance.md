@@ -164,6 +164,18 @@ python3 scripts/run_war_room_gpu_ab.py \\
 
 El comparador **rechaza cohortes mezcladas V3/V4**, incluida una mezcla entre A y B. Los antiguos JSON schema 2 sin `variant` siguen interpretándose como V3. Una comparación V3 frente a V4 requiere un experimento diferente; el A/B de regresión solo compara una sala consigo misma. Igual que antes, rAF no es tiempo GPU; los datos GPU se publican únicamente con queries reales y procedencia verificada.
 
+**Estabilidad del escenario Hans (V3/V4):** el shell puede declarar
+`ready` antes de que se complete la instalación asíncrona de Hans.
+El benchmark mantiene `openToReadyWallMs` hasta el primer shell/paint,
+pero espera `data-war-room-hans-stage` con identidad de la variante y
+estado `quick` o `idle` antes de muestrear `idle` y `move`.
+Registra `hansStage` y `hansReadyAfterShellMs` por visita. Un actor
+`missing`, `error` o que nunca termine hace fallar la captura en vez de
+parecer una GPU más rápida. El comparador sigue admitiendo JSON antiguos
+para rAF, pero muestra `n/a` para sus deltas GPU sin procedencia
+completa de Hans o cuando el estado montado cambia entre revisiones.
+Esto **no** modifica la carga normal de la sala ni añade espera a las partidas.
+
 **Semántica de métricas**: intervalos entre callbacks `requestAnimationFrame` = cadencia de oportunidades del navegador, **no** tiempos de GPU ni FPS exactos de los draws. `inputToConfirmationMs` incluye automatización de teclado, mutación y aserción de estado, no latencia exclusiva del dispositivo. `openToReadyWallMs` abarca login y navegación de prueba, no equivale a tiempo de descarga GLB. `snapshotMemory` son los contadores que la sala publica al ready, no consumo VRAM. `gpuFrameTimeMs: null` y `gpuTimerQueryMeasured: false` evitan atribuir números GPU no medidos.
 
 Repetir cada revisión en el mismo host en órdenes alternos A/B/B/A (varias repeticiones); comparar distribuciones y no un único p95 ruidoso. No lanzar varios navegadores o renders en paralelo. Comprobar con GPU profiler/EXT timer query independientes cualquier hipótesis de saturación real. **El modo touch emulado en GPU de escritorio no acredita Android físico**: probar también un móvil real con navegador, rotación y fluidez durante varias jugadas antes de considerar cerrado el coste móvil.
@@ -206,9 +218,10 @@ El resultado es **tiempo de GPU de un render elegido**, no FPS ni tiempo
 de CPU, y no mide por sí solo la pantalla completa ni el compositor.
 El juego normal no emite consultas, no tiene timer activo y no escribe
 atributos de GPU por fotograma. Tras desactivar la bandera basta
-recargar/remontar el tablero. La captura y el comparador A/B/B/A
-existentes siguen recogiendo solo cadencia rAF (schema 2):
-**todavía no incorporan los resultados de este temporizador**.
+recargar/remontar el tablero. La captura y el comparador A/B/B/A ya incorporan muestras reales
+de este temporizador por fase (idle/move), con comprobación de atribución
+temporal y metadatos del navegador/canvas/Hans. Si faltan muestras
+válidas, el comparador muestra `n/a`, nunca un tiempo deducido de rAF.
 No interpretar `gpuFrameTimeMs: null` del JSON como tiempo GPU cero.
 La medición física reproducible sigue abierta en #5765.
 
