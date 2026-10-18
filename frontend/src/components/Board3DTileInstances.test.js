@@ -6,7 +6,7 @@ import {
   resolveBoard3DPointerSquare,
   squareFromBoard3DIntersection,
 } from './Board3DTileInstances.js';
-import { board3DMovableSquares } from './Board3DPointerPicking.js';
+import { board3DMovableSquares, pickBoard3DSquare } from './Board3DPointerPicking.js';
 
 describe('Board3D tile instances', () => {
   it('packs the 64 board squares into two shared-geometry batches', () => {
@@ -93,6 +93,35 @@ describe('Board3D tile instances', () => {
     })).toBe('g6');
   });
 
+
+  it('prioriza la casilla legal oculta al hacer clic de ratón, pero no durante hover ni al reseleccionar', () => {
+    const tile = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 0.1, 1), new THREE.MeshBasicMaterial(), 1);
+    tile.userData.board3DSquares = ['e3'];
+    const foreground = new THREE.Group();
+    foreground.userData.square = 'e2';
+    const mesh = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial());
+    foreground.add(mesh);
+    const hits = [{ object: mesh, distance: 2 }, { object: tile, instanceId: 0, distance: 3 }];
+    const canvas = { getBoundingClientRect: () => ({ left: 0, top: 0, width: 800, height: 800 }) };
+    const pointer = new THREE.Vector2();
+    const raycaster = { setFromCamera: () => {}, intersectObjects: () => hits };
+    const openingFen = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
+    const base = { canvas, pointer, raycaster, camera: {}, pickTargets: [], latestProps: {
+      selectedSquare: 'e2', legalTargets: [{ to: 'e3' }], fen: openingFen,
+    } };
+    expect(pickBoard3DSquare({ ...base, event: { type: 'pointermove', clientX: 410, clientY: 410 } })).toBe('e2');
+    // The canvas sends release coordinates (not the raw pointer event) for an actual click.
+    expect(pickBoard3DSquare({ ...base, event: { clientX: 410, clientY: 410 } })).toBe('e3');
+    const knight = new THREE.Group();
+    knight.userData.square = 'g1';
+    const knightMesh = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial());
+    knight.add(knightMesh);
+    hits[0] = { object: knightMesh, distance: 2 };
+    expect(pickBoard3DSquare({ ...base, event: { clientX: 410, clientY: 410 } })).toBe('g1');
+    expect(pickBoard3DSquare({ ...base, event: { clientX: 410, clientY: 410 }, latestProps: {
+      selectedSquare: null, legalTargets: [], fen: openingFen,
+    } })).toBe('g1');
+  });
 
   it('al elegir pieza, la casilla bajo el dedo gana si la pieza visible no puede mover', () => {
     const tile = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 0.1, 1), new THREE.MeshBasicMaterial(), 1);

@@ -68,6 +68,10 @@ export function resolveBoard3DPointerSquare(
         .filter(Boolean),
     );
     if (legalSquares.size) {
+      // A click on another movable friendly piece means reselect, not play a
+      // highlighted destination that happens to be projected behind it.
+      const foreground = intersections.map(squareFromBoard3DIntersection).find(Boolean);
+      if (foreground && foreground !== selectedSquare && movableSquares?.has(foreground)) return foreground;
       // The v4 play pitch intentionally keeps a real perspective. On compact
       // touch viewports a tall source piece can visually cover the centre of a
       // legal square one rank behind it. The ray still reaches that tile after
