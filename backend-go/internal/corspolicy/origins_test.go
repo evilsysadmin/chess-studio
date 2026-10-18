@@ -15,11 +15,14 @@ func TestCanonicalBrowserOriginsReturnsDefensiveCopy(t *testing.T) {
 	}
 }
 
-func TestChroniclesStagingOriginIsAllowed(t *testing.T) {
-	for _, origin := range CanonicalBrowserOrigins() {
-		if origin == "https://staging.chronicles.shadowops.dpdns.org" {
-			return
+func TestChroniclesOriginsAreAllowed(t *testing.T) {
+	for _, want := range []string{"https://staging.chronicles.shadowops.dpdns.org", "https://chronicles.shadowops.dpdns.org"} {
+		found := false
+		for _, origin := range CanonicalBrowserOrigins() {
+			found = found || origin == want
+		}
+		if !found {
+			t.Fatalf("Chronicles origin %s missing from browser CORS policy", want)
 		}
 	}
-	t.Fatal("Chronicles standalone staging origin missing from browser CORS policy")
 }
