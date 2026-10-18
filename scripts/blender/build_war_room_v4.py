@@ -1385,6 +1385,47 @@ def validate_v4_hans_stage():
     if (hinge2 + (tip - hinge2) * t - armor).length < 0.48 + 0.15:
         raise RuntimeError("War Room v4 Hans door swings into the door armour")
     work_y = anchors["WR_ANCHOR_hans_hearth"][1] - 0.72
+    # End-to-end *swept* clearance, not merely point anchors: the former V4
+    # hearth overlapped the command table while every old anchor check passed.
+    bpy.context.view_layer.update()
+    mantel = objects["WR4_OBS_fireplace_mantel"]
+    hx, hy = float(mantel.dimensions.x) / 2, float(mantel.dimensions.y) / 2
+    cx, cy = float(mantel.location.x), float(mantel.location.y)
+    if abs(cx - V4_HANS_HEARTH_CENTER[0]) > 0.02 or abs(cy - V4_HANS_HEARTH_CENTER[1]) > 0.02:
+        raise RuntimeError("War Room v4 Hans fireplace is not at the authored service alcove")
+    if hx > 1.12 or hy > 0.52:
+        raise RuntimeError("War Room v4 fireplace expanded into Hans' service lane")
+    route = [
+        anchors["WR_ANCHOR_hans_door"][:2],
+        *[anchors[f"WR_ANCHOR_hans_corridor_{index}"][:2] for index in range(3)],
+        (anchors["WR_ANCHOR_hans_basket"][0], work_y),
+        (anchors["WR_ANCHOR_hans_hearth"][0], work_y),
+        (anchors["WR_ANCHOR_hans_tools"][0], work_y),
+    ]
+
+    def rectangle_gap(px, py, ox, oy, half_x, half_y):
+        return math.hypot(max(abs(px - ox) - half_x, 0),
+                          max(abs(py - oy) - half_y, 0))
+
+    for before, after in zip(route, route[1:]):
+        length = math.dist(before, after)
+        count = max(1, math.ceil(length / 0.08))
+        for step in range(count + 1):
+            ratio = step / count
+            px = before[0] + (after[0] - before[0]) * ratio
+            py = before[1] + (after[1] - before[1]) * ratio
+            gaps = {
+                "wall": V4_WALL_RADIUS - math.hypot(px, py - V4_WALL_CENTER_Y),
+                "board_dais": rectangle_gap(px, py, 0, 0, V4_PLINTH_HALF + 0.03, V4_PLINTH_HALF + 0.03),
+                "fireplace": rectangle_gap(px, py, cx, cy, hx, hy),
+                "left_armour": math.hypot(px + 6.55, py - V4_HANS_LEFT_ARMOR_Y) - 0.48,
+            }
+            for obstacle, gap in gaps.items():
+                if gap < V4_HANS_BODY_CLEARANCE_RADIUS:
+                    raise RuntimeError(
+                        f"War Room v4 Hans cannot pass {obstacle}: gap={gap:.3f}m"
+                        f" at ({px:.2f}, {py:.2f}), needs {V4_HANS_BODY_CLEARANCE_RADIUS:.2f}m"
+                    )
     # The armour (x -6.55) shares Hans' work lane; it must neither stand on his
     # spot nor right in front of it, between him and the play camera.
     if V4_HANS_LEFT_ARMOR_Y - 0.48 < work_y + 0.25 and V4_HANS_LEFT_ARMOR_Y + 0.48 > work_y - 1.6:
