@@ -978,7 +978,6 @@ function Board3DCanvas({
       data-board3d-motion="physical-v1"
       data-board3d-interaction-fx="brass-ember-v1"
       data-board3d-camera={presentation.cameraData}
-      data-board3d-camera-experiment={cameraProfile === 'warroom' && warRoomVariant === 'v4' ? 'v4-school-angle-v1' : undefined}
       data-board3d-theme={effectiveThemeId}
       data-board3d-turn={turnState || ''}
       data-board3d-technique-target-count={techniqueTargetCount}
