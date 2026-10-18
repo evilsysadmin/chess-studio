@@ -112,8 +112,14 @@ def prepare_worktree(root, temporary, label, sha, harness_blobs):
     if label == 'A':
         # Both worktrees now use the identical pinned e2e lockfile.
         run((str(target / 'e2e/node_modules/.bin/playwright'), 'install', 'chromium'), cwd=root)
-    print(f'==> Building exact {label} frontend', flush=True)
-    run(('npm', '--prefix', str(target / 'frontend'), 'run', 'build'), cwd=root)
+    print(f'==> Building exact {label} frontend with explicit War Room variants', flush=True)
+    # Localhost is not the staging hostname. Without this build-time Vite
+    # flag the normal selector falls back to classic, invalidating V3/V4
+    # captures even though localStorage requests the correct variant.
+    build_env = os.environ.copy()
+    build_env['VITE_WAR_ROOM_VARIANTS_ENABLE'] = '1'
+    run(('npm', '--prefix', str(target / 'frontend'), 'run', 'build'),
+        cwd=root, env=build_env)
     return target
 
 
