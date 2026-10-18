@@ -751,22 +751,22 @@ export function homeBlenderFireMotion({
 }
 
 // The live animation already knows the (seconds, seed) pair for each mesh.
-// Keeping this scalar path separate prevents phase hashing and time coercion
-// from being paid for every node, while preserving the public helper above.
-export function homeBlenderFireMotionPrepared(seconds, seed, kind = 'flame', commonGust) {
+// Keep this scalar path separate to avoid repeated phase hashing/time coercion.
+// Its optional output record belongs to one GLB node and avoids per-frame
+// motion-object allocations; standalone callers still get a fresh object.
+export function homeBlenderFireMotionPrepared(seconds, seed, kind = 'flame', commonGust, output = {}) {
   if (kind === 'ember') {
     // Embers only consume slow glow and flicker. Skip the gust, body and
     // drift lattice samples used by flames/candles: they never affect embers.
     const flick = fireNoise(seconds, 8.6, seed + 401);
     const glow = fireNoise(seconds, 1.6, seed + 601);
-    return {
-      scaleX: 1 + glow * 0.015,
-      scaleY: 1 + glow * 0.012,
-      scaleZ: 1 + glow * 0.015,
-      lean: 0,
-      emission: 0.93 + glow * 0.06 + flick * 0.02,
-      light: 0.97 + glow * 0.03,
-    };
+    output.scaleX = 1 + glow * 0.015;
+    output.scaleY = 1 + glow * 0.012;
+    output.scaleZ = 1 + glow * 0.015;
+    output.lean = 0;
+    output.emission = 0.93 + glow * 0.06 + flick * 0.02;
+    output.light = 0.97 + glow * 0.03;
+    return output;
   }
   // Standalone callers retain their original deterministic output.
   const gust = commonGust === undefined ? fireNoise(seconds, 0.33, 7) : commonGust;
@@ -779,27 +779,25 @@ export function homeBlenderFireMotionPrepared(seconds, seed, kind = 'flame', com
   const flick = fireNoise(seconds, 8.6, seed + 401);
 
   if (kind === 'candle') {
-    return {
-      scaleX: 1 - body * 0.030,
-      scaleY: 1 + body * 0.070,
-      scaleZ: 1 - body * 0.030,
-      lean: fireNoise(seconds, 2.6, seed + 503) * 0.050 + gust * 0.015,
-      emission: 0.95 + flick * 0.045,
-      // A candle or torch flame throws a light that wavers with it.
-      light: 0.90 + body * 0.09 + drift * 0.07,
-    };
+    output.scaleX = 1 - body * 0.030;
+    output.scaleY = 1 + body * 0.070;
+    output.scaleZ = 1 - body * 0.030;
+    output.lean = fireNoise(seconds, 2.6, seed + 503) * 0.050 + gust * 0.015;
+    output.emission = 0.95 + flick * 0.045;
+    // A candle or torch flame throws a light that wavers with it.
+    output.light = 0.90 + body * 0.09 + drift * 0.07;
+    return output;
   }
 
   const hot = kind === 'hot';
   const stretch = body * (hot ? 0.75 : 1) + drift * 0.30;
-  return {
-    scaleX: 1 - stretch * (hot ? 0.030 : 0.045),
-    scaleY: 1 + stretch * (hot ? 0.070 : 0.105) + Math.max(0, body) * 0.02,
-    scaleZ: 1 - stretch * (hot ? 0.030 : 0.045),
-    lean: fireNoise(seconds, 3.4, seed + 503) * (hot ? 0.030 : 0.045) + gust * (hot ? 0.020 : 0.035),
-    emission: 0.95 + flick * 0.05 + body * 0.035,
-    light: 0.95 + body * 0.05 + flick * 0.03 + drift * 0.02,
-  };
+  output.scaleX = 1 - stretch * (hot ? 0.030 : 0.045);
+  output.scaleY = 1 + stretch * (hot ? 0.070 : 0.105) + Math.max(0, body) * 0.02;
+  output.scaleZ = 1 - stretch * (hot ? 0.030 : 0.045);
+  output.lean = fireNoise(seconds, 3.4, seed + 503) * (hot ? 0.030 : 0.045) + gust * (hot ? 0.020 : 0.035);
+  output.emission = 0.95 + flick * 0.05 + body * 0.035;
+  output.light = 0.95 + body * 0.05 + flick * 0.03 + drift * 0.02;
+  return output;
 }
 
 // Torch lights only consume .light from homeBlenderFireMotion('candle').
@@ -828,21 +826,27 @@ export function homeBlenderCandleLightFactorPrepared(seconds, seed) {
 // phase so the cup never pulses in unison. `height` is the wisp's own height, so
 // the motion scales with whatever size the GLB ships.
 export function homeBlenderSteamMotion({ timeMs = 0, phase = 0, height = 0.4 } = {}) {
-  const seconds = Math.max(0, Number(timeMs) || 0) / 1000;
-  const offset = ((Number(phase) || 0) / (Math.PI * 2)) % 1;
+  return homeBlenderSteamMotionPrepared(
+    Math.max(0, Number(timeMs) || 0) / 1000, Number(phase) || 0, height,
+  );
+}
+
+// The live GLB animation shares the normalized frame clock and writes into a
+// per-wisp record. Standalone callers still receive a fresh output object.
+export function homeBlenderSteamMotionPrepared(seconds, phase, height = 0.4, output = {}) {
+  const offset = (phase / (Math.PI * 2)) % 1;
   const period = 4.2 + offset * 1.6;
   const progress = ((seconds / period) + offset + 1) % 1;
   const envelope = Math.sin(Math.PI * progress) ** 1.25;
-  return {
-    progress,
-    opacity: 0.30 * envelope,
-    rise: progress * height * 0.55,
-    swayX: Math.sin((seconds * 1.15) + (Number(phase) || 0)) * height * 0.055 * (0.4 + progress),
-    swayZ: Math.cos((seconds * 0.9) + (Number(phase) || 0) * 1.7) * height * 0.035,
-    // The authored wisp is a thin tube; it swells into a soft plume as it rises.
-    scaleXZ: 1.8 + progress * 3.2,
-    scaleY: 0.85 + progress * 0.30,
-  };
+  output.progress = progress;
+  output.opacity = 0.30 * envelope;
+  output.rise = progress * height * 0.55;
+  output.swayX = Math.sin((seconds * 1.15) + phase) * height * 0.055 * (0.4 + progress);
+  output.swayZ = Math.cos((seconds * 0.9) + phase * 1.7) * height * 0.035;
+  // The authored wisp is a thin tube; it swells into a soft plume as it rises.
+  output.scaleXZ = 1.8 + progress * 3.2;
+  output.scaleY = 0.85 + progress * 0.30;
+  return output;
 }
 
 // The published runtime GLB was exported with every flame panel's origin at the
@@ -1129,6 +1133,9 @@ function prepareRuntimeFireRig(root) {
       hearth: lowered.includes('fireplace_left') ? 'left' : lowered.includes('fireplace_right') ? 'right' : null,
       phase,
       seed: homeBlenderFireSeed(phase),
+      // One stable motion record per GLB flame/ember/steam node; no short-lived
+      // per-node objects allocated during the ambient animation loop.
+      motion: {},
       baseScale: object.scale.clone(),
       baseRotationZ: object.rotation.z,
       materials,
@@ -1146,7 +1153,7 @@ function applyRuntimeFireMotion(
   const light = { left: { sum: 0, count: 0 }, right: { sum: 0, count: 0 } };
   for (const node of nodes) {
     if (node.kind === 'steam') {
-      const steam = homeBlenderSteamMotion({ timeMs, phase: node.phase, height: node.height });
+      const steam = homeBlenderSteamMotionPrepared(seconds, node.phase, node.height, node.motion);
       node.object.position.set(
         node.basePosition.x + steam.swayX,
         node.basePosition.y + steam.rise,
@@ -1160,7 +1167,7 @@ function applyRuntimeFireMotion(
       for (const { material } of node.materials) material.opacity = steam.opacity;
       continue;
     }
-    const motion = homeBlenderFireMotionPrepared(seconds, node.seed, node.kind, commonGust);
+    const motion = homeBlenderFireMotionPrepared(seconds, node.seed, node.kind, commonGust, node.motion);
     node.object.scale.set(
       node.baseScale.x * motion.scaleX,
       node.baseScale.y * motion.scaleY,
