@@ -346,6 +346,21 @@ def self_test():
             assert 'mixed V3/V4' in str(exc)
         else:
             raise AssertionError('Mixed variants were accepted')
+        # A and B may be internally consistent but still measure different rooms.
+        for path in candidate.glob('*.json'):
+            report = json.loads(path.read_text())
+            report['variant'] = 'v4'
+            path.write_text(json.dumps(report))
+        for path in base.glob('*.json'):
+            report = json.loads(path.read_text())
+            report['variant'] = 'v3'
+            path.write_text(json.dumps(report))
+        try:
+            compare(base, candidate, a, b)
+        except BadReport as exc:
+            assert 'Cannot compare V3 and V4' in str(exc)
+        else:
+            raise AssertionError('Cross-revision mixed variants accepted')
         for directory in (base, candidate):
             for path in directory.glob('*.json'):
                 report = json.loads(path.read_text())
