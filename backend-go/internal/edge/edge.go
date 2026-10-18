@@ -61,6 +61,9 @@ type Config struct {
 	NativeSession http.Handler
 	// NativeLogin serves POST /api/auth/login; nil keeps it in Python.
 	NativeLogin http.Handler
+	// NativeSSO serves /api/identity/* (ShadowOps single sign-on); Python
+	// has no such routes.
+	NativeSSO http.Handler
 	// NativeAccount serves register, password and email changes and
 	// delete-account; nil keeps them in Python.
 	NativeAccount http.Handler
@@ -139,6 +142,7 @@ type Handler struct {
 	nativeProfile             http.Handler
 	nativeSession             http.Handler
 	nativeLogin               http.Handler
+	nativeSSO                 http.Handler
 	nativeAccount             http.Handler
 	nativeRecovery            http.Handler
 	nativeFeedback            http.Handler
@@ -265,6 +269,7 @@ func New(cfg Config) (*Handler, error) {
 		nativeProfile:             cfg.NativeProfile,
 		nativeSession:             cfg.NativeSession,
 		nativeLogin:               cfg.NativeLogin,
+		nativeSSO:                 cfg.NativeSSO,
 		nativeAccount:             cfg.NativeAccount,
 		nativeRecovery:            cfg.NativeRecovery,
 		nativeFeedback:            cfg.NativeFeedback,
@@ -304,6 +309,7 @@ func (h *Handler) nativeRoutes() []nativeRoute {
 		{h.nativeProfile, gamesapi.ProfileRoute},
 		{h.nativeSession, gamesapi.SessionRoute},
 		{h.nativeLogin, gamesapi.LoginRoute},
+		{h.nativeSSO, gamesapi.SSORoute},
 		{h.nativeAccount, gamesapi.AccountRoute},
 		{h.nativeRecovery, gamesapi.RecoveryRoute},
 		{h.nativeFeedback, func(r *http.Request) (string, bool) { p, _, ok := gamesapi.FeedbackRoute(r); return p, ok }},

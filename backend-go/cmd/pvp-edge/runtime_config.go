@@ -32,17 +32,20 @@ type nativeFeatureFlags struct {
 	profile             bool
 	authSession         bool
 	login               bool
-	account             bool
-	recovery            bool
-	feedback            bool
-	matthiasRead        bool
-	narrative           bool
-	pawnSlug            bool
-	chronicles          bool
-	chroniclesRuns      bool
-	adminFeedback       bool
-	adminUsers          bool
-	adminObservability  bool
+	// sso serves /api/identity/* (on by default; a kill-switch only). It
+	// rides on the MongoDB other native routes open and never opens it.
+	sso                bool
+	account            bool
+	recovery           bool
+	feedback           bool
+	matthiasRead       bool
+	narrative          bool
+	pawnSlug           bool
+	chronicles         bool
+	chroniclesRuns     bool
+	adminFeedback      bool
+	adminUsers         bool
+	adminObservability bool
 }
 
 func loadNativeFeatureFlags() nativeFeatureFlags {
@@ -68,6 +71,7 @@ func loadNativeFeatureFlags() nativeFeatureFlags {
 		profile:             envBool("GO_NATIVE_PROFILE_ENABLED", false),
 		authSession:         envBool("GO_NATIVE_AUTH_SESSION_ENABLED", false),
 		login:               envBool("GO_NATIVE_LOGIN_ENABLED", false),
+		sso:                 envBool("GO_NATIVE_SSO_ENABLED", true),
 		account:             envBool("GO_NATIVE_ACCOUNT_ENABLED", false),
 		recovery:            envBool("GO_NATIVE_RECOVERY_ENABLED", false),
 		feedback:            envBool("GO_NATIVE_FEEDBACK_ENABLED", false),
@@ -108,6 +112,7 @@ func allNative() nativeFeatureFlags {
 		profile:             true,
 		authSession:         true,
 		login:               true,
+		sso:                 true,
 		account:             true,
 		recovery:            true,
 		feedback:            true,
