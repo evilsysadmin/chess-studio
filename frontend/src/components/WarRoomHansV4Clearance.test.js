@@ -5,19 +5,23 @@ import { installWarRoomHansVariantStage, readWarRoomHansStageAnchors } from './W
 
 // Mirrors the actual Blender authoring coordinates. Its validator also checks
 // the *real* generated mantel geometry, not only this gameplay fixture.
-const V4_HEARTH = [-6.75, 4.0];
 const DOOR_AND_STOPS = Object.freeze({
-  WR_ANCHOR_hans_hearth: [-6.75, 4.0],
+  WR_ANCHOR_hans_hearth: [-6.28, 3.05],
   WR_ANCHOR_hans_door: [-7.82, 1.23],
-  WR_ANCHOR_hans_basket: [-6.95, 3.55],
-  WR_ANCHOR_hans_tools: [-6.35, 3.42],
-  WR_ANCHOR_hans_corridor_0: [-7.35, 1.95],
-  WR_ANCHOR_hans_corridor_1: [-7.20, 2.65],
-  WR_ANCHOR_hans_corridor_2: [-7.03, 3.08],
+  WR_ANCHOR_hans_basket: [-6.42, 2.26],
+  WR_ANCHOR_hans_tools: [-6.25, 2.23],
+  WR_ANCHOR_hans_corridor_0: [-7.20, 1.23],
+  WR_ANCHOR_hans_corridor_1: [-6.52, 1.25],
+  WR_ANCHOR_hans_corridor_2: [-6.40, 1.82],
 });
 const ACTOR_CLEARANCE_RADIUS = 0.56;
 const BOARD_HALF = 5.65;
-const FIREPLACE = Object.freeze({ x: -6.75, y: 4.40, halfX: 1.66 * 0.64, halfY: 0.69 * 0.70 });
+const FIREPLACE = Object.freeze({
+  x: -7.12, y: 3.08, halfX: 1.66 * 0.72, halfY: 0.67 * 0.55,
+  angle: 62 * Math.PI / 180,
+});
+const RIGHT_ARMOUR = Object.freeze({ x: 7.45, y: -1.20, radius: 0.48 });
+const LOUNGE = Object.freeze({ chair: [7.05, 1.55], rug: [6.95, 1.35], table: [6.10, 0.45] });
 
 function makeShell(whiteSide) {
   const scene = new THREE.Scene();
@@ -44,6 +48,14 @@ function rectGap(x, y, centerX, centerY, halfX, halfY) {
   );
 }
 
+function mantelGap(x, y) {
+  const dx = x - FIREPLACE.x;
+  const dy = y - FIREPLACE.y;
+  const cs = Math.cos(FIREPLACE.angle);
+  const sn = Math.sin(FIREPLACE.angle);
+  return rectGap(dx * cs + dy * sn, -dx * sn + dy * cs, 0, 0, FIREPLACE.halfX, FIREPLACE.halfY);
+}
+
 describe('V4 · pasillo físico para Hans (no basta con que sea visible en cámara)', () => {
   for (const whiteSide of [true, false]) {
     it(`mantiene despejado el recorrido animado completo con ${whiteSide ? 'blancas' : 'negras'}`, () => {
@@ -68,7 +80,7 @@ describe('V4 · pasillo físico para Hans (no basta con que sea visible en cáma
         const gaps = [
           8.72 - Math.hypot(x, y + 0.72), // circular tower wall
           rectGap(x, y, 0, 0, BOARD_HALF, BOARD_HALF),
-          rectGap(x, y, FIREPLACE.x, FIREPLACE.y, FIREPLACE.halfX, FIREPLACE.halfY),
+          mantelGap(x, y),
           Math.hypot(x + 6.55, y + 0.75) - 0.48, // ceremonial armour
         ];
         for (const gap of gaps) {
@@ -108,6 +120,25 @@ describe('V4 · pasillo físico para Hans (no basta con que sea visible en cáma
       }
     });
   }
+
+  it('chimenea tangente al muro y armadura derecha fuera del sillón, alfombra y mesita', () => {
+    const angle = FIREPLACE.angle;
+    const cos = Math.cos(angle), sin = Math.sin(angle);
+    for (const sx of [-1, 1]) {
+      for (const sy of [-1, 1]) {
+        const x = FIREPLACE.x + sx * FIREPLACE.halfX * cos - sy * FIREPLACE.halfY * sin;
+        const y = FIREPLACE.y + sx * FIREPLACE.halfX * sin + sy * FIREPLACE.halfY * cos;
+        expect(8.72 - Math.hypot(x, y + 0.72), 'mantel does not fit tower wall')
+          .toBeGreaterThan(0.08);
+      }
+    }
+    expect(Math.hypot(RIGHT_ARMOUR.x - LOUNGE.chair[0], RIGHT_ARMOUR.y - LOUNGE.chair[1]))
+      .toBeGreaterThan(1.8);
+    expect(Math.hypot(RIGHT_ARMOUR.x - LOUNGE.rug[0], RIGHT_ARMOUR.y - LOUNGE.rug[1]))
+      .toBeGreaterThan(1.42 + RIGHT_ARMOUR.radius + 0.15);
+    expect(Math.hypot(RIGHT_ARMOUR.x - LOUNGE.table[0], RIGHT_ARMOUR.y - LOUNGE.table[1]))
+      .toBeGreaterThan(0.55 + RIGHT_ARMOUR.radius + 0.15);
+  });
 
   it('V4 no hereda el desplazamiento de trabajo que empuja a Hans contra el muro', () => {
     const shell = makeShell(true);
