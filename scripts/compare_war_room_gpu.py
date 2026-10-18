@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Compare repeated opt-in War Room V3 rAF captures, not GPU execution times.
+"""Compare repeated opt-in War Room V3 browser pacing and optional genuine GPU timings.
 
 Standard-library only. Reject mixed renderer, viewport, SHA, run IDs, or
 insufficient samples rather than inventing a performance result.
@@ -55,7 +55,7 @@ def load_group(directory, expected_sha, mode, minimum):
         require(data.get('schema') == 2, prefix + 'schema 2 with collision-safe runId required')
         require(data.get('revision') == expected_sha, prefix + 'revision differs from requested SHA')
         require(data.get('requestedRenderer') == mode, prefix + 'requested renderer mismatch')
-        require(data.get('browserFramePacingOnly') is True, prefix + 'not declared browser frame pacing')
+        require(type(data.get('browserFramePacingOnly')) is bool, prefix + 'frame-pacing mode declaration missing')
         require(data.get('physicalAndroidVerified') is False, prefix + 'physical Android must be measured separately')
         run = data.get('runId')
         require(type(run) is str and re.fullmatch(r'[0-9a-f-]{36}', run) is not None,
@@ -69,6 +69,7 @@ def load_group(directory, expected_sha, mode, minimum):
         seen.add((profile, run))
         visits = data.get('visits')
         require(type(visits) is list and len(visits) == 2, prefix + 'two visits required')
+        actual_gpu_samples = 0
         for visit, expected_visit in zip(visits, VISITS):
             where = prefix + profile + '/' + expected_visit
             require(type(visit) is dict and visit.get('visitType') == expected_visit,
@@ -77,8 +78,9 @@ def load_group(directory, expected_sha, mode, minimum):
             renderer = visit.get('renderer')
             require(type(renderer) is str and renderer.strip(), where + ': renderer string required')
             renderers.add(renderer)
-            require(visit.get('gpuTimerQueryMeasured') is False
-                    and visit.get('gpuFrameTimeMs') is None, where + ': GPU timers not part of this benchmark')
+            require(type(visit.get('gpuTimerQueryMeasured')) is bool
+                    and visit.get('gpuFrameTimeMs') is None,
+                    where + ': GPU timing must use the explicit phase samples (never an inferred frame time)')
             require(type(visit.get('firstReady')) is dict, where + ': missing firstReady')
             number(visit['firstReady'].get('calls'), where + '/calls', strictly_positive=True)
             number(visit['firstReady'].get('triangles'), where + '/triangles', strictly_positive=True)
@@ -96,7 +98,34 @@ def load_group(directory, expected_sha, mode, minimum):
                     number(sample.get(field), where + '/' + phase + '/' + field)
                 require(sample['rafGapsOver50Ms'] <= sample['rafGapsOver33Ms'] <= sample['rafIntervals'],
                         where + '/' + phase + ': invalid gap counts')
+                gpu = sample.get('gpuTimer')
+                if gpu is None:
+                    continue  # Legacy schema-2 harness, rAF-only. No invented timing.
+                require(type(gpu) is dict, where + '/' + phase + ': GPU timer must be an object')
+                status = gpu.get('status')
+                require(status in ('absent', 'sampling', 'ready', 'unsupported',
+                                   'software', 'disjoint', 'error', 'invalid'),
+                        where + '/' + phase + ': GPU timer status unrecognised')
+                values = gpu.get('samplesMs')
+                require(type(values) is list and len(values) <= 500,
+                        where + '/' + phase + ': invalid GPU query sample collection')
+                for index, value in enumerate(values):
+                    number(value, where + '/' + phase + f'/gpuSample{index}')
+                require(type(gpu.get('disjointObserved')) is bool,
+                        where + '/' + phase + ': missing disjoint flag')
+                dropped = gpu.get('droppedQueries')
+                require(type(dropped) is int and 0 <= dropped <= 10000,
+                        where + '/' + phase + ': invalid skipped query count')
+                require(mode == 'hardware' or not values,
+                        where + '/' + phase + ': software samples cannot claim GPU timing')
+                actual_gpu_samples += len(values)
+            require(visit['gpuTimerQueryMeasured'] is (any(
+                visit[phase].get('gpuTimer', {}).get('samplesMs')
+                for phase in ('idle', 'move')
+            )), where + ': GPU timer claim does not match actual completed samples')
             number(visit['move'].get('inputToConfirmationMs'), where + '/move/confirmation')
+        require(data['browserFramePacingOnly'] is (actual_gpu_samples == 0),
+                prefix + 'GPU/frame-pacing declaration inconsistent with real query samples')
         reports[profile].append(data)
     require(len(renderers) == 1, f'{directory}: renderer identity differs between runs: {sorted(renderers)}')
     for profile, items in reports.items():
@@ -122,6 +151,19 @@ def summarize(reports, visit_type, metric):
     return statistics.median(values)
 
 
+def gpu_phase_median(reports, visit_type, phase):
+    """Return real GPU elapsed median only for a fully comparable cohort."""
+    values = []
+    for report in reports:
+        sample = report['visits'][VISITS.index(visit_type)][phase].get('gpuTimer')
+        if (not sample or sample['status'] != 'ready'
+                or sample['disjointObserved'] or sample['droppedQueries']
+                or len(sample['samplesMs']) < 2):
+            return None
+        values.append(statistics.median(sample['samplesMs']))
+    return statistics.median(values)
+
+
 def compare(baseline, candidate, base_sha, candidate_sha, *, mode='hardware', minimum=2):
     require(mode in ('hardware', 'software'), 'Mode must be hardware or software')
     require(minimum >= 2, 'At least two independent runs per revision/profile required')
@@ -129,13 +171,15 @@ def compare(baseline, candidate, base_sha, candidate_sha, *, mode='hardware', mi
     after, new_renderer = load_group(Path(candidate), candidate_sha, mode, minimum)
     require(old_renderer == new_renderer, 'Different physical renderer/driver strings: no valid A/B')
     lines = [
-        '# War Room V3 · repeated browser frame-pacing A/B',
+        '# War Room V3 · repeated browser pacing + optional measured GPU A/B',
         '',
         f'Baseline {base_sha} → candidate {candidate_sha}',
         f'Renderer: {old_renderer} · requested mode: {mode}',
         '',
-        '**rAF p95 is browser callback cadence, not GPU frame time or FPS.** '
-        'No statistical significance or hardware Android claim is made.',
+        '**rAF p95 is callback cadence, not GPU time or FPS.** Genuine GPU time '
+        'is reported separately only when both cohorts have >=2 completed elapsed '
+        'WebGL2 queries per phase/run, with no disjoint or missed queries. '
+        'No statistical significance or physical Android claim is made.',
         '',
         '| Profile · visit · metric | Baseline median | Candidate median | Delta | Runs A/B |',
         '|---|---:|---:|---:|---:|',
@@ -149,6 +193,23 @@ def compare(baseline, candidate, base_sha, candidate_sha, *, mode='hardware', mi
                 b = summarize(after[profile], visit, metric)
                 lines.append(f'| {profile} · {visit} · {label} | {a:.2f} | {b:.2f} | '
                              f'{b-a:+.2f} | {len(before[profile])}/{len(after[profile])} |')
+    lines.extend([
+        '', '## GPU TIME_ELAPSED_EXT (ms): only valid measured queries',
+        '',
+        '| Profile · visit · phase | Baseline GPU median | Candidate GPU median | Delta | Coverage |',
+        '|---|---:|---:|---:|---|',
+    ])
+    for profile in PROFILES:
+        for visit in VISITS:
+            for phase in ('idle', 'move'):
+                a = gpu_phase_median(before[profile], visit, phase) if mode == 'hardware' else None
+                b = gpu_phase_median(after[profile], visit, phase) if mode == 'hardware' else None
+                label = f'{profile} · {visit} · {phase}'
+                if a is None or b is None:
+                    lines.append(f'| {label} | n/a | n/a | n/a | Missing/incomparable GPU queries |')
+                else:
+                    lines.append(f'| {label} | {a:.3f} | {b:.3f} | {b-a:+.3f} | '
+                                 f'{len(before[profile])}/{len(after[profile])} independent runs |')
     lines.extend(['', 'Touch profiles are **desktop-browser emulations**, not physical Android devices.',
                   'Repeat A/B/B/A on one machine and confirm differences with real interaction.'])
     if mode == 'software':
@@ -187,7 +248,41 @@ def self_test():
                     report = fake_report(sha, profile, f'00000000-0000-4000-8000-{index:012x}')
                     (dest / f'{profile}-{index}.json').write_text(json.dumps(report))
         output = compare(base, candidate, a, b)
-        assert 'first-ready draw calls' in output and 'not GPU frame time' in output
+        assert 'first-ready draw calls' in output and 'not GPU time' in output
+        assert 'Missing/incomparable GPU queries' in output
+
+        # Schema-2 reports with genuine timer data are still compatible with
+        # older rAF-only JSON; no measured GPU is invented for missing data.
+        for directory in (base, candidate):
+            for path in directory.glob('*.json'):
+                recorded = json.loads(path.read_text())
+                recorded['browserFramePacingOnly'] = False
+                for visit in recorded['visits']:
+                    visit['gpuTimerQueryMeasured'] = True
+                    for phase in ('idle', 'move'):
+                        visit[phase]['gpuTimer'] = {
+                            'status': 'ready', 'samplesMs': [3.25, 3.75, 4.25],
+                            'disjointObserved': False, 'droppedQueries': 0,
+                        }
+                path.write_text(json.dumps(recorded))
+        output = compare(base, candidate, a, b)
+        assert '| desktop-1440x900 · first-visit · idle | 3.750 | 3.750 | +0.000 |' in output
+        path = candidate / 'touch-portrait-390x844-1.json'
+        report = json.loads(path.read_text())
+        report['visits'][0]['idle']['gpuTimer']['samplesMs'][1] = -0.5
+        path.write_text(json.dumps(report))
+        try:
+            compare(base, candidate, a, b)
+        except BadReport as exc:
+            assert 'gpuSample' in str(exc)
+        else:
+            raise AssertionError('Negative GPU query time accepted')
+        report['visits'][0]['idle']['gpuTimer']['samplesMs'][1] = 3.75
+        report['visits'][0]['idle']['gpuTimer']['disjointObserved'] = True
+        path.write_text(json.dumps(report))
+        assert 'Missing/incomparable GPU queries' in compare(base, candidate, a, b)
+        report['visits'][0]['idle']['gpuTimer']['disjointObserved'] = False
+        path.write_text(json.dumps(report))
         path = candidate / 'touch-portrait-390x844-1.json'
         report = json.loads(path.read_text())
         report['visits'][0]['renderer'] = 'ANGLE (AMD test)'
