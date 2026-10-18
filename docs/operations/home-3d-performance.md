@@ -26,6 +26,12 @@ The 28 explicitly named camera-facing flame/hot/tongue/base spheres on the two H
 
 The export metadata field `hearth_front_flame_lod` reports actual triangles before, after, saved and the number of modified nodes. This **reduces vertex/index geometry**, not the number of GLB primitive instances or the number of draw submissions: do not claim extra FPS without a physical GPU A/B test. Because fewer vertices can subtly alter shader flutter/silhouettes, the unpromoted candidate must pass the Home browser runtime gate and its captured PNG must be reviewed before enabling automerge; the old content-addressed GLB remains the rollback baseline.
 
+## Stationary transform propagation
+
+The Home scene root is an identity container that never moves. Three.js ordinarily calls `updateMatrix()` on it every render; this dirties the root world matrix and forces recomputation throughout the hall. On the loaded GLB, once fire and Klaus rigs have been prepared, `freezeHomeBlenderStaticTransforms` primes each stationary object's local TRS matrix once and disables its automatic rewrite. **Flame, ember, candle and steam nodes remain animated**, as does the full Klaus subtree; Matthias, lights, glows, dust and runtime particles are separate scene children and retain normal automatic transforms. This preserves shadow maps, lighting, materials, geometry, camera, GLB bytes and renderer policy.
+
+This is a CPU-side matrix-propagation optimization, **not a measured GPU speedup**. Tests exercise stationary world-matrix equality under repeated animation, moving fire/Klaus/Matthias and manually managed matrices. The canvas attribute `data-home-blender-frozen-transforms` provides a bounded, startup-only sanity count; compare CPU draw cost with the established local benchmark rather than guessing frame-time savings.
+
 ## Opt-in authored-GLB draw inventory
 
 Open the Home with `?homeGpuProfile=1`. After the authored GLB is prepared, the canvas publishes `dataset.homeBlenderModelDrawInventory`, a compact JSON object. This adds **one scene-graph traversal only when profiling**, after the original first-ready time is recorded. The production Home does not do this work.
