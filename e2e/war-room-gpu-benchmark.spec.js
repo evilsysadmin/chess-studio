@@ -30,11 +30,6 @@ const onboarding = {
   'matthias.onboarded': '2',
   'chess-study-home-guide-dismissed-v1': '1',
   [variantKey]: variant,
-  // A GPU benchmark must not depend on the unrelated sign-in form/animation.
-  // This is the same persisted E2E identity used by the Lab restore test;
-  // /auth/me and the profile still go through the real mocked API.
-  'chess-study-auth-token': 'e2e-token',
-  'chess-study-auth-username': 'e2e',
   // Opt-in only in this local benchmark. Production/regular E2E stays inert.
   'war-room-gpu-profile': '1',
 };
@@ -313,6 +308,10 @@ for (const profile of profiles) {
     });
     await context.addInitScript((seed) => {
       for (const [key, value] of Object.entries(seed)) localStorage.setItem(key, value);
+      // Auth belongs only to localStorage, never to the mocked profile payload.
+      // This is the same persisted E2E identity used by the Lab restore test.
+      localStorage.setItem('chess-study-auth-token', 'e2e-token');
+      localStorage.setItem('chess-study-auth-username', 'e2e');
       // The second visit must also start on Home, not restore an unrelated
       // saved UI route from the first visit in the same browser context.
       sessionStorage.setItem('chess-study-current-view', 'menu');
