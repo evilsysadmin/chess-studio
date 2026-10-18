@@ -8,12 +8,14 @@ import { navigateWarRoomKeyboard } from './war-room-board-input.js';
 // Opt-in local benchmark only. rAF is not GPU time; emulated touch is not a phone GPU.
 const requested = process.env.WAR_ROOM_GPU_BENCH_RENDERER;
 const revision = process.env.WAR_ROOM_GPU_BENCH_SHA || '';
+const variant = process.env.WAR_ROOM_GPU_BENCH_VARIANT || 'v3';
 // One ID per invocation: repeated A/B runs must never overwrite old samples.
 const runId = randomUUID();
 if (process.env.WAR_ROOM_GPU_BENCH !== '1'
+    || !['v3', 'v4'].includes(variant)
     || !['hardware', 'software'].includes(requested)
     || !/^[0-9a-f]{40}$/i.test(revision)) {
-  throw new Error('Set WAR_ROOM_GPU_BENCH=1, WAR_ROOM_GPU_BENCH_RENDERER=hardware|software and WAR_ROOM_GPU_BENCH_SHA=<40-char SHA>');
+  throw new Error('Set WAR_ROOM_GPU_BENCH=1, WAR_ROOM_GPU_BENCH_RENDERER=hardware|software and WAR_ROOM_GPU_BENCH_SHA=<40-char SHA> and optionally WAR_ROOM_GPU_BENCH_VARIANT=v3|v4');
 }
 
 const profiles = [
@@ -27,7 +29,7 @@ const onboarding = {
   'chess-study-mechanic-tutorial-progress-v1': JSON.stringify({ 'war-room-basics': { seen: true } }),
   'matthias.onboarded': '2',
   'chess-study-home-guide-dismissed-v1': '1',
-  [variantKey]: 'v3',
+  [variantKey]: variant,
   // Opt-in only in this local benchmark. Production/regular E2E stays inert.
   'war-room-gpu-profile': '1',
 };
@@ -165,7 +167,7 @@ async function sampleIdle(page) {
   return result;
 }
 
-async function openV3(page, requestLog) {
+async function openWarRoom(page, requestLog) {
   await mockApi(page, { requestLog, profileSeed: onboarding });
   await login(page);
   await buttonWithVisibleText(page, 'Partida rápida').click();
@@ -174,7 +176,7 @@ async function openV3(page, requestLog) {
   const canvas = page.locator('canvas.board3d-main-canvas');
   await expect(board).toBeVisible({ timeout: 60_000 });
   await expect(canvas).toBeVisible({ timeout: 60_000 });
-  await expect(canvas).toHaveAttribute('data-war-room-variant', 'v3', { timeout: 60_000 });
+  await expect(canvas).toHaveAttribute('data-war-room-variant', variant, { timeout: 60_000 });
   await expect(canvas).toHaveAttribute('data-war-room-variant-status', 'ready', { timeout: 60_000 });
   await expect(canvas).toHaveAttribute('data-war-room-first-ready-render-calls', /^[1-9][0-9]*$/, { timeout: 30_000 });
   const tutorial = page.locator('[data-war-room-first-run-tutorial="true"]');
@@ -253,7 +255,7 @@ test.beforeAll(async () => {
 test.afterAll(async () => { await browser?.close(); });
 
 for (const profile of profiles) {
-  test('War Room V3 sustained GPU diagnostic · ' + profile.id, async () => {
+  test('War Room ' + variant.toUpperCase() + ' sustained GPU diagnostic · ' + profile.id, async () => {
     test.setTimeout(240_000);
     const context = await browser.newContext({
       // Manual browser.newContext does not inherit fixture-level baseURL.
@@ -271,7 +273,7 @@ for (const profile of profiles) {
         const requestLog = [];
         try {
           const startedAt = Date.now();
-          const { board, canvas } = await openV3(page, requestLog);
+          const { board, canvas } = await openWarRoom(page, requestLog);
           // Stop the opening clock at readiness, not after idle/move sampling.
           const openToReadyWallMs = Date.now() - startedAt;
           const renderer = await inspectActualRenderer(canvas);
@@ -299,7 +301,7 @@ for (const profile of profiles) {
       await context.close();
     }
     const report = {
-      schema: 2, revision, runId, capturedAtUtc: new Date().toISOString(),
+      schema: 2, revision, variant, runId, capturedAtUtc: new Date().toISOString(),
       requestedRenderer: requested,
       browserVersion: browser.version(),
       profile: profile.id, viewport: profile.viewport,
@@ -308,9 +310,9 @@ for (const profile of profiles) {
       visits,
     };
     await mkdir(outputDir, { recursive: true });
-    await writeFile(resolve(outputDir, revision + '-' + requested + '-' + profile.id + '-' + runId + '.json'), JSON.stringify(report, null, 2) + '\n');
+    await writeFile(resolve(outputDir, revision + '-' + variant + '-' + requested + '-' + profile.id + '-' + runId + '.json'), JSON.stringify(report, null, 2) + '\n');
     console.log('WAR_ROOM_GPU_BENCH ' + JSON.stringify({
-      revision, runId, profile: profile.id, renderer: requested,
+      revision, variant, runId, profile: profile.id, renderer: requested,
       visits: visits.map(({ visitType, idle, move }) => ({
         visitType, idleRafP95Ms: idle.rafP95Ms, moveRafP95Ms: move.rafP95Ms,
         idleGpuQueries: idle.gpuTimer.samplesMs.length,
