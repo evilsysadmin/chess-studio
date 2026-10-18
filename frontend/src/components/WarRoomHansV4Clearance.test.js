@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
 import { hansQuickIterationFrame } from './WarRoomHansIteration.js';
-import { readWarRoomHansStageAnchors } from './WarRoomHansStage.js';
+import { installWarRoomHansVariantStage, readWarRoomHansStageAnchors } from './WarRoomHansStage.js';
 
 // Mirrors the actual Blender authoring coordinates. Its validator also checks
 // the *real* generated mantel geometry, not only this gameplay fixture.
@@ -80,6 +80,32 @@ describe('V4 · pasillo físico para Hans (no basta con que sea visible en cáma
         expect(visited.has(phase), `missing Hans animation phase: ${phase}`).toBe(true);
       }
       shell.clear();
+    });
+  }
+
+  for (const whiteSide of [true, false]) {
+    it(`coloca cesta y herramientas exactamente en sus anclajes físicos (${whiteSide ? 'blancas' : 'negras'})`, () => {
+      const shell = makeShell(whiteSide);
+      const scene = shell.parent;
+      const stage = installWarRoomHansVariantStage(scene, { variant: 'v4', shellRoot: shell });
+      try {
+        expect(stage.status).toMatch(/^v4-tower-study:(quick|idle)$/);
+        scene.updateMatrixWorld(true);
+        const basket = scene.getObjectByName('war-room-hearth-log-basket');
+        const tools = scene.getObjectByName('war-room-hearth-tool-stand');
+        expect(basket).toBeTruthy();
+        expect(tools).toBeTruthy();
+        const basketWorld = basket.getWorldPosition(new THREE.Vector3());
+        const toolsWorld = tools.getWorldPosition(new THREE.Vector3());
+        const turn = whiteSide ? 1 : -1;
+        expect(basketWorld.x * turn).toBeCloseTo(DOOR_AND_STOPS.WR_ANCHOR_hans_basket[0], 3);
+        expect(-basketWorld.z * turn).toBeCloseTo(DOOR_AND_STOPS.WR_ANCHOR_hans_basket[1], 3);
+        expect(toolsWorld.x * turn).toBeCloseTo(DOOR_AND_STOPS.WR_ANCHOR_hans_tools[0], 3);
+        expect(-toolsWorld.z * turn).toBeCloseTo(DOOR_AND_STOPS.WR_ANCHOR_hans_tools[1], 3);
+        expect(basket.userData.warRoomHansHearthSide).toBe('service-aisle');
+      } finally {
+        stage.release();
+      }
     });
   }
 
