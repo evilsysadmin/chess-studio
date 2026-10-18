@@ -364,6 +364,9 @@ e2e-combat-dom: ensure-e2e-deps frontend-build
 # to an existing port 4173, preventing stale builds from contaminating data.
 HOME_GPU_NVIDIA_PRIME ?= 1
 HOME_GPU_HEADLESS ?= 0
+# An offload request alone cannot prove Chromium used NVIDIA. Require its
+# observed WebGL vendor by default; native GPU modes may set amd/intel etc.
+HOME_GPU_EXPECT_VENDOR ?= $(if $(filter 1,$(HOME_GPU_NVIDIA_PRIME)),nvidia,)
 ifeq ($(HOME_GPU_NVIDIA_PRIME),1)
 HOME_GPU_ENV := __NV_PRIME_RENDER_OFFLOAD=1 __GLX_VENDOR_LIBRARY_NAME=nvidia
 else
@@ -373,6 +376,7 @@ home-gpu-light-probe: ensure-e2e-deps frontend-build
 	cd e2e && ./node_modules/.bin/playwright install chromium
 	@cd e2e && $(HOME_GPU_ENV) CHESS_HOME_GPU_MODE=hardware \
 		CHESS_HOME_GPU_LIGHT_PROBE=1 CHESS_HOME_GPU_HEADLESS=$(HOME_GPU_HEADLESS) \
+		CHESS_HOME_GPU_EXPECT_VENDOR=$(HOME_GPU_EXPECT_VENDOR) \
 		CHESS_HOME_GPU_REVISION="$$(git rev-parse HEAD)" \
 		./node_modules/.bin/playwright test --config=playwright.home-gpu.config.js
 	@echo "Home A/B/B/A: .artifacts/home-gpu-benchmark/home-3d-light-probe-hardware.json"

@@ -7,6 +7,17 @@ export function homeBlenderLightProbeMode(search = '') {
     ? 'aux-off' : 'normal';
 }
 
+// A/B/B/A needs two comparable FULL renderers. The production governor
+// correctly degrades under sustained jank, but doing so in just one visit
+// would compare a different scene instead of light-shader cost. Lock full
+// only for the explicit trial, never for profiling alone or ordinary Home.
+export function homeBlenderLightProbeLocksFullLod(search = '', initialLod = null) {
+  if (initialLod !== 'full') return false;
+  const params = new URLSearchParams(String(search).replace(/^\?/, ''));
+  return params.get('homeGpuProfile') === '1'
+    && ['normal', 'aux-off'].includes(params.get('homeLightProbe'));
+}
+
 // The ancillary lights don't cast shadows; keep the shadow-casting key,
 // dominant fireplaces, fill/ambient, PBR environment, and *all* additive
 // glow sprites unchanged. Invisible Three lights are excluded from shader

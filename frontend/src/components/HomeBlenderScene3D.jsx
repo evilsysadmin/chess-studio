@@ -5,7 +5,11 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { loadHomeCastleR2Scene } from './HomeCastle3DR2Asset.js';
-import { homeBlenderLightProbeMode, applyHomeBlenderLightProbe } from './HomeBlenderLightProbe.js';
+import {
+  homeBlenderLightProbeMode,
+  homeBlenderLightProbeLocksFullLod,
+  applyHomeBlenderLightProbe,
+} from './HomeBlenderLightProbe.js';
 import {
   createHomeBlenderGpuTimer,
   createHomeBlenderFrameSamples,
@@ -1713,6 +1717,11 @@ export default function HomeBlenderScene3D({
     // The Blender scene decided its LOD once at mount and never degraded before this.
     let lodCap = null;
     let performanceGovernor = createHomeCastle3DPerformanceGovernor(initialPolicy.lod);
+    // Hardware A/B only: keep the FULL source scene for both branches. The
+    // normal adaptive LOD is unchanged outside this explicit two-flag trial.
+    const lightProbeFullLod = homeBlenderLightProbeLocksFullLod(
+      window.location.search, initialPolicy.lod,
+    );
     const effectsAllowed = () => lodCap == null && initialPolicy.lod === 'full';
     if (!canvas || !homeBlenderRuntimeEligible()) {
       onUnavailable?.();
@@ -1920,7 +1929,10 @@ export default function HomeBlenderScene3D({
     // in ordinary sessions. Diagnostics must not affect production startup.
     const gpuProfiling = new URLSearchParams(window.location.search).get('homeGpuProfile') === '1';
     const lightProbeMode = homeBlenderLightProbeMode(window.location.search);
-    if (gpuProfiling) canvas.dataset.homeBlenderLightProbe = lightProbeMode;
+    if (gpuProfiling) {
+      canvas.dataset.homeBlenderLightProbe = lightProbeMode;
+      canvas.dataset.homeBlenderLightProbeLod = lightProbeFullLod ? 'full-locked' : 'automatic';
+    }
     const gpuTimer = createHomeBlenderGpuTimer(gl, {
       enabled: gpuProfiling,
       software: softwareRenderer,
@@ -2066,7 +2078,11 @@ export default function HomeBlenderScene3D({
           // intentional timer sleep is excluded from both the quality governor
           // and the fire frame-gap EWMA.
           sampledRafClock += gap;
-          const degradeTo = performanceGovernor.observe(sampledRafClock);
+          // Full-light A/B cannot change scene complexity halfway through a
+          // visit. This opt-in diagnostic intentionally bears the full cost;
+          // production still degrades to lite under sustained slow frames.
+          const degradeTo = lightProbeFullLod
+            ? null : performanceGovernor.observe(sampledRafClock);
           if (degradeTo) applyLodCap(degradeTo);
           fireRafCount += 1;
           if (fireRafCount > HOME_BLENDER_FIRE_WARMUP_FRAMES) {

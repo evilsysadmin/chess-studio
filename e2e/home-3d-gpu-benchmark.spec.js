@@ -7,6 +7,7 @@ import { homeBlenderDistinctGpuSamplesMs } from '../frontend/src/components/Home
 // standard Playwright matrix; no identity, passwords or raw GPU names are logged.
 const requested = process.env.CHESS_HOME_GPU_MODE;
 const lightProbe = process.env.CHESS_HOME_GPU_LIGHT_PROBE === '1';
+const expectedVendor = (process.env.CHESS_HOME_GPU_EXPECT_VENDOR || '').trim().toLowerCase();
 // A/B/B/A trials require a real timer. Do not substitute browser CPU timing
 // or software GPU for fragment-shading costs.
 const requireTimer = lightProbe || process.env.CHESS_HOME_GPU_REQUIRE_TIMER === '1';
@@ -34,8 +35,11 @@ async function openRealHome(page, lightMode = 'normal') {
       'chess-study-home-guide-dismissed-v1': '1',
     },
   });
-  const query = lightMode === 'aux-off'
-    ? './?homeGpuProfile=1&homeLightProbe=aux-off' : './?homeGpuProfile=1';
+  // Mark BOTH variants as a controlled trial: otherwise only the B branch
+  // would hold full LOD while the baseline could automatically degrade.
+  const query = lightProbe
+    ? `./?homeGpuProfile=1&homeLightProbe=${lightMode}`
+    : './?homeGpuProfile=1';
   await page.goto(query, { waitUntil: 'domcontentloaded' });
   await page.getByLabel('Usuario').fill('e2e');
   const password = page.getByLabel('Contraseña');
@@ -107,6 +111,7 @@ async function readRealCanvas(castle) {
       actual, vendor, software, lod: d.homeCastleLod || null,
       shadows: d.homeBlenderShadows || null,
       lightProbe: d.homeBlenderLightProbe || null,
+      lightProbeLod: d.homeBlenderLightProbeLod || null,
       auxiliaryLightsDisabled: num('homeBlenderLightProbeDisabled'),
       matthiasActor: d.homeMatthiasActor || 'missing',
       matthiasStation: d.homeMatthiasStation || 'missing',
@@ -203,11 +208,21 @@ test('Home 3D physical GPU benchmark · three visits or opt-in light A/B/B/A', a
       console.log('HOME_3D_GPU_BENCH ' + JSON.stringify(row));
       expect(row.actual, 'Verify the renderer of the actual Home canvas, not browser launch flags')
         .toBe(requested);
+      if (expectedVendor) {
+        expect(row.vendor,
+          `Chromium used ${row.vendor}, not the requested ${expectedVendor} GPU; check PRIME/ANGLE offload or use HOME_GPU_NVIDIA_PRIME=0 for native GPU`)
+          .toBe(expectedVendor);
+      }
       expect(row.matthiasActor, 'All visits must render the actual Matthias actor').toBe('ready');
       expect(snapshots.every((snapshot) => snapshot.matthiasActor === 'ready'),
         'No GPU snapshot can be taken before Matthias finishes mounting').toBe(true);
       if (lightProbe) {
         expect(row.lightProbe).toBe(sequence[index]);
+        expect(row.lightProbeLod, 'Full source scene must stay pinned throughout light A/B')
+          .toBe('full-locked');
+        expect(snapshots.every((snapshot) =>
+          snapshot.lod === 'full' && snapshot.lightProbeLod === 'full-locked'),
+        'Every GPU sample must be from the same full LOD source').toBe(true);
         expect(row.lod, 'Compare fully lit full-LOD Home only').toBe('full');
         expect(row.shadows, 'Both variants must keep the key shadow pass').toBe('enabled');
         if (sequence[index] === 'aux-off') {
@@ -243,7 +258,7 @@ test('Home 3D physical GPU benchmark · three visits or opt-in light A/B/B/A', a
     for (const row of visits.slice(1)) {
       for (const key of ['actual', 'vendor', 'rendererFingerprint', 'lod', 'shadows',
         'ambient', 'canvasWidth', 'canvasHeight', 'initialTriangles', 'matthiasActor',
-        'matthiasStation']) {
+        'matthiasStation', 'lightProbeLod']) {
         expect(row[key], `Home A/B/B/A is not comparable: mismatched ${key}`).toEqual(reference[key]);
       }
     }

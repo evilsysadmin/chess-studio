@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   homeBlenderLightProbeMode,
+  homeBlenderLightProbeLocksFullLod,
   applyHomeBlenderLightProbe,
 } from './HomeBlenderLightProbe.js';
 
@@ -12,6 +13,21 @@ describe('opt-in Home GPU auxiliary-light isolation', () => {
     }
     expect(homeBlenderLightProbeMode('?homeGpuProfile=1&homeLightProbe=aux-off')).toBe('aux-off');
     expect(homeBlenderLightProbeMode('homeGpuProfile=1&homeLightProbe=aux-off')).toBe('aux-off');
+  });
+
+  it('pins full LOD only inside an explicitly marked GPU A/B trial', () => {
+    for (const query of ['', '?homeGpuProfile=1',
+      '?homeLightProbe=normal',
+      '?homeGpuProfile=1&homeLightProbe=unknown',
+      '?homeGpuProfile=0&homeLightProbe=aux-off']) {
+      expect(homeBlenderLightProbeLocksFullLod(query, 'full')).toBe(false);
+    }
+    for (const mode of ['normal', 'aux-off']) {
+      const query = `?homeGpuProfile=1&homeLightProbe=${mode}`;
+      expect(homeBlenderLightProbeLocksFullLod(query, 'full')).toBe(true);
+      expect(homeBlenderLightProbeLocksFullLod(query, 'lite')).toBe(false);
+      expect(homeBlenderLightProbeLocksFullLod(query, '2d')).toBe(false);
+    }
   });
 
   it('leaves every light unchanged in normal mode', () => {
