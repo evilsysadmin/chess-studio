@@ -14,6 +14,8 @@ const WAR_ROOM_V2_REVISION_BASE =
   'https://assets.chess-studio.shadowops.dpdns.org/war-room/v2/staging/revisions';
 const WAR_ROOM_V3_REVISION_BASE =
   'https://assets.chess-studio.shadowops.dpdns.org/war-room/v3/staging/revisions';
+const WAR_ROOM_V4_REVISION_BASE =
+  'https://assets.chess-studio.shadowops.dpdns.org/war-room/v4/staging/revisions';
 const LOCAL_GPU_CAPTURE = process.env.APP_VISUAL_LOCAL_GPU === '1';
 const WAR_ROOM_PROFILE_SCOPE = String(process.env.APP_VISUAL_WARROOM_PROFILE_SCOPE || 'all').trim().toLowerCase();
 const WAR_ROOM_PROFILE_SHARD = String(process.env.APP_VISUAL_WARROOM_PROFILE_SHARD || 'all').trim().toLowerCase();
@@ -96,6 +98,42 @@ async function installWarRoomV3RevisionRoute(page) {
   // intent prefetch (and tolerate the legacy current.glb alias) so a staged
   // Blender revision is actually exercised by the canonical visual capture.
   await page.route('**/war-room/v3/runtime/*.glb*', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'model/gltf-binary',
+      body,
+      headers: { 'cache-control': 'no-store' },
+    });
+  });
+}
+
+// V4 source-art PRs build a new GLB while the app manifest still pins the
+// previous immutable live shell. Intercept that immutable request with the
+// exact PR-head staging revision; otherwise a green PNG would prove *old* art.
+async function installWarRoomV4RevisionRoute(page) {
+  const expected = String(process.env.APP_VISUAL_EXPECTED_WAR_ROOM_V4_REVISION || '').trim();
+  if (!expected) return;
+  const revisionUrl = WAR_ROOM_V4_REVISION_BASE + '/' + encodeURIComponent(expected) + '.glb';
+  const deadline = Date.now() + 180_000;
+  let body = null;
+  while (Date.now() < deadline) {
+    try {
+      const response = await page.request.get(revisionUrl + '?probe=' + Date.now(), {
+        headers: { 'cache-control': 'no-cache' },
+        timeout: 10_000,
+      });
+      if (response.ok()) {
+        body = await response.body();
+        break;
+      }
+    } catch {
+      // The separate Blender producer may still be publishing.
+    }
+    await new Promise((resolve) => setTimeout(resolve, 1_500));
+  }
+  if (!body) throw new Error('War Room v4 exact revision GLB unavailable: ' + expected);
+  console.log('WAR_ROOM_V4_EXACT_REVISION ' + expected + ' bytes=' + body.length);
+  await page.route('**/war-room/v4/runtime/*.glb*', async (route) => {
     await route.fulfill({
       status: 200,
       contentType: 'model/gltf-binary',
@@ -575,6 +613,9 @@ async function openCanonicalWarRoom(page, { variant = 'classic' } = {}) {
   if (variant === 'v3') {
     await installWarRoomV3RevisionRoute(page);
   }
+  if (variant === 'v4') {
+    await installWarRoomV4RevisionRoute(page);
+  }
   await page.addInitScript(({ key, value }) => {
     window.localStorage.setItem(key, value);
   }, { key: WAR_ROOM_VARIANT_STORAGE_KEY, value: variant });
@@ -833,6 +874,7 @@ function registerIndependentCaptureProfile(profile) {
 async function switchDesktopVariant(page, board3d, variant) {
   if (variant === 'v2') await installWarRoomV2RevisionRoute(page);
   if (variant === 'v3') await installWarRoomV3RevisionRoute(page);
+  if (variant === 'v4') await installWarRoomV4RevisionRoute(page);
 
   const menu = page.getByRole('button', { name: 'Más acciones de partida', exact: true });
   await menu.click();
