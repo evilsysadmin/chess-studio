@@ -106,6 +106,7 @@ async function readRealCanvas(castle) {
       allocatedTextures: num('homeBlenderGpuTextures'),
       allocatedGeometries: num('homeBlenderGpuGeometries'),
       allocatedPrograms: num('homeBlenderGpuPrograms'),
+      modelDrawInventory,
       cpuP95Ms: num('homeBlenderCpuP95Ms'),
       rafGapP95Ms: num('homeBlenderVsyncP95Ms'),
       animatedDrawsPerSecond: num('homeBlenderDrawnFps'),
@@ -168,6 +169,8 @@ test('Home 3D physical GPU benchmark · three cold independent visits', async ({
       expect(row.initialTriangles).toBeGreaterThan(0);
       expect(row.allocatedTextures).toBeGreaterThan(0);
       expect(row.allocatedGeometries).toBeGreaterThan(0);
+      expect(row.modelDrawInventory?.drawSlotCandidates).toBeGreaterThan(0);
+      expect(row.modelDrawInventory?.uniqueGeometries).toBeGreaterThan(0);
       expect(row.startupMs).toBeGreaterThan(0);
       expect(row.modelRequests, 'The Home GLB must be requested, not a static fallback')
         .toBeGreaterThan(0);
