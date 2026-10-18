@@ -4,6 +4,7 @@ export function createHomeBlenderGpuTimer(gl, { enabled = false, software = fals
   const inactive = (status) => ({
     get status() { return status; },
     get lastMs() { return null; },
+    get lastCompletedTag() { return null; },
     get completedSamples() { return 0; },
     begin: noop, end: noop, poll: () => null, dispose: noop,
   });
@@ -26,7 +27,10 @@ export function createHomeBlenderGpuTimer(gl, { enabled = false, software = fals
   let completedSamples = 0;
   let frame = 0;
   let active = null;
+  let activeTag = null;
   let pending = null;
+  let pendingTag = null;
+  let lastCompletedTag = null;
   let disposed = false;
   const safelyDelete = (query) => {
     if (!query) return;
@@ -39,7 +43,9 @@ export function createHomeBlenderGpuTimer(gl, { enabled = false, software = fals
       if (gl.getParameter(extension.GPU_DISJOINT_EXT)) {
         safelyDelete(pending);
         pending = null;
+        pendingTag = null;
         lastMs = null;
+        lastCompletedTag = null;
         status = 'disjoint';
         return null;
       }
@@ -48,11 +54,15 @@ export function createHomeBlenderGpuTimer(gl, { enabled = false, software = fals
       safelyDelete(pending);
       pending = null;
       if (!Number.isFinite(nanoseconds) || nanoseconds < 0) {
+        pendingTag = null;
+        lastCompletedTag = null;
         lastMs = null;
         status = 'invalid';
         return null;
       }
       lastMs = nanoseconds / 1_000_000;
+      lastCompletedTag = pendingTag;
+      pendingTag = null;
       // The last successful result remains readable while the next query is
       // pending. Benchmark consumers need an identity to avoid counting it twice.
       completedSamples += 1;
@@ -61,7 +71,9 @@ export function createHomeBlenderGpuTimer(gl, { enabled = false, software = fals
     } catch {
       safelyDelete(pending);
       pending = null;
+      pendingTag = null;
       lastMs = null;
+      lastCompletedTag = null;
       status = 'error';
       return null;
     }
@@ -69,9 +81,10 @@ export function createHomeBlenderGpuTimer(gl, { enabled = false, software = fals
   return {
     get status() { return status; },
     get lastMs() { return lastMs; },
+    get lastCompletedTag() { return lastCompletedTag; },
     get completedSamples() { return completedSamples; },
     poll,
-    begin() {
+    begin(tag = null) {
       if (disposed || status === 'error') return;
       poll();
       frame += 1;
@@ -82,8 +95,10 @@ export function createHomeBlenderGpuTimer(gl, { enabled = false, software = fals
         if (!query) return;
         gl.beginQuery(extension.TIME_ELAPSED_EXT, query);
         active = query;
+        activeTag = tag;
       } catch {
         safelyDelete(query);
+        activeTag = null;
         status = 'error';
       }
     },
@@ -94,8 +109,11 @@ export function createHomeBlenderGpuTimer(gl, { enabled = false, software = fals
       try {
         gl.endQuery(extension.TIME_ELAPSED_EXT);
         pending = query;
+        pendingTag = activeTag;
+        activeTag = null;
       } catch {
         safelyDelete(query);
+        activeTag = null;
         status = 'error';
       }
     },
@@ -109,6 +127,9 @@ export function createHomeBlenderGpuTimer(gl, { enabled = false, software = fals
       safelyDelete(pending);
       active = null;
       pending = null;
+      activeTag = null;
+      pendingTag = null;
+      lastCompletedTag = null;
       disposed = true;
     },
   };

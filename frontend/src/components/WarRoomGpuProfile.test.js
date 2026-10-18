@@ -53,12 +53,16 @@ describe('War Room GPU timer opt-in', () => {
     profile.begin(); profile.end(); profile.poll();
     expect(p.canvas.dataset.warRoomGpuProfileSamples).toBe('0');
     profile.begin(); profile.end(); profile.poll();
-    expect(p.canvas.dataset).toEqual({
+    expect(p.canvas.dataset).toMatchObject({
       warRoomGpuProfileStatus: 'ready',
       warRoomGpuProfileSamples: '1',
       warRoomGpuProfileLastMs: '3.75',
     });
+    const queryStartedAt = Number(p.canvas.dataset.warRoomGpuProfileLastQueryStartedAtMs);
+    expect(Number.isFinite(queryStartedAt)).toBe(true);
+    expect(queryStartedAt).toBeGreaterThanOrEqual(0);
     profile.poll();
+    expect(Number(p.canvas.dataset.warRoomGpuProfileLastQueryStartedAtMs)).toBe(queryStartedAt);
     expect(p.canvas.dataset.warRoomGpuProfileSamples).toBe('1');
     expect(p.deleted).toEqual([1]);
     profile.dispose();
@@ -78,6 +82,7 @@ describe('War Room GPU timer opt-in', () => {
     expect(p.canvas.dataset.warRoomGpuProfileStatus).toBe('disjoint');
     expect(p.canvas.dataset.warRoomGpuProfileSamples).toBe('1');
     expect(p.canvas.dataset.warRoomGpuProfileLastMs).toBeUndefined();
+    expect(p.canvas.dataset.warRoomGpuProfileLastQueryStartedAtMs).toBeUndefined();
     profile.dispose();
     expect(p.deleted).toEqual([1, 2]);
   });

@@ -51,10 +51,13 @@ export function createWarRoomGpuProfile(renderer, {
   dataset.warRoomGpuProfileStatus = timer.status;
   dataset.warRoomGpuProfileSamples = '0';
   delete dataset.warRoomGpuProfileLastMs;
+  delete dataset.warRoomGpuProfileLastQueryStartedAtMs;
   let lastSamples = 0;
   let lastStatus = timer.status;
   return {
-    begin: () => timer.begin(),
+    // Tag the query at its actual GPU begin, not the later asynchronous
+    // publication. This prevents bootstrap/idle renders leaking into move.
+    begin: () => timer.begin(globalThis.performance?.now?.() ?? null),
     end: () => timer.end(),
     poll() {
       // Polling is non-blocking and occurs only after a genuine room render.
@@ -69,9 +72,15 @@ export function createWarRoomGpuProfile(renderer, {
         if (Number.isFinite(timer.lastMs)) {
           dataset.warRoomGpuProfileLastMs = String(Number(timer.lastMs.toFixed(4)));
         }
+        if (Number.isFinite(timer.lastCompletedTag)) {
+          dataset.warRoomGpuProfileLastQueryStartedAtMs = String(timer.lastCompletedTag);
+        } else {
+          delete dataset.warRoomGpuProfileLastQueryStartedAtMs;
+        }
       } else if (!Number.isFinite(timer.lastMs)) {
         // A disjoint/error must never leave the prior elapsed result visible.
         delete dataset.warRoomGpuProfileLastMs;
+        delete dataset.warRoomGpuProfileLastQueryStartedAtMs;
       }
     },
     dispose() {
@@ -79,6 +88,7 @@ export function createWarRoomGpuProfile(renderer, {
       delete dataset.warRoomGpuProfileStatus;
       delete dataset.warRoomGpuProfileSamples;
       delete dataset.warRoomGpuProfileLastMs;
+      delete dataset.warRoomGpuProfileLastQueryStartedAtMs;
     },
   };
 }

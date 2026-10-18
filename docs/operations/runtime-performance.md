@@ -310,6 +310,18 @@ Cada muestra aparece en `idle.gpuTimer.samplesMs` o
 `move.gpuTimer.samplesMs` junto con estado, disjoint y consultas
 perdidas. No se sustituye una muestra faltante por un valor rAF/CPU.
 
+**Atribución temporal de consultas GPU:** el temporizador identifica el
+instante `performance.now()` en que se **inicia** cada consulta, no
+cuando se publica su resultado. Una consulta iniciada durante el arranque
+y completada en `idle`, o iniciada en `idle` y completada en `move`,
+se excluye de la fase receptora y se cuenta en
+`gpuTimer.excludedCrossPhaseQueries`. El campo
+`gpuTimer.phaseAttributionVerified` solo permite cifras GPU comparables
+si cada muestra admitida tiene procedencia de fase comprobable.
+Los reportes sin esta procedencia conservan sus métricas rAF, pero
+las filas GPU se muestran como `n/a`. El perfilador no espera a la GPU,
+ni usa `gl.finish` ni crea consultas durante una partida normal.
+
 El comparador conserva la compatibilidad con los informes **schema 2**
 anteriores, pero solo presenta una fila GPU numérica si, **en ambas
 revisiones y para todas las repeticiones** de ese perfil/visita/fase,

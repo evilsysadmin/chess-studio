@@ -134,6 +134,14 @@ def load_group(directory, expected_sha, mode, minimum):
                     number(value, where + '/' + phase + f'/gpuSample{index}')
                 require(type(gpu.get('disjointObserved')) is bool,
                         where + '/' + phase + ': missing disjoint flag')
+                phase_verified = gpu.get('phaseAttributionVerified')
+                if phase_verified is not None:
+                    require(type(phase_verified) is bool,
+                            where + '/' + phase + ': phase attribution must be boolean')
+                excluded = gpu.get('excludedCrossPhaseQueries')
+                if excluded is not None:
+                    require(type(excluded) is int and 0 <= excluded <= 10000,
+                            where + '/' + phase + ': invalid excluded cross-phase query count')
                 dropped = gpu.get('droppedQueries')
                 require(type(dropped) is int and 0 <= dropped <= 10000,
                         where + '/' + phase + ': invalid skipped query count')
@@ -208,6 +216,7 @@ def gpu_phase_median(reports, visit_type, phase):
     for report in reports:
         sample = report['visits'][VISITS.index(visit_type)][phase].get('gpuTimer')
         if (not sample or sample['status'] != 'ready'
+                or sample.get('phaseAttributionVerified') is not True
                 or sample['disjointObserved'] or sample['droppedQueries']
                 or len(sample['samplesMs']) < 2):
             return None
@@ -233,7 +242,8 @@ def compare(baseline, candidate, base_sha, candidate_sha, *, mode='hardware', mi
         '',
         '**rAF p95 is callback cadence, not GPU time or FPS.** Genuine GPU time '
         'is reported separately only when both cohorts have >=2 completed elapsed '
-        'WebGL2 queries per phase/run, with no disjoint or missed queries. '
+        'WebGL2 queries per phase/run, verified query-start phase attribution, '
+        'and no disjoint or missed queries. '
         'No statistical significance or physical Android claim is made.',
         '',
         '| Profile · visit · metric | Baseline median | Candidate median | Delta | Runs A/B |',
@@ -322,12 +332,35 @@ def self_test():
                         visit[phase]['gpuTimer'] = {
                             'status': 'ready', 'samplesMs': [3.25, 3.75, 4.25],
                             'disjointObserved': False, 'droppedQueries': 0,
+                            'phaseAttributionVerified': True,
+                            'excludedCrossPhaseQueries': 0,
                         }
                 path.write_text(json.dumps(recorded))
         output = compare(base, candidate, a, b)
         assert '| desktop-1440x900 · first-visit · idle | 3.750 | 3.750 | +0.000 |' in output
         assert 'physical canvas dimensions: verified A/B' in output
         path = candidate / 'touch-portrait-390x844-1.json'
+        report = json.loads(path.read_text())
+        report['visits'][0]['idle']['gpuTimer']['phaseAttributionVerified'] = False
+        path.write_text(json.dumps(report))
+        assert '| touch-portrait-390x844 · first-visit · idle | n/a | n/a |' in compare(base, candidate, a, b)
+        # Reports from older local harness versions remain usable for rAF, but
+        # must never claim that a delayed query belongs to idle or move.
+        report['visits'][0]['idle']['gpuTimer'].pop('phaseAttributionVerified')
+        path.write_text(json.dumps(report))
+        assert '| touch-portrait-390x844 · first-visit · idle | n/a | n/a |' in compare(base, candidate, a, b)
+        report['visits'][0]['idle']['gpuTimer']['phaseAttributionVerified'] = True
+        report['visits'][0]['idle']['gpuTimer']['excludedCrossPhaseQueries'] = -1
+        path.write_text(json.dumps(report))
+        try:
+            compare(base, candidate, a, b)
+        except BadReport as exc:
+            assert 'cross-phase' in str(exc)
+        else:
+            raise AssertionError('Negative excluded query count accepted')
+        report['visits'][0]['idle']['gpuTimer']['excludedCrossPhaseQueries'] = 2
+        path.write_text(json.dumps(report))
+        assert '| touch-portrait-390x844 · first-visit · idle | 3.750 |' in compare(base, candidate, a, b)
         # A/B must reject different browser builds, real canvas pixel sizes,
         # and device pixel ratios despite identical CSS viewports/renderers.
         for field, replacement in (

@@ -48,6 +48,7 @@ async function startProbe(page) {
       gpu: {
         lastCount: null, samplesMs: [], droppedQueries: 0,
         disjointObserved: false, status: 'absent',
+        excludedCrossPhaseQueries: 0, phaseAttributionVerified: true,
       },
     };
     // Sample only actually completed WebGL2 elapsed timer queries published
@@ -69,9 +70,21 @@ async function startProbe(page) {
       if (count > gpu.lastCount + 1) gpu.droppedQueries += count - gpu.lastCount - 1;
       gpu.lastCount = count;
       const elapsed = Number(dataset.warRoomGpuProfileLastMs);
-      if (gpu.status === 'ready' && Number.isFinite(elapsed) && elapsed >= 0) {
-        if (gpu.samplesMs.length < 500) gpu.samplesMs.push(elapsed);
+      if (gpu.status !== 'ready' || !Number.isFinite(elapsed) || elapsed < 0) return;
+      const startedRaw = dataset.warRoomGpuProfileLastQueryStartedAtMs;
+      const queryStartedAt = Number(startedRaw);
+      // Provenance is mandatory: timer completion may be delayed into a
+      // different phase. Distinguish *query start* from *result publication*.
+      if (startedRaw === undefined || !Number.isFinite(queryStartedAt)
+          || queryStartedAt < 0) {
+        gpu.phaseAttributionVerified = false;
+        return;
       }
+      if (queryStartedAt < probe.started) {
+        gpu.excludedCrossPhaseQueries += 1;
+        return;
+      }
+      if (gpu.samplesMs.length < 500) gpu.samplesMs.push(elapsed);
     };
     readGpu();
     const tick = (stamp) => {
@@ -119,6 +132,8 @@ async function stopProbe(page) {
         samplesMs: probe.gpu.samplesMs,
         droppedQueries: probe.gpu.droppedQueries,
         disjointObserved: probe.gpu.disjointObserved,
+        excludedCrossPhaseQueries: probe.gpu.excludedCrossPhaseQueries,
+        phaseAttributionVerified: probe.gpu.phaseAttributionVerified,
       },
     };
   });
