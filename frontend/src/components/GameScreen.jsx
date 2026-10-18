@@ -125,9 +125,7 @@ export default function GameScreen({
   const illegalKingSafetyCommentShownRef = useRef(false);
   const lastValidBoardFenRef = useRef(chessFromFen(game.fen) ? game.fen : new Chess().fen());
 
-  // Estado visual del tablero: se actualiza en dos pasos (jugada propia,
-  // después jugada de la CPU) para poder animar cada una por separado, en
-  // vez de saltar directo al estado final que devuelve el servidor.
+  // La FEN local permite animar por separado la jugada humana y la respuesta CPU.
   const [boardFen, setBoardFen] = useState(game.fen);
   const [lastMoveSquares, setLastMoveSquares] = useState(game.lastMove);
   const [pendingAnim, setPendingAnim] = useState(null); // { from, to, seq }
@@ -165,8 +163,7 @@ export default function GameScreen({
 
   // Si cambia la partida (nueva / continuar), resincronizamos el estado visual.
   useEffect(() => {
-    // Nueva partida = nueva generación async. Cualquier respuesta, prompt o
-    // request de la partida anterior deja de tener permiso para tocar estado.
+    // Una partida nueva invalida respuestas y prompts de la sesión anterior.
     mutationCoordinator.invalidateSession('Game changed', { clearRetry: true });
     hintSessionGenerationRef.current += 1;
     hintRequestRef.current?.controller?.abort(new DOMException('Game changed', 'AbortError'));
@@ -181,6 +178,7 @@ export default function GameScreen({
     setLastMoveSquares(game.lastMove);
     setSelected(null);
     setPendingAnim(null);
+    clearTimeout(turnBannerTimeout.current);
     setTurnBanner(null);
     setAudienceReaction(null);
     setGameChat(loadActiveGameChat(game.id));
@@ -470,8 +468,7 @@ export default function GameScreen({
       setSelected(null);
       return;
     }
-    // `busy` tarda un render en propagarse. El coordinador cierra la pequeña
-    // ventana donde dos clics/eventos síncronos podían disparar mutaciones iguales.
+    // El coordinador evita una segunda mutación antes de propagar `busy`.
     const operation = mutationCoordinator.begin('game-mutation');
     if (!operation) return;
     const { controller } = operation;
@@ -480,6 +477,7 @@ export default function GameScreen({
     setLastMoveSquares({ from, to });
     triggerAnim(from, to, !!humanMove.captured);
     setSelected(null);
+    clearTimeout(turnBannerTimeout.current);
     setTurnBanner(null);
     setBusy(true);
     onPersistenceState?.('saving');
@@ -602,10 +600,12 @@ export default function GameScreen({
       if (stillCurrent && !isAbortError(e)) {
         onPersistenceState?.('error');
         onError?.(e.message);
-        // Revertimos a la foto confirmada desde la que salió esta operación;
-        // nunca a `game` si entretanto ya cambió de partida.
         setBoardFen(beforeHumanFen);
         setLastMoveSquares(game.lastMove);
+        setPendingAnim(null);
+        setTurnBanner('Jugada sin confirmar · posición restaurada');
+        clearTimeout(turnBannerTimeout.current);
+        turnBannerTimeout.current = setTimeout(() => setTurnBanner(null), 3200);
       }
     } finally {
       if (mutationCoordinator.finish(operation)) setBusy(false);
