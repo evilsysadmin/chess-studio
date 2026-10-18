@@ -353,6 +353,9 @@ for (const profile of profiles) {
     }
     const report = {
       schema: 2, revision, variant, runId, capturedAtUtc: new Date().toISOString(),
+      // Wall-clock opening timings from this harness exclude UI form login.
+      // Older reports (without this field) used 'form-login-v1'.
+      bootstrapMode: 'persisted-e2e-session-v1',
       requestedRenderer: requested,
       browserVersion: browser.version(),
       profile: profile.id, viewport: profile.viewport,
