@@ -819,6 +819,11 @@ def self_test() -> None:
     ]) == "warroom-core"
     assert classify(["frontend/public/sw.js", "scripts/pwa_check.mjs"]) == "none"
     assert classify(["frontend/src/components/ShareResultModal.jsx"]) == "warroom-core"
+    assert classify([
+        "frontend/src/components/GameBoardView.jsx",
+        "frontend/src/components/warRoomSelectionAnnouncement.js",
+        "e2e/three-d-war-room.spec.js",
+    ]) == "warroom-core"
     assert classify(["frontend/src/components/ProfileBackupModal.jsx"]) == "home-base"
     assert classify([
         "frontend/src/components/GameScreen.jsx",
