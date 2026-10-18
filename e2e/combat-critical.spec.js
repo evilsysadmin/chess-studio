@@ -10,8 +10,39 @@ import {
 const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 const CHECK_START_FEN = '7k/8/8/8/8/8/4Q3/7K w - - 0 1';
 const MATE_START_FEN = '7k/8/5KQ1/8/8/8/8/8 w - - 0 1';
+const BLACK_PAWN_CAPTURE_FEN = '7k/8/8/4p3/3N4/8/8/K7 b - - 0 1';
 
 test.describe('Combat Chess · jugadas críticas reales', () => {
+  test('e5xd4 negro abre ataque y el registro plegado responde a los clics', async ({ page }) => {
+    await mockApi(page);
+    await login(page);
+    await seedCombatBattleSnapshot(page, { fen: BLACK_PAWN_CAPTURE_FEN, humanColor: 'b' });
+    await openFreeCombat(page);
+    await expect(page.locator('[data-board3d-war-room="true"]')).toBeVisible({ timeout: 45_000 });
+
+    const history = page.getByRole('button', { name: /Registro de batalla/ });
+    await expect(history).toHaveAttribute('aria-expanded', 'false');
+    await history.click();
+    await expect(history).toHaveAttribute('aria-expanded', 'true');
+    const report = page.getByRole('region', { name: 'Historial de la batalla' });
+    await expect(report).toBeVisible();
+    await expect(report).toContainText('Todavía no hay jugadas');
+    await history.click();
+    await expect(history).toHaveAttribute('aria-expanded', 'false');
+
+    await clickBoardMove(page, 'e5', 'd4');
+    const attack = page.getByRole('dialog', { name: 'Confirmar ataque' });
+    await expect(attack).toBeVisible();
+    await expect(attack).toContainText('Peón');
+    await expect(attack).toContainText('Caballo');
+    await attack.getByRole('button', { name: 'Cancelar' }).click();
+    await expect(attack).toBeHidden();
+    await history.click();
+    await expect(history).toHaveAttribute('aria-expanded', 'true');
+    await expect(report).toBeVisible();
+    await expect(page.locator('.error-boundary-screen')).toHaveCount(0);
+  });
+
   test('jugada humana → turno CPU → vuelve al humano sin busy eterno ni retry', async ({ page }) => {
     await mockApi(page);
     await login(page);
