@@ -112,6 +112,16 @@ def load_group(directory, expected_sha, mode, minimum):
             number(visit['firstReady'].get('calls'), where + '/calls', strictly_positive=True)
             number(visit['firstReady'].get('triangles'), where + '/triangles', strictly_positive=True)
             number(visit.get('openToReadyWallMs'), where + '/openToReadyWallMs', strictly_positive=True)
+            # Legacy reports did not record the asynchronously mounted Hans
+            # stage. Retain their rAF diagnostics, but never certify their
+            # queries as comparable fully-staged GPU measurements.
+            hans_stage = visit.get('hansStage')
+            hans_delay = visit.get('hansReadyAfterShellMs')
+            if hans_stage is not None or hans_delay is not None:
+                expected = 'v3-armory-hall' if variant == 'v3' else 'v4-tower-study'
+                require(hans_stage in (expected + ':quick', expected + ':idle'),
+                        where + ': wrong or incomplete Hans stage')
+                number(hans_delay, where + '/hansReadyAfterShellMs')
             for phase in ('idle', 'move'):
                 sample = visit.get(phase)
                 require(type(sample) is dict, where + '/' + phase + ': sample missing')
@@ -207,6 +217,11 @@ def validate_capture_provenance(before, after):
         for visit_name in VISITS:
             index = VISITS.index(visit_name)
             observed = [report['visits'][index] for report in reports]
+            # The room is considered a stable GPU cohort only after the
+            # async Hans stage is installed in *every* A/B visit.
+            stages = {visit.get('hansStage') for visit in observed}
+            if None in stages or len(stages) != 1:
+                verified = False
             for field in ('canvasPixels', 'canvasWidth', 'canvasHeight', 'devicePixelRatio'):
                 values = {visit[field] for visit in observed if visit.get(field) is not None}
                 require(len(values) <= 1,
@@ -301,6 +316,8 @@ def fake_report(sha, profile, run_id, renderer='ANGLE (NVIDIA GeForce test)'):
             'gpuFrameTimeMs': None, 'gpuTimerQueryMeasured': False,
             'firstReady': {'calls': 491, 'triangles': 210000},
             'openToReadyWallMs': 3000,
+            'hansStage': 'v3-armory-hall:quick',
+            'hansReadyAfterShellMs': 120,
             'idle': {'rafIntervals': 150, 'rafP50Ms': 16.6, 'rafP95Ms': 17,
                      'elapsedMs': 2500, 'rafGapsOver33Ms': 1, 'rafGapsOver50Ms': 0},
             'move': {'rafIntervals': 120, 'rafP50Ms': 16.6, 'rafP95Ms': 19,
@@ -334,11 +351,15 @@ def self_test():
             for path in directory.glob('*.json'):
                 report = json.loads(path.read_text())
                 report['variant'] = 'v4'
+                for visit in report['visits']:
+                    visit['hansStage'] = 'v4-tower-study:quick'
                 path.write_text(json.dumps(report))
         assert '# War Room V4' in compare(base, candidate, a, b)
         mismatched = candidate / 'desktop-1440x900-0.json'
         report = json.loads(mismatched.read_text())
         report['variant'] = 'v3'
+        for visit in report['visits']:
+            visit['hansStage'] = 'v3-armory-hall:quick'
         mismatched.write_text(json.dumps(report))
         try:
             compare(base, candidate, a, b)
@@ -350,10 +371,14 @@ def self_test():
         for path in candidate.glob('*.json'):
             report = json.loads(path.read_text())
             report['variant'] = 'v4'
+            for visit in report['visits']:
+                visit['hansStage'] = 'v4-tower-study:quick'
             path.write_text(json.dumps(report))
         for path in base.glob('*.json'):
             report = json.loads(path.read_text())
             report['variant'] = 'v3'
+            for visit in report['visits']:
+                visit['hansStage'] = 'v3-armory-hall:quick'
             path.write_text(json.dumps(report))
         try:
             compare(base, candidate, a, b)
@@ -365,6 +390,8 @@ def self_test():
             for path in directory.glob('*.json'):
                 report = json.loads(path.read_text())
                 report.pop('variant', None)
+                for visit in report['visits']:
+                    visit['hansStage'] = 'v3-armory-hall:quick'
                 path.write_text(json.dumps(report))
 
         # Schema-2 reports with genuine timer data are still compatible with
@@ -386,6 +413,30 @@ def self_test():
         output = compare(base, candidate, a, b)
         assert '| desktop-1440x900 · first-visit · idle | 3.750 | 3.750 | +0.000 |' in output
         assert 'physical canvas dimensions: verified A/B' in output
+        # Old captures are readable for browser pacing, but cannot prove the
+        # async Hans graph was already present when GPU timers were sampled.
+        stage_path = candidate / 'desktop-1440x900-0.json'
+        stage_report = json.loads(stage_path.read_text())
+        stage_report['visits'][0].pop('hansStage')
+        stage_report['visits'][0].pop('hansReadyAfterShellMs')
+        stage_path.write_text(json.dumps(stage_report))
+        old_report = compare(base, candidate, a, b)
+        assert '| desktop-1440x900 · first-visit · idle | n/a | n/a |' in old_report
+        stage_report['visits'][0]['hansStage'] = 'v3-armory-hall:quick'
+        stage_report['visits'][0]['hansReadyAfterShellMs'] = 120
+        stage_path.write_text(json.dumps(stage_report))
+        # A missing actor is never a faster scene. Reject rather than
+        # accepting a falsely cheap GPU sample or a different room.
+        stage_report['visits'][0]['hansStage'] = 'missing:door'
+        stage_path.write_text(json.dumps(stage_report))
+        try:
+            compare(base, candidate, a, b)
+        except BadReport as exc:
+            assert 'incomplete Hans stage' in str(exc)
+        else:
+            raise AssertionError('Missing Hans incorrectly accepted')
+        stage_report['visits'][0]['hansStage'] = 'v3-armory-hall:quick'
+        stage_path.write_text(json.dumps(stage_report))
         path = candidate / 'touch-portrait-390x844-1.json'
         report = json.loads(path.read_text())
         report['visits'][0]['idle']['gpuTimer']['phaseAttributionVerified'] = False
