@@ -1,24 +1,37 @@
 import { installWarRoomV3StoveFireSprites } from './WarRoomFireSprites.js';
 
-export function warRoomV3FireFrame({
-  elapsedMs = 0,
-  coarsePointer = false,
-  reducedMotion = false,
-} = {}) {
+// Hot path: share the same arithmetic with the public immutable frame API,
+// without allocating/freeze-churning five frame objects on every render tick.
+function sampleWarRoomV3FireFrameInto(target, elapsedMs, coarsePointer, reducedMotion) {
   if (reducedMotion) {
-    return Object.freeze({ width: 1, height: 1, depth: 1, lift: 0, intensity: 1 });
+    target.width = 1;
+    target.height = 1;
+    target.depth = 1;
+    target.lift = 0;
+    target.intensity = 1;
+    return target;
   }
   const power = coarsePointer ? 0.62 : 1;
   const slow = Math.sin(elapsedMs * 0.0043);
   const flutter = Math.sin(elapsedMs * 0.0107 + 0.9);
   const lick = Math.sin(elapsedMs * 0.0231 + Math.sin(elapsedMs * 0.0019) * 1.7);
-  return Object.freeze({
-    width: 1 + (flutter * 0.045 - lick * 0.022) * power,
-    height: 1 + (slow * 0.075 + lick * 0.055) * power,
-    depth: 1 - flutter * 0.026 * power,
-    lift: (slow * 0.013 + lick * 0.009) * power,
-    intensity: 1 + (slow * 0.065 + flutter * 0.055 + lick * 0.035) * power,
-  });
+  target.width = 1 + (flutter * 0.045 - lick * 0.022) * power;
+  target.height = 1 + (slow * 0.075 + lick * 0.055) * power;
+  target.depth = 1 - flutter * 0.026 * power;
+  target.lift = (slow * 0.013 + lick * 0.009) * power;
+  target.intensity = 1 + (slow * 0.065 + flutter * 0.055 + lick * 0.035) * power;
+  return target;
+}
+
+export function warRoomV3FireFrame({
+  elapsedMs = 0,
+  coarsePointer = false,
+  reducedMotion = false,
+} = {}) {
+  // Preserve the stable, immutable external contract used by tests/tools.
+  return Object.freeze(sampleWarRoomV3FireFrameInto(
+    {}, elapsedMs, coarsePointer, reducedMotion,
+  ));
 }
 
 export const WAR_ROOM_V3_FLAME_NAMES = Object.freeze([
@@ -63,13 +76,17 @@ export function installWarRoomV3FireAnimation(
   const spriteBaseOpacity = Number(spriteUniforms?.uOpacity?.value);
   const driver = flames[0];
   const previous = driver.onBeforeRender;
+  // One pair of reusable workspaces per mounted hearth. Never shared across
+  // rooms, sessions or animations; avoids per-frame garbage collection.
+  const lightFrame = {};
+  const flameFrame = {};
 
   const animate = (renderer) => {
     const rendererNow = renderer?.userData?.board3DMotionNowMs;
     const elapsedMs = Number.isFinite(rendererNow)
       ? rendererNow
       : (globalThis.performance?.now?.() ?? Date.now());
-    const lightFrame = warRoomV3FireFrame({ elapsedMs, coarsePointer, reducedMotion });
+    sampleWarRoomV3FireFrameInto(lightFrame, elapsedMs, coarsePointer, reducedMotion);
     // When Hans tends this hearth he dims and revives it through stand-ins
     // (WarRoomHansStage); their scale and intensity multiply the flicker.
     const dimmer = root.userData?.warRoomHansFireDimmer;
@@ -91,23 +108,26 @@ export function installWarRoomV3FireAnimation(
       if (Number.isFinite(spriteBaseSize)) spriteUniforms.uSize.value = spriteBaseSize * Math.max(0.25, dimWidth);
       if (Number.isFinite(spriteBaseOpacity)) spriteUniforms.uOpacity.value = spriteBaseOpacity * spriteLife;
     }
-    flames.forEach((flame, index) => {
+    for (let index = 0; index < flames.length; index += 1) {
+      const flame = flames[index];
       const base = bases[index];
-      const frame = warRoomV3FireFrame({
-        elapsedMs: elapsedMs + index * 137,
-        coarsePointer,
-        reducedMotion,
-      });
+      // Flame zero uses the already sampled lighting frame, with identical
+      // phase. Only the remaining authored flames need another sample.
+      const frame = index === 0
+        ? lightFrame
+        : sampleWarRoomV3FireFrameInto(
+          flameFrame, elapsedMs + index * 137, coarsePointer, reducedMotion,
+        );
       flame.scale.set(
         base.scale.x * frame.width * dimWidth,
         base.scale.y * frame.height * dimHeight,
         base.scale.z * frame.depth * dimWidth,
       );
       flame.position.y = base.position.y + frame.lift;
-    });
-    materials.forEach((material) => {
+    }
+    for (const material of materials) {
       material.emissiveIntensity = materialBases.get(material) * lightFrame.intensity * dimLight;
-    });
+    }
     if (practical && Number.isFinite(practicalBase)) {
       practical.intensity = practicalBase * lightFrame.intensity * dimLight;
       practical.color.setHSL(
