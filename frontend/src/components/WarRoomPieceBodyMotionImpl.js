@@ -535,9 +535,12 @@ export function installPieceBodyMotion(group, type, { coarsePointer = false, red
   body.traverse((child) => {
     if (!child?.isMesh || isStaticRootChild(child)) return;
     const previous = child.onBeforeRender;
-    child.onBeforeRender = function onBeforeRender(...args) {
-      previous?.apply(this, args);
-      updatePose(args[0]);
+    // Three.js invokes this hook once for each visible mesh. Forward the
+    // stable six render arguments without allocating a rest array per draw,
+    // preserving the prior callback's receiver and the pose update order.
+    child.onBeforeRender = function onBeforeRender(renderer, scene, camera, geometry, material, renderGroup) {
+      previous?.call(this, renderer, scene, camera, geometry, material, renderGroup);
+      updatePose(renderer);
     };
   });
 
