@@ -181,11 +181,6 @@ async function openWarRoom(page, requestLog) {
   await expect(canvas).toHaveAttribute('data-war-room-first-ready-render-calls', /^[1-9][0-9]*$/, { timeout: 30_000 });
   // Capture the shell milestone before the lazy actor completes.
   const shellReadyAt = Date.now();
-  const tutorial = page.locator('[data-war-room-first-run-tutorial="true"]');
-  if (await tutorial.isVisible().catch(() => false)) {
-    await tutorial.getByRole('button', { name: /Saltar|Continuar/ }).click();
-    await expect(tutorial).toBeHidden();
-  }
   // Hans is mounted asynchronously after the shell is reported ready.
   // An idle sample must not include that variable installation workload.
   const stageName = variant === 'v3' ? 'v3-armory-hall' : 'v4-tower-study';
@@ -196,6 +191,13 @@ async function openWarRoom(page, requestLog) {
   );
   const hansStage = await canvas.getAttribute('data-war-room-hans-stage');
   const hansReadyAfterShellMs = Math.max(0, Date.now() - shellReadyAt);
+  // Close optional onboarding only AFTER measuring the second milestone:
+  // tutorial click/visibility waits must not inflate Hans installation time.
+  const tutorial = page.locator('[data-war-room-first-run-tutorial="true"]');
+  if (await tutorial.isVisible().catch(() => false)) {
+    await tutorial.getByRole('button', { name: /Saltar|Continuar/ }).click();
+    await expect(tutorial).toBeHidden();
+  }
   return { board, canvas, shellReadyAt, hansStage, hansReadyAfterShellMs };
 }
 
