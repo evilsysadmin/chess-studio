@@ -179,12 +179,24 @@ async function openWarRoom(page, requestLog) {
   await expect(canvas).toHaveAttribute('data-war-room-variant', variant, { timeout: 60_000 });
   await expect(canvas).toHaveAttribute('data-war-room-variant-status', 'ready', { timeout: 60_000 });
   await expect(canvas).toHaveAttribute('data-war-room-first-ready-render-calls', /^[1-9][0-9]*$/, { timeout: 30_000 });
+  // Capture the shell milestone before the lazy actor completes.
+  const shellReadyAt = Date.now();
   const tutorial = page.locator('[data-war-room-first-run-tutorial="true"]');
   if (await tutorial.isVisible().catch(() => false)) {
     await tutorial.getByRole('button', { name: /Saltar|Continuar/ }).click();
     await expect(tutorial).toBeHidden();
   }
-  return { board, canvas };
+  // Hans is mounted asynchronously after the shell is reported ready.
+  // An idle sample must not include that variable installation workload.
+  const stageName = variant === 'v3' ? 'v3-armory-hall' : 'v4-tower-study';
+  await expect(canvas).toHaveAttribute(
+    'data-war-room-hans-stage',
+    new RegExp('^' + stageName + ':(quick|idle)$'),
+    { timeout: 45_000 },
+  );
+  const hansStage = await canvas.getAttribute('data-war-room-hans-stage');
+  const hansReadyAfterShellMs = Math.max(0, Date.now() - shellReadyAt);
+  return { board, canvas, shellReadyAt, hansStage, hansReadyAfterShellMs };
 }
 
 async function inspectActualRenderer(canvas) {
@@ -273,9 +285,9 @@ for (const profile of profiles) {
         const requestLog = [];
         try {
           const startedAt = Date.now();
-          const { board, canvas } = await openWarRoom(page, requestLog);
-          // Stop the opening clock at readiness, not after idle/move sampling.
-          const openToReadyWallMs = Date.now() - startedAt;
+          const { board, canvas, shellReadyAt, hansStage, hansReadyAfterShellMs } = await openWarRoom(page, requestLog);
+          // Keep the first-ready metric independent of delayed Hans setup.
+          const openToReadyWallMs = shellReadyAt - startedAt;
           const renderer = await inspectActualRenderer(canvas);
           expect(renderer.actual, 'Real scene renderer must be ' + requested + ': ' + (renderer.renderer || 'unknown')).toBe(requested);
           expect(renderer.coarsePointer).toBe(profile.touch);
@@ -287,7 +299,7 @@ for (const profile of profiles) {
             idle.gpuTimer.samplesMs.length || move.gpuTimer.samplesMs.length,
           );
           visits.push({
-            visitType, openToReadyWallMs,
+            visitType, openToReadyWallMs, hansStage, hansReadyAfterShellMs,
             ...renderer, idle, move,
             // GPU elapsed is phase-specific: an aggregated frame time would
             // conflate idle and move; retain null rather than manufacture it.
@@ -313,8 +325,9 @@ for (const profile of profiles) {
     await writeFile(resolve(outputDir, revision + '-' + variant + '-' + requested + '-' + profile.id + '-' + runId + '.json'), JSON.stringify(report, null, 2) + '\n');
     console.log('WAR_ROOM_GPU_BENCH ' + JSON.stringify({
       revision, variant, runId, profile: profile.id, renderer: requested,
-      visits: visits.map(({ visitType, idle, move }) => ({
-        visitType, idleRafP95Ms: idle.rafP95Ms, moveRafP95Ms: move.rafP95Ms,
+      visits: visits.map(({ visitType, hansStage, hansReadyAfterShellMs, idle, move }) => ({
+        visitType, hansStage, hansReadyAfterShellMs,
+        idleRafP95Ms: idle.rafP95Ms, moveRafP95Ms: move.rafP95Ms,
         idleGpuQueries: idle.gpuTimer.samplesMs.length,
         moveGpuQueries: move.gpuTimer.samplesMs.length,
         moveConfirmationMs: move.inputToConfirmationMs,
