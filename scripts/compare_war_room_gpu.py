@@ -409,6 +409,30 @@ def self_test():
         output = compare(base, candidate, a, b)
         assert '| desktop-1440x900 · first-visit · idle | 3.750 | 3.750 | +0.000 |' in output
         assert 'physical canvas dimensions: verified A/B' in output
+        # Old captures are readable for browser pacing, but cannot prove the
+        # async Hans graph was already present when GPU timers were sampled.
+        stage_path = candidate / 'desktop-1440x900-0.json'
+        stage_report = json.loads(stage_path.read_text())
+        stage_report['visits'][0].pop('hansStage')
+        stage_report['visits'][0].pop('hansReadyAfterShellMs')
+        stage_path.write_text(json.dumps(stage_report))
+        old_report = compare(base, candidate, a, b)
+        assert '| desktop-1440x900 · first-visit · idle | n/a | n/a |' in old_report
+        stage_report['visits'][0]['hansStage'] = 'v3-armory-hall:quick'
+        stage_report['visits'][0]['hansReadyAfterShellMs'] = 120
+        stage_path.write_text(json.dumps(stage_report))
+        # A missing actor is never a faster scene. Reject rather than
+        # accepting a falsely cheap GPU sample or a different room.
+        stage_report['visits'][0]['hansStage'] = 'missing:door'
+        stage_path.write_text(json.dumps(stage_report))
+        try:
+            compare(base, candidate, a, b)
+        except BadReport as exc:
+            assert 'incomplete Hans stage' in str(exc)
+        else:
+            raise AssertionError('Missing Hans incorrectly accepted')
+        stage_report['visits'][0]['hansStage'] = 'v3-armory-hall:quick'
+        stage_path.write_text(json.dumps(stage_report))
         path = candidate / 'touch-portrait-390x844-1.json'
         report = json.loads(path.read_text())
         report['visits'][0]['idle']['gpuTimer']['phaseAttributionVerified'] = False
