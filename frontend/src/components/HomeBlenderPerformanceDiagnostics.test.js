@@ -233,6 +233,7 @@ describe('Home Blender authored-model GPU draw inventory', () => {
         { material: 'Flame', slots: 2, transparentSlots: 2, shadowCasterSlots: 1 },
         { material: 'Stone', slots: 2, transparentSlots: 0, shadowCasterSlots: 1 },
       ],
+      permutedStaticBatchGroups: [],
     });
   });
 
@@ -250,9 +251,45 @@ describe('Home Blender authored-model GPU draw inventory', () => {
       topMaterials: [
         { material: '(unnamed)', slots: 1, transparentSlots: 0, shadowCasterSlots: 0 },
       ],
+      permutedStaticBatchGroups: [],
     });
     expect(homeBlenderModelDrawInventory(null).drawSlotCandidates).toBe(0);
     expect(homeBlenderModelDrawInventory(null).topMaterials).toEqual([]);
+    expect(homeBlenderModelDrawInventory(null).permutedStaticBatchGroups).toEqual([]);
+  });
+
+  it('identifies only opaque static batches with identical material sets but different slot order', () => {
+    const wood = { name: 'Wood', transparent: false };
+    const brass = { name: 'Brass', transparent: false };
+    const glass = { name: 'Glass', transparent: true };
+    const root = { visible: true };
+    const mesh = (name, list, options = {}) => ({
+      name, parent: options.parent || root, isMesh: true, visible: true,
+      castShadow: options.castShadow ?? true,
+      geometry: { groups: list.map((_, materialIndex) => ({ materialIndex, count: 6 })) },
+      material: list,
+    });
+    const nodes = [
+      mesh('HOME_ARCH_BATCH_0_wood', [wood, brass]),
+      mesh('HOME_PROP_BATCH_1_brass', [brass, wood]),
+      mesh('HOME_ARCH_BATCH_2_wood', [wood, brass]),
+      mesh('HOME_ARCH_BATCH_3_transparent', [glass, wood]),
+      mesh('HOME_ARCH_BATCH_4_transparent', [wood, glass]),
+      mesh('HOME_PROP_BATCH_5_other-shadow', [brass, wood], { castShadow: false }),
+      mesh('HOME_ARCH_unbatched', [brass, wood]),
+      mesh('HOME_ARCH_BATCH_6_dup', [wood, wood]),
+      mesh('HOME_ARCH_BATCH_7_dup', [wood, wood]),
+      mesh('HOME_ARCH_BATCH_8_missing-group', [brass, wood]),
+    ];
+    nodes[9].geometry.groups.pop();
+    const hidden = { parent: root, visible: false };
+    nodes.push(mesh('HOME_ARCH_BATCH_9_hidden', [brass, wood], { parent: hidden }));
+    root.traverse = (visit) => [root, ...nodes].forEach(visit);
+    expect(homeBlenderModelDrawInventory(root).permutedStaticBatchGroups).toEqual([{
+      materials: ['Brass', 'Wood'], shadowCaster: true,
+      batches: 3, orderedVariants: 2,
+      examples: ['HOME_ARCH_BATCH_0_wood', 'HOME_ARCH_BATCH_2_wood', 'HOME_PROP_BATCH_1_brass'],
+    }]);
   });
 
   it('ranks at most ten authored material names, combining repeated labels', () => {
