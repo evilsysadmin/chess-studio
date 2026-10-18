@@ -67,6 +67,12 @@ export function startWarRoomVariantScene({
   let releaseHans = null;
   const classicShellObjects = classicShellController?.current?.() || [];
   const ensureClassicShell = classicShellController?.ensure;
+  const parkedClassicObjects = [];
+  const restoreParkedClassicObjects = () => {
+    for (const { object, parent } of parkedClassicObjects.splice(0)) {
+      if (!object.parent) parent.add(object);
+    }
+  };
   const setStatus = (status, renderedVariant) => {
     if (canvas) {
       canvas.dataset.warRoomVariantStatus = status;
@@ -120,6 +126,16 @@ export function startWarRoomVariantScene({
   // classic room. Only hide an already-built classic shell; build it lazily if
   // the user switches back or if the selected GLB fails to load.
   setClassicShellVisible(classicShellObjects, false);
+  // A previously visited V1 room can remain mounted (but hidden) in Three's
+  // scene graph. Its old 'war-room-fireplace' and Hans actor names would steal
+  // Blender Hans' getObjectByName lookups or trip his 'occupied' guard.
+  // Park those legacy nodes without disposing them; restore on fallback/switch.
+  for (const object of classicShellObjects) {
+    const parent = object?.parent;
+    if (!parent?.remove || !parent?.add) continue;
+    parkedClassicObjects.push({ object, parent });
+    parent.remove(object);
+  }
   scene.userData ||= {};
   scene.userData.warRoomRenderedVariant = `${variant}-loading`;
   setStatus('loading', `${variant}-loading`);
@@ -198,6 +214,7 @@ export function startWarRoomVariantScene({
           setClassicShellVisible(objects, false);
           return;
         }
+        restoreParkedClassicObjects();
         setClassicShellVisible(objects, true);
         scene.userData ||= {};
         scene.userData.warRoomRenderedVariant = 'classic';
@@ -233,6 +250,7 @@ export function startWarRoomVariantScene({
     }
     releaseShell?.();
     releaseShell = null;
+    restoreParkedClassicObjects();
     scene.userData ||= {};
     scene.userData.warRoomRenderedVariant = 'classic';
   };
