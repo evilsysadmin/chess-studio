@@ -15,11 +15,10 @@ export function resolveBoardTap(start, end, { coarsePointer = false } = {}) {
   const distance = Math.hypot(Number(end.x) - Number(start.x), Number(end.y) - Number(start.y));
   if (!Number.isFinite(distance) || distance > tolerance) return null;
 
-  // On touch, use the contact point, not finger-up. The few pixels of normal
-  // release drift are enough to cross a projected rank in the 3D camera.
-  return coarsePointer
-    ? { x: Number(start.x), y: Number(start.y) }
-    : { x: Number(end.x), y: Number(end.y) };
+  // A click or tap belongs to the square under initial contact. Small release
+  // drift can cross a projected tile edge (especially with perspective) and
+  // trigger a different move. Larger drags are already rejected above.
+  return { x: Number(start.x), y: Number(start.y) };
 }
 
 
