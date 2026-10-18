@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   board3DCaptureWarmBoost,
   board3DCaptureWarmBoostValue,
+  board3DCapturedGhostScale,
   board3DHighlightPulse,
   board3DPieceInteractionPose,
   writeBoard3DHighlightPulse,
@@ -49,6 +50,30 @@ describe('War Room premium interaction FX', () => {
     expect(selected.yOffset).toBeGreaterThan(hovered.yOffset);
     expect(selected.scaleFactor).toBeGreaterThan(hovered.scaleFactor);
     expect(coarseHover).toEqual({ yOffset: 0, scaleFactor: 1 });
+    const coarseSelection = board3DPieceInteractionPose({ selected: true, coarsePointer: true });
+    expect(coarseSelection.yOffset).toBeGreaterThan(0.02);
+    expect(coarseSelection.yOffset).toBeLessThan(selected.yOffset);
+    expect(coarseSelection.scaleFactor).toBeGreaterThan(1.015);
+    expect(coarseSelection.scaleFactor).toBeLessThan(selected.scaleFactor);
+  });
+
+  it('keeps the captured piece compression bounded and identical regardless of frame count', () => {
+    expect(board3DCapturedGhostScale(0)).toBe(1);
+    expect(board3DCapturedGhostScale(-10)).toBe(1);
+    expect(board3DCapturedGhostScale(1)).toBeCloseTo(0.85);
+    expect(board3DCapturedGhostScale(10)).toBeCloseTo(0.85);
+    expect(board3DCapturedGhostScale(1, true)).toBeCloseTo(0.89);
+
+    for (const frameCount of [4, 8, 24, 80]) {
+      const base = 1.3;
+      let last = base;
+      for (let frame = 0; frame <= frameCount; frame += 1) {
+        const impact = frame / frameCount;
+        // Apply to the resting scale, never the preceding frame.
+        last = base * board3DCapturedGhostScale(impact);
+      }
+      expect(last).toBeCloseTo(1.3 * 0.85, 10);
+    }
   });
 
   it('uses one bounded warm-light impact for captures and returns to baseline at the ends', () => {
