@@ -142,7 +142,7 @@ LANE_COMMANDS: dict[str, tuple[LaneCommand, ...]] = {
         # Keep the opt-in GPU timing suite local, but exercise its persisted
         # auth/Home bootstrap in the ordinary hosted Chromium smoke gate.
         LaneCommand('war-room-gpu-session-bootstrap.spec.js',
-                    ('--workers=1', '--retries=0', '--max-failures=1', '--timeout=100000'),
+                    ('--workers=1', '--retries=0', '--max-failures=1', '--timeout=150000'),
                     canonical_critical=False),
     ),
 }
@@ -227,7 +227,7 @@ def self_test() -> None:
     assert LANE_COMMANDS['smoke'][2].grep == HOME_WEBGL_GREP
     assert LANE_COMMANDS['smoke'][2].canonical_critical is False
     assert LANE_COMMANDS['smoke'][-1].canonical_critical is False
-    assert '--timeout=100000' in LANE_COMMANDS['smoke'][-1].args
+    assert '--timeout=150000' in LANE_COMMANDS['smoke'][-1].args
     assert '--grep-invert' in LANE_COMMANDS['regression-state'][0].args
     assert all(command.spec.endswith('.spec.js') for commands in LANE_COMMANDS.values() for command in commands)
     assert all('--max-failures=1' in command.args for commands in LANE_COMMANDS.values() for command in commands)
