@@ -19,6 +19,32 @@ function bottomWorldY(mesh) {
 }
 
 describe('WarRoomHansVisibleGroundLock', () => {
+  it('grounds moving Hans on the real V4 Blender floor when V1/V3 floor nodes are absent', () => {
+    const root = new THREE.Group();
+    const material = new THREE.MeshBasicMaterial();
+    const floor = new THREE.Mesh(new THREE.CylinderGeometry(9.05, 9.05, 0.24, 48), material);
+    floor.name = 'WR4_OBS_floor';
+    floor.position.set(0, -1.26, 0);
+    root.add(floor);
+
+    const hans = new THREE.Group();
+    hans.name = 'war-room-hans-butler';
+    hans.position.set(-6.4, -0.4, -2.3);
+    hans.scale.setScalar(0.74);
+    root.add(hans);
+    const leftShoe = shoe(material, -0.17);
+    const rightShoe = shoe(material, 0.17);
+    hans.add(leftShoe, rightShoe);
+    hans.userData.refs = { leftShoe, rightShoe };
+
+    expect(installWarRoomHansVisibleGroundLock(root)).toBe(1);
+    leftShoe.onBeforeRender({}, null, null, leftShoe.geometry, leftShoe.material, null);
+
+    expect(hans.userData.warRoomHansVisibleGroundSurface).toBe('WR4_OBS_floor');
+    expect(hans.userData.warRoomHansVisibleGroundGap).toBeCloseTo(0, 6);
+    expect(Math.min(bottomWorldY(leftShoe), bottomWorldY(rightShoe))).toBeCloseTo(-1.14, 5);
+  });
+
   it('grounds Hans on authored V3 flagstones when classic floor names do not exist', () => {
     const root = new THREE.Group();
     const material = new THREE.MeshBasicMaterial();
