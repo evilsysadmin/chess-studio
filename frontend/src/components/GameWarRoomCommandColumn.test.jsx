@@ -93,6 +93,20 @@ describe('GameWarRoomCommandColumn', () => {
     }
   });
 
+  it('señala en ámbar la recuperación tras una jugada sin confirmar, también en móvil', () => {
+    const game = { turn: 'w', humanColor: 'w', isGameOver: false };
+    for (const compactViewport of [false, true]) {
+      const status = { statusText: 'Jugada sin confirmar · posición restaurada', busy: false };
+      const html = renderToStaticMarkup(<GameWarRoomCommandColumn game={game} status={status} board={{}} compactViewport={compactViewport} />);
+      expect(html).toContain(compactViewport ? 'game-3d-turn-pill is-compact is-amber' : 'game-3d-turn-pill is-amber');
+      expect(html).toContain('>Jugada sin confirmar</strong>');
+      expect(html).not.toContain('>Tu turno</strong>');
+      expect(html).not.toContain('>Pensando…</strong>');
+      const terminal = renderToStaticMarkup(<GameWarRoomCommandColumn game={{ ...game, isGameOver: true }} status={{ ...status, statusText: 'Jaque mate' }} board={{}} compactViewport={compactViewport} />);
+      expect(terminal).toContain('>Jaque mate</strong>');
+    }
+  });
+
   it('no muestra a Matthias pensando tras mate o caída de bandera aunque busy sea antiguo', () => {
     for (const { game, status, expected } of [
       {

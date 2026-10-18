@@ -198,3 +198,38 @@ test('War Room · offline→online durante /move pendiente reconcilia 3D sin rem
   expect(requestLog.filter((entry) => entry.method === 'POST' && /\/api\/games\/[^/]+\/move$/.test(entry.path))).toHaveLength(1);
   await expect(page.locator('.error-boundary-screen')).toHaveCount(0);
 });
+
+test('War Room · conflicto 409 restaura FEN, limpia selección y avisa sin fingir respuesta CPU', async ({ page }) => {
+  test.setTimeout(90_000);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await mockApi(page);
+  let movePosts = 0;
+  await page.route('http://localhost:4000/api/games/*/move', async (route) => {
+    movePosts += 1;
+    await route.fulfill({ status: 409, contentType: 'application/json', body: JSON.stringify({ detail: 'Conflicto de revisión de partida' }) });
+  });
+  await login(page);
+  await buttonWithVisibleText(page, 'Partida rápida').click();
+  const quickMatch = page.getByRole('dialog', { name: 'Configurar partida rápida' });
+  await quickMatch.locator('details.quick-match-settings > summary').click();
+  await quickMatch.getByRole('group', { name: 'Tipo de tablero' }).getByRole('button', { name: '2D', exact: true }).click();
+  await quickMatch.getByRole('button', { name: 'Empezar partida', exact: true }).click();
+  const { board3d, canvas } = await switchTo3D(page);
+  await canvas.evaluate((element) => element.setAttribute('data-e2e-rollback-sentinel', 'alive'));
+  await navigateWarRoomKeyboard(canvas, board3d, 'e2');
+  await canvas.press('Enter');
+  await navigateWarRoomKeyboard(canvas, board3d, 'e4');
+  await canvas.press('Enter');
+  await expect.poll(() => movePosts).toBe(1);
+  await expect(page.locator('.game-3d-turn-pill-label')).toContainText('Jugada sin confirmar', { timeout: 12_000 });
+  await expect(board3d).toHaveAttribute('data-board3d-turn', 'human');
+  await expect(board3d).toHaveAttribute('data-board3d-selected', '');
+  await expect(board3d).toHaveAttribute('data-board3d-legal-target-count', '0');
+  await expect(canvas).toHaveAttribute('data-e2e-rollback-sentinel', 'alive');
+  await navigateWarRoomKeyboard(canvas, board3d, 'e2');
+  await canvas.press('Enter');
+  await expect(board3d).toHaveAttribute('data-board3d-selected', 'e2');
+  await expect(board3d).toHaveAttribute('data-board3d-legal-target-count', '2');
+  expect(movePosts).toBe(1);
+  await expect(page.locator('.error-boundary-screen')).toHaveCount(0);
+});
