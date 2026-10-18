@@ -67,14 +67,21 @@ V4_HANS_LEFT_ARMOR_Y = -0.75
 # the fire mouth: the board dais covers the floor in front of its right half.
 V4_HANS_ANCHOR_PREFIX = "WR_ANCHOR_hans_"
 V4_HANS_ANCHORS = (
-    ("WR_ANCHOR_hans_hearth", (-6.15, 3.95, 0.0)),
+    ("WR_ANCHOR_hans_hearth", (-6.75, 4.00, 0.0)),
     ("WR_ANCHOR_hans_door", (-7.82, 1.23, 0.0)),
-    ("WR_ANCHOR_hans_basket", (-7.00, 3.55, 0.0)),
-    ("WR_ANCHOR_hans_tools", (-6.00, 3.60, 0.0)),
-    ("WR_ANCHOR_hans_corridor_0", (-7.45, 1.95, 0.0)),
-    ("WR_ANCHOR_hans_corridor_1", (-7.42, 2.75, 0.0)),
-    ("WR_ANCHOR_hans_corridor_2", (-7.15, 3.20, 0.0)),
+    ("WR_ANCHOR_hans_basket", (-6.95, 3.55, 0.0)),
+    ("WR_ANCHOR_hans_tools", (-6.35, 3.42, 0.0)),
+    ("WR_ANCHOR_hans_corridor_0", (-7.35, 1.95, 0.0)),
+    ("WR_ANCHOR_hans_corridor_1", (-7.20, 2.65, 0.0)),
+    ("WR_ANCHOR_hans_corridor_2", (-7.03, 3.08, 0.0)),
 )
+
+# The old fireplace overlapped the live 11.3 m board plinth by >1 m and
+# left no adult-width passage. Preserve its ivory identity, but author it as a
+# compact wall hearth entirely west of the board, with a usable front apron.
+V4_HANS_HEARTH_CENTER = (-6.75, 4.40)
+V4_HANS_HEARTH_XY_SCALE = (0.64, 0.70)
+V4_HANS_BODY_CLEARANCE_RADIUS = 0.56  # shoulders plus walking allowance
 
 V4_WEATHER_MATERIALS = frozenset({
     "WR4_MAT_warm_travertine",
@@ -707,7 +714,8 @@ def build_round_command_table(static, palette):
 
 
 def build_white_fireplace(static, palette):
-    """Canonical pale masonry fireplace from the approved V4 golden."""
+    """Ivory hearth, moved and narrowed to give Hans a physical aisle beside the board."""
+    existing_names = {obj.name for obj in static.objects}
     x, y = -5.65, 4.48
     # Broad ivory surround: visually warm/architectural, not a freestanding stove.
     base.cube("WR4_OBS_fireplace_plinth", (x, y, 0.30), (1.42, 0.62, 0.20),
@@ -751,6 +759,20 @@ def build_white_fireplace(static, palette):
     base.light("WR4_LIGHT_fireplace", "POINT", (x, y - 1.12, 1.58), 430.0,
                (1.0, 0.27, 0.045), static, radius=2.05)
     base.anchor("WR_ANCHOR_fireplace_practical", (x, y - 0.82, 1.65), static)
+
+    # Apply the same affine plan-view transform to every authored hearth part:
+    # masonry, logs, flames, preview light AND runtime practical anchor.
+    # The chess board and door do not move; V1–V3 have no involvement.
+    target_x, target_y = V4_HANS_HEARTH_CENTER
+    scale_x, scale_y = V4_HANS_HEARTH_XY_SCALE
+    for obj in static.objects:
+        if obj.name in existing_names:
+            continue
+        obj.location.x = target_x + (obj.location.x - x) * scale_x
+        obj.location.y = target_y + (obj.location.y - y) * scale_y
+        if obj.type == "MESH":
+            obj.scale.x *= scale_x
+            obj.scale.y *= scale_y
 
 
 def build_oculus_desk(static, palette):
