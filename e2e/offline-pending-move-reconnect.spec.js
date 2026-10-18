@@ -199,14 +199,14 @@ test('War Room · offline→online durante /move pendiente reconcilia 3D sin rem
   await expect(page.locator('.error-boundary-screen')).toHaveCount(0);
 });
 
-test('War Room · fallo de /move restaura FEN, limpia selección y avisa sin fingir respuesta CPU', async ({ page }) => {
+test('War Room · conflicto 409 restaura FEN, limpia selección y avisa sin fingir respuesta CPU', async ({ page }) => {
   test.setTimeout(90_000);
   await page.setViewportSize({ width: 390, height: 844 });
   await mockApi(page);
   let movePosts = 0;
   await page.route('http://localhost:4000/api/games/*/move', async (route) => {
     movePosts += 1;
-    await route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ detail: 'Sin confirmación del servidor' }) });
+    await route.fulfill({ status: 409, contentType: 'application/json', body: JSON.stringify({ detail: 'Conflicto de revisión de partida' }) });
   });
   await login(page);
   await buttonWithVisibleText(page, 'Partida rápida').click();
