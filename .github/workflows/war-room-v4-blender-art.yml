@@ -179,7 +179,7 @@ jobs:
 
       - name: Capture V4 with exact authored PR model · desktop and Android
         working-directory: e2e
-        run: ./node_modules/.bin/playwright test war-room-visual-artifact.spec.js --workers=1
+        run: ./node_modules/.bin/playwright test war-room-visual-artifact.spec.js war-room-v4-hans-clearance-visual.spec.js --workers=1
 
       - uses: actions/upload-artifact@v7
         if: always()
