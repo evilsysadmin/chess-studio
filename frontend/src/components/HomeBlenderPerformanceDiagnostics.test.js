@@ -197,8 +197,8 @@ describe('Home Blender bounded performance diagnostics', () => {
 
 describe('Home Blender authored-model GPU draw inventory', () => {
   it('counts visible material groups and shared resources without calling them actual GPU draws', () => {
-    const stone = { transparent: false };
-    const flame = { transparent: true };
+    const stone = { name: 'Stone', transparent: false };
+    const flame = { name: 'Flame', transparent: true };
     const sharedGeometry = { groups: [
       { materialIndex: 0, count: 12 },
       { materialIndex: 1, count: 6 },
@@ -229,6 +229,10 @@ describe('Home Blender authored-model GPU draw inventory', () => {
       meshes: 3, drawSlotCandidates: 4, transparentSlots: 2,
       shadowCasterSlots: 2, sharedGeometryMeshes: 1,
       uniqueGeometries: 2, uniqueMaterials: 2,
+      topMaterials: [
+        { material: 'Flame', slots: 2, transparentSlots: 2, shadowCasterSlots: 1 },
+        { material: 'Stone', slots: 2, transparentSlots: 0, shadowCasterSlots: 1 },
+      ],
     });
   });
 
@@ -243,7 +247,35 @@ describe('Home Blender authored-model GPU draw inventory', () => {
       meshes: 3, drawSlotCandidates: 1, transparentSlots: 0,
       shadowCasterSlots: 0, sharedGeometryMeshes: 0,
       uniqueGeometries: 3, uniqueMaterials: 1,
+      topMaterials: [
+        { material: '(unnamed)', slots: 1, transparentSlots: 0, shadowCasterSlots: 0 },
+      ],
     });
     expect(homeBlenderModelDrawInventory(null).drawSlotCandidates).toBe(0);
+    expect(homeBlenderModelDrawInventory(null).topMaterials).toEqual([]);
+  });
+
+  it('ranks at most ten authored material names, combining repeated labels', () => {
+    const materials = Array.from({ length: 12 }, (_, i) => ({
+      name: `MAT_${String(i).padStart(2, '0')}`,
+      transparent: i === 0,
+    }));
+    const root = {
+      traverse(visitor) {
+        for (const material of materials) {
+          visitor({ isMesh: true, geometry: {}, material, castShadow: material === materials[0] });
+        }
+        // Multiple distinct material objects can carry the same authored name.
+        visitor({ isMesh: true, geometry: {}, material: { name: 'MAT_00', transparent: false }, castShadow: true });
+      },
+    };
+    const ranking = homeBlenderModelDrawInventory(root).topMaterials;
+    expect(ranking).toHaveLength(10);
+    expect(ranking[0]).toEqual({
+      material: 'MAT_00', slots: 2, transparentSlots: 1, shadowCasterSlots: 2,
+    });
+    expect(ranking.slice(1).map((entry) => entry.material)).toEqual(
+      materials.slice(1, 10).map((material) => material.name),
+    );
   });
 });
