@@ -21,6 +21,7 @@ import WarRoomImmersiveMusicDock from './WarRoomImmersiveMusicDock.jsx';
 import { useGameFocusBubble, useGameMobileFocus } from './useGameMobileFocus.js';
 import useMatthias3DBubbleAnchor from './useMatthias3DBubbleAnchor.js';
 import useMatthiasBoardReactions from './useMatthiasBoardReactions.js';
+import { warRoomSelectionAnnouncement } from './warRoomSelectionAnnouncement.js';
 import { warRoomHansEventForGame } from './WarRoomHansEventContract.js';
 import { shouldForceHansQuickIteration } from './WarRoomHansIteration.js';
 import { resolveHansFireOpeningLatch } from './WarRoomHansFireCallContract.js';
@@ -224,6 +225,13 @@ export default function GameBoardView({
             {isThreeD ? (
               <div ref={matthias3DStageRef} className="game-board-3d-stage">
                 <WarRoomBoardSurface isThreeD boardProps={boardProps} />
+                <div className="sr-only" role="status" aria-live="polite" aria-atomic="true" aria-label="Destinos legales del tablero">
+                  {warRoomSelectionAnnouncement({
+                    selectedSquare: board.selected,
+                    legalTargets: board.legalTargets,
+                    disabled: zenMode || status.busy || boardProps.gameOver,
+                  })}
+                </div>
                 <WarRoomExitOverlay
                   onClick={controls.onAbandon}
                   ariaLabel="Salir de la partida"

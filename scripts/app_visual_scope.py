@@ -390,7 +390,7 @@ def _surface_groups(path: str) -> set[str] | None:
             # Behaviour/lifecycle coverage only. The Godot workflow owns the
             # runtime pixels; this spec must not wake unrelated app visuals.
             return set()
-        if name == "war-room-entry-latency-visual.spec.js":
+        if name in {"war-room-entry-latency-visual.spec.js", "three-d-war-room.spec.js"}:
             return {"warroom"}
         if name.startswith("war-room-") and "visual" in name:
             return {"warroom"}
@@ -757,6 +757,11 @@ def self_test() -> None:
         "frontend/src/components/HomeIllustrated.jsx",
     ]).capture_groups != "warroom"
     assert classify(["e2e/smoke.spec.js"]).capture_groups == "none"
+    assert classify([
+        "frontend/src/components/GameBoardView.jsx",
+        "frontend/src/components/warRoomSelectionAnnouncement.js",
+        "e2e/three-d-war-room.spec.js",
+    ]).capture_groups == "warroom"
     quick_match = classify([
         "frontend/src/components/QuickMatchModal.jsx",
         "frontend/src/components/useWarRoomImmersive.js",

@@ -301,6 +301,7 @@ def _e2e_producer(name: str) -> set[str] | None:
         "war-room-pvp.spec.js": {"pvp-duel"},
         "pvp-background-roster.spec.js": {"pvp-duel"},
         "mobile-golden-path-war-room-invariants.spec.js": {"warroom-core"},
+        "three-d-war-room.spec.js": {"warroom-core"},
         "war-room-visual-artifact.spec.js": {"warroom-core"},
         "war-room-entry-latency-visual.spec.js": {"warroom-core"},
         "war-room-decor-visual-artifact.spec.js": {"warroom-decor"},
@@ -471,6 +472,8 @@ def classify_path(path: str) -> set[str] | None:
     if lower in QUICK_MATCH_EXACT_PRODUCERS:
         return set(QUICK_MATCH_EXACT_PRODUCERS[lower])
     if lower == "frontend/src/components/shareresultmodal.jsx":
+        return {"warroom-core"}
+    if lower == "frontend/src/components/warroomselectionannouncement.js":
         return {"warroom-core"}
     if lower == "frontend/src/components/profilebackupmodal.jsx":
         return {"home-base"}
@@ -816,6 +819,11 @@ def self_test() -> None:
     ]) == "warroom-core"
     assert classify(["frontend/public/sw.js", "scripts/pwa_check.mjs"]) == "none"
     assert classify(["frontend/src/components/ShareResultModal.jsx"]) == "warroom-core"
+    assert classify([
+        "frontend/src/components/GameBoardView.jsx",
+        "frontend/src/components/warRoomSelectionAnnouncement.js",
+        "e2e/three-d-war-room.spec.js",
+    ]) == "warroom-core"
     assert classify(["frontend/src/components/ProfileBackupModal.jsx"]) == "home-base"
     assert classify([
         "frontend/src/components/GameScreen.jsx",
