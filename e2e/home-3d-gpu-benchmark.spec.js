@@ -2,6 +2,7 @@ import { expect, test } from '@playwright/test';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { mockApi } from './helpers.js';
 import { homeBlenderDistinctGpuSamplesMs } from '../frontend/src/components/HomeBlenderPerformanceDiagnostics.js';
+import { summarizeHomeGpuLightContrast } from '../frontend/src/components/HomeBlenderGpuLightContrast.js';
 
 // Explicit, local-only hardware diagnostic. CI excludes this file from its
 // standard Playwright matrix; no identity, passwords or raw GPU names are logged.
@@ -268,10 +269,10 @@ test('Home 3D physical GPU benchmark · three visits or opt-in light A/B/B/A', a
       }
     }
     expect(visits[1].auxiliaryLightsDisabled).toBe(visits[2].auxiliaryLightsDisabled);
-    const normal = visits.filter((row) => row.lightProbe === 'normal');
-    const auxOff = visits.filter((row) => row.lightProbe === 'aux-off');
-    const baseGpuMs = median(normal.map((row) => row.gpuMedianMs));
-    const auxOffGpuMs = median(auxOff.map((row) => row.gpuMedianMs));
+    // Fail closed if a family-labelled B condition is absent, or if any
+    // aggregate timing is null/NaN. JS arithmetic silently coerces null to
+    // zero and previously fabricated a 100% saving for aux-board-off.
+    const contrast = summarizeHomeGpuLightContrast(visits, lightOffMode);
     const result = {
       schema: 1,
       surface: 'Home Blender 3D auxiliary light isolation',
@@ -288,14 +289,7 @@ test('Home 3D physical GPU benchmark · three visits or opt-in light A/B/B/A', a
       auxiliaryLightsExcluded: visits[1].auxiliaryLightsDisabled,
       // Contrast between *different rendered scenes*, not an FPS estimate
       // or a recommendation to remove lights in production.
-      gpuMedianMs: { normal: baseGpuMs, auxOff: auxOffGpuMs },
-      gpuDifferenceMs: baseGpuMs - auxOffGpuMs,
-      gpuContrastPct: baseGpuMs > 0
-        ? 100 * (baseGpuMs - auxOffGpuMs) / baseGpuMs : null,
-      cpuP95MedianMs: {
-        normal: median(normal.map((row) => row.cpuP95MedianMs)),
-        auxOff: median(auxOff.map((row) => row.cpuP95MedianMs)),
-      },
+      ...contrast,
       visits,
     };
     await mkdir(artifactDir, { recursive: true });
