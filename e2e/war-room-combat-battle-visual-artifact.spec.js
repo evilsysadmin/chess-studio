@@ -66,7 +66,7 @@ async function openCombatBattle(page) {
   await page.getByRole('button', { name: /PREPARAR EJÉRCITO/i }).click();
   await dismissTutorialIfVisible(page);
 
-  const quick = page.getByRole('button', { name: /JUGAR CON (ESTA|FORMACIÓN RECOMENDADA)/i });
+  const quick = page.getByRole('button', { name: /¡ENTRAR EN COMBATE!|ORGANIZAR Y COMBATIR/i });
   await expect(quick).toBeVisible();
   await quick.click();
 

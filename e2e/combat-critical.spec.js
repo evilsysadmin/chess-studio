@@ -72,7 +72,7 @@ test('Combat Chess · Campaña · primera jugada completa un ciclo humano/CPU si
   const prepare = page.getByRole('button', { name: /PREPARAR EJÉRCITO/i });
   await expect(prepare).toBeVisible();
   await prepare.click();
-  const quick = page.getByRole('button', { name: /JUGAR CON (ESTA|FORMACIÓN RECOMENDADA)/i });
+  const quick = page.getByRole('button', { name: /¡ENTRAR EN COMBATE!|ORGANIZAR Y COMBATIR/i });
   await expect(quick).toBeVisible();
   await quick.click();
   await expect(page.getByRole('complementary', { name: 'Registro de batalla y estado táctico' })).toBeVisible();

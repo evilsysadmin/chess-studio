@@ -41,7 +41,8 @@ describe('tutorial de despliegue con defaults', () => {
   it('deja claro que personalizar es opcional', () => {
     const tutorial = mechanicTutorialById('combat-deployment');
     const copy = [tutorial.summary, ...tutorial.steps.map((step) => `${step.title} ${step.text}`)].join(' ');
-    expect(copy).toContain('un clic');
+    expect(copy).toContain('priorizando veteranos');
+    expect(copy).toContain('reorganiza todo el ejército');
     expect(copy).toContain('opcional');
   });
 });

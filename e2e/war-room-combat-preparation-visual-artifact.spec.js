@@ -131,13 +131,13 @@ async function openOperationsRoom(page) {
   await expect(board3d).toHaveAttribute('data-board3d-variant-status', 'ready', { timeout: 45_000 });
   await expect(room.locator('.board3d-main-canvas')).toBeVisible({ timeout: 45_000 });
   await expect(page.getByLabel('Resumen de preparación')).toBeVisible();
-  await expect(page.getByRole('button', { name: /Personalizar despliegue/i })).toBeVisible();
+  await expect(page.getByRole('button', { name: /Editar formación desde el tablero/i })).toBeVisible();
   return room;
 }
 
 async function openWarTable(page) {
   await openOperationsRoom(page);
-  await page.getByRole('button', { name: /Personalizar despliegue/i }).click();
+  await page.getByRole('button', { name: /Editar formación desde el tablero/i }).click();
   const table = page.locator('[data-combat-deployment="war-table"]');
   await expect(table).toBeVisible();
   await expect(table.getByRole('heading', { name: 'Mesa de Guerra', exact: true })).toBeVisible();
