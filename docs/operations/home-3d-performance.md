@@ -20,6 +20,14 @@ On a ready Home canvas, inspect `document.querySelector('.illustrated-home__cast
 | `homeBlenderGpuMs` | Last async elapsed WebGL GPU-timer sample in milliseconds; **only** with status `ready` |
 | `homeBlenderGpuSampleCount` | Monotonic number of **valid completed GPU queries**, used to distinguish newly measured values from a still-published previous result |
 
+## Conservative GLB static batch permutation join
+
+The Blender runtime exporter now also combines static `HOME_ARCH_*` / `HOME_PROP_*` objects when their multiple material slots are the **same named opaque materials in a different order**. Its existing join step remaps material slots; transparent, alpha-linked, unnamed, duplicate-slot and single-material objects keep the legacy ordered signature. Animated flames, moon and steam nodes, plus the Klaus rig, remain excluded.
+
+For each newly combined cross-order batch, export fails if per-material triangle totals before and after Blender join differ. The exported `home-v2-runtime.json` reports `permutation_join_groups` and `permutation_ordered_meshes_avoided`: the latter is an actual number of joined Blender mesh nodes avoided relative to the original grouping, **not** a measured GPU draw-call count or GPU-time improvement. A zero is valid and indicates that the canonical input had no eligible cross-order groups. GLB primitive counts remain separately recorded, and real draw/GPU comparisons still require the physical-hardware benchmark below.
+
+The change is validated by the PR-only Blender GLB export and unpromoted runtime Playwright screenshot gate before the automatic R2 promotion pipeline. This changes the generated runtime asset, not the canonical authored Blender scene. Any image differences or GLB gate failure block acceptance; keep the old content-addressed R2 object for rollback.
+
 ## Opt-in authored-GLB draw inventory
 
 Open the Home with `?homeGpuProfile=1`. After the authored GLB is prepared, the canvas publishes `dataset.homeBlenderModelDrawInventory`, a compact JSON object. This adds **one scene-graph traversal only when profiling**, after the original first-ready time is recorded. The production Home does not do this work.
