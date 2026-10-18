@@ -20,6 +20,10 @@ export default defineConfig({
   workers: 1,
   fullyParallel: false,
   retries: 0,
+  // The generic local config reuses port 4173. A physical-GPU comparison
+  // must fail closed instead of sampling a stale build served by another
+  // development/e2e process. Never attach to an unknown existing server.
+  webServer: { ...base.webServer, reuseExistingServer: false },
   timeout: 450_000,
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
   use: {

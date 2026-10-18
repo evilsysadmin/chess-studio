@@ -108,18 +108,13 @@ For meaningful before/after numbers: check out a known baseline SHA, rebuild, ru
 
 The Home always retains its authored lighting in normal play. For GPU diagnosis only, `?homeGpuProfile=1&homeLightProbe=aux-off` excludes **auxiliary non-shadow-casting torches, stairs lamps, chandelier and board spotlights** from Three.js light lists; the shadow-casting key, fireplace point lights, atmospheric/fill/environment light, and additive glow sprites are preserved. The experiment **intentionally changes the rendered lighting**: it is not an acceptable production look and must never be enabled as a performance policy without separate visual approval. The query flag is ignored unless `homeGpuProfile=1` is also present. The read-only canvas dataset exposes `homeBlenderLightProbe` and `homeBlenderLightProbeDisabled` for validation.
 
-On an actual hardware GPU (not SwiftShader), use the same installed frontend, compiled app, browser, scene asset and power profile for both conditions:
+On an actual hardware GPU (not SwiftShader), run from the repo root on Nobara or another local Linux machine. The one-command entry point installs missing local dependencies/Chromium when needed, rebuilds the frontend, and isolates the benchmark from any pre-existing test server:
 
 ```bash
-npm --prefix frontend ci
-npm --prefix e2e ci
-npm --prefix frontend run build
-cd e2e
-__NV_PRIME_RENDER_OFFLOAD=1 __GLX_VENDOR_LIBRARY_NAME=nvidia \\
-  CHESS_HOME_GPU_MODE=hardware CHESS_HOME_GPU_LIGHT_PROBE=1 \\
-  CHESS_HOME_GPU_REVISION="$(git rev-parse HEAD)" \\
-  ./node_modules/.bin/playwright test --config=playwright.home-gpu.config.js
+make home-gpu-light-probe
 ```
+
+The default uses NVIDIA PRIME offload for hybrid Nobara laptops. For native AMD/Intel graphics, use `make home-gpu-light-probe HOME_GPU_NVIDIA_PRIME=0`; for a GPU-only headless environment add `HOME_GPU_HEADLESS=1`. If `127.0.0.1:4173` is occupied, the benchmark now **fails** rather than silently sampling a stale website; stop the old e2e/dev server first. A software/unknown renderer or absent hardware GPU timer samples also fails closed.
 
 The same local benchmark creates **four fresh browser contexts** in fixed order normal/aux-off/aux-off/normal, keeps 1440×900 at DPR 1, waits for the actual Home GLB **and Matthias's independently loaded actor to report ready**, then collects distinct asynchronous `EXT_disjoint_timer_query_webgl2` samples. It takes a post-settle query-completion watermark and ignores older results; the A/B/B/A light trial also discards the first fresh asynchronous query, because it may overlap the actor-ready boundary. The actor's station must match between visits. It **fails** if hardware or GPU timers are missing; if the LOD is not full; if the shadow-casting key is missing; if no auxiliary lights were excluded; or if the renderer fingerprint, browser context dimensions, ambient period, initial triangle count or other comparison invariants differ. The only output is `.artifacts/home-gpu-benchmark/home-3d-light-probe-hardware.json` with two observed GPU medians and their exploratory contrast. No individual raw renderer name is logged.
 
