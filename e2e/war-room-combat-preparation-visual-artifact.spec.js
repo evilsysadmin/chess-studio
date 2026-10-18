@@ -44,11 +44,13 @@ import { expect, test } from '@playwright/test';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import {
+  buttonWithVisibleText,
   dismissTutorialIfVisible,
   login,
   mockApi,
   openCampaignBriefing,
   openCampaignMap,
+  waitForHomeInteractive,
 } from './helpers.js';
 
 const ARTIFACT_DIR = '../.artifacts/app-visual/combat-preparation';
@@ -585,9 +587,10 @@ async function openCombatVictoryDebrief(page) {
   expect(context, 'a selected battle is required for a genuine postbattle screen').toBeTruthy();
 
   await page.getByRole('button', { name: /Volver al menú/ }).first().click();
-  const campaignEntry = page.getByRole('button').filter({
-    has: page.getByText('Combat Chess · Campaña', { exact: true }),
-  });
+  await waitForHomeInteractive(page);
+  // The Home castle exposes Combat Chess as a diegetic destination, which
+  // is not always a literal nested <button> with visible text.
+  const campaignEntry = buttonWithVisibleText(page, 'Combat Chess · Campaña');
   await expect(campaignEntry).toBeVisible({ timeout: 30_000 });
   await campaignEntry.click();
   const report = page.getByRole('region', { name: 'Informe postcombate' });
