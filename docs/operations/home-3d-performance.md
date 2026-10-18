@@ -104,6 +104,27 @@ The script fails closed if it cannot prove the requested renderer family from th
 For meaningful before/after numbers: check out a known baseline SHA, rebuild, run in hardware mode, preserve the JSON; then build the candidate SHA and repeat on the **same workstation**, with the same NVIDIA/AMD driver, Chromium build, power state, viewport, time-of-day and network conditions. Repeat the experiment more than once. Compare median GPU time where available and CPU/RAF p95; do not interpret Home's intentionally throttled animated draws/sec as monitor FPS. An opt-in software run is for compatibility diagnosis, not proof of real-GPU gains.
 
 
+## Local auxiliary-light GPU isolation (A/B/B/A)
+
+The Home always retains its authored lighting in normal play. For GPU diagnosis only, `?homeGpuProfile=1&homeLightProbe=aux-off` excludes **auxiliary non-shadow-casting torches, stairs lamps, chandelier and board spotlights** from Three.js light lists; the shadow-casting key, fireplace point lights, atmospheric/fill/environment light, and additive glow sprites are preserved. The experiment **intentionally changes the rendered lighting**: it is not an acceptable production look and must never be enabled as a performance policy without separate visual approval. The query flag is ignored unless `homeGpuProfile=1` is also present. The read-only canvas dataset exposes `homeBlenderLightProbe` and `homeBlenderLightProbeDisabled` for validation.
+
+On an actual hardware GPU (not SwiftShader), use the same installed frontend, compiled app, browser, scene asset and power profile for both conditions:
+
+```bash
+npm --prefix frontend ci
+npm --prefix e2e ci
+npm --prefix frontend run build
+cd e2e
+__NV_PRIME_RENDER_OFFLOAD=1 __GLX_VENDOR_LIBRARY_NAME=nvidia \\
+  CHESS_HOME_GPU_MODE=hardware CHESS_HOME_GPU_LIGHT_PROBE=1 \\
+  CHESS_HOME_GPU_REVISION="$(git rev-parse HEAD)" \\
+  ./node_modules/.bin/playwright test --config=playwright.home-gpu.config.js
+```
+
+The same local benchmark creates **four fresh browser contexts** in fixed order normal/aux-off/aux-off/normal, keeps 1440×900 at DPR 1, waits for the actual Home GLB and collects distinct asynchronous `EXT_disjoint_timer_query_webgl2` samples. It **fails** if hardware or GPU timers are missing; if the LOD is not full; if the shadow-casting key is missing; if no auxiliary lights were excluded; or if the renderer fingerprint, browser context dimensions, ambient period, initial triangle count or other comparison invariants differ. The only output is `.artifacts/home-gpu-benchmark/home-3d-light-probe-hardware.json` with two observed GPU medians and their exploratory contrast. No individual raw renderer name is logged.
+
+**Interpretation:** the A/B/B/A gap bounds the potential fragment-lighting cost of this *visually different scene*, **not** FPS savings or a safe estimate for removing lights. Re-run multiple sessions under the same driver/power conditions. If GPU differences are small or unstable, stop rather than trading away the canonical castle lighting; if consistently large, test a narrower light selection and review visual runtime evidence before any production change.
+
 ## Fail-closed hardware A/B comparison
 
 The local benchmark now writes **schema 2** with the Chromium version, a fingerprint of the renderer name (an 8-digit *non-cryptographic hash*, **not** a physical GPU ID), the actual canvas dimensions, LOD and the four possible authored Home lighting periods. No raw GPU model string is written to the report. Because older reports lack these fields, collect **both baseline and candidate again** after updating the harness.
