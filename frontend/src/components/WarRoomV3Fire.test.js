@@ -19,6 +19,65 @@ describe('War Room v3 authored stove fire', () => {
     });
   });
 
+  it('keeps the immutable public sample independent across timestamps', () => {
+    const old = warRoomV3FireFrame({ elapsedMs: 840, coarsePointer: true });
+    expect(Object.isFrozen(old)).toBe(true);
+    for (const elapsedMs of [0, 840, 1370, 8000, 80_000]) {
+      for (const coarsePointer of [false, true]) {
+        const sample = warRoomV3FireFrame({ elapsedMs, coarsePointer });
+        const power = coarsePointer ? 0.62 : 1;
+        const slow = Math.sin(elapsedMs * 0.0043);
+        const flutter = Math.sin(elapsedMs * 0.0107 + 0.9);
+        const lick = Math.sin(elapsedMs * 0.0231 + Math.sin(elapsedMs * 0.0019) * 1.7);
+        expect(sample).toEqual({
+          width: 1 + (flutter * 0.045 - lick * 0.022) * power,
+          height: 1 + (slow * 0.075 + lick * 0.055) * power,
+          depth: 1 - flutter * 0.026 * power,
+          lift: (slow * 0.013 + lick * 0.009) * power,
+          intensity: 1 + (slow * 0.065 + flutter * 0.055 + lick * 0.035) * power,
+        });
+        expect(Object.isFrozen(sample)).toBe(true);
+      }
+    }
+    expect(old).toEqual(warRoomV3FireFrame({ elapsedMs: 840, coarsePointer: true }));
+  });
+
+  it('matches phase-shifted flame and practical values across repeated render ticks', () => {
+    for (const coarsePointer of [false, true]) {
+      const root = new THREE.Group();
+      const names = ['WR3_ARM_hearth_flame_body', 'WR3_ARM_hearth_flame_0', 'WR3_ARM_hearth_flame_1'];
+      const flames = names.map((name) => {
+        const flame = new THREE.Mesh(new THREE.SphereGeometry(0.2), new THREE.MeshStandardMaterial());
+        flame.name = name;
+        root.add(flame);
+        return flame;
+      });
+      const anchor = new THREE.Group();
+      anchor.name = 'WR_ANCHOR_fireplace_practical';
+      const practical = new THREE.PointLight(0xff8a38, 2.3);
+      anchor.add(practical);
+      root.add(anchor);
+      const release = installWarRoomV3FireAnimation(root, { coarsePointer });
+      for (const elapsedMs of [0, 840, 2170, 1250, 840]) {
+        flames[0].onBeforeRender({ userData: { board3DMotionNowMs: elapsedMs } });
+        flames.forEach((flame, index) => {
+          const expected = warRoomV3FireFrame({
+            elapsedMs: elapsedMs + index * 137, coarsePointer,
+          });
+          expect(flame.scale.x).toBeCloseTo(expected.width, 12);
+          expect(flame.scale.y).toBeCloseTo(expected.height, 12);
+          expect(flame.scale.z).toBeCloseTo(expected.depth, 12);
+          expect(flame.position.y).toBeCloseTo(expected.lift, 12);
+        });
+        const intensity = warRoomV3FireFrame({ elapsedMs, coarsePointer }).intensity;
+        expect(practical.intensity).toBeCloseTo(2.3 * intensity, 12);
+      }
+      release();
+      expect(practical.intensity).toBe(2.3);
+      expect(flames.every((flame) => flame.scale.equals(new THREE.Vector3(1, 1, 1)))).toBe(true);
+    }
+  });
+
   it('honors Hans cold-hearth zero scale instead of treating zero as a missing multiplier', () => {
     const root = new THREE.Group();
     const material = new THREE.MeshStandardMaterial({ emissive: 0xff4b12 });
