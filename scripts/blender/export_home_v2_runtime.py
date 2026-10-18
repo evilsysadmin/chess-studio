@@ -133,6 +133,117 @@ def _is_static_batchable(name: str) -> bool:
     return name.startswith("HOME_PROP_") and not ANIMATED_PROP_NAME.search(name)
 
 
+# The 28 small, camera-facing flame lobes of the two fireplaces were
+# authored as 40x20 UV spheres (1,520 triangles each), despite being thin
+# emissive shapes measured in a few screen pixels from the Home camera.
+# Preserve the canonical Blender builder/review render, node identity, pivot,
+# exact local bounds and fire materials. Only the published runtime GLB uses
+# a still-smooth 24x12 UV sphere so vertex-shader flutter keeps enough height
+# samples while cutting tens of thousands of GPU triangles.
+RUNTIME_HEARTH_FRONT_LOBE = re.compile(
+    r"^HOME_PROP_fireplace_(?:left|right)_front_(?:flame|hot|tongue|base)_\d+$"
+)
+RUNTIME_HEARTH_FRONT_LOBE_COUNT = 28
+RUNTIME_HEARTH_FRONT_SEGMENTS = 24
+RUNTIME_HEARTH_FRONT_RINGS = 12
+
+
+def simplify_runtime_hearth_front_lobes() -> dict:
+    targets = sorted(
+        (
+            obj for obj in bpy.context.scene.objects
+            if RUNTIME_HEARTH_FRONT_LOBE.fullmatch(obj.name)
+        ),
+        key=lambda obj: obj.name,
+    )
+    if len(targets) != RUNTIME_HEARTH_FRONT_LOBE_COUNT:
+        raise SystemExit(
+            f"Hearth flame LOD expected {RUNTIME_HEARTH_FRONT_LOBE_COUNT} nodes, "
+            f"found {len(targets)}"
+        )
+
+    before = after = 0
+    for obj in targets:
+        if obj.type != "MESH" or obj.modifiers or len(obj.data.materials) != 1:
+            raise SystemExit(f"Unexpected hearth flame mesh: {obj.name}")
+        original = obj.data
+        material = original.materials[0]
+        if material is None or material.name not in {"HOME_MAT_fire", "HOME_MAT_fire_hot"}:
+            raise SystemExit(f"Unexpected hearth flame material: {obj.name}")
+        if material.use_nodes and material.node_tree and any(
+            node.type == "TEX_IMAGE" for node in material.node_tree.nodes
+        ):
+            raise SystemExit(f"Hearth flame uses UV-dependent texture: {obj.name}")
+        old_triangles = sum(len(poly.vertices) - 2 for poly in original.polygons)
+        if old_triangles != 1520:
+            raise SystemExit(f"Hearth flame topology drift: {obj.name} = {old_triangles}")
+        prior_bounds = [
+            (min(v.co[axis] for v in original.vertices), max(v.co[axis] for v in original.vertices))
+            for axis in range(3)
+        ]
+        if any(lo >= hi for lo, hi in prior_bounds) or max(
+            hi - lo for lo, hi in prior_bounds
+        ) > 1.6:
+            raise SystemExit(f"Hearth flame bounds drift: {obj.name}")
+        before += old_triangles
+
+        bm = bmesh.new()
+        replacement = bpy.data.meshes.new(f"{obj.name}_runtime_lod")
+        try:
+            bmesh.ops.create_uvsphere(
+                bm, u_segments=RUNTIME_HEARTH_FRONT_SEGMENTS,
+                v_segments=RUNTIME_HEARTH_FRONT_RINGS, radius=1.0,
+            )
+            bm.to_mesh(replacement)
+        finally:
+            bm.free()
+        sphere_bounds = [
+            (min(v.co[axis] for v in replacement.vertices),
+             max(v.co[axis] for v in replacement.vertices))
+            for axis in range(3)
+        ]
+        # Normalise the replacement mesh back into the identical local bounds;
+        # object-level transforms, authored rotations and pivots remain intact.
+        for vertex in replacement.vertices:
+            for axis in range(3):
+                lo, hi = prior_bounds[axis]
+                src_min, src_max = sphere_bounds[axis]
+                vertex.co[axis] = lo + (
+                    (vertex.co[axis] - src_min) / (src_max - src_min)
+                ) * (hi - lo)
+        replacement.materials.append(material)
+        smooth = all(poly.use_smooth for poly in original.polygons)
+        for polygon in replacement.polygons:
+            polygon.use_smooth = smooth
+        replacement.update()
+        current_bounds = [
+            (min(v.co[axis] for v in replacement.vertices),
+             max(v.co[axis] for v in replacement.vertices))
+            for axis in range(3)
+        ]
+        if any(
+            abs(lo - new_lo) > 1e-5 or abs(hi - new_hi) > 1e-5
+            for (lo, hi), (new_lo, new_hi) in zip(prior_bounds, current_bounds)
+        ):
+            raise SystemExit(f"Hearth flame silhouette bounds changed: {obj.name}")
+        new_triangles = sum(len(poly.vertices) - 2 for poly in replacement.polygons)
+        if new_triangles >= old_triangles:
+            raise SystemExit(f"Hearth flame LOD did not reduce triangles: {obj.name}")
+        after += new_triangles
+        obj.data = replacement
+        if original.users == 0:
+            bpy.data.meshes.remove(original)
+
+    if before - after < 25000 or after >= before // 2:
+        raise SystemExit(f"Insufficient hearth flame runtime savings: {before} -> {after}")
+    return {
+        "objects": len(targets),
+        "triangles_before": before,
+        "triangles_after": after,
+        "triangles_saved": before - after,
+    }
+
+
 # The last 21 overlapping tail-tip segments are each a 20x10 UV sphere
 # although they read as a continuous fuzzy curve at the Home camera distance.
 # Replace ONLY these small spheres for the runtime GLB; keep the organic body,
@@ -921,6 +1032,7 @@ def main() -> None:
     )
 
     flatten_runtime_materials()
+    hearth_front_flame_lod = simplify_runtime_hearth_front_lobes()
     banner_medallion_lod = simplify_banner_medallion_tubes()
     chandelier_tube_lod = simplify_chandelier_thin_tubes()
     converted_curves = convert_curves_to_meshes()
@@ -1006,6 +1118,7 @@ def main() -> None:
         "mesh_count": mesh_count,
         "converted_curves": converted_curves,
         "klaus_parts": klaus_parts,
+        "hearth_front_flame_lod": hearth_front_flame_lod,
         "klaus_tail_lod": klaus_tail_lod,
         "klaus_undercoat_lod": klaus_undercoat_lod,
         "klaus_paw_lod": klaus_paw_lod,
