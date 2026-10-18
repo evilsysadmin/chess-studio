@@ -728,14 +728,31 @@ export function homeBlenderSharedFireGust(timeMs = 0) {
   return fireNoise(Math.max(0, Number(timeMs) || 0) / 1000, 0.33, 7);
 }
 
+// GLB flame names and torch identities have fixed phases across their lifespan.
+// Prepare the corresponding noise-lattice seed once instead of recomputing it
+// for every flame and torch on each animated frame.
+export function homeBlenderFireSeed(phase = 0) {
+  return Math.floor(Math.abs(Number(phase) || 0) * 997) + 13;
+}
+
 export function homeBlenderFireMotion({
   timeMs = 0,
   phase = 0,
   kind = 'flame',
   commonGust,
 } = {}) {
-  const seconds = Math.max(0, Number(timeMs) || 0) / 1000;
-  const seed = Math.floor(Math.abs(Number(phase) || 0) * 997) + 13;
+  return homeBlenderFireMotionPrepared(
+    Math.max(0, Number(timeMs) || 0) / 1000,
+    homeBlenderFireSeed(phase),
+    kind,
+    commonGust,
+  );
+}
+
+// The live animation already knows the (seconds, seed) pair for each mesh.
+// Keeping this scalar path separate prevents phase hashing and time coercion
+// from being paid for every node, while preserving the public helper above.
+export function homeBlenderFireMotionPrepared(seconds, seed, kind = 'flame', commonGust) {
   if (kind === 'ember') {
     // Embers only consume slow glow and flicker. Skip the gust, body and
     // drift lattice samples used by flames/candles: they never affect embers.
@@ -790,8 +807,13 @@ export function homeBlenderFireMotion({
 // Keep the *same arithmetic order* as the canonical candle expression so
 // candlelight intensity remains bit-for-bit identical.
 export function homeBlenderCandleLightFactor(timeMs = 0, phase = 0) {
-  const seconds = Math.max(0, Number(timeMs) || 0) / 1000;
-  const seed = Math.floor(Math.abs(Number(phase) || 0) * 997) + 13;
+  return homeBlenderCandleLightFactorPrepared(
+    Math.max(0, Number(timeMs) || 0) / 1000,
+    homeBlenderFireSeed(phase),
+  );
+}
+
+export function homeBlenderCandleLightFactorPrepared(seconds, seed) {
   const body = (
     fireNoise(seconds, 4.4, seed) * 0.60
     + fireNoise(seconds, 7.3, seed + 101) * 0.28
@@ -1070,6 +1092,7 @@ function prepareRuntimeFireRig(root) {
       object.material = object.material.clone();
     }
 
+    const phase = stableFirePhase(object.name);
     for (const material of (Array.isArray(object.material) ? object.material : [object.material])) {
       if (kind === 'steam') {
         material.transparent = true;
@@ -1082,7 +1105,7 @@ function prepareRuntimeFireRig(root) {
       if (kind !== 'ember') {
         applyFlameGradient(material, flameHeightRange(object.geometry), {
           amp: kind === 'candle' ? 0.055 : 0.15,
-          phase: stableFirePhase(object.name),
+          phase,
         });
       }
     }
@@ -1103,7 +1126,8 @@ function prepareRuntimeFireRig(root) {
       basePosition: object.position.clone(),
       height: wispBox ? Math.max(0.05, wispBox.max.y - wispBox.min.y) : 0.4,
       hearth: lowered.includes('fireplace_left') ? 'left' : lowered.includes('fireplace_right') ? 'right' : null,
-      phase: stableFirePhase(object.name),
+      phase,
+      seed: homeBlenderFireSeed(phase),
       baseScale: object.scale.clone(),
       baseRotationZ: object.rotation.z,
       materials,
@@ -1112,7 +1136,12 @@ function prepareRuntimeFireRig(root) {
   return nodes;
 }
 
-function applyRuntimeFireMotion(nodes, timeMs, commonGust = homeBlenderSharedFireGust(timeMs)) {
+function applyRuntimeFireMotion(
+  nodes, timeMs, commonGust = homeBlenderSharedFireGust(timeMs),
+  seconds = Math.max(0, Number(timeMs) || 0) / 1000,
+) {
+  // Do not normalize shader clock: the WebGL uniform historically uses raw ms.
+  const shaderSeconds = timeMs / 1000;
   const light = { left: { sum: 0, count: 0 }, right: { sum: 0, count: 0 } };
   for (const node of nodes) {
     if (node.kind === 'steam') {
@@ -1130,21 +1159,16 @@ function applyRuntimeFireMotion(nodes, timeMs, commonGust = homeBlenderSharedFir
       for (const { material } of node.materials) material.opacity = steam.opacity;
       continue;
     }
-    const motion = homeBlenderFireMotion({
-      timeMs,
-      phase: node.phase,
-      kind: node.kind,
-      commonGust,
-    });
+    const motion = homeBlenderFireMotionPrepared(seconds, node.seed, node.kind, commonGust);
     node.object.scale.set(
       node.baseScale.x * motion.scaleX,
       node.baseScale.y * motion.scaleY,
       node.baseScale.z * motion.scaleZ,
     );
     node.object.rotation.z = node.baseRotationZ + motion.lean;
-    const seconds = timeMs / 1000;
+    // Shader uniforms use the original raw timestamp, including the first frame.
     for (const { material } of node.materials) {
-      if (material.userData?.flameTime) material.userData.flameTime.value = seconds;
+      if (material.userData?.flameTime) material.userData.flameTime.value = shaderSeconds;
     }
     for (const { material, emissiveIntensity } of node.materials) {
       if ('emissiveIntensity' in material) {
@@ -1466,12 +1490,16 @@ function addRuntimeLights(scene, shadowsEnabled = true, ambientPeriod = 'day') {
   return {
     glows,
     disposeGlows,
-    torches: torches.map((light, index) => ({
-      light,
-      base: light.intensity,
-      // A stable phase per torch, so the four never flicker in step.
-      phase: stableFirePhase(`home_torch_light_${index}`),
-    })),
+    torches: torches.map((light, index) => {
+      // The light's phase never changes. Precompute its noise seed on mount.
+      const phase = stableFirePhase(`home_torch_light_${index}`);
+      return {
+        light,
+        base: light.intensity,
+        phase,
+        seed: homeBlenderFireSeed(phase),
+      };
+    }),
     leftHearth,
     rightHearth,
     leftHearthBase: leftHearth.intensity,
@@ -2037,14 +2065,15 @@ export default function HomeBlenderScene3D({
           lastActorTickAt = timestamp;
           matthiasActor.update(dt);
         }
+        const seconds = Math.max(0, Number(timestamp) || 0) / 1000;
         const commonGust = homeBlenderSharedFireGust(timestamp);
-        const lightFactor = applyRuntimeFireMotion(fireRig, timestamp, commonGust);
+        const lightFactor = applyRuntimeFireMotion(fireRig, timestamp, commonGust, seconds);
         runtimeLights.leftHearth.intensity = runtimeLights.leftHearthBase * lightFactor.left;
         runtimeLights.rightHearth.intensity = runtimeLights.rightHearthBase * lightFactor.right;
         for (const torch of runtimeLights.torches) {
           // These torch meshes only use the candle's light intensity, not
           // its geometry/emission motion. Avoid creating an unused motion object.
-          torch.light.intensity = torch.base * homeBlenderCandleLightFactor(timestamp, torch.phase);
+          torch.light.intensity = torch.base * homeBlenderCandleLightFactorPrepared(seconds, torch.seed);
         }
         for (const glow of runtimeLights.glows) {
           glow.sprite.material.opacity = homeBlenderGlowOpacity(
