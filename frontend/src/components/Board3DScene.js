@@ -213,7 +213,7 @@ export function trainingRoomCameraFramingProfile(args = {}) {
   });
 }
 
-export function fitBoardCamera(camera, width, height, whiteSide, { profile: requestedProfile = 'tactical', immersive = false } = {}) {
+export function fitBoardCamera(camera, width, height, whiteSide, { profile: requestedProfile = 'tactical', immersive = false, variant = null } = {}) {
   const aspect = Math.max(0.35, width / Math.max(1, height));
   const coarsePointer = typeof window !== 'undefined'
     && Boolean(window.matchMedia?.('(pointer: coarse)')?.matches);
@@ -221,8 +221,11 @@ export function fitBoardCamera(camera, width, height, whiteSide, { profile: requ
     ? Number(window.innerWidth) || width
     : width;
   const duelRoomProfile = requestedProfile === 'duel';
-  const teachingProfile = requestedProfile === 'classroom' || requestedProfile === 'training-room';
-  const usesWarRoomContract = requestedProfile === 'warroom' || duelRoomProfile;
+  // One deliberately isolated A/B experiment: give only selectable V4 the
+  // actual School camera. Other War Rooms retain the approved common optics.
+  const v4SchoolCameraExperiment = requestedProfile === 'warroom' && variant === 'v4';
+  const teachingProfile = requestedProfile === 'classroom' || requestedProfile === 'training-room' || v4SchoolCameraExperiment;
+  const usesWarRoomContract = (requestedProfile === 'warroom' || duelRoomProfile) && !v4SchoolCameraExperiment;
   const canonicalMobileProfile = usesWarRoomContract
     ? getWarRoomMobileFramingProfile({ aspect, coarsePointer, viewportWidth })
     : null;
@@ -231,7 +234,12 @@ export function fitBoardCamera(camera, width, height, whiteSide, { profile: requ
     : null;
   const mobileProfile = canonicalMobileProfile || legacyMobileProfile;
 
-  const baseProfile = requestedProfile === 'training-room'
+  const baseProfile = v4SchoolCameraExperiment
+    ? {
+        ...classRoomCameraFramingProfile({ aspect, coarsePointer, viewportWidth }),
+        version: 'warroom-v4-school-angle-experiment-v1',
+      }
+    : requestedProfile === 'training-room'
     ? trainingRoomCameraFramingProfile({ aspect, coarsePointer, viewportWidth })
     : requestedProfile === 'classroom'
       ? classRoomCameraFramingProfile({ aspect, coarsePointer, viewportWidth })
