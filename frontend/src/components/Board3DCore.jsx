@@ -22,7 +22,8 @@ import { resolveBoardTap, selectBoardSquareOnTouch } from './WarRoom3DTouch.js';
 import { BOARD3D_HIGHLIGHT_SIZE, BOARD3D_HIGHLIGHT_Y, board3DHighlightStyle } from './Board3DHighlights.js';
 import { applyBoard3DCaptureGhostPose, board3DCaptureWarmBoostValue, board3DPieceInteractionPose, writeBoard3DHighlightPulse } from './Board3DInteractionFx.js';
 import { BOARD_THEME_3D, FILES, resolveBoard3DThemeId } from './Board3DConfig.js';
-import { adjacentSquare, parseFen, squarePosition } from './Board3DBoardMath.js';
+import { parseFen, squarePosition } from './Board3DBoardMath.js';
+import { board3DKeyboardFocusAnnouncement, handleBoard3DKeyboardEvent } from './Board3DKeyboardAccessibility.js';
 import { buildBoard3DTileInstances } from './Board3DTileInstances.js';
 import { pickBoard3DSquare } from './Board3DPointerPicking.js';
 import { planBoard3DPieceReconciliation } from './Board3DPieceReconciliation.js';
@@ -81,6 +82,7 @@ function Board3DCanvas({
   const [boardTheme, setBoardTheme] = useState(() => loadBoardTheme());
   const [rendererLabel, setRendererLabel] = useState('3D');
   const [focusedSquare, setFocusedSquare] = useState(() => orientation === 'black' ? 'e8' : 'e1');
+  const [keyboardActive, setKeyboardActive] = useState(false);
   const [hoveredSquare, setHoveredSquare] = useState(null);
   const { selectable: warRoomVariantSelectable, variant: globalWarRoomVariant, status: warRoomVariantStatus, domData: globalWarRoomVariantDomData, setStatus: setWarRoomVariantStatus } = useWarRoomVariant();
   const presentation = resolveBoard3DPresentation({ cameraProfile, variantOverride: warRoomVariantOverride, globalVariant: globalWarRoomVariant, globalDomData: globalWarRoomVariantDomData, variantStatus: warRoomVariantStatus, trainingRoom });
@@ -954,15 +956,7 @@ function Board3DCanvas({
   }, [checkSquare, gameOver, effectiveThemeId, orientation, showCoordinates, warRoomVariant]);
 
   function handleKeyDown(event) {
-    if (event.key === 'Enter' || event.key === ' ') {
-      event.preventDefault();
-      onSquareClick?.(focusedSquare);
-      return;
-    }
-    const next = adjacentSquare(focusedSquare, event.key, orientation);
-    if (!next) return;
-    event.preventDefault();
-    setFocusedSquare(next);
+    handleBoard3DKeyboardEvent(event, { focusedSquare, orientation, onSquareClick, setFocusedSquare });
   }
 
   return (
@@ -985,7 +979,11 @@ function Board3DCanvas({
       data-board3d-legal-target-count={legalMap.size}
       data-matthias-rival-king={matthiasKingColor || 'off'}
     >
-      <div ref={hostRef} className="board3d-main-host" onKeyDown={handleKeyDown} />
+      <div ref={hostRef} className="board3d-main-host" onKeyDown={handleKeyDown}
+        onFocus={() => setKeyboardActive(true)} onBlur={() => setKeyboardActive(false)} />
+      <span className="sr-only" role="status" aria-live="polite" aria-atomic="true" aria-label="Casilla enfocada en 3D">
+        {keyboardActive ? board3DKeyboardFocusAnnouncement({ focusedSquare, pieces: currentPieces, selectedSquare, legalTargets }) : ''}
+      </span>
       <div className="board3d-fixed-camera-note" aria-hidden="true">{presentation.roomLabel} · {presentation.cameraLabel}</div>
       <div className="board3d-renderer-badge" aria-hidden="true">{rendererLabel}</div>
       {onCustomize && <button type="button" className="board3d-customize secondary-btn" onClick={onCustomize}>Apariencia</button>}
