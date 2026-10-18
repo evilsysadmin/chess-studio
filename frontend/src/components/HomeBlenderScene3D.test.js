@@ -440,6 +440,50 @@ describe('HomeBlenderScene3D live flame animation', () => {
     }
   });
 
+  it('preserves the exact legacy ember animation after skipping unused noise', () => {
+    // Frozen values from the pre-optimization flame motion; independent of the
+    // new short-circuit implementation. These cover time/phase boundaries.
+    const baseline = [
+      [0, 0, [1.0122549182805232, 1.0098039346244185, 0.981749589322135, 0.9945098365610465]],
+      [16.7, 0.137, [0.9945262594665164, 0.9956210075732131, 0.9027136644023754, 0.9590525189330328]],
+      [250, 1.234, [0.9978200971601904, 0.9982560777281523, 0.9062358420378366, 0.9656401943203806]],
+      [4321, 3.9, [0.9940415297832134, 0.9952332238265708, 0.9211409410307563, 0.9580830595664267]],
+      [12345, -1.2, [0.9990009236091998, 0.9992007388873598, 0.9418893486790095, 0.9680018472183994]],
+      [90000, 0.17, [1.0071406382438726, 1.0057125105950981, 0.9546136231161655, 0.9842812764877453]],
+      [1e7, Math.PI, [1.0094609018438496, 1.0075687214750797, 0.9614496365375818, 0.9889218036876991]],
+    ];
+    for (const [timeMs, phase, [scaleX, scaleY, emission, light]] of baseline) {
+      for (const commonGust of [undefined, -0.8, 0.71]) {
+        const motion = homeBlenderFireMotion({ timeMs, phase, kind: 'ember', commonGust });
+        // Object.is asserts exact binary parity, not a perceptual epsilon.
+        expect(Object.is(motion.scaleX, scaleX)).toBe(true);
+        expect(Object.is(motion.scaleY, scaleY)).toBe(true);
+        expect(Object.is(motion.scaleZ, scaleX)).toBe(true);
+        expect(Object.is(motion.emission, emission)).toBe(true);
+        expect(Object.is(motion.light, light)).toBe(true);
+        expect(motion.lean).toBe(0);
+      }
+    }
+    const negative = homeBlenderFireMotion({ timeMs: -4, phase: NaN, kind: 'ember' });
+    expect(negative).toEqual(homeBlenderFireMotion({ timeMs: 0, phase: 0, kind: 'ember' }));
+  });
+
+  it('shares the exact Klaus head pose with both ear flicks without changing standalone calls', () => {
+    // Runtime can reuse the posture it already calculated for the head skin.
+    // Standalone callers still calculate that same posture when omitted.
+    for (const timeMs of [
+      -50, 0, 16.7, 137, 1000, 5000, 10001, 18000, 30000,
+      45000, 65000, 120000, 600000, NaN,
+    ]) {
+      const up = homeBlenderKlausHeadPose(timeMs).up;
+      for (const ear of [0, 1]) {
+        const oldCall = homeBlenderKlausEarPose(timeMs, ear);
+        const sharedCall = homeBlenderKlausEarPose(timeMs, ear, up);
+        expect(Object.is(sharedCall, oldCall)).toBe(true);
+      }
+    }
+  });
+
   it('computes torch-only light intensity with exact candle-motion equivalence', () => {
     // Verify the actual runtime optimization, not an approximation: the same
     // intensity reaches each existing Three.js light for every sampled phase.

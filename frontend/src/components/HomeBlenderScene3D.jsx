@@ -237,13 +237,13 @@ export function homeBlenderKlausHeadPose(timeMs = 0) {
 
 // Ear flick angle (radians, outwards) for ear 0 or 1. Ears perk a little while
 // the head is up.
-export function homeBlenderKlausEarPose(timeMs = 0, index = 0) {
+export function homeBlenderKlausEarPose(timeMs = 0, index = 0, headUp = homeBlenderKlausHeadPose(timeMs).up) {
   const spec = HOME_BLENDER_KLAUS_EAR_MOTION;
   const seconds = Math.max(0, Number(timeMs) || 0) / 1000;
   const period = spec.periods[index % spec.periods.length];
   const local = ((seconds + index * 4.1) % period + period) % period;
   const flick = local < spec.flickSeconds ? Math.sin((local / spec.flickSeconds) * Math.PI) : 0;
-  const perk = homeBlenderKlausHeadPose(timeMs).up * 0.35;
+  const perk = headUp * 0.35;
   return THREE.MathUtils.degToRad(spec.flickDeg) * Math.max(flick, perk);
 }
 
@@ -420,7 +420,9 @@ const klausScratch = {
 export function applyHomeBlenderKlausHeadDeform(deform, timeMs = 0) {
   if (!deform) return false;
   const head = homeBlenderKlausHeadPose(timeMs);
-  const earAngles = [homeBlenderKlausEarPose(timeMs, 0), homeBlenderKlausEarPose(timeMs, 1)];
+  // Share the head posture used for the skin deformation with both ear flicks.
+  // The standalone public ear helper keeps its original default behaviour.
+  const earAngles = [homeBlenderKlausEarPose(timeMs, 0, head.up), homeBlenderKlausEarPose(timeMs, 1, head.up)];
   const moving = head.up > 1e-4 || earAngles[0] > 1e-4 || earAngles[1] > 1e-4;
   if (!moving && !deform.active) return false;
   deform.active = moving;
@@ -734,6 +736,20 @@ export function homeBlenderFireMotion({
 } = {}) {
   const seconds = Math.max(0, Number(timeMs) || 0) / 1000;
   const seed = Math.floor(Math.abs(Number(phase) || 0) * 997) + 13;
+  if (kind === 'ember') {
+    // Embers only consume slow glow and flicker. Skip the gust, body and
+    // drift lattice samples used by flames/candles: they never affect embers.
+    const flick = fireNoise(seconds, 8.6, seed + 401);
+    const glow = fireNoise(seconds, 1.6, seed + 601);
+    return {
+      scaleX: 1 + glow * 0.015,
+      scaleY: 1 + glow * 0.012,
+      scaleZ: 1 + glow * 0.015,
+      lean: 0,
+      emission: 0.93 + glow * 0.06 + flick * 0.02,
+      light: 0.97 + glow * 0.03,
+    };
+  }
   // Standalone callers retain their original deterministic output.
   const gust = commonGust === undefined ? fireNoise(seconds, 0.33, 7) : commonGust;
   const body = (
@@ -753,18 +769,6 @@ export function homeBlenderFireMotion({
       emission: 0.95 + flick * 0.045,
       // A candle or torch flame throws a light that wavers with it.
       light: 0.90 + body * 0.09 + drift * 0.07,
-    };
-  }
-  if (kind === 'ember') {
-    // Embers breathe slowly instead of flickering.
-    const glow = fireNoise(seconds, 1.6, seed + 601);
-    return {
-      scaleX: 1 + glow * 0.015,
-      scaleY: 1 + glow * 0.012,
-      scaleZ: 1 + glow * 0.015,
-      lean: 0,
-      emission: 0.93 + glow * 0.06 + flick * 0.02,
-      light: 0.97 + glow * 0.03,
     };
   }
 
