@@ -321,6 +321,10 @@ export function installPieceBodyMotion(group, type, { coarsePointer = false, red
     passiveCheckEvent: null,
     passiveCheckStartedAt: 0,
   };
+  // The destination is stable for most renders. Reuse its coordinates across
+  // animation frames; a reconciled/new square must invalidate this cache.
+  let cachedTargetSquare = '';
+  let cachedTargetPosition = null;
 
   function clearPromotionMorph() {
     let changed = false;
@@ -406,7 +410,11 @@ export function installPieceBodyMotion(group, type, { coarsePointer = false, red
       return;
     }
 
-    const target = squarePosition(targetSquare);
+    if (targetSquare !== cachedTargetSquare) {
+      cachedTargetSquare = targetSquare;
+      cachedTargetPosition = squarePosition(targetSquare);
+    }
+    const target = cachedTargetPosition;
     const dx = target.x - group.position.x;
     const dz = target.z - group.position.z;
     const remaining = Math.hypot(dx, dz);
