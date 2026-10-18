@@ -22,7 +22,9 @@ SHA_RE = re.compile(r'^[0-9a-f]{40}$')
 PROFILES = ('desktop-1440x900', 'touch-portrait-390x844', 'touch-landscape-844x390')
 HARNESS_FILES = (
     'e2e/war-room-gpu-benchmark.spec.js', 'e2e/playwright.config.js',
+    'e2e/helpers.js', 'e2e/war-room-board-input.js',
     'e2e/package.json', 'e2e/package-lock.json',
+    'scripts/e2e_dist_server.py',
 )
 COMPARE_PATH = 'scripts/compare_war_room_gpu.py'
 
@@ -193,6 +195,9 @@ def exercise_once(label, target, sha, renderer, env, destination, ordinal, total
 def self_test():
     assert execution_order(2) == ('A', 'B', 'B', 'A')
     assert execution_order(3) == ('A', 'B', 'B', 'A', 'A', 'B')
+    assert 'e2e/helpers.js' in HARNESS_FILES
+    assert 'e2e/war-room-board-input.js' in HARNESS_FILES
+    assert 'scripts/e2e_dist_server.py' in HARNESS_FILES
     for count in (0, 1, 9):
         try:
             execution_order(count)
