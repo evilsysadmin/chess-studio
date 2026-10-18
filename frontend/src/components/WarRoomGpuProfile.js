@@ -19,12 +19,20 @@ export function warRoomGpuProfileRequested({
 // polling, or GPU query in normal play. Values are updated only after a
 // completed asynchronous timer query, and a disjoint invalidates lastMs.
 export function createWarRoomGpuProfile(renderer, {
-  search = '',
-  storageFlag = '',
+  search = globalThis.location?.search || '',
+  storageFlag = null,
   softwareRenderer = false,
   sampleEvery = 8,
 } = {}) {
-  if (!warRoomGpuProfileRequested({ search, storageFlag })) return null;
+  let optInStorageFlag = storageFlag;
+  if (optInStorageFlag === null && !new URLSearchParams(search).has(WAR_ROOM_GPU_PROFILE_QUERY_KEY)) {
+    try {
+      optInStorageFlag = globalThis.localStorage?.getItem(WAR_ROOM_GPU_PROFILE_STORAGE_KEY);
+    } catch {
+      // StorageSecurityError must never prevent normal 3D play.
+    }
+  }
+  if (!warRoomGpuProfileRequested({ search, storageFlag: optInStorageFlag })) return null;
   const canvas = renderer?.domElement;
   if (!canvas?.dataset) return null;
 
