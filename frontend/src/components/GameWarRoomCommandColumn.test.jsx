@@ -75,6 +75,24 @@ describe('GameWarRoomCommandColumn', () => {
     expect(busyHtml).toContain('Pensando…');
   });
 
+  it('confirma visualmente la jugada optimista sin afirmar que el backend la aceptó', () => {
+    const game = { turn: 'w', humanColor: 'w', isGameOver: false };
+    for (const compactViewport of [false, true]) {
+      const render = (status) => renderToStaticMarkup(
+        <GameWarRoomCommandColumn game={game} status={status} board={{}} compactViewport={compactViewport} />,
+      );
+      const pending = render({ statusText: 'La CPU está pensando…', busy: true, pendingMove: true });
+      expect(pending).toContain('game-3d-turn-pill is-amber');
+      expect(pending).toContain('Confirmando jugada…');
+      expect(pending).not.toContain('>Pensando…</strong>');
+      expect(render({ statusText: 'La CPU está pensando…', busy: true, pendingMove: false })).toContain('Pensando…');
+      expect(render({ statusText: 'Tu turno', busy: false, pendingMove: false })).toContain('Tu turno');
+      const terminal = render({ statusText: 'Jaque mate', busy: true, pendingMove: true });
+      expect(terminal).toContain('Jaque mate');
+      expect(terminal).not.toContain('Confirmando jugada…');
+    }
+  });
+
   it('no muestra a Matthias pensando tras mate o caída de bandera aunque busy sea antiguo', () => {
     for (const { game, status, expected } of [
       {
