@@ -130,17 +130,18 @@ La precarga se permite sólo cuando hay intención razonable del usuario y no pe
 **Acceptance adicional para cambios de transición:** ejecutar el ciclo A → B → A al menos repetidamente con y sin cache; observar que la latencia no crece sesión tras sesión, que el primer toque funciona y que se liberan recursos al desmontar. Registrar el SHA, entorno, viewport, renderer y los números de antes/después. Cualquier optimización que mejore FPS pero empeore perceptiblemente intent-to-interactive requiere justificación explícita.
 
 
-## War Room V3 · benchmark local de cadencia sostenida (#5765)
+## War Room V3/V4 · benchmark local de cadencia sostenida (#5765)
 
 La prueba optativa `e2e/war-room-gpu-benchmark.spec.js` usa la **app y WebGL reales** con backend de juego simulado, sin alterar el renderer de producción. Queda **excluida de CI ordinaria**, porque GitHub hosted usa SwiftShader: el hardware debe comprobarse en el equipo que ejecuta el benchmark.
 
 Desde un checkout limpio de **cada SHA** a comparar (mismos assets R2, misma máquina, navegador, resolución y configuración):
 
 ```bash
-cd frontend && npm ci && npm run build && cd ..
+cd frontend && npm ci && VITE_WAR_ROOM_VARIANTS_ENABLE=1 npm run build && cd ..
 cd e2e && npm ci
 WAR_ROOM_GPU_BENCH=1 \
 WAR_ROOM_GPU_BENCH_RENDERER=hardware \
+WAR_ROOM_GPU_BENCH_VARIANT=v3 \
 WAR_ROOM_GPU_BENCH_SHA="$(git rev-parse HEAD)" \
 __NV_PRIME_RENDER_OFFLOAD=1 __GLX_VENDOR_LIBRARY_NAME=nvidia \
 ./node_modules/.bin/playwright test war-room-gpu-benchmark.spec.js \
@@ -149,7 +150,19 @@ __NV_PRIME_RENDER_OFFLOAD=1 __GLX_VENDOR_LIBRARY_NAME=nvidia \
 
 AMD/Intel Mesa: usar `DRI_PRIME=1` cuando corresponda en vez del offload NVIDIA. Para diagnóstico control de compatibilidad puede usarse `WAR_ROOM_GPU_BENCH_RENDERER=software`; **nunca** se mezclan sus métricas con las de hardware. Un renderer desconocido, SwiftShader inesperado o falta de WebGL real hace fallar la prueba.
 
-Cada SHA produce tres JSON en `.artifacts/war-room-gpu-benchmark/`: escritorio 1440×900, touch **emulado** vertical 390×844 y horizontal 844×390. En cada perfil abre primero la sala en una pestaña nueva (first visit) y después vuelve a entrar dentro del mismo contexto del navegador (return visit), con caché de navegador compartida; este etiquetado no demuestra por sí solo un HIT de red. Los dos recorridos montan una **War Room V3 real con GLB real**, registran identidad de renderer GPU, primera carga/contadores WebGL, memoria expuesta al ready, una muestra de 2,5 s de cadencia rAF inactiva y otra durante una jugada e2→e4 real con confirmación de la API simulada. Se cuentan pausas >33 ms y >50 ms y tareas largas cuando el navegador permite PerformanceObserver.
+Cada SHA produce tres JSON en `.artifacts/war-room-gpu-benchmark/`: escritorio 1440×900, touch **emulado** vertical 390×844 y horizontal 844×390. En cada perfil abre primero la sala en una pestaña nueva (first visit) y después vuelve a entrar dentro del mismo contexto del navegador (return visit), con caché de navegador compartida; este etiquetado no demuestra por sí solo un HIT de red. Los dos recorridos montan la **War Room V3 o V4 seleccionada con su GLB real**, registran identidad de renderer GPU, primera carga/contadores WebGL, memoria expuesta al ready, una muestra de 2,5 s de cadencia rAF inactiva y otra durante una jugada e2→e4 real con confirmación de la API simulada. Se cuentan pausas >33 ms y >50 ms y tareas largas cuando el navegador permite PerformanceObserver.
+
+
+Para V4, establecer `WAR_ROOM_GPU_BENCH_VARIANT=v4`. El runner aislado de A/B/B/A acepta `--variant v3|v4` (por defecto V3), conserva los mismos SHAs/harness y guarda la variante en el manifiesto de sesión y en los JSON individuales. Por ejemplo, tras elegir dos SHAs completos que contengan la variante V4:
+
+```bash
+python3 scripts/run_war_room_gpu_ab.py \\
+  --baseline-sha "<SHA_BASE_DE_40_CARACTERES>" \\
+  --candidate-sha "<SHA_NUEVO_DE_40_CARACTERES>" \\
+  --variant v4 --renderer hardware --offload nvidia --repetitions 2
+```
+
+El comparador **rechaza cohortes mezcladas V3/V4**, incluida una mezcla entre A y B. Los antiguos JSON schema 2 sin `variant` siguen interpretándose como V3. Una comparación V3 frente a V4 requiere un experimento diferente; el A/B de regresión solo compara una sala consigo misma. Igual que antes, rAF no es tiempo GPU; los datos GPU se publican únicamente con queries reales y procedencia verificada.
 
 **Semántica de métricas**: intervalos entre callbacks `requestAnimationFrame` = cadencia de oportunidades del navegador, **no** tiempos de GPU ni FPS exactos de los draws. `inputToConfirmationMs` incluye automatización de teclado, mutación y aserción de estado, no latencia exclusiva del dispositivo. `openToReadyWallMs` abarca login y navegación de prueba, no equivale a tiempo de descarga GLB. `snapshotMemory` son los contadores que la sala publica al ready, no consumo VRAM. `gpuFrameTimeMs: null` y `gpuTimerQueryMeasured: false` evitan atribuir números GPU no medidos.
 
@@ -246,7 +259,7 @@ El procedimiento manual que sigue es equivalente y queda disponible
 para investigaciones específicas.
 
 Desde la versión 2 del informe, cada invocación lleva un `runId` UUID único y escribe
-`SHA-renderer-perfil-runId.json`. No se pierden las muestras al repetir;
+`SHA-variante-renderer-perfil-runId.json` (los archivos anteriores no incluían variante). No se pierden las muestras al repetir;
 `capturedAtUtc` señala cuándo se capturó cada perfil. El comparador
 `scripts/compare_war_room_gpu.py` se comprueba con
 `python3 -S scripts/compare_war_room_gpu.py --self-test` (también en CI).
