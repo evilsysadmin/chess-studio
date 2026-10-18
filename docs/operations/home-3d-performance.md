@@ -116,6 +116,18 @@ make home-gpu-light-probe
 
 The default requests NVIDIA PRIME offload on Nobara **and requires the actual Chromium WebGL vendor to be NVIDIA**. PRIME environment variables alone are not proof of the GPU used. If Chrome still selects Intel, the test fails with the observed vendor: inspect `nvidia-smi`, `switcherooctl list` and local graphics offload before rerunning. To deliberately measure the native Intel/AMD GPU instead, use `make home-gpu-light-probe HOME_GPU_NVIDIA_PRIME=0` (optionally `HOME_GPU_EXPECT_VENDOR=intel` or `amd` to pin its identity). The native GPU is valid *hardware* but cannot be compared to NVIDIA results. For a GPU-only headless environment add `HOME_GPU_HEADLESS=1`.
 
+The measured Intel A/B/B/A report (`revision 6bf7b4f4`, `ambient=night`, `full` LOD, 1423×680 canvas) showed medians **28.04 ms** with all twelve lights, **15.15 ms** with all twelve auxiliaries excluded (12.89 ms, about 46% less GPU elapsed time), with **329 draw submissions and the same geometry** in each condition. These are observed GPU timer samples from **four short visits**, not a verified FPS increase or a safe production-lighting change. A repeat run and group-level isolation are needed before deciding what to keep, merge or approximate.
+
+To isolate one family without sacrificing the other lighting, choose:
+
+```bash
+# On native Intel (the renderer already observed in the report):
+make home-gpu-light-probe HOME_GPU_NVIDIA_PRIME=0 HOME_GPU_EXPECT_VENDOR=intel HOME_GPU_LIGHT_GROUP=board
+# Other options: wall (4), stairs (3), accent (3), all (12; default)
+```
+
+The experimental family names preserve existing glow sprites and all key/fireplace/environment lights. The four auxiliary groups are: `wall` = four wall-torch point lights; `board` = the chandelier point light plus narrow board spotlight; `stairs` = three stair-railing lanterns; `accent` = dungeon pit, desk and reading lights. Each mode disables **exactly** its intended group and fails closed if the authored light count changes. Each group gets its own report `.artifacts/home-gpu-benchmark/home-3d-light-probe-<family>-hardware.json`; default `all` retains the original filename. Do not sum group-level savings: GPU cost and shader specialization are nonlinear, and disabling real lights intentionally changes the picture. Use the results to choose a **smaller visually validated production change** later.
+
 Both A and B URLs are explicitly marked as the physical **lighting trial**, and only during this trial the Home's adaptive governor is suspended to retain the initial full-LOD scene. This is necessary because a slow GPU may otherwise degrade only some of the four visits to lite and make the shader-light comparison meaningless. **The normal Home and ordinary `?homeGpuProfile=1` retain their original adaptive behavior**; hardware A/B may feel slower than regular gameplay. The benchmark asserts every sampled frame is full-LOD and has the same actor state and shadows.
 
 If `127.0.0.1:4173` is occupied, the benchmark **fails** rather than sampling a stale build. Stop the old e2e/dev server first. Software/unknown renderers and absent hardware GPU timer results also fail closed.
