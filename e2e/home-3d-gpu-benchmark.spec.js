@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { mockApi } from './helpers.js';
 import { homeBlenderDistinctGpuSamplesMs } from '../frontend/src/components/HomeBlenderPerformanceDiagnostics.js';
-import { summarizeHomeGpuLightContrast } from '../frontend/src/components/HomeBlenderGpuLightContrast.js';
+import { summarizeHomeGpuLightContrast } from './home-blender-gpu-light-contrast.mjs';
 
 // Explicit, local-only hardware diagnostic. CI excludes this file from its
 // standard Playwright matrix; no identity, passwords or raw GPU names are logged.
