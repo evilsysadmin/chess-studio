@@ -301,6 +301,7 @@ def _e2e_producer(name: str) -> set[str] | None:
         "war-room-pvp.spec.js": {"pvp-duel"},
         "pvp-background-roster.spec.js": {"pvp-duel"},
         "mobile-golden-path-war-room-invariants.spec.js": {"warroom-core"},
+        "three-d-war-room.spec.js": {"warroom-core"},
         "war-room-visual-artifact.spec.js": {"warroom-core"},
         "war-room-entry-latency-visual.spec.js": {"warroom-core"},
         "war-room-decor-visual-artifact.spec.js": {"warroom-decor"},
@@ -472,6 +473,8 @@ def classify_path(path: str) -> set[str] | None:
         return set(QUICK_MATCH_EXACT_PRODUCERS[lower])
     if lower == "frontend/src/components/shareresultmodal.jsx":
         return {"warroom-core"}
+    if lower == "frontend/src/components/warroomselectionannouncement.js":
+        return {"warroom-core"},
     if lower == "frontend/src/components/profilebackupmodal.jsx":
         return {"home-base"}
     if lower == "frontend/src/components/homemobilegoldenpath.css":
