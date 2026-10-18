@@ -67,20 +67,25 @@ V4_HANS_LEFT_ARMOR_Y = -0.75
 # the fire mouth: the board dais covers the floor in front of its right half.
 V4_HANS_ANCHOR_PREFIX = "WR_ANCHOR_hans_"
 V4_HANS_ANCHORS = (
-    ("WR_ANCHOR_hans_hearth", (-6.75, 4.00, 0.0)),
+    ("WR_ANCHOR_hans_hearth", (-6.28, 3.05, 0.0)),
     ("WR_ANCHOR_hans_door", (-7.82, 1.23, 0.0)),
-    ("WR_ANCHOR_hans_basket", (-6.95, 3.55, 0.0)),
-    ("WR_ANCHOR_hans_tools", (-6.35, 3.42, 0.0)),
-    ("WR_ANCHOR_hans_corridor_0", (-7.35, 1.95, 0.0)),
-    ("WR_ANCHOR_hans_corridor_1", (-7.20, 2.65, 0.0)),
-    ("WR_ANCHOR_hans_corridor_2", (-7.03, 3.08, 0.0)),
+    ("WR_ANCHOR_hans_basket", (-6.42, 2.26, 0.0)),
+    ("WR_ANCHOR_hans_tools", (-6.25, 2.23, 0.0)),
+    ("WR_ANCHOR_hans_corridor_0", (-7.20, 1.23, 0.0)),
+    ("WR_ANCHOR_hans_corridor_1", (-6.52, 1.25, 0.0)),
+    ("WR_ANCHOR_hans_corridor_2", (-6.40, 1.82, 0.0)),
 )
 
 # The old fireplace overlapped the live 11.3 m board plinth by >1 m and
 # left no adult-width passage. Preserve its ivory identity, but author it as a
 # compact wall hearth entirely west of the board, with a usable front apron.
-V4_HANS_HEARTH_CENTER = (-6.75, 4.40)
-V4_HANS_HEARTH_XY_SCALE = (0.64, 0.70)
+V4_HANS_HEARTH_CENTER = (-7.12, 3.08)
+V4_HANS_HEARTH_XY_SCALE = (0.72, 0.55)
+# Tangent to the observatory's curved western wall; front faces INTO the room.
+# The former unrotated mantel was almost embedded in the circular wall.
+V4_HANS_HEARTH_YAW_DEG = 62.0
+# Move the right armour away from the club chair, rug and side table.
+V4_RIGHT_ARMOR_POSITION = (7.45, -1.20)
 V4_HANS_BODY_CLEARANCE_RADIUS = 0.56  # shoulders plus walking allowance
 
 V4_WEATHER_MATERIALS = frozenset({
@@ -760,19 +765,23 @@ def build_white_fireplace(static, palette):
                (1.0, 0.27, 0.045), static, radius=2.05)
     base.anchor("WR_ANCHOR_fireplace_practical", (x, y - 0.82, 1.65), static)
 
-    # Apply the same affine plan-view transform to every authored hearth part:
-    # masonry, logs, flames, preview light AND runtime practical anchor.
-    # The chess board and door do not move; V1–V3 have no involvement.
+    # The ivory fireplace is built into the CURVED western wall. Rotate its
+    # entire masonry/log/fire/light/anchor collection along the wall tangent,
+    # not merely its render mesh. This also seats the mouth towards Hans' aisle.
     target_x, target_y = V4_HANS_HEARTH_CENTER
     scale_x, scale_y = V4_HANS_HEARTH_XY_SCALE
+    yaw = math.radians(V4_HANS_HEARTH_YAW_DEG)
+    c, sn = math.cos(yaw), math.sin(yaw)
     for obj in static.objects:
         if obj.name in existing_names:
             continue
-        obj.location.x = target_x + (obj.location.x - x) * scale_x
-        obj.location.y = target_y + (obj.location.y - y) * scale_y
+        dx, dy = (obj.location.x - x) * scale_x, (obj.location.y - y) * scale_y
+        obj.location.x = target_x + dx * c - dy * sn
+        obj.location.y = target_y + dx * sn + dy * c
         if obj.type == "MESH":
             obj.scale.x *= scale_x
             obj.scale.y *= scale_y
+            obj.rotation_euler.z += yaw
 
 
 def build_oculus_desk(static, palette):
@@ -827,7 +836,7 @@ def build_library_wall(static, palette):
 def build_armor_pair(static, palette):
     """Two restrained ceremonial suits framing the room without stealing board focus."""
     for side in (-1, 1):
-        x, y = side * 6.55, (V4_HANS_LEFT_ARMOR_Y if side < 0 else 2.85)
+        x, y = ((-6.55, V4_HANS_LEFT_ARMOR_Y) if side < 0 else V4_RIGHT_ARMOR_POSITION)
         base.cylinder(f"WR4_OBS_armor_base_{side}", (x, y, 0.22), 0.48, 0.16,
                       palette["walnut_dark"], static, vertices=36)
         base.cube(f"WR4_OBS_armor_torso_{side}", (x, y, 1.32), (0.38, 0.25, 0.44),
@@ -1365,7 +1374,7 @@ def validate_v4_hans_stage():
     anchors = dict(V4_HANS_ANCHORS)
     # Every walk anchor stays off the board dais and clear of the armour bases.
     dais = V4_PLINTH_HALF + 0.20
-    armors = ((-6.55, V4_HANS_LEFT_ARMOR_Y), (6.55, 2.85))
+    armors = ((-6.55, V4_HANS_LEFT_ARMOR_Y), V4_RIGHT_ARMOR_POSITION)
     for name, (x, y, _z) in V4_HANS_ANCHORS:
         if name == "WR_ANCHOR_hans_hearth":
             continue
