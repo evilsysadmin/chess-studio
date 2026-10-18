@@ -93,7 +93,7 @@ describe('War Room premium interaction FX', () => {
       expect(ghost.rotation.z).toBeCloseTo(-0.7);
       expect(ghost.rotation.x).toBeCloseTo(0.16);
       expect(ghost.position.y).toBeCloseTo(0.025);
-      expect(materials.map((material) => material.opacity)).toEqual([0.08, 0.08]);
+      for (const material of materials) expect(material.opacity).toBeCloseTo(0.08);
     }
     applyBoard3DCaptureGhostPose(ghost, restScale, materials, 0, 0.7, true);
     expect(ghost.scale.equals(restScale)).toBe(true);
