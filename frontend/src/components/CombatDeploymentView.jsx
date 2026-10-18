@@ -3,11 +3,12 @@ import './CombatDeploymentRoute.css';
 import './CombatDeploymentWarTable.css';
 import { CombatDeploymentPresetDrawer, CombatDeploymentWarTableHeader } from './CombatDeploymentWarTableChrome.jsx';
 import { CombatDeploymentFooter, CombatDeploymentGuidance } from './CombatDeploymentDecisionChrome.jsx';
+import CombatCasualtiesPanel from './CombatCasualtiesPanel.jsx';
 import { createPortal } from 'react-dom';
 import Board2D from './Board2D.jsx';
 import { pieceRankForLevel } from '../combatRanks.js';
 import RankInsignia from './RankInsignia.jsx';
-import { costForNextPoint, reviveCost, SPEED_POINT_VALUE, STRENGTH_POINT_VALUE, statsFor } from '../combat.js';
+import { costForNextPoint, SPEED_POINT_VALUE, STRENGTH_POINT_VALUE, statsFor } from '../combat.js';
 import { unlockedDeploymentTypes } from '../combatMetamorphosis.js';
 import { unitDecorations, unitRecordForKey } from '../combatUnitService.js';
 import { techniqueById, unlockedTechniquesFor } from '../combatTechniques.js';
@@ -685,76 +686,14 @@ export default function CombatDeploymentView({
               <small>{summary.fallenCount > 0 ? `${summary.fallenCount} caídas pendientes` : 'Fuera de la formación'}</small>
             </div>
             {summary.fallenCount > 0 && (
-              <section ref={casualtiesRef} className="deployment-casualties" aria-label="Bajas pendientes">
-                <div className="deployment-casualties-heading">
-                  <div><span>BAJAS PENDIENTES</span><b>{summary.fallenCount}</b></div>
-                  <div className="deployment-casualties-xp" title="Créditos disponibles para recuperar veteranos caídos">
-                    <small>CRÉDITOS</small><strong>{Number(roster.credits || 0)}</strong>
-                  </div>
-                </div>
-                <p>Decide a quién recuperar. El saldo se comparte con contratos y equipo.</p>
-                <div className="deployment-casualty-list">
-                  {summary.fallenKeys.map((unitKey) => {
-                    const origin = originTypeForRosterKey(unitKey);
-                    const saved = roster.pieces?.[unitKey] || {};
-                    const alias = roster.identities?.[unitKey]?.alias || 'Sin alias';
-                    const level = levelForSaved(saved);
-                    const progress = Math.max(0, Number(saved.strengthPoints) || 0) + Math.max(0, Number(saved.speedPoints) || 0);
-                    const cost = reviveCost(origin);
-                    const canRevive = progress > 0 && Number(roster.credits || 0) >= cost;
-                    const reviveTitle = progress <= 0
-                      ? 'Recluta de nivel 1: no tiene progreso que recuperar.'
-                      : canRevive
-                        ? `Revivir conserva la identidad y devuelve la mitad del progreso · ${cost} créditos.`
-                        : `Necesitas ${cost} créditos para revivir esta unidad.`;
-                    const dossierVisible = dossierUnitKey === unitKey;
-                    return (
-                      <div className={`deployment-casualty-card ${selectedUnitKey === unitKey ? 'selected' : ''}`} key={unitKey}>
-                        <span className="deployment-casualty-symbol" aria-hidden="true">{TYPE_SYMBOL[origin] || '♙'}</span>
-                        <div className="deployment-casualty-copy">
-                          <button
-                            type="button"
-                            className="deployment-casualty-name"
-                            onMouseEnter={(event) => previewUnitDossier(unitKey, event)}
-                            onMouseLeave={hideUnitDossierPreview}
-                            onFocus={(event) => previewUnitDossier(unitKey, event, true)}
-                            onBlur={hideUnitDossierPreview}
-                            onClick={(event) => pinUnitDossier(unitKey, event)}
-                            data-unit-dossier-trigger="true"
-                            aria-label={`Ver ficha de unidad de ${alias}`}
-                            aria-haspopup="dialog"
-                            aria-expanded={dossierVisible}
-                            aria-controls={dossierVisible ? 'deployment-unit-dossier-popover' : undefined}
-                            title="Pasa el cursor para ver la ficha · clic para fijarla antes de decidir si revivir"
-                          >
-                            <span>{alias}</span><span className="deployment-casualty-name-cue" aria-hidden="true">ⓘ</span>
-                          </button>
-                          <small>{TYPE_NAME[origin]} · {pieceRankForLevel(level).label} · nv.{level}</small>
-                        </div>
-                        <div className="deployment-casualty-actions">
-                          <button type="button" className="secondary-btn" disabled={!canRevive} title={reviveTitle} onClick={() => { onRevive?.(unitKey, origin); setSelectedUnitKey(unitKey); closeUnitDossier(); }}>
-                            Revivir · {cost} cr
-                          </button>
-                          <button type="button" className="secondary-btn danger-soft" title="La identidad actual pasa al Memorial. El recluta nuevo sólo cubre el hueco si no hay otra reserva compatible." onClick={() => { onReplaceFallen?.(unitKey); setSelectedUnitKey(unitKey); closeUnitDossier(); }}>
-                            Nuevo recluta
-                          </button>
-                          {!canRevive && progress > 0 && (
-                            <small className="deployment-revive-shortfall">Faltan {Math.max(0, cost - Number(roster.credits || 0))} créditos para recuperar esta unidad.</small>
-                          )}
-                          {progress <= 0 && (
-                            <small className="deployment-revive-shortfall neutral">Sin progreso invertido que recuperar: el reemplazo no pierde veteranía.</small>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-                {summary.fallenCount > 1 && (
-                  <button type="button" className="secondary-btn deployment-replace-all" title="Los nuevos sólo cubren huecos sin otra reserva compatible." onClick={() => summary.fallenKeys.forEach((unitKey) => onReplaceFallen?.(unitKey))}>
-                    Aceptar {summary.fallenCount} reclutas nuevos
-                  </button>
-                )}
-              </section>
+              <CombatCasualtiesPanel
+                sectionRef={casualtiesRef} roster={roster} fallenKeys={summary.fallenKeys}
+                selectedUnitKey={selectedUnitKey} activeDossierKey={dossierUnitKey}
+                onPreviewDossier={previewUnitDossier} onHideDossier={hideUnitDossierPreview}
+                onPinDossier={pinUnitDossier} onRevive={onRevive}
+                onReplace={onReplaceFallen}
+                onAfterDecision={() => { setSelectedUnitKey(null); closeUnitDossier(); }}
+              />
             )}
 
             <CombatDeploymentPresetDrawer presets={presets} onLoad={loadPreset} onSave={savePreset} />

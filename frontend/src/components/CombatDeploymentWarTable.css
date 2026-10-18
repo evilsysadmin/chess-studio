@@ -654,3 +654,74 @@
   .combat-war-table .deployment-mobile-autofill { padding-inline: .28rem; font-size: .6rem; }
   .combat-war-table .deployment-footer-copy { font-size: .58rem; }
 }
+/* Consequential decisions should be legible, without accidentally replacing veterans. */
+.combat-war-table .deployment-barracks:has(.deployment-casualties) .deployment-casualties {
+  max-height: min(57dvh, 520px);
+  border-color: rgba(215, 115, 95, .48);
+  overscroll-behavior: contain;
+}
+.combat-war-table .deployment-casualties-warning {
+  color: #f1c3ae;
+  font-size: .68rem;
+  line-height: 1.45;
+}
+.combat-war-table .deployment-casualty-card {
+  grid-template-columns: 28px minmax(0, 1fr);
+  gap: .35rem .45rem;
+  padding: .57rem;
+  background: rgba(7, 10, 14, .67);
+}
+.combat-war-table .deployment-casualty-name { min-height: 44px; white-space: normal; }
+.combat-war-table .deployment-casualty-symbol { font-size: 1.7rem; }
+.combat-war-table .deployment-casualty-record {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: .25rem;
+}
+.combat-war-table .deployment-casualty-record span {
+  padding: .23rem .32rem;
+  border: 1px solid rgba(212, 180, 110, .20);
+  border-radius: 5px;
+  color: #ead3ab;
+  font: .61rem/1.45 var(--font-mono);
+}
+.combat-war-table .deployment-casualty-record .deployment-casualty-honours { color: #f7d683; }
+.combat-war-table .deployment-casualty-outcomes {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: .32rem;
+}
+.combat-war-table .deployment-casualty-path {
+  display: grid;
+  gap: .18rem;
+  padding: .48rem;
+  border: 1px solid rgba(210, 181, 111, .25);
+  border-radius: 8px;
+  background: rgba(23, 56, 34, .17);
+}
+.combat-war-table .deployment-casualty-path.retire {
+  border-color: rgba(205, 97, 85, .28);
+  background: rgba(85, 27, 24, .16);
+}
+.combat-war-table .deployment-casualty-path b { font: .61rem var(--font-mono); color: #dfc994; letter-spacing: .07em; }
+.combat-war-table .deployment-casualty-path span { font-size: .75rem; font-weight: 700; }
+.combat-war-table .deployment-casualty-path small { font-size: .66rem; line-height: 1.45; color: rgba(232, 220, 195, .76); }
+.combat-war-table .deployment-casualty-actions .secondary-btn,
+.combat-war-table .deployment-casualty-confirm button { min-height: 44px; font-size: .67rem; }
+.combat-war-table .deployment-casualty-confirm {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: .45rem;
+  padding: .62rem;
+  border: 1px solid rgba(227, 113, 95, .65);
+  border-radius: 8px;
+  background: rgba(83, 23, 22, .55);
+}
+.combat-war-table .deployment-casualty-confirm strong { color: #ffe3d2; font-size: .77rem; }
+.combat-war-table .deployment-casualty-confirm p { margin: 0; font-size: .69rem; line-height: 1.45; }
+.combat-war-table .deployment-casualty-confirm > div { display: grid; gap: .38rem; }
+@media (max-width: 780px) {
+  .combat-war-table .combat-deployment-layout:has(.deployment-casualties) .deployment-barracks { order: 0; }
+  .combat-war-table .deployment-barracks:has(.deployment-casualties) .deployment-casualties { max-height: min(63dvh, 510px); }
+}
