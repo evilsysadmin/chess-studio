@@ -22,6 +22,7 @@ export default function WarRoomHansMopDialogue({
   gameId = '',
   isThreeD = false,
   enabled = false,
+  quiet = false,
   matthiasAnchorStyle = null,
   matthiasTrackedSquare = null,
 }) {
@@ -97,7 +98,7 @@ export default function WarRoomHansMopDialogue({
     '--warroom-fire-call-tail-x': '50%',
   } : null, [matthiasAnchorStyle]);
 
-  if (!isThreeD || !enabled || !gameId || !portalHost || !phase) return null;
+  if (!isThreeD || !enabled || !gameId || !portalHost || !phase || quiet) return null;
 
   return createPortal(
     <div className="warroom-hans-fire-call-overlay" data-testid="warroom-hans-mop-dialogue" data-mop-dialogue-phase={phase}>

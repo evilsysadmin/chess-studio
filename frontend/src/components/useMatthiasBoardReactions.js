@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { speakCpuComment } from '../voiceCommentary.js';
+import { shouldShowNewLiveBoardRemark } from './warRoomLiveNarrative.js';
 import {
   matthiasAngerState,
   matthiasCaptureReaction,
@@ -29,8 +30,11 @@ export default function useMatthiasBoardReactions({
   gameContextMessages,
 }) {
   const [captureReaction, setCaptureReaction] = useState(null);
+  const [liveBoardBubble, setLiveBoardBubble] = useState(null);
   const [portraitReaction, setPortraitReaction] = useState({ key: '', type: 'none' });
   const captureReactionTimeoutRef = useRef(null);
+  const liveBubbleTimeoutRef = useRef(null);
+  const liveBubbleTrackingRef = useRef({ gameId: null, seenKey: '' });
   const captureTrackingRef = useRef({ gameId: null, seenId: null, lastReaction: null });
   const portraitTrackingRef = useRef({ gameId: null, humanId: null, cpuId: null });
   const matthiasAnger = useMemo(
@@ -43,6 +47,14 @@ export default function useMatthiasBoardReactions({
   const latestBoardBubble = [...(gameChat || [])]
     .reverse()
     .find((message) => message?.by === 'cpu' && message?.text && BOARD_BUBBLE_EVENTS.has(message?.event));
+
+  const boardBubbleKey = latestBoardBubble
+    ? String(latestBoardBubble.id || `${latestBoardBubble.event}:${latestBoardBubble.ply}:${latestBoardBubble.text}`)
+    : '';
+  if (liveBubbleTrackingRef.current.gameId !== game.id) {
+    // Hydrated history is not a new live remark after F5, renderer remount or login.
+    liveBubbleTrackingRef.current = { gameId: game.id, seenKey: boardBubbleKey };
+  }
 
   if (captureTrackingRef.current.gameId !== game.id) {
     captureTrackingRef.current = {
@@ -61,7 +73,7 @@ export default function useMatthiasBoardReactions({
   }
 
   const activeMatthiasMessage = captureReaction || latestMatthiasMessage;
-  const activeBoardBubble = captureReaction || latestBoardBubble;
+  const activeBoardBubble = captureReaction || liveBoardBubble;
   const activeMatthiasKey = activeMatthiasMessage?.id || activeMatthiasMessage?.text || '';
 
   useEffect(() => {
@@ -69,8 +81,25 @@ export default function useMatthiasBoardReactions({
       window.clearTimeout(captureReactionTimeoutRef.current);
     }
     setCaptureReaction(null);
+    if (liveBubbleTimeoutRef.current) window.clearTimeout(liveBubbleTimeoutRef.current);
+    setLiveBoardBubble(null);
     setPortraitReaction({ key: '', type: 'none' });
   }, [game.id]);
+
+  useEffect(() => {
+    if (!shouldShowNewLiveBoardRemark({
+      gameId: game.id,
+      trackedGameId: liveBubbleTrackingRef.current.gameId,
+      currentKey: boardBubbleKey,
+      seenKey: liveBubbleTrackingRef.current.seenKey,
+    })) return undefined;
+    liveBubbleTrackingRef.current.seenKey = boardBubbleKey;
+    if (zenMode) return undefined;
+    setLiveBoardBubble(latestBoardBubble);
+    if (liveBubbleTimeoutRef.current) window.clearTimeout(liveBubbleTimeoutRef.current);
+    liveBubbleTimeoutRef.current = window.setTimeout(() => setLiveBoardBubble(null), 4200);
+    return undefined;
+  }, [game.id, boardBubbleKey, zenMode]);
 
   useEffect(() => {
     const tracking = portraitTrackingRef.current;
@@ -151,6 +180,7 @@ export default function useMatthiasBoardReactions({
   ]);
 
   useEffect(() => () => {
+    if (liveBubbleTimeoutRef.current && typeof window !== 'undefined') window.clearTimeout(liveBubbleTimeoutRef.current);
     if (captureReactionTimeoutRef.current && typeof window !== 'undefined') {
       window.clearTimeout(captureReactionTimeoutRef.current);
     }

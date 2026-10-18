@@ -40,6 +40,7 @@ export default function WarRoomHansFireCall({
   fen = '',
   isThreeD = false,
   enabled = false,
+  quiet = false,
   matthiasAnchorStyle = null,
   matthiasTrackedSquare = null,
   onComplete = null,
@@ -311,7 +312,7 @@ export default function WarRoomHansFireCall({
     '--warroom-fire-call-tail-x': '50%',
   } : null, [matthiasAnchorStyle]);
 
-  if (!isThreeD || !portalHost || !enabled) return null;
+  if (!isThreeD || !portalHost || !enabled || quiet) return null;
 
   return createPortal(
     <div
