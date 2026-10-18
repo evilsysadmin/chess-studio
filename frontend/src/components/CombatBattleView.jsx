@@ -180,7 +180,7 @@ export default function CombatBattleView({
       </div>
 
       {phase === 'over' && onOpenDebrief && (
-        <section className="combat-mate-reveal" aria-label="Resultado de la batalla" role="status">
+        <section className="combat-mate-reveal" aria-label="Resultado de la batalla" role="region" aria-live="polite">
           <span className="combat-mate-kicker">COMBAT CHESS · FIN DEL ENCUENTRO</span>
           <h2>{status === 'checkmate' ? 'JAQUE MATE' : statusLabel?.toUpperCase() || 'FIN DEL COMBATE'}</h2>
           <p>{battleRecap?.debrief?.outcome === 'win'
