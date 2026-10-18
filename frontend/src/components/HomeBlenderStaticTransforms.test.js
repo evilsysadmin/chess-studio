@@ -32,6 +32,10 @@ describe('Home Blender stationary GLB transform optimization', () => {
     const updates = vi.spyOn(stone, 'updateMatrix');
 
     expect(freezeHomeBlenderStaticTransforms(root, [flame, cat])).toBe(3); // root, hall, stone
+    // The one-time local matrix priming is intentional; after it, the room
+    // must not call updateMatrix again during animated draws.
+    expect(updates).toHaveBeenCalledTimes(1);
+    updates.mockClear();
     expect(freezeHomeBlenderStaticTransforms(root, [flame, cat])).toBe(0);
     expect(root.matrixAutoUpdate).toBe(false);
     expect(hall.matrixAutoUpdate).toBe(false);
