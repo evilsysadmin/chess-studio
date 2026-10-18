@@ -411,6 +411,28 @@ async function captureViewportPng(page, path) {
   }
 
   try {
+    if (process.env.APP_VISUAL_EXPECTED_WAR_ROOM_V4_REVISION) {
+      // SwiftShader can return a black WebGL drawing buffer even after a real
+      // GLB render and a green scene-readiness check. A technically valid
+      // screenshot of a black board is NOT visual evidence for a Blender PR.
+      const litShare = await page.evaluate(() => {
+        const image = document.querySelector('img[data-war-room-webgl-capture]');
+        if (!image) return 0;
+        const sample = document.createElement('canvas');
+        sample.width = 32;
+        sample.height = 24;
+        const ctx = sample.getContext('2d', { willReadFrequently: true });
+        ctx.drawImage(image, 0, 0, sample.width, sample.height);
+        const data = ctx.getImageData(0, 0, sample.width, sample.height).data;
+        let lit = 0;
+        for (let i = 0; i < data.length; i += 4) {
+          if (data[i] + data[i + 1] + data[i + 2] > 120) lit += 1;
+        }
+        return lit / (sample.width * sample.height);
+      });
+      expect(litShare, 'blank WebGL capture: actual V4 board is not visible').toBeGreaterThan(0.12);
+    }
+
     const viewport = page.viewportSize();
     if (!viewport) throw new Error('War Room visual capture requires a fixed viewport');
     const png = await page.screenshot({
@@ -844,15 +866,27 @@ async function assertAndCaptureProfile(page, profile, board3d) {
     ).toBeHidden();
   }
 
-  await freezeVisualFrame(page);
-  try {
-    await captureViewportPng(
-      page,
-      `${ARTIFACT_DIR}/${profile.label}.png`,
-    );
-  } finally {
-    await thawVisualFrame(page);
+  let captureError = null;
+  const maxAttempts = process.env.APP_VISUAL_EXPECTED_WAR_ROOM_V4_REVISION ? 3 : 1;
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    await freezeVisualFrame(page);
+    try {
+      await captureViewportPng(page, `${ARTIFACT_DIR}/${profile.label}.png`);
+      captureError = null;
+      break;
+    } catch (error) {
+      if (!String(error?.message || '').includes('blank WebGL capture')) throw error;
+      captureError = error;
+      console.warn(`V4 WebGL black frame ${attempt}/${maxAttempts}: retrying live render`);
+    } finally {
+      await thawVisualFrame(page);
+    }
+    if (attempt < maxAttempts) {
+      await page.waitForTimeout(850);
+      await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(resolve)));
+    }
   }
+  if (captureError) throw captureError;
 }
 
 function registerIndependentCaptureProfile(profile) {
