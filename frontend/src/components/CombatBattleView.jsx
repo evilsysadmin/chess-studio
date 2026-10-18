@@ -18,7 +18,7 @@ import { checkedKingSquare } from '../boardState.js';
 const BOSS_SPRITES = { iron: ironKing, nomad: nomadKing, shadow: shadowKing };
 
 export default function CombatBattleView({
-  onExit, onViewBattle, phase, localChess, status, statusLabel, statusClass, statusText,
+  onExit, onViewBattle, onOpenDebrief, phase, localChess, status, statusLabel, statusClass, statusText,
   fen, selected, handleSquareClick, handleSquareDoubleClick, legalTargets, pendingAnim,
   pieceLevels, pieceXp, pieceVeteranMarks, humanColor, busy, backToSetup, armySummary, log, battleRecap, registry, roster,
   pendingPromotion, choosePromotion, pendingAttack, confirmAttack, cancelAttack, infoPiece, infoUnitRecord,
@@ -179,7 +179,22 @@ export default function CombatBattleView({
         </div>
       </div>
 
-      {phase === 'over' && (
+      {phase === 'over' && onOpenDebrief && (
+        <section className="combat-mate-reveal" aria-label="Resultado de la batalla" role="status">
+          <span className="combat-mate-kicker">COMBAT CHESS · FIN DEL ENCUENTRO</span>
+          <h2>{status === 'checkmate' ? 'JAQUE MATE' : statusLabel?.toUpperCase() || 'FIN DEL COMBATE'}</h2>
+          <p>{battleRecap?.debrief?.outcome === 'win'
+            ? 'Victoria. El campo es tuyo.'
+            : localChess.turn() === humanColor ? 'El rival ha vencido.' : 'La batalla ha terminado.'}</p>
+          {battleRecap?.debrief?.outcome === 'win' && (
+            <span className="combat-mate-aftermath">{battleRecap.creditsGained > 0 ? `+${battleRecap.creditsGained} créditos obtenidos · ` : ''}El desenlace ya se ha guardado.</span>
+          )}
+          <button type="button" className="primary-btn combat-mate-next" onClick={onOpenDebrief}>
+            Ver debriefing →
+          </button>
+        </section>
+      )}
+      {phase === 'over' && !onOpenDebrief && (
         <div className="endgame-banner combat-warroom-debrief">
           <h2>{statusLabel}</h2>
           <p>
