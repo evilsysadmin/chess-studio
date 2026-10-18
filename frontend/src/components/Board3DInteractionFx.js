@@ -42,11 +42,29 @@ export function board3DHighlightPulse({ kind, nowMs = 0, reducedMotion = false, 
 export function board3DPieceInteractionPose({ selected = false, hovered = false, coarsePointer = false } = {}) {
   if (selected) {
     return coarsePointer
-      ? { yOffset: 0.016, scaleFactor: 1.012 }
-      : { yOffset: 0.026, scaleFactor: 1.018 };
+      ? { yOffset: 0.026, scaleFactor: 1.019 }
+      : { yOffset: 0.032, scaleFactor: 1.022 };
   }
   if (hovered && !coarsePointer) return { yOffset: 0.014, scaleFactor: 1.009 };
   return { yOffset: 0, scaleFactor: 1 };
+}
+
+// Derived from a single animation progress value, never multiplied onto the
+// previous frame's scale: capture weight must look the same at every FPS.
+export function board3DCapturedGhostScale(impact = 0, coarsePointer = false) {
+  return 1 - clamp01(impact) * (coarsePointer ? 0.11 : 0.15);
+}
+
+// Presentation-only transformation: use the resting scale each frame, not
+// last frame's mutated scale. Keeps tilt, compression and fade in one module.
+export function applyBoard3DCaptureGhostPose(ghost, restScale, materials, impact, tilt, coarsePointer = false) {
+  const progress = clamp01(impact);
+  ghost.rotation.z = tilt * progress;
+  ghost.rotation.x = progress * 0.16;
+  ghost.position.y = 0.1 - progress * 0.075;
+  ghost.scale.copy(restScale).multiplyScalar(board3DCapturedGhostScale(progress, coarsePointer));
+  const opacity = 1 - progress * 0.92;
+  for (const material of materials) material.opacity = opacity;
 }
 
 export function board3DCaptureWarmBoostValue(progress = 0, coarsePointer = false) {

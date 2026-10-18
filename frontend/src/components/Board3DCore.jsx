@@ -20,7 +20,7 @@ import { applyWarRoomLightDiagnostics } from './WarRoomDomDiagnostics.js';
 import { createWarRoomHansScreenProbe } from './WarRoomHansScreenProbe.js';
 import { resolveBoardTap, selectBoardSquareOnTouch } from './WarRoom3DTouch.js';
 import { BOARD3D_HIGHLIGHT_SIZE, BOARD3D_HIGHLIGHT_Y, board3DHighlightStyle } from './Board3DHighlights.js';
-import { board3DCaptureWarmBoostValue, board3DPieceInteractionPose, writeBoard3DHighlightPulse } from './Board3DInteractionFx.js';
+import { applyBoard3DCaptureGhostPose, board3DCaptureWarmBoostValue, board3DPieceInteractionPose, writeBoard3DHighlightPulse } from './Board3DInteractionFx.js';
 import { BOARD_THEME_3D, FILES, resolveBoard3DThemeId } from './Board3DConfig.js';
 import { adjacentSquare, parseFen, squarePosition } from './Board3DBoardMath.js';
 import { buildBoard3DTileInstances } from './Board3DTileInstances.js';
@@ -716,6 +716,7 @@ function Board3DCanvas({
     const baseScale = animatedMesh.scale.clone();
     const baseLights = reactiveLightProfile({ check: Boolean(checkSquare), gameOver, coarsePointer: state.coarsePointer, variant: latestPropsRef.current.warRoomVariant });
     let capturedGhost = null;
+    let capturedGhostRestScale = null;
     let capturedGhostMaterials = null;
     let castleRook = null;
     let castleFrom = null;
@@ -728,6 +729,7 @@ function Board3DCanvas({
       });
       const capturedPosition = squarePosition(capturedPiece.square);
       capturedGhost.position.set(capturedPosition.x, 0.1, capturedPosition.z);
+      capturedGhostRestScale = capturedGhost.scale.clone();
       capturedGhost.userData.captureGhost = true;
       capturedGhostMaterials = [];
       capturedGhost.traverse((object) => {
@@ -769,12 +771,7 @@ function Board3DCanvas({
       if (animate.capture && capturedGhost) {
         const impact = smoothstep(kinetics.impactStart, 0.9, raw);
         const side = orientation === 'black' ? -1 : 1;
-        capturedGhost.rotation.z = side * kinetics.captureTilt * impact;
-        capturedGhost.rotation.x = impact * 0.16;
-        capturedGhost.position.y = 0.1 - impact * 0.075;
-        capturedGhost.scale.multiplyScalar(1 - impact * 0.0016);
-        const ghostOpacity = 1 - impact * 0.92;
-        for (const material of capturedGhostMaterials) material.opacity = ghostOpacity;
+        applyBoard3DCaptureGhostPose(capturedGhost, capturedGhostRestScale, capturedGhostMaterials, impact, side * kinetics.captureTilt, state.coarsePointer);
         animatedMesh.rotation.z = Math.sin(impact * Math.PI) * 0.045 * side;
         state.warm.intensity = baseLights.warm + board3DCaptureWarmBoostValue(raw, state.coarsePointer);
       }
