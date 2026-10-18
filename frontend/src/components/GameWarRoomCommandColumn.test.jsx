@@ -75,6 +75,31 @@ describe('GameWarRoomCommandColumn', () => {
     expect(busyHtml).toContain('Pensando…');
   });
 
+  it('no muestra a Matthias pensando tras mate o caída de bandera aunque busy sea antiguo', () => {
+    for (const { game, status, expected } of [
+      {
+        game: { turn: 'b', humanColor: 'w', isGameOver: true },
+        status: { statusText: 'La CPU está pensando…', busy: true },
+        expected: 'Partida terminada',
+      },
+      {
+        game: { turn: 'w', humanColor: 'w', isGameOver: false },
+        status: { statusText: 'Se acabó el tiempo (blancas)', busy: true },
+        expected: 'Se acabó el tiempo (blancas)',
+      },
+      {
+        game: { turn: 'b', humanColor: 'w', isGameOver: true },
+        status: { statusText: 'Jaque mate', busy: false },
+        expected: 'Jaque mate',
+      },
+    ]) {
+      const html = renderToStaticMarkup(<GameWarRoomCommandColumn game={game} status={status} board={{}} />);
+      expect(html).toContain('game-3d-turn-pill is-amber');
+      expect(html).toContain(expected);
+      expect(html).not.toContain('>Pensando…</strong>');
+    }
+  });
+
   it('mantiene las acciones comunes idénticas y limita los extras al HUD compacto', () => {
     const game = {
       difficulty: 5,
