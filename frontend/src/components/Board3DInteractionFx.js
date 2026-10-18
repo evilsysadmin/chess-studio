@@ -42,11 +42,17 @@ export function board3DHighlightPulse({ kind, nowMs = 0, reducedMotion = false, 
 export function board3DPieceInteractionPose({ selected = false, hovered = false, coarsePointer = false } = {}) {
   if (selected) {
     return coarsePointer
-      ? { yOffset: 0.016, scaleFactor: 1.012 }
-      : { yOffset: 0.026, scaleFactor: 1.018 };
+      ? { yOffset: 0.026, scaleFactor: 1.019 }
+      : { yOffset: 0.032, scaleFactor: 1.022 };
   }
   if (hovered && !coarsePointer) return { yOffset: 0.014, scaleFactor: 1.009 };
   return { yOffset: 0, scaleFactor: 1 };
+}
+
+// Derived from a single animation progress value, never multiplied onto the
+// previous frame's scale: capture weight must look the same at every FPS.
+export function board3DCapturedGhostScale(impact = 0, coarsePointer = false) {
+  return 1 - clamp01(impact) * (coarsePointer ? 0.11 : 0.15);
 }
 
 export function board3DCaptureWarmBoostValue(progress = 0, coarsePointer = false) {
