@@ -7,6 +7,7 @@ import {
   createHomeBlenderRenderCameraReset,
   homeBlenderFireKind,
   homeBlenderSteamMotion,
+  homeBlenderSteamMotionPrepared,
   applyHomeBlenderPieceLift,
   disposeStaleHomeBlenderGltf,
   homeBlenderProjectAnchors,
@@ -510,6 +511,55 @@ describe('HomeBlenderScene3D live flame animation', () => {
     }
     expect(homeBlenderFireSeed(0)).toBe(13);
     expect(homeBlenderFireSeed(NaN)).toBe(13);
+  });
+
+  it('reuses independent fire records without changing a single output float', () => {
+    const a = {};
+    const b = {};
+    for (const timeMs of [0, 16.7, 137, 4321, 90000, -40, NaN]) {
+      const seconds = Math.max(0, Number(timeMs) || 0) / 1000;
+      for (const phase of [0, 0.137, 1.234, -1.2, NaN]) {
+        for (const kind of ['flame', 'hot', 'ember', 'candle']) {
+          for (const gust of [undefined, -0.8, 0.71]) {
+            const seed = homeBlenderFireSeed(phase);
+            const normal = homeBlenderFireMotion({ timeMs, phase, kind, commonGust: gust });
+            const result = homeBlenderFireMotionPrepared(seconds, seed, kind, gust, a);
+            expect(result).toBe(a);
+            expect(result).not.toBe(normal);
+            expect(Object.keys(result)).toEqual(Object.keys(normal));
+            for (const key of Object.keys(normal)) expect(Object.is(result[key], normal[key])).toBe(true);
+            // Repeated updates into a different node's record must not mutate this node.
+            const snapshot = { ...a };
+            expect(homeBlenderFireMotionPrepared(seconds, seed + 1, kind, gust, b)).toBe(b);
+            expect(a).toEqual(snapshot);
+          }
+        }
+      }
+    }
+    expect(homeBlenderFireMotionPrepared(0, 13)).not.toBe(homeBlenderFireMotionPrepared(0, 13));
+  });
+
+  it('reuses steam wisp records with exact standalone pose parity', () => {
+    const a = {};
+    const b = {};
+    for (const timeMs of [0, 16.7, 137, 4321, 90000, -40, NaN]) {
+      const seconds = Math.max(0, Number(timeMs) || 0) / 1000;
+      for (const phase of [0, 0.137, 1.234, -1.2, NaN]) {
+        for (const height of [0.05, 0.4, 1.1]) {
+          const standalone = homeBlenderSteamMotion({ timeMs, phase, height });
+          const actual = homeBlenderSteamMotionPrepared(seconds, Number(phase) || 0, height, a);
+          expect(actual).toBe(a);
+          expect(Object.keys(actual)).toEqual(Object.keys(standalone));
+          for (const key of Object.keys(standalone)) {
+            expect(Object.is(actual[key], standalone[key]), `steam ${key} ${timeMs}`).toBe(true);
+          }
+          const snapshot = { ...a };
+          expect(homeBlenderSteamMotionPrepared(seconds, 2, height, b)).toBe(b);
+          expect(a).toEqual(snapshot);
+        }
+      }
+    }
+    expect(homeBlenderSteamMotion({})).not.toBe(homeBlenderSteamMotion({}));
   });
 
   it('matches frozen pre-optimization fire motion floats for all four flame kinds', () => {
