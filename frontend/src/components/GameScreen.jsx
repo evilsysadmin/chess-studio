@@ -536,14 +536,15 @@ export default function GameScreen({
     try {
       const operationId = mutationCoordinator.operationId('move', [game.id, from, to, promotion || 'q']);
       operation.operationId = operationId;
-      const [updated] = await Promise.all([api.playMove(game.id, from, to, promotion, { signal: controller.signal, operationId }), minThink]);
+      const [updated] = await Promise.all([api.playMove(game.id, from, to, promotion, {
+        signal: controller.signal, operationId,
+        onRetry: () => mutationCoordinator.isCurrent(operation) && setTurnBanner('Reintentando conexión…'),
+      }), minThink]);
       mutationCoordinator.confirm(operationId);
       if (!mutationCoordinator.isCurrent(operation)) return;
+      setTurnBanner(null);
 
-      // Sólo una jugada confirmada por el backend puede conceder incremento o
-      // puntos de torneo. Antes estos efectos se aplicaban al tablero optimista:
-      // un 409/timeout podía regalar tiempo o puntuación aunque la jugada fuera
-      // rechazada.
+      // Sólo la confirmación del backend permite incremento o puntos.
       addIncrement(humanColor);
       if (onCapturePoints && humanMove.captured) {
         captureStreakRef.current += 1;
@@ -562,8 +563,7 @@ export default function GameScreen({
       }
 
       setGame(updated);
-      // App marcará 'saved' cuando el snapshot local de esta respuesta también
-      // quede escrito; aquí sólo sabemos que el backend ya confirmó la jugada.
+      // App marcará 'saved' al persistir también el snapshot local.
       // La narrativa remota sólo recibe hechos de una jugada que el backend ya confirmó.
       // Sigue siendo fire-and-forget: no retrasa tablero, reloj ni persistencia.
       showNoteworthy(humanComment, 'human', { history: updated.history });

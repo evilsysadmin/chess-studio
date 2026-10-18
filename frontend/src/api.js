@@ -57,7 +57,7 @@ export const api = {
       signal,
     });
   },
-  playMove(id, from, to, promotion, { signal, operationId = null } = {}) {
+  playMove(id, from, to, promotion, { signal, operationId = null, onRetry } = {}) {
     // Con Idempotency-Key el backend reproduce la respuesta ya aplicada si el primer
     // intento llegó pero su respuesta se perdió (p. ej. durante un deploy): reintentar
     // no puede mover dos veces.
@@ -66,7 +66,7 @@ export const api = {
       headers: { 'Content-Type': 'application/json', ...(operationId ? { 'Idempotency-Key': operationId } : {}), ...authHeader() },
       body: JSON.stringify({ from, to, promotion }),
       signal,
-    }), { idempotent: Boolean(operationId), signal }).then((payload) => requireGamePayload(payload, id));
+    }), { idempotent: Boolean(operationId), signal, onRetry }).then((payload) => requireGamePayload(payload, id));
   },
   deleteGame(id) {
     return request(`${BASE_URL}/games/${id}`, { method: 'DELETE', headers: { ...authHeader() } });
