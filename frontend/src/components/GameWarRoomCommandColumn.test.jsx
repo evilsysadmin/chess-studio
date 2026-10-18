@@ -82,7 +82,7 @@ describe('GameWarRoomCommandColumn', () => {
         <GameWarRoomCommandColumn game={game} status={status} board={{}} compactViewport={compactViewport} />,
       );
       const pending = render({ statusText: 'La CPU está pensando…', busy: true, pendingMove: true });
-      expect(pending).toContain('game-3d-turn-pill is-amber');
+      expect(pending).toContain(compactViewport ? 'game-3d-turn-pill is-compact is-amber' : 'game-3d-turn-pill is-amber');
       expect(pending).toContain('Confirmando jugada…');
       expect(pending).not.toContain('>Pensando…</strong>');
       expect(render({ statusText: 'La CPU está pensando…', busy: true, pendingMove: false })).toContain('Pensando…');
