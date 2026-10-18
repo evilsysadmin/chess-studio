@@ -4,6 +4,7 @@ import {
   createHomeBlenderFrameSamples,
   homeBlenderP95Ms,
   homeBlenderGpuResourceCounts,
+  homeBlenderModelDrawInventory,
   homeBlenderDistinctGpuSamplesMs,
 } from './HomeBlenderPerformanceDiagnostics.js';
 
@@ -170,5 +171,59 @@ describe('Home Blender bounded performance diagnostics', () => {
       .toEqual({ textures: 38, geometries: 117, programs: 2 });
     expect(homeBlenderGpuResourceCounts(null))
       .toEqual({ textures: null, geometries: null, programs: null });
+  });
+});
+
+
+describe('Home Blender authored-model GPU draw inventory', () => {
+  it('counts visible material groups and shared resources without calling them actual GPU draws', () => {
+    const stone = { transparent: false };
+    const flame = { transparent: true };
+    const sharedGeometry = { groups: [
+      { materialIndex: 0, count: 12 },
+      { materialIndex: 1, count: 6 },
+      { materialIndex: 1, count: 0 },
+    ] };
+    const root = { visible: true, parent: null };
+    const first = {
+      isMesh: true, visible: true, parent: root, castShadow: true,
+      geometry: sharedGeometry, material: [stone, flame],
+    };
+    const second = {
+      isMesh: true, visible: true, parent: root, castShadow: false,
+      geometry: sharedGeometry, material: [stone, flame],
+    };
+    const hiddenGroup = { visible: false, parent: root };
+    const hiddenMesh = {
+      isMesh: true, visible: true, parent: hiddenGroup,
+      castShadow: true, geometry: {}, material: stone,
+    };
+    const invisibleMaterial = {
+      isMesh: true, parent: root, castShadow: true,
+      geometry: {}, material: { visible: false },
+    };
+    root.traverse = (visitor) => {
+      for (const node of [root, first, second, hiddenGroup, hiddenMesh, invisibleMaterial]) visitor(node);
+    };
+    expect(homeBlenderModelDrawInventory(root)).toEqual({
+      meshes: 3, drawSlotCandidates: 4, transparentSlots: 2,
+      shadowCasterSlots: 2, sharedGeometryMeshes: 1,
+      uniqueGeometries: 2, uniqueMaterials: 2,
+    });
+  });
+
+  it('counts only explicit multi-material groups, and handles missing models', () => {
+    const root = { traverse: (visit) => {
+      visit({ isMesh: true, geometry: { groups: [] }, material: [{}, {}] });
+      visit({ isMesh: true, geometry: { groups: [{ materialIndex: 3, count: 5 }] }, material: [{}] });
+      visit({ isMesh: true, geometry: { groups: [] }, material: { transparent: false } });
+      visit({ isMesh: false, geometry: {}, material: {} });
+    } };
+    expect(homeBlenderModelDrawInventory(root)).toEqual({
+      meshes: 3, drawSlotCandidates: 1, transparentSlots: 0,
+      shadowCasterSlots: 0, sharedGeometryMeshes: 0,
+      uniqueGeometries: 3, uniqueMaterials: 1,
+    });
+    expect(homeBlenderModelDrawInventory(null).drawSlotCandidates).toBe(0);
   });
 });

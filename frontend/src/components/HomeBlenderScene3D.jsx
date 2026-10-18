@@ -8,6 +8,7 @@ import {
   createHomeBlenderGpuTimer,
   createHomeBlenderFrameSamples,
   homeBlenderGpuResourceCounts,
+  homeBlenderModelDrawInventory,
 } from './HomeBlenderPerformanceDiagnostics.js';
 import { FIRE_SPRITE_DEFAULTS, createFireSprites, createSteamSprites, disposeFireSprites, fireSpriteSeeds } from './fireSprites.js';
 import { getEffectiveReducedMotion } from '../userPreferences.js';
@@ -1906,9 +1907,11 @@ export default function HomeBlenderScene3D({
     markStartup('webgl-renderer-identified');
     const softwareRenderer = homeBlenderIsSoftwareRenderer(rendererName);
     canvas.dataset.homeBlenderSoftware = softwareRenderer ? 'true' : 'false';
-    // Explicit opt-in, never run timer queries on SwiftShader or in ordinary sessions.
+    // Explicit opt-in, never run timer queries or the model draw inventory
+    // in ordinary sessions. Diagnostics must not affect production startup.
+    const gpuProfiling = new URLSearchParams(window.location.search).get('homeGpuProfile') === '1';
     const gpuTimer = createHomeBlenderGpuTimer(gl, {
-      enabled: new URLSearchParams(window.location.search).get('homeGpuProfile') === '1',
+      enabled: gpuProfiling,
       software: softwareRenderer,
     });
     canvas.dataset.homeBlenderGpuStatus = gpuTimer.status;
@@ -2394,6 +2397,12 @@ export default function HomeBlenderScene3D({
       canvas.dataset.homeBlenderRuntime = 'ready';
       canvas.classList.add('is-ready');
       markStartup('ready');
+      // One-time authored-GLB inventory. These are potential draw/material
+      // slots, not observed renderer calls and not GPU timings. Excludes
+      // Matthias and runtime particle effects, which load separately.
+      if (gpuProfiling) {
+        canvas.dataset.homeBlenderModelDrawInventory = JSON.stringify(homeBlenderModelDrawInventory(model));
+      }
       startFireAnimation();
       loadMatthiasActor();
     });

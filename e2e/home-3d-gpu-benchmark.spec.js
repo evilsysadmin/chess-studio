@@ -83,6 +83,11 @@ async function readRealCanvas(castle) {
       const value = d[key];
       return value == null || value === '' || !Number.isFinite(Number(value)) ? null : Number(value);
     };
+    let modelDrawInventory = null;
+    try {
+      const candidate = JSON.parse(d.homeBlenderModelDrawInventory || 'null');
+      if (candidate && typeof candidate === 'object') modelDrawInventory = candidate;
+    } catch { /* Keep missing inventory explicit. */ }
     let startupMs = null;
     try {
       const events = JSON.parse(d.homeBlenderStartup || '{}');
@@ -101,6 +106,7 @@ async function readRealCanvas(castle) {
       allocatedTextures: num('homeBlenderGpuTextures'),
       allocatedGeometries: num('homeBlenderGpuGeometries'),
       allocatedPrograms: num('homeBlenderGpuPrograms'),
+      modelDrawInventory,
       cpuP95Ms: num('homeBlenderCpuP95Ms'),
       rafGapP95Ms: num('homeBlenderVsyncP95Ms'),
       animatedDrawsPerSecond: num('homeBlenderDrawnFps'),
@@ -163,6 +169,8 @@ test('Home 3D physical GPU benchmark · three cold independent visits', async ({
       expect(row.initialTriangles).toBeGreaterThan(0);
       expect(row.allocatedTextures).toBeGreaterThan(0);
       expect(row.allocatedGeometries).toBeGreaterThan(0);
+      expect(row.modelDrawInventory?.drawSlotCandidates).toBeGreaterThan(0);
+      expect(row.modelDrawInventory?.uniqueGeometries).toBeGreaterThan(0);
       expect(row.startupMs).toBeGreaterThan(0);
       expect(row.modelRequests, 'The Home GLB must be requested, not a static fallback')
         .toBeGreaterThan(0);
@@ -189,6 +197,12 @@ test('Home 3D physical GPU benchmark · three cold independent visits', async ({
       initialDrawCalls: median(visits.map((visit) => visit.initialDrawCalls)),
       allocatedTextures: median(visits.map((visit) => visit.allocatedTextures)),
       allocatedGeometries: median(visits.map((visit) => visit.allocatedGeometries)),
+      // One-time authored-model draw candidates, never actual GL submissions.
+      modelDrawSlots: median(visits.map((visit) => visit.modelDrawInventory?.drawSlotCandidates)),
+      modelShadowCasterSlots: median(visits.map((visit) => visit.modelDrawInventory?.shadowCasterSlots)),
+      modelTransparentSlots: median(visits.map((visit) => visit.modelDrawInventory?.transparentSlots)),
+      modelUniqueGeometries: median(visits.map((visit) => visit.modelDrawInventory?.uniqueGeometries)),
+      modelUniqueMaterials: median(visits.map((visit) => visit.modelDrawInventory?.uniqueMaterials)),
       cpuP95Ms: median(visits.map((visit) => visit.cpuP95MedianMs)),
       rafGapP95Ms: median(visits.map((visit) => visit.rafGapP95MedianMs)),
       gpuMs: median(visits.map((visit) => visit.gpuMedianMs)),

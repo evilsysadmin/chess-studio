@@ -139,6 +139,53 @@ export function createHomeBlenderFrameSamples(maxSamples = 120) {
   };
 }
 
+// One-time authored-GLB draw inventory for the opt-in physical-GPU profiler.
+// These are visible *potential* draw slots, NOT observed WebGL draw calls:
+// frustum culling, material groups, shadow passes, and renderer batching can
+// all change the actual count. Do not present them as GPU milliseconds or VRAM.
+export function homeBlenderModelDrawInventory(root) {
+  const geometries = new Set();
+  const materials = new Set();
+  const stats = {
+    meshes: 0,
+    drawSlotCandidates: 0,
+    transparentSlots: 0,
+    shadowCasterSlots: 0,
+    sharedGeometryMeshes: 0,
+    uniqueGeometries: 0,
+    uniqueMaterials: 0,
+  };
+  if (typeof root?.traverse !== 'function') return stats;
+  root.traverse((object) => {
+    if (!object?.isMesh || !object.geometry || object.visible === false) return;
+    // Omit children under a hidden ancestor (e.g. day-only moon features).
+    for (let parent = object.parent; parent; parent = parent.parent) {
+      if (parent.visible === false) return;
+    }
+    stats.meshes += 1;
+    if (geometries.has(object.geometry)) stats.sharedGeometryMeshes += 1;
+    geometries.add(object.geometry);
+    const materialArray = Array.isArray(object.material) ? object.material : null;
+    // Three.js draws multi-material meshes only through explicit geometry
+    // groups; without groups the array creates no draw entries.
+    const groups = materialArray
+      ? (object.geometry.groups || [])
+      : [{ materialIndex: 0 }];
+    for (const group of groups) {
+      if (group.count === 0) continue;
+      const material = materialArray ? materialArray[group.materialIndex] : object.material;
+      if (!material || material.visible === false) continue;
+      materials.add(material);
+      stats.drawSlotCandidates += 1;
+      if (material.transparent) stats.transparentSlots += 1;
+      if (object.castShadow) stats.shadowCasterSlots += 1;
+    }
+  });
+  stats.uniqueGeometries = geometries.size;
+  stats.uniqueMaterials = materials.size;
+  return stats;
+}
+
 // Three.js exposes allocation counts, not texture byte totals. Never label these as MB.
 export function homeBlenderGpuResourceCounts(renderer) {
   const memory = renderer?.info?.memory;

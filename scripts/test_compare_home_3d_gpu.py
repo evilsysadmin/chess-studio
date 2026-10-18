@@ -125,6 +125,31 @@ class HomeGpuCompareTests(unittest.TestCase):
         self.assertIsNone(count["percent"])
         self.assertIn("n/a", format_comparison(result))
 
+    def test_optional_glb_draw_inventory_is_labeled_as_candidates(self):
+        self.before["medians"].update(modelDrawSlots=140, modelShadowCasterSlots=100,
+                                      modelTransparentSlots=18, modelUniqueGeometries=80,
+                                      modelUniqueMaterials=46)
+        self.after["medians"].update(modelDrawSlots=125, modelShadowCasterSlots=93,
+                                     modelTransparentSlots=17, modelUniqueGeometries=75,
+                                     modelUniqueMaterials=43)
+        result = compare_reports(self.before, self.after)
+        slots = next(m for m in result["metrics"] if m["key"] == "modelDrawSlots")
+        self.assertEqual(slots["delta"], -15)
+        output = format_comparison(result)
+        self.assertIn("GLB candidate draw slots", output)
+        self.assertIn("NOT measured GPU draw calls", output)
+        # Older schema-2 benchmark reports can still be compared; their
+        # missing optional inventory is labeled n/a, never counted as zero.
+        legacy = compare_reports(report("0123456789abcdef"), report("abcdef0123456789", 3.6))
+        legacy_slots = next(m for m in legacy["metrics"] if m["key"] == "modelDrawSlots")
+        self.assertIsNone(legacy_slots["delta"])
+
+    def test_rejects_fabricated_glb_inventory_metric(self):
+        self.after["medians"]["modelDrawSlots"] = float("nan")
+        self.rejected("invalid modelDrawSlots median")
+        self.after["medians"]["modelDrawSlots"] = -1
+        self.rejected("invalid modelDrawSlots median")
+
     def test_dawn_and_dusk_are_legitimate_if_identical(self):
         for data in (self.before, self.after):
             for visit in data["visits"]:
