@@ -608,3 +608,89 @@ body:has(.combat-operations-screen) .global-music-dock {
   color: var(--parchment);
   transform: translateX(2px);
 }
+
+ 
+/* Preparación, no combate: la escena es la protagonista y las decisiones viven
+ * en las bandas laterales. El mapa de campaña usa esta hoja, pero no estos HUD. */
+.combat-operations-screen:not(.campaign-mission-room-screen) .combat-operations-briefing {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-start;
+  gap: .24rem;
+}
+.combat-operations-screen:not(.campaign-mission-room-screen) .combat-operations-briefing h2 {
+  max-width: 100%;
+  margin: 0;
+  line-height: 1.16;
+  overflow-wrap: break-word;
+}
+.combat-operations-screen:not(.campaign-mission-room-screen) .combat-operations-briefing .section-label {
+  font-size: .62rem;
+  letter-spacing: .12em;
+}
+.combat-operations-screen:not(.campaign-mission-room-screen) .combat-operations-primary > div:first-child > small {
+  display: block;
+}
+@media (min-width: 721px) {
+  .combat-operations-screen:not(.campaign-mission-room-screen) .combat-operations-briefing {
+    width: min(340px, 30vw);
+  }
+  .combat-operations-screen:not(.campaign-mission-room-screen) .combat-operations-status {
+    width: min(355px, 30vw);
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+  .combat-operations-screen:not(.campaign-mission-room-screen) .combat-operations-status > span,
+  .combat-operations-screen:not(.campaign-mission-room-screen) .combat-operations-status > button {
+    min-height: 36px;
+  }
+  .combat-operations-screen:not(.campaign-mission-room-screen) .combat-operations-primary {
+    left: auto;
+    right: .85rem;
+    bottom: 4.55rem;
+    width: min(340px, 30vw);
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr);
+    align-items: stretch;
+    gap: .56rem;
+    padding: .84rem;
+    border: 1px solid rgba(215, 187, 126, .24);
+    border-radius: 13px;
+    background: rgba(6, 9, 13, .88);
+    backdrop-filter: blur(12px);
+  }
+  .combat-operations-screen:not(.campaign-mission-room-screen) .combat-operations-primary-actions {
+    min-width: 0;
+    width: 100%;
+  }
+  .combat-operations-screen:not(.campaign-mission-room-screen) .combat-operations-drawer {
+    width: min(340px, 30vw);
+  }
+  .combat-operations-screen:not(.campaign-mission-room-screen) .combat-operations-primary-actions .campaign-recommended-formation {
+    text-align: center;
+  }
+}
+@media (min-width: 721px) and (max-width: 980px) {
+  .combat-operations-screen:not(.campaign-mission-room-screen) .combat-operations-primary {
+    right: .7rem;
+    bottom: 4.4rem;
+  }
+  .combat-operations-screen:not(.campaign-mission-room-screen) .combat-operations-briefing {
+    top: 7.2rem;
+  }
+}
+@media (max-width: 720px) {
+  .combat-operations-screen:not(.campaign-mission-room-screen) .combat-operations-briefing {
+    gap: .14rem;
+  }
+  .combat-operations-screen:not(.campaign-mission-room-screen) .combat-operations-primary {
+    background: rgba(6, 9, 13, .93);
+    border-radius: 12px;
+    border: 1px solid rgba(215, 187, 126, .26);
+  }
+  .combat-operations-screen:not(.campaign-mission-room-screen) .combat-operations-primary > div:first-child > small {
+    font-size: .66rem;
+    line-height: 1.35;
+  }
+}
