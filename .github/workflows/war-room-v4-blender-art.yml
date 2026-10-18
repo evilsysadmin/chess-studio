@@ -165,6 +165,7 @@ jobs:
     timeout-minutes: 25
     env:
       VITE_WAR_ROOM_VARIANTS_ENABLE: '1'
+      VITE_APP_VISUAL_CAPTURE: 'true'
       APP_VISUAL_ARTIFACT: '1'
       APP_VISUAL_WARROOM_VARIANTS: 'v4'
       APP_VISUAL_EXPECTED_WAR_ROOM_V4_REVISION: ${{ github.event.pull_request.head.sha }}
