@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
+import { basename, resolve } from 'node:path';
 
 /**
  * Visual proof must consume exactly the immutable bytes the application will
@@ -8,7 +9,12 @@ import { readFile } from 'node:fs/promises';
  * PR revision as interchangeable with the manifest-pinned runtime asset.
  */
 export async function installManifestPinnedV4Model(page) {
-  const manifestPath = new URL('../frontend/src/assets/r2-assets-manifest.json', import.meta.url);
+  // Playwright's E2E loader may transpile helper .js as CommonJS, where
+  // import.meta is a SyntaxError. Resolve from the configured E2E/root cwd.
+  const manifestPath = resolve(
+    process.cwd(),
+    basename(process.cwd()) === 'e2e' ? '../frontend/src/assets/r2-assets-manifest.json' : 'frontend/src/assets/r2-assets-manifest.json',
+  );
   const manifest = JSON.parse(await readFile(manifestPath, 'utf8'));
   const asset = manifest.assets?.['warRoom.v4.runtime'];
   if (!asset?.url || !asset?.sha256 || !asset?.key) {
