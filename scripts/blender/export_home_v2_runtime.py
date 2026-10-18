@@ -141,7 +141,7 @@ def _is_static_batchable(name: str) -> bool:
 # a still-smooth 24x12 UV sphere so vertex-shader flutter keeps enough height
 # samples while cutting tens of thousands of GPU triangles.
 RUNTIME_HEARTH_FRONT_LOBE = re.compile(
-    r"^HOME_PROP_fireplace_(?:left|right)_front_(?:flame|hot|tongue|base)_\\d+$"
+    r"^HOME_PROP_fireplace_(?:left|right)_front_(?:flame|hot|tongue|base)_\d+$"
 )
 RUNTIME_HEARTH_FRONT_LOBE_COUNT = 28
 RUNTIME_HEARTH_FRONT_SEGMENTS = 24
