@@ -143,9 +143,11 @@ export function installWarRoomV3FireAnimation(
   };
 
   driver.userData.warRoomV3FireDriver = true;
-  driver.onBeforeRender = (...args) => {
-    previous?.(...args);
-    animate(args[0]);
+  // WebGL invokes this hook every rendered frame; avoid allocating a rest
+  // array just to forward Three.js' fixed six-argument callback signature.
+  driver.onBeforeRender = (renderer, scene, camera, geometry, material, group) => {
+    previous?.(renderer, scene, camera, geometry, material, group);
+    animate(renderer);
   };
   root.userData.warRoomV3FireAnimation = reducedMotion ? 'static-reduced-motion' : 'authored-flicker-v2-hans-dimmer';
 
