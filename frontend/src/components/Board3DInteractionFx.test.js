@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
+import * as THREE from 'three';
 import {
+  applyBoard3DCaptureGhostPose,
   board3DCaptureWarmBoost,
   board3DCaptureWarmBoostValue,
   board3DCapturedGhostScale,
@@ -74,6 +76,28 @@ describe('War Room premium interaction FX', () => {
       }
       expect(last).toBeCloseTo(1.3 * 0.85, 10);
     }
+  });
+
+  it('applies a stable capture ghost pose and opacity at any render cadence', () => {
+    const ghost = new THREE.Group();
+    ghost.scale.set(1.3, 1.1, 0.9);
+    const restScale = ghost.scale.clone();
+    const materials = [{ opacity: 1 }, { opacity: 1 }];
+    for (const frameCount of [3, 10, 64]) {
+      ghost.scale.copy(restScale);
+      for (let index = 0; index <= frameCount; index += 1) {
+        applyBoard3DCaptureGhostPose(ghost, restScale, materials, index / frameCount, -0.7, false);
+      }
+      expect(ghost.scale.x).toBeCloseTo(1.3 * 0.85);
+      expect(ghost.scale.y).toBeCloseTo(1.1 * 0.85);
+      expect(ghost.rotation.z).toBeCloseTo(-0.7);
+      expect(ghost.rotation.x).toBeCloseTo(0.16);
+      expect(ghost.position.y).toBeCloseTo(0.025);
+      expect(materials.map((material) => material.opacity)).toEqual([0.08, 0.08]);
+    }
+    applyBoard3DCaptureGhostPose(ghost, restScale, materials, 0, 0.7, true);
+    expect(ghost.scale.equals(restScale)).toBe(true);
+    expect(materials.map((material) => material.opacity)).toEqual([1, 1]);
   });
 
   it('uses one bounded warm-light impact for captures and returns to baseline at the ends', () => {
