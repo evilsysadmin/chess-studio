@@ -179,6 +179,17 @@ describe('Home Blender bounded performance diagnostics', () => {
       { gpuStatus: 'ready', gpuSampleCount: 5, gpuMs: -1 },
       { gpuStatus: 'ready', gpuSampleCount: 6, gpuMs: 9.25 },
     ])).toEqual([3.25, 5.25, 7.25, 9.25]);
+    expect(homeBlenderDistinctGpuSamplesMs([
+      { gpuStatus: 'ready', gpuSampleCount: 9, gpuMs: 99 },
+      { gpuStatus: 'ready', gpuSampleCount: 10, gpuMs: 10 },
+      { gpuStatus: 'ready', gpuSampleCount: 10, gpuMs: 10 },
+      { gpuStatus: 'ready', gpuSampleCount: 11, gpuMs: 11 },
+      { gpuStatus: 'sampling', gpuSampleCount: 12, gpuMs: null },
+      { gpuStatus: 'ready', gpuSampleCount: 13, gpuMs: 13 },
+    ], 10)).toEqual([11, 13]);
+    expect(homeBlenderDistinctGpuSamplesMs([
+      { gpuStatus: 'ready', gpuSampleCount: 3, gpuMs: 3 },
+    ], 3)).toEqual([]);
     expect(homeBlenderDistinctGpuSamplesMs([])).toEqual([]);
     expect(homeBlenderDistinctGpuSamplesMs([
       { gpuStatus: 'ready', gpuSampleCount: null, gpuMs: 2 },
