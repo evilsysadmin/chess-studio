@@ -12,7 +12,10 @@ import {
   homeBlenderProjectAnchors,
   HOME_BLENDER_BEACON_ANCHORS,
   homeBlenderFireMotion,
+  homeBlenderFireMotionPrepared,
+  homeBlenderFireSeed,
   homeBlenderCandleLightFactor,
+  homeBlenderCandleLightFactorPrepared,
   homeBlenderSharedFireGust,
   rebaseFlameToPivot,
   homeBlenderFireFramePlan,
@@ -481,6 +484,55 @@ describe('HomeBlenderScene3D live flame animation', () => {
         const sharedCall = homeBlenderKlausEarPose(timeMs, ear, up);
         expect(Object.is(sharedCall, oldCall)).toBe(true);
       }
+    }
+  });
+
+  it('reuses fixed per-mesh seeds without changing any fire-kind motion', () => {
+    // The runtime normalizes the frame clock once and stores each node's seed
+    // at GLB load; compare it against the unchanged public call contract.
+    for (const timeMs of [0, 16.7, 137, 1010, 4321, 90000, 1e7, -40, NaN]) {
+      const seconds = Math.max(0, Number(timeMs) || 0) / 1000;
+      for (const phase of [0, 0.137, 1.234, 3.9, -1.2, NaN]) {
+        const seed = homeBlenderFireSeed(phase);
+        for (const kind of ['flame', 'hot', 'ember', 'candle']) {
+          for (const gust of [undefined, -0.8, 0.71]) {
+            const normal = homeBlenderFireMotion({ timeMs, phase, kind, commonGust: gust });
+            const prepared = homeBlenderFireMotionPrepared(seconds, seed, kind, gust);
+            for (const key of Object.keys(normal)) {
+              expect(Object.is(prepared[key], normal[key]), `${kind} ${key} ${timeMs} ${phase}`).toBe(true);
+            }
+          }
+        }
+        const normalLight = homeBlenderCandleLightFactor(timeMs, phase);
+        const preparedLight = homeBlenderCandleLightFactorPrepared(seconds, seed);
+        expect(Object.is(preparedLight, normalLight), `torch ${timeMs} ${phase}`).toBe(true);
+      }
+    }
+    expect(homeBlenderFireSeed(0)).toBe(13);
+    expect(homeBlenderFireSeed(NaN)).toBe(13);
+  });
+
+  it('matches frozen pre-optimization fire motion floats for all four flame kinds', () => {
+    // Values recorded from the unmodified v5782 implementation; guard both
+    // public and prepared calculations against a correlated formula change.
+    const snapshots = [
+      [0, 0, 'flame', undefined, [0.9914785529787187, 1.0221567309859674, 0.03613860896322876, 0.9608031610553153, 0.9648247780883683]],
+      [167.5, 0.137, 'hot', undefined, [1.0024557310929514, 0.9942699607831132, -0.00701216115664675, 0.949488074345368, 0.9483243335734549]],
+      [4321, 1.234, 'candle', undefined, [0.9830012214151452, 1.0396638166979946, -0.003676956097189417, 0.9280848553342714, 0.9986189665025442]],
+      [12345, 3.9, 'ember', undefined, [1.0026574895446667, 1.0021259916357335, 0, 0.9312032649900317, 0.9753149790893334]],
+      [90000, -1.2, 'flame', 0.71, [0.9900500074561686, 1.0238630548380314, -0.0010382326656021151, 0.988840244259592, 0.9868274790951982]],
+      [-45, NaN, 'hot', -0.8, [0.9951715432952624, 1.0135397535806987, 0.0026599347880110133, 0.9608031610553153, 0.9648247780883683]],
+      [1e7, Math.PI, 'candle', undefined, [0.9880218338441104, 1.0279490543637424, -0.014262612294405699, 0.9356135656149126, 0.9123009193914012]],
+    ];
+    const keys = ['scaleX', 'scaleY', 'lean', 'emission', 'light'];
+    for (const [timeMs, phase, kind, commonGust, values] of snapshots) {
+      const motion = homeBlenderFireMotionPrepared(
+        Math.max(0, Number(timeMs) || 0) / 1000, homeBlenderFireSeed(phase), kind, commonGust,
+      );
+      for (let index = 0; index < keys.length; index += 1) {
+        expect(Object.is(motion[keys[index]], values[index]), `${kind} ${keys[index]} at ${timeMs}`).toBe(true);
+      }
+      expect(Object.is(motion.scaleX, motion.scaleZ)).toBe(true);
     }
   });
 
