@@ -732,6 +732,11 @@ async function assertAndCaptureProfile(page, profile, board3d) {
       .toHaveAttribute('data-war-room-variant-status', 'ready', { timeout: 30_000 });
   }
   if (profile.variant === 'v4') {
+    // The observatory's Blender shell must really install Hans' authored
+    // service door/hearth stage. Hans himself only appears for the event
+    // chosen for this game; never force a fake permanent NPC into the scene.
+    await expect(page.locator('.board3d-main-canvas'))
+      .toHaveAttribute('data-war-room-hans-stage', /^v4-tower-study:(quick|idle)$/, { timeout: 45_000 });
     const variantMenu = page.getByRole('button', { name: 'Más acciones de partida', exact: true });
     await variantMenu.click();
     await expect(page.getByRole('menuitemradio', { name: 'War Room v3', exact: true })).toBeVisible();
