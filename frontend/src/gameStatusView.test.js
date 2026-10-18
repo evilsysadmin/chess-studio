@@ -37,6 +37,16 @@ describe('gameStatusView', () => {
     expect(gameStatusView({ status: 'playing', turn: 'w', humanColor: 'w', busy: true, turnBanner: 'La CPU jugó e5' }).statusText).toBe('La CPU está pensando…');
   });
 
+  it('distingue reintento de red real de la espera normal y del resultado final', () => {
+    const retry = { status: 'playing', turn: 'w', humanColor: 'w', busy: true, turnBanner: 'Reintentando conexión…' };
+    expect(gameStatusView(retry).statusText).toBe('Reintentando conexión…');
+    expect(gameStatusView({ ...retry, zenMode: true }).statusText).toBe('Reintentando conexión…');
+    expect(gameStatusView({ ...retry, busy: false }).statusText).toBe('Tu turno');
+    expect(gameStatusView({ ...retry, turnBanner: null }).statusText).toBe('La CPU está pensando…');
+    expect(gameStatusView({ ...retry, status: 'checkmate' }).statusText).toBe('Jaque mate');
+    expect(gameStatusView({ ...retry, flagFallen: 'w' }).statusText).toContain('Se acabó el tiempo');
+  });
+
   it('busy y bandera tienen prioridad sobre banners normales', () => {
     expect(gameStatusView({ status: 'check', turn: 'b', humanColor: 'w', busy: true }).statusText).toBe('La CPU está pensando…');
     expect(gameStatusView({ status: 'playing', turn: 'w', humanColor: 'w', flagFallen: 'b', flagFinalOutcome: 'win' }).statusText).toContain('negras');
