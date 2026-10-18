@@ -273,7 +273,7 @@ test('Combat Chess · Campaña permite jugar con defaults en un clic y deja el d
   await expect(page.locator('[data-combat-preparation-room="combat-operations-room"] [data-board3d-war-room="true"]'))
     .toHaveAttribute('data-board3d-variant', 'combat-ops');
   await expect(page.locator('[data-combat-preparation-room="combat-operations-room"] .board3d-main-canvas')).toBeVisible({ timeout: 45_000 });
-  await expect(page.getByRole('button', { name: /Elegir mis piezas|Cambiar formación/i })).toBeVisible();
+  await expect(page.getByRole('button', { name: /Editar formación desde el tablero/i })).toBeVisible();
 
   const quick = page.getByRole('button', { name: /¡ENTRAR EN COMBATE!|ORGANIZAR Y COMBATIR/i });
   await expect(quick).toBeVisible();

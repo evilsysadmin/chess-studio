@@ -110,11 +110,6 @@ export default function CampaignCombatPreparation({
               aria-describedby="combat-operation-next-step" onClick={doPrimaryAction}>
               {nextStep.label}
             </button>
-            {deadCount === 0 && (
-              <button type="button" className="secondary-btn campaign-recommended-formation" onClick={() => setShowDeployment(true)}>
-                {deploymentConfirmed ? 'Cambiar formación' : 'Elegir mis piezas'}
-              </button>
-            )}
           </div>
         </div>
 
