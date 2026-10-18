@@ -2,6 +2,7 @@ import { chromium, expect, test } from '@playwright/test';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { buttonWithVisibleText, clickBoardMove, gameStatus, login, mockApi } from './helpers.js';
 import { WAR_ROOM_CAT_VERSION } from '../frontend/src/components/WarRoomCatDecor.js';
+import { installManifestPinnedV4Model } from './v4-immutable-model.js';
 
 const ARTIFACT_DIR = '../.artifacts/app-visual';
 const SEEN_WAR_ROOM_TUTORIAL_PROFILE = Object.freeze({
@@ -14,8 +15,6 @@ const WAR_ROOM_V2_REVISION_BASE =
   'https://assets.chess-studio.shadowops.dpdns.org/war-room/v2/staging/revisions';
 const WAR_ROOM_V3_REVISION_BASE =
   'https://assets.chess-studio.shadowops.dpdns.org/war-room/v3/staging/revisions';
-const WAR_ROOM_V4_REVISION_BASE =
-  'https://assets.chess-studio.shadowops.dpdns.org/war-room/v4/staging/revisions';
 const LOCAL_GPU_CAPTURE = process.env.APP_VISUAL_LOCAL_GPU === '1';
 const WAR_ROOM_PROFILE_SCOPE = String(process.env.APP_VISUAL_WARROOM_PROFILE_SCOPE || 'all').trim().toLowerCase();
 const WAR_ROOM_PROFILE_SHARD = String(process.env.APP_VISUAL_WARROOM_PROFILE_SHARD || 'all').trim().toLowerCase();
@@ -107,40 +106,11 @@ async function installWarRoomV3RevisionRoute(page) {
   });
 }
 
-// V4 source-art PRs build a new GLB while the app manifest still pins the
-// previous immutable live shell. Intercept that immutable request with the
-// exact PR-head staging revision; otherwise a green PNG would prove *old* art.
+// Exact-asset V4 proof uses the manifest-pinned immutable GLB, not the last
+// Blender staging revision (which can differ on a clean rebuild).
 async function installWarRoomV4RevisionRoute(page) {
-  const expected = String(process.env.APP_VISUAL_EXPECTED_WAR_ROOM_V4_REVISION || '').trim();
-  if (!expected) return;
-  const revisionUrl = WAR_ROOM_V4_REVISION_BASE + '/' + encodeURIComponent(expected) + '.glb';
-  const deadline = Date.now() + 180_000;
-  let body = null;
-  while (Date.now() < deadline) {
-    try {
-      const response = await page.request.get(revisionUrl + '?probe=' + Date.now(), {
-        headers: { 'cache-control': 'no-cache' },
-        timeout: 10_000,
-      });
-      if (response.ok()) {
-        body = await response.body();
-        break;
-      }
-    } catch {
-      // The separate Blender producer may still be publishing.
-    }
-    await new Promise((resolve) => setTimeout(resolve, 1_500));
-  }
-  if (!body) throw new Error('War Room v4 exact revision GLB unavailable: ' + expected);
-  console.log('WAR_ROOM_V4_EXACT_REVISION ' + expected + ' bytes=' + body.length);
-  await page.route('**/war-room/v4/runtime/*.glb*', async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'model/gltf-binary',
-      body,
-      headers: { 'cache-control': 'no-store' },
-    });
-  });
+  if (!String(process.env.APP_VISUAL_EXPECTED_WAR_ROOM_V4_REVISION || '').trim()) return;
+  await installManifestPinnedV4Model(page);
 }
 const CAPTURE_PROFILES = Object.freeze([
   Object.freeze({
