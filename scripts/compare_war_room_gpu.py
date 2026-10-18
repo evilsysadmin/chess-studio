@@ -371,6 +371,8 @@ def self_test():
         for path in candidate.glob('*.json'):
             report = json.loads(path.read_text())
             report['variant'] = 'v4'
+            for visit in report['visits']:
+                visit['hansStage'] = 'v4-tower-study:quick'
             path.write_text(json.dumps(report))
         for path in base.glob('*.json'):
             report = json.loads(path.read_text())
