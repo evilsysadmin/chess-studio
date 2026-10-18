@@ -149,3 +149,36 @@ describe('Board3D tile instances', () => {
   });
 
 });
+
+describe('Combat capture e5 to d4 · 3D pointer', () => {
+  it('picks a legal occupied target piece even when the destination tile is hidden', () => {
+    const source = new THREE.Group();
+    source.userData.square = 'e5';
+    const sourceMesh = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial());
+    source.add(sourceMesh);
+    const target = new THREE.Group();
+    target.userData.square = 'd4';
+    const targetMesh = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial());
+    target.add(targetMesh);
+    const intersections = [
+      { object: sourceMesh, distance: 1 },
+      { object: targetMesh, distance: 1.2 },
+    ];
+    const targets = [{ to: 'd4', san: 'exd4', captured: 'n' }, { to: 'e4', san: 'e4' }];
+    const opts = { selectedSquare: 'e5', legalTargets: targets, preferLegalTargets: true, movableSquares: new Set(['e5']) };
+    expect(resolveBoard3DPointerSquare(intersections, opts)).toBe('d4');
+    expect(resolveBoard3DPointerSquare(intersections, { ...opts, preferLegalTargets: false })).toBe('e5');
+    expect(resolveBoard3DPointerSquare(intersections, { ...opts, legalTargets: [{ to: 'e4', san: 'e4' }] })).toBe('e5');
+    source.userData.square = 'f5';
+    expect(resolveBoard3DPointerSquare(intersections, { ...opts, movableSquares: new Set(['e5', 'f5']) })).toBe('f5');
+    const canvas = { getBoundingClientRect: () => ({ left: 0, top: 0, width: 800, height: 800 }) };
+    const raycaster = { setFromCamera() {}, intersectObjects: () => intersections };
+    source.userData.square = 'e5';
+    expect(pickBoard3DSquare({
+      event: { clientX: 400, clientY: 400 }, canvas, pointer: new THREE.Vector2(), raycaster,
+      camera: {}, pickTargets: [], latestProps: {
+        selectedSquare: 'e5', legalTargets: targets, fen: '7k/8/8/4p3/3N4/8/8/K7 b - - 0 1',
+      },
+    })).toBe('d4');
+  });
+});
