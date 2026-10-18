@@ -190,6 +190,7 @@ test('War Room · selección y jugadas legales sobreviven 2D→3D y el teclado u
   await canvas.press('ArrowUp');
   await canvas.press('ArrowUp');
   await expect(board3d).toHaveAttribute('data-board3d-focused', 'e4');
+  await expect(focusedAnnouncement).toHaveText('Casilla e4: vacía. Destino legal.');
   await canvas.press('Enter');
 
   await expect.poll(() => requestLog.filter((entry) => entry.method === 'POST' && /\/games\/[^/]+\/move$/.test(entry.path)).length).toBe(1);
