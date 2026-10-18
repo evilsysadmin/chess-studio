@@ -259,7 +259,7 @@ El procedimiento manual que sigue es equivalente y queda disponible
 para investigaciones específicas.
 
 Desde la versión 2 del informe, cada invocación lleva un `runId` UUID único y escribe
-`SHA-renderer-perfil-runId.json`. No se pierden las muestras al repetir;
+`SHA-variante-renderer-perfil-runId.json` (los archivos anteriores no incluían variante). No se pierden las muestras al repetir;
 `capturedAtUtc` señala cuándo se capturó cada perfil. El comparador
 `scripts/compare_war_room_gpu.py` se comprueba con
 `python3 -S scripts/compare_war_room_gpu.py --self-test` (también en CI).
