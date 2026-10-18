@@ -545,3 +545,77 @@ test.describe('Combat preparation · mobile', () => {
     await captureWarRoomFrame(page, ARTIFACT_DIR + '/combat-preparation-android-390x844.png');
   });
 });
+
+
+// Post-battle UX proof: a real RoguelikeScreen render, with explicit synthetic
+// campaign outcomes injected only into the test session. No JSX/mockup capture.
+async function openCombatVictoryDebrief(page) {
+  await mockApi(page);
+  await login(page);
+  await openCampaignBriefing(page);
+
+  const context = await page.evaluate(() => {
+    const key = 'chess-study-combat-campaign-v1';
+    const campaign = JSON.parse(localStorage.getItem(key) || 'null');
+    if (!campaign?.active || !campaign?.seed || !campaign?.selectedNodeId) return null;
+    localStorage.setItem(key, JSON.stringify({ ...campaign, phase: 'reward' }));
+
+    const veteran = {
+      identityId: 'qa-service-veteran', key: 'n-b', alias: 'Rivas', originType: 'n',
+      beforeLevel: 4, kills: 2, bossDamage: 0, promoted: true, afterRank: 'Sargento', fallen: false,
+    };
+    const fallen = {
+      identityId: 'qa-fallen-pawn', key: 'p-a', alias: 'Nora', originType: 'p',
+      beforeLevel: 2, kills: 0, bossDamage: 0, promoted: false, fallen: true,
+    };
+    const debrief = {
+      outcome: 'win', units: [veteran, fallen], topUnits: [veteran],
+      totalKills: 2, totalBossDamage: 0, creditsGained: 12, meritGained: 4,
+      survivorCount: 15, deployedCount: 16, boardSurvivorCount: 15,
+      boardDeployedCount: 16, fallenCount: 1, contractsCompleted: [],
+      newDecorations: [{ id: 'qa-service', label: 'Cruz de campaña' }],
+      creditBreakdown: { captures: 2, result: 5, sector: 5, preservation: 0, underdog: 0, tactics: 0, capped: 0 },
+    };
+    const id = `campaign:${campaign.seed}:${campaign.selectedNodeId}`;
+    sessionStorage.setItem('chess-study-combat-post-battle-debrief-v1', JSON.stringify({
+      version: 1, entries: { [id]: { savedAt: new Date().toISOString(), debrief } },
+    }));
+    return id;
+  });
+  expect(context, 'a selected battle is required for a genuine postbattle screen').toBeTruthy();
+
+  await page.getByRole('button', { name: /Volver al menú/ }).first().click();
+  const campaignEntry = page.getByRole('button').filter({
+    has: page.getByText('Combat Chess · Campaña', { exact: true }),
+  });
+  await expect(campaignEntry).toBeVisible({ timeout: 30_000 });
+  await campaignEntry.click();
+  const report = page.getByRole('region', { name: 'Informe postcombate' });
+  await expect(report).toBeVisible({ timeout: 30_000 });
+  await expect(report.getByText('VICTORIA', { exact: true })).toBeVisible();
+  await expect(report.getByText('Rivas', { exact: true })).toBeVisible();
+  const score = report.locator('details.combat-debrief-score-details');
+  await expect(score).not.toHaveAttribute('open');
+  await expect(score.getByText('piezas en pie')).toBeHidden();
+  return report;
+}
+
+test('Combat debrief · real runtime desktop 1440x900 · outcome before numbers', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const report = await openCombatVictoryDebrief(page);
+  await report.scrollIntoViewIfNeeded();
+  const overflow = await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1);
+  expect(overflow).toBe(false);
+  await mkdir(ARTIFACT_DIR, { recursive: true });
+  await captureWarRoomFrame(page, ARTIFACT_DIR + '/combat-debrief-story-desktop-1440x900.png');
+});
+
+test('Combat debrief · real runtime mobile 390x844 · compact story first', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  const report = await openCombatVictoryDebrief(page);
+  await report.scrollIntoViewIfNeeded();
+  const overflow = await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1);
+  expect(overflow).toBe(false);
+  await mkdir(ARTIFACT_DIR, { recursive: true });
+  await captureWarRoomFrame(page, ARTIFACT_DIR + '/combat-debrief-story-android-390x844.png');
+});
