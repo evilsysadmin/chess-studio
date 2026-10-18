@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { combatVeteranHighlight } from '../combatDebrief.js';
+import { combatDebriefOutcomeLabel } from '../combatDebriefCopy.js';
 import { buildCombatDebriefDossier } from '../aiNarrativeTasks.js';
 import { useRemoteNarrativeDossier } from '../useRemoteNarrativeDossier.js';
 
@@ -57,15 +58,9 @@ export default function CombatDebrief({ debrief, compact = false, onViewBattle =
           <span className="army-memorial-kicker">COMBAT CHESS · DEBRIEFING</span>
           <h3>{outcomeTitle(debrief.outcome)}</h3>
         </div>
-        <span className={`combat-debrief-outcome ${debrief.outcome}`}>{String(debrief.outcome).toUpperCase()}</span>
+        <span className={`combat-debrief-outcome ${debrief.outcome}`}>{combatDebriefOutcomeLabel(debrief.outcome)}</span>
       </div>
 
-      <div className="combat-debrief-score">
-        <span><b>{debrief.boardSurvivorCount ?? debrief.survivorCount}/{debrief.boardDeployedCount ?? debrief.deployedCount}</b><small>piezas en pie</small></span>
-        <span><b>{debrief.totalKills}</b><small>bajas enemigas</small></span>
-        <span title="Capturas, resultado y sector asegurado"><b>{debrief.creditsGained > 0 ? `+${debrief.creditsGained}` : '0'}</b><small>créditos</small></span>
-        <span><b>{debrief.meritGained > 0 ? `+${debrief.meritGained}` : '0'}</b><small>méritos</small></span>
-      </div>
 
       <div className="combat-debrief-overview" aria-label="Resumen accionable del combate">
         <section><small>QUÉ OCURRIÓ</small><strong>{debriefWhatHappened(debrief)}</strong></section>
@@ -75,6 +70,16 @@ export default function CombatDebrief({ debrief, compact = false, onViewBattle =
         <small>SIGUIENTE DECISIÓN</small>
         <strong>{debriefNextStep(debrief, nextAction)}</strong>
       </div>
+
+      <details className="combat-debrief-score-details">
+        <summary>Ver cifras de la batalla</summary>
+        <div className="combat-debrief-score">
+          <span><b>{debrief.boardSurvivorCount ?? debrief.survivorCount}/{debrief.boardDeployedCount ?? debrief.deployedCount}</b><small>piezas en pie</small></span>
+          <span><b>{debrief.totalKills}</b><small>bajas enemigas</small></span>
+          <span title="Capturas, resultado y sector asegurado"><b>{debrief.creditsGained > 0 ? `+${debrief.creditsGained}` : '0'}</b><small>créditos</small></span>
+          <span><b>{debrief.meritGained > 0 ? `+${debrief.meritGained}` : '0'}</b><small>méritos</small></span>
+        </div>
+      </details>
 
       {debrief.creditBreakdown && debrief.creditsGained > 0 && (
         <details className="combat-credit-breakdown">
