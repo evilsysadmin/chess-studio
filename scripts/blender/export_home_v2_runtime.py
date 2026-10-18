@@ -23,6 +23,7 @@ if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
 import build_home_v2_blockout as home
+from home_batch_signatures import static_material_batch_key, avoided_ordered_meshes
 
 
 LOGICAL_ID = "home.scene.runtime"
@@ -714,7 +715,39 @@ def simplify_banner_chief_studs() -> dict:
     return {"objects": len(objects), "triangles_before": before, "triangles_after": after}
 
 
-def consolidate_static_architecture() -> tuple[int, int, int, int, int]:
+def _is_opaque_static_material(material) -> bool:
+    """Fail closed on alpha-blended or uncertain Blender material slots."""
+    if material is None:
+        return False
+    if getattr(material, "blend_method", "OPAQUE") != "OPAQUE":
+        return False
+    if getattr(material, "surface_render_method", None) == "BLENDED":
+        return False
+    diffuse = getattr(material, "diffuse_color", None)
+    if diffuse is not None and len(diffuse) >= 4 and diffuse[3] < 0.999:
+        return False
+    if getattr(material, "use_nodes", False) and material.node_tree:
+        shader = material.node_tree.nodes.get("Principled BSDF")
+        alpha = shader.inputs.get("Alpha") if shader else None
+        if alpha is not None and (alpha.is_linked or alpha.default_value < 0.999):
+            return False
+    return True
+
+
+def _material_polygon_triangles(objects) -> dict[str, int]:
+    """Check material identity and triangulated face totals around any new join."""
+    totals = {}
+    for obj in objects:
+        slots = obj.data.materials
+        for polygon in obj.data.polygons:
+            if polygon.material_index >= len(slots) or slots[polygon.material_index] is None:
+                raise SystemExit(f"Static batch has unassigned material: {obj.name}")
+            material_name = slots[polygon.material_index].name
+            totals[material_name] = totals.get(material_name, 0) + len(polygon.vertices) - 2
+    return totals
+
+
+def consolidate_static_architecture() -> tuple[int, int, int, int, int, int, int]:
     """Batch static HOME_ARCH_ and HOME_PROP_ meshes by material for draw-call efficiency.
 
     The scene ships ~2000 individual props (books, chairs, armour, board...). Each
@@ -727,6 +760,11 @@ def consolidate_static_architecture() -> tuple[int, int, int, int, int]:
     separate ARCH/PROP buckets caused redundant GLB primitives / draw calls.
     Joining across those two *static* families preserves geometry and materials,
     while animated props and Klaus's rig remain excluded by _is_static_batchable.
+    Multi-material opaque batches may share a signature despite different slot
+    order: Blender's join remaps indices by material identity. Transparent,
+    ambiguous, single-material and duplicated-slot objects retain the original
+    ordered signature, and we check per-material triangle totals before/after
+    every new permutation join (fail closed on any mismatch).
     """
     candidates = [
         obj for obj in bpy.context.scene.objects
@@ -756,15 +794,19 @@ def consolidate_static_architecture() -> tuple[int, int, int, int, int]:
         obj for obj in bpy.context.scene.objects
         if obj.type == "MESH" and _is_static_batchable(obj.name)
     ]
-    groups: dict[tuple[str, ...], list] = {}
+    groups: dict[tuple[str, tuple[str, ...]], list] = {}
     for obj in candidates:
-        signature = tuple(mat.name if mat else "" for mat in obj.data.materials)
-        # A material slot has the same rendering cost regardless of whether
-        # the original static object was an arch or a prop.
+        slots = [(mat.name if mat else "", _is_opaque_static_material(mat))
+                 for mat in obj.data.materials]
+        # An unordered signature is safe only for known opaque, distinct
+        # materials. All other objects keep the exact historic grouping.
+        signature = static_material_batch_key(slots)
         groups.setdefault(signature, []).append(obj)
 
     batch_index = 0
     mixed_batches = 0
+    permutation_join_groups = 0
+    ordered_meshes_avoided = 0
     bpy.ops.object.select_all(action="DESELECT")
     for signature, group in groups.items():
         live = [obj for obj in group if obj.name in bpy.context.scene.objects]
@@ -773,6 +815,15 @@ def consolidate_static_architecture() -> tuple[int, int, int, int, int]:
         kinds = {"ARCH" if obj.name.startswith("HOME_ARCH_") else "PROP" for obj in live}
         if len(kinds) > 1:
             mixed_batches += 1
+        ordered_signatures = [
+            tuple(mat.name if mat else "" for mat in obj.data.materials)
+            for obj in live
+        ]
+        mesh_saving = (
+            avoided_ordered_meshes(ordered_signatures)
+            if signature[0] == "opaque-set" else 0
+        )
+        before_triangles = _material_polygon_triangles(live) if mesh_saving else None
         for obj in live:
             obj.select_set(True)
         active = live[0]
@@ -780,7 +831,17 @@ def consolidate_static_architecture() -> tuple[int, int, int, int, int]:
         kind = "ARCH" if active.name.startswith("HOME_ARCH_") else "PROP"
         bpy.context.view_layer.objects.active = active
         bpy.ops.object.join()
-        material_label = signature[0].replace("HOME_MAT_", "").lower() if signature else "mixed"
+        if mesh_saving:
+            after_triangles = _material_polygon_triangles([active])
+            if before_triangles != after_triangles:
+                raise SystemExit(
+                    f"Static permutation join altered material triangles: "
+                    f"{active.name}: {before_triangles} -> {after_triangles}"
+                )
+            permutation_join_groups += 1
+            ordered_meshes_avoided += mesh_saving
+        material_names = signature[1]
+        material_label = material_names[0].replace("HOME_MAT_", "").lower() if material_names else "mixed"
         active.name = f"HOME_{kind}_BATCH_{batch_index}_{material_label}"
         active.select_set(False)
         batch_index += 1
@@ -805,7 +866,8 @@ def consolidate_static_architecture() -> tuple[int, int, int, int, int]:
         )
     if arch_after + prop_after > arch_before + prop_before:
         raise SystemExit("Static batching increased the number of static meshes")
-    return arch_before, arch_after, prop_before, prop_after, mixed_batches
+    return (arch_before, arch_after, prop_before, prop_after,
+            mixed_batches, permutation_join_groups, ordered_meshes_avoided)
 
 
 def select_runtime_geometry() -> int:
@@ -935,6 +997,8 @@ def main() -> None:
         prop_meshes_before,
         prop_meshes_after,
         mixed_static_batches,
+        permutation_join_groups,
+        ordered_meshes_avoided,
     ) = consolidate_static_architecture()
     klaus_tail_lod = simplify_klaus_tail_tip()
     klaus_undercoat_lod = simplify_klaus_undercoat()
@@ -1021,6 +1085,10 @@ def main() -> None:
         "static_prop_meshes_before": prop_meshes_before,
         "prop_meshes_after": prop_meshes_after,
         "mixed_static_batches": mixed_static_batches,
+        # Real joined Blender nodes avoided versus the old ordered signature,
+        # not a measured GPU draw-call or FPS saving.
+        "permutation_join_groups": permutation_join_groups,
+        "permutation_ordered_meshes_avoided": ordered_meshes_avoided,
         "glb_meshes": len(glb_document.get("meshes", [])),
         "geometry_budget": geometry_budget,
         "glb_primitives": primitive_count,
