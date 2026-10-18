@@ -280,9 +280,12 @@ export function homeBlenderGpuResourceCounts(renderer) {
  * diagnostic snapshots. A browser can publish the same last-result value
  * for several seconds while a subsequent query is pending: repeating that
  * value does not create another independent observation.
+ * minCompletedCount discards queries completed before a benchmark finishes
+ * actor/model settling. Backwards-compatible default is zero.
  */
-export function homeBlenderDistinctGpuSamplesMs(snapshots) {
-  let lastAcceptedCount = 0;
+export function homeBlenderDistinctGpuSamplesMs(snapshots, minCompletedCount = 0) {
+  let lastAcceptedCount = Number.isSafeInteger(minCompletedCount) && minCompletedCount > 0
+    ? minCompletedCount : 0;
   const samples = [];
   for (const snapshot of snapshots) {
     const { gpuSampleCount, gpuStatus, gpuMs } = snapshot || {};
