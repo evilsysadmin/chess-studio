@@ -40,7 +40,10 @@ func TestSignAndVerify(t *testing.T) {
 	for name, check := range map[string]func() error{
 		"other audience": func() error { _, err := Verify(token, keys, Issuer("staging"), "chess", now); return err },
 		"other issuer":   func() error { _, err := Verify(token, keys, Issuer("production"), "chronicles", now); return err },
-		"expired":        func() error { _, err := Verify(token, keys, Issuer("staging"), "chronicles", now.Add(2*TokenLifetime)); return err },
+		"expired": func() error {
+			_, err := Verify(token, keys, Issuer("staging"), "chronicles", now.Add(2*TokenLifetime))
+			return err
+		},
 		"tampered": func() error {
 			parts := strings.Split(token, ".")
 			forged, _ := json.Marshal(Claims{Issuer: claims.Issuer, Audience: "chronicles", Subject: "admin", ExpiresAt: claims.ExpiresAt})
