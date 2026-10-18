@@ -1,18 +1,23 @@
 import { expect, test } from '@playwright/test';
-import { loginAndOpenDeployment } from './helpers.js';
+import { dismissTutorialIfVisible, login, loginAndOpenDeployment, mockApi, openCampaignBriefing } from './helpers.js';
 
 test.describe('Combat Chess · interacción DOM real', () => {
   test('una baja veterana exige confirmar pérdida definitiva y conserva el expediente en el Memorial', async ({ page }) => {
-    await page.addInitScript(() => {
-      localStorage.setItem('chess-study-combat-roster', JSON.stringify({
+    const veteranRoster = {
         pieces: { 'n-b': { alive: false, strengthPoints: 4, speedPoints: 2, bankedXp: 3 } },
         identities: { 'n-b': { alias: 'Konrad', identityId: 'unit-konrad', createdAt: '2026-08-20T00:00:00Z' } },
         unitRecords: { 'unit-konrad': { identityId: 'unit-konrad', alias: 'Konrad', slotKey: 'n-b',
           stats: { battles: 11, survivals: 8, kills: 4 }, decorations: [{ id: 'veteran' }] } },
         credits: 60,
-      }));
-    });
-    const deployment = await loginAndOpenDeployment(page);
+    };
+    await mockApi(page, { profileSeed: { 'chess-study-combat-roster': JSON.stringify(veteranRoster) } });
+    await login(page);
+    await openCampaignBriefing(page);
+    await page.getByRole('button', { name: /PREPARAR EJÉRCITO/i }).click();
+    await dismissTutorialIfVisible(page);
+    await page.getByRole('button', { name: /RESOLVER BAJAS/i }).click();
+    const deployment = page.locator('[data-combat-deployment="war-table"]');
+    await expect(deployment).toBeVisible();
     const casualties = deployment.getByRole('region', { name: 'Bajas pendientes' });
     await expect(casualties).toBeVisible();
     await expect(casualties.getByText('11 batallas')).toBeVisible();

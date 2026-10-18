@@ -332,8 +332,7 @@ test('Combat campaign map · desktop is a diegetic Operations Room instrument', 
 // Real casualty state, not a mockup. The persisted veteran's history is
 // measured in the roster and appears in the actual campaign modal.
 async function openFallenVeteranWarTable(page) {
-  await page.addInitScript(() => {
-    localStorage.setItem('chess-study-combat-roster', JSON.stringify({
+  const veteranRoster = {
       pieces: { 'n-b': { alive: false, strengthPoints: 4, speedPoints: 2, bankedXp: 3 } },
       identities: { 'n-b': { identityId: 'visual-veteran-konrad', alias: 'Konrad', createdAt: '2026-08-20T00:00:00Z' } },
       unitRecords: { 'visual-veteran-konrad': {
@@ -342,10 +341,9 @@ async function openFallenVeteranWarTable(page) {
         decorations: [{ id: 'veteran' }],
       } },
       credits: 60,
-    }));
-  });
+  };
   await verifyCombatOperationsRuntimeAsset(page);
-  await mockApi(page);
+  await mockApi(page, { profileSeed: { 'chess-study-combat-roster': JSON.stringify(veteranRoster) } });
   await login(page);
   await openCampaignBriefing(page);
   await page.getByRole('button', { name: /PREPARAR EJÉRCITO/i }).click();
