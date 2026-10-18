@@ -42,6 +42,7 @@ export function gameStatusView({
   else if (flagFallen) statusText = flagFinalOutcome === 'draw'
     ? 'Tiempo agotado · tablas por material insuficiente'
     : `Se acabó el tiempo (${flagFallen === 'w' ? 'blancas' : 'negras'})`;
+  else if (boardOutcome) statusText = statusLabel || 'Partida terminada';
   else if (busy) statusText = 'La CPU está pensando…';
   else if (!zenMode && turnBanner) statusText = turnBanner;
   else statusText = statusLabel || (turn === humanColor ? 'Tu turno' : 'Turno de la CPU');
