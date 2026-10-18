@@ -31,6 +31,8 @@ describe('Combat Chess · decisiones de bajas', () => {
     expect(html).toContain('4 bajas enemigas');
     expect(html).toContain('1 condecoración');
     expect(html).toContain('nv.7 → nv.4');
+    expect(html).toContain('<details class="deployment-casualty-mechanics"');
+    expect(html).toContain('¿Qué hacemos con Konrad?');
     expect(html).toContain('una batalla de recuperación');
     expect(html).not.toContain('Confirmar reemplazo definitivo');
     expect(html).not.toContain('Aceptar 2 reclutas');

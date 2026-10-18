@@ -18,6 +18,12 @@ test.describe('Combat Chess · interacción DOM real', () => {
     await expect(casualties.getByText('11 batallas')).toBeVisible();
     await expect(casualties.getByText(/nv.7 → nv.4/)).toBeVisible();
     await expect(casualties.getByText('✦ 1 condecoración')).toBeVisible();
+    const mechanics = casualties.locator('details.deployment-casualty-mechanics');
+    await expect(mechanics).not.toHaveAttribute('open');
+    await expect(mechanics.getByText(/pierde la XP sin gastar/)).toBeHidden();
+    await mechanics.locator('summary').click();
+    await expect(mechanics.getByText(/pierde la XP sin gastar/)).toBeVisible();
+
     await casualties.getByRole('button', { name: 'Reemplazar…' }).click();
     await expect(casualties.getByText('¿Archivar definitivamente a Konrad?')).toBeVisible();
     let stored = await page.evaluate(() => JSON.parse(localStorage.getItem('chess-study-combat-roster')));

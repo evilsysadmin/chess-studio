@@ -725,3 +725,92 @@
   .combat-war-table .combat-deployment-layout:has(.deployment-casualties) .deployment-barracks { order: 0; }
   .combat-war-table .deployment-barracks:has(.deployment-casualties) .deployment-casualties { max-height: min(63dvh, 510px); }
 }
+
+
+/* Casualty UX: character first, two readable decisions, rules on demand. */
+.combat-war-table .deployment-casualty-question {
+  grid-column: 1 / -1;
+  margin: .25rem 0 0;
+  color: #f6e4bf;
+  font-size: .81rem;
+  line-height: 1.4;
+  font-weight: 750;
+}
+.combat-war-table .deployment-casualty-choices {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: .5rem;
+}
+.combat-war-table .deployment-casualty-choice {
+  display: grid;
+  gap: .4rem;
+  padding: .56rem;
+  border: 1px solid rgba(219, 185, 111, .30);
+  border-radius: 9px;
+  background: rgba(34, 52, 28, .25);
+}
+.combat-war-table .deployment-casualty-choice.retire {
+  border-color: rgba(164, 115, 106, .24);
+  background: rgba(65, 29, 28, .14);
+}
+.combat-war-table .deployment-casualty-choice-copy {
+  display: grid;
+  gap: .12rem;
+}
+.combat-war-table .deployment-casualty-choice-copy strong {
+  color: #ecd49e;
+  font-size: .79rem;
+}
+.combat-war-table .deployment-casualty-choice-copy small {
+  color: rgba(232, 221, 193, .80);
+  font-size: .68rem;
+  line-height: 1.42;
+}
+.combat-war-table .deployment-casualty-choice .primary-btn,
+.combat-war-table .deployment-casualty-choice .secondary-btn {
+  width: 100%;
+  min-height: 44px;
+  margin: 0;
+  font-size: .73rem;
+}
+.combat-war-table .deployment-casualty-choice .primary-btn:disabled {
+  opacity: .52;
+}
+.combat-war-table .deployment-casualty-mechanics {
+  grid-column: 1 / -1;
+  border: 1px solid rgba(215, 182, 111, .18);
+  border-radius: 8px;
+  background: rgba(10, 14, 17, .40);
+}
+.combat-war-table .deployment-casualty-mechanics > summary {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  gap: .4rem;
+  padding: .5rem .65rem;
+  color: #e4d1a9;
+  font-size: .68rem;
+  cursor: pointer;
+}
+.combat-war-table .deployment-casualty-mechanics > summary::after {
+  content: '+';
+  margin-left: auto;
+  font-size: 1rem;
+}
+.combat-war-table .deployment-casualty-mechanics[open] > summary::after { content: '−'; }
+.combat-war-table .deployment-casualty-mechanics > div {
+  display: grid;
+  gap: .45rem;
+  padding: .1rem .65rem .65rem;
+}
+.combat-war-table .deployment-casualty-mechanics p {
+  margin: 0;
+  color: rgba(235, 224, 202, .85);
+  font-size: .68rem;
+  line-height: 1.5;
+}
+@media (max-width: 780px) {
+  .combat-war-table .deployment-casualty-choices { gap: .45rem; }
+  .combat-war-table .deployment-casualty-choices .primary-btn,
+  .combat-war-table .deployment-casualty-choices .secondary-btn { min-height: 46px; }
+}
