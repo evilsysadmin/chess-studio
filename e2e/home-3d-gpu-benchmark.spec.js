@@ -47,6 +47,11 @@ async function openRealHome(page, lightMode = 'normal') {
   await expect(castle).toHaveClass(/is-ready/, { timeout: 90_000 });
   await expect(castle).toHaveAttribute('data-home-blender-runtime', 'ready');
   await expect(castle).toHaveAttribute('data-home-castle-compositor', 'blender-runtime');
+  // The hall marks ready before the separate Matthias GLB has mounted. A
+  // benchmark captured during that transition compares different scenes,
+  // especially when the light probe compiles different shader permutations.
+  await expect(castle, 'Benchmark requires Matthias inside the real 3D hall')
+    .toHaveAttribute('data-home-matthias-actor', 'ready', { timeout: 75_000 });
   await expect(page.locator('.home-3d-loading')).toHaveCount(0, { timeout: 45_000 });
   return castle;
 }
@@ -103,6 +108,8 @@ async function readRealCanvas(castle) {
       shadows: d.homeBlenderShadows || null,
       lightProbe: d.homeBlenderLightProbe || null,
       auxiliaryLightsDisabled: num('homeBlenderLightProbeDisabled'),
+      matthiasActor: d.homeMatthiasActor || 'missing',
+      matthiasStation: d.homeMatthiasStation || 'missing',
       ambient: d.homeBlenderAmbient || null, rendererFingerprint,
       gpuStatus: d.homeBlenderGpuStatus || 'missing',
       gpuMs: num('homeBlenderGpuMs'),
@@ -156,8 +163,15 @@ test('Home 3D physical GPU benchmark · three visits or opt-in light A/B/B/A', a
     });
     try {
       const castle = await openRealHome(page, sequence[index]);
+      // Wait for one real post-actor render interval before recording a GPU
+      // query watermark. A pending pre-actor query might still complete; the
+      // watermark excludes already completed results, and the first fresh
+      // query is discarded to guard against that pending boundary.
+      await page.waitForTimeout(1_500);
+      const settled = await readRealCanvas(castle);
+      const settledGpuCount = settled.gpuSampleCount;
       const snapshots = [];
-      // Sample after the Home is ready, not the loading/compilation spike.
+      // Sample after both Home and Matthias are ready, not loading/compilation.
       // The scene throttles animation by design, so "draws/s" != display FPS.
       for (let sample = 0; sample < 4; sample += 1) {
         await page.waitForTimeout(2_000);
@@ -167,9 +181,18 @@ test('Home 3D physical GPU benchmark · three visits or opt-in light A/B/B/A', a
       // The same most-recent GPU result may survive several 2s reads.
       // Count only new completed WebGL queries: duplicated reads must not
       // artificially inflate the sample size or bias the median.
-      const gpuSamplesMs = homeBlenderDistinctGpuSamplesMs(snapshots);
+      const freshSamples = homeBlenderDistinctGpuSamplesMs(
+        snapshots, Number.isSafeInteger(settledGpuCount) ? settledGpuCount : 0,
+      );
+      // With asynchronous WebGL queries, the first result since the
+      // watermark may have been submitted while Matthias was still loading.
+      // Exclude that ambiguous boundary, rather than calling it a stable
+      // post-actor GPU frame. Retain normal benchmark behaviour where no
+      // hardware timer was available.
+      const gpuSamplesMs = lightProbe ? freshSamples.slice(1) : freshSamples;
       const row = {
         visit: index + 1,
+        gpuSamplesWatermark: settledGpuCount,
         ...last,
         gpuSamplesMs,
         gpuMedianMs: median(gpuSamplesMs),
@@ -180,6 +203,9 @@ test('Home 3D physical GPU benchmark · three visits or opt-in light A/B/B/A', a
       console.log('HOME_3D_GPU_BENCH ' + JSON.stringify(row));
       expect(row.actual, 'Verify the renderer of the actual Home canvas, not browser launch flags')
         .toBe(requested);
+      expect(row.matthiasActor, 'All visits must render the actual Matthias actor').toBe('ready');
+      expect(snapshots.every((snapshot) => snapshot.matthiasActor === 'ready'),
+        'No GPU snapshot can be taken before Matthias finishes mounting').toBe(true);
       if (lightProbe) {
         expect(row.lightProbe).toBe(sequence[index]);
         expect(row.lod, 'Compare fully lit full-LOD Home only').toBe('full');
@@ -216,7 +242,8 @@ test('Home 3D physical GPU benchmark · three visits or opt-in light A/B/B/A', a
     const reference = visits[0];
     for (const row of visits.slice(1)) {
       for (const key of ['actual', 'vendor', 'rendererFingerprint', 'lod', 'shadows',
-        'ambient', 'canvasWidth', 'canvasHeight', 'initialTriangles']) {
+        'ambient', 'canvasWidth', 'canvasHeight', 'initialTriangles', 'matthiasActor',
+        'matthiasStation']) {
         expect(row[key], `Home A/B/B/A is not comparable: mismatched ${key}`).toEqual(reference[key]);
       }
     }
