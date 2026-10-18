@@ -65,6 +65,13 @@ WARROOM_MOBILE_VISUAL_SURFACES = {
     "frontend/src/components/warroommobilelandscape.css",
 }
 
+WARROOM_NARRATIVE_VISUAL_SURFACES = {
+    # In-game commentary and status strips are owned by War Room 2D/3D, not
+    # Home's Matthias greeting or unrelated gameplay surfaces.
+    "frontend/src/components/usematthiasboardreactions.js",
+    "frontend/src/components/gamestatusstrips.jsx",
+}
+
 WARROOM_MATTHIAS_VISUAL_SURFACES = {
     "frontend/src/components/matthias3dbubbleanchor.css",
     "frontend/src/components/usematthias3dbubbleanchor.js",
@@ -265,6 +272,8 @@ def _surface_groups(path: str) -> set[str] | None:
     if lower == "frontend/src/components/homemobilegoldenpath.css":
         return {"home"}
     if lower in WARROOM_MOBILE_VISUAL_SURFACES:
+        return {"warroom"}
+    if lower in WARROOM_NARRATIVE_VISUAL_SURFACES:
         return {"warroom"}
     if lower in WARROOM_MATTHIAS_VISUAL_SURFACES:
         return {"warroom"}
@@ -731,6 +740,16 @@ def self_test() -> None:
     assert cpu_scope.capture_groups == "warroom"
     assert classify(["frontend/public/sw.js", "scripts/pwa_check.mjs"]).capture_groups == "none"
     assert classify(["frontend/src/components/ShareResultModal.jsx"]).capture_groups == "warroom"
+    narrative_scope = classify([
+        "frontend/src/components/GameBoardView.jsx",
+        "frontend/src/components/GameStatusStrips.jsx",
+        "frontend/src/components/useMatthiasBoardReactions.js",
+        "frontend/src/components/warRoomLiveNarrative.js",
+        "frontend/src/components/WarRoomHansFireCall.jsx",
+    ])
+    assert narrative_scope.capture_groups == "warroom"
+    assert narrative_scope.hans  # Dialogue edits still require Hans visual evidence.
+    assert classify(["frontend/src/components/HomeMatthiasDailyConsult.jsx"]).capture_groups == "home"
     assert classify(["frontend/src/components/ProfileBackupModal.jsx"]).capture_groups == "home"
     assert classify([
         "frontend/src/components/GameScreen.jsx",
