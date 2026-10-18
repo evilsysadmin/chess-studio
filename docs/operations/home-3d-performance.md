@@ -26,6 +26,8 @@ Open the Home with `?homeGpuProfile=1`. After the authored GLB is prepared, the 
 
 The inventory counts visible authored-GLB meshes, potential material-group draw slots, shadow-casting candidates, transparent slots, shared geometry references, unique geometries and unique materials. It is deliberately **not** actual GPU draw calls, shader GPU time or VRAM usage: frustum culling, invisible ancestors, material groups and shadow passes all affect the renderer's actual submissions. Matthias, runtime fire/candle particles, dust and glow sprites are loaded/added separately and are **excluded**. Use the existing `homeBlenderDrawCalls`/GPU timer to observe actual rendering cost, then use the GLB inventory only to locate plausible batching/shadow work.
 
+The opt-in JSON also contains `topMaterials`, a bounded top-ten ranking by the authored material name and visible potential draw slots, with transparent and shadow-caster candidates per row. Separate material instances with the same name are intentionally grouped for diagnosis. This is a **lead for targeted batching**, not a measured WebGL submission count or a prediction of GPU speedup; check the actual renderer/GPU measurements first.
+
 The local hardware benchmark includes this inventory per cold visit and medians for `modelDrawSlots`, `modelShadowCasterSlots`, `modelTransparentSlots`, `modelUniqueGeometries` and `modelUniqueMaterials`. The A/B comparator displays these as **GLB candidates** separately from real GPU calls. Older schema-2 reports without an inventory show `n/a`; never interpret missing inventory as zero. To compare inventory, rebuild both revisions with the instrumented harness.
 
 ## Opt-in GPU timer (physical device)
