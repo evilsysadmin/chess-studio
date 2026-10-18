@@ -29,6 +29,14 @@ describe('gameStatusView', () => {
     expect(gameStatusView({ status: 'check', turn: 'b', humanColor: 'w', busy: true }).statusText).toBe('La CPU está pensando…');
   });
 
+  it('avisa del rollback incluso en modo Zen sin ocultar los resultados terminales', () => {
+    const banner = 'Jugada sin confirmar · posición restaurada';
+    expect(gameStatusView({ status: 'playing', turn: 'w', humanColor: 'w', turnBanner: banner }).statusText).toBe(banner);
+    expect(gameStatusView({ status: 'playing', turn: 'w', humanColor: 'w', turnBanner: banner, zenMode: true }).statusText).toBe(banner);
+    expect(gameStatusView({ status: 'checkmate', turn: 'b', humanColor: 'w', turnBanner: banner }).statusText).toBe('Jaque mate');
+    expect(gameStatusView({ status: 'playing', turn: 'w', humanColor: 'w', busy: true, turnBanner: 'La CPU jugó e5' }).statusText).toBe('La CPU está pensando…');
+  });
+
   it('busy y bandera tienen prioridad sobre banners normales', () => {
     expect(gameStatusView({ status: 'check', turn: 'b', humanColor: 'w', busy: true }).statusText).toBe('La CPU está pensando…');
     expect(gameStatusView({ status: 'playing', turn: 'w', humanColor: 'w', flagFallen: 'b', flagFinalOutcome: 'win' }).statusText).toContain('negras');
