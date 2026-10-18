@@ -364,6 +364,9 @@ e2e-combat-dom: ensure-e2e-deps frontend-build
 # to an existing port 4173, preventing stale builds from contaminating data.
 HOME_GPU_NVIDIA_PRIME ?= 1
 HOME_GPU_HEADLESS ?= 0
+# An offload request alone cannot prove Chromium used NVIDIA. Require its
+# observed WebGL vendor by default; native GPU modes may set amd/intel etc.
+HOME_GPU_EXPECT_VENDOR ?= $(if $(filter 1,$(HOME_GPU_NVIDIA_PRIME)),nvidia,)
 ifeq ($(HOME_GPU_NVIDIA_PRIME),1)
 HOME_GPU_ENV := __NV_PRIME_RENDER_OFFLOAD=1 __GLX_VENDOR_LIBRARY_NAME=nvidia
 else
