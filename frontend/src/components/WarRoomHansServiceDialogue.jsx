@@ -26,6 +26,7 @@ export default function WarRoomHansServiceDialogue({
   gameId = '',
   isThreeD = false,
   enabled = false,
+  quiet = false,
   matthiasAnchorStyle = null,
   matthiasTrackedSquare = null,
 }) {
@@ -100,7 +101,7 @@ export default function WarRoomHansServiceDialogue({
   } : null, [matthiasAnchorStyle]);
 
   const spec = warRoomHansServiceDialogueSpec(phase) || warRoomHansChoreDialogueSpec(phase);
-  if (!isThreeD || !enabled || !gameId || !portalHost || !phase || !spec) return null;
+  if (!isThreeD || !enabled || !gameId || !portalHost || !phase || !spec || quiet) return null;
   const isHans = spec.speaker === 'HANS';
   const style = isHans ? hansStyle : matthiasStyle;
   if (!style) return null;
