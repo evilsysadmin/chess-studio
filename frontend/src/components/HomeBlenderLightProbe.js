@@ -1,10 +1,22 @@
 // Explicit physical-GPU experiment, never an automatic visual/quality policy.
 // Query opt-in requires the existing GPU profiler as a second deliberate flag.
 // Real users, including those using ?homeGpuProfile=1 alone, see the canon.
+// Four explicit families account for the twelve existing auxiliary lights.
+// Keep default 'aux-off' mode for historical A/B reports.
+export const HOME_BLENDER_LIGHT_PROBE_FAMILIES = Object.freeze({
+  all: 12, wall: 4, board: 2, stairs: 3, accent: 3,
+});
+
+const DIAGNOSTIC_MODES = new Set([
+  'normal', 'aux-off', 'aux-wall-off', 'aux-board-off',
+  'aux-stairs-off', 'aux-accent-off',
+]);
+
 export function homeBlenderLightProbeMode(search = '') {
   const params = new URLSearchParams(String(search).replace(/^\?/, ''));
-  return params.get('homeGpuProfile') === '1' && params.get('homeLightProbe') === 'aux-off'
-    ? 'aux-off' : 'normal';
+  const mode = params.get('homeLightProbe');
+  return params.get('homeGpuProfile') === '1' && DIAGNOSTIC_MODES.has(mode)
+    ? mode : 'normal';
 }
 
 // A/B/B/A needs two comparable FULL renderers. The production governor
@@ -15,7 +27,7 @@ export function homeBlenderLightProbeLocksFullLod(search = '', initialLod = null
   if (initialLod !== 'full') return false;
   const params = new URLSearchParams(String(search).replace(/^\?/, ''));
   return params.get('homeGpuProfile') === '1'
-    && ['normal', 'aux-off'].includes(params.get('homeLightProbe'));
+    && DIAGNOSTIC_MODES.has(params.get('homeLightProbe'));
 }
 
 // The ancillary lights don't cast shadows; keep the shadow-casting key,
@@ -23,11 +35,14 @@ export function homeBlenderLightProbeLocksFullLod(search = '', initialLod = null
 // glow sprites unchanged. Invisible Three lights are excluded from shader
 // light lists. No flicker/power configuration or scene assets are mutated.
 export function applyHomeBlenderLightProbe(torches, mode) {
-  if (mode !== 'aux-off') return 0;
+  if (!DIAGNOSTIC_MODES.has(mode) || mode === 'normal') return 0;
+  const family = mode === 'aux-off' ? null : mode.slice(4, -4);
   let disabled = 0;
   for (const entry of torches) {
-    if (entry?.light && entry.light.castShadow !== true) {
-      entry.light.visible = false;
+    const light = entry?.light;
+    if (light && light.castShadow !== true
+      && (family === null || light.userData?.homeLightProbeFamily === family)) {
+      light.visible = false;
       disabled += 1;
     }
   }
