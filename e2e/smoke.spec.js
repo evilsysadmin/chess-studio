@@ -824,7 +824,7 @@ test('resiliencia · jugada persistida con respuesta perdida se reintenta sin do
 // clicks a square: animations and slow software-rendered canvases are excluded.
 // A fast CPU should be paced, while a slow CPU must not pay the delay *again*.
 for (const [label, serverDelayMs, minimumMs, maximumMs] of [
-  ['fast CPU respects the presentation floor', 0, 1750, 4800],
+  ['fast CPU respects the presentation floor', 0, 1250, 4300],
   ['slow CPU does not receive another presentation pause', 3500, 3350, 5400],
 ]) {
   test(`Matthias · ${label}`, async ({ page }) => {
