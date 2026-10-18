@@ -694,3 +694,39 @@ body:has(.combat-operations-screen) .global-music-dock {
     line-height: 1.35;
   }
 }
+
+/* Combat pre-battle focus: action first, exact outcome second; HUD is only
+ * operational status, not a dashboard. Keep the tactical scene visible. */
+.combat-operations-screen:not(.campaign-mission-room-screen) .combat-operations-primary-actions .campaign-main-cta {
+  min-height: 50px;
+  padding-inline: 1.15rem;
+  font-weight: 850;
+  letter-spacing: .035em;
+}
+.combat-operations-screen:not(.campaign-mission-room-screen) .combat-operations-primary > div:first-child > small {
+  display: block;
+  max-width: 48ch;
+  color: rgba(245, 233, 205, .88);
+  line-height: 1.4;
+  font-size: .73rem;
+}
+.combat-operations-screen:not(.campaign-mission-room-screen) .combat-operations-primary-actions .campaign-recommended-formation {
+  min-height: 44px;
+}
+@media (max-width: 720px) {
+  .combat-operations-screen:not(.campaign-mission-room-screen) .combat-operations-primary {
+    gap: .45rem;
+    padding: .58rem .66rem;
+  }
+  .combat-operations-screen:not(.campaign-mission-room-screen) .combat-operations-primary > div:first-child > small {
+    display: block;
+    font-size: .71rem;
+    line-height: 1.35;
+  }
+  .combat-operations-screen:not(.campaign-mission-room-screen) .combat-operations-primary-actions {
+    gap: .32rem;
+  }
+  .combat-operations-screen:not(.campaign-mission-room-screen) .combat-operations-primary-actions .campaign-main-cta {
+    min-height: 50px;
+  }
+}
