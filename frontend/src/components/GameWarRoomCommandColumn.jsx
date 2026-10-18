@@ -27,6 +27,9 @@ function resolveWarRoomSignal(game, status) {
   // A mate, flag fall or finished game must never keep the turn lamp on
   // "thinking" because a pending request or old busy flag cleared late.
   if (game?.isGameOver || terminalText) return { tone: 'amber', label: terminalText ? text : 'Partida terminada' };
+  // The board already moved optimistically; until the server replies, do not
+  // present Matthias as thinking or imply the move was accepted remotely.
+  if (status?.busy && status?.pendingMove) return { tone: 'amber', label: 'Confirmando jugada…' };
   if (thinking) return { tone: 'amber', label: 'Pensando…' };
 
   if (humanTurn) {

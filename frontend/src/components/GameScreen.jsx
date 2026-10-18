@@ -768,7 +768,7 @@ export default function GameScreen({
         humanColor={humanColor}
         rivalryRecord={rivalryRecord}
         zenMode={zenMode}
-        status={{ statusClass, statusText, turnBanner, busy, audienceReaction, matthiasSilentBeat }}
+        status={{ statusClass, statusText, turnBanner, busy, pendingMove: busy && game.turn === humanColor && boardFen !== game.fen, audienceReaction, matthiasSilentBeat }}
         context={{
           memoryContext,
           suddenLives,
