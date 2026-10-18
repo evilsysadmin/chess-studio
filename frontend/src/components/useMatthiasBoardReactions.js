@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { speakCpuComment } from '../voiceCommentary.js';
+import { shouldShowNewLiveBoardRemark } from './warRoomLiveNarrative.js';
 import {
   matthiasAngerState,
   matthiasCaptureReaction,
@@ -86,7 +87,12 @@ export default function useMatthiasBoardReactions({
   }, [game.id]);
 
   useEffect(() => {
-    if (!boardBubbleKey || liveBubbleTrackingRef.current.seenKey === boardBubbleKey) return undefined;
+    if (!shouldShowNewLiveBoardRemark({
+      gameId: game.id,
+      trackedGameId: liveBubbleTrackingRef.current.gameId,
+      currentKey: boardBubbleKey,
+      seenKey: liveBubbleTrackingRef.current.seenKey,
+    })) return undefined;
     liveBubbleTrackingRef.current.seenKey = boardBubbleKey;
     if (zenMode) return undefined;
     setLiveBoardBubble(latestBoardBubble);
