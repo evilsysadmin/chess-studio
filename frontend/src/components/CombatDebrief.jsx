@@ -71,8 +71,8 @@ export default function CombatDebrief({ debrief, compact = false, onViewBattle =
         <strong>{debriefNextStep(debrief, nextAction)}</strong>
       </div>
 
-      <details className="combat-debrief-score-details">
-        <summary>Ver cifras de la batalla</summary>
+      <details className="combat-credit-breakdown combat-debrief-score-details">
+        <summary style={{ minHeight: 44 }}>Ver cifras de la batalla</summary>
         <div className="combat-debrief-score">
           <span><b>{debrief.boardSurvivorCount ?? debrief.survivorCount}/{debrief.boardDeployedCount ?? debrief.deployedCount}</b><small>piezas en pie</small></span>
           <span><b>{debrief.totalKills}</b><small>bajas enemigas</small></span>
