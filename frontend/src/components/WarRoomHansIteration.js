@@ -251,24 +251,28 @@ function relocateHearthKit(fireplace, towardBoard) {
   const tools = fireplace.getObjectByName?.('war-room-hearth-tool-stand');
   let moved = 0;
   if (basket) {
-    basket.position.x = -side * Math.abs(stage.basketX);
+    // Use the authored signed lateral coordinate. Abs() silently mirrored the
+    // V4 basket *away* from the actual route, leaving Hans miming a pickup.
+    basket.position.x = side * stage.basketX;
     basket.position.z = towardBoard * stage.basketZ;
     basket.rotation.y = -side * towardBoard * 0.05;
-    basket.userData.warRoomHansHearthSide = 'opposite-service-door';
+    basket.userData.warRoomHansHearthSide = stage.basketX > 0 ? 'service-aisle' : 'opposite-service-door';
     basket.userData.warRoomHansHearthDepth = 'rear-wall-v1';
     recolorGraphiteBasket(basket);
     moved += 1;
   }
   if (tools) {
-    tools.position.x = -side * Math.abs(stage.toolsX);
+    tools.position.x = side * stage.toolsX;
     tools.position.z = towardBoard * stage.toolsZ;
-    tools.userData.warRoomHansHearthSide = 'opposite-service-door';
+    tools.userData.warRoomHansHearthSide = stage.toolsX > 0 ? 'service-aisle' : 'opposite-service-door';
     tools.userData.warRoomHansHearthDepth = 'rear-wall-v1';
     moved += 1;
   }
   const kit = fireplace.getObjectByName?.('war-room-hans-hearth-kit');
   if (kit) {
-    kit.userData.warRoomHansServiceDoorClearance = 'opposite-side-v1';
+    kit.userData.warRoomHansServiceDoorClearance = stage.basketX > 0
+      ? 'authored-service-aisle-v4'
+      : 'opposite-side-v1';
     kit.userData.warRoomHansHearthDepth = 'rear-wall-v1';
   }
   return moved;
