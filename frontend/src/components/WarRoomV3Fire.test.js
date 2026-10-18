@@ -61,9 +61,15 @@ describe('War Room v3 authored stove fire', () => {
       for (const elapsedMs of [0, 840, 2170, 1250, 840]) {
         flames[0].onBeforeRender({ userData: { board3DMotionNowMs: elapsedMs } });
         flames.forEach((flame, index) => {
-          const expected = warRoomV3FireFrame({
-            elapsedMs: elapsedMs + index * 137, coarsePointer,
-          });
+          if (index > 0) {
+            // Previous PR removed these GLB nodes from rendering. Their
+            // transforms no longer need CPU updates while sprites are active.
+            expect(flame.visible).toBe(false);
+            expect(flame.scale.toArray()).toEqual([1, 1, 1]);
+            expect(flame.position.y).toBe(0);
+            return;
+          }
+          const expected = warRoomV3FireFrame({ elapsedMs, coarsePointer });
           expect(flame.scale.x).toBeCloseTo(expected.width, 12);
           expect(flame.scale.y).toBeCloseTo(expected.height, 12);
           expect(flame.scale.z).toBeCloseTo(expected.depth, 12);
@@ -76,6 +82,40 @@ describe('War Room v3 authored stove fire', () => {
       expect(practical.intensity).toBe(2.3);
       expect(flames.every((flame) => flame.scale.equals(new THREE.Vector3(1, 1, 1)))).toBe(true);
     }
+  });
+
+  it('keeps all authored flame updates in reduced-motion without sprites', () => {
+    const root = new THREE.Group();
+    const names = [
+      'WR3_ARM_hearth_flame_body',
+      'WR3_ARM_hearth_flame_0',
+      'WR3_ARM_hearth_flame_1',
+    ];
+    const flames = names.map((name) => {
+      const flame = new THREE.Mesh(
+        new THREE.SphereGeometry(0.2),
+        new THREE.MeshStandardMaterial(),
+      );
+      flame.name = name;
+      root.add(flame);
+      return flame;
+    });
+    // Reduced-motion disables sprites: GLB flame meshes remain visible and
+    // all must still consume the dimmer (not just the callback driver).
+    root.userData.warRoomHansFireDimmer = {
+      core: { visible: true, scale: new THREE.Vector3(0.7, 0.4, 0.7) },
+      light: { intensity: 0.5 },
+    };
+    const release = installWarRoomV3FireAnimation(root, { reducedMotion: true });
+    expect(root.getObjectByName('war-room-v3-stove-fire-sprites')).toBeUndefined();
+    expect(flames.every((flame) => flame.visible)).toBe(true);
+    flames[0].onBeforeRender({ userData: { board3DMotionNowMs: 840 } });
+    flames.forEach((flame) => {
+      expect(flame.scale.toArray()).toEqual([0.7, 0.4, 0.7]);
+      expect(flame.position.y).toBe(0);
+    });
+    release();
+    expect(flames.every((flame) => flame.scale.equals(new THREE.Vector3(1, 1, 1)))).toBe(true);
   });
 
   it('honors Hans cold-hearth zero scale instead of treating zero as a missing multiplier', () => {

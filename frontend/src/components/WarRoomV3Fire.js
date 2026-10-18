@@ -71,6 +71,10 @@ export function installWarRoomV3FireAnimation(
   const disposeSprites = installWarRoomV3StoveFireSprites(flames, { coarsePointer, reducedMotion, shape: spriteShape });
   const fireSprites = root.getObjectByName?.('war-room-v3-stove-fire-sprites') || null;
   const spriteUniforms = fireSprites?.material?.uniforms || null;
+  // Particle-driven hearths hide every authored flame except the render
+  // callback driver. Avoid transforming the three hidden GLB objects on every
+  // frame; reduced-motion / missing-sprite fallback still animates all meshes.
+  const animatedFlameCount = fireSprites && spriteUniforms ? 1 : flames.length;
   const spriteBaseHeight = Number(spriteUniforms?.uHeight?.value);
   const spriteBaseSize = Number(spriteUniforms?.uSize?.value);
   const spriteBaseOpacity = Number(spriteUniforms?.uOpacity?.value);
@@ -108,11 +112,11 @@ export function installWarRoomV3FireAnimation(
       if (Number.isFinite(spriteBaseSize)) spriteUniforms.uSize.value = spriteBaseSize * Math.max(0.25, dimWidth);
       if (Number.isFinite(spriteBaseOpacity)) spriteUniforms.uOpacity.value = spriteBaseOpacity * spriteLife;
     }
-    for (let index = 0; index < flames.length; index += 1) {
+    for (let index = 0; index < animatedFlameCount; index += 1) {
       const flame = flames[index];
       const base = bases[index];
-      // Flame zero uses the already sampled lighting frame, with identical
-      // phase. Only the remaining authored flames need another sample.
+      // Flame zero uses the lighting sample. Extra phase samples only run
+      // when no sprite fire is installed and authored flames are rendered.
       const frame = index === 0
         ? lightFrame
         : sampleWarRoomV3FireFrameInto(
