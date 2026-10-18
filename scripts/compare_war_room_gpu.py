@@ -57,6 +57,12 @@ def load_group(directory, expected_sha, mode, minimum):
         require(data.get('requestedRenderer') == mode, prefix + 'requested renderer mismatch')
         require(type(data.get('browserFramePacingOnly')) is bool, prefix + 'frame-pacing mode declaration missing')
         require(data.get('physicalAndroidVerified') is False, prefix + 'physical Android must be measured separately')
+        browser_version = data.get('browserVersion')
+        if browser_version is not None:
+            require(type(browser_version) is str
+                    and 0 < len(browser_version) <= 128
+                    and browser_version.strip() == browser_version,
+                    prefix + 'invalid Chromium/browser version')
         run = data.get('runId')
         require(type(run) is str and re.fullmatch(r'[0-9a-f-]{36}', run) is not None,
                 prefix + 'missing/invalid unique runId')
@@ -78,6 +84,21 @@ def load_group(directory, expected_sha, mode, minimum):
             renderer = visit.get('renderer')
             require(type(renderer) is str and renderer.strip(), where + ': renderer string required')
             renderers.add(renderer)
+            # Older schema-2 reports have only canvasPixels; keep them readable
+            # for rAF diagnostics but never attribute verified GPU timings.
+            width, height, dpr = (
+                visit.get('canvasWidth'), visit.get('canvasHeight'),
+                visit.get('devicePixelRatio'),
+            )
+            if any(value is not None for value in (width, height, dpr)):
+                require(type(width) is int and width > 0
+                        and type(height) is int and height > 0,
+                        where + ': invalid physical canvas dimensions')
+                number(dpr, where + '/devicePixelRatio', strictly_positive=True)
+                require(visit.get('canvasPixels') == width * height,
+                        where + ': physical canvas pixel count inconsistent')
+            if visit.get('canvasPixels') is not None:
+                number(visit['canvasPixels'], where + '/canvasPixels', strictly_positive=True)
             require(type(visit.get('gpuTimerQueryMeasured')) is bool
                     and visit.get('gpuFrameTimeMs') is None,
                     where + ': GPU timing must use the explicit phase samples (never an inferred frame time)')
@@ -151,6 +172,36 @@ def summarize(reports, visit_type, metric):
     return statistics.median(values)
 
 
+def validate_capture_provenance(before, after):
+    """Reject known browser/DPR/resolution mismatches; flag incomplete legacy metadata.
+
+    Different profile viewports are expected. Only compare the corresponding
+    profile + visit across A/B. Missing old fields remain readable for rAF
+    diagnostics, but do not authorize a GPU delta.
+    """
+    verified = True
+    versions = set()
+    for profile in PROFILES:
+        reports = before[profile] + after[profile]
+        for report in reports:
+            version = report.get('browserVersion')
+            if version is None:
+                verified = False
+            else:
+                versions.add(version)
+        for visit_name in VISITS:
+            index = VISITS.index(visit_name)
+            observed = [report['visits'][index] for report in reports]
+            for field in ('canvasPixels', 'canvasWidth', 'canvasHeight', 'devicePixelRatio'):
+                values = {visit[field] for visit in observed if visit.get(field) is not None}
+                require(len(values) <= 1,
+                        f'{profile}/{visit_name}: different {field} between A/B runs')
+                if len(values) == 0 or any(visit.get(field) is None for visit in observed):
+                    verified = False
+    require(len(versions) <= 1, 'Different Chromium/browser versions between A/B runs')
+    return verified
+
+
 def gpu_phase_median(reports, visit_type, phase):
     """Return real GPU elapsed median only for a fully comparable cohort."""
     values = []
@@ -170,11 +221,15 @@ def compare(baseline, candidate, base_sha, candidate_sha, *, mode='hardware', mi
     before, old_renderer = load_group(Path(baseline), base_sha, mode, minimum)
     after, new_renderer = load_group(Path(candidate), candidate_sha, mode, minimum)
     require(old_renderer == new_renderer, 'Different physical renderer/driver strings: no valid A/B')
+    provenance_verified = validate_capture_provenance(before, after)
     lines = [
         '# War Room V3 · repeated browser pacing + optional measured GPU A/B',
         '',
         f'Baseline {base_sha} → candidate {candidate_sha}',
         f'Renderer: {old_renderer} · requested mode: {mode}',
+        ('Chromium version + CSS DPR + physical canvas dimensions: verified A/B'
+         if provenance_verified else
+         'Legacy/incomplete Chromium or canvas provenance: GPU comparison is n/a'),
         '',
         '**rAF p95 is callback cadence, not GPU time or FPS.** Genuine GPU time '
         'is reported separately only when both cohorts have >=2 completed elapsed '
@@ -202,8 +257,8 @@ def compare(baseline, candidate, base_sha, candidate_sha, *, mode='hardware', mi
     for profile in PROFILES:
         for visit in VISITS:
             for phase in ('idle', 'move'):
-                a = gpu_phase_median(before[profile], visit, phase) if mode == 'hardware' else None
-                b = gpu_phase_median(after[profile], visit, phase) if mode == 'hardware' else None
+                a = gpu_phase_median(before[profile], visit, phase) if mode == 'hardware' and provenance_verified else None
+                b = gpu_phase_median(after[profile], visit, phase) if mode == 'hardware' and provenance_verified else None
                 label = f'{profile} · {visit} · {phase}'
                 if a is None or b is None:
                     lines.append(f'| {label} | n/a | n/a | n/a | Missing/incomparable GPU queries |')
@@ -222,6 +277,9 @@ def fake_report(sha, profile, run_id, renderer='ANGLE (NVIDIA GeForce test)'):
     def visit(name):
         return {
             'visitType': name, 'actual': 'hardware', 'renderer': renderer,
+            'canvasWidth': viewport['width'], 'canvasHeight': viewport['height'],
+            'canvasPixels': viewport['width'] * viewport['height'],
+            'devicePixelRatio': 1,
             'gpuFrameTimeMs': None, 'gpuTimerQueryMeasured': False,
             'firstReady': {'calls': 491, 'triangles': 210000},
             'openToReadyWallMs': 3000,
@@ -232,6 +290,7 @@ def fake_report(sha, profile, run_id, renderer='ANGLE (NVIDIA GeForce test)'):
                      'inputToConfirmationMs': 120},
         }
     return {'schema': 2, 'revision': sha, 'requestedRenderer': 'hardware',
+            'browserVersion': '147.0.0.0',
             'browserFramePacingOnly': True, 'physicalAndroidVerified': False,
             'runId': run_id, 'profile': profile, 'viewport': viewport, 'emulatedTouch': touch,
             'visits': [visit(name) for name in VISITS]}
@@ -267,7 +326,46 @@ def self_test():
                 path.write_text(json.dumps(recorded))
         output = compare(base, candidate, a, b)
         assert '| desktop-1440x900 · first-visit · idle | 3.750 | 3.750 | +0.000 |' in output
+        assert 'physical canvas dimensions: verified A/B' in output
         path = candidate / 'touch-portrait-390x844-1.json'
+        # A/B must reject different browser builds, real canvas pixel sizes,
+        # and device pixel ratios despite identical CSS viewports/renderers.
+        for field, replacement in (
+            ('browserVersion', '148.0.0.0'),
+            ('devicePixelRatio', 2),
+            ('canvasWidth', 392),
+        ):
+            report = json.loads(path.read_text())
+            original = report[field] if field == 'browserVersion' else report['visits'][0][field]
+            if field == 'browserVersion':
+                report[field] = replacement
+            else:
+                report['visits'][0][field] = replacement
+                if field == 'canvasWidth':
+                    report['visits'][0]['canvasPixels'] = replacement * report['visits'][0]['canvasHeight']
+            path.write_text(json.dumps(report))
+            try:
+                compare(base, candidate, a, b)
+            except BadReport as exc:
+                assert 'different' in str(exc).lower() or 'Different' in str(exc)
+            else:
+                raise AssertionError(f'Mismatched {field} accepted')
+            if field == 'browserVersion':
+                report[field] = original
+            else:
+                report['visits'][0][field] = original
+                if field == 'canvasWidth':
+                    report['visits'][0]['canvasPixels'] = original * report['visits'][0]['canvasHeight']
+            path.write_text(json.dumps(report))
+        # Old schema-2 files remain rAF readable, but their GPU rows are n/a.
+        report = json.loads(path.read_text())
+        legacy_version = report.pop('browserVersion')
+        path.write_text(json.dumps(report))
+        legacy = compare(base, candidate, a, b)
+        assert 'Legacy/incomplete Chromium' in legacy
+        assert '| touch-portrait-390x844 · first-visit · idle | n/a | n/a |' in legacy
+        report['browserVersion'] = legacy_version
+        path.write_text(json.dumps(report))
         report = json.loads(path.read_text())
         report['visits'][0]['idle']['gpuTimer']['samplesMs'][1] = -0.5
         path.write_text(json.dumps(report))
