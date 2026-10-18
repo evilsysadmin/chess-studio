@@ -9,6 +9,32 @@ test.describe('Combat Chess · interacción DOM real', () => {
     await expect(pawn).toHaveCSS('pointer-events', 'auto');
   });
 
+  test('la reserva se despliega con un botón, sin dobles clics ni arrastrar', async ({ page }) => {
+    const deployment = await loginAndOpenDeployment(page);
+    const pawnSquare = deployment.getByRole('button', { name: /Casilla a2,/ });
+    await pawnSquare.locator('img.piece.piece-event-target').dblclick();
+    await expect(deployment.getByText('Banquillo · 1', { exact: true })).toBeVisible();
+    const add = deployment.getByRole('button', { name: /Desplegar .* en primer puesto libre/ });
+    await expect(add).toBeEnabled();
+    await add.click();
+    await expect(pawnSquare.locator('img.piece.piece-event-target')).toBeVisible();
+    await expect(deployment.getByText('Banquillo · 0', { exact: true })).toBeVisible();
+    await expect(deployment.getByRole('button', { name: 'CONFIRMAR DESPLIEGUE' })).toBeEnabled();
+  });
+
+  test('móvil permite rehacer una formación incompleta', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    const deployment = await loginAndOpenDeployment(page);
+    const pawnSquare = deployment.getByRole('button', { name: /Casilla a2,/ });
+    await pawnSquare.locator('img.piece.piece-event-target').dblclick();
+    await expect(pawnSquare.locator('img.piece.piece-event-target')).toHaveCount(0);
+    const auto = deployment.getByRole('button', { name: 'Rehacer formación automática priorizando veteranos' });
+    await expect(auto).toBeVisible();
+    await auto.click();
+    await expect(pawnSquare.locator('img.piece.piece-event-target')).toBeVisible();
+    await expect(deployment.getByRole('button', { name: 'CONFIRMAR DESPLIEGUE' })).toBeEnabled();
+  });
+
   test('focus de teclado sobre una reserva abre la ficha rápida sin ratón', async ({ page }) => {
     const deployment = await loginAndOpenDeployment(page);
     const pawnSquare = deployment.getByRole('button', { name: /Casilla a2,/ });

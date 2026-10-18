@@ -569,3 +569,88 @@
     backdrop-filter: none;
   }
 }
+/* Accessible one-tap alternative to dragging reserves. Each action is a sibling
+ * of the dossier button, never a nested interactive element. */
+.combat-war-table .deployment-reserve-entry {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: .34rem;
+  align-items: stretch;
+}
+.combat-war-table .deployment-reserve-entry .deployment-unit-card {
+  min-width: 0;
+  grid-template-columns: 32px minmax(0, 1fr);
+  gap: .32rem;
+  padding: .42rem;
+}
+.combat-war-table .deployment-reserve-entry .deployment-unit-state { display: none; }
+.combat-war-table .deployment-quick-deploy {
+  min-width: 92px;
+  min-height: 44px;
+  margin: 0;
+  padding: .32rem .4rem;
+  border-color: rgba(215, 182, 111, .42);
+  background: rgba(167, 126, 42, .18);
+  color: #f0d9aa;
+  font-size: .69rem;
+  font-weight: 750;
+}
+.combat-war-table .deployment-quick-deploy:disabled {
+  cursor: not-allowed;
+  opacity: .4;
+}
+.combat-war-table .deployment-reserve-market {
+  justify-self: start;
+  min-height: 36px;
+  padding: .32rem .55rem;
+  border: 1px solid rgba(215, 182, 111, .28);
+  border-radius: 8px;
+  background: rgba(7, 10, 14, .76);
+  color: #ebd094;
+  cursor: pointer;
+}
+.combat-war-table .deployment-board-guidance {
+  width: min(100%, 76dvh, 760px);
+  min-height: 34px;
+  box-sizing: border-box;
+  margin: 0;
+  padding: .42rem .66rem;
+  border: 1px solid rgba(215, 182, 111, .24);
+  border-radius: 8px;
+  background: rgba(7, 10, 14, .82);
+  color: rgba(242, 226, 190, .9);
+  font-size: .68rem;
+  line-height: 1.35;
+  text-align: center;
+}
+.combat-war-table .deployment-mobile-autofill { display: none; }
+.combat-war-table .deployment-footer-copy { min-width: 0; color: #e5d4b1; }
+@media (max-width: 780px) {
+  .combat-war-table .deployment-board-guidance { width: 100%; min-height: 40px; }
+  .combat-war-table .deployment-mobile-autofill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    margin: 0;
+    font-size: .7rem;
+  }
+  .combat-war-table .combat-deployment-footer:has(.deployment-mobile-autofill) {
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1.5fr);
+  }
+  .combat-war-table .combat-deployment-footer .primary-btn {
+    min-width: 0;
+    padding-inline: .44rem;
+    white-space: normal;
+    line-height: 1.2;
+  }
+  .combat-war-table .deployment-footer-copy { font-size: .63rem; line-height: 1.24; }
+  .combat-war-table .deployment-quick-deploy { min-width: 110px; }
+}
+@media (max-width: 430px) {
+  .combat-war-table .combat-deployment-footer:has(.deployment-mobile-autofill) {
+    grid-template-columns: 66px 106px minmax(0, 1fr);
+  }
+  .combat-war-table .deployment-mobile-autofill { padding-inline: .28rem; font-size: .6rem; }
+  .combat-war-table .deployment-footer-copy { font-size: .58rem; }
+}
