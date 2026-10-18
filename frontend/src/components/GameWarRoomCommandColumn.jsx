@@ -28,6 +28,7 @@ function resolveWarRoomSignal(game, status) {
   // "thinking" because a pending request or old busy flag cleared late.
   if (game?.isGameOver || terminalText) return { tone: 'amber', label: terminalText ? text : 'Partida terminada' };
   if (text.startsWith('Jugada sin confirmar')) return { tone: 'amber', label: 'Jugada sin confirmar' };
+  if (status?.busy && text === 'Reintentando conexión…') return { tone: 'amber', label: 'Reconectando…' };
   // The board already moved optimistically; until the server replies, do not
   // present Matthias as thinking or imply the move was accepted remotely.
   if (status?.busy && status?.pendingMove) return { tone: 'amber', label: 'Confirmando jugada…' };
