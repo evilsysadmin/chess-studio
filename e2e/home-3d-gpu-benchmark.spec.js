@@ -7,6 +7,9 @@ import { homeBlenderDistinctGpuSamplesMs } from '../frontend/src/components/Home
 // standard Playwright matrix; no identity, passwords or raw GPU names are logged.
 const requested = process.env.CHESS_HOME_GPU_MODE;
 const lightProbe = process.env.CHESS_HOME_GPU_LIGHT_PROBE === '1';
+const lightProbeFamily = String(process.env.CHESS_HOME_GPU_LIGHT_GROUP || 'all').trim().toLowerCase();
+const lightFamilyCounts = Object.freeze({ all: 12, wall: 4, board: 2, stairs: 3, accent: 3 });
+const lightOffMode = lightProbeFamily === 'all' ? 'aux-off' : `aux-${lightProbeFamily}-off`;
 const expectedVendor = (process.env.CHESS_HOME_GPU_EXPECT_VENDOR || '').trim().toLowerCase();
 // A/B/B/A trials require a real timer. Do not substitute browser CPU timing
 // or software GPU for fragment-shading costs.
@@ -142,6 +145,9 @@ test('Home 3D physical GPU benchmark · three visits or opt-in light A/B/B/A', a
   if (lightProbe && requested !== 'hardware') {
     throw new Error('CHESS_HOME_GPU_LIGHT_PROBE=1 requires CHESS_HOME_GPU_MODE=hardware');
   }
+  if (lightProbe && !Object.hasOwn(lightFamilyCounts, lightProbeFamily)) {
+    throw new Error('Unknown CHESS_HOME_GPU_LIGHT_GROUP: choose all, wall, board, stairs, or accent');
+  }
   if (process.env.CHESS_E2E_LIGHTWEIGHT === '1') {
     throw new Error('CHESS_E2E_LIGHTWEIGHT=1 forces a 2D Home and cannot benchmark GPU rendering');
   }
@@ -149,7 +155,7 @@ test('Home 3D physical GPU benchmark · three visits or opt-in light A/B/B/A', a
   // Alternating order counters warmup/drift and always uses a fresh browser
   // context, identical build, camera, viewport and ambient period.
   const sequence = lightProbe
-    ? ['normal', 'aux-off', 'aux-off', 'normal']
+    ? ['normal', lightOffMode, lightOffMode, 'normal']
     : ['normal', 'normal', 'normal'];
   for (let index = 0; index < sequence.length; index += 1) {
     const context = await browser.newContext({
@@ -225,12 +231,11 @@ test('Home 3D physical GPU benchmark · three visits or opt-in light A/B/B/A', a
         'Every GPU sample must be from the same full LOD source').toBe(true);
         expect(row.lod, 'Compare fully lit full-LOD Home only').toBe('full');
         expect(row.shadows, 'Both variants must keep the key shadow pass').toBe('enabled');
-        if (sequence[index] === 'aux-off') {
-          expect(row.auxiliaryLightsDisabled, 'The probe must actually exclude auxiliary lights')
-            .toBeGreaterThan(0);
-        } else {
-          expect(row.auxiliaryLightsDisabled).toBe(0);
-        }
+        const expectedDisabled = sequence[index] === 'normal'
+          ? 0 : lightFamilyCounts[lightProbeFamily];
+        expect(row.auxiliaryLightsDisabled,
+          'The probe must exclude exactly the intended family, not unrelated lights')
+          .toBe(expectedDisabled);
         expect(row.gpuSamplesMs.length, 'A/B requires fresh hardware GPU timer results in every visit')
           .toBeGreaterThan(0);
       }
@@ -270,6 +275,7 @@ test('Home 3D physical GPU benchmark · three visits or opt-in light A/B/B/A', a
     const result = {
       schema: 1,
       surface: 'Home Blender 3D auxiliary light isolation',
+      lightFamily: lightProbeFamily,
       revision: process.env.CHESS_HOME_GPU_REVISION || null,
       mode: requested,
       browserVersion: browser.version(),
@@ -293,10 +299,14 @@ test('Home 3D physical GPU benchmark · three visits or opt-in light A/B/B/A', a
       visits,
     };
     await mkdir(artifactDir, { recursive: true });
-    await writeFile(`${artifactDir}/home-3d-light-probe-hardware.json`,
+    const reportName = lightProbeFamily === 'all'
+      ? 'home-3d-light-probe-hardware.json'
+      : `home-3d-light-probe-${lightProbeFamily}-hardware.json`;
+    await writeFile(`${artifactDir}/${reportName}`,
       `${JSON.stringify(result, null, 2)}\n`, 'utf8');
     console.log('HOME_3D_LIGHT_PROBE ' + JSON.stringify({
-      sequence, auxiliaryLightsExcluded: result.auxiliaryLightsExcluded,
+      sequence, lightFamily: lightProbeFamily,
+      auxiliaryLightsExcluded: result.auxiliaryLightsExcluded,
       gpuMedianMs: result.gpuMedianMs,
       gpuDifferenceMs: result.gpuDifferenceMs,
       gpuContrastPct: result.gpuContrastPct,
