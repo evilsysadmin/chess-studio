@@ -168,6 +168,10 @@ export function homeBlenderModelDrawInventory(root) {
   const geometries = new Set();
   const materials = new Set();
   const materialDrawSlots = new Map();
+  // Same authored opaque material *set*, but a different slot order: the
+  // Blender exporter currently batches by ordered signature. These are only
+  // candidates for a future, remapped-slot export experiment.
+  const staticBatchSets = new Map();
   const stats = {
     meshes: 0,
     drawSlotCandidates: 0,
@@ -177,6 +181,7 @@ export function homeBlenderModelDrawInventory(root) {
     uniqueGeometries: 0,
     uniqueMaterials: 0,
     topMaterials: [],
+    permutedStaticBatchGroups: [],
   };
   if (typeof root?.traverse !== 'function') return stats;
   root.traverse((object) => {
@@ -194,6 +199,30 @@ export function homeBlenderModelDrawInventory(root) {
     const groups = materialArray
       ? (object.geometry.groups || [])
       : [{ materialIndex: 0 }];
+    // Only authored, already-batched architecture/prop nodes. Require every
+    // material slot to be visible, named, opaque and referenced by a nonempty
+    // draw group. Skip ambiguous duplicate material names and differing shadow
+    // policies rather than claiming that they are safely mergeable.
+    if (/^HOME_(?:ARCH|PROP)_BATCH_/i.test(String(object.name || '')) && materialArray) {
+      const validGroups = groups.filter((group) => group.count !== 0
+        && Number.isInteger(group.materialIndex) && materialArray[group.materialIndex]?.visible !== false);
+      const allMaterials = materialArray.every((material) =>
+        material && material.visible !== false && !material.transparent && String(material.name || '').trim());
+      const names = materialArray.map((material) => String(material?.name || '').trim());
+      if (allMaterials && new Set(names).size === names.length
+        && names.length > 1 && validGroups.length >= names.length
+        && new Set(validGroups.map((group) => group.materialIndex)).size === names.length) {
+        const sorted = [...names].sort();
+        const key = JSON.stringify([sorted, Boolean(object.castShadow)]);
+        let entry = staticBatchSets.get(key);
+        if (!entry) {
+          entry = { materials: sorted, shadowCaster: Boolean(object.castShadow), ordered: new Set(), names: [] };
+          staticBatchSets.set(key, entry);
+        }
+        entry.ordered.add(JSON.stringify(names));
+        entry.names.push(String(object.name));
+      }
+    }
     for (const group of groups) {
       if (group.count === 0) continue;
       const material = materialArray ? materialArray[group.materialIndex] : object.material;
@@ -220,6 +249,17 @@ export function homeBlenderModelDrawInventory(root) {
   stats.uniqueMaterials = materials.size;
   stats.topMaterials = [...materialDrawSlots.values()]
     .sort((a, b) => b.slots - a.slots || a.material.localeCompare(b.material))
+    .slice(0, 10);
+  stats.permutedStaticBatchGroups = [...staticBatchSets.values()]
+    .filter((entry) => entry.names.length > 1 && entry.ordered.size > 1)
+    .map((entry) => ({
+      materials: entry.materials,
+      shadowCaster: entry.shadowCaster,
+      batches: entry.names.length,
+      orderedVariants: entry.ordered.size,
+      examples: entry.names.sort().slice(0, 5),
+    }))
+    .sort((a, b) => b.batches - a.batches || a.materials.join(',').localeCompare(b.materials.join(',')))
     .slice(0, 10);
   return stats;
 }
