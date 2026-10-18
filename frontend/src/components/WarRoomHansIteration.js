@@ -294,6 +294,7 @@ function remapWorkingFrameInPlace(frame, timelineT, stage = WAR_ROOM_HANS_CLASSI
   if (!frame?.hansVisible) return frame;
   const HEARTH_BASKET_X = stage.basketX;
   const HEARTH_TOOLS_X = stage.toolsX;
+  const FIRE_WORK_X = stage.fireWorkX ?? 0.9;
   const ARMOR_BYPASS_X = stage.bypassX;
   const QUICK_DOOR_X = stage.doorX;
   frame.hansZ = stage.workZ;
@@ -308,7 +309,7 @@ function remapWorkingFrameInPlace(frame, timelineT, stage = WAR_ROOM_HANS_CLASSI
   } else if (frame.phase === 'carry-log') {
     const local = Math.max(0, timelineT - 12);
     const walkP = smoothstep01((local - CARRY_LOG_TURN_SECONDS) / (3 - CARRY_LOG_TURN_SECONDS));
-    frame.hansX = lerp(HEARTH_BASKET_X, 0.9, walkP);
+    frame.hansX = lerp(HEARTH_BASKET_X, FIRE_WORK_X, walkP);
     frame.stride = local < CARRY_LOG_TURN_SECONDS
       ? 0
       : Math.sin((local - CARRY_LOG_TURN_SECONDS) * 3.2) * 0.13;
@@ -318,7 +319,7 @@ function remapWorkingFrameInPlace(frame, timelineT, stage = WAR_ROOM_HANS_CLASSI
     frame.orientationTarget = 'fire';
   } else if (frame.phase === 'place-log') {
     const p = clamp01((timelineT - 15) / 2);
-    frame.hansX = 0.9;
+    frame.hansX = FIRE_WORK_X;
     frame.crouch = Math.sin(p * Math.PI) * 0.12;
     frame.leftArm = -0.66 - p * 0.26;
     frame.rightArm = -0.72 - p * 0.44;
@@ -326,7 +327,7 @@ function remapWorkingFrameInPlace(frame, timelineT, stage = WAR_ROOM_HANS_CLASSI
   } else if (frame.phase === 'take-poker') {
     const local = Math.max(0, timelineT - 17);
     const walkP = smoothstep01((local - POKER_OUTBOUND_TURN_SECONDS) / (2 - POKER_OUTBOUND_TURN_SECONDS));
-    frame.hansX = lerp(0.9, HEARTH_TOOLS_X, walkP);
+    frame.hansX = lerp(FIRE_WORK_X, HEARTH_TOOLS_X, walkP);
     frame.stride = local < POKER_OUTBOUND_TURN_SECONDS
       ? 0
       : Math.sin((local - POKER_OUTBOUND_TURN_SECONDS) * 3.05) * 0.12;
@@ -338,7 +339,7 @@ function remapWorkingFrameInPlace(frame, timelineT, stage = WAR_ROOM_HANS_CLASSI
   } else if (frame.phase === 'stoke-fire') {
     const local = Math.max(0, timelineT - 19);
     const walkP = smoothstep01(local / POKER_RETURN_TO_FIRE_SECONDS);
-    frame.hansX = lerp(HEARTH_TOOLS_X, 0.92, walkP);
+    frame.hansX = lerp(HEARTH_TOOLS_X, FIRE_WORK_X, walkP);
     frame.stride = local < POKER_RETURN_TO_FIRE_SECONDS ? Math.sin(local * 3.05) * 0.12 : 0;
     frame.stoke = local < POKER_RETURN_TO_FIRE_SECONDS ? 0 : frame.stoke;
     frame.rightArm = local < POKER_RETURN_TO_FIRE_SECONDS ? -0.42 : frame.rightArm;
@@ -347,7 +348,7 @@ function remapWorkingFrameInPlace(frame, timelineT, stage = WAR_ROOM_HANS_CLASSI
   } else if (frame.phase === 'return-poker') {
     const local = Math.max(0, timelineT - 24);
     const walkP = smoothstep01(local / 1.5);
-    frame.hansX = lerp(0.92, HEARTH_TOOLS_X, walkP);
+    frame.hansX = lerp(FIRE_WORK_X, HEARTH_TOOLS_X, walkP);
     frame.stride = local < 1.42 ? Math.sin(local * 2.95) * 0.11 : 0;
     frame.carryPoker = local < 1.28;
     frame.rightArm = lerp(-0.38, -0.08, clamp01(local / 1.5));
