@@ -246,7 +246,13 @@ test('War Room · un diálogo de Hans cede al seleccionar una pieza, con PNG de 
   try {
     await page.emulateMedia({ reducedMotion: 'no-preference' });
     await mockApi(page, {
-      profileSeed: { 'matthias.onboarded': '2', 'chess-study-home-guide-dismissed-v1': '1' },
+      profileSeed: {
+        'matthias.onboarded': '2',
+        'chess-study-home-guide-dismissed-v1': '1',
+        'chess-study-mechanic-tutorial-progress-v1': JSON.stringify({
+          'war-room-basics': { seen: true }, 'quick-match-rules': { seen: true },
+        }),
+      },
     });
     await login(page);
     await page.evaluate(() => localStorage.setItem('chess-study-war-room-variant-v1', 'v3'));
@@ -260,7 +266,7 @@ test('War Room · un diálogo de Hans cede al seleccionar una pieza, con PNG de 
     const canvas = page.locator('.board3d-main-canvas');
     await expect(board).toBeVisible({ timeout: MOUNT_BUDGET_MS });
     await expect(canvas).toBeVisible({ timeout: MOUNT_BUDGET_MS });
-    const liveDialogue = page.locator('.warroom-hans-fire-call-bubble:visible, .warroom-fire-call-bubble:visible').first();
+    const liveDialogue = page.locator('.warroom-fire-call-bubble:visible').first();
     await expect(liveDialogue).toBeVisible({ timeout: hansBudget(25_000) });
     await captureViewportPng(context, page, `${ARTIFACT_DIR}/war-room-narrative-idle-1440x900.png`);
 
