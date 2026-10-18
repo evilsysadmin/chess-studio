@@ -55,6 +55,18 @@ export function board3DCapturedGhostScale(impact = 0, coarsePointer = false) {
   return 1 - clamp01(impact) * (coarsePointer ? 0.11 : 0.15);
 }
 
+// Presentation-only transformation: use the resting scale each frame, not
+// last frame's mutated scale. Keeps tilt, compression and fade in one module.
+export function applyBoard3DCaptureGhostPose(ghost, restScale, materials, impact, tilt, coarsePointer = false) {
+  const progress = clamp01(impact);
+  ghost.rotation.z = tilt * progress;
+  ghost.rotation.x = progress * 0.16;
+  ghost.position.y = 0.1 - progress * 0.075;
+  ghost.scale.copy(restScale).multiplyScalar(board3DCapturedGhostScale(progress, coarsePointer));
+  const opacity = 1 - progress * 0.92;
+  for (const material of materials) material.opacity = opacity;
+}
+
 export function board3DCaptureWarmBoostValue(progress = 0, coarsePointer = false) {
   const p = clamp01(progress);
   if (p <= 0.34 || p >= 1) return 0;
