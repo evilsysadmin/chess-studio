@@ -727,7 +727,7 @@ export async function openDeployment(page) {
     }
   }
 
-  const reviewDeployment = page.getByRole('button', { name: /PREPARAR DESPLIEGUE|REVISAR Y CONFIRMAR|Personalizar despliegue/i });
+  const reviewDeployment = page.getByRole('button', { name: /PREPARAR DESPLIEGUE|REVISAR Y CONFIRMAR|Elegir mis piezas|Cambiar formación/i });
   await expect(reviewDeployment).toBeVisible();
   await reviewDeployment.click();
   await dismissTutorialIfVisible(page);

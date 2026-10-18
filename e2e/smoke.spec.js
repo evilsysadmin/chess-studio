@@ -273,9 +273,9 @@ test('Combat Chess · Campaña permite jugar con defaults en un clic y deja el d
   await expect(page.locator('[data-combat-preparation-room="combat-operations-room"] [data-board3d-war-room="true"]'))
     .toHaveAttribute('data-board3d-variant', 'combat-ops');
   await expect(page.locator('[data-combat-preparation-room="combat-operations-room"] .board3d-main-canvas')).toBeVisible({ timeout: 45_000 });
-  await expect(page.getByRole('button', { name: /Personalizar despliegue/i })).toBeVisible();
+  await expect(page.getByRole('button', { name: /Elegir mis piezas|Cambiar formación/i })).toBeVisible();
 
-  const quick = page.getByRole('button', { name: /JUGAR CON (ESTA|FORMACIÓN RECOMENDADA)/i });
+  const quick = page.getByRole('button', { name: /¡ENTRAR EN COMBATE!|ORGANIZAR Y COMBATIR/i });
   await expect(quick).toBeVisible();
   await quick.click({ timeout: 30_000 });
   await expect(page.getByRole('complementary', { name: 'Registro de batalla y estado táctico' })).toBeVisible();
@@ -314,7 +314,7 @@ test('Combat Chess · una batalla activa sobrevive a reload y no vuelve a Setup'
   await openCampaignBriefing(page);
   await page.getByRole('button', { name: /PREPARAR EJÉRCITO/i }).click();
   await dismissTutorialIfVisible(page);
-  const quick = page.getByRole('button', { name: /JUGAR CON (ESTA|FORMACIÓN RECOMENDADA)/i });
+  const quick = page.getByRole('button', { name: /¡ENTRAR EN COMBATE!|ORGANIZAR Y COMBATIR/i });
   await expect(quick).toBeVisible();
   await quick.click({ timeout: 30_000 });
   await expect(page.getByRole('complementary', { name: 'Registro de batalla y estado táctico' })).toBeVisible();
@@ -485,7 +485,7 @@ test('Combat Chess · salir al menú conserva campaña y batalla activas', async
   await openCampaignBriefing(page);
   await page.getByRole('button', { name: /PREPARAR EJÉRCITO/i }).click();
   await dismissTutorialIfVisible(page);
-  const quick = page.getByRole('button', { name: /JUGAR CON (ESTA|FORMACIÓN RECOMENDADA)/i });
+  const quick = page.getByRole('button', { name: /¡ENTRAR EN COMBATE!|ORGANIZAR Y COMBATIR/i });
   await expect(quick).toBeVisible();
   // The CTA starts the War Room immediately; do not let Playwright keep waiting
   // on unrelated app navigation/lifecycle work after the successful transition.
@@ -651,7 +651,7 @@ test('desktop 1440x900 · Combat mantiene mesa y acciones coherentes dentro del 
   await openCampaignBriefing(page);
   await page.getByRole('button', { name: /PREPARAR EJÉRCITO/i }).click();
   await dismissTutorialIfVisible(page);
-  const quick = page.getByRole('button', { name: /JUGAR CON (ESTA|FORMACIÓN RECOMENDADA)/i });
+  const quick = page.getByRole('button', { name: /¡ENTRAR EN COMBATE!|ORGANIZAR Y COMBATIR/i });
   await expect(quick).toBeVisible();
   await quick.click();
   await expect(page.getByRole('complementary', { name: 'Registro de batalla y estado táctico' })).toBeVisible();
@@ -786,7 +786,7 @@ test('golden journey · onboarding → partida/reload → mate → puzzle → Co
   await openCampaignBriefing(page);
   await page.getByRole('button', { name: /PREPARAR EJÉRCITO/i }).click();
   await dismissTutorialIfVisible(page);
-  const quick = page.getByRole('button', { name: /JUGAR CON (ESTA|FORMACIÓN RECOMENDADA)/i });
+  const quick = page.getByRole('button', { name: /¡ENTRAR EN COMBATE!|ORGANIZAR Y COMBATIR/i });
   await expect(quick).toBeVisible();
   await quick.click();
   await expect(page.getByRole('complementary', { name: 'Registro de batalla y estado táctico' })).toBeVisible();
