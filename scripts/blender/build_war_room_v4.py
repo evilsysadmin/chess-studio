@@ -1398,12 +1398,50 @@ def validate_v4_hans_stage():
     # hearth overlapped the command table while every old anchor check passed.
     bpy.context.view_layer.update()
     mantel = objects["WR4_OBS_fireplace_mantel"]
-    hx, hy = float(mantel.dimensions.x) / 2, float(mantel.dimensions.y) / 2
+    # The mantle is ROTATED tangent to the circular wall. Local XY half extents
+    # must be used; axis-aligned Blender dimensions falsely flag a good angle.
+    hx = max(abs(float(corner[0])) for corner in mantel.bound_box) * abs(float(mantel.scale.x))
+    hy = max(abs(float(corner[1])) for corner in mantel.bound_box) * abs(float(mantel.scale.y))
     cx, cy = float(mantel.location.x), float(mantel.location.y)
+    yaw = float(mantel.rotation_euler.z)
     if abs(cx - V4_HANS_HEARTH_CENTER[0]) > 0.02 or abs(cy - V4_HANS_HEARTH_CENTER[1]) > 0.02:
         raise RuntimeError("War Room v4 Hans fireplace is not at the authored service alcove")
-    if hx > 1.12 or hy > 0.52:
+    if hx > 1.23 or hy > 0.43:
         raise RuntimeError("War Room v4 fireplace expanded into Hans' service lane")
+    tangent_theta = math.atan2(cx, cy - V4_WALL_CENTER_Y)
+    tangent_yaw = math.atan2(-math.sin(tangent_theta), math.cos(tangent_theta))
+    delta_yaw = math.atan2(math.sin(yaw - tangent_yaw), math.cos(yaw - tangent_yaw))
+    if abs(delta_yaw) > math.radians(9):
+        raise RuntimeError("War Room v4 fireplace is not tangent to the curved wall")
+    cyaw, syaw = math.cos(yaw), math.sin(yaw)
+    for dx in (-hx, hx):
+        for dy in (-hy, hy):
+            corner_x = cx + dx * cyaw - dy * syaw
+            corner_y = cy + dx * syaw + dy * cyaw
+            wall_gap = V4_WALL_RADIUS - math.hypot(corner_x, corner_y - V4_WALL_CENTER_Y)
+            if wall_gap < 0.08:
+                raise RuntimeError(f"War Room v4 fireplace embedded into tower wall: {wall_gap:.3f}m")
+
+    # Armour/right lounge are distinct architectural beats, never overlapping
+    # furniture. Validate authored meshes rather than visually trusting a render.
+    stand = objects["WR4_OBS_armor_base_1"]
+    ax, ay = float(stand.location.x), float(stand.location.y)
+    if math.hypot(ax - V4_RIGHT_ARMOR_POSITION[0], ay - V4_RIGHT_ARMOR_POSITION[1]) > 0.02:
+        raise RuntimeError("War Room v4 right armour drifted from its free wall bay")
+    if V4_WALL_RADIUS - math.hypot(ax, ay - V4_WALL_CENTER_Y) < 0.48 + 0.15:
+        raise RuntimeError("War Room v4 right armour clips the tower wall")
+    for seat_part in (part for part in objects if part.name.startswith("WR4_OBS_chair_")):
+        corners = [seat_part.matrix_world @ Vector(local) for local in seat_part.bound_box]
+        left, right = min(p.x for p in corners), max(p.x for p in corners)
+        bottom, top = min(p.y for p in corners), max(p.y for p in corners)
+        gap = math.hypot(max(left - ax, ax - right, 0), max(bottom - ay, ay - top, 0))
+        if gap < 0.48 + 0.15:
+            raise RuntimeError(f"War Room v4 right armour is embedded in chair: {seat_part.name}")
+    for fixture, radius in (("WR4_OBS_lounge_rug_gold", 1.42), ("WR4_OBS_side_table_top", 0.55)):
+        cx_f, cy_f = objects[fixture].location.xy
+        gap = math.hypot(ax - cx_f, ay - cy_f) - radius - 0.48
+        if gap < 0.15:
+            raise RuntimeError(f"War Room v4 right armour overlaps {fixture}: {gap:.3f}m")
     route = [
         anchors["WR_ANCHOR_hans_door"][:2],
         *[anchors[f"WR_ANCHOR_hans_corridor_{index}"][:2] for index in range(3)],
@@ -1416,6 +1454,11 @@ def validate_v4_hans_stage():
         return math.hypot(max(abs(px - ox) - half_x, 0),
                           max(abs(py - oy) - half_y, 0))
 
+    def oriented_mantel_gap(px, py):
+        dx = (px - cx) * cyaw + (py - cy) * syaw
+        dy = -(px - cx) * syaw + (py - cy) * cyaw
+        return math.hypot(max(abs(dx) - hx, 0), max(abs(dy) - hy, 0))
+
     for before, after in zip(route, route[1:]):
         length = math.dist(before, after)
         count = max(1, math.ceil(length / 0.08))
@@ -1426,7 +1469,7 @@ def validate_v4_hans_stage():
             gaps = {
                 "wall": V4_WALL_RADIUS - math.hypot(px, py - V4_WALL_CENTER_Y),
                 "board_dais": rectangle_gap(px, py, 0, 0, V4_PLINTH_HALF + 0.03, V4_PLINTH_HALF + 0.03),
-                "fireplace": rectangle_gap(px, py, cx, cy, hx, hy),
+                "fireplace": oriented_mantel_gap(px, py),
                 "left_armour": math.hypot(px + 6.55, py - V4_HANS_LEFT_ARMOR_Y) - 0.48,
             }
             for obstacle, gap in gaps.items():
