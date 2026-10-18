@@ -7,6 +7,7 @@ import { homeBlenderDistinctGpuSamplesMs } from '../frontend/src/components/Home
 // standard Playwright matrix; no identity, passwords or raw GPU names are logged.
 const requested = process.env.CHESS_HOME_GPU_MODE;
 const lightProbe = process.env.CHESS_HOME_GPU_LIGHT_PROBE === '1';
+const expectedVendor = (process.env.CHESS_HOME_GPU_EXPECT_VENDOR || '').trim().toLowerCase();
 // A/B/B/A trials require a real timer. Do not substitute browser CPU timing
 // or software GPU for fragment-shading costs.
 const requireTimer = lightProbe || process.env.CHESS_HOME_GPU_REQUIRE_TIMER === '1';
