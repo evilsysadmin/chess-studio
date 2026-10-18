@@ -1888,6 +1888,8 @@ export default function HomeBlenderScene3D({
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.shadowMap.enabled = homeBlenderShouldRenderShadows(initialPolicy.lod, rendererName);
     canvas.dataset.homeBlenderShadows = renderer.shadowMap.enabled ? 'enabled' : 'disabled';
+    // Record the authored lighting period for like-for-like hardware A/B reports.
+    canvas.dataset.homeBlenderAmbient = ambient;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     // The room is static and only emissive flames move, so the shadow map is
     // computed once instead of re-rasterising every mesh on each animated frame.

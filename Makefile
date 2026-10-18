@@ -481,6 +481,7 @@ static-preflight: capacity-probe-check test-parity-check test-flake-check audio-
 	@python3 -S scripts/oci_cloudflare_tunnel.py --self-test
 	@python3 -S scripts/compare_war_room_gpu.py --self-test
 	@python3 -S scripts/run_war_room_gpu_ab.py --self-test
+	@python3 -S -m unittest discover -s scripts -p 'test_compare_home_3d_gpu.py' -v
 	@python3 -S scripts/oci_k3s_staging2_root.py self-test infra/oci/gitops/staging2/backend.yaml.tmpl
 	@find frontend/src scripts e2e -type f \( -name '*.js' -o -name '*.mjs' \) -print0 | xargs -0 -P $(NODE_CHECK_JOBS) -n1 node --check
 	@python3 scripts/python_syntax_check.py

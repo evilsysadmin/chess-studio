@@ -78,3 +78,23 @@ CHESS_HOME_GPU_MODE=software CHESS_HOME_GPU_REVISION="$(git rev-parse HEAD)" \
 The script fails closed if it cannot prove the requested renderer family from the existing WebGL canvas, if the GLB fails to mount, or if the first-frame geometry/texture counters are empty. The raw hardware renderer string, user credentials and GLB URLs are never printed.
 
 For meaningful before/after numbers: check out a known baseline SHA, rebuild, run in hardware mode, preserve the JSON; then build the candidate SHA and repeat on the **same workstation**, with the same NVIDIA/AMD driver, Chromium build, power state, viewport, time-of-day and network conditions. Repeat the experiment more than once. Compare median GPU time where available and CPU/RAF p95; do not interpret Home's intentionally throttled animated draws/sec as monitor FPS. An opt-in software run is for compatibility diagnosis, not proof of real-GPU gains.
+
+
+## Fail-closed hardware A/B comparison
+
+The local benchmark now writes **schema 2** with the Chromium version, a fingerprint of the renderer name (an 8-digit *non-cryptographic hash*, **not** a physical GPU ID), the actual canvas dimensions, LOD and the four possible authored Home lighting periods. No raw GPU model string is written to the report. Because older reports lack these fields, collect **both baseline and candidate again** after updating the harness.
+
+At the baseline SHA, run the hardware benchmark shown above, then preserve its output **before** rebuilding the candidate; the next run overwrites the same JSON:
+
+```bash
+cp .artifacts/home-gpu-benchmark/home-3d-hardware.json /tmp/home-3d-baseline.json
+# Rebuild and benchmark the candidate SHA on the same GPU, driver, browser, power profile and viewport.
+python3 -S scripts/compare_home_3d_gpu.py \
+  /tmp/home-3d-baseline.json \
+  .artifacts/home-gpu-benchmark/home-3d-hardware.json
+```
+
+This offline comparison **rejects** software/unknown renderers, missing exact SHAs, mismatched Chromium versions, GPU-model fingerprints, LOD, lighting period, canvas sizes or viewport/DPR, and incomplete visits/GLB evidence. It shows differences in reported medians; lower is better for GPU/CPU times, but **a three-visit delta is not proof of a general performance gain**. Rerun A/B more than once to see whether the sign and magnitude are stable. When real GPU elapsed queries are missing, the GPU row is explicitly `n/a`: CPU-submit p95 is never substituted for GPU timing. A matching hash **cannot verify** that two runs were on the same physical GPU or driver; keep those controls yourself. Draw calls and Three.js resource counts are not FPS, VRAM bytes or total memory usage.
+
+Regression checks for invalid/noncomparable benchmark reports run in CI preflight via stdlib `unittest`.
+
