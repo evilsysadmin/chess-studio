@@ -20,6 +20,14 @@ On a ready Home canvas, inspect `document.querySelector('.illustrated-home__cast
 | `homeBlenderGpuMs` | Last async elapsed WebGL GPU-timer sample in milliseconds; **only** with status `ready` |
 | `homeBlenderGpuSampleCount` | Monotonic number of **valid completed GPU queries**, used to distinguish newly measured values from a still-published previous result |
 
+## Opt-in authored-GLB draw inventory
+
+Open the Home with `?homeGpuProfile=1`. After the authored GLB is prepared, the canvas publishes `dataset.homeBlenderModelDrawInventory`, a compact JSON object. This adds **one scene-graph traversal only when profiling**, after the original first-ready time is recorded. The production Home does not do this work.
+
+The inventory counts visible authored-GLB meshes, potential material-group draw slots, shadow-casting candidates, transparent slots, shared geometry references, unique geometries and unique materials. It is deliberately **not** actual GPU draw calls, shader GPU time or VRAM usage: frustum culling, invisible ancestors, material groups and shadow passes all affect the renderer's actual submissions. Matthias, runtime fire/candle particles, dust and glow sprites are loaded/added separately and are **excluded**. Use the existing `homeBlenderDrawCalls`/GPU timer to observe actual rendering cost, then use the GLB inventory only to locate plausible batching/shadow work.
+
+The local hardware benchmark includes this inventory per cold visit and medians for `modelDrawSlots`, `modelShadowCasterSlots`, `modelTransparentSlots`, `modelUniqueGeometries` and `modelUniqueMaterials`. The A/B comparator displays these as **GLB candidates** separately from real GPU calls. Older schema-2 reports without an inventory show `n/a`; never interpret missing inventory as zero. To compare inventory, rebuild both revisions with the instrumented harness.
+
 ## Opt-in GPU timer (physical device)
 
 Open the Home with `?homeGpuProfile=1` on a capable non-software WebGL2 browser. The profiler samples at most one `EXT_disjoint_timer_query_webgl2` elapsed query per 30 **rendered** frames, without `gl.finish` or blocking for the result. Its most recent value can remain unchanged between query completions; use `homeBlenderGpuSampleCount` to avoid counting repeated reads of that same result as fresh samples. Queries cover `renderer.render(scene, camera)`, including any shadow-map work within that invocation. Do **not** claim that these values include browser layout, JavaScript animation updates or final screen composition.
