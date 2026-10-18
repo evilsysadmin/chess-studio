@@ -23,6 +23,12 @@ describe('gameStatusView', () => {
     expect(gameStatusView({ status: 'repetition', turn: 'w', humanColor: 'w' }).finalOutcome).toBe('draw');
   });
 
+  it('el resultado terminal prevalece sobre un busy rezagado', () => {
+    expect(gameStatusView({ status: 'checkmate', turn: 'w', humanColor: 'w', busy: true }).statusText).toBe('Jaque mate');
+    expect(gameStatusView({ status: 'stalemate', turn: 'b', humanColor: 'w', busy: true }).statusText).toBe('Tablas por ahogado');
+    expect(gameStatusView({ status: 'check', turn: 'b', humanColor: 'w', busy: true }).statusText).toBe('La CPU está pensando…');
+  });
+
   it('busy y bandera tienen prioridad sobre banners normales', () => {
     expect(gameStatusView({ status: 'check', turn: 'b', humanColor: 'w', busy: true }).statusText).toBe('La CPU está pensando…');
     expect(gameStatusView({ status: 'playing', turn: 'w', humanColor: 'w', flagFallen: 'b', flagFinalOutcome: 'win' }).statusText).toContain('negras');
