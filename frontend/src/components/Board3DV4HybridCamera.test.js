@@ -58,6 +58,13 @@ describe('War Room V4 · cámara híbrida, sala y recorrido de Hans', () => {
         .toBeGreaterThan(Math.atan2(WAR_ROOM_CANONICAL_PLAY_PITCH.cameraY, WAR_ROOM_CANONICAL_PLAY_PITCH.cameraZ));
       assertBoardWithinCanvas(v4);
 
+      // Exact Blender V4 oculus apex: center (0, 7.56, 2.62), vertical
+      // radius 1.70, room root -1.12. Keep its upper rim in the actual
+      // perspective frustum, not merely the chessboard's 64 squares.
+      const oculusApex = new THREE.Vector3(0, 3.20, whiteSide ? -7.56 : 7.56).project(v4);
+      expect(oculusApex.y, 'V4 upper lunar oculus cropped').toBeLessThan(0.995);
+      expect(oculusApex.y, 'V4 oculus no longer prominent').toBeGreaterThan(0.85);
+
       // V4's real Blender door and hearth anchors (x,z,-y, room root -1.12).
       // A previous stale test asserted an obsolete door location and allowed
       // the actual teal doorway to slip off the edge of the desktop capture.
