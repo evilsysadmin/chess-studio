@@ -35,6 +35,17 @@ describe('War Room real-render cost journal', () => {
     expect(rows[1].mainCalls).toBeUndefined();
   });
 
+  it('retains only exact nonnegative shadow-family sums', () => {
+    const journal = createWarRoomRenderCostJournal(3);
+    journal.record({ calls: 30, triangles: 60, mainCalls: 10, shadowCalls: 20,
+      shadowPasses: 1, shadowFamilyCalls: { pieces: 12, shell: 5, other: 3 } }, 1, 2);
+    journal.record({ calls: 30, triangles: 60, mainCalls: 10, shadowCalls: 20,
+      shadowPasses: 1, shadowFamilyCalls: { pieces: 12, shell: 5, other: 4 } }, 2, 3);
+    const [valid, invalid] = journal.readAfter(0).samples;
+    expect(valid.shadowFamilyCalls).toEqual({ pieces: 12, shell: 5, other: 3 });
+    expect(invalid.shadowFamilyCalls).toBeUndefined();
+  });
+
   it('fails closed on overrun instead of presenting a biased tail as full sampling', () => {
     const journal = createWarRoomRenderCostJournal(3);
     for (let i = 1; i <= 5; i += 1) journal.record({ calls: i, triangles: i * 10 }, i, i + 1);
