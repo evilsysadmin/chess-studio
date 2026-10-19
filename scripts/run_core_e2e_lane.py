@@ -130,6 +130,9 @@ LANE_COMMANDS: dict[str, tuple[LaneCommand, ...]] = {
     ),
     'smoke': (
         LaneCommand('smoke.spec.js', ('--grep', SMOKE_GREP, '--workers=1', '--retries=0', '--max-failures=1')),
+        # F5 between cinematic mate and the explicit debrief CTA must not lose
+        # the recorded report or award the campaign twice. Keep this one focused.
+        LaneCommand('combat-critical.spec.js', ('--grep', 'F5 tras JAQUE MATE', '--workers=1', '--retries=0', '--max-failures=1', '--timeout=120000')),
         LaneCommand('mobile-final-interactions.spec.js', ('--workers=1', '--retries=0', '--max-failures=1')),
         LaneCommand(
             'browser-runtime-health.spec.js',
@@ -221,11 +224,12 @@ def self_test() -> None:
     assert LANE_COMMANDS['home'][1].grep == HOME_MOBILE_GREP
     assert LANE_COMMANDS['home'][2].grep == HOME_WEBGL_GREP
     assert [command.spec for command in LANE_COMMANDS['smoke']] == [
-        'smoke.spec.js', 'mobile-final-interactions.spec.js', 'browser-runtime-health.spec.js',
-        'godot-release-continuity.spec.js', 'war-room-gpu-session-bootstrap.spec.js',
+        'smoke.spec.js', 'combat-critical.spec.js', 'mobile-final-interactions.spec.js',
+        'browser-runtime-health.spec.js', 'godot-release-continuity.spec.js', 'war-room-gpu-session-bootstrap.spec.js',
     ]
-    assert LANE_COMMANDS['smoke'][2].grep == HOME_WEBGL_GREP
-    assert LANE_COMMANDS['smoke'][2].canonical_critical is False
+    assert LANE_COMMANDS['smoke'][1].grep == 'F5 tras JAQUE MATE'
+    assert LANE_COMMANDS['smoke'][3].grep == HOME_WEBGL_GREP
+    assert LANE_COMMANDS['smoke'][3].canonical_critical is False
     assert LANE_COMMANDS['smoke'][-1].canonical_critical is False
     assert '--timeout=150000' in LANE_COMMANDS['smoke'][-1].args
     assert '--grep-invert' in LANE_COMMANDS['regression-state'][0].args
