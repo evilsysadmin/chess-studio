@@ -889,7 +889,7 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
             )}
           </div>
         )}
-
+        {run.inRun && battleDebrief && ['cleared', 'completed'].includes(run.phase) && <CombatDebrief debrief={battleDebrief} onViewBattle={onViewBattle} nextAction={run.phase === 'cleared' ? 'Elige una ventaja antes de continuar al siguiente piso.' : 'Continúa en infinito o cierra el intento.'} />}
         {run.inRun && run.phase === 'cleared' && (
           <div className="tournament-result roguelike-reward-screen" style={{ marginTop: '0.8rem' }}>
             <h3>¡Piso {run.floor} superado!</h3>

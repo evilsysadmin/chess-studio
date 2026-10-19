@@ -285,3 +285,41 @@ test('Combat mate · landscape 844x390 and portrait debrief 390x844', async ({ p
   expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1)).toBe(false);
   await captureWarRoomFrame(page, ARTIFACT_DIR + '/combat-debrief-story-portrait-390x844.png');
 });
+
+
+test('Torre · F5 revela informe postcombate en escritorio y móvil', async ({ page }) => {
+  test.setTimeout(130_000);
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await mockApi(page);
+  await login(page);
+  await page.evaluate(() => localStorage.setItem('chess-study-roguelike-run', JSON.stringify({
+    floor: 1, inRun: true, phase: 'battle', seed: 'tower-f5-visual', mode: 'tower', perks: [],
+    rewardChosenForFloor: null,
+  })));
+  const entry = page.getByRole('button').filter({ has: page.getByText('Combat Chess · Campaña', { exact: true }) });
+  await expect(entry).toBeVisible();
+  await entry.click();
+  await page.getByRole('button', { name: /PREPARAR EJÉRCITO/i }).click();
+  const start = page.getByRole('button', { name: /¡ENTRAR EN COMBATE!|ORGANIZAR Y COMBATIR/i });
+  await expect(start).toBeVisible();
+  await start.click();
+  await expect(page.locator('.combat-battle-screen')).toBeVisible({ timeout: 45_000 });
+  await seedCombatBattleSnapshot(page, { sessionId: 'run:tower-f5-visual:1', fen: MATE_CAPTURE_FEN });
+  await page.reload();
+  await expect(page.locator('[data-combat-war-room="generic"] [data-board3d-war-room="true"]')).toBeVisible({ timeout: 45_000 });
+  await clickBoardMove(page, 'g6', 'g7');
+  const reveal = page.getByRole('region', { name: 'Resultado de la batalla' });
+  await expect(reveal.getByRole('heading', { name: 'JAQUE MATE' })).toBeVisible({ timeout: 20_000 });
+  await page.reload();
+  const report = page.getByRole('region', { name: 'Informe postcombate' });
+  await expect(report.getByRole('heading', { name: 'VICTORIA' })).toBeVisible({ timeout: 45_000 });
+  await expect(page.getByRole('heading', { name: /Piso 1 superado/ })).toBeVisible();
+  await report.scrollIntoViewIfNeeded();
+  await mkdir(ARTIFACT_DIR, { recursive: true });
+  await captureWarRoomFrame(page, ARTIFACT_DIR + '/combat-tower-f5-desktop-1440x900.png');
+  await page.setViewportSize({ width: 390, height: 844 });
+  await report.scrollIntoViewIfNeeded();
+  await expect(report).toBeInViewport({ ratio: 0.5 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1)).toBe(false);
+  await captureWarRoomFrame(page, ARTIFACT_DIR + '/combat-tower-f5-mobile-390x844.png');
+});

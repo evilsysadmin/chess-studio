@@ -202,3 +202,48 @@ test('Campaña · F5 tras JAQUE MATE recupera el informe sin volver a pagar la v
   await expect.poll(checkpoint).toEqual(before);
   await expect(page.locator('.error-boundary-screen')).toHaveCount(0);
 });
+
+async function openTowerMate(page, seed) {
+  await mockApi(page);
+  await login(page);
+  await page.evaluate((id) => localStorage.setItem('chess-study-roguelike-run', JSON.stringify({
+    floor: 1, inRun: true, phase: 'battle', seed: id, mode: 'tower', perks: [], rewardChosenForFloor: null,
+  })), seed);
+  const entry = page.getByRole('button').filter({ has: page.getByText('Combat Chess · Campaña', { exact: true }) });
+  await expect(entry).toBeVisible();
+  await entry.click();
+  await page.getByRole('button', { name: /PREPARAR EJÉRCITO/i }).click();
+  const start = page.getByRole('button', { name: /¡ENTRAR EN COMBATE!|ORGANIZAR Y COMBATIR/i });
+  await expect(start).toBeVisible();
+  await start.click();
+  await expect(page.locator('.combat-battle-screen')).toBeVisible({ timeout: 45_000 });
+  await seedCombatBattleSnapshot(page, { sessionId: 'run:' + seed + ':1', fen: MATE_START_FEN });
+  await page.reload();
+  await expect(page.locator('[data-combat-war-room="generic"] [data-board3d-war-room="true"]')).toBeVisible({ timeout: 45_000 });
+  await clickBoardMove(page, 'g6', 'g7');
+  const reveal = page.getByRole('region', { name: 'Resultado de la batalla' });
+  await expect(reveal.getByRole('heading', { name: 'JAQUE MATE' })).toBeVisible({ timeout: 20_000 });
+}
+
+test('Torre · F5 tras JAQUE MATE conserva informe y piso sin recompensas duplicadas', async ({ page }) => {
+  test.setTimeout(120_000);
+  const seed = 'tower-f5-checkpoint';
+  await openTowerMate(page, seed);
+  const checkpoint = async () => page.evaluate((id) => {
+    const run = JSON.parse(localStorage.getItem('chess-study-roguelike-run') || '{}');
+    const cache = JSON.parse(sessionStorage.getItem('chess-study-combat-post-battle-debrief-v1') || '{}');
+    return { floor: run.floor, phase: run.phase, perks: run.perks,
+      rewardChosenForFloor: run.rewardChosenForFloor,
+      outcome: cache.entries?.[id]?.debrief?.outcome || null };
+  }, 'run:' + seed + ':1');
+  await expect.poll(async () => (await checkpoint()).phase).toBe('cleared');
+  const before = await checkpoint();
+  expect(before).toMatchObject({ floor: 1, phase: 'cleared', perks: [], outcome: 'win' });
+  await page.reload();
+  const report = page.getByRole('region', { name: 'Informe postcombate' });
+  await expect(report.getByRole('heading', { name: 'VICTORIA' })).toBeVisible({ timeout: 45_000 });
+  await expect(page.getByRole('heading', { name: /Piso 1 superado/ })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Resultado de la batalla' })).toHaveCount(0);
+  await expect.poll(checkpoint).toEqual(before);
+  await expect(page.locator('.error-boundary-screen')).toHaveCount(0);
+});
