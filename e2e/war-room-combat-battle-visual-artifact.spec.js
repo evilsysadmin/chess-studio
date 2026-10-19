@@ -48,6 +48,7 @@ import {
   mockApi,
   openCampaignBriefing,
   seedCombatBattleSnapshot,
+  buttonWithVisibleText,
   clickBoardMove,
 } from './helpers.js';
 
@@ -292,7 +293,7 @@ test('Torre · F5 revela informe postcombate en escritorio y móvil', async ({ p
   await page.setViewportSize({ width: 1440, height: 900 });
   await mockApi(page);
   await login(page);
-  const entry = page.getByRole('button').filter({ has: page.getByText('Combat Chess · Campaña', { exact: true }) });
+  const entry = buttonWithVisibleText(page, 'Combat Chess · Campaña');
   await expect(entry).toBeVisible();
   await entry.click();
   await page.evaluate(() => localStorage.setItem('chess-study-roguelike-run', JSON.stringify({

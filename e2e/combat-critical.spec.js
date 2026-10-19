@@ -6,6 +6,7 @@ import {
   openCampaignBriefing,
   openFreeCombat,
   seedCombatBattleSnapshot,
+  buttonWithVisibleText,
 } from './helpers.js';
 
 const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
@@ -208,7 +209,7 @@ async function openTowerMate(page, seed) {
   await login(page);
   // Enter the real Combat route before restoring an existing Tower run:
   // the Home mode tile changes when a resumable run exists.
-  const entry = page.getByRole('button').filter({ has: page.getByText('Combat Chess · Campaña', { exact: true }) });
+  const entry = buttonWithVisibleText(page, 'Combat Chess · Campaña');
   await expect(entry).toBeVisible();
   await entry.click();
   await page.evaluate((id) => localStorage.setItem('chess-study-roguelike-run', JSON.stringify({
