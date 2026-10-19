@@ -53,6 +53,11 @@ test('War Room V4 · Hans realmente atraviesa su nuevo pasillo en WebGL', async 
     await expect(canvas).toBeVisible({ timeout: 90_000 });
     await expect(canvas).toHaveAttribute('data-war-room-variant', 'v4', { timeout: 90_000 });
     await expect(canvas).toHaveAttribute('data-war-room-variant-status', 'ready', { timeout: 90_000 });
+    if (process.env.APP_VISUAL_AUTHORED_WAR_ROOM_V4_GLB) {
+      expect(pinned.source, 'V4 PR proof must use the render-job GLB').toBe('pr-render-artifact');
+      expect(pinned.servedRequests, 'V4 runtime must fetch the authored GLB through the browser')
+        .toBeGreaterThan(0);
+    }
     await expect(canvas).toHaveAttribute('data-war-room-hans-stage', /^v4-tower-study:quick$/, { timeout: 90_000 });
     await expect(canvas).toHaveAttribute('data-war-room-hans-scene-ready', 'true', { timeout: 90_000 });
     await expect(canvas).toHaveAttribute('data-war-room-hans-call-released', 'true', { timeout: 90_000 });
@@ -137,6 +142,7 @@ test('War Room V4 · Hans realmente atraviesa su nuevo pasillo en WebGL', async 
     // Preserve the full trace even on assertion failures.
     await writeFile(DIR + '/war-room-v4-hans-full-route-1280x720.json', JSON.stringify({
       revision: REVISION, pinnedSha256: pinned.sha256,
+      modelSource: pinned.source, servedRequests: pinned.servedRequests,
       viewport: { width: 1280, height: 720 },
       entryTravel, exitTravel, phases, snapshots: [...snapshots], samples: captures,
     }, null, 2));
