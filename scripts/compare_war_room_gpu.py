@@ -449,6 +449,46 @@ def self_test():
         assert 'first-ready draw calls' in output and 'not GPU time' in output
         assert 'Missing/incomparable GPU queries' in output
         assert '# War Room V3' in output  # Legacy missing variant means V3.
+        assert 'Missing/incomplete real render journal' in output
+        # Real-render rows are only populated from the opt-in bounded journal,
+        # never inferred from the first-ready draw call counter.
+        for directory in (base, candidate):
+            for path in directory.glob('*.json'):
+                report = json.loads(path.read_text())
+                for visit in report['visits']:
+                    for phase in ('idle', 'move'):
+                        visit[phase]['renderCost'] = {
+                            'status': 'ready', 'renderedFrames': 40,
+                            'callsMedian': 140, 'callsP95': 150,
+                            'trianglesMedian': 280000,
+                            'cpuSubmitMedianMs': 1.25, 'cpuSubmitP95Ms': 2.5,
+                        }
+                path.write_text(json.dumps(report))
+        measured = compare(base, candidate, a, b)
+        assert '| desktop-1440x900 · first-visit · idle · draw calls/frame median | 140.00 | 140.00 | +0.00 | 40/40 |' in measured
+        assert '| desktop-1440x900 · first-visit · move · renderer CPU submit p95 (ms) | 2.50 | 2.50 | +0.00 | 40/40 |' in measured
+        journal_path = candidate / 'desktop-1440x900-0.json'
+        journal_report = json.loads(journal_path.read_text())
+        journal_report['visits'][0]['idle']['renderCost'] = {
+            'status': 'overflow', 'renderedFrames': 40,
+        }
+        journal_path.write_text(json.dumps(journal_report))
+        assert '| desktop-1440x900 · first-visit · idle · draw calls/frame median | n/a |' in compare(base, candidate, a, b)
+        journal_report['visits'][0]['idle']['renderCost'] = {
+            'status': 'ready', 'renderedFrames': 40,
+            'callsMedian': 140, 'callsP95': 150,
+            'trianglesMedian': 280000,
+            'cpuSubmitMedianMs': -1, 'cpuSubmitP95Ms': 2.5,
+        }
+        journal_path.write_text(json.dumps(journal_report))
+        try:
+            compare(base, candidate, a, b)
+        except BadReport as exc:
+            assert 'cpuSubmitMedianMs' in str(exc)
+        else:
+            raise AssertionError('Invalid negative renderer CPU cost accepted')
+        journal_report['visits'][0]['idle']['renderCost']['cpuSubmitMedianMs'] = 1.25
+        journal_path.write_text(json.dumps(journal_report))
         # Old captures still work as a cohort, but login-form timings must
         # never be compared against the direct persisted-session harness.
         for directory in (base, candidate):
