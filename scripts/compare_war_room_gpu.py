@@ -162,6 +162,22 @@ def load_group(directory, expected_sha, mode, minimum):
                             'callsMedian', 'callsP95', 'trianglesMedian',
                             'cpuSubmitMedianMs', 'cpuSubmitP95Ms')),
                             where + '/' + phase + ': partial render sample cannot claim metrics')
+                    split = render_cost.get('shadowSplitStatus')
+                    if split is not None:
+                        require(split in ('ready', 'unavailable'),
+                                where + '/' + phase + ': invalid shadow-pass split status')
+                        fields = ('mainCallsMedian', 'shadowCallsMedian',
+                                  'shadowCallsP95', 'shadowPassesMedian')
+                        if split == 'ready':
+                            require(status == 'ready',
+                                    where + '/' + phase + ': shadow breakdown needs real renders')
+                            for field in fields:
+                                number(render_cost.get(field), where + '/' + phase + '/' + field)
+                            require(render_cost['shadowCallsP95'] >= render_cost['shadowCallsMedian'],
+                                    where + '/' + phase + ': shadow percentile inversion')
+                        else:
+                            require(not any(field in render_cost for field in fields),
+                                    where + '/' + phase + ': unavailable split cannot claim values')
                 gpu = sample.get('gpuTimer')
                 if gpu is None:
                     continue  # Legacy schema-2 harness, rAF-only. No invented timing.
@@ -286,6 +302,15 @@ def render_phase_median(reports, visit_type, phase, metric):
     return statistics.median(values), min(counts)
 
 
+def shadow_phase_median(reports, visit_type, phase, metric):
+    """Return measured draw-pass split only; legacy/unavailable is n/a."""
+    for report in reports:
+        sample = report['visits'][VISITS.index(visit_type)][phase].get('renderCost') or {}
+        if sample.get('status') != 'ready' or sample.get('shadowSplitStatus') != 'ready':
+            return None, None
+    return render_phase_median(reports, visit_type, phase, metric)
+
+
 def gpu_phase_median(reports, visit_type, phase):
     """Return real GPU elapsed median only for a fully comparable cohort."""
     values = []
@@ -368,6 +393,33 @@ def compare(baseline, candidate, base_sha, candidate_sha, *, mode='hardware', mi
                     key = f'{profile} · {visit} · {phase} · {label}'
                     if a is None or b is None:
                         lines.append(f'| {key} | n/a | n/a | n/a | Missing/incomplete real render journal |')
+                    else:
+                        lines.append(f'| {key} | {a:.2f} | {b:.2f} | {b-a:+.2f} | {ac}/{bc} |')
+    lines.extend([
+        '', '## Shadow-depth versus main-scene draw submissions',
+        '',
+        'Opt-in measurements subtract draw calls counted inside the existing '
+        'Three.js shadowMap.render pass from the total. No additional shadows '
+        'or renders are created. Main calls include every non-shadow pass. '
+        'Legacy/unavailable splits are n/a, not zero.',
+        '',
+        '| Profile · visit · phase · metric | Baseline median | Candidate median | Delta | Min rendered frames A/B |',
+        '|---|---:|---:|---:|---:|',
+    ])
+    for profile in PROFILES:
+        for visit in VISITS:
+            for phase in ('idle', 'move'):
+                for metric, label in (
+                    ('mainCallsMedian', 'main-scene draw calls/frame median'),
+                    ('shadowCallsMedian', 'shadow-depth draw calls/frame median'),
+                    ('shadowCallsP95', 'shadow-depth draw calls/frame p95'),
+                    ('shadowPassesMedian', 'shadow-map invocations/frame median'),
+                ):
+                    a, ac = shadow_phase_median(before[profile], visit, phase, metric)
+                    b, bc = shadow_phase_median(after[profile], visit, phase, metric)
+                    key = f'{profile} · {visit} · {phase} · {label}'
+                    if a is None or b is None:
+                        lines.append(f'| {key} | n/a | n/a | n/a | No comparable shadow-pass census |')
                     else:
                         lines.append(f'| {key} | {a:.2f} | {b:.2f} | {b-a:+.2f} | {ac}/{bc} |')
     lines.extend([
