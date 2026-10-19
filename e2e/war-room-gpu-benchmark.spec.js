@@ -187,6 +187,27 @@ async function stopProbe(page) {
         shadowCallsP95: percentile(raw.renderCostRaw.frames.map((f) => f.shadowCalls), 0.95),
         shadowPassesMedian: percentile(raw.renderCostRaw.frames.map((f) => f.shadowPasses), 0.5),
       } : {}),
+      shadowFamiliesStatus: raw.renderCostRaw.status === 'ready'
+        && raw.renderCostRaw.frames.every((frame) =>
+          frame.shadowFamilyCalls
+          && ['pieces', 'shell', 'other'].every((key) =>
+            Number.isSafeInteger(frame.shadowFamilyCalls[key])
+            && frame.shadowFamilyCalls[key] >= 0)
+          && frame.shadowFamilyCalls.pieces + frame.shadowFamilyCalls.shell
+            + frame.shadowFamilyCalls.other === frame.shadowCalls)
+        ? 'ready' : 'unavailable',
+      ...(raw.renderCostRaw.status === 'ready'
+        && raw.renderCostRaw.frames.every((frame) =>
+          frame.shadowFamilyCalls
+          && ['pieces', 'shell', 'other'].every((key) =>
+            Number.isSafeInteger(frame.shadowFamilyCalls[key])
+            && frame.shadowFamilyCalls[key] >= 0)
+          && frame.shadowFamilyCalls.pieces + frame.shadowFamilyCalls.shell
+            + frame.shadowFamilyCalls.other === frame.shadowCalls) ? {
+        shadowPieceCallsMedian: percentile(raw.renderCostRaw.frames.map((f) => f.shadowFamilyCalls.pieces), 0.5),
+        shadowShellCallsMedian: percentile(raw.renderCostRaw.frames.map((f) => f.shadowFamilyCalls.shell), 0.5),
+        shadowOtherCallsMedian: percentile(raw.renderCostRaw.frames.map((f) => f.shadowFamilyCalls.other), 0.5),
+      } : {}),
       ...(raw.renderCostRaw.status === 'ready' ? {
         callsMedian: percentile(raw.renderCostRaw.frames.map((f) => f.calls), 0.5),
         callsP95: percentile(raw.renderCostRaw.frames.map((f) => f.calls), 0.95),
