@@ -1487,7 +1487,8 @@ function addRuntimeLights(scene, shadowsEnabled = true, ambientPeriod = 'day', d
   // Diagnostic only: append the extra midpoint fills AFTER the existing
   // torches, so every original light keeps its stable per-index flicker seed.
   // The four flame sprites are still authored at their original sconces.
-  if (shadowsEnabled && diagnosticLightMode === 'wall-pair') {
+  if (shadowsEnabled && (diagnosticLightMode === 'wall-pair'
+    || diagnosticLightMode.startsWith('pair-'))) {
     for (const spec of homeBlenderWallPairFillPlan(HOME_BLENDER_TORCH_X)) {
       const fillLight = new THREE.PointLight(spec.color, spec.intensity, spec.distance, spec.decay);
       fillLight.position.set(spec.x, spec.y, spec.z);
@@ -1948,8 +1949,8 @@ export default function HomeBlenderScene3D({
     const gpuProfiling = new URLSearchParams(window.location.search).get('homeGpuProfile') === '1';
     const lightProbeMode = homeBlenderLightProbeMode(window.location.search);
     const wallTorchLayout = homeBlenderWallTorchLayout(window.location.search);
-    // Each explicit A/B lighting trial retains its four-point legacy A
-    // baseline; otherwise the reviewed two-fill candidate is the default.
+    // Historical A/B modes keep their four-point baseline; new pair-* A/B
+    // modes explicitly benchmark the reviewed production two-fill layout.
     // ?homeWallTorches=legacy is an immediate, reload-only operational rollback.
     const torchLightMode = lightProbeMode !== 'normal'
       ? lightProbeMode : wallTorchLayout === 'pair' ? 'wall-pair' : 'normal';
