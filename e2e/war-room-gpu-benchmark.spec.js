@@ -298,7 +298,7 @@ async function inspectActualRenderer(canvas) {
         ['activeShadowCasters', 'warRoomShadowCasterCount'],
       ].map(([label, key]) => {
         const value = element.dataset[key];
-        return [label, value !== undefined && /^\\d+$/.test(value)
+        return [label, value !== undefined && /^[0-9]+$/.test(value)
           ? Number(value) : null];
       })),
     };
