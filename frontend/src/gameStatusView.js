@@ -16,6 +16,7 @@ export function gameStatusView({
   turn,
   humanColor,
   busy = false,
+  pendingMove = false,
   zenMode = false,
   turnBanner = null,
   flagFallen = null,
@@ -45,6 +46,7 @@ export function gameStatusView({
   else if (boardOutcome) statusText = statusLabel || 'Partida terminada';
   else if (turnBanner?.startsWith('Jugada sin confirmar')) statusText = turnBanner;
   else if (busy && turnBanner === 'Reintentando conexión…') statusText = turnBanner;
+  else if (busy && pendingMove) statusText = 'Confirmando jugada…';
   else if (busy) statusText = 'La CPU está pensando…';
   else if (!zenMode && turnBanner && turnBanner !== 'Reintentando conexión…') statusText = turnBanner;
   else statusText = statusLabel || (turn === humanColor ? 'Tu turno' : 'Turno de la CPU');
