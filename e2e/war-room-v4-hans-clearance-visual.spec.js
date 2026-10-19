@@ -15,7 +15,7 @@ function firstFireGameIndex() {
 }
 
 test('War Room V4 · Hans realmente atraviesa su nuevo pasillo en WebGL', async () => {
-  test.setTimeout(300_000);
+  test.setTimeout(750_000);
   if (!REVISION) throw new Error('An exact V4 authored model revision is required');
   await mkdir(DIR, { recursive: true });
 
@@ -63,48 +63,95 @@ test('War Room V4 · Hans realmente atraviesa su nuevo pasillo en WebGL', async 
     // Snapshot while an actual moving actor is onscreen: the normal V4 scene
     // screenshots only show an empty service aisle and a Matthias dialogue card.
     const captures = [];
+    const snapshots = new Set();
+    const requiredPhases = [
+      'fire-dimming', 'take-log', 'carry-log', 'place-log',
+      'take-poker', 'stoke-fire', 'return-poker', 'leave',
+    ];
+    const routeDisplacement = (samples) => {
+      if (samples.length < 2) return 0;
+      const first = samples[0];
+      return Math.max(...samples.map((sample) =>
+        Math.hypot(sample.logicalX - first.logicalX, sample.sceneZ - first.sceneZ)));
+    };
+    const saveFrame = async (name) => {
+      const base64 = await canvas.evaluate((node) => node.toDataURL('image/png').split(',')[1]);
+      await writeFile(DIR + '/war-room-v4-hans-' + name + '-1280x720.png', Buffer.from(base64, 'base64'));
+      snapshots.add(name);
+    };
     const start = Date.now();
-    // The first six seconds used to prove only the introductory 'fire-dimming'
-    // phase: a stationary but visible Hans could pass. Observe long enough for
-    // an actual walk along the door-to-hearth corridor, and require movement.
-    while (Date.now() - start < 28_000) {
-      captures.push(await canvas.evaluate((node) => ({
+    // The real performance runs at ~0.54x speed. The old 30cm criterion in
+    // fire-dimming could pass without ever reaching or leaving the hearth.
+    // Observe actual WebGL frames throughout both full corridor traversals.
+    while (Date.now() - start < 360_000) {
+      const sample = await canvas.evaluate((node) => ({
         screen: node.dataset.warRoomHansScreen || '',
         route: node.dataset.warRoomHansRoute || '',
         phase: node.dataset.warRoomHansChoreographyPhase || '',
+        doorOpen: Number(node.dataset.warRoomHansDoorOpen),
         logicalX: Number(node.dataset.warRoomHansLogicalX),
         sceneZ: Number(node.dataset.warRoomHansSceneZ),
         ndcX: Number(node.dataset.warRoomHansNdcX),
         ndcY: Number(node.dataset.warRoomHansNdcY),
         groundGap: Number(node.dataset.warRoomHansGroundGap),
-      })));
-      await page.waitForTimeout(400);
+      }));
+      captures.push(sample);
       const visible = captures.filter((item) => /^(onscreen|edge)$/.test(item.screen));
-      const first = visible[0];
-      const traveled = first ? Math.max(...visible.map((item) =>
-        Math.hypot(item.logicalX - first.logicalX, item.sceneZ - first.sceneZ))) : 0;
-      const screenTravel = first ? Math.max(...visible.map((item) =>
-        Math.hypot(item.ndcX - first.ndcX, item.ndcY - first.ndcY))) : 0;
-      if (visible.length >= 10 && traveled >= 0.3 && screenTravel >= 0.015) break;
+      const entering = visible.filter((item) => item.route === 'stage-entry');
+      const leaving = visible.filter((item) => item.route === 'stage-leave');
+      if (!snapshots.has('entering') && sample.screen === 'onscreen'
+        && sample.route === 'stage-entry' && routeDisplacement(entering) >= 1.2) {
+        await saveFrame('entering');
+      }
+      if (!snapshots.has('at-hearth') && sample.screen === 'onscreen'
+        && sample.phase === 'stoke-fire') {
+        await saveFrame('at-hearth');
+      }
+      if (!snapshots.has('leaving') && sample.screen === 'onscreen'
+        && sample.route === 'stage-leave' && routeDisplacement(leaving) >= 1.2) {
+        await saveFrame('leaving');
+      }
+      if (requiredPhases.every((phase) => captures.some((item) => item.phase === phase))
+        && routeDisplacement(entering) >= 2.2
+        && routeDisplacement(leaving) >= 3.2
+        && leaving.some((item) => item.doorOpen >= 0.65)
+        && leaving.length >= 8
+        && snapshots.size === 3) break;
+      await page.waitForTimeout(350);
     }
-    const visible = captures.filter((sample) => /^(onscreen|edge)$/.test(sample.screen));
-    expect(visible.length, 'Hans must remain visible while crossing the room')
-      .toBeGreaterThan(4);
-    expect(captures.some((sample) => sample.route === 'stage-entry' || sample.route === 'stage-leave'))
-      .toBe(true);
-    const phases = [...new Set(visible.map((item) => item.phase))];
+    const visible = captures.filter((item) => /^(onscreen|edge)$/.test(item.screen));
+    const entering = visible.filter((item) => item.route === 'stage-entry');
+    const leaving = visible.filter((item) => item.route === 'stage-leave');
+    const phases = [...new Set(captures.map((item) => item.phase))];
+    const entryTravel = routeDisplacement(entering);
+    const exitTravel = routeDisplacement(leaving);
     const first = visible[0];
-    const traveled = first ? Math.max(...visible.map((item) =>
-      Math.hypot(item.logicalX - first.logicalX, item.sceneZ - first.sceneZ))) : 0;
     const screenTravel = first ? Math.max(...visible.map((item) =>
       Math.hypot(item.ndcX - first.ndcX, item.ndcY - first.ndcY))) : 0;
-    console.log('V4_HANS_ROUTE_DISTANCE', JSON.stringify({
-      traveled, screenTravel, phases, samples: captures.length,
-      start: first ? [first.logicalX, first.sceneZ] : null,
-      end: visible.length ? [visible.at(-1).logicalX, visible.at(-1).sceneZ] : null,
+    console.log('V4_HANS_FULL_ROUTE', JSON.stringify({
+      entryTravel, exitTravel, screenTravel, phases,
+      exitDoorOpened: leaving.some((item) => item.doorOpen >= 0.65),
+      entrySamples: entering.length, exitSamples: leaving.length,
+      snapshots: [...snapshots], totalSamples: captures.length,
     }));
-    expect(traveled, 'Hans must move at least 30cm along the real 2D service aisle').toBeGreaterThanOrEqual(0.3);
-    expect(screenTravel, 'Hans must visibly move across the rendered room').toBeGreaterThanOrEqual(0.015);
+    // Preserve the full trace even on assertion failures.
+    await writeFile(DIR + '/war-room-v4-hans-full-route-1280x720.json', JSON.stringify({
+      revision: REVISION, pinnedSha256: pinned.sha256,
+      viewport: { width: 1280, height: 720 },
+      entryTravel, exitTravel, phases, snapshots: [...snapshots], samples: captures,
+    }, null, 2));
+    expect(visible.length, 'Hans must be on screen throughout the routine').toBeGreaterThan(15);
+    for (const phase of requiredPhases) {
+      expect(phases, 'Missing real choreography phase: ' + phase).toContain(phase);
+    }
+    expect(entering.length, 'Must observe the actual door-to-hearth path').toBeGreaterThan(8);
+    expect(leaving.length, 'Must observe the actual hearth-to-door path').toBeGreaterThanOrEqual(8);
+    expect(entryTravel, 'Hans must walk at least 2.2m into the room').toBeGreaterThanOrEqual(2.2);
+    expect(exitTravel, 'Hans must walk at least 3.2m back toward the door').toBeGreaterThanOrEqual(3.2);
+    expect(leaving.some((item) => item.doorOpen >= 0.65), 'Exit door must visibly open as Hans approaches').toBe(true);
+    expect(screenTravel, 'Hans must visibly cross the rendered room').toBeGreaterThanOrEqual(0.015);
+    expect([...snapshots].sort(), 'Entry, hearth and exit need actual WebGL PNG evidence')
+      .toEqual(['at-hearth', 'entering', 'leaving']);
     for (const sample of visible) {
       expect(Number.isFinite(sample.ndcX) && Number.isFinite(sample.ndcY)).toBe(true);
       expect(Math.abs(sample.groundGap)).toBeLessThanOrEqual(0.02);
