@@ -29,6 +29,12 @@ export function createWarRoomRenderCostJournal(capacity = WAR_ROOM_RENDER_COST_C
         row.mainCalls = info.mainCalls;
         row.shadowCalls = info.shadowCalls;
         row.shadowPasses = info.shadowPasses;
+        const groups = info.shadowFamilyCalls;
+        if (groups && ['pieces', 'shell', 'other'].every((key) =>
+          Number.isSafeInteger(groups[key]) && groups[key] >= 0)
+          && groups.pieces + groups.shell + groups.other === info.shadowCalls) {
+          row.shadowFamilyCalls = { pieces: groups.pieces, shell: groups.shell, other: groups.other };
+        }
       }
       ring[(seq - 1) % capacity] = row;
     },
