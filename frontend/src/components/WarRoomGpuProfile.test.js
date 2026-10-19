@@ -78,6 +78,31 @@ describe('War Room GPU timer opt-in', () => {
     expect(p.canvas.__warRoomRenderCostJournal).toBeUndefined();
   });
 
+  it('hooks only opted-in Three shadow pass and restores its original implementation', () => {
+    const p = rendererProbe();
+    const counters = { calls: 0 };
+    const shadowMap = { render: () => { counters.calls += 27; } };
+    const original = shadowMap.render;
+    p.renderer.info = { render: counters };
+    p.renderer.shadowMap = shadowMap;
+    expect(createWarRoomGpuProfile(p.renderer)).toBeNull();
+    expect(shadowMap.render).toBe(original);
+
+    const profile = createWarRoomGpuProfile(p.renderer, { storageFlag: '1' });
+    expect(shadowMap.render).not.toBe(original);
+    profile.begin();
+    shadowMap.render();
+    counters.calls += 73;
+    profile.recordRender({ calls: counters.calls, triangles: 1500 }, 20, 23);
+    expect(p.canvas.__warRoomRenderCostJournal.readAfter(0).samples).toMatchObject([
+      { calls: 100, mainCalls: 73, shadowCalls: 27, shadowPasses: 1 },
+    ]);
+    profile.end();
+    profile.dispose();
+    expect(shadowMap.render).toBe(original);
+    expect(p.canvas.__warRoomRenderCostJournal).toBeUndefined();
+  });
+
   it('invalidates previous elapsed ms after GPU disjoint without fabricating an extra sample', () => {
     const p = rendererProbe();
     const profile = createWarRoomGpuProfile(p.renderer, {

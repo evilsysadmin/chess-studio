@@ -50,7 +50,14 @@ test('War Room benchmark restores Home and enters a real quick-match 3D board', 
         && frame.endedAtMs >= frame.startedAtMs
         && frame.cpuSubmitMs >= 0
         && Number.isFinite(frame.calls) && frame.calls > 0
-        && Number.isFinite(frame.triangles) && frame.triangles > 0);
+        && Number.isFinite(frame.triangles) && frame.triangles > 0
+        // SwiftShader may render with shadow maps disabled, but the split
+        // still must attribute every draw to the main or shadow pass.
+        && Number.isSafeInteger(frame.mainCalls)
+        && Number.isSafeInteger(frame.shadowCalls)
+        && Number.isSafeInteger(frame.shadowPasses)
+        && frame.mainCalls >= 0 && frame.shadowCalls >= 0
+        && frame.mainCalls + frame.shadowCalls === frame.calls);
     }), { timeout: 30_000, message: 'Opt-in War Room journal must record real 3D draws' })
       .toBe(true);
   } finally {

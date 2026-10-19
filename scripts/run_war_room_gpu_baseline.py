@@ -18,7 +18,7 @@ from pathlib import Path
 
 from compare_war_room_gpu import (
     BadReport, PROFILES, VISITS, fake_report, gpu_phase_median, load_group,
-    render_phase_median, validate_capture_provenance,
+    render_phase_median, shadow_phase_median, validate_capture_provenance,
 )
 from run_war_room_gpu_ab import (
     BenchError, HARNESS_FILES, capture, exercise_once, gpu_env,
@@ -69,6 +69,30 @@ def baseline_report(directory, sha, mode, variant, repetitions):
                 columns = ' | '.join(f'{number:.2f}' for number in values)
                 lines.append(f'| {profile} · {visit} · {phase} | {columns} | '
                              f'{gpu_label} | {min_count} |')
+    lines.extend([
+        '',
+        '## Measured shadow-depth versus main-scene submissions',
+        '',
+        'Draws in the existing Three.js shadowMap.render pass are counted '
+        'separately from main-scene draws. No additional passes or GPU '
+        'queries are issued. Missing or legacy splits show n/a, not zero.',
+        '',
+        '| Profile · visit · phase | Main draw calls median | '
+        'Shadow draw calls median | Shadow draw calls p95 | '
+        'Shadow-map invocations median |',
+        '|---|---:|---:|---:|---:|',
+    ])
+    for profile in PROFILES:
+        for visit in VISITS:
+            for phase in ('idle', 'move'):
+                metrics = ('mainCallsMedian', 'shadowCallsMedian',
+                           'shadowCallsP95', 'shadowPassesMedian')
+                values = [shadow_phase_median(groups[profile], visit, phase, field)[0]
+                          for field in metrics]
+                formatted = [f'{value:.2f}' if value is not None else 'n/a'
+                             for value in values]
+                lines.append(f'| {profile} · {visit} · {phase} | '
+                             + ' | '.join(formatted) + ' |')
     lines.extend([
         '',
         '## Static GLB and lighting census (not draw calls)',
@@ -138,6 +162,9 @@ def self_test():
                             'trianglesMedian': 280000,
                             'cpuSubmitMedianMs': 1.25,
                             'cpuSubmitP95Ms': 2.50,
+                            'shadowSplitStatus': 'ready',
+                            'mainCallsMedian': 35, 'shadowCallsMedian': 105,
+                            'shadowCallsP95': 115, 'shadowPassesMedian': 1,
                         }
                 (root / f'{profile}-{index}.json').write_text(json.dumps(report))
         for path in root.glob('*.json'):
@@ -153,6 +180,7 @@ def self_test():
         assert '| desktop-1440x900 · first-visit | 690 | 12 | 32 | 32 | ready-budgeted |' in output
         assert '| desktop-1440x900 · first-visit · idle | 140.00 | 150.00 | ' in output
         assert '| 280000.00 | 1.25 | 2.50 | n/a | 22 |' in output
+        assert '| desktop-1440x900 · first-visit · idle | 35.00 | 105.00 | 115.00 | 1.00 |' in output
         path = root / 'desktop-1440x900-0.json'
         report = json.loads(path.read_text())
         report['visits'][0]['sceneInventory']['authoredGlbMeshes'] = None
