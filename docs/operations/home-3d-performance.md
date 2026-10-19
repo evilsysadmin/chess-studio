@@ -51,6 +51,28 @@ the observed value instead of assuming that. A pass's draw count is not GPU
 milliseconds; this census identifies **which subsequent render experiment** to
 measure on physical hardware.
 
+### Per-object WebGL draw submission hotspots (profiling only)
+
+The opt-in Home draw census now also exports `drawPass.hotspots.main`
+and `drawPass.hotspots.shadow`, including the initial first-frame snapshot.
+Each pass has `uniqueObjects`, the top twelve individual Three mesh objects
+ranked by **real successful draw submissions** (`family`, `name`, `calls`),
+and `otherCalls`. The top rows plus `otherCalls` must equal the exact
+pass count. Aggregation uses **object identity**, not Blender mesh names:
+two distinct meshes may share a display name, and labels are deliberately
+bounded. Missing names show `(unnamed mesh)`.
+
+Read the per-visit `visits[].drawPass.hotspots` in
+`.artifacts/home-gpu-benchmark/home-3d-hardware.json`.
+A high call count may indicate repeated material groups or draw submissions,
+but these are **not GPU milliseconds**. Many objects with one draw each
+means a material/scene-wide analysis is more useful than removing one prop.
+The reporting list is limited to twelve rows **per pass** to avoid bloating
+DOM datasets and JSON; counts outside it remain accurately represented by
+`otherCalls`. On invalid/partial census, hotspots are `null`, not zero.
+No scene traversal, new render, light change or production-session overhead
+is introduced.
+
 ### One-command physical GPU draw census (no lighting removal)
 
 After the real-browser CI gate is green, run the fixed three-cold-visit
