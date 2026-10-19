@@ -7,6 +7,10 @@ on:
       - 'scripts/blender/build_war_room_v4.py'
       - 'scripts/blender/configure_eevee_premium.py'
       - 'scripts/blender/publish_war_room_v4.py'
+      - 'e2e/v4-immutable-model.js'
+      - 'e2e/war-room-v4-hans-clearance-visual.spec.js'
+      - 'e2e/war-room-visual-artifact.spec.js'
+      - 'frontend/src/components/WarRoomHansActorTelemetry.js'
       - '.github/workflows/war-room-v4-blender-art.yml'
   push:
     branches:
@@ -16,6 +20,10 @@ on:
       - 'scripts/blender/build_war_room_v4.py'
       - 'scripts/blender/configure_eevee_premium.py'
       - 'scripts/blender/publish_war_room_v4.py'
+      - 'e2e/v4-immutable-model.js'
+      - 'e2e/war-room-v4-hans-clearance-visual.spec.js'
+      - 'e2e/war-room-visual-artifact.spec.js'
+      - 'frontend/src/components/WarRoomHansActorTelemetry.js'
       - '.github/workflows/war-room-v4-blender-art.yml'
   workflow_dispatch:
 
