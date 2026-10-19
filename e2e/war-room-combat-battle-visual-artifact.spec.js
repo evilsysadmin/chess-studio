@@ -292,13 +292,14 @@ test('Torre · F5 revela informe postcombate en escritorio y móvil', async ({ p
   await page.setViewportSize({ width: 1440, height: 900 });
   await mockApi(page);
   await login(page);
+  const entry = page.getByRole('button').filter({ has: page.getByText('Combat Chess · Campaña', { exact: true }) });
+  await expect(entry).toBeVisible();
+  await entry.click();
   await page.evaluate(() => localStorage.setItem('chess-study-roguelike-run', JSON.stringify({
     floor: 1, inRun: true, phase: 'battle', seed: 'tower-f5-visual', mode: 'tower', perks: [],
     rewardChosenForFloor: null,
   })));
-  const entry = page.getByRole('button').filter({ has: page.getByText('Combat Chess · Campaña', { exact: true }) });
-  await expect(entry).toBeVisible();
-  await entry.click();
+  await page.reload();
   await page.getByRole('button', { name: /PREPARAR EJÉRCITO/i }).click();
   const start = page.getByRole('button', { name: /¡ENTRAR EN COMBATE!|ORGANIZAR Y COMBATIR/i });
   await expect(start).toBeVisible();

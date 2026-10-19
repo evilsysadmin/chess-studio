@@ -206,12 +206,15 @@ test('Campaña · F5 tras JAQUE MATE recupera el informe sin volver a pagar la v
 async function openTowerMate(page, seed) {
   await mockApi(page);
   await login(page);
-  await page.evaluate((id) => localStorage.setItem('chess-study-roguelike-run', JSON.stringify({
-    floor: 1, inRun: true, phase: 'battle', seed: id, mode: 'tower', perks: [], rewardChosenForFloor: null,
-  })), seed);
+  // Enter the real Combat route before restoring an existing Tower run:
+  // the Home mode tile changes when a resumable run exists.
   const entry = page.getByRole('button').filter({ has: page.getByText('Combat Chess · Campaña', { exact: true }) });
   await expect(entry).toBeVisible();
   await entry.click();
+  await page.evaluate((id) => localStorage.setItem('chess-study-roguelike-run', JSON.stringify({
+    floor: 1, inRun: true, phase: 'battle', seed: id, mode: 'tower', perks: [], rewardChosenForFloor: null,
+  })), seed);
+  await page.reload();
   await page.getByRole('button', { name: /PREPARAR EJÉRCITO/i }).click();
   const start = page.getByRole('button', { name: /¡ENTRAR EN COMBATE!|ORGANIZAR Y COMBATIR/i });
   await expect(start).toBeVisible();
