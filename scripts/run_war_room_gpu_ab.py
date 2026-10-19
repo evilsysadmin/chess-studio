@@ -100,6 +100,21 @@ def require_port_free(host='127.0.0.1', port=4173):
             raise BenchError(f'{host}:{port} is already serving content; stop the old E2E server first')
 
 
+def check_gpu_benchmark_syntax(spec_path):
+    """Verify the exact Playwright spec with Node before npm/build/GPU work.
+
+    Vite does not compile this E2E-only file and CI's regular smoke doesn't
+    collect the optional local benchmark. A broken test must fail in preflight.
+    """
+    result = subprocess.run(
+        ['node', '--check', str(spec_path)],
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False,
+    )
+    if result.returncode:
+        reason = result.stderr.decode('utf-8', errors='replace').strip()[:1500]
+        raise BenchError(f'War Room GPU benchmark spec syntax invalid: {reason}')
+
+
 def prepare_worktree(root, temporary, label, sha, harness_blobs):
     target = temporary / label
     print(f'==> Creating detached {label} worktree at {sha[:12]}', flush=True)
@@ -109,6 +124,7 @@ def prepare_worktree(root, temporary, label, sha, harness_blobs):
         # Historical baseline SHAs predate the benchmark spec: safely add it.
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(raw)
+    check_gpu_benchmark_syntax(target / 'e2e/war-room-gpu-benchmark.spec.js')
     for scope in ('frontend', 'e2e'):
         print(f'==> Installing {label} {scope} dependencies', flush=True)
         run(('npm', '--prefix', str(target / scope), 'ci'), cwd=root)
@@ -194,6 +210,10 @@ def exercise_once(label, target, sha, renderer, env, destination, ordinal, total
 
 
 def self_test():
+    # Runs in static-preflight even without Playwright installed. Fail before
+    # any operator spends time compiling or launching Chromium on a broken spec.
+    root = Path(__file__).resolve().parent.parent
+    check_gpu_benchmark_syntax(root / 'e2e/war-room-gpu-benchmark.spec.js')
     assert execution_order(2) == ('A', 'B', 'B', 'A')
     assert execution_order(3) == ('A', 'B', 'B', 'A', 'A', 'B')
     assert 'e2e/helpers.js' in HARNESS_FILES
@@ -217,6 +237,14 @@ def self_test():
     # Reproduce a failed Playwright process without a browser or GPU.
     with tempfile.TemporaryDirectory(prefix='warroom-runner-selftest-') as tmp:
         root = Path(tmp)
+        broken = root / 'invalid-gpu.spec.js'
+        broken.write_text('const invalid = ];', encoding='utf-8')
+        try:
+            check_gpu_benchmark_syntax(broken)
+        except BenchError as exc:
+            assert 'spec syntax invalid' in str(exc)
+        else:
+            raise AssertionError('Malformed local GPU benchmark spec accepted')
         target = root / 'worktree'
         sources = target / '.artifacts/war-room-gpu-benchmark'
         sources.mkdir(parents=True)
