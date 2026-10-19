@@ -196,6 +196,35 @@ Repetir cada revisión en el mismo host en órdenes alternos A/B/B/A (varias rep
 No fusionar una nueva optimización de luces, materiales o GLB basándose exclusivamente en un JSON de este benchmark; conservar captura visual, comparación de triángulos/draw calls y paridad de jugabilidad. La issue #5765 permanece abierta hasta tener medidas repetidas sobre hardware.
 
 
+### Baseline de una sola revisión · War Room V3/V4
+
+Una vez integrada la instrumentación de coste sostenido, **no hace falta
+comparar dos commits** para localizar cuánto dibujo persiste en la sala
+actual. En Nobara/NVIDIA, con checkout actualizado y el puerto 4173 libre:
+
+```bash
+git pull --ff-only
+python3 -S scripts/run_war_room_gpu_baseline.py \\
+  --variant v3 --renderer hardware --offload nvidia --repetitions 2
+```
+
+El script prepara **un único worktree A**, compila la revisión local `HEAD`,
+ejecuta dos rondas de los tres perfiles (escritorio y touch emulado), y
+produce una sesión inmutable en `.artifacts/war-room-gpu-baseline/<sesión>/`,
+con `baseline.md`, `session.json` y seis capturas JSON. Un fallo retiene
+logs/JSON parciales, pero deja el manifiesto como `incomplete`, sin informe
+de baseline válido. `--revision-sha <40 caracteres>` permite medir otra
+revisión **que ya contenga la instrumentación**; las anteriores son
+rechazadas, aunque se les copie el harness nuevo.
+
+El informe usa sólo renders reales completados en idle y move: mediana/p95
+de draw calls, mediana de triángulos, tiempo CPU de `renderer.render()`,
+y tiempo GPU `TIME_ELAPSED_EXT` cuando las queries verificadas existen.
+Un journal ausente, incompleto o desbordado invalida la baseline, en lugar
+de convertir rAF en frames dibujados. No demuestra mejora de FPS ni sustituye
+la comparación A/B posterior. `--variant v4` usa la misma disciplina con
+V4. **No se ejecuta la captura física GPU en CI**; sólo el autotest sintético.
+
 ### Diagnóstico GPU real de War Room, opt-in (WebGL2)
 
 Home ya usa `EXT_disjoint_timer_query_webgl2` para observar tiempo de GPU
