@@ -1,6 +1,30 @@
 // Opt-in census of REAL Three.js render submissions in the Home. Never renders
 // additional frames, changes lights/shaders or touches ordinary sessions.
 const fresh = () => ({ castle: 0, matthias: 0, runtime: 0 });
+const HOTSPOT_LIMIT = 12;
+
+// Names are diagnostic labels, never identities: duplicate Blender names can
+// appear in separate rows. Actual submissions are grouped by object reference.
+function drawObjectPath(object) {
+  const names = [];
+  for (let node = object, depth = 0; node && depth < 12 && names.length < 4; node = node.parent, depth += 1) {
+    const name = typeof node.name === 'string' ? node.name.trim().slice(0, 64) : '';
+    if (name) names.push(name);
+  }
+  return names.length ? names.reverse().join(' / ').slice(0, 180) : '(unnamed mesh)';
+}
+
+function summarizeHotspots(objects, totalCalls) {
+  const ranked = [...objects].map(([object, value]) => ({
+    family: value.family, name: drawObjectPath(object), calls: value.calls,
+  })).sort((a, b) => b.calls - a.calls || a.family.localeCompare(b.family) || a.name.localeCompare(b.name));
+  const top = ranked.slice(0, HOTSPOT_LIMIT);
+  return {
+    uniqueObjects: ranked.length,
+    top,
+    otherCalls: totalCalls - top.reduce((sum, item) => sum + item.calls, 0),
+  };
+}
 
 export function installHomeBlenderDrawPassProbe(renderer, classify) {
   const shadowMap = renderer?.shadowMap;
@@ -15,6 +39,7 @@ export function installHomeBlenderDrawPassProbe(renderer, classify) {
   let shadowCalls = 0;
   let shadowPasses = 0;
   let families = { shadow: fresh(), main: fresh() };
+  let objects = { shadow: new Map(), main: new Map() };
   const validCounter = (value) => Number.isSafeInteger(value) && value >= 0;
 
   const direct = function (...args) {
@@ -31,7 +56,14 @@ export function installHomeBlenderDrawPassProbe(renderer, classify) {
       } else if (after > before) {
         const family = classify(args[4]);
         if (!Object.hasOwn(families.main, family)) valid = false;
-        else families[insideShadow ? 'shadow' : 'main'][family] += after - before;
+        else {
+          const pass = insideShadow ? 'shadow' : 'main';
+          const delta = after - before;
+          families[pass][family] += delta;
+          const object = args[4];
+          const previous = objects[pass].get(object);
+          objects[pass].set(object, { family, calls: (previous?.calls || 0) + delta });
+        }
       }
     }
   };
@@ -73,6 +105,7 @@ export function installHomeBlenderDrawPassProbe(renderer, classify) {
       shadowCalls = 0;
       shadowPasses = 0;
       families = { shadow: fresh(), main: fresh() };
+      objects = { shadow: new Map(), main: new Map() };
     },
     sample(totalCalls) {
       if (!valid || !validCounter(totalCalls) || shadowCalls > totalCalls) return null;
@@ -89,6 +122,12 @@ export function installHomeBlenderDrawPassProbe(renderer, classify) {
         families: attributed ? {
           shadow: { ...families.shadow },
           main: { ...families.main },
+        } : null,
+        // Bounded leaderboard of measured calls, NOT GPU time or draw
+        // candidates. Keep unavailable whenever the full census is invalid.
+        hotspots: attributed ? {
+          shadow: summarizeHotspots(objects.shadow, shadowCalls),
+          main: summarizeHotspots(objects.main, mainCalls),
         } : null,
       };
     },

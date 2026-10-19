@@ -31,17 +31,23 @@ describe('Home WebGL draw-pass census (profiler only)', () => {
     x.renderer.renderBufferDirect(null, null, null, null, child, 27);
     x.renderer.renderBufferDirect(null, null, null, null, actorChild, 4);
     x.renderer.renderBufferDirect(null, null, null, null, x.runtime, 2);
-    expect(probe.sample(42)).toEqual({
+    expect(probe.sample(42)).toMatchObject({
       totalCalls: 42, shadowCalls: 9, mainCalls: 33, shadowPasses: 1,
       families: {
         shadow: { castle: 6, matthias: 3, runtime: 0 },
         main: { castle: 27, matthias: 4, runtime: 2 },
       },
     });
+    expect(probe.sample(42)?.hotspots).toMatchObject({
+      shadow: { uniqueObjects: 2, otherCalls: 0,
+        top: [{ family: 'castle', calls: 6 }, { family: 'matthias', calls: 3 }] },
+      main: { uniqueObjects: 3, otherCalls: 0,
+        top: [{ family: 'castle', calls: 27 }, { family: 'matthias', calls: 4 }, { family: 'runtime', calls: 2 }] },
+    });
     x.info.calls = 0;
     probe.begin();
     x.renderer.renderBufferDirect(null, null, null, null, child, 5);
-    expect(probe.sample(5)).toEqual({
+    expect(probe.sample(5)).toMatchObject({
       totalCalls: 5, shadowCalls: 0, mainCalls: 5, shadowPasses: 0,
       families: { shadow: { castle: 0, matthias: 0, runtime: 0 },
         main: { castle: 5, matthias: 0, runtime: 0 } },
@@ -57,10 +63,31 @@ describe('Home WebGL draw-pass census (profiler only)', () => {
       (object) => homeBlenderDrawFamily(object, x.cast, x.actor));
     probe.begin();
     x.renderer.renderBufferDirect(null, null, null, null, x.cast, 5);
-    expect(probe.sample(7)).toEqual({
+    expect(probe.sample(7)).toMatchObject({
       totalCalls: 7, shadowCalls: 0, mainCalls: 7, shadowPasses: 0, families: null,
     });
+    expect(probe.sample(7)?.hotspots).toBeNull();
     expect(probe.sample(3)).toBeNull();
+    probe.dispose();
+  });
+
+  it('caps object leaderboard without dropping actual draws, distinguishing identically named meshes', () => {
+    const x = rig();
+    const probe = installHomeBlenderDrawPassProbe(x.renderer,
+      (object) => homeBlenderDrawFamily(object, x.cast, x.actor));
+    probe.begin();
+    for (let index = 0; index < 18; index += 1) {
+      const mesh = { name: 'Repeated Blender Part', parent: x.cast };
+      x.renderer.renderBufferDirect(null, null, null, null, mesh, 1);
+    }
+    const sample = probe.sample(18);
+    expect(sample.families.main.castle).toBe(18);
+    expect(sample.hotspots.main.uniqueObjects).toBe(18);
+    expect(sample.hotspots.main.top).toHaveLength(12);
+    expect(sample.hotspots.main.otherCalls).toBe(6);
+    expect(sample.hotspots.main.top.every((row) =>
+      row.family === 'castle' && row.calls === 1
+      && row.name === 'Repeated Blender Part')).toBe(true);
     probe.dispose();
   });
 
