@@ -16,9 +16,14 @@ function median(numbers) {
 
 export function summarizeHomeGpuLightContrast(visits, offMode, baselineMode = 'normal') {
   const expectedBaseline = offMode.startsWith('pair-aux-') ? 'pair-normal' : 'normal';
-  if (!LIGHT_OFF_MODES.has(offMode) || baselineMode !== expectedBaseline
-    || !Array.isArray(visits) || visits.length !== 4) {
-    throw new Error('Home GPU A/B/B/A requires four visits and a compatible baseline/off mode');
+  if (!LIGHT_OFF_MODES.has(offMode)) {
+    throw new Error('Home GPU A/B/B/A requires a known light-off mode');
+  }
+  if (!Array.isArray(visits) || visits.length !== 4) {
+    throw new Error('Home GPU A/B/B/A requires four visits');
+  }
+  if (baselineMode !== expectedBaseline) {
+    throw new Error('Home GPU A/B/B/A requires a compatible baseline/off mode');
   }
   const sequence = [baselineMode, offMode, offMode, baselineMode];
   for (let index = 0; index < sequence.length; index += 1) {
