@@ -1424,6 +1424,21 @@ def validate_v4_hans_stage():
             if wall_gap < 0.08:
                 raise RuntimeError(f"War Room v4 fireplace embedded into tower wall: {wall_gap:.3f}m")
 
+    # The tower entrance and hearth must occupy two clearly separate bays.
+    # Collision alone is insufficient: previously the fireplace technically
+    # fitted the wall but looked jammed directly against the teal door.
+    door_x, door_y, _door_z = anchors["WR_ANCHOR_hans_door"]
+    hearth_x, hearth_y, _hearth_z = anchors["WR_ANCHOR_hans_hearth"]
+    if math.hypot(door_x - hearth_x, door_y - hearth_y) < 4.0:
+        raise RuntimeError("War Room v4 fireplace crowds Hans' tower doorway")
+    door_mantel_dx = (door_x - cx) * cyaw + (door_y - cy) * syaw
+    door_mantel_dy = -(door_x - cx) * syaw + (door_y - cy) * cyaw
+    door_mantel_gap = math.hypot(
+        max(abs(door_mantel_dx) - hx, 0), max(abs(door_mantel_dy) - hy, 0)
+    )
+    if door_mantel_gap < 3.0:
+        raise RuntimeError("War Room v4 doorway and fireplace have no distinct architectural spacing")
+
     # Armour/right lounge are distinct architectural beats, never overlapping
     # furniture. Validate authored meshes rather than visually trusting a render.
     stand = objects["WR4_OBS_armor_base_1"]
