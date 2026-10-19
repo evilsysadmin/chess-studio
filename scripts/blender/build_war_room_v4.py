@@ -58,16 +58,19 @@ V4_ENTRY_THETA_DEG = -95.0
 V4_ENTRY_RECESS_METERS = 1.30
 # The circular wall's true tangent presents a closed door almost edge-on in
 # the accepted V4 hybrid camera. Splay only the inner entry and its leaf
-# toward the player; its threshold and Hans' authored walking anchors stay put.
-V4_ENTRY_VISUAL_SPLAY_DEG = -35.0
+# toward the player; a restrained 30° splay improves the closed silhouette.
+# Its threshold and Hans' authored walking anchors stay put.
+V4_ENTRY_VISUAL_SPLAY_DEG = -30.0
 V4_ENTRY_DOOR_Z = 1.90
 
 # Hans' tower door: the teal leaf is its own runtime node, hinged on the jamb
 # nearer the player so it swings into the room away from his path to the
-# hearth (Blender Z yaw == three.js Y yaw). A dark void behind it reads as the
+# hearth (Blender Z yaw == three.js Y yaw). The 60° swing compensates
+# the 30° splay to retain the proven in-room opening direction.
+# A dark void behind it reads as the
 # stair landing once it opens.
 V4_HANS_DOOR_LEAF = "WR_HANS_door_leaf"
-V4_HANS_DOOR_OPEN_YAW = -0.96
+V4_HANS_DOOR_OPEN_YAW = -1.048
 V4_HANS_DOOR_HALF = 0.88
 # The left armour guards the tower door from the player's side of it: in front
 # of the hearth it would stand on Hans' work spot and hide him from the camera.
@@ -1286,12 +1289,12 @@ def build_tower_entry(static, palette):
         point = center + tangent * (side * 1.02)
         jamb = base.cube(
             f"WR4_OBS_entry_jamb_{side}", (point.x, point.y, 2.02),
-            (0.105, 0.20, 1.98), palette["copper"], static, bevel=0.055,
+            (0.105, 0.20, 1.98), palette["walnut_dark"], static, bevel=0.055,
         )
         jamb.rotation_euler.z = angle
     lintel = base.cube(
         "WR4_OBS_entry_lintel", (center.x, center.y, 4.00),
-        (1.12, 0.20, 0.11), palette["copper"], static, bevel=0.055,
+        (1.12, 0.20, 0.11), palette["walnut_dark"], static, bevel=0.055,
     )
     lintel.rotation_euler.z = angle
     threshold = base.cube(
@@ -1299,6 +1302,43 @@ def build_tower_entry(static, palette):
         (1.12, 0.24, 0.075), palette["brass_dark"], static, bevel=0.040,
     )
     threshold.rotation_euler.z = angle
+
+    # A splayed door can read as ajar against the circular outer-wall return.
+    # Put a continuous CLOSED-PLANE rebate on the inner jamb, directly behind
+    # the leaf edges, instead of rotating the playable doorway again. The
+    # narrow fixed lips never join the dynamic leaf and do not obstruct its
+    # inward swing; bring them to the visible room-side frame to make the
+    # closed outline legible; use aged dark brass so the jamb does not look
+    # like a second teal door standing open behind the moving leaf.
+    for side in (-1, 1):
+        stop_point = center + tangent * (side * (V4_HANS_DOOR_HALF + 0.145)) - radial * 0.155
+        stop = base.cube(
+            f"WR4_OBS_entry_closed_stop_{side}",
+            (stop_point.x, stop_point.y, door_z),
+            (0.125, 0.055, 1.82),
+            palette["brass_dark"], static, bevel=0.020,
+        )
+        stop.rotation_euler.z = angle
+    head_point = center - radial * 0.155
+    head_stop = base.cube(
+        "WR4_OBS_entry_closed_head",
+        (head_point.x, head_point.y, door_z + 1.90),
+        (V4_HANS_DOOR_HALF + 0.17, 0.055, 0.115),
+        palette["brass_dark"], static, bevel=0.020,
+    )
+    head_stop.rotation_euler.z = angle
+
+    # The fixed brass keeper is deliberately subtle: the existing handle is
+    # already part of the moving leaf. A protruding ornamental bolt made the
+    # closed door read even more like an open gate in the play camera.
+    strike_point = center + tangent * (V4_HANS_DOOR_HALF + 0.085) - radial * 0.17
+    strike = base.cube(
+        "WR4_OBS_entry_closed_strike",
+        (strike_point.x, strike_point.y, door_z - 0.30),
+        (0.048, 0.022, 0.125),
+        palette["brass_dark"], static, bevel=0.012,
+    )
+    strike.rotation_euler.z = angle
 
     front = Vector((center.x, center.y, door_z)) - radial * 0.17
     glass_start = front - radial * 0.035 + Vector((0, 0, 0.72))
@@ -1355,6 +1395,7 @@ def validate_v4_entry_door(door):
         raise RuntimeError(f"War Room v4 entry door floated vertically: z={door.location.z:.3f}")
 
 
+
 def v4_hans_door_hinge(center, tangent, radial):
     """Hinge on the player-side jamb, on the leaf's room face."""
     hinge = center - tangent * V4_HANS_DOOR_HALF - radial * 0.11
@@ -1395,6 +1436,21 @@ def validate_v4_hans_stage():
         raise RuntimeError("War Room v4 Hans door leaf must stay a dynamic runtime node")
     if any(abs(value) > 1e-6 for value in leaf.rotation_euler):
         raise RuntimeError("War Room v4 Hans door leaf must export closed with no rotation")
+    # The closing frame belongs to the stationary alcove; it must stay in
+    # the same authored plane as the sealed leaf, not float at the outer arch.
+    scene_objects = bpy.context.scene.objects
+    expected_closed_angle = math.radians(-V4_ENTRY_THETA_DEG + V4_ENTRY_VISUAL_SPLAY_DEG)
+    for side in (-1, 1):
+        stop = scene_objects.get(f"WR4_OBS_entry_closed_stop_{side}")
+        if stop is None or abs(stop.rotation_euler.z - expected_closed_angle) > 1e-5:
+            raise RuntimeError("War Room v4 inner closing jamb lost its splayed plane")
+    head = scene_objects.get("WR4_OBS_entry_closed_head")
+    strike = scene_objects.get("WR4_OBS_entry_closed_strike")
+    if head is None or strike is None:
+        raise RuntimeError("War Room v4 service door lost its closing head or brass keeper")
+    if abs(head.rotation_euler.z - expected_closed_angle) > 1e-5:
+        raise RuntimeError("War Room v4 closing head is not aligned to the closed leaf")
+
     theta = math.radians(V4_ENTRY_THETA_DEG)
     radial = Vector((math.sin(theta), math.cos(theta), 0.0))
     wall_tangent = Vector((math.cos(theta), -math.sin(theta), 0.0))
