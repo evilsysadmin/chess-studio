@@ -52,6 +52,9 @@ V4_WALL_SEGMENT_COUNT = 19
 # Further round the left tower perimeter: the teal service entrance must read
 # as an independent bay, not as a side panel glued to the ivory fireplace.
 V4_ENTRY_THETA_DEG = -95.0
+# Keep the doorway visible in the board-forward V4 camera without cropping the
+# board. Shallow timber wall returns join the portal to the curved wall.
+V4_ENTRY_RECESS_METERS = 0.82
 V4_ENTRY_DOOR_Z = 1.90
 
 # Hans' tower door: the teal leaf is its own runtime node, hinged on the jamb
@@ -1234,7 +1237,7 @@ def build_tower_entry(static, palette):
     # Seat the leaf against the inner face of the authored wall and use the exact
     # tangent of that circular shell. This keeps the whole portal visually welded
     # into the observatory rather than floating a few centimetres in front of it.
-    center = wall - radial * 0.205
+    center = wall - radial * V4_ENTRY_RECESS_METERS
     angle = math.atan2(tangent.y, tangent.x)
     door_z = V4_ENTRY_DOOR_Z
 
@@ -1250,6 +1253,19 @@ def build_tower_entry(static, palette):
         (0.68, 0.035, 1.56), palette["walnut_dark"], static, bevel=0.12,
     )
     inset.rotation_euler.z = angle
+
+    # Bridge the inset threshold to the actual curved wall. Otherwise the
+    # door would appear as a freestanding prop once pushed inside the room.
+    depth = V4_ENTRY_RECESS_METERS - 0.205
+    for side in (-1, 1):
+        join_center = center + tangent * (side * 1.02) + radial * (depth / 2)
+        return_wall = base.cube(
+            f"WR4_OBS_entry_alcove_return_{side}",
+            (join_center.x, join_center.y, 2.08),
+            (0.12, depth / 2 + 0.05, 1.91),
+            palette["walnut_dark"], static, bevel=0.055,
+        )
+        return_wall.rotation_euler.z = angle
 
     for side in (-1, 1):
         point = center + tangent * (side * 1.02)
@@ -1365,7 +1381,7 @@ def validate_v4_hans_stage():
     radial = Vector((math.sin(theta), math.cos(theta), 0.0))
     tangent = Vector((math.cos(theta), -math.sin(theta), 0.0))
     wall = Vector((V4_WALL_RADIUS * radial.x, V4_WALL_CENTER_Y + V4_WALL_RADIUS * radial.y, 0.0))
-    hinge = v4_hans_door_hinge(wall - radial * 0.205, tangent, radial)
+    hinge = v4_hans_door_hinge(wall - radial * V4_ENTRY_RECESS_METERS, tangent, radial)
     if (Vector((leaf.location.x, leaf.location.y, leaf.location.z)) - hinge).length > 1e-3:
         raise RuntimeError(f"War Room v4 Hans door origin is not on its hinge: {tuple(leaf.location)}")
     yaw = V4_HANS_DOOR_OPEN_YAW
