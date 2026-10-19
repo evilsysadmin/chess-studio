@@ -73,19 +73,18 @@ test('War Room V4 · Hans realmente atraviesa su nuevo pasillo en WebGL', async 
         route: node.dataset.warRoomHansRoute || '',
         phase: node.dataset.warRoomHansChoreographyPhase || '',
         logicalX: Number(node.dataset.warRoomHansLogicalX),
+        sceneZ: Number(node.dataset.warRoomHansSceneZ),
         ndcX: Number(node.dataset.warRoomHansNdcX),
         ndcY: Number(node.dataset.warRoomHansNdcY),
         groundGap: Number(node.dataset.warRoomHansGroundGap),
       })));
       await page.waitForTimeout(400);
       const visible = captures.filter((item) => /^(onscreen|edge)$/.test(item.screen));
-      const xValues = visible.map((item) => item.logicalX).filter(Number.isFinite);
-      const traveled = xValues.length ? Math.max(...xValues) - Math.min(...xValues) : 0;
-      // 'fire-dimming' is the entire authored doorway-to-basket walk, not a
-      // static pose. The elder-clock intentionally keeps Hans in this phase
-      // for longer than a normal speed animation. Movement is what matters.
-      const ndcXs = visible.map((item) => item.ndcX).filter(Number.isFinite);
-      const screenTravel = ndcXs.length ? Math.max(...ndcXs) - Math.min(...ndcXs) : 0;
+      const first = visible[0];
+      const traveled = first ? Math.max(...visible.map((item) =>
+        Math.hypot(item.logicalX - first.logicalX, item.sceneZ - first.sceneZ))) : 0;
+      const screenTravel = first ? Math.max(...visible.map((item) =>
+        Math.hypot(item.ndcX - first.ndcX, item.ndcY - first.ndcY))) : 0;
       if (visible.length >= 10 && traveled >= 0.3 && screenTravel >= 0.015) break;
     }
     const visible = captures.filter((sample) => /^(onscreen|edge)$/.test(sample.screen));
@@ -94,15 +93,17 @@ test('War Room V4 · Hans realmente atraviesa su nuevo pasillo en WebGL', async 
     expect(captures.some((sample) => sample.route === 'stage-entry' || sample.route === 'stage-leave'))
       .toBe(true);
     const phases = [...new Set(visible.map((item) => item.phase))];
-    const lateralX = visible.map((item) => item.logicalX).filter(Number.isFinite);
-    const traveled = lateralX.length ? Math.max(...lateralX) - Math.min(...lateralX) : 0;
-    const screenXs = visible.map((item) => item.ndcX).filter(Number.isFinite);
-    const screenTravel = screenXs.length ? Math.max(...screenXs) - Math.min(...screenXs) : 0;
+    const first = visible[0];
+    const traveled = first ? Math.max(...visible.map((item) =>
+      Math.hypot(item.logicalX - first.logicalX, item.sceneZ - first.sceneZ))) : 0;
+    const screenTravel = first ? Math.max(...visible.map((item) =>
+      Math.hypot(item.ndcX - first.ndcX, item.ndcY - first.ndcY))) : 0;
     console.log('V4_HANS_ROUTE_DISTANCE', JSON.stringify({
       traveled, screenTravel, phases, samples: captures.length,
-      startX: lateralX[0], endX: lateralX.at(-1),
+      start: first ? [first.logicalX, first.sceneZ] : null,
+      end: visible.length ? [visible.at(-1).logicalX, visible.at(-1).sceneZ] : null,
     }));
-    expect(traveled, 'Hans must actually traverse his authored V4 service aisle').toBeGreaterThanOrEqual(0.3);
+    expect(traveled, 'Hans must move at least 30cm along the real 2D service aisle').toBeGreaterThanOrEqual(0.3);
     expect(screenTravel, 'Hans must visibly move across the rendered room').toBeGreaterThanOrEqual(0.015);
     for (const sample of visible) {
       expect(Number.isFinite(sample.ndcX) && Number.isFinite(sample.ndcY)).toBe(true);
