@@ -206,7 +206,8 @@ def self_test() -> None:
         'app-boot', 'admin', 'tournament', 'combat', 'home', 'smoke',
     )
     assert tuple(LANE_COMMANDS) == expected
-    assert len(critical_targets()) == 3
+    assert len(critical_targets()) == 4
+    assert ('combat-critical.spec.js', 'F5 tras JAQUE MATE') in critical_targets()
     assert [command.spec for command in LANE_COMMANDS['app-boot']] == ['smoke.spec.js']
     assert LANE_COMMANDS['app-boot'][0].grep == APP_BOOT_GREP
     assert LANE_COMMANDS['admin'][0].spec == 'regression-journeys.spec.js'
