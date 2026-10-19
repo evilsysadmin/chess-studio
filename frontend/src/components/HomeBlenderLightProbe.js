@@ -14,6 +14,11 @@ const DIAGNOSTIC_MODES = new Set([
   // historical four-point baseline used by existing A/B reports.
   'pair-normal', 'pair-aux-board-off',
   'pair-aux-stairs-off', 'pair-aux-accent-off',
+  // Profile just one of the three production accents while preserving the
+  // other two, the two published wall fills and all visible flame sprites.
+  'pair-aux-accent-dungeon-off',
+  'pair-aux-accent-table-off',
+  'pair-aux-accent-reading-off',
 ]);
 
 export function homeBlenderLightProbeMode(search = '') {
@@ -54,16 +59,20 @@ export function homeBlenderLightProbeLocksFullLod(search = '', initialLod = null
 export function applyHomeBlenderLightProbe(torches, mode) {
   if (!DIAGNOSTIC_MODES.has(mode) || mode === 'normal') return 0;
   const pair = mode === 'wall-pair' || mode.startsWith('pair-');
+  const selectedAccent = mode.startsWith('pair-aux-accent-')
+    ? mode.slice('pair-aux-accent-'.length, -'-off'.length) : null;
   const family = mode === 'aux-off' ? null
     : mode === 'wall-pair' || mode === 'pair-normal' ? 'wall'
-      : mode.startsWith('pair-aux-') ? mode.slice(9, -4) : mode.slice(4, -4);
+      : selectedAccent ? 'accent'
+        : mode.startsWith('pair-aux-') ? mode.slice(9, -4) : mode.slice(4, -4);
   let disabled = 0;
   for (const entry of torches) {
     const light = entry?.light;
     if (!light || light.castShadow === true) continue;
     const lightFamily = light.userData?.homeLightProbeFamily;
     const exclude = pair
-      ? lightFamily === 'wall' || (family !== 'wall' && lightFamily === family)
+      ? lightFamily === 'wall' || (family !== 'wall' && lightFamily === family
+        && (!selectedAccent || light.userData?.homeLightProbeAccent === selectedAccent))
       : family === null || lightFamily === family;
     if (exclude) {
       light.visible = false;
