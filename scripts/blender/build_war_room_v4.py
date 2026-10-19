@@ -1277,11 +1277,14 @@ def build_tower_entry(static, palette):
         back_point = outer_face + wall_tangent * (side * 1.02)
         bridge = back_point - front_point
         join_center = (front_point + back_point) * 0.5
+        # Warm walnut returns read as SOLID recessed architecture rather than
+        # merging with the charcoal landing and making a closed teal leaf
+        # look ajar. Keep the fixed jamb dark and the actual opening unchanged.
         return_wall = base.cube(
             f"WR4_OBS_entry_alcove_return_{side}",
             (join_center.x, join_center.y, 2.08),
             (0.12, bridge.length / 2 + 0.07, 1.91),
-            palette["walnut_dark"], static, bevel=0.055,
+            palette["walnut"], static, bevel=0.055,
         )
         return_wall.rotation_euler.z = math.atan2(-bridge.x, bridge.y)
 
