@@ -173,8 +173,6 @@ jobs:
     timeout-minutes: 12
     services:
       mongo:
-        # CI-only fallback: MongoDB 8.0 refuses to start on hosted kernel 6.19
-        # (SERVER-121912). This integration DB is ephemeral; production stays 8.0.
         image: mongo:7.0
         ports:
           - 27017:27017
