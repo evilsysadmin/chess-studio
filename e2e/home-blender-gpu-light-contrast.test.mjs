@@ -25,6 +25,44 @@ describe('physical Home GPU lighting contrast aggregator', () => {
     assert.ok(result.gpuContrastPct < 100);
   });
 
+  it('flags large same-mode variation in the measured board and accent visits', () => {
+    const boardResult = summarizeHomeGpuLightContrast(board, 'aux-board-off');
+    assert.ok(boardResult.stability.auxOffDriftPct > 15);
+    assert.ok(boardResult.stability.flags.includes('auxiliary-variant-drift-over-15pct'));
+    const accent = [
+      { lightProbe: 'normal', gpuMedianMs: 33.475, cpuP95MedianMs: 11 },
+      { lightProbe: 'aux-accent-off', gpuMedianMs: 25.36, cpuP95MedianMs: 8.85 },
+      { lightProbe: 'aux-accent-off', gpuMedianMs: 26.31, cpuP95MedianMs: 8.75 },
+      { lightProbe: 'normal', gpuMedianMs: 26.48, cpuP95MedianMs: 8.85 },
+    ];
+    const result = summarizeHomeGpuLightContrast(accent, 'aux-accent-off');
+    assert.ok(result.stability.normalDriftPct > 15);
+    assert.ok(result.stability.flags.includes('normal-baseline-drift-over-15pct'));
+    close(result.gpuDifferenceMs, 4.1425);
+  });
+
+  it('flags contradictory paired changes without erasing a measured aggregate', () => {
+    const stairs = [
+      { lightProbe: 'normal', gpuMedianMs: 36.1, cpuP95MedianMs: 11.75 },
+      { lightProbe: 'aux-stairs-off', gpuMedianMs: 36.67, cpuP95MedianMs: 10.3 },
+      { lightProbe: 'aux-stairs-off', gpuMedianMs: 32.12, cpuP95MedianMs: 10.45 },
+      { lightProbe: 'normal', gpuMedianMs: 40.46, cpuP95MedianMs: 10.5 },
+    ];
+    const result = summarizeHomeGpuLightContrast(stairs, 'aux-stairs-off');
+    close(result.gpuDifferenceMs, 3.885);
+    assert.equal(result.stability.pairedSignsAgree, false);
+    assert.ok(result.stability.flags.includes('paired-contrast-direction-disagrees'));
+    const consistent = [
+      { lightProbe: 'normal', gpuMedianMs: 30, cpuP95MedianMs: 10 },
+      { lightProbe: 'aux-stairs-off', gpuMedianMs: 24, cpuP95MedianMs: 9 },
+      { lightProbe: 'aux-stairs-off', gpuMedianMs: 24, cpuP95MedianMs: 9 },
+      { lightProbe: 'normal', gpuMedianMs: 30, cpuP95MedianMs: 10 },
+    ];
+    const stable = summarizeHomeGpuLightContrast(consistent, 'aux-stairs-off');
+    assert.deepEqual(stable.stability.flags, []);
+    assert.equal(stable.stability.repeatRecommended, true);
+  });
+
   it('supports legacy aux-off and every new family without special arithmetic', () => {
     for (const mode of ['aux-off', 'aux-wall-off', 'aux-board-off',
       'aux-stairs-off', 'aux-accent-off']) {
