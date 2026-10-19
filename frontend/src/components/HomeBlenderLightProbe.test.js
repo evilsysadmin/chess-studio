@@ -140,6 +140,69 @@ describe('opt-in Home GPU auxiliary-light isolation', () => {
     }
   });
 
+  it('isolates one named accent on the production pair baseline without affecting other lights', () => {
+    const ids = ['dungeon', 'table', 'reading'];
+    const makeEntries = () => [
+      ...Array.from({ length: 4 }, () => ({
+        light: { visible: true, castShadow: false, intensity: 7,
+          userData: { homeLightProbeFamily: 'wall', glow: { opacity: 0.5 } } },
+      })),
+      ...ids.map((id) => ({
+        light: { visible: true, castShadow: false, intensity: 3.2,
+          userData: { homeLightProbeFamily: 'accent',
+            homeLightProbeAccent: id, glow: { opacity: 0.5 } } },
+      })),
+      ...Array.from({ length: 2 }, () => ({
+        light: { visible: true, castShadow: false,
+          userData: { homeLightProbeFamily: 'board' } },
+      })),
+      ...Array.from({ length: 3 }, () => ({
+        light: { visible: true, castShadow: false,
+          userData: { homeLightProbeFamily: 'stairs' } },
+      })),
+      ...Array.from({ length: 2 }, () => ({
+        light: { visible: true, castShadow: false,
+          userData: { homeLightProbeFamily: 'wall-pair' } },
+      })),
+      { light: { visible: true, castShadow: true,
+        userData: { homeLightProbeFamily: 'accent', homeLightProbeAccent: 'dungeon' } } },
+    ];
+    for (const id of ids) {
+      const mode = `pair-aux-accent-${id}-off`;
+      const query = `?homeGpuProfile=1&homeLightProbe=${mode}`;
+      expect(homeBlenderLightProbeMode(query)).toBe(mode);
+      expect(homeBlenderWallTorchLayout(query)).toBe('pair');
+      expect(homeBlenderLightProbeLocksFullLod(query, 'full')).toBe(true);
+      expect(homeBlenderLightProbeLocksFullLod(query, 'lite')).toBe(false);
+      expect(homeBlenderLightProbeMode(`?homeLightProbe=${mode}`)).toBe('normal');
+      expect(homeBlenderLightProbeMode(`?homeGpuProfile=0&homeLightProbe=${mode}`))
+        .toBe('normal');
+      const entries = makeEntries();
+      expect(applyHomeBlenderLightProbe(entries, mode)).toBe(5);
+      expect(entries.slice(0, 4).every(({ light }) => !light.visible)).toBe(true);
+      for (let i = 0; i < ids.length; i += 1) {
+        expect(entries[4 + i].light.visible).toBe(ids[i] !== id);
+      }
+      expect(entries.slice(7).every(({ light }) => light.visible)).toBe(true);
+      expect(entries.slice(4, 7).every(({ light }) => light.intensity === 3.2
+        && light.userData.glow.opacity === 0.5)).toBe(true);
+    }
+    const all = makeEntries();
+    expect(applyHomeBlenderLightProbe(all, 'pair-aux-accent-off')).toBe(7);
+    expect(all.slice(4, 7).every(({ light }) => !light.visible)).toBe(true);
+    for (const bad of ['pair-aux-accent-unknown-off', 'pair-aux-accent-off-off']) {
+      const entries = makeEntries();
+      expect(homeBlenderLightProbeMode(`?homeGpuProfile=1&homeLightProbe=${bad}`))
+        .toBe('normal');
+      expect(applyHomeBlenderLightProbe(entries, bad)).toBe(0);
+      expect(entries.every(({ light }) => light.visible)).toBe(true);
+    }
+    const unlabeled = makeEntries();
+    delete unlabeled[4].light.userData.homeLightProbeAccent;
+    expect(applyHomeBlenderLightProbe(unlabeled, 'pair-aux-accent-dungeon-off')).toBe(4);
+    expect(unlabeled[4].light.visible).toBe(true);
+  });
+
   it('pair-fill mode requires BOTH flags and full LOD', () => {
     const pair = '?homeGpuProfile=1&homeLightProbe=wall-pair';
     expect(homeBlenderLightProbeMode(pair)).toBe('wall-pair');
