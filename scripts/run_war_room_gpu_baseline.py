@@ -171,7 +171,7 @@ def main():
         session += '-' + uuid.uuid4().hex[:8]
         destination = (args.output_root or root / '.artifacts/war-room-gpu-baseline') / session
         destination.mkdir(parents=True, exist_ok=False)
-        captures = destination / 'S'
+        captures = destination / 'A'
         captures.mkdir()
         manifest = destination / 'session.json'
         metadata = {
@@ -184,11 +184,11 @@ def main():
         print(f'==> Results: {destination}', flush=True)
         with tempfile.TemporaryDirectory(prefix='chess-warroom-gpu-baseline-') as tmp:
             temporary = Path(tmp)
-            worktree = temporary / 'S'
+            worktree = temporary / 'A'
             try:
-                prepare_worktree(root, temporary, 'S', revision, harness_blobs)
+                prepare_worktree(root, temporary, 'A', revision, harness_blobs)
                 for index in range(1, args.repetitions + 1):
-                    exercise_once('S', worktree, revision, args.renderer,
+                    exercise_once('A', worktree, revision, args.renderer,
                                   env, captures, index, args.repetitions)
                 output = baseline_report(captures, revision, args.renderer,
                                          args.variant, args.repetitions)
