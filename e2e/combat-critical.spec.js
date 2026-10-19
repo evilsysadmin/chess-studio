@@ -247,4 +247,31 @@ test('Torre · F5 tras JAQUE MATE conserva informe y piso sin recompensas duplic
   await expect(page.getByRole('region', { name: 'Resultado de la batalla' })).toHaveCount(0);
   await expect.poll(checkpoint).toEqual(before);
   await expect(page.locator('.error-boundary-screen')).toHaveCount(0);
+
+  // Pick exactly one temporary perk. F5 must retain it without reoffering
+  // a second reward or charging the completed encounter again.
+  const cards = page.locator('.roguelike-reward-card');
+  await expect(cards).toHaveCount(3);
+  await cards.first().click();
+  await expect.poll(async () => (await checkpoint()).rewardChosenForFloor).toBe(1);
+  const rewarded = await checkpoint();
+  expect(rewarded.perks).toHaveLength(1);
+  expect(rewarded).toMatchObject({ floor: 1, phase: 'cleared', outcome: 'win' });
+  await expect(cards.first()).toBeDisabled();
+  await page.reload();
+  const nextFloor = page.getByRole('button', { name: 'Seguir al piso 2' });
+  await expect(nextFloor).toBeVisible({ timeout: 45_000 });
+  await expect(page.locator('.roguelike-reward-card').first()).toBeDisabled();
+  await expect.poll(checkpoint).toEqual(rewarded);
+
+  // Continuing consumes the old debrief, but never loses the chosen perk.
+  await nextFloor.click();
+  await expect.poll(async () => (await checkpoint()).floor).toBe(2);
+  const advanced = await checkpoint();
+  expect(advanced).toMatchObject({ floor: 2, phase: 'battle', perks: rewarded.perks, outcome: null });
+  await page.reload();
+  await expect(page.getByRole('region', { name: 'Informe postcombate' })).toHaveCount(0);
+  await expect(page.locator('.roguelike-reward-screen')).toHaveCount(0);
+  await expect.poll(checkpoint).toEqual(advanced);
+  await expect(page.locator('.error-boundary-screen')).toHaveCount(0);
 });
