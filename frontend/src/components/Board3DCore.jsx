@@ -104,9 +104,7 @@ function Board3DCanvas({
     warRoomVariant,
     selectedSquare, legalTargets, fen,
   };
-  useEffect(() => {
-    sceneStateRef.current?.ambientScheduler?.wake();
-  }, [hansFireCallEnabled]);
+  useEffect(() => { sceneStateRef.current?.ambientScheduler?.wake(); }, [hansFireCallEnabled]);
   useEffect(() => {
     const refreshSkin = (event) => setSkinId(event?.detail || loadSelectedSkin());
     const refreshPreferences = () => setBoardTheme(loadBoardTheme());
@@ -122,7 +120,8 @@ function Board3DCanvas({
     setHoveredSquare(null);
     hoveredPieceRef.current = null;
   }, [orientation]);
-
+  // Handoff from touch, pointer, hints and 2D without resetting arrow-key travel.
+  useEffect(() => { if (selectedSquare) setFocusedSquare(selectedSquare); }, [selectedSquare]);
   useEffect(() => {
     const host = hostRef.current;
     if (!host) return undefined;
