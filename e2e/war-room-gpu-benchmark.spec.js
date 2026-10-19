@@ -288,6 +288,22 @@ async function inspectActualRenderer(canvas) {
         textures: Number(element.dataset.board3dMemoryTextures || 0),
         programs: Number(element.dataset.board3dMemoryPrograms || 0),
       },
+      // The runtime already exposes this one-shot GLB/light census. Keep
+      // missing telemetry null instead of treating a not-yet-installed room
+      // as zero geometry. These are static inventories, NOT rendered draws.
+      sceneInventory: {
+        ...Object.fromEntries([
+          ['authoredGlbMeshes', 'warRoomShadowCasterCandidates'],
+          ['v3StaticTorchBatches', 'warRoomV3StaticTorchBatches'],
+          ['shadowCasterBudget', 'warRoomShadowCasterBudget'],
+          ['activeShadowCasters', 'warRoomShadowCasterCount'],
+        ].map(([label, key]) => {
+          const value = element.dataset[key];
+          return [label, value !== undefined && /^[0-9]+$/.test(value)
+            ? Number(value) : null];
+        })),
+        shadowWarmup: element.dataset.warRoomShadowWarmup || null,
+      },
     };
   });
 }

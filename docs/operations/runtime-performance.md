@@ -217,6 +217,8 @@ de baseline válido. `--revision-sha <40 caracteres>` permite medir otra
 revisión **que ya contenga la instrumentación**; las anteriores son
 rechazadas, aunque se les copie el harness nuevo.
 
+El baseline incorpora también un **censo estático y solo de diagnóstico** reutilizando datos que la sala ya expone: número de mallas originales del GLB (candidatas al análisis de sombras antes de los efectos runtime), lotes de antorchas V3 agrupados, presupuesto y número observado de emisores de sombras, y estado de la preparación diferida. Estos números **no son draw calls** y no deben restarse de las draw calls sostenidas; una malla puede producir distintos números de draw submissions según material, visibilidad y pasadas de sombra. El censo ausente figura como `n/a`, nunca como cero, y las capturas inconsistentes muestran rangos.
+
 El informe usa sólo renders reales completados en idle y move: mediana/p95
 de draw calls, mediana de triángulos, tiempo CPU de `renderer.render()`,
 y tiempo GPU `TIME_ELAPSED_EXT` cuando las queries verificadas existen.

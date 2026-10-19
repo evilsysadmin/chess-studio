@@ -71,6 +71,49 @@ def baseline_report(directory, sha, mode, variant, repetitions):
                              f'{gpu_label} | {min_count} |')
     lines.extend([
         '',
+        '## Static GLB and lighting census (not draw calls)',
+        '',
+        'One-shot runtime telemetry observed after the room and Hans become ready. '
+        'Authored GLB mesh count is the original loader mesh census before '
+        'effects; instanced torch batches are additional runtime meshes. '
+        'One authored mesh does not necessarily equal one WebGL draw, because '
+        'culling, materials and shadow passes affect submissions.',
+        '',
+        '| Profile · visit | Authored GLB meshes | V3 static torch batches | '
+        'Shadow caster budget | Observed casters | Shadow warmup stage |',
+        '|---|---:|---:|---:|---:|---|',
+    ])
+    for profile in PROFILES:
+        for index, visit in enumerate(VISITS):
+            captures = [report['visits'][index].get('sceneInventory')
+                        for report in groups[profile]]
+            fields = ('authoredGlbMeshes', 'v3StaticTorchBatches',
+                      'shadowCasterBudget', 'activeShadowCasters')
+            values = []
+            for field in fields:
+                readings = [capture.get(field) if isinstance(capture, dict) else None
+                            for capture in captures]
+                if all(type(value) is int and value >= 0 for value in readings):
+                    values.append(str(readings[0]) if len(set(readings)) == 1
+                                  else f'{min(readings)}–{max(readings)}')
+                else:
+                    values.append('n/a')
+            stages = [capture.get('shadowWarmup') if isinstance(capture, dict)
+                      else None for capture in captures]
+            stage = stages[0] if stages and all(
+                isinstance(item, str) and item == stages[0] for item in stages
+            ) else 'n/a/mixed'
+            lines.append(f'| {profile} · {visit} | ' + ' | '.join(values)
+                         + f' | {stage} |')
+    lines.extend([
+        '',
+        'Shadow caster counts are **snapshots**, not per-frame draw counts. '
+        'If warmup is not ready, the observed caster count may still be zero. '
+        'Missing fields are n/a; mixed captures retain ranges rather than '
+        'silently fabricating a stable room topology.',
+    ])
+    lines.extend([
+        '',
         'GPU timing is **n/a** when asynchronous WebGL2 query coverage is '
         'insufficient, disjoint, or unavailable. No GPU time is inferred from rAF.',
         'Touch profiles are browser emulations on this computer, **not physical Android**.',
@@ -97,11 +140,26 @@ def self_test():
                             'cpuSubmitP95Ms': 2.50,
                         }
                 (root / f'{profile}-{index}.json').write_text(json.dumps(report))
+        for path in root.glob('*.json'):
+            report = json.loads(path.read_text())
+            for visit in report['visits']:
+                visit['sceneInventory'] = {
+                    'authoredGlbMeshes': 690, 'v3StaticTorchBatches': 12,
+                    'shadowCasterBudget': 32, 'activeShadowCasters': 32,
+                    'shadowWarmup': 'ready-budgeted',
+                }
+            path.write_text(json.dumps(report))
         output = baseline_report(root, sha, 'hardware', 'v3', 2)
+        assert '| desktop-1440x900 · first-visit | 690 | 12 | 32 | 32 | ready-budgeted |' in output
         assert '| desktop-1440x900 · first-visit · idle | 140.00 | 150.00 | ' in output
         assert '| 280000.00 | 1.25 | 2.50 | n/a | 22 |' in output
         path = root / 'desktop-1440x900-0.json'
         report = json.loads(path.read_text())
+        report['visits'][0]['sceneInventory']['authoredGlbMeshes'] = None
+        path.write_text(json.dumps(report))
+        assert '| desktop-1440x900 · first-visit | n/a | 12 | 32 | 32 | ready-budgeted |' in baseline_report(root, sha, 'hardware', 'v3', 2)
+        report['visits'][0]['sceneInventory']['authoredGlbMeshes'] = 690
+        path.write_text(json.dumps(report))
         report['visits'][0]['idle']['renderCost'] = {
             'status': 'overflow', 'renderedFrames': 22,
         }
