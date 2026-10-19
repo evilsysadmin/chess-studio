@@ -51,6 +51,19 @@ the observed value instead of assuming that. A pass's draw count is not GPU
 milliseconds; this census identifies **which subsequent render experiment** to
 measure on physical hardware.
 
+### Real browser gate for the draw-pass census
+
+The ordinary core-smoke CI lane runs `e2e/home-3d-draw-census.spec.js`
+on the **real Three.js Home canvas** using hosted Chromium/SwiftShader,
+full desktop layout and a loaded Matthias actor. Unlike mock renderer
+unit tests, it requires nonzero actual WebGL draw submissions, verifies
+`mainCalls + shadowCalls = totalCalls` and demands that family buckets
+sum exactly to each pass (including visible castle and Matthias main draws).
+It also validates the first-frame snapshot; this is not a GPU performance
+benchmark and must never be interpreted as hardware FPS or GPU milliseconds.
+For physical GPU numbers, rerun the existing Nobara benchmark on the same
+revision and inspect its new per-visit `drawPass` fields.
+
 ## Runtime-only hearth flame geometry LOD
 
 The 28 explicitly named camera-facing flame/hot/tongue/base spheres on the two Home fireplaces use an isolated **runtime GLB-only** 24×12 sphere instead of the authored 40×20 topology. The canonical Blender builder and its Eevee review render remain unchanged. The exporter fails closed unless the exact 28 known object names, expected original 1,520-triangle spheres, material identities, UV-free fire materials and local bounding boxes match. After replacement it verifies unchanged per-axis local bounds, vertex smoothing, and a minimum reduction of 25,000 triangles; GLTFLoader still finds the same animated mesh names and pivots.
