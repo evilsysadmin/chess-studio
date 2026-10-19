@@ -150,3 +150,55 @@ test('Campaña · jaque mate deja la War Room visible hasta Ver debriefing', asy
   await expect(debrief.getByRole('heading', { name: 'VICTORIA' })).toBeVisible();
   await expect(debrief.locator('details.combat-debrief-score-details')).not.toHaveAttribute('open');
 });
+
+
+test('Campaña · F5 tras JAQUE MATE recupera el informe sin volver a pagar la victoria', async ({ page }) => {
+  test.setTimeout(100_000);
+  await mockApi(page);
+  await login(page);
+  await openCampaignBriefing(page);
+  await page.getByRole('button', { name: /PREPARAR EJÉRCITO/i }).click();
+  const start = page.getByRole('button', { name: /¡ENTRAR EN COMBATE!|ORGANIZAR Y COMBATIR/i });
+  await expect(start).toBeVisible();
+  await start.click();
+  await expect(page.locator('.combat-battle-screen')).toBeVisible({ timeout: 45_000 });
+
+  const sessionId = await page.evaluate(() => {
+    const campaign = JSON.parse(localStorage.getItem('chess-study-combat-campaign-v1') || '{}');
+    return 'campaign:' + campaign.seed + ':' + campaign.selectedNodeId;
+  });
+  expect(sessionId).toMatch(/^campaign:.+:.+$/);
+  await seedCombatBattleSnapshot(page, { sessionId, fen: MATE_START_FEN });
+  await page.reload();
+  await expect(page.locator('[data-combat-war-room="generic"] [data-board3d-war-room="true"]')).toBeVisible({ timeout: 45_000 });
+
+  await clickBoardMove(page, 'g6', 'g7');
+  const result = page.getByRole('region', { name: 'Resultado de la batalla' });
+  await expect(result.getByRole('heading', { name: 'JAQUE MATE' })).toBeVisible({ timeout: 20_000 });
+  await expect(result.getByRole('button', { name: /Ver debriefing/ })).toBeVisible();
+
+  const checkpoint = async () => page.evaluate((id) => {
+    const campaign = JSON.parse(localStorage.getItem('chess-study-combat-campaign-v1') || '{}');
+    const cache = JSON.parse(sessionStorage.getItem('chess-study-combat-post-battle-debrief-v1') || '{}');
+    return {
+      phase: campaign.phase,
+      credits: campaign.operationalCredits,
+      completedNodeIds: campaign.completedNodeIds,
+      lastMissionResult: campaign.lastMissionResult,
+      outcome: cache.entries?.[id]?.debrief?.outcome || null,
+    };
+  }, sessionId);
+  await expect.poll(async () => (await checkpoint()).phase).toBe('reward');
+  const before = await checkpoint();
+  expect(before.outcome).toBe('win');
+
+  // A reload must never reapply earned credits or strand the player in a
+  // finished encounter. The canonical stored report stays readable.
+  await page.reload();
+  const debrief = page.getByRole('region', { name: 'Informe postcombate' });
+  await expect(debrief).toBeVisible({ timeout: 45_000 });
+  await expect(debrief.getByRole('heading', { name: 'VICTORIA' })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Resultado de la batalla' })).toHaveCount(0);
+  await expect.poll(checkpoint).toEqual(before);
+  await expect(page.locator('.error-boundary-screen')).toHaveCount(0);
+});
