@@ -309,7 +309,11 @@ function Board3DCanvas({
       const firstPaint = beginWarRoomFirstReadyPaintTiming(renderer.domElement);
       gpuProfile?.begin();
       try {
+        // renderer.info.render is per actual Three draw, not an rAF counter.
+        // Cost journaling is opt-in; ordinary play performs no extra clock read.
+        const renderStartedAt = gpuProfile ? performance.now() : 0;
         renderer.render(scene, camera);
+        gpuProfile?.recordRender(renderer.info.render, renderStartedAt, performance.now());
       } finally {
         gpuProfile?.end();
         gpuProfile?.poll();
