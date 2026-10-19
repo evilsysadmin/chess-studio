@@ -7,6 +7,7 @@ import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { loadHomeCastleR2Scene } from './HomeCastle3DR2Asset.js';
 import {
   homeBlenderLightProbeMode,
+  homeBlenderWallTorchLayout,
   homeBlenderLightProbeLocksFullLod,
   applyHomeBlenderLightProbe,
   homeBlenderWallPairFillPlan,
@@ -1946,6 +1947,13 @@ export default function HomeBlenderScene3D({
     // in ordinary sessions. Diagnostics must not affect production startup.
     const gpuProfiling = new URLSearchParams(window.location.search).get('homeGpuProfile') === '1';
     const lightProbeMode = homeBlenderLightProbeMode(window.location.search);
+    const wallTorchLayout = homeBlenderWallTorchLayout(window.location.search);
+    // Each explicit A/B lighting trial retains its four-point legacy A
+    // baseline; otherwise the reviewed two-fill candidate is the default.
+    // ?homeWallTorches=legacy is an immediate, reload-only operational rollback.
+    const torchLightMode = lightProbeMode !== 'normal'
+      ? lightProbeMode : wallTorchLayout === 'pair' ? 'wall-pair' : 'normal';
+    canvas.dataset.homeWallTorches = wallTorchLayout;
     if (gpuProfiling) {
       canvas.dataset.homeBlenderLightProbe = lightProbeMode;
       canvas.dataset.homeBlenderLightProbeLod = lightProbeFullLod ? 'full-locked' : 'automatic';
@@ -1992,14 +2000,15 @@ export default function HomeBlenderScene3D({
     scene.fog = new THREE.Fog(0x170d09, 20, 34);
     const runtimeLights = addRuntimeLights(
       scene, initialPolicy.lod === 'full', ambient,
-      gpuProfiling ? lightProbeMode : 'normal',
+      torchLightMode,
     );
-    // Explicit benchmark-only variant: isolate non-shadow lights or swap
-    // four wall illuminators for two wider midpoint fills. The four flame
-    // glows, key shadow and fireplaces are unchanged. Two flags are required;
-    // normal Home neither builds nor renders the candidate.
+    // Full-quality Home uses the accepted two-fill torch layout by default.
+    // Retain the four original lights as invisible shading sources: their
+    // animated glow sprites use their own intensities and stay independently
+    // flickering. An explicit A/B trial still tests the legacy reference; the
+    // legacy URL switch provides instant rollback without changing the GLB.
+    const disabled = applyHomeBlenderLightProbe(runtimeLights.torches, torchLightMode);
     if (gpuProfiling) {
-      const disabled = applyHomeBlenderLightProbe(runtimeLights.torches, lightProbeMode);
       canvas.dataset.homeBlenderLightProbeDisabled = String(disabled);
       canvas.dataset.homeBlenderLightProbeAdded = String(
         runtimeLights.torches.filter(({ light }) =>
