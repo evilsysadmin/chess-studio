@@ -502,6 +502,7 @@ def self_test():
         assert 'Missing/incomparable GPU queries' in output
         assert '# War Room V3' in output  # Legacy missing variant means V3.
         assert 'Missing/incomplete real render journal' in output
+        assert 'No comparable shadow-pass census' in output
         # Real-render rows are only populated from the opt-in bounded journal,
         # never inferred from the first-ready draw call counter.
         for directory in (base, candidate):
@@ -514,11 +515,15 @@ def self_test():
                             'callsMedian': 140, 'callsP95': 150,
                             'trianglesMedian': 280000,
                             'cpuSubmitMedianMs': 1.25, 'cpuSubmitP95Ms': 2.5,
+                            'shadowSplitStatus': 'ready', 'mainCallsMedian': 35,
+                            'shadowCallsMedian': 105, 'shadowCallsP95': 115,
+                            'shadowPassesMedian': 1,
                         }
                 path.write_text(json.dumps(report))
         measured = compare(base, candidate, a, b)
         assert '| desktop-1440x900 · first-visit · idle · draw calls/frame median | 140.00 | 140.00 | +0.00 | 40/40 |' in measured
         assert '| desktop-1440x900 · first-visit · move · renderer CPU submit p95 (ms) | 2.50 | 2.50 | +0.00 | 40/40 |' in measured
+        assert '| desktop-1440x900 · first-visit · idle · shadow-depth draw calls/frame median | 105.00 | 105.00 | +0.00 | 40/40 |' in measured
         journal_path = candidate / 'desktop-1440x900-0.json'
         journal_report = json.loads(journal_path.read_text())
         journal_report['visits'][0]['idle']['renderCost'] = {
