@@ -15,7 +15,7 @@ function firstFireGameIndex() {
 }
 
 test('War Room V4 · Hans realmente atraviesa su nuevo pasillo en WebGL', async () => {
-  test.setTimeout(500_000);
+  test.setTimeout(750_000);
   if (!REVISION) throw new Error('An exact V4 authored model revision is required');
   await mkdir(DIR, { recursive: true });
 
@@ -60,23 +60,6 @@ test('War Room V4 · Hans realmente atraviesa su nuevo pasillo en WebGL', async 
     await expect(canvas).toHaveAttribute('data-war-room-hans-screen', /^(onscreen|edge)$/, { timeout: 25_000 });
     await expect(canvas).toHaveAttribute('data-war-room-hans-ground-gap', /^[0-9]/, { timeout: 25_000 });
 
-    // Real WebGL still paints every pose, but SwiftShader can take >200s to
-    // progress through a 33s choreography (presentation scale 0.54). Advance
-    // only this isolated browser's monotonic animation clock between samples.
-    // No production code, route coordinates or rendered frames are mocked.
-    const acceleratedClock = await page.evaluate(() => {
-      const realNow = performance.now.bind(performance);
-      let offsetMs = 0;
-      Object.defineProperty(performance, 'now', {
-        configurable: true,
-        value: () => realNow() + offsetMs,
-      });
-      window.__advanceHansE2EClock = (milliseconds) => { offsetMs += milliseconds; };
-      return performance.now() >= realNow();
-    });
-    expect(acceleratedClock, 'Browser test clock must be available').toBe(true);
-
-
     // Snapshot while an actual moving actor is onscreen: the normal V4 scene
     // screenshots only show an empty service aisle and a Matthias dialogue card.
     const captures = [];
@@ -100,7 +83,7 @@ test('War Room V4 · Hans realmente atraviesa su nuevo pasillo en WebGL', async 
     // The real performance runs at ~0.54x speed. The old 30cm criterion in
     // fire-dimming could pass without ever reaching or leaving the hearth.
     // Observe actual WebGL frames throughout both full corridor traversals.
-    while (Date.now() - start < 150_000) {
+    while (Date.now() - start < 360_000) {
       const sample = await canvas.evaluate((node) => ({
         screen: node.dataset.warRoomHansScreen || '',
         route: node.dataset.warRoomHansRoute || '',
@@ -134,7 +117,6 @@ test('War Room V4 · Hans realmente atraviesa su nuevo pasillo en WebGL', async 
         && leaving.some((item) => item.doorOpen >= 0.65)
         && leaving.length >= 8
         && snapshots.size === 3) break;
-      await page.evaluate(() => window.__advanceHansE2EClock(450));
       await page.waitForTimeout(350);
     }
     const visible = captures.filter((item) => /^(onscreen|edge)$/.test(item.screen));
