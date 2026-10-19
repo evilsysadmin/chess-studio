@@ -1297,6 +1297,28 @@ def build_tower_entry(static, palette):
         (1.12, 0.20, 0.11), palette["walnut_dark"], static, bevel=0.055,
     )
     lintel.rotation_euler.z = angle
+
+    # Readable front architrave: the previous narrow rebates sat behind the
+    # green leaf and made it look free-standing against a black cavity.
+    # These THREE stationary walnut pieces wrap the inner opening from the
+    # player's side, outside the leaf sweep; the leaf, hinge and walking
+    # anchors remain exactly where they were.
+    for side in (-1, 1):
+        face_point = center + tangent * (side * 1.055) - radial * 0.255
+        facing_jamb = base.cube(
+            f"WR4_OBS_entry_portal_facing_{side}",
+            (face_point.x, face_point.y, door_z),
+            (0.105, 0.085, 1.82), palette["walnut"], static, bevel=0.034,
+        )
+        facing_jamb.rotation_euler.z = angle
+    cap_point = center - radial * 0.255
+    facing_cap = base.cube(
+        "WR4_OBS_entry_portal_facing_head",
+        (cap_point.x, cap_point.y, door_z + 1.915),
+        (1.155, 0.085, 0.125), palette["walnut"], static, bevel=0.034,
+    )
+    facing_cap.rotation_euler.z = angle
+
     threshold = base.cube(
         "WR4_OBS_entry_threshold", (center.x, center.y, 0.105),
         (1.12, 0.24, 0.075), palette["brass_dark"], static, bevel=0.040,
@@ -1436,6 +1458,14 @@ def validate_v4_hans_stage():
         raise RuntimeError("War Room v4 Hans door leaf must stay a dynamic runtime node")
     if any(abs(value) > 1e-6 for value in leaf.rotation_euler):
         raise RuntimeError("War Room v4 Hans door leaf must export closed with no rotation")
+    # The new facing is STATIC decor, seated in the closed door plane. The
+    # sweep remains controlled by the existing dynamic leaf and open-yaw.
+    face_angle = math.radians(-V4_ENTRY_THETA_DEG + V4_ENTRY_VISUAL_SPLAY_DEG)
+    for name in ("WR4_OBS_entry_portal_facing_-1", "WR4_OBS_entry_portal_facing_1",
+                 "WR4_OBS_entry_portal_facing_head"):
+        face = objects.get(name)
+        if face is None or abs(float(face.rotation_euler.z) - face_angle) > 1e-5:
+            raise RuntimeError("War Room v4 closed portal facing missing/misaligned: " + name)
     # The closing frame belongs to the stationary alcove; it must stay in
     # the same authored plane as the sealed leaf, not float at the outer arch.
     scene_objects = bpy.context.scene.objects
