@@ -172,14 +172,18 @@ test('War Room · selección y jugadas legales sobreviven 2D→3D y el teclado u
   const { board3d, canvas } = await waitForWarRoomRenderer(page);
   await expect(board3d).toHaveAttribute('data-board3d-selected', 'e2');
   await expect(board3d).toHaveAttribute('data-board3d-legal-target-count', '2');
+  await expect(board3d).toHaveAttribute('data-board3d-focused', 'e2');
   await expect(page.getByRole('status', { name: 'Destinos legales del tablero' }))
     .toHaveText('Casilla e2 seleccionada. 2 destinos legales: e3, e4.');
 
   await canvas.focus();
-  await canvas.press('ArrowUp');
-  await expect(board3d).toHaveAttribute('data-board3d-focused', 'e2');
   const focusedAnnouncement = page.getByRole('status', { name: 'Casilla enfocada en 3D' });
   await expect(focusedAnnouncement).toHaveText('Casilla e2: peón blanco. Seleccionada.');
+  await canvas.press('ArrowUp');
+  await expect(board3d).toHaveAttribute('data-board3d-focused', 'e3');
+  await expect(focusedAnnouncement).toHaveText('Casilla e3: vacía. Destino legal.');
+  await canvas.press('ArrowDown');
+  await expect(board3d).toHaveAttribute('data-board3d-focused', 'e2');
   await canvas.press('Escape');
   await expect(board3d).toHaveAttribute('data-board3d-selected', '');
   await expect(board3d).toHaveAttribute('data-board3d-legal-target-count', '0');
