@@ -45,9 +45,12 @@ function percentile(values, fraction) {
 async function startProbe(page) {
   await page.evaluate(() => {
     if (window.__warRoomBenchProbe) throw new Error('Frame probe already started');
+    const journal = document.querySelector('canvas.board3d-main-canvas')?.__warRoomRenderCostJournal;
     const probe = {
       started: performance.now(), intervals: [], longTasks: [],
       longTaskSupported: false, lastFrame: null, raf: null, observer: null,
+      renderJournal: journal || null,
+      renderStartSeq: journal?.latestSeq ?? null,
       gpu: {
         lastCount: null, samplesMs: [], droppedQueries: 0,
         disjointObserved: false, status: 'absent',
@@ -124,7 +127,21 @@ async function stopProbe(page) {
     cancelAnimationFrame(probe.raf);
     probe.observer?.disconnect();
     delete window.__warRoomBenchProbe;
+    const endedAt = performance.now();
+    const journal = probe.renderJournal;
+    const capture = journal && Number.isSafeInteger(probe.renderStartSeq)
+      ? journal.readAfter(probe.renderStartSeq)
+      : null;
+    // Only renders actually begun AND finished during this phase count.
+    // rAF callbacks never stand in for renderer.render submissions.
+    const frames = capture?.samples.filter((f) =>
+      f.startedAtMs >= probe.started && f.endedAtMs <= endedAt) || [];
     return {
+      renderCostRaw: {
+        status: !capture ? 'missing' : capture.overflow ? 'overflow'
+          : frames.length < 3 ? 'insufficient' : 'ready',
+        frames,
+      },
       elapsedMs: performance.now() - probe.started,
       visibility: document.visibilityState,
       intervals: probe.intervals,
@@ -151,6 +168,17 @@ async function stopProbe(page) {
     rafGapsOver50Ms: raw.intervals.filter((ms) => ms > 50).length,
     longTaskSupported: raw.longTaskSupported,
     gpuTimer: raw.gpuTimer,
+    renderCost: {
+      status: raw.renderCostRaw.status,
+      renderedFrames: raw.renderCostRaw.frames.length,
+      ...(raw.renderCostRaw.status === 'ready' ? {
+        callsMedian: percentile(raw.renderCostRaw.frames.map((f) => f.calls), 0.5),
+        callsP95: percentile(raw.renderCostRaw.frames.map((f) => f.calls), 0.95),
+        trianglesMedian: percentile(raw.renderCostRaw.frames.map((f) => f.triangles), 0.5),
+        cpuSubmitMedianMs: percentile(raw.renderCostRaw.frames.map((f) => f.cpuSubmitMs), 0.5),
+        cpuSubmitP95Ms: percentile(raw.renderCostRaw.frames.map((f) => f.cpuSubmitMs), 0.95),
+      } : {}),
+    },
     longTaskCount: raw.longTaskSupported ? raw.longTasks.length : null,
     longTaskMaxMs: raw.longTaskSupported && raw.longTasks.length
       ? Number(Math.max(...raw.longTasks).toFixed(2)) : null,
@@ -373,6 +401,8 @@ for (const profile of profiles) {
         idleRafP95Ms: idle.rafP95Ms, moveRafP95Ms: move.rafP95Ms,
         idleGpuQueries: idle.gpuTimer.samplesMs.length,
         moveGpuQueries: move.gpuTimer.samplesMs.length,
+        idleRenderedFrames: idle.renderCost.renderedFrames,
+        moveRenderedFrames: move.renderCost.renderedFrames,
         moveConfirmationMs: move.inputToConfirmationMs,
       })),
     }));
