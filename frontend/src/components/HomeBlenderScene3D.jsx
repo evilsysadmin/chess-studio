@@ -7,8 +7,10 @@ import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { loadHomeCastleR2Scene } from './HomeCastle3DR2Asset.js';
 import {
   homeBlenderLightProbeMode,
+  homeBlenderWallTorchLayout,
   homeBlenderLightProbeLocksFullLod,
   applyHomeBlenderLightProbe,
+  homeBlenderWallPairFillPlan,
 } from './HomeBlenderLightProbe.js';
 import {
   createHomeBlenderGpuTimer,
@@ -1365,7 +1367,7 @@ function createGlowSprite(texture, color, size, opacity, position) {
   return sprite;
 }
 
-function addRuntimeLights(scene, shadowsEnabled = true, ambientPeriod = 'day') {
+function addRuntimeLights(scene, shadowsEnabled = true, ambientPeriod = 'day', diagnosticLightMode = 'normal') {
   // Keep the browser rendition close to the authored Blender beauty pass:
   // dark stone stays dark and the warm practicals shape the room instead of
   // a large ambient wash flattening every material.
@@ -1482,6 +1484,18 @@ function addRuntimeLights(scene, shadowsEnabled = true, ambientPeriod = 'day') {
     }
   }
 
+  // Diagnostic only: append the extra midpoint fills AFTER the existing
+  // torches, so every original light keeps its stable per-index flicker seed.
+  // The four flame sprites are still authored at their original sconces.
+  if (shadowsEnabled && diagnosticLightMode === 'wall-pair') {
+    for (const spec of homeBlenderWallPairFillPlan(HOME_BLENDER_TORCH_X)) {
+      const fillLight = new THREE.PointLight(spec.color, spec.intensity, spec.distance, spec.decay);
+      fillLight.position.set(spec.x, spec.y, spec.z);
+      fillLight.castShadow = false;
+      fillLight.userData.homeLightProbeFamily = 'wall-pair';
+      torches.push(fillLight);
+    }
+  }
   scene.add(ambient, hemi, key, fill, leftHearth, rightHearth, table, floorBounce, armour, armour.target, ...torches);
 
   const glowTexture = createGlowTexture();
@@ -1933,6 +1947,13 @@ export default function HomeBlenderScene3D({
     // in ordinary sessions. Diagnostics must not affect production startup.
     const gpuProfiling = new URLSearchParams(window.location.search).get('homeGpuProfile') === '1';
     const lightProbeMode = homeBlenderLightProbeMode(window.location.search);
+    const wallTorchLayout = homeBlenderWallTorchLayout(window.location.search);
+    // Each explicit A/B lighting trial retains its four-point legacy A
+    // baseline; otherwise the reviewed two-fill candidate is the default.
+    // ?homeWallTorches=legacy is an immediate, reload-only operational rollback.
+    const torchLightMode = lightProbeMode !== 'normal'
+      ? lightProbeMode : wallTorchLayout === 'pair' ? 'wall-pair' : 'normal';
+    canvas.dataset.homeWallTorches = wallTorchLayout;
     if (gpuProfiling) {
       canvas.dataset.homeBlenderLightProbe = lightProbeMode;
       canvas.dataset.homeBlenderLightProbeLod = lightProbeFullLod ? 'full-locked' : 'automatic';
@@ -1977,14 +1998,22 @@ export default function HomeBlenderScene3D({
     // Keep haze behind the playing surface: foreground remains crisp while the
     // rear architecture picks up a restrained warm atmospheric falloff.
     scene.fog = new THREE.Fog(0x170d09, 20, 34);
-    const runtimeLights = addRuntimeLights(scene, initialPolicy.lod === 'full', ambient);
-    // Explicit benchmark-only variant: remove ancillary non-shadow lights
-    // from the shader's light list. Keep key shadows, fireplaces, glows and
-    // all production lighting entirely unchanged. Never used for users
-    // without BOTH ?homeGpuProfile=1 and ?homeLightProbe=aux-off.
+    const runtimeLights = addRuntimeLights(
+      scene, initialPolicy.lod === 'full', ambient,
+      torchLightMode,
+    );
+    // Full-quality Home uses the accepted two-fill torch layout by default.
+    // Retain the four original lights as invisible shading sources: their
+    // animated glow sprites use their own intensities and stay independently
+    // flickering. An explicit A/B trial still tests the legacy reference; the
+    // legacy URL switch provides instant rollback without changing the GLB.
+    const disabled = applyHomeBlenderLightProbe(runtimeLights.torches, torchLightMode);
     if (gpuProfiling) {
-      const disabled = applyHomeBlenderLightProbe(runtimeLights.torches, lightProbeMode);
       canvas.dataset.homeBlenderLightProbeDisabled = String(disabled);
+      canvas.dataset.homeBlenderLightProbeAdded = String(
+        runtimeLights.torches.filter(({ light }) =>
+          light.userData.homeLightProbeFamily === 'wall-pair').length,
+      );
     }
     canvas.dataset.homeBlenderPhase = 'scene-created';
     markStartup('scene-created');

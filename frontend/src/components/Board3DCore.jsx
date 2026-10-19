@@ -104,9 +104,7 @@ function Board3DCanvas({
     warRoomVariant,
     selectedSquare, legalTargets, fen,
   };
-  useEffect(() => {
-    sceneStateRef.current?.ambientScheduler?.wake();
-  }, [hansFireCallEnabled]);
+  useEffect(() => { sceneStateRef.current?.ambientScheduler?.wake(); }, [hansFireCallEnabled]);
   useEffect(() => {
     const refreshSkin = (event) => setSkinId(event?.detail || loadSelectedSkin());
     const refreshPreferences = () => setBoardTheme(loadBoardTheme());
@@ -122,7 +120,8 @@ function Board3DCanvas({
     setHoveredSquare(null);
     hoveredPieceRef.current = null;
   }, [orientation]);
-
+  // Handoff from touch, pointer, hints and 2D without resetting arrow-key travel.
+  useEffect(() => { if (selectedSquare) setFocusedSquare(selectedSquare); }, [selectedSquare]);
   useEffect(() => {
     const host = hostRef.current;
     if (!host) return undefined;
@@ -291,7 +290,6 @@ function Board3DCanvas({
     boardGroup.scale.setScalar(warRoomVariant === 'v3' ? 1.08 : 1); scene.add(boardGroup);
 
     if (showCoordinates) installBoard3DCoordinates(coordinateGroup, whiteSide);
-
     const gpuProfile = createWarRoomGpuProfile(renderer, { softwareRenderer });
     let cachedHansDriver = null;
     let ambientScheduler = null;
@@ -308,8 +306,10 @@ function Board3DCanvas({
       });
       const firstPaint = beginWarRoomFirstReadyPaintTiming(renderer.domElement);
       gpuProfile?.begin();
+      const renderStartedAt = gpuProfile ? performance.now() : 0;
       try {
         renderer.render(scene, camera);
+        gpuProfile?.recordRender(renderer.info.render, renderStartedAt, performance.now());
       } finally {
         gpuProfile?.end();
         gpuProfile?.poll();
@@ -330,7 +330,6 @@ function Board3DCanvas({
       exposeHansScreenDiagnostics(latestPropsRef.current);
       ambientScheduler?.markPaint(); firstPaint?.afterDiagnostics();
     }
-
     const renderBatcher = createWarRoomRenderBatcher({
       requestFrame: (callback) => window.requestAnimationFrame(callback),
       cancelFrame: (id) => window.cancelAnimationFrame(id),

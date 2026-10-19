@@ -2,6 +2,7 @@
 // Never allow null/NaN measurements to be coerced into fake savings.
 const LIGHT_OFF_MODES = new Set([
   'aux-off', 'aux-wall-off', 'aux-board-off', 'aux-stairs-off', 'aux-accent-off',
+  'wall-pair',
 ]);
 
 function median(numbers) {

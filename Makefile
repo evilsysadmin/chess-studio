@@ -365,6 +365,8 @@ e2e-combat-dom: ensure-e2e-deps frontend-build
 HOME_GPU_NVIDIA_PRIME ?= 1
 HOME_GPU_HEADLESS ?= 0
 HOME_GPU_LIGHT_GROUP ?= all
+# For wall-pair hardware + real WebGL canvas before/after images, set
+# HOME_GPU_LIGHT_GROUP=wall-pair; do not promote without reviewing both PNGs.
 # Test-context-only ambient clock for reproducible physical GPU comparisons.
 HOME_GPU_AMBIENT ?= night
 HOME_GPU_LIGHT_OUTPUT = $(if $(filter all,$(HOME_GPU_LIGHT_GROUP)),home-3d-light-probe-hardware.json,home-3d-light-probe-$(HOME_GPU_LIGHT_GROUP)-hardware.json)
@@ -511,6 +513,7 @@ static-preflight: capacity-probe-check test-parity-check test-flake-check audio-
 	@python3 -S scripts/oci_cloudflare_tunnel.py --self-test
 	@python3 -S scripts/compare_war_room_gpu.py --self-test
 	@python3 -S scripts/run_war_room_gpu_ab.py --self-test
+	@python3 -S scripts/run_war_room_gpu_baseline.py --self-test
 	@node --test e2e/home-blender-gpu-light-contrast.test.mjs
 	@python3 -S -m unittest discover -s scripts -p 'test_compare_home_3d_gpu.py' -v
 	@python3 -S scripts/oci_k3s_staging2_root.py self-test infra/oci/gitops/staging2/backend.yaml.tmpl

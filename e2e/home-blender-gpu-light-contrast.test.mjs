@@ -65,7 +65,7 @@ describe('physical Home GPU lighting contrast aggregator', () => {
 
   it('supports legacy aux-off and every new family without special arithmetic', () => {
     for (const mode of ['aux-off', 'aux-wall-off', 'aux-board-off',
-      'aux-stairs-off', 'aux-accent-off']) {
+      'aux-stairs-off', 'aux-accent-off', 'wall-pair']) {
       const visits = board.map((visit, index) => ({
         ...visit, lightProbe: index === 0 || index === 3 ? 'normal' : mode,
       }));

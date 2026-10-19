@@ -15,6 +15,10 @@ test('War Room benchmark restores Home and enters a real quick-match 3D board', 
     await context.addInitScript(() => {
       localStorage.setItem('chess-study-auth-token', 'e2e-token');
       localStorage.setItem('chess-study-auth-username', 'e2e');
+      // The real local benchmark enables this before mounting the board.
+      // Assert in CI that an opted-in software renderer also exposes the
+      // actual render-cost journal (not fabricated GPU timer queries).
+      localStorage.setItem('war-room-gpu-profile', '1');
       sessionStorage.setItem('chess-study-current-view', 'menu');
     });
     const page = await context.newPage();
@@ -28,8 +32,27 @@ test('War Room benchmark restores Home and enters a real quick-match 3D board', 
     // The local A/B failed on all profiles because the modal never opened.
     const { board, dialog } = await enterWarRoomGpuQuickMatch(page);
     await expect(board).toBeVisible();
-    await expect(page.locator('canvas.board3d-main-canvas')).toBeVisible({ timeout: 75_000 });
+    const canvas = page.locator('canvas.board3d-main-canvas');
+    await expect(canvas).toBeVisible({ timeout: 75_000 });
     await expect(dialog).toBeHidden({ timeout: 30_000 });
+    // The previous smoke verified only access to the 3D board. If a future
+    // refactor silently disconnects the opt-in journal from renderer.render(),
+    // the physical baseline would otherwise fail only on the user's NVIDIA.
+    // Software Chromium can verify real draw submissions, NOT GPU elapsed.
+    await expect.poll(() => canvas.evaluate((element) => {
+      const journal = element.__warRoomRenderCostJournal;
+      if (!journal || journal.latestSeq < 1) return false;
+      const captured = journal.readAfter(Math.max(0, journal.latestSeq - 16));
+      return !captured.overflow && captured.samples.some((frame) =>
+        Number.isFinite(frame.startedAtMs)
+        && Number.isFinite(frame.endedAtMs)
+        && Number.isFinite(frame.cpuSubmitMs)
+        && frame.endedAtMs >= frame.startedAtMs
+        && frame.cpuSubmitMs >= 0
+        && Number.isFinite(frame.calls) && frame.calls > 0
+        && Number.isFinite(frame.triangles) && frame.triangles > 0);
+    }), { timeout: 30_000, message: 'Opt-in War Room journal must record real 3D draws' })
+      .toBe(true);
   } finally {
     await context.close();
   }

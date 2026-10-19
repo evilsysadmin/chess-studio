@@ -1,0 +1,35 @@
+import { describe, expect, it } from 'vitest';
+import { createWarRoomRenderCostJournal } from './WarRoomRenderCostJournal.js';
+
+describe('War Room real-render cost journal', () => {
+  it('captures only real draw records in order, without inventing rAF frames', () => {
+    const journal = createWarRoomRenderCostJournal(3);
+    expect(journal.latestSeq).toBe(0);
+    expect(journal.readAfter(0)).toEqual({ overflow: false, samples: [] });
+    journal.record({ calls: 979, triangles: 459990 }, 100, 108);
+    journal.record({ calls: 102, triangles: 87000 }, 130, 131.25);
+    expect(journal.latestSeq).toBe(2);
+    expect(journal.readAfter(0)).toEqual({ overflow: false, samples: [
+      { seq: 1, startedAtMs: 100, endedAtMs: 108, calls: 979, triangles: 459990, cpuSubmitMs: 8 },
+      { seq: 2, startedAtMs: 130, endedAtMs: 131.25, calls: 102, triangles: 87000, cpuSubmitMs: 1.25 },
+    ] });
+    expect(journal.readAfter(1).samples).toHaveLength(1);
+    // Bad or failed renders cannot fabricate a zero-draw frame.
+    journal.record(null, 140, 141);
+    journal.record({ calls: -1, triangles: 100 }, 145, 147);
+    journal.record({ calls: 9, triangles: 15 }, 160, 159);
+    expect(journal.latestSeq).toBe(2);
+  });
+
+  it('fails closed on overrun instead of presenting a biased tail as full sampling', () => {
+    const journal = createWarRoomRenderCostJournal(3);
+    for (let i = 1; i <= 5; i += 1) journal.record({ calls: i, triangles: i * 10 }, i, i + 1);
+    expect(journal.latestSeq).toBe(5);
+    expect(journal.readAfter(0)).toMatchObject({ overflow: true });
+    expect(journal.readAfter(0).samples.map((item) => item.seq)).toEqual([3, 4, 5]);
+    expect(journal.readAfter(3)).toMatchObject({ overflow: false });
+    expect(journal.readAfter(5).samples).toEqual([]);
+    expect(journal.readAfter(-1)).toEqual({ overflow: true, samples: [] });
+    expect(() => createWarRoomRenderCostJournal(0)).toThrow(/capacity/);
+  });
+});

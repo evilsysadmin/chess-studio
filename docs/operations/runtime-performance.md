@@ -162,7 +162,7 @@ python3 scripts/run_war_room_gpu_ab.py \\
   --variant v4 --renderer hardware --offload nvidia --repetitions 2
 ```
 
-El comparador **rechaza cohortes mezcladas V3/V4**, incluida una mezcla entre A y B. Los antiguos JSON schema 2 sin `variant` siguen interpretándose como V3. Una comparación V3 frente a V4 requiere un experimento diferente; el A/B de regresión solo compara una sala consigo misma. Los JSON sin `bootstrapMode` corresponden al flujo antiguo con formulario; los nuevos declaran `persisted-e2e-session-v1`. El comparador **rechaza mezclar ambas estrategias de inicio**, porque sus tiempos de apertura no son comparables. El runner fija también `helpers.js`, el helper compartido de entrada a la partida rápida, los controles de teclado y el servidor de dist con el mismo SHA de harness para A y B. El smoke de CI ya no solo comprueba Home: abre la antesala y una partida auténtica, aunque la medición física WebGL2 sigue siendo exclusivamente local. Un clic del acceso de Home que no abre la antesala se reintenta como máximo una vez, y si falla se informa del estado de la página; nunca se fabrican datos GPU ni se aceptan partidas reanudadas como nuevas. Igual que antes, rAF no es tiempo GPU; los datos GPU se publican únicamente con queries reales y procedencia verificada.
+El comparador **rechaza cohortes mezcladas V3/V4**, incluida una mezcla entre A y B. Los antiguos JSON schema 2 sin `variant` siguen interpretándose como V3. Una comparación V3 frente a V4 requiere un experimento diferente; el A/B de regresión solo compara una sala consigo misma. Los JSON sin `bootstrapMode` corresponden al flujo antiguo con formulario; los nuevos declaran `persisted-e2e-session-v1`. El comparador **rechaza mezclar ambas estrategias de inicio**, porque sus tiempos de apertura no son comparables. El runner fija también `helpers.js`, el helper compartido de entrada a la partida rápida, los controles de teclado y el servidor de dist con el mismo SHA de harness para A y B. El smoke de CI ya no solo comprueba Home: abre la antesala y una partida auténtica, **activa el journal opcional y comprueba que registra draws reales (llamadas, triángulos y duración CPU)** con Chromium de CI; las queries físicas WebGL2 y los resultados NVIDIA siguen siendo exclusivamente locales. Un clic del acceso de Home que no abre la antesala se reintenta como máximo una vez, y si falla se informa del estado de la página; nunca se fabrican datos GPU ni se aceptan partidas reanudadas como nuevas. Igual que antes, rAF no es tiempo GPU; los datos GPU se publican únicamente con queries reales y procedencia verificada.
 
 **Estabilidad del escenario Hans (V3/V4):** el shell puede declarar
 `ready` antes de que se complete la instalación asíncrona de Hans.
@@ -187,12 +187,43 @@ descarga GLB ni render GPU. Los JSON antiguos sin
 de Hans y el tiempo total de escena aparecen como `n/a` en lugar de
 presuponerse cero.
 
+**Nuevo diagnóstico de carga sostenida por fotograma:** con el perfil GPU habilitado, el renderer añade un journal acotado de cada llamada **real** a `renderer.render()`. Captura los contadores `renderer.info.render.calls` y `triangles` inmediatamente después de cada render (Three.js los reinicia en renders posteriores), junto con la duración CPU de la llamada a `renderer.render()`. No se crean queries GPU extra, no se fuerza un render adicional y la sesión normal no instala este journal. El benchmark separa las muestras cuyo **inicio y fin** pertenecen a idle o move: reporta por fase medianas/p95 de draw calls por render, mediana de triángulos por render y mediana/p95 de **CPU submit** en milisegundos. Si hay menos de tres renders, desaparece el journal o se desborda el búfer, devuelve `n/a` y no infiere frames desde rAF. Los JSON anteriores sin `renderCost` siguen siendo válidos para sus métricas originales y muestran `n/a` para las nuevas filas. Los SHAs anteriores a esta instrumentación **no** pueden aportar un coste sostenido histórico simplemente copiándoles el harness nuevo: el código runtime antiguo no registraba esos frames. Para comprobar una futura optimización de draw calls hay que elegir dos revisiones instrumentadas y usar exactamente la misma sala y GPU.
+
 **Semántica de métricas**: intervalos entre callbacks `requestAnimationFrame` = cadencia de oportunidades del navegador, **no** tiempos de GPU ni FPS exactos de los draws. `inputToConfirmationMs` incluye automatización de teclado, mutación y aserción de estado, no latencia exclusiva del dispositivo. `openToReadyWallMs` abarca navegación/preparación desde una sesión E2E restaurada, no equivale a tiempo de descarga GLB. `snapshotMemory` son los contadores que la sala publica al ready, no consumo VRAM. `gpuFrameTimeMs: null` y `gpuTimerQueryMeasured: false` evitan atribuir números GPU no medidos.
 
 Repetir cada revisión en el mismo host en órdenes alternos A/B/B/A (varias repeticiones); comparar distribuciones y no un único p95 ruidoso. No lanzar varios navegadores o renders en paralelo. Comprobar con GPU profiler/EXT timer query independientes cualquier hipótesis de saturación real. **El modo touch emulado en GPU de escritorio no acredita Android físico**: probar también un móvil real con navegador, rotación y fluidez durante varias jugadas antes de considerar cerrado el coste móvil.
 
 No fusionar una nueva optimización de luces, materiales o GLB basándose exclusivamente en un JSON de este benchmark; conservar captura visual, comparación de triángulos/draw calls y paridad de jugabilidad. La issue #5765 permanece abierta hasta tener medidas repetidas sobre hardware.
 
+
+### Baseline de una sola revisión · War Room V3/V4
+
+Una vez integrada la instrumentación de coste sostenido, **no hace falta
+comparar dos commits** para localizar cuánto dibujo persiste en la sala
+actual. En Nobara/NVIDIA, con checkout actualizado y el puerto 4173 libre:
+
+```bash
+git pull --ff-only
+python3 -S scripts/run_war_room_gpu_baseline.py \\
+  --variant v3 --renderer hardware --offload nvidia --repetitions 2
+```
+
+El script prepara **un único worktree A**, compila la revisión local `HEAD`,
+ejecuta dos rondas de los tres perfiles (escritorio y touch emulado), y
+produce una sesión inmutable en `.artifacts/war-room-gpu-baseline/<sesión>/`,
+con `baseline.md`, `session.json` y seis capturas JSON. Un fallo retiene
+logs/JSON parciales, pero deja el manifiesto como `incomplete`, sin informe
+de baseline válido. `--revision-sha <40 caracteres>` permite medir otra
+revisión **que ya contenga la instrumentación**; las anteriores son
+rechazadas, aunque se les copie el harness nuevo.
+
+El informe usa sólo renders reales completados en idle y move: mediana/p95
+de draw calls, mediana de triángulos, tiempo CPU de `renderer.render()`,
+y tiempo GPU `TIME_ELAPSED_EXT` cuando las queries verificadas existen.
+Un journal ausente, incompleto o desbordado invalida la baseline, en lugar
+de convertir rAF en frames dibujados. No demuestra mejora de FPS ni sustituye
+la comparación A/B posterior. `--variant v4` usa la misma disciplina con
+V4. **No se ejecuta la captura física GPU en CI**; sólo el autotest sintético.
 
 ### Diagnóstico GPU real de War Room, opt-in (WebGL2)
 

@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
   homeBlenderLightProbeMode,
+  homeBlenderWallTorchLayout,
   homeBlenderLightProbeLocksFullLod,
   HOME_BLENDER_LIGHT_PROBE_FAMILIES,
   applyHomeBlenderLightProbe,
+  homeBlenderWallPairFillPlan,
 } from './HomeBlenderLightProbe.js';
 
 describe('opt-in Home GPU auxiliary-light isolation', () => {
@@ -65,6 +67,78 @@ describe('opt-in Home GPU auxiliary-light isolation', () => {
     const unknown = make();
     expect(applyHomeBlenderLightProbe(unknown, 'aux-garbage-off')).toBe(0);
     expect(unknown.every((entry) => entry.light.visible)).toBe(true);
+  });
+
+  it('promotes pair fills for normal Home while retaining a one-URL legacy rollback', () => {
+    for (const query of ['', '?homeGpuProfile=1', '?homeWallTorches=pair',
+      '?homeWallTorches=unknown', '?homeGpuProfile=0&homeLightProbe=aux-wall-off']) {
+      expect(homeBlenderWallTorchLayout(query)).toBe('pair');
+    }
+    for (const query of ['?homeWallTorches=legacy', 'homeWallTorches=legacy',
+      '?homeGpuProfile=1&homeWallTorches=legacy',
+      '?homeWallTorches=legacy&homeGpuProfile=0']) {
+      expect(homeBlenderWallTorchLayout(query)).toBe('legacy');
+    }
+  });
+
+  it('keeps legacy as the exact baseline for all existing A/B family trials', () => {
+    for (const lightMode of ['normal', 'aux-off', 'aux-wall-off', 'aux-board-off',
+      'aux-stairs-off', 'aux-accent-off']) {
+      const query = `?homeGpuProfile=1&homeLightProbe=${lightMode}`;
+      expect(homeBlenderWallTorchLayout(query)).toBe('legacy');
+      expect(homeBlenderLightProbeLocksFullLod(query, 'full')).toBe(true);
+    }
+    expect(homeBlenderWallTorchLayout('?homeGpuProfile=1&homeLightProbe=wall-pair'))
+      .toBe('pair');
+    // Explicit trial selection wins over a stale legacy rollback query.
+    expect(homeBlenderWallTorchLayout(
+      '?homeWallTorches=legacy&homeGpuProfile=1&homeLightProbe=wall-pair',
+    )).toBe('pair');
+    // Without the profiler's second flag, the query cannot force a test path.
+    expect(homeBlenderWallTorchLayout('?homeLightProbe=aux-wall-off')).toBe('pair');
+  });
+
+  it('pair-fill mode requires BOTH flags and full LOD', () => {
+    const pair = '?homeGpuProfile=1&homeLightProbe=wall-pair';
+    expect(homeBlenderLightProbeMode(pair)).toBe('wall-pair');
+    expect(homeBlenderLightProbeLocksFullLod(pair, 'full')).toBe(true);
+    expect(homeBlenderLightProbeLocksFullLod(pair, 'lite')).toBe(false);
+    expect(homeBlenderLightProbeMode('?homeLightProbe=wall-pair')).toBe('normal');
+    expect(homeBlenderLightProbeMode('?homeGpuProfile=0&homeLightProbe=wall-pair')).toBe('normal');
+  });
+
+  it('plans two broad midpoint wall fills without moving the four authored sconces', () => {
+    const wall = [-8, -4.15, 2.45, 7.95];
+    const before = [...wall];
+    const plan = homeBlenderWallPairFillPlan(wall);
+    expect(wall).toEqual(before);
+    expect(plan).toHaveLength(2);
+    expect(plan.map(({ x }) => x)).toEqual([-6.075, 5.2]);
+    expect(plan.map(({ intensity, distance, decay }) => [intensity, distance, decay]))
+      .toEqual([[10, 8, 2], [10, 8, 2]]);
+    expect(homeBlenderWallPairFillPlan([-8, 2])).toEqual([]);
+    expect(homeBlenderWallPairFillPlan([-8, NaN, 2, 7])).toEqual([]);
+  });
+
+  it('hides four torch shading lights but preserves two diagnostic fills and all other sources', () => {
+    const original = Array.from({ length: 4 }, (_, i) => ({
+      light: { visible: true, castShadow: false, intensity: 7,
+        userData: { homeLightProbeFamily: 'wall', glow: { opacity: 0.5 }, originalIndex: i } },
+    }));
+    const fills = homeBlenderWallPairFillPlan([-8, -4.15, 2.45, 7.95]).map(({ x }) => ({
+      light: { visible: true, castShadow: false, position: { x },
+        userData: { homeLightProbeFamily: 'wall-pair' } },
+    }));
+    const key = { light: { visible: true, castShadow: true } };
+    const board = { light: { visible: true, castShadow: false,
+      userData: { homeLightProbeFamily: 'board' } } };
+    const list = [...original, key, board, ...fills];
+    expect(applyHomeBlenderLightProbe(list, 'wall-pair')).toBe(4);
+    expect(original.every(({ light }) => !light.visible && light.intensity === 7
+      && light.userData.glow.opacity === 0.5)).toBe(true);
+    expect(fills.every(({ light }) => light.visible)).toBe(true);
+    expect(key.light.visible).toBe(true);
+    expect(board.light.visible).toBe(true);
   });
 
   it('leaves every light unchanged in normal mode', () => {

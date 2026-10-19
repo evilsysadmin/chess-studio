@@ -1,4 +1,5 @@
 import { createHomeBlenderGpuTimer } from './HomeBlenderPerformanceDiagnostics.js';
+import { createWarRoomRenderCostJournal } from './WarRoomRenderCostJournal.js';
 
 // This flag is intentionally not a normal preference. A local benchmark can
 // opt in using its init-script localStorage seed; a human can use a URL query.
@@ -48,6 +49,9 @@ export function createWarRoomGpuProfile(renderer, {
     sampleEvery,
   });
   const dataset = canvas.dataset;
+  const renderCosts = createWarRoomRenderCostJournal();
+  // Local-only, read by the real browser benchmark. No per-frame DOM writes.
+  canvas.__warRoomRenderCostJournal = renderCosts;
   dataset.warRoomGpuProfileStatus = timer.status;
   dataset.warRoomGpuProfileSamples = '0';
   delete dataset.warRoomGpuProfileLastMs;
@@ -59,6 +63,7 @@ export function createWarRoomGpuProfile(renderer, {
     // publication. This prevents bootstrap/idle renders leaking into move.
     begin: () => timer.begin(globalThis.performance?.now?.() ?? null),
     end: () => timer.end(),
+    recordRender: (info, startedAtMs, endedAtMs) => renderCosts.record(info, startedAtMs, endedAtMs),
     poll() {
       // Polling is non-blocking and occurs only after a genuine room render.
       timer.poll();
@@ -85,6 +90,7 @@ export function createWarRoomGpuProfile(renderer, {
     },
     dispose() {
       timer.dispose();
+      delete canvas.__warRoomRenderCostJournal;
       delete dataset.warRoomGpuProfileStatus;
       delete dataset.warRoomGpuProfileSamples;
       delete dataset.warRoomGpuProfileLastMs;
