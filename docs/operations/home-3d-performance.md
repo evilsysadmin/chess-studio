@@ -128,6 +128,25 @@ make home-gpu-light-probe HOME_GPU_NVIDIA_PRIME=0 HOME_GPU_EXPECT_VENDOR=intel H
 
 **Board-family field report (Intel hardware; revision `4fb5de32`, night/full, Matthias at `sofa-nap`):** the four visits actually measured normal **28.90 / 28.31 ms**, and board-off **28.01 / 23.35 ms**. Thus the median of visit medians is **28.605 vs 25.68 ms** (2.925 ms, **10.23% lower GPU time**). The first report's `gpuMedianMs.auxOff=null` and 100% contrast were **an aggregation bug**: the report filtered only literal `aux-off`, ignoring `aux-board-off`. Those printed summary fields are invalid, but its individual visit samples are still available for post-hoc recalculation. The aggregator now keys the B visits to the selected light-family mode and fails closed on missing/nonfinite timings. Do not interpret 10.23% as production FPS gain: the diagnostic renders the board without two lights, and a second run plus visual acceptance would be needed before changing actual lighting.
 
+### Experimental wall-torch pair (visual + physical GPU A/B)
+
+The `wall` isolation report on Intel WebGL (`night`, full LOD, Matthias in reading-chair) measured **30.675 vs 25.775 ms** (4.90 ms / 15.97% lower GPU time) with four original wall torch lights excluded. Its paired differences were +5.59 / +4.21 ms and its stability flags were empty; this short test still requires replication and does **not** authorize removing four authored light sources.
+
+An opt-in **visual candidate**, `?homeGpuProfile=1&homeLightProbe=wall-pair`, leaves the original four sconces, flames, emission, additive halo sprites, shadow key, fireplaces and all other lights untouched. Only in this explicit diagnostic mode it excludes the four original *shading* point lights and replaces their wall illumination with **two slightly brighter and broader point fills**, placed midway between the two pairs of wall sconces (x≈-6.075 and x≈5.2). The existing lights keep their indices and independent flicker seeds; the extra fills are appended and animated separately, with no additional glow sprites or shadow passes. **The pair variant is intentionally NOT the default** and has no production quality-policy path.
+
+Use this exact physical Intel command on the feature-PR branch, not on unmodified `main` before visual acceptance:
+
+```bash
+make home-gpu-light-probe HOME_GPU_NVIDIA_PRIME=0 \
+  HOME_GPU_EXPECT_VENDOR=intel HOME_GPU_AMBIENT=night \
+  HOME_GPU_LIGHT_GROUP=wall-pair
+```
+
+The harness saves `.artifacts/home-gpu-benchmark/home-3d-light-probe-wall-pair-hardware.json` plus two **actual WebGL-canvas screenshots** in the same directory:
+`home-3d-wall-pair-baseline-hardware.png` and `home-3d-wall-pair-two-fill-candidate-hardware.png`. Both are captured after the actor has loaded and sampled, with the same viewport, camera, full LOD and frozen clock. It asserts that the candidate disables **exactly four original** wall lights and adds **exactly two** fills while the baseline adds none. **Review and show both real PNGs in the conversation** (full-frame and details of sconces, board, architecture and resident) before ever promoting the change to production or merging any visually changing PR; preserve a rollback. Differences in animated flame frames are expected and not a reason to do pixel-exact equality.
+
+If the A/B lacks a repeatable hardware GPU benefit, or the original wall mood becomes too flat, **do not promote** the two-fill variant. The room's ordinary lighting remains unchanged even if this isolated diagnostic lands.
+
 **Local repeatability control (all-light / per-family A/B/B/A):** by default, `make home-gpu-light-probe` fixes the in-browser local hour to 23:00 so every one of its four visits uses the **same `night` ambient**, independent of when the operator runs it. This happens only inside the browser's opt-in Playwright test context (overrides `Date.prototype.getHours`, not system time, `performance.now` or `Date.now`); ordinary Chess Studio sessions are unchanged. Override with `HOME_GPU_AMBIENT=day` for 13:00, `dawn` for 07:00 or `dusk` for 19:00. Each sampled visit must report the expected period and full LOD. **Do not directly rank GPU ms from older day and night reports**; repeat all families under the same ambient for a comparison.
 
 The JSON now includes `benchmarkAmbient` and `stability`: signed paired A-vs-B GPU differences, normal-baseline and aux-off visit-to-visit drift percentages, and caution flags when either condition drifts **over 15%** or the paired differences disagree in direction. These flags are diagnostics, **not statistical significance tests**. For example, the earlier stairs report had paired differences -0.57/+8.34 ms (opposite signs), and the accent report had ~23% drift between the two normal visits; their aggregate savings must remain exploratory. Even without flags, repeat the run before acting. No power state, drivers, GPU throttling or browser compositor behavior is asserted from these short samples.
