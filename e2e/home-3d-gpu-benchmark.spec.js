@@ -141,6 +141,12 @@ async function readRealCanvas(castle) {
       const candidate = JSON.parse(d.homeBlenderModelDrawInventory || 'null');
       if (candidate && typeof candidate === 'object') modelDrawInventory = candidate;
     } catch { /* Keep missing inventory explicit. */ }
+    const pass = (key) => {
+      try {
+        const candidate = JSON.parse(d[key] || 'null');
+        return candidate && Number.isSafeInteger(candidate.totalCalls) ? candidate : null;
+      } catch { return null; }
+    };
     let startupMs = null;
     try {
       const events = JSON.parse(d.homeBlenderStartup || '{}');
@@ -160,6 +166,8 @@ async function readRealCanvas(castle) {
       gpuMs: num('homeBlenderGpuMs'),
       gpuSampleCount: num('homeBlenderGpuSampleCount'),
       drawCalls: num('homeBlenderDrawCalls'),
+      drawPass: pass('homeBlenderDrawPass'),
+      firstFrameDrawPass: pass('homeBlenderFirstFrameDrawPass'),
       triangles: num('homeBlenderTriangles'),
       initialDrawCalls: num('homeBlenderFirstFrameDrawCalls'),
       initialTriangles: num('homeBlenderFirstFrameTriangles'),
@@ -306,6 +314,22 @@ test('Home 3D physical GPU benchmark · three visits or opt-in light A/B/B/A', a
       expect(row.canvasWidth * row.canvasHeight).toBeGreaterThan(0);
       expect(row.initialDrawCalls).toBeGreaterThan(0);
       expect(row.initialTriangles).toBeGreaterThan(0);
+      // Diagnostic measurements: an unavailable split is explicit null, not
+      // an invented zero. When present, verify the observed render identity.
+      if (row.drawPass) {
+        expect(row.drawPass.mainCalls + row.drawPass.shadowCalls).toBe(row.drawPass.totalCalls);
+        if (row.drawPass.families) {
+          for (const phase of ['main', 'shadow']) {
+            const families = row.drawPass.families[phase];
+            const total = families.castle + families.matthias + families.runtime;
+            expect(total).toBe(row.drawPass[phase + 'Calls']);
+          }
+        }
+      }
+      if (row.firstFrameDrawPass) {
+        expect(row.firstFrameDrawPass.mainCalls + row.firstFrameDrawPass.shadowCalls)
+          .toBe(row.firstFrameDrawPass.totalCalls);
+      }
       expect(row.allocatedTextures).toBeGreaterThan(0);
       expect(row.allocatedGeometries).toBeGreaterThan(0);
       expect(row.modelDrawInventory?.drawSlotCandidates).toBeGreaterThan(0);
@@ -435,6 +459,10 @@ test('Home 3D physical GPU benchmark · three visits or opt-in light A/B/B/A', a
     medians: {
       startupMs: median(visits.map((visit) => visit.startupMs)),
       initialDrawCalls: median(visits.map((visit) => visit.initialDrawCalls)),
+      shadowDrawCalls: median(visits.map((visit) => visit.drawPass?.shadowCalls)),
+      mainDrawCalls: median(visits.map((visit) => visit.drawPass?.mainCalls)),
+      firstFrameShadowDrawCalls: median(visits.map((visit) => visit.firstFrameDrawPass?.shadowCalls)),
+      firstFrameMainDrawCalls: median(visits.map((visit) => visit.firstFrameDrawPass?.mainCalls)),
       allocatedTextures: median(visits.map((visit) => visit.allocatedTextures)),
       allocatedGeometries: median(visits.map((visit) => visit.allocatedGeometries)),
       // One-time authored-model draw candidates, never actual GL submissions.
