@@ -32,10 +32,39 @@ export function summarizeHomeGpuLightContrast(visits, offMode) {
   const baseGpuMs = median(normal.map((visit) => visit.gpuMedianMs));
   const auxOffGpuMs = median(auxOff.map((visit) => visit.gpuMedianMs));
   const gpuDifferenceMs = baseGpuMs - auxOffGpuMs;
+  // A/B/B/A cancels some monotonic drift, but does not make thermal, OS
+  // scheduling, driver or GC variation disappear. Report within-mode drift
+  // and contradictory paired signs instead of claiming a stable speedup.
+  const percentSpread = (left, right, centre) => (
+    100 * Math.abs(left - right) / centre
+  );
+  const normalDriftPct = percentSpread(normal[0].gpuMedianMs,
+    normal[1].gpuMedianMs, baseGpuMs);
+  const auxOffDriftPct = percentSpread(auxOff[0].gpuMedianMs,
+    auxOff[1].gpuMedianMs, auxOffGpuMs);
+  const pairedDifferencesMs = [
+    normal[0].gpuMedianMs - auxOff[0].gpuMedianMs,
+    normal[1].gpuMedianMs - auxOff[1].gpuMedianMs,
+  ];
+  const pairedSignsAgree = pairedDifferencesMs.every((ms) => ms > 0)
+    || pairedDifferencesMs.every((ms) => ms < 0);
+  const flags = [];
+  if (normalDriftPct > 15) flags.push('normal-baseline-drift-over-15pct');
+  if (auxOffDriftPct > 15) flags.push('auxiliary-variant-drift-over-15pct');
+  if (!pairedSignsAgree) flags.push('paired-contrast-direction-disagrees');
   return {
     gpuMedianMs: { normal: baseGpuMs, auxOff: auxOffGpuMs },
     gpuDifferenceMs,
     gpuContrastPct: 100 * gpuDifferenceMs / baseGpuMs,
+    stability: {
+      normalDriftPct,
+      auxOffDriftPct,
+      pairedDifferencesMs,
+      pairedSignsAgree,
+      flags,
+      // Informational only: even zero flags do not prove reproducibility.
+      repeatRecommended: true,
+    },
     cpuP95MedianMs: {
       normal: median(normal.map((visit) => visit.cpuP95MedianMs)),
       auxOff: median(auxOff.map((visit) => visit.cpuP95MedianMs)),

@@ -12,6 +12,13 @@ const lightProbeFamily = String(process.env.CHESS_HOME_GPU_LIGHT_GROUP || 'all')
 const lightFamilyCounts = Object.freeze({ all: 12, wall: 4, board: 2, stairs: 3, accent: 3 });
 const lightOffMode = lightProbeFamily === 'all' ? 'aux-off' : `aux-${lightProbeFamily}-off`;
 const expectedVendor = (process.env.CHESS_HOME_GPU_EXPECT_VENDOR || '').trim().toLowerCase();
+// Fix the in-browser local hour only in explicitly opt-in lighting trials.
+// Otherwise morning/night comparisons measure different source lighting.
+const lightProbeAmbient = String(process.env.CHESS_HOME_GPU_AMBIENT || 'night')
+  .trim().toLowerCase();
+const LIGHT_PROBE_AMBIENT_HOUR = Object.freeze({
+  dawn: 7, day: 13, dusk: 19, night: 23,
+});
 // A/B/B/A trials require a real timer. Do not substitute browser CPU timing
 // or software GPU for fragment-shading costs.
 const requireTimer = lightProbe || process.env.CHESS_HOME_GPU_REQUIRE_TIMER === '1';
@@ -25,6 +32,18 @@ function median(numbers) {
 }
 
 async function openRealHome(page, lightMode = 'normal') {
+  if (lightProbe) {
+    // Test-context-only clock: the game's authored ambient and Matthias
+    // routine derive from Date#getHours. Do not touch production behavior,
+    // system time, performance.now, Date.now or real scheduling intervals.
+    await page.addInitScript((hour) => {
+      Object.defineProperty(Date.prototype, 'getHours', {
+        configurable: true,
+        writable: true,
+        value() { return hour; },
+      });
+    }, LIGHT_PROBE_AMBIENT_HOUR[lightProbeAmbient]);
+  }
   await page.addInitScript(() => {
     // Home's desktop GLTF policy needs a capable CPU report. This does not
     // change the renderer and must never be used to claim a physical GPU.
@@ -149,6 +168,9 @@ test('Home 3D physical GPU benchmark · three visits or opt-in light A/B/B/A', a
   if (lightProbe && !Object.hasOwn(lightFamilyCounts, lightProbeFamily)) {
     throw new Error('Unknown CHESS_HOME_GPU_LIGHT_GROUP: choose all, wall, board, stairs, or accent');
   }
+  if (lightProbe && !Object.hasOwn(LIGHT_PROBE_AMBIENT_HOUR, lightProbeAmbient)) {
+    throw new Error('Unknown CHESS_HOME_GPU_AMBIENT: choose dawn, day, dusk, or night');
+  }
   if (process.env.CHESS_E2E_LIGHTWEIGHT === '1') {
     throw new Error('CHESS_E2E_LIGHTWEIGHT=1 forces a 2D Home and cannot benchmark GPU rendering');
   }
@@ -220,6 +242,10 @@ test('Home 3D physical GPU benchmark · three visits or opt-in light A/B/B/A', a
           `Chromium used ${row.vendor}, not the requested ${expectedVendor} GPU; check PRIME/ANGLE offload or use HOME_GPU_NVIDIA_PRIME=0 for native GPU`)
           .toBe(expectedVendor);
       }
+      if (lightProbe) {
+        expect(row.ambient, 'All visits must use the explicitly frozen local Home lighting period')
+          .toBe(lightProbeAmbient);
+      }
       expect(row.matthiasActor, 'All visits must render the actual Matthias actor').toBe('ready');
       expect(snapshots.every((snapshot) => snapshot.matthiasActor === 'ready'),
         'No GPU snapshot can be taken before Matthias finishes mounting').toBe(true);
@@ -277,6 +303,7 @@ test('Home 3D physical GPU benchmark · three visits or opt-in light A/B/B/A', a
       schema: 1,
       surface: 'Home Blender 3D auxiliary light isolation',
       lightFamily: lightProbeFamily,
+      benchmarkAmbient: lightProbeAmbient,
       revision: process.env.CHESS_HOME_GPU_REVISION || null,
       mode: requested,
       browserVersion: browser.version(),
@@ -299,8 +326,9 @@ test('Home 3D physical GPU benchmark · three visits or opt-in light A/B/B/A', a
     await writeFile(`${artifactDir}/${reportName}`,
       `${JSON.stringify(result, null, 2)}\n`, 'utf8');
     console.log('HOME_3D_LIGHT_PROBE ' + JSON.stringify({
-      sequence, lightFamily: lightProbeFamily,
+      sequence, lightFamily: lightProbeFamily, ambient: result.benchmarkAmbient,
       auxiliaryLightsExcluded: result.auxiliaryLightsExcluded,
+      stability: result.stability,
       gpuMedianMs: result.gpuMedianMs,
       gpuDifferenceMs: result.gpuDifferenceMs,
       gpuContrastPct: result.gpuContrastPct,
