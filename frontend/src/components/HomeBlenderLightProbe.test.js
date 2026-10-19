@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   homeBlenderLightProbeMode,
+  homeBlenderWallTorchLayout,
   homeBlenderLightProbeLocksFullLod,
   HOME_BLENDER_LIGHT_PROBE_FAMILIES,
   applyHomeBlenderLightProbe,
@@ -66,6 +67,35 @@ describe('opt-in Home GPU auxiliary-light isolation', () => {
     const unknown = make();
     expect(applyHomeBlenderLightProbe(unknown, 'aux-garbage-off')).toBe(0);
     expect(unknown.every((entry) => entry.light.visible)).toBe(true);
+  });
+
+  it('promotes pair fills for normal Home while retaining a one-URL legacy rollback', () => {
+    for (const query of ['', '?homeGpuProfile=1', '?homeWallTorches=pair',
+      '?homeWallTorches=unknown', '?homeGpuProfile=0&homeLightProbe=aux-wall-off']) {
+      expect(homeBlenderWallTorchLayout(query)).toBe('pair');
+    }
+    for (const query of ['?homeWallTorches=legacy', 'homeWallTorches=legacy',
+      '?homeGpuProfile=1&homeWallTorches=legacy',
+      '?homeWallTorches=legacy&homeGpuProfile=0']) {
+      expect(homeBlenderWallTorchLayout(query)).toBe('legacy');
+    }
+  });
+
+  it('keeps legacy as the exact baseline for all existing A/B family trials', () => {
+    for (const lightMode of ['normal', 'aux-off', 'aux-wall-off', 'aux-board-off',
+      'aux-stairs-off', 'aux-accent-off']) {
+      const query = `?homeGpuProfile=1&homeLightProbe=${lightMode}`;
+      expect(homeBlenderWallTorchLayout(query)).toBe('legacy');
+      expect(homeBlenderLightProbeLocksFullLod(query, 'full')).toBe(true);
+    }
+    expect(homeBlenderWallTorchLayout('?homeGpuProfile=1&homeLightProbe=wall-pair'))
+      .toBe('pair');
+    // Explicit trial selection wins over a stale legacy rollback query.
+    expect(homeBlenderWallTorchLayout(
+      '?homeWallTorches=legacy&homeGpuProfile=1&homeLightProbe=wall-pair',
+    )).toBe('pair');
+    // Without the profiler's second flag, the query cannot force a test path.
+    expect(homeBlenderWallTorchLayout('?homeLightProbe=aux-wall-off')).toBe('pair');
   });
 
   it('pair-fill mode requires BOTH flags and full LOD', () => {
