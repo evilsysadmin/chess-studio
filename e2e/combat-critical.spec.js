@@ -213,14 +213,10 @@ async function openTowerMate(page, seed) {
   await expect(entry).toBeVisible();
   await entry.click();
   await page.evaluate((id) => localStorage.setItem('chess-study-roguelike-run', JSON.stringify({
-    floor: 1, inRun: true, phase: 'battle', seed: id, mode: 'tower', perks: [], rewardChosenForFloor: null,
+    floor: 1, inRun: true, phase: 'fighting', seed: id, mode: 'tower', perks: [], rewardChosenForFloor: null,
   })), seed);
-  await page.reload();
-  await page.getByRole('button', { name: /PREPARAR EJÉRCITO/i }).click();
-  const start = page.getByRole('button', { name: /¡ENTRAR EN COMBATE!|ORGANIZAR Y COMBATIR/i });
-  await expect(start).toBeVisible();
-  await start.click();
-  await expect(page.locator('.combat-battle-screen')).toBeVisible({ timeout: 45_000 });
+  // Restore a genuine in-progress Tower battle using its validated FEN and
+  // persistent encounter identity, not Campaign's separate preparation CTA.
   await seedCombatBattleSnapshot(page, { sessionId: 'run:' + seed + ':1', fen: MATE_START_FEN });
   await page.reload();
   await expect(page.locator('[data-combat-war-room="generic"] [data-board3d-war-room="true"]')).toBeVisible({ timeout: 45_000 });

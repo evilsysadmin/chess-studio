@@ -297,15 +297,11 @@ test('Torre · F5 revela informe postcombate en escritorio y móvil', async ({ p
   await expect(entry).toBeVisible();
   await entry.click();
   await page.evaluate(() => localStorage.setItem('chess-study-roguelike-run', JSON.stringify({
-    floor: 1, inRun: true, phase: 'battle', seed: 'tower-f5-visual', mode: 'tower', perks: [],
+    floor: 1, inRun: true, phase: 'fighting', seed: 'tower-f5-visual', mode: 'tower', perks: [],
     rewardChosenForFloor: null,
   })));
-  await page.reload();
-  await page.getByRole('button', { name: /PREPARAR EJÉRCITO/i }).click();
-  const start = page.getByRole('button', { name: /¡ENTRAR EN COMBATE!|ORGANIZAR Y COMBATIR/i });
-  await expect(start).toBeVisible();
-  await start.click();
-  await expect(page.locator('.combat-battle-screen')).toBeVisible({ timeout: 45_000 });
+  // Restore a genuine in-progress Tower battle using its validated FEN and
+  // persistent encounter identity, not Campaign's separate preparation CTA.
   await seedCombatBattleSnapshot(page, { sessionId: 'run:tower-f5-visual:1', fen: MATE_CAPTURE_FEN });
   await page.reload();
   await expect(page.locator('[data-combat-war-room="generic"] [data-board3d-war-room="true"]')).toBeVisible({ timeout: 45_000 });
