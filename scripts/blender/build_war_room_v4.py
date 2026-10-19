@@ -1398,19 +1398,6 @@ def validate_v4_entry_door(door):
     if abs(float(door.location.z) - V4_ENTRY_DOOR_Z) > 0.01:
         raise RuntimeError(f"War Room v4 entry door floated vertically: z={door.location.z:.3f}")
 
-    # The closing frame belongs to the stationary alcove; it must stay in
-    # the same authored plane as the sealed leaf, not float at the outer arch.
-    scene_objects = bpy.context.scene.objects
-    for side in (-1, 1):
-        stop = scene_objects.get(f"WR4_OBS_entry_closed_stop_{side}")
-        if stop is None or abs(stop.rotation_euler.z - door.rotation_euler.z) > 1e-5:
-            raise RuntimeError("War Room v4 inner closing jamb lost its splayed plane")
-    head = scene_objects.get("WR4_OBS_entry_closed_head")
-    strike = scene_objects.get("WR4_OBS_entry_closed_strike")
-    if head is None or strike is None:
-        raise RuntimeError("War Room v4 service door lost its closing head or brass keeper")
-    if abs(head.rotation_euler.z - door.rotation_euler.z) > 1e-5:
-        raise RuntimeError("War Room v4 closing head is not aligned to the closed leaf")
 
 
 def v4_hans_door_hinge(center, tangent, radial):
@@ -1453,6 +1440,20 @@ def validate_v4_hans_stage():
         raise RuntimeError("War Room v4 Hans door leaf must stay a dynamic runtime node")
     if any(abs(value) > 1e-6 for value in leaf.rotation_euler):
         raise RuntimeError("War Room v4 Hans door leaf must export closed with no rotation")
+    # The closing frame belongs to the stationary alcove; it must stay in
+    # the same authored plane as the sealed leaf, not float at the outer arch.
+    scene_objects = bpy.context.scene.objects
+    for side in (-1, 1):
+        stop = scene_objects.get(f"WR4_OBS_entry_closed_stop_{side}")
+        if stop is None or abs(stop.rotation_euler.z - door.rotation_euler.z) > 1e-5:
+            raise RuntimeError("War Room v4 inner closing jamb lost its splayed plane")
+    head = scene_objects.get("WR4_OBS_entry_closed_head")
+    strike = scene_objects.get("WR4_OBS_entry_closed_strike")
+    if head is None or strike is None:
+        raise RuntimeError("War Room v4 service door lost its closing head or brass keeper")
+    if abs(head.rotation_euler.z - door.rotation_euler.z) > 1e-5:
+        raise RuntimeError("War Room v4 closing head is not aligned to the closed leaf")
+
     theta = math.radians(V4_ENTRY_THETA_DEG)
     radial = Vector((math.sin(theta), math.cos(theta), 0.0))
     wall_tangent = Vector((math.cos(theta), -math.sin(theta), 0.0))
