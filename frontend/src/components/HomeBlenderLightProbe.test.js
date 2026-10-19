@@ -98,6 +98,48 @@ describe('opt-in Home GPU auxiliary-light isolation', () => {
     expect(homeBlenderWallTorchLayout('?homeLightProbe=aux-wall-off')).toBe('pair');
   });
 
+  it('keeps the two-fill layout in production-baseline A/B tests', () => {
+    const modes = ['pair-normal', 'pair-aux-board-off',
+      'pair-aux-stairs-off', 'pair-aux-accent-off'];
+    for (const mode of modes) {
+      const query = `?homeGpuProfile=1&homeLightProbe=${mode}`;
+      expect(homeBlenderLightProbeMode(query)).toBe(mode);
+      expect(homeBlenderWallTorchLayout(query)).toBe('pair');
+      expect(homeBlenderLightProbeLocksFullLod(query, 'full')).toBe(true);
+      expect(homeBlenderLightProbeLocksFullLod(query, 'lite')).toBe(false);
+      expect(homeBlenderLightProbeMode(`?homeLightProbe=${mode}`)).toBe('normal');
+    }
+    expect(homeBlenderLightProbeMode('?homeGpuProfile=1&homeLightProbe=pair-aux-wall-off'))
+      .toBe('normal');
+    expect(homeBlenderWallTorchLayout('?homeWallTorches=legacy&homeGpuProfile=1&homeLightProbe=pair-normal'))
+      .toBe('pair');
+  });
+
+  it('preserves two fills and glows while isolating one extra family on production baseline', () => {
+    const families = ['wall', 'wall', 'wall', 'wall', 'accent', 'board', 'board',
+      'accent', 'accent', 'stairs', 'stairs', 'stairs', 'wall-pair', 'wall-pair'];
+    for (const [mode, count] of [
+      ['pair-normal', 4],
+      ['pair-aux-board-off', 6],
+      ['pair-aux-stairs-off', 7],
+      ['pair-aux-accent-off', 7],
+    ]) {
+      const sources = families.map((family) => ({
+        light: { visible: true, castShadow: false, intensity: 6,
+          userData: { homeLightProbeFamily: family, glow: { opacity: 0.5 } } },
+      }));
+      const shadow = { light: { visible: true, castShadow: true,
+        userData: { homeLightProbeFamily: 'stairs' } } };
+      const list = [...sources, shadow];
+      expect(applyHomeBlenderLightProbe(list, mode)).toBe(count);
+      expect(list.filter((entry) => !entry.light.visible)).toHaveLength(count);
+      expect(list.slice(12, 14).every((entry) => entry.light.visible)).toBe(true);
+      expect(shadow.light.visible).toBe(true);
+      expect(list.every((entry) => entry.light.intensity === undefined || entry.light.intensity === 6))
+        .toBe(true);
+    }
+  });
+
   it('pair-fill mode requires BOTH flags and full LOD', () => {
     const pair = '?homeGpuProfile=1&homeLightProbe=wall-pair';
     expect(homeBlenderLightProbeMode(pair)).toBe('wall-pair');

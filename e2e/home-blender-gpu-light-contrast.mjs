@@ -3,6 +3,7 @@
 const LIGHT_OFF_MODES = new Set([
   'aux-off', 'aux-wall-off', 'aux-board-off', 'aux-stairs-off', 'aux-accent-off',
   'wall-pair',
+  'pair-aux-board-off', 'pair-aux-stairs-off', 'pair-aux-accent-off',
 ]);
 
 function median(numbers) {
@@ -13,11 +14,18 @@ function median(numbers) {
     : (sorted[midpoint - 1] + sorted[midpoint]) / 2;
 }
 
-export function summarizeHomeGpuLightContrast(visits, offMode) {
-  if (!LIGHT_OFF_MODES.has(offMode) || !Array.isArray(visits) || visits.length !== 4) {
-    throw new Error('Home GPU A/B/B/A requires four visits and a known light-off mode');
+export function summarizeHomeGpuLightContrast(visits, offMode, baselineMode = 'normal') {
+  const expectedBaseline = offMode.startsWith('pair-aux-') ? 'pair-normal' : 'normal';
+  if (!LIGHT_OFF_MODES.has(offMode)) {
+    throw new Error('Home GPU A/B/B/A requires a known light-off mode');
   }
-  const sequence = ['normal', offMode, offMode, 'normal'];
+  if (!Array.isArray(visits) || visits.length !== 4) {
+    throw new Error('Home GPU A/B/B/A requires four visits');
+  }
+  if (baselineMode !== expectedBaseline) {
+    throw new Error('Home GPU A/B/B/A requires a compatible baseline/off mode');
+  }
+  const sequence = [baselineMode, offMode, offMode, baselineMode];
   for (let index = 0; index < sequence.length; index += 1) {
     const visit = visits[index];
     if (!visit || visit.lightProbe !== sequence[index]) {

@@ -63,6 +63,26 @@ describe('physical Home GPU lighting contrast aggregator', () => {
     assert.equal(stable.stability.repeatRecommended, true);
   });
 
+  it('requires the actual production-pair A baseline for each new family', () => {
+    for (const family of ['board', 'stairs', 'accent']) {
+      const mode = `pair-aux-${family}-off`;
+      const visits = board.map((visit, index) => ({
+        ...visit, lightProbe: (index === 0 || index === 3) ? 'pair-normal' : mode,
+      }));
+      const result = summarizeHomeGpuLightContrast(visits, mode, 'pair-normal');
+      close(result.gpuMedianMs.normal, 28.605);
+      close(result.gpuMedianMs.auxOff, 25.68);
+      assert.throws(() => summarizeHomeGpuLightContrast(visits, mode),
+        /compatible baseline/);
+      assert.throws(() => summarizeHomeGpuLightContrast(visits, mode, 'normal'),
+        /compatible baseline/);
+      assert.throws(() => summarizeHomeGpuLightContrast(board, mode, 'pair-normal'),
+        /unexpected light mode/);
+      assert.throws(() => summarizeHomeGpuLightContrast(visits, 'aux-board-off', 'pair-normal'),
+        /compatible baseline/);
+    }
+  });
+
   it('supports legacy aux-off and every new family without special arithmetic', () => {
     for (const mode of ['aux-off', 'aux-wall-off', 'aux-board-off',
       'aux-stairs-off', 'aux-accent-off', 'wall-pair']) {

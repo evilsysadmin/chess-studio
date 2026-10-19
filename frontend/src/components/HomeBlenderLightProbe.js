@@ -10,6 +10,10 @@ export const HOME_BLENDER_LIGHT_PROBE_FAMILIES = Object.freeze({
 const DIAGNOSTIC_MODES = new Set([
   'normal', 'aux-off', 'aux-wall-off', 'aux-board-off',
   'aux-stairs-off', 'aux-accent-off', 'wall-pair',
+  // Explicitly profile the current production two-fill layout, not the
+  // historical four-point baseline used by existing A/B reports.
+  'pair-normal', 'pair-aux-board-off',
+  'pair-aux-stairs-off', 'pair-aux-accent-off',
 ]);
 
 export function homeBlenderLightProbeMode(search = '') {
@@ -27,7 +31,7 @@ export function homeBlenderWallTorchLayout(search = '') {
   const params = new URLSearchParams(String(search).replace(/^[?]/, ''));
   const mode = params.get('homeLightProbe');
   if (params.get('homeGpuProfile') === '1' && DIAGNOSTIC_MODES.has(mode)) {
-    return mode === 'wall-pair' ? 'pair' : 'legacy';
+    return mode === 'wall-pair' || mode.startsWith('pair-') ? 'pair' : 'legacy';
   }
   return params.get('homeWallTorches') === 'legacy' ? 'legacy' : 'pair';
 }
@@ -49,13 +53,19 @@ export function homeBlenderLightProbeLocksFullLod(search = '', initialLod = null
 // light lists. No flicker/power configuration or scene assets are mutated.
 export function applyHomeBlenderLightProbe(torches, mode) {
   if (!DIAGNOSTIC_MODES.has(mode) || mode === 'normal') return 0;
+  const pair = mode === 'wall-pair' || mode.startsWith('pair-');
   const family = mode === 'aux-off' ? null
-    : mode === 'wall-pair' ? 'wall' : mode.slice(4, -4);
+    : mode === 'wall-pair' || mode === 'pair-normal' ? 'wall'
+      : mode.startsWith('pair-aux-') ? mode.slice(9, -4) : mode.slice(4, -4);
   let disabled = 0;
   for (const entry of torches) {
     const light = entry?.light;
-    if (light && light.castShadow !== true
-      && (family === null || light.userData?.homeLightProbeFamily === family)) {
+    if (!light || light.castShadow === true) continue;
+    const lightFamily = light.userData?.homeLightProbeFamily;
+    const exclude = pair
+      ? lightFamily === 'wall' || (family !== 'wall' && lightFamily === family)
+      : family === null || lightFamily === family;
+    if (exclude) {
       light.visible = false;
       disabled += 1;
     }
@@ -64,10 +74,8 @@ export function applyHomeBlenderLightProbe(torches, mode) {
 }
 
 // Two gentle, wider-spread torch fills between the original four flames.
-// Diagnostic only: the four real torch Light objects are left in place
-// (hidden from shading) so their independent glow sprites keep flickering.
-// Do not promote the candidate as a production lighting policy without
-// actual WebGL screenshot review and repeat physical-GPU A/B data.
+// Production-approved in PR #5850; the original four shading lights remain
+// present for the exact legacy rollback and the flickering torch glow sprites.
 export function homeBlenderWallPairFillPlan(xs) {
   if (!Array.isArray(xs) || xs.length !== 4 || !xs.every(Number.isFinite)) {
     return [];
