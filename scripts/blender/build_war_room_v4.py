@@ -49,7 +49,9 @@ V4_WALL_END_DEG = 112.0
 V4_WALL_SEGMENT_COUNT = 19
 # Snap the entry to an authored wall bay so the door plane is truly tangent to
 # the same circular shell instead of looking like a freestanding prop.
-V4_ENTRY_THETA_DEG = -76.0
+# Further round the left tower perimeter: the teal service entrance must read
+# as an independent bay, not as a side panel glued to the ivory fireplace.
+V4_ENTRY_THETA_DEG = -95.0
 V4_ENTRY_DOOR_Z = 1.90
 
 # Hans' tower door: the teal leaf is its own runtime node, hinged on the jamb
@@ -61,19 +63,19 @@ V4_HANS_DOOR_OPEN_YAW = -1.45
 V4_HANS_DOOR_HALF = 0.88
 # The left armour guards the tower door from the player's side of it: in front
 # of the hearth it would stand on Hans' work spot and hide him from the camera.
-V4_HANS_LEFT_ARMOR_Y = -0.75
+V4_HANS_LEFT_ARMOR_Y = -4.20
 
 # Where Hans works (WarRoomHansStage.js). The hearth anchor sits on the left of
 # the fire mouth: the board dais covers the floor in front of its right half.
 V4_HANS_ANCHOR_PREFIX = "WR_ANCHOR_hans_"
 V4_HANS_ANCHORS = (
     ("WR_ANCHOR_hans_hearth", (-6.28, 3.05, 0.0)),
-    ("WR_ANCHOR_hans_door", (-7.82, 1.23, 0.0)),
+    ("WR_ANCHOR_hans_door", (-7.38, -1.37, 0.0)),
     ("WR_ANCHOR_hans_basket", (-6.42, 2.26, 0.0)),
     ("WR_ANCHOR_hans_tools", (-6.25, 2.23, 0.0)),
-    ("WR_ANCHOR_hans_corridor_0", (-7.20, 1.23, 0.0)),
-    ("WR_ANCHOR_hans_corridor_1", (-6.52, 1.25, 0.0)),
-    ("WR_ANCHOR_hans_corridor_2", (-6.40, 1.82, 0.0)),
+    ("WR_ANCHOR_hans_corridor_0", (-7.45, -0.53, 0.0)),
+    ("WR_ANCHOR_hans_corridor_1", (-7.30, 0.50, 0.0)),
+    ("WR_ANCHOR_hans_corridor_2", (-6.62, 1.76, 0.0)),
 )
 
 # The old fireplace overlapped the live 11.3 m board plinth by >1 m and
@@ -1478,8 +1480,8 @@ def validate_v4_hans_stage():
                         f"War Room v4 Hans cannot pass {obstacle}: gap={gap:.3f}m"
                         f" at ({px:.2f}, {py:.2f}), needs {V4_HANS_BODY_CLEARANCE_RADIUS:.2f}m"
                     )
-    # The armour (x -6.55) shares Hans' work lane; it must neither stand on his
-    # spot nor right in front of it, between him and the play camera.
+    # The armour remains in its own forward-left bay, away from the entrance,
+    # Hans' walkway and the fireplace work spot.
     if V4_HANS_LEFT_ARMOR_Y - 0.48 < work_y + 0.25 and V4_HANS_LEFT_ARMOR_Y + 0.48 > work_y - 1.6:
         raise RuntimeError("War Room v4 left armour blocks or hides Hans' hearth work spot")
 
