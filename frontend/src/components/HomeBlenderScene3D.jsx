@@ -1444,6 +1444,7 @@ function addRuntimeLights(scene, shadowsEnabled = true, ambientPeriod = 'day', d
     const dungeon = new THREE.PointLight(0xff5a18, 9, 6, 2);
     dungeon.position.set(6.42, -0.45, -1.05);
     dungeon.userData.homeLightProbeFamily = 'accent';
+    dungeon.userData.homeLightProbeAccent = 'dungeon';
     torches.push(dungeon);
 
     // Three more flames that light the Blender scene but not the runtime: the eight
@@ -1463,13 +1464,13 @@ function addRuntimeLights(scene, shadowsEnabled = true, ambientPeriod = 'day', d
     scene.add(boardPool.target);
     torches.push(boardPool);
 
-    for (const [color, intensity, distance, x, y, z, glowSize, probeFamily] of [
+    for (const [color, intensity, distance, x, y, z, glowSize, probeFamily, probeAccent] of [
       // The chandelier is the natural light over the board. At 3.6 it barely reached the
       // pieces (about 0.27 at the board after inverse-square falloff from 3.65 m up), so they
       // read dull; this level lifts them while its warm colour keeps the squares honest.
       [0xffa050, 16, 6.8, 0, 4.5, -2.2, 0, 'board'],
-      [0xff9040, 3.2, 3.4, -2.72, 1.9, -1.4, 0.55, 'accent'],
-      [0xff9648, 3.2, 3.6, -3.1, 1.5, -3.76, 0.55, 'accent'],
+      [0xff9040, 3.2, 3.4, -2.72, 1.9, -1.4, 0.55, 'accent', 'table'],
+      [0xff9648, 3.2, 3.6, -3.1, 1.5, -3.76, 0.55, 'accent', 'reading'],
       // The three lanterns on the profile stair's front rail: they give the step treads (in
       // shadow otherwise) a raking warm light, one per third of the flight.
       [0xff7a30, 3.0, 3.2, 5.59, 1.00, -0.28, 0.5, 'stairs'],
@@ -1479,6 +1480,9 @@ function addRuntimeLights(scene, shadowsEnabled = true, ambientPeriod = 'day', d
       const light = new THREE.PointLight(color, intensity, distance, 2);
       light.position.set(x, y, z);
       light.userData.homeLightProbeFamily = probeFamily;
+      // Diagnostic label only; production positions, brightness and animation
+      // are unchanged. Enables fail-closed, single-source GPU isolation.
+      if (probeAccent) light.userData.homeLightProbeAccent = probeAccent;
       if (glowSize) light.userData.glow = { size: glowSize, opacity: 0.5 };
       torches.push(light);
     }
