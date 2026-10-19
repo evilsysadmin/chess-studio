@@ -148,6 +148,11 @@ LANE_COMMANDS: dict[str, tuple[LaneCommand, ...]] = {
         LaneCommand('war-room-gpu-session-bootstrap.spec.js',
                     ('--workers=1', '--retries=0', '--max-failures=1', '--timeout=150000'),
                     canonical_critical=False),
+        # Real Home WebGL smoke proves that the profiler's measured draw
+        # submissions are attributed, rather than inferred from mesh census.
+        LaneCommand('home-3d-draw-census.spec.js',
+                    ('--workers=1', '--retries=0', '--max-failures=1', '--timeout=180000'),
+                    canonical_critical=False),
     ),
 }
 
