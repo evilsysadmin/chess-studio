@@ -23,6 +23,18 @@ const validCounts = (split) => {
     if (!group || !['castle', 'matthias', 'runtime'].every((family) =>
       Number.isSafeInteger(group[family]) && group[family] >= 0)) return false;
     if (group.castle + group.matthias + group.runtime !== split[`${phase}Calls`]) return false;
+    const hotspots = split.hotspots?.[phase];
+    if (!hotspots || !Number.isSafeInteger(hotspots.uniqueObjects)
+        || !Number.isSafeInteger(hotspots.otherCalls) || hotspots.otherCalls < 0
+        || !Array.isArray(hotspots.top) || hotspots.top.length > 12
+        || hotspots.uniqueObjects < hotspots.top.length) return false;
+    const shown = hotspots.top.reduce((sum, item) => {
+      if (!['castle', 'matthias', 'runtime'].includes(item.family)
+          || typeof item.name !== 'string' || !item.name
+          || !Number.isSafeInteger(item.calls) || item.calls <= 0) return NaN;
+      return sum + item.calls;
+    }, 0);
+    if (shown + hotspots.otherCalls !== split[`${phase}Calls`]) return false;
   }
   return true;
 };
