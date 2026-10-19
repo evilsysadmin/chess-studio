@@ -64,25 +64,41 @@ test('War Room V4 · Hans realmente atraviesa su nuevo pasillo en WebGL', async 
     // screenshots only show an empty service aisle and a Matthias dialogue card.
     const captures = [];
     const start = Date.now();
-    while (Date.now() - start < 6_000) {
+    // The first six seconds used to prove only the introductory 'fire-dimming'
+    // phase: a stationary but visible Hans could pass. Observe long enough for
+    // an actual walk along the door-to-hearth corridor, and require movement.
+    while (Date.now() - start < 28_000) {
       captures.push(await canvas.evaluate((node) => ({
         screen: node.dataset.warRoomHansScreen || '',
         route: node.dataset.warRoomHansRoute || '',
         phase: node.dataset.warRoomHansChoreographyPhase || '',
+        logicalX: Number(node.dataset.warRoomHansLogicalX),
         ndcX: Number(node.dataset.warRoomHansNdcX),
         ndcY: Number(node.dataset.warRoomHansNdcY),
         groundGap: Number(node.dataset.warRoomHansGroundGap),
       })));
-      await page.waitForTimeout(350);
+      await page.waitForTimeout(400);
+      const visible = captures.filter((item) => /^(onscreen|edge)$/.test(item.screen));
+      const xValues = visible.map((item) => item.logicalX).filter(Number.isFinite);
+      const traveled = xValues.length ? Math.max(...xValues) - Math.min(...xValues) : 0;
+      const differentPhases = new Set(visible.map((item) => item.phase)).size;
+      if (visible.length >= 10 && traveled >= 0.3 && differentPhases >= 2) break;
     }
-    expect(captures.filter((sample) => /^(onscreen|edge)$/.test(sample.screen)).length)
-      .toBeGreaterThan(2);
+    const visible = captures.filter((sample) => /^(onscreen|edge)$/.test(sample.screen));
+    expect(visible.length, 'Hans must remain visible while crossing the room')
+      .toBeGreaterThan(4);
     expect(captures.some((sample) => sample.route === 'stage-entry' || sample.route === 'stage-leave'))
       .toBe(true);
-    for (const sample of captures.filter((sample) => /^(onscreen|edge)$/.test(sample.screen))) {
+    const phases = [...new Set(visible.map((item) => item.phase))];
+    expect(phases.length, 'a stationary fire-dimming actor does not prove walking').toBeGreaterThan(1);
+    const lateralX = visible.map((item) => item.logicalX).filter(Number.isFinite);
+    const traveled = lateralX.length ? Math.max(...lateralX) - Math.min(...lateralX) : 0;
+    expect(traveled, 'Hans must actually traverse his authored V4 service aisle').toBeGreaterThanOrEqual(0.3);
+    for (const sample of visible) {
       expect(Number.isFinite(sample.ndcX) && Number.isFinite(sample.ndcY)).toBe(true);
       expect(Math.abs(sample.groundGap)).toBeLessThanOrEqual(0.02);
     }
+    console.log('V4_HANS_ROUTE_DISTANCE', JSON.stringify({traveled, phases, samples: captures.length}));
     // SwiftShader's browser compositor can stall for >30 seconds on a full
     // viewport screenshot while Hans is animating. Read the actual 3D canvas
     // instead; visual builds preserveDrawingBuffer and this image proves the
