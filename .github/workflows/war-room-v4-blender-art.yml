@@ -169,7 +169,7 @@ jobs:
       APP_VISUAL_ARTIFACT: '1'
       APP_VISUAL_WARROOM_VARIANTS: 'v4'
       APP_VISUAL_EXPECTED_WAR_ROOM_V4_REVISION: ${{ github.event.pull_request.head.sha }}
-      APP_VISUAL_AUTHORED_WAR_ROOM_V4_GLB: ${{ runner.temp }}/war-room-v4-authored/war-room-v4-shell.glb
+      APP_VISUAL_AUTHORED_WAR_ROOM_V4_GLB: ${{ github.workspace }}/.artifacts/war-room-v4-authored/war-room-v4-shell.glb
     steps:
       - uses: actions/checkout@v7
         with:
@@ -180,7 +180,7 @@ jobs:
       - uses: actions/download-artifact@v7
         with:
           name: war-room-v4-${{ github.event.pull_request.number }}
-          path: ${{ runner.temp }}/war-room-v4-authored
+          path: ${{ github.workspace }}/.artifacts/war-room-v4-authored
 
       - name: Verify exact V4 GLB handoff to browser
         run: |
