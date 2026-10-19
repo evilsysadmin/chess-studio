@@ -15,7 +15,7 @@ function firstFireGameIndex() {
 }
 
 test('War Room V4 · Hans realmente atraviesa su nuevo pasillo en WebGL', async () => {
-  test.setTimeout(420_000);
+  test.setTimeout(500_000);
   if (!REVISION) throw new Error('An exact V4 authored model revision is required');
   await mkdir(DIR, { recursive: true });
 
@@ -83,7 +83,7 @@ test('War Room V4 · Hans realmente atraviesa su nuevo pasillo en WebGL', async 
     // The real performance runs at ~0.54x speed. The old 30cm criterion in
     // fire-dimming could pass without ever reaching or leaving the hearth.
     // Observe actual WebGL frames throughout both full corridor traversals.
-    while (Date.now() - start < 120_000) {
+    while (Date.now() - start < 220_000) {
       const sample = await canvas.evaluate((node) => ({
         screen: node.dataset.warRoomHansScreen || '',
         route: node.dataset.warRoomHansRoute || '',
@@ -113,7 +113,8 @@ test('War Room V4 · Hans realmente atraviesa su nuevo pasillo en WebGL', async 
       }
       if (requiredPhases.every((phase) => captures.some((item) => item.phase === phase))
         && routeDisplacement(entering) >= 2.2
-        && routeDisplacement(leaving) >= 2.2
+        && routeDisplacement(leaving) >= 3.2
+        && leaving.some((item) => item.doorOpen >= 0.65)
         && leaving.length >= 8
         && snapshots.size === 3) break;
       await page.waitForTimeout(350);
@@ -129,6 +130,7 @@ test('War Room V4 · Hans realmente atraviesa su nuevo pasillo en WebGL', async 
       Math.hypot(item.ndcX - first.ndcX, item.ndcY - first.ndcY))) : 0;
     console.log('V4_HANS_FULL_ROUTE', JSON.stringify({
       entryTravel, exitTravel, screenTravel, phases,
+      exitDoorOpened: leaving.some((item) => item.doorOpen >= 0.65),
       entrySamples: entering.length, exitSamples: leaving.length,
       snapshots: [...snapshots], totalSamples: captures.length,
     }));
@@ -145,7 +147,8 @@ test('War Room V4 · Hans realmente atraviesa su nuevo pasillo en WebGL', async 
     expect(entering.length, 'Must observe the actual door-to-hearth path').toBeGreaterThan(8);
     expect(leaving.length, 'Must observe the actual hearth-to-door path').toBeGreaterThanOrEqual(8);
     expect(entryTravel, 'Hans must walk at least 2.2m into the room').toBeGreaterThanOrEqual(2.2);
-    expect(exitTravel, 'Hans must walk at least 2.2m back to the exit').toBeGreaterThanOrEqual(2.2);
+    expect(exitTravel, 'Hans must walk at least 3.2m back toward the door').toBeGreaterThanOrEqual(3.2);
+    expect(leaving.some((item) => item.doorOpen >= 0.65), 'Exit door must visibly open as Hans approaches').toBe(true);
     expect(screenTravel, 'Hans must visibly cross the rendered room').toBeGreaterThanOrEqual(0.015);
     expect([...snapshots].sort(), 'Entry, hearth and exit need actual WebGL PNG evidence')
       .toEqual(['at-hearth', 'entering', 'leaving']);
