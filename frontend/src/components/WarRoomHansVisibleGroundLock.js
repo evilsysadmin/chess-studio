@@ -10,6 +10,10 @@ const SURFACE_NAMES = Object.freeze([
   'war-room-command-carpet-bed',
   'war-room-castle-floor-slab',
   'WR3_ARM_floor',
+  // V4 Blender exposes a single authored floor node. Without it the visible
+  // ground-lock has no surface, Hans lacks ground-gap telemetry and his shoes
+  // may float between animation phases.
+  'WR4_OBS_floor',
 ]);
 const SURFACE_PREFIXES = Object.freeze([
   'WR3_ARM_flagstones_',

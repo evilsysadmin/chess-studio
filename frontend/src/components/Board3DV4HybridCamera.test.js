@@ -58,20 +58,21 @@ describe('War Room V4 · cámara híbrida, sala y recorrido de Hans', () => {
         .toBeGreaterThan(Math.atan2(WAR_ROOM_CANONICAL_PLAY_PITCH.cameraY, WAR_ROOM_CANONICAL_PLAY_PITCH.cameraZ));
       assertBoardWithinCanvas(v4);
 
-      // Real V4 GLB stage anchors (Blender x,z,-y, root lifted -1.12m):
-      // the authored teal service door and fire mouth must remain in the
-      // camera's visible interior, including the top of Hans' physical actor.
+      // V4's real Blender door and hearth anchors (x,z,-y, room root -1.12).
+      // A previous stale test asserted an obsolete door location and allowed
+      // the actual teal doorway to slip off the edge of the desktop capture.
       const sign = whiteSide ? 1 : -1;
-      const hansPoints = [
-        [-7.82, -1.12, -1.23], // door floor
-        [-7.82, 1.2, -1.23],   // Hans head at the door
-        [-6.15, -1.12, -3.95], // hearth floor
-        [-6.15, 1.2, -3.95],   // Hans at the fireplace
+      const visiblePoints = [
+        [-7.38, -1.12, 1.37], // actual doorway threshold, not old -7.82/1.23
+        [-7.38, 1.2, 1.37],   // Hans' head entering by the door
+        [-7.38, 2.65, 1.37],  // top of the full teal portal
+        [-6.28, -1.12, -3.05], // hearth working aisle
+        [-6.28, 1.2, -3.05],  // Hans standing by the fireplace
       ];
-      for (const [x, y, z] of hansPoints) {
+      for (const [x, y, z] of visiblePoints) {
         const ndc = new THREE.Vector3(x * sign, y, z * sign).project(v4);
-        expect(Math.abs(ndc.x), `Hans x at ${x}, ${z}`).toBeLessThan(0.93);
-        expect(Math.abs(ndc.y), `Hans y at ${x}, ${z}`).toBeLessThan(0.92);
+        expect(Math.abs(ndc.x), `V4 door/Hans outside frame at ${x},${z}`).toBeLessThan(0.9);
+        expect(Math.abs(ndc.y), `V4 door/Hans vertical crop at ${x},${z}`).toBeLessThan(0.93);
       }
     });
   }
