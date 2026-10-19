@@ -293,15 +293,15 @@ async function inspectActualRenderer(canvas) {
       // as zero geometry. These are static inventories, NOT rendered draws.
       sceneInventory: {
         ...Object.fromEntries([
-        ['authoredGlbMeshes', 'warRoomShadowCasterCandidates'],
-        ['v3StaticTorchBatches', 'warRoomV3StaticTorchBatches'],
-        ['shadowCasterBudget', 'warRoomShadowCasterBudget'],
-        ['activeShadowCasters', 'warRoomShadowCasterCount'],
-      ].map(([label, key]) => {
-        const value = element.dataset[key];
-        return [label, value !== undefined && /^[0-9]+$/.test(value)
-          ? Number(value) : null];
-      ])),
+          ['authoredGlbMeshes', 'warRoomShadowCasterCandidates'],
+          ['v3StaticTorchBatches', 'warRoomV3StaticTorchBatches'],
+          ['shadowCasterBudget', 'warRoomShadowCasterBudget'],
+          ['activeShadowCasters', 'warRoomShadowCasterCount'],
+        ].map(([label, key]) => {
+          const value = element.dataset[key];
+          return [label, value !== undefined && /^[0-9]+$/.test(value)
+            ? Number(value) : null];
+        })),
         shadowWarmup: element.dataset.warRoomShadowWarmup || null,
       },
     };
