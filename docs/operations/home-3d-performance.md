@@ -104,6 +104,23 @@ The script fails closed if it cannot prove the requested renderer family from th
 For meaningful before/after numbers: check out a known baseline SHA, rebuild, run in hardware mode, preserve the JSON; then build the candidate SHA and repeat on the **same workstation**, with the same NVIDIA/AMD driver, Chromium build, power state, viewport, time-of-day and network conditions. Repeat the experiment more than once. Compare median GPU time where available and CPU/RAF p95; do not interpret Home's intentionally throttled animated draws/sec as monitor FPS. An opt-in software run is for compatibility diagnosis, not proof of real-GPU gains.
 
 
+## Production-pair GPU lighting baseline — after PR #5850
+
+The canonical full-LOD Home now ships the **two-fill wall-torch layout** (4 original wall shader lights hidden, 2 wider fills added, independent torch glows preserved). Older lighting-family experiments explicitly used a **four-torch** baseline; reusing their `normal` comparator would overstate or misattribute subsequent gains to the remaining families.
+
+To benchmark the cost of the board, stairs or accent lights **on the current production-lit scene**, on the same native Intel hardware:
+
+```bash
+make home-gpu-light-probe \
+  HOME_GPU_NVIDIA_PRIME=0 HOME_GPU_EXPECT_VENDOR=intel \
+  HOME_GPU_AMBIENT=night HOME_GPU_BASELINE=production HOME_GPU_LIGHT_GROUP=stairs
+# Repeat with HOME_GPU_LIGHT_GROUP=accent or board after reviewing the report.
+```
+
+The physical A/B/B/A sequence is `pair-normal / pair-aux-stairs-off / pair-aux-stairs-off / pair-normal` (or the selected family), and **both** variants retain the two production wall fills. Baseline: four legacy wall shading lights hidden, two fills present. B: the same four hidden **plus exactly** 3 stairs, 3 accent or 2 board light contributions hidden. The harness demands the unchanged hardware renderer fingerprint, full LOD, night ambience, Matthias station, shadow key, scene geometry and fresh asynchronous GPU samples. It emits `.artifacts/home-gpu-benchmark/home-3d-light-probe-stairs-production-hardware.json` (or `-accent-` / `-board-`) so earlier reports are not overwritten. The JSON includes `baselineLayout: "production"` and `baselineMode: "pair-normal"`; the pure summary helper **rejects mixed** legacy and production mode labels.
+
+**The old benchmark is intentionally still the default:** `HOME_GPU_BASELINE=legacy` uses its original four-wall-light baseline and original filenames. `HOME_GPU_BASELINE=production` supports only `board`, `stairs`, `accent`. Other production-group requests **fail rather than silently comparing a different layout**. All these modes require both opt-in query flags and exist for GPU profiling alone; no production UI or lights change. A reduction from switching off lights is **not** acceptable visual design or a measured FPS gain. Only after repeat GPU evidence and reviewed runtime PNGs should we explore a visual alternative in a separate Draft PR with rollback.
+
 ## Local auxiliary-light GPU isolation (A/B/B/A)
 
 The Home always retains its authored lighting in normal play. For GPU diagnosis only, `?homeGpuProfile=1&homeLightProbe=aux-off` excludes **auxiliary non-shadow-casting torches, stairs lamps, chandelier and board spotlights** from Three.js light lists; the shadow-casting key, fireplace point lights, atmospheric/fill/environment light, and additive glow sprites are preserved. The experiment **intentionally changes the rendered lighting**: it is not an acceptable production look and must never be enabled as a performance policy without separate visual approval. The query flag is ignored unless `homeGpuProfile=1` is also present. The read-only canvas dataset exposes `homeBlenderLightProbe` and `homeBlenderLightProbeDisabled` for validation.
