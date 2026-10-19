@@ -51,6 +51,34 @@ the observed value instead of assuming that. A pass's draw count is not GPU
 milliseconds; this census identifies **which subsequent render experiment** to
 measure on physical hardware.
 
+### One-command physical GPU draw census (no lighting removal)
+
+After the real-browser CI gate is green, run the fixed three-cold-visit
+**normal production Home** without toggling any lights. The command below
+requires an actual hardware WebGL renderer, a fresh asynchronous GPU timer
+sample in each visit, and a valid per-pass/per-family draw census. It fails
+instead of writing a misleading zero when Three cannot attribute draws:
+
+```bash
+make home-gpu-draw-census HOME_GPU_NVIDIA_PRIME=0 HOME_GPU_EXPECT_VENDOR=intel
+```
+
+Use `HOME_GPU_NVIDIA_PRIME=1 HOME_GPU_EXPECT_VENDOR=nvidia` when validating
+NVIDIA PRIME instead. Every run rebuilds the local frontend and uses the same
+real Home GLB plus Matthias. It writes
+`.artifacts/home-gpu-benchmark/home-3d-hardware.json`: look for
+`medians.mainDrawCalls`, `shadowDrawCalls` and exact family contributions
+`mainCastleDrawCalls`, `mainMatthiasDrawCalls`, `mainRuntimeDrawCalls`,
+plus the corresponding `shadow*` fields. Inspect the per-visit
+`drawPass` and `firstFrameDrawPass` as well.
+
+These figures count actual **draw submissions**, not triangles-per-object,
+GPU-duration-per-family, or FPS. The timer still measures the entire
+`renderer.render`, not the individual pass GPU durations. No historical
+unprofiled Home JSON can be used to assign these counts retrospectively.
+Do not compare a different browser, driver, scene LOD or time of day
+without collecting a new matching baseline.
+
 ### Real browser gate for the draw-pass census
 
 The ordinary core-smoke CI lane runs `e2e/home-3d-draw-census.spec.js`
