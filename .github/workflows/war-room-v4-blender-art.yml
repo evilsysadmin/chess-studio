@@ -5,6 +5,7 @@ on:
     paths:
       - 'scripts/blender/build_war_room_premium.py'
       - 'scripts/blender/build_war_room_v4.py'
+      - 'scripts/blender/render_war_room_v4_hybrid_preview.py'
       - 'scripts/blender/configure_eevee_premium.py'
       - 'scripts/blender/publish_war_room_v4.py'
       - '.github/workflows/war-room-v4-blender-art.yml'
@@ -14,6 +15,7 @@ on:
     paths:
       - 'scripts/blender/build_war_room_premium.py'
       - 'scripts/blender/build_war_room_v4.py'
+      - 'scripts/blender/render_war_room_v4_hybrid_preview.py'
       - 'scripts/blender/configure_eevee_premium.py'
       - 'scripts/blender/publish_war_room_v4.py'
       - '.github/workflows/war-room-v4-blender-art.yml'
@@ -53,6 +55,24 @@ jobs:
             --glb /tmp/war-room-v4/war-room-v4-shell.glb \
             --preview /tmp/war-room-v4/war-room-v4-preview.png \
             --manifest /tmp/war-room-v4/war-room-v4-manifest.json
+
+      # This second render reads the Blender scene only. The hero PNG and
+      # published/exported GLB above are not touched; it is an optical A/B.
+      - name: Validate V4 hybrid desktop camera contract
+        run: python3 -S scripts/blender/render_war_room_v4_hybrid_preview.py --check-contract
+
+      - name: Render V4 hybrid optical comparison from authored scene
+        env:
+          LIBGL_ALWAYS_SOFTWARE: '1'
+        run: |
+          set -euo pipefail
+          blender --background /tmp/war-room-v4/war-room-v4.blend \
+            --python-exit-code 1 \
+            --python scripts/blender/render_war_room_v4_hybrid_preview.py -- \
+            --preview /tmp/war-room-v4/war-room-v4-preview-hybrid.png \
+            --report /tmp/war-room-v4/war-room-v4-preview-hybrid-camera.json
+          test -s /tmp/war-room-v4/war-room-v4-preview-hybrid.png
+          test -s /tmp/war-room-v4/war-room-v4-preview-hybrid-camera.json
 
       - name: Validate generated artifact envelope
         run: |
@@ -101,6 +121,12 @@ jobs:
 
           image = Image.open(preview).convert('RGB')
           assert image.size == (1600, 900), image.size
+          hybrid = Image.open(root / 'war-room-v4-preview-hybrid.png').convert('RGB')
+          assert hybrid.size == image.size, hybrid.size
+          optics = json.loads((root / 'war-room-v4-preview-hybrid-camera.json').read_text())
+          assert optics['experiment'] == 'war-room-v4-hybrid-blender-camera-preview-only'
+          assert optics['canonical_hero_preserved'] and optics['glb_unmodified']
+          assert 44 < optics['camera']['pitch_deg'] < 52
           assert max(channel[1] for channel in image.getextrema()) > 80
           data = json.loads(manifest.read_text())
           assert data['contract'] == 'war-room-golden-observatory-v4'
