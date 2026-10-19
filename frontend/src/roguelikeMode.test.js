@@ -165,6 +165,33 @@ describe('máquina de estados del intento', () => {
     expect(run.perks).toContain(option.id);
   });
 
+  it('rechaza perks del catálogo que no estaban entre las tres cartas de Torre', () => {
+    let run = markFloorCleared(markBattleStarted(startNewRun('oferta-real')));
+    const offered = rewardOptionsForFloor(run.seed, run.floor);
+    const hidden = ROGUELIKE_PERKS.find((perk) => !offered.some((card) => card.id === perk.id));
+    expect(hidden).toBeDefined();
+    const before = loadRun();
+    expect(chooseRunReward(run, hidden.id)).toEqual(run);
+    expect(loadRun()).toEqual(before);
+    expect(chooseRunReward(run, 'fake-perk')).toEqual(run);
+    run = chooseRunReward(run, offered[0].id);
+    expect(run.perks).toEqual([offered[0].id]);
+    expect(chooseRunReward(run, hidden.id)).toEqual(run);
+    expect(advanceFloor(run).floor).toBe(2);
+  });
+
+  it('valida las tres cartas de un piso infinito sin perder un perk legítimo', () => {
+    const run = markFloorCleared(markBattleStarted({
+      ...startNewRun('infinito-oferta'), floor: 11, mode: 'endless',
+    }));
+    const offered = rewardOptionsForFloor(run.seed, 11);
+    const hidden = ROGUELIKE_PERKS.find((perk) => !offered.some((card) => card.id === perk.id));
+    expect(chooseRunReward(run, hidden.id)).toEqual(run);
+    const selected = chooseRunReward(run, offered[1].id);
+    expect(selected).toMatchObject({ floor: 11, mode: 'endless', rewardChosenForFloor: 11, perks: [offered[1].id] });
+    expect(advanceFloor(selected)).toMatchObject({ floor: 12, phase: 'battle', perks: [offered[1].id] });
+  });
+
   it('no permite cobrar dos recompensas por el mismo piso', () => {
     let run = startNewRun('una-sola');
     run = markBattleStarted(run);

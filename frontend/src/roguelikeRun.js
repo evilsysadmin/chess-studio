@@ -1,6 +1,6 @@
 import { STORAGE_LOCAL, getStorageItem, readJsonStorage } from './safeStorage.js';
 import { setProfileStorageItem, removeProfileStorageItem } from './profileKeys.js';
-import { perkById } from './roguelikePerks.js';
+import { perkById, rewardOptionsForFloor } from './roguelikePerks.js';
 import { loadCombatHistory } from './combatHistory.js';
 import { adaptiveCombatDifficulty } from './combatAdaptiveDifficulty.js';
 
@@ -86,6 +86,9 @@ export function markFloorCleared(run) {
 export function chooseRunReward(run, perkId) {
   if (!run?.inRun || run.phase !== 'cleared' || !perkById(perkId)) return run;
   if (run.rewardChosenForFloor === run.floor) return run;
+  // A valid catalogue perk is not necessarily among the three cards dealt
+  // for this seed and floor. Enforce the deterministic offer in the domain.
+  if (!rewardOptionsForFloor(run.seed, run.floor).some((perk) => perk.id === perkId)) return run;
   return saveRun({
     ...run,
     perks: [...(run.perks || []), perkId],
