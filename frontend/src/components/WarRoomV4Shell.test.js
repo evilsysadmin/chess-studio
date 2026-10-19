@@ -13,7 +13,7 @@ import { installWarRoomV3FireAnimation } from './WarRoomV3Fire.js';
 describe('War Room v4 runtime shell', () => {
   it('reuses the exact byte-identical V4 immutable model across builds', () => {
     const expected = warRoomVariantRuntimeModelUrl('v4', { buildSha: 'abc123' });
-    expect(expected).toBe('https://assets.chess-studio.shadowops.dpdns.org/war-room/v4/runtime/war-room-v4-shell-c94904e122e110f6.glb');
+    expect(expected).toBe('https://assets.chess-studio.shadowops.dpdns.org/war-room/v4/runtime/war-room-v4-shell-34237727aef95835.glb');
     expect(WAR_ROOM_V4_RUNTIME_MODEL_URL).not.toBe(WAR_ROOM_V3_RUNTIME_MODEL_URL);
     expect(WAR_ROOM_V4_RUNTIME_MODEL_URL).toBe(expected);
     expect(warRoomV4ModelUrl({ buildSha: 'abc123' })).toBe(expected);

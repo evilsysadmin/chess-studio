@@ -112,7 +112,7 @@ describe('War Room staging variant', () => {
     expect(WAR_ROOM_VARIANTS.map(({ id }) => id)).toEqual(['classic', 'v2', 'v3', 'v4']);
     expect(warRoomVariantDefinition('v4').shell).toBe('blender');
     expect(warRoomVariantRuntimeModelUrl('v4', { buildSha: 'abc123' }))
-      .toBe('https://assets.chess-studio.shadowops.dpdns.org/war-room/v4/runtime/war-room-v4-shell-c94904e122e110f6.glb');
+      .toBe('https://assets.chess-studio.shadowops.dpdns.org/war-room/v4/runtime/war-room-v4-shell-34237727aef95835.glb');
     expect(warRoomVariantDefinition('classic').shell).toBe('procedural');
     expect(warRoomVariantDefinition('v2').shell).toBe('blender');
     expect(warRoomVariantDefinition('v3').shell).toBe('blender');
