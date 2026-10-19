@@ -468,6 +468,14 @@ test('Home 3D physical GPU benchmark · three visits or opt-in light A/B/B/A', a
     }));
     return;
   }
+  if (requireDrawCensus && !lightProbe) {
+    const reference = visits[0];
+    for (const row of visits.slice(1)) {
+      for (const field of ['actual', 'vendor', 'rendererFingerprint', 'lod', 'shadows', 'ambient', 'matthiasStation', 'canvasWidth', 'canvasHeight']) {
+        expect(row[field]).toEqual(reference[field]);
+      }
+    }
+  }
   const summary = {
     schema: 2,
     surface: 'Home Blender 3D',
