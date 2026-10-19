@@ -1443,15 +1443,16 @@ def validate_v4_hans_stage():
     # The closing frame belongs to the stationary alcove; it must stay in
     # the same authored plane as the sealed leaf, not float at the outer arch.
     scene_objects = bpy.context.scene.objects
+    expected_closed_angle = math.radians(-V4_ENTRY_THETA_DEG + V4_ENTRY_VISUAL_SPLAY_DEG)
     for side in (-1, 1):
         stop = scene_objects.get(f"WR4_OBS_entry_closed_stop_{side}")
-        if stop is None or abs(stop.rotation_euler.z - door.rotation_euler.z) > 1e-5:
+        if stop is None or abs(stop.rotation_euler.z - expected_closed_angle) > 1e-5:
             raise RuntimeError("War Room v4 inner closing jamb lost its splayed plane")
     head = scene_objects.get("WR4_OBS_entry_closed_head")
     strike = scene_objects.get("WR4_OBS_entry_closed_strike")
     if head is None or strike is None:
         raise RuntimeError("War Room v4 service door lost its closing head or brass keeper")
-    if abs(head.rotation_euler.z - door.rotation_euler.z) > 1e-5:
+    if abs(head.rotation_euler.z - expected_closed_angle) > 1e-5:
         raise RuntimeError("War Room v4 closing head is not aligned to the closed leaf")
 
     theta = math.radians(V4_ENTRY_THETA_DEG)
