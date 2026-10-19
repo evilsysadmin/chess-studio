@@ -3,15 +3,16 @@
 .combat-battle-screen .combat-mate-reveal {
   position: fixed;
   z-index: 150;
-  top: clamp(4rem, 19dvh, 12rem);
-  left: 50%;
-  transform: translateX(-50%);
-  width: min(27rem, calc(100vw - 1.5rem));
+  /* Leave the center of the War Room clear: the final board is the reward. */
+  top: clamp(4.5rem, 13vh, 8rem);
+  left: clamp(.7rem, 1.5vw, 1.4rem);
+  transform: none;
+  width: min(20rem, calc(100vw - 1.5rem));
   display: grid;
-  justify-items: center;
-  gap: .55rem;
-  padding: clamp(1.2rem, 3vw, 2.2rem);
-  text-align: center;
+  justify-items: start;
+  gap: .4rem;
+  padding: clamp(.85rem, 2vw, 1.4rem);
+  text-align: left;
   color: #f7eedb;
   border: 1px solid rgba(221, 188, 112, .58);
   border-radius: 18px;
@@ -27,7 +28,7 @@
 .combat-battle-screen .combat-mate-reveal h2 {
   margin: .15rem 0 0;
   color: #f6d59b;
-  font: 800 clamp(2.05rem, 5vw, 3.3rem)/1.05 var(--font-display, serif);
+  font: 800 clamp(2.05rem, 3.4vw, 2.7rem)/1.05 var(--font-display, serif);
   letter-spacing: .095em;
   text-shadow: 0 2px 22px rgba(255, 191, 101, .22);
 }
@@ -43,7 +44,7 @@
 .combat-battle-screen .combat-mate-next {
   min-height: 48px;
   margin-top: .55rem;
-  width: min(100%, 17rem);
+  width: 100%;
 }
 .combat-debrief .combat-debrief-story {
   padding: clamp(1rem, 3vw, 1.8rem);
@@ -84,8 +85,29 @@
 .combat-debrief .combat-debrief-score-details {
   margin-block: .8rem;
 }
-@media (max-width: 620px) {
-  .combat-battle-screen .combat-mate-reveal { top: 17dvh; padding: 1.1rem; }
+@media (max-width: 900px) and (max-height: 470px) {
+  .combat-battle-screen .combat-mate-reveal {
+    top: 3.4rem;
+    left: .5rem;
+    width: min(13rem, 30vw);
+    padding: .7rem;
+    gap: .25rem;
+  }
+  .combat-battle-screen .combat-mate-reveal h2 { font-size: 1.9rem; }
+  .combat-battle-screen .combat-mate-reveal p { font-size: .82rem; line-height: 1.25; }
+  .combat-battle-screen .combat-mate-kicker { font-size: .52rem; letter-spacing: .1em; }
+  .combat-battle-screen .combat-mate-aftermath { font-size: .62rem; }
+  .combat-battle-screen .combat-mate-next { margin-top: .15rem; min-height: 44px; }
+}
+@media (max-width: 620px) and (min-height: 471px) {
+  .combat-battle-screen .combat-mate-reveal {
+    top: auto;
+    right: .6rem;
+    bottom: calc(3.75rem + env(safe-area-inset-bottom, 0px));
+    left: .6rem;
+    width: auto;
+    padding: 1rem;
+  }
   .combat-debrief-story > p { font-size: .81rem; }
 }
 @media (prefers-reduced-motion: reduce) {

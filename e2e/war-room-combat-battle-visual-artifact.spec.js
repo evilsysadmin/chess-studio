@@ -232,10 +232,21 @@ async function openRealCampaignMate(page) {
   return reveal;
 }
 
+async function expectMateRevealLeavesBoardCenterClear(page, reveal) {
+  const bounds = await reveal.boundingBox();
+  const viewport = page.viewportSize();
+  expect(bounds).not.toBeNull();
+  expect(viewport).not.toBeNull();
+  // The results card should sit in the side scenery, not cover the mating pieces.
+  expect(bounds.x + bounds.width).toBeLessThan(viewport.width * .36);
+  expect(bounds.y).toBeGreaterThan(40);
+}
+
 test('Combat mate · 1440x900 keeps the War Room until the debrief CTA', async ({ page }) => {
   test.setTimeout(100_000);
   await page.setViewportSize({ width: 1440, height: 900 });
   const reveal = await openRealCampaignMate(page);
+  await expectMateRevealLeavesBoardCenterClear(page, reveal);
   await mkdir(ARTIFACT_DIR, { recursive: true });
   await captureWarRoomFrame(page, ARTIFACT_DIR + '/combat-checkmate-desktop-1440x900.png');
   await reveal.getByRole('button', { name: /Ver debriefing/ }).click();
@@ -251,6 +262,7 @@ test('Combat mate · landscape 844x390 and portrait debrief 390x844', async ({ p
   test.setTimeout(100_000);
   await page.setViewportSize({ width: 844, height: 390 });
   const reveal = await openRealCampaignMate(page);
+  await expectMateRevealLeavesBoardCenterClear(page, reveal);
   await mkdir(ARTIFACT_DIR, { recursive: true });
   await captureWarRoomFrame(page, ARTIFACT_DIR + '/combat-checkmate-landscape-844x390.png');
   await reveal.getByRole('button', { name: /Ver debriefing/ }).click();
