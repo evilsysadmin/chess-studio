@@ -1432,22 +1432,40 @@ test('staging live · auth real → War Room v2 → recovery 3D → jugada real'
     await expect(page.getByRole('button', { name: 'Cambiar apariencia y piezas del tablero', exact: true })).toBeVisible({ timeout: 30_000 });
     await expect(page.locator('.square[aria-label^="Casilla e2,"]')).toBeVisible();
 
+    const moveUrl = `${STAGING_API_URL}/games/${gameId}/move`;
+    let releaseMoveResponse;
+    const moveResponseGate = new Promise((resolve) => { releaseMoveResponse = resolve; });
+    // Keep the single REAL backend POST and its response, but hold delivery to
+    // the browser until we have seen the optimistic move awaiting confirmation.
+    // This removes timing races without mocking CPU play or accepting stale UI.
+    await page.route(moveUrl, async (route) => {
+      if (route.request().method() !== 'POST') return route.continue();
+      const upstream = await route.fetch();
+      await moveResponseGate;
+      await route.fulfill({ response: upstream });
+    });
     const moveResponsePromise = page.waitForResponse((response) => {
       const url = new URL(response.url());
       return response.request().method() === 'POST'
-        && Boolean(gameId)
-        && url.origin + url.pathname === `${STAGING_API_URL}/games/${gameId}/move`;
+        && url.origin + url.pathname === moveUrl;
     }, { timeout: 60_000 });
-    await clickBoardMove(page, 'e2', 'e4');
-    // HTTP 200 alone does not prove the CPU reply was actually presented.
-    // Observe Matthias thinking and the authoritative return to the human turn.
-    await expect(gameStatus(page).getByText('La CPU está pensando…', { exact: true })).toBeVisible({ timeout: 10_000 });
+    try {
+      await clickBoardMove(page, 'e2', 'e4');
+      await expect(gameStatus(page).getByText('Confirmando jugada…', { exact: true }))
+        .toBeVisible({ timeout: 10_000 });
+    } finally {
+      releaseMoveResponse();
+    }
     const moveResponse = await moveResponsePromise;
+    await page.unroute(moveUrl);
     expect(moveResponse.status()).toBe(200);
     const moved = await moveResponse.json();
     expect(Array.isArray(moved.history)).toBe(true);
-    expect(moved.history.length).toBeGreaterThanOrEqual(1);
-    await expect(gameStatus(page).getByText('Tu turno', { exact: true })).toBeVisible({ timeout: 30_000 });
+    expect(moved.history.length).toBeGreaterThanOrEqual(2);
+    expect(moved.lastMove?.by, 'el backend debe confirmar también una jugada real de Matthias').toBe('cpu');
+    // The authoritative CPU reply must restore the human turn, not just return HTTP 200.
+    await expect(gameStatus(page).getByText('Tu turno', { exact: true }))
+      .toBeVisible({ timeout: 30_000 });
     phase('move-and-cpu-reply');
 
     await leaveCurrentGameThroughUi(page);
