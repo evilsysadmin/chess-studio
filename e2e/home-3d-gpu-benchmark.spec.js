@@ -9,8 +9,13 @@ import { summarizeHomeGpuLightContrast } from './home-blender-gpu-light-contrast
 const requested = process.env.CHESS_HOME_GPU_MODE;
 const lightProbe = process.env.CHESS_HOME_GPU_LIGHT_PROBE === '1';
 const lightProbeFamily = String(process.env.CHESS_HOME_GPU_LIGHT_GROUP || 'all').trim().toLowerCase();
-const lightFamilyCounts = Object.freeze({ all: 12, wall: 4, board: 2, stairs: 3, accent: 3 });
-const lightOffMode = lightProbeFamily === 'all' ? 'aux-off' : `aux-${lightProbeFamily}-off`;
+const lightFamilyCounts = Object.freeze({
+  all: 12, wall: 4, board: 2, stairs: 3, accent: 3,
+  'wall-pair': 4, // original torches disabled, two wider fills added
+});
+const lightOffMode = lightProbeFamily === 'all' ? 'aux-off'
+  : lightProbeFamily === 'wall-pair' ? 'wall-pair'
+    : `aux-${lightProbeFamily}-off`;
 const expectedVendor = (process.env.CHESS_HOME_GPU_EXPECT_VENDOR || '').trim().toLowerCase();
 // Fix the in-browser local hour only in explicitly opt-in lighting trials.
 // Otherwise morning/night comparisons measure different source lighting.
@@ -60,9 +65,12 @@ async function openRealHome(page, lightMode = 'normal') {
   });
   // Mark BOTH variants as a controlled trial: otherwise only the B branch
   // would hold full LOD while the baseline could automatically degrade.
-  const query = lightProbe
-    ? `./?homeGpuProfile=1&homeLightProbe=${lightMode}`
-    : './?homeGpuProfile=1';
+  // Capture the true production path separately from locked-LOD A/B.
+  // These two modes do not enable GPU profiling or override lighting flags.
+  const query = lightProbe && lightMode === 'production' ? './'
+    : lightProbe && lightMode === 'legacy-rollback' ? './?homeWallTorches=legacy'
+      : lightProbe ? `./?homeGpuProfile=1&homeLightProbe=${lightMode}`
+        : './?homeGpuProfile=1';
   await page.goto(query, { waitUntil: 'domcontentloaded' });
   await page.getByLabel('Usuario').fill('e2e');
   const password = page.getByLabel('Contraseña');
@@ -136,6 +144,7 @@ async function readRealCanvas(castle) {
       lightProbe: d.homeBlenderLightProbe || null,
       lightProbeLod: d.homeBlenderLightProbeLod || null,
       auxiliaryLightsDisabled: num('homeBlenderLightProbeDisabled'),
+      auxiliaryLightsAdded: num('homeBlenderLightProbeAdded'),
       matthiasActor: d.homeMatthiasActor || 'missing',
       matthiasStation: d.homeMatthiasStation || 'missing',
       ambient: d.homeBlenderAmbient || null, rendererFingerprint,
@@ -166,7 +175,7 @@ test('Home 3D physical GPU benchmark · three visits or opt-in light A/B/B/A', a
     throw new Error('CHESS_HOME_GPU_LIGHT_PROBE=1 requires CHESS_HOME_GPU_MODE=hardware');
   }
   if (lightProbe && !Object.hasOwn(lightFamilyCounts, lightProbeFamily)) {
-    throw new Error('Unknown CHESS_HOME_GPU_LIGHT_GROUP: choose all, wall, board, stairs, or accent');
+    throw new Error('Unknown CHESS_HOME_GPU_LIGHT_GROUP: choose all, wall, board, stairs, accent, or wall-pair');
   }
   if (lightProbe && !Object.hasOwn(LIGHT_PROBE_AMBIENT_HOUR, lightProbeAmbient)) {
     throw new Error('Unknown CHESS_HOME_GPU_AMBIENT: choose dawn, day, dusk, or night');
@@ -260,6 +269,13 @@ test('Home 3D physical GPU benchmark · three visits or opt-in light A/B/B/A', a
         expect(row.shadows, 'Both variants must keep the key shadow pass').toBe('enabled');
         const expectedDisabled = sequence[index] === 'normal'
           ? 0 : lightFamilyCounts[lightProbeFamily];
+        const expectedAdded = lightProbeFamily === 'wall-pair'
+          && sequence[index] !== 'normal' ? 2 : 0;
+        expect(row.auxiliaryLightsAdded,
+          'Only the wall-pair experimental branch may add two fill lights')
+          .toBe(expectedAdded);
+        expect(snapshots.every((snapshot) => snapshot.auxiliaryLightsAdded === expectedAdded),
+          'No snapshots may change the number of experimental fill lights').toBe(true);
         expect(row.auxiliaryLightsDisabled,
           'The probe must exclude exactly the intended family, not unrelated lights')
           .toBe(expectedDisabled);
@@ -280,9 +296,54 @@ test('Home 3D physical GPU benchmark · three visits or opt-in light A/B/B/A', a
         expect(row.gpuSamplesMs.length, 'Driver did not return a valid async GPU timing query')
           .toBeGreaterThan(0);
       }
+      // Real full-resolution screenshots from the SAME physical WebGL canvas,
+      // only for the opt-in wall-pair trial. Never use CI SwiftShader or a
+      // synthetic concept illustration as visual acceptance.
+      if (lightProbe && lightProbeFamily === 'wall-pair' && index < 2) {
+        await mkdir(artifactDir, { recursive: true });
+        const name = index === 0 ? 'baseline' : 'two-fill-candidate';
+        await castle.screenshot({
+          path: `${artifactDir}/home-3d-wall-pair-${name}-hardware.png`,
+        });
+      }
       visits.push(row);
     } finally {
       await context.close();
+    }
+  }
+  if (lightProbe && lightProbeFamily === 'wall-pair') {
+    // Verify and capture actual player-facing production and rollback entry:
+    // neither URL has the profiling flags used by the A/B lighting trial.
+    for (const { mode, layout, screenshot } of [
+      { mode: 'production', layout: 'pair', screenshot: 'production-default' },
+      { mode: 'legacy-rollback', layout: 'legacy', screenshot: 'production-legacy-rollback' },
+    ]) {
+      const context = await browser.newContext({
+        baseURL,
+        viewport: { width: 1440, height: 900 },
+        deviceScaleFactor: 1,
+        reducedMotion: 'no-preference',
+        serviceWorkers: 'block',
+      });
+      try {
+        const page = await context.newPage();
+        const castle = await openRealHome(page, mode);
+        await expect(castle, 'Production and rollback must use the selected lights')
+          .toHaveAttribute('data-home-wall-torches', layout);
+        const snapshot = await readRealCanvas(castle);
+        expect(snapshot.actual, 'Visual proof must use physical GPU WebGL').toBe('hardware');
+        if (expectedVendor) expect(snapshot.vendor).toBe(expectedVendor);
+        expect(snapshot.ambient).toBe(lightProbeAmbient);
+        expect(snapshot.matthiasActor).toBe('ready');
+        expect(snapshot.lod).toBe('full');
+        // This viewport is the same as the user-approved A/B canvas.
+        await mkdir(artifactDir, { recursive: true });
+        await castle.screenshot({
+          path: `${artifactDir}/home-3d-wall-pair-${screenshot}-hardware.png`,
+        });
+      } finally {
+        await context.close();
+      }
     }
   }
   if (lightProbe) {
@@ -314,6 +375,7 @@ test('Home 3D physical GPU benchmark · three visits or opt-in light A/B/B/A', a
       lod: reference.lod,
       shadows: reference.shadows,
       auxiliaryLightsExcluded: visits[1].auxiliaryLightsDisabled,
+      auxiliaryLightsAdded: visits[1].auxiliaryLightsAdded,
       // Contrast between *different rendered scenes*, not an FPS estimate
       // or a recommendation to remove lights in production.
       ...contrast,
@@ -328,6 +390,7 @@ test('Home 3D physical GPU benchmark · three visits or opt-in light A/B/B/A', a
     console.log('HOME_3D_LIGHT_PROBE ' + JSON.stringify({
       sequence, lightFamily: lightProbeFamily, ambient: result.benchmarkAmbient,
       auxiliaryLightsExcluded: result.auxiliaryLightsExcluded,
+      auxiliaryLightsAdded: result.auxiliaryLightsAdded,
       stability: result.stability,
       gpuMedianMs: result.gpuMedianMs,
       gpuDifferenceMs: result.gpuDifferenceMs,
