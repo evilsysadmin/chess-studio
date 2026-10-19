@@ -12,11 +12,15 @@ export function installWarRoomShadowPassProbe(renderer) {
   let valid = true;
   const wrapped = function (...args) {
     const before = counts.calls;
+    let succeeded = false;
     try {
-      return original.apply(this, args);
+      const result = original.apply(this, args);
+      succeeded = true;
+      return result;
     } finally {
       const after = counts.calls;
-      if (!Number.isSafeInteger(before) || !Number.isSafeInteger(after) || after < before) {
+      if (!succeeded || !Number.isSafeInteger(before) || before < 0
+          || !Number.isSafeInteger(after) || after < before) {
         valid = false;
       } else {
         shadowCalls += after - before;
