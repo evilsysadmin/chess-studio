@@ -4,6 +4,8 @@ const LIGHT_OFF_MODES = new Set([
   'aux-off', 'aux-wall-off', 'aux-board-off', 'aux-stairs-off', 'aux-accent-off',
   'wall-pair',
   'pair-aux-board-off', 'pair-aux-stairs-off', 'pair-aux-accent-off',
+  'pair-aux-accent-dungeon-off', 'pair-aux-accent-table-off',
+  'pair-aux-accent-reading-off',
 ]);
 
 function median(numbers) {

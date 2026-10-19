@@ -63,6 +63,26 @@ describe('physical Home GPU lighting contrast aggregator', () => {
     assert.equal(stable.stability.repeatRecommended, true);
   });
 
+  it('accepts each isolated accent against pair-normal, but refuses missing/mixed baselines', () => {
+    for (const target of ['dungeon', 'table', 'reading']) {
+      const mode = `pair-aux-accent-${target}-off`;
+      const visits = board.map((visit, i) => ({
+        ...visit, lightProbe: i === 0 || i === 3 ? 'pair-normal' : mode,
+      }));
+      const result = summarizeHomeGpuLightContrast(visits, mode, 'pair-normal');
+      close(result.gpuMedianMs.normal, 28.605);
+      close(result.gpuMedianMs.auxOff, 25.68);
+      assert.deepEqual(result.stability.pairedSignsAgree, true);
+      assert.throws(() => summarizeHomeGpuLightContrast(visits, mode), /compatible baseline/);
+      assert.throws(() => summarizeHomeGpuLightContrast(board, mode, 'pair-normal'),
+        /unexpected light mode/);
+      assert.throws(() => summarizeHomeGpuLightContrast(visits, 'pair-aux-accent-off', 'pair-normal'),
+        /unexpected light mode/);
+    }
+    assert.throws(() => summarizeHomeGpuLightContrast(board,
+      'pair-aux-accent-unknown-off', 'pair-normal'), /known light-off mode/);
+  });
+
   it('requires the actual production-pair A baseline for each new family', () => {
     for (const family of ['board', 'stairs', 'accent']) {
       const mode = `pair-aux-${family}-off`;
