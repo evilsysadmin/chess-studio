@@ -65,9 +65,12 @@ async function openRealHome(page, lightMode = 'normal') {
   });
   // Mark BOTH variants as a controlled trial: otherwise only the B branch
   // would hold full LOD while the baseline could automatically degrade.
-  const query = lightProbe
-    ? `./?homeGpuProfile=1&homeLightProbe=${lightMode}`
-    : './?homeGpuProfile=1';
+  // Capture the true production path separately from locked-LOD A/B.
+  // These two modes do not enable GPU profiling or override lighting flags.
+  const query = lightProbe && lightMode === 'production' ? './'
+    : lightProbe && lightMode === 'legacy-rollback' ? './?homeWallTorches=legacy'
+      : lightProbe ? `./?homeGpuProfile=1&homeLightProbe=${lightMode}`
+        : './?homeGpuProfile=1';
   await page.goto(query, { waitUntil: 'domcontentloaded' });
   await page.getByLabel('Usuario').fill('e2e');
   const password = page.getByLabel('Contraseña');
@@ -306,6 +309,41 @@ test('Home 3D physical GPU benchmark · three visits or opt-in light A/B/B/A', a
       visits.push(row);
     } finally {
       await context.close();
+    }
+  }
+  if (lightProbe && lightProbeFamily === 'wall-pair') {
+    // Verify and capture actual player-facing production and rollback entry:
+    // neither URL has the profiling flags used by the A/B lighting trial.
+    for (const { mode, layout, screenshot } of [
+      { mode: 'production', layout: 'pair', screenshot: 'production-default' },
+      { mode: 'legacy-rollback', layout: 'legacy', screenshot: 'production-legacy-rollback' },
+    ]) {
+      const context = await browser.newContext({
+        baseURL,
+        viewport: { width: 1440, height: 900 },
+        deviceScaleFactor: 1,
+        reducedMotion: 'no-preference',
+        serviceWorkers: 'block',
+      });
+      try {
+        const page = await context.newPage();
+        const castle = await openRealHome(page, mode);
+        await expect(castle, 'Production and rollback must use the selected lights')
+          .toHaveAttribute('data-home-wall-torches', layout);
+        const snapshot = await readRealCanvas(castle);
+        expect(snapshot.actual, 'Visual proof must use physical GPU WebGL').toBe('hardware');
+        if (expectedVendor) expect(snapshot.vendor).toBe(expectedVendor);
+        expect(snapshot.ambient).toBe(lightProbeAmbient);
+        expect(snapshot.matthiasActor).toBe('ready');
+        expect(snapshot.lod).toBe('full');
+        // This viewport is the same as the user-approved A/B canvas.
+        await mkdir(artifactDir, { recursive: true });
+        await castle.screenshot({
+          path: `${artifactDir}/home-3d-wall-pair-${screenshot}-hardware.png`,
+        });
+      } finally {
+        await context.close();
+      }
     }
   }
   if (lightProbe) {
