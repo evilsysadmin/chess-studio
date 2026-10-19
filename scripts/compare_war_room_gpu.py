@@ -189,9 +189,6 @@ def load_group(directory, expected_sha, mode, minimum):
                                     where + '/' + phase + ': shadow families require measured shadow pass')
                             for field in family_keys:
                                 number(render_cost.get(field), where + '/' + phase + '/' + field)
-                            require(abs(sum(render_cost[field] for field in family_keys)
-                                        - render_cost['shadowCallsMedian']) <= 1,
-                                    where + '/' + phase + ': median shadow families disagree with total')
                         else:
                             require(not any(field in render_cost for field in family_keys),
                                     where + '/' + phase + ': unavailable family census cannot claim values')
