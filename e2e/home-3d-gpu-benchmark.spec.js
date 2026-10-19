@@ -9,13 +9,20 @@ import { summarizeHomeGpuLightContrast } from './home-blender-gpu-light-contrast
 const requested = process.env.CHESS_HOME_GPU_MODE;
 const lightProbe = process.env.CHESS_HOME_GPU_LIGHT_PROBE === '1';
 const lightProbeFamily = String(process.env.CHESS_HOME_GPU_LIGHT_GROUP || 'all').trim().toLowerCase();
+// Legacy is intentionally the default to keep historical A/B reports
+// comparable. Choose production explicitly for the current two-fill Home.
+const lightBaseline = String(process.env.CHESS_HOME_GPU_BASELINE || 'legacy')
+  .trim().toLowerCase();
+const productionBaseline = lightBaseline === 'production';
+const baseMode = productionBaseline ? 'pair-normal' : 'normal';
 const lightFamilyCounts = Object.freeze({
   all: 12, wall: 4, board: 2, stairs: 3, accent: 3,
   'wall-pair': 4, // original torches disabled, two wider fills added
 });
-const lightOffMode = lightProbeFamily === 'all' ? 'aux-off'
-  : lightProbeFamily === 'wall-pair' ? 'wall-pair'
-    : `aux-${lightProbeFamily}-off`;
+const lightOffMode = productionBaseline ? `pair-aux-${lightProbeFamily}-off`
+  : lightProbeFamily === 'all' ? 'aux-off'
+    : lightProbeFamily === 'wall-pair' ? 'wall-pair'
+      : `aux-${lightProbeFamily}-off`;
 const expectedVendor = (process.env.CHESS_HOME_GPU_EXPECT_VENDOR || '').trim().toLowerCase();
 // Fix the in-browser local hour only in explicitly opt-in lighting trials.
 // Otherwise morning/night comparisons measure different source lighting.
@@ -174,8 +181,14 @@ test('Home 3D physical GPU benchmark · three visits or opt-in light A/B/B/A', a
   if (lightProbe && requested !== 'hardware') {
     throw new Error('CHESS_HOME_GPU_LIGHT_PROBE=1 requires CHESS_HOME_GPU_MODE=hardware');
   }
+  if (lightProbe && !['legacy', 'production'].includes(lightBaseline)) {
+    throw new Error('CHESS_HOME_GPU_BASELINE must be legacy or production');
+  }
   if (lightProbe && !Object.hasOwn(lightFamilyCounts, lightProbeFamily)) {
     throw new Error('Unknown CHESS_HOME_GPU_LIGHT_GROUP: choose all, wall, board, stairs, accent, or wall-pair');
+  }
+  if (lightProbe && productionBaseline && !['board', 'stairs', 'accent'].includes(lightProbeFamily)) {
+    throw new Error('Production two-fill GPU baseline supports only board, stairs and accent groups');
   }
   if (lightProbe && !Object.hasOwn(LIGHT_PROBE_AMBIENT_HOUR, lightProbeAmbient)) {
     throw new Error('Unknown CHESS_HOME_GPU_AMBIENT: choose dawn, day, dusk, or night');
@@ -187,7 +200,7 @@ test('Home 3D physical GPU benchmark · three visits or opt-in light A/B/B/A', a
   // Alternating order counters warmup/drift and always uses a fresh browser
   // context, identical build, camera, viewport and ambient period.
   const sequence = lightProbe
-    ? ['normal', lightOffMode, lightOffMode, 'normal']
+    ? [baseMode, lightOffMode, lightOffMode, baseMode]
     : ['normal', 'normal', 'normal'];
   for (let index = 0; index < sequence.length; index += 1) {
     const context = await browser.newContext({
@@ -267,12 +280,13 @@ test('Home 3D physical GPU benchmark · three visits or opt-in light A/B/B/A', a
         'Every GPU sample must be from the same full LOD source').toBe(true);
         expect(row.lod, 'Compare fully lit full-LOD Home only').toBe('full');
         expect(row.shadows, 'Both variants must keep the key shadow pass').toBe('enabled');
-        const expectedDisabled = sequence[index] === 'normal'
-          ? 0 : lightFamilyCounts[lightProbeFamily];
-        const expectedAdded = lightProbeFamily === 'wall-pair'
-          && sequence[index] !== 'normal' ? 2 : 0;
+        const expectedDisabled = productionBaseline
+          ? 4 + (sequence[index] === baseMode ? 0 : lightFamilyCounts[lightProbeFamily])
+          : sequence[index] === 'normal' ? 0 : lightFamilyCounts[lightProbeFamily];
+        const expectedAdded = productionBaseline ? 2
+          : lightProbeFamily === 'wall-pair' && sequence[index] !== baseMode ? 2 : 0;
         expect(row.auxiliaryLightsAdded,
-          'Only the wall-pair experimental branch may add two fill lights')
+          'Two wall fills must exist in BOTH production-baseline variants')
           .toBe(expectedAdded);
         expect(snapshots.every((snapshot) => snapshot.auxiliaryLightsAdded === expectedAdded),
           'No snapshots may change the number of experimental fill lights').toBe(true);
@@ -359,11 +373,13 @@ test('Home 3D physical GPU benchmark · three visits or opt-in light A/B/B/A', a
     // Fail closed if a family-labelled B condition is absent, or if any
     // aggregate timing is null/NaN. JS arithmetic silently coerces null to
     // zero and previously fabricated a 100% saving for aux-board-off.
-    const contrast = summarizeHomeGpuLightContrast(visits, lightOffMode);
+    const contrast = summarizeHomeGpuLightContrast(visits, lightOffMode, baseMode);
     const result = {
       schema: 1,
       surface: 'Home Blender 3D auxiliary light isolation',
       lightFamily: lightProbeFamily,
+      baselineLayout: lightBaseline,
+      baselineMode: baseMode,
       benchmarkAmbient: lightProbeAmbient,
       revision: process.env.CHESS_HOME_GPU_REVISION || null,
       mode: requested,
@@ -382,13 +398,15 @@ test('Home 3D physical GPU benchmark · three visits or opt-in light A/B/B/A', a
       visits,
     };
     await mkdir(artifactDir, { recursive: true });
-    const reportName = lightProbeFamily === 'all'
-      ? 'home-3d-light-probe-hardware.json'
-      : `home-3d-light-probe-${lightProbeFamily}-hardware.json`;
+    const reportName = productionBaseline
+      ? `home-3d-light-probe-${lightProbeFamily}-production-hardware.json`
+      : lightProbeFamily === 'all' ? 'home-3d-light-probe-hardware.json'
+        : `home-3d-light-probe-${lightProbeFamily}-hardware.json`;
     await writeFile(`${artifactDir}/${reportName}`,
       `${JSON.stringify(result, null, 2)}\n`, 'utf8');
     console.log('HOME_3D_LIGHT_PROBE ' + JSON.stringify({
-      sequence, lightFamily: lightProbeFamily, ambient: result.benchmarkAmbient,
+      sequence, lightFamily: lightProbeFamily, baselineLayout: lightBaseline,
+      ambient: result.benchmarkAmbient,
       auxiliaryLightsExcluded: result.auxiliaryLightsExcluded,
       auxiliaryLightsAdded: result.auxiliaryLightsAdded,
       stability: result.stability,
