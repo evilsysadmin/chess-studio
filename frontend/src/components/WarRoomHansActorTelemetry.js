@@ -30,6 +30,10 @@ export function installWarRoomHansActorTelemetry(root) {
       const state = getWarRoomHansRouteState(actor);
       setDatasetIfChanged(canvas, 'warRoomHansRoute', state.route || 'none');
       setDatasetIfChanged(canvas, 'warRoomHansLogicalX', Number(state.logicalX).toFixed(3));
+      // Stage-entry on V4 moves mostly in Z before it turns toward the hearth.
+      // Sampling only X misdiagnosed a real doorway walk as a stationary actor.
+      // This is a local canvas diagnostic, never sent in admin presence.
+      setDatasetIfChanged(canvas, 'warRoomHansSceneZ', Number(actor.hans.position?.z || 0).toFixed(3));
       setDatasetIfChanged(canvas, 'warRoomHansDoorOpen', Number(actor.hans.userData?.warRoomHansDoorOpen || 0).toFixed(3));
       setDatasetIfChanged(canvas, 'warRoomHansChoreographyPhase', driver.userData?.warRoomHansPhase || 'none');
       setDatasetIfChanged(canvas, 'warRoomHansActiveTask', actor.hans.userData?.warRoomHansActiveTask || 'none');
