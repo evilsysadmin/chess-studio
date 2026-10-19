@@ -205,16 +205,17 @@ test('Campaña · F5 tras JAQUE MATE recupera el informe sin volver a pagar la v
 });
 
 async function openTowerMate(page, seed) {
-  await mockApi(page);
+  // The profile mock is Mongo-authoritative: raw localStorage writes are
+  // overwritten during F5 bootstrap. Seed the real persisted profile instead.
+  await mockApi(page, { profileSeed: {
+    'chess-study-roguelike-run': JSON.stringify({
+      floor: 1, inRun: true, phase: 'fighting', seed, mode: 'tower', perks: [], rewardChosenForFloor: null,
+    }),
+  } });
   await login(page);
-  // Enter the real Combat route before restoring an existing Tower run:
-  // the Home mode tile changes when a resumable run exists.
   const entry = buttonWithVisibleText(page, 'Combat Chess · Campaña');
   await expect(entry).toBeVisible();
   await entry.click();
-  await page.evaluate((id) => localStorage.setItem('chess-study-roguelike-run', JSON.stringify({
-    floor: 1, inRun: true, phase: 'fighting', seed: id, mode: 'tower', perks: [], rewardChosenForFloor: null,
-  })), seed);
   // Restore a genuine in-progress Tower battle using its validated FEN and
   // persistent encounter identity, not Campaign's separate preparation CTA.
   await seedCombatBattleSnapshot(page, { sessionId: 'run:' + seed + ':1', fen: MATE_START_FEN });

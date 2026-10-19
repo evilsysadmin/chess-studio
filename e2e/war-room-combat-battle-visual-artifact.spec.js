@@ -291,15 +291,16 @@ test('Combat mate · landscape 844x390 and portrait debrief 390x844', async ({ p
 test('Torre · F5 revela informe postcombate en escritorio y móvil', async ({ page }) => {
   test.setTimeout(130_000);
   await page.setViewportSize({ width: 1440, height: 900 });
-  await mockApi(page);
+  await mockApi(page, { profileSeed: {
+    'chess-study-roguelike-run': JSON.stringify({
+      floor: 1, inRun: true, phase: 'fighting', seed: 'tower-f5-visual',
+      mode: 'tower', perks: [], rewardChosenForFloor: null,
+    }),
+  } });
   await login(page);
   const entry = buttonWithVisibleText(page, 'Combat Chess · Campaña');
   await expect(entry).toBeVisible();
   await entry.click();
-  await page.evaluate(() => localStorage.setItem('chess-study-roguelike-run', JSON.stringify({
-    floor: 1, inRun: true, phase: 'fighting', seed: 'tower-f5-visual', mode: 'tower', perks: [],
-    rewardChosenForFloor: null,
-  })));
   // Restore a genuine in-progress Tower battle using its validated FEN and
   // persistent encounter identity, not Campaign's separate preparation CTA.
   await seedCombatBattleSnapshot(page, { sessionId: 'run:tower-f5-visual:1', fen: MATE_CAPTURE_FEN });
