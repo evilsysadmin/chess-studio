@@ -180,6 +180,10 @@ test('War Room · selección y jugadas legales sobreviven 2D→3D y el teclado u
   await expect(board3d).toHaveAttribute('data-board3d-focused', 'e2');
   const focusedAnnouncement = page.getByRole('status', { name: 'Casilla enfocada en 3D' });
   await expect(focusedAnnouncement).toHaveText('Casilla e2: peón blanco. Seleccionada.');
+  await canvas.press('Escape');
+  await expect(board3d).toHaveAttribute('data-board3d-selected', '');
+  await expect(board3d).toHaveAttribute('data-board3d-legal-target-count', '0');
+  await expect(focusedAnnouncement).toHaveText('Casilla e2: peón blanco.');
   await canvas.press('Enter');
   await expect(board3d).toHaveAttribute('data-board3d-selected', '');
   await expect(board3d).toHaveAttribute('data-board3d-legal-target-count', '0');
