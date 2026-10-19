@@ -110,6 +110,18 @@
   }
   .combat-debrief-story > p { font-size: .81rem; }
 }
+/* In the post-battle report on narrow screens the music dock occupies its
+ * own row instead of floating over the campaign heading. Music keeps playing. */
+@media (max-width: 620px) {
+  body:has(.combat-debrief-story) .global-music-dock {
+    position: relative;
+    top: auto;
+    left: auto;
+    z-index: 30;
+    margin: max(.5rem, env(safe-area-inset-top)) 0 .55rem max(.5rem, env(safe-area-inset-left));
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .combat-battle-screen .combat-mate-reveal { backdrop-filter: none; }
 }

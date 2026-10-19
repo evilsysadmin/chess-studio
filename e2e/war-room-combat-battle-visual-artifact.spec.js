@@ -271,6 +271,16 @@ test('Combat mate · landscape 844x390 and portrait debrief 390x844', async ({ p
   await expect(debrief).toBeVisible({ timeout: 20_000 });
   await expect(debrief.getByRole('heading', { name: 'VICTORIA' })).toBeVisible();
   await expect(debrief.locator('.combat-debrief-score-details')).not.toHaveAttribute('open');
+  // The global player remains available but must not sit on the campaign title.
+  const dock = page.locator('.global-music-dock');
+  const heading = page.getByRole('heading', { name: 'Campaña de Combat Chess' });
+  await expect(dock).toBeVisible();
+  await expect(heading).toBeVisible();
+  const dockBounds = await dock.boundingBox();
+  const headingBounds = await heading.boundingBox();
+  expect(dockBounds).not.toBeNull();
+  expect(headingBounds).not.toBeNull();
+  expect(dockBounds.y + dockBounds.height, 'Music dock must finish before the campaign heading').toBeLessThanOrEqual(headingBounds.y + 1);
   await debrief.scrollIntoViewIfNeeded();
   expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1)).toBe(false);
   await captureWarRoomFrame(page, ARTIFACT_DIR + '/combat-debrief-story-portrait-390x844.png');
