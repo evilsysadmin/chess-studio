@@ -30,9 +30,7 @@ describe('War Room opt-in shadow-pass draw census', () => {
     const probe = installWarRoomShadowPassProbe({ shadowMap, info: { render: info } });
     probe.begin();
     expect(() => shadowMap.render()).toThrow('depth pass failed');
-    expect(probe.sample(0)).toEqual({
-      shadowCalls: 0, mainCalls: 0, shadowPasses: 1,
-    });
+    expect(probe.sample(0)).toBeNull();
     info.calls = -10;
     shadowMap.render = function () { return 'external override'; };
     probe.dispose();
