@@ -1304,29 +1304,29 @@ def build_tower_entry(static, palette):
     # Put a continuous CLOSED-PLANE rebate on the inner jamb, directly behind
     # the leaf edges, instead of rotating the playable doorway again. The
     # narrow fixed lips never join the dynamic leaf and do not obstruct its
-    # inward swing; their brass finish makes the closed seam legible.
+    # inward swing; bring them to the visible room-side frame to make the
+    # closed outline legible instead of hiding trim behind the door.
     for side in (-1, 1):
-        stop_point = center + tangent * (side * (V4_HANS_DOOR_HALF + 0.075)) + radial * 0.16
+        stop_point = center + tangent * (side * (V4_HANS_DOOR_HALF + 0.145)) - radial * 0.155
         stop = base.cube(
             f"WR4_OBS_entry_closed_stop_{side}",
             (stop_point.x, stop_point.y, door_z),
-            (0.077, 0.045, 1.82),
+            (0.125, 0.055, 1.82),
             palette["copper"], static, bevel=0.020,
         )
         stop.rotation_euler.z = angle
-    head_point = center + radial * 0.16
+    head_point = center - radial * 0.155
     head_stop = base.cube(
         "WR4_OBS_entry_closed_head",
         (head_point.x, head_point.y, door_z + 1.90),
-        (V4_HANS_DOOR_HALF + 0.15, 0.045, 0.115),
+        (V4_HANS_DOOR_HALF + 0.17, 0.055, 0.115),
         palette["copper"], static, bevel=0.020,
     )
     head_stop.rotation_euler.z = angle
 
-    # The little fixed brass keeper is aligned to a bolt on the movable
-    # leaf. When Hans opens the door the bolt travels with it; the keeper
-    # stays in the jamb. This visually resolves the *closed* side of the leaf
-    # without sealing or changing the service aisle.
+    # The fixed brass keeper is deliberately subtle: the existing handle is
+    # already part of the moving leaf. A protruding ornamental bolt made the
+    # closed door read even more like an open gate in the play camera.
     strike_point = center + tangent * (V4_HANS_DOOR_HALF + 0.085) - radial * 0.17
     strike = base.cube(
         "WR4_OBS_entry_closed_strike",
@@ -1357,15 +1357,7 @@ def build_tower_entry(static, palette):
         "WR4_OBS_entry_handle", handle_center, handle_center - tangent * 0.34,
         0.045, palette["brass"], static, vertices=28,
     )
-    bolt_point = front + tangent * (V4_HANS_DOOR_HALF - 0.16) + Vector((0, 0, -0.30))
-    bolt = base.cube(
-        "WR4_OBS_entry_latch_bolt",
-        (bolt_point.x, bolt_point.y, bolt_point.z),
-        (0.145, 0.028, 0.025),
-        palette["brass"], static, bevel=0.012,
-    )
-    bolt.rotation_euler.z = angle
-    build_hans_door(static, palette, (door, inset, porthole, ring, hub, handle, bolt),
+    build_hans_door(static, palette, (door, inset, porthole, ring, hub, handle),
                     center, tangent, radial)
 
     rug_center = Vector((center.x, center.y, 0.105)) - radial * 1.10
