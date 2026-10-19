@@ -121,7 +121,11 @@ test('Combat battle · desktop lives inside the generic War Room', async ({ page
   await expect(toggleHistory).toHaveAttribute('aria-expanded', 'false');
   await toggleHistory.click();
   await expect(toggleHistory).toHaveAttribute('aria-expanded', 'true');
-  await expect(page.getByRole('region', { name: 'Historial de la batalla' })).toBeVisible();
+  const historyBody = page.getByRole('region', { name: 'Historial de la batalla' });
+  await expect(historyBody).toBeVisible();
+  await expect(historyBody).toBeInViewport({ ratio: 0.7 });
+  const historyBounds = await historyBody.boundingBox();
+  expect(historyBounds?.height || 0, 'Expanded history must occupy visible space').toBeGreaterThan(65);
   await mkdir(ARTIFACT_DIR, { recursive: true });
   await captureWarRoomFrame(page, ARTIFACT_DIR + '/combat-battle-history-open-desktop-1440x900.png');
   await toggleHistory.click();
@@ -184,7 +188,11 @@ test.describe('Combat battle · Android', () => {
     await expect(toggleHistory).toBeVisible();
     await toggleHistory.click();
     await expect(toggleHistory).toHaveAttribute('aria-expanded', 'true');
-    await expect(page.getByRole('region', { name: 'Historial de la batalla' })).toBeVisible();
+    const historyBody = page.getByRole('region', { name: 'Historial de la batalla' });
+    await expect(historyBody).toBeVisible();
+    await expect(historyBody).toBeInViewport({ ratio: 0.7 });
+    const historyBounds = await historyBody.boundingBox();
+    expect(historyBounds?.height || 0, 'Landscape history must unfold visibly').toBeGreaterThan(65);
     await mkdir(ARTIFACT_DIR, { recursive: true });
     await captureWarRoomFrame(page, ARTIFACT_DIR + '/combat-battle-history-open-landscape-844x390.png');
     await toggleHistory.click();
