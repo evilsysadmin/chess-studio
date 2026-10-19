@@ -1286,12 +1286,12 @@ def build_tower_entry(static, palette):
         point = center + tangent * (side * 1.02)
         jamb = base.cube(
             f"WR4_OBS_entry_jamb_{side}", (point.x, point.y, 2.02),
-            (0.105, 0.20, 1.98), palette["copper"], static, bevel=0.055,
+            (0.105, 0.20, 1.98), palette["walnut_dark"], static, bevel=0.055,
         )
         jamb.rotation_euler.z = angle
     lintel = base.cube(
         "WR4_OBS_entry_lintel", (center.x, center.y, 4.00),
-        (1.12, 0.20, 0.11), palette["copper"], static, bevel=0.055,
+        (1.12, 0.20, 0.11), palette["walnut_dark"], static, bevel=0.055,
     )
     lintel.rotation_euler.z = angle
     threshold = base.cube(
@@ -1305,14 +1305,15 @@ def build_tower_entry(static, palette):
     # the leaf edges, instead of rotating the playable doorway again. The
     # narrow fixed lips never join the dynamic leaf and do not obstruct its
     # inward swing; bring them to the visible room-side frame to make the
-    # closed outline legible instead of hiding trim behind the door.
+    # closed outline legible; use aged dark brass so the jamb does not look
+    # like a second teal door standing open behind the moving leaf.
     for side in (-1, 1):
         stop_point = center + tangent * (side * (V4_HANS_DOOR_HALF + 0.145)) - radial * 0.155
         stop = base.cube(
             f"WR4_OBS_entry_closed_stop_{side}",
             (stop_point.x, stop_point.y, door_z),
             (0.125, 0.055, 1.82),
-            palette["copper"], static, bevel=0.020,
+            palette["brass_dark"], static, bevel=0.020,
         )
         stop.rotation_euler.z = angle
     head_point = center - radial * 0.155
@@ -1320,7 +1321,7 @@ def build_tower_entry(static, palette):
         "WR4_OBS_entry_closed_head",
         (head_point.x, head_point.y, door_z + 1.90),
         (V4_HANS_DOOR_HALF + 0.17, 0.055, 0.115),
-        palette["copper"], static, bevel=0.020,
+        palette["brass_dark"], static, bevel=0.020,
     )
     head_stop.rotation_euler.z = angle
 
