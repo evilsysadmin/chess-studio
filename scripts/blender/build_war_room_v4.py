@@ -52,9 +52,10 @@ V4_WALL_SEGMENT_COUNT = 19
 # Further round the left tower perimeter: the teal service entrance must read
 # as an independent bay, not as a side panel glued to the ivory fireplace.
 V4_ENTRY_THETA_DEG = -95.0
-# Keep the doorway visible in the board-forward V4 camera without cropping the
-# board. Shallow timber wall returns join the portal to the curved wall.
-V4_ENTRY_RECESS_METERS = 0.82
+# The teal door must coincide with Hans' authored doorway anchor rather than
+# hiding half a metre beyond it at the left edge of the board-forward camera.
+# Timber wall returns connect the deeper alcove to the curved exterior shell.
+V4_ENTRY_RECESS_METERS = 1.30
 V4_ENTRY_DOOR_Z = 1.90
 
 # Hans' tower door: the teal leaf is its own runtime node, hinged on the jamb
@@ -1390,6 +1391,18 @@ def validate_v4_hans_stage():
     if open_dir.dot(-radial) < 0.95:
         raise RuntimeError(f"War Room v4 Hans door does not open into the room: {tuple(open_dir)}")
     anchors = dict(V4_HANS_ANCHORS)
+    # On the previous iteration the door mesh was ~0.49m outside its Hans
+    # anchor: the actor could enter but half the portal vanished offscreen.
+    # Validate the real hinge/door center against that authored walk anchor.
+    expected_door = wall - radial * V4_ENTRY_RECESS_METERS
+    door_point = Vector((*anchors["WR_ANCHOR_hans_door"][:2], 0.0))
+    if (door_point - expected_door).length > 0.055:
+        raise RuntimeError(
+            f"War Room v4 door center drifted from Hans entrance: "
+            f"{(door_point - expected_door).length:.3f}m"
+        )
+    if not 1.20 <= V4_ENTRY_RECESS_METERS <= 1.40:
+        raise RuntimeError("War Room v4 door lost its visible inset into the curved wall")
     # Every walk anchor stays off the board dais and clear of the armour bases.
     dais = V4_PLINTH_HALF + 0.20
     armors = ((-6.55, V4_HANS_LEFT_ARMOR_Y), V4_RIGHT_ARMOR_POSITION)
