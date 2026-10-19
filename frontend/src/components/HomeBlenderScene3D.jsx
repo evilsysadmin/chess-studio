@@ -18,6 +18,7 @@ import {
   homeBlenderGpuResourceCounts,
   homeBlenderModelDrawInventory,
 } from './HomeBlenderPerformanceDiagnostics.js';
+import { installHomeBlenderDrawPassProbe, homeBlenderDrawFamily } from './HomeBlenderDrawPassProbe.js';
 import { FIRE_SPRITE_DEFAULTS, createFireSprites, createSteamSprites, disposeFireSprites, fireSpriteSeeds } from './fireSprites.js';
 import { getEffectiveReducedMotion } from '../userPreferences.js';
 import { threeSurfaceShouldRender } from '../threeRenderPolicy.js';
@@ -1967,6 +1968,8 @@ export default function HomeBlenderScene3D({
       enabled: gpuProfiling,
       software: softwareRenderer,
     });
+    const drawPassProbe = gpuProfiling ? installHomeBlenderDrawPassProbe(renderer, (object) =>
+      homeBlenderDrawFamily(object, model, matthiasActor?.object)) : null;
     canvas.dataset.homeBlenderGpuStatus = gpuTimer.status;
     canvas.dataset.homeBlenderGpuSampleCount = String(gpuTimer.completedSamples);
     canvas.dataset.homeBlenderPhase = 'renderer-created';
@@ -2045,12 +2048,20 @@ export default function HomeBlenderScene3D({
     const renderFrame = () => {
       if (disposed || !model) return;
       renderCameraReset.restore();
+      drawPassProbe?.begin();
       gpuTimer.begin();
+      let successful = false;
       try {
         renderer.render(scene, camera);
+        successful = true;
       } finally {
         gpuTimer.end();
         gpuTimer.poll();
+        if (gpuProfiling) {
+          const split = successful ? drawPassProbe?.sample(renderer.info?.render?.calls) : null;
+          if (split) canvas.dataset.homeBlenderDrawPass = JSON.stringify(split);
+          else delete canvas.dataset.homeBlenderDrawPass;
+        }
       }
     };
 
@@ -2464,6 +2475,9 @@ export default function HomeBlenderScene3D({
       cancelPendingRender();
       canvas.dataset.homeBlenderInitialFrameCoalesced = hadPendingInitialFrame ? 'true' : 'false';
       renderFrame();
+      if (gpuProfiling && canvas.dataset.homeBlenderDrawPass) {
+        canvas.dataset.homeBlenderFirstFrameDrawPass = canvas.dataset.homeBlenderDrawPass;
+      }
       // One-time, actual WebGL draw calls (including any initial shadow pass),
       // not the mesh count. Browser profiling can read these without tracing
       // every animation frame or changing the visual.
@@ -2579,6 +2593,7 @@ export default function HomeBlenderScene3D({
       runtimeLights.disposeGlows?.();
       releaseEnvironment();
       gpuTimer.dispose();
+      drawPassProbe?.dispose();
       renderer.dispose();
     };
   }, [ambient, contextGeneration, onUnavailable]);

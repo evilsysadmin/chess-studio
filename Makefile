@@ -25,14 +25,14 @@ OCI_SSH_USER ?= ubuntu
 OCI_SSH_KEY ?=
 OCI_SSH_PUBLIC_KEY ?=
 OCI_SSH_HOSTNAME ?= ssh-chess-studio-staging.shadowops.dpdns.org
-CRITICAL_E2E_GREP := login → menú|Partida rápida · una partida activa|Torneo · una partida activa|Partida rápida · un 503 al restaurar|Combat Chess · Campaña permite jugar con defaults|Combat Chess · salir al menú conserva campaña|Combat Chess · una batalla activa sobrevive a reload|deploy · una release nueva no fuerza reload|sesión · dos contextos de navegador|admin · presencia distingue|admin · evidencia visual de cinco áreas|Matthias · saluda una vez tras login y no repite el saludo con F5|Home · el avatar residente de Matthias abre Así juegas|Matthias · el briefing persistente aparece antes de una partida rápida|Matthias · banco de personalidad Admin usa sólo datos sintéticos|Escuela de Matthias · el primer movimiento se aprende hands-on y persiste tras F5|Escuela de Matthias · el examen básico bloquea la promoción hasta aprobar|F5 tras JAQUE MATE
+CRITICAL_E2E_GREP := login → menú|Partida rápida · una partida activa|Torneo · una partida activa|Partida rápida · un 503 al restaurar|Combat Chess · Campaña permite jugar con defaults|Combat Chess · salir al menú conserva campaña|Combat Chess · una batalla activa sobrevive a reload|deploy · una release nueva no fuerza reload|sesión · dos contextos de navegador|admin · presencia distingue|admin · evidencia visual de cinco áreas|Matthias · saluda una vez tras login y no repite el saludo con F5|Home · el avatar residente de Matthias abre Así juegas|Matthias · el briefing persistente aparece antes de una partida rápida|Matthias · banco de personalidad Admin usa sólo datos sintéticos|Escuela de Matthias · el primer movimiento se aprende hands-on y persiste tras F5|Escuela de Matthias · el examen básico bloquea la promoción hasta aprobar|Campaña · F5 tras JAQUE MATE|Torre · F5 tras JAQUE MATE
 
 .PHONY: game game-bg ungame restart logs status build clean help install \
 	frontend-install backend-install ensure-pip-audit python-check ensure-hook-script install-hooks ensure-hooks hooks ensure-frontend-deps ensure-backend-deps \
 	test tests test-fe test-be tests-fe tests-be tests/fe tests/be e2e e2e-combat-dom e2e-install compose-smoke coverage coverage-fe coverage-be release-gate \
 	test-frontend test-frontend-smoke test-frontend-unit test-frontend-contract test-backend test-backend-smoke test-backend-integration backend-check quality-gate gate-core \
 	gate-frontend-critical gate-critical combat-smoke frontend-build bundle-report puzzles-check audio-check data-ux-check pwa-check campaign-map-check copy-check release-check test-suite-audit test-suite-audit-ci static-contract-risk-audit css-check css-debt-check visual-ux-check state-resilience-check idempotency-check npm-audit-parser-check architecture-debt-check workflow-debt-check dependency-cycle-check dead-code-check session-continuity-check safe-storage-check async-resilience-check chess-rules-check grafana-check render-staging-check static-preflight \
-	security security-full security-images security-fe security-be security-trivy security-api ensure-trivy deps-status doctor worker-test load-probe synthetic-check bootstrap-test test-all-local test-in-docker ensure-e2e-deps e2e-critical home-gpu-light-probe test-parity-check chronicles-contracts chronicles-contracts-check \
+	security security-full security-images security-fe security-be security-trivy security-api ensure-trivy deps-status doctor worker-test load-probe synthetic-check bootstrap-test test-all-local test-in-docker ensure-e2e-deps e2e-critical home-gpu-light-probe home-gpu-draw-census test-parity-check chronicles-contracts chronicles-contracts-check \
 	oci-login oci-session oci-a1-info oci-a1-status oci-a1-ip oci-a1-authorize-ssh oci-a1-ssh-check oci-a1-ssh
 
 ## Diagnóstico local sin instalar nada: runtimes, lockfiles, CI y tooling opcional.
@@ -392,6 +392,19 @@ home-gpu-light-probe: ensure-e2e-deps frontend-build
 		CHESS_HOME_GPU_REVISION="$$(git rev-parse HEAD)" \
 		./node_modules/.bin/playwright test --config=playwright.home-gpu.config.js
 	@echo "Home A/B/B/A: .artifacts/home-gpu-benchmark/$(HOME_GPU_LIGHT_OUTPUT)"
+
+# Stable 3-visit HOME profile: no lights are disabled, no A/B variant is
+# installed, and a real timer plus an exact draw-family census are mandatory.
+# Run on physical GPU only; fail if WebGL or a draw family cannot be measured.
+home-gpu-draw-census: ensure-e2e-deps frontend-build
+	cd e2e && ./node_modules/.bin/playwright install chromium
+	@cd e2e && $(HOME_GPU_ENV) CHESS_HOME_GPU_MODE=hardware \
+		CHESS_HOME_GPU_LIGHT_PROBE=0 CHESS_HOME_GPU_HEADLESS=$(HOME_GPU_HEADLESS) \
+		CHESS_HOME_GPU_REQUIRE_TIMER=1 CHESS_HOME_GPU_REQUIRE_DRAW_CENSUS=1 \
+		CHESS_HOME_GPU_EXPECT_VENDOR=$(HOME_GPU_EXPECT_VENDOR) \
+		CHESS_HOME_GPU_REVISION="$(git rev-parse HEAD)" \
+		./node_modules/.bin/playwright test --config=playwright.home-gpu.config.js
+	@echo "Home real draw census: .artifacts/home-gpu-benchmark/home-3d-hardware.json"
 
 ## Smoke de integración REAL: nginx frontend + API Go + Mongo + auth/perfil.
 ## Usa imágenes construidas por docker compose y sólo stdlib Python para el probe.

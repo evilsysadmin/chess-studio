@@ -43,7 +43,7 @@ export function canonicalWarRoomCameraFramingProfile({ aspect = 1 } = {}) {
 // V4-only optical experiment. Keep the room's authored play target and long
 // lens instead of importing School's low target, close crop and class-room FOV.
 // Mobile retains the already accredited board-width fit and canonical pitch.
-export const WAR_ROOM_V4_HYBRID_CAMERA_VERSION = 'warroom-v4-board-forward-v1';
+export const WAR_ROOM_V4_HYBRID_CAMERA_VERSION = 'warroom-v4-board-forward-v2-oculus';
 export const WAR_ROOM_V4_HYBRID_PITCH = Object.freeze({ cameraY: 10.2, cameraZ: 9.2 });
 
 export function v4WarRoomHybridCameraFramingProfile({ aspect = 1, mobileProfile = null } = {}) {
@@ -53,8 +53,11 @@ export function v4WarRoomHybridCameraFramingProfile({ aspect = 1, mobileProfile 
   return Object.freeze({
     ...base,
     version: wide ? WAR_ROOM_V4_HYBRID_CAMERA_VERSION : `${WAR_ROOM_V4_HYBRID_CAMERA_VERSION}-compact`,
-    halfSpan: wide ? 5.22 : base.halfSpan,
-    targetY: wide ? 1.75 : base.targetY,
+    // Restore the oculus upper rim without pushing the front rank offscreen.
+    // Desktop-only: +2.3% distance trades a little zoom for the lunar vista;
+    // +0.23m target height returns vertical room. Mobile is unchanged.
+    halfSpan: wide ? 5.34 : base.halfSpan,
+    targetY: wide ? 1.98 : base.targetY,
     cameraY: WAR_ROOM_V4_HYBRID_PITCH.cameraY,
     cameraZ: WAR_ROOM_V4_HYBRID_PITCH.cameraZ,
   });

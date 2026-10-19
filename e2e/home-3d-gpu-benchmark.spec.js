@@ -35,6 +35,7 @@ const LIGHT_PROBE_AMBIENT_HOUR = Object.freeze({
 // A/B/B/A trials require a real timer. Do not substitute browser CPU timing
 // or software GPU for fragment-shading costs.
 const requireTimer = lightProbe || process.env.CHESS_HOME_GPU_REQUIRE_TIMER === '1';
+const requireDrawCensus = process.env.CHESS_HOME_GPU_REQUIRE_DRAW_CENSUS === '1';
 const artifactDir = '../.artifacts/home-gpu-benchmark';
 
 function median(numbers) {
@@ -141,6 +142,12 @@ async function readRealCanvas(castle) {
       const candidate = JSON.parse(d.homeBlenderModelDrawInventory || 'null');
       if (candidate && typeof candidate === 'object') modelDrawInventory = candidate;
     } catch { /* Keep missing inventory explicit. */ }
+    const pass = (key) => {
+      try {
+        const candidate = JSON.parse(d[key] || 'null');
+        return candidate && Number.isSafeInteger(candidate.totalCalls) ? candidate : null;
+      } catch { return null; }
+    };
     let startupMs = null;
     try {
       const events = JSON.parse(d.homeBlenderStartup || '{}');
@@ -160,6 +167,8 @@ async function readRealCanvas(castle) {
       gpuMs: num('homeBlenderGpuMs'),
       gpuSampleCount: num('homeBlenderGpuSampleCount'),
       drawCalls: num('homeBlenderDrawCalls'),
+      drawPass: pass('homeBlenderDrawPass'),
+      firstFrameDrawPass: pass('homeBlenderFirstFrameDrawPass'),
       triangles: num('homeBlenderTriangles'),
       initialDrawCalls: num('homeBlenderFirstFrameDrawCalls'),
       initialTriangles: num('homeBlenderFirstFrameTriangles'),
@@ -306,6 +315,42 @@ test('Home 3D physical GPU benchmark · three visits or opt-in light A/B/B/A', a
       expect(row.canvasWidth * row.canvasHeight).toBeGreaterThan(0);
       expect(row.initialDrawCalls).toBeGreaterThan(0);
       expect(row.initialTriangles).toBeGreaterThan(0);
+      // Diagnostic measurements: an unavailable split is explicit null, not
+      // an invented zero. When present, verify the observed render identity.
+      if (row.drawPass) {
+        expect(row.drawPass.mainCalls + row.drawPass.shadowCalls).toBe(row.drawPass.totalCalls);
+        if (row.drawPass.families) {
+          for (const phase of ['main', 'shadow']) {
+            const families = row.drawPass.families[phase];
+            const total = families.castle + families.matthias + families.runtime;
+            expect(total).toBe(row.drawPass[phase + 'Calls']);
+          }
+        }
+      }
+      if (row.firstFrameDrawPass) {
+        expect(row.firstFrameDrawPass.mainCalls + row.firstFrameDrawPass.shadowCalls)
+          .toBe(row.firstFrameDrawPass.totalCalls);
+      }
+      if (requireDrawCensus) {
+        expect(!lightProbe, 'Draw census runner measures unmodified production lights').toBe(true);
+        expect(row.drawPass?.families, 'Actual sustained draw families must be available').toBeTruthy();
+        expect(row.firstFrameDrawPass?.families, 'First-frame draw families must be available').toBeTruthy();
+        const validate = (pass) => {
+          expect(pass.totalCalls).toBeGreaterThan(0);
+          expect(pass.mainCalls + pass.shadowCalls).toBe(pass.totalCalls);
+          for (const phase of ['main', 'shadow']) {
+            const group = pass.families[phase];
+            expect(group.castle + group.matthias + group.runtime)
+              .toBe(pass[phase + 'Calls']);
+          }
+        };
+        validate(row.drawPass);
+        validate(row.firstFrameDrawPass);
+        expect(row.drawPass.families.main.castle,
+          'The real hall GLB must contribute sustained direct submissions').toBeGreaterThan(0);
+        expect(row.drawPass.families.main.matthias,
+          'The independently loaded Matthias actor must contribute real draws').toBeGreaterThan(0);
+      }
       expect(row.allocatedTextures).toBeGreaterThan(0);
       expect(row.allocatedGeometries).toBeGreaterThan(0);
       expect(row.modelDrawInventory?.drawSlotCandidates).toBeGreaterThan(0);
@@ -423,6 +468,14 @@ test('Home 3D physical GPU benchmark · three visits or opt-in light A/B/B/A', a
     }));
     return;
   }
+  if (requireDrawCensus && !lightProbe) {
+    const reference = visits[0];
+    for (const row of visits.slice(1)) {
+      for (const field of ['actual', 'vendor', 'rendererFingerprint', 'lod', 'shadows', 'ambient', 'matthiasStation', 'canvasWidth', 'canvasHeight']) {
+        expect(row[field]).toEqual(reference[field]);
+      }
+    }
+  }
   const summary = {
     schema: 2,
     surface: 'Home Blender 3D',
@@ -431,10 +484,21 @@ test('Home 3D physical GPU benchmark · three visits or opt-in light A/B/B/A', a
     browserVersion: browser.version(),
     viewport: { width: 1440, height: 900, dpr: 1 },
     requireTimer,
+    requireDrawCensus,
     // Only medians of physical observations, never inferred GPU ms or VRAM MB.
     medians: {
       startupMs: median(visits.map((visit) => visit.startupMs)),
       initialDrawCalls: median(visits.map((visit) => visit.initialDrawCalls)),
+      shadowDrawCalls: median(visits.map((visit) => visit.drawPass?.shadowCalls)),
+      mainDrawCalls: median(visits.map((visit) => visit.drawPass?.mainCalls)),
+      firstFrameShadowDrawCalls: median(visits.map((visit) => visit.firstFrameDrawPass?.shadowCalls)),
+      firstFrameMainDrawCalls: median(visits.map((visit) => visit.firstFrameDrawPass?.mainCalls)),
+      mainCastleDrawCalls: median(visits.map((visit) => visit.drawPass?.families?.main?.castle)),
+      mainMatthiasDrawCalls: median(visits.map((visit) => visit.drawPass?.families?.main?.matthias)),
+      mainRuntimeDrawCalls: median(visits.map((visit) => visit.drawPass?.families?.main?.runtime)),
+      shadowCastleDrawCalls: median(visits.map((visit) => visit.drawPass?.families?.shadow?.castle)),
+      shadowMatthiasDrawCalls: median(visits.map((visit) => visit.drawPass?.families?.shadow?.matthias)),
+      shadowRuntimeDrawCalls: median(visits.map((visit) => visit.drawPass?.families?.shadow?.runtime)),
       allocatedTextures: median(visits.map((visit) => visit.allocatedTextures)),
       allocatedGeometries: median(visits.map((visit) => visit.allocatedGeometries)),
       // One-time authored-model draw candidates, never actual GL submissions.

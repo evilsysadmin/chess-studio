@@ -1,7 +1,13 @@
 import * as THREE from 'three';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { fitBoardCamera } from './Board3DScene.js';
-import { board3DProjectionSnapshot } from './Board3DProjectionDiagnostics.js';
+import {
+  BOARD3D_PLAY_SURFACE_Y,
+  applyBoard3DProjectionDiagnostics,
+  board3DProjectionSnapshot,
+  projectWorldPointNdc,
+  readBoard3DViewProjection,
+} from './Board3DProjectionDiagnostics.js';
 import {
   WAR_ROOM_CANONICAL_CAMERA_VERSION,
   WAR_ROOM_V4_HYBRID_CAMERA_VERSION,
@@ -58,6 +64,13 @@ describe('War Room V4 · cámara híbrida, sala y recorrido de Hans', () => {
         .toBeGreaterThan(Math.atan2(WAR_ROOM_CANONICAL_PLAY_PITCH.cameraY, WAR_ROOM_CANONICAL_PLAY_PITCH.cameraZ));
       assertBoardWithinCanvas(v4);
 
+      // Exact Blender V4 oculus apex: center (0, 7.56, 2.62), vertical
+      // radius 1.70, room root -1.12. Keep its upper rim in the actual
+      // perspective frustum, not merely the chessboard's 64 squares.
+      const oculusApex = new THREE.Vector3(0, 3.20, whiteSide ? -7.56 : 7.56).project(v4);
+      expect(oculusApex.y, 'V4 upper lunar oculus cropped').toBeLessThan(0.995);
+      expect(oculusApex.y, 'V4 oculus no longer prominent').toBeGreaterThan(0.85);
+
       // V4's real Blender door and hearth anchors (x,z,-y, room root -1.12).
       // A previous stale test asserted an obsolete door location and allowed
       // the actual teal doorway to slip off the edge of the desktop capture.
@@ -74,6 +87,66 @@ describe('War Room V4 · cámara híbrida, sala y recorrido de Hans', () => {
         expect(Math.abs(ndc.x), `V4 door/Hans outside frame at ${x},${z}`).toBeLessThan(0.9);
         expect(Math.abs(ndc.y), `V4 door/Hans vertical crop at ${x},${z}`).toBeLessThan(0.93);
       }
+    });
+  }
+
+  for (const whiteSide of [true, false]) {
+    it(`desktop resize ${whiteSide ? 'blancas' : 'negras'}: actual published projection follows the camera and returns to its first pose`, () => {
+      const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 100);
+      const canvas = { dataset: {} };
+      // Realistic drawable board sizes; the 16:10 laptop and 4:3 compact
+      // viewport cross the wide/compact threshold without touching mobile.
+      const viewports = [
+        [1400, 880, 1440], // starting desktop (wide)
+        [1220, 685, 1280], // short laptop (wide)
+        [980, 730, 1024],  // compact desktop (not coarse pointer)
+        [2480, 1020, 2560], // ultrawide
+        [1400, 880, 1440], // restore exactly, e.g. resized window
+      ];
+      let firstPublished = null;
+      for (const [width, height, windowWidth] of viewports) {
+        vi.stubGlobal('window', {
+          innerWidth: windowWidth,
+          matchMedia: () => ({ matches: false }),
+        });
+        fitBoardCamera(camera, width, height, whiteSide, {
+          profile: 'warroom',
+          variant: 'v4',
+          immersive: true,
+        });
+        camera.updateMatrixWorld(true);
+        // The canvas matrix is what runtime interaction and E2E diagnostics
+        // actually consume; merely projecting via camera.project() can miss
+        // a stale attribute after resize, rotation or a camera-profile swap.
+        expect(applyBoard3DProjectionDiagnostics(canvas, camera)).toBe(1);
+        const matrix = readBoard3DViewProjection(canvas);
+        expect(matrix).toHaveLength(16);
+        const { corners } = board3DProjectionSnapshot(camera);
+        const worldCorners = [
+          [-4, BOARD3D_PLAY_SURFACE_Y, -4],
+          [4, BOARD3D_PLAY_SURFACE_Y, -4],
+          [-4, BOARD3D_PLAY_SURFACE_Y, 4],
+          [4, BOARD3D_PLAY_SURFACE_Y, 4],
+        ];
+        for (let i = 0; i < corners.length; i += 1) {
+          const ndc = projectWorldPointNdc(matrix, worldCorners[i]);
+          expect(ndc).not.toBeNull();
+          expect(ndc.x).toBeCloseTo(corners[i][0], 3);
+          expect(ndc.y).toBeCloseTo(corners[i][1], 3);
+          expect(Math.abs(ndc.x)).toBeLessThanOrEqual(1);
+          expect(Math.abs(ndc.y)).toBeLessThanOrEqual(1);
+        }
+        if (width / height >= 1.42) {
+          const apex = projectWorldPointNdc(matrix, [0, 3.20, whiteSide ? -7.56 : 7.56]);
+          expect(apex, 'oculus apex behind hybrid camera').not.toBeNull();
+          expect(apex.y, 'wide desktop cropped the lunar upper rim').toBeLessThan(0.995);
+          expect(apex.y, 'oculus disappeared from wide composition').toBeGreaterThan(0.85);
+        }
+        if (firstPublished === null) firstPublished = canvas.dataset.board3dViewProjection;
+      }
+      expect(canvas.dataset.board3dViewProjection).toBe(firstPublished);
+      // No camera motion means no needless per-frame dataset rewrite.
+      expect(applyBoard3DProjectionDiagnostics(canvas, camera)).toBe(0);
     });
   }
 

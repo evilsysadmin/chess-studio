@@ -6,6 +6,7 @@ import {
   openCampaignBriefing,
   openFreeCombat,
   seedCombatBattleSnapshot,
+  buttonWithVisibleText,
 } from './helpers.js';
 
 const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
@@ -200,5 +201,77 @@ test('Campaña · F5 tras JAQUE MATE recupera el informe sin volver a pagar la v
   await expect(debrief.getByRole('heading', { name: 'VICTORIA' })).toBeVisible();
   await expect(page.getByRole('region', { name: 'Resultado de la batalla' })).toHaveCount(0);
   await expect.poll(checkpoint).toEqual(before);
+  await expect(page.locator('.error-boundary-screen')).toHaveCount(0);
+});
+
+async function openTowerMate(page, seed) {
+  // The profile mock is Mongo-authoritative: raw localStorage writes are
+  // overwritten during F5 bootstrap. Seed the real persisted profile instead.
+  await mockApi(page, { profileSeed: {
+    'chess-study-roguelike-run': JSON.stringify({
+      floor: 1, inRun: true, phase: 'fighting', seed, mode: 'tower', perks: [], rewardChosenForFloor: null,
+    }),
+  } });
+  await login(page);
+  const entry = buttonWithVisibleText(page, 'Combat Chess · Campaña');
+  await expect(entry).toBeVisible();
+  await entry.click();
+  // Restore a genuine in-progress Tower battle using its validated FEN and
+  // persistent encounter identity, not Campaign's separate preparation CTA.
+  await seedCombatBattleSnapshot(page, { sessionId: 'run:' + seed + ':1', fen: MATE_START_FEN });
+  await page.reload();
+  await expect(page.locator('[data-combat-war-room="generic"] [data-board3d-war-room="true"]')).toBeVisible({ timeout: 45_000 });
+  await clickBoardMove(page, 'g6', 'g7');
+  const reveal = page.getByRole('region', { name: 'Resultado de la batalla' });
+  await expect(reveal.getByRole('heading', { name: 'JAQUE MATE' })).toBeVisible({ timeout: 20_000 });
+}
+
+test('Torre · F5 tras JAQUE MATE conserva informe y piso sin recompensas duplicadas', async ({ page }) => {
+  test.setTimeout(120_000);
+  const seed = 'tower-f5-checkpoint';
+  await openTowerMate(page, seed);
+  const checkpoint = async () => page.evaluate((id) => {
+    const run = JSON.parse(localStorage.getItem('chess-study-roguelike-run') || '{}');
+    const cache = JSON.parse(sessionStorage.getItem('chess-study-combat-post-battle-debrief-v1') || '{}');
+    return { floor: run.floor, phase: run.phase, perks: run.perks,
+      rewardChosenForFloor: run.rewardChosenForFloor,
+      outcome: cache.entries?.[id]?.debrief?.outcome || null };
+  }, 'run:' + seed + ':1');
+  await expect.poll(async () => (await checkpoint()).phase).toBe('cleared');
+  const before = await checkpoint();
+  expect(before).toMatchObject({ floor: 1, phase: 'cleared', perks: [], outcome: 'win' });
+  await page.reload();
+  const report = page.getByRole('region', { name: 'Informe postcombate' });
+  await expect(report.getByRole('heading', { name: 'VICTORIA' })).toBeVisible({ timeout: 45_000 });
+  await expect(page.getByRole('heading', { name: /Piso 1 superado/ })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Resultado de la batalla' })).toHaveCount(0);
+  await expect.poll(checkpoint).toEqual(before);
+  await expect(page.locator('.error-boundary-screen')).toHaveCount(0);
+
+  // Pick exactly one temporary perk. F5 must retain it without reoffering
+  // a second reward or charging the completed encounter again.
+  const cards = page.locator('.roguelike-reward-card');
+  await expect(cards).toHaveCount(3);
+  await cards.first().click();
+  await expect.poll(async () => (await checkpoint()).rewardChosenForFloor).toBe(1);
+  const rewarded = await checkpoint();
+  expect(rewarded.perks).toHaveLength(1);
+  expect(rewarded).toMatchObject({ floor: 1, phase: 'cleared', outcome: 'win' });
+  await expect(cards.first()).toBeDisabled();
+  await page.reload();
+  const nextFloor = page.getByRole('button', { name: 'Seguir al piso 2' });
+  await expect(nextFloor).toBeVisible({ timeout: 45_000 });
+  await expect(page.locator('.roguelike-reward-card').first()).toBeDisabled();
+  await expect.poll(checkpoint).toEqual(rewarded);
+
+  // Continuing consumes the old debrief, but never loses the chosen perk.
+  await nextFloor.click();
+  await expect.poll(async () => (await checkpoint()).floor).toBe(2);
+  const advanced = await checkpoint();
+  expect(advanced).toMatchObject({ floor: 2, phase: 'battle', perks: rewarded.perks, outcome: null });
+  await page.reload();
+  await expect(page.getByRole('region', { name: 'Informe postcombate' })).toHaveCount(0);
+  await expect(page.locator('.roguelike-reward-screen')).toHaveCount(0);
+  await expect.poll(checkpoint).toEqual(advanced);
   await expect(page.locator('.error-boundary-screen')).toHaveCount(0);
 });

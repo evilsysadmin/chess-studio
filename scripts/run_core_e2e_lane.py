@@ -132,7 +132,8 @@ LANE_COMMANDS: dict[str, tuple[LaneCommand, ...]] = {
         LaneCommand('smoke.spec.js', ('--grep', SMOKE_GREP, '--workers=1', '--retries=0', '--max-failures=1')),
         # F5 between cinematic mate and the explicit debrief CTA must not lose
         # the recorded report or award the campaign twice. Keep this one focused.
-        LaneCommand('combat-critical.spec.js', ('--grep', 'F5 tras JAQUE MATE', '--workers=1', '--retries=0', '--max-failures=1', '--timeout=120000')),
+        LaneCommand('combat-critical.spec.js', ('--grep', 'Campaña · F5 tras JAQUE MATE', '--workers=1', '--retries=0', '--max-failures=1', '--timeout=120000')),
+        LaneCommand('combat-critical.spec.js', ('--grep', 'Torre · F5 tras JAQUE MATE', '--workers=1', '--retries=0', '--max-failures=1', '--timeout=120000')),
         LaneCommand('mobile-final-interactions.spec.js', ('--workers=1', '--retries=0', '--max-failures=1')),
         LaneCommand(
             'browser-runtime-health.spec.js',
@@ -146,6 +147,11 @@ LANE_COMMANDS: dict[str, tuple[LaneCommand, ...]] = {
         # auth/Home bootstrap in the ordinary hosted Chromium smoke gate.
         LaneCommand('war-room-gpu-session-bootstrap.spec.js',
                     ('--workers=1', '--retries=0', '--max-failures=1', '--timeout=150000'),
+                    canonical_critical=False),
+        # Real Home WebGL smoke proves that the profiler's measured draw
+        # submissions are attributed, rather than inferred from mesh census.
+        LaneCommand('home-3d-draw-census.spec.js',
+                    ('--workers=1', '--retries=0', '--max-failures=1', '--timeout=180000'),
                     canonical_critical=False),
     ),
 }
@@ -206,8 +212,9 @@ def self_test() -> None:
         'app-boot', 'admin', 'tournament', 'combat', 'home', 'smoke',
     )
     assert tuple(LANE_COMMANDS) == expected
-    assert len(critical_targets()) == 4
-    assert ('combat-critical.spec.js', 'F5 tras JAQUE MATE') in critical_targets()
+    assert len(critical_targets()) == 5
+    assert ('combat-critical.spec.js', 'Campaña · F5 tras JAQUE MATE') in critical_targets()
+    assert ('combat-critical.spec.js', 'Torre · F5 tras JAQUE MATE') in critical_targets()
     assert [command.spec for command in LANE_COMMANDS['app-boot']] == ['smoke.spec.js']
     assert LANE_COMMANDS['app-boot'][0].grep == APP_BOOT_GREP
     assert LANE_COMMANDS['admin'][0].spec == 'regression-journeys.spec.js'
@@ -225,14 +232,17 @@ def self_test() -> None:
     assert LANE_COMMANDS['home'][1].grep == HOME_MOBILE_GREP
     assert LANE_COMMANDS['home'][2].grep == HOME_WEBGL_GREP
     assert [command.spec for command in LANE_COMMANDS['smoke']] == [
-        'smoke.spec.js', 'combat-critical.spec.js', 'mobile-final-interactions.spec.js',
+        'smoke.spec.js', 'combat-critical.spec.js', 'combat-critical.spec.js', 'mobile-final-interactions.spec.js',
         'browser-runtime-health.spec.js', 'godot-release-continuity.spec.js', 'war-room-gpu-session-bootstrap.spec.js',
+        'home-3d-draw-census.spec.js',
     ]
-    assert LANE_COMMANDS['smoke'][1].grep == 'F5 tras JAQUE MATE'
-    assert LANE_COMMANDS['smoke'][3].grep == HOME_WEBGL_GREP
-    assert LANE_COMMANDS['smoke'][3].canonical_critical is False
+    assert LANE_COMMANDS['smoke'][1].grep == 'Campaña · F5 tras JAQUE MATE'
+    assert LANE_COMMANDS['smoke'][2].grep == 'Torre · F5 tras JAQUE MATE'
+    assert LANE_COMMANDS['smoke'][4].grep == HOME_WEBGL_GREP
+    assert LANE_COMMANDS['smoke'][4].canonical_critical is False
     assert LANE_COMMANDS['smoke'][-1].canonical_critical is False
-    assert '--timeout=150000' in LANE_COMMANDS['smoke'][-1].args
+    assert '--timeout=150000' in LANE_COMMANDS['smoke'][-2].args
+    assert '--timeout=180000' in LANE_COMMANDS['smoke'][-1].args
     assert '--grep-invert' in LANE_COMMANDS['regression-state'][0].args
     assert all(command.spec.endswith('.spec.js') for commands in LANE_COMMANDS.values() for command in commands)
     assert all('--max-failures=1' in command.args for commands in LANE_COMMANDS.values() for command in commands)

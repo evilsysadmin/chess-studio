@@ -20,6 +20,78 @@ On a ready Home canvas, inspect `document.querySelector('.illustrated-home__cast
 | `homeBlenderGpuMs` | Last async elapsed WebGL GPU-timer sample in milliseconds; **only** with status `ready` |
 | `homeBlenderGpuSampleCount` | Monotonic number of **valid completed GPU queries**, used to distinguish newly measured values from a still-published previous result |
 
+## Profiler-only real main/depth draw census
+
+The Home now instruments the **existing** `renderer.shadowMap.render` and
+`renderer.renderBufferDirect` only behind `?homeGpuProfile=1`. A successful
+`renderer.render(scene, camera)` publishes the read-only canvas field
+`data-home-blender-draw-pass`, with actual Three `renderer.info.render.calls`
+split into `shadowCalls`, `mainCalls`, `shadowPasses`, and (when every draw
+is attributed) `families.main/shadow.castle|matthias|runtime`. Authored scene
+GLB and separately loaded Matthias GLB are classified by **object ancestry**,
+not material count or potentially ambiguous names. Other runtime meshes,
+sprites, particles and effects are `runtime`.
+
+If a Three API cannot be hooked or counters disagree, the pass split is absent
+or `families: null`: neither unknown draws nor missing data become zero.
+`data-home-blender-first-frame-draw-pass` retains the initial snapshot before
+Matthias loads; it is **not** a sustained-frame baseline. There are no extra
+draws, shadow refreshes, scene traversals, queries, or layout changes. Hooks
+restore original renderer methods on cleanup. Normal sessions do not install
+any hooks or publish these additional fields.
+
+The local physical GPU benchmark includes `drawPass` and
+`firstFrameDrawPass` per visit, plus main/depth medians in its non-light
+summary. Existing JSON files predate the probe and **cannot** be retrofitted
+with an inferred shadow fraction. Home normally uses
+`shadowMap.autoUpdate = false`, refreshing shadows when explicitly requested
+(for example when the imported model or Matthias moves), so expect most
+steady-state frames to have zero *depth-pass submissions*; the profiler records
+the observed value instead of assuming that. A pass's draw count is not GPU
+milliseconds; this census identifies **which subsequent render experiment** to
+measure on physical hardware.
+
+### One-command physical GPU draw census (no lighting removal)
+
+After the real-browser CI gate is green, run the fixed three-cold-visit
+**normal production Home** without toggling any lights. The command below
+requires an actual hardware WebGL renderer, a fresh asynchronous GPU timer
+sample in each visit, and a valid per-pass/per-family draw census. It fails
+instead of writing a misleading zero when Three cannot attribute draws:
+
+```bash
+make home-gpu-draw-census HOME_GPU_NVIDIA_PRIME=0 HOME_GPU_EXPECT_VENDOR=intel
+```
+
+Use `HOME_GPU_NVIDIA_PRIME=1 HOME_GPU_EXPECT_VENDOR=nvidia` when validating
+NVIDIA PRIME instead. Every run rebuilds the local frontend and uses the same
+real Home GLB plus Matthias. It writes
+`.artifacts/home-gpu-benchmark/home-3d-hardware.json`: look for
+`medians.mainDrawCalls`, `shadowDrawCalls` and exact family contributions
+`mainCastleDrawCalls`, `mainMatthiasDrawCalls`, `mainRuntimeDrawCalls`,
+plus the corresponding `shadow*` fields. Inspect the per-visit
+`drawPass` and `firstFrameDrawPass` as well.
+
+These figures count actual **draw submissions**, not triangles-per-object,
+GPU-duration-per-family, or FPS. The timer still measures the entire
+`renderer.render`, not the individual pass GPU durations. No historical
+unprofiled Home JSON can be used to assign these counts retrospectively.
+Do not compare a different browser, driver, scene LOD or time of day
+without collecting a new matching baseline.
+
+### Real browser gate for the draw-pass census
+
+The ordinary core-smoke CI lane runs `e2e/home-3d-draw-census.spec.js`
+on the **real Three.js Home canvas** using hosted Chromium/SwiftShader,
+full desktop layout and a loaded Matthias actor. Unlike mock renderer
+unit tests, it requires nonzero actual WebGL draw submissions, verifies
+`mainCalls + shadowCalls = totalCalls` and demands that family buckets
+sum exactly to each pass (including visible castle and Matthias main draws).
+It also validates the first-frame snapshot; this is not a GPU performance
+benchmark and must never be interpreted as hardware FPS or GPU milliseconds.
+For physical GPU numbers, rerun the existing Nobara benchmark on the same
+revision and inspect its new per-visit `drawPass` fields.
+
 ## Runtime-only hearth flame geometry LOD
 
 The 28 explicitly named camera-facing flame/hot/tongue/base spheres on the two Home fireplaces use an isolated **runtime GLB-only** 24×12 sphere instead of the authored 40×20 topology. The canonical Blender builder and its Eevee review render remain unchanged. The exporter fails closed unless the exact 28 known object names, expected original 1,520-triangle spheres, material identities, UV-free fire materials and local bounding boxes match. After replacement it verifies unchanged per-axis local bounds, vertex smoothing, and a minimum reduction of 25,000 triangles; GLTFLoader still finds the same animated mesh names and pivots.
