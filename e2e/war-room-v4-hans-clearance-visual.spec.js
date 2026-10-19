@@ -85,15 +85,16 @@ test('War Room V4 · Hans realmente atraviesa su nuevo pasillo en WebGL', async 
       snapshots.add(name);
     };
     const start = Date.now();
-    // The real performance runs at ~0.54x speed. The old 30cm criterion in
-    // fire-dimming could pass without ever reaching or leaving the hearth.
-    // Observe actual WebGL frames throughout both full corridor traversals.
+    // Observe real WebGL frames throughout both traversals and do not stop
+    // until the door is fully closed again with Hans no longer visible.
     while (Date.now() - start < 360_000) {
       const sample = await canvas.evaluate((node) => ({
         screen: node.dataset.warRoomHansScreen || '',
         route: node.dataset.warRoomHansRoute || '',
         phase: node.dataset.warRoomHansChoreographyPhase || '',
         doorOpen: Number(node.dataset.warRoomHansDoorOpen),
+        completed: node.dataset.warRoomHansRoutineCompleted === 'true',
+        actorVisible: node.dataset.warRoomHansActorVisible === 'true',
         logicalX: Number(node.dataset.warRoomHansLogicalX),
         sceneZ: Number(node.dataset.warRoomHansSceneZ),
         ndcX: Number(node.dataset.warRoomHansNdcX),
@@ -116,12 +117,18 @@ test('War Room V4 · Hans realmente atraviesa su nuevo pasillo en WebGL', async 
         && sample.route === 'stage-leave' && routeDisplacement(leaving) >= 1.2) {
         await saveFrame('leaving');
       }
+      if (!snapshots.has('closed-after-exit') && sample.completed
+        && !sample.actorVisible && sample.doorOpen <= 0.02
+        && captures.some((item) => item.route === 'stage-leave' && item.doorOpen >= 0.65)) {
+        await saveFrame('closed-after-exit');
+      }
       if (requiredPhases.every((phase) => captures.some((item) => item.phase === phase))
         && routeDisplacement(entering) >= 2.2
         && routeDisplacement(leaving) >= 3.2
         && leaving.some((item) => item.doorOpen >= 0.65)
         && leaving.length >= 8
-        && snapshots.size === 3) break;
+        && snapshots.size === 4
+        && sample.completed && !sample.actorVisible && sample.doorOpen <= 0.02) break;
       await page.waitForTimeout(350);
     }
     const visible = captures.filter((item) => /^(onscreen|edge)$/.test(item.screen));
@@ -130,12 +137,15 @@ test('War Room V4 · Hans realmente atraviesa su nuevo pasillo en WebGL', async 
     const phases = [...new Set(captures.map((item) => item.phase))];
     const entryTravel = routeDisplacement(entering);
     const exitTravel = routeDisplacement(leaving);
+    const finalFrame = captures.at(-1);
     const first = visible[0];
     const screenTravel = first ? Math.max(...visible.map((item) =>
       Math.hypot(item.ndcX - first.ndcX, item.ndcY - first.ndcY))) : 0;
     console.log('V4_HANS_FULL_ROUTE', JSON.stringify({
       entryTravel, exitTravel, screenTravel, phases,
       exitDoorOpened: leaving.some((item) => item.doorOpen >= 0.65),
+      finalDoorOpen: finalFrame?.doorOpen, finalActorVisible: finalFrame?.actorVisible,
+      routineCompleted: finalFrame?.completed,
       entrySamples: entering.length, exitSamples: leaving.length,
       snapshots: [...snapshots], totalSamples: captures.length,
     }));
@@ -155,9 +165,12 @@ test('War Room V4 · Hans realmente atraviesa su nuevo pasillo en WebGL', async 
     expect(entryTravel, 'Hans must walk at least 2.2m into the room').toBeGreaterThanOrEqual(2.2);
     expect(exitTravel, 'Hans must walk at least 3.2m back toward the door').toBeGreaterThanOrEqual(3.2);
     expect(leaving.some((item) => item.doorOpen >= 0.65), 'Exit door must visibly open as Hans approaches').toBe(true);
+    expect(finalFrame?.completed, 'Hans must finish the entire fire routine after leaving').toBe(true);
+    expect(finalFrame?.actorVisible, 'Hans must disappear through the exit').toBe(false);
+    expect(finalFrame?.doorOpen, 'The door must actually close after Hans leaves').toBeLessThanOrEqual(0.02);
     expect(screenTravel, 'Hans must visibly cross the rendered room').toBeGreaterThanOrEqual(0.015);
-    expect([...snapshots].sort(), 'Entry, hearth and exit need actual WebGL PNG evidence')
-      .toEqual(['at-hearth', 'entering', 'leaving']);
+    expect([...snapshots].sort(), 'Entry, hearth, exit and final closure need actual WebGL PNG evidence')
+      .toEqual(['at-hearth', 'closed-after-exit', 'entering', 'leaving']);
     for (const sample of visible) {
       expect(Number.isFinite(sample.ndcX) && Number.isFinite(sample.ndcY)).toBe(true);
       expect(Math.abs(sample.groundGap)).toBeLessThanOrEqual(0.02);
