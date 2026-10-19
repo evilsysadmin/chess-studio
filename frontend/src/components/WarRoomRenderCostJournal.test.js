@@ -21,6 +21,20 @@ describe('War Room real-render cost journal', () => {
     expect(journal.latestSeq).toBe(2);
   });
 
+  it('keeps only mathematically valid measured shadow/main draw partitions', () => {
+    const journal = createWarRoomRenderCostJournal(3);
+    journal.record({ calls: 100, triangles: 350,
+      mainCalls: 65, shadowCalls: 35, shadowPasses: 1 }, 1, 3);
+    journal.record({ calls: 100, triangles: 350,
+      mainCalls: 60, shadowCalls: 50, shadowPasses: 1 }, 4, 5);
+    const rows = journal.readAfter(0).samples;
+    expect(rows[0]).toMatchObject({
+      calls: 100, mainCalls: 65, shadowCalls: 35, shadowPasses: 1,
+    });
+    expect(rows[1].shadowCalls).toBeUndefined();
+    expect(rows[1].mainCalls).toBeUndefined();
+  });
+
   it('fails closed on overrun instead of presenting a biased tail as full sampling', () => {
     const journal = createWarRoomRenderCostJournal(3);
     for (let i = 1; i <= 5; i += 1) journal.record({ calls: i, triangles: i * 10 }, i, i + 1);
