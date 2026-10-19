@@ -1435,20 +1435,6 @@ function addRuntimeLights(scene, shadowsEnabled = true, ambientPeriod = 'day', d
       return light;
     })
     : [];
-  // In the opt-in A/B candidate only, keep all four real torch objects for
-  // flame/glow flicker, but add exactly two midpoint fill lights. The original
-  // wall lights are later hidden from shader evaluation by the probe filter.
-  // New fills have no glow sprites: the four actual flames remain the source
-  // of visible emissive light. No production render path creates these.
-  if (shadowsEnabled && diagnosticLightMode === 'wall-pair') {
-    for (const spec of homeBlenderWallPairFillPlan(HOME_BLENDER_TORCH_X)) {
-      const fillLight = new THREE.PointLight(spec.color, spec.intensity, spec.distance, spec.decay);
-      fillLight.position.set(spec.x, spec.y, spec.z);
-      fillLight.castShadow = false;
-      fillLight.userData.homeLightProbeFamily = 'wall-pair';
-      torches.push(fillLight);
-    }
-  }
   // The Dungeon's two fire pits sit under the gate at the foot of the stairs and glow
   // up the steps in the Blender scene; the runtime ignored them, so the stairs read as
   // flat dark slabs. A warm light from below gives them relief and life, and it wavers
@@ -1497,6 +1483,18 @@ function addRuntimeLights(scene, shadowsEnabled = true, ambientPeriod = 'day', d
     }
   }
 
+  // Diagnostic only: append the extra midpoint fills AFTER the existing
+  // torches, so every original light keeps its stable per-index flicker seed.
+  // The four flame sprites are still authored at their original sconces.
+  if (shadowsEnabled && diagnosticLightMode === 'wall-pair') {
+    for (const spec of homeBlenderWallPairFillPlan(HOME_BLENDER_TORCH_X)) {
+      const fillLight = new THREE.PointLight(spec.color, spec.intensity, spec.distance, spec.decay);
+      fillLight.position.set(spec.x, spec.y, spec.z);
+      fillLight.castShadow = false;
+      fillLight.userData.homeLightProbeFamily = 'wall-pair';
+      torches.push(fillLight);
+    }
+  }
   scene.add(ambient, hemi, key, fill, leftHearth, rightHearth, table, floorBounce, armour, armour.target, ...torches);
 
   const glowTexture = createGlowTexture();
