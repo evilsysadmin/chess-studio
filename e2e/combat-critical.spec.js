@@ -3,6 +3,7 @@ import {
   clickBoardMove,
   login,
   mockApi,
+  openCampaignBriefing,
   openFreeCombat,
   seedCombatBattleSnapshot,
 } from './helpers.js';
@@ -114,4 +115,38 @@ test('Combat Chess · Campaña · primera jugada completa un ciclo humano/CPU si
   await expect(page.getByRole('button', { name: 'Reintentar turno de la CPU', exact: true })).toHaveCount(0);
   await expect(page.getByRole('region', { name: 'Hoy en Chess Studio' })).toHaveCount(0);
   await expect(page.locator('.error-boundary-screen')).toHaveCount(0);
+});
+
+test('Campaña · jaque mate deja la War Room visible hasta Ver debriefing', async ({ page }) => {
+  test.setTimeout(90_000);
+  await mockApi(page);
+  await login(page);
+  await openCampaignBriefing(page);
+  await page.getByRole('button', { name: /PREPARAR EJÉRCITO/i }).click();
+  const start = page.getByRole('button', { name: /¡ENTRAR EN COMBATE!|ORGANIZAR Y COMBATIR/i });
+  await expect(start).toBeVisible();
+  await start.click();
+  await expect(page.locator('.combat-battle-screen')).toBeVisible({ timeout: 45_000 });
+
+  const sessionId = await page.evaluate(() => {
+    const campaign = JSON.parse(localStorage.getItem('chess-study-combat-campaign-v1') || '{}');
+    return `campaign:${campaign.seed}:${campaign.selectedNodeId}`;
+  });
+  expect(sessionId).toMatch(/^campaign:.+:.+$/);
+  await seedCombatBattleSnapshot(page, { sessionId, fen: MATE_START_FEN });
+  await page.reload();
+  const board = page.locator('[data-combat-war-room="generic"] [data-board3d-war-room="true"]');
+  await expect(board).toBeVisible({ timeout: 45_000 });
+
+  await clickBoardMove(page, 'g6', 'g7');
+  const reveal = page.getByRole('region', { name: 'Resultado de la batalla' });
+  await expect(reveal.getByRole('heading', { name: 'JAQUE MATE' })).toBeVisible({ timeout: 20_000 });
+  await expect(board).toBeVisible();
+  await expect(reveal.getByRole('button', { name: /Ver debriefing/ })).toBeVisible();
+  await reveal.getByRole('button', { name: /Ver debriefing/ }).click();
+  await expect(board).toHaveCount(0);
+  const debrief = page.getByRole('region', { name: 'Informe postcombate' });
+  await expect(debrief).toBeVisible({ timeout: 15_000 });
+  await expect(debrief.getByRole('heading', { name: 'VICTORIA' })).toBeVisible();
+  await expect(debrief.locator('details.combat-debrief-score-details')).not.toHaveAttribute('open');
 });

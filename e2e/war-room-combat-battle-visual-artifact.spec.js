@@ -47,6 +47,8 @@ import {
   login,
   mockApi,
   openCampaignBriefing,
+  seedCombatBattleSnapshot,
+  clickBoardMove,
 } from './helpers.js';
 
 const ARTIFACT_DIR = '../.artifacts/app-visual/combat-battle';
@@ -208,4 +210,78 @@ test.describe('Combat battle · Android', () => {
     await mkdir(ARTIFACT_DIR, { recursive: true });
     await captureWarRoomFrame(page, ARTIFACT_DIR + '/combat-battle-android-landscape-844x390.png');
   });
+});
+
+const MATE_CAPTURE_FEN = '7k/8/5KQ1/8/8/8/8/8 w - - 0 1';
+
+async function openRealCampaignMate(page) {
+  await openCombatBattle(page);
+  const sessionId = await page.evaluate(() => {
+    const campaign = JSON.parse(localStorage.getItem('chess-study-combat-campaign-v1') || '{}');
+    return `campaign:${campaign.seed}:${campaign.selectedNodeId}`;
+  });
+  expect(sessionId).toMatch(/^campaign:.+:.+$/);
+  await seedCombatBattleSnapshot(page, { sessionId, fen: MATE_CAPTURE_FEN });
+  await page.reload();
+  const board = page.locator('[data-combat-war-room="generic"] [data-board3d-war-room="true"]');
+  await expect(board).toBeVisible({ timeout: 45_000 });
+  await clickBoardMove(page, 'g6', 'g7');
+  const reveal = page.getByRole('region', { name: 'Resultado de la batalla' });
+  await expect(reveal.getByRole('heading', { name: 'JAQUE MATE' })).toBeVisible({ timeout: 25_000 });
+  await expect(board).toBeVisible();
+  return reveal;
+}
+
+async function expectMateRevealLeavesBoardCenterClear(page, reveal) {
+  const bounds = await reveal.boundingBox();
+  const viewport = page.viewportSize();
+  expect(bounds).not.toBeNull();
+  expect(viewport).not.toBeNull();
+  // The results card should sit in the side scenery, not cover the mating pieces.
+  expect(bounds.x + bounds.width).toBeLessThan(viewport.width * .36);
+  expect(bounds.y).toBeGreaterThan(40);
+}
+
+test('Combat mate · 1440x900 keeps the War Room until the debrief CTA', async ({ page }) => {
+  test.setTimeout(100_000);
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const reveal = await openRealCampaignMate(page);
+  await expectMateRevealLeavesBoardCenterClear(page, reveal);
+  await mkdir(ARTIFACT_DIR, { recursive: true });
+  await captureWarRoomFrame(page, ARTIFACT_DIR + '/combat-checkmate-desktop-1440x900.png');
+  await reveal.getByRole('button', { name: /Ver debriefing/ }).click();
+  const debrief = page.getByRole('region', { name: 'Informe postcombate' });
+  await expect(debrief).toBeVisible({ timeout: 20_000 });
+  await expect(debrief.getByRole('heading', { name: 'VICTORIA' })).toBeVisible();
+  await expect(debrief.locator('.combat-debrief-score-details')).not.toHaveAttribute('open');
+  await debrief.scrollIntoViewIfNeeded();
+  await captureWarRoomFrame(page, ARTIFACT_DIR + '/combat-debrief-story-desktop-1440x900.png');
+});
+
+test('Combat mate · landscape 844x390 and portrait debrief 390x844', async ({ page }) => {
+  test.setTimeout(100_000);
+  await page.setViewportSize({ width: 844, height: 390 });
+  const reveal = await openRealCampaignMate(page);
+  await expectMateRevealLeavesBoardCenterClear(page, reveal);
+  await mkdir(ARTIFACT_DIR, { recursive: true });
+  await captureWarRoomFrame(page, ARTIFACT_DIR + '/combat-checkmate-landscape-844x390.png');
+  await reveal.getByRole('button', { name: /Ver debriefing/ }).click();
+  await page.setViewportSize({ width: 390, height: 844 });
+  const debrief = page.getByRole('region', { name: 'Informe postcombate' });
+  await expect(debrief).toBeVisible({ timeout: 20_000 });
+  await expect(debrief.getByRole('heading', { name: 'VICTORIA' })).toBeVisible();
+  await expect(debrief.locator('.combat-debrief-score-details')).not.toHaveAttribute('open');
+  // The global player remains available but must not sit on the campaign title.
+  const dock = page.locator('.global-music-dock');
+  const heading = page.getByRole('heading', { name: 'Campaña de Combat Chess' });
+  await expect(dock).toBeVisible();
+  await expect(heading).toBeVisible();
+  const dockBounds = await dock.boundingBox();
+  const headingBounds = await heading.boundingBox();
+  expect(dockBounds).not.toBeNull();
+  expect(headingBounds).not.toBeNull();
+  expect(dockBounds.y + dockBounds.height, 'Music dock must finish before the campaign heading').toBeLessThanOrEqual(headingBounds.y + 1);
+  await debrief.scrollIntoViewIfNeeded();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1)).toBe(false);
+  await captureWarRoomFrame(page, ARTIFACT_DIR + '/combat-debrief-story-portrait-390x844.png');
 });
