@@ -18,7 +18,7 @@ REF = "chess_studio_warroom_immutable_glbs_v1"
 HOST = "assets.chess-studio.shadowops.dpdns.org"
 PATHS = (
     "/war-room/v3/runtime/war-room-v3-shell-0df589c2fa839a26.glb",
-    "/war-room/v4/runtime/war-room-v4-shell-f4b19a5d578af126.glb",
+    "/war-room/v4/runtime/war-room-v4-shell-c94904e122e110f6.glb",
 )
 EDGE_TTL = 7 * 24 * 3600
 BROWSER_TTL = 365 * 24 * 3600
