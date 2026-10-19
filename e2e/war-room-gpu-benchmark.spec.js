@@ -171,6 +171,22 @@ async function stopProbe(page) {
     renderCost: {
       status: raw.renderCostRaw.status,
       renderedFrames: raw.renderCostRaw.frames.length,
+      shadowSplitStatus: raw.renderCostRaw.status !== 'ready' ? 'unavailable'
+        : raw.renderCostRaw.frames.every((frame) =>
+          Number.isSafeInteger(frame.mainCalls) && Number.isSafeInteger(frame.shadowCalls)
+          && Number.isSafeInteger(frame.shadowPasses)
+          && frame.mainCalls + frame.shadowCalls === frame.calls)
+          ? 'ready' : 'unavailable',
+      ...(raw.renderCostRaw.status === 'ready'
+        && raw.renderCostRaw.frames.every((frame) =>
+          Number.isSafeInteger(frame.mainCalls) && Number.isSafeInteger(frame.shadowCalls)
+          && Number.isSafeInteger(frame.shadowPasses)
+          && frame.mainCalls + frame.shadowCalls === frame.calls) ? {
+        mainCallsMedian: percentile(raw.renderCostRaw.frames.map((f) => f.mainCalls), 0.5),
+        shadowCallsMedian: percentile(raw.renderCostRaw.frames.map((f) => f.shadowCalls), 0.5),
+        shadowCallsP95: percentile(raw.renderCostRaw.frames.map((f) => f.shadowCalls), 0.95),
+        shadowPassesMedian: percentile(raw.renderCostRaw.frames.map((f) => f.shadowPasses), 0.5),
+      } : {}),
       ...(raw.renderCostRaw.status === 'ready' ? {
         callsMedian: percentile(raw.renderCostRaw.frames.map((f) => f.calls), 0.5),
         callsP95: percentile(raw.renderCostRaw.frames.map((f) => f.calls), 0.95),
