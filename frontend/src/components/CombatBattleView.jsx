@@ -19,7 +19,7 @@ const BOSS_SPRITES = { iron: ironKing, nomad: nomadKing, shadow: shadowKing };
 
 export default function CombatBattleView({
   onExit, onViewBattle, phase, localChess, status, statusLabel, statusClass, statusText,
-  fen, selected, handleSquareClick, handleSquareDoubleClick, legalTargets, pendingAnim,
+  fen, selected, handleSquareClick, handleSquareDoubleClick, legalTargets, pendingAnim, combatLog = [],
   pieceLevels, pieceXp, pieceVeteranMarks, humanColor, busy, backToSetup, armySummary, log, battleRecap, registry, roster,
   pendingPromotion, choosePromotion, pendingAttack, confirmAttack, cancelAttack, infoPiece, infoUnitRecord,
   handleBuyStat, handleActivateTechnique, infoTechniqueTargets, setInfoSquare, suspendBattleToMenu, retireBattle, combatVariant, bossHp, bossPhase, bossConfig, cpuRetryNeeded, retryCpuTurn, battleTheme, battleThemeLabel,
@@ -31,6 +31,7 @@ export default function CombatBattleView({
   } = useWarRoomLandscape(true);
   const { immersive: warRoomImmersive } = useWarRoomImmersive({ enabled: true, focusActive: false });
   const [exitChoiceOpen, setExitChoiceOpen] = useState(false);
+  const [battleLogOpen, setBattleLogOpen] = useState(false);
 
   return (
     <div
@@ -95,9 +96,27 @@ export default function CombatBattleView({
             </div>
 
             <aside className="game-side-column combat-game-side-column combat-warroom-ops" aria-label="Registro de batalla y estado táctico">
-              <details className="notation-panel combat-tactical-panel combat-warroom-log-drawer">
-                <summary className="combat-warroom-log-summary"><h3>Registro de batalla</h3><b>{log.length}</b></summary>
-                <div className="combat-warroom-log-body">
+              <div className="notation-panel combat-tactical-panel combat-warroom-log-drawer">
+                <button type="button" className="combat-warroom-log-summary"
+                  aria-expanded={battleLogOpen} aria-controls="combat-warroom-log-history"
+                  onClick={() => setBattleLogOpen((open) => !open)}>
+                  <h3>Registro de batalla <span aria-hidden="true">{battleLogOpen ? '−' : '+'}</span></h3>
+                  <b>{combatLog.length}</b>
+                </button>
+                {battleLogOpen && <div className="combat-warroom-log-body"
+                  id="combat-warroom-log-history" role="region" aria-label="Historial de la batalla">
+                <div className="combat-log-section">
+                  <div className="combat-panel-section-title"><span>Jugadas</span><small>{combatLog.length}</small></div>
+                  <div className="notation-list combat-log-list" aria-label="Historial de jugadas">
+                    {combatLog.length === 0 && <p className="notation-empty">Todavía no hay jugadas.</p>}
+                    {combatLog.map((move, i) => (
+                      <div key={`${i}-${move.from}-${move.to}`} className="combat-log-entry kind-move">
+                        <span className="combat-log-glyph" aria-hidden="true">{i + 1}</span>
+                        <span><small>{move.by === 'human' ? 'TÚ' : 'RIVAL'}</small>{move.san || `${move.from} → ${move.to}`}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
                 <header className="combat-tactical-heading">
                   <span className="game-chat-kicker">COMBAT CHESS</span>
                   <strong>Bitácora táctica</strong>
@@ -115,7 +134,7 @@ export default function CombatBattleView({
                     <small>{log.length}</small>
                   </div>
                   <div className="notation-list combat-log-list">
-                    {log.length === 0 && <p className="notation-empty">Todavía no hubo ninguna captura.</p>}
+                    {log.length === 0 && <p className="notation-empty">Todavía no hay incidencias destacadas.</p>}
                     {log.map((entry, i) => {
                       const glyph = entry.kind === 'capture' ? '✦'
                         : entry.kind === 'casualty' ? '✕'
@@ -150,8 +169,8 @@ export default function CombatBattleView({
                     </p>
                   </div>
                 </details>
-                </div>
-              </details>
+                </div>}
+              </div>
             </aside>
           </div>
 

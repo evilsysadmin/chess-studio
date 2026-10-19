@@ -72,6 +72,18 @@ export function resolveBoard3DPointerSquare(
       // highlighted destination that happens to be projected behind it.
       const foreground = intersections.map(squareFromBoard3DIntersection).find(Boolean);
       if (foreground && foreground !== selectedSquare && movableSquares?.has(foreground)) return foreground;
+      // A capture destination may be completely covered by an enemy piece,
+      // so its tile never appears among ray hits. Resolve that enemy piece
+      // against chess.js legal captures before checking background tiles.
+      const captures = new Set((legalTargets || [])
+        .filter((target) => target && typeof target === 'object'
+          && (target.captured || target.technique || target.san?.includes?.('x')))
+        .map((target) => target.to || target.square).filter(Boolean));
+      for (const hit of intersections) {
+        if (squareFromBoard3DTileIntersection(hit)) continue;
+        const target = squareFromBoard3DIntersection(hit);
+        if (target && captures.has(target)) return target;
+      }
       // The v4 play pitch intentionally keeps a real perspective. On compact
       // touch viewports a tall source piece can visually cover the centre of a
       // legal square one rank behind it. The ray still reaches that tile after

@@ -486,3 +486,18 @@ describe('Combat fail-closed ante posiciones dañadas', () => {
     expect(combatPositionIssues(chess.fen(), ghost)).toContain('ghost:e4');
   });
 });
+
+describe('Combat Chess · captura negra e5 a d4', () => {
+  it('mantiene la captura legal y coherente sin cambiar las probabilidades', () => {
+    const fen = '7k/8/8/4p3/3N4/8/8/K7 b - - 0 1';
+    const chess = new Chess(fen);
+    expect(chess.moves({ square: 'e5', verbose: true }).find(m => m.to === 'd4')?.captured).toBe('n');
+    const registry = createInitialRegistry(chess);
+    const result = resolveCombatMove({ fen, registry, from: 'e5', to: 'd4', randomFn: () => 0 });
+    expect(result).toMatchObject({ isCapture: true, hit: true });
+    expect(new Chess(result.fen).get('d4')).toMatchObject({ type: 'p', color: 'b' });
+    expect(result.registry.d4).toMatchObject({ type: 'p', color: 'b' });
+    expect(result.registry.e5).toBeUndefined();
+    expect(combatPositionIssues(result.fen, result.registry)).toEqual([]);
+  });
+});
