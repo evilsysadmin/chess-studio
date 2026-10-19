@@ -9,6 +9,7 @@ import {
   homeBlenderLightProbeMode,
   homeBlenderLightProbeLocksFullLod,
   applyHomeBlenderLightProbe,
+  homeBlenderWallPairFillPlan,
 } from './HomeBlenderLightProbe.js';
 import {
   createHomeBlenderGpuTimer,
@@ -1365,7 +1366,7 @@ function createGlowSprite(texture, color, size, opacity, position) {
   return sprite;
 }
 
-function addRuntimeLights(scene, shadowsEnabled = true, ambientPeriod = 'day') {
+function addRuntimeLights(scene, shadowsEnabled = true, ambientPeriod = 'day', diagnosticLightMode = 'normal') {
   // Keep the browser rendition close to the authored Blender beauty pass:
   // dark stone stays dark and the warm practicals shape the room instead of
   // a large ambient wash flattening every material.
@@ -1434,6 +1435,20 @@ function addRuntimeLights(scene, shadowsEnabled = true, ambientPeriod = 'day') {
       return light;
     })
     : [];
+  // In the opt-in A/B candidate only, keep all four real torch objects for
+  // flame/glow flicker, but add exactly two midpoint fill lights. The original
+  // wall lights are later hidden from shader evaluation by the probe filter.
+  // New fills have no glow sprites: the four actual flames remain the source
+  // of visible emissive light. No production render path creates these.
+  if (shadowsEnabled && diagnosticLightMode === 'wall-pair') {
+    for (const spec of homeBlenderWallPairFillPlan(HOME_BLENDER_TORCH_X)) {
+      const fillLight = new THREE.PointLight(spec.color, spec.intensity, spec.distance, spec.decay);
+      fillLight.position.set(spec.x, spec.y, spec.z);
+      fillLight.castShadow = false;
+      fillLight.userData.homeLightProbeFamily = 'wall-pair';
+      torches.push(fillLight);
+    }
+  }
   // The Dungeon's two fire pits sit under the gate at the foot of the stairs and glow
   // up the steps in the Blender scene; the runtime ignored them, so the stairs read as
   // flat dark slabs. A warm light from below gives them relief and life, and it wavers
@@ -1977,14 +1992,21 @@ export default function HomeBlenderScene3D({
     // Keep haze behind the playing surface: foreground remains crisp while the
     // rear architecture picks up a restrained warm atmospheric falloff.
     scene.fog = new THREE.Fog(0x170d09, 20, 34);
-    const runtimeLights = addRuntimeLights(scene, initialPolicy.lod === 'full', ambient);
-    // Explicit benchmark-only variant: remove ancillary non-shadow lights
-    // from the shader's light list. Keep key shadows, fireplaces, glows and
-    // all production lighting entirely unchanged. Never used for users
-    // without BOTH ?homeGpuProfile=1 and ?homeLightProbe=aux-off.
+    const runtimeLights = addRuntimeLights(
+      scene, initialPolicy.lod === 'full', ambient,
+      gpuProfiling ? lightProbeMode : 'normal',
+    );
+    // Explicit benchmark-only variant: isolate non-shadow lights or swap
+    // four wall illuminators for two wider midpoint fills. The four flame
+    // glows, key shadow and fireplaces are unchanged. Two flags are required;
+    // normal Home neither builds nor renders the candidate.
     if (gpuProfiling) {
       const disabled = applyHomeBlenderLightProbe(runtimeLights.torches, lightProbeMode);
       canvas.dataset.homeBlenderLightProbeDisabled = String(disabled);
+      canvas.dataset.homeBlenderLightProbeAdded = String(
+        runtimeLights.torches.filter(({ light }) =>
+          light.userData.homeLightProbeFamily === 'wall-pair').length,
+      );
     }
     canvas.dataset.homeBlenderPhase = 'scene-created';
     markStartup('scene-created');
