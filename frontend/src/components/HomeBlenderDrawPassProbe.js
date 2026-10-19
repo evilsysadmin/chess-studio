@@ -78,8 +78,12 @@ export function installHomeBlenderDrawPassProbe(renderer, classify) {
       if (!valid || !validCounter(totalCalls) || shadowCalls > totalCalls) return null;
       const mainCalls = totalCalls - shadowCalls;
       const sum = (group) => Object.values(group).reduce((acc, count) => acc + count, 0);
+      const observedShadow = sum(families.shadow);
+      const observedMain = sum(families.main);
+      // Even partial attribution cannot exceed the renderer's real counters.
+      if (observedShadow > shadowCalls || observedMain > mainCalls) return null;
       // Unobserved render paths are unavailable, NEVER silently assigned to runtime.
-      const attributed = sum(families.shadow) === shadowCalls && sum(families.main) === mainCalls;
+      const attributed = observedShadow === shadowCalls && observedMain === mainCalls;
       return {
         totalCalls, shadowCalls, mainCalls, shadowPasses,
         families: attributed ? {
