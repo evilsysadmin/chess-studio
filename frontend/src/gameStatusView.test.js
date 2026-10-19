@@ -37,6 +37,18 @@ describe('gameStatusView', () => {
     expect(gameStatusView({ status: 'playing', turn: 'w', humanColor: 'w', busy: true, turnBanner: 'La CPU jugó e5' }).statusText).toBe('La CPU está pensando…');
   });
 
+  it('distingue confirmación humana de cálculo CPU en 2D, 3D y accesibilidad', () => {
+    const pending = { status: 'playing', turn: 'w', humanColor: 'w', busy: true, pendingMove: true };
+    expect(gameStatusView(pending).statusText).toBe('Confirmando jugada…');
+    expect(gameStatusView({ ...pending, zenMode: true }).statusText).toBe('Confirmando jugada…');
+    expect(gameStatusView({ ...pending, pendingMove: false }).statusText).toBe('La CPU está pensando…');
+    expect(gameStatusView({ ...pending, busy: false }).statusText).toBe('Tu turno');
+    expect(gameStatusView({ ...pending, turnBanner: 'Reintentando conexión…' }).statusText).toBe('Reintentando conexión…');
+    expect(gameStatusView({ ...pending, status: 'checkmate' }).statusText).toBe('Jaque mate');
+    expect(gameStatusView({ ...pending, flagFallen: 'w' }).statusText).toContain('Se acabó el tiempo');
+    expect(gameStatusView({ ...pending, forcedOutcome: 'loss' }).statusText).toContain('Sudden Death');
+  });
+
   it('distingue reintento de red real de la espera normal y del resultado final', () => {
     const retry = { status: 'playing', turn: 'w', humanColor: 'w', busy: true, turnBanner: 'Reintentando conexión…' };
     expect(gameStatusView(retry).statusText).toBe('Reintentando conexión…');

@@ -148,6 +148,8 @@ test('War Room · offline→online durante /move pendiente reconcilia 3D sin rem
   await expect(canvas).toHaveAttribute('data-e2e-reconnect-sentinel', 'alive');
   await expect(board3d).toHaveAttribute('data-board3d-selected', '');
   await expect(board3d).toHaveAttribute('data-board3d-legal-target-count', '0');
+  await expect(page.locator('.status-line')).toContainText('Confirmando jugada…');
+  await expect(page.locator('.game-3d-turn-pill-label')).toContainText('Confirmando jugada…');
 
   await page.evaluate(() => {
     window.dispatchEvent(new Event('offline'));
@@ -177,6 +179,7 @@ test('War Room · offline→online durante /move pendiente reconcilia 3D sin rem
   await expect(board3d).toHaveAttribute('data-board3d-selected', '');
   await expect(board3d).toHaveAttribute('data-board3d-legal-target-count', '0');
   await expect(gameStatus(page)).toBeVisible();
+  await expect(page.locator('.status-line')).not.toContainText('Confirmando jugada…');
   expect(movePosts).toBe(1);
 
   // La foto autoritativa es 1.e4 ...e5. El caballo g1 debe ver e2 libre además
