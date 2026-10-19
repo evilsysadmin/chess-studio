@@ -291,7 +291,8 @@ async function inspectActualRenderer(canvas) {
       // The runtime already exposes this one-shot GLB/light census. Keep
       // missing telemetry null instead of treating a not-yet-installed room
       // as zero geometry. These are static inventories, NOT rendered draws.
-      sceneInventory: Object.fromEntries([
+      sceneInventory: {
+        ...Object.fromEntries([
         ['authoredGlbMeshes', 'warRoomShadowCasterCandidates'],
         ['v3StaticTorchBatches', 'warRoomV3StaticTorchBatches'],
         ['shadowCasterBudget', 'warRoomShadowCasterBudget'],
@@ -300,7 +301,9 @@ async function inspectActualRenderer(canvas) {
         const value = element.dataset[key];
         return [label, value !== undefined && /^[0-9]+$/.test(value)
           ? Number(value) : null];
-      })),
+      ])),
+        shadowWarmup: element.dataset.warRoomShadowWarmup || null,
+      },
     };
   });
 }
