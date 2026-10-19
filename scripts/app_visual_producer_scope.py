@@ -324,7 +324,7 @@ def classify_path(path: str) -> set[str] | None:
 
     if lower.endswith(".md"):
         return set()
-    if lower in {"makefile", ".github/workflows/staging-deploy.yml", ".github/workflows/production-promote.yml"}:
+    if lower in {"makefile", ".github/workflows/staging-deploy.yml", ".github/workflows/production-promote.yml", ".github/workflows/cicd.yml", "scripts/run_core_e2e_lane.py", "scripts/test_entrypoint_parity.py"}:
         return set()
     if lower.startswith("scripts/app_visual_"):
         return set()
@@ -808,6 +808,7 @@ def self_test() -> None:
     assert classify(["e2e/staging-live.spec.js"]) == "none"
     assert classify(["scripts/chronicles_area_parity_corpus.py"]) == "none"
     assert classify(["scripts/chronicles_contracts.py", "scripts/validate_chronicles_campaign.py"]) == "none"
+    assert classify([".github/workflows/cicd.yml", "scripts/run_core_e2e_lane.py", "scripts/test_entrypoint_parity.py", "frontend/src/components/RoguelikeScreen.jsx", "e2e/war-room-combat-battle-visual-artifact.spec.js"]) == "combat-battle"
     assert classify(["scripts/chronicles_area_parity_corpus.py", "frontend/src/chronicles/chroniclesMapCatalog.js"]) == "none"
     assert classify(["scripts/unknown_unowned_generator.py"]) == "all"
     assert classify(["e2e/staging-live.spec.js", "frontend/src/components/PvpHandoffModal.jsx"]) == "pvp-handoff"
