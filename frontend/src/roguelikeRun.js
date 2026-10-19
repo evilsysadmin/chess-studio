@@ -47,9 +47,10 @@ function normalizeRun(parsed) {
   const seed = inRun ? String(parsed.seed || `legacy-${floor}`) : null;
   const mode = parsed.mode === 'endless' ? 'endless' : 'tower';
   const perks = Array.isArray(parsed.perks) ? parsed.perks.filter((id) => perkById(id)) : [];
-  const rewardChosenForFloor = Number.isFinite(Number(parsed.rewardChosenForFloor))
-    ? Number(parsed.rewardChosenForFloor)
-    : null;
+  // null means "not yet rewarded": Number(null) === 0 would silently
+  // corrupt the persisted marker. Only the cleared current floor may own it.
+  const chosenFloor = parsed.rewardChosenForFloor == null ? null : Number(parsed.rewardChosenForFloor);
+  const rewardChosenForFloor = inRun && phase === 'cleared' && chosenFloor === floor ? floor : null;
   return { floor, inRun, phase, seed, mode, perks, rewardChosenForFloor };
 }
 

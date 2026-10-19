@@ -129,6 +129,39 @@ describe('máquina de estados del intento', () => {
     expect(startNewRun('seed-controlada')).toMatchObject({ inRun: true, floor: 1, phase: 'battle', seed: 'seed-controlada', mode: 'tower', perks: [] });
   });
 
+  it('mantiene null hasta elegir una recompensa y vuelve a null al avanzar', () => {
+    let run = startNewRun('reward-null');
+    expect(run.rewardChosenForFloor).toBeNull();
+    expect(loadRun().rewardChosenForFloor).toBeNull();
+    run = markBattleStarted(run);
+    expect(run.rewardChosenForFloor).toBeNull();
+    run = markFloorCleared(run);
+    expect(run.rewardChosenForFloor).toBeNull();
+    expect(loadRun().rewardChosenForFloor).toBeNull();
+    const perk = rewardOptionsForFloor(run.seed, run.floor)[0];
+    run = chooseRunReward(run, perk.id);
+    expect(run.rewardChosenForFloor).toBe(1);
+    run = advanceFloor(run);
+    expect(run).toMatchObject({ floor: 2, phase: 'battle', perks: [perk.id] });
+    expect(run.rewardChosenForFloor).toBeNull();
+    expect(loadRun().rewardChosenForFloor).toBeNull();
+  });
+
+  it('recupera marcadores legacy sin confundir recompensa ajena con el piso actual', () => {
+    const key = 'chess-study-roguelike-run';
+    const legacy = { floor: 4, inRun: true, phase: 'cleared', seed: 'legacy-reward', mode: 'tower', perks: ['steel_pulse'] };
+    for (const value of [null, 0, 2, -1, 'invalido']) {
+      localStorage.setItem(key, JSON.stringify({ ...legacy, rewardChosenForFloor: value }));
+      const restored = loadRun();
+      expect(restored.rewardChosenForFloor).toBeNull();
+      expect(advanceFloor(restored).floor).toBe(4);
+    }
+    localStorage.setItem(key, JSON.stringify({ ...legacy, rewardChosenForFloor: '4' }));
+    expect(loadRun().rewardChosenForFloor).toBe(4);
+    localStorage.setItem(key, JSON.stringify({ ...legacy, phase: 'battle', rewardChosenForFloor: 4 }));
+    expect(loadRun().rewardChosenForFloor).toBeNull();
+  });
+
   it('no permite battle -> cleared sin haber empezado', () => {
     const run = startNewRun('sin-atajos');
     expect(markFloorCleared(run)).toEqual(run);
