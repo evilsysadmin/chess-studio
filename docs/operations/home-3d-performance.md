@@ -104,6 +104,26 @@ The script fails closed if it cannot prove the requested renderer family from th
 For meaningful before/after numbers: check out a known baseline SHA, rebuild, run in hardware mode, preserve the JSON; then build the candidate SHA and repeat on the **same workstation**, with the same NVIDIA/AMD driver, Chromium build, power state, viewport, time-of-day and network conditions. Repeat the experiment more than once. Compare median GPU time where available and CPU/RAF p95; do not interpret Home's intentionally throttled animated draws/sec as monitor FPS. An opt-in software run is for compatibility diagnosis, not proof of real-GPU gains.
 
 
+## Single-source accent lighting GPU isolation
+
+A physical Intel GPU A/B/B/A on the **current two-fill production Home** measured 23.34 ms with all accents vs. 19.255 ms without the 3 `accent` shading lights: **4.085 ms / 17.50% lower GPU time**, paired +3.77 / +4.40 ms with no drift flags (night, full LOD, Matthias in reading-chair, 329 draws / 492,298 triangles). This was a **group** contrast; it does not identify which of the three lights caused the shader cost or imply an FPS benefit.
+
+The runtime identifies the three sources accurately by authored position: `accent-dungeon` is the fire-pit uplight at the foot of the stairs, `accent-table` is the tabletop candle at (-2.72, 1.9, -1.4), and `accent-reading` is the reading/library desk light at (-3.1, 1.5, -3.76). Their positions, intensity, glows, flicker and shading in normal play **do not change**. Read-only diagnostic `userData.homeLightProbeAccent` labels are attached to just these three light objects.
+
+Run **one** physical trial at a time in a clean up-to-date checkout:
+
+```bash
+make home-gpu-light-probe \
+  HOME_GPU_NVIDIA_PRIME=0 HOME_GPU_EXPECT_VENDOR=intel \
+  HOME_GPU_AMBIENT=night HOME_GPU_BASELINE=production \
+  HOME_GPU_LIGHT_GROUP=accent-dungeon
+# Then run the same command with accent-table and accent-reading.
+```
+
+Each trial produces a distinct file: `.artifacts/home-gpu-benchmark/home-3d-light-probe-accent-dungeon-production-hardware.json` (or `accent-table` / `accent-reading`). It compares `pair-normal` with `pair-aux-accent-dungeon-off`, using A/B/B/A and the same strict GPU-timer, WebGL hardware/vendor, full-LOD, shadow key, actor, time-of-day, scene-inventory and renderer-fingerprint guards. **A always disables four old wall shaders and adds two fills; B additionally disables exactly one named accent, not the other two.** Modes are double-opt-in under the existing `homeGpuProfile=1&homeLightProbe=...` flags. The pure report aggregator rejects any mixed baseline, missing timing, unknown light-mode or group/individual mismatch. All historical report filenames and `HOME_GPU_LIGHT_GROUP=accent` keep their existing meaning.
+
+These are exploratory timing contrasts of deliberately different lighting. A single low-cost accent may explain little of the 4.085 ms group gap, and costs need not add linearly. **Do not remove a production light from these measurements alone.** If one is a convincing hotspot, prepare a separate reversible visual experiment and review real WebGL before/after PNGs before promotion.
+
 ## Production-pair GPU lighting baseline — after PR #5850
 
 The canonical full-LOD Home now ships the **two-fill wall-torch layout** (4 original wall shader lights hidden, 2 wider fills added, independent torch glows preserved). Older lighting-family experiments explicitly used a **four-torch** baseline; reusing their `normal` comparator would overstate or misattribute subsequent gains to the remaining families.
