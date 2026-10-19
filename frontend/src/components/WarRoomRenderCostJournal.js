@@ -18,10 +18,19 @@ export function createWarRoomRenderCostJournal(capacity = WAR_ROOM_RENDER_COST_C
       if (![calls, triangles, startedAtMs, endedAtMs].every(Number.isFinite)
           || calls < 0 || triangles < 0 || startedAtMs < 0 || endedAtMs < startedAtMs) return;
       const seq = ++sequence;
-      ring[(seq - 1) % capacity] = {
+      const row = {
         seq, startedAtMs, endedAtMs,
         calls, triangles, cpuSubmitMs: endedAtMs - startedAtMs,
       };
+      if (Number.isSafeInteger(info.mainCalls) && Number.isSafeInteger(info.shadowCalls)
+          && Number.isSafeInteger(info.shadowPasses)
+          && info.mainCalls >= 0 && info.shadowCalls >= 0
+          && info.shadowPasses >= 0 && info.mainCalls + info.shadowCalls === calls) {
+        row.mainCalls = info.mainCalls;
+        row.shadowCalls = info.shadowCalls;
+        row.shadowPasses = info.shadowPasses;
+      }
+      ring[(seq - 1) % capacity] = row;
     },
     readAfter(afterSeq) {
       if (!Number.isSafeInteger(afterSeq) || afterSeq < 0) {
