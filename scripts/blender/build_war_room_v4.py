@@ -59,7 +59,7 @@ V4_ENTRY_RECESS_METERS = 1.30
 # The circular wall's true tangent presents a closed door almost edge-on in
 # the accepted V4 hybrid camera. Splay only the inner entry and its leaf
 # toward the player; its threshold and Hans' authored walking anchors stay put.
-V4_ENTRY_VISUAL_SPLAY_DEG = 25.0
+V4_ENTRY_VISUAL_SPLAY_DEG = -35.0
 V4_ENTRY_DOOR_Z = 1.90
 
 # Hans' tower door: the teal leaf is its own runtime node, hinged on the jamb
@@ -67,7 +67,7 @@ V4_ENTRY_DOOR_Z = 1.90
 # hearth (Blender Z yaw == three.js Y yaw). A dark void behind it reads as the
 # stair landing once it opens.
 V4_HANS_DOOR_LEAF = "WR_HANS_door_leaf"
-V4_HANS_DOOR_OPEN_YAW = -1.82
+V4_HANS_DOOR_OPEN_YAW = -0.96
 V4_HANS_DOOR_HALF = 0.88
 # The left armour guards the tower door from the player's side of it: in front
 # of the hearth it would stand on Hans' work spot and hide him from the camera.
