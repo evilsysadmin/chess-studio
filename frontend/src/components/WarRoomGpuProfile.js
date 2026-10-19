@@ -1,5 +1,6 @@
 import { createHomeBlenderGpuTimer } from './HomeBlenderPerformanceDiagnostics.js';
 import { createWarRoomRenderCostJournal } from './WarRoomRenderCostJournal.js';
+import { installWarRoomShadowPassProbe } from './WarRoomShadowPassProbe.js';
 
 // This flag is intentionally not a normal preference. A local benchmark can
 // opt in using its init-script localStorage seed; a human can use a URL query.
@@ -50,6 +51,7 @@ export function createWarRoomGpuProfile(renderer, {
   });
   const dataset = canvas.dataset;
   const renderCosts = createWarRoomRenderCostJournal();
+  const shadowPass = installWarRoomShadowPassProbe(renderer);
   // Local-only, read by the real browser benchmark. No per-frame DOM writes.
   canvas.__warRoomRenderCostJournal = renderCosts;
   dataset.warRoomGpuProfileStatus = timer.status;
@@ -61,9 +63,17 @@ export function createWarRoomGpuProfile(renderer, {
   return {
     // Tag the query at its actual GPU begin, not the later asynchronous
     // publication. This prevents bootstrap/idle renders leaking into move.
-    begin: () => timer.begin(globalThis.performance?.now?.() ?? null),
+    begin: () => {
+      shadowPass?.begin();
+      timer.begin(globalThis.performance?.now?.() ?? null);
+    },
     end: () => timer.end(),
-    recordRender: (info, startedAtMs, endedAtMs) => renderCosts.record(info, startedAtMs, endedAtMs),
+    recordRender(info, startedAtMs, endedAtMs) {
+      // Only in benchmark mode: split the completed Three draw census by
+      // shadow-depth submissions versus the main render pass.
+      const split = shadowPass?.sample(info?.calls);
+      renderCosts.record(split ? { ...info, ...split } : info, startedAtMs, endedAtMs);
+    },
     poll() {
       // Polling is non-blocking and occurs only after a genuine room render.
       timer.poll();
@@ -89,6 +99,7 @@ export function createWarRoomGpuProfile(renderer, {
       }
     },
     dispose() {
+      shadowPass?.dispose();
       timer.dispose();
       delete canvas.__warRoomRenderCostJournal;
       delete dataset.warRoomGpuProfileStatus;
