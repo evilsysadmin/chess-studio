@@ -19,6 +19,19 @@ export function homeBlenderLightProbeMode(search = '') {
     ? mode : 'normal';
 }
 
+// Full-quality Home uses the visual-reviewed two-point wall fill by default.
+// The canonical four-sconce layout remains an instant URL rollback, and every
+// explicit GPU A/B trial keeps its historical FOUR-light baseline. This avoids
+// silently changing the meaning of earlier family-level hardware reports.
+export function homeBlenderWallTorchLayout(search = '') {
+  const params = new URLSearchParams(String(search).replace(/^\\?/, ''));
+  const mode = params.get('homeLightProbe');
+  if (params.get('homeGpuProfile') === '1' && DIAGNOSTIC_MODES.has(mode)) {
+    return mode === 'wall-pair' ? 'pair' : 'legacy';
+  }
+  return params.get('homeWallTorches') === 'legacy' ? 'legacy' : 'pair';
+}
+
 // A/B/B/A needs two comparable FULL renderers. The production governor
 // correctly degrades under sustained jank, but doing so in just one visit
 // would compare a different scene instead of light-shader cost. Lock full
