@@ -140,6 +140,28 @@ def load_group(directory, expected_sha, mode, minimum):
                     number(sample.get(field), where + '/' + phase + '/' + field)
                 require(sample['rafGapsOver50Ms'] <= sample['rafGapsOver33Ms'] <= sample['rafIntervals'],
                         where + '/' + phase + ': invalid gap counts')
+                render_cost = sample.get('renderCost')
+                if render_cost is not None:
+                    require(type(render_cost) is dict, where + '/' + phase + ': renderCost must be object')
+                    status = render_cost.get('status')
+                    require(status in ('ready', 'missing', 'overflow', 'insufficient'),
+                            where + '/' + phase + ': unknown real-render journal status')
+                    count = render_cost.get('renderedFrames')
+                    require(type(count) is int and 0 <= count <= 512,
+                            where + '/' + phase + ': invalid real-render sample count')
+                    if status == 'ready':
+                        require(count >= 3, where + '/' + phase + ': insufficient actual renders')
+                        for field in ('callsMedian', 'callsP95', 'trianglesMedian',
+                                      'cpuSubmitMedianMs', 'cpuSubmitP95Ms'):
+                            number(render_cost.get(field), where + '/' + phase + '/' + field)
+                        require(render_cost['callsP95'] >= render_cost['callsMedian']
+                                and render_cost['cpuSubmitP95Ms'] >= render_cost['cpuSubmitMedianMs'],
+                                where + '/' + phase + ': inverted real-render percentiles')
+                    else:
+                        require(not any(field in render_cost for field in (
+                            'callsMedian', 'callsP95', 'trianglesMedian',
+                            'cpuSubmitMedianMs', 'cpuSubmitP95Ms')),
+                            where + '/' + phase + ': partial render sample cannot claim metrics')
                 gpu = sample.get('gpuTimer')
                 if gpu is None:
                     continue  # Legacy schema-2 harness, rAF-only. No invented timing.
@@ -250,6 +272,20 @@ def validate_capture_provenance(before, after):
     return verified
 
 
+def render_phase_median(reports, visit_type, phase, metric):
+    """Median of per-run actual Three.js draws, not first-ready or rAF."""
+    values = []
+    counts = []
+    for report in reports:
+        sample = report['visits'][VISITS.index(visit_type)][phase].get('renderCost')
+        if (not sample or sample.get('status') != 'ready'
+                or sample.get('renderedFrames', 0) < 3):
+            return None, None
+        values.append(sample[metric])
+        counts.append(sample['renderedFrames'])
+    return statistics.median(values), min(counts)
+
+
 def gpu_phase_median(reports, visit_type, phase):
     """Return real GPU elapsed median only for a fully comparable cohort."""
     values = []
@@ -307,6 +343,33 @@ def compare(baseline, candidate, base_sha, candidate_sha, *, mode='hardware', mi
                 else:
                     lines.append(f'| {profile} · {visit} · {label} | {a:.2f} | {b:.2f} | '
                                  f'{b-a:+.2f} | {len(before[profile])}/{len(after[profile])} |')
+    lines.extend([
+        '', '## Sustained renderer.render() cost · actual rendered frames only',
+        '',
+        'These are real Three.js draw submissions, not rAF ticks, total frame CPU, '
+        'or GPU elapsed time. CPU submit duration brackets only renderer.render(). '
+        'Missing/overflowed/legacy phases are n/a.',
+        '',
+        '| Profile · visit · phase · metric | Baseline median | Candidate median | Delta | Min rendered frames A/B |',
+        '|---|---:|---:|---:|---:|',
+    ])
+    for profile in PROFILES:
+        for visit in VISITS:
+            for phase in ('idle', 'move'):
+                for metric, label in (
+                    ('callsMedian', 'draw calls/frame median'),
+                    ('callsP95', 'draw calls/frame p95'),
+                    ('trianglesMedian', 'triangles/frame median'),
+                    ('cpuSubmitMedianMs', 'renderer CPU submit median (ms)'),
+                    ('cpuSubmitP95Ms', 'renderer CPU submit p95 (ms)'),
+                ):
+                    a, ac = render_phase_median(before[profile], visit, phase, metric)
+                    b, bc = render_phase_median(after[profile], visit, phase, metric)
+                    key = f'{profile} · {visit} · {phase} · {label}'
+                    if a is None or b is None:
+                        lines.append(f'| {key} | n/a | n/a | n/a | Missing/incomplete real render journal |')
+                    else:
+                        lines.append(f'| {key} | {a:.2f} | {b:.2f} | {b-a:+.2f} | {ac}/{bc} |')
     lines.extend([
         '', '## GPU TIME_ELAPSED_EXT (ms): only valid measured queries',
         '',
