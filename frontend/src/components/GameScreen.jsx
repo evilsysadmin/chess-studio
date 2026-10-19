@@ -736,7 +736,7 @@ export default function GameScreen({
     status: game.status,
     turn: game.turn,
     humanColor,
-    busy,
+    busy, pendingMove: busy && game.turn === humanColor && boardFen !== game.fen,
     zenMode,
     turnBanner,
     flagFallen,
