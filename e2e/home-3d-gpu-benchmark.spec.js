@@ -17,6 +17,7 @@ const productionBaseline = lightBaseline === 'production';
 const baseMode = productionBaseline ? 'pair-normal' : 'normal';
 const lightFamilyCounts = Object.freeze({
   all: 12, wall: 4, board: 2, stairs: 3, accent: 3,
+  'accent-dungeon': 1, 'accent-table': 1, 'accent-reading': 1,
   'wall-pair': 4, // original torches disabled, two wider fills added
 });
 const lightOffMode = productionBaseline ? `pair-aux-${lightProbeFamily}-off`
@@ -185,10 +186,16 @@ test('Home 3D physical GPU benchmark · three visits or opt-in light A/B/B/A', a
     throw new Error('CHESS_HOME_GPU_BASELINE must be legacy or production');
   }
   if (lightProbe && !Object.hasOwn(lightFamilyCounts, lightProbeFamily)) {
-    throw new Error('Unknown CHESS_HOME_GPU_LIGHT_GROUP: choose all, wall, board, stairs, accent, or wall-pair');
+    throw new Error('Unknown CHESS_HOME_GPU_LIGHT_GROUP: choose all, wall, board, stairs, accent, accent-dungeon, accent-table, accent-reading or wall-pair');
   }
-  if (lightProbe && productionBaseline && !['board', 'stairs', 'accent'].includes(lightProbeFamily)) {
-    throw new Error('Production two-fill GPU baseline supports only board, stairs and accent groups');
+  if (lightProbe && productionBaseline && ![
+    'board', 'stairs', 'accent',
+    'accent-dungeon', 'accent-table', 'accent-reading',
+  ].includes(lightProbeFamily)) {
+    throw new Error('Production two-fill GPU baseline supports only board, stairs and accent groups or individually named accent lights');
+  }
+  if (lightProbe && !productionBaseline && lightProbeFamily.startsWith('accent-')) {
+    throw new Error('Single-accent GPU probes require HOME_GPU_BASELINE=production');
   }
   if (lightProbe && !Object.hasOwn(LIGHT_PROBE_AMBIENT_HOUR, lightProbeAmbient)) {
     throw new Error('Unknown CHESS_HOME_GPU_AMBIENT: choose dawn, day, dusk, or night');
