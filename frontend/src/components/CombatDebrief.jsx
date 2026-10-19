@@ -1,5 +1,7 @@
 import { useMemo } from 'react';
+import './CombatDebriefExperience.css';
 import { combatVeteranHighlight } from '../combatDebrief.js';
+import { combatDebriefOutcomeLabel } from '../combatDebriefCopy.js';
 import { buildCombatDebriefDossier } from '../aiNarrativeTasks.js';
 import { useRemoteNarrativeDossier } from '../useRemoteNarrativeDossier.js';
 
@@ -52,29 +54,39 @@ export default function CombatDebrief({ debrief, compact = false, onViewBattle =
   const secondaryHighlights = debrief.topUnits.filter((unit) => unit.identityId !== veteranHighlight?.identityId);
   return (
     <section className={`combat-debrief ${compact ? 'compact' : ''}`} aria-label="Informe postcombate">
-      <div className="combat-debrief-heading">
-        <div>
-          <span className="army-memorial-kicker">COMBAT CHESS · DEBRIEFING</span>
-          <h3>{outcomeTitle(debrief.outcome)}</h3>
-        </div>
-        <span className={`combat-debrief-outcome ${debrief.outcome}`}>{String(debrief.outcome).toUpperCase()}</span>
-      </div>
+      <header className={`combat-debrief-story outcome-${debrief.outcome}`}>
+        <span className="army-memorial-kicker">COMBAT CHESS · PARTE DE BATALLA</span>
+        <h3>{combatDebriefOutcomeLabel(debrief.outcome)}</h3>
+        <strong>{outcomeTitle(debrief.outcome)}</strong>
+        <p>{debriefWhatHappened(debrief)}</p>
+        <span className="combat-debrief-story-spoils">{debriefGainLine(debrief)}</span>
+      </header>
+      {veteranHighlight && (
+        <article className="combat-veteran-highlight" aria-label="Veterano destacado">
+          <span className="combat-veteran-highlight-piece" aria-hidden="true">{PIECE[veteranHighlight.originType] || '♟'}</span>
+          <div>
+            <small>VETERANO DESTACADO</small>
+            <strong>{veteranHighlight.alias}</strong>
+            <span>{veteranHighlight.kills} bajas{veteranHighlight.bossDamage ? ` · ${veteranHighlight.bossDamage} daño boss` : ''}{veteranHighlight.promoted ? ` · Ascenso a ${veteranHighlight.afterRank}` : ''}</span>
+          </div>
+        </article>
+      )}
 
-      <div className="combat-debrief-score">
-        <span><b>{debrief.boardSurvivorCount ?? debrief.survivorCount}/{debrief.boardDeployedCount ?? debrief.deployedCount}</b><small>piezas en pie</small></span>
-        <span><b>{debrief.totalKills}</b><small>bajas enemigas</small></span>
-        <span title="Capturas, resultado y sector asegurado"><b>{debrief.creditsGained > 0 ? `+${debrief.creditsGained}` : '0'}</b><small>créditos</small></span>
-        <span><b>{debrief.meritGained > 0 ? `+${debrief.meritGained}` : '0'}</b><small>méritos</small></span>
-      </div>
 
-      <div className="combat-debrief-overview" aria-label="Resumen accionable del combate">
-        <section><small>QUÉ OCURRIÓ</small><strong>{debriefWhatHappened(debrief)}</strong></section>
-        <section><small>GANANCIAS</small><strong>{debriefGainLine(debrief)}</strong></section>
-      </div>
       <div className={`combat-debrief-next-action outcome-${debrief.outcome}`} aria-label="Siguiente decisión recomendada">
         <small>SIGUIENTE DECISIÓN</small>
         <strong>{debriefNextStep(debrief, nextAction)}</strong>
       </div>
+
+      <details className="combat-credit-breakdown combat-debrief-score-details">
+        <summary style={{ minHeight: 44 }}>Ver cifras de la batalla</summary>
+        <div className="combat-debrief-score">
+          <span><b>{debrief.boardSurvivorCount ?? debrief.survivorCount}/{debrief.boardDeployedCount ?? debrief.deployedCount}</b><small>piezas en pie</small></span>
+          <span><b>{debrief.totalKills}</b><small>bajas enemigas</small></span>
+          <span title="Capturas, resultado y sector asegurado"><b>{debrief.creditsGained > 0 ? `+${debrief.creditsGained}` : '0'}</b><small>créditos</small></span>
+          <span><b>{debrief.meritGained > 0 ? `+${debrief.meritGained}` : '0'}</b><small>méritos</small></span>
+        </div>
+      </details>
 
       {debrief.creditBreakdown && debrief.creditsGained > 0 && (
         <details className="combat-credit-breakdown">
@@ -98,16 +110,6 @@ export default function CombatDebrief({ debrief, compact = false, onViewBattle =
         </div>
       )}
 
-      {veteranHighlight && (
-        <article className="combat-veteran-highlight" aria-label="Veterano destacado">
-          <span className="combat-veteran-highlight-piece" aria-hidden="true">{PIECE[veteranHighlight.originType] || '♟'}</span>
-          <div>
-            <small>VETERANO DESTACADO</small>
-            <strong>{veteranHighlight.alias}</strong>
-            <span>{veteranHighlight.kills} bajas{veteranHighlight.bossDamage ? ` · ${veteranHighlight.bossDamage} daño boss` : ''}{veteranHighlight.promoted ? ` · Ascenso a ${veteranHighlight.afterRank}` : ''}</span>
-          </div>
-        </article>
-      )}
 
       {secondaryHighlights.length > 0 && (
         <details className="combat-debrief-more-units">

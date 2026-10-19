@@ -1,0 +1,93 @@
+/* Campaign victory is an event, not a statistics dashboard. Route-scoped styles
+ * are loaded with Combat Chess instead of inflating the initial app CSS. */
+.combat-battle-screen .combat-mate-reveal {
+  position: fixed;
+  z-index: 150;
+  top: clamp(4rem, 19dvh, 12rem);
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(27rem, calc(100vw - 1.5rem));
+  display: grid;
+  justify-items: center;
+  gap: .55rem;
+  padding: clamp(1.2rem, 3vw, 2.2rem);
+  text-align: center;
+  color: #f7eedb;
+  border: 1px solid rgba(221, 188, 112, .58);
+  border-radius: 18px;
+  background: linear-gradient(150deg, rgba(34, 35, 31, .96), rgba(7, 13, 20, .94));
+  box-shadow: 0 25px 90px rgba(0, 0, 0, .65), inset 0 1px 0 rgba(255, 232, 186, .16);
+  backdrop-filter: blur(16px);
+}
+.combat-mate-kicker {
+  font: 700 .66rem/1.35 var(--font-mono, monospace);
+  color: #cfb77d;
+  letter-spacing: .16em;
+}
+.combat-battle-screen .combat-mate-reveal h2 {
+  margin: .15rem 0 0;
+  color: #f6d59b;
+  font: 800 clamp(2.05rem, 5vw, 3.3rem)/1.05 var(--font-display, serif);
+  letter-spacing: .095em;
+  text-shadow: 0 2px 22px rgba(255, 191, 101, .22);
+}
+.combat-battle-screen .combat-mate-reveal p {
+  font-size: 1.04rem;
+  margin: 0;
+  line-height: 1.5;
+}
+.combat-battle-screen .combat-mate-aftermath {
+  font-size: .72rem;
+  color: #d9c6a1;
+}
+.combat-battle-screen .combat-mate-next {
+  min-height: 48px;
+  margin-top: .55rem;
+  width: min(100%, 17rem);
+}
+.combat-debrief .combat-debrief-story {
+  padding: clamp(1rem, 3vw, 1.8rem);
+  margin-bottom: .65rem;
+  border: 1px solid rgba(216, 177, 106, .34);
+  border-radius: 14px;
+  color: #f4e8ce;
+  background: radial-gradient(ellipse at top left, rgba(184, 138, 65, .16), transparent 75%), rgba(12, 17, 23, .74);
+}
+.combat-debrief-story.outcome-loss { border-color: rgba(202, 102, 94, .48); }
+.combat-debrief-story .army-memorial-kicker { letter-spacing: .14em; }
+.combat-debrief-story h3 {
+  font: 800 clamp(1.9rem, 4.5vw, 3rem)/1.08 var(--font-display, serif);
+  letter-spacing: .075em;
+  color: #f6d79f;
+  margin: .55rem 0 .1rem;
+}
+.combat-debrief-story.outcome-loss h3 { color: #e7a6a0; }
+.combat-debrief-story > strong {
+  display: block;
+  font-size: 1rem;
+  font-weight: 750;
+}
+.combat-debrief-story > p {
+  color: #ebdfc9;
+  font-size: .9rem;
+  line-height: 1.6;
+  max-width: 58ch;
+  margin: .6rem 0;
+}
+.combat-debrief-story-spoils {
+  display: inline-block;
+  color: #b8dbab;
+  font-size: .78rem;
+  line-height: 1.5;
+}
+.combat-debrief .combat-veteran-highlight { margin: .75rem 0; }
+.combat-debrief .combat-debrief-score-details {
+  margin-block: .8rem;
+}
+@media (max-width: 620px) {
+  .combat-battle-screen .combat-mate-reveal { top: 17dvh; padding: 1.1rem; }
+  .combat-debrief-story > p { font-size: .81rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .combat-battle-screen .combat-mate-reveal { backdrop-filter: none; }
+}

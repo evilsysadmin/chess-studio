@@ -73,21 +73,17 @@ import {
   difficultyForFloor,
   ROGUELIKE_TOWER_FLOORS,
 } from '../roguelikeRun.js';
-
 const HUMAN_COLOR = 'w';
 const CPU_COLOR = 'b';
-
 function campaignDebriefContextId(state) {
   if (!state?.active || !state.seed || !state.selectedNodeId) return null;
   if (!['briefing', 'reward'].includes(state.phase)) return null;
   return `campaign:${state.seed}:${state.selectedNodeId}`;
 }
-
 function runDebriefContextId(state) {
   if (!state?.inRun || !state.seed || !['cleared', 'completed'].includes(state.phase)) return null;
   return `run:${state.seed}:${state.floor}`;
 }
-
 export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBattle, onBattleUiActive, onPersistenceState }) {
   const [run, setRun] = useState(() => loadRun());
   const [campaign, setCampaign] = useState(() => loadCampaign());
@@ -100,6 +96,7 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
 
   const [serviceRecord, setServiceRecord] = useState(() => loadCombatService());
   const [roster, setRoster] = useState(() => loadRoster());
+  const [postBattleGate, setPostBattleGate] = useState(null);
   const [battleDebrief, setBattleDebrief] = useState(() => {
     const contextId = campaignDebriefContextId(campaign) || runDebriefContextId(run);
     return contextId ? loadCombatDebriefSession(contextId) : null;
@@ -301,6 +298,7 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
   }
 
   function handleCampaignBattleResult(outcome, debrief = null, meta = {}) {
+    if (outcome === 'win') setPostBattleGate({ kind: 'campaign', sessionId: campaignCombatSessionId });
     if (debrief && campaignCombatSessionId && ['win', 'retired'].includes(outcome)) saveCombatDebriefSession(campaignCombatSessionId, debrief);
     setBattleDebrief(debrief);
     if (meta.gameId) recordGameActivity({
@@ -451,6 +449,7 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
   }
 
   function handleBattleResult(outcome, debrief = null, meta = {}) {
+    if (outcome === 'win') setPostBattleGate({ kind: 'run', sessionId: runCombatSessionId });
     if (debrief && runCombatSessionId && outcome === 'win') saveCombatDebriefSession(runCombatSessionId, debrief);
     setBattleDebrief(debrief);
     if (meta.gameId) recordGameActivity({
@@ -518,7 +517,7 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
     );
   }
 
-  if (!run.inRun && campaign.active && (campaign.phase === 'battle' || (campaign.phase === 'fighting' && campaignBattleSessionPresent))) {
+  if (!run.inRun && campaign.active && (campaign.phase === 'battle' || (campaign.phase === 'fighting' && campaignBattleSessionPresent) || (postBattleGate?.kind === 'campaign' && postBattleGate.sessionId === campaignCombatSessionId))) {
     const node = selectedCampaignNode;
     const campaignFen = node ? applyModifierToFen(new Chess().fen(), node.modifierId, CPU_COLOR) : new Chess().fen();
     const isBoss = node?.type === 'boss';
@@ -550,7 +549,7 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
         runPerkDetails={campaignPerkDetails}
         bossConfig={isBoss ? campaignBossForSeed(campaign.seed) : null}
         onBattleStart={handleCampaignBattleStarted}
-        onBattleResult={handleCampaignBattleResult}
+        onBattleResult={handleCampaignBattleResult} onOpenDebrief={() => setPostBattleGate(null)}
         roguelikeFloor={node?.floor || node?.stage || 1}
         roguelikeMode="campaign"
         combatSessionId={campaignCombatSessionId || `campaign:${campaign.seed}:${node?.id || 'node'}`}
@@ -580,7 +579,7 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
     );
   }
 
-  if (run.inRun && (run.phase === 'battle' || (run.phase === 'fighting' && runBattleSessionPresent))) {
+  if (run.inRun && (run.phase === 'battle' || (run.phase === 'fighting' && runBattleSessionPresent) || (postBattleGate?.kind === 'run' && postBattleGate.sessionId === runCombatSessionId))) {
     const isBoss = run.mode === 'tower' && run.floor === ROGUELIKE_BOSS_FLOOR;
     return (
       <CombatScreen
@@ -603,7 +602,7 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
         runPerkDetails={runPerkDetails}
         bossConfig={isBoss ? ROGUELIKE_BOSS : null}
         onBattleStart={handleBattleStarted}
-        onBattleResult={handleBattleResult}
+        onBattleResult={handleBattleResult} onOpenDebrief={() => setPostBattleGate(null)}
         roguelikeFloor={run.floor}
         roguelikeMode={run.mode}
         combatSessionId={runCombatSessionId || `run:${run.seed}:${run.floor}`}
