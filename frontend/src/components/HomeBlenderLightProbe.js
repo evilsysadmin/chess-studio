@@ -24,7 +24,7 @@ export function homeBlenderLightProbeMode(search = '') {
 // explicit GPU A/B trial keeps its historical FOUR-light baseline. This avoids
 // silently changing the meaning of earlier family-level hardware reports.
 export function homeBlenderWallTorchLayout(search = '') {
-  const params = new URLSearchParams(String(search).replace(/^\\?/, ''));
+  const params = new URLSearchParams(String(search).replace(/^[?]/, ''));
   const mode = params.get('homeLightProbe');
   if (params.get('homeGpuProfile') === '1' && DIAGNOSTIC_MODES.has(mode)) {
     return mode === 'wall-pair' ? 'pair' : 'legacy';
