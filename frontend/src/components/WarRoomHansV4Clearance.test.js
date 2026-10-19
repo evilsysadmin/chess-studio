@@ -7,12 +7,12 @@ import { installWarRoomHansVariantStage, readWarRoomHansStageAnchors } from './W
 // the *real* generated mantel geometry, not only this gameplay fixture.
 const DOOR_AND_STOPS = Object.freeze({
   WR_ANCHOR_hans_hearth: [-6.28, 3.05],
-  WR_ANCHOR_hans_door: [-7.82, 1.23],
+  WR_ANCHOR_hans_door: [-7.38, -1.37],
   WR_ANCHOR_hans_basket: [-6.42, 2.26],
   WR_ANCHOR_hans_tools: [-6.25, 2.23],
-  WR_ANCHOR_hans_corridor_0: [-7.20, 1.23],
-  WR_ANCHOR_hans_corridor_1: [-6.52, 1.25],
-  WR_ANCHOR_hans_corridor_2: [-6.40, 1.82],
+  WR_ANCHOR_hans_corridor_0: [-7.45, -0.53],
+  WR_ANCHOR_hans_corridor_1: [-7.30, 0.50],
+  WR_ANCHOR_hans_corridor_2: [-6.62, 1.76],
 });
 const ACTOR_CLEARANCE_RADIUS = 0.56;
 const BOARD_HALF = 5.65;
@@ -81,7 +81,7 @@ describe('V4 · pasillo físico para Hans (no basta con que sea visible en cáma
           8.72 - Math.hypot(x, y + 0.72), // circular tower wall
           rectGap(x, y, 0, 0, BOARD_HALF, BOARD_HALF),
           mantelGap(x, y),
-          Math.hypot(x + 6.55, y + 0.75) - 0.48, // ceremonial armour
+          Math.hypot(x + 6.55, y + 4.20) - 0.48, // ceremonial armour
         ];
         for (const gap of gaps) {
           expect(gap, `Hans intersects scenery in ${frame.phase} at (${x.toFixed(2)}, ${y.toFixed(2)})`)
@@ -120,6 +120,15 @@ describe('V4 · pasillo físico para Hans (no basta con que sea visible en cáma
       }
     });
   }
+
+  it('la puerta de servicio ocupa un tramo independiente de muro, lejos de la chimenea', () => {
+    const door = DOOR_AND_STOPS.WR_ANCHOR_hans_door;
+    const hearth = DOOR_AND_STOPS.WR_ANCHOR_hans_hearth;
+    expect(Math.hypot(door[0] - hearth[0], door[1] - hearth[1])).toBeGreaterThan(4);
+    expect(mantelGap(door[0], door[1])).toBeGreaterThan(3);
+    // The left suit is also removed from the entrance bay.
+    expect(Math.hypot(door[0] + 6.55, door[1] + 4.2)).toBeGreaterThan(2);
+  });
 
   it('chimenea tangente al muro y armadura derecha fuera del sillón, alfombra y mesita', () => {
     const angle = FIREPLACE.angle;
