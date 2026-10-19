@@ -27,6 +27,26 @@ describe('War Room · exploración accesible del tablero 3D', () => {
       .toBe('Casilla e4: vacía.');
   });
 
+  it('Escape cancela solo una selección real, sin mover ni bloquear Escape global', () => {
+    const onSquareClick = vi.fn();
+    const setFocusedSquare = vi.fn();
+    const event = () => ({ key: 'Escape', preventDefault: vi.fn(), stopPropagation: vi.fn() });
+    const options = { focusedSquare: 'e4', selectedSquare: 'e2', orientation: 'white', onSquareClick, setFocusedSquare };
+    const cancel = event();
+    handleBoard3DKeyboardEvent(cancel, options);
+    expect(onSquareClick).toHaveBeenCalledOnce();
+    expect(onSquareClick).toHaveBeenCalledWith('e2');
+    expect(cancel.preventDefault).toHaveBeenCalledOnce();
+    expect(cancel.stopPropagation).toHaveBeenCalledOnce();
+    expect(setFocusedSquare).not.toHaveBeenCalled();
+
+    const nothingToCancel = event();
+    handleBoard3DKeyboardEvent(nothingToCancel, { ...options, selectedSquare: null });
+    expect(nothingToCancel.preventDefault).not.toHaveBeenCalled();
+    expect(nothingToCancel.stopPropagation).not.toHaveBeenCalled();
+    expect(onSquareClick).toHaveBeenCalledOnce();
+  });
+
   it('conserva flechas y orientación negra sin modificar la legalidad', () => {
     const event = (key) => ({ key, preventDefault: vi.fn() });
     const onSquareClick = vi.fn();

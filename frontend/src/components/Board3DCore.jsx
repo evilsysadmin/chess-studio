@@ -956,7 +956,7 @@ function Board3DCanvas({
   }, [checkSquare, gameOver, effectiveThemeId, orientation, showCoordinates, warRoomVariant]);
 
   function handleKeyDown(event) {
-    handleBoard3DKeyboardEvent(event, { focusedSquare, orientation, onSquareClick, setFocusedSquare });
+    handleBoard3DKeyboardEvent(event, { focusedSquare, orientation, selectedSquare, onSquareClick, setFocusedSquare });
   }
 
   return (

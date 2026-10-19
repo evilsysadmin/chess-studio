@@ -22,8 +22,14 @@ export function board3DKeyboardFocusAnnouncement({
 }
 
 export function handleBoard3DKeyboardEvent(event, {
-  focusedSquare, orientation, onSquareClick, setFocusedSquare,
+  focusedSquare, orientation, selectedSquare, onSquareClick, setFocusedSquare,
 }) {
+  if (event.key === 'Escape' && selectedSquare) {
+    event.preventDefault();
+    event.stopPropagation?.();
+    onSquareClick?.(selectedSquare);
+    return;
+  }
   if (event.key === 'Enter' || event.key === ' ') {
     event.preventDefault();
     onSquareClick?.(focusedSquare);
