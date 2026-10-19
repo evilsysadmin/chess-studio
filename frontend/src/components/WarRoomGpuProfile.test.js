@@ -34,6 +34,7 @@ describe('War Room GPU timer opt-in', () => {
     const profile = createWarRoomGpuProfile(p.renderer);
     expect(profile).toBeNull();
     expect(p.canvas.dataset).toEqual({});
+    expect(p.canvas.__warRoomRenderCostJournal).toBeUndefined();
     expect(p.deleted).toHaveLength(0);
     expect(warRoomGpuProfileRequested({ search: '?warRoomGpuProfile=0' })).toBe(false);
     expect(warRoomGpuProfileRequested({ search: '?warRoomGpuProfile=1' })).toBe(true);
@@ -50,6 +51,13 @@ describe('War Room GPU timer opt-in', () => {
       warRoomGpuProfileStatus: 'sampling',
       warRoomGpuProfileSamples: '0',
     });
+    const journal = p.canvas.__warRoomRenderCostJournal;
+    expect(journal).toBeTruthy();
+    expect(journal.latestSeq).toBe(0);
+    profile.recordRender({ calls: 979, triangles: 459990 }, 10, 13.5);
+    expect(journal.readAfter(0).samples).toMatchObject([
+      { calls: 979, triangles: 459990, cpuSubmitMs: 3.5 },
+    ]);
     profile.begin(); profile.end(); profile.poll();
     expect(p.canvas.dataset.warRoomGpuProfileSamples).toBe('0');
     profile.begin(); profile.end(); profile.poll();
@@ -67,6 +75,7 @@ describe('War Room GPU timer opt-in', () => {
     expect(p.deleted).toEqual([1]);
     profile.dispose();
     expect(p.canvas.dataset).toEqual({});
+    expect(p.canvas.__warRoomRenderCostJournal).toBeUndefined();
   });
 
   it('invalidates previous elapsed ms after GPU disjoint without fabricating an extra sample', () => {
