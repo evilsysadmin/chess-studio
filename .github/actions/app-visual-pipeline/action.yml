@@ -108,66 +108,8 @@ runs:
             APP_VISUAL_BASE_SHA="$base_sha" APP_VISUAL_HEAD_SHA="$head_sha" \
             python3 -S scripts/app_visual_changed_files.py
         )"
-        # Workflow/tooling changes are normally no-op in product routing.
-        # Only the sharded Chronicles workflow must exercise its full real
-        # producer when it changes, so an empty successful shard is not proof.
-        if [[ "${{ inputs.chronicles-lane }}" == 'chronicles' && -n "${{ inputs.chronicles-shard }}" ]] &&
-           printf '%s\n' "$files" | grep -Eq '^(\.github/workflows/chronicles-visual-artifact\.yml|\.github/actions/app-visual-pipeline/action\.yml|scripts/app_visual_capture\.sh)$'; then
-          scoped_files="$(printf '%s\n%s\n' "$scoped_files" 'e2e/chronicles-gameplay-visual-artifact.spec.js')"
-          echo 'Chronicles visual shard self-test: execute real gameplay producer.'
-        fi
-        # A PR touching only the expedition book plus visual-pipeline plumbing
-        # still receives real desktop / portrait / landscape screenshots and
-        # functional entry assertions, without rerunning every dungeon encounter.
-        # Any other product file fails closed into the complete Chronicles suite.
-        if [[ "$GITHUB_EVENT_NAME" == "pull_request" ]]; then
-          menu_only=true
-          menu_touched=false
-          while IFS= read -r changed; do
-            [[ -z "$changed" ]] && continue
-            case "$changed" in
-              frontend/src/components/ChroniclesSaveMenu.css|frontend/src/components/ChroniclesSaveMenu.jsx)
-                menu_touched=true ;;
-              frontend/src/assets/chronicles/expedition-study-desktop-v2.avif)
-                # Decorative sibling of the book CSS, no gameplay ownership.
-                : ;;
-              scripts/app_visual_capture.sh|scripts/app_visual_producer_scope.py|.github/actions/app-visual-pipeline/action.yml)
-                : ;;
-              *) menu_only=false ;;
-            esac
-          done <<< "$files"
-          if [[ "$menu_only" == true && "$menu_touched" == true ]]; then
-            echo "chronicles_save_only=true" >> "$GITHUB_OUTPUT"
-            echo "Chronicles visual scope: expedition-book-only, three live browser viewports."
-          fi
-          # Only the pre-game party selector and its setup assertions changed.
-          # Unknown/shared changes retain the full Chronicles visual suite.
-          setup_only=true
-          setup_touched=false
-          while IFS= read -r changed; do
-            [[ -z "$changed" ]] && continue
-            case "$changed" in
-              frontend/src/components/ChroniclesCharacterSetup.jsx|frontend/src/components/ChroniclesCharacterSetup.css|frontend/src/components/ChroniclesCharacterSetup.test.jsx)
-                setup_touched=true ;;
-              e2e/chronicles-gameplay-visual-artifact.spec.js)
-                # Only lines within the existing setup helper (33-163).
-                hunks="$(git diff --unified=0 "$merge_base" "$head_sha" -- "$changed" | awk '/^@@ / { sub(/^@@ -/, ""); split($1,n,","); print n[1] }')"
-                [[ -n "$hunks" ]] || setup_only=false
-                while IFS= read -r line; do
-                  [[ -z "$line" ]] && continue
-                  if (( line < 33 || line > 163 )); then setup_only=false; fi
-                done <<< "$hunks" ;;
-              scripts/app_visual_capture.sh|.github/actions/app-visual-pipeline/action.yml)
-                : ;;
-              *) setup_only=false ;;
-            esac
-          done <<< "$files"
-          if [[ "$setup_only" == true && "$setup_touched" == true ]]; then
-            echo "chronicles_setup_only=true" >> "$GITHUB_OUTPUT"
-            scoped_files="frontend/src/components/ChroniclesCharacterSetup.jsx"
-            echo "Chronicles visual scope: character setup only, three First Book viewports."
-          fi
-        fi
+        # The only remaining consumer is Chess Studio's App visual workflow.
+        # The extracted games own their screenshot jobs in their own repository.
         printf '%s\n' "$files"
         if [[ "$scoped_files" != "$files" ]]; then
           echo 'Normalized visual ownership:'
