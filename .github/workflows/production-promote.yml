@@ -21,6 +21,10 @@ on:
         description: SHA exacto de 40 caracteres de la acreditación que autorizas
         required: true
         type: string
+      staging_ai_run_id:
+        description: Opcional; ID del Staging AI run acreditado para una promoción anterior explícita
+        required: false
+        type: string
 
 permissions:
   actions: write
@@ -106,10 +110,12 @@ jobs:
         id: source
         env:
           GH_TOKEN: ${{ github.token }}
+          PINNED_STAGING_RUN_ID: ${{ inputs.staging_ai_run_id || '' }}
         run: |
           python3 -S scripts/production_release_train.py --self-test
           python3 scripts/production_release_train.py select \
             --repository "$GITHUB_REPOSITORY" \
+            --pinned-run-id "$PINNED_STAGING_RUN_ID" \
             --github-output "$GITHUB_OUTPUT"
 
       - name: Download immutable staging accreditation
