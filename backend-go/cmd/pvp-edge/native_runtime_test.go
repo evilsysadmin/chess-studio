@@ -72,11 +72,17 @@ func TestAdminUsersSharesTheNarrativeGateway(t *testing.T) {
 	}
 }
 
-func TestAllNativeTurnsEveryFlagOn(t *testing.T) {
+func TestAllNativeKeepsRetiredChroniclesOff(t *testing.T) {
 	v := reflect.ValueOf(allNative())
 	for i := 0; i < v.NumField(); i++ {
-		if !v.Field(i).Bool() {
-			t.Fatalf("%s left off", v.Type().Field(i).Name)
+		name := v.Type().Field(i).Name
+		enabled := v.Field(i).Bool()
+		if name == "chronicles" || name == "chroniclesRuns" {
+			if enabled {
+				t.Fatalf("retired %s must not return through GO_PYTHON_RETIRED", name)
+			}
+		} else if !enabled {
+			t.Fatalf("active Chess Studio flag %s left off", name)
 		}
 	}
 }
@@ -105,8 +111,18 @@ func TestRetiredPythonBuildsEveryNativeHandler(t *testing.T) {
 	v := reflect.ValueOf(cfg)
 	handler := reflect.TypeOf((*http.Handler)(nil)).Elem()
 	for i := 0; i < v.NumField(); i++ {
-		if v.Field(i).Type() == handler && v.Field(i).IsNil() {
-			t.Errorf("%s not built", v.Type().Field(i).Name)
+		if v.Field(i).Type() != handler {
+			continue
+		}
+		name := v.Type().Field(i).Name
+		if name == "NativeChronicles" || name == "NativeChroniclesRuns" {
+			if !v.Field(i).IsNil() {
+				t.Errorf("retired handler %s unexpectedly built", name)
+			}
+			continue
+		}
+		if v.Field(i).IsNil() {
+			t.Errorf("%s not built", name)
 		}
 	}
 	if _, err := edge.New(cfg); err != nil {
