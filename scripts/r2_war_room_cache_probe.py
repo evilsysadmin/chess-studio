@@ -3,7 +3,7 @@
 
 This is an observer, not a cache-rule mutator. It uses HTTP GET with no
 Cache-Control request bypass, URL query changes, browser cache or Playwright
-route interception. Each response must match the exact #5733 source SHA.
+route interception. Each response must match the active runtime R2 manifest SHA.
 Second edge HIT is diagnostic until a narrow reviewed Cache Rule exists.
 """
 from __future__ import annotations
@@ -16,6 +16,9 @@ import urllib.error
 import urllib.request
 
 import r2_war_room_live_freeze as freeze
+from r2_war_room_runtime_contract import runtime_rooms
+
+ROOMS = runtime_rooms()
 
 USER_AGENT = "chess-studio-r2-warroom-cache-observer/1"
 ORIGIN = "https://assets.chess-studio.shadowops.dpdns.org"
@@ -61,7 +64,7 @@ def read_get(room: freeze.Room, *, open_url=urllib.request.urlopen, clock=time.p
 
 def probe(*, get=read_get):
     result = []
-    for room in freeze.ROOMS:
+    for room in ROOMS:
         first, second = get(room), get(room)
         same_colo = bool(first["cfRayColo"] and first["cfRayColo"] == second["cfRayColo"])
         edge_hit = second["cfCacheStatus"] == "HIT"
@@ -80,7 +83,7 @@ def probe(*, get=read_get):
         })
     return {
         "schema": "warroom-r2-cdn-v1",
-        "source": "#5733 exact immutable source hashes",
+        "source": "frontend/src/assets/r2-assets-manifest.json",
         "browserCacheDisabledByDesign": True,
         "edgeCacheConfigurationInspected": False,  # observer cannot establish zone config
         "rooms": result,
@@ -91,7 +94,8 @@ def self_test() -> None:
     from email.message import Message
     from unittest.mock import patch
 
-    room = freeze.ROOMS[0]
+    assert len(ROOMS) == 2
+    room = ROOMS[0]
     m = Message()
     m["Content-Type"] = "model/gltf-binary"
     m["CF-Cache-Status"] = "HIT"

@@ -12,14 +12,14 @@ import json
 from typing import Any
 
 from cloudflare_auth_rate_limit import request_json, resolve_zone
+from r2_war_room_runtime_contract import runtime_rooms
 
 PHASE = "http_request_cache_settings"
 REF = "chess_studio_warroom_immutable_glbs_v1"
 HOST = "assets.chess-studio.shadowops.dpdns.org"
-PATHS = (
-    "/war-room/v3/runtime/war-room-v3-shell-0df589c2fa839a26.glb",
-    "/war-room/v4/runtime/war-room-v4-shell-c94904e122e110f6.glb",
-)
+# Exactly two SHA-derived URLs from the same reviewed manifest the browser ships.
+# Never match mutable aliases, path prefixes or arbitrary user-defined URLs.
+PATHS = tuple("/" + room.immutable_key for room in runtime_rooms())
 EDGE_TTL = 7 * 24 * 3600
 BROWSER_TTL = 365 * 24 * 3600
 
@@ -146,6 +146,8 @@ def self_test() -> None:
     desired = desired_rule()
     expr = desired["expression"]
     assert HOST in expr and all(path in expr for path in PATHS)
+    assert len(PATHS) == 2 and all(path.endswith(".glb") for path in PATHS)
+    assert PATHS == tuple("/" + room.immutable_key for room in runtime_rooms())
     assert "current.glb" not in expr
     assert "starts_with(" not in expr and "matches" not in expr and "contains" not in expr
     assert 'http.request.uri.query eq ""' in expr

@@ -40,6 +40,25 @@ The `War Room · immutable GLB edge cache rule` GitHub workflow manages **one na
 
 Official reference: https://developers.cloudflare.com/cache/how-to/cache-rules/create-api/.
 
+### GLB pin rotation without stale cache rules
+
+The V3/V4 cache rule and its public CDN probe both resolve the **exact**
+content-addressed keys from `frontend/src/assets/r2-assets-manifest.json`.
+When that manifest changes, the narrow cache-rule workflow now runs on the
+PR and again on main. The reviewer must still confirm the R2 object is
+published, byte-identical, and publicly readable; the PR validation **does
+not apply** a Cloudflare rule.
+
+The original historical `r2_war_room_live_freeze.py` snapshots are intentionally
+unchanged. They are archival proof, not the current runtime's source of truth.
+The old GLB remains retained as a rollback; it is not automatically a
+Cloudflare Cache Rule target once the live manifest moves forward.
+
+The workflow only claims CDN acceleration after a successful main `reconcile`
+readback and a real second `CF-Cache-Status: HIT` for **both** immutable GLBs.
+A 403 on the Rulesets API still requires the dedicated least-privilege token
+described above. Do not broaden the rule to a prefix or cache mutable aliases.
+
 ## Why this is not a Terraform custom-domain resource yet
 
 The current production Cloudflare Terraform job rebuilds local state on each Actions run and imports existing resources before planning. R2 buckets support Terraform import, but R2 custom domains currently do not. A state-less Terraform custom-domain resource would therefore work on first creation and then try to create the same domain again on later runs.

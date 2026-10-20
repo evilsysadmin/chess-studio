@@ -8,10 +8,14 @@ on:
       - .github/workflows/war-room-r2-cache-rule.yml
       - scripts/r2_war_room_cache_probe.py
       - scripts/r2_war_room_live_freeze.py
+      - scripts/r2_war_room_runtime_contract.py
+      - frontend/src/assets/r2-assets-manifest.json
   push:
     branches: [main]
     paths:
       - scripts/cloudflare_war_room_glb_cache.py
+      - scripts/r2_war_room_runtime_contract.py
+      - frontend/src/assets/r2-assets-manifest.json
       - .github/workflows/war-room-r2-cache-rule.yml
   workflow_dispatch:
 
@@ -32,6 +36,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v7
+      - run: python3 -S scripts/r2_war_room_runtime_contract.py
       - run: python3 -S scripts/cloudflare_war_room_glb_cache.py self-test
       - name: Verify exact public GLBs with the merged CDN SHA observer
         shell: bash
