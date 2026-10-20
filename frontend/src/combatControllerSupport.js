@@ -50,13 +50,14 @@ export function isLegalCombatCpuSuggestion(fen, suggestion) {
 
 
 const EMERGENCY_CPU_PIECE_VALUE = Object.freeze({ p: 1, n: 3, b: 3, r: 5, q: 9, k: 0 });
+const EMERGENCY_CPU_MISS_TEMPO_SCORE = 90;
 
 // Fallback estrictamente local para que una caída del endpoint de análisis no
 // secuestre una campaña. Sólo elige entre jugadas legales de chess.js y nunca
 // altera dificultad, XP ni reglas de Combat. Prioriza mate, capturas, promoción
 // y jaques; los empates se resuelven de forma determinista para facilitar tests
 // y recuperación de sesión.
-export function emergencyCombatCpuSuggestion(fen) {
+export function emergencyCombatCpuSuggestion(fen, registry = null, focus = {}) {
   try {
     const chess = new Chess(fen);
     const moves = chess.moves({ verbose: true });
@@ -68,7 +69,17 @@ export function emergencyCombatCpuSuggestion(fen) {
       if (!applied) return null;
       let score = 0;
       if (probe.isCheckmate()) score += 10000;
-      if (move.captured) score += 100 + (EMERGENCY_CPU_PIECE_VALUE[move.captured] || 0) * 10 - (EMERGENCY_CPU_PIECE_VALUE[move.piece] || 0);
+      if (move.captured) {
+        const chessCaptureScore = 100 + (EMERGENCY_CPU_PIECE_VALUE[move.captured] || 0) * 10
+          - (EMERGENCY_CPU_PIECE_VALUE[move.piece] || 0);
+        const facts = registry ? measuredCombatCapture(fen, registry, move, focus) : null;
+        // Con hechos completos, una captura que puede fallar no vale lo
+        // mismo que una captura garantizada. Un fallo también consume turno.
+        // Si el registro está incompleto mantenemos el fallback histórico.
+        score += facts
+          ? facts.hitChance * chessCaptureScore - (1 - facts.hitChance) * EMERGENCY_CPU_MISS_TEMPO_SCORE
+          : chessCaptureScore;
+      }
       if (move.promotion) score += 70 + (EMERGENCY_CPU_PIECE_VALUE[move.promotion] || 0) * 4;
       if (probe.isCheck()) score += 18;
       if (move.flags?.includes('k') || move.flags?.includes('q')) score += 2;
@@ -93,6 +104,23 @@ function focusStreakFor(focus, attackerColor, defenderId) {
   const current = focus?.[attackerColor];
   if (!current || current.targetId !== defenderId) return 0;
   return Math.max(0, Number(current.streak) || 0);
+}
+
+// Una única fuente de hechos para la shortlist remota y la CPU local:
+// verifica captura, defensor real (incluido al paso), posibilidad de golpe
+// forzado y foco actual. Nunca inventa porcentajes si falta el registro.
+function measuredCombatCapture(fen, registry, move, focus) {
+  if (!move.captured) return null;
+  const attacker = registry?.[move.from];
+  if (!attacker || attacker.color !== move.color || attacker.type !== move.piece) return null;
+  const defender = registry?.[capturedSquareFor(move)];
+  if (!defender || defender.color === attacker.color || defender.type !== move.captured) return null;
+  const forcedHit = isForcedCombatCapture(fen, move.from, move.to, move.promotion);
+  return {
+    hitChance: forcedHit ? 1 : hitChance(attacker, defender, focusStreakFor(focus, attacker.color, defender.id)),
+    enemyValue: BASE_STATS[defender.type]?.strength || 0,
+    enemyPersistentValue: defender.identityId ? Math.max(0, derivedLevel(defender) - 1) : 0,
+  };
 }
 
 // Adjunta sólo hechos que Combat conoce de verdad en el momento de elegir:
@@ -127,21 +155,8 @@ export function annotateCombatCandidates(fen, registry, remote, focus = {}) {
       return { ...candidate, combatReady: true, hitChance: 1, enemyValue: 0, enemyPersistentValue: 0 };
     }
 
-    const defender = registry[capturedSquareFor(move)];
-    if (!defender || defender.color === attacker.color || defender.type !== move.captured) return candidate;
-
-    const forcedHit = isForcedCombatCapture(fen, move.from, move.to, move.promotion);
-    const chance = forcedHit
-      ? 1
-      : hitChance(attacker, defender, focusStreakFor(focus, attacker.color, defender.id));
-
-    return {
-      ...candidate,
-      combatReady: true,
-      hitChance: chance,
-      enemyValue: BASE_STATS[defender.type]?.strength || 0,
-      enemyPersistentValue: defender.identityId ? Math.max(0, derivedLevel(defender) - 1) : 0,
-    };
+    const facts = measuredCombatCapture(fen, registry, move, focus);
+    return facts ? { ...candidate, combatReady: true, ...facts } : candidate;
   });
 
   return { ...remote, candidates: enriched };
@@ -195,7 +210,7 @@ export async function resolveCombatCpuTurnSuggestion({ fen, difficulty, analyzeP
     remoteError = error;
   }
 
-  const local = emergencyCombatCpuSuggestion(fen);
+  const local = emergencyCombatCpuSuggestion(fen, registry, focus);
   if (local && isLegalCombatCpuSuggestion(fen, local)) {
     return { suggestion: local, source: 'local', remoteError };
   }
