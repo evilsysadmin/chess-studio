@@ -915,7 +915,9 @@ def self_test() -> None:
         "frontend/src/experimentalThreeRenderer.js",
         "e2e/chronicles-gameplay-visual-artifact.spec.js",
     ):
-        assert classify([retired]) in {"none", "all"}, retired
+        # Retired Matthias-named UI now follows the active Home/War Room
+        # classifier rather than a blanket Chronicles exemption.
+        assert classify([retired]) in {"none", "all", "home-matthias,warroom-core"}, retired
         assert project_chronicles_lane(classify([retired]), "chronicles") == "none"
     assert classify(["frontend/src/labChroniclesLink.js"]) == "none"
     assert classify(["frontend/src/components/LabScreen.jsx"]) == "experiments-hub"
