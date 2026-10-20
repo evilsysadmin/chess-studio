@@ -17,6 +17,10 @@ on:
         required: false
         default: false
         type: boolean
+      expected_sha:
+        description: SHA exacto de 40 caracteres de la acreditación que autorizas
+        required: true
+        type: string
 
 permissions:
   actions: write
@@ -120,6 +124,8 @@ jobs:
       - name: Read accredited source SHA
         if: steps.source.outputs.found == 'true'
         id: accreditation
+        env:
+          EXPECTED_SHA: ${{ inputs.expected_sha || '' }}
         run: >-
           python3 scripts/production_release_train.py read
           --artifact "$RUNNER_TEMP/staging-accreditation/staging-promotion-accreditation.json"
@@ -127,6 +133,8 @@ jobs:
           --run-number "${{ steps.source.outputs.staging_ai_run_number }}"
           --github-output "$GITHUB_OUTPUT"
           --github-env "$GITHUB_ENV"
+          --event "$GITHUB_EVENT_NAME"
+          --expected-sha "$EXPECTED_SHA"
 
       - name: Require current main before starting promotion · lineage, not HEAD
         if: steps.source.outputs.found == 'true'
