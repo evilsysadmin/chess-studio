@@ -19,8 +19,6 @@ class Budget:
 
 INVENTORY = {
     'app-visual-artifact.yml': 'visual-artifact',
-    'chronicles-visual-artifact.yml': 'visual-artifact',
-    'tactics-visual-artifact.yml': 'visual-artifact',
     'blender-setup-smoke.yml': 'art-generation-infra',
     'billing-cost-export.yml': 'observability',
     'capacity-staging.yml': 'capacity-readiness',
@@ -90,11 +88,8 @@ BUDGETS = (
     Budget('.github/workflows/staging-ai-worker.yml', 7227),
     Budget('.github/workflows/cloudflare-prometheus-exporter.yml', 5964),
     Budget('.github/workflows/oci-readiness.yml', 2840),
-    # Keep App/Tactics short. Chronicles alone includes 2 isolated shards plus
-    # the old stable required-check aggregator (fail-closed for both shards).
+    # The only remaining App visual gate belongs to Chess Studio itself.
     Budget('.github/workflows/app-visual-artifact.yml', 1500),
-    Budget('.github/workflows/chronicles-visual-artifact.yml', 2400),
-    Budget('.github/workflows/tactics-visual-artifact.yml', 1300),
 )
 
 

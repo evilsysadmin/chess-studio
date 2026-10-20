@@ -108,8 +108,6 @@ Render staging está retirado del plano de despliegue: el **release canónico y 
 | Workflow | Responsabilidad |
 | --- | --- |
 | `app-visual-artifact.yml` | Capturas visuales generales de la app (Home, War Room, entrenamiento, PvP, etc.). El productor excluye Chronicles y Tactics, y omite el navegador cuando los cambios no afectan a estas superficies. Misma cobertura fail-closed para archivos comunes o desconocidos. |
-| `chronicles-visual-artifact.yml` | Gate visual independiente para **Chronicles primera persona** (gameplay y avatars): PNG propio `chronicles-visual-*`, runners/SwiftShader aislados, controles desktop/móvil y ningún test de Tactics. |
-| `tactics-visual-artifact.yml` | Gate visual independiente para **Tactics**: PNG propio `tactics-visual-*`, runner/SwiftShader aislado y ningún test de Chronicles primera persona. Los cambios compartidos activan ambos según el clasificador de propietarios. |
 | `e2e-full.yml` | Sweep completo Chromium/Firefox/WebKit mensual/manual e informativo. Ya no duplica PR: la matriz requerida y path-aware War Room/Matthias vive en `cicd.yml`. |
 | `home-blender-v2-preview.yml` | Evidencia PNG Home path-aware en PR con envelope de revisión barato; los renders manuales conservan calidad alta. |
 | `home-blender-v2-runtime.yml` | Exporta/publica el GLB Home sólo en `main` o manual, luego ejecuta su gate browser y promoción. No repite el export runtime en PR: la revisión visual PR pertenece al preview PNG. |
@@ -252,8 +250,17 @@ El objetivo no es tener el mínimo número de YAML, sino **mínimo estado, míni
 
 `.github/production-deploy.env` contiene un único `DEPLOY_TARGET=render|oci`. Es deliberadamente distinto de `DEPLOY_ENV`: ambos targets ejecutan producción y usan la configuración/BD de producción. El workflow valida el archivo antes de cualquier mutación. El CNAME público del API ya no pertenece a Terraform; `scripts/oci_production_tunnel.py` lo conmuta sólo después de acreditar el SHA exacto en el target elegido. El rollback de producción siempre restaura primero la ruta del API a Render.
 
-## Chronicles vs. Tactics · deuda visual independiente
+## Chronicles y Tactics · capturas fuera de Chess Studio
 
-Chronicles y Tactics tienen productores, artifacts y workflows visuales distintos. Las modificaciones a la pantalla de guardados de Chronicles, el transporte HTTP del catálogo y la identidad local de expediciones no activan capturas Tactics. Los cambios estrictamente auditados de cableado de GET para recuperar una run en el bootstrap compartido y en el shell Tactics se normalizan como **no visuales** sólo si todas sus líneas modificadas pertenecen al allowlist exacto de `scripts/app_visual_changed_files.py`.
+Los juegos Chronicles of Matthias y Tactics viven en el repositorio
+`evilsysadmin/chronicles-of-matthias`. Sus capturas visuales y criterios de
+aceptación deben ejecutarse allí, no mediante dos workflows sin producto
+embebido en Chess Studio. En este repositorio permanece únicamente el
+workflow `app-visual-artifact.yml` para Home, War Room, entrenamiento,
+PvP y las demás superficies propias de ajedrez.
 
-Una edición nueva de JSX, mapa, renderer, scene, lógica de mundo fuera de ese allowlist, diff ilegible o path desconocido **restablece fail-closed** el gate visual Tactics. Pruebas de estado/contrato y Quality siguen siendo obligatorias en los cambios compartidos; no se relajan por esta separación. Las excepciones se comprueban en los self-tests de los clasificadores.
+Los clasificadores aún admiten aliases legacy de Chronicles/Tactics para
+evitar que una ruta antigua active capturas ajenas; **no son gates requeridos**.
+Las referencias legacy de `staging_deploy_scope.py` a YAML retirados
+sirven únicamente para clasificar su borrado como cambio no runtime,
+sin publicar una nueva versión del juego por eliminar un workflow.
