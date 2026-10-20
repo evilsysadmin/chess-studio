@@ -81,12 +81,6 @@ type Config struct {
 	NativeNarrative http.Handler
 	// NativePawnSlug serves Pawn Slug stage content; nil keeps it in Python.
 	NativePawnSlug http.Handler
-	// NativeChronicles serves Chronicles area content and MapCode previews;
-	// nil keeps them in Python.
-	NativeChronicles http.Handler
-	// NativeChroniclesRuns serves the Chronicles run routes; nil keeps them
-	// in Python.
-	NativeChroniclesRuns http.Handler
 	// NativeAdminFeedback serves Admin's feedback management; nil keeps it
 	// in Python.
 	NativeAdminFeedback http.Handler
@@ -149,8 +143,6 @@ type Handler struct {
 	nativeMatthias            http.Handler
 	nativeNarrative           http.Handler
 	nativePawnSlug            http.Handler
-	nativeChronicles          http.Handler
-	nativeChroniclesRuns      http.Handler
 	nativeAdminFeedback       http.Handler
 	nativeAdminUsers          http.Handler
 	nativeAdminObservability  http.Handler
@@ -276,8 +268,6 @@ func New(cfg Config) (*Handler, error) {
 		nativeMatthias:            cfg.NativeMatthias,
 		nativeNarrative:           cfg.NativeNarrative,
 		nativePawnSlug:            cfg.NativePawnSlug,
-		nativeChronicles:          cfg.NativeChronicles,
-		nativeChroniclesRuns:      cfg.NativeChroniclesRuns,
 		nativeAdminFeedback:       cfg.NativeAdminFeedback,
 		nativeAdminUsers:          cfg.NativeAdminUsers,
 		nativeAdminObservability:  cfg.NativeAdminObservability,
@@ -316,8 +306,6 @@ func (h *Handler) nativeRoutes() []nativeRoute {
 		{h.nativeMatthias, gamesapi.MatthiasRoute},
 		{h.nativeNarrative, gamesapi.NarrativeRoute},
 		{h.nativePawnSlug, gamesapi.PawnSlugRoute},
-		{h.nativeChronicles, gamesapi.ChroniclesRoute},
-		{h.nativeChroniclesRuns, func(r *http.Request) (string, bool) { p, _, ok := gamesapi.ChroniclesRunsRoute(r); return p, ok }},
 		{h.nativeAdminFeedback, gamesapi.AdminFeedbackRoute},
 		{h.nativeAdminUsers, func(r *http.Request) (string, bool) { p, _, ok := gamesapi.AdminUsersRoute(r); return p, ok }},
 		{h.nativeAdminObservability, gamesapi.AdminObservabilityRoute},
@@ -556,8 +544,6 @@ func (h *Handler) statusPayload(status string) map[string]any {
 		"nativeMatthias":            h.nativeMatthias != nil,
 		"nativeNarrative":           h.nativeNarrative != nil,
 		"nativePawnSlug":            h.nativePawnSlug != nil,
-		"nativeChronicles":          h.nativeChronicles != nil,
-		"nativeChroniclesRuns":      h.nativeChroniclesRuns != nil,
 		"nativeAdminFeedback":       h.nativeAdminFeedback != nil,
 		"nativeAdminUsers":          h.nativeAdminUsers != nil,
 		"nativeAdminObservability":  h.nativeAdminObservability != nil,
