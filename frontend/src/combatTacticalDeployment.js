@@ -61,7 +61,14 @@ export function deploymentSelectionFingerprint(rosterState) {
       unitKey,
       effectiveDeploymentType(state, unitKey) || null,
     ]);
-  const units = Object.keys(state.pieces || {}).sort().map((unitKey) => unitOrderRow(state, unitKey));
+  // La primera campaña aún no tiene entradas en pieces, pero las 16
+  // identidades ya existen y sus expedientes sí afectan a metamorfosis.
+  // Usar la unión evita omitir veteranos con ficha pero sin stats guardadas.
+  const unitKeys = new Set([
+    ...Object.keys(state.pieces || {}),
+    ...Object.keys(state.identities || {}),
+  ]);
+  const units = [...unitKeys].sort().map((unitKey) => unitOrderRow(state, unitKey));
   return JSON.stringify({
     version: COMBAT_TACTICAL_DEPLOYMENT_VERSION,
     rows,
