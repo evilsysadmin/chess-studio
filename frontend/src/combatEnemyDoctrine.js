@@ -36,6 +36,25 @@ const DOCTRINES = Object.freeze([
   }),
 ]);
 
+// La doctrina colorea decisiones casi iguales; no compra blunders.
+export function combatDoctrineBonusForMove(doctrine, move) {
+  const style = doctrine?.style;
+  if (!style || !move) return 0;
+  const flags = String(move.flags || '');
+  const traits = [
+    [Boolean(move.captured), style.capture],
+    [move.piece === 'p', style.pawn],
+    [move.piece === 'q', style.queen],
+    [/[+#]$/.test(String(move.san || '')), style.check],
+    [flags.includes('k') || flags.includes('q'), style.castle],
+  ];
+  const total = traits.reduce((sum, [active, weight]) => {
+    const n = Number(weight);
+    return sum + (active && Number.isFinite(n) ? Math.max(-1, Math.min(1, n)) : 0);
+  }, 0);
+  return Math.max(-6, Math.min(6, Math.round(total * 3)));
+}
+
 function hash(value) {
   let result = 2166136261;
   for (const char of String(value)) {
