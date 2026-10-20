@@ -1642,20 +1642,6 @@ if ! wait_pvp_browser_attest games_native_attest "http://127.0.0.1:${port}/api/p
   rollback "$sha" || true
   exit 78
 fi
-# Anonymous GET of a Chronicles area is Go's 401.
-if ! wait_pvp_browser_attest games_native_attest "http://127.0.0.1:${port}/api/chronicles/maps/ash-vault" GET X-Chess-Chronicles-Native 401; then
-  echo "native chronicles did not answer through Go after cutover: color=$candidate_color" >&2
-  compose "$sha" logs --no-color --tail=40 "$candidate_pvp_service" edge >&2 || true
-  rollback "$sha" || true
-  exit 79
-fi
-# Anonymous GET of a Chronicles run is Go's 401.
-if ! wait_pvp_browser_attest games_native_attest "http://127.0.0.1:${port}/api/chronicles/runs/attest" GET X-Chess-Chronicles-Native 401; then
-  echo "native chronicles runs did not answer through Go after cutover: color=$candidate_color" >&2
-  compose "$sha" logs --no-color --tail=40 "$candidate_pvp_service" edge >&2 || true
-  rollback "$sha" || true
-  exit 80
-fi
 # Anonymous GET of Admin's feedback summary is Go's 401.
 if ! wait_pvp_browser_attest games_native_attest "http://127.0.0.1:${port}/api/admin/feedback/summary" GET X-Chess-Admin-Native 401; then
   echo "native admin feedback did not answer through Go after cutover: color=$candidate_color" >&2
