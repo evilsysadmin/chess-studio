@@ -80,6 +80,33 @@ describe('combat controller support', () => {
     expect(isLegalCombatCpuSuggestion(startBlack, recovered.suggestion)).toBe(true);
   });
 
+  it('la CPU de emergencia prefiere un jaque fiable a una captura que apenas conecta', async () => {
+    const fen = 'r7/P5k1/8/8/8/8/8/7K b - - 0 1';
+    const registry = {
+      a8: { id: 'b-r-a8', square: 'a8', color: 'b', type: 'r' },
+      g7: { id: 'b-k-g7', square: 'g7', color: 'b', type: 'k' },
+      a7: { id: 'w-p-a7', square: 'a7', color: 'w', type: 'p', speedPoints: 100 },
+      h1: { id: 'w-k-h1', square: 'h1', color: 'w', type: 'k' },
+    };
+    // Sin datos no se inventan probabilidades: conserva el comportamiento
+    // determinista histórico. Con datos, capturar al peón tiene sólo 50%.
+    expect(emergencyCombatCpuSuggestion(fen)).toMatchObject({ from: 'a8', to: 'a7' });
+    expect(emergencyCombatCpuSuggestion(fen, {})).toMatchObject({ from: 'a8', to: 'a7' });
+    expect(emergencyCombatCpuSuggestion(fen, registry)).toMatchObject({ from: 'a8', to: 'h8' });
+    expect(isLegalCombatCpuSuggestion(fen, emergencyCombatCpuSuggestion(fen, registry))).toBe(true);
+
+    // Una víctima sin mejoras defensivas vuelve a ser una captura razonable.
+    const vulnerable = { ...registry, a7: { ...registry.a7, speedPoints: 0 } };
+    expect(emergencyCombatCpuSuggestion(fen, vulnerable)).toMatchObject({ from: 'a8', to: 'a7' });
+
+    const recovered = await resolveCombatCpuTurnSuggestion({
+      fen, difficulty: 45, registry,
+      analyzePosition: async () => { throw new Error('Análisis remoto no disponible'); },
+    });
+    expect(recovered.source).toBe('local');
+    expect(recovered.suggestion).toMatchObject({ from: 'a8', to: 'h8' });
+  });
+
   it('también degrada a local si el servidor devuelve una jugada ilegal', async () => {
     const startBlack = 'rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1';
     const recovered = await resolveCombatCpuTurnSuggestion({
