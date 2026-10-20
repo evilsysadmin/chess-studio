@@ -25,7 +25,6 @@ INVENTORY = {
     'billing-cost-export.yml': 'observability',
     'capacity-staging.yml': 'capacity-readiness',
     'capacity-virtual-players.yml': 'capacity-readiness',
-    'chronicles-party-blender-art.yml': 'art-generation',
     'combat-operations-room-blender-art.yml': 'art-generation',
     'chess-football-godot-poc.yml': 'game-runtime-experiment',
     'chesscom-sven-sprite-forge.yml': 'art-quality',
