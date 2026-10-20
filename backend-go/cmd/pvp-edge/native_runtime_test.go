@@ -72,18 +72,29 @@ func TestAdminUsersSharesTheNarrativeGateway(t *testing.T) {
 	}
 }
 
-func TestAllNativeKeepsRetiredChroniclesOff(t *testing.T) {
+func TestAllNativeTurnsOnEveryRemainingChessStudioFlag(t *testing.T) {
 	v := reflect.ValueOf(allNative())
 	for i := 0; i < v.NumField(); i++ {
 		name := v.Type().Field(i).Name
-		enabled := v.Field(i).Bool()
-		if name == "chronicles" || name == "chroniclesRuns" {
-			if enabled {
-				t.Fatalf("retired %s must not return through GO_PYTHON_RETIRED", name)
-			}
-		} else if !enabled {
+		if strings.Contains(strings.ToLower(name), "chronicles") {
+			t.Fatalf("retired game flag %s unexpectedly present", name)
+		}
+		if !v.Field(i).Bool() {
 			t.Fatalf("active Chess Studio flag %s left off", name)
 		}
+	}
+}
+
+// Old GO_NATIVE_CHRONICLES_* variables must never re-enable native routes.
+func TestRetiredChroniclesEnvFlagsCannotReenableNativeHandlers(t *testing.T) {
+	t.Setenv("GO_NATIVE_CHRONICLES_ENABLED", "true")
+	t.Setenv("GO_NATIVE_CHRONICLES_RUNS_ENABLED", "true")
+	flags := reflect.TypeOf(loadNativeFeatureFlags())
+	if _, exists := flags.FieldByName("chronicles"); exists {
+		t.Fatal("retired Chronicles map handler flag still exists")
+	}
+	if _, exists := flags.FieldByName("chroniclesRuns"); exists {
+		t.Fatal("retired Chronicles run handler flag still exists")
 	}
 }
 
