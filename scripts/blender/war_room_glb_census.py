@@ -7,6 +7,7 @@ only nodes reachable from the default glTF scene, including repeated mesh uses.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 from pathlib import Path
 
@@ -99,11 +100,37 @@ def census_scene(document: dict, *, top: int = 12) -> dict:
     }
 
 
+def render_census_markdown(reports: list[dict]) -> str:
+    """CI geometry report: potential shell cost, not observed renderer work."""
+    lines = [
+        "### War Room · exported GLB geometry census", "",
+        "Potential triangle/primitive counts assume every shell node is visible. "
+        "**Not** actual GPU draw calls, shadows, culling or FPS.", "",
+        "| GLB | SHA-256 | Potential triangles | Unique triangles | Mesh instances | Primitive instances | Bytes |",
+        "| --- | --- | ---: | ---: | ---: | ---: | ---: |",
+    ]
+    for row in reports:
+        lines.append(
+            f"| {Path(row['file']).name} | {row['sha256']} | "
+            f"{row['potentialTriangles']:,} | {row['uniqueMeshTriangles']:,} | "
+            f"{row['meshInstances']:,} | {row['primitiveInstances']:,} | {row['glbBytes']:,} |"
+        )
+        lines.extend([
+            "", f"**Largest nodes — {Path(row['file']).name}**", "",
+            "| Node | Mesh | Potential triangles |", "| --- | --- | ---: |",
+        ])
+        for node in row["topNodes"]:
+            lines.append(f"| {node['node']} | {node['mesh']} | {node['triangles']:,} |")
+    return "\n".join(lines) + "\n"
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("glb", nargs="+", type=Path, help="exported War Room GLB(s)")
     parser.add_argument("--top", type=int, default=12, help="largest scene nodes (default 12)")
     parser.add_argument("--json", action="store_true", help="machine-readable JSON")
+    parser.add_argument("--output-json", type=Path, help="write geometry JSON artifact")
+    parser.add_argument("--summary-file", type=Path, help="append Markdown to CI step summary")
     args = parser.parse_args(argv)
     if args.top < 0:
         parser.error("--top cannot be negative")
@@ -112,7 +139,16 @@ def main(argv: list[str] | None = None) -> int:
     reports = []
     for path in args.glb:
         document, _ = read_glb(path)
-        reports.append({"file": str(path), "glbBytes": path.stat().st_size, **census_scene(document, top=args.top)})
+        report = {"file": str(path), "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+                  "glbBytes": path.stat().st_size, **census_scene(document, top=args.top)}
+        if report["meshInstances"] <= 0 or report["potentialTriangles"] <= 0:
+            raise ValueError(f"{path}: exported War Room scene has no renderable geometry")
+        reports.append(report)
+    if args.output_json:
+        args.output_json.write_text(json.dumps(reports, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    if args.summary_file:
+        with args.summary_file.open("a", encoding="utf-8") as handle:
+            handle.write(render_census_markdown(reports))
     if args.json:
         print(json.dumps(reports, indent=2, ensure_ascii=False))
     else:

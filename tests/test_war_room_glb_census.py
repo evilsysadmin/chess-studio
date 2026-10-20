@@ -4,7 +4,7 @@ import unittest
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'scripts' / 'blender'))
-from war_room_glb_census import census_scene  # noqa: E402
+from war_room_glb_census import census_scene, render_census_markdown  # noqa: E402
 
 
 def fixture():
@@ -78,6 +78,19 @@ class WarRoomGlbCensusTests(unittest.TestCase):
         doc['scene'] = 5
         with self.assertRaisesRegex(ValueError, 'default scene'):
             census_scene(doc)
+
+    def test_ci_summary_identifies_glb_hash_without_claiming_fps(self):
+        report = {
+            'file': '/tmp/war-room-v3/war-room-v3-shell.glb',
+            'sha256': 'b' * 64,
+            'glbBytes': 1000,
+            **census_scene(fixture(), top=1),
+        }
+        summary = render_census_markdown([report])
+        self.assertIn('war-room-v3-shell.glb', summary)
+        self.assertIn('b' * 64, summary)
+        self.assertIn('| Pillar A | stone | 2 |', summary)
+        self.assertIn('Not** actual GPU draw calls', summary)
 
 
 if __name__ == '__main__':
