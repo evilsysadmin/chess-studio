@@ -16,7 +16,6 @@ import sys
 
 MATTHIAS_MODEL = "frontend/public/models/matthias-home-canonical.glb"
 MATTHIAS_BLEND = "frontend/art-source/matthias-home-canonical.blend"
-CHRONICLES_PARTY_MODEL = "frontend/public/models/chronicles-tactics-party.glb"
 CHRONICLES_BOOTSTRAP_OWNER = "frontend/src/chronicles/chroniclesGameBootstrap.js"
 FOOTBALL_PROFILE_REGISTRY = "frontend/src/profileKeys.js"
 FOOTBALL_MANAGER_VISUAL_OWNER = "frontend/src/footballManagerCareer.js"
@@ -54,7 +53,6 @@ NONVISUAL_CHRONICLES_SAVE_BOOTSTRAP_LINES = {
     ".then((payload) => ({ ok: true, value: validateAuthoritativeRun(payload, resumeRunId ? null : mapId) }))",
 }
 
-CHRONICLES_PARTY_BUILDER = "scripts/blender/build_chronicles_tactics_party.py"
 PAWN_SLUG_OWNER = "frontend/src/components/PawnSlugGodotHost.jsx"
 CHESS_FOOTBALL_OWNER = "frontend/src/components/ChessFootballGodotHost.jsx"
 CHESS_FOOTBALL_GAME_ROOT = "games/chess-football-godot/"
@@ -922,9 +920,6 @@ def normalize(
             # separately and must not wake for Home-only pawn geometry changes.
             add(MATTHIAS_MODEL)
             continue
-        if lower in {CHRONICLES_PARTY_MODEL, CHRONICLES_PARTY_BUILDER}:
-            add(CHRONICLES_PARTY_MODEL)
-            continue
         if lower in {
             PAWN_SLUG_POW_MODEL,
             PAWN_SLUG_POW_BLEND,
@@ -963,10 +958,12 @@ def self_test() -> None:
         "frontend/src/App.css",
         MATTHIAS_MODEL,
     ]
-    chronicles_party_sources = [CHRONICLES_PARTY_BUILDER, CHRONICLES_PARTY_MODEL]
-    assert normalize(chronicles_party_sources) == [CHRONICLES_PARTY_MODEL]
     pawn_slug_pow_sources = [PAWN_SLUG_POW_BLEND, PAWN_SLUG_POW_MODEL, PAWN_SLUG_POW_BUILDER]
     assert normalize(pawn_slug_pow_sources) == [PAWN_SLUG_OWNER]
+    # Removed Chronicles assets must never map to a phantom runtime model.
+    retired = ["scripts/blender/build_chronicles_tactics_party.py",
+               "frontend/public/models/chronicles-tactics-party.glb"]
+    assert normalize(retired) == retired
     assert normalize(["scripts/unknown_visual_owner.py"]) == ["scripts/unknown_visual_owner.py"]
     # Pure remote-save plumbing never starts the 3D Tactics capture. A visual
     # JSX edit in the same file, a missing Git diff, or an unknown bootstrap

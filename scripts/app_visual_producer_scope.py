@@ -389,8 +389,6 @@ def classify_path(path: str) -> set[str] | None:
         return set()
     if lower in PUBLIC_NONCANONICAL_PATHS:
         return set()
-    if lower == "frontend/public/models/chronicles-tactics-party.glb":
-        return set()  # Left over from Tactics, which moved to its own repo.
     if lower in {
         "frontend/public/models/matthias-home-canonical.glb",
         "frontend/public/matthias-home-canonical.b64",
@@ -1088,7 +1086,7 @@ def self_test() -> None:
     assert classify(["frontend/public/chesscom/piece.glb"]) == "none"
     for public_meta in PUBLIC_NONCANONICAL_PATHS:
         assert classify([public_meta]) == "none"
-    assert classify(["frontend/public/models/chronicles-tactics-party.glb"]) == "none"
+    assert classify(["frontend/public/models/chronicles-tactics-party.glb"]) == "all"  # Removed asset: unknown public model fails closed.
     assert classify(["frontend/public/models/matthias-home-canonical.glb"]) == "home-matthias"
     assert classify(["frontend/public/matthias-home-canonical.b64"]) == "home-matthias"
     assert classify(["frontend/src/components/HomeMatthias3D.jsx"]) == "home-matthias"
