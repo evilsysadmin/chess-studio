@@ -401,8 +401,6 @@ def _surface_groups(path: str) -> set[str] | None:
         return set()
     if lower in PUBLIC_NONCANONICAL_PATHS:
         return set()
-    if lower == "frontend/public/models/chronicles-tactics-party.glb":
-        return {"experiments"}
     if lower in {
         "frontend/public/models/matthias-home-canonical.glb",
         "frontend/public/matthias-home-canonical.b64",
@@ -1083,9 +1081,9 @@ def self_test() -> None:
         public_scope = classify([public_meta])
         assert public_scope.capture_groups == "none"
         assert not public_scope.hans and not public_scope.chesscom
-    public_chronicles_model = classify(["frontend/public/models/chronicles-tactics-party.glb"])
-    assert public_chronicles_model.capture_groups == "experiments"
-    assert public_chronicles_model.experiments_scope == "chronicles"
+    # The removed Tactics GLB cannot suppress coverage on a future unknown
+    # public model: unlike the actual Home Matthias GLB, it no longer exists.
+    assert classify(["frontend/public/models/chronicles-tactics-party.glb"]) == full_scope()
     public_home_model = classify(["frontend/public/models/matthias-home-canonical.glb"])
     assert public_home_model.capture_groups == "home"
     public_home_b64 = classify(["frontend/public/matthias-home-canonical.b64"])

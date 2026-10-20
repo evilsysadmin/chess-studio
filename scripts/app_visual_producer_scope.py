@@ -389,8 +389,6 @@ def classify_path(path: str) -> set[str] | None:
         return set()
     if lower in PUBLIC_NONCANONICAL_PATHS:
         return set()
-    if lower == "frontend/public/models/chronicles-tactics-party.glb":
-        return set()  # Left over from Tactics, which moved to its own repo.
     if lower in {
         "frontend/public/models/matthias-home-canonical.glb",
         "frontend/public/matthias-home-canonical.b64",
@@ -512,9 +510,10 @@ def classify_path(path: str) -> set[str] | None:
     if lower in TRAINING_EXACT_PRODUCERS:
         return set(TRAINING_EXACT_PRODUCERS[lower])
 
-    if "chronicles" in lower:
-        # Chronicles and Tactics live in their own repository now; the Lab only
-        # links to them, so nothing named after them paints a scene here.
+    # The *existing* Lab link is a routing-only exception. Do not globally
+    # exempt every new "chronicles"-named component: unexpected product code
+    # must fail closed to real Chess Studio visual evidence.
+    if lower == "frontend/src/labchronicleslink.js":
         return set()
 
     if any(token in lower for token in (
@@ -809,7 +808,11 @@ def self_test() -> None:
     assert classify(["scripts/chronicles_area_parity_corpus.py"]) == "none"
     assert classify(["scripts/chronicles_contracts.py", "scripts/validate_chronicles_campaign.py"]) == "none"
     assert classify([".github/workflows/cicd.yml", "scripts/run_core_e2e_lane.py", "scripts/test_entrypoint_parity.py", "frontend/src/components/RoguelikeScreen.jsx", "e2e/war-room-combat-battle-visual-artifact.spec.js"]) == "combat-battle"
-    assert classify(["scripts/chronicles_area_parity_corpus.py", "frontend/src/chronicles/chroniclesMapCatalog.js"]) == "none"
+    # A ghost runtime source is unexpected after extraction; fail closed rather
+    # than silently granting a new implementation exemption based on its name.
+    assert classify(["scripts/chronicles_area_parity_corpus.py", "frontend/src/chronicles/chroniclesMapCatalog.js"]) == "all"
+    assert classify(["frontend/src/components/ChroniclesReturn.jsx"]) == "all"
+    assert classify(["frontend/src/chronicles/newScene.js"]) == "all"
     assert classify(["scripts/unknown_unowned_generator.py"]) == "all"
     assert classify(["e2e/staging-live.spec.js", "frontend/src/components/PvpHandoffModal.jsx"]) == "pvp-handoff"
     assert classify([
@@ -910,7 +913,9 @@ def self_test() -> None:
         "frontend/src/experimentalThreeRenderer.js",
         "e2e/chronicles-gameplay-visual-artifact.spec.js",
     ):
-        assert classify([retired]) in {"none", "all"}, retired
+        # Retired Matthias-named UI now follows the active Home/War Room
+        # classifier rather than a blanket Chronicles exemption.
+        assert classify([retired]) in {"none", "all", "home-matthias,warroom-core"}, retired
         assert project_chronicles_lane(classify([retired]), "chronicles") == "none"
     assert classify(["frontend/src/labChroniclesLink.js"]) == "none"
     assert classify(["frontend/src/components/LabScreen.jsx"]) == "experiments-hub"
@@ -1081,7 +1086,7 @@ def self_test() -> None:
     assert classify(["frontend/public/chesscom/piece.glb"]) == "none"
     for public_meta in PUBLIC_NONCANONICAL_PATHS:
         assert classify([public_meta]) == "none"
-    assert classify(["frontend/public/models/chronicles-tactics-party.glb"]) == "none"
+    assert classify(["frontend/public/models/chronicles-tactics-party.glb"]) == "all"  # Removed asset: unknown public model fails closed.
     assert classify(["frontend/public/models/matthias-home-canonical.glb"]) == "home-matthias"
     assert classify(["frontend/public/matthias-home-canonical.b64"]) == "home-matthias"
     assert classify(["frontend/src/components/HomeMatthias3D.jsx"]) == "home-matthias"
