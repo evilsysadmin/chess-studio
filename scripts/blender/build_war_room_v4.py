@@ -574,11 +574,11 @@ def build_celestial_window(static, palette):
             0.035, palette["fire_core"], static, scale=(1.0, 0.3, 1.0),
         )
 
-    # The former crest sat 55 cm above the oval and disappeared behind the
-    # top crop of the *actual* 1440×900 play camera. Bring its heraldic shield
-    # into the visible upper lunette without crossing the moon or the board.
-    # Keep the window opening, Hans anchors and all camera optics unchanged.
-    crest_z = cz + r + 0.16
+    # Keep the heraldic crown above the lunette. Lowering it by 39 cm made
+    # the play-camera top crop sever the shield into a floating gold fragment;
+    # the tiny side hour marks below carry the new visible architectural detail.
+    # Do not move the playing camera, moon, window opening or Hans anchors.
+    crest_z = cz + r + 0.55
     base.cube("WR4_OBS_oculus_crest_shield", (cx, cy - 0.30, crest_z), (0.42, 0.06, 0.48),
               palette["brass"], static, bevel=0.20)
     base.cube("WR4_OBS_oculus_crest_field", (cx, cy - 0.37, crest_z + 0.02), (0.33, 0.03, 0.38),
@@ -1843,9 +1843,9 @@ def validate_v4():
     if missing:
         raise RuntimeError(f"War Room v4 contract objects missing: {missing}")
     crest = bpy.data.objects.get("WR4_OBS_oculus_crest_shield")
-    expected_crest_z = V4_OCULUS_CENTER[2] + V4_OCULUS_RADIUS + 0.16
+    expected_crest_z = V4_OCULUS_CENTER[2] + V4_OCULUS_RADIUS + 0.55
     if crest is None or abs(crest.location.z - expected_crest_z) > 0.01:
-        raise RuntimeError("War Room v4 lunar crest must stay within the live camera crown")
+        raise RuntimeError("War Room v4 lunar crest must remain above the oculus rim")
     hour_marks = [name for name in names if name.startswith("WR4_OBS_oculus_hour_mark_")]
     if len(hour_marks) != 10:
         raise RuntimeError(f"War Room v4 expected ten symmetrical oculus hour marks; got {len(hour_marks)}")
