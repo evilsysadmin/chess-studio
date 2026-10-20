@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { annotateCombatCandidates, buildCombatSessionSnapshot, emergencyCombatCpuSuggestion, emptyUnitBattleStats, incrementIdentityCounter, isLegalCombatCpuSuggestion, resolveCombatCpuTurnSuggestion, resolveHumanColor, selectCombatAwareRemoteSuggestion } from './combatControllerSupport.js';
+import { enemyDoctrineCatalog } from './combatEnemyDoctrine.js';
 
 describe('combat controller support', () => {
   it('resuelve color explícito o aleatorio sin esconder Math.random en el controlador', () => {
@@ -181,6 +182,41 @@ describe('combat controller support', () => {
     });
     expect(recovered.source).toBe('local');
     expect(recovered.suggestion).toMatchObject({ from: 'a8', to: 'h8' });
+  });
+
+  it('mantiene la doctrina del oficial al caer Workers sin cambiar la legalidad o un mate', async () => {
+    const fen = 'n3k3/7p/8/8/8/8/8/4K3 b - - 0 1';
+    const catalog = enemyDoctrineCatalog();
+    const storm = catalog.find((item) => item.id === 'pawn-storm');
+    const pressure = catalog.find((item) => item.id === 'pressure');
+
+    const plain = emergencyCombatCpuSuggestion(fen);
+    const neutral = emergencyCombatCpuSuggestion(fen, null, {}, pressure);
+    const aggressive = emergencyCombatCpuSuggestion(fen, null, {}, storm);
+    expect(plain).toMatchObject({ from: 'a8', to: 'b6' });
+    expect(neutral).toEqual(plain);
+    expect(aggressive).toMatchObject({ from: 'h7', to: 'h5' });
+    expect(isLegalCombatCpuSuggestion(fen, aggressive)).toBe(true);
+    expect(emergencyCombatCpuSuggestion(fen, null, {}, { style: { pawn: 500 } })).toEqual(aggressive);
+
+    const recovered = await resolveCombatCpuTurnSuggestion({
+      fen, difficulty: 45, doctrine: storm,
+      analyzePosition: async () => { throw new Error('Workers no responde'); },
+    });
+    expect(recovered.source).toBe('local');
+    expect(recovered.suggestion).toEqual(aggressive);
+    const invalidRemote = await resolveCombatCpuTurnSuggestion({
+      fen, difficulty: 45, doctrine: storm,
+      analyzePosition: async () => ({ from: 'a8', to: 'a1' }),
+    });
+    expect(invalidRemote.source).toBe('local');
+    expect(invalidRemote.suggestion).toEqual(aggressive);
+
+    // El mate tiene un bonus decisivo. Ni una doctrina contraria lo desplaza.
+    const mateFen = '7k/8/5KQ1/8/8/8/8/8 w - - 0 1';
+    expect(emergencyCombatCpuSuggestion(mateFen, null, {}, storm)).toMatchObject({
+      from: 'g6', to: 'g7',
+    });
   });
 
   it('también degrada a local si el servidor devuelve una jugada ilegal', async () => {
