@@ -9,7 +9,47 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import struct
 from pathlib import Path
+
+
+def read_glb_json(path: Path) -> dict:
+    """Parse glTF 2.0 JSON chunk without interpreting compressed BIN buffer layout.
+
+    EXT_meshopt_compression can have logical buffer sizes differing from the
+    on-disk compressed BIN chunk. Accessor.count remains the authoritative
+    decoded geometry count. No decompression is required for this census.
+    """
+    data = path.read_bytes()
+    if len(data) < 20:
+        raise ValueError(f"{path}: truncated GLB header")
+    magic, version, total_length = struct.unpack_from("<4sII", data, 0)
+    if magic != b"glTF" or version != 2 or total_length != len(data):
+        raise ValueError(f"{path}: invalid GLB header")
+    offset = 12
+    document = None
+    bin_chunks = 0
+    chunk_index = 0
+    while offset < total_length:
+        if offset + 8 > total_length:
+            raise ValueError(f"{path}: truncated GLB chunk header")
+        chunk_length, chunk_type = struct.unpack_from("<II", data, offset)
+        offset += 8
+        if chunk_length % 4 or offset + chunk_length > total_length:
+            raise ValueError(f"{path}: truncated or unaligned GLB chunk")
+        if chunk_index == 0 and chunk_type != 0x4E4F534A:
+            raise ValueError(f"{path}: JSON must be first GLB chunk")
+        if chunk_type == 0x4E4F534A:
+            if document is not None:
+                raise ValueError(f"{path}: duplicate GLB JSON chunk")
+            document = json.loads(data[offset:offset + chunk_length].decode("utf-8").rstrip(" \t\r\n\0"))
+        elif chunk_type == 0x004E4942:
+            bin_chunks += 1
+        offset += chunk_length
+        chunk_index += 1
+    if not isinstance(document, dict) or bin_chunks != 1:
+        raise ValueError(f"{path}: expected JSON and one BIN chunk")
+    return document
 
 
 def _accessor_count(accessors, index: int) -> int:
@@ -134,11 +174,9 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     if args.top < 0:
         parser.error("--top cannot be negative")
-    from compare_glb_semantics import read_glb  # reuse the strict existing GLB reader
-
     reports = []
     for path in args.glb:
-        document, _ = read_glb(path)
+        document = read_glb_json(path)
         report = {"file": str(path), "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
                   "glbBytes": path.stat().st_size, **census_scene(document, top=args.top)}
         if report["meshInstances"] <= 0 or report["potentialTriangles"] <= 0:
