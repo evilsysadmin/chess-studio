@@ -225,6 +225,40 @@ describe('máquina de estados del intento', () => {
     expect(advanceFloor(selected)).toMatchObject({ floor: 12, phase: 'battle', perks: [offered[1].id] });
   });
 
+  it('ignora clics repetidos con snapshot anterior y nunca concede dos ventajas', () => {
+    let run = markFloorCleared(markBattleStarted(startNewRun('stale-double-reward')));
+    const [first, second] = rewardOptionsForFloor(run.seed, run.floor);
+    const staleBeforeReward = { ...run, perks: [...run.perks] };
+    run = chooseRunReward(run, first.id);
+    expect(run.perks).toEqual([first.id]);
+    const replay = chooseRunReward(staleBeforeReward, second.id);
+    expect(replay).toEqual(run);
+    expect(loadRun()).toEqual(run);
+    expect(run.rewardChosenForFloor).toBe(1);
+  });
+
+  it('una orden antigua de avanzar no rebobina el piso ni repite recompensa', () => {
+    let run = markFloorCleared(markBattleStarted(startNewRun('stale-advance')));
+    const [first] = rewardOptionsForFloor(run.seed, run.floor);
+    const staleBeforeReward = { ...run };
+    run = chooseRunReward(run, first.id);
+    const staleBeforeAdvance = { ...run };
+    run = advanceFloor(run);
+    expect(run).toMatchObject({ floor: 2, phase: 'battle', perks: [first.id] });
+    expect(advanceFloor(staleBeforeAdvance)).toEqual(run);
+    expect(chooseRunReward(staleBeforeReward, first.id)).toEqual(run);
+    expect(loadRun()).toEqual(run);
+  });
+
+  it('una orden de un intento anterior no revive su progreso al iniciar otro', () => {
+    let firstRun = markFloorCleared(markBattleStarted(startNewRun('retirado')));
+    const [perk] = rewardOptionsForFloor(firstRun.seed, 1);
+    const nextRun = startNewRun('nuevo-intento');
+    expect(chooseRunReward(firstRun, perk.id)).toEqual(nextRun);
+    expect(advanceFloor({ ...firstRun, rewardChosenForFloor: 1 })).toEqual(nextRun);
+    expect(loadRun()).toEqual(nextRun);
+  });
+
   it('no permite cobrar dos recompensas por el mismo piso', () => {
     let run = startNewRun('una-sola');
     run = markBattleStarted(run);

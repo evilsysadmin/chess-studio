@@ -84,8 +84,24 @@ export function markFloorCleared(run) {
   return saveRun({ ...run, phase: 'cleared', rewardChosenForFloor: null });
 }
 
+// React or a delayed callback may replay an earlier cleared-floor snapshot.
+// Never overwrite the profile-authoritative run with a stale reward/advance.
+function currentRunIfStale(run) {
+  const latest = loadRun();
+  return latest.inRun === run.inRun
+    && latest.seed === run.seed
+    && latest.mode === run.mode
+    && latest.floor === run.floor
+    && latest.phase === run.phase
+    && latest.rewardChosenForFloor === run.rewardChosenForFloor
+    && JSON.stringify(latest.perks) === JSON.stringify(run.perks)
+    ? null : latest;
+}
+
 export function chooseRunReward(run, perkId) {
   if (!run?.inRun || run.phase !== 'cleared' || !perkById(perkId)) return run;
+  const latest = currentRunIfStale(run);
+  if (latest) return latest;
   if (run.rewardChosenForFloor === run.floor) return run;
   // A valid catalogue perk is not necessarily among the three cards dealt
   // for this seed and floor. Enforce the deterministic offer in the domain.
@@ -99,6 +115,8 @@ export function chooseRunReward(run, perkId) {
 
 export function advanceFloor(run) {
   if (!run?.inRun || run.phase !== 'cleared') return run;
+  const latest = currentRunIfStale(run);
+  if (latest) return latest;
   // En la torre y en infinito, superar un piso implica elegir su recompensa
   // antes de seguir. El boss final se gestiona como `completed`, no llega acá.
   if (run.rewardChosenForFloor !== run.floor) return run;
