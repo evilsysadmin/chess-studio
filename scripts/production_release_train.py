@@ -89,7 +89,7 @@ def select_latest(repository: str) -> tuple[int, int] | None:
     return run_id, run_number
 
 
-def read_accreditation(path: str, run_id: int) -> str:
+def read_accreditation(path: str, run_id: int, expected_sha: str = "", event: str = "schedule") -> str:
     payload = json.loads(pathlib.Path(path).read_text(encoding="utf-8"))
     if payload.get("schema") != 1:
         raise ValueError(f"Schema de acreditación inesperado: {payload.get('schema')!r}")
@@ -102,6 +102,16 @@ def read_accreditation(path: str, run_id: int) -> str:
     sha = str(payload.get("sha") or "").lower()
     if _SHA_RE.fullmatch(sha) is None:
         raise ValueError(f"SHA acreditado inválido: {sha!r}")
+    if event not in {"schedule", "workflow_dispatch", "push"}:
+        raise ValueError(f"Evento de promoción inesperado: {event!r}")
+    if event == "workflow_dispatch" and not expected_sha:
+        raise ValueError("La promoción manual exige fijar expected_sha")
+    if expected_sha:
+        pinned_sha = expected_sha.lower()
+        if _SHA_RE.fullmatch(pinned_sha) is None:
+            raise ValueError(f"expected_sha inválido: {expected_sha!r}")
+        if pinned_sha != sha:
+            raise ValueError(f"El SHA esperado {pinned_sha} no coincide con la acreditación {sha}")
     return sha
 
 
@@ -225,6 +235,16 @@ def self_test() -> None:
             encoding="utf-8",
         )
         assert read_accreditation(str(accreditation), 22) == "a" * 40
+        assert read_accreditation(
+            str(accreditation), 22, expected_sha="A" * 40, event="workflow_dispatch"
+        ) == "a" * 40
+        for pin in ("", "b" * 40, "invalid", " a" * 20):
+            try:
+                read_accreditation(str(accreditation), 22, expected_sha=pin, event="workflow_dispatch")
+                raise AssertionError("Manual promotion with invalid/missing/mismatched pin must fail")
+            except ValueError:
+                pass
+        assert read_accreditation(str(accreditation), 22, event="push") == "a" * 40
         record = pathlib.Path(tmp) / "record.json"
         write_record(str(record), "b" * 40, 77, "schedule")
         assert json.loads(record.read_text(encoding="utf-8")) == {
@@ -253,6 +273,8 @@ def main(argv: list[str] | None = None) -> int:
     read.add_argument("--run-number", required=True, type=int)
     read.add_argument("--github-output", required=True)
     read.add_argument("--github-env", required=True)
+    read.add_argument("--event", choices=("schedule", "workflow_dispatch", "push"), required=True)
+    read.add_argument("--expected-sha", default="")
 
     lineage = sub.add_parser("lineage")
     lineage.add_argument("--repository", required=True)
@@ -291,7 +313,7 @@ def main(argv: list[str] | None = None) -> int:
             print(f"Latest staging accreditation: Staging AI run {run_id} (#{run_number}).")
         return 0
     if args.command == "read":
-        sha = read_accreditation(args.artifact, args.run_id)
+        sha = read_accreditation(args.artifact, args.run_id, expected_sha=args.expected_sha, event=args.event)
         _append(args.github_output, deploy_sha=sha)
         _append(args.github_env, DEPLOY_SHA=sha)
         print(f"Production provenance: Staging AI run {args.run_id} (#{args.run_number}) acreditó {sha}")
