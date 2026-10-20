@@ -269,6 +269,52 @@ describe('máquina de estados del intento', () => {
     expect(again.perks).toEqual([a.id]);
   });
 
+  it('un resultado de boss antiguo no termina un intento nuevo ni da el logro', () => {
+    let run = startNewRun('boss-antiguo');
+    for (let floor = 1; floor < ROGUELIKE_TOWER_FLOORS; floor += 1) {
+      run = markBattleStarted(run);
+      run = markFloorCleared(run);
+      run = chooseRunReward(run, rewardOptionsForFloor(run.seed, floor)[0].id);
+      run = advanceFloor(run);
+    }
+    const staleBoss = { ...markBattleStarted(run), perks: [...run.perks] };
+    const fresh = startNewRun('nuevo-recluta');
+    expect(completeTower(staleBoss)).toEqual(fresh);
+    expect(loadRun()).toEqual(fresh);
+    expect(loadTowerCompleted()).toBe(false);
+    expect(loadBestFloor()).toBe(0);
+  });
+
+  it('repetir el botón del boss no rebobina infinito ni completa una Torre ajena', () => {
+    let run = startNewRun('boss-continue-once');
+    for (let floor = 1; floor < ROGUELIKE_TOWER_FLOORS; floor += 1) {
+      run = markBattleStarted(run);
+      run = markFloorCleared(run);
+      run = chooseRunReward(run, rewardOptionsForFloor(run.seed, floor)[0].id);
+      run = advanceFloor(run);
+    }
+    const fighting = markBattleStarted(run);
+    const completed = completeTower(fighting);
+    expect(completed.phase).toBe('completed');
+    const endless = continueIntoEndless(completed);
+    expect(endless).toMatchObject({ mode: 'endless', floor: 11, phase: 'battle' });
+    expect(completeTower(fighting)).toEqual(endless);
+    expect(continueIntoEndless(completed)).toEqual(endless);
+    expect(loadRun()).toEqual(endless);
+    expect(loadTowerCompleted()).toBe(true);
+    expect(loadBestFloor()).toBe(10);
+  });
+
+  it('solo el jefe del piso diez permite abrir infinito', () => {
+    const run = startNewRun('no-boss');
+    const forged = { ...run, phase: 'completed', floor: 1 };
+    expect(continueIntoEndless(forged)).toEqual(forged);
+    expect(loadRun()).toEqual(run);
+    expect(completeTower({ ...run, floor: 10, phase: 'fighting', mode: 'endless' }))
+      .toMatchObject({ mode: 'endless', phase: 'fighting' });
+    expect(loadTowerCompleted()).toBe(false);
+  });
+
   it('completar piso 10 desbloquea infinito sin exigir una carta post-boss', () => {
     let run = startNewRun('boss');
     // Simulamos llegar al 10 respetando el gate de recompensa.

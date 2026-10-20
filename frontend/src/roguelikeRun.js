@@ -124,14 +124,20 @@ export function advanceFloor(run) {
 }
 
 export function completeTower(run) {
-  if (!run?.inRun || run.floor !== ROGUELIKE_TOWER_FLOORS || run.phase !== 'fighting') return run;
+  if (!run?.inRun || run.mode !== 'tower' || run.floor !== ROGUELIKE_TOWER_FLOORS || run.phase !== 'fighting') return run;
+  // A delayed boss result must never complete a newer attempt.
+  const latest = currentRunIfStale(run);
+  if (latest) return latest;
   setProfileStorageItem(COMPLETED_KEY, '1');
   if (run.floor > loadBestFloor()) setProfileStorageItem(BEST_FLOOR_KEY, String(run.floor));
   return saveRun({ ...run, phase: 'completed' });
 }
 
 export function continueIntoEndless(run) {
-  if (!run?.inRun || run.phase !== 'completed') return run;
+  if (!run?.inRun || run.mode !== 'tower' || run.floor !== ROGUELIKE_TOWER_FLOORS || run.phase !== 'completed') return run;
+  // Replaying the old "continue" CTA cannot roll an active endless run back.
+  const latest = currentRunIfStale(run);
+  if (latest) return latest;
   return saveRun({ ...run, mode: 'endless', floor: ROGUELIKE_TOWER_FLOORS + 1, phase: 'battle', rewardChosenForFloor: null });
 }
 
