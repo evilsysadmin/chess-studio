@@ -122,7 +122,7 @@ describe('recompensas temporales', () => {
 
 describe('máquina de estados del intento', () => {
   it('arranca sin intento en curso', () => {
-    expect(loadRun()).toEqual({ floor: 1, inRun: false, phase: 'idle', seed: null, mode: 'tower', perks: [], rewardChosenForFloor: null });
+    expect(loadRun()).toEqual({ floor: 1, inRun: false, phase: 'idle', seed: null, mode: 'tower', perks: [], rewardChosenForFloor: null, battleAttempt: 0 });
   });
 
   it('startNewRun fija piso, seed y torre', () => {
@@ -173,7 +173,7 @@ describe('máquina de estados del intento', () => {
     // input to a transition that now checks the profile-authoritative state.
     localStorage.setItem('chess-study-roguelike-run', JSON.stringify({
       floor: 6, inRun: true, phase: 'battle', mode: 'endless',
-      seed: 'snapshot-caido', perks: ['steel_pulse'], rewardChosenForFloor: null,
+      seed: 'snapshot-caido', perks: ['steel_pulse'], rewardChosenForFloor: null, battleAttempt: 0,
     }));
     const run = markBattleStarted(loadRun());
 
@@ -223,6 +223,7 @@ describe('máquina de estados del intento', () => {
     expect(recovered.phase).toBe('battle');
     expect(recoverInterruptedRun(oldFighting)).toEqual(recovered);
     const restarted = markBattleStarted(recovered);
+    expect(restarted.battleAttempt).toBe(oldFighting.battleAttempt + 1);
     expect(recoverInterruptedRun(oldFighting)).toEqual(restarted);
     expect(loadRun()).toEqual(restarted);
   });
@@ -257,9 +258,9 @@ describe('máquina de estados del intento', () => {
   });
 
   it('valida las tres cartas de un piso infinito sin perder un perk legítimo', () => {
-    const run = markFloorCleared(markBattleStarted({
-      ...startNewRun('infinito-oferta'), floor: 11, mode: 'endless',
-    }));
+    const started = startNewRun('infinito-oferta');
+    localStorage.setItem('chess-study-roguelike-run', JSON.stringify({ ...started, floor: 11, mode: 'endless' }));
+    const run = markFloorCleared(markBattleStarted(loadRun()));
     const offered = rewardOptionsForFloor(run.seed, 11);
     const hidden = ROGUELIKE_PERKS.find((perk) => !offered.some((card) => card.id === perk.id));
     expect(chooseRunReward(run, hidden.id)).toEqual(run);

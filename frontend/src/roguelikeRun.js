@@ -25,6 +25,7 @@ function defaultRun() {
     mode: 'tower',
     perks: [],
     rewardChosenForFloor: null,
+    battleAttempt: 0,
   };
 }
 
@@ -51,7 +52,11 @@ function normalizeRun(parsed) {
   // corrupt the persisted marker. Only the cleared current floor may own it.
   const chosenFloor = parsed.rewardChosenForFloor == null ? null : Number(parsed.rewardChosenForFloor);
   const rewardChosenForFloor = inRun && phase === 'cleared' && chosenFloor === floor ? floor : null;
-  return { floor, inRun, phase, seed, mode, perks, rewardChosenForFloor };
+  // Monotonic per-run generation distinguishes a restarted fight from its
+  // identical-looking earlier 'fighting' snapshot after F5 recovery.
+  const rawAttempt = Number(parsed.battleAttempt);
+  const battleAttempt = inRun && Number.isSafeInteger(rawAttempt) && rawAttempt > 0 ? rawAttempt : 0;
+  return { floor, inRun, phase, seed, mode, perks, rewardChosenForFloor, battleAttempt };
 }
 
 export function loadRun() {
@@ -72,7 +77,7 @@ export function markBattleStarted(run) {
   if (!run?.inRun || run.phase !== 'battle') return run;
   const latest = currentRunIfStale(run);
   if (latest) return latest;
-  return saveRun({ ...run, phase: 'fighting' });
+  return saveRun({ ...run, phase: 'fighting', battleAttempt: (run.battleAttempt || 0) + 1 });
 }
 
 export function recoverInterruptedRun(run) {
@@ -99,6 +104,7 @@ function currentRunIfStale(run) {
     && latest.mode === run.mode
     && latest.floor === run.floor
     && latest.phase === run.phase
+    && latest.battleAttempt === run.battleAttempt
     && latest.rewardChosenForFloor === run.rewardChosenForFloor
     && JSON.stringify(latest.perks) === JSON.stringify(run.perks)
     ? null : latest;
