@@ -574,7 +574,10 @@ def build_celestial_window(static, palette):
             0.035, palette["fire_core"], static, scale=(1.0, 0.3, 1.0),
         )
 
-    # Lion crest crowning the oculus.
+    # Keep the heraldic crown above the lunette. Lowering it by 39 cm made
+    # the play-camera top crop sever the shield into a floating gold fragment;
+    # the tiny side hour marks below carry the new visible architectural detail.
+    # Do not move the playing camera, moon, window opening or Hans anchors.
     crest_z = cz + r + 0.55
     base.cube("WR4_OBS_oculus_crest_shield", (cx, cy - 0.30, crest_z), (0.42, 0.06, 0.48),
               palette["brass"], static, bevel=0.20)
@@ -585,6 +588,24 @@ def build_celestial_window(static, palette):
         wing = base.cube(f"WR4_OBS_oculus_crest_scroll_{side}", (cx + side * 0.78, cy - 0.28, crest_z - 0.22),
                          (0.42, 0.05, 0.07), palette["brass_dark"], static, bevel=0.035)
         wing.rotation_euler.y = math.radians(-side * 24)
+
+    # Ten restrained radial brass hour marks sit ON the walnut oculus reveal.
+    # They strengthen the visible architectural surround at play-camera scale
+    # rather than adding freestanding ornament or blocking the lunar sky.
+    # Mirror both sides to keep the centre/crest optically balanced.
+    for side in (-1, 1):
+        for index, degrees in enumerate((40, 64, 88, 112, 136)):
+            angle = math.radians(side * degrees)
+            ring_radius = r + 0.36
+            tick = base.cube(
+                f"WR4_OBS_oculus_hour_mark_{side}_{index}",
+                (cx + ring_radius * V4_OCULUS_ASPECT * math.sin(angle),
+                 cy - 0.215,
+                 cz + ring_radius * math.cos(angle)),
+                (0.050, 0.020, 0.155), palette["brass"], static,
+                bevel=0.014,
+            )
+            tick.rotation_euler.y = angle
 
     # Heraldic blue banners with a gold lion flank the oculus (replace the
     # earlier green drapery, which the golden does not have).
@@ -1797,6 +1818,8 @@ def validate_v4():
         "WR4_OBS_board_plinth",
         "WR4_OBS_board_corner_dome_1_1",
         "WR4_OBS_oculus_crest_shield",
+        "WR4_OBS_oculus_hour_mark_-1_0",
+        "WR4_OBS_oculus_hour_mark_1_4",
         "WR4_OBS_banner_-1",
         "WR4_OBS_banner_1",
         "WR4_OBS_celestial_window",
@@ -1819,6 +1842,13 @@ def validate_v4():
     missing = sorted(required - names)
     if missing:
         raise RuntimeError(f"War Room v4 contract objects missing: {missing}")
+    crest = bpy.data.objects.get("WR4_OBS_oculus_crest_shield")
+    expected_crest_z = V4_OCULUS_CENTER[2] + V4_OCULUS_RADIUS + 0.55
+    if crest is None or abs(crest.location.z - expected_crest_z) > 0.01:
+        raise RuntimeError("War Room v4 lunar crest must remain above the oculus rim")
+    hour_marks = [name for name in names if name.startswith("WR4_OBS_oculus_hour_mark_")]
+    if len(hour_marks) != 10:
+        raise RuntimeError(f"War Room v4 expected ten symmetrical oculus hour marks; got {len(hour_marks)}")
     forbidden_prefixes = (
         "WR_ARCH_", "WR_TABLE_", "WR_FIREPLACE_", "WR_DESK_", "WR_CREST_",
         "WR_WINDOW_", "WR_CANON_", "WR4_OBS_drafting_", "WR4_OBS_map_",
