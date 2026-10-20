@@ -11,6 +11,18 @@ function unitOrderRow(state, unitKey) {
   const saved = state?.pieces?.[unitKey] || {};
   const identity = state?.identities?.[unitKey] || {};
   const mercenary = saved?.mercenary || null;
+  const record = rosterState?.unitRecords?.[identity.identityId];
+  // Estas cifras abren o cierran metamorfosis. Si cambian después de
+  // confirmar, el jugador debe revisar la orden antes de ir a batalla.
+  // No mezclar fechas, biografías o estadísticas cosméticas con la huella.
+  const service = record?.stats;
+  const metamorphosisService = service ? [
+    finiteInt(service.battles),
+    finiteInt(service.survivals),
+    finiteInt(service.kills),
+    finiteInt(service.bestSurvivalStreak),
+    finiteInt(service.bossVictories),
+  ] : null;
   return [
     unitKey,
     identity.identityId || null,
@@ -23,6 +35,7 @@ function unitOrderRow(state, unitKey) {
     saved.equippedTechnique || null,
     Array.isArray(saved.unlockedTechniques) ? [...saved.unlockedTechniques].sort() : [],
     saved.equipmentId || null,
+    metamorphosisService,
     mercenary ? [
       mercenary.offerId || null,
       mercenary.contract || null,
@@ -34,7 +47,8 @@ function unitOrderRow(state, unitKey) {
 
 // La confirmación representa una orden operativa completa, no un booleano.
 // Además de slot/identidad/forma incluimos el estado del barracón que puede
-// alterar la fuerza o la economía de salida. Así una compra, contratación,
+// alterar la fuerza o la economía de salida, incluidos méritos de servicio
+// que habilitan metamorfosis. Así una compra, contratación, ascenso,
 // renombre o mejora posterior exige reconfirmar en vez de quedar revertida por
 // el snapshot congelado al iniciar la batalla.
 export function deploymentSelectionFingerprint(rosterState) {
