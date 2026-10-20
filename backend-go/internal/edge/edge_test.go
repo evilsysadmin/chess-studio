@@ -1516,60 +1516,39 @@ func TestNativePawnSlugServesOnlyItsRoute(t *testing.T) {
 	}
 }
 
-func TestNativeChroniclesServesOnlyItsRoutes(t *testing.T) {
-	var proxied []string
+// Old game routes cannot be served by Chess Studio's native Go edge.
+// During the temporary migration window they may only reach the separately
+// opt-in Python compatibility router. The standalone Chronicles API owns play.
+func TestExtractedChroniclesRoutesNeverGoNative(t *testing.T) {
+	var forwarded []string
 	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		proxied = append(proxied, r.Method+" "+r.URL.Path)
+		forwarded = append(forwarded, r.Method+" "+r.URL.Path)
 		w.WriteHeader(http.StatusTeapot)
 	}))
 	defer upstream.Close()
-	var served []string
-	native := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		served = append(served, r.Method+" "+r.URL.Path)
-		w.WriteHeader(http.StatusOK)
-	})
-	h, err := New(Config{UpstreamURL: upstream.URL, NativeChronicles: native})
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, req := range [][2]string{
-		{"GET", "/api/chronicles/maps/ash-vault"}, {"POST", "/api/chronicles/map-code/preview"},
-		{"POST", "/api/chronicles/runs"}, {"GET", "/api/chronicles/runs/r1"}, {"PUT", "/api/chronicles/runs/r1/checkpoint"},
-	} {
-		h.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(req[0], "http://api.chess.test"+req[1], nil))
-	}
-	if strings.Join(served, ",") != "GET /api/chronicles/maps/ash-vault,POST /api/chronicles/map-code/preview" ||
-		strings.Join(proxied, ",") != "POST /api/chronicles/runs,GET /api/chronicles/runs/r1,PUT /api/chronicles/runs/r1/checkpoint" {
-		t.Fatalf("served %v proxied %v", served, proxied)
-	}
-}
 
-func TestNativeChroniclesRunsServesOnlyItsRoutes(t *testing.T) {
-	var proxied []string
-	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		proxied = append(proxied, r.Method+" "+r.URL.Path)
-		w.WriteHeader(http.StatusTeapot)
-	}))
-	defer upstream.Close()
-	var served []string
-	native := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		served = append(served, r.Method+" "+r.URL.Path)
-		w.WriteHeader(http.StatusOK)
-	})
-	h, err := New(Config{UpstreamURL: upstream.URL, NativeChroniclesRuns: native})
+	h, err := New(Config{UpstreamURL: upstream.URL})
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, req := range [][2]string{
-		{"POST", "/api/chronicles/runs"}, {"GET", "/api/chronicles/runs"}, {"GET", "/api/chronicles/runs/r1"},
-		{"PUT", "/api/chronicles/runs/r1/checkpoint"}, {"DELETE", "/api/chronicles/runs/r1"},
+	requests := [][2]string{
 		{"GET", "/api/chronicles/maps/ash-vault"},
-	} {
-		h.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(req[0], "http://api.chess.test"+req[1], nil))
+		{"POST", "/api/chronicles/map-code/preview"},
+		{"POST", "/api/chronicles/runs"},
+		{"GET", "/api/chronicles/runs"},
+		{"GET", "/api/chronicles/runs/r1"},
+		{"PUT", "/api/chronicles/runs/r1/checkpoint"},
+		{"DELETE", "/api/chronicles/runs/r1"},
 	}
-	if strings.Join(served, ",") != "POST /api/chronicles/runs,GET /api/chronicles/runs,GET /api/chronicles/runs/r1,PUT /api/chronicles/runs/r1/checkpoint,DELETE /api/chronicles/runs/r1" ||
-		strings.Join(proxied, ",") != "GET /api/chronicles/maps/ash-vault" {
-		t.Fatalf("served %v proxied %v", served, proxied)
+	for _, req := range requests {
+		recorder := httptest.NewRecorder()
+		h.ServeHTTP(recorder, httptest.NewRequest(req[0], "http://api.chess.test"+req[1], nil))
+		if recorder.Code != http.StatusTeapot {
+			t.Fatalf("%s %s: expected proxy response, got %d", req[0], req[1], recorder.Code)
+		}
+	}
+	if len(forwarded) != len(requests) {
+		t.Fatalf("expected %d legacy requests to reach only the compatibility proxy, got %v", len(requests), forwarded)
 	}
 }
 
