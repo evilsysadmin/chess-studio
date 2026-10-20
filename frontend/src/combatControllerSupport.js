@@ -1,6 +1,7 @@
 import { Chess } from 'chess.js';
 import { BASE_STATS, capturedSquareFor, derivedLevel, hitChance, isForcedCombatCapture } from './combat.js';
 import { chooseCombatCandidate, combatCandidateUtility, hasMeasuredChessScoreCp } from './combatExpectedUtility.js';
+import { combatDoctrineBonusForMove } from './combatEnemyDoctrine.js';
 import { proceduralNarrative } from './narrativeProvider.js';
 
 export const STATUS_LABELS = Object.freeze({
@@ -127,7 +128,7 @@ function measuredCombatCapture(fen, registry, move, focus) {
 // probabilidad de que una captura conecte y veteranía persistente del objetivo.
 // Si FEN/registro no permiten demostrar esos datos, la candidata permanece
 // sin marcar y jamás puede desplazar la jugada principal del motor.
-export function annotateCombatCandidates(fen, registry, remote, focus = {}) {
+export function annotateCombatCandidates(fen, registry, remote, focus = {}, doctrine = null) {
   const candidates = Array.isArray(remote?.candidates) ? remote.candidates : null;
   if (!candidates?.length || !registry || typeof registry !== 'object' || Array.isArray(registry)) return remote;
 
@@ -150,13 +151,14 @@ export function annotateCombatCandidates(fen, registry, remote, focus = {}) {
 
     const attacker = registry[move.from];
     if (!attacker || attacker.color !== move.color || attacker.type !== move.piece) return candidate;
+    const doctrineBonusCp = combatDoctrineBonusForMove(doctrine, move);
 
     if (!move.captured) {
-      return { ...candidate, combatReady: true, hitChance: 1, enemyValue: 0, enemyPersistentValue: 0 };
+      return { ...candidate, combatReady: true, hitChance: 1, enemyValue: 0, enemyPersistentValue: 0, doctrineBonusCp };
     }
 
     const facts = measuredCombatCapture(fen, registry, move, focus);
-    return facts ? { ...candidate, combatReady: true, ...facts } : candidate;
+    return facts ? { ...candidate, combatReady: true, ...facts, doctrineBonusCp } : candidate;
   });
 
   return { ...remote, candidates: enriched };
@@ -201,11 +203,11 @@ export function selectCombatAwareRemoteSuggestion(remote) {
 // Política de disponibilidad del turno CPU: el análisis remoto mejora la
 // calidad de la jugada, pero nunca tiene derecho a bloquear una campaña.
 // Este helper hace el fail-open comprobable con tests sin montar React.
-export async function resolveCombatCpuTurnSuggestion({ fen, difficulty, analyzePosition, registry = null, focus = {} }) {
+export async function resolveCombatCpuTurnSuggestion({ fen, difficulty, analyzePosition, registry = null, focus = {}, doctrine = null }) {
   let remoteError = null;
   try {
     const response = await analyzePosition(fen, difficulty);
-    const measured = annotateCombatCandidates(fen, registry, response, focus);
+    const measured = annotateCombatCandidates(fen, registry, response, focus, doctrine);
     const remote = selectCombatAwareRemoteSuggestion(measured);
     if (!isLegalCombatCpuSuggestion(fen, remote)) throw new Error('La CPU devolvió una jugada inválida.');
     return { suggestion: remote, source: 'remote', remoteError: null };
