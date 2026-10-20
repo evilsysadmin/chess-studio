@@ -512,9 +512,10 @@ def classify_path(path: str) -> set[str] | None:
     if lower in TRAINING_EXACT_PRODUCERS:
         return set(TRAINING_EXACT_PRODUCERS[lower])
 
-    if "chronicles" in lower:
-        # Chronicles and Tactics live in their own repository now; the Lab only
-        # links to them, so nothing named after them paints a scene here.
+    # The *existing* Lab link is a routing-only exception. Do not globally
+    # exempt every new "chronicles"-named component: unexpected product code
+    # must fail closed to real Chess Studio visual evidence.
+    if lower == "frontend/src/labchronicleslink.js":
         return set()
 
     if any(token in lower for token in (
@@ -809,7 +810,11 @@ def self_test() -> None:
     assert classify(["scripts/chronicles_area_parity_corpus.py"]) == "none"
     assert classify(["scripts/chronicles_contracts.py", "scripts/validate_chronicles_campaign.py"]) == "none"
     assert classify([".github/workflows/cicd.yml", "scripts/run_core_e2e_lane.py", "scripts/test_entrypoint_parity.py", "frontend/src/components/RoguelikeScreen.jsx", "e2e/war-room-combat-battle-visual-artifact.spec.js"]) == "combat-battle"
-    assert classify(["scripts/chronicles_area_parity_corpus.py", "frontend/src/chronicles/chroniclesMapCatalog.js"]) == "none"
+    # A ghost runtime source is unexpected after extraction; fail closed rather
+    # than silently granting a new implementation exemption based on its name.
+    assert classify(["scripts/chronicles_area_parity_corpus.py", "frontend/src/chronicles/chroniclesMapCatalog.js"]) == "all"
+    assert classify(["frontend/src/components/ChroniclesReturn.jsx"]) == "all"
+    assert classify(["frontend/src/chronicles/newScene.js"]) == "all"
     assert classify(["scripts/unknown_unowned_generator.py"]) == "all"
     assert classify(["e2e/staging-live.spec.js", "frontend/src/components/PvpHandoffModal.jsx"]) == "pvp-handoff"
     assert classify([
