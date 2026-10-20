@@ -86,9 +86,10 @@ func loadNativeFeatureFlags() nativeFeatureFlags {
 	}
 }
 
-// allNative turns every native route on: the edge once Python is retired
-// (GO_PYTHON_RETIRED), where nothing may fall back to a proxy.
-// TestAllNativeTurnsEveryFlagOn keeps a flag added later from being missed.
+// allNative enables every *Chess Studio* native route after Python retires.
+// Chronicles/Tactics moved to their independent Go API: do not bring those
+// handlers back online through GO_PYTHON_RETIRED. The legacy user-data purge
+// remains independent, and explicit recovery still uses Python's opt-in gate.
 func allNative() nativeFeatureFlags {
 	return nativeFeatureFlags{
 		pulse:               true,
@@ -119,8 +120,8 @@ func allNative() nativeFeatureFlags {
 		matthiasRead:        true,
 		narrative:           true,
 		pawnSlug:            true,
-		chronicles:          true,
-		chroniclesRuns:      true,
+		chronicles:          false, // independent Chronicles API; never revive in allNative
+		chroniclesRuns:      false, // legacy account purge still deletes old run documents
 		adminFeedback:       true,
 		adminUsers:          true,
 		adminObservability:  true,
