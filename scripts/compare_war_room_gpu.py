@@ -178,6 +178,20 @@ def load_group(directory, expected_sha, mode, minimum):
                         else:
                             require(not any(field in render_cost for field in fields),
                                     where + '/' + phase + ': unavailable split cannot claim values')
+                    family_status = render_cost.get('shadowFamiliesStatus')
+                    if family_status is not None:
+                        require(family_status in ('ready', 'unavailable'),
+                                where + '/' + phase + ': invalid family census status')
+                        family_keys = ('shadowPieceCallsMedian', 'shadowShellCallsMedian',
+                                       'shadowOtherCallsMedian')
+                        if family_status == 'ready':
+                            require(status == 'ready' and split == 'ready',
+                                    where + '/' + phase + ': shadow families require measured shadow pass')
+                            for field in family_keys:
+                                number(render_cost.get(field), where + '/' + phase + '/' + field)
+                        else:
+                            require(not any(field in render_cost for field in family_keys),
+                                    where + '/' + phase + ': unavailable family census cannot claim values')
                 gpu = sample.get('gpuTimer')
                 if gpu is None:
                     continue  # Legacy schema-2 harness, rAF-only. No invented timing.
@@ -311,6 +325,14 @@ def shadow_phase_median(reports, visit_type, phase, metric):
     return render_phase_median(reports, visit_type, phase, metric)
 
 
+def shadow_family_phase_median(reports, visit_type, phase, field):
+    for report in reports:
+        entry = report['visits'][VISITS.index(visit_type)][phase].get('renderCost') or {}
+        if entry.get('shadowFamiliesStatus') != 'ready':
+            return None, None
+    return render_phase_median(reports, visit_type, phase, field)
+
+
 def gpu_phase_median(reports, visit_type, phase):
     """Return real GPU elapsed median only for a fully comparable cohort."""
     values = []
@@ -420,6 +442,32 @@ def compare(baseline, candidate, base_sha, candidate_sha, *, mode='hardware', mi
                     key = f'{profile} · {visit} · {phase} · {label}'
                     if a is None or b is None:
                         lines.append(f'| {key} | n/a | n/a | n/a | No comparable shadow-pass census |')
+                    else:
+                        lines.append(f'| {key} | {a:.2f} | {b:.2f} | {b-a:+.2f} | {ac}/{bc} |')
+    lines.extend([
+        '', '## Shadow draw calls by actual submitting object family',
+        '',
+        'A reversible opt-in WebGLRenderer.renderBufferDirect census inside the '
+        'existing shadow pass attributes actual submissions to chess pieces, '
+        'Blender GLB shell or other scene objects. '
+        'Missing or inconsistent measurements are n/a.',
+        '',
+        '| Profile · visit · phase · family | Baseline median | Candidate median | Delta | Min rendered frames A/B |',
+        '|---|---:|---:|---:|---:|',
+    ])
+    for profile in PROFILES:
+        for visit in VISITS:
+            for phase in ('idle', 'move'):
+                for metric, label in (
+                    ('shadowPieceCallsMedian', 'chess pieces'),
+                    ('shadowShellCallsMedian', 'Blender GLB'),
+                    ('shadowOtherCallsMedian', 'other casters'),
+                ):
+                    a, ac = shadow_family_phase_median(before[profile], visit, phase, metric)
+                    b, bc = shadow_family_phase_median(after[profile], visit, phase, metric)
+                    key = f'{profile} · {visit} · {phase} · {label}'
+                    if a is None or b is None:
+                        lines.append(f'| {key} | n/a | n/a | n/a | Missing/inconsistent shadow-family draws |')
                     else:
                         lines.append(f'| {key} | {a:.2f} | {b:.2f} | {b-a:+.2f} | {ac}/{bc} |')
     lines.extend([

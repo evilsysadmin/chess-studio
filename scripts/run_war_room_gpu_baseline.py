@@ -18,7 +18,7 @@ from pathlib import Path
 
 from compare_war_room_gpu import (
     BadReport, PROFILES, VISITS, fake_report, gpu_phase_median, load_group,
-    render_phase_median, shadow_phase_median, validate_capture_provenance,
+    render_phase_median, shadow_phase_median, shadow_family_phase_median, validate_capture_provenance,
 )
 from run_war_room_gpu_ab import (
     BenchError, HARNESS_FILES, capture, exercise_once, gpu_env,
@@ -95,6 +95,30 @@ def baseline_report(directory, sha, mode, variant, repetitions):
                              + ' | '.join(formatted) + ' |')
     lines.extend([
         '',
+        '## Measured shadow draw calls by object family',
+        '',
+        'This per-object census is active only during the optional profiler '
+        'and counts real renderBufferDirect submissions inside the shadow pass. '
+        'Piece silhouettes, original Blender shell, and other casters are '
+        'measured separately; missing or inconsistent totals are n/a.',
+        '',
+        '| Profile · visit · phase | Chess piece shadow calls | '
+        'Blender GLB shadow calls | Other shadow calls |',
+        '|---|---:|---:|---:|',
+    ])
+    for profile in PROFILES:
+        for visit in VISITS:
+            for phase in ('idle', 'move'):
+                metrics = ('shadowPieceCallsMedian', 'shadowShellCallsMedian',
+                           'shadowOtherCallsMedian')
+                values = [shadow_family_phase_median(groups[profile], visit, phase, metric)[0]
+                          for metric in metrics]
+                cells = [f'{value:.2f}' if value is not None else 'n/a'
+                         for value in values]
+                lines.append(f'| {profile} · {visit} · {phase} | '
+                             + ' | '.join(cells) + ' |')
+    lines.extend([
+        '',
         '## Static GLB and lighting census (not draw calls)',
         '',
         'One-shot runtime telemetry observed after the room and Hans become ready. '
@@ -165,6 +189,10 @@ def self_test():
                             'shadowSplitStatus': 'ready',
                             'mainCallsMedian': 35, 'shadowCallsMedian': 105,
                             'shadowCallsP95': 115, 'shadowPassesMedian': 1,
+                            'shadowFamiliesStatus': 'ready',
+                            'shadowPieceCallsMedian': 90,
+                            'shadowShellCallsMedian': 10,
+                            'shadowOtherCallsMedian': 5,
                         }
                 (root / f'{profile}-{index}.json').write_text(json.dumps(report))
         for path in root.glob('*.json'):
@@ -181,6 +209,7 @@ def self_test():
         assert '| desktop-1440x900 · first-visit · idle | 140.00 | 150.00 | ' in output
         assert '| 280000.00 | 1.25 | 2.50 | n/a | 22 |' in output
         assert '| desktop-1440x900 · first-visit · idle | 35.00 | 105.00 | 115.00 | 1.00 |' in output
+        assert '| desktop-1440x900 · first-visit · idle | 90.00 | 10.00 | 5.00 |' in output
         path = root / 'desktop-1440x900-0.json'
         report = json.loads(path.read_text())
         report['visits'][0]['sceneInventory']['authoredGlbMeshes'] = None

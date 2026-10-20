@@ -1,7 +1,63 @@
 import { describe, expect, it } from 'vitest';
-import { installWarRoomShadowPassProbe } from './WarRoomShadowPassProbe.js';
+import { installWarRoomShadowPassProbe, warRoomShadowDrawFamily } from './WarRoomShadowPassProbe.js';
 
 describe('War Room opt-in shadow-pass draw census', () => {
+  it('classifies actual WebGL submissions by ancestor without confusing meshes with draws', () => {
+    const piece = { name: 'pawn', userData: { type: 'p', color: 'w', square: 'a2' } };
+    const shell = { name: 'war-room-v3-blender-shell', userData: {} };
+    const other = { name: 'hans', userData: {} };
+    const pieceDetail = { name: 'piece-ring', userData: {}, parent: piece };
+    const wall = { name: 'wall', userData: {}, parent: shell };
+    expect(warRoomShadowDrawFamily(pieceDetail)).toBe('pieces');
+    expect(warRoomShadowDrawFamily(wall)).toBe('shell');
+    expect(warRoomShadowDrawFamily(other)).toBe('other');
+
+    const info = { calls: 0 };
+    const calls = [];
+    const renderer = {
+      info: { render: info },
+      renderBufferDirect(...args) {
+        calls.push({ receiver: this, args });
+        info.calls += args[5].drawCount;
+      },
+      shadowMap: {
+        render() {
+          renderer.renderBufferDirect('camera', null, 'geo', 'material', pieceDetail, { drawCount: 9 });
+          renderer.renderBufferDirect('camera', null, 'geo', 'material', wall, { drawCount: 6 });
+          renderer.renderBufferDirect('camera', null, 'geo', 'material', other, { drawCount: 3 });
+        },
+      },
+    };
+    const oldShadow = renderer.shadowMap.render;
+    const oldBuffer = renderer.renderBufferDirect;
+    const probe = installWarRoomShadowPassProbe(renderer);
+    probe.begin();
+    renderer.shadowMap.render();
+    info.calls += 19; // main scene, not attributed to any shadow caster.
+    expect(probe.sample(info.calls)).toEqual({
+      mainCalls: 19, shadowCalls: 18, shadowPasses: 1,
+      shadowFamilyCalls: { pieces: 9, shell: 6, other: 3 },
+    });
+    expect(calls.every((item) => item.receiver === renderer)).toBe(true);
+    probe.dispose();
+    expect(renderer.shadowMap.render).toBe(oldShadow);
+    expect(renderer.renderBufferDirect).toBe(oldBuffer);
+  });
+
+  it('fails family attribution closed when Three uses another submission path', () => {
+    const info = { calls: 0 };
+    const renderer = {
+      info: { render: info },
+      renderBufferDirect() { info.calls += 4; },
+      shadowMap: { render() { renderer.renderBufferDirect(); info.calls += 2; } },
+    };
+    const probe = installWarRoomShadowPassProbe(renderer);
+    probe.begin();
+    renderer.shadowMap.render();
+    expect(probe.sample(6)).toEqual({ mainCalls: 0, shadowCalls: 6, shadowPasses: 1 });
+    probe.dispose();
+  });
+
   it('subtracts measured shadow depth submissions and restores Three render method', () => {
     const info = { calls: 0 };
     const shadowMap = { render: (count) => { info.calls += count; } };

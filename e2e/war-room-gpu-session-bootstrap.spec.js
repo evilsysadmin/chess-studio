@@ -57,7 +57,13 @@ test('War Room benchmark restores Home and enters a real quick-match 3D board', 
         && Number.isSafeInteger(frame.shadowCalls)
         && Number.isSafeInteger(frame.shadowPasses)
         && frame.mainCalls >= 0 && frame.shadowCalls >= 0
-        && frame.mainCalls + frame.shadowCalls === frame.calls);
+        && frame.mainCalls + frame.shadowCalls === frame.calls
+        && frame.shadowFamilyCalls
+        && ['pieces', 'shell', 'other'].every((key) =>
+          Number.isSafeInteger(frame.shadowFamilyCalls[key])
+          && frame.shadowFamilyCalls[key] >= 0)
+        && frame.shadowFamilyCalls.pieces + frame.shadowFamilyCalls.shell
+          + frame.shadowFamilyCalls.other === frame.shadowCalls);
     }), { timeout: 30_000, message: 'Opt-in War Room journal must record real 3D draws' })
       .toBe(true);
   } finally {
