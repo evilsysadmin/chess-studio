@@ -26,6 +26,14 @@ function probability(value) {
   return Math.max(0, Math.min(1, finite(value, 0)));
 }
 
+// Un valor no medido no significa 0 centipeones. Aceptamos números finitos
+// y textos numéricos no vacíos por compatibilidad con APIs anteriores.
+export function hasMeasuredChessScoreCp(candidate) {
+  const score = candidate?.chessScoreCp;
+  if (typeof score === 'number') return Number.isFinite(score);
+  return typeof score === 'string' && score.trim() !== '' && Number.isFinite(Number(score));
+}
+
 export function combatCandidateUtility(candidate, options = {}) {
   if (!candidate || candidate.isLegal === false) return -Infinity;
   if (candidate.isMate === true) return Number.POSITIVE_INFINITY;
@@ -71,11 +79,13 @@ export function rankCombatCandidates(candidates, options = {}) {
   }
 
   const cfg = { ...DEFAULT_COMBAT_UTILITY_OPTIONS, ...options };
-  const bestChessScore = Math.max(...legal.map((candidate) => finite(candidate.chessScoreCp, -Infinity)));
+  const measured = legal.filter(hasMeasuredChessScoreCp);
+  if (!measured.length) return [];
+  const bestChessScore = Math.max(...measured.map((candidate) => Number(candidate.chessScoreCp)));
   const maxChessLossCp = Math.max(0, finite(cfg.maxChessLossCp, 80));
 
-  return legal
-    .filter((candidate) => bestChessScore - finite(candidate.chessScoreCp, -Infinity) <= maxChessLossCp)
+  return measured
+    .filter((candidate) => bestChessScore - Number(candidate.chessScoreCp) <= maxChessLossCp)
     .map((candidate) => ({
       ...candidate,
       combatUtility: combatCandidateUtility(candidate, cfg),

@@ -1,6 +1,6 @@
 import { Chess } from 'chess.js';
 import { BASE_STATS, capturedSquareFor, derivedLevel, hitChance, isForcedCombatCapture } from './combat.js';
-import { chooseCombatCandidate, combatCandidateUtility } from './combatExpectedUtility.js';
+import { chooseCombatCandidate, combatCandidateUtility, hasMeasuredChessScoreCp } from './combatExpectedUtility.js';
 import { proceduralNarrative } from './narrativeProvider.js';
 
 export const STATUS_LABELS = Object.freeze({
@@ -180,6 +180,9 @@ export function selectCombatAwareRemoteSuggestion(remote) {
   if (sameCombatMove(chosen, primary)) return chosen;
   if (primary.isMate === true) return remote;
   if (chosen.isMate === true) return chosen;
+  // La shortlist no puede promover un supuesto 0 cp cuando la puntuación
+  // es null/vacía: conservar la jugada profunda si falta cualquier prueba.
+  if (!hasMeasuredChessScoreCp(primary) || !hasMeasuredChessScoreCp(chosen)) return remote;
 
   const primaryUtility = combatCandidateUtility(primary);
   const chosenUtility = combatCandidateUtility(chosen);
