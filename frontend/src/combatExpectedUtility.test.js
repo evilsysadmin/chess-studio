@@ -71,6 +71,14 @@ describe('combatExpectedUtility', () => {
     expect(chooseCombatCandidate([{ moveKey: 'mate', isMate: true, chessScoreCp: null }]).moveKey).toBe('mate');
   });
 
+  it('acota la doctrina a pocos centipeones sin desplazar los hechos de combate', () => {
+    const plain = { moveKey: 'a8b8', chessScoreCp: 10, hitChance: 1 };
+    const baseline = combatCandidateUtility(plain);
+    expect(combatCandidateUtility({ ...plain, doctrineBonusCp: 999 })).toBe(baseline + 6);
+    expect(combatCandidateUtility({ ...plain, doctrineBonusCp: -999 })).toBe(baseline - 6);
+    expect(combatCandidateUtility({ ...plain, doctrineBonusCp: null })).toBe(baseline);
+  });
+
   it('filters illegal candidates and uses a deterministic move-key tiebreak', () => {
     const ranked = rankCombatCandidates([
       { moveKey: 'b2b3', chessScoreCp: 0 },
