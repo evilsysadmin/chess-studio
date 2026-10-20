@@ -65,6 +65,17 @@ describe('compensación de amenaza de Combate', () => {
     expect(threat.metamorphosisThreat).toBe(0);
   });
 
+  it('no cobra amenaza por técnicas antiguas equipadas sin desbloqueo real', () => {
+    const state = roster();
+    addPiece(state, 'p-a', { equippedTechnique: 'line_fire', unlockedTechniques: [] });
+    addPiece(state, 'p-b', { equippedTechnique: 'line_fire', unlockedTechniques: ['line_fire'] });
+    addPiece(state, 'n-b', { equippedTechnique: 'line_fire', unlockedTechniques: ['line_fire'] });
+    const threat = combatArmyThreat(state);
+    expect(threat.equippedTechniques).toBe(1);
+    expect(threat.techniqueBonus).toBe(1);
+    expect(threat.bonus).toBe(1);
+  });
+
   it('suma amenaza antes de calibrar y no reabre el precipicio 70 por accidente', () => {
     const state = roster();
     addPiece(state, 'n-b', { strengthPoints: 18, speedPoints: 18 });
@@ -83,7 +94,7 @@ describe('compensación de amenaza de Combate', () => {
       addPiece(
         state,
         `p-${file}`,
-        { strengthPoints: 8, speedPoints: 8, deploymentType: 'r', equippedTechnique: 'line_fire' },
+        { strengthPoints: 8, speedPoints: 8, deploymentType: 'r', unlockedTechniques: ['line_fire'], equippedTechnique: 'line_fire' },
         { battles: 20, survivals: 16, kills: 20, bestSurvivalStreak: 10, bossVictories: 2 },
       );
     }

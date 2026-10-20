@@ -1,5 +1,6 @@
 import { canChooseDeploymentType } from './combatMetamorphosis.js';
 import { unitRecordForKey } from './combatUnitService.js';
+import { unlockedTechniquesFor } from './combatTechniques.js';
 import { calibrateCombatEngineDifficulty } from './combatAdaptiveDifficulty.js';
 
 // Compensación de dificultad por potencia PERMANENTE del ejército humano.
@@ -42,7 +43,13 @@ export function combatArmyThreat(rosterState) {
       metamorphosisThreat += FORM_THREAT[targetType] || 0;
       activeMetamorphoses += 1;
     }
-    if (saved.equippedTechnique) equippedTechniques += 1;
+    // No cobrar dificultad por una técnica fantasma de un save antiguo:
+    // sólo suma cuando el soldado sigue vivo, la ha desbloqueado y su
+    // clase de origen puede realmente equiparla.
+    if (saved.equippedTechnique
+      && unlockedTechniquesFor(key, saved).some((technique) => technique.id === saved.equippedTechnique)) {
+      equippedTechniques += 1;
+    }
   }
 
   // Doce puntos permanentes repartidos por el ejército ≈ +1 dificultad.
