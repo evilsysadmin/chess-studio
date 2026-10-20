@@ -168,8 +168,14 @@ describe('máquina de estados del intento', () => {
   });
 
   it('recupera una pelea interrumpida sin perder piso, seed, modo ni perks', () => {
-    let run = startNewRun('snapshot-caido');
-    run = markBattleStarted({ ...run, floor: 6, mode: 'endless', perks: ['steel_pulse'] });
+    startNewRun('snapshot-caido');
+    // Restore the actual persisted encounter, rather than passing a forged
+    // input to a transition that now checks the profile-authoritative state.
+    localStorage.setItem('chess-study-roguelike-run', JSON.stringify({
+      floor: 6, inRun: true, phase: 'battle', mode: 'endless',
+      seed: 'snapshot-caido', perks: ['steel_pulse'], rewardChosenForFloor: null,
+    }));
+    const run = markBattleStarted(loadRun());
 
     const recovered = recoverInterruptedRun(run);
 
@@ -182,6 +188,43 @@ describe('máquina de estados del intento', () => {
       perks: ['steel_pulse'],
     });
     expect(loadBestFloor()).toBe(0);
+  });
+
+  it('ignora inicios, victorias y recuperación tardíos de otro intento', () => {
+    const first = startNewRun('partida-abandonada');
+    const fighting = markBattleStarted(first);
+    const replacement = startNewRun('partida-vigente');
+    expect(markBattleStarted(first)).toEqual(replacement);
+    expect(markFloorCleared(fighting)).toEqual(replacement);
+    expect(recoverInterruptedRun(fighting)).toEqual(replacement);
+    expect(loadRun()).toEqual(replacement);
+  });
+
+  it('un resultado repetido no vuelve a escribir un piso ya superado', () => {
+    const battle = startNewRun('doble-resultado');
+    const fighting = markBattleStarted(battle);
+    expect(markBattleStarted(battle)).toEqual(fighting);
+    const cleared = markFloorCleared(fighting);
+    expect(cleared).toMatchObject({ floor: 1, phase: 'cleared' });
+    expect(markFloorCleared(fighting)).toEqual(cleared);
+    expect(recoverInterruptedRun(fighting)).toEqual(cleared);
+    expect(loadRun()).toEqual(cleared);
+    const picked = chooseRunReward(cleared, rewardOptionsForFloor(cleared.seed, 1)[0].id);
+    const advanced = advanceFloor(picked);
+    expect(markFloorCleared(fighting)).toEqual(advanced);
+    expect(markBattleStarted(battle)).toEqual(advanced);
+    expect(loadRun()).toEqual(advanced);
+  });
+
+  it('una recuperación tardía no rebobina una batalla que ya se reinició', () => {
+    const battle = startNewRun('recuperacion-doble');
+    const oldFighting = markBattleStarted(battle);
+    const recovered = recoverInterruptedRun(oldFighting);
+    expect(recovered.phase).toBe('battle');
+    expect(recoverInterruptedRun(oldFighting)).toEqual(recovered);
+    const restarted = markBattleStarted(recovered);
+    expect(recoverInterruptedRun(oldFighting)).toEqual(restarted);
+    expect(loadRun()).toEqual(restarted);
   });
 
   it('fighting -> cleared exige elegir recompensa antes de subir', () => {
