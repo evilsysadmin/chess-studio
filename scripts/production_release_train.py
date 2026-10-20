@@ -73,11 +73,20 @@ def select_latest(repository: str) -> tuple[int, int] | None:
         repository,
         "actions/workflows/staging-ai-worker.yml/runs?event=workflow_run&status=success&branch=main&per_page=100",
     )
-    for run_id, run_number in candidate_runs(runs):
-        artifacts = _gh_json(repository, f"actions/runs/{run_id}/artifacts?per_page=100")
-        if has_current_accreditation(artifacts):
-            return run_id, run_number
-    return None
+    candidates = candidate_runs(runs)
+    if not candidates:
+        return None
+    # Fail closed: never silently fall back to an older staging accreditation.
+    # A newer successful staging run without a valid artifact must be
+    # investigated instead of allowing a green but stale production release.
+    run_id, run_number = candidates[0]
+    artifacts = _gh_json(repository, f"actions/runs/{run_id}/artifacts?per_page=100")
+    if not has_current_accreditation(artifacts):
+        raise RuntimeError(
+            f"Latest successful staging AI run {run_id} (#{run_number}) "
+            "has no unique, unexpired staging accreditation; refusing stale fallback"
+        )
+    return run_id, run_number
 
 
 def read_accreditation(path: str, run_id: int) -> str:
@@ -179,6 +188,31 @@ def self_test() -> None:
         ]
     }
     assert candidate_runs(runs) == [(2, 20), (1, 10)]
+    original_gh_json = globals()["_gh_json"]
+    try:
+        def fake_gh_json(_repository: str, endpoint: str) -> object:
+            if endpoint.startswith("actions/workflows/"):
+                return runs
+            if endpoint == "actions/runs/2/artifacts?per_page=100":
+                return {"artifacts": []}
+            if endpoint == "actions/runs/1/artifacts?per_page=100":
+                return {"artifacts": [{"name": ARTIFACT_NAME, "expired": False}]}
+            raise AssertionError(endpoint)
+
+        globals()["_gh_json"] = fake_gh_json
+        try:
+            select_latest("example/repo")
+            raise AssertionError("Stale accreditation fallback must be rejected")
+        except RuntimeError as exc:
+            assert "refusing stale fallback" in str(exc)
+        def accredited_gh_json(repository: str, endpoint: str) -> object:
+            if endpoint == "actions/runs/2/artifacts?per_page=100":
+                return {"artifacts": [{"name": ARTIFACT_NAME, "expired": False}]}
+            return fake_gh_json(repository, endpoint)
+        globals()["_gh_json"] = accredited_gh_json
+        assert select_latest("example/repo") == (2, 20)
+    finally:
+        globals()["_gh_json"] = original_gh_json
     assert has_current_accreditation({"artifacts": [{"name": ARTIFACT_NAME, "expired": False}]})
     assert not has_current_accreditation({"artifacts": [{"name": ARTIFACT_NAME, "expired": True}]})
     assert not has_current_accreditation(
