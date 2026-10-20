@@ -49,20 +49,6 @@ GATES = (
         }),
     ),
     Gate(
-        workflow="chronicles-party-blender-art.yml",
-        label="Chronicles party art",
-        exact_paths=frozenset({
-            "scripts/blender/build_chronicles_humanoid_party.py",
-            "scripts/blender/configure_eevee_premium.py",
-            "scripts/blender/refine_chronicles_party_tailoring.py",
-            "scripts/blender/refine_chronicles_party_anatomy.py",
-            "scripts/blender/render_chronicles_party_preview.py",
-            "scripts/blender/render_chronicles_dungeon_mock.py",
-            "scripts/blender/render_chronicles_tactics_dungeon_v3.py",
-            ".github/workflows/chronicles-party-blender-art.yml",
-        }),
-    ),
-    Gate(
         workflow="pvp-duel-room-blender-art.yml",
         label="PvP Duel Room art",
         exact_paths=frozenset({
@@ -175,15 +161,6 @@ def self_test() -> None:
     assert [gate.workflow for gate in classify([".github/actions/setup-blender-canonical/action.yml"])] == [
         "blender-setup-smoke.yml"
     ]
-    assert [gate.workflow for gate in classify(["scripts/blender/refine_chronicles_party_anatomy.py"])] == [
-        "chronicles-party-blender-art.yml"
-    ]
-    assert [gate.workflow for gate in classify(["scripts/blender/render_chronicles_dungeon_mock.py"])] == [
-        "chronicles-party-blender-art.yml"
-    ]
-    assert [gate.workflow for gate in classify(["scripts/blender/render_chronicles_tactics_dungeon_v3.py"])] == [
-        "chronicles-party-blender-art.yml"
-    ]
     assert [gate.workflow for gate in classify(["scripts/blender/build_pvp_duel_room.py"])] == [
         "pvp-duel-room-blender-art.yml"
     ]
@@ -219,7 +196,6 @@ def self_test() -> None:
     ]
     assert [gate.workflow for gate in classify(["scripts/blender/configure_eevee_premium.py"])] == [
         "home-matthias-blender-art.yml",
-        "chronicles-party-blender-art.yml",
         "pvp-duel-room-blender-art.yml",
         "pvp-duel-hall-blender-art.yml",
         "combat-operations-room-blender-art.yml",
