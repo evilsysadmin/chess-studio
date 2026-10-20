@@ -58,7 +58,7 @@ const EMERGENCY_CPU_MISS_TEMPO_SCORE = 90;
 // altera dificultad, XP ni reglas de Combat. Prioriza mate, capturas, promoción
 // y jaques; los empates se resuelven de forma determinista para facilitar tests
 // y recuperación de sesión.
-export function emergencyCombatCpuSuggestion(fen, registry = null, focus = {}) {
+export function emergencyCombatCpuSuggestion(fen, registry = null, focus = {}, doctrine = null) {
   try {
     const chess = new Chess(fen);
     const moves = chess.moves({ verbose: true });
@@ -84,6 +84,9 @@ export function emergencyCombatCpuSuggestion(fen, registry = null, focus = {}) {
       if (move.promotion) score += 70 + (EMERGENCY_CPU_PIECE_VALUE[move.promotion] || 0) * 4;
       if (probe.isCheck()) score += 18;
       if (move.flags?.includes('k') || move.flags?.includes('q')) score += 2;
+      // Misma doctrina factual que la shortlist remota, acotada a ±6.
+      // No altera mates, grandes diferencias materiales ni la ruta clásica.
+      score += combatDoctrineBonusForMove(doctrine, move);
       return { from: move.from, to: move.to, promotion: move.promotion || undefined, score, key: `${move.from}${move.to}${move.promotion || ''}` };
     }).filter(Boolean);
     ranked.sort((a, b) => b.score - a.score || a.key.localeCompare(b.key));
@@ -227,7 +230,7 @@ export async function resolveCombatCpuTurnSuggestion({ fen, difficulty, analyzeP
     remoteError = error;
   }
 
-  const local = emergencyCombatCpuSuggestion(fen, registry, focus);
+  const local = emergencyCombatCpuSuggestion(fen, registry, focus, doctrine);
   if (local && isLegalCombatCpuSuggestion(fen, local)) {
     return { suggestion: local, source: 'local', remoteError };
   }
