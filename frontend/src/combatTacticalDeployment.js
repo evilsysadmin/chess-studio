@@ -11,7 +11,7 @@ function unitOrderRow(state, unitKey) {
   const saved = state?.pieces?.[unitKey] || {};
   const identity = state?.identities?.[unitKey] || {};
   const mercenary = saved?.mercenary || null;
-  const record = rosterState?.unitRecords?.[identity.identityId];
+  const record = state?.unitRecords?.[identity.identityId];
   // Estas cifras abren o cierran metamorfosis. Si cambian después de
   // confirmar, el jugador debe revisar la orden antes de ir a batalla.
   // No mezclar fechas, biografías o estadísticas cosméticas con la huella.
