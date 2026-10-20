@@ -2,9 +2,8 @@
 """Synchronize and validate the committed Chronicles cross-runtime contracts.
 
 The Python backend owns the authored map manifests and Go embeds the same
-authored bytes (the frontend copy moved with Chronicles to its own repo). The two Python
-parity generators then pin the derived area envelopes and run/API behavior for
-Go.
+authored bytes (the frontend copy moved with Chronicles to its own repo). The remaining Python parity generator pins derived map area envelopes for
+legacy Go map validation. Run/API parity moved with Chronicles to its own repo.
 
 Usage:
     python3 scripts/chronicles_contracts.py
@@ -25,7 +24,6 @@ MIRROR_MAP_DIRS = (
 )
 PARITY_GENERATORS = (
     ROOT / "scripts" / "chronicles_area_parity_corpus.py",
-    ROOT / "scripts" / "chronicles_runs_parity_corpus.py",
 )
 
 
