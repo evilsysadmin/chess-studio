@@ -41,8 +41,6 @@ type nativeFeatureFlags struct {
 	matthiasRead       bool
 	narrative          bool
 	pawnSlug           bool
-	chronicles         bool
-	chroniclesRuns     bool
 	adminFeedback      bool
 	adminUsers         bool
 	adminObservability bool
@@ -78,18 +76,15 @@ func loadNativeFeatureFlags() nativeFeatureFlags {
 		matthiasRead:        envBool("GO_NATIVE_MATTHIAS_READ_ENABLED", false),
 		narrative:           envBool("GO_NATIVE_NARRATIVE_ENABLED", false),
 		pawnSlug:            envBool("GO_NATIVE_PAWN_SLUG_ENABLED", false),
-		chronicles:          envBool("GO_NATIVE_CHRONICLES_ENABLED", false),
-		chroniclesRuns:      envBool("GO_NATIVE_CHRONICLES_RUNS_ENABLED", false),
 		adminFeedback:       envBool("GO_NATIVE_ADMIN_FEEDBACK_ENABLED", false),
 		adminUsers:          envBool("GO_NATIVE_ADMIN_USERS_ENABLED", false),
 		adminObservability:  envBool("GO_NATIVE_ADMIN_OBSERVABILITY_ENABLED", false),
 	}
 }
 
-// allNative enables every *Chess Studio* native route after Python retires.
-// Chronicles/Tactics moved to their independent Go API: do not bring those
-// handlers back online through GO_PYTHON_RETIRED. The legacy user-data purge
-// remains independent, and explicit recovery still uses Python's opt-in gate.
+// allNative enables only Chess Studio's active domains after Python retires.
+// The extracted Chronicles API has no startup flags or handlers in this edge;
+// the historical account-data purge remains separate.
 func allNative() nativeFeatureFlags {
 	return nativeFeatureFlags{
 		pulse:               true,
@@ -120,8 +115,6 @@ func allNative() nativeFeatureFlags {
 		matthiasRead:        true,
 		narrative:           true,
 		pawnSlug:            true,
-		chronicles:          false, // independent Chronicles API; never revive in allNative
-		chroniclesRuns:      false, // legacy account purge still deletes old run documents
 		adminFeedback:       true,
 		adminUsers:          true,
 		adminObservability:  true,
@@ -155,8 +148,6 @@ func (f nativeFeatureFlags) needsMongo() bool {
 		f.matthiasRead ||
 		f.narrative ||
 		f.pawnSlug ||
-		f.chronicles ||
-		f.chroniclesRuns ||
 		f.adminFeedback ||
 		f.adminUsers ||
 		f.adminObservability
