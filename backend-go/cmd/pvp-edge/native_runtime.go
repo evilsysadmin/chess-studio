@@ -67,9 +67,9 @@ type nativeRuntime struct {
 	feedback http.Handler
 	matthias http.Handler
 	// narrative is built in edgeConfig, once the log recorder exists.
-	narrative      *gamesapi.NarrativeConfig
-	pawnSlug       http.Handler
-	adminFeedback  http.Handler
+	narrative     *gamesapi.NarrativeConfig
+	pawnSlug      http.Handler
+	adminFeedback http.Handler
 	// adminUsers is built in edgeConfig, sharing the narrative gateway.
 	adminUsers *gamesapi.AdminUsersConfig
 	// adminObservability is built in edgeConfig: it reads the narrative
