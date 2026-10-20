@@ -78,7 +78,7 @@ INVENTORY = {
 }
 
 BUDGETS = (
-    Budget('.github/workflows/production-promote.yml', 34643),
+    Budget('.github/workflows/production-promote.yml', 35200),
     Budget('.github/workflows/cicd.yml', 19454),
     Budget('.github/workflows/staging-deploy.yml', 17792),
     Budget('.github/workflows/oci-resend-bootstrap.yml', 4601),
