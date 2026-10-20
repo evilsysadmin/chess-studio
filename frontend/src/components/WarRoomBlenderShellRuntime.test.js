@@ -1,9 +1,10 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import * as THREE from 'three';
 import {
   configureWarRoomBlenderLoader,
   createWarRoomBlenderVariantShell,
   deferWarRoomBlenderShadowPass,
+  disposeWarRoomBlenderShellResources,
   installAuthoredPracticalLights,
   scheduleWarRoomAfterFirstPaint,
   selectWarRoomBlenderShadowCasters,
@@ -13,6 +14,54 @@ import {
 } from './WarRoomBlenderShellRuntime.js';
 
 describe('War Room shared Blender runtime', () => {
+  it('disposes shared GLB geometry and textures once across distinct materials and meshes', () => {
+    const root = new THREE.Group();
+    const geometry = new THREE.BoxGeometry();
+    const texture = new THREE.Texture();
+    const first = new THREE.MeshStandardMaterial({ map: texture });
+    first.roughnessMap = texture;
+    const second = new THREE.MeshStandardMaterial({ map: texture });
+    root.add(new THREE.Mesh(geometry, first), new THREE.Mesh(geometry, second));
+    const geometryDispose = vi.spyOn(geometry, 'dispose');
+    const textureDispose = vi.spyOn(texture, 'dispose');
+    const firstDispose = vi.spyOn(first, 'dispose');
+    const secondDispose = vi.spyOn(second, 'dispose');
+
+    disposeWarRoomBlenderShellResources(root);
+
+    expect(geometryDispose).toHaveBeenCalledTimes(1);
+    expect(textureDispose).toHaveBeenCalledTimes(1);
+    expect(firstDispose).toHaveBeenCalledTimes(1);
+    expect(secondDispose).toHaveBeenCalledTimes(1);
+    geometryDispose.mockRestore();
+    textureDispose.mockRestore();
+    firstDispose.mockRestore();
+    secondDispose.mockRestore();
+  });
+
+  it('handles absent shell and indexed material arrays without double release', () => {
+    expect(() => disposeWarRoomBlenderShellResources(null)).not.toThrow();
+    const root = new THREE.Group();
+    const geometry = new THREE.BufferGeometry();
+    const one = new THREE.MeshBasicMaterial();
+    const two = new THREE.MeshBasicMaterial();
+    const node = new THREE.Mesh(geometry, one);
+    node.material = [one, two, one];
+    root.add(node);
+    const geometryDispose = vi.spyOn(geometry, 'dispose');
+    const oneDispose = vi.spyOn(one, 'dispose');
+    const twoDispose = vi.spyOn(two, 'dispose');
+
+    disposeWarRoomBlenderShellResources(root);
+
+    expect(geometryDispose).toHaveBeenCalledTimes(1);
+    expect(oneDispose).toHaveBeenCalledTimes(1);
+    expect(twoDispose).toHaveBeenCalledTimes(1);
+    geometryDispose.mockRestore();
+    oneDispose.mockRestore();
+    twoDispose.mockRestore();
+  });
+
   it('builds thin variant manifests from one shared shell factory', () => {
     expect(() => createWarRoomBlenderVariantShell()).toThrow(/requires id, model URL, root name and finish/i);
     const variant = createWarRoomBlenderVariantShell({

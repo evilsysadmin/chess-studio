@@ -184,7 +184,7 @@ export function selectWarRoomBlenderShadowCasters(
     .map((entry) => entry.node);
 }
 
-function disposeShell(root) {
+export function disposeWarRoomBlenderShellResources(root) {
   const geometries = new Set();
   const materials = new Set();
   const textures = new Set();
@@ -369,6 +369,6 @@ export async function installWarRoomBlenderShell(
     cancelShadowWarmup();
     disposeRuntimeEffects();
     root.removeFromParent();
-    disposeShell(root);
+    disposeWarRoomBlenderShellResources(root);
   };
 }
