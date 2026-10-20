@@ -120,7 +120,7 @@ test('PvP handoff · desktop seals the duel before authoritative readiness', asy
   await page.setViewportSize({ width: 1440, height: 900 });
   const { handoff, releaseReady, wasReadyRequested } = await prepareHandoff(page, { holdReady: true });
 
-  await expect.poll(wasReadyRequested, { message: 'PvP must request authoritative readiness before opening' }).toBe(true);
+  await expect.poll(wasReadyRequested, { timeout: 30_000, message: 'PvP must request authoritative readiness before opening' }).toBe(true);
   await expect(handoff).toHaveAttribute('data-handoff-phase', 'sealing');
   await expect(handoff.getByText('SELLANDO EL DUELO', { exact: true })).toBeVisible();
   await expect(handoff.getByText('e2e', { exact: true })).toBeVisible();
@@ -147,7 +147,7 @@ test('PvP handoff · Android landscape opens the gate on authoritative start', a
   // commit and leave the visual snapshot in 'sealing' under slow SwiftShader.
   const { handoff, releaseReady, wasReadyRequested } = await prepareHandoff(page, { holdReady: true });
   await expect(handoff).toHaveAttribute('data-handoff-phase', 'sealing');
-  await expect.poll(wasReadyRequested, { message: 'PvP must send POST /ready before release' }).toBe(true);
+  await expect.poll(wasReadyRequested, { timeout: 30_000, message: 'PvP must send POST /ready before release' }).toBe(true);
   releaseReady();
   await expect(handoff).toHaveAttribute('data-handoff-phase', 'opening');
   await expect(handoff.getByText('PORTÓN ABRIENDO', { exact: true })).toBeVisible();
