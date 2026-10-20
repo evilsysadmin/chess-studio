@@ -64,6 +64,17 @@ describe('combat controller support', () => {
     expect(selectCombatAwareRemoteSuggestion(noFacts)).toBe(noFacts);
   });
 
+  it('no sustituye la jugada profunda por candidatos sin puntuación demostrada', () => {
+    const remote = {
+      from: 'a8', to: 'a1',
+      candidates: [
+        { from: 'a8', to: 'a1', combatReady: true, chessScoreCp: null, hitChance: 0.5, enemyValue: 9 },
+        { from: 'a8', to: 'b8', combatReady: true, chessScoreCp: -10, hitChance: 1, enemyValue: 0 },
+      ],
+    };
+    expect(selectCombatAwareRemoteSuggestion(remote)).toBe(remote);
+  });
+
   it('si cae el análisis remoto puede elegir una jugada legal local y no secuestra la batalla', async () => {
     const startBlack = 'rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1';
     const fallback = emergencyCombatCpuSuggestion(startBlack);
