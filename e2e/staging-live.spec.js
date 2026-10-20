@@ -1,4 +1,6 @@
 import { expect, test } from '@playwright/test';
+import { createHash } from 'node:crypto';
+import { createRequire } from 'node:module';
 import { buttonWithVisibleText, clickBoardMove, gameStatus, openDuelHall } from './helpers.js';
 import { stagingSyntheticHeaders } from './staging-synthetic.js';
 
@@ -1184,7 +1186,7 @@ test('staging live · auth real → War Room v2 → recovery 3D → jugada real'
     console.log(`STAGING_LIVE_PHASE ${label} duration_ms=${now - phaseStarted} total_ms=${now - smokeStarted}`);
     phaseStarted = now;
   };
-  test.setTimeout(210_000);
+  test.setTimeout(300_000);
   await page.setViewportSize({ width: 1440, height: 900 });
   // v3 is the product default, but this smoke runs on software GL where the
   // Blender shell starves screenshots; pin v1 and exercise v2 explicitly below.
@@ -1297,11 +1299,13 @@ test('staging live · auth real → War Room v2 → recovery 3D → jugada real'
     const classicWarRoomItem = page.getByRole('menuitemradio', { name: 'War Room v1', exact: true });
     const v2WarRoomItem = page.getByRole('menuitemradio', { name: 'War Room v2', exact: true });
     const v3WarRoomItem = page.getByRole('menuitemradio', { name: 'War Room v3', exact: true });
+    const v4WarRoomItem = page.getByRole('menuitemradio', { name: 'War Room v4', exact: true });
     await expect(classicWarRoomItem).toBeVisible();
     await expect(v2WarRoomItem).toBeVisible();
     await expect(v3WarRoomItem).toBeVisible();
+    await expect(v4WarRoomItem).toBeVisible();
     const initiallySelectedWarRooms = await Promise.all(
-      [classicWarRoomItem, v2WarRoomItem, v3WarRoomItem]
+      [classicWarRoomItem, v2WarRoomItem, v3WarRoomItem, v4WarRoomItem]
         .map((item) => item.getAttribute('aria-checked')),
     );
     expect(initiallySelectedWarRooms.filter((value) => value === 'true')).toHaveLength(1);
@@ -1309,6 +1313,38 @@ test('staging live · auth real → War Room v2 → recovery 3D → jugada real'
     await expect(warRoom3d).toHaveAttribute('data-board3d-variant', 'v2');
     await expect(warRoom3d).toHaveAttribute('data-board3d-variant-status', 'ready', { timeout: 30_000 });
     await expect(warRoomCanvas).toBeVisible();
+
+    // Fail closed on the exact V4 GLB fetched by Chromium from the public CDN.
+    // Do not route/fulfill a local model here: staging must really load R2.
+    // The test checkout is the same deployed runtime SHA (including smoke-only
+    // mode), so its immutable manifest is the authoritative expected asset.
+    // JSON is configuration data, not source text. This is the same public
+    // logical manifest used by the actual runtime, on the exact deployed SHA.
+    const manifest = createRequire(import.meta.url)('../frontend/src/assets/r2-assets-manifest.json');
+    const v4 = manifest.assets?.['warRoom.v4.runtime'];
+    expect(v4?.sha256, 'War Room V4 must have a pinned SHA-256').toMatch(/^[0-9a-f]{64}$/);
+    expect(v4?.url, 'War Room V4 must use the immutable CDN key').toContain(
+      '/war-room/v4/runtime/war-room-v4-shell-' + v4.sha256.slice(0, 16) + '.glb',
+    );
+    const v4BrowserResponse = page.waitForResponse((response) =>
+      response.request().method() === 'GET' && response.url().split('?')[0] === v4.url,
+    { timeout: 90_000 });
+    await variantUtilityMenu.click();
+    await page.getByRole('menuitemradio', { name: 'War Room v4', exact: true }).click();
+    const v4Response = await v4BrowserResponse;
+    expect(v4Response.status(), 'Chromium must fetch the exact pinned V4 GLB').toBe(200);
+    const v4Bytes = await v4Response.body();
+    expect(v4Bytes.length, 'Chromium R2 bytes must match the deployed manifest').toBe(v4.bytes);
+    expect(createHash('sha256').update(v4Bytes).digest('hex'),
+      'Chromium must receive the exact GLB validated before R2 promotion').toBe(v4.sha256);
+    expect(v4Bytes.subarray(0, 4).toString('ascii'), 'V4 must be an actual GLB').toBe('glTF');
+    await expect(warRoom3d).toHaveAttribute('data-board3d-variant', 'v4');
+    await expect(warRoom3d).toHaveAttribute('data-board3d-variant-status', 'ready', { timeout: 90_000 });
+    await expect(warRoomCanvas).toBeVisible();
+    console.log('STAGING_WAR_ROOM_V4_VERIFIED sha256=' + v4.sha256 + ' bytes=' + v4Bytes.length);
+    phase('war-room-v4-public-r2-ready');
+
+    // A failed V4 load must never strand the player: retain v1 rollback.
     await variantUtilityMenu.click();
     await page.getByRole('menuitemradio', { name: 'War Room v1', exact: true }).click();
     await expect(warRoom3d).toHaveAttribute('data-board3d-variant', 'classic');
