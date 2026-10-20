@@ -131,7 +131,6 @@ GO_AUTHORITY_PATHS = {
     "backend-python/admin_api.py",
     "scripts/admin_feedback_parity_corpus.py",
     "backend-python/chronicles_run_store.py",
-    "scripts/chronicles_runs_parity_corpus.py",
     "backend-python/chronicles_api.py",
     "backend-python/chronicles_content_variation.py",
     "backend-python/chronicles_difficulty.py",
