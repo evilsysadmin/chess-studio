@@ -21,7 +21,6 @@ func problemDoc(kind string, loc bson.A, msg string, input any, ctx bson.D) bson
 	return d
 }
 
-
 func pydanticInt(value any, loc bson.A) (int64, bson.D) {
 	switch v := value.(type) {
 	case bool:
@@ -57,7 +56,6 @@ func pydanticInt(value any, loc bson.A) (int64, bson.D) {
 	return 0, problemDoc("int_type", loc, "Input should be a valid integer", value, nil)
 }
 
-
 func modelObject(body any) (bson.D, bson.A) {
 	if body == nil {
 		return nil, bson.A{problemDoc("missing", bson.A{"body"}, "Field required", nil, nil)}
@@ -68,7 +66,6 @@ func modelObject(body any) (bson.D, bson.A) {
 	}
 	return object, nil
 }
-
 
 func strField(loc bson.A, value any, minLen, maxLen int) (string, bson.D) {
 	s, ok := value.(string)
@@ -85,11 +82,9 @@ func strField(loc bson.A, value any, minLen, maxLen int) (string, bson.D) {
 	return s, nil
 }
 
-
 func lookupOr(d bson.D, key string, fallback any) any {
 	if v, ok := pydoc.Get(d, key); ok {
 		return v
 	}
 	return fallback
 }
-
