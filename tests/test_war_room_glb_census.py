@@ -1,0 +1,84 @@
+"""Blender-independent tests of exported War Room mesh accounting."""
+import sys
+import unittest
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'scripts' / 'blender'))
+from war_room_glb_census import census_scene  # noqa: E402
+
+
+def fixture():
+    return {
+        'scene': 0,
+        'scenes': [{'nodes': [0]}],
+        'nodes': [
+            {'name': 'Room', 'children': [1, 2]},
+            {'name': 'Pillar A', 'mesh': 0},
+            {'name': 'Pillar B', 'mesh': 0},
+            {'name': 'Orphan', 'mesh': 1},
+        ],
+        'meshes': [
+            {'name': 'stone', 'primitives': [{'attributes': {'POSITION': 0}, 'indices': 1}]},
+            {'name': 'not in scene', 'primitives': [{'attributes': {'POSITION': 2}}]},
+        ],
+        'accessors': [{'count': 4}, {'count': 6}, {'count': 300}],
+    }
+
+
+class WarRoomGlbCensusTests(unittest.TestCase):
+    def test_scene_references_not_orphan_meshes_and_reused_mesh_twice(self):
+        report = census_scene(fixture())
+        self.assertEqual(report['meshInstances'], 2)
+        self.assertEqual(report['uniqueMeshes'], 1)
+        self.assertEqual(report['primitiveInstances'], 2)
+        self.assertEqual(report['potentialTriangles'], 4)
+        self.assertEqual(report['uniqueMeshTriangles'], 2)
+        self.assertEqual(report['vertexReferences'], 8)
+        self.assertEqual([row['node'] for row in report['topNodes']], ['Pillar A', 'Pillar B'])
+
+    def test_nonindexed_primitive_counts_vertices(self):
+        doc = fixture()
+        doc['nodes'][1]['mesh'] = 1
+        doc['nodes'][0]['children'] = [1]
+        report = census_scene(doc)
+        self.assertEqual(report['potentialTriangles'], 100)
+        self.assertEqual(report['vertexReferences'], 300)
+
+    def test_invalid_topology_fails_closed(self):
+        doc = fixture()
+        doc['meshes'][0]['primitives'][0]['mode'] = 5
+        with self.assertRaisesRegex(ValueError, 'non-triangle'):
+            census_scene(doc)
+        doc['meshes'][0]['primitives'][0]['mode'] = 4
+        doc['accessors'][1]['count'] = 5
+        with self.assertRaisesRegex(ValueError, 'not divisible'):
+            census_scene(doc)
+
+    def test_corrupt_references_cycles_and_instancing_fail_closed(self):
+        doc = fixture()
+        doc['nodes'][2]['mesh'] = 22
+        with self.assertRaisesRegex(ValueError, 'invalid mesh'):
+            census_scene(doc)
+        doc = fixture()
+        doc['nodes'][2]['children'] = [0]
+        with self.assertRaisesRegex(ValueError, 'cyclic'):
+            census_scene(doc)
+        doc = fixture()
+        doc['nodes'][1]['extensions'] = {'EXT_mesh_gpu_instancing': {}}
+        with self.assertRaisesRegex(ValueError, 'GPU instancing'):
+            census_scene(doc)
+
+    def test_unused_scene_ignored_and_top_limited(self):
+        doc = fixture()
+        doc['scenes'].append({'nodes': [3]})
+        self.assertEqual(census_scene(doc, top=1)['meshInstances'], 2)
+        self.assertEqual(len(census_scene(doc, top=1)['topNodes']), 1)
+        doc['scene'] = 1
+        self.assertEqual(census_scene(doc)['potentialTriangles'], 100)
+        doc['scene'] = 5
+        with self.assertRaisesRegex(ValueError, 'default scene'):
+            census_scene(doc)
+
+
+if __name__ == '__main__':
+    unittest.main()
