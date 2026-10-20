@@ -25,6 +25,7 @@ function defaultRun() {
     mode: 'tower',
     perks: [],
     rewardChosenForFloor: null,
+    battleAttempt: 0,
   };
 }
 
@@ -51,7 +52,11 @@ function normalizeRun(parsed) {
   // corrupt the persisted marker. Only the cleared current floor may own it.
   const chosenFloor = parsed.rewardChosenForFloor == null ? null : Number(parsed.rewardChosenForFloor);
   const rewardChosenForFloor = inRun && phase === 'cleared' && chosenFloor === floor ? floor : null;
-  return { floor, inRun, phase, seed, mode, perks, rewardChosenForFloor };
+  // Monotonic per-run generation distinguishes a restarted fight from its
+  // identical-looking earlier 'fighting' snapshot after F5 recovery.
+  const rawAttempt = Number(parsed.battleAttempt);
+  const battleAttempt = inRun && Number.isSafeInteger(rawAttempt) && rawAttempt > 0 ? rawAttempt : 0;
+  return { floor, inRun, phase, seed, mode, perks, rewardChosenForFloor, battleAttempt };
 }
 
 export function loadRun() {
@@ -70,22 +75,28 @@ export function startNewRun(seed = makeSeed()) {
 
 export function markBattleStarted(run) {
   if (!run?.inRun || run.phase !== 'battle') return run;
-  return saveRun({ ...run, phase: 'fighting' });
+  const latest = currentRunIfStale(run);
+  if (latest) return latest;
+  return saveRun({ ...run, phase: 'fighting', battleAttempt: (run.battleAttempt || 0) + 1 });
 }
 
 export function recoverInterruptedRun(run) {
   if (!run?.inRun || run.phase !== 'fighting') return run;
+  const latest = currentRunIfStale(run);
+  if (latest) return latest;
   return saveRun({ ...run, phase: 'battle' });
 }
 
 export function markFloorCleared(run) {
   if (!run?.inRun || run.phase === 'cleared' || run.phase === 'completed') return run;
   if (run.phase !== 'fighting') return run;
+  const latest = currentRunIfStale(run);
+  if (latest) return latest;
   return saveRun({ ...run, phase: 'cleared', rewardChosenForFloor: null });
 }
 
-// React or a delayed callback may replay an earlier cleared-floor snapshot.
-// Never overwrite the profile-authoritative run with a stale reward/advance.
+// React or a delayed callback may replay an earlier battle or floor snapshot.
+// Never overwrite the profile-authoritative run with stale phase transitions.
 function currentRunIfStale(run) {
   const latest = loadRun();
   return latest.inRun === run.inRun
@@ -93,6 +104,7 @@ function currentRunIfStale(run) {
     && latest.mode === run.mode
     && latest.floor === run.floor
     && latest.phase === run.phase
+    && latest.battleAttempt === run.battleAttempt
     && latest.rewardChosenForFloor === run.rewardChosenForFloor
     && JSON.stringify(latest.perks) === JSON.stringify(run.perks)
     ? null : latest;
