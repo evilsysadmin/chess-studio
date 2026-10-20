@@ -9,7 +9,7 @@ Este archivo complementa el `AGENTS.md` raíz para cambios bajo `frontend/src/`.
 - Resiliencia/fallbacks: `docs/operations/resilience-degraded-mode.md`.
 - Home/Blender: `skills/home-blender/SKILL.md`, `docs/home-castle-life-minimal.md`, `docs/VISUAL_LANGUAGE.md`.
 - War Room: `docs/operations/war-room-blender-pipeline.md`, `docs/operations/war-room-parity.md`, `docs/operations/war-room-visual-freeze.md`.
-- Chronicles/Tactics: `docs/operations/chronicles-tactics.md`.
+- Chronicles/Tactics: **solo enlace externo** mediante `labChroniclesLink.js`; implementación, tests y arte nuevos van a `evilsysadmin/chronicles-of-matthias`. `docs/operations/chronicles-tactics.md` es histórico mientras se retira el backend legado de Chess Studio (issue #5632).
 - Pawn Slug host/runtime: `skills/pawn-slug-runtime-smoke/SKILL.md`.
 - Assets R2: `docs/visual-assets-r2-flow.md`.
 - Presencia/Admin: `docs/operations/presence-admin.md`.
@@ -52,7 +52,7 @@ No saltar fases con `setState`/flags literales sólo porque el camino feliz func
 - Home es diegética, no un dashboard. Hotspots reaccionan a hover/focus/touch; modos secundarios pueden vivir tras la transición Dungeon. Reduced-motion conserva señal visual sin movimiento decorativo.
 - War Room v1 sigue siendo rollback mientras v2 no esté plenamente validada. No mezcles o borres su implementación al trabajar v2.
 - El onboarding inicial de War Room lo guía Matthias y usa los destinos legales reales del estado compartido; no implementes una segunda legalidad tutorial.
-- Chronicles usa posiciones runtime actuales como autoridad para colisión/targeting/IA/escena y checkpoints durables versionados; no resucites blockers de spawn ni blobs opacos de estado React.
+- Chronicles/Tactics no poseen runtime frontend en Chess Studio. No copiar componentes, stores, mapas ni rutas al repositorio de ajedrez; preservar el acceso al dominio independiente del Laboratorio.
 - Combat Chess mantiene sus reglas especiales aisladas de ajedrez estándar; identidad veterana, rango/medallas y metamorfosis siguen perteneciendo a Combat.
 
 ## Visual acceptance

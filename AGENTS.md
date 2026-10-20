@@ -6,8 +6,8 @@ Las reglas detalladas viven en los `.md` especializados enlazados aquí. Antes d
 
 ## Contexto básico
 
-- `Chronicles` = **Chronicles of Matthias**.
-- `Tactics` = **Chronicles of Matthias Tactics**.
+- Chronicles of Matthias y Tactics **pertenecen exclusivamente** a `evilsysadmin/chronicles-of-matthias`; aquí solo queda el enlace externo desde Lab. No desarrollar ni reintroducir mapas, arte, runtime, E2E ni workflows del juego en Chess Studio.
+- Los backends Go/Python y datos legados de Chronicles aún pendientes de retirar se tratan **solo como migración controlada** en [#5632](https://github.com/evilsysadmin/chess-studio/issues/5632). Mantener `chronicles_runs` cubierto por borrado de cuenta hasta acreditar su salida.
 - Pawn Slug en Godot es **2D puro**. Sus sprites no usan Blender. Matthias conserva una única escala corporal canónica entre armas; variantes grandes/pequeñas son regresión.
 - Home 3D y War Room v2 usan la pipeline Blender.
 - La War Room **v3 es la variante por defecto** cuando las variantes están habilitadas; una elección explícita del jugador se conserva por dispositivo y siempre manda sobre el default. v1 clásica sigue siendo el baseline de rollback y v1/v2/v3/v4 continúan seleccionables en el menú «…». Deshabilitar variantes debe seguir devolviendo de forma segura a v1.
@@ -49,9 +49,9 @@ El contrato de entrega está en [`docs/auto-merge-delivery.md`](docs/auto-merge-
 | Publicación/migración de assets a R2 | [`docs/r2-asset-publisher.md`](docs/r2-asset-publisher.md), [`docs/r2-assets.md`](docs/r2-assets.md), [`docs/visual-assets-r2-flow.md`](docs/visual-assets-r2-flow.md) |
 | War Room visual / Blender / v2 | [`docs/operations/war-room-blender-pipeline.md`](docs/operations/war-room-blender-pipeline.md), [`docs/operations/war-room-parity.md`](docs/operations/war-room-parity.md), [`docs/operations/war-room-visual-freeze.md`](docs/operations/war-room-visual-freeze.md), [`skills/local-gpu-rendering/SKILL.md`](skills/local-gpu-rendering/SKILL.md) |
 | Home / Castillo / Blender | [`skills/home-blender/SKILL.md`](skills/home-blender/SKILL.md), [`docs/VISUAL_LANGUAGE.md`](docs/VISUAL_LANGUAGE.md), [`docs/home-castle-life-minimal.md`](docs/home-castle-life-minimal.md), [`docs/visual-assets-r2-flow.md`](docs/visual-assets-r2-flow.md), [`docs/operations/home-3d-performance.md`](docs/operations/home-3d-performance.md), [`skills/local-gpu-rendering/SKILL.md`](skills/local-gpu-rendering/SKILL.md) |
-| Chronicles / Tactics | [`docs/operations/chronicles-tactics.md`](docs/operations/chronicles-tactics.md) |
-| Chronicles · estadísticas MM3 y economía | [`docs/operations/chronicles-mm3-economy.md`](docs/operations/chronicles-mm3-economy.md) |
-| Chronicles campaña y atlas narrativo | [`backend-python/chronicles_campaign/DESIGN.md`](backend-python/chronicles_campaign/DESIGN.md) |
+| Chronicles / Tactics · retirada legacy (no desarrollo de juego) | [`docs/operations/chronicles-tactics.md`](docs/operations/chronicles-tactics.md) |
+| Chronicles · economía histórica pendiente de extracción | [`docs/operations/chronicles-mm3-economy.md`](docs/operations/chronicles-mm3-economy.md) |
+| Chronicles · campaña histórica pendiente de extracción | [`backend-python/chronicles_campaign/DESIGN.md`](backend-python/chronicles_campaign/DESIGN.md) |
 | Matthias / comentarios / espectadores / memoria narrativa | [`docs/operations/matthias-runtime.md`](docs/operations/matthias-runtime.md) |
 | Combat Chess / veteranos / despliegue / intel | [`docs/operations/combat-chess.md`](docs/operations/combat-chess.md), [`docs/experiments/combat-tactical-deployment.md`](docs/experiments/combat-tactical-deployment.md), [`frontend/src/AGENTS.md`](frontend/src/AGENTS.md) |
 | Puzzles / Así juegas / autopsia / entrenamiento personal | [`docs/operations/training-quality.md`](docs/operations/training-quality.md), [`docs/experiments/cinematic-game-autopsy.md`](docs/experiments/cinematic-game-autopsy.md), [`frontend/src/AGENTS.md`](frontend/src/AGENTS.md) |
