@@ -59,19 +59,21 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     env:
-      # Prefer a zone-scoped token for Cache Rules rather than broadening
-      # the R2 publisher / staging token. Fallback keeps older setups valid.
-      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_CACHE_RULES_TOKEN || secrets.CLOUDFLARE_API_TOKEN }}
+      # Dedicated least-privilege token only: never silently reuse R2/staging credentials.
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_CACHE_RULES_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       # Diagnostic only: disclose which credential was selected, never its value.
-      CLOUDFLARE_TOKEN_SOURCE: ${{ secrets.CLOUDFLARE_CACHE_RULES_TOKEN != '' && 'dedicated-cache-rules' || 'shared-fallback' }}
+      CLOUDFLARE_TOKEN_SOURCE: ${{ secrets.CLOUDFLARE_CACHE_RULES_TOKEN != '' && 'dedicated-cache-rules' || 'missing-dedicated-secret' }}
     steps:
       - uses: actions/checkout@v7
       - name: Require actual Zone Cache Rules permission
         shell: bash
         run: |
           set -euo pipefail
-          test -n "$CLOUDFLARE_API_TOKEN"
+          if [[ -z "$CLOUDFLARE_API_TOKEN" ]]; then
+            echo "::error::Missing chess-studio repository secret CLOUDFLARE_CACHE_RULES_TOKEN"
+            exit 1
+          fi
           test -n "$CLOUDFLARE_ACCOUNT_ID"
       - name: Verify selected Cloudflare token without disclosing credentials
         shell: bash
