@@ -18,6 +18,10 @@ on:
       - scripts/oci_production_tunnel.py
       - scripts/production_deploy_target.py
       - scripts/synthetic_health_check.py
+  workflow_run:
+    workflows: [Deploy to production]
+    types: [completed]
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -31,6 +35,8 @@ concurrency:
 jobs:
   smoke:
     name: Public route + authenticated gameplay
+    # Never probe as post-release proof after a failed/cancelled train.
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-24.04
     timeout-minutes: 8
     env:
