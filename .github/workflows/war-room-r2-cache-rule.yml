@@ -63,6 +63,8 @@ jobs:
       # the R2 publisher / staging token. Fallback keeps older setups valid.
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_CACHE_RULES_TOKEN || secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      # Diagnostic only: disclose which credential was selected, never its value.
+      CLOUDFLARE_TOKEN_SOURCE: ${{ secrets.CLOUDFLARE_CACHE_RULES_TOKEN != '' && 'dedicated-cache-rules' || 'shared-fallback' }}
     steps:
       - uses: actions/checkout@v7
       - name: Require actual Zone Cache Rules permission
@@ -71,6 +73,27 @@ jobs:
           set -euo pipefail
           test -n "$CLOUDFLARE_API_TOKEN"
           test -n "$CLOUDFLARE_ACCOUNT_ID"
+      - name: Verify selected Cloudflare token without disclosing credentials
+        shell: bash
+        run: |
+          python3 -S - <<'PY'
+          import os
+          import sys
+          sys.path.insert(0, "scripts")
+          from cloudflare_auth_rate_limit import request_json
+
+          print("Cloudflare Cache Rules token source:", os.environ.get("CLOUDFLARE_TOKEN_SOURCE", "unknown"))
+          status, body = request_json("GET", "/user/tokens/verify")
+          result = body.get("result") if isinstance(body, dict) else None
+          active = (
+              status == 200
+              and isinstance(body, dict) and body.get("success") is True
+              and isinstance(result, dict) and result.get("status") == "active"
+          )
+          print(f"Cloudflare API token verification: HTTP {status}; status={'active' if active else 'not-active-or-unverified'}")
+          if not active:
+              raise SystemExit("Selected Cloudflare token is not verified active; check the repository secret and token validity")
+          PY
       - name: Idempotently add/update only our exact hash-key rule
         run: python3 -S scripts/cloudflare_war_room_glb_cache.py apply
       - name: Read back the active Cloudflare Cache Rule
