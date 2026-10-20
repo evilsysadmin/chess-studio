@@ -151,12 +151,26 @@ export function annotateCombatCandidates(fen, registry, remote, focus = {}) {
     const attacker = registry[move.from];
     if (!attacker || attacker.color !== move.color || attacker.type !== move.piece) return candidate;
 
+    // El shortlist remoto no puede proclamar un mate por sí solo: el mate
+    // es una prioridad absoluta, así que verificamos la posición exacta
+    // con chess.js antes de permitir que ese indicador cambie la elección.
+    let verifiedCandidate = candidate;
+    if (candidate.isMate === true) {
+      try {
+        const after = new Chess(fen);
+        after.move({ from: move.from, to: move.to, promotion: move.promotion || 'q' });
+        verifiedCandidate = { ...candidate, isMate: after.isCheckmate() };
+      } catch {
+        return candidate;
+      }
+    }
+
     if (!move.captured) {
-      return { ...candidate, combatReady: true, hitChance: 1, enemyValue: 0, enemyPersistentValue: 0 };
+      return { ...verifiedCandidate, combatReady: true, hitChance: 1, enemyValue: 0, enemyPersistentValue: 0 };
     }
 
     const facts = measuredCombatCapture(fen, registry, move, focus);
-    return facts ? { ...candidate, combatReady: true, ...facts } : candidate;
+    return facts ? { ...verifiedCandidate, combatReady: true, ...facts } : candidate;
   });
 
   return { ...remote, candidates: enriched };

@@ -64,6 +64,32 @@ describe('combat controller support', () => {
     expect(selectCombatAwareRemoteSuggestion(noFacts)).toBe(noFacts);
   });
 
+  it('desmiente mates inventados por el shortlist y conserva los mates reales', () => {
+    const fen = '7k/8/5KQ1/8/8/8/8/8 w - - 0 1';
+    const registry = {
+      g6: { id: 'w-q-g6', color: 'w', type: 'q', square: 'g6' },
+      f6: { id: 'w-k-f6', color: 'w', type: 'k', square: 'f6' },
+      h8: { id: 'b-k-h8', color: 'b', type: 'k', square: 'h8' },
+    };
+    const remote = {
+      from: 'g6', to: 'g5',
+      candidates: [
+        { from: 'g6', to: 'g5', moveKey: 'g6g5', isLegal: true, isMate: true, chessScoreCp: 10 },
+        { from: 'g6', to: 'g7', moveKey: 'g6g7', isLegal: true, isMate: true, chessScoreCp: 0 },
+      ],
+    };
+    const checked = annotateCombatCandidates(fen, registry, remote);
+    expect(checked.candidates[0]).toMatchObject({ combatReady: true, isMate: false });
+    expect(checked.candidates[1]).toMatchObject({ combatReady: true, isMate: true });
+    expect(selectCombatAwareRemoteSuggestion(checked).to).toBe('g7');
+    expect(remote.candidates[0].isMate).toBe(true); // fuente sin mutar
+
+    const onlyFalse = {
+      ...remote, candidates: [remote.candidates[0]],
+    };
+    expect(annotateCombatCandidates(fen, registry, onlyFalse).candidates[0].isMate).toBe(false);
+  });
+
   it('no sustituye la jugada profunda por candidatos sin puntuación demostrada', () => {
     const remote = {
       from: 'a8', to: 'a1',
