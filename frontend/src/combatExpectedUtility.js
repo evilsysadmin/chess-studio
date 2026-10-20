@@ -64,8 +64,12 @@ export function combatCandidateUtility(candidate, options = {}) {
   const techniqueCp = techniqueValue * finite(cfg.techniqueCp, 16);
   const veteranRiskCp = ownPersistentValue * ownCasualtyRisk * finite(cfg.persistentUnitCp, 55);
   const exposureCp = exposureRisk * finite(cfg.exposureCp, 35);
+  // Sesgo narrativo medido únicamente desde una jugada legal real. El límite
+  // estricto evita que un oficial compre errores ajedrecísticos graves.
+  const doctrineCp = Math.max(-6, Math.min(6, finite(candidate.doctrineBonusCp, 0)));
 
-  return chessScoreCp - captureFailureCp + persistentTargetCp + bossCp + techniqueCp - veteranRiskCp - exposureCp;
+  return chessScoreCp - captureFailureCp + persistentTargetCp + bossCp + techniqueCp
+    - veteranRiskCp - exposureCp + doctrineCp;
 }
 
 export function rankCombatCandidates(candidates, options = {}) {
