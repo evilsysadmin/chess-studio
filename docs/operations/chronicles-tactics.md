@@ -112,7 +112,7 @@ El estado persistente de una run se hidrata antes del primer frame jugable y se 
 Los manifests authored de `backend-python/chronicles_maps/` son la copia canónica. El frontend conserva mirrors byte-for-byte para fallback/offline y Go embebe los mismos bytes para su runtime nativo. Los corpus derivados de áreas y runs/API se generan siempre después de sincronizar esos manifests.
 
 - Tras editar, añadir o retirar un mapa authored, ejecutar `make chronicles-contracts`.
-- Ese comando sincroniza los mirrors de `frontend/src/chronicles/maps/` y `backend-go/internal/chronicles/content/maps/`, y regenera tanto `python_chronicles_area_corpus.json` como `python_chronicles_runs_corpus.json`.
+- Ese comando sincroniza los mirrors de `frontend/src/chronicles/maps/` y `backend-go/internal/chronicles/content/maps/`, y regenera el `python_chronicles_area_corpus.json` histórico. La paridad Go de runs se retiró de Chess Studio al trasladar el runtime a su repositorio dedicado; este texto restante es archivo histórico.
 - `make chronicles-contracts-check` es read-only y falla si hay un mirror o corpus stale.
 - El gate Go/Python consume ese contrato único. No copiar manifests o hashes manualmente entre árboles como procedimiento normal.
 - Una diferencia en nombres de archivos también es drift: altas/bajas del catálogo deben materializarse en las tres superficies en el mismo cambio.
