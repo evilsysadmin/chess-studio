@@ -11,6 +11,18 @@ function unitOrderRow(state, unitKey) {
   const saved = state?.pieces?.[unitKey] || {};
   const identity = state?.identities?.[unitKey] || {};
   const mercenary = saved?.mercenary || null;
+  const record = state?.unitRecords?.[identity.identityId];
+  // Estas cifras abren o cierran metamorfosis. Si cambian después de
+  // confirmar, el jugador debe revisar la orden antes de ir a batalla.
+  // No mezclar fechas, biografías o estadísticas cosméticas con la huella.
+  const service = record?.stats;
+  const metamorphosisService = service ? [
+    finiteInt(service.battles),
+    finiteInt(service.survivals),
+    finiteInt(service.kills),
+    finiteInt(service.bestSurvivalStreak),
+    finiteInt(service.bossVictories),
+  ] : null;
   return [
     unitKey,
     identity.identityId || null,
@@ -23,6 +35,7 @@ function unitOrderRow(state, unitKey) {
     saved.equippedTechnique || null,
     Array.isArray(saved.unlockedTechniques) ? [...saved.unlockedTechniques].sort() : [],
     saved.equipmentId || null,
+    metamorphosisService,
     mercenary ? [
       mercenary.offerId || null,
       mercenary.contract || null,
@@ -34,7 +47,8 @@ function unitOrderRow(state, unitKey) {
 
 // La confirmación representa una orden operativa completa, no un booleano.
 // Además de slot/identidad/forma incluimos el estado del barracón que puede
-// alterar la fuerza o la economía de salida. Así una compra, contratación,
+// alterar la fuerza o la economía de salida, incluidos méritos de servicio
+// que habilitan metamorfosis. Así una compra, contratación, ascenso,
 // renombre o mejora posterior exige reconfirmar en vez de quedar revertida por
 // el snapshot congelado al iniciar la batalla.
 export function deploymentSelectionFingerprint(rosterState) {
@@ -47,7 +61,14 @@ export function deploymentSelectionFingerprint(rosterState) {
       unitKey,
       effectiveDeploymentType(state, unitKey) || null,
     ]);
-  const units = Object.keys(state.pieces || {}).sort().map((unitKey) => unitOrderRow(state, unitKey));
+  // La primera campaña aún no tiene entradas en pieces, pero las 16
+  // identidades ya existen y sus expedientes sí afectan a metamorfosis.
+  // Usar la unión evita omitir veteranos con ficha pero sin stats guardadas.
+  const unitKeys = new Set([
+    ...Object.keys(state.pieces || {}),
+    ...Object.keys(state.identities || {}),
+  ]);
+  const units = [...unitKeys].sort().map((unitKey) => unitOrderRow(state, unitKey));
   return JSON.stringify({
     version: COMBAT_TACTICAL_DEPLOYMENT_VERSION,
     rows,
