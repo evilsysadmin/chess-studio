@@ -7,7 +7,7 @@ username from inheriting state from a previous account.
 """
 from __future__ import annotations
 
-import chronicles_run_store
+import legacy_chronicles_purge
 import feedback_store
 import game_store
 import matthias_daily_store
@@ -27,7 +27,7 @@ async def purge_user_data(username: str) -> dict[str, int]:
     deleted_games = await game_store.delete_games_by_owner(username)
     await profile_store.delete_profile(username)
     await pvp_store.delete_user_data(username)
-    deleted_chronicles_runs = await chronicles_run_store.delete_user_runs(username)
+    deleted_chronicles_runs = await legacy_chronicles_purge.delete_legacy_chronicles_runs(username)
     await matthias_daily_store.delete_user_daily(username)
     await matthias_memory_store.delete_user_memory(username)
     deleted_feedback = await feedback_store.delete_feedback_by_user(username)
