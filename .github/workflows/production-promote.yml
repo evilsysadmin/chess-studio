@@ -181,6 +181,21 @@ jobs:
             echo 'should_deploy=true' >> "$GITHUB_OUTPUT"
           fi
 
+      # Read-only gate before any production mutations, against the selected
+      # staging-accredited source (which may differ from current main).
+      - name: Checkout accredited V4 asset manifest
+        if: steps.production_state.outputs.should_deploy == 'true'
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ env.DEPLOY_SHA }}
+          path: release-proof
+
+      - name: Verify pinned V4 GLB on public R2 before promotion
+        if: steps.production_state.outputs.should_deploy == 'true'
+        run: >-
+          python3 -S scripts/verify_war_room_v4_r2_pin.py
+          --manifest release-proof/frontend/src/assets/r2-assets-manifest.json
+
       - name: Production backend target contract
         if: steps.source.outputs.found == 'true'
         run: |
