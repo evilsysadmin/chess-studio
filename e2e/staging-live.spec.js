@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { createHash } from 'node:crypto';
-import { readFile } from 'node:fs/promises';
+import { createRequire } from 'node:module';
 import { buttonWithVisibleText, clickBoardMove, gameStatus, openDuelHall } from './helpers.js';
 import { stagingSyntheticHeaders } from './staging-synthetic.js';
 
@@ -1318,9 +1318,9 @@ test('staging live · auth real → War Room v2 → recovery 3D → jugada real'
     // Do not route/fulfill a local model here: staging must really load R2.
     // The test checkout is the same deployed runtime SHA (including smoke-only
     // mode), so its immutable manifest is the authoritative expected asset.
-    const manifest = JSON.parse(await readFile(
-      new URL('../frontend/src/assets/r2-assets-manifest.json', import.meta.url), 'utf8',
-    ));
+    // JSON is configuration data, not source text. This is the same public
+    // logical manifest used by the actual runtime, on the exact deployed SHA.
+    const manifest = createRequire(import.meta.url)('../frontend/src/assets/r2-assets-manifest.json');
     const v4 = manifest.assets?.['warRoom.v4.runtime'];
     expect(v4?.sha256, 'War Room V4 must have a pinned SHA-256').toMatch(/^[0-9a-f]{64}$/);
     expect(v4?.url, 'War Room V4 must use the immutable CDN key').toContain(
