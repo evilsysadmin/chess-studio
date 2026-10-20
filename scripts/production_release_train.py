@@ -68,22 +68,35 @@ def has_current_accreditation(payload: object) -> bool:
     return len(matches) == 1
 
 
-def select_latest(repository: str) -> tuple[int, int] | None:
+def select_latest(repository: str, pinned_run_id: int | None = None) -> tuple[int, int] | None:
     runs = _gh_json(
         repository,
         "actions/workflows/staging-ai-worker.yml/runs?event=workflow_run&status=success&branch=main&per_page=100",
     )
     candidates = candidate_runs(runs)
-    if not candidates:
+    if not candidates and pinned_run_id is None:
         return None
-    # Fail closed: never silently fall back to an older staging accreditation.
-    # A newer successful staging run without a valid artifact must be
-    # investigated instead of allowing a green but stale production release.
-    run_id, run_number = candidates[0]
+    # Automatic selection remains strictly newest-only. Explicit rollback is
+    # only permitted by selecting a successful main Staging AI run by ID
+    # and separately matching its immutable artifact to expected_sha.
+    if pinned_run_id is not None:
+        if pinned_run_id <= 0:
+            raise ValueError("pinned_run_id debe ser positivo")
+        selected = next((item for item in candidates if item[0] == pinned_run_id), None)
+        if selected is None:
+            raise RuntimeError(
+                f"Manual staging run {pinned_run_id} no aparece entre los últimos 100 "
+                "runs automáticos exitosos de main; no se permite una acreditación no verificada"
+            )
+        run_id, run_number = selected
+    else:
+        # Never silently fall back to an older accreditation.
+        run_id, run_number = candidates[0]
     artifacts = _gh_json(repository, f"actions/runs/{run_id}/artifacts?per_page=100")
     if not has_current_accreditation(artifacts):
+        label = "Manual selected" if pinned_run_id is not None else "Latest successful"
         raise RuntimeError(
-            f"Latest successful staging AI run {run_id} (#{run_number}) "
+            f"{label} staging AI run {run_id} (#{run_number}) "
             "has no unique, unexpired staging accreditation; refusing stale fallback"
         )
     return run_id, run_number
@@ -215,6 +228,14 @@ def self_test() -> None:
             raise AssertionError("Stale accreditation fallback must be rejected")
         except RuntimeError as exc:
             assert "refusing stale fallback" in str(exc)
+        # An explicit manual run selection can use an older but valid proof.
+        assert select_latest("example/repo", pinned_run_id=1) == (1, 10)
+        for invalid_pin in (-1, 999):
+            try:
+                select_latest("example/repo", pinned_run_id=invalid_pin)
+                raise AssertionError("Unknown/invalid manual run must fail closed")
+            except (ValueError, RuntimeError):
+                pass
         def accredited_gh_json(repository: str, endpoint: str) -> object:
             if endpoint == "actions/runs/2/artifacts?per_page=100":
                 return {"artifacts": [{"name": ARTIFACT_NAME, "expired": False}]}
@@ -266,6 +287,7 @@ def main(argv: list[str] | None = None) -> int:
     select = sub.add_parser("select")
     select.add_argument("--repository", required=True)
     select.add_argument("--github-output", required=True)
+    select.add_argument("--pinned-run-id", default="")
 
     read = sub.add_parser("read")
     read.add_argument("--artifact", required=True)
@@ -303,7 +325,12 @@ def main(argv: list[str] | None = None) -> int:
         self_test()
         return 0
     if args.command == "select":
-        selected = select_latest(args.repository)
+        pin = args.pinned_run_id
+        if pin and os.environ.get("GITHUB_EVENT_NAME") != "workflow_dispatch":
+            raise ValueError("Sólo workflow_dispatch puede seleccionar un Staging AI run anterior")
+        if pin and (not pin.isdecimal() or int(pin) <= 0):
+            raise ValueError(f"ID de acreditación manual inválido: {pin!r}")
+        selected = select_latest(args.repository, pinned_run_id=int(pin) if pin else None)
         if selected is None:
             _append(args.github_output, found="false")
             print("No hay una acreditación automática de staging vigente.")
