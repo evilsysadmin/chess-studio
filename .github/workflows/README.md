@@ -136,7 +136,7 @@ Para producción pública, un fallo del synthetic es una señal operativa, no ru
 | `capacity-virtual-players.yml` | Probe 20/50/100 jugadores virtuales. PR valida contratos; la carga real queda restringida a manual o ramas `ops/capacity-*`, nunca a un push normal de `main`. |
 | `observability-live.yml` | Comprueba cada hora y tras publicar dashboards que señales de host/backend llegan a Grafana; sólo lectura. |
 | `production-frontend-watchdog.yml` | Vigila el frontend público cada 5 min y dispone de self-heal acotado, serializado con promoción para no competir con un deploy. |
-| `production-target-smoke.yml` | Smoke read-only del target de producción y gameplay/ruta pública cuando cambia el selector o sus helpers; manual bajo demanda. |
+| `production-target-smoke.yml` | Smoke read-only del target de producción, gameplay y ruta pública tras un tren de producción exitoso, cambios del selector/helpers o invocación manual. Los trenes fallidos/cancelados no acreditan un smoke posrelease. |
 
 ## Flujo
 
