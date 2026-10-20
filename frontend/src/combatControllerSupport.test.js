@@ -75,6 +75,45 @@ describe('combat controller support', () => {
     expect(selectCombatAwareRemoteSuggestion(remote)).toBe(remote);
   });
 
+  it('aplica doctrinas de oficiales sólo a alternativas realmente próximas', async () => {
+    const fen = 'r7/6k1/8/8/8/8/8/7K b - - 0 1';
+    const registry = {
+      a8: { id: 'b-r-a8', color: 'b', type: 'r', square: 'a8' },
+      g7: { id: 'b-k-g7', color: 'b', type: 'k', square: 'g7' },
+      h1: { id: 'w-k-h1', color: 'w', type: 'k', square: 'h1' },
+    };
+    const remote = {
+      from: 'a8', to: 'b8',
+      candidates: [
+        { from: 'a8', to: 'b8', moveKey: 'a8b8', chessScoreCp: 10, isLegal: true },
+        { from: 'a8', to: 'h8', moveKey: 'a8h8', chessScoreCp: 10, isLegal: true },
+      ],
+    };
+    const noDoctrine = selectCombatAwareRemoteSuggestion(annotateCombatCandidates(fen, registry, remote));
+    expect(noDoctrine.to).toBe('b8');
+
+    const pressure = { style: { check: 1 } };
+    const measured = annotateCombatCandidates(fen, registry, remote, {}, pressure);
+    expect(measured.candidates[1].doctrineBonusCp).toBe(3);
+    expect(selectCombatAwareRemoteSuggestion(measured).to).toBe('h8');
+    const resolved = await resolveCombatCpuTurnSuggestion({
+      fen, difficulty: 50, registry, doctrine: pressure,
+      analyzePosition: async () => remote,
+    });
+    expect(resolved.source).toBe('remote');
+    expect(resolved.suggestion.to).toBe('h8');
+
+    const badlyScored = {
+      ...remote,
+      candidates: remote.candidates.map((candidate) => ({
+        ...candidate, chessScoreCp: candidate.to === 'h8' ? -100 : 10,
+      })),
+    };
+    expect(selectCombatAwareRemoteSuggestion(
+      annotateCombatCandidates(fen, registry, badlyScored, {}, pressure),
+    ).to).toBe('b8');
+  });
+
   it('si cae el análisis remoto puede elegir una jugada legal local y no secuestra la batalla', async () => {
     const startBlack = 'rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1';
     const fallback = emergencyCombatCpuSuggestion(startBlack);
