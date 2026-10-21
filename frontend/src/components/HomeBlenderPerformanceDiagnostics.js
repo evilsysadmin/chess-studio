@@ -170,6 +170,8 @@ export function homeBlenderFlamePassEligibility(fireRig, doubleSide = 2, frontSi
     flameNodes: 0, hotNodes: 0, candleNodes: 0,
     materialSlots: 0, doubleSided: 0, frontSided: 0, otherSided: 0,
     transparentNow: 0,
+    transparentDoubleSidedNow: 0,
+    singlePassTransparentDoubleSidedNow: 0,
   };
   if (!Array.isArray(fireRig)) return counts;
   for (const node of fireRig) {
@@ -182,7 +184,13 @@ export function homeBlenderFlamePassEligibility(fireRig, doubleSide = 2, frontSi
       if (material.side === doubleSide) counts.doubleSided += 1;
       else if (material.side === frontSide) counts.frontSided += 1;
       else counts.otherSided += 1;
-      if (material.transparent) counts.transparentNow += 1;
+      if (material.transparent) {
+        counts.transparentNow += 1;
+        if (material.side === doubleSide) {
+          counts.transparentDoubleSidedNow += 1;
+          if (material.forceSinglePass === true) counts.singlePassTransparentDoubleSidedNow += 1;
+        }
+      }
     }
   }
   return counts;

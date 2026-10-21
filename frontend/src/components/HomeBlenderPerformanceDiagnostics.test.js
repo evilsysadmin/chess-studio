@@ -131,21 +131,24 @@ describe('Home fire material pass eligibility · diagnostics only', () => {
     const front = { side: 0, transparent: false };
     const both = { side: 2, transparent: false };
     const back = { side: 1, transparent: true };
+    const onePass = { side: 2, transparent: true, forceSinglePass: true };
     const hidden = { side: 2, visible: false, transparent: true };
     const nodes = [
       { kind: 'flame', materials: [{ material: front }, { material: both }] },
-      { kind: 'hot', materials: [{ material: both }] },
+      { kind: 'hot', materials: [{ material: both }, { material: onePass }] },
       { kind: 'candle', materials: [{ material: back }, { material: hidden }] },
       { kind: 'steam', materials: [{ material: both }] },
     ];
     expect(homeBlenderFlamePassEligibility(nodes)).toEqual({
       flameNodes: 1, hotNodes: 1, candleNodes: 1,
-      materialSlots: 4, doubleSided: 2, frontSided: 1,
-      otherSided: 1, transparentNow: 1,
+      materialSlots: 5, doubleSided: 3, frontSided: 1,
+      otherSided: 1, transparentNow: 2,
+      transparentDoubleSidedNow: 1, singlePassTransparentDoubleSidedNow: 1,
     });
     expect(front.transparent).toBe(false);
     expect(both.transparent).toBe(false);
     expect(both.forceSinglePass).toBeUndefined();
+    expect(onePass.forceSinglePass).toBe(true); // Read-only: no mutation.
   });
 
   it('returns explicit zero counts for absent rig and does not invent eligibility', () => {
@@ -153,6 +156,7 @@ describe('Home fire material pass eligibility · diagnostics only', () => {
       flameNodes: 0, hotNodes: 0, candleNodes: 0,
       materialSlots: 0, doubleSided: 0, frontSided: 0,
       otherSided: 0, transparentNow: 0,
+      transparentDoubleSidedNow: 0, singlePassTransparentDoubleSidedNow: 0,
     });
     expect(homeBlenderFlamePassEligibility([{ kind: 'steam', materials: [] }]).materialSlots).toBe(0);
   });

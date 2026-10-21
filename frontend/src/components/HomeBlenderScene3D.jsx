@@ -2272,6 +2272,15 @@ export default function HomeBlenderScene3D({
       ensureFireParticles();
       ensureCandleParticles();
       ensureSteamSprites();
+      // Unlike the GLB pre-animation census, this read-only opt-in snapshot
+      // sees the alpha materials that the REAL live fire has activated. Hosted
+      // SwiftShader/reduced-motion never enters this path. It is a candidate
+      // count, not a claim about WebGL draw savings or GPU duration.
+      if (gpuProfiling) {
+        canvas.dataset.homeBlenderFlamePassLiveEligibility = JSON.stringify(
+          homeBlenderFlamePassEligibility(fireRig, THREE.DoubleSide, THREE.FrontSide),
+        );
+      }
       lastFireRafAt = null;
       lastActorTickAt = null;
       // A queued resize/resume draw is superseded by the imminent ambient
