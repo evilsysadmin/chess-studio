@@ -126,8 +126,6 @@ El contrato de entrega está en [`docs/auto-merge-delivery.md`](docs/auto-merge-
 - [`docs/operations/game-state-recovery.md`](docs/operations/game-state-recovery.md)
 - [`docs/operations/training-quality.md`](docs/operations/training-quality.md)
 - [`docs/operations/matthias-runtime.md`](docs/operations/matthias-runtime.md)
-- [`docs/operations/chronicles-tactics.md`](docs/operations/chronicles-tactics.md)
-- [`docs/operations/chronicles-mm3-economy.md`](docs/operations/chronicles-mm3-economy.md) — siete estadísticas MM3, compatibilidad legacy y ownership de economía.
 - [`docs/operations/chess-football-product.md`](docs/operations/chess-football-product.md) — calidad del partido y diseño futuro de mánager de clubes.
 - [`backend-python/chronicles_campaign/DESIGN.md`](backend-python/chronicles_campaign/DESIGN.md) — atlas, actos, portales y contrato de autoría de la campaña.
 - [`docs/operations/combat-chess.md`](docs/operations/combat-chess.md)
