@@ -300,8 +300,14 @@ def build_hall(static, palette):
         col = 0
         while x < hx:
             material = palette["flag"] if (row * 3 + col) % 5 else palette["flag_dark"]
-            base.cube(f"WR3_ARM_floor_tile_{index}", (x, y, 0.010),
-                      (tile * 0.485, tile * 0.485, 0.03), material, static, bevel=0.02)
+            flagstone = base.cube(f"WR3_ARM_floor_tile_{index}", (x, y, 0.010),
+                                  (tile * 0.485, tile * 0.485, 0.03), material, static,
+                                  bevel=0.02)
+            # The flagstones' 2 cm edge reads as a crisp joint at game zoom.
+            # The generic 3-segment bevel tessellates every one of ~150 tiles
+            # unnecessarily. Keep the width, material and footprint; use one
+            # planar chamfer only on floor tiles, not on furniture or board.
+            flagstone.modifiers["premium-bevel"].segments = 1
             index += 1
             x += tile
             col += 1
