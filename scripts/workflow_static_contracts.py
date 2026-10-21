@@ -280,6 +280,24 @@ def validate_resend_bootstrap_topology(root: Path = ROOT) -> None:
     )
     print("Resend bootstrap scoped dispatch topology: OK")
 
+def validate_staging_continuity_self_test(root: Path = ROOT) -> None:
+    """Catch missing Chess/PvP/Godot continuity helpers before staging runs.
+
+    This no-network self-test uses the same entrypoint as the live drill but
+    runs on every PR's cheap static contract lane.
+    """
+    workflow = (root / ".github" / "workflows" / "staging-deploy-continuity.yml").read_text(encoding="utf-8")
+    command = "python3 -S scripts/staging_deploy_continuity_probe.py --self-test"
+    if command not in workflow:
+        raise SystemExit("staging continuity perdió su autocheck previo al drill")
+    subprocess.run(
+        [sys.executable, "-S", "scripts/staging_deploy_continuity_probe.py", "--self-test"],
+        cwd=root,
+        check=True,
+    )
+    print("staging continuity self-test and workflow wiring: OK")
+
+
 def validate_workflow_static_contracts(root: Path = ROOT) -> None:
     """Run always-on static contracts; OCI integration stays conditional on the CI PR surface."""
     main_lineage_self_test()
@@ -294,6 +312,7 @@ def validate_workflow_static_contracts(root: Path = ROOT) -> None:
     validate_cloudflare_auth_rate_limit(root)
     validate_pawn_slug_staging_visual_scope(root)
     validate_resend_bootstrap_topology(root)
+    validate_staging_continuity_self_test(root)
 
     unknown, missing = inventory_drift(root)
     rows = budget_rows(root)
