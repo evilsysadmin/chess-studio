@@ -65,6 +65,60 @@ describe('combat controller support', () => {
     expect(selectCombatAwareRemoteSuggestion(noFacts)).toBe(noFacts);
   });
 
+  it('penaliza solo el riesgo demostrado de un veterano ante una réplica inmediata', () => {
+    const fen = 'r5k1/8/8/8/8/8/1R6/7K b - - 0 1';
+    const veteran = {
+      id: 'b-r-a8', identityId: 'veteran-rook', color: 'b', type: 'r',
+      square: 'a8', strengthPoints: 4, speedPoints: 1,
+    };
+    const registry = {
+      a8: veteran,
+      g8: { id: 'b-k-g8', color: 'b', type: 'k', square: 'g8' },
+      b2: { id: 'w-r-b2', color: 'w', type: 'r', square: 'b2' },
+      h1: { id: 'w-k-h1', color: 'w', type: 'k', square: 'h1' },
+    };
+    const remote = {
+      from: 'a8', to: 'b8',
+      candidates: [
+        { from: 'a8', to: 'b8', moveKey: 'a8b8', chessScoreCp: 10, isLegal: true },
+        { from: 'a8', to: 'a7', moveKey: 'a8a7', chessScoreCp: 10, isLegal: true },
+      ],
+    };
+    const measured = annotateCombatCandidates(fen, registry, remote);
+    expect(measured.candidates[0]).toMatchObject({ combatReady: true, ownPersistentValue: 5 });
+    expect(measured.candidates[0].ownCasualtyRisk).toBeGreaterThan(0.5);
+    expect(measured.candidates[0].ownCasualtyRisk).toBeLessThan(1);
+    expect(measured.candidates[1]).toMatchObject({ ownPersistentValue: 5, ownCasualtyRisk: 0 });
+    expect(selectCombatAwareRemoteSuggestion(measured)).toMatchObject({ from: 'a8', to: 'a7' });
+    // Sin identidad veterana, la penalización por pérdida persistente desaparece.
+    const recruit = { ...registry, a8: { ...veteran, identityId: null } };
+    expect(selectCombatAwareRemoteSuggestion(annotateCombatCandidates(fen, recruit, remote))).toBe(remote);
+    // No sabemos las estadísticas de la torre que podría contraatacar.
+    const unknown = { ...registry };
+    delete unknown.b2;
+    expect(annotateCombatCandidates(fen, unknown, remote).candidates[0])
+      .toMatchObject({ ownPersistentValue: 0, ownCasualtyRisk: 0 });
+    expect(selectCombatAwareRemoteSuggestion(annotateCombatCandidates(fen, unknown, remote))).toBe(remote);
+    expect(registry.a8.square).toBe('a8');
+  });
+
+  it('detecta la réplica al paso contra el peón veterano que acaba de avanzar dos', () => {
+    const fen = '7k/1p6/8/P7/8/8/8/7K b - - 0 1';
+    const registry = {
+      b7: { id: 'b-p-b7', identityId: 'veteran-pawn', color: 'b', type: 'p', square: 'b7', strengthPoints: 2 },
+      a5: { id: 'w-p-a5', color: 'w', type: 'p', square: 'a5' },
+    };
+    const remote = {
+      from: 'b7', to: 'b5',
+      candidates: [{ from: 'b7', to: 'b5', moveKey: 'b7b5', chessScoreCp: 5, isLegal: true }],
+    };
+    const measured = annotateCombatCandidates(fen, registry, remote).candidates[0];
+    expect(measured.ownPersistentValue).toBe(2);
+    expect(measured.ownCasualtyRisk).toBeGreaterThanOrEqual(0.5);
+    expect(measured.ownCasualtyRisk).toBeLessThanOrEqual(0.9);
+    expect(registry.b7.square).toBe('b7');
+  });
+
   it('desmiente mates inventados por el shortlist y conserva los mates reales', () => {
     const fen = '7k/8/5KQ1/8/8/8/8/8 w - - 0 1';
     const registry = {
