@@ -257,6 +257,7 @@ CORE_E2E_SPEC_LANES = {
 }
 E2E_SHARED = {"e2e/helpers.js", "e2e/playwright.config.js", "e2e/playwright.config.mjs"}
 SECURITY_RE = re.compile(
+    r"^scripts/art/requirements[^/]*\.txt$|"
     r"(^|/)(?:Dockerfile[^/]*|docker-compose[^/]*\.ya?ml|\.dockerignore)$|"
     r"^compose\.ya?ml$|^frontend/package-lock\.json$|"
     r"^backend-python/requirements[^/]*\.txt$|^\.trivy(?:ignore|\.ya?ml)?$|"
@@ -554,6 +555,9 @@ def self_test() -> None:
     _expect(["backend-python/cpu_difficulty.py"], run_backend=True, run_go=True, run_go_parity=True)
     _expect(["backend-python/pvp_api.py"], run_backend=True, run_go=True, run_go_parity=True)
     _expect(["backend-python/requirements.txt"], run_backend=True, run_go=True, run_go_parity=True, run_security=True)
+    assert classify(["scripts/art/requirements.txt"]).run_security
+    assert classify(["scripts/art/requirements-dev.txt"]).run_security
+    assert not classify(["scripts/art/requirements.md"]).run_security
     _expect(["e2e/pawn-slug.spec.js"], run_pawn_slug_e2e=True)
     _expect_core(
         [LAB_LAUNCH_INTENT_PATH],
