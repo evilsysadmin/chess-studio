@@ -517,12 +517,29 @@ def reject_remote_deploy_failure(output: str) -> None:
         raise SystemExit(f"OCI Run Command remote deploy FAILED: rc={match.group(1)}")
 
 
+class MissingDeployReceiptError(Exception):
+    """No host receipt was returned; public exact-SHA verification is required."""
+
+
 def validate_deploy_output(output: str, expected_sha: str) -> None:
     """Accept only an explicit exact-SHA completion receipt from the host."""
     sha = validate_sha(expected_sha)
     marker = f"CHESS_STUDIO_DEPLOY_OK target=staging repo_ref={sha} "
     if not any(line.startswith(marker) for line in output.splitlines()):
-        raise SystemExit("OCI deploy returned without exact-SHA CHESS_STUDIO_DEPLOY_OK receipt")
+        raise MissingDeployReceiptError("OCI deploy returned without exact-SHA CHESS_STUDIO_DEPLOY_OK receipt")
+
+
+def deploy_receipt_exit_status(output: str, expected_sha: str) -> int:
+    """0 = verified host receipt; 78 = missing receipt, public check required.
+
+    This result is NOT the host's exit code: execute() already rejected
+    nonzero OCI exit codes and all explicit remote-failure sentinels.
+    """
+    try:
+        validate_deploy_output(output, expected_sha)
+    except MissingDeployReceiptError:
+        return 78
+    return 0
 
 
 def execute(
@@ -590,7 +607,7 @@ def execute(
             if text:
                 print(bounded_command_output(text), flush=True)
                 reject_remote_deploy_failure(text)
-            if state != "SUCCEEDED" or exit_code not in (None, 0):
+            if state != "SUCCEEDED" or exit_code != 0:
                 detail = message or text or "no command output"
                 raise SystemExit(f"OCI Run Command failed: state={state} exit={exit_code} detail={detail[:500]}")
             return text
@@ -796,13 +813,18 @@ def self_test() -> None:
     else:
         raise AssertionError("secret-bearing command must be rejected")
 
-    validate_deploy_output(
-        "CHESS_STUDIO_DEPLOY_OK target=staging repo_ref=" + sample + " color=blue", sample
-    )
+    receipt = "CHESS_STUDIO_DEPLOY_OK target=staging repo_ref=" + sample + " color=blue"
+    validate_deploy_output(receipt, sample)
+    assert deploy_receipt_exit_status(receipt, sample) == 0
+    assert deploy_receipt_exit_status("", sample) == 78
+    assert deploy_receipt_exit_status(
+        "CHESS_STUDIO_DEPLOY_OK target=staging repo_ref=" + "f" * 40 + " color=blue",
+        sample,
+    ) == 78
     for invalid in ("", "OCI_DEPLOY_LAUNCHER_HASH_PREFIX=deadbeef", "CHESS_STUDIO_DEPLOY_OK repo_ref=" + sample):
         try:
             validate_deploy_output(invalid, sample)
-        except SystemExit as exc:
+        except MissingDeployReceiptError as exc:
             assert "without exact-SHA" in str(exc)
         else:
             raise AssertionError("missing/wrong deployment receipt must fail closed")
@@ -876,7 +898,13 @@ def main() -> int:
             timeout=900,
             resolved=resolved,
         )
-        validate_deploy_output(output, args.repo_ref)
+        receipt_exit = deploy_receipt_exit_status(output, args.repo_ref)
+        if receipt_exit:
+            # Only the staging workflow may handle this provisional outcome.
+            # It MUST run the independent public exact-SHA accreditation.
+            # CLI users receive a nonzero exit until that check succeeds.
+            print("OCI_DEPLOY_RECEIPT_MISSING public_exact_sha_verification_required", file=sys.stderr)
+            return receipt_exit
     return 0
 
 

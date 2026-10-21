@@ -117,7 +117,11 @@ jobs:
             exit 0
           fi
           python3 -S scripts/staging_image_ready.py --sha "$DEPLOY_SHA"
-          python3 scripts/oci_run_command.py deploy --repo-ref "$DEPLOY_SHA"
+          python3 scripts/oci_run_command.py deploy --repo-ref "$DEPLOY_SHA" || {
+            rc=$?
+            [[ "$rc" == 78 ]] || exit "$rc"
+            echo "::warning::No OCI receipt; public exact-SHA check required"
+          }
       - name: Re-check main after OCI fallback
         id: post_deploy
         if: steps.watcher.outputs.converged != 'true' && steps.fallback_admission.outputs.superseded != 'true'
