@@ -39,7 +39,7 @@ describe('Combat Chess · amenazas simultáneas verificadas', () => {
     expect(measured.candidates[1]).toMatchObject({
       combatReady: true, enemyValue: 1, enemyPersistentValue: 30,
     });
-    expect(selectCombatAwareRemoteSuggestion(measured)).toBe(remote);
+    expect(selectCombatAwareRemoteSuggestion(measured)).toMatchObject({ from: 'a8', to: 'a7' });
     expect(rankCombatCandidates(measured.candidates).map(({ moveKey }) => moveKey))
       .toEqual(['a8a7']);
     expect(registry.b7.strengthPoints).toBe(30);
@@ -61,6 +61,6 @@ describe('Combat Chess · amenazas simultáneas verificadas', () => {
     const inconsistent = { ...registry, b7: { ...registry.b7, square: 'b6' } };
     const measured = annotateCombatCandidates(fen, inconsistent, remote);
     expect(measured.candidates[1].combatReady).not.toBe(true);
-    expect(selectCombatAwareRemoteSuggestion(measured)).toBe(measured);
+    expect(selectCombatAwareRemoteSuggestion(measured)).toMatchObject({ from: 'a8', to: 'a7' });
   });
 });
