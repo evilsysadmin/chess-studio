@@ -87,7 +87,7 @@ class V2RoomArchitectureTests(unittest.TestCase):
         self.assertIn('patch_v2_hans_door_extras(path)', source)
         self.assertIn('patch_v2_hans_door_extras', self.funcs)
         self.assertIn('V2_HANS_ANCHORS', ast.get_source_segment(source, self.funcs["export_shell"]))
-        self.assertIn('runtime GLB contains retired second hearth', source)
+        self.assertIn('runtime V2 GLB contains retired second hearth', source)
 
     def test_v2_blender_publish_stays_manual_only(self):
         yaml = WORKFLOW.read_text(encoding="utf-8")
