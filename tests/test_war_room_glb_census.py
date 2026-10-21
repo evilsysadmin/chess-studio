@@ -37,6 +37,10 @@ class WarRoomGlbCensusTests(unittest.TestCase):
         self.assertEqual(report['potentialTriangles'], 4)
         self.assertEqual(report['uniqueMeshTriangles'], 2)
         self.assertEqual(report['vertexReferences'], 8)
+        self.assertEqual(report['materialCosts'], [{
+            'materialIndex': -1, 'material': '(unassigned)',
+            'potentialTriangles': 4, 'primitiveInstances': 2,
+        }])
         self.assertEqual([row['node'] for row in report['topNodes']], ['Pillar A', 'Pillar B'])
 
     def test_nonindexed_primitive_counts_vertices(self):
@@ -94,6 +98,39 @@ class WarRoomGlbCensusTests(unittest.TestCase):
         self.assertIn('b' * 64, summary)
         self.assertIn('| Pillar A | stone | 2 |', summary)
         self.assertIn('Not** actual GPU draw calls', summary)
+        self.assertIn('| (unassigned) | 4 | 2 |', summary)
+
+    def test_material_costs_count_scene_instances_and_sort_by_triangles(self):
+        doc = fixture()
+        doc['materials'] = [{'name': 'granite'}, {'name': 'iron'}]
+        doc['meshes'][0]['primitives'][0]['material'] = 0
+        doc['meshes'][1]['primitives'][0]['material'] = 1
+        doc['nodes'][0]['children'].append(3)
+        report = census_scene(doc)
+        self.assertEqual(report['potentialTriangles'], 104)
+        self.assertEqual(report['primitiveInstances'], 3)
+        self.assertEqual(report['materialCosts'], [
+            {'materialIndex': 1, 'material': 'iron',
+             'potentialTriangles': 100, 'primitiveInstances': 1},
+            {'materialIndex': 0, 'material': 'granite',
+             'potentialTriangles': 4, 'primitiveInstances': 2},
+        ])
+        self.assertEqual(sum(row['potentialTriangles'] for row in report['materialCosts']),
+                         report['potentialTriangles'])
+        summary = render_census_markdown([{'file': '/tmp/v3.glb',
+            'sha256': 'a'*64, 'glbBytes': 1000, **report}])
+        self.assertIn('| iron | 100 | 1 |', summary)
+        self.assertIn('| granite | 4 | 2 |', summary)
+
+    def test_material_references_fail_closed(self):
+        doc = fixture()
+        doc['meshes'][0]['primitives'][0]['material'] = 0
+        with self.assertRaisesRegex(ValueError, 'invalid glTF material'):
+            census_scene(doc)
+        doc['materials'] = [{'name': 'stone'}]
+        doc['meshes'][0]['primitives'][0]['material'] = None
+        with self.assertRaisesRegex(ValueError, 'invalid glTF material'):
+            census_scene(doc)
 
     def test_glb_reader_accepts_meshopt_buffer_layout(self):
         # Meshopt can preserve decoded buffer metadata but store a short
