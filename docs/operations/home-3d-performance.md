@@ -138,6 +138,18 @@ runtime rendering are changed by the probe.
 
 A `DoubleSide` slot is only a potential target for Three.js transparent
 front/back rendering *once the real GPU flame loop makes it transparent*.
+The initial count now additionally reports `transparentDoubleSidedNow` and
+`singlePassTransparentDoubleSidedNow` (both read-only, per material slot).
+On a real non-software renderer with animated fire, the profiler also captures
+`data-home-blender-flame-pass-live-eligibility` **after** the existing fire
+and candle material preparation. This separate one-shot snapshot uses the
+same schema: only `transparentDoubleSidedNow` counts actual alpha-enabled
+DoubleSide slots, and `singlePassTransparentDoubleSidedNow` counts those
+already marked `forceSinglePass`. It never enables alpha or modifies any
+material. The live census is intentionally **absent** under SwiftShader and
+reduced-motion; missing is not zero. These slots still are **not observed
+draw calls**: compare the real main-pass draw census and asynchronous physical
+GPU times before drawing any performance conclusions.
 If `doubleSided === 0`, the proposed `forceSinglePass` experiment has
 **no eligible authored flame materials** under current GLB siding, and
 should not be promoted to production. Never change material sidedness just
