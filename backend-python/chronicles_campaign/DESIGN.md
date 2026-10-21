@@ -150,7 +150,7 @@ side quests locales, su mazmorra y un camino recíproco desde el tramo anterior.
 
 Como en MM3, el exterior se divide en una cuadrícula de áreas: columnas A–F (oeste → este) y filas 1–6 (norte → sur). Las áreas se unen por puertas en los bordes, y los pueblos y las mazmorras se abren desde dentro de ellas. El HUD muestra «ÁREA C4».
 
-- **Fuente**: la tabla de `scripts/chronicles/build_terra_world.py`. El script genera los manifests en `chronicles_maps/` de forma determinista; después hay que ejecutar `make chronicles-contracts`. Con `--check`, falla si los manifests no coinciden con la tabla.
+- **Fuente de verdad actual**: el repositorio independiente `evilsysadmin/chronicles-of-matthias`, en `api/cmd/terragen` (Go); ejecutar allí `cd api && go run ./cmd/terragen -check` para verificar que los mapas de frontend y API coinciden. La copia Python de los manifiestos en Chess Studio es **legada para recuperación de guardados**: no regenerarla ni desarrollar Terra aquí. El generador Python histórico se retiró de este repositorio; sigue en el historial Git.
 - **C3 y D3** son el Camino de los Estandartes y Rookwood, ya existentes: el script solo les añade las puertas de borde. Swordhaven se entra desde el Camino.
 - **Biomas** (llanura, bosque, colinas, marisma, costa, nieve, ceniza): fijan los obstáculos, el suelo, el cielo y la fauna de cada área.
 - **Contenido de cada área**:
