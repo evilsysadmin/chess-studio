@@ -1,0 +1,85 @@
+name: War Room v3 · R2 immutable pin
+
+on:
+  pull_request:
+    paths:
+      - 'frontend/src/assets/r2-assets-manifest.json'
+      - 'scripts/r2_war_room_runtime_contract.py'
+      - '.github/workflows/war-room-v3-r2-pin.yml'
+      - 'e2e/war-room-visual-artifact.spec.js'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-public-v3:
+    name: Verify V3 public immutable GLB SHA, length and Hans stage
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+
+      - name: Verify public V3 CDN object matches reviewed manifest
+        run: |
+          set -euo pipefail
+          python3 -S - <<'PY'
+          import hashlib
+          import sys
+          sys.path.insert(0, 'scripts')
+          from r2_war_room_runtime_contract import runtime_rooms
+          from r2_war_room_live_freeze import fetch_public_immutable, verify_bytes
+          v3 = runtime_rooms()[0]
+          assert v3.variant == 'v3'
+          payload = fetch_public_immutable(v3, 'assets.chess-studio.shadowops.dpdns.org')
+          verify_bytes(v3, payload)
+          print(f'V3_PUBLIC_IMMUTABLE_PIN_OK sha256={hashlib.sha256(payload).hexdigest()} bytes={len(payload)}')
+          PY
+
+  browser-proof:
+    name: V3 · manifest-pinned WebGL desktop and Android
+    needs: verify-public-v3
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      CI: 'true'
+      VITE_WAR_ROOM_VARIANTS_ENABLE: '1'
+      VITE_APP_VISUAL_CAPTURE: 'true'
+      APP_VISUAL_ARTIFACT: '1'
+      APP_VISUAL_WARROOM_VARIANTS: 'v3'
+      # Intentionally omit APP_VISUAL_EXPECTED_WAR_ROOM_V3_REVISION:
+      # Playwright must consume the new public immutable manifest URL,
+      # never a staging revision installed through a Playwright route.
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+
+      - uses: ./.github/actions/setup-browser-e2e
+        with:
+          browser-scope: chromium
+
+      - name: Capture manifest-pinned V3 in app
+        working-directory: e2e
+        run: ./node_modules/.bin/playwright test war-room-visual-artifact.spec.js --workers=1
+
+      - name: Require V3 runtime evidence in all three viewports
+        run: |
+          set -euo pipefail
+          for profile in desktop-1440x900 android-390x844 android-landscape-844x390; do
+            test -s ".artifacts/app-visual/war-room-v3-${profile}.png"
+            test -s ".artifacts/app-visual/war-room-v3-${profile}-health.json"
+          done
+
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: war-room-v3-pinned-browser-${{ github.event.pull_request.number || github.run_number }}
+          path: |
+            .artifacts/app-visual/war-room-v3*
+            e2e/test-results/
+          if-no-files-found: warn
+          retention-days: 10
+          compression-level: 0
