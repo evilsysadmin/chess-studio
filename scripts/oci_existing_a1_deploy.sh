@@ -1339,24 +1339,36 @@ supersede_if_stale() {
 }
 
 deploy_lock_file="/var/lib/chess-studio/deploy.lock"
-exec 8>"$deploy_lock_file"
-lock_acquired=false
-for ((attempt=1; attempt<=24; attempt++)); do
-  if flock -w 5 8; then
-    lock_acquired=true
-    break
+if [[ "${CHESS_STUDIO_HOST_LOCK_HELD:-0}" == "1" ]]; then
+  # The current launcher already holds this SAME open file description on FD8.
+  # Reopening it would deadlock against our own flock. Verify the inherited
+  # descriptor and lock; never trust the environment flag alone.
+  [[ "$(readlink /proc/self/fd/8 2>/dev/null || true)" == "$deploy_lock_file" ]] || {
+    echo 'OCI_DEPLOY_LOCK_INVALID inherited fd8 path' >&2
+    exit 75
+  }
+  flock -n 8 || { echo 'OCI_DEPLOY_LOCK_INVALID inherited lock' >&2; exit 75; }
+else
+  # Legacy/direct entry still takes the same mutation lock itself.
+  exec 8>"$deploy_lock_file"
+  lock_acquired=false
+  for ((attempt=1; attempt<=24; attempt++)); do
+    if flock -w 5 8; then
+      lock_acquired=true
+      break
+    fi
+    if supersede_if_stale; then
+      :
+    else
+      status=$?
+      [[ "$status" == 42 ]] && exit 0
+      exit "$status"
+    fi
+  done
+  if [[ "$lock_acquired" != true ]]; then
+    echo 'timed out waiting for host deploy lock' >&2
+    exit 75
   fi
-  if supersede_if_stale; then
-    :
-  else
-    status=$?
-    [[ "$status" == 42 ]] && exit 0
-    exit "$status"
-  fi
-done
-if [[ "$lock_acquired" != true ]]; then
-  echo 'timed out waiting for host deploy lock' >&2
-  exit 75
 fi
 
 # GitHub Actions cancellation cannot retract a Run Command already accepted by
