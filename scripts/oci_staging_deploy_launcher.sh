@@ -30,6 +30,15 @@ command -v git >/dev/null 2>&1 || { echo 'missing required command: git' >&2; ex
 # Take the EXISTING mutation lock before touching Git, then hand the open FD
 # to the payload through exec. Never delete Git's own locks.
 command -v flock >/dev/null 2>&1 || { echo 'flock required for OCI deploy' >&2; exit 69; }
+command -v timeout >/dev/null 2>&1 || { echo 'timeout required for OCI deploy' >&2; exit 69; }
+
+origin_main_sha() {
+  # Read-only and bounded: no interactive credentials and no indefinite wait
+  # if DNS/GitHub become unavailable while the host deploy lock is held.
+  GIT_TERMINAL_PROMPT=0 timeout --signal=TERM --kill-after=2s 5s \
+    git -C "$repo" ls-remote --exit-code origin refs/heads/main \
+    | awk 'NR == 1 {print $1}'
+}
 install -d -m 0755 /var/lib/chess-studio
 deploy_lock_file=/var/lib/chess-studio/deploy.lock
 exec 8>"$deploy_lock_file"
@@ -49,7 +58,7 @@ for ((lock_attempt=1; lock_attempt<=84; lock_attempt++)); do
     if [[ "$target" == staging ]]; then
       # ls-remote never changes the working tree or shallow Git metadata.
       # Failure to reach origin is NOT evidence of supersession.
-      current_main="$(git -C "$repo" ls-remote --exit-code origin refs/heads/main 2>/dev/null | awk 'NR == 1 {print $1}' || true)"
+      current_main="$(origin_main_sha 2>/dev/null || true)"
       if [[ "$current_main" =~ ^[0-9a-f]{40}$ && "$current_main" != "$sha" ]]; then
         echo "OCI_DEPLOY_SUPERSEDED phase=launcher_lock_wait repo_ref=$sha current_main=$current_main"
         exit 0
@@ -68,8 +77,17 @@ fi
 # A generation may become stale between the last 30s probe and the lock
 # acquisition. Reject it before fetch/checkout; payload repeats this guard.
 if [[ "$target" == staging ]]; then
-  current_main="$(git -C "$repo" ls-remote --exit-code origin refs/heads/main 2>/dev/null | awk 'NR == 1 {print $1}' || true)"
-  if [[ "$current_main" =~ ^[0-9a-f]{40}$ && "$current_main" != "$sha" ]]; then
+  # Once the lock is acquired, origin/main must be trustworthy BEFORE
+  # changing the checkout. A failed probe is not permission to deploy.
+  if ! current_main="$(origin_main_sha)"; then
+    echo 'OCI_DEPLOY_MAIN_UNAVAILABLE phase=launcher_lock_acquired' >&2
+    exit 69
+  fi
+  if [[ ! "$current_main" =~ ^[0-9a-f]{40}$ ]]; then
+    echo 'OCI_DEPLOY_MAIN_INVALID phase=launcher_lock_acquired' >&2
+    exit 69
+  fi
+  if [[ "$current_main" != "$sha" ]]; then
     echo "OCI_DEPLOY_SUPERSEDED phase=launcher_lock_acquired repo_ref=$sha current_main=$current_main"
     exit 0
   fi

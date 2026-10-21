@@ -28,6 +28,13 @@ def self_test():
     stale_acquired = launcher.index("OCI_DEPLOY_SUPERSEDED phase=launcher_lock_acquired")
     assert lock_wait < stale_wait < stale_acquired < before_fetch
     assert 'git -C "$repo" ls-remote --exit-code origin refs/heads/main' in launcher
+    assert "GIT_TERMINAL_PROMPT=0 timeout --signal=TERM --kill-after=2s 5s" in launcher
+    assert 'command -v timeout >/dev/null' in launcher
+    assert 'current_main="$(origin_main_sha 2>/dev/null || true)"' in launcher
+    assert 'if ! current_main="$(origin_main_sha)"; then' in launcher
+    assert "OCI_DEPLOY_MAIN_UNAVAILABLE phase=launcher_lock_acquired" in launcher
+    assert "OCI_DEPLOY_MAIN_INVALID phase=launcher_lock_acquired" in launcher
+    assert launcher.index('if ! current_main="$(origin_main_sha)"; then') < before_fetch
     assert 'current_main' in launcher
     assert 'flock -w 120 8' not in launcher
     assert 'CHESS_STUDIO_HOST_LOCK_HELD=1 CHESS_STUDIO_CHECKOUT_READY=1 exec /bin/bash' in launcher
