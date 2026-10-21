@@ -7,8 +7,49 @@ only nodes reachable from the default glTF scene, including repeated mesh uses.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
+import struct
 from pathlib import Path
+
+
+def read_glb_json(path: Path) -> dict:
+    """Parse glTF 2.0 JSON chunk without interpreting compressed BIN buffer layout.
+
+    EXT_meshopt_compression can have logical buffer sizes differing from the
+    on-disk compressed BIN chunk. Accessor.count remains the authoritative
+    decoded geometry count. No decompression is required for this census.
+    """
+    data = path.read_bytes()
+    if len(data) < 20:
+        raise ValueError(f"{path}: truncated GLB header")
+    magic, version, total_length = struct.unpack_from("<4sII", data, 0)
+    if magic != b"glTF" or version != 2 or total_length != len(data):
+        raise ValueError(f"{path}: invalid GLB header")
+    offset = 12
+    document = None
+    bin_chunks = 0
+    chunk_index = 0
+    while offset < total_length:
+        if offset + 8 > total_length:
+            raise ValueError(f"{path}: truncated GLB chunk header")
+        chunk_length, chunk_type = struct.unpack_from("<II", data, offset)
+        offset += 8
+        if chunk_length % 4 or offset + chunk_length > total_length:
+            raise ValueError(f"{path}: truncated or unaligned GLB chunk")
+        if chunk_index == 0 and chunk_type != 0x4E4F534A:
+            raise ValueError(f"{path}: JSON must be first GLB chunk")
+        if chunk_type == 0x4E4F534A:
+            if document is not None:
+                raise ValueError(f"{path}: duplicate GLB JSON chunk")
+            document = json.loads(data[offset:offset + chunk_length].decode("utf-8").rstrip(" \t\r\n\0"))
+        elif chunk_type == 0x004E4942:
+            bin_chunks += 1
+        offset += chunk_length
+        chunk_index += 1
+    if not isinstance(document, dict) or bin_chunks != 1:
+        raise ValueError(f"{path}: expected JSON and one BIN chunk")
+    return document
 
 
 def _accessor_count(accessors, index: int) -> int:
@@ -99,20 +140,53 @@ def census_scene(document: dict, *, top: int = 12) -> dict:
     }
 
 
+def render_census_markdown(reports: list[dict]) -> str:
+    """CI geometry report: potential shell cost, not observed renderer work."""
+    lines = [
+        "### War Room · exported GLB geometry census", "",
+        "Potential triangle/primitive counts assume every shell node is visible. "
+        "**Not** actual GPU draw calls, shadows, culling or FPS.", "",
+        "| GLB | SHA-256 | Potential triangles | Unique triangles | Mesh instances | Primitive instances | Bytes |",
+        "| --- | --- | ---: | ---: | ---: | ---: | ---: |",
+    ]
+    for row in reports:
+        lines.append(
+            f"| {Path(row['file']).name} | {row['sha256']} | "
+            f"{row['potentialTriangles']:,} | {row['uniqueMeshTriangles']:,} | "
+            f"{row['meshInstances']:,} | {row['primitiveInstances']:,} | {row['glbBytes']:,} |"
+        )
+        lines.extend([
+            "", f"**Largest nodes — {Path(row['file']).name}**", "",
+            "| Node | Mesh | Potential triangles |", "| --- | --- | ---: |",
+        ])
+        for node in row["topNodes"]:
+            lines.append(f"| {node['node']} | {node['mesh']} | {node['triangles']:,} |")
+    return "\n".join(lines) + "\n"
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("glb", nargs="+", type=Path, help="exported War Room GLB(s)")
     parser.add_argument("--top", type=int, default=12, help="largest scene nodes (default 12)")
     parser.add_argument("--json", action="store_true", help="machine-readable JSON")
+    parser.add_argument("--output-json", type=Path, help="write geometry JSON artifact")
+    parser.add_argument("--summary-file", type=Path, help="append Markdown to CI step summary")
     args = parser.parse_args(argv)
     if args.top < 0:
         parser.error("--top cannot be negative")
-    from compare_glb_semantics import read_glb  # reuse the strict existing GLB reader
-
     reports = []
     for path in args.glb:
-        document, _ = read_glb(path)
-        reports.append({"file": str(path), "glbBytes": path.stat().st_size, **census_scene(document, top=args.top)})
+        document = read_glb_json(path)
+        report = {"file": str(path), "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+                  "glbBytes": path.stat().st_size, **census_scene(document, top=args.top)}
+        if report["meshInstances"] <= 0 or report["potentialTriangles"] <= 0:
+            raise ValueError(f"{path}: exported War Room scene has no renderable geometry")
+        reports.append(report)
+    if args.output_json:
+        args.output_json.write_text(json.dumps(reports, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    if args.summary_file:
+        with args.summary_file.open("a", encoding="utf-8") as handle:
+            handle.write(render_census_markdown(reports))
     if args.json:
         print(json.dumps(reports, indent=2, ensure_ascii=False))
     else:

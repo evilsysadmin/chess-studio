@@ -170,6 +170,17 @@ jobs:
           assert 'WR4_OBS_window_moon' not in source_names
           PY
 
+
+      - name: Audit exported V4 GLB geometry
+        run: |
+          set -euo pipefail
+          python3 -S scripts/blender/war_room_glb_census.py \
+            /tmp/war-room-v4/war-room-v4-shell.glb \
+            --top 20 \
+            --output-json /tmp/war-room-v4/war-room-v4-geometry-census.json \
+            --summary-file "$GITHUB_STEP_SUMMARY"
+          test -s /tmp/war-room-v4/war-room-v4-geometry-census.json
+
       - name: Publish War Room v4 shell
         if: github.event_name == 'workflow_dispatch' || github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository)
         env:

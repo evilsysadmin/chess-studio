@@ -1,10 +1,13 @@
 """Blender-independent tests of exported War Room mesh accounting."""
+import json
+import struct
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'scripts' / 'blender'))
-from war_room_glb_census import census_scene  # noqa: E402
+from war_room_glb_census import census_scene, read_glb_json, render_census_markdown  # noqa: E402
 
 
 def fixture():
@@ -78,6 +81,54 @@ class WarRoomGlbCensusTests(unittest.TestCase):
         doc['scene'] = 5
         with self.assertRaisesRegex(ValueError, 'default scene'):
             census_scene(doc)
+
+    def test_ci_summary_identifies_glb_hash_without_claiming_fps(self):
+        report = {
+            'file': '/tmp/war-room-v3/war-room-v3-shell.glb',
+            'sha256': 'b' * 64,
+            'glbBytes': 1000,
+            **census_scene(fixture(), top=1),
+        }
+        summary = render_census_markdown([report])
+        self.assertIn('war-room-v3-shell.glb', summary)
+        self.assertIn('b' * 64, summary)
+        self.assertIn('| Pillar A | stone | 2 |', summary)
+        self.assertIn('Not** actual GPU draw calls', summary)
+
+    def test_glb_reader_accepts_meshopt_buffer_layout(self):
+        # Meshopt can preserve decoded buffer metadata but store a short
+        # compressed binary chunk; no equality between those lengths required.
+        document = fixture()
+        document["buffers"] = [{"byteLength": 4096, "name": "decoded"}]
+        document["extensionsUsed"] = ["EXT_meshopt_compression"]
+        document["bufferViews"] = [
+            {"byteLength": 40, "extensions": {
+                "EXT_meshopt_compression": {"buffer": 0, "byteOffset": 0,
+                                            "byteLength": 4, "byteStride": 4,
+                                            "count": 10, "mode": "ATTRIBUTES"}
+            }}
+        ]
+        body = json.dumps(document).encode()
+        body += b" " * (-len(body) % 4)
+        binary = b"\0" * 4
+        raw = (struct.pack("<4sII", b"glTF", 2, 12 + 8 + len(body) + 8 + len(binary))
+               + struct.pack("<II", len(body), 0x4E4F534A) + body
+               + struct.pack("<II", len(binary), 0x004E4942) + binary)
+        with tempfile.TemporaryDirectory() as directory:
+            file = Path(directory) / "meshopt.glb"
+            file.write_bytes(raw)
+            decoded = read_glb_json(file)
+            self.assertEqual(census_scene(decoded)["potentialTriangles"], 4)
+            with self.assertRaisesRegex(ValueError, "invalid GLB header"):
+                file.write_bytes(raw[:-1])
+                read_glb_json(file)
+            with self.assertRaisesRegex(ValueError, "JSON must be first"):
+                file.write_bytes(
+                    struct.pack("<4sII", b"glTF", 2, len(raw))
+                    + struct.pack("<II", len(binary), 0x004E4942) + binary
+                    + struct.pack("<II", len(body), 0x4E4F534A) + body
+                )
+                read_glb_json(file)
 
 
 if __name__ == '__main__':
