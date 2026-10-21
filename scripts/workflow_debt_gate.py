@@ -24,6 +24,7 @@ INVENTORY = {
     'capacity-staging.yml': 'capacity-readiness',
     'capacity-virtual-players.yml': 'capacity-readiness',
     'combat-operations-room-blender-art.yml': 'art-generation',
+    'combat-cpu-benchmark.yml': 'performance-diagnostics',
     'chess-football-godot-poc.yml': 'game-runtime-experiment',
     'chesscom-sven-sprite-forge.yml': 'art-quality',
     'chesscom-oss-character-forge.yml': 'art-generation-preview',
