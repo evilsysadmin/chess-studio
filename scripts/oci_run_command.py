@@ -171,10 +171,9 @@ run_deploy() {{
   sudo --non-interactive '{DEPLOY_WRAPPER}' '{sha}' >"$log" 2>&1
   deploy_rc=$?
   set -e
-  # A root launcher may return 0 for a superseded/no-op generation.
-  # Require its exact completion receipt before reporting success to OCI.
+  # rc87 identifies a host-declared supersession; rc86 means no receipt.
   if [ "$deploy_rc" -eq 0 ] && ! grep -q '^CHESS_STUDIO_DEPLOY_OK target=staging repo_ref={sha} ' "$log"; then
-    deploy_rc=86
+    grep -q '^OCI_DEPLOY_SUPERSEDED ' "$log" && deploy_rc=87 || deploy_rc=86
   fi
   return "$deploy_rc"
 }}
@@ -186,7 +185,7 @@ emit_failure() {{
   printf 'OCI_DEPLOY_REMOTE_FAILURE rc=%s\n' "$1"
   grep -E '^OCI_DEPLOY_(LOCK|MAIN|SUPERSEDED)' "$log" | tail -n 8 || true
   emit_version
-  [ "$1" -ne 86 ] || exit 86
+  case "$1" in 86|87) exit "$1";; esac
 }}
 emit_success() {{
   printf 'OCI_RUN_COMMAND_AGENT version=%s\n' "${{agent_version:-unknown}}"
@@ -678,10 +677,16 @@ def local_deploy_diagnostics_self_test() -> None:
                 encoding="utf-8",
             )
             superseded = run_script()
-            assert superseded.returncode == 86, superseded.stderr[-300:]
-            assert "OCI_DEPLOY_REMOTE_FAILURE rc=86" in superseded.stdout
+            assert superseded.returncode == 87, superseded.stderr[-300:]
+            assert "OCI_DEPLOY_REMOTE_FAILURE rc=87" in superseded.stdout
             assert "CHESS_STUDIO_DEPLOY_OK" not in superseded.stdout
             assert "OCI_DEPLOY_SUPERSEDED phase=launcher_lock_acquired" in superseded.stdout
+            # A generic rc0 with no host receipt remains distinct from supersession.
+            deploy_path.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+            silent = run_script()
+            assert silent.returncode == 86, silent.stderr[-300:]
+            assert "OCI_DEPLOY_REMOTE_FAILURE rc=86" in silent.stdout
+            assert "OCI_DEPLOY_SUPERSEDED" not in silent.stdout
 
             replacement_path = root / "new-launcher"
             replacement_path.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
