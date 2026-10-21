@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { clearStorageMemoryFallback } from '../safeStorage.js';
+import r2Manifest from '../assets/r2-assets-manifest.json';
 import {
   DEFAULT_WAR_ROOM_VARIANT,
   DEFAULT_WAR_ROOM_VARIANT_PREFERENCE,
@@ -112,7 +113,7 @@ describe('War Room staging variant', () => {
     expect(WAR_ROOM_VARIANTS.map(({ id }) => id)).toEqual(['classic', 'v2', 'v3', 'v4']);
     expect(warRoomVariantDefinition('v4').shell).toBe('blender');
     expect(warRoomVariantRuntimeModelUrl('v4', { buildSha: 'abc123' }))
-      .toBe('https://assets.chess-studio.shadowops.dpdns.org/war-room/v4/runtime/war-room-v4-shell-e125b2c95dd5517e.glb');
+      .toBe(r2Manifest.assets['warRoom.v4.runtime'].url);
     expect(warRoomVariantDefinition('classic').shell).toBe('procedural');
     expect(warRoomVariantDefinition('v2').shell).toBe('blender');
     expect(warRoomVariantDefinition('v3').shell).toBe('blender');

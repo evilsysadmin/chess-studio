@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
+import r2Manifest from '../assets/r2-assets-manifest.json';
 import { warRoomVariantRuntimeModelUrl } from './WarRoomVariant.js';
 import {
   WAR_ROOM_V4_FLAME_NAMES,
@@ -13,7 +14,13 @@ import { installWarRoomV3FireAnimation } from './WarRoomV3Fire.js';
 describe('War Room v4 runtime shell', () => {
   it('reuses the exact byte-identical V4 immutable model across builds', () => {
     const expected = warRoomVariantRuntimeModelUrl('v4', { buildSha: 'abc123' });
-    expect(expected).toBe('https://assets.chess-studio.shadowops.dpdns.org/war-room/v4/runtime/war-room-v4-shell-e125b2c95dd5517e.glb');
+    const asset = r2Manifest.assets['warRoom.v4.runtime'];
+    // Immutable version comes from the audited manifest, not a stale hash
+    // copied into tests each time a reviewed GLB is promoted.
+    expect(asset.sha256).toMatch(/^[0-9a-f]{64}$/);
+    expect(asset.key).toBe(`war-room/v4/runtime/war-room-v4-shell-${asset.sha256.slice(0, 16)}.glb`);
+    expect(asset.url).toBe(`${r2Manifest.baseUrl}/${asset.key}`);
+    expect(expected).toBe(asset.url);
     expect(WAR_ROOM_V4_RUNTIME_MODEL_URL).not.toBe(WAR_ROOM_V3_RUNTIME_MODEL_URL);
     expect(WAR_ROOM_V4_RUNTIME_MODEL_URL).toBe(expected);
     expect(warRoomV4ModelUrl({ buildSha: 'abc123' })).toBe(expected);
