@@ -59,7 +59,7 @@ const EMERGENCY_CPU_MISS_TEMPO_SCORE = 90;
 // sólo existe en la rama de éxito, ponderada por su probabilidad real.
 // El máximo riesgo mide exposición táctica, no predice qué elegirá el rival.
 // Sin registro coherente, no se fabrican porcentajes ni amenazas.
-function emergencyRecapturePenalty(after, move, registry, focus, branchChance = 1, threatenedSquare = move.to) {
+function emergencyRecapturePenalty(after, move, registry, focus, branchChance = 1, threatenedSquare = move.to, replies = null) {
   // Una promoción sólo cambia el tipo si la captura acierta. Tras un fallo,
   // el peón sigue en su casilla inicial y puede ser atacado normalmente.
   if (!registry || (move.promotion && threatenedSquare !== move.from)
@@ -69,7 +69,7 @@ function emergencyRecapturePenalty(after, move, registry, focus, branchChance = 
     || !pieceSquareMatches(original, move.from)) return 0;
   const moved = { ...original, square: threatenedSquare };
   let maxChance = 0;
-  for (const reply of after.moves({ verbose: true })) {
+  for (const reply of replies || after.moves({ verbose: true })) {
     if (!reply.captured || reply.captured !== move.piece || capturedSquareFor(reply) !== threatenedSquare) continue;
     const enemy = registry[reply.from];
     if (!enemy || enemy.color === move.color || enemy.type !== reply.piece
@@ -86,12 +86,12 @@ function emergencyRecapturePenalty(after, move, registry, focus, branchChance = 
 // En una réplica el rival sólo puede realizar UNA captura: se toma el mayor
 // riesgo medido para otra pieza propia, sin sumar ataques independientes.
 // Un objetivo que no concuerda con el FEN o el registro no aporta riesgo.
-function emergencyOtherUnitExposurePenalty(after, move, registry, focus, branchChance = 1, excludedSquare = move.to) {
+function emergencyOtherUnitExposurePenalty(after, move, registry, focus, branchChance = 1, excludedSquare = move.to, replies = null) {
   if (!registry || move.piece === 'k') return 0;
   const chance = Math.max(0, Math.min(1, Number(branchChance) || 0));
   if (chance <= 0) return 0;
   let worst = 0;
-  for (const reply of after.moves({ verbose: true })) {
+  for (const reply of replies || after.moves({ verbose: true })) {
     if (!reply.captured || reply.captured === 'k') continue;
     const targetSquare = capturedSquareFor(reply);
     if (targetSquare === excludedSquare) continue;
@@ -119,10 +119,13 @@ export function emergencyCombatMissExposurePenalty(fen, move, registry, focus = 
   if (!move?.captured || !registry || !Number.isFinite(missChance) || missChance <= 0) return 0;
   try {
     const afterMiss = new Chess(passTurnFen(fen));
-    if (afterMiss.moves().length === 0) return 0;
+    // Ambos riesgos comparten las mismas respuestas legales del turno perdido.
+    // Esto también comprueba que el fallo no crea un falso ahogado/mate.
+    const replies = afterMiss.moves({ verbose: true });
+    if (!replies.length) return 0;
     return Math.max(
-      emergencyRecapturePenalty(afterMiss, move, registry, focus, missChance, move.from),
-      emergencyOtherUnitExposurePenalty(afterMiss, move, registry, focus, missChance, move.from),
+      emergencyRecapturePenalty(afterMiss, move, registry, focus, missChance, move.from, replies),
+      emergencyOtherUnitExposurePenalty(afterMiss, move, registry, focus, missChance, move.from, replies),
     );
   } catch {
     return 0;
@@ -164,9 +167,11 @@ export function emergencyCombatCpuSuggestion(fen, registry = null, focus = {}, d
       // Sin engine, una dama expuesta a una recaptura legal no es un premio
       // gratis. Para capturas, sólo valoramos la rama cuyo éxito es medible.
       if (measuredCapture) {
+        // Una sola generación de respuestas para el riesgo propio y aliado.
+        const replies = probe.moves({ verbose: true });
         score -= Math.max(
-          emergencyRecapturePenalty(probe, move, registry, focus, captureSuccessChance),
-          emergencyOtherUnitExposurePenalty(probe, move, registry, focus, captureSuccessChance),
+          emergencyRecapturePenalty(probe, move, registry, focus, captureSuccessChance, move.to, replies),
+          emergencyOtherUnitExposurePenalty(probe, move, registry, focus, captureSuccessChance, move.to, replies),
         );
         if (move.captured && captureSuccessChance < 1) {
           score -= emergencyCombatMissExposurePenalty(fen, move, registry, focus, 1 - captureSuccessChance);
