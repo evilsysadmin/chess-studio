@@ -114,6 +114,54 @@ describe('combat controller support', () => {
     // No se atribuye a la IA enemiga veteranía que sólo tiene el ejército humano.
   });
 
+  it('no atribuye una captura a un veterano con casilla desfasada', () => {
+    const fen = 'r7/7k/8/8/8/8/8/Q6K b - - 0 1';
+    const attacker = { id: 'b-r-a8', square: 'a8', color: 'b', type: 'r' };
+    const defender = {
+      id: 'w-q-a1', identityId: 'human-queen-vet',
+      square: 'a1', color: 'w', type: 'q', strengthPoints: 5,
+    };
+    const remote = {
+      from: 'a8', to: 'a1',
+      candidates: [
+        { from: 'a8', to: 'a1', moveKey: 'a8a1', chessScoreCp: 20, isLegal: true },
+        { from: 'a8', to: 'b8', moveKey: 'a8b8', chessScoreCp: 0, isLegal: true },
+      ],
+    };
+    const good = annotateCombatCandidates(fen, { a8: attacker, a1: defender }, remote);
+    expect(good.candidates[0]).toMatchObject({ combatReady: true, enemyPersistentValue: 5 });
+    // Ojo: la casilla indexada a1 sigue existiendo, pero su propia identidad
+    // afirma estar en a2. No se debe premiar la captura de esa identidad.
+    const staleVictim = annotateCombatCandidates(fen, {
+      a8: attacker, a1: { ...defender, square: 'a2' },
+    }, remote);
+    expect(staleVictim.candidates[0].combatReady).not.toBe(true);
+    expect(selectCombatAwareRemoteSuggestion(staleVictim)).toBe(staleVictim);
+    const staleAttacker = annotateCombatCandidates(fen, {
+      a8: { ...attacker, square: 'b8' }, a1: defender,
+    }, remote);
+    expect(staleAttacker.candidates.every((candidate) => candidate.combatReady !== true)).toBe(true);
+    // Compatibilidad: el snapshot legacy que no tenía square sigue midiendo.
+    const legacy = annotateCombatCandidates(fen, {
+      a8: { ...attacker, square: undefined }, a1: { ...defender, square: undefined },
+    }, remote);
+    expect(legacy.candidates[0]).toMatchObject({ combatReady: true, enemyPersistentValue: 5 });
+  });
+
+  it('en passant valida la casilla real del peón capturado, no el destino vacío', () => {
+    const fen = '7k/8/8/3pP3/8/8/8/7K w - d6 0 1';
+    const attacker = { id: 'w-p-e5', square: 'e5', color: 'w', type: 'p' };
+    const victim = { id: 'b-p-d5', square: 'd5', color: 'b', type: 'p', identityId: 'enemy-old-vet', strengthPoints: 2 };
+    const remote = { from: 'e5', to: 'd6', candidates: [
+      { from: 'e5', to: 'd6', moveKey: 'e5d6', chessScoreCp: 10, isLegal: true },
+    ] };
+    expect(annotateCombatCandidates(fen, { e5: attacker, d5: victim }, remote).candidates[0])
+      .toMatchObject({ combatReady: true, enemyPersistentValue: 2 });
+    expect(annotateCombatCandidates(fen, {
+      e5: attacker, d5: { ...victim, square: 'd6' },
+    }, remote).candidates[0].combatReady).not.toBe(true);
+  });
+
   it('desmiente mates inventados por el shortlist y conserva los mates reales', () => {
     const fen = '7k/8/5KQ1/8/8/8/8/8 w - - 0 1';
     const registry = {

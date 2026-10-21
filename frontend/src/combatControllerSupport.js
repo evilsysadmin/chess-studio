@@ -113,12 +113,21 @@ function focusStreakFor(focus, attackerColor, defenderId) {
 // Una única fuente de hechos para la shortlist remota y la CPU local:
 // verifica captura, defensor real (incluido al paso), posibilidad de golpe
 // forzado y foco actual. Nunca inventa porcentajes si falta el registro.
+// Los snapshots antiguos pueden omitir square; si la incluyen, debe coincidir
+// con el FEN. Nunca atribuir XP/veteranía a una identidad desplazada.
+function pieceSquareMatches(piece, square) {
+  return piece?.square == null || piece.square === square;
+}
+
 function measuredCombatCapture(fen, registry, move, focus) {
   if (!move.captured) return null;
   const attacker = registry?.[move.from];
-  if (!attacker || attacker.color !== move.color || attacker.type !== move.piece) return null;
-  const defender = registry?.[capturedSquareFor(move)];
-  if (!defender || defender.color === attacker.color || defender.type !== move.captured) return null;
+  if (!attacker || attacker.color !== move.color || attacker.type !== move.piece
+    || !pieceSquareMatches(attacker, move.from)) return null;
+  const defenderSquare = capturedSquareFor(move);
+  const defender = registry?.[defenderSquare];
+  if (!defender || defender.color === attacker.color || defender.type !== move.captured
+    || !pieceSquareMatches(defender, defenderSquare)) return null;
   const forcedHit = isForcedCombatCapture(fen, move.from, move.to, move.promotion);
   return {
     hitChance: forcedHit ? 1 : hitChance(attacker, defender, focusStreakFor(focus, attacker.color, defender.id)),
@@ -153,7 +162,8 @@ export function annotateCombatCandidates(fen, registry, remote, focus = {}, doct
     if (!move) return candidate;
 
     const attacker = registry[move.from];
-    if (!attacker || attacker.color !== move.color || attacker.type !== move.piece) return candidate;
+    if (!attacker || attacker.color !== move.color || attacker.type !== move.piece
+      || !pieceSquareMatches(attacker, move.from)) return candidate;
 
     // Comprobar el mate contra el FEN, nunca confiar en una marca de la API.
     let verifiedCandidate = candidate;
