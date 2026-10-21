@@ -153,3 +153,56 @@ jobs:
           if-no-files-found: error
           retention-days: 7
           compression-level: 0
+
+  runtime-visual-proof:
+    name: V3 · exact PR GLB in browser
+    needs: render
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      VITE_WAR_ROOM_VARIANTS_ENABLE: '1'
+      VITE_APP_VISUAL_CAPTURE: 'true'
+      APP_VISUAL_ARTIFACT: '1'
+      APP_VISUAL_WARROOM_VARIANTS: 'v3'
+      APP_VISUAL_EXPECTED_WAR_ROOM_V3_REVISION: ${{ github.event.pull_request.head.sha }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      # Verify PR-authoring and staged browser payload are byte-identical.
+      # A successful Blender preview alone does not prove runtime provenance.
+      - uses: actions/download-artifact@v7
+        with:
+          name: war-room-v3-${{ github.event.pull_request.number }}
+          path: ${{ github.workspace }}/.artifacts/war-room-v3-authored
+
+      - name: Verify exact V3 staged GLB bytes
+        env:
+          AUTHORED_GLB: ${{ github.workspace }}/.artifacts/war-room-v3-authored/war-room-v3-shell.glb
+        run: |
+          set -euo pipefail
+          test -s "$AUTHORED_GLB"
+          revision_url="https://assets.chess-studio.shadowops.dpdns.org/war-room/v3/staging/revisions/${APP_VISUAL_EXPECTED_WAR_ROOM_V3_REVISION}.glb"
+          curl --fail --location --retry 3 --retry-delay 2 --silent --show-error \
+            "$revision_url" --output /tmp/war-room-v3-staged.glb
+          cmp "$AUTHORED_GLB" /tmp/war-room-v3-staged.glb
+          sha256sum "$AUTHORED_GLB" /tmp/war-room-v3-staged.glb
+
+      - uses: ./.github/actions/setup-browser-e2e
+        with:
+          browser-scope: chromium
+
+      - name: Capture V3 authored PR model · desktop and Android
+        working-directory: e2e
+        run: ./node_modules/.bin/playwright test war-room-visual-artifact.spec.js --workers=1
+
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: war-room-v3-runtime-${{ github.event.pull_request.number }}
+          path: .artifacts/app-visual/war-room-v3*
+          if-no-files-found: warn
+          retention-days: 7
+          compression-level: 0
