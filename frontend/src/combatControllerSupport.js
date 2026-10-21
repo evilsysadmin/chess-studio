@@ -152,61 +152,69 @@ export function emergencyCombatCpuSuggestion(fen, registry = null, focus = {}, d
     // probabilidades completas de fallo. Nunca cruza FENs, turnos ni usuarios.
     let missedTurn = null;
     let missedTurnChecked = false;
+    // Ya hemos enumerado las candidatas sobre chess: reutilizar el mismo
+    // tablero, siempre restaurándolo tras analizar cada jugada.
+    const probe = chess;
     const ranked = moves.map((move) => {
-      const probe = new Chess(fen);
       let applied = null;
       try { applied = probe.move({ from: move.from, to: move.to, promotion: move.promotion || 'q' }); } catch { applied = null; }
       if (!applied) return null;
-      let score = 0;
-      if (probe.isCheckmate()) score += 10000;
-      let captureSuccessChance = 1;
-      let measuredCapture = !move.captured;
-      if (move.captured) {
-        const chessCaptureScore = 100 + (EMERGENCY_CPU_PIECE_VALUE[move.captured] || 0) * 10
-          - (EMERGENCY_CPU_PIECE_VALUE[move.piece] || 0);
-        const facts = registry ? measuredCombatCapture(fen, registry, move, focus) : null;
-        // Con hechos completos, una captura que puede fallar no vale lo
-        // mismo que una captura garantizada. Un fallo también consume turno.
-        // Si el registro está incompleto mantenemos el fallback histórico.
-        captureSuccessChance = facts?.hitChance ?? 0;
-        measuredCapture = Boolean(facts);
-        score += facts
-          ? facts.hitChance * chessCaptureScore - (1 - facts.hitChance) * EMERGENCY_CPU_MISS_TEMPO_SCORE
-          : chessCaptureScore;
-      }
-      // Sin engine, una dama expuesta a una recaptura legal no es un premio
-      // gratis. Para capturas, sólo valoramos la rama cuyo éxito es medible.
-      if (measuredCapture) {
-        // Una sola generación de respuestas para el riesgo propio y aliado.
-        const replies = probe.moves({ verbose: true });
-        score -= Math.max(
-          emergencyRecapturePenalty(probe, move, registry, focus, captureSuccessChance, move.to, replies),
-          emergencyOtherUnitExposurePenalty(probe, move, registry, focus, captureSuccessChance, move.to, replies),
-        );
-        if (move.captured && captureSuccessChance < 1) {
-          if (!missedTurnChecked) {
-            missedTurnChecked = true;
-            try {
-              const board = new Chess(passTurnFen(fen));
-              missedTurn = { board, replies: board.moves({ verbose: true }) };
-            } catch {
-              missedTurn = null;
+      try {
+        let score = 0;
+        if (probe.isCheckmate()) score += 10000;
+        let captureSuccessChance = 1;
+        let measuredCapture = !move.captured;
+        if (move.captured) {
+          const chessCaptureScore = 100 + (EMERGENCY_CPU_PIECE_VALUE[move.captured] || 0) * 10
+            - (EMERGENCY_CPU_PIECE_VALUE[move.piece] || 0);
+          const facts = registry ? measuredCombatCapture(fen, registry, move, focus) : null;
+          // Con hechos completos, una captura que puede fallar no vale lo
+          // mismo que una captura garantizada. Un fallo también consume turno.
+          // Si el registro está incompleto mantenemos el fallback histórico.
+          captureSuccessChance = facts?.hitChance ?? 0;
+          measuredCapture = Boolean(facts);
+          score += facts
+            ? facts.hitChance * chessCaptureScore - (1 - facts.hitChance) * EMERGENCY_CPU_MISS_TEMPO_SCORE
+            : chessCaptureScore;
+        }
+        // Sin engine, una dama expuesta a una recaptura legal no es un premio
+        // gratis. Para capturas, sólo valoramos la rama cuyo éxito es medible.
+        if (measuredCapture) {
+          // Una sola generación de respuestas para el riesgo propio y aliado.
+          const replies = probe.moves({ verbose: true });
+          score -= Math.max(
+            emergencyRecapturePenalty(probe, move, registry, focus, captureSuccessChance, move.to, replies),
+            emergencyOtherUnitExposurePenalty(probe, move, registry, focus, captureSuccessChance, move.to, replies),
+          );
+          if (move.captured && captureSuccessChance < 1) {
+            if (!missedTurnChecked) {
+              missedTurnChecked = true;
+              try {
+                const board = new Chess(passTurnFen(fen));
+                missedTurn = { board, replies: board.moves({ verbose: true }) };
+              } catch {
+                missedTurn = null;
+              }
+            }
+            if (missedTurn) {
+              score -= measuredMissExposure(
+                missedTurn.board, missedTurn.replies, move, registry, focus, 1 - captureSuccessChance,
+              );
             }
           }
-          if (missedTurn) {
-            score -= measuredMissExposure(
-              missedTurn.board, missedTurn.replies, move, registry, focus, 1 - captureSuccessChance,
-            );
-          }
         }
+        if (move.promotion) score += 70 + (EMERGENCY_CPU_PIECE_VALUE[move.promotion] || 0) * 4;
+        if (probe.isCheck()) score += 18;
+        if (move.flags?.includes('k') || move.flags?.includes('q')) score += 2;
+        // Misma doctrina factual que la shortlist remota, acotada a ±6.
+        // No altera mates, grandes diferencias materiales ni la ruta clásica.
+        score += combatDoctrineBonusForMove(doctrine, move);
+        return { from: move.from, to: move.to, promotion: move.promotion || undefined, score, key: `${move.from}${move.to}${move.promotion || ''}` };
+      } finally {
+        // chess.js restaura FEN, enroque, turno y al paso de esta candidata.
+        // La siguiente se evalúa siempre desde la posición ORIGINAL.
+        probe.undo();
       }
-      if (move.promotion) score += 70 + (EMERGENCY_CPU_PIECE_VALUE[move.promotion] || 0) * 4;
-      if (probe.isCheck()) score += 18;
-      if (move.flags?.includes('k') || move.flags?.includes('q')) score += 2;
-      // Misma doctrina factual que la shortlist remota, acotada a ±6.
-      // No altera mates, grandes diferencias materiales ni la ruta clásica.
-      score += combatDoctrineBonusForMove(doctrine, move);
-      return { from: move.from, to: move.to, promotion: move.promotion || undefined, score, key: `${move.from}${move.to}${move.promotion || ''}` };
     }).filter(Boolean);
     ranked.sort((a, b) => b.score - a.score || a.key.localeCompare(b.key));
     const best = ranked[0];
