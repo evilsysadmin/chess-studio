@@ -127,6 +127,35 @@ function measuredCombatCapture(fen, registry, move, focus) {
   };
 }
 
+// Amenaza de réplica inmediata contra un veterano, sólo tras una jugada
+// tranquila. Si la captura propia falla, el tablero resultante no coincide
+// con chess.js: no medimos un futuro que no podemos demostrar.
+// Esto NO predice qué elegirá el jugador; es el máximo riesgo *condicional*
+// de acierto entre capturas legales en la respuesta siguiente.
+function measuredVeteranCounterattack(fen, registry, move, veteran, focus) {
+  const persistentValue = veteran.identityId && veteran.type !== 'k'
+    ? Math.max(0, derivedLevel(veteran) - 1) : 0;
+  if (!persistentValue || move.captured || move.promotion || /[kq]/.test(move.flags || '')) return null;
+  try {
+    const next = new Chess(fen);
+    next.move({ from: move.from, to: move.to, promotion: move.promotion || 'q' });
+    let maxHitChance = 0;
+    const movedPiece = { ...veteran, square: move.to };
+    for (const reply of next.moves({ verbose: true })) {
+      if (!reply.captured || reply.captured !== move.piece || capturedSquareFor(reply) !== move.to) continue;
+      const counter = registry[reply.from];
+      // Ningún defensor desconocido puede convertirse en "riesgo cero".
+      if (!counter || counter.color === veteran.color || counter.type !== reply.piece) return null;
+      const forced = isForcedCombatCapture(next.fen(), reply.from, reply.to, reply.promotion);
+      const chance = forced ? 1 : hitChance(counter, movedPiece, focusStreakFor(focus, counter.color, veteran.id));
+      maxHitChance = Math.max(maxHitChance, chance);
+    }
+    return { ownPersistentValue: persistentValue, ownCasualtyRisk: maxHitChance };
+  } catch {
+    return null;
+  }
+}
+
 // Adjunta sólo hechos que Combat conoce de verdad en el momento de elegir:
 // probabilidad de que una captura conecte y veteranía persistente del objetivo.
 // Si FEN/registro no permiten demostrar esos datos, la candidata permanece
@@ -169,11 +198,16 @@ export function annotateCombatCandidates(fen, registry, remote, focus = {}, doct
     const doctrineBonusCp = combatDoctrineBonusForMove(doctrine, move);
 
     if (!move.captured) {
-      return { ...verifiedCandidate, combatReady: true, hitChance: 1, enemyValue: 0, enemyPersistentValue: 0, doctrineBonusCp };
+      const counterattack = measuredVeteranCounterattack(fen, registry, move, attacker, focus);
+      return {
+        ...verifiedCandidate, combatReady: true, hitChance: 1, enemyValue: 0,
+        enemyPersistentValue: 0, ownPersistentValue: 0, ownCasualtyRisk: 0,
+        ...counterattack, doctrineBonusCp,
+      };
     }
 
     const facts = measuredCombatCapture(fen, registry, move, focus);
-    return facts ? { ...verifiedCandidate, combatReady: true, ...facts, doctrineBonusCp } : candidate;
+    return facts ? { ...verifiedCandidate, combatReady: true, ...facts, ownPersistentValue: 0, ownCasualtyRisk: 0, doctrineBonusCp } : candidate;
   });
 
   return { ...remote, candidates: enriched };
