@@ -10,6 +10,7 @@ import argparse
 import hashlib
 import json
 import struct
+import sys
 from pathlib import Path
 
 
@@ -202,6 +203,28 @@ def render_census_markdown(reports: list[dict]) -> str:
     return "\n".join(lines) + "\n"
 
 
+def geometry_budget_violations(
+    report: dict, *, max_triangles: int | None = None, max_bytes: int | None = None,
+) -> list[str]:
+    """Compare an authored shell against explicit regression limits.
+
+    These limits concern exported potential geometry, not runtime FPS or draws.
+    Each budget belongs to the versioned Blender workflow, so art changes may
+    adjust the limit only with an explicit, reviewed diff and visual evidence.
+    """
+    violations = []
+    if max_triangles is not None and report["potentialTriangles"] > max_triangles:
+        violations.append(
+            f"{report['file']}: potential triangles {report['potentialTriangles']:,} "
+            f"exceed budget {max_triangles:,}"
+        )
+    if max_bytes is not None and report["glbBytes"] > max_bytes:
+        violations.append(
+            f"{report['file']}: GLB bytes {report['glbBytes']:,} exceed budget {max_bytes:,}"
+        )
+    return violations
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("glb", nargs="+", type=Path, help="exported War Room GLB(s)")
@@ -209,9 +232,15 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--json", action="store_true", help="machine-readable JSON")
     parser.add_argument("--output-json", type=Path, help="write geometry JSON artifact")
     parser.add_argument("--summary-file", type=Path, help="append Markdown to CI step summary")
+    parser.add_argument("--max-triangles", type=int, help="optional upper bound for exported potential triangles")
+    parser.add_argument("--max-bytes", type=int, help="optional upper bound for compressed GLB size")
     args = parser.parse_args(argv)
     if args.top < 0:
         parser.error("--top cannot be negative")
+    if args.max_triangles is not None and args.max_triangles <= 0:
+        parser.error("--max-triangles must be positive")
+    if args.max_bytes is not None and args.max_bytes <= 0:
+        parser.error("--max-bytes must be positive")
     reports = []
     for path in args.glb:
         document = read_glb_json(path)
@@ -219,12 +248,31 @@ def main(argv: list[str] | None = None) -> int:
                   "glbBytes": path.stat().st_size, **census_scene(document, top=args.top)}
         if report["meshInstances"] <= 0 or report["potentialTriangles"] <= 0:
             raise ValueError(f"{path}: exported War Room scene has no renderable geometry")
+        if args.max_triangles is not None or args.max_bytes is not None:
+            budget_errors = geometry_budget_violations(
+                report, max_triangles=args.max_triangles, max_bytes=args.max_bytes,
+            )
+            report["geometryBudget"] = {
+                "maxTriangles": args.max_triangles,
+                "maxBytes": args.max_bytes,
+                "status": "fail" if budget_errors else "pass",
+                "violations": budget_errors,
+            }
         reports.append(report)
     if args.output_json:
         args.output_json.write_text(json.dumps(reports, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     if args.summary_file:
         with args.summary_file.open("a", encoding="utf-8") as handle:
             handle.write(render_census_markdown(reports))
+            for report in reports:
+                if "geometryBudget" in report:
+                    budget = report["geometryBudget"]
+                    handle.write(
+                        f"**Geometry budget for {Path(report['file']).name}: "
+                        f"{budget['status'].upper()}** "
+                        f"(triangles <= {budget['maxTriangles']}, "
+                        f"bytes <= {budget['maxBytes']}).\\n\\n"
+                    )
     if args.json:
         print(json.dumps(reports, indent=2, ensure_ascii=False))
     else:
@@ -238,7 +286,14 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"  {node['triangles']:>10,} tri  {node['node']}  [{node['mesh']}]")
             for material in row["materialCosts"]:
                 print(f"  {material['potentialTriangles']:>10,} tri  material: {material['material']}")
-    return 0
+    failures = [
+        error
+        for report in reports
+        for error in report.get("geometryBudget", {}).get("violations", [])
+    ]
+    for error in failures:
+        print(f"GEOMETRY REGRESSION: {error}", file=sys.stderr)
+    return 2 if failures else 0
 
 
 if __name__ == "__main__":

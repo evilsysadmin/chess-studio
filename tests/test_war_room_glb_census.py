@@ -7,7 +7,7 @@ import unittest
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'scripts' / 'blender'))
-from war_room_glb_census import census_scene, read_glb_json, render_census_markdown  # noqa: E402
+from war_room_glb_census import census_scene, geometry_budget_violations, main, read_glb_json, render_census_markdown  # noqa: E402
 
 
 def fixture():
@@ -131,6 +131,25 @@ class WarRoomGlbCensusTests(unittest.TestCase):
         doc['meshes'][0]['primitives'][0]['material'] = None
         with self.assertRaisesRegex(ValueError, 'invalid glTF material'):
             census_scene(doc)
+
+    def test_geometry_budget_boundary_and_failure_cause(self):
+        report = {'file': 'candidate-v4.glb', 'potentialTriangles': 107888,
+                  'glbBytes': 3021880}
+        self.assertEqual(geometry_budget_violations(
+            report, max_triangles=107888, max_bytes=3021880), [])
+        self.assertEqual(len(geometry_budget_violations(
+            report, max_triangles=100000, max_bytes=3000000)), 2)
+        self.assertIn('107,888', geometry_budget_violations(
+            report, max_triangles=100000)[0])
+        self.assertEqual(geometry_budget_violations(report), [])
+
+    def test_budget_validation_cli_accepts_only_positive_thresholds(self):
+        with self.assertRaises(SystemExit) as error:
+            main(['not-present.glb', '--max-triangles', '0'])
+        self.assertEqual(error.exception.code, 2)
+        with self.assertRaises(SystemExit) as error:
+            main(['not-present.glb', '--max-bytes', '-1'])
+        self.assertEqual(error.exception.code, 2)
 
     def test_glb_reader_accepts_meshopt_buffer_layout(self):
         # Meshopt can preserve decoded buffer metadata but store a short
