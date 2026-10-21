@@ -9,7 +9,7 @@ Este archivo complementa el `AGENTS.md` raíz para cambios bajo `frontend/src/`.
 - Resiliencia/fallbacks: `docs/operations/resilience-degraded-mode.md`.
 - Home/Blender: `skills/home-blender/SKILL.md`, `docs/home-castle-life-minimal.md`, `docs/VISUAL_LANGUAGE.md`.
 - War Room: `docs/operations/war-room-blender-pipeline.md`, `docs/operations/war-room-parity.md`, `docs/operations/war-room-visual-freeze.md`.
-- Chronicles/Tactics: **solo enlace externo** mediante `labChroniclesLink.js`; implementación, tests y arte nuevos van a `evilsysadmin/chronicles-of-matthias`. `docs/operations/chronicles-tactics.md` es histórico mientras se retira el backend legado de Chess Studio (issue #5632).
+- Chronicles/Tactics: **solo enlace externo** mediante `labChroniclesLink.js`; implementación, tests y arte nuevos van a `evilsysadmin/chronicles-of-matthias`. Para el histórico de Chess Studio, usar [issue #5632](https://github.com/evilsysadmin/chess-studio/issues/5632); no recuperar antiguos manuales de juego desde este repo.
 - Pawn Slug host/runtime: `skills/pawn-slug-runtime-smoke/SKILL.md`.
 - Assets R2: `docs/visual-assets-r2-flow.md`.
 - Presencia/Admin: `docs/operations/presence-admin.md`.
