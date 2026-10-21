@@ -53,6 +53,33 @@ export function isLegalCombatCpuSuggestion(fen, suggestion) {
 const EMERGENCY_CPU_PIECE_VALUE = Object.freeze({ p: 1, n: 3, b: 3, r: 5, q: 9, k: 0 });
 const EMERGENCY_CPU_MISS_TEMPO_SCORE = 90;
 
+// El fallback no dispone de búsqueda profunda. Comprueba únicamente si la
+// pieza recién movida puede ser capturada LEGALMENTE en la réplica inmediata.
+// Una captura Combat puede fallar: el tablero de chess.js después de capturar
+// sólo existe en la rama de éxito, ponderada por su probabilidad real.
+// El máximo riesgo mide exposición táctica, no predice qué elegirá el rival.
+// Sin registro coherente, no se fabrican porcentajes ni amenazas.
+function emergencyRecapturePenalty(after, move, registry, focus, captureSuccessChance = 1) {
+  if (!registry || move.promotion || /[kq]/.test(move.flags || '') || move.piece === 'k') return 0;
+  const original = registry[move.from];
+  if (!original || original.color !== move.color || original.type !== move.piece
+    || !pieceSquareMatches(original, move.from)) return 0;
+  const moved = { ...original, square: move.to };
+  let maxChance = 0;
+  for (const reply of after.moves({ verbose: true })) {
+    if (!reply.captured || reply.captured !== move.piece || capturedSquareFor(reply) !== move.to) continue;
+    const enemy = registry[reply.from];
+    if (!enemy || enemy.color === move.color || enemy.type !== reply.piece
+      || !pieceSquareMatches(enemy, reply.from)) return 0;
+    const forced = isForcedCombatCapture(after.fen(), reply.from, reply.to, reply.promotion);
+    const chance = forced ? 1 : hitChance(enemy, moved, focusStreakFor(focus, enemy.color, original.id));
+    maxChance = Math.max(maxChance, chance);
+  }
+  const pieceValue = EMERGENCY_CPU_PIECE_VALUE[move.piece] || 0;
+  const hit = Math.max(0, Math.min(1, Number(captureSuccessChance) || 0));
+  return maxChance * hit * (100 + pieceValue * 10);
+}
+
 // Fallback estrictamente local para que una caída del endpoint de análisis no
 // secuestre una campaña. Sólo elige entre jugadas legales de chess.js y nunca
 // altera dificultad, XP ni reglas de Combat. Prioriza mate, capturas, promoción
@@ -70,6 +97,8 @@ export function emergencyCombatCpuSuggestion(fen, registry = null, focus = {}, d
       if (!applied) return null;
       let score = 0;
       if (probe.isCheckmate()) score += 10000;
+      let captureSuccessChance = 1;
+      let measuredCapture = !move.captured;
       if (move.captured) {
         const chessCaptureScore = 100 + (EMERGENCY_CPU_PIECE_VALUE[move.captured] || 0) * 10
           - (EMERGENCY_CPU_PIECE_VALUE[move.piece] || 0);
@@ -77,10 +106,15 @@ export function emergencyCombatCpuSuggestion(fen, registry = null, focus = {}, d
         // Con hechos completos, una captura que puede fallar no vale lo
         // mismo que una captura garantizada. Un fallo también consume turno.
         // Si el registro está incompleto mantenemos el fallback histórico.
+        captureSuccessChance = facts?.hitChance ?? 0;
+        measuredCapture = Boolean(facts);
         score += facts
           ? facts.hitChance * chessCaptureScore - (1 - facts.hitChance) * EMERGENCY_CPU_MISS_TEMPO_SCORE
           : chessCaptureScore;
       }
+      // Sin engine, una dama expuesta a una recaptura legal no es un premio
+      // gratis. Para capturas, sólo valoramos la rama cuyo éxito es medible.
+      if (measuredCapture) score -= emergencyRecapturePenalty(probe, move, registry, focus, captureSuccessChance);
       if (move.promotion) score += 70 + (EMERGENCY_CPU_PIECE_VALUE[move.promotion] || 0) * 4;
       if (probe.isCheck()) score += 18;
       if (move.flags?.includes('k') || move.flags?.includes('q')) score += 2;
