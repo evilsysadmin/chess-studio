@@ -171,7 +171,12 @@ pero espera `data-war-room-hans-stage` con identidad de la variante y
 estado `quick` o `idle` antes de muestrear `idle` y `move`.
 Registra `hansStage` y `hansReadyAfterShellMs` por visita. Un actor
 `missing`, `error` o que nunca termine hace fallar la captura en vez de
-parecer una GPU más rápida. El comparador sigue admitiendo JSON antiguos
+parecer una GPU más rápida. **Antes de iniciar las muestras** también espera
+la finalización del ranking diferido de sombras: en escritorio GPU físico
+`ready-budgeted` con triángulos seleccionados positivos; en touch emulado
+o SwiftShader `disabled-lite`. Una sala a medio inicializar o con sombras
+inesperadamente desactivadas falla el benchmark, en lugar de producir un
+falso ahorro de draw calls. El comparador sigue admitiendo JSON antiguos
 para rAF, pero muestra `n/a` para sus deltas GPU sin procedencia
 completa de Hans o cuando el estado montado cambia entre revisiones.
 Esto **no** modifica la carga normal de la sala ni añade espera a las partidas.
