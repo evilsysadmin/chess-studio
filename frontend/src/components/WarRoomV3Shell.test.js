@@ -15,7 +15,7 @@ import {
 describe('War Room v3 runtime asset URL', () => {
   it('prefetches the identical Hans-ready content-addressed GLB with no build token', () => {
     const expected = warRoomVariantRuntimeModelUrl('v3', { buildSha: 'abc123' });
-    expect(expected).toBe('https://assets.chess-studio.shadowops.dpdns.org/war-room/v3/runtime/war-room-v3-shell-5eec3e5d49be9c9a.glb');
+    expect(expected).toBe('https://assets.chess-studio.shadowops.dpdns.org/war-room/v3/runtime/war-room-v3-shell-466435aaa9698888.glb');
     expect(WAR_ROOM_V3_RUNTIME_MODEL_URL).toBe(expected);
     expect(warRoomV3ModelUrl({ buildSha: 'abc123' })).toBe(expected);
     expect(warRoomV3ModelUrl({ buildSha: 'new-deploy' })).toBe(expected);
