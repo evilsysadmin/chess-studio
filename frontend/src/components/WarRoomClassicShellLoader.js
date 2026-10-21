@@ -1,3 +1,5 @@
+import { censusClassicWarRoomShell } from './WarRoomClassicGeometryCensus.js';
+
 export function createLazyClassicWarRoomShellController(
   buildOptions = {},
   {
@@ -73,6 +75,16 @@ export function createClassicWarRoomShellController(
     onBuilt: (objects) => {
       if (!canvas?.dataset) return;
       canvas.dataset.schoolRoomScene = objects.find((object) => object?.userData?.schoolRoomCanonical)?.userData?.schoolRoomSceneVersion || 'off';
+      // A one-shot geometry census of V1, separate from GLB metrics for V2-4.
+      // No per-frame traversal, GPU timing, draw-call or FPS claims.
+      if (!buildOptions.classroom) {
+        const census = censusClassicWarRoomShell(objects);
+        canvas.dataset.warRoomClassicMeshNodes = String(census.meshNodes);
+        canvas.dataset.warRoomClassicMeshInstances = String(census.meshInstances);
+        canvas.dataset.warRoomClassicUniqueGeometries = String(census.uniqueGeometries);
+        canvas.dataset.warRoomClassicPotentialTriangles = String(census.potentialTriangles);
+        canvas.dataset.warRoomClassicUniqueTriangles = String(census.uniqueTriangles);
+      }
     },
   });
 }

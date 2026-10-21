@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
-import { classicShellModuleKind, createLazyClassicWarRoomShellController } from './WarRoomClassicShellLoader.js';
+import * as THREE from 'three';
+import { classicShellModuleKind, createClassicWarRoomShellController, createLazyClassicWarRoomShellController } from './WarRoomClassicShellLoader.js';
 
 describe('lazy classic War Room shell controller', () => {
   it('routes classroom bootstrap to the dedicated School Room module', () => {
@@ -88,4 +89,40 @@ describe('lazy classic War Room shell controller', () => {
     await expect(controller.ensure()).resolves.toEqual([shell]);
     expect(loadModule).toHaveBeenCalledTimes(2);
   });
+  it('publishes a one-shot classic geometry census without measuring classroom meshes', async () => {
+    const group = new THREE.Group();
+    const cube = new THREE.BoxGeometry(1, 1, 1); // 12 triangles
+    group.add(new THREE.Mesh(cube, new THREE.MeshBasicMaterial()));
+    const canvas = { dataset: {}, isConnected: true };
+    const loadModule = vi.fn(async () => ({
+      buildClassicWarRoomShell: () => ({ classicShellObjects: [group] }),
+    }));
+
+    const controller = createClassicWarRoomShellController(
+      { canvas, scene: {}, boardGroup: {} }, false, { loadModule },
+    );
+    await controller.ensure();
+    expect(canvas.dataset.warRoomClassicPotentialTriangles).toBe('12');
+    expect(canvas.dataset.warRoomClassicMeshNodes).toBe('1');
+    expect(canvas.dataset.warRoomClassicMeshInstances).toBe('1');
+    expect(canvas.dataset.warRoomClassicUniqueGeometries).toBe('1');
+    expect(canvas.dataset.warRoomClassicUniqueTriangles).toBe('12');
+    expect(loadModule).toHaveBeenCalledTimes(1);
+    await controller.ensure();
+    expect(loadModule).toHaveBeenCalledTimes(1);
+
+    const schoolCanvas = { dataset: {}, isConnected: true };
+    const school = createClassicWarRoomShellController(
+      { canvas: schoolCanvas, classroom: true }, false, {
+        loadModule: async () => ({
+          buildClassicWarRoomShell: () => ({ classicShellObjects: [group] }),
+        }),
+      },
+    );
+    await school.ensure();
+    expect(schoolCanvas.dataset.warRoomClassicPotentialTriangles).toBeUndefined();
+    expect(schoolCanvas.dataset.classicShellModule).toBe('school-room-dedicated-v1');
+  });
+
+
 });
