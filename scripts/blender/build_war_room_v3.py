@@ -207,9 +207,10 @@ def build_v3_palette():
 
 # --- shared helpers -----------------------------------------------------------------
 
-def lod_sphere(name, loc, radius, material, owner, *, scale=(1, 1, 1)):
-    """Smooth icosphere sized by radius (runtime budget; see build_war_room_v4)."""
-    subdivisions = 1 if radius < 0.09 else 2 if radius < 0.22 else 3
+def lod_sphere(name, loc, radius, material, owner, *, scale=(1, 1, 1), subdivisions=None):
+    """Smooth icosphere sized by radius; selected armour plates use a lower LOD."""
+    if subdivisions is None:
+        subdivisions = 1 if radius < 0.09 else 2 if radius < 0.22 else 3
     bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=subdivisions, radius=radius, location=loc)
     obj = bpy.context.object
     obj.name = name
@@ -502,7 +503,13 @@ def build_armor(index, x, y, static, palette):
         return obj
 
     def sph(name, loc, r, mat, scale=(1, 1, 1)):
-        return add(lod_sphere(f"{prefix}_{name}", loc, r, mat, static, scale=scale))
+        # Breastplate and plackart are smooth shaded and only ~0.3 m in radius.
+        # Icosphere L3 uses 1280 triangles versus 320 for L2; across eight
+        # suits these two plates alone account for 15,360 avoidable faces.
+        # Keep helmets, pauldrons, detail and all placements untouched.
+        detail = 2 if name in ("breastplate", "plackart") else None
+        return add(lod_sphere(f"{prefix}_{name}", loc, r, mat, static,
+                              scale=scale, subdivisions=detail))
 
     def box(name, loc, half, mat, bevel=0.01, rot=None):
         obj = add(base.cube(f"{prefix}_{name}", loc, half, mat, static, bevel=bevel))
