@@ -271,7 +271,7 @@ def main(argv: list[str] | None = None) -> int:
                         f"**Geometry budget for {Path(report['file']).name}: "
                         f"{budget['status'].upper()}** "
                         f"(triangles <= {budget['maxTriangles']}, "
-                        f"bytes <= {budget['maxBytes']}).\\n\\n"
+                        f"bytes <= {budget['maxBytes']}).\n\n"
                     )
     if args.json:
         print(json.dumps(reports, indent=2, ensure_ascii=False))
