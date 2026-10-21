@@ -92,9 +92,11 @@ describe('combat controller support', () => {
     const rookie = { ...registry, h8: { ...registry.h8, identityId: null } };
     expect(selectCombatAwareRemoteSuggestion(annotateCombatCandidates(fen, rookie, remote)))
       .toMatchObject({ from: 'a8', to: 'a1' });
-    const evasive = { ...registry, h8: { ...registry.h8, speedPoints: 100 } };
+    // Bonus táctico temporal: evasión alta sin inventar 100 niveles nuevos.
+    const evasive = { ...registry, h8: { ...registry.h8, runSpeedBonus: 1000 } };
     const measured = annotateCombatCandidates(fen, evasive, remote);
     expect(measured.candidates[1].hitChance).toBe(0.5);
+    expect(measured.candidates[1].enemyPersistentValue).toBe(4);
     expect(selectCombatAwareRemoteSuggestion(measured)).toMatchObject({ from: 'a8', to: 'a1' });
     expect(registry.h8.speedPoints).toBeUndefined();
   });
