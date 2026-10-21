@@ -128,15 +128,17 @@ def baseline_report(directory, sha, mode, variant, repetitions):
         'culling, materials and shadow passes affect submissions.',
         '',
         '| Profile · visit | Authored GLB meshes | V3 static torch batches | '
-        'Shadow caster budget | Observed casters | Shadow warmup stage |',
-        '|---|---:|---:|---:|---:|---|',
+        'Shadow caster budget | Candidate shadow triangles | '
+        'Selected shadow triangles | Observed casters | Shadow warmup stage |',
+        '|---|---:|---:|---:|---:|---:|---:|---|',
     ])
     for profile in PROFILES:
         for index, visit in enumerate(VISITS):
             captures = [report['visits'][index].get('sceneInventory')
                         for report in groups[profile]]
             fields = ('authoredGlbMeshes', 'v3StaticTorchBatches',
-                      'shadowCasterBudget', 'activeShadowCasters')
+                      'shadowCasterBudget', 'shadowCandidatePotentialTriangles',
+                      'shadowSelectedPotentialTriangles', 'activeShadowCasters')
             values = []
             for field in fields:
                 readings = [capture.get(field) if isinstance(capture, dict) else None
@@ -151,12 +153,24 @@ def baseline_report(directory, sha, mode, variant, repetitions):
             stage = stages[0] if stages and all(
                 isinstance(item, str) and item == stages[0] for item in stages
             ) else 'n/a/mixed'
+            # Zero selected triangles is meaningful only if the shadow ranking
+            # completed. A disabled/pending pass is not evidence of zero GPU
+            # shadow work; do not present it as a successful measurement.
+            if stage.startswith('disabled-'):
+                values[4] = 'disabled'
+            elif stage == 'deferred-after-first-paint':
+                values[4] = 'pending'
+            elif stage != 'ready-budgeted':
+                values[4] = 'n/a/mixed' if stage == 'n/a/mixed' else 'n/a'
             lines.append(f'| {profile} · {visit} | ' + ' | '.join(values)
                          + f' | {stage} |')
     lines.extend([
         '',
-        'Shadow caster counts are **snapshots**, not per-frame draw counts. '
-        'If warmup is not ready, the observed caster count may still be zero. '
+        'Candidate/selected shadow triangles are potential mesh geometry at '
+        'one instant, **not** triangles rasterized or shadow draw calls. '
+        'Selected counts are shown only after ready-budgeted warmup; disabled '
+        'and pending passes are labelled instead of masquerading as zero. '
+        'Observed caster counts are also snapshots, not per-frame draws. '
         'Missing fields are n/a; mixed captures retain ranges rather than '
         'silently fabricating a stable room topology.',
     ])
@@ -201,11 +215,13 @@ def self_test():
                 visit['sceneInventory'] = {
                     'authoredGlbMeshes': 690, 'v3StaticTorchBatches': 12,
                     'shadowCasterBudget': 32, 'activeShadowCasters': 32,
+                    'shadowCandidatePotentialTriangles': 94754,
+                    'shadowSelectedPotentialTriangles': 38400,
                     'shadowWarmup': 'ready-budgeted',
                 }
             path.write_text(json.dumps(report))
         output = baseline_report(root, sha, 'hardware', 'v3', 2)
-        assert '| desktop-1440x900 · first-visit | 690 | 12 | 32 | 32 | ready-budgeted |' in output
+        assert '| desktop-1440x900 · first-visit | 690 | 12 | 32 | 94754 | 38400 | 32 | ready-budgeted |' in output
         assert '| desktop-1440x900 · first-visit · idle | 140.00 | 150.00 | ' in output
         assert '| 280000.00 | 1.25 | 2.50 | n/a | 22 |' in output
         assert '| desktop-1440x900 · first-visit · idle | 35.00 | 105.00 | 115.00 | 1.00 |' in output
@@ -214,9 +230,34 @@ def self_test():
         report = json.loads(path.read_text())
         report['visits'][0]['sceneInventory']['authoredGlbMeshes'] = None
         path.write_text(json.dumps(report))
-        assert '| desktop-1440x900 · first-visit | n/a | 12 | 32 | 32 | ready-budgeted |' in baseline_report(root, sha, 'hardware', 'v3', 2)
+        assert '| desktop-1440x900 · first-visit | n/a | 12 | 32 | 94754 | 38400 | 32 | ready-budgeted |' in baseline_report(root, sha, 'hardware', 'v3', 2)
         report['visits'][0]['sceneInventory']['authoredGlbMeshes'] = 690
         path.write_text(json.dumps(report))
+        # Different measurements must not silently become a fabricated
+        # stable count. Legacy captures are valid and show missing as n/a.
+        report['visits'][0]['sceneInventory']['shadowCandidatePotentialTriangles'] = 92000
+        path.write_text(json.dumps(report))
+        assert '| 32 | 92000–94754 | 38400 | 32 | ready-budgeted |' in baseline_report(root, sha, 'hardware', 'v3', 2)
+        report['visits'][0]['sceneInventory'].pop('shadowSelectedPotentialTriangles')
+        path.write_text(json.dumps(report))
+        assert '| 32 | 92000–94754 | n/a | 32 | ready-budgeted |' in baseline_report(root, sha, 'hardware', 'v3', 2)
+        report['visits'][0]['sceneInventory']['shadowSelectedPotentialTriangles'] = 38400
+        report['visits'][0]['sceneInventory']['shadowWarmup'] = 'disabled-lite'
+        path.write_text(json.dumps(report))
+        assert '| 32 | 92000–94754 | n/a/mixed | 32 | n/a/mixed |' in baseline_report(root, sha, 'hardware', 'v3', 2)
+        report['visits'][0]['sceneInventory']['shadowWarmup'] = 'ready-budgeted'
+        for report_path in root.glob('*.json'):
+            raw = json.loads(report_path.read_text())
+            for visit in raw['visits']:
+                visit['sceneInventory']['shadowWarmup'] = 'disabled-lite'
+            report_path.write_text(json.dumps(raw))
+        assert '| 32 | 92000–94754 | disabled | 32 | disabled-lite |' in baseline_report(root, sha, 'hardware', 'v3', 2)
+        for report_path in root.glob('*.json'):
+            raw = json.loads(report_path.read_text())
+            for visit in raw['visits']:
+                visit['sceneInventory']['shadowWarmup'] = 'ready-budgeted'
+            report_path.write_text(json.dumps(raw))
+        report = json.loads(path.read_text())
         report['visits'][0]['idle']['renderCost'] = {
             'status': 'overflow', 'renderedFrames': 22,
         }
