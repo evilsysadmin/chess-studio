@@ -1,4 +1,5 @@
 import { chromium, expect, test } from '@playwright/test';
+import { expectedWarRoomGpuShadowWarmup } from './war-room-gpu-shadow-readiness.mjs';
 import { randomUUID } from 'node:crypto';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
@@ -411,6 +412,22 @@ for (const profile of profiles) {
           const { board, canvas, shellReadyAt, hansStage, hansReadyAfterShellMs } = await openWarRoom(page, requestLog);
           // Keep the first-ready metric independent of delayed Hans setup.
           const openToReadyWallMs = shellReadyAt - startedAt;
+          // Hans' stage being ready does not prove the deferred shadow caster
+          // ranking has run. Sampling here once compared a partially warmed
+          // room against a fully warmed one, contaminating shadow draw deltas.
+          const expectedWarmup = expectedWarRoomGpuShadowWarmup(requested, profile.touch);
+          await expect(canvas, 'Shadow setup must be stable before measuring ' + variant
+            + ' · ' + profile.id).toHaveAttribute(
+            'data-war-room-shadow-warmup', expectedWarmup, { timeout: 20_000 },
+          );
+          if (expectedWarmup === 'ready-budgeted') {
+            await expect.poll(() => canvas.evaluate((element) =>
+              Number(element.dataset.warRoomShadowSelectedPotentialTriangles || 0)),
+            { message: 'Physical desktop needs nonempty shadow casters', timeout: 20_000 })
+              .toBeGreaterThan(0);
+          }
+          // The inventory is captured only after the shadow warmup gate, so
+          // its selected triangle count cannot be a temporary mount-time 0.
           const renderer = await inspectActualRenderer(canvas);
           expect(renderer.actual, 'Real scene renderer must be ' + requested + ': ' + (renderer.renderer || 'unknown')).toBe(requested);
           expect(renderer.coarsePointer).toBe(profile.touch);
