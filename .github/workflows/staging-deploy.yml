@@ -117,7 +117,19 @@ jobs:
             exit 0
           fi
           python3 -S scripts/staging_image_ready.py --sha "$DEPLOY_SHA"
-          python3 scripts/oci_run_command.py deploy --repo-ref "$DEPLOY_SHA"
+          # Oracle explicitly makes TEXT output optional. An agent SUCCEEDED
+          # with exitCode=0 but no host receipt is NOT accredited: only the
+          # later public release+commit+Mongo/PVP verification can prove it.
+          if python3 scripts/oci_run_command.py deploy --repo-ref "$DEPLOY_SHA"; then
+            :
+          else
+            deploy_rc=$?
+            if [[ "$deploy_rc" -ne 78 ]]; then
+              echo "::error title=OCI deploy failed::Run Command exit $deploy_rc"
+              exit "$deploy_rc"
+            fi
+            echo "::warning title=OCI transcript unavailable::No host receipt; requiring public exact-SHA staging accreditation."
+          fi
       - name: Re-check main after OCI fallback
         id: post_deploy
         if: steps.watcher.outputs.converged != 'true' && steps.fallback_admission.outputs.superseded != 'true'
