@@ -16,6 +16,27 @@ def diagnostic_command() -> str:
     command = r'''set -u
 
 printf '%s\n' 'OCI_BACKEND_DIAG_BEGIN'
+# Read-only immutable provenance. Never read runtime env, tokens or logs.
+checkout="$(git -C /opt/chess-studio/repo rev-parse HEAD 2>/dev/null || true)"
+[[ "$checkout" =~ ^[0-9a-f]{40}$ ]] || checkout=unavailable
+committed=unavailable
+state=/var/lib/chess-studio/deployed.sha
+if [[ -f "$state" && ! -L "$state" ]]; then
+  committed="$(tr -d '\r\n' <"$state")"
+  [[ "$committed" =~ ^[0-9a-f]{40}$ ]] || committed=unavailable
+fi
+color=unknown
+color_file=/var/lib/chess-studio/active.color
+if [[ -f "$color_file" && ! -L "$color_file" ]]; then
+  color="$(tr -d '\r\n' <"$color_file")"
+  [[ "$color" == blue || "$color" == green ]] || color=unknown
+fi
+watcher="$(systemctl is-active chess-studio-deploy-watcher.service 2>/dev/null || true)"
+case "$watcher" in active|inactive|failed|activating|deactivating) ;; *) watcher=unknown ;; esac
+watch_enabled=no
+[[ -f /var/lib/chess-studio/DEPLOY_WATCH_ENABLED && ! -L /var/lib/chess-studio/DEPLOY_WATCH_ENABLED ]] && watch_enabled=yes
+printf 'OCI_BACKEND_PROVENANCE checkout=%s committed=%s color=%s watcher=%s enabled=%s\n' \
+  "$checkout" "$committed" "$color" "$watcher" "$watch_enabled"
 for service in edge pvp_blue pvp_green; do
   container_id="$(docker ps -aq \
     --filter 'label=com.docker.compose.project=chess-studio-staging' \
@@ -53,6 +74,14 @@ def self_test() -> None:
     assert "docker inspect Env" not in command
     assert "backend.env" not in command
     assert "OCI_BACKEND_DIAG_END" in command
+    assert "OCI_BACKEND_PROVENANCE checkout=%s committed=%s" in command
+    assert "git -C /opt/chess-studio/repo rev-parse HEAD" in command
+    assert "chess-studio-deploy-watcher.service" in command
+    assert "DEPLOY_WATCH_ENABLED" in command
+    assert "docker logs" not in command and "journalctl" not in command
+    assert "cat /" not in command and "printenv" not in command
+    import subprocess
+    subprocess.run(["bash", "-n"], input=command, text=True, check=True, capture_output=True)
     print("OCI backend diagnostics self-test: OK")
 
 
