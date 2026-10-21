@@ -3,6 +3,8 @@ on:
   pull_request:
     paths:
       - 'frontend/bench/combatCpuBenchmark.mjs'
+      - 'frontend/bench/combatCpuFullAB.mjs'
+      - 'frontend/src/combatCpuFullAB.test.js'
       - 'frontend/src/combatCpuBenchmark.test.js'
       - '.github/workflows/combat-cpu-benchmark.yml'
   workflow_dispatch:
@@ -31,9 +33,24 @@ jobs:
       - name: Run reproducible Combat fallback structural A/B
         run: |
           node frontend/bench/combatCpuBenchmark.mjs --iterations 25 | tee combat-cpu-benchmark.json
+      - name: Materialize immutable historical Combat CPU module
+        env:
+          BASELINE_SHA: '58ac62a57664607131f29f3dcfab44182dfa32fc'
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch --no-tags --depth=1 origin "$BASELINE_SHA"
+          git show "$BASELINE_SHA:frontend/src/combatControllerSupport.js" > frontend/src/combatCpuHistoricalBaseline.mjs
+          test -s frontend/src/combatCpuHistoricalBaseline.mjs
+          node --check frontend/src/combatCpuHistoricalBaseline.mjs
+      - name: Run real full CPU historical-versus-current A/B
+        run: |
+          node frontend/bench/combatCpuFullAB.mjs --baseline-module frontend/src/combatCpuHistoricalBaseline.mjs --iterations 8 | tee combat-cpu-full-ab.json
       - name: Save raw benchmark results
         uses: actions/upload-artifact@v6
         with:
           name: combat-cpu-benchmark-${{ github.sha }}
-          path: combat-cpu-benchmark.json
+          path: |
+            combat-cpu-benchmark.json
+            combat-cpu-full-ab.json
           retention-days: 14
