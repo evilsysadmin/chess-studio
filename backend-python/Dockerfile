@@ -20,6 +20,18 @@ RUN apk add --no-cache ca-certificates libstdc++ \
 
 COPY --from=builder /opt/venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
+
+# pip is a *build tool*, not a runtime dependency. pip 26.2+ also vendors
+# its own CA bundle and embedded CycloneDX SBOM; those vendored libraries
+# can be vulnerable independently of the patched /opt/venv certifi.
+# Remove pip from BOTH the copied venv and the Python base-image site-packages
+# so the final container does not ship a second, obsolete TLS trust bundle.
+RUN /opt/venv/bin/python -m pip uninstall --yes pip \
+    && /usr/local/bin/python -m pip uninstall --yes pip \
+    && /opt/venv/bin/python -c "from importlib.metadata import version; assert version('certifi') == '2026.10.19'" \
+    && /opt/venv/bin/python -c "import importlib.util; assert importlib.util.find_spec('pip') is None" \
+    && /usr/local/bin/python -c "import importlib.util; assert importlib.util.find_spec('pip') is None"
+
 COPY --chown=chess:chess . .
 
 # Keep the OCI image config numeric so Kubernetes can prove runAsNonRoot

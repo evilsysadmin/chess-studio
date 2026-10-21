@@ -23,6 +23,7 @@ SECURITY_PATTERN = re.compile(
     # are rejected by npm ci before they can merge.
     r"|^frontend/package-lock\.json$"
     r"|^backend-python/requirements[^/]*\.txt$"
+    r"|^scripts/art/requirements[^/]*\.txt$"
     r"|^Makefile$"
     r"|^\.trivy(ignore|\.ya?ml)?$"
     r"|^scripts/(npm_audit_gate\.py|pip_audit_report\.py|compose_smoke\.py|security[^/]*|trivy_[^/]*|install_trivy\.sh)$"
@@ -68,6 +69,8 @@ def self_test() -> None:
         "frontend/package-lock.json",
         "backend-python/requirements.txt",
         "backend-python/requirements-dev.txt",
+        "scripts/art/requirements.txt",
+        "scripts/art/requirements-dev.txt",
         "Makefile",
         ".trivyignore",
         ".trivy.yml",
@@ -102,6 +105,7 @@ def self_test() -> None:
         "docs/security-notes.md",
         "frontend/package-lock.json.bak",
         "backend-python/requirements.md",
+        "scripts/art/requirements.md",
         "infrared/example.txt",
         "deployment-notes.md",
         "render.json",
