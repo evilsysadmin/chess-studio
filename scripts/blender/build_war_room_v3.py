@@ -519,6 +519,11 @@ def build_armor(index, x, y, static, palette):
 
     def box(name, loc, half, mat, bevel=0.01, rot=None):
         obj = add(base.cube(f"{prefix}_{name}", loc, half, mat, static, bevel=bevel))
+        # A 1.2 cm-or-smaller chamfer on miniature heraldry or armour
+        # fittings does not need the generic furniture's three bevel bands.
+        # Keep the width, surface material and all larger silhouette edges.
+        if 0 < bevel <= 0.012:
+            obj.modifiers["premium-bevel"].segments = 1
         if rot:
             obj.rotation_euler = rot
         return obj
