@@ -10,6 +10,7 @@ import {
   selectWarRoomBlenderShadowCasters,
   shouldPrepareWarRoomShadowPass,
   WAR_ROOM_BLENDER_SHADOW_CASTER_LIMIT,
+  warRoomBlenderPotentialShadowTriangles,
   warRoomBlenderPracticalLightProfile,
 } from './WarRoomBlenderShellRuntime.js';
 
@@ -154,6 +155,20 @@ describe('War Room shared Blender runtime', () => {
     expect(shouldPrepareWarRoomShadowPass({ coarsePointer: true, shadowMapsEnabled: false })).toBe(false);
   });
 
+  it('counts potential shell shadow triangles from indexed, nonindexed, shared and instanced geometry', () => {
+    const indexed = new THREE.BoxGeometry(1, 1, 1); // 12 tris
+    const nonindexed = indexed.toNonIndexed(); // still 12
+    const shared = new THREE.Mesh(indexed, new THREE.MeshBasicMaterial());
+    const another = new THREE.Mesh(indexed, new THREE.MeshBasicMaterial());
+    const instances = new THREE.InstancedMesh(nonindexed, new THREE.MeshBasicMaterial(), 3);
+    const empty = new THREE.Group();
+    expect(warRoomBlenderPotentialShadowTriangles([shared, another, instances, empty])).toBe(60);
+    expect(warRoomBlenderPotentialShadowTriangles([])).toBe(0);
+    expect(warRoomBlenderPotentialShadowTriangles([
+      { isMesh: true, geometry: { attributes: { position: { count: Number.NaN } } } },
+    ])).toBe(0);
+  });
+
   it('caps decorative Blender-shell shadow casters and prioritizes useful nearby geometry', () => {
     const makeMesh = ({ x, y = 1, z = 0, radius = 0.5, opacity = 1 } = {}) => ({
       isMesh: true,
@@ -280,6 +295,8 @@ describe('War Room shared Blender runtime', () => {
     expect(root.userData.warRoomBlenderShadowWarmup).toBe('ready-budgeted');
     expect(root.userData.warRoomBlenderShadowProjectedCount).toBe(1);
     expect(root.userData.warRoomBlenderShadowCasterCount).toBe(1);
+    // This synthetic mesh has no vertex accessor; do not invent triangles.
+    expect(root.userData.warRoomBlenderShadowSelectedPotentialTriangles).toBe(0);
     expect(refinements).toBe(1);
   });
 

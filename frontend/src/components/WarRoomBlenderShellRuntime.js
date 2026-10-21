@@ -184,6 +184,26 @@ export function selectWarRoomBlenderShadowCasters(
     .map((entry) => entry.node);
 }
 
+/**
+ * Upper bound on potential geometry sent to a shell's shadow pass.
+ * Index/position accessor counts only; NOT actual WebGL shadow draw calls,
+ * culled triangles, timings or FPS. Invoked once per installed GLB.
+ */
+export function warRoomBlenderPotentialShadowTriangles(meshes = []) {
+  let total = 0;
+  for (const mesh of meshes || []) {
+    if (!mesh?.isMesh) continue;
+    const geometry = mesh.geometry;
+    const count = Number(geometry?.index?.count ?? geometry?.attributes?.position?.count ?? 0);
+    if (!Number.isFinite(count) || count <= 0) continue;
+    const copies = mesh.isInstancedMesh
+      ? Math.max(0, Math.floor(Number(mesh.count) || 0))
+      : 1;
+    total += Math.floor(count / 3) * copies;
+  }
+  return total;
+}
+
 export function disposeWarRoomBlenderShellResources(root) {
   const geometries = new Set();
   const materials = new Set();
@@ -259,6 +279,7 @@ export function deferWarRoomBlenderShadowPass({
     root.userData.warRoomBlenderShadowProjectedCount = selectedShadowCasters.length;
     root.userData.warRoomBlenderShadowWarmup = 'ready-budgeted';
     root.userData.warRoomBlenderShadowCasterCount = selectedShadowCasters.length;
+    root.userData.warRoomBlenderShadowSelectedPotentialTriangles = warRoomBlenderPotentialShadowTriangles(selectedShadowCasters);
     onRefine?.();
   });
 }
@@ -349,6 +370,9 @@ export async function installWarRoomBlenderShell(
     : (coarsePointer ? 'disabled-lite' : 'disabled-no-shadow-maps');
   root.userData.warRoomBlenderShadowCasterBudget = needsShadowPass ? WAR_ROOM_BLENDER_SHADOW_CASTER_LIMIT : 0;
   root.userData.warRoomBlenderShadowCasterCandidates = shadowCandidateMeshes.length;
+  // This pass is on shell mount, never in render or animation frames.
+  root.userData.warRoomBlenderShadowCandidatePotentialTriangles = warRoomBlenderPotentialShadowTriangles(shadowCandidateMeshes);
+  root.userData.warRoomBlenderShadowSelectedPotentialTriangles = 0;
   root.userData.warRoomBlenderShadowCasterCount = 0;
   const disposeRuntimeEffects = installRuntimeEffects?.(root, { coarsePointer }) || (() => {});
   scene.add(root);

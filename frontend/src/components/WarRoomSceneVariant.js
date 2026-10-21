@@ -34,6 +34,8 @@ function syncBlenderShadowTelemetry(scene, variant, canvas) {
   const rows = [
     ['warRoomBlenderShadowCasterBudget', 'warRoomShadowCasterBudget'],
     ['warRoomBlenderShadowCasterCandidates', 'warRoomShadowCasterCandidates'],
+    ['warRoomBlenderShadowCandidatePotentialTriangles', 'warRoomShadowCandidatePotentialTriangles'],
+    ['warRoomBlenderShadowSelectedPotentialTriangles', 'warRoomShadowSelectedPotentialTriangles'],
     ['warRoomBlenderShadowProjectedCount', 'warRoomShadowProjectedCount'],
     ['warRoomBlenderShadowCasterCount', 'warRoomShadowCasterCount'],
     ['warRoomBlenderShadowWarmup', 'warRoomShadowWarmup'],
