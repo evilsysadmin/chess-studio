@@ -118,6 +118,10 @@ def main() -> int:
 
     if critical:
         print(f"\nFATAL: {critical} hallazgo(s) CRITICAL. Quality gate BLOQUEADO.", file=sys.stderr)
+        # Print only package / advisory or redacted secret-rule identifiers.
+        # Never emit values matched by Trivy's secret scanner.
+        for item in examples["CRITICAL"]:
+            print(f"  CRITICAL  {item}", file=sys.stderr)
         annotation("error", f"{critical} CRITICAL security findings", "El build se bloquea hasta corregirlas o documentar una excepción explícita.")
         return 1
 
