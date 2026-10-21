@@ -90,8 +90,10 @@ def census_scene(document: dict, *, top: int = 12) -> dict:
     nodes = document.get("nodes", [])
     meshes = document.get("meshes", [])
     accessors = document.get("accessors", [])
+    materials = document.get("materials", [])
     costs = [_mesh_cost(mesh, accessors) for mesh in meshes]
     rows = []
+    material_costs = {}
     used_meshes = set()
     total_triangles = total_vertices = draw_primitives = 0
 
@@ -113,6 +115,28 @@ def census_scene(document: dict, *, top: int = 12) -> dict:
             total_triangles += triangles
             total_vertices += vertices
             draw_primitives += primitives
+            # The GLB's primitive material index is more reliable than mesh
+            # names after Blender merges many authored objects by material.
+            # Count every *scene instance*; this is potential geometry, not
+            # actual material switches or draw calls in the renderer.
+            for primitive in meshes[mesh_id].get("primitives", []):
+                material_id = primitive.get("material", -1)
+                if type(material_id) is not int or not -1 <= material_id < len(materials):
+                    raise ValueError(f"invalid glTF material reference: {material_id!r}")
+                material_name = (
+                    materials[material_id].get("name") or f"material-{material_id}"
+                    if material_id >= 0 else "(unassigned)"
+                )
+                accessor_id = primitive.get("indices", primitive["attributes"]["POSITION"])
+                primitive_triangles = _accessor_count(accessors, accessor_id) // 3
+                material_row = material_costs.setdefault(material_id, {
+                    "materialIndex": material_id,
+                    "material": material_name,
+                    "potentialTriangles": 0,
+                    "primitiveInstances": 0,
+                })
+                material_row["potentialTriangles"] += primitive_triangles
+                material_row["primitiveInstances"] += 1
             rows.append({
                 "node": node.get("name") or f"node-{index}",
                 "mesh": meshes[mesh_id].get("name") or f"mesh-{mesh_id}",
@@ -136,6 +160,10 @@ def census_scene(document: dict, *, top: int = 12) -> dict:
         "potentialTriangles": total_triangles,
         "uniqueMeshTriangles": sum(costs[i][0] for i in used_meshes),
         "vertexReferences": total_vertices,
+        "materialCosts": sorted(
+            material_costs.values(),
+            key=lambda row: (-row["potentialTriangles"], row["materialIndex"]),
+        ),
         "topNodes": sorted(rows, key=lambda row: (-row["triangles"], row["nodeIndex"]))[:top],
     }
 
@@ -161,6 +189,16 @@ def render_census_markdown(reports: list[dict]) -> str:
         ])
         for node in row["topNodes"]:
             lines.append(f"| {node['node']} | {node['mesh']} | {node['triangles']:,} |")
+        lines.extend([
+            "", "**Geometry by GLB material (not runtime draw calls)**", "",
+            "| Material | Potential triangles | Primitive instances |",
+            "| --- | ---: | ---: |",
+        ])
+        for material in row["materialCosts"]:
+            lines.append(
+                f"| {material['material']} | {material['potentialTriangles']:,} "
+                f"| {material['primitiveInstances']:,} |"
+            )
     return "\n".join(lines) + "\n"
 
 
@@ -198,6 +236,8 @@ def main(argv: list[str] | None = None) -> int:
                   f"{row['glbBytes']:,} GLB bytes")
             for node in row["topNodes"]:
                 print(f"  {node['triangles']:>10,} tri  {node['node']}  [{node['mesh']}]")
+            for material in row["materialCosts"]:
+                print(f"  {material['potentialTriangles']:>10,} tri  material: {material['material']}")
     return 0
 
 
