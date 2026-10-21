@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { Chess } from 'chess.js';
-import { passTurnFen } from './combat.js';
+import { hitChance, passTurnFen } from './combat.js';
 import { emergencyCombatCpuSuggestion, emergencyCombatMissExposurePenalty } from './combatControllerSupport.js';
 
 describe('Combat CPU fallback · generar una sola vez cada lista de réplicas', () => {
@@ -19,13 +19,13 @@ describe('Combat CPU fallback · generar una sola vez cada lista de réplicas', 
       .find(({ to }) => to === 'a5');
     expect(capture).toBeTruthy();
     const expected = 0.4 * Math.max(
-      190 * 0.65 + 190 * 0, // alternativa: se confirma abajo con probabilidades reales
-      150 * 0.5,
+      190 * hitChance(registry.a5, registry.c4),
+      150 * hitChance(registry.a5, registry.b7),
     );
     const baseline = emergencyCombatMissExposurePenalty(fen, capture, registry, {}, 0.4);
     expect(baseline).toBeGreaterThan(0);
     expect(baseline).toBeLessThan(190 * 0.4);
-    expect(expected).toBeGreaterThan(0);
+    expect(baseline).toBeCloseTo(expected, 8);
 
     const passed = passTurnFen(fen);
     const original = Chess.prototype.moves;
@@ -38,6 +38,27 @@ describe('Combat CPU fallback · generar una sola vez cada lista de réplicas', 
       const optimized = emergencyCombatMissExposurePenalty(fen, capture, registry, {}, 0.4);
       expect(optimized).toBeCloseTo(baseline, 8);
       expect(verbosePostMissLists).toBe(1);
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it('también comparte las respuestas tras acertar, sin cambiar el movimiento elegido', () => {
+    const postHit = new Chess(fen);
+    postHit.move({ from: 'b6', to: 'a5' });
+    const resultingFen = postHit.fen();
+    const original = Chess.prototype.moves;
+    let verbosePostHitLists = 0;
+    const spy = vi.spyOn(Chess.prototype, 'moves').mockImplementation(function(options) {
+      if (options?.verbose === true && this.fen() === resultingFen) verbosePostHitLists += 1;
+      return original.call(this, options);
+    });
+    try {
+      const selected = emergencyCombatCpuSuggestion(fen, registry);
+      expect(selected).toBeTruthy();
+      // Solo el candidato b6xa5 produce este FEN, aun cuando se
+      // inspeccionan la pieza movida y sus aliados.
+      expect(verbosePostHitLists).toBe(1);
     } finally {
       spy.mockRestore();
     }
