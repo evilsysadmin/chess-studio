@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { Chess } from 'chess.js';
 import { annotateCombatCandidates, buildCombatSessionSnapshot, emergencyCombatCpuSuggestion, emptyUnitBattleStats, incrementIdentityCounter, isLegalCombatCpuSuggestion, resolveCombatCpuTurnSuggestion, resolveHumanColor, selectCombatAwareRemoteSuggestion } from './combatControllerSupport.js';
 import { enemyDoctrineCatalog } from './combatEnemyDoctrine.js';
 
@@ -63,6 +64,54 @@ describe('combat controller support', () => {
 
     const noFacts = annotateCombatCandidates(fen, {}, remote);
     expect(selectCombatAwareRemoteSuggestion(noFacts)).toBe(noFacts);
+  });
+
+  it('el enemigo prefiere una captura medible de veterano ante una recluta equivalente', () => {
+    const fen = 'r6R/6k1/8/8/8/8/8/R6K b - - 0 1';
+    const registry = {
+      a8: { id: 'b-r-a8', type: 'r', color: 'b', square: 'a8' },
+      g7: { id: 'b-k-g7', type: 'k', color: 'b', square: 'g7' },
+      a1: { id: 'w-r-a1', type: 'r', color: 'w', square: 'a1' },
+      h8: { id: 'w-r-h8', identityId: 'human-veteran', strengthPoints: 4, type: 'r', color: 'w', square: 'h8' },
+      h1: { id: 'w-k-h1', type: 'k', color: 'w', square: 'h1' },
+    };
+    const remote = {
+      from: 'a8', to: 'a1',
+      candidates: [
+        { from: 'a8', to: 'a1', moveKey: 'a8a1', chessScoreCp: 15, isLegal: true },
+        { from: 'a8', to: 'h8', moveKey: 'a8h8', chessScoreCp: 15, isLegal: true },
+      ],
+    };
+    const scored = annotateCombatCandidates(fen, registry, remote);
+    expect(scored.candidates[0]).toMatchObject({ combatReady: true, enemyValue: 5, enemyPersistentValue: 0 });
+    expect(scored.candidates[1]).toMatchObject({ combatReady: true, enemyValue: 5, enemyPersistentValue: 4 });
+    expect(scored.candidates[1].hitChance).toBeGreaterThanOrEqual(0.5);
+    expect(scored.candidates[1].hitChance).toBeLessThanOrEqual(0.9);
+    expect(selectCombatAwareRemoteSuggestion(scored)).toMatchObject({ from: 'a8', to: 'h8' });
+
+    const rookie = { ...registry, h8: { ...registry.h8, identityId: null } };
+    expect(selectCombatAwareRemoteSuggestion(annotateCombatCandidates(fen, rookie, remote)))
+      .toMatchObject({ from: 'a8', to: 'a1' });
+    // Bonus táctico temporal: evasión alta sin inventar 100 niveles nuevos.
+    const evasive = { ...registry, h8: { ...registry.h8, runSpeedBonus: 1000 } };
+    const measured = annotateCombatCandidates(fen, evasive, remote);
+    expect(measured.candidates[1].hitChance).toBe(0.5);
+    expect(measured.candidates[1].enemyPersistentValue).toBe(4);
+    expect(selectCombatAwareRemoteSuggestion(measured)).toMatchObject({ from: 'a8', to: 'a1' });
+    expect(registry.h8.speedPoints).toBeUndefined();
+  });
+
+  it('la posición confirma la réplica real, sin convertirla en baja segura del jugador', () => {
+    const fen = 'r5k1/8/8/8/8/8/1R6/7K b - - 0 1';
+    const reply = new Chess(fen);
+    const exposed = reply.move({ from: 'a8', to: 'b8' });
+    expect(exposed).toBeTruthy();
+    const threats = reply.moves({ verbose: true }).filter(({ to, captured }) => to === 'b8' && captured === 'r');
+    expect(threats.some(({ from }) => from === 'b2')).toBe(true);
+    const safer = new Chess(fen);
+    safer.move({ from: 'a8', to: 'a7' });
+    expect(safer.moves({ verbose: true }).some(({ to, captured }) => to === 'a7' && captured === 'r')).toBe(false);
+    // No se atribuye a la IA enemiga veteranía que sólo tiene el ejército humano.
   });
 
   it('desmiente mates inventados por el shortlist y conserva los mates reales', () => {
