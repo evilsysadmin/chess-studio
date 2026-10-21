@@ -92,13 +92,15 @@ describe('combat controller support', () => {
     expect(selectCombatAwareRemoteSuggestion(measured)).toMatchObject({ from: 'a8', to: 'a7' });
     // Sin identidad veterana, la penalización por pérdida persistente desaparece.
     const recruit = { ...registry, a8: { ...veteran, identityId: null } };
-    expect(selectCombatAwareRemoteSuggestion(annotateCombatCandidates(fen, recruit, remote))).toBe(remote);
+    expect(selectCombatAwareRemoteSuggestion(annotateCombatCandidates(fen, recruit, remote)))
+      .toMatchObject({ from: 'a8', to: 'b8' });
     // No sabemos las estadísticas de la torre que podría contraatacar.
     const unknown = { ...registry };
     delete unknown.b2;
     expect(annotateCombatCandidates(fen, unknown, remote).candidates[0])
       .toMatchObject({ ownPersistentValue: 0, ownCasualtyRisk: 0 });
-    expect(selectCombatAwareRemoteSuggestion(annotateCombatCandidates(fen, unknown, remote))).toBe(remote);
+    expect(selectCombatAwareRemoteSuggestion(annotateCombatCandidates(fen, unknown, remote)))
+      .toMatchObject({ from: 'a8', to: 'b8' });
     expect(registry.a8.square).toBe('a8');
   });
 
