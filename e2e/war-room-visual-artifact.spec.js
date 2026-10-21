@@ -779,6 +779,13 @@ async function assertAndCaptureProfile(page, profile, board3d) {
     await expect(page.locator('.board3d-main-canvas'))
       .toHaveAttribute('data-war-room-variant-status', 'ready', { timeout: 30_000 });
   }
+  if (profile.variant === 'v2' && expectedWarRoomV2Revision()) {
+    // A Blender PNG and intact door/anchor nodes are insufficient. The exact
+    // PR GLB must also install Hans' real service-door routine in Three.js.
+    // Historical V2 runtime aliases are exempt until manually promoted.
+    await expect(page.locator('.board3d-main-canvas'))
+      .toHaveAttribute('data-war-room-hans-stage', /^v2-blender-hall:(quick|idle)$/, { timeout: 45_000 });
+  }
   if (profile.variant === 'v4') {
     // The observatory's Blender shell must really install Hans' authored
     // service door/hearth stage. Hans himself only appears for the event
