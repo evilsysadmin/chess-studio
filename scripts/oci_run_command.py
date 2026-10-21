@@ -175,8 +175,10 @@ run_deploy() {{
 }}
 # The installed launcher may predate the repository source; a fixed-size,
 # non-secret fingerprint identifies which binary handled this attempt.
-launcher_hash="$(sha256sum '{DEPLOY_WRAPPER}' 2>/dev/null | cut -c1-16 || true)"
 emit_version() {{
+  # Re-read at the moment of reporting: the payload may have installed a NEW
+  # launcher after this Run Command started.
+  launcher_hash="$(sha256sum '{DEPLOY_WRAPPER}' 2>/dev/null | cut -c1-16 || true)"
   printf 'OCI_DEPLOY_LAUNCHER_HASH_PREFIX=%s\n' "${{launcher_hash:-unknown}}"
 }}
 emit_failure() {{
@@ -569,6 +571,7 @@ def execute(
 
 def local_deploy_diagnostics_self_test() -> None:
     """Exercise the generated Bash payload using isolated executable shims."""
+    import hashlib
     import subprocess
     import tempfile
     from pathlib import Path
@@ -614,14 +617,23 @@ def local_deploy_diagnostics_self_test() -> None:
             assert "OCI_DEPLOY_LAUNCHER_HASH_PREFIX=" in failed.stdout
             assert "PRIVATE_LOG_CANARY_SHOULD_NOT_LEAK" not in failed.stdout + failed.stderr
 
+            replacement_path = root / "new-launcher"
+            replacement_path.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+            replacement_path.chmod(0o700)
             deploy_path.write_text(
-                "#!/bin/sh\nprintf '%s\\n' 'CHESS_STUDIO_DEPLOY_OK repo_ref=confirmed'\n",
+                "#!/bin/sh\n"
+                f'mv "{replacement_path}" "$0"\n'
+                "printf '%s\\n' 'CHESS_STUDIO_DEPLOY_OK repo_ref=confirmed'\n",
                 encoding="utf-8",
             )
+            old_hash = hashlib.sha256(deploy_path.read_bytes()).hexdigest()[:16]
             passed = run_script()
+            new_hash = hashlib.sha256(deploy_path.read_bytes()).hexdigest()[:16]
+            assert old_hash != new_hash
             assert passed.returncode == 0, passed.stderr[-300:]
             assert "CHESS_STUDIO_DEPLOY_OK repo_ref=confirmed" in passed.stdout
-            assert "OCI_DEPLOY_LAUNCHER_HASH_PREFIX=" in passed.stdout
+            assert "OCI_DEPLOY_LAUNCHER_HASH_PREFIX=" + new_hash in passed.stdout
+            assert "OCI_DEPLOY_LAUNCHER_HASH_PREFIX=" + old_hash not in passed.stdout
             assert "OCI_DEPLOY_REMOTE_FAILURE" not in passed.stdout
         finally:
             DEPLOY_WRAPPER, RUNTIME_WRAPPER = original_deploy, original_runtime
