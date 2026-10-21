@@ -8,12 +8,12 @@ import {
 
 // La dama puede comerse el peón en c5. Pero, si falla, c5xb6 captura a
 // la dama QUE NO SE HA MOVIDO. Esa amenaza no existe si la captura acierta.
-const FEN = '4k3/8/1q6/2P5/8/8/8/6BK b - - 0 1';
+const FEN = '4k3/8/1q6/2P5/8/8/8/6RK b - - 0 1';
 const REGISTRY = {
   e8: { id: 'b-k-e8', color: 'b', type: 'k', square: 'e8' },
   b6: { id: 'b-q-b6', color: 'b', type: 'q', square: 'b6' },
   c5: { id: 'w-p-c5', color: 'w', type: 'p', square: 'c5', runSpeedBonus: 20 },
-  g1: { id: 'w-b-g1', color: 'w', type: 'b', square: 'g1' },
+  g1: { id: 'w-r-g1', color: 'w', type: 'r', square: 'g1' },
   h1: { id: 'w-k-h1', color: 'w', type: 'k', square: 'h1' },
 };
 
@@ -39,6 +39,8 @@ describe('Combat Chess · captura fallida y amenaza en casilla original', () => 
     expect(success.registry.b6).toBeUndefined();
     expect(new Chess(miss.fen).moves({ square: 'c5', verbose: true })
       .some(({ to, captured }) => to === 'b6' && captured === 'q')).toBe(true);
+    expect(new Chess(success.fen).moves({ verbose: true })
+      .some(({ to, captured }) => to === 'c5' && captured === 'q')).toBe(false);
     expect(new Chess(success.fen).moves({ square: 'c5', verbose: true })
       .some(({ to, captured }) => to === 'b6' && captured === 'q')).toBe(false);
 
