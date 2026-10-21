@@ -155,11 +155,11 @@
       "url": "https://assets.chess-studio.shadowops.dpdns.org/war-room/v2/runtime/war-room-premium-shell-c8c6d324d0dec87e.glb"
     },
     "warRoom.v3.runtime": {
-      "bytes": 3816796,
+      "bytes": 3066020,
       "contentType": "model/gltf-binary",
-      "key": "war-room/v3/runtime/war-room-v3-shell-5eec3e5d49be9c9a.glb",
-      "sha256": "5eec3e5d49be9c9a131eabf1b21dc4cba6ef4c99244e698f5974616d98c6f45a",
-      "url": "https://assets.chess-studio.shadowops.dpdns.org/war-room/v3/runtime/war-room-v3-shell-5eec3e5d49be9c9a.glb"
+      "key": "war-room/v3/runtime/war-room-v3-shell-466435aaa9698888.glb",
+      "sha256": "466435aaa9698888c29a9a780a8c41d61ec8c09a91d950ff99fa3f9cb7203587",
+      "url": "https://assets.chess-studio.shadowops.dpdns.org/war-room/v3/runtime/war-room-v3-shell-466435aaa9698888.glb"
     },
     "warRoom.v4.runtime": {
       "bytes": 3756840,
