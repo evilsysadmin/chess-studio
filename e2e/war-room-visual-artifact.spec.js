@@ -13,6 +13,9 @@ const SEEN_WAR_ROOM_TUTORIAL_PROFILE = Object.freeze({
 const WAR_ROOM_VARIANT_STORAGE_KEY = 'chess-study-war-room-variant-v1';
 const WAR_ROOM_V2_REVISION_BASE =
   'https://assets.chess-studio.shadowops.dpdns.org/war-room/v2/staging/revisions';
+// An env-enabled staging proof must fail if no browser model request actually
+// consumes the staged GLB. A passing PNG of the immutable OLD model is not proof.
+const v2RevisionProof = new WeakMap();
 const WAR_ROOM_V3_REVISION_BASE =
   'https://assets.chess-studio.shadowops.dpdns.org/war-room/v3/staging/revisions';
 const LOCAL_GPU_CAPTURE = process.env.APP_VISUAL_LOCAL_GPU === '1';
@@ -56,13 +59,17 @@ async function installWarRoomV2RevisionRoute(page) {
   }
   if (!body) throw new Error('War Room v2 revision GLB timeout: ' + expected);
 
-  await page.route('**/war-room/v2/runtime/current.glb*', async (route) => {
+  v2RevisionProof.set(page, { revision: expected, fulfilled: 0 });
+  // V2's runtime is content-addressed (war-room-premium-shell-<sha>.glb).
+  // Intercept both immutable filenames and the pre-manifest current.glb alias.
+  await page.route('**/war-room/v2/runtime/*.glb*', async (route) => {
     await route.fulfill({
       status: 200,
       contentType: 'model/gltf-binary',
       body,
       headers: { 'cache-control': 'no-store' },
     });
+    v2RevisionProof.get(page).fulfilled += 1;
   });
 }
 
@@ -780,6 +787,10 @@ async function assertAndCaptureProfile(page, profile, board3d) {
       .toHaveAttribute('data-war-room-variant-status', 'ready', { timeout: 30_000 });
   }
   if (profile.variant === 'v2' && expectedWarRoomV2Revision()) {
+    const proof = v2RevisionProof.get(page);
+    expect(proof?.revision).toBe(expectedWarRoomV2Revision());
+    expect(proof?.fulfilled, 'the V2 browser must fetch the exact staged GLB, not the old immutable manifest GLB')
+      .toBeGreaterThan(0);
     // A Blender PNG and intact door/anchor nodes are insufficient. The exact
     // PR GLB must also install Hans' real service-door routine in Three.js.
     // Historical V2 runtime aliases are exempt until manually promoted.
