@@ -115,18 +115,24 @@ function emergencyOtherUnitExposurePenalty(after, move, registry, focus, branchC
 // muerto al defensor ni mantenemos un derecho al paso ya consumido.
 // Si el fallo crearía un turno enemigo sin jugadas legales, Combat fuerza
 // el acierto: esa rama no existe y no debe recibir una penalización ficticia.
+// El turno perdido tiene el mismo FEN para TODAS las capturas candidatas
+// de la posición actual: sólo cambian qué atacante intentó capturar y su
+// probabilidad de fallo. Este helper acepta respuestas ya enumeradas y es
+// puro respecto al tablero compartido.
+function measuredMissExposure(afterMiss, replies, move, registry, focus, missChance) {
+  if (!replies?.length) return 0;
+  return Math.max(
+    emergencyRecapturePenalty(afterMiss, move, registry, focus, missChance, move.from, replies),
+    emergencyOtherUnitExposurePenalty(afterMiss, move, registry, focus, missChance, move.from, replies),
+  );
+}
+
 export function emergencyCombatMissExposurePenalty(fen, move, registry, focus = {}, missChance = 0) {
   if (!move?.captured || !registry || !Number.isFinite(missChance) || missChance <= 0) return 0;
   try {
     const afterMiss = new Chess(passTurnFen(fen));
-    // Ambos riesgos comparten las mismas respuestas legales del turno perdido.
-    // Esto también comprueba que el fallo no crea un falso ahogado/mate.
-    const replies = afterMiss.moves({ verbose: true });
-    if (!replies.length) return 0;
-    return Math.max(
-      emergencyRecapturePenalty(afterMiss, move, registry, focus, missChance, move.from, replies),
-      emergencyOtherUnitExposurePenalty(afterMiss, move, registry, focus, missChance, move.from, replies),
-    );
+    // El mismo contrato público sirve para evaluar una captura aislada.
+    return measuredMissExposure(afterMiss, afterMiss.moves({ verbose: true }), move, registry, focus, missChance);
   } catch {
     return 0;
   }
@@ -142,6 +148,10 @@ export function emergencyCombatCpuSuggestion(fen, registry = null, focus = {}, d
     const chess = new Chess(fen);
     const moves = chess.moves({ verbose: true });
     if (!moves.length) return null;
+    // Cache efímera de UNA decisión, creada sólo si hay una captura con
+    // probabilidades completas de fallo. Nunca cruza FENs, turnos ni usuarios.
+    let missedTurn = null;
+    let missedTurnChecked = false;
     const ranked = moves.map((move) => {
       const probe = new Chess(fen);
       let applied = null;
@@ -174,7 +184,20 @@ export function emergencyCombatCpuSuggestion(fen, registry = null, focus = {}, d
           emergencyOtherUnitExposurePenalty(probe, move, registry, focus, captureSuccessChance, move.to, replies),
         );
         if (move.captured && captureSuccessChance < 1) {
-          score -= emergencyCombatMissExposurePenalty(fen, move, registry, focus, 1 - captureSuccessChance);
+          if (!missedTurnChecked) {
+            missedTurnChecked = true;
+            try {
+              const board = new Chess(passTurnFen(fen));
+              missedTurn = { board, replies: board.moves({ verbose: true }) };
+            } catch {
+              missedTurn = null;
+            }
+          }
+          if (missedTurn) {
+            score -= measuredMissExposure(
+              missedTurn.board, missedTurn.replies, move, registry, focus, 1 - captureSuccessChance,
+            );
+          }
         }
       }
       if (move.promotion) score += 70 + (EMERGENCY_CPU_PIECE_VALUE[move.promotion] || 0) * 4;
