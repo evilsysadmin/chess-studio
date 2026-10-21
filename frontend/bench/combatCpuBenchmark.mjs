@@ -49,7 +49,8 @@ export function structuralPass(fen, mode) {
       // shares one. Score BOTH reply traversals so semantic work is equal.
       const first = probe.moves({ verbose: true });
       const second = mode === 'legacy' ? probe.moves({ verbose: true }) : first;
-      checksum = Math.imul(checksum ^ fingerprint(first) ^ fingerprint(second), 16777619) >>> 0;
+      checksum = Math.imul(checksum ^ fingerprint(first), 16777619) >>> 0;
+      checksum = Math.imul(checksum ^ fingerprint(second), 16777619) >>> 0;
       checksum = Math.imul(checksum ^ first.length ^ Number(probe.isCheck()), 16777619) >>> 0;
       if (move.captured) captures++;
     } finally {
