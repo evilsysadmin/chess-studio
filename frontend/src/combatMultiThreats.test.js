@@ -54,7 +54,7 @@ describe('Combat Chess · amenazas simultáneas verificadas', () => {
       ],
     };
     const measured = annotateCombatCandidates(fen, registry, corrupt);
-    expect(selectCombatAwareRemoteSuggestion(measured)).toBe(corrupt);
+    expect(selectCombatAwareRemoteSuggestion(measured)).toBe(measured);
   });
 
   it('no transforma un registro de veterano desfasado en botín medido', () => {
