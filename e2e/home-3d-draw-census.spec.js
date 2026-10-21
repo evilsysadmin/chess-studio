@@ -106,6 +106,17 @@ test('Home 3D · profiler attributes real WebGL draws to castle, Matthias and de
   });
   expect(validCounts(first), 'First frame count must be an actual, complete Three census').toBe(true);
   expect(validCounts(latest), 'Latest frame count must be an actual, complete Three census').toBe(true);
+  // SwiftShader intentionally disables live fire. The GLB material side
+  // census is still available before animation starts; it must be real data,
+  // not a fabricated benchmark or an assertion of GPU draw savings.
+  const eligibility = await canvas.evaluate((node) => {
+    try { return JSON.parse(node.dataset.homeBlenderFlamePassEligibility || 'null'); }
+    catch { return null; }
+  });
+  expect(eligibility?.materialSlots).toBeGreaterThan(0);
+  expect(eligibility.doubleSided + eligibility.frontSided + eligibility.otherSided)
+    .toBe(eligibility.materialSlots);
+  expect(eligibility.transparentNow).toBeLessThanOrEqual(eligibility.materialSlots);
   // These tests run on SwiftShader. Never interpret its timer as hardware GPU.
   expect(gpuStatus).not.toBe('ready');
 });
