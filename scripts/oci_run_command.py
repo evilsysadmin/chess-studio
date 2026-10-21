@@ -517,6 +517,14 @@ def reject_remote_deploy_failure(output: str) -> None:
         raise SystemExit(f"OCI Run Command remote deploy FAILED: rc={match.group(1)}")
 
 
+def validate_deploy_output(output: str, expected_sha: str) -> None:
+    """Accept only an explicit exact-SHA completion receipt from the host."""
+    sha = validate_sha(expected_sha)
+    marker = f"CHESS_STUDIO_DEPLOY_OK target=staging repo_ref={sha} "
+    if not any(line.startswith(marker) for line in output.splitlines()):
+        raise SystemExit("OCI deploy returned without exact-SHA CHESS_STUDIO_DEPLOY_OK receipt")
+
+
 def execute(
     oci: Any,
     config: dict[str, str],
@@ -788,6 +796,17 @@ def self_test() -> None:
     else:
         raise AssertionError("secret-bearing command must be rejected")
 
+    validate_deploy_output(
+        "CHESS_STUDIO_DEPLOY_OK target=staging repo_ref=" + sample + " color=blue", sample
+    )
+    for invalid in ("", "OCI_DEPLOY_LAUNCHER_HASH_PREFIX=deadbeef", "CHESS_STUDIO_DEPLOY_OK repo_ref=" + sample):
+        try:
+            validate_deploy_output(invalid, sample)
+        except SystemExit as exc:
+            assert "without exact-SHA" in str(exc)
+        else:
+            raise AssertionError("missing/wrong deployment receipt must fail closed")
+
     class Capture:
         def __init__(self, **kwargs: Any) -> None:
             self.kwargs = kwargs
@@ -849,7 +868,7 @@ def main() -> int:
             resolved=resolved,
             include_desired_config=False,
         )
-        execute(
+        output = execute(
             oci,
             config,
             deploy_command(args.repo_ref),
@@ -857,6 +876,7 @@ def main() -> int:
             timeout=900,
             resolved=resolved,
         )
+        validate_deploy_output(output, args.repo_ref)
     return 0
 
 
