@@ -26,21 +26,29 @@ function isPromiseLike(value) {
   return Boolean(value && typeof value.then === 'function');
 }
 
+// Shared mapping keeps lifecycle clearing and reporting in lockstep.
+const BLENDER_SHADOW_TELEMETRY_ROWS = Object.freeze([
+  ['warRoomBlenderShadowCasterBudget', 'warRoomShadowCasterBudget'],
+  ['warRoomBlenderShadowCasterCandidates', 'warRoomShadowCasterCandidates'],
+  ['warRoomBlenderShadowCandidatePotentialTriangles', 'warRoomShadowCandidatePotentialTriangles'],
+  ['warRoomBlenderShadowSelectedPotentialTriangles', 'warRoomShadowSelectedPotentialTriangles'],
+  ['warRoomBlenderShadowProjectedCount', 'warRoomShadowProjectedCount'],
+  ['warRoomBlenderShadowCasterCount', 'warRoomShadowCasterCount'],
+  ['warRoomBlenderShadowWarmup', 'warRoomShadowWarmup'],
+]);
+
+export function clearWarRoomBlenderShadowTelemetry(canvas) {
+  if (!canvas?.dataset) return;
+  for (const [, key] of BLENDER_SHADOW_TELEMETRY_ROWS) delete canvas.dataset[key];
+  delete canvas.dataset.warRoomV3StaticTorchBatches;
+}
+
 function syncBlenderShadowTelemetry(scene, variant, canvas) {
   if (!canvas?.dataset || !scene?.children) return;
   const root = scene.children.find((child) => child?.userData?.warRoomVariant === variant);
   if (!root?.userData) return;
   const { userData } = root;
-  const rows = [
-    ['warRoomBlenderShadowCasterBudget', 'warRoomShadowCasterBudget'],
-    ['warRoomBlenderShadowCasterCandidates', 'warRoomShadowCasterCandidates'],
-    ['warRoomBlenderShadowCandidatePotentialTriangles', 'warRoomShadowCandidatePotentialTriangles'],
-    ['warRoomBlenderShadowSelectedPotentialTriangles', 'warRoomShadowSelectedPotentialTriangles'],
-    ['warRoomBlenderShadowProjectedCount', 'warRoomShadowProjectedCount'],
-    ['warRoomBlenderShadowCasterCount', 'warRoomShadowCasterCount'],
-    ['warRoomBlenderShadowWarmup', 'warRoomShadowWarmup'],
-  ];
-  for (const [source, target] of rows) {
+  for (const [source, target] of BLENDER_SHADOW_TELEMETRY_ROWS) {
     const value = userData[source];
     if (value === undefined || value === null) continue;
     canvas.dataset[target] = String(value);
@@ -64,6 +72,9 @@ export function startWarRoomVariantScene({
   loadVariantInstaller = loadWarRoomVariantInstaller,
   loadHansStage = () => import('./WarRoomHansStage.js'),
 }) {
+  // Each room transition owns a fresh diagnostic snapshot. An old V3/V4
+  // shadow budget must never be attributed to a loading, classic or failed room.
+  clearWarRoomBlenderShadowTelemetry(canvas);
   let cancelled = false;
   let releaseShell = null;
   let releaseHans = null;

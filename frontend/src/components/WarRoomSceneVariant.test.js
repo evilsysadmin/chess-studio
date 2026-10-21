@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
 import {
+  clearWarRoomBlenderShadowTelemetry,
   shouldShowClassicWarRoomShell,
   startWarRoomVariantScene,
   warRoomVariantShellCoarsePointer,
@@ -144,6 +145,72 @@ describe('War Room shared scene variants', () => {
     expect(hansCalls).toBe(0);
     expect(fallbackBuilds).toBe(0);
     expect(scene.userData.warRoomRenderedVariant).toBe('classic');
+  });
+
+  it('clears old V3/V4 shadow counters on transition to classic or a loading room', () => {
+    const old = {
+      warRoomShadowCasterBudget: '32',
+      warRoomShadowCasterCandidates: '75',
+      warRoomShadowCandidatePotentialTriangles: '94754',
+      warRoomShadowSelectedPotentialTriangles: '42222',
+      warRoomShadowProjectedCount: '32',
+      warRoomShadowCasterCount: '32',
+      warRoomShadowWarmup: 'ready-budgeted',
+      warRoomV3StaticTorchBatches: '4',
+    };
+    const canvas = { dataset: { ...old, board3dRendererClass: 'native-gl' } };
+    startWarRoomVariantScene({
+      scene: { userData: {} },
+      canvas, variant: 'classic', selectable: true,
+      classicShellController: { ensure: () => [], current: () => [] },
+    });
+    for (const key of Object.keys(old)) expect(canvas.dataset[key]).toBeUndefined();
+    expect(canvas.dataset.board3dRendererClass).toBe('native-gl');
+    expect(canvas.dataset.warRoomVariant).toBe('classic');
+
+    Object.assign(canvas.dataset, old);
+    const scene = { userData: {}, children: [] };
+    const release = startWarRoomVariantScene({
+      scene, canvas, variant: 'v4', selectable: true,
+      classicShellController: { current: () => [] },
+      loadVariantInstaller: () => new Promise(() => {}),
+    });
+    expect(canvas.dataset.warRoomVariant).toBe('v4-loading');
+    for (const key of Object.keys(old)) expect(canvas.dataset[key]).toBeUndefined();
+    release();
+  });
+
+  it('updates the cleared counters only after the matching Blender shell mounts', async () => {
+    const canvas = { dataset: { warRoomShadowCasterCount: '32', warRoomV3StaticTorchBatches: '8' } };
+    const scene = { userData: {}, children: [] };
+    const release = startWarRoomVariantScene({
+      scene, canvas, variant: 'v4', selectable: true,
+      classicShellController: { current: () => [] },
+      loadVariantInstaller: async () => (target) => {
+        target.children.push({ userData: {
+          warRoomVariant: 'v4',
+          warRoomBlenderShadowCasterCount: 12,
+          warRoomBlenderShadowCasterCandidates: 140,
+          warRoomBlenderShadowCandidatePotentialTriangles: 107888,
+          warRoomBlenderShadowSelectedPotentialTriangles: 56000,
+        } });
+        return () => {};
+      },
+      loadHansStage: () => new Promise(() => {}),
+    });
+    expect(canvas.dataset.warRoomShadowCasterCount).toBeUndefined();
+    for (let i = 0; i < 10; i += 1) await Promise.resolve();
+    expect(canvas.dataset.warRoomVariantStatus).toBe('ready');
+    expect(canvas.dataset.warRoomShadowCasterCount).toBe('12');
+    expect(canvas.dataset.warRoomShadowCandidatePotentialTriangles).toBe('107888');
+    expect(canvas.dataset.warRoomShadowSelectedPotentialTriangles).toBe('56000');
+    expect(canvas.dataset.warRoomV3StaticTorchBatches).toBeUndefined();
+    release();
+  });
+
+  it('clears shadow metrics without requiring a DOM canvas', () => {
+    expect(() => clearWarRoomBlenderShadowTelemetry(null)).not.toThrow();
+    expect(() => clearWarRoomBlenderShadowTelemetry({})).not.toThrow();
   });
 
   it('reports independent import, GLB, material, effect and ready-paint phases on the same canvas', async () => {
