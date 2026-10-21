@@ -16,6 +16,9 @@ const V2_STOPS = Object.freeze({
 });
 const TABLE_HALF = 5.32;
 const ACTOR_RADIUS = 0.56;
+const LEFT_ARMOUR_BASE = Object.freeze([-7.55, 6.15]);
+const ARMOUR_PLINTH_RADIUS = 0.62;
+const CLEARANCE_TOLERANCE = 0.04;
 
 function v2Shell(whiteSide) {
   const scene = new THREE.Scene();
@@ -61,6 +64,12 @@ describe('V2 · Hans can enter and work without clipping the command table', () 
         const gap = Math.hypot(dx, dy);
         expect(gap, `Hans intersects command table at (${x.toFixed(2)}, ${y.toFixed(2)}) in ${frame.phase}`)
           .toBeGreaterThanOrEqual(ACTOR_RADIUS);
+        const armourX = whiteSide ? LEFT_ARMOUR_BASE[0] : -LEFT_ARMOUR_BASE[0];
+        const armourY = whiteSide ? LEFT_ARMOUR_BASE[1] : -LEFT_ARMOUR_BASE[1];
+        const armourGap = Math.hypot(x - armourX, y - armourY);
+        expect(armourGap,
+          `Hans clips left-armour plinth at (${x.toFixed(2)}, ${y.toFixed(2)}) in ${frame.phase}`)
+          .toBeGreaterThanOrEqual(ACTOR_RADIUS + ARMOUR_PLINTH_RADIUS + CLEARANCE_TOLERANCE);
       }
       for (const phase of ['fire-dimming', 'take-log', 'carry-log', 'place-log',
         'take-poker', 'stoke-fire', 'return-poker', 'leave']) {

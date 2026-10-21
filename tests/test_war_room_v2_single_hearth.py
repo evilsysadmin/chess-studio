@@ -62,6 +62,22 @@ class V2RoomArchitectureTests(unittest.TestCase):
         self.assertLess(y0, y1)
         self.assertLess(height, 6.7)
 
+    def test_hans_service_path_does_not_intersect_left_armour_plinth(self):
+        # The previous plinth (-7.33, 4.35) was directly on corridor_1.
+        # Allow 0.62m armour radius + 0.56m body radius + 0.04m margin.
+        armour = self.constants["V2_HANS_ARMOUR_LEFT_BASE"]
+        self.assertEqual(armour, (-7.55, 6.15))
+        anchor_points = dict(self.constants["V2_HANS_ANCHORS"])
+        for label in ("WR_ANCHOR_hans_door", "WR_ANCHOR_hans_basket",
+                      "WR_ANCHOR_hans_tools", "WR_ANCHOR_hans_corridor_0",
+                      "WR_ANCHOR_hans_corridor_1", "WR_ANCHOR_hans_corridor_2"):
+            x, y, _z = anchor_points[label]
+            separation = math.hypot(x - armour[0], y - armour[1])
+            self.assertGreaterEqual(separation, 1.22, label)
+        authored = ast.get_source_segment(self.source, self.funcs["add_room"])
+        self.assertIn("V2_HANS_ARMOUR_LEFT_BASE[0] - x", authored)
+        self.assertIn("V2_HANS_ARMOUR_LEFT_BASE[1] - 4.35", authored)
+
     def test_hans_hinge_swing_and_corridor_are_authored(self):
         y0 = self.constants["V2_HANS_DOOR_Y0"]
         y1 = self.constants["V2_HANS_DOOR_Y1"]

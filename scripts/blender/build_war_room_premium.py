@@ -59,6 +59,8 @@ V2_HANS_DOOR_HEIGHT = 2.72
 V2_HANS_HINGE = (-8.46, 4.58)
 V2_HANS_OPEN_YAW = -1.45
 V2_HANS_ALCOVE_DEPTH = 1.65
+# Keep the left ceremonial armour but move it away from Hans' exit corridor.
+V2_HANS_ARMOUR_LEFT_BASE = (-7.55, 6.15)
 V2_HANS_ANCHORS = (
     ("WR_ANCHOR_hans_hearth", (-4.55, 4.55, 0.0)),
     ("WR_ANCHOR_hans_door", (-8.12, 3.80, 0.0)),
@@ -858,6 +860,7 @@ def add_room(static, mats):
     # Ceremonial armour display. Angular plate construction keeps the suits
     # reading as armour rather than glossy toy figures at the hero camera.
     for side in (-1, 1):
+        armour_before = {obj.name for obj in static.objects}
         x = side * 7.33
         cylinder(f"WR_ARMOR_base_{side}", (x, 4.35, 0.33), 0.62, 0.22, mats["charcoal"], static)
         cube(f"WR_ARMOR_stand_{side}", (x, 4.35, 1.12), (0.11, 0.11, 0.78), mats["charcoal"], static, bevel=0.025)
@@ -920,6 +923,15 @@ def add_room(static, mats):
         spike.data.materials.append(mats["armor"])
         tag(spike)
         relink(spike, static)
+        if side == -1:
+            # Move *every* element of the original armour display, including
+            # halberd and small fittings. The old plinth intersected Hans' path.
+            shift_x = V2_HANS_ARMOUR_LEFT_BASE[0] - x
+            shift_y = V2_HANS_ARMOUR_LEFT_BASE[1] - 4.35
+            for armour_obj in static.objects:
+                if armour_obj.name not in armour_before:
+                    armour_obj.location.x += shift_x
+                    armour_obj.location.y += shift_y
 
 
 
