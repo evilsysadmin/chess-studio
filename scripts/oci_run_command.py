@@ -171,6 +171,11 @@ run_deploy() {{
   sudo --non-interactive '{DEPLOY_WRAPPER}' '{sha}' >"$log" 2>&1
   deploy_rc=$?
   set -e
+  # A root launcher may return 0 for a superseded/no-op generation.
+  # Require its exact completion receipt before reporting success to OCI.
+  if [ "$deploy_rc" -eq 0 ] && ! grep -q '^CHESS_STUDIO_DEPLOY_OK target=staging repo_ref={sha} ' "$log"; then
+    deploy_rc=86
+  fi
   return "$deploy_rc"
 }}
 # The installed launcher may predate the repository source; a fixed-size,
@@ -185,6 +190,8 @@ emit_failure() {{
   printf 'OCI_DEPLOY_REMOTE_FAILURE rc=%s\n' "$1"
   grep -E '^OCI_DEPLOY_(LOCK|MAIN)_' "$log" | tail -n 8 || true
   emit_version
+  # No stdout is guaranteed from OCI; rc86 must survive as the exit code.
+  [ "$1" -ne 86 ] || exit 86
 }}
 emit_success() {{
   printf 'OCI_RUN_COMMAND_AGENT version=%s\n' "${{agent_version:-unknown}}"
@@ -669,13 +676,26 @@ def local_deploy_diagnostics_self_test() -> None:
             assert "OCI_DEPLOY_LAUNCHER_HASH_PREFIX=" in failed.stdout
             assert "PRIVATE_LOG_CANARY_SHOULD_NOT_LEAK" not in failed.stdout + failed.stderr
 
+            # A superseded host generation returns zero but has NO deploy
+            # receipt. This must survive even when OCI returns no TEXT output.
+            deploy_path.write_text(
+                "#!/bin/sh\n"
+                "printf '%s\\n' 'OCI_DEPLOY_SUPERSEDED phase=launcher_lock_acquired'\n"
+                "exit 0\n",
+                encoding="utf-8",
+            )
+            superseded = run_script()
+            assert superseded.returncode == 86, superseded.stderr[-300:]
+            assert "OCI_DEPLOY_REMOTE_FAILURE rc=86" in superseded.stdout
+            assert "CHESS_STUDIO_DEPLOY_OK" not in superseded.stdout
+
             replacement_path = root / "new-launcher"
             replacement_path.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
             replacement_path.chmod(0o700)
             deploy_path.write_text(
                 "#!/bin/sh\n"
                 f'mv "{replacement_path}" "$0"\n'
-                "printf '%s\\n' 'CHESS_STUDIO_DEPLOY_OK repo_ref=confirmed'\n",
+                f"printf '%s\\n' 'CHESS_STUDIO_DEPLOY_OK target=staging repo_ref={sample_sha} color=blue'\n",
                 encoding="utf-8",
             )
             old_hash = hashlib.sha256(deploy_path.read_bytes()).hexdigest()[:16]
@@ -683,11 +703,20 @@ def local_deploy_diagnostics_self_test() -> None:
             new_hash = hashlib.sha256(deploy_path.read_bytes()).hexdigest()[:16]
             assert old_hash != new_hash
             assert passed.returncode == 0, passed.stderr[-300:]
-            assert "CHESS_STUDIO_DEPLOY_OK repo_ref=confirmed" in passed.stdout
+            assert f"CHESS_STUDIO_DEPLOY_OK target=staging repo_ref={sample_sha} " in passed.stdout
             assert "OCI_DEPLOY_LAUNCHER_HASH_PREFIX=" + new_hash in passed.stdout
             assert "OCI_DEPLOY_LAUNCHER_HASH_PREFIX=" + old_hash not in passed.stdout
             assert "OCI_DEPLOY_REMOTE_FAILURE" not in passed.stdout
             reject_remote_deploy_failure(passed.stdout)
+            deploy_path.write_text(
+                "#!/bin/sh\n"
+                "printf '%s\\n' 'CHESS_STUDIO_DEPLOY_OK target=staging repo_ref=0000000000000000000000000000000000000000 color=blue'\n"
+                "exit 0\n",
+                encoding="utf-8",
+            )
+            bad_receipt = run_script()
+            assert bad_receipt.returncode == 86
+            assert "OCI_DEPLOY_REMOTE_FAILURE rc=86" in bad_receipt.stdout
             try:
                 reject_remote_deploy_failure("OCI_DEPLOY_REMOTE_FAILURE rc=invalid")
             except SystemExit as exc:
