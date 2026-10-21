@@ -14,8 +14,9 @@ function fireGameIndex() {
   throw new Error('No deterministic Hans V2 fire-game fixture');
 }
 
-test('War Room V2 · Hans opens and closes the real service door', async () => {
-  test.skip(!REVISION, 'Exact V2 PR staging GLB required');
+// This proof is only registered in the V2 staging visual lane. Other E2E
+// suites must not silently 'pass' a fake skipped door test.
+if (REVISION) test('War Room V2 · Hans opens and closes the real service door', async () => {
   test.setTimeout(450_000);
   await mkdir(DIR, { recursive: true });
   const browser = await chromium.launch({
