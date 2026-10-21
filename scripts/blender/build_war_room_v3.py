@@ -504,8 +504,8 @@ def build_armor(index, x, y, static, palette):
 
     def sph(name, loc, r, mat, scale=(1, 1, 1)):
         # Breastplate and plackart are smooth shaded and only ~0.3 m in radius.
-        # Icosphere L3 uses 1280 triangles versus 320 for L2; across eight
-        # suits these two plates alone account for 15,360 avoidable faces.
+        # Blender icosphere subdivisions=3 has 320 triangles, L2 has 80;
+        # eight suits x two chest plates save 3,840 triangles in total.
         # Keep helmets, pauldrons, detail and all placements untouched.
         detail = 2 if name in ("breastplate", "plackart") else None
         return add(lod_sphere(f"{prefix}_{name}", loc, r, mat, static,
