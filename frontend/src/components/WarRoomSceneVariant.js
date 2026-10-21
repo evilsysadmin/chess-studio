@@ -150,7 +150,11 @@ export function startWarRoomVariantScene({
   };
   void loadVariantInstaller(variant)
     .then((installShell) => {
-      if (!cancelled) shellTiming.mark('import');
+      // Navigation may have unmounted this room while its JS chunk was still
+      // importing. Never start a costly GLB fetch/install for a stale scene.
+      // If the GLB was already in flight, the next .then releases it as before.
+      if (cancelled) return null;
+      shellTiming.mark('import');
       return installShell(scene, {
         whiteSide,
         coarsePointer: shellCoarsePointer,

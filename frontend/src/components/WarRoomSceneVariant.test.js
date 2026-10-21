@@ -111,6 +111,41 @@ describe('War Room shared scene variants', () => {
     release();
   });
 
+  it('does not download or install a GLB if unmounted during lazy module import', async () => {
+    const canvas = { dataset: {} };
+    const scene = { userData: {}, children: [] };
+    let resolveImport;
+    const deferredImport = new Promise((resolve) => { resolveImport = resolve; });
+    let installerCalls = 0;
+    let hansCalls = 0;
+    let fallbackBuilds = 0;
+    const release = startWarRoomVariantScene({
+      scene,
+      canvas,
+      variant: 'v3',
+      selectable: true,
+      classicShellController: {
+        current: () => [],
+        ensure: () => { fallbackBuilds += 1; return []; },
+      },
+      loadVariantInstaller: () => deferredImport,
+      loadHansStage: () => { hansCalls += 1; return Promise.resolve({}); },
+    });
+
+    expect(canvas.dataset.warRoomVariantStatus).toBe('loading');
+    release();
+    resolveImport(() => {
+      installerCalls += 1;
+      throw new Error('stale room must never request the GLB');
+    });
+    for (let n = 0; n < 8; n += 1) await Promise.resolve();
+
+    expect(installerCalls).toBe(0);
+    expect(hansCalls).toBe(0);
+    expect(fallbackBuilds).toBe(0);
+    expect(scene.userData.warRoomRenderedVariant).toBe('classic');
+  });
+
   it('reports independent import, GLB, material, effect and ready-paint phases on the same canvas', async () => {
     const scene = { userData: {}, children: [{ userData: { warRoomVariant: 'v3' } }] };
     const canvas = { dataset: { warRoomShellTimingGlbMs: '999' } };
