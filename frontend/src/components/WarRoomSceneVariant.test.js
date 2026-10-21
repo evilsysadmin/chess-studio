@@ -58,6 +58,61 @@ describe('War Room shared scene variants', () => {
     expect(builds).toBe(1);
   });
 
+  it.each(['v3', 'v4'])('cold-start %s installs the Blender room without building V1', async (variant) => {
+    const scene = { userData: {}, children: [] };
+    const canvas = { dataset: {} };
+    let classicBuilds = 0;
+    let glbInstalls = 0;
+    const controller = {
+      current: () => [],
+      ensure: () => { classicBuilds += 1; return []; },
+    };
+    const release = startWarRoomVariantScene({
+      scene, canvas, variant, selectable: true,
+      classicShellController: controller,
+      loadVariantInstaller: async () => (target) => {
+        glbInstalls += 1;
+        target.children.push({ userData: { warRoomVariant: variant } });
+        return () => {};
+      },
+      loadHansStage: () => new Promise(() => {}),
+    });
+
+    for (let i = 0; i < 12; i += 1) await Promise.resolve();
+    expect(glbInstalls).toBe(1);
+    expect(classicBuilds).toBe(0);
+    expect(canvas.dataset.warRoomVariantStatus).toBe('ready');
+    expect(scene.userData.warRoomRenderedVariant).toBe(variant);
+    release();
+    expect(classicBuilds).toBe(0);
+  });
+
+  it.each(['v3', 'v4'])('%s builds V1 lazily exactly once when its GLB fails', async (variant) => {
+    const scene = { userData: {}, children: [] };
+    const canvas = { dataset: {} };
+    let classicBuilds = 0;
+    const classic = { visible: false };
+    const controller = {
+      current: () => [],
+      ensure: () => { classicBuilds += 1; return [classic]; },
+    };
+    const release = startWarRoomVariantScene({
+      scene, canvas, variant, selectable: true,
+      classicShellController: controller,
+      loadVariantInstaller: async () => { throw new Error('GLB unavailable'); },
+    });
+    expect(classicBuilds).toBe(0);
+    for (let i = 0; i < 12; i += 1) await Promise.resolve();
+
+    expect(classicBuilds).toBe(1);
+    expect(classic.visible).toBe(true);
+    expect(canvas.dataset.warRoomVariantStatus).toBe('fallback');
+    expect(scene.userData.warRoomRenderedVariant).toBe('classic');
+    expect(canvas.dataset.warRoomVariantError).toContain('GLB unavailable');
+    release();
+    expect(classicBuilds).toBe(1);
+  });
+
   it('keeps the classic shell visible through the shared scene controller', () => {
     const shell = { visible: false };
     const scene = { userData: {} };
