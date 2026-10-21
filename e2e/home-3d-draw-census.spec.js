@@ -117,6 +117,9 @@ test('Home 3D · profiler attributes real WebGL draws to castle, Matthias and de
   expect(eligibility.doubleSided + eligibility.frontSided + eligibility.otherSided)
     .toBe(eligibility.materialSlots);
   expect(eligibility.transparentNow).toBeLessThanOrEqual(eligibility.materialSlots);
+  // Bounded non-identifying counts in the smoke log tell us whether the
+  // single-pass experiment has any DoubleSide flame candidates at all.
+  console.log('HOME_3D_FLAME_SIDE_CENSUS ' + JSON.stringify(eligibility));
   // These tests run on SwiftShader. Never interpret its timer as hardware GPU.
   expect(gpuStatus).not.toBe('ready');
 });
