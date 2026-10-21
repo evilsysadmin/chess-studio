@@ -923,6 +923,71 @@ def add_room(static, mats):
 
 
 
+
+def build_hans_service_v2(static, mats):
+    """Frame the wall gap with a hinged oak leaf and a dark service alcove."""
+    y0, y1, height = V2_HANS_DOOR_Y0, V2_HANS_DOOR_Y1, V2_HANS_DOOR_HEIGHT
+    mid = (y0 + y1) / 2.0
+    for label, y in (("front", y0 - 0.11), ("back", y1 + 0.11)):
+        cube(f"WR2_HANS_door_jamb_{label}", (-8.44, y, height / 2),
+             (0.14, 0.14, height / 2), mats["stone"], static, bevel=0.035)
+    cube("WR2_HANS_door_lintel", (-8.45, mid, height + 0.13),
+         (0.14, (y1 - y0) / 2 + 0.22, 0.13), mats["stone_light"], static, bevel=0.035)
+    cube("WR2_HANS_door_threshold", (-8.67, mid, 0.018),
+         (0.45, (y1 - y0) / 2 - 0.05, 0.035), mats["stone_dark"], static, bevel=0.013)
+
+    # The aperture opens into actual depth, not a black rectangle against
+    # the intact wall. Side cheeks hide the world beyond the service alcove.
+    depth = V2_HANS_ALCOVE_DEPTH
+    outer_x = -8.86
+    alcove_x = outer_x - depth / 2
+    cube("WR2_HANS_alcove_floor", (alcove_x, mid, -0.025),
+         (depth / 2, (y1 - y0) / 2 + 0.10, 0.04), mats["stone_dark"], static, bevel=0.008)
+    cube("WR2_HANS_alcove_back", (outer_x - depth, mid, height / 2),
+         (0.055, (y1 - y0) / 2 + 0.12, height / 2 + 0.11),
+         mats["charcoal"], static, bevel=0.01)
+    cube("WR2_HANS_alcove_roof", (alcove_x, mid, height + 0.14),
+         (depth / 2, (y1 - y0) / 2 + 0.10, 0.07), mats["charcoal"], static, bevel=0.01)
+    for label, y in (("front", y0 - 0.09), ("back", y1 + 0.09)):
+        cube(f"WR2_HANS_alcove_end_{label}", (alcove_x, y, height / 2),
+             (depth / 2, 0.055, height / 2), mats["charcoal"], static, bevel=0.01)
+
+    # Every door detail is joined into one dynamic glTF mesh with its origin
+    # on the hinge. The runtime must rotate exactly this node, not the wall.
+    hx, hy = V2_HANS_HINGE
+    width = hy - y0 - 0.065
+    parts = [
+        cube("WR2_HANS_leaf_oak", (hx, hy - width / 2, height / 2),
+             (0.045, width / 2, height / 2 - 0.04), mats["trim_wood"], static, bevel=0.016),
+    ]
+    for index, z in enumerate((0.48, 1.34, 2.19)):
+        parts.append(cube(f"WR2_HANS_leaf_iron_{index}", (hx + 0.058, hy - width / 2, z),
+                          (0.015, width * 0.42, 0.046), mats["iron"], static, bevel=0.006))
+    parts.append(sphere("WR2_HANS_leaf_handle", (hx + 0.084, hy - width + 0.19, 1.27),
+                        0.072, mats["brass_dark"], static, scale=(0.50, 0.68, 0.88)))
+    bpy.ops.object.select_all(action="DESELECT")
+    for part in parts:
+        part.select_set(True)
+    bpy.context.view_layer.objects.active = parts[0]
+    bpy.ops.object.join()
+    leaf = parts[0]
+    leaf.name = "WR_HANS_door_leaf"
+    cursor = bpy.context.scene.cursor
+    old_cursor = cursor.location.copy()
+    cursor.location = (hx, hy, 0.0)
+    bpy.ops.object.select_all(action="DESELECT")
+    leaf.select_set(True)
+    bpy.context.view_layer.objects.active = leaf
+    bpy.ops.object.origin_set(type="ORIGIN_CURSOR")
+    leaf.select_set(False)
+    cursor.location = old_cursor
+    leaf["war_room_runtime_dynamic"] = "v2-hans-door"
+    leaf["war_room_hans_door_open_yaw"] = V2_HANS_OPEN_YAW
+    for name, pos in V2_HANS_ANCHORS:
+        anchor(name, pos, static)
+
+
+
 def add_gothic_canon_v2(static, mats):
     """Structural parity pass for the approved 2026-09-18 gothic-study canon.
 
@@ -1709,6 +1774,7 @@ def build():
 
     add_room(static, mats)
     add_gothic_canon_v2(static, mats)
+    build_hans_service_v2(static, mats)
     weather_architecture()
     add_preview_board(dynamic, mats)
 
