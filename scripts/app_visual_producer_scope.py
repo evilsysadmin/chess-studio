@@ -400,20 +400,13 @@ def classify_path(path: str) -> set[str] | None:
     if not lower.startswith("frontend/src/"):
         if lower.startswith(("backend-python/", "backend-go/")):
             return set()
-        # Chronicles content and art generators have no render code: what they
-        # write (manifests under frontend/src/chronicles/maps, assets under
-        # frontend/src/assets/chronicles) is classified on its own.
-        if (
-            lower.startswith("scripts/chronicles/")
-            or lower.startswith("scripts/art/chronicles_sprites/")
-            or lower.startswith("scripts/art/build_chronicles_")
-            or lower == "scripts/art/pack_chronicles_sprites.py"
-        ):
+        # One historical Terra authoring tool still exists while its source
+        # is transferred to the independent game repository. Do not exempt
+        # whole Chronicles directories: new tools must fail closed.
+        if lower == "scripts/chronicles/build_terra_world.py":
             return set()
         if lower in {
             "scripts/css_architecture_manifest.json",
-            "scripts/chronicles_area_parity_corpus.py",  # Backend fixture data, no render code.
-            "scripts/chronicles_contracts.py",  # Backend/Go manifest parity, no render code.
             "scripts/validate_chronicles_campaign.py",  # Backend campaign atlas, no render code.
             "scripts/dead_code_reachability_check.py",  # Static gate, no render code.
             "scripts/architecture_debt_budget.py",
@@ -789,8 +782,11 @@ def project_chronicles_lane(producers: str, lane: str) -> str:
 
 def self_test() -> None:
     assert classify_path("scripts/chronicles/build_terra_world.py") == set()
-    assert classify_path("scripts/art/build_chronicles_procedural_sprites.py") == set()
-    assert classify_path("scripts/art/chronicles_sprites/source/drowned.idle.png") == set()
+    # Deleted generators cannot inherit a blanket exclusion. A newly added
+    # Chronicles tool is a new visual-risk surface until explicitly reviewed.
+    assert classify(["scripts/art/build_chronicles_procedural_sprites.py"]) == "all"
+    assert classify(["scripts/art/chronicles_sprites/source/drowned.idle.png"]) == "all"
+    assert classify(["scripts/chronicles/new_renderer.py"]) == "all"
     assert project_chronicles_lane("all", "combined") == "all"
     # Chronicles and Tactics left for their own repository: their lanes stay
     # empty whatever is asked, and App keeps every remaining producer.
@@ -805,8 +801,9 @@ def self_test() -> None:
     assert project_chronicles_lane("all", "default") != "all"
     assert "chronicles" not in project_chronicles_lane("all", "default")
     assert classify(["e2e/staging-live.spec.js"]) == "none"
-    assert classify(["scripts/chronicles_area_parity_corpus.py"]) == "none"
-    assert classify(["scripts/chronicles_contracts.py", "scripts/validate_chronicles_campaign.py"]) == "none"
+    assert classify(["scripts/chronicles_area_parity_corpus.py"]) == "all"
+    assert classify(["scripts/chronicles_contracts.py"]) == "all"
+    assert classify(["scripts/validate_chronicles_campaign.py"]) == "none"
     assert classify([".github/workflows/cicd.yml", "scripts/run_core_e2e_lane.py", "scripts/test_entrypoint_parity.py", "frontend/src/components/RoguelikeScreen.jsx", "e2e/war-room-combat-battle-visual-artifact.spec.js"]) == "combat-battle"
     # A ghost runtime source is unexpected after extraction; fail closed rather
     # than silently granting a new implementation exemption based on its name.
