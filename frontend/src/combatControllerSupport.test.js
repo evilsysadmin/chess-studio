@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { Chess } from 'chess.js';
 import { annotateCombatCandidates, buildCombatSessionSnapshot, emergencyCombatCpuSuggestion, emptyUnitBattleStats, incrementIdentityCounter, isLegalCombatCpuSuggestion, resolveCombatCpuTurnSuggestion, resolveHumanColor, selectCombatAwareRemoteSuggestion } from './combatControllerSupport.js';
 import { enemyDoctrineCatalog } from './combatEnemyDoctrine.js';
 
@@ -65,60 +66,50 @@ describe('combat controller support', () => {
     expect(selectCombatAwareRemoteSuggestion(noFacts)).toBe(noFacts);
   });
 
-  it('penaliza solo el riesgo demostrado de un veterano ante una réplica inmediata', () => {
-    const fen = 'r5k1/8/8/8/8/8/1R6/7K b - - 0 1';
-    const veteran = {
-      id: 'b-r-a8', identityId: 'veteran-rook', color: 'b', type: 'r',
-      square: 'a8', strengthPoints: 4, speedPoints: 1,
-    };
+  it('el enemigo prefiere una captura medible de veterano ante una recluta equivalente', () => {
+    const fen = 'r6R/6k1/8/8/8/8/8/R6K b - - 0 1';
     const registry = {
-      a8: veteran,
-      g8: { id: 'b-k-g8', color: 'b', type: 'k', square: 'g8' },
-      b2: { id: 'w-r-b2', color: 'w', type: 'r', square: 'b2' },
-      h1: { id: 'w-k-h1', color: 'w', type: 'k', square: 'h1' },
+      a8: { id: 'b-r-a8', type: 'r', color: 'b', square: 'a8' },
+      g7: { id: 'b-k-g7', type: 'k', color: 'b', square: 'g7' },
+      a1: { id: 'w-r-a1', type: 'r', color: 'w', square: 'a1' },
+      h8: { id: 'w-r-h8', identityId: 'human-veteran', strengthPoints: 4, type: 'r', color: 'w', square: 'h8' },
+      h1: { id: 'w-k-h1', type: 'k', color: 'w', square: 'h1' },
     };
     const remote = {
-      from: 'a8', to: 'b8',
+      from: 'a8', to: 'a1',
       candidates: [
-        { from: 'a8', to: 'b8', moveKey: 'a8b8', chessScoreCp: 10, isLegal: true },
-        { from: 'a8', to: 'a7', moveKey: 'a8a7', chessScoreCp: 10, isLegal: true },
+        { from: 'a8', to: 'a1', moveKey: 'a8a1', chessScoreCp: 15, isLegal: true },
+        { from: 'a8', to: 'h8', moveKey: 'a8h8', chessScoreCp: 15, isLegal: true },
       ],
     };
-    const measured = annotateCombatCandidates(fen, registry, remote);
-    expect(measured.candidates[0]).toMatchObject({ combatReady: true, ownPersistentValue: 5 });
-    expect(measured.candidates[0].ownCasualtyRisk).toBeGreaterThan(0.5);
-    expect(measured.candidates[0].ownCasualtyRisk).toBeLessThan(1);
-    expect(measured.candidates[1]).toMatchObject({ ownPersistentValue: 5, ownCasualtyRisk: 0 });
-    expect(selectCombatAwareRemoteSuggestion(measured)).toMatchObject({ from: 'a8', to: 'a7' });
-    // Sin identidad veterana, la penalización por pérdida persistente desaparece.
-    const recruit = { ...registry, a8: { ...veteran, identityId: null } };
-    expect(selectCombatAwareRemoteSuggestion(annotateCombatCandidates(fen, recruit, remote)))
-      .toMatchObject({ from: 'a8', to: 'b8' });
-    // No sabemos las estadísticas de la torre que podría contraatacar.
-    const unknown = { ...registry };
-    delete unknown.b2;
-    expect(annotateCombatCandidates(fen, unknown, remote).candidates[0])
-      .toMatchObject({ ownPersistentValue: 0, ownCasualtyRisk: 0 });
-    expect(selectCombatAwareRemoteSuggestion(annotateCombatCandidates(fen, unknown, remote)))
-      .toMatchObject({ from: 'a8', to: 'b8' });
-    expect(registry.a8.square).toBe('a8');
+    const scored = annotateCombatCandidates(fen, registry, remote);
+    expect(scored.candidates[0]).toMatchObject({ combatReady: true, enemyValue: 5, enemyPersistentValue: 0 });
+    expect(scored.candidates[1]).toMatchObject({ combatReady: true, enemyValue: 5, enemyPersistentValue: 4 });
+    expect(scored.candidates[1].hitChance).toBeGreaterThanOrEqual(0.5);
+    expect(scored.candidates[1].hitChance).toBeLessThanOrEqual(0.9);
+    expect(selectCombatAwareRemoteSuggestion(scored)).toMatchObject({ from: 'a8', to: 'h8' });
+
+    const rookie = { ...registry, h8: { ...registry.h8, identityId: null } };
+    expect(selectCombatAwareRemoteSuggestion(annotateCombatCandidates(fen, rookie, remote)))
+      .toMatchObject({ from: 'a8', to: 'a1' });
+    const evasive = { ...registry, h8: { ...registry.h8, speedPoints: 100 } };
+    const measured = annotateCombatCandidates(fen, evasive, remote);
+    expect(measured.candidates[1].hitChance).toBe(0.5);
+    expect(selectCombatAwareRemoteSuggestion(measured)).toMatchObject({ from: 'a8', to: 'a1' });
+    expect(registry.h8.speedPoints).toBeUndefined();
   });
 
-  it('detecta la réplica al paso contra el peón veterano que acaba de avanzar dos', () => {
-    const fen = '7k/1p6/8/P7/8/8/8/7K b - - 0 1';
-    const registry = {
-      b7: { id: 'b-p-b7', identityId: 'veteran-pawn', color: 'b', type: 'p', square: 'b7', strengthPoints: 2 },
-      a5: { id: 'w-p-a5', color: 'w', type: 'p', square: 'a5' },
-    };
-    const remote = {
-      from: 'b7', to: 'b5',
-      candidates: [{ from: 'b7', to: 'b5', moveKey: 'b7b5', chessScoreCp: 5, isLegal: true }],
-    };
-    const measured = annotateCombatCandidates(fen, registry, remote).candidates[0];
-    expect(measured.ownPersistentValue).toBe(2);
-    expect(measured.ownCasualtyRisk).toBeGreaterThanOrEqual(0.5);
-    expect(measured.ownCasualtyRisk).toBeLessThanOrEqual(0.9);
-    expect(registry.b7.square).toBe('b7');
+  it('la posición confirma la réplica real, sin convertirla en baja segura del jugador', () => {
+    const fen = 'r5k1/8/8/8/8/8/1R6/7K b - - 0 1';
+    const reply = new Chess(fen);
+    const exposed = reply.move({ from: 'a8', to: 'b8' });
+    expect(exposed).toBeTruthy();
+    const threats = reply.moves({ verbose: true }).filter(({ to, captured }) => to === 'b8' && captured === 'r');
+    expect(threats.some(({ from }) => from === 'b2')).toBe(true);
+    const safer = new Chess(fen);
+    safer.move({ from: 'a8', to: 'a7' });
+    expect(safer.moves({ verbose: true }).some(({ to, captured }) => to === 'a7' && captured === 'r')).toBe(false);
+    // No se atribuye a la IA enemiga veteranía que sólo tiene el ejército humano.
   });
 
   it('desmiente mates inventados por el shortlist y conserva los mates reales', () => {
