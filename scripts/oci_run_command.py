@@ -173,8 +173,20 @@ run_deploy() {{
   set -e
   return "$deploy_rc"
 }}
+# The installed launcher may predate the repository source; a fixed-size,
+# non-secret fingerprint identifies which binary handled this attempt.
+launcher_hash="$(sha256sum '{DEPLOY_WRAPPER}' 2>/dev/null | cut -c1-16 || true)"
+emit_version() {{
+  printf 'OCI_DEPLOY_LAUNCHER_HASH_PREFIX=%s\n' "${{launcher_hash:-unknown}}"
+}}
+emit_failure() {{
+  printf 'OCI_DEPLOY_REMOTE_FAILURE rc=%s\n' "$1"
+  grep -E '^OCI_DEPLOY_(LOCK|MAIN)_' "$log" | tail -n 8 || true
+  emit_version
+}}
 emit_success() {{
   printf 'OCI_RUN_COMMAND_AGENT version=%s\n' "${{agent_version:-unknown}}"
+  emit_version
   awk -v runtime="$1" '/^OCI_DEPLOY_WATCHER / {{print}} /^OCI_DEPLOY_WATCHER_DIAG / {{print}} /^OCI_AGENT_DIAG / {{print}} /^OCI_DEPLOY_TIMINGS / {{print $0 " runtime=" runtime}} /^CHESS_STUDIO_DEPLOY_OK / {{print}}' "$log"
 }}
 
@@ -185,6 +197,7 @@ else
   deploy_rc=$?
 fi
 if [ "$deploy_rc" -ne 42 ]; then
+  emit_failure "$deploy_rc"
   cat "$log" >&2
   exit "$deploy_rc"
 fi
@@ -230,6 +243,7 @@ if run_deploy; then
 else
   deploy_rc=$?
 fi
+emit_failure "$deploy_rc"
 cat "$log" >&2
 exit "$deploy_rc"
 """
@@ -645,6 +659,11 @@ def self_test() -> None:
     assert "/^OCI_DEPLOY_WATCHER_DIAG / {print}" in deploy
     assert "/^OCI_AGENT_DIAG / {print}" in deploy
     assert "emit_success object-storage" in deploy
+    assert "OCI_DEPLOY_LAUNCHER_HASH_PREFIX=%s" in deploy
+    assert "OCI_DEPLOY_REMOTE_FAILURE rc=%s" in deploy
+    assert "grep -E '^OCI_DEPLOY_(LOCK|MAIN)_' " in deploy
+    assert deploy.count('emit_failure "$deploy_rc"') == 2
+    assert deploy.count("emit_version") >= 2
     assert 'if [ "$deploy_rc" -ne 42 ]' in deploy
     assert deploy.index(f"sudo --non-interactive '{DEPLOY_WRAPPER}'") < deploy.index("InstancePrincipalsSecurityTokenSigner")
     assert "COMMIT_SHA" in deploy
