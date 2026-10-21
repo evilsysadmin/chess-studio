@@ -232,9 +232,6 @@ def _surface_groups(path: str) -> set[str] | None:
         return set()
     if lower == "scripts/css_architecture_manifest.json":
         return set()
-    if lower == "scripts/chronicles_area_parity_corpus.py":
-        # Backend parity-fixture generator: no browser-owned visual surface.
-        return set()
     if lower in {
         "scripts/architecture_debt_budget.py",
         "scripts/async_resilience_gate.mjs",
@@ -725,8 +722,8 @@ def write_outputs(scope: Scope, output_path: str) -> None:
 
 def self_test() -> None:
     assert classify(["e2e/staging-live.spec.js"]).capture_groups == "none"
-    assert classify(["scripts/chronicles_area_parity_corpus.py"]).capture_groups == "none"
-    assert classify(["scripts/chronicles_area_parity_corpus.py", "frontend/src/chronicles/chroniclesMapCatalog.js"]).capture_groups == "experiments"
+    assert classify(["scripts/chronicles_area_parity_corpus.py"]).capture_groups == "home,experiments,training,warroom,health"
+    assert classify(["scripts/chronicles_area_parity_corpus.py", "frontend/src/chronicles/chroniclesMapCatalog.js"]).capture_groups == "home,experiments,training,warroom,health"
     assert classify(["scripts/unknown_unowned_generator.py"]).capture_groups == "home,experiments,training,warroom,health"
     assert classify([".github/workflows/cicd.yml", "scripts/run_core_e2e_lane.py", "scripts/test_entrypoint_parity.py", "frontend/src/components/RoguelikeScreen.jsx", "e2e/war-room-combat-battle-visual-artifact.spec.js"]).capture_groups == "warroom"
     assert classify(["e2e/staging-live.spec.js", "frontend/src/components/PvpHandoffModal.jsx"]).capture_groups == "home"
