@@ -200,7 +200,10 @@ else
 fi
 if [ "$deploy_rc" -ne 42 ]; then
   emit_failure "$deploy_rc"
-  exit "$deploy_rc"
+  # OCI FAILED reports only the numerical exit status, discarding the safe
+  # diagnostic stdout. Return transport success with an explicit failure
+  # sentinel; the Python caller MUST reject this sentinel as a failed deploy.
+  exit 0
 fi
 
 tmp="$(mktemp /tmp/chess-studio-backend.env.XXXXXX)"
@@ -245,7 +248,9 @@ else
   deploy_rc=$?
 fi
 emit_failure "$deploy_rc"
-exit "$deploy_rc"
+# Preserve the whitelisted diagnostic output for the OCI Run Command client.
+# The caller rejects OCI_DEPLOY_REMOTE_FAILURE even when transport succeeded.
+exit 0
 """
     assert_nonsecret_command(command)
     if len(command.encode("utf-8")) > RUN_COMMAND_INLINE_MAX_BYTES:
@@ -497,6 +502,29 @@ def bounded_command_output(text: str, *, head_chars: int = 2000, tail_chars: int
     )
 
 
+def reject_remote_deploy_failure(output: str) -> None:
+    """Treat a remote failure sentinel as fatal even when the OCI transport succeeds.
+
+    The remote shell intentionally exits zero ONLY to preserve text output;
+    this is never permission for a failed host mutation to pass the deploy.
+    """
+    for line in output.splitlines():
+        if not line.startswith("OCI_DEPLOY_REMOTE_FAILURE"):
+            continue
+        match = re.fullmatch(r"OCI_DEPLOY_REMOTE_FAILURE rc=([1-9][0-9]{0,2})", line.strip())
+        if not match:
+            raise SystemExit("OCI Run Command remote deploy emitted invalid failure sentinel")
+        raise SystemExit(f"OCI Run Command remote deploy FAILED: rc={match.group(1)}")
+
+
+def validate_deploy_output(output: str, expected_sha: str) -> None:
+    """Accept only an explicit exact-SHA completion receipt from the host."""
+    sha = validate_sha(expected_sha)
+    marker = f"CHESS_STUDIO_DEPLOY_OK target=staging repo_ref={sha} "
+    if not any(line.startswith(marker) for line in output.splitlines()):
+        raise SystemExit("OCI deploy returned without exact-SHA CHESS_STUDIO_DEPLOY_OK receipt")
+
+
 def execute(
     oci: Any,
     config: dict[str, str],
@@ -561,6 +589,7 @@ def execute(
             message = (getattr(content, "message", "") or "").strip()
             if text:
                 print(bounded_command_output(text), flush=True)
+                reject_remote_deploy_failure(text)
             if state != "SUCCEEDED" or exit_code not in (None, 0):
                 detail = message or text or "no command output"
                 raise SystemExit(f"OCI Run Command failed: state={state} exit={exit_code} detail={detail[:500]}")
@@ -611,8 +640,14 @@ def local_deploy_diagnostics_self_test() -> None:
             )
             deploy_path.chmod(0o700)
             failed = run_script()
-            assert failed.returncode == 75, failed.stderr[-300:]
+            assert failed.returncode == 0, failed.stderr[-300:]
             assert "OCI_DEPLOY_REMOTE_FAILURE rc=75" in failed.stdout
+            try:
+                reject_remote_deploy_failure(failed.stdout)
+            except SystemExit as exc:
+                assert "FAILED: rc=75" in str(exc)
+            else:
+                raise AssertionError("remote failure sentinel must block despite OCI success")
             assert "OCI_DEPLOY_LOCK_TIMEOUT phase=launcher_checkout" in failed.stdout
             assert "OCI_DEPLOY_LAUNCHER_HASH_PREFIX=" in failed.stdout
             assert "PRIVATE_LOG_CANARY_SHOULD_NOT_LEAK" not in failed.stdout + failed.stderr
@@ -635,6 +670,13 @@ def local_deploy_diagnostics_self_test() -> None:
             assert "OCI_DEPLOY_LAUNCHER_HASH_PREFIX=" + new_hash in passed.stdout
             assert "OCI_DEPLOY_LAUNCHER_HASH_PREFIX=" + old_hash not in passed.stdout
             assert "OCI_DEPLOY_REMOTE_FAILURE" not in passed.stdout
+            reject_remote_deploy_failure(passed.stdout)
+            try:
+                reject_remote_deploy_failure("OCI_DEPLOY_REMOTE_FAILURE rc=invalid")
+            except SystemExit as exc:
+                assert "invalid failure sentinel" in str(exc)
+            else:
+                raise AssertionError("malformed remote failure must fail closed")
         finally:
             DEPLOY_WRAPPER, RUNTIME_WRAPPER = original_deploy, original_runtime
 
@@ -754,6 +796,17 @@ def self_test() -> None:
     else:
         raise AssertionError("secret-bearing command must be rejected")
 
+    validate_deploy_output(
+        "CHESS_STUDIO_DEPLOY_OK target=staging repo_ref=" + sample + " color=blue", sample
+    )
+    for invalid in ("", "OCI_DEPLOY_LAUNCHER_HASH_PREFIX=deadbeef", "CHESS_STUDIO_DEPLOY_OK repo_ref=" + sample):
+        try:
+            validate_deploy_output(invalid, sample)
+        except SystemExit as exc:
+            assert "without exact-SHA" in str(exc)
+        else:
+            raise AssertionError("missing/wrong deployment receipt must fail closed")
+
     class Capture:
         def __init__(self, **kwargs: Any) -> None:
             self.kwargs = kwargs
@@ -815,7 +868,7 @@ def main() -> int:
             resolved=resolved,
             include_desired_config=False,
         )
-        execute(
+        output = execute(
             oci,
             config,
             deploy_command(args.repo_ref),
@@ -823,6 +876,7 @@ def main() -> int:
             timeout=900,
             resolved=resolved,
         )
+        validate_deploy_output(output, args.repo_ref)
     return 0
 
 
