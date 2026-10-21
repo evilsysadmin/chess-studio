@@ -117,6 +117,14 @@ test('Home 3D · profiler attributes real WebGL draws to castle, Matthias and de
   expect(eligibility.doubleSided + eligibility.frontSided + eligibility.otherSided)
     .toBe(eligibility.materialSlots);
   expect(eligibility.transparentNow).toBeLessThanOrEqual(eligibility.materialSlots);
+  expect(eligibility.transparentDoubleSidedNow).toBeLessThanOrEqual(eligibility.doubleSided);
+  expect(eligibility.singlePassTransparentDoubleSidedNow)
+    .toBeLessThanOrEqual(eligibility.transparentDoubleSidedNow);
+  // A second census is only allowed after real live-fire alpha activation.
+  // SwiftShader intentionally never reaches that path; it cannot claim that
+  // the 73 initial DoubleSide slots became 73 transparent draw candidates.
+  expect(await canvas.getAttribute('data-home-fire-motion')).toBe('off-software');
+  expect(await canvas.getAttribute('data-home-blender-flame-pass-live-eligibility')).toBe(null);
   // Bounded non-identifying counts in the smoke log tell us whether the
   // single-pass experiment has any DoubleSide flame candidates at all.
   console.log('HOME_3D_FLAME_SIDE_CENSUS ' + JSON.stringify(eligibility));
