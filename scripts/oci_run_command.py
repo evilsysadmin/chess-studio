@@ -198,7 +198,6 @@ else
 fi
 if [ "$deploy_rc" -ne 42 ]; then
   emit_failure "$deploy_rc"
-  cat "$log" >&2
   exit "$deploy_rc"
 fi
 
@@ -244,7 +243,6 @@ else
   deploy_rc=$?
 fi
 emit_failure "$deploy_rc"
-cat "$log" >&2
 exit "$deploy_rc"
 """
     assert_nonsecret_command(command)
@@ -569,6 +567,66 @@ def execute(
     raise SystemExit("OCI Run Command polling timed out waiting for delivery/execution")
 
 
+def local_deploy_diagnostics_self_test() -> None:
+    """Exercise the generated Bash payload using isolated executable shims."""
+    import subprocess
+    import tempfile
+    from pathlib import Path
+
+    global DEPLOY_WRAPPER, RUNTIME_WRAPPER
+    with tempfile.TemporaryDirectory(prefix="chess-oci-deploy-test-") as directory:
+        root = Path(directory)
+        deploy_path = root / "deploy"
+        installer_path = root / "runtime"
+        sudo_path = root / "sudo"
+        sudo_path.write_text(
+            '#!/bin/sh\n[ "$1" = "--non-interactive" ] && shift\nexec "$@"\n',
+            encoding="utf-8",
+        )
+        installer_path.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+        sudo_path.chmod(0o700)
+        installer_path.chmod(0o700)
+        original_deploy, original_runtime = DEPLOY_WRAPPER, RUNTIME_WRAPPER
+        try:
+            DEPLOY_WRAPPER = str(deploy_path)
+            RUNTIME_WRAPPER = str(installer_path)
+            sample_sha = "0123456789abcdef0123456789abcdef01234567"
+            def run_script() -> subprocess.CompletedProcess[str]:
+                payload = deploy_command(sample_sha)
+                return subprocess.run(
+                    ["bash", "-c", payload],
+                    env={**os.environ, "PATH": str(root) + os.pathsep + os.environ.get("PATH", "")},
+                    capture_output=True, text=True, check=False, timeout=10,
+                )
+
+            deploy_path.write_text(
+                "#!/bin/sh\n"
+                "printf '%s\\n' 'OCI_DEPLOY_LOCK_TIMEOUT phase=launcher_checkout waited_s=420'\n"
+                "printf '%s\\n' 'PRIVATE_LOG_CANARY_SHOULD_NOT_LEAK'\n"
+                "exit 75\n",
+                encoding="utf-8",
+            )
+            deploy_path.chmod(0o700)
+            failed = run_script()
+            assert failed.returncode == 75, failed.stderr[-300:]
+            assert "OCI_DEPLOY_REMOTE_FAILURE rc=75" in failed.stdout
+            assert "OCI_DEPLOY_LOCK_TIMEOUT phase=launcher_checkout" in failed.stdout
+            assert "OCI_DEPLOY_LAUNCHER_HASH_PREFIX=" in failed.stdout
+            assert "PRIVATE_LOG_CANARY_SHOULD_NOT_LEAK" not in failed.stdout + failed.stderr
+
+            deploy_path.write_text(
+                "#!/bin/sh\nprintf '%s\\n' 'CHESS_STUDIO_DEPLOY_OK repo_ref=confirmed'\n",
+                encoding="utf-8",
+            )
+            passed = run_script()
+            assert passed.returncode == 0, passed.stderr[-300:]
+            assert "CHESS_STUDIO_DEPLOY_OK repo_ref=confirmed" in passed.stdout
+            assert "OCI_DEPLOY_LAUNCHER_HASH_PREFIX=" in passed.stdout
+            assert "OCI_DEPLOY_REMOTE_FAILURE" not in passed.stdout
+        finally:
+            DEPLOY_WRAPPER, RUNTIME_WRAPPER = original_deploy, original_runtime
+
+
 def self_test() -> None:
     sample = "0123456789abcdef0123456789abcdef01234567"
     assert validate_sha(sample) == sample
@@ -663,6 +721,7 @@ def self_test() -> None:
     assert "OCI_DEPLOY_REMOTE_FAILURE rc=%s" in deploy
     assert "grep -E '^OCI_DEPLOY_(LOCK|MAIN)_' " in deploy
     assert deploy.count('emit_failure "$deploy_rc"') == 2
+    assert 'cat "$log" >&2' not in deploy
     assert deploy.count("emit_version") >= 2
     assert 'if [ "$deploy_rc" -ne 42 ]' in deploy
     assert deploy.index(f"sudo --non-interactive '{DEPLOY_WRAPPER}'") < deploy.index("InstancePrincipalsSecurityTokenSigner")
@@ -696,6 +755,7 @@ def self_test() -> None:
     assert "command_string" not in command_content.kwargs
     assert command_content.kwargs["source"].kwargs["text"] == smoke
     assert command_content.kwargs["output"].kwargs["output_type"] == "TEXT"
+    local_deploy_diagnostics_self_test()
     print("OCI Run Command self-test: OK")
 
 
