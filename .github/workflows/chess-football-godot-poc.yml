@@ -40,7 +40,7 @@ jobs:
       changed: ${{ steps.scope.outputs.changed }}
     steps:
       - name: Discover affected PR files (fail closed)
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         id: scope
         with:
           script: |
