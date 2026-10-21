@@ -160,6 +160,34 @@ export function createHomeBlenderFrameSamples(maxSamples = 120) {
   };
 }
 
+// One-shot material classification before the runtime flame alpha is applied.
+// Geometry/material SIDE is preserved when fire becomes transparent on a real
+// GPU. DoubleSide is therefore a *candidate* for Three's two-pass rendering,
+// not proof of visible extra draws or saved GPU time. Software Home may leave
+// flames off entirely. Never change a material or traverse in normal sessions.
+export function homeBlenderFlamePassEligibility(fireRig, doubleSide = 2, frontSide = 0) {
+  const counts = {
+    flameNodes: 0, hotNodes: 0, candleNodes: 0,
+    materialSlots: 0, doubleSided: 0, frontSided: 0, otherSided: 0,
+    transparentNow: 0,
+  };
+  if (!Array.isArray(fireRig)) return counts;
+  for (const node of fireRig) {
+    if (!['flame', 'hot', 'candle'].includes(node?.kind)) continue;
+    counts[`${node.kind}Nodes`] += 1;
+    for (const entry of node.materials || []) {
+      const material = entry?.material;
+      if (!material || material.visible === false) continue;
+      counts.materialSlots += 1;
+      if (material.side === doubleSide) counts.doubleSided += 1;
+      else if (material.side === frontSide) counts.frontSided += 1;
+      else counts.otherSided += 1;
+      if (material.transparent) counts.transparentNow += 1;
+    }
+  }
+  return counts;
+}
+
 // One-time authored-GLB draw inventory for the opt-in physical-GPU profiler.
 // These are visible *potential* draw slots, NOT observed WebGL draw calls:
 // frustum culling, material groups, shadow passes, and renderer batching can

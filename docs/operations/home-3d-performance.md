@@ -126,6 +126,28 @@ The Home scene root is an identity container that never moves. Three.js ordinari
 
 This is a CPU-side matrix-propagation optimization, **not a measured GPU speedup**. Tests exercise stationary world-matrix equality under repeated animation, moving fire/Klaus/Matthias and manually managed matrices. The canvas attribute `data-home-blender-frozen-transforms` provides a bounded, startup-only sanity count; compare CPU draw cost with the established local benchmark rather than guessing frame-time savings.
 
+## Flame pass eligibility before a physical GPU experiment
+
+With `?homeGpuProfile=1`, the Home publishes
+`data-home-blender-flame-pass-eligibility` as a JSON count of **actual
+loaded GLB flame/hot/candle material slots**, split by `doubleSided`,
+`frontSided` and `otherSided`, plus the currently transparent slots.
+The counts are collected once after fire-rig preparation, **before**
+the separate animation can make flames transparent. Neither materials nor
+runtime rendering are changed by the probe.
+
+A `DoubleSide` slot is only a potential target for Three.js transparent
+front/back rendering *once the real GPU flame loop makes it transparent*.
+If `doubleSided === 0`, the proposed `forceSinglePass` experiment has
+**no eligible authored flame materials** under current GLB siding, and
+should not be promoted to production. Never change material sidedness just
+to manufacture a benchmark win; that would alter appearance/culling.
+If candidates exist, the gain still requires **real Intel/NVIDIA physical
+GPU A/B/B/A timer samples, measured draw-pass counts and review of two
+runtime PNGs**. Hosted Chromium uses SwiftShader and intentionally leaves
+fire off, so its censes can verify scene data but **cannot** prove physical
+GPU benefit. `materialSlots` is not a draw-call count.
+
 ## Opt-in authored-GLB draw inventory
 
 Open the Home with `?homeGpuProfile=1`. After the authored GLB is prepared, the canvas publishes `dataset.homeBlenderModelDrawInventory`, a compact JSON object. This adds **one scene-graph traversal only when profiling**, after the original first-ready time is recorded. The production Home does not do this work.

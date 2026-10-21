@@ -17,6 +17,7 @@ import {
   createHomeBlenderFrameSamples,
   homeBlenderGpuResourceCounts,
   homeBlenderModelDrawInventory,
+  homeBlenderFlamePassEligibility,
 } from './HomeBlenderPerformanceDiagnostics.js';
 import { installHomeBlenderDrawPassProbe, homeBlenderDrawFamily } from './HomeBlenderDrawPassProbe.js';
 import { FIRE_SPRITE_DEFAULTS, createFireSprites, createSteamSprites, disposeFireSprites, fireSpriteSeeds } from './fireSprites.js';
@@ -2453,6 +2454,11 @@ export default function HomeBlenderScene3D({
       applyHomeBlenderPieceLift(model);
       applyHomeBlenderMoonVisibility(model, ambient);
       fireRig = prepareRuntimeFireRig(model);
+      if (gpuProfiling) {
+        canvas.dataset.homeBlenderFlamePassEligibility = JSON.stringify(
+          homeBlenderFlamePassEligibility(fireRig, THREE.DoubleSide, THREE.FrontSide),
+        );
+      }
       klausRig = prepareHomeBlenderKlausRig(model);
       canvas.dataset.homeKlausMotion = klausRig ? 'ready' : 'missing';
       // Only authored GLB stationary nodes are frozen. Flame/steam meshes,
