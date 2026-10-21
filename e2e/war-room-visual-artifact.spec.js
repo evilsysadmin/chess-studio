@@ -567,10 +567,25 @@ async function captureWarRoomHealth(page, label) {
       blenderShadow: canvas ? {
         budget: Number(canvas.dataset.warRoomShadowCasterBudget || 0),
         candidates: Number(canvas.dataset.warRoomShadowCasterCandidates || 0),
+        // Potential geometry counts, not WebGL shadow draw submissions.
+        // SwiftShader/lite deliberately disables the shadow pass: selected=0.
+        candidatePotentialTriangles: canvas.dataset.warRoomShadowCandidatePotentialTriangles === undefined
+          ? null : Number(canvas.dataset.warRoomShadowCandidatePotentialTriangles),
+        selectedPotentialTriangles: canvas.dataset.warRoomShadowSelectedPotentialTriangles === undefined
+          ? null : Number(canvas.dataset.warRoomShadowSelectedPotentialTriangles),
         projectedCount: Number(canvas.dataset.warRoomShadowProjectedCount || 0),
         count: Number(canvas.dataset.warRoomShadowCasterCount || 0),
         warmup: canvas.dataset.warRoomShadowWarmup || null,
       } : null,
+      // V1 rollback has no GLB. This separate inventory is populated only
+      // after the lazily constructed procedural classic shell exists.
+      classicGeometry: canvas?.dataset.warRoomClassicMeshNodes === undefined ? null : {
+        meshNodes: Number(canvas.dataset.warRoomClassicMeshNodes),
+        meshInstances: Number(canvas.dataset.warRoomClassicMeshInstances),
+        uniqueGeometries: Number(canvas.dataset.warRoomClassicUniqueGeometries),
+        potentialTriangles: Number(canvas.dataset.warRoomClassicPotentialTriangles),
+        uniqueTriangles: Number(canvas.dataset.warRoomClassicUniqueTriangles),
+      },
       horizontalOverflowPx: Math.max(0, root.scrollWidth - viewport.width),
       verticalOverflowPx: Math.max(0, root.scrollHeight - viewport.height),
       overflowOffenders,
