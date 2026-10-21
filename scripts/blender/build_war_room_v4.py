@@ -276,6 +276,18 @@ def cylinder_between(name, start, end, radius, material, owner, *, vertices=24):
     obj.rotation_euler = direction.to_track_quat("Z", "Y").to_euler()
     return obj
 
+    
+def thin_brass_trim(name, loc, half, material, owner, *, bevel):
+    """Keep thin golden inlays' authored chamfer width, without 3 bevel bands.
+
+    Small decorative metal strips occupy only a few pixels at play zoom.
+    This is opt-in; important rounded crowns, arches, armour and board
+    structural elements keep the original high-quality profile.
+    """
+    obj = base.cube(name, loc, half, material, owner, bevel=bevel)
+    obj.modifiers["premium-bevel"].segments = 1
+    return obj
+
 
 def build_curved_observatory(static, palette):
     """Build the canonical circular room: tiled floor, rug and curved paneled wall."""
@@ -363,7 +375,7 @@ def build_curved_observatory(static, palette):
             (half_length * 0.76, 0.065, (V4_WALL_TOP_Z - 2.70) / 2.0 - 0.12), palette["walnut"], static, bevel=0.045,
         )
         panel.rotation_euler.z = tangent
-        rail = base.cube(
+        rail = thin_brass_trim(
             f"WR4_OBS_apse_brass_rail_{index}", (x, y - 0.235, 2.62),
             (half_length * 0.80, 0.022, 0.030), palette["brass_dark"], static, bevel=0.012,
         )
@@ -406,7 +418,7 @@ def build_curved_observatory(static, palette):
         theta = start + (index + 0.5) * step
         x = radius * math.sin(theta)
         y = center_y + radius * math.cos(theta)
-        rail = base.cube(
+        rail = thin_brass_trim(
             f"WR4_OBS_apse_crown_rail_{index}", (x, y - 0.02, V4_WALL_TOP_Z + 0.06),
             (half_length, 0.24, 0.07), palette["brass_dark"], static, bevel=0.03,
         )
@@ -597,7 +609,7 @@ def build_celestial_window(static, palette):
         for index, degrees in enumerate((40, 64, 88, 112, 136)):
             angle = math.radians(side * degrees)
             ring_radius = r + 0.36
-            tick = base.cube(
+            tick = thin_brass_trim(
                 f"WR4_OBS_oculus_hour_mark_{side}_{index}",
                 (cx + ring_radius * V4_OCULUS_ASPECT * math.sin(angle),
                  cy - 0.215,
@@ -723,13 +735,13 @@ def build_round_command_table(static, palette):
                 band_half = [offset + width, offset + width, 0.020]
                 band[1 - axis] = side * offset
                 band_half[1 - axis] = width
-                base.cube(f"WR4_OBS_board_brass_{label}_{name}_{side}", tuple(band), tuple(band_half),
+                thin_brass_trim(f"WR4_OBS_board_brass_{label}_{name}_{side}", tuple(band), tuple(band_half),
                           palette["brass"], static, bevel=0.010)
             outer = [0.0, 0.0, 1.10]
             outer_half = [fh + 0.02, fh + 0.02, 0.06]
             outer[1 - axis] = side * (fh + 0.01)
             outer_half[1 - axis] = 0.035
-            base.cube(f"WR4_OBS_board_edge_{name}_{side}", tuple(outer), tuple(outer_half),
+            thin_brass_trim(f"WR4_OBS_board_edge_{name}_{side}", tuple(outer), tuple(outer_half),
                       palette["brass"], static, bevel=0.015)
             # Warm bulbs set into the rim, as in the golden.
             for index in range(11):
