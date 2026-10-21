@@ -134,7 +134,7 @@ describe('War Room staging variant', () => {
     expect(warRoomVariantRuntimeModelUrl('v2', { buildSha: 'abc123' }))
       .toBe('https://assets.chess-studio.shadowops.dpdns.org/war-room/v2/runtime/war-room-premium-shell-c8c6d324d0dec87e.glb');
     expect(warRoomVariantRuntimeModelUrl('v3', { buildSha: 'abc123' }))
-      .toBe('https://assets.chess-studio.shadowops.dpdns.org/war-room/v3/runtime/war-room-v3-shell-466435aaa9698888.glb');
+      .toBe('https://assets.chess-studio.shadowops.dpdns.org/war-room/v3/runtime/war-room-v3-shell-28da4df7f5a2a9cc.glb');
     expect(warRoomVariantRuntimeModelUrl('duel', { buildSha: 'abc123' }))
       .toBe('https://assets.chess-studio.shadowops.dpdns.org/pvp/duel-room/runtime/pvp-duel-room-shell-b644b06d0c522690.glb');
     // The published R2 manifest now points V3/V4 at identical copies of the
