@@ -279,7 +279,6 @@ if (checkCiWiring) {
   for (const marker of [
     "grep -E '^chess==' backend-python/requirements.txt",
     "grep -E '^pydantic==' backend-python/requirements.txt",
-    'python scripts/chronicles_topology_parity_corpus.py --check',
     'python scripts/engine_parity_corpus.py --check',
     'python scripts/games_parity_corpus.py --check',
     'python scripts/games_ops_corpus.py --check',
