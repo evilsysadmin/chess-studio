@@ -400,11 +400,8 @@ def classify_path(path: str) -> set[str] | None:
     if not lower.startswith("frontend/src/"):
         if lower.startswith(("backend-python/", "backend-go/")):
             return set()
-        # One historical Terra authoring tool still exists while its source
-        # is transferred to the independent game repository. Do not exempt
-        # whole Chronicles directories: new tools must fail closed.
-        if lower == "scripts/chronicles/build_terra_world.py":
-            return set()
+        # Chronicles/Tactics authoring belongs to the independent repository.
+        # New tools reintroduced here must pass ordinary fail-closed review.
         if lower in {
             "scripts/css_architecture_manifest.json",
             "scripts/validate_chronicles_campaign.py",  # Backend campaign atlas, no render code.
@@ -781,7 +778,7 @@ def project_chronicles_lane(producers: str, lane: str) -> str:
 
 
 def self_test() -> None:
-    assert classify_path("scripts/chronicles/build_terra_world.py") == set()
+    assert classify(["scripts/chronicles/build_terra_world.py"]) == "all"  # Retired authoring is not exempt.
     # Deleted generators cannot inherit a blanket exclusion. A newly added
     # Chronicles tool is a new visual-risk surface until explicitly reviewed.
     assert classify(["scripts/art/build_chronicles_procedural_sprites.py"]) == "all"
