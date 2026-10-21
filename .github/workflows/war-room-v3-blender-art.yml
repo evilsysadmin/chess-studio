@@ -173,7 +173,7 @@ jobs:
 
       # Verify PR-authoring and staged browser payload are byte-identical.
       # A successful Blender preview alone does not prove runtime provenance.
-      - uses: actions/download-artifact@v7
+      - uses: actions/download-artifact@v8
         with:
           name: war-room-v3-${{ github.event.pull_request.number }}
           path: ${{ github.workspace }}/.artifacts/war-room-v3-authored
