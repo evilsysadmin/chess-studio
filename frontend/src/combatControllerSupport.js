@@ -152,11 +152,14 @@ export function emergencyCombatCpuSuggestion(fen, registry = null, focus = {}, d
     // probabilidades completas de fallo. Nunca cruza FENs, turnos ni usuarios.
     let missedTurn = null;
     let missedTurnChecked = false;
+    // Ya hemos enumerado las candidatas sobre chess: reutilizar el mismo
+    // tablero, siempre restaurándolo tras analizar cada jugada.
+    const probe = chess;
     const ranked = moves.map((move) => {
-      const probe = new Chess(fen);
       let applied = null;
       try { applied = probe.move({ from: move.from, to: move.to, promotion: move.promotion || 'q' }); } catch { applied = null; }
       if (!applied) return null;
+      try {
       let score = 0;
       if (probe.isCheckmate()) score += 10000;
       let captureSuccessChance = 1;
@@ -207,6 +210,11 @@ export function emergencyCombatCpuSuggestion(fen, registry = null, focus = {}, d
       // No altera mates, grandes diferencias materiales ni la ruta clásica.
       score += combatDoctrineBonusForMove(doctrine, move);
       return { from: move.from, to: move.to, promotion: move.promotion || undefined, score, key: `${move.from}${move.to}${move.promotion || ''}` };
+      } finally {
+        // chess.js restaura FEN, enroque, turno y al paso de esta candidata.
+        // La siguiente se evalúa siempre desde la posición ORIGINAL.
+        probe.undo();
+      }
     }).filter(Boolean);
     ranked.sort((a, b) => b.score - a.score || a.key.localeCompare(b.key));
     const best = ranked[0];
