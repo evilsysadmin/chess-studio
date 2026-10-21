@@ -8,9 +8,13 @@ on:
       - 'scripts/blender/render_war_room_v4_hybrid_preview.py'
       - 'scripts/blender/configure_eevee_premium.py'
       - 'scripts/blender/publish_war_room_v4.py'
-      - 'e2e/v4-immutable-model.js'
+      # Browser-only visual/model test edits are validated by the V4 R2 pin
+      # and App visual workflows. Do not rerender/reupload unchanged Blender
+      # geometry for test-only PRs (the canonical builder paths remain below).
+      # Browser-only visual/model test edits are validated by the V4 R2 pin
+      # and App visual workflows. Do not rerender/reupload unchanged Blender
+      # geometry for test-only PRs (the canonical builder paths remain below).
       - 'e2e/war-room-v4-hans-clearance-visual.spec.js'
-      - 'e2e/war-room-visual-artifact.spec.js'
       - 'frontend/src/components/WarRoomHansActorTelemetry.js'
       - '.github/workflows/war-room-v4-blender-art.yml'
   push:
@@ -22,9 +26,7 @@ on:
       - 'scripts/blender/render_war_room_v4_hybrid_preview.py'
       - 'scripts/blender/configure_eevee_premium.py'
       - 'scripts/blender/publish_war_room_v4.py'
-      - 'e2e/v4-immutable-model.js'
       - 'e2e/war-room-v4-hans-clearance-visual.spec.js'
-      - 'e2e/war-room-visual-artifact.spec.js'
       - 'frontend/src/components/WarRoomHansActorTelemetry.js'
       - '.github/workflows/war-room-v4-blender-art.yml'
   workflow_dispatch:
