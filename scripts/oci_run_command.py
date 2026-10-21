@@ -178,11 +178,7 @@ run_deploy() {{
   fi
   return "$deploy_rc"
 }}
-# The installed launcher may predate the repository source; a fixed-size,
-# non-secret fingerprint identifies which binary handled this attempt.
 emit_version() {{
-  # Re-read at the moment of reporting: the payload may have installed a NEW
-  # launcher after this Run Command started.
   launcher_hash="$(sha256sum '{DEPLOY_WRAPPER}' 2>/dev/null | cut -c1-16 || true)"
   printf 'OCI_DEPLOY_LAUNCHER_HASH_PREFIX=%s\n' "${{launcher_hash:-unknown}}"
 }}
@@ -190,7 +186,6 @@ emit_failure() {{
   printf 'OCI_DEPLOY_REMOTE_FAILURE rc=%s\n' "$1"
   grep -E '^OCI_DEPLOY_(LOCK|MAIN)_' "$log" | tail -n 8 || true
   emit_version
-  # No stdout is guaranteed from OCI; rc86 must survive as the exit code.
   [ "$1" -ne 86 ] || exit 86
 }}
 emit_success() {{
@@ -255,8 +250,6 @@ else
   deploy_rc=$?
 fi
 emit_failure "$deploy_rc"
-# Preserve the whitelisted diagnostic output for the OCI Run Command client.
-# The caller rejects OCI_DEPLOY_REMOTE_FAILURE even when transport succeeded.
 exit 0
 """
     assert_nonsecret_command(command)
