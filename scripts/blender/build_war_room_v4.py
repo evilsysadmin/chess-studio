@@ -308,10 +308,15 @@ def build_curved_observatory(static, palette):
             # deep green diamonds that frames the room without fighting the board.
             green_inlay = (x * x + (y + 0.18) ** 2 > 6.1 * 6.1) and (row + col) % 2 == 0
             material = palette["green_marble"] if green_inlay else palette["stone_light"]
-            base.cube(
+            tile = base.cube(
                 f"WR4_OBS_floor_tile_{tile_index}", (x, y, 0.010),
                 (tile_half, tile_half, 0.030), material, static, bevel=0.018,
             )
+            # The 18 mm marble chamfer reads as a crisp seam from the
+            # play camera. The generic 3-band bevel adds subdivisions that
+            # are imperceptible on these low, flat floor tiles. Keep their
+            # exact layout, materials, dimensions and bevel *width*.
+            tile.modifiers["premium-bevel"].segments = 1
             tile_index += 1
 
     # A thin brass perimeter inlay makes the green/ivory marble floor read as
