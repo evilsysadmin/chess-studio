@@ -83,6 +83,32 @@ function emergencyRecapturePenalty(after, move, registry, focus, branchChance = 
   return maxChance * chance * (100 + pieceValue * 10);
 }
 
+// En una réplica el rival sólo puede realizar UNA captura: se toma el mayor
+// riesgo medido para otra pieza propia, sin sumar ataques independientes.
+// Un objetivo que no concuerda con el FEN o el registro no aporta riesgo.
+function emergencyOtherUnitExposurePenalty(after, move, registry, focus, branchChance = 1, excludedSquare = move.to) {
+  if (!registry || move.piece === 'k') return 0;
+  const chance = Math.max(0, Math.min(1, Number(branchChance) || 0));
+  if (chance <= 0) return 0;
+  let worst = 0;
+  for (const reply of after.moves({ verbose: true })) {
+    if (!reply.captured || reply.captured === 'k') continue;
+    const targetSquare = capturedSquareFor(reply);
+    if (targetSquare === excludedSquare) continue;
+    const victim = registry[targetSquare];
+    const attacker = registry[reply.from];
+    const actual = after.get(targetSquare);
+    if (!victim || victim.color !== move.color || victim.type !== reply.captured
+      || !pieceSquareMatches(victim, targetSquare) || actual?.color !== victim.color
+      || actual.type !== victim.type || !attacker || attacker.color === move.color
+      || attacker.type !== reply.piece || !pieceSquareMatches(attacker, reply.from)) continue;
+    const forced = isForcedCombatCapture(after.fen(), reply.from, reply.to, reply.promotion);
+    const probability = forced ? 1 : hitChance(attacker, victim, focusStreakFor(focus, attacker.color, victim.id));
+    worst = Math.max(worst, probability * (100 + (EMERGENCY_CPU_PIECE_VALUE[victim.type] || 0) * 10));
+  }
+  return worst * chance;
+}
+
 // La segunda rama de una captura Combat NO contiene el movimiento intentado:
 // un fallo es un turno nulo, no una captura de chess.js. Sólo inspeccionamos
 // recapturas legales del atacante en su casilla ORIGINAL; nunca damos por
@@ -94,7 +120,10 @@ export function emergencyCombatMissExposurePenalty(fen, move, registry, focus = 
   try {
     const afterMiss = new Chess(passTurnFen(fen));
     if (afterMiss.moves().length === 0) return 0;
-    return emergencyRecapturePenalty(afterMiss, move, registry, focus, missChance, move.from);
+    return Math.max(
+      emergencyRecapturePenalty(afterMiss, move, registry, focus, missChance, move.from),
+      emergencyOtherUnitExposurePenalty(afterMiss, move, registry, focus, missChance, move.from),
+    );
   } catch {
     return 0;
   }
@@ -135,7 +164,10 @@ export function emergencyCombatCpuSuggestion(fen, registry = null, focus = {}, d
       // Sin engine, una dama expuesta a una recaptura legal no es un premio
       // gratis. Para capturas, sólo valoramos la rama cuyo éxito es medible.
       if (measuredCapture) {
-        score -= emergencyRecapturePenalty(probe, move, registry, focus, captureSuccessChance);
+        score -= Math.max(
+          emergencyRecapturePenalty(probe, move, registry, focus, captureSuccessChance),
+          emergencyOtherUnitExposurePenalty(probe, move, registry, focus, captureSuccessChance),
+        );
         if (move.captured && captureSuccessChance < 1) {
           score -= emergencyCombatMissExposurePenalty(fen, move, registry, focus, 1 - captureSuccessChance);
         }
