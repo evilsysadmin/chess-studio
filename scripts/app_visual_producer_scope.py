@@ -407,7 +407,6 @@ def classify_path(path: str) -> set[str] | None:
             return set()
         if lower in {
             "scripts/css_architecture_manifest.json",
-            "scripts/validate_chronicles_campaign.py",  # Backend campaign atlas, no render code.
             "scripts/dead_code_reachability_check.py",  # Static gate, no render code.
             "scripts/architecture_debt_budget.py",
             "scripts/async_resilience_gate.mjs",
@@ -803,7 +802,7 @@ def self_test() -> None:
     assert classify(["e2e/staging-live.spec.js"]) == "none"
     assert classify(["scripts/chronicles_area_parity_corpus.py"]) == "all"
     assert classify(["scripts/chronicles_contracts.py"]) == "all"
-    assert classify(["scripts/validate_chronicles_campaign.py"]) == "none"
+    assert classify(["scripts/validate_chronicles_campaign.py"]) == "all"  # No longer a checked-in tool.
     assert classify([".github/workflows/cicd.yml", "scripts/run_core_e2e_lane.py", "scripts/test_entrypoint_parity.py", "frontend/src/components/RoguelikeScreen.jsx", "e2e/war-room-combat-battle-visual-artifact.spec.js"]) == "combat-battle"
     # A ghost runtime source is unexpected after extraction; fail closed rather
     # than silently granting a new implementation exemption based on its name.
