@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Static, dependency-free contracts for the deliberately manual V2 art pipeline.
+"""Static, dependency-free contracts for the PR-staging-only V2 art pipeline.
 
 These checks do not pretend to replace a Blender render or runtime Hans test.
 """
@@ -89,12 +89,17 @@ class V2RoomArchitectureTests(unittest.TestCase):
         self.assertIn('V2_HANS_ANCHORS', ast.get_source_segment(source, self.funcs["export_shell"]))
         self.assertIn('runtime V2 GLB contains retired second hearth', source)
 
-    def test_v2_blender_publish_stays_manual_only(self):
+    def test_v2_pr_publish_is_staging_only_and_runtime_remains_manual(self):
         yaml = WORKFLOW.read_text(encoding="utf-8")
         self.assertIn("workflow_dispatch:", yaml)
-        self.assertNotIn("pull_request:", yaml)
+        self.assertIn("pull_request:", yaml)
+        self.assertIn("'scripts/blender/build_war_room_premium.py'", yaml)
         self.assertNotIn("push:", yaml)
-        self.assertIn("Runtime aliases require main", yaml)
+        self.assertIn("github.event.pull_request.head.sha", yaml)
+        self.assertIn("github.event.pull_request.head.repo.full_name == github.repository", yaml)
+        self.assertIn("github.event_name == 'pull_request' && 'staging' || inputs.channel", yaml)
+        self.assertIn("Refuse runtime publication outside main", yaml)
+        self.assertIn('if: inputs.channel == \'runtime\'', yaml)
 
 
 if __name__ == "__main__":
