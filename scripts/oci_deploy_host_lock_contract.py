@@ -14,9 +14,22 @@ def self_test():
     launcher = LAUNCH.read_text(encoding="utf-8")
     payload = DEPLOY.read_text(encoding="utf-8")
     before_fetch = launcher.index('git -C "$repo" fetch --no-tags')
-    lock_wait = launcher.index('flock -w 120 8')
+    lock_wait = launcher.index('flock -w 5 8')
     lock_open = launcher.index('exec 8>"$deploy_lock_file"')
     assert lock_open < lock_wait < before_fetch
+    # A real watcher deployment can exceed 120s; waiting must not fail early.
+    assert "lock_attempt<=84" in launcher
+    assert "OCI_DEPLOY_LOCK_WAIT phase=launcher_checkout" in launcher
+    assert "OCI_DEPLOY_LOCK_TIMEOUT phase=launcher_checkout waited_s=420" in launcher
+    assert 'fuser -v "$deploy_lock_file"' in launcher
+    # Never mutate Git before acquisition. A stale waiter exits without
+    # checking out a superseded generation, including after getting the lock.
+    stale_wait = launcher.index("OCI_DEPLOY_SUPERSEDED phase=launcher_lock_wait")
+    stale_acquired = launcher.index("OCI_DEPLOY_SUPERSEDED phase=launcher_lock_acquired")
+    assert lock_wait < stale_wait < stale_acquired < before_fetch
+    assert 'git -C "$repo" ls-remote --exit-code origin refs/heads/main' in launcher
+    assert 'current_main' in launcher
+    assert 'flock -w 120 8' not in launcher
     assert 'CHESS_STUDIO_HOST_LOCK_HELD=1 CHESS_STUDIO_CHECKOUT_READY=1 exec /bin/bash' in launcher
     assert launcher.index("git -C \"$repo\" checkout --detach") < launcher.index("CHESS_STUDIO_HOST_LOCK_HELD=1")
     # The payload must NOT reopen inherited FD8 and cause a self-deadlock.
