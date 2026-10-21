@@ -1858,16 +1858,42 @@ def validate():
         "WR_WINDOW_frame", "WR_WINDOW_moon", "WR_CANON_banner_0",
         "WR_FIREPLACE_log_0", "WR_FIREPLACE_flame_core_0", "WR_FIREPLACE_mantel_cap",
         "WR_ARMOR_belt_-1",
-        "WR_ANCHOR_fireplace_practical", "WR_ANCHOR_right_fireplace_practical", "WR_ANCHOR_chandelier_practical", "WR_ANCHOR_window_moonlight",
+        "WR_ANCHOR_fireplace_practical", "WR_ANCHOR_chandelier_practical", "WR_ANCHOR_window_moonlight",
+        "WR_HANS_door_leaf", *(name for name, _pos in V2_HANS_ANCHORS),
         "WR_LIGHT_key", "WR_LIGHT_fireplace", "WR_CAMERA_hero",
-        "WR_CANON_chandelier_ring", "WR_CANON_right_fireplace_body",
+        "WR_CANON_chandelier_ring", "WR_CANON_campaign_cabinet_body",
         "WR_CANON_table_drape",
         "WR_CANON_arch_left_curve_-1_0", "WR_CANON_campaign_canvas",
-        "WR_CANON_fireplace_block_left_lintel_0", "WR_CANON_fireplace_block_right_lintel_0",
+        "WR_CANON_fireplace_block_left_lintel_0", "WR_ARCH_left_wall_over_door",
+        "WR2_HANS_door_lintel", "WR2_HANS_alcove_back",
     }
     missing = sorted(required - {obj.name for obj in scene.objects})
     if missing:
         raise RuntimeError(f"missing War Room contract objects: {missing}")
+    retired_fires = [
+        obj.name for obj in scene.objects if obj.name.startswith("WR_CANON_right_fireplace_")
+        or obj.name in {"WR_CANON_right_fire_light", "WR_ANCHOR_right_fireplace_practical"}
+        or obj.name.startswith("WR_CANON_fireplace_block_right_")
+    ]
+    if retired_fires:
+        raise RuntimeError(f"War Room v2 may have only one hearth: {retired_fires[:12]}")
+    door = scene.objects["WR_HANS_door_leaf"]
+    if door.get("war_room_runtime_dynamic") != "v2-hans-door":
+        raise RuntimeError("Hans' door leaf must be its own dynamic runtime mesh")
+    if any(abs(float(rot)) > 1e-5 for rot in door.rotation_euler):
+        raise RuntimeError("Hans' closed door must have no initial rotation")
+    if any(abs(float(door.location[i] - expected)) > 1e-3 for i, expected in
+           enumerate((*V2_HANS_HINGE, 0.0))):
+        raise RuntimeError("Hans' door pivot must be at the structural hinge")
+    if not (V2_HANS_DOOR_Y0 < dict(V2_HANS_ANCHORS)["WR_ANCHOR_hans_door"][1]
+            < V2_HANS_DOOR_Y1):
+        raise RuntimeError("Hans' spawn must align with his actual wall opening")
+    # With negative yaw the free edge of the leaf swings outside the left
+    # wall into the authored alcove, not through the command table.
+    free_edge_x = V2_HANS_HINGE[0] + math.sin(V2_HANS_OPEN_YAW) * (
+        V2_HANS_HINGE[1] - V2_HANS_DOOR_Y0 - 0.065)
+    if not -8.86 - V2_HANS_ALCOVE_DEPTH < free_edge_x < -8.86:
+        raise RuntimeError(f"Hans' door opens outside the alcove: {free_edge_x:.2f}")
     retired_overlap_props = sorted(
         obj.name for obj in scene.objects if obj.name.startswith("WR_CANON_bookshelf_")
     )
@@ -2088,6 +2114,38 @@ def read_glb_json(path):
     raise RuntimeError(f"GLB JSON chunk missing: {path}")
 
 
+
+def patch_v2_hans_door_extras(path):
+    """Exporter's extras vary by Blender version; guarantee Three.js door yaw."""
+    raw = Path(path).read_bytes()
+    chunks = []
+    patched = 0
+    offset = 12
+    while offset + 8 <= len(raw):
+        size, kind = struct.unpack_from("<II", raw, offset)
+        offset += 8
+        payload = raw[offset:offset + size]
+        offset += size
+        if kind == 0x4E4F534A:
+            data = json.loads(payload.decode("utf-8").rstrip("\x00 \t\r\n"))
+            for node in data.get("nodes", []):
+                if node.get("name") == "WR_HANS_door_leaf":
+                    node.setdefault("extras", {})["war_room_hans_door_open_yaw"] = V2_HANS_OPEN_YAW
+                    patched += 1
+            payload = json.dumps(data, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+            payload += b" " * ((4 - len(payload) % 4) % 4)
+        chunks.append((kind, payload))
+    if patched != 1:
+        raise RuntimeError(f"V2 runtime Hans door patched {patched} times")
+    output = bytearray(struct.pack("<4sII", b"glTF", 2,
+                                  12 + sum(8 + len(data) for _kind, data in chunks)))
+    for kind, data in chunks:
+        output.extend(struct.pack("<II", len(data), kind))
+        output.extend(data)
+    Path(path).write_bytes(output)
+
+
+
 def validate_runtime_glb(path, expected_factors=None):
     data = read_glb_json(path)
     extensions_used = set(data.get("extensionsUsed", []))
@@ -2105,14 +2163,22 @@ def validate_runtime_glb(path, expected_factors=None):
     materials = {row.get("name"): row for row in data.get("materials", [])}
     node_names = {row.get("name") for row in data.get("nodes", [])}
     required_runtime_anchors = {
-        "WR_ANCHOR_fireplace_practical",
-        "WR_ANCHOR_right_fireplace_practical",
-        "WR_ANCHOR_chandelier_practical",
-        "WR_ANCHOR_window_moonlight",
+        "WR_ANCHOR_fireplace_practical", "WR_ANCHOR_chandelier_practical",
+        "WR_ANCHOR_window_moonlight", "WR_HANS_door_leaf",
+        *(name for name, _pos in V2_HANS_ANCHORS),
     }
     missing_runtime_anchors = sorted(required_runtime_anchors - node_names)
     if missing_runtime_anchors:
-        raise RuntimeError(f"runtime GLB practical anchors missing: {missing_runtime_anchors}")
+        raise RuntimeError(f"runtime GLB practical/Hans nodes missing: {missing_runtime_anchors}")
+    if any(name and (name.startswith("WR_CANON_right_fireplace_")
+                     or name.startswith("WR_CANON_fireplace_block_right_"))
+           for name in node_names) or "WR_ANCHOR_right_fireplace_practical" in node_names:
+        raise RuntimeError("runtime V2 GLB contains retired second hearth")
+    leaf = next(node for node in data["nodes"] if node.get("name") == "WR_HANS_door_leaf")
+    if leaf.get("extras", {}).get("war_room_hans_door_open_yaw") != V2_HANS_OPEN_YAW:
+        raise RuntimeError("runtime Hans door lost its animated yaw")
+    if "mesh" not in leaf:
+        raise RuntimeError("runtime Hans door must survive batching as its own mesh")
     required_heraldry = {
         "WR_CREST_shield",
         "WR_CREST_horse_relief",
@@ -2307,9 +2373,9 @@ def export_shell(path):
         is_static_mesh = obj.type == "MESH" and obj.get("war_room_role") == ROLE_STATIC
         is_runtime_anchor = obj.type == "EMPTY" and obj.name in {
             "WR_ANCHOR_fireplace_practical",
-            "WR_ANCHOR_right_fireplace_practical",
             "WR_ANCHOR_chandelier_practical",
             "WR_ANCHOR_window_moonlight",
+            *(name for name, _pos in V2_HANS_ANCHORS),
         }
         if is_static_mesh or is_runtime_anchor:
             obj.select_set(True)
@@ -2323,6 +2389,7 @@ def export_shell(path):
         **meshopt_export_kwargs(),
     )
     patched_factors = patch_runtime_glb_base_color_factors(path, base_color_factors)
+    patch_v2_hans_door_extras(path)
     bpy.context.scene["war_room_runtime_base_color_factor_count"] = patched_factors
     bpy.context.scene["war_room_runtime_mesh_compression"] = MESH_COMPRESSION_EXTENSION
     validate_runtime_glb(path, base_color_factors)
