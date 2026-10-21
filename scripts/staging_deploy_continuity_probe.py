@@ -148,6 +148,79 @@ def get_game(api: str, token: str, game_id: str) -> tuple[dict, float]:
     return body, latency
 
 
+# Verify R2 binaries for the *pinned* release of each Godot game. HEAD avoids
+# downloading the large WebAssembly and PCK payloads during deploy drills.
+_R2_BASE = "https://assets.chess-studio.shadowops.dpdns.org"
+_R2_MODES = ("pawn-slug-godot", "chess-football-godot")
+_R2_FILES = ("index.html", "index.js", "index.wasm", "index.pck")
+
+
+def validate_godot_pointer(mode: str, pointer: dict) -> dict:
+    import re
+    release = pointer.get("release") if isinstance(pointer, dict) else None
+    if mode not in _R2_MODES or not isinstance(release, str) or not re.fullmatch(r"[0-9a-f]{16}", release):
+        raise RuntimeError("Godot R2 release pointer invalid")
+    manifest = pointer.get("files")
+    if not isinstance(manifest, dict) or not set(_R2_FILES).issubset(manifest):
+        raise RuntimeError("Godot R2 export incomplete")
+    files = {}
+    for name in _R2_FILES:
+        entry = manifest[name]
+        key = f"{mode}/releases/{release}/{name}"
+        url = f"{_R2_BASE}/{key}"
+        if not isinstance(entry, dict) or entry.get("key") != key or entry.get("url") != url:
+            raise RuntimeError("Godot R2 asset escapes pinned release")
+        size = entry.get("bytes")
+        media = entry.get("contentType")
+        if type(size) is not int or size <= 0 or not isinstance(media, str) or not media:
+            raise RuntimeError("Godot R2 asset metadata invalid")
+        files[name] = (url, size, media)
+    if pointer.get("index") != files["index.html"][0]:
+        raise RuntimeError("Godot R2 index pointer inconsistent")
+    return files
+
+
+def check_godot_pins(pins: dict) -> int:
+    checked = 0
+    for mode in _R2_MODES:
+        for name, (url, size, media) in pins[mode].items():
+            request = urllib.request.Request(
+                url, method="HEAD",
+                headers={"Cache-Control": "no-cache", "User-Agent": "ChessStudio-Deploy-R2-Check/1"},
+            )
+            with urllib.request.urlopen(request, timeout=12) as response:
+                if response.status != 200:
+                    raise RuntimeError(f"Godot R2 {mode}/{name} unavailable")
+                actual = (response.headers.get("Content-Type") or "").split(";", 1)[0].lower()
+                if actual != media.split(";", 1)[0].lower():
+                    raise RuntimeError(f"Godot R2 {mode}/{name} MIME mismatch")
+                length = response.headers.get("Content-Length")
+                coding = response.headers.get("Content-Encoding", "identity").lower()
+                if length and coding in ("", "identity") and int(length) != size:
+                    raise RuntimeError(f"Godot R2 {mode}/{name} changed size")
+            checked += 1
+    return checked
+
+
+def pin_godot_assets() -> dict:
+    pins = {}
+    for mode in _R2_MODES:
+        request = urllib.request.Request(
+            f"{_R2_BASE}/{mode}/current.json",
+            headers={"Cache-Control": "no-cache", "Accept": "application/json",
+                     "User-Agent": "ChessStudio-Deploy-R2-Check/1"},
+        )
+        with urllib.request.urlopen(request, timeout=12) as response:
+            if response.status != 200:
+                raise RuntimeError(f"Godot R2 {mode} pointer unavailable")
+            raw = response.read(65537)
+            if len(raw) > 65536:
+                raise RuntimeError("Godot R2 pointer oversized")
+        pins[mode] = validate_godot_pointer(mode, json.loads(raw))
+    check_godot_pins(pins)
+    return pins
+
+
 def godot_pins_self_test() -> None:
     mode, release = _R2_MODES[0], "a" * 16
     entries = {
