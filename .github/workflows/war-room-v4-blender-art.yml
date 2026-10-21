@@ -1,8 +1,8 @@
 name: War Room v4 · Blender art
 
-# Visual/model E2E-only edits are handled by V4 immutable R2 pin and App visual.
+# Shared visual-capture test-only edits are handled by V4 immutable R2 pin and App visual.
 # Rebuild authored Blender geometry only when the authored scene or its
-# dedicated Hans test changes; never for shared visual capture test edits.
+# dedicated Hans test or authored-model proof helper changes.
 on:
   pull_request:
     paths:
@@ -11,6 +11,7 @@ on:
       - 'scripts/blender/render_war_room_v4_hybrid_preview.py'
       - 'scripts/blender/configure_eevee_premium.py'
       - 'scripts/blender/publish_war_room_v4.py'
+      - 'e2e/v4-immutable-model.js'
       - 'e2e/war-room-v4-hans-clearance-visual.spec.js'
       - 'frontend/src/components/WarRoomHansActorTelemetry.js'
       - '.github/workflows/war-room-v4-blender-art.yml'
@@ -23,6 +24,7 @@ on:
       - 'scripts/blender/render_war_room_v4_hybrid_preview.py'
       - 'scripts/blender/configure_eevee_premium.py'
       - 'scripts/blender/publish_war_room_v4.py'
+      - 'e2e/v4-immutable-model.js'
       - 'e2e/war-room-v4-hans-clearance-visual.spec.js'
       - 'frontend/src/components/WarRoomHansActorTelemetry.js'
       - '.github/workflows/war-room-v4-blender-art.yml'

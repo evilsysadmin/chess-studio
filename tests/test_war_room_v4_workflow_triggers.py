@@ -12,9 +12,12 @@ class WarRoomV4WorkflowTriggerTests(unittest.TestCase):
     def test_e2e_only_changes_use_public_r2_browser_proof_not_blender_rebuild(self):
         authored = BLENDER.read_text(encoding="utf-8").split("\npermissions:", 1)[0]
         pinned = PIN.read_text(encoding="utf-8").split("\npermissions:", 1)[0]
-        for path in ("e2e/v4-immutable-model.js", "e2e/war-room-visual-artifact.spec.js"):
-            self.assertNotIn(f"- '{path}'", authored)
-            self.assertIn(f"- '{path}'", pinned)
+        self.assertNotIn("- 'e2e/war-room-visual-artifact.spec.js'", authored)
+        self.assertIn("- 'e2e/war-room-visual-artifact.spec.js'", pinned)
+        # The V4 helper has a special staging-authored GLB route. Changes to
+        # that contract must still test an exact *newly built* Blender artifact.
+        self.assertEqual(authored.count("- 'e2e/v4-immutable-model.js'"), 2)
+        self.assertIn("- 'e2e/v4-immutable-model.js'", pinned)
 
     def test_authored_model_and_hans_changes_still_run_full_blender_proof(self):
         authored = BLENDER.read_text(encoding="utf-8").split("\npermissions:", 1)[0]
