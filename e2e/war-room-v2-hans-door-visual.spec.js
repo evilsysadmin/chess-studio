@@ -165,3 +165,131 @@ if (REVISION) test('War Room V2 · Hans opens and closes the real service door',
     await browser.close();
   }
 });
+
+
+// Mobile is deliberately a separate gate. The 390 px viewport can crop the
+// service alcove to prioritize the playable board, so route/ground assertions
+// must use actual scene telemetry, not an 'onscreen' expectation for every
+// entry frame. This is NOT a desktop screenshot resized to phone dimensions.
+if (REVISION) test('War Room V2 · Hans crosses the real service door on touch mobile', async () => {
+  test.setTimeout(480_000);
+  await mkdir(DIR, { recursive: true });
+  const browser = await chromium.launch({
+    headless: true,
+    args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'],
+  });
+  const context = await browser.newContext({
+    viewport: { width: 390, height: 844 },
+    isMobile: true, hasTouch: true, deviceScaleFactor: 1,
+  });
+  const page = await context.newPage();
+  try {
+    const response = await page.request.get(STAGING + encodeURIComponent(REVISION) + '.glb', {
+      timeout: 20_000,
+    });
+    expect(response.ok(), 'Touch run must use the PR-staging V2 GLB').toBe(true);
+    const glb = await response.body();
+    expect(glb.length).toBeGreaterThan(100_000);
+    let served = 0;
+    await page.route('**/war-room/v2/runtime/*.glb*', async (route) => {
+      served += 1;
+      await route.fulfill({
+        status: 200, contentType: 'model/gltf-binary',
+        body: glb, headers: { 'cache-control': 'no-store' },
+      });
+    });
+
+    await page.emulateMedia({ reducedMotion: 'no-preference' });
+    await mockApi(page, {
+      profileSeed: {
+        'matthias.onboarded': '2',
+        'chess-study-home-guide-dismissed-v1': '1',
+      },
+    });
+    await login(page);
+    await page.evaluate(() => localStorage.setItem('chess-study-war-room-variant-v1', 'v2'));
+    expect(warRoomHansEventForGame('e2e-game-1', { variant: 'v2' })).toBe('fire');
+    await buttonWithVisibleText(page, 'Partida rápida').click();
+    const dialog = page.getByRole('dialog', { name: 'Configurar partida rápida' });
+    await expect(dialog).toBeVisible({ timeout: 30_000 });
+    await dialog.getByRole('button', { name: 'Empezar partida', exact: true }).click();
+
+    const canvas = page.locator('canvas.board3d-main-canvas');
+    await expect(canvas).toHaveAttribute('data-war-room-variant', 'v2', { timeout: 90_000 });
+    await expect(canvas).toHaveAttribute('data-war-room-variant-status', 'ready', { timeout: 90_000 });
+    await expect(canvas).toHaveAttribute('data-war-room-hans-stage', /^v2-blender-hall:quick$/, { timeout: 90_000 });
+    await expect(canvas).toHaveAttribute('data-war-room-hans-scene-ready', 'true', { timeout: 90_000 });
+    expect(served, 'Real mobile WebGL canvas must consume this revision').toBeGreaterThan(0);
+    const captures = [];
+    let savedHearth = false;
+    const started = Date.now();
+    while (Date.now() - started < 300_000) {
+      const sample = await canvas.evaluate((node) => ({
+        screen: node.dataset.warRoomHansScreen || '',
+        route: node.dataset.warRoomHansRoute || '',
+        phase: node.dataset.warRoomHansChoreographyPhase || '',
+        doorOpen: Number(node.dataset.warRoomHansDoorOpen),
+        visible: node.dataset.warRoomHansActorVisible === 'true',
+        completed: node.dataset.warRoomHansRoutineCompleted === 'true',
+        x: Number(node.dataset.warRoomHansLogicalX),
+        z: Number(node.dataset.warRoomHansSceneZ),
+        groundGap: Number(node.dataset.warRoomHansGroundGap),
+      }));
+      captures.push(sample);
+      if (!savedHearth && sample.phase === 'stoke-fire') {
+        const png = await canvas.evaluate((node) => node.toDataURL('image/png').split(',')[1]);
+        await writeFile(DIR + '/war-room-v2-hans-touch-hearth-390x844.png',
+          Buffer.from(png, 'base64'));
+        savedHearth = true;
+      }
+      if (sample.completed && !sample.visible && sample.doorOpen <= 0.02
+        && captures.some((s) => s.route === 'stage-leave' && s.doorOpen >= 0.9)) break;
+      await page.waitForTimeout(350);
+    }
+
+    // Keep the full sampled trace even if the new mobile assertions fail.
+    await writeFile(DIR + '/war-room-v2-hans-touch-route-390x844.json',
+      JSON.stringify({ revision: REVISION, viewport: { width: 390, height: 844 },
+        isMobile: true, hasTouch: true, served, samples: captures }, null, 2));
+    const wallLocalX = 8.68 - 4.55;
+    const entries = captures.filter((s) => s.route === 'stage-entry' && s.visible);
+    const exits = captures.filter((s) => s.route === 'stage-leave' && s.visible);
+    const nearWall = (row) => Math.abs(row.x - wallLocalX) <= 0.56;
+    const displacement = (rows) => rows.length < 2 ? 0
+      : Math.max(...rows.map((s) => Math.hypot(s.x - rows[0].x, s.z - rows[0].z)));
+    const result = {
+      revision: REVISION, served, samples: captures.length,
+      enters: entries.length, exits: exits.length,
+      enteredMeters: displacement(entries), exitedMeters: displacement(exits),
+      phases: [...new Set(captures.map((s) => s.phase))],
+      entryThreshold: entries.filter(nearWall).length,
+      exitThreshold: exits.filter(nearWall).length,
+      final: captures.at(-1),
+    };
+    console.log('V2_HANS_TOUCH_ROUTE', JSON.stringify(result));
+    expect(entries.length).toBeGreaterThan(5);
+    expect(exits.length).toBeGreaterThan(5);
+    expect(result.enteredMeters).toBeGreaterThan(1.5);
+    expect(result.exitedMeters).toBeGreaterThan(1.5);
+    expect(result.entryThreshold).toBeGreaterThan(0);
+    expect(result.exitThreshold).toBeGreaterThan(0);
+    expect(entries.filter(nearWall).every((s) => s.doorOpen >= 0.9)).toBe(true);
+    expect(exits.filter(nearWall).every((s) => s.doorOpen >= 0.9)).toBe(true);
+    expect(entries.some((s) => s.x > wallLocalX + 0.56)).toBe(true);
+    expect(entries.some((s) => s.x < wallLocalX - 0.56)).toBe(true);
+    expect(exits.some((s) => s.x > wallLocalX + 0.56)).toBe(true);
+    expect(result.phases).toContain('stoke-fire');
+    expect(result.phases).toContain('leave');
+    expect(result.final?.completed).toBe(true);
+    expect(result.final?.visible).toBe(false);
+    expect(result.final?.doorOpen).toBeLessThanOrEqual(0.02);
+    expect(savedHearth).toBe(true);
+    for (const sample of captures.filter((s) => s.visible && s.screen === 'onscreen')) {
+      expect(Number.isFinite(sample.groundGap)).toBe(true);
+      expect(Math.abs(sample.groundGap)).toBeLessThanOrEqual(0.03);
+    }
+  } finally {
+    await context.close();
+    await browser.close();
+  }
+});
