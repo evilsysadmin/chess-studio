@@ -92,8 +92,7 @@ async function waitForRoutineStart(page, canvas, eventName) {
   }
 
   const route = expectedRoute(eventName);
-  await expect.poll(
-    () => page.evaluate(() => {
+  const readRoutineState = () => page.evaluate(() => {
       const node = document.querySelector('.board3d-main-canvas');
       if (!node) return { route: 'missing-canvas', screen: 'missing', phase: 'missing' };
       return {
@@ -112,12 +111,23 @@ async function waitForRoutineStart(page, canvas, eventName) {
         choreRouteLengths: node.dataset.warRoomHansChoreRouteLengths || '',
         choreEndpoints: node.dataset.warRoomHansChoreEndpoints || '',
       };
-    }),
-    { timeout: 75_000, intervals: [100, 100, 200, 300, 500] },
-  ).toMatchObject({
-    route,
-    screen: expect.stringMatching(VISIBLE_SCREEN),
-  });
+    });
+  try {
+    await expect.poll(readRoutineState,
+      { timeout: 75_000, intervals: [100, 100, 200, 300, 500] },
+    ).toMatchObject({
+      route,
+      screen: expect.stringMatching(VISIBLE_SCREEN),
+    });
+  } catch (error) {
+    // Playwright's toMatchObject() diff only prints the keys asserted above,
+    // so the E2E-only physical setup reason was absent from red CI logs.
+    // Print the real diagnostic snapshot while preserving a hard failure.
+    const snapshot = await readRoutineState().catch((readError) => ({
+      diagnosticsReadError: String(readError),
+    }));
+    throw new Error(`HANS_ROUTINE_SETUP_DIAGNOSTICS ${eventName}: ${JSON.stringify(snapshot)}\n${error.message}`);
+  }
 }
 
 async function sampleRoutine(page, canvas, eventName) {
