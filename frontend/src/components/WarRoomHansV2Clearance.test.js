@@ -7,7 +7,7 @@ import { readWarRoomHansStageAnchors } from './WarRoomHansStage.js';
 // These are room-floor X/Y, not projected screen or JS camera coordinates.
 const V2_STOPS = Object.freeze({
   WR_ANCHOR_hans_hearth: [-4.55, 4.55],
-  WR_ANCHOR_hans_door: [-9.55, 3.80],
+  WR_ANCHOR_hans_door: [-9.55, 3.70],
   WR_ANCHOR_hans_basket: [-6.56, 4.96],
   WR_ANCHOR_hans_tools: [-6.42, 5.48],
   WR_ANCHOR_hans_corridor_0: [-7.42, 3.82],
@@ -38,6 +38,18 @@ function v2Shell(whiteSide) {
   shell.add(door);
   scene.updateMatrixWorld(true);
   return shell;
+}
+
+
+// Project the authored oak door into the same Blender floor plane as Hans.
+// A doorOpen value alone cannot prove the real leaf clears his shoulders.
+function distanceToSegment(point, start, end) {
+  const dx = end[0] - start[0];
+  const dy = end[1] - start[1];
+  const fraction = Math.max(0, Math.min(1,
+    ((point[0] - start[0]) * dx + (point[1] - start[1]) * dy) / (dx * dx + dy * dy)));
+  return Math.hypot(point[0] - start[0] - fraction * dx,
+    point[1] - start[1] - fraction * dy);
 }
 
 describe('V2 · Hans can enter and work without clipping the command table', () => {
@@ -88,4 +100,29 @@ describe('V2 · Hans can enter and work without clipping the command table', () 
       shell.clear();
     });
   }
+
+  it('clears the rotating oak door on entry and exit at every sampled frame', () => {
+    const shell = v2Shell(true);
+    const { stage, hearth, side, towardBoard } = readWarRoomHansStageAnchors(
+      shell, { id: 'v2-blender-hall' },
+    );
+    const hinge = [-8.46, 4.58];
+    const leafWidth = 4.58 - 2.95 - 0.065;
+    const sampledRoutes = new Set();
+    for (let tick = 0; tick <= 380; tick += 1) {
+      const frame = hansQuickIterationFrame(tick / 10, { stage });
+      if (!frame.hansVisible || !['stage-entry', 'stage-leave'].includes(frame.route)) continue;
+      sampledRoutes.add(frame.route);
+      const center = [hearth.x + side * frame.hansX,
+        -(hearth.z + towardBoard * frame.hansZ)];
+      const yaw = -1.45 * frame.doorOpen;
+      const freeEnd = [hinge[0] + leafWidth * Math.sin(yaw),
+        hinge[1] - leafWidth * Math.cos(yaw)];
+      const clearance = distanceToSegment(center, hinge, freeEnd);
+      expect(clearance, `door clips Hans at t=${tick / 10}, ${frame.route}`)
+        .toBeGreaterThanOrEqual(ACTOR_RADIUS + 0.045 + 0.04);
+    }
+    expect([...sampledRoutes].sort()).toEqual(['stage-entry', 'stage-leave']);
+    shell.clear();
+  });
 });

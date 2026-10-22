@@ -94,7 +94,9 @@ class V2RoomArchitectureTests(unittest.TestCase):
         self.assertTrue({"WR_ANCHOR_hans_hearth", "WR_ANCHOR_hans_door", "WR_ANCHOR_hans_basket",
                          "WR_ANCHOR_hans_tools", "WR_ANCHOR_hans_corridor_0",
                          "WR_ANCHOR_hans_corridor_1", "WR_ANCHOR_hans_corridor_2"} <= set(anchors))
-        self.assertTrue(y0 < anchors["WR_ANCHOR_hans_door"][1] < y1)
+        door_y = anchors["WR_ANCHOR_hans_door"][1]
+        self.assertGreater(door_y, y0 + 0.56)
+        self.assertLess(door_y, y1 - 0.56)
         # A real passage begins behind the structural wall, not in the room.
         door_x = anchors["WR_ANCHOR_hans_door"][0]
         self.assertLess(door_x, -8.86 - 0.54)

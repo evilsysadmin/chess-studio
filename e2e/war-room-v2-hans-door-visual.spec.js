@@ -130,6 +130,16 @@ if (REVISION) test('War Room V2 · Hans opens and closes the real service door',
     // The actual x=-8.68 wall is 4.13 m from the x=-4.55 hearth.
     // Require travel across the wall, not mere movement inside the room.
     const wallLocalX = 4.13;
+    const entryThreshold = enters.filter((f) =>
+      Number.isFinite(f.x) && Math.abs(f.x - wallLocalX) <= 0.56);
+    const exitThreshold = exits.filter((f) =>
+      Number.isFinite(f.x) && Math.abs(f.x - wallLocalX) <= 0.56);
+    expect(entryThreshold.length, 'sample Hans crossing inward').toBeGreaterThan(0);
+    expect(exitThreshold.length, 'sample Hans crossing outward').toBeGreaterThan(0);
+    expect(entryThreshold.every((f) => f.doorOpen >= 0.9),
+      'keep the oak leaf open while Hans enters').toBe(true);
+    expect(exitThreshold.every((f) => f.doorOpen >= 0.9),
+      'open the oak leaf before Hans leaves').toBe(true);
     expect(enters.some((f) => Number.isFinite(f.x) && f.x > wallLocalX + 0.56),
       'Hans must appear outside the structural wall in the alcove').toBe(true);
     expect(enters.some((f) => Number.isFinite(f.x) && f.x < wallLocalX - 0.56),
