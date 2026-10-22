@@ -3,6 +3,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { mockApi } from './helpers.js';
 import { homeBlenderDistinctGpuSamplesMs } from '../frontend/src/components/HomeBlenderPerformanceDiagnostics.js';
 import { summarizeHomeGpuLightContrast } from './home-blender-gpu-light-contrast.mjs';
+import { homeGpuBenchmarkAmbientHour } from './home-gpu-ambient-clock.mjs';
 import { homeGpuBenchmarkRevision } from './home-gpu-revision.mjs';
 
 // Explicit, local-only hardware diagnostic. CI excludes this file from its
@@ -30,9 +31,6 @@ const expectedVendor = (process.env.CHESS_HOME_GPU_EXPECT_VENDOR || '').trim().t
 // Otherwise morning/night comparisons measure different source lighting.
 const lightProbeAmbient = String(process.env.CHESS_HOME_GPU_AMBIENT || 'night')
   .trim().toLowerCase();
-const LIGHT_PROBE_AMBIENT_HOUR = Object.freeze({
-  dawn: 7, day: 13, dusk: 19, night: 23,
-});
 // A/B/B/A trials require a real timer. Do not substitute browser CPU timing
 // or software GPU for fragment-shading costs.
 const requireTimer = lightProbe || process.env.CHESS_HOME_GPU_REQUIRE_TIMER === '1';
@@ -47,17 +45,20 @@ function median(numbers) {
 }
 
 async function openRealHome(page, lightMode = 'normal') {
-  if (lightProbe) {
-    // Test-context-only clock: the game's authored ambient and Matthias
-    // routine derive from Date#getHours. Do not touch production behavior,
-    // system time, performance.now, Date.now or real scheduling intervals.
+  const ambientHour = homeGpuBenchmarkAmbientHour({
+    lightProbe,
+    drawCensus: requireDrawCensus,
+    ambient: lightProbeAmbient,
+  });
+  if (ambientHour != null) {
+    // Only Playwright probe contexts see this override; real timers are unchanged.
     await page.addInitScript((hour) => {
       Object.defineProperty(Date.prototype, 'getHours', {
         configurable: true,
         writable: true,
         value() { return hour; },
       });
-    }, LIGHT_PROBE_AMBIENT_HOUR[lightProbeAmbient]);
+    }, ambientHour);
   }
   await page.addInitScript(() => {
     // Home's desktop GLTF policy needs a capable CPU report. This does not
@@ -207,9 +208,8 @@ test('Home 3D physical GPU benchmark · three visits or opt-in light A/B/B/A', a
   if (lightProbe && !productionBaseline && lightProbeFamily.startsWith('accent-')) {
     throw new Error('Single-accent GPU probes require HOME_GPU_BASELINE=production');
   }
-  if (lightProbe && !Object.hasOwn(LIGHT_PROBE_AMBIENT_HOUR, lightProbeAmbient)) {
-    throw new Error('Unknown CHESS_HOME_GPU_AMBIENT: choose dawn, day, dusk, or night');
-  }
+  // Reject invalid controlled ambient before starting Chromium visits.
+  homeGpuBenchmarkAmbientHour({ lightProbe, drawCensus: requireDrawCensus, ambient: lightProbeAmbient });
   if (process.env.CHESS_E2E_LIGHTWEIGHT === '1') {
     throw new Error('CHESS_E2E_LIGHTWEIGHT=1 forces a 2D Home and cannot benchmark GPU rendering');
   }
