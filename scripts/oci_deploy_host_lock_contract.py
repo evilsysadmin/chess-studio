@@ -48,6 +48,25 @@ def self_test():
     legacy = payload.split("\nelse\n", 1)[-1]
     assert 'flock -w 5 8' in legacy
     assert 'if supersede_if_stale; then' in payload
+    # The last side-effect-free guard runs after the immutable Go image is
+    # available but before the blue/green candidate can be recreated.
+    pulled = payload.index('phase_done image_pull "$image_pull_started_ms"')
+    guard = payload.index("OCI_DEPLOY_PRE_RECREATE_SUPERSEDED")
+    recreate = payload.index('recreate_started_ms="$(now_ms)"')
+    compose_recreate = payload.index('compose "$sha" up -d --no-build --force-recreate')
+    assert pulled < guard < recreate < compose_recreate
+    assert payload.count('OCI_DEPLOY_PRE_RECREATE_SUPERSEDED') == 1
+    guard_section = payload[pulled:recreate]
+    assert 'if supersede_if_stale; then' in guard_section
+    assert '[["$status" == 42]]' not in guard_section
+    assert 'if [[ "$status" == 42 ]]; then' in guard_section
+    assert 'exit 0' in guard_section
+    assert 'exit "$status"' in guard_section
+    # The same reusable classifier always bypasses production and fails closed
+    # when origin/main is unavailable; no unchecked "success" on network errors.
+    classifier = payload[payload.index('supersede_if_stale() {'):pulled]
+    assert '[[ "$target" == staging ]] || return 0' in classifier
+    assert 'current_main="$(resolve_staging_main)" || return $?' in classifier
     assert "rm -f .git/" not in launcher + payload
     print("OCI deploy host lock contract: OK")
 
