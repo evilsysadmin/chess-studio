@@ -110,6 +110,7 @@ async function waitForRoutineStart(page, canvas, eventName) {
         choreTarget: node.dataset.warRoomHansChoreTarget || '',
         choreRouteLengths: node.dataset.warRoomHansChoreRouteLengths || '',
         choreEndpoints: node.dataset.warRoomHansChoreEndpoints || '',
+        choreRouteBlock: node.dataset.warRoomHansChoreRouteBlock || '',
       };
     });
   try {

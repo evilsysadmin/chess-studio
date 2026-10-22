@@ -23,7 +23,7 @@ import {
   warRoomHansChoreForEvent,
 } from './WarRoomHansChoreContract.js';
 import { findWarRoomHansChoreApproach } from './WarRoomHansChoreApproach.js';
-import { moveWarRoomHansAlongRoute } from './WarRoomHansNavigation.js';
+import { explainWarRoomHansBlockedRoute, moveWarRoomHansAlongRoute } from './WarRoomHansNavigation.js';
 import {
   assignWarRoomHansTask,
   createWarRoomHansSetupRetryState,
@@ -52,6 +52,7 @@ const CHORE_EVENTS = new Set(WAR_ROOM_HANS_CHORE_EVENTS);
 // task never launched. No player telemetry, persistence or network calls.
 function reportChoreSetup(actor, eventName, status, {
   targetObject = null, home = null, target = null, routeIn = [], routeOut = [],
+  routeBlock = null,
 } = {}) {
   if (globalThis.__CHESS_E2E_HANS_AMBIENT_AUDIT__ !== true) return;
   const canvas = getWarRoomHansCanvas(actor);
@@ -64,6 +65,7 @@ function reportChoreSetup(actor, eventName, status, {
     home: home ? [Number(home.x).toFixed(2), Number(home.z).toFixed(2)] : null,
     target: target ? [Number(target.x).toFixed(2), Number(target.z).toFixed(2)] : null,
   });
+  if (routeBlock) canvas.dataset.warRoomHansChoreRouteBlock = JSON.stringify(routeBlock);
 }
 
 function firstNamed(root, names = []) {
@@ -337,7 +339,10 @@ export function installWarRoomHansAmbientChoreRoutine(root) {
       routeOut = approach.routeOut;
       if (!routeIn.length || !routeOut.length) {
         reportChoreSetup(actor, eventName, !routeIn.length ? 'route-in-blocked' : 'route-out-blocked',
-          { targetObject, home, target, routeIn, routeOut });
+          { targetObject, home, target, routeIn, routeOut,
+            routeBlock: globalThis.__CHESS_E2E_HANS_AMBIENT_AUDIT__ === true
+              ? explainWarRoomHansBlockedRoute(floor, actor.hans.parent, home, target)
+              : null });
         abortSetupForCurrentGame();
         return;
       }
