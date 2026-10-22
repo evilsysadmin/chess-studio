@@ -234,6 +234,28 @@ class HomeGpuCompareTests(unittest.TestCase):
         bad["visits"][1]["drawPass"]["families"]["main"]["castle"] = False
         self.rejected("invalid drawPass main families", after=bad)
 
+    def test_required_draw_census_medians_match_observed_visits(self):
+        for record in (self.before, self.after):
+            self._attach_draw_census(record)
+        for metric in ("mainDrawCalls", "mainCastleDrawCalls", "mainMatthiasDrawCalls",
+                       "shadowDrawCalls", "firstFrameMainDrawCalls", "firstFrameShadowDrawCalls"):
+            bad = copy.deepcopy(self.after)
+            bad["medians"][metric] += 1
+            self.rejected(f"claimed {metric} median disagrees", after=bad)
+
+    def test_three_visits_can_differ_when_middle_draw_observation_matches(self):
+        for record in (self.before, self.after):
+            self._attach_draw_census(record)
+            for index, delta in ((0, 12), (2, -8)):
+                visit = record["visits"][index]
+                for key in ("drawPass", "firstFrameDrawPass"):
+                    draw = visit[key]
+                    draw["mainCalls"] += delta
+                    draw["totalCalls"] += delta
+                    draw["families"]["main"]["castle"] += delta
+        result = compare_reports(self.before, self.after)
+        self.assertTrue(result["drawCensusEvidenceComplete"])
+
     def test_required_census_flag_must_be_boolean(self):
         invalid = copy.deepcopy(self.after)
         invalid["requireDrawCensus"] = "true"
