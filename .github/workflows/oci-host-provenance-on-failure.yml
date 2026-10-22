@@ -20,8 +20,8 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 12
     concurrency:
-      group: oci-staging-mutations
-      cancel-in-progress: false
+      group: oci-staging-readonly-provenance
+      cancel-in-progress: true
     environment:
       name: staging
     env:
