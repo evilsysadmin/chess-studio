@@ -28,7 +28,7 @@ def _check_report(report, label):
     if report.get("surface") != "Home Blender 3D" or report.get("mode") != "hardware":
         raise IncomparableBenchmarks(f"{label}: a real hardware Home Blender benchmark is required")
     revision = report.get("revision")
-    if not isinstance(revision, str) or not (7 <= len(revision) <= 40) or any(c not in "0123456789abcdefABCDEF" for c in revision):
+    if not isinstance(revision, str) or len(revision) != 40 or any(c not in "0123456789abcdefABCDEF" for c in revision):
         raise IncomparableBenchmarks(f"{label}: record the exact git SHA with CHESS_HOME_GPU_REVISION")
     viewport = report.get("viewport")
     if not isinstance(viewport, dict) or any(not _finite_number(viewport.get(k)) or viewport[k] <= 0 for k in ("width", "height", "dpr")):
