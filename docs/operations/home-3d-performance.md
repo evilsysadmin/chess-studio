@@ -147,7 +147,14 @@ same schema: only `transparentDoubleSidedNow` counts actual alpha-enabled
 DoubleSide slots, and `singlePassTransparentDoubleSidedNow` counts those
 already marked `forceSinglePass`. It never enables alpha or modifies any
 material. The live census is intentionally **absent** under SwiftShader and
-reduced-motion; missing is not zero. These slots still are **not observed
+reduced-motion; missing is not zero. The physical `home-3d-hardware.json` now records both
+`visits[].flamePassEligibility` (pre-animation) and
+`visits[].flamePassLiveEligibility` (live alpha material slots).
+Missing or invalid live data is `null`, **not zero**; software rendering
+cannot manufacture live evidence. Counts are validated integer material slots,
+not measured draw submissions or expected frame-time savings.
+
+These slots still are **not observed
 draw calls**: compare the real main-pass draw census and asynchronous physical
 GPU times before drawing any performance conclusions.
 If `doubleSided === 0`, the proposed `forceSinglePass` experiment has
