@@ -78,7 +78,11 @@ export function createClassicWarRoomShellController(
       // A one-shot geometry census of V1, separate from GLB metrics for V2-4.
       // No per-frame traversal, GPU timing, draw-call or FPS claims.
       if (!buildOptions.classroom) {
-        const census = censusClassicWarRoomShell(objects);
+        // This order comes from buildClassicWarRoomShell's five V1 roots.
+        const census = censusClassicWarRoomShell(objects, {
+          ownerLabels: ['room-structure', 'premium-decor', 'table-base',
+            'table-details', 'board-frame'],
+        });
         canvas.dataset.warRoomClassicMeshNodes = String(census.meshNodes);
         canvas.dataset.warRoomClassicMeshInstances = String(census.meshInstances);
         canvas.dataset.warRoomClassicUniqueGeometries = String(census.uniqueGeometries);
@@ -88,6 +92,10 @@ export function createClassicWarRoomShellController(
         // aid rollback/perf audits without adding a per-frame GPU probe.
         canvas.dataset.warRoomClassicTopGeometryFamilies = JSON.stringify(
           census.geometryFamilies.slice(0, 5),
+        );
+        // Local one-shot diagnostics: no scene edits, network, or frame loop.
+        canvas.dataset.warRoomClassicTopOwnerFamilies = JSON.stringify(
+          census.ownerFamilies.slice(0, 5),
         );
       }
     },
