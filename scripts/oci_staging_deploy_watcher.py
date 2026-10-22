@@ -112,16 +112,21 @@ def deploy(candidate: str) -> None:
     )
 
 
-def iteration() -> str:
+def iteration(rejected_sha: str = "") -> tuple[str, str]:
     if not ENABLE_MARKER.is_file() or ENABLE_MARKER.is_symlink():
-        return "disabled"
+        return "disabled", ""
 
     candidate = fetch_worker_build()
     if candidate == read_deployed_sha():
-        return "current"
+        return "current", candidate
+    # The root-owned deploy wrapper already proved this exact generation stale.
+    # Git main cannot move backwards to that SHA in the normal release train.
+    # Do not reacquire deploy.lock every 15s until the Worker publishes a new SHA.
+    if candidate == rejected_sha:
+        return "known-superseded", candidate
     if not backend_image_available(candidate):
         print(f"OCI_DEPLOY_WATCH_IMAGE_PENDING repo_ref={candidate}", flush=True)
-        return "image-pending"
+        return "image-pending", candidate
 
     print(f"OCI_DEPLOY_WATCH_TRIGGER repo_ref={candidate}", flush=True)
     deploy(candidate)
@@ -133,17 +138,27 @@ def iteration() -> str:
             f"OCI_DEPLOY_WATCH_SUPERSEDED repo_ref={candidate} deployed_sha={deployed}",
             flush=True,
         )
-        return "superseded"
+        return "superseded", candidate
     print(f"OCI_DEPLOY_WATCH_OK repo_ref={candidate}", flush=True)
-    return "deployed"
+    return "deployed", candidate
+
+
+def remember_rejected_sha(previous: str, result: str, candidate: str) -> str:
+    if result == "superseded":
+        return candidate
+    if result == "deployed":
+        return ""
+    return previous
 
 
 def watch() -> None:
     last_disabled_notice = False
+    rejected_sha = ""
     while True:
         delay = POLL_SECONDS
         try:
-            result = iteration()
+            result, candidate = iteration(rejected_sha)
+            rejected_sha = remember_rejected_sha(rejected_sha, result, candidate)
             if result == "disabled":
                 if not last_disabled_notice:
                     print("OCI_DEPLOY_WATCH_DISABLED", flush=True)
@@ -175,6 +190,30 @@ def self_test() -> None:
     assert GO_IMAGE_PREFIX.endswith(":oci-")
     assert go_image_ref(sample) == "ghcr.io/evilsysadmin/chess-studio-pvp:oci-" + sample
     assert ENABLE_MARKER == Path("/var/lib/chess-studio/DEPLOY_WATCH_ENABLED")
+    # Regression: a superseded Worker build must not trigger another OCI
+    # manifest lookup or sudo deploy until its immutable SHA changes.
+    from unittest.mock import patch
+    rejected = "a" * 40
+    newer = "b" * 40
+    assert remember_rejected_sha("", "superseded", sample) == sample
+    assert remember_rejected_sha(sample, "known-superseded", sample) == sample
+    assert remember_rejected_sha(sample, "image-pending", newer) == sample
+    assert remember_rejected_sha(sample, "deployed", newer) == ""
+    with (
+        patch(f"{__name__}.ENABLE_MARKER") as marker,
+        patch(f"{__name__}.fetch_worker_build", return_value=sample),
+        patch(f"{__name__}.read_deployed_sha", return_value=rejected),
+        patch(f"{__name__}.backend_image_available") as image_lookup,
+        patch(f"{__name__}.deploy") as deploy_call,
+    ):
+        marker.is_file.return_value = True
+        marker.is_symlink.return_value = False
+        assert iteration(sample) == ("known-superseded", sample)
+        image_lookup.assert_not_called()
+        deploy_call.assert_not_called()
+        image_lookup.return_value = True
+        assert iteration(newer) == ("superseded", sample)
+        deploy_call.assert_called_once_with(sample)
     source = Path(__file__).read_text(encoding="utf-8")
     tree = ast.parse(source)
     imported = []
