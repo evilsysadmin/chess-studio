@@ -58,6 +58,10 @@ NON_RUNTIME_EXACT = frozenset({
     "scripts/pr_merge_diff.py",
     "scripts/run_core_e2e_lane.py",
     "scripts/war_room_visual_freeze_check.mjs",
+    # Offline GPU diagnostics and main CI provenance are not deployed runtime.
+    "scripts/compare_home_3d_gpu.py",
+    "scripts/test_compare_home_3d_gpu.py",
+    "scripts/main_ci_source.py",
 })
 NON_RUNTIME_ACTION_PREFIXES = (
     ".github/actions/cache-node-modules/",
@@ -208,6 +212,20 @@ def self_test() -> None:
     for path in diagnostic_only:
         assert deploy_required_for_paths([path]) == (False, "non-runtime-only")
     assert deploy_required_for_paths(diagnostic_only) == (False, "non-runtime-only")
+    offline_home_ci = [
+        "scripts/compare_home_3d_gpu.py",
+        "scripts/test_compare_home_3d_gpu.py",
+        "scripts/main_ci_source.py",
+    ]
+    for path in offline_home_ci:
+        assert deploy_required_for_paths([path]) == (False, "non-runtime-only")
+    assert deploy_required_for_paths(offline_home_ci) == (False, "non-runtime-only")
+    assert deploy_required_for_paths([*diagnostic_only, *offline_home_ci]) == (False, "non-runtime-only")
+    for runtime in ("frontend/src/components/HomeBlenderScene3D.jsx",
+                    "scripts/oci_existing_a1_deploy.sh", "Makefile"):
+        assert deploy_required_for_paths([*offline_home_ci, runtime]) == (
+            True, f"runtime:{runtime}"
+        )
     # Host mutation and actual acceptance changes stay fail-open/deploy-required.
     for deployment_control in (
         "scripts/oci_run_command.py",
@@ -256,6 +274,7 @@ def self_test() -> None:
     assert deploy_required_for_paths([".github/workflows/staging-deploy.yml"])[0]
     assert deploy_required_for_paths([".github/actions/build-staging-frontend/action.yml"])[0]
     assert deploy_required_for_paths(["scripts/staging_deploy_scope.py"])[0]
+    assert deploy_required_for_paths(["scripts/staging_deploy_scope.py", *offline_home_ci])[0]
     assert deploy_required_for_paths([])[0]
     print("staging-deploy-scope self-test: OK")
 
