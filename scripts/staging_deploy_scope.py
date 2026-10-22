@@ -46,6 +46,7 @@ NON_RUNTIME_EXACT = frozenset({
     "scripts/test_suite_audit.mjs",
     "scripts/test_entrypoint_parity.py",
     "scripts/workflow_static_contracts.py",
+    "scripts/staging_deploy_proof.py",
     "scripts/static_contract_risk_audit.mjs",
     "scripts/pr_track_label_check.py",
     "scripts/quality_provenance.py",
@@ -193,6 +194,7 @@ def emit(path: str, deploy_required: bool, reason: str, prebuild_required: bool 
 
 def self_test() -> None:
     assert deploy_required_for_paths(["docs/operations/pvp.md", "README.md"]) == (False, "non-runtime-only")
+    assert deploy_required_for_paths(["scripts/staging_deploy_proof.py"]) == (False, "non-runtime-only")
     assert deploy_required_for_paths(["e2e/smoke.spec.js", "backend-go/internal/pulse/pulse_test.go"]) == (False, "non-runtime-only")
     for staging_path in sorted(STAGING_ACCEPTANCE_FILES):
         assert deploy_required_for_paths([staging_path]) == (True, f"runtime:{staging_path}")
