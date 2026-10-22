@@ -19,6 +19,10 @@ describe('classic War Room geometry census', () => {
         geometryType: 'BoxGeometry', meshNodes: 2, meshInstances: 5,
         uniqueGeometries: 1, potentialTriangles: 60, uniqueTriangles: 12,
       }],
+      ownerFamilies: [{
+        owner: 'root-1', meshNodes: 2, meshInstances: 5,
+        uniqueGeometries: 1, potentialTriangles: 60, uniqueTriangles: 12,
+      }],
     });
   });
 
@@ -47,6 +51,31 @@ describe('classic War Room geometry census', () => {
       .toBe(report.potentialTriangles);
   });
 
+  it('attributes owner cost without counting overlapping roots or shared geometries twice', () => {
+    const room = new THREE.Group();
+    const table = new THREE.Group();
+    const common = new THREE.BoxGeometry(1, 1, 1);
+    room.add(new THREE.Mesh(common, new THREE.MeshBasicMaterial()));
+    table.add(new THREE.InstancedMesh(common, new THREE.MeshBasicMaterial(), 3));
+    const report = censusClassicWarRoomShell([room, table, room], {
+      ownerLabels: ['room-structure', 'table-base', 'duplicate-room'],
+    });
+    expect(report.meshNodes).toBe(2);
+    expect(report.uniqueGeometries).toBe(1);
+    expect(report.potentialTriangles).toBe(48);
+    expect(report.ownerFamilies).toEqual([
+      { owner: 'table-base', meshNodes: 1, meshInstances: 3,
+        uniqueGeometries: 0, potentialTriangles: 36, uniqueTriangles: 0 },
+      { owner: 'room-structure', meshNodes: 1, meshInstances: 1,
+        uniqueGeometries: 1, potentialTriangles: 12, uniqueTriangles: 12 },
+    ]);
+    for (const field of ['meshNodes', 'meshInstances', 'uniqueGeometries',
+      'potentialTriangles', 'uniqueTriangles']) {
+      expect(report.ownerFamilies.reduce((sum, owner) => sum + owner[field], 0))
+        .toBe(report[field]);
+    }
+  });
+
   it('handles nonindexed geometries, non-mesh nodes and empty input', () => {
     expect(censusClassicWarRoomShell([null, {}]).potentialTriangles).toBe(0);
     const geometry = new THREE.BufferGeometry();
@@ -62,6 +91,10 @@ describe('classic War Room geometry census', () => {
       potentialTriangles: 2, uniqueTriangles: 2,
       geometryFamilies: [{
         geometryType: 'BufferGeometry', meshNodes: 1, meshInstances: 1,
+        uniqueGeometries: 1, potentialTriangles: 2, uniqueTriangles: 2,
+      }],
+      ownerFamilies: [{
+        owner: 'root-1', meshNodes: 1, meshInstances: 1,
         uniqueGeometries: 1, potentialTriangles: 2, uniqueTriangles: 2,
       }],
     });

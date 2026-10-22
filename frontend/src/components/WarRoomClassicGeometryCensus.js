@@ -9,16 +9,23 @@ function trianglesPerMesh(geometry) {
   return Number.isFinite(count) && count >= 0 ? Math.floor(count / 3) : 0;
 }
 
-export function censusClassicWarRoomShell(roots = []) {
+export function censusClassicWarRoomShell(roots = [], { ownerLabels = [] } = {}) {
   const visited = new Set();
   const geometries = new Set();
   const families = new Map();
+  const owners = new Map();
   let meshNodes = 0;
   let meshInstances = 0;
   let potentialTriangles = 0;
   let uniqueTriangles = 0;
 
+  let rootIndex = 0;
   for (const root of roots || []) {
+    // V1 provides semantic labels; arbitrary roots fall back to name or index.
+    const ownerName = String(ownerLabels[rootIndex]
+      || root?.userData?.warRoomGeometryOwner || root?.name
+      || `root-${rootIndex + 1}`);
+    rootIndex++;
     if (typeof root?.traverse !== 'function') continue;
     root.traverse((object) => {
       if (!object?.isMesh || visited.has(object)) return;
@@ -29,6 +36,15 @@ export function censusClassicWarRoomShell(roots = []) {
         : 1;
       const triangles = trianglesPerMesh(geometry);
       const geometryType = String(geometry?.type || 'UnknownGeometry');
+      let owner = owners.get(ownerName);
+      if (!owner) {
+        owner = { owner: ownerName, meshNodes: 0, meshInstances: 0,
+          uniqueGeometries: 0, potentialTriangles: 0, uniqueTriangles: 0 };
+        owners.set(ownerName, owner);
+      }
+      owner.meshNodes++;
+      owner.meshInstances += instanceCount;
+      owner.potentialTriangles += triangles * instanceCount;
       let family = families.get(geometryType);
       if (!family) {
         family = { geometryType, meshNodes: 0, meshInstances: 0,
@@ -46,6 +62,9 @@ export function censusClassicWarRoomShell(roots = []) {
         uniqueTriangles += triangles;
         family.uniqueGeometries++;
         family.uniqueTriangles += triangles;
+        // First-encounter assignment preserves additivity across owners.
+        owner.uniqueGeometries++;
+        owner.uniqueTriangles += triangles;
       }
     });
   }
@@ -60,6 +79,12 @@ export function censusClassicWarRoomShell(roots = []) {
     geometryFamilies: [...families.values()].sort(
       (left, right) => right.potentialTriangles - left.potentialTriangles
         || left.geometryType.localeCompare(right.geometryType),
+    ),
+    // Each mesh belongs to its first traversed root. Shared geometries
+    // are charged once for unique metrics, but all instance triangles count.
+    ownerFamilies: [...owners.values()].sort(
+      (left, right) => right.potentialTriangles - left.potentialTriangles
+        || left.owner.localeCompare(right.owner),
     ),
   };
 }
