@@ -108,29 +108,23 @@ def self_test() -> None:
     for payload in (command, matched):
         subprocess.run(["bash", "-n"], input=payload, text=True, check=True, capture_output=True)
     # Synthetic read-only fixtures prove all four no-text classifications.
-    import tempfile
-    from pathlib import Path
-    with tempfile.TemporaryDirectory(prefix="oci-provenance-test-") as directory:
-        for checkout, committed, expected_rc in (
-            (sample, sample, 0),
-            (sample, "a" * 40, 91),
-            ("b" * 40, sample, 92),
-            ("b" * 40, "a" * 40, 90),
-            ("unavailable", sample, 92),
-            ("unavailable", "unavailable", 94),
-        ):
-            shell = (
-                "checkout=" + checkout + "\n"
-                + "committed=" + committed + "\n"
-                + matched.split("if [[ \"$checkout\" ==")[1].join([]) if False else ""
-            )
-            # Take only the status classifier tail, not the host operations.
-            classifier = matched[matched.rfind('if [[ "$checkout" == "'): ]
-            result = subprocess.run(
-                ["bash", "-c", f'checkout={checkout}; committed={committed};\n{classifier}'],
-                cwd=directory, text=True, capture_output=True, check=False,
-            )
-            assert result.returncode == expected_rc, (checkout, committed, result.returncode)
+    classifier_start = matched.index(
+        f'if [[ "$checkout" == "{sample}" && "$committed" == "{sample}" ]]'
+    )
+    classifier = matched[classifier_start:]
+    for checkout, committed, expected_rc in (
+        (sample, sample, 0),
+        (sample, "a" * 40, 91),
+        ("b" * 40, sample, 92),
+        ("b" * 40, "a" * 40, 90),
+        ("unavailable", sample, 92),
+        ("unavailable", "unavailable", 94),
+    ):
+        result = subprocess.run(
+            ["bash", "-c", f'checkout={checkout}; committed={committed};\n{classifier}'],
+            text=True, capture_output=True, check=False,
+        )
+        assert result.returncode == expected_rc, (checkout, committed, result.returncode)
     print("OCI backend diagnostics self-test: OK")
 
 
