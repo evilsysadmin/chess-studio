@@ -102,6 +102,7 @@ jobs:
           python3 -S scripts/oci_vault_sync.py --self-test
           python3 -S scripts/verify_backend_staging.py --self-test
       - name: Deploy exact backend commit to OCI staging
+        id: oci_fallback
         if: steps.fallback_admission.outputs.requires_sdk == 'true'
         shell: bash
         env:
@@ -119,18 +120,26 @@ jobs:
           python3 -S scripts/staging_image_ready.py --sha "$DEPLOY_SHA"
           python3 scripts/oci_run_command.py deploy --repo-ref "$DEPLOY_SHA" || {
             rc=$?
+            if [[ "$rc" == 87 ]]; then
+              echo 'superseded=true' >> "$GITHUB_OUTPUT"
+              echo "::notice title=OCI release superseded::Host rejected obsolete generation $DEPLOY_SHA (rc=87); no staging accreditation."
+              exit 0
+            fi
             [[ "$rc" == 78 ]] || exit "$rc"
             echo "::warning::No OCI receipt; public exact-SHA check required"
           }
       - name: Re-check main after OCI fallback
         id: post_deploy
-        if: steps.watcher.outputs.converged != 'true' && steps.fallback_admission.outputs.superseded != 'true'
+        if: >-
+          steps.watcher.outputs.converged != 'true' &&
+          steps.fallback_admission.outputs.superseded != 'true' &&
+          steps.oci_fallback.outputs.superseded != 'true'
         run: python3 -S scripts/staging_generation.py main-head --sha "$DEPLOY_SHA" --github-output "$GITHUB_OUTPUT"
       - name: Resolve backend generation state
         id: backend_state
         if: always()
         env:
-          SUPERSEDED: ${{ steps.fallback_admission.outputs.superseded == 'true' || steps.post_deploy.outputs.superseded == 'true' }}
+          SUPERSEDED: ${{ steps.fallback_admission.outputs.superseded == 'true' || steps.post_deploy.outputs.superseded == 'true' || steps.oci_fallback.outputs.superseded == 'true' }}
         run: echo "superseded=$SUPERSEDED" >> "$GITHUB_OUTPUT"
       - name: Verify backend public path reaches exact OCI generation
         if: steps.backend_state.outputs.superseded != 'true'

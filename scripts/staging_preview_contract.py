@@ -356,6 +356,20 @@ def main() -> int:
             if "if: steps.fallback_admission.outputs.requires_sdk == 'true'" not in section:
                 errors.append(f"staging backend: {label} requires exact public probe and stale-main admission")
 
+        # The host's rc=87 means a *superseded* generation: it may finish
+        # without failing CI, but it must never reach public verification or
+        # staging smoke/accreditation. Other non-receipt failures still fail closed.
+        for needle, label in (
+            ("id: oci_fallback", "OCI fallback explicit supersession output"),
+            ('if [[ "$rc" == 87 ]]; then', "only host-declared rc87 may be a no-op"),
+            ('echo \'superseded=true\' >> "$GITHUB_OUTPUT"', "superseded output from host"),
+            ('[[ "$rc" == 78 ]] || exit "$rc"', "other OCI failure codes fail closed"),
+            ("steps.oci_fallback.outputs.superseded != 'true'", "do not recheck superseded release"),
+            ("steps.oci_fallback.outputs.superseded == 'true'", "backend state includes late OCI supersession"),
+            ("needs.backend.outputs.superseded != 'true'", "browser smoke must not accredit superseded backend"),
+        ):
+            require(staging_deploy, needle, label, errors)
+
         forbid(
             blocks["backend"],
             "python3 scripts/oci_vault_sync.py sync-current",

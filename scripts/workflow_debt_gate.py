@@ -83,7 +83,8 @@ INVENTORY = {
 BUDGETS = (
     Budget('.github/workflows/production-promote.yml', 35200),
     Budget('.github/workflows/cicd.yml', 19454),
-    Budget('.github/workflows/staging-deploy.yml', 17792),
+    # Deliberate +448-byte allowance: rc=87 supersession now fails closed for accreditation without a false deploy failure.
+    Budget('.github/workflows/staging-deploy.yml', 18240),
     Budget('.github/workflows/oci-resend-bootstrap.yml', 4601),
     Budget('.github/workflows/staging-deploy-continuity.yml', 7390),
     Budget('.github/workflows/staging-pawn-slug-visual.yml', 3919),
