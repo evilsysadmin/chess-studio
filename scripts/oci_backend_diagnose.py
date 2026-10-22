@@ -17,10 +17,7 @@ def diagnostic_command(expected_sha: str | None = None) -> str:
     command = r'''set -u
 
 printf '%s\n' 'OCI_BACKEND_DIAG_BEGIN'
-# Read-only immutable provenance. Never read runtime env, tokens or logs.
-# Run Command executes as ocarun, while Git metadata belongs to the
-# deployment operator. Trust ONLY the fixed local checkout, not arbitrary paths.
-# Git must not acquire index locks or need write access for this read-only probe.
+# Fixed host metadata only; never environment or logs.
 checkout="$(GIT_OPTIONAL_LOCKS=0 git -c safe.directory=/opt/chess-studio/repo \
   -C /opt/chess-studio/repo rev-parse --verify 'HEAD^{commit}' 2>/dev/null || true)"
 checkout_reason=ok
@@ -52,8 +49,7 @@ watch_enabled=no
 [[ -f /var/lib/chess-studio/DEPLOY_WATCH_ENABLED && ! -L /var/lib/chess-studio/DEPLOY_WATCH_ENABLED ]] && watch_enabled=yes
 printf 'OCI_BACKEND_PROVENANCE checkout=%s checkout_reason=%s committed=%s color=%s watcher=%s enabled=%s\n' \
   "$checkout" "$checkout_reason" "$committed" "$color" "$watcher" "$watch_enabled"
-# Compare the installed root launcher to the immutable checkout; no content
-# is printed and an unreadable or symlinked file stays "unavailable".
+# Compare launchers without reading their contents into stdout.
 source_launcher=/opt/chess-studio/repo/scripts/oci_staging_deploy_launcher.sh
 host_launcher=/usr/local/sbin/chess-studio-deploy
 launcher_status=unavailable
@@ -66,6 +62,12 @@ if [[ -f "$source_launcher" && ! -L "$source_launcher" && -r "$source_launcher" 
   fi
 fi
 printf 'OCI_BACKEND_LAUNCHER installed_vs_checkout=%s\n' "$launcher_status"
+lock_pid=unavailable
+if command -v lslocks >/dev/null 2>&1; then
+  lock_pid="$(lslocks -n -o PID,PATH 2>/dev/null | awk '$2 == "/var/lib/chess-studio/deploy.lock" && $1 ~ /^[0-9]+$/ {print $1; exit}' || true)"
+  [[ "$lock_pid" =~ ^[0-9]+$ ]] || lock_pid=not_observed
+fi
+printf 'OCI_BACKEND_LOCK pid=%s\n' "$lock_pid"
 for service in edge pvp_blue pvp_green; do
   container_id="$(docker ps -aq \
     --filter 'label=com.docker.compose.project=chess-studio-staging' \
@@ -147,6 +149,8 @@ def self_test() -> None:
     assert "checkout_reason=git_error" in command
     assert "chess-studio-deploy-watcher.service" in command
     assert "OCI_BACKEND_LAUNCHER installed_vs_checkout=%s" in command
+    assert "OCI_BACKEND_LOCK pid=%s" in command
+    assert 'lslocks -n -o PID,PATH' in command
     assert "cmp -s \"$source_launcher\" \"$host_launcher\"" in command
     assert all(f"launcher_status={status}" in command for status in ("match", "drift", "unavailable"))
     assert "DEPLOY_WATCH_ENABLED" in command
