@@ -240,6 +240,29 @@ def _flame_live_identity(report, label):
     return identities[0]
 
 
+def _flame_single_pass_slots(report, label):
+    slots = {
+        visit["flamePassLiveEligibility"]["singlePassTransparentDoubleSidedNow"]
+        for visit in report["visits"]
+    }
+    if len(slots) != 1:
+        raise IncomparableBenchmarks(f"{label}: single-pass flame activation differs between visits")
+    return slots.pop()
+
+
+def require_flame_single_pass_trial(result):
+    """Validate experimental configuration only, never assert performance savings."""
+    if not result["flameEvidenceComplete"]:
+        raise IncomparableBenchmarks("Single-pass flame trial requires live flame census on both revisions")
+    if not result["drawCensusEvidenceComplete"]:
+        raise IncomparableBenchmarks("Single-pass flame trial requires real sustained draw census")
+    if not result["gpuTimingAvailable"] or not result["hardwareTimerRequired"]:
+        raise IncomparableBenchmarks("Single-pass flame trial requires real hardware GPU timer samples")
+    before, after = result["flameSinglePassSlots"]
+    if before != 0 or after <= 0:
+        raise IncomparableBenchmarks("Single-pass flame trial must start at zero and enable eligible candidate slots")
+
+
 def compare_reports(baseline, candidate):
     """Return measured per-metric A/B differences; never infer missing timings."""
     old_signature = _check_report(baseline, "baseline")
@@ -256,6 +279,11 @@ def compare_reports(baseline, candidate):
     after_flames = _flame_live_identity(candidate, "candidate")
     if before_flames is not None and after_flames is not None and before_flames != after_flames:
         raise IncomparableBenchmarks("Live flame population differs between hardware revisions")
+    single_pass = (
+        (_flame_single_pass_slots(baseline, "baseline"),
+         _flame_single_pass_slots(candidate, "candidate"))
+        if before_flames is not None and after_flames is not None else None
+    )
 
     metrics = []
     for key, label, unit in (
@@ -303,6 +331,8 @@ def compare_reports(baseline, candidate):
         "metrics": metrics,
         "gpuTimingAvailable": next(m for m in metrics if m["key"] == "gpuMs")["delta"] is not None,
         "flameEvidenceComplete": before_flames is not None and after_flames is not None,
+        "flameSinglePassSlots": single_pass,
+        "hardwareTimerRequired": old_signature[2],
         "drawCensusEvidenceComplete": before_census and after_census,
     }
 
@@ -330,6 +360,8 @@ def format_comparison(result):
         lines.append("Sustained draw census: NOT REQUIRED on both revisions; do not assert actual draw savings.")
     if result["flameEvidenceComplete"]:
         lines.append("Live flame population matches in both revisions; material sidedness may differ intentionally.")
+        before, after = result["flameSinglePassSlots"]
+        lines.append(f"Live flame forceSinglePass slots: {before} -> {after}; material eligibility, not measured draw savings.")
     else:
         lines.append("Live flame evidence: UNAVAILABLE for one/both revisions; do not infer flame optimization savings.")
     lines.append("A matching renderer fingerprint is not proof of the same physical machine.")
@@ -344,11 +376,18 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("baseline", type=Path)
     parser.add_argument("candidate", type=Path)
+    parser.add_argument(
+        "--require-flame-single-pass", action="store_true",
+        help="Require real GPU timer and draw census, with baseline=0 and candidate>0 single-pass flame slots",
+    )
     args = parser.parse_args(argv)
     try:
         base = json.loads(args.baseline.read_text(encoding="utf-8"))
         next_report = json.loads(args.candidate.read_text(encoding="utf-8"))
-        print(format_comparison(compare_reports(base, next_report)))
+        result = compare_reports(base, next_report)
+        if args.require_flame_single_pass:
+            require_flame_single_pass_trial(result)
+        print(format_comparison(result))
     except (OSError, ValueError, TypeError) as exc:
         parser.exit(2, f"Home GPU comparison rejected: {exc}\n")
 
