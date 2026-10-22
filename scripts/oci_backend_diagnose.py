@@ -145,6 +145,20 @@ def self_test() -> None:
     assert "OCI_BACKEND_WATCHER_METRICS restarts=%s %s" in command
     assert "cat /" not in command and "printenv" not in command
     import subprocess
+    awk_source = command.split(" | awk '", 1)[1].split("'", 1)[0]
+    fixture = (
+        "OCI_DEPLOY_WATCH_TRIGGER repo_ref=example\\n"
+        "OCI_DEPLOY_WATCH_OK repo_ref=example\\n"
+        "OCI_DEPLOY_WATCH_ERROR type=RuntimeError PRIVATE_SECRET=never-print-me\\n"
+        "OCI_DEPLOY_WATCH_SUPERSEDED repo_ref=example\\n"
+        "OCI_DEPLOY_WATCH_IMAGE_PENDING repo_ref=example\\n"
+        "PRIVATE_SECRET=another-canary\\n"
+    )
+    aggregate = subprocess.run(
+        ["awk", awk_source], input=fixture, text=True, capture_output=True, check=True,
+    ).stdout
+    assert aggregate == "lines=6 attempts=1 ok=1 errors=1 superseded=1 pending=1"
+    assert "PRIVATE_SECRET" not in aggregate
     for payload in (command, matched):
         subprocess.run(["bash", "-n"], input=payload, text=True, check=True, capture_output=True)
     # Synthetic read-only fixtures prove all four no-text classifications.
