@@ -19,6 +19,33 @@ function bottomWorldY(mesh) {
 }
 
 describe('WarRoomHansVisibleGroundLock', () => {
+  it('grounds V2 Hans on the exported structural floor instead of leaving ground telemetry empty', () => {
+    const root = new THREE.Group();
+    const material = new THREE.MeshBasicMaterial();
+    // These dimensions match the exported WR_ARCH_floor in the genuine V2 GLB.
+    const floor = new THREE.Mesh(new THREE.BoxGeometry(17.6, 0.24, 14.6), material);
+    floor.name = 'WR_ARCH_floor';
+    floor.position.set(0, -1.24, 0);
+    root.add(floor);
+    const hans = new THREE.Group();
+    hans.name = 'war-room-hans-butler';
+    hans.visible = true;
+    hans.position.set(-7.2, -0.45, -3.8);
+    hans.scale.setScalar(0.74);
+    root.add(hans);
+    const leftShoe = shoe(material, -0.17);
+    const rightShoe = shoe(material, 0.17);
+    hans.add(leftShoe, rightShoe);
+    hans.userData.refs = { leftShoe, rightShoe };
+
+    expect(installWarRoomHansVisibleGroundLock(root)).toBe(1);
+    leftShoe.onBeforeRender({}, null, null, leftShoe.geometry, leftShoe.material, null);
+
+    expect(hans.userData.warRoomHansVisibleGroundSurface).toBe('WR_ARCH_floor');
+    expect(hans.userData.warRoomHansVisibleGroundGap).toBeCloseTo(0, 6);
+    expect(Math.min(bottomWorldY(leftShoe), bottomWorldY(rightShoe))).toBeCloseTo(-1.12, 5);
+  });
+
   it('grounds moving Hans on the real V4 Blender floor when V1/V3 floor nodes are absent', () => {
     const root = new THREE.Group();
     const material = new THREE.MeshBasicMaterial();
