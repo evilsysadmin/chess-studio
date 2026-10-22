@@ -334,6 +334,14 @@ case "$mode" in
         war-room-entry-latency-visual.spec.js \
         --workers=1 \
         --retries=0
+
+      if [[ -n "${APP_VISUAL_EXPECTED_WAR_ROOM_REVISION:-}" ]]; then
+        echo "War Room V2 Hans: prove actual door swing and passage with exact PR GLB."
+        ./node_modules/.bin/playwright test \
+          war-room-v2-hans-door-visual.spec.js \
+          --workers=1 \
+          --retries=0
+      fi
     fi
     ;;
   hans)

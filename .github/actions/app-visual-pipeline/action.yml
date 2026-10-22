@@ -141,7 +141,10 @@ runs:
         set -euo pipefail
         revision_url="https://assets.chess-studio.shadowops.dpdns.org/war-room/v2/staging/revisions/${APP_VISUAL_EXPECTED_WAR_ROOM_REVISION}.glb"
         probe_file="${RUNNER_TEMP}/war-room-v2-revision.glb"
-        deadline=$((SECONDS + 420))
+        # V2 PR Blender staging can begin several minutes after Chromium's
+        # build; the 420s budget once expired two minutes before R2 published
+        # the very same SHA. Wait, but never fall back to an older asset.
+        deadline=$((SECONDS + 900))
         while (( SECONDS < deadline )); do
           rm -f "$probe_file"
           if curl -fsSL --max-time 15 -H 'Cache-Control: no-cache' \

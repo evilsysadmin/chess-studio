@@ -91,9 +91,11 @@ export function readWarRoomHansStageAnchors(shellRoot, { id = 'blender-room' } =
     toolsX: tools[0],
     toolsZ: tools[1],
     entrySeconds: 11,
-    // V4's west-wall hearth is narrow; the old +0.9m working offset walked
-    // Hans into the curved outer wall. Other rooms retain their old choreography.
-    fireWorkX: id === WAR_ROOM_HANS_ROOMS.v4.id ? 0 : 0.9,
+    // V4 works at its west-wall mouth. V2's fireplace is tucked into the
+    // back-left corner: at +0.9 Hans clips the wide v2 command table.
+    // +1.85 moves his working feet into the left service aisle. V3 stays put.
+    fireWorkX: id === WAR_ROOM_HANS_ROOMS.v4.id ? 0
+      : id === WAR_ROOM_HANS_ROOMS.v2.id ? 1.85 : 0.9,
     corridor: Object.freeze([doorLocal, ...corridor.map((anchor) => local(worldPoint(anchor)))].map(Object.freeze)),
   });
   return {

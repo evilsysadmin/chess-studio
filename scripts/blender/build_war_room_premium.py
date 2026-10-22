@@ -51,6 +51,27 @@ RUNTIME_WIDE_TARGET = (0.0, 0.16, 2.20)
 RUNTIME_WIDE_DIRECTION = (0.0, -10.6, 6.0)
 
 
+# V2's only hearth is the left ceremonial fireplace. Hans' real service
+# doorway is cut into the left side wall, opening into a dark alcove.
+V2_HANS_DOOR_Y0 = 2.95
+V2_HANS_DOOR_Y1 = 4.65
+V2_HANS_DOOR_HEIGHT = 2.72
+V2_HANS_HINGE = (-8.46, 4.58)
+V2_HANS_OPEN_YAW = -1.45
+V2_HANS_ALCOVE_DEPTH = 1.65
+# Keep the left ceremonial armour but move it away from Hans' exit corridor.
+V2_HANS_ARMOUR_LEFT_BASE = (-7.55, 6.15)
+V2_HANS_ANCHORS = (
+    ("WR_ANCHOR_hans_hearth", (-4.55, 4.55, 0.0)),
+    ("WR_ANCHOR_hans_door", (-9.55, 3.70, 0.0)),
+    ("WR_ANCHOR_hans_basket", (-6.56, 4.96, 0.0)),
+    ("WR_ANCHOR_hans_tools", (-6.42, 5.48, 0.0)),
+    ("WR_ANCHOR_hans_corridor_0", (-7.42, 3.82, 0.0)),
+    ("WR_ANCHOR_hans_corridor_1", (-7.10, 4.35, 0.0)),
+    ("WR_ANCHOR_hans_corridor_2", (-6.66, 4.78, 0.0)),
+)
+
+
 def args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--blend", required=True)
@@ -446,7 +467,14 @@ def add_room(static, mats):
     # Architecture and parquet-like floor.
     cube("WR_ARCH_floor", (0, 0, -0.12), (8.8, 7.3, 0.12), mats["floor_dark"], static, bevel=0.02)
     cube("WR_ARCH_back_wall", (0, 7.02, 3.35), (8.8, 0.18, 3.35), mats["wall_wood"], static, bevel=0.02)
-    cube("WR_ARCH_left_wall", (-8.68, 0.8, 3.35), (0.18, 6.25, 3.35), mats["wall_wood"], static, bevel=0.02)
+    # Split the structural wall around a true 1.70 m x 2.72 m aperture.
+    y0, y1, door_h = V2_HANS_DOOR_Y0, V2_HANS_DOOR_Y1, V2_HANS_DOOR_HEIGHT
+    cube("WR_ARCH_left_wall", (-8.68, (-5.45 + y0) / 2, 3.35),
+         (0.18, (y0 + 5.45) / 2, 3.35), mats["wall_wood"], static, bevel=0.02)
+    cube("WR_ARCH_left_wall_back", (-8.68, (y1 + 7.05) / 2, 3.35),
+         (0.18, (7.05 - y1) / 2, 3.35), mats["wall_wood"], static, bevel=0.02)
+    cube("WR_ARCH_left_wall_over_door", (-8.68, (y0 + y1) / 2, (6.7 + door_h) / 2),
+         (0.18, (y1 - y0) / 2, (6.7 - door_h) / 2), mats["wall_wood"], static, bevel=0.02)
     cube("WR_ARCH_right_wall", (8.68, 0.8, 3.35), (0.18, 6.25, 3.35), mats["wall_wood"], static, bevel=0.02)    # Canonical v2 split: dark walnut wainscot below, warm mineral plaster
     # above. The broad matte fields break the all-brown box effect while the
     # original rails/stiles remain the architectural frame in front.
@@ -511,7 +539,15 @@ def add_room(static, mats):
     cube("WR_ARCH_baseboard_back", (0, 6.72, 0.42), (8.46, 0.10, 0.16), mats["trim_wood"], static, bevel=0.035)
     for side in (-1, 1):
         cube(f"WR_ARCH_side_cornice_{side}", (side * 8.52, 0.75, 6.32), (0.10, 6.0, 0.12), mats["trim_wood"], static, bevel=0.035)
-        cube(f"WR_ARCH_side_baseboard_{side}", (side * 8.52, 0.75, 0.42), (0.10, 6.0, 0.16), mats["trim_wood"], static, bevel=0.035)
+        if side < 0:
+            # No timber threshold bar across Hans' doorway.
+            for label, a, b in (("front", -5.25, V2_HANS_DOOR_Y0),
+                                ("back", V2_HANS_DOOR_Y1, 6.75)):
+                cube(f"WR_ARCH_side_baseboard_{side}_{label}", (side * 8.52, (a + b) / 2, 0.42),
+                     (0.10, (b - a) / 2, 0.16), mats["trim_wood"], static, bevel=0.035)
+        else:
+            cube(f"WR_ARCH_side_baseboard_{side}", (side * 8.52, 0.75, 0.42),
+                 (0.10, 6.0, 0.16), mats["trim_wood"], static, bevel=0.035)
 
     # Recessed lower panels break the large back wall into believable joinery.
     for index, x in enumerate((-6.35, -2.55, 2.55, 6.35)):
@@ -824,6 +860,7 @@ def add_room(static, mats):
     # Ceremonial armour display. Angular plate construction keeps the suits
     # reading as armour rather than glossy toy figures at the hero camera.
     for side in (-1, 1):
+        armour_before = {obj.name for obj in static.objects}
         x = side * 7.33
         cylinder(f"WR_ARMOR_base_{side}", (x, 4.35, 0.33), 0.62, 0.22, mats["charcoal"], static)
         cube(f"WR_ARMOR_stand_{side}", (x, 4.35, 1.12), (0.11, 0.11, 0.78), mats["charcoal"], static, bevel=0.025)
@@ -886,6 +923,80 @@ def add_room(static, mats):
         spike.data.materials.append(mats["armor"])
         tag(spike)
         relink(spike, static)
+        if side == -1:
+            # Move *every* element of the original armour display, including
+            # halberd and small fittings. The old plinth intersected Hans' path.
+            shift_x = V2_HANS_ARMOUR_LEFT_BASE[0] - x
+            shift_y = V2_HANS_ARMOUR_LEFT_BASE[1] - 4.35
+            for armour_obj in static.objects:
+                if armour_obj.name not in armour_before:
+                    armour_obj.location.x += shift_x
+                    armour_obj.location.y += shift_y
+
+
+
+
+def build_hans_service_v2(static, mats):
+    """Frame the wall gap with a hinged oak leaf and a dark service alcove."""
+    y0, y1, height = V2_HANS_DOOR_Y0, V2_HANS_DOOR_Y1, V2_HANS_DOOR_HEIGHT
+    mid = (y0 + y1) / 2.0
+    for label, y in (("front", y0 - 0.11), ("back", y1 + 0.11)):
+        cube(f"WR2_HANS_door_jamb_{label}", (-8.44, y, height / 2),
+             (0.14, 0.14, height / 2), mats["stone"], static, bevel=0.035)
+    cube("WR2_HANS_door_lintel", (-8.45, mid, height + 0.13),
+         (0.14, (y1 - y0) / 2 + 0.22, 0.13), mats["stone_light"], static, bevel=0.035)
+    cube("WR2_HANS_door_threshold", (-8.67, mid, 0.018),
+         (0.45, (y1 - y0) / 2 - 0.05, 0.035), mats["stone_dark"], static, bevel=0.013)
+
+    # The aperture opens into actual depth, not a black rectangle against
+    # the intact wall. Side cheeks hide the world beyond the service alcove.
+    depth = V2_HANS_ALCOVE_DEPTH
+    outer_x = -8.86
+    alcove_x = outer_x - depth / 2
+    cube("WR2_HANS_alcove_floor", (alcove_x, mid, -0.025),
+         (depth / 2, (y1 - y0) / 2 + 0.10, 0.04), mats["stone_dark"], static, bevel=0.008)
+    cube("WR2_HANS_alcove_back", (outer_x - depth, mid, height / 2),
+         (0.055, (y1 - y0) / 2 + 0.12, height / 2 + 0.11),
+         mats["charcoal"], static, bevel=0.01)
+    cube("WR2_HANS_alcove_roof", (alcove_x, mid, height + 0.14),
+         (depth / 2, (y1 - y0) / 2 + 0.10, 0.07), mats["charcoal"], static, bevel=0.01)
+    for label, y in (("front", y0 - 0.09), ("back", y1 + 0.09)):
+        cube(f"WR2_HANS_alcove_end_{label}", (alcove_x, y, height / 2),
+             (depth / 2, 0.055, height / 2), mats["charcoal"], static, bevel=0.01)
+
+    # Every door detail is joined into one dynamic glTF mesh with its origin
+    # on the hinge. The runtime must rotate exactly this node, not the wall.
+    hx, hy = V2_HANS_HINGE
+    width = hy - y0 - 0.065
+    parts = [
+        cube("WR2_HANS_leaf_oak", (hx, hy - width / 2, height / 2),
+             (0.045, width / 2, height / 2 - 0.04), mats["trim_wood"], static, bevel=0.016),
+    ]
+    for index, z in enumerate((0.48, 1.34, 2.19)):
+        parts.append(cube(f"WR2_HANS_leaf_iron_{index}", (hx + 0.058, hy - width / 2, z),
+                          (0.015, width * 0.42, 0.046), mats["iron"], static, bevel=0.006))
+    parts.append(sphere("WR2_HANS_leaf_handle", (hx + 0.084, hy - width + 0.19, 1.27),
+                        0.072, mats["brass_dark"], static, scale=(0.50, 0.68, 0.88)))
+    bpy.ops.object.select_all(action="DESELECT")
+    for part in parts:
+        part.select_set(True)
+    bpy.context.view_layer.objects.active = parts[0]
+    bpy.ops.object.join()
+    leaf = parts[0]
+    leaf.name = "WR_HANS_door_leaf"
+    cursor = bpy.context.scene.cursor
+    old_cursor = cursor.location.copy()
+    cursor.location = (hx, hy, 0.0)
+    bpy.ops.object.select_all(action="DESELECT")
+    leaf.select_set(True)
+    bpy.context.view_layer.objects.active = leaf
+    bpy.ops.object.origin_set(type="ORIGIN_CURSOR")
+    leaf.select_set(False)
+    cursor.location = old_cursor
+    leaf["war_room_runtime_dynamic"] = "v2-hans-door"
+    leaf["war_room_hans_door_open_yaw"] = V2_HANS_OPEN_YAW
+    for name, pos in V2_HANS_ANCHORS:
+        anchor(name, pos, static)
 
 
 
@@ -894,7 +1005,7 @@ def add_gothic_canon_v2(static, mats):
 
     Keep the existing room as the editable baseline, then add the large canonical
     masses that are already present in the Three.js scene: burgundy heraldry,
-    deep bookcase, second fireplace, chandelier, globe and table drape.
+    deep bookcase, campaign cupboard, chandelier, globe and table drape.
     """
     bpy.context.scene["war_room_visual_canon"] = "cinematic-gothic-study-2026-09-18-v1"
     # Separate the heraldic crest from the chandelier in projection. The crest
@@ -1129,62 +1240,23 @@ def add_gothic_canon_v2(static, mats):
     # replacement both crowded the left hearth/desk silhouettes; negative space
     # reads better in the real gameplay camera.
 
-    # Right-hand fireplace: the approved mock is asymmetric but balanced by two
-    # warm hearths. The side window remains visible farther right as the cold key.
+    # Former secondary hearth: a low walnut campaign cupboard supports the
+    # map without competing with the one great stone fireplace on the left.
     rx = 4.85
-    # Secondary hearth: deliberately lower and narrower than the ceremonial
-    # left fireplace so the two sides no longer compete at equal weight.
-    cube("WR_CANON_right_fireplace_body", (rx, 6.34, 1.84), (1.18, 0.43, 1.20),
-         mats["stone_dark"], static, bevel=0.095)
-    cube("WR_CANON_right_fireplace_opening", (rx, 5.86, 1.55), (0.74, 0.12, 0.62),
-         mats["charcoal"], static, bevel=0.042)
-    cube("WR_CANON_right_fireplace_mantel", (rx, 5.78, 3.05), (1.42, 0.56, 0.11),
-         mats["stone_dark"], static, bevel=0.068)
-    cube("WR_CANON_right_fireplace_hearth", (rx, 5.38, 0.70), (1.18, 0.67, 0.09),
-         mats["stone_dark"], static, bevel=0.065)
+    cube("WR_CANON_campaign_cabinet_body", (rx, 6.33, 1.18),
+         (1.24, 0.36, 1.05), mats["walnut_dark"], static, bevel=0.055)
+    cube("WR_CANON_campaign_cabinet_top", (rx, 5.97, 2.26),
+         (1.34, 0.45, 0.085), mats["trim_wood"], static, bevel=0.045)
+    cube("WR_CANON_campaign_cabinet_plinth", (rx, 6.12, 0.23),
+         (1.32, 0.45, 0.16), mats["frame_wood"], static, bevel=0.038)
     for side in (-1, 1):
-        cube(f"WR_CANON_right_fireplace_pilaster_{side}", (rx + side * 1.18, 5.75, 2.12),
-             (0.15, 0.13, 1.02), mats["stone"], static, bevel=0.045)
-    # Keep this hearth visibly secondary to the ceremonial left fireplace:
-    # a low ember bed and two small wisps read as a maintained room fire rather
-    # than a duplicated hero effect.
-    # One restrained charred log gives the secondary hearth a physical anchor
-    # so its low embers do not read like a row of glowing pebbles.
-    right_log = cylinder("WR_CANON_right_fireplace_log", (rx, 5.52, 1.13),
-                         0.075, 0.86, mats["charred_wood"], static, vertices=16)
-    right_log.rotation_euler = (0, math.pi / 2, math.radians(12))
-    for idx, (dx, dz, sx) in enumerate((
-        (-0.42, 0.02, 1.18), (-0.12, 0.06, 1.34), (0.20, 0.03, 1.12), (0.43, 0.08, 0.94),
-    )):
-        sphere(f"WR_CANON_right_fireplace_ember_{idx}", (rx + dx, 5.50, 1.24 + dz), 0.105,
-               mats["ember"], static, scale=(sx, 0.62, 0.46))
-    for idx, (dx, dz, sx, sz) in enumerate((
-        (-0.18, 0.12, 0.40, 0.82), (0.18, 0.08, 0.34, 0.70),
-    )):
-        sphere(f"WR_CANON_right_fireplace_flame_{idx}", (rx + dx, 5.52, 1.34 + dz), 0.16,
-               mats["fire"], static, scale=(sx, 0.34, sz))
-    light("WR_CANON_right_fire_light", "POINT", (rx, 5.18, 1.68), 108.0,
-          (1.0, 0.19, 0.035), static, radius=1.00)
-    anchor("WR_ANCHOR_right_fireplace_practical", (rx, 5.05, 1.92), static)
-    cube("WR_CANON_right_fireplace_mantel_cap", (rx, 5.78, 3.18), (1.50, 0.60, 0.050),
-         mats["stone"], static, bevel=0.038)
-    cube("WR_CANON_right_fireplace_mantel_shadow", (rx, 5.18, 2.91), (1.42, 0.07, 0.052),
-         mats["charcoal"], static, bevel=0.022)
-    cube("WR_CANON_right_fireplace_hearth_lip", (rx, 4.86, 0.79), (1.26, 0.10, 0.050),
-         mats["stone_dark"], static, bevel=0.022)
-    cube("WR_CANON_right_fireplace_inner_lintel", (rx, 5.72, 2.18), (0.82, 0.08, 0.10),
-         mats["stone_dark"], static, bevel=0.030)
-    for side in (-1, 1):
-        cube(f"WR_CANON_right_fireplace_inner_jamb_{side}", (rx + side * 0.84, 5.72, 1.55),
-             (0.090, 0.08, 0.59), mats["stone_dark"], static, bevel=0.026)
-        cube(f"WR_CANON_right_fireplace_cap_{side}", (rx + side * 0.98, 5.76, 2.78),
-             (0.18, 0.15, 0.080), mats["stone"], static, bevel=0.034)
-        cube(f"WR_CANON_right_fireplace_foot_{side}", (rx + side * 0.98, 5.70, 0.98),
-             (0.18, 0.17, 0.080), mats["stone_dark"], static, bevel=0.030)
+        cube(f"WR_CANON_campaign_cabinet_panel_{side}", (rx + side * 0.58, 5.946, 1.16),
+             (0.50, 0.025, 0.70), mats["table_wood"], static, bevel=0.025)
+        sphere(f"WR_CANON_campaign_cabinet_pull_{side}", (rx + side * 0.15, 5.89, 1.19),
+               0.065, mats["brass_dark"], static, scale=(0.55, 0.48, 1.0))
 
-
-    # Lived-in dispatch station between the central desk and the secondary
-    # hearth. Keep it narrow and low so the central command desk owns the axis.
+    # Lived-in dispatch station between the central desk and the campaign
+    # cupboard. Keep it narrow and low so the central command desk owns the axis.
     dx, dy = 2.53, 5.78
     cube("WR_CANON_dispatch_body", (dx, dy, 1.02), (0.47, 0.38, 0.70),
          mats["walnut_dark"], static, bevel=0.050)
@@ -1239,7 +1311,7 @@ def add_gothic_canon_v2(static, mats):
          mats["trim_wood"], static, bevel=0.028)
 
 
-    # Dressed stone faces around both hearths. The big v2 fireplaces were
+    # Dressed stone around the sole hearth. The big v2 fireplaces were
     # structurally sound but their broad uninterrupted slabs read like toy
     # blocks at gameplay distance. A restrained block rhythm and corbels give
     # them real masonry scale without adding expensive sculpted meshes.
@@ -1264,7 +1336,6 @@ def add_gothic_canon_v2(static, mats):
             # budget; extra corbels/keys were visually redundant at hero scale.
 
     add_fireplace_blockwork("left", -4.55)
-    add_fireplace_blockwork("right", rx)
 
     # Cold floor globe becomes the right-side hero prop once the mirrored
     # armour is retired. Give it enough cartographic language to read as a real
@@ -1715,6 +1786,7 @@ def build():
 
     add_room(static, mats)
     add_gothic_canon_v2(static, mats)
+    build_hans_service_v2(static, mats)
     weather_architecture()
     add_preview_board(dynamic, mats)
 
@@ -1798,16 +1870,42 @@ def validate():
         "WR_WINDOW_frame", "WR_WINDOW_moon", "WR_CANON_banner_0",
         "WR_FIREPLACE_log_0", "WR_FIREPLACE_flame_core_0", "WR_FIREPLACE_mantel_cap",
         "WR_ARMOR_belt_-1",
-        "WR_ANCHOR_fireplace_practical", "WR_ANCHOR_right_fireplace_practical", "WR_ANCHOR_chandelier_practical", "WR_ANCHOR_window_moonlight",
+        "WR_ANCHOR_fireplace_practical", "WR_ANCHOR_chandelier_practical", "WR_ANCHOR_window_moonlight",
+        "WR_HANS_door_leaf", *(name for name, _pos in V2_HANS_ANCHORS),
         "WR_LIGHT_key", "WR_LIGHT_fireplace", "WR_CAMERA_hero",
-        "WR_CANON_chandelier_ring", "WR_CANON_right_fireplace_body",
+        "WR_CANON_chandelier_ring", "WR_CANON_campaign_cabinet_body",
         "WR_CANON_table_drape",
         "WR_CANON_arch_left_curve_-1_0", "WR_CANON_campaign_canvas",
-        "WR_CANON_fireplace_block_left_lintel_0", "WR_CANON_fireplace_block_right_lintel_0",
+        "WR_CANON_fireplace_block_left_lintel_0", "WR_ARCH_left_wall_over_door",
+        "WR2_HANS_door_lintel", "WR2_HANS_alcove_back",
     }
     missing = sorted(required - {obj.name for obj in scene.objects})
     if missing:
         raise RuntimeError(f"missing War Room contract objects: {missing}")
+    retired_fires = [
+        obj.name for obj in scene.objects if obj.name.startswith("WR_CANON_right_fireplace_")
+        or obj.name in {"WR_CANON_right_fire_light", "WR_ANCHOR_right_fireplace_practical"}
+        or obj.name.startswith("WR_CANON_fireplace_block_right_")
+    ]
+    if retired_fires:
+        raise RuntimeError(f"War Room v2 may have only one hearth: {retired_fires[:12]}")
+    door = scene.objects["WR_HANS_door_leaf"]
+    if door.get("war_room_runtime_dynamic") != "v2-hans-door":
+        raise RuntimeError("Hans' door leaf must be its own dynamic runtime mesh")
+    if any(abs(float(rot)) > 1e-5 for rot in door.rotation_euler):
+        raise RuntimeError("Hans' closed door must have no initial rotation")
+    if any(abs(float(door.location[i] - expected)) > 1e-3 for i, expected in
+           enumerate((*V2_HANS_HINGE, 0.0))):
+        raise RuntimeError("Hans' door pivot must be at the structural hinge")
+    if not (V2_HANS_DOOR_Y0 < dict(V2_HANS_ANCHORS)["WR_ANCHOR_hans_door"][1]
+            < V2_HANS_DOOR_Y1):
+        raise RuntimeError("Hans' spawn must align with his actual wall opening")
+    # With negative yaw the free edge of the leaf swings outside the left
+    # wall into the authored alcove, not through the command table.
+    free_edge_x = V2_HANS_HINGE[0] + math.sin(V2_HANS_OPEN_YAW) * (
+        V2_HANS_HINGE[1] - V2_HANS_DOOR_Y0 - 0.065)
+    if not -8.86 - V2_HANS_ALCOVE_DEPTH < free_edge_x < -8.86:
+        raise RuntimeError(f"Hans' door opens outside the alcove: {free_edge_x:.2f}")
     retired_overlap_props = sorted(
         obj.name for obj in scene.objects if obj.name.startswith("WR_CANON_bookshelf_")
     )
@@ -2028,6 +2126,38 @@ def read_glb_json(path):
     raise RuntimeError(f"GLB JSON chunk missing: {path}")
 
 
+
+def patch_v2_hans_door_extras(path):
+    """Exporter's extras vary by Blender version; guarantee Three.js door yaw."""
+    raw = Path(path).read_bytes()
+    chunks = []
+    patched = 0
+    offset = 12
+    while offset + 8 <= len(raw):
+        size, kind = struct.unpack_from("<II", raw, offset)
+        offset += 8
+        payload = raw[offset:offset + size]
+        offset += size
+        if kind == 0x4E4F534A:
+            data = json.loads(payload.decode("utf-8").rstrip("\x00 \t\r\n"))
+            for node in data.get("nodes", []):
+                if node.get("name") == "WR_HANS_door_leaf":
+                    node.setdefault("extras", {})["war_room_hans_door_open_yaw"] = V2_HANS_OPEN_YAW
+                    patched += 1
+            payload = json.dumps(data, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+            payload += b" " * ((4 - len(payload) % 4) % 4)
+        chunks.append((kind, payload))
+    if patched != 1:
+        raise RuntimeError(f"V2 runtime Hans door patched {patched} times")
+    output = bytearray(struct.pack("<4sII", b"glTF", 2,
+                                  12 + sum(8 + len(data) for _kind, data in chunks)))
+    for kind, data in chunks:
+        output.extend(struct.pack("<II", len(data), kind))
+        output.extend(data)
+    Path(path).write_bytes(output)
+
+
+
 def validate_runtime_glb(path, expected_factors=None):
     data = read_glb_json(path)
     extensions_used = set(data.get("extensionsUsed", []))
@@ -2045,14 +2175,22 @@ def validate_runtime_glb(path, expected_factors=None):
     materials = {row.get("name"): row for row in data.get("materials", [])}
     node_names = {row.get("name") for row in data.get("nodes", [])}
     required_runtime_anchors = {
-        "WR_ANCHOR_fireplace_practical",
-        "WR_ANCHOR_right_fireplace_practical",
-        "WR_ANCHOR_chandelier_practical",
-        "WR_ANCHOR_window_moonlight",
+        "WR_ANCHOR_fireplace_practical", "WR_ANCHOR_chandelier_practical",
+        "WR_ANCHOR_window_moonlight", "WR_HANS_door_leaf",
+        *(name for name, _pos in V2_HANS_ANCHORS),
     }
     missing_runtime_anchors = sorted(required_runtime_anchors - node_names)
     if missing_runtime_anchors:
-        raise RuntimeError(f"runtime GLB practical anchors missing: {missing_runtime_anchors}")
+        raise RuntimeError(f"runtime GLB practical/Hans nodes missing: {missing_runtime_anchors}")
+    if any(name and (name.startswith("WR_CANON_right_fireplace_")
+                     or name.startswith("WR_CANON_fireplace_block_right_"))
+           for name in node_names) or "WR_ANCHOR_right_fireplace_practical" in node_names:
+        raise RuntimeError("runtime V2 GLB contains retired second hearth")
+    leaf = next(node for node in data["nodes"] if node.get("name") == "WR_HANS_door_leaf")
+    if leaf.get("extras", {}).get("war_room_hans_door_open_yaw") != V2_HANS_OPEN_YAW:
+        raise RuntimeError("runtime Hans door lost its animated yaw")
+    if "mesh" not in leaf:
+        raise RuntimeError("runtime Hans door must survive batching as its own mesh")
     required_heraldry = {
         "WR_CREST_shield",
         "WR_CREST_horse_relief",
@@ -2247,9 +2385,9 @@ def export_shell(path):
         is_static_mesh = obj.type == "MESH" and obj.get("war_room_role") == ROLE_STATIC
         is_runtime_anchor = obj.type == "EMPTY" and obj.name in {
             "WR_ANCHOR_fireplace_practical",
-            "WR_ANCHOR_right_fireplace_practical",
             "WR_ANCHOR_chandelier_practical",
             "WR_ANCHOR_window_moonlight",
+            *(name for name, _pos in V2_HANS_ANCHORS),
         }
         if is_static_mesh or is_runtime_anchor:
             obj.select_set(True)
@@ -2263,6 +2401,7 @@ def export_shell(path):
         **meshopt_export_kwargs(),
     )
     patched_factors = patch_runtime_glb_base_color_factors(path, base_color_factors)
+    patch_v2_hans_door_extras(path)
     bpy.context.scene["war_room_runtime_base_color_factor_count"] = patched_factors
     bpy.context.scene["war_room_runtime_mesh_compression"] = MESH_COMPRESSION_EXTENSION
     validate_runtime_glb(path, base_color_factors)

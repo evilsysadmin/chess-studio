@@ -48,6 +48,20 @@ describe('War Room fire sprites', () => {
     expect(root.children.filter((child) => child.isPoints)).toHaveLength(0);
   });
 
+  it('adds exactly one plume for the new single-hearth V2, retaining legacy two-hearth compatibility', () => {
+    const root = new THREE.Group();
+    const left = new THREE.Object3D();
+    left.name = 'WR_ANCHOR_fireplace_practical';
+    left.position.set(-4.55, 1.92, -5.05);
+    root.add(left);
+    const dispose = installWarRoomV2FireSprites(root, { reducedMotion: false });
+    expect(root.children.filter((child) => child.isPoints)).toHaveLength(1);
+    expect(root.userData.warRoomFireSprites).toBe(1);
+    expect(root.getObjectByName('WR_ANCHOR_right_fireplace_practical')).toBeUndefined();
+    dispose();
+    expect(root.children.filter((child) => child.isPoints)).toHaveLength(0);
+  });
+
   it('stays static under reduced motion and without anchors', () => {
     expect(installWarRoomV2FireSprites(new THREE.Group(), { reducedMotion: true })).toBeTypeOf('function');
     const root = new THREE.Group();
