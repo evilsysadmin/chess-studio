@@ -80,9 +80,10 @@ printf '%s\n' 'OCI_BACKEND_DIAG_END'
         # exit status; never treat this as public endpoint accreditation.
         command += f"""
 if [[ "$checkout" == "{sha}" && "$committed" == "{sha}" ]]; then exit 0; fi
+# Missing evidence must take priority over any apparent partial match.
+if [[ "$checkout" == unavailable || "$committed" == unavailable ]]; then exit 94; fi
 if [[ "$checkout" == "{sha}" ]]; then exit 91; fi
 if [[ "$committed" == "{sha}" ]]; then exit 92; fi
-if [[ "$checkout" == unavailable || "$committed" == unavailable ]]; then exit 94; fi
 exit 90
 """
     assert_nonsecret_command(command)
@@ -147,7 +148,8 @@ def self_test() -> None:
         (sample, "a" * 40, 91),
         ("b" * 40, sample, 92),
         ("b" * 40, "a" * 40, 90),
-        ("unavailable", sample, 92),
+        ("unavailable", sample, 94),
+        (sample, "unavailable", 94),
         ("unavailable", "unavailable", 94),
     ):
         result = subprocess.run(
