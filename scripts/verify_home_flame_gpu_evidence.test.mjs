@@ -1,13 +1,47 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { describe, it } from 'node:test';
+import { deflateSync } from 'node:zlib';
 import {
   HOME_FLAME_PNGS,
   validateHomeFlameEvidence,
 } from './verify_home_flame_gpu_evidence.mjs';
 
-// No I/O in tests. Real CLI loads the JSON/PNG files; this exercises the
-// public validator using a deterministic in-memory manifest and fake PNG header.
+// No I/O in tests. Browser evidence is never invented here: construct valid
+// in-memory PNGs solely to exercise the offline binary integrity validator.
+
+const pngCrc = (bytes) => {
+  let crc = 0xffffffff;
+  for (const byte of bytes) {
+    crc ^= byte;
+    for (let j = 0; j < 8; j += 1) crc = (crc >>> 1) ^ ((crc & 1) ? 0xedb88320 : 0);
+  }
+  return (crc ^ 0xffffffff) >>> 0;
+};
+const pngChunk = (name, data) => {
+  const type = Buffer.from(name, 'ascii');
+  const len = Buffer.alloc(4); len.writeUInt32BE(data.length);
+  const sum = Buffer.alloc(4); sum.writeUInt32BE(pngCrc(Buffer.concat([type, data])));
+  return Buffer.concat([len, type, data, sum]);
+};
+const makeValidPng = (width, height, seed = 1, filter = 0) => {
+  const ihdr = Buffer.alloc(13);
+  ihdr.writeUInt32BE(width, 0);
+  ihdr.writeUInt32BE(height, 4);
+  ihdr[8] = 8; ihdr[9] = 6; // Non-interlaced RGBA8.
+  const raw = Buffer.alloc(height * (1 + width * 4));
+  for (let row = 0; row < height; row += 1) {
+    raw[row * (1 + width * 4)] = filter;
+    raw[row * (1 + width * 4) + 1] = seed;
+  }
+  return Buffer.concat([
+    Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]),
+    pngChunk('IHDR', ihdr),
+    pngChunk('IDAT', deflateSync(raw)),
+    pngChunk('IEND', Buffer.alloc(0)),
+  ]);
+};
+
 function example() {
   const images = new Map();
   const visualEvidenceHashes = {};
@@ -15,13 +49,7 @@ function example() {
   const modelUrlFingerprints = ['1'.repeat(64), 'a'.repeat(64)];
   const visits = modes.map((mode, i) => {
     const file = HOME_FLAME_PNGS[i];
-    const png = Buffer.alloc(33, 0);
-    Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]).copy(png, 0);
-    png.writeUInt32BE(13, 8); // IHDR length
-    png.write('IHDR', 12);
-    png.writeUInt32BE(320, 16);
-    png.writeUInt32BE(180, 20);
-    png[32] = i + 1;
+    const png = makeValidPng(320, 180, i + 1);
     images.set(file, png);
     visualEvidenceHashes[file] = {
       sha256: createHash('sha256').update(png).digest('hex'),
@@ -119,7 +147,7 @@ describe('offline Home flame A/B/B/A PNG manifest verification', () => {
 
   it('rejects stale/tampered PNG bytes, absent files and non-PNG data', () => {
     const stale = example();
-    stale.images.get(HOME_FLAME_PNGS[2])[32] = 99;
+    stale.images.set(HOME_FLAME_PNGS[2], makeValidPng(320, 180, 99));
     assert.throws(() => validateHomeFlameEvidence(stale.report, stale.read), /bytes differ/);
     const absent = example();
     absent.images.delete(HOME_FLAME_PNGS[3]);
@@ -127,6 +155,48 @@ describe('offline Home flame A/B/B/A PNG manifest verification', () => {
     const fake = example();
     fake.images.set(HOME_FLAME_PNGS[0], Buffer.alloc(32));
     assert.throws(() => validateHomeFlameEvidence(fake.report, fake.read), /PNG IHDR/);
+  });
+
+  it('rejects truncated header-only PNGs even with a matching SHA-256', () => {
+    const x = example();
+    const file = HOME_FLAME_PNGS[0];
+    const fake = x.images.get(file).subarray(0, 33);
+    x.images.set(file, fake);
+    x.report.visualEvidenceHashes[file].sha256 =
+      createHash('sha256').update(fake).digest('hex');
+    assert.throws(() => validateHomeFlameEvidence(x.report, x.read),
+      /PNG missing IDAT\/IEND|PNG truncated chunk/);
+  });
+
+  it('rejects corrupt PNG chunk CRC even if manifest SHA is recomputed', () => {
+    const x = example();
+    const file = HOME_FLAME_PNGS[2];
+    const png = Buffer.from(x.images.get(file));
+    png[29] ^= 1; // IHDR CRC byte. Dimensions and canvas remain unchanged.
+    x.images.set(file, png);
+    x.report.visualEvidenceHashes[file].sha256 =
+      createHash('sha256').update(png).digest('hex');
+    assert.throws(() => validateHomeFlameEvidence(x.report, x.read), /PNG chunk CRC mismatch/);
+  });
+
+  it('rejects decodable-looking PNGs with invalid rows or trailing bytes', () => {
+    const badFilter = example();
+    const first = HOME_FLAME_PNGS[0];
+    const png = makeValidPng(320, 180, 1, 7);
+    badFilter.images.set(first, png);
+    badFilter.report.visualEvidenceHashes[first].sha256 =
+      createHash('sha256').update(png).digest('hex');
+    assert.throws(() => validateHomeFlameEvidence(badFilter.report, badFilter.read),
+      /PNG invalid row filter/);
+
+    const trailing = example();
+    const last = HOME_FLAME_PNGS[3];
+    const withGarbage = Buffer.concat([trailing.images.get(last), Buffer.from([99])]);
+    trailing.images.set(last, withGarbage);
+    trailing.report.visualEvidenceHashes[last].sha256 =
+      createHash('sha256').update(withGarbage).digest('hex');
+    assert.throws(() => validateHomeFlameEvidence(trailing.report, trailing.read),
+      /PNG missing IDAT\/IEND or trailing bytes/);
   });
 
   it('rejects visit/photo swaps and mismatched canvas dimensions', () => {
