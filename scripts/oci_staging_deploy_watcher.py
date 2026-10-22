@@ -41,6 +41,8 @@ GO_IMAGE_PREFIX = os.environ.get(
 ).strip()
 POLL_SECONDS = 15
 ERROR_BACKOFF_SECONDS = 30
+# Avoid hot-looping a stale Worker SHA without permanently suppressing recovery.
+SUPERSEDED_RETRY_SECONDS = 300
 HTTP_TIMEOUT_SECONDS = 8
 DEPLOY_TIMEOUT_SECONDS = 900
 SHA_RE = re.compile(r"^[0-9a-f]{40}$")
@@ -121,7 +123,8 @@ def iteration(rejected_sha: str = "") -> tuple[str, str]:
         return "current", candidate
     # The root-owned deploy wrapper already proved this exact generation stale.
     # Git main cannot move backwards to that SHA in the normal release train.
-    # Do not reacquire deploy.lock every 15s until the Worker publishes a new SHA.
+    # Avoid reacquiring deploy.lock every 15s; watch() expires the suppression
+    # after a bounded delay so temporary or misclassified results can recover.
     if candidate == rejected_sha:
         return "known-superseded", candidate
     if not backend_image_available(candidate):
@@ -143,10 +146,14 @@ def iteration(rejected_sha: str = "") -> tuple[str, str]:
     return "deployed", candidate
 
 
+def active_rejection(sha: str, deadline: float, now: float) -> str:
+    return sha if sha and now < deadline else ""
+
+
 def remember_rejected_sha(previous: str, result: str, candidate: str) -> str:
     if result == "superseded":
         return candidate
-    if result == "deployed":
+    if result in {"deployed", "current"}:
         return ""
     return previous
 
@@ -154,11 +161,17 @@ def remember_rejected_sha(previous: str, result: str, candidate: str) -> str:
 def watch() -> None:
     last_disabled_notice = False
     rejected_sha = ""
+    rejected_until = 0.0
     while True:
         delay = POLL_SECONDS
         try:
-            result, candidate = iteration(rejected_sha)
-            rejected_sha = remember_rejected_sha(rejected_sha, result, candidate)
+            eligible_rejection = active_rejection(rejected_sha, rejected_until, time.monotonic())
+            result, candidate = iteration(eligible_rejection)
+            rejected_sha = remember_rejected_sha(eligible_rejection, result, candidate)
+            if result == "superseded":
+                rejected_until = time.monotonic() + SUPERSEDED_RETRY_SECONDS
+            elif not rejected_sha:
+                rejected_until = 0.0
             if result == "disabled":
                 if not last_disabled_notice:
                     print("OCI_DEPLOY_WATCH_DISABLED", flush=True)
@@ -185,6 +198,7 @@ def self_test() -> None:
     assert build_from_health_payload([]) == ""
     assert POLL_SECONDS == 15
     assert ERROR_BACKOFF_SECONDS >= POLL_SECONDS
+    assert SUPERSEDED_RETRY_SECONDS >= ERROR_BACKOFF_SECONDS
     assert HTTP_TIMEOUT_SECONDS < POLL_SECONDS
     assert DEPLOY_WRAPPER == "/usr/local/sbin/chess-studio-deploy"
     assert GO_IMAGE_PREFIX.endswith(":oci-")
@@ -199,6 +213,10 @@ def self_test() -> None:
     assert remember_rejected_sha(sample, "known-superseded", sample) == sample
     assert remember_rejected_sha(sample, "image-pending", newer) == sample
     assert remember_rejected_sha(sample, "deployed", newer) == ""
+    assert remember_rejected_sha(sample, "current", sample) == ""
+    assert active_rejection(sample, 500.0, 499.0) == sample
+    assert active_rejection(sample, 500.0, 500.0) == ""
+    assert active_rejection(sample, 500.0, 501.0) == ""
     with (
         patch(f"{__name__}.ENABLE_MARKER") as marker,
         patch(f"{__name__}.fetch_worker_build", return_value=sample),
@@ -208,12 +226,15 @@ def self_test() -> None:
     ):
         marker.is_file.return_value = True
         marker.is_symlink.return_value = False
-        assert iteration(sample) == ("known-superseded", sample)
+        assert iteration(active_rejection(sample, 500.0, 499.0)) == ("known-superseded", sample)
         image_lookup.assert_not_called()
         deploy_call.assert_not_called()
         image_lookup.return_value = True
-        assert iteration(newer) == ("superseded", sample)
+        # The same Worker SHA is retried after bounded expiry, never forgotten forever.
+        assert iteration(active_rejection(sample, 500.0, 500.0)) == ("superseded", sample)
         deploy_call.assert_called_once_with(sample)
+        assert iteration(newer) == ("superseded", sample)
+        assert deploy_call.call_count == 2
     source = Path(__file__).read_text(encoding="utf-8")
     tree = ast.parse(source)
     imported = []
