@@ -164,6 +164,49 @@ class HomeGpuCompareTests(unittest.TestCase):
             after["medians"]["mainDrawCalls"] = value
             self.rejected("invalid mainDrawCalls median", after=after)
 
+    def test_scene_identity_same_station_and_shadows_remains_comparable(self):
+        for report_data in (self.before, self.after):
+            for visit in report_data["visits"]:
+                visit.update(matthiasStation="table-coffee", shadows="enabled")
+        result = compare_reports(self.before, self.after)
+        self.assertTrue(result["gpuTimingAvailable"])
+
+    def test_matthias_station_changed_between_revisions_is_rejected(self):
+        for visit in self.before["visits"]:
+            visit.update(matthiasStation="table-coffee", shadows="enabled")
+        for visit in self.after["visits"]:
+            visit.update(matthiasStation="chess-chair", shadows="enabled")
+        self.rejected("scene identity differs")
+
+    def test_shadows_and_visit_station_drift_are_rejected(self):
+        for report_data in (self.before, self.after):
+            for visit in report_data["visits"]:
+                visit.update(matthiasStation="table-coffee", shadows="enabled")
+        changed = copy.deepcopy(self.after)
+        for visit in changed["visits"]:
+            visit["shadows"] = "disabled"
+        self.rejected("scene identity differs", after=changed)
+        drifted = copy.deepcopy(self.after)
+        drifted["visits"][1]["matthiasStation"] = "reading-chair"
+        self.rejected("inconsistent", after=drifted)
+
+    def test_missing_one_scene_field_or_invalid_identity_is_rejected(self):
+        for visit in self.before["visits"]:
+            visit["matthiasStation"] = "table-coffee"
+        self.rejected("scene identity differs")
+        for visit in self.after["visits"]:
+            visit["matthiasStation"] = "table-coffee"
+        bad = copy.deepcopy(self.after)
+        bad["visits"][0]["matthiasStation"] = ""
+        self.rejected("invalid matthiasStation", after=bad)
+        bad["visits"][0]["matthiasStation"] = False
+        self.rejected("invalid matthiasStation", after=bad)
+        # Historical schema-2 captures without these optional keys still work.
+        self.assertEqual(
+            compare_reports(report("0123456789abcdef"), report("abcdef0123456789"))["lod"],
+            "full",
+        )
+
     def test_optional_glb_draw_inventory_is_labeled_as_candidates(self):
         self.before["medians"].update(modelDrawSlots=140, modelShadowCasterSlots=100,
                                       modelTransparentSlots=18, modelUniqueGeometries=80,

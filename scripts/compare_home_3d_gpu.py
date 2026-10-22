@@ -60,9 +60,18 @@ def _check_report(report, label):
             "allocatedTextures", "allocatedGeometries", "modelRequests", "startupMs",
         )):
             raise IncomparableBenchmarks(f"{label}: visit {index} lacks a ready 3D canvas or GLB")
-        signatures.append((vendor, fingerprint, lod, ambient, visit["canvasWidth"], visit["canvasHeight"]))
+        # Compare actual in-scene identity across visits and revisions. A
+        # missing legacy field remains unknown; missing on just one side,
+        # or changing within a run, is not a defensible A/B comparison.
+        scene = []
+        for key in ("matthiasStation", "shadows"):
+            observed = visit.get(key)
+            if observed is not None and (not isinstance(observed, str) or not observed.strip()):
+                raise IncomparableBenchmarks(f"{label}: visit {index} has invalid {key}")
+            scene.append(observed)
+        signatures.append((vendor, fingerprint, lod, ambient, visit["canvasWidth"], visit["canvasHeight"], *scene))
     if len(set(signatures)) != 1:
-        raise IncomparableBenchmarks(f"{label}: visits have inconsistent renderer, LOD or framebuffer size")
+        raise IncomparableBenchmarks(f"{label}: visits have inconsistent renderer, LOD, lighting, framebuffer or scene identity")
     medians = report.get("medians")
     if not isinstance(medians, dict):
         raise IncomparableBenchmarks(f"{label}: medians missing")
@@ -125,7 +134,7 @@ def compare_reports(baseline, candidate):
     old_signature = _check_report(baseline, "baseline")
     new_signature = _check_report(candidate, "candidate")
     if old_signature != new_signature:
-        raise IncomparableBenchmarks("Browser, viewport/DPR, timer mode, renderer, LOD, lighting or framebuffer differs")
+        raise IncomparableBenchmarks("Browser, viewport/DPR, timer mode, renderer, LOD, lighting, framebuffer or Matthias/shadows scene identity differs")
     if baseline["revision"].lower() == candidate["revision"].lower():
         raise IncomparableBenchmarks("Same revision on both sides; supply distinct baseline/candidate SHAs")
     before_flames = _flame_live_identity(baseline, "baseline")
