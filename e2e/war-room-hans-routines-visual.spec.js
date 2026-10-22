@@ -1,6 +1,6 @@
 import { chromium, expect, test } from '@playwright/test';
 import { mkdir, writeFile } from 'node:fs/promises';
-import { login, mockApi } from './helpers.js';
+import { dismissTutorialIfVisible, login, mockApi } from './helpers.js';
 import { enterWarRoomGpuQuickMatch } from './war-room-gpu-quick-match.js';
 import { WAR_ROOM_HANS_CHORE_EVENTS } from '../frontend/src/components/WarRoomHansChoreContract.js';
 import {
@@ -245,6 +245,10 @@ for (const eventName of CAPTURE_EVENTS) {
       const canvas = page.locator('.board3d-main-canvas');
       await expect(canvas).toBeVisible({ timeout: MOUNT_BUDGET_MS });
       await expect(canvas).toHaveAttribute('data-war-room-variant', 'classic', { timeout: 10_000 });
+      // First-time War Room move tutorial can stop ambient Hans entirely
+      // until the player dismisses it. This film is about the routine, not
+      // tutorial onboarding; close via the real visible 'Saltar' control.
+      await dismissTutorialIfVisible(page);
       await expect(page.locator('[data-war-room-hans-game-id]').first()).toHaveAttribute(
         'data-war-room-hans-game-id',
         expectedGameId(eventName),
