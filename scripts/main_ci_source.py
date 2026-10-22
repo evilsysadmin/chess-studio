@@ -11,8 +11,10 @@ instead of silently choosing either path.
 from __future__ import annotations
 
 import os
+import re
 import sys
-from typing import Any
+import time
+from typing import Any, Callable
 from urllib.parse import quote
 
 import main_ci_admission as admission
@@ -55,6 +57,34 @@ def emit_output(source: str, pr_number: int | None) -> None:
         print(line)
 
 
+def merged_pulls_with_retry(
+    path: str, token: str, *, get: Callable[[str, str], Any] = admission.api_get,
+    sleep: Callable[[float], None] = time.sleep,
+) -> list[dict[str, Any]]:
+    """Retry only transient transport/API errors; never invent commit ancestry."""
+    for attempt in range(3):
+        try:
+            pulls = get(path, token)
+        except admission.AdmissionError as exc:
+            message = str(exc)
+            retryable = (
+                re.match(r"^GitHub API .+ devolvió HTTP (429|500|502|503|504):", message)
+                or message.startswith("GitHub API no disponible para ")
+            )
+            if not retryable or attempt == 2:
+                raise
+            print(
+                f"::warning title=Main source API transient::attempt {attempt + 1}/3; retrying",
+                file=sys.stderr,
+            )
+            sleep(1 << attempt)
+            continue
+        if not isinstance(pulls, list):
+            raise SourceError("respuesta inesperada al buscar PR asociado")
+        return pulls
+    raise AssertionError("unreachable")
+
+
 def run_live() -> int:
     repo = os.environ.get("GITHUB_REPOSITORY", "").strip()
     main_sha = os.environ.get("GITHUB_SHA", "").strip().lower()
@@ -68,9 +98,7 @@ def run_live() -> int:
 
     owner, repo_name = repo.split("/", 1)
     api_base = f"/repos/{quote(owner)}/{quote(repo_name)}"
-    pulls = admission.api_get(f"{api_base}/commits/{main_sha}/pulls", token)
-    if not isinstance(pulls, list):
-        raise SourceError("respuesta inesperada al buscar PR asociado")
+    pulls = merged_pulls_with_retry(f"{api_base}/commits/{main_sha}/pulls", token)
 
     source, pr_number = classify_main_source(pulls, main_sha)
     emit_output(source, pr_number)
@@ -112,7 +140,55 @@ def self_test() -> None:
     else:
         raise AssertionError("un PR sin número debe fallar")
 
-    print("main-ci-source self-test OK · pr/direct/ambiguous fail-closed")
+    # Retry a transient 500 or 429 without bypassing the exact merge SHA proof.
+    path = f"/repos/owner/repo/commits/{sha}/pulls"
+    for transient in (429, 500, 502, 503, 504):
+        calls = []
+        delays = []
+        def flaky(path_arg, token_arg):
+            calls.append((path_arg, token_arg))
+            if len(calls) < 3:
+                raise admission.AdmissionError(f"GitHub API {path_arg} devolvió HTTP {transient}:")
+            return [pr]
+        assert classify_main_source(
+            merged_pulls_with_retry(path, "test-token", get=flaky, sleep=delays.append), sha
+        ) == ("pr", 42)
+        assert calls == [(path, "test-token")] * 3
+        assert delays == [1, 2]
+
+    for permanent in (400, 401, 403, 404, 422):
+        calls = []
+        def denied(path_arg, token_arg):
+            calls.append(path_arg)
+            raise admission.AdmissionError(f"GitHub API {path_arg} devolvió HTTP {permanent}:")
+        try:
+            merged_pulls_with_retry(path, "test-token", get=denied,
+                                    sleep=lambda _: (_ for _ in ()).throw(AssertionError("sleep on permanent failure")))
+        except admission.AdmissionError:
+            assert calls == [path]
+        else:
+            raise AssertionError(f"HTTP {permanent} must fail closed")
+
+    attempts = []
+    def unavailable(path_arg, token_arg):
+        attempts.append(path_arg)
+        raise admission.AdmissionError(f"GitHub API no disponible para {path_arg}: timeout")
+    try:
+        merged_pulls_with_retry(path, "token", get=unavailable, sleep=lambda _: None)
+    except admission.AdmissionError:
+        assert len(attempts) == 3
+    else:
+        raise AssertionError("exhausted transient responses must fail closed")
+
+    malformed = lambda *_: {"pulls": [pr]}
+    try:
+        merged_pulls_with_retry(path, "token", get=malformed, sleep=lambda _: None)
+    except SourceError:
+        pass
+    else:
+        raise AssertionError("invalid GitHub pull list must not pass as direct")
+
+    print("main-ci-source self-test OK · pr/direct/ambiguous + bounded API retries")
 
 
 def main() -> int:
