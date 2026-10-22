@@ -15,9 +15,7 @@ from oci_run_command import assert_nonsecret_command, config_from_env, diagnose_
 
 def diagnostic_command(expected_sha: str | None = None) -> str:
     command = r'''set -u
-
 printf '%s\n' 'OCI_BACKEND_DIAG_BEGIN'
-# Fixed host metadata only; never environment or logs.
 checkout="$(GIT_OPTIONAL_LOCKS=0 git -c safe.directory=/opt/chess-studio/repo \
   -C /opt/chess-studio/repo rev-parse --verify 'HEAD^{commit}' 2>/dev/null || true)"
 checkout_reason=ok
@@ -49,7 +47,6 @@ watch_enabled=no
 [[ -f /var/lib/chess-studio/DEPLOY_WATCH_ENABLED && ! -L /var/lib/chess-studio/DEPLOY_WATCH_ENABLED ]] && watch_enabled=yes
 printf 'OCI_BACKEND_PROVENANCE checkout=%s checkout_reason=%s committed=%s color=%s watcher=%s enabled=%s\n' \
   "$checkout" "$checkout_reason" "$committed" "$color" "$watcher" "$watch_enabled"
-# Compare launchers without reading their contents into stdout.
 source_launcher=/opt/chess-studio/repo/scripts/oci_staging_deploy_launcher.sh
 host_launcher=/usr/local/sbin/chess-studio-deploy
 launcher_status=unavailable
@@ -68,6 +65,8 @@ if command -v lslocks >/dev/null 2>&1; then
   [[ "$lock_pid" =~ ^[0-9]+$ ]] || lock_pid=not_observed
 fi
 printf 'OCI_BACKEND_LOCK pid=%s\n' "$lock_pid"
+events="$(set -o pipefail; timeout 5 journalctl -u chess-studio-deploy-watcher.service -n 80 -o cat 2>/dev/null | awk '/OCI_DEPLOY_WATCH_/{a[substr($1,18,1)]++}END{printf "t=%d ok=%d err=%d stale=%d",a["T"],a["O"],a["E"],a["S"]}')" || events=unavailable
+echo "OCI_WATCH_EVENTS $events"
 for service in edge pvp_blue pvp_green; do
   container_id="$(docker ps -aq \
     --filter 'label=com.docker.compose.project=chess-studio-staging' \
@@ -76,10 +75,8 @@ for service in edge pvp_blue pvp_green; do
     docker inspect --format "OCI_BACKEND_CONTAINER service=$service status={{.State.Status}} exit={{.State.ExitCode}} health={{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}} image={{.Config.Image}}" "$container_id"
   fi
 done
-
 legacy_state="$(systemctl is-active chess-studio-backend.service 2>/dev/null || true)"
 printf 'OCI_BACKEND_LEGACY_UNIT state=%s\n' "${legacy_state:-unknown}"
-
 for endpoint in health ready release; do
   tmp="$(mktemp /tmp/chess-studio-diag.XXXXXX)"
   code="$(curl --silent --show-error --max-time 8 -o "$tmp" -w '%{http_code}' "http://127.0.0.1:4000/api/$endpoint" 2>/dev/null || true)"
@@ -96,7 +93,6 @@ printf '%s\n' 'OCI_BACKEND_DIAG_END'
         # exit status; never treat this as public endpoint accreditation.
         command += f"""
 if [[ "$checkout" == "{sha}" && "$committed" == "{sha}" ]]; then exit 0; fi
-# Missing evidence must take priority over any apparent partial match.
 if [[ "$checkout" == unavailable || "$committed" == unavailable ]]; then exit 94; fi
 if [[ "$checkout" == "{sha}" ]]; then exit 91; fi
 if [[ "$committed" == "{sha}" ]]; then exit 92; fi
@@ -154,9 +150,28 @@ def self_test() -> None:
     assert "cmp -s \"$source_launcher\" \"$host_launcher\"" in command
     assert all(f"launcher_status={status}" in command for status in ("match", "drift", "unavailable"))
     assert "DEPLOY_WATCH_ENABLED" in command
-    assert "docker logs" not in command and "journalctl" not in command
-    assert "cat /" not in command and "printenv" not in command
+    assert "docker logs" not in command
+    assert "journalctl -u chess-studio-deploy-watcher.service -n 80" in command
+    assert "OCI_WATCH_EVENTS $events" in command
+    assert "|| events=unavailable" in command
+    # Only fixed event counters may be emitted; journal contents are never echoed.
     import subprocess
+    metrics = command.split("journalctl -u chess-studio-deploy-watcher.service", 1)[1]
+    awk_source = metrics.split("| awk '", 1)[1].split("'", 1)[0]
+    sample_events = (
+        "OCI_DEPLOY_WATCH_TRIGGER repo_ref=sample\n"
+        "OCI_DEPLOY_WATCH_OK repo_ref=sample\n"
+        "OCI_DEPLOY_WATCH_ERROR type=RuntimeError SECRET_CANARY=do-not-print\n"
+        "OCI_DEPLOY_WATCH_SUPERSEDED repo_ref=sample\n"
+        "SECRET_CANARY=another-secret\n"
+    )
+    aggregated = subprocess.run(
+        ["awk", awk_source], input=sample_events, text=True,
+        capture_output=True, check=True,
+    ).stdout
+    assert aggregated == "t=1 ok=1 err=1 stale=1"
+    assert "SECRET_CANARY" not in aggregated
+    assert "cat /" not in command and "printenv" not in command
     for payload in (command, matched):
         subprocess.run(["bash", "-n"], input=payload, text=True, check=True, capture_output=True)
     # Synthetic read-only fixtures prove all four no-text classifications.
