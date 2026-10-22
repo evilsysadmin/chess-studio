@@ -265,6 +265,22 @@ if (checkCiWiring) {
   ]) {
     if (!backendGoBlock.includes(marker)) fail(`Backend Go requerido incompleto: falta ${JSON.stringify(marker)}`);
   }
+  // Go stdlib fixes ship with the compiler, not with go.mod dependency upgrades.
+  // Keep the CI binary tests and the deployed Linux Docker binary on one patched toolchain.
+  const goDockerSource = read(path.join(root, 'backend-go', 'Dockerfile'));
+  const goBuilder = goDockerSource.match(/^FROM\s+golang:(\d+\.\d+\.\d+)-alpine\d+\.\d+\s+AS\s+build$/m);
+  if (!goBuilder) fail('Go Docker builder debe fijar versión patch completa y Alpine, no un tag flotante');
+  const goCiPins = [...backendGoBlock.matchAll(/^\s*go-version:\s*['"]?(\d+\.\d+\.\d+)['"]?\s*$/gm)];
+  if (goCiPins.length !== 1 || /go-version-file:/.test(backendGoBlock)) fail('CI Go debe fijar una única versión patch explícita');
+  if (goCiPins[0][1] !== goBuilder[1]) fail('Go CI y Docker builder deben compartir versión patch exacta');
+  const goVersion = goBuilder[1].split('.').map(Number);
+  const goSecurityFloor = [1, 27, 3];
+  const belowFloor = goVersion.findIndex((part, i) => part !== goSecurityFloor[i]);
+  if (belowFloor >= 0 && goVersion[belowFloor] < goSecurityFloor[belowFloor]) {
+    fail('Go builder por debajo del mínimo de seguridad 1.27.3');
+  }
+  if (goBuilder[1].split('.').length !== 3) fail('Go builder debe fijar major.minor.patch');
+
   if (!backendAggregateBlock.includes('needs: [preflight, backend_python, backend_go]')) {
     fail('Tests · Backend debe agregar Python + Go bajo el required check estable');
   }
