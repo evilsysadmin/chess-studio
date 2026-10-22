@@ -35,6 +35,7 @@ jobs:
       name: staging
     env:
       EXPECTED_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+      PROVENANCE_EVENT: ${{ github.event_name }}
       OCI_TENANCY_OCID: ${{ secrets.OCI_TENANCY_OCID }}
       OCI_USER_OCID: ${{ secrets.OCI_USER_OCID }}
       OCI_FINGERPRINT: ${{ secrets.OCI_FINGERPRINT }}
@@ -65,9 +66,14 @@ jobs:
               94) echo "::warning::Host checkout or marker unreadable; classification incomplete." ;;
               *) echo "::error::OCI read-only probe failed (transport or unrelated error)." ;;
             esac
+            # A code-only push races the normal staging rollout. Two healthy,
+            # matching old host markers (90) are informational on that trigger,
+            # but still fail after an actual staging failure or manual check.
+            if [[ "$PROVENANCE_EVENT" == push && "$code" == 90 ]]; then exit 0; fi
             exit "$code"
           fi
       - name: Compare public staging release with requested revision (read-only)
-        if: ${{ !cancelled() }}
+        # A source push is a transport self-check, not public accreditation.
+        if: ${{ !cancelled() && github.event_name != 'push' }}
         shell: bash
         run: python3 -S scripts/oci_public_staging_release.py --expected-sha "$EXPECTED_SHA"
