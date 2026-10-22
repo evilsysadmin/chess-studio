@@ -343,6 +343,10 @@ The same local benchmark creates **four fresh browser contexts** in fixed order 
 
 **Interpretation:** the A/B/B/A gap bounds the potential fragment-lighting cost of this *visually different scene*, **not** FPS savings or a safe estimate for removing lights. Re-run multiple sessions under the same driver/power conditions. If GPU differences are small or unstable, stop rather than trading away the canonical castle lighting; if consistently large, test a narrower light selection and review visual runtime evidence before any production change.
 
+### Guard opt-in para el experimento de llamas single-pass
+
+El comparador físico normal **no** implica que se haya activado `forceSinglePass`. Para comprobar el experimento #5883, ejecutar con `--require-flame-single-pass`: exige muestras reales de timer GPU, censo sostenido de draw calls y censo animado de materiales en ambas revisiones. Además comprueba `singlePassTransparentDoubleSidedNow=0` en baseline, un valor positivo en candidate y un valor estable durante las tres visitas. El informe muestra los slots activados, **no interpreta los slots como draw calls ahorradas** ni reemplaza la revisión visual de PNG runtime.
+
 ## Fail-closed hardware A/B comparison
 
 The local benchmark now writes **schema 2** with the Chromium version, a fingerprint of the renderer name (an 8-digit *non-cryptographic hash*, **not** a physical GPU ID), the actual canvas dimensions, LOD and the four possible authored Home lighting periods. No raw GPU model string is written to the report. Because older reports lack these fields, collect **both baseline and candidate again** after updating the harness.
