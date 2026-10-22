@@ -51,7 +51,7 @@ def classify_main_source(pulls: list[dict[str, Any]], main_sha: str) -> tuple[st
 # A 500 from GitHub's commit→PR association endpoint is transport failure,
 # not proof of a direct push. Retry a small, bounded number of *GETs* before
 # failing closed. Never fall through to the less restrictive direct-source gate.
-_TRANSIENT_COMMIT_PULL_HTTP = re.compile(r"\\bHTTP (?:500|502|503|504)\\b")
+_TRANSIENT_COMMIT_PULL_HTTP = re.compile(r"\bHTTP (?:500|502|503|504)\b")
 _COMMIT_PULL_RETRY_DELAYS = (1, 2, 4)
 
 
