@@ -54,7 +54,6 @@ printf 'OCI_BACKEND_PROVENANCE checkout=%s checkout_reason=%s committed=%s color
   "$checkout" "$checkout_reason" "$committed" "$color" "$watcher" "$watch_enabled"
 watch_restarts="$(systemctl show chess-studio-deploy-watcher.service -p NRestarts --value 2>/dev/null || true)"
 [[ "$watch_restarts" =~ ^[0-9]+$ ]] || watch_restarts=unknown
-# Journal contents never leave the instance: only fixed numeric aggregates.
 set -o pipefail
 watch_metrics="$(timeout 8s journalctl -u chess-studio-deploy-watcher.service -n 150 --no-pager -o cat 2>/dev/null | awk '/OCI_DEPLOY_WATCH_TRIGGER/{a++}/OCI_DEPLOY_WATCH_OK/{o++}/OCI_DEPLOY_WATCH_ERROR/{e++}/OCI_DEPLOY_WATCH_SUPERSEDED/{s++}/OCI_DEPLOY_WATCH_IMAGE_PENDING/{p++}END{printf "lines=%d attempts=%d ok=%d errors=%d superseded=%d pending=%d",NR,a,o,e,s,p}')" || watch_metrics=unavailable
 set +o pipefail
