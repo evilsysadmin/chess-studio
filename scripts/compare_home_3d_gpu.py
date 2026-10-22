@@ -66,7 +66,11 @@ def _check_report(report, label):
     medians = report.get("medians")
     if not isinstance(medians, dict):
         raise IncomparableBenchmarks(f"{label}: medians missing")
-    for key in ("startupMs", "initialDrawCalls", "allocatedTextures", "allocatedGeometries",
+    for key in ("startupMs", "initialDrawCalls", "mainDrawCalls", "shadowDrawCalls",
+                "firstFrameMainDrawCalls", "firstFrameShadowDrawCalls",
+                "mainCastleDrawCalls", "mainMatthiasDrawCalls", "mainRuntimeDrawCalls",
+                "shadowCastleDrawCalls", "shadowMatthiasDrawCalls", "shadowRuntimeDrawCalls",
+                "allocatedTextures", "allocatedGeometries",
                 "cpuP95Ms", "rafGapP95Ms", "gpuMs", "modelDrawSlots",
                 "modelShadowCasterSlots", "modelTransparentSlots",
                 "modelUniqueGeometries", "modelUniqueMaterials"):
@@ -136,6 +140,17 @@ def compare_reports(baseline, candidate):
         ("rafGapP95Ms", "Adjacent RAF p95", "ms"),
         ("startupMs", "First-ready startup", "ms"),
         ("initialDrawCalls", "Initial draw calls", "calls"),
+        # Real sustained renderer.info draw submissions, NOT GLB graph candidates.
+        ("mainDrawCalls", "Sustained main draws", "calls"),
+        ("shadowDrawCalls", "Sustained shadow draws", "calls"),
+        ("mainCastleDrawCalls", "Main castle draws", "calls"),
+        ("mainMatthiasDrawCalls", "Main Matthias draws", "calls"),
+        ("mainRuntimeDrawCalls", "Main runtime draws", "calls"),
+        ("shadowCastleDrawCalls", "Shadow castle draws", "calls"),
+        ("shadowMatthiasDrawCalls", "Shadow Matthias draws", "calls"),
+        ("shadowRuntimeDrawCalls", "Shadow runtime draws", "calls"),
+        ("firstFrameMainDrawCalls", "First-frame main draws", "calls"),
+        ("firstFrameShadowDrawCalls", "First-frame shadow draws", "calls"),
         ("allocatedTextures", "Three GPU textures", "count"),
         ("allocatedGeometries", "Three GPU geometries", "count"),
         ("modelDrawSlots", "GLB candidate draw slots", "count"),
@@ -193,6 +208,7 @@ def format_comparison(result):
     lines.append("A matching renderer fingerprint is not proof of the same physical machine.")
     lines.append("Recheck driver, GPU, browser, power mode, assets/network and repeat A/B runs before claiming a gain.")
     lines.append("Draw counts and Three allocations are counts, not GPU FPS or VRAM usage.")
+    lines.append("Sustained draw counts are measured renderer submissions, NOT candidate GLB material slots.")
     lines.append("GLB candidate slots are a one-time scene-graph inventory, NOT measured GPU draw calls; they exclude Matthias, particles and sprites.")
     return "\n".join(lines)
 
