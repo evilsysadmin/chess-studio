@@ -22,10 +22,8 @@ import {
   warRoomHansChoreDialoguePhase,
   warRoomHansChoreForEvent,
 } from './WarRoomHansChoreContract.js';
-import {
-  warRoomHansBuildSafeRoute,
-  moveWarRoomHansAlongRoute,
-} from './WarRoomHansNavigation.js';
+import { findWarRoomHansChoreApproach } from './WarRoomHansChoreApproach.js';
+import { moveWarRoomHansAlongRoute } from './WarRoomHansNavigation.js';
 import {
   assignWarRoomHansTask,
   createWarRoomHansSetupRetryState,
@@ -327,8 +325,16 @@ export function installWarRoomHansAmbientChoreRoutine(root) {
         abortSetupForCurrentGame();
         return;
       }
-      routeIn = warRoomHansBuildSafeRoute(floor, actor.hans.parent, home, target);
-      routeOut = warRoomHansBuildSafeRoute(floor, actor.hans.parent, target, home);
+      // The approved desk trim extends beyond the plain desktop. Try only
+      // small outward flank offsets, and accept a destination ONLY when the
+      // unchanged safe-route planner validates both complete directions.
+      // No fallback straight line and no walking through board/furniture.
+      const approach = findWarRoomHansChoreApproach({
+        floor, parent: actor.hans.parent, home, target, targetObject,
+      });
+      target = approach.target;
+      routeIn = approach.routeIn;
+      routeOut = approach.routeOut;
       if (!routeIn.length || !routeOut.length) {
         reportChoreSetup(actor, eventName, !routeIn.length ? 'route-in-blocked' : 'route-out-blocked',
           { targetObject, home, target, routeIn, routeOut });
