@@ -7,7 +7,7 @@ import { readWarRoomHansStageAnchors } from './WarRoomHansStage.js';
 // These are room-floor X/Y, not projected screen or JS camera coordinates.
 const V2_STOPS = Object.freeze({
   WR_ANCHOR_hans_hearth: [-4.55, 4.55],
-  WR_ANCHOR_hans_door: [-9.40, 3.80],
+  WR_ANCHOR_hans_door: [-9.55, 3.80],
   WR_ANCHOR_hans_basket: [-6.56, 4.96],
   WR_ANCHOR_hans_tools: [-6.42, 5.48],
   WR_ANCHOR_hans_corridor_0: [-7.42, 3.82],
