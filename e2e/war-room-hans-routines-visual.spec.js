@@ -1,6 +1,6 @@
 import { chromium, expect, test } from '@playwright/test';
 import { mkdir, writeFile } from 'node:fs/promises';
-import { dismissTutorialIfVisible, login, mockApi } from './helpers.js';
+import { login, mockApi } from './helpers.js';
 import { enterWarRoomGpuQuickMatch } from './war-room-gpu-quick-match.js';
 import { WAR_ROOM_HANS_CHORE_EVENTS } from '../frontend/src/components/WarRoomHansChoreContract.js';
 import {
@@ -227,6 +227,13 @@ for (const eventName of CAPTURE_EVENTS) {
         profileSeed: {
           'matthias.onboarded': '2',
           'chess-study-home-guide-dismissed-v1': '1',
+          // Hans' routine film deliberately uses a veteran profile. The
+          // in-board Matthias3DOpeningBanter tutorial is independent of the
+          // generic .mechanic-tutorial-card and may appear many frames after
+          // first paint, blocking ambient choreography during onboarding.
+          'chess-study-mechanic-tutorial-progress-v1': JSON.stringify({
+            'war-room-basics': { seen: true, completedAt: '2026-10-01T12:00:00.000Z' },
+          }),
         },
       });
       await login(page);
@@ -253,10 +260,11 @@ for (const eventName of CAPTURE_EVENTS) {
         emulateSupportedGpu ? 'full' : 'lite',
         { timeout: MOUNT_BUDGET_MS },
       );
-      // First-time War Room move tutorial can stop ambient Hans entirely
-      // until the player dismisses it. This film is about the routine, not
-      // tutorial onboarding; close via the real visible 'Saltar' control.
-      await dismissTutorialIfVisible(page);
+      // Do not click or bypass a live tutorial. This fixture starts with a
+      // persisted experienced profile, and onboarding itself has separate
+      // first-run tests. Explicitly reject an unexpected tutorial overlay.
+      await expect(page.getByRole('region', { name: 'Tutorial de War Room con Matthias' }))
+        .toHaveCount(0);
       await expect(page.locator('[data-war-room-hans-game-id]').first()).toHaveAttribute(
         'data-war-room-hans-game-id',
         expectedGameId(eventName),
