@@ -34,8 +34,8 @@ def report(sha, gpu=4.0):
 
 class HomeGpuCompareTests(unittest.TestCase):
     def setUp(self):
-        self.before = report("0123456789abcdef", 4.0)
-        self.after = report("abcdef0123456789", 3.6)
+        self.before = report("0123456789abcdef0123456789abcdef01234567", 4.0)
+        self.after = report("abcdef0123456789abcdef0123456789abcdef01", 3.6)
 
     def rejected(self, message, before=None, after=None):
         with self.assertRaisesRegex(IncomparableBenchmarks, message):
@@ -53,15 +53,15 @@ class HomeGpuCompareTests(unittest.TestCase):
         self.assertIn("not proof", text)
 
     def test_missing_gpu_timer_does_not_get_replaced_by_cpu_data(self):
-        before = report("0123456789abcdef", gpu=None)
-        after = report("abcdef0123456789", gpu=None)
+        before = report("0123456789abcdef0123456789abcdef01234567", gpu=None)
+        after = report("abcdef0123456789abcdef0123456789abcdef01", gpu=None)
         result = compare_reports(before, after)
         self.assertFalse(result["gpuTimingAvailable"])
         self.assertIn("GPU timing: UNAVAILABLE", format_comparison(result))
         self.assertIn("n/a", format_comparison(result))
 
     def test_only_one_side_has_gpu_timer(self):
-        before = report("0123456789abcdef", gpu=None)
+        before = report("0123456789abcdef0123456789abcdef01234567", gpu=None)
         before["requireTimer"] = False
         self.after["requireTimer"] = False
         result = compare_reports(before, self.after)
@@ -117,6 +117,18 @@ class HomeGpuCompareTests(unittest.TestCase):
                 after = copy.deepcopy(self.after)
                 mutate(after)
                 self.rejected("visits|canvas|GLB|fingerprint|SHA|invalid|ready", after=after)
+
+    def test_only_exact_full_commit_shas_are_accepted(self):
+        for bad in ("deadbee", "0123456789abcdef", "f" * 39, "f" * 41, "g" * 40, "head", "", None):
+            for side in ("baseline", "candidate"):
+                before = copy.deepcopy(self.before)
+                after = copy.deepcopy(self.after)
+                (before if side == "baseline" else after)["revision"] = bad
+                self.rejected("exact git SHA", before=before, after=after)
+        # Case is not a separate Git identity, nor a different candidate revision.
+        after = copy.deepcopy(self.after)
+        after["revision"] = self.before["revision"].upper()
+        self.rejected("Same revision", after=after)
 
     def test_zero_baseline_never_invents_percentage(self):
         self.before["medians"]["allocatedGeometries"] = 0
@@ -202,7 +214,7 @@ class HomeGpuCompareTests(unittest.TestCase):
         self._attach_draw_census(self.after)
         self.before["visits"][1].pop("drawPass")
         self.rejected("missing drawPass census")
-        legacy = compare_reports(report("0123456789abcdef"), report("abcdef0123456789"))
+        legacy = compare_reports(report("0123456789abcdef0123456789abcdef01234567"), report("abcdef0123456789abcdef0123456789abcdef01"))
         self.assertFalse(legacy["drawCensusEvidenceComplete"])
         self.assertIn("NOT REQUIRED", format_comparison(legacy))
 
@@ -266,7 +278,7 @@ class HomeGpuCompareTests(unittest.TestCase):
         self.rejected("invalid matthiasStation", after=bad)
         # Historical schema-2 captures without these optional keys still work.
         self.assertEqual(
-            compare_reports(report("0123456789abcdef"), report("abcdef0123456789"))["lod"],
+            compare_reports(report("0123456789abcdef0123456789abcdef01234567"), report("abcdef0123456789abcdef0123456789abcdef01"))["lod"],
             "full",
         )
 
@@ -285,7 +297,7 @@ class HomeGpuCompareTests(unittest.TestCase):
         self.assertIn("NOT measured GPU draw calls", output)
         # Older schema-2 benchmark reports can still be compared; their
         # missing optional inventory is labeled n/a, never counted as zero.
-        legacy = compare_reports(report("0123456789abcdef"), report("abcdef0123456789", 3.6))
+        legacy = compare_reports(report("0123456789abcdef0123456789abcdef01234567"), report("abcdef0123456789abcdef0123456789abcdef01", 3.6))
         legacy_slots = next(m for m in legacy["metrics"] if m["key"] == "modelDrawSlots")
         self.assertIsNone(legacy_slots["delta"])
 
@@ -318,7 +330,7 @@ class HomeGpuCompareTests(unittest.TestCase):
         result = compare_reports(self.before, self.after)
         self.assertFalse(result["flameEvidenceComplete"])
         self.assertIn("UNAVAILABLE", format_comparison(result))
-        old = compare_reports(report("0123456789abcdef"), report("abcdef0123456789"))
+        old = compare_reports(report("0123456789abcdef0123456789abcdef01234567"), report("abcdef0123456789abcdef0123456789abcdef01"))
         self.assertFalse(old["flameEvidenceComplete"])
 
     def test_rejects_partially_missing_or_drifting_live_flame_counts(self):
