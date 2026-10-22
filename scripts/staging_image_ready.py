@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Fail closed until all immutable GHCR image tags for a staging SHA exist.
+"""Fail closed until the immutable Go runtime image for staging exists.
 
-Main image publication and staging-deploy are independent post-admission jobs.
-Waiting for the OCI host watcher alone is not enough: it may miss the deadline
-while the backend and Go images are still building for the first time.
+Main image publication and staging-deploy run independently. The OCI A1 deploy
+only pulls chess-studio-pvp; legacy backend and backend-go tags are published
+for compatibility but must not delay this Go runtime's release.
 """
 from __future__ import annotations
 
@@ -13,11 +13,7 @@ import subprocess
 import time
 
 _TAG = re.compile(r"^[0-9a-f]{40}$")
-_REPOS = (
-    "chess-studio-backend",
-    "chess-studio-backend-go",
-    "chess-studio-pvp",
-)
+_REPOS = ("chess-studio-pvp",)
 _MAX_WAIT_S = 900
 
 
@@ -66,7 +62,7 @@ def wait_for_images(sha: str, *, exists=is_published, clock=time.monotonic,
 def self_test() -> None:
     sha = "a" * 40
     refs = image_refs(sha)
-    assert len(refs) == 3
+    assert refs == ("ghcr.io/evilsysadmin/chess-studio-pvp:oci-" + sha,)
     assert all(ref.endswith(":oci-" + sha) for ref in refs)
     for invalid in ("main", "0" * 39, "f" * 41, "F" * 40, "a" * 40 + "/x"):
         try:
@@ -79,12 +75,12 @@ def self_test() -> None:
     ticks = [0.]
     def exists(ref):
         calls.append(ref)
-        return len(calls) > 3
+        return len(calls) > 1
     def pause(seconds):
         ticks[0] += seconds
     assert wait_for_images(sha, exists=exists, clock=lambda: ticks[0],
                            pause=pause, max_wait=20, interval=2) == 2
-    assert len(calls) == 6
+    assert len(calls) == 2
     assert ticks[0] == 2
     try:
         wait_for_images(sha, exists=lambda ref: False, clock=lambda: ticks[0],
