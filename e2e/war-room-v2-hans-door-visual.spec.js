@@ -240,6 +240,12 @@ if (REVISION) test('War Room V2 · Hans crosses the real service door on touch m
         const png = await canvas.evaluate((node) => node.toDataURL('image/png').split(',')[1]);
         await writeFile(DIR + '/war-room-v2-hans-touch-hearth-390x844.png',
           Buffer.from(png, 'base64'));
+        // Canvas-only PNG excludes React portals. Capture the full actual
+        // mobile viewport and prove the fireplace cue is rendered above it.
+        const cue = page.getByTestId('warroom-hans-mobile-offscreen-cue');
+        await expect(cue).toBeVisible({ timeout: 8_000 });
+        await expect(cue).toContainText('Atizando el fuego');
+        await page.screenshot({ path: DIR + '/war-room-v2-hans-touch-hearth-cue-390x844.png' });
         savedHearth = true;
       }
       if (sample.completed && !sample.visible && sample.doorOpen <= 0.02
