@@ -54,6 +54,11 @@ jobs:
         run: |
           set -euo pipefail
           python3 -S scripts/oci_backend_diagnose.py --self-test
+          if [[ "$PROVENANCE_EVENT" == push ]]; then
+            echo "::notice::Diagnostic code push: transport snapshot only, no expected-SHA accreditation."
+            python3 scripts/oci_backend_diagnose.py
+            exit 0
+          fi
           echo "::notice::Read-only host state for $EXPECTED_SHA; not public staging accreditation."
           if python3 scripts/oci_backend_diagnose.py --expected-sha "$EXPECTED_SHA"; then
             echo "::notice::Host checkout and committed marker match; public route still needs separate verification."
@@ -66,10 +71,6 @@ jobs:
               94) echo "::warning::Host checkout or marker unreadable; classification incomplete." ;;
               *) echo "::error::OCI read-only probe failed (transport or unrelated error)." ;;
             esac
-            # A code-only push races the normal staging rollout. Two healthy,
-            # matching old host markers (90) are informational on that trigger,
-            # but still fail after an actual staging failure or manual check.
-            if [[ "$PROVENANCE_EVENT" == push && "$code" == 90 ]]; then exit 0; fi
             exit "$code"
           fi
       - name: Compare public staging release with requested revision (read-only)
