@@ -1,6 +1,7 @@
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
+import { inflateSync } from 'node:zlib';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -18,6 +19,85 @@ const HEX_256 = /^[0-9a-f]{64}$/;
 const HEX_COMMIT = /^[0-9a-f]{40}$/;
 const PNG_SIGNATURE = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
 const fail = (reason) => { throw new Error(`Home flame evidence: ${reason}`); };
+
+const pngCrc32 = (bytes) => {
+  let crc = 0xffffffff;
+  for (const byte of bytes) {
+    crc ^= byte;
+    for (let bit = 0; bit < 8; bit += 1) {
+      crc = (crc >>> 1) ^ ((crc & 1) ? 0xedb88320 : 0);
+    }
+  }
+  return (crc ^ 0xffffffff) >>> 0;
+};
+
+// A 33-byte IHDR with an invented checksum is not an actual screenshot.
+// Inspect the complete PNG structure and its decompressed image rows in the
+// local offline verifier, without treating this as visual or GPU approval.
+function verifyCompletePng(png, file, width, height) {
+  let offset = 8;
+  let seenIHDR = false;
+  let seenIEND = false;
+  const payloads = [];
+  let channels = 0;
+  let bits = 0;
+  while (offset < png.length) {
+    if (offset + 12 > png.length) fail(`${file} PNG truncated chunk`);
+    const length = png.readUInt32BE(offset);
+    if (length > png.length - offset - 12) fail(`${file} PNG truncated payload`);
+    const type = png.toString('ascii', offset + 4, offset + 8);
+    if (!/^[A-Za-z]{4}$/.test(type)) fail(`${file} PNG invalid chunk type`);
+    const dataOffset = offset + 8;
+    const crcOffset = dataOffset + length;
+    if (pngCrc32(png.subarray(offset + 4, crcOffset)) !== png.readUInt32BE(crcOffset)) {
+      fail(`${file} PNG chunk CRC mismatch`);
+    }
+    if (!seenIHDR) {
+      if (type !== 'IHDR' || length !== 13) fail(`${file} PNG IHDR must be first`);
+      seenIHDR = true;
+      const colorType = png[dataOffset + 9];
+      bits = png[dataOffset + 8];
+      channels = ({ 0: 1, 2: 3, 3: 1, 4: 2, 6: 4 })[colorType] || 0;
+      const bitDepths = {
+        0: [1, 2, 4, 8, 16], 2: [8, 16], 3: [1, 2, 4, 8],
+        4: [8, 16], 6: [8, 16],
+      };
+      if (!channels || !bitDepths[colorType].includes(bits)
+          || png[dataOffset + 10] !== 0 || png[dataOffset + 11] !== 0
+          || png[dataOffset + 12] !== 0) {
+        fail(`${file} PNG unsupported physical screenshot format`);
+      }
+    } else if (type === 'IHDR') {
+      fail(`${file} PNG repeated IHDR`);
+    }
+    if (type === 'IDAT') payloads.push(png.subarray(dataOffset, crcOffset));
+    if (type === 'IEND') {
+      if (length !== 0) fail(`${file} PNG invalid IEND`);
+      seenIEND = true;
+    }
+    offset = crcOffset + 4;
+    if (seenIEND) break;
+  }
+  if (!seenIHDR || !seenIEND || !payloads.length || offset !== png.length) {
+    fail(`${file} PNG missing IDAT/IEND or trailing bytes`);
+  }
+  const stride = Math.ceil(width * channels * bits / 8);
+  const expected = height * (1 + stride);
+  if (!Number.isSafeInteger(expected) || expected <= 0 || expected > 64 * 1024 * 1024) {
+    fail(`${file} PNG decoded image exceeds bounded capture size`);
+  }
+  let pixels;
+  try {
+    pixels = inflateSync(Buffer.concat(payloads), { maxOutputLength: expected + 1 });
+  } catch {
+    fail(`${file} PNG invalid compressed image`);
+  }
+  if (pixels.length !== expected) fail(`${file} PNG decoded rows do not match canvas`);
+  for (let y = 0; y < height; y += 1) {
+    if (pixels[y * (stride + 1)] > 4) fail(`${file} PNG invalid row filter`);
+  }
+}
+
 const median = (values) => {
   const sorted = [...values].sort((a, b) => a - b);
   const mid = Math.floor(sorted.length / 2);
@@ -110,6 +190,7 @@ export function validateHomeFlameEvidence(report, readPng, expectedRevision = nu
         || imageWidth !== record.canvasWidth || imageHeight !== record.canvasHeight) {
       fail(`${file} PNG dimensions do not match the hardware canvas`);
     }
+    verifyCompletePng(png, file, visit.canvasWidth, visit.canvasHeight);
     if (createHash('sha256').update(png).digest('hex') !== record.sha256) {
       fail(`${file} bytes differ from recorded SHA-256`);
     }
