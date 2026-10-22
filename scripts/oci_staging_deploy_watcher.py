@@ -276,6 +276,22 @@ def self_test() -> None:
         deploy_call.assert_called_once_with(sample)
         assert iteration(newer) == ("superseded", sample)
         assert deploy_call.call_count == 2
+        # A failed sudo deploy is attributed to the candidate SHA, not to
+        # a generic image/HTTP failure (only these failures get long backoff).
+        deploy_call.side_effect = subprocess.CalledProcessError(75, ["sudo", DEPLOY_WRAPPER, sample])
+        try:
+            iteration()
+        except WatchDeployError as exc:
+            assert exc.candidate == sample and exc.code == 75
+        else:
+            raise AssertionError("failed root deploy must retain immutable SHA")
+        deploy_call.side_effect = subprocess.TimeoutExpired(["sudo", DEPLOY_WRAPPER, sample], 900)
+        try:
+            iteration()
+        except WatchDeployError as exc:
+            assert exc.candidate == sample and exc.code is None
+        else:
+            raise AssertionError("timed out root deploy must retain immutable SHA")
     source = Path(__file__).read_text(encoding="utf-8")
     tree = ast.parse(source)
     imported = []
