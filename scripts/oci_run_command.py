@@ -185,7 +185,7 @@ emit_failure() {{
   printf 'OCI_DEPLOY_REMOTE_FAILURE rc=%s\n' "$1"
   grep -E '^OCI_DEPLOY_(LOCK|MAIN|SUPERSEDED)' "$log" | tail -n 8 || true
   emit_version
-  case "$1" in 86|87) exit "$1";; esac
+  exit "$1"
 }}
 emit_success() {{
   printf 'OCI_RUN_COMMAND_AGENT version=%s\n' "${{agent_version:-unknown}}"
@@ -201,10 +201,7 @@ else
 fi
 if [ "$deploy_rc" -ne 42 ]; then
   emit_failure "$deploy_rc"
-  # OCI FAILED reports only the numerical exit status, discarding the safe
-  # diagnostic stdout. Return transport success with an explicit failure
-  # sentinel; the Python caller MUST reject this sentinel as a failed deploy.
-  exit 0
+  # Transport carries the real host exit code even when TEXT is omitted.
 fi
 
 tmp="$(mktemp /tmp/chess-studio-backend.env.XXXXXX)"
@@ -249,7 +246,6 @@ else
   deploy_rc=$?
 fi
 emit_failure "$deploy_rc"
-exit 0
 """
     assert_nonsecret_command(command)
     if len(command.encode("utf-8")) > RUN_COMMAND_INLINE_MAX_BYTES:
@@ -504,8 +500,8 @@ def bounded_command_output(text: str, *, head_chars: int = 2000, tail_chars: int
 def reject_remote_deploy_failure(output: str) -> None:
     """Treat a remote failure sentinel as fatal even when the OCI transport succeeds.
 
-    The remote shell intentionally exits zero ONLY to preserve text output;
-    this is never permission for a failed host mutation to pass the deploy.
+    The remote shell now exits nonzero on failure. Reject embedded sentinels
+    too, in case the transport reports an inconsistent successful status.
     """
     for line in output.splitlines():
         if not line.startswith("OCI_DEPLOY_REMOTE_FAILURE"):
@@ -539,6 +535,15 @@ def deploy_receipt_exit_status(output: str, expected_sha: str) -> int:
     except MissingDeployReceiptError:
         return 78
     return 0
+
+
+def host_declared_supersession(exc: BaseException) -> bool:
+    """Only host exit 87 means an obsolete generation, never transport timeout."""
+    message = str(exc)
+    return bool(
+        re.match(r"^OCI Run Command failed: state=FAILED exit=87\b", message)
+        or re.fullmatch(r"OCI Run Command remote deploy FAILED: rc=87", message)
+    )
 
 
 def execute(
@@ -656,14 +661,15 @@ def local_deploy_diagnostics_self_test() -> None:
             )
             deploy_path.chmod(0o700)
             failed = run_script()
-            assert failed.returncode == 0, failed.stderr[-300:]
+            assert failed.returncode == 75, failed.stderr[-300:]
             assert "OCI_DEPLOY_REMOTE_FAILURE rc=75" in failed.stdout
+            # OCI must see nonzero even if it drops the TEXT output entirely.
             try:
                 reject_remote_deploy_failure(failed.stdout)
             except SystemExit as exc:
                 assert "FAILED: rc=75" in str(exc)
             else:
-                raise AssertionError("remote failure sentinel must block despite OCI success")
+                raise AssertionError("remote failure sentinel must block despite missing transport checks")
             assert "OCI_DEPLOY_LOCK_TIMEOUT phase=launcher_checkout" in failed.stdout
             assert "OCI_DEPLOY_LAUNCHER_HASH_PREFIX=" in failed.stdout
             assert "PRIVATE_LOG_CANARY_SHOULD_NOT_LEAK" not in failed.stdout + failed.stderr
@@ -870,6 +876,15 @@ def self_test() -> None:
     assert "command_string" not in command_content.kwargs
     assert command_content.kwargs["source"].kwargs["text"] == smoke
     assert command_content.kwargs["output"].kwargs["output_type"] == "TEXT"
+    for error_text, classified in (
+        ("OCI Run Command failed: state=FAILED exit=87 detail=no command output", True),
+        ("OCI Run Command remote deploy FAILED: rc=87", True),
+        ("OCI Run Command failed: state=FAILED exit=86 detail=no command output", False),
+        ("OCI Run Command failed: state=FAILED exit=875 detail=unrelated", False),
+        ("OCI Run Command polling timed out waiting for delivery/execution", False),
+        ("OCI Run Command remote deploy FAILED: rc=75", False),
+    ):
+        assert host_declared_supersession(SystemExit(error_text)) is classified
     local_deploy_diagnostics_self_test()
     print("OCI Run Command self-test: OK")
 
@@ -918,14 +933,20 @@ def main() -> int:
             resolved=resolved,
             include_desired_config=False,
         )
-        output = execute(
-            oci,
-            config,
-            deploy_command(args.repo_ref),
-            display_name=f"chess-studio-deploy-{args.repo_ref[:12]}",
-            timeout=900,
-            resolved=resolved,
-        )
+        try:
+            output = execute(
+                oci,
+                config,
+                deploy_command(args.repo_ref),
+                display_name=f"chess-studio-deploy-{args.repo_ref[:12]}",
+                timeout=900,
+                resolved=resolved,
+            )
+        except SystemExit as exc:
+            if not host_declared_supersession(exc):
+                raise
+            print("OCI_DEPLOY_SUPERSEDED host_exit=87", file=sys.stderr)
+            return 87
         receipt_exit = deploy_receipt_exit_status(output, args.repo_ref)
         if receipt_exit:
             # Only the staging workflow may handle this provisional outcome.
