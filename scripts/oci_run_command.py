@@ -500,8 +500,8 @@ def bounded_command_output(text: str, *, head_chars: int = 2000, tail_chars: int
 def reject_remote_deploy_failure(output: str) -> None:
     """Treat a remote failure sentinel as fatal even when the OCI transport succeeds.
 
-    The remote shell intentionally exits zero ONLY to preserve text output;
-    this is never permission for a failed host mutation to pass the deploy.
+    The remote shell now exits nonzero on failure. Reject embedded sentinels
+    too, in case the transport reports an inconsistent successful status.
     """
     for line in output.splitlines():
         if not line.startswith("OCI_DEPLOY_REMOTE_FAILURE"):
@@ -663,12 +663,13 @@ def local_deploy_diagnostics_self_test() -> None:
             failed = run_script()
             assert failed.returncode == 75, failed.stderr[-300:]
             assert "OCI_DEPLOY_REMOTE_FAILURE rc=75" in failed.stdout
+            # OCI must see nonzero even if it drops the TEXT output entirely.
             try:
                 reject_remote_deploy_failure(failed.stdout)
             except SystemExit as exc:
                 assert "FAILED: rc=75" in str(exc)
             else:
-                raise AssertionError("remote failure sentinel must block despite OCI success")
+                raise AssertionError("remote failure sentinel must block despite missing transport checks")
             assert "OCI_DEPLOY_LOCK_TIMEOUT phase=launcher_checkout" in failed.stdout
             assert "OCI_DEPLOY_LAUNCHER_HASH_PREFIX=" in failed.stdout
             assert "PRIVATE_LOG_CANARY_SHOULD_NOT_LEAK" not in failed.stdout + failed.stderr
