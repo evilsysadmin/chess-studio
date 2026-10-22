@@ -63,7 +63,7 @@ V2_HANS_ALCOVE_DEPTH = 1.65
 V2_HANS_ARMOUR_LEFT_BASE = (-7.55, 6.15)
 V2_HANS_ANCHORS = (
     ("WR_ANCHOR_hans_hearth", (-4.55, 4.55, 0.0)),
-    ("WR_ANCHOR_hans_door", (-8.12, 3.80, 0.0)),
+    ("WR_ANCHOR_hans_door", (-9.40, 3.80, 0.0)),
     ("WR_ANCHOR_hans_basket", (-6.56, 4.96, 0.0)),
     ("WR_ANCHOR_hans_tools", (-6.42, 5.48, 0.0)),
     ("WR_ANCHOR_hans_corridor_0", (-7.42, 3.82, 0.0)),

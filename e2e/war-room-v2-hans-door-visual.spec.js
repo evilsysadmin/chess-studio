@@ -127,6 +127,15 @@ if (REVISION) test('War Room V2 · Hans opens and closes the real service door',
 
     expect(enters.length).toBeGreaterThan(5);
     expect(exits.length).toBeGreaterThan(5);
+    // The actual x=-8.68 wall is 4.13 m from the x=-4.55 hearth.
+    // Require travel across the wall, not mere movement inside the room.
+    const wallLocalX = 4.13;
+    expect(enters.some((f) => Number.isFinite(f.x) && f.x > wallLocalX + 0.56),
+      'Hans must appear outside the structural wall in the alcove').toBe(true);
+    expect(enters.some((f) => Number.isFinite(f.x) && f.x < wallLocalX - 0.56),
+      'Hans must fully clear the threshold into the hall').toBe(true);
+    expect(exits.some((f) => Number.isFinite(f.x) && f.x > wallLocalX + 0.56),
+      'Hans must leave into the alcove through the real wall opening').toBe(true);
     expect(result.enteredMeters, 'Hans must traverse from door to hearth').toBeGreaterThan(1.5);
     expect(result.exitedMeters, 'Hans must return to the door').toBeGreaterThan(1.5);
     expect(result.opened, 'Door must actually swing').toBe(true);

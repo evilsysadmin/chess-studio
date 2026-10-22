@@ -95,6 +95,10 @@ class V2RoomArchitectureTests(unittest.TestCase):
                          "WR_ANCHOR_hans_tools", "WR_ANCHOR_hans_corridor_0",
                          "WR_ANCHOR_hans_corridor_1", "WR_ANCHOR_hans_corridor_2"} <= set(anchors))
         self.assertTrue(y0 < anchors["WR_ANCHOR_hans_door"][1] < y1)
+        # A real passage begins behind the structural wall, not in the room.
+        door_x = anchors["WR_ANCHOR_hans_door"][0]
+        self.assertLess(door_x, -8.86 - 0.54)
+        self.assertGreater(door_x, -8.86 - depth + 0.56)
 
     def test_runtime_keeps_door_dynamic_and_exports_hans_anchors(self):
         source = self.source

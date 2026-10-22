@@ -7,7 +7,7 @@ import { readWarRoomHansStageAnchors } from './WarRoomHansStage.js';
 // These are room-floor X/Y, not projected screen or JS camera coordinates.
 const V2_STOPS = Object.freeze({
   WR_ANCHOR_hans_hearth: [-4.55, 4.55],
-  WR_ANCHOR_hans_door: [-8.12, 3.80],
+  WR_ANCHOR_hans_door: [-9.40, 3.80],
   WR_ANCHOR_hans_basket: [-6.56, 4.96],
   WR_ANCHOR_hans_tools: [-6.42, 5.48],
   WR_ANCHOR_hans_corridor_0: [-7.42, 3.82],
@@ -50,6 +50,16 @@ describe('V2 · Hans can enter and work without clipping the command table', () 
       expect(missing).toEqual([]);
       expect(stage.fireWorkX).toBe(1.85);
       expect(stage.corridor).toHaveLength(4);
+      // x=-8.68 wall is 4.13 m laterally from the hearth, in this frame.
+      // Hans must begin in the alcove, not already inside the hall.
+      const wallPlaneLocalX = 8.68 - 4.55;
+      expect(stage.doorX).toBeGreaterThan(wallPlaneLocalX + ACTOR_RADIUS);
+      const outside = hansQuickIterationFrame(0, { stage });
+      const inside = hansQuickIterationFrame(6, { stage });
+      expect(outside.hansX).toBeGreaterThan(wallPlaneLocalX + ACTOR_RADIUS);
+      expect(inside.hansX).toBeLessThan(wallPlaneLocalX - ACTOR_RADIUS);
+      expect(outside.doorOpen).toBe(1);
+      expect(inside.doorOpen).toBe(0);
       const visited = new Set();
       for (let tick = 0; tick <= 380; tick += 1) {
         const frame = hansQuickIterationFrame(tick / 10, { stage });

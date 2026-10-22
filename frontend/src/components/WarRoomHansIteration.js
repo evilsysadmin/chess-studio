@@ -368,7 +368,10 @@ function remapWorkingFrameInPlace(frame, timelineT, stage = WAR_ROOM_HANS_CLASSI
     frame.hansZ = point.z;
     frame.route = 'stage-leave';
     frame.routeProgress = p;
-    frame.doorOpen = smoothstep01((p - 0.72) / 0.18);
+    // V2 opens its physical leaf before Hans crosses into the alcove.
+    frame.doorOpen = stage.id === 'v2-blender-hall'
+      ? smoothstep01((p - 0.60) / 0.22)
+      : smoothstep01((p - 0.72) / 0.18);
     frame.facingTarget = 'path';
     frame.pathAheadX = point.aheadX;
     frame.pathAheadZ = point.aheadZ;
@@ -422,7 +425,11 @@ export function writeHansQuickIterationFrame(
     resetQuickFrameExtras(frame, stage);
     const entryStart = coarsePointer ? MOBILE_QUICK_ENTRY_VISIBLE_PROGRESS : 0;
     const eased = lerp(entryStart, 1, smoothstep01(elapsed / entrySeconds));
-    const closeDoor = smoothstep01(Math.max(0, (elapsed - 1.8) / 2.4));
+    // V2 enters through a real wall from the alcove. Hold the door until
+    // the actor clears the threshold; V1/V3/V4 retain their old timing.
+    const closeDoor = stage.id === 'v2-blender-hall'
+      ? smoothstep01(Math.max(0, (elapsed - 2.4) / 3.0))
+      : smoothstep01(Math.max(0, (elapsed - 1.8) / 2.4));
     frame.phase = 'fire-dimming';
     frame.active = true;
     frame.hansVisible = true;
