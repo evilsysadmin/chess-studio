@@ -18,8 +18,22 @@ def diagnostic_command(expected_sha: str | None = None) -> str:
 
 printf '%s\n' 'OCI_BACKEND_DIAG_BEGIN'
 # Read-only immutable provenance. Never read runtime env, tokens or logs.
-checkout="$(git -C /opt/chess-studio/repo rev-parse HEAD 2>/dev/null || true)"
-[[ "$checkout" =~ ^[0-9a-f]{40}$ ]] || checkout=unavailable
+# Run Command executes as ocarun, while Git metadata belongs to the
+# deployment operator. Trust ONLY the fixed local checkout, not arbitrary paths.
+# Git must not acquire index locks or need write access for this read-only probe.
+checkout="$(GIT_OPTIONAL_LOCKS=0 git -c safe.directory=/opt/chess-studio/repo \
+  -C /opt/chess-studio/repo rev-parse --verify 'HEAD^{commit}' 2>/dev/null || true)"
+checkout_reason=ok
+if [[ ! "$checkout" =~ ^[0-9a-f]{40}$ ]]; then
+  checkout=unavailable
+  if [[ ! -d /opt/chess-studio/repo/.git ]]; then
+    checkout_reason=missing
+  elif [[ ! -r /opt/chess-studio/repo/.git/HEAD ]]; then
+    checkout_reason=unreadable
+  else
+    checkout_reason=git_error
+  fi
+fi
 committed=unavailable
 state=/var/lib/chess-studio/deployed.sha
 if [[ -f "$state" && ! -L "$state" ]]; then
@@ -36,8 +50,8 @@ watcher="$(systemctl is-active chess-studio-deploy-watcher.service 2>/dev/null |
 case "$watcher" in active|inactive|failed|activating|deactivating) ;; *) watcher=unknown ;; esac
 watch_enabled=no
 [[ -f /var/lib/chess-studio/DEPLOY_WATCH_ENABLED && ! -L /var/lib/chess-studio/DEPLOY_WATCH_ENABLED ]] && watch_enabled=yes
-printf 'OCI_BACKEND_PROVENANCE checkout=%s committed=%s color=%s watcher=%s enabled=%s\n' \
-  "$checkout" "$committed" "$color" "$watcher" "$watch_enabled"
+printf 'OCI_BACKEND_PROVENANCE checkout=%s checkout_reason=%s committed=%s color=%s watcher=%s enabled=%s\n' \
+  "$checkout" "$checkout_reason" "$committed" "$color" "$watcher" "$watch_enabled"
 for service in edge pvp_blue pvp_green; do
   container_id="$(docker ps -aq \
     --filter 'label=com.docker.compose.project=chess-studio-staging' \
@@ -66,9 +80,10 @@ printf '%s\n' 'OCI_BACKEND_DIAG_END'
         # exit status; never treat this as public endpoint accreditation.
         command += f"""
 if [[ "$checkout" == "{sha}" && "$committed" == "{sha}" ]]; then exit 0; fi
+# Missing evidence must take priority over any apparent partial match.
+if [[ "$checkout" == unavailable || "$committed" == unavailable ]]; then exit 94; fi
 if [[ "$checkout" == "{sha}" ]]; then exit 91; fi
 if [[ "$committed" == "{sha}" ]]; then exit 92; fi
-if [[ "$checkout" == unavailable || "$committed" == unavailable ]]; then exit 94; fi
 exit 90
 """
     assert_nonsecret_command(command)
@@ -94,7 +109,7 @@ def self_test() -> None:
     assert "docker inspect Env" not in command
     assert "backend.env" not in command
     assert "OCI_BACKEND_DIAG_END" in command
-    assert "OCI_BACKEND_PROVENANCE checkout=%s committed=%s" in command
+    assert "OCI_BACKEND_PROVENANCE checkout=%s checkout_reason=%s committed=%s" in command
     sample = "0123456789abcdef0123456789abcdef01234567"
     matched = diagnostic_command(sample)
     assert f'if [[ "$checkout" == "{sample}" && "$committed" == "{sample}" ]]' in matched
@@ -112,7 +127,10 @@ def self_test() -> None:
         assert provenance_exit_code(error) == status
     assert provenance_exit_code(SystemExit("OCI Run Command failed: state=FAILED exit=75")) is None
     assert provenance_exit_code(SystemExit("OCI Run Command polling timed out")) is None
-    assert "git -C /opt/chess-studio/repo rev-parse HEAD" in command
+    assert "GIT_OPTIONAL_LOCKS=0 git -c safe.directory=/opt/chess-studio/repo" in command
+    assert "rev-parse --verify 'HEAD^{commit}'" in command
+    assert "checkout_reason=unreadable" in command
+    assert "checkout_reason=git_error" in command
     assert "chess-studio-deploy-watcher.service" in command
     assert "DEPLOY_WATCH_ENABLED" in command
     assert "docker logs" not in command and "journalctl" not in command
@@ -130,7 +148,8 @@ def self_test() -> None:
         (sample, "a" * 40, 91),
         ("b" * 40, sample, 92),
         ("b" * 40, "a" * 40, 90),
-        ("unavailable", sample, 92),
+        ("unavailable", sample, 94),
+        (sample, "unavailable", 94),
         ("unavailable", "unavailable", 94),
     ):
         result = subprocess.run(
