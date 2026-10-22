@@ -62,6 +62,8 @@ NON_RUNTIME_EXACT = frozenset({
     "scripts/compare_home_3d_gpu.py",
     "scripts/test_compare_home_3d_gpu.py",
     "scripts/main_ci_source.py",
+    # CI admission evidence is verified by main gates; never served by OCI.
+    "scripts/main_ci_admission.py",
     # PR provenance validation gates CI, but does not change OCI's deployed binary.
     "scripts/main_ci_admission.py",
     "scripts/main_ci_admission_wait.py",
@@ -220,12 +222,21 @@ def self_test() -> None:
         "scripts/test_compare_home_3d_gpu.py",
         "scripts/main_ci_source.py",
         "scripts/main_ci_admission.py",
+        "scripts/main_ci_admission.py",
         "scripts/main_ci_admission_wait.py",
     ]
     for path in offline_home_ci:
         assert deploy_required_for_paths([path]) == (False, "non-runtime-only")
     assert deploy_required_for_paths(offline_home_ci) == (False, "non-runtime-only")
     assert deploy_required_for_paths([*diagnostic_only, *offline_home_ci]) == (False, "non-runtime-only")
+    # Mixing admission-only edits with actual runtime/deployment policy is
+    # always a real staging change, regardless of the harmless companion.
+    assert deploy_required_for_paths(
+        ["scripts/main_ci_admission.py", "backend-go/Dockerfile"]
+    ) == (True, "runtime:backend-go/Dockerfile")
+    assert deploy_required_for_paths(
+        ["scripts/main_ci_admission.py", ".github/workflows/staging-deploy.yml"]
+    ) == (True, "runtime:.github/workflows/staging-deploy.yml")
     for runtime in ("frontend/src/components/HomeBlenderScene3D.jsx",
                     "scripts/oci_existing_a1_deploy.sh", "Makefile"):
         assert deploy_required_for_paths([*offline_home_ci, runtime]) == (
