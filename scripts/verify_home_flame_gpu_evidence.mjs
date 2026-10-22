@@ -114,6 +114,48 @@ export function validateHomeFlameEvidence(report, readPng, expectedRevision = nu
       fail(`${file} bytes differ from recorded SHA-256`);
     }
   }
+  // A reported draw saving must come from the same four WebGL submit counts
+  // as the GPU samples. A stale/edited summary must not certify an apparent
+  // pass reduction. Allow normal per-mode variation but lock the invariant
+  // Matthias/runtime/shadow submissions, as in the Playwright capture.
+  const drawPasses = [];
+  for (let i = 0; i < MODES.length; i += 1) {
+    const pass = report.visits[i].drawPass;
+    const validFamilies = (group) => group
+      && ['castle', 'matthias', 'runtime'].every((key) =>
+        Number.isSafeInteger(group[key]) && group[key] >= 0);
+    if (!pass || !Number.isSafeInteger(pass.mainCalls) || pass.mainCalls <= 0
+        || !Number.isSafeInteger(pass.shadowCalls) || pass.shadowCalls < 0
+        || !Number.isSafeInteger(pass.totalCalls)
+        || pass.mainCalls + pass.shadowCalls !== pass.totalCalls
+        || !validFamilies(pass.families?.main) || !validFamilies(pass.families?.shadow)
+        || pass.families.main.castle <= 0 || pass.families.main.matthias <= 0
+        || ['main', 'shadow'].some((phase) =>
+          ['castle', 'matthias', 'runtime'].reduce(
+            (sum, family) => sum + pass.families[phase][family], 0,
+          ) !== pass[phase + 'Calls'])) {
+      fail(`visit ${i + 1} invalid measured draw-pass families`);
+    }
+    drawPasses.push(pass);
+  }
+  const original = drawPasses[0];
+  for (const pass of drawPasses.slice(1)) {
+    if (pass.shadowCalls !== original.shadowCalls
+        || pass.families.main.matthias !== original.families.main.matthias
+        || pass.families.main.runtime !== original.families.main.runtime) {
+      fail('flame trial changed shadow/Matthias/runtime draw submissions');
+    }
+  }
+  const normalMain = median([drawPasses[0].mainCalls, drawPasses[3].mainCalls]);
+  const singleMain = median([drawPasses[1].mainCalls, drawPasses[2].mainCalls]);
+  const savedMain = normalMain - singleMain;
+  if (!closeEnough(report.mainDrawCalls?.normal, normalMain)
+      || !closeEnough(report.mainDrawCalls?.single, singleMain)
+      || !closeEnough(report.drawEvidence?.savedMainDrawCalls, savedMain)
+      || report.drawEvidence?.reduced !== (savedMain > 0)
+      || report.drawEvidence?.gpuMedianImproved !== (report.gpuDifferenceMs > 0)) {
+    fail('four-visit draw saving summary differs from measured WebGL submissions');
+  }
   // The finished report must reflect the underlying four visits, not an
   // optimistic aggregate pasted over valid per-visit measurements.
   const baseline = median([report.visits[0].gpuMedianMs, report.visits[3].gpuMedianMs]);
