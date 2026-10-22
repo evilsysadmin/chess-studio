@@ -245,6 +245,9 @@ for (const eventName of CAPTURE_EVENTS) {
       const canvas = page.locator('.board3d-main-canvas');
       await expect(canvas).toBeVisible({ timeout: MOUNT_BUDGET_MS });
       await expect(canvas).toHaveAttribute('data-war-room-variant', 'classic', { timeout: 10_000 });
+      // Wait for the actual chess room/actor. Dismissing too early can race
+      // tutorial mount on cold SwiftShader and leave an invisible routine.
+      await expect(canvas).toHaveAttribute('data-war-room-hans-scene-ready', 'true', { timeout: MOUNT_BUDGET_MS });
       // First-time War Room move tutorial can stop ambient Hans entirely
       // until the player dismisses it. This film is about the routine, not
       // tutorial onboarding; close via the real visible 'Saltar' control.
