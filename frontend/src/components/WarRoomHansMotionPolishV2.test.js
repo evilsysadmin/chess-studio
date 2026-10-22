@@ -225,6 +225,37 @@ describe('Hans motion polish v2', () => {
     expect(hans.userData.warRoomHansMotionState).toBe('stoke-fire-action');
   });
 
+  it('uses an authored Blender door hinge instead of the 2.28m procedural fallback', () => {
+    const { root, fireplace, hans, driver, door: fakeDoor } = makeRig();
+    fakeDoor.removeFromParent();
+    const shell = new THREE.Group();
+    const pivot = new THREE.Group();
+    shell.name = 'war-room-v2-authored-shell';
+    pivot.name = 'war-room-hans-door-pivot';
+    pivot.position.set(-8.46, 0, -3.8);
+    pivot.userData.refs = { authored: true, side: -1, doorZ: -3.8 };
+    shell.add(pivot);
+    root.add(shell);
+    fireplace.position.x = -4.55;
+    driver.onBeforeRender = () => {
+      hans.position.set(-3.57, -0.34, 0.74);
+      driver.userData.warRoomHansPhase = 'leave';
+      hans.userData.warRoomHansRoute = 'stage-leave';
+    };
+
+    expect(installWarRoomHansMotionPolish(root)).toBe(1);
+    driver.onBeforeRender();
+
+    const safeX = Math.abs(hans.position.x);
+    // Structural hinge -8.46, hearth -4.55 => 3.91m before clearance.
+    // Hans' 0.74x body half-width and wall margin leave ~3.42m.
+    expect(safeX).toBeGreaterThan(3.4);
+    expect(safeX).toBeLessThan(3.45);
+    expect(hans.userData.warRoomHansDoorSafeFrameX).toBeCloseTo(safeX, 6);
+    expect(hans.userData.warRoomHansWallClearanceApplied).toBe(true);
+    expect(safeX - 1.873).toBeGreaterThan(1.5);
+  });
+
   it('derives exit clearance from the actual service-door wall plane after scaling Hans', () => {
     const { root, hans, driver } = makeRig();
     driver.onBeforeRender = () => {
