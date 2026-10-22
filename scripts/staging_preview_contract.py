@@ -370,6 +370,21 @@ def main() -> int:
         ):
             require(staging_deploy, needle, label, errors)
 
+        # Image publish/pull can outlive a newer merge. Recheck HEAD before
+        # sending an expensive Run Command, not just before waiting for GHCR.
+        fallback = blocks["backend"].split(
+            "      - name: Deploy exact backend commit to OCI staging", 1
+        )[-1].split("\n      - name: ", 1)[0]
+        images_ready = fallback.find('scripts/staging_image_ready.py --sha "$DEPLOY_SHA"')
+        strict_guard = fallback.find('main-head --sha "$DEPLOY_SHA" --fail-stale')
+        remote = fallback.find('scripts/oci_run_command.py deploy --repo-ref "$DEPLOY_SHA"')
+        if min(images_ready, strict_guard, remote) < 0 or not images_ready < strict_guard < remote:
+            errors.append("staging backend: no strict SHA guard after GHCR wait before OCI mutation")
+        if "&& python3 scripts/oci_run_command.py deploy" not in fallback:
+            errors.append("staging backend: stale pre-OCI gate must share rc87 handling")
+        if '[[ "$rc" == 78 ]] || exit "$rc"' not in fallback:
+            errors.append("staging backend: non-supersession failure must remain fatal")
+
         forbid(
             blocks["backend"],
             "python3 scripts/oci_vault_sync.py sync-current",
