@@ -38,11 +38,26 @@ function example() {
       canvasWidth: 320, canvasHeight: 180, modelUrlFingerprints,
     };
   });
+  for (const visit of visits) {
+    const mainCalls = visit.flamePass === 'normal' ? 310 : 298;
+    visit.drawPass = {
+      mainCalls, shadowCalls: 0, totalCalls: mainCalls,
+      families: {
+        main: { castle: mainCalls - 50, matthias: 30, runtime: 20 },
+        shadow: { castle: 0, matthias: 0, runtime: 0 },
+      },
+    };
+  }
   const report = {
     schema: 1, status: 'complete', mode: 'hardware', sequence: modes,
     revision: 'a'.repeat(40),
     gpuMedianMs: { normal: 9.5, single: 8.9 },
     gpuDifferenceMs: 9.5 - 8.9,
+    mainDrawCalls: { normal: 310, single: 298 },
+    drawEvidence: {
+      savedMainDrawCalls: 12, reduced: true, gpuMedianImproved: true,
+      physicalResultsStable: true, visualReviewRequired: true,
+    },
     gpuContrastPct: 100 * (9.5 - 8.9) / 9.5,
     visualEvidence: [...HOME_FLAME_PNGS], visualEvidenceHashes, visits,
     interpretation: {
@@ -50,7 +65,6 @@ function example() {
       productionApproved: false, visualReviewRequired: true,
       repeatHardwareRunRequired: true,
     },
-    drawEvidence: { visualReviewRequired: true },
   };
   return { report, images, read: (filename) => images.get(filename) };
 }
@@ -142,6 +156,45 @@ describe('offline Home flame A/B/B/A PNG manifest verification', () => {
       alter(x.report.visits[1]);
       assert.throws(() => validateHomeFlameEvidence(x.report, x.read), /visit 2/);
     }
+  });
+
+  it('rejects reported draw savings not grounded in four visit submissions', () => {
+    for (const mutate of [
+      (x) => { x.report.mainDrawCalls.normal += 12; },
+      (x) => { x.report.mainDrawCalls.single -= 5; },
+      (x) => { x.report.drawEvidence.savedMainDrawCalls = 25; },
+      (x) => { x.report.drawEvidence.reduced = false; },
+      (x) => { x.report.drawEvidence.gpuMedianImproved = false; },
+    ]) {
+      const x = example();
+      mutate(x);
+      assert.throws(() => validateHomeFlameEvidence(x.report, x.read),
+        /draw saving summary differs/);
+    }
+  });
+
+  it('rejects missing or inconsistent actual renderer draw passes', () => {
+    for (const mutate of [
+      (x) => { delete x.report.visits[1].drawPass; },
+      (x) => { x.report.visits[1].drawPass.totalCalls -= 1; },
+      (x) => { x.report.visits[1].drawPass.families.main.castle -= 1; },
+      (x) => { x.report.visits[1].drawPass.families.main.runtime = false; },
+    ]) {
+      const x = example();
+      mutate(x);
+      assert.throws(() => validateHomeFlameEvidence(x.report, x.read),
+        /invalid measured draw-pass families/);
+    }
+  });
+
+  it('rejects altered Matthias/runtime/shadow submissions in the candidate', () => {
+    const x = example();
+    const candidate = x.report.visits[1].drawPass;
+    candidate.mainCalls += 1;
+    candidate.totalCalls += 1;
+    candidate.families.main.matthias += 1;
+    assert.throws(() => validateHomeFlameEvidence(x.report, x.read),
+      /changed shadow\/Matthias\/runtime draw submissions/);
   });
 
   it('rejects an optimistic GPU summary inconsistent with raw asynchronous samples', () => {
