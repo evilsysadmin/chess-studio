@@ -256,6 +256,42 @@ describe('Hans motion polish v2', () => {
     expect(safeX - 1.873).toBeGreaterThan(1.5);
   });
 
+  it('lets Hans cross the V2 authored doorway only after the real leaf is open', () => {
+    const { root, fireplace, hans, driver, door: proceduralDoor } = makeRig();
+    proceduralDoor.removeFromParent();
+    fireplace.position.x = -4.55;
+    fireplace.userData.warRoomHansStage = { id: 'v2-blender-hall' };
+    const pivot = new THREE.Group();
+    pivot.name = 'war-room-hans-door-pivot';
+    pivot.position.set(-8.46, 0, -3.8);
+    pivot.userData.refs = { authored: true, side: -1, doorZ: -3.8 };
+    root.add(pivot);
+    let open = 0;
+    driver.onBeforeRender = () => {
+      hans.position.set(-5, -0.34, 0.85);
+      hans.userData.warRoomHansRoute = 'stage-leave';
+      driver.userData.warRoomHansPhase = 'leave';
+      pivot.userData.warRoomHansDoorOpen = open;
+    };
+    expect(installWarRoomHansMotionPolish(root)).toBe(1);
+    driver.onBeforeRender();
+    // A closed leaf must still block crossing the structural wall.
+    expect(hans.position.x).toBeGreaterThan(-3.5);
+    expect(hans.userData.warRoomHansWallClearanceApplied).toBe(true);
+
+    open = 1;
+    driver.onBeforeRender();
+    // Opening the actual Blender leaf releases the authored route into
+    // the external service alcove, without disabling the other guards.
+    expect(hans.position.x).toBeCloseTo(-5, 5);
+    expect(hans.userData.warRoomHansWallClearanceApplied).toBe(false);
+
+    fireplace.userData.warRoomHansStage = { id: 'v3-armory-hall' };
+    driver.onBeforeRender();
+    expect(hans.position.x).toBeGreaterThan(-3.5);
+    expect(hans.userData.warRoomHansWallClearanceApplied).toBe(true);
+  });
+
   it('derives exit clearance from the actual service-door wall plane after scaling Hans', () => {
     const { root, hans, driver } = makeRig();
     driver.onBeforeRender = () => {

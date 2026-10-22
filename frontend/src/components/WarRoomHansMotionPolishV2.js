@@ -258,6 +258,15 @@ export function clampHansExitToDoorGeometry(hans, {
   scale = WAR_ROOM_HANS_CANONICAL_SCALE,
 } = {}) {
   if (!hans || (phase !== 'leave' && !String(route || '').startsWith('leave-'))) return false;
+  // V2 authors an actual aperture and an outside-alcove endpoint. The
+  // legacy inner-wall clamp blocked Hans inside the room even after the leaf
+  // swung open. Keep that guard for closed V2 doors and all other variants.
+  const v2AuthoredPassageOpen =
+    fireplace?.userData?.warRoomHansStage?.id === 'v2-blender-hall'
+    && route === 'stage-leave'
+    && door?.userData?.refs?.authored === true
+    && Number(door.userData?.warRoomHansDoorOpen) >= 0.9;
+  if (v2AuthoredPassageOpen) return false;
   const safeFrameX = actualDoorWallFrameX(fireplace, door, scale);
   const frameX = Number(hans.position.x) / side;
   if (!Number.isFinite(frameX) || frameX <= safeFrameX) return false;
