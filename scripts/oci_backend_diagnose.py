@@ -62,8 +62,6 @@ if [[ -f "$source_launcher" && ! -L "$source_launcher" && -r "$source_launcher" 
   fi
 fi
 printf 'OCI_BACKEND_LAUNCHER installed_vs_checkout=%s\n' "$launcher_status"
-# Snapshot the deploy.lock PID using read-only util-linux metadata.
-# A missing match does NOT prove the lock was free during an earlier failure.
 lock_pid=unavailable
 if command -v lslocks >/dev/null 2>&1; then
   lock_pid="$(lslocks -n -o PID,PATH 2>/dev/null | awk '$2 == "/var/lib/chess-studio/deploy.lock" && $1 ~ /^[0-9]+$/ {print $1; exit}' || true)"
