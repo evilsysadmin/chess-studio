@@ -21,10 +21,9 @@ import {
   warRoomHansShouldClearDeliveredArtifacts,
 } from './WarRoomHansEventContract.js';
 import { ensureWarRoomHansPlant } from './WarRoomHansPlantDecor.js';
-import {
-  warRoomHansBuildSafeRoute,
-  moveWarRoomHansAlongRoute,
-} from './WarRoomHansNavigation.js';
+import { findWarRoomHansChoreApproach } from './WarRoomHansChoreApproach.js';
+import { warRoomHansBuildSafeRoute } from './WarRoomHansNavigation.js';
+import { explainWarRoomHansBlockedRoute, moveWarRoomHansAlongRoute } from './WarRoomHansNavigation.js';
 import {
   assignWarRoomHansTask,
   createWarRoomHansSetupRetryState,
@@ -288,11 +287,46 @@ export function installWarRoomHansServiceRoutine(root) {
         abortSetupForCurrentGame();
         return;
       }
-      routeIn = warRoomHansBuildSafeRoute(floor, actor.hans.parent, home, target);
-      routeOut = warRoomHansBuildSafeRoute(floor, actor.hans.parent, target, home);
+      // Espresso serves the SAME physical command desk as dust-board.
+      // Both must use the same bounded, collision-checked approach policy.
+      // Watering a plant retains its existing canonical route unchanged.
+      const approach = eventName === 'espresso'
+        ? findWarRoomHansChoreApproach({
+          floor, parent: actor.hans.parent, home, target,
+          targetObject: serviceTargetObject,
+        })
+        : null;
+      if (approach) {
+        target = approach.target;
+        routeIn = approach.routeIn;
+        routeOut = approach.routeOut;
+      } else {
+        const normal = warRoomHansBuildSafeRoute(floor, actor.hans.parent, home, target);
+        routeIn = normal;
+        routeOut = warRoomHansBuildSafeRoute(floor, actor.hans.parent, target, home);
+      }
       if (!routeIn.length || !routeOut.length) {
+        // Debug proof only: distinguish a physically blocked service landing
+        // from scheduler delays. Never report these diagnostics to a server.
+        if (globalThis.__CHESS_E2E_HANS_AMBIENT_AUDIT__ === true) {
+          const canvas = getWarRoomHansCanvas(actor);
+          if (canvas?.dataset) {
+            canvas.dataset.warRoomHansServiceSetup = 'route-blocked';
+            canvas.dataset.warRoomHansServiceEvent = eventName;
+            canvas.dataset.warRoomHansServiceRouteBlock = JSON.stringify(
+              explainWarRoomHansBlockedRoute(floor, actor.hans.parent, home, target),
+            );
+          }
+        }
         abortSetupForCurrentGame();
         return;
+      }
+      if (globalThis.__CHESS_E2E_HANS_AMBIENT_AUDIT__ === true) {
+        const canvas = getWarRoomHansCanvas(actor);
+        if (canvas?.dataset) {
+          canvas.dataset.warRoomHansServiceSetup = 'route-started';
+          canvas.dataset.warRoomHansServiceEvent = eventName;
+        }
       }
       props ||= ensureCarriedProps(actor);
       if (eventName === 'espresso') deliveredEspresso ||= ensureDeliveredEspresso(root);

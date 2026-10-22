@@ -61,6 +61,22 @@ describe('Hans physically verified desktop flank fallback', () => {
     expect(selected.routeOut.at(-1)).toEqual(home);
   });
 
+  it('reuses the bounded board-edge approach for an espresso delivery to the desk', () => {
+    const { floor, parent, top } = room();
+    // Same desk target as dust-board but a slightly different serving flank:
+    // it must not step into the chessboard simply because this is a service.
+    const espressoTarget = new THREE.Vector3(-2.53, -0.34, -4.95);
+    expect(warRoomHansBuildSafeRoute(floor, parent, home, espressoTarget)).toEqual([]);
+    const selected = approach({
+      floor, parent, home, target: espressoTarget, targetObject: top,
+    });
+    expect(selected.routeIn.length).toBeGreaterThan(0);
+    expect(selected.routeOut.length).toBeGreaterThan(0);
+    expect(selected.target.z).toBeLessThan(-5.10);
+    expect(selected.boardEdgeDisplacement).toBeGreaterThan(0);
+    expect(selected.boardEdgeDisplacement).toBeLessThanOrEqual(1.4);
+  });
+
   it('rejects a deep board-interior target instead of teleporting Hans to an unrelated surface', () => {
     const { floor, parent, top } = room();
     const center = new THREE.Vector3(0, -0.34, 0);
