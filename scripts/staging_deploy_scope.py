@@ -64,6 +64,7 @@ NON_RUNTIME_EXACT = frozenset({
     "scripts/main_ci_source.py",
     # PR provenance validation gates CI, but does not change OCI's deployed binary.
     "scripts/main_ci_admission.py",
+    "scripts/main_ci_admission_wait.py",
 })
 NON_RUNTIME_ACTION_PREFIXES = (
     ".github/actions/cache-node-modules/",
@@ -219,6 +220,7 @@ def self_test() -> None:
         "scripts/test_compare_home_3d_gpu.py",
         "scripts/main_ci_source.py",
         "scripts/main_ci_admission.py",
+        "scripts/main_ci_admission_wait.py",
     ]
     for path in offline_home_ci:
         assert deploy_required_for_paths([path]) == (False, "non-runtime-only")
