@@ -26,7 +26,8 @@ permissions:
 
 concurrency:
   group: war-room-v2-review-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: false
+  # Supersede obsolete PR previews; never interrupt manual staging/recovery.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   render:
