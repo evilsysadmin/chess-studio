@@ -529,6 +529,10 @@ WAR_ROOM_V2_REVISION_OWNERS = {
     "scripts/blender/build_war_room_premium.py",
     "scripts/blender/publish_war_room_v2_staging.py",
     ".github/workflows/war-room-blender-art.yml",
+    # A V2 browser-proof-only PR still needs the exact PR-SHA staged GLB.
+    # Otherwise the app visual lane passes general room screenshots while
+    # silently SKIPPING the requested mobile Hans route test.
+    "e2e/war-room-v2-hans-door-visual.spec.js",
 }
 
 WAR_ROOM_V3_REVISION_OWNERS = {
@@ -977,6 +981,12 @@ def self_test() -> None:
     ])
     assert blender_duel_hall.capture_groups == "none"
     assert not blender_duel_hall.hans and not blender_duel_hall.chesscom
+    # Test-only V2 proof must force exact-head staging, not silently green
+    # general War Room screenshots with APP_VISUAL_EXPECTED_WAR_ROOM_REVISION=''.
+    v2_browser_proof = classify(["e2e/war-room-v2-hans-door-visual.spec.js"])
+    assert v2_browser_proof.capture_groups == "warroom"
+    assert v2_browser_proof.warroom_revision_required
+    assert not v2_browser_proof.warroom_v3_revision_required
     blender_warroom = classify(["scripts/blender/build_war_room_premium.py"])
     blender_publish = classify(["scripts/blender/publish_war_room_v2_staging.py"])
     blender_workflow = classify([".github/workflows/war-room-blender-art.yml"])
