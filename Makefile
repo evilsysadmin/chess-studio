@@ -32,7 +32,7 @@ CRITICAL_E2E_GREP := login → menú|Partida rápida · una partida activa|Torne
 	test tests test-fe test-be tests-fe tests-be tests/fe tests/be e2e e2e-combat-dom e2e-install compose-smoke coverage coverage-fe coverage-be release-gate \
 	test-frontend test-frontend-smoke test-frontend-unit test-frontend-contract test-backend test-backend-smoke test-backend-integration backend-check quality-gate gate-core \
 	gate-frontend-critical gate-critical combat-smoke frontend-build bundle-report puzzles-check audio-check data-ux-check pwa-check campaign-map-check copy-check release-check test-suite-audit test-suite-audit-ci static-contract-risk-audit css-check css-debt-check visual-ux-check state-resilience-check idempotency-check npm-audit-parser-check architecture-debt-check workflow-debt-check dependency-cycle-check dead-code-check session-continuity-check safe-storage-check async-resilience-check chess-rules-check grafana-check render-staging-check static-preflight \
-	security security-full security-images security-fe security-be security-trivy security-api ensure-trivy deps-status doctor worker-test load-probe synthetic-check bootstrap-test test-all-local test-in-docker ensure-e2e-deps e2e-critical home-gpu-light-probe home-gpu-draw-census test-parity-check \
+	security security-full security-images security-fe security-be security-trivy security-api ensure-trivy deps-status doctor worker-test load-probe synthetic-check bootstrap-test test-all-local test-in-docker ensure-e2e-deps e2e-critical home-gpu-light-probe home-gpu-draw-census home-gpu-flame-pass-verify test-parity-check \
 	oci-login oci-session oci-a1-info oci-a1-status oci-a1-ip oci-a1-authorize-ssh oci-a1-ssh-check oci-a1-ssh
 
 ## Diagnóstico local sin instalar nada: runtimes, lockfiles, CI y tooling opcional.
@@ -399,6 +399,12 @@ home-gpu-draw-census: ensure-e2e-deps frontend-build
 		./node_modules/.bin/playwright test --config=playwright.home-gpu.config.js
 	@echo "Home real draw census: .artifacts/home-gpu-benchmark/home-3d-hardware.json"
 
+# Only checks physical A/B/B/A PNG/report integrity; never claims visual or GPU
+# approval. The experimental flame capture remains in Draft until accepted.
+home-gpu-flame-pass-verify:
+	@node scripts/verify_home_flame_gpu_evidence.mjs
+
+
 ## Smoke de integración REAL: nginx frontend + API Go + Mongo + auth/perfil.
 ## Usa imágenes construidas por docker compose y sólo stdlib Python para el probe.
 compose-smoke:
@@ -534,6 +540,7 @@ static-preflight: capacity-probe-check test-parity-check test-flake-check audio-
 	@node --test e2e/home-gpu-revision.test.mjs
 	@node --test e2e/war-room-gpu-shadow-readiness.test.mjs
 	@node --test e2e/home-gpu-flame-eligibility.test.mjs
+	@node --test scripts/verify_home_flame_gpu_evidence.test.mjs
 	@python3 -S -m unittest discover -s scripts -p 'test_compare_home_3d_gpu.py' -v
 	@python3 -S scripts/oci_k3s_staging2_root.py self-test infra/oci/gitops/staging2/backend.yaml.tmpl
 	@find frontend/src scripts e2e -type f \( -name '*.js' -o -name '*.mjs' \) -print0 | xargs -0 -P $(NODE_CHECK_JOBS) -n1 node --check
