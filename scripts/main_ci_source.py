@@ -11,8 +11,10 @@ instead of silently choosing either path.
 from __future__ import annotations
 
 import os
+import re
 import sys
-from typing import Any
+import time
+from typing import Any, Callable
 from urllib.parse import quote
 
 import main_ci_admission as admission
@@ -45,6 +47,34 @@ def classify_main_source(pulls: list[dict[str, Any]], main_sha: str) -> tuple[st
     raise SourceError(f"main {main_sha[:12]} acredita {len(matches)} PR mergeados; origen ambiguo")
 
 
+
+# A 500 from GitHub's commit→PR association endpoint is transport failure,
+# not proof of a direct push. Retry a small, bounded number of *GETs* before
+# failing closed. Never fall through to the less restrictive direct-source gate.
+_TRANSIENT_COMMIT_PULL_HTTP = re.compile(r"\bHTTP (?:500|502|503|504)\b")
+_COMMIT_PULL_RETRY_DELAYS = (1, 2, 4)
+
+
+def fetch_commit_pulls(
+    path: str, token: str, *,
+    getter: Callable[[str, str], Any] = admission.api_get,
+    pause: Callable[[float], None] = time.sleep,
+) -> Any:
+    for attempt in range(len(_COMMIT_PULL_RETRY_DELAYS) + 1):
+        try:
+            return getter(path, token)
+        except admission.AdmissionError as exc:
+            if attempt == len(_COMMIT_PULL_RETRY_DELAYS) or not _TRANSIENT_COMMIT_PULL_HTTP.search(str(exc)):
+                raise
+            print(
+                f"::warning title=GitHub commit provenance retry::"
+                f"Transient GitHub API HTTP 5xx; attempt {attempt + 2}/4.",
+                file=sys.stderr,
+            )
+            pause(_COMMIT_PULL_RETRY_DELAYS[attempt])
+    raise AssertionError("unreachable retry loop")
+
+
 def emit_output(source: str, pr_number: int | None) -> None:
     output = os.environ.get("GITHUB_OUTPUT", "").strip()
     lines = [f"source={source}", f"pr_number={pr_number or ''}"]
@@ -68,7 +98,7 @@ def run_live() -> int:
 
     owner, repo_name = repo.split("/", 1)
     api_base = f"/repos/{quote(owner)}/{quote(repo_name)}"
-    pulls = admission.api_get(f"{api_base}/commits/{main_sha}/pulls", token)
+    pulls = fetch_commit_pulls(f"{api_base}/commits/{main_sha}/pulls", token)
     if not isinstance(pulls, list):
         raise SourceError("respuesta inesperada al buscar PR asociado")
 
@@ -111,6 +141,53 @@ def self_test() -> None:
         pass
     else:
         raise AssertionError("un PR sin número debe fallar")
+
+
+    # Failure from the upstream commit→pulls API must never be interpreted as
+    # direct-origin main or a successful PR accreditation.
+    calls: list[int] = []
+    delays: list[float] = []
+
+    def flaky_getter(_path: str, _token: str) -> Any:
+        calls.append(1)
+        if len(calls) < 3:
+            raise admission.AdmissionError("GitHub API commit/pulls devolvió HTTP 500")
+        return [pr]
+
+    assert fetch_commit_pulls("commit/pulls", "test", getter=flaky_getter, pause=delays.append) == [pr]
+    assert len(calls) == 3 and delays == [1, 2]
+
+    for status in (502, 503, 504):
+        attempts: list[int] = []
+        pauses: list[float] = []
+
+        def always_transient(_path: str, _token: str) -> Any:
+            attempts.append(status)
+            raise admission.AdmissionError(f"GitHub API commit/pulls devolvió HTTP {status}")
+
+        try:
+            fetch_commit_pulls("commit/pulls", "test", getter=always_transient, pause=pauses.append)
+        except admission.AdmissionError:
+            pass
+        else:
+            raise AssertionError("HTTP 5xx agotado debe fallar cerrado")
+        assert len(attempts) == 4 and pauses == [1, 2, 4]
+
+    immediate: list[float] = []
+    for status in (400, 403, 404, 422):
+        try:
+            fetch_commit_pulls(
+                "commit/pulls", "test",
+                getter=lambda _p, _t: (_ for _ in ()).throw(
+                    admission.AdmissionError(f"GitHub API commit/pulls devolvió HTTP {status}")
+                ),
+                pause=immediate.append,
+            )
+        except admission.AdmissionError:
+            pass
+        else:
+            raise AssertionError(f"HTTP {status} must fail immediately")
+    assert not immediate
 
     print("main-ci-source self-test OK · pr/direct/ambiguous fail-closed")
 
