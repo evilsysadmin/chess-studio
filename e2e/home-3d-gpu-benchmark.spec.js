@@ -3,6 +3,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { mockApi } from './helpers.js';
 import { homeBlenderDistinctGpuSamplesMs } from '../frontend/src/components/HomeBlenderPerformanceDiagnostics.js';
 import { summarizeHomeGpuLightContrast } from './home-blender-gpu-light-contrast.mjs';
+import { parseHomeGpuFlameEligibility } from './home-gpu-flame-eligibility.mjs';
 import { homeGpuBenchmarkAmbientHour } from './home-gpu-ambient-clock.mjs';
 import { homeGpuBenchmarkRevision } from './home-gpu-revision.mjs';
 
@@ -103,7 +104,7 @@ async function openRealHome(page, lightMode = 'normal') {
 }
 
 async function readRealCanvas(castle) {
-  return castle.evaluate((canvas) => {
+  const raw = await castle.evaluate((canvas) => {
     const d = canvas.dataset;
     // Reuse the GL context of the *actual* Home canvas. Do not create a
     // separate benchmark context that might select a different GPU.
@@ -178,6 +179,8 @@ async function readRealCanvas(castle) {
       allocatedGeometries: num('homeBlenderGpuGeometries'),
       allocatedPrograms: num('homeBlenderGpuPrograms'),
       modelDrawInventory,
+      flamePassEligibilityJson: d.homeBlenderFlamePassEligibility || null,
+      flamePassLiveEligibilityJson: d.homeBlenderFlamePassLiveEligibility || null,
       cpuP95Ms: num('homeBlenderCpuP95Ms'),
       rafGapP95Ms: num('homeBlenderVsyncP95Ms'),
       animatedDrawsPerSecond: num('homeBlenderDrawnFps'),
@@ -186,6 +189,12 @@ async function readRealCanvas(castle) {
       canvasHeight: canvas.height,
     };
   });
+  const { flamePassEligibilityJson, flamePassLiveEligibilityJson, ...snapshot } = raw;
+  return {
+    ...snapshot,
+    flamePassEligibility: parseHomeGpuFlameEligibility(flamePassEligibilityJson),
+    flamePassLiveEligibility: parseHomeGpuFlameEligibility(flamePassLiveEligibilityJson),
+  };
 }
 
 test('Home 3D physical GPU benchmark · three visits or opt-in light A/B/B/A', async ({ browser, baseURL }) => {
