@@ -1,0 +1,60 @@
+name: OCI staging · read-only host provenance
+on:
+  workflow_run:
+    workflows: ['Deploy to staging']
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  provenance:
+    if: >-
+      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') ||
+      (github.event_name == 'workflow_run' &&
+       github.event.workflow_run.conclusion == 'failure' &&
+       github.event.workflow_run.head_branch == 'main' &&
+       github.event.workflow_run.head_repository.full_name == github.repository)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    concurrency:
+      group: oci-staging-readonly-provenance
+      cancel-in-progress: true
+    environment:
+      name: staging
+    env:
+      EXPECTED_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+      OCI_TENANCY_OCID: ${{ secrets.OCI_TENANCY_OCID }}
+      OCI_USER_OCID: ${{ secrets.OCI_USER_OCID }}
+      OCI_FINGERPRINT: ${{ secrets.OCI_FINGERPRINT }}
+      OCI_PRIVATE_KEY: ${{ secrets.OCI_PRIVATE_KEY }}
+      OCI_REGION: ${{ vars.OCI_REGION || 'eu-frankfurt-1' }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-oci-sdk
+        with:
+          version: '2.185.2'
+          python-version: '3.13'
+      - name: Classify host SHA markers without changing the instance
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -S scripts/oci_backend_diagnose.py --self-test
+          echo "::notice::Read-only host state for $EXPECTED_SHA; not public staging accreditation."
+          if python3 scripts/oci_backend_diagnose.py --expected-sha "$EXPECTED_SHA"; then
+            echo "::notice::Host checkout and committed marker match; public route still needs separate verification."
+          else
+            code=$?
+            case "$code" in
+              90) echo "::warning::Host checkout and marker both differ from requested SHA." ;;
+              91) echo "::warning::Host checkout matches; committed marker differs." ;;
+              92) echo "::warning::Host marker matches; checkout differs." ;;
+              94) echo "::warning::Host checkout or marker unreadable; classification incomplete." ;;
+              *) echo "::error::OCI read-only probe failed (transport or unrelated error)." ;;
+            esac
+            exit "$code"
+          fi

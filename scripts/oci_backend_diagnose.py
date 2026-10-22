@@ -8,11 +8,12 @@ files, or secret-bearing configuration.
 from __future__ import annotations
 
 import argparse
+import re
 
-from oci_run_command import assert_nonsecret_command, config_from_env, diagnose_plugin, execute
+from oci_run_command import assert_nonsecret_command, config_from_env, diagnose_plugin, execute, validate_sha
 
 
-def diagnostic_command() -> str:
+def diagnostic_command(expected_sha: str | None = None) -> str:
     command = r'''set -u
 
 printf '%s\n' 'OCI_BACKEND_DIAG_BEGIN'
@@ -58,8 +59,27 @@ for endpoint in health ready release; do
 done
 printf '%s\n' 'OCI_BACKEND_DIAG_END'
 '''
+    if expected_sha is not None:
+        sha = validate_sha(expected_sha)
+        # OCI may omit the complete TEXT transcript. Encode the relationship
+        # between the two host SHA markers and the expected SHA in the process
+        # exit status; never treat this as public endpoint accreditation.
+        command += f"""
+if [[ "$checkout" == "{sha}" && "$committed" == "{sha}" ]]; then exit 0; fi
+if [[ "$checkout" == "{sha}" ]]; then exit 91; fi
+if [[ "$committed" == "{sha}" ]]; then exit 92; fi
+if [[ "$checkout" == unavailable || "$committed" == unavailable ]]; then exit 94; fi
+exit 90
+"""
     assert_nonsecret_command(command)
     return command
+
+
+def provenance_exit_code(exc: BaseException) -> int | None:
+    # Only recognize our reserved read-only diagnostic statuses. Unrelated OCI
+    # failures (auth, timeout, delivery) retain their original severity.
+    match = re.match(r"^OCI Run Command failed: state=FAILED exit=(90|91|92|94)\b", str(exc))
+    return int(match.group(1)) if match else None
 
 
 def self_test() -> None:
@@ -75,19 +95,57 @@ def self_test() -> None:
     assert "backend.env" not in command
     assert "OCI_BACKEND_DIAG_END" in command
     assert "OCI_BACKEND_PROVENANCE checkout=%s committed=%s" in command
+    sample = "0123456789abcdef0123456789abcdef01234567"
+    matched = diagnostic_command(sample)
+    assert f'if [[ "$checkout" == "{sample}" && "$committed" == "{sample}" ]]' in matched
+    assert "exit 91;" in matched and "exit 92;" in matched
+    assert "exit 94;" in matched and "exit 90" in matched
+    assert len(matched.encode("utf-8")) <= 4096
+    try:
+        diagnostic_command("main")
+    except SystemExit:
+        pass
+    else:
+        raise AssertionError("mutable expected source must be rejected")
+    for status in (90, 91, 92, 94):
+        error = SystemExit(f"OCI Run Command failed: state=FAILED exit={status} detail=no command output")
+        assert provenance_exit_code(error) == status
+    assert provenance_exit_code(SystemExit("OCI Run Command failed: state=FAILED exit=75")) is None
+    assert provenance_exit_code(SystemExit("OCI Run Command polling timed out")) is None
     assert "git -C /opt/chess-studio/repo rev-parse HEAD" in command
     assert "chess-studio-deploy-watcher.service" in command
     assert "DEPLOY_WATCH_ENABLED" in command
     assert "docker logs" not in command and "journalctl" not in command
     assert "cat /" not in command and "printenv" not in command
     import subprocess
-    subprocess.run(["bash", "-n"], input=command, text=True, check=True, capture_output=True)
+    for payload in (command, matched):
+        subprocess.run(["bash", "-n"], input=payload, text=True, check=True, capture_output=True)
+    # Synthetic read-only fixtures prove all four no-text classifications.
+    classifier_start = matched.index(
+        f'if [[ "$checkout" == "{sample}" && "$committed" == "{sample}" ]]'
+    )
+    classifier = matched[classifier_start:]
+    for checkout, committed, expected_rc in (
+        (sample, sample, 0),
+        (sample, "a" * 40, 91),
+        ("b" * 40, sample, 92),
+        ("b" * 40, "a" * 40, 90),
+        ("unavailable", sample, 92),
+        ("unavailable", "unavailable", 94),
+    ):
+        result = subprocess.run(
+            ["bash", "-c", f'checkout={checkout}; committed={committed};\n{classifier}'],
+            text=True, capture_output=True, check=False,
+        )
+        assert result.returncode == expected_rc, (checkout, committed, result.returncode)
     print("OCI backend diagnostics self-test: OK")
 
 
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--self-test", action="store_true")
+    parser.add_argument("--expected-sha", default=None,
+                        help="40-character SHA for read-only host provenance classification")
     args = parser.parse_args()
     if args.self_test:
         self_test()
@@ -100,13 +158,20 @@ def main() -> int:
 
     config = config_from_env(oci)
     diagnose_plugin(oci, config)
-    execute(
-        oci,
-        config,
-        diagnostic_command(),
-        display_name="chess-studio-backend-diagnose",
-        timeout=120,
-    )
+    try:
+        execute(
+            oci,
+            config,
+            diagnostic_command(args.expected_sha),
+            display_name="chess-studio-backend-diagnose",
+            timeout=120,
+        )
+    except SystemExit as exc:
+        status = provenance_exit_code(exc) if args.expected_sha else None
+        if status is None:
+            raise
+        print(f"OCI_BACKEND_PROVENANCE_EXIT_CODE={status}", flush=True)
+        return status
     return 0
 
 
