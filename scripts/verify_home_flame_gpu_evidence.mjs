@@ -156,6 +156,57 @@ export function validateHomeFlameEvidence(report, readPng, expectedRevision = nu
       || report.drawEvidence?.gpuMedianImproved !== (report.gpuDifferenceMs > 0)) {
     fail('four-visit draw saving summary differs from measured WebGL submissions');
   }
+
+  // The browser harness fixes the lighting, Matthias station and framebuffer
+  // for all four cold visits. The offline verifier must independently enforce
+  // that contract: valid PNG hashes cannot justify mismatched scene states.
+  const identityFields = [
+    'vendor', 'rendererFingerprint', 'ambient', 'lod', 'shadows',
+    'lightProbe', 'wallTorches', 'lightsDisabled', 'lightsAdded',
+    'matthiasStation', 'matthiasActor', 'fireMotion',
+    'canvasWidth', 'canvasHeight',
+  ];
+  const firstVisit = report.visits[0];
+  if (!['intel', 'nvidia', 'amd'].includes(firstVisit.vendor)
+      || typeof firstVisit.rendererFingerprint !== 'string'
+      || !/^[0-9a-f]{8}$/.test(firstVisit.rendererFingerprint)
+      || !['dawn', 'day', 'dusk', 'night'].includes(firstVisit.ambient)
+      || firstVisit.lod !== 'full' || firstVisit.shadows !== 'enabled'
+      || firstVisit.lightProbe !== 'pair-normal'
+      || firstVisit.wallTorches !== 'pair'
+      || firstVisit.lightsDisabled !== 4 || firstVisit.lightsAdded !== 2
+      || typeof firstVisit.matthiasStation !== 'string'
+      || !firstVisit.matthiasStation.trim()
+      || firstVisit.matthiasActor !== 'ready'
+      || report.benchmarkAmbient !== firstVisit.ambient
+      || report.rendererFingerprint !== firstVisit.rendererFingerprint) {
+    fail('baseline has invalid fixed physical Home scene identity');
+  }
+  for (let i = 1; i < report.visits.length; i += 1) {
+    const visit = report.visits[i];
+    for (const field of identityFields) {
+      if (visit[field] !== firstVisit[field]) {
+        fail(`visit ${i + 1} changed fixed physical scene identity: ${field}`);
+      }
+    }
+  }
+  const baselineMaterials = firstVisit.liveEligibility;
+  const materialKeys = [
+    'flameNodes', 'hotNodes', 'candleNodes', 'materialSlots',
+    'doubleSided', 'frontSided', 'otherSided', 'transparentNow',
+    'transparentDoubleSidedNow',
+  ];
+  if (!baselineMaterials || materialKeys.some((key) =>
+    !Number.isSafeInteger(baselineMaterials[key]) || baselineMaterials[key] < 0)) {
+    fail('baseline live flame material census incomplete');
+  }
+  for (let i = 1; i < report.visits.length; i += 1) {
+    const live = report.visits[i].liveEligibility;
+    if (!live || materialKeys.some((key) =>
+      !Number.isSafeInteger(live[key]) || live[key] !== baselineMaterials[key])) {
+      fail(`visit ${i + 1} changed authored flame material identity`);
+    }
+  }
   // The finished report must reflect the underlying four visits, not an
   // optimistic aggregate pasted over valid per-visit measurements.
   const baseline = median([report.visits[0].gpuMedianMs, report.visits[3].gpuMedianMs]);
