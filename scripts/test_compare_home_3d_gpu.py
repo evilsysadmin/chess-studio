@@ -18,6 +18,10 @@ def report(sha, gpu=4.0):
         }
         for n in range(1, 4)
     ]
+    for visit in visits:
+        if gpu is not None:
+            visit["gpuSamplesMs"] = [gpu]
+            visit["gpuMedianMs"] = gpu
     return {
         "schema": 2, "surface": "Home Blender 3D", "mode": "hardware",
         "revision": sha, "browserVersion": "154.0.0.0",
@@ -66,6 +70,49 @@ class HomeGpuCompareTests(unittest.TestCase):
         self.after["requireTimer"] = False
         result = compare_reports(before, self.after)
         self.assertFalse(result["gpuTimingAvailable"])
+
+    def test_gpu_medians_require_actual_fresh_query_samples(self):
+        for bad in ([], None, [0], [-1], [float("nan")], [float("inf")],
+                    ["4.0"], [True], [4.0, None]):
+            changed = copy.deepcopy(self.after)
+            changed["visits"][0]["gpuSamplesMs"] = bad
+            self.rejected("missing or invalid fresh GPU query samples", after=changed)
+        missing = copy.deepcopy(self.after)
+        missing["visits"][2].pop("gpuMedianMs")
+        self.rejected("missing real GPU median", after=missing)
+
+    def test_rejects_forged_visit_or_global_gpu_medians(self):
+        bad = copy.deepcopy(self.after)
+        bad["visits"][1]["gpuMedianMs"] = 1.0
+        self.rejected("GPU median differs from query samples", after=bad)
+        bad = copy.deepcopy(self.after)
+        bad["medians"]["gpuMs"] = 1.0
+        self.rejected("reported GPU median differs from three physical visits", after=bad)
+        bad = copy.deepcopy(self.after)
+        bad["medians"]["gpuMs"] = 0
+        self.rejected("required physical GPU median must be positive", after=bad)
+
+    def test_gpu_medians_allow_real_sample_variation(self):
+        for report_data in (self.before, self.after):
+            value = report_data["medians"]["gpuMs"]
+            for i, visit in enumerate(report_data["visits"]):
+                # Different query durations; per-visit and overall medians stay
+                # grounded in the actual samples, not a single arbitrary read.
+                visit["gpuSamplesMs"] = [value - 0.4, value + (i - 1) * 0.1, value + 0.4]
+                visit["gpuMedianMs"] = value + (i - 1) * 0.1
+        result = compare_reports(self.before, self.after)
+        self.assertTrue(result["gpuTimingAvailable"])
+
+    def test_timer_requirement_is_strictly_boolean(self):
+        for invalid in ("true", 1, 0, None, []):
+            bad = copy.deepcopy(self.after)
+            bad["requireTimer"] = invalid
+            self.rejected("requireTimer must be boolean", after=bad)
+        # Historical software-only diagnostic receipts with no requested
+        # hardware timer are still comparable as timing-unavailable.
+        before = report(self.before["revision"], gpu=None)
+        after = report(self.after["revision"], gpu=None)
+        self.assertFalse(compare_reports(before, after)["gpuTimingAvailable"])
 
     def test_missing_required_gpu_timing_is_rejected(self):
         self.before["medians"]["gpuMs"] = None

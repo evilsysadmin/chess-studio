@@ -12,6 +12,7 @@ import argparse
 import json
 import math
 from pathlib import Path
+from statistics import median
 
 
 class IncomparableBenchmarks(ValueError):
@@ -86,9 +87,38 @@ def _check_report(report, label):
         value = medians.get(key)
         if value is not None and (not _finite_number(value) or value < 0):
             raise IncomparableBenchmarks(f"{label}: invalid {key} median")
-    if report.get("requireTimer") is True and medians.get("gpuMs") is None:
-        raise IncomparableBenchmarks(f"{label}: required physical GPU samples are missing")
-    return (browser, tuple(viewport[k] for k in ("width", "height", "dpr")), bool(report.get("requireTimer")), signatures[0])
+    require_timer = report.get("requireTimer", False)
+    if type(require_timer) is not bool:
+        raise IncomparableBenchmarks(f"{label}: requireTimer must be boolean")
+    if require_timer:
+        if medians.get("gpuMs") is None:
+            raise IncomparableBenchmarks(f"{label}: required physical GPU samples are missing")
+        if medians["gpuMs"] <= 0:
+            raise IncomparableBenchmarks(f"{label}: required physical GPU median must be positive")
+        observed_medians = []
+        for index, visit in enumerate(visits, 1):
+            samples = visit.get("gpuSamplesMs")
+            if not isinstance(samples, list) or not samples or any(
+                not _finite_number(value) or value <= 0 for value in samples
+            ):
+                raise IncomparableBenchmarks(
+                    f"{label}: visit {index} missing or invalid fresh GPU query samples"
+                )
+            measured = visit.get("gpuMedianMs")
+            if not _finite_number(measured) or measured <= 0:
+                raise IncomparableBenchmarks(f"{label}: visit {index} missing real GPU median")
+            if not math.isclose(measured, median(samples), rel_tol=1e-10, abs_tol=1e-10):
+                raise IncomparableBenchmarks(
+                    f"{label}: visit {index} GPU median differs from query samples"
+                )
+            observed_medians.append(measured)
+        if not math.isclose(
+            medians["gpuMs"], median(observed_medians), rel_tol=1e-10, abs_tol=1e-10
+        ):
+            raise IncomparableBenchmarks(
+                f"{label}: reported GPU median differs from three physical visits"
+            )
+    return (browser, tuple(viewport[k] for k in ("width", "height", "dpr")), require_timer, signatures[0])
 
 
 
