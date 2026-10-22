@@ -394,7 +394,7 @@ home-gpu-draw-census: ensure-e2e-deps frontend-build
 		CHESS_HOME_GPU_LIGHT_PROBE=0 CHESS_HOME_GPU_HEADLESS=$(HOME_GPU_HEADLESS) \
 		CHESS_HOME_GPU_REQUIRE_TIMER=1 CHESS_HOME_GPU_REQUIRE_DRAW_CENSUS=1 \
 		CHESS_HOME_GPU_EXPECT_VENDOR=$(HOME_GPU_EXPECT_VENDOR) \
-		CHESS_HOME_GPU_REVISION="$(git rev-parse HEAD)" \
+		CHESS_HOME_GPU_REVISION="$$(git rev-parse HEAD)" \
 		./node_modules/.bin/playwright test --config=playwright.home-gpu.config.js
 	@echo "Home real draw census: .artifacts/home-gpu-benchmark/home-3d-hardware.json"
 
