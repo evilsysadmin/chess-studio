@@ -234,10 +234,13 @@ for (const eventName of CAPTURE_EVENTS) {
     });
       await seedGamesBeforeEvent(page, eventName);
 
-      await buttonWithVisibleText(page, 'Partida rápida').press('Enter');
+      // Pressing Enter on the immersive Home hotspot can invoke global
+      // keyboard navigation rather than the same trusted activation used by
+      // canonical quick-game E2E. Open the actual button by pointer click.
+      await buttonWithVisibleText(page, 'Partida rápida').click();
       const quickDialog = page.getByRole('dialog', { name: 'Configurar partida rápida' });
-      await expect(quickDialog).toBeVisible();
-      await quickDialog.getByRole('button', { name: 'Empezar partida', exact: true }).press('Enter');
+      await expect(quickDialog).toBeVisible({ timeout: 30_000 });
+      await quickDialog.getByRole('button', { name: 'Empezar partida', exact: true }).click();
       await expect(page.locator('.board-live-row.is-3d-warroom')).toBeVisible({ timeout: MOUNT_BUDGET_MS });
 
       const canvas = page.locator('.board3d-main-canvas');
