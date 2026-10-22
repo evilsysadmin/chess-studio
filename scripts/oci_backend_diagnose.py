@@ -8,6 +8,7 @@ files, or secret-bearing configuration.
 from __future__ import annotations
 
 import argparse
+import re
 
 from oci_run_command import assert_nonsecret_command, config_from_env, diagnose_plugin, execute, validate_sha
 
@@ -74,6 +75,13 @@ exit 90
     return command
 
 
+def provenance_exit_code(exc: BaseException) -> int | None:
+    # Only recognize our reserved read-only diagnostic statuses. Unrelated OCI
+    # failures (auth, timeout, delivery) retain their original severity.
+    match = re.match(r"^OCI Run Command failed: state=FAILED exit=(90|91|92|94)\b", str(exc))
+    return int(match.group(1)) if match else None
+
+
 def self_test() -> None:
     command = diagnostic_command()
     assert "docker inspect" in command
@@ -99,6 +107,11 @@ def self_test() -> None:
         pass
     else:
         raise AssertionError("mutable expected source must be rejected")
+    for status in (90, 91, 92, 94):
+        error = SystemExit(f"OCI Run Command failed: state=FAILED exit={status} detail=no command output")
+        assert provenance_exit_code(error) == status
+    assert provenance_exit_code(SystemExit("OCI Run Command failed: state=FAILED exit=75")) is None
+    assert provenance_exit_code(SystemExit("OCI Run Command polling timed out")) is None
     assert "git -C /opt/chess-studio/repo rev-parse HEAD" in command
     assert "chess-studio-deploy-watcher.service" in command
     assert "DEPLOY_WATCH_ENABLED" in command
@@ -145,13 +158,20 @@ def main() -> int:
 
     config = config_from_env(oci)
     diagnose_plugin(oci, config)
-    execute(
-        oci,
-        config,
-        diagnostic_command(args.expected_sha),
-        display_name="chess-studio-backend-diagnose",
-        timeout=120,
-    )
+    try:
+        execute(
+            oci,
+            config,
+            diagnostic_command(args.expected_sha),
+            display_name="chess-studio-backend-diagnose",
+            timeout=120,
+        )
+    except SystemExit as exc:
+        status = provenance_exit_code(exc) if args.expected_sha else None
+        if status is None:
+            raise
+        print(f"OCI_BACKEND_PROVENANCE_EXIT_CODE={status}", flush=True)
+        return status
     return 0
 
 
