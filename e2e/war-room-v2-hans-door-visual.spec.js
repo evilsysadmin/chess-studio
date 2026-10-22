@@ -127,9 +127,11 @@ if (REVISION) test('War Room V2 · Hans opens and closes the real service door',
 
     expect(enters.length).toBeGreaterThan(5);
     expect(exits.length).toBeGreaterThan(5);
-    // The actual x=-8.68 wall is 4.13 m from the x=-4.55 hearth.
-    // Require travel across the wall, not mere movement inside the room.
-    const wallLocalX = 4.13;
+    // WarRoomHansActorTelemetry exports world lateral X / actor.side,
+    // *not* hearth-relative stage.hansX. For the V2 white-side scene,
+    // Blender's x=-8.68 wall therefore appears as logicalX=8.68.
+    // Comparing against 4.13 (hearth-relative) falsely fails a real crossing.
+    const wallLocalX = 8.68;
     const entryThreshold = enters.filter((f) =>
       Number.isFinite(f.x) && Math.abs(f.x - wallLocalX) <= 0.56);
     const exitThreshold = exits.filter((f) =>
