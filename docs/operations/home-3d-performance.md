@@ -345,7 +345,7 @@ The same local benchmark creates **four fresh browser contexts** in fixed order 
 
 ### Guard opt-in para el experimento de llamas single-pass
 
-El comparador físico normal **no** implica que se haya activado `forceSinglePass`. Para comprobar el experimento #5883, ejecutar con `--require-flame-single-pass`: exige muestras reales de timer GPU, censo sostenido de draw calls y censo animado de materiales en ambas revisiones. Además comprueba `singlePassTransparentDoubleSidedNow=0` en baseline, un valor positivo en candidate y un valor estable durante las tres visitas. El informe muestra los slots activados, **no interpreta los slots como draw calls ahorradas** ni reemplaza la revisión visual de PNG runtime.
+El comparador físico normal **no** implica que se haya activado `forceSinglePass`. Para comprobar el experimento #5883, ejecutar con `--require-flame-single-pass`: exige muestras reales de timer GPU, censo sostenido de draw calls y censo animado de materiales en ambas revisiones. Además comprueba `singlePassTransparentDoubleSidedNow=0` en baseline, un valor positivo en candidate y un valor estable durante las tres visitas. El modo experimental exige además identidad exacta de las cantidades de materiales por caras (`DoubleSide`/`FrontSide`/otras) y transparencia, tanto entre las tres visitas como entre las dos revisiones: **únicamente puede variar `forceSinglePass`**. Si cambia el sidedness o el número de materiales transparentes elegibles, se rechaza la atribución de ganancias al flag. El informe muestra los slots activados, **no interpreta los slots como draw calls ahorradas** ni reemplaza la revisión visual de PNG runtime.
 
 ## Fail-closed hardware A/B comparison
 

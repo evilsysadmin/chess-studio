@@ -240,6 +240,22 @@ def _flame_live_identity(report, label):
     return identities[0]
 
 
+# Only forceSinglePass may differ in the dedicated single-pass flame trial.
+# It cannot be credited for any gain if the candidate also changes material
+# sidedness/transparency or if an individual visit drifts from its peers.
+_FLAME_MATERIAL_FIELDS = tuple(
+    key for key in _FLAME_LIVE_FIELDS if key != "singlePassTransparentDoubleSidedNow"
+)
+
+
+def _flame_material_identity(report):
+    profiles = [
+        tuple(visit["flamePassLiveEligibility"][key] for key in _FLAME_MATERIAL_FIELDS)
+        for visit in report["visits"]
+    ]
+    return profiles[0] if len(set(profiles)) == 1 else None
+
+
 def _flame_single_pass_slots(report, label):
     slots = {
         visit["flamePassLiveEligibility"]["singlePassTransparentDoubleSidedNow"]
@@ -256,6 +272,10 @@ def require_flame_single_pass_trial(result):
         raise IncomparableBenchmarks("Single-pass flame trial requires live flame census on both revisions")
     if not result["drawCensusEvidenceComplete"]:
         raise IncomparableBenchmarks("Single-pass flame trial requires real sustained draw census")
+    if not result["flameMaterialInvariant"]:
+        raise IncomparableBenchmarks(
+            "Single-pass flame trial must preserve material sidedness and transparency"
+        )
     if not result["gpuTimingAvailable"] or not result["hardwareTimerRequired"]:
         raise IncomparableBenchmarks("Single-pass flame trial requires real hardware GPU timer samples")
     before, after = result["flameSinglePassSlots"]
@@ -279,6 +299,11 @@ def compare_reports(baseline, candidate):
     after_flames = _flame_live_identity(candidate, "candidate")
     if before_flames is not None and after_flames is not None and before_flames != after_flames:
         raise IncomparableBenchmarks("Live flame population differs between hardware revisions")
+    flame_material_invariant = (
+        _flame_material_identity(baseline) is not None
+        and _flame_material_identity(baseline) == _flame_material_identity(candidate)
+        if before_flames is not None and after_flames is not None else False
+    )
     single_pass = (
         (_flame_single_pass_slots(baseline, "baseline"),
          _flame_single_pass_slots(candidate, "candidate"))
@@ -332,6 +357,7 @@ def compare_reports(baseline, candidate):
         "gpuTimingAvailable": next(m for m in metrics if m["key"] == "gpuMs")["delta"] is not None,
         "flameEvidenceComplete": before_flames is not None and after_flames is not None,
         "flameSinglePassSlots": single_pass,
+        "flameMaterialInvariant": flame_material_invariant,
         "hardwareTimerRequired": old_signature[2],
         "drawCensusEvidenceComplete": before_census and after_census,
     }
@@ -360,6 +386,8 @@ def format_comparison(result):
         lines.append("Sustained draw census: NOT REQUIRED on both revisions; do not assert actual draw savings.")
     if result["flameEvidenceComplete"]:
         lines.append("Live flame population matches in both revisions; material sidedness may differ intentionally.")
+        if not result["flameMaterialInvariant"]:
+            lines.append("Warning: flame material sidedness/transparency changed; no valid single-pass isolation.")
         before, after = result["flameSinglePassSlots"]
         lines.append(f"Live flame forceSinglePass slots: {before} -> {after}; material eligibility, not measured draw savings.")
     else:

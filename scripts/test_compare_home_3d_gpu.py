@@ -419,6 +419,50 @@ class HomeGpuCompareTests(unittest.TestCase):
         with self.assertRaisesRegex(IncomparableBenchmarks, "start at zero"):
             require_flame_single_pass_trial(compare_reports(self.before, self.after))
 
+    def test_trial_rejects_changed_sidedness_despite_equal_flame_population(self):
+        for record in (self.before, self.after):
+            self._attach_draw_census(record)
+        self._attach_live_flames(self.before)
+        self._attach_live_flames(self.after, single=72)
+        for visit in self.after["visits"]:
+            material = visit["flamePassLiveEligibility"]
+            material["doubleSided"] = 72
+            material["frontSided"] = 1
+            material["transparentDoubleSidedNow"] = 72
+        comparison = compare_reports(self.before, self.after)
+        self.assertFalse(comparison["flameMaterialInvariant"])
+        self.assertIn("sidedness/transparency changed", format_comparison(comparison))
+        with self.assertRaisesRegex(IncomparableBenchmarks, "preserve material sidedness"):
+            require_flame_single_pass_trial(comparison)
+
+    def test_trial_rejects_one_visit_changing_material_or_alpha_eligibility(self):
+        for record in (self.before, self.after):
+            self._attach_draw_census(record)
+        self._attach_live_flames(self.before)
+        self._attach_live_flames(self.after, single=1)
+        for mutation in ("sidedness", "transparency"):
+            candidate = copy.deepcopy(self.after)
+            material = candidate["visits"][1]["flamePassLiveEligibility"]
+            material["transparentDoubleSidedNow"] = 72
+            if mutation == "sidedness":
+                material["doubleSided"] = 72
+                material["frontSided"] = 1
+            result = compare_reports(self.before, candidate)
+            self.assertFalse(result["flameMaterialInvariant"])
+            with self.assertRaisesRegex(IncomparableBenchmarks, "preserve material sidedness"):
+                require_flame_single_pass_trial(result)
+
+    def test_normal_comparator_reports_material_changes_without_trial_approval(self):
+        self._attach_live_flames(self.before)
+        self._attach_live_flames(self.after, single=1)
+        result = compare_reports(self.before, self.after)
+        self.assertTrue(result["flameMaterialInvariant"])
+        self.assertEqual(result["flameSinglePassSlots"], (0, 1))
+        # Normal historic diagnostics do not gain a fake approval by only
+        # counting flame materials: the explicit trial requires real draws.
+        with self.assertRaisesRegex(IncomparableBenchmarks, "sustained draw census"):
+            require_flame_single_pass_trial(result)
+
     def test_single_pass_trial_rejects_missing_hardware_draw_or_flame_evidence(self):
         self._attach_live_flames(self.before)
         self._attach_live_flames(self.after, single=73)
