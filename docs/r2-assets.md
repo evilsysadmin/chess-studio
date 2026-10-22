@@ -76,6 +76,27 @@ The publisher should use content-addressed object names and immutable cache head
 with `Cache-Control: public, max-age=31536000, immutable`. A small manifest in Git can then map logical asset names to immutable R2 objects.
 
 
+## Cross-repository Star Adventures atlas protection
+
+The `chess-studio-assets` R2 bucket is also currently serving original
+Star Adventures tactical atlases under the separate prefix
+`star-adventures/`. Their current logical IDs and SHA-256 pins live in
+[`evilsysadmin/star-adventures`](https://github.com/evilsysadmin/star-adventures/blob/main/frontend/src/assets/r2-assets-manifest.json),
+**not** this repository. This repository's scheduled retention collector
+does not crawl that separate Git repo when determining live asset pins.
+
+For safety, `infra/cloudflare/r2-assets.json` therefore declares
+`star-adventures/` as a protected prefix. **Never delete objects inside this
+prefix through Chess Studio's retention job**, including when a generation
+is older than the normal age grace, a duplicate exists, or the bucket exceeds
+the soft budget. The `r2_asset_gc.py self-test` enforces this cross-repo
+safety contract against an intentionally old, unreferenced example.
+
+This is deliberately conservative and can retain unused future generations.
+Before implementing pruning of Star Adventures objects, move to an explicit
+cross-repository manifest ingestion/pinning contract with versioned rollback,
+and validate it in CI. Do not just remove this protected prefix.
+
 ## Storage budget and retention
 
 The repository owns an automatic retention policy for the public asset bucket.
