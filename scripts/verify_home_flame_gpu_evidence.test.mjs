@@ -29,12 +29,22 @@ function example() {
     };
     return {
       visit: i + 1, flamePass: mode, actual: 'hardware', fireMotion: 'live',
+      vendor: 'intel', rendererFingerprint: 'a1b2c3d4',
+      ambient: 'night', lod: 'full', shadows: 'enabled',
+      lightProbe: 'pair-normal', wallTorches: 'pair',
+      lightsDisabled: 4, lightsAdded: 2,
+      matthiasStation: 'reading-chair', matthiasActor: 'ready',
       gpuMedianMs: mode === 'normal' ? 9.5 : 8.9,
       gpuSamplesMs: mode === 'normal'
         ? [9.5, 9.4, 9.6, 9.5] : [8.9, 8.8, 9.0, 8.9],
       completedQueryObservations: 5,
       singlePassMaterials: mode === 'normal' ? 0 : 12,
-      liveEligibility: { transparentDoubleSidedNow: 12 },
+      liveEligibility: {
+        flameNodes: 4, hotNodes: 4, candleNodes: 4,
+        materialSlots: 12, doubleSided: 12, frontSided: 0,
+        otherSided: 0, transparentNow: 12, transparentDoubleSidedNow: 12,
+        singlePassTransparentDoubleSidedNow: mode === 'normal' ? 0 : 12,
+      },
       canvasWidth: 320, canvasHeight: 180, modelUrlFingerprints,
     };
   });
@@ -51,6 +61,7 @@ function example() {
   const report = {
     schema: 1, status: 'complete', mode: 'hardware', sequence: modes,
     revision: 'a'.repeat(40),
+    benchmarkAmbient: 'night', rendererFingerprint: 'a1b2c3d4',
     gpuMedianMs: { normal: 9.5, single: 8.9 },
     gpuDifferenceMs: 9.5 - 8.9,
     mainDrawCalls: { normal: 310, single: 298 },
@@ -155,6 +166,59 @@ describe('offline Home flame A/B/B/A PNG manifest verification', () => {
       const x = example();
       alter(x.report.visits[1]);
       assert.throws(() => validateHomeFlameEvidence(x.report, x.read), /visit 2/);
+    }
+  });
+
+  it('rejects A/B/B/A visits whose real scene identity differs', () => {
+    for (const [field, changed] of [
+      ['vendor', 'nvidia'],
+      ['rendererFingerprint', 'ffffffff'],
+      ['ambient', 'dusk'],
+      ['lod', 'lite'],
+      ['shadows', 'disabled'],
+      ['lightProbe', 'pair-disabled'],
+      ['wallTorches', 'other'],
+      ['lightsDisabled', 0],
+      ['lightsAdded', 3],
+      ['matthiasStation', 'chess-chair'],
+      ['matthiasActor', 'loading'],
+      ['fireMotion', 'paused'],
+      ['canvasWidth', 321],
+      ['canvasHeight', 181],
+    ]) {
+      const x = example();
+      x.report.visits[1][field] = changed;
+      assert.throws(() => validateHomeFlameEvidence(x.report, x.read),
+        /changed fixed physical scene identity|PNG manifest/);
+    }
+  });
+
+  it('rejects invalid baseline or forged top-level scene identity', () => {
+    for (const patch of [
+      (x) => { x.report.visits[0].lod = 'lite'; },
+      (x) => { x.report.visits[0].vendor = 'unknown'; },
+      (x) => { x.report.visits[0].lightsDisabled = 2; },
+      (x) => { x.report.benchmarkAmbient = 'dawn'; },
+      (x) => { x.report.rendererFingerprint = 'ffffffff'; },
+    ]) {
+      const x = example();
+      patch(x);
+      assert.throws(() => validateHomeFlameEvidence(x.report, x.read),
+        /invalid fixed physical Home scene identity/);
+    }
+  });
+
+  it('rejects changes to flame sidedness or transparency outside single-pass flag', () => {
+    for (const mutate of [
+      (m) => { m.doubleSided = 11; m.frontSided = 1; },
+      (m) => { m.transparentNow = 11; m.transparentDoubleSidedNow = 11; },
+      (m) => { m.flameNodes = 3; },
+      (m) => { m.materialSlots = 11; },
+    ]) {
+      const x = example();
+      mutate(x.report.visits[2].liveEligibility);
+      assert.throws(() => validateHomeFlameEvidence(x.report, x.read),
+        /changed authored flame material identity/);
     }
   });
 
