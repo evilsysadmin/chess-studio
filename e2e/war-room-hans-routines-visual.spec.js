@@ -105,6 +105,12 @@ async function waitForRoutineStart(page, canvas, eventName) {
         mopState: node.dataset.warRoomHansMopState || '',
         mopStartStatus: node.dataset.warRoomHansMopStartStatus || '',
         mopInstalled: node.dataset.warRoomHansMopInstalled || '',
+        // Setup diagnostics are published only under the visual E2E audit flag.
+        choreSetup: node.dataset.warRoomHansChoreSetup || '',
+        choreEvent: node.dataset.warRoomHansChoreEvent || '',
+        choreTarget: node.dataset.warRoomHansChoreTarget || '',
+        choreRouteLengths: node.dataset.warRoomHansChoreRouteLengths || '',
+        choreEndpoints: node.dataset.warRoomHansChoreEndpoints || '',
       };
     }),
     { timeout: 75_000, intervals: [100, 100, 200, 300, 500] },

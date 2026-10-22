@@ -50,6 +50,24 @@ export const WAR_ROOM_HANS_AMBIENT_CHORE_ROUTINE_VERSION = 'hans-ambient-chore-v
 const FLOOR_NAME = 'war-room-castle-floor-slab';
 const CHORE_EVENTS = new Set(WAR_ROOM_HANS_CHORE_EVENTS);
 
+// Diagnostic-only: the visual E2E must prove why a particular service
+// task never launched. No player telemetry, persistence or network calls.
+function reportChoreSetup(actor, eventName, status, {
+  targetObject = null, home = null, target = null, routeIn = [], routeOut = [],
+} = {}) {
+  if (globalThis.__CHESS_E2E_HANS_AMBIENT_AUDIT__ !== true) return;
+  const canvas = getWarRoomHansCanvas(actor);
+  if (!canvas?.dataset) return;
+  canvas.dataset.warRoomHansChoreSetup = String(status);
+  canvas.dataset.warRoomHansChoreEvent = String(eventName || '');
+  canvas.dataset.warRoomHansChoreTarget = String(targetObject?.name || '');
+  canvas.dataset.warRoomHansChoreRouteLengths = `${routeIn.length}/${routeOut.length}`;
+  canvas.dataset.warRoomHansChoreEndpoints = JSON.stringify({
+    home: home ? [Number(home.x).toFixed(2), Number(home.z).toFixed(2)] : null,
+    target: target ? [Number(target.x).toFixed(2), Number(target.z).toFixed(2)] : null,
+  });
+}
+
 function firstNamed(root, names = []) {
   for (const name of names) {
     const object = root?.getObjectByName?.(name);
@@ -241,6 +259,8 @@ export function installWarRoomHansAmbientChoreRoutine(root) {
       const clearDeliveredArtifacts = warRoomHansShouldClearDeliveredArtifacts(nextGameId, completedGameId);
       gameId = nextGameId;
       eventName = warRoomHansEventForGame(gameId);
+      reportChoreSetup(actor, eventName, CHORE_EVENTS.has(eventName)
+        ? 'waiting-for-delay' : 'not-a-chore');
       eligibleSince = now;
       delayMs = warRoomHansAmbientDelayMs(gameId, { min: 7000, max: 16000, salt: `chore:${eventName}` });
       active = false;
@@ -274,6 +294,7 @@ export function installWarRoomHansAmbientChoreRoutine(root) {
       if (!warRoomHansSetupRetryReady(setupRetry, now)) return;
       controller ||= createWarRoomHansWalkController(actor, { forward: 1 });
       if (!controller) {
+        reportChoreSetup(actor, eventName, 'controller-missing');
         if (!deferWarRoomHansSetupRetry(setupRetry, now)) completedGameId = gameId;
         return;
       }
@@ -283,7 +304,10 @@ export function installWarRoomHansAmbientChoreRoutine(root) {
         kind: 'chore',
         source: 'WarRoomHansAmbientChoreRoutine',
         payload: { eventName },
-      })) return;
+      })) {
+        reportChoreSetup(actor, eventName, !chore ? 'chore-definition-missing' : 'task-busy');
+        return;
+      }
       const abortSetupForCurrentGame = () => {
         releaseWarRoomHansTask(runtime, taskId);
         if (!deferWarRoomHansSetupRetry(setupRetry, now)) completedGameId = gameId;
@@ -291,18 +315,23 @@ export function installWarRoomHansAmbientChoreRoutine(root) {
       const service = warRoomHansServiceHome(root, actor.hans.parent);
       targetObject = firstNamed(root, chore.targetNames);
       if (!service?.point || !targetObject) {
+        reportChoreSetup(actor, eventName, !service?.point ? 'home-missing' : 'target-object-missing',
+          { targetObject, home: service?.point });
         abortSetupForCurrentGame();
         return;
       }
       home = service.point;
       target = warRoomHansTargetNearObject(targetObject, actor.hans.parent, { offsetX: chore.offsetX, offsetZ: chore.offsetZ });
       if (!target) {
+        reportChoreSetup(actor, eventName, 'target-point-invalid', { targetObject, home });
         abortSetupForCurrentGame();
         return;
       }
       routeIn = warRoomHansBuildSafeRoute(floor, actor.hans.parent, home, target);
       routeOut = warRoomHansBuildSafeRoute(floor, actor.hans.parent, target, home);
       if (!routeIn.length || !routeOut.length) {
+        reportChoreSetup(actor, eventName, !routeIn.length ? 'route-in-blocked' : 'route-out-blocked',
+          { targetObject, home, target, routeIn, routeOut });
         abortSetupForCurrentGame();
         return;
       }
@@ -310,6 +339,8 @@ export function installWarRoomHansAmbientChoreRoutine(root) {
       deliveredProp = ensureDeliveredProp(root, eventName, targetObject);
       if (deliveredProp) deliveredProp.visible = false;
       placeWarRoomHansHorizontal(actor, home);
+      reportChoreSetup(actor, eventName, 'route-started',
+        { targetObject, home, target, routeIn, routeOut });
       setWarRoomHansTaskPresentation(runtime, {
         visible: true,
         motionState: 'walk-chore',
