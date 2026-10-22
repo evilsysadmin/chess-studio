@@ -351,9 +351,11 @@ case "$mode" in
     hans_playwright_args=(--workers=1 --retries=0)
     if [[ "${GITHUB_EVENT_NAME:-}" == "pull_request" ]]; then
       # `fire` already has its own canonical visual canary above. Keep this
-      # parallel lane focused on the ambient scheduler and order espresso last
-      # so it runs with less SwiftShader contention after a worker frees up.
-      export HANS_ROUTINE_EVENTS="mop,dust-board,espresso"
+      # parallel lane focused on the ambient scheduler. Run the currently
+      # failing dust-board first so its physical setup diagnostic is captured
+      # without wasting an entire mop video on each red iteration. On success
+      # all three videos remain mandatory; espresso stays last.
+      export HANS_ROUTINE_EVENTS="dust-board,mop,espresso"
       hans_playwright_args+=(--max-failures=1)
     fi
     ./node_modules/.bin/playwright test \
