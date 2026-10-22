@@ -13,7 +13,10 @@ from __future__ import annotations
 import os
 import sys
 import time
-from typing import Any
+from typing import Any, Callable
+from unittest.mock import patch
+
+from main_ci_source import fetch_commit_pulls
 from urllib.parse import quote
 
 import main_ci_admission as admission
@@ -39,7 +42,11 @@ def matching_pending_quality_runs(
     ]
 
 
-def pending_quality_runs_for_current_main() -> list[dict[str, Any]]:
+def pending_quality_runs_for_current_main(
+    *,
+    get_commit_pulls: Callable[[str, str], Any] = fetch_commit_pulls,
+    get: Callable[[str, str], Any] = admission.api_get,
+) -> list[dict[str, Any]]:
     repo = os.environ.get("GITHUB_REPOSITORY", "").strip()
     main_sha = os.environ.get("GITHUB_SHA", "").strip().lower()
     token = os.environ.get("GITHUB_TOKEN", "").strip()
@@ -52,7 +59,7 @@ def pending_quality_runs_for_current_main() -> list[dict[str, Any]]:
 
     owner, repo_name = repo.split("/", 1)
     base = f"/repos/{quote(owner)}/{quote(repo_name)}"
-    pulls = admission.api_get(f"{base}/commits/{main_sha}/pulls", token)
+    pulls = get_commit_pulls(f"{base}/commits/{main_sha}/pulls", token)
     if not isinstance(pulls, list):
         raise admission.AdmissionError("respuesta inesperada al buscar PR asociado")
 
@@ -70,7 +77,7 @@ def pending_quality_runs_for_current_main() -> list[dict[str, Any]]:
     if len(head_sha) != 40:
         return []
 
-    payload = admission.api_get(
+    payload = get(
         f"{base}/actions/workflows/cicd.yml/runs?event=pull_request&head_sha={quote(head_sha)}&per_page=20",
         token,
     )
@@ -246,6 +253,49 @@ def self_test() -> None:
         [{**base_run, "status": "in_progress", "head_sha": "d" * 40}],
         head_sha=head,
     ) == []
+
+    # The wait phase must re-use the same bounded, fail-closed commit/pulls GET
+    # as the first source-classification phase. Do not fall back to "direct".
+    seen: list[tuple[str, str]] = []
+    main_sha = "b" * 40
+    with patch.dict(os.environ, {
+        "GITHUB_REPOSITORY": "evilsysadmin/chess-studio",
+        "GITHUB_SHA": main_sha,
+        "GITHUB_TOKEN": "unit-test-token",
+    }):
+        def validated_commit_pulls(path: str, token: str) -> Any:
+            seen.append((path, token))
+            return [{
+                "merged_at": "2026-09-04T22:24:13Z",
+                "merge_commit_sha": main_sha,
+                "base": {"ref": "main"},
+                "head": {"sha": head},
+            }]
+
+        def validated_quality_runs(path: str, token: str) -> Any:
+            seen.append((path, token))
+            return {"workflow_runs": [{**base_run, "status": "in_progress"}]}
+
+        assert [r["id"] for r in pending_quality_runs_for_current_main(
+            get_commit_pulls=validated_commit_pulls, get=validated_quality_runs
+        )] == [10]
+        assert seen == [
+            (f"/repos/evilsysadmin/chess-studio/commits/{main_sha}/pulls", "unit-test-token"),
+            (f"/repos/evilsysadmin/chess-studio/actions/workflows/cicd.yml/runs?event=pull_request&head_sha={head}&per_page=20", "unit-test-token"),
+        ]
+        seen.clear()
+        def bad_commit_payload(path: str, token: str) -> Any:
+            seen.append((path, token))
+            return {"not": "a pull list"}
+        try:
+            pending_quality_runs_for_current_main(
+                get_commit_pulls=bad_commit_payload,
+                get=lambda *_: (_ for _ in ()).throw(AssertionError("should not query Quality")),
+            )
+        except admission.AdmissionError:
+            assert len(seen) == 1
+        else:
+            raise AssertionError("ambiguous commit→PR payload must fail closed")
 
     pulls = [{
         "merged_at": "2026-09-04T22:24:13Z",
