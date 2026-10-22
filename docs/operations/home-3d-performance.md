@@ -343,6 +343,16 @@ The same local benchmark creates **four fresh browser contexts** in fixed order 
 
 **Interpretation:** the A/B/B/A gap bounds the potential fragment-lighting cost of this *visually different scene*, **not** FPS savings or a safe estimate for removing lights. Re-run multiple sessions under the same driver/power conditions. If GPU differences are small or unstable, stop rather than trading away the canonical castle lighting; if consistently large, test a narrower light selection and review visual runtime evidence before any production change.
 
+### Verificador A/B/B/A de **cuatro** visitas (aislado de la PR visual)
+
+El experimento de llamas usa cuatro visitas `normal/single/single/normal` **dentro del mismo commit**. No usar el comparador normal de dos revisiones, que exige SHA distintos y tres visitas por informe. Una vez obtenido el informe y los **cuatro PNG físicos auténticos** de la rama experimental, ejecutar:
+
+```bash
+make home-gpu-flame-pass-verify
+```
+
+El verificador comprueba SHA completo contra el checkout, identidad ordenada de GLBs, cantidad/orden de visitas, muestras GPU reales, medianas, dimensiones PNG IHDR y SHA-256 de cada captura. **No** verifica por sí mismo que Chromium empleara realmente la GPU declarada ni sustituye la inspección de las imágenes embebidas en el chat. Su CLI sólo sirve con la captura experimental completa; no habilita el modo `single` en la Home de producción. Su batería de tests sí se ejecuta de forma independiente en `make static-preflight`.
+
 ### Guard opt-in para el experimento de llamas single-pass
 
 El comparador físico normal **no** implica que se haya activado `forceSinglePass`. Para comprobar el experimento #5883, ejecutar con `--require-flame-single-pass`: exige muestras reales de timer GPU, censo sostenido de draw calls y censo animado de materiales en ambas revisiones. Además comprueba `singlePassTransparentDoubleSidedNow=0` en baseline, un valor positivo en candidate y un valor estable durante las tres visitas. El modo experimental exige además identidad exacta de las cantidades de materiales por caras (`DoubleSide`/`FrontSide`/otras) y transparencia, tanto entre las tres visitas como entre las dos revisiones: **únicamente puede variar `forceSinglePass`**. Si cambia el sidedness o el número de materiales transparentes elegibles, se rechaza la atribución de ganancias al flag. El informe muestra los slots activados, **no interpreta los slots como draw calls ahorradas** ni reemplaza la revisión visual de PNG runtime.
