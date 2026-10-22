@@ -3,6 +3,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { mockApi } from './helpers.js';
 import { homeBlenderDistinctGpuSamplesMs } from '../frontend/src/components/HomeBlenderPerformanceDiagnostics.js';
 import { summarizeHomeGpuLightContrast } from './home-blender-gpu-light-contrast.mjs';
+import { homeGpuBenchmarkRevision } from './home-gpu-revision.mjs';
 
 // Explicit, local-only hardware diagnostic. CI excludes this file from its
 // standard Playwright matrix; no identity, passwords or raw GPU names are logged.
@@ -212,6 +213,8 @@ test('Home 3D physical GPU benchmark · three visits or opt-in light A/B/B/A', a
   if (process.env.CHESS_E2E_LIGHTWEIGHT === '1') {
     throw new Error('CHESS_E2E_LIGHTWEIGHT=1 forces a 2D Home and cannot benchmark GPU rendering');
   }
+  // Fail closed before expensive GPU/browser work on untraceable hardware runs.
+  const revision = homeGpuBenchmarkRevision(process.env.CHESS_HOME_GPU_REVISION, { hardware: requested === 'hardware' });
   const visits = [];
   // Alternating order counters warmup/drift and always uses a fresh browser
   // context, identical build, camera, viewport and ambient period.
@@ -433,7 +436,7 @@ test('Home 3D physical GPU benchmark · three visits or opt-in light A/B/B/A', a
       baselineLayout: lightBaseline,
       baselineMode: baseMode,
       benchmarkAmbient: lightProbeAmbient,
-      revision: process.env.CHESS_HOME_GPU_REVISION || null,
+      revision,
       mode: requested,
       browserVersion: browser.version(),
       viewport: { width: 1440, height: 900, dpr: 1 },
@@ -480,7 +483,7 @@ test('Home 3D physical GPU benchmark · three visits or opt-in light A/B/B/A', a
     schema: 2,
     surface: 'Home Blender 3D',
     mode: requested,
-    revision: process.env.CHESS_HOME_GPU_REVISION || null,
+    revision,
     browserVersion: browser.version(),
     viewport: { width: 1440, height: 900, dpr: 1 },
     requireTimer,
