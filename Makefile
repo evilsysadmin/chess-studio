@@ -528,6 +528,7 @@ static-preflight: capacity-probe-check test-parity-check test-flake-check audio-
 	@python3 -S tests/test_war_room_v2_single_hearth.py
 	@python3 -S tests/test_war_room_v2_revision_immutability.py
 	@node --test e2e/home-blender-gpu-light-contrast.test.mjs
+	@node --test e2e/home-gpu-revision.test.mjs
 	@node --test e2e/war-room-gpu-shadow-readiness.test.mjs
 	@python3 -S -m unittest discover -s scripts -p 'test_compare_home_3d_gpu.py' -v
 	@python3 -S scripts/oci_k3s_staging2_root.py self-test infra/oci/gitops/staging2/backend.yaml.tmpl
