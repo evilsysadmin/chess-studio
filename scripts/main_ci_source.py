@@ -51,7 +51,7 @@ def classify_main_source(pulls: list[dict[str, Any]], main_sha: str) -> tuple[st
 # A 500 from GitHub's commit→PR association endpoint is transport failure,
 # not proof of a direct push. Retry a small, bounded number of *GETs* before
 # failing closed. Never fall through to the less restrictive direct-source gate.
-_TRANSIENT_COMMIT_PULL_HTTP = re.compile(r"\bHTTP (?:500|502|503|504)\b")
+_TRANSIENT_COMMIT_PULL_HTTP = re.compile(r"\bHTTP (?:429|500|502|503|504)\b")
 _COMMIT_PULL_RETRY_DELAYS = (1, 2, 4)
 
 
@@ -64,7 +64,12 @@ def fetch_commit_pulls(
         try:
             return getter(path, token)
         except admission.AdmissionError as exc:
-            if attempt == len(_COMMIT_PULL_RETRY_DELAYS) or not _TRANSIENT_COMMIT_PULL_HTTP.search(str(exc)):
+            message = str(exc)
+            transient = (
+                _TRANSIENT_COMMIT_PULL_HTTP.search(message)
+                or message.startswith(f"GitHub API no disponible para {path}:")
+            )
+            if attempt == len(_COMMIT_PULL_RETRY_DELAYS) or not transient:
                 raise
             print(
                 f"::warning title=GitHub commit provenance retry::"
@@ -157,7 +162,7 @@ def self_test() -> None:
     assert fetch_commit_pulls("commit/pulls", "test", getter=flaky_getter, pause=delays.append) == [pr]
     assert len(calls) == 3 and delays == [1, 2]
 
-    for status in (502, 503, 504):
+    for status in (429, 502, 503, 504):
         attempts: list[int] = []
         pauses: list[float] = []
 
@@ -173,7 +178,27 @@ def self_test() -> None:
             raise AssertionError("HTTP 5xx agotado debe fallar cerrado")
         assert len(attempts) == 4 and pauses == [1, 2, 4]
 
+    # GitHub transport failures can clear, but only with a bounded retry.
+    attempts: list[int] = []
+    pauses: list[float] = []
+    def intermittent_network(_path: str, _token: str) -> Any:
+        attempts.append(1)
+        if len(attempts) < 3:
+            raise admission.AdmissionError(f"GitHub API no disponible para {_path}: timeout")
+        return [pr]
+    assert fetch_commit_pulls("commit/pulls", "test", getter=intermittent_network, pause=pauses.append) == [pr]
+    assert len(attempts) == 3 and pauses == [1, 2]
+
+    # Malformed or unexpectedly structured data must not become "direct push".
     immediate: list[float] = []
+    try:
+        fetch_commit_pulls("commit/pulls", "test", getter=lambda _p, _t: {"bad": "payload"}, pause=immediate.append)
+        # Validated by run_live, not transport; verify no automatic retry here.
+    except admission.AdmissionError:
+        raise AssertionError("valid HTTP response should not be retried")
+    assert not immediate
+
+    immediate = []
     for status in (400, 403, 404, 422):
         try:
             fetch_commit_pulls(
