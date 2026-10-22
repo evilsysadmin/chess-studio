@@ -9,10 +9,10 @@ from __future__ import annotations
 
 import argparse
 
-from oci_run_command import assert_nonsecret_command, config_from_env, diagnose_plugin, execute
+from oci_run_command import assert_nonsecret_command, config_from_env, diagnose_plugin, execute, validate_sha
 
 
-def diagnostic_command() -> str:
+def diagnostic_command(expected_sha: str | None = None) -> str:
     command = r'''set -u
 
 printf '%s\n' 'OCI_BACKEND_DIAG_BEGIN'
@@ -58,6 +58,18 @@ for endpoint in health ready release; do
 done
 printf '%s\n' 'OCI_BACKEND_DIAG_END'
 '''
+    if expected_sha is not None:
+        sha = validate_sha(expected_sha)
+        # OCI may omit the complete TEXT transcript. Encode the relationship
+        # between the two host SHA markers and the expected SHA in the process
+        # exit status; never treat this as public endpoint accreditation.
+        command += f"""
+if [[ "$checkout" == "{sha}" && "$committed" == "{sha}" ]]; then exit 0; fi
+if [[ "$checkout" == "{sha}" ]]; then exit 91; fi
+if [[ "$committed" == "{sha}" ]]; then exit 92; fi
+if [[ "$checkout" == unavailable || "$committed" == unavailable ]]; then exit 94; fi
+exit 90
+"""
     assert_nonsecret_command(command)
     return command
 
@@ -75,19 +87,58 @@ def self_test() -> None:
     assert "backend.env" not in command
     assert "OCI_BACKEND_DIAG_END" in command
     assert "OCI_BACKEND_PROVENANCE checkout=%s committed=%s" in command
+    sample = "0123456789abcdef0123456789abcdef01234567"
+    matched = diagnostic_command(sample)
+    assert f'if [[ "$checkout" == "{sample}" && "$committed" == "{sample}" ]]' in matched
+    assert "exit 91;" in matched and "exit 92;" in matched
+    assert "exit 94;" in matched and "exit 90" in matched
+    assert len(matched.encode("utf-8")) <= 4096
+    try:
+        diagnostic_command("main")
+    except SystemExit:
+        pass
+    else:
+        raise AssertionError("mutable expected source must be rejected")
     assert "git -C /opt/chess-studio/repo rev-parse HEAD" in command
     assert "chess-studio-deploy-watcher.service" in command
     assert "DEPLOY_WATCH_ENABLED" in command
     assert "docker logs" not in command and "journalctl" not in command
     assert "cat /" not in command and "printenv" not in command
     import subprocess
-    subprocess.run(["bash", "-n"], input=command, text=True, check=True, capture_output=True)
+    for payload in (command, matched):
+        subprocess.run(["bash", "-n"], input=payload, text=True, check=True, capture_output=True)
+    # Synthetic read-only fixtures prove all four no-text classifications.
+    import tempfile
+    from pathlib import Path
+    with tempfile.TemporaryDirectory(prefix="oci-provenance-test-") as directory:
+        for checkout, committed, expected_rc in (
+            (sample, sample, 0),
+            (sample, "a" * 40, 91),
+            ("b" * 40, sample, 92),
+            ("b" * 40, "a" * 40, 90),
+            ("unavailable", sample, 92),
+            ("unavailable", "unavailable", 94),
+        ):
+            shell = (
+                "checkout=" + checkout + "\n"
+                + "committed=" + committed + "\n"
+                + matched.split("if [[ \"$checkout\" ==")[1].join([]) if False else ""
+            )
+            # Take only the status classifier tail, not the host operations.
+            classifier = matched[matched.rfind('if [[ "$checkout" == "'): ]
+            result = subprocess.run(
+                ["bash", "-c", f'checkout={checkout}; committed={committed};\n{classifier}'],
+                cwd=directory, text=True, capture_output=True, check=False,
+            )
+            assert result.returncode == expected_rc, (checkout, committed, result.returncode)
     print("OCI backend diagnostics self-test: OK")
 
 
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--self-test", action="store_true")
+    parser.add_argument("--expected-sha", default=None,
+                        help="40-character SHA for read-only host provenance classification")
     args = parser.parse_args()
     if args.self_test:
         self_test()
@@ -103,7 +154,7 @@ def main() -> int:
     execute(
         oci,
         config,
-        diagnostic_command(),
+        diagnostic_command(args.expected_sha),
         display_name="chess-studio-backend-diagnose",
         timeout=120,
     )
