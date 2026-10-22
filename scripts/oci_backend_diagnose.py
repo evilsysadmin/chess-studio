@@ -52,6 +52,20 @@ watch_enabled=no
 [[ -f /var/lib/chess-studio/DEPLOY_WATCH_ENABLED && ! -L /var/lib/chess-studio/DEPLOY_WATCH_ENABLED ]] && watch_enabled=yes
 printf 'OCI_BACKEND_PROVENANCE checkout=%s checkout_reason=%s committed=%s color=%s watcher=%s enabled=%s\n' \
   "$checkout" "$checkout_reason" "$committed" "$color" "$watcher" "$watch_enabled"
+# Compare the installed root launcher to the immutable checkout; no content
+# is printed and an unreadable or symlinked file stays "unavailable".
+source_launcher=/opt/chess-studio/repo/scripts/oci_staging_deploy_launcher.sh
+host_launcher=/usr/local/sbin/chess-studio-deploy
+launcher_status=unavailable
+if [[ -f "$source_launcher" && ! -L "$source_launcher" && -r "$source_launcher" &&
+      -f "$host_launcher" && ! -L "$host_launcher" && -r "$host_launcher" ]]; then
+  if cmp -s "$source_launcher" "$host_launcher"; then
+    launcher_status=match
+  else
+    launcher_status=drift
+  fi
+fi
+printf 'OCI_BACKEND_LAUNCHER installed_vs_checkout=%s\n' "$launcher_status"
 for service in edge pvp_blue pvp_green; do
   container_id="$(docker ps -aq \
     --filter 'label=com.docker.compose.project=chess-studio-staging' \
@@ -132,6 +146,9 @@ def self_test() -> None:
     assert "checkout_reason=unreadable" in command
     assert "checkout_reason=git_error" in command
     assert "chess-studio-deploy-watcher.service" in command
+    assert "OCI_BACKEND_LAUNCHER installed_vs_checkout=%s" in command
+    assert "cmp -s \"$source_launcher\" \"$host_launcher\"" in command
+    assert all(f"launcher_status={status}" in command for status in ("match", "drift", "unavailable"))
     assert "DEPLOY_WATCH_ENABLED" in command
     assert "docker logs" not in command and "journalctl" not in command
     assert "cat /" not in command and "printenv" not in command
