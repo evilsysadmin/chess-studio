@@ -125,6 +125,45 @@ class HomeGpuCompareTests(unittest.TestCase):
         self.assertIsNone(count["percent"])
         self.assertIn("n/a", format_comparison(result))
 
+    def test_sustained_real_draw_counts_show_up_in_ab(self):
+        self.before["medians"].update(
+            mainDrawCalls=310, shadowDrawCalls=0,
+            mainCastleDrawCalls=265, mainMatthiasDrawCalls=30, mainRuntimeDrawCalls=15,
+            shadowCastleDrawCalls=0, shadowMatthiasDrawCalls=0, shadowRuntimeDrawCalls=0,
+            firstFrameMainDrawCalls=320, firstFrameShadowDrawCalls=0,
+        )
+        self.after["medians"].update(
+            mainDrawCalls=290, shadowDrawCalls=0,
+            mainCastleDrawCalls=245, mainMatthiasDrawCalls=30, mainRuntimeDrawCalls=15,
+            shadowCastleDrawCalls=0, shadowMatthiasDrawCalls=0, shadowRuntimeDrawCalls=0,
+            firstFrameMainDrawCalls=310, firstFrameShadowDrawCalls=0,
+        )
+        result = compare_reports(self.before, self.after)
+        real = next(m for m in result["metrics"] if m["key"] == "mainDrawCalls")
+        castle = next(m for m in result["metrics"] if m["key"] == "mainCastleDrawCalls")
+        shadows = next(m for m in result["metrics"] if m["key"] == "shadowDrawCalls")
+        self.assertEqual((real["before"], real["after"], real["delta"]), (310, 290, -20))
+        self.assertEqual(castle["delta"], -20)
+        self.assertEqual((shadows["before"], shadows["after"], shadows["percent"]), (0, 0, None))
+        self.assertIn("Sustained main draws", format_comparison(result))
+        self.assertIn("measured renderer submissions", format_comparison(result))
+
+    def test_legacy_reports_do_not_invent_sustained_draw_savings(self):
+        comparison = compare_reports(self.before, self.after)
+        for key in ("mainDrawCalls", "shadowDrawCalls", "mainCastleDrawCalls",
+                    "firstFrameMainDrawCalls", "shadowRuntimeDrawCalls"):
+            metric = next(m for m in comparison["metrics"] if m["key"] == key)
+            self.assertIsNone(metric["before"])
+            self.assertIsNone(metric["after"])
+            self.assertIsNone(metric["delta"])
+        self.assertIn("n/a", format_comparison(comparison))
+
+    def test_invalid_sustained_draw_count_is_rejected(self):
+        for value in (-1, float("nan"), float("inf"), "12", True):
+            after = copy.deepcopy(self.after)
+            after["medians"]["mainDrawCalls"] = value
+            self.rejected("invalid mainDrawCalls median", after=after)
+
     def test_optional_glb_draw_inventory_is_labeled_as_candidates(self):
         self.before["medians"].update(modelDrawSlots=140, modelShadowCasterSlots=100,
                                       modelTransparentSlots=18, modelUniqueGeometries=80,
