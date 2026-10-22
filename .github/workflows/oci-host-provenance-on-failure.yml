@@ -35,6 +35,7 @@ jobs:
       name: staging
     env:
       EXPECTED_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+      PROVENANCE_EVENT: ${{ github.event_name }}
       OCI_TENANCY_OCID: ${{ secrets.OCI_TENANCY_OCID }}
       OCI_USER_OCID: ${{ secrets.OCI_USER_OCID }}
       OCI_FINGERPRINT: ${{ secrets.OCI_FINGERPRINT }}
@@ -53,6 +54,11 @@ jobs:
         run: |
           set -euo pipefail
           python3 -S scripts/oci_backend_diagnose.py --self-test
+          if [[ "$PROVENANCE_EVENT" == push ]]; then
+            echo "::notice::Diagnostic code push: transport snapshot only, no expected-SHA accreditation."
+            python3 scripts/oci_backend_diagnose.py
+            exit 0
+          fi
           echo "::notice::Read-only host state for $EXPECTED_SHA; not public staging accreditation."
           if python3 scripts/oci_backend_diagnose.py --expected-sha "$EXPECTED_SHA"; then
             echo "::notice::Host checkout and committed marker match; public route still needs separate verification."
@@ -68,6 +74,7 @@ jobs:
             exit "$code"
           fi
       - name: Compare public staging release with requested revision (read-only)
-        if: ${{ !cancelled() }}
+        # A source push is a transport self-check, not public accreditation.
+        if: ${{ !cancelled() && github.event_name != 'push' }}
         shell: bash
         run: python3 -S scripts/oci_public_staging_release.py --expected-sha "$EXPECTED_SHA"
