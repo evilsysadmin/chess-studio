@@ -84,6 +84,11 @@ export function createClassicWarRoomShellController(
         canvas.dataset.warRoomClassicUniqueGeometries = String(census.uniqueGeometries);
         canvas.dataset.warRoomClassicPotentialTriangles = String(census.potentialTriangles);
         canvas.dataset.warRoomClassicUniqueTriangles = String(census.uniqueTriangles);
+        // Local-only, once-after-build inventory. Five leading geometry types
+        // aid rollback/perf audits without adding a per-frame GPU probe.
+        canvas.dataset.warRoomClassicTopGeometryFamilies = JSON.stringify(
+          census.geometryFamilies.slice(0, 5),
+        );
       }
     },
   });
