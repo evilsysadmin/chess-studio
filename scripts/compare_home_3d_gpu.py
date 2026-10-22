@@ -144,6 +144,32 @@ def _check_draw_census(report, label):
         sustained = visit["drawPass"]["families"]["main"]
         if sustained["castle"] <= 0 or sustained["matthias"] <= 0:
             raise IncomparableBenchmarks(f"{label}: visit {index} castle/Matthias draws missing")
+    # The reporter takes one median across the three measured visits.
+    # Never accept a summary with claimed savings disconnected from samples.
+    metric_paths = {
+        "mainDrawCalls": ("drawPass", "mainCalls"),
+        "shadowDrawCalls": ("drawPass", "shadowCalls"),
+        "mainCastleDrawCalls": ("drawPass", "families", "main", "castle"),
+        "mainMatthiasDrawCalls": ("drawPass", "families", "main", "matthias"),
+        "mainRuntimeDrawCalls": ("drawPass", "families", "main", "runtime"),
+        "shadowCastleDrawCalls": ("drawPass", "families", "shadow", "castle"),
+        "shadowMatthiasDrawCalls": ("drawPass", "families", "shadow", "matthias"),
+        "shadowRuntimeDrawCalls": ("drawPass", "families", "shadow", "runtime"),
+        "firstFrameMainDrawCalls": ("firstFrameDrawPass", "mainCalls"),
+        "firstFrameShadowDrawCalls": ("firstFrameDrawPass", "shadowCalls"),
+    }
+    for key, path in metric_paths.items():
+        samples = []
+        for visit in report["visits"]:
+            nested = visit
+            for part in path:
+                nested = nested[part]
+            samples.append(nested)
+        expected = sorted(samples)[1]  # Exactly three previously verified visits.
+        if report["medians"][key] != expected:
+            raise IncomparableBenchmarks(
+                f"{label}: claimed {key} median disagrees with measured draw visits"
+            )
     return True
 
 
