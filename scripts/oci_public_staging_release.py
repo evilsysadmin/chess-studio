@@ -26,11 +26,22 @@ def validated_build(payload: bytes) -> str:
         return "unavailable"
 
 
-def read_public_release(expected: str) -> tuple[str, str]:
-    request = Request(
+def public_release_request(expected: str) -> Request:
+    # Match the accredited staging verifier's request shape. Cloudflare may
+    # reject the default Python-urllib user agent before reaching the API.
+    return Request(
         STAGING_RELEASE + "?sha=" + expected,
-        headers={"Accept": "application/json", "Cache-Control": "no-cache"},
+        headers={
+            "Accept": "application/json",
+            "Cache-Control": "no-cache, no-store",
+            "Pragma": "no-cache",
+            "User-Agent": "chess-studio-staging-deploy/6",
+        },
     )
+
+
+def read_public_release(expected: str) -> tuple[str, str]:
+    request = public_release_request(expected)
     try:
         with urlopen(request, timeout=8) as response:
             status = str(response.status)
@@ -51,6 +62,11 @@ def self_test() -> None:
                   b'{"build":1234}', b'{"token":"must-never-print"}'):
         assert validated_build(value) == "unavailable"
     assert STAGING_RELEASE.startswith("https://")
+    request = public_release_request(good)
+    assert request.full_url == STAGING_RELEASE + "?sha=" + good
+    assert request.get_header("User-agent") == "chess-studio-staging-deploy/6"
+    assert request.get_header("Pragma") == "no-cache"
+    assert request.get_header("Cache-control") == "no-cache, no-store"
     assert SHA.fullmatch(good) and not SHA.fullmatch("main")
     print("OCI public staging release probe self-test: OK")
 
