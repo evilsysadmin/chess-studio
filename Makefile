@@ -393,6 +393,7 @@ home-gpu-draw-census: ensure-e2e-deps frontend-build
 	@cd e2e && $(HOME_GPU_ENV) CHESS_HOME_GPU_MODE=hardware \
 		CHESS_HOME_GPU_LIGHT_PROBE=0 CHESS_HOME_GPU_HEADLESS=$(HOME_GPU_HEADLESS) \
 		CHESS_HOME_GPU_REQUIRE_TIMER=1 CHESS_HOME_GPU_REQUIRE_DRAW_CENSUS=1 \
+		CHESS_HOME_GPU_AMBIENT=$(HOME_GPU_AMBIENT) \
 		CHESS_HOME_GPU_EXPECT_VENDOR=$(HOME_GPU_EXPECT_VENDOR) \
 		CHESS_HOME_GPU_REVISION="$$(git rev-parse HEAD)" \
 		./node_modules/.bin/playwright test --config=playwright.home-gpu.config.js
@@ -528,6 +529,7 @@ static-preflight: capacity-probe-check test-parity-check test-flake-check audio-
 	@python3 -S tests/test_war_room_v2_single_hearth.py
 	@python3 -S tests/test_war_room_v2_revision_immutability.py
 	@node --test e2e/home-blender-gpu-light-contrast.test.mjs
+	@node --test e2e/home-gpu-ambient-clock.test.mjs
 	@node --test e2e/home-gpu-revision.test.mjs
 	@node --test e2e/war-room-gpu-shadow-readiness.test.mjs
 	@python3 -S -m unittest discover -s scripts -p 'test_compare_home_3d_gpu.py' -v
