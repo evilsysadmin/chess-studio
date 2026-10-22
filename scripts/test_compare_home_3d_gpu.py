@@ -164,6 +164,69 @@ class HomeGpuCompareTests(unittest.TestCase):
             after["medians"]["mainDrawCalls"] = value
             self.rejected("invalid mainDrawCalls median", after=after)
 
+    def _attach_draw_census(self, record):
+        record["requireDrawCensus"] = True
+        record["medians"].update(
+            mainDrawCalls=310, shadowDrawCalls=0,
+            mainCastleDrawCalls=260, mainMatthiasDrawCalls=30,
+            mainRuntimeDrawCalls=20, shadowCastleDrawCalls=0,
+            shadowMatthiasDrawCalls=0, shadowRuntimeDrawCalls=0,
+            firstFrameMainDrawCalls=320, firstFrameShadowDrawCalls=0,
+        )
+        for visit in record["visits"]:
+            visit["drawPass"] = {
+                "mainCalls": 310, "shadowCalls": 0, "totalCalls": 310,
+                "families": {
+                    "main": {"castle": 260, "matthias": 30, "runtime": 20},
+                    "shadow": {"castle": 0, "matthias": 0, "runtime": 0},
+                },
+            }
+            visit["firstFrameDrawPass"] = {
+                "mainCalls": 320, "shadowCalls": 0, "totalCalls": 320,
+                "families": {
+                    "main": {"castle": 270, "matthias": 30, "runtime": 20},
+                    "shadow": {"castle": 0, "matthias": 0, "runtime": 0},
+                },
+            }
+
+    def test_required_draw_census_accepts_complete_physical_submissions(self):
+        for record in (self.before, self.after):
+            self._attach_draw_census(record)
+        result = compare_reports(self.before, self.after)
+        self.assertTrue(result["drawCensusEvidenceComplete"])
+        self.assertIn("Sustained main draws", format_comparison(result))
+
+    def test_required_census_missing_one_side_rejected_no_forged_savings(self):
+        self._attach_draw_census(self.before)
+        self.rejected("Required real draw census differs")
+        self._attach_draw_census(self.after)
+        self.before["visits"][1].pop("drawPass")
+        self.rejected("missing drawPass census")
+        legacy = compare_reports(report("0123456789abcdef"), report("abcdef0123456789"))
+        self.assertFalse(legacy["drawCensusEvidenceComplete"])
+        self.assertIn("NOT REQUIRED", format_comparison(legacy))
+
+    def test_required_census_rejects_bad_families_and_missing_medians(self):
+        for record in (self.before, self.after):
+            self._attach_draw_census(record)
+        bad = copy.deepcopy(self.after)
+        bad["visits"][0]["drawPass"]["families"]["main"]["matthias"] = 0
+        self.rejected("inconsistent drawPass main families", after=bad)
+        bad = copy.deepcopy(self.after)
+        bad["visits"][2]["firstFrameDrawPass"]["totalCalls"] = 311
+        self.rejected("inconsistent firstFrameDrawPass total", after=bad)
+        bad = copy.deepcopy(self.after)
+        bad["medians"]["mainDrawCalls"] = None
+        self.rejected("required sustained draw median mainDrawCalls", after=bad)
+        bad = copy.deepcopy(self.after)
+        bad["visits"][1]["drawPass"]["families"]["main"]["castle"] = False
+        self.rejected("invalid drawPass main families", after=bad)
+
+    def test_required_census_flag_must_be_boolean(self):
+        invalid = copy.deepcopy(self.after)
+        invalid["requireDrawCensus"] = "true"
+        self.rejected("requireDrawCensus must be boolean", after=invalid)
+
     def test_scene_identity_same_station_and_shadows_remains_comparable(self):
         for report_data in (self.before, self.after):
             for visit in report_data["visits"]:

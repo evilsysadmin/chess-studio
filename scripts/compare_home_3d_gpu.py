@@ -92,6 +92,61 @@ def _check_report(report, label):
 
 
 
+
+# An opt-in production draw census is stronger evidence than a one-time GLB
+# material inventory. Never compare a census-enabled run against an
+# uncensused one, or silently accept incomplete renderer submissions.
+_CENSUS_METRICS = (
+    "mainDrawCalls", "shadowDrawCalls",
+    "mainCastleDrawCalls", "mainMatthiasDrawCalls", "mainRuntimeDrawCalls",
+    "shadowCastleDrawCalls", "shadowMatthiasDrawCalls", "shadowRuntimeDrawCalls",
+    "firstFrameMainDrawCalls", "firstFrameShadowDrawCalls",
+)
+
+
+def _check_draw_census(report, label):
+    requested = report.get("requireDrawCensus", False)
+    if type(requested) is not bool:
+        raise IncomparableBenchmarks(f"{label}: requireDrawCensus must be boolean")
+    if not requested:
+        return False  # Historical non-census reports remain comparable.
+
+    for key in _CENSUS_METRICS:
+        value = report["medians"].get(key)
+        if not _finite_number(value) or value < 0:
+            raise IncomparableBenchmarks(f"{label}: required sustained draw median {key} missing or invalid")
+    if report["medians"]["mainDrawCalls"] <= 0:
+        raise IncomparableBenchmarks(f"{label}: no sustained main draw submissions")
+
+    for index, visit in enumerate(report["visits"], 1):
+        for pass_key in ("drawPass", "firstFrameDrawPass"):
+            observed = visit.get(pass_key)
+            if not isinstance(observed, dict):
+                raise IncomparableBenchmarks(f"{label}: visit {index} missing {pass_key} census")
+            counts = ("mainCalls", "shadowCalls", "totalCalls")
+            if any(type(observed.get(k)) is not int or observed[k] < 0 for k in counts):
+                raise IncomparableBenchmarks(f"{label}: visit {index} invalid {pass_key} draw counts")
+            if (observed["totalCalls"] <= 0
+                or observed["mainCalls"] + observed["shadowCalls"] != observed["totalCalls"]):
+                raise IncomparableBenchmarks(f"{label}: visit {index} inconsistent {pass_key} total")
+            families = observed.get("families")
+            if not isinstance(families, dict):
+                raise IncomparableBenchmarks(f"{label}: visit {index} missing {pass_key} families")
+            for phase in ("main", "shadow"):
+                group = families.get(phase)
+                if not isinstance(group, dict) or any(
+                    type(group.get(k)) is not int or group[k] < 0
+                    for k in ("castle", "matthias", "runtime")
+                ):
+                    raise IncomparableBenchmarks(f"{label}: visit {index} invalid {pass_key} {phase} families")
+                if sum(group[k] for k in ("castle", "matthias", "runtime")) != observed[f"{phase}Calls"]:
+                    raise IncomparableBenchmarks(f"{label}: visit {index} inconsistent {pass_key} {phase} families")
+        sustained = visit["drawPass"]["families"]["main"]
+        if sustained["castle"] <= 0 or sustained["matthias"] <= 0:
+            raise IncomparableBenchmarks(f"{label}: visit {index} castle/Matthias draws missing")
+    return True
+
+
 # A physical run may leave live flames unmeasured (older captures, reduced
 # motion, incomplete animation). Never fabricate zero material slots.
 _FLAME_LIVE_FIELDS = (
@@ -137,6 +192,10 @@ def compare_reports(baseline, candidate):
         raise IncomparableBenchmarks("Browser, viewport/DPR, timer mode, renderer, LOD, lighting, framebuffer or Matthias/shadows scene identity differs")
     if baseline["revision"].lower() == candidate["revision"].lower():
         raise IncomparableBenchmarks("Same revision on both sides; supply distinct baseline/candidate SHAs")
+    before_census = _check_draw_census(baseline, "baseline")
+    after_census = _check_draw_census(candidate, "candidate")
+    if before_census != after_census:
+        raise IncomparableBenchmarks("Required real draw census differs between revisions")
     before_flames = _flame_live_identity(baseline, "baseline")
     after_flames = _flame_live_identity(candidate, "candidate")
     if before_flames is not None and after_flames is not None and before_flames != after_flames:
@@ -188,6 +247,7 @@ def compare_reports(baseline, candidate):
         "metrics": metrics,
         "gpuTimingAvailable": next(m for m in metrics if m["key"] == "gpuMs")["delta"] is not None,
         "flameEvidenceComplete": before_flames is not None and after_flames is not None,
+        "drawCensusEvidenceComplete": before_census and after_census,
     }
 
 
@@ -210,6 +270,8 @@ def format_comparison(result):
                      f"{_cell(metric['delta']):>12} {percent:>12}")
     if not result["gpuTimingAvailable"]:
         lines.append("GPU timing: UNAVAILABLE on one/both revisions; CPU times are NOT GPU measurements.")
+    if not result["drawCensusEvidenceComplete"]:
+        lines.append("Sustained draw census: NOT REQUIRED on both revisions; do not assert actual draw savings.")
     if result["flameEvidenceComplete"]:
         lines.append("Live flame population matches in both revisions; material sidedness may differ intentionally.")
     else:
