@@ -6,6 +6,7 @@ on:
     branches: [main]
     paths:
       - scripts/oci_backend_diagnose.py
+      - scripts/oci_public_staging_release.py
       - .github/workflows/oci-host-provenance-on-failure.yml
   workflow_run:
     workflows: ['Deploy to staging']
@@ -66,3 +67,7 @@ jobs:
             esac
             exit "$code"
           fi
+      - name: Compare public staging release with requested revision (read-only)
+        if: ${{ !cancelled() }}
+        shell: bash
+        run: python3 -S scripts/oci_public_staging_release.py --expected-sha "$EXPECTED_SHA"

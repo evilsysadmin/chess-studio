@@ -521,6 +521,7 @@ static-preflight: capacity-probe-check test-parity-check test-flake-check audio-
 	@python3 scripts/synthetic_health_contract.py
 	@python3 -S scripts/oci_cloudflare_tunnel.py --self-test
 	@python3 -S scripts/oci_backend_diagnose.py --self-test
+	@python3 -S scripts/oci_public_staging_release.py --self-test
 	@python3 -S scripts/compare_war_room_gpu.py --self-test
 	@python3 -S scripts/run_war_room_gpu_ab.py --self-test
 	@python3 -S scripts/run_war_room_gpu_baseline.py --self-test
