@@ -1455,6 +1455,21 @@ if ! pull_immutable_image "$pvp_target_image"; then
 fi
 phase_done image_pull "$image_pull_started_ms"
 
+# Image availability can lag the main admission by minutes. An unrelated main
+# merge during that wait invalidates this staging generation. Drop it *before*
+# Docker Compose starts or replaces a serving slot; keep the current slot live.
+# A failed origin probe is not proof of supersession and must fail closed.
+if supersede_if_stale; then
+  :
+else
+  status=$?
+  if [[ "$status" == 42 ]]; then
+    echo "OCI_DEPLOY_PRE_RECREATE_SUPERSEDED repo_ref=$sha"
+    exit 0
+  fi
+  exit "$status"
+fi
+
 recreate_started_ms="$(now_ms)"
 previous_color="$(read_active_color)"
 if [[ -n "$previous_color" ]]; then
