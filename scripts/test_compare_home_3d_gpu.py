@@ -150,6 +150,60 @@ class HomeGpuCompareTests(unittest.TestCase):
         self.after["medians"]["modelDrawSlots"] = -1
         self.rejected("invalid modelDrawSlots median")
 
+    def _attach_live_flames(self, record, *, slots=73, transparent=73, single=0):
+        evidence = {
+            "flameNodes": 29, "hotNodes": 19, "candleNodes": 25,
+            "materialSlots": slots, "doubleSided": slots, "frontSided": 0,
+            "otherSided": 0, "transparentNow": transparent,
+            "transparentDoubleSidedNow": transparent,
+            "singlePassTransparentDoubleSidedNow": single,
+        }
+        for visit in record["visits"]:
+            visit["flamePassLiveEligibility"] = dict(evidence)
+
+    def test_live_flame_population_matches_while_single_pass_changes(self):
+        self._attach_live_flames(self.before, single=0)
+        self._attach_live_flames(self.after, single=73)
+        result = compare_reports(self.before, self.after)
+        self.assertTrue(result["flameEvidenceComplete"])
+        self.assertIn("Live flame population matches", format_comparison(result))
+
+    def test_missing_live_flame_census_stays_unknown_not_zero(self):
+        self._attach_live_flames(self.after)
+        result = compare_reports(self.before, self.after)
+        self.assertFalse(result["flameEvidenceComplete"])
+        self.assertIn("UNAVAILABLE", format_comparison(result))
+        old = compare_reports(report("0123456789abcdef"), report("abcdef0123456789"))
+        self.assertFalse(old["flameEvidenceComplete"])
+
+    def test_rejects_partially_missing_or_drifting_live_flame_counts(self):
+        self._attach_live_flames(self.before)
+        self._attach_live_flames(self.after)
+        missing = copy.deepcopy(self.before)
+        missing["visits"][1]["flamePassLiveEligibility"] = None
+        self.rejected("missing from some visits", before=missing)
+        drift = copy.deepcopy(self.before)
+        drift["visits"][2]["flamePassLiveEligibility"]["transparentNow"] = 72
+        drift["visits"][2]["flamePassLiveEligibility"]["transparentDoubleSidedNow"] = 72
+        self.rejected("population drifted", before=drift)
+        mismatch = copy.deepcopy(self.after)
+        for visit in mismatch["visits"]:
+            visit["flamePassLiveEligibility"]["flameNodes"] = 28
+        self.rejected("population differs", after=mismatch)
+
+    def test_rejects_corrupt_live_material_sidedness_or_forged_zero(self):
+        self._attach_live_flames(self.before)
+        self._attach_live_flames(self.after)
+        for mutate in (
+            lambda e: e.update(doubleSided=72),
+            lambda e: e.update(transparentNow=74),
+            lambda e: e.update(singlePassTransparentDoubleSidedNow=74),
+            lambda e: e.update(flameNodes=True),
+        ):
+            invalid = copy.deepcopy(self.after)
+            mutate(invalid["visits"][0]["flamePassLiveEligibility"])
+            self.rejected("invalid|inconsistent", after=invalid)
+
     def test_dawn_and_dusk_are_legitimate_if_identical(self):
         for data in (self.before, self.after):
             for visit in data["visits"]:

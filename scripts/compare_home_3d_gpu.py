@@ -78,6 +78,44 @@ def _check_report(report, label):
     return (browser, tuple(viewport[k] for k in ("width", "height", "dpr")), bool(report.get("requireTimer")), signatures[0])
 
 
+
+# A physical run may leave live flames unmeasured (older captures, reduced
+# motion, incomplete animation). Never fabricate zero material slots.
+_FLAME_LIVE_FIELDS = (
+    "flameNodes", "hotNodes", "candleNodes", "materialSlots", "doubleSided",
+    "frontSided", "otherSided", "transparentNow",
+    "transparentDoubleSidedNow", "singlePassTransparentDoubleSidedNow",
+)
+_FLAME_IDENTITY_FIELDS = (
+    "flameNodes", "hotNodes", "candleNodes", "materialSlots", "transparentNow",
+)
+
+
+def _flame_live_identity(report, label):
+    captures = [visit.get("flamePassLiveEligibility") for visit in report["visits"]]
+    if all(capture is None for capture in captures):
+        return None  # Legacy/missing live evidence is unknown, not zero.
+    if any(capture is None for capture in captures):
+        raise IncomparableBenchmarks(f"{label}: live flame census is missing from some visits")
+
+    identities = []
+    for index, capture in enumerate(captures, 1):
+        if not isinstance(capture, dict) or any(
+            type(capture.get(key)) is not int or capture[key] < 0
+            for key in _FLAME_LIVE_FIELDS
+        ):
+            raise IncomparableBenchmarks(f"{label}: invalid live flame census in visit {index}")
+        if (capture["materialSlots"] != capture["doubleSided"] + capture["frontSided"] + capture["otherSided"]
+            or capture["transparentNow"] > capture["materialSlots"]
+            or capture["transparentDoubleSidedNow"] > min(capture["transparentNow"], capture["doubleSided"])
+            or capture["singlePassTransparentDoubleSidedNow"] > capture["transparentDoubleSidedNow"]):
+            raise IncomparableBenchmarks(f"{label}: inconsistent live flame census in visit {index}")
+        identities.append(tuple(capture[key] for key in _FLAME_IDENTITY_FIELDS))
+    if len(set(identities)) != 1:
+        raise IncomparableBenchmarks(f"{label}: live flame population drifted between visits")
+    return identities[0]
+
+
 def compare_reports(baseline, candidate):
     """Return measured per-metric A/B differences; never infer missing timings."""
     old_signature = _check_report(baseline, "baseline")
@@ -86,6 +124,10 @@ def compare_reports(baseline, candidate):
         raise IncomparableBenchmarks("Browser, viewport/DPR, timer mode, renderer, LOD, lighting or framebuffer differs")
     if baseline["revision"].lower() == candidate["revision"].lower():
         raise IncomparableBenchmarks("Same revision on both sides; supply distinct baseline/candidate SHAs")
+    before_flames = _flame_live_identity(baseline, "baseline")
+    after_flames = _flame_live_identity(candidate, "candidate")
+    if before_flames is not None and after_flames is not None and before_flames != after_flames:
+        raise IncomparableBenchmarks("Live flame population differs between hardware revisions")
 
     metrics = []
     for key, label, unit in (
@@ -121,6 +163,7 @@ def compare_reports(baseline, candidate):
         "viewport": old_signature[1],
         "metrics": metrics,
         "gpuTimingAvailable": next(m for m in metrics if m["key"] == "gpuMs")["delta"] is not None,
+        "flameEvidenceComplete": before_flames is not None and after_flames is not None,
     }
 
 
@@ -143,6 +186,10 @@ def format_comparison(result):
                      f"{_cell(metric['delta']):>12} {percent:>12}")
     if not result["gpuTimingAvailable"]:
         lines.append("GPU timing: UNAVAILABLE on one/both revisions; CPU times are NOT GPU measurements.")
+    if result["flameEvidenceComplete"]:
+        lines.append("Live flame population matches in both revisions; material sidedness may differ intentionally.")
+    else:
+        lines.append("Live flame evidence: UNAVAILABLE for one/both revisions; do not infer flame optimization savings.")
     lines.append("A matching renderer fingerprint is not proof of the same physical machine.")
     lines.append("Recheck driver, GPU, browser, power mode, assets/network and repeat A/B runs before claiming a gain.")
     lines.append("Draw counts and Three allocations are counts, not GPU FPS or VRAM usage.")
