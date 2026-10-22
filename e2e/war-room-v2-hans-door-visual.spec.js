@@ -7,13 +7,6 @@ const REVISION = String(process.env.APP_VISUAL_EXPECTED_WAR_ROOM_REVISION || '')
 const DIR = '../.artifacts/app-visual';
 const STAGING = 'https://assets.chess-studio.shadowops.dpdns.org/war-room/v2/staging/revisions/';
 
-function fireGameIndex() {
-  for (let i = 1; i <= 96; i += 1) {
-    if (warRoomHansEventForGame('e2e-game-' + i) === 'fire') return i;
-  }
-  throw new Error('No deterministic Hans V2 fire-game fixture');
-}
-
 // This proof is only registered in the V2 staging visual lane. Other E2E
 // suites must not silently 'pass' a fake skipped door test.
 if (REVISION) test('War Room V2 · Hans opens and closes the real service door', async () => {
@@ -52,17 +45,10 @@ if (REVISION) test('War Room V2 · Hans opens and closes the real service door',
     });
     await login(page);
     await page.evaluate(() => localStorage.setItem('chess-study-war-room-variant-v1', 'v2'));
-    const index = fireGameIndex();
-    if (index > 1) {
-      await page.evaluate(async (count) => {
-        for (let n = 1; n < count; n += 1) {
-          await fetch('http://localhost:4000/api/games', {
-            method: 'POST', mode: 'no-cors',
-            headers: { 'Content-Type': 'text/plain' }, body: '{}',
-          });
-        }
-      }, index);
-    }
+    // Blender rooms offer only the fire routine. The fresh mock creates
+    // e2e-game-1, so don't prime unrelated cross-origin game POST requests
+    // merely to satisfy the classic room's 11-event selector.
+    expect(warRoomHansEventForGame('e2e-game-1', { variant: 'v2' })).toBe('fire');
     await buttonWithVisibleText(page, 'Partida rápida').press('Enter');
     const dialog = page.getByRole('dialog', { name: 'Configurar partida rápida' });
     await expect(dialog).toBeVisible({ timeout: 30_000 });
