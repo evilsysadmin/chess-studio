@@ -188,8 +188,12 @@ describe('offline Home flame A/B/B/A PNG manifest verification', () => {
     ]) {
       const x = example();
       x.report.visits[1][field] = changed;
-      assert.throws(() => validateHomeFlameEvidence(x.report, x.read),
-        /changed fixed physical scene identity|PNG manifest/);
+      // A paused fire is already rejected by the earlier per-visit physical
+      // gate, before the cross-visit scene identity check runs.
+      const expected = field === 'fireMotion'
+        ? /missing physical \/ live alpha \/ query \/ GLB consistency/
+        : /changed fixed physical scene identity|PNG manifest/;
+      assert.throws(() => validateHomeFlameEvidence(x.report, x.read), expected);
     }
   });
 
