@@ -127,11 +127,12 @@ if (REVISION) test('War Room V2 · Hans opens and closes the real service door',
 
     expect(enters.length).toBeGreaterThan(5);
     expect(exits.length).toBeGreaterThan(5);
-    // WarRoomHansActorTelemetry exports world lateral X / actor.side,
-    // *not* hearth-relative stage.hansX. For the V2 white-side scene,
-    // Blender's x=-8.68 wall therefore appears as logicalX=8.68.
-    // Comparing against 4.13 (hearth-relative) falsely fails a real crossing.
-    const wallLocalX = 8.68;
+    // ActorTelemetry's logicalX reads hans.position.x / actor.side. Hans
+    // is a child of the fireplace actor root, so this is FIREPLACE-LOCAL,
+    // not Blender-world X. On the white-side V2 stage, the authored wall
+    // x=-8.68 and hearth x=-4.55 imply a local threshold of 4.13 m.
+    // This is also proven by the exact-SHA browser route JSON.
+    const wallLocalX = 8.68 - 4.55;
     const entryThreshold = enters.filter((f) =>
       Number.isFinite(f.x) && Math.abs(f.x - wallLocalX) <= 0.56);
     const exitThreshold = exits.filter((f) =>

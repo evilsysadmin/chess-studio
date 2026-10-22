@@ -67,7 +67,9 @@ describe('V2 · Hans can enter and work without clipping the command table', () 
       const wallPlaneLocalX = 8.68 - 4.55;
       expect(stage.doorX).toBeGreaterThan(wallPlaneLocalX + ACTOR_RADIUS);
       const outside = hansQuickIterationFrame(0, { stage });
-      const inside = hansQuickIterationFrame(6, { stage });
+      // Door close finishes at 4.3 + 2.4 = 6.7 seconds in V2;
+      // assert after closure, not during the intended safe closing arc.
+      const inside = hansQuickIterationFrame(7, { stage });
       expect(outside.hansX).toBeGreaterThan(wallPlaneLocalX + ACTOR_RADIUS);
       expect(inside.hansX).toBeLessThan(wallPlaneLocalX - ACTOR_RADIUS);
       expect(outside.doorOpen).toBe(1);
