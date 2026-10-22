@@ -407,6 +407,12 @@ export function explainWarRoomHansBlockedRoute(floor, parent, from, to) {
   return result;
 }
 
+// Exact same board no-go rectangle that the physical route planner enforces.
+// Exposed read-only for chore destinations; never weaken the collision rule.
+export function warRoomHansBoardKeepOutBounds(floor, parent) {
+  return boardKeepOutRect(floor, parent);
+}
+
 export function moveWarRoomHansAlongRoute(hans, route, index, maxStep) {
   if (!hans || !Array.isArray(route) || route.length === 0) {
     return { arrived: false, travelled: 0, index: Math.max(0, Number(index) || 0), valid: false };

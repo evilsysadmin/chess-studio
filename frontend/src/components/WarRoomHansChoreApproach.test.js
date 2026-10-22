@@ -47,6 +47,28 @@ describe('Hans physically verified desktop flank fallback', () => {
     expect(selected.routeOut.length).toBeGreaterThan(0);
   });
 
+  it('repositions a blocked desk chore just outside the actual board footprint', () => {
+    const { floor, parent, top } = room();
+    const insideBoard = new THREE.Vector3(-2.65, -0.34, -4.95);
+    expect(warRoomHansBuildSafeRoute(floor, parent, home, insideBoard)).toEqual([]);
+    const selected = approach({ floor, parent, home, target: insideBoard, targetObject: top });
+    expect(selected.boardEdgeDisplacement).toBeGreaterThan(0);
+    expect(selected.boardEdgeDisplacement).toBeLessThanOrEqual(1.4);
+    expect(selected.target.z).toBeLessThan(-5.10);
+    expect(selected.routeIn.length).toBeGreaterThan(0);
+    expect(selected.routeOut.length).toBeGreaterThan(0);
+    expect(selected.routeIn.at(-1)).toEqual(selected.target);
+    expect(selected.routeOut.at(-1)).toEqual(home);
+  });
+
+  it('rejects a deep board-interior target instead of teleporting Hans to an unrelated surface', () => {
+    const { floor, parent, top } = room();
+    const center = new THREE.Vector3(0, -0.34, 0);
+    const selected = approach({ floor, parent, home, target: center, targetObject: top });
+    expect(selected.routeIn).toEqual([]);
+    expect(selected.routeOut).toEqual([]);
+  });
+
   it('fails closed instead of applying a desk detour to other targets or entering the board', () => {
     const { floor, parent } = room();
     const other = new THREE.Group();
