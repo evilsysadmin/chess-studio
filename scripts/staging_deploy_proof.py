@@ -70,6 +70,39 @@ def write_output(path: str, deployed: bool) -> None:
         handle.write(f"deployed={'true' if deployed else 'false'}\n")
 
 
+
+def accreditation_summary(run_id: int, jobs: list[dict]) -> str:
+    """Make green no-op accreditation jobs explicitly non-promotable to operators."""
+    conclusions = {
+        str(job.get("name") or ""): str(job.get("conclusion") or "")
+        for job in jobs if isinstance(job, dict)
+    }
+    missing = [
+        (name, conclusions.get(name, "missing"))
+        for name in REQUIRED_JOBS
+        if conclusions.get(name) != "success"
+    ]
+    if not missing:
+        return (
+            f"### Staging generation verified · run {run_id}\n\n"
+            "All required upstream jobs passed. Promotion eligibility still "
+            "depends on the independent main-lineage gate.\n"
+        )
+    evidence = "\n".join(f"- {name}: {status}" for name, status in missing)
+    return (
+        f"### Staging NOT accredited · run {run_id}\n\n"
+        "The accreditation workflow may finish green because this is a "
+        "**deliberate no-op**, not a deployed generation. "
+        "**No production promotion artifact will be created.**\n\n"
+        f"Upstream jobs without success:\n{evidence}\n"
+    )
+
+
+def write_summary(path: str, summary: str) -> None:
+    if path:
+        with open(path, "a", encoding="utf-8") as handle:
+            handle.write(summary.rstrip() + "\n")
+
 def self_test() -> None:
     green = [{"name": name, "conclusion": "success"} for name in REQUIRED_JOBS]
     assert deployed_generation(green)
@@ -77,6 +110,18 @@ def self_test() -> None:
     failed = [dict(row) for row in green]
     failed[1]["conclusion"] = "skipped"
     assert not deployed_generation(failed)
+    assert "Staging generation verified" in accreditation_summary(123, green)
+    assert "NOT accredited" in accreditation_summary(123, failed)
+    assert "Backend · exact OCI generation: skipped" in accreditation_summary(123, failed)
+    assert "No production promotion artifact" in accreditation_summary(123, failed)
+    assert "Staging generation complete: missing" in accreditation_summary(123, green[:-1])
+    from tempfile import TemporaryDirectory
+    from pathlib import Path
+    with TemporaryDirectory() as tmp:
+        target = Path(tmp) / "summary.md"
+        write_summary(str(target), accreditation_summary(123, failed))
+        assert target.read_text(encoding="utf-8").startswith("### Staging NOT accredited")
+    write_summary("", accreditation_summary(123, failed))
 
     # No network/sleep: prove 502 recovery, bounded exhaustion, fail-fast 403,
     # and no retry of malformed accreditation evidence.
@@ -138,8 +183,10 @@ def main() -> int:
     token = os.environ.get("GITHUB_TOKEN", "")
     if not repository or not token or not args.run_id:
         raise SystemExit("repository/token/run-id requeridos")
-    deployed = deployed_generation(fetch_jobs(repository, args.run_id, token))
+    jobs = fetch_jobs(repository, args.run_id, token)
+    deployed = deployed_generation(jobs)
     write_output(args.github_output, deployed)
+    write_summary(os.environ.get("GITHUB_STEP_SUMMARY", ""), accreditation_summary(args.run_id, jobs))
     if deployed:
         print(f"staging deploy proof OK · run {args.run_id}")
     else:
