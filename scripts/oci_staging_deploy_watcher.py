@@ -199,11 +199,13 @@ def self_test() -> None:
     assert remember_rejected_sha(sample, "known-superseded", sample) == sample
     assert remember_rejected_sha(sample, "image-pending", newer) == sample
     assert remember_rejected_sha(sample, "deployed", newer) == ""
-    with patch(f"{__name__}.ENABLE_MARKER") as marker, (
-        patch(f"{__name__}.fetch_worker_build", return_value=sample)
-    ), patch(f"{__name__}.read_deployed_sha", return_value=rejected), (
-        patch(f"{__name__}.backend_image_available") as image_lookup
-    ), patch(f"{__name__}.deploy") as deploy_call:
+    with (
+        patch(f"{__name__}.ENABLE_MARKER") as marker,
+        patch(f"{__name__}.fetch_worker_build", return_value=sample),
+        patch(f"{__name__}.read_deployed_sha", return_value=rejected),
+        patch(f"{__name__}.backend_image_available") as image_lookup,
+        patch(f"{__name__}.deploy") as deploy_call,
+    ):
         marker.is_file.return_value = True
         marker.is_symlink.return_value = False
         assert iteration(sample) == ("known-superseded", sample)
