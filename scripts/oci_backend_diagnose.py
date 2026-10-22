@@ -147,12 +147,12 @@ def self_test() -> None:
     import subprocess
     awk_source = command.split(" | awk '", 1)[1].split("'", 1)[0]
     fixture = (
-        "OCI_DEPLOY_WATCH_TRIGGER repo_ref=example\\n"
-        "OCI_DEPLOY_WATCH_OK repo_ref=example\\n"
-        "OCI_DEPLOY_WATCH_ERROR type=RuntimeError PRIVATE_SECRET=never-print-me\\n"
-        "OCI_DEPLOY_WATCH_SUPERSEDED repo_ref=example\\n"
-        "OCI_DEPLOY_WATCH_IMAGE_PENDING repo_ref=example\\n"
-        "PRIVATE_SECRET=another-canary\\n"
+        "OCI_DEPLOY_WATCH_TRIGGER repo_ref=example\n"
+        "OCI_DEPLOY_WATCH_OK repo_ref=example\n"
+        "OCI_DEPLOY_WATCH_ERROR type=RuntimeError PRIVATE_SECRET=never-print-me\n"
+        "OCI_DEPLOY_WATCH_SUPERSEDED repo_ref=example\n"
+        "OCI_DEPLOY_WATCH_IMAGE_PENDING repo_ref=example\n"
+        "PRIVATE_SECRET=another-canary\n"
     )
     aggregate = subprocess.run(
         ["awk", awk_source], input=fixture, text=True, capture_output=True, check=True,
