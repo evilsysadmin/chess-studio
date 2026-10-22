@@ -1,6 +1,7 @@
 import { chromium, expect, test } from '@playwright/test';
 import { mkdir, writeFile } from 'node:fs/promises';
-import { buttonWithVisibleText, login, mockApi } from './helpers.js';
+import { login, mockApi } from './helpers.js';
+import { enterWarRoomGpuQuickMatch } from './war-room-gpu-quick-match.js';
 import { WAR_ROOM_HANS_CHORE_EVENTS } from '../frontend/src/components/WarRoomHansChoreContract.js';
 import {
   WAR_ROOM_HANS_EVENTS,
@@ -234,13 +235,11 @@ for (const eventName of CAPTURE_EVENTS) {
     });
       await seedGamesBeforeEvent(page, eventName);
 
-      // Pressing Enter on the immersive Home hotspot can invoke global
-      // keyboard navigation rather than the same trusted activation used by
-      // canonical quick-game E2E. Open the actual button by pointer click.
-      await buttonWithVisibleText(page, 'Partida rápida').click();
-      const quickDialog = page.getByRole('dialog', { name: 'Configurar partida rápida' });
-      await expect(quickDialog).toBeVisible({ timeout: 30_000 });
-      await quickDialog.getByRole('button', { name: 'Empezar partida', exact: true }).click();
+      // The immersive Home hotspot can be re-created during its first
+      // 3D animation frame. Reuse the established War Room entry helper:
+      // it retries the *same* UI activation once, rejects resumed games,
+      // and reports real Home/dialog state if the click never opens setup.
+      await enterWarRoomGpuQuickMatch(page);
       await expect(page.locator('.board-live-row.is-3d-warroom')).toBeVisible({ timeout: MOUNT_BUDGET_MS });
 
       const canvas = page.locator('.board3d-main-canvas');
