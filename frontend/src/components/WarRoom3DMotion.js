@@ -40,6 +40,12 @@ const warRoomMaterialGradeSignatureState = new WeakMap();
 const warRoomMaterialGradeObjectIds = new WeakMap();
 let nextWarRoomMaterialGradeObjectId = 1;
 
+// Fixed quality preferences never create an adaptive governor. In that case
+// preserve the normal shadow cadence instead of reading .tier on undefined.
+export function warRoomShadowFactorForGovernor(governor) {
+  return warRoomShadowIntervalFactor(governor?.tier);
+}
+
 export function materialGradeRefreshInterval({ activeMotion = false } = {}) {
   // Historical cadence helper retained for compatibility with existing callers
   // and tests. The War Room render path no longer uses this timer: material
@@ -555,7 +561,7 @@ function installWarRoomRenderDiscipline() {
       lastShadowAt: state.lastShadowAt,
       coarsePointer,
       activeMotion,
-      factor: warRoomShadowIntervalFactor(state.governor.tier),
+      factor: warRoomShadowFactorForGovernor(state.governor),
     })) {
       this.shadowMap.needsUpdate = true;
       state.lastShadowAt = now;
