@@ -10,7 +10,6 @@ from urllib.parse import quote
 
 import main_ci_admission as admission
 import staging_deploy_scope as deploy_scope
-import staging_generation_diff as generation_diff
 import staging_generation as generation
 import staging_optional_scope as optional_scope
 import staging_smoke_only as smoke_only
@@ -93,32 +92,9 @@ def manual_main_admission_green(sha: str, repository: str, token: str, *, get=ad
     )
 
 
-def require_pending_since_complete(
-    head: str,
-    required: bool,
-    reason: str,
-    *,
-    diff_lookup=generation_diff.diff_since_previous_complete,
-) -> tuple[bool, str]:
-    """Never skip an uncompleted runtime deployment behind a doc/test merge.
-
-    The one-commit classifier is cheap, but rapid merges can cancel the deploy
-    of a runtime change before a later non-runtime commit reaches admission.
-    Compare against the last *complete* staging generation on the skip path.
-    If the baseline cannot be established, run the guarded full deploy.
-    """
-    if required:
-        return required, reason
-    try:
-        pending_paths, base, _run_id = diff_lookup(head)
-        if not pending_paths:
-            return False, f"no-pending-diff:{base[:12]}"
-        pending_required, pending_reason = deploy_scope.deploy_required_for_paths(pending_paths)
-        if pending_required:
-            return True, f"pending-since-complete:{base[:12]}:{pending_reason}"
-        return False, f"non-runtime-since-complete:{base[:12]}"
-    except (OSError, RuntimeError, ValueError) as exc:
-        return True, f"pending-diff-fail-open:{type(exc).__name__}"
+# Shared with the backend image publisher: never omit the immutable OCI tag
+# when staging still has an unapplied runtime generation.
+require_pending_since_complete = deploy_scope.require_pending_since_complete
 
 
 def prepare(sha: str) -> dict[str, str]:

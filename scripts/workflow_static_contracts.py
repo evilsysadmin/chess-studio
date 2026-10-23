@@ -117,6 +117,7 @@ def validate_main_backend_image_non_runtime_gate(root: Path = ROOT) -> None:
         "name: Backend · classify admitted deploy surface",
         "runs-on: ubuntu-24.04",
         'python3 -S scripts/staging_deploy_scope.py --sha "$DEPLOY_SHA" --github-output "$GITHUB_OUTPUT"',
+        "--include-pending",
         "deploy_required: ${{ steps.scope.outputs.deploy_required }}",
         "backend_needs_build: ${{ steps.image_scope.outputs.backend_needs_build }}",
         "pvp_needs_build: ${{ steps.image_scope.outputs.pvp_needs_build }}",
