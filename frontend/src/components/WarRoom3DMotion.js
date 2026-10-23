@@ -174,9 +174,16 @@ export function applyWarRoomKeyLightGrade(scene) {
   // profile and ambient lift, not from tinting every surface amber.
   const whiteSide = (Number(key.position?.z) || 0) >= 0;
   const pose = warRoomKeyLightPose({ whiteSide });
-  if (typeof key.position?.set === 'function') key.position.set(pose.x, pose.y, pose.z);
-  else if (key.position) Object.assign(key.position, pose);
-  if (typeof key.color?.setHex === 'function') key.color.setHex(0xffd8ac);
+  // Preserve the authored pose, but avoid redundant Three.js transform/color
+  // mutations on each ambient paint. Reapply immediately if another owner
+  // actually moves or recolors the light (e.g. a variant/orientation change).
+  if (key.position && (key.position.x !== pose.x || key.position.y !== pose.y || key.position.z !== pose.z)) {
+    if (typeof key.position.set === 'function') key.position.set(pose.x, pose.y, pose.z);
+    else Object.assign(key.position, pose);
+  }
+  if (typeof key.color?.setHex === 'function' && key.color.getHex?.() !== 0xffd8ac) {
+    key.color.setHex(0xffd8ac);
+  }
 
   scene.userData ||= {};
   scene.userData.warRoomKeyLightPose = 'high-side-v1';
@@ -219,9 +226,13 @@ export function applyWarRoomWarmFillGrade(scene) {
   }
   const keyZ = Number(scene.userData?.warRoomKeyLightPosition?.z ?? key?.position?.z) || 0;
   const pose = warRoomWarmFillPose({ whiteSide: keyZ >= 0 });
-  if (typeof warm.position?.set === 'function') warm.position.set(pose.x, pose.y, pose.z);
-  else if (warm.position) Object.assign(warm.position, pose);
-  if (typeof warm.color?.setHex === 'function') warm.color.setHex(0xffb45f);
+  if (warm.position && (warm.position.x !== pose.x || warm.position.y !== pose.y || warm.position.z !== pose.z)) {
+    if (typeof warm.position.set === 'function') warm.position.set(pose.x, pose.y, pose.z);
+    else Object.assign(warm.position, pose);
+  }
+  if (typeof warm.color?.setHex === 'function' && warm.color.getHex?.() !== 0xffb45f) {
+    warm.color.setHex(0xffb45f);
+  }
 
   scene.userData ||= {};
   scene.userData.warRoomRankSeparation = 'lateral-graze-ranks-v3';
