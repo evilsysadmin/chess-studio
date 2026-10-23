@@ -93,7 +93,9 @@ case "$mode" in
     if has_group warroom; then
       has_producer pvp-duel && specs+=(war-room-pvp-duel-visual-artifact.spec.js)
       has_producer combat-battle && specs+=(war-room-combat-battle-visual-artifact.spec.js)
-      has_producer combat-prep && specs+=(war-room-combat-preparation-visual-artifact.spec.js)
+      if has_producer combat-prep; then
+        specs+=(war-room-combat-preparation-visual-artifact.spec.js combat-briefing-room-visual-artifact.spec.js)
+      fi
       has_producer warroom-core && warroom_core_selected=true
       has_producer warroom-decor && specs+=(war-room-decor-visual-artifact.spec.js)
       has_producer warroom-armor && specs+=(war-room-armor-oblique-visual-artifact.spec.js)
