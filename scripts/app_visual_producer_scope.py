@@ -288,14 +288,6 @@ def _e2e_producer(name: str) -> set[str] | None:
         "experiments-visual-artifact.spec.js": {"experiments-hub"},
         "lab-mobile-room.spec.js": {"experiments-hub"},
         "pawn-slug-godot-visual-artifact.spec.js": {"experiments-hub"},
-        # Chronicles and Tactics moved to their own repository: their old
-        # visual specs no longer exist and wake no producer.
-        "chronicles-tactics-visual-artifact.spec.js": set(),
-        "chronicles-gameplay-visual-artifact.spec.js": set(),
-        "chronicles-avatar-visual-artifact.spec.js": set(),
-        "chronicles-of-matthias.spec.js": set(),
-        "chronicles-of-matthias-tactics.spec.js": set(),
-        "chronicles-runtime-mount.spec.js": set(),
         # This monolithic spec contains independently scoped training
         # producers. Treat it as a neutral companion when product-owned files
         # are present; classify() falls back to TRAINING_ALL for spec-only edits.
@@ -774,6 +766,17 @@ def self_test() -> None:
     assert classify(["scripts/art/build_chronicles_procedural_sprites.py"]) == "all"
     assert classify(["scripts/art/chronicles_sprites/source/drowned.idle.png"]) == "all"
     assert classify(["scripts/chronicles/new_renderer.py"]) == "all"
+    # A removed Chronicles browser suite must never silently pass as a known
+    # neutral E2E test when someone reintroduces its filename.
+    for retired_spec in (
+        "chronicles-tactics-visual-artifact.spec.js",
+        "chronicles-gameplay-visual-artifact.spec.js",
+        "chronicles-avatar-visual-artifact.spec.js",
+        "chronicles-of-matthias.spec.js",
+        "chronicles-of-matthias-tactics.spec.js",
+        "chronicles-runtime-mount.spec.js",
+    ):
+        assert classify([f"e2e/{retired_spec}"]) == "all", retired_spec
     # Unknown/global changes fan out to every surviving app-owned producer.
     assert project_app_producers("all") != "all"
     assert "chronicles" not in project_app_producers("all")
