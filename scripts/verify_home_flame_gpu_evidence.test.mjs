@@ -97,6 +97,11 @@ function example() {
       savedMainDrawCalls: 12, reduced: true, gpuMedianImproved: true,
       physicalResultsStable: true, visualReviewRequired: true,
     },
+    stability: {
+      baseDriftPct: 0, variantDriftPct: 0,
+      pairedDifferencesMs: [9.5 - 8.9, 9.5 - 8.9],
+      flags: [], repeatRecommended: true,
+    },
     gpuContrastPct: 100 * (9.5 - 8.9) / 9.5,
     visualEvidence: [...HOME_FLAME_PNGS], visualEvidenceHashes, visits,
     interpretation: {
@@ -294,6 +299,57 @@ describe('offline Home flame A/B/B/A PNG manifest verification', () => {
       assert.throws(() => validateHomeFlameEvidence(x.report, x.read),
         /changed authored flame material identity/);
     }
+  });
+
+  it('rejects forged stable verdicts, drift percentages and pairing claims', () => {
+    for (const manipulate of [
+      (x) => { x.report.stability.baseDriftPct = 0.1; },
+      (x) => { x.report.stability.variantDriftPct = 12; },
+      (x) => { x.report.stability.pairedDifferencesMs[1] = 0; },
+      (x) => { x.report.stability.flags = ['normal-drift-over-15pct']; },
+      (x) => { x.report.stability.repeatRecommended = false; },
+      (x) => { x.report.drawEvidence.physicalResultsStable = false; },
+      (x) => { delete x.report.stability; },
+    ]) {
+      const x = example();
+      manipulate(x);
+      assert.throws(() => validateHomeFlameEvidence(x.report, x.read),
+        /stability and paired-drift claims differ/);
+    }
+  });
+
+  it('rejects contradicted A/B pairs even when their GPU aggregate appears faster', () => {
+    const x = example();
+    // A(9.5), B(8.9), B(10.0), A(9.5): one paired comparison
+    // favors single-pass, the other opposes it. The aggregate is not proof.
+    const changed = x.report.visits[2];
+    changed.gpuMedianMs = 10.0;
+    changed.gpuSamplesMs = [10, 9.9, 10.1, 10];
+    x.report.gpuMedianMs.single = (8.9 + 10) / 2;
+    x.report.gpuDifferenceMs = 9.5 - x.report.gpuMedianMs.single;
+    x.report.gpuContrastPct = 100 * x.report.gpuDifferenceMs / 9.5;
+    x.report.drawEvidence.gpuMedianImproved = x.report.gpuDifferenceMs > 0;
+    assert.throws(() => validateHomeFlameEvidence(x.report, x.read),
+      /stability and paired-drift claims differ/);
+  });
+
+  it('accepts correctly recorded unstable physical runs but never approves production', () => {
+    const x = example();
+    const changed = x.report.visits[2];
+    changed.gpuMedianMs = 10.0;
+    changed.gpuSamplesMs = [10, 9.9, 10.1, 10];
+    const single = (8.9 + 10) / 2;
+    x.report.gpuMedianMs.single = single;
+    x.report.gpuDifferenceMs = 9.5 - single;
+    x.report.gpuContrastPct = 100 * x.report.gpuDifferenceMs / 9.5;
+    x.report.drawEvidence.gpuMedianImproved = x.report.gpuDifferenceMs > 0;
+    x.report.drawEvidence.physicalResultsStable = false;
+    x.report.stability.variantDriftPct = 100 * (10 - 8.9) / single;
+    x.report.stability.pairedDifferencesMs = [9.5 - 8.9, 9.5 - 10.0];
+    x.report.stability.flags = ['paired-direction-disagrees'];
+    const result = validateHomeFlameEvidence(x.report, x.read);
+    assert.equal(result.productionApproved, false);
+    assert.equal(result.hardwareOriginVerified, false);
   });
 
   it('rejects reported draw savings not grounded in four visit submissions', () => {
