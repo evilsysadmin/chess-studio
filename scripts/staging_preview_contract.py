@@ -158,7 +158,7 @@ def main() -> int:
         ('python3 scripts/oci_run_command.py deploy --repo-ref "$DEPLOY_SHA"', "OCI deploy owns transport readiness"),
         ("Deploy tested frontend to Cloudflare Pages", "generation frontend deploy"),
         ("Deploy and verify exact staging Worker generation", "generation Worker deploy + runtime identity gate"),
-        ("run: python3 scripts/deploy_staging_ai_worker.py", "generation Worker helper"),
+        ('run: python3 -S scripts/staging_cloudflare_publish.py worker --sha "$DEPLOY_SHA"', "generation guarded Worker helper"),
         ("Verify staging generation parity before browser smoke", "generation parity gate"),
         ("--surfaces backend,frontend,worker --attempts 60 --interval 5", "generation N/N/N parity incl. Worker, bounded 5 min"),
         ("Load ephemeral staging invite code from OCI runtime", "smoke invite source"),
