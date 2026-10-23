@@ -10,6 +10,9 @@ import {
   HOME_MATTHIAS_PROP_ANCHORS,
   HOME_MATTHIAS_BLANKET,
   HOME_MATTHIAS_SLEEP_FACE,
+  HOME_MATTHIAS_TABLE_CAP_ANCHOR,
+  homeMatthiasIsSleeping,
+  createHomeMatthiasTableCap,
   homeMatthiasZzzFrame,
   HOME_MATTHIAS_LIE_POSE,
   homeMatthiasActorRoutine,
@@ -288,5 +291,61 @@ describe('Home Matthias human cadence', () => {
     expect(homeMatthiasSipWeight(12 - 1, 12)).toBe(0);
     // The historical 9.6 s cycle is unchanged.
     expect(homeMatthiasSipWeight(7, 9.6)).toBe(1);
+  });
+});
+
+
+describe('Sleeping Matthias: canonical service cap on the table', () => {
+  it('treats both sofa nap and book-doze as sleep, but not speaking or reading', () => {
+    expect(homeMatthiasIsSleeping(homeMatthiasActorRoutine({ scene: 'time-late-sleep' }))).toBe(true);
+    expect(homeMatthiasIsSleeping(homeMatthiasActorRoutine({ scene: 'moment-book-doze-sleep' }))).toBe(true);
+    expect(homeMatthiasIsSleeping(homeMatthiasActorRoutine({ scene: 'time-late-sleep', speaking: true }))).toBe(false);
+    expect(homeMatthiasIsSleeping(homeMatthiasActorRoutine({ scene: 'time-reading' }))).toBe(false);
+    expect(homeMatthiasIsSleeping(null)).toBe(false);
+  });
+
+  it('places the cap above the left tabletop without covering the board or other props', () => {
+    const [x, y, z] = HOME_MATTHIAS_TABLE_CAP_ANCHOR;
+    expect(x).toBeLessThan(-1.75);
+    expect(x).toBeGreaterThan(-2.45);
+    expect(y).toBeGreaterThan(0.7);
+    expect(y).toBeLessThan(1.32);
+    expect(z).toBeGreaterThan(1.30);
+    expect(z).toBeLessThan(1.36);
+    // A canonical cap of radius ~0.4m clears the 1.4m board half-width.
+    expect(x + 0.4).toBeLessThan(-1.40);
+    expect(Math.hypot(x + 2.72, y - 1.60)).toBeGreaterThan(0.65);
+  });
+
+  it('copies the genuine authored meshes, flattens their transform and owns resources', () => {
+    const root = new THREE.Group();
+    root.scale.setScalar(0.88);
+    const head = new THREE.Group();
+    head.position.y = 1.3;
+    root.add(head);
+    const sourceMaterial = new THREE.MeshStandardMaterial();
+    const parts = ['Classic cap crown', 'Classic cap visor'].map((name, i) => {
+      const mesh = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.10, 0.35), sourceMaterial);
+      mesh.name = name;
+      mesh.position.set(i * 0.035, 0.19 + i * 0.07, -0.03);
+      head.add(mesh);
+      return mesh;
+    });
+    root.updateMatrixWorld(true);
+    const cap = createHomeMatthiasTableCap(parts);
+    expect(cap?.name).toBe('Matthias cap resting on chess table');
+    expect(cap.children).toHaveLength(parts.length);
+    expect(cap.visible).toBe(false);
+    expect(cap.children.every((clone, i) =>
+      clone.geometry !== parts[i].geometry && clone.material !== parts[i].material
+      && clone.matrixAutoUpdate === false)).toBe(true);
+    const box = new THREE.Box3().setFromObject(cap);
+    expect(box.min.y).toBeCloseTo(0, 4);
+    expect(box.max.y).toBeGreaterThan(0.1);
+    expect(box.max.y).toBeLessThan(0.4);
+    expect(createHomeMatthiasTableCap([])).toBeNull();
+    for (const clone of cap.children) { clone.geometry.dispose(); clone.material.dispose(); }
+    for (const original of parts) original.geometry.dispose();
+    sourceMaterial.dispose();
   });
 });
