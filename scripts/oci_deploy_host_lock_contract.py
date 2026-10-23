@@ -5,8 +5,12 @@ This is a deploy ordering contract, not a mock of an OCI host or a promise that
 Oracle's remote command channel is healthy.
 """
 from pathlib import Path
+import fcntl
+import os
+import signal
 import subprocess
 import sys
+import tempfile
 
 ROOT = Path(__file__).resolve().parents[1]
 LAUNCH = ROOT / "scripts/oci_staging_deploy_launcher.sh"
@@ -79,6 +83,57 @@ def self_test():
     assert 'git -C "$repo" ls-remote --exit-code origin refs/heads/main' in resolver
     assert "if ! current_main=" in resolver
     assert "return 69" in resolver
+
+    # A live cloudflared tunnel is daemonized *inside* the deploy lock.
+    # nohup/setsid do not close unrelated FDs: closing FD8 in runuser's
+    # subtree (and redundantly on the daemon) prevents permanent flock leaks.
+    tunnel = ROOT / "scripts/oci_staging_tunnel_connector.sh"
+    tunnel_source = tunnel.read_text(encoding="utf-8")
+    assert 'runuser -u "$RUNTIME_USER" -- env HOME="$runtime_home" /bin/bash -c' in tunnel_source
+    assert '"$pid_file" 8>&-' in tunnel_source
+    assert 'run --token-file "$3" </dev/null >/dev/null 2>&1 8>&- &' in tunnel_source
+    subprocess.run(["bash", "-n", str(tunnel)], check=True)
+
+    # Exercise the real Linux flock and nohup/setsid FD-inheritance behavior
+    # with *temporary* processes. Old behavior keeps the flock held after
+    # the launching shell exits; explicit 8>&- releases it while sleep lives.
+    with tempfile.TemporaryDirectory(prefix="oci-tunnel-lock-contract-") as tmp:
+        lock_path = Path(tmp) / "deploy.lock"
+        for close_fd, expected_held in ((False, True), (True, False)):
+            inner = ('nohup setsid sleep 8 </dev/null >/dev/null 2>&1 '
+                     + ('8>&- ' if close_fd else '')
+                     + '& printf "%s\\n" "$!"')
+            script = ('exec 8>"$1"; flock -n 8; '
+                      + '/bin/bash -c ' + "'" + inner + "'")
+            launcher_result = subprocess.run(
+                ["bash", "-c", script, "bash", str(lock_path)],
+                text=True, capture_output=True, check=True, timeout=5,
+            )
+            child_pid = int(launcher_result.stdout.strip())
+            try:
+                # Live detached child is the potential long-lived FD holder.
+                os.kill(child_pid, 0)
+                fd = os.open(lock_path, os.O_RDONLY)
+                try:
+                    try:
+                        fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                    except BlockingIOError:
+                        actual_held = True
+                    else:
+                        actual_held = False
+                        fcntl.flock(fd, fcntl.LOCK_UN)
+                    assert actual_held is expected_held, (
+                        f"detached FD8 inheritance mismatch: close={close_fd}"
+                    )
+                finally:
+                    os.close(fd)
+            finally:
+                # Terminate only our synthetic test process; never touch host
+                # deploy lock owners or real cloudflared here.
+                try:
+                    os.kill(child_pid, signal.SIGTERM)
+                except ProcessLookupError:
+                    pass
 
     assert "rm -f .git/" not in launcher + payload
     # Root-host diagnostic is offline and strictly read-only in production.

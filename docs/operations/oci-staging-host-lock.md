@@ -39,6 +39,30 @@ wrapper nunca concluye. En ese caso se debe inspeccionar el host antes de
 cualquier parada controlada del servicio o recuperación. No cancelar una
 mutación de despliegue a medias para forzar el progreso.
 
+### Candidato de fuga de FD8: túnel cloudflared desacoplado
+
+La auditoría del código ha encontrado una ruta **concreta** de herencia del
+descriptor: el deploy mantiene `deploy.lock` en FD8 y ejecuta
+`scripts/oci_staging_tunnel_connector.sh`, que lanza `cloudflared` como
+daemon con `runuser` + `nohup setsid ... &`. Ni `nohup` ni `setsid` cierran
+automáticamente los descriptores arbitrarios heredados; un proceso del túnel
+puede conservar FD8 después de terminar el deploy, perpetuando el `flock`.
+
+El conector actualizado cierra **FD8 solo en la rama hija** al ejecutar
+`runuser` y otra vez en el lanzamiento desacoplado de `cloudflared`; el
+deploy padre **no** pierde su exclusión mutua. El test de contrato crea un
+lock temporal real: verifica que un daemon sin cierre mantiene el lock
+ocupado y que con `8>&-` queda libre mientras el daemon sigue vivo.
+
+Esto es una **causa plausible documentada por código**, no una atribución
+confirmada al proceso actualmente activo en la VM. Un `cloudflared` viejo
+podría seguir teniendo FD8 aun después del merge. Usar el triaje desde el
+**host real** para correlacionar inodo, FD y servicio; solo después de
+identificar inequívocamente al holder y excluir una mutación legítima,
+planificar una intervención manual controlada que preserve el túnel de acceso.
+**No reiniciar el túnel automáticamente, matar PIDs a ciegas ni borrar el
+fichero lock**.
+
 ## Toma de evidencia desde el host (sin mutaciones)
 
 Desde una copia local verificada de Chess Studio, materializar **solo**
