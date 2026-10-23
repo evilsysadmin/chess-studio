@@ -18,7 +18,7 @@ async function openBriefingRoom(page) {
   // The GLB is not visually accepted until the real seeded campaign is on it.
   const canvas = room.locator('canvas.board3d-main-canvas');
   await expect(canvas).toHaveAttribute('data-combat-operations-map-nodes', '19', { timeout: 45_000 });
-  await expect(canvas).toHaveAttribute('data-combat-operations-map-edges', /^[1-9]\\d*$/, { timeout: 45_000 });
+  await expect(canvas).toHaveAttribute('data-combat-operations-map-edges', /^[1-9][0-9]*$/, { timeout: 45_000 });
   await expect(room.getByRole('heading', { name: 'Campaña de Combat Chess' })).toBeVisible();
   await expect(room.getByRole('complementary', { name: 'Órdenes para el sector elegido' })).toBeVisible();
   await expect(room.getByRole('button', { name: /PREPARAR EJÉRCITO/i })).toBeVisible();
