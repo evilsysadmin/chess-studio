@@ -37,11 +37,45 @@ describe('War Room opt-in shadow-pass draw census', () => {
     expect(probe.sample(info.calls)).toEqual({
       mainCalls: 19, shadowCalls: 18, shadowPasses: 1,
       shadowFamilyCalls: { pieces: 9, shell: 6, other: 3 },
+      shadowTopCasters: {
+        top: [
+          { name: 'piece-ring', family: 'pieces', calls: 9 },
+          { name: 'wall', family: 'shell', calls: 6 },
+          { name: 'hans', family: 'other', calls: 3 },
+        ],
+        unrankedCalls: 0,
+      },
     });
     expect(calls.every((item) => item.receiver === renderer)).toBe(true);
     probe.dispose();
     expect(renderer.shadowMap.render).toBe(oldShadow);
     expect(renderer.renderBufferDirect).toBe(oldBuffer);
+  });
+
+  it('bounds the rank to eight named actual casters and accounts for omitted calls', () => {
+    const info = { calls: 0 };
+    const actors = Array.from({ length: 10 }, (_, index) =>
+      ({ name: `actor-${index}`, userData: {} }));
+    const renderer = {
+      info: { render: info },
+      renderBufferDirect(_a, _b, _c, _d, _object, count) { info.calls += count; },
+      shadowMap: { render() {
+        actors.forEach((actor, index) =>
+          renderer.renderBufferDirect(null, null, null, null, actor, index + 1));
+      } },
+    };
+    const probe = installWarRoomShadowPassProbe(renderer);
+    probe.begin();
+    renderer.shadowMap.render();
+    const snapshot = probe.sample(info.calls);
+    expect(snapshot.shadowCalls).toBe(55);
+    expect(snapshot.shadowTopCasters.top).toHaveLength(8);
+    expect(snapshot.shadowTopCasters.top[0]).toEqual(
+      { name: 'actor-9', family: 'other', calls: 10 });
+    expect(snapshot.shadowTopCasters.unrankedCalls).toBe(3);
+    expect(snapshot.shadowTopCasters.top.reduce((sum, row) => sum + row.calls, 0)
+      + snapshot.shadowTopCasters.unrankedCalls).toBe(snapshot.shadowCalls);
+    probe.dispose();
   });
 
   it('fails family attribution closed when Three uses another submission path', () => {
