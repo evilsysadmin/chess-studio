@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -293,7 +294,10 @@ if (checkCiWiring) {
   for (const required of [
     'set -euo pipefail',
     'export GOTOOLCHAIN=local',
-    '[[ "$selected_go" == \'go1.27.3\' ]]',
+    'go_at_least_patched "$selected_go"',
+    'patch >= 3',
+    'go1.27.3 go1.27.4 go1.27.10 go1.28.0',
+    'go1.27.2 go1.26.10 go1.26.999',
     'GOOS=linux GOARCH=arm64 go build -trimpath -o /tmp/pvp-edge ./cmd/pvp-edge',
     'go version /tmp/pvp-edge',
     '[[ "$actual" == "/tmp/pvp-edge: $selected_go" ]]',
@@ -303,6 +307,8 @@ if (checkCiWiring) {
   ]) {
     if (!binaryScript.includes(required)) fail(`Sin evidencia binaria Go ARM64: ${required}`);
   }
+  // Run the actual shell patch-floor assertions in CI preflight.
+  execFileSync('bash', [path.join(root, 'scripts', 'go_binary_build_verify.sh'), '--self-test'], { stdio: 'pipe' });
   if (/\|\|\s*(?:true|:)/m.test(binaryScript) || /continue-on-error:/m.test(binaryBuildStep)) {
     fail('Comprobación binaria Go no puede suprimir errores');
   }
