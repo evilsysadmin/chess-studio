@@ -14,6 +14,7 @@ import {
   smoothstep,
   warRoomHemisphereIntensity,
   warRoomMaterialIblProfile,
+  warRoomShadowFactorForGovernor,
 } from './WarRoom3DMotion.js';
 
 function fakeColor(hex) {
@@ -28,6 +29,15 @@ function fakeColor(hex) {
 }
 
 describe('WarRoom3DMotion', () => {
+  it('keeps fixed quality renderers on a valid full shadow cadence without a governor', () => {
+    // 'low'/'medium'/'high'/'ultra' do not allocate an adaptive governor.
+    expect(warRoomShadowFactorForGovernor(undefined)).toBe(1);
+    expect(warRoomShadowFactorForGovernor(null)).toBe(1);
+    expect(warRoomShadowFactorForGovernor({ tier: 'full' })).toBe(1);
+    expect(warRoomShadowFactorForGovernor({ tier: 'reduced' })).toBe(2.5);
+    expect(warRoomShadowFactorForGovernor({ tier: 'lite' })).toBe(6);
+  });
+
   it('finds direct and en-passant-style captured pieces from real board deltas', () => {
     expect(inferCapturedPiece(
       [{ square: 'e4', type: 'p', color: 'w' }, { square: 'd5', type: 'p', color: 'b' }],
