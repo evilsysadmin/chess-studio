@@ -164,10 +164,7 @@ function Board3DCanvas({
     const coarsePointer = Boolean(window.matchMedia?.('(pointer: coarse)')?.matches);
     const sceneProfile = warRoomSceneProfile({ coarsePointer, softwareRenderer, maxTextureSize });
     const { lite: renderLite } = sceneProfile; const sceneLite = renderLite || (coarsePointer && warRoomMobilePerformance === true);
-    const scene = new THREE.Scene(); scene.userData.warRoomHansAwaitCall = latestPropsRef.current.hansFireCallEnabled; scene.userData.warRoomAdaptiveQuality = sceneProfile.adaptiveQuality;
-    // Input modality and shadow resolution are independent: auto/medium can
-    // use 512px shadows on a desktop mouse, while touch can request ultra.
-    scene.userData.warRoomInteractionCoarsePointer = coarsePointer;
+    const scene = new THREE.Scene(); scene.userData.warRoomHansAwaitCall = latestPropsRef.current.hansFireCallEnabled; scene.userData.warRoomAdaptiveQuality = sceneProfile.adaptiveQuality; scene.userData.warRoomInteractionCoarsePointer = coarsePointer;
     const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 100);
     const raycaster = new THREE.Raycaster();
     const pointer = new THREE.Vector2();
