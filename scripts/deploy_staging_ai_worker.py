@@ -242,7 +242,7 @@ def self_test() -> None:
     from unittest.mock import patch
     with TemporaryDirectory() as tmp:
         binary = pathlib.Path(tmp) / "wrangler"
-        binary.write_text("#!/bin/sh\\nexit 0\\n", encoding="utf-8")
+        binary.write_text("#!/bin/sh" + chr(10) + "exit 0" + chr(10), encoding="utf-8")
         binary.chmod(0o755)
         env = {"CLOUDFLARE_API_TOKEN": "test", "CLOUDFLARE_ACCOUNT_ID": "test",
                "WRANGLER_BIN": str(binary)}
