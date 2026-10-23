@@ -49,7 +49,7 @@ El contrato de entrega está en [`docs/auto-merge-delivery.md`](docs/auto-merge-
 | Publicación/migración de assets a R2 | [`docs/r2-asset-publisher.md`](docs/r2-asset-publisher.md), [`docs/r2-assets.md`](docs/r2-assets.md), [`docs/visual-assets-r2-flow.md`](docs/visual-assets-r2-flow.md) |
 | War Room visual / Blender / v2 | [`docs/operations/war-room-blender-pipeline.md`](docs/operations/war-room-blender-pipeline.md), [`docs/operations/war-room-parity.md`](docs/operations/war-room-parity.md), [`docs/operations/war-room-visual-freeze.md`](docs/operations/war-room-visual-freeze.md), [`skills/local-gpu-rendering/SKILL.md`](skills/local-gpu-rendering/SKILL.md) |
 | Home / Castillo / Blender | [`skills/home-blender/SKILL.md`](skills/home-blender/SKILL.md), [`docs/VISUAL_LANGUAGE.md`](docs/VISUAL_LANGUAGE.md), [`docs/home-castle-life-minimal.md`](docs/home-castle-life-minimal.md), [`docs/visual-assets-r2-flow.md`](docs/visual-assets-r2-flow.md), [`docs/operations/home-3d-performance.md`](docs/operations/home-3d-performance.md), [`skills/local-gpu-rendering/SKILL.md`](skills/local-gpu-rendering/SKILL.md) |
-| Chronicles / Tactics · migración y privacidad legacy (no desarrollo de juego) | [`issue #5632`](https://github.com/evilsysadmin/chess-studio/issues/5632); proteger purga histórica de `chronicles_runs` y la recuperación opt-in mientras se valida el retiro |
+| Chronicles / Tactics · migración y privacidad legacy (no desarrollo de juego) | [`issue #5632`](https://github.com/evilsysadmin/chess-studio/issues/5632), [`archivo y restore drill`](docs/operations/chronicles-legacy-archive.md); proteger purga de `chronicles_runs` y recuperación opt-in hasta verificar migración |
 | Matthias / comentarios / espectadores / memoria narrativa | [`docs/operations/matthias-runtime.md`](docs/operations/matthias-runtime.md) |
 | Combat Chess / veteranos / despliegue / intel | [`docs/operations/combat-chess.md`](docs/operations/combat-chess.md), [`docs/experiments/combat-tactical-deployment.md`](docs/experiments/combat-tactical-deployment.md), [`frontend/src/AGENTS.md`](frontend/src/AGENTS.md) |
 | Puzzles / Así juegas / autopsia / entrenamiento personal | [`docs/operations/training-quality.md`](docs/operations/training-quality.md), [`docs/experiments/cinematic-game-autopsy.md`](docs/experiments/cinematic-game-autopsy.md), [`frontend/src/AGENTS.md`](frontend/src/AGENTS.md) |
@@ -123,6 +123,7 @@ El contrato de entrega está en [`docs/auto-merge-delivery.md`](docs/auto-merge-
 - [`docs/operations/architecture-ownership.md`](docs/operations/architecture-ownership.md)
 - [`docs/operations/go-migration.md`](docs/operations/go-migration.md) — plan y contrato de la migración strangler de Python a Go.
 - [`docs/operations/tutorials.md`](docs/operations/tutorials.md)
+- [`docs/operations/chronicles-legacy-archive.md`](docs/operations/chronicles-legacy-archive.md) — archivo/restore drill read-only de las partidas históricas.
 - [`docs/operations/game-state-recovery.md`](docs/operations/game-state-recovery.md)
 - [`docs/operations/training-quality.md`](docs/operations/training-quality.md)
 - [`docs/operations/matthias-runtime.md`](docs/operations/matthias-runtime.md)
