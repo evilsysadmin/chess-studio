@@ -1475,13 +1475,27 @@ image_pull_started_ms="$(now_ms)"
 pull_immutable_image() {
   local ref="$1"
   local attempts="${CHESS_STUDIO_IMAGE_PULL_ATTEMPTS:-18}"
-  local attempt
-  for attempt in $(seq 1 "$attempts"); do
-    if docker pull --quiet "$ref" >/dev/null 2>&1; then
+  local attempt remaining per_attempt
+  local deadline=$((SECONDS + 300))
+  # CI may publish the SHA image while this deploy starts. Wait for it, but
+  # never let a stalled Docker registry/client hold FD8's host flock forever.
+  [[ "$attempts" =~ ^[1-9][0-9]{0,2}$ ]] || {
+    echo 'invalid CHESS_STUDIO_IMAGE_PULL_ATTEMPTS (expected 1..999)' >&2
+    return 1
+  }
+  for ((attempt=1; attempt<=attempts; attempt++)); do
+    remaining=$((deadline - SECONDS))
+    ((remaining > 0)) || break
+    per_attempt=$((remaining < 45 ? remaining : 45))
+    if timeout --signal=TERM --kill-after=2s "${per_attempt}s" \
+      docker pull --quiet "$ref" >/dev/null 2>&1; then
       return 0
     fi
-    [[ "$attempt" == "$attempts" ]] || sleep 10
+    remaining=$((deadline - SECONDS))
+    ((attempt < attempts && remaining > 10)) || break
+    sleep 10
   done
+  echo "OCI_DEPLOY_IMAGE_PULL_EXHAUSTED repo_ref=$sha budget_s=300" >&2
   return 1
 }
 if ! pull_immutable_image "$pvp_target_image"; then

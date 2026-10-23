@@ -78,6 +78,22 @@ Esta prevención no libera descriptores heredados por un daemon antiguo ni
 autoriza borrar el fichero lock. Continúa siendo imprescindible el triaje
 de solo lectura en el namespace host.
 
+### Descarga GHCR dentro de la sección crítica
+
+La imagen Go exact-SHA se descarga mediante `docker pull` mientras el
+deploy mantiene FD8. Antes, los 18 reintentos podían quedar atrapados en
+una **única llamada Docker sin timeout**. Ahora cada cliente `docker pull`
+tiene un límite de **45 s**, con SIGKILL de respaldo dos segundos después
+del SIGTERM; toda la espera/reintentos comparte un presupuesto total de
+**300 s**, incluso si se configura un número mayor de intentos. El
+deploy conserva la ranura activa mientras falla la descarga y no llega a
+recrear la candidata.
+
+El mensaje `OCI_DEPLOY_IMAGE_PULL_EXHAUSTED` señala falta de prueba de
+disponibilidad de imagen, no un despliegue satisfactorio. Esta protección
+evita un futuro bloqueo indefinido, **no** libera un lock heredado por un
+proceso que ya esté vivo. No se han reiniciado contenedores ni el host.
+
 ## Toma de evidencia desde el host (sin mutaciones)
 
 Desde una copia local verificada de Chess Studio, materializar **solo**
