@@ -347,6 +347,24 @@ El verificador calcula por su cuenta las dos diferencias pareadas (A1−B1, A2�
 
 El campo `interpretation.verdict` y el spread observado se recalculan desde las visitas y los draw submissions utilizando el mismo clasificador conservador que produce el informe experimental. Una etiqueta de mejora editada a mano no es evidencia, aunque los PNG sean válidos. La clasificación jamás aprueba producción automáticamente.
 
+### Experimental flame A/B/B/A — GPU física local, sin aprobación visual
+
+La rama experimental **Draft** de [PR #5883](https://github.com/evilsysadmin/chess-studio/pull/5883)
+incorpora el cambio opcional `?homeGpuProfile=1&homeFlamePass=single` y la captura de cuatro
+visitas; el runtime normal de `main` no lo activa. En Nobara/Intel y desde un
+checkout de **esa rama**, ejecutar:
+
+```bash
+make home-gpu-flame-pass-probe HOME_GPU_NVIDIA_PRIME=0 HOME_GPU_EXPECT_VENDOR=intel HOME_GPU_AMBIENT=night
+```
+
+El objetivo reconstruye el frontend y mide `normal / single / single / normal`
+con contextos nuevos de Chromium. Valida el SHA de 40 caracteres, la escena, los
+tiempos GPU y los draw calls, genera cuatro PNG reales y ejecuta después el
+verificador de integridad. **Los cuatro PNG deben mostrarse y revisarse
+visualmente; las pruebas offline y SwiftShader no los sustituyen.** La prueba
+no concede permiso para fusionar #5883.
+
 ### Verificador A/B/B/A de **cuatro** visitas (aislado de la PR visual)
 
 El experimento de llamas usa cuatro visitas `normal/single/single/normal` **dentro del mismo commit**. No usar el comparador normal de dos revisiones, que exige SHA distintos y tres visitas por informe. Una vez obtenido el informe y los **cuatro PNG físicos auténticos** de la rama experimental, ejecutar:
