@@ -222,7 +222,7 @@
      *only for briefing*, so the exposed mobile slot contains the chess army
      rather than an empty distant wall. No new camera or duplicate renderer. */
   .combat-briefing-room-shell .combat-preparation-room-stage {
-    transform: translateY(-38%);
+    transform: translateY(-30%);
   }
   .combat-briefing-room-intro {
     top: 3.55rem;
