@@ -171,6 +171,8 @@ jobs:
     if: needs.preflight.outputs.run_go == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 12
+    env:
+      GOTOOLCHAIN: local
     services:
       mongo:
         image: mongo:7.0
@@ -194,7 +196,7 @@ jobs:
         run: |
           files="$(gofmt -l .)"
           [[ -z "$files" ]] || { echo "::error::gofmt needed in:"; echo "$files"; exit 1; }
-      - name: Unit + MongoDB integration tests
+      - name: Unit + MongoDB tests
         env:
           PVP_MONGO_TEST_URL: mongodb://localhost:27017
           PVP_MONGO_TEST_REQUIRED: '1'
