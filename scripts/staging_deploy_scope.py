@@ -48,6 +48,7 @@ NON_RUNTIME_EXACT = frozenset({
     # Diagnostic-only readers cannot change the deployed API or its acceptance.
     # Prevent CI-only updates from superseding an active OCI generation.
     "scripts/oci_backend_diagnose.py",
+    "scripts/oci_host_lock_triage.py",
     "scripts/oci_public_staging_release.py",
     ".github/workflows/oci-host-provenance-on-failure.yml",
     "scripts/staging_deploy_proof.py",
@@ -251,6 +252,7 @@ def self_test() -> None:
     assert deploy_required_for_paths(["scripts/staging_deploy_proof.py"]) == (False, "non-runtime-only")
     diagnostic_only = [
         "scripts/oci_backend_diagnose.py",
+        "scripts/oci_host_lock_triage.py",
         "scripts/oci_public_staging_release.py",
         ".github/workflows/oci-host-provenance-on-failure.yml",
     ]
@@ -342,6 +344,10 @@ def self_test() -> None:
     assert deploy_required_for_paths(["scripts/staging_deploy_scope.py"])[0]
     assert deploy_required_for_paths(["scripts/staging_deploy_scope.py", *offline_home_ci])[0]
     assert deploy_required_for_paths([])[0]
+    # The diagnostic is host-only; exercise its pure read-only lock parser in
+    # the existing dependency-free staging scope contract on every PR.
+    import oci_host_lock_triage
+    oci_host_lock_triage.self_test()
     print("staging-deploy-scope self-test: OK")
 
 

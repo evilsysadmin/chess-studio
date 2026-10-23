@@ -5,6 +5,8 @@ This is a deploy ordering contract, not a mock of an OCI host or a promise that
 Oracle's remote command channel is healthy.
 """
 from pathlib import Path
+import subprocess
+import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 LAUNCH = ROOT / "scripts/oci_staging_deploy_launcher.sh"
@@ -68,6 +70,13 @@ def self_test():
     assert '[[ "$target" == staging ]] || return 0' in classifier
     assert 'current_main="$(resolve_staging_main)" || return $?' in classifier
     assert "rm -f .git/" not in launcher + payload
+    # Root-host diagnostic is offline and strictly read-only in production.
+    diag = ROOT / "scripts/oci_host_lock_triage.py"
+    diagnostic_source = diag.read_text(encoding="utf-8")
+    assert 'LOCK = Path("/var/lib/chess-studio/deploy.lock")' in diagnostic_source
+    assert "os.O_RDONLY | os.O_CLOEXEC | os.O_NOFOLLOW" in diagnostic_source
+    assert "os.kill(" not in diagnostic_source and "subprocess.Popen(" not in diagnostic_source
+    subprocess.run([sys.executable, "-S", str(diag), "--self-test"], check=True)
     print("OCI deploy host lock contract: OK")
 
 if __name__ == "__main__":
