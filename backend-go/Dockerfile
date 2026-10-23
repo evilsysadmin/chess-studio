@@ -1,10 +1,18 @@
 FROM golang:1.27.3-alpine3.23 AS build
+ARG TARGETARCH
+ARG EXPECTED_GO_VERSION=1.27.3
 WORKDIR /src
+# Verify the builder selected for the actual distributed image, not just CI.
+RUN test "$(GOTOOLCHAIN=local go env GOVERSION)" = "go${EXPECTED_GO_VERSION}"
 COPY go.mod go.sum ./
 RUN go mod download
 COPY cmd ./cmd
 COPY internal ./internal
 RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags='-s -w' -o /out/api-edge ./cmd/pvp-edge
+RUN set -eu; \
+    test "$(go version /out/api-edge)" = "/out/api-edge: go${EXPECTED_GO_VERSION}"; \
+    go version -m /out/api-edge | grep -Fqx "$(printf '\tbuild\tGOOS=linux')"; \
+    go version -m /out/api-edge | grep -Fqx "$(printf '\tbuild\tGOARCH=%s' "$TARGETARCH")"
 
 FROM alpine:3.23
 RUN apk add --no-cache ca-certificates \
