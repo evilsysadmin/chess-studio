@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { availableCampaignNodes, campaignMap } from '../combatCampaign.js';
 import { projectCombatOperationsCampaignMap } from '../combatOperationsMapProjection.js';
 import CombatPreparationRoom from './CombatPreparationRoom.jsx';
@@ -17,10 +17,21 @@ export default function CombatCampaignBriefingRoom({
   const [inspectingArmy, setInspectingArmy] = useState(false);
   const [inspectedSectorId, setInspectedSectorId] = useState('');
   const [inspectedUnitSquare, setInspectedUnitSquare] = useState('');
+  const dossierReturnFocusRef = useRef(null);
+  const veteranSelectRef = useRef(null);
+  const closeDossier = useCallback(() => {
+    setInspectedUnitSquare('');
+    const previous = dossierReturnFocusRef.current;
+    const target = previous?.isConnected ? previous : veteranSelectRef.current;
+    target?.focus?.({ preventScroll: true });
+  }, []);
   const unitOptions = useMemo(() => combatVeteranInspectionOptions(roster), [roster]);
   const inspectedUnit = useMemo(() => combatVeteranAtSquare(roster, inspectedUnitSquare), [roster, inspectedUnitSquare]);
   const inspectUnit = useCallback((square) => {
     if (!combatVeteranAtSquare(roster, square)) return;
+    const active = document.activeElement;
+    dossierReturnFocusRef.current = active?.matches?.('canvas.board3d-main-canvas, .combat-veteran-select select')
+      ? active : veteranSelectRef.current;
     setInspectedUnitSquare(square);
     setInspectingArmy(true);
   }, [roster]);
@@ -37,12 +48,12 @@ export default function CombatCampaignBriefingRoom({
       // preview is open, the first Escape must only close this local view.
       event.preventDefault();
       event.stopPropagation();
-      if (inspectedUnitSquare) setInspectedUnitSquare('');
+      if (inspectedUnitSquare) closeDossier();
       else setInspectingArmy(false);
     };
     window.addEventListener('keydown', onEscape, true);
     return () => window.removeEventListener('keydown', onEscape, true);
-  }, [inspectingArmy, inspectedUnitSquare]);
+  }, [inspectingArmy, inspectedUnitSquare, closeDossier]);
 
   const stage = Math.max(0, (campaign.route || []).length - 1);
   const fallen = Math.max(0, Number(armySummary?.fallenCount) || 0);
@@ -62,7 +73,7 @@ export default function CombatCampaignBriefingRoom({
           </button>
           <div className="combat-operations-mode-chip"><span>COMBAT CHESS</span><b>ÓRDENES</b></div>
           <button type="button" className="context-help-btn combat-operations-help"
-            onClick={() => { setInspectingArmy(false); onHelp(); }} aria-label="Tutorial de campaña">?</button>
+            onClick={() => { setInspectedUnitSquare(''); setInspectingArmy(false); onHelp(); }} aria-label="Tutorial de campaña">?</button>
         </div>
 
         <header className="combat-briefing-room-intro">
@@ -77,7 +88,7 @@ export default function CombatCampaignBriefingRoom({
             <span>Suministros <b>{campaign.operationalCredits}</b></span>
             <span>Créditos <b>{roster.credits || 0}</b></span>
             {fallen > 0 && <span className="danger-text">Bajas <b>{fallen}</b></span>}
-            <button type="button" onClick={() => { setInspectingArmy(false); onOpenMarket(); }}>Mercado →</button>
+            <button type="button" onClick={() => { setInspectedUnitSquare(''); setInspectingArmy(false); onOpenMarket(); }}>Mercado →</button>
             <button type="button" onClick={onRestart}>↻ Reiniciar campaña</button>
           </div>
           <label className="combat-briefing-map-lookup">
@@ -119,7 +130,11 @@ export default function CombatCampaignBriefingRoom({
           <label className="combat-veteran-select">
             Expediente
             <select aria-label="Consultar veterano desplegado" value={inspectedUnit?.square || ''}
-              onChange={(event) => setInspectedUnitSquare(event.target.value)}>
+              ref={veteranSelectRef}
+              onChange={(event) => {
+                dossierReturnFocusRef.current = event.currentTarget;
+                setInspectedUnitSquare(event.target.value);
+              }}>
               <option value="">Seleccionar pieza…</option>
               {unitOptions.map((unit) => (
                 <option key={unit.identityId} value={unit.square}>{unit.alias} · {unit.square}</option>
@@ -127,7 +142,7 @@ export default function CombatCampaignBriefingRoom({
             </select>
           </label>
         )}
-        {inspectedUnit && <CombatVeteranDossier unit={inspectedUnit} onClose={() => setInspectedUnitSquare('')} />}
+        {inspectedUnit && <CombatVeteranDossier unit={inspectedUnit} onClose={closeDossier} />}
 
         <aside id="combat-briefing-orders" className="combat-briefing-room-orders" aria-label="Órdenes para el sector elegido">
           <CampaignBriefing
