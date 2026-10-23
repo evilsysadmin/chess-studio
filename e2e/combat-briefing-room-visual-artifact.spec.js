@@ -193,6 +193,24 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 
           ?.closest('.combat-preparation-room-stage')));
       expect(upperRoomUnobstructed).toBe(true);
       await captureRoom(page, ARTIFACT_DIR + '/combat-briefing-army-inspection-390x844.png');
+      // Nothing is imposed on the initial scene. The native selector proves
+      // screen-reader/keyboard access to the same real identity as piece taps.
+      await expect(room.locator('[data-combat-veteran-dossier]')).toHaveCount(0);
+      const veteranPicker = room.getByRole('combobox', { name: 'Consultar veterano desplegado' });
+      await expect(veteranPicker).toBeVisible();
+      await veteranPicker.selectOption('a1');
+      const dossier = room.getByRole('complementary', { name: 'Expediente de Varela' });
+      await expect(dossier).toBeVisible();
+      await expect(dossier).toContainText('Teniente');
+      await expect(dossier).toContainText('5 batallas');
+      await expect(dossier).toContainText('Bautismo de fuego');
+      await expect(dossier).toContainText('Cinco bajas');
+      await expect(dossier).toContainText('Cicatriz del jefe');
+      // One real live-WebGL screenshot with the veteran's service folio open.
+      await captureRoom(page, ARTIFACT_DIR + '/combat-briefing-veteran-dossier-390x844.png');
+      await page.keyboard.press('Escape');
+      await expect(dossier).toHaveCount(0);
+      await expect(room.locator('.combat-briefing-room-orders')).not.toBeVisible();
       await page.keyboard.press('Escape');
       await expect(canvas).toHaveAttribute('data-board3d-camera-framing', framingBefore);
       expect(await page.evaluate((el) =>
