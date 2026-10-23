@@ -117,6 +117,11 @@ runs:
         fi
         printf '%s\n' "$scoped_files" | python3 -S scripts/app_visual_scope.py --github-output "$GITHUB_OUTPUT"
         printf '%s\n' "$scoped_files" | python3 -S scripts/app_visual_producer_scope.py --chronicles-lane "${{ inputs.chronicles-lane }}" --github-output "$GITHUB_OUTPUT"
+        # Video remains informational for unrelated visual PRs, but a PR that
+        # edits the Hans routine spec must NOT turn green if its own test fails.
+        if printf '%s\n' "$files" | grep -Fxq 'e2e/war-room-hans-routines-visual.spec.js'; then
+          echo 'hans_video_required=true' >> "$GITHUB_OUTPUT"
+        fi
 
     - name: Restore browser + build when capture is required
       if: >-
@@ -328,6 +333,18 @@ runs:
           echo "La captura secundaria de rutinas de Hans falló. No bloquea la PR."
           echo "El canario visual canónico de Hans continúa siendo fail-closed."
         } >> "$GITHUB_STEP_SUMMARY"
+
+    - name: Enforce Hans routine E2E for changes to its own spec
+      if: >-
+        always() &&
+        inputs.mode == 'canonical' &&
+        steps.scope.outputs.hans_video_required == 'true' &&
+        steps.hans_capture.outcome != 'success'
+      shell: bash
+      run: |
+        echo "::error::Hans routine spec changed but its video E2E did not pass."
+        echo "The optional Hans sidecar may fail on unrelated PRs, not on its own repair PR."
+        exit 1
 
     - name: Capture Chesscom desktop + mobile
       if: inputs.mode == 'canonical' && (inputs.chronicles-lane == 'app' || inputs.chronicles-lane == 'default') && steps.scope.outputs.chesscom == 'true'

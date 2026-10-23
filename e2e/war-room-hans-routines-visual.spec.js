@@ -1,6 +1,7 @@
 import { chromium, expect, test } from '@playwright/test';
 import { mkdir, writeFile } from 'node:fs/promises';
-import { buttonWithVisibleText, login, mockApi } from './helpers.js';
+import { login, mockApi } from './helpers.js';
+import { enterWarRoomGpuQuickMatch } from './war-room-gpu-quick-match.js';
 import { WAR_ROOM_HANS_CHORE_EVENTS } from '../frontend/src/components/WarRoomHansChoreContract.js';
 import {
   WAR_ROOM_HANS_EVENTS,
@@ -91,8 +92,7 @@ async function waitForRoutineStart(page, canvas, eventName) {
   }
 
   const route = expectedRoute(eventName);
-  await expect.poll(
-    () => page.evaluate(() => {
+  const readRoutineState = () => page.evaluate(() => {
       const node = document.querySelector('.board3d-main-canvas');
       if (!node) return { route: 'missing-canvas', screen: 'missing', phase: 'missing' };
       return {
@@ -104,13 +104,34 @@ async function waitForRoutineStart(page, canvas, eventName) {
         mopState: node.dataset.warRoomHansMopState || '',
         mopStartStatus: node.dataset.warRoomHansMopStartStatus || '',
         mopInstalled: node.dataset.warRoomHansMopInstalled || '',
+        // Setup diagnostics are published only under the visual E2E audit flag.
+        choreSetup: node.dataset.warRoomHansChoreSetup || '',
+        choreEvent: node.dataset.warRoomHansChoreEvent || '',
+        choreTarget: node.dataset.warRoomHansChoreTarget || '',
+        choreRouteLengths: node.dataset.warRoomHansChoreRouteLengths || '',
+        choreEndpoints: node.dataset.warRoomHansChoreEndpoints || '',
+        choreRouteBlock: node.dataset.warRoomHansChoreRouteBlock || '',
+        serviceSetup: node.dataset.warRoomHansServiceSetup || '',
+        serviceEvent: node.dataset.warRoomHansServiceEvent || '',
+        serviceRouteBlock: node.dataset.warRoomHansServiceRouteBlock || '',
       };
-    }),
-    { timeout: 75_000, intervals: [100, 100, 200, 300, 500] },
-  ).toMatchObject({
-    route,
-    screen: expect.stringMatching(VISIBLE_SCREEN),
-  });
+    });
+  try {
+    await expect.poll(readRoutineState,
+      { timeout: 75_000, intervals: [100, 100, 200, 300, 500] },
+    ).toMatchObject({
+      route,
+      screen: expect.stringMatching(VISIBLE_SCREEN),
+    });
+  } catch (error) {
+    // Playwright's toMatchObject() diff only prints the keys asserted above,
+    // so the E2E-only physical setup reason was absent from red CI logs.
+    // Print the real diagnostic snapshot while preserving a hard failure.
+    const snapshot = await readRoutineState().catch((readError) => ({
+      diagnosticsReadError: String(readError),
+    }));
+    throw new Error(`HANS_ROUTINE_SETUP_DIAGNOSTICS ${eventName}: ${JSON.stringify(snapshot)}\n${error.message}`);
+  }
 }
 
 async function sampleRoutine(page, canvas, eventName) {
@@ -226,6 +247,13 @@ for (const eventName of CAPTURE_EVENTS) {
         profileSeed: {
           'matthias.onboarded': '2',
           'chess-study-home-guide-dismissed-v1': '1',
+          // Hans' routine film deliberately uses a veteran profile. The
+          // in-board Matthias3DOpeningBanter tutorial is independent of the
+          // generic .mechanic-tutorial-card and may appear many frames after
+          // first paint, blocking ambient choreography during onboarding.
+          'chess-study-mechanic-tutorial-progress-v1': JSON.stringify({
+            'war-room-basics': { seen: true, completedAt: '2026-10-01T12:00:00.000Z' },
+          }),
         },
       });
       await login(page);
@@ -234,15 +262,29 @@ for (const eventName of CAPTURE_EVENTS) {
     });
       await seedGamesBeforeEvent(page, eventName);
 
-      await buttonWithVisibleText(page, 'Partida rápida').press('Enter');
-      const quickDialog = page.getByRole('dialog', { name: 'Configurar partida rápida' });
-      await expect(quickDialog).toBeVisible();
-      await quickDialog.getByRole('button', { name: 'Empezar partida', exact: true }).press('Enter');
+      // The immersive Home hotspot can be re-created during its first
+      // 3D animation frame. Reuse the established War Room entry helper:
+      // it retries the *same* UI activation once, rejects resumed games,
+      // and reports real Home/dialog state if the click never opens setup.
+      await enterWarRoomGpuQuickMatch(page);
       await expect(page.locator('.board-live-row.is-3d-warroom')).toBeVisible({ timeout: MOUNT_BUDGET_MS });
 
       const canvas = page.locator('.board3d-main-canvas');
       await expect(canvas).toBeVisible({ timeout: MOUNT_BUDGET_MS });
       await expect(canvas).toHaveAttribute('data-war-room-variant', 'classic', { timeout: 10_000 });
+      // Ambient mop/dust/espresso do NOT use the fire quick-iteration
+      // 'hans-scene-ready' marker; it only exists on that one fire route.
+      // The 3D scene tier and mounted canvas are the correct shared gates.
+      await expect(canvas).toHaveAttribute(
+        'data-board3d-scene-tier',
+        emulateSupportedGpu ? 'full' : 'lite',
+        { timeout: MOUNT_BUDGET_MS },
+      );
+      // Do not click or bypass a live tutorial. This fixture starts with a
+      // persisted experienced profile, and onboarding itself has separate
+      // first-run tests. Explicitly reject an unexpected tutorial overlay.
+      await expect(page.getByRole('region', { name: 'Tutorial de War Room con Matthias' }))
+        .toHaveCount(0);
       await expect(page.locator('[data-war-room-hans-game-id]').first()).toHaveAttribute(
         'data-war-room-hans-game-id',
         expectedGameId(eventName),

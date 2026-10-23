@@ -353,6 +353,66 @@ export function warRoomHansBuildSafeRoute(floor, parent, from, to) {
   return clear[0] || [];
 }
 
+/**
+ * Read-only route rejection audit for E2E/geometry tests.
+ * Exactly the same candidate construction and padded collision rectangles as
+ * the production router, but never changes a waypoint or loosens a guard.
+ * Call only on rejected paths: expensive mesh bounds traversal is intentional.
+ */
+export function explainWarRoomHansBlockedRoute(floor, parent, from, to) {
+  if (!floor || !parent || !from || !to) return { reason: 'invalid-input' };
+  const root = sceneRoot(floor) || sceneRoot(parent);
+  const desk = firstNamed(root, COMMAND_DESK_NAMES);
+  const chair = root?.getObjectByName?.(COMMAND_CHAIR_NAME) || null;
+  const sofas = SOFA_NAMES.map((name) => root?.getObjectByName?.(name) || null).filter(Boolean);
+  const labels = ['board-keepout', ...[desk, chair, ...sofas].filter(Boolean).map((object) => object.name)];
+  const obstacles = navigationObstacles(floor, parent);
+  const loop = warRoomHansSafeRoomLoop(floor, parent);
+  const inside = (point) => obstacles.flatMap((rect, index) =>
+    pointInsideRect(point, rect) ? [labels[index] || `obstacle-${index}`] : []);
+  const result = {
+    loopNodes: loop.length,
+    originInside: inside(from),
+    targetInside: inside(to),
+    candidateCount: 0,
+    blockedBy: {},
+  };
+  if (!loop.length) return result;
+  const bounds = laneBounds(loop);
+  const departure = laneApproach(from, bounds);
+  const arrival = laneApproach(to, bounds);
+  const candidates = [];
+  if (departure.side === arrival.side) candidates.push(buildCandidate(loop, departure, arrival));
+  for (const start of indicesForSide(loop, departure.side, bounds)) {
+    for (const end of indicesForSide(loop, arrival.side, bounds)) {
+      candidates.push(buildCandidate(loop, departure, arrival, start, end, 1));
+      candidates.push(buildCandidate(loop, departure, arrival, start, end, -1));
+    }
+  }
+  result.candidateCount = candidates.length;
+  for (const points of candidates) {
+    const route = [...points];
+    pushUnique(route, to);
+    let prev = from;
+    for (const point of route) {
+      const culpritIndex = obstacles.findIndex((rect) => segmentIntersectsRectInterior(prev, point, rect));
+      if (culpritIndex >= 0) {
+        const label = labels[culpritIndex] || `obstacle-${culpritIndex}`;
+        result.blockedBy[label] = (result.blockedBy[label] || 0) + 1;
+        break;
+      }
+      prev = point;
+    }
+  }
+  return result;
+}
+
+// Exact same board no-go rectangle that the physical route planner enforces.
+// Exposed read-only for chore destinations; never weaken the collision rule.
+export function warRoomHansBoardKeepOutBounds(floor, parent) {
+  return boardKeepOutRect(floor, parent);
+}
+
 export function moveWarRoomHansAlongRoute(hans, route, index, maxStep) {
   if (!hans || !Array.isArray(route) || route.length === 0) {
     return { arrived: false, travelled: 0, index: Math.max(0, Number(index) || 0), valid: false };

@@ -23,9 +23,16 @@ export async function enterWarRoomGpuQuickMatch(page) {
         throw new Error('War Room GPU benchmark unexpectedly resumed an active game; fresh quick-match required');
       }
       if (await entry.isVisible().catch(() => false)) {
-        // Same strategy as the canonical War Room visual journey: a DOM
-        // activation bypasses a moving, replaced or obscured hotspot.
-        await entry.evaluate((element) => element.click());
+        // IsVisible and Locator.evaluate are separate DOM reads: the 3D Home
+        // can unmount the hotspot between them. Bound this retry so a stale
+        // locator cannot consume the entire E2E budget while the dialog/route
+        // already transitioned. Final modal assertion remains mandatory.
+        try {
+          await entry.evaluate((element) => element.click(), undefined, { timeout: 3_000 });
+        } catch {
+          // A disappearing entry is not success. Continue to the explicit
+          // modal/board assertion and its richer Home-state diagnostic.
+        }
       }
     }
   }
