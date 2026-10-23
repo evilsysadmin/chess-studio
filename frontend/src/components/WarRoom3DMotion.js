@@ -42,6 +42,12 @@ let nextWarRoomMaterialGradeObjectId = 1;
 
 // Fixed quality preferences never create an adaptive governor. In that case
 // preserve the normal shadow cadence instead of reading .tier on undefined.
+export function warRoomInteractionCoarsePointer(scene) {
+  // Read the real matchMedia result published by Board3DCore, not an indirect
+  // guess from shadow-map dimensions or the software/lite renderer quality.
+  return scene?.userData?.warRoomInteractionCoarsePointer === true;
+}
+
 export function warRoomShadowFactorForGovernor(governor) {
   return warRoomShadowIntervalFactor(governor?.tier);
 }
@@ -518,7 +524,7 @@ function installWarRoomRenderDiscipline() {
     const budget = scene?.userData?.warRoomRenderBudget;
     if (!budget || !this.shadowMap) return originalRender.call(this, scene, camera);
 
-    const coarsePointer = Number(budget.shadowMapSize) <= 512;
+    const coarsePointer = warRoomInteractionCoarsePointer(scene);
     const atmosphere = applyWarRoomAtmosphereGrade(scene);
     if (atmosphere && this.domElement?.dataset) {
       writeWarRoomCanvasTelemetry(this.domElement, 'warRoomAtmosphereGrade', atmosphere.grade);

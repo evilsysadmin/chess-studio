@@ -164,7 +164,7 @@ function Board3DCanvas({
     const coarsePointer = Boolean(window.matchMedia?.('(pointer: coarse)')?.matches);
     const sceneProfile = warRoomSceneProfile({ coarsePointer, softwareRenderer, maxTextureSize });
     const { lite: renderLite } = sceneProfile; const sceneLite = renderLite || (coarsePointer && warRoomMobilePerformance === true);
-    const scene = new THREE.Scene(); scene.userData.warRoomHansAwaitCall = latestPropsRef.current.hansFireCallEnabled; scene.userData.warRoomAdaptiveQuality = sceneProfile.adaptiveQuality;
+    const scene = new THREE.Scene(); scene.userData.warRoomHansAwaitCall = latestPropsRef.current.hansFireCallEnabled; scene.userData.warRoomAdaptiveQuality = sceneProfile.adaptiveQuality; scene.userData.warRoomInteractionCoarsePointer = coarsePointer;
     const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 100);
     const raycaster = new THREE.Raycaster();
     const pointer = new THREE.Vector2();
