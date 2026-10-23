@@ -96,6 +96,51 @@ export function homeMatthiasActorRoutine({ scene = '', activity = '', speaking =
   };
 }
 
+// The animated bedroom and the reading-chair doze are the same semantic sleep.
+// Drive the hot coffee and hat from the same canonical routine, not the hour.
+export function homeMatthiasIsSleeping(routine) {
+  return routine?.profile === 'sleep';
+}
+
+// On the LEFT wing of the main chess table: outside the 2.8m central board,
+// between the left books, wall candelabra and hourglass. Blender coordinates.
+// The wood tabletop runs up to z=1.30; 1.31 avoids buried cap trim.
+export const HOME_MATTHIAS_TABLE_CAP_ANCHOR = Object.freeze([-2.03, 1.04, 1.31]);
+
+// A detachable copy of the *actual* canonical cap, not a generic replacement.
+// Flatten each part's rest-pose world matrix into a common hat pivot at the
+// lowest brim point; duplicates own their resources for safe actor disposal.
+export function createHomeMatthiasTableCap(capParts) {
+  const meshes = (capParts || []).filter((part) => part.isMesh);
+  if (!meshes.length) return null;
+  const bounds = new THREE.Box3();
+  for (const part of meshes) {
+    part.updateWorldMatrix(true, false);
+    bounds.expandByObject(part);
+  }
+  if (bounds.isEmpty()) return null;
+  const center = bounds.getCenter(new THREE.Vector3());
+  const recenter = new THREE.Matrix4().makeTranslation(-center.x, -bounds.min.y, -center.z);
+  const group = new THREE.Group();
+  group.name = 'Matthias cap resting on chess table';
+  for (const part of meshes) {
+    const clone = part.clone(false);
+    clone.name = `Table cap: ${part.name}`;
+    clone.geometry = part.geometry?.clone() || part.geometry;
+    clone.material = Array.isArray(part.material)
+      ? part.material.map((material) => material?.clone?.() || material)
+      : part.material?.clone?.() || part.material;
+    clone.matrixAutoUpdate = false;
+    clone.matrix.copy(recenter).multiply(part.matrixWorld);
+    clone.matrixWorldNeedsUpdate = true;
+    clone.castShadow = true;
+    clone.receiveShadow = true;
+    group.add(clone);
+  }
+  group.visible = false;
+  return group;
+}
+
 export function homeMatthiasBlenderToThree([x, y, z] = [0, 0, 0]) {
   return { x: Number(x) || 0, y: Number(z) || 0, z: -(Number(y) || 0) };
 }
@@ -642,8 +687,11 @@ export function createHomeMatthiasActor(gltf, { shadowsEnabled = true, random = 
   const capNodes = [];
   model.traverse((node) => {
     const key = String(node.name || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
-    if (key.startsWith(HOME_MATTHIAS_SLEEP_FACE.capPrefix)) capNodes.push(node);
+    if (node.isMesh && key.startsWith(HOME_MATTHIAS_SLEEP_FACE.capPrefix)) capNodes.push(node);
   });
+  model.updateMatrixWorld(true);
+  const tableCap = createHomeMatthiasTableCap(capNodes);
+  if (tableCap) actor.add(tableCap);
   const eyeNodes = HOME_MATTHIAS_SLEEP_FACE.eyes
     .map((name) => findBone(model, name))
     .filter(Boolean)
@@ -657,8 +705,9 @@ export function createHomeMatthiasActor(gltf, { shadowsEnabled = true, random = 
   let zzzElapsed = 0;
 
   const applySleepFace = () => {
-    asleep = routine?.posture === 'lie';
+    asleep = homeMatthiasIsSleeping(routine);
     for (const node of capNodes) node.visible = !asleep;
+    if (tableCap) tableCap.visible = asleep;
     for (const eye of eyeNodes) {
       eye.node.scale.y = eye.restY * (asleep ? HOME_MATTHIAS_SLEEP_FACE.closedEyeScale : 1);
     }
@@ -849,6 +898,14 @@ export function createHomeMatthiasActor(gltf, { shadowsEnabled = true, random = 
       contactShadow.scale.set(1.62 * HOME_MATTHIAS_ACTOR_SCALE, 1.18 * HOME_MATTHIAS_ACTOR_SCALE, 1);
     }
     actor.updateMatrixWorld(true);
+    if (tableCap) {
+      // Actor remains at its furniture station. Convert one fixed table
+      // location into its local coordinate system on EVERY routine change.
+      // Do not parent the table cap to Matthias's moving head or bones.
+      const target = homeMatthiasBlenderToThree(HOME_MATTHIAS_TABLE_CAP_ANCHOR);
+      tableCap.position.copy(actor.worldToLocal(new THREE.Vector3(target.x, target.y, target.z)));
+      tableCap.quaternion.copy(actor.quaternion).invert();
+    }
   };
 
   const playClip = ({ force = false } = {}) => {
