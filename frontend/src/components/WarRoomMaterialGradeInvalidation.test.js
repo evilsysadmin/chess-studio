@@ -46,6 +46,36 @@ function fixture() {
 }
 
 describe('War Room material grade invalidation', () => {
+  it('preserves the stable per-group identity/count/edge signature without temporary arrays', () => {
+    const board = new THREE.Group();
+    const loosePiece = mesh('ivory');
+    const first = new THREE.Group();
+    const last = new THREE.Group();
+    const pieceA = mesh('ivory');
+    const pieceB = mesh('ivory');
+    first.add(pieceA, pieceB);
+    board.add(loosePiece, first, last);
+
+    const initial = warRoomMaterialGradeDynamicSignature(board);
+    expect(initial).toMatch(/^\d+:2:\d+:\d+\|\d+:0:0:0$/);
+    expect(warRoomMaterialGradeDynamicSignature(board)).toBe(initial);
+    // Only Groups influence the signature; a loose static mesh does not.
+    board.add(mesh('ivory'));
+    expect(warRoomMaterialGradeDynamicSignature(board)).toBe(initial);
+
+    // Changing the first or last child with the same count must invalidate.
+    first.remove(pieceA);
+    first.add(pieceA);
+    const reordered = warRoomMaterialGradeDynamicSignature(board);
+    expect(reordered).not.toBe(initial);
+    expect(warRoomMaterialGradeDynamicSignature(board)).toBe(reordered);
+
+    last.add(mesh('ivory'));
+    expect(warRoomMaterialGradeDynamicSignature(board)).not.toBe(reordered);
+    expect(warRoomMaterialGradeDynamicSignature(new THREE.Group())).toBe('');
+    expect(warRoomMaterialGradeDynamicSignature(null)).toBe('');
+  });
+
   it('runs once for a stable board instead of following the ambient render cadence', () => {
     const { scene, board } = fixture();
 
