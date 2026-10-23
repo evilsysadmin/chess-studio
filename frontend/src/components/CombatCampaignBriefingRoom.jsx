@@ -42,7 +42,7 @@ export default function CombatCampaignBriefingRoom({
           <span>Créditos <b>{roster.credits || 0}</b></span>
           {fallen > 0 && <span className="danger-text">Bajas <b>{fallen}</b></span>}
           <button type="button" onClick={onOpenMarket}>Mercado →</button>
-          <button type="button" onClick={onRestart}>↻ Reiniciar campaña</button
+          <button type="button" onClick={onRestart}>↻ Reiniciar campaña</button>
         </div>
 
         <aside className="combat-briefing-room-orders" aria-label="Órdenes para el sector elegido">
