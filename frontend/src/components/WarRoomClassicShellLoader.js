@@ -97,6 +97,11 @@ export function createClassicWarRoomShellController(
         canvas.dataset.warRoomClassicTopOwnerFamilies = JSON.stringify(
           census.ownerFamilies.slice(0, 5),
         );
+        // Rank owner/type pairs to expose actual V1 geometry hotspots.
+        // This is one-shot metadata, not a draw-call or FPS measurement.
+        canvas.dataset.warRoomClassicTopOwnerGeometryFamilies = JSON.stringify(
+          census.ownerGeometryFamilies.slice(0, 8),
+        );
       }
     },
   });
