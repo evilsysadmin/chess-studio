@@ -104,6 +104,13 @@ export function warRoomV2RuntimeLightingProfile({ coarsePointer = false } = {}) 
   };
 }
 
+// Three.js Color.setHex is not a no-op even for an identical value; avoid
+// redundant sRGB conversion and scene color writes on each War Room paint.
+function setWarRoomColorIfChanged(color, hex) {
+  if (typeof color?.setHex !== 'function') return;
+  if (color.getHex?.() !== hex) color.setHex(hex);
+}
+
 export function applyWarRoomV2RuntimeLightingGrade(
   scene,
   renderer,
@@ -117,8 +124,8 @@ export function applyWarRoomV2RuntimeLightingGrade(
   if (!scene || scene.userData?.warRoomRenderedVariant !== 'v2') return null;
   const profile = warRoomV2RuntimeLightingProfile({ coarsePointer });
 
-  if (typeof scene.background?.setHex === 'function') scene.background.setHex(profile.background);
-  if (scene.fog?.isFogExp2 && typeof scene.fog.color?.setHex === 'function') scene.fog.color.setHex(profile.fog);
+  setWarRoomColorIfChanged(scene.background, profile.background);
+  if (scene.fog?.isFogExp2) setWarRoomColorIfChanged(scene.fog.color, profile.fog);
   if (hemisphere) hemisphere.intensity = profile.hemisphere;
   if (key && Number.isFinite(key.intensity)) key.intensity = Math.min(key.intensity, profile.keyMax);
   if (warmFill && Number.isFinite(warmFill.intensity)) warmFill.intensity = Math.min(warmFill.intensity, profile.warmMax);
@@ -140,8 +147,13 @@ export function warRoomAtmosphereProfile() {
 export function applyWarRoomAtmosphereGrade(scene) {
   if (!scene) return null;
   const profile = warRoomAtmosphereProfile();
-  if (typeof scene.background?.setHex === 'function') scene.background.setHex(profile.background);
-  if (scene.fog?.isFogExp2 && typeof scene.fog.color?.setHex === 'function') scene.fog.color.setHex(profile.fog);
+  // V2 owns its darker atmosphere. Don't change both colors to the generic
+  // warm grade only for the V2 pass to immediately set them back every frame.
+  // Keep telemetry metadata and the generic grade for all other variants.
+  if (scene.userData?.warRoomRenderedVariant !== 'v2') {
+    setWarRoomColorIfChanged(scene.background, profile.background);
+    if (scene.fog?.isFogExp2) setWarRoomColorIfChanged(scene.fog.color, profile.fog);
+  }
   scene.userData ||= {};
   scene.userData.warRoomAtmosphereGrade = profile.grade;
   scene.userData.warRoomBackgroundColor = profile.background;
