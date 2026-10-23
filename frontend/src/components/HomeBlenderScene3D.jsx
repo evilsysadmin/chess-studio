@@ -2409,6 +2409,7 @@ export default function HomeBlenderScene3D({
       canvas.dataset.homeMatthiasStation = routine.stationId;
       canvas.dataset.homeMatthiasPosture = routine.posture;
       canvas.dataset.homeMatthiasClip = routine.clip;
+      canvas.dataset.homeMatthiasCap = matthiasActor.capLocation;
       canvas.dataset.homeCoffeeTemperature = applyHomeBlenderCoffeeTemperature(fireParticles, routine);
       if (moved && renderer.shadowMap.enabled) renderer.shadowMap.needsUpdate = true;
       reportMatthiasLayout();
