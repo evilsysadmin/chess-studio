@@ -12,7 +12,6 @@ permissions:
   contents: read
   actions: read
   pull-requests: read
-# running generation finishes while newer pending.
 concurrency:
   group: chess-studio-staging-deploy
   cancel-in-progress: false
@@ -218,41 +217,7 @@ jobs:
       - name: Deploy tested frontend to Cloudflare Pages
         id: pages_publish
         working-directory: frontend
-        shell: bash
-        run: |
-          set -euo pipefail
-          # A newer main may have landed while we restored/build the dist.
-          # Only 87 means superseded; transport/provenance errors still fail.
-          check_pages_head() {
-            if python3 -S ../scripts/staging_generation.py main-head --sha "$DEPLOY_SHA" --fail-stale; then
-              return 0
-            else
-              rc=$?
-              if [[ "$rc" == 87 ]]; then
-                echo 'superseded=true' >> "$GITHUB_OUTPUT"
-                echo "::notice title=Pages superseded::Skip immutable upload for $DEPLOY_SHA."
-                return 87
-              fi
-              return "$rc"
-            fi
-          }
-          if check_pages_head; then :; else
-            rc=$?
-            [[ "$rc" == 87 ]] && exit 0
-            exit "$rc"
-          fi
-          python3 -S ../scripts/pages_runtime_asset_grace.py --dist dist --site staging
-          # Asset retention may take minutes; recheck immediately before write.
-          if check_pages_head; then :; else
-            rc=$?
-            [[ "$rc" == 87 ]] && exit 0
-            exit "$rc"
-          fi
-          "$WRANGLER_BIN" pages deploy dist \
-            --project-name chess-studio-staging \
-            --branch main \
-            --commit-hash "$DEPLOY_SHA" \
-            --commit-dirty=false
+        run: python3 -S ../scripts/staging_cloudflare_publish.py pages --sha "$DEPLOY_SHA"
       - name: Verify frontend staging build identity
         if: steps.pages_publish.outputs.superseded != 'true'
         run: python3 -S scripts/staging_generation.py wait --sha "$DEPLOY_SHA" --surfaces frontend --attempts 150 --interval 2 --root
@@ -261,7 +226,7 @@ jobs:
     needs: prepare
     if: needs.prepare.outputs.admitted == 'true' && needs.prepare.outputs.smoke_only != 'true'
     outputs:
-      superseded: ${{ steps.worker_head.outputs.superseded }}
+      superseded: ${{ steps.worker_publish.outputs.superseded }}
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     environment:
@@ -287,14 +252,11 @@ jobs:
           node-version: '22'
       - name: Staging Worker isolation contract
         run: python3 -S scripts/deploy_staging_ai_worker.py --self-test
-      - name: Re-check main before Worker mutation
-        id: worker_head
-        run: python3 -S scripts/staging_generation.py main-head --sha "$DEPLOY_SHA" --github-output "$GITHUB_OUTPUT"
       - name: Deploy and verify exact staging Worker generation
-        if: steps.worker_head.outputs.superseded != 'true'
-        run: python3 scripts/deploy_staging_ai_worker.py
+        id: worker_publish
+        run: python3 -S scripts/staging_cloudflare_publish.py worker --sha "$DEPLOY_SHA"
       - name: Shared Workers AI live contract
-        if: steps.worker_head.outputs.superseded != 'true'
+        if: steps.worker_publish.outputs.superseded != 'true'
         run: python3 scripts/cloudflare_ai_preflight.py --worker-url "$STAGING_AI_URL"
   smoke:
     name: Browser smoke · ${{ matrix.label }}
@@ -310,9 +272,6 @@ jobs:
       url: https://staging.chess-studio.shadowops.dpdns.org
     strategy:
       fail-fast: false
-      # For full deployment, stage both staging-live.spec.js and
-      # staging-war-room-restore.spec.js. Narrow the smoke-only matrix only
-      # when the exact diff touches a single isolated smoke spec; helpers run both.
       matrix: ${{ fromJSON(needs.prepare.outputs.smoke_matrix) }}
     env:
       DEPLOY_SHA: ${{ needs.prepare.outputs.smoke_sha || needs.prepare.outputs.deploy_sha }}
@@ -412,9 +371,6 @@ jobs:
     steps:
       - name: Summary
         run: echo "### Staging $DEPLOY_SHA · backend=$BACKEND · frontend=$FRONTEND · worker=$WORKER · smoke=$SMOKE" >> "$GITHUB_STEP_SUMMARY"
-      # Diagnostics must never invalidate a successfully deployed generation.
-      # The summary job has no checkout by default: the first metrics revision
-      # forgot this and blocked accreditation even when all smokes were green.
       - name: Checkout staging metrics scripts
         id: metrics_checkout
         continue-on-error: true
