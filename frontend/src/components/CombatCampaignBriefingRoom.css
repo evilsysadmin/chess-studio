@@ -261,8 +261,10 @@
     line-height: 1.25;
     font-size: .63rem;
   }
+  /* Leave a real unobstructed view of the 3D deployment table between the
+     campaign status rail and the orders folio. Keep the primary CTA in view. */
   .combat-briefing-room-orders {
-    top: 10.25rem;
+    top: calc(10.25rem + clamp(5.5rem, 14dvh, 7rem));
     bottom: .45rem;
     left: .45rem;
     right: .45rem;
