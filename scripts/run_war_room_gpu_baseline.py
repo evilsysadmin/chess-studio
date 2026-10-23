@@ -275,6 +275,14 @@ def self_test():
                             'shadowPieceCallsMedian': 90,
                             'shadowShellCallsMedian': 10,
                             'shadowOtherCallsMedian': 5,
+                            'shadowCasterSnapshot': {
+                                'shadowCalls': 105,
+                                'top': [
+                                    {'name': 'pawn', 'family': 'pieces', 'calls': 90},
+                                    {'name': 'WR3_ARM_armor_ring_7', 'family': 'shell', 'calls': 10},
+                                ],
+                                'unrankedCalls': 5,
+                            },
                         }
                 (root / f'{profile}-{index}.json').write_text(json.dumps(report))
         for path in root.glob('*.json'):
@@ -294,6 +302,7 @@ def self_test():
         assert '| 280000.00 | 1.25 | 2.50 | n/a | 22 |' in output
         assert '| desktop-1440x900 · first-visit · idle | 35.00 | 105.00 | 115.00 | 1.00 |' in output
         assert '| desktop-1440x900 · first-visit · idle | 90.00 | 10.00 | 5.00 |' in output
+        assert '| desktop-1440x900 · first-visit · idle | 105 | pawn (pieces: 90), WR3_ARM_armor_ring_7 (shell: 10) | 5 |' in output
         assert '| desktop-1440x900 · first-visit | 80–81 | 14 | 7 |' in output
         path = root / 'desktop-1440x900-0.json'
         report = json.loads(path.read_text())
