@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { home3DFrameReady, home3DContextRecovering } from './Home3DReadiness.js';
+import { home3DFrameReady, home3DShouldPreserveCanvas } from './Home3DReadiness.js';
 import './Home3DLoadingGate.css';
 
 // No wrapper is inserted inside the illustrated stage: existing canvas/art
@@ -26,6 +26,9 @@ export default function Home3DLoadingGate({ stageRef, onUseStaticHome, onHomeAva
     let secondFrame = 0;
     let helpTimer = 0;
     let fallbackTimer = 0;
+    // Only a genuinely composed first 3D frame qualifies for lifetime
+    // recovery protection; canvas mount/GLB decode alone are insufficient.
+    let everPresented3D = false;
     const showIllustration = () => {
       if (cancelled || visibleRef.current) return;
       stage.dataset.home3dPreview = 'painted';
@@ -48,7 +51,7 @@ export default function Home3DLoadingGate({ stageRef, onUseStaticHome, onHomeAva
         // WebGL context was lost must survive: the browser can restore it
         // later, and the painted Home is usable meanwhile. Unmounting it
         // here destroys the very context that would deliver 'restored'.
-        if (!visibleRef.current && !home3DContextRecovering(stage)) {
+        if (!visibleRef.current && !home3DShouldPreserveCanvas(stage, { everPresented3D })) {
           onUseStaticHomeRef.current?.();
         }
       }, 30_000);
@@ -83,6 +86,7 @@ export default function Home3DLoadingGate({ stageRef, onUseStaticHome, onHomeAva
             return;
           }
           visibleRef.current = true;
+          everPresented3D = true;
           delete stage.dataset.home3dPreview;
           setReady(true);
           setPreviewing(false);
