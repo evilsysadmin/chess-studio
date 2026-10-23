@@ -10,6 +10,7 @@ from urllib.parse import quote
 
 import main_ci_admission as admission
 import staging_deploy_scope as deploy_scope
+import staging_generation_diff as generation_diff
 import staging_generation as generation
 import staging_optional_scope as optional_scope
 import staging_smoke_only as smoke_only
@@ -92,10 +93,39 @@ def manual_main_admission_green(sha: str, repository: str, token: str, *, get=ad
     )
 
 
+def require_pending_since_complete(
+    head: str,
+    required: bool,
+    reason: str,
+    *,
+    diff_lookup=generation_diff.diff_since_previous_complete,
+) -> tuple[bool, str]:
+    """Never skip an uncompleted runtime deployment behind a doc/test merge.
+
+    The one-commit classifier is cheap, but rapid merges can cancel the deploy
+    of a runtime change before a later non-runtime commit reaches admission.
+    Compare against the last *complete* staging generation on the skip path.
+    If the baseline cannot be established, run the guarded full deploy.
+    """
+    if required:
+        return required, reason
+    try:
+        pending_paths, base, _run_id = diff_lookup(head)
+        if not pending_paths:
+            return False, f"no-pending-diff:{base[:12]}"
+        pending_required, pending_reason = deploy_scope.deploy_required_for_paths(pending_paths)
+        if pending_required:
+            return True, f"pending-since-complete:{base[:12]}:{pending_reason}"
+        return False, f"non-runtime-since-complete:{base[:12]}"
+    except (OSError, RuntimeError, ValueError) as exc:
+        return True, f"pending-diff-fail-open:{type(exc).__name__}"
+
+
 def prepare(sha: str) -> dict[str, str]:
     head = generation.valid_sha(sha)
     source = resolve_source(head)
     required, reason = deploy_scope.decide(head, source)
+    required, reason = require_pending_since_complete(head, required, reason)
     values = {
         "deploy_sha": head,
         "admitted": "false",
@@ -209,6 +239,27 @@ def self_test() -> None:
     })
     assert "fail-open:GenerationError" in optional_scope_receipt(sha, receipt_flags)
     assert "Resend recovery: `true`" in optional_scope_receipt(sha, receipt_flags)
+    # A docs-only HEAD must not conceal an older runtime deploy that never
+    # completed. Purely non-runtime changes still avoid the expensive deploy.
+    pending = lambda _head: (["docs/staging.md", "scripts/pages_runtime_asset_grace.py"], "b" * 40, 987)
+    required, reason = require_pending_since_complete(sha, False, "non-runtime-only", diff_lookup=pending)
+    assert required and reason.startswith("pending-since-complete:") and "pages_runtime_asset_grace.py" in reason
+    non_runtime = lambda _head: (["docs/staging.md", "AGENTS.md"], "b" * 40, 987)
+    required, reason = require_pending_since_complete(sha, False, "non-runtime-only", diff_lookup=non_runtime)
+    assert not required and reason.startswith("non-runtime-since-complete:")
+    required, reason = require_pending_since_complete(
+        sha, False, "non-runtime-only", diff_lookup=lambda _head: ([], "b" * 40, 987))
+    assert not required and reason.startswith("no-pending-diff:")
+    # A locally detected runtime change must not make a redundant API request.
+    required, reason = require_pending_since_complete(
+        sha, True, "runtime:frontend/src/App.jsx",
+        diff_lookup=lambda _head: (_ for _ in ()).throw(AssertionError("unexpected API call")))
+    assert required and reason == "runtime:frontend/src/App.jsx"
+    def unreadable_baseline(_head):
+        raise RuntimeError("history unavailable")
+    required, reason = require_pending_since_complete(
+        sha, False, "non-runtime-only", diff_lookup=unreadable_baseline)
+    assert required and reason == "pending-diff-fail-open:RuntimeError"
     deploy_scope.self_test()
     generation.self_test()
     optional_scope.self_test()
