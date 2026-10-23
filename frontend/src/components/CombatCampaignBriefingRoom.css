@@ -327,6 +327,91 @@
     background: rgba(29,28,25,.97);
   }
 }
+
+/* The parchment can be consulted without making another campaign dashboard.
+   Native select provides full keyboard/screen-reader parity with 3D seal taps. */
+.combat-briefing-room-status > .combat-briefing-map-lookup {
+  display: inline-flex;
+  align-items: center;
+  gap: .42rem;
+  min-height: 44px;
+  padding: .25rem .55rem;
+  border: 1px solid rgba(216,184,117,.27);
+  border-radius: 999px;
+  background: rgba(7,11,13,.82);
+  color: #e9c57d;
+  font: .61rem var(--font-mono);
+}
+.combat-briefing-map-lookup select {
+  min-height: 34px;
+  max-width: 11rem;
+  border: 0;
+  border-radius: 5px;
+  background: #1b211f;
+  color: #f1e1bd;
+  font: inherit;
+  cursor: pointer;
+}
+.combat-briefing-map-lookup select:focus-visible {
+  outline: 2px solid #e9c57d;
+  outline-offset: 2px;
+}
+.combat-briefing-map-readout {
+  position: absolute;
+  z-index: 8;
+  bottom: 4.9rem;
+  left: 1rem;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: .55rem;
+  width: max-content;
+  max-width: calc(56% - 2rem);
+  min-height: 44px;
+  padding: .5rem .7rem;
+  color: #ecdfc5;
+  border: 1px solid rgba(218,182,112,.48);
+  border-radius: 8px;
+  background: rgba(15,19,18,.94);
+  box-shadow: 0 8px 24px rgba(0,0,0,.4);
+  font: .68rem/1.4 var(--font-body, sans-serif);
+}
+.combat-briefing-map-readout strong { color: #efca82; white-space: nowrap; }
+.combat-briefing-map-readout span { min-width: 0; overflow-wrap: anywhere; }
+.combat-briefing-map-readout button {
+  flex: 0 0 32px;
+  height: 34px;
+  border: 0;
+  border-radius: 5px;
+  background: rgba(219,184,112,.12);
+  color: #f1d49a;
+  cursor: pointer;
+  font-size: 1.12rem;
+}
+.combat-briefing-map-readout button:focus-visible { outline: 2px solid #f1d49a; }
+@media (max-width: 900px) {
+  .combat-briefing-room-shell.is-inspecting-army .combat-briefing-map-readout {
+    top: 5.5rem;
+    bottom: auto;
+    max-width: calc(100% - 1.2rem);
+  }
+}
+@media (max-width: 720px) {
+  .combat-briefing-room-status > .combat-briefing-map-lookup { flex: 0 0 auto; }
+  .combat-briefing-map-readout {
+    top: 11.35rem;
+    bottom: auto;
+    left: .55rem;
+    right: .55rem;
+    max-width: none;
+    width: auto;
+  }
+  .combat-briefing-room-shell.is-inspecting-army .combat-briefing-map-readout {
+    top: 5.5rem;
+    right: .55rem;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .combat-briefing-room-orders { scroll-behavior: auto; }
 }
