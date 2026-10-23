@@ -169,6 +169,26 @@ async function stopProbe(page) {
     ? eligibleCasters.reduce((best, frame) =>
       frame.shadowCalls > best.shadowCalls ? frame : best)
     : null;
+  // The main scene can have a different busiest frame from the shadow pass.
+  // Retain only actual, exactly accounted main draws (not GPU milliseconds).
+  const eligibleMain = raw.renderCostRaw.status === 'ready'
+    ? raw.renderCostRaw.frames.filter((frame) =>
+      Number.isSafeInteger(frame.mainCalls) && frame.mainCalls > 0
+      && Array.isArray(frame.mainTopSubmitters?.top)
+      && frame.mainTopSubmitters.top.length > 0
+      && frame.mainTopSubmitters.top.length <= 8
+      && Number.isSafeInteger(frame.mainTopSubmitters.unrankedCalls)
+      && frame.mainTopSubmitters.unrankedCalls >= 0
+      && frame.mainTopSubmitters.top.every((row) =>
+        Number.isSafeInteger(row.calls) && row.calls > 0)
+      && frame.mainTopSubmitters.top.reduce(
+        (sum, row) => sum + row.calls,
+        frame.mainTopSubmitters.unrankedCalls) === frame.mainCalls)
+    : [];
+  const mainFrame = eligibleMain.length
+    ? eligibleMain.reduce((best, frame) =>
+      frame.mainCalls > best.mainCalls ? frame : best)
+    : null;
   expect(raw.visibility, 'Foreground session required for rAF pacing').toBe('visible');
   expect(raw.intervals.length, 'No usable frames collected').toBeGreaterThan(10);
   return {
@@ -186,6 +206,11 @@ async function stopProbe(page) {
         shadowCalls: casterFrame.shadowCalls,
         top: casterFrame.shadowTopCasters.top,
         unrankedCalls: casterFrame.shadowTopCasters.unrankedCalls,
+      } } : {}),
+      ...(mainFrame ? { mainSubmitterSnapshot: {
+        mainCalls: mainFrame.mainCalls,
+        top: mainFrame.mainTopSubmitters.top,
+        unrankedCalls: mainFrame.mainTopSubmitters.unrankedCalls,
       } } : {}),
       renderedFrames: raw.renderCostRaw.frames.length,
       shadowSplitStatus: raw.renderCostRaw.status !== 'ready' ? 'unavailable'

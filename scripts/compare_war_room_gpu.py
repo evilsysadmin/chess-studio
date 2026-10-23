@@ -207,6 +207,35 @@ def load_group(directory, expected_sha, mode, minimum):
                             last_count = row['calls']
                         require(counted == shadow_calls,
                                 where + '/' + phase + ': incomplete or invented caster rank totals')
+                    main_rank = render_cost.get('mainSubmitterSnapshot')
+                    if main_rank is not None:
+                        require(status == 'ready' and split == 'ready',
+                                where + '/' + phase + ': main rank requires real render/split')
+                        require(type(main_rank) is dict,
+                                where + '/' + phase + ': invalid main submitter snapshot')
+                        main_calls = main_rank.get('mainCalls')
+                        require(type(main_calls) is int and main_calls > 0,
+                                where + '/' + phase + ': main rank requires actual main draws')
+                        main_rows = main_rank.get('top')
+                        require(type(main_rows) is list and 0 < len(main_rows) <= 8,
+                                where + '/' + phase + ': invalid main submitter rank length')
+                        remainder = main_rank.get('unrankedCalls')
+                        require(type(remainder) is int and remainder >= 0,
+                                where + '/' + phase + ': invalid main unranked remainder')
+                        main_counted = remainder
+                        prior_calls = main_calls + 1
+                        for index, row in enumerate(main_rows):
+                            require(type(row) is dict
+                                    and type(row.get('name')) is str
+                                    and 0 < len(row['name']) <= 96
+                                    and row.get('family') in ('pieces', 'shell', 'other')
+                                    and type(row.get('calls')) is int
+                                    and 0 < row['calls'] <= prior_calls,
+                                    where + '/' + phase + f': invalid main rank {index}')
+                            main_counted += row['calls']
+                            prior_calls = row['calls']
+                        require(main_counted == main_calls,
+                                where + '/' + phase + ': incomplete or invented main rank totals')
                     family_status = render_cost.get('shadowFamiliesStatus')
                     if family_status is not None:
                         require(family_status in ('ready', 'unavailable'),
@@ -601,6 +630,38 @@ def self_test():
         assert '| desktop-1440x900 · first-visit · idle · draw calls/frame median | 140.00 | 140.00 | +0.00 | 40/40 |' in measured
         assert '| desktop-1440x900 · first-visit · move · renderer CPU submit p95 (ms) | 2.50 | 2.50 | +0.00 | 40/40 |' in measured
         assert '| desktop-1440x900 · first-visit · idle · shadow-depth draw calls/frame median | 105.00 | 105.00 | +0.00 | 40/40 |' in measured
+        # Main-object rankings are optional legacy-safe telemetry, but if
+        # present they must account for the entire observed main pass.
+        rank_path = candidate / 'desktop-1440x900-0.json'
+        ranked = json.loads(rank_path.read_text())
+        rank_cost = ranked['visits'][0]['idle']['renderCost']
+        rank_cost['mainSubmitterSnapshot'] = {
+            'mainCalls': 35, 'top': [
+                {'name': 'desk', 'family': 'shell', 'calls': 20},
+                {'name': 'pawn', 'family': 'pieces', 'calls': 10},
+            ], 'unrankedCalls': 5,
+        }
+        rank_path.write_text(json.dumps(ranked))
+        assert 'draw calls/frame median' in compare(base, candidate, a, b)
+        rank_cost['mainSubmitterSnapshot']['unrankedCalls'] = 4
+        rank_path.write_text(json.dumps(ranked))
+        try:
+            compare(base, candidate, a, b)
+        except BadReport as exc:
+            assert 'main rank totals' in str(exc)
+        else:
+            raise AssertionError('Incomplete real main draw ranking accepted')
+        rank_cost['mainSubmitterSnapshot']['unrankedCalls'] = 5
+        rank_cost['mainSubmitterSnapshot']['top'][1]['calls'] = 21
+        rank_path.write_text(json.dumps(ranked))
+        try:
+            compare(base, candidate, a, b)
+        except BadReport as exc:
+            assert 'invalid main rank' in str(exc)
+        else:
+            raise AssertionError('Unsorted main draw ranking accepted')
+        rank_cost.pop('mainSubmitterSnapshot')
+        rank_path.write_text(json.dumps(ranked))
         journal_path = candidate / 'desktop-1440x900-0.json'
         journal_report = json.loads(journal_path.read_text())
         journal_report['visits'][0]['idle']['renderCost'] = {
