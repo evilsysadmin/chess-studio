@@ -1,11 +1,14 @@
 FROM golang:1.27.3-alpine3.23 AS build
 ARG TARGETARCH
 ARG EXPECTED_GO_VERSION=1.27.3
+# Keep dependency and binary steps on the bundled patched Go, with no auto-switch.
+ENV GOTOOLCHAIN=local
 WORKDIR /src
 # Verify the builder selected for the actual distributed image, not just CI.
 RUN test "$(GOTOOLCHAIN=local go env GOVERSION)" = "go${EXPECTED_GO_VERSION}"
 COPY go.mod go.sum ./
-RUN go mod download
+# Also verify modules have not been altered in the build cache after download.
+RUN go mod download && go mod verify
 COPY cmd ./cmd
 COPY internal ./internal
 # GO-2026-5932: the legacy OpenPGP packages have no upstream fix.
