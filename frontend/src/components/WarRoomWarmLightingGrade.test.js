@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
   applyWarRoomAtmosphereGrade,
   applyWarRoomHemisphereGrade,
@@ -93,6 +93,47 @@ describe('War Room canonical warm lighting', () => {
     expect(scene.background.getHex()).toBe(0x070504);
     expect(scene.fog.color.getHex()).toBe(0x0d0907);
     expect(scene.userData.warRoomV2LightingGrade).toBe('nocturnal-walnut-v3');
+  });
+
+  it('avoids generic-to-v2 color ping-pong every paint and still restores other variants', () => {
+    const scene = {
+      userData: { warRoomRenderedVariant: 'v2' },
+      background: color(0x100b08),
+      fog: { isFogExp2: true, color: color(0x17100c) },
+    };
+    const backgroundWrite = vi.spyOn(scene.background, 'setHex');
+    const fogWrite = vi.spyOn(scene.fog.color, 'setHex');
+
+    for (let i = 0; i < 30; i += 1) {
+      applyWarRoomAtmosphereGrade(scene);
+      applyWarRoomV2RuntimeLightingGrade(scene, null);
+    }
+    // One dark-grade install, not 30 generic->dark cycles.
+    expect(backgroundWrite).toHaveBeenCalledTimes(1);
+    expect(fogWrite).toHaveBeenCalledTimes(1);
+    expect(scene.background.getHex()).toBe(0x070504);
+    expect(scene.fog.color.getHex()).toBe(0x0d0907);
+    expect(scene.userData.warRoomAtmosphereGrade).toBe('warm-amber-room-v2');
+    expect(scene.userData.warRoomV2LightingGrade).toBe('nocturnal-walnut-v3');
+
+    // Returning to any non-V2 room must immediately restore its warm palette.
+    scene.userData.warRoomRenderedVariant = 'v3';
+    applyWarRoomAtmosphereGrade(scene);
+    expect(scene.background.getHex()).toBe(0x100b08);
+    expect(scene.fog.color.getHex()).toBe(0x17100c);
+    expect(backgroundWrite).toHaveBeenCalledTimes(2);
+    expect(fogWrite).toHaveBeenCalledTimes(2);
+    applyWarRoomAtmosphereGrade(scene);
+    expect(backgroundWrite).toHaveBeenCalledTimes(2);
+    expect(fogWrite).toHaveBeenCalledTimes(2);
+
+    scene.userData.warRoomRenderedVariant = 'v2';
+    applyWarRoomAtmosphereGrade(scene);
+    applyWarRoomV2RuntimeLightingGrade(scene, null);
+    expect(backgroundWrite).toHaveBeenCalledTimes(3);
+    expect(fogWrite).toHaveBeenCalledTimes(3);
+    expect(scene.background.getHex()).toBe(0x070504);
+    expect(scene.fog.color.getHex()).toBe(0x0d0907);
   });
 
   it('recognizes an already graded key instead of depending on the old source color', () => {
