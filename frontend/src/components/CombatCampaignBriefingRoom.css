@@ -218,6 +218,12 @@
   .combat-briefing-room-status { max-width: calc(48% - 1rem); }
 }
 @media (max-width: 720px) {
+  /* The shared camera frames the whole room; shift that authored view upward
+     *only for briefing*, so the exposed mobile slot contains the chess army
+     rather than an empty distant wall. No new camera or duplicate renderer. */
+  .combat-briefing-room-shell .combat-preparation-room-stage {
+    transform: translateY(-38%);
+  }
   .combat-briefing-room-intro {
     top: 3.55rem;
     left: .55rem;
