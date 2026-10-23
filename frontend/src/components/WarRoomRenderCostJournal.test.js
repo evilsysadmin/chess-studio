@@ -46,6 +46,31 @@ describe('War Room real-render cost journal', () => {
     expect(invalid.shadowFamilyCalls).toBeUndefined();
   });
 
+  it('keeps only bounded, complete real shadow-caster ranks', () => {
+    const journal = createWarRoomRenderCostJournal(3);
+    const common = {
+      calls: 24, triangles: 100, mainCalls: 4, shadowCalls: 20,
+      shadowPasses: 1, shadowFamilyCalls: { pieces: 12, shell: 5, other: 3 },
+    };
+    journal.record({ ...common, shadowTopCasters: {
+      top: [{ name: 'armour', family: 'shell', calls: 5 },
+        { name: 'pawn', family: 'pieces', calls: 12 }],
+      unrankedCalls: 3,
+    } }, 1, 2);
+    journal.record({ ...common, shadowTopCasters: {
+      top: [{ name: 'armour', family: 'shell', calls: 50 }],
+      unrankedCalls: 0,
+    } }, 2, 3);
+    const rows = journal.readAfter(0).samples;
+    expect(rows[0].shadowTopCasters).toEqual({
+      top: [{ name: 'armour', family: 'shell', calls: 5 },
+        { name: 'pawn', family: 'pieces', calls: 12 }],
+      unrankedCalls: 3,
+    });
+    expect(rows[1].shadowTopCasters).toBeUndefined();
+    expect(rows[1].shadowFamilyCalls).toEqual(common.shadowFamilyCalls);
+  });
+
   it('fails closed on overrun instead of presenting a biased tail as full sampling', () => {
     const journal = createWarRoomRenderCostJournal(3);
     for (let i = 1; i <= 5; i += 1) journal.record({ calls: i, triangles: i * 10 }, i, i + 1);
