@@ -26,6 +26,10 @@ export default function Home3DLoadingGate({ stageRef, onUseStaticHome, onHomeAva
     let secondFrame = 0;
     let helpTimer = 0;
     let fallbackTimer = 0;
+    // The cold-start watchdog is allowed to choose the static Home only if
+    // this visit has NEVER shown a complete WebGL frame. After a live 3D
+    // context is lost, a painted preview must remain a reversible state.
+    let everPresented3D = false;
     const showIllustration = () => {
       if (cancelled || visibleRef.current) return;
       stage.dataset.home3dPreview = 'painted';
@@ -40,11 +44,13 @@ export default function Home3DLoadingGate({ stageRef, onUseStaticHome, onHomeAva
     };
     const armRecovery = () => {
       if (fallbackTimer) return;
-      // On a slow GPU users may immediately choose the pre-decoded illustration;
-      // the same recovery applies after a later WebGL context loss.
+      // On a slow GPU users can use the pre-decoded illustration while
+      // WebGL starts or recovers. Only a NEVER-ready cold start may switch
+      // permanently to static after 30 seconds: otherwise a delayed browser
+      // webglcontextrestored event could no longer reach the Blender canvas.
       helpTimer = window.setTimeout(showIllustration, 6_000);
       fallbackTimer = window.setTimeout(() => {
-        if (!visibleRef.current) onUseStaticHomeRef.current?.();
+        if (!visibleRef.current && !everPresented3D) onUseStaticHomeRef.current?.();
       }, 30_000);
     };
     const cancelFrames = () => {
@@ -77,6 +83,7 @@ export default function Home3DLoadingGate({ stageRef, onUseStaticHome, onHomeAva
             return;
           }
           visibleRef.current = true;
+          everPresented3D = true;
           delete stage.dataset.home3dPreview;
           setReady(true);
           setPreviewing(false);
