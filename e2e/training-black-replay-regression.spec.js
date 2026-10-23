@@ -75,4 +75,26 @@ test('Replay personal · negras mantiene escena jugable en desktop y portrait', 
       contentType: 'image/png',
     });
   }
+
+  // Original field report was taken AFTER pressing "Ver solución". Keep that
+  // revealed/review composition in the same visual gate as the solving state.
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await replay.getByRole('button', { name: 'Ver solución', exact: true }).click();
+  await expect(replay.getByText('Esta era la solución', { exact: true })).toBeVisible();
+  await expect(replay.locator('.puzzle-coach-panel')).toContainText('Juegas con negras');
+  for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 }]) {
+    await page.setViewportSize(viewport);
+    await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+    await expect(canvas).toBeVisible();
+    await expect(replay.getByText('Esta era la solución', { exact: true })).toBeVisible();
+    const bounds = await canvas.boundingBox();
+    expect(bounds?.width || 0).toBeGreaterThanOrEqual(viewport.width * 0.98);
+    expect(bounds?.height || 0).toBeGreaterThanOrEqual(viewport.height * 0.98);
+    const png = await page.screenshot({ animations: 'disabled', fullPage: false });
+    await writeFile(`../.artifacts/app-visual/training-replay-black-revealed-${viewport.width}x${viewport.height}.png`, png);
+    await testInfo.attach(`replay-black-revealed-${viewport.width}x${viewport.height}`, {
+      body: png,
+      contentType: 'image/png',
+    });
+  }
 });
