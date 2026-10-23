@@ -224,18 +224,22 @@ test('Browser WebGL · Home 3D recupera el contexto perdido', async ({ page }) =
 
   await expect(canvas).not.toHaveClass(/is-ready/);
   // Actual browser WEBGL_lose_context, not just a synthetic DOM event.
-  // Advance beyond the old irreversible 8-second deadline. The painted
-  // safety layer may appear, but the Blender component must remain alive
-  // and able to accept a late restoration on the SAME WebGL context.
+  // Cross BOTH historical irreversible deadlines (8 s in the renderer,
+  // 30 s in Home3DLoadingGate) without remounting away the recovering
+  // WebGL canvas. The painted Home must remain usable throughout.
   await page.clock.install();
-  await page.clock.fastForward(9_100);
+  await page.clock.fastForward(31_100);
   await expect(canvas).toHaveAttribute('data-home-castle-compositor', 'blender-runtime');
   await expect(canvas).toHaveAttribute('data-home-blender-runtime', 'recovering');
   await expect(canvas).toHaveAttribute('data-home-blender-last-context-event', 'lost');
+  await expect(home.locator('.illustrated-home__stage')).toHaveAttribute('data-home3d-preview', 'painted');
+  await expect(home.locator('.illustrated-home__art')).toHaveCSS('opacity', '1');
+  await expect(canvas).toHaveCSS('opacity', '0');
   await expect.poll(() => page.evaluate(() => document.documentElement.dataset.homeBlenderLastEvent)).toBe('context-lost');
   await page.evaluate(() => window.__homeWebglLoseContext?.restoreContext());
   await expect(canvas).toHaveAttribute('data-home-blender-runtime', 'ready', { timeout:15_000 });
   await expect(canvas).toHaveClass(/is-ready/, { timeout:15_000 });
+  await expect(home.locator('.illustrated-home__stage')).not.toHaveAttribute('data-home3d-preview', 'painted');
   const history = await page.evaluate(() => JSON.parse(
     document.documentElement.dataset.homeBlenderTrace || '[]',
   ));
@@ -245,7 +249,7 @@ test('Browser WebGL · Home 3D recupera el contexto perdido', async ({ page }) =
   expect(lifecycle.slice(lossIndex)).toEqual([
     'context-lost', 'context-restored', 'mount', 'ready',
   ]);
-  expect(history.at(-1).at - history[lossIndex].at).toBeGreaterThanOrEqual(9_000);
+  expect(history.at(-1).at - history[lossIndex].at).toBeGreaterThanOrEqual(31_000);
   await settle(page);
 
   const restored = await canvas.evaluate((node) => {

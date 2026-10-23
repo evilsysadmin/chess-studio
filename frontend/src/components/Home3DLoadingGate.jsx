@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { home3DFrameReady } from './Home3DReadiness.js';
+import { home3DFrameReady, home3DContextRecovering } from './Home3DReadiness.js';
 import './Home3DLoadingGate.css';
 
 // No wrapper is inserted inside the illustrated stage: existing canvas/art
@@ -44,7 +44,13 @@ export default function Home3DLoadingGate({ stageRef, onUseStaticHome, onHomeAva
       // the same recovery applies after a later WebGL context loss.
       helpTimer = window.setTimeout(showIllustration, 6_000);
       fallbackTimer = window.setTimeout(() => {
-        if (!visibleRef.current) onUseStaticHomeRef.current?.();
+        // Startup may fall back after 30 s. An already mounted canvas whose
+        // WebGL context was lost must survive: the browser can restore it
+        // later, and the painted Home is usable meanwhile. Unmounting it
+        // here destroys the very context that would deliver 'restored'.
+        if (!visibleRef.current && !home3DContextRecovering(stage)) {
+          onUseStaticHomeRef.current?.();
+        }
       }, 30_000);
     };
     const cancelFrames = () => {

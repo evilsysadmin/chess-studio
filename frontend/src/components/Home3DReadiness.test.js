@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { home3DFrameReady } from './Home3DReadiness.js';
+import { home3DFrameReady, home3DContextRecovering } from './Home3DReadiness.js';
 
 function stage({ ready = false, compositor = 'blender-runtime', runtime = 'loading', width = 600 } = {}) {
   return {
@@ -24,5 +24,15 @@ describe('atomic Home 3D reveal', () => {
     expect(home3DFrameReady(stage({ ready: true, runtime: 'ready' }))).toBe(true);
     expect(home3DFrameReady(stage({ ready: false, compositor: 'layered' }))).toBe(false);
     expect(home3DFrameReady(stage({ ready: true, compositor: 'layered' }))).toBe(true);
+  });
+});
+
+describe('recoverable Home WebGL context loss', () => {
+  it('protects the surviving canvas from the irreversible startup fallback', () => {
+    expect(home3DContextRecovering(null)).toBe(false);
+    expect(home3DContextRecovering({ querySelector: () => null })).toBe(false);
+    expect(home3DContextRecovering(stage({ runtime: 'loading' }))).toBe(false);
+    expect(home3DContextRecovering(stage({ ready: true, runtime: 'ready' }))).toBe(false);
+    expect(home3DContextRecovering(stage({ runtime: 'recovering' }))).toBe(true);
   });
 });
