@@ -71,6 +71,9 @@ COMBAT_PREPARATION_FILES = {
     "frontend/src/components/combatoperationscampaignbriefingroute.jsx",
     "frontend/src/components/campaignbriefing.jsx",
     "frontend/src/components/campaigncommandstatus.jsx",
+    "frontend/src/combatveteraninspection.js",
+    "frontend/src/components/combatveterandossier.jsx",
+    "frontend/src/components/combatveterandossier.css",
 }
 # Hans has its own choreography/runtime owners and should not block unrelated
 # shared-renderer camera/layout PRs. Its dedicated canary still runs whenever

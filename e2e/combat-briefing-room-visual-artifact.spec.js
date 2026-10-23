@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { dismissTutorialIfVisible, login, mockApi, openCampaignBriefing } from './helpers.js';
+import { readBoard3DProjection } from './board3d-projection.js';
 
 const ARTIFACT_DIR = '../.artifacts/app-visual/combat-briefing-room';
 
@@ -193,6 +194,38 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 
           ?.closest('.combat-preparation-room-stage')));
       expect(upperRoomUnobstructed).toBe(true);
       await captureRoom(page, ARTIFACT_DIR + '/combat-briefing-army-inspection-390x844.png');
+      // Nothing is imposed on the initial scene. The native selector proves
+      // screen-reader/keyboard access to the same real identity as piece taps.
+      await expect(room.locator('[data-combat-veteran-dossier]')).toHaveCount(0);
+      const veteranPicker = room.getByRole('combobox', { name: 'Consultar veterano desplegado' });
+      await expect(veteranPicker).toBeVisible();
+      const projection = await readBoard3DProjection(canvas);
+      const rook = projection.square('a1', 0.72);
+      expect(rook.x).toBeGreaterThan(0);
+      expect(rook.x).toBeLessThan(viewport.width);
+      expect(rook.y).toBeGreaterThan(0);
+      expect(rook.y).toBeLessThan(viewport.height);
+      await page.mouse.click(rook.x, rook.y);
+      const dossier = room.getByRole('complementary', { name: 'Expediente de Varela' });
+      await expect(dossier).toBeVisible();
+      await dossier.getByRole('button', { name: 'Cerrar expediente del veterano' }).click();
+      await expect(dossier).toHaveCount(0);
+      // A native twin is still present for touch precision and accessibility.
+      await veteranPicker.selectOption('a1');
+      await expect(dossier).toBeVisible();
+      await expect(dossier).toContainText('Teniente');
+      await expect(dossier).toContainText('5 batallas');
+      await expect(dossier).toContainText('Bautismo de fuego');
+      await expect(dossier).toContainText('Cinco bajas');
+      await expect(dossier).toContainText('Cicatriz del jefe');
+      // All three medals and their provenance must fit, not disappear past an
+      // unadvertised inner scroll boundary on the 390 px inspection.
+      expect(await dossier.evaluate((el) => el.scrollHeight - el.clientHeight)).toBeLessThanOrEqual(1);
+      // One real live-WebGL screenshot with the veteran's service folio open.
+      await captureRoom(page, ARTIFACT_DIR + '/combat-briefing-veteran-dossier-390x844.png');
+      await page.keyboard.press('Escape');
+      await expect(dossier).toHaveCount(0);
+      await expect(room.locator('.combat-briefing-room-orders')).not.toBeVisible();
       await page.keyboard.press('Escape');
       await expect(canvas).toHaveAttribute('data-board3d-camera-framing', framingBefore);
       expect(await page.evaluate((el) =>

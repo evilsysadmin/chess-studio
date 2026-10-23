@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import { campaignMap, availableCampaignNodes } from '../combatCampaign.js';
 import { projectCombatOperationsCampaignMap } from '../combatOperationsMapProjection.js';
 import { combatPreparationHonors } from '../combatPreparationHonors.js';
@@ -6,7 +6,7 @@ import WarRoomBoardSurface from './WarRoomBoardSurface.jsx';
 import { deploymentFen } from '../combatDeployment.js';
 import './CombatPreparationRoom.css';
 
-export default function CombatPreparationRoom({ roster, campaign = null, cartography = null, onSectorInspect, onCustomize, inspectionPreview = false }) {
+export default function CombatPreparationRoom({ roster, campaign = null, cartography = null, onSectorInspect, onUnitInspect, onCustomize, inspectionPreview = false }) {
   const fen = useMemo(() => deploymentFen(roster), [roster]);
   const combatOperationsMap = useMemo(() => {
     const map = cartography || (campaign?.active
@@ -14,6 +14,7 @@ export default function CombatPreparationRoom({ roster, campaign = null, cartogr
       : null);
     return map && onSectorInspect ? { ...map, onInspect: onSectorInspect } : map;
   }, [campaign, cartography, onSectorInspect]);
+  const handleUnitInspect = useCallback((square) => onUnitInspect?.(square), [onUnitInspect]);
   const { rankLevels: pieceRankLevels, medalCounts: pieceMedalCounts } = useMemo(
     () => combatPreparationHonors(roster), [roster],
   );
@@ -21,7 +22,7 @@ export default function CombatPreparationRoom({ roster, campaign = null, cartogr
   const boardProps = useMemo(() => ({
     gameId: 'combat-preparation-room',
     fen,
-    onSquareClick: () => {},
+    onSquareClick: handleUnitInspect,
     selectedSquare: null,
     legalTargets: [],
     animate: null,
@@ -37,7 +38,7 @@ export default function CombatPreparationRoom({ roster, campaign = null, cartogr
     warRoomMobilePerformance: true,
     pieceRankLevels,
     pieceMedalCounts,
-  }), [fen, pieceRankLevels, pieceMedalCounts, inspectionPreview, combatOperationsMap]);
+  }), [fen, handleUnitInspect, pieceRankLevels, pieceMedalCounts, inspectionPreview, combatOperationsMap]);
 
   return (
     <div
