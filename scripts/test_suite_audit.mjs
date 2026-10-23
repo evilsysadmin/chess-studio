@@ -400,6 +400,7 @@ if (checkCiWiring) {
     .filter((line) => line && !line.startsWith('#'));
   const expectedScanCommands = [
     'set -euo pipefail',
+    'go mod tidy -diff',
     'go install golang.org/x/vuln/cmd/govulncheck@v1.9.0',
     'scanner="$(go env GOPATH)/bin/govulncheck"',
     '"$scanner" ./...',
