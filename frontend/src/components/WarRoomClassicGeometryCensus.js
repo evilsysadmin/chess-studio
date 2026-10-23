@@ -14,6 +14,7 @@ export function censusClassicWarRoomShell(roots = [], { ownerLabels = [] } = {})
   const geometries = new Set();
   const families = new Map();
   const owners = new Map();
+  const ownerGeometryCosts = new Map();
   let meshNodes = 0;
   let meshInstances = 0;
   let potentialTriangles = 0;
@@ -54,6 +55,19 @@ export function censusClassicWarRoomShell(roots = [], { ownerLabels = [] } = {})
       family.meshNodes++;
       family.meshInstances += instanceCount;
       family.potentialTriangles += triangles * instanceCount;
+      // Cross owner x primitive family without another traversal. This
+      // distinguishes, e.g., decorative cylinders from structural cylinders.
+      const ownerGeometryKey = JSON.stringify([ownerName, geometryType]);
+      let ownerGeometry = ownerGeometryCosts.get(ownerGeometryKey);
+      if (!ownerGeometry) {
+        ownerGeometry = { owner: ownerName, geometryType, meshNodes: 0,
+          meshInstances: 0, uniqueGeometries: 0, potentialTriangles: 0,
+          uniqueTriangles: 0 };
+        ownerGeometryCosts.set(ownerGeometryKey, ownerGeometry);
+      }
+      ownerGeometry.meshNodes++;
+      ownerGeometry.meshInstances += instanceCount;
+      ownerGeometry.potentialTriangles += triangles * instanceCount;
       meshNodes++;
       meshInstances += instanceCount;
       potentialTriangles += triangles * instanceCount;
@@ -65,6 +79,8 @@ export function censusClassicWarRoomShell(roots = [], { ownerLabels = [] } = {})
         // First-encounter assignment preserves additivity across owners.
         owner.uniqueGeometries++;
         owner.uniqueTriangles += triangles;
+        ownerGeometry.uniqueGeometries++;
+        ownerGeometry.uniqueTriangles += triangles;
       }
     });
   }
@@ -85,6 +101,14 @@ export function censusClassicWarRoomShell(roots = [], { ownerLabels = [] } = {})
     ownerFamilies: [...owners.values()].sort(
       (left, right) => right.potentialTriangles - left.potentialTriangles
         || left.owner.localeCompare(right.owner),
+    ),
+    // Fine-grained hotspots: which *geometry type* dominates each V1 owner.
+    // Credits unique shared geometry to the first visited owner, matching
+    // ownerFamilies so all aggregate counts remain additive.
+    ownerGeometryFamilies: [...ownerGeometryCosts.values()].sort(
+      (left, right) => right.potentialTriangles - left.potentialTriangles
+        || left.owner.localeCompare(right.owner)
+        || left.geometryType.localeCompare(right.geometryType),
     ),
   };
 }
