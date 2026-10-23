@@ -153,6 +153,17 @@ AMD/Intel Mesa: usar `DRI_PRIME=1` cuando corresponda en vez del offload NVIDIA.
 Cada SHA produce tres JSON en `.artifacts/war-room-gpu-benchmark/`: escritorio 1440×900, touch **emulado** vertical 390×844 y horizontal 844×390. En cada perfil abre primero la sala en una pestaña nueva (first visit) y después vuelve a entrar dentro del mismo contexto del navegador (return visit), con caché de navegador compartida; este etiquetado no demuestra por sí solo un HIT de red. Los dos recorridos inician una sesión E2E autenticada y restaurada (sin depender del formulario «Usuario»), **verifican que se abre la antesala real «Configurar partida rápida» y que «Empezar partida» produce un tablero 3D real**, montan la **War Room V3 o V4 seleccionada con su GLB real**, registran identidad de renderer GPU, primera carga/contadores WebGL, memoria expuesta al ready, una muestra de 2,5 s de cadencia rAF inactiva y otra durante una jugada e2→e4 real con confirmación de la API simulada. Se cuentan pausas >33 ms y >50 ms y tareas largas cuando el navegador permite PerformanceObserver.
 
 
+Si Playwright **falla** durante el benchmark GPU (baseline de una o
+ambas salas, o A/B), el runner conserva, además de los JSON parciales y el
+log, las capturas de pantalla, trazas ZIP y contexto de error de
+`e2e/test-results`, bajo
+`<sesión>/<cohorte>/playwright-XX-A-evidence/` (o `-B-` en A/B).
+Estos archivos son diagnósticos, **no** muestras de rendimiento válidas.
+La copia está acotada (máximo 48 archivos, 64 MiB en total), ignora enlaces
+simbólicos y archivos ajenos, y ocurre antes de eliminar el worktree
+temporal. Si no hay artefactos, el log permanece como fuente primaria del
+fallo.
+
 Para capturar **V3 y V4 en una sola sesión física**, el runner de baseline
 acepta `--variant both`: instala dependencias y compila el mismo SHA **una vez**
 y ejecuta luego cada sala con sus propios JSON y Markdown, sin comparar
