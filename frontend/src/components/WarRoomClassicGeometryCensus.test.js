@@ -23,6 +23,11 @@ describe('classic War Room geometry census', () => {
         owner: 'root-1', meshNodes: 2, meshInstances: 5,
         uniqueGeometries: 1, potentialTriangles: 60, uniqueTriangles: 12,
       }],
+      ownerGeometryFamilies: [{
+        owner: 'root-1', geometryType: 'BoxGeometry',
+        meshNodes: 2, meshInstances: 5, uniqueGeometries: 1,
+        potentialTriangles: 60, uniqueTriangles: 12,
+      }],
     });
   });
 
@@ -69,9 +74,19 @@ describe('classic War Room geometry census', () => {
       { owner: 'room-structure', meshNodes: 1, meshInstances: 1,
         uniqueGeometries: 1, potentialTriangles: 12, uniqueTriangles: 12 },
     ]);
+    expect(report.ownerGeometryFamilies).toEqual([
+      { owner: 'table-base', geometryType: 'BoxGeometry',
+        meshNodes: 1, meshInstances: 3, uniqueGeometries: 0,
+        potentialTriangles: 36, uniqueTriangles: 0 },
+      { owner: 'room-structure', geometryType: 'BoxGeometry',
+        meshNodes: 1, meshInstances: 1, uniqueGeometries: 1,
+        potentialTriangles: 12, uniqueTriangles: 12 },
+    ]);
     for (const field of ['meshNodes', 'meshInstances', 'uniqueGeometries',
       'potentialTriangles', 'uniqueTriangles']) {
       expect(report.ownerFamilies.reduce((sum, owner) => sum + owner[field], 0))
+        .toBe(report[field]);
+      expect(report.ownerGeometryFamilies.reduce((sum, row) => sum + row[field], 0))
         .toBe(report[field]);
     }
   });
@@ -96,6 +111,11 @@ describe('classic War Room geometry census', () => {
       ownerFamilies: [{
         owner: 'root-1', meshNodes: 1, meshInstances: 1,
         uniqueGeometries: 1, potentialTriangles: 2, uniqueTriangles: 2,
+      }],
+      ownerGeometryFamilies: [{
+        owner: 'root-1', geometryType: 'BufferGeometry',
+        meshNodes: 1, meshInstances: 1, uniqueGeometries: 1,
+        potentialTriangles: 2, uniqueTriangles: 2,
       }],
     });
   });

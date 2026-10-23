@@ -111,6 +111,11 @@ describe('lazy classic War Room shell controller', () => {
       owner: 'room-structure', meshNodes: 1, meshInstances: 1,
       uniqueGeometries: 1, potentialTriangles: 12, uniqueTriangles: 12,
     }]);
+    expect(JSON.parse(canvas.dataset.warRoomClassicTopOwnerGeometryFamilies)).toEqual([{
+      owner: 'room-structure', geometryType: 'BoxGeometry',
+      meshNodes: 1, meshInstances: 1, uniqueGeometries: 1,
+      potentialTriangles: 12, uniqueTriangles: 12,
+    }]);
     expect(loadModule).toHaveBeenCalledTimes(1);
     await controller.ensure();
     expect(loadModule).toHaveBeenCalledTimes(1);
@@ -125,6 +130,7 @@ describe('lazy classic War Room shell controller', () => {
     );
     await school.ensure();
     expect(schoolCanvas.dataset.warRoomClassicPotentialTriangles).toBeUndefined();
+    expect(schoolCanvas.dataset.warRoomClassicTopOwnerGeometryFamilies).toBeUndefined();
     expect(schoolCanvas.dataset.classicShellModule).toBe('school-room-dedicated-v1');
   });
 
