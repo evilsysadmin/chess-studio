@@ -36,6 +36,9 @@ def main() -> int:
     portable = load_json(PORTABLE_LOGS)
     if portable.get("uid") != "chess-studio-logs":
         fail("UID estable ausente en dashboard portable de logs")
+    portable_raw = PORTABLE_LOGS.read_text(encoding="utf-8")
+    if 'chess-studio-backend-go' not in portable_raw:
+        fail("dashboard portable debe seleccionar el backend Go canónico")
     panels = portable.get("panels") or []
     titles = {str(row.get("title") or "") for row in panels}
     required_titles = {"404 accionables · request_path", "5xx por ruta", "p95 por ruta · top 10", "Errores recientes · correlación", "Errores CI / synthetic · aislados", "Frontend telemetry · 15 min", "Frontend telemetry · flujo reciente", "Auth IP bans · 1 h", "Biggest offenders · 401/403", "Tráfico legítimo por país · hits"}
@@ -68,9 +71,9 @@ def main() -> int:
     logs_data = load_json(INFRA / "dashboards" / "chess-studio-logs.json")
     logs_raw = (INFRA / "dashboards" / "chess-studio-logs.json").read_text(encoding="utf-8")
     for token in (
-        'production : {service_name=\\"chess-studio-backend\\"}',
-        'staging : {service_name=\\"chess-studio-backend-staging\\"}',
-        '{service_name=~\\"chess-studio-backend(-staging)?\\"}',
+        'production : {service_name=\\"chess-studio-backend-go\\"}',
+        'staging : {service_name=\\"chess-studio-backend-staging-go\\"}',
+        '{service_name=~\\"chess-studio-backend(-staging)?-go\\"}',
     ):
         if token not in logs_raw:
             fail(f"logs dashboard no usa OTLP canónico por entorno: {token}")
@@ -155,10 +158,10 @@ def main() -> int:
         fail("dashboard OCI host no debe ofrecer production mientras el collector físico sea sólo staging")
 
     trace_dash = (INFRA / "dashboards" / "chess-studio-traces.json").read_text(encoding="utf-8")
-    for token in ('traceql', 'chess-studio-backend', '${traces_datasource_uid}', 'trace_id', 'trace_sampled'):
+    for token in ('traceql', 'chess-studio-backend-go', '${traces_datasource_uid}', 'trace_id', 'trace_sampled'):
         if token not in trace_dash:
             fail(f"dashboard Tempo no cubre {token}")
-    for token in ('chess-studio-backend-staging', 'backend_service', '"label": "Entorno"', 'production : chess-studio-backend', 'staging : chess-studio-backend-staging'):
+    for token in ('chess-studio-backend-staging-go', 'backend_service', '"label": "Entorno"', 'production : chess-studio-backend-go', 'staging : chess-studio-backend-staging-go'):
         if token not in trace_dash:
             fail(f"dashboard Tempo no permite separar producción/staging: {token}")
 
@@ -565,7 +568,7 @@ def main() -> int:
     overview_path = INFRA / "dashboards" / "chess-studio-overview.json"
     overview = overview_path.read_text(encoding="utf-8")
     overview_data = load_json(overview_path)
-    for token in ('${metrics_datasource_uid}', 'chess_studio_http_server_requests_total', 'chess_studio_http_server_duration_seconds_bucket', 'chess-studio-backend', '"label": "Entorno"', 'production : chess-studio-backend', 'staging : chess-studio-backend-staging'):
+    for token in ('${metrics_datasource_uid}', 'chess_studio_http_server_requests_total', 'chess_studio_http_server_duration_seconds_bucket', 'chess-studio-backend-go', '"label": "Entorno"', 'production : chess-studio-backend-go', 'staging : chess-studio-backend-staging-go'):
         if token not in overview:
             fail(f"overview no usa señal real: {token}")
     for panel in overview_data.get("panels") or []:
@@ -649,13 +652,13 @@ def main() -> int:
         fail("dashboard logs debe interpolar selector LogQL con ${selector:raw}")
 
     for token in (
-        'chess-studio-backend',
-        'chess-studio-backend-staging',
+        'chess-studio-backend-go',
+        'chess-studio-backend-staging-go',
         '"type": "custom"',
         '"label": "Entorno"',
         'production : {service_name=',
         'staging : {service_name=',
-        'chess-studio-backend(-staging)?',
+        'chess-studio-backend(-staging)?-go',
     ):
         if token not in infra_logs:
             fail(f"Loki debe usar OTLP directo por entorno: {token}")

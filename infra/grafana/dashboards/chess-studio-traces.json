@@ -34,14 +34,14 @@
         "name": "backend_service",
         "label": "Entorno",
         "type": "custom",
-        "query": "production : chess-studio-backend,staging : chess-studio-backend-staging",
+        "query": "production : chess-studio-backend-go,staging : chess-studio-backend-staging-go",
         "current": {
           "text": "production",
-          "value": "chess-studio-backend"
+          "value": "chess-studio-backend-go"
         },
         "hide": 0,
         "includeAll": true,
-        "allValue": "chess-studio-backend|chess-studio-backend-staging",
+        "allValue": "chess-studio-backend-go|chess-studio-backend-staging-go",
         "multi": false,
         "skipUrlSync": false
       }
