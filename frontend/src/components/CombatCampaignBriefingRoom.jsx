@@ -1,7 +1,9 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { availableCampaignNodes, campaignMap } from '../combatCampaign.js';
 import { projectCombatOperationsCampaignMap } from '../combatOperationsMapProjection.js';
 import CombatPreparationRoom from './CombatPreparationRoom.jsx';
+import CombatVeteranDossier from './CombatVeteranDossier.jsx';
+import { combatVeteranAtSquare, combatVeteranInspectionOptions } from '../combatVeteranInspection.js';
 import CampaignBriefing from './CampaignBriefing.jsx';
 import './CampaignCombatPreparationRoom.css';
 import './CombatCampaignBriefingRoom.css';
@@ -14,11 +16,19 @@ export default function CombatCampaignBriefingRoom({
 }) {
   const [inspectingArmy, setInspectingArmy] = useState(false);
   const [inspectedSectorId, setInspectedSectorId] = useState('');
+  const [inspectedUnitSquare, setInspectedUnitSquare] = useState('');
+  const unitOptions = useMemo(() => combatVeteranInspectionOptions(roster), [roster]);
+  const inspectedUnit = useMemo(() => combatVeteranAtSquare(roster, inspectedUnitSquare), [roster, inspectedUnitSquare]);
+  const inspectUnit = useCallback((square) => {
+    if (!combatVeteranAtSquare(roster, square)) return;
+    setInspectedUnitSquare(square);
+    setInspectingArmy(true);
+  }, [roster]);
   const cartography = useMemo(() => campaign?.active
     ? projectCombatOperationsCampaignMap(campaignMap(campaign.seed), campaign, availableCampaignNodes(campaign))
     : null, [campaign]);
   const inspected = cartography?.nodes.find((sector) => sector.id === inspectedSectorId);
-  useEffect(() => { setInspectedSectorId(''); }, [campaign.seed, node.id]);
+  useEffect(() => { setInspectedSectorId(''); setInspectedUnitSquare(''); }, [campaign.seed, node.id]);
   useEffect(() => {
     if (!inspectingArmy) return undefined;
     const onEscape = (event) => {
@@ -27,11 +37,12 @@ export default function CombatCampaignBriefingRoom({
       // preview is open, the first Escape must only close this local view.
       event.preventDefault();
       event.stopPropagation();
-      setInspectingArmy(false);
+      if (inspectedUnitSquare) setInspectedUnitSquare('');
+      else setInspectingArmy(false);
     };
     window.addEventListener('keydown', onEscape, true);
     return () => window.removeEventListener('keydown', onEscape, true);
-  }, [inspectingArmy]);
+  }, [inspectingArmy, inspectedUnitSquare]);
 
   const stage = Math.max(0, (campaign.route || []).length - 1);
   const fallen = Math.max(0, Number(armySummary?.fallenCount) || 0);
@@ -43,7 +54,7 @@ export default function CombatCampaignBriefingRoom({
         aria-label="Mesa de órdenes de Combat Chess"
         data-combat-campaign-room="briefing"
       >
-        <CombatPreparationRoom roster={roster} campaign={campaign} cartography={cartography} onSectorInspect={setInspectedSectorId} inspectionPreview={inspectingArmy} />
+        <CombatPreparationRoom roster={roster} campaign={campaign} cartography={cartography} onSectorInspect={setInspectedSectorId} onUnitInspect={inspectUnit} inspectionPreview={inspectingArmy} />
 
         <div className="combat-operations-topbar combat-briefing-room-topbar">
           <button type="button" className="back-link combat-operations-exit" onClick={onExit}>
@@ -99,10 +110,24 @@ export default function CombatCampaignBriefingRoom({
           aria-controls="combat-briefing-orders"
           aria-expanded={!inspectingArmy}
           aria-pressed={inspectingArmy}
-          onClick={() => setInspectingArmy((current) => !current)}
+          onClick={() => { setInspectedUnitSquare(''); setInspectingArmy((current) => !current); }}
         >
           {inspectingArmy ? '← Volver a órdenes' : '♞ Inspeccionar ejército'}
         </button>
+
+        {inspectingArmy && (
+          <label className="combat-veteran-select">
+            Expediente
+            <select aria-label="Consultar veterano desplegado" value={inspectedUnit?.square || ''}
+              onChange={(event) => setInspectedUnitSquare(event.target.value)}>
+              <option value="">Seleccionar pieza…</option>
+              {unitOptions.map((unit) => (
+                <option key={unit.identityId} value={unit.square}>{unit.alias} · {unit.square}</option>
+              ))}
+            </select>
+          </label>
+        )}
+        {inspectedUnit && <CombatVeteranDossier unit={inspectedUnit} onClose={() => setInspectedUnitSquare('')} />}
 
         <aside id="combat-briefing-orders" className="combat-briefing-room-orders" aria-label="Órdenes para el sector elegido">
           <CampaignBriefing
