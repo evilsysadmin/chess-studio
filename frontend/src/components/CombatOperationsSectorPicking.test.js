@@ -56,7 +56,7 @@ describe('Combat Operations · read-only physical sector hit-testing', () => {
     listeners.get('pointerup')({ pointerId: 4, pointerType: 'mouse', button: 0, clientX: point.clientX + 30, clientY: point.clientY });
     expect(inspect).toHaveBeenCalledTimes(1);
     listeners.get('pointerdown')({ pointerId: 5, ...point });
-    listeners.get('pointercancel')();
+    listeners.get('pointercancel')({ pointerId: 5 });
     listeners.get('pointerup')({ pointerId: 5, ...point });
     expect(inspect).toHaveBeenCalledTimes(1);
 
