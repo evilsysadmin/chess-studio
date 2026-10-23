@@ -41,6 +41,7 @@ GO_IMAGE_PREFIX = os.environ.get(
 ).strip()
 POLL_SECONDS = 15
 ERROR_BACKOFF_SECONDS = 30
+MAX_DEPLOY_ERROR_BACKOFF_SECONDS = 300
 # Avoid hot-looping a stale Worker SHA without permanently suppressing recovery.
 SUPERSEDED_RETRY_SECONDS = 300
 HTTP_TIMEOUT_SECONDS = 8
@@ -114,6 +115,21 @@ def deploy(candidate: str) -> None:
     )
 
 
+class WatchDeployError(RuntimeError):
+    """A specific immutable SHA failed at the root-owned deploy boundary."""
+
+    def __init__(self, candidate: str, code: int | None):
+        self.candidate = candidate
+        self.code = code
+        super().__init__(f"deploy repo_ref={candidate} rc={code if code is not None else 'timeout'}")
+
+
+def repeated_error_delay(previous_sha: str, failures: int, candidate: str) -> tuple[int, int]:
+    """Avoid hammering a stuck host lock, but never inherit delay across SHAs."""
+    streak = min(5, failures + 1) if previous_sha == candidate else 1
+    return streak, min(MAX_DEPLOY_ERROR_BACKOFF_SECONDS, ERROR_BACKOFF_SECONDS * 2 ** (streak - 1))
+
+
 def iteration(rejected_sha: str = "") -> tuple[str, str]:
     if not ENABLE_MARKER.is_file() or ENABLE_MARKER.is_symlink():
         return "disabled", ""
@@ -132,7 +148,12 @@ def iteration(rejected_sha: str = "") -> tuple[str, str]:
         return "image-pending", candidate
 
     print(f"OCI_DEPLOY_WATCH_TRIGGER repo_ref={candidate}", flush=True)
-    deploy(candidate)
+    try:
+        deploy(candidate)
+    except subprocess.CalledProcessError as exc:
+        raise WatchDeployError(candidate, exc.returncode) from exc
+    except subprocess.TimeoutExpired as exc:
+        raise WatchDeployError(candidate, None) from exc
     deployed = read_deployed_sha()
     if not deployed:
         raise RuntimeError("deploy wrapper returned success without a persisted target SHA")
@@ -162,11 +183,15 @@ def watch() -> None:
     last_disabled_notice = False
     rejected_sha = ""
     rejected_until = 0.0
+    last_failed_deploy_sha = ""
+    consecutive_deploy_errors = 0
     while True:
         delay = POLL_SECONDS
         try:
             eligible_rejection = active_rejection(rejected_sha, rejected_until, time.monotonic())
             result, candidate = iteration(eligible_rejection)
+            last_failed_deploy_sha = ""
+            consecutive_deploy_errors = 0
             rejected_sha = remember_rejected_sha(eligible_rejection, result, candidate)
             if result == "superseded":
                 rejected_until = time.monotonic() + SUPERSEDED_RETRY_SECONDS
@@ -180,8 +205,16 @@ def watch() -> None:
                 last_disabled_notice = False
         except (OSError, RuntimeError, subprocess.SubprocessError, json.JSONDecodeError, urllib.error.URLError) as exc:
             delay = ERROR_BACKOFF_SECONDS
+            if isinstance(exc, WatchDeployError):
+                consecutive_deploy_errors, delay = repeated_error_delay(
+                    last_failed_deploy_sha, consecutive_deploy_errors, exc.candidate
+                )
+                last_failed_deploy_sha = exc.candidate
+            else:
+                last_failed_deploy_sha = ""
+                consecutive_deploy_errors = 0
             print(
-                f"OCI_DEPLOY_WATCH_ERROR type={type(exc).__name__} detail={str(exc)[:240]}",
+                f"OCI_DEPLOY_WATCH_ERROR type={type(exc).__name__} detail={str(exc)[:240]} delay_s={delay}",
                 flush=True,
             )
         time.sleep(delay)
@@ -198,6 +231,14 @@ def self_test() -> None:
     assert build_from_health_payload([]) == ""
     assert POLL_SECONDS == 15
     assert ERROR_BACKOFF_SECONDS >= POLL_SECONDS
+    assert MAX_DEPLOY_ERROR_BACKOFF_SECONDS == 300
+    assert [repeated_error_delay(sample, n - 1, sample)[1] for n in range(1, 7)] == [
+        30, 60, 120, 240, 300, 300,
+    ]
+    assert repeated_error_delay(sample, 5, "a" * 40) == (1, 30)
+    assert repeated_error_delay(sample, 5, sample) == (5, 300)
+    assert WatchDeployError(sample, 75).candidate == sample
+    assert str(WatchDeployError(sample, None)).endswith("rc=timeout")
     assert SUPERSEDED_RETRY_SECONDS >= ERROR_BACKOFF_SECONDS
     assert HTTP_TIMEOUT_SECONDS < POLL_SECONDS
     assert DEPLOY_WRAPPER == "/usr/local/sbin/chess-studio-deploy"
@@ -235,6 +276,22 @@ def self_test() -> None:
         deploy_call.assert_called_once_with(sample)
         assert iteration(newer) == ("superseded", sample)
         assert deploy_call.call_count == 2
+        # A failed sudo deploy is attributed to the candidate SHA, not to
+        # a generic image/HTTP failure (only these failures get long backoff).
+        deploy_call.side_effect = subprocess.CalledProcessError(75, ["sudo", DEPLOY_WRAPPER, sample])
+        try:
+            iteration()
+        except WatchDeployError as exc:
+            assert exc.candidate == sample and exc.code == 75
+        else:
+            raise AssertionError("failed root deploy must retain immutable SHA")
+        deploy_call.side_effect = subprocess.TimeoutExpired(["sudo", DEPLOY_WRAPPER, sample], 900)
+        try:
+            iteration()
+        except WatchDeployError as exc:
+            assert exc.candidate == sample and exc.code is None
+        else:
+            raise AssertionError("timed out root deploy must retain immutable SHA")
     source = Path(__file__).read_text(encoding="utf-8")
     tree = ast.parse(source)
     imported = []
