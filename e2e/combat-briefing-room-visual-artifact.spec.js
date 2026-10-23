@@ -88,6 +88,27 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 
     await mkdir(ARTIFACT_DIR, { recursive: true });
     await captureRoom(page, ARTIFACT_DIR + '/combat-briefing-room-' + viewport.width + 'x' + viewport.height + '.png');
 
+    if (viewport.width < 720) {
+      const inspect = room.getByRole('button', { name: /Inspeccionar ejército/i });
+      await expect(inspect).toBeVisible();
+      await inspect.click();
+      await expect(room.locator('.combat-briefing-room-orders')).not.toBeVisible();
+      await expect(room.locator('.combat-preparation-room-stage')).toBeVisible();
+      await expect(room.getByRole('button', { name: /Volver a órdenes/i })).toBeVisible();
+      const unobstructed = await page.evaluate(() =>
+        Boolean(document.elementFromPoint(innerWidth / 2, innerHeight * .62)
+          ?.closest('.combat-preparation-room-stage')));
+      expect(unobstructed).toBe(true);
+      await captureRoom(page, ARTIFACT_DIR + '/combat-briefing-army-inspection-390x844.png');
+      await page.keyboard.press('Escape');
+      await expect(room.locator('.combat-briefing-room-orders')).toBeVisible();
+      await expect(room.getByRole('button', { name: /PREPARAR EJÉRCITO/i })).toBeVisible();
+      await inspect.click();
+      await expect(room.locator('.combat-briefing-room-orders')).not.toBeVisible();
+      await room.getByRole('button', { name: /Volver a órdenes/i }).click();
+      await expect(room.locator('.combat-briefing-room-orders')).toBeVisible();
+    }
+
     // Optional dossiers are keyboard-accessible, and not dashboard cards
     // occupying the viewport before the player asks for them.
     const secondaryOrders = room.locator('details.campaign-mission-orders-fold');

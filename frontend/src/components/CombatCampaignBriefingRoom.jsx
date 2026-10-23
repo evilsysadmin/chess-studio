@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import CombatPreparationRoom from './CombatPreparationRoom.jsx';
 import CampaignBriefing from './CampaignBriefing.jsx';
 import './CampaignCombatPreparationRoom.css';
@@ -9,13 +10,28 @@ export default function CombatCampaignBriefingRoom({
   campaign, node, roster, armySummary, onExit, onHelp, onOpenMarket, onRestart,
   onBuyIntel, onContinue, onRetire, children,
 }) {
+  const [inspectingArmy, setInspectingArmy] = useState(false);
+  useEffect(() => {
+    if (!inspectingArmy) return undefined;
+    const onEscape = (event) => {
+      if (event.key !== 'Escape') return;
+      // The application also owns a global Escape-to-exit shortcut. While the
+      // preview is open, the first Escape must only close this local view.
+      event.preventDefault();
+      event.stopPropagation();
+      setInspectingArmy(false);
+    };
+    window.addEventListener('keydown', onEscape, true);
+    return () => window.removeEventListener('keydown', onEscape, true);
+  }, [inspectingArmy]);
+
   const stage = Math.max(0, (campaign.route || []).length - 1);
   const fallen = Math.max(0, Number(armySummary?.fallenCount) || 0);
 
   return (
     <div className="menu combat-operations-screen combat-briefing-room-screen">
       <section
-        className="campaign-preparation-shell combat-operations-shell combat-briefing-room-shell"
+        className={`campaign-preparation-shell combat-operations-shell combat-briefing-room-shell${inspectingArmy ? ' is-inspecting-army' : ''}`}
         aria-label="Mesa de órdenes de Combat Chess"
         data-combat-campaign-room="briefing"
       >
@@ -27,7 +43,7 @@ export default function CombatCampaignBriefingRoom({
           </button>
           <div className="combat-operations-mode-chip"><span>COMBAT CHESS</span><b>ÓRDENES</b></div>
           <button type="button" className="context-help-btn combat-operations-help"
-            onClick={onHelp} aria-label="Tutorial de campaña">?</button>
+            onClick={() => { setInspectingArmy(false); onHelp(); }} aria-label="Tutorial de campaña">?</button>
         </div>
 
         <header className="combat-briefing-room-intro">
@@ -41,11 +57,22 @@ export default function CombatCampaignBriefingRoom({
           <span>Suministros <b>{campaign.operationalCredits}</b></span>
           <span>Créditos <b>{roster.credits || 0}</b></span>
           {fallen > 0 && <span className="danger-text">Bajas <b>{fallen}</b></span>}
-          <button type="button" onClick={onOpenMarket}>Mercado →</button>
+          <button type="button" onClick={() => { setInspectingArmy(false); onOpenMarket(); }}>Mercado →</button>
           <button type="button" onClick={onRestart}>↻ Reiniciar campaña</button>
         </div>
 
-        <aside className="combat-briefing-room-orders" aria-label="Órdenes para el sector elegido">
+        <button
+          type="button"
+          className="combat-briefing-army-inspect"
+          aria-controls="combat-briefing-orders"
+          aria-expanded={!inspectingArmy}
+          aria-pressed={inspectingArmy}
+          onClick={() => setInspectingArmy((current) => !current)}
+        >
+          {inspectingArmy ? '← Volver a órdenes' : '♞ Inspeccionar ejército'}
+        </button>
+
+        <aside id="combat-briefing-orders" className="combat-briefing-room-orders" aria-label="Órdenes para el sector elegido">
           <CampaignBriefing
             campaign={campaign}
             node={node}
