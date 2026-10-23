@@ -85,8 +85,11 @@ export function applyWarRoomHemisphereGrade(scene, { coarsePointer = false } = {
   }
   if (!hemisphere) return null;
   hemisphere.intensity = warRoomHemisphereIntensity({ coarsePointer });
-  if (typeof hemisphere.color?.setHex === 'function') hemisphere.color.setHex(0xffe4c4);
-  if (typeof hemisphere.groundColor?.setHex === 'function') hemisphere.groundColor.setHex(0x1b120d);
+  // The light is graded on each painted frame. Three.js Color.setHex does
+  // real color-space work even for an identical value. Preserve the authored
+  // colors and reapply them if another owner changes either channel.
+  setWarRoomColorIfChanged(hemisphere.color, 0xffe4c4);
+  setWarRoomColorIfChanged(hemisphere.groundColor, 0x1b120d);
   scene.userData.warRoomHemisphereIntensity = hemisphere.intensity;
   scene.userData.warRoomLightingGrade = 'warm-club-v2';
   return hemisphere;

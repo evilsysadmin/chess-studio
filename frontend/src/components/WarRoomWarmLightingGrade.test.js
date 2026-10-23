@@ -68,6 +68,42 @@ describe('War Room canonical warm lighting', () => {
     expect(scene.userData.warRoomAtmosphereGrade).toBe('warm-amber-room-v2');
   });
 
+  it('avoids redundant hemisphere color-space writes while repairing changed colors', () => {
+    const hemisphere = {
+      isHemisphereLight: true,
+      intensity: 1.35,
+      color: color(0xffefd0),
+      groundColor: color(0x10192b),
+      parent: {},
+    };
+    const colorWrites = vi.spyOn(hemisphere.color, 'setHex');
+    const groundWrites = vi.spyOn(hemisphere.groundColor, 'setHex');
+    const scene = { children: [hemisphere], userData: {} };
+
+    for (let frame = 0; frame < 30; frame += 1) {
+      expect(applyWarRoomHemisphereGrade(scene)).toBe(hemisphere);
+    }
+    expect(colorWrites).toHaveBeenCalledTimes(1);
+    expect(groundWrites).toHaveBeenCalledTimes(1);
+    expect(hemisphere.color.getHex()).toBe(0xffe4c4);
+    expect(hemisphere.groundColor.getHex()).toBe(0x1b120d);
+
+    // The GPU light palette must recover after an external mutation, without
+    // consulting a stale one-shot cache.
+    hemisphere.color.setHex(0xffffff);
+    hemisphere.groundColor.setHex(0x000000);
+    applyWarRoomHemisphereGrade(scene, { coarsePointer: true });
+    expect(colorWrites).toHaveBeenCalledTimes(3);
+    expect(groundWrites).toHaveBeenCalledTimes(3);
+    expect(hemisphere.color.getHex()).toBe(0xffe4c4);
+    expect(hemisphere.groundColor.getHex()).toBe(0x1b120d);
+    expect(hemisphere.intensity).toBe(1.35);
+    applyWarRoomHemisphereGrade(scene);
+    expect(colorWrites).toHaveBeenCalledTimes(3);
+    expect(groundWrites).toHaveBeenCalledTimes(3);
+    expect(hemisphere.intensity).toBe(0.62);
+  });
+
   it('applies the darker v2 grade only when the Blender shell is active', () => {
     const hemisphere = { intensity: 0.62 };
     const key = { intensity: 1.72 };
