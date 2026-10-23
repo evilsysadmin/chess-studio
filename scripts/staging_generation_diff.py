@@ -14,13 +14,14 @@ import staging_generation as generation
 
 Runner = Callable[..., subprocess.CompletedProcess]
 WORKFLOW_FILE = "staging-deploy.yml"
+MAX_HISTORY_PROOFS = 12  # Three batches; older baselines force a guarded full deploy.
 
 
 def successful_runs(repository: str, token: str) -> list[dict]:
     api = os.environ.get("GITHUB_API_URL", "https://api.github.com").rstrip("/")
     request = Request(
         f"{api}/repos/{repository}/actions/workflows/{WORKFLOW_FILE}/runs"
-        "?branch=main&status=success&per_page=100",
+        "?branch=main&status=success&per_page=30",
         headers={
             "Accept": "application/vnd.github+json",
             "Authorization": f"Bearer {token}",
@@ -45,7 +46,9 @@ def select_complete_generation(
     Most recent staging workflows may be intentionally superseded/no-op yet
     conclude success. Probe their job receipts in small read-only batches,
     but consume evidence in strict newest-first order. Never allow a later
-    successful probe to eclipse an earlier complete generation.
+    successful probe to eclipse an earlier complete generation. An old baseline
+    beyond the bounded search is deliberately treated as UNKNOWN, requiring a
+    guarded full deploy; never infer a no-op from incomplete history.
     """
     candidates: list[tuple[str, int]] = []
     for run in runs:
@@ -56,7 +59,11 @@ def select_complete_generation(
         if generation.SHA_RE.fullmatch(sha) and run_id > 0:
             candidates.append((sha, run_id))
 
-    batch_size = 4  # Bound parallel GitHub read-only API requests.
+    # A long trail of successful-but-no-op workflows is not permission to
+    # spend minutes probing historical runs. A missed older baseline causes
+    # the caller to deploy conservatively, not to skip pending changes.
+    candidates = candidates[:MAX_HISTORY_PROOFS]
+    batch_size = 4  # At most three bounded parallel read-only batches.
     for start in range(0, len(candidates), batch_size):
         batch = candidates[start:start + batch_size]
         with ThreadPoolExecutor(max_workers=len(batch)) as pool:
@@ -64,7 +71,7 @@ def select_complete_generation(
             for (sha, run_id), jobs in zip(batch, job_receipts):
                 if proof.deployed_generation(jobs):
                     return sha, run_id
-    raise RuntimeError("no previous complete staging generation found")
+    raise RuntimeError("no proven complete staging generation in bounded history")
 
 
 def previous_complete_generation(repository: str, token: str) -> tuple[str, int]:
@@ -136,6 +143,33 @@ def self_test() -> None:
     result = select_complete_generation(ten, lambda rid: completions[rid])
     assert result == (f"{93:040x}", 93)
     assert not select_complete_generation.__defaults__  # No configurable unbounded parallelism.
+    # If the previous true full deploy is older than twelve green-looking
+    # runs, the proof must fail closed: no speculative no-op is permitted.
+    assert MAX_HISTORY_PROOFS == 12
+    older = [
+        {"id": rid, "head_sha": f"{rid:040x}", "conclusion": "success"}
+        for rid in range(130, 116, -1)
+    ]
+    old_complete = {rid: (green if rid == 117 else partial)
+                    for rid in range(130, 116, -1)}
+    examined: list[int] = []
+    def read_jobs(rid: int) -> list[dict]:
+        examined.append(rid)
+        return old_complete[rid]
+    try:
+        select_complete_generation(older, read_jobs)
+    except RuntimeError as exc:
+        assert "bounded history" in str(exc)
+    else:
+        raise AssertionError("too-old proof must not authorize staging no-op")
+    assert len(examined) == MAX_HISTORY_PROOFS
+    assert 117 not in examined
+    # The twelfth position remains eligible; the thirteenth is not.
+    old_complete[119] = green
+    assert select_complete_generation(older, lambda rid: old_complete[rid]) == (
+        f"{119:040x}", 119
+    )
+
     try:
         select_complete_generation(ten, lambda _: (_ for _ in ()).throw(RuntimeError("API offline")))
     except RuntimeError as exc:
