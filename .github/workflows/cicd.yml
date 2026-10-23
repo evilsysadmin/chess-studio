@@ -210,10 +210,7 @@ jobs:
       - name: Vet
         run: go vet ./...
       - name: Reachable Go CVE scan
-        run: |
-          go install golang.org/x/vuln/cmd/govulncheck@v1.9.0
-          "$(go env GOPATH)/bin/govulncheck" ./...
-          GOOS=linux GOARCH=arm64 "$(go env GOPATH)/bin/govulncheck" ./...
+        run: bash ../scripts/go_vulncheck_crossarch.sh
       - name: Build Linux ARM64
         env:
           CGO_ENABLED: '0'
