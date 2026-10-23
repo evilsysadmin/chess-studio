@@ -161,6 +161,58 @@ def self_test():
                 except ProcessLookupError:
                     pass
 
+    # GHCR pulls run with the host FD8 lock already acquired. Bound each
+    # Docker client and the whole retry window; test only a fake local Docker.
+    pull = payload.split("pull_immutable_image() {", 1)[1].split(
+        "\n}\nif ! pull_immutable_image", 1
+    )[0]
+    assert "deadline=$((SECONDS + 300))" in pull
+    assert "remaining=$((deadline - SECONDS))" in pull
+    assert "per_attempt=$((remaining < 45 ? remaining : 45))" in pull
+    assert 'timeout --signal=TERM --kill-after=2s "${per_attempt}s"' in pull
+    assert 'docker pull --quiet "$ref"' in pull
+    assert "OCI_DEPLOY_IMAGE_PULL_EXHAUSTED" in pull
+    assert payload.index('if ! pull_immutable_image "$pvp_target_image"') < payload.index(
+        'compose "$sha" pull edge'
+    )
+    # Exercise the real bash function without contacting OCI or GHCR.
+    # Suppress retry sleep to keep the contract subsecond.
+    function_text = "pull_immutable_image() {" + pull + "\n}"
+    with tempfile.TemporaryDirectory(prefix="oci-image-pull-contract-") as tmp:
+        fake_docker = Path(tmp) / "docker"
+        fake_docker.write_text(
+            '#!/bin/sh\nprintf "%s\\n" "$*" >> "$PULL_LOG"\nexit "$PULL_RC"\n',
+            encoding="utf-8",
+        )
+        fake_docker.chmod(0o755)
+        calls = Path(tmp) / "docker-calls"
+        env = os.environ.copy()
+        env["PATH"] = tmp + os.pathsep + env["PATH"]
+        env["PULL_LOG"] = str(calls)
+        script = (
+            "set -euo pipefail\nsha=" + "a" * 40 + "\n"
+            "sleep() { :; }\n" + function_text + "\n"
+            'if pull_immutable_image "ghcr.example/test:oci-sha"; then '
+            'echo RESULT=success; else echo RESULT=failure; fi\n'
+        )
+        for attempts, docker_rc, expected, count in (
+            ("2", "1", "failure", 2),
+            ("18", "0", "success", 1),
+            ("bad", "0", "failure", 0),
+            ("1000", "0", "failure", 0),
+        ):
+            calls.unlink(missing_ok=True)
+            trial = dict(env, CHESS_STUDIO_IMAGE_PULL_ATTEMPTS=attempts,
+                         PULL_RC=docker_rc)
+            result = subprocess.run(
+                ["bash", "-c", script], env=trial,
+                capture_output=True, text=True, check=True, timeout=8,
+            )
+            assert f"RESULT={expected}" in result.stdout
+            actual = calls.read_text().splitlines() if calls.exists() else []
+            assert len(actual) == count, (attempts, docker_rc, actual)
+            assert all(arg == "pull --quiet ghcr.example/test:oci-sha" for arg in actual)
+
     assert "rm -f .git/" not in launcher + payload
     # Root-host diagnostic is offline and strictly read-only in production.
     diag = ROOT / "scripts/oci_host_lock_triage.py"
