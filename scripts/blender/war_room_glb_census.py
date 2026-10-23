@@ -241,6 +241,51 @@ def render_census_markdown(reports: list[dict]) -> str:
     return "\n".join(lines) + "\n"
 
 
+def verify_runtime_manifest_provenance(
+    path: Path, report: dict, manifest: dict,
+) -> dict:
+    """Bind a local GLB to one *published* V2/V3/V4 logical runtime asset.
+
+    This deliberately rejects builder previews, staging candidates and
+    same-named stale files. It does not contact R2; the caller owns download.
+    """
+    assets = manifest.get("assets")
+    if not isinstance(assets, dict):
+        raise ValueError("R2 manifest has no assets object")
+    matched = []
+    for variant in ("v2", "v3", "v4"):
+        logical_id = f"warRoom.{variant}.runtime"
+        entry = assets.get(logical_id)
+        if not isinstance(entry, dict):
+            raise ValueError(f"R2 manifest missing {logical_id}")
+        key = entry.get("key")
+        if not isinstance(key, str) or not key.startswith(f"war-room/{variant}/runtime/"):
+            raise ValueError(f"R2 manifest has invalid runtime key for {logical_id}")
+        if Path(key).name == path.name:
+            matched.append((logical_id, entry))
+    if len(matched) != 1:
+        raise ValueError(f"{path}: no unique published War Room runtime match")
+    logical_id, entry = matched[0]
+    expected_sha = entry.get("sha256")
+    expected_bytes = entry.get("bytes")
+    if not isinstance(expected_sha, str) or len(expected_sha) != 64 or any(
+        digit not in "0123456789abcdef" for digit in expected_sha
+    ):
+        raise ValueError(f"{logical_id}: invalid manifest SHA-256")
+    if type(expected_bytes) is not int or expected_bytes <= 0:
+        raise ValueError(f"{logical_id}: invalid manifest byte length")
+    if entry.get("contentType") != "model/gltf-binary":
+        raise ValueError(f"{logical_id}: not a GLB runtime asset")
+    if report["glbBytes"] != expected_bytes or report["sha256"] != expected_sha:
+        raise ValueError(
+            f"{path}: published {logical_id} provenance mismatch "
+            f"(size {report['glbBytes']}/{expected_bytes}, "
+            f"SHA-256 {report['sha256']}/{expected_sha})"
+        )
+    return {"logicalId": logical_id, "r2Key": entry["key"],
+            "sha256": expected_sha, "bytes": expected_bytes}
+
+
 def geometry_budget_violations(
     report: dict, *, max_triangles: int | None = None, max_bytes: int | None = None,
 ) -> list[str]:
@@ -267,6 +312,8 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("glb", nargs="+", type=Path, help="exported War Room GLB(s)")
     parser.add_argument("--top", type=int, default=12, help="largest scene nodes (default 12)")
+    parser.add_argument("--runtime-manifest", type=Path,
+                        help="require each GLB to match published v2/v3/v4 R2 manifest name, SHA and size")
     parser.add_argument("--json", action="store_true", help="machine-readable JSON")
     parser.add_argument("--output-json", type=Path, help="write geometry JSON artifact")
     parser.add_argument("--summary-file", type=Path, help="append Markdown to CI step summary")
@@ -279,11 +326,23 @@ def main(argv: list[str] | None = None) -> int:
         parser.error("--max-triangles must be positive")
     if args.max_bytes is not None and args.max_bytes <= 0:
         parser.error("--max-bytes must be positive")
+    manifest = None
+    if args.runtime_manifest is not None:
+        manifest = json.loads(args.runtime_manifest.read_text(encoding="utf-8"))
+        if not isinstance(manifest, dict):
+            raise ValueError("R2 runtime manifest is not a JSON object")
     reports = []
+    verified_variants = set()
     for path in args.glb:
         document = read_glb_json(path)
         report = {"file": str(path), "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
                   "glbBytes": path.stat().st_size, **census_scene(document, top=args.top)}
+        if manifest is not None:
+            provenance = verify_runtime_manifest_provenance(path, report, manifest)
+            if provenance["logicalId"] in verified_variants:
+                raise ValueError(f"{path}: duplicate runtime variant {provenance['logicalId']}")
+            verified_variants.add(provenance["logicalId"])
+            report["runtimeManifestProvenance"] = provenance
         if report["meshInstances"] <= 0 or report["potentialTriangles"] <= 0:
             raise ValueError(f"{path}: exported War Room scene has no renderable geometry")
         if args.max_triangles is not None or args.max_bytes is not None:
