@@ -247,6 +247,44 @@ class WarRoomGlbCensusTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "no assets object"):
             verify_runtime_manifest_provenance(path, report, {})
 
+    def test_runtime_manifest_cli_reports_verified_published_glb(self):
+        document = fixture()
+        body = json.dumps(document).encode("utf-8")
+        body += b" " * (-len(body) % 4)
+        binary = b"\\0" * 4
+        raw = (struct.pack("<4sII", b"glTF", 2, 12 + 8 + len(body) + 8 + len(binary))
+               + struct.pack("<II", len(body), 0x4E4F534A) + body
+               + struct.pack("<II", len(binary), 0x004E4942) + binary)
+        with tempfile.TemporaryDirectory() as directory:
+            folder = Path(directory)
+            glb = folder / "v3-published.glb"
+            glb.write_bytes(raw)
+            assets = {}
+            for variant in ("v2", "v3", "v4"):
+                assets[f"warRoom.{variant}.runtime"] = {
+                    "key": f"war-room/{variant}/runtime/"
+                           + ("v3-published.glb" if variant == "v3" else f"{variant}.glb"),
+                    "bytes": len(raw),
+                    "sha256": hashlib.sha256(raw).hexdigest(),
+                    "contentType": "model/gltf-binary",
+                }
+            manifest = folder / "manifest.json"
+            manifest.write_text(json.dumps({"assets": assets}), encoding="utf-8")
+            result = folder / "census.json"
+            self.assertEqual(main([str(glb), "--runtime-manifest", str(manifest),
+                                   "--output-json", str(result)]), 0)
+            report = json.loads(result.read_text(encoding="utf-8"))[0]
+            self.assertEqual(report["potentialTriangles"], 4)
+            self.assertEqual(report["runtimeManifestProvenance"]["logicalId"],
+                             "warRoom.v3.runtime")
+            self.assertEqual(report["runtimeManifestProvenance"]["sha256"],
+                             hashlib.sha256(raw).hexdigest())
+
+            assets["warRoom.v3.runtime"]["sha256"] = "0" * 64
+            manifest.write_text(json.dumps({"assets": assets}), encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "provenance mismatch"):
+                main([str(glb), "--runtime-manifest", str(manifest)])
+
     def test_glb_reader_accepts_meshopt_buffer_layout(self):
         # Meshopt can preserve decoded buffer metadata but store a short
         # compressed binary chunk; no equality between those lengths required.
