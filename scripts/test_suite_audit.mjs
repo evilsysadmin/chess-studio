@@ -328,6 +328,26 @@ if (checkCiWiring) {
   }
 
 
+  // MongoDB driver v2.9.0/v2.9.1 reintroduced CVE-2026-81521 and retained
+  // CVE-2026-107325. A source-reachability scan alone does not enforce the floor.
+  const mongoDriverMatch = goModSource.match(/^[ \t]*go\.mongodb\.org\/mongo-driver\/v2[ \t]+v2\.(\d+)\.(\d+)(?:[ \t]+\/\/[^\n]*)?$/m);
+  if (!mongoDriverMatch) fail('MongoDB Go driver debe fijar una versión v2 explícita');
+  const mongoMinor = Number(mongoDriverMatch[1]);
+  const mongoPatch = Number(mongoDriverMatch[2]);
+  if (mongoMinor < 9 || (mongoMinor === 9 && mongoPatch < 2)) {
+    fail('MongoDB Go driver por debajo del mínimo seguro v2.9.2');
+  }
+  if (/^[ \t]*replace[ \t]+(?:\([ \t]*)?go\.mongodb\.org\/mongo-driver\/v2\b/m.test(goModSource)
+    || /^[ \t]*go\.mongodb\.org\/mongo-driver\/v2(?:[ \t]+v\d+\.\d+\.\d+)?[ \t]+=>/m.test(goModSource)) {
+    fail('go.mod no debe sustituir el driver MongoDB para eludir su versión segura');
+  }
+  const mongoSelected = 'go.mongodb.org/mongo-driver/v2 v2.' + mongoMinor + '.' + mongoPatch;
+  const mongoGoSum = read(path.join(root, 'backend-go', 'go.sum'));
+  if (!mongoGoSum.includes(mongoSelected + ' h1:') || !mongoGoSum.includes(mongoSelected + '/go.mod h1:')) {
+    fail('Faltan checksums de la versión segura MongoDB en go.sum');
+  }
+
+
   if (!backendAggregateBlock.includes('needs: [preflight, backend_python, backend_go]')) {
     fail('Tests · Backend debe agregar Python + Go bajo el required check estable');
   }
