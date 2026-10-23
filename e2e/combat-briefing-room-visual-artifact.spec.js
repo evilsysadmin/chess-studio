@@ -7,21 +7,21 @@ const ARTIFACT_DIR = '../.artifacts/app-visual/combat-briefing-room';
 async function openBriefingRoom(page) {
   await mockApi(page);
   await login(page);
-  // Only the isolated visual test account receives this fixture. It exercises
-  // the production roster loader and per-identity service record; never spoof
-  // renderer props or paint decorative pixels into screenshot images.
+  // Put this proven veteran on the near rank (a1), not on a2 behind the
+  // rook: screenshot proof must show the physical medals without occlusion.
+  // The fixture exists only in the isolated browser, never in real user state.
   await page.evaluate(() => {
     const key = 'chess-study-combat-roster';
     const roster = JSON.parse(localStorage.getItem(key) || '{}');
     const identityId = 'e2e-proven-veteran-001';
-    const identity = { ...(roster.identities?.['p-a'] || {}), identityId, alias: 'Varela' };
-    roster.identities = { ...(roster.identities || {}), 'p-a': identity };
-    roster.deployment = { ...(roster.deployment || {}), 'p-a': 'p-a' };
-    roster.pieces = { ...(roster.pieces || {}), 'p-a': { ...(roster.pieces?.['p-a'] || {}), strengthPoints: 3, speedPoints: 1, alive: true } };
+    const identity = { ...(roster.identities?.['r-a'] || {}), identityId, alias: 'Varela' };
+    roster.identities = { ...(roster.identities || {}), 'r-a': identity };
+    roster.deployment = { ...(roster.deployment || {}), 'r-a': 'r-a' };
+    roster.pieces = { ...(roster.pieces || {}), 'r-a': { ...(roster.pieces?.['r-a'] || {}), strengthPoints: 3, speedPoints: 1, alive: true } };
     roster.unitRecords = {
       ...(roster.unitRecords || {}),
       [identityId]: {
-        identityId, alias: 'Varela', slotKey: 'p-a',
+        identityId, alias: 'Varela', slotKey: 'r-a',
         decorations: [
           { id: 'baptism', earnedAt: '2026-10-20T00:00:00Z' },
           { id: 'five_kills', earnedAt: '2026-10-21T00:00:00Z' },
