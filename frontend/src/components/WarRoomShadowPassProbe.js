@@ -26,6 +26,10 @@ export function installWarRoomShadowPassProbe(renderer) {
   let insideShadow = false;
   let familyValid = hasDirect;
   let families = { pieces: 0, shell: 0, other: 0 };
+  // Opt-in only, ephemeral per real renderer.render() call. Keys are actual
+  // Three objects (not names, which may collide after Blender batching).
+  const casterCalls = new Map();
+  let casterValid = hasDirect;
 
   // Preserve exact receiver/arguments: Three may supply a shader-material
   // override or geometry group. We only observe the call after it succeeds.
@@ -43,7 +47,22 @@ export function installWarRoomShadowPassProbe(renderer) {
           || !Number.isSafeInteger(after) || after < before) {
         familyValid = false;
       } else {
-        families[warRoomShadowDrawFamily(args[4])] += after - before;
+        const delta = after - before;
+        const object = args[4];
+        const family = warRoomShadowDrawFamily(object);
+        families[family] += delta;
+        if (delta > 0) {
+          if (!object || typeof object !== 'object' || casterCalls.size > 512) {
+            casterValid = false;
+          } else {
+            const current = casterCalls.get(object);
+            if (current) current.calls += delta;
+            else casterCalls.set(object, {
+              name: String(object.name || object.parent?.name || '(unnamed)').slice(0, 96),
+              family, calls: delta,
+            });
+          }
+        }
       }
     }
   };
@@ -91,6 +110,8 @@ export function installWarRoomShadowPassProbe(renderer) {
       insideShadow = false;
       familyValid = hasDirect && renderer.renderBufferDirect === directWrapper;
       families = { pieces: 0, shell: 0, other: 0 };
+      casterCalls.clear();
+      casterValid = hasDirect && renderer.renderBufferDirect === directWrapper;
     },
     sample(totalCalls) {
       if (!valid || !Number.isSafeInteger(totalCalls)
@@ -101,6 +122,16 @@ export function installWarRoomShadowPassProbe(renderer) {
       // yield unavailable, never misleading zeros or partial attribution.
       if (familyValid && pieces + shell + other === shadowCalls) {
         result.shadowFamilyCalls = { pieces, shell, other };
+        const candidates = [...casterCalls.values()];
+        const counted = candidates.reduce((sum, item) => sum + item.calls, 0);
+        if (casterValid && counted === shadowCalls) {
+          candidates.sort((a, b) => b.calls - a.calls || a.name.localeCompare(b.name));
+          const top = candidates.slice(0, 8);
+          result.shadowTopCasters = {
+            top: top.map((item) => ({ ...item })),
+            unrankedCalls: shadowCalls - top.reduce((sum, item) => sum + item.calls, 0),
+          };
+        }
       }
       return result;
     },
