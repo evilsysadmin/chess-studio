@@ -63,9 +63,16 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 
         const r = el?.getBoundingClientRect();
         return r ? { left: r.left, right: r.right, top: r.top, bottom: r.bottom } : null;
       };
+      const orders = box('.combat-briefing-room-orders');
+      const status = box('.combat-briefing-room-status');
+      const scenicSampleY = status && orders ? (status.bottom + orders.top) / 2 : -1;
+      const scenicNode = document.elementFromPoint(innerWidth / 2, scenicSampleY);
       return {
         overflow: document.documentElement.scrollWidth > innerWidth + 1,
-        orders: box('.combat-briefing-room-orders'),
+        orders,
+        status,
+        sceneUnobstructed: Boolean(scenicNode?.closest('.combat-preparation-room-stage')),
+        cta: box('.combat-briefing-room-orders .campaign-main-cta'),
         room: box('[data-combat-campaign-room="briefing"]'),
       };
     });
@@ -73,6 +80,11 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 
     expect(metrics.orders.left).toBeGreaterThanOrEqual(0);
     expect(metrics.orders.right).toBeLessThanOrEqual(viewport.width + 1);
     expect(metrics.orders.bottom).toBeLessThanOrEqual(viewport.height + 1);
+    if (viewport.width < 720) {
+      expect(metrics.orders.top - metrics.status.bottom).toBeGreaterThan(65);
+      expect(metrics.sceneUnobstructed).toBe(true);
+      expect(metrics.cta.bottom).toBeLessThan(viewport.height - 8);
+    }
     await mkdir(ARTIFACT_DIR, { recursive: true });
     await captureRoom(page, ARTIFACT_DIR + '/combat-briefing-room-' + viewport.width + 'x' + viewport.height + '.png');
 
