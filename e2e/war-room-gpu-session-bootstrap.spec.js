@@ -66,6 +66,40 @@ test('War Room benchmark restores Home and enters a real quick-match 3D board', 
           + frame.shadowFamilyCalls.other === frame.shadowCalls);
     }), { timeout: 30_000, message: 'Opt-in War Room journal must record real 3D draws' })
       .toBe(true);
+    // The opt-in main-pass attribution must also work with a REAL Three
+    // renderer, not merely the mocked renderBufferDirect unit test. Software
+    // Chromium proves exact draw accounting, NOT a hardware FPS benefit.
+    await expect.poll(() => canvas.evaluate((element) => {
+      const journal = element.__warRoomRenderCostJournal;
+      if (!journal || journal.latestSeq < 1) return false;
+      const capture = journal.readAfter(Math.max(0, journal.latestSeq - 128));
+      if (capture.overflow) return false;
+      return capture.samples.some((frame) => {
+        const ranking = frame.mainTopSubmitters;
+        if (!Number.isSafeInteger(frame.mainCalls) || frame.mainCalls <= 0
+            || !Number.isSafeInteger(frame.shadowCalls)
+            || frame.mainCalls + frame.shadowCalls !== frame.calls
+            || !ranking || !Array.isArray(ranking.top)
+            || ranking.top.length < 1 || ranking.top.length > 8
+            || !Number.isSafeInteger(ranking.unrankedCalls)
+            || ranking.unrankedCalls < 0) return false;
+        let counted = ranking.unrankedCalls;
+        let previous = Infinity;
+        for (const item of ranking.top) {
+          if (typeof item.name !== 'string' || item.name.length < 1
+              || item.name.length > 96
+              || !['pieces', 'shell', 'other'].includes(item.family)
+              || !Number.isSafeInteger(item.calls) || item.calls < 1
+              || item.calls > previous) return false;
+          previous = item.calls;
+          counted += item.calls;
+        }
+        return counted === frame.mainCalls;
+      });
+    }), {
+      timeout: 45_000,
+      message: 'Real War Room main-pass objects must account for every actual draw',
+    }).toBe(true);
   } finally {
     await context.close();
   }
