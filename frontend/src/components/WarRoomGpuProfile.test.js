@@ -78,6 +78,41 @@ describe('War Room GPU timer opt-in', () => {
     expect(p.canvas.__warRoomRenderCostJournal).toBeUndefined();
   });
 
+  it('rejects overlapping profiles and permits safe reinstall after an idempotent dispose', () => {
+    const p = rendererProbe();
+    const info = { calls: 0 };
+    const shadowMap = { render: () => { info.calls += 5; } };
+    const original = shadowMap.render;
+    p.renderer.info = { render: info };
+    p.renderer.shadowMap = shadowMap;
+
+    const first = createWarRoomGpuProfile(p.renderer, { storageFlag: '1' });
+    const wrapped = shadowMap.render;
+    const firstJournal = p.canvas.__warRoomRenderCostJournal;
+    expect(wrapped).not.toBe(original);
+    expect(createWarRoomGpuProfile(p.renderer, { storageFlag: '1' })).toBeNull();
+    expect(shadowMap.render).toBe(wrapped);
+    expect(p.canvas.__warRoomRenderCostJournal).toBe(firstJournal);
+
+    first.dispose();
+    expect(shadowMap.render).toBe(original);
+    const next = createWarRoomGpuProfile(p.renderer, { storageFlag: '1' });
+    const nextJournal = p.canvas.__warRoomRenderCostJournal;
+    expect(next).toBeTruthy();
+    expect(nextJournal).not.toBe(firstJournal);
+    expect(shadowMap.render).not.toBe(original);
+
+    // A stale cleanup from the old session must not erase the new profiler.
+    first.dispose();
+    expect(p.canvas.__warRoomRenderCostJournal).toBe(nextJournal);
+    expect(p.canvas.dataset.warRoomGpuProfileStatus).toBeTruthy();
+    expect(shadowMap.render).not.toBe(original);
+    next.dispose();
+    expect(shadowMap.render).toBe(original);
+    expect(p.canvas.dataset).toEqual({});
+    expect(p.canvas.__warRoomRenderCostJournal).toBeUndefined();
+  });
+
   it('hooks only opted-in Three shadow pass and restores its original implementation', () => {
     const p = rendererProbe();
     const counters = { calls: 0 };
