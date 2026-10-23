@@ -28,6 +28,7 @@ import { buildBoard3DTileInstances } from './Board3DTileInstances.js';
 import { pickBoard3DSquare } from './Board3DPointerPicking.js';
 import { planBoard3DPieceReconciliation } from './Board3DPieceReconciliation.js';
 import { addCoarsePieceHitTarget, applyMatthiasCheckPose, buildPiece, disposeObject } from './Board3DPieces.js';
+import { syncBoard3DRankInsignias } from './Board3DRankInsignia.js';
 import { clearObjectGroup, makeObjectTranslucent } from './Board3DObjectLifecycle.js';
 import { fitBoardCamera } from './Board3DScene.js';
 import { resolveStableBoardViewportForHost } from './Board3DViewportSize.js';
@@ -68,7 +69,7 @@ function Board3DCanvas({
   hansDiagnosticsRequested = false, hansFireCallEnabled = false,
   cameraProfile = 'tactical', warRoomVariantOverride = null, immersive = false,
   trainingRoom = false, warRoomMobilePerformance = false, inspectionPreview = false,
-  combatOperationsMap = null, onRendererFailure,
+  combatOperationsMap = null, pieceMedalCounts = null, onRendererFailure,
 }) {
   const hostRef = useRef(null);
   const sceneStateRef = useRef(null);
@@ -840,6 +841,16 @@ function Board3DCanvas({
       }
     };
   }, [fen, skinId, animate, effectiveThemeId, orientation, showCoordinates, matthiasKingColor, checkSquare, gameOver, warRoomVariant]);
+
+  // Returning veterans can gain medals without changing their starting FEN.
+  // Refresh the existing plinth adornments without rebuilding the whole board.
+  useEffect(() => {
+    if (warRoomVariant !== 'combat-ops') return;
+    const state = sceneStateRef.current;
+    if (!state || animationFrameRef.current) return;
+    syncBoard3DRankInsignias(state);
+    state.requestRender();
+  }, [pieceMedalCounts, warRoomVariant]);
 
   useEffect(() => {
     const state = sceneStateRef.current;
