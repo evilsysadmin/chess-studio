@@ -61,12 +61,14 @@ export default function CombatCampaignBriefingRoom({
         </header>
 
         <div className="combat-briefing-room-status" aria-label="Recursos de campaña">
-          <span>Sector <b>{stage}/7</b></span>
-          <span>Suministros <b>{campaign.operationalCredits}</b></span>
-          <span>Créditos <b>{roster.credits || 0}</b></span>
-          {fallen > 0 && <span className="danger-text">Bajas <b>{fallen}</b></span>}
-          <button type="button" onClick={() => { setInspectingArmy(false); onOpenMarket(); }}>Mercado →</button>
-          <button type="button" onClick={onRestart}>↻ Reiniciar campaña</button>
+          <div className="combat-briefing-resource-rail">
+            <span>Sector <b>{stage}/7</b></span>
+            <span>Suministros <b>{campaign.operationalCredits}</b></span>
+            <span>Créditos <b>{roster.credits || 0}</b></span>
+            {fallen > 0 && <span className="danger-text">Bajas <b>{fallen}</b></span>}
+            <button type="button" onClick={() => { setInspectingArmy(false); onOpenMarket(); }}>Mercado →</button>
+            <button type="button" onClick={onRestart}>↻ Reiniciar campaña</button>
+          </div>
           <label className="combat-briefing-map-lookup">
             Mapa
             <select aria-label="Consultar sector del mapa" value={inspectedSectorId}
