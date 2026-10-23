@@ -99,6 +99,15 @@ def fingerprints(documents: list[dict[str, Any]]) -> dict[str, str]:
     return result
 
 
+def owners_at_or_above_cap(documents: list[dict[str, Any]], cap: int) -> int:
+    """Flag possible truncation of the legacy importer without naming owners."""
+    counts: dict[str, int] = {}
+    for row in documents:
+        owner = row["owner"]  # fingerprints() has already validated this.
+        counts[owner] = counts.get(owner, 0) + 1
+    return sum(total >= cap for total in counts.values())
+
+
 def aggregate_digest(entries: dict[str, str]) -> str:
     # Sorted IDs make the digest independent of mongoexport record order.
     digest = hashlib.sha256()
@@ -112,12 +121,17 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Comprueba un archivo histórico de chronicles_runs sin usar Mongo.")
     parser.add_argument("export", help="mongoexport JSONL/JSON/array; '-' lee stdin")
     parser.add_argument("--baseline", help="export original para comparar tras un restore aislado")
+    parser.add_argument("--importer-cap", type=int, help="límite por propietario del importador externo; 200 actualmente")
     args = parser.parse_args(argv)
     if args.baseline == "-" and args.export == "-":
         parser.error("baseline y restore no pueden leer simultáneamente de stdin")
+    if args.importer_cap is not None and args.importer_cap < 1:
+        parser.error("--importer-cap debe ser un entero positivo")
     try:
-        current = fingerprints(load_export(args.export))
-        baseline = fingerprints(load_export(args.baseline)) if args.baseline else None
+        current_docs = load_export(args.export)
+        current = fingerprints(current_docs)
+        baseline_docs = load_export(args.baseline) if args.baseline else None
+        baseline = fingerprints(baseline_docs) if baseline_docs is not None else None
     except (OSError, UnicodeError, ValueError) as exc:
         # Validation failures never include owner or run ID values.
         print(json.dumps({"archiveCheck": "input-error", "detail": str(exc)}, ensure_ascii=False))
@@ -141,6 +155,14 @@ def main(argv: list[str] | None = None) -> int:
         })
         if missing or added or modified:
             output["archiveCheck"] = "restore-mismatch"
+    if args.importer_cap is not None:
+        # The source archive is the baseline if comparing a restored export.
+        source_docs = baseline_docs if baseline_docs is not None else current_docs
+        at_cap = owners_at_or_above_cap(source_docs, args.importer_cap)
+        output["importerCap"] = args.importer_cap
+        output["ownersAtOrAboveCap"] = at_cap
+        if at_cap and output["archiveCheck"] == "ok":
+            output["archiveCheck"] = "importer-cap-unsafe"
     print(json.dumps(output, ensure_ascii=False, sort_keys=True))
     return 0 if output["archiveCheck"] == "ok" else 1
 

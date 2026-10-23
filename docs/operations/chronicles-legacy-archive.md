@@ -16,7 +16,7 @@ mongoexport --uri "$MONGODB_URI" \
   --jsonFormat canonical \
   --out /ruta/privada/chronicles-before.jsonl
 python3 scripts/legacy_chronicles_archive_doctor.py \
-  /ruta/privada/chronicles-before.jsonl
+  /ruta/privada/chronicles-before.jsonl --importer-cap 200
 ```
 
 El comprobador requiere un `_id` y `owner` válidos por documento, detecta
@@ -24,6 +24,22 @@ duplicados y verifica formatos elementales de campos de progreso presentes.
 Calcula una huella SHA-256 de **todos** los campos persistidos, independiente
 del orden de filas/llaves JSON. La salida muestra solo contadores y un hash
 agregado, nunca partidas ni identificadores individuales.
+
+### Alarma de límite por propietario
+
+El repositorio independiente `evilsysadmin/chronicles-of-matthias` ya conecta
+un importador Go: `api/internal/legacyimport/legacyimport.go`, invocado desde
+`api/cmd/chronicles-api/main.go`. A fecha de esta revisión, lee de la base
+`chess_study_staging` y limita cada búsqueda por propietario a **200 runs**
+(`SetLimit(maxRuns)`). Un propietario con 200 o más documentos podría sufrir
+una importación incompleta sin que el número de copias revele el truncamiento.
+
+Con `--importer-cap 200`, el comprobador sale con código 1 y
+`archiveCheck=importer-cap-unsafe` si algún propietario alcanza el límite;
+solo imprime cuántos lo alcanzan, sin identificarlos. Esta alarma **no
+demuestra** que el importador se ejecutó ni que su base fuente cubra todos
+los datos históricos; obliga a comprobar ambos extremos y a revisar el límite
+contra el código del importador antes de retirar el motor Python.
 
 ## 2. Restore drill fuera de la colección real
 

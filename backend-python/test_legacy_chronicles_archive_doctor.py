@@ -81,3 +81,28 @@ def test_empty_collection_has_stable_fingerprint(tmp_path):
     entries = doctor.fingerprints(doctor.load_export(str(file)))
     assert not entries
     assert len(doctor.aggregate_digest(entries)) == 64
+
+
+def test_legacy_importer_limit_cannot_silently_truncate_owner_runs(tmp_path):
+    source = tmp_path / "original.jsonl"
+    # Go's existing source reader uses SetLimit(200) per owner. Exercise a
+    # lower synthetic cap rather than creating real or expensive save data.
+    source.write_text(json.dumps([
+        _run("sensitive-one", "same-owner"),
+        _run("sensitive-two", "same-owner"),
+        _run("sensitive-three", "unrelated-owner"),
+    ]), encoding="utf-8")
+    cmd = [
+        sys.executable, str(ROOT / "scripts/legacy_chronicles_archive_doctor.py"),
+        str(source), "--importer-cap", "2",
+    ]
+    response = subprocess.run(cmd, capture_output=True, text=True, check=False, timeout=10)
+    payload = json.loads(response.stdout)
+    assert response.returncode == 1
+    assert payload["archiveCheck"] == "importer-cap-unsafe"
+    assert payload["importerCap"] == 2 and payload["ownersAtOrAboveCap"] == 1
+    assert "same-owner" not in response.stdout and "sensitive-one" not in response.stdout
+    # A cap above the largest actual owner count is safe to clear this gate.
+    response = subprocess.run(cmd[:-1] + ["4"], capture_output=True, text=True, check=False, timeout=10)
+    assert response.returncode == 0
+    assert json.loads(response.stdout)["ownersAtOrAboveCap"] == 0
