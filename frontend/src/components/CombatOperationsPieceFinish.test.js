@@ -45,6 +45,10 @@ describe('Combat Operations · veteran satin finish', () => {
       const finished = mainFinishMaterials(battle)[0];
       expect(finished.isMeshPhysicalMaterial).toBe(true);
       expect(finished.color.getHex()).not.toBe(canonical.color.getHex());
+      const canonicalLuma = canonical.color.r * 0.2126 + canonical.color.g * 0.7152 + canonical.color.b * 0.0722;
+      const combatLuma = finished.color.r * 0.2126 + finished.color.g * 0.7152 + finished.color.b * 0.0722;
+      if (side === 'w') expect(combatLuma).toBeLessThan(canonicalLuma * 0.76);
+      else expect(combatLuma).toBeGreaterThan(canonicalLuma * 1.7);
       expect(finished.roughness).toBeGreaterThanOrEqual(side === 'w' ? 0.73 : 0.47);
       expect(finished.clearcoat).toBeLessThanOrEqual(side === 'w' ? 0.23 : 0.58);
       expect(finished.emissive.getHex()).toBe(canonical.emissive.getHex());
