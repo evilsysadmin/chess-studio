@@ -85,13 +85,31 @@ export default function Home3DLoadingGate({ stageRef, onUseStaticHome, onHomeAva
         });
       });
     };
-    const observer = new MutationObserver(inspect);
-    observer.observe(stage, {
-      childList: true,
-      subtree: true,
-      attributes: true,
-      attributeFilter: ['class', 'data-home-blender-runtime'],
+    // Readiness only depends on a direct canvas child and two of *its*
+    // attributes. Observing every descendant class change causes needless
+    // readiness queries when Matthias, hotspots or menus update their UI.
+    // Keep stage childList tracking so a recreated WebGL canvas is watched.
+    // undefined forces the first watchCanvas() to observe the stage even
+    // before React mounts its canvas (when the query initially returns null).
+    let watchedCanvas;
+    const observer = new MutationObserver(() => {
+      watchCanvas();
+      inspect();
     });
+    const watchCanvas = () => {
+      const canvas = stage.querySelector(':scope > canvas.illustrated-home__castle-3d');
+      if (canvas === watchedCanvas) return;
+      observer.disconnect();
+      observer.observe(stage, { childList: true });
+      if (canvas) {
+        observer.observe(canvas, {
+          attributes: true,
+          attributeFilter: ['class', 'data-home-blender-runtime'],
+        });
+      }
+      watchedCanvas = canvas;
+    };
+    watchCanvas();
     armRecovery();
     inspect();
     return () => {
