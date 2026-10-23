@@ -282,6 +282,23 @@ if (checkCiWiring) {
   }
   if (goBuilder[1].split('.').length !== 3) fail('Go builder debe fijar major.minor.patch');
 
+
+  // Guard the *release builder* against auto-switching toolchains or
+  // consuming mutated extracted modules after the checksum-checked download.
+  const goBuilderStage = goDockerSource.split('\nFROM alpine:')[0];
+  const localEnvAt = goBuilderStage.indexOf('\nENV GOTOOLCHAIN=local\n');
+  const moduleCopyAt = goBuilderStage.indexOf('COPY go.mod go.sum ./');
+  const moduleVerifyAt = goBuilderStage.indexOf('RUN go mod download && go mod verify');
+  const goSourceAt = goBuilderStage.indexOf('COPY cmd ./cmd');
+  const goCompileAt = goBuilderStage.indexOf('go build -trimpath');
+  if (!(localEnvAt > 0 && localEnvAt < moduleCopyAt &&
+    moduleCopyAt < moduleVerifyAt && moduleVerifyAt < goSourceAt &&
+    goSourceAt < goCompileAt)) {
+    fail('Go Docker debe usar GOTOOLCHAIN=local y verificar la caché de módulos antes de compilar');
+  }
+  if (/\|\|\s*(?:true|:)(?:\s|$)/.test(goBuilderStage)) {
+    fail('Go Docker no puede ignorar errores al verificar dependencias');
+  }
   // Attest the *Docker-built* executable too; a green runner build alone
   // cannot prove which toolchain/arch went into the published image.
   const expectedBuilder = goDockerSource.match(/^ARG EXPECTED_GO_VERSION=(\d+\.\d+\.\d+)$/m);
