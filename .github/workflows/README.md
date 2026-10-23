@@ -96,6 +96,7 @@ Render staging está retirado del plano de despliegue: el **release canónico y 
 | `home-matthias-materialize.yml` | Materialización explícita de binarios canónicos de Matthias al etiquetar una PR interna; separa build read-only y commit write con guard de SHA. |
 | `pvp-duel-room-blender-art.yml` | Genera/valida/publica el shell Blender de la Sala de Duelos en su superficie path-aware. |
 | `war-room-v4-blender-art.yml` | Genera/valida/publica War Room v4 sin reemplazar las generaciones anteriores. |
+| `war-room-published-geometry.yml` | Censo read-only de los tres GLB R2 inmutables V2/V3/V4: GET y verificación SHA/tamaño, reporte JSON + summary, sin benchmark GPU ni publicar arte. PR path-aware, main sólo cuando cambia auditor/manifiesto, y ejecución manual. |
 | `war-room-v3-r2-pin.yml` | Acredita el GLB inmutable público de V3 con hash/tamaño/Hans antes de capturar el runtime WebGL de escritorio, Android vertical y apaisado del manifest exacto. No usa alias mutable ni revisión staging. |
 | `war-room-v4-r2-pin.yml` | Gate ligero para promociones de V4: descarga el GLB inmutable desde el CDN público y verifica SHA-256, tamaño, cabecera glTF y anclajes de Hans contra el manifiesto, sin modificar R2. |
 | `pawn-slug-enemy-cast-v2.yml` | Regenera, prueba y publica el cast enemigo v2 de Pawn Slug; conserva evidencia visual e identidad R2 verificable. |
