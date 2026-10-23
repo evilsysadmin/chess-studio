@@ -57,7 +57,7 @@ describe('War Room material grade invalidation', () => {
     board.add(loosePiece, first, last);
 
     const initial = warRoomMaterialGradeDynamicSignature(board);
-    expect(initial).toMatch(/^\\d+:2:\\d+:\\d+\\|\\d+:0:0:0$/);
+    expect(initial).toMatch(/^\d+:2:\d+:\d+\|\d+:0:0:0$/);
     expect(warRoomMaterialGradeDynamicSignature(board)).toBe(initial);
     // Only Groups influence the signature; a loose static mesh does not.
     board.add(mesh('ivory'));
