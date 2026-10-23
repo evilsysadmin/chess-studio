@@ -124,6 +124,20 @@ test('Home Blender no muestra el fallback mientras espera su primer frame', asyn
   // it until the frame gate actually releases.
   await expect(canvas).toHaveAttribute('data-home-castle-compositor', 'blender-runtime');
 
+  // The painted preview is a usable Home, not merely a picture behind a
+  // loading mask. Exercise the real global shell controls while WebGL's
+  // compositor RAFs remain blocked; no navigation or second canvas is needed.
+  const dock = page.locator('.global-music-dock');
+  const openPlayer = page.getByRole('button', { name: 'Abrir reproductor de música', exact: true });
+  const foldPlayer = page.getByRole('button', { name: 'Plegar reproductor de música', exact: true });
+  await expect(dock).toBeVisible();
+  await openPlayer.click();
+  await expect(dock.locator('.music-deck-expanded')).toBeVisible();
+  await foldPlayer.click();
+  await expect(dock.locator('.music-deck-collapsed')).toBeVisible();
+  await expect(stage).toHaveAttribute('data-home3d-preview', 'painted');
+  await expect(canvas).toHaveCSS('opacity', '0');
+
   await page.evaluate(() => window.__homeFrameGate.release());
   try {
     // A mounted canvas is not a completed Blender frame, and the 2D fallback
@@ -160,13 +174,10 @@ test('Home Blender no muestra el fallback mientras espera su primer frame', asyn
   // The global RetroPlayer belongs to the shell, not Home's 3D stage.
   // Interact with the real control after WebGL is visible: a fullscreen
   // overlay or canvas intercepting its hitbox must fail Playwright click.
-  const dock = page.locator('.global-music-dock');
-  const openPlayer = page.getByRole('button', { name: 'Abrir reproductor de música', exact: true });
   await expect(dock).toBeVisible();
   await expect(openPlayer).toBeVisible();
   await openPlayer.click();
   await expect(dock.locator('.music-deck-expanded')).toBeVisible();
-  const foldPlayer = page.getByRole('button', { name: 'Plegar reproductor de música', exact: true });
   await foldPlayer.click();
   await expect(dock.locator('.music-deck-collapsed')).toBeVisible();
 });
