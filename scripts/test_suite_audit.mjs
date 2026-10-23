@@ -334,7 +334,7 @@ if (checkCiWiring) {
   if (/\|\|\s*(?:true|:)(?:\s|$)/.test(goDockerSource)) {
     fail('Docker OpenPGP no puede silenciar errores');
   }
-  // Check the real ARM64 binary with an external fail-closed script to
+  // Check real ARM64 and AMD64 binaries with an external fail-closed script to
   // preserve the bounded workflow size ratchet.
   const binaryBuildStart = backendGoBlock.indexOf('\n      - name: Build Linux ARM64\n');
   if (binaryBuildStart < 0) fail('Backend Go debe compilar el ARM64 real');
@@ -364,8 +364,14 @@ if (checkCiWiring) {
     'CGO_ENABLED=0 GOOS=linux GOARCH="$arch" go list -deps ./cmd/pvp-edge',
     'GO-2026-5932 unsafe legacy OpenPGP import',
     '"$scanner" -mode=binary /tmp/pvp-edge',
+    'CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -o /tmp/pvp-edge-amd64 ./cmd/pvp-edge',
+    'actual_amd64="$(go version /tmp/pvp-edge-amd64)"',
+    '[[ "$actual_amd64" == "/tmp/pvp-edge-amd64: $selected_go" ]]',
+    'metadata_amd64="$(go version -m /tmp/pvp-edge-amd64)"',
+    "grep -Fqx $'\\tbuild\\tGOARCH=amd64'",
+    '"$scanner" -mode=binary /tmp/pvp-edge-amd64',
   ]) {
-    if (!binaryScript.includes(required)) fail(`Sin evidencia binaria Go ARM64: ${required}`);
+    if (!binaryScript.includes(required)) fail(`Sin evidencia binaria Go dual-arch: ${required}`);
   }
   // Run the actual shell patch-floor assertions in CI preflight.
   execFileSync('bash', [path.join(root, 'scripts', 'go_binary_build_verify.sh'), '--self-test'], { stdio: 'pipe' });
