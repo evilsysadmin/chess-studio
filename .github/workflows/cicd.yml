@@ -211,29 +211,12 @@ jobs:
         run: go vet ./...
       - name: Reachable Go CVE scan
         run: bash ../scripts/go_vulncheck_crossarch.sh
-      - name: Build Linux ARM64 and verify embedded Go toolchain
+      - name: Build Linux ARM64
         env:
           CGO_ENABLED: '0'
           GOOS: linux
           GOARCH: arm64
-        run: |
-          set -euo pipefail
-          # GO-2026-6809 / CVE-2026-111943: patched stdlib lives in the binary.
-          export GOTOOLCHAIN=local
-          selected_go="$(go env GOVERSION)"
-          [[ "$selected_go" == 'go1.27.3' ]] || {
-            echo "::error::Unexpected Go compiler: $selected_go"
-            exit 1
-          }
-          go build -trimpath -o /tmp/pvp-edge ./cmd/pvp-edge
-          actual="$(go version /tmp/pvp-edge)"
-          [[ "$actual" == "/tmp/pvp-edge: $selected_go" ]] || {
-            echo "::error::Incorrect Go toolchain embedded in ARM64 binary: $actual"
-            exit 1
-          }
-          metadata="$(go version -m /tmp/pvp-edge)"
-          grep -Fqx $'\tbuild\tGOOS=linux' <<< "$metadata" || exit 1
-          grep -Fqx $'\tbuild\tGOARCH=arm64' <<< "$metadata" || exit 1
+        run: bash ../scripts/go_binary_build_verify.sh
 
   backend:
     name: Tests · Backend
