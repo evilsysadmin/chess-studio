@@ -53,10 +53,10 @@ describe('rangos militares de piezas de Combate', () => {
       expect(combatVeteranDisplayLevel({ strengthPoints: corrupt, speedPoints: 0 })).toBe(1);
     }
     expect(combatVeteranDisplayLevel({
-      strengthPoints: Number.MAX_SAFE_INTEGER, speedPoints: 1,
-    })).toBe(2);
+      strengthPoints: Number.MAX_SAFE_INTEGER + 1, speedPoints: 1,
+    })).toBe(2); // keep known safe purchased points
     expect(combatVeteranDisplayLevel({
-      strengthPoints: Number.MAX_SAFE_INTEGER - 1, speedPoints: 1,
+      strengthPoints: Number.MAX_SAFE_INTEGER - 1, speedPoints: 2,
     })).toBe(1); // adding the base level must remain a safe integer
   });
 
