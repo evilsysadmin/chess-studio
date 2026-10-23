@@ -1,6 +1,7 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import { expect, test } from '@playwright/test';
 import { login, mockApi } from './helpers.js';
+import { readBoard3DProjection } from './board3d-projection.js';
 
 // Regression fixture: one legal black-to-move personal puzzle. The view must
 // choose the black-side camera, exactly as in the reported Replay screenshot.
@@ -19,6 +20,18 @@ const BLACK_REPLAY_PUZZLE = {
   solves: 0,
   cleanSolves: 0,
 };
+
+function assertProjectedBoardVisible(projection, viewport, state) {
+  // A mounted WebGL canvas proves nothing about whether the board is actually
+  // in its frame. Use the exact view-projection matrix published by Three.js.
+  for (const name of ['a1', 'h1', 'a8', 'h8', 'd4', 'e5']) {
+    const point = projection.square(name);
+    expect(point.x, `${state} ${name} clipped horizontally`).toBeGreaterThan(0);
+    expect(point.x, `${state} ${name} clipped horizontally`).toBeLessThan(viewport.width);
+    expect(point.y, `${state} ${name} clipped vertically`).toBeGreaterThan(0);
+    expect(point.y, `${state} ${name} clipped vertically`).toBeLessThan(viewport.height);
+  }
+}
 
 test('Replay personal · negras mantiene escena jugable en desktop y portrait', async ({ page }, testInfo) => {
   test.setTimeout(90_000);
@@ -63,6 +76,7 @@ test('Replay personal · negras mantiene escena jugable en desktop y portrait', 
     // On narrow screens this explanatory copy is intentionally collapsed;
     // assert black-to-move state, not visibility of the secondary coach text.
     await expect(replay.locator('.puzzle-coach-panel')).toContainText('Juegas con negras');
+    assertProjectedBoardVisible(await readBoard3DProjection(canvas), viewport, 'solving');
     const dimensions = await canvas.boundingBox();
     expect(dimensions?.width || 0).toBeGreaterThanOrEqual(viewport.width * 0.98);
     expect(dimensions?.height || 0).toBeGreaterThanOrEqual(viewport.height * 0.98);
@@ -87,6 +101,7 @@ test('Replay personal · negras mantiene escena jugable en desktop y portrait', 
     await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
     await expect(canvas).toBeVisible();
     await expect(replay.getByText('Esta era la solución', { exact: true })).toBeVisible();
+    assertProjectedBoardVisible(await readBoard3DProjection(canvas), viewport, 'revealed');
     const bounds = await canvas.boundingBox();
     expect(bounds?.width || 0).toBeGreaterThanOrEqual(viewport.width * 0.98);
     expect(bounds?.height || 0).toBeGreaterThanOrEqual(viewport.height * 0.98);
