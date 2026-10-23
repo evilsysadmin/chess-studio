@@ -27,6 +27,13 @@ export function installCombatOperationsRoomPracticalLights(root, { coarsePointer
     light.name = `combat-operations-practical-${anchorName}`;
     light.castShadow = false;
     light.userData.combatOperationsPractical = anchorName;
+    if (anchorName === 'COMBAT_ANCHOR_board_fill') {
+      // Authored ceiling fixture (Blender z=5.8) barely reached the pieces:
+      // inverse-square attenuation left the board effectively unlit.
+      // Bring its existing bulb down and forward in anchor-local axes, near
+      // the player rank. Still one non-shadowing light, no extra GPU resources.
+      light.position.set(0, -2.3, 2.2);
+    }
     anchor.add(light);
     lights.push(light);
   }
