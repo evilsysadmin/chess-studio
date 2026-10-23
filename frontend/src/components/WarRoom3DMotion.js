@@ -508,6 +508,25 @@ export function writeWarRoomCanvasTelemetry(canvas, key, value) {
   return true;
 }
 
+/**
+ * The War Room budgets depth passes manually during its own renderer.render.
+ * Do not leave autoUpdate disabled on the shared renderer object afterward:
+ * a later non-War-Room scene must keep its original shadow policy. Preserve
+ * Three's needsUpdate handling; only the temporary autoUpdate override belongs
+ * to this wrapper, even when rendering throws.
+ */
+export function renderWarRoomWithScopedShadowUpdates(renderer, originalRender, scene, camera) {
+  const shadowMap = renderer?.shadowMap;
+  if (!shadowMap) return originalRender.call(renderer, scene, camera);
+  const previous = shadowMap.autoUpdate;
+  shadowMap.autoUpdate = false;
+  try {
+    return originalRender.call(renderer, scene, camera);
+  } finally {
+    shadowMap.autoUpdate = previous;
+  }
+}
+
 function installWarRoomRenderDiscipline() {
   const prototype = THREE.WebGLRenderer?.prototype;
   if (!prototype || prototype[WAR_ROOM_RENDER_DISCIPLINE]) return;
@@ -600,7 +619,6 @@ function installWarRoomRenderDiscipline() {
     // The scene can keep its premium ambient heartbeat without paying the full
     // directional-shadow pass on every idle paint. Contiguous motion restores the
     // tighter cadence so piece movement still gets responsive real shadows.
-    this.shadowMap.autoUpdate = false;
     if (shouldRefreshShadowMap({
       now,
       lastShadowAt: state.lastShadowAt,
@@ -612,7 +630,7 @@ function installWarRoomRenderDiscipline() {
       state.lastShadowAt = now;
     }
 
-    return originalRender.call(this, scene, camera);
+    return renderWarRoomWithScopedShadowUpdates(this, originalRender, scene, camera);
   };
 }
 
