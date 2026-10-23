@@ -283,6 +283,15 @@ def self_test():
         assert '| desktop-1440x900 · first-visit | n/a | 12 | 32 | 94754 | 38400 | 32 | ready-budgeted |' in baseline_report(root, sha, 'hardware', 'v3', 2)
         report['visits'][0]['sceneInventory']['shadowCasterCandidates'] = 75
         path.write_text(json.dumps(report))
+        # Previously captured files mislabeled this same selector count;
+        # preserve comparability without calling it a GLB authored census.
+        report['visits'][0]['sceneInventory'].pop('shadowCasterCandidates')
+        report['visits'][0]['sceneInventory']['authoredGlbMeshes'] = 75
+        path.write_text(json.dumps(report))
+        assert '| desktop-1440x900 · first-visit | 75 | 12 | 32 | 94754 | 38400 | 32 | ready-budgeted |' in baseline_report(root, sha, 'hardware', 'v3', 2)
+        report['visits'][0]['sceneInventory'].pop('authoredGlbMeshes')
+        report['visits'][0]['sceneInventory']['shadowCasterCandidates'] = 75
+        path.write_text(json.dumps(report))
         # Different measurements must not silently become a fabricated
         # stable count. Legacy captures are valid and show missing as n/a.
         report['visits'][0]['sceneInventory']['shadowCandidatePotentialTriangles'] = 92000
