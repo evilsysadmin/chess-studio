@@ -181,7 +181,12 @@ def wait_for_runtime_build(deploy_sha: str, *, attempts: int = 60, interval: flo
 def wrangler(args: list[str], *, stdin: str | None = None) -> None:
     required("CLOUDFLARE_API_TOKEN")
     required("CLOUDFLARE_ACCOUNT_ID")
-    command = ["npx", "--yes", "wrangler@4", *args, "--config", str(CONFIG)]
+    # setup-wrangler publishes an absolute, exact-version CLI path. Never
+    # rely on npx resolution or an implicit registry fallback during release.
+    binary = pathlib.Path(required("WRANGLER_BIN"))
+    if not binary.is_absolute() or not binary.is_file() or not os.access(binary, os.X_OK):
+        raise SystemExit("Wrangler staging exige un WRANGLER_BIN absoluto y ejecutable")
+    command = [str(binary), *args, "--config", str(CONFIG)]
     result = subprocess.run(
         command,
         cwd=ROOT,
@@ -230,6 +235,38 @@ def self_test() -> None:
     simple = limiter.get("simple")
     if not isinstance(simple, dict) or simple.get("limit") != 300 or simple.get("period") != 60:
         raise SystemExit("Wrangler staging tiene un contrato de rate-limit inesperado")
+
+    # No network/npm resolution in a release job: exercise the exact pinned
+    # binary selection and fail-closed handling of missing/nonzero toolchains.
+    from tempfile import TemporaryDirectory
+    from unittest.mock import patch
+    with TemporaryDirectory() as tmp:
+        binary = pathlib.Path(tmp) / "wrangler"
+        binary.write_text("#!/bin/sh\\nexit 0\\n", encoding="utf-8")
+        binary.chmod(0o755)
+        env = {"CLOUDFLARE_API_TOKEN": "test", "CLOUDFLARE_ACCOUNT_ID": "test",
+               "WRANGLER_BIN": str(binary)}
+        with patch.dict(os.environ, env), patch(f"{__name__}.subprocess.run") as run:
+            run.return_value.returncode = 0
+            wrangler(["deploy", "--var", "BUILD_SHA:" + "a" * 40])
+            argv = run.call_args.args[0]
+            assert argv[:2] == [str(binary), "deploy"]
+            assert argv[-2:] == ["--config", str(CONFIG)]
+            assert "npx" not in argv and run.call_args.kwargs["check"] is False
+            run.return_value.returncode = 1
+            try:
+                wrangler(["deploy"])
+            except SystemExit:
+                pass
+            else:
+                raise AssertionError("failed pinned Wrangler was accepted")
+        with patch.dict(os.environ, {**env, "WRANGLER_BIN": str(binary) + "-missing"}):
+            try:
+                wrangler(["deploy"])
+            except SystemExit:
+                pass
+            else:
+                raise AssertionError("missing pinned Wrangler was accepted")
 
     production = (ROOT / "infra/cloudflare/wrangler.toml").read_text(encoding="utf-8")
     if f'name = "{WORKER_NAME}"' in production or WORKER_HOSTNAME in production:
