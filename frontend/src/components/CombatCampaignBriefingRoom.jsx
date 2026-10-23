@@ -6,7 +6,7 @@ import './CombatCampaignBriefingRoom.css';
 // A view over the campaign authority, not another campaign state machine.
 // Selection, intelligence purchases and deployment continue through RoguelikeScreen.
 export default function CombatCampaignBriefingRoom({
-  campaign, node, roster, armySummary, onExit, onHelp, onOpenMarket,
+  campaign, node, roster, armySummary, onExit, onHelp, onOpenMarket, onRestart,
   onBuyIntel, onContinue, onRetire, children,
 }) {
   const stage = Math.max(0, (campaign.route || []).length - 1);
@@ -42,6 +42,7 @@ export default function CombatCampaignBriefingRoom({
           <span>Créditos <b>{roster.credits || 0}</b></span>
           {fallen > 0 && <span className="danger-text">Bajas <b>{fallen}</b></span>}
           <button type="button" onClick={onOpenMarket}>Mercado →</button>
+          <button type="button" onClick={onRestart}>↻ Reiniciar campaña</button
         </div>
 
         <aside className="combat-briefing-room-orders" aria-label="Órdenes para el sector elegido">
