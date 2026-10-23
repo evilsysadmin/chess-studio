@@ -153,6 +153,26 @@ AMD/Intel Mesa: usar `DRI_PRIME=1` cuando corresponda en vez del offload NVIDIA.
 Cada SHA produce tres JSON en `.artifacts/war-room-gpu-benchmark/`: escritorio 1440×900, touch **emulado** vertical 390×844 y horizontal 844×390. En cada perfil abre primero la sala en una pestaña nueva (first visit) y después vuelve a entrar dentro del mismo contexto del navegador (return visit), con caché de navegador compartida; este etiquetado no demuestra por sí solo un HIT de red. Los dos recorridos inician una sesión E2E autenticada y restaurada (sin depender del formulario «Usuario»), **verifican que se abre la antesala real «Configurar partida rápida» y que «Empezar partida» produce un tablero 3D real**, montan la **War Room V3 o V4 seleccionada con su GLB real**, registran identidad de renderer GPU, primera carga/contadores WebGL, memoria expuesta al ready, una muestra de 2,5 s de cadencia rAF inactiva y otra durante una jugada e2→e4 real con confirmación de la API simulada. Se cuentan pausas >33 ms y >50 ms y tareas largas cuando el navegador permite PerformanceObserver.
 
 
+Para capturar **V3 y V4 en una sola sesión física**, el runner de baseline
+acepta `--variant both`: instala dependencias y compila el mismo SHA **una vez**
+y ejecuta luego cada sala con sus propios JSON y Markdown, sin comparar
+directamente sus métricas. El modo individual `--variant v3|v4` mantiene
+la disposición de resultados anterior (`A/` y `baseline.md`).
+
+```bash
+python3 scripts/run_war_room_gpu_baseline.py \\
+  --revision-sha "$(git rev-parse HEAD)" \\
+  --variant both --renderer hardware --offload nvidia --repetitions 2
+```
+
+El manifiesto raíz `session.json` permanece `incomplete` hasta terminar
+ambas variantes e indica `completedVariants` para distinguir capturas
+parciales en caso de fallo. Los resultados se aíslan en
+`v3/A/*.json`, `v3/baseline.md`, `v4/A/*.json` y
+`v4/baseline.md`. Ejecutar una variante primero puede alterar la temperatura
+de la GPU: **este modo no constituye una comparación causal V3 vs V4**.
+Para optimizaciones, seguir comparando V3→V3 o V4→V4 en el A/B/B/A.
+
 Para V4, establecer `WAR_ROOM_GPU_BENCH_VARIANT=v4`. El runner aislado de A/B/B/A acepta `--variant v3|v4` (por defecto V3), conserva los mismos SHAs/harness y guarda la variante en el manifiesto de sesión y en los JSON individuales. Por ejemplo, tras elegir dos SHAs completos que contengan la variante V4:
 
 ```bash
