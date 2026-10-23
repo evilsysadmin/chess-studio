@@ -99,4 +99,24 @@ describe('Operations Room · authentic veteran inspection', () => {
       .toEqual(['a1', 'a2']);
   });
 
+  it('reports the same conservative rank as the physical board for damaged purchased stats', () => {
+    const roster = veteran();
+    roster.pieces['r-a'].strengthPoints = Infinity;
+    roster.pieces['r-a'].speedPoints = '3';
+    const before = JSON.stringify(roster);
+    expect(combatVeteranAtSquare(roster, 'a1')).toMatchObject({
+      level: 4, rank: 'Sargento', identityId: 'unit-varela',
+    });
+    roster.pieces['r-a'].speedPoints = 1.9;
+    expect(combatVeteranAtSquare(roster, 'a1')).toMatchObject({
+      level: 1, rank: 'Recluta',
+    });
+    roster.pieces['r-a'].strengthPoints = 3;
+    roster.pieces['r-a'].speedPoints = 1;
+    expect(combatVeteranAtSquare(roster, 'a1')).toMatchObject({
+      level: 5, rank: 'Teniente',
+    });
+    expect(before).toContain('"speedPoints":"3"');
+  });
+
 });
