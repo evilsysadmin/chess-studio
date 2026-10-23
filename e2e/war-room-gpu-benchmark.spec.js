@@ -158,6 +158,17 @@ async function stopProbe(page) {
       },
     };
   });
+  // This is one real shadow-heavy render snapshot, NOT a phase median nor
+  // a GPU time. The full rank can be inspected in the opt-in journal.
+  const eligibleCasters = raw.renderCostRaw.status === 'ready'
+    ? raw.renderCostRaw.frames.filter((frame) =>
+      frame.shadowTopCasters && Number.isSafeInteger(frame.shadowCalls)
+      && frame.shadowCalls > 0)
+    : [];
+  const casterFrame = eligibleCasters.length
+    ? eligibleCasters.reduce((best, frame) =>
+      frame.shadowCalls > best.shadowCalls ? frame : best)
+    : null;
   expect(raw.visibility, 'Foreground session required for rAF pacing').toBe('visible');
   expect(raw.intervals.length, 'No usable frames collected').toBeGreaterThan(10);
   return {
@@ -171,6 +182,11 @@ async function stopProbe(page) {
     gpuTimer: raw.gpuTimer,
     renderCost: {
       status: raw.renderCostRaw.status,
+      ...(casterFrame ? { shadowCasterSnapshot: {
+        shadowCalls: casterFrame.shadowCalls,
+        top: casterFrame.shadowTopCasters.top,
+        unrankedCalls: casterFrame.shadowTopCasters.unrankedCalls,
+      } } : {}),
       renderedFrames: raw.renderCostRaw.frames.length,
       shadowSplitStatus: raw.renderCostRaw.status !== 'ready' ? 'unavailable'
         : raw.renderCostRaw.frames.every((frame) =>
