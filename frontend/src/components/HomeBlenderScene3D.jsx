@@ -1316,6 +1316,14 @@ export function homeBlenderAdaptiveLodFloor(policy) {
   return policy?.enabled && policy?.lod !== '2d' ? 'lite' : '2d';
 }
 
+// Pure version of the live governor clamp. Keep the floor and the monotonic
+// LOD cap in one testable decision so persistent jank cannot eject a valid
+// Blender session to static 2D by accident.
+export function homeBlenderAdaptiveLodCap(currentCap, governorSignal, floor) {
+  const requested = floor === 'lite' && governorSignal === '2d' ? 'lite' : governorSignal;
+  return tighterRuntimeLodCap(currentCap, requested);
+}
+
 
 // Wall-torch x positions from the authored Blender scene (Blender x maps to three x).
 const HOME_BLENDER_TORCH_X = Object.freeze([-8.0, -4.15, 2.45, 7.95]);
@@ -2105,9 +2113,8 @@ export default function HomeBlenderScene3D({
     // Drop the extra GPU effects and shadows in place (no scene reload), then re-read the
     // capped policy for pixel ratio; '2d' hands the Home back to the painted master.
     const applyLodCap = (next) => {
-      const requested = adaptiveLodFloor === 'lite' && next === '2d' ? 'lite' : next;
       const previousCap = lodCap;
-      lodCap = tighterRuntimeLodCap(lodCap, requested);
+      lodCap = homeBlenderAdaptiveLodCap(lodCap, next, adaptiveLodFloor);
       if (lodCap === '2d') {
         failToFallback(true, 'adaptive-2d');
         return;
