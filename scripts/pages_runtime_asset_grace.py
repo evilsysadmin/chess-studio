@@ -120,7 +120,7 @@ def fetch_from_origin(origin: str, path: str, limit: int, *, optional: bool = Fa
         except urllib.error.HTTPError as error:
             if error.code == 404 and optional:
                 return None
-            if error.code not in {429, 500, 502, 503, 504} or attempt == 2:
+            if error.code not in {429, 500, 502, 503, 504, 520} or attempt == 2:
                 raise
         except (TimeoutError, ConnectionResetError, http.client.IncompleteRead,
                 urllib.error.URLError) as error:
@@ -309,6 +309,44 @@ def self_test() -> None:
     else:
         raise AssertionError("persistent remote disconnect bypassed retained-asset safety")
     assert len(persistent) == 3
+    # Cloudflare Pages may briefly return a 520 edge error while serving an
+    # immutable historical chunk. Retry within the existing three-attempt bound.
+    cf520_attempts = []
+    cf520_delays = []
+    def cf520_once(request, timeout=15):
+        cf520_attempts.append(request.full_url)
+        if len(cf520_attempts) == 1:
+            raise urllib.error.HTTPError(request.full_url, 520, "Origin Error", {}, None)
+        return FakeResponse(b"preserved immutable asset")
+    assert fetch_from_origin("https://example.com", "assets/Old-12345678.js", 1024,
+                             opener=cf520_once, sleep=cf520_delays.append) == b"preserved immutable asset"
+    assert len(cf520_attempts) == 2 and cf520_delays == [1]
+    # A persistent 520 never publishes an incomplete historical generation.
+    cf520_failures = []
+    def cf520_always(request, timeout=15):
+        cf520_failures.append(request.full_url)
+        raise urllib.error.HTTPError(request.full_url, 520, "Origin Error", {}, None)
+    try:
+        fetch_from_origin("https://example.com", "assets/Old-12345678.js", 1024,
+                          opener=cf520_always, sleep=lambda _: None)
+    except urllib.error.HTTPError as error:
+        assert error.code == 520
+    else:
+        raise AssertionError("persistent Cloudflare 520 bypassed retained-asset safety")
+    assert len(cf520_failures) == 3
+    # A genuinely missing required chunk remains fatal on the first 404.
+    missing_attempts = []
+    def missing_chunk(request, timeout=15):
+        missing_attempts.append(request.full_url)
+        raise urllib.error.HTTPError(request.full_url, 404, "Not Found", {}, None)
+    try:
+        fetch_from_origin("https://example.com", "assets/Old-12345678.js", 1024,
+                          opener=missing_chunk, sleep=lambda _: None)
+    except urllib.error.HTTPError as error:
+        assert error.code == 404
+    else:
+        raise AssertionError("missing required chunk was accepted")
+    assert len(missing_attempts) == 1
     forbidden = []
     def forbidden_asset(request, timeout=15):
         forbidden.append(timeout)
