@@ -298,6 +298,25 @@ if (checkCiWiring) {
   ]) {
     if (!goDockerSource.includes(required)) fail(`Sin prueba del binario Go final en Docker: ${required}`);
   }
+  // Reject legacy OpenPGP in the independently compiled, distributed image.
+  // The runner-only import graph check cannot attest this Docker build.
+  const dockerOpenPgpGuard = goDockerSource.indexOf('GO-2026-5932: the legacy OpenPGP packages');
+  const dockerGoBuild = goDockerSource.indexOf("RUN CGO_ENABLED=0 GOOS=linux go build");
+  if (dockerOpenPgpGuard < 0 || dockerGoBuild <= dockerOpenPgpGuard) {
+    fail('Docker debe excluir OpenPGP antes de compilar el binario publicado');
+  }
+  for (const required of [
+    'RUN set -eu;',
+    'CGO_ENABLED=0 GOTOOLCHAIN=local GOOS=linux GOARCH="$TARGETARCH" go list -deps ./cmd/pvp-edge',
+    "grep -Eq '^golang[.]org/x/crypto/openpgp(/|$)'",
+    'GO-2026-5932: forbidden OpenPGP import in linux/$TARGETARCH',
+    'exit 1;',
+  ]) {
+    if (!goDockerSource.includes(required)) fail(`Guardia OpenPGP Docker insuficiente: ${required}`);
+  }
+  if (/\\|\\|\\s*(?:true|:)(?:\\s|$)/.test(goDockerSource)) {
+    fail('Docker OpenPGP no puede silenciar errores');
+  }
   // Check the real ARM64 binary with an external fail-closed script to
   // preserve the bounded workflow size ratchet.
   const binaryBuildStart = backendGoBlock.indexOf('\n      - name: Build Linux ARM64\n');
