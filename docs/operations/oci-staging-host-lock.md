@@ -47,13 +47,17 @@ La herramienta:
   ignora esperas, locks POSIX y colisiones de inodo en otros dispositivos.
 - Publica únicamente `state`, conteo, PID, visibilidad y antigüedad si la puede
   obtener de `/proc/<pid>/stat`; no lee `cmdline`, `environ` ni secretos.
-- Si el lock está retenido, inspecciona **solo metadatos** `stat()` de los FD
+- Si el lock está retenido, inspecciona metadatos `stat()` de los FD
   expuestos en `/proc/<pid>/fd`, con límite de 4096 procesos. Busca el **mismo
   dispositivo e inodo**, incluso si el PID original del `FLOCK` desapareció y
-  otro proceso heredó su descriptor. Emite PID y **conteo** de FD coincidentes,
-  nunca sus rutas, contenidos ni nombres de procesos. `coverage=partial`
-  significa que hubo permisos insuficientes, carreras o límite alcanzado:
-  la ausencia de coincidencias **no demuestra** ausencia de herederos.
+  otro proceso heredó su descriptor. Para los FD coincidentes, consulta
+  únicamente el metadato del kernel `/proc/<pid>/fdinfo/<fd>` y cuenta los
+  registros `lock: ... FLOCK` que coinciden con ese dispositivo e inodo.
+  Publica `matching_fds` (candidatos) y `flock_witness_fds` (testigos
+  del kernel); no publica rutas, datos del FD ni nombres de procesos.
+  `coverage=partial` significa permisos insuficientes, carreras o límite
+  alcanzado, incluidos `fdinfo` inaccesibles: **un cero no demuestra ausencia
+  de propietarios**. Tampoco un testigo demuestra que sea seguro terminarlo.
 - Nunca ejecuta `kill`, `rm`, `systemctl restart`, operaciones de Docker,
   modificaciones de Git ni cambios de despliegue.
 

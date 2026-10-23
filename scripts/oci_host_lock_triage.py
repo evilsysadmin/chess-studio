@@ -89,17 +89,26 @@ def snapshot(path: Path = LOCK, proc_root: Path = PROC) -> tuple[str, list[tuple
 
 
 
-def fd_holders(device: int, inode: int, proc_root: Path = PROC,
-               max_processes: int = 4096) -> tuple[list[tuple[int, int]], bool]:
-    """Correlate inherited lock descriptors by fstat metadata, never contents.
+def fdinfo_has_flock(contents: str, device: int, inode: int) -> bool:
+    """Only recognize kernel fdinfo lock records for this exact device/inode."""
+    return any(
+        bool(parse_locks(line.partition(":")[2].strip(), device, inode))
+        for line in contents.splitlines() if line.startswith("lock:")
+    )
 
-    A matching FD is a lead, not automatic proof of a live deploy or exclusive
-    ownership. Return incomplete=True (second tuple item False) if the bounded
-    scan cannot inspect every process and FD in the visible namespace.
+
+def fd_holders(device: int, inode: int, proc_root: Path = PROC,
+               max_processes: int = 4096) -> tuple[list[tuple[int, int, int]], bool]:
+    """Correlate descriptors and read only kernel fdinfo FLOCK records.
+
+    The third tuple field counts descriptors with a matching kernel lock
+    witness. Even a witness is not proof that terminating the process is safe.
+    The boolean indicates complete coverage; unknown fdinfo is never a
+    negative lock-witness assertion.
     """
     if max_processes < 1:
         raise ValueError("max_processes must be positive")
-    holders: list[tuple[int, int]] = []
+    holders: list[tuple[int, int, int]] = []
     complete = True
     examined = 0
     try:
@@ -116,6 +125,7 @@ def fd_holders(device: int, inode: int, proc_root: Path = PROC,
                 complete = False
                 continue
             matching = 0
+            witnessed = 0
             for descriptor in descriptors:
                 if not descriptor.name.isdecimal():
                     continue
@@ -128,8 +138,20 @@ def fd_holders(device: int, inode: int, proc_root: Path = PROC,
                     continue
                 if st.st_dev == device and st.st_ino == inode:
                     matching += 1
+                    try:
+                        # Read only procfs descriptor metadata, not target FD.
+                        info = (process / "fdinfo" / descriptor.name).read_text(
+                            encoding="utf-8")
+                    except FileNotFoundError:
+                        complete = False  # FD vanished while being checked
+                        continue
+                    except OSError:
+                        complete = False  # Cannot certify missing witnesses
+                        continue
+                    if fdinfo_has_flock(info, device, inode):
+                        witnessed += 1
             if matching:
-                holders.append((int(process.name), matching))
+                holders.append((int(process.name), matching, witnessed))
     except OSError:
         complete = False
     return holders, complete
@@ -153,6 +175,11 @@ def self_test() -> None:
         with path.open("rb") as owner:
             fcntl.flock(owner, fcntl.LOCK_EX | fcntl.LOCK_NB)
             assert lock_state(path)[0] == "held"
+            # Linux kernel integration: a genuine flock must be visible in
+            # fdinfo for this very descriptor, not just in synthetic fixtures.
+            own_fdinfo = Path(f"/proc/self/fdinfo/{owner.fileno()}").read_text(
+                encoding="utf-8")
+            assert fdinfo_has_flock(own_fdinfo, st.st_dev, st.st_ino)
             proc = Path(directory) / "proc"
             proc.mkdir()
             (proc / "locks").write_text(sample, encoding="utf-8")
@@ -171,10 +198,21 @@ def self_test() -> None:
             other = Path(directory) / "unrelated.lock"
             other.touch()
             (inherited / "10").symlink_to(other)
-            assert fd_holders(st.st_dev, st.st_ino, proc) == ([(456, 2)], True)
-            assert fd_holders(st.st_dev, st.st_ino, proc, max_processes=1) == ([(456, 2)], True)
+            info_dir = proc / "456" / "fdinfo"
+            info_dir.mkdir()
+            (info_dir / "8").write_text("pos:\t0\nlock:  1: FLOCK ADVISORY WRITE 123 " + key + " 0 EOF\n")
+            (info_dir / "9").write_text("pos:\t0\nlock:  2: POSIX ADVISORY WRITE 123 " + key + " 0 EOF\n")
+            assert fdinfo_has_flock("lock:  1: FLOCK ADVISORY WRITE 123 " + key + " 0 EOF", st.st_dev, st.st_ino)
+            assert not fdinfo_has_flock("lock:  2: POSIX ADVISORY WRITE 123 " + key + " 0 EOF", st.st_dev, st.st_ino)
+            assert not fdinfo_has_flock("lock:  3: -> FLOCK ADVISORY WRITE 123 " + key + " 0 EOF", st.st_dev, st.st_ino)
+            assert not fdinfo_has_flock("lock:  1: FLOCK ADVISORY WRITE 123 00:00:99 0 EOF", st.st_dev, st.st_ino)
+            assert fd_holders(st.st_dev, st.st_ino, proc) == ([(456, 2, 1)], True)
+            assert fd_holders(st.st_dev, st.st_ino, proc, max_processes=1) == ([(456, 2, 1)], True)
+            (info_dir / "8").unlink()
+            assert fd_holders(st.st_dev, st.st_ino, proc) == ([(456, 2, 0)], False)
+            (info_dir / "8").write_text("lock:  1: FLOCK ADVISORY WRITE 123 " + key + " 0 EOF\n")
             (proc / "789" / "fd").mkdir(parents=True)
-            assert fd_holders(st.st_dev, st.st_ino, proc, max_processes=1) == ([(456, 2)], False)
+            assert fd_holders(st.st_dev, st.st_ino, proc, max_processes=1) == ([(456, 2, 1)], False)
             (inherited / "8").unlink()
             (inherited / "9").unlink()
             assert fd_holders(st.st_dev, st.st_ino, proc)[0] == []
@@ -209,8 +247,9 @@ def main() -> int:
         if rechecked == "held" and st is not None:
             holders, complete = fd_holders(st.st_dev, st.st_ino)
             print(f"OCI_HOST_LOCK_FD_SCAN coverage={'complete' if complete else 'partial'} holders={len(holders)}")
-            for pid, count in holders:
-                print(f"OCI_HOST_LOCK_FD_HOLDER pid={pid} matching_fds={count}")
+            for pid, count, witnesses in holders:
+                print(f"OCI_HOST_LOCK_FD_HOLDER pid={pid} matching_fds={count} "
+                      f"flock_witness_fds={witnesses}")
             if not holders or not complete:
                 print("OCI_HOST_LOCK_WARNING fd_owner_unresolved=yes")
         else:
