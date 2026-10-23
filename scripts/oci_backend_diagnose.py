@@ -90,12 +90,13 @@ printf '%s\n' 'OCI_BACKEND_DIAG_END'
     # hint. Keep exact-SHA provenance probes byte-stable and strictly bounded.
     if expected_sha is None:
         command = command.replace("events=", r'''if [[ "$lock_state" == held && -r /proc/locks ]]; then
-  ino="$(stat -Lc %i /var/lib/chess-studio/deploy.lock 2>/dev/null)"
-  pid="$(awk -v n="$ino" '$2=="FLOCK" && $6 ~ (":" n "$") {print $5; exit}' /proc/locks)"
-  [[ "$pid" =~ ^[1-9][0-9]*$ ]] || pid=unknown
-  age="$(ps -o etimes= -p "$pid" 2>/dev/null | tr -dc '0-9')"
-  [[ "$age" =~ ^[0-9]{1,10}$ ]] || age=unknown
-  echo "OCI_BACKEND_LOCK_CANDIDATE pid=$pid age_s=$age"
+  ino=$(stat -Lc %i /var/lib/chess-studio/deploy.lock)
+  pid=$(awk -v n="$ino" '$2=="FLOCK" && $6 ~ ":" n "$" {print $5; exit}' /proc/locks)
+  [[ $pid =~ ^[1-9][0-9]*$ ]] || pid=unknown
+  age=$(ps -o etimes= -p "$pid" 2>/dev/null | tr -dc 0-9)
+  age=${age:-unknown}
+  [[ -d /proc/$pid ]] && proc=yes || proc=no
+  echo "OCI_BACKEND_LOCK_CANDIDATE pid=$pid age_s=$age proc=$proc"
 fi
 events=''', 1)
     if expected_sha is not None:
@@ -162,9 +163,10 @@ def self_test() -> None:
     # Candidate PID is evidence, not proof: /proc/locks may hide an inherited
     # owner or show a same-inode collision on another device. Never take action
     # based on this read-only hint without verifying the actual process.
-    assert "OCI_BACKEND_LOCK_CANDIDATE pid=$pid age_s=$age" in command
+    assert "OCI_BACKEND_LOCK_CANDIDATE pid=$pid age_s=$age proc=$proc" in command
+    assert "[[ -d /proc/$pid ]] && proc=yes || proc=no" in command
     assert '[[ "$lock_state" == held && -r /proc/locks ]]' in command
-    assert '[[ "$pid" =~ ^[1-9][0-9]*$ ]] || pid=unknown' in command
+    assert '[[ $pid =~ ^[1-9][0-9]*$ ]] || pid=unknown' in command
     assert "ps -o etimes= -p" in command
     assert "kill " not in command and "fuser -k" not in command
     assert "flock -n -E 73 9 9</var/lib/chess-studio/deploy.lock" in command
