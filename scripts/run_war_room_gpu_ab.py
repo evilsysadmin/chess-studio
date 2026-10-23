@@ -206,6 +206,42 @@ def run_playwright_logged(command, *, cwd, env, log_path):
             return process.wait()
 
 
+def preserve_failed_playwright_evidence(target, destination, ordinal, label, *,
+                                        max_bytes=64 * 1024 * 1024):
+    """Retain bounded browser diagnostics before deleting the temporary worktree.
+
+    Playwright's default test-results directory holds failure screenshots,
+    traces, and error context. Merely streaming the log loses those artifacts
+    when the detached checkout disappears. Keep a relative layout for each run
+    and deliberately skip symlinks and arbitrary unrelated files.
+    """
+    source = target / 'e2e' / 'test-results'
+    if not source.is_dir() or source.is_symlink():
+        return 0, 0
+    folder = destination / f'playwright-{ordinal:02d}-{label}-evidence'
+    suffixes = {'.png', '.jpg', '.jpeg', '.webp', '.zip', '.txt', '.md', '.json'}
+    retained = skipped = total_bytes = 0
+    for path in sorted(source.rglob('*')):
+        if not path.is_file() or path.is_symlink() or path.suffix.lower() not in suffixes:
+            continue
+        parent = path.parent
+        if any(ancestor.is_symlink() for ancestor in (parent, *parent.parents)
+               if ancestor == source or source in ancestor.parents):
+            skipped += 1
+            continue
+        size = path.stat().st_size
+        if retained >= 48 or size > max_bytes - total_bytes:
+            skipped += 1
+            continue
+        dest = folder / path.relative_to(source)
+        require(not dest.exists(), f'Browser evidence filename collision: {dest}')
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(path, dest)
+        total_bytes += size
+        retained += 1
+    return retained, skipped
+
+
 def preserve_fresh_captures(target, prior, destination, sha, renderer, *, strict, variant='v3'):
     """Copy first, validate afterward. Failed runs must retain partial evidence."""
     directory = target / '.artifacts/war-room-gpu-benchmark'
@@ -245,6 +281,12 @@ def exercise_once(label, target, sha, renderer, env, destination, ordinal, total
          '--config=playwright.config.js', '--project=chromium', '--workers=1'),
         cwd=target / 'e2e', env=local_env, log_path=log_path,
     )
+    # On failure, browser screenshots and traces live inside the temporary
+    # worktree; save them before the checkout is removed. The JSON capture
+    # preservation below remains independent and also retains partial data.
+    evidence, skipped = preserve_failed_playwright_evidence(
+        target, destination, ordinal, label,
+    ) if result else (0, 0)
     # Preserve every profile recorded so far before propagating a failed test
     # or deleting the detached worktree in the caller's finally block.
     count = preserve_fresh_captures(
@@ -254,7 +296,8 @@ def exercise_once(label, target, sha, renderer, env, destination, ordinal, total
     if result:
         raise BenchError(
             f'Playwright failed (exit {result}); retained {count} partial capture(s) '
-            f'and diagnostic log in {destination}',
+            f'and diagnostic log in {destination}; '
+            f'browser evidence files retained={evidence}, skipped={skipped}',
         )
 
 
@@ -343,6 +386,34 @@ def self_test():
         assert count == 2
         assert (destination / valid.name).is_file()
         assert (destination / malformed.name).read_text() == '{'
+        # Failed browser runs must not silently lose trace/screenshot evidence
+        # when the temporary worktree gets deleted; require per-run isolation,
+        # skip unrelated files/symlinks, and exercise bounded-copy behavior.
+        test_results = target / 'e2e' / 'test-results' / 'critical-lane'
+        test_results.mkdir(parents=True)
+        (test_results / 'failure.png').write_bytes(b'png-image')
+        (test_results / 'trace.zip').write_bytes(b'zip-trace')
+        (test_results / 'error-context.md').write_text('failed board gate')
+        (test_results / 'secrets.env').write_text('not a Playwright attachment')
+        outside = root / 'outside.png'
+        outside.write_bytes(b'outside-path')
+        (test_results / 'outside.png').symlink_to(outside)
+        retained, skipped = preserve_failed_playwright_evidence(
+            target, destination, 1, 'A',
+        )
+        assert (retained, skipped) == (3, 0)
+        saved = destination / 'playwright-01-A-evidence' / 'critical-lane'
+        assert (saved / 'failure.png').read_bytes() == b'png-image'
+        assert (saved / 'trace.zip').read_bytes() == b'zip-trace'
+        assert (saved / 'error-context.md').read_text() == 'failed board gate'
+        assert not (saved / 'secrets.env').exists()
+        assert not (saved / 'outside.png').exists()
+        tight_destination = root / 'bounded'
+        tight_destination.mkdir()
+        copied, skipped = preserve_failed_playwright_evidence(
+            target, tight_destination, 2, 'B', max_bytes=5,
+        )
+        assert copied <= 2 and skipped >= 1
         # A successful invocation must reject truncated/invalid output, not
         # accidentally count diagnostics as clean benchmark measurements.
         accepted = root / 'accepted'
@@ -355,6 +426,9 @@ def self_test():
             pass
         else:
             raise AssertionError('Invalid benchmark JSON was accepted')
+        shutil.rmtree(target)
+        assert (saved / 'trace.zip').read_bytes() == b'zip-trace'
+        assert preserve_failed_playwright_evidence(target, destination, 3, 'A') == (0, 0)
     print('War Room GPU A/B local runner self-test: OK')
 
 
