@@ -57,7 +57,7 @@ case "$mode" in
       # Game-specific Chronicles producers were extracted with their specs.
       if [[ "$experiments_scope" == "pawnslug" ]]; then
         specs+=(pawn-slug-godot-visual-artifact.spec.js)
-      elif [[ "$experiments_scope" != "chronicles" && "$experiments_scope" != "none" ]]; then
+      elif [[ "$experiments_scope" != "none" ]]; then
         specs+=(experiments-visual-artifact.spec.js)
       fi
     fi
@@ -93,20 +93,8 @@ case "$mode" in
     fi
     if [[ -n "${GITHUB_OUTPUT:-}" ]]; then echo "has_specs=true" >> "$GITHUB_OUTPUT"; fi
 
+    # All surviving experiment subgroups are owned by this repository.
     playwright_experiments_scope="$experiments_scope"
-    if [[ "$experiments_scope" == "all" ]]; then
-      # The old all-scope already captured only landing and Pawn Slug.
-      playwright_experiments_scope="landing,pawnslug"
-    elif [[ ",$experiments_scope," == *",chronicles,"* ]]; then
-      # Do not ask the retained Lab hub to render an extracted game.
-      filtered_scopes=()
-      IFS=',' read -ra requested_scopes <<< "$experiments_scope"
-      for scope in "${requested_scopes[@]}"; do
-        [[ "$scope" == "chronicles" ]] || filtered_scopes+=("$scope")
-      done
-      playwright_experiments_scope="$(IFS=,; echo "${filtered_scopes[*]}")"
-    fi
-
     export APP_VISUAL_EXPERIMENTS_SCOPE="$playwright_experiments_scope"
     echo "App visual capture groups: $groups"
     echo "App visual producers: $producer_scope"

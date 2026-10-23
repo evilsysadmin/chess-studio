@@ -13,7 +13,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 GROUP_ORDER = ("home", "experiments", "training", "warroom", "health")
-EXPERIMENT_ORDER = ("landing", "chronicles", "pawnslug", "football")
+EXPERIMENT_ORDER = ("landing", "pawnslug", "football")
 
 NONVISUAL_FRONTEND_PATHS = {
     # Domain/session ownership with no canonical visual producer of its own.
@@ -384,9 +384,6 @@ def _surface_groups(path: str) -> set[str] | None:
         if name in {
             "experiments-visual-artifact.spec.js",
             "pawn-slug-godot-visual-artifact.spec.js",
-            "chronicles-avatar-visual-artifact.spec.js",
-            "chronicles-gameplay-visual-artifact.spec.js",
-            "chronicles-tactics-visual-artifact.spec.js",
         }:
             return {"experiments"}
         if name == "training-visual-artifact.spec.js":
@@ -420,6 +417,12 @@ def _surface_groups(path: str) -> set[str] | None:
         return None
     if "chesscom" in lower:
         return set()
+    if lower == "frontend/src/labchronicleslink.js":
+        # External Lab link belongs to the Lab landing, not an owned game.
+        return {"experiments"}
+    if "chronicles" in lower:
+        # Reintroduced game runtime is unknown after extraction: fail closed.
+        return None
     if ".test." in name or ".spec." in name:
         return set()
     if lower.startswith("frontend/src/footballmanager"):
@@ -480,21 +483,12 @@ def _surface_groups(path: str) -> set[str] | None:
 def _experiment_parts(path: str) -> set[str]:
     lower = path.lower()
     name = Path(lower).name
-    if (
-        lower in {
-            "scripts/app_visual_scope.py",
-            "scripts/app_visual_producer_scope.py",
-            ".github/workflows/app-visual-artifact.yml",
-        }
-        or lower.startswith(".github/actions/app-visual-pipeline/")
-    ):
-        return {"chronicles"}
     if name == "labworkshopmobile.css":
         return {"landing"}
     if name == "experiments-visual-artifact.spec.js":
         return {"landing", "pawnslug"}
-    if name == "chronicles-avatar-visual-artifact.spec.js" or "chronicles" in lower:
-        return {"chronicles"}
+    if lower == "frontend/src/labchronicleslink.js":
+        return {"landing"}
     if "pawnslug" in lower or "pawn-slug" in lower:
         return {"pawnslug"}
     if "trailblazer" in lower or "arcade" in lower:
@@ -931,30 +925,27 @@ def self_test() -> None:
     visual_pipeline = classify([".github/actions/app-visual-pipeline/action.yml"])
     assert visual_pipeline.capture_groups == "none"
     assert not browser_quality_scope.hans and not browser_quality_scope.chesscom
-    chronicles_visual = classify(["e2e/chronicles-tactics-visual-artifact.spec.js"])
-    assert chronicles_visual.capture_groups == "experiments"
-    assert chronicles_visual.experiments_scope == "chronicles"
-    assert not chronicles_visual.hans and not chronicles_visual.chesscom
-    chronicles_logic = classify(["frontend/src/chroniclesDungeon.js"])
-    assert chronicles_logic.capture_groups == "experiments"
-    assert chronicles_logic.experiments_scope == "chronicles"
-    chronicles_ui = classify(["frontend/src/components/ChroniclesOfMatthias.jsx"])
-    assert chronicles_ui.capture_groups == "experiments"
-    assert chronicles_ui.experiments_scope == "chronicles"
-    chronicles_three = classify(["frontend/src/chroniclesOfMatthiasThree.js"])
-    assert chronicles_three.capture_groups == "experiments"
-    chronicles_party = classify(["frontend/src/chroniclesOfMatthiasPartyCondition.js"])
-    assert chronicles_party.capture_groups == "experiments"
-    chronicles_atmosphere = classify(["frontend/src/chroniclesOfMatthiasAtmosphere.js"])
-    assert chronicles_atmosphere.capture_groups == "experiments"
-    assert chronicles_atmosphere.experiments_scope == "chronicles"
-    chronicles_patina = classify(["frontend/src/chroniclesOfMatthiasSurfacePatina.js"])
-    assert chronicles_patina.capture_groups == "experiments"
-    assert chronicles_patina.experiments_scope == "chronicles"
+    # Returning a removed game's source/spec must never silently select
+    # an empty Chronicles-only browser lane. Fail closed to real app captures.
+    for retired in (
+        "e2e/chronicles-tactics-visual-artifact.spec.js",
+        "frontend/src/chroniclesDungeon.js",
+        "frontend/src/components/ChroniclesOfMatthias.jsx",
+        "frontend/src/chroniclesOfMatthiasThree.js",
+        "frontend/src/chroniclesOfMatthiasPartyCondition.js",
+        "frontend/src/chroniclesOfMatthiasAtmosphere.js",
+        "frontend/src/chroniclesOfMatthiasSurfacePatina.js",
+    ):
+        ghost = classify([retired])
+        assert ghost.capture_groups == ",".join(GROUP_ORDER), retired
+        assert ghost.experiments_scope == ",".join(EXPERIMENT_ORDER), retired
+    external = classify(["frontend/src/labChroniclesLink.js"])
+    assert external.capture_groups == "experiments"
+    assert external.experiments_scope == "landing"
     trailblazer = classify(["frontend/src/pawnTrailblazerThree.js"])
     assert trailblazer.experiments_scope == "landing"
     hub = classify(["frontend/src/components/ExperimentsScreen.jsx"])
-    assert hub.experiments_scope == "landing,chronicles,pawnslug,football"
+    assert hub.experiments_scope == "landing,pawnslug,football"
 
     pawn_visual = classify(["e2e/pawn-slug-godot-visual-artifact.spec.js"])
     assert pawn_visual.capture_groups == "experiments"
