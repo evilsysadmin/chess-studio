@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { freezeHomeBlenderStaticTransforms } from './HomeBlenderStaticTransforms.js';
+import { recordHomeBlenderRuntimeEvent } from './HomeBlenderRuntimeTrace.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
@@ -1749,6 +1750,7 @@ export default function HomeBlenderScene3D({
     );
     const effectsAllowed = () => lodCap == null && initialPolicy.lod === 'full';
     if (!canvas || !homeBlenderRuntimeEligible()) {
+      recordHomeBlenderRuntimeEvent('fallback', { reason: 'policy-ineligible' });
       onUnavailable?.();
       return undefined;
     }
@@ -1937,6 +1939,7 @@ export default function HomeBlenderScene3D({
       });
       markStartup('webgl-constructor-finished');
     } catch {
+      recordHomeBlenderRuntimeEvent('fallback', { reason: 'webgl-constructor' });
       onUnavailable?.();
       return undefined;
     } finally {
@@ -1973,6 +1976,7 @@ export default function HomeBlenderScene3D({
     canvas.dataset.homeBlenderGpuStatus = gpuTimer.status;
     canvas.dataset.homeBlenderGpuSampleCount = String(gpuTimer.completedSamples);
     canvas.dataset.homeBlenderPhase = 'renderer-created';
+    recordHomeBlenderRuntimeEvent('mount');
     markStartup('renderer-created');
     glContextRef.current = gl;
     glLoseContextRef.current = gl?.getExtension?.('WEBGL_lose_context') || null;
@@ -2102,12 +2106,14 @@ export default function HomeBlenderScene3D({
     // capped policy for pixel ratio; '2d' hands the Home back to the painted master.
     const applyLodCap = (next) => {
       const requested = adaptiveLodFloor === 'lite' && next === '2d' ? 'lite' : next;
+      const previousCap = lodCap;
       lodCap = tighterRuntimeLodCap(lodCap, requested);
       if (lodCap === '2d') {
-        failToFallback(true);
+        failToFallback(true, 'adaptive-2d');
         return;
       }
       if (lodCap === 'lite') {
+        if (previousCap !== 'lite') recordHomeBlenderRuntimeEvent('lod-lite');
         // Only the costly full-screen effects go. The soft fire, candle and steam sprites are a
         // handful of points and are what keeps the hall from snapping back to the hard baked
         // flames and the vertical steam strands (a jarring regression a few seconds in).
@@ -2324,7 +2330,7 @@ export default function HomeBlenderScene3D({
       const policy = browserPolicy(lodCap);
       canvas.dataset.homeCastleLod = policy.lod;
       if (homeBlenderPolicyNeedsFallback(policy)) {
-        failToFallback(true);
+        failToFallback(true, 'policy-ineligible');
         return;
       }
       const viewport = {
@@ -2418,17 +2424,18 @@ export default function HomeBlenderScene3D({
       );
     };
 
-    const failToFallback = (force = false) => {
+    const failToFallback = (force = false, reason = 'model-unavailable') => {
       if (disposed || fallbackRequested || (!force && model)) return;
       fallbackRequested = true;
       matthiasLayoutRef.current?.(null);
       canvas.classList.remove('is-ready');
       canvas.dataset.homeBlenderRuntime = 'fallback';
       canvas.dataset.homeBlenderPhase = 'fallback';
+      recordHomeBlenderRuntimeEvent('fallback', { reason });
       markStartup('fallback');
       onUnavailable?.();
     };
-    loadTimer = window.setTimeout(() => failToFallback(), 20_000);
+    loadTimer = window.setTimeout(() => failToFallback(false, 'model-timeout'), 20_000);
 
     canvas.dataset.homeBlenderPhase = 'model-loading';
     markStartup('model-loading');
@@ -2507,6 +2514,7 @@ export default function HomeBlenderScene3D({
       canvas.dataset.homeBlenderPhase = 'ready';
       canvas.dataset.homeBlenderRuntime = 'ready';
       canvas.classList.add('is-ready');
+      recordHomeBlenderRuntimeEvent('ready');
       markStartup('ready');
       // One-time authored-GLB inventory. These are potential draw/material
       // slots, not observed renderer calls and not GPU timings. Excludes
@@ -2526,6 +2534,7 @@ export default function HomeBlenderScene3D({
       canvas.classList.remove('is-ready');
       canvas.dataset.homeBlenderRuntime = 'recovering';
       canvas.dataset.homeBlenderLastContextEvent = 'lost';
+      recordHomeBlenderRuntimeEvent('context-lost');
       // Keep the original canvas and event listeners mounted. The painted
       // master is already visible while is-ready is absent; unmounting after
       // an arbitrary eight seconds made a later browser GPU restoration
@@ -2535,6 +2544,7 @@ export default function HomeBlenderScene3D({
     const onContextRestored = () => {
       if (disposed || fallbackRequested) return;
       canvas.dataset.homeBlenderLastContextEvent = 'restored';
+      recordHomeBlenderRuntimeEvent('context-restored');
       // A restored WebGL context invalidates renderer-owned GPU resources.
       // Re-run the complete runtime effect so renderer, scene, GLTF resources,
       // PMREM/environment, materials and animations are recreated together.
