@@ -101,18 +101,28 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 
         el === document.querySelector('[data-combat-campaign-room="briefing"] canvas.board3d-main-canvas'), originalCanvas)).toBe(true);
       expect(await canvas.getAttribute('data-board3d-view-projection')).not.toBe(projectionBefore);
       await expect(room.locator('.combat-briefing-room-orders')).not.toBeVisible();
+      await expect(room.locator('.combat-briefing-room-intro')).not.toBeVisible();
+      await expect(room.locator('.combat-briefing-room-status')).not.toBeVisible();
+      await expect(room.getByRole('button', { name: /Salir de Combat Chess/i })).toBeVisible();
+      await expect(room.getByRole('button', { name: /Tutorial de campaña/i })).toBeVisible();
       await expect(room.locator('.combat-preparation-room-stage')).toBeVisible();
       await expect(room.getByRole('button', { name: /Volver a órdenes/i })).toBeVisible();
       const unobstructed = await page.evaluate(() =>
         Boolean(document.elementFromPoint(innerWidth / 2, innerHeight * .62)
           ?.closest('.combat-preparation-room-stage')));
       expect(unobstructed).toBe(true);
+      const upperRoomUnobstructed = await page.evaluate(() =>
+        Boolean(document.elementFromPoint(innerWidth / 2, innerHeight * .14)
+          ?.closest('.combat-preparation-room-stage')));
+      expect(upperRoomUnobstructed).toBe(true);
       await captureRoom(page, ARTIFACT_DIR + '/combat-briefing-army-inspection-390x844.png');
       await page.keyboard.press('Escape');
       await expect(canvas).toHaveAttribute('data-board3d-camera-framing', framingBefore);
       expect(await page.evaluate((el) =>
         el === document.querySelector('[data-combat-campaign-room="briefing"] canvas.board3d-main-canvas'), originalCanvas)).toBe(true);
       await expect(room.locator('.combat-briefing-room-orders')).toBeVisible();
+      await expect(room.locator('.combat-briefing-room-intro')).toBeVisible();
+      await expect(room.locator('.combat-briefing-room-status')).toBeVisible();
       await expect(room.getByRole('button', { name: /PREPARAR EJÉRCITO/i })).toBeVisible();
       await inspect.click();
       await expect(room.locator('.combat-briefing-room-orders')).not.toBeVisible();

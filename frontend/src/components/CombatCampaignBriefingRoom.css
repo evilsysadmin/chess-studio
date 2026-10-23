@@ -242,6 +242,12 @@
   .combat-briefing-room-shell.is-inspecting-army .combat-briefing-room-orders {
     display: none;
   }
+  /* Inspection is a photographic look at the real formation, not another
+     briefing: hide the campaign folio chrome until orders are restored. */
+  .combat-briefing-room-shell.is-inspecting-army .combat-briefing-room-intro,
+  .combat-briefing-room-shell.is-inspecting-army .combat-briefing-room-status {
+    display: none;
+  }
   /* Inspect the physical room, not a second board or campaign view. */
   .combat-briefing-room-shell.is-inspecting-army .combat-preparation-room-stage {
     /* Do not scale a live WebGL shell: that changes canvas measurement and
