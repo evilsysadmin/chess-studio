@@ -254,6 +254,13 @@ if (checkCiWiring) {
   }
 
   const backendGoBlock = jobBlock('backend_go');
+  // Toolchain switches must be disabled at job scope, not in one
+  // shell step (step exports do not persist into source/binary CVE scans).
+  const goJobHeader = backendGoBlock.split('\n    steps:\n')[0];
+  if (!/\n    env:\n      GOTOOLCHAIN: local\n/.test(goJobHeader)) {
+    fail('Backend Go: GOTOOLCHAIN=local debe estar en env del job completo');
+  }
+
   const backendAggregateBlock = jobBlock('backend');
   for (const marker of [
     'actions/setup-go@v6',
