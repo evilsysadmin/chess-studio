@@ -21,7 +21,8 @@ export default function useCombatOperationsCartography({
       dispose();
       delete state.renderer.domElement.dataset.combatOperationsMapNodes;
       delete state.renderer.domElement.dataset.combatOperationsMapEdges;
-      state.requestRender();
+      // On unmount the renderer may already be disposed; only repaint live rooms.
+      if (sceneStateRef.current === state) state.requestRender();
     };
   }, [sceneStateRef, variant, status, projection]);
 }
