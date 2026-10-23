@@ -19,7 +19,15 @@ export function recordHomeBlenderRuntimeEvent(event, {
     const parsed = JSON.parse(root.dataset.homeBlenderTrace || '[]');
     if (Array.isArray(parsed)) previous = parsed.filter((entry) =>
       entry && EVENTS.has(entry.event) && Number.isFinite(entry.at)
-    ).slice(1 - HOME_BLENDER_TRACE_LIMIT);
+    ).slice(1 - HOME_BLENDER_TRACE_LIMIT).map((entry) => {
+      // Existing page metadata is not a trusted schema: never carry through
+      // arbitrary keys, URLs or overlong strings into the bounded forensic log.
+      const clean = { event: entry.event, at: Math.floor(entry.at) };
+      if (entry.event === 'fallback') {
+        clean.reason = REASONS.has(entry.reason) ? entry.reason : 'unknown';
+      }
+      return clean;
+    });
   } catch {
     // Corrupt diagnostic metadata must never break the scene or fallback.
   }
