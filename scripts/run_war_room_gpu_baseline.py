@@ -465,13 +465,46 @@ def self_test():
             assert 'no complete real-render journal' in str(exc)
         else:
             raise AssertionError('Missing renderer journal accepted')
+    assert requested_variants('v3') == ('v3',)
+    assert requested_variants('v4') == ('v4',)
+    assert requested_variants('both') == ('v3', 'v4')
+    for invalid in ('', 'v2', 'all'):
+        try:
+            requested_variants(invalid)
+        except BenchError:
+            pass
+        else:
+            raise AssertionError('Unsupported room selection accepted')
+    with tempfile.TemporaryDirectory(prefix='warroom-variant-paths-') as folder:
+        root = Path(folder)
+        one_captures, one_report = baseline_output_paths(root, 'v3', combined=False)
+        assert one_captures == root / 'A' and one_report == root / 'baseline.md'
+        v3_captures, v3_report = baseline_output_paths(root, 'v3', combined=True)
+        v4_captures, v4_report = baseline_output_paths(root, 'v4', combined=True)
+        assert v3_captures == root / 'v3' / 'A'
+        assert v3_report == root / 'v3' / 'baseline.md'
+        assert v4_captures == root / 'v4' / 'A'
+        assert v4_report == root / 'v4' / 'baseline.md'
+        assert {v3_captures, v3_report}.isdisjoint({v4_captures, v4_report})
     print('War Room single-revision GPU baseline self-test: OK')
+
+
+def requested_variants(option):
+    require(option in ('v3', 'v4', 'both'), 'Select V3, V4, or both War Rooms')
+    return ('v3', 'v4') if option == 'both' else (option,)
+
+
+def baseline_output_paths(destination, variant, *, combined):
+    require(variant in ('v3', 'v4'), 'Invalid individual room variant')
+    directory = destination / variant if combined else destination
+    return directory / 'A', directory / 'baseline.md'
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--revision-sha', help='Revision to measure (default: HEAD)')
-    parser.add_argument('--variant', choices=('v3', 'v4'), default='v3')
+    parser.add_argument('--variant', choices=('v3', 'v4', 'both'), default='v3',
+                        help='Measure V3, V4, or both with one dependency install/build')
     parser.add_argument('--renderer', choices=('hardware', 'software'), default='hardware')
     parser.add_argument('--offload', choices=('nvidia', 'mesa', 'none'), default='nvidia')
     parser.add_argument('--repetitions', type=int, default=2,
@@ -491,11 +524,12 @@ def main():
         harness = resolve_sha(root, current)
         revision = resolve_sha(root, args.revision_sha or current)
         env = gpu_env(args.renderer, args.offload)
-        env['WAR_ROOM_GPU_BENCH_VARIANT'] = args.variant
+        variants = requested_variants(args.variant)
         print(f'War Room sustained baseline · revision={revision} harness={harness} '
               f'variant={args.variant} renderer={args.renderer} '
               f'offload={args.offload} repeats={args.repetitions}', flush=True)
         if args.dry_run:
+            print('Rooms: ' + ' -> '.join(variants) + ' (one build; separate reports)')
             print('Dry run: no worktree, build, GPU capture or report executed.')
             return 0
         require_port_free()
@@ -518,12 +552,11 @@ def main():
         session += '-' + uuid.uuid4().hex[:8]
         destination = (args.output_root or root / '.artifacts/war-room-gpu-baseline') / session
         destination.mkdir(parents=True, exist_ok=False)
-        captures = destination / 'A'
-        captures.mkdir()
         manifest = destination / 'session.json'
         metadata = {
             'schema': 1, 'revision': revision, 'harness': harness,
-            'variant': args.variant, 'renderer': args.renderer,
+            'variant': args.variant, 'variants': list(variants),
+            'completedVariants': [], 'renderer': args.renderer,
             'offload': args.offload, 'repetitions': args.repetitions,
             'status': 'incomplete', 'physicalAndroidVerified': False,
         }
@@ -534,16 +567,29 @@ def main():
             worktree = temporary / 'A'
             try:
                 prepare_worktree(root, temporary, 'A', revision, harness_blobs)
-                for index in range(1, args.repetitions + 1):
-                    exercise_once('A', worktree, revision, args.renderer,
-                                  env, captures, index, args.repetitions)
-                output = baseline_report(captures, revision, args.renderer,
-                                         args.variant, args.repetitions)
-                (destination / 'baseline.md').write_text(output, encoding='utf-8')
+                for variant in variants:
+                    # Each variant has its own JSON/Markdown cohort. Only the
+                    # exact same built revision/harness/dependencies are reused;
+                    # no ranking or GPU time is compared across V3 and V4.
+                    captures, report_path = baseline_output_paths(
+                        destination, variant, combined=len(variants) > 1,
+                    )
+                    captures.mkdir(parents=True, exist_ok=False)
+                    variant_env = env.copy()
+                    variant_env['WAR_ROOM_GPU_BENCH_VARIANT'] = variant
+                    for index in range(1, args.repetitions + 1):
+                        exercise_once('A', worktree, revision, args.renderer,
+                                      variant_env, captures, index, args.repetitions)
+                    output = baseline_report(captures, revision, args.renderer,
+                                             variant, args.repetitions)
+                    report_path.write_text(output, encoding='utf-8')
+                    metadata['completedVariants'].append(variant)
+                    manifest.write_text(json.dumps(metadata, indent=2) + '\n',
+                                        encoding='utf-8')
+                    print(f'==> {variant.upper()} baseline complete: {report_path}', flush=True)
                 metadata['status'] = 'complete'
                 manifest.write_text(json.dumps(metadata, indent=2) + '\n',
                                     encoding='utf-8')
-                print(f'==> Sustained baseline complete: {destination / "baseline.md"}', flush=True)
             finally:
                 if worktree.exists():
                     run(('git', 'worktree', 'remove', '--force', str(worktree)),
