@@ -1423,7 +1423,10 @@ if [[ "${CHESS_STUDIO_CHECKOUT_READY:-0}" == "1" ]]; then
   current_sha="$(git rev-parse HEAD)"
   [[ "$current_sha" == "$sha" ]] || { echo "launcher checkout mismatch: expected $sha, found $current_sha" >&2; exit 66; }
 else
-  git fetch --no-tags --depth=1 origin "$sha"
+  # Legacy/direct deploys also hold FD8 here. Keep network fetch bounded;
+  # timeout or transport failure exits before a checkout or slot mutation.
+  GIT_TERMINAL_PROMPT=0 timeout --signal=TERM --kill-after=2s 90s \
+    git fetch --no-tags --depth=1 origin "$sha"
   git checkout --detach "$sha"
 fi
 phase_done checkout "$checkout_started_ms"
