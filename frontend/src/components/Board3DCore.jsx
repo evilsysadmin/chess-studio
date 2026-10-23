@@ -28,6 +28,7 @@ import { buildBoard3DTileInstances } from './Board3DTileInstances.js';
 import { pickBoard3DSquare } from './Board3DPointerPicking.js';
 import { planBoard3DPieceReconciliation } from './Board3DPieceReconciliation.js';
 import { addCoarsePieceHitTarget, applyMatthiasCheckPose, buildPiece, disposeObject } from './Board3DPieces.js';
+import useBoard3DCombatMedalRefresh from './useBoard3DCombatMedalRefresh.js';
 import { clearObjectGroup, makeObjectTranslucent } from './Board3DObjectLifecycle.js';
 import { fitBoardCamera } from './Board3DScene.js';
 import { resolveStableBoardViewportForHost } from './Board3DViewportSize.js';
@@ -68,7 +69,7 @@ function Board3DCanvas({
   hansDiagnosticsRequested = false, hansFireCallEnabled = false,
   cameraProfile = 'tactical', warRoomVariantOverride = null, immersive = false,
   trainingRoom = false, warRoomMobilePerformance = false, inspectionPreview = false,
-  combatOperationsMap = null, onRendererFailure,
+  combatOperationsMap = null, pieceMedalCounts = null, pieceRankLevels = null, onRendererFailure,
 }) {
   const hostRef = useRef(null);
   const sceneStateRef = useRef(null);
@@ -598,7 +599,6 @@ function Board3DCanvas({
     if (!state) return undefined;
     window.cancelAnimationFrame(animationFrameRef.current);
     animationFrameRef.current = 0;
-
     const previousPieces = parseFen(previousFenRef.current);
     const nextPieces = parseFen(fen);
     const movingBefore = animate?.from ? previousPieces.find((piece) => piece.square === animate.from) : null;
@@ -840,7 +840,7 @@ function Board3DCanvas({
       }
     };
   }, [fen, skinId, animate, effectiveThemeId, orientation, showCoordinates, matthiasKingColor, checkSquare, gameOver, warRoomVariant]);
-
+  useBoard3DCombatMedalRefresh({ sceneStateRef, animationFrameRef, warRoomVariant, pieceMedalCounts, pieceRankLevels });
   useEffect(() => {
     const state = sceneStateRef.current;
     if (!state) return;
