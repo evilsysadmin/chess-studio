@@ -5,6 +5,7 @@ import CombatServicePanel from './CombatServicePanel.jsx';
 import CampaignArmyGlance from './CampaignArmyGlance.jsx';
 import { ArmyRosterPanel } from './ArmyScreen.jsx';
 import CombatOperationsCampaignMissionRoute from './CombatOperationsCampaignMissionRoute.jsx';
+import CombatCampaignBriefingRoom from './CombatCampaignBriefingRoom.jsx';
 import CampaignBriefing from './CampaignBriefing.jsx';
 import MechanicTutorialModal from './MechanicTutorialModal.jsx';
 import CombatDebrief from './CombatDebrief.jsx';
@@ -612,6 +613,28 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
 
   if (!run.inRun && campaign.active && campaign.phase === 'map' && campaignMapState) {
     return <CombatOperationsCampaignMissionRoute campaign={campaign} map={campaignMapState} availableNodes={campaignAvailable} roster={roster} serviceSummary={serviceSummary} showTutorial={showCampaignTutorial} showMarket={showMarket} onExit={onExit} onSelect={handleCampaignNodeSelect} onRestart={handleRestartCampaign} onFinishCampaign={finishCampaign} setShowTutorial={setShowCampaignTutorial} setShowMarket={setShowMarket} onHire={handleHireMercenary} onBuyEquipment={handleBuyEquipment} />;
+  }
+
+  // Selection stays on the same 3D operations table; only the contextual
+  // orders folio changes. Campaign transitions still belong to the domain.
+  if (!run.inRun && campaign.active && campaign.phase === 'briefing' && selectedCampaignNode) {
+    return (
+      <CombatCampaignBriefingRoom
+        campaign={campaign}
+        node={selectedCampaignNode}
+        roster={roster}
+        armySummary={deploymentSummary(roster)}
+        onExit={onExit}
+        onHelp={() => setShowCampaignTutorial(true)}
+        onOpenMarket={() => setShowMarket(true)}
+        onBuyIntel={handleCampaignBuyIntel}
+        onContinue={handleCampaignBriefingContinue}
+        onRetire={() => finishCampaign('retired')}
+      >
+        {showCampaignTutorial && <MechanicTutorialModal tutorialId="combat-campaign" onClose={() => setShowCampaignTutorial(false)} />}
+        {showMarket && <CombatMarket roster={roster} serviceSummary={serviceSummary} onHire={handleHireMercenary} onBuyEquipment={handleBuyEquipment} onClose={() => setShowMarket(false)} />}
+      </CombatCampaignBriefingRoom>
+    );
   }
 
   if (!run.inRun && campaign.active) {
