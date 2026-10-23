@@ -175,6 +175,11 @@ def self_test() -> None:
         with path.open("rb") as owner:
             fcntl.flock(owner, fcntl.LOCK_EX | fcntl.LOCK_NB)
             assert lock_state(path)[0] == "held"
+            # Linux kernel integration: a genuine flock must be visible in
+            # fdinfo for this very descriptor, not just in synthetic fixtures.
+            own_fdinfo = Path(f"/proc/self/fdinfo/{owner.fileno()}").read_text(
+                encoding="utf-8")
+            assert fdinfo_has_flock(own_fdinfo, st.st_dev, st.st_ino)
             proc = Path(directory) / "proc"
             proc.mkdir()
             (proc / "locks").write_text(sample, encoding="utf-8")
