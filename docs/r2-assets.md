@@ -97,6 +97,27 @@ Before implementing pruning of Star Adventures objects, move to an explicit
 cross-repository manifest ingestion/pinning contract with versioned rollback,
 and validate it in CI. Do not just remove this protected prefix.
 
+## Cross-repository Chronicles merchant-room art protection
+
+Chronicles of Matthias is now maintained in
+[`evilsysadmin/chronicles-of-matthias`](https://github.com/evilsysadmin/chronicles-of-matthias),
+separately from Chess Studio. Its approved 2D merchant-room images will be
+published under `chronicles/shops/` with immutable SHA-suffixed keys (starting
+with Odo) on the **existing** `chess-studio-assets` bucket and public domain.
+The Chronicles application repository owns the runtime manifest and cutover;
+Chess Studio owns the current bucket publisher and GC until formally handed off.
+
+The Chess Studio GC does not scan that separate runtime manifest. Therefore
+`chronicles/shops/` is protected from deletion **even if** an object is old,
+duplicates another key, or storage pressure is high. The retention self-test
+exercises an unreferenced, old Odo object in the protected family. This
+protection does not imply that Odo is already uploaded or deployed; remote
+readback and exact SHA verification are separate gates.
+
+Before narrowing this protection, implement explicit cross-repo pin ingestion,
+release rollback protection and live byte checks. Do not delete it merely
+because a Chess Studio manifest has no Chronicles shop entry.
+
 ## Storage budget and retention
 
 The repository owns an automatic retention policy for the public asset bucket.
