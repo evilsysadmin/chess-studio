@@ -56,7 +56,7 @@ describe('Combat Operations Room runtime variant', () => {
     const dispose = installCombatOperationsRoomPracticalLights(root, { coarsePointer: false });
     expect(root.userData.combatOperationsPracticalLights).toBe(5);
     const boardLight = root.getObjectByName('COMBAT_ANCHOR_board_fill').children[0];
-    expect(boardLight.intensity).toBeCloseTo(1.12);
+    expect(boardLight.intensity).toBeCloseTo(4.2);
     expect(boardLight.color.getHex()).toBe(0xffe2b6);
     expect(boardLight.distance).toBeCloseTo(9.8);
     expect(boardLight.castShadow).toBe(false);
@@ -88,7 +88,7 @@ describe('Combat Operations Room runtime variant', () => {
 
     const dispose = installCombatOperationsRoomPracticalLights(root, { coarsePointer: true });
     const boardLight = root.getObjectByName('COMBAT_ANCHOR_board_fill').children[0];
-    expect(boardLight.intensity).toBeCloseTo(1.34);
+    expect(boardLight.intensity).toBeCloseTo(5.2);
     expect(boardLight.color.getHex()).toBe(0xffe2b6);
     expect(boardLight.castShadow).toBe(false);
     expect(boardLight.position.toArray()).toEqual([0, -2.3, 2.2]);
