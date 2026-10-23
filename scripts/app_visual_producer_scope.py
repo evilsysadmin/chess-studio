@@ -333,11 +333,7 @@ def classify_path(path: str) -> set[str] | None:
     }:
         return set()
     if (
-        lower in {
-            ".github/workflows/app-visual-artifact.yml",
-            ".github/workflows/chronicles-visual-artifact.yml",
-            ".github/workflows/tactics-visual-artifact.yml",
-        }
+        lower == ".github/workflows/app-visual-artifact.yml"
         or lower.startswith(".github/actions/app-visual-pipeline/")
     ):
         return set()
@@ -783,8 +779,11 @@ def self_test() -> None:
     assert project_app_producers("pvp-duel") == "pvp-duel"
     assert project_app_producers("chronicles-gameplay,home-matthias") == "home-matthias"
     assert project_app_producers("chronicles-avatar,chronicles-tactics") == "none"
-    assert classify([".github/workflows/chronicles-visual-artifact.yml"]) == "none"
-    assert classify([".github/workflows/tactics-visual-artifact.yml"]) == "none"
+    for retired_workflow in (
+        ".github/workflows/chronicles-visual-artifact.yml",
+        ".github/workflows/tactics-visual-artifact.yml",
+    ):
+        assert classify([retired_workflow]) == "all", retired_workflow
     assert classify(["e2e/staging-live.spec.js"]) == "none"
     assert classify(["e2e/war-room-variant-lifecycle-soak.spec.js"]) == "warroom-core"
     assert classify(["scripts/chronicles_area_parity_corpus.py"]) == "all"

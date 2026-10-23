@@ -7,7 +7,7 @@ from types import SimpleNamespace
 import pytest
 from pymongo.errors import PyMongoError
 
-import chronicles_run_store
+import legacy_chronicles_memory
 import legacy_chronicles_purge as purge
 from db import PersistentStorageUnavailable
 
@@ -57,12 +57,34 @@ def test_legacy_run_purge_keeps_memory_fallback_compatible(monkeypatch):
     monkeypatch.setattr(purge, "get_db", _as_async(None))
     monkeypatch.setattr(purge, "persistent_storage_required", lambda: False)
     ours, another = "legacy-purge-ours", "legacy-purge-other"
-    chronicles_run_store._memory_runs[ours] = {"owner": "former-player"}
-    chronicles_run_store._memory_runs[another] = {"owner": "someone-else"}
+    legacy_chronicles_memory._memory_runs[ours] = {"owner": "former-player"}
+    legacy_chronicles_memory._memory_runs[another] = {"owner": "someone-else"}
     try:
         assert asyncio.run(purge.delete_legacy_chronicles_runs("former-player")) == 1
-        assert ours not in chronicles_run_store._memory_runs
-        assert another in chronicles_run_store._memory_runs
+        assert ours not in legacy_chronicles_memory._memory_runs
+        assert another in legacy_chronicles_memory._memory_runs
     finally:
-        chronicles_run_store._memory_runs.pop(ours, None)
-        chronicles_run_store._memory_runs.pop(another, None)
+        legacy_chronicles_memory._memory_runs.pop(ours, None)
+        legacy_chronicles_memory._memory_runs.pop(another, None)
+
+
+def test_memory_purge_does_not_import_legacy_game_store(monkeypatch):
+    """Account deletion must remain independent if legacy runtime is retired."""
+    import builtins
+
+    original_import = builtins.__import__
+
+    def reject_game_store(name, *args, **kwargs):
+        if name == "chronicles_run_store":
+            raise AssertionError("privacy purge imported retired game persistence")
+        return original_import(name, *args, **kwargs)
+
+    monkeypatch.setattr(purge, "get_db", _as_async(None))
+    monkeypatch.setattr(purge, "persistent_storage_required", lambda: False)
+    monkeypatch.setattr(builtins, "__import__", reject_game_store)
+    legacy_chronicles_memory._memory_runs["privacy-isolated"] = {"owner": "former-player"}
+    try:
+        assert asyncio.run(purge.delete_legacy_chronicles_runs("former-player")) == 1
+        assert "privacy-isolated" not in legacy_chronicles_memory._memory_runs
+    finally:
+        legacy_chronicles_memory._memory_runs.pop("privacy-isolated", None)

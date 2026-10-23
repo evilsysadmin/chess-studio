@@ -36,6 +36,14 @@ deploy_watcher_source="$repo/scripts/oci_staging_deploy_watcher.py"
 deploy_watcher_unit_source="$repo/infra/oci/runtime/chess-studio-deploy-watcher.service"
 deploy_watcher_target="/usr/local/libexec/chess-studio-deploy-watcher"
 deploy_watcher_unit_target="/etc/systemd/system/chess-studio-deploy-watcher.service"
+heartbeat_source="$repo/scripts/oci_observability_heartbeat.py"
+heartbeat_probe_source="$repo/scripts/otel_log_ingest_probe.py"
+heartbeat_service_source="$repo/infra/oci/runtime/chess-studio-observability-heartbeat.service"
+heartbeat_timer_source="$repo/infra/oci/runtime/chess-studio-observability-heartbeat.timer"
+heartbeat_target="/usr/local/libexec/chess-studio-observability-heartbeat"
+heartbeat_probe_target="/usr/local/libexec/otel_log_ingest_probe.py"
+heartbeat_service_target="/etc/systemd/system/chess-studio-observability-heartbeat.service"
+heartbeat_timer_target="/etc/systemd/system/chess-studio-observability-heartbeat.timer"
 pvp_registry_image_prefix="${CHESS_STUDIO_PVP_IMAGE_PREFIX:-ghcr.io/evilsysadmin/chess-studio-pvp:oci-}"
 
 case "$target" in
@@ -164,6 +172,24 @@ prepare_deploy_watcher() {
   install -o root -g root -m 0755 "$deploy_watcher_source" "$deploy_watcher_target"
   install -o root -g root -m 0644 "$deploy_watcher_unit_source" "$deploy_watcher_unit_target"
   systemctl daemon-reload
+}
+
+prepare_observability_heartbeat() {
+  python3 -S "$heartbeat_source" --self-test >/dev/null
+  install -d -o root -g root -m 0755 /usr/local/libexec
+  install -o root -g root -m 0755 "$heartbeat_source" "$heartbeat_target"
+  install -o root -g root -m 0644 "$heartbeat_probe_source" "$heartbeat_probe_target"
+  install -o root -g root -m 0644 "$heartbeat_service_source" "$heartbeat_service_target"
+  install -o root -g root -m 0644 "$heartbeat_timer_source" "$heartbeat_timer_target"
+  systemctl daemon-reload
+}
+
+enable_observability_heartbeat() {
+  if systemctl enable --now chess-studio-observability-heartbeat.timer >/dev/null 2>&1; then
+    echo 'OCI_LOG_HEARTBEAT_TIMER enabled=hourly'
+  else
+    echo 'OCI_LOG_HEARTBEAT_TIMER degraded=enable-failed' >&2
+  fi
 }
 
 enable_deploy_watcher() {
@@ -1424,8 +1450,12 @@ if [[ "$target" == staging ]]; then
   [[ -f "$signal_timer_source" && ! -L "$signal_timer_source" ]] || { echo "missing staging signal timer in $sha" >&2; exit 66; }
   [[ -f "$deploy_watcher_source" && ! -L "$deploy_watcher_source" ]] || { echo "missing zero-cost deploy watcher in $sha" >&2; exit 66; }
   [[ -f "$deploy_watcher_unit_source" && ! -L "$deploy_watcher_unit_source" ]] || { echo "missing zero-cost deploy watcher unit in $sha" >&2; exit 66; }
+  for heartbeat_file in "$heartbeat_source" "$heartbeat_probe_source" "$heartbeat_service_source" "$heartbeat_timer_source"; do
+    [[ -f "$heartbeat_file" && ! -L "$heartbeat_file" ]] || { echo "missing periodic OCI log probe input in $sha" >&2; exit 66; }
+  done
   prepare_signal_controller_disabled
   prepare_deploy_watcher
+  prepare_observability_heartbeat
   /bin/bash "$tunnel_connector" --self-test >/dev/null
 fi
 phase_done preflight "$preflight_started_ms"
@@ -1754,6 +1784,7 @@ phase_done drain "$drain_started_ms"
 
 start_observability_best_effort "$sha"
 if [[ "$target" == staging ]]; then
+  enable_observability_heartbeat
   enable_deploy_watcher
   deploy_watcher_diag_summary
 fi

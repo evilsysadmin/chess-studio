@@ -1,0 +1,13 @@
+[Unit]
+Description=Refresh Chess Studio staging OTLP and Alloy log probes hourly
+
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=1h
+AccuracySec=2min
+RandomizedDelaySec=1min
+Persistent=true
+Unit=chess-studio-observability-heartbeat.service
+
+[Install]
+WantedBy=timers.target

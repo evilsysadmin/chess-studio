@@ -354,17 +354,19 @@ function materialGradeObjectIdentity(object) {
 
 export function warRoomMaterialGradeDynamicSignature(root) {
   if (!root?.children) return '';
-  // Evaluated on each painted War Room frame, including the 10-FPS ambient
-  // heartbeat. Keep the identical signature contract but avoid allocating a
-  // filtered array, a mapped array and per-group temporary tuples each time.
+  // This runs on ambient paints too. The former first/last-only signature
+  // missed a replaced *middle* piece in a stable-sized group, leaving its new
+  // material ungraded until a later move. Include every direct-child identity
+  // in order; preserve the no-array, single-pass render hot path.
   let signature = '';
   for (const group of root.children) {
     if (!group?.isGroup) continue;
     const children = group.children || [];
-    const first = children[0] || null;
-    const last = children.length ? children[children.length - 1] : null;
     if (signature) signature += '|';
-    signature += `${materialGradeObjectIdentity(group)}:${children.length}:${materialGradeObjectIdentity(first)}:${materialGradeObjectIdentity(last)}`;
+    signature += `${materialGradeObjectIdentity(group)}:${children.length}`;
+    for (const child of children) {
+      signature += `:${materialGradeObjectIdentity(child)}`;
+    }
   }
   return signature;
 }

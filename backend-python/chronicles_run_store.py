@@ -7,7 +7,6 @@ must never be trusted solely to client storage.
 
 from __future__ import annotations
 
-import asyncio
 from copy import deepcopy
 from datetime import datetime, timezone
 from typing import Any
@@ -15,25 +14,12 @@ from typing import Any
 from pymongo.errors import PyMongoError
 
 from db import PersistentStorageUnavailable, get_db, persistent_storage_required
+from legacy_chronicles_memory import _memory_guard, _memory_runs
 
 
 COLLECTION = "chronicles_runs"
-_memory_runs: dict[str, dict[str, Any]] = {}
-_memory_lock: asyncio.Lock | None = None
-_memory_lock_loop = None
-
-
 def utcnow() -> datetime:
     return datetime.now(timezone.utc)
-
-
-def _memory_guard() -> asyncio.Lock:
-    global _memory_lock, _memory_lock_loop
-    loop = asyncio.get_running_loop()
-    if _memory_lock is None or _memory_lock_loop is not loop:
-        _memory_lock = asyncio.Lock()
-        _memory_lock_loop = loop
-    return _memory_lock
 
 
 async def _collection():

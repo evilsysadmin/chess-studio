@@ -157,12 +157,14 @@ def baseline_report(directory, sha, mode, variant, repetitions):
         '## Static GLB and lighting census (not draw calls)',
         '',
         'One-shot runtime telemetry observed after the room and Hans become ready. '
-        'Authored GLB mesh count is the original loader mesh census before '
-        'effects; instanced torch batches are additional runtime meshes. '
-        'One authored mesh does not necessarily equal one WebGL draw, because '
+        'Shell shadow candidate count is the subset considered by the '
+        'runtime shadow selector, NOT the complete authored GLB mesh census. '
+        'Use the immutable-R2 geometry report for authored topology. '
+        'Instanced torch batches are additional runtime meshes. '
+        'One candidate does not necessarily equal one WebGL draw, because '
         'culling, materials and shadow passes affect submissions.',
         '',
-        '| Profile · visit | Authored GLB meshes | V3 static torch batches | '
+        '| Profile · visit | Shell shadow candidate meshes | V3 static torch batches | '
         'Shadow caster budget | Candidate shadow triangles | '
         'Selected shadow triangles | Observed casters | Shadow warmup stage |',
         '|---|---:|---:|---:|---:|---:|---:|---|',
@@ -171,13 +173,19 @@ def baseline_report(directory, sha, mode, variant, repetitions):
         for index, visit in enumerate(VISITS):
             captures = [report['visits'][index].get('sceneInventory')
                         for report in groups[profile]]
-            fields = ('authoredGlbMeshes', 'v3StaticTorchBatches',
+            fields = ('shadowCasterCandidates', 'v3StaticTorchBatches',
                       'shadowCasterBudget', 'shadowCandidatePotentialTriangles',
                       'shadowSelectedPotentialTriangles', 'activeShadowCasters')
             values = []
             for field in fields:
-                readings = [capture.get(field) if isinstance(capture, dict) else None
-                            for capture in captures]
+                # Early baselines mislabeled *shadow candidates* as authored
+                # meshes. Recover their actual meaning without presenting
+                # them as the full GLB loader mesh count.
+                readings = [
+                    (capture.get(field, capture.get('authoredGlbMeshes'))
+                     if field == 'shadowCasterCandidates' else capture.get(field))
+                    if isinstance(capture, dict) else None for capture in captures
+                ]
                 if all(type(value) is int and value >= 0 for value in readings):
                     values.append(str(readings[0]) if len(set(readings)) == 1
                                   else f'{min(readings)}–{max(readings)}')
@@ -289,7 +297,7 @@ def self_test():
             report = json.loads(path.read_text())
             for visit in report['visits']:
                 visit['sceneInventory'] = {
-                    'authoredGlbMeshes': 690, 'v3StaticTorchBatches': 12,
+                    'shadowCasterCandidates': 75, 'v3StaticTorchBatches': 12,
                     'shadowCasterBudget': 32, 'activeShadowCasters': 32,
                     'shadowCandidatePotentialTriangles': 94754,
                     'shadowSelectedPotentialTriangles': 38400,
@@ -297,7 +305,7 @@ def self_test():
                 }
             path.write_text(json.dumps(report))
         output = baseline_report(root, sha, 'hardware', 'v3', 2)
-        assert '| desktop-1440x900 · first-visit | 690 | 12 | 32 | 94754 | 38400 | 32 | ready-budgeted |' in output
+        assert '| desktop-1440x900 · first-visit | 75 | 12 | 32 | 94754 | 38400 | 32 | ready-budgeted |' in output
         assert '| desktop-1440x900 · first-visit · idle | 140.00 | 150.00 | ' in output
         assert '| 280000.00 | 1.25 | 2.50 | n/a | 22 |' in output
         assert '| desktop-1440x900 · first-visit · idle | 35.00 | 105.00 | 115.00 | 1.00 |' in output
@@ -314,10 +322,19 @@ def self_test():
         path.write_text(json.dumps(report))
         assert '| desktop-1440x900 · first-visit | 80–81 | n/a | 7 |' in baseline_report(root, sha, 'hardware', 'v3', 2)
         report['visits'][0]['snapshotMemory']['textures'] = 14
-        report['visits'][0]['sceneInventory']['authoredGlbMeshes'] = None
+        report['visits'][0]['sceneInventory']['shadowCasterCandidates'] = None
         path.write_text(json.dumps(report))
         assert '| desktop-1440x900 · first-visit | n/a | 12 | 32 | 94754 | 38400 | 32 | ready-budgeted |' in baseline_report(root, sha, 'hardware', 'v3', 2)
-        report['visits'][0]['sceneInventory']['authoredGlbMeshes'] = 690
+        report['visits'][0]['sceneInventory']['shadowCasterCandidates'] = 75
+        path.write_text(json.dumps(report))
+        # Previously captured files mislabeled this same selector count;
+        # preserve comparability without calling it a GLB authored census.
+        report['visits'][0]['sceneInventory'].pop('shadowCasterCandidates')
+        report['visits'][0]['sceneInventory']['authoredGlbMeshes'] = 75
+        path.write_text(json.dumps(report))
+        assert '| desktop-1440x900 · first-visit | 75 | 12 | 32 | 94754 | 38400 | 32 | ready-budgeted |' in baseline_report(root, sha, 'hardware', 'v3', 2)
+        report['visits'][0]['sceneInventory'].pop('authoredGlbMeshes')
+        report['visits'][0]['sceneInventory']['shadowCasterCandidates'] = 75
         path.write_text(json.dumps(report))
         # Different measurements must not silently become a fabricated
         # stable count. Legacy captures are valid and show missing as n/a.
