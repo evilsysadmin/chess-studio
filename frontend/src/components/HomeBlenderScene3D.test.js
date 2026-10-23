@@ -37,6 +37,7 @@ import {
   HOME_BLENDER_FIRE_MAX_INTERVAL_MS,
   homeBlenderPolicyNeedsFallback,
   homeBlenderAdaptiveLodFloor,
+  homeBlenderAdaptiveLodCap,
   homeBlenderRuntimePolicy,
   homeBlenderDustSeeds,
   homeBlenderDustPosition,
@@ -62,6 +63,7 @@ import {
   releaseHomeBlenderWebglContext,
 } from './HomeBlenderScene3D.jsx';
 import { tighterRuntimeLodCap } from './HomeCastle3DRenderPolicy.js';
+import { createHomeCastle3DPerformanceGovernor } from './HomeCastle3DPerformanceGovernor.js';
 
 describe('Home Blender stationary render camera', () => {
   const canonical = homeBlenderCameraPoseForAspect(16 / 9);
@@ -238,6 +240,29 @@ describe('HomeBlenderScene3D mobile runtime policy', () => {
 
 
 describe('HomeBlenderScene3D live fallback policy', () => {
+  it('preserves a 3D lite floor under sustained governor slowdown', () => {
+    const governorDecision = (lod, frameMs, count) => {
+      const governor = createHomeCastle3DPerformanceGovernor(lod);
+      let timestamp = 0;
+      let decision = governor.observe(timestamp);
+      for (let index = 0; index < count; index += 1) {
+        timestamp += frameMs;
+        decision = governor.observe(timestamp) || decision;
+      }
+      return decision;
+    };
+    const fullSignal = governorDecision('full', 33.4, 400);
+    expect(fullSignal).toBe('lite');
+    const cap = homeBlenderAdaptiveLodCap(null, fullSignal, 'lite');
+    expect(cap).toBe('lite');
+
+    const liteSignal = governorDecision('lite', 70, 320);
+    expect(liteSignal).toBe('2d');
+    expect(homeBlenderAdaptiveLodCap(cap, liteSignal, 'lite')).toBe('lite');
+    // A genuinely ineligible policy may still request the explicit 2D path.
+    expect(homeBlenderAdaptiveLodCap(null, liteSignal, '2d')).toBe('2d');
+  });
+
   it('never performance-ejects an eligible 3D session to static 2D', () => {
     expect(homeBlenderAdaptiveLodFloor({ enabled: true, lod: 'full' })).toBe('lite');
     expect(homeBlenderAdaptiveLodFloor({ enabled: true, lod: 'lite' })).toBe('lite');
