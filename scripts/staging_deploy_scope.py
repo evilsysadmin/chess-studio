@@ -247,7 +247,15 @@ def self_test() -> None:
     assert require_pending_since_complete(sha, True, "runtime:backend-go/pvp.go",
                diff_lookup=lambda _: (_ for _ in ()).throw(AssertionError("unexpected API call")))[0]
     assert require_pending_since_complete(sha, False, "non-runtime-only",
-               diff_lookup=lambda _: (_ for _ in ()).throw(RuntimeError("unavailable")))[0]
+               diff_lookup=lambda _: (_ for _ in ()).throw(RuntimeError("unavailable"))) == (
+                   True, "pending-diff-fail-open:RuntimeError"
+               )
+    # A generation baseline older than the bounded receipt search is unknown,
+    # never evidence that a documentation-only merge can skip pending runtime.
+    assert require_pending_since_complete(sha, False, "non-runtime-only",
+               diff_lookup=lambda _: (_ for _ in ()).throw(
+                   RuntimeError("no proven complete staging generation in bounded history")
+               )) == (True, "pending-diff-fail-open:RuntimeError")
 
     assert deploy_required_for_paths(["scripts/staging_deploy_proof.py"]) == (False, "non-runtime-only")
     diagnostic_only = [
