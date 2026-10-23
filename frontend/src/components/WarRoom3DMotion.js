@@ -463,6 +463,18 @@ export function applyWarRoomMaterialGrade(scene, { coarsePointer = false } = {})
   return { adjusted, ivory, canonicalIvory, lightTile, canonicalLightTile, profile };
 }
 
+// The render discipline publishes stable inspection labels every room paint.
+// Writing an unchanged data-* attribute still schedules a DOM mutation. Keep
+// the exact same observable values while skipping redundant writes.
+export function writeWarRoomCanvasTelemetry(canvas, key, value) {
+  const dataset = canvas?.dataset;
+  if (!dataset) return false;
+  const next = String(value);
+  if (dataset[key] === next) return false;
+  dataset[key] = next;
+  return true;
+}
+
 function installWarRoomRenderDiscipline() {
   const prototype = THREE.WebGLRenderer?.prototype;
   if (!prototype || prototype[WAR_ROOM_RENDER_DISCIPLINE]) return;
@@ -482,20 +494,20 @@ function installWarRoomRenderDiscipline() {
     const coarsePointer = Number(budget.shadowMapSize) <= 512;
     const atmosphere = applyWarRoomAtmosphereGrade(scene);
     if (atmosphere && this.domElement?.dataset) {
-      this.domElement.dataset.warRoomAtmosphereGrade = atmosphere.grade;
+      writeWarRoomCanvasTelemetry(this.domElement, 'warRoomAtmosphereGrade', atmosphere.grade);
     }
     const hemisphere = applyWarRoomHemisphereGrade(scene, { coarsePointer });
     if (hemisphere && this.domElement?.dataset) {
-      this.domElement.dataset.warRoomLightHemisphere = Number(hemisphere.intensity).toFixed(2);
+      writeWarRoomCanvasTelemetry(this.domElement, 'warRoomLightHemisphere', Number(hemisphere.intensity).toFixed(2));
     }
     const boardKey = applyWarRoomKeyLightGrade(scene);
     if (boardKey && this.domElement?.dataset) {
-      this.domElement.dataset.warRoomKeyLightPose = 'high-side-v1';
-      this.domElement.dataset.warRoomLightingGrade = 'warm-club-v2';
+      writeWarRoomCanvasTelemetry(this.domElement, 'warRoomKeyLightPose', 'high-side-v1');
+      writeWarRoomCanvasTelemetry(this.domElement, 'warRoomLightingGrade', 'warm-club-v2');
     }
     const warmFill = applyWarRoomWarmFillGrade(scene);
     if (warmFill && this.domElement?.dataset) {
-      this.domElement.dataset.warRoomRankSeparation = 'lateral-graze-ranks-v3';
+      writeWarRoomCanvasTelemetry(this.domElement, 'warRoomRankSeparation', 'lateral-graze-ranks-v3');
     }
     const v2Lighting = applyWarRoomV2RuntimeLightingGrade(scene, this, {
       coarsePointer,
@@ -504,8 +516,8 @@ function installWarRoomRenderDiscipline() {
       warmFill,
     });
     if (v2Lighting && this.domElement?.dataset) {
-      this.domElement.dataset.warRoomV2LightingGrade = v2Lighting.grade;
-      this.domElement.dataset.warRoomV2Exposure = Number(v2Lighting.exposure).toFixed(2);
+      writeWarRoomCanvasTelemetry(this.domElement, 'warRoomV2LightingGrade', v2Lighting.grade);
+      writeWarRoomCanvasTelemetry(this.domElement, 'warRoomV2Exposure', Number(v2Lighting.exposure).toFixed(2));
     }
     const now = typeof performance !== 'undefined' && typeof performance.now === 'function'
       ? performance.now()
@@ -529,11 +541,11 @@ function installWarRoomRenderDiscipline() {
     if (shouldRunWarRoomMaterialGrade(scene)) {
       const materialGrade = applyWarRoomMaterialGrade(scene, { coarsePointer });
       if (materialGrade.profile && this.domElement?.dataset) {
-        this.domElement.dataset.warRoomIblIvory = Number(materialGrade.profile.ivoryEnvMax).toFixed(2);
-        this.domElement.dataset.warRoomIblLightTile = Number(materialGrade.profile.lightTileEnvMax).toFixed(2);
-        this.domElement.dataset.warRoomSurfaceGrade = scene.userData?.warRoomSurfaceGrade || 'aged-matte-v2';
-        this.domElement.dataset.warRoomMaterialGrade = 'dynamic-groups-v1';
-        this.domElement.dataset.warRoomCanonicalIvoryProtected = String(materialGrade.canonicalIvory || 0);
+        writeWarRoomCanvasTelemetry(this.domElement, 'warRoomIblIvory', Number(materialGrade.profile.ivoryEnvMax).toFixed(2));
+        writeWarRoomCanvasTelemetry(this.domElement, 'warRoomIblLightTile', Number(materialGrade.profile.lightTileEnvMax).toFixed(2));
+        writeWarRoomCanvasTelemetry(this.domElement, 'warRoomSurfaceGrade', scene.userData?.warRoomSurfaceGrade || 'aged-matte-v2');
+        writeWarRoomCanvasTelemetry(this.domElement, 'warRoomMaterialGrade', 'dynamic-groups-v1');
+        writeWarRoomCanvasTelemetry(this.domElement, 'warRoomCanonicalIvoryProtected', String(materialGrade.canonicalIvory || 0));
       }
     }
 
