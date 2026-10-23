@@ -40,7 +40,6 @@ NON_RUNTIME_EXACT = frozenset({
     "scripts/grafana_dashboard_check.py",
     "scripts/pvp_python_fallback_report.py",
     "scripts/dead_code_reachability_check.py",
-    "scripts/chronicles_contracts.py",
     "scripts/test_suite_audit.mjs",
     "scripts/test_entrypoint_parity.py",
     "scripts/workflow_static_contracts.py",
@@ -272,7 +271,14 @@ def self_test() -> None:
     assert deploy_required_for_paths(["scripts/grafana_dashboard_check.py", ".github/workflows/billing-cost-export.yml"]) == (False, "non-runtime-only")
     assert deploy_required_for_paths(["scripts/pvp_python_fallback_report.py", ".github/workflows/pvp-python-fallback.yml"]) == (False, "non-runtime-only")
     assert deploy_required_for_paths([".github/workflows/war-room-blender-art.yml", "scripts/blender_required_scope.py"]) == (False, "non-runtime-only")
-    assert deploy_required_for_paths(["scripts/chronicles_contracts.py"]) == (False, "non-runtime-only")
+    # Extracted Chronicles authoring tools are NOT safe to silently ignore if
+    # someone reintroduces them. Fail open to staging admission/deployment.
+    for retired_script in (
+        "scripts/chronicles_contracts.py",
+        "scripts/chronicles_area_parity_corpus.py",
+        "scripts/validate_chronicles_campaign.py",
+    ):
+        assert deploy_required_for_paths([retired_script])[0], retired_script
     for retired_workflow in (
         ".github/workflows/chronicles-visual-artifact.yml",
         ".github/workflows/tactics-visual-artifact.yml",
