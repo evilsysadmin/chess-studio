@@ -1,0 +1,172 @@
+name: Assets · Chronicles Odo R2 promotion
+
+# Mirrors Star Adventures' split ownership: R2 owner publishes and proves
+# public bytes; Chronicles receives a small reviewable source-manifest PR.
+# Upload the approved WebP as an asset of the *draft release*, then publish
+# that release. Binary never goes through the git tree or a PR checkout.
+on:
+  pull_request:
+    paths:
+      - .github/workflows/chronicles-odo-r2-publish.yml
+      - scripts/chronicles_odo_r2_pipeline.py
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Approved immutable art release tag
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: chronicles-odo-r2-publish
+  cancel-in-progress: false
+
+jobs:
+  contract:
+    name: Validate · approved Odo R2 publication contract
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v7
+      - run: python3 -S scripts/chronicles_odo_r2_pipeline.py self-test
+      - run: python3 -S scripts/r2_asset_publish.py self-test
+
+  publish-and-propose:
+    name: Publish verified Odo and propose Chronicles pin
+    needs: contract
+    if: >-
+      (github.event_name == 'release' || github.event_name == 'workflow_dispatch')
+      && github.repository == 'evilsysadmin/chess-studio'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    environment: chronicles-r2-publish
+    env:
+      EXPECTED_RELEASE_TAG: chronicles-odo-r2-79e0b13fc2ee2ffb
+      RELEASE_TAG: ${{ github.event.release.tag_name || inputs.release_tag }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      # Uses the already-established CI bot PAT when it has cross-repo
+      # contents+PR permissions; a narrowed per-repo token takes precedence.
+      CHRONICLES_PR_TOKEN: ${{ secrets.CHRONICLES_MANIFEST_PR_TOKEN || secrets.CI_PR_BOT_PAT }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Fail closed on wrong release, missing authority or superseded job
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$RELEASE_TAG" == "$EXPECTED_RELEASE_TAG" ]] || {
+            echo "::error::Only exact reviewed Odo release $EXPECTED_RELEASE_TAG is admitted"
+            exit 1
+          }
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+          test -n "$CHRONICLES_PR_TOKEN" || {
+            echo "::error::Set CHRONICLES_MANIFEST_PR_TOKEN (Chronicles Contents/PR write) on Chess Studio before promotion"
+            exit 1
+          }
+
+      - name: Fetch release asset outside Git history
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/chronicles-odo
+          gh release download "$RELEASE_TAG" \
+            --repo evilsysadmin/chess-studio \
+            --pattern 'odo-premium-composite.webp' \
+            --dir /tmp/chronicles-odo
+          test -f /tmp/chronicles-odo/odo-premium-composite.webp
+          python3 -S scripts/chronicles_odo_r2_pipeline.py source /tmp/chronicles-odo/odo-premium-composite.webp
+
+      - name: Check out current Chronicles source manifest
+        uses: actions/checkout@v7
+        with:
+          repository: evilsysadmin/chronicles-of-matthias
+          ref: main
+          path: chronicles-source
+          token: ${{ secrets.CHRONICLES_MANIFEST_PR_TOKEN || secrets.CI_PR_BOT_PAT }}
+          fetch-depth: 0
+
+      - name: Dry-run and publish with existing Chess Studio R2 publisher
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp chronicles-source/frontend/src/assets/r2-assets-manifest.json /tmp/chronicles-odo/manifest-before.json
+          file=/tmp/chronicles-odo/odo-premium-composite.webp
+          manifest=chronicles-source/frontend/src/assets/r2-assets-manifest.json
+          python3 -S scripts/r2_asset_publish.py publish "$file" \
+            --logical-id chronicles.shop.odo --prefix chronicles/shops/odo \
+            --manifest "$manifest" --dry-run
+          python3 -S scripts/r2_asset_publish.py publish "$file" \
+            --logical-id chronicles.shop.odo --prefix chronicles/shops/odo \
+            --manifest "$manifest"
+
+      - name: Verify actual public HTTPS bytes and reject any unrelated manifest mutation
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -S scripts/chronicles_odo_r2_pipeline.py public
+          python3 -S scripts/chronicles_odo_r2_pipeline.py manifest \
+            /tmp/chronicles-odo/manifest-before.json \
+            chronicles-source/frontend/src/assets/r2-assets-manifest.json
+
+      - name: Create narrowly scoped Chronicles manifest PR (not an auto-merge)
+        env:
+          GH_TOKEN: ${{ secrets.CHRONICLES_MANIFEST_PR_TOKEN || secrets.CI_PR_BOT_PAT }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd chronicles-source
+          branch="art/odo-r2-79e0b13fc2ee2ffb"
+          target="frontend/src/assets/r2-assets-manifest.json"
+          if git diff --quiet -- "$target"; then
+            echo "Already pinned on Chronicles main; nothing to propose."
+            exit 0
+          fi
+          latest="$(gh api repos/evilsysadmin/chronicles-of-matthias/commits/main --jq .sha)"
+          current="$(git rev-parse HEAD)"
+          [[ "$current" == "$latest" ]] || {
+            echo "::error::Chronicles main moved after the asset was checked; rerun on new main."
+            exit 1
+          }
+          if gh pr list --repo evilsysadmin/chronicles-of-matthias --state open \
+              --head "$branch" --json number --jq 'length' | grep -q '^1$'; then
+            echo "A manifest promotion PR is already open; refusing duplicate."
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git checkout -b "$branch"
+          git add -- "$target"
+          git commit -m 'art(shops): pin verified immutable Odo WebP from R2'
+          git push origin "$branch"
+          gh pr create --repo evilsysadmin/chronicles-of-matthias \
+            --base main --head "$branch" \
+            --title 'art(shops): pin verified premium Odo on R2' \
+            --body 'Exact approved original Odo WebP, SHA256 79e0b13fc2ee2ffbc8f8aa7a1f569cb4c5776935fcb428bafc09a6820aea43e1, published via Chess Studio R2 pipeline and independently verified over public HTTPS. This PR changes only the Chronicles R2 asset manifest. Requires CI, real desktop/mobile visual inspection and staging confirmation before merge. Refs #166.'
+          echo "R2 bytes proved; Chronicles PR opened for guarded source promotion."
+
+      - name: Record publication evidence
+        if: success()
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/chronicles-odo/evidence
+          cp chronicles-source/frontend/src/assets/r2-assets-manifest.json /tmp/chronicles-odo/evidence/manifest.json
+          printf '%s\n' '79e0b13fc2ee2ffbc8f8aa7a1f569cb4c5776935fcb428bafc09a6820aea43e1' > /tmp/chronicles-odo/evidence/sha256.txt
+          printf '%s\n' 'https://assets.chess-studio.shadowops.dpdns.org/chronicles/shops/odo/odo-premium-composite-79e0b13fc2ee2ffb.webp' > /tmp/chronicles-odo/evidence/public-url.txt
+      - uses: actions/upload-artifact@v7
+        if: success()
+        with:
+          name: chronicles-odo-r2-evidence-${{ github.run_id }}
+          path: /tmp/chronicles-odo/evidence/
+          if-no-files-found: error
+          retention-days: 30
