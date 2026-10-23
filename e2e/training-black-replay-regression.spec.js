@@ -1,3 +1,4 @@
+import { mkdir, writeFile } from 'node:fs/promises';
 import { expect, test } from '@playwright/test';
 import { login, mockApi } from './helpers.js';
 
@@ -65,6 +66,8 @@ test('Replay personal · negras mantiene escena jugable en desktop y portrait', 
     expect(dimensions?.height || 0).toBeGreaterThanOrEqual(viewport.height * 0.98);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
     const png = await page.screenshot({ animations: 'disabled', fullPage: false });
+    await mkdir('../.artifacts/app-visual', { recursive: true });
+    await writeFile(`../.artifacts/app-visual/training-replay-black-${viewport.width}x${viewport.height}.png`, png);
     await testInfo.attach(`replay-black-${viewport.width}x${viewport.height}`, {
       body: png,
       contentType: 'image/png',
