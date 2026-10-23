@@ -218,6 +218,12 @@
   .combat-briefing-room-status { max-width: calc(48% - 1rem); }
 }
 @media (max-width: 720px) {
+  /* The shared camera frames the whole room; shift that authored view upward
+     *only for briefing*, so the exposed mobile slot contains the chess army
+     rather than an empty distant wall. No new camera or duplicate renderer. */
+  .combat-briefing-room-shell .combat-preparation-room-stage {
+    transform: translateY(-30%);
+  }
   .combat-briefing-room-intro {
     top: 3.55rem;
     left: .55rem;
@@ -261,8 +267,10 @@
     line-height: 1.25;
     font-size: .63rem;
   }
+  /* Leave a real unobstructed view of the 3D deployment table between the
+     campaign status rail and the orders folio. Keep the primary CTA in view. */
   .combat-briefing-room-orders {
-    top: 10.25rem;
+    top: calc(10.25rem + clamp(5.5rem, 14dvh, 7rem));
     bottom: .45rem;
     left: .45rem;
     right: .45rem;
