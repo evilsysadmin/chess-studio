@@ -63,6 +63,21 @@ planificar una intervención manual controlada que preserve el túnel de acceso.
 **No reiniciar el túnel automáticamente, matar PIDs a ciegas ni borrar el
 fichero lock**.
 
+### Git fetch con FD8 adquirido
+
+El launcher y la ruta legacy/direct de despliegue adquieren la exclusión
+`deploy.lock` **antes** de traer el SHA inmutable desde GitHub. Sin límite
+de tiempo, una conexión Git/DNS/SSH atascada puede retener el mismo descriptor
+mucho después de que la generación resulte obsoleta. Ambos caminos ejecutan
+ahora `git fetch` con `GIT_TERMINAL_PROMPT=0` y un timeout de **90 s**,
+seguido de 2 s antes del SIGKILL si no concluye. Si falla la descarga, se
+aborta **antes de `git checkout` y de modificar contenedores**. El lanzamiento
+normal sigue validando `main` y el lock de forma autoritativa.
+
+Esta prevención no libera descriptores heredados por un daemon antiguo ni
+autoriza borrar el fichero lock. Continúa siendo imprescindible el triaje
+de solo lectura en el namespace host.
+
 ## Toma de evidencia desde el host (sin mutaciones)
 
 Desde una copia local verificada de Chess Studio, materializar **solo**
