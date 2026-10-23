@@ -846,15 +846,15 @@
         "name": "selector",
         "label": "Entorno",
         "type": "custom",
-        "query": "production : {service_name=\"chess-studio-backend\"},staging : {service_name=\"chess-studio-backend-staging\"}",
+        "query": "production : {service_name=\"chess-studio-backend-go\"},staging : {service_name=\"chess-studio-backend-staging-go\"}",
         "current": {
           "text": "production",
-          "value": "{service_name=\"chess-studio-backend\"}"
+          "value": "{service_name=\"chess-studio-backend-go\"}"
         },
         "hide": 0,
         "skipUrlSync": false,
         "includeAll": true,
-        "allValue": "{service_name=~\"chess-studio-backend(-staging)?\"}",
+        "allValue": "{service_name=~\"chess-studio-backend(-staging)?-go\"}",
         "multi": false
       }
     ]
