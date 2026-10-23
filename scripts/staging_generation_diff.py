@@ -63,20 +63,21 @@ def changed_files(base_sha: str, head_sha: str, runner: Runner = subprocess.run)
     head = generation.valid_sha(head_sha)
     if base == head:
         return []
-    fetched = runner(
-        ["git", "fetch", "--no-tags", "--depth=1", "origin", base],
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    if fetched.returncode != 0:
-        raise RuntimeError("could not fetch previous complete staging generation")
-    diff = runner(
-        ["git", "diff", "--name-only", base, head],
-        capture_output=True,
-        text=True,
-        check=True,
-    )
+    # Fail bounded: an unavailable baseline must trigger the normal guarded
+    # full-deploy path, not a speculative skip or an indefinitely stuck runner.
+    try:
+        fetched = runner(
+            ["git", "fetch", "--no-tags", "--depth=1", "origin", base],
+            capture_output=True, text=True, check=False, timeout=20,
+        )
+        if fetched.returncode != 0:
+            raise RuntimeError("could not fetch previous complete staging generation")
+        diff = runner(
+            ["git", "diff", "--name-only", base, head],
+            capture_output=True, text=True, check=True, timeout=15,
+        )
+    except (OSError, subprocess.SubprocessError) as exc:
+        raise RuntimeError("could not prove cumulative staging diff") from exc
     return [line.strip().replace("\\", "/") for line in (diff.stdout or "").splitlines() if line.strip()]
 
 
@@ -128,6 +129,33 @@ def self_test() -> None:
     ]
     assert calls[0][:3] == ["git", "fetch", "--no-tags"]
     assert calls[1][:3] == ["git", "diff", "--name-only"]
+
+    # Timeouts and invalid Git history are not evidence of no pending deploy.
+    # The caller catches RuntimeError and enters the guarded full-deploy path.
+    def timeout_fetch(argv, **kwargs):
+        assert argv[1] == "fetch" and kwargs["timeout"] == 20
+        raise subprocess.TimeoutExpired(argv, kwargs["timeout"])
+
+    def timeout_diff(argv, **kwargs):
+        if argv[1] == "fetch":
+            assert kwargs["timeout"] == 20
+            return Done()
+        assert argv[1] == "diff" and kwargs["timeout"] == 15
+        raise subprocess.TimeoutExpired(argv, kwargs["timeout"])
+
+    def invalid_diff(argv, **kwargs):
+        if argv[1] == "fetch":
+            return Done()
+        raise subprocess.CalledProcessError(128, argv)
+
+    for failing_runner in (timeout_fetch, timeout_diff, invalid_diff):
+        try:
+            changed_files(a, b, runner=failing_runner)
+        except RuntimeError as exc:
+            assert "cumulative staging diff" in str(exc)
+        else:
+            raise AssertionError("unproven cumulative diff must fail open")
+
     print("staging-generation-diff self-test: OK")
 
 
