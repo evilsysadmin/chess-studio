@@ -306,6 +306,11 @@ if (checkCiWiring) {
     "grep -Fqx $'\\tbuild\\tGOARCH=arm64'",
     'scanner="$(go env GOPATH)/bin/govulncheck"',
     '[[ -x "$scanner" ]]',
+    'contains_unsafe_openpgp()',
+    "grep -Eq '^golang[.]org/x/crypto/openpgp(/|$)'",
+    'for arch in amd64 arm64; do',
+    'CGO_ENABLED=0 GOOS=linux GOARCH="$arch" go list -deps ./cmd/pvp-edge',
+    'GO-2026-5932 unsafe legacy OpenPGP import',
     '"$scanner" -mode=binary /tmp/pvp-edge',
   ]) {
     if (!binaryScript.includes(required)) fail(`Sin evidencia binaria Go ARM64: ${required}`);
