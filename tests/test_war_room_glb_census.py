@@ -55,6 +55,19 @@ class WarRoomGlbCensusTests(unittest.TestCase):
         self.assertEqual(report['potentialTriangles'], 100)
         self.assertEqual(report['vertexReferences'], 300)
 
+    def test_unreachable_mesh_topology_does_not_contaminate_default_scene(self):
+        doc = fixture()
+        # The unused mesh may be a line-strip helper for a different scene.
+        # A default-scene triangle census must not reject or count it.
+        doc['meshes'][1]['primitives'][0]['mode'] = 5
+        report = census_scene(doc)
+        self.assertEqual(report['potentialTriangles'], 4)
+        self.assertEqual(report['uniqueMeshes'], 1)
+        # Fail closed when that same previously unused mesh becomes reachable.
+        doc['nodes'][0]['children'].append(3)
+        with self.assertRaisesRegex(ValueError, 'non-triangle'):
+            census_scene(doc)
+
     def test_invalid_topology_fails_closed(self):
         doc = fixture()
         doc['meshes'][0]['primitives'][0]['mode'] = 5
