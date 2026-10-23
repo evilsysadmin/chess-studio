@@ -7,6 +7,31 @@ const ARTIFACT_DIR = '../.artifacts/app-visual/combat-briefing-room';
 async function openBriefingRoom(page) {
   await mockApi(page);
   await login(page);
+  // Only the isolated visual test account receives this fixture. It exercises
+  // the production roster loader and per-identity service record; never spoof
+  // renderer props or paint decorative pixels into screenshot images.
+  await page.evaluate(() => {
+    const key = 'chess-study-combat-roster';
+    const roster = JSON.parse(localStorage.getItem(key) || '{}');
+    const identityId = 'e2e-proven-veteran-001';
+    const identity = { ...(roster.identities?.['p-a'] || {}), identityId, alias: 'Varela' };
+    roster.identities = { ...(roster.identities || {}), 'p-a': identity };
+    roster.deployment = { ...(roster.deployment || {}), 'p-a': 'p-a' };
+    roster.pieces = { ...(roster.pieces || {}), 'p-a': { ...(roster.pieces?.['p-a'] || {}), strengthPoints: 3, speedPoints: 1, alive: true } };
+    roster.unitRecords = {
+      ...(roster.unitRecords || {}),
+      [identityId]: {
+        identityId, alias: 'Varela', slotKey: 'p-a',
+        decorations: [
+          { id: 'baptism', earnedAt: '2026-10-20T00:00:00Z' },
+          { id: 'five_kills', earnedAt: '2026-10-21T00:00:00Z' },
+          { id: 'boss_survivor', earnedAt: '2026-10-22T00:00:00Z' },
+        ],
+        stats: { battles: 5, survivals: 5, kills: 5, bossVictories: 1 },
+      },
+    };
+    localStorage.setItem(key, JSON.stringify(roster));
+  });
   await openCampaignBriefing(page);
   await dismissTutorialIfVisible(page);
 
@@ -20,6 +45,10 @@ async function openBriefingRoom(page) {
   await expect(canvas).toHaveAttribute('data-combat-operations-map-nodes', '19', { timeout: 45_000 });
   await expect(canvas).toHaveAttribute('data-combat-operations-map-edges', /^[1-9][0-9]*$/, { timeout: 45_000 });
   await expect(room.locator('[data-war-room-scene-gate]')).toHaveAttribute('data-war-room-scene-gate', 'ready', { timeout: 45_000 });
+  // Confirm that the canvas really rendered medals from the loaded saved
+  // identity, not a synthetic screenshot overlay or mere rank decoration.
+  await expect(canvas).toHaveAttribute('data-board3d-decorated-pieces', '1', { timeout: 45_000 });
+  await expect(canvas).toHaveAttribute('data-board3d-medal-seals', '3', { timeout: 45_000 });
   await expect(room.getByRole('heading', { name: 'Campaña de Combat Chess' })).toBeVisible();
   await expect(room.getByRole('complementary', { name: 'Órdenes para el sector elegido' })).toBeVisible();
   await expect(room.getByRole('button', { name: /PREPARAR EJÉRCITO/i })).toBeVisible();
