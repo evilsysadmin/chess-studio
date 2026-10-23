@@ -6,6 +6,7 @@ import { SKIN_3D } from './Board3DConfig.js';
 import { addPieceSkinDetails, reinforcePieceSkinMaterial } from './Board3DSkinDecor.js';
 import { COARSE_PIECE_HIT_TARGET } from './WarRoom3DTouch.js';
 import { syncBoard3DRankInsignias } from './Board3DRankInsignia.js';
+import { applyCombatOperationsPieceFinish } from './CombatOperationsPieceFinish.js';
 
 function makeMaterial(color, skin, accent = false, side = 'w', coarsePointer = false, skinId = 'studio') {
   const material = reinforcePieceSkinMaterial(
@@ -365,6 +366,7 @@ export function buildPiece(type, color, skinId, coarsePointer = false, options =
   const accentColor = color === 'w' ? skin.whiteAccent : skin.blackAccent;
   const main = makeMaterial(mainColor, skin, false, color, coarsePointer, skinId);
   const accent = makeMaterial(accentColor, skin, true, color, coarsePointer, skinId);
+  if (options.combatOperationsFinish) applyCombatOperationsPieceFinish(main, color);
   const detail = pieceDetailProfile(coarsePointer);
 
   try {
