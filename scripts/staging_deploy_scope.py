@@ -48,6 +48,7 @@ NON_RUNTIME_EXACT = frozenset({
     # Diagnostic-only readers cannot change the deployed API or its acceptance.
     # Prevent CI-only updates from superseding an active OCI generation.
     "scripts/oci_backend_diagnose.py",
+    "scripts/oci_host_lock_triage.py",
     "scripts/oci_public_staging_release.py",
     ".github/workflows/oci-host-provenance-on-failure.yml",
     "scripts/staging_deploy_proof.py",
@@ -251,6 +252,7 @@ def self_test() -> None:
     assert deploy_required_for_paths(["scripts/staging_deploy_proof.py"]) == (False, "non-runtime-only")
     diagnostic_only = [
         "scripts/oci_backend_diagnose.py",
+        "scripts/oci_host_lock_triage.py",
         "scripts/oci_public_staging_release.py",
         ".github/workflows/oci-host-provenance-on-failure.yml",
     ]
