@@ -83,6 +83,7 @@ GLOBAL_HARNESS_PATHS = {
 }
 FRONTEND_HARNESS_PATHS = {"scripts/frontend_test_groups.mjs", "scripts/run_frontend_test_group.mjs"}
 NODE_HARNESS_PATHS = {".github/actions/cache-node-modules/action.yml"}
+GO_BUILD_TOOLING_PATHS = {"scripts/go_binary_build_verify.sh", "scripts/go_vulncheck_crossarch.sh"}
 BACKEND_HARNESS_PATHS = {".github/actions/cache-python-venv/action.yml"}
 GO_AUTHORITY_PATHS = {
     "backend-python/pvp_api.py",
@@ -342,7 +343,7 @@ def classify(paths: Iterable[str]) -> Scope:
         if CHRONICLES_MANIFEST_RE.search(path):
             scope.run_backend = True
 
-        if path.startswith("backend-go/") or path in GO_AUTHORITY_PATHS:
+        if path.startswith("backend-go/") or path in GO_AUTHORITY_PATHS or path in GO_BUILD_TOOLING_PATHS:
             scope.run_go = True
         if path in GO_AUTHORITY_PATHS or GO_PARITY_FIXTURE_RE.search(path):
             scope.run_go_parity = True
@@ -621,6 +622,9 @@ def self_test() -> None:
     _expect(["infra/terraform/main.tf"], run_security=True)
     _expect(["Dockerfile"], run_security=True)
     _expect(["scripts/npm_audit_gate.py"], run_security=True)
+    _expect(["scripts/go_binary_build_verify.sh"], run_go=True)
+    _expect(["scripts/go_vulncheck_crossarch.sh"], run_go=True)
+    _expect(["scripts/go_binary_build_verify.sh", "backend-python/observability.py"], run_go=True, run_go_parity=True)
 
     for tooling_path in (
         ".github/workflows/production-promote.yml", ".github/workflows/e2e-full.yml",
