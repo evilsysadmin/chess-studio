@@ -60,6 +60,10 @@
   .combat-veteran-select { left: .55rem; top: 4.45rem; }
 }
 @media (max-width: 720px) {
-  .combat-veteran-dossier { max-height: min(270px, 33dvh); }
+  /* The earned-medals details should fit a typical portrait screen without
+     hiding the last award below an invisible scroll boundary. */
+  .combat-veteran-dossier { max-height: min(315px, 38dvh); }
+  .combat-veteran-dossier .combat-veteran-service { margin: .55rem 0; padding: .42rem 0; }
+  .combat-veteran-decorations ul { gap: .35rem; }
   .combat-veteran-select { top: 4.1rem; }
 }
