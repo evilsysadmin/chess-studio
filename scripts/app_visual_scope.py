@@ -61,6 +61,9 @@ COMBAT_BRIEFING_VISUAL_SURFACES = {
     "frontend/src/components/combatoperationscampaignbriefingroute.jsx",
     "frontend/src/components/campaignbriefing.jsx",
     "frontend/src/components/campaigncommandstatus.jsx",
+    "frontend/src/combatveteraninspection.js",
+    "frontend/src/components/combatveterandossier.jsx",
+    "frontend/src/components/combatveterandossier.css",
 }
 
 WARROOM_MOBILE_VISUAL_SURFACES = {
