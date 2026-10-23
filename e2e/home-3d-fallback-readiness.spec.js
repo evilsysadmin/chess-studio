@@ -113,4 +113,17 @@ test('Home Blender no muestra el fallback mientras espera su primer frame', asyn
     throw new Error('Home frame readiness or fallback contract failed: '
       + JSON.stringify(state) + '; ' + String(error?.message || error));
   }
+
+  // The global RetroPlayer belongs to the shell, not Home's 3D stage.
+  // Interact with the real control after WebGL is visible: a fullscreen
+  // overlay or canvas intercepting its hitbox must fail Playwright click.
+  const dock = page.locator('.global-music-dock');
+  const openPlayer = page.getByRole('button', { name: 'Abrir reproductor de música', exact: true });
+  await expect(dock).toBeVisible();
+  await expect(openPlayer).toBeVisible();
+  await openPlayer.click();
+  await expect(dock.locator('.music-deck-expanded')).toBeVisible();
+  const foldPlayer = page.getByRole('button', { name: 'Plegar reproductor de música', exact: true });
+  await foldPlayer.click();
+  await expect(dock.locator('.music-deck-collapsed')).toBeVisible();
 });
