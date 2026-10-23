@@ -66,6 +66,24 @@ grep -Fqx $'\tbuild\tGOARCH=arm64' <<< "$metadata" || {
   exit 1
 }
 
+# Inspect linux/amd64 as a real compiled binary too; source analysis alone
+# cannot substitute for the architecture-specific binary vulnerability scan.
+CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -o /tmp/pvp-edge-amd64 ./cmd/pvp-edge
+actual_amd64="$(go version /tmp/pvp-edge-amd64)"
+[[ "$actual_amd64" == "/tmp/pvp-edge-amd64: $selected_go" ]] || {
+  echo "::error::Incorrect Go compiler embedded in AMD64 binary: $actual_amd64"
+  exit 1
+}
+metadata_amd64="$(go version -m /tmp/pvp-edge-amd64)"
+grep -Fqx $'\tbuild\tGOOS=linux' <<< "$metadata_amd64" || {
+  echo "::error::AMD64 binary has incorrect GOOS"
+  exit 1
+}
+grep -Fqx $'\tbuild\tGOARCH=amd64' <<< "$metadata_amd64" || {
+  echo "::error::Binary was not built for linux/amd64"
+  exit 1
+}
+
 # The OpenPGP package is unsafe at every x/crypto release. Keep unrelated
 # crypto packages, but reject importing these retired packages for either target.
 for arch in amd64 arm64; do
@@ -76,7 +94,8 @@ for arch in amd64 arm64; do
   fi
 done
 
-# The source scans ran earlier in this required job. Check the exact binary too.
+# Source scans already ran. Inspect both unstripped architecture-specific binaries.
 scanner="$(go env GOPATH)/bin/govulncheck"
 [[ -x "$scanner" ]] || { echo '::error::Pinned govulncheck missing'; exit 1; }
 "$scanner" -mode=binary /tmp/pvp-edge
+"$scanner" -mode=binary /tmp/pvp-edge-amd64
