@@ -234,9 +234,9 @@ def self_test() -> None:
             # Report only a coarse allowlisted daemon clue, and only when
             # the live descriptor 8 actually matches the locked inode.
             assert fd8_tunnel_hint(456, st.st_dev, st.st_ino, proc) == ("yes", "unknown")
-            (proc / "456" / "comm").write_text("cloudflared\\n", encoding="utf-8")
+            (proc / "456" / "comm").write_text("cloudflared\n", encoding="utf-8")
             assert fd8_tunnel_hint(456, st.st_dev, st.st_ino, proc) == ("yes", "yes")
-            (proc / "456" / "comm").write_text("bash\\n", encoding="utf-8")
+            (proc / "456" / "comm").write_text("bash\n", encoding="utf-8")
             assert fd8_tunnel_hint(456, st.st_dev, st.st_ino, proc) == ("yes", "no")
             (proc / "456" / "comm").unlink()
             assert fd8_tunnel_hint(456, other.stat().st_dev, other.stat().st_ino, proc) == ("no", "unknown")
