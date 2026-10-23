@@ -192,12 +192,8 @@ jobs:
           cache-dependency-path: backend-go/go.mod
       - name: Format
         run: |
-          unformatted="$(gofmt -l .)"
-          if [[ -n "$unformatted" ]]; then
-            echo "::error::gofmt needed in:"
-            echo "$unformatted"
-            exit 1
-          fi
+          files="$(gofmt -l .)"
+          [[ -z "$files" ]] || { echo "::error::gofmt needed in:"; echo "$files"; exit 1; }
       - name: Unit + MongoDB integration tests
         env:
           PVP_MONGO_TEST_URL: mongodb://localhost:27017
@@ -213,6 +209,8 @@ jobs:
         run: bash scripts/go_python_parity_check.sh
       - name: Vet
         run: go vet ./...
+      - name: Reachable Go CVE scan
+        run: go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./...
       - name: Build Linux ARM64
         env:
           CGO_ENABLED: '0'
