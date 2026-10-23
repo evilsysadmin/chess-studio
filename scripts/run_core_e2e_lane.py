@@ -235,14 +235,15 @@ def self_test() -> None:
     assert LANE_COMMANDS['home'][1].grep == HOME_MOBILE_GREP
     assert LANE_COMMANDS['home'][2].grep == HOME_WEBGL_GREP
     assert [command.spec for command in LANE_COMMANDS['smoke']] == [
-        'smoke.spec.js', 'combat-critical.spec.js', 'combat-critical.spec.js', 'mobile-final-interactions.spec.js',
+        'smoke.spec.js', 'feedback-draft-recovery.spec.js', 'combat-critical.spec.js', 'combat-critical.spec.js', 'mobile-final-interactions.spec.js',
         'browser-runtime-health.spec.js', 'godot-release-continuity.spec.js', 'war-room-gpu-session-bootstrap.spec.js',
         'home-3d-draw-census.spec.js',
     ]
-    assert LANE_COMMANDS['smoke'][1].grep == 'Campaña · F5 tras JAQUE MATE'
-    assert LANE_COMMANDS['smoke'][2].grep == 'Torre · F5 tras JAQUE MATE'
-    assert LANE_COMMANDS['smoke'][4].grep == HOME_WEBGL_GREP
-    assert LANE_COMMANDS['smoke'][4].canonical_critical is False
+    assert LANE_COMMANDS['smoke'][1].canonical_critical is False
+    assert LANE_COMMANDS['smoke'][2].grep == 'Campaña · F5 tras JAQUE MATE'
+    assert LANE_COMMANDS['smoke'][3].grep == 'Torre · F5 tras JAQUE MATE'
+    assert LANE_COMMANDS['smoke'][5].grep == HOME_WEBGL_GREP
+    assert LANE_COMMANDS['smoke'][5].canonical_critical is False
     assert LANE_COMMANDS['smoke'][-1].canonical_critical is False
     assert '--timeout=150000' in LANE_COMMANDS['smoke'][-2].args
     assert '--timeout=180000' in LANE_COMMANDS['smoke'][-1].args
