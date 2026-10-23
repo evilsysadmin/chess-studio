@@ -59,13 +59,20 @@ if [[ -f "$source_launcher" && ! -L "$source_launcher" && -r "$source_launcher" 
   fi
 fi
 printf 'OCI_BACKEND_LAUNCHER installed_vs_checkout=%s\n' "$launcher_status"
-# Read-only, nonblocking lock probe.
 lock_state=unavailable
 if [[ -r /var/lib/chess-studio/deploy.lock && ! -L /var/lib/chess-studio/deploy.lock ]]; then
   flock -n -E 73 9 9</var/lib/chess-studio/deploy.lock
   case "$?" in 0) lock_state=free;; 73) lock_state=held;; esac
 fi
 printf 'OCI_BACKEND_LOCK state=%s\n' "$lock_state"
+if [[ "$lock_state" == held && -r /proc/locks ]]; then
+  ino="$(stat -Lc %i /var/lib/chess-studio/deploy.lock 2>/dev/null)"
+  pid="$(awk -v n="$ino" '$2=="FLOCK" && $6 ~ (":" n "$") {print $5; exit}' /proc/locks)"
+  [[ "$pid" =~ ^[1-9][0-9]*$ ]] || pid=unknown
+  age="$(ps -o etimes= -p "$pid" 2>/dev/null | tr -dc '0-9')"
+  [[ "$age" =~ ^[0-9]{1,10}$ ]] || age=unknown
+  echo "OCI_BACKEND_LOCK_CANDIDATE pid=$pid age_s=$age"
+fi
 events="$(set -o pipefail; timeout 5 journalctl -u chess-studio-deploy-watcher.service -n 80 -o cat 2>/dev/null | awk '/OCI_DEPLOY_WATCH_/{a[substr($1,18,1)]++}END{printf "t=%d ok=%d err=%d stale=%d",a["T"],a["O"],a["E"],a["S"]}')" || events=unavailable
 echo "OCI_WATCH_EVENTS $events"
 for service in edge pvp_blue pvp_green; do
@@ -147,6 +154,14 @@ def self_test() -> None:
     assert "chess-studio-deploy-watcher.service" in command
     assert "OCI_BACKEND_LAUNCHER installed_vs_checkout=%s" in command
     assert "OCI_BACKEND_LOCK state=%s" in command
+    # Candidate PID is evidence, not proof: /proc/locks may hide an inherited
+    # owner or show a same-inode collision on another device. Never take action
+    # based on this read-only hint without verifying the actual process.
+    assert "OCI_BACKEND_LOCK_CANDIDATE pid=$pid age_s=$age" in command
+    assert '[[ "$lock_state" == held && -r /proc/locks ]]' in command
+    assert '[[ "$pid" =~ ^[1-9][0-9]*$ ]] || pid=unknown' in command
+    assert "ps -o etimes= -p" in command
+    assert "kill " not in command and "fuser -k" not in command
     assert "flock -n -E 73 9 9</var/lib/chess-studio/deploy.lock" in command
     assert "lock_state=unavailable" in command
     assert "lock_state=free" in command and "lock_state=held" in command
