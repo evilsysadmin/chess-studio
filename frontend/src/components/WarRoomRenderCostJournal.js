@@ -34,6 +34,22 @@ export function createWarRoomRenderCostJournal(capacity = WAR_ROOM_RENDER_COST_C
           Number.isSafeInteger(groups[key]) && groups[key] >= 0)
           && groups.pieces + groups.shell + groups.other === info.shadowCalls) {
           row.shadowFamilyCalls = { pieces: groups.pieces, shell: groups.shell, other: groups.other };
+          const snapshot = info.shadowTopCasters;
+          const top = snapshot?.top;
+          const unranked = snapshot?.unrankedCalls;
+          if (Array.isArray(top) && top.length <= 8
+              && Number.isSafeInteger(unranked) && unranked >= 0
+              && top.every((item) =>
+                item && typeof item.name === 'string' && item.name.length > 0
+                && item.name.length <= 96
+                && ['pieces', 'shell', 'other'].includes(item.family)
+                && Number.isSafeInteger(item.calls) && item.calls > 0)
+              && top.reduce((sum, item) => sum + item.calls, unranked) === info.shadowCalls) {
+            row.shadowTopCasters = {
+              top: top.map(({ name, family, calls }) => ({ name, family, calls })),
+              unrankedCalls: unranked,
+            };
+          }
         }
       }
       ring[(seq - 1) % capacity] = row;
