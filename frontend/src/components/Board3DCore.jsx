@@ -599,7 +599,6 @@ function Board3DCanvas({
     if (!state) return undefined;
     window.cancelAnimationFrame(animationFrameRef.current);
     animationFrameRef.current = 0;
-
     const previousPieces = parseFen(previousFenRef.current);
     const nextPieces = parseFen(fen);
     const movingBefore = animate?.from ? previousPieces.find((piece) => piece.square === animate.from) : null;
@@ -841,9 +840,7 @@ function Board3DCanvas({
       }
     };
   }, [fen, skinId, animate, effectiveThemeId, orientation, showCoordinates, matthiasKingColor, checkSquare, gameOver, warRoomVariant]);
-
   useBoard3DCombatMedalRefresh({ sceneStateRef, animationFrameRef, warRoomVariant, pieceMedalCounts });
-
   useEffect(() => {
     const state = sceneStateRef.current;
     if (!state) return;
