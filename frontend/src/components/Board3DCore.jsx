@@ -225,7 +225,7 @@ function Board3DCanvas({
     warm.position.set(-4.6, 4.4, whiteSide ? -5.8 : 5.8);
     scene.add(warm);
 
-    const trainingRoomShell = trainingRoom ? buildTrainingRoomBoardShell({ scene, boardGroup, coarsePointer: sceneLite }) : null;
+    const trainingRoomShell = trainingRoom ? buildTrainingRoomBoardShell({ scene, boardGroup, coarsePointer: sceneLite, whiteSide }) : null;
     const classicShellController = createClassicWarRoomShellController({ scene, boardGroup, theme, whiteSide, renderLite: sceneLite, classroom: classroomCamera, canvas: renderer.domElement }, !trainingRoom && shouldShowClassicWarRoomShell({ selectable: warRoomVariantSelectable, variant: warRoomVariant }));
     renderer.domElement.dataset.trainingRoomScene = trainingRoomShell?.sceneVersion || 'off';
 

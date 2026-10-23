@@ -8,11 +8,15 @@ import {
 // Board and picking meshes belong to Board3D; this shell stays entirely BELOW
 // and OUTSIDE the playable 8x8 footprint. The refined cabinetry also appears
 // on touch devices without adding lights, render loops, or external textures.
-export function buildTrainingRoomBoardShell({ scene, boardGroup, coarsePointer = false } = {}) {
+export function buildTrainingRoomBoardShell({ scene, boardGroup, coarsePointer = false, whiteSide = true } = {}) {
   if (!scene || !boardGroup) return null;
 
   const room = buildInsightsTrainingRoomLayer({ coarsePointer });
-  room.position.set(0, -0.72, -5);
+  // The room is authored behind the white player's view (camera on +Z).
+  // Black plays from -Z: turn the room around as well, otherwise the desk
+  // sits between the camera and the playable board, hiding the squares.
+  room.rotation.y = whiteSide ? 0 : Math.PI;
+  room.position.set(0, -0.72, whiteSide ? -5 : 5);
   room.name = 'training-room-playable-study';
   scene.add(room);
 

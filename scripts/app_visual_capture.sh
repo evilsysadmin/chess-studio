@@ -71,6 +71,11 @@ case "$mode" in
       has_producer training-daily && training_scopes+=(daily)
       if (( ${#training_scopes[@]} > 0 )); then
         specs+=(training-visual-artifact.spec.js)
+        # A real black-side personal replay must be captured alongside the
+        # generic puzzle viewport so furniture occlusion cannot regress silently.
+        if has_producer training-puzzles; then
+          specs+=(training-black-replay-regression.spec.js)
+        fi
         export APP_VISUAL_TRAINING_SCOPE="$(IFS=,; echo "${training_scopes[*]}")"
       fi
     fi
