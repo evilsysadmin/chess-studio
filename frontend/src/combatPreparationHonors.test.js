@@ -90,4 +90,33 @@ describe('Combat Operations · earned honours on deployed identities', () => {
     });
   });
 
+  it('does not paint a predecessor\'s medals when the stored record contradicts the active identity', () => {
+    const roster = {
+      deploymentVersion: 1,
+      deployment: { 'r-a': 'r-a' },
+      identities: { 'r-a': { identityId: 'recruit-current' } },
+      pieces: { 'r-a': { strengthPoints: 2, speedPoints: 0, alive: true } },
+      unitRecords: {
+        'recruit-current': {
+          identityId: 'fallen-predecessor',
+          decorations: [{ id: 'ace', earnedAt: '2026-10-22' }],
+        },
+        'fallen-predecessor': {
+          identityId: 'fallen-predecessor',
+          decorations: [{ id: 'baptism' }],
+        },
+      },
+    };
+    const unchanged = JSON.stringify(roster);
+    expect(combatPreparationHonors(roster)).toEqual({
+      rankLevels: { a1: 3 }, medalCounts: {},
+    });
+    expect(JSON.stringify(roster)).toBe(unchanged); // no repair during render
+
+    roster.unitRecords['recruit-current'].identityId = 'recruit-current';
+    expect(combatPreparationHonors(roster).medalCounts).toEqual({ a1: 1 });
+    delete roster.unitRecords['recruit-current'].identityId; // legacy record without explicit ID
+    expect(combatPreparationHonors(roster).medalCounts).toEqual({ a1: 1 });
+  });
+
 });
