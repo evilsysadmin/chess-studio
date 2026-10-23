@@ -55,6 +55,12 @@ describe('Combat Operations Room runtime variant', () => {
 
     const dispose = installCombatOperationsRoomPracticalLights(root, { coarsePointer: false });
     expect(root.userData.combatOperationsPracticalLights).toBe(5);
+    const boardLight = root.getObjectByName('COMBAT_ANCHOR_board_fill').children[0];
+    expect(boardLight.intensity).toBeCloseTo(1.12);
+    expect(boardLight.color.getHex()).toBe(0xffe2b6);
+    expect(boardLight.distance).toBeCloseTo(9.8);
+    expect(boardLight.castShadow).toBe(false);
+    expect(root.userData.combatOperationsPracticalLights).toBe(5);
     expect(root.getObjectByName('COMBAT_ANCHOR_map_fill').children[0].intensity).toBeCloseTo(1.12);
     expect(root.getObjectByName('COMBAT_ANCHOR_barracks_fill').children[0].intensity).toBeCloseTo(1.08);
     expect(root.getObjectByName('COMBAT_ANCHOR_memorial_fill').children[0].intensity).toBeCloseTo(0.92);
@@ -80,7 +86,11 @@ describe('Combat Operations Room runtime variant', () => {
     }
 
     const dispose = installCombatOperationsRoomPracticalLights(root, { coarsePointer: true });
-    expect(root.getObjectByName('COMBAT_ANCHOR_board_fill').children[0].intensity).toBeGreaterThanOrEqual(0.62);
+    const boardLight = root.getObjectByName('COMBAT_ANCHOR_board_fill').children[0];
+    expect(boardLight.intensity).toBeCloseTo(1.34);
+    expect(boardLight.color.getHex()).toBe(0xffe2b6);
+    expect(boardLight.castShadow).toBe(false);
+    expect(root.userData.combatOperationsPracticalLights).toBe(5);
     expect(root.getObjectByName('COMBAT_ANCHOR_map_fill').children[0].intensity).toBeGreaterThanOrEqual(1.12);
     expect(root.getObjectByName('COMBAT_ANCHOR_barracks_fill').children[0].intensity).toBeGreaterThanOrEqual(1.08);
     expect(root.getObjectByName('COMBAT_ANCHOR_memorial_fill').children[0].intensity).toBeGreaterThanOrEqual(0.92);
