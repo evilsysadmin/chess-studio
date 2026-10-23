@@ -340,11 +340,7 @@ def _surface_groups(path: str) -> set[str] | None:
         "frontend/src/assets/r2-assets-manifest.json",
     }:
         return set()
-    if lower in {
-        ".github/workflows/app-visual-artifact.yml",
-        ".github/workflows/chronicles-visual-artifact.yml",
-        ".github/workflows/tactics-visual-artifact.yml",
-    }:
+    if lower == ".github/workflows/app-visual-artifact.yml":
         return set()
     if lower.startswith(".github/actions/app-visual-pipeline/"):
         # Visual orchestration owns no product surface. Its classifier self-tests
@@ -711,6 +707,11 @@ def self_test() -> None:
     assert classify(["e2e/staging-live.spec.js"]).capture_groups == "none"
     assert classify(["frontend/src/components/CombatCampaignBriefingRoom.jsx", "e2e/combat-briefing-room-visual-artifact.spec.js"]).capture_groups == "warroom"
     assert classify(["scripts/chronicles_area_parity_corpus.py"]).capture_groups == "home,experiments,training,warroom,health"
+    for retired_workflow in (
+        ".github/workflows/chronicles-visual-artifact.yml",
+        ".github/workflows/tactics-visual-artifact.yml",
+    ):
+        assert classify([retired_workflow]).capture_groups == ",".join(GROUP_ORDER)
     assert classify(["scripts/chronicles_area_parity_corpus.py", "frontend/src/chronicles/chroniclesMapCatalog.js"]).capture_groups == "home,experiments,training,warroom,health"
     assert classify(["scripts/unknown_unowned_generator.py"]).capture_groups == "home,experiments,training,warroom,health"
     assert classify([".github/workflows/cicd.yml", "scripts/run_core_e2e_lane.py", "scripts/test_entrypoint_parity.py", "frontend/src/components/RoguelikeScreen.jsx", "e2e/war-room-combat-battle-visual-artifact.spec.js"]).capture_groups == "warroom"

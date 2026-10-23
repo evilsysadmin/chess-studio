@@ -32,8 +32,6 @@ NON_RUNTIME_EXACT = frozenset({
     ".github/workflows/pvp-python-fallback.yml",
     ".github/workflows/war-room-blender-art.yml",
     ".github/workflows/app-visual-artifact.yml",
-    ".github/workflows/chronicles-visual-artifact.yml",
-    ".github/workflows/tactics-visual-artifact.yml",
     "scripts/quality_scope.py",
     "scripts/browser_quality_scope.py",
     "scripts/blender_required_scope.py",
@@ -275,14 +273,17 @@ def self_test() -> None:
     assert deploy_required_for_paths(["scripts/pvp_python_fallback_report.py", ".github/workflows/pvp-python-fallback.yml"]) == (False, "non-runtime-only")
     assert deploy_required_for_paths([".github/workflows/war-room-blender-art.yml", "scripts/blender_required_scope.py"]) == (False, "non-runtime-only")
     assert deploy_required_for_paths(["scripts/chronicles_contracts.py"]) == (False, "non-runtime-only")
+    for retired_workflow in (
+        ".github/workflows/chronicles-visual-artifact.yml",
+        ".github/workflows/tactics-visual-artifact.yml",
+    ):
+        assert deploy_required_for_paths([retired_workflow])[0], retired_workflow
     assert deploy_required_for_paths([
         "e2e/war-room-visual-artifact.spec.js",
         "scripts/app_visual_capture.sh",
         "scripts/app_visual_producer_scope.py",
         ".github/actions/app-visual-pipeline/action.yml",
         ".github/workflows/app-visual-artifact.yml",
-        ".github/workflows/chronicles-visual-artifact.yml",
-        ".github/workflows/tactics-visual-artifact.yml",
         "scripts/war_room_visual_freeze_check.mjs",
     ]) == (False, "non-runtime-only")
     assert deploy_required_for_paths(["frontend/src/components/GameScreen.jsx"])[0]
