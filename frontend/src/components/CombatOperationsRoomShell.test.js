@@ -60,6 +60,7 @@ describe('Combat Operations Room runtime variant', () => {
     expect(boardLight.color.getHex()).toBe(0xffe2b6);
     expect(boardLight.distance).toBeCloseTo(9.8);
     expect(boardLight.castShadow).toBe(false);
+    expect(boardLight.position.toArray()).toEqual([0, -2.3, 2.2]);
     expect(root.userData.combatOperationsPracticalLights).toBe(5);
     expect(root.getObjectByName('COMBAT_ANCHOR_map_fill').children[0].intensity).toBeCloseTo(1.12);
     expect(root.getObjectByName('COMBAT_ANCHOR_barracks_fill').children[0].intensity).toBeCloseTo(1.08);
@@ -90,6 +91,7 @@ describe('Combat Operations Room runtime variant', () => {
     expect(boardLight.intensity).toBeCloseTo(1.34);
     expect(boardLight.color.getHex()).toBe(0xffe2b6);
     expect(boardLight.castShadow).toBe(false);
+    expect(boardLight.position.toArray()).toEqual([0, -2.3, 2.2]);
     expect(root.userData.combatOperationsPracticalLights).toBe(5);
     expect(root.getObjectByName('COMBAT_ANCHOR_map_fill').children[0].intensity).toBeGreaterThanOrEqual(1.12);
     expect(root.getObjectByName('COMBAT_ANCHOR_barracks_fill').children[0].intensity).toBeGreaterThanOrEqual(1.08);
