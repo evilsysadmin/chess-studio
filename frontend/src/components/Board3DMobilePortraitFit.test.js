@@ -22,6 +22,57 @@ const PHONES = [
   { viewport: [360, 640], canvas: [336, 350], profile: 'classic', immersive: false },
 ];
 
+describe('Combat inspection · opt-in optical framing', () => {
+  const previousWindow = globalThis.window;
+  afterEach(() => { globalThis.window = previousWindow; });
+
+  for (const [width, height] of [[360, 640], [390, 844], [430, 932]]) {
+    it(`${width}x${height}: a closer view that restores the original camera`, () => {
+      globalThis.window = { matchMedia: () => ({ matches: true }), innerWidth: width, innerHeight: height };
+      const camera = new THREE.PerspectiveCamera(40, width / height, 0.1, 200);
+      const opts = { profile: 'warroom', variant: 'combat-ops', immersive: true };
+      fitBoardCamera(camera, width, height, true, opts);
+      camera.updateMatrixWorld(true);
+      const normal = board3DProjectionSnapshot(camera);
+      const initialPosition = camera.position.clone();
+      const initialFraming = camera.userData.framingProfile;
+      const projectedWidth = ({ corners }) =>
+        (Math.max(...corners.map(([x]) => x)) - Math.min(...corners.map(([x]) => x))) / 2;
+
+      fitBoardCamera(camera, width, height, true, { ...opts, inspectionPreview: true });
+      camera.updateMatrixWorld(true);
+      expect(camera.userData.framingProfile).toBe('combat-inspection-portrait-v1');
+      const focused = board3DProjectionSnapshot(camera);
+      expect(projectedWidth(focused)).toBeGreaterThan(projectedWidth(normal) * 1.08);
+      for (const square of ['a2', 'b2', 'c2', 'd2', 'e2', 'f2', 'g2', 'h2']) {
+        const [x, y] = focused.squares[square];
+        expect(Number.isFinite(x) && Number.isFinite(y)).toBe(true);
+        expect(Math.abs(x)).toBeLessThan(1.1);
+        expect(Math.abs(y)).toBeLessThan(1.1);
+      }
+      fitBoardCamera(camera, width, height, true, opts);
+      expect(camera.userData.framingProfile).toBe(initialFraming);
+      expect(camera.position.distanceTo(initialPosition)).toBeLessThan(1e-6);
+    });
+  }
+
+  it('never affects desktop Combat, playable War Room, or Duel Room', () => {
+    globalThis.window = { matchMedia: () => ({ matches: false }), innerWidth: 1440, innerHeight: 900 };
+    const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 200);
+    for (const options of [
+      { profile: 'warroom', variant: 'combat-ops' },
+      { profile: 'warroom', variant: 'v4' },
+      { profile: 'duel', variant: 'duel' },
+    ]) {
+      fitBoardCamera(camera, 1440, 900, true, { ...options, inspectionPreview: true });
+      expect(camera.userData.framingProfile).not.toBe('combat-inspection-portrait-v1');
+    }
+    globalThis.window = { matchMedia: () => ({ matches: true }), innerWidth: 390, innerHeight: 844 };
+    fitBoardCamera(camera, 390, 844, true, { profile: 'warroom', variant: 'v4', inspectionPreview: true });
+    expect(camera.userData.framingProfile).not.toBe('combat-inspection-portrait-v1');
+  });
+});
+
 describe('War Room · encaje del tablero en teléfono vertical', () => {
   let previousWindow;
   beforeEach(() => { previousWindow = globalThis.window; });
