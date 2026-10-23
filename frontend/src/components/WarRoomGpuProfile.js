@@ -8,6 +8,10 @@ import { installWarRoomShadowPassProbe } from './WarRoomShadowPassProbe.js';
 export const WAR_ROOM_GPU_PROFILE_STORAGE_KEY = 'war-room-gpu-profile';
 export const WAR_ROOM_GPU_PROFILE_QUERY_KEY = 'warRoomGpuProfile';
 
+// Only one opt-in profiler may own a Three renderer at a time. Double
+// installation would stack shadow wrappers and overwrite the canvas journal.
+const activeGpuProfiles = new WeakSet();
+
 export function warRoomGpuProfileRequested({
   search = '',
   storageFlag = '',
@@ -36,7 +40,7 @@ export function createWarRoomGpuProfile(renderer, {
   }
   if (!warRoomGpuProfileRequested({ search, storageFlag: optInStorageFlag })) return null;
   const canvas = renderer?.domElement;
-  if (!canvas?.dataset) return null;
+  if (!canvas?.dataset || activeGpuProfiles.has(renderer)) return null;
 
   let gl = null;
   try {
@@ -60,6 +64,8 @@ export function createWarRoomGpuProfile(renderer, {
   delete dataset.warRoomGpuProfileLastQueryStartedAtMs;
   let lastSamples = 0;
   let lastStatus = timer.status;
+  let disposed = false;
+  activeGpuProfiles.add(renderer);
   return {
     // Tag the query at its actual GPU begin, not the later asynchronous
     // publication. This prevents bootstrap/idle renders leaking into move.
@@ -99,8 +105,13 @@ export function createWarRoomGpuProfile(renderer, {
       }
     },
     dispose() {
+      // A late second cleanup must not wipe a replacement profiler's
+      // journal, status or shadow wrapper after this one has been released.
+      if (disposed) return;
+      disposed = true;
       shadowPass?.dispose();
       timer.dispose();
+      activeGpuProfiles.delete(renderer);
       delete canvas.__warRoomRenderCostJournal;
       delete dataset.warRoomGpuProfileStatus;
       delete dataset.warRoomGpuProfileSamples;
