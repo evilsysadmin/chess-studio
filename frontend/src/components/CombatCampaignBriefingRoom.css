@@ -244,7 +244,10 @@
   }
   /* Inspect the physical room, not a second board or campaign view. */
   .combat-briefing-room-shell.is-inspecting-army .combat-preparation-room-stage {
-    transform: none;
+    /* Presentation zoom only: fill the portrait with the real army rather
+       than an unreadable whole-room wide shot. The WebGL camera is untouched. */
+    transform: translateY(12%) scale(1.6);
+    transform-origin: 50% 47%;
   }
   .combat-briefing-room-shell.is-inspecting-army .combat-briefing-army-inspect {
     top: auto;
