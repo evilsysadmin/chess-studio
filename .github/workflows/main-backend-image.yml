@@ -58,7 +58,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          python3 -S scripts/staging_deploy_scope.py --sha "$DEPLOY_SHA" --github-output "$GITHUB_OUTPUT"
+          python3 -S scripts/staging_deploy_scope.py --sha "$DEPLOY_SHA" --github-output "$GITHUB_OUTPUT" --include-pending
 
       - name: Classify backend image inputs
         id: image_scope
