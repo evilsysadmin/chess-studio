@@ -212,8 +212,47 @@
   font: .66rem var(--font-mono);
   color: rgba(222,207,177,.72);
 }
+.combat-briefing-army-inspect { display: none; }
 @media (max-width: 900px) {
   .combat-briefing-room-orders { width: min(440px, 52%); }
+  .combat-briefing-army-inspect {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    position: absolute;
+    z-index: 9;
+    top: calc(10.25rem + clamp(5.5rem, 14dvh, 7rem) - 3.55rem);
+    right: .65rem;
+    min-height: 44px;
+    padding: .52rem .85rem;
+    border: 1px solid rgba(227, 192, 117, .65);
+    border-radius: 999px;
+    background: rgba(11, 17, 17, .9);
+    color: #f3dfb4;
+    font-size: .72rem;
+    font-weight: 700;
+    box-shadow: 0 5px 20px rgba(0, 0, 0, .4);
+    cursor: pointer;
+    touch-action: manipulation;
+  }
+  .combat-briefing-army-inspect:focus-visible {
+    outline: 2px solid #f3dfb4;
+    outline-offset: 3px;
+  }
+  .combat-briefing-room-shell.is-inspecting-army .combat-briefing-room-orders {
+    display: none;
+  }
+  /* Inspect the physical room, not a second board or campaign view. */
+  .combat-briefing-room-shell.is-inspecting-army .combat-preparation-room-stage {
+    transform: none;
+  }
+  .combat-briefing-room-shell.is-inspecting-army .combat-briefing-army-inspect {
+    top: auto;
+    bottom: max(.9rem, env(safe-area-inset-bottom));
+    right: 50%;
+    transform: translateX(50%);
+    white-space: nowrap;
+  }
   .combat-briefing-room-intro { width: calc(48% - 1rem); }
   .combat-briefing-room-status { max-width: calc(48% - 1rem); }
 }
