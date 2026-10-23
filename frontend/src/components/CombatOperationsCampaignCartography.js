@@ -4,17 +4,17 @@ import { COMBAT_OPERATIONS_MAP_SURFACE } from '../combatOperationsMapProjection.
 // One draw call for real route segments and one instanced batch for sector pins.
 // All meshes live on the imported Combat Operations GLB and are disposed on exit.
 const NODE_COLORS = Object.freeze({
-  current: 0xf2d58b,
-  selected: 0xaed2f3,
-  available: 0xd7a75c,
-  cleared: 0x748976,
-  locked: 0x55483a,
+  current: 0xffe7aa,
+  selected: 0xbcdffc,
+  available: 0xe8bf72,
+  cleared: 0x93a18a,
+  locked: 0x695744,
 });
 const EDGE_COLORS = Object.freeze({
-  traversed: 0xe4bc77,
-  available: 0xa9c1b5,
-  cleared: 0x748976,
-  locked: 0x514439,
+  traversed: 0xf0cf91,
+  available: 0xd7ad70,
+  cleared: 0x9aab97,
+  locked: 0x615044,
 });
 
 function removeDecorativeFakeObjectives(root) {
@@ -39,7 +39,9 @@ export function installCombatOperationsCampaignCartography(root, projection) {
   overlay.userData.combatOperationsCartography = projection.version;
 
   const points = new THREE.InstancedMesh(
-    new THREE.CircleGeometry(0.073, 18),
+    // Slightly larger wax seals remain separated even in three-lane stages.
+    // No extra meshes, glow pass or geometry per campaign node.
+    new THREE.CircleGeometry(0.098, 22),
     new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide, toneMapped: false }),
     projection.nodes.length,
   );
@@ -49,7 +51,10 @@ export function installCombatOperationsCampaignCartography(root, projection) {
   const matrix = new THREE.Matrix4();
   for (let index = 0; index < projection.nodes.length; index += 1) {
     const node = projection.nodes[index];
-    const size = node.type === 'boss' ? 1.42 : node.status === 'current' || node.status === 'selected' ? 1.22 : 1;
+    const size = node.status === 'current' ? 1.38
+      : node.status === 'selected' ? 1.33
+        : node.status === 'available' ? 1.16
+          : node.type === 'boss' ? 1.30 : 1;
     matrix.makeScale(size, size, 1);
     matrix.setPosition(node.x, node.y, COMBAT_OPERATIONS_MAP_SURFACE.nodeDepth);
     points.setMatrixAt(index, matrix);
@@ -73,7 +78,10 @@ export function installCombatOperationsCampaignCartography(root, projection) {
   edgeGeometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
   const routes = new THREE.LineSegments(
     edgeGeometry,
-    new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.86, depthWrite: false }),
+    // Tone mapping previously dimmed the already thin route strokes. Preserve
+    // the parchment's authored texture, with ink/metal contrast that survives
+    // the distant briefing camera and has the same cost on mobile.
+    new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.96, depthWrite: false, toneMapped: false }),
   );
   routes.name = 'combat-operations-real-sector-routes';
   routes.castShadow = false;

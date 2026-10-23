@@ -27,8 +27,22 @@ describe('Combat Operations · authored-wall live topology', () => {
 
     expect(pins.isInstancedMesh).toBe(true);
     expect(pins.count).toBe(map.nodes.length);
+    expect(pins.geometry.parameters.radius).toBeCloseTo(0.098);
+    expect(pins.material.toneMapped).toBe(false);
+    const currentIndex = projection.nodes.findIndex((node) => node.status === 'current');
+    const availableIndex = projection.nodes.findIndex((node) => node.status === 'available');
+    const currentPose = new THREE.Matrix4();
+    const availablePose = new THREE.Matrix4();
+    pins.getMatrixAt(currentIndex, currentPose);
+    pins.getMatrixAt(availableIndex, availablePose);
+    expect(new THREE.Vector3().setFromMatrixScale(currentPose).x).toBeCloseTo(1.38);
+    expect(new THREE.Vector3().setFromMatrixScale(availablePose).x).toBeCloseTo(1.16);
     expect(pins.userData.nodeIds).toEqual(map.nodes.map((node) => node.id));
     expect(routes.geometry.getAttribute('position').count).toBe(projection.edges.length * 2);
+    expect(routes.material.toneMapped).toBe(false);
+    expect(routes.material.opacity).toBeCloseTo(0.96);
+    // Remain exactly two draw batches irrespective of the number of branches.
+    expect(room.getObjectByName('combat-operations-live-campaign-map').children).toHaveLength(2);
     expect(room.userData.combatOperationsLiveMapNodes).toBe(map.nodes.length);
     expect(room.getObjectByName('COMBAT_MAP_pin_0').visible).toBe(false);
     expect(room.getObjectByName('COMBAT_MAP_route_0').visible).toBe(false);
