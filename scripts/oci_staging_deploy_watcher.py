@@ -22,6 +22,7 @@ import time
 import urllib.error
 import urllib.request
 from pathlib import Path
+from unittest.mock import patch
 
 AI_HEALTH_URL = os.environ.get(
     "CHESS_STUDIO_STAGING_AI_HEALTH_URL",
@@ -294,7 +295,6 @@ def self_test() -> None:
             assert deploy_lock_busy()  # Never follow a malicious lock symlink.
     # Regression: a superseded Worker build must not trigger another OCI
     # manifest lookup or sudo deploy until its immutable SHA changes.
-    from unittest.mock import patch
     rejected = "a" * 40
     newer = "b" * 40
     assert remember_rejected_sha("", "superseded", sample) == sample
