@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import CombatPreparationRoom from './CombatPreparationRoom.jsx';
 import CampaignBriefing from './CampaignBriefing.jsx';
 import './CampaignCombatPreparationRoom.css';
@@ -9,13 +10,23 @@ export default function CombatCampaignBriefingRoom({
   campaign, node, roster, armySummary, onExit, onHelp, onOpenMarket, onRestart,
   onBuyIntel, onContinue, onRetire, children,
 }) {
+  const [inspectingArmy, setInspectingArmy] = useState(false);
+  useEffect(() => {
+    if (!inspectingArmy) return undefined;
+    const onEscape = (event) => {
+      if (event.key === 'Escape') setInspectingArmy(false);
+    };
+    window.addEventListener('keydown', onEscape);
+    return () => window.removeEventListener('keydown', onEscape);
+  }, [inspectingArmy]);
+
   const stage = Math.max(0, (campaign.route || []).length - 1);
   const fallen = Math.max(0, Number(armySummary?.fallenCount) || 0);
 
   return (
     <div className="menu combat-operations-screen combat-briefing-room-screen">
       <section
-        className="campaign-preparation-shell combat-operations-shell combat-briefing-room-shell"
+        className={`campaign-preparation-shell combat-operations-shell combat-briefing-room-shell${inspectingArmy ? ' is-inspecting-army' : ''}`}
         aria-label="Mesa de órdenes de Combat Chess"
         data-combat-campaign-room="briefing"
       >
@@ -45,7 +56,18 @@ export default function CombatCampaignBriefingRoom({
           <button type="button" onClick={onRestart}>↻ Reiniciar campaña</button>
         </div>
 
-        <aside className="combat-briefing-room-orders" aria-label="Órdenes para el sector elegido">
+        <button
+          type="button"
+          className="combat-briefing-army-inspect"
+          aria-controls="combat-briefing-orders"
+          aria-expanded={!inspectingArmy}
+          aria-pressed={inspectingArmy}
+          onClick={() => setInspectingArmy((current) => !current)}
+        >
+          {inspectingArmy ? '← Volver a órdenes' : '♞ Inspeccionar ejército'}
+        </button>
+
+        <aside id="combat-briefing-orders" className="combat-briefing-room-orders" aria-label="Órdenes para el sector elegido">
           <CampaignBriefing
             campaign={campaign}
             node={node}
