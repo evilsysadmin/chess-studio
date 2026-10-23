@@ -281,6 +281,31 @@ if (checkCiWiring) {
   }
   if (goBuilder[1].split('.').length !== 3) fail('Go builder debe fijar major.minor.patch');
 
+  // The mandatory Go lane must keep the official, pinned, fail-closed scan.
+  // A static preflight catches accidental removal before expensive Go CI runs.
+  const goScanStart = backendGoBlock.indexOf('\n      - name: Reachable Go CVE scan\n');
+  if (goScanStart < 0) fail('Backend Go debe conservar el escáner obligatorio de vulnerabilidades alcanzables');
+  const goScanEnd = backendGoBlock.indexOf('\n      - name:', goScanStart + 1);
+  const goScanBlock = backendGoBlock.slice(goScanStart, goScanEnd < 0 ? undefined : goScanEnd);
+  if (!/^\s*run: go run golang\.org\/x\/vuln\/cmd\/govulncheck@v1\.9\.0 \.\/\.\.\.\s*$/m.test(goScanBlock)) {
+    fail('Backend Go debe ejecutar govulncheck v1.9.0 sobre ./...');
+  }
+  if (/continue-on-error:|^\s*if:|\|\|\s*true|\|\|\s*:/m.test(goScanBlock)) {
+    fail('El escaneo Go debe bloquear CI sin condiciones ni supresiones');
+  }
+  // The October 2026 HTTP/2 CVEs were reachable at x/net v0.59.0.
+  // Permit removing the module, or upgrading it; forbid a vulnerable downgrade.
+  const goModSource = read(path.join(root, 'backend-go', 'go.mod'));
+  const xNetMatch = goModSource.match(/^[ \t]*golang\.org\/x\/net[ \t]+v(\d+)\.(\d+)\.(\d+)(?:[ \t]+\/\/[^\n]*)?$/m);
+  if (goModSource.includes('golang.org/x/net') && !xNetMatch) fail('x/net requiere versión semver explícita en go.mod');
+  if (xNetMatch) {
+    const version = xNetMatch.slice(1).map(Number);
+    const floor = [0, 60, 0];
+    const i = version.findIndex((part, index) => part !== floor[index]);
+    if (i >= 0 && version[i] < floor[i]) fail('golang.org/x/net por debajo del mínimo seguro v0.60.0');
+  }
+
+
   if (!backendAggregateBlock.includes('needs: [preflight, backend_python, backend_go]')) {
     fail('Tests · Backend debe agregar Python + Go bajo el required check estable');
   }
