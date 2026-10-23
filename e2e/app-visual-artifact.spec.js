@@ -37,7 +37,30 @@ async function openCanonicalHome(page, { reducedMotion = 'no-preference' } = {})
 
 async function settle(page, home, { expectCastleReady = false } = {}) {
   if (expectCastleReady) {
-    await expect(home.locator('.illustrated-home__castle-3d.is-ready')).toBeVisible({ timeout:15_000 });
+    const canvas = home.locator('canvas.illustrated-home__castle-3d');
+    // Real Blender composition can take longer in software Chromium with a
+    // tall/touch desktop-site viewport. Other strict 3D E2E tests allow up
+    // to 90–105 s. Never accept a mere mounted canvas or 2D fallback.
+    try {
+      await expect(canvas).toHaveClass(/is-ready/, { timeout: 60_000 });
+      await expect(canvas).toHaveAttribute('data-home-blender-runtime', 'ready');
+      await expect(canvas).toBeVisible();
+    } catch (error) {
+      const state = await page.evaluate(() => {
+        const root = document.querySelector('.illustrated-home__stage');
+        const node = root?.querySelector('canvas.illustrated-home__castle-3d');
+        return {
+          canvasPresent: Boolean(node),
+          ready: node?.classList.contains('is-ready') ?? false,
+          runtime: node?.dataset.homeBlenderRuntime ?? null,
+          compositor: node?.dataset.homeCastleCompositor ?? null,
+          canvasPixels: node ? node.width * node.height : null,
+          loadingCoverPresent: Boolean(document.querySelector('.home-3d-loading')),
+        };
+      }).catch(() => ({ diagnostics: 'unavailable' }));
+      throw new Error('Canonical Home 3D never composed a real ready Blender frame: '
+        + JSON.stringify(state) + '; ' + String(error?.message || error));
+    }
   }
   await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
   await page.waitForTimeout(250);
@@ -226,7 +249,10 @@ async function captureHealth(page, label) {
 }
 
 test('App · captura visual canónica desktop + Android normal/desktop-site', async () => {
-  test.setTimeout(210_000);
+  // Nine independent canonical viewports share one test; an occasional slow
+  // software-rendered desktop-site canvas must not exhaust the whole test
+  // before its own strict readiness timeout can report the actual issue.
+  test.setTimeout(300_000);
   await mkdir(ARTIFACT_DIR, { recursive:true });
 
   const visualBrowser = await chromium.launch({
