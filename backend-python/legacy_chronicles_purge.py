@@ -9,6 +9,7 @@ from __future__ import annotations
 from pymongo.errors import PyMongoError
 
 from db import PersistentStorageUnavailable, get_db, persistent_storage_required
+from legacy_chronicles_memory import _memory_guard, _memory_runs
 
 
 async def delete_legacy_chronicles_runs(owner: str) -> int:
@@ -26,10 +27,8 @@ async def delete_legacy_chronicles_runs(owner: str) -> int:
             "MongoDB no está disponible para borrar las runs históricas de Chronicles."
         )
 
-    # Only the non-persistent test/dev fallback shares the legacy store.
-    # Production no longer imports Chronicles game code to purge an account.
-    from chronicles_run_store import _memory_guard, _memory_runs
-
+    # Non-persistent test/dev fallback shares only a lightweight state holder.
+    # Account deletion must never import the legacy game engine or run store.
     async with _memory_guard():
         doomed = [key for key, row in _memory_runs.items() if row.get("owner") == owner]
         for key in doomed:
