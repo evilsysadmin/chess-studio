@@ -36,6 +36,10 @@ class WarRoomGlbCensusTests(unittest.TestCase):
         self.assertEqual(report['primitiveInstances'], 2)
         self.assertEqual(report['potentialTriangles'], 4)
         self.assertEqual(report['uniqueMeshTriangles'], 2)
+        self.assertEqual(report['topMeshes'], [{
+            'meshIndex': 0, 'mesh': 'stone', 'instances': 2,
+            'potentialTriangles': 4, 'uniqueTriangles': 2, 'primitiveInstances': 2,
+        }])
         self.assertEqual(report['vertexReferences'], 8)
         self.assertEqual(report['materialCosts'], [{
             'materialIndex': -1, 'material': '(unassigned)',
@@ -116,6 +120,26 @@ class WarRoomGlbCensusTests(unittest.TestCase):
         self.assertIn('| Pillar A | stone | 2 |', summary)
         self.assertIn('Not** actual GPU draw calls', summary)
         self.assertIn('| (unassigned) | 4 | 2 |', summary)
+
+    def test_top_meshes_rank_accumulated_instances_not_single_nodes(self):
+        doc = fixture()
+        doc['nodes'][0]['children'].append(3)
+        report = census_scene(doc, top=1)
+        self.assertEqual(len(report['topMeshes']), 1)
+        self.assertEqual(report['topMeshes'][0], {
+            'meshIndex': 1, 'mesh': 'not in scene', 'instances': 1,
+            'potentialTriangles': 100, 'uniqueTriangles': 100,
+            'primitiveInstances': 1,
+        })
+        self.assertEqual(sum(row['potentialTriangles'] for row in
+                             census_scene(doc)['topMeshes']), 104)
+        summary = render_census_markdown([{
+            'file': 'v3.glb', 'sha256': 'f' * 64, 'glbBytes': 123,
+            **census_scene(doc),
+        }])
+        self.assertIn('Repeated mesh cost across scene instances', summary)
+        self.assertIn('| stone | 2 | 4 | 2 |', summary)
+        self.assertIn('| not in scene | 1 | 100 | 100 |', summary)
 
     def test_material_costs_count_scene_instances_and_sort_by_triangles(self):
         doc = fixture()
