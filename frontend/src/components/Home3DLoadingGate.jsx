@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { home3DFrameReady } from './Home3DReadiness.js';
+import { home3DColdStartWatchdogShouldFallback } from './Home3DFallbackPolicy.js';
 import './Home3DLoadingGate.css';
 
 // No wrapper is inserted inside the illustrated stage: existing canvas/art
@@ -50,7 +51,10 @@ export default function Home3DLoadingGate({ stageRef, onUseStaticHome, onHomeAva
       // webglcontextrestored event could no longer reach the Blender canvas.
       helpTimer = window.setTimeout(showIllustration, 6_000);
       fallbackTimer = window.setTimeout(() => {
-        if (!visibleRef.current && !everPresented3D) onUseStaticHomeRef.current?.();
+        if (home3DColdStartWatchdogShouldFallback({
+          currentlyVisible: visibleRef.current,
+          everPresented3D,
+        })) onUseStaticHomeRef.current?.();
       }, 30_000);
     };
     const cancelFrames = () => {
