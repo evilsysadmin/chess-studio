@@ -354,6 +354,10 @@ El verificador calcula por su cuenta las dos diferencias pareadas (A1−B1, A2�
 
 El campo `interpretation.verdict` y el spread observado se recalculan desde las visitas y los draw submissions utilizando el mismo clasificador conservador que produce el informe experimental. Una etiqueta de mejora editada a mano no es evidencia, aunque los PNG sean válidos. La clasificación jamás aprueba producción automáticamente.
 
+### Galería visual de las cuatro capturas físicas (solo local)
+
+Después de ejecutar `make home-gpu-flame-pass-probe` en el checkout experimental limpio y `make home-gpu-flame-pass-verify`, ejecutar `make home-gpu-flame-pass-review`. **El comando vuelve a verificar el JSON y los cuatro PNG antes de escribir** `.artifacts/home-gpu-benchmark/home-flame-abba-visual-review.html`. Abrir ese HTML localmente para ver A1/B1 y A2/B2 emparejados, con timings y draw calls de cada visita y advertencia persistente de que no hay aprobación para producción. No descarga recursos, no falsifica capturas, no mide GPU y nunca cambia la Home. Para revisión en esta conversación siguen siendo necesarios **los cuatro PNG auténticos como archivos**, no el HTML por sí solo.
+
 ### Verificador A/B/B/A de **cuatro** visitas (aislado de la PR visual)
 
 El experimento de llamas usa cuatro visitas `normal/single/single/normal` **dentro del mismo commit**. No usar el comparador normal de dos revisiones, que exige SHA distintos y tres visitas por informe. Una vez obtenido el informe y los **cuatro PNG físicos auténticos** de la rama experimental, ejecutar:
