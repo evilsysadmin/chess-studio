@@ -14,7 +14,13 @@ export function combatPreparationHonors(roster) {
     const level = 1 + Math.max(0, Number(saved.strengthPoints) || 0)
       + Math.max(0, Number(saved.speedPoints) || 0);
     if (level > 1) rankLevels[square] = level;
-    const decorations = unitDecorations(unitRecordForKey(state, unitKey));
+    // A slot is not an identity: a stale record may still be stored under
+    // the replacement's key after an interrupted migration. Do not project
+    // the predecessor's honours onto the live recruit's physical plinth.
+    const identityId = state.identities?.[unitKey]?.identityId;
+    const record = unitRecordForKey(state, unitKey);
+    const ownedRecord = record && (!record.identityId || record.identityId === identityId) ? record : null;
+    const decorations = unitDecorations(ownedRecord);
     if (decorations.length > 0) medalCounts[square] = decorations.length;
   }
   return { rankLevels, medalCounts };
