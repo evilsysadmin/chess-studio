@@ -43,8 +43,12 @@ class PublishedWarRoomCensusTests(unittest.TestCase):
         self.manifest = {"baseUrl": R2_ORIGIN, "assets": self.assets}
         self.requests = []
 
-    def opener(self, url, timeout):
-        self.requests.append((url, timeout))
+    def opener(self, request, timeout):
+        self.assertEqual(timeout, 30)
+        self.assertEqual(request.get_header("Accept"), "model/gltf-binary")
+        self.assertEqual(request.get_header("User-agent"), "chess-studio-r2-warroom-census/1")
+        self.assertEqual(request.get_header("Cache-control"), None)
+        self.requests.append(request.full_url)
         return io.BytesIO(self.glb)
 
     def test_exactly_three_provenance_bound_glb_reports(self):
