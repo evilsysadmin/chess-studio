@@ -128,6 +128,7 @@ phase_done() {
 }
 
 require git
+require timeout
 require docker
 require curl
 require python3
@@ -1343,7 +1344,9 @@ agent_diag_summary() {
 
 resolve_staging_main() {
   local current_main
-  if ! current_main="$(git -C "$repo" ls-remote --exit-code origin refs/heads/main | awk 'NR == 1 {print $1}')"; then
+  if ! current_main="$(GIT_TERMINAL_PROMPT=0 timeout --signal=TERM --kill-after=2s 5s \
+    git -C "$repo" ls-remote --exit-code origin refs/heads/main \
+    | awk 'NR == 1 {print $1}')"; then
     echo 'failed to resolve current origin/main before staging mutation' >&2
     return 69
   fi

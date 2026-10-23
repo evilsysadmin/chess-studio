@@ -69,6 +69,17 @@ def self_test():
     classifier = payload[payload.index('supersede_if_stale() {'):pulled]
     assert '[[ "$target" == staging ]] || return 0' in classifier
     assert 'current_main="$(resolve_staging_main)" || return $?' in classifier
+    # The payload runs after FD8's root-host flock is acquired. Never let a
+    # stalled GitHub/DNS credential probe retain that mutation lock forever.
+    assert "require timeout" in payload
+    resolver = payload.split("resolve_staging_main() {", 1)[1].split(
+        "\n}\n\nsupersede_if_stale() {", 1
+    )[0]
+    assert "GIT_TERMINAL_PROMPT=0 timeout --signal=TERM --kill-after=2s 5s" in resolver
+    assert 'git -C "$repo" ls-remote --exit-code origin refs/heads/main' in resolver
+    assert "if ! current_main=" in resolver
+    assert "return 69" in resolver
+
     assert "rm -f .git/" not in launcher + payload
     # Root-host diagnostic is offline and strictly read-only in production.
     diag = ROOT / "scripts/oci_host_lock_triage.py"
