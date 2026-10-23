@@ -18,6 +18,7 @@ export default function CombatCampaignBriefingRoom({
     ? projectCombatOperationsCampaignMap(campaignMap(campaign.seed), campaign, availableCampaignNodes(campaign))
     : null, [campaign]);
   const inspected = cartography?.nodes.find((sector) => sector.id === inspectedSectorId);
+  useEffect(() => { setInspectedSectorId(''); }, [campaign.seed, node.id]);
   useEffect(() => {
     if (!inspectingArmy) return undefined;
     const onEscape = (event) => {
