@@ -31,14 +31,27 @@ export function pickCombatOperationsSector({ nodes, root, camera, rect, clientX,
 export function listenCombatOperationsSectorInspection({ canvas, camera, root, projection }) {
   if (!canvas || !projection?.nodes?.length || typeof projection.onInspect !== 'function') return () => {};
   let start = null;
+  const touching = new Set();
+  let multiTouch = false;
   const onDown = (event) => {
-    start = { id: event.pointerId, x: event.clientX, y: event.clientY };
+    if (event.pointerType === 'touch' || event.pointerType === 'pen') {
+      touching.add(event.pointerId);
+      if (touching.size > 1) multiTouch = true;
+    }
+    start = multiTouch ? null : { id: event.pointerId, x: event.clientX, y: event.clientY };
   };
-  const onCancel = () => { start = null; };
+  const onCancel = (event) => {
+    touching.delete(event.pointerId);
+    if (!touching.size) multiTouch = false;
+    start = null;
+  };
   const onUp = (event) => {
     const down = start;
+    const blocked = multiTouch || canvas.dataset?.warRoomPinching === 'true';
+    touching.delete(event.pointerId);
+    if (!touching.size) multiTouch = false;
     start = null;
-    if (!down || down.id !== event.pointerId
+    if (blocked || !down || down.id !== event.pointerId
       || Math.hypot(event.clientX - down.x, event.clientY - down.y) > 12
       || (event.pointerType === 'mouse' && event.button !== 0)) return;
     const sector = pickCombatOperationsSector({
