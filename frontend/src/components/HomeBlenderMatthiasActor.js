@@ -945,6 +945,7 @@ export function createHomeMatthiasActor(gltf, { shadowsEnabled = true, random = 
   return {
     object: actor,
     get routine() { return routine; },
+    get capLocation() { return !tableCap ? 'unavailable' : tableCap.visible ? 'table' : 'head'; },
     setRoutine(next, { reducedMotion = false } = {}) {
       const changed = !routine
         || routine.propProfile !== next.propProfile
