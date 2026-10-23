@@ -5,7 +5,7 @@ import MechanicTutorialModal from './MechanicTutorialModal.jsx';
 // Campaign data and transitions remain owned by RoguelikeScreen/the domain.
 export default function CombatOperationsCampaignBriefingRoute({
   campaign, node, roster, armySummary, serviceSummary,
-  showTutorial, showMarket, onExit, onBuyIntel, onContinue, onRetire,
+  showTutorial, showMarket, onExit, onRestart, onBuyIntel, onContinue, onRetire,
   setShowTutorial, setShowMarket, onHire, onBuyEquipment,
 }) {
   return (
@@ -17,6 +17,7 @@ export default function CombatOperationsCampaignBriefingRoute({
       onExit={onExit}
       onHelp={() => setShowTutorial(true)}
       onOpenMarket={() => setShowMarket(true)}
+      onRestart={onRestart}
       onBuyIntel={onBuyIntel}
       onContinue={onContinue}
       onRetire={onRetire}
