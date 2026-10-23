@@ -75,6 +75,23 @@ class WarRoomGlbCensusTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'GPU instancing'):
             census_scene(doc)
 
+    def test_duplicate_scene_node_references_fail_closed(self):
+        # A glTF node has a single parent. Counting a DAG twice would make
+        # the per-room potential-triangle census untrustworthy.
+        doc = fixture()
+        doc['scenes'][0]['nodes'].append(1)
+        with self.assertRaisesRegex(ValueError, 'referenced more than once'):
+            census_scene(doc)
+        doc = fixture()
+        doc['nodes'].append({'name': 'Second root', 'children': [1]})
+        doc['scenes'][0]['nodes'].append(4)
+        with self.assertRaisesRegex(ValueError, 'referenced more than once'):
+            census_scene(doc)
+        # Duplicates in an unused scene do not alter the active scene census.
+        doc = fixture()
+        doc['scenes'].append({'nodes': [1, 1]})
+        self.assertEqual(census_scene(doc)['meshInstances'], 2)
+
     def test_unused_scene_ignored_and_top_limited(self):
         doc = fixture()
         doc['scenes'].append({'nodes': [3]})
