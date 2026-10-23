@@ -42,6 +42,30 @@ describe('Home Blender page-local runtime forensics', () => {
     expect(root.dataset.homeBlenderTrace).not.toContain('private.example');
   });
 
+  it('normalizes existing page metadata and never reserializes arbitrary fields', () => {
+    const root = { dataset: {
+      homeBlenderTrace: JSON.stringify([
+        { event: 'ready', at: 100.8, stack: 'private stack'.repeat(1000), url: 'https://private.example/token' },
+        { event: 'fallback', at: 101.9, reason: 'model-timeout', password: 'not-a-real-password' },
+        { event: 'fallback', at: 102, reason: 'https://private.example/secret', nested: { session: 'private' } },
+        { event: 'ready', at: '103', sneaky: 'invalid timestamp type' },
+        { event: 'unrecognized', at: 104, details: 'not in event contract' },
+      ]),
+    } };
+    recordHomeBlenderRuntimeEvent('context-lost', { root, at: 105 });
+    expect(JSON.parse(root.dataset.homeBlenderTrace)).toEqual([
+      { event: 'ready', at: 100 },
+      { event: 'fallback', at: 101, reason: 'model-timeout' },
+      { event: 'fallback', at: 102, reason: 'unknown' },
+      { event: 'context-lost', at: 105 },
+    ]);
+    expect(root.dataset.homeBlenderTrace.length).toBeLessThan(250);
+    expect(root.dataset.homeBlenderTrace).not.toContain('private');
+    expect(root.dataset.homeBlenderTrace).not.toContain('token');
+    expect(root.dataset.homeBlenderTrace).not.toContain('stack');
+    expect(root.dataset.homeBlenderLastEvent).toBe('context-lost');
+  });
+
   it('does not throw on corrupted DOM metadata, unsupported events or absent DOM', () => {
     const root = { dataset: { homeBlenderTrace: '{bad' } };
     expect(recordHomeBlenderRuntimeEvent('ready', { root, at: 5 })).toEqual({ event: 'ready', at: 5 });
