@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import './CombatVeteranDossier.css';
 
 const PIECE_LABELS = Object.freeze({
@@ -13,13 +14,17 @@ function earnedDate(value) {
 // A contextual paper folio, never an always-on roster/dashboard and never
 // a source of campaign stats. All facts come from the selected live identity.
 export default function CombatVeteranDossier({ unit, onClose }) {
+  const titleRef = useRef(null);
+  useEffect(() => {
+    if (unit?.identityId) titleRef.current?.focus({ preventScroll: true });
+  }, [unit?.identityId]);
   if (!unit) return null;
   return (
     <aside className="combat-veteran-dossier" aria-label={`Expediente de ${unit.alias}`} data-combat-veteran-dossier={unit.identityId}>
       <header>
         <div>
           <small>EXPEDIENTE DE SERVICIO · {unit.square.toUpperCase()}</small>
-          <h3>{unit.alias}</h3>
+          <h3 ref={titleRef} tabIndex={-1}>{unit.alias}</h3>
           <p>{unit.rank} · Nivel {unit.level} · {PIECE_LABELS[unit.battlefieldType] || 'Unidad'}</p>
         </div>
         <button type="button" onClick={onClose} aria-label="Cerrar expediente del veterano">×</button>
