@@ -729,6 +729,11 @@ assert '["docker", "manifest", "inspect", ref]' in deploy_watcher
 assert 'return image_available(go_image_ref(candidate))' in deploy_watcher
 assert 'git -C "$repo" ls-remote --exit-code origin refs/heads/main' in deploy
 assert '["sudo", "--non-interactive", DEPLOY_WRAPPER, candidate]' in deploy_watcher
+# The unprivileged watcher must never SIGKILL only sudo at a deadline:
+# the privileged wrapper could keep FD8's flock via an orphaned descendant.
+assert "DEPLOY_TIMEOUT_SECONDS" not in deploy_watcher
+assert "supervised_run.assert_called_once_with(" in deploy_watcher
+assert "check=True," in deploy_watcher
 assert "ENABLE_MARKER.is_symlink()" in deploy_watcher
 assert "import oci" not in deploy_watcher
 assert "User=ocarun" in deploy_watcher_unit
