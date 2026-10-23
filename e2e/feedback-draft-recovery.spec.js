@@ -36,8 +36,11 @@ test('Feedback · red caída conserva descripción, no promete conservar adjunto
 
   await page.unroute('**/api/feedback');
   await dialog.getByRole('button', { name: 'Enviar feedback', exact: true }).click();
-  await expect(dialog.getByRole('heading', { name: 'Feedback enviado. Gracias.' })).toBeVisible();
-  await dialog.getByRole('button', { name: 'Cerrar', exact: true }).click();
+  // Success changes aria-labelledby and therefore the dialog's accessible name.
+  // Re-query the confirmed-success dialog rather than a stale name.
+  const confirmed = page.getByRole('dialog', { name: 'Feedback enviado. Gracias.' });
+  await expect(confirmed.getByRole('heading', { name: 'Feedback enviado. Gracias.' })).toBeVisible();
+  await confirmed.getByRole('button', { name: 'Cerrar', exact: true }).click();
   await openFeedback(page);
   dialog = page.getByRole('dialog', { name: 'Dinos qué mejorar' });
   await expect(dialog.getByLabel('¿Qué pasó o qué cambiarías?')).toHaveValue('');
