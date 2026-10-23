@@ -239,11 +239,31 @@ test('Browser WebGL · Home 3D recupera el contexto perdido', async ({ page }) =
   await expect(home.locator('.illustrated-home__stage')).toHaveAttribute('data-home3d-preview', 'painted');
   await expect(home.locator('.illustrated-home__art')).toHaveCSS('opacity', '1');
   await expect(canvas).toHaveCSS('opacity', '0');
+  await expect(page.locator('.route-loading.home-3d-loading')).toHaveCount(0);
+  // A lost GPU context may take minutes to restore; the safety illustration
+  // must leave global shell controls usable, not just visually present.
+  // Reuse this same real WEBGL_lose_context browser journey.
+  const dock = page.locator('.global-music-dock');
+  const openPlayer = page.getByRole('button', { name:'Abrir reproductor de música', exact:true });
+  const foldPlayer = page.getByRole('button', { name:'Plegar reproductor de música', exact:true });
+  await expect(dock).toBeVisible();
+  await openPlayer.click();
+  await expect(dock.locator('.music-deck-expanded')).toBeVisible();
+  await foldPlayer.click();
+  await expect(dock.locator('.music-deck-collapsed')).toBeVisible();
+  await expect(canvas).toHaveAttribute('data-home-blender-runtime', 'recovering');
+  await expect(home.locator('.illustrated-home__stage')).toHaveAttribute('data-home3d-preview', 'painted');
   await expect.poll(() => page.evaluate(() => document.documentElement.dataset.homeBlenderLastEvent)).toBe('context-lost');
   await page.evaluate(() => window.__homeWebglLoseContext?.restoreContext());
   await expect(canvas).toHaveAttribute('data-home-blender-runtime', 'ready', { timeout:15_000 });
   await expect(canvas).toHaveClass(/is-ready/, { timeout:15_000 });
   await expect(home.locator('.illustrated-home__stage')).not.toHaveAttribute('data-home3d-preview', 'painted');
+  await expect(canvas).toHaveCSS('opacity', '1');
+  // The same shell remains clickable after the recovering canvas is revealed.
+  await openPlayer.click();
+  await expect(dock.locator('.music-deck-expanded')).toBeVisible();
+  await foldPlayer.click();
+  await expect(dock.locator('.music-deck-collapsed')).toBeVisible();
   const history = await page.evaluate(() => JSON.parse(
     document.documentElement.dataset.homeBlenderTrace || '[]',
   ));
