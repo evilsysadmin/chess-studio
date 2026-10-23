@@ -32,7 +32,7 @@ CRITICAL_E2E_GREP := login → menú|Partida rápida · una partida activa|Torne
 	test tests test-fe test-be tests-fe tests-be tests/fe tests/be e2e e2e-combat-dom e2e-install compose-smoke coverage coverage-fe coverage-be release-gate \
 	test-frontend test-frontend-smoke test-frontend-unit test-frontend-contract test-backend test-backend-smoke test-backend-integration backend-check quality-gate gate-core \
 	gate-frontend-critical gate-critical combat-smoke frontend-build bundle-report puzzles-check audio-check data-ux-check pwa-check campaign-map-check copy-check release-check test-suite-audit test-suite-audit-ci static-contract-risk-audit css-check css-debt-check visual-ux-check state-resilience-check idempotency-check npm-audit-parser-check architecture-debt-check workflow-debt-check dependency-cycle-check dead-code-check session-continuity-check safe-storage-check async-resilience-check chess-rules-check grafana-check render-staging-check static-preflight \
-	security security-full security-images security-fe security-be security-trivy security-api ensure-trivy deps-status doctor worker-test load-probe synthetic-check bootstrap-test test-all-local test-in-docker ensure-e2e-deps e2e-critical home-gpu-light-probe home-gpu-draw-census home-gpu-flame-pass-verify test-parity-check \
+	security security-full security-images security-fe security-be security-trivy security-api ensure-trivy deps-status doctor worker-test load-probe synthetic-check bootstrap-test test-all-local test-in-docker ensure-e2e-deps e2e-critical home-gpu-light-probe home-gpu-draw-census home-gpu-flame-pass-probe home-gpu-flame-pass-verify test-parity-check \
 	oci-login oci-session oci-a1-info oci-a1-status oci-a1-ip oci-a1-authorize-ssh oci-a1-ssh-check oci-a1-ssh
 
 ## Diagnóstico local sin instalar nada: runtimes, lockfiles, CI y tooling opcional.
@@ -401,6 +401,19 @@ home-gpu-draw-census: ensure-e2e-deps frontend-build
 
 # Only checks physical A/B/B/A PNG/report integrity; never claims visual or GPU
 # approval. The experimental flame capture remains in Draft until accepted.
+# Draft-only physical flame A/B/B/A. Not a visual or GPU approval.
+home-gpu-flame-pass-probe: ensure-e2e-deps frontend-build
+	cd e2e && ./node_modules/.bin/playwright install chromium
+	@cd e2e && $(HOME_GPU_ENV) CHESS_HOME_GPU_MODE=hardware \
+		CHESS_HOME_GPU_FLAME_PROBE=1 CHESS_HOME_GPU_HEADLESS=$(HOME_GPU_HEADLESS) \
+		CHESS_HOME_GPU_AMBIENT=$(HOME_GPU_AMBIENT) \
+		CHESS_HOME_GPU_EXPECT_VENDOR=$(HOME_GPU_EXPECT_VENDOR) \
+		CHESS_HOME_GPU_REVISION="$$(git rev-parse HEAD)" \
+		./node_modules/.bin/playwright test --config=playwright.home-gpu.config.js
+	@node scripts/verify_home_flame_gpu_evidence.mjs
+	@echo "Flame A/B/B/A: .artifacts/home-gpu-benchmark/home-3d-flame-single-pass-hardware.json"
+	@echo "Review the FOUR original WebGL PNGs, never synthetic screenshots"
+
 home-gpu-flame-pass-verify:
 	@node scripts/verify_home_flame_gpu_evidence.mjs
 
