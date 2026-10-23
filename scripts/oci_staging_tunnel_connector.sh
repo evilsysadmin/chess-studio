@@ -108,11 +108,14 @@ fi
 : >"$log_file"
 chown "$RUNTIME_USER" "$log_file"
 rm -f "$pid_file"
+# Keep FD8 in the deploy shell only: do not pass it into runuser/PAM/bash.
 runuser -u "$RUNTIME_USER" -- env HOME="$runtime_home" /bin/bash -c '
   set -euo pipefail
-  nohup setsid "$1" tunnel --no-autoupdate --loglevel info --logfile "$2" run --token-file "$3" </dev/null >/dev/null 2>&1 &
+  # nohup/setsid detach from the terminal, not from inherited descriptors.
+  # Close the deploy FD8 in the long-lived cloudflared child as a safeguard.
+  nohup setsid "$1" tunnel --no-autoupdate --loglevel info --logfile "$2" run --token-file "$3" </dev/null >/dev/null 2>&1 8>&- &
   printf "%s\n" "$!" >"$4"
-' bash "$bin" "$log_file" "$token_file" "$pid_file"
+' bash "$bin" "$log_file" "$token_file" "$pid_file" 8>&-
 
 new_pid="$(cat "$pid_file" 2>/dev/null || true)"
 [[ "$new_pid" =~ ^[0-9]+$ ]] || { echo 'cloudflared did not publish a valid pid' >&2; exit 70; }
