@@ -66,8 +66,7 @@ function Board3DCanvas({
   themeOverride = null, hansDiagnosticsMarkerRef = null,
   hansDiagnosticsRequested = false, hansFireCallEnabled = false,
   cameraProfile = 'tactical', warRoomVariantOverride = null, immersive = false,
-  trainingRoom = false, warRoomMobilePerformance = false,
-  inspectionPreview = false,
+  trainingRoom = false, warRoomMobilePerformance = false, inspectionPreview = false,
   onRendererFailure,
 }) {
   const hostRef = useRef(null);
@@ -95,8 +94,7 @@ function Board3DCanvas({
   const techniqueTargetCount = useMemo(() => board3DTechniqueTargetCount(legalTargets), [legalTargets]);
 
   latestPropsRef.current = {
-    onSquareClick,
-    inspectionPreview,
+    onSquareClick, inspectionPreview,
     onRendererFailure,
     onPieceMouseEnter,
     onPieceMouseLeave,
@@ -319,10 +317,6 @@ function Board3DCanvas({
       firstPaint?.afterRender(renderer.info.render);
       applyBoard3DRendererMemoryDiagnostics(renderer.domElement, renderer);
       applyBoard3DProjectionDiagnostics(renderer.domElement, camera);
-      const framing = camera.userData.framingProfile || 'standard';
-      if (renderer.domElement.dataset.board3dCameraFraming !== framing) {
-        renderer.domElement.dataset.board3dCameraFraming = framing;
-      }
       if (!cachedHansDriver && latestPropsRef.current.hansDiagnosticsRequested) {
         cachedHansDriver = scene.getObjectByName('war-room-hans-fireplace-driver');
       }
