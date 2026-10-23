@@ -10,7 +10,12 @@ export function isConnectionFailure(error) {
 }
 
 export function connectionErrorCopy(error, language = 'es') {
-  if (!isConnectionFailure(error)) return String(error?.message || error || 'No se pudo completar la operación.');
+  if (!isConnectionFailure(error)) {
+    // An unexpected application TypeError must neither masquerade as a
+    // connection outage nor leak raw JS implementation details into the UI.
+    if (error instanceof TypeError) return language === 'en' ? 'Could not complete the operation.' : 'No se pudo completar la operación.';
+    return String(error?.message || error || 'No se pudo completar la operación.');
+  }
   return language === 'en'
     ? 'We could not reach Chess Studio. Check your connection and try again. We cannot confirm whether the operation completed.'
     : 'No hemos podido conectar con Chess Studio. Comprueba tu conexión y vuelve a intentarlo. No podemos confirmar si la operación llegó a completarse.';
