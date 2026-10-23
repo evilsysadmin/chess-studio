@@ -115,6 +115,9 @@ test('Home Android · portrait usa vestíbulo y reserva 3D para apaisado', async
 });
 
 test('Home Android 3D · apaisado guarda 1v1 bajo Más y libera el salón', async ({ browser }) => {
+  // Software Chromium can render slowly; this test still requires a real
+  // Blender frame rather than accepting the 2D fallback.
+  test.setTimeout(135_000);
   const viewport = { width: 844, height: 390 };
   const context = await browser.newContext({
     viewport,
@@ -130,7 +133,13 @@ test('Home Android 3D · apaisado guarda 1v1 bajo Más y libera el salón', asyn
   try {
     const home = await openHome(page);
     expect(await page.evaluate(() => window.matchMedia('(pointer: coarse)').matches)).toBe(true);
-    await expect(home.locator('.illustrated-home__castle-3d.is-ready')).toBeVisible({ timeout: 15_000 });
+    const canvas = home.locator('.illustrated-home__castle-3d');
+    await expect(canvas).toHaveClass(/is-ready/, { timeout: 75_000 });
+    await expect(canvas).toHaveAttribute('data-home-castle-compositor', 'blender-runtime');
+    await expect(canvas).toHaveAttribute('data-home-blender-runtime', 'ready');
+    await expect(canvas).toBeVisible();
+    await expect(page.locator('.home-3d-loading')).toHaveCount(0, { timeout: 15_000 });
+    await expect(home.locator('.illustrated-home__art')).toHaveCSS('opacity', '0');
 
     const floatingPvp = page.locator('.home-pvp-roster-link:not(.home-pvp-roster-link--menu)');
     await expect(floatingPvp).toBeHidden();
