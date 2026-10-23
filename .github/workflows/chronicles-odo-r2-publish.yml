@@ -38,9 +38,13 @@ jobs:
   publish-and-propose:
     name: Publish verified Odo and propose Chronicles pin
     needs: contract
+    # Other Chess Studio releases are unrelated; do not turn their publish
+    # events into a failing Chronicles run.
     if: >-
-      (github.event_name == 'release' || github.event_name == 'workflow_dispatch')
-      && github.repository == 'evilsysadmin/chess-studio'
+      github.repository == 'evilsysadmin/chess-studio'
+      && (github.event_name == 'workflow_dispatch'
+          || (github.event_name == 'release'
+              && github.event.release.tag_name == 'chronicles-odo-r2-79e0b13fc2ee2ffb'))
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     environment: chronicles-r2-publish
