@@ -38,8 +38,16 @@
   max-width: calc(58% - 2rem);
   flex-wrap: wrap;
 }
-.combat-briefing-room-status > span,
-.combat-briefing-room-status > button {
+.combat-briefing-resource-rail {
+  display: flex;
+  align-items: center;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+  gap: .35rem;
+  min-width: 0;
+}
+.combat-briefing-resource-rail > span,
+.combat-briefing-resource-rail > button {
   display: inline-flex;
   gap: .3rem;
   align-items: center;
@@ -53,12 +61,12 @@
   font: .61rem var(--font-mono);
 }
 .combat-briefing-room-status b { color: #f3e6c6; }
-.combat-briefing-room-status > button {
+.combat-briefing-resource-rail > button {
   cursor: pointer;
   color: #e9c57d;
 }
-.combat-briefing-room-status > button:hover,
-.combat-briefing-room-status > button:focus-visible {
+.combat-briefing-resource-rail > button:hover,
+.combat-briefing-resource-rail > button:focus-visible {
   border-color: #e9c57d;
   outline-offset: 2px;
 }
@@ -292,11 +300,20 @@
     right: .55rem;
     max-width: none;
     flex-wrap: nowrap;
+    overflow: visible;
+  }
+  /* Resources scroll independently; map consultation stays in view. */
+  .combat-briefing-resource-rail {
+    flex: 1 1 0;
+    min-width: 0;
+    flex-wrap: nowrap;
     overflow-x: auto;
+    overscroll-behavior-x: contain;
     scrollbar-width: none;
   }
-  .combat-briefing-room-status > span,
-  .combat-briefing-room-status > button {
+  .combat-briefing-resource-rail::-webkit-scrollbar { display: none; }
+  .combat-briefing-resource-rail > span,
+  .combat-briefing-resource-rail > button {
     flex: 0 0 auto;
     min-height: 44px;
   }
@@ -397,7 +414,16 @@
   }
 }
 @media (max-width: 720px) {
-  .combat-briefing-room-status > .combat-briefing-map-lookup { flex: 0 0 auto; }
+  .combat-briefing-room-status > .combat-briefing-map-lookup {
+    flex: 0 0 auto;
+    min-width: 0;
+    gap: .25rem;
+    padding: .25rem .38rem;
+  }
+  .combat-briefing-map-lookup select {
+    width: 7.1rem;
+    max-width: 7.1rem;
+  }
   .combat-briefing-map-readout {
     top: 11.35rem;
     bottom: auto;
