@@ -77,6 +77,10 @@ def self_test():
     assert "os.O_RDONLY | os.O_CLOEXEC | os.O_NOFOLLOW" in diagnostic_source
     assert "os.kill(" not in diagnostic_source and "subprocess.Popen(" not in diagnostic_source
     assert "descriptor.stat()" in diagnostic_source  # metadata-only, never FD contents
+    assert '(process / "fdinfo" / descriptor.name).read_text(' in diagnostic_source
+    assert "fdinfo_has_flock(info, device, inode)" in diagnostic_source
+    assert "flock_witness_fds=" in diagnostic_source
+    assert 'for line in contents.splitlines() if line.startswith("lock:")' in diagnostic_source
     assert "max_processes: int = 4096" in diagnostic_source
     assert "OCI_HOST_LOCK_FD_SCAN coverage=" in diagnostic_source
     assert "OCI_HOST_LOCK_FD_HOLDER pid=" in diagnostic_source
