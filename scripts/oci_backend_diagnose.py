@@ -59,7 +59,7 @@ if [[ -f "$source_launcher" && ! -L "$source_launcher" && -r "$source_launcher" 
   fi
 fi
 printf 'OCI_BACKEND_LAUNCHER installed_vs_checkout=%s\n' "$launcher_status"
-# Probe nonblocking via a read-only fd: no Docker or root privileges.
+# Read-only, nonblocking lock probe.
 lock_state=unavailable
 if [[ -r /var/lib/chess-studio/deploy.lock && ! -L /var/lib/chess-studio/deploy.lock ]]; then
   flock -n -E 73 9 9</var/lib/chess-studio/deploy.lock
