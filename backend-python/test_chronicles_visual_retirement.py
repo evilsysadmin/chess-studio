@@ -19,4 +19,5 @@ def test_extracted_chronicles_visual_producers_do_not_launch_browser(tmp_path):
         )
         assert result.returncode == 0, result.stdout + result.stderr
         assert "no canonical specs" in result.stdout
-        assert output.read_text(encoding="utf-8").strip() == "has_specs=false"
+        with output.open(encoding="utf-8") as results:
+            assert results.readline().strip() == "has_specs=false"
