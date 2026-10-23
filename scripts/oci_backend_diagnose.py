@@ -65,14 +65,6 @@ if [[ -r /var/lib/chess-studio/deploy.lock && ! -L /var/lib/chess-studio/deploy.
   case "$?" in 0) lock_state=free;; 73) lock_state=held;; esac
 fi
 printf 'OCI_BACKEND_LOCK state=%s\n' "$lock_state"
-if [[ "$lock_state" == held && -r /proc/locks ]]; then
-  ino="$(stat -Lc %i /var/lib/chess-studio/deploy.lock 2>/dev/null)"
-  pid="$(awk -v n="$ino" '$2=="FLOCK" && $6 ~ (":" n "$") {print $5; exit}' /proc/locks)"
-  [[ "$pid" =~ ^[1-9][0-9]*$ ]] || pid=unknown
-  age="$(ps -o etimes= -p "$pid" 2>/dev/null | tr -dc '0-9')"
-  [[ "$age" =~ ^[0-9]{1,10}$ ]] || age=unknown
-  echo "OCI_BACKEND_LOCK_CANDIDATE pid=$pid age_s=$age"
-fi
 events="$(set -o pipefail; timeout 5 journalctl -u chess-studio-deploy-watcher.service -n 80 -o cat 2>/dev/null | awk '/OCI_DEPLOY_WATCH_/{a[substr($1,18,1)]++}END{printf "t=%d ok=%d err=%d stale=%d",a["T"],a["O"],a["E"],a["S"]}')" || events=unavailable
 echo "OCI_WATCH_EVENTS $events"
 for service in edge pvp_blue pvp_green; do
@@ -94,6 +86,18 @@ for endpoint in health ready release; do
 done
 printf '%s\n' 'OCI_BACKEND_DIAG_END'
 '''
+    # Transport-only snapshot has room for one extra sanitized kernel lock
+    # hint. Keep exact-SHA provenance probes byte-stable and strictly bounded.
+    if expected_sha is None:
+        command = command.replace("events=", r'''if [[ "$lock_state" == held && -r /proc/locks ]]; then
+  ino="$(stat -Lc %i /var/lib/chess-studio/deploy.lock 2>/dev/null)"
+  pid="$(awk -v n="$ino" '$2=="FLOCK" && $6 ~ (":" n "$") {print $5; exit}' /proc/locks)"
+  [[ "$pid" =~ ^[1-9][0-9]*$ ]] || pid=unknown
+  age="$(ps -o etimes= -p "$pid" 2>/dev/null | tr -dc '0-9')"
+  [[ "$age" =~ ^[0-9]{1,10}$ ]] || age=unknown
+  echo "OCI_BACKEND_LOCK_CANDIDATE pid=$pid age_s=$age"
+fi
+events=''', 1)
     if expected_sha is not None:
         sha = validate_sha(expected_sha)
         # OCI may omit the complete TEXT transcript. Encode the relationship
@@ -132,6 +136,7 @@ def self_test() -> None:
     assert "OCI_BACKEND_PROVENANCE checkout=%s checkout_reason=%s committed=%s" in command
     sample = "0123456789abcdef0123456789abcdef01234567"
     matched = diagnostic_command(sample)
+    assert "OCI_BACKEND_LOCK_CANDIDATE" not in matched
     assert f'if [[ "$checkout" == "{sample}" && "$committed" == "{sample}" ]]' in matched
     assert "exit 91;" in matched and "exit 92;" in matched
     assert "exit 94;" in matched and "exit 90" in matched
