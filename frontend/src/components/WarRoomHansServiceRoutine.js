@@ -225,6 +225,7 @@ export function installWarRoomHansServiceRoutine(root) {
   let routeIndex = 0;
   let actionElapsed = 0;
   let lastNow = null;
+  let espressoTravelMeters = 0;
   const setupRetry = createWarRoomHansSetupRetryState();
 
   floor.onBeforeRender = (...args) => {
@@ -240,6 +241,7 @@ export function installWarRoomHansServiceRoutine(root) {
       const clearDeliveredArtifacts = warRoomHansShouldClearDeliveredArtifacts(nextGameId, completedGameId);
       gameId = nextGameId;
       eventName = warRoomHansEventForGame(gameId);
+      espressoTravelMeters = 0;
       if (eventName === 'espresso') {
         publishEspressoEvidence(actor, 'warRoomHansEspressoDelivered', false);
         publishEspressoEvidence(actor, 'warRoomHansEspressoReturned', false);
@@ -266,6 +268,19 @@ export function installWarRoomHansServiceRoutine(root) {
     }
 
     if (!SERVICE_EVENTS.has(eventName) || completedGameId === gameId) return;
+    // Read-only E2E progress: actual route distance accumulated during renders.
+    // Players do not incur DOM writes, persistence or additional scene walks.
+    if (eventName === 'espresso' && globalThis.__CHESS_E2E_HANS_AMBIENT_AUDIT__ === true) {
+      const canvas = getWarRoomHansCanvas(actor);
+      if (canvas?.dataset) {
+        canvas.dataset.warRoomHansEspressoStage = state;
+        canvas.dataset.warRoomHansEspressoTravelMeters = espressoTravelMeters.toFixed(3);
+        canvas.dataset.warRoomHansEspressoRouteIndex = String(routeIndex);
+        canvas.dataset.warRoomHansEspressoRouteLength = String(
+          state === 'returning' ? routeOut.length : routeIn.length,
+        );
+      }
+    }
     const taskId = `service-${eventName}`;
 
     if (!active) {
@@ -383,6 +398,7 @@ export function installWarRoomHansServiceRoutine(root) {
         return;
       }
       if (motion.travelled > 0) {
+        if (eventName === 'espresso') espressoTravelMeters += motion.travelled;
         advanceWarRoomHansWalk(controller, { travelled: motion.travelled, horizontalWeight: 0.4 });
       }
       if (motion.arrived) {
@@ -447,6 +463,7 @@ export function installWarRoomHansServiceRoutine(root) {
         return;
       }
       if (motion.travelled > 0) {
+        if (eventName === 'espresso') espressoTravelMeters += motion.travelled;
         advanceWarRoomHansWalk(controller, { travelled: motion.travelled, horizontalWeight: 0.4 });
       }
       if (motion.arrived) {
