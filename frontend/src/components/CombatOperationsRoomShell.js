@@ -9,7 +9,10 @@ export {
 
 export function installCombatOperationsRoomPracticalLights(root, { coarsePointer = false } = {}) {
   const specs = [
-    ['COMBAT_ANCHOR_board_fill', 0xf1c27a, coarsePointer ? 0.66 : 0.62, 9.2],
+    // One existing non-shadowing practical owns the army/table readability.
+    // Warm ivory, not saturated orange; slightly stronger on touch devices.
+    // No additional light, shadow caster, shader pass or renderer budget.
+    ['COMBAT_ANCHOR_board_fill', 0xffe2b6, coarsePointer ? 1.34 : 1.12, 9.8],
     ['COMBAT_ANCHOR_map_fill', 0xff9b45, coarsePointer ? 1.22 : 1.12, 7.6],
     ['COMBAT_ANCHOR_barracks_fill', 0xff7f2d, coarsePointer ? 1.18 : 1.08, 6.8],
     ['COMBAT_ANCHOR_memorial_fill', 0xff8b38, coarsePointer ? 1.02 : 0.92, 6.4],
