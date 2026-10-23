@@ -15,3 +15,22 @@ export function homeGpuBenchmarkRevision(raw, { hardware = false } = {}) {
   }
   return revision.toLowerCase();
 }
+
+/**
+ * Physical GPU screenshots must be attributable to the exact executed source.
+ * HEAD alone is insufficient: local tracked edits or staged modifications
+ * can alter the renderer without altering the advertised commit SHA.
+ * The caller supplies `git status --porcelain=v1 --untracked-files=no`;
+ * generated/untracked PNG evidence is deliberately not part of the tree gate.
+ */
+export function homeGpuPhysicalCheckoutProvenance(rawRevision, checkoutRevision, trackedStatus) {
+  const expected = homeGpuBenchmarkRevision(rawRevision, { hardware: true });
+  const actual = homeGpuBenchmarkRevision(checkoutRevision, { hardware: true });
+  if (expected !== actual) {
+    throw new Error('Physical Home GPU SHA does not match checkout HEAD');
+  }
+  if (typeof trackedStatus !== 'string' || trackedStatus.trim().length > 0) {
+    throw new Error('Physical Home GPU requires a clean tracked Git worktree and index');
+  }
+  return expected;
+}
