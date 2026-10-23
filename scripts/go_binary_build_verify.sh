@@ -51,3 +51,8 @@ grep -Fqx $'\tbuild\tGOARCH=arm64' <<< "$metadata" || {
   echo "::error::Binary was not built for linux/arm64"
   exit 1
 }
+
+# The source scans ran earlier in this required job. Check the exact binary too.
+scanner="$(go env GOPATH)/bin/govulncheck"
+[[ -x "$scanner" ]] || { echo '::error::Pinned govulncheck missing'; exit 1; }
+"$scanner" -mode=binary /tmp/pvp-edge

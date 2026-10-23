@@ -304,6 +304,9 @@ if (checkCiWiring) {
     'go version -m /tmp/pvp-edge',
     "grep -Fqx $'\\tbuild\\tGOOS=linux'",
     "grep -Fqx $'\\tbuild\\tGOARCH=arm64'",
+    'scanner="$(go env GOPATH)/bin/govulncheck"',
+    '[[ -x "$scanner" ]]',
+    '"$scanner" -mode=binary /tmp/pvp-edge',
   ]) {
     if (!binaryScript.includes(required)) fail(`Sin evidencia binaria Go ARM64: ${required}`);
   }
