@@ -73,6 +73,13 @@ DOM datasets and JSON; counts outside it remain accurately represented by
 No scene traversal, new render, light change or production-session overhead
 is introduced.
 
+The physical GPU probe also requires a **clean tracked Git worktree and index**. Its
+full revision must match `git rev-parse HEAD`; staged, edited, deleted or
+conflicted tracked files fail before opening the browser. Generated, untracked
+PNG reports are intentionally ignored. This applies to both the three-visit
+draw census and local A/B/B/A lighting trials. Run from a dedicated clean
+worktree rather than stashing valuable development changes just to benchmark.
+
 ### One-command physical GPU draw census (no lighting removal)
 
 After the real-browser CI gate is green, run the fixed three-cold-visit
