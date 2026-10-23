@@ -153,6 +153,8 @@ jobs:
     name: Frontend · exact Pages generation
     needs: prepare
     if: needs.prepare.outputs.admitted == 'true' && needs.prepare.outputs.smoke_only != 'true'
+    outputs:
+      superseded: ${{ steps.pages_publish.outputs.superseded }}
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     environment:
@@ -214,22 +216,18 @@ jobs:
           api-url: ${{ env.STAGING_API_URL }}
           repo-vars: ${{ toJSON(vars) }}
       - name: Deploy tested frontend to Cloudflare Pages
+        id: pages_publish
         working-directory: frontend
-        shell: bash
-        run: |
-          set -euo pipefail
-          python3 -S ../scripts/pages_runtime_asset_grace.py --dist dist --site staging
-          "$WRANGLER_BIN" pages deploy dist \
-            --project-name chess-studio-staging \
-            --branch main \
-            --commit-hash "$DEPLOY_SHA" \
-            --commit-dirty=false
+        run: python3 -S ../scripts/staging_cloudflare_publish.py pages --sha "$DEPLOY_SHA"
       - name: Verify frontend staging build identity
+        if: steps.pages_publish.outputs.superseded != 'true'
         run: python3 -S scripts/staging_generation.py wait --sha "$DEPLOY_SHA" --surfaces frontend --attempts 150 --interval 2 --root
   worker:
     name: Worker · exact AI generation
     needs: prepare
     if: needs.prepare.outputs.admitted == 'true' && needs.prepare.outputs.smoke_only != 'true'
+    outputs:
+      superseded: ${{ steps.worker_publish.outputs.superseded }}
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     environment:
@@ -256,8 +254,10 @@ jobs:
       - name: Staging Worker isolation contract
         run: python3 -S scripts/deploy_staging_ai_worker.py --self-test
       - name: Deploy and verify exact staging Worker generation
-        run: python3 scripts/deploy_staging_ai_worker.py
+        id: worker_publish
+        run: python3 -S scripts/staging_cloudflare_publish.py worker --sha "$DEPLOY_SHA"
       - name: Shared Workers AI live contract
+        if: steps.worker_publish.outputs.superseded != 'true'
         run: python3 scripts/cloudflare_ai_preflight.py --worker-url "$STAGING_AI_URL"
   smoke:
     name: Browser smoke · ${{ matrix.label }}
@@ -265,7 +265,7 @@ jobs:
     if: >
       always() && needs.prepare.outputs.admitted == 'true' &&
       ((needs.prepare.outputs.smoke_only == 'true' && needs.backend.result == 'skipped' && needs.frontend.result == 'skipped' && needs.worker.result == 'skipped') ||
-      (needs.backend.result == 'success' && needs.frontend.result == 'success' && needs.worker.result == 'success' && needs.backend.outputs.superseded != 'true'))
+      (needs.backend.result == 'success' && needs.frontend.result == 'success' && needs.worker.result == 'success' && needs.backend.outputs.superseded != 'true' && needs.frontend.outputs.superseded != 'true' && needs.worker.outputs.superseded != 'true'))
     runs-on: ubuntu-24.04
     timeout-minutes: 8
     environment:
@@ -273,9 +273,7 @@ jobs:
       url: https://staging.chess-studio.shadowops.dpdns.org
     strategy:
       fail-fast: false
-      # For full deployment, stage both staging-live.spec.js and
-      # staging-war-room-restore.spec.js. Narrow the smoke-only matrix only
-      # when the exact diff touches a single isolated smoke spec; helpers run both.
+      # Full smoke: staging-live.spec.js + staging-war-room-restore.spec.js
       matrix: ${{ fromJSON(needs.prepare.outputs.smoke_matrix) }}
     env:
       DEPLOY_SHA: ${{ needs.prepare.outputs.smoke_sha || needs.prepare.outputs.deploy_sha }}
@@ -348,7 +346,7 @@ jobs:
   pawn_slug_visual:
     name: Pawn Slug Godot · live visual evidence
     needs: [prepare, backend, frontend, worker, smoke]
-    if: needs.prepare.outputs.admitted == 'true' && needs.prepare.outputs.pawn_slug_visual_required == 'true' && needs.backend.outputs.superseded != 'true'
+    if: needs.prepare.outputs.admitted == 'true' && needs.prepare.outputs.pawn_slug_visual_required == 'true' && needs.backend.outputs.superseded != 'true' && needs.frontend.outputs.superseded != 'true' && needs.worker.outputs.superseded != 'true'
     uses: ./.github/workflows/staging-pawn-slug-visual.yml
     with:
       deploy_sha: ${{ needs.prepare.outputs.deploy_sha }}
@@ -375,9 +373,6 @@ jobs:
     steps:
       - name: Summary
         run: echo "### Staging $DEPLOY_SHA · backend=$BACKEND · frontend=$FRONTEND · worker=$WORKER · smoke=$SMOKE" >> "$GITHUB_STEP_SUMMARY"
-      # Diagnostics must never invalidate a successfully deployed generation.
-      # The summary job has no checkout by default: the first metrics revision
-      # forgot this and blocked accreditation even when all smokes were green.
       - name: Checkout staging metrics scripts
         id: metrics_checkout
         continue-on-error: true
