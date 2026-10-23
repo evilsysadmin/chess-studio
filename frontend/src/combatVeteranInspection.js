@@ -1,12 +1,13 @@
-import { deploymentSlotForSquare, deploymentSquareForSlot, effectiveDeploymentType } from './combatDeployment.js';
+import { deploymentSlotForSquare, deploymentSquareForSlot, effectiveDeploymentType, ensureDeploymentState } from './combatDeployment.js';
 import { originTypeForRosterKey } from './combatDeployment.js';
 import { pieceRankForLevel } from './combatRanks.js';
 import { unitDecorations, unitRecordForKey, unitServiceMarks } from './combatUnitService.js';
 
-// Read-only lookup: the visible square maps to a DEPLOYMENT SLOT, which
-// resolves to the active persistent unit identity. Never use the square as
-// an identity, or inherit a dead predecessor's medals after replacement.
-export function combatVeteranAtSquare(roster, square) {
+// Read-only lookup: use the same canonical deployment as deploymentFen(),
+// including legacy migration, reserves and invalid/duplicate slot rejection.
+// Otherwise a rendered piece may have no dossier, or a corrupt save may
+// attribute its slot to the wrong persistent veteran.
+function deployedVeteranAtSquare(roster, square) {
   const slot = deploymentSlotForSquare(square, 'w');
   const unitKey = slot && roster?.deployment?.[slot.key];
   if (!unitKey || unitKey === 'k-e') return null;
@@ -36,11 +37,17 @@ export function combatVeteranAtSquare(roster, square) {
   };
 }
 
+export function combatVeteranAtSquare(roster, square) {
+  return deployedVeteranAtSquare(ensureDeploymentState(roster), square);
+}
+
 export function combatVeteranInspectionOptions(roster) {
-  return Object.keys(roster?.deployment || {})
+  // Normalize just once for the full selector, not once per square.
+  const state = ensureDeploymentState(roster);
+  return Object.keys(state.deployment || {})
     .map((slot) => deploymentSquareForSlot(slot, 'w'))
     .filter(Boolean)
     .sort((a, b) => Number(a[1]) - Number(b[1]) || a.localeCompare(b))
-    .map((square) => combatVeteranAtSquare(roster, square))
+    .map((square) => deployedVeteranAtSquare(state, square))
     .filter(Boolean);
 }
