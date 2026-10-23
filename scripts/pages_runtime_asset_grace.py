@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 from concurrent.futures import ThreadPoolExecutor
 import hashlib
+import http.client
 import json
 import pathlib
 import re
@@ -121,8 +122,15 @@ def fetch_from_origin(origin: str, path: str, limit: int, *, optional: bool = Fa
                 return None
             if error.code not in {429, 500, 502, 503, 504} or attempt == 2:
                 raise
-        except (TimeoutError, urllib.error.URLError) as error:
-            if isinstance(error, urllib.error.URLError) and not isinstance(error.reason, TimeoutError):
+        except (TimeoutError, ConnectionResetError, http.client.IncompleteRead,
+                urllib.error.URLError) as error:
+            # Pages / Cloudflare sometimes closes an otherwise healthy GET
+            # before returning response headers or while streaming a chunk.
+            # These transport cuts are transient candidates, like timeouts;
+            # still fail closed after three attempts and never skip assets.
+            if isinstance(error, urllib.error.URLError) and not isinstance(
+                error.reason, (TimeoutError, ConnectionResetError, http.client.IncompleteRead)
+            ):
                 raise
             if attempt == 2:
                 raise
@@ -265,6 +273,42 @@ def self_test() -> None:
     else:
         raise AssertionError("persistent timeout bypassed historical chunk retention")
     assert len(failures) == 3
+    # Exact Pages failure observed in staging: urllib raises RemoteDisconnected
+    # directly before it wraps any URL error. A one-off reset is retried, not
+    # interpreted as a corrupt or missing immutable asset.
+    attempts = []
+    pauses = []
+    def disconnected_once(request, timeout=15):
+        attempts.append(request.full_url)
+        if len(attempts) == 1:
+            raise http.client.RemoteDisconnected("remote closed without response")
+        return FakeResponse(b"preserved immutable asset")
+    assert fetch_from_origin("https://example.com", "assets/Old-12345678.js", 1024,
+                             opener=disconnected_once, sleep=pauses.append) == b"preserved immutable asset"
+    assert len(attempts) == 2 and pauses == [1]
+    # URLError-wrapped connection resets are also transient.
+    wrapped = []
+    def wrapped_reset(request, timeout=15):
+        wrapped.append(request.full_url)
+        if len(wrapped) == 1:
+            raise urllib.error.URLError(ConnectionResetError("connection reset"))
+        return FakeResponse(b"preserved immutable asset")
+    assert fetch_from_origin("https://example.com", "assets/Old-12345678.js", 1024,
+                             opener=wrapped_reset, sleep=lambda _: None) == b"preserved immutable asset"
+    assert len(wrapped) == 2
+    # Persistent abrupt EOF may never silently publish a reduced retention set.
+    persistent = []
+    def always_disconnect(request, timeout=15):
+        persistent.append(request.full_url)
+        raise http.client.RemoteDisconnected("remote closed without response")
+    try:
+        fetch_from_origin("https://example.com", "assets/Old-12345678.js", 1024,
+                          opener=always_disconnect, sleep=lambda _: None)
+    except http.client.RemoteDisconnected:
+        pass
+    else:
+        raise AssertionError("persistent remote disconnect bypassed retained-asset safety")
+    assert len(persistent) == 3
     forbidden = []
     def forbidden_asset(request, timeout=15):
         forbidden.append(timeout)
