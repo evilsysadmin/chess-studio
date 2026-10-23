@@ -541,6 +541,7 @@ static-preflight: capacity-probe-check test-parity-check test-flake-check audio-
 	@node --test e2e/war-room-gpu-shadow-readiness.test.mjs
 	@node --test e2e/home-gpu-flame-eligibility.test.mjs
 	@node --test scripts/verify_home_flame_gpu_evidence.test.mjs
+	@node --test e2e/home-blender-gpu-flame-contrast.test.mjs
 	@python3 -S -m unittest discover -s scripts -p 'test_compare_home_3d_gpu.py' -v
 	@python3 -S scripts/oci_k3s_staging2_root.py self-test infra/oci/gitops/staging2/backend.yaml.tmpl
 	@find frontend/src scripts e2e -type f \( -name '*.js' -o -name '*.mjs' \) -print0 | xargs -0 -P $(NODE_CHECK_JOBS) -n1 node --check

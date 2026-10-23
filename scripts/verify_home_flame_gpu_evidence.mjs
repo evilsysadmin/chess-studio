@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { inflateSync } from 'node:zlib';
 import { join, resolve } from 'node:path';
+import { classifyHomeFlamePassContrast } from '../e2e/home-blender-gpu-flame-contrast.mjs';
 import { fileURLToPath } from 'node:url';
 
 // Local offline consistency check; this is NOT proof of physical GPU origin
@@ -327,6 +328,23 @@ export function validateHomeFlameEvidence(report, readPng, expectedRevision = nu
       || recorded.repeatRecommended !== true
       || report.drawEvidence?.physicalResultsStable !== (stabilityFlags.length === 0)) {
     fail('A/B/B/A stability and paired-drift claims differ from physical visits');
+  }
+
+  // The verdict comes from the pure conservative experimental classifier,
+  // not from a mutable label in the JSON file. The fourth visit can overturn
+  // a promising first A/B pair; no report may hide that behind a stale label.
+  const expectedInterpretation = classifyHomeFlamePassContrast({
+    savedMainDrawCalls: savedMain,
+    gpuDifferenceMs: difference,
+    pairedDifferencesMs: pair,
+    baseDriftMs: Math.abs(report.visits[0].gpuMedianMs - report.visits[3].gpuMedianMs),
+    variantDriftMs: Math.abs(report.visits[1].gpuMedianMs - report.visits[2].gpuMedianMs),
+    flags: stabilityFlags,
+  });
+  if (report.interpretation?.verdict !== expectedInterpretation.verdict
+      || !closeEnough(report.interpretation?.observedSpreadMs,
+        expectedInterpretation.observedSpreadMs)) {
+    fail('A/B/B/A reported interpretation contradicts measured hardware receipts');
   }
   return {
     checkedScreenshots: 4,

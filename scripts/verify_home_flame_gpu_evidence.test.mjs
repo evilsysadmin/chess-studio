@@ -106,6 +106,7 @@ function example() {
     visualEvidence: [...HOME_FLAME_PNGS], visualEvidenceHashes, visits,
     interpretation: {
       verdict: 'candidate-repeat-and-review-pngs',
+      observedSpreadMs: 0,
       productionApproved: false, visualReviewRequired: true,
       repeatHardwareRunRequired: true,
     },
@@ -347,9 +348,26 @@ describe('offline Home flame A/B/B/A PNG manifest verification', () => {
     x.report.stability.variantDriftPct = 100 * (10 - 8.9) / single;
     x.report.stability.pairedDifferencesMs = [9.5 - 8.9, 9.5 - 10.0];
     x.report.stability.flags = ['paired-direction-disagrees'];
+    x.report.interpretation.verdict = 'inconclusive-unstable-paired-timings';
+    x.report.interpretation.observedSpreadMs = 10 - 8.9;
+
     const result = validateHomeFlameEvidence(x.report, x.read);
     assert.equal(result.productionApproved, false);
     assert.equal(result.hardwareOriginVerified, false);
+  });
+
+  it('rejects optimistic interpretation labels or doctored observed spread', () => {
+    for (const alter of [
+      (x) => { x.report.interpretation.verdict = 'no-observed-draw-reduction'; },
+      (x) => { x.report.interpretation.verdict = 'candidate-repeat-and-review-pngs-v2'; },
+      (x) => { x.report.interpretation.observedSpreadMs = 0.5; },
+      (x) => { delete x.report.interpretation.observedSpreadMs; },
+    ]) {
+      const x = example();
+      alter(x);
+      assert.throws(() => validateHomeFlameEvidence(x.report, x.read),
+        /interpretation contradicts measured hardware receipts/);
+    }
   });
 
   it('rejects reported draw savings not grounded in four visit submissions', () => {
