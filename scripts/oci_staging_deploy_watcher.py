@@ -49,7 +49,6 @@ MAX_DEPLOY_ERROR_BACKOFF_SECONDS = 300
 # Avoid hot-looping a stale Worker SHA without permanently suppressing recovery.
 SUPERSEDED_RETRY_SECONDS = 300
 HTTP_TIMEOUT_SECONDS = 8
-DEPLOY_TIMEOUT_SECONDS = 900
 SHA_RE = re.compile(r"^[0-9a-f]{40}$")
 USER_AGENT = "chess-studio-staging-deploy-watcher/1"
 
@@ -137,10 +136,14 @@ def deploy_lock_busy() -> bool:
 
 
 def deploy(candidate: str) -> None:
+    # Do not put a timeout around sudo: subprocess.run(timeout=...) kills only
+    # its immediate child. The root-owned launcher/grandchildren may survive,
+    # retaining FD8's flock indefinitely after the watcher reports timeout.
+    # Serialize by waiting for the authoritative root wrapper to finish; the
+    # watcher does not start another deploy while this call is outstanding.
     subprocess.run(
         ["sudo", "--non-interactive", DEPLOY_WRAPPER, candidate],
         check=True,
-        timeout=DEPLOY_TIMEOUT_SECONDS,
     )
 
 
@@ -270,6 +273,14 @@ def self_test() -> None:
     assert repeated_error_delay(sample, 5, "a" * 40) == (1, 30)
     assert repeated_error_delay(sample, 5, sample) == (5, 300)
     assert WatchDeployError(sample, 75).candidate == sample
+    # A supervisor timeout must never kill just sudo and orphan the root
+    # launcher/grandchildren that might continue holding deploy.lock.
+    with patch(f"{__name__}.subprocess.run") as supervised_run:
+        deploy(sample)
+        supervised_run.assert_called_once_with(
+            ["sudo", "--non-interactive", DEPLOY_WRAPPER, sample],
+            check=True,
+        )
     assert str(WatchDeployError(sample, None)).endswith("rc=timeout")
     assert SUPERSEDED_RETRY_SECONDS >= ERROR_BACKOFF_SECONDS
     assert HTTP_TIMEOUT_SECONDS < POLL_SECONDS
