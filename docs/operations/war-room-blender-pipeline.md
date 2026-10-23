@@ -97,6 +97,29 @@ Performance adaptations are renderer-specific:
 
 Do not trade legibility for frame rate without evidence; measure draw/paint cadence and validate on midrange hardware or an equivalent budget.
 
+### Censo de geometría de los GLB publicados (sin medición GPU)
+
+Para comparar las salas V2/V3/V4 de R2, descargar cada archivo desde el
+`url` inmutable de `frontend/src/assets/r2-assets-manifest.json` (IDs
+`warRoom.v2.runtime`, `warRoom.v3.runtime` y `warRoom.v4.runtime`),
+conservando el nombre original. No usar el alias `latest`, exportaciones
+locales de Blender ni copias de staging como si fueran producción.
+
+```bash
+python3 scripts/blender/war_room_glb_census.py \
+  --runtime-manifest frontend/src/assets/r2-assets-manifest.json \
+  --output-json /tmp/war-room-published-geometry.json \
+  /tmp/war-room-glb/*.glb
+```
+
+El censo comprueba el nombre publicado, tipo, bytes y SHA-256 de **cada** GLB
+y falla si falta o no corresponde a una de las tres variantes. El JSON
+incluye `runtimeManifestProvenance.logicalId` y `r2Key`.
+El modo sin `--runtime-manifest` sigue admitiendo candidatos de Blender sin
+afirmar que sean los assets publicados. En ambos casos, triángulos y
+primitivas son **potenciales**, no draw calls, shadow passes ni FPS reales:
+las pruebas con GPU física siguen siendo un gate independiente.
+
 ## Acceptance
 
 A v2 or v3 visual iteration is accepted only when:
