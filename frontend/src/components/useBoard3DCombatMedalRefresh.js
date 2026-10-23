@@ -4,7 +4,7 @@ import { syncBoard3DRankInsignias } from './Board3DRankInsignia.js';
 // Combat-only service ornaments. Never rebuild the shared renderer just
 // because the returning army has earned a new decoration with the same FEN.
 export default function useBoard3DCombatMedalRefresh({
-  sceneStateRef, animationFrameRef, warRoomVariant, pieceMedalCounts,
+  sceneStateRef, animationFrameRef, warRoomVariant, pieceMedalCounts, pieceRankLevels,
 }) {
   useEffect(() => {
     if (warRoomVariant !== 'combat-ops') return;
@@ -12,5 +12,5 @@ export default function useBoard3DCombatMedalRefresh({
     if (!state || animationFrameRef.current) return;
     syncBoard3DRankInsignias(state);
     state.requestRender();
-  }, [sceneStateRef, animationFrameRef, pieceMedalCounts, warRoomVariant]);
+  }, [sceneStateRef, animationFrameRef, pieceMedalCounts, pieceRankLevels, warRoomVariant]);
 }
