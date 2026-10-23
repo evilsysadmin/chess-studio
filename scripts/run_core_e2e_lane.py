@@ -130,6 +130,9 @@ LANE_COMMANDS: dict[str, tuple[LaneCommand, ...]] = {
     ),
     'smoke': (
         LaneCommand('smoke.spec.js', ('--grep', SMOKE_GREP, '--workers=1', '--retries=0', '--max-failures=1')),
+        # A lost feedback POST must preserve the draft across modal close/F5,
+        # then clear it only after an acknowledged manual retry.
+        LaneCommand('feedback-draft-recovery.spec.js', ('--workers=1', '--retries=0', '--max-failures=1'), canonical_critical=False),
         # F5 between cinematic mate and the explicit debrief CTA must not lose
         # the recorded report or award the campaign twice. Keep this one focused.
         LaneCommand('combat-critical.spec.js', ('--grep', 'Campaña · F5 tras JAQUE MATE', '--workers=1', '--retries=0', '--max-failures=1', '--timeout=120000')),
