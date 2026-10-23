@@ -343,6 +343,8 @@ The same local benchmark creates **four fresh browser contexts** in fixed order 
 
 **Interpretation:** the A/B/B/A gap bounds the potential fragment-lighting cost of this *visually different scene*, **not** FPS savings or a safe estimate for removing lights. Re-run multiple sessions under the same driver/power conditions. If GPU differences are small or unstable, stop rather than trading away the canonical castle lighting; if consistently large, test a narrower light selection and review visual runtime evidence before any production change.
 
+El verificador calcula por su cuenta las dos diferencias pareadas (A1−B1, A2−B2), el drift de cada modo y los flags de estabilidad a partir de los cuatro tiempos GPU por visita. Los campos `stability.*` y `drawEvidence.physicalResultsStable` deben coincidir con esos cálculos; si se contradicen, el JSON se rechaza. Una ejecución auténtica pero ruidosa **puede pasar la validación de integridad** con flags desfavorables: eso no significa que la optimización sea útil ni apta para producción.
+
 ### Verificador A/B/B/A de **cuatro** visitas (aislado de la PR visual)
 
 El experimento de llamas usa cuatro visitas `normal/single/single/normal` **dentro del mismo commit**. No usar el comparador normal de dos revisiones, que exige SHA distintos y tres visitas por informe. Una vez obtenido el informe y los **cuatro PNG físicos auténticos** de la rama experimental, ejecutar:

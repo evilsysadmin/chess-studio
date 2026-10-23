@@ -299,6 +299,35 @@ export function validateHomeFlameEvidence(report, readPng, expectedRevision = nu
       || !closeEnough(report.gpuContrastPct, 100 * difference / baseline)) {
     fail('A/B/B/A GPU summary differs from its recorded physical visits');
   }
+
+  // Report-level drift flags must be derived from the A/B/B/A samples, not
+  // trusted as a self-certification that a noisy run is repeatable.
+  const pair = [
+    report.visits[0].gpuMedianMs - report.visits[1].gpuMedianMs,
+    report.visits[3].gpuMedianMs - report.visits[2].gpuMedianMs,
+  ];
+  const normalDriftPct =
+    100 * Math.abs(report.visits[0].gpuMedianMs - report.visits[3].gpuMedianMs) / baseline;
+  const singleDriftPct =
+    100 * Math.abs(report.visits[1].gpuMedianMs - report.visits[2].gpuMedianMs) / candidate;
+  const stabilityFlags = [];
+  if (normalDriftPct > 15) stabilityFlags.push('normal-drift-over-15pct');
+  if (singleDriftPct > 15) stabilityFlags.push('single-drift-over-15pct');
+  if (!((pair[0] > 0 && pair[1] > 0) || (pair[0] < 0 && pair[1] < 0))) {
+    stabilityFlags.push('paired-direction-disagrees');
+  }
+  const recorded = report.stability;
+  if (!recorded || !closeEnough(recorded.baseDriftPct, normalDriftPct)
+      || !closeEnough(recorded.variantDriftPct, singleDriftPct)
+      || !Array.isArray(recorded.pairedDifferencesMs)
+      || recorded.pairedDifferencesMs.length !== 2
+      || recorded.pairedDifferencesMs.some((value, i) => !closeEnough(value, pair[i]))
+      || !Array.isArray(recorded.flags)
+      || recorded.flags.join(',') !== stabilityFlags.join(',')
+      || recorded.repeatRecommended !== true
+      || report.drawEvidence?.physicalResultsStable !== (stabilityFlags.length === 0)) {
+    fail('A/B/B/A stability and paired-drift claims differ from physical visits');
+  }
   return {
     checkedScreenshots: 4,
     verdict: report.interpretation.verdict,
