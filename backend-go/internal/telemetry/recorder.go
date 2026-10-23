@@ -39,6 +39,14 @@ const (
 	frontendEventsName = "chess_studio_frontend_events"
 	frontendVitalName  = "chess_studio_frontend_web_vital"
 	billingGaugeName   = "chess_studio_billing_cost_current_cycle"
+// HTTP durations are observed in seconds. The default OpenTelemetry bounds
+// are 0,5,10,... in the instrument's UNIT, not milliseconds. That collapses
+// normal requests into (0,5]s and reports a fictitious ~4.75s p95.
+var httpDurationBucketsSeconds = []float64{
+	0.005, 0.01, 0.025, 0.05, 0.075, 0.1, 0.15, 0.25,
+	0.5, 0.75, 1, 1.5, 2, 3, 5, 10,
+}
+
 	// billingTTL mirrors _BILLING_EMIT_TTL_SECONDS: a cost stops being
 	// reported five minutes after it was received.
 	billingTTL     = 5 * time.Minute
@@ -183,7 +191,11 @@ func New(ctx context.Context, cfg Config, opts Options) (*Recorder, error) {
 		provider := sdkmetric.NewMeterProvider(sdkmetric.WithResource(res), sdkmetric.WithReader(reader))
 		meter := provider.Meter(meterName)
 		counter, err1 := meter.Int64Counter(requestCounterName, metric.WithDescription("Chess Studio HTTP requests"))
-		histogram, err2 := meter.Float64Histogram(durationName, metric.WithUnit("s"), metric.WithDescription("Chess Studio HTTP request duration"))
+		histogram, err2 := meter.Float64Histogram(durationName,
+			metric.WithUnit("s"),
+			metric.WithDescription("Chess Studio HTTP request duration"),
+			metric.WithExplicitBucketBoundaries(httpDurationBucketsSeconds...),
+		)
 		frontend, err3 := meter.Int64Counter(frontendEventsName, metric.WithDescription("Coarse frontend telemetry events"))
 		vital, err4 := meter.Float64Histogram(frontendVitalName, metric.WithDescription("Web Vital value reported by the frontend"))
 		_, err5 := meter.Float64ObservableGauge(billingGaugeName,
