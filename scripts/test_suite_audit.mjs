@@ -314,7 +314,7 @@ if (checkCiWiring) {
   ]) {
     if (!goDockerSource.includes(required)) fail(`Guardia OpenPGP Docker insuficiente: ${required}`);
   }
-  if (/\\|\\|\\s*(?:true|:)(?:\\s|$)/.test(goDockerSource)) {
+  if (/\|\|\s*(?:true|:)(?:\s|$)/.test(goDockerSource)) {
     fail('Docker OpenPGP no puede silenciar errores');
   }
   // Check the real ARM64 binary with an external fail-closed script to
