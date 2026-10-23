@@ -22,7 +22,7 @@ from compare_war_room_gpu import (
 )
 from run_war_room_gpu_ab import (
     BenchError, HARNESS_FILES, capture, exercise_once, gpu_env,
-    prepare_worktree, require, require_complete_harness_imports,
+    prepare_worktree, require, require_complete_harness_imports, check_gpu_harness_syntax,
     require_port_free, resolve_sha, run,
 )
 
@@ -504,6 +504,7 @@ def main():
             for path in HARNESS_FILES
         }
         require_complete_harness_imports(harness_blobs)
+        check_gpu_harness_syntax(harness_blobs)
         require(b'renderCost' in harness_blobs['e2e/war-room-gpu-benchmark.spec.js'],
                 'The current harness must capture real per-render costs')
         # Historical commits are allowed only if they really include the
