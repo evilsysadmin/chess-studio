@@ -298,11 +298,20 @@ if (checkCiWiring) {
   const goModSource = read(path.join(root, 'backend-go', 'go.mod'));
   const xNetMatch = goModSource.match(/^[ \t]*golang\.org\/x\/net[ \t]+v(\d+)\.(\d+)\.(\d+)(?:[ \t]+\/\/[^\n]*)?$/m);
   if (goModSource.includes('golang.org/x/net') && !xNetMatch) fail('x/net requiere versión semver explícita en go.mod');
+  if (/^[ \t]*replace[ \t]+(?:\([ \t]*)?golang\.org\/x\/net\b/m.test(goModSource)
+    || /^[ \t]*golang\.org\/x\/net(?:[ \t]+v\d+\.\d+\.\d+)?[ \t]+=>/m.test(goModSource)) {
+    fail('go.mod no debe sustituir golang.org/x/net y eludir el mínimo seguro');
+  }
   if (xNetMatch) {
     const version = xNetMatch.slice(1).map(Number);
     const floor = [0, 60, 0];
     const i = version.findIndex((part, index) => part !== floor[index]);
     if (i >= 0 && version[i] < floor[i]) fail('golang.org/x/net por debajo del mínimo seguro v0.60.0');
+    const selected = 'golang.org/x/net v' + version.join('.');
+    const goSum = read(path.join(root, 'backend-go', 'go.sum'));
+    if (!goSum.includes(selected + ' h1:') || !goSum.includes(selected + '/go.mod h1:')) {
+      fail('Faltan checksums de la versión segura x/net en go.sum');
+    }
   }
 
 
