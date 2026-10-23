@@ -8,6 +8,7 @@ import {
   homeBlenderFireKind,
   homeBlenderSteamMotion,
   homeBlenderSteamMotionPrepared,
+  applyHomeBlenderCoffeeTemperature,
   applyHomeBlenderPieceLift,
   disposeStaleHomeBlenderGltf,
   homeBlenderProjectAnchors,
@@ -1282,5 +1283,25 @@ describe('home blender runtime LOD cap', () => {
     expect(tighterRuntimeLodCap('lite', '2d')).toBe('2d');
     expect(tighterRuntimeLodCap('2d', 'lite')).toBe('2d');
     expect(tighterRuntimeLodCap('lite', null)).toBe('lite');
+  });
+});
+
+
+describe('Home coffee is cold only while Matthias sleeps', () => {
+  it('hides only the coffee particles while keeping the hearth and candles untouched', () => {
+    const steam = { userData: { steam: true }, visible: true };
+    const fire = { userData: { fire: true }, visible: true };
+    const candle = { userData: { candles: true }, visible: true };
+    const particles = [steam, fire, candle];
+    expect(applyHomeBlenderCoffeeTemperature(particles, { profile: 'sleep' })).toBe('cold');
+    expect(steam.visible).toBe(false);
+    expect(fire.visible).toBe(true);
+    expect(candle.visible).toBe(true);
+
+    expect(applyHomeBlenderCoffeeTemperature(particles, { profile: 'sip' })).toBe('hot');
+    expect(steam.visible).toBe(true);
+    expect(fire.visible).toBe(true);
+    expect(candle.visible).toBe(true);
+    expect(applyHomeBlenderCoffeeTemperature([], { profile: 'sleep' })).toBe('cold');
   });
 });
