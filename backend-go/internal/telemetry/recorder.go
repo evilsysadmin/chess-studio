@@ -39,14 +39,6 @@ const (
 	frontendEventsName = "chess_studio_frontend_events"
 	frontendVitalName  = "chess_studio_frontend_web_vital"
 	billingGaugeName   = "chess_studio_billing_cost_current_cycle"
-// HTTP durations are observed in seconds. The default OpenTelemetry bounds
-// are 0,5,10,... in the instrument's UNIT, not milliseconds. That collapses
-// normal requests into (0,5]s and reports a fictitious ~4.75s p95.
-var httpDurationBucketsSeconds = []float64{
-	0.005, 0.01, 0.025, 0.05, 0.075, 0.1, 0.15, 0.25,
-	0.5, 0.75, 1, 1.5, 2, 3, 5, 10,
-}
-
 	// billingTTL mirrors _BILLING_EMIT_TTL_SECONDS: a cost stops being
 	// reported five minutes after it was received.
 	billingTTL     = 5 * time.Minute
@@ -54,6 +46,14 @@ var httpDurationBucketsSeconds = []float64{
 	tracerName     = "chess-studio.backend"
 	exportInterval = 30 * time.Second
 )
+
+// HTTP durations are observed in seconds. The default OpenTelemetry bounds
+// are 0,5,10,... in the instrument's UNIT, not milliseconds. That collapses
+// normal requests into (0,5]s and reports a fictitious ~4.75s p95.
+var httpDurationBucketsSeconds = []float64{
+	0.005, 0.01, 0.025, 0.05, 0.075, 0.1, 0.15, 0.25,
+	0.5, 0.75, 1, 1.5, 2, 3, 5, 10,
+}
 
 // UsernameFunc returns the verified session subject of a request, or "" —
 // what main._request_username derives from the JWT without touching Mongo.
