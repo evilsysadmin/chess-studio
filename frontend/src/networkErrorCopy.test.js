@@ -16,7 +16,8 @@ describe('copy de incidencias de conexión', () => {
   it('no confunde un TypeError de aplicación con fallo de red', () => {
     const error = new TypeError('Cannot read properties of undefined (reading board)');
     expect(isConnectionFailure(error)).toBe(false);
-    expect(connectionErrorCopy(error)).toMatch(/Cannot read properties/);
+    expect(connectionErrorCopy(error)).toBe('No se pudo completar la operación.');
+    expect(connectionErrorCopy(error, 'en')).toBe('Could not complete the operation.');
   });
 
   it('reconoce mensajes de fallos fetch en distintos navegadores', () => {
