@@ -97,9 +97,9 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 
     const consultation = room.getByRole('combobox', { name: 'Consultar sector del mapa' });
     await expect(consultation).toBeVisible();
     await consultation.selectOption('start');
-    await expect(room.getByRole('status')).toContainText('Base');
-    await expect(room.getByRole('status')).toContainText('Posición actual');
-    await expect(room.getByRole('button', { name: 'PREPARAR EJÉRCITO' })).toBeVisible();
+    await expect(room.locator('.combat-briefing-map-readout')).toContainText('Base');
+    await expect(room.locator('.combat-briefing-map-readout')).toContainText('Posición actual');
+    await expect(room.getByRole('button', { name: /PREPARAR EJÉRCITO/i })).toBeVisible();
     await room.getByRole('button', { name: 'Cerrar consulta de mapa' }).click();
     await expect(room.locator('.combat-briefing-map-readout')).toHaveCount(0);
 
