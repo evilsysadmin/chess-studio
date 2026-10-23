@@ -76,6 +76,7 @@ INVENTORY = {
     'war-room-blender-art.yml': 'art-generation',
     'war-room-v3-blender-art.yml': 'art-generation',
     'war-room-v4-blender-art.yml': 'art-generation',
+    'war-room-published-geometry.yml': 'performance-diagnostics',
     'war-room-v3-r2-pin.yml': 'infra-assets-integrity',
     'war-room-v4-r2-pin.yml': 'infra-assets-integrity',
 }
