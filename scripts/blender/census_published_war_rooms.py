@@ -49,7 +49,13 @@ def audit_published_glbs(manifest: dict, directory: Path, *, opener=None, top=12
             raise ValueError(f"{logical_id}: invalid size")
         if entry.get("contentType") != "model/gltf-binary":
             raise ValueError(f"{logical_id}: not a GLB")
-        with fetch(url, timeout=30) as response:
+        # Mirror the repository's existing public-R2 cache observers. The
+        # generic Python-urllib user agent can be blocked by Cloudflare.
+        request = urllib.request.Request(url, method="GET", headers={
+            "Accept": "model/gltf-binary",
+            "User-Agent": "chess-studio-r2-warroom-census/1",
+        })
+        with fetch(request, timeout=30) as response:
             raw = response.read(size + 1)
         actual_sha = hashlib.sha256(raw).hexdigest()
         if len(raw) != size or actual_sha != digest:
