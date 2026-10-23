@@ -76,6 +76,11 @@ def self_test():
     assert 'LOCK = Path("/var/lib/chess-studio/deploy.lock")' in diagnostic_source
     assert "os.O_RDONLY | os.O_CLOEXEC | os.O_NOFOLLOW" in diagnostic_source
     assert "os.kill(" not in diagnostic_source and "subprocess.Popen(" not in diagnostic_source
+    assert "descriptor.stat()" in diagnostic_source  # metadata-only, never FD contents
+    assert "max_processes: int = 4096" in diagnostic_source
+    assert "OCI_HOST_LOCK_FD_SCAN coverage=" in diagnostic_source
+    assert "OCI_HOST_LOCK_FD_HOLDER pid=" in diagnostic_source
+    assert "OCI_HOST_LOCK_ACTION manual_review_only=yes" in diagnostic_source
     subprocess.run([sys.executable, "-S", str(diag), "--self-test"], check=True)
     print("OCI deploy host lock contract: OK")
 
