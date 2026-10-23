@@ -331,20 +331,19 @@ function materialGradeObjectIdentity(object) {
 
 export function warRoomMaterialGradeDynamicSignature(root) {
   if (!root?.children) return '';
-  return root.children
-    .filter((child) => child?.isGroup)
-    .map((group) => {
-      const children = group.children || [];
-      const first = children[0] || null;
-      const last = children.length ? children[children.length - 1] : null;
-      return [
-        materialGradeObjectIdentity(group),
-        children.length,
-        materialGradeObjectIdentity(first),
-        materialGradeObjectIdentity(last),
-      ].join(':');
-    })
-    .join('|');
+  // Evaluated on each painted War Room frame, including the 10-FPS ambient
+  // heartbeat. Keep the identical signature contract but avoid allocating a
+  // filtered array, a mapped array and per-group temporary tuples each time.
+  let signature = '';
+  for (const group of root.children) {
+    if (!group?.isGroup) continue;
+    const children = group.children || [];
+    const first = children[0] || null;
+    const last = children.length ? children[children.length - 1] : null;
+    if (signature) signature += '|';
+    signature += `${materialGradeObjectIdentity(group)}:${children.length}:${materialGradeObjectIdentity(first)}:${materialGradeObjectIdentity(last)}`;
+  }
+  return signature;
 }
 
 export function shouldRunWarRoomMaterialGrade(scene) {
