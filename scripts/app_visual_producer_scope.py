@@ -201,6 +201,19 @@ QUICK_MATCH_EXACT_PRODUCERS = {
     "frontend/src/components/usewarroomimmersive.js": {"warroom-core"},
 }
 
+# Review-only ownership for the earned-medals feature. Explicit paths keep
+# unknown renderer code fail-closed to all producers. Board3D/School and the
+# real Combat Operations canvas remain in scope; unrelated Home/Hans/health
+# screenshots cannot prove service rosettes and should not run.
+COMBAT_HONORS_EXACT_PRODUCERS = {
+    "frontend/src/combatpreparationhonors.js": {"combat-prep"},
+    "frontend/src/components/board3dcombatmedals.js": {"training-school", "combat-prep", "warroom-core"},
+    "frontend/src/components/useboard3dcombatmedalrefresh.js": {"training-school", "combat-prep", "warroom-core"},
+    "frontend/src/components/warroomboardsurface.jsx": {
+        "training-school", "combat-battle", "combat-prep", "warroom-core",
+    },
+}
+
 SHARED_BOOTSTRAP_EXACT_PRODUCERS = {
     # The lazy classic-shell router can decide whether School or classic War Room
     # mounts at all, but it does not own room decor, armor or Hans choreography.
@@ -455,6 +468,8 @@ def classify_path(path: str) -> set[str] | None:
         return {"combat-battle"}
     if lower in COMBAT_PREPARATION_FILES:
         return {"combat-prep"}
+    if lower in COMBAT_HONORS_EXACT_PRODUCERS:
+        return set(COMBAT_HONORS_EXACT_PRODUCERS[lower])
     if lower in POSTGAME_EXACT_PRODUCERS:
         return set(POSTGAME_EXACT_PRODUCERS[lower])
     if lower in QUICK_MATCH_EXACT_PRODUCERS:
@@ -774,6 +789,25 @@ def self_test() -> None:
     for map_file in combat_map_files:
         assert classify([map_file]) == "combat-prep", map_file
     assert classify(combat_map_files + ["e2e/combat-briefing-room-visual-artifact.spec.js"]) == "combat-prep"
+    assert classify(["frontend/src/combatPreparationHonors.js"]) == "combat-prep"
+    assert classify(["frontend/src/components/Board3DCombatMedals.js"]) == "training-school,combat-prep,warroom-core"
+    assert classify(["frontend/src/components/useBoard3DCombatMedalRefresh.js"]) == "training-school,combat-prep,warroom-core"
+    assert classify(["frontend/src/components/WarRoomBoardSurface.jsx"]) == "training-school,combat-battle,combat-prep,warroom-core"
+    # End-to-end source ownership for this PR: actual decorated Combat proof +
+    # every board-sharing surface, never global screenshot fan-out.
+    combat_honors_files = [
+        "frontend/src/combatPreparationHonors.js",
+        "frontend/src/components/CombatPreparationRoom.jsx",
+        "frontend/src/components/Board3DCombatMedals.js",
+        "frontend/src/components/useBoard3DCombatMedalRefresh.js",
+        "frontend/src/components/WarRoomBoardSurface.jsx",
+        "frontend/src/components/Board3DCore.jsx",
+        "frontend/src/components/Board3DRankInsignia.js",
+        "frontend/src/components/Board3D.jsx",
+        "e2e/combat-briefing-room-visual-artifact.spec.js",
+    ]
+    assert classify(combat_honors_files) == "training-school,combat-battle,combat-prep,warroom-core"
+    assert classify(combat_honors_files + ["frontend/src/unreviewedRenderer.js"]) == "all"
     assert classify(combat_map_files + ["frontend/src/components/Board3DCore.jsx"]) != "combat-prep"
     assert classify(combat_map_files + ["frontend/src/components/WarRoomSceneReadiness.js"]) != "combat-prep"
     assert classify(["frontend/src/components/CombatOperationsUnexpectedRenderer.js"]) == "all"
