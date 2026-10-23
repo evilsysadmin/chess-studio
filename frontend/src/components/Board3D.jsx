@@ -2,6 +2,7 @@ import { useLayoutEffect, useRef } from 'react';
 import { BoardRendererContext } from './Board.jsx';
 import Board3DCore from './Board3DCore.jsx';
 import { serializeBoard3DRankLevels } from './Board3DRankInsignia.js';
+import { serializeBoard3DCombatMedals } from './Board3DCombatMedals.js';
 import { chessFromFen } from '../chessRules.js';
 import {
   armWarRoomMoveFinishEvent,
@@ -28,6 +29,7 @@ export default function Board3D(props) {
   });
   const hansGameId = props.gameId;
   const rankLevelsPayload = serializeBoard3DRankLevels(props.pieceRankLevels);
+  const combatMedalsPayload = serializeBoard3DCombatMedals(props.pieceMedalCounts);
   const hansMarkerRef = useRef(null);
   const previousFenRef = useRef(props.fen);
   const moveFinishEvent = deriveWarRoomMoveFinishEvent({
@@ -75,7 +77,7 @@ export default function Board3D(props) {
 
   return (
     <BoardRendererContext.Provider value="3d">
-      <div style={{ display: 'contents' }} data-board3d-rank-levels={rankLevelsPayload}>
+      <div style={{ display: 'contents' }} data-board3d-rank-levels={rankLevelsPayload} data-board3d-combat-medals={combatMedalsPayload}>
         <span
           ref={hansMarkerRef}
           hidden
