@@ -15,6 +15,7 @@ import {
   warRoomHemisphereIntensity,
   warRoomMaterialIblProfile,
   warRoomShadowFactorForGovernor,
+  warRoomInteractionCoarsePointer,
 } from './WarRoom3DMotion.js';
 
 function fakeColor(hex) {
@@ -29,6 +30,32 @@ function fakeColor(hex) {
 }
 
 describe('WarRoom3DMotion', () => {
+  it('uses actual input modality instead of shadow resolution to grade War Room paints', () => {
+    const scene = {
+      userData: {
+        warRoomInteractionCoarsePointer: false,
+        warRoomRenderBudget: { shadowMapSize: 512, shadowRadius: 1.1 },
+      },
+    };
+    // Desktop auto/medium legitimately has the same 512px shadow map as touch.
+    expect(warRoomInteractionCoarsePointer(scene)).toBe(false);
+    expect(warRoomHemisphereIntensity({ coarsePointer: warRoomInteractionCoarsePointer(scene) })).toBe(0.62);
+    expect(nextRuntimeRenderScale({ coarsePointer: warRoomInteractionCoarsePointer(scene), currentScale: 1, frameMs: 30, slowFrameCount: 4 }).scale).toBe(0.9);
+
+    // Touch ultra may use a 2048px shadow map: it must still obey touch cadence.
+    scene.userData.warRoomInteractionCoarsePointer = true;
+    scene.userData.warRoomRenderBudget.shadowMapSize = 2048;
+    expect(warRoomInteractionCoarsePointer(scene)).toBe(true);
+    expect(warRoomHemisphereIntensity({ coarsePointer: warRoomInteractionCoarsePointer(scene) })).toBe(1.35);
+    expect(shadowRefreshInterval({ coarsePointer: warRoomInteractionCoarsePointer(scene) })).toBe(540);
+
+    // Old/test scenes lacking interaction metadata must never classify input
+    // by a quality tier or missing shadow budget.
+    delete scene.userData.warRoomInteractionCoarsePointer;
+    expect(warRoomInteractionCoarsePointer(scene)).toBe(false);
+    expect(warRoomInteractionCoarsePointer(null)).toBe(false);
+  });
+
   it('keeps fixed quality renderers on a valid full shadow cadence without a governor', () => {
     // 'low'/'medium'/'high'/'ultra' do not allocate an adaptive governor.
     expect(warRoomShadowFactorForGovernor(undefined)).toBe(1);
