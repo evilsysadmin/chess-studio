@@ -28,6 +28,8 @@ jobs:
           python3 -S scripts/oci_blue_green_edge.py --self-test
           python3 -S scripts/oci_service_contracts.py --self-test
           python3 -S scripts/oci_staging_deploy_watcher.py --self-test
+          python3 -S scripts/otel_log_ingest_probe.py --self-test
+          python3 -S scripts/oci_observability_heartbeat.py --self-test
           python3 -S scripts/oci_release_deploy.py --self-test
           python3 -S scripts/oci_runtime_manifest.py --self-test
           python3 -S scripts/oci_vault_compare.py --self-test
