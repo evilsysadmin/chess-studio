@@ -20,6 +20,8 @@ const ALL_CAPTURES = [
 const CAPTURES = process.env.HOME_MATTHIAS_CAPTURE_SCOPE === 'canonical-model'
   ? ALL_CAPTURES.filter(({ label }) => (
     label === 'desktop-dossier-coffee-1440x900'
+    || label === 'desktop-coffee-1440x900'
+    || label === 'desktop-rest-1440x900'
   ))
   : ALL_CAPTURES;
 
