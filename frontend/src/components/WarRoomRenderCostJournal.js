@@ -51,6 +51,22 @@ export function createWarRoomRenderCostJournal(capacity = WAR_ROOM_RENDER_COST_C
             };
           }
         }
+        const main = info.mainTopSubmitters;
+        const top = main?.top;
+        const remaining = main?.unrankedCalls;
+        if (Array.isArray(top) && top.length <= 8
+            && Number.isSafeInteger(remaining) && remaining >= 0
+            && top.every((entry) =>
+              entry && typeof entry.name === 'string' && entry.name.length > 0
+              && entry.name.length <= 96
+              && ['pieces', 'shell', 'other'].includes(entry.family)
+              && Number.isSafeInteger(entry.calls) && entry.calls > 0)
+            && top.reduce((sum, entry) => sum + entry.calls, remaining) === info.mainCalls) {
+          row.mainTopSubmitters = {
+            top: top.map(({ name, family, calls }) => ({ name, family, calls })),
+            unrankedCalls: remaining,
+          };
+        }
       }
       ring[(seq - 1) % capacity] = row;
     },

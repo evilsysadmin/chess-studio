@@ -30,11 +30,43 @@ export function installWarRoomShadowPassProbe(renderer) {
   // Three objects (not names, which may collide after Blender batching).
   const casterCalls = new Map();
   let casterValid = hasDirect;
+  // Also inspect real *main* submissions. These are distinct from shadow
+  // depth draws and must add up to the renderer's observed mainCalls.
+  const mainSubmitters = new Map();
+  let mainValid = hasDirect;
 
   // Preserve exact receiver/arguments: Three may supply a shader-material
   // override or geometry group. We only observe the call after it succeeds.
   const directWrapper = function (...args) {
-    if (!insideShadow) return originalDirect.apply(this, args);
+    if (!insideShadow) {
+      const before = counts.calls;
+      let succeeded = false;
+      try {
+        const result = originalDirect.apply(this, args);
+        succeeded = true;
+        return result;
+      } finally {
+        const after = counts.calls;
+        if (!succeeded || !Number.isSafeInteger(before) || before < 0
+            || !Number.isSafeInteger(after) || after < before) {
+          mainValid = false;
+        } else if (after > before) {
+          const object = args[4];
+          if (!object || typeof object !== 'object') {
+            mainValid = false;
+          } else {
+            const current = mainSubmitters.get(object);
+            if (current) current.calls += after - before;
+            else if (mainSubmitters.size >= 2048) mainValid = false;
+            else mainSubmitters.set(object, {
+              name: String(object.name || object.parent?.name || '(unnamed)').slice(0, 96),
+              family: warRoomShadowDrawFamily(object),
+              calls: after - before,
+            });
+          }
+        }
+      }
+    }
     const before = counts.calls;
     let succeeded = false;
     try {
@@ -112,11 +144,25 @@ export function installWarRoomShadowPassProbe(renderer) {
       families = { pieces: 0, shell: 0, other: 0 };
       casterCalls.clear();
       casterValid = hasDirect && renderer.renderBufferDirect === directWrapper;
+      mainSubmitters.clear();
+      mainValid = hasDirect && renderer.renderBufferDirect === directWrapper;
     },
     sample(totalCalls) {
       if (!valid || !Number.isSafeInteger(totalCalls)
           || shadowCalls > totalCalls || totalCalls < 0) return null;
       const result = { shadowCalls, mainCalls: totalCalls - shadowCalls, shadowPasses: passes };
+      const mainRows = [...mainSubmitters.values()];
+      // An empty main pass is not a ranking; avoid emitting a decorative
+      // zero-valued snapshot when only shadow work ran.
+      if (result.mainCalls > 0 && mainValid
+          && mainRows.reduce((sum, row) => sum + row.calls, 0) === result.mainCalls) {
+        mainRows.sort((a, b) => b.calls - a.calls || a.name.localeCompare(b.name));
+        const top = mainRows.slice(0, 8);
+        result.mainTopSubmitters = {
+          top: top.map((row) => ({ ...row })),
+          unrankedCalls: result.mainCalls - top.reduce((sum, row) => sum + row.calls, 0),
+        };
+      }
       const { pieces, shell, other } = families;
       // Missing API, unusual internal Three path, or invalid counters must
       // yield unavailable, never misleading zeros or partial attribution.

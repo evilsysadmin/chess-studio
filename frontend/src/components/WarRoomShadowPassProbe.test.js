@@ -52,6 +52,69 @@ describe('War Room opt-in shadow-pass draw census', () => {
     expect(renderer.renderBufferDirect).toBe(oldBuffer);
   });
 
+  it('ranks actual main-pass submissions separately from shadow casters', () => {
+    const counts = { calls: 0 };
+    const objects = Array.from({ length: 11 }, (_, i) =>
+      ({ name: `main-${i}`, userData: {} }));
+    const shadow = { name: 'shadow-only', userData: {} };
+    const renderer = {
+      info: { render: counts },
+      renderBufferDirect(_a, _b, _c, _d, object, draws) {
+        expect(object).toBeTruthy();
+        counts.calls += draws;
+      },
+      shadowMap: {
+        render() { renderer.renderBufferDirect(null, null, null, null, shadow, 7); },
+      },
+    };
+    const direct = renderer.renderBufferDirect;
+    const probe = installWarRoomShadowPassProbe(renderer);
+    probe.begin();
+    renderer.shadowMap.render();
+    objects.forEach((object, i) =>
+      renderer.renderBufferDirect(null, null, null, null, object, i + 1));
+    expect(counts.calls).toBe(73);
+    const row = probe.sample(counts.calls);
+    expect(row.shadowCalls).toBe(7);
+    expect(row.mainCalls).toBe(66);
+    expect(row.shadowTopCasters).toEqual({
+      top: [{ name: 'shadow-only', family: 'other', calls: 7 }], unrankedCalls: 0,
+    });
+    expect(row.mainTopSubmitters.top).toHaveLength(8);
+    expect(row.mainTopSubmitters.top[0]).toEqual(
+      { name: 'main-10', family: 'other', calls: 11 });
+    expect(row.mainTopSubmitters.unrankedCalls).toBe(6);
+    expect(row.mainTopSubmitters.top.reduce((sum, item) => sum + item.calls, 0)
+      + row.mainTopSubmitters.unrankedCalls).toBe(row.mainCalls);
+
+    probe.begin();
+    renderer.renderBufferDirect(null, null, null, null, objects[0], 2);
+    expect(probe.sample(2).mainTopSubmitters).toEqual({
+      top: [{ name: 'main-0', family: 'other', calls: 2 }], unrankedCalls: 0,
+    });
+    probe.dispose();
+    expect(renderer.renderBufferDirect).toBe(direct);
+  });
+
+  it('does not fabricate main-object ranks when real draws bypass the observed path', () => {
+    const counts = { calls: 0 };
+    const object = { name: 'visible', userData: {} };
+    const renderer = {
+      info: { render: counts },
+      renderBufferDirect() { counts.calls += 3; },
+      shadowMap: { render() { counts.calls += 2; } },
+    };
+    const probe = installWarRoomShadowPassProbe(renderer);
+    probe.begin();
+    renderer.shadowMap.render();
+    renderer.renderBufferDirect(null, null, null, null, object);
+    counts.calls += 4; // A different, unobserved renderer submission path.
+    const snapshot = probe.sample(counts.calls);
+    expect(snapshot).toMatchObject({ mainCalls: 7, shadowCalls: 2 });
+    expect(snapshot.mainTopSubmitters).toBeUndefined();
+    probe.dispose();
+  });
+
   it('bounds the rank to eight named actual casters and accounts for omitted calls', () => {
     const info = { calls: 0 };
     const actors = Array.from({ length: 10 }, (_, index) =>

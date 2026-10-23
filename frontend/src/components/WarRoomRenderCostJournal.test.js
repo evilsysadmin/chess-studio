@@ -71,6 +71,27 @@ describe('War Room real-render cost journal', () => {
     expect(rows[1].shadowFamilyCalls).toEqual(common.shadowFamilyCalls);
   });
 
+  it('retains bounded main-pass object ranks only when totals are exact', () => {
+    const journal = createWarRoomRenderCostJournal(4);
+    const counts = { calls: 35, triangles: 100, mainCalls: 30, shadowCalls: 5, shadowPasses: 1 };
+    const good = {
+      top: [
+        { name: 'WR3_ARM_armor_ring_7', family: 'shell', calls: 20 },
+        { name: 'pawn', family: 'pieces', calls: 6 },
+      ], unrankedCalls: 4,
+    };
+    journal.record({ ...counts, mainTopSubmitters: good }, 1, 2);
+    journal.record({ ...counts, mainTopSubmitters: {
+      top: [{ name: 'bad', family: 'other', calls: 22 }], unrankedCalls: 4,
+    } }, 2, 3);
+    const rows = journal.readAfter(0).samples;
+    expect(rows[0].mainTopSubmitters).toEqual(good);
+    expect(rows[1].mainTopSubmitters).toBeUndefined();
+    expect(rows[1].mainCalls).toBe(30);
+    good.top[0].calls = 999; // journal clones mutable profiler snapshots.
+    expect(rows[0].mainTopSubmitters.top[0].calls).toBe(20);
+  });
+
   it('fails closed on overrun instead of presenting a biased tail as full sampling', () => {
     const journal = createWarRoomRenderCostJournal(3);
     for (let i = 1; i <= 5; i += 1) journal.record({ calls: i, triangles: i * 10 }, i, i + 1);
