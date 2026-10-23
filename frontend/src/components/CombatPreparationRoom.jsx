@@ -1,4 +1,6 @@
 import { useMemo } from 'react';
+import { campaignMap, availableCampaignNodes } from '../combatCampaign.js';
+import { projectCombatOperationsCampaignMap } from '../combatOperationsMapProjection.js';
 import WarRoomBoardSurface from './WarRoomBoardSurface.jsx';
 import {
   deploymentFen,
@@ -12,8 +14,11 @@ function levelForSaved(saved) {
     + Math.max(0, Number(saved?.speedPoints) || 0);
 }
 
-export default function CombatPreparationRoom({ roster, onCustomize, inspectionPreview = false }) {
+export default function CombatPreparationRoom({ roster, campaign = null, onCustomize, inspectionPreview = false }) {
   const fen = useMemo(() => deploymentFen(roster), [roster]);
+  const combatOperationsMap = useMemo(() => campaign?.active
+    ? projectCombatOperationsCampaignMap(campaignMap(campaign.seed), campaign, availableCampaignNodes(campaign))
+    : null, [campaign]);
   const pieceRankLevels = useMemo(() => {
     const ranks = {};
     for (const [slotKey, unitKey] of Object.entries(roster?.deployment || {})) {
@@ -38,11 +43,12 @@ export default function CombatPreparationRoom({ roster, onCustomize, inspectionP
     showCoordinates: false,
     cameraProfile: 'warroom',
     inspectionPreview,
+    combatOperationsMap,
     immersive: true,
     warRoomVariantOverride: 'combat-ops',
     warRoomMobilePerformance: true,
     pieceRankLevels,
-  }), [fen, pieceRankLevels, inspectionPreview]);
+  }), [fen, pieceRankLevels, inspectionPreview, combatOperationsMap]);
 
   return (
     <div

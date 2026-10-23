@@ -41,6 +41,7 @@ import useWarRoomVariant from './useWarRoomVariant.js';
 import { resolveBoard3DPresentation } from './Board3DPresentation.js';
 import { createClassicWarRoomShellController } from './WarRoomClassicShellLoader.js'; import { buildTrainingRoomBoardShell } from './TrainingRoomBoardShell.js';
 import { shouldShowClassicWarRoomShell, startWarRoomVariantScene } from './WarRoomSceneVariant.js';
+import useCombatOperationsCartography from './useCombatOperationsCartography.js';
 import './Board3D.css';
 import './Board3DViewportTuning.css';
 import './Board3DParity.css';
@@ -67,7 +68,7 @@ function Board3DCanvas({
   hansDiagnosticsRequested = false, hansFireCallEnabled = false,
   cameraProfile = 'tactical', warRoomVariantOverride = null, immersive = false,
   trainingRoom = false, warRoomMobilePerformance = false, inspectionPreview = false,
-  onRendererFailure,
+  combatOperationsMap = null, onRendererFailure,
 }) {
   const hostRef = useRef(null);
   const sceneStateRef = useRef(null);
@@ -570,7 +571,6 @@ function Board3DCanvas({
       sceneStateRef.current = null;
     };
   }, [effectiveThemeId, orientation, showCoordinates, cameraProfile, playAriaLabel, trainingRoom]);
-
   useEffect(() => {
     const state = sceneStateRef.current;
     if (!state || trainingRoom) return undefined;
@@ -586,14 +586,13 @@ function Board3DCanvas({
       onPaint: state.render,
     });
   }, [warRoomVariant, warRoomVariantSelectable, setWarRoomVariantStatus, effectiveThemeId, orientation, showCoordinates, trainingRoom]);
-
+  useCombatOperationsCartography({ sceneStateRef, variant: warRoomVariant, status: warRoomVariantStatus, projection: combatOperationsMap });
   useEffect(() => {
     const state = sceneStateRef.current, host = hostRef.current;
     if (!state || !host) return;
     const viewport = resolveStableBoardViewportForHost(host, { immersive, viewport: window }); fitBoardCamera(state.camera, viewport.width, viewport.height, state.whiteSide, { profile: trainingRoom ? 'training-room' : cameraProfile === 'classroom' || cameraProfile === 'warroom' || warRoomVariant !== 'classic' ? cameraProfile : 'classic', immersive, variant: warRoomVariant, inspectionPreview });
     state.requestRender();
   }, [warRoomVariant, cameraProfile, immersive, trainingRoom, inspectionPreview]);
-
   useEffect(() => {
     const state = sceneStateRef.current;
     if (!state) return undefined;

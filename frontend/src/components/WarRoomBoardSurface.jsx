@@ -38,6 +38,7 @@ export function sameBoardSurfaceProps(previous, next) {
     && a.onCustomize === b.onCustomize
     && a.cameraProfile === b.cameraProfile
     && a.inspectionPreview === b.inspectionPreview
+    && a.combatOperationsMap === b.combatOperationsMap
     && a.immersive === b.immersive
     && a.warRoomVariantOverride === b.warRoomVariantOverride
     && a.warRoomMobilePerformance === b.warRoomMobilePerformance
@@ -56,6 +57,7 @@ const WarRoomBoardSurface = memo(function WarRoomBoardSurface({
   const [ready, setReady] = useState(false);
   const [stalled, setStalled] = useState(false);
   const [retry, setRetry] = useState(0);
+  const requireCombatMap = boardProps?.warRoomVariantOverride === 'combat-ops' && Boolean(boardProps?.combatOperationsMap);
 
   useLayoutEffect(() => {
     if (!isThreeD) return undefined;
@@ -74,7 +76,7 @@ const WarRoomBoardSurface = memo(function WarRoomBoardSurface({
       secondFrame = 0;
     };
     const inspect = () => {
-      const complete = warRoomFirstFrameReady(gateRef.current);
+      const complete = warRoomFirstFrameReady(gateRef.current, { requireCombatMap });
       if (!complete) {
         cancelReveal();
         if (pendingReveal) {
@@ -100,10 +102,10 @@ const WarRoomBoardSurface = memo(function WarRoomBoardSurface({
       childList: true,
       subtree: true,
       attributes: true,
-      attributeFilter: ['data-war-room-variant-status', 'data-war-room-variant', 'data-board3d-piece-built'],
+      attributeFilter: ['data-war-room-variant-status', 'data-war-room-variant', 'data-board3d-piece-built', 'data-combat-operations-map-nodes'],
     });
     const stalledTimer = window.setTimeout(() => {
-      if (!warRoomFirstFrameReady(gateRef.current)) setStalled(true);
+      if (!warRoomFirstFrameReady(gateRef.current, { requireCombatMap })) setStalled(true);
     }, 30000);
     inspect();
     return () => {
@@ -112,7 +114,7 @@ const WarRoomBoardSurface = memo(function WarRoomBoardSurface({
       cancelReveal();
       window.clearTimeout(stalledTimer);
     };
-  }, [isThreeD, boardProps?.gameId, retry]);
+  }, [isThreeD, boardProps?.gameId, requireCombatMap, retry]);
 
   if (!isThreeD) return <Board {...boardProps} />;
   return (
