@@ -91,7 +91,15 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 
     if (viewport.width < 720) {
       const inspect = room.getByRole('button', { name: /Inspeccionar ejército/i });
       await expect(inspect).toBeVisible();
+      const canvas = room.locator('canvas.board3d-main-canvas');
+      const originalCanvas = await canvas.elementHandle();
+      const framingBefore = await canvas.getAttribute('data-board3d-camera-framing');
+      const projectionBefore = await canvas.getAttribute('data-board3d-view-projection');
       await inspect.click();
+      await expect(canvas).toHaveAttribute('data-board3d-camera-framing', 'combat-inspection-portrait-v1');
+      expect(await page.evaluate((el) =>
+        el === document.querySelector('[data-combat-campaign-room="briefing"] canvas.board3d-main-canvas'), originalCanvas)).toBe(true);
+      expect(await canvas.getAttribute('data-board3d-view-projection')).not.toBe(projectionBefore);
       await expect(room.locator('.combat-briefing-room-orders')).not.toBeVisible();
       await expect(room.locator('.combat-preparation-room-stage')).toBeVisible();
       await expect(room.getByRole('button', { name: /Volver a órdenes/i })).toBeVisible();
@@ -101,6 +109,9 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 
       expect(unobstructed).toBe(true);
       await captureRoom(page, ARTIFACT_DIR + '/combat-briefing-army-inspection-390x844.png');
       await page.keyboard.press('Escape');
+      await expect(canvas).toHaveAttribute('data-board3d-camera-framing', framingBefore);
+      expect(await page.evaluate((el) =>
+        el === document.querySelector('[data-combat-campaign-room="briefing"] canvas.board3d-main-canvas'), originalCanvas)).toBe(true);
       await expect(room.locator('.combat-briefing-room-orders')).toBeVisible();
       await expect(room.getByRole('button', { name: /PREPARAR EJÉRCITO/i })).toBeVisible();
       await inspect.click();

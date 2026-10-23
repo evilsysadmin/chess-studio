@@ -214,7 +214,7 @@ export function trainingRoomCameraFramingProfile(args = {}) {
   });
 }
 
-export function fitBoardCamera(camera, width, height, whiteSide, { profile: requestedProfile = 'tactical', immersive = false, variant = null } = {}) {
+export function fitBoardCamera(camera, width, height, whiteSide, { profile: requestedProfile = 'tactical', immersive = false, variant = null, inspectionPreview = false } = {}) {
   const aspect = Math.max(0.35, width / Math.max(1, height));
   const coarsePointer = typeof window !== 'undefined'
     && Boolean(window.matchMedia?.('(pointer: coarse)')?.matches);
@@ -235,7 +235,22 @@ export function fitBoardCamera(camera, width, height, whiteSide, { profile: requ
     : null;
   const mobileProfile = canonicalMobileProfile || legacyMobileProfile;
 
-  const baseProfile = v4HybridCamera
+  // This non-playable Combat inspection may move closer to the veteran line.
+  // Regular briefing, deployment and playable War Rooms remain unchanged.
+  const combatInspectionProfile = inspectionPreview && requestedProfile === 'warroom'
+    && variant === 'combat-ops' && viewportWidth <= 720 && aspect < 0.8
+    ? {
+        ...(canonicalMobileProfile || getWarRoomMobileFramingProfile({ aspect, coarsePointer: true, viewportWidth })),
+        version: 'combat-inspection-portrait-v1',
+        mode: 'combat-inspection',
+        halfSpan: 4.20,
+        padding: 1,
+        targetY: -0.6,
+        targetZ: 0.2,
+      }
+    : null;
+
+  const baseProfile = combatInspectionProfile || (v4HybridCamera
     ? v4WarRoomHybridCameraFramingProfile({ aspect, mobileProfile: canonicalMobileProfile })
     : requestedProfile === 'training-room'
     ? trainingRoomCameraFramingProfile({ aspect, coarsePointer, viewportWidth })
@@ -245,7 +260,7 @@ export function fitBoardCamera(camera, width, height, whiteSide, { profile: requ
       ? mobileProfile || canonicalWarRoomCameraFramingProfile({ aspect })
       : mobileProfile || (requestedProfile === 'classic'
         ? classicWarRoomCameraFramingProfile(aspect)
-        : getCameraFramingProfile(aspect));
+        : getCameraFramingProfile(aspect)));
 
   // Existing non-WarRoom Board3D surfaces retain their prior desktop pitch.
   // Playable War Rooms do not need this shim: the v4 canonical profile already

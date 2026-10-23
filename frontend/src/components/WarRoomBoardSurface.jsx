@@ -37,6 +37,7 @@ export function sameBoardSurfaceProps(previous, next) {
     && a.matthiasKingColor === b.matthiasKingColor
     && a.onCustomize === b.onCustomize
     && a.cameraProfile === b.cameraProfile
+    && a.inspectionPreview === b.inspectionPreview
     && a.immersive === b.immersive
     && a.warRoomVariantOverride === b.warRoomVariantOverride
     && a.warRoomMobilePerformance === b.warRoomMobilePerformance

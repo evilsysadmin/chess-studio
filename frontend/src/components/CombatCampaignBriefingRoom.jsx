@@ -35,7 +35,7 @@ export default function CombatCampaignBriefingRoom({
         aria-label="Mesa de órdenes de Combat Chess"
         data-combat-campaign-room="briefing"
       >
-        <CombatPreparationRoom roster={roster} />
+        <CombatPreparationRoom roster={roster} inspectionPreview={inspectingArmy} />
 
         <div className="combat-operations-topbar combat-briefing-room-topbar">
           <button type="button" className="back-link combat-operations-exit" onClick={onExit}>

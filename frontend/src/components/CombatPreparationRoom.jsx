@@ -12,7 +12,7 @@ function levelForSaved(saved) {
     + Math.max(0, Number(saved?.speedPoints) || 0);
 }
 
-export default function CombatPreparationRoom({ roster, onCustomize }) {
+export default function CombatPreparationRoom({ roster, onCustomize, inspectionPreview = false }) {
   const fen = useMemo(() => deploymentFen(roster), [roster]);
   const pieceRankLevels = useMemo(() => {
     const ranks = {};
@@ -37,11 +37,12 @@ export default function CombatPreparationRoom({ roster, onCustomize }) {
     orientation: 'white',
     showCoordinates: false,
     cameraProfile: 'warroom',
+    inspectionPreview,
     immersive: true,
     warRoomVariantOverride: 'combat-ops',
     warRoomMobilePerformance: true,
     pieceRankLevels,
-  }), [fen, pieceRankLevels]);
+  }), [fen, pieceRankLevels, inspectionPreview]);
 
   return (
     <div
