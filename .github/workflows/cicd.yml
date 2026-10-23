@@ -171,6 +171,10 @@ jobs:
     if: needs.preflight.outputs.run_go == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 12
+    # Enforce the patched setup-go compiler for tests, vet, source scans,
+    # parity scripts, installs and both target-architecture binary scans.
+    env:
+      GOTOOLCHAIN: local
     services:
       mongo:
         image: mongo:7.0
