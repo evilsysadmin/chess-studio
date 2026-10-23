@@ -310,6 +310,7 @@ def _e2e_producer(name: str) -> set[str] | None:
         "three-d-war-room.spec.js": {"warroom-core"},
         "war-room-visual-artifact.spec.js": {"warroom-core"},
         "war-room-entry-latency-visual.spec.js": {"warroom-core"},
+        "war-room-variant-lifecycle-soak.spec.js": {"warroom-core"},
         "war-room-decor-visual-artifact.spec.js": {"warroom-decor"},
         "war-room-armor-oblique-visual-artifact.spec.js": {"warroom-armor"},
         "war-room-hans-visual-artifact.spec.js": {"warroom-hans"},
@@ -804,6 +805,7 @@ def self_test() -> None:
     assert project_chronicles_lane("all", "default") != "all"
     assert "chronicles" not in project_chronicles_lane("all", "default")
     assert classify(["e2e/staging-live.spec.js"]) == "none"
+    assert classify(["e2e/war-room-variant-lifecycle-soak.spec.js"]) == "warroom-core"
     assert classify(["scripts/chronicles_area_parity_corpus.py"]) == "all"
     assert classify(["scripts/chronicles_contracts.py"]) == "all"
     assert classify(["scripts/validate_chronicles_campaign.py"]) == "all"  # No longer a checked-in tool.
