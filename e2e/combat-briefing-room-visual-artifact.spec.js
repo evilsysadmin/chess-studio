@@ -76,6 +76,25 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 
     await mkdir(ARTIFACT_DIR, { recursive: true });
     await captureRoom(page, ARTIFACT_DIR + '/combat-briefing-room-' + viewport.width + 'x' + viewport.height + '.png');
 
+    // Optional dossiers are keyboard-accessible, and not dashboard cards
+    // occupying the viewport before the player asks for them.
+    const secondaryOrders = room.locator('details.campaign-mission-orders-fold');
+    await expect(secondaryOrders).toBeVisible();
+    await expect(secondaryOrders).not.toHaveAttribute('open');
+    await secondaryOrders.locator('summary').focus();
+    await page.keyboard.press('Enter');
+    await expect(secondaryOrders).toHaveAttribute('open');
+    await expect(secondaryOrders.getByRole('region', { name: 'Órdenes opcionales de misión' })).toBeVisible();
+    await page.keyboard.press('Enter');
+    await expect(secondaryOrders).not.toHaveAttribute('open');
+
+    const enemyDossier = room.locator('details.campaign-officer-orders');
+    await expect(enemyDossier).toBeVisible();
+    await expect(enemyDossier).not.toHaveAttribute('open');
+    await enemyDossier.locator('summary').click();
+    await expect(enemyDossier).toHaveAttribute('open');
+    await enemyDossier.locator('summary').click();
+
     // The briefing keeps the existing campaign -> army preparation transition.
     await room.getByRole('button', { name: /PREPARAR EJÉRCITO/i }).click();
     await expect(page.locator('[data-combat-preparation-room="combat-operations-room"]')).toBeVisible();
