@@ -59,12 +59,13 @@ if [[ -f "$source_launcher" && ! -L "$source_launcher" && -r "$source_launcher" 
   fi
 fi
 printf 'OCI_BACKEND_LAUNCHER installed_vs_checkout=%s\n' "$launcher_status"
-lock_pid=unavailable
-if command -v lslocks >/dev/null 2>&1; then
-  lock_pid="$(lslocks -n -o PID,PATH 2>/dev/null | awk '$2 == "/var/lib/chess-studio/deploy.lock" && $1 ~ /^[0-9]+$/ {print $1; exit}' || true)"
-  [[ "$lock_pid" =~ ^[0-9]+$ ]] || lock_pid=not_observed
+# Read-only, nonblocking lock probe.
+lock_state=unavailable
+if [[ -r /var/lib/chess-studio/deploy.lock && ! -L /var/lib/chess-studio/deploy.lock ]]; then
+  flock -n -E 73 9 9</var/lib/chess-studio/deploy.lock
+  case "$?" in 0) lock_state=free;; 73) lock_state=held;; esac
 fi
-printf 'OCI_BACKEND_LOCK pid=%s\n' "$lock_pid"
+printf 'OCI_BACKEND_LOCK state=%s\n' "$lock_state"
 events="$(set -o pipefail; timeout 5 journalctl -u chess-studio-deploy-watcher.service -n 80 -o cat 2>/dev/null | awk '/OCI_DEPLOY_WATCH_/{a[substr($1,18,1)]++}END{printf "t=%d ok=%d err=%d stale=%d",a["T"],a["O"],a["E"],a["S"]}')" || events=unavailable
 echo "OCI_WATCH_EVENTS $events"
 for service in edge pvp_blue pvp_green; do
@@ -145,8 +146,11 @@ def self_test() -> None:
     assert "checkout_reason=git_error" in command
     assert "chess-studio-deploy-watcher.service" in command
     assert "OCI_BACKEND_LAUNCHER installed_vs_checkout=%s" in command
-    assert "OCI_BACKEND_LOCK pid=%s" in command
-    assert 'lslocks -n -o PID,PATH' in command
+    assert "OCI_BACKEND_LOCK state=%s" in command
+    assert "flock -n -E 73 9 9</var/lib/chess-studio/deploy.lock" in command
+    assert "lock_state=unavailable" in command
+    assert "lock_state=free" in command and "lock_state=held" in command
+    assert "lslocks -n" not in command
     assert "cmp -s \"$source_launcher\" \"$host_launcher\"" in command
     assert all(f"launcher_status={status}" in command for status in ("match", "drift", "unavailable"))
     assert "DEPLOY_WATCH_ENABLED" in command
@@ -172,6 +176,23 @@ def self_test() -> None:
     assert aggregated == "t=1 ok=1 err=1 stale=1"
     assert "SECRET_CANARY" not in aggregated
     assert "cat /" not in command and "printenv" not in command
+    # The probe uses an O_RDONLY fd and recognizes the dedicated contention
+    # code, never conflating permission/command errors with a held lock.
+    import fcntl
+    import tempfile
+    from pathlib import Path
+    with tempfile.TemporaryDirectory() as scratch:
+        lock = Path(scratch) / "deploy.lock"
+        lock.touch()
+        check = "flock -n -E 73 9 9<" + str(lock)
+        open_result = subprocess.run(["bash", "-c", check], check=False)
+        assert open_result.returncode == 0
+        with lock.open("rb") as owner:
+            fcntl.flock(owner.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+            held_result = subprocess.run(["bash", "-c", check], check=False)
+            assert held_result.returncode == 73
+            fcntl.flock(owner.fileno(), fcntl.LOCK_UN)
+        assert subprocess.run(["bash", "-c", check], check=False).returncode == 0
     for payload in (command, matched):
         subprocess.run(["bash", "-n"], input=payload, text=True, check=True, capture_output=True)
     # Synthetic read-only fixtures prove all four no-text classifications.
