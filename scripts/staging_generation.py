@@ -188,7 +188,14 @@ def watch_committed(
     for attempt in range(1, attempts + 1):
         status, body = fetch(f"{url('STAGING_API_URL')}/_deploy/committed?probe={attempt}")
         if status == 200 and body.strip().lower() == sha and accredited():
-            return True
+            # A marker/attestation can become stale when another PR lands
+            # while the watcher polls. Never issue convergence credit for a
+            # generation that is no longer the current main HEAD. An
+            # unavailable HEAD is also not a valid authorization.
+            try:
+                return main_head() == sha
+            except GenerationError:
+                return False
         if attempt % main_every == 0:
             try:
                 if main_head() != sha:
@@ -310,6 +317,26 @@ def self_test() -> None:
                            accredited=lambda: True, main_head=lambda: sha, sleep=quiet)
     assert not watch_committed(sha, attempts=2, interval=0, main_every=8, fetch=committed(sha),
                                accredited=lambda: False, main_head=lambda: sha, sleep=quiet)
+    # The commit marker and backend proof alone cannot accredit an obsolete
+    # generation. Verify main HEAD at the *moment of success*, not only at
+    # the periodic stale checks; otherwise a newer merge can race the return.
+    assert not watch_committed(sha, attempts=2, interval=0, main_every=8,
+                               fetch=committed(sha), accredited=lambda: True,
+                               main_head=lambda: other, sleep=quiet)
+    def inaccessible_head() -> str:
+        raise GenerationError("GitHub main unavailable")
+    assert not watch_committed(sha, attempts=2, interval=0, main_every=8,
+                               fetch=committed(sha), accredited=lambda: True,
+                               main_head=inaccessible_head, sleep=quiet)
+    def must_not_probe_head() -> str:
+        raise AssertionError("HEAD probe on unaccredited watcher marker")
+    assert not watch_committed(sha, attempts=2, interval=0, main_every=8,
+                               fetch=committed(other), accredited=lambda: True,
+                               main_head=must_not_probe_head, sleep=quiet)
+    assert not watch_committed(sha, attempts=2, interval=0, main_every=8,
+                               fetch=committed(sha), accredited=lambda: False,
+                               main_head=must_not_probe_head, sleep=quiet)
+
     seen = {"n": 0}
 
     def head() -> str:
