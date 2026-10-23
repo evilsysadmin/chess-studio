@@ -55,6 +55,14 @@ QUICK_MATCH_VISUAL_SURFACES = {
     "frontend/src/components/usewarroomimmersive.js": {"warroom"},
 }
 
+COMBAT_BRIEFING_VISUAL_SURFACES = {
+    "frontend/src/components/combatcampaignbriefingroom.jsx",
+    "frontend/src/components/combatcampaignbriefingroom.css",
+    "frontend/src/components/combatoperationscampaignbriefingroute.jsx",
+    "frontend/src/components/campaignbriefing.jsx",
+    "frontend/src/components/campaigncommandstatus.jsx",
+}
+
 WARROOM_MOBILE_VISUAL_SURFACES = {
     # Phone-only War Room composition/orientation. These must never wake Home,
     # Chronicles, training or browser-health canonical captures.
@@ -260,6 +268,8 @@ def _surface_groups(path: str) -> set[str] | None:
         return {"warroom"}
     if lower in POSTGAME_VISUAL_SURFACES:
         return set(POSTGAME_VISUAL_SURFACES[lower])
+    if lower in COMBAT_BRIEFING_VISUAL_SURFACES:
+        return {"warroom"}
     if lower in QUICK_MATCH_VISUAL_SURFACES:
         return set(QUICK_MATCH_VISUAL_SURFACES[lower])
     if lower == "frontend/src/components/shareresultmodal.jsx":
@@ -388,6 +398,8 @@ def _surface_groups(path: str) -> set[str] | None:
             # runtime pixels; this spec must not wake unrelated app visuals.
             return set()
         if name in {"war-room-entry-latency-visual.spec.js", "three-d-war-room.spec.js"}:
+            return {"warroom"}
+        if name == "combat-briefing-room-visual-artifact.spec.js":
             return {"warroom"}
         if name.startswith("war-room-") and "visual" in name:
             return {"warroom"}
@@ -726,6 +738,7 @@ def write_outputs(scope: Scope, output_path: str) -> None:
 
 def self_test() -> None:
     assert classify(["e2e/staging-live.spec.js"]).capture_groups == "none"
+    assert classify(["frontend/src/components/CombatCampaignBriefingRoom.jsx", "e2e/combat-briefing-room-visual-artifact.spec.js"]).capture_groups == "warroom"
     assert classify(["scripts/chronicles_area_parity_corpus.py"]).capture_groups == "home,experiments,training,warroom,health"
     assert classify(["scripts/chronicles_area_parity_corpus.py", "frontend/src/chronicles/chroniclesMapCatalog.js"]).capture_groups == "home,experiments,training,warroom,health"
     assert classify(["scripts/unknown_unowned_generator.py"]).capture_groups == "home,experiments,training,warroom,health"
