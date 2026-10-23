@@ -69,7 +69,7 @@ function Board3DCanvas({
   hansDiagnosticsRequested = false, hansFireCallEnabled = false,
   cameraProfile = 'tactical', warRoomVariantOverride = null, immersive = false,
   trainingRoom = false, warRoomMobilePerformance = false, inspectionPreview = false,
-  combatOperationsMap = null, pieceMedalCounts = null, onRendererFailure,
+  combatOperationsMap = null, pieceMedalCounts = null, pieceRankLevels = null, onRendererFailure,
 }) {
   const hostRef = useRef(null);
   const sceneStateRef = useRef(null);
