@@ -59,6 +59,18 @@ describe('Combat Operations · read-only physical sector hit-testing', () => {
     listeners.get('pointercancel')();
     listeners.get('pointerup')({ pointerId: 5, ...point });
     expect(inspect).toHaveBeenCalledTimes(1);
+
+    listeners.get('pointerdown')({ pointerId: 7, pointerType: 'touch', ...point });
+    listeners.get('pointerdown')({ pointerId: 8, pointerType: 'touch', ...point });
+    listeners.get('pointerup')({ pointerId: 8, pointerType: 'touch', button: 0, ...point });
+    listeners.get('pointerup')({ pointerId: 7, pointerType: 'touch', button: 0, ...point });
+    expect(inspect).toHaveBeenCalledTimes(1);
+
+    canvas.dataset = { warRoomPinching: 'true' };
+    listeners.get('pointerdown')({ pointerId: 9, pointerType: 'touch', ...point });
+    listeners.get('pointerup')({ pointerId: 9, pointerType: 'touch', button: 0, ...point });
+    expect(inspect).toHaveBeenCalledTimes(1);
+
     dispose();
     expect(listeners.size).toBe(0);
   });
