@@ -19,7 +19,7 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: '22'
           cache: npm
@@ -47,7 +47,7 @@ jobs:
         run: |
           node frontend/bench/combatCpuFullAB.mjs --baseline-module frontend/src/combatCpuHistoricalBaseline.mjs --iterations 8 | tee combat-cpu-full-ab.json
       - name: Save raw benchmark results
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: combat-cpu-benchmark-${{ github.sha }}
           path: |

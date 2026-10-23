@@ -151,7 +151,7 @@ jobs:
           PY
       - name: Upload renders and provenance (no automatic publication)
         if: always()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: chesscom-oss-cc0-v52-review-${{ github.run_id }}
           path: |
