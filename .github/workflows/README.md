@@ -83,6 +83,12 @@ Docker/Compose es el runtime canónico de la A1 Always Free. K3s/Flux queda en *
 Render staging está retirado del plano de despliegue: el **release canónico y `runtime-sync` consumen Vault + Git y no consultan Render**, y ya no existe un workflow capaz de reconciliar, reanudar o desplegar el antiguo servicio staging. El cutover inicial a CURRENT Vault ya está acreditado; su workflow/helper one-shot se retiraron para que una migración histórica no permanezca como superficie operativa activa. Render producción permanece independiente y no forma parte de esta retirada.
 
 
+## Publicación cross-repo de arte Chronicles
+
+- `chronicles-odo-r2-publish.yml`: en Chess Studio (propietario R2), un **GitHub Release adjunto** con nombre y SHA fijo activa validación, publicación inmutable, readback real HTTPS y PR de **solo manifest** hacia Chronicles. Usa el publicador R2 ya probado, protege música/GLBs y nunca incorpora el WebP al árbol Git.
+- La pipeline sólo acepta la release `chronicles-odo-r2-79e0b13fc2ee2ffb`, con asset `odo-premium-composite.webp` y SHA-256 completo anclado en `scripts/chronicles_odo_r2_pipeline.py`. Debe existir credencial con acceso a las PR y contenido de Chronicles (`CHRONICLES_MANIFEST_PR_TOKEN` o `CI_PR_BOT_PAT` con permisos suficientes); ninguna credencial llega al cliente.
+- Los cambios de manifiesto no tienen automerge: requieren validación visual desktop/móvil y CI del juego. Sin release adjunta válida, este workflow no publica nada.
+
 ## Runtimes, assets y laboratorios especializados
 
 | Workflow | Responsabilidad |
