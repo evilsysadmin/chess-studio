@@ -272,6 +272,7 @@ jobs:
       url: https://staging.chess-studio.shadowops.dpdns.org
     strategy:
       fail-fast: false
+      # Full smoke: staging-live.spec.js + staging-war-room-restore.spec.js
       matrix: ${{ fromJSON(needs.prepare.outputs.smoke_matrix) }}
     env:
       DEPLOY_SHA: ${{ needs.prepare.outputs.smoke_sha || needs.prepare.outputs.deploy_sha }}
