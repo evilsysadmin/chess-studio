@@ -17,6 +17,8 @@ async function loginWithHomeFramesHeld(page) {
 }
 
 test('Home Blender no muestra el fallback mientras espera su primer frame', async ({ page }) => {
+  // Software WebGL may need much longer than the default functional E2E budget.
+  test.setTimeout(135_000);
   await page.setViewportSize({ width: 1600, height: 900 });
   await page.addInitScript(() => {
     Object.defineProperty(navigator, 'hardwareConcurrency', {
@@ -82,8 +84,29 @@ test('Home Blender no muestra el fallback mientras espera su primer frame', asyn
   await expect(art).toHaveCSS('opacity', '0');
 
   await page.evaluate(() => window.__homeFrameGate.release());
-  await expect(canvas).toHaveClass(/is-ready/, { timeout: 15_000 });
-  await expect(loadingCover).toHaveCount(0, { timeout: 15_000 });
-  await expect(canvas).toHaveAttribute('data-home-blender-runtime', 'ready');
-  await expect(art).toHaveCSS('opacity', '0');
+  try {
+    // A mounted canvas is not a completed Blender frame, and the 2D fallback
+    // must not be accepted as success if software Chromium is slow.
+    await expect(canvas).toHaveClass(/is-ready/, { timeout: 75_000 });
+    await expect(canvas).toHaveAttribute('data-home-blender-runtime', 'ready');
+    await expect(canvas).toBeVisible();
+    await expect(loadingCover).toHaveCount(0, { timeout: 15_000 });
+    await expect.poll(() => canvas.evaluate((node) => node.width * node.height)).toBeGreaterThan(0);
+    await expect(art).toHaveCSS('opacity', '0');
+  } catch (error) {
+    const state = await page.evaluate(() => {
+      const node = document.querySelector('canvas.illustrated-home__castle-3d');
+      return {
+        canvasPresent: Boolean(node),
+        ready: node?.classList.contains('is-ready') ?? false,
+        runtime: node?.dataset.homeBlenderRuntime ?? null,
+        compositor: node?.dataset.homeCastleCompositor ?? null,
+        canvasPixels: node ? node.width * node.height : null,
+        loadingCoverPresent: Boolean(document.querySelector('.home-3d-loading')),
+        artOpacity: getComputedStyle(document.querySelector('.illustrated-home__art') || document.body).opacity,
+      };
+    }).catch(() => ({ diagnostics: 'unavailable' }));
+    throw new Error('Home frame readiness or fallback contract failed: '
+      + JSON.stringify(state) + '; ' + String(error?.message || error));
+  }
 });
