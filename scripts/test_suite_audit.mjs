@@ -282,6 +282,22 @@ if (checkCiWiring) {
   }
   if (goBuilder[1].split('.').length !== 3) fail('Go builder debe fijar major.minor.patch');
 
+  // Attest the *Docker-built* executable too; a green runner build alone
+  // cannot prove which toolchain/arch went into the published image.
+  const expectedBuilder = goDockerSource.match(/^ARG EXPECTED_GO_VERSION=(\d+\.\d+\.\d+)$/m);
+  if (!expectedBuilder || expectedBuilder[1] !== goBuilder[1]) {
+    fail('El compilador real del Docker builder debe coincidir con el tag Go parcheado');
+  }
+  for (const required of [
+    'ARG TARGETARCH',
+    'test "$(GOTOOLCHAIN=local go env GOVERSION)" = "go${EXPECTED_GO_VERSION}"',
+    'test "$(go version /out/api-edge)" = "/out/api-edge: go${EXPECTED_GO_VERSION}"',
+    'go version -m /out/api-edge',
+    "grep -Fqx \"$(printf '\\tbuild\\tGOOS=linux')\"",
+    "grep -Fqx \"$(printf '\\tbuild\\tGOARCH=%s' \"$TARGETARCH\")\"",
+  ]) {
+    if (!goDockerSource.includes(required)) fail(`Sin prueba del binario Go final en Docker: ${required}`);
+  }
   // Check the real ARM64 binary with an external fail-closed script to
   // preserve the bounded workflow size ratchet.
   const binaryBuildStart = backendGoBlock.indexOf('\n      - name: Build Linux ARM64\n');
