@@ -167,7 +167,7 @@ def validate_app_visual_product_trigger(root: Path = ROOT) -> None:
         "group: ${{ github.workflow }}-${{ github.ref }}",
         "uses: ./.github/actions/app-visual-pipeline",
         "name: App · visual artifact",
-        "chronicles-lane: app",
+        "with: {mode: canonical}",
         "workflow_dispatch:",
     ):
         if required not in workflow:

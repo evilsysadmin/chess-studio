@@ -30,4 +30,4 @@ jobs:
       - uses: actions/checkout@v7
         with: {fetch-depth: 2}
       - uses: ./.github/actions/app-visual-pipeline
-        with: {mode: canonical, chronicles-lane: app}
+        with: {mode: canonical}
