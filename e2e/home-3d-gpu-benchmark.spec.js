@@ -1,11 +1,12 @@
 import { expect, test } from '@playwright/test';
+import { execFileSync } from 'node:child_process';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { mockApi } from './helpers.js';
 import { homeBlenderDistinctGpuSamplesMs } from '../frontend/src/components/HomeBlenderPerformanceDiagnostics.js';
 import { summarizeHomeGpuLightContrast } from './home-blender-gpu-light-contrast.mjs';
 import { parseHomeGpuFlameEligibility } from './home-gpu-flame-eligibility.mjs';
 import { homeGpuBenchmarkAmbientHour } from './home-gpu-ambient-clock.mjs';
-import { homeGpuBenchmarkRevision } from './home-gpu-revision.mjs';
+import { homeGpuBenchmarkRevision, homeGpuPhysicalCheckoutProvenance } from './home-gpu-revision.mjs';
 
 // Explicit, local-only hardware diagnostic. CI excludes this file from its
 // standard Playwright matrix; no identity, passwords or raw GPU names are logged.
@@ -223,7 +224,15 @@ test('Home 3D physical GPU benchmark · three visits or opt-in light A/B/B/A', a
     throw new Error('CHESS_E2E_LIGHTWEIGHT=1 forces a 2D Home and cannot benchmark GPU rendering');
   }
   // Fail closed before expensive GPU/browser work on untraceable hardware runs.
-  const revision = homeGpuBenchmarkRevision(process.env.CHESS_HOME_GPU_REVISION, { hardware: requested === 'hardware' });
+  const revision = requested === 'hardware'
+    ? homeGpuPhysicalCheckoutProvenance(
+      process.env.CHESS_HOME_GPU_REVISION,
+      execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }),
+      execFileSync('git', ['status', '--porcelain=v1', '--untracked-files=no'],
+        { encoding: 'utf8' }),
+    )
+    : homeGpuBenchmarkRevision(process.env.CHESS_HOME_GPU_REVISION);
+
   const visits = [];
   // Alternating order counters warmup/drift and always uses a fresh browser
   // context, identical build, camera, viewport and ambient period.
