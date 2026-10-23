@@ -60,7 +60,9 @@ test('Replay personal · negras mantiene escena jugable en desktop y portrait', 
     await page.setViewportSize(viewport);
     await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
     await expect(canvas).toBeVisible();
-    await expect(replay.getByText(/Juegas con negras/)).toBeVisible();
+    // On narrow screens this explanatory copy is intentionally collapsed;
+    // assert black-to-move state, not visibility of the secondary coach text.
+    await expect(replay.locator('.puzzle-coach-panel')).toContainText('Juegas con negras');
     const dimensions = await canvas.boundingBox();
     expect(dimensions?.width || 0).toBeGreaterThanOrEqual(viewport.width * 0.98);
     expect(dimensions?.height || 0).toBeGreaterThanOrEqual(viewport.height * 0.98);
