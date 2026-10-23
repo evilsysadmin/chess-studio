@@ -14,10 +14,15 @@ export default function CombatCampaignBriefingRoom({
   useEffect(() => {
     if (!inspectingArmy) return undefined;
     const onEscape = (event) => {
-      if (event.key === 'Escape') setInspectingArmy(false);
+      if (event.key !== 'Escape') return;
+      // The application also owns a global Escape-to-exit shortcut. While the
+      // preview is open, the first Escape must only close this local view.
+      event.preventDefault();
+      event.stopPropagation();
+      setInspectingArmy(false);
     };
-    window.addEventListener('keydown', onEscape);
-    return () => window.removeEventListener('keydown', onEscape);
+    window.addEventListener('keydown', onEscape, true);
+    return () => window.removeEventListener('keydown', onEscape, true);
   }, [inspectingArmy]);
 
   const stage = Math.max(0, (campaign.route || []).length - 1);
