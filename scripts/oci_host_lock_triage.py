@@ -157,6 +157,30 @@ def fd_holders(device: int, inode: int, proc_root: Path = PROC,
     return holders, complete
 
 
+def fd8_tunnel_hint(pid: int, device: int, inode: int,
+                    proc_root: Path = PROC) -> tuple[str, str]:
+    """(fd8_matches, cloudflared_comm_hint); never read argv or credentials.
+
+    A matching FD8 inode + /proc/<pid>/comm='cloudflared' is a *lead*, not
+    proof of the executable, active lock ownership or safety to terminate.
+    Unknown permissions/races must not be printed as negative evidence.
+    """
+    proc = proc_root / str(pid)
+    try:
+        st = (proc / "fd" / "8").stat()
+    except FileNotFoundError:
+        return "no", "unknown"
+    except OSError:
+        return "unknown", "unknown"
+    if (st.st_dev, st.st_ino) != (device, inode):
+        return "no", "unknown"
+    try:
+        comm = (proc / "comm").read_text(encoding="utf-8").strip()
+    except OSError:
+        return "yes", "unknown"
+    return "yes", "yes" if comm == "cloudflared" else "no"
+
+
 def self_test() -> None:
     with tempfile.TemporaryDirectory(prefix="oci-lock-triage-") as directory:
         path = Path(directory) / "deploy.lock"
@@ -207,6 +231,17 @@ def self_test() -> None:
             assert not fdinfo_has_flock("lock:  3: -> FLOCK ADVISORY WRITE 123 " + key + " 0 EOF", st.st_dev, st.st_ino)
             assert not fdinfo_has_flock("lock:  1: FLOCK ADVISORY WRITE 123 00:00:99 0 EOF", st.st_dev, st.st_ino)
             assert fd_holders(st.st_dev, st.st_ino, proc) == ([(456, 2, 1)], True)
+            # Report only a coarse allowlisted daemon clue, and only when
+            # the live descriptor 8 actually matches the locked inode.
+            assert fd8_tunnel_hint(456, st.st_dev, st.st_ino, proc) == ("yes", "unknown")
+            (proc / "456" / "comm").write_text("cloudflared\\n", encoding="utf-8")
+            assert fd8_tunnel_hint(456, st.st_dev, st.st_ino, proc) == ("yes", "yes")
+            (proc / "456" / "comm").write_text("bash\\n", encoding="utf-8")
+            assert fd8_tunnel_hint(456, st.st_dev, st.st_ino, proc) == ("yes", "no")
+            (proc / "456" / "comm").unlink()
+            assert fd8_tunnel_hint(456, other.stat().st_dev, other.stat().st_ino, proc) == ("no", "unknown")
+            assert fd8_tunnel_hint(789, st.st_dev, st.st_ino, proc) == ("no", "unknown")
+
             assert fd_holders(st.st_dev, st.st_ino, proc, max_processes=1) == ([(456, 2, 1)], True)
             (info_dir / "8").unlink()
             assert fd_holders(st.st_dev, st.st_ino, proc) == ([(456, 2, 0)], False)
@@ -248,8 +283,10 @@ def main() -> int:
             holders, complete = fd_holders(st.st_dev, st.st_ino)
             print(f"OCI_HOST_LOCK_FD_SCAN coverage={'complete' if complete else 'partial'} holders={len(holders)}")
             for pid, count, witnesses in holders:
+                fd8, tunnel = fd8_tunnel_hint(pid, st.st_dev, st.st_ino)
                 print(f"OCI_HOST_LOCK_FD_HOLDER pid={pid} matching_fds={count} "
-                      f"flock_witness_fds={witnesses}")
+                      f"flock_witness_fds={witnesses} fd8_match={fd8} "
+                      f"cloudflared_comm_hint={tunnel}")
             if not holders or not complete:
                 print("OCI_HOST_LOCK_WARNING fd_owner_unresolved=yes")
         else:
