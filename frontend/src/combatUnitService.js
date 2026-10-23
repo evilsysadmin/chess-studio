@@ -185,7 +185,9 @@ export function unitRecordForKey(rosterState, slotKey) {
 }
 
 export function unitDecorations(record) {
-  const earned = new Map((record?.decorations || []).map((entry) => [entry.id, entry]));
+  // Presentation must tolerate legacy and damaged saved records without writing
+  // migrations during render. Reuse the canonical persisted medal validator.
+  const earned = new Map(normalizeDecorations(record?.decorations).map((entry) => [entry.id, entry]));
   return UNIT_DECORATIONS
     .filter((definition) => earned.has(definition.id))
     .map((definition) => ({ ...definition, earnedAt: earned.get(definition.id)?.earnedAt || null }));
