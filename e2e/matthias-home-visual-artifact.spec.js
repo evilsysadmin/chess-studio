@@ -141,6 +141,12 @@ async function expectInSceneMatthias(home, hallRuntime, capture) {
   await expect(hallRuntime).toHaveAttribute('data-home-matthias-station', capture.scene.station);
   await expect(hallRuntime).toHaveAttribute('data-home-matthias-posture', capture.scene.posture);
   await expect(hallRuntime).toHaveAttribute('data-home-matthias-clip', capture.clip);
+  await expect(hallRuntime).toHaveAttribute(
+    'data-home-coffee-temperature', capture.profile === 'sleep' ? 'cold' : 'hot',
+  );
+  await expect(hallRuntime).toHaveAttribute(
+    'data-home-matthias-cap', capture.profile === 'sleep' ? 'table' : 'head',
+  );
 
   const [stageBox, matthiasBox] = await Promise.all([
     home.locator('.illustrated-home__stage').boundingBox(),
