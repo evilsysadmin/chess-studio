@@ -85,6 +85,21 @@ def run(operation: str) -> None:
 
 
 def self_test() -> None:
+    # OCI readiness runs this contract already: exercise both independent
+    # probe paths without inflating the workflow's strict byte-size budget.
+    from oci_observability_heartbeat import self_test as heartbeat_self_test
+    from otel_log_ingest_probe import self_test as otlp_self_test
+    heartbeat_self_test()
+    otlp_self_test()
+    for name, markers in {
+        "chess-studio-observability-heartbeat.timer": ("OnUnitActiveSec=1h", "Persistent=true"),
+        "chess-studio-observability-heartbeat.service": (
+            "Type=oneshot", "ReadWritePaths=/var/lib/chess-studio/observability",
+        ),
+    }.items():
+        contents = (ROOT / "infra" / "oci" / "runtime" / name).read_text(encoding="utf-8")
+        assert all(marker in contents for marker in markers), name
+
     expected = {
         "diagnose", "backend-diagnose", "mongo-target-diagnose", "mongo-network-diagnose",
         "reserved-egress", "smoke", "reboot-agent", "deploy", "bringup", "runtime-sync",
