@@ -1,18 +1,10 @@
 import { useMemo } from 'react';
 import { campaignMap, availableCampaignNodes } from '../combatCampaign.js';
 import { projectCombatOperationsCampaignMap } from '../combatOperationsMapProjection.js';
+import { combatPreparationHonors } from '../combatPreparationHonors.js';
 import WarRoomBoardSurface from './WarRoomBoardSurface.jsx';
-import {
-  deploymentFen,
-  deploymentSquareForSlot,
-} from '../combatDeployment.js';
+import { deploymentFen } from '../combatDeployment.js';
 import './CombatPreparationRoom.css';
-
-function levelForSaved(saved) {
-  return 1
-    + Math.max(0, Number(saved?.strengthPoints) || 0)
-    + Math.max(0, Number(saved?.speedPoints) || 0);
-}
 
 export default function CombatPreparationRoom({ roster, campaign = null, cartography = null, onSectorInspect, onCustomize, inspectionPreview = false }) {
   const fen = useMemo(() => deploymentFen(roster), [roster]);
@@ -22,16 +14,9 @@ export default function CombatPreparationRoom({ roster, campaign = null, cartogr
       : null);
     return map && onSectorInspect ? { ...map, onInspect: onSectorInspect } : map;
   }, [campaign, cartography, onSectorInspect]);
-  const pieceRankLevels = useMemo(() => {
-    const ranks = {};
-    for (const [slotKey, unitKey] of Object.entries(roster?.deployment || {})) {
-      const square = deploymentSquareForSlot(slotKey, 'w');
-      if (!square || !unitKey) continue;
-      const level = levelForSaved(roster?.pieces?.[unitKey]);
-      if (level > 1) ranks[square] = level;
-    }
-    return ranks;
-  }, [roster]);
+  const { rankLevels: pieceRankLevels, medalCounts: pieceMedalCounts } = useMemo(
+    () => combatPreparationHonors(roster), [roster],
+  );
 
   const boardProps = useMemo(() => ({
     gameId: 'combat-preparation-room',
@@ -51,7 +36,8 @@ export default function CombatPreparationRoom({ roster, campaign = null, cartogr
     warRoomVariantOverride: 'combat-ops',
     warRoomMobilePerformance: true,
     pieceRankLevels,
-  }), [fen, pieceRankLevels, inspectionPreview, combatOperationsMap]);
+    pieceMedalCounts,
+  }), [fen, pieceRankLevels, pieceMedalCounts, inspectionPreview, combatOperationsMap]);
 
   return (
     <div
