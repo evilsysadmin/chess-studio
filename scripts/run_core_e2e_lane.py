@@ -153,6 +153,11 @@ LANE_COMMANDS: dict[str, tuple[LaneCommand, ...]] = {
         LaneCommand('home-3d-draw-census.spec.js',
                     ('--workers=1', '--retries=0', '--max-failures=1', '--timeout=180000'),
                     canonical_critical=False),
+        # The real Blender canvas must keep LOADING above 2D until its first
+        # composed frame, even on slow hosted Chromium.
+        LaneCommand('home-3d-fallback-readiness.spec.js',
+                    ('--workers=1', '--retries=0', '--max-failures=1', '--timeout=135000'),
+                    canonical_critical=False),
     ),
 }
 
