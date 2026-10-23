@@ -178,6 +178,35 @@ def load_group(directory, expected_sha, mode, minimum):
                         else:
                             require(not any(field in render_cost for field in fields),
                                     where + '/' + phase + ': unavailable split cannot claim values')
+                    caster = render_cost.get('shadowCasterSnapshot')
+                    if caster is not None:
+                        require(status == 'ready' and split == 'ready',
+                                where + '/' + phase + ': caster snapshot requires full real shadow counters')
+                        require(type(caster) is dict,
+                                where + '/' + phase + ': invalid shadow caster snapshot')
+                        shadow_calls = caster.get('shadowCalls')
+                        require(type(shadow_calls) is int and shadow_calls > 0,
+                                where + '/' + phase + ': caster snapshot is not a real shadowed frame')
+                        rows = caster.get('top')
+                        require(type(rows) is list and 0 < len(rows) <= 8,
+                                where + '/' + phase + ': invalid caster rank length')
+                        remainder = caster.get('unrankedCalls')
+                        require(type(remainder) is int and remainder >= 0,
+                                where + '/' + phase + ': invalid unranked remainder')
+                        counted = remainder
+                        last_count = shadow_calls + 1
+                        for index, row in enumerate(rows):
+                            require(type(row) is dict
+                                    and type(row.get('name')) is str
+                                    and 0 < len(row['name']) <= 96
+                                    and row.get('family') in ('pieces', 'shell', 'other')
+                                    and type(row.get('calls')) is int
+                                    and 0 < row['calls'] <= last_count,
+                                    where + '/' + phase + f': invalid caster rank {index}')
+                            counted += row['calls']
+                            last_count = row['calls']
+                        require(counted == shadow_calls,
+                                where + '/' + phase + ': incomplete or invented caster rank totals')
                     family_status = render_cost.get('shadowFamiliesStatus')
                     if family_status is not None:
                         require(family_status in ('ready', 'unavailable'),
