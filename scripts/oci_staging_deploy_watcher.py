@@ -12,14 +12,17 @@ from __future__ import annotations
 
 import argparse
 import ast
+import fcntl
 import json
 import os
 import re
+import tempfile
 import subprocess
 import time
 import urllib.error
 import urllib.request
 from pathlib import Path
+from unittest.mock import patch
 
 AI_HEALTH_URL = os.environ.get(
     "CHESS_STUDIO_STAGING_AI_HEALTH_URL",
@@ -29,6 +32,7 @@ STATE_FILE = Path(os.environ.get("CHESS_STUDIO_STATE_FILE", "/var/lib/chess-stud
 ENABLE_MARKER = Path(
     os.environ.get("CHESS_STUDIO_DEPLOY_WATCH_MARKER", "/var/lib/chess-studio/DEPLOY_WATCH_ENABLED")
 )
+DEPLOY_LOCK_PATH = Path("/var/lib/chess-studio/deploy.lock")
 DEPLOY_WRAPPER = os.environ.get(
     "CHESS_STUDIO_DEPLOY_WRAPPER",
     "/usr/local/sbin/chess-studio-deploy",
@@ -107,6 +111,31 @@ def backend_image_available(candidate: str) -> bool:
     return image_available(go_image_ref(candidate))
 
 
+def deploy_lock_busy() -> bool:
+    """Avoid queueing the watcher behind a CI/host mutation.
+
+    A read-only, nonblocking probe never replaces the root wrapper's lock
+    or its exact-SHA admission. Unknown/unreadable locks are treated as busy.
+    """
+    try:
+        fd = os.open(DEPLOY_LOCK_PATH, os.O_RDONLY | os.O_NOFOLLOW | os.O_CLOEXEC)
+    except FileNotFoundError:
+        return False  # The root wrapper will create and own the lock.
+    except OSError:
+        return True
+    try:
+        try:
+            fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            return True
+        fcntl.flock(fd, fcntl.LOCK_UN)
+        return False
+    except OSError:
+        return True
+    finally:
+        os.close(fd)
+
+
 def deploy(candidate: str) -> None:
     subprocess.run(
         ["sudo", "--non-interactive", DEPLOY_WRAPPER, candidate],
@@ -143,6 +172,9 @@ def iteration(rejected_sha: str = "") -> tuple[str, str]:
     # after a bounded delay so temporary or misclassified results can recover.
     if candidate == rejected_sha:
         return "known-superseded", candidate
+    if deploy_lock_busy():
+        print(f"OCI_DEPLOY_WATCH_LOCK_BUSY repo_ref={candidate}", flush=True)
+        return "lock-busy", candidate
     if not backend_image_available(candidate):
         print(f"OCI_DEPLOY_WATCH_IMAGE_PENDING repo_ref={candidate}", flush=True)
         return "image-pending", candidate
@@ -245,9 +277,24 @@ def self_test() -> None:
     assert GO_IMAGE_PREFIX.endswith(":oci-")
     assert go_image_ref(sample) == "ghcr.io/evilsysadmin/chess-studio-pvp:oci-" + sample
     assert ENABLE_MARKER == Path("/var/lib/chess-studio/DEPLOY_WATCH_ENABLED")
+    assert DEPLOY_LOCK_PATH == Path("/var/lib/chess-studio/deploy.lock")
+    with tempfile.TemporaryDirectory(prefix="chess-watcher-lock-") as tmp:
+        with patch(f"{__name__}.DEPLOY_LOCK_PATH", Path(tmp) / "deploy.lock"):
+            assert not deploy_lock_busy()  # Missing lock is not a blocker.
+            fd = os.open(DEPLOY_LOCK_PATH, os.O_RDWR | os.O_CREAT, 0o600)
+            try:
+                assert not deploy_lock_busy()
+                fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                assert deploy_lock_busy()
+            finally:
+                fcntl.flock(fd, fcntl.LOCK_UN)
+                os.close(fd)
+            assert not deploy_lock_busy()
+            os.symlink(Path(tmp) / "other", DEPLOY_LOCK_PATH.with_name("unsafe-link"))
+        with patch(f"{__name__}.DEPLOY_LOCK_PATH", Path(tmp) / "unsafe-link"):
+            assert deploy_lock_busy()  # Never follow a malicious lock symlink.
     # Regression: a superseded Worker build must not trigger another OCI
     # manifest lookup or sudo deploy until its immutable SHA changes.
-    from unittest.mock import patch
     rejected = "a" * 40
     newer = "b" * 40
     assert remember_rejected_sha("", "superseded", sample) == sample
@@ -263,6 +310,7 @@ def self_test() -> None:
         patch(f"{__name__}.fetch_worker_build", return_value=sample),
         patch(f"{__name__}.read_deployed_sha", return_value=rejected),
         patch(f"{__name__}.backend_image_available") as image_lookup,
+        patch(f"{__name__}.deploy_lock_busy", return_value=False) as lock_busy,
         patch(f"{__name__}.deploy") as deploy_call,
     ):
         marker.is_file.return_value = True
@@ -270,6 +318,11 @@ def self_test() -> None:
         assert iteration(active_rejection(sample, 500.0, 499.0)) == ("known-superseded", sample)
         image_lookup.assert_not_called()
         deploy_call.assert_not_called()
+        lock_busy.return_value = True
+        assert iteration() == ("lock-busy", sample)
+        image_lookup.assert_not_called()
+        deploy_call.assert_not_called()
+        lock_busy.return_value = False
         image_lookup.return_value = True
         # The same Worker SHA is retried after bounded expiry, never forgotten forever.
         assert iteration(active_rejection(sample, 500.0, 500.0)) == ("superseded", sample)
@@ -311,6 +364,7 @@ def self_test() -> None:
     assert "return image_available(go_image_ref(candidate))" in source
     assert "chess-studio-" + "backend:" not in source
     assert "OCI_DEPLOY_WATCH_IMAGE_PENDING" in source
+    assert "OCI_DEPLOY_WATCH_LOCK_BUSY" in source
     assert "ENABLE_MARKER.is_symlink()" in source
     print("OCI zero-cost deploy watcher self-test: OK")
 
