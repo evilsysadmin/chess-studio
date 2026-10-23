@@ -39,6 +39,8 @@ export function sameBoardSurfaceProps(previous, next) {
     && a.cameraProfile === b.cameraProfile
     && a.inspectionPreview === b.inspectionPreview
     && a.combatOperationsMap === b.combatOperationsMap
+    && a.pieceRankLevels === b.pieceRankLevels
+    && a.pieceMedalCounts === b.pieceMedalCounts
     && a.immersive === b.immersive
     && a.warRoomVariantOverride === b.warRoomVariantOverride
     && a.warRoomMobilePerformance === b.warRoomMobilePerformance
