@@ -53,6 +53,14 @@ export default function CampaignBriefing({ campaign, node, armySummary, onBuyInt
         <span><small>Intel</small><b>{intel.levelLabel}</b></span>
       </div>
 
+      <div className="campaign-operation-primary-zone campaign-briefing-primary-zone friendly-primary-zone">
+        <div>
+          <span>SIGUIENTE</span>
+          <small>Elige qué unidades quieres llevar.</small>
+        </div>
+        <button type="button" className="primary-btn campaign-main-cta" onClick={onContinue}>PREPARAR EJÉRCITO →</button>
+      </div>
+
       {enemyOfficer && (
         <article className="campaign-rule-alert campaign-enemy-officer" aria-label={`Oficial enemigo: ${enemyOfficer.name}`}>
           <span>OFICIAL ENEMIGO · {enemyOfficer.rank}</span>
@@ -111,14 +119,6 @@ export default function CampaignBriefing({ campaign, node, armySummary, onBuyInt
           ) : null}
         </section>
       )}
-
-      <div className="campaign-operation-primary-zone campaign-briefing-primary-zone friendly-primary-zone">
-        <div>
-          <span>SIGUIENTE</span>
-          <small>Elige qué unidades quieres llevar.</small>
-        </div>
-        <button type="button" className="primary-btn campaign-main-cta" onClick={onContinue}>PREPARAR EJÉRCITO →</button>
-      </div>
 
       <details className="campaign-optional-panel campaign-intel-optional">
         <summary>Ver informe completo</summary>
