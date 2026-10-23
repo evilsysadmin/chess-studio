@@ -7,6 +7,8 @@ import os
 from pathlib import Path, PurePosixPath
 import re
 import subprocess
+
+import staging_generation_diff as generation_diff
 from urllib.parse import quote
 
 import main_ci_admission as admission
@@ -135,6 +137,34 @@ def deploy_required_for_paths(paths: list[str]) -> tuple[bool, str]:
     return False, "non-runtime-only"
 
 
+def require_pending_since_complete(
+    head: str,
+    required: bool,
+    reason: str,
+    *,
+    diff_lookup=generation_diff.diff_since_previous_complete,
+) -> tuple[bool, str]:
+    """Never skip an uncompleted runtime deployment behind a doc/test merge.
+
+    The one-commit classifier is cheap, but rapid merges can cancel the deploy
+    of a runtime change before a later non-runtime commit reaches admission.
+    Compare against the last *complete* staging generation on the skip path.
+    If the baseline cannot be established, run the guarded full deploy.
+    """
+    if required:
+        return required, reason
+    try:
+        pending_paths, base, _run_id = diff_lookup(head)
+        if not pending_paths:
+            return False, f"no-pending-diff:{base[:12]}"
+        pending_required, pending_reason = deploy_required_for_paths(pending_paths)
+        if pending_required:
+            return True, f"pending-since-complete:{base[:12]}:{pending_reason}"
+        return False, f"non-runtime-since-complete:{base[:12]}"
+    except (OSError, RuntimeError, ValueError) as exc:
+        return True, f"pending-diff-fail-open:{type(exc).__name__}"
+
+
 def speculative_prebuild_required_for_paths(paths: list[str]) -> bool:
     """Skip speculative compilation only for obvious browser-smoke edits.
 
@@ -205,6 +235,19 @@ def emit(path: str, deploy_required: bool, reason: str, prebuild_required: bool 
 
 def self_test() -> None:
     assert deploy_required_for_paths(["docs/operations/pvp.md", "README.md"]) == (False, "non-runtime-only")
+    # Image publishing uses exactly the same pending-generation decision as
+    # staging prepare; docs-only last merges must not strand missing GHCR tags.
+    sha = "a" * 40
+    pending = lambda _sha: (["docs/staging.md", "frontend/src/App.jsx"], "b" * 40, 101)
+    needed, reason = require_pending_since_complete(sha, False, "non-runtime-only", diff_lookup=pending)
+    assert needed and reason.startswith("pending-since-complete:")
+    pure = lambda _sha: (["docs/staging.md"], "b" * 40, 101)
+    assert require_pending_since_complete(sha, False, "non-runtime-only", diff_lookup=pure)[0] is False
+    assert require_pending_since_complete(sha, True, "runtime:backend-go/pvp.go",
+               diff_lookup=lambda _: (_ for _ in ()).throw(AssertionError("unexpected API call")))[0]
+    assert require_pending_since_complete(sha, False, "non-runtime-only",
+               diff_lookup=lambda _: (_ for _ in ()).throw(RuntimeError("unavailable")))[0]
+
     assert deploy_required_for_paths(["scripts/staging_deploy_proof.py"]) == (False, "non-runtime-only")
     diagnostic_only = [
         "scripts/oci_backend_diagnose.py",
@@ -306,6 +349,8 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--sha")
     parser.add_argument("--source", choices=("pr", "direct"))
+    parser.add_argument("--include-pending", action="store_true",
+                        help="publish immutable image when staging has uncompleted runtime changes")
     parser.add_argument("--github-output", default=os.environ.get("GITHUB_OUTPUT", ""))
     parser.add_argument("--self-test", action="store_true")
     args = parser.parse_args()
@@ -329,6 +374,8 @@ def main() -> int:
             return 0
 
     deploy_required, reason = decide(sha, source)
+    if args.include_pending:
+        deploy_required, reason = require_pending_since_complete(sha, deploy_required, reason)
     prebuild_required = speculative_prebuild_required(sha, source) if deploy_required else True
     emit(args.github_output, deploy_required, reason, prebuild_required)
     if not deploy_required:
