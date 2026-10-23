@@ -187,7 +187,9 @@ async function sampleRoutine(page, canvas, eventName) {
 
 for (const eventName of CAPTURE_EVENTS) {
   test(`War Room · Hans routine video · ${eventName}`, async () => {
-    test.setTimeout(300_000);
+    // The espresso proof also waits for real inbound movement, the visible
+    // delivered cup, and the full outbound return at normal simulation speed.
+    test.setTimeout(eventName === 'espresso' ? 480_000 : 300_000);
     await mkdir(ARTIFACT_DIR, { recursive: true });
     await mkdir(TEMP_VIDEO_DIR, { recursive: true });
 
@@ -303,6 +305,22 @@ for (const eventName of CAPTURE_EVENTS) {
       await waitForRoutineStart(page, canvas, eventName);
 
       const manifest = await sampleRoutine(page, canvas, eventName);
+      if (eventName === 'espresso') {
+        // Previously the routine sidecar went green after only 6 seconds of
+        // visible walking. Do not imply a cup was served unless the real mesh
+        // is visible and the return leg reaches the service exit.
+        await expect.poll(
+          () => canvas.getAttribute('data-war-room-hans-espresso-delivered'),
+          { timeout: 180_000, intervals: [500, 1_000, 2_000] },
+        ).toBe('true');
+        await captureViewportPng(context, page, `${ARTIFACT_DIR}/espresso-delivered.png`);
+        await expect.poll(
+          () => canvas.getAttribute('data-war-room-hans-espresso-returned'),
+          { timeout: 180_000, intervals: [500, 1_000, 2_000] },
+        ).toBe('true');
+        manifest.deliveredCupVisible = true;
+        manifest.returnedToServiceDoor = true;
+      }
       manifest.rendererClass = emulateSupportedGpu ? 'NVIDIA-emulated-on-SwiftShader' : 'SOFTWARE';
       manifest.sceneTier = emulateSupportedGpu ? 'full' : 'lite';
       await captureViewportPng(context, page, `${ARTIFACT_DIR}/${eventName}.png`);
