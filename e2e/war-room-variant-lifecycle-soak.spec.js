@@ -72,11 +72,28 @@ async function switchVariant(page, board, variant) {
 
 async function memorySnapshot(page) {
   const canvas = page.locator('.board3d-main-canvas');
-  const attrs = await canvas.evaluate((element) => ({
-    geometries: Number(element.dataset.board3dMemoryGeometries || 0),
-    textures: Number(element.dataset.board3dMemoryTextures || 0),
-    programs: Number(element.dataset.board3dMemoryPrograms || 0),
-  }));
+  const attrs = await canvas.evaluate((element) => {
+    // Never let a missing diagnostic silently become zero and certify a
+    // healthy lifecycle. Zero textures can be valid in the procedural room,
+    // but geometry and compiled programs must exist after an actual paint.
+    const counters = {};
+    for (const [field, key] of [
+      ['geometries', 'board3dMemoryGeometries'],
+      ['textures', 'board3dMemoryTextures'],
+      ['programs', 'board3dMemoryPrograms'],
+    ]) {
+      const raw = element.dataset[key];
+      if (typeof raw !== 'string' || !/^[0-9]+$/.test(raw)
+          || !Number.isSafeInteger(Number(raw))) {
+        throw new Error(`War Room lifecycle missing/invalid renderer counter: ${key}=${raw}`);
+      }
+      counters[field] = Number(raw);
+    }
+    if (counters.geometries === 0 || counters.programs === 0) {
+      throw new Error('War Room lifecycle sampled before real WebGL geometry/program readiness');
+    }
+    return counters;
+  });
   const context = await page.evaluate(() => window.__warRoomVariantContextProbe.snapshot());
   return { ...attrs, ...context };
 }
