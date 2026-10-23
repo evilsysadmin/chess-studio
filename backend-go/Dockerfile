@@ -8,6 +8,14 @@ COPY go.mod go.sum ./
 RUN go mod download
 COPY cmd ./cmd
 COPY internal ./internal
+# GO-2026-5932: the legacy OpenPGP packages have no upstream fix.
+# Check the real target's import graph inside the release image builder.
+RUN set -eu; \
+    deps="$(CGO_ENABLED=0 GOTOOLCHAIN=local GOOS=linux GOARCH="$TARGETARCH" go list -deps ./cmd/pvp-edge)"; \
+    if printf '%s\n' "$deps" | grep -Eq '^golang[.]org/x/crypto/openpgp(/|$)'; then \
+      echo "GO-2026-5932: forbidden OpenPGP import in linux/$TARGETARCH" >&2; \
+      exit 1; \
+    fi
 RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags='-s -w' -o /out/api-edge ./cmd/pvp-edge
 RUN set -eu; \
     test "$(go version /out/api-edge)" = "/out/api-edge: go${EXPECTED_GO_VERSION}"; \
