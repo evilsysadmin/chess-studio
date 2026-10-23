@@ -10,3 +10,11 @@ export function home3DFrameReady(stage) {
   }
   return true; // Legacy renderer has its own texture-composition readiness gate.
 }
+
+// A lost WebGL context is recoverable on the SAME canvas. The 30 s startup
+// fallback may unmount that canvas forever, so never run it while the runtime
+// explicitly reports a transient context loss. The painted Home stays usable.
+export function home3DContextRecovering(stage) {
+  const canvas = stage?.querySelector?.(':scope > canvas.illustrated-home__castle-3d');
+  return canvas?.dataset?.homeBlenderRuntime === 'recovering';
+}
