@@ -38,6 +38,8 @@ describe('WarRoomBoardSurface memo contract', () => {
   it.each([
     ['immersive', false],
     ['warRoomVariantOverride', 'duel'],
+    ['pieceRankLevels', { a2: 3 }],
+    ['pieceMedalCounts', { a2: 2 }],
     ['cameraProfile', 'classroom'],
     ['warRoomMobilePerformance', false],
     ['themeOverride', 'midnight'],
