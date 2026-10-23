@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { syncBoard3DCombatMedals } from './Board3DCombatMedals.js';
 
 const SQUARE_RE = /^[a-h][1-8]$/;
 const MAX_BANDS = 4;
@@ -121,6 +122,7 @@ export function syncBoard3DRankInsignias(state) {
     }
   }
 
+  syncBoard3DCombatMedals(state, wrapper);
   if (state.renderer?.domElement?.dataset) {
     state.renderer.domElement.dataset.board3dRankInsignia = 'plinth-bands-v1';
     state.renderer.domElement.dataset.board3dRankedPieces = String(rankedPieces);
