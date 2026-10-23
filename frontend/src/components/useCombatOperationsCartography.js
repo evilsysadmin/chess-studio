@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { installCombatOperationsCampaignCartography } from './CombatOperationsCampaignCartography.js';
+import { listenCombatOperationsSectorInspection } from './CombatOperationsSectorPicking.js';
 
 // Physical campaign projection has its own lifecycle, outside the shared
 // Board3D renderer. It neither owns campaign state nor changes chess rules.
@@ -12,12 +13,14 @@ export default function useCombatOperationsCartography({
     const root = state.scene.children.find((child) => child?.userData?.warRoomVariant === 'combat-ops');
     if (!root) return undefined;
     const dispose = installCombatOperationsCampaignCartography(root, projection);
+    const stopInspection = listenCombatOperationsSectorInspection({ canvas: state.renderer.domElement, camera: state.camera, root, projection });
     state.renderer.domElement.dataset.combatOperationsMapNodes =
       String(root.userData.combatOperationsLiveMapNodes || 0);
     state.renderer.domElement.dataset.combatOperationsMapEdges =
       String(root.userData.combatOperationsLiveMapEdges || 0);
     state.requestRender();
     return () => {
+      stopInspection();
       dispose();
       delete state.renderer.domElement.dataset.combatOperationsMapNodes;
       delete state.renderer.domElement.dataset.combatOperationsMapEdges;
