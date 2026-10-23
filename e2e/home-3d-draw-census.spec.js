@@ -131,3 +131,103 @@ test('Home 3D · profiler attributes real WebGL draws to castle, Matthias and de
   // These tests run on SwiftShader. Never interpret its timer as hardware GPU.
   expect(gpuStatus).not.toBe('ready');
 });
+
+
+test('Home 3D · opt-in flame single pass reduces REAL Three draw calls, not scene content', async ({ browser, baseURL }) => {
+  test.setTimeout(180_000);
+  async function census(mode) {
+    const context = await browser.newContext({
+      baseURL, viewport: { width: 1440, height: 900 }, deviceScaleFactor: 1,
+      reducedMotion: 'no-preference', serviceWorkers: 'block',
+    });
+    try {
+      const page = await context.newPage();
+      await page.addInitScript(() => {
+        Object.defineProperty(Navigator.prototype, 'hardwareConcurrency', {
+          configurable: true, get: () => 8,
+        });
+        Object.defineProperty(Date.prototype, 'getHours', {
+          configurable: true, writable: true, value() { return 23; },
+        });
+      });
+      await mockApi(page, { profileSeed: {
+        'matthias.onboarded': '2', 'chess-study-home-guide-dismissed-v1': '1',
+      } });
+      await page.goto(`./?homeGpuProfile=1&homeLightProbe=pair-normal&homeFlamePass=${mode}`,
+        { waitUntil: 'domcontentloaded' });
+      await page.getByLabel('Usuario').fill('e2e');
+      await page.getByLabel('Contraseña').fill('clave123456');
+      await page.getByLabel('Contraseña').press('Enter');
+      const canvas = page.locator('.illustrated-home__castle-3d');
+      await expect(canvas).toHaveAttribute('data-home-blender-runtime', 'ready', { timeout: 105_000 });
+      await expect(canvas).toHaveAttribute('data-home-matthias-actor', 'ready', { timeout: 75_000 });
+      await expect.poll(async () => canvas.evaluate((node) => {
+        let split = null;
+        try { split = JSON.parse(node.dataset.homeBlenderDrawPass || 'null'); }
+        catch { return false; }
+        // Hosted Chromium uses SwiftShader: Home deliberately disables fire
+        // animation and never prepares transparent flame materials there.
+        // Test safe/no-op behavior on software, actual draw savings only on
+        // a physical renderer with live fire (local hardware probe).
+        const software = node.dataset.homeBlenderSoftware === 'true';
+        const flameReady = software
+          ? node.dataset.homeFireMotion === 'off-software'
+          : node.dataset.homeFireMotion === 'live'
+            && (node.dataset.homeBlenderFlamePass !== 'single'
+              || Number(node.dataset.homeBlenderFlameSinglePassCount) > 0);
+        return Boolean(validCountsInPage(split) && split.families.main.castle > 0
+          && split.families.main.matthias > 0 && flameReady);
+        function validCountsInPage(s) {
+          return s && s.totalCalls > 0 && s.mainCalls + s.shadowCalls === s.totalCalls
+            && s.families && ['main', 'shadow'].every((phase) => {
+              const group = s.families[phase];
+              return group && group.castle + group.matthias + group.runtime === s[phase + 'Calls'];
+            });
+        }
+      }), { timeout: 45_000, message: 'Real WebGL must render eligible double-sided flame materials' })
+        .toBe(true);
+      const snapshot = await canvas.evaluate((node) => ({
+        mode: node.dataset.homeBlenderFlamePass,
+        affectedMaterials: Number(node.dataset.homeBlenderFlameSinglePassCount),
+        software: node.dataset.homeBlenderSoftware === 'true',
+        fireMotion: node.dataset.homeFireMotion,
+        station: node.dataset.homeMatthiasStation,
+        lightProbe: node.dataset.homeBlenderLightProbe,
+        wall: node.dataset.homeWallTorches,
+        lod: node.dataset.homeCastleLod,
+        drawPass: JSON.parse(node.dataset.homeBlenderDrawPass),
+      }));
+      expect(validCounts(snapshot.drawPass)).toBe(true);
+      expect(snapshot.mode).toBe(mode);
+      expect(snapshot.lightProbe).toBe('pair-normal');
+      expect(snapshot.wall).toBe('pair');
+      expect(snapshot.lod).toBe('full');
+      return snapshot;
+    } finally {
+      await context.close();
+    }
+  }
+  const normal = await census('normal');
+  const single = await census('single');
+  expect(normal.affectedMaterials, 'A condition must have unmodified flames').toBe(0);
+  if (normal.software || single.software) {
+    // Do not turn on fire just to force a software CI draw-count win:
+    // physical GPU A/B/B/A and visual PNG review are the acceptance gate.
+    expect(normal.software).toBe(true);
+    expect(single.software).toBe(true);
+    expect(normal.fireMotion).toBe('off-software');
+    expect(single.fireMotion).toBe('off-software');
+    expect(single.affectedMaterials, 'Software Home must not silently enable fire').toBe(0);
+    expect(validCounts(normal.drawPass)).toBe(true);
+    expect(validCounts(single.drawPass)).toBe(true);
+    return;
+  }
+  expect(single.fireMotion).toBe('live');
+  expect(single.affectedMaterials, 'B must actually enable single-pass on eligible materials')
+    .toBeGreaterThan(0);
+  expect(single.station).toBe(normal.station);
+  expect(single.drawPass.families.main.matthias).toBe(normal.drawPass.families.main.matthias);
+  expect(single.drawPass.families.main.runtime).toBe(normal.drawPass.families.main.runtime);
+  expect(single.drawPass.mainCalls, 'B must submit fewer real WebGL draws than A')
+    .toBeLessThan(normal.drawPass.mainCalls);
+});

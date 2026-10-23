@@ -354,6 +354,24 @@ El verificador calcula por su cuenta las dos diferencias pareadas (A1−B1, A2�
 
 El campo `interpretation.verdict` y el spread observado se recalculan desde las visitas y los draw submissions utilizando el mismo clasificador conservador que produce el informe experimental. Una etiqueta de mejora editada a mano no es evidencia, aunque los PNG sean válidos. La clasificación jamás aprueba producción automáticamente.
 
+### Experimental flame A/B/B/A — GPU física local, sin aprobación visual
+
+La rama experimental **Draft** de [PR #5883](https://github.com/evilsysadmin/chess-studio/pull/5883)
+incorpora el cambio opcional `?homeGpuProfile=1&homeFlamePass=single` y la captura de cuatro
+visitas; el runtime normal de `main` no lo activa. En Nobara/Intel y desde un
+checkout de **esa rama**, ejecutar:
+
+```bash
+make home-gpu-flame-pass-probe HOME_GPU_NVIDIA_PRIME=0 HOME_GPU_EXPECT_VENDOR=intel HOME_GPU_AMBIENT=night
+```
+
+El objetivo reconstruye el frontend y mide `normal / single / single / normal`
+con contextos nuevos de Chromium. Valida el SHA de 40 caracteres, la escena, los
+tiempos GPU y los draw calls, genera cuatro PNG reales y ejecuta después el
+verificador de integridad. **Los cuatro PNG deben mostrarse y revisarse
+visualmente; las pruebas offline y SwiftShader no los sustituyen.** La prueba
+no concede permiso para fusionar #5883.
+
 ### Galería visual de las cuatro capturas físicas (solo local)
 
 Después de ejecutar `make home-gpu-flame-pass-probe` en el checkout experimental limpio y `make home-gpu-flame-pass-verify`, ejecutar `make home-gpu-flame-pass-review`. **El comando vuelve a verificar el JSON y los cuatro PNG antes de escribir** `.artifacts/home-gpu-benchmark/home-flame-abba-visual-review.html`. Abrir ese HTML localmente para ver A1/B1 y A2/B2 emparejados, con timings y draw calls de cada visita y advertencia persistente de que no hay aprobación para producción. No descarga recursos, no falsifica capturas, no mide GPU y nunca cambia la Home. Para revisión en esta conversación siguen siendo necesarios **los cuatro PNG auténticos como archivos**, no el HTML por sí solo.
