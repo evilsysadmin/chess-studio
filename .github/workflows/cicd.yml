@@ -213,6 +213,14 @@ jobs:
         run: bash scripts/go_python_parity_check.sh
       - name: Vet
         run: go vet ./...
+      # Source-level call graphs: block reachable module and Go stdlib CVEs.
+      # This runs in the required Backend · Go gate, not in advisory Trivy.
+      - name: Go vulnerability scan (reachable source paths)
+        shell: bash
+        run: |
+          set -euo pipefail
+          go install golang.org/x/vuln/cmd/govulncheck@v1.9.0
+          "$(go env GOPATH)/bin/govulncheck" ./...
       - name: Build Linux ARM64
         env:
           CGO_ENABLED: '0'
