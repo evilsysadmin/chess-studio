@@ -83,6 +83,20 @@ test('Home Blender no muestra el fallback mientras espera su primer frame', asyn
   await expect(canvas).toHaveAttribute('data-home-blender-runtime', 'loading');
   await expect(art).toHaveCSS('opacity', '0');
 
+  // The 6s slow-GPU recovery must make Home usable without revealing an
+  // unfinished Three.js canvas. Reuse this same real-WebGL cold load instead
+  // of adding another heavyweight smoke test.
+  const stage = home.locator('.illustrated-home__stage');
+  await expect(stage).toHaveAttribute('data-home3d-preview', 'painted', { timeout: 15_000 });
+  await expect(loadingCover).toHaveCount(0);
+  await expect(art).toHaveCSS('opacity', '1');
+  await expect(canvas).toHaveCSS('opacity', '0');
+  // Loading is a visibility contract, not a GLTFLoader-state contract: the
+  // WebGL renderer may finish its initial draw while the compositor's two RAF
+  // callbacks are still deliberately held. The 2D preview must keep masking
+  // it until the frame gate actually releases.
+  await expect(canvas).toHaveAttribute('data-home-castle-compositor', 'blender-runtime');
+
   await page.evaluate(() => window.__homeFrameGate.release());
   try {
     // A mounted canvas is not a completed Blender frame, and the 2D fallback
@@ -91,6 +105,8 @@ test('Home Blender no muestra el fallback mientras espera su primer frame', asyn
     await expect(canvas).toHaveAttribute('data-home-blender-runtime', 'ready');
     await expect(canvas).toBeVisible();
     await expect(loadingCover).toHaveCount(0, { timeout: 15_000 });
+    await expect(stage).not.toHaveAttribute('data-home3d-preview', 'painted');
+    await expect(canvas).toHaveCSS('opacity', '1');
     // is-ready is only published after a real WebGL frame has composed.
     // Do not add a separate locator.evaluate() probe here: under hosted
     // SwiftShader it may time out on Playwright's 12 s actionability budget
