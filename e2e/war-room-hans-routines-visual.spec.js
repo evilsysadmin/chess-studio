@@ -134,6 +134,43 @@ async function waitForRoutineStart(page, canvas, eventName) {
   }
 }
 
+
+async function waitForEspressoMilestone(page, canvas, milestone, {
+  budgetMs = 1_080_000,
+  stallMs = 100_000,
+} = {}) {
+  const started = Date.now();
+  let lastAdvance = started;
+  let distanceObserved = -1;
+  let stageObserved = '';
+  let last = null;
+  while (Date.now() - started < budgetMs) {
+    last = await canvas.evaluate((node, key) => ({
+      milestone: node.dataset[key] || '',
+      stage: node.dataset.warRoomHansEspressoStage || '',
+      meters: Number(node.dataset.warRoomHansEspressoTravelMeters || 0),
+      routeIndex: node.dataset.warRoomHansEspressoRouteIndex || '',
+      routeLength: node.dataset.warRoomHansEspressoRouteLength || '',
+      route: node.dataset.warRoomHansRoute || '',
+      taskPhase: node.dataset.warRoomHansTaskPhase || '',
+      serviceSetup: node.dataset.warRoomHansServiceSetup || '',
+    }), milestone);
+    if (last.milestone === 'true') return last;
+    if (last.meters >= distanceObserved + 0.015 || last.stage !== stageObserved) {
+      distanceObserved = last.meters;
+      stageObserved = last.stage;
+      lastAdvance = Date.now();
+    }
+    // Slow SwiftShader is acceptable while the physical actor progresses.
+    // A motionless service is not; fail with actionable scene diagnostics.
+    if (Date.now() - lastAdvance > stallMs) {
+      throw new Error(`ESPRESSO_SERVICE_STALLED ${milestone}: ${JSON.stringify(last)}`);
+    }
+    await page.waitForTimeout(1500);
+  }
+  throw new Error(`ESPRESSO_SERVICE_TIMEOUT ${milestone}: ${JSON.stringify(last)}`);
+}
+
 async function sampleRoutine(page, canvas, eventName) {
   const samples = [];
   const startedAt = Date.now();
@@ -187,7 +224,13 @@ async function sampleRoutine(page, canvas, eventName) {
 
 for (const eventName of CAPTURE_EVENTS) {
   test(`War Room · Hans routine video · ${eventName}`, async () => {
-    test.setTimeout(300_000);
+    // The espresso proof also waits for real inbound movement, the visible
+    // delivered cup, and the full outbound return at normal simulation speed.
+    // Rendering an unhurried ~24m physical round trip under SwiftShader can
+    // use far more wall-clock than game time. Keep the strict no-progress
+    // watchdog and finite milestone budgets; do not accelerate Hans or
+    // simulate a successful delivery.
+    test.setTimeout(eventName === 'espresso' ? 2_650_000 : 300_000);
     await mkdir(ARTIFACT_DIR, { recursive: true });
     await mkdir(TEMP_VIDEO_DIR, { recursive: true });
 
@@ -202,6 +245,10 @@ for (const eventName of CAPTURE_EVENTS) {
     });
     const context = await browser.newContext({
       viewport: { width: 1280, height: 720 },
+      // Keep desktop CSS layout unchanged, but ask SwiftShader to rasterize
+      // fewer pixels during the long *physical* espresso round trip. The
+      // other routines retain their baseline full-resolution captures.
+      deviceScaleFactor: eventName === 'espresso' ? 0.75 : 1,
       hasTouch: false,
       recordVideo: {
         dir: TEMP_VIDEO_DIR,
@@ -303,6 +350,20 @@ for (const eventName of CAPTURE_EVENTS) {
       await waitForRoutineStart(page, canvas, eventName);
 
       const manifest = await sampleRoutine(page, canvas, eventName);
+      if (eventName === 'espresso') {
+        // Previously the routine sidecar went green after only 6 seconds of
+        // visible walking. Do not imply a cup was served unless the real mesh
+        // is visible and the return leg reaches the service exit.
+        const delivered = await waitForEspressoMilestone(page, canvas,
+          'warRoomHansEspressoDelivered');
+        manifest.inboundServiceMeters = delivered.meters;
+        await captureViewportPng(context, page, `${ARTIFACT_DIR}/espresso-delivered.png`);
+        const returned = await waitForEspressoMilestone(page, canvas,
+          'warRoomHansEspressoReturned');
+        manifest.completedServiceMeters = returned.meters;
+        manifest.deliveredCupVisible = true;
+        manifest.returnedToServiceDoor = true;
+      }
       manifest.rendererClass = emulateSupportedGpu ? 'NVIDIA-emulated-on-SwiftShader' : 'SOFTWARE';
       manifest.sceneTier = emulateSupportedGpu ? 'full' : 'lite';
       await captureViewportPng(context, page, `${ARTIFACT_DIR}/${eventName}.png`);
