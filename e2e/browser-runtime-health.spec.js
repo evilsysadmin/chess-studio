@@ -206,6 +206,7 @@ test('Browser WebGL · Home 3D recupera el contexto perdido', async ({ page }) =
   await expect(canvas).toBeVisible();
   await expect(canvas).toHaveAttribute('data-home-blender-runtime', 'ready', { timeout:25_000 });
   await expect(canvas).toHaveClass(/is-ready/, { timeout:25_000 });
+  await expect.poll(() => page.evaluate(() => document.documentElement.dataset.homeBlenderLastEvent)).toBe('ready');
 
   const canLoseContext = await canvas.evaluate((node) => {
     const gl = node.getContext('webgl2') || node.getContext('webgl');
@@ -231,9 +232,20 @@ test('Browser WebGL · Home 3D recupera el contexto perdido', async ({ page }) =
   await expect(canvas).toHaveAttribute('data-home-castle-compositor', 'blender-runtime');
   await expect(canvas).toHaveAttribute('data-home-blender-runtime', 'recovering');
   await expect(canvas).toHaveAttribute('data-home-blender-last-context-event', 'lost');
+  await expect.poll(() => page.evaluate(() => document.documentElement.dataset.homeBlenderLastEvent)).toBe('context-lost');
   await page.evaluate(() => window.__homeWebglLoseContext?.restoreContext());
   await expect(canvas).toHaveAttribute('data-home-blender-runtime', 'ready', { timeout:15_000 });
   await expect(canvas).toHaveClass(/is-ready/, { timeout:15_000 });
+  const history = await page.evaluate(() => JSON.parse(
+    document.documentElement.dataset.homeBlenderTrace || '[]',
+  ));
+  const lifecycle = history.map((entry) => entry.event);
+  const lossIndex = lifecycle.indexOf('context-lost');
+  expect(lossIndex).toBeGreaterThanOrEqual(0);
+  expect(lifecycle.slice(lossIndex)).toEqual([
+    'context-lost', 'context-restored', 'mount', 'ready',
+  ]);
+  expect(history.at(-1).at - history[lossIndex].at).toBeGreaterThanOrEqual(9_000);
   await settle(page);
 
   const restored = await canvas.evaluate((node) => {
@@ -249,6 +261,11 @@ test('Browser WebGL · Home 3D recupera el contexto perdido', async ({ page }) =
   await matthias.click();
   await expect(page.getByRole('heading', { name:'Así juegas', exact:true })).toBeVisible();
   await expect(page.locator('.illustrated-home__castle-3d')).toHaveCount(0);
+  // The forensic history belongs to the page, not to an eventually unmounted
+  // canvas: it remains inspectable after navigation or permanent 2D fallback.
+  expect(await page.evaluate(() => JSON.parse(
+    document.documentElement.dataset.homeBlenderTrace || '[]',
+  ))).toEqual(history);
 
   await page.getByRole('button', { name:'← Volver al menú', exact:true }).click();
   const remountedHome = page.getByRole('region', { name:'Modos principales' });

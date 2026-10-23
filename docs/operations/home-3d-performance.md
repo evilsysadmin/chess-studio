@@ -20,6 +20,30 @@ On a ready Home canvas, inspect `document.querySelector('.illustrated-home__cast
 | `homeBlenderGpuMs` | Last async elapsed WebGL GPU-timer sample in milliseconds; **only** with status `ready` |
 | `homeBlenderGpuSampleCount` | Monotonic number of **valid completed GPU queries**, used to distinguish newly measured values from a still-published previous result |
 
+## Diagnosing a late 3D → static fallback
+
+The Blender canvas is destroyed when the Home switches to legacy fallback, so
+its `canvas.dataset` is no longer available. The **page-local** root element
+now retains the last ten meaningful renderer lifecycle events, including
+`mount`, `ready`, `lod-lite`, `context-lost`, `context-restored`,
+and `fallback` with a bounded reason (`model-timeout`,
+`model-unavailable`, `webgl-constructor`, `policy-ineligible`, or
+`adaptive-2d`). This is not GPU telemetry or evidence of a driver fault.
+
+Inspect after the incident, **before reloading**:
+
+```js
+console.table(JSON.parse(document.documentElement.dataset.homeBlenderTrace || '[]'));
+```
+
+Each `at` value is JavaScript epoch milliseconds; compare successive entries
+to distinguish a delayed restore from a model load failure. The trace is
+limited to ten entries and contains no URL, username, hardware fingerprint,
+stack trace or application data. It is never transmitted or persisted; F5
+starts a fresh page-local trace. `data-home-blender-last-event` offers the
+most recent event without JSON parsing. A driver reset can be investigated
+separately with kernel `NVRM`/`Xid` logs on the physical host.
+
 ## Profiler-only real main/depth draw census
 
 The Home now instruments the **existing** `renderer.shadowMap.render` and
