@@ -95,6 +95,7 @@ def census_scene(document: dict, *, top: int = 12) -> dict:
     costs = [_mesh_cost(mesh, accessors) for mesh in meshes]
     rows = []
     material_costs = {}
+    mesh_costs = {}
     used_meshes = set()
     visited_nodes = set()
     total_triangles = total_vertices = draw_primitives = 0
@@ -119,6 +120,17 @@ def census_scene(document: dict, *, top: int = 12) -> dict:
                 raise ValueError(f"invalid mesh reference: {mesh_id!r}")
             triangles, vertices, primitives = costs[mesh_id]
             used_meshes.add(mesh_id)
+            mesh_row = mesh_costs.setdefault(mesh_id, {
+                "meshIndex": mesh_id,
+                "mesh": meshes[mesh_id].get("name") or f"mesh-{mesh_id}",
+                "instances": 0,
+                "potentialTriangles": 0,
+                "uniqueTriangles": triangles,
+                "primitiveInstances": 0,
+            })
+            mesh_row["instances"] += 1
+            mesh_row["potentialTriangles"] += triangles
+            mesh_row["primitiveInstances"] += primitives
             total_triangles += triangles
             total_vertices += vertices
             draw_primitives += primitives
@@ -172,6 +184,12 @@ def census_scene(document: dict, *, top: int = 12) -> dict:
             key=lambda row: (-row["potentialTriangles"], row["materialIndex"]),
         ),
         "topNodes": sorted(rows, key=lambda row: (-row["triangles"], row["nodeIndex"]))[:top],
+        # Rank repeated meshes by their accumulated *scene* cost; ranking
+        # single nodes alone can hide geometry reused across many objects.
+        "topMeshes": sorted(
+            mesh_costs.values(),
+            key=lambda row: (-row["potentialTriangles"], row["meshIndex"]),
+        )[:top],
     }
 
 
@@ -196,6 +214,16 @@ def render_census_markdown(reports: list[dict]) -> str:
         ])
         for node in row["topNodes"]:
             lines.append(f"| {node['node']} | {node['mesh']} | {node['triangles']:,} |")
+        lines.extend([
+            "", "**Repeated mesh cost across scene instances**", "",
+            "| Mesh | Instances | Potential triangles | Unique triangles |",
+            "| --- | ---: | ---: | ---: |",
+        ])
+        for mesh in row["topMeshes"]:
+            lines.append(
+                f"| {mesh['mesh']} | {mesh['instances']:,} "
+                f"| {mesh['potentialTriangles']:,} | {mesh['uniqueTriangles']:,} |"
+            )
         lines.extend([
             "", "**Geometry by GLB material (not runtime draw calls)**", "",
             "| Material | Potential triangles | Primitive instances |",
