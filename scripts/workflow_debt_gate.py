@@ -30,6 +30,7 @@ INVENTORY = {
     'chesscom-oss-character-forge.yml': 'art-generation-preview',
     'cicd.yml': 'quality-required',
     'cloudflare-prometheus-exporter.yml': 'observability',
+    'chronicles-odo-r2-publish.yml': 'infra-assets',
     'coverage.yml': 'quality-scheduled',
     'e2e-full.yml': 'quality-scheduled',
     'grafana-dashboards.yml': 'observability',
