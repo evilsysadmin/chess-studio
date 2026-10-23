@@ -32,8 +32,7 @@ case "$mode" in
 
     # Canonical Matthias source edits only need focused Home evidence.
     # The retired portrait sidecar is a classifier compatibility alias.
-    if [[ "$producer_scope" == "home-matthias,chronicles-avatar" ||
-          "$producer_scope" == "home-matthias" ]]; then
+    if [[ "$producer_scope" == "home-matthias" ]]; then
       export HOME_MATTHIAS_CAPTURE_SCOPE="canonical-model"
       echo "Matthias canonical fast path: seated and mobile Home."
     fi
