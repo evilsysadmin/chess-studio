@@ -624,7 +624,7 @@ def self_test() -> None:
     _expect(["scripts/npm_audit_gate.py"], run_security=True)
     _expect(["scripts/go_binary_build_verify.sh"], run_go=True)
     _expect(["scripts/go_vulncheck_crossarch.sh"], run_go=True)
-    _expect(["scripts/go_binary_build_verify.sh", "backend-python/observability.py"], run_go=True, run_go_parity=True)
+    _expect(["scripts/go_binary_build_verify.sh", "backend-python/observability.py"], run_go=True, run_go_parity=True, run_backend=True)
 
     for tooling_path in (
         ".github/workflows/production-promote.yml", ".github/workflows/e2e-full.yml",
