@@ -14,11 +14,14 @@ function levelForSaved(saved) {
     + Math.max(0, Number(saved?.speedPoints) || 0);
 }
 
-export default function CombatPreparationRoom({ roster, campaign = null, onCustomize, inspectionPreview = false }) {
+export default function CombatPreparationRoom({ roster, campaign = null, cartography = null, onSectorInspect, onCustomize, inspectionPreview = false }) {
   const fen = useMemo(() => deploymentFen(roster), [roster]);
-  const combatOperationsMap = useMemo(() => campaign?.active
-    ? projectCombatOperationsCampaignMap(campaignMap(campaign.seed), campaign, availableCampaignNodes(campaign))
-    : null, [campaign]);
+  const combatOperationsMap = useMemo(() => {
+    const map = cartography || (campaign?.active
+      ? projectCombatOperationsCampaignMap(campaignMap(campaign.seed), campaign, availableCampaignNodes(campaign))
+      : null);
+    return map && onSectorInspect ? { ...map, onInspect: onSectorInspect } : map;
+  }, [campaign, cartography, onSectorInspect]);
   const pieceRankLevels = useMemo(() => {
     const ranks = {};
     for (const [slotKey, unitKey] of Object.entries(roster?.deployment || {})) {

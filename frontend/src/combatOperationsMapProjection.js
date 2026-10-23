@@ -24,6 +24,8 @@ export function projectCombatOperationsCampaignMap(map, campaign, availableNodes
       stage: node.stage,
       lane: node.lane,
       type: node.type,
+      label: node.label,
+      typeLabel: node.typeLabel,
       status: node.id === 'start'
         ? (campaign.currentNodeId === 'start' ? 'current' : (campaign.route || []).includes('start') ? 'cleared' : 'locked')
         : campaignNodeStatus(node, campaign, availableIds),

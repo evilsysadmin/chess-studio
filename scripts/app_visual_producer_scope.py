@@ -48,6 +48,7 @@ COMBAT_PREPARATION_FILES = {
     "frontend/src/combatoperationsmapprojection.js",
     "frontend/src/components/combatoperationscampaigncartography.js",
     "frontend/src/components/usecombatoperationscartography.js",
+    "frontend/src/components/combatoperationssectorpicking.js",
     "frontend/src/components/campaigncombatpreparation.jsx",
     "frontend/src/components/combatpreparationroom.jsx",
     "frontend/src/components/combatpreparationroom.css",
@@ -768,6 +769,7 @@ def self_test() -> None:
         "frontend/src/combatOperationsMapProjection.js",
         "frontend/src/components/CombatOperationsCampaignCartography.js",
         "frontend/src/components/useCombatOperationsCartography.js",
+        "frontend/src/components/CombatOperationsSectorPicking.js",
     ]
     for map_file in combat_map_files:
         assert classify([map_file]) == "combat-prep", map_file
