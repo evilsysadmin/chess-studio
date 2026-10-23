@@ -186,6 +186,18 @@ def self_test() -> None:
     assert "needs.prepare.outputs.smoke_only != 'true'" in workflow
     assert "needs.prepare.outputs.smoke_only == 'true'" in workflow
     assert "needs.backend.result == 'skipped'" in workflow
+    # Stale Cloudflare publications must not be counted as a complete generation.
+    # Pages rechecks main after the potentially slow historic-asset recovery;
+    # Worker checks before its deploy. Both expose an explicit superseded flag.
+    assert "id: pages_publish" in workflow
+    assert "if: steps.pages_publish.outputs.superseded != 'true'" in workflow
+    assert workflow.count('main-head --sha "$DEPLOY_SHA" --fail-stale') >= 1
+    assert 'python3 -S ../scripts/pages_runtime_asset_grace.py --dist dist --site staging' in workflow
+    assert workflow.index('python3 -S ../scripts/pages_runtime_asset_grace.py --dist dist --site staging') < workflow.index('"$WRANGLER_BIN" pages deploy dist')
+    assert "id: worker_head" in workflow
+    assert "if: steps.worker_head.outputs.superseded != 'true'" in workflow
+    assert "needs.frontend.outputs.superseded != 'true'" in workflow
+    assert "needs.worker.outputs.superseded != 'true'" in workflow
     assert "needs.frontend.result == 'skipped'" in workflow
     assert "needs.worker.result == 'skipped'" in workflow
     assert "smoke_matrix: ${{ steps.admission.outputs.smoke_matrix }}" in workflow
