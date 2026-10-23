@@ -613,7 +613,7 @@ function Board3DCanvas({
       skinId,
       state.renderLite ? 'lite' : 'full',
       orientation,
-      matthiasKingColor || 'none',
+      matthiasKingColor || 'none', warRoomVariant === 'combat-ops' ? 'combat-finish-v1' : 'normal',
     ].join('|');
     const allowPieceReuse = state.pieceMeshes.size > 0 && pieceBuildSignatureRef.current === pieceBuildSignature;
     const reconciliation = planBoard3DPieceReconciliation({
@@ -661,7 +661,7 @@ function Board3DCanvas({
       const matthiasKing = isMatthiasRivalKing(piece, matthiasKingColor);
       const mesh = buildPiece(piece.type, piece.color, skinId, state.renderLite, {
         matthiasKing,
-        faceTowardCamera: orientation !== 'black',
+        faceTowardCamera: orientation !== 'black', combatOperationsFinish: warRoomVariant === 'combat-ops',
       });
       const { x, z } = squarePosition(piece.square);
       mesh.position.set(x, 0.1, z);
