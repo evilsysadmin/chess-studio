@@ -8,6 +8,7 @@ import {
   materialGradeRefreshInterval,
   nextRuntimeRenderScale,
   reactiveLightProfile,
+  renderWarRoomWithScopedShadowUpdates,
   shadowRefreshInterval,
   shouldRefreshMaterialGrade,
   shouldRefreshShadowMap,
@@ -30,6 +31,61 @@ function fakeColor(hex) {
 }
 
 describe('WarRoom3DMotion', () => {
+  it('scopes manual shadow updates to a War Room draw and restores the prior renderer policy', () => {
+    const scene = { name: 'war-room-v4' };
+    const camera = { name: 'fixed-camera' };
+    for (const previous of [true, false]) {
+      const renderer = { shadowMap: { autoUpdate: previous, needsUpdate: true } };
+      const calls = [];
+      const original = function (actualScene, actualCamera) {
+        calls.push({
+          receiver: this,
+          scene: actualScene,
+          camera: actualCamera,
+          autoUpdateDuringDraw: this.shadowMap.autoUpdate,
+          needsUpdateDuringDraw: this.shadowMap.needsUpdate,
+        });
+        // Three manages needsUpdate; our wrapper must not reset it.
+        this.shadowMap.needsUpdate = false;
+        return 'painted';
+      };
+      expect(renderWarRoomWithScopedShadowUpdates(renderer, original, scene, camera))
+        .toBe('painted');
+      expect(calls).toHaveLength(1);
+      expect(calls[0]).toMatchObject({
+        receiver: renderer, scene, camera, autoUpdateDuringDraw: false,
+        needsUpdateDuringDraw: true,
+      });
+      expect(renderer.shadowMap.autoUpdate).toBe(previous);
+      expect(renderer.shadowMap.needsUpdate).toBe(false);
+    }
+  });
+
+  it('restores the auto-update policy if the WebGL render throws; other scenes bypass manual budgeting', () => {
+    const renderer = { shadowMap: { autoUpdate: true } };
+    const failure = new Error('context lost while painting');
+    expect(() => renderWarRoomWithScopedShadowUpdates(
+      renderer, function () {
+        expect(this.shadowMap.autoUpdate).toBe(false);
+        throw failure;
+      }, {}, {},
+    )).toThrow(failure);
+    expect(renderer.shadowMap.autoUpdate).toBe(true);
+    const scene = { name: 'non-war-room' };
+    const camera = {};
+    let calls = 0;
+    expect(renderWarRoomWithScopedShadowUpdates(
+      { shadowMap: null },
+      function (actualScene, actualCamera) {
+        calls += 1;
+        expect(actualScene).toBe(scene);
+        expect(actualCamera).toBe(camera);
+        return 42;
+      }, scene, camera,
+    )).toBe(42);
+    expect(calls).toBe(1);
+  });
+
   it('uses actual input modality instead of shadow resolution to grade War Room paints', () => {
     const scene = {
       userData: {
