@@ -88,6 +88,53 @@ def snapshot(path: Path = LOCK, proc_root: Path = PROC) -> tuple[str, list[tuple
     return state, result
 
 
+
+def fd_holders(device: int, inode: int, proc_root: Path = PROC,
+               max_processes: int = 4096) -> tuple[list[tuple[int, int]], bool]:
+    """Correlate inherited lock descriptors by fstat metadata, never contents.
+
+    A matching FD is a lead, not automatic proof of a live deploy or exclusive
+    ownership. Return incomplete=True (second tuple item False) if the bounded
+    scan cannot inspect every process and FD in the visible namespace.
+    """
+    if max_processes < 1:
+        raise ValueError("max_processes must be positive")
+    holders: list[tuple[int, int]] = []
+    complete = True
+    examined = 0
+    try:
+        pids = sorted((item for item in proc_root.iterdir() if item.name.isdecimal()),
+                      key=lambda item: int(item.name))
+        for process in pids:
+            examined += 1
+            if examined > max_processes:
+                complete = False
+                break
+            try:
+                descriptors = list((process / "fd").iterdir())
+            except OSError:
+                complete = False
+                continue
+            matching = 0
+            for descriptor in descriptors:
+                if not descriptor.name.isdecimal():
+                    continue
+                try:
+                    st = descriptor.stat()  # metadata only; never open or read FD
+                except FileNotFoundError:
+                    continue  # transient FD closed between listing and stat
+                except OSError:
+                    complete = False
+                    continue
+                if st.st_dev == device and st.st_ino == inode:
+                    matching += 1
+            if matching:
+                holders.append((int(process.name), matching))
+    except OSError:
+        complete = False
+    return holders, complete
+
+
 def self_test() -> None:
     with tempfile.TemporaryDirectory(prefix="oci-lock-triage-") as directory:
         path = Path(directory) / "deploy.lock"
@@ -115,6 +162,28 @@ def self_test() -> None:
             assert snapshot(path, proc) == ("held", [(123, "no", "unknown")])
             (proc / "locks").unlink()
             assert snapshot(path, proc) == ("held-unreadable-records", [])
+            # Emulate an inherited descriptor: the original /proc/locks PID
+            # is gone, but another live process still exposes the same inode.
+            inherited = proc / "456" / "fd"
+            inherited.mkdir(parents=True)
+            (inherited / "8").symlink_to(path)
+            (inherited / "9").symlink_to(path)
+            other = Path(directory) / "unrelated.lock"
+            other.touch()
+            (inherited / "10").symlink_to(other)
+            assert fd_holders(st.st_dev, st.st_ino, proc) == ([(456, 2)], True)
+            assert fd_holders(st.st_dev, st.st_ino, proc, max_processes=1) == ([(456, 2)], True)
+            (proc / "789" / "fd").mkdir(parents=True)
+            assert fd_holders(st.st_dev, st.st_ino, proc, max_processes=1) == ([(456, 2)], False)
+            (inherited / "8").unlink()
+            (inherited / "9").unlink()
+            assert fd_holders(st.st_dev, st.st_ino, proc)[0] == []
+            try:
+                fd_holders(st.st_dev, st.st_ino, proc, max_processes=0)
+            except ValueError:
+                pass
+            else:
+                raise AssertionError("unbounded FD scan was accepted")
             fcntl.flock(owner, fcntl.LOCK_UN)
         assert snapshot(path)[0] == "free"
         path.unlink()
@@ -135,6 +204,17 @@ def main() -> int:
     print(f"OCI_HOST_LOCK state={state} records={len(owners)}")
     for pid, visible, age in owners:
         print(f"OCI_HOST_LOCK_OWNER pid={pid} proc_visible={visible} age_s={age}")
+    if state == "held":
+        rechecked, st = lock_state()
+        if rechecked == "held" and st is not None:
+            holders, complete = fd_holders(st.st_dev, st.st_ino)
+            print(f"OCI_HOST_LOCK_FD_SCAN coverage={'complete' if complete else 'partial'} holders={len(holders)}")
+            for pid, count in holders:
+                print(f"OCI_HOST_LOCK_FD_HOLDER pid={pid} matching_fds={count}")
+            if not holders or not complete:
+                print("OCI_HOST_LOCK_WARNING fd_owner_unresolved=yes")
+        else:
+            print("OCI_HOST_LOCK_FD_SCAN coverage=partial reason=lock_changed")
     if state == "held" and not owners:
         print("OCI_HOST_LOCK_WARNING owner_unresolved=yes")
     print("OCI_HOST_LOCK_ACTION manual_review_only=yes")

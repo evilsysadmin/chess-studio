@@ -47,14 +47,21 @@ La herramienta:
   ignora esperas, locks POSIX y colisiones de inodo en otros dispositivos.
 - Publica únicamente `state`, conteo, PID, visibilidad y antigüedad si la puede
   obtener de `/proc/<pid>/stat`; no lee `cmdline`, `environ` ni secretos.
+- Si el lock está retenido, inspecciona **solo metadatos** `stat()` de los FD
+  expuestos en `/proc/<pid>/fd`, con límite de 4096 procesos. Busca el **mismo
+  dispositivo e inodo**, incluso si el PID original del `FLOCK` desapareció y
+  otro proceso heredó su descriptor. Emite PID y **conteo** de FD coincidentes,
+  nunca sus rutas, contenidos ni nombres de procesos. `coverage=partial`
+  significa que hubo permisos insuficientes, carreras o límite alcanzado:
+  la ausencia de coincidencias **no demuestra** ausencia de herederos.
 - Nunca ejecuta `kill`, `rm`, `systemctl restart`, operaciones de Docker,
   modificaciones de Git ni cambios de despliegue.
 
 ## Decisión posterior
 
-Si muestra `held` con PID visible, identificar **desde la misma VM y namespace**
-su unidad de systemd, descriptores heredados y actividad real, también en modo
-lectura. No intervenir hasta descartar un despliegue legítimo en curso. Si
+Si muestra `held` con PID visible o `OCI_HOST_LOCK_FD_HOLDER` con
+`matching_fds>0`, identificar **desde la misma VM y namespace** su unidad de
+systemd, descriptores heredados y actividad real, también en modo lectura. No intervenir hasta descartar un despliegue legítimo en curso. Si
 muestra `held` con `records=0`, `proc_visible=no` o `age_s=unknown`, registrar
 la limitación y examinar namespaces/FDs con un operador autorizado. Un lock
 retenido no demuestra por sí solo un proceso colgado.
