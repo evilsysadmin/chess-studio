@@ -212,6 +212,8 @@ test('Home canónica · Matthias puede quedarse dormido sobre el manual en la bi
   if (render.mode === 'in-scene') {
     // Nodding off over the manual in the reading chair, not on the sofa.
     await expectInSceneResident(matthias, render.hallRuntime, { station: 'reading-chair', posture: 'seat', clip: 'Sleep' });
+    await expect(render.hallRuntime).toHaveAttribute('data-home-coffee-temperature', 'cold');
+    await expect(render.hallRuntime).toHaveAttribute('data-home-matthias-cap', 'table');
     return;
   }
   await expect(avatar).toHaveAttribute('data-home-matthias-station', 'rest');

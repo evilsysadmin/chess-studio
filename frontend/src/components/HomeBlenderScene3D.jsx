@@ -34,6 +34,7 @@ import {
   HOME_MATTHIAS_ACTOR_MODEL_PATH,
   createHomeMatthiasActor,
   homeMatthiasActorRoutine,
+  homeMatthiasIsSleeping,
   homeMatthiasProjectBounds,
 } from './HomeBlenderMatthiasActor.js';
 
@@ -665,6 +666,16 @@ void main() {
   vec3 col = mix(vec3(1.0, 0.80, 0.36), vec3(0.95, 0.42, 0.08), smoothstep(0.0, 1.0, vLife));
   gl_FragColor = vec4(col, a * a * (1.0 - vLife) * smoothstep(0.0, 0.12, vLife) * uOpacity);
 }`;
+
+// Change only the coffee particles: fireplace, candles and embers keep
+// working while the sleepy pawn is resting. No per-frame clock check.
+export function applyHomeBlenderCoffeeTemperature(particles, routine) {
+  const hot = !homeMatthiasIsSleeping(routine);
+  for (const points of particles || []) {
+    if (points?.userData?.steam) points.visible = hot;
+  }
+  return hot ? 'hot' : 'cold';
+}
 
 export function homeBlenderSteamBase(nodes) {
   const steam = (nodes || []).filter((node) => node.kind === 'steam');
@@ -1800,6 +1811,7 @@ export default function HomeBlenderScene3D({
       if (!base) return;
       const points = createSteamSprites({ base, salt: 5, name: 'home-coffee-steam' });
       points.userData.steam = true;
+      points.visible = !homeMatthiasIsSleeping(homeMatthiasActorRoutine(matthiasPropsRef.current || {}));
       scene.add(points);
       fireParticles.push(points);
       // The baked wisp is a hard-edged ribbon; the soft puffs replace it while they run.
@@ -2404,6 +2416,8 @@ export default function HomeBlenderScene3D({
       canvas.dataset.homeMatthiasStation = routine.stationId;
       canvas.dataset.homeMatthiasPosture = routine.posture;
       canvas.dataset.homeMatthiasClip = routine.clip;
+      canvas.dataset.homeMatthiasCap = matthiasActor.capLocation;
+      canvas.dataset.homeCoffeeTemperature = applyHomeBlenderCoffeeTemperature(fireParticles, routine);
       if (moved && renderer.shadowMap.enabled) renderer.shadowMap.needsUpdate = true;
       reportMatthiasLayout();
       requestRender();
