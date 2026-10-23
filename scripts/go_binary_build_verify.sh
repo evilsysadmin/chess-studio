@@ -14,6 +14,11 @@ go_at_least_patched() {
   (( major > 1 || (major == 1 && (minor > 27 || (minor == 27 && patch >= 3))) ))
 }
 
+# GO-2026-5932: no x/crypto release can fix the abandoned OpenPGP packages.
+contains_unsafe_openpgp() {
+  grep -Eq '^golang[.]org/x/crypto/openpgp(/|$)' <<< "$1"
+}
+
 if [[ "${1:-}" == '--self-test' ]]; then
   for good in go1.27.3 go1.27.4 go1.27.10 go1.28.0; do
     go_at_least_patched "$good" || { echo "Rejected patched Go: $good" >&2; exit 1; }
@@ -24,7 +29,16 @@ if [[ "${1:-}" == '--self-test' ]]; then
       exit 1
     fi
   done
-  echo 'Go binary compiler security floor self-test: OK'
+  for unsafe in golang.org/x/crypto/openpgp golang.org/x/crypto/openpgp/packet; do
+    contains_unsafe_openpgp "$unsafe" || { echo "Failed to detect unsafe OpenPGP: $unsafe" >&2; exit 1; }
+  done
+  for safe in golang.org/x/crypto golang.org/x/crypto/ssh golang.org/x/crypto/openpgp2; do
+    if contains_unsafe_openpgp "$safe"; then
+      echo "Rejected safe package: $safe" >&2
+      exit 1
+    fi
+  done
+  echo 'Go compiler security floor and OpenPGP import guard self-test: OK'
   exit 0
 fi
 [[ "$#" -eq 0 ]] || { echo 'Unexpected arguments' >&2; exit 2; }
@@ -51,6 +65,16 @@ grep -Fqx $'\tbuild\tGOARCH=arm64' <<< "$metadata" || {
   echo "::error::Binary was not built for linux/arm64"
   exit 1
 }
+
+# The OpenPGP package is unsafe at every x/crypto release. Keep unrelated
+# crypto packages, but reject importing these retired packages for either target.
+for arch in amd64 arm64; do
+  deps="$(CGO_ENABLED=0 GOOS=linux GOARCH="$arch" go list -deps ./cmd/pvp-edge)"
+  if contains_unsafe_openpgp "$deps"; then
+    echo "::error::GO-2026-5932 unsafe legacy OpenPGP import in linux/$arch"
+    exit 1
+  fi
+done
 
 # The source scans ran earlier in this required job. Check the exact binary too.
 scanner="$(go env GOPATH)/bin/govulncheck"
