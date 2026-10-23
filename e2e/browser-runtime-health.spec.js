@@ -207,6 +207,11 @@ test('Browser WebGL · Home 3D recupera el contexto perdido', async ({ page }) =
   await expect(canvas).toHaveAttribute('data-home-blender-runtime', 'ready', { timeout:25_000 });
   await expect(canvas).toHaveClass(/is-ready/, { timeout:25_000 });
   await expect.poll(() => page.evaluate(() => document.documentElement.dataset.homeBlenderLastEvent)).toBe('ready');
+  // The gate grants permanent-recovery protection only AFTER two actual
+  // compositor RAFs exposed 3D, not merely when the renderer set is-ready.
+  await expect(page.locator('.route-loading.home-3d-loading')).toHaveCount(0);
+  await expect(home.locator('.illustrated-home__art')).toHaveCSS('opacity', '0');
+  await expect(home.locator('.illustrated-home__stage')).not.toHaveAttribute('data-home3d-preview', 'painted');
 
   const canLoseContext = await canvas.evaluate((node) => {
     const gl = node.getContext('webgl2') || node.getContext('webgl');
