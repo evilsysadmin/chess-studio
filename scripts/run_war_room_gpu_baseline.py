@@ -119,6 +119,41 @@ def baseline_report(directory, sha, mode, variant, repetitions):
                              + ' | '.join(cells) + ' |')
     lines.extend([
         '',
+        '## One real shadow-heavy frame: top caster objects (opt-in only)',
+        '',
+        'For each profile/visit/phase this is the capture with the highest '
+        'observed shadow draw count, taken from *actual renderer.render* '
+        'samples. It is **not a phase median** and is not GPU elapsed time. '
+        'Names are runtime Three.js object identities; the unranked remainder '
+        'ensures no draw is quietly omitted. Missing/legacy ranks show n/a.',
+        '',
+        '| Profile · visit · phase | Shadow draws (snapshot) | '
+        'Top shadow casters, calls and family | Remaining calls |',
+        '|---|---:|---|---:|',
+    ])
+    for profile in PROFILES:
+        for index, visit in enumerate(VISITS):
+            for phase in ('idle', 'move'):
+                samples = [report['visits'][index].get(phase, {}).get('renderCost', {})
+                           .get('shadowCasterSnapshot') for report in groups[profile]]
+                valid = [row for row in samples if isinstance(row, dict)
+                         and type(row.get('shadowCalls')) is int
+                         and type(row.get('top')) is list
+                         and type(row.get('unrankedCalls')) is int]
+                if len(valid) != len(samples):
+                    lines.append(f'| {profile} · {visit} · {phase} | n/a | n/a | n/a |')
+                    continue
+                selected = max(valid, key=lambda row: row['shadowCalls'])
+                names = ', '.join(
+                    f"{str(item['name']).replace('|', '/').replace(chr(10), ' ')[:96]} "
+                    f"({item['family']}: {item['calls']})"
+                    for item in selected['top'][:8]
+                )
+                lines.append(f"| {profile} · {visit} · {phase} | "
+                             f"{selected['shadowCalls']} | {names or 'n/a'} | "
+                             f"{selected['unrankedCalls']} |")
+    lines.extend([
+        '',
         '## Static GLB and lighting census (not draw calls)',
         '',
         'One-shot runtime telemetry observed after the room and Hans become ready. '
