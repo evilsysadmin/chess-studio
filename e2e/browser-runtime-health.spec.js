@@ -222,6 +222,15 @@ test('Browser WebGL · Home 3D recupera el contexto perdido', async ({ page }) =
   expect(canLoseContext, 'El Chromium CI debe exponer WEBGL_lose_context para validar recuperación real').toBe(true);
 
   await expect(canvas).not.toHaveClass(/is-ready/);
+  // Actual browser WEBGL_lose_context, not just a synthetic DOM event.
+  // Advance beyond the old irreversible 8-second deadline. The painted
+  // safety layer may appear, but the Blender component must remain alive
+  // and able to accept a late restoration on the SAME WebGL context.
+  await page.clock.install();
+  await page.clock.fastForward(9_100);
+  await expect(canvas).toHaveAttribute('data-home-castle-compositor', 'blender-runtime');
+  await expect(canvas).toHaveAttribute('data-home-blender-runtime', 'recovering');
+  await expect(canvas).toHaveAttribute('data-home-blender-last-context-event', 'lost');
   await page.evaluate(() => window.__homeWebglLoseContext?.restoreContext());
   await expect(canvas).toHaveAttribute('data-home-blender-runtime', 'ready', { timeout:15_000 });
   await expect(canvas).toHaveClass(/is-ready/, { timeout:15_000 });

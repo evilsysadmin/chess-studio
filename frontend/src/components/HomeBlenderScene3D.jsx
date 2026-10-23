@@ -1911,7 +1911,6 @@ export default function HomeBlenderScene3D({
     let fireWakeTimer = null;
     let frame = null;
     let loadTimer = null;
-    let contextRecoveryTimer = null;
 
     // WebGLRenderer includes both the browser's WebGL context acquisition
     // and Three's own renderer setup. Observe the original getContext call
@@ -2526,19 +2525,16 @@ export default function HomeBlenderScene3D({
       delete canvas.dataset.homeBlenderGpuMs;
       canvas.classList.remove('is-ready');
       canvas.dataset.homeBlenderRuntime = 'recovering';
+      canvas.dataset.homeBlenderLastContextEvent = 'lost';
+      // Keep the original canvas and event listeners mounted. The painted
+      // master is already visible while is-ready is absent; unmounting after
+      // an arbitrary eight seconds made a later browser GPU restoration
+      // permanently impossible until a full page reload.
       stopFireAnimation();
-      if (contextRecoveryTimer !== null) window.clearTimeout(contextRecoveryTimer);
-      contextRecoveryTimer = window.setTimeout(() => {
-        contextRecoveryTimer = null;
-        failToFallback(true);
-      }, 8_000);
     };
     const onContextRestored = () => {
       if (disposed || fallbackRequested) return;
-      if (contextRecoveryTimer !== null) {
-        window.clearTimeout(contextRecoveryTimer);
-        contextRecoveryTimer = null;
-      }
+      canvas.dataset.homeBlenderLastContextEvent = 'restored';
       // A restored WebGL context invalidates renderer-owned GPU resources.
       // Re-run the complete runtime effect so renderer, scene, GLTF resources,
       // PMREM/environment, materials and animations are recreated together.
@@ -2565,7 +2561,6 @@ export default function HomeBlenderScene3D({
       cancelPendingRender();
       stopFireAnimation();
       if (loadTimer !== null) window.clearTimeout(loadTimer);
-      if (contextRecoveryTimer !== null) window.clearTimeout(contextRecoveryTimer);
       resizeObserver?.disconnect();
       intersectionObserver?.disconnect();
       window.removeEventListener('resize', resize);
