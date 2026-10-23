@@ -287,11 +287,21 @@ if (checkCiWiring) {
   if (goScanStart < 0) fail('Backend Go debe conservar el escáner obligatorio de vulnerabilidades alcanzables');
   const goScanEnd = backendGoBlock.indexOf('\n      - name:', goScanStart + 1);
   const goScanBlock = backendGoBlock.slice(goScanStart, goScanEnd < 0 ? undefined : goScanEnd);
-  if (!/^\s*run: \|\s*$/m.test(goScanBlock)
-    || !/^\s*go install golang\.org\/x\/vuln\/cmd\/govulncheck@v1\.9\.0\s*$/m.test(goScanBlock)
-    || !/^\s*"\$\(go env GOPATH\)\/bin\/govulncheck" \.\/\.\.\.\s*$/m.test(goScanBlock)
-    || !/^\s*GOOS=linux GOARCH=arm64 "\$\(go env GOPATH\)\/bin\/govulncheck" \.\/\.\.\.\s*$/m.test(goScanBlock)) {
-    fail('Backend Go debe escanear ambas arquitecturas con govulncheck v1.9.0 bloqueante');
+  if (!/^\s*run: bash \.\.\/scripts\/go_vulncheck_crossarch\.sh\s*$/m.test(goScanBlock)) {
+    fail('Backend Go debe ejecutar el escáner multiarquitectura obligatorio');
+  }
+  const scanScript = read(path.join(root, 'scripts', 'go_vulncheck_crossarch.sh'));
+  const scanCommands = scanScript.split(/\r?\n/).map((line) => line.trim())
+    .filter((line) => line && !line.startsWith('#'));
+  const expectedScanCommands = [
+    'set -euo pipefail',
+    'go install golang.org/x/vuln/cmd/govulncheck@v1.9.0',
+    'scanner="$(go env GOPATH)/bin/govulncheck"',
+    '"$scanner" ./...',
+    'GOOS=linux GOARCH=arm64 "$scanner" ./...',
+  ];
+  if (JSON.stringify(scanCommands) !== JSON.stringify(expectedScanCommands)) {
+    fail('Escáner Go debe conservar AMD64 + ARM64, versión fija y errores bloqueantes');
   }
   if (/continue-on-error:|^\s*if:|\|\|\s*true|\|\|\s*:/m.test(goScanBlock)) {
     fail('El escaneo Go debe bloquear CI sin condiciones ni supresiones');
