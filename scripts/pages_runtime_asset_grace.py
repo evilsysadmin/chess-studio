@@ -101,11 +101,17 @@ def fetch_from_origin(origin: str, path: str, limit: int, *, optional: bool = Fa
     url = origin + "/" + path
     # Cloudflare's bot protection answers 403 to the default Python-urllib
     # user agent, which broke every staging deploy after the first cutover.
-    request = urllib.request.Request(url, headers={
+    # release.json and asset-grace.json are mutable lineage pointers: fetch
+    # them fresh. Hashed JS/CSS chunks are immutable and SHA-256 verified after
+    # download, so never force the CDN to revalidate them with no-cache/no-store.
+    metadata = path in {"release.json", MANIFEST}
+    headers = {
         "User-Agent": "chess-studio-pages-asset-grace/1",
-        "Cache-Control": "no-cache, no-store",
-        "Accept": "application/json" if path.startswith(("release.json", MANIFEST)) else "*/*",
-    })
+        "Accept": "application/json" if metadata else "*/*",
+    }
+    if metadata:
+        headers["Cache-Control"] = "no-cache, no-store"
+    request = urllib.request.Request(url, headers=headers)
     # Historical immutable chunks are mandatory. Retry only a temporary
     # network timeout or a transient origin response; never turn a missing,
     # forbidden, malformed or mismatched chunk into a successful deploy.
@@ -249,6 +255,22 @@ def self_test() -> None:
         assert fetch_from_origin("https://example.com", MANIFEST, 2048, optional=True) is not None
     finally:
         urllib.request.urlopen = original_urlopen
+    # Mutable manifest/release pointers must bypass stale CDN cache, but
+    # immutable hashes should be allowed to hit the edge cache.
+    cache_headers = {}
+    def observe_headers(request, timeout=15):
+        cache_headers[request.full_url.rsplit("/", 1)[-1]] = (
+            request.get_header("Cache-control"),
+            request.get_header("Accept"),
+        )
+        return FakeResponse(b"same checked bytes")
+    for name in ("release.json", MANIFEST, "assets/Board3D-aBcDeF01.js"):
+        fetch_from_origin("https://example.com", name, 1024, opener=observe_headers)
+    assert cache_headers == {
+        "release.json": ("no-cache, no-store", "application/json"),
+        MANIFEST: ("no-cache, no-store", "application/json"),
+        "Board3D-aBcDeF01.js": (None, "*/*"),
+    }
     # Transient origin errors must be retried, but a persistent outage or
     # a missing required chunk may never produce an incomplete manifest.
     calls = []
