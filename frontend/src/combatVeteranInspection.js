@@ -1,6 +1,6 @@
 import { deploymentSlotForSquare, deploymentSquareForSlot, effectiveDeploymentType, ensureDeploymentState } from './combatDeployment.js';
 import { originTypeForRosterKey } from './combatDeployment.js';
-import { pieceRankForLevel } from './combatRanks.js';
+import { combatVeteranDisplayLevel, pieceRankForLevel } from './combatRanks.js';
 import { unitDecorations, unitRecordForKey, unitServiceMarks } from './combatUnitService.js';
 
 // Read-only lookup: use the same canonical deployment as deploymentFen(),
@@ -16,8 +16,7 @@ function deployedVeteranAtSquare(roster, square) {
   if (!identity?.identityId || saved?.alive === false) return null;
   const record = unitRecordForKey(roster, unitKey);
   if (record && record.identityId !== identity.identityId) return null;
-  const level = 1 + Math.max(0, Number(saved?.strengthPoints) || 0)
-    + Math.max(0, Number(saved?.speedPoints) || 0);
+  const level = combatVeteranDisplayLevel(saved);
   const stats = record?.stats || {};
   const safeCount = (key) => Number.isFinite(Number(stats[key]))
     ? Math.max(0, Math.floor(Number(stats[key]))) : 0;

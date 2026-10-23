@@ -119,4 +119,31 @@ describe('Combat Operations · earned honours on deployed identities', () => {
     expect(combatPreparationHonors(roster).medalCounts).toEqual({ a1: 1 });
   });
 
+  it('does not engrave inflated or fractional ranks on physical veterans', () => {
+    const roster = {
+      deploymentVersion: 1,
+      deployment: { 'r-a': 'r-a', 'p-a': 'p-a' },
+      identities: {
+        'r-a': { identityId: 'r-one' },
+        'p-a': { identityId: 'p-one' },
+      },
+      pieces: {
+        'r-a': { strengthPoints: Infinity, speedPoints: '3' },
+        'p-a': { strengthPoints: 2.8, speedPoints: -4 },
+      },
+      unitRecords: {
+        'r-one': { decorations: [{ id: 'baptism' }] },
+        'p-one': { decorations: [] },
+      },
+    };
+    const before = roster.pieces['r-a'].strengthPoints;
+    expect(combatPreparationHonors(roster)).toEqual({
+      rankLevels: { a1: 4 }, medalCounts: { a1: 1 },
+    });
+    expect(roster.pieces['r-a'].strengthPoints).toBe(before); // projection only
+    roster.pieces['r-a'].strengthPoints = 3;
+    roster.pieces['r-a'].speedPoints = 1;
+    expect(combatPreparationHonors(roster).rankLevels).toEqual({ a1: 5 });
+  });
+
 });

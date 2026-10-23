@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { METAMORPHOSIS_MIN_RANK_ID, PIECE_RANKS, pieceRankAtLeast, pieceRankForLevel, pieceRankInsignia, pieceRankTooltip } from './combatRanks.js';
+import { METAMORPHOSIS_MIN_RANK_ID, PIECE_RANKS, combatVeteranDisplayLevel, pieceRankAtLeast, pieceRankForLevel, pieceRankInsignia, pieceRankTooltip } from './combatRanks.js';
 
 describe('rangos militares de piezas de Combate', () => {
   it('deriva el rango exclusivamente del nivel real', () => {
@@ -38,6 +38,26 @@ describe('rangos militares de piezas de Combate', () => {
     expect(pieceRankTooltip(6)).toContain('Siguiente: Comandante · nivel 8');
     expect(pieceRankTooltip(8)).toContain('Primer rango elegible para metamorfosis');
     expect(pieceRankTooltip(12)).toContain('Rango máximo');
+  });
+
+  it('uses one safe integer-only display level for saved purchased points', () => {
+    expect(combatVeteranDisplayLevel()).toBe(1);
+    expect(combatVeteranDisplayLevel({ strengthPoints: 3, speedPoints: 1 })).toBe(5);
+    expect(combatVeteranDisplayLevel({ strengthPoints: '3', speedPoints: '1' })).toBe(5);
+    expect(combatVeteranDisplayLevel({ strengthPoints: -2, speedPoints: 3 })).toBe(4);
+    expect(combatVeteranDisplayLevel({ strengthPoints: 2.5, speedPoints: 1 })).toBe(2);
+  });
+
+  it('fails closed on malformed, nonfinite and unsafe purchased points', () => {
+    for (const corrupt of [NaN, Infinity, -Infinity, 'Infinity', '1e3', '0x10', '3.5', true, [], {}, Number.MAX_SAFE_INTEGER + 1]) {
+      expect(combatVeteranDisplayLevel({ strengthPoints: corrupt, speedPoints: 0 })).toBe(1);
+    }
+    expect(combatVeteranDisplayLevel({
+      strengthPoints: Number.MAX_SAFE_INTEGER + 1, speedPoints: 1,
+    })).toBe(2); // keep known safe purchased points
+    expect(combatVeteranDisplayLevel({
+      strengthPoints: Number.MAX_SAFE_INTEGER - 1, speedPoints: 2,
+    })).toBe(1); // adding the base level must remain a safe integer
   });
 
 });
