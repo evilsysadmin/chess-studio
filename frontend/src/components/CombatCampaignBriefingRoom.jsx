@@ -43,7 +43,7 @@ export default function CombatCampaignBriefingRoom({
           </button>
           <div className="combat-operations-mode-chip"><span>COMBAT CHESS</span><b>ÓRDENES</b></div>
           <button type="button" className="context-help-btn combat-operations-help"
-            onClick={onHelp} aria-label="Tutorial de campaña">?</button>
+            onClick={() => { setInspectingArmy(false); onHelp(); }} aria-label="Tutorial de campaña">?</button>
         </div>
 
         <header className="combat-briefing-room-intro">
@@ -57,7 +57,7 @@ export default function CombatCampaignBriefingRoom({
           <span>Suministros <b>{campaign.operationalCredits}</b></span>
           <span>Créditos <b>{roster.credits || 0}</b></span>
           {fallen > 0 && <span className="danger-text">Bajas <b>{fallen}</b></span>}
-          <button type="button" onClick={onOpenMarket}>Mercado →</button>
+          <button type="button" onClick={() => { setInspectingArmy(false); onOpenMarket(); }}>Mercado →</button>
           <button type="button" onClick={onRestart}>↻ Reiniciar campaña</button>
         </div>
 
