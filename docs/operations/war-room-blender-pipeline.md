@@ -120,6 +120,13 @@ afirmar que sean los assets publicados. En ambos casos, triángulos y
 primitivas son **potenciales**, no draw calls, shadow passes ni FPS reales:
 las pruebas con GPU física siguen siendo un gate independiente.
 
+El workflow `War Room · published GLB census` descarga automáticamente los tres
+assets inmutables desde las URL fijadas en R2 cuando cambia el auditor, el
+manifiesto o el propio workflow. Compara SHA-256 y longitud **antes** de
+contar triángulos; publica el JSON de geometría como artifact y el resumen
+en GitHub Actions. También se puede iniciar con `workflow_dispatch`.
+Ningún resultado de este job representa FPS, draws o consumo de GPU real.
+
 ## Acceptance
 
 A v2 or v3 visual iteration is accepted only when:
