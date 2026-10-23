@@ -9,6 +9,7 @@ import argparse
 import datetime as dt
 import json
 import os
+import posixpath
 import re
 import shutil
 import socket
@@ -24,6 +25,7 @@ HARNESS_FILES = (
     'e2e/war-room-gpu-benchmark.spec.js', 'e2e/playwright.config.js',
     'e2e/helpers.js', 'e2e/war-room-board-input.js',
     'e2e/war-room-gpu-quick-match.js',
+    'e2e/war-room-gpu-shadow-readiness.mjs',
     'e2e/package.json', 'e2e/package-lock.json',
     'scripts/e2e_dist_server.py',
 )
@@ -37,6 +39,30 @@ class BenchError(Exception):
 def require(condition, message):
     if not condition:
         raise BenchError(message)
+
+
+def require_complete_harness_imports(harness_blobs):
+    """Fail before npm/GPU if a shared harness imports an unpinned local file.
+
+    The benchmark spec is copied into historical runtime worktrees. Syntax
+    checks alone cannot detect a missing imported module at browser startup.
+    """
+    pinned = set(HARNESS_FILES)
+    for filename, source in harness_blobs.items():
+        if not filename.endswith(('.js', '.mjs')):
+            continue
+        text = source.decode('utf-8')
+        # Static import/export-from, side-effect imports, and literal dynamic
+        # imports. Bare package specifiers stay in the pinned npm lockfile.
+        for spec in re.findall(
+            r"""(?:\bfrom\s*|\bimport\s*\(\s*|\bimport\s*)['"]([^'"]+)['"]""",
+            text,
+        ):
+            if not spec.startswith('.'):
+                continue
+            target = posixpath.normpath(posixpath.join(posixpath.dirname(filename), spec))
+            require(target in pinned and target in harness_blobs,
+                    f'GPU benchmark harness missing local import {target} (from {filename})')
 
 
 def run(command, *, cwd=None, env=None, stdout=None, check=True):
@@ -219,7 +245,18 @@ def self_test():
     assert 'e2e/helpers.js' in HARNESS_FILES
     assert 'e2e/war-room-board-input.js' in HARNESS_FILES
     assert 'e2e/war-room-gpu-quick-match.js' in HARNESS_FILES
+    assert 'e2e/war-room-gpu-shadow-readiness.mjs' in HARNESS_FILES
     assert 'scripts/e2e_dist_server.py' in HARNESS_FILES
+    pinned_files = {filename: (root / filename).read_bytes() for filename in HARNESS_FILES}
+    require_complete_harness_imports(pinned_files)
+    incomplete_files = dict(pinned_files)
+    incomplete_files.pop('e2e/war-room-gpu-shadow-readiness.mjs')
+    try:
+        require_complete_harness_imports(incomplete_files)
+    except BenchError as exc:
+        assert 'war-room-gpu-shadow-readiness.mjs' in str(exc)
+    else:
+        raise AssertionError('Missing imported GPU shadow helper passed preflight')
     for count in (0, 1, 9):
         try:
             execution_order(count)
@@ -325,6 +362,7 @@ def main():
         harness_blobs = {}
         for filename in (*HARNESS_FILES, COMPARE_PATH):
             harness_blobs[filename] = capture(('git', 'show', harness + ':' + filename), cwd=root)
+        require_complete_harness_imports(harness_blobs)
         require(b'schema: 2' in harness_blobs[HARNESS_FILES[0]]
                 and b'runId' in harness_blobs[HARNESS_FILES[0]]
                 and (args.variant == 'v3' or b'WAR_ROOM_GPU_BENCH_VARIANT' in harness_blobs[HARNESS_FILES[0]]),
