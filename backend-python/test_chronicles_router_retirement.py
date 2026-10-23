@@ -1,6 +1,8 @@
 """The standalone Chronicles API must not be remounted in Chess Studio."""
 from __future__ import annotations
 
+from pathlib import Path
+
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
@@ -44,3 +46,10 @@ def test_legacy_chronicles_router_requires_explicit_opt_in(monkeypatch):
     client = TestClient(_isolated_app())
     assert client.get("/api/chronicles/maps/crypt-eight-squares").status_code == 200
     assert client.get("/api/health").status_code == 200
+
+
+def test_design_only_chronicles_campaign_is_not_maintained_here():
+    """Only legacy *runtime* recovery and account-data deletion may remain."""
+    root = Path(__file__).resolve().parents[1]
+    assert not (root / "backend-python" / "chronicles_campaign").exists()
+    assert not (root / "scripts" / "validate_chronicles_campaign.py").exists()
