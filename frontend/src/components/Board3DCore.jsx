@@ -840,7 +840,7 @@ function Board3DCanvas({
       }
     };
   }, [fen, skinId, animate, effectiveThemeId, orientation, showCoordinates, matthiasKingColor, checkSquare, gameOver, warRoomVariant]);
-  useBoard3DCombatMedalRefresh({ sceneStateRef, animationFrameRef, warRoomVariant, pieceMedalCounts });
+  useBoard3DCombatMedalRefresh({ sceneStateRef, animationFrameRef, warRoomVariant, pieceMedalCounts, pieceRankLevels });
   useEffect(() => {
     const state = sceneStateRef.current;
     if (!state) return;
