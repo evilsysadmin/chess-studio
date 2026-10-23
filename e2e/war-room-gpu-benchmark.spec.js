@@ -331,7 +331,7 @@ async function inspectActualRenderer(canvas) {
       // as zero geometry. These are static inventories, NOT rendered draws.
       sceneInventory: {
         ...Object.fromEntries([
-          ['authoredGlbMeshes', 'warRoomShadowCasterCandidates'],
+          ['shadowCasterCandidates', 'warRoomShadowCasterCandidates'],
           ['v3StaticTorchBatches', 'warRoomV3StaticTorchBatches'],
           ['shadowCasterBudget', 'warRoomShadowCasterBudget'],
           ['activeShadowCasters', 'warRoomShadowCasterCount'],
