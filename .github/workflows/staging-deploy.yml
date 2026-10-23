@@ -117,8 +117,7 @@ jobs:
             echo "::notice title=OCI fallback avoided::A1 terminó y acreditó $DEPLOY_SHA."
             exit 0
           fi
-          python3 -S scripts/staging_image_ready.py --sha "$DEPLOY_SHA"
-          python3 -S scripts/staging_generation.py main-head --sha "$DEPLOY_SHA" --fail-stale && python3 scripts/oci_run_command.py deploy --repo-ref "$DEPLOY_SHA" || {
+          python3 -S scripts/staging_image_ready.py --sha "$DEPLOY_SHA" && python3 -S scripts/staging_generation.py main-head --sha "$DEPLOY_SHA" --fail-stale && python3 scripts/oci_run_command.py deploy --repo-ref "$DEPLOY_SHA" || {
             rc=$?
             if [[ "$rc" == 87 ]]; then
               echo 'superseded=true' >> "$GITHUB_OUTPUT"
