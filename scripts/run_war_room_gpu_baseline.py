@@ -154,6 +154,62 @@ def baseline_report(directory, sha, mode, variant, repetitions):
                              f"{selected['unrankedCalls']} |")
     lines.extend([
         '',
+        '## One real main-heavy frame: top submitting objects (opt-in only)',
+        '',
+        'For each profile/visit/phase this is one actual renderer.render frame '
+        'with the most observed **non-shadow** draw calls. It is **not** a '
+        'phase median, GPU elapsed time or proof of an FPS improvement. '
+        'Main and shadow snapshots may come from different frames. '
+        'The unranked remainder preserves exact draw accounting. '
+        'Legacy/unavailable captures show n/a.',
+        '',
+        '| Profile · visit · phase | Main draws (snapshot) | '
+        'Top main submitters, calls and family | Remaining calls |',
+        '|---|---:|---|---:|',
+    ])
+    for profile in PROFILES:
+        for index, visit in enumerate(VISITS):
+            for phase in ('idle', 'move'):
+                samples = [report['visits'][index].get(phase, {}).get('renderCost', {})
+                           .get('mainSubmitterSnapshot') for report in groups[profile]]
+                # Old captures have no ranking; never treat that absence as 0 draws.
+                if any(sample is None for sample in samples):
+                    lines.append(f'| {profile} · {visit} · {phase} | n/a | n/a | n/a |')
+                    continue
+                for sample in samples:
+                    require(type(sample) is dict and type(sample.get('mainCalls')) is int
+                            and sample['mainCalls'] > 0,
+                            f'{profile}/{visit}/{phase}: invalid main snapshot calls')
+                    rows = sample.get('top')
+                    remaining = sample.get('unrankedCalls')
+                    require(type(rows) is list and 0 < len(rows) <= 8
+                            and type(remaining) is int and remaining >= 0,
+                            f'{profile}/{visit}/{phase}: invalid main snapshot rank')
+                    total = remaining
+                    previous_calls = sample['mainCalls'] + 1
+                    for row in rows:
+                        require(type(row) is dict
+                                and type(row.get('name')) is str
+                                and 0 < len(row['name']) <= 96
+                                and row.get('family') in ('pieces', 'shell', 'other')
+                                and type(row.get('calls')) is int
+                                and 0 < row['calls'] <= previous_calls,
+                                f'{profile}/{visit}/{phase}: invalid main submitter row')
+                        total += row['calls']
+                        previous_calls = row['calls']
+                    require(total == sample['mainCalls'],
+                            f'{profile}/{visit}/{phase}: incomplete main draw accounting')
+                selected = max(samples, key=lambda row: row['mainCalls'])
+                names = ', '.join(
+                    f"{str(item['name']).replace('|', '/').replace(chr(10), ' ').replace(chr(13), ' ')[:96]} "
+                    f"({item['family']}: {item['calls']})"
+                    for item in selected['top']
+                )
+                lines.append(f"| {profile} · {visit} · {phase} | "
+                             f"{selected['mainCalls']} | {names} | "
+                             f"{selected['unrankedCalls']} |")
+    lines.extend([
+        '',
         '## Static GLB and lighting census (not draw calls)',
         '',
         'One-shot runtime telemetry observed after the room and Hans become ready. '
@@ -283,6 +339,14 @@ def self_test():
                             'shadowPieceCallsMedian': 90,
                             'shadowShellCallsMedian': 10,
                             'shadowOtherCallsMedian': 5,
+                            'mainSubmitterSnapshot': {
+                                'mainCalls': 35,
+                                'top': [
+                                    {'name': 'WR3_Bookcase', 'family': 'shell', 'calls': 20},
+                                    {'name': 'pawn', 'family': 'pieces', 'calls': 10},
+                                ],
+                                'unrankedCalls': 5,
+                            },
                             'shadowCasterSnapshot': {
                                 'shadowCalls': 105,
                                 'top': [
@@ -311,7 +375,28 @@ def self_test():
         assert '| desktop-1440x900 · first-visit · idle | 35.00 | 105.00 | 115.00 | 1.00 |' in output
         assert '| desktop-1440x900 · first-visit · idle | 90.00 | 10.00 | 5.00 |' in output
         assert '| desktop-1440x900 · first-visit · idle | 105 | pawn (pieces: 90), WR3_ARM_armor_ring_7 (shell: 10) | 5 |' in output
+        assert '| desktop-1440x900 · first-visit · idle | 35 | WR3_Bookcase (shell: 20), pawn (pieces: 10) | 5 |' in output
+        assert 'Main and shadow snapshots may come from different frames' in output
         assert '| desktop-1440x900 · first-visit | 80–81 | 14 | 7 |' in output
+        # Fail closed on corrupted main-pass attribution (not made-up savings).
+        main_path = root / 'desktop-1440x900-0.json'
+        original_report = json.loads(main_path.read_text())
+        broken_report = json.loads(main_path.read_text())
+        broken_report['visits'][0]['idle']['renderCost']['mainSubmitterSnapshot']['unrankedCalls'] = 4
+        main_path.write_text(json.dumps(broken_report))
+        try:
+            baseline_report(root, sha, 'hardware', 'v3', 2)
+        except (BadReport, BenchError) as exc:
+            assert 'main' in str(exc).lower()
+        else:
+            raise AssertionError('Corrupted main-pass rank accepted')
+        main_path.write_text(json.dumps(original_report))
+        # Legacy captures remain readable and explicitly show n/a.
+        legacy_report = json.loads(main_path.read_text())
+        legacy_report['visits'][0]['idle']['renderCost'].pop('mainSubmitterSnapshot')
+        main_path.write_text(json.dumps(legacy_report))
+        assert '| desktop-1440x900 · first-visit · idle | n/a | n/a | n/a |' in baseline_report(root, sha, 'hardware', 'v3', 2)
+        main_path.write_text(json.dumps(original_report))
         path = root / 'desktop-1440x900-0.json'
         report = json.loads(path.read_text())
         report['visits'][0]['snapshotMemory']['programs'] = 0
