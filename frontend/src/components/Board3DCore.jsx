@@ -41,6 +41,7 @@ import useWarRoomVariant from './useWarRoomVariant.js';
 import { resolveBoard3DPresentation } from './Board3DPresentation.js';
 import { createClassicWarRoomShellController } from './WarRoomClassicShellLoader.js'; import { buildTrainingRoomBoardShell } from './TrainingRoomBoardShell.js';
 import { shouldShowClassicWarRoomShell, startWarRoomVariantScene } from './WarRoomSceneVariant.js';
+import { installCombatOperationsCampaignCartography } from './CombatOperationsCampaignCartography.js';
 import './Board3D.css';
 import './Board3DViewportTuning.css';
 import './Board3DParity.css';
@@ -67,7 +68,7 @@ function Board3DCanvas({
   hansDiagnosticsRequested = false, hansFireCallEnabled = false,
   cameraProfile = 'tactical', warRoomVariantOverride = null, immersive = false,
   trainingRoom = false, warRoomMobilePerformance = false, inspectionPreview = false,
-  onRendererFailure,
+  combatOperationsMap = null, onRendererFailure,
 }) {
   const hostRef = useRef(null);
   const sceneStateRef = useRef(null);
@@ -586,6 +587,28 @@ function Board3DCanvas({
       onPaint: state.render,
     });
   }, [warRoomVariant, warRoomVariantSelectable, setWarRoomVariantStatus, effectiveThemeId, orientation, showCoordinates, trainingRoom]);
+
+  // This is a read-only physical projection on the imported Operations Room.
+  // Install only after the GLB is mounted, and restore the authored room on
+  // campaign changes, failed/aborted navigation and normal unmount.
+  useEffect(() => {
+    const state = sceneStateRef.current;
+    if (!state || warRoomVariant !== 'combat-ops' || !combatOperationsMap) return undefined;
+    const root = state.scene.children.find((child) => child?.userData?.warRoomVariant === 'combat-ops');
+    if (!root) return undefined;
+    const dispose = installCombatOperationsCampaignCartography(root, combatOperationsMap);
+    state.renderer.domElement.dataset.combatOperationsMapNodes =
+      String(root.userData.combatOperationsLiveMapNodes || 0);
+    state.renderer.domElement.dataset.combatOperationsMapEdges =
+      String(root.userData.combatOperationsLiveMapEdges || 0);
+    state.requestRender();
+    return () => {
+      dispose();
+      delete state.renderer.domElement.dataset.combatOperationsMapNodes;
+      delete state.renderer.domElement.dataset.combatOperationsMapEdges;
+      state.requestRender();
+    };
+  }, [warRoomVariant, warRoomVariantStatus, combatOperationsMap]);
 
   useEffect(() => {
     const state = sceneStateRef.current, host = hostRef.current;
