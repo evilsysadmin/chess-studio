@@ -422,6 +422,21 @@ async function sampleConfirmedMove(page, board, canvas, requestLog) {
   } finally {
     pacing = await stopProbe(page);
   }
+  // The /move POST and an empty selection alone do not prove the authoritative
+  // e2→e4 ...e5 position reached the real Three board. Verify it *after* the
+  // measured window: the g1 knight has e2, f3, h3 (three legal destinations);
+  // in the initial position e2 is occupied and it has only two. This guards
+  // against benchmarking a reverted/uncommitted move without contaminating
+  // the measured idle/move frame pacing or CPU/GPU timings.
+  await expect(board).toHaveAttribute('data-board3d-turn', 'human', { timeout: 20_000 });
+  await navigateWarRoomKeyboard(canvas, board, 'g1');
+  await canvas.press('Enter');
+  await expect(board).toHaveAttribute('data-board3d-selected', 'g1');
+  await expect(board).toHaveAttribute('data-board3d-legal-target-count', '3', {
+    timeout: 10_000,
+  });
+  await canvas.press('Enter');
+  await expect(board).toHaveAttribute('data-board3d-selected', '');
   return { ...pacing, inputToConfirmationMs };
 }
 
