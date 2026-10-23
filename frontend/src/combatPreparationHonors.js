@@ -1,5 +1,6 @@
 import { deploymentSquareForSlot, ensureDeploymentState } from './combatDeployment.js';
 import { unitDecorations, unitRecordForKey } from './combatUnitService.js';
+import { combatVeteranDisplayLevel } from './combatRanks.js';
 
 // Read-only from the deployed identity. Rank progression and campaign medals are
 // independent: levels cannot award a decoration, only the saved service record.
@@ -11,8 +12,7 @@ export function combatPreparationHonors(roster) {
     const square = deploymentSquareForSlot(slotKey, 'w');
     if (!square || !unitKey) continue;
     const saved = state.pieces?.[unitKey] || {};
-    const level = 1 + Math.max(0, Number(saved.strengthPoints) || 0)
-      + Math.max(0, Number(saved.speedPoints) || 0);
+    const level = combatVeteranDisplayLevel(saved);
     if (level > 1) rankLevels[square] = level;
     // A slot is not an identity: a stale record may still be stored under
     // the replacement's key after an interrupted migration. Do not project
