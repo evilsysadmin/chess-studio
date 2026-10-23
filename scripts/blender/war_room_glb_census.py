@@ -92,7 +92,9 @@ def census_scene(document: dict, *, top: int = 12) -> dict:
     meshes = document.get("meshes", [])
     accessors = document.get("accessors", [])
     materials = document.get("materials", [])
-    costs = [_mesh_cost(mesh, accessors) for mesh in meshes]
+    # Validate/count only meshes reached by the default scene. A library GLB
+    # may carry unused meshes with different primitive topologies.
+    costs = {}
     rows = []
     material_costs = {}
     mesh_costs = {}
@@ -118,6 +120,8 @@ def census_scene(document: dict, *, top: int = 12) -> dict:
             mesh_id = node["mesh"]
             if type(mesh_id) is not int or not 0 <= mesh_id < len(meshes):
                 raise ValueError(f"invalid mesh reference: {mesh_id!r}")
+            if mesh_id not in costs:
+                costs[mesh_id] = _mesh_cost(meshes[mesh_id], accessors)
             triangles, vertices, primitives = costs[mesh_id]
             used_meshes.add(mesh_id)
             mesh_row = mesh_costs.setdefault(mesh_id, {
