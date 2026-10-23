@@ -619,7 +619,7 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
   if (!run.inRun && campaign.active && campaign.phase === 'briefing' && selectedCampaignNode) {
     return <CombatOperationsCampaignBriefingRoute
       campaign={campaign} node={selectedCampaignNode} roster={roster} armySummary={deploymentSummary(roster)} serviceSummary={serviceSummary}
-      showTutorial={showCampaignTutorial} showMarket={showMarket} onExit={onExit} onBuyIntel={handleCampaignBuyIntel} onContinue={handleCampaignBriefingContinue} onRetire={() => finishCampaign('retired')}
+      showTutorial={showCampaignTutorial} showMarket={showMarket} onExit={onExit} onRestart={handleRestartCampaign} onBuyIntel={handleCampaignBuyIntel} onContinue={handleCampaignBriefingContinue} onRetire={() => finishCampaign('retired')}
       setShowTutorial={setShowCampaignTutorial} setShowMarket={setShowMarket} onHire={handleHireMercenary} onBuyEquipment={handleBuyEquipment} />;
   }
 
