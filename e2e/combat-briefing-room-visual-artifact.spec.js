@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { dismissTutorialIfVisible, login, mockApi, openCampaignBriefing } from './helpers.js';
+import { readBoard3DProjection } from './board3d-projection.js';
 
 const ARTIFACT_DIR = '../.artifacts/app-visual/combat-briefing-room';
 
@@ -198,8 +199,19 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 
       await expect(room.locator('[data-combat-veteran-dossier]')).toHaveCount(0);
       const veteranPicker = room.getByRole('combobox', { name: 'Consultar veterano desplegado' });
       await expect(veteranPicker).toBeVisible();
-      await veteranPicker.selectOption('a1');
+      const projection = await readBoard3DProjection(canvas);
+      const rook = projection.square('a1', 0.72);
+      expect(rook.x).toBeGreaterThan(0);
+      expect(rook.x).toBeLessThan(viewport.width);
+      expect(rook.y).toBeGreaterThan(0);
+      expect(rook.y).toBeLessThan(viewport.height);
+      await page.mouse.click(rook.x, rook.y);
       const dossier = room.getByRole('complementary', { name: 'Expediente de Varela' });
+      await expect(dossier).toBeVisible();
+      await dossier.getByRole('button', { name: 'Cerrar expediente del veterano' }).click();
+      await expect(dossier).toHaveCount(0);
+      // A native twin is still present for touch precision and accessibility.
+      await veteranPicker.selectOption('a1');
       await expect(dossier).toBeVisible();
       await expect(dossier).toContainText('Teniente');
       await expect(dossier).toContainText('5 batallas');
