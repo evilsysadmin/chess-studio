@@ -176,6 +176,35 @@ def baseline_report(directory, sha, mode, variant, repetitions):
     ])
     lines.extend([
         '',
+        '## WebGL resource snapshots on first and return visits',
+        '',
+        'These are renderer.info-memory counters observed in the live scene, '
+        '**not** process VRAM, proof of a leak, or a post-dispose measurement. '
+        'The return visit reuses the browser context but opens a new page. '
+        'Missing/zero legacy counters are n/a, never evidence of zero resources.',
+        '',
+        '| Profile · visit | Geometries | Textures | Shader programs |',
+        '|---|---:|---:|---:|',
+    ])
+    for profile in PROFILES:
+        for index, visit in enumerate(VISITS):
+            snapshots = [report['visits'][index].get('snapshotMemory')
+                         for report in groups[profile]]
+            cells = []
+            for key in ('geometries', 'textures', 'programs'):
+                readings = [snap.get(key) if isinstance(snap, dict) else None
+                            for snap in snapshots]
+                # Legacy harness coerced missing canvas data-attributes to 0.
+                # A positive observation is required for a usable counter.
+                if readings and all(type(value) is int and value > 0
+                                    for value in readings):
+                    cells.append(str(readings[0]) if len(set(readings)) == 1
+                                 else f'{min(readings)}–{max(readings)}')
+                else:
+                    cells.append('n/a')
+            lines.append(f'| {profile} · {visit} | ' + ' | '.join(cells) + ' |')
+    lines.extend([
+        '',
         'GPU timing is **n/a** when asynchronous WebGL2 query coverage is '
         'insufficient, disjoint, or unavailable. No GPU time is inferred from rAF.',
         'Touch profiles are browser emulations on this computer, **not physical Android**.',
@@ -193,6 +222,10 @@ def self_test():
                 report = fake_report(sha, profile, f'00000000-0000-4000-8000-{index:012x}')
                 report['bootstrapMode'] = 'persisted-e2e-session-v1'
                 for visit in report['visits']:
+                    visit['snapshotMemory'] = {
+                        'geometries': 80 + index, 'textures': 14,
+                        'programs': 7,
+                    }
                     for phase in ('idle', 'move'):
                         visit[phase]['renderCost'] = {
                             'status': 'ready', 'renderedFrames': 22,
@@ -226,8 +259,17 @@ def self_test():
         assert '| 280000.00 | 1.25 | 2.50 | n/a | 22 |' in output
         assert '| desktop-1440x900 · first-visit · idle | 35.00 | 105.00 | 115.00 | 1.00 |' in output
         assert '| desktop-1440x900 · first-visit · idle | 90.00 | 10.00 | 5.00 |' in output
+        assert '| desktop-1440x900 · first-visit | 80–81 | 14 | 7 |' in output
         path = root / 'desktop-1440x900-0.json'
         report = json.loads(path.read_text())
+        report['visits'][0]['snapshotMemory']['programs'] = 0
+        path.write_text(json.dumps(report))
+        assert '| desktop-1440x900 · first-visit | 80–81 | 14 | n/a |' in baseline_report(root, sha, 'hardware', 'v3', 2)
+        report['visits'][0]['snapshotMemory']['programs'] = 7
+        report['visits'][0]['snapshotMemory']['textures'] = None
+        path.write_text(json.dumps(report))
+        assert '| desktop-1440x900 · first-visit | 80–81 | n/a | 7 |' in baseline_report(root, sha, 'hardware', 'v3', 2)
+        report['visits'][0]['snapshotMemory']['textures'] = 14
         report['visits'][0]['sceneInventory']['authoredGlbMeshes'] = None
         path.write_text(json.dumps(report))
         assert '| desktop-1440x900 · first-visit | n/a | 12 | 32 | 94754 | 38400 | 32 | ready-budgeted |' in baseline_report(root, sha, 'hardware', 'v3', 2)
