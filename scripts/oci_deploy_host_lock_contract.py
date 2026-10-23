@@ -150,6 +150,15 @@ def self_test():
     assert "max_processes: int = 4096" in diagnostic_source
     assert "OCI_HOST_LOCK_FD_SCAN coverage=" in diagnostic_source
     assert "OCI_HOST_LOCK_FD_HOLDER pid=" in diagnostic_source
+    # Correlate the specific FD8 tunnel inheritance hypothesis with exact
+    # dev/inode and only an allowlisted /proc/PID/comm name, never argv/env.
+    assert "def fd8_tunnel_hint(" in diagnostic_source
+    assert '(proc / "fd" / "8").stat()' in diagnostic_source
+    assert '(proc / "comm").read_text(' in diagnostic_source
+    assert "cloudflared_comm_hint=" in diagnostic_source
+    assert "fd8_match=" in diagnostic_source
+    assert "cmdline" not in diagnostic_source.split("def fd8_tunnel_hint(", 1)[1].split("def self_test()", 1)[0]
+
     assert "OCI_HOST_LOCK_ACTION manual_review_only=yes" in diagnostic_source
     subprocess.run([sys.executable, "-S", str(diag), "--self-test"], check=True)
     print("OCI deploy host lock contract: OK")

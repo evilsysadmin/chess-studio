@@ -98,6 +98,16 @@ La herramienta:
   `coverage=partial` significa permisos insuficientes, carreras o límite
   alcanzado, incluidos `fdinfo` inaccesibles: **un cero no demuestra ausencia
   de propietarios**. Tampoco un testigo demuestra que sea seguro terminarlo.
+
+  Para cada PID con descriptor coincidente, la herramienta también comprueba
+  si **FD8** señala al mismo dispositivo e inodo (`fd8_match`), y si el
+  nombre corto reportado por `/proc/<pid>/comm` es exactamente
+  `cloudflared` (`cloudflared_comm_hint`). Son **pistas**, no una identidad
+  autenticada: `comm` puede alterarse y no certifica que el proceso sea el
+  daemon esperado. `unknown` nunca equivale a `no`. La herramienta no lee
+  `cmdline`, `environ`, argumentos del túnel, tokens ni rutas del proceso.
+  Un `fd8_match=yes` junto con `cloudflared_comm_hint=yes` es motivo para
+  investigar el túnel en ese **mismo namespace host**, no para matar el PID.
 - Nunca ejecuta `kill`, `rm`, `systemctl restart`, operaciones de Docker,
   modificaciones de Git ni cambios de despliegue.
 
