@@ -251,7 +251,7 @@ class WarRoomGlbCensusTests(unittest.TestCase):
         document = fixture()
         body = json.dumps(document).encode("utf-8")
         body += b" " * (-len(body) % 4)
-        binary = b"\\0" * 4
+        binary = b"\x00" * 4
         raw = (struct.pack("<4sII", b"glTF", 2, 12 + 8 + len(body) + 8 + len(binary))
                + struct.pack("<II", len(body), 0x4E4F534A) + body
                + struct.pack("<II", len(binary), 0x004E4942) + binary)
