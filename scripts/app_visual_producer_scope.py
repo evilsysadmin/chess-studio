@@ -43,6 +43,11 @@ COMBAT_BATTLE_FILES = {
     "frontend/src/components/combatwarroomboard.jsx",
 }
 COMBAT_PREPARATION_FILES = {
+    # These are projections on the dedicated Operations Room. Changes cannot
+    # affect other War Rooms or School, unlike Board3DCore/shared readiness.
+    "frontend/src/combatoperationsmapprojection.js",
+    "frontend/src/components/combatoperationscampaigncartography.js",
+    "frontend/src/components/usecombatoperationscartography.js",
     "frontend/src/components/campaigncombatpreparation.jsx",
     "frontend/src/components/combatpreparationroom.jsx",
     "frontend/src/components/combatpreparationroom.css",
@@ -757,6 +762,20 @@ def project_app_producers(producers: str) -> str:
 def self_test() -> None:
     assert classify(["scripts/chronicles/build_terra_world.py"]) == "all"
     assert classify(["frontend/src/components/CombatCampaignBriefingRoom.jsx", "e2e/combat-briefing-room-visual-artifact.spec.js"]) == "combat-prep"  # Retired authoring is not exempt.
+    # Dedicated map source/overlay/hook must capture the physical Operations
+    # Room only; shared Board3D or scene readiness remain broad and fail-closed.
+    combat_map_files = [
+        "frontend/src/combatOperationsMapProjection.js",
+        "frontend/src/components/CombatOperationsCampaignCartography.js",
+        "frontend/src/components/useCombatOperationsCartography.js",
+    ]
+    for map_file in combat_map_files:
+        assert classify([map_file]) == "combat-prep", map_file
+    assert classify(combat_map_files + ["e2e/combat-briefing-room-visual-artifact.spec.js"]) == "combat-prep"
+    assert classify(combat_map_files + ["frontend/src/components/Board3DCore.jsx"]) != "combat-prep"
+    assert classify(combat_map_files + ["frontend/src/components/WarRoomSceneReadiness.js"]) != "combat-prep"
+    assert classify(["frontend/src/components/CombatOperationsUnexpectedRenderer.js"]) == "all"
+
     # Deleted generators cannot inherit a blanket exclusion. A newly added
     # Chronicles tool is a new visual-risk surface until explicitly reviewed.
     assert classify(["scripts/art/build_chronicles_procedural_sprites.py"]) == "all"
