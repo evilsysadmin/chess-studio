@@ -298,8 +298,8 @@ if (checkCiWiring) {
   const goModSource = read(path.join(root, 'backend-go', 'go.mod'));
   const xNetMatch = goModSource.match(/^[ \t]*golang\.org\/x\/net[ \t]+v(\d+)\.(\d+)\.(\d+)(?:[ \t]+\/\/[^\n]*)?$/m);
   if (goModSource.includes('golang.org/x/net') && !xNetMatch) fail('x/net requiere versión semver explícita en go.mod');
-  if (/^[ \t]*replace[ \t]+(?:\\([ \t]*)?golang\\.org\\/x\\/net\\b/m.test(goModSource)
-    || /^[ \t]*golang\\.org\\/x\\/net(?:[ \t]+v\\d+\\.\\d+\\.\\d+)?[ \t]+=>/m.test(goModSource)) {
+  if (/^[ \t]*replace[ \t]+(?:\([ \t]*)?golang\.org\/x\/net\b/m.test(goModSource)
+    || /^[ \t]*golang\.org\/x\/net(?:[ \t]+v\d+\.\d+\.\d+)?[ \t]+=>/m.test(goModSource)) {
     fail('go.mod no debe sustituir golang.org/x/net y eludir el mínimo seguro');
   }
   if (xNetMatch) {
