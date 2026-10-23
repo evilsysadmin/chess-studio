@@ -49,7 +49,7 @@ El contrato de entrega está en [`docs/auto-merge-delivery.md`](docs/auto-merge-
 | Publicación/migración de assets a R2 | [`docs/r2-asset-publisher.md`](docs/r2-asset-publisher.md), [`docs/r2-assets.md`](docs/r2-assets.md), [`docs/visual-assets-r2-flow.md`](docs/visual-assets-r2-flow.md) |
 | War Room visual / Blender / v2 | [`docs/operations/war-room-blender-pipeline.md`](docs/operations/war-room-blender-pipeline.md), [`docs/operations/war-room-parity.md`](docs/operations/war-room-parity.md), [`docs/operations/war-room-visual-freeze.md`](docs/operations/war-room-visual-freeze.md), [`skills/local-gpu-rendering/SKILL.md`](skills/local-gpu-rendering/SKILL.md) |
 | Home / Castillo / Blender | [`skills/home-blender/SKILL.md`](skills/home-blender/SKILL.md), [`docs/VISUAL_LANGUAGE.md`](docs/VISUAL_LANGUAGE.md), [`docs/home-castle-life-minimal.md`](docs/home-castle-life-minimal.md), [`docs/visual-assets-r2-flow.md`](docs/visual-assets-r2-flow.md), [`docs/operations/home-3d-performance.md`](docs/operations/home-3d-performance.md), [`skills/local-gpu-rendering/SKILL.md`](skills/local-gpu-rendering/SKILL.md) |
-| Chronicles / Tactics · migración y privacidad legacy (no desarrollo de juego) | [`issue #5632`](https://github.com/evilsysadmin/chess-studio/issues/5632), [`backend-python/chronicles_campaign/DESIGN.md`](backend-python/chronicles_campaign/DESIGN.md) (referencia histórica mientras quede recuperación Python) |
+| Chronicles / Tactics · migración y privacidad legacy (no desarrollo de juego) | [`issue #5632`](https://github.com/evilsysadmin/chess-studio/issues/5632); proteger purga histórica de `chronicles_runs` y la recuperación opt-in mientras se valida el retiro |
 | Matthias / comentarios / espectadores / memoria narrativa | [`docs/operations/matthias-runtime.md`](docs/operations/matthias-runtime.md) |
 | Combat Chess / veteranos / despliegue / intel | [`docs/operations/combat-chess.md`](docs/operations/combat-chess.md), [`docs/experiments/combat-tactical-deployment.md`](docs/experiments/combat-tactical-deployment.md), [`frontend/src/AGENTS.md`](frontend/src/AGENTS.md) |
 | Puzzles / Así juegas / autopsia / entrenamiento personal | [`docs/operations/training-quality.md`](docs/operations/training-quality.md), [`docs/experiments/cinematic-game-autopsy.md`](docs/experiments/cinematic-game-autopsy.md), [`frontend/src/AGENTS.md`](frontend/src/AGENTS.md) |
@@ -127,7 +127,6 @@ El contrato de entrega está en [`docs/auto-merge-delivery.md`](docs/auto-merge-
 - [`docs/operations/training-quality.md`](docs/operations/training-quality.md)
 - [`docs/operations/matthias-runtime.md`](docs/operations/matthias-runtime.md)
 - [`docs/operations/chess-football-product.md`](docs/operations/chess-football-product.md) — calidad del partido y diseño futuro de mánager de clubes.
-- [`backend-python/chronicles_campaign/DESIGN.md`](backend-python/chronicles_campaign/DESIGN.md) — atlas, actos, portales y contrato de autoría de la campaña.
 - [`docs/operations/combat-chess.md`](docs/operations/combat-chess.md)
 - [`docs/operations/client-storage.md`](docs/operations/client-storage.md)
 - [`docs/operations/oci-backend-migration.md`](docs/operations/oci-backend-migration.md)
