@@ -60,6 +60,11 @@ COMBAT_PREPARATION_FILES = {
     "frontend/src/components/combatoperationsmissionroom.jsx",
     "frontend/src/components/combatoperationsmissionroom.css",
     "frontend/src/components/combatoperationscampaignmissionroute.jsx",
+    "frontend/src/components/combatcampaignbriefingroom.jsx",
+    "frontend/src/components/combatcampaignbriefingroom.css",
+    "frontend/src/components/combatoperationscampaignbriefingroute.jsx",
+    "frontend/src/components/campaignbriefing.jsx",
+    "frontend/src/components/campaigncommandstatus.jsx",
 }
 # Hans has its own choreography/runtime owners and should not block unrelated
 # shared-renderer camera/layout PRs. Its dedicated canary still runs whenever
@@ -298,6 +303,7 @@ def _e2e_producer(name: str) -> set[str] | None:
         "war-room-pvp-duel-visual-artifact.spec.js": {"pvp-duel"},
         "war-room-combat-battle-visual-artifact.spec.js": {"combat-battle"},
         "war-room-combat-preparation-visual-artifact.spec.js": {"combat-prep"},
+        "combat-briefing-room-visual-artifact.spec.js": {"combat-prep"},
         "war-room-pvp.spec.js": {"pvp-duel"},
         "pvp-background-roster.spec.js": {"pvp-duel"},
         "mobile-golden-path-war-room-invariants.spec.js": {"warroom-core"},
@@ -777,7 +783,8 @@ def project_chronicles_lane(producers: str, lane: str) -> str:
 
 
 def self_test() -> None:
-    assert classify(["scripts/chronicles/build_terra_world.py"]) == "all"  # Retired authoring is not exempt.
+    assert classify(["scripts/chronicles/build_terra_world.py"]) == "all"
+    assert classify(["frontend/src/components/CombatCampaignBriefingRoom.jsx", "e2e/combat-briefing-room-visual-artifact.spec.js"]) == "combat-prep"  # Retired authoring is not exempt.
     # Deleted generators cannot inherit a blanket exclusion. A newly added
     # Chronicles tool is a new visual-risk surface until explicitly reviewed.
     assert classify(["scripts/art/build_chronicles_procedural_sprites.py"]) == "all"
