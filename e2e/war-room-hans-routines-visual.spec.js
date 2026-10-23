@@ -136,7 +136,7 @@ async function waitForRoutineStart(page, canvas, eventName) {
 
 
 async function waitForEspressoMilestone(page, canvas, milestone, {
-  budgetMs = 720_000,
+  budgetMs = 1_080_000,
   stallMs = 100_000,
 } = {}) {
   const started = Date.now();
@@ -226,7 +226,11 @@ for (const eventName of CAPTURE_EVENTS) {
   test(`War Room · Hans routine video · ${eventName}`, async () => {
     // The espresso proof also waits for real inbound movement, the visible
     // delivered cup, and the full outbound return at normal simulation speed.
-    test.setTimeout(eventName === 'espresso' ? 1_650_000 : 300_000);
+    // Rendering an unhurried ~24m physical round trip under SwiftShader can
+    // use far more wall-clock than game time. Keep the strict no-progress
+    // watchdog and finite milestone budgets; do not accelerate Hans or
+    // simulate a successful delivery.
+    test.setTimeout(eventName === 'espresso' ? 2_650_000 : 300_000);
     await mkdir(ARTIFACT_DIR, { recursive: true });
     await mkdir(TEMP_VIDEO_DIR, { recursive: true });
 
@@ -241,6 +245,10 @@ for (const eventName of CAPTURE_EVENTS) {
     });
     const context = await browser.newContext({
       viewport: { width: 1280, height: 720 },
+      // Keep desktop CSS layout unchanged, but ask SwiftShader to rasterize
+      // fewer pixels during the long *physical* espresso round trip. The
+      // other routines retain their baseline full-resolution captures.
+      deviceScaleFactor: eventName === 'espresso' ? 0.75 : 1,
       hasTouch: false,
       recordVideo: {
         dir: TEMP_VIDEO_DIR,
