@@ -5,7 +5,8 @@ import CombatServicePanel from './CombatServicePanel.jsx';
 import CampaignArmyGlance from './CampaignArmyGlance.jsx';
 import { ArmyRosterPanel } from './ArmyScreen.jsx';
 import CombatOperationsCampaignMissionRoute from './CombatOperationsCampaignMissionRoute.jsx';
-import CombatCampaignBriefingRoom from './CombatCampaignBriefingRoom.jsx';
+import CombatOperationsCampaignBriefingRoute from './CombatOperationsCampaignBriefingRoute.jsx';
+import CampaignCommandStatus from './CampaignCommandStatus.jsx';
 import CampaignBriefing from './CampaignBriefing.jsx';
 import MechanicTutorialModal from './MechanicTutorialModal.jsx';
 import CombatDebrief from './CombatDebrief.jsx';
@@ -615,26 +616,11 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
     return <CombatOperationsCampaignMissionRoute campaign={campaign} map={campaignMapState} availableNodes={campaignAvailable} roster={roster} serviceSummary={serviceSummary} showTutorial={showCampaignTutorial} showMarket={showMarket} onExit={onExit} onSelect={handleCampaignNodeSelect} onRestart={handleRestartCampaign} onFinishCampaign={finishCampaign} setShowTutorial={setShowCampaignTutorial} setShowMarket={setShowMarket} onHire={handleHireMercenary} onBuyEquipment={handleBuyEquipment} />;
   }
 
-  // Selection stays on the same 3D operations table; only the contextual
-  // orders folio changes. Campaign transitions still belong to the domain.
   if (!run.inRun && campaign.active && campaign.phase === 'briefing' && selectedCampaignNode) {
-    return (
-      <CombatCampaignBriefingRoom
-        campaign={campaign}
-        node={selectedCampaignNode}
-        roster={roster}
-        armySummary={deploymentSummary(roster)}
-        onExit={onExit}
-        onHelp={() => setShowCampaignTutorial(true)}
-        onOpenMarket={() => setShowMarket(true)}
-        onBuyIntel={handleCampaignBuyIntel}
-        onContinue={handleCampaignBriefingContinue}
-        onRetire={() => finishCampaign('retired')}
-      >
-        {showCampaignTutorial && <MechanicTutorialModal tutorialId="combat-campaign" onClose={() => setShowCampaignTutorial(false)} />}
-        {showMarket && <CombatMarket roster={roster} serviceSummary={serviceSummary} onHire={handleHireMercenary} onBuyEquipment={handleBuyEquipment} onClose={() => setShowMarket(false)} />}
-      </CombatCampaignBriefingRoom>
-    );
+    return <CombatOperationsCampaignBriefingRoute
+      campaign={campaign} node={selectedCampaignNode} roster={roster} armySummary={deploymentSummary(roster)} serviceSummary={serviceSummary}
+      showTutorial={showCampaignTutorial} showMarket={showMarket} onExit={onExit} onBuyIntel={handleCampaignBuyIntel} onContinue={handleCampaignBriefingContinue} onRetire={() => finishCampaign('retired')}
+      setShowTutorial={setShowCampaignTutorial} setShowMarket={setShowMarket} onHire={handleHireMercenary} onBuyEquipment={handleBuyEquipment} />;
   }
 
   if (!run.inRun && campaign.active) {
@@ -650,39 +636,8 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
           <div className="combat-heading-row"><h2>Campaña de Combat Chess</h2><button type="button" className="context-help-btn" onClick={() => setShowCampaignTutorial(true)}>?</button></div>
           <p className="combat-operational-hint" title="La cartografía muestra rutas y tipos de sector. La fuerza enemiga precisa requiere inteligencia.">Elige tu siguiente sector.</p>
 
-          {(() => {
-            const nextStep = campaign.phase === 'map'
-              ? 'Elige uno de los sectores iluminados en el mapa.'
-              : campaign.phase === 'briefing'
-                ? 'Revisa qué cambia y prepara tu ejército.'
-                : campaign.phase === 'reward'
-                  ? 'Elige una recompensa para seguir avanzando.'
-                  : campaign.phase === 'camp'
-                    ? 'Elige una ventaja y continúa.'
-                    : campaign.phase === 'event'
-                      ? 'Elige una respuesta al evento.'
-                      : campaign.phase === 'completed'
-                        ? 'Operación cumplida. Archiva la campaña.'
-                        : 'Continúa con la siguiente fase.';
-            return (
-              <>
-                <div className="campaign-quick-status" aria-label="Resumen de campaña">
-                  <span>Sector <b>{Math.max(0, (campaign.route || []).length - 1)}/7</b></span>
-                  <span title="Recurso temporal de esta campaña"><b>{campaign.operationalCredits}</b> suministros</span>
-                  <span title="Fondos persistentes para mercado y bajas"><b>{roster.credits || 0}</b> créditos</span>
-                  {rosterDeployment.fallenCount > 0 && <span className="danger-text"><b>{rosterDeployment.fallenCount}</b> bajas</span>}
-                </div>
-                <div className="campaign-command-actions" aria-label="Acciones de campaña">
-                  <button type="button" className="secondary-btn campaign-market-primary" onClick={() => setShowMarket(true)}>▣ Mercado</button>
-                  <button type="button" className="secondary-btn campaign-restart-action" onClick={handleRestartCampaign}>↻ Reiniciar campaña</button>
-                </div>
-                <div className={`campaign-situation-banner campaign-friendly-next ${rosterDeployment.fallenCount ? 'danger' : ''}`}>
-                  <span>QUÉ HACER AHORA</span>
-                  <strong>{nextStep}</strong>
-                </div>
-              </>
-            );
-          })()}
+          <CampaignCommandStatus campaign={campaign} roster={roster} fallenCount={rosterDeployment.fallenCount}
+            onMarket={() => setShowMarket(true)} onRestart={handleRestartCampaign} />
 
           {battleDebrief && <CombatDebrief debrief={battleDebrief} onViewBattle={onViewBattle} nextAction={campaign.phase === 'reward' ? 'Elige una recompensa para cerrar el sector.' : null} />}
 
