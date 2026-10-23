@@ -281,6 +281,32 @@ if (checkCiWiring) {
   }
   if (goBuilder[1].split('.').length !== 3) fail('Go builder debe fijar major.minor.patch');
 
+  // Check the real ARM64 binary with an external fail-closed script to
+  // preserve the bounded workflow size ratchet.
+  const binaryBuildStart = backendGoBlock.indexOf('\n      - name: Build Linux ARM64\n');
+  if (binaryBuildStart < 0) fail('Backend Go debe compilar el ARM64 real');
+  const binaryBuildStep = backendGoBlock.slice(binaryBuildStart);
+  if (!binaryBuildStep.includes('run: bash ../scripts/go_binary_build_verify.sh')) {
+    fail('Backend Go debe verificar versión y plataforma del binario generado');
+  }
+  const binaryScript = read(path.join(root, 'scripts', 'go_binary_build_verify.sh'));
+  for (const required of [
+    'set -euo pipefail',
+    'export GOTOOLCHAIN=local',
+    '[[ "$selected_go" == \'go1.27.3\' ]]',
+    'GOOS=linux GOARCH=arm64 go build -trimpath -o /tmp/pvp-edge ./cmd/pvp-edge',
+    'go version /tmp/pvp-edge',
+    '[[ "$actual" == "/tmp/pvp-edge: $selected_go" ]]',
+    'go version -m /tmp/pvp-edge',
+    "grep -Fqx $'\\tbuild\\tGOOS=linux'",
+    "grep -Fqx $'\\tbuild\\tGOARCH=arm64'",
+  ]) {
+    if (!binaryScript.includes(required)) fail(`Sin evidencia binaria Go ARM64: ${required}`);
+  }
+  if (/\|\|\s*(?:true|:)/m.test(binaryScript) || /continue-on-error:/m.test(binaryBuildStep)) {
+    fail('Comprobación binaria Go no puede suprimir errores');
+  }
+
   // The mandatory Go lane must keep the official, pinned, fail-closed scan.
   // A static preflight catches accidental removal before expensive Go CI runs.
   const goScanStart = backendGoBlock.indexOf('\n      - name: Reachable Go CVE scan\n');
