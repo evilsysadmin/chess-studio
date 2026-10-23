@@ -281,6 +281,27 @@ if (checkCiWiring) {
   }
   if (goBuilder[1].split('.').length !== 3) fail('Go builder debe fijar major.minor.patch');
 
+  // Check the compiled deployable ARM64 artifact, not merely the pinned config.
+  const binaryBuildStart = backendGoBlock.indexOf('\n      - name: Build Linux ARM64 and verify embedded Go toolchain\n');
+  if (binaryBuildStart < 0) fail('Backend Go debe comprobar el compilador del binario ARM64');
+  const binaryBuildStep = backendGoBlock.slice(binaryBuildStart);
+  for (const required of [
+    'export GOTOOLCHAIN=local',
+    '[[ "$selected_go" == \'go1.27.3\' ]]',
+    'go build -trimpath -o /tmp/pvp-edge ./cmd/pvp-edge',
+    'go version /tmp/pvp-edge',
+    '[[ "$actual" == "/tmp/pvp-edge: $selected_go" ]]',
+    'go version -m /tmp/pvp-edge',
+    "grep -Fqx $'\\tbuild\\tGOOS=linux'",
+    "grep -Fqx $'\\tbuild\\tGOARCH=arm64'",
+  ]) {
+    if (!binaryBuildStep.includes(required)) fail(`Sin evidencia binaria Go ARM64: ${required}`);
+  }
+  if (/continue-on-error:|\|\|\s*(?:true|:)/m.test(binaryBuildStep)) {
+    fail('Comprobación binaria Go no puede suprimir errores');
+  }
+
+
   // The mandatory Go lane must keep the official, pinned, fail-closed scan.
   // A static preflight catches accidental removal before expensive Go CI runs.
   const goScanStart = backendGoBlock.indexOf('\n      - name: Reachable Go CVE scan\n');
