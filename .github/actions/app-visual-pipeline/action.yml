@@ -8,10 +8,6 @@ inputs:
     description: "app, chronicles or tactics selects one independent visual workflow; default keeps the legacy CLI behavior."
     default: default
     required: false
-  chronicles-shard:
-    description: "Dedicated Chronicles weighted visual runner (1-3); empty leaves other lanes unchanged."
-    default: ''
-    required: false
 runs:
   using: composite
   steps:
@@ -228,21 +224,16 @@ runs:
         APP_VISUAL_WARROOM_VARIANTS: ${{ steps.scope.outputs.warroom_variants }}
         APP_VISUAL_WARROOM_PROFILE_SCOPE: ${{ steps.scope.outputs.warroom_profile_scope }}
         APP_VISUAL_HOME_PROFILE_SCOPE: ${{ steps.scope.outputs.home_profile_scope }}
-        APP_VISUAL_CHRONICLES_SAVE_ONLY: ${{ steps.scope.outputs.chronicles_save_only }}
-        APP_VISUAL_CHRONICLES_SETUP_ONLY: ${{ steps.scope.outputs.chronicles_setup_only }}
-        APP_VISUAL_CHRONICLES_SHARD: ${{ inputs.chronicles-shard }}
       shell: bash
       run: |
         set -euo pipefail
         groups='${{ steps.scope.outputs.capture_groups }}'
         experiments='${{ steps.scope.outputs.experiments_scope }}'
-        chronicles_avatar='${{ steps.scope.outputs.chronicles_avatar }}'
         producers='${{ steps.scope.outputs.producer_scope }}'
         [[ -n "$groups" ]] || groups=all
         [[ -n "$experiments" ]] || experiments=all
         [[ -n "$producers" ]] || producers=all
-        [[ "$chronicles_avatar" == 'true' || "$chronicles_avatar" == 'false' ]] || chronicles_avatar=true
-        bash scripts/app_visual_capture.sh "${{ inputs.mode }}" "$groups" "$experiments" "$chronicles_avatar" "$producers"
+        bash scripts/app_visual_capture.sh "${{ inputs.mode }}" "$groups" "$experiments" "$producers"
 
     - name: Enforce War Room visual freeze
       if: >-
@@ -284,7 +275,7 @@ runs:
       if: always() && steps.scope.outcome == 'success' && inputs.mode == 'canonical' && steps.scope.outputs.capture_groups != 'none' && steps.scope.outputs.producer_scope != 'none' && steps.canonical_capture.outputs.has_specs == 'true'
       uses: actions/upload-artifact@v7
       with:
-        name: ${{ inputs.chronicles-lane == 'tactics' && 'tactics-visual' || inputs.chronicles-lane == 'chronicles' && 'chronicles-visual' || 'app-visual' }}-${{ github.event.pull_request.number || github.run_id }}${{ inputs.chronicles-shard && format('-part-{0}', inputs.chronicles-shard) || '' }}
+        name: app-visual-${{ github.event.pull_request.number || github.run_id }}
         path: .artifacts/app-visual/
         if-no-files-found: error
         retention-days: 7
