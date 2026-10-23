@@ -92,7 +92,11 @@ if [[ "$target" == staging ]]; then
     exit 0
   fi
 fi
-git -C "$repo" fetch --no-tags --depth=1 origin "$sha"
+# This network operation runs under FD8's exclusive host mutation flock.
+# A stalled GitHub/DNS/SSH connection must not strand the lock indefinitely.
+# Nonzero/timeout fail closed under set -e: never checkout an unproven SHA.
+GIT_TERMINAL_PROMPT=0 timeout --signal=TERM --kill-after=2s 90s \
+  git -C "$repo" fetch --no-tags --depth=1 origin "$sha"
 git -C "$repo" checkout --detach "$sha"
 [[ -f "$payload" && ! -L "$payload" ]] || { echo "missing deploy payload in $sha: $payload" >&2; exit 66; }
 

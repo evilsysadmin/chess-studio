@@ -45,6 +45,13 @@ def self_test():
     assert 'flock -w 120 8' not in launcher
     assert 'CHESS_STUDIO_HOST_LOCK_HELD=1 CHESS_STUDIO_CHECKOUT_READY=1 exec /bin/bash' in launcher
     assert launcher.index("git -C \"$repo\" checkout --detach") < launcher.index("CHESS_STUDIO_HOST_LOCK_HELD=1")
+    # A failed/stalled network fetch while FD8 is held must not leave a
+    # process indefinitely retaining the flock. Never proceed to checkout.
+    launch_fetch = launcher.index('git -C "$repo" fetch --no-tags --depth=1 origin "$sha"')
+    launch_timeout = launcher.index("GIT_TERMINAL_PROMPT=0 timeout --signal=TERM --kill-after=2s 90s")
+    assert lock_wait < launch_timeout < launch_fetch < launcher.index('git -C "$repo" checkout --detach')
+    assert launcher.count("GIT_TERMINAL_PROMPT=0 timeout --signal=TERM --kill-after=2s 90s") == 1
+
     # The payload must NOT reopen inherited FD8 and cause a self-deadlock.
     assert 'if [[ "${CHESS_STUDIO_HOST_LOCK_HELD:-0}" == "1" ]]; then' in payload
     inherited = payload.split('if [[ "${CHESS_STUDIO_HOST_LOCK_HELD:-0}" == "1" ]]; then', 1)[1].split("\nelse\n", 1)[0]
@@ -83,6 +90,25 @@ def self_test():
     assert 'git -C "$repo" ls-remote --exit-code origin refs/heads/main' in resolver
     assert "if ! current_main=" in resolver
     assert "return 69" in resolver
+    # Direct legacy payload acquires FD8 itself and must observe the same
+    # bounded Git transport contract when its checkout is not pre-prepared.
+    direct = payload.split('if [[ "${CHESS_STUDIO_CHECKOUT_READY:-0}" == "1" ]]; then', 1)[1].split(
+        '\nfi\n', 1
+    )[0]
+    assert 'GIT_TERMINAL_PROMPT=0 timeout --signal=TERM --kill-after=2s 90s' in direct
+    assert 'git fetch --no-tags --depth=1 origin "$sha"' in direct
+    assert direct.index('timeout --signal=TERM --kill-after=2s 90s') < direct.index(
+        'git fetch --no-tags --depth=1 origin "$sha"'
+    ) < direct.index('git checkout --detach "$sha"')
+
+    # Real coreutils smoke: expired subprocess is terminated, not allowed to
+    # continue running while the host mutation flock would remain held.
+    expired = subprocess.run(
+        ["timeout", "--signal=TERM", "--kill-after=1s", "1s", "sleep", "3"],
+        capture_output=True, timeout=4, check=False,
+    )
+    assert expired.returncode == 124
+
 
     # A live cloudflared tunnel is daemonized *inside* the deploy lock.
     # nohup/setsid do not close unrelated FDs: closing FD8 in runuser's
