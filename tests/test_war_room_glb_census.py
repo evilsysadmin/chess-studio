@@ -1,4 +1,5 @@
 """Blender-independent tests of exported War Room mesh accounting."""
+import hashlib
 import json
 import struct
 import sys
@@ -7,7 +8,7 @@ import unittest
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'scripts' / 'blender'))
-from war_room_glb_census import census_scene, geometry_budget_violations, main, read_glb_json, render_census_markdown  # noqa: E402
+from war_room_glb_census import census_scene, geometry_budget_violations, main, read_glb_json, render_census_markdown, verify_runtime_manifest_provenance  # noqa: E402
 
 
 def fixture():
@@ -204,6 +205,47 @@ class WarRoomGlbCensusTests(unittest.TestCase):
         with self.assertRaises(SystemExit) as error:
             main(['not-present.glb', '--max-bytes', '-1'])
         self.assertEqual(error.exception.code, 2)
+
+    def test_runtime_manifest_provenance_checks_published_id_hash_bytes_and_filename(self):
+        data = b"real glb bytes"
+        digest = hashlib.sha256(data).hexdigest()
+        entry = {
+            "bytes": len(data), "sha256": digest,
+            "key": "war-room/v3/runtime/war-room-v3-shell-test.glb",
+            "contentType": "model/gltf-binary",
+        }
+        manifest = {"assets": {
+            "warRoom.v2.runtime": {"key": "war-room/v2/runtime/v2.glb",
+                                   "sha256": "a"*64, "bytes": 10,
+                                   "contentType": "model/gltf-binary"},
+            "warRoom.v3.runtime": entry,
+            "warRoom.v4.runtime": {"key": "war-room/v4/runtime/v4.glb",
+                                   "sha256": "b"*64, "bytes": 10,
+                                   "contentType": "model/gltf-binary"},
+        }}
+        path = Path("/tmp/war-room-v3-shell-test.glb")
+        report = {"sha256": digest, "glbBytes": len(data)}
+        verified = verify_runtime_manifest_provenance(path, report, manifest)
+        self.assertEqual(verified["logicalId"], "warRoom.v3.runtime")
+        self.assertEqual(verified["r2Key"], entry["key"])
+        with self.assertRaisesRegex(ValueError, "provenance mismatch"):
+            verify_runtime_manifest_provenance(path, {**report, "sha256": "0"*64}, manifest)
+        with self.assertRaisesRegex(ValueError, "provenance mismatch"):
+            verify_runtime_manifest_provenance(path, {**report, "glbBytes": len(data)+1}, manifest)
+        with self.assertRaisesRegex(ValueError, "no unique"):
+            verify_runtime_manifest_provenance(Path("/tmp/other.glb"), report, manifest)
+        with self.assertRaisesRegex(ValueError, "invalid runtime key"):
+            verify_runtime_manifest_provenance(path, report, {
+                "assets": {**manifest["assets"],
+                           "warRoom.v3.runtime": {**entry, "key": "../bad.glb"}},
+            })
+        with self.assertRaisesRegex(ValueError, "invalid manifest SHA"):
+            verify_runtime_manifest_provenance(path, report, {
+                "assets": {**manifest["assets"],
+                           "warRoom.v3.runtime": {**entry, "sha256": "unknown"}},
+            })
+        with self.assertRaisesRegex(ValueError, "no assets object"):
+            verify_runtime_manifest_provenance(path, report, {})
 
     def test_glb_reader_accepts_meshopt_buffer_layout(self):
         # Meshopt can preserve decoded buffer metadata but store a short
