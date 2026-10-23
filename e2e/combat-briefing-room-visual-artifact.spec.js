@@ -218,6 +218,9 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 
       await expect(dossier).toContainText('Bautismo de fuego');
       await expect(dossier).toContainText('Cinco bajas');
       await expect(dossier).toContainText('Cicatriz del jefe');
+      // All three medals and their provenance must fit, not disappear past an
+      // unadvertised inner scroll boundary on the 390 px inspection.
+      expect(await dossier.evaluate((el) => el.scrollHeight - el.clientHeight)).toBeLessThanOrEqual(1);
       // One real live-WebGL screenshot with the veteran's service folio open.
       await captureRoom(page, ARTIFACT_DIR + '/combat-briefing-veteran-dossier-390x844.png');
       await page.keyboard.press('Escape');
