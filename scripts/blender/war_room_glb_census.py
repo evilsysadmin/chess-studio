@@ -96,6 +96,7 @@ def census_scene(document: dict, *, top: int = 12) -> dict:
     rows = []
     material_costs = {}
     used_meshes = set()
+    visited_nodes = set()
     total_triangles = total_vertices = draw_primitives = 0
 
     def visit(index: int, parents: frozenset[int]) -> None:
@@ -104,6 +105,11 @@ def census_scene(document: dict, *, top: int = 12) -> dict:
             raise ValueError(f"invalid scene node: {index!r}")
         if index in parents:
             raise ValueError("cyclic glTF node graph")
+        # glTF node ownership is a tree. Repeated references would inflate
+        # potential triangles and make comparisons between War Rooms misleading.
+        if index in visited_nodes:
+            raise ValueError("glTF node referenced more than once in default scene")
+        visited_nodes.add(index)
         node = nodes[index]
         if "EXT_mesh_gpu_instancing" in node.get("extensions", {}):
             raise ValueError("GPU instancing needs a separate instance census")
