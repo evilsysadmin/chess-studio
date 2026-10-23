@@ -349,6 +349,12 @@ async function inspectActualRenderer(canvas) {
 }
 
 async function sampleConfirmedMove(page, board, canvas, requestLog) {
+  const movePosts = () => requestLog.filter(
+    (entry) => entry.method === 'POST' && /\/games\/[^/]+\/move$/.test(entry.path),
+  );
+  // Benchmark only one reproducible move from a genuinely fresh game.
+  // A request left over from setup/recovery would taint the measured phase.
+  expect(movePosts(), 'GPU move workload must begin with zero move requests').toHaveLength(0);
   await navigateWarRoomKeyboard(canvas, board, 'e2');
   await canvas.press('Enter');
   await expect(board).toHaveAttribute('data-board3d-selected', 'e2');
@@ -361,12 +367,17 @@ async function sampleConfirmedMove(page, board, canvas, requestLog) {
     const startedAt = await page.evaluate(() => performance.now());
     await canvas.press('Enter');
     await expect.poll(
-      () => requestLog.some((entry) => entry.method === 'POST' && /\/games\/[^/]+\/move$/.test(entry.path)),
-      { timeout: 20_000 },
-    ).toBe(true);
+      () => movePosts().length,
+      { message: 'Benchmark move must submit one real /move request', timeout: 20_000 },
+    ).toBe(1);
     await expect(board).toHaveAttribute('data-board3d-selected', '', { timeout: 20_000 });
     inputToConfirmationMs = Math.round((await page.evaluate(() => performance.now())) - startedAt);
     await page.waitForTimeout(1700);
+    // Polling for *some* POST can hide a double submission. The full
+    // measured window must contain exactly one idempotent backend mutation.
+    const requests = movePosts();
+    expect(requests, 'Duplicated /move invalidates GPU workload').toHaveLength(1);
+    expect(requests[0].idempotencyKey, 'Move must have a real idempotency key').toBeTruthy();
   } finally {
     pacing = await stopProbe(page);
   }
