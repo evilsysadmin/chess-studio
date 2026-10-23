@@ -1,4 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { availableCampaignNodes, campaignMap } from '../combatCampaign.js';
+import { projectCombatOperationsCampaignMap } from '../combatOperationsMapProjection.js';
 import CombatPreparationRoom from './CombatPreparationRoom.jsx';
 import CampaignBriefing from './CampaignBriefing.jsx';
 import './CampaignCombatPreparationRoom.css';
@@ -11,6 +13,11 @@ export default function CombatCampaignBriefingRoom({
   onBuyIntel, onContinue, onRetire, children,
 }) {
   const [inspectingArmy, setInspectingArmy] = useState(false);
+  const [inspectedSectorId, setInspectedSectorId] = useState('');
+  const cartography = useMemo(() => campaign?.active
+    ? projectCombatOperationsCampaignMap(campaignMap(campaign.seed), campaign, availableCampaignNodes(campaign))
+    : null, [campaign]);
+  const inspected = cartography?.nodes.find((sector) => sector.id === inspectedSectorId);
   useEffect(() => {
     if (!inspectingArmy) return undefined;
     const onEscape = (event) => {
@@ -35,7 +42,7 @@ export default function CombatCampaignBriefingRoom({
         aria-label="Mesa de órdenes de Combat Chess"
         data-combat-campaign-room="briefing"
       >
-        <CombatPreparationRoom roster={roster} campaign={campaign} inspectionPreview={inspectingArmy} />
+        <CombatPreparationRoom roster={roster} campaign={campaign} cartography={cartography} onSectorInspect={setInspectedSectorId} inspectionPreview={inspectingArmy} />
 
         <div className="combat-operations-topbar combat-briefing-room-topbar">
           <button type="button" className="back-link combat-operations-exit" onClick={onExit}>
@@ -59,7 +66,29 @@ export default function CombatCampaignBriefingRoom({
           {fallen > 0 && <span className="danger-text">Bajas <b>{fallen}</b></span>}
           <button type="button" onClick={() => { setInspectingArmy(false); onOpenMarket(); }}>Mercado →</button>
           <button type="button" onClick={onRestart}>↻ Reiniciar campaña</button>
+          <label className="combat-briefing-map-lookup">
+            Mapa
+            <select aria-label="Consultar sector del mapa" value={inspectedSectorId}
+              onChange={(event) => setInspectedSectorId(event.target.value)}>
+              <option value="">Consultar sector…</option>
+              {(cartography?.nodes || []).map((sector) => (
+                <option key={sector.id} value={sector.id}>
+                  {sector.stage === 0 ? "Base" : "Sector " + sector.stage} · {sector.status === "locked" ? "sin explorar" : sector.label}
+                </option>
+              ))}
+            </select>
+          </label>
         </div>
+        {inspected && (
+          <div className="combat-briefing-map-readout" role="status" aria-live="polite">
+            <strong>{inspected.stage === 0 ? "Base" : "Sector " + inspected.stage}</strong>
+            <span>{inspected.status === "locked" ? "Aún sin explorar" : inspected.label} · {{
+              current: "Posición actual", selected: "Objetivo designado",
+              available: "Ruta accesible", cleared: "Sector superado", locked: "Ruta bloqueada",
+            }[inspected.status]}</span>
+            <button type="button" aria-label="Cerrar consulta de mapa" onClick={() => setInspectedSectorId("")}>×</button>
+          </div>
+        )}
 
         <button
           type="button"
