@@ -60,7 +60,9 @@ test('Feedback · red caída conserva descripción, no promete conservar adjunto
   // Re-query the confirmed-success dialog rather than a stale name.
   const confirmed = page.getByRole('dialog', { name: 'Feedback enviado. Gracias.' });
   await expect(confirmed.getByRole('heading', { name: 'Feedback enviado. Gracias.' })).toBeVisible();
-  await confirmed.getByRole('button', { name: 'Cerrar', exact: true }).click();
+  // The close X and the primary confirmation both expose the name 'Cerrar'.
+  // Explicitly use the visible confirmation CTA; never disable strict mode.
+  await confirmed.locator('.feedback-sent .primary-btn').click();
   await openFeedback(page);
   dialog = page.getByRole('dialog', { name: 'Dinos qué mejorar' });
   await expect(dialog.getByLabel('¿Qué pasó o qué cambiarías?')).toHaveValue('');
