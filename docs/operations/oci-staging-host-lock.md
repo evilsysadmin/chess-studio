@@ -23,6 +23,22 @@ Ese PID **no es propietario verificado**. `proc=no` indica que no está visible
 en el espacio de procesos del agente. No usarlo con `kill`, ni eliminar el
 fichero lock.
 
+### Prevención adicional: timeout del watcher
+
+La investigación del código encontró un riesgo independiente de la causa del
+incidente: el watcher Python envolvía `sudo chess-studio-deploy` en
+`subprocess.run(timeout=900)`. Al vencer, Python termina **solo el proceso
+inmediato**; el wrapper raíz o sus descendientes pueden continuar reteniendo
+`deploy.lock` después de desaparecer `sudo`.
+
+El watcher ahora espera el resultado del wrapper raíz sin matar solamente a
+`sudo`; sigue siendo secuencial, y la verificación exact-SHA y el lock
+permanecen bajo autoridad del propio wrapper. Esto **no identifica ni libera**
+los holders del lock anterior, y puede mantener bloqueado al watcher si el
+wrapper nunca concluye. En ese caso se debe inspeccionar el host antes de
+cualquier parada controlada del servicio o recuperación. No cancelar una
+mutación de despliegue a medias para forzar el progreso.
+
 ## Toma de evidencia desde el host (sin mutaciones)
 
 Desde una copia local verificada de Chess Studio, materializar **solo**
