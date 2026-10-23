@@ -140,12 +140,19 @@ def wait_for_surfaces(
 
 
 def current_main(runner: Callable[..., subprocess.CompletedProcess] = subprocess.run) -> str:
-    result = runner(
-        ["git", "ls-remote", "origin", "refs/heads/main"],
-        capture_output=True, text=True, check=False,
-    )
+    # GitHub/DNS can stall a read-only probe indefinitely. This is a release
+    # boundary: an unproven HEAD may not authorize Cloudflare or OCI mutations.
+    try:
+        result = runner(
+            ["git", "ls-remote", "origin", "refs/heads/main"],
+            capture_output=True, text=True, check=False, timeout=10,
+        )
+    except subprocess.TimeoutExpired as exc:
+        raise GenerationError("Timeout consultando main HEAD (10s)") from exc
+    if result.returncode != 0:
+        raise GenerationError("git ls-remote main falló; no hay SHA acreditado")
     head = (result.stdout or "").split()[0] if (result.stdout or "").split() else ""
-    if not SHA_RE.match(head):
+    if not SHA_RE.fullmatch(head):
         raise GenerationError(f"No pude resolver un main HEAD válido: {head or '<vacío>'}")
     return head
 
@@ -273,14 +280,30 @@ def self_test() -> None:
     assert not dist_identity(sha, tmp.with_suffix(".missing"))
 
     class Done:
-        def __init__(self, out: str) -> None:
+        def __init__(self, out: str, returncode: int = 0) -> None:
             self.stdout = out
-    assert current_main(lambda *a, **k: Done(f"{sha}\trefs/heads/main\n")) == sha
+            self.returncode = returncode
+    seen_kwargs = {}
+    def good_head(*_args, **kwargs):
+        seen_kwargs.update(kwargs)
+        return Done(f"{sha}\trefs/heads/main\n")
+    assert current_main(good_head) == sha
+    assert seen_kwargs.get("timeout") == 10 and seen_kwargs.get("check") is False
+    for failed in (Done(""), Done(f"{sha}\trefs/heads/main\n", 128)):
+        try:
+            current_main(lambda *a, **k: failed)
+        except GenerationError:
+            pass
+        else:
+            raise AssertionError("failed/empty git probe allowed a deploy")
+    def stalled_git(*_args, **_kwargs):
+        raise subprocess.TimeoutExpired(cmd="git ls-remote", timeout=10)
     try:
-        current_main(lambda *a, **k: Done(""))
-        raise AssertionError("main vacío debería fallar")
-    except GenerationError:
-        pass
+        current_main(stalled_git)
+    except GenerationError as exc:
+        assert "Timeout" in str(exc)
+    else:
+        raise AssertionError("hanging Git main probe allowed a deploy")
 
     committed = lambda body: (lambda _target: (200, body))  # noqa: E731
     assert watch_committed(sha, attempts=2, interval=0, main_every=8, fetch=committed(sha + "\n"),
