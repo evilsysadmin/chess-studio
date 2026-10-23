@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import os
 import subprocess
+from concurrent.futures import ThreadPoolExecutor
 from collections.abc import Callable
 from urllib.request import Request, urlopen
 
@@ -39,15 +40,30 @@ def select_complete_generation(
     runs: list[dict],
     jobs_for_run: Callable[[int], list[dict]],
 ) -> tuple[str, int]:
+    """Prove the newest complete generation, not merely a green workflow.
+
+    Most recent staging workflows may be intentionally superseded/no-op yet
+    conclude success. Probe their job receipts in small read-only batches,
+    but consume evidence in strict newest-first order. Never allow a later
+    successful probe to eclipse an earlier complete generation.
+    """
+    candidates: list[tuple[str, int]] = []
     for run in runs:
         if not isinstance(run, dict) or str(run.get("conclusion") or "") != "success":
             continue
         sha = str(run.get("head_sha") or "").lower()
         run_id = int(run.get("id") or 0)
-        if not generation.SHA_RE.fullmatch(sha) or run_id <= 0:
-            continue
-        if proof.deployed_generation(jobs_for_run(run_id)):
-            return sha, run_id
+        if generation.SHA_RE.fullmatch(sha) and run_id > 0:
+            candidates.append((sha, run_id))
+
+    batch_size = 4  # Bound parallel GitHub read-only API requests.
+    for start in range(0, len(candidates), batch_size):
+        batch = candidates[start:start + batch_size]
+        with ThreadPoolExecutor(max_workers=len(batch)) as pool:
+            job_receipts = pool.map(jobs_for_run, (run_id for _, run_id in batch))
+            for (sha, run_id), jobs in zip(batch, job_receipts):
+                if proof.deployed_generation(jobs):
+                    return sha, run_id
     raise RuntimeError("no previous complete staging generation found")
 
 
@@ -108,6 +124,25 @@ def self_test() -> None:
     ]
     jobs = {30: partial, 29: green}
     assert select_complete_generation(runs, lambda rid: jobs[rid]) == (b, 29)
+
+    # Many green-but-superseded workflows must never displace the newest fully
+    # proved generation, even when their read-only job requests run concurrently.
+    ten = [
+        {"id": rid, "head_sha": f"{rid:040x}", "conclusion": "success"}
+        for rid in range(100, 90, -1)
+    ]
+    completions = {rid: (green if rid == 93 or rid == 91 else partial)
+                   for rid in range(100, 90, -1)}
+    result = select_complete_generation(ten, lambda rid: completions[rid])
+    assert result == (f"{93:040x}", 93)
+    assert not select_complete_generation.__defaults__  # No configurable unbounded parallelism.
+    try:
+        select_complete_generation(ten, lambda _: (_ for _ in ()).throw(RuntimeError("API offline")))
+    except RuntimeError as exc:
+        assert "API offline" in str(exc)
+    else:
+        raise AssertionError("unproven GitHub jobs must fail open to guarded deploy")
+
     assert changed_files(a, a, runner=lambda *args, **kwargs: None) == []
 
     class Done:
