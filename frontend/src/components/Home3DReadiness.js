@@ -18,3 +18,12 @@ export function home3DContextRecovering(stage) {
   const canvas = stage?.querySelector?.(':scope > canvas.illustrated-home__castle-3d');
   return canvas?.dataset?.homeBlenderRuntime === 'recovering';
 }
+
+
+// A context can transition 'recovering' → 'loading' while the same WebGL Home
+// rebuilds resources. The old 30 s watchdog must not unmount it in that gap.
+// Once an authentic 3D frame was composed, the painted preview is reversible
+// for the remainder of this Home mount (even while its renderer reloads).
+export function home3DShouldPreserveCanvas(stage, { everPresented3D = false } = {}) {
+  return everPresented3D || home3DContextRecovering(stage);
+}
