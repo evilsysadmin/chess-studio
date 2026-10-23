@@ -92,6 +92,38 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 
     }
     await mkdir(ARTIFACT_DIR, { recursive: true });
     await captureRoom(page, ARTIFACT_DIR + '/combat-briefing-room-' + viewport.width + 'x' + viewport.height + '.png');
+    if (viewport.width < 720) {
+      // The Map affordance must be reachable without sliding a long resources
+      // rail. Verify narrow 360/390/430 widths against the actual hit target,
+      // not just a visible DOM node outside the viewport.
+      for (const width of [360, 390, 430]) {
+        await page.setViewportSize({ width, height: viewport.height });
+        const mapPosition = await page.evaluate(() => {
+          const selector = document.querySelector('.combat-briefing-map-lookup select');
+          const lookup = document.querySelector('.combat-briefing-map-lookup');
+          const rail = document.querySelector('.combat-briefing-resource-rail');
+          const a = selector?.getBoundingClientRect();
+          const b = lookup?.getBoundingClientRect();
+          const c = rail?.getBoundingClientRect();
+          const center = a && document.elementFromPoint(a.left + a.width / 2, a.top + a.height / 2);
+          return {
+            width: innerWidth,
+            left: b?.left, right: b?.right,
+            railRight: c?.right,
+            accessible: Boolean(center === selector || selector?.contains(center)),
+            inRail: Boolean(lookup?.closest('.combat-briefing-resource-rail')),
+            overflow: document.documentElement.scrollWidth > innerWidth + 1,
+          };
+        });
+        expect(mapPosition.left).toBeGreaterThanOrEqual(0);
+        expect(mapPosition.right).toBeLessThanOrEqual(width - 4);
+        expect(mapPosition.railRight).toBeLessThanOrEqual(mapPosition.left + 1);
+        expect(mapPosition.accessible).toBe(true);
+        expect(mapPosition.inRail).toBe(false);
+        expect(mapPosition.overflow).toBe(false);
+      }
+      await page.setViewportSize(viewport);
+    }
     // The physical map is consultation only. Its keyboard-accessible twin
     // must never navigate to another node or restart the canvas.
     const consultation = room.getByRole('combobox', { name: 'Consultar sector del mapa' });
