@@ -65,6 +65,29 @@ def require_complete_harness_imports(harness_blobs):
                     f'GPU benchmark harness missing local import {target} (from {filename})')
 
 
+def check_gpu_harness_syntax(harness_blobs):
+    """Parse every pinned JS/MJS as ESM before builds or real-GPU captures.
+
+    node --check of only the entry spec does not parse imported helpers. Read
+    the *actual pinned bytes*, including the same historical-harness override
+    that will be copied into both detached worktrees.
+    """
+    for filename in HARNESS_FILES:
+        if not filename.endswith(('.js', '.mjs')):
+            continue
+        source = harness_blobs.get(filename)
+        require(type(source) is bytes,
+                f'GPU harness missing module for syntax preflight: {filename}')
+        result = subprocess.run(
+            ('node', '--check', '--input-type=module'),
+            input=source, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            check=False,
+        )
+        if result.returncode:
+            reason = result.stderr.decode('utf-8', errors='replace').strip()[:800]
+            raise BenchError(f'GPU harness invalid JavaScript syntax in {filename}: {reason}')
+
+
 def run(command, *, cwd=None, env=None, stdout=None, check=True):
     # Never run a shell and never echo the inherited environment or secrets.
     result = subprocess.run(
@@ -249,6 +272,18 @@ def self_test():
     assert 'scripts/e2e_dist_server.py' in HARNESS_FILES
     pinned_files = {filename: (root / filename).read_bytes() for filename in HARNESS_FILES}
     require_complete_harness_imports(pinned_files)
+    check_gpu_harness_syntax(pinned_files)
+    # Both .js and .mjs imports must fail fast even when the entry spec parses.
+    for broken_path in ('e2e/war-room-gpu-quick-match.js',
+                        'e2e/war-room-gpu-shadow-readiness.mjs'):
+        broken_files = dict(pinned_files)
+        broken_files[broken_path] = b'export const malformed = ];'
+        try:
+            check_gpu_harness_syntax(broken_files)
+        except BenchError as exc:
+            assert broken_path in str(exc) and 'syntax' in str(exc)
+        else:
+            raise AssertionError(f'Malformed imported GPU helper accepted: {broken_path}')
     incomplete_files = dict(pinned_files)
     incomplete_files.pop('e2e/war-room-gpu-shadow-readiness.mjs')
     try:
@@ -363,6 +398,7 @@ def main():
         for filename in (*HARNESS_FILES, COMPARE_PATH):
             harness_blobs[filename] = capture(('git', 'show', harness + ':' + filename), cwd=root)
         require_complete_harness_imports(harness_blobs)
+        check_gpu_harness_syntax(harness_blobs)
         require(b'schema: 2' in harness_blobs[HARNESS_FILES[0]]
                 and b'runId' in harness_blobs[HARNESS_FILES[0]]
                 and (args.variant == 'v3' or b'WAR_ROOM_GPU_BENCH_VARIANT' in harness_blobs[HARNESS_FILES[0]]),
