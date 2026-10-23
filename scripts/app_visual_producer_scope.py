@@ -759,27 +759,10 @@ def classify(paths: list[str]) -> str:
     return _csv(producers)
 
 
-def project_chronicles_lane(producers: str, lane: str) -> str:
-    """Project visual producers into independent App, Chronicles and Tactics gates.
-
-    Shared owners still request both visual producers, but independent workflows
-    prevent software-WebGL Tactics from blocking first-person evidence.
-    Unknown paths remain fail-closed: 'all' expands to every known producer
-    before projecting either lane, rather than bypassing the expensive gate.
-    """
-    if lane == "combined":
-        return producers  # Preserve the public classifier CLI contract.
+def project_app_producers(producers: str) -> str:
+    """Keep canonical captures in Chess Studio; never revive removed game suites."""
     selected = set(PRODUCER_ORDER) if producers == "all" else set(producers.split(",")) - {"none", ""}
-    if lane == "tactics":
-        selected &= {"chronicles-tactics"}
-    elif lane == "chronicles":
-        selected &= {"chronicles-gameplay", "chronicles-avatar"}
-    elif lane == "app":
-        selected -= {"chronicles-gameplay", "chronicles-avatar", "chronicles-tactics"}
-    elif lane == "default":
-        selected.discard("chronicles-tactics")  # CLI backwards compatibility.
-    else:
-        raise ValueError(f"Unknown visual lane: {lane}")
+    selected -= {"chronicles-gameplay", "chronicles-avatar", "chronicles-tactics"}
     return _csv(selected)
 
 
@@ -791,19 +774,14 @@ def self_test() -> None:
     assert classify(["scripts/art/build_chronicles_procedural_sprites.py"]) == "all"
     assert classify(["scripts/art/chronicles_sprites/source/drowned.idle.png"]) == "all"
     assert classify(["scripts/chronicles/new_renderer.py"]) == "all"
-    assert project_chronicles_lane("all", "combined") == "all"
-    # Chronicles and Tactics left for their own repository: their lanes stay
-    # empty whatever is asked, and App keeps every remaining producer.
-    for lane in ("chronicles", "tactics"):
-        assert project_chronicles_lane("all", lane) == "none"
-        assert project_chronicles_lane("pvp-duel", lane) == "none"
-    assert project_chronicles_lane("pvp-duel", "app") == "pvp-duel"
-    assert project_chronicles_lane("all", "app") == project_chronicles_lane("all", "default")
-    assert project_chronicles_lane("scripts", "tactics") == "none"
+    # Unknown/global changes fan out to every surviving app-owned producer.
+    assert project_app_producers("all") != "all"
+    assert "chronicles" not in project_app_producers("all")
+    assert project_app_producers("pvp-duel") == "pvp-duel"
+    assert project_app_producers("chronicles-gameplay,home-matthias") == "home-matthias"
+    assert project_app_producers("chronicles-avatar,chronicles-tactics") == "none"
     assert classify([".github/workflows/chronicles-visual-artifact.yml"]) == "none"
     assert classify([".github/workflows/tactics-visual-artifact.yml"]) == "none"
-    assert project_chronicles_lane("all", "default") != "all"
-    assert "chronicles" not in project_chronicles_lane("all", "default")
     assert classify(["e2e/staging-live.spec.js"]) == "none"
     assert classify(["e2e/war-room-variant-lifecycle-soak.spec.js"]) == "warroom-core"
     assert classify(["scripts/chronicles_area_parity_corpus.py"]) == "all"
@@ -918,7 +896,7 @@ def self_test() -> None:
         # Retired Matthias-named UI now follows the active Home/War Room
         # classifier rather than a blanket Chronicles exemption.
         assert classify([retired]) in {"none", "all", "home-matthias,warroom-core"}, retired
-        assert project_chronicles_lane(classify([retired]), "chronicles") == "none"
+        assert "chronicles" not in project_app_producers(classify([retired]))
     assert classify(["frontend/src/labChroniclesLink.js"]) == "none"
     assert classify(["frontend/src/components/LabScreen.jsx"]) == "experiments-hub"
     assert classify([
@@ -1114,7 +1092,6 @@ def self_test() -> None:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--all", action="store_true")
-    parser.add_argument("--chronicles-lane", choices=("combined", "default", "app", "chronicles", "tactics"), default="combined")
     parser.add_argument("--github-output", default=os.environ.get("GITHUB_OUTPUT", ""))
     parser.add_argument("--self-test", action="store_true")
     args = parser.parse_args(argv)
@@ -1123,7 +1100,7 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     paths = [] if args.all else sys.stdin.read().splitlines()
     selected_producers = "all" if args.all else classify(paths)
-    result = project_chronicles_lane(selected_producers, args.chronicles_lane)
+    result = project_app_producers(selected_producers)
     warroom_variants = _variant_csv(WARROOM_VARIANT_ALL) if args.all else classify_warroom_variants(paths)
     warroom_profile_scope = WARROOM_PROFILE_SCOPE_ALL if args.all else classify_warroom_profile_scope(paths)
     home_profile_scope = HOME_PROFILE_SCOPE_ALL if args.all else classify_home_profile_scope(paths)
@@ -1133,17 +1110,7 @@ def main(argv: list[str] | None = None) -> int:
             handle.write(f"warroom_variants={warroom_variants}\n")
             handle.write(f"warroom_profile_scope={warroom_profile_scope}\n")
             handle.write(f"home_profile_scope={home_profile_scope}\n")
-            # Specialist workflows own exactly their game, never Home, War Room,
-            # the other game's WebGL browser or general-purpose sidecars.
-            if args.chronicles_lane in {"tactics", "chronicles"}:
-                handle.write(f"capture_groups={'experiments' if result != 'none' else 'none'}\n")
-                handle.write(f"experiments_scope={'chronicles' if result != 'none' else 'none'}\n")
-                handle.write(f"chronicles_avatar={'true' if args.chronicles_lane == 'chronicles' and 'chronicles-avatar' in result.split(',') else 'false'}\n")
-                for output in ("warroom", "hans", "chesscom",
-                               "warroom_revision_required", "warroom_v3_revision_required",
-                               "pvp_duel_revision_required"):
-                    handle.write(f"{output}=false\n")
-            elif result == "none":
+            if result == "none":
                 handle.write("capture_groups=none\n")
     else:
         print(f"producer_scope={result}")
