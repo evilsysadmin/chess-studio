@@ -89,7 +89,9 @@ export default function Home3DLoadingGate({ stageRef, onUseStaticHome, onHomeAva
     // attributes. Observing every descendant class change causes needless
     // readiness queries when Matthias, hotspots or menus update their UI.
     // Keep stage childList tracking so a recreated WebGL canvas is watched.
-    let watchedCanvas = null;
+    // undefined forces the first watchCanvas() to observe the stage even
+    // before React mounts its canvas (when the query initially returns null).
+    let watchedCanvas;
     const observer = new MutationObserver(() => {
       watchCanvas();
       inspect();
