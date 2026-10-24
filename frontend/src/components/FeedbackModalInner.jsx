@@ -38,6 +38,7 @@ export default function FeedbackModal({ onClose, context = 'Home' }) {
   const submitInFlightRef = useRef(false);
   const submitAbortRef = useRef(null);
   const fileInputRef = useRef(null);
+  const dialogRef = useRef(null);
   const durableDraftRef = useRef(Boolean(initialDraft));
 
   useEffect(() => {
@@ -56,6 +57,30 @@ export default function FeedbackModal({ onClose, context = 'Home' }) {
     if (sent || !draftOwner || getUsername() !== draftOwner) return;
     durableDraftRef.current = saveFeedbackDraft({ owner: draftOwner, context, category, message });
   }, [category, message, context, draftOwner, sent]);
+
+  // A sticky mobile action bar must never cover the failed-send explanation.
+  // Recheck after viewport changes (rotation/resize) without stealing focus.
+  useEffect(() => {
+    if (!error) return undefined;
+    let frame;
+    const revealError = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        const dialog = dialogRef.current;
+        const alert = dialog?.querySelector('[role="alert"]');
+        const actions = dialog?.querySelector('.feedback-modal-actions');
+        if (!alert || !actions) return;
+        const overlap = alert.getBoundingClientRect().bottom - actions.getBoundingClientRect().top;
+        if (overlap > -12) dialog.scrollTop += overlap + 12;
+      });
+    };
+    revealError();
+    window.addEventListener('resize', revealError);
+    return () => {
+      window.removeEventListener('resize', revealError);
+      cancelAnimationFrame(frame);
+    };
+  }, [error]);
 
   useEffect(() => {
     const next = images.map((file) => ({ file, url: URL.createObjectURL(file) }));
@@ -143,7 +168,7 @@ export default function FeedbackModal({ onClose, context = 'Home' }) {
 
   return (
     <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
-      <section className="army-card feedback-modal" role="dialog" aria-modal="true" aria-labelledby="feedback-title" onMouseDown={(event) => event.stopPropagation()}>
+      <section ref={dialogRef} className="army-card feedback-modal" role="dialog" aria-modal="true" aria-labelledby="feedback-title" onMouseDown={(event) => event.stopPropagation()}>
         <button type="button" className="piece-info-close" onClick={onClose} aria-label="Cerrar">×</button>
         {sent ? (
           <div className="feedback-sent">
