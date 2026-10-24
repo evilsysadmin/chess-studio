@@ -46,6 +46,37 @@ describe('War Room collapsible captured pieces', () => {
     expect(warRoomCaptureSummary(null).total).toBe(0);
   });
 
+  it('recovers real captured piece from backend boolean moves with no colour field', () => {
+    const booleanHistory = [
+      { from: 'e2', to: 'e4', captured: false, by: 'human' },
+      { from: 'd7', to: 'd5', captured: false, by: 'cpu' },
+      { from: 'e4', to: 'd5', captured: true, by: 'human', san: 'exd5' },
+      { from: 'g8', to: 'f6', captured: false, by: 'cpu' },
+    ];
+    expect(warRoomCaptureSummary(booleanHistory, 'w')).toMatchObject({
+      total: 1, difference: 1, unknownCount: 0,
+    });
+    expect(warRoomCaptureSummary(booleanHistory, 'w').playerEntries[0].glyph).toBe('♟');
+  });
+
+  it('correctly reconstructs en passant from moves rather than destination occupancy', () => {
+    const booleanHistory = [
+      { from: 'e2', to: 'e4' }, { from: 'a7', to: 'a6' },
+      { from: 'e4', to: 'e5' }, { from: 'd7', to: 'd5' },
+      { from: 'e5', to: 'd6', captured: true },
+    ];
+    expect(warRoomCaptureSummary(booleanHistory, 'w')).toMatchObject({
+      total: 1, difference: 1, unknownCount: 0,
+    });
+  });
+
+  it('does not claim an unprovable boolean capture is a particular piece', () => {
+    const summary = warRoomCaptureSummary([
+      { from: 'e4', to: 'd5', captured: true },
+    ], 'w');
+    expect(summary).toMatchObject({ total: 0, unknownCount: 1, difference: 0 });
+  });
+
   it('is closed by default, has an accessible toggle and does not consume board UI', () => {
     const html = renderToStaticMarkup(
       <WarRoomCapturedPieces game={{ id: 'game-1', history }} humanColor="w" />,
