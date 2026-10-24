@@ -5,6 +5,7 @@ import NotationPanel from './NotationPanel.jsx';
 import WarRoomAmbienceToggle from './WarRoomAmbienceToggle.jsx';
 import { formatLongMove } from '../notation.js';
 import { identifyOpening } from '../openings.js';
+import { chessFromFen, safeChessMove } from '../chessRules.js';
 import './GameSideColumn.css';
 import './WarRoomTabbedRail.css';
 
@@ -57,23 +58,44 @@ function CompactNotationPreview({ history, difficulty }) {
   );
 }
 
-export function warRoomCaptureLedger(history = []) {
+export function warRoomCaptureLedger(history = [], initialFen = null, humanColor = 'w') {
   const ledger = { white: [], black: [], unknown: [] };
+  let chess = chessFromFen(initialFen || undefined);
+  const moves = Array.isArray(history) ? history : [];
 
-  history.forEach((move, index) => {
-    const piece = CAPTURE_PIECES[move?.captured];
-    if (!piece) return;
+  moves.forEach((move, index) => {
+    // Some backend/legacy histories contain only `captured: true`. Replay
+    // from the authoritative initial position to recover the actual piece and
+    // mover colour, including en passant. Never infer a piece from SAN alone.
+    let played = null;
+    if (chess) {
+      if (move?.from && move?.to) played = safeChessMove(chess, move);
+      else if (move?.san) {
+        try { played = chess.move(move.san); } catch { played = null; }
+      }
+      if (!played) chess = null;
+    }
 
+    const type = played ? played.captured : (typeof move?.captured === 'string' ? move.captured : null);
+    const piece = CAPTURE_PIECES[type];
+    if (!piece) {
+      if ((!played && move?.captured) || (played && played.captured && !piece)) {
+        ledger.unknown.push({ key: index });
+      }
+      return;
+    }
+
+    const color = played?.color || move?.color
+      || (move?.by === 'human' ? humanColor : move?.by === 'cpu' ? (humanColor === 'w' ? 'b' : 'w') : null);
     const entry = {
-      key: `${index}-${move?.san || move?.captured}`,
+      key: `${index}-${move?.san || type}`,
       label: piece.label,
       value: piece.value,
       san: move?.san || '',
-      glyph: move?.color === 'w' ? piece.black : move?.color === 'b' ? piece.white : '×',
+      glyph: color === 'w' ? piece.black : color === 'b' ? piece.white : '×',
     };
-
-    if (move?.color === 'w') ledger.white.push(entry);
-    else if (move?.color === 'b') ledger.black.push(entry);
+    if (color === 'w') ledger.white.push(entry);
+    else if (color === 'b') ledger.black.push(entry);
     else ledger.unknown.push(entry);
   });
 
