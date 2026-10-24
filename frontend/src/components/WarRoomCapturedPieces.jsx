@@ -36,8 +36,8 @@ function MaterialRow({ label, entries }) {
 
 // Presentation only: the authoritative, confirmed backend game history owns
 // every capture. A renderer/variant change does not create a second ledger.
-export function warRoomCaptureSummary(history, humanColor = 'w') {
-  const ledger = warRoomCaptureLedger(Array.isArray(history) ? history : []);
+export function warRoomCaptureSummary(history, humanColor = 'w', initialFen = null) {
+  const ledger = warRoomCaptureLedger(history, initialFen, humanColor);
   const playerEntries = humanColor === 'b' ? ledger.black : ledger.white;
   const opponentEntries = humanColor === 'b' ? ledger.white : ledger.black;
   const total = playerEntries.length + opponentEntries.length;
@@ -50,7 +50,7 @@ export function warRoomCaptureSummary(history, humanColor = 'w') {
 export default function WarRoomCapturedPieces({ game, humanColor = 'w' }) {
   const [open, setOpen] = useState(false);
   const { playerEntries, opponentEntries, total, unknownCount, difference } =
-    warRoomCaptureSummary(game?.history, humanColor);
+    warRoomCaptureSummary(game?.history, humanColor, game?.initialFen);
 
   return (
     <aside className={`warroom-captures-drawer${open ? ' is-open' : ''}`} aria-label="Registro de capturas" data-warroom-captures="true">
