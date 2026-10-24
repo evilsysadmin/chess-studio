@@ -515,6 +515,28 @@ export function writeWarRoomCanvasTelemetry(canvas, key, value) {
  * Three's needsUpdate handling; only the temporary autoUpdate override belongs
  * to this wrapper, even when rendering throws.
  */
+/**
+ * The canvas and Three.Scene may survive a Blender room switch. The previous
+ * room's throttled shadow timestamp must not suppress the new room's first
+ * depth pass; likewise its frame cadence/governor must not penalize entry.
+ * Reset only on a scene identity or rendered-variant transition, never on an
+ * ordinary idle/animation paint of the same room.
+ */
+export function warRoomShadowStateForScene(renderer, scene) {
+  const variant = scene?.userData?.warRoomRenderedVariant ?? 'classic';
+  const existing = shadowRefreshState.get(renderer);
+  if (existing?.scene === scene && existing?.variant === variant) return existing;
+  const fresh = {
+    scene,
+    variant,
+    lastShadowAt: Number.NEGATIVE_INFINITY,
+    lastRenderAt: Number.NaN,
+    slowFrameCount: 0,
+  };
+  shadowRefreshState.set(renderer, fresh);
+  return fresh;
+}
+
 export function renderWarRoomWithScopedShadowUpdates(renderer, originalRender, scene, camera) {
   const shadowMap = renderer?.shadowMap;
   if (!shadowMap) return originalRender.call(renderer, scene, camera);
@@ -574,12 +596,7 @@ function installWarRoomRenderDiscipline() {
     const now = typeof performance !== 'undefined' && typeof performance.now === 'function'
       ? performance.now()
       : Date.now();
-    const state = shadowRefreshState.get(this) || {
-      lastShadowAt: Number.NEGATIVE_INFINITY,
-      lastRenderAt: Number.NaN,
-      slowFrameCount: 0,
-    };
-    shadowRefreshState.set(this, state);
+    const state = warRoomShadowStateForScene(this, scene);
 
     const frameMs = Number.isFinite(state.lastRenderAt) ? now - state.lastRenderAt : 16;
     const activeMotion = Number.isFinite(state.lastRenderAt) && frameMs < 50;
