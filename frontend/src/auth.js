@@ -16,6 +16,7 @@ import { STORAGE_LOCAL, STORAGE_SESSION, getStorageItem, removeStorageItem, setS
 import { setUiLanguage } from './userPreferences.js';
 import { clearMatthiasSessionSignals, queueMatthiasLoginGreeting } from './matthiasSession.js';
 import { clearPvpEnrollment } from './pvpEnrollment.js';
+import { clearFeedbackDraft } from './feedbackDraft.js';
 
 export const TOKEN_KEY = 'chess-study-auth-token';
 const USERNAME_KEY = 'chess-study-auth-username';
@@ -119,6 +120,8 @@ function clearSessionRuntimeState() {
   clearCombatDebriefSession();
   clearHomePlayNudgeSession();
   clearPvpEnrollment();
+  // Feedback is account-bound and must not leak after an explicit auth switch.
+  clearFeedbackDraft();
 }
 
 function saveSession(token, username) {

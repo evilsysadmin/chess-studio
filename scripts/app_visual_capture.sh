@@ -47,7 +47,12 @@ case "$mode" in
       has_producer health-storage && specs+=(browser-storage-health.spec.js)
     fi
     if has_group home; then
-      has_producer home-base && specs+=(app-visual-artifact.spec.js)
+      if has_producer home-base; then
+        specs+=(app-visual-artifact.spec.js)
+        # Capture the actual offline feedback dialog at desktop + 390px.
+        # Restored text and a readable retry action are product contracts.
+        specs+=(feedback-draft-recovery.spec.js)
+      fi
       has_producer pvp-lobby && specs+=(pvp-lobby-visual-artifact.spec.js)
       has_producer pvp-handoff && specs+=(pvp-handoff-visual-artifact.spec.js)
       has_producer home-matthias && specs+=(matthias-home-visual-artifact.spec.js)

@@ -130,6 +130,9 @@ LANE_COMMANDS: dict[str, tuple[LaneCommand, ...]] = {
     ),
     'smoke': (
         LaneCommand('smoke.spec.js', ('--grep', SMOKE_GREP, '--workers=1', '--retries=0', '--max-failures=1')),
+        # A lost feedback POST must preserve the draft across modal close/F5,
+        # then clear it only after an acknowledged manual retry.
+        LaneCommand('feedback-draft-recovery.spec.js', ('--workers=1', '--retries=0', '--max-failures=1'), canonical_critical=False),
         # F5 between cinematic mate and the explicit debrief CTA must not lose
         # the recorded report or award the campaign twice. Keep this one focused.
         LaneCommand('combat-critical.spec.js', ('--grep', 'Campaña · F5 tras JAQUE MATE', '--workers=1', '--retries=0', '--max-failures=1', '--timeout=120000')),
@@ -243,14 +246,15 @@ def self_test() -> None:
     assert LANE_COMMANDS['home'][1].grep == HOME_MOBILE_GREP
     assert LANE_COMMANDS['home'][2].grep == HOME_WEBGL_GREP
     assert [command.spec for command in LANE_COMMANDS['smoke']] == [
-        'smoke.spec.js', 'combat-critical.spec.js', 'combat-critical.spec.js', 'mobile-final-interactions.spec.js',
+        'smoke.spec.js', 'feedback-draft-recovery.spec.js', 'combat-critical.spec.js', 'combat-critical.spec.js', 'mobile-final-interactions.spec.js',
         'browser-runtime-health.spec.js', 'godot-release-continuity.spec.js', 'war-room-gpu-session-bootstrap.spec.js',
         'home-3d-draw-census.spec.js', 'home-3d-fallback-readiness.spec.js', 'home-android-composition.spec.js',
     ]
-    assert LANE_COMMANDS['smoke'][1].grep == 'Campaña · F5 tras JAQUE MATE'
-    assert LANE_COMMANDS['smoke'][2].grep == 'Torre · F5 tras JAQUE MATE'
-    assert LANE_COMMANDS['smoke'][4].grep == HOME_WEBGL_GREP
-    assert LANE_COMMANDS['smoke'][4].canonical_critical is False
+    assert LANE_COMMANDS['smoke'][1].canonical_critical is False
+    assert LANE_COMMANDS['smoke'][2].grep == 'Campaña · F5 tras JAQUE MATE'
+    assert LANE_COMMANDS['smoke'][3].grep == 'Torre · F5 tras JAQUE MATE'
+    assert LANE_COMMANDS['smoke'][5].grep == HOME_WEBGL_GREP
+    assert LANE_COMMANDS['smoke'][5].canonical_critical is False
     assert LANE_COMMANDS['smoke'][-1].canonical_critical is False
     assert '--timeout=150000' in LANE_COMMANDS['smoke'][-4].args
     assert '--timeout=180000' in LANE_COMMANDS['smoke'][-3].args
