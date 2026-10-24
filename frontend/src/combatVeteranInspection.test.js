@@ -119,4 +119,22 @@ describe('Operations Room · authentic veteran inspection', () => {
     expect(before).toContain('"speedPoints":"3"');
   });
 
+  it('reads legacy service history without an embedded ID, but still rejects explicit contradictions', () => {
+    const roster = veteran();
+    const record = roster.unitRecords['unit-varela'];
+    delete record.identityId; // pre-identityId schema; key still names the active identity
+    const before = JSON.stringify(roster);
+    expect(combatVeteranAtSquare(roster, 'a1')).toMatchObject({
+      alias: 'Varela', identityId: 'unit-varela',
+      battles: 5, survivals: 4, kills: 5,
+      decorations: [{ id: 'baptism' }, { id: 'five_kills' }],
+    });
+    expect(combatVeteranInspectionOptions(roster).find((unit) => unit.square === 'a1')
+      ?.serviceMarks.map((mark) => mark.id)).toEqual(['revival-scar']);
+    expect(JSON.stringify(roster)).toBe(before); // never migrate during inspection
+
+    record.identityId = 'fallen-other-veteran';
+    expect(combatVeteranAtSquare(roster, 'a1')).toBeNull();
+  });
+
 });
