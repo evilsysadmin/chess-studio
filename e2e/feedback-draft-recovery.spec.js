@@ -33,6 +33,13 @@ test('Feedback · red caída conserva descripción, no promete conservar adjunto
     await expect(dialog.getByRole('alert')).toBeInViewport({ ratio: 0.95 });
     await expect(retry).toBeInViewport({ ratio: 1 });
     await expect(dialog.getByRole('alert')).toContainText('El texto se conserva en esta pestaña.');
+    // IntersectionObserver/toBeInViewport checks geometry, not occlusion:
+    // the sticky footer previously hid the alert while both appeared "visible".
+    await expect.poll(() => dialog.evaluate((root) => {
+      const alert = root.querySelector('[role="alert"]').getBoundingClientRect();
+      const actions = root.querySelector('.feedback-modal-actions').getBoundingClientRect();
+      return alert.bottom - actions.top;
+    })).toBeLessThanOrEqual(-8);
     const geometry = await dialog.evaluate((root) => {
       const rect = root.getBoundingClientRect();
       return { left: rect.left, right: rect.right, scroll: root.scrollWidth, client: root.clientWidth };
