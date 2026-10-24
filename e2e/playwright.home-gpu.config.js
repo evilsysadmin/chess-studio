@@ -15,7 +15,8 @@ const args = mode === 'hardware'
 
 export default defineConfig({
   ...base,
-  testMatch: ['home-3d-gpu-benchmark.spec.js'],
+  testMatch: [process.env.CHESS_HOME_GPU_FLAME_PROBE === '1'
+    ? 'home-3d-flame-pass-benchmark.spec.js' : 'home-3d-gpu-benchmark.spec.js'],
   testIgnore: [],
   workers: 1,
   fullyParallel: false,

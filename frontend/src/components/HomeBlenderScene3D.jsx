@@ -1104,6 +1104,14 @@ export function applyFlameGradient(material, range, flutter = null) {
   return true;
 }
 
+// Restricted, opt-in only; no alteration to face direction or alpha.
+export function applyHomeBlenderFlameSinglePass(material, kind, enabled = false) {
+  if (!enabled || !['flame', 'hot', 'candle'].includes(kind) || !material
+    || !material.transparent || material.side !== THREE.DoubleSide) return false;
+  material.forceSinglePass = true;
+  return true;
+}
+
 function prepareRuntimeFireRig(root) {
   const nodes = [];
   root?.traverse?.((object) => {
@@ -1826,8 +1834,12 @@ export default function HomeBlenderScene3D({
           material.opacity = 0.7;
           material.depthWrite = false;
           material.needsUpdate = true;
+          if (applyHomeBlenderFlameSinglePass(material, node.kind, flameSinglePass)) {
+            flameSinglePassCount += 1;
+          }
         }
       }
+      if (gpuProfiling) canvas.dataset.homeBlenderFlameSinglePassCount = String(flameSinglePassCount);
       const bases = homeBlenderCandleBases(fireRig);
       if (!bases.length) return;
       const cfg = HOME_BLENDER_CANDLE_PARTICLES;
@@ -1865,8 +1877,12 @@ export default function HomeBlenderScene3D({
           material.opacity = 0.62;
           material.depthWrite = false;
           material.needsUpdate = true;
+          if (applyHomeBlenderFlameSinglePass(material, node.kind, flameSinglePass)) {
+            flameSinglePassCount += 1;
+          }
         }
       }
+      if (gpuProfiling) canvas.dataset.homeBlenderFlameSinglePassCount = String(flameSinglePassCount);
       for (const { hearth, base } of homeBlenderFireHearthBases(fireRig)) {
         const points = createFireSprites({ base, salt: hearth === 'left' ? 1 : 2, name: `home-fire-${hearth}` });
         scene.add(points);
@@ -1974,7 +1990,14 @@ export default function HomeBlenderScene3D({
     canvas.dataset.homeBlenderSoftware = softwareRenderer ? 'true' : 'false';
     // Explicit opt-in, never run timer queries or the model draw inventory
     // in ordinary sessions. Diagnostics must not affect production startup.
-    const gpuProfiling = new URLSearchParams(window.location.search).get('homeGpuProfile') === '1';
+    const searchParams = new URLSearchParams(window.location.search);
+    const gpuProfiling = searchParams.get('homeGpuProfile') === '1';
+    const flameSinglePass = gpuProfiling && searchParams.get('homeFlamePass') === 'single';
+    let flameSinglePassCount = 0;
+    if (gpuProfiling) {
+      canvas.dataset.homeBlenderFlamePass = flameSinglePass ? 'single' : 'normal';
+      canvas.dataset.homeBlenderFlameSinglePassCount = '0';
+    }
     const lightProbeMode = homeBlenderLightProbeMode(window.location.search);
     const wallTorchLayout = homeBlenderWallTorchLayout(window.location.search);
     // Historical A/B modes keep their four-point baseline; new pair-* A/B
