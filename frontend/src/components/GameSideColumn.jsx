@@ -9,11 +9,11 @@ import './GameSideColumn.css';
 import './WarRoomTabbedRail.css';
 
 const CAPTURE_PIECES = {
-  p: { label: 'Peón', white: '♙', black: '♟' },
-  n: { label: 'Caballo', white: '♘', black: '♞' },
-  b: { label: 'Alfil', white: '♗', black: '♝' },
-  r: { label: 'Torre', white: '♖', black: '♜' },
-  q: { label: 'Dama', white: '♕', black: '♛' },
+  p: { label: 'Peón', white: '♙', black: '♟', value: 1 },
+  n: { label: 'Caballo', white: '♘', black: '♞', value: 3 },
+  b: { label: 'Alfil', white: '♗', black: '♝', value: 3 },
+  r: { label: 'Torre', white: '♖', black: '♜', value: 5 },
+  q: { label: 'Dama', white: '♕', black: '♛', value: 9 },
 };
 
 function recentNotationPairs(history, limit = 1) {
@@ -67,6 +67,7 @@ export function warRoomCaptureLedger(history = []) {
     const entry = {
       key: `${index}-${move?.san || move?.captured}`,
       label: piece.label,
+      value: piece.value,
       san: move?.san || '',
       glyph: move?.color === 'w' ? piece.black : move?.color === 'b' ? piece.white : '×',
     };
@@ -79,58 +80,11 @@ export function warRoomCaptureLedger(history = []) {
   return ledger;
 }
 
-function CaptureRow({ label, entries }) {
-  return (
-    <div className="game-warroom-capture-row">
-      <span>{label}</span>
-      <div className="game-warroom-capture-pieces">
-        {entries.length === 0 ? (
-          <small>—</small>
-        ) : entries.map((entry) => (
-          <span
-            key={entry.key}
-            className="game-warroom-capture-piece"
-            title={`${entry.label}${entry.san ? ` · ${entry.san}` : ''}`}
-          >
-            {entry.glyph}
-          </span>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function WarRoomCaptures({ history }) {
-  const ledger = warRoomCaptureLedger(history);
-  const captureCount = ledger.white.length + ledger.black.length + ledger.unknown.length;
-
-  return (
-    <div className="game-warroom-captures" aria-label="Capturas de la partida">
-      {captureCount === 0 ? (
-        <p>Sin capturas todavía.</p>
-      ) : (
-        <>
-          <CaptureRow label="Blancas" entries={ledger.white} />
-          <CaptureRow label="Negras" entries={ledger.black} />
-          {ledger.unknown.length > 0 && (
-            <p className="game-warroom-capture-warning">
-              {ledger.unknown.length} {ledger.unknown.length === 1 ? 'captura' : 'capturas'} sin bando fiable en el historial.
-            </p>
-          )}
-        </>
-      )}
-    </div>
-  );
-}
-
 function WarRoomTabbedRail({ game, side }) {
   const [activeTab, setActiveTab] = useState('matthias');
-  const ledger = warRoomCaptureLedger(game.history);
-  const captureCount = ledger.white.length + ledger.black.length + ledger.unknown.length;
   const tabs = [
     { id: 'matthias', label: 'Matthias' },
     { id: 'notebook', label: 'Cuaderno', count: game.history.length },
-    { id: 'captures', label: 'Capturas', count: captureCount },
   ];
   const active = tabs.find((tab) => tab.id === activeTab) || tabs[0];
 
@@ -169,7 +123,6 @@ function WarRoomTabbedRail({ game, side }) {
         {activeTab === 'notebook' && (
           <CompactNotationPreview history={game.history} difficulty={game.difficulty} />
         )}
-        {activeTab === 'captures' && <WarRoomCaptures history={game.history} />}
       </div>
     </section>
   );
