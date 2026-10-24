@@ -209,6 +209,20 @@
   align-items: stretch;
 }
 
+/* Feedback offline: keep the manual retry visible on short touch viewports.
+   The dialog remains scrollable for long descriptions and attachments. */
+@media (max-width: 600px) {
+  .feedback-modal .feedback-modal-actions {
+    position: sticky;
+    bottom: 0;
+    z-index: 2;
+    padding: .65rem 0 max(.65rem, env(safe-area-inset-bottom));
+    background: var(--ink-2);
+    border-top: 1px solid var(--ui-border);
+    box-shadow: 0 -8px 16px rgba(0, 0, 0, .2);
+  }
+}
+
 /* Ningún diálogo debe perder sus acciones por debajo del viewport. */
 .modal-backdrop > :where([role='dialog'], .army-card, .feedback-modal, .rating-detail-modal) {
   max-height: calc(100dvh - 1rem);
