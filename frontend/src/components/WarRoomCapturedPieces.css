@@ -1,0 +1,175 @@
+/* A small, opt-in overlay; never reserve grid width or change the board
+   camera/framing. Shared by classic, v2, v3 and v4 3D War Rooms. */
+.game-layout-3d .board-live-row.is-3d-warroom {
+  position: relative;
+}
+
+.game-layout-3d .warroom-captures-drawer {
+  position: absolute;
+  z-index: 65;
+  top: max(4.35rem, calc(env(safe-area-inset-top, 0px) + 3.7rem));
+  right: max(.55rem, env(safe-area-inset-right, 0px));
+  display: flex;
+  flex-direction: row-reverse;
+  align-items: flex-start;
+  gap: .3rem;
+  pointer-events: none;
+}
+
+.warroom-captures-toggle {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: .05rem;
+  box-sizing: border-box;
+  width: 32px;
+  min-width: 32px;
+  min-height: 42px;
+  padding: .28rem;
+  border: 1px solid rgba(203, 165, 89, .48);
+  border-radius: 9px 0 0 9px;
+  background: rgba(8, 11, 15, .86);
+  color: #e2c98e;
+  font: 750 1.05rem/1 var(--font-body, sans-serif);
+  cursor: pointer;
+  pointer-events: auto;
+  backdrop-filter: blur(8px);
+}
+
+.warroom-captures-toggle small {
+  font: 750 .59rem/1 var(--font-mono, monospace);
+}
+
+.warroom-captures-toggle:hover,
+.warroom-captures-toggle:focus-visible {
+  border-color: #d2b66f;
+  background: #17202a;
+  color: #fff0c4;
+  outline: 2px solid transparent;
+  box-shadow: 0 0 0 2px rgba(210, 182, 111, .25);
+}
+
+.warroom-captures-panel {
+  box-sizing: border-box;
+  width: min(218px, calc(100vw - 4.5rem));
+  max-height: min(50dvh, 290px);
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding: .78rem .78rem .65rem;
+  border: 1px solid rgba(203, 165, 89, .43);
+  border-radius: 11px;
+  background: rgba(7, 11, 16, .93);
+  color: #ecdfc6;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, .36);
+  pointer-events: auto;
+  backdrop-filter: blur(10px);
+}
+
+.warroom-captures-title {
+  display: block;
+  margin-bottom: .55rem;
+  color: #e6cb91;
+  font: 800 .69rem/1.2 var(--font-body, sans-serif);
+  letter-spacing: .02em;
+}
+
+.warroom-captures-group {
+  padding: .46rem 0 .55rem;
+  border-top: 1px solid rgba(203, 165, 89, .16);
+}
+
+.warroom-captures-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .4rem;
+  color: #ddcfb5;
+  font: 680 .65rem/1.3 var(--font-body, sans-serif);
+}
+
+.warroom-captures-heading small {
+  color: #ab9b80;
+  font: 700 .62rem/1 var(--font-mono, monospace);
+}
+
+.warroom-captures-pieces {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: .36rem;
+  min-height: 1.65rem;
+  padding-top: .38rem;
+}
+
+.warroom-captures-piece {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: .08rem;
+  color: #ebd6ab;
+  font-size: 1.3rem;
+  line-height: 1;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, .7);
+}
+
+.warroom-captures-piece small {
+  color: #cbb58c;
+  font: 700 .53rem/1 var(--font-mono, monospace);
+}
+
+.warroom-captures-empty {
+  color: #8c8375;
+  font-size: .73rem;
+}
+
+.warroom-captures-balance {
+  display: flex;
+  justify-content: space-between;
+  gap: .6rem;
+  padding-top: .5rem;
+  border-top: 1px solid rgba(203, 165, 89, .18);
+  color: #bdb19e;
+  font: 700 .62rem/1.35 var(--font-body, sans-serif);
+}
+
+.warroom-captures-balance strong {
+  color: #e9dac0;
+  font: 800 .7rem/1 var(--font-mono, monospace);
+}
+
+.warroom-captures-balance strong.is-positive { color: #9fd9aa; }
+.warroom-captures-balance strong.is-negative { color: #edaba4; }
+
+.warroom-captures-uncertain {
+  display: block;
+  padding-top: .45rem;
+  color: #e5c28a;
+  font: 600 .58rem/1.35 var(--font-body, sans-serif);
+}
+
+@media (max-width: 1080px) {
+  .game-layout-3d .warroom-captures-drawer {
+    top: max(3.5rem, calc(env(safe-area-inset-top, 0px) + 3.25rem));
+    right: max(.35rem, env(safe-area-inset-right, 0px));
+  }
+
+  .warroom-captures-toggle {
+    min-height: 38px;
+    width: 30px;
+    min-width: 30px;
+  }
+
+  .warroom-captures-panel {
+    width: min(205px, calc(100vw - 3.7rem));
+    max-height: 46dvh;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .warroom-captures-toggle,
+  .warroom-captures-panel {
+    transition: none;
+    animation: none;
+  }
+}
