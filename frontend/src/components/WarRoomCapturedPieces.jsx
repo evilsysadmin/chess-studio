@@ -36,15 +36,21 @@ function MaterialRow({ label, entries }) {
 
 // Presentation only: the authoritative, confirmed backend game history owns
 // every capture. A renderer/variant change does not create a second ledger.
-export default function WarRoomCapturedPieces({ game, humanColor = 'w' }) {
-  const [open, setOpen] = useState(false);
-  const ledger = warRoomCaptureLedger(game?.history || []);
+export function warRoomCaptureSummary(history, humanColor = 'w') {
+  const ledger = warRoomCaptureLedger(Array.isArray(history) ? history : []);
   const playerEntries = humanColor === 'b' ? ledger.black : ledger.white;
   const opponentEntries = humanColor === 'b' ? ledger.white : ledger.black;
   const total = playerEntries.length + opponentEntries.length;
-  const incomplete = ledger.unknown.length > 0;
+  const unknownCount = ledger.unknown.length;
   const difference = playerEntries.reduce((sum, entry) => sum + entry.value, 0)
     - opponentEntries.reduce((sum, entry) => sum + entry.value, 0);
+  return { playerEntries, opponentEntries, total, unknownCount, difference };
+}
+
+export default function WarRoomCapturedPieces({ game, humanColor = 'w' }) {
+  const [open, setOpen] = useState(false);
+  const { playerEntries, opponentEntries, total, unknownCount, difference } =
+    warRoomCaptureSummary(game?.history, humanColor);
 
   return (
     <aside className={`warroom-captures-drawer${open ? ' is-open' : ''}`} aria-label="Registro de capturas" data-warroom-captures="true">
@@ -65,8 +71,8 @@ export default function WarRoomCapturedPieces({ game, humanColor = 'w' }) {
           <strong className="warroom-captures-title">Capturas</strong>
           <MaterialRow label="Tus capturas" entries={playerEntries} />
           <MaterialRow label="Capturas de Matthias" entries={opponentEntries} />
-          {incomplete ? (
-            <small className="warroom-captures-uncertain">Hay {ledger.unknown.length} capturas sin bando verificado.</small>
+          {unknownCount > 0 ? (
+            <small className="warroom-captures-uncertain">Hay {unknownCount} capturas sin bando verificado.</small>
           ) : (
             <span className="warroom-captures-balance">
               Balance material <strong className={difference > 0 ? 'is-positive' : difference < 0 ? 'is-negative' : ''}>
