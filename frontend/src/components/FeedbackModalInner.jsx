@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { deleteMyFeedback, fetchMyFeedback, submitFeedback } from '../feedback.js';
+import { getUsername } from '../auth.js';
+import { clearFeedbackDraft, readFeedbackDraft, saveFeedbackDraft } from '../feedbackDraft.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
 import { userFacingError } from '../userFacingError.js';
 import { MAX_FEEDBACK_IMAGES, prepareFeedbackAttachments, validateFeedbackFiles } from '../feedbackAttachments.js';
@@ -21,8 +23,10 @@ function formatBytes(bytes) {
 
 export default function FeedbackModal({ onClose, context = 'Home' }) {
   useEscapeToClose(onClose);
-  const [category, setCategory] = useState('general');
-  const [message, setMessage] = useState('');
+  const [draftOwner] = useState(() => getUsername());
+  const [initialDraft] = useState(() => readFeedbackDraft({ owner: draftOwner, context }));
+  const [category, setCategory] = useState(() => initialDraft?.category || 'general');
+  const [message, setMessage] = useState(() => initialDraft?.message || '');
   const [sending, setSending] = useState(false);
   const [error, setError] = useState(null);
   const [sent, setSent] = useState(false);
@@ -34,6 +38,7 @@ export default function FeedbackModal({ onClose, context = 'Home' }) {
   const submitInFlightRef = useRef(false);
   const submitAbortRef = useRef(null);
   const fileInputRef = useRef(null);
+  const durableDraftRef = useRef(Boolean(initialDraft));
 
   useEffect(() => {
     mountedRef.current = true;
@@ -44,6 +49,13 @@ export default function FeedbackModal({ onClose, context = 'Home' }) {
       submitInFlightRef.current = false;
     };
   }, []);
+
+  // Text-only recovery survives modal close/F5 in this tab. Attachments stay
+  // in memory until close; we never claim to persist browser File objects.
+  useEffect(() => {
+    if (sent || !draftOwner || getUsername() !== draftOwner) return;
+    durableDraftRef.current = saveFeedbackDraft({ owner: draftOwner, context, category, message });
+  }, [category, message, context, draftOwner, sent]);
 
   useEffect(() => {
     const next = images.map((file) => ({ file, url: URL.createObjectURL(file) }));
@@ -73,9 +85,17 @@ export default function FeedbackModal({ onClose, context = 'Home' }) {
       const attachments = await prepareFeedbackAttachments(images);
       if (controller.signal.aborted || !mountedRef.current) return;
       await submitFeedback({ category, message: text, context, attachments, signal: controller.signal });
-      if (!controller.signal.aborted && mountedRef.current) setSent(true);
+      if (!controller.signal.aborted && mountedRef.current) {
+        clearFeedbackDraft();
+        setSent(true);
+      }
     } catch (err) {
-      if (!controller.signal.aborted && mountedRef.current) setError(userFacingError(err, 'No se pudo enviar el feedback.'));
+      if (!controller.signal.aborted && mountedRef.current) {
+        const message = userFacingError(err, 'No se pudo enviar el feedback.');
+        setError(durableDraftRef.current
+          ? `${message} El texto se conserva en esta pestaña. Si cierras, tendrás que volver a adjuntar las capturas.`
+          : message);
+      }
     } finally {
       if (submitAbortRef.current === controller) submitAbortRef.current = null;
       submitInFlightRef.current = false;
