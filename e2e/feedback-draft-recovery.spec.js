@@ -25,6 +25,13 @@ test('Feedback · red caída conserva descripción, no promete conservar adjunto
   // screens, not a static mockup. The long recovery copy must not overflow.
   for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 }]) {
     await page.setViewportSize(viewport);
+    const retry = dialog.getByRole('button', { name: 'Enviar feedback', exact: true });
+    // The failed-send CTA must remain visible even after a viewport resize;
+    // an internally scrollable dialog alone is not enough on 390px phones.
+    await expect(retry).toBeInViewport({ ratio: 1 });
+    await dialog.getByRole('alert').scrollIntoViewIfNeeded();
+    await expect(dialog.getByRole('alert')).toBeInViewport({ ratio: 0.95 });
+    await expect(retry).toBeInViewport({ ratio: 1 });
     await expect(dialog.getByRole('alert')).toContainText('El texto se conserva en esta pestaña.');
     const geometry = await dialog.evaluate((root) => {
       const rect = root.getBoundingClientRect();
