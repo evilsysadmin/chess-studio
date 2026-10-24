@@ -53,6 +53,8 @@ export default defineConfig({
       output: {
         manualChunks(id) {
           if (!id.includes('node_modules')) return undefined;
+          // Loaders are opt-in; never let them share initial vendor and drag Babylon into startup.
+          if (id.includes('/babylonjs-loaders/') || id.includes('/babylonjs-gltf2interface/')) return 'vendor-babylon-loaders';
           if (id.includes('/babylonjs/')) return 'vendor-babylon';
           if (id.includes('/three/')) return 'vendor-three';
           if (id.includes('/react/') || id.includes('/react-dom/')) return 'vendor-react';
