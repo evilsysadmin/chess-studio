@@ -15,7 +15,9 @@ function deployedVeteranAtSquare(roster, square) {
   const saved = roster?.pieces?.[unitKey];
   if (!identity?.identityId || saved?.alive === false) return null;
   const record = unitRecordForKey(roster, unitKey);
-  if (record && record.identityId !== identity.identityId) return null;
+  // Historical records can lack the explicit identityId but are still keyed
+  // by the live identity in unitRecords. Reject only proven contradictions.
+  if (record?.identityId && record.identityId !== identity.identityId) return null;
   const level = combatVeteranDisplayLevel(saved);
   const stats = record?.stats || {};
   const safeCount = (key) => Number.isFinite(Number(stats[key]))
