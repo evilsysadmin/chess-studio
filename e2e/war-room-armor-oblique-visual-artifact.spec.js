@@ -1,6 +1,7 @@
 import { chromium, expect, test } from '@playwright/test';
 import { mkdir, writeFile } from 'node:fs/promises';
-import { activateSetupControl, buttonWithVisibleText, gameStatus, login, mockApi } from './helpers.js';
+import { buttonWithVisibleText, login, mockApi } from './helpers.js';
+import { launchWarRoomVisualQuickMatch } from './war-room-visual-quick-match.js';
 
 const ARTIFACT_DIR = '../.artifacts/app-visual';
 const SEEN_WAR_ROOM_TUTORIAL_PROFILE = Object.freeze({
@@ -39,8 +40,8 @@ async function openCanonicalWarRoom(page) {
   await buttonWithVisibleText(page, 'Partida rápida').click();
   const quickMatch = page.getByRole('dialog', { name: 'Configurar partida rápida' });
   await expect(quickMatch).toBeVisible();
-  await activateSetupControl(quickMatch.getByRole('button', { name: 'Empezar partida', exact: true }));
-  await expect(gameStatus(page)).toBeVisible({ timeout: 60_000 });
+  await launchWarRoomVisualQuickMatch(page, quickMatch);
+  await expect(quickMatch).toBeHidden({ timeout: 30_000 });
   const board3d = await open3DFromAppearance(page);
   const canvas = page.locator('.board3d-main-canvas');
   await expect(canvas).toBeVisible({ timeout: 30_000 });

@@ -73,6 +73,14 @@ export default function QuickMatchModal({
     };
   }, []);
 
+  // Start warming the chosen Blender room while the player is configuring
+  // the match, rather than only when the launch CTA is touched (too late on
+  // phones). The existing intent guard skips hidden tabs, Save-Data and 2G.
+  useEffect(() => {
+    if (selectedRenderer !== '3d') return;
+    void preloadPreferredWarRoomOnIntent({ boardRenderer: '3d' });
+  }, [selectedRenderer]);
+
   function warmWarRoomPath() {
     void prefetchGameScreenRoute();
     if (selectedRenderer === '3d') {

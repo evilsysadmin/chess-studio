@@ -4,8 +4,7 @@ set -euo pipefail
 mode="${1:-canonical}"
 groups="${2:-all}"
 experiments_scope="${3:-all}"
-chronicles_avatar="${4:-true}"
-producer_scope="${5:-all}"
+producer_scope="${4:-all}"
 
 # Dedicated visual producers already create the canonical screenshots/artifacts
 # that matter. Tell Playwright not to continuously record trace/video on these
@@ -17,11 +16,6 @@ cd e2e
 has_group() {
   local needle="$1"
   [[ ",$groups," == *",all,"* || ",$groups," == *",$needle,"* ]]
-}
-
-has_experiment_scope() {
-  local needle="$1"
-  [[ ",$experiments_scope," == *",all,"* || ",$experiments_scope," == *",$needle,"* ]]
 }
 
 has_producer() {
@@ -36,13 +30,11 @@ case "$mode" in
       exit 0
     fi
 
-    # Canonical Matthias asset-only changes have already passed the dedicated
-    # Blender contract. Keep browser proof focused on the two actual consumers:
-    # one seated + one mobile Home composition, and Matthias' Chronicles portrait.
-    if [[ "$producer_scope" == "home-matthias,chronicles-avatar" ]]; then
+    # Canonical Matthias source edits only need focused Home evidence.
+    # The retired portrait sidecar is a classifier compatibility alias.
+    if [[ "$producer_scope" == "home-matthias" ]]; then
       export HOME_MATTHIAS_CAPTURE_SCOPE="canonical-model"
-      export CHRONICLES_AVATAR_SCOPE="matthias"
-      echo "Matthias canonical fast path: seated+mobile Home + Matthias-only Chronicles avatar."
+      echo "Matthias canonical fast path: seated and mobile Home."
     fi
 
     specs=()
@@ -55,26 +47,23 @@ case "$mode" in
       has_producer health-storage && specs+=(browser-storage-health.spec.js)
     fi
     if has_group home; then
-      has_producer home-base && specs+=(app-visual-artifact.spec.js)
+      if has_producer home-base; then
+        specs+=(app-visual-artifact.spec.js)
+        # Capture the actual offline feedback dialog at desktop + 390px.
+        # Restored text and a readable retry action are product contracts.
+        specs+=(feedback-draft-recovery.spec.js)
+      fi
       has_producer pvp-lobby && specs+=(pvp-lobby-visual-artifact.spec.js)
       has_producer pvp-handoff && specs+=(pvp-handoff-visual-artifact.spec.js)
       has_producer home-matthias && specs+=(matthias-home-visual-artifact.spec.js)
       has_producer home-focus && specs+=(home-3d-focus-visual.spec.js)
     fi
-    if has_group experiments; then
-      if has_experiment_scope chronicles; then
-        has_producer chronicles-tactics && specs+=(chronicles-tactics-visual-artifact.spec.js)
-        has_producer chronicles-gameplay && specs+=(chronicles-gameplay-visual-artifact.spec.js)
-      fi
-
-      if [[ "$experiments_scope" == "pawnslug" ]] && has_producer experiments-hub; then
+    if has_group experiments && has_producer experiments-hub; then
+      # Game-specific Chronicles producers were extracted with their specs.
+      if [[ "$experiments_scope" == "pawnslug" ]]; then
         specs+=(pawn-slug-godot-visual-artifact.spec.js)
-      elif [[ "$experiments_scope" != "chronicles" ]] && has_producer experiments-hub; then
+      elif [[ "$experiments_scope" != "none" ]]; then
         specs+=(experiments-visual-artifact.spec.js)
-      fi
-
-      if has_experiment_scope chronicles && [[ "$chronicles_avatar" == "true" ]] && has_producer chronicles-avatar; then
-        specs+=(chronicles-avatar-visual-artifact.spec.js)
       fi
     fi
     training_scopes=()
@@ -87,13 +76,20 @@ case "$mode" in
       has_producer training-daily && training_scopes+=(daily)
       if (( ${#training_scopes[@]} > 0 )); then
         specs+=(training-visual-artifact.spec.js)
+        # A real black-side personal replay must be captured alongside the
+        # generic puzzle viewport so furniture occlusion cannot regress silently.
+        if has_producer training-puzzles; then
+          specs+=(training-black-replay-regression.spec.js)
+        fi
         export APP_VISUAL_TRAINING_SCOPE="$(IFS=,; echo "${training_scopes[*]}")"
       fi
     fi
     if has_group warroom; then
       has_producer pvp-duel && specs+=(war-room-pvp-duel-visual-artifact.spec.js)
       has_producer combat-battle && specs+=(war-room-combat-battle-visual-artifact.spec.js)
-      has_producer combat-prep && specs+=(war-room-combat-preparation-visual-artifact.spec.js)
+      if has_producer combat-prep; then
+        specs+=(war-room-combat-preparation-visual-artifact.spec.js combat-briefing-room-visual-artifact.spec.js)
+      fi
       has_producer warroom-core && warroom_core_selected=true
       has_producer warroom-decor && specs+=(war-room-decor-visual-artifact.spec.js)
       has_producer warroom-armor && specs+=(war-room-armor-oblique-visual-artifact.spec.js)
@@ -101,31 +97,14 @@ case "$mode" in
     fi
     if (( ${#specs[@]} == 0 )) && [[ "$warroom_core_selected" != "true" ]]; then
       echo "App visual capture: groups '$groups' + producers '$producer_scope' resolved to no canonical specs."
-      # The app lane may receive a Chronicles-only group after its independent
-      # producer is routed to the dedicated Chronicles workflow. This is a
-      # successful no-op, not a missing-PNG failure.
+      # A retired or out-of-scope visual producer is a deliberate no-op.
       if [[ -n "${GITHUB_OUTPUT:-}" ]]; then echo "has_specs=false" >> "$GITHUB_OUTPUT"; fi
       exit 0
     fi
     if [[ -n "${GITHUB_OUTPUT:-}" ]]; then echo "has_specs=true" >> "$GITHUB_OUTPUT"; fi
 
+    # All surviving experiment subgroups are owned by this repository.
     playwright_experiments_scope="$experiments_scope"
-    if [[ "$experiments_scope" != "chronicles" ]] && has_group experiments && has_producer experiments-hub && has_producer chronicles-gameplay && has_experiment_scope chronicles; then
-      # The dedicated Chronicles gameplay producer owns the canonical dungeon/
-      # portrait proof. Do not ask the legacy Experiments hub producer to render
-      # the same software-WebGL session again during broad/full visual sweeps.
-      if [[ ",$experiments_scope," == *",all,"* ]]; then
-        playwright_experiments_scope="landing,pawnslug"
-      else
-        filtered_scopes=()
-        IFS=',' read -ra requested_scopes <<< "$experiments_scope"
-        for scope in "${requested_scopes[@]}"; do
-          [[ "$scope" == "chronicles" ]] || filtered_scopes+=("$scope")
-        done
-        playwright_experiments_scope="$(IFS=,; echo "${filtered_scopes[*]}")"
-      fi
-    fi
-
     export APP_VISUAL_EXPERIMENTS_SCOPE="$playwright_experiments_scope"
     echo "App visual capture groups: $groups"
     echo "App visual producers: $producer_scope"
@@ -133,11 +112,7 @@ case "$mode" in
       echo "Training visual subscopes: $APP_VISUAL_TRAINING_SCOPE"
     fi
     if has_group experiments; then
-      echo "Experiments visual subscopes: $experiments_scope"
-      if [[ "$playwright_experiments_scope" != "$experiments_scope" ]]; then
-        echo "Experiments hub effective subscopes: $playwright_experiments_scope (Chronicles owned by dedicated producer)"
-      fi
-      echo "Chronicles avatar proof: $chronicles_avatar"
+      echo "Experiments hub effective subscopes: $playwright_experiments_scope"
     fi
     if (( ${#specs[@]} > 0 )); then
       printf ' - %s\n' "${specs[@]}"
@@ -147,42 +122,6 @@ case "$mode" in
     fi
 
     playwright_args=(--workers=1 --retries=0)
-    # Split the full Chronicles producer across independent GHA runners.
-    # No second worker on the same SwiftShader runner (GPU contention), no
-    # test-name grep and no relaxed assertions: Playwright owns the partition.
-    if [[ -n "${APP_VISUAL_CHRONICLES_SHARD:-}" ]]; then
-      case "$APP_VISUAL_CHRONICLES_SHARD" in
-        1|2|3) ;;
-        *) echo "::error::Invalid Chronicles visual shard: $APP_VISUAL_CHRONICLES_SHARD"; exit 2 ;;
-      esac
-      [[ "$warroom_core_selected" == "false" && "${#specs[@]}" -gt 0 ]] || {
-        echo "::error::Chronicles shard requested without Chronicles visual specs"; exit 2;
-      }
-      for spec in "${specs[@]}"; do
-        case "$spec" in
-          chronicles-gameplay-visual-artifact.spec.js|chronicles-avatar-visual-artifact.spec.js) ;;
-          *) echo "::error::Chronicles shard cannot own other visual producer: $spec"; exit 2 ;;
-        esac
-      done
-      # Full producer is sliced further below into short-lived Chromium groups;
-      # focused paths use a 3-way split (avatar-only 2-viewpoint special case).
-      echo "Chronicles visual partition ${APP_VISUAL_CHRONICLES_SHARD}/3: independent runners."
-    fi
-    # The party-choice surface also has canonical setup + editor screenshots
-    # in these same three First Book journeys, plus a real game-entry proof.
-    # Functional Chronicles WebGL canaries stay required in Quality CI.
-    if [[ "${APP_VISUAL_CHRONICLES_SETUP_ONLY:-false}" == "true" && "$groups" == "experiments" && "$experiments_scope" == "chronicles" && "$producer_scope" == "chronicles-gameplay" ]]; then
-      playwright_args+=(--grep 'Chronicles · First Book actual authored city')
-      echo "Chronicles party-choice proof: desktop/portrait/landscape, editor and game entry."
-    fi
-    # Only the expedition book changed: reuse three existing real-browser
-    # First Book cases. openChronicles() already asserts all six live actions,
-    # AVIF decoding, short-landscape bounds and captures each book PNG.
-    # Gameplay / shared-renderer changes still run the full 34+ test producer.
-    if [[ "${APP_VISUAL_CHRONICLES_SAVE_ONLY:-false}" == "true" && "$groups" == "experiments" && "$experiments_scope" == "chronicles" && "$producer_scope" == "chronicles-gameplay" ]]; then
-      playwright_args+=(--grep 'Chronicles · First Book actual authored city')
-      echo "Chronicles book-only proof: 1440×900 / 390×844 / 844×390 via existing First Book E2E."
-    fi
     if [[ "${GITHUB_EVENT_NAME:-}" == "pull_request" ]]; then
       playwright_args+=(--max-failures=1)
     fi
@@ -209,74 +148,17 @@ case "$mode" in
     fi
 
     if (( ${#specs[@]} > 0 )); then
-      # Two pathological high-cost tests must not sit behind other tests
-      # on the same 1-worker Chromium process. Place them at the START of the
-      # third runner in fresh Playwright/browser invocations. The complement
-      # is then sharded normally: grep + grep-invert partition the EXACT same
-      # test set, so new tests default into the common coverage automatically.
-      # Only full Chronicles gameplay runs are eligible; scoped 3-viewport
-      # expedition/setup paths retain their original Playwright sharding.
-      chronicle_full_shard=false
-      if [[ -n "${APP_VISUAL_CHRONICLES_SHARD:-}" &&
-            "${APP_VISUAL_CHRONICLES_SAVE_ONLY:-false}" != 'true' &&
-            "${APP_VISUAL_CHRONICLES_SETUP_ONLY:-false}" != 'true' ]] &&
-         has_producer chronicles-gameplay; then
-        chronicle_full_shard=true
-      fi
-      if [[ "$chronicle_full_shard" == 'true' ]]; then
-        # Keep each expensive or flaky scene isolated from all prior WebGL
-        # contexts. Fail fast: a broken menu no longer waits behind 14 min of
-        # screenshots and cannot be accidentally masked as a timeout retry.
-        if [[ "$APP_VISUAL_CHRONICLES_SHARD" == '3' ]]; then
-          echo 'Chronicles visual early canary: portrait pause + audio, fresh browser.'
-          ./node_modules/.bin/playwright test chronicles-gameplay-visual-artifact.spec.js \
-            --workers=1 --retries=0 --max-failures=1 \
-            --grep 'Chronicles · pause \+ audio tablets visual · android-390x844$'
-          echo 'Chronicles visual isolated expensive scene: desktop gameplay, fresh browser.'
-          ./node_modules/.bin/playwright test chronicles-gameplay-visual-artifact.spec.js \
-            --workers=1 --retries=0 --max-failures=1 \
-            --grep 'Chronicles · gameplay visual · desktop-1440x900$'
-        fi
-        playwright_args+=(--grep-invert 'Chronicles · (pause \+ audio tablets visual · android-390x844|gameplay visual · desktop-1440x900)$')
-        # In both prior runs the LAST tablet capture failed after 18-19
-        # earlier 3D captures, independently of portrait/landscape. Reset
-        # Chromium after 4-5 captures, with no retries or missing tests.
-        # Rebalanced after measuring ALL three runners on PR #5606:
-        # 1: subshards 1/4/7/8 (~9.6 min), 2: 2/3/5 (~9.6 min),
-        # 3: 6 + cold-menu/desktop canaries (~8.7 min). This moves the
-        # expensive group 4 away from the previously slowest runner.
-        # Every subshard remains uniquely owned with a fresh Playwright
-        # process; newly added cases still enter the full eight-way suite.
-        case "$APP_VISUAL_CHRONICLES_SHARD" in
-          1) subshards=(1 4 7 8) ;;
-          2) subshards=(2 3 5) ;;
-          3) subshards=(6) ;;
-        esac
-        for subshard in "${subshards[@]}"; do
-          echo "Chronicles visual bounded renderer: isolated process ${subshard}/8."
-          ./node_modules/.bin/playwright test \
-            "${specs[@]}" \
-            "${playwright_args[@]}" \
-            "--shard=${subshard}/8"
-        done
-      else
-        if [[ -n "${APP_VISUAL_CHRONICLES_SHARD:-}" ]]; then
-          # Avatar-only has exactly two canonical viewports. They run once
-          # each on runners 1 and 2; runner 3 is a documented/visible no-op,
-          # NOT a third test that can spuriously pass without evidence.
-          if [[ "$APP_VISUAL_CHRONICLES_SHARD" == '3' &&
-                "${#specs[@]}" == 1 &&
-                "${specs[0]}" == 'chronicles-avatar-visual-artifact.spec.js' ]]; then
-            echo 'Chronicles avatar-only: third shard idle; 2 of 2 viewports owned by runners 1/2.'
-            if [[ -n "${GITHUB_OUTPUT:-}" ]]; then echo 'has_specs=false' >> "$GITHUB_OUTPUT"; fi
-            exit 0
-          fi
-          playwright_args+=(--shard="${APP_VISUAL_CHRONICLES_SHARD}/3")
-        fi
-        ./node_modules/.bin/playwright test \
-          "${specs[@]}" \
-          "${playwright_args[@]}"
-      fi
+      ./node_modules/.bin/playwright test \
+        "${specs[@]}" \
+        "${playwright_args[@]}"
+    fi
+
+    if [[ "$warroom_core_selected" == "true" ]]; then
+      echo "War Room captures drawer: real open-state desktop + portrait + landscape screenshots."
+      ./node_modules/.bin/playwright test \
+        war-room-captures-visual.spec.js \
+        --workers=1 \
+        "${warroom_core_args[@]}"
     fi
 
     if [[ "$warroom_core_selected" == "true" ]]; then
@@ -305,6 +187,14 @@ case "$mode" in
         war-room-entry-latency-visual.spec.js \
         --workers=1 \
         --retries=0
+
+      if [[ -n "${APP_VISUAL_EXPECTED_WAR_ROOM_REVISION:-}" ]]; then
+        echo "War Room V2 Hans: prove actual door swing and passage with exact PR GLB."
+        ./node_modules/.bin/playwright test \
+          war-room-v2-hans-door-visual.spec.js \
+          --workers=1 \
+          --retries=0
+      fi
     fi
     ;;
   hans)
@@ -314,9 +204,11 @@ case "$mode" in
     hans_playwright_args=(--workers=1 --retries=0)
     if [[ "${GITHUB_EVENT_NAME:-}" == "pull_request" ]]; then
       # `fire` already has its own canonical visual canary above. Keep this
-      # parallel lane focused on the ambient scheduler and order espresso last
-      # so it runs with less SwiftShader contention after a worker frees up.
-      export HANS_ROUTINE_EVENTS="mop,dust-board,espresso"
+      # parallel lane focused on the ambient scheduler. Run the currently
+      # failing dust-board first so its physical setup diagnostic is captured
+      # without wasting an entire mop video on each red iteration. On success
+      # all three videos remain mandatory; espresso stays last.
+      export HANS_ROUTINE_EVENTS="dust-board,mop,espresso"
       hans_playwright_args+=(--max-failures=1)
     fi
     ./node_modules/.bin/playwright test \

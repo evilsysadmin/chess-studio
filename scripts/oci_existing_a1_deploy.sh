@@ -36,6 +36,14 @@ deploy_watcher_source="$repo/scripts/oci_staging_deploy_watcher.py"
 deploy_watcher_unit_source="$repo/infra/oci/runtime/chess-studio-deploy-watcher.service"
 deploy_watcher_target="/usr/local/libexec/chess-studio-deploy-watcher"
 deploy_watcher_unit_target="/etc/systemd/system/chess-studio-deploy-watcher.service"
+heartbeat_source="$repo/scripts/oci_observability_heartbeat.py"
+heartbeat_probe_source="$repo/scripts/otel_log_ingest_probe.py"
+heartbeat_service_source="$repo/infra/oci/runtime/chess-studio-observability-heartbeat.service"
+heartbeat_timer_source="$repo/infra/oci/runtime/chess-studio-observability-heartbeat.timer"
+heartbeat_target="/usr/local/libexec/chess-studio-observability-heartbeat"
+heartbeat_probe_target="/usr/local/libexec/otel_log_ingest_probe.py"
+heartbeat_service_target="/etc/systemd/system/chess-studio-observability-heartbeat.service"
+heartbeat_timer_target="/etc/systemd/system/chess-studio-observability-heartbeat.timer"
 pvp_registry_image_prefix="${CHESS_STUDIO_PVP_IMAGE_PREFIX:-ghcr.io/evilsysadmin/chess-studio-pvp:oci-}"
 
 case "$target" in
@@ -120,6 +128,7 @@ phase_done() {
 }
 
 require git
+require timeout
 require docker
 require curl
 require python3
@@ -164,6 +173,24 @@ prepare_deploy_watcher() {
   install -o root -g root -m 0755 "$deploy_watcher_source" "$deploy_watcher_target"
   install -o root -g root -m 0644 "$deploy_watcher_unit_source" "$deploy_watcher_unit_target"
   systemctl daemon-reload
+}
+
+prepare_observability_heartbeat() {
+  python3 -S "$heartbeat_source" --self-test >/dev/null
+  install -d -o root -g root -m 0755 /usr/local/libexec
+  install -o root -g root -m 0755 "$heartbeat_source" "$heartbeat_target"
+  install -o root -g root -m 0644 "$heartbeat_probe_source" "$heartbeat_probe_target"
+  install -o root -g root -m 0644 "$heartbeat_service_source" "$heartbeat_service_target"
+  install -o root -g root -m 0644 "$heartbeat_timer_source" "$heartbeat_timer_target"
+  systemctl daemon-reload
+}
+
+enable_observability_heartbeat() {
+  if systemctl enable --now chess-studio-observability-heartbeat.timer >/dev/null 2>&1; then
+    echo 'OCI_LOG_HEARTBEAT_TIMER enabled=hourly'
+  else
+    echo 'OCI_LOG_HEARTBEAT_TIMER degraded=enable-failed' >&2
+  fi
 }
 
 enable_deploy_watcher() {
@@ -1317,7 +1344,9 @@ agent_diag_summary() {
 
 resolve_staging_main() {
   local current_main
-  if ! current_main="$(git -C "$repo" ls-remote --exit-code origin refs/heads/main | awk 'NR == 1 {print $1}')"; then
+  if ! current_main="$(GIT_TERMINAL_PROMPT=0 timeout --signal=TERM --kill-after=2s 5s \
+    git -C "$repo" ls-remote --exit-code origin refs/heads/main \
+    | awk 'NR == 1 {print $1}')"; then
     echo 'failed to resolve current origin/main before staging mutation' >&2
     return 69
   fi
@@ -1339,24 +1368,36 @@ supersede_if_stale() {
 }
 
 deploy_lock_file="/var/lib/chess-studio/deploy.lock"
-exec 8>"$deploy_lock_file"
-lock_acquired=false
-for ((attempt=1; attempt<=24; attempt++)); do
-  if flock -w 5 8; then
-    lock_acquired=true
-    break
+if [[ "${CHESS_STUDIO_HOST_LOCK_HELD:-0}" == "1" ]]; then
+  # The current launcher already holds this SAME open file description on FD8.
+  # Reopening it would deadlock against our own flock. Verify the inherited
+  # descriptor and lock; never trust the environment flag alone.
+  [[ "$(readlink /proc/self/fd/8 2>/dev/null || true)" == "$deploy_lock_file" ]] || {
+    echo 'OCI_DEPLOY_LOCK_INVALID inherited fd8 path' >&2
+    exit 75
+  }
+  flock -n 8 || { echo 'OCI_DEPLOY_LOCK_INVALID inherited lock' >&2; exit 75; }
+else
+  # Legacy/direct entry still takes the same mutation lock itself.
+  exec 8>"$deploy_lock_file"
+  lock_acquired=false
+  for ((attempt=1; attempt<=24; attempt++)); do
+    if flock -w 5 8; then
+      lock_acquired=true
+      break
+    fi
+    if supersede_if_stale; then
+      :
+    else
+      status=$?
+      [[ "$status" == 42 ]] && exit 0
+      exit "$status"
+    fi
+  done
+  if [[ "$lock_acquired" != true ]]; then
+    echo 'timed out waiting for host deploy lock' >&2
+    exit 75
   fi
-  if supersede_if_stale; then
-    :
-  else
-    status=$?
-    [[ "$status" == 42 ]] && exit 0
-    exit "$status"
-  fi
-done
-if [[ "$lock_acquired" != true ]]; then
-  echo 'timed out waiting for host deploy lock' >&2
-  exit 75
 fi
 
 # GitHub Actions cancellation cannot retract a Run Command already accepted by
@@ -1382,7 +1423,10 @@ if [[ "${CHESS_STUDIO_CHECKOUT_READY:-0}" == "1" ]]; then
   current_sha="$(git rev-parse HEAD)"
   [[ "$current_sha" == "$sha" ]] || { echo "launcher checkout mismatch: expected $sha, found $current_sha" >&2; exit 66; }
 else
-  git fetch --no-tags --depth=1 origin "$sha"
+  # Legacy/direct deploys also hold FD8 here. Keep network fetch bounded;
+  # timeout or transport failure exits before a checkout or slot mutation.
+  GIT_TERMINAL_PROMPT=0 timeout --signal=TERM --kill-after=2s 90s \
+    git fetch --no-tags --depth=1 origin "$sha"
   git checkout --detach "$sha"
 fi
 phase_done checkout "$checkout_started_ms"
@@ -1412,8 +1456,12 @@ if [[ "$target" == staging ]]; then
   [[ -f "$signal_timer_source" && ! -L "$signal_timer_source" ]] || { echo "missing staging signal timer in $sha" >&2; exit 66; }
   [[ -f "$deploy_watcher_source" && ! -L "$deploy_watcher_source" ]] || { echo "missing zero-cost deploy watcher in $sha" >&2; exit 66; }
   [[ -f "$deploy_watcher_unit_source" && ! -L "$deploy_watcher_unit_source" ]] || { echo "missing zero-cost deploy watcher unit in $sha" >&2; exit 66; }
+  for heartbeat_file in "$heartbeat_source" "$heartbeat_probe_source" "$heartbeat_service_source" "$heartbeat_timer_source"; do
+    [[ -f "$heartbeat_file" && ! -L "$heartbeat_file" ]] || { echo "missing periodic OCI log probe input in $sha" >&2; exit 66; }
+  done
   prepare_signal_controller_disabled
   prepare_deploy_watcher
+  prepare_observability_heartbeat
   /bin/bash "$tunnel_connector" --self-test >/dev/null
 fi
 phase_done preflight "$preflight_started_ms"
@@ -1427,13 +1475,27 @@ image_pull_started_ms="$(now_ms)"
 pull_immutable_image() {
   local ref="$1"
   local attempts="${CHESS_STUDIO_IMAGE_PULL_ATTEMPTS:-18}"
-  local attempt
-  for attempt in $(seq 1 "$attempts"); do
-    if docker pull --quiet "$ref" >/dev/null 2>&1; then
+  local attempt remaining per_attempt
+  local deadline=$((SECONDS + 300))
+  # CI may publish the SHA image while this deploy starts. Wait for it, but
+  # never let a stalled Docker registry/client hold FD8's host flock forever.
+  [[ "$attempts" =~ ^[1-9][0-9]{0,2}$ ]] || {
+    echo 'invalid CHESS_STUDIO_IMAGE_PULL_ATTEMPTS (expected 1..999)' >&2
+    return 1
+  }
+  for ((attempt=1; attempt<=attempts; attempt++)); do
+    remaining=$((deadline - SECONDS))
+    ((remaining > 0)) || break
+    per_attempt=$((remaining < 45 ? remaining : 45))
+    if timeout --signal=TERM --kill-after=2s "${per_attempt}s" \
+      docker pull --quiet "$ref" >/dev/null 2>&1; then
       return 0
     fi
-    [[ "$attempt" == "$attempts" ]] || sleep 10
+    remaining=$((deadline - SECONDS))
+    ((attempt < attempts && remaining > 10)) || break
+    sleep 10
   done
+  echo "OCI_DEPLOY_IMAGE_PULL_EXHAUSTED repo_ref=$sha budget_s=300" >&2
   return 1
 }
 if ! pull_immutable_image "$pvp_target_image"; then
@@ -1442,6 +1504,21 @@ if ! pull_immutable_image "$pvp_target_image"; then
   exit 1
 fi
 phase_done image_pull "$image_pull_started_ms"
+
+# Image availability can lag the main admission by minutes. An unrelated main
+# merge during that wait invalidates this staging generation. Drop it *before*
+# Docker Compose starts or replaces a serving slot; keep the current slot live.
+# A failed origin probe is not proof of supersession and must fail closed.
+if supersede_if_stale; then
+  :
+else
+  status=$?
+  if [[ "$status" == 42 ]]; then
+    echo "OCI_DEPLOY_PRE_RECREATE_SUPERSEDED repo_ref=$sha"
+    exit 0
+  fi
+  exit "$status"
+fi
 
 recreate_started_ms="$(now_ms)"
 previous_color="$(read_active_color)"
@@ -1642,20 +1719,6 @@ if ! wait_pvp_browser_attest games_native_attest "http://127.0.0.1:${port}/api/p
   rollback "$sha" || true
   exit 78
 fi
-# Anonymous GET of a Chronicles area is Go's 401.
-if ! wait_pvp_browser_attest games_native_attest "http://127.0.0.1:${port}/api/chronicles/maps/ash-vault" GET X-Chess-Chronicles-Native 401; then
-  echo "native chronicles did not answer through Go after cutover: color=$candidate_color" >&2
-  compose "$sha" logs --no-color --tail=40 "$candidate_pvp_service" edge >&2 || true
-  rollback "$sha" || true
-  exit 79
-fi
-# Anonymous GET of a Chronicles run is Go's 401.
-if ! wait_pvp_browser_attest games_native_attest "http://127.0.0.1:${port}/api/chronicles/runs/attest" GET X-Chess-Chronicles-Native 401; then
-  echo "native chronicles runs did not answer through Go after cutover: color=$candidate_color" >&2
-  compose "$sha" logs --no-color --tail=40 "$candidate_pvp_service" edge >&2 || true
-  rollback "$sha" || true
-  exit 80
-fi
 # Anonymous GET of Admin's feedback summary is Go's 401.
 if ! wait_pvp_browser_attest games_native_attest "http://127.0.0.1:${port}/api/admin/feedback/summary" GET X-Chess-Admin-Native 401; then
   echo "native admin feedback did not answer through Go after cutover: color=$candidate_color" >&2
@@ -1741,6 +1804,7 @@ phase_done drain "$drain_started_ms"
 
 start_observability_best_effort "$sha"
 if [[ "$target" == staging ]]; then
+  enable_observability_heartbeat
   enable_deploy_watcher
   deploy_watcher_diag_summary
 fi

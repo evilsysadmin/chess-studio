@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { home3DFrameReady } from './Home3DReadiness.js';
+import { home3DFrameReady, home3DShouldPreserveCanvas } from './Home3DReadiness.js';
 import './Home3DLoadingGate.css';
 
 // No wrapper is inserted inside the illustrated stage: existing canvas/art
@@ -26,6 +26,9 @@ export default function Home3DLoadingGate({ stageRef, onUseStaticHome, onHomeAva
     let secondFrame = 0;
     let helpTimer = 0;
     let fallbackTimer = 0;
+    // Only a genuinely composed first 3D frame qualifies for lifetime
+    // recovery protection; canvas mount/GLB decode alone are insufficient.
+    let everPresented3D = false;
     const showIllustration = () => {
       if (cancelled || visibleRef.current) return;
       stage.dataset.home3dPreview = 'painted';
@@ -44,7 +47,13 @@ export default function Home3DLoadingGate({ stageRef, onUseStaticHome, onHomeAva
       // the same recovery applies after a later WebGL context loss.
       helpTimer = window.setTimeout(showIllustration, 6_000);
       fallbackTimer = window.setTimeout(() => {
-        if (!visibleRef.current) onUseStaticHomeRef.current?.();
+        // Startup may fall back after 30 s. An already mounted canvas whose
+        // WebGL context was lost must survive: the browser can restore it
+        // later, and the painted Home is usable meanwhile. Unmounting it
+        // here destroys the very context that would deliver 'restored'.
+        if (!visibleRef.current && !home3DShouldPreserveCanvas(stage, { everPresented3D })) {
+          onUseStaticHomeRef.current?.();
+        }
       }, 30_000);
     };
     const cancelFrames = () => {
@@ -77,6 +86,7 @@ export default function Home3DLoadingGate({ stageRef, onUseStaticHome, onHomeAva
             return;
           }
           visibleRef.current = true;
+          everPresented3D = true;
           delete stage.dataset.home3dPreview;
           setReady(true);
           setPreviewing(false);
@@ -85,13 +95,31 @@ export default function Home3DLoadingGate({ stageRef, onUseStaticHome, onHomeAva
         });
       });
     };
-    const observer = new MutationObserver(inspect);
-    observer.observe(stage, {
-      childList: true,
-      subtree: true,
-      attributes: true,
-      attributeFilter: ['class', 'data-home-blender-runtime'],
+    // Readiness only depends on a direct canvas child and two of *its*
+    // attributes. Observing every descendant class change causes needless
+    // readiness queries when Matthias, hotspots or menus update their UI.
+    // Keep stage childList tracking so a recreated WebGL canvas is watched.
+    // undefined forces the first watchCanvas() to observe the stage even
+    // before React mounts its canvas (when the query initially returns null).
+    let watchedCanvas;
+    const observer = new MutationObserver(() => {
+      watchCanvas();
+      inspect();
     });
+    const watchCanvas = () => {
+      const canvas = stage.querySelector(':scope > canvas.illustrated-home__castle-3d');
+      if (canvas === watchedCanvas) return;
+      observer.disconnect();
+      observer.observe(stage, { childList: true });
+      if (canvas) {
+        observer.observe(canvas, {
+          attributes: true,
+          attributeFilter: ['class', 'data-home-blender-runtime'],
+        });
+      }
+      watchedCanvas = canvas;
+    };
+    watchCanvas();
     armRecovery();
     inspect();
     return () => {

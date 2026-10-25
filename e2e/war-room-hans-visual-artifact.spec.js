@@ -1,6 +1,7 @@
 import { chromium, expect, test } from '@playwright/test';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { buttonWithVisibleText, login, mockApi } from './helpers.js';
+import { navigateWarRoomKeyboard } from './war-room-board-input.js';
 import { warRoomHansEventForGame } from '../frontend/src/components/WarRoomHansEventContract.js';
 
 const ARTIFACT_DIR = '../.artifacts/app-visual';
@@ -230,4 +231,55 @@ test('War Room · canario visual de Hans físicamente en escena', async () => {
   return;
   }
   throw lastBootstrapError || new Error('Hans visual canary could not bootstrap War Room');
+});
+
+
+test('War Room · un diálogo de Hans cede al seleccionar una pieza, con PNG de ambos estados', async () => {
+  test.setTimeout(240_000);
+  await mkdir(ARTIFACT_DIR, { recursive: true });
+  const browser = await chromium.launch({
+    headless: true,
+    args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'],
+  });
+  const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+  const page = await context.newPage();
+  try {
+    await page.emulateMedia({ reducedMotion: 'no-preference' });
+    await mockApi(page, {
+      profileSeed: {
+        'matthias.onboarded': '2',
+        'chess-study-home-guide-dismissed-v1': '1',
+        'chess-study-mechanic-tutorial-progress-v1': JSON.stringify({
+          'war-room-basics': { seen: true }, 'quick-match-rules': { seen: true },
+        }),
+      },
+    });
+    await login(page);
+    await page.evaluate(() => localStorage.setItem('chess-study-war-room-variant-v1', 'v3'));
+    await seedGamesBeforeFire(page);
+    await buttonWithVisibleText(page, 'Partida rápida').press('Enter');
+    const modal = page.getByRole('dialog', { name: 'Configurar partida rápida' });
+    await expect(modal).toBeVisible();
+    await modal.getByRole('button', { name: 'Empezar partida', exact: true }).press('Enter');
+
+    const board = page.locator('[data-board3d-war-room="true"]');
+    const canvas = page.locator('.board3d-main-canvas');
+    await expect(board).toBeVisible({ timeout: MOUNT_BUDGET_MS });
+    await expect(canvas).toBeVisible({ timeout: MOUNT_BUDGET_MS });
+    const liveDialogue = page.locator('.warroom-fire-call-bubble:visible').first();
+    await expect(liveDialogue).toBeVisible({ timeout: hansBudget(25_000) });
+    await captureViewportPng(context, page, `${ARTIFACT_DIR}/war-room-narrative-idle-1440x900.png`);
+
+    // Keyboard selection is a real board interaction, not a mocked overlay toggle.
+    await navigateWarRoomKeyboard(canvas, board, 'e2');
+    await canvas.press('Enter');
+    await expect(board).toHaveAttribute('data-board3d-selected', 'e2');
+    await expect(page.locator('.warroom-fire-call-bubble')).toHaveCount(0);
+    await expect(page.locator('.matthias-3d-opening-banter:not(.matthias-3d-opening-tutorial)')).toHaveCount(0);
+    await expect(canvas).not.toHaveAttribute('data-war-room-hans-narrative-phase', 'done');
+    await captureViewportPng(context, page, `${ARTIFACT_DIR}/war-room-narrative-selected-1440x900.png`);
+  } finally {
+    await context.close();
+    await browser.close();
+  }
 });

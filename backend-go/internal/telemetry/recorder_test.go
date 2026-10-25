@@ -146,11 +146,28 @@ func TestNativeRequestIsRecordedLikePython(t *testing.T) {
 	if sum := histogram.DataPoints[0].Sum; sum < 0.015 || sum > 5 {
 		t.Errorf("duration sum=%v, want seconds", sum)
 	}
-	// Python's SDK default buckets: the dashboards' histogram_quantile relies
-	// on both runtimes sharing them.
-	wantBounds := []float64{0, 5, 10, 25, 50, 75, 100, 250, 500, 750, 1000, 2500, 5000, 7500, 10000}
+	// Units are seconds: the old default (0,5]s bucket made healthy
+	// subsecond requests appear as a bogus 4.75s p95 in Prometheus.
+	wantBounds := []float64{0.005, 0.01, 0.025, 0.05, 0.075, 0.1, 0.15, 0.25, 0.5, 0.75, 1, 1.5, 2, 3, 5, 10}
 	if bounds := histogram.DataPoints[0].Bounds; !reflect.DeepEqual(bounds, wantBounds) {
 		t.Errorf("bounds=%v", bounds)
+	}
+}
+
+func TestHTTPDurationHistogramResolvesSubsecondLatency(t *testing.T) {
+	f := newFixture(t)
+	f.rec.duration.Record(context.Background(), 0.020)
+	histogram := f.collect(t)[durationName].Data.(metricdata.Histogram[float64])
+	if len(histogram.DataPoints) != 1 {
+		t.Fatalf("duration points=%d", len(histogram.DataPoints))
+	}
+	point := histogram.DataPoints[0]
+	if len(point.BucketCounts) != len(point.Bounds)+1 || point.BucketCounts[2] != 1 {
+		t.Fatalf("20ms request should land in the (10ms,25ms] bucket: bounds=%v counts=%v",
+			point.Bounds, point.BucketCounts)
+	}
+	if point.Bounds[1] != 0.01 || point.Bounds[2] != 0.025 {
+		t.Fatalf("unexpected HTTP latency resolution: %v", point.Bounds)
 	}
 }
 

@@ -8,6 +8,12 @@ var canonicalBrowserOrigins = [...]string{
 	"https://evilsysadmin.github.io",
 	"https://chess-studio.shadowops.dpdns.org",
 	"https://staging.chess-studio.shadowops.dpdns.org",
+	// Chronicles of Matthias standalone (iteración 1): su frontend propio usa
+	// esta API para cuentas y runs hasta que tenga API propia.
+	"https://staging.chronicles.shadowops.dpdns.org",
+	// Chronicles production: signs in with the ShadowOps account (this API
+	// is its identity provider; shadowops-infra/docs/identity-sso.md).
+	"https://chronicles.shadowops.dpdns.org",
 }
 
 // CanonicalBrowserOrigins returns a copy so domain handlers cannot mutate the

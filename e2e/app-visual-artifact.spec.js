@@ -37,7 +37,30 @@ async function openCanonicalHome(page, { reducedMotion = 'no-preference' } = {})
 
 async function settle(page, home, { expectCastleReady = false } = {}) {
   if (expectCastleReady) {
-    await expect(home.locator('.illustrated-home__castle-3d.is-ready')).toBeVisible({ timeout:15_000 });
+    const canvas = home.locator('canvas.illustrated-home__castle-3d');
+    // Real Blender composition can take longer in software Chromium with a
+    // tall/touch desktop-site viewport. Other strict 3D E2E tests allow up
+    // to 90–105 s. Never accept a mere mounted canvas or 2D fallback.
+    try {
+      await expect(canvas).toHaveClass(/is-ready/, { timeout: 60_000 });
+      await expect(canvas).toHaveAttribute('data-home-blender-runtime', 'ready');
+      await expect(canvas).toBeVisible();
+    } catch (error) {
+      const state = await page.evaluate(() => {
+        const root = document.querySelector('.illustrated-home__stage');
+        const node = root?.querySelector('canvas.illustrated-home__castle-3d');
+        return {
+          canvasPresent: Boolean(node),
+          ready: node?.classList.contains('is-ready') ?? false,
+          runtime: node?.dataset.homeBlenderRuntime ?? null,
+          compositor: node?.dataset.homeCastleCompositor ?? null,
+          canvasPixels: node ? node.width * node.height : null,
+          loadingCoverPresent: Boolean(document.querySelector('.home-3d-loading')),
+        };
+      }).catch(() => ({ diagnostics: 'unavailable' }));
+      throw new Error('Canonical Home 3D never composed a real ready Blender frame: '
+        + JSON.stringify(state) + '; ' + String(error?.message || error));
+    }
   }
   await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
   await page.waitForTimeout(250);
@@ -141,11 +164,41 @@ async function captureHealth(page, label) {
           && rect.top < viewport.height;
       }).length;
     const castle3d = document.querySelector('.illustrated-home__castle-3d.is-ready');
+    // This artifact runs with SwiftShader on GitHub runners. Snapshot *actual*
+    // WebGL geometry and canvas resolution, but never label it real-GPU FPS.
+    const numericSceneStat = (name) => {
+      const value = castle3d?.dataset?.[name];
+      if (value == null || value === '') return null;
+      const parsed = Number(value);
+      return Number.isFinite(parsed) ? parsed : null;
+    };
     const castle3dDiagnostics = castle3d ? {
       compositor:castle3d.getAttribute('data-home-castle-compositor'),
       blenderRuntime:castle3d.getAttribute('data-home-blender-runtime'),
       lod:castle3d.getAttribute('data-home-castle-lod'),
       camera:castle3d.getAttribute('data-home-blender-camera'),
+      softwareRenderer:castle3d.getAttribute('data-home-blender-software') === 'true',
+      framebufferWidth:castle3d.width ?? null,
+      framebufferHeight:castle3d.height ?? null,
+      meshes:numericSceneStat('homeBlenderMeshes'),
+      materials:numericSceneStat('homeBlenderMaterials'),
+      textures:numericSceneStat('homeBlenderTextures'),
+      firstFrameDrawCalls:numericSceneStat('homeBlenderFirstFrameDrawCalls'),
+      firstFrameTriangles:numericSceneStat('homeBlenderFirstFrameTriangles'),
+      viewportUpdates:numericSceneStat('homeBlenderViewportUpdates'),
+      animatedFrameCpuMs:numericSceneStat('homeFireCostMs'),
+      animatedFrameCadenceMs:numericSceneStat('homeFireIntervalMs'),
+      animatedDrawnFps:numericSceneStat('homeBlenderDrawnFps'),
+      animatedDrawCalls:numericSceneStat('homeBlenderDrawCalls'),
+      animatedTriangles:numericSceneStat('homeBlenderTriangles'),
+      // Three GPU allocations are counts, not estimated VRAM megabytes.
+      gpuTextures:numericSceneStat('homeBlenderGpuTextures'),
+      gpuGeometries:numericSceneStat('homeBlenderGpuGeometries'),
+      gpuPrograms:numericSceneStat('homeBlenderGpuPrograms'),
+      renderCpuP95Ms:numericSceneStat('homeBlenderCpuP95Ms'),
+      naturalVsyncP95Ms:numericSceneStat('homeBlenderVsyncP95Ms'),
+      gpuTimerStatus:castle3d.dataset.homeBlenderGpuStatus ?? null,
+      gpuTimerMs:numericSceneStat('homeBlenderGpuMs'),
     } : null;
     const matthiasNode = document.querySelector('.illustrated-home__matthias');
     const matthiasRect = matthiasNode?.getBoundingClientRect();
@@ -196,7 +249,10 @@ async function captureHealth(page, label) {
 }
 
 test('App · captura visual canónica desktop + Android normal/desktop-site', async () => {
-  test.setTimeout(210_000);
+  // Nine independent canonical viewports share one test; an occasional slow
+  // software-rendered desktop-site canvas must not exhaust the whole test
+  // before its own strict readiness timeout can report the actual issue.
+  test.setTimeout(300_000);
   await mkdir(ARTIFACT_DIR, { recursive:true });
 
   const visualBrowser = await chromium.launch({
@@ -388,7 +444,7 @@ test('App · captura visual canónica desktop + Android normal/desktop-site', as
 
   await writeFile(
     `${ARTIFACT_DIR}/visual-health.json`,
-    `${JSON.stringify({ schema:10, minimumTouchTarget:MIN_TOUCH_TARGET, captures }, null, 2)}\n`,
+    `${JSON.stringify({ schema:11, minimumTouchTarget:MIN_TOUCH_TARGET, rendererBenchmark:'SwiftShader (CPU software GL), not physical GPU', captures }, null, 2)}\n`,
     'utf8',
   );
 
@@ -402,6 +458,14 @@ test('App · captura visual canónica desktop + Android normal/desktop-site', as
     if (capture.expectedBlenderRuntime) {
       expect(capture.castle3dDiagnostics?.compositor, `${capture.label}: Blender compositor`).toBe('blender-runtime');
       expect(capture.castle3dDiagnostics?.blenderRuntime, `${capture.label}: Blender runtime ready`).toBe('ready');
+      expect(capture.castle3dDiagnostics?.firstFrameDrawCalls, `${capture.label}: first frame actually draws geometry`).toBeGreaterThan(0);
+      expect(capture.castle3dDiagnostics?.firstFrameTriangles, `${capture.label}: first frame has actual triangles`).toBeGreaterThan(0);
+      expect(capture.castle3dDiagnostics?.gpuTextures, `${capture.label}: actual GPU texture allocations`).toBeGreaterThan(0);
+      expect(capture.castle3dDiagnostics?.gpuGeometries, `${capture.label}: actual GPU geometry allocations`).toBeGreaterThan(0);
+      expect(capture.castle3dDiagnostics?.gpuTimerStatus, `${capture.label}: default profiling remains off`).toBe('disabled');
+      expect(capture.castle3dDiagnostics?.gpuTimerMs, `${capture.label}: no fabricated GPU milliseconds from SwiftShader`).toBe(null);
+      expect(capture.castle3dDiagnostics?.framebufferWidth, `${capture.label}: backing canvas allocated`).toBeGreaterThan(0);
+      expect(capture.castle3dDiagnostics?.framebufferHeight, `${capture.label}: backing canvas allocated`).toBeGreaterThan(0);
     }
     if (capture.expectedCoarsePointer) {
       expect(capture.coarsePointer, `${capture.label}: coarse pointer emulation`).toBe(true);

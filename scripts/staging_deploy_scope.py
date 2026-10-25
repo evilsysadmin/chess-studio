@@ -7,6 +7,8 @@ import os
 from pathlib import Path, PurePosixPath
 import re
 import subprocess
+
+import staging_generation_diff as generation_diff
 from urllib.parse import quote
 
 import main_ci_admission as admission
@@ -32,8 +34,6 @@ NON_RUNTIME_EXACT = frozenset({
     ".github/workflows/pvp-python-fallback.yml",
     ".github/workflows/war-room-blender-art.yml",
     ".github/workflows/app-visual-artifact.yml",
-    ".github/workflows/chronicles-visual-artifact.yml",
-    ".github/workflows/tactics-visual-artifact.yml",
     "scripts/quality_scope.py",
     "scripts/browser_quality_scope.py",
     "scripts/blender_required_scope.py",
@@ -42,16 +42,31 @@ NON_RUNTIME_EXACT = frozenset({
     "scripts/grafana_dashboard_check.py",
     "scripts/pvp_python_fallback_report.py",
     "scripts/dead_code_reachability_check.py",
-    "scripts/chronicles_contracts.py",
     "scripts/test_suite_audit.mjs",
     "scripts/test_entrypoint_parity.py",
     "scripts/workflow_static_contracts.py",
+    # Diagnostic-only readers cannot change the deployed API or its acceptance.
+    # Prevent CI-only updates from superseding an active OCI generation.
+    "scripts/oci_backend_diagnose.py",
+    "scripts/oci_host_lock_triage.py",
+    "scripts/oci_public_staging_release.py",
+    ".github/workflows/oci-host-provenance-on-failure.yml",
+    "scripts/staging_deploy_proof.py",
     "scripts/static_contract_risk_audit.mjs",
     "scripts/pr_track_label_check.py",
     "scripts/quality_provenance.py",
     "scripts/pr_merge_diff.py",
     "scripts/run_core_e2e_lane.py",
     "scripts/war_room_visual_freeze_check.mjs",
+    # Offline GPU diagnostics and main CI provenance are not deployed runtime.
+    "scripts/compare_home_3d_gpu.py",
+    "scripts/test_compare_home_3d_gpu.py",
+    "scripts/main_ci_source.py",
+    # CI admission evidence is verified by main gates; never served by OCI.
+    "scripts/main_ci_admission.py",
+    # PR provenance validation gates CI, but does not change OCI's deployed binary.
+    "scripts/main_ci_admission.py",
+    "scripts/main_ci_admission_wait.py",
 })
 NON_RUNTIME_ACTION_PREFIXES = (
     ".github/actions/cache-node-modules/",
@@ -121,6 +136,34 @@ def deploy_required_for_paths(paths: list[str]) -> tuple[bool, str]:
     if runtime:
         return True, f"runtime:{runtime[0]}"
     return False, "non-runtime-only"
+
+
+def require_pending_since_complete(
+    head: str,
+    required: bool,
+    reason: str,
+    *,
+    diff_lookup=generation_diff.diff_since_previous_complete,
+) -> tuple[bool, str]:
+    """Never skip an uncompleted runtime deployment behind a doc/test merge.
+
+    The one-commit classifier is cheap, but rapid merges can cancel the deploy
+    of a runtime change before a later non-runtime commit reaches admission.
+    Compare against the last *complete* staging generation on the skip path.
+    If the baseline cannot be established, run the guarded full deploy.
+    """
+    if required:
+        return required, reason
+    try:
+        pending_paths, base, _run_id = diff_lookup(head)
+        if not pending_paths:
+            return False, f"no-pending-diff:{base[:12]}"
+        pending_required, pending_reason = deploy_required_for_paths(pending_paths)
+        if pending_required:
+            return True, f"pending-since-complete:{base[:12]}:{pending_reason}"
+        return False, f"non-runtime-since-complete:{base[:12]}"
+    except (OSError, RuntimeError, ValueError) as exc:
+        return True, f"pending-diff-fail-open:{type(exc).__name__}"
 
 
 def speculative_prebuild_required_for_paths(paths: list[str]) -> bool:
@@ -193,6 +236,76 @@ def emit(path: str, deploy_required: bool, reason: str, prebuild_required: bool 
 
 def self_test() -> None:
     assert deploy_required_for_paths(["docs/operations/pvp.md", "README.md"]) == (False, "non-runtime-only")
+    # Image publishing uses exactly the same pending-generation decision as
+    # staging prepare; docs-only last merges must not strand missing GHCR tags.
+    sha = "a" * 40
+    pending = lambda _sha: (["docs/staging.md", "frontend/src/App.jsx"], "b" * 40, 101)
+    needed, reason = require_pending_since_complete(sha, False, "non-runtime-only", diff_lookup=pending)
+    assert needed and reason.startswith("pending-since-complete:")
+    pure = lambda _sha: (["docs/staging.md"], "b" * 40, 101)
+    assert require_pending_since_complete(sha, False, "non-runtime-only", diff_lookup=pure)[0] is False
+    assert require_pending_since_complete(sha, True, "runtime:backend-go/pvp.go",
+               diff_lookup=lambda _: (_ for _ in ()).throw(AssertionError("unexpected API call")))[0]
+    assert require_pending_since_complete(sha, False, "non-runtime-only",
+               diff_lookup=lambda _: (_ for _ in ()).throw(RuntimeError("unavailable"))) == (
+                   True, "pending-diff-fail-open:RuntimeError"
+               )
+    # A generation baseline older than the bounded receipt search is unknown,
+    # never evidence that a documentation-only merge can skip pending runtime.
+    assert require_pending_since_complete(sha, False, "non-runtime-only",
+               diff_lookup=lambda _: (_ for _ in ()).throw(
+                   RuntimeError("no proven complete staging generation in bounded history")
+               )) == (True, "pending-diff-fail-open:RuntimeError")
+
+    assert deploy_required_for_paths(["scripts/staging_deploy_proof.py"]) == (False, "non-runtime-only")
+    diagnostic_only = [
+        "scripts/oci_backend_diagnose.py",
+        "scripts/oci_host_lock_triage.py",
+        "scripts/oci_public_staging_release.py",
+        ".github/workflows/oci-host-provenance-on-failure.yml",
+    ]
+    for path in diagnostic_only:
+        assert deploy_required_for_paths([path]) == (False, "non-runtime-only")
+    assert deploy_required_for_paths(diagnostic_only) == (False, "non-runtime-only")
+    offline_home_ci = [
+        "scripts/compare_home_3d_gpu.py",
+        "scripts/test_compare_home_3d_gpu.py",
+        "scripts/main_ci_source.py",
+        "scripts/main_ci_admission.py",
+        "scripts/main_ci_admission.py",
+        "scripts/main_ci_admission_wait.py",
+    ]
+    for path in offline_home_ci:
+        assert deploy_required_for_paths([path]) == (False, "non-runtime-only")
+    assert deploy_required_for_paths(offline_home_ci) == (False, "non-runtime-only")
+    assert deploy_required_for_paths([*diagnostic_only, *offline_home_ci]) == (False, "non-runtime-only")
+    # Mixing admission-only edits with actual runtime/deployment policy is
+    # always a real staging change, regardless of the harmless companion.
+    assert deploy_required_for_paths(
+        ["scripts/main_ci_admission.py", "backend-go/Dockerfile"]
+    ) == (True, "runtime:backend-go/Dockerfile")
+    assert deploy_required_for_paths(
+        ["scripts/main_ci_admission.py", ".github/workflows/staging-deploy.yml"]
+    ) == (True, "runtime:.github/workflows/staging-deploy.yml")
+    for runtime in ("frontend/src/components/HomeBlenderScene3D.jsx",
+                    "scripts/oci_existing_a1_deploy.sh", "Makefile"):
+        assert deploy_required_for_paths([*offline_home_ci, runtime]) == (
+            True, f"runtime:{runtime}"
+        )
+    # Host mutation and actual acceptance changes stay fail-open/deploy-required.
+    for deployment_control in (
+        "scripts/oci_run_command.py",
+        "scripts/oci_existing_a1_deploy.sh",
+        "scripts/oci_staging_deploy_launcher.sh",
+        ".github/workflows/staging-deploy.yml",
+        "scripts/staging_deploy_scope.py",
+    ):
+        assert deploy_required_for_paths([deployment_control]) == (
+            True, f"runtime:{deployment_control}"
+        )
+        assert deploy_required_for_paths([*diagnostic_only, deployment_control]) == (
+            True, f"runtime:{deployment_control}"
+        )
     assert deploy_required_for_paths(["e2e/smoke.spec.js", "backend-go/internal/pulse/pulse_test.go"]) == (False, "non-runtime-only")
     for staging_path in sorted(STAGING_ACCEPTANCE_FILES):
         assert deploy_required_for_paths([staging_path]) == (True, f"runtime:{staging_path}")
@@ -211,15 +324,25 @@ def self_test() -> None:
     assert deploy_required_for_paths(["scripts/grafana_dashboard_check.py", ".github/workflows/billing-cost-export.yml"]) == (False, "non-runtime-only")
     assert deploy_required_for_paths(["scripts/pvp_python_fallback_report.py", ".github/workflows/pvp-python-fallback.yml"]) == (False, "non-runtime-only")
     assert deploy_required_for_paths([".github/workflows/war-room-blender-art.yml", "scripts/blender_required_scope.py"]) == (False, "non-runtime-only")
-    assert deploy_required_for_paths(["scripts/chronicles_contracts.py"]) == (False, "non-runtime-only")
+    # Extracted Chronicles authoring tools are NOT safe to silently ignore if
+    # someone reintroduces them. Fail open to staging admission/deployment.
+    for retired_script in (
+        "scripts/chronicles_contracts.py",
+        "scripts/chronicles_area_parity_corpus.py",
+        "scripts/validate_chronicles_campaign.py",
+    ):
+        assert deploy_required_for_paths([retired_script])[0], retired_script
+    for retired_workflow in (
+        ".github/workflows/chronicles-visual-artifact.yml",
+        ".github/workflows/tactics-visual-artifact.yml",
+    ):
+        assert deploy_required_for_paths([retired_workflow])[0], retired_workflow
     assert deploy_required_for_paths([
         "e2e/war-room-visual-artifact.spec.js",
         "scripts/app_visual_capture.sh",
         "scripts/app_visual_producer_scope.py",
         ".github/actions/app-visual-pipeline/action.yml",
         ".github/workflows/app-visual-artifact.yml",
-        ".github/workflows/chronicles-visual-artifact.yml",
-        ".github/workflows/tactics-visual-artifact.yml",
         "scripts/war_room_visual_freeze_check.mjs",
     ]) == (False, "non-runtime-only")
     assert deploy_required_for_paths(["frontend/src/components/GameScreen.jsx"])[0]
@@ -227,7 +350,12 @@ def self_test() -> None:
     assert deploy_required_for_paths([".github/workflows/staging-deploy.yml"])[0]
     assert deploy_required_for_paths([".github/actions/build-staging-frontend/action.yml"])[0]
     assert deploy_required_for_paths(["scripts/staging_deploy_scope.py"])[0]
+    assert deploy_required_for_paths(["scripts/staging_deploy_scope.py", *offline_home_ci])[0]
     assert deploy_required_for_paths([])[0]
+    # The diagnostic is host-only; exercise its pure read-only lock parser in
+    # the existing dependency-free staging scope contract on every PR.
+    import oci_host_lock_triage
+    oci_host_lock_triage.self_test()
     print("staging-deploy-scope self-test: OK")
 
 
@@ -235,6 +363,8 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--sha")
     parser.add_argument("--source", choices=("pr", "direct"))
+    parser.add_argument("--include-pending", action="store_true",
+                        help="publish immutable image when staging has uncompleted runtime changes")
     parser.add_argument("--github-output", default=os.environ.get("GITHUB_OUTPUT", ""))
     parser.add_argument("--self-test", action="store_true")
     args = parser.parse_args()
@@ -258,6 +388,8 @@ def main() -> int:
             return 0
 
     deploy_required, reason = decide(sha, source)
+    if args.include_pending:
+        deploy_required, reason = require_pending_since_complete(sha, deploy_required, reason)
     prebuild_required = speculative_prebuild_required(sha, source) if deploy_required else True
     emit(args.github_output, deploy_required, reason, prebuild_required)
     if not deploy_required:

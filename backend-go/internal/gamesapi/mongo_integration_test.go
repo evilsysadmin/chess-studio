@@ -8,7 +8,6 @@ import (
 	"go.mongodb.org/mongo-driver/v2/bson"
 
 	"github.com/evilsysadmin/chess-studio/backend-go/internal/accountstore"
-	"github.com/evilsysadmin/chess-studio/backend-go/internal/chroniclesrun"
 	"github.com/evilsysadmin/chess-studio/backend-go/internal/feedbackstore"
 	"github.com/evilsysadmin/chess-studio/backend-go/internal/matthiasmem"
 	"github.com/evilsysadmin/chess-studio/backend-go/internal/profilestore"
@@ -18,10 +17,6 @@ import (
 // Against a disposable MongoDB (integrationDB: PVP_MONGO_TEST_URL, required
 // in Quality's Go lane) the corpora replay through the Mongo stores, so the
 // queries and updates are Mongo's own, and must still answer Python's bytes.
-
-func TestChroniclesRunsMatchesPythonCorpusInMongo(t *testing.T) {
-	replayRunsCorpus(t, chroniclesrun.NewMongo(integrationDB(t), 5*time.Second))
-}
 
 // Admin's user tools through the real stores: the overview projection, the
 // batched profile read with data.<key> projections, the profile CAS patch

@@ -1,6 +1,12 @@
 name: Observability · Grafana dashboards
 
 on:
+  pull_request:
+    paths:
+      - "infra/grafana/dashboards/**"
+      - "ops/grafana/chess-studio-logs.json"
+      - "scripts/grafana_dashboard_check.py"
+      - ".github/workflows/grafana-dashboards.yml"
   push:
     branches: [main]
     paths:
@@ -17,7 +23,17 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  dashboard-contract:
+    name: Grafana dashboards · static contract
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v7
+      - run: python3 -S scripts/grafana_dashboard_check.py
+
   publish:
+    if: github.event_name != 'pull_request'
     name: Publish dashboards
     runs-on: ubuntu-24.04
     timeout-minutes: 10

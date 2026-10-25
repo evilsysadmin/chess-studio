@@ -19,9 +19,6 @@ PRODUCER_ORDER = (
     "pvp-lobby",
     "pvp-handoff",
     "experiments-hub",
-    "chronicles-tactics",
-    "chronicles-gameplay",
-    "chronicles-avatar",
     "training-school",
     "training-openings",
     "training-puzzles",
@@ -46,6 +43,12 @@ COMBAT_BATTLE_FILES = {
     "frontend/src/components/combatwarroomboard.jsx",
 }
 COMBAT_PREPARATION_FILES = {
+    # These are projections on the dedicated Operations Room. Changes cannot
+    # affect other War Rooms or School, unlike Board3DCore/shared readiness.
+    "frontend/src/combatoperationsmapprojection.js",
+    "frontend/src/components/combatoperationscampaigncartography.js",
+    "frontend/src/components/usecombatoperationscartography.js",
+    "frontend/src/components/combatoperationssectorpicking.js",
     "frontend/src/components/campaigncombatpreparation.jsx",
     "frontend/src/components/combatpreparationroom.jsx",
     "frontend/src/components/combatpreparationroom.css",
@@ -63,6 +66,14 @@ COMBAT_PREPARATION_FILES = {
     "frontend/src/components/combatoperationsmissionroom.jsx",
     "frontend/src/components/combatoperationsmissionroom.css",
     "frontend/src/components/combatoperationscampaignmissionroute.jsx",
+    "frontend/src/components/combatcampaignbriefingroom.jsx",
+    "frontend/src/components/combatcampaignbriefingroom.css",
+    "frontend/src/components/combatoperationscampaignbriefingroute.jsx",
+    "frontend/src/components/campaignbriefing.jsx",
+    "frontend/src/components/campaigncommandstatus.jsx",
+    "frontend/src/combatveteraninspection.js",
+    "frontend/src/components/combatveterandossier.jsx",
+    "frontend/src/components/combatveterandossier.css",
 }
 # Hans has its own choreography/runtime owners and should not block unrelated
 # shared-renderer camera/layout PRs. Its dedicated canary still runs whenever
@@ -175,7 +186,6 @@ WARROOM_VARIANT_CORE_FILES = {
     "frontend/src/components/warroomvariant.js",
 }
 HOME_ALL = {"home-base", "home-matthias", "home-focus"}
-CHRONICLES_SHARED = {"chronicles-tactics", "chronicles-gameplay"}
 TRAINING_ALL = {
     "training-school",
     "training-openings",
@@ -192,6 +202,19 @@ QUICK_MATCH_EXACT_PRODUCERS = {
     "frontend/src/components/quickmatchreadyroom.css": {"home-base"},
     "frontend/src/components/quickmatchreadyroomscene3d.jsx": {"home-base"},
     "frontend/src/components/usewarroomimmersive.js": {"warroom-core"},
+}
+
+# Review-only ownership for the earned-medals feature. Explicit paths keep
+# unknown renderer code fail-closed to all producers. Board3D/School and the
+# real Combat Operations canvas remain in scope; unrelated Home/Hans/health
+# screenshots cannot prove service rosettes and should not run.
+COMBAT_HONORS_EXACT_PRODUCERS = {
+    "frontend/src/combatpreparationhonors.js": {"combat-prep"},
+    "frontend/src/components/board3dcombatmedals.js": {"training-school", "combat-prep", "warroom-core"},
+    "frontend/src/components/useboard3dcombatmedalrefresh.js": {"training-school", "combat-prep", "warroom-core"},
+    "frontend/src/components/warroomboardsurface.jsx": {
+        "training-school", "combat-battle", "combat-prep", "warroom-core",
+    },
 }
 
 SHARED_BOOTSTRAP_EXACT_PRODUCERS = {
@@ -287,9 +310,6 @@ def _e2e_producer(name: str) -> set[str] | None:
         "experiments-visual-artifact.spec.js": {"experiments-hub"},
         "lab-mobile-room.spec.js": {"experiments-hub"},
         "pawn-slug-godot-visual-artifact.spec.js": {"experiments-hub"},
-        "chronicles-tactics-visual-artifact.spec.js": {"chronicles-tactics"},
-        "chronicles-gameplay-visual-artifact.spec.js": {"chronicles-gameplay"},
-        "chronicles-avatar-visual-artifact.spec.js": {"chronicles-avatar"},
         # This monolithic spec contains independently scoped training
         # producers. Treat it as a neutral companion when product-owned files
         # are present; classify() falls back to TRAINING_ALL for spec-only edits.
@@ -297,11 +317,14 @@ def _e2e_producer(name: str) -> set[str] | None:
         "war-room-pvp-duel-visual-artifact.spec.js": {"pvp-duel"},
         "war-room-combat-battle-visual-artifact.spec.js": {"combat-battle"},
         "war-room-combat-preparation-visual-artifact.spec.js": {"combat-prep"},
+        "combat-briefing-room-visual-artifact.spec.js": {"combat-prep"},
         "war-room-pvp.spec.js": {"pvp-duel"},
         "pvp-background-roster.spec.js": {"pvp-duel"},
         "mobile-golden-path-war-room-invariants.spec.js": {"warroom-core"},
+        "three-d-war-room.spec.js": {"warroom-core"},
         "war-room-visual-artifact.spec.js": {"warroom-core"},
         "war-room-entry-latency-visual.spec.js": {"warroom-core"},
+        "war-room-variant-lifecycle-soak.spec.js": {"warroom-core"},
         "war-room-decor-visual-artifact.spec.js": {"warroom-decor"},
         "war-room-armor-oblique-visual-artifact.spec.js": {"warroom-armor"},
         "war-room-hans-visual-artifact.spec.js": {"warroom-hans"},
@@ -322,7 +345,7 @@ def classify_path(path: str) -> set[str] | None:
 
     if lower.endswith(".md"):
         return set()
-    if lower in {"makefile", ".github/workflows/staging-deploy.yml", ".github/workflows/production-promote.yml"}:
+    if lower in {"makefile", ".github/workflows/staging-deploy.yml", ".github/workflows/production-promote.yml", ".github/workflows/cicd.yml", "scripts/run_core_e2e_lane.py", "scripts/test_entrypoint_parity.py"}:
         return set()
     if lower.startswith("scripts/app_visual_"):
         return set()
@@ -332,11 +355,7 @@ def classify_path(path: str) -> set[str] | None:
     }:
         return set()
     if (
-        lower in {
-            ".github/workflows/app-visual-artifact.yml",
-            ".github/workflows/chronicles-visual-artifact.yml",
-            ".github/workflows/tactics-visual-artifact.yml",
-        }
+        lower == ".github/workflows/app-visual-artifact.yml"
         or lower.startswith(".github/actions/app-visual-pipeline/")
     ):
         return set()
@@ -387,8 +406,6 @@ def classify_path(path: str) -> set[str] | None:
         return set()
     if lower in PUBLIC_NONCANONICAL_PATHS:
         return set()
-    if lower == "frontend/public/models/chronicles-tactics-party.glb":
-        return {"chronicles-tactics"}
     if lower in {
         "frontend/public/models/matthias-home-canonical.glb",
         "frontend/public/matthias-home-canonical.b64",
@@ -400,19 +417,11 @@ def classify_path(path: str) -> set[str] | None:
     if not lower.startswith("frontend/src/"):
         if lower.startswith(("backend-python/", "backend-go/")):
             return set()
-        # Chronicles content and art generators have no render code: what they
-        # write (manifests under frontend/src/chronicles/maps, assets under
-        # frontend/src/assets/chronicles) is classified on its own.
-        if (
-            lower.startswith("scripts/chronicles/")
-            or lower.startswith("scripts/art/chronicles_sprites/")
-            or lower.startswith("scripts/art/build_chronicles_")
-            or lower == "scripts/art/pack_chronicles_sprites.py"
-        ):
-            return set()
+        # Chronicles/Tactics authoring belongs to the independent repository.
+        # New tools reintroduced here must pass ordinary fail-closed review.
         if lower in {
             "scripts/css_architecture_manifest.json",
-            "scripts/chronicles_area_parity_corpus.py",  # Backend fixture data, no render code.
+            "scripts/dead_code_reachability_check.py",  # Static gate, no render code.
             "scripts/architecture_debt_budget.py",
             "scripts/async_resilience_gate.mjs",
             "scripts/visual_ux_contract_check.mjs",
@@ -437,7 +446,7 @@ def classify_path(path: str) -> set[str] | None:
         return set()
 
     if name == "experimentalthreerenderer.js":
-        return set(CHRONICLES_SHARED)
+        return set()  # Chronicles' renderer, gone with it to its own repo.
 
     if lower in {
         "frontend/src/lablaunchintent.js",
@@ -462,11 +471,15 @@ def classify_path(path: str) -> set[str] | None:
         return {"combat-battle"}
     if lower in COMBAT_PREPARATION_FILES:
         return {"combat-prep"}
+    if lower in COMBAT_HONORS_EXACT_PRODUCERS:
+        return set(COMBAT_HONORS_EXACT_PRODUCERS[lower])
     if lower in POSTGAME_EXACT_PRODUCERS:
         return set(POSTGAME_EXACT_PRODUCERS[lower])
     if lower in QUICK_MATCH_EXACT_PRODUCERS:
         return set(QUICK_MATCH_EXACT_PRODUCERS[lower])
     if lower == "frontend/src/components/shareresultmodal.jsx":
+        return {"warroom-core"}
+    if lower == "frontend/src/components/warroomselectionannouncement.js":
         return {"warroom-core"}
     if lower == "frontend/src/components/profilebackupmodal.jsx":
         return {"home-base"}
@@ -490,44 +503,26 @@ def classify_path(path: str) -> set[str] | None:
         return {"training-school"}
     if lower == "frontend/src/components/homeillustrated.jsx":
         return {"home-base"}
+    # Career visual modules belong to the scoped training-progress producer.
+    # No wildcard: unrelated frontend files retain the full visual fallback.
+    if lower in {
+        "frontend/src/careeropeningatlas.js",
+        "frontend/src/components/careeropeningatlas.jsx",
+        "frontend/src/components/careeropeningatlas.css",
+        "frontend/src/components/careeropeningssection.jsx",
+        "frontend/src/components/careerchronicle.jsx",
+        "frontend/src/components/careerchronicle.css",
+        "frontend/src/components/careerperformancesection.jsx",
+    }:
+        return {"training-progress"}
     if lower in TRAINING_EXACT_PRODUCERS:
         return set(TRAINING_EXACT_PRODUCERS[lower])
 
-    if lower in {
-        "frontend/src/chronicles/chroniclesrunclient.js",
-        "frontend/src/chronicles/chroniclesrunidentity.js",
-    }:
-        # Owner-scoped IDs and authenticated transport never paint the scene;
-        # functional save/restore/ownership tests are their quality gate.
+    # The *existing* Lab link is a routing-only exception. Do not globally
+    # exempt every new "chronicles"-named component: unexpected product code
+    # must fail closed to real Chess Studio visual evidence.
+    if lower == "frontend/src/labchronicleslink.js":
         return set()
-    if lower in {
-        "frontend/src/components/chroniclessavemenu.jsx",
-        "frontend/src/components/chroniclessavemenu.css",
-        "frontend/src/assets/chronicles/expedition-study-desktop-v2.avif",
-    }:
-        # The book and its decorative desktop art belong exclusively to
-        # first-person Chronicles: Tactics never mounts this menu.
-        return {"chronicles-gameplay"}
-    if lower in {
-        "frontend/src/components/chroniclesofmatthias.css",
-        "frontend/src/components/chroniclesofmatthiasart.css",
-        "frontend/src/components/chroniclesofmatthiasjournal.css",
-    }:
-        # Authored first-person overlays, not the Tactics renderer. Keep the
-        # avatar consumer covered: HUD/portrait styling is still visual work.
-        return {"chronicles-gameplay", "chronicles-avatar"}
-    if "chronicles" in lower:
-        if "tactics" in lower or "isometric" in lower:
-            return {"chronicles-tactics"}
-        if any(token in lower for token in ("scavenger", "spectral", "blenderart", "enemyart")):
-            return set(CHRONICLES_SHARED)
-        if any(token in lower for token in ("portrait", "party", "avatar")):
-            return {"chronicles-gameplay", "chronicles-avatar"}
-        if name == "chroniclesofmatthias.jsx":
-            return {"chronicles-gameplay", "chronicles-avatar"}
-        if any(token in lower for token in ("three", "dungeon", "atmosphere", "patina", "turn", "encounter", "event", "treasure")):
-            return {"chronicles-gameplay"}
-        return set(CHRONICLES_SHARED)
 
     if any(token in lower for token in (
         "pawnslug", "pawn-slug", "trailblazer", "arcade", "chessfootball", "chess-football", "footballmanager",
@@ -776,58 +771,88 @@ def classify(paths: list[str]) -> str:
     return _csv(producers)
 
 
-def project_chronicles_lane(producers: str, lane: str) -> str:
-    """Project visual producers into independent App, Chronicles and Tactics gates.
-
-    Shared owners still request both visual producers, but independent workflows
-    prevent software-WebGL Tactics from blocking first-person evidence.
-    Unknown paths remain fail-closed: 'all' expands to every known producer
-    before projecting either lane, rather than bypassing the expensive gate.
-    """
-    if lane == "combined":
-        return producers  # Preserve the public classifier CLI contract.
+def project_app_producers(producers: str) -> str:
+    """Keep canonical captures in Chess Studio; never revive removed game suites."""
     selected = set(PRODUCER_ORDER) if producers == "all" else set(producers.split(",")) - {"none", ""}
-    if lane == "tactics":
-        selected &= {"chronicles-tactics"}
-    elif lane == "chronicles":
-        selected &= {"chronicles-gameplay", "chronicles-avatar"}
-    elif lane == "app":
-        selected -= {"chronicles-gameplay", "chronicles-avatar", "chronicles-tactics"}
-    elif lane == "default":
-        selected.discard("chronicles-tactics")  # CLI backwards compatibility.
-    else:
-        raise ValueError(f"Unknown visual lane: {lane}")
+    selected -= {"chronicles-gameplay", "chronicles-avatar", "chronicles-tactics"}
     return _csv(selected)
 
 
 def self_test() -> None:
-    assert classify_path("scripts/chronicles/build_terra_world.py") == set()
-    assert classify_path("scripts/art/build_chronicles_procedural_sprites.py") == set()
-    assert classify_path("scripts/art/chronicles_sprites/source/drowned.idle.png") == set()
-    assert project_chronicles_lane("all", "combined") == "all"
-    assert project_chronicles_lane("chronicles-tactics,chronicles-gameplay", "default") == "chronicles-gameplay"
-    assert project_chronicles_lane("chronicles-tactics,chronicles-gameplay", "tactics") == "chronicles-tactics"
-    assert project_chronicles_lane("chronicles-gameplay", "tactics") == "none"
-    assert project_chronicles_lane("chronicles-tactics", "default") == "none"
-    assert project_chronicles_lane("all", "tactics") == "chronicles-tactics"
-    assert project_chronicles_lane("chronicles-tactics,chronicles-gameplay", "chronicles") == "chronicles-gameplay"
-    assert project_chronicles_lane("chronicles-tactics,chronicles-gameplay", "app") == "none"
-    assert project_chronicles_lane("chronicles-gameplay,chronicles-avatar", "app") == "none"
-    assert project_chronicles_lane("chronicles-avatar", "chronicles") == "chronicles-avatar"
-    assert project_chronicles_lane("pvp-duel", "chronicles") == "none"
-    assert project_chronicles_lane("pvp-duel", "tactics") == "none"
-    assert project_chronicles_lane("pvp-duel", "app") == "pvp-duel"
-    assert project_chronicles_lane("all", "app") != "all"
-    assert "chronicles-gameplay" in project_chronicles_lane("all", "chronicles")
-    assert "chronicles-tactics" not in project_chronicles_lane("all", "chronicles")
-    assert project_chronicles_lane("scripts", "tactics") == "none"
-    assert classify([".github/workflows/chronicles-visual-artifact.yml"]) == "none"
-    assert classify([".github/workflows/tactics-visual-artifact.yml"]) == "none"
-    assert project_chronicles_lane("all", "default") != "all"
-    assert "chronicles-gameplay" in project_chronicles_lane("all", "default")
+    assert classify(["scripts/chronicles/build_terra_world.py"]) == "all"
+    assert classify(["frontend/src/components/CombatCampaignBriefingRoom.jsx", "e2e/combat-briefing-room-visual-artifact.spec.js"]) == "combat-prep"  # Retired authoring is not exempt.
+    # Dedicated map source/overlay/hook must capture the physical Operations
+    # Room only; shared Board3D or scene readiness remain broad and fail-closed.
+    combat_map_files = [
+        "frontend/src/combatOperationsMapProjection.js",
+        "frontend/src/components/CombatOperationsCampaignCartography.js",
+        "frontend/src/components/useCombatOperationsCartography.js",
+        "frontend/src/components/CombatOperationsSectorPicking.js",
+    ]
+    for map_file in combat_map_files:
+        assert classify([map_file]) == "combat-prep", map_file
+    assert classify(combat_map_files + ["e2e/combat-briefing-room-visual-artifact.spec.js"]) == "combat-prep"
+    assert classify(["frontend/src/combatPreparationHonors.js"]) == "combat-prep"
+    assert classify(["frontend/src/components/Board3DCombatMedals.js"]) == "training-school,combat-prep,warroom-core"
+    assert classify(["frontend/src/components/useBoard3DCombatMedalRefresh.js"]) == "training-school,combat-prep,warroom-core"
+    assert classify(["frontend/src/components/WarRoomBoardSurface.jsx"]) == "training-school,combat-battle,combat-prep,warroom-core"
+    # End-to-end source ownership for this PR: actual decorated Combat proof +
+    # every board-sharing surface, never global screenshot fan-out.
+    combat_honors_files = [
+        "frontend/src/combatPreparationHonors.js",
+        "frontend/src/components/CombatPreparationRoom.jsx",
+        "frontend/src/components/Board3DCombatMedals.js",
+        "frontend/src/components/useBoard3DCombatMedalRefresh.js",
+        "frontend/src/components/WarRoomBoardSurface.jsx",
+        "frontend/src/components/Board3DCore.jsx",
+        "frontend/src/components/Board3DRankInsignia.js",
+        "frontend/src/components/Board3D.jsx",
+        "e2e/combat-briefing-room-visual-artifact.spec.js",
+    ]
+    assert classify(combat_honors_files) == "training-school,combat-battle,combat-prep,warroom-core"
+    assert classify(combat_honors_files + ["frontend/src/unreviewedRenderer.js"]) == "all"
+    assert classify(combat_map_files + ["frontend/src/components/Board3DCore.jsx"]) != "combat-prep"
+    assert classify(combat_map_files + ["frontend/src/components/WarRoomSceneReadiness.js"]) != "combat-prep"
+    assert classify(["frontend/src/components/CombatOperationsUnexpectedRenderer.js"]) == "all"
+
+    # Deleted generators cannot inherit a blanket exclusion. A newly added
+    # Chronicles tool is a new visual-risk surface until explicitly reviewed.
+    assert classify(["scripts/art/build_chronicles_procedural_sprites.py"]) == "all"
+    assert classify(["scripts/art/chronicles_sprites/source/drowned.idle.png"]) == "all"
+    assert classify(["scripts/chronicles/new_renderer.py"]) == "all"
+    # A removed Chronicles browser suite must never silently pass as a known
+    # neutral E2E test when someone reintroduces its filename.
+    for retired_spec in (
+        "chronicles-tactics-visual-artifact.spec.js",
+        "chronicles-gameplay-visual-artifact.spec.js",
+        "chronicles-avatar-visual-artifact.spec.js",
+        "chronicles-of-matthias.spec.js",
+        "chronicles-of-matthias-tactics.spec.js",
+        "chronicles-runtime-mount.spec.js",
+    ):
+        assert classify([f"e2e/{retired_spec}"]) == "all", retired_spec
+    # Unknown/global changes fan out to every surviving app-owned producer.
+    assert project_app_producers("all") != "all"
+    assert "chronicles" not in project_app_producers("all")
+    assert project_app_producers("pvp-duel") == "pvp-duel"
+    assert project_app_producers("chronicles-gameplay,home-matthias") == "home-matthias"
+    assert project_app_producers("chronicles-avatar,chronicles-tactics") == "none"
+    for retired_workflow in (
+        ".github/workflows/chronicles-visual-artifact.yml",
+        ".github/workflows/tactics-visual-artifact.yml",
+    ):
+        assert classify([retired_workflow]) == "all", retired_workflow
     assert classify(["e2e/staging-live.spec.js"]) == "none"
-    assert classify(["scripts/chronicles_area_parity_corpus.py"]) == "none"
-    assert classify(["scripts/chronicles_area_parity_corpus.py", "frontend/src/chronicles/chroniclesMapCatalog.js"]) == "chronicles-tactics,chronicles-gameplay"
+    assert classify(["e2e/war-room-variant-lifecycle-soak.spec.js"]) == "warroom-core"
+    assert classify(["scripts/chronicles_area_parity_corpus.py"]) == "all"
+    assert classify(["scripts/chronicles_contracts.py"]) == "all"
+    assert classify(["scripts/validate_chronicles_campaign.py"]) == "all"  # No longer a checked-in tool.
+    assert classify([".github/workflows/cicd.yml", "scripts/run_core_e2e_lane.py", "scripts/test_entrypoint_parity.py", "frontend/src/components/RoguelikeScreen.jsx", "e2e/war-room-combat-battle-visual-artifact.spec.js"]) == "combat-battle"
+    # A ghost runtime source is unexpected after extraction; fail closed rather
+    # than silently granting a new implementation exemption based on its name.
+    assert classify(["scripts/chronicles_area_parity_corpus.py", "frontend/src/chronicles/chroniclesMapCatalog.js"]) == "all"
+    assert classify(["frontend/src/components/ChroniclesReturn.jsx"]) == "all"
+    assert classify(["frontend/src/chronicles/newScene.js"]) == "all"
     assert classify(["scripts/unknown_unowned_generator.py"]) == "all"
     assert classify(["e2e/staging-live.spec.js", "frontend/src/components/PvpHandoffModal.jsx"]) == "pvp-handoff"
     assert classify([
@@ -838,6 +863,11 @@ def self_test() -> None:
     ]) == "warroom-core"
     assert classify(["frontend/public/sw.js", "scripts/pwa_check.mjs"]) == "none"
     assert classify(["frontend/src/components/ShareResultModal.jsx"]) == "warroom-core"
+    assert classify([
+        "frontend/src/components/GameBoardView.jsx",
+        "frontend/src/components/warRoomSelectionAnnouncement.js",
+        "e2e/three-d-war-room.spec.js",
+    ]) == "warroom-core"
     assert classify(["frontend/src/components/ProfileBackupModal.jsx"]) == "home-base"
     assert classify([
         "frontend/src/components/GameScreen.jsx",
@@ -913,27 +943,21 @@ def self_test() -> None:
     ]) == "training-school"
     assert classify([".github/actions/app-visual-pipeline/action.yml"]) == "none"
     assert classify([".github/workflows/app-visual-artifact.yml"]) == "none"
-    assert classify(["frontend/src/chroniclesOfMatthiasIsometric.js"]) == "chronicles-tactics"
-    assert classify(["frontend/src/components/ChroniclesOfMatthiasTactics.jsx"]) == "chronicles-tactics"
-    assert classify(["frontend/src/components/ChroniclesSaveMenu.jsx"]) == "chronicles-gameplay"
-    assert classify(["frontend/src/components/ChroniclesSaveMenu.css"]) == "chronicles-gameplay"
-    assert classify(["frontend/src/assets/chronicles/expedition-study-desktop-v2.avif"]) == "chronicles-gameplay"
-    assert project_chronicles_lane(classify(["frontend/src/assets/chronicles/expedition-study-desktop-v2.avif"]), "tactics") == "none"
-    for first_person_css in (
-        "ChroniclesOfMatthias.css",
-        "ChroniclesOfMatthiasArt.css",
-        "ChroniclesOfMatthiasJournal.css",
+    for retired in (
+        "frontend/src/chroniclesOfMatthiasIsometric.js",
+        "frontend/src/components/ChroniclesOfMatthiasTactics.jsx",
+        "frontend/src/components/ChroniclesSaveMenu.css",
+        "frontend/src/components/ChroniclesOfMatthias.css",
+        "frontend/src/assets/chronicles/expedition-study-desktop-v2.avif",
+        "frontend/src/chronicles/chroniclesGameBootstrap.js",
+        "frontend/src/experimentalThreeRenderer.js",
+        "e2e/chronicles-gameplay-visual-artifact.spec.js",
     ):
-        producers = classify([f"frontend/src/components/{first_person_css}"])
-        assert producers == "chronicles-gameplay,chronicles-avatar"
-        assert project_chronicles_lane(producers, "tactics") == "none"
-    assert classify(["frontend/src/components/ChroniclesOfMatthiasTactics.css"]) == "chronicles-tactics"
-    assert project_chronicles_lane(classify(["frontend/src/components/ChroniclesSaveMenu.css"]), "tactics") == "none"
-    assert classify(["frontend/src/chronicles/chroniclesRunClient.js"]) == "none"
-    assert classify(["frontend/src/chronicles/chroniclesRunIdentity.js"]) == "none"
-    assert classify(["frontend/src/chronicles/chroniclesGameBootstrap.js"]) == "chronicles-tactics,chronicles-gameplay"
-    assert classify(["frontend/src/chroniclesDungeon.js"]) == "chronicles-gameplay"
-    assert classify(["frontend/src/experimentalThreeRenderer.js"]) == "chronicles-tactics,chronicles-gameplay"
+        # Retired Matthias-named UI now follows the active Home/War Room
+        # classifier rather than a blanket Chronicles exemption.
+        assert classify([retired]) in {"none", "all", "home-matthias,warroom-core"}, retired
+        assert "chronicles" not in project_app_producers(classify([retired]))
+    assert classify(["frontend/src/labChroniclesLink.js"]) == "none"
     assert classify(["frontend/src/components/LabScreen.jsx"]) == "experiments-hub"
     assert classify([
         "frontend/src/components/ChessFootballGodotHost.jsx",
@@ -1051,7 +1075,6 @@ def self_test() -> None:
     assert classify(["scripts/war_room_visual_freeze_check.mjs"]) == "none"
     assert classify(["scripts/app_visual_summary.mjs"]) == "none"
     assert classify(["scripts/hans_visual_artifact_summary.mjs"]) == "none"
-    assert classify(["frontend/src/chroniclesOfMatthiasSpectralBishop.js"]) == "chronicles-tactics,chronicles-gameplay"
     assert classify(["scripts/blender/build_war_room_premium.py"]) == "warroom-core"
     assert classify(["scripts/blender/publish_war_room_v2_staging.py"]) == "warroom-core"
     assert classify([".github/workflows/war-room-blender-art.yml"]) == "warroom-core"
@@ -1103,7 +1126,7 @@ def self_test() -> None:
     assert classify(["frontend/public/chesscom/piece.glb"]) == "none"
     for public_meta in PUBLIC_NONCANONICAL_PATHS:
         assert classify([public_meta]) == "none"
-    assert classify(["frontend/public/models/chronicles-tactics-party.glb"]) == "chronicles-tactics"
+    assert classify(["frontend/public/models/chronicles-tactics-party.glb"]) == "all"  # Removed asset: unknown public model fails closed.
     assert classify(["frontend/public/models/matthias-home-canonical.glb"]) == "home-matthias"
     assert classify(["frontend/public/matthias-home-canonical.b64"]) == "home-matthias"
     assert classify(["frontend/src/components/HomeMatthias3D.jsx"]) == "home-matthias"
@@ -1111,24 +1134,24 @@ def self_test() -> None:
     assert classify(["frontend/src/components/HomeMatthiasStations.js"]) == "home-matthias"
     assert classify(["e2e/matthias-home-visual-critical.spec.js"]) == "home-matthias"
     assert classify(["frontend/public/support-pawn.png"]) == "all"
-    assert classify([
-        "frontend/src/chroniclesOfMatthiasIsometric.js",
-        "frontend/public/audio/theme.ogg",
-    ]) == "chronicles-tactics"
-    assert classify([
-        "frontend/src/chroniclesOfMatthiasIsometric.js",
-        "frontend/src/chroniclesDungeon.js",
-    ]) == "chronicles-tactics,chronicles-gameplay"
     assert classify(["frontend/src/tutorialRoute.js"]) == "training-school"
     assert classify(["frontend/src/components/trainingSchoolIntentPreload.js"]) == "training-school"
     assert classify(["frontend/src/components/HomeIllustrated.jsx"]) == "home-base"
+    assert classify(["frontend/src/careerOpeningAtlas.js"]) == "training-progress"
+    assert classify(["frontend/src/components/CareerOpeningAtlas.jsx"]) == "training-progress"
+    assert classify(["frontend/src/components/CareerOpeningAtlas.css"]) == "training-progress"
+    assert classify(["frontend/src/components/CareerOpeningsSection.jsx"]) == "training-progress"
+    assert classify(["frontend/src/components/CareerChronicle.jsx"]) == "training-progress"
+    assert classify(["frontend/src/components/CareerChronicle.css"]) == "training-progress"
+    assert classify(["frontend/src/components/CareerPerformanceSection.jsx"]) == "training-progress"
+    assert classify(["frontend/src/components/CareerOpeningAtlas.jsx", "e2e/training-visual-artifact.spec.js"]) == "training-progress"
+    assert classify(["frontend/src/components/CareerOpeningAtlas.jsx", "frontend/src/components/SomeUnknownGlobalWidget.jsx"]) == "all"
     print("app visual producer scope self-test: OK")
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--all", action="store_true")
-    parser.add_argument("--chronicles-lane", choices=("combined", "default", "app", "chronicles", "tactics"), default="combined")
     parser.add_argument("--github-output", default=os.environ.get("GITHUB_OUTPUT", ""))
     parser.add_argument("--self-test", action="store_true")
     args = parser.parse_args(argv)
@@ -1137,7 +1160,7 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     paths = [] if args.all else sys.stdin.read().splitlines()
     selected_producers = "all" if args.all else classify(paths)
-    result = project_chronicles_lane(selected_producers, args.chronicles_lane)
+    result = project_app_producers(selected_producers)
     warroom_variants = _variant_csv(WARROOM_VARIANT_ALL) if args.all else classify_warroom_variants(paths)
     warroom_profile_scope = WARROOM_PROFILE_SCOPE_ALL if args.all else classify_warroom_profile_scope(paths)
     home_profile_scope = HOME_PROFILE_SCOPE_ALL if args.all else classify_home_profile_scope(paths)
@@ -1147,17 +1170,7 @@ def main(argv: list[str] | None = None) -> int:
             handle.write(f"warroom_variants={warroom_variants}\n")
             handle.write(f"warroom_profile_scope={warroom_profile_scope}\n")
             handle.write(f"home_profile_scope={home_profile_scope}\n")
-            # Specialist workflows own exactly their game, never Home, War Room,
-            # the other game's WebGL browser or general-purpose sidecars.
-            if args.chronicles_lane in {"tactics", "chronicles"}:
-                handle.write(f"capture_groups={'experiments' if result != 'none' else 'none'}\n")
-                handle.write(f"experiments_scope={'chronicles' if result != 'none' else 'none'}\n")
-                handle.write(f"chronicles_avatar={'true' if args.chronicles_lane == 'chronicles' and 'chronicles-avatar' in result.split(',') else 'false'}\n")
-                for output in ("warroom", "hans", "chesscom",
-                               "warroom_revision_required", "warroom_v3_revision_required",
-                               "pvp_duel_revision_required"):
-                    handle.write(f"{output}=false\n")
-            elif result == "none":
+            if result == "none":
                 handle.write("capture_groups=none\n")
     else:
         print(f"producer_scope={result}")

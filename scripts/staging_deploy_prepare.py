@@ -92,10 +92,16 @@ def manual_main_admission_green(sha: str, repository: str, token: str, *, get=ad
     )
 
 
+# Shared with the backend image publisher: never omit the immutable OCI tag
+# when staging still has an unapplied runtime generation.
+require_pending_since_complete = deploy_scope.require_pending_since_complete
+
+
 def prepare(sha: str) -> dict[str, str]:
     head = generation.valid_sha(sha)
     source = resolve_source(head)
     required, reason = deploy_scope.decide(head, source)
+    required, reason = require_pending_since_complete(head, required, reason)
     values = {
         "deploy_sha": head,
         "admitted": "false",
@@ -209,6 +215,27 @@ def self_test() -> None:
     })
     assert "fail-open:GenerationError" in optional_scope_receipt(sha, receipt_flags)
     assert "Resend recovery: `true`" in optional_scope_receipt(sha, receipt_flags)
+    # A docs-only HEAD must not conceal an older runtime deploy that never
+    # completed. Purely non-runtime changes still avoid the expensive deploy.
+    pending = lambda _head: (["docs/staging.md", "scripts/pages_runtime_asset_grace.py"], "b" * 40, 987)
+    required, reason = require_pending_since_complete(sha, False, "non-runtime-only", diff_lookup=pending)
+    assert required and reason.startswith("pending-since-complete:") and "pages_runtime_asset_grace.py" in reason
+    non_runtime = lambda _head: (["docs/staging.md", "AGENTS.md"], "b" * 40, 987)
+    required, reason = require_pending_since_complete(sha, False, "non-runtime-only", diff_lookup=non_runtime)
+    assert not required and reason.startswith("non-runtime-since-complete:")
+    required, reason = require_pending_since_complete(
+        sha, False, "non-runtime-only", diff_lookup=lambda _head: ([], "b" * 40, 987))
+    assert not required and reason.startswith("no-pending-diff:")
+    # A locally detected runtime change must not make a redundant API request.
+    required, reason = require_pending_since_complete(
+        sha, True, "runtime:frontend/src/App.jsx",
+        diff_lookup=lambda _head: (_ for _ in ()).throw(AssertionError("unexpected API call")))
+    assert required and reason == "runtime:frontend/src/App.jsx"
+    def unreadable_baseline(_head):
+        raise RuntimeError("history unavailable")
+    required, reason = require_pending_since_complete(
+        sha, False, "non-runtime-only", diff_lookup=unreadable_baseline)
+    assert required and reason == "pending-diff-fail-open:RuntimeError"
     deploy_scope.self_test()
     generation.self_test()
     optional_scope.self_test()

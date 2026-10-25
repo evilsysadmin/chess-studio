@@ -21,16 +21,20 @@ export function captureDeploymentPreset(roster, index, name = null) {
   const state = ensureDeploymentState(roster);
   const deployment = { ...(state.deployment || {}) };
   const forms = {};
+  const identityIds = {};
   for (const unitKey of Object.values(deployment)) {
     const requested = state.pieces?.[unitKey]?.deploymentType || String(unitKey || '').split('-')[0];
     if (requested) forms[unitKey] = requested;
+    const identityId = state.identities?.[unitKey]?.identityId;
+    if (typeof identityId === 'string' && identityId) identityIds[unitKey] = identityId;
   }
   const preset = {
-    version: 1,
+    version: 2,
     name: normalizedPresetName(name, slot),
     savedAt: new Date().toISOString(),
     deployment,
     forms,
+    identityIds,
   };
   const all = loadDeploymentPresets();
   all[slot] = preset;
@@ -41,16 +45,28 @@ export function captureDeploymentPreset(roster, index, name = null) {
 export function applyDeploymentPreset(roster, preset) {
   if (!preset?.deployment || typeof preset.deployment !== 'object') return ensureDeploymentState(roster);
   let next = resetDeployment(ensureDeploymentState(roster));
+  // Los presets v2 siguen al SOLDADO, no a la clave de su puesto: si una
+  // baja fue reemplazada, ese mismo slot ya pertenece a otra identidad.
+  // v1 conserva la lectura histórica porque no almacenaba identityId.
+  const sameIdentity = (unitKey) => (
+    preset.version === 1
+    || (preset.version === 2
+      && typeof preset.identityIds?.[unitKey] === 'string'
+      && Boolean(preset.identityIds[unitKey])
+      && preset.identityIds[unitKey] === next.identities?.[unitKey]?.identityId)
+  );
 
   // Las formas se intentan primero; si el veterano ya no cumple requisitos,
   // setRosterDeploymentType conserva el estado válido y el preset no fuerza nada ilegal.
   for (const [unitKey, targetType] of Object.entries(preset.forms || {})) {
+    if (!sameIdentity(unitKey)) continue;
     next = setRosterDeploymentType(next, unitKey, targetType);
   }
 
   // Partimos del deployment actual, pero cada asignación guardada sustituye a
   // su ocupante sólo cuando sigue siendo compatible y la identidad existe.
   for (const [slotKey, unitKey] of Object.entries(preset.deployment)) {
+    if (!sameIdentity(unitKey)) continue;
     next = setDeploymentUnit(next, slotKey, unitKey);
   }
   return ensureDeploymentState(next);

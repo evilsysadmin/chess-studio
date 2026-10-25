@@ -4,5 +4,5 @@ export function cpuPresentationDelayMs({ cpuTime = null, gameOver = false, rando
   if (gameOver) return 0;
   if (cpuTime !== null && Number.isFinite(cpuTime) && cpuTime <= 8) return 350;
   const sample = Number.isFinite(random) ? Math.min(1, Math.max(0, random)) : 0.5;
-  return 2000 + Math.floor(sample * 1000);
+  return 1500 + Math.floor(sample * 1000);
 }

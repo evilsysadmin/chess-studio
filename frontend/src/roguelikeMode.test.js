@@ -122,11 +122,44 @@ describe('recompensas temporales', () => {
 
 describe('máquina de estados del intento', () => {
   it('arranca sin intento en curso', () => {
-    expect(loadRun()).toEqual({ floor: 1, inRun: false, phase: 'idle', seed: null, mode: 'tower', perks: [], rewardChosenForFloor: null });
+    expect(loadRun()).toEqual({ floor: 1, inRun: false, phase: 'idle', seed: null, mode: 'tower', perks: [], rewardChosenForFloor: null, battleAttempt: 0 });
   });
 
   it('startNewRun fija piso, seed y torre', () => {
     expect(startNewRun('seed-controlada')).toMatchObject({ inRun: true, floor: 1, phase: 'battle', seed: 'seed-controlada', mode: 'tower', perks: [] });
+  });
+
+  it('mantiene null hasta elegir una recompensa y vuelve a null al avanzar', () => {
+    let run = startNewRun('reward-null');
+    expect(run.rewardChosenForFloor).toBeNull();
+    expect(loadRun().rewardChosenForFloor).toBeNull();
+    run = markBattleStarted(run);
+    expect(run.rewardChosenForFloor).toBeNull();
+    run = markFloorCleared(run);
+    expect(run.rewardChosenForFloor).toBeNull();
+    expect(loadRun().rewardChosenForFloor).toBeNull();
+    const perk = rewardOptionsForFloor(run.seed, run.floor)[0];
+    run = chooseRunReward(run, perk.id);
+    expect(run.rewardChosenForFloor).toBe(1);
+    run = advanceFloor(run);
+    expect(run).toMatchObject({ floor: 2, phase: 'battle', perks: [perk.id] });
+    expect(run.rewardChosenForFloor).toBeNull();
+    expect(loadRun().rewardChosenForFloor).toBeNull();
+  });
+
+  it('recupera marcadores legacy sin confundir recompensa ajena con el piso actual', () => {
+    const key = 'chess-study-roguelike-run';
+    const legacy = { floor: 4, inRun: true, phase: 'cleared', seed: 'legacy-reward', mode: 'tower', perks: ['steel_pulse'] };
+    for (const value of [null, 0, 2, -1, 'invalido']) {
+      localStorage.setItem(key, JSON.stringify({ ...legacy, rewardChosenForFloor: value }));
+      const restored = loadRun();
+      expect(restored.rewardChosenForFloor).toBeNull();
+      expect(advanceFloor(restored).floor).toBe(4);
+    }
+    localStorage.setItem(key, JSON.stringify({ ...legacy, rewardChosenForFloor: '4' }));
+    expect(loadRun().rewardChosenForFloor).toBe(4);
+    localStorage.setItem(key, JSON.stringify({ ...legacy, phase: 'battle', rewardChosenForFloor: 4 }));
+    expect(loadRun().rewardChosenForFloor).toBeNull();
   });
 
   it('no permite battle -> cleared sin haber empezado', () => {
@@ -135,8 +168,14 @@ describe('máquina de estados del intento', () => {
   });
 
   it('recupera una pelea interrumpida sin perder piso, seed, modo ni perks', () => {
-    let run = startNewRun('snapshot-caido');
-    run = markBattleStarted({ ...run, floor: 6, mode: 'endless', perks: ['steel_pulse'] });
+    startNewRun('snapshot-caido');
+    // Restore the actual persisted encounter, rather than passing a forged
+    // input to a transition that now checks the profile-authoritative state.
+    localStorage.setItem('chess-study-roguelike-run', JSON.stringify({
+      floor: 6, inRun: true, phase: 'battle', mode: 'endless',
+      seed: 'snapshot-caido', perks: ['steel_pulse'], rewardChosenForFloor: null, battleAttempt: 0,
+    }));
+    const run = markBattleStarted(loadRun());
 
     const recovered = recoverInterruptedRun(run);
 
@@ -149,6 +188,44 @@ describe('máquina de estados del intento', () => {
       perks: ['steel_pulse'],
     });
     expect(loadBestFloor()).toBe(0);
+  });
+
+  it('ignora inicios, victorias y recuperación tardíos de otro intento', () => {
+    const first = startNewRun('partida-abandonada');
+    const fighting = markBattleStarted(first);
+    const replacement = startNewRun('partida-vigente');
+    expect(markBattleStarted(first)).toEqual(replacement);
+    expect(markFloorCleared(fighting)).toEqual(replacement);
+    expect(recoverInterruptedRun(fighting)).toEqual(replacement);
+    expect(loadRun()).toEqual(replacement);
+  });
+
+  it('un resultado repetido no vuelve a escribir un piso ya superado', () => {
+    const battle = startNewRun('doble-resultado');
+    const fighting = markBattleStarted(battle);
+    expect(markBattleStarted(battle)).toEqual(fighting);
+    const cleared = markFloorCleared(fighting);
+    expect(cleared).toMatchObject({ floor: 1, phase: 'cleared' });
+    expect(markFloorCleared(fighting)).toEqual(cleared);
+    expect(recoverInterruptedRun(fighting)).toEqual(cleared);
+    expect(loadRun()).toEqual(cleared);
+    const picked = chooseRunReward(cleared, rewardOptionsForFloor(cleared.seed, 1)[0].id);
+    const advanced = advanceFloor(picked);
+    expect(markFloorCleared(fighting)).toEqual(advanced);
+    expect(markBattleStarted(battle)).toEqual(advanced);
+    expect(loadRun()).toEqual(advanced);
+  });
+
+  it('una recuperación tardía no rebobina una batalla que ya se reinició', () => {
+    const battle = startNewRun('recuperacion-doble');
+    const oldFighting = markBattleStarted(battle);
+    const recovered = recoverInterruptedRun(oldFighting);
+    expect(recovered.phase).toBe('battle');
+    expect(recoverInterruptedRun(oldFighting)).toEqual(recovered);
+    const restarted = markBattleStarted(recovered);
+    expect(restarted.battleAttempt).toBe(oldFighting.battleAttempt + 1);
+    expect(recoverInterruptedRun(oldFighting)).toEqual(restarted);
+    expect(loadRun()).toEqual(restarted);
   });
 
   it('fighting -> cleared exige elegir recompensa antes de subir', () => {
@@ -165,6 +242,67 @@ describe('máquina de estados del intento', () => {
     expect(run.perks).toContain(option.id);
   });
 
+  it('rechaza perks del catálogo que no estaban entre las tres cartas de Torre', () => {
+    let run = markFloorCleared(markBattleStarted(startNewRun('oferta-real')));
+    const offered = rewardOptionsForFloor(run.seed, run.floor);
+    const hidden = ROGUELIKE_PERKS.find((perk) => !offered.some((card) => card.id === perk.id));
+    expect(hidden).toBeDefined();
+    const before = loadRun();
+    expect(chooseRunReward(run, hidden.id)).toEqual(run);
+    expect(loadRun()).toEqual(before);
+    expect(chooseRunReward(run, 'fake-perk')).toEqual(run);
+    run = chooseRunReward(run, offered[0].id);
+    expect(run.perks).toEqual([offered[0].id]);
+    expect(chooseRunReward(run, hidden.id)).toEqual(run);
+    expect(advanceFloor(run).floor).toBe(2);
+  });
+
+  it('valida las tres cartas de un piso infinito sin perder un perk legítimo', () => {
+    const started = startNewRun('infinito-oferta');
+    localStorage.setItem('chess-study-roguelike-run', JSON.stringify({ ...started, floor: 11, mode: 'endless' }));
+    const run = markFloorCleared(markBattleStarted(loadRun()));
+    const offered = rewardOptionsForFloor(run.seed, 11);
+    const hidden = ROGUELIKE_PERKS.find((perk) => !offered.some((card) => card.id === perk.id));
+    expect(chooseRunReward(run, hidden.id)).toEqual(run);
+    const selected = chooseRunReward(run, offered[1].id);
+    expect(selected).toMatchObject({ floor: 11, mode: 'endless', rewardChosenForFloor: 11, perks: [offered[1].id] });
+    expect(advanceFloor(selected)).toMatchObject({ floor: 12, phase: 'battle', perks: [offered[1].id] });
+  });
+
+  it('ignora clics repetidos con snapshot anterior y nunca concede dos ventajas', () => {
+    let run = markFloorCleared(markBattleStarted(startNewRun('stale-double-reward')));
+    const [first, second] = rewardOptionsForFloor(run.seed, run.floor);
+    const staleBeforeReward = { ...run, perks: [...run.perks] };
+    run = chooseRunReward(run, first.id);
+    expect(run.perks).toEqual([first.id]);
+    const replay = chooseRunReward(staleBeforeReward, second.id);
+    expect(replay).toEqual(run);
+    expect(loadRun()).toEqual(run);
+    expect(run.rewardChosenForFloor).toBe(1);
+  });
+
+  it('una orden antigua de avanzar no rebobina el piso ni repite recompensa', () => {
+    let run = markFloorCleared(markBattleStarted(startNewRun('stale-advance')));
+    const [first] = rewardOptionsForFloor(run.seed, run.floor);
+    const staleBeforeReward = { ...run };
+    run = chooseRunReward(run, first.id);
+    const staleBeforeAdvance = { ...run };
+    run = advanceFloor(run);
+    expect(run).toMatchObject({ floor: 2, phase: 'battle', perks: [first.id] });
+    expect(advanceFloor(staleBeforeAdvance)).toEqual(run);
+    expect(chooseRunReward(staleBeforeReward, first.id)).toEqual(run);
+    expect(loadRun()).toEqual(run);
+  });
+
+  it('una orden de un intento anterior no revive su progreso al iniciar otro', () => {
+    let firstRun = markFloorCleared(markBattleStarted(startNewRun('retirado')));
+    const [perk] = rewardOptionsForFloor(firstRun.seed, 1);
+    const nextRun = startNewRun('nuevo-intento');
+    expect(chooseRunReward(firstRun, perk.id)).toEqual(nextRun);
+    expect(advanceFloor({ ...firstRun, rewardChosenForFloor: 1 })).toEqual(nextRun);
+    expect(loadRun()).toEqual(nextRun);
+  });
+
   it('no permite cobrar dos recompensas por el mismo piso', () => {
     let run = startNewRun('una-sola');
     run = markBattleStarted(run);
@@ -173,6 +311,52 @@ describe('máquina de estados del intento', () => {
     run = chooseRunReward(run, a.id);
     const again = chooseRunReward(run, b.id);
     expect(again.perks).toEqual([a.id]);
+  });
+
+  it('un resultado de boss antiguo no termina un intento nuevo ni da el logro', () => {
+    let run = startNewRun('boss-antiguo');
+    for (let floor = 1; floor < ROGUELIKE_TOWER_FLOORS; floor += 1) {
+      run = markBattleStarted(run);
+      run = markFloorCleared(run);
+      run = chooseRunReward(run, rewardOptionsForFloor(run.seed, floor)[0].id);
+      run = advanceFloor(run);
+    }
+    const staleBoss = { ...markBattleStarted(run), perks: [...run.perks] };
+    const fresh = startNewRun('nuevo-recluta');
+    expect(completeTower(staleBoss)).toEqual(fresh);
+    expect(loadRun()).toEqual(fresh);
+    expect(loadTowerCompleted()).toBe(false);
+    expect(loadBestFloor()).toBe(0);
+  });
+
+  it('repetir el botón del boss no rebobina infinito ni completa una Torre ajena', () => {
+    let run = startNewRun('boss-continue-once');
+    for (let floor = 1; floor < ROGUELIKE_TOWER_FLOORS; floor += 1) {
+      run = markBattleStarted(run);
+      run = markFloorCleared(run);
+      run = chooseRunReward(run, rewardOptionsForFloor(run.seed, floor)[0].id);
+      run = advanceFloor(run);
+    }
+    const fighting = markBattleStarted(run);
+    const completed = completeTower(fighting);
+    expect(completed.phase).toBe('completed');
+    const endless = continueIntoEndless(completed);
+    expect(endless).toMatchObject({ mode: 'endless', floor: 11, phase: 'battle' });
+    expect(completeTower(fighting)).toEqual(endless);
+    expect(continueIntoEndless(completed)).toEqual(endless);
+    expect(loadRun()).toEqual(endless);
+    expect(loadTowerCompleted()).toBe(true);
+    expect(loadBestFloor()).toBe(10);
+  });
+
+  it('solo el jefe del piso diez permite abrir infinito', () => {
+    const run = startNewRun('no-boss');
+    const forged = { ...run, phase: 'completed', floor: 1 };
+    expect(continueIntoEndless(forged)).toEqual(forged);
+    expect(loadRun()).toEqual(run);
+    expect(completeTower({ ...run, floor: 10, phase: 'fighting', mode: 'endless' }))
+      .toMatchObject({ mode: 'endless', phase: 'fighting' });
+    expect(loadTowerCompleted()).toBe(false);
   });
 
   it('completar piso 10 desbloquea infinito sin exigir una carta post-boss', () => {

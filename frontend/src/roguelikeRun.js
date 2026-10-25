@@ -1,6 +1,6 @@
 import { STORAGE_LOCAL, getStorageItem, readJsonStorage } from './safeStorage.js';
 import { setProfileStorageItem, removeProfileStorageItem } from './profileKeys.js';
-import { perkById } from './roguelikePerks.js';
+import { perkById, rewardOptionsForFloor } from './roguelikePerks.js';
 import { loadCombatHistory } from './combatHistory.js';
 import { adaptiveCombatDifficulty } from './combatAdaptiveDifficulty.js';
 
@@ -25,6 +25,7 @@ function defaultRun() {
     mode: 'tower',
     perks: [],
     rewardChosenForFloor: null,
+    battleAttempt: 0,
   };
 }
 
@@ -47,10 +48,15 @@ function normalizeRun(parsed) {
   const seed = inRun ? String(parsed.seed || `legacy-${floor}`) : null;
   const mode = parsed.mode === 'endless' ? 'endless' : 'tower';
   const perks = Array.isArray(parsed.perks) ? parsed.perks.filter((id) => perkById(id)) : [];
-  const rewardChosenForFloor = Number.isFinite(Number(parsed.rewardChosenForFloor))
-    ? Number(parsed.rewardChosenForFloor)
-    : null;
-  return { floor, inRun, phase, seed, mode, perks, rewardChosenForFloor };
+  // null means "not yet rewarded": Number(null) === 0 would silently
+  // corrupt the persisted marker. Only the cleared current floor may own it.
+  const chosenFloor = parsed.rewardChosenForFloor == null ? null : Number(parsed.rewardChosenForFloor);
+  const rewardChosenForFloor = inRun && phase === 'cleared' && chosenFloor === floor ? floor : null;
+  // Monotonic per-run generation distinguishes a restarted fight from its
+  // identical-looking earlier 'fighting' snapshot after F5 recovery.
+  const rawAttempt = Number(parsed.battleAttempt);
+  const battleAttempt = inRun && Number.isSafeInteger(rawAttempt) && rawAttempt > 0 ? rawAttempt : 0;
+  return { floor, inRun, phase, seed, mode, perks, rewardChosenForFloor, battleAttempt };
 }
 
 export function loadRun() {
@@ -69,23 +75,49 @@ export function startNewRun(seed = makeSeed()) {
 
 export function markBattleStarted(run) {
   if (!run?.inRun || run.phase !== 'battle') return run;
-  return saveRun({ ...run, phase: 'fighting' });
+  const latest = currentRunIfStale(run);
+  if (latest) return latest;
+  return saveRun({ ...run, phase: 'fighting', battleAttempt: (run.battleAttempt || 0) + 1 });
 }
 
 export function recoverInterruptedRun(run) {
   if (!run?.inRun || run.phase !== 'fighting') return run;
+  const latest = currentRunIfStale(run);
+  if (latest) return latest;
   return saveRun({ ...run, phase: 'battle' });
 }
 
 export function markFloorCleared(run) {
   if (!run?.inRun || run.phase === 'cleared' || run.phase === 'completed') return run;
   if (run.phase !== 'fighting') return run;
+  const latest = currentRunIfStale(run);
+  if (latest) return latest;
   return saveRun({ ...run, phase: 'cleared', rewardChosenForFloor: null });
+}
+
+// React or a delayed callback may replay an earlier battle or floor snapshot.
+// Never overwrite the profile-authoritative run with stale phase transitions.
+function currentRunIfStale(run) {
+  const latest = loadRun();
+  return latest.inRun === run.inRun
+    && latest.seed === run.seed
+    && latest.mode === run.mode
+    && latest.floor === run.floor
+    && latest.phase === run.phase
+    && latest.battleAttempt === run.battleAttempt
+    && latest.rewardChosenForFloor === run.rewardChosenForFloor
+    && JSON.stringify(latest.perks) === JSON.stringify(run.perks)
+    ? null : latest;
 }
 
 export function chooseRunReward(run, perkId) {
   if (!run?.inRun || run.phase !== 'cleared' || !perkById(perkId)) return run;
+  const latest = currentRunIfStale(run);
+  if (latest) return latest;
   if (run.rewardChosenForFloor === run.floor) return run;
+  // A valid catalogue perk is not necessarily among the three cards dealt
+  // for this seed and floor. Enforce the deterministic offer in the domain.
+  if (!rewardOptionsForFloor(run.seed, run.floor).some((perk) => perk.id === perkId)) return run;
   return saveRun({
     ...run,
     perks: [...(run.perks || []), perkId],
@@ -95,6 +127,8 @@ export function chooseRunReward(run, perkId) {
 
 export function advanceFloor(run) {
   if (!run?.inRun || run.phase !== 'cleared') return run;
+  const latest = currentRunIfStale(run);
+  if (latest) return latest;
   // En la torre y en infinito, superar un piso implica elegir su recompensa
   // antes de seguir. El boss final se gestiona como `completed`, no llega acá.
   if (run.rewardChosenForFloor !== run.floor) return run;
@@ -102,14 +136,20 @@ export function advanceFloor(run) {
 }
 
 export function completeTower(run) {
-  if (!run?.inRun || run.floor !== ROGUELIKE_TOWER_FLOORS || run.phase !== 'fighting') return run;
+  if (!run?.inRun || run.mode !== 'tower' || run.floor !== ROGUELIKE_TOWER_FLOORS || run.phase !== 'fighting') return run;
+  // A delayed boss result must never complete a newer attempt.
+  const latest = currentRunIfStale(run);
+  if (latest) return latest;
   setProfileStorageItem(COMPLETED_KEY, '1');
   if (run.floor > loadBestFloor()) setProfileStorageItem(BEST_FLOOR_KEY, String(run.floor));
   return saveRun({ ...run, phase: 'completed' });
 }
 
 export function continueIntoEndless(run) {
-  if (!run?.inRun || run.phase !== 'completed') return run;
+  if (!run?.inRun || run.mode !== 'tower' || run.floor !== ROGUELIKE_TOWER_FLOORS || run.phase !== 'completed') return run;
+  // Replaying the old "continue" CTA cannot roll an active endless run back.
+  const latest = currentRunIfStale(run);
+  if (latest) return latest;
   return saveRun({ ...run, mode: 'endless', floor: ROGUELIKE_TOWER_FLOORS + 1, phase: 'battle', rewardChosenForFloor: null });
 }
 

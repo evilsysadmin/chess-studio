@@ -1,15 +1,19 @@
+# Keep FastAPI/Pydantic on the validated HTTP error contract until Go parity is migrated.
 fastapi==0.143.0
 uvicorn[standard]==0.54.0
 chess==1.11.2
-pymongo==4.18.3
+pymongo==4.19.0
 pydantic==2.14.0
 slowapi==0.1.10
 bcrypt==4.2.1
 argon2-cffi==25.1.0
 pyjwt==2.15.1
 httpx>=0.27,<1
+# CVE-equivalent GHSA-6q48-6c7w-9gw2: compromised emSign CA intermediates.
+# Pin the patched CA bundle in the backend runtime venv copied into the image.
+certifi==2026.10.19
 opentelemetry-api>=1.45.1,<2
-opentelemetry-sdk>=1.45.0,<2
+opentelemetry-sdk>=1.45.1,<2
 opentelemetry-instrumentation-fastapi>=0.66b1,<1
 opentelemetry-exporter-otlp-proto-http>=1.45.1,<2
 opentelemetry-instrumentation-httpx>=0.66b1,<1

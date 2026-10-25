@@ -251,24 +251,28 @@ function relocateHearthKit(fireplace, towardBoard) {
   const tools = fireplace.getObjectByName?.('war-room-hearth-tool-stand');
   let moved = 0;
   if (basket) {
-    basket.position.x = -side * Math.abs(stage.basketX);
+    // Use the authored signed lateral coordinate. Abs() silently mirrored the
+    // V4 basket *away* from the actual route, leaving Hans miming a pickup.
+    basket.position.x = side * stage.basketX;
     basket.position.z = towardBoard * stage.basketZ;
     basket.rotation.y = -side * towardBoard * 0.05;
-    basket.userData.warRoomHansHearthSide = 'opposite-service-door';
+    basket.userData.warRoomHansHearthSide = stage.basketX > 0 ? 'service-aisle' : 'opposite-service-door';
     basket.userData.warRoomHansHearthDepth = 'rear-wall-v1';
     recolorGraphiteBasket(basket);
     moved += 1;
   }
   if (tools) {
-    tools.position.x = -side * Math.abs(stage.toolsX);
+    tools.position.x = side * stage.toolsX;
     tools.position.z = towardBoard * stage.toolsZ;
-    tools.userData.warRoomHansHearthSide = 'opposite-service-door';
+    tools.userData.warRoomHansHearthSide = stage.toolsX > 0 ? 'service-aisle' : 'opposite-service-door';
     tools.userData.warRoomHansHearthDepth = 'rear-wall-v1';
     moved += 1;
   }
   const kit = fireplace.getObjectByName?.('war-room-hans-hearth-kit');
   if (kit) {
-    kit.userData.warRoomHansServiceDoorClearance = 'opposite-side-v1';
+    kit.userData.warRoomHansServiceDoorClearance = stage.basketX > 0
+      ? 'authored-service-aisle-v4'
+      : 'opposite-side-v1';
     kit.userData.warRoomHansHearthDepth = 'rear-wall-v1';
   }
   return moved;
@@ -294,6 +298,7 @@ function remapWorkingFrameInPlace(frame, timelineT, stage = WAR_ROOM_HANS_CLASSI
   if (!frame?.hansVisible) return frame;
   const HEARTH_BASKET_X = stage.basketX;
   const HEARTH_TOOLS_X = stage.toolsX;
+  const FIRE_WORK_X = stage.fireWorkX ?? 0.9;
   const ARMOR_BYPASS_X = stage.bypassX;
   const QUICK_DOOR_X = stage.doorX;
   frame.hansZ = stage.workZ;
@@ -308,7 +313,7 @@ function remapWorkingFrameInPlace(frame, timelineT, stage = WAR_ROOM_HANS_CLASSI
   } else if (frame.phase === 'carry-log') {
     const local = Math.max(0, timelineT - 12);
     const walkP = smoothstep01((local - CARRY_LOG_TURN_SECONDS) / (3 - CARRY_LOG_TURN_SECONDS));
-    frame.hansX = lerp(HEARTH_BASKET_X, 0.9, walkP);
+    frame.hansX = lerp(HEARTH_BASKET_X, FIRE_WORK_X, walkP);
     frame.stride = local < CARRY_LOG_TURN_SECONDS
       ? 0
       : Math.sin((local - CARRY_LOG_TURN_SECONDS) * 3.2) * 0.13;
@@ -318,7 +323,7 @@ function remapWorkingFrameInPlace(frame, timelineT, stage = WAR_ROOM_HANS_CLASSI
     frame.orientationTarget = 'fire';
   } else if (frame.phase === 'place-log') {
     const p = clamp01((timelineT - 15) / 2);
-    frame.hansX = 0.9;
+    frame.hansX = FIRE_WORK_X;
     frame.crouch = Math.sin(p * Math.PI) * 0.12;
     frame.leftArm = -0.66 - p * 0.26;
     frame.rightArm = -0.72 - p * 0.44;
@@ -326,7 +331,7 @@ function remapWorkingFrameInPlace(frame, timelineT, stage = WAR_ROOM_HANS_CLASSI
   } else if (frame.phase === 'take-poker') {
     const local = Math.max(0, timelineT - 17);
     const walkP = smoothstep01((local - POKER_OUTBOUND_TURN_SECONDS) / (2 - POKER_OUTBOUND_TURN_SECONDS));
-    frame.hansX = lerp(0.9, HEARTH_TOOLS_X, walkP);
+    frame.hansX = lerp(FIRE_WORK_X, HEARTH_TOOLS_X, walkP);
     frame.stride = local < POKER_OUTBOUND_TURN_SECONDS
       ? 0
       : Math.sin((local - POKER_OUTBOUND_TURN_SECONDS) * 3.05) * 0.12;
@@ -338,7 +343,7 @@ function remapWorkingFrameInPlace(frame, timelineT, stage = WAR_ROOM_HANS_CLASSI
   } else if (frame.phase === 'stoke-fire') {
     const local = Math.max(0, timelineT - 19);
     const walkP = smoothstep01(local / POKER_RETURN_TO_FIRE_SECONDS);
-    frame.hansX = lerp(HEARTH_TOOLS_X, 0.92, walkP);
+    frame.hansX = lerp(HEARTH_TOOLS_X, FIRE_WORK_X, walkP);
     frame.stride = local < POKER_RETURN_TO_FIRE_SECONDS ? Math.sin(local * 3.05) * 0.12 : 0;
     frame.stoke = local < POKER_RETURN_TO_FIRE_SECONDS ? 0 : frame.stoke;
     frame.rightArm = local < POKER_RETURN_TO_FIRE_SECONDS ? -0.42 : frame.rightArm;
@@ -347,7 +352,7 @@ function remapWorkingFrameInPlace(frame, timelineT, stage = WAR_ROOM_HANS_CLASSI
   } else if (frame.phase === 'return-poker') {
     const local = Math.max(0, timelineT - 24);
     const walkP = smoothstep01(local / 1.5);
-    frame.hansX = lerp(0.92, HEARTH_TOOLS_X, walkP);
+    frame.hansX = lerp(FIRE_WORK_X, HEARTH_TOOLS_X, walkP);
     frame.stride = local < 1.42 ? Math.sin(local * 2.95) * 0.11 : 0;
     frame.carryPoker = local < 1.28;
     frame.rightArm = lerp(-0.38, -0.08, clamp01(local / 1.5));
@@ -363,7 +368,10 @@ function remapWorkingFrameInPlace(frame, timelineT, stage = WAR_ROOM_HANS_CLASSI
     frame.hansZ = point.z;
     frame.route = 'stage-leave';
     frame.routeProgress = p;
-    frame.doorOpen = smoothstep01((p - 0.72) / 0.18);
+    // V2 opens its physical leaf before Hans crosses into the alcove.
+    frame.doorOpen = stage.id === 'v2-blender-hall'
+      ? smoothstep01((p - 0.40) / 0.20)
+      : smoothstep01((p - 0.72) / 0.18);
     frame.facingTarget = 'path';
     frame.pathAheadX = point.aheadX;
     frame.pathAheadZ = point.aheadZ;
@@ -417,7 +425,11 @@ export function writeHansQuickIterationFrame(
     resetQuickFrameExtras(frame, stage);
     const entryStart = coarsePointer ? MOBILE_QUICK_ENTRY_VISIBLE_PROGRESS : 0;
     const eased = lerp(entryStart, 1, smoothstep01(elapsed / entrySeconds));
-    const closeDoor = smoothstep01(Math.max(0, (elapsed - 1.8) / 2.4));
+    // V2 enters through a real wall from the alcove. Hold the door until
+    // the actor clears the threshold; V1/V3/V4 retain their old timing.
+    const closeDoor = stage.id === 'v2-blender-hall'
+      ? smoothstep01(Math.max(0, (elapsed - 4.3) / 2.4))
+      : smoothstep01(Math.max(0, (elapsed - 1.8) / 2.4));
     frame.phase = 'fire-dimming';
     frame.active = true;
     frame.hansVisible = true;

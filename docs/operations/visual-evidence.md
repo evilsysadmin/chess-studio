@@ -132,7 +132,7 @@ un proceso Playwright nuevo del **runner 3**, y la captura WebGL desktop de 4 mi
 ejecuta en otro proceso nuevo del mismo runner. El resto de pruebas se reparte mediante `--shard` con un filtro
 complementario `--grep-invert`. Se usan **ocho subshards** ponderados de acuerdo
 con las mediciones del gate de tres runners en la #5606: runner 1 recibe `1,4,7,8`;
-runner 2 recibe `2,3,5`; runner 3 recibe `6` más los dos canaries. Cada proceso contiene
+runner 2 recibía `2,3,5`; runner 3 recibía `6` más los dos canaries (distribución histórica). Cada proceso contiene
 un máximo aproximado de cinco casos:
 reiniciar Chromium periódicamente limita la acumulación de contextos SwiftShader
 y aísla el fallo que aparecía al final de una serie larga de capturas.
@@ -175,3 +175,19 @@ mueve el grupo 4 (~6m30s) al runner 1 y los grupos 2/3 al 2, dejando el runner 3
 para el canary WebGL desktop (~4m), el canary menú y el grupo 6 (~4m36s).
 Es una hipótesis de ~10m basada en esos tiempos, no un resultado acreditado:
 volver a medir los tres runners y revisar los 141 PNG del SHA exacto.
+
+Reequilibrio tras #5642 (15-10-2026): con la ficha y las consultas CDP optimizadas,
+las mediciones wall-clock por runner fueron **6m54s / 9m55s / 4m17s**.
+La primera hipótesis movió el grupo 2 (~3m54s) al runner 3, pero el SHA
+`ebc6a329` **falló realmente**: tras los canaries, Home se quedó en `LOADING`
+y el caso `Rookwood side quest walk · desktop-1440x900` agotó sus 60s.
+No se ocultó el fallo con retries, ni se aceptó esa versión.
+
+Reparto corregido y sujeto a nuevo gate visual:
+**runner 1: `1,3,4,7,8`; runner 2: `2,5`; runner 3: canaries aislados + `6`**.
+Se mueve el grupo 3 (~1m24s) al runner 1, antes del grupo pesado 4;
+el runner 2 conserva el grupo 2 en entorno fresco y runner 3 mantiene el
+orden previamente probado. Los ocho grupos siguen siendo exclusivos.
+El cuello de botella esperado es ~8m30s, **sólo una predicción**, que deberá
+confirmarse con tres jobs + agregador GREEN, 40/40 tests y las **169 rutas PNG**
+del baseline vigente intactas.

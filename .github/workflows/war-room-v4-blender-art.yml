@@ -1,12 +1,19 @@
 name: War Room v4 · Blender art
 
+# Shared visual-capture test-only edits are handled by V4 immutable R2 pin and App visual.
+# Rebuild authored Blender geometry only when the authored scene or its
+# dedicated Hans test or authored-model proof helper changes.
 on:
   pull_request:
     paths:
       - 'scripts/blender/build_war_room_premium.py'
       - 'scripts/blender/build_war_room_v4.py'
+      - 'scripts/blender/render_war_room_v4_hybrid_preview.py'
       - 'scripts/blender/configure_eevee_premium.py'
       - 'scripts/blender/publish_war_room_v4.py'
+      - 'e2e/v4-immutable-model.js'
+      - 'e2e/war-room-v4-hans-clearance-visual.spec.js'
+      - 'frontend/src/components/WarRoomHansActorTelemetry.js'
       - '.github/workflows/war-room-v4-blender-art.yml'
   push:
     branches:
@@ -14,8 +21,12 @@ on:
     paths:
       - 'scripts/blender/build_war_room_premium.py'
       - 'scripts/blender/build_war_room_v4.py'
+      - 'scripts/blender/render_war_room_v4_hybrid_preview.py'
       - 'scripts/blender/configure_eevee_premium.py'
       - 'scripts/blender/publish_war_room_v4.py'
+      - 'e2e/v4-immutable-model.js'
+      - 'e2e/war-room-v4-hans-clearance-visual.spec.js'
+      - 'frontend/src/components/WarRoomHansActorTelemetry.js'
       - '.github/workflows/war-room-v4-blender-art.yml'
   workflow_dispatch:
 
@@ -53,6 +64,24 @@ jobs:
             --glb /tmp/war-room-v4/war-room-v4-shell.glb \
             --preview /tmp/war-room-v4/war-room-v4-preview.png \
             --manifest /tmp/war-room-v4/war-room-v4-manifest.json
+
+      # This second render reads the Blender scene only. The hero PNG and
+      # published/exported GLB above are not touched; it is an optical A/B.
+      - name: Validate V4 hybrid desktop camera contract
+        run: python3 -S scripts/blender/render_war_room_v4_hybrid_preview.py --check-contract
+
+      - name: Render V4 hybrid optical comparison from authored scene
+        env:
+          LIBGL_ALWAYS_SOFTWARE: '1'
+        run: |
+          set -euo pipefail
+          blender --background /tmp/war-room-v4/war-room-v4.blend \
+            --python-exit-code 1 \
+            --python scripts/blender/render_war_room_v4_hybrid_preview.py -- \
+            --preview /tmp/war-room-v4/war-room-v4-preview-hybrid.png \
+            --report /tmp/war-room-v4/war-room-v4-preview-hybrid-camera.json
+          test -s /tmp/war-room-v4/war-room-v4-preview-hybrid.png
+          test -s /tmp/war-room-v4/war-room-v4-preview-hybrid-camera.json
 
       - name: Validate generated artifact envelope
         run: |
@@ -101,6 +130,12 @@ jobs:
 
           image = Image.open(preview).convert('RGB')
           assert image.size == (1600, 900), image.size
+          hybrid = Image.open(root / 'war-room-v4-preview-hybrid.png').convert('RGB')
+          assert hybrid.size == image.size, hybrid.size
+          optics = json.loads((root / 'war-room-v4-preview-hybrid-camera.json').read_text())
+          assert optics['experiment'] == 'war-room-v4-hybrid-blender-camera-preview-only'
+          assert optics['canonical_hero_preserved'] and optics['glb_unmodified']
+          assert 44 < optics['camera']['pitch_deg'] < 52
           assert max(channel[1] for channel in image.getextrema()) > 80
           data = json.loads(manifest.read_text())
           assert data['contract'] == 'war-room-golden-observatory-v4'
@@ -136,6 +171,19 @@ jobs:
           assert 'WR4_OBS_window_moon' not in source_names
           PY
 
+
+      - name: Audit exported V4 GLB geometry
+        run: |
+          set -euo pipefail
+          python3 -S scripts/blender/war_room_glb_census.py \
+            /tmp/war-room-v4/war-room-v4-shell.glb \
+            --top 20 \
+            --max-triangles 123000 \
+            --max-bytes 3450000 \
+            --output-json /tmp/war-room-v4/war-room-v4-geometry-census.json \
+            --summary-file "$GITHUB_STEP_SUMMARY"
+          test -s /tmp/war-room-v4/war-room-v4-geometry-census.json
+
       - name: Publish War Room v4 shell
         if: github.event_name == 'workflow_dispatch' || github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository)
         env:
@@ -154,5 +202,52 @@ jobs:
           name: war-room-v4-${{ github.event.pull_request.number || github.run_number }}
           path: /tmp/war-room-v4/
           if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
+
+  runtime-visual-proof:
+    name: V4 · exact GLB in real browser
+    needs: render
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      VITE_WAR_ROOM_VARIANTS_ENABLE: '1'
+      VITE_APP_VISUAL_CAPTURE: 'true'
+      APP_VISUAL_ARTIFACT: '1'
+      APP_VISUAL_WARROOM_VARIANTS: 'v4'
+      APP_VISUAL_EXPECTED_WAR_ROOM_V4_REVISION: ${{ github.event.pull_request.head.sha }}
+      APP_VISUAL_AUTHORED_WAR_ROOM_V4_GLB: ${{ github.workspace }}/.artifacts/war-room-v4-authored/war-room-v4-shell.glb
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      # Test the *same bytes* generated by the render job. The production
+      # manifest can legitimately pin a different older content hash.
+      - uses: actions/download-artifact@v7
+        with:
+          name: war-room-v4-${{ github.event.pull_request.number }}
+          path: ${{ github.workspace }}/.artifacts/war-room-v4-authored
+
+      - name: Verify exact V4 GLB handoff to browser
+        run: |
+          test -s "$APP_VISUAL_AUTHORED_WAR_ROOM_V4_GLB"
+          sha256sum "$APP_VISUAL_AUTHORED_WAR_ROOM_V4_GLB"
+
+      - uses: ./.github/actions/setup-browser-e2e
+        with:
+          browser-scope: chromium
+
+      - name: Capture V4 with exact authored PR model · desktop and Android
+        working-directory: e2e
+        run: ./node_modules/.bin/playwright test war-room-visual-artifact.spec.js war-room-v4-hans-clearance-visual.spec.js --workers=1
+
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: war-room-v4-runtime-${{ github.event.pull_request.number }}
+          path: .artifacts/app-visual/war-room-v4*
+          if-no-files-found: warn
           retention-days: 7
           compression-level: 0

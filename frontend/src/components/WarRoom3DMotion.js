@@ -40,6 +40,18 @@ const warRoomMaterialGradeSignatureState = new WeakMap();
 const warRoomMaterialGradeObjectIds = new WeakMap();
 let nextWarRoomMaterialGradeObjectId = 1;
 
+// Fixed quality preferences never create an adaptive governor. In that case
+// preserve the normal shadow cadence instead of reading .tier on undefined.
+export function warRoomInteractionCoarsePointer(scene) {
+  // Read the real matchMedia result published by Board3DCore, not an indirect
+  // guess from shadow-map dimensions or the software/lite renderer quality.
+  return scene?.userData?.warRoomInteractionCoarsePointer === true;
+}
+
+export function warRoomShadowFactorForGovernor(governor) {
+  return warRoomShadowIntervalFactor(governor?.tier);
+}
+
 export function materialGradeRefreshInterval({ activeMotion = false } = {}) {
   // Historical cadence helper retained for compatibility with existing callers
   // and tests. The War Room render path no longer uses this timer: material
@@ -79,8 +91,11 @@ export function applyWarRoomHemisphereGrade(scene, { coarsePointer = false } = {
   }
   if (!hemisphere) return null;
   hemisphere.intensity = warRoomHemisphereIntensity({ coarsePointer });
-  if (typeof hemisphere.color?.setHex === 'function') hemisphere.color.setHex(0xffe4c4);
-  if (typeof hemisphere.groundColor?.setHex === 'function') hemisphere.groundColor.setHex(0x1b120d);
+  // The light is graded on each painted frame. Three.js Color.setHex does
+  // real color-space work even for an identical value. Preserve the authored
+  // colors and reapply them if another owner changes either channel.
+  setWarRoomColorIfChanged(hemisphere.color, 0xffe4c4);
+  setWarRoomColorIfChanged(hemisphere.groundColor, 0x1b120d);
   scene.userData.warRoomHemisphereIntensity = hemisphere.intensity;
   scene.userData.warRoomLightingGrade = 'warm-club-v2';
   return hemisphere;
@@ -98,6 +113,13 @@ export function warRoomV2RuntimeLightingProfile({ coarsePointer = false } = {}) 
   };
 }
 
+// Three.js Color.setHex is not a no-op even for an identical value; avoid
+// redundant sRGB conversion and scene color writes on each War Room paint.
+function setWarRoomColorIfChanged(color, hex) {
+  if (typeof color?.setHex !== 'function') return;
+  if (color.getHex?.() !== hex) color.setHex(hex);
+}
+
 export function applyWarRoomV2RuntimeLightingGrade(
   scene,
   renderer,
@@ -111,8 +133,8 @@ export function applyWarRoomV2RuntimeLightingGrade(
   if (!scene || scene.userData?.warRoomRenderedVariant !== 'v2') return null;
   const profile = warRoomV2RuntimeLightingProfile({ coarsePointer });
 
-  if (typeof scene.background?.setHex === 'function') scene.background.setHex(profile.background);
-  if (scene.fog?.isFogExp2 && typeof scene.fog.color?.setHex === 'function') scene.fog.color.setHex(profile.fog);
+  setWarRoomColorIfChanged(scene.background, profile.background);
+  if (scene.fog?.isFogExp2) setWarRoomColorIfChanged(scene.fog.color, profile.fog);
   if (hemisphere) hemisphere.intensity = profile.hemisphere;
   if (key && Number.isFinite(key.intensity)) key.intensity = Math.min(key.intensity, profile.keyMax);
   if (warmFill && Number.isFinite(warmFill.intensity)) warmFill.intensity = Math.min(warmFill.intensity, profile.warmMax);
@@ -134,8 +156,13 @@ export function warRoomAtmosphereProfile() {
 export function applyWarRoomAtmosphereGrade(scene) {
   if (!scene) return null;
   const profile = warRoomAtmosphereProfile();
-  if (typeof scene.background?.setHex === 'function') scene.background.setHex(profile.background);
-  if (scene.fog?.isFogExp2 && typeof scene.fog.color?.setHex === 'function') scene.fog.color.setHex(profile.fog);
+  // V2 owns its darker atmosphere. Don't change both colors to the generic
+  // warm grade only for the V2 pass to immediately set them back every frame.
+  // Keep telemetry metadata and the generic grade for all other variants.
+  if (scene.userData?.warRoomRenderedVariant !== 'v2') {
+    setWarRoomColorIfChanged(scene.background, profile.background);
+    if (scene.fog?.isFogExp2) setWarRoomColorIfChanged(scene.fog.color, profile.fog);
+  }
   scene.userData ||= {};
   scene.userData.warRoomAtmosphereGrade = profile.grade;
   scene.userData.warRoomBackgroundColor = profile.background;
@@ -168,9 +195,16 @@ export function applyWarRoomKeyLightGrade(scene) {
   // profile and ambient lift, not from tinting every surface amber.
   const whiteSide = (Number(key.position?.z) || 0) >= 0;
   const pose = warRoomKeyLightPose({ whiteSide });
-  if (typeof key.position?.set === 'function') key.position.set(pose.x, pose.y, pose.z);
-  else if (key.position) Object.assign(key.position, pose);
-  if (typeof key.color?.setHex === 'function') key.color.setHex(0xffd8ac);
+  // Preserve the authored pose, but avoid redundant Three.js transform/color
+  // mutations on each ambient paint. Reapply immediately if another owner
+  // actually moves or recolors the light (e.g. a variant/orientation change).
+  if (key.position && (key.position.x !== pose.x || key.position.y !== pose.y || key.position.z !== pose.z)) {
+    if (typeof key.position.set === 'function') key.position.set(pose.x, pose.y, pose.z);
+    else Object.assign(key.position, pose);
+  }
+  if (typeof key.color?.setHex === 'function' && key.color.getHex?.() !== 0xffd8ac) {
+    key.color.setHex(0xffd8ac);
+  }
 
   scene.userData ||= {};
   scene.userData.warRoomKeyLightPose = 'high-side-v1';
@@ -213,9 +247,13 @@ export function applyWarRoomWarmFillGrade(scene) {
   }
   const keyZ = Number(scene.userData?.warRoomKeyLightPosition?.z ?? key?.position?.z) || 0;
   const pose = warRoomWarmFillPose({ whiteSide: keyZ >= 0 });
-  if (typeof warm.position?.set === 'function') warm.position.set(pose.x, pose.y, pose.z);
-  else if (warm.position) Object.assign(warm.position, pose);
-  if (typeof warm.color?.setHex === 'function') warm.color.setHex(0xffb45f);
+  if (warm.position && (warm.position.x !== pose.x || warm.position.y !== pose.y || warm.position.z !== pose.z)) {
+    if (typeof warm.position.set === 'function') warm.position.set(pose.x, pose.y, pose.z);
+    else Object.assign(warm.position, pose);
+  }
+  if (typeof warm.color?.setHex === 'function' && warm.color.getHex?.() !== 0xffb45f) {
+    warm.color.setHex(0xffb45f);
+  }
 
   scene.userData ||= {};
   scene.userData.warRoomRankSeparation = 'lateral-graze-ranks-v3';
@@ -325,20 +363,21 @@ function materialGradeObjectIdentity(object) {
 
 export function warRoomMaterialGradeDynamicSignature(root) {
   if (!root?.children) return '';
-  return root.children
-    .filter((child) => child?.isGroup)
-    .map((group) => {
-      const children = group.children || [];
-      const first = children[0] || null;
-      const last = children.length ? children[children.length - 1] : null;
-      return [
-        materialGradeObjectIdentity(group),
-        children.length,
-        materialGradeObjectIdentity(first),
-        materialGradeObjectIdentity(last),
-      ].join(':');
-    })
-    .join('|');
+  // This runs on ambient paints too. The former first/last-only signature
+  // missed a replaced *middle* piece in a stable-sized group, leaving its new
+  // material ungraded until a later move. Include every direct-child identity
+  // in order; preserve the no-array, single-pass render hot path.
+  let signature = '';
+  for (const group of root.children) {
+    if (!group?.isGroup) continue;
+    const children = group.children || [];
+    if (signature) signature += '|';
+    signature += `${materialGradeObjectIdentity(group)}:${children.length}`;
+    for (const child of children) {
+      signature += `:${materialGradeObjectIdentity(child)}`;
+    }
+  }
+  return signature;
 }
 
 export function shouldRunWarRoomMaterialGrade(scene) {
@@ -457,39 +496,116 @@ export function applyWarRoomMaterialGrade(scene, { coarsePointer = false } = {})
   return { adjusted, ivory, canonicalIvory, lightTile, canonicalLightTile, profile };
 }
 
-function installWarRoomRenderDiscipline() {
-  const prototype = THREE.WebGLRenderer?.prototype;
-  if (!prototype || prototype[WAR_ROOM_RENDER_DISCIPLINE]) return;
+// The render discipline publishes stable inspection labels every room paint.
+// Writing an unchanged data-* attribute still schedules a DOM mutation. Keep
+// the exact same observable values while skipping redundant writes.
+export function writeWarRoomCanvasTelemetry(canvas, key, value) {
+  const dataset = canvas?.dataset;
+  if (!dataset) return false;
+  const next = String(value);
+  if (dataset[key] === next) return false;
+  dataset[key] = next;
+  return true;
+}
 
-  const originalRender = prototype.render;
-  Object.defineProperty(prototype, WAR_ROOM_RENDER_DISCIPLINE, {
+/**
+ * The War Room budgets depth passes manually during its own renderer.render.
+ * Do not leave autoUpdate disabled on the shared renderer object afterward:
+ * a later non-War-Room scene must keep its original shadow policy. Preserve
+ * Three's needsUpdate handling; only the temporary autoUpdate override belongs
+ * to this wrapper, even when rendering throws.
+ */
+/**
+ * The canvas and Three.Scene may survive a Blender room switch. The previous
+ * room's throttled shadow timestamp must not suppress the new room's first
+ * depth pass; likewise its frame cadence/governor must not penalize entry.
+ * Reset only on a scene identity or rendered-variant transition, never on an
+ * ordinary idle/animation paint of the same room.
+ */
+export function warRoomShadowStateForScene(renderer, scene) {
+  const variant = scene?.userData?.warRoomRenderedVariant ?? 'classic';
+  const existing = shadowRefreshState.get(renderer);
+  if (existing?.scene === scene && existing?.variant === variant) return existing;
+  const fresh = {
+    scene,
+    variant,
+    lastShadowAt: Number.NEGATIVE_INFINITY,
+    lastRenderAt: Number.NaN,
+    slowFrameCount: 0,
+  };
+  shadowRefreshState.set(renderer, fresh);
+  return fresh;
+}
+
+/**
+ * CPU-verifiable depth-pass request. Three consumes needsUpdate when drawing;
+ * this helper only requests the pass on budget expiry or the first frame of a
+ * different room (whose state has just been reset).
+ */
+export function requestWarRoomShadowRefresh(shadowMap, state, {
+  now,
+  coarsePointer = false,
+  activeMotion = false,
+} = {}) {
+  if (!shadowMap || !state) return false;
+  if (!shouldRefreshShadowMap({
+    now,
+    lastShadowAt: state.lastShadowAt,
+    coarsePointer,
+    activeMotion,
+    factor: warRoomShadowFactorForGovernor(state.governor),
+  })) return false;
+  shadowMap.needsUpdate = true;
+  state.lastShadowAt = now;
+  return true;
+}
+
+export function renderWarRoomWithScopedShadowUpdates(renderer, originalRender, scene, camera) {
+  const shadowMap = renderer?.shadowMap;
+  if (!shadowMap) return originalRender.call(renderer, scene, camera);
+  const previous = shadowMap.autoUpdate;
+  shadowMap.autoUpdate = false;
+  try {
+    return originalRender.call(renderer, scene, camera);
+  } finally {
+    shadowMap.autoUpdate = previous;
+  }
+}
+
+export function installWarRoomRenderDiscipline(renderer) {
+  // Three r186 defines render on each WebGLRenderer instance. Patching the
+  // prototype is inert, so the former global hook never budgeted real frames.
+  if (!renderer || typeof renderer.render !== 'function'
+    || Object.prototype.hasOwnProperty.call(renderer, WAR_ROOM_RENDER_DISCIPLINE)) return false;
+  const originalRender = renderer.render;
+  Object.defineProperty(renderer, WAR_ROOM_RENDER_DISCIPLINE, {
     value: true,
     configurable: false,
     enumerable: false,
     writable: false,
   });
 
-  prototype.render = function renderWithWarRoomShadowBudget(scene, camera) {
+  renderer.render = function renderWithWarRoomShadowBudget(scene, camera) {
     const budget = scene?.userData?.warRoomRenderBudget;
     if (!budget || !this.shadowMap) return originalRender.call(this, scene, camera);
 
-    const coarsePointer = Number(budget.shadowMapSize) <= 512;
+    const coarsePointer = warRoomInteractionCoarsePointer(scene);
     const atmosphere = applyWarRoomAtmosphereGrade(scene);
     if (atmosphere && this.domElement?.dataset) {
-      this.domElement.dataset.warRoomAtmosphereGrade = atmosphere.grade;
+      writeWarRoomCanvasTelemetry(this.domElement, 'warRoomAtmosphereGrade', atmosphere.grade);
     }
     const hemisphere = applyWarRoomHemisphereGrade(scene, { coarsePointer });
     if (hemisphere && this.domElement?.dataset) {
-      this.domElement.dataset.warRoomLightHemisphere = Number(hemisphere.intensity).toFixed(2);
+      writeWarRoomCanvasTelemetry(this.domElement, 'warRoomLightHemisphere', Number(hemisphere.intensity).toFixed(2));
     }
     const boardKey = applyWarRoomKeyLightGrade(scene);
     if (boardKey && this.domElement?.dataset) {
-      this.domElement.dataset.warRoomKeyLightPose = 'high-side-v1';
-      this.domElement.dataset.warRoomLightingGrade = 'warm-club-v2';
+      writeWarRoomCanvasTelemetry(this.domElement, 'warRoomKeyLightPose', 'high-side-v1');
+      writeWarRoomCanvasTelemetry(this.domElement, 'warRoomLightingGrade', 'warm-club-v2');
     }
     const warmFill = applyWarRoomWarmFillGrade(scene);
     if (warmFill && this.domElement?.dataset) {
-      this.domElement.dataset.warRoomRankSeparation = 'lateral-graze-ranks-v3';
+      writeWarRoomCanvasTelemetry(this.domElement, 'warRoomRankSeparation', 'lateral-graze-ranks-v3');
     }
     const v2Lighting = applyWarRoomV2RuntimeLightingGrade(scene, this, {
       coarsePointer,
@@ -498,18 +614,13 @@ function installWarRoomRenderDiscipline() {
       warmFill,
     });
     if (v2Lighting && this.domElement?.dataset) {
-      this.domElement.dataset.warRoomV2LightingGrade = v2Lighting.grade;
-      this.domElement.dataset.warRoomV2Exposure = Number(v2Lighting.exposure).toFixed(2);
+      writeWarRoomCanvasTelemetry(this.domElement, 'warRoomV2LightingGrade', v2Lighting.grade);
+      writeWarRoomCanvasTelemetry(this.domElement, 'warRoomV2Exposure', Number(v2Lighting.exposure).toFixed(2));
     }
     const now = typeof performance !== 'undefined' && typeof performance.now === 'function'
       ? performance.now()
       : Date.now();
-    const state = shadowRefreshState.get(this) || {
-      lastShadowAt: Number.NEGATIVE_INFINITY,
-      lastRenderAt: Number.NaN,
-      slowFrameCount: 0,
-    };
-    shadowRefreshState.set(this, state);
+    const state = warRoomShadowStateForScene(this, scene);
 
     const frameMs = Number.isFinite(state.lastRenderAt) ? now - state.lastRenderAt : 16;
     const activeMotion = Number.isFinite(state.lastRenderAt) && frameMs < 50;
@@ -523,11 +634,11 @@ function installWarRoomRenderDiscipline() {
     if (shouldRunWarRoomMaterialGrade(scene)) {
       const materialGrade = applyWarRoomMaterialGrade(scene, { coarsePointer });
       if (materialGrade.profile && this.domElement?.dataset) {
-        this.domElement.dataset.warRoomIblIvory = Number(materialGrade.profile.ivoryEnvMax).toFixed(2);
-        this.domElement.dataset.warRoomIblLightTile = Number(materialGrade.profile.lightTileEnvMax).toFixed(2);
-        this.domElement.dataset.warRoomSurfaceGrade = scene.userData?.warRoomSurfaceGrade || 'aged-matte-v2';
-        this.domElement.dataset.warRoomMaterialGrade = 'dynamic-groups-v1';
-        this.domElement.dataset.warRoomCanonicalIvoryProtected = String(materialGrade.canonicalIvory || 0);
+        writeWarRoomCanvasTelemetry(this.domElement, 'warRoomIblIvory', Number(materialGrade.profile.ivoryEnvMax).toFixed(2));
+        writeWarRoomCanvasTelemetry(this.domElement, 'warRoomIblLightTile', Number(materialGrade.profile.lightTileEnvMax).toFixed(2));
+        writeWarRoomCanvasTelemetry(this.domElement, 'warRoomSurfaceGrade', scene.userData?.warRoomSurfaceGrade || 'aged-matte-v2');
+        writeWarRoomCanvasTelemetry(this.domElement, 'warRoomMaterialGrade', 'dynamic-groups-v1');
+        writeWarRoomCanvasTelemetry(this.domElement, 'warRoomCanonicalIvoryProtected', String(materialGrade.canonicalIvory || 0));
       }
     }
 
@@ -549,23 +660,19 @@ function installWarRoomRenderDiscipline() {
     // The scene can keep its premium ambient heartbeat without paying the full
     // directional-shadow pass on every idle paint. Contiguous motion restores the
     // tighter cadence so piece movement still gets responsive real shadows.
-    this.shadowMap.autoUpdate = false;
-    if (shouldRefreshShadowMap({
-      now,
-      lastShadowAt: state.lastShadowAt,
-      coarsePointer,
-      activeMotion,
-      factor: warRoomShadowIntervalFactor(state.governor.tier),
-    })) {
-      this.shadowMap.needsUpdate = true;
-      state.lastShadowAt = now;
-    }
+    requestWarRoomShadowRefresh(this.shadowMap, state, { now, coarsePointer, activeMotion });
 
-    return originalRender.call(this, scene, camera);
+    return renderWarRoomWithScopedShadowUpdates(this, originalRender, scene, camera);
   };
+  return true;
 }
 
-installWarRoomRenderDiscipline();
+/** Keep renderer construction and its shadow discipline out of Board3DCore. */
+export function createWarRoomRenderer(parameters) {
+  const renderer = new THREE.WebGLRenderer(parameters);
+  installWarRoomRenderDiscipline(renderer);
+  return renderer;
+}
 
 // The v4 golden is a warm, luminous observatory. This is the lighting path the
 // runtime actually applies (initial scene, move animation and check/game-over

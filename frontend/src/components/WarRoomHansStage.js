@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { disposeObject } from './Board3DPieces.js';
 import { runWarRoomHansBlenderPostInstall } from './WarRoomHansBlenderPostInstall.js';
 import { WAR_ROOM_HANS_CLASSIC_STAGE, installWarRoomHansSceneRoutine } from './WarRoomHansIteration.js';
 
@@ -90,6 +91,11 @@ export function readWarRoomHansStageAnchors(shellRoot, { id = 'blender-room' } =
     toolsX: tools[0],
     toolsZ: tools[1],
     entrySeconds: 11,
+    // V4 works at its west-wall mouth. V2's fireplace is tucked into the
+    // back-left corner: at +0.9 Hans clips the wide v2 command table.
+    // +1.85 moves his working feet into the left service aisle. V3 stays put.
+    fireWorkX: id === WAR_ROOM_HANS_ROOMS.v4.id ? 0
+      : id === WAR_ROOM_HANS_ROOMS.v2.id ? 1.85 : 0.9,
     corridor: Object.freeze([doorLocal, ...corridor.map((anchor) => local(worldPoint(anchor)))].map(Object.freeze)),
   });
   return {
@@ -196,6 +202,10 @@ export function installWarRoomHansVariantStage(scene, {
     status: `${room.id}:${armed ? 'quick' : 'idle'}`,
     release: () => {
       stageGroup.removeFromParent();
+      // The Blender shell's disposer does not own Hans' separately allocated
+      // actor/hearth-kit meshes. Detaching the stage without disposing them
+      // leaked ~86 WebGL geometries on each variant-switch cycle.
+      disposeObject(stageGroup);
       door.release();
       if (shellRoot?.userData) delete shellRoot.userData.warRoomHansFireDimmer;
       if (scene.userData) {

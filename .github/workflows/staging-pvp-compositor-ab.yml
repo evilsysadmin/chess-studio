@@ -11,13 +11,14 @@ on:
         default: default
         options: [default, software]
       comparison:
-        description: 'prehidden tests forced hide; product tests actual modal-scoped CSS'
+        description: 'product/prehidden: opening A/B; native: full post-ready CDP'
         type: choice
         default: product
-        options: [product, prehidden]
+        options: [product, prehidden, native, native-hall-ab]
 
 permissions:
   contents: read
+  actions: read
 
 concurrency:
   group: chess-studio-staging-pvp-compositor-ab
@@ -25,7 +26,7 @@ concurrency:
 
 jobs:
   compare:
-    name: Compare first PvP GET · Home visible/hidden
+    name: Compare PvP A/B or trace post-ready native stall
     runs-on: ubuntu-24.04
     timeout-minutes: 25
     environment:
@@ -49,6 +50,25 @@ jobs:
         with:
           ref: ${{ github.sha }}
           fetch-depth: 1
+
+      - name: Pin native CDP to the last complete staging generation
+        if: inputs.comparison == 'native' || inputs.comparison == 'native-hall-ab'
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -S scripts/staging_pvp_native_generation.py --self-test
+          runtime="$(python3 -S scripts/staging_pvp_native_generation.py --source-sha "$GITHUB_SHA")"
+          echo "DEPLOY_SHA=$runtime" >> "$GITHUB_ENV"
+          git fetch --no-tags --depth=1 origin "$runtime"
+          git -c advice.detachedHead=false checkout --detach "$runtime"
+          # Keep runtime files pinned, but use the current main diagnostic spec.
+          # Otherwise a smoke-only test improvement disappears on checkout.
+          git show "$GITHUB_SHA:e2e/staging-live.spec.js" > e2e/staging-live.spec.js
+          grep -Fq "stopDeepDiagnostics('settled')" e2e/staging-live.spec.js &&
+            grep -Fq 'STAGING_PVP_WEBGL ' e2e/staging-live.spec.js ||
+            { echo "::error::Current native diagnostic spec is missing CDP/WebGL markers"; exit 1; }
 
       - name: Reject stale or non-main runtime
         shell: bash
@@ -76,15 +96,29 @@ jobs:
           restore-frontend-deps: 'false'
           build-frontend: 'false'
 
-      - name: Run paired opening-only A/B with real browser GET and dialog
+      - name: Run A/B openings or one full native CDP diagnosis
         shell: bash
         timeout-minutes: 21
         run: |
           set -euo pipefail
           summary="$RUNNER_TEMP/staging-pvp-ab.txt"
-          printf 'source_sha=%s renderer_requested=%s\n' "$DEPLOY_SHA" "$CHESS_STAGING_RENDERER" > "$summary"
-          if [[ "$PVP_COMPARISON" == product ]]; then control=product-home-canvas; else control=hide-home-canvas; fi
-          for mode in keep-home-canvas "$control" "$control" keep-home-canvas; do
+          printf 'source_sha=%s runtime_sha=%s renderer_requested=%s\n' "$GITHUB_SHA" "$DEPLOY_SHA" "$CHESS_STAGING_RENDERER" > "$summary"
+          if [[ "$PVP_COMPARISON" == native-hall-ab ]]; then
+            modes=(normal block-glb block-glb normal)
+            export CHESS_STAGING_PVP_OPEN_ONLY=0 CHESS_STAGING_CDP_DIAGNOSTICS=1
+          elif [[ "$PVP_COMPARISON" == native ]]; then
+            modes=(off)
+            export CHESS_STAGING_PVP_OPEN_ONLY=0 CHESS_STAGING_CDP_DIAGNOSTICS=1
+          else
+            if [[ "$PVP_COMPARISON" == product ]]; then control=product-home-canvas; else control=hide-home-canvas; fi
+            modes=(keep-home-canvas "$control" "$control" keep-home-canvas)
+          fi
+          for mode in "${modes[@]}"; do
+            hall_mode=normal
+            home_mode="$mode"
+            if [[ "$PVP_COMPARISON" == native-hall-ab ]]; then
+              hall_mode="$mode"; home_mode=off
+            fi
             python3 -S scripts/staging_generation.py wait \
               --sha "$DEPLOY_SHA" --surfaces backend,frontend,worker --attempts 1 --interval 0 --root
             env_file="$(mktemp "$RUNNER_TEMP/staging-pvp-identity.XXXXXXXX")"
@@ -101,7 +135,7 @@ jobs:
             set +e
             (
               cd e2e
-              CHESS_STAGING_PVP_ABLATION="$mode" \
+              CHESS_STAGING_PVP_ABLATION="$home_mode" CHESS_STAGING_PVP_HALL_ABLATION="$hall_mode" \
                 ./node_modules/.bin/playwright test staging-live.spec.js \
                   --config=playwright.staging.config.js
             ) 2>&1 | tee "$leg_log"
@@ -109,7 +143,7 @@ jobs:
             python3 -S scripts/staging_smoke_user_cleanup.py
             cleanup_rc="$?"
             set -e
-            grep -E 'STAGING_PVP_(ABLATION|GPU|OPEN|INPUT_FRAME|RENDER|PHASE)' "$leg_log" >> "$summary" || true
+            grep -E 'STAGING_PVP_(ABLATION|GPU|OPEN|INPUT_FRAME|RENDER|PHASE|DIAGNOSTICS|CPU|NATIVE|WEBGL|LAYERS|HALL_ABLATION|LOAF)' "$leg_log" >> "$summary" || true
             rm -f "$leg_log"
             echo "::endgroup::"
             unset STAGING_E2E_USERNAME STAGING_E2E_PASSWORD
@@ -121,9 +155,15 @@ jobs:
               --sha "$DEPLOY_SHA" --surfaces backend,frontend,worker --attempts 1 --interval 0 --root
           done
           {
-            echo '### PvP compositor A/B — diagnostic only, NOT staging accreditation'
-            echo "Exact SHA: $DEPLOY_SHA; renderer requested: $CHESS_STAGING_RENDERER"
-            echo "Order: keep / $control / $control / keep. Opening-only, NOT canonical smoke."
+            echo '### PvP manual diagnostic — no deployment or accreditation'
+            echo "Source: $GITHUB_SHA; deployed runtime: $DEPLOY_SHA; renderer: $CHESS_STAGING_RENDERER"
+            if [[ "$PVP_COMPARISON" == native-hall-ab ]]; then
+              echo 'Native Hall A/B: normal / blocked GLB / blocked GLB / normal; CDP opt-in; no product assets changed.'
+            elif [[ "$PVP_COMPARISON" == native ]]; then
+              echo 'Native: runtime pinned; current-main diagnostic; one smoke, CDP 20s max.'
+            else
+              echo "A/B: keep / $control / $control / keep, opening-only."
+            fi
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Retry cleanup after any interrupted leg

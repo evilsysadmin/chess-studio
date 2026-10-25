@@ -27,25 +27,38 @@ function installMoveLightRollback(group) {
   const body = group.children.find((child) => child.userData?.board3DBodyMotionBody);
   if (!body) return group;
 
+  // Every visible body mesh receives an onBeforeRender callback. Cache the
+  // target per piece, not per callback: the square normally stays unchanged
+  // for dozens of renders, yet the guard must still check movement every time.
+  let cachedSquare = null;
+  let cachedTarget = null;
   let wrapped = 0;
   body.traverse((child) => {
     if (!child?.isMesh) return;
     const previous = child.onBeforeRender;
-    child.onBeforeRender = function onBeforeRender(...args) {
-      const scene = args[1];
+    // The Three.js render hook has six fixed parameters. Do not allocate a
+    // rest array for every rendered mesh, every frame; forward the original
+    // hook's arguments and receiver unchanged.
+    child.onBeforeRender = function onBeforeRender(renderer, scene, camera, geometry, material, objectGroup) {
       const targetSquare = String(group.userData?.square || '');
       if (scene?.isScene && targetSquare) {
-        const target = squarePosition(targetSquare);
-        const remaining = Math.hypot(target.x - group.position.x, target.z - group.position.z);
+        if (targetSquare !== cachedSquare) {
+          cachedSquare = targetSquare;
+          cachedTarget = squarePosition(targetSquare);
+        }
+        const remaining = Math.hypot(
+          cachedTarget.x - group.position.x,
+          cachedTarget.z - group.position.z,
+        );
         if (remaining > MOVE_EPSILON) {
           if (!hasWarRoomMoveLightGuard(scene, group)) {
-            armWarRoomMoveLightGuard({ scene, owner: group, targetSquare, target });
+            armWarRoomMoveLightGuard({ scene, owner: group, targetSquare, target: cachedTarget });
           }
         } else if (hasWarRoomMoveLightGuard(scene, group)) {
           clearWarRoomMoveLightGuard(scene, group);
         }
       }
-      previous?.apply(this, args);
+      previous?.call(this, renderer, scene, camera, geometry, material, objectGroup);
     };
     wrapped += 1;
   });

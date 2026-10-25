@@ -186,6 +186,17 @@ def self_test() -> None:
     assert "needs.prepare.outputs.smoke_only != 'true'" in workflow
     assert "needs.prepare.outputs.smoke_only == 'true'" in workflow
     assert "needs.backend.result == 'skipped'" in workflow
+    # Stale Cloudflare mutations must not count as an accredited generation.
+    from staging_cloudflare_publish import self_test as cloudflare_publish_self_test
+    cloudflare_publish_self_test()
+    assert "id: pages_publish" in workflow
+    assert 'staging_cloudflare_publish.py pages --sha "$DEPLOY_SHA"' in workflow
+    assert "if: steps.pages_publish.outputs.superseded != 'true'" in workflow
+    assert "id: worker_publish" in workflow
+    assert 'staging_cloudflare_publish.py worker --sha "$DEPLOY_SHA"' in workflow
+    assert "if: steps.worker_publish.outputs.superseded != 'true'" in workflow
+    assert "needs.frontend.outputs.superseded != 'true'" in workflow
+    assert "needs.worker.outputs.superseded != 'true'" in workflow
     assert "needs.frontend.result == 'skipped'" in workflow
     assert "needs.worker.result == 'skipped'" in workflow
     assert "smoke_matrix: ${{ steps.admission.outputs.smoke_matrix }}" in workflow

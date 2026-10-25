@@ -1,0 +1,443 @@
+/* The board and the soldiers own the room. Tactical orders are a readable
+   physical folio, not a collection of full-width dashboard widgets. */
+.combat-briefing-room-shell {
+  isolation: isolate;
+  background: #090c10;
+}
+.combat-briefing-room-intro {
+  position: absolute;
+  z-index: 5;
+  top: 5.1rem;
+  left: 1rem;
+  width: min(37rem, calc(58% - 2rem));
+  padding: .75rem .9rem;
+  border-left: 2px solid rgba(212,176,99,.72);
+  background: linear-gradient(90deg, rgba(5,8,12,.88) 4%, rgba(5,8,12,.42) 80%, transparent);
+  text-shadow: 0 2px 8px #040508;
+  pointer-events: none;
+}
+.combat-briefing-room-intro h2 {
+  margin: .18rem 0 .25rem;
+  font-size: clamp(1.28rem, 2.2vw, 2.15rem);
+  line-height: 1.08;
+}
+.combat-briefing-room-intro p {
+  margin: 0;
+  color: rgba(235,224,202,.78);
+  font-size: .74rem;
+  line-height: 1.4;
+}
+.combat-briefing-room-status {
+  position: absolute;
+  z-index: 6;
+  bottom: 1rem;
+  left: 1rem;
+  display: flex;
+  align-items: center;
+  gap: .35rem;
+  max-width: calc(58% - 2rem);
+  flex-wrap: wrap;
+}
+.combat-briefing-resource-rail {
+  display: flex;
+  align-items: center;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+  gap: .35rem;
+  min-width: 0;
+}
+.combat-briefing-resource-rail > span,
+.combat-briefing-resource-rail > button {
+  display: inline-flex;
+  gap: .3rem;
+  align-items: center;
+  min-height: 44px;
+  padding: .48rem .62rem;
+  color: rgba(237,224,196,.83);
+  border: 1px solid rgba(216,184,117,.27);
+  border-radius: 999px;
+  background: rgba(7,11,13,.82);
+  backdrop-filter: blur(10px);
+  font: .61rem var(--font-mono);
+}
+.combat-briefing-room-status b { color: #f3e6c6; }
+.combat-briefing-resource-rail > button {
+  cursor: pointer;
+  color: #e9c57d;
+}
+.combat-briefing-resource-rail > button:hover,
+.combat-briefing-resource-rail > button:focus-visible {
+  border-color: #e9c57d;
+  outline-offset: 2px;
+}
+.combat-briefing-room-orders {
+  position: absolute;
+  z-index: 7;
+  top: 4.7rem;
+  right: .85rem;
+  bottom: .85rem;
+  width: min(470px, 39%);
+  min-width: 0;
+  padding: 1rem 1.05rem;
+  box-sizing: border-box;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  border: 1px solid rgba(216,180,105,.46);
+  border-radius: 9px 9px 12px 12px;
+  background:
+    linear-gradient(145deg, rgba(61,47,30,.24), transparent 40%),
+    rgba(24,25,23,.95);
+  box-shadow: 0 16px 48px rgba(0,0,0,.48), inset 0 0 0 4px rgba(11,13,12,.25);
+  backdrop-filter: blur(14px);
+}
+.combat-briefing-room-orders .campaign-briefing-card {
+  display: grid;
+  gap: .72rem;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+}
+.combat-briefing-room-orders .campaign-operation-progress { display: none; }
+.combat-briefing-room-orders .campaign-briefing-heading {
+  gap: .5rem;
+}
+.combat-briefing-room-orders .campaign-briefing-heading h3 {
+  font-size: clamp(1.1rem, 1.6vw, 1.42rem);
+  line-height: 1.15;
+}
+.combat-briefing-room-orders .campaign-briefing-command { font: .7rem/1.5 var(--font-body, sans-serif); }
+.combat-briefing-room-orders .campaign-briefing-at-glance {
+  gap: 0;
+  padding: .4rem 0;
+  border-top: 1px solid rgba(219,183,112,.3);
+  border-bottom: 1px solid rgba(219,183,112,.3);
+  background: transparent;
+}
+.combat-briefing-room-orders .campaign-briefing-at-glance > span {
+  min-width: 0;
+  padding: .35rem .4rem;
+  border: 0;
+  border-right: 1px solid rgba(219,183,112,.14);
+  border-radius: 0;
+  background: transparent;
+}
+.combat-briefing-room-orders .campaign-briefing-at-glance > span:last-child { border-right: 0; }
+.combat-briefing-room-orders .campaign-briefing-at-glance b {
+  overflow-wrap: anywhere;
+  font-size: .68rem;
+}
+.combat-briefing-room-orders .campaign-briefing-primary-zone {
+  margin: .08rem 0;
+  padding: .25rem 0 .7rem;
+  border: 0;
+  border-bottom: 1px solid rgba(219,183,112,.2);
+  border-radius: 0;
+  background: transparent;
+}
+.combat-briefing-room-orders .campaign-briefing-primary-zone .campaign-main-cta {
+  width: 100%;
+  min-height: 48px;
+}
+.combat-briefing-room-orders :is(.campaign-rule-alert,.campaign-enemy-officer) {
+  background: rgba(6,9,9,.25);
+  border-radius: 5px;
+}
+.combat-briefing-room-orders .campaign-mission-orders,
+.combat-briefing-room-orders .campaign-optional-panel { min-width: 0; }
+/* Tactically relevant facts remain on the open folio. Secondary dispatches
+   are folded paper leaves, not permanent dashboard cards. */
+.combat-briefing-room-orders :is(.campaign-officer-orders, .campaign-mission-orders-fold, .campaign-standard-rules) {
+  border: 0;
+  border-top: 1px solid rgba(218, 183, 115, .3);
+  border-radius: 0;
+  background: transparent;
+  min-width: 0;
+}
+.combat-briefing-room-orders :is(.campaign-officer-orders, .campaign-mission-orders-fold, .campaign-standard-rules) > summary {
+  position: relative;
+  display: grid;
+  gap: .18rem;
+  align-content: center;
+  list-style: none;
+  min-height: 54px;
+  cursor: pointer;
+  padding: .52rem 2rem .52rem .32rem;
+  color: rgba(233, 216, 181, .9);
+  border-left: 2px solid transparent;
+}
+.combat-briefing-room-orders :is(.campaign-officer-orders, .campaign-mission-orders-fold, .campaign-standard-rules) > summary::-webkit-details-marker {
+  display: none;
+}
+.combat-briefing-room-orders :is(.campaign-officer-orders, .campaign-mission-orders-fold, .campaign-standard-rules) > summary::after {
+  content: '+';
+  position: absolute;
+  right: .5rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #dfbd77;
+  font: 1.1rem var(--font-mono);
+}
+.combat-briefing-room-orders :is(.campaign-officer-orders, .campaign-mission-orders-fold, .campaign-standard-rules)[open] > summary::after { content: '−'; }
+.combat-briefing-room-orders :is(.campaign-officer-orders, .campaign-mission-orders-fold, .campaign-standard-rules) > summary:hover,
+.combat-briefing-room-orders :is(.campaign-officer-orders, .campaign-mission-orders-fold, .campaign-standard-rules) > summary:focus-visible {
+  background: rgba(190,150,77,.1);
+  border-left-color: rgba(223,189,119,.6);
+  outline-offset: 1px;
+}
+.combat-briefing-room-orders :is(.campaign-officer-orders, .campaign-mission-orders-fold) > summary > span {
+  color: #d3b36d;
+  font: .56rem var(--font-mono);
+  letter-spacing: .09em;
+}
+.combat-briefing-room-orders :is(.campaign-officer-orders, .campaign-mission-orders-fold) > summary > strong {
+  font-size: .82rem;
+  font-weight: 750;
+  line-height: 1.24;
+}
+.combat-briefing-room-orders :is(.campaign-officer-orders, .campaign-mission-orders-fold) > summary > small {
+  color: rgba(231,216,184,.63);
+  font: .61rem var(--font-mono);
+}
+.combat-briefing-room-orders .campaign-officer-orders > p,
+.combat-briefing-room-orders .campaign-standard-rules > p {
+  margin: 0 0 .55rem;
+  padding: .35rem .55rem .6rem;
+  color: rgba(230,219,199,.78);
+  font-size: .69rem;
+  line-height: 1.5;
+}
+.combat-briefing-room-orders .campaign-mission-orders-fold .campaign-mission-orders {
+  margin: 0 0 .4rem;
+  padding: .6rem .35rem;
+  background: rgba(7,9,10,.20);
+}
+.combat-briefing-room-orders .campaign-standard-rules > summary {
+  min-height: 44px;
+  font: .66rem var(--font-mono);
+  color: rgba(222,207,177,.72);
+}
+.combat-briefing-army-inspect { display: none; }
+@media (max-width: 900px) {
+  .combat-briefing-room-orders { width: min(440px, 52%); }
+  .combat-briefing-army-inspect {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    position: absolute;
+    z-index: 9;
+    top: calc(10.25rem + clamp(5.5rem, 14dvh, 7rem) - 3.55rem);
+    right: .65rem;
+    min-height: 44px;
+    padding: .52rem .85rem;
+    border: 1px solid rgba(227, 192, 117, .65);
+    border-radius: 999px;
+    background: rgba(11, 17, 17, .9);
+    color: #f3dfb4;
+    font-size: .72rem;
+    font-weight: 700;
+    box-shadow: 0 5px 20px rgba(0, 0, 0, .4);
+    cursor: pointer;
+    touch-action: manipulation;
+  }
+  .combat-briefing-army-inspect:focus-visible {
+    outline: 2px solid #f3dfb4;
+    outline-offset: 3px;
+  }
+  .combat-briefing-room-shell.is-inspecting-army .combat-briefing-room-orders {
+    display: none;
+  }
+  /* Inspection is a photographic look at the real formation, not another
+     briefing: hide the campaign folio chrome until orders are restored. */
+  .combat-briefing-room-shell.is-inspecting-army .combat-briefing-room-intro,
+  .combat-briefing-room-shell.is-inspecting-army .combat-briefing-room-status {
+    display: none;
+  }
+  /* Inspect the physical room, not a second board or campaign view. */
+  .combat-briefing-room-shell.is-inspecting-army .combat-preparation-room-stage {
+    /* Do not scale a live WebGL shell: that changes canvas measurement and
+       reframes the camera unexpectedly. A slight vertical offset keeps the
+       actual board visible in the unobstructed portrait inspection. */
+    transform: translateY(6%);
+  }
+  .combat-briefing-room-shell.is-inspecting-army .combat-briefing-army-inspect {
+    top: auto;
+    bottom: max(.9rem, env(safe-area-inset-bottom));
+    right: 50%;
+    transform: translateX(50%);
+    white-space: nowrap;
+  }
+  .combat-briefing-room-intro { width: calc(48% - 1rem); }
+  .combat-briefing-room-status { max-width: calc(48% - 1rem); }
+}
+@media (max-width: 720px) {
+  /* The shared camera frames the whole room; shift that authored view upward
+     *only for briefing*, so the exposed mobile slot contains the chess army
+     rather than an empty distant wall. No new camera or duplicate renderer. */
+  .combat-briefing-room-shell .combat-preparation-room-stage {
+    transform: translateY(-30%);
+  }
+  .combat-briefing-room-intro {
+    top: 3.55rem;
+    left: .55rem;
+    right: .55rem;
+    width: auto;
+    padding: .22rem .45rem;
+    border-left-width: 2px;
+  }
+  .combat-briefing-room-intro h2 {
+    margin: .05rem 0;
+    font-size: 1.06rem;
+  }
+  .combat-briefing-room-intro p { display: none; }
+  .combat-briefing-room-status {
+    top: 7rem;
+    bottom: auto;
+    left: .55rem;
+    right: .55rem;
+    max-width: none;
+    flex-wrap: nowrap;
+    overflow: visible;
+  }
+  /* Resources scroll independently; map consultation stays in view. */
+  .combat-briefing-resource-rail {
+    flex: 1 1 0;
+    min-width: 0;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+  }
+  .combat-briefing-resource-rail::-webkit-scrollbar { display: none; }
+  .combat-briefing-resource-rail > span,
+  .combat-briefing-resource-rail > button {
+    flex: 0 0 auto;
+    min-height: 44px;
+  }
+  /* The global mobile briefing stacks all three facts in a dashboard column.
+     In the operations folio, keep them in one compact line. */
+  .combat-briefing-room-orders .campaign-briefing-at-glance {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0;
+  }
+  .combat-briefing-room-orders .campaign-briefing-at-glance > span {
+    padding: .4rem .25rem;
+  }
+  .combat-briefing-room-orders .campaign-briefing-at-glance b {
+    white-space: normal;
+    overflow-wrap: anywhere;
+    line-height: 1.25;
+    font-size: .63rem;
+  }
+  /* Leave a real unobstructed view of the 3D deployment table between the
+     campaign status rail and the orders folio. Keep the primary CTA in view. */
+  .combat-briefing-room-orders {
+    top: calc(10.25rem + clamp(5.5rem, 14dvh, 7rem));
+    bottom: .45rem;
+    left: .45rem;
+    right: .45rem;
+    width: auto;
+    padding: .85rem .9rem;
+    background: rgba(29,28,25,.97);
+  }
+}
+
+/* The parchment can be consulted without making another campaign dashboard.
+   Native select provides full keyboard/screen-reader parity with 3D seal taps. */
+.combat-briefing-room-status > .combat-briefing-map-lookup {
+  display: inline-flex;
+  align-items: center;
+  gap: .42rem;
+  min-height: 44px;
+  padding: .25rem .55rem;
+  border: 1px solid rgba(216,184,117,.27);
+  border-radius: 999px;
+  background: rgba(7,11,13,.82);
+  color: #e9c57d;
+  font: .61rem var(--font-mono);
+}
+.combat-briefing-map-lookup select {
+  min-height: 34px;
+  max-width: 11rem;
+  border: 0;
+  border-radius: 5px;
+  background: #1b211f;
+  color: #f1e1bd;
+  font: inherit;
+  cursor: pointer;
+}
+.combat-briefing-map-lookup select:focus-visible {
+  outline: 2px solid #e9c57d;
+  outline-offset: 2px;
+}
+.combat-briefing-map-readout {
+  position: absolute;
+  z-index: 8;
+  bottom: 4.9rem;
+  left: 1rem;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: .55rem;
+  width: max-content;
+  max-width: calc(56% - 2rem);
+  min-height: 44px;
+  padding: .5rem .7rem;
+  color: #ecdfc5;
+  border: 1px solid rgba(218,182,112,.48);
+  border-radius: 8px;
+  background: rgba(15,19,18,.94);
+  box-shadow: 0 8px 24px rgba(0,0,0,.4);
+  font: .68rem/1.4 var(--font-body, sans-serif);
+}
+.combat-briefing-map-readout strong { color: #efca82; white-space: nowrap; }
+.combat-briefing-map-readout span { min-width: 0; overflow-wrap: anywhere; }
+.combat-briefing-map-readout button {
+  flex: 0 0 32px;
+  height: 34px;
+  border: 0;
+  border-radius: 5px;
+  background: rgba(219,184,112,.12);
+  color: #f1d49a;
+  cursor: pointer;
+  font-size: 1.12rem;
+}
+.combat-briefing-map-readout button:focus-visible { outline: 2px solid #f1d49a; }
+@media (max-width: 900px) {
+  .combat-briefing-room-shell.is-inspecting-army .combat-briefing-map-readout {
+    top: 5.5rem;
+    bottom: auto;
+    max-width: calc(100% - 1.2rem);
+  }
+}
+@media (max-width: 720px) {
+  .combat-briefing-room-status > .combat-briefing-map-lookup {
+    flex: 0 0 auto;
+    min-width: 0;
+    gap: .25rem;
+    padding: .25rem .38rem;
+  }
+  .combat-briefing-map-lookup select {
+    width: 7.1rem;
+    max-width: 7.1rem;
+  }
+  .combat-briefing-map-readout {
+    top: 11.35rem;
+    bottom: auto;
+    left: .55rem;
+    right: .55rem;
+    max-width: none;
+    width: auto;
+  }
+  .combat-briefing-room-shell.is-inspecting-army .combat-briefing-map-readout {
+    top: 5.5rem;
+    right: .55rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .combat-briefing-room-orders { scroll-behavior: auto; }
+}

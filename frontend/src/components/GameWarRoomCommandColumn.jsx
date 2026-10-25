@@ -22,9 +22,17 @@ function resolveWarRoomSignal(game, status) {
   const humanColor = game?.humanColor || 'w';
   const humanTurn = game?.turn === humanColor;
   const thinking = Boolean(status?.busy) || /pensando|reintentar|cargando|calculando|transici[oó]n/i.test(text);
+  const terminalText = /^(?:jaque mate|tablas|se acab[oó] el tiempo|tiempo agotado|sudden death|partida terminada)/i.test(text);
 
+  // A mate, flag fall or finished game must never keep the turn lamp on
+  // "thinking" because a pending request or old busy flag cleared late.
+  if (game?.isGameOver || terminalText) return { tone: 'amber', label: terminalText ? text : 'Partida terminada' };
+  if (text.startsWith('Jugada sin confirmar')) return { tone: 'amber', label: 'Jugada sin confirmar' };
+  if (status?.busy && text === 'Reintentando conexión…') return { tone: 'amber', label: 'Reconectando…' };
+  // The board already moved optimistically; until the server replies, do not
+  // present Matthias as thinking or imply the move was accepted remotely.
+  if (status?.busy && status?.pendingMove) return { tone: 'amber', label: 'Confirmando jugada…' };
   if (thinking) return { tone: 'amber', label: 'Pensando…' };
-  if (game?.isGameOver) return { tone: 'amber', label: text || 'Partida terminada' };
 
   if (humanTurn) {
     return { tone: 'green', label: !text || text === 'Tu turno' ? 'Tu turno' : text };

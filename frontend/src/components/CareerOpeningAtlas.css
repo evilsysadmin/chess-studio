@@ -1,0 +1,50 @@
+/* Compact opening study within the existing Career room. */
+.career-atlas-explorer {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(180px, .75fr);
+  align-items: start;
+  gap: clamp(.8rem, 2vw, 1.3rem);
+}
+.career-atlas-navigation { min-width: 0; display: grid; gap: .7rem; align-content: start; }
+.career-atlas-route { display: flex; flex-wrap: wrap; align-items: center; gap: .3rem; }
+.career-atlas-route button {
+  min-height: 44px; padding: .4rem .6rem;
+  border: 1px solid rgba(196, 153, 86, .42); border-radius: 5px;
+  color: #ecd6a9; background: rgba(24, 21, 19, .73); cursor: pointer;
+}
+.career-atlas-route button[aria-current="step"] { background: #77552e; border-color: #dfb876; color: #fff1d0; }
+.career-atlas-summary { margin: 0; font-size: .82rem; color: var(--parchment-dim, #cbb99f); }
+.career-atlas-summary strong { color: var(--parchment, #f1dfb7); }
+.career-atlas-choices { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .5rem; }
+.career-atlas-choices button {
+  display: grid; gap: .1rem; text-align: left; min-height: 48px; min-width: 0;
+  padding: .55rem .65rem; border: 1px solid rgba(192, 149, 83, .34);
+  border-radius: 6px; background: rgba(25, 21, 20, .84);
+  color: #ead8b6; cursor: pointer;
+}
+.career-atlas-choices button:hover { border-color: #d8af70; background: rgba(86, 58, 32, .74); }
+.career-atlas-choices button small { color: #c2aa86; font-size: .7rem; }
+.career-atlas-navigation button:focus-visible, .career-opening-atlas-tree summary:focus-visible { outline: 2px solid #f2d296; outline-offset: 3px; }
+.career-atlas-open-record { justify-self: start; min-height: 44px; }
+.career-atlas-board { width: min(100%, 280px); min-width: 0; margin: 0 auto; }
+.career-atlas-board .insights-position-preview {
+  display: grid; grid-template-columns: repeat(8, minmax(0, 1fr));
+  width: 100%; aspect-ratio: 1; overflow: hidden;
+  border: 4px solid #9c7949; border-radius: 5px; box-shadow: 0 10px 28px rgba(0,0,0,.4);
+}
+.career-atlas-board .insights-position-square { display: grid; place-items: center; min-width: 0; min-height: 0; font: 28px/1 'DejaVu Sans', 'Segoe UI Symbol', sans-serif; }
+.career-atlas-board .insights-position-square.light { background: #dac8a7; }
+.career-atlas-board .insights-position-square.dark { background: #886a4c; }
+.career-atlas-board .insights-position-square .is-white { color: #fff9e6; -webkit-text-stroke: .5px #30251f; text-shadow: 0 2px 1px #30251f; }
+.career-atlas-board .insights-position-square .is-black { color: #201b1c; text-shadow: 0 1px 1px rgba(255, 255, 255, .22); }
+.career-atlas-board figcaption { color: #c9b59a; margin: .55rem 0; font-size: .72rem; line-height: 1.45; }
+.career-opening-atlas-tree { margin-top: 1rem; }
+@media (max-width: 760px) {
+ .career-atlas-explorer { grid-template-columns: minmax(0, 1fr); }
+ .career-atlas-board { width: min(220px, 100%); }
+ .career-atlas-board .insights-position-square { font-size: clamp(16px, 6vw, 25px); }
+ .career-atlas-choices { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (prefers-reduced-motion: reduce) {
+ .career-atlas-route button, .career-atlas-choices button { transition: none; }
+}

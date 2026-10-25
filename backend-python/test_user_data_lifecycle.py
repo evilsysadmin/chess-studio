@@ -5,7 +5,7 @@ import asyncio
 
 from fastapi.testclient import TestClient
 
-import chronicles_run_store
+import legacy_chronicles_memory
 import feedback_store
 import game_store
 import matthias_daily_store
@@ -29,7 +29,7 @@ def _seed_orphaned_user_data(username: str) -> None:
     pvp_store._memory_matches[f"match-{username}"] = {
         "white": username, "black": "other", "status": "finished",
     }
-    chronicles_run_store._memory_runs[f"run-{username}"] = {
+    legacy_chronicles_memory._memory_runs[f"run-{username}"] = {
         "_id": f"run-{username}", "owner": username,
     }
     matthias_daily_store._memory[username] = {"_id": username, "day": "2026-09-17", "state": "used"}
@@ -51,7 +51,7 @@ def _assert_user_data_gone(username: str) -> None:
         username not in {row.get("white"), row.get("black")}
         for row in pvp_store._memory_matches.values()
     )
-    assert all(row.get("owner") != username for row in chronicles_run_store._memory_runs.values())
+    assert all(row.get("owner") != username for row in legacy_chronicles_memory._memory_runs.values())
     assert username not in matthias_daily_store._memory
     assert username not in matthias_memory_store._memory
     assert all(row.get("username") != username for row in feedback_store._memory_feedback.values())

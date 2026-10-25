@@ -88,6 +88,9 @@ export function board3DHighlightStyle({
 
   if (legalMap?.has?.(square)) {
     const meta = legalMeta(legalMap.get(square));
+    // Keyboard focus and desktop hover must remain perceivable on an actionable
+    // destination without hiding whether the move is legal or a capture.
+    const activeTarget = focusedSquare === square || hoveredSquare === square;
     if (meta.technique) {
       kind = 'technique';
       color = BOARD3D_HIGHLIGHT_COLORS.technique;
@@ -96,8 +99,8 @@ export function board3DHighlightStyle({
     } else {
       kind = meta.capture ? 'capture' : 'legal';
       color = meta.capture ? BOARD3D_HIGHLIGHT_COLORS.capture : BOARD3D_HIGHLIGHT_COLORS.legal;
-      opacity = meta.capture ? 0.66 : 0.62;
-      scale = meta.capture ? 0.86 : 0.8;
+      opacity = meta.capture ? (activeTarget ? 0.8 : 0.66) : (activeTarget ? 0.77 : 0.62);
+      scale = meta.capture ? (activeTarget ? 0.92 : 0.86) : (activeTarget ? 0.88 : 0.8);
     }
   }
   if (selectedSquare === square) {

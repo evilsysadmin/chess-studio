@@ -2,11 +2,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
 import Board from './Board.jsx';
 import { isMatthiasRivalKing } from './MatthiasKing3D.js';
-import { installPremiumEnvironment, makePremiumTileMaterial } from './Board3DSurfaces.js';
+import { applyWarRoomPixelRatioIfChanged, installPremiumEnvironment, makePremiumTileMaterial } from './Board3DSurfaces.js';
 import { loadBoardTheme } from '../career.js';
 import { loadSelectedSkin } from '../tournamentRewards.js';
 import { USER_PREFERENCES_CHANGED_EVENT, getEffectiveReducedMotion } from '../userPreferences.js';
-import { adaptiveRenderScale, clamp01, deriveMoveKinetics, easeOutCubic, inferCapturedPiece, reactiveLightProfile, smoothstep } from './WarRoom3DMotion.js';
+import { adaptiveRenderScale, clamp01, deriveMoveKinetics, easeOutCubic, inferCapturedPiece, createWarRoomRenderer, reactiveLightProfile, smoothstep } from './WarRoom3DMotion.js';
 import {
   compactWebGLRendererLabel,
   isSoftwareWebGLRenderer,
@@ -15,49 +15,38 @@ import {
   warRoomSceneProfile,
 } from './WarRoom3DAnimation.js';
 import { createWarRoomAmbientScheduler } from './WarRoomAmbientScheduler.js';
+import { createWarRoomRenderBatcher } from './WarRoomRenderBatcher.js';
 import { applyWarRoomLightDiagnostics } from './WarRoomDomDiagnostics.js';
 import { createWarRoomHansScreenProbe } from './WarRoomHansScreenProbe.js';
 import { resolveBoardTap, selectBoardSquareOnTouch } from './WarRoom3DTouch.js';
 import { BOARD3D_HIGHLIGHT_SIZE, BOARD3D_HIGHLIGHT_Y, board3DHighlightStyle } from './Board3DHighlights.js';
-import { board3DCaptureWarmBoostValue, board3DPieceInteractionPose, writeBoard3DHighlightPulse } from './Board3DInteractionFx.js';
+import { applyBoard3DCaptureGhostPose, board3DCaptureWarmBoostValue, board3DPieceInteractionPose, writeBoard3DHighlightPulse } from './Board3DInteractionFx.js';
 import { BOARD_THEME_3D, FILES, resolveBoard3DThemeId } from './Board3DConfig.js';
-import { adjacentSquare, parseFen, squarePosition } from './Board3DBoardMath.js';
+import { parseFen, squarePosition } from './Board3DBoardMath.js';
+import { board3DKeyboardFocusAnnouncement, handleBoard3DKeyboardEvent } from './Board3DKeyboardAccessibility.js';
 import { buildBoard3DTileInstances } from './Board3DTileInstances.js';
 import { pickBoard3DSquare } from './Board3DPointerPicking.js';
 import { planBoard3DPieceReconciliation } from './Board3DPieceReconciliation.js';
 import { addCoarsePieceHitTarget, applyMatthiasCheckPose, buildPiece, disposeObject } from './Board3DPieces.js';
-import { fitBoardCamera, makeTextSprite } from './Board3DScene.js';
+import useBoard3DCombatMedalRefresh from './useBoard3DCombatMedalRefresh.js';
+import { clearObjectGroup, makeObjectTranslucent } from './Board3DObjectLifecycle.js';
+import { fitBoardCamera } from './Board3DScene.js';
 import { resolveStableBoardViewportForHost } from './Board3DViewportSize.js';
+import { createWarRoomCanvasSizeGate } from './WarRoomCanvasSizeGate.js';
+import { createWarRoomGpuProfile } from './WarRoomGpuProfile.js';
+import { installBoard3DCoordinates } from './Board3DCoordinates.js';
 import { applyBoard3DProjectionDiagnostics, applyBoard3DRendererMemoryDiagnostics } from './Board3DProjectionDiagnostics.js';
+import { beginWarRoomFirstReadyPaintTiming } from './WarRoomFirstReadyPaintTiming.js';
 import { board3DForensicGhost, board3DTechniqueTargetCount, board3DTerrainSquares, buildBoard3DLegalMap } from './Board3DParityVisuals.js';
 import useWarRoomVariant from './useWarRoomVariant.js';
 import { resolveBoard3DPresentation } from './Board3DPresentation.js';
 import { createClassicWarRoomShellController } from './WarRoomClassicShellLoader.js'; import { buildTrainingRoomBoardShell } from './TrainingRoomBoardShell.js';
 import { shouldShowClassicWarRoomShell, startWarRoomVariantScene } from './WarRoomSceneVariant.js';
+import useCombatOperationsCartography from './useCombatOperationsCartography.js';
 import './Board3D.css';
 import './Board3DViewportTuning.css';
 import './Board3DParity.css';
 import './WarRoomSharedViewport.css';
-function clearObjectGroup(group) {
-  if (!group) return;
-  for (const child of [...group.children]) {
-    group.remove(child);
-    disposeObject(child);
-  }
-}
-
-function makeObjectTranslucent(group, opacity) {
-  group?.traverse?.((object) => {
-    const materials = Array.isArray(object.material) ? object.material : [object.material];
-    materials.forEach((material) => {
-      if (!material) return;
-      material.transparent = true;
-      material.opacity = opacity;
-      material.depthWrite = false;
-    });
-  });
-}
-
 function Board3DCanvas({
   fen,
   onSquareClick,
@@ -79,8 +68,8 @@ function Board3DCanvas({
   themeOverride = null, hansDiagnosticsMarkerRef = null,
   hansDiagnosticsRequested = false, hansFireCallEnabled = false,
   cameraProfile = 'tactical', warRoomVariantOverride = null, immersive = false,
-  trainingRoom = false, warRoomMobilePerformance = false,
-  onRendererFailure,
+  trainingRoom = false, warRoomMobilePerformance = false, inspectionPreview = false,
+  combatOperationsMap = null, pieceMedalCounts = null, pieceRankLevels = null, onRendererFailure,
 }) {
   const hostRef = useRef(null);
   const sceneStateRef = useRef(null);
@@ -95,6 +84,7 @@ function Board3DCanvas({
   const [boardTheme, setBoardTheme] = useState(() => loadBoardTheme());
   const [rendererLabel, setRendererLabel] = useState('3D');
   const [focusedSquare, setFocusedSquare] = useState(() => orientation === 'black' ? 'e8' : 'e1');
+  const [keyboardActive, setKeyboardActive] = useState(false);
   const [hoveredSquare, setHoveredSquare] = useState(null);
   const { selectable: warRoomVariantSelectable, variant: globalWarRoomVariant, status: warRoomVariantStatus, domData: globalWarRoomVariantDomData, setStatus: setWarRoomVariantStatus } = useWarRoomVariant();
   const presentation = resolveBoard3DPresentation({ cameraProfile, variantOverride: warRoomVariantOverride, globalVariant: globalWarRoomVariant, globalDomData: globalWarRoomVariantDomData, variantStatus: warRoomVariantStatus, trainingRoom });
@@ -106,7 +96,7 @@ function Board3DCanvas({
   const techniqueTargetCount = useMemo(() => board3DTechniqueTargetCount(legalTargets), [legalTargets]);
 
   latestPropsRef.current = {
-    onSquareClick,
+    onSquareClick, inspectionPreview,
     onRendererFailure,
     onPieceMouseEnter,
     onPieceMouseLeave,
@@ -116,11 +106,7 @@ function Board3DCanvas({
     warRoomVariant,
     selectedSquare, legalTargets, fen,
   };
-
-  useEffect(() => {
-    sceneStateRef.current?.ambientScheduler?.wake();
-  }, [hansFireCallEnabled]);
-
+  useEffect(() => { sceneStateRef.current?.ambientScheduler?.wake(); }, [hansFireCallEnabled]);
   useEffect(() => {
     const refreshSkin = (event) => setSkinId(event?.detail || loadSelectedSkin());
     const refreshPreferences = () => setBoardTheme(loadBoardTheme());
@@ -131,14 +117,13 @@ function Board3DCanvas({
       window.removeEventListener(USER_PREFERENCES_CHANGED_EVENT, refreshPreferences);
     };
   }, []);
-
   useEffect(() => {
     setFocusedSquare(orientation === 'black' ? 'e8' : 'e1');
     setHoveredSquare(null);
     hoveredPieceRef.current = null;
   }, [orientation]);
-
-
+  // Handoff from touch, pointer, hints and 2D without resetting arrow-key travel.
+  useEffect(() => { if (selectedSquare) setFocusedSquare(selectedSquare); }, [selectedSquare]);
   useEffect(() => {
     const host = hostRef.current;
     if (!host) return undefined;
@@ -151,7 +136,7 @@ function Board3DCanvas({
     let rendererError = null;
     for (const attempt of rendererAttempts) {
       try {
-        renderer = new THREE.WebGLRenderer(attempt.parameters);
+        renderer = createWarRoomRenderer(attempt.parameters);
         rendererAttempt = attempt;
         break;
       } catch (error) {
@@ -180,7 +165,7 @@ function Board3DCanvas({
     const coarsePointer = Boolean(window.matchMedia?.('(pointer: coarse)')?.matches);
     const sceneProfile = warRoomSceneProfile({ coarsePointer, softwareRenderer, maxTextureSize });
     const { lite: renderLite } = sceneProfile; const sceneLite = renderLite || (coarsePointer && warRoomMobilePerformance === true);
-    const scene = new THREE.Scene(); scene.userData.warRoomHansAwaitCall = latestPropsRef.current.hansFireCallEnabled; scene.userData.warRoomAdaptiveQuality = sceneProfile.adaptiveQuality;
+    const scene = new THREE.Scene(); scene.userData.warRoomHansAwaitCall = latestPropsRef.current.hansFireCallEnabled; scene.userData.warRoomAdaptiveQuality = sceneProfile.adaptiveQuality; scene.userData.warRoomInteractionCoarsePointer = coarsePointer;
     const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 100);
     const raycaster = new THREE.Raycaster();
     const pointer = new THREE.Vector2();
@@ -219,7 +204,6 @@ function Board3DCanvas({
     host.appendChild(renderer.domElement);
 
     const releaseEnvironment = installPremiumEnvironment(renderer, scene, { coarsePointer: sceneLite, renderProfile: sceneProfile });
-
     scene.add(new THREE.HemisphereLight(0xffefd0, 0x10192b, 1.35));
     const key = new THREE.DirectionalLight(0xffe1aa, initialLights.key);
     key.position.set(-5.4, 10, whiteSide ? 6.6 : -6.6);
@@ -242,7 +226,7 @@ function Board3DCanvas({
     warm.position.set(-4.6, 4.4, whiteSide ? -5.8 : 5.8);
     scene.add(warm);
 
-    const trainingRoomShell = trainingRoom ? buildTrainingRoomBoardShell({ scene, boardGroup, coarsePointer: sceneLite }) : null;
+    const trainingRoomShell = trainingRoom ? buildTrainingRoomBoardShell({ scene, boardGroup, coarsePointer: sceneLite, whiteSide }) : null;
     const classicShellController = createClassicWarRoomShellController({ scene, boardGroup, theme, whiteSide, renderLite: sceneLite, classroom: classroomCamera, canvas: renderer.domElement }, !trainingRoom && shouldShowClassicWarRoomShell({ selectable: warRoomVariantSelectable, variant: warRoomVariant }));
     renderer.domElement.dataset.trainingRoomScene = trainingRoomShell?.sceneVersion || 'off';
 
@@ -307,28 +291,14 @@ function Board3DCanvas({
     boardGroup.add(coordinateGroup);
     boardGroup.scale.setScalar(warRoomVariant === 'v3' ? 1.08 : 1); scene.add(boardGroup);
 
-    if (showCoordinates) {
-      const fileOrder = whiteSide ? FILES : [...FILES].reverse();
-      const rankOrder = whiteSide ? ['1','2','3','4','5','6','7','8'] : ['8','7','6','5','4','3','2','1'];
-      fileOrder.forEach((file, index) => {
-        const sprite = makeTextSprite(file.toUpperCase(), '#d4aa54');
-        sprite.position.set(index - 3.5, 0.16, whiteSide ? 4.68 : -4.68);
-        coordinateGroup.add(sprite);
-      });
-      rankOrder.forEach((rank, index) => {
-        const sprite = makeTextSprite(rank, '#d4aa54');
-        sprite.position.set(whiteSide ? -4.68 : 4.68, 0.16, whiteSide ? 3.5 - index : -3.5 + index);
-        coordinateGroup.add(sprite);
-      });
-    }
-
+    if (showCoordinates) installBoard3DCoordinates(coordinateGroup, whiteSide);
+    const gpuProfile = createWarRoomGpuProfile(renderer, { softwareRenderer });
     let cachedHansDriver = null;
     let ambientScheduler = null;
-
     const exposeHansScreenDiagnostics = createWarRoomHansScreenProbe({ scene, camera, canvas: renderer.domElement });
 
     let hansReadyFrames = 0;
-    function render() {
+    function renderNow() {
       scene.userData.warRoomHansCallReleased = !latestPropsRef.current.hansFireCallEnabled
         || renderer.domElement.dataset.warRoomHansCallReleased === 'true';
       applyWarRoomLightDiagnostics(renderer.domElement, {
@@ -336,7 +306,18 @@ function Board3DCanvas({
         keyIntensity: key.intensity,
         exposure: renderer.toneMappingExposure,
       });
-      renderer.render(scene, camera); applyBoard3DRendererMemoryDiagnostics(renderer.domElement, renderer);
+      const firstPaint = beginWarRoomFirstReadyPaintTiming(renderer.domElement);
+      gpuProfile?.begin();
+      const renderStartedAt = gpuProfile ? performance.now() : 0;
+      try {
+        renderer.render(scene, camera);
+        gpuProfile?.recordRender(renderer.info.render, renderStartedAt, performance.now());
+      } finally {
+        gpuProfile?.end();
+        gpuProfile?.poll();
+      }
+      firstPaint?.afterRender(renderer.info.render);
+      applyBoard3DRendererMemoryDiagnostics(renderer.domElement, renderer);
       applyBoard3DProjectionDiagnostics(renderer.domElement, camera);
       if (!cachedHansDriver && latestPropsRef.current.hansDiagnosticsRequested) {
         cachedHansDriver = scene.getObjectByName('war-room-hans-fireplace-driver');
@@ -349,13 +330,22 @@ function Board3DCanvas({
         if (hansReadyFrames >= 2) renderer.domElement.dataset.warRoomHansSceneReady = 'true';
       }
       exposeHansScreenDiagnostics(latestPropsRef.current);
-      ambientScheduler?.markPaint();
+      ambientScheduler?.markPaint(); firstPaint?.afterDiagnostics();
     }
-
+    const renderBatcher = createWarRoomRenderBatcher({
+      requestFrame: (callback) => window.requestAnimationFrame(callback),
+      cancelFrame: (id) => window.cancelAnimationFrame(id),
+      draw: renderNow,
+    });
+    const requestRender = renderBatcher.request;
+    const paintNow = renderBatcher.flush;
+    const sizeGate = createWarRoomCanvasSizeGate();
     function resize() {
-      const viewport = resolveStableBoardViewportForHost(host, { immersive, viewport: window }); renderer.setSize(viewport.width, viewport.height, false);
-      fitBoardCamera(camera, viewport.width, viewport.height, whiteSide, { profile: trainingRoom ? 'training-room' : cameraProfile === 'classroom' || cameraProfile === 'warroom' || (latestPropsRef.current.warRoomVariant || 'classic') !== 'classic' ? cameraProfile : 'classic', immersive });
-      render();
+      const viewport = resolveStableBoardViewportForHost(host, { immersive, viewport: window });
+      if (!sizeGate(viewport)) return;
+      renderer.setSize(viewport.width, viewport.height, false);
+      fitBoardCamera(camera, viewport.width, viewport.height, whiteSide, { profile: trainingRoom ? 'training-room' : cameraProfile === 'classroom' || cameraProfile === 'warroom' || (latestPropsRef.current.warRoomVariant || 'classic') !== 'classic' ? cameraProfile : 'classic', immersive, variant: latestPropsRef.current.warRoomVariant, inspectionPreview: latestPropsRef.current.inspectionPreview });
+      requestRender();
     }
     resize();
     const observer = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(resize) : null;
@@ -509,7 +499,7 @@ function Board3DCanvas({
         onFrame: () => {
           // Fire and premium interaction pulses update from onBeforeRender, so
           // one quiet heartbeat paints both without another animation loop.
-          render();
+          paintNow();
         },
       });
       renderer.domElement.dataset.warRoomAmbientScheduler = 'deadline-v1';
@@ -538,7 +528,8 @@ function Board3DCanvas({
       key,
       rim,
       warm,
-      render,
+      render: paintNow,
+      requestRender,
       ambientScheduler,
       renderScale: Math.min(window.devicePixelRatio || 1, sceneProfile.pixelRatioCap),
       slowFrameCount: 0,
@@ -548,7 +539,7 @@ function Board3DCanvas({
     const noMsaa = rendererAttempt.id === 'gpu-noaa' ? ' · NO MSAA' : '';
     const liteLabel = sceneProfile.lite ? ' · LITE' : '';
     setRendererLabel(`${rendererApi} · ${rendererClass}${noMsaa}${liteLabel}`);
-    render();
+    requestRender();
     ambientScheduler?.start();
 
     return () => {
@@ -556,6 +547,8 @@ function Board3DCanvas({
       animationFrameRef.current = 0;
       ambientScheduler?.dispose();
       ambientScheduler = null;
+      gpuProfile?.dispose();
+      renderBatcher.dispose();
       renderer.domElement.removeEventListener('warroom-hans-call-release', wakeAmbientScheduler);
       document.removeEventListener('visibilitychange', wakeAmbientScheduler);
       window.removeEventListener(USER_PREFERENCES_CHANGED_EVENT, wakeAmbientScheduler);
@@ -579,7 +572,6 @@ function Board3DCanvas({
       sceneStateRef.current = null;
     };
   }, [effectiveThemeId, orientation, showCoordinates, cameraProfile, playAriaLabel, trainingRoom]);
-
   useEffect(() => {
     const state = sceneStateRef.current;
     if (!state || trainingRoom) return undefined;
@@ -595,20 +587,18 @@ function Board3DCanvas({
       onPaint: state.render,
     });
   }, [warRoomVariant, warRoomVariantSelectable, setWarRoomVariantStatus, effectiveThemeId, orientation, showCoordinates, trainingRoom]);
-
+  useCombatOperationsCartography({ sceneStateRef, variant: warRoomVariant, status: warRoomVariantStatus, projection: combatOperationsMap });
   useEffect(() => {
     const state = sceneStateRef.current, host = hostRef.current;
     if (!state || !host) return;
-    const viewport = resolveStableBoardViewportForHost(host, { immersive, viewport: window }); fitBoardCamera(state.camera, viewport.width, viewport.height, state.whiteSide, { profile: trainingRoom ? 'training-room' : cameraProfile === 'classroom' || cameraProfile === 'warroom' || warRoomVariant !== 'classic' ? cameraProfile : 'classic', immersive });
-    state.render();
-  }, [warRoomVariant, cameraProfile, immersive, trainingRoom]);
-
+    const viewport = resolveStableBoardViewportForHost(host, { immersive, viewport: window }); fitBoardCamera(state.camera, viewport.width, viewport.height, state.whiteSide, { profile: trainingRoom ? 'training-room' : cameraProfile === 'classroom' || cameraProfile === 'warroom' || warRoomVariant !== 'classic' ? cameraProfile : 'classic', immersive, variant: warRoomVariant, inspectionPreview });
+    state.requestRender();
+  }, [warRoomVariant, cameraProfile, immersive, trainingRoom, inspectionPreview]);
   useEffect(() => {
     const state = sceneStateRef.current;
     if (!state) return undefined;
     window.cancelAnimationFrame(animationFrameRef.current);
     animationFrameRef.current = 0;
-
     const previousPieces = parseFen(previousFenRef.current);
     const nextPieces = parseFen(fen);
     const movingBefore = animate?.from ? previousPieces.find((piece) => piece.square === animate.from) : null;
@@ -622,7 +612,7 @@ function Board3DCanvas({
       skinId,
       state.renderLite ? 'lite' : 'full',
       orientation,
-      matthiasKingColor || 'none',
+      matthiasKingColor || 'none', warRoomVariant === 'combat-ops' ? 'combat-finish-v1' : 'normal',
     ].join('|');
     const allowPieceReuse = state.pieceMeshes.size > 0 && pieceBuildSignatureRef.current === pieceBuildSignature;
     const reconciliation = planBoard3DPieceReconciliation({
@@ -670,7 +660,7 @@ function Board3DCanvas({
       const matthiasKing = isMatthiasRivalKing(piece, matthiasKingColor);
       const mesh = buildPiece(piece.type, piece.color, skinId, state.renderLite, {
         matthiasKing,
-        faceTowardCamera: orientation !== 'black',
+        faceTowardCamera: orientation !== 'black', combatOperationsFinish: warRoomVariant === 'combat-ops',
       });
       const { x, z } = squarePosition(piece.square);
       mesh.position.set(x, 0.1, z);
@@ -708,7 +698,7 @@ function Board3DCanvas({
     if (!shouldAnimate) {
       if (animate?.seq) lastAnimatedSeqRef.current = animate.seq;
       applyMatthiasCheckPose(state, checkSquare, orientation);
-      state.render();
+      state.requestRender();
       return undefined;
     }
 
@@ -726,6 +716,7 @@ function Board3DCanvas({
     const baseScale = animatedMesh.scale.clone();
     const baseLights = reactiveLightProfile({ check: Boolean(checkSquare), gameOver, coarsePointer: state.coarsePointer, variant: latestPropsRef.current.warRoomVariant });
     let capturedGhost = null;
+    let capturedGhostRestScale = null;
     let capturedGhostMaterials = null;
     let castleRook = null;
     let castleFrom = null;
@@ -738,6 +729,7 @@ function Board3DCanvas({
       });
       const capturedPosition = squarePosition(capturedPiece.square);
       capturedGhost.position.set(capturedPosition.x, 0.1, capturedPosition.z);
+      capturedGhostRestScale = capturedGhost.scale.clone();
       capturedGhost.userData.captureGhost = true;
       capturedGhostMaterials = [];
       capturedGhost.traverse((object) => {
@@ -779,12 +771,7 @@ function Board3DCanvas({
       if (animate.capture && capturedGhost) {
         const impact = smoothstep(kinetics.impactStart, 0.9, raw);
         const side = orientation === 'black' ? -1 : 1;
-        capturedGhost.rotation.z = side * kinetics.captureTilt * impact;
-        capturedGhost.rotation.x = impact * 0.16;
-        capturedGhost.position.y = 0.1 - impact * 0.075;
-        capturedGhost.scale.multiplyScalar(1 - impact * 0.0016);
-        const ghostOpacity = 1 - impact * 0.92;
-        for (const material of capturedGhostMaterials) material.opacity = ghostOpacity;
+        applyBoard3DCaptureGhostPose(capturedGhost, capturedGhostRestScale, capturedGhostMaterials, impact, side * kinetics.captureTilt, state.coarsePointer);
         animatedMesh.rotation.z = Math.sin(impact * Math.PI) * 0.045 * side;
         state.warm.intensity = baseLights.warm + board3DCaptureWarmBoostValue(raw, state.coarsePointer);
       }
@@ -811,9 +798,10 @@ function Board3DCanvas({
       const cappedScale = Math.min(window.devicePixelRatio || 1, requestedScale);
       if (cappedScale + 0.05 < state.renderScale) {
         state.renderScale = cappedScale;
-        state.renderer.setPixelRatio(cappedScale);
-        const host = hostRef.current;
-        if (host) state.renderer.setSize(Math.max(280, host.clientWidth || 280), Math.max(300, host.clientHeight || 300), false);
+        // Three.js setPixelRatio already resizes its existing logical viewport.
+        // Repeating setSize(host) would reallocate GPU storage and replace the
+        // immersive viewport with narrower layout dimensions mid-animation.
+        applyWarRoomPixelRatioIfChanged(state.renderer, cappedScale);
       }
 
       state.render();
@@ -852,7 +840,7 @@ function Board3DCanvas({
       }
     };
   }, [fen, skinId, animate, effectiveThemeId, orientation, showCoordinates, matthiasKingColor, checkSquare, gameOver, warRoomVariant]);
-
+  useBoard3DCombatMedalRefresh({ sceneStateRef, animationFrameRef, warRoomVariant, pieceMedalCounts, pieceRankLevels });
   useEffect(() => {
     const state = sceneStateRef.current;
     if (!state) return;
@@ -869,7 +857,7 @@ function Board3DCanvas({
       makeObjectTranslucent(ghost, 0.3);
       state.forensicGroup.add(ghost);
     }
-    state.render();
+    state.requestRender();
   }, [forensicGhost, skinId, orientation, matthiasKingColor]);
 
   useEffect(() => {
@@ -895,7 +883,7 @@ function Board3DCanvas({
       obstacle.userData.terrainBlocked = square;
       state.terrainGroup.add(obstacle);
     }
-    state.render();
+    state.requestRender();
   }, [terrainSquares, effectiveThemeId]);
 
   const legalMap = useMemo(() => buildBoard3DLegalMap(legalTargets), [legalTargets]);
@@ -949,7 +937,7 @@ function Board3DCanvas({
     }
 
     applyMatthiasCheckPose(state, checkSquare, orientation);
-    state.render();
+    state.requestRender();
   }, [fen, selectedSquare, legalMap, lastMove, hintMove, checkSquare, focusedSquare, hoveredSquare, effectiveThemeId, orientation, showCoordinates]);
 
   useEffect(() => {
@@ -962,19 +950,11 @@ function Board3DCanvas({
     state.renderer.toneMappingExposure = lights.exposure;
     if (state.scene.fog?.isFogExp2) state.scene.fog.density = lights.fogDensity;
     applyMatthiasCheckPose(state, checkSquare, orientation);
-    state.render();
+    state.requestRender();
   }, [checkSquare, gameOver, effectiveThemeId, orientation, showCoordinates, warRoomVariant]);
 
   function handleKeyDown(event) {
-    if (event.key === 'Enter' || event.key === ' ') {
-      event.preventDefault();
-      onSquareClick?.(focusedSquare);
-      return;
-    }
-    const next = adjacentSquare(focusedSquare, event.key, orientation);
-    if (!next) return;
-    event.preventDefault();
-    setFocusedSquare(next);
+    handleBoard3DKeyboardEvent(event, { focusedSquare, orientation, selectedSquare, onSquareClick, setFocusedSquare });
   }
 
   return (
@@ -997,7 +977,11 @@ function Board3DCanvas({
       data-board3d-legal-target-count={legalMap.size}
       data-matthias-rival-king={matthiasKingColor || 'off'}
     >
-      <div ref={hostRef} className="board3d-main-host" onKeyDown={handleKeyDown} />
+      <div ref={hostRef} className="board3d-main-host" onKeyDown={handleKeyDown}
+        onFocus={() => setKeyboardActive(true)} onBlur={() => setKeyboardActive(false)} />
+      <span className="sr-only" role="status" aria-live="polite" aria-atomic="true" aria-label="Casilla enfocada en 3D">
+        {keyboardActive ? board3DKeyboardFocusAnnouncement({ focusedSquare, pieces: currentPieces, selectedSquare, legalTargets }) : ''}
+      </span>
       <div className="board3d-fixed-camera-note" aria-hidden="true">{presentation.roomLabel} · {presentation.cameraLabel}</div>
       <div className="board3d-renderer-badge" aria-hidden="true">{rendererLabel}</div>
       {onCustomize && <button type="button" className="board3d-customize secondary-btn" onClick={onCustomize}>Apariencia</button>}

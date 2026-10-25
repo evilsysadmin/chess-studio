@@ -37,6 +37,7 @@ export default function Matthias3DOpeningBanter({
   anchorStyle = null,
   trackedSquare = null,
   leadIn = '',
+  quiet = false,
 }) {
   const [line, setLine] = useState('');
   const [portalHost, setPortalHost] = useState(null);
@@ -230,7 +231,7 @@ export default function Matthias3DOpeningBanter({
         </aside>
       )}
 
-      {!tutorialSession && line && anchorReady && (
+      {!tutorialSession && !quiet && line && anchorReady && (
         <aside
           className="matthias-3d-opening-banter"
           ref={bubbleFitRef}

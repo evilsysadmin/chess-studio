@@ -19,19 +19,18 @@ class Budget:
 
 INVENTORY = {
     'app-visual-artifact.yml': 'visual-artifact',
-    'chronicles-visual-artifact.yml': 'visual-artifact',
-    'tactics-visual-artifact.yml': 'visual-artifact',
     'blender-setup-smoke.yml': 'art-generation-infra',
     'billing-cost-export.yml': 'observability',
     'capacity-staging.yml': 'capacity-readiness',
     'capacity-virtual-players.yml': 'capacity-readiness',
-    'chronicles-party-blender-art.yml': 'art-generation',
     'combat-operations-room-blender-art.yml': 'art-generation',
+    'combat-cpu-benchmark.yml': 'performance-diagnostics',
     'chess-football-godot-poc.yml': 'game-runtime-experiment',
     'chesscom-sven-sprite-forge.yml': 'art-quality',
     'chesscom-oss-character-forge.yml': 'art-generation-preview',
     'cicd.yml': 'quality-required',
     'cloudflare-prometheus-exporter.yml': 'observability',
+    'chronicles-odo-r2-publish.yml': 'infra-assets',
     'coverage.yml': 'quality-scheduled',
     'e2e-full.yml': 'quality-scheduled',
     'grafana-dashboards.yml': 'observability',
@@ -43,6 +42,7 @@ INVENTORY = {
     'main-admission.yml': 'delivery-admission',
     'main-backend-image.yml': 'delivery-backend-image',
     'menu-ux-audit.yml': 'ux-manual-audit',
+    'oci-host-provenance-on-failure.yml': 'infra-readonly-diagnostics',
     'oci-readiness.yml': 'infra-readiness',
     'oci-resend-bootstrap.yml': 'infra-runtime-secrets',
     'oci-staging-deploy.yml': 'infra-staging-delivery',
@@ -72,27 +72,30 @@ INVENTORY = {
     'staging-preview.yml': 'delivery-preview',
     'synthetic-health.yml': 'observability',
     'weekly-actions-hygiene.yml': 'actions-maintenance',
+    'war-room-r2-cache-observer.yml': 'performance-diagnostics',
+    'war-room-r2-cache-rule.yml': 'infra-assets',
     'war-room-blender-art.yml': 'art-generation',
     'war-room-v3-blender-art.yml': 'art-generation',
     'war-room-v4-blender-art.yml': 'art-generation',
+    'war-room-published-geometry.yml': 'performance-diagnostics',
+    'war-room-v3-r2-pin.yml': 'infra-assets-integrity',
+    'war-room-v4-r2-pin.yml': 'infra-assets-integrity',
 }
 
 BUDGETS = (
-    Budget('.github/workflows/production-promote.yml', 34643),
+    Budget('.github/workflows/production-promote.yml', 35200),
     Budget('.github/workflows/cicd.yml', 19454),
-    Budget('.github/workflows/staging-deploy.yml', 17792),
+    # Deliberate +448-byte allowance: rc=87 supersession now fails closed for accreditation without a false deploy failure.
+    Budget('.github/workflows/staging-deploy.yml', 18240),
     Budget('.github/workflows/oci-resend-bootstrap.yml', 4601),
     Budget('.github/workflows/staging-deploy-continuity.yml', 7390),
     Budget('.github/workflows/staging-pawn-slug-visual.yml', 3919),
-    Budget('.github/workflows/staging-pvp-compositor-ab.yml', 6000),
+    Budget('.github/workflows/staging-pvp-compositor-ab.yml', 8450),
     Budget('.github/workflows/staging-ai-worker.yml', 7227),
     Budget('.github/workflows/cloudflare-prometheus-exporter.yml', 5964),
     Budget('.github/workflows/oci-readiness.yml', 2840),
-    # Keep App/Tactics short. Chronicles alone includes 2 isolated shards plus
-    # the old stable required-check aggregator (fail-closed for both shards).
+    # The only remaining App visual gate belongs to Chess Studio itself.
     Budget('.github/workflows/app-visual-artifact.yml', 1500),
-    Budget('.github/workflows/chronicles-visual-artifact.yml', 2400),
-    Budget('.github/workflows/tactics-visual-artifact.yml', 1300),
 )
 
 

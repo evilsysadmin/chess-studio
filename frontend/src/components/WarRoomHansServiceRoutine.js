@@ -21,10 +21,9 @@ import {
   warRoomHansShouldClearDeliveredArtifacts,
 } from './WarRoomHansEventContract.js';
 import { ensureWarRoomHansPlant } from './WarRoomHansPlantDecor.js';
-import {
-  warRoomHansBuildSafeRoute,
-  moveWarRoomHansAlongRoute,
-} from './WarRoomHansNavigation.js';
+import { findWarRoomHansChoreApproach } from './WarRoomHansChoreApproach.js';
+import { warRoomHansBuildSafeRoute } from './WarRoomHansNavigation.js';
+import { explainWarRoomHansBlockedRoute, moveWarRoomHansAlongRoute } from './WarRoomHansNavigation.js';
 import {
   assignWarRoomHansTask,
   createWarRoomHansSetupRetryState,
@@ -168,6 +167,15 @@ export function restoreWarRoomHansPersistedServiceEffect(gameId, eventName, {
   return true;
 }
 
+// E2E-only delivery evidence. Do not create game state, persistence, network
+// traffic or runtime work for normal players. This reports real mesh visibility
+// and a real physically completed return to the service exit.
+function publishEspressoEvidence(actor, field, verified) {
+  if (globalThis.__CHESS_E2E_HANS_AMBIENT_AUDIT__ !== true) return;
+  const canvas = getWarRoomHansCanvas(actor);
+  if (canvas?.dataset) canvas.dataset[field] = verified === true ? 'true' : 'false';
+}
+
 function setDialogue(actor, phase) {
   const canvas = getWarRoomHansCanvas(actor);
   if (canvas?.dataset) canvas.dataset.warRoomHansServiceDialogue = phase || '';
@@ -217,6 +225,7 @@ export function installWarRoomHansServiceRoutine(root) {
   let routeIndex = 0;
   let actionElapsed = 0;
   let lastNow = null;
+  let espressoTravelMeters = 0;
   const setupRetry = createWarRoomHansSetupRetryState();
 
   floor.onBeforeRender = (...args) => {
@@ -232,6 +241,11 @@ export function installWarRoomHansServiceRoutine(root) {
       const clearDeliveredArtifacts = warRoomHansShouldClearDeliveredArtifacts(nextGameId, completedGameId);
       gameId = nextGameId;
       eventName = warRoomHansEventForGame(gameId);
+      espressoTravelMeters = 0;
+      if (eventName === 'espresso') {
+        publishEspressoEvidence(actor, 'warRoomHansEspressoDelivered', false);
+        publishEspressoEvidence(actor, 'warRoomHansEspressoReturned', false);
+      }
       eligibleSince = now;
       delayMs = warRoomHansAmbientDelayMs(gameId, { min: 6000, max: 14000, salt: eventName });
       active = false;
@@ -254,6 +268,19 @@ export function installWarRoomHansServiceRoutine(root) {
     }
 
     if (!SERVICE_EVENTS.has(eventName) || completedGameId === gameId) return;
+    // Read-only E2E progress: actual route distance accumulated during renders.
+    // Players do not incur DOM writes, persistence or additional scene walks.
+    if (eventName === 'espresso' && globalThis.__CHESS_E2E_HANS_AMBIENT_AUDIT__ === true) {
+      const canvas = getWarRoomHansCanvas(actor);
+      if (canvas?.dataset) {
+        canvas.dataset.warRoomHansEspressoStage = state;
+        canvas.dataset.warRoomHansEspressoTravelMeters = espressoTravelMeters.toFixed(3);
+        canvas.dataset.warRoomHansEspressoRouteIndex = String(routeIndex);
+        canvas.dataset.warRoomHansEspressoRouteLength = String(
+          state === 'returning' ? routeOut.length : routeIn.length,
+        );
+      }
+    }
     const taskId = `service-${eventName}`;
 
     if (!active) {
@@ -288,11 +315,46 @@ export function installWarRoomHansServiceRoutine(root) {
         abortSetupForCurrentGame();
         return;
       }
-      routeIn = warRoomHansBuildSafeRoute(floor, actor.hans.parent, home, target);
-      routeOut = warRoomHansBuildSafeRoute(floor, actor.hans.parent, target, home);
+      // Espresso serves the SAME physical command desk as dust-board.
+      // Both must use the same bounded, collision-checked approach policy.
+      // Watering a plant retains its existing canonical route unchanged.
+      const approach = eventName === 'espresso'
+        ? findWarRoomHansChoreApproach({
+          floor, parent: actor.hans.parent, home, target,
+          targetObject: serviceTargetObject,
+        })
+        : null;
+      if (approach) {
+        target = approach.target;
+        routeIn = approach.routeIn;
+        routeOut = approach.routeOut;
+      } else {
+        const normal = warRoomHansBuildSafeRoute(floor, actor.hans.parent, home, target);
+        routeIn = normal;
+        routeOut = warRoomHansBuildSafeRoute(floor, actor.hans.parent, target, home);
+      }
       if (!routeIn.length || !routeOut.length) {
+        // Debug proof only: distinguish a physically blocked service landing
+        // from scheduler delays. Never report these diagnostics to a server.
+        if (globalThis.__CHESS_E2E_HANS_AMBIENT_AUDIT__ === true) {
+          const canvas = getWarRoomHansCanvas(actor);
+          if (canvas?.dataset) {
+            canvas.dataset.warRoomHansServiceSetup = 'route-blocked';
+            canvas.dataset.warRoomHansServiceEvent = eventName;
+            canvas.dataset.warRoomHansServiceRouteBlock = JSON.stringify(
+              explainWarRoomHansBlockedRoute(floor, actor.hans.parent, home, target),
+            );
+          }
+        }
         abortSetupForCurrentGame();
         return;
+      }
+      if (globalThis.__CHESS_E2E_HANS_AMBIENT_AUDIT__ === true) {
+        const canvas = getWarRoomHansCanvas(actor);
+        if (canvas?.dataset) {
+          canvas.dataset.warRoomHansServiceSetup = 'route-started';
+          canvas.dataset.warRoomHansServiceEvent = eventName;
+        }
       }
       props ||= ensureCarriedProps(actor);
       if (eventName === 'espresso') deliveredEspresso ||= ensureDeliveredEspresso(root);
@@ -336,6 +398,7 @@ export function installWarRoomHansServiceRoutine(root) {
         return;
       }
       if (motion.travelled > 0) {
+        if (eventName === 'espresso') espressoTravelMeters += motion.travelled;
         advanceWarRoomHansWalk(controller, { travelled: motion.travelled, horizontalWeight: 0.4 });
       }
       if (motion.arrived) {
@@ -363,6 +426,8 @@ export function installWarRoomHansServiceRoutine(root) {
           const newlyDelivered = deliveredEspresso.visible !== true;
           deliveredEspresso.visible = true;
           props.tray.visible = false;
+          publishEspressoEvidence(actor, 'warRoomHansEspressoDelivered',
+            deliveredEspresso.visible === true);
           if (newlyDelivered) markWarRoomHansAmbientEffectCompleted(gameId, eventName);
         }
       }
@@ -398,9 +463,16 @@ export function installWarRoomHansServiceRoutine(root) {
         return;
       }
       if (motion.travelled > 0) {
+        if (eventName === 'espresso') espressoTravelMeters += motion.travelled;
         advanceWarRoomHansWalk(controller, { travelled: motion.travelled, horizontalWeight: 0.4 });
       }
       if (motion.arrived) {
+        // A finished service is more than merely starting its route: Hans
+        // returned to the actual service door and the delivered cup remains.
+        if (eventName === 'espresso') {
+          publishEspressoEvidence(actor, 'warRoomHansEspressoReturned',
+            deliveredEspresso?.visible === true);
+        }
         finish(actor, props, controller, root, runtime, taskId);
         active = false;
         state = 'done';

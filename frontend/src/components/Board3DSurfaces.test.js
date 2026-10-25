@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import {
   PREMIUM_SURFACE_VERSION,
   applyPremiumDecorSurfacePass,
+  applyWarRoomPixelRatioIfChanged,
   createMicroSurfaceMap,
   getCameraFramingProfile,
   makePremiumDecorMaterial,
@@ -29,6 +30,50 @@ function disposeMaterial(material) {
 }
 
 describe('Board3D premium surfaces', () => {
+  it('keeps the immersive logical viewport when adaptive DPR changes', () => {
+    // Three.js setPixelRatio calls setSize using the renderer's own stored
+    // logical width/height. It must not be followed by another host-sized call.
+    const actualSize = { width: 1440, height: 900 };
+    const conflictingHostSize = { width: 883, height: 659 };
+    const calls = [];
+    let ratio = 1.35;
+    const renderer = {
+      getPixelRatio: () => ratio,
+      setSize(width, height, updateStyle) {
+        calls.push([width, height, updateStyle]);
+        actualSize.width = width;
+        actualSize.height = height;
+      },
+      setPixelRatio(value) {
+        ratio = value;
+        this.setSize(actualSize.width, actualSize.height, false);
+      },
+    };
+    expect(applyWarRoomPixelRatioIfChanged(renderer, 0.85)).toBe(true);
+    expect(calls).toEqual([[1440, 900, false]]);
+    expect(actualSize).toEqual({ width: 1440, height: 900 });
+    expect(actualSize).not.toEqual(conflictingHostSize);
+    expect(applyWarRoomPixelRatioIfChanged(renderer, 0.85)).toBe(false);
+    expect(calls).toHaveLength(1);
+  });
+
+  it('does not reallocate an unchanged drawing-buffer pixel ratio on environment setup', () => {
+    let ratio = 1.2;
+    const writes = [];
+    const renderer = {
+      getPixelRatio: () => ratio,
+      setPixelRatio(value) { writes.push(value); ratio = value; },
+    };
+    expect(applyWarRoomPixelRatioIfChanged(renderer, 1.2)).toBe(false);
+    expect(writes).toEqual([]);
+    expect(applyWarRoomPixelRatioIfChanged(renderer, 0.85)).toBe(true);
+    expect(writes).toEqual([0.85]);
+    expect(applyWarRoomPixelRatioIfChanged(renderer, 0.85)).toBe(false);
+    expect(writes).toEqual([0.85]);
+    expect(applyWarRoomPixelRatioIfChanged({ setPixelRatio: (value) => writes.push(value) }, 0.9)).toBe(true);
+    expect(writes).toEqual([0.85, 0.9]);
+  });
+
   it('genera microtextura determinista y más ligera para puntero grueso', () => {
     const first = createMicroSurfaceMap({ seed: 77, kind: 'wood' });
     const second = createMicroSurfaceMap({ seed: 77, kind: 'wood' });

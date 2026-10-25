@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -253,6 +254,13 @@ if (checkCiWiring) {
   }
 
   const backendGoBlock = jobBlock('backend_go');
+  // Toolchain switches must be disabled at job scope, not in one
+  // shell step (step exports do not persist into source/binary CVE scans).
+  const goJobHeader = backendGoBlock.split('\n    steps:\n')[0];
+  if (!/\n    env:\n      GOTOOLCHAIN: local\n/.test(goJobHeader)) {
+    fail('Backend Go: GOTOOLCHAIN=local debe estar en env del job completo');
+  }
+
   const backendAggregateBlock = jobBlock('backend');
   for (const marker of [
     'actions/setup-go@v6',
@@ -265,6 +273,187 @@ if (checkCiWiring) {
   ]) {
     if (!backendGoBlock.includes(marker)) fail(`Backend Go requerido incompleto: falta ${JSON.stringify(marker)}`);
   }
+  // Go stdlib fixes ship with the compiler, not with go.mod dependency upgrades.
+  // Keep the CI binary tests and the deployed Linux Docker binary on one patched toolchain.
+  const goDockerSource = read(path.join(root, 'backend-go', 'Dockerfile'));
+  const goBuilder = goDockerSource.match(/^FROM\s+golang:(\d+\.\d+\.\d+)-alpine\d+\.\d+\s+AS\s+build$/m);
+  if (!goBuilder) fail('Go Docker builder debe fijar versión patch completa y Alpine, no un tag flotante');
+  const goCiPins = [...backendGoBlock.matchAll(/^\s*go-version:\s*['"]?(\d+\.\d+\.\d+)['"]?\s*$/gm)];
+  if (goCiPins.length !== 1 || /go-version-file:/.test(backendGoBlock)) fail('CI Go debe fijar una única versión patch explícita');
+  if (goCiPins[0][1] !== goBuilder[1]) fail('Go CI y Docker builder deben compartir versión patch exacta');
+  const goVersion = goBuilder[1].split('.').map(Number);
+  const goSecurityFloor = [1, 27, 3];
+  const belowFloor = goVersion.findIndex((part, i) => part !== goSecurityFloor[i]);
+  if (belowFloor >= 0 && goVersion[belowFloor] < goSecurityFloor[belowFloor]) {
+    fail('Go builder por debajo del mínimo de seguridad 1.27.3');
+  }
+  if (goBuilder[1].split('.').length !== 3) fail('Go builder debe fijar major.minor.patch');
+
+
+  // Guard the *release builder* against auto-switching toolchains or
+  // consuming mutated extracted modules after the checksum-checked download.
+  const goBuilderStage = goDockerSource.split('\nFROM alpine:')[0];
+  const localEnvAt = goBuilderStage.indexOf('\nENV GOTOOLCHAIN=local\n');
+  const moduleCopyAt = goBuilderStage.indexOf('COPY go.mod go.sum ./');
+  const moduleVerifyAt = goBuilderStage.indexOf('RUN go mod download && go mod verify');
+  const goSourceAt = goBuilderStage.indexOf('COPY cmd ./cmd');
+  const goCompileAt = goBuilderStage.indexOf('go build -trimpath');
+  if (!(localEnvAt > 0 && localEnvAt < moduleCopyAt &&
+    moduleCopyAt < moduleVerifyAt && moduleVerifyAt < goSourceAt &&
+    goSourceAt < goCompileAt)) {
+    fail('Go Docker debe usar GOTOOLCHAIN=local y verificar la caché de módulos antes de compilar');
+  }
+  if (/\|\|\s*(?:true|:)(?:\s|$)/.test(goBuilderStage)) {
+    fail('Go Docker no puede ignorar errores al verificar dependencias');
+  }
+  // Attest the *Docker-built* executable too; a green runner build alone
+  // cannot prove which toolchain/arch went into the published image.
+  const expectedBuilder = goDockerSource.match(/^ARG EXPECTED_GO_VERSION=(\d+\.\d+\.\d+)$/m);
+  if (!expectedBuilder || expectedBuilder[1] !== goBuilder[1]) {
+    fail('El compilador real del Docker builder debe coincidir con el tag Go parcheado');
+  }
+  for (const required of [
+    'ARG TARGETARCH',
+    'test "$(GOTOOLCHAIN=local go env GOVERSION)" = "go${EXPECTED_GO_VERSION}"',
+    'test "$(go version /out/api-edge)" = "/out/api-edge: go${EXPECTED_GO_VERSION}"',
+    'go version -m /out/api-edge',
+    "grep -Fqx \"$(printf '\\tbuild\\tGOOS=linux')\"",
+    "grep -Fqx \"$(printf '\\tbuild\\tGOARCH=%s' \"$TARGETARCH\")\"",
+  ]) {
+    if (!goDockerSource.includes(required)) fail(`Sin prueba del binario Go final en Docker: ${required}`);
+  }
+  // Reject legacy OpenPGP in the independently compiled, distributed image.
+  // The runner-only import graph check cannot attest this Docker build.
+  const dockerOpenPgpGuard = goDockerSource.indexOf('GO-2026-5932: the legacy OpenPGP packages');
+  const dockerGoBuild = goDockerSource.indexOf("RUN CGO_ENABLED=0 GOOS=linux go build");
+  if (dockerOpenPgpGuard < 0 || dockerGoBuild <= dockerOpenPgpGuard) {
+    fail('Docker debe excluir OpenPGP antes de compilar el binario publicado');
+  }
+  for (const required of [
+    'RUN set -eu;',
+    'CGO_ENABLED=0 GOTOOLCHAIN=local GOOS=linux GOARCH="$TARGETARCH" go list -deps ./cmd/pvp-edge',
+    "grep -Eq '^golang[.]org/x/crypto/openpgp(/|$)'",
+    'GO-2026-5932: forbidden OpenPGP import in linux/$TARGETARCH',
+    'exit 1;',
+  ]) {
+    if (!goDockerSource.includes(required)) fail(`Guardia OpenPGP Docker insuficiente: ${required}`);
+  }
+  if (/\|\|\s*(?:true|:)(?:\s|$)/.test(goDockerSource)) {
+    fail('Docker OpenPGP no puede silenciar errores');
+  }
+  // Check real ARM64 and AMD64 binaries with an external fail-closed script to
+  // preserve the bounded workflow size ratchet.
+  const binaryBuildStart = backendGoBlock.indexOf('\n      - name: Build Linux ARM64\n');
+  if (binaryBuildStart < 0) fail('Backend Go debe compilar el ARM64 real');
+  const binaryBuildStep = backendGoBlock.slice(binaryBuildStart);
+  if (!binaryBuildStep.includes('run: bash ../scripts/go_binary_build_verify.sh')) {
+    fail('Backend Go debe verificar versión y plataforma del binario generado');
+  }
+  const binaryScript = read(path.join(root, 'scripts', 'go_binary_build_verify.sh'));
+  for (const required of [
+    'set -euo pipefail',
+    'export GOTOOLCHAIN=local',
+    'go_at_least_patched "$selected_go"',
+    'patch >= 3',
+    'go1.27.3 go1.27.4 go1.27.10 go1.28.0',
+    'go1.27.2 go1.26.10 go1.26.999',
+    'GOOS=linux GOARCH=arm64 go build -trimpath -o /tmp/pvp-edge ./cmd/pvp-edge',
+    'go version /tmp/pvp-edge',
+    '[[ "$actual" == "/tmp/pvp-edge: $selected_go" ]]',
+    'go version -m /tmp/pvp-edge',
+    "grep -Fqx $'\\tbuild\\tGOOS=linux'",
+    "grep -Fqx $'\\tbuild\\tGOARCH=arm64'",
+    'scanner="$(go env GOPATH)/bin/govulncheck"',
+    '[[ -x "$scanner" ]]',
+    'contains_unsafe_openpgp()',
+    "grep -Eq '^golang[.]org/x/crypto/openpgp(/|$)'",
+    'for arch in amd64 arm64; do',
+    'CGO_ENABLED=0 GOOS=linux GOARCH="$arch" go list -deps ./cmd/pvp-edge',
+    'GO-2026-5932 unsafe legacy OpenPGP import',
+    '"$scanner" -mode=binary /tmp/pvp-edge',
+    'CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -o /tmp/pvp-edge-amd64 ./cmd/pvp-edge',
+    'actual_amd64="$(go version /tmp/pvp-edge-amd64)"',
+    '[[ "$actual_amd64" == "/tmp/pvp-edge-amd64: $selected_go" ]]',
+    'metadata_amd64="$(go version -m /tmp/pvp-edge-amd64)"',
+    "grep -Fqx $'\\tbuild\\tGOARCH=amd64'",
+    '"$scanner" -mode=binary /tmp/pvp-edge-amd64',
+  ]) {
+    if (!binaryScript.includes(required)) fail(`Sin evidencia binaria Go dual-arch: ${required}`);
+  }
+  // Run the actual shell patch-floor assertions in CI preflight.
+  execFileSync('bash', [path.join(root, 'scripts', 'go_binary_build_verify.sh'), '--self-test'], { stdio: 'pipe' });
+  if (/\|\|\s*(?:true|:)/m.test(binaryScript) || /continue-on-error:/m.test(binaryBuildStep)) {
+    fail('Comprobación binaria Go no puede suprimir errores');
+  }
+
+  // The mandatory Go lane must keep the official, pinned, fail-closed scan.
+  // A static preflight catches accidental removal before expensive Go CI runs.
+  const goScanStart = backendGoBlock.indexOf('\n      - name: Reachable Go CVE scan\n');
+  if (goScanStart < 0) fail('Backend Go debe conservar el escáner obligatorio de vulnerabilidades alcanzables');
+  const goScanEnd = backendGoBlock.indexOf('\n      - name:', goScanStart + 1);
+  const goScanBlock = backendGoBlock.slice(goScanStart, goScanEnd < 0 ? undefined : goScanEnd);
+  if (!/^\s*run: bash \.\.\/scripts\/go_vulncheck_crossarch\.sh\s*$/m.test(goScanBlock)) {
+    fail('Backend Go debe ejecutar el escáner multiarquitectura obligatorio');
+  }
+  const scanScript = read(path.join(root, 'scripts', 'go_vulncheck_crossarch.sh'));
+  const scanCommands = scanScript.split(/\r?\n/).map((line) => line.trim())
+    .filter((line) => line && !line.startsWith('#'));
+  const expectedScanCommands = [
+    'set -euo pipefail',
+    'go mod tidy -diff',
+    'go install golang.org/x/vuln/cmd/govulncheck@v1.9.0',
+    'scanner="$(go env GOPATH)/bin/govulncheck"',
+    '"$scanner" ./...',
+    'GOOS=linux GOARCH=arm64 "$scanner" ./...',
+  ];
+  if (JSON.stringify(scanCommands) !== JSON.stringify(expectedScanCommands)) {
+    fail('Escáner Go debe conservar AMD64 + ARM64, versión fija y errores bloqueantes');
+  }
+  if (/continue-on-error:|^\s*if:|\|\|\s*true|\|\|\s*:/m.test(goScanBlock)) {
+    fail('El escaneo Go debe bloquear CI sin condiciones ni supresiones');
+  }
+  // The October 2026 HTTP/2 CVEs were reachable at x/net v0.59.0.
+  // Permit removing the module, or upgrading it; forbid a vulnerable downgrade.
+  const goModSource = read(path.join(root, 'backend-go', 'go.mod'));
+  const xNetMatch = goModSource.match(/^[ \t]*golang\.org\/x\/net[ \t]+v(\d+)\.(\d+)\.(\d+)(?:[ \t]+\/\/[^\n]*)?$/m);
+  if (goModSource.includes('golang.org/x/net') && !xNetMatch) fail('x/net requiere versión semver explícita en go.mod');
+  if (/^[ \t]*replace[ \t]+(?:\([ \t]*)?golang\.org\/x\/net\b/m.test(goModSource)
+    || /^[ \t]*golang\.org\/x\/net(?:[ \t]+v\d+\.\d+\.\d+)?[ \t]+=>/m.test(goModSource)) {
+    fail('go.mod no debe sustituir golang.org/x/net y eludir el mínimo seguro');
+  }
+  if (xNetMatch) {
+    const version = xNetMatch.slice(1).map(Number);
+    const floor = [0, 60, 0];
+    const i = version.findIndex((part, index) => part !== floor[index]);
+    if (i >= 0 && version[i] < floor[i]) fail('golang.org/x/net por debajo del mínimo seguro v0.60.0');
+    const selected = 'golang.org/x/net v' + version.join('.');
+    const goSum = read(path.join(root, 'backend-go', 'go.sum'));
+    if (!goSum.includes(selected + ' h1:') || !goSum.includes(selected + '/go.mod h1:')) {
+      fail('Faltan checksums de la versión segura x/net en go.sum');
+    }
+  }
+
+
+  // MongoDB driver v2.9.0/v2.9.1 reintroduced CVE-2026-81521 and retained
+  // CVE-2026-107325. A source-reachability scan alone does not enforce the floor.
+  const mongoDriverMatch = goModSource.match(/^[ \t]*go\.mongodb\.org\/mongo-driver\/v2[ \t]+v2\.(\d+)\.(\d+)(?:[ \t]+\/\/[^\n]*)?$/m);
+  if (!mongoDriverMatch) fail('MongoDB Go driver debe fijar una versión v2 explícita');
+  const mongoMinor = Number(mongoDriverMatch[1]);
+  const mongoPatch = Number(mongoDriverMatch[2]);
+  if (mongoMinor < 9 || (mongoMinor === 9 && mongoPatch < 2)) {
+    fail('MongoDB Go driver por debajo del mínimo seguro v2.9.2');
+  }
+  if (/^[ \t]*replace[ \t]+(?:\([ \t]*)?go\.mongodb\.org\/mongo-driver\/v2\b/m.test(goModSource)
+    || /^[ \t]*go\.mongodb\.org\/mongo-driver\/v2(?:[ \t]+v\d+\.\d+\.\d+)?[ \t]+=>/m.test(goModSource)) {
+    fail('go.mod no debe sustituir el driver MongoDB para eludir su versión segura');
+  }
+  const mongoSelected = 'go.mongodb.org/mongo-driver/v2 v2.' + mongoMinor + '.' + mongoPatch;
+  const mongoGoSum = read(path.join(root, 'backend-go', 'go.sum'));
+  if (!mongoGoSum.includes(mongoSelected + ' h1:') || !mongoGoSum.includes(mongoSelected + '/go.mod h1:')) {
+    fail('Faltan checksums de la versión segura MongoDB en go.sum');
+  }
+
+
   if (!backendAggregateBlock.includes('needs: [preflight, backend_python, backend_go]')) {
     fail('Tests · Backend debe agregar Python + Go bajo el required check estable');
   }
@@ -279,7 +468,6 @@ if (checkCiWiring) {
   for (const marker of [
     "grep -E '^chess==' backend-python/requirements.txt",
     "grep -E '^pydantic==' backend-python/requirements.txt",
-    'python scripts/chronicles_topology_parity_corpus.py --check',
     'python scripts/engine_parity_corpus.py --check',
     'python scripts/games_parity_corpus.py --check',
     'python scripts/games_ops_corpus.py --check',

@@ -91,6 +91,7 @@ test('Home 3D · resize aplica full→lite→full sin conservar un LOD obsoleto'
   const castle3d = page.locator('.illustrated-home__castle-3d');
   await expect(castle3d).toBeVisible({ timeout: 15_000 });
   await expect(castle3d).toHaveClass(/is-ready/, { timeout: 15_000 });
+  await expect(castle3d).toHaveAttribute('data-home-blender-initial-frame-coalesced', 'true');
   await expect(castle3d).toHaveAttribute('data-home-castle-lod', 'full');
 
   await page.setViewportSize({ width: 1100, height: 900 });

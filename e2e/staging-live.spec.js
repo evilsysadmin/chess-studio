@@ -1,4 +1,6 @@
 import { expect, test } from '@playwright/test';
+import { createHash } from 'node:crypto';
+import v4AssetsManifest from '../frontend/src/assets/r2-assets-manifest.json';
 import { buttonWithVisibleText, clickBoardMove, gameStatus, openDuelHall } from './helpers.js';
 import { stagingSyntheticHeaders } from './staging-synthetic.js';
 
@@ -293,7 +295,12 @@ function createPvpNativeTraceSummary() {
         }
         if (Number.isFinite(event.ts) && event.dur > (longest.get(event.name)?.dur || 0)) {
           // Retain only numeric time/thread identity; never raw trace args.
-          longest.set(event.name, { ts: event.ts, dur: event.dur, pid: event.pid, tid: event.tid });
+          // Thread CPU time is a separate Chromium trace clock. Missing tdur
+          // must stay "unavailable": it does not mean a 0ms CPU cost.
+          longest.set(event.name, {
+            ts: event.ts, dur: event.dur, pid: event.pid, tid: event.tid,
+            tdur: Number.isFinite(event.tdur) && event.tdur >= 0 ? event.tdur : null,
+          });
         }
         events += 1;
       }
@@ -320,14 +327,147 @@ function createPvpNativeTraceSummary() {
             (nested.get(event.name) || 0) + inside / 1000);
         }
       }
+      // Distinguish CPU-intensive native commits from blocked/suspended wall
+      // time on the *same* renderer thread. The trace clocks are optional;
+      // report absent clocks explicitly and never infer a GPU from timings.
+      const threadCpuMs = (event) => event && event.tdur !== null &&
+        Number.isFinite(event.tdur) && Number.isFinite(event.dur) && event.dur > 0
+        ? Math.round(event.tdur / 1000) : 'unavailable';
+      const commitCpuMs = threadCpuMs(commit);
+      const taskCpuMs = threadCpuMs(task);
+      const commitNonCpuMs = typeof commitCpuMs === 'number'
+        ? Math.max(0, Math.round((commit.dur - commit.tdur) / 1000))
+        : 'unavailable';
+      const commitCpuPct = typeof commitCpuMs === 'number'
+        ? Math.round(100 * commit.tdur / commit.dur)
+        : 'unavailable';
       const nestedTop = [...nested].sort((a, b) => b[1] - a[1]).slice(0, 8)
         .map(([name, ms]) => name + ':' + Math.round(ms)).join(',');
+      // Correlate allowlisted *other-thread* activity with the exact native
+      // Commit time window. Enclosing RunTask frames are intentionally omitted:
+      // they are generic wrappers, not evidence of GPU or raster work.
+      // Totals across threads may overlap one another; never treat their sum
+      // as accounted-for Commit wall time or as proof of a GPU dependency.
+      const peerNames = new Map();
+      const peerThreads = new Set();
+      const targetedIntervals = [];
+      const targetedNames = new Set([
+        'GpuCommandBufferStub::OnAsyncFlush', 'GLES2DecoderImpl::DoCommands',
+        'RasterTask', 'DrawFrame', 'CompositeLayers', 'UpdateLayerTree',
+      ]);
+      const taskWrappers = new Set([
+        'RunTask', 'ThreadControllerImpl::RunTask',
+        'ThreadController::RunTask', 'TaskQueueManager::ProcessTaskFromWorkQueue',
+        'SequenceManagerImpl::SelectNextTask',
+      ]);
+      if (commit) {
+        const end = commit.ts + commit.dur;
+        for (const event of nativeIntervals) {
+          if (event.pid === commit.pid && event.tid === commit.tid) continue;
+          if (taskWrappers.has(event.name)) continue;
+          const from = Math.max(commit.ts, event.ts);
+          const to = Math.min(end, event.ts + event.dur);
+          if (to - from < 1000) continue;
+          peerThreads.add(event.pid + ':' + event.tid);
+          const row = peerNames.get(event.name) || { count: 0, totalUs: 0, maxUs: 0 };
+          row.count += 1;
+          row.totalUs += to - from;
+          row.maxUs = Math.max(row.maxUs, to - from);
+          peerNames.set(event.name, row);
+          if (targetedNames.has(event.name)) targetedIntervals.push([from, to]);
+        }
+      }
+      // Union of only explicitly traced GPU/raster/layer intervals, clipped to
+      // Commit. If none were recorded, report "not-observed", NOT zero GPU work.
+      targetedIntervals.sort((a, b) => a[0] - b[0]);
+      let targetedUs = 0;
+      let coverageEnd = -Infinity;
+      for (const [from, to] of targetedIntervals) {
+        targetedUs += Math.max(0, to - Math.max(from, coverageEnd));
+        coverageEnd = Math.max(coverageEnd, to);
+      }
+      const peerTop = [...peerNames].sort((a, b) => b[1].totalUs - a[1].totalUs)
+        .slice(0, 8)
+        .map(([name, row]) => name + ':' + row.count + '/' +
+          Math.round(row.totalUs / 1000) + '/' + Math.round(row.maxUs / 1000))
+        .join(',');
       return 'events=' + events + ' top_count_total_max_ms=' + (top || 'none') +
         ' critical_commit_child_ms=' + (nestedTop || 'none') +
         ' critical_commit_task_same_thread=' + sameThread +
-        ' critical_commit_task_overlap_ms=' + Math.round(overlap / 1000);
+        ' critical_commit_task_overlap_ms=' + Math.round(overlap / 1000) +
+        ' critical_commit_thread_cpu_ms=' + commitCpuMs +
+        ' critical_commit_non_cpu_wall_ms=' + commitNonCpuMs +
+        ' critical_commit_cpu_pct=' + commitCpuPct +
+        ' critical_task_thread_cpu_ms=' + taskCpuMs +
+        ' critical_commit_peer_threads=' + (commit ? peerThreads.size : 'unavailable') +
+        ' critical_commit_peer_top_overlap_ms=' + (peerTop || 'none') +
+        ' critical_commit_peer_graphics_coverage_ms=' +
+          (targetedIntervals.length ? Math.round(targetedUs / 1000) : 'not-observed');
     },
   };
+}
+
+
+// Optional native-run microscope: measure synchronous WebGL API calls only.
+// Never capture WebGL arguments, shaders, scene contents, URLs or identities.
+// Deliberately NOT enabled by the normal, unprofiled staging smoke.
+async function installPvpWebGlCallProbe(page) {
+  await page.evaluate(() => {
+    const methods = [
+      'compileShader', 'linkProgram', 'getProgramInfoLog', 'getShaderInfoLog',
+      'getProgramParameter', 'getShaderParameter', 'useProgram', 'validateProgram',
+      'bufferData', 'bufferSubData', 'texImage2D', 'texSubImage2D',
+      'compressedTexImage2D', 'drawElements', 'drawArrays',
+      'drawElementsInstanced', 'drawArraysInstanced', 'clear', 'flush', 'finish',
+    ];
+    const stats = new Map();
+    const restored = [];
+    const protoNames = ['WebGLRenderingContext', 'WebGL2RenderingContext'];
+    for (const name of protoNames) {
+      const proto = globalThis[name]?.prototype;
+      if (!proto) continue;
+      for (const method of methods) {
+        const descriptor = Object.getOwnPropertyDescriptor(proto, method);
+        if (!descriptor?.configurable || typeof descriptor.value !== 'function') continue;
+        try {
+          Object.defineProperty(proto, method, {
+            ...descriptor,
+            value: function (...args) {
+              const start = performance.now();
+              try {
+                return Reflect.apply(descriptor.value, this, args);
+              } finally {
+                const ms = Math.max(0, performance.now() - start);
+                const row = stats.get(method) || { calls: 0, totalMs: 0, maxMs: 0 };
+                row.calls += 1;
+                row.totalMs += ms;
+                row.maxMs = Math.max(row.maxMs, ms);
+                stats.set(method, row);
+              }
+            },
+          });
+          restored.push({ proto, method, descriptor });
+        } catch {
+          // Some GL implementations expose non-replaceable native methods.
+        }
+      }
+    }
+    globalThis.__stagingPvpWebGlProbe = {
+      snapshot() {
+        const top = [...stats].sort((a, b) => b[1].totalMs - a[1].totalMs)
+          .slice(0, 12).map(([method, row]) => ({
+            method, calls: row.calls,
+            totalMs: Math.round(row.totalMs), maxMs: Math.round(row.maxMs),
+          }));
+        return { hooks: restored.length, top };
+      },
+      stop() {
+        for (const { proto, method, descriptor } of restored.reverse()) {
+          try { Object.defineProperty(proto, method, descriptor); } catch { /* best effort */ }
+        }
+      },
+    };
+  });
 }
 
 async function assertLivePvpBrowserPath(page) {
@@ -362,6 +502,22 @@ async function assertLivePvpBrowserPath(page) {
   // comparison legs. Do not compare the canonical 'off' smoke with a leg that
   // waited for a different Home initialization state.
   // Hidden canvases remain mounted with their original WebGL render loop.
+  // Diagnostic-only counterfactual: bypass only the authored Duel Hall GLB.
+  // Both legs retain the same real lobby/PvP API, Home, and browser profile.
+  const hallAblation = process.env.CHESS_STAGING_PVP_HALL_ABLATION || 'normal';
+  expect(['normal', 'block-glb'], 'known diagnostic Hall ablation').toContain(hallAblation);
+  if (hallAblation !== 'normal') {
+    expect(process.env.CHESS_STAGING_CDP_DIAGNOSTICS,
+      'Hall asset ablation must never run in canonical staging smoke').toBe('1');
+  }
+  let hallBlocked = 0;
+  const isHallGlb = (url) => url.hostname === 'assets.chess-studio.shadowops.dpdns.org' &&
+    url.pathname.startsWith('/pvp/duel-hall/runtime/') && url.pathname.endsWith('.glb');
+  const blockHallGlb = async (route) => {
+    hallBlocked += 1;
+    await route.abort('blockedbyclient');
+  };
+  if (hallAblation === 'block-glb') await page.route(isHallGlb, blockHallGlb);
   const ablation = process.env.CHESS_STAGING_PVP_ABLATION || 'off';
   expect(['off', 'keep-home-canvas', 'hide-home-canvas', 'product-home-canvas'],
     'recognized staging compositor A/B mode').toContain(ablation);
@@ -426,6 +582,10 @@ async function assertLivePvpBrowserPath(page) {
   // Diagnostics are one-shot and contain only timing, not URLs or identities.
   const openedAt = Date.now();
   const openMs = () => Date.now() - openedAt;
+  if (process.env.CHESS_STAGING_CDP_DIAGNOSTICS === '1') {
+    await installPvpWebGlCallProbe(page).catch(() =>
+      console.log('STAGING_PVP_WEBGL unavailable=probe-install'));
+  }
   // Measure DOM milestones from *inside* Chromium. Playwright's own locator
   // commands can be delayed by a busy main thread, even after React has
   // inserted the dialog. Keep the observer read-only and stop it after open.
@@ -656,6 +816,23 @@ async function assertLivePvpBrowserPath(page) {
   // CDP tracing is local to the test browser. Summarize an allowlisted set
   // of renderer/native events; never preserve raw trace event args or URLs.
   const nativeSummary = createPvpNativeTraceSummary();
+  // CDP layer observations are metadata-only: never retain layer identifiers,
+  // DOM node IDs, geometry, paint rectangles or raw protocol payloads.
+  const layers = { changes: 0, paints: 0, maxLayers: 0 };
+  let layerTreeEnabled = false;
+  if (cpuSession && deepDiagnostics) {
+    try {
+      cpuSession.on('LayerTree.layerTreeDidChange', ({ layers: entries }) => {
+        layers.changes += 1;
+        layers.maxLayers = Math.max(layers.maxLayers, entries?.length || 0);
+      });
+      cpuSession.on('LayerTree.layerPainted', () => { layers.paints += 1; });
+      await cpuSession.send('LayerTree.enable');
+      layerTreeEnabled = true;
+    } catch {
+      console.log('STAGING_PVP_LAYERS unavailable=cdp-enable');
+    }
+  }
   let nativeTracing = false;
   const onTraceData = ({ value }) => nativeSummary.add(value);
   if (cpuSession && deepDiagnostics) {
@@ -682,10 +859,35 @@ async function assertLivePvpBrowserPath(page) {
       await cpuSession.send('Tracing.end');
       await Promise.race([complete, new Promise((resolve) => setTimeout(resolve, 2500))]);
       console.log('STAGING_PVP_NATIVE ' + nativeSummary.report());
+      if (layerTreeEnabled) console.log('STAGING_PVP_LAYERS ' + JSON.stringify(layers));
     } catch {
       console.log('STAGING_PVP_NATIVE unavailable=cdp-stop');
     }
   };
+
+  // A software WebGL stall can block Chromium for seconds. Limit optional CDP
+  // capture to 20 seconds even if a polling assertion hangs; never persist raw
+  // traces, enlarge canonical test timeouts or turn diagnostics on by default.
+  // Share one stop promise across settled, deadline and finally, so concurrent
+  // cleanup cannot race Tracing.end / Profiler.stop on the same CDP session.
+  const diagnosticMaxMs = 20_000;
+  let diagnosticDeadline = null;
+  let diagnosticStopPromise = null;
+  const stopDeepDiagnostics = (reason) => {
+    if (!deepDiagnostics) return Promise.resolve();
+    if (!diagnosticStopPromise) {
+      if (diagnosticDeadline !== null) clearTimeout(diagnosticDeadline);
+      console.log('STAGING_PVP_DIAGNOSTICS stop=' + reason + ' max_ms=' + diagnosticMaxMs);
+      diagnosticStopPromise = (async () => {
+        await stopNativeTracing();
+        await stopCpuSampling();
+      })();
+    }
+    return diagnosticStopPromise;
+  };
+  if (deepDiagnostics) {
+    diagnosticDeadline = setTimeout(() => { void stopDeepDiagnostics('deadline'); }, diagnosticMaxMs);
+  }
 
   try {
     const firstLobby = waitLobby();
@@ -704,8 +906,8 @@ async function assertLivePvpBrowserPath(page) {
       ' elapsed_from_start_ms=' + (Number.isFinite(requestTiming?.responseStart) && requestTiming.responseStart >= 0
         ? Math.round(requestTiming.responseStart) : 'unavailable'),
     );
-    await stopNativeTracing();
-    await stopCpuSampling();
+    // Keep opt-in native/CPU evidence through the deferred 3D initialization.
+    // Stopping at the first GET missed the 4–6s LongTask *after* scene ready.
 
     const lobby = page.getByRole('dialog', { name: 'Duelo 1 contra 1 · War Room' });
     await expect(lobby).toBeVisible();
@@ -860,6 +1062,24 @@ async function assertLivePvpBrowserPath(page) {
       );
     }
 
+    // The passive browser sample above is canonical and unprofiled by default.
+    // When explicitly enabled, finish CDP only AFTER that same scene-settled
+    // checkpoint. This captures native work following GLB decode/first paint.
+    if (deepDiagnostics) {
+      const webgl = await page.evaluate(() =>
+        globalThis.__stagingPvpWebGlProbe?.snapshot() || null).catch(() => null);
+      console.log('STAGING_PVP_WEBGL ' + (webgl
+        ? JSON.stringify(webgl)
+        : 'unavailable=probe-snapshot'));
+    }
+    if (hallAblation === 'block-glb') {
+      expect(hallBlocked, 'only the Duel Hall runtime GLB may be aborted').toBe(1);
+      expect(settled?.sceneState, 'blocked GLB should reveal the existing 2D fallback').toBe('fallback');
+    }
+    console.log('STAGING_PVP_HALL_ABLATION mode=' + hallAblation +
+      ' intercepted=' + hallBlocked + ' scene=' + (settled?.sceneState || 'not-seen'));
+    await stopDeepDiagnostics('settled');
+
     const leave = page.waitForResponse(
       (response) => response.request().method() === 'DELETE' && isPvpApiPath(response.url(), '/roster'),
       { timeout: 25_000 },
@@ -874,18 +1094,21 @@ async function assertLivePvpBrowserPath(page) {
     }
     logPhase('leave-lobby');
   } finally {
-    await stopNativeTracing();
-    await stopCpuSampling();
+    await stopDeepDiagnostics('finally');
+    if (cpuSession && layerTreeEnabled) await cpuSession.send('LayerTree.disable').catch(() => {});
     if (cpuSession) await cpuSession.detach().catch(() => {});
     if (!page.isClosed()) {
       await page.evaluate(() => {
         window.__stagingDuelHallTiming?.close();
         delete window.__stagingDuelHallTiming;
+        window.__stagingPvpWebGlProbe?.stop();
+        delete window.__stagingPvpWebGlProbe;
       }).catch(() => {});
     }
     if (homeCanvasStyle && !page.isClosed()) {
       await homeCanvasStyle.evaluate((node) => node.remove()).catch(() => {});
     }
+    if (hallAblation === 'block-glb') await page.unroute(isHallGlb, blockHallGlb).catch(() => {});
     page.off('requestfinished', onOpenFinished);
     page.off('request', onOpenRequest);
     page.off('response', onOpenResponse);
@@ -963,7 +1186,7 @@ test('staging live · auth real → War Room v2 → recovery 3D → jugada real'
     console.log(`STAGING_LIVE_PHASE ${label} duration_ms=${now - phaseStarted} total_ms=${now - smokeStarted}`);
     phaseStarted = now;
   };
-  test.setTimeout(210_000);
+  test.setTimeout(300_000);
   await page.setViewportSize({ width: 1440, height: 900 });
   // v3 is the product default, but this smoke runs on software GL where the
   // Blender shell starves screenshots; pin v1 and exercise v2 explicitly below.
@@ -1076,11 +1299,13 @@ test('staging live · auth real → War Room v2 → recovery 3D → jugada real'
     const classicWarRoomItem = page.getByRole('menuitemradio', { name: 'War Room v1', exact: true });
     const v2WarRoomItem = page.getByRole('menuitemradio', { name: 'War Room v2', exact: true });
     const v3WarRoomItem = page.getByRole('menuitemradio', { name: 'War Room v3', exact: true });
+    const v4WarRoomItem = page.getByRole('menuitemradio', { name: 'War Room v4', exact: true });
     await expect(classicWarRoomItem).toBeVisible();
     await expect(v2WarRoomItem).toBeVisible();
     await expect(v3WarRoomItem).toBeVisible();
+    await expect(v4WarRoomItem).toBeVisible();
     const initiallySelectedWarRooms = await Promise.all(
-      [classicWarRoomItem, v2WarRoomItem, v3WarRoomItem]
+      [classicWarRoomItem, v2WarRoomItem, v3WarRoomItem, v4WarRoomItem]
         .map((item) => item.getAttribute('aria-checked')),
     );
     expect(initiallySelectedWarRooms.filter((value) => value === 'true')).toHaveLength(1);
@@ -1088,6 +1313,37 @@ test('staging live · auth real → War Room v2 → recovery 3D → jugada real'
     await expect(warRoom3d).toHaveAttribute('data-board3d-variant', 'v2');
     await expect(warRoom3d).toHaveAttribute('data-board3d-variant-status', 'ready', { timeout: 30_000 });
     await expect(warRoomCanvas).toBeVisible();
+
+    // Fail closed on the exact V4 GLB fetched by Chromium from the public CDN.
+    // Do not route/fulfill a local model here: staging must really load R2.
+    // The test checkout is the same deployed runtime SHA (including smoke-only
+    // mode), so its immutable manifest is the authoritative expected asset.
+    // Structured JSON imports are transformed by Playwright's test loader,
+    // which compiles this spec as CommonJS on the staging runner.
+    const v4 = v4AssetsManifest.assets?.['warRoom.v4.runtime'];
+    expect(v4?.sha256, 'War Room V4 must have a pinned SHA-256').toMatch(/^[0-9a-f]{64}$/);
+    expect(v4?.url, 'War Room V4 must use the immutable CDN key').toContain(
+      '/war-room/v4/runtime/war-room-v4-shell-' + v4.sha256.slice(0, 16) + '.glb',
+    );
+    const v4BrowserResponse = page.waitForResponse((response) =>
+      response.request().method() === 'GET' && response.url().split('?')[0] === v4.url,
+    { timeout: 90_000 });
+    await variantUtilityMenu.click();
+    await page.getByRole('menuitemradio', { name: 'War Room v4', exact: true }).click();
+    const v4Response = await v4BrowserResponse;
+    expect(v4Response.status(), 'Chromium must fetch the exact pinned V4 GLB').toBe(200);
+    const v4Bytes = await v4Response.body();
+    expect(v4Bytes.length, 'Chromium R2 bytes must match the deployed manifest').toBe(v4.bytes);
+    expect(createHash('sha256').update(v4Bytes).digest('hex'),
+      'Chromium must receive the exact GLB validated before R2 promotion').toBe(v4.sha256);
+    expect(v4Bytes.subarray(0, 4).toString('ascii'), 'V4 must be an actual GLB').toBe('glTF');
+    await expect(warRoom3d).toHaveAttribute('data-board3d-variant', 'v4');
+    await expect(warRoom3d).toHaveAttribute('data-board3d-variant-status', 'ready', { timeout: 90_000 });
+    await expect(warRoomCanvas).toBeVisible();
+    console.log('STAGING_WAR_ROOM_V4_VERIFIED sha256=' + v4.sha256 + ' bytes=' + v4Bytes.length);
+    phase('war-room-v4-public-r2-ready');
+
+    // A failed V4 load must never strand the player: retain v1 rollback.
     await variantUtilityMenu.click();
     await page.getByRole('menuitemradio', { name: 'War Room v1', exact: true }).click();
     await expect(warRoom3d).toHaveAttribute('data-board3d-variant', 'classic');
@@ -1211,22 +1467,40 @@ test('staging live · auth real → War Room v2 → recovery 3D → jugada real'
     await expect(page.getByRole('button', { name: 'Cambiar apariencia y piezas del tablero', exact: true })).toBeVisible({ timeout: 30_000 });
     await expect(page.locator('.square[aria-label^="Casilla e2,"]')).toBeVisible();
 
+    const moveUrl = `${STAGING_API_URL}/games/${gameId}/move`;
+    let releaseMoveResponse;
+    const moveResponseGate = new Promise((resolve) => { releaseMoveResponse = resolve; });
+    // Keep the single REAL backend POST and its response, but hold delivery to
+    // the browser until we have seen the optimistic move awaiting confirmation.
+    // This removes timing races without mocking CPU play or accepting stale UI.
+    await page.route(moveUrl, async (route) => {
+      if (route.request().method() !== 'POST') return route.continue();
+      const upstream = await route.fetch();
+      await moveResponseGate;
+      await route.fulfill({ response: upstream });
+    });
     const moveResponsePromise = page.waitForResponse((response) => {
       const url = new URL(response.url());
       return response.request().method() === 'POST'
-        && Boolean(gameId)
-        && url.origin + url.pathname === `${STAGING_API_URL}/games/${gameId}/move`;
+        && url.origin + url.pathname === moveUrl;
     }, { timeout: 60_000 });
-    await clickBoardMove(page, 'e2', 'e4');
-    // HTTP 200 alone does not prove the CPU reply was actually presented.
-    // Observe Matthias thinking and the authoritative return to the human turn.
-    await expect(gameStatus(page).getByText('La CPU está pensando…', { exact: true })).toBeVisible({ timeout: 10_000 });
+    try {
+      await clickBoardMove(page, 'e2', 'e4');
+      await expect(gameStatus(page).getByText('Confirmando jugada…', { exact: true }))
+        .toBeVisible({ timeout: 10_000 });
+    } finally {
+      releaseMoveResponse();
+    }
     const moveResponse = await moveResponsePromise;
+    await page.unroute(moveUrl);
     expect(moveResponse.status()).toBe(200);
     const moved = await moveResponse.json();
     expect(Array.isArray(moved.history)).toBe(true);
-    expect(moved.history.length).toBeGreaterThanOrEqual(1);
-    await expect(gameStatus(page).getByText('Tu turno', { exact: true })).toBeVisible({ timeout: 30_000 });
+    expect(moved.history.length).toBeGreaterThanOrEqual(2);
+    expect(moved.lastMove?.by, 'el backend debe confirmar también una jugada real de Matthias').toBe('cpu');
+    // The authoritative CPU reply must restore the human turn, not just return HTTP 200.
+    await expect(gameStatus(page).getByText('Tu turno', { exact: true }))
+      .toBeVisible({ timeout: 30_000 });
     phase('move-and-cpu-reply');
 
     await leaveCurrentGameThroughUi(page);

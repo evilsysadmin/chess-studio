@@ -370,3 +370,17 @@ func TestAnonymousRateLimitIsPerCloudflareClient(t *testing.T) {
 		t.Fatalf("another client must not share the bucket: %d", code)
 	}
 }
+
+// Todos los handlers nativos (login, runs de Chronicles, games…) construyen
+// su política de orígenes con New(), así que basta con probar uno.
+func TestChroniclesStandaloneStagingOriginPreflight(t *testing.T) {
+	f := newFixture(t, fakeAccounts{})
+	origin := "https://staging.chronicles.shadowops.dpdns.org"
+	w := f.do(t, "OPTIONS", "/api/games/g1", "", map[string]string{
+		"Origin": origin, "Access-Control-Request-Method": "DELETE",
+		"Access-Control-Request-Headers": "authorization, content-type",
+	})
+	if w.Code != 200 || w.Header().Get("Access-Control-Allow-Origin") != origin {
+		t.Fatalf("preflight from Chronicles staging: %d %v", w.Code, w.Header())
+	}
+}

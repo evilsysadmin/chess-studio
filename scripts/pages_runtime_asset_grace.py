@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 from concurrent.futures import ThreadPoolExecutor
 import hashlib
+import http.client
 import json
 import pathlib
 import re
@@ -100,11 +101,17 @@ def fetch_from_origin(origin: str, path: str, limit: int, *, optional: bool = Fa
     url = origin + "/" + path
     # Cloudflare's bot protection answers 403 to the default Python-urllib
     # user agent, which broke every staging deploy after the first cutover.
-    request = urllib.request.Request(url, headers={
+    # release.json and asset-grace.json are mutable lineage pointers: fetch
+    # them fresh. Hashed JS/CSS chunks are immutable and SHA-256 verified after
+    # download, so never force the CDN to revalidate them with no-cache/no-store.
+    metadata = path in {"release.json", MANIFEST}
+    headers = {
         "User-Agent": "chess-studio-pages-asset-grace/1",
-        "Cache-Control": "no-cache, no-store",
-        "Accept": "application/json" if path.startswith(("release.json", MANIFEST)) else "*/*",
-    })
+        "Accept": "application/json" if metadata else "*/*",
+    }
+    if metadata:
+        headers["Cache-Control"] = "no-cache, no-store"
+    request = urllib.request.Request(url, headers=headers)
     # Historical immutable chunks are mandatory. Retry only a temporary
     # network timeout or a transient origin response; never turn a missing,
     # forbidden, malformed or mismatched chunk into a successful deploy.
@@ -119,10 +126,17 @@ def fetch_from_origin(origin: str, path: str, limit: int, *, optional: bool = Fa
         except urllib.error.HTTPError as error:
             if error.code == 404 and optional:
                 return None
-            if error.code not in {429, 500, 502, 503, 504} or attempt == 2:
+            if error.code not in {429, 500, 502, 503, 504, 520} or attempt == 2:
                 raise
-        except (TimeoutError, urllib.error.URLError) as error:
-            if isinstance(error, urllib.error.URLError) and not isinstance(error.reason, TimeoutError):
+        except (TimeoutError, ConnectionResetError, http.client.IncompleteRead,
+                urllib.error.URLError) as error:
+            # Pages / Cloudflare sometimes closes an otherwise healthy GET
+            # before returning response headers or while streaming a chunk.
+            # These transport cuts are transient candidates, like timeouts;
+            # still fail closed after three attempts and never skip assets.
+            if isinstance(error, urllib.error.URLError) and not isinstance(
+                error.reason, (TimeoutError, ConnectionResetError, http.client.IncompleteRead)
+            ):
                 raise
             if attempt == 2:
                 raise
@@ -241,6 +255,22 @@ def self_test() -> None:
         assert fetch_from_origin("https://example.com", MANIFEST, 2048, optional=True) is not None
     finally:
         urllib.request.urlopen = original_urlopen
+    # Mutable manifest/release pointers must bypass stale CDN cache, but
+    # immutable hashes should be allowed to hit the edge cache.
+    cache_headers = {}
+    def observe_headers(request, timeout=15):
+        cache_headers[request.full_url.rsplit("/", 1)[-1]] = (
+            request.get_header("Cache-control"),
+            request.get_header("Accept"),
+        )
+        return FakeResponse(b"same checked bytes")
+    for name in ("release.json", MANIFEST, "assets/Board3D-aBcDeF01.js"):
+        fetch_from_origin("https://example.com", name, 1024, opener=observe_headers)
+    assert cache_headers == {
+        "release.json": ("no-cache, no-store", "application/json"),
+        MANIFEST: ("no-cache, no-store", "application/json"),
+        "Board3D-aBcDeF01.js": (None, "*/*"),
+    }
     # Transient origin errors must be retried, but a persistent outage or
     # a missing required chunk may never produce an incomplete manifest.
     calls = []
@@ -265,6 +295,80 @@ def self_test() -> None:
     else:
         raise AssertionError("persistent timeout bypassed historical chunk retention")
     assert len(failures) == 3
+    # Exact Pages failure observed in staging: urllib raises RemoteDisconnected
+    # directly before it wraps any URL error. A one-off reset is retried, not
+    # interpreted as a corrupt or missing immutable asset.
+    attempts = []
+    pauses = []
+    def disconnected_once(request, timeout=15):
+        attempts.append(request.full_url)
+        if len(attempts) == 1:
+            raise http.client.RemoteDisconnected("remote closed without response")
+        return FakeResponse(b"preserved immutable asset")
+    assert fetch_from_origin("https://example.com", "assets/Old-12345678.js", 1024,
+                             opener=disconnected_once, sleep=pauses.append) == b"preserved immutable asset"
+    assert len(attempts) == 2 and pauses == [1]
+    # URLError-wrapped connection resets are also transient.
+    wrapped = []
+    def wrapped_reset(request, timeout=15):
+        wrapped.append(request.full_url)
+        if len(wrapped) == 1:
+            raise urllib.error.URLError(ConnectionResetError("connection reset"))
+        return FakeResponse(b"preserved immutable asset")
+    assert fetch_from_origin("https://example.com", "assets/Old-12345678.js", 1024,
+                             opener=wrapped_reset, sleep=lambda _: None) == b"preserved immutable asset"
+    assert len(wrapped) == 2
+    # Persistent abrupt EOF may never silently publish a reduced retention set.
+    persistent = []
+    def always_disconnect(request, timeout=15):
+        persistent.append(request.full_url)
+        raise http.client.RemoteDisconnected("remote closed without response")
+    try:
+        fetch_from_origin("https://example.com", "assets/Old-12345678.js", 1024,
+                          opener=always_disconnect, sleep=lambda _: None)
+    except http.client.RemoteDisconnected:
+        pass
+    else:
+        raise AssertionError("persistent remote disconnect bypassed retained-asset safety")
+    assert len(persistent) == 3
+    # Cloudflare Pages may briefly return a 520 edge error while serving an
+    # immutable historical chunk. Retry within the existing three-attempt bound.
+    cf520_attempts = []
+    cf520_delays = []
+    def cf520_once(request, timeout=15):
+        cf520_attempts.append(request.full_url)
+        if len(cf520_attempts) == 1:
+            raise urllib.error.HTTPError(request.full_url, 520, "Origin Error", {}, None)
+        return FakeResponse(b"preserved immutable asset")
+    assert fetch_from_origin("https://example.com", "assets/Old-12345678.js", 1024,
+                             opener=cf520_once, sleep=cf520_delays.append) == b"preserved immutable asset"
+    assert len(cf520_attempts) == 2 and cf520_delays == [1]
+    # A persistent 520 never publishes an incomplete historical generation.
+    cf520_failures = []
+    def cf520_always(request, timeout=15):
+        cf520_failures.append(request.full_url)
+        raise urllib.error.HTTPError(request.full_url, 520, "Origin Error", {}, None)
+    try:
+        fetch_from_origin("https://example.com", "assets/Old-12345678.js", 1024,
+                          opener=cf520_always, sleep=lambda _: None)
+    except urllib.error.HTTPError as error:
+        assert error.code == 520
+    else:
+        raise AssertionError("persistent Cloudflare 520 bypassed retained-asset safety")
+    assert len(cf520_failures) == 3
+    # A genuinely missing required chunk remains fatal on the first 404.
+    missing_attempts = []
+    def missing_chunk(request, timeout=15):
+        missing_attempts.append(request.full_url)
+        raise urllib.error.HTTPError(request.full_url, 404, "Not Found", {}, None)
+    try:
+        fetch_from_origin("https://example.com", "assets/Old-12345678.js", 1024,
+                          opener=missing_chunk, sleep=lambda _: None)
+    except urllib.error.HTTPError as error:
+        assert error.code == 404
+    else:
+        raise AssertionError("missing required chunk was accepted")
+    assert len(missing_attempts) == 1
     forbidden = []
     def forbidden_asset(request, timeout=15):
         forbidden.append(timeout)

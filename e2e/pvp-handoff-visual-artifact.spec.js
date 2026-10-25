@@ -3,11 +3,10 @@ import { mkdir } from 'node:fs/promises';
 import { login, mockApi } from './helpers.js';
 
 const ARTIFACT_DIR = '../.artifacts/app-visual/pvp-handoff';
-const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
-// Screenshot canaries can spend minutes setting up SwiftShader. Keep the same
-// authoritative POST /ready transition, but prevent test-clock expiry while
-// checking the `opening` animation. No product clock semantics are changed.
+// Keep the mocked server start sufficiently far in the future for slow
+// SwiftShader screenshot capture; polling must reuse the same timestamp.
 const HANDOFF_VISUAL_START_LEAD_MS = 5 * 60_000;
+const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 
 function startingMatch() {
   return {
@@ -47,6 +46,7 @@ function activeMatch(startsAt) {
 async function prepareHandoff(page, { holdReady = false } = {}) {
   await mockApi(page);
   let released = false;
+  let readyRequested = false;
   let activationStartsAt = null;
   const authoritativeActiveMatch = () => activeMatch(activationStartsAt);
   const commitReadiness = () => {
@@ -86,6 +86,7 @@ async function prepareHandoff(page, { holdReady = false } = {}) {
     body: JSON.stringify({ match: startingMatch() }),
   }));
   await page.route('**/api/pvp/matches/pvp-handoff-visual-1/ready', async (route) => {
+    readyRequested = true;
     if (holdReady) await readyGate;
     commitReadiness();
     await route.fulfill({
@@ -115,13 +116,14 @@ async function prepareHandoff(page, { holdReady = false } = {}) {
 
   const handoff = page.getByRole('dialog', { name: 'Entrando en 1 contra 1' });
   await expect(handoff).toBeVisible();
-  return { handoff, releaseReady };
+  return { handoff, releaseReady, wasReadyRequested: () => readyRequested };
 }
 
 test('PvP handoff · desktop seals the duel before authoritative readiness', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
-  const { handoff, releaseReady } = await prepareHandoff(page, { holdReady: true });
+  const { handoff, releaseReady, wasReadyRequested } = await prepareHandoff(page, { holdReady: true });
 
+  await expect.poll(wasReadyRequested, { timeout: 30_000, message: 'PvP must request authoritative readiness before opening' }).toBe(true);
   await expect(handoff).toHaveAttribute('data-handoff-phase', 'sealing');
   await expect(handoff.getByText('SELLANDO EL DUELO', { exact: true })).toBeVisible();
   await expect(handoff.getByText('e2e', { exact: true })).toBeVisible();
@@ -143,8 +145,13 @@ test.use({ hasTouch: true, isMobile: true });
 
 test('PvP handoff · Android landscape opens the gate on authoritative start', async ({ page }) => {
   await page.setViewportSize({ width: 844, height: 390 });
-  const { handoff } = await prepareHandoff(page);
-
+  // The Android capture must observe the same actual server-backed transition
+  // as desktop. Immediate mock replies can race the initial React handoff
+  // commit and leave the visual snapshot in 'sealing' under slow SwiftShader.
+  const { handoff, releaseReady, wasReadyRequested } = await prepareHandoff(page, { holdReady: true });
+  await expect(handoff).toHaveAttribute('data-handoff-phase', 'sealing');
+  await expect.poll(wasReadyRequested, { timeout: 30_000, message: 'PvP must send POST /ready before release' }).toBe(true);
+  releaseReady();
   await expect(handoff).toHaveAttribute('data-handoff-phase', 'opening', { timeout: 60_000 });
   await expect(handoff.getByText('PORTÓN ABRIENDO', { exact: true })).toBeVisible({ timeout: 60_000 });
   await expect(handoff.getByText(/Entrando en 1 vs 1 en/)).toBeVisible();

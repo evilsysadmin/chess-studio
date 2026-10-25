@@ -94,4 +94,33 @@ describe('expediente individual de Combate', () => {
     });
     expect(archived.memorial[0].stats).toMatchObject({ battles: 1, deaths: 1, kills: 3 });
   });
+  it('reads genuine legacy string medals and normalized dated medals without editing the save', () => {
+    const record = {
+      decorations: [
+        'baptism',
+        { id: 'five_kills', earnedAt: '2026-10-20T00:00:00.000Z' },
+        { id: 'five_kills', earnedAt: '2026-10-23T00:00:00.000Z' },
+      ],
+    };
+    const before = JSON.stringify(record);
+    expect(unitDecorations(record).map(({ id, earnedAt }) => ({ id, earnedAt }))).toEqual([
+      { id: 'baptism', earnedAt: null },
+      { id: 'five_kills', earnedAt: '2026-10-20T00:00:00.000Z' },
+    ]);
+    expect(JSON.stringify(record)).toBe(before);
+  });
+
+  it('fails closed on corrupt service decorations rather than crashing Combat preparation', () => {
+    for (const decorations of [null, 'ace', 123, { id: 'ace' }, false]) {
+      expect(unitDecorations({ decorations })).toEqual([]);
+    }
+    expect(unitDecorations()).toEqual([]);
+    expect(unitDecorations({
+      decorations: [null, false, 12, {}, { id: 'unknown' }, { id: 3 }, 'ace'],
+    }).map((medal) => medal.id)).toEqual(['ace']);
+    expect(unitDecorations({
+      decorations: [{ id: 'boss_survivor' }, 'baptism', null],
+    }).map((medal) => medal.id)).toEqual(['baptism', 'boss_survivor']);
+  });
+
 });

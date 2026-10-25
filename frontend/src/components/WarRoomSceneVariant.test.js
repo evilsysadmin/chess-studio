@@ -1,5 +1,7 @@
+import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
 import {
+  clearWarRoomBlenderShadowTelemetry,
   shouldShowClassicWarRoomShell,
   startWarRoomVariantScene,
   warRoomVariantShellCoarsePointer,
@@ -56,6 +58,61 @@ describe('War Room shared scene variants', () => {
     expect(builds).toBe(1);
   });
 
+  it.each(['v3', 'v4'])('cold-start %s installs the Blender room without building V1', async (variant) => {
+    const scene = { userData: {}, children: [] };
+    const canvas = { dataset: {} };
+    let classicBuilds = 0;
+    let glbInstalls = 0;
+    const controller = {
+      current: () => [],
+      ensure: () => { classicBuilds += 1; return []; },
+    };
+    const release = startWarRoomVariantScene({
+      scene, canvas, variant, selectable: true,
+      classicShellController: controller,
+      loadVariantInstaller: async () => (target) => {
+        glbInstalls += 1;
+        target.children.push({ userData: { warRoomVariant: variant } });
+        return () => {};
+      },
+      loadHansStage: () => new Promise(() => {}),
+    });
+
+    for (let i = 0; i < 12; i += 1) await Promise.resolve();
+    expect(glbInstalls).toBe(1);
+    expect(classicBuilds).toBe(0);
+    expect(canvas.dataset.warRoomVariantStatus).toBe('ready');
+    expect(scene.userData.warRoomRenderedVariant).toBe(variant);
+    release();
+    expect(classicBuilds).toBe(0);
+  });
+
+  it.each(['v3', 'v4'])('%s builds V1 lazily exactly once when its GLB fails', async (variant) => {
+    const scene = { userData: {}, children: [] };
+    const canvas = { dataset: {} };
+    let classicBuilds = 0;
+    const classic = { visible: false };
+    const controller = {
+      current: () => [],
+      ensure: () => { classicBuilds += 1; return [classic]; },
+    };
+    const release = startWarRoomVariantScene({
+      scene, canvas, variant, selectable: true,
+      classicShellController: controller,
+      loadVariantInstaller: async () => { throw new Error('GLB unavailable'); },
+    });
+    expect(classicBuilds).toBe(0);
+    for (let i = 0; i < 12; i += 1) await Promise.resolve();
+
+    expect(classicBuilds).toBe(1);
+    expect(classic.visible).toBe(true);
+    expect(canvas.dataset.warRoomVariantStatus).toBe('fallback');
+    expect(scene.userData.warRoomRenderedVariant).toBe('classic');
+    expect(canvas.dataset.warRoomVariantError).toContain('GLB unavailable');
+    release();
+    expect(classicBuilds).toBe(1);
+  });
+
   it('keeps the classic shell visible through the shared scene controller', () => {
     const shell = { visible: false };
     const scene = { userData: {} };
@@ -107,6 +164,190 @@ describe('War Room shared scene variants', () => {
     expect(shell.visible).toBe(true);
     expect(scene.userData.warRoomRenderedVariant).toBe('classic');
     expect(statuses).toEqual(['loading', 'idle']);
+    release();
+  });
+
+  it('does not download or install a GLB if unmounted during lazy module import', async () => {
+    const canvas = { dataset: {} };
+    const scene = { userData: {}, children: [] };
+    let resolveImport;
+    const deferredImport = new Promise((resolve) => { resolveImport = resolve; });
+    let installerCalls = 0;
+    let hansCalls = 0;
+    let fallbackBuilds = 0;
+    const release = startWarRoomVariantScene({
+      scene,
+      canvas,
+      variant: 'v3',
+      selectable: true,
+      classicShellController: {
+        current: () => [],
+        ensure: () => { fallbackBuilds += 1; return []; },
+      },
+      loadVariantInstaller: () => deferredImport,
+      loadHansStage: () => { hansCalls += 1; return Promise.resolve({}); },
+    });
+
+    expect(canvas.dataset.warRoomVariantStatus).toBe('loading');
+    release();
+    resolveImport(() => {
+      installerCalls += 1;
+      throw new Error('stale room must never request the GLB');
+    });
+    for (let n = 0; n < 8; n += 1) await Promise.resolve();
+
+    expect(installerCalls).toBe(0);
+    expect(hansCalls).toBe(0);
+    expect(fallbackBuilds).toBe(0);
+    expect(scene.userData.warRoomRenderedVariant).toBe('classic');
+  });
+
+  it('clears old V3/V4 shadow counters on transition to classic or a loading room', () => {
+    const old = {
+      warRoomShadowCasterBudget: '32',
+      warRoomShadowCasterCandidates: '75',
+      warRoomShadowCandidatePotentialTriangles: '94754',
+      warRoomShadowSelectedPotentialTriangles: '42222',
+      warRoomShadowProjectedCount: '32',
+      warRoomShadowCasterCount: '32',
+      warRoomShadowWarmup: 'ready-budgeted',
+      warRoomV3StaticTorchBatches: '4',
+    };
+    const canvas = { dataset: { ...old, board3dRendererClass: 'native-gl' } };
+    startWarRoomVariantScene({
+      scene: { userData: {} },
+      canvas, variant: 'classic', selectable: true,
+      classicShellController: { ensure: () => [], current: () => [] },
+    });
+    for (const key of Object.keys(old)) expect(canvas.dataset[key]).toBeUndefined();
+    expect(canvas.dataset.board3dRendererClass).toBe('native-gl');
+    expect(canvas.dataset.warRoomVariant).toBe('classic');
+
+    Object.assign(canvas.dataset, old);
+    const scene = { userData: {}, children: [] };
+    const release = startWarRoomVariantScene({
+      scene, canvas, variant: 'v4', selectable: true,
+      classicShellController: { current: () => [] },
+      loadVariantInstaller: () => new Promise(() => {}),
+    });
+    expect(canvas.dataset.warRoomVariant).toBe('v4-loading');
+    for (const key of Object.keys(old)) expect(canvas.dataset[key]).toBeUndefined();
+    release();
+  });
+
+  it('updates the cleared counters only after the matching Blender shell mounts', async () => {
+    const canvas = { dataset: { warRoomShadowCasterCount: '32', warRoomV3StaticTorchBatches: '8' } };
+    const scene = { userData: {}, children: [] };
+    const release = startWarRoomVariantScene({
+      scene, canvas, variant: 'v4', selectable: true,
+      classicShellController: { current: () => [] },
+      loadVariantInstaller: async () => (target) => {
+        target.children.push({ userData: {
+          warRoomVariant: 'v4',
+          warRoomBlenderShadowCasterCount: 12,
+          warRoomBlenderShadowCasterCandidates: 140,
+          warRoomBlenderShadowCandidatePotentialTriangles: 107888,
+          warRoomBlenderShadowSelectedPotentialTriangles: 56000,
+        } });
+        return () => {};
+      },
+      loadHansStage: () => new Promise(() => {}),
+    });
+    expect(canvas.dataset.warRoomShadowCasterCount).toBeUndefined();
+    for (let i = 0; i < 10; i += 1) await Promise.resolve();
+    expect(canvas.dataset.warRoomVariantStatus).toBe('ready');
+    expect(canvas.dataset.warRoomShadowCasterCount).toBe('12');
+    expect(canvas.dataset.warRoomShadowCandidatePotentialTriangles).toBe('107888');
+    expect(canvas.dataset.warRoomShadowSelectedPotentialTriangles).toBe('56000');
+    expect(canvas.dataset.warRoomV3StaticTorchBatches).toBeUndefined();
+    release();
+  });
+
+  it('clears shadow metrics without requiring a DOM canvas', () => {
+    expect(() => clearWarRoomBlenderShadowTelemetry(null)).not.toThrow();
+    expect(() => clearWarRoomBlenderShadowTelemetry({})).not.toThrow();
+  });
+
+  it('reports independent import, GLB, material, effect and ready-paint phases on the same canvas', async () => {
+    const scene = { userData: {}, children: [{ userData: { warRoomVariant: 'v3' } }] };
+    const canvas = { dataset: { warRoomShellTimingGlbMs: '999' } };
+    const release = startWarRoomVariantScene({
+      scene, classicShellController: { current: () => [] },
+      variant: 'v3', selectable: true, canvas,
+      onPaint: () => {},
+      loadVariantInstaller: async () => async (target, options) => {
+        expect(target).toBe(scene);
+        options.onTiming('glb');
+        options.onTiming('materials');
+        options.onTiming('effects');
+        return () => {};
+      },
+      loadHansStage: () => new Promise(() => {}),
+    });
+    for (let i = 0; i < 5; i += 1) await Promise.resolve();
+    for (const phase of ['Import', 'Glb', 'Materials', 'Effects', 'ReadyPaint']) {
+      expect(canvas.dataset[`warRoomShellTiming${phase}Ms`]).toMatch(/^\d+$/);
+    }
+    expect(canvas.dataset.warRoomShellTimingGlbMs).not.toBe('999');
+    expect(canvas.dataset.warRoomVariantStatus).toBe('ready');
+    release();
+  });
+
+  it('parks an invisible V1 fireplace so Hans can mount in V4; restores V1 on return', async () => {
+    const scene = new THREE.Scene();
+    const legacy = new THREE.Group();
+    legacy.name = 'premium-war-room-layer';
+    const legacyFireplace = new THREE.Group();
+    legacyFireplace.name = 'war-room-fireplace';
+    legacy.add(legacyFireplace);
+    legacy.userData.premiumWarRoom = true;
+    scene.add(legacy);
+    const controller = { current: () => [legacy], ensure: () => [legacy] };
+    const canvas = { dataset: {} };
+    let stageLookups = 0;
+    const release = startWarRoomVariantScene({
+      scene, classicShellController: controller, variant: 'v4', selectable: true,
+      canvas,
+      loadVariantInstaller: async () => (root) => {
+        const shell = new THREE.Group();
+        shell.userData.warRoomVariant = 'v4';
+        root.add(shell);
+        return () => shell.removeFromParent();
+      },
+      loadHansStage: async () => ({
+        installWarRoomHansVariantStage: (root) => {
+          stageLookups += 1;
+          expect(root.getObjectByName('war-room-fireplace')).toBeUndefined();
+          return { status: 'v4-tower-study:idle', release: () => {} };
+        },
+      }),
+    });
+    for (let i = 0; i < 12; i += 1) await Promise.resolve();
+
+    expect(stageLookups).toBe(1);
+    expect(legacy.parent).toBeNull();
+    expect(canvas.dataset.warRoomHansStage).toBe('v4-tower-study:idle');
+    release();
+    expect(legacy.parent).toBe(scene);
+    expect(legacy.visible).toBe(false);
+    expect(scene.getObjectByName('war-room-fireplace')).toBe(legacyFireplace);
+  });
+
+  it('restores parked classic objects before revealing fallback on V4 shell error', async () => {
+    const scene = new THREE.Scene();
+    const legacy = new THREE.Group();
+    scene.add(legacy);
+    const canvas = { dataset: {} };
+    const release = startWarRoomVariantScene({
+      scene,
+      classicShellController: { current: () => [legacy], ensure: () => [legacy] },
+      variant: 'v4', selectable: true, canvas,
+      loadVariantInstaller: async () => { throw new Error('offline GLB'); },
+    });
+    for (let i = 0; i < 12; i += 1) await Promise.resolve();
+    expect(canvas.dataset.warRoomVariantStatus).toBe('fallback');
+    expect(legacy.parent).toBe(scene);
+    expect(legacy.visible).toBe(true);
     release();
   });
 

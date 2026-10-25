@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { clearStorageMemoryFallback } from '../safeStorage.js';
+import r2Manifest from '../assets/r2-assets-manifest.json';
 import {
   DEFAULT_WAR_ROOM_VARIANT,
   DEFAULT_WAR_ROOM_VARIANT_PREFERENCE,
@@ -112,7 +113,7 @@ describe('War Room staging variant', () => {
     expect(WAR_ROOM_VARIANTS.map(({ id }) => id)).toEqual(['classic', 'v2', 'v3', 'v4']);
     expect(warRoomVariantDefinition('v4').shell).toBe('blender');
     expect(warRoomVariantRuntimeModelUrl('v4', { buildSha: 'abc123' }))
-      .toBe('https://assets.chess-studio.shadowops.dpdns.org/war-room/v4/runtime/war-room-v4-shell-58e5243dcf0b39d7.glb');
+      .toBe(r2Manifest.assets['warRoom.v4.runtime'].url);
     expect(warRoomVariantDefinition('classic').shell).toBe('procedural');
     expect(warRoomVariantDefinition('v2').shell).toBe('blender');
     expect(warRoomVariantDefinition('v3').shell).toBe('blender');
@@ -134,9 +135,11 @@ describe('War Room staging variant', () => {
     expect(warRoomVariantRuntimeModelUrl('v2', { buildSha: 'abc123' }))
       .toBe('https://assets.chess-studio.shadowops.dpdns.org/war-room/v2/runtime/war-room-premium-shell-c8c6d324d0dec87e.glb');
     expect(warRoomVariantRuntimeModelUrl('v3', { buildSha: 'abc123' }))
-      .toBe('https://assets.chess-studio.shadowops.dpdns.org/war-room/v3/runtime/war-room-v3-shell-5f7b69a8b8681b37.glb');
+      .toBe('https://assets.chess-studio.shadowops.dpdns.org/war-room/v3/runtime/war-room-v3-shell-28da4df7f5a2a9cc.glb');
     expect(warRoomVariantRuntimeModelUrl('duel', { buildSha: 'abc123' }))
       .toBe('https://assets.chess-studio.shadowops.dpdns.org/pvp/duel-room/runtime/pvp-duel-room-shell-b644b06d0c522690.glb');
+    // The published R2 manifest now points V3/V4 at identical copies of the
+    // original Hans-ready scene. No room needs build-based cache busts.
     for (const id of ['v2', 'v3', 'v4', 'duel']) {
       expect(warRoomVariantDefinition(id)).toMatchObject({ cacheBustBuild: false });
     }

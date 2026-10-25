@@ -24,6 +24,41 @@ No R2 Access Key/Secret is needed to create or configure the bucket. The Cloudfl
 
 Cloudflare R2 must be enabled for the account. If the account/token is not ready, the workflow fails before pretending the infrastructure is healthy.
 
+## War Room GLB CDN Cache Rule · dedicated credential
+
+The `War Room · immutable GLB edge cache rule` GitHub workflow manages **one narrowly scoped Cache Rule** for precisely two content-addressed V3/V4 `.glb` URLs on the R2 custom domain. The rule does not cover mutable `current.glb`, JSON, APIs or other asset paths. It requires the Cloudflare **zone Rulesets/Cache Rules** API, which is a different permission surface from R2 object publishing.
+
+**Verified incident:** #5743 `main` run [39018340871](https://github.com/evilsysadmin/chess-studio/actions/runs/39018340871) failed with `GET /zones/{zone}/rulesets/phases/http_request_cache_settings/entrypoint → HTTP 403 / code 10000 Authentication error`. The Cloudflare variables were present; the existing token simply lacked authority for that request. The public edge probe still returned `DYNAMIC → DYNAMIC` for V3 and V4.
+
+**Least-privilege setup (a Cloudflare/GitHub administrator must do this):**
+
+1. In Cloudflare, create an API token for **Zone → Cache Rules → Edit**, restricted to the `shadowops.dpdns.org` zone. Allow the zone-read access necessary to resolve that zone. Consult Cloudflare's current Cache Rules API permission reference if this account also requires Account Rulesets/Filter Lists permissions. Do not grant access to other zones unnecessarily.
+2. In the repository's **Settings → Secrets and variables → Actions**, create/update the repository secret **`CLOUDFLARE_CACHE_RULES_TOKEN`** using that token. **Never** paste its value into an issue, a PR, application logs or a chat.
+3. This workflow uses **only** `CLOUDFLARE_CACHE_RULES_TOKEN`, not the shared R2/staging `CLOUDFLARE_API_TOKEN`. If the dedicated secret is absent in **evilsysadmin/chess-studio** Repository secrets (or not granted to this repository as an organization secret), the reconcile job fails before any Cloudflare mutation. Secrets placed in the separate Chronicles repository are not available.
+4. From GitHub **Actions → War Room · immutable GLB edge cache rule → Run workflow** (main branch), verify the `Reconcile narrow Cloudflare GLB Cache Rule` job fully succeeds. The job reads the managed rule back and requires a second true **`CF-Cache-Status: HIT`** from real uncached GET requests to **both** exact V3/V4 URLs.
+5. Do not close [issue #5739](https://github.com/evilsysadmin/chess-studio/issues/5739) or claim edge savings until the above checks pass. GitHub's cache-rule PR self-test passing is not evidence that the `main` mutation succeeded.
+
+Official reference: https://developers.cloudflare.com/cache/how-to/cache-rules/create-api/.
+
+### GLB pin rotation without stale cache rules
+
+The V3/V4 cache rule and its public CDN probe both resolve the **exact**
+content-addressed keys from `frontend/src/assets/r2-assets-manifest.json`.
+When that manifest changes, the narrow cache-rule workflow now runs on the
+PR and again on main. The reviewer must still confirm the R2 object is
+published, byte-identical, and publicly readable; the PR validation **does
+not apply** a Cloudflare rule.
+
+The original historical `r2_war_room_live_freeze.py` snapshots are intentionally
+unchanged. They are archival proof, not the current runtime's source of truth.
+The old GLB remains retained as a rollback; it is not automatically a
+Cloudflare Cache Rule target once the live manifest moves forward.
+
+The workflow only claims CDN acceleration after a successful main `reconcile`
+readback and a real second `CF-Cache-Status: HIT` for **both** immutable GLBs.
+A 403 on the Rulesets API still requires the dedicated least-privilege token
+described above. Do not broaden the rule to a prefix or cache mutable aliases.
+
 ## Why this is not a Terraform custom-domain resource yet
 
 The current production Cloudflare Terraform job rebuilds local state on each Actions run and imports existing resources before planning. R2 buckets support Terraform import, but R2 custom domains currently do not. A state-less Terraform custom-domain resource would therefore work on first creation and then try to create the same domain again on later runs.
@@ -40,6 +75,48 @@ The publisher should use content-addressed object names and immutable cache head
 
 with `Cache-Control: public, max-age=31536000, immutable`. A small manifest in Git can then map logical asset names to immutable R2 objects.
 
+
+## Cross-repository Star Adventures atlas protection
+
+The `chess-studio-assets` R2 bucket is also currently serving original
+Star Adventures tactical atlases under the separate prefix
+`star-adventures/`. Their current logical IDs and SHA-256 pins live in
+[`evilsysadmin/star-adventures`](https://github.com/evilsysadmin/star-adventures/blob/main/frontend/src/assets/r2-assets-manifest.json),
+**not** this repository. This repository's scheduled retention collector
+does not crawl that separate Git repo when determining live asset pins.
+
+For safety, `infra/cloudflare/r2-assets.json` therefore declares
+`star-adventures/` as a protected prefix. **Never delete objects inside this
+prefix through Chess Studio's retention job**, including when a generation
+is older than the normal age grace, a duplicate exists, or the bucket exceeds
+the soft budget. The `r2_asset_gc.py self-test` enforces this cross-repo
+safety contract against an intentionally old, unreferenced example.
+
+This is deliberately conservative and can retain unused future generations.
+Before implementing pruning of Star Adventures objects, move to an explicit
+cross-repository manifest ingestion/pinning contract with versioned rollback,
+and validate it in CI. Do not just remove this protected prefix.
+
+## Cross-repository Chronicles merchant-room art protection
+
+Chronicles of Matthias is now maintained in
+[`evilsysadmin/chronicles-of-matthias`](https://github.com/evilsysadmin/chronicles-of-matthias),
+separately from Chess Studio. Its approved 2D merchant-room images will be
+published under `chronicles/shops/` with immutable SHA-suffixed keys (starting
+with Odo) on the **existing** `chess-studio-assets` bucket and public domain.
+The Chronicles application repository owns the runtime manifest and cutover;
+Chess Studio owns the current bucket publisher and GC until formally handed off.
+
+The Chess Studio GC does not scan that separate runtime manifest. Therefore
+`chronicles/shops/` is protected from deletion **even if** an object is old,
+duplicates another key, or storage pressure is high. The retention self-test
+exercises an unreferenced, old Odo object in the protected family. This
+protection does not imply that Odo is already uploaded or deployed; remote
+readback and exact SHA verification are separate gates.
+
+Before narrowing this protection, implement explicit cross-repo pin ingestion,
+release rollback protection and live byte checks. Do not delete it merely
+because a Chess Studio manifest has no Chronicles shop entry.
 
 ## Storage budget and retention
 

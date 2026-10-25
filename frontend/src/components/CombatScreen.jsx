@@ -91,6 +91,7 @@ export default function CombatScreen(props) {
       {...controller}
       onExit={props.onExit}
       onViewBattle={props.onViewBattle}
+      onOpenDebrief={props.onOpenDebrief}
       combatVariant={props.combatVariant}
       battleTheme={props.battleTheme}
       battleThemeLabel={props.battleThemeLabel}

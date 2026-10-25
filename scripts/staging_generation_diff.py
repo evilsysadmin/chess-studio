@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import os
 import subprocess
+from concurrent.futures import ThreadPoolExecutor
 from collections.abc import Callable
 from urllib.request import Request, urlopen
 
@@ -13,13 +14,14 @@ import staging_generation as generation
 
 Runner = Callable[..., subprocess.CompletedProcess]
 WORKFLOW_FILE = "staging-deploy.yml"
+MAX_HISTORY_PROOFS = 12  # Three batches; older baselines force a guarded full deploy.
 
 
 def successful_runs(repository: str, token: str) -> list[dict]:
     api = os.environ.get("GITHUB_API_URL", "https://api.github.com").rstrip("/")
     request = Request(
         f"{api}/repos/{repository}/actions/workflows/{WORKFLOW_FILE}/runs"
-        "?branch=main&status=success&per_page=100",
+        "?branch=main&status=success&per_page=30",
         headers={
             "Accept": "application/vnd.github+json",
             "Authorization": f"Bearer {token}",
@@ -39,16 +41,37 @@ def select_complete_generation(
     runs: list[dict],
     jobs_for_run: Callable[[int], list[dict]],
 ) -> tuple[str, int]:
+    """Prove the newest complete generation, not merely a green workflow.
+
+    Most recent staging workflows may be intentionally superseded/no-op yet
+    conclude success. Probe their job receipts in small read-only batches,
+    but consume evidence in strict newest-first order. Never allow a later
+    successful probe to eclipse an earlier complete generation. An old baseline
+    beyond the bounded search is deliberately treated as UNKNOWN, requiring a
+    guarded full deploy; never infer a no-op from incomplete history.
+    """
+    candidates: list[tuple[str, int]] = []
     for run in runs:
         if not isinstance(run, dict) or str(run.get("conclusion") or "") != "success":
             continue
         sha = str(run.get("head_sha") or "").lower()
         run_id = int(run.get("id") or 0)
-        if not generation.SHA_RE.fullmatch(sha) or run_id <= 0:
-            continue
-        if proof.deployed_generation(jobs_for_run(run_id)):
-            return sha, run_id
-    raise RuntimeError("no previous complete staging generation found")
+        if generation.SHA_RE.fullmatch(sha) and run_id > 0:
+            candidates.append((sha, run_id))
+
+    # A long trail of successful-but-no-op workflows is not permission to
+    # spend minutes probing historical runs. A missed older baseline causes
+    # the caller to deploy conservatively, not to skip pending changes.
+    candidates = candidates[:MAX_HISTORY_PROOFS]
+    batch_size = 4  # At most three bounded parallel read-only batches.
+    for start in range(0, len(candidates), batch_size):
+        batch = candidates[start:start + batch_size]
+        with ThreadPoolExecutor(max_workers=len(batch)) as pool:
+            job_receipts = pool.map(jobs_for_run, (run_id for _, run_id in batch))
+            for (sha, run_id), jobs in zip(batch, job_receipts):
+                if proof.deployed_generation(jobs):
+                    return sha, run_id
+    raise RuntimeError("no proven complete staging generation in bounded history")
 
 
 def previous_complete_generation(repository: str, token: str) -> tuple[str, int]:
@@ -63,20 +86,21 @@ def changed_files(base_sha: str, head_sha: str, runner: Runner = subprocess.run)
     head = generation.valid_sha(head_sha)
     if base == head:
         return []
-    fetched = runner(
-        ["git", "fetch", "--no-tags", "--depth=1", "origin", base],
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    if fetched.returncode != 0:
-        raise RuntimeError("could not fetch previous complete staging generation")
-    diff = runner(
-        ["git", "diff", "--name-only", base, head],
-        capture_output=True,
-        text=True,
-        check=True,
-    )
+    # Fail bounded: an unavailable baseline must trigger the normal guarded
+    # full-deploy path, not a speculative skip or an indefinitely stuck runner.
+    try:
+        fetched = runner(
+            ["git", "fetch", "--no-tags", "--depth=1", "origin", base],
+            capture_output=True, text=True, check=False, timeout=20,
+        )
+        if fetched.returncode != 0:
+            raise RuntimeError("could not fetch previous complete staging generation")
+        diff = runner(
+            ["git", "diff", "--name-only", base, head],
+            capture_output=True, text=True, check=True, timeout=15,
+        )
+    except (OSError, subprocess.SubprocessError) as exc:
+        raise RuntimeError("could not prove cumulative staging diff") from exc
     return [line.strip().replace("\\", "/") for line in (diff.stdout or "").splitlines() if line.strip()]
 
 
@@ -107,6 +131,52 @@ def self_test() -> None:
     ]
     jobs = {30: partial, 29: green}
     assert select_complete_generation(runs, lambda rid: jobs[rid]) == (b, 29)
+
+    # Many green-but-superseded workflows must never displace the newest fully
+    # proved generation, even when their read-only job requests run concurrently.
+    ten = [
+        {"id": rid, "head_sha": f"{rid:040x}", "conclusion": "success"}
+        for rid in range(100, 90, -1)
+    ]
+    completions = {rid: (green if rid == 93 or rid == 91 else partial)
+                   for rid in range(100, 90, -1)}
+    result = select_complete_generation(ten, lambda rid: completions[rid])
+    assert result == (f"{93:040x}", 93)
+    assert not select_complete_generation.__defaults__  # No configurable unbounded parallelism.
+    # If the previous true full deploy is older than twelve green-looking
+    # runs, the proof must fail closed: no speculative no-op is permitted.
+    assert MAX_HISTORY_PROOFS == 12
+    older = [
+        {"id": rid, "head_sha": f"{rid:040x}", "conclusion": "success"}
+        for rid in range(130, 116, -1)
+    ]
+    old_complete = {rid: (green if rid == 117 else partial)
+                    for rid in range(130, 116, -1)}
+    examined: list[int] = []
+    def read_jobs(rid: int) -> list[dict]:
+        examined.append(rid)
+        return old_complete[rid]
+    try:
+        select_complete_generation(older, read_jobs)
+    except RuntimeError as exc:
+        assert "bounded history" in str(exc)
+    else:
+        raise AssertionError("too-old proof must not authorize staging no-op")
+    assert len(examined) == MAX_HISTORY_PROOFS
+    assert 117 not in examined
+    # The twelfth position remains eligible; the thirteenth is not.
+    old_complete[119] = green
+    assert select_complete_generation(older, lambda rid: old_complete[rid]) == (
+        f"{119:040x}", 119
+    )
+
+    try:
+        select_complete_generation(ten, lambda _: (_ for _ in ()).throw(RuntimeError("API offline")))
+    except RuntimeError as exc:
+        assert "API offline" in str(exc)
+    else:
+        raise AssertionError("unproven GitHub jobs must fail open to guarded deploy")
+
     assert changed_files(a, a, runner=lambda *args, **kwargs: None) == []
 
     class Done:
@@ -128,6 +198,33 @@ def self_test() -> None:
     ]
     assert calls[0][:3] == ["git", "fetch", "--no-tags"]
     assert calls[1][:3] == ["git", "diff", "--name-only"]
+
+    # Timeouts and invalid Git history are not evidence of no pending deploy.
+    # The caller catches RuntimeError and enters the guarded full-deploy path.
+    def timeout_fetch(argv, **kwargs):
+        assert argv[1] == "fetch" and kwargs["timeout"] == 20
+        raise subprocess.TimeoutExpired(argv, kwargs["timeout"])
+
+    def timeout_diff(argv, **kwargs):
+        if argv[1] == "fetch":
+            assert kwargs["timeout"] == 20
+            return Done()
+        assert argv[1] == "diff" and kwargs["timeout"] == 15
+        raise subprocess.TimeoutExpired(argv, kwargs["timeout"])
+
+    def invalid_diff(argv, **kwargs):
+        if argv[1] == "fetch":
+            return Done()
+        raise subprocess.CalledProcessError(128, argv)
+
+    for failing_runner in (timeout_fetch, timeout_diff, invalid_diff):
+        try:
+            changed_files(a, b, runner=failing_runner)
+        except RuntimeError as exc:
+            assert "cumulative staging diff" in str(exc)
+        else:
+            raise AssertionError("unproven cumulative diff must fail open")
+
     print("staging-generation-diff self-test: OK")
 
 

@@ -70,6 +70,7 @@ Lección operativa: no resolver falsos positivos de CI debilitando el gate a cie
 
 | Workflow | Responsabilidad |
 | --- | --- |
+| `oci-host-provenance-on-failure.yml` | Tras un staging fallido en `main`, consulta el host por Run Command **sin sudo ni mutaciones**. Si Oracle omite TEXT, clasifica sólo por exit code: 0 ambos SHAs coinciden, 90 ambos difieren, 91 checkout coincide, 92 marker coincide, 94 incompleto. Tiene mutex read-only separado y cancelable; el host informa además un PID de `deploy.lock` observado con `lslocks` (o `unavailable`/`not_observed`, que **no prueban ausencia histórica de bloqueo**). La sonda pública de `/release` replica las cabeceras del verificador de staging y solo imprime un SHA validado o estado HTTP, incluso si falla el diagnóstico del host. **No acredita staging ni sustituye la verificación pública**. En `push` de la propia sonda se ejecuta **solo una prueba de transporte de lectura**, sin comparar SHA ni acreditar salud del host (un 90 no demostraría que ambos marcadores sean coherentes). Si falla el transporte, el autocheck falla. En `workflow_run` de staging fallido y en ejecución manual se conserva la clasificación estricta 90/91/92/94 y la comprobación pública exact-SHA; ninguna de estas lanes promociona producción. `workflow_dispatch` permite diagnóstico manual en `main`. |
 | `oci-readiness.yml` | Validación OCI path-aware para PR: contratos, runtime bundle y ARM64 sólo cuando cambia la imagen backend/su smoke o la propia lane ARM64. `workflow_dispatch` añade validaciones Terraform estáticas. **No muta staging ni publica K3s al mergear.** |
 | `oci-resend-bootstrap.yml` | Bootstrap one-shot de recuperación por Resend. Ya no escucha cada staging ni paga un runner de scope: `staging-deploy.yml` lo despacha explícitamente sólo cuando el marker cambió desde la última generación completa. `workflow_dispatch` permanece como escape manual; el mutex OCI sólo existe en el job mutante y conserva los SHA ya servidos. |
 | `oci-staging-deploy.yml` | Mutación Terraform **exclusivamente manual** y exacta sobre `main`. `scope=full` conserva el apply completo + convergencia de agente/egress; `scope=backup-storage` reconcilia sólo el bucket privado de backups y la policy IAM que lo autoriza, sin tocar compute/red/LB. El one-shot de la recuperación Mongo del 12-10-2026 se retiró tras demostrar upload, descarga y restauración desde Object Storage. Ambos scopes comparten mutex y anti-stale exact-SHA. |
@@ -82,6 +83,12 @@ Docker/Compose es el runtime canónico de la A1 Always Free. K3s/Flux queda en *
 Render staging está retirado del plano de despliegue: el **release canónico y `runtime-sync` consumen Vault + Git y no consultan Render**, y ya no existe un workflow capaz de reconciliar, reanudar o desplegar el antiguo servicio staging. El cutover inicial a CURRENT Vault ya está acreditado; su workflow/helper one-shot se retiraron para que una migración histórica no permanezca como superficie operativa activa. Render producción permanece independiente y no forma parte de esta retirada.
 
 
+## Publicación cross-repo de arte Chronicles
+
+- `chronicles-odo-r2-publish.yml`: en Chess Studio (propietario R2), un **GitHub Release adjunto** con nombre y SHA fijo activa validación, publicación inmutable, readback real HTTPS y PR de **solo manifest** hacia Chronicles. Usa el publicador R2 ya probado, protege música/GLBs y nunca incorpora el WebP al árbol Git.
+- La pipeline sólo acepta la release `chronicles-odo-r2-79e0b13fc2ee2ffb`, con asset `odo-premium-composite.webp` y SHA-256 completo anclado en `scripts/chronicles_odo_r2_pipeline.py`. Debe existir credencial con acceso a las PR y contenido de Chronicles (`CHRONICLES_MANIFEST_PR_TOKEN` o `CI_PR_BOT_PAT` con permisos suficientes); ninguna credencial llega al cliente.
+- Los cambios de manifiesto no tienen automerge: requieren validación visual desktop/móvil y CI del juego. Sin release adjunta válida, este workflow no publica nada.
+
 ## Runtimes, assets y laboratorios especializados
 
 | Workflow | Responsabilidad |
@@ -89,16 +96,21 @@ Render staging está retirado del plano de despliegue: el **release canónico y 
 | `main-backend-image.yml` | Tras `Main · admission`, un clasificador x86 barato reutiliza `staging_deploy_scope.py`, corta merges inequívocamente non-runtime y clasifica cambios reales en `backend-python` / `backend-go` antes de elegir runner. Cada build publica tanto el tag exacto `oci-<sha>` como un tag content-addressed `tree-<git-tree-sha>`; si el árbol backend no cambia, x86 reutiliza ese contenido y sólo crea los aliases exact-SHA, sin ARM, QEMU ni pulls de capas. El exact-tag del padre sirve únicamente para sembrar el primer `tree-*` durante la transición; si no existe ninguna fuente reutilizable se conserva el fallback de build arm64. |
 | `chess-football-godot-poc.yml` | **Football · filtro de cambios (Godot si aplica)**: aparece en toda PR, pero sólo valida/exporta Godot y arranca Chromium cuando se modifican Football o sus herramientas/CI; en el resto sólo ejecuta detección de rutas y el gate estable. `main`/manual pueden publicar el bundle. Superficie experimental aislada del release principal. |
 | `blender-setup-smoke.yml` | Smoke real de Blender/EGL y helpers compartidos cuando cambia `setup-blender-canonical`; evita romper todas las lanes de arte desde una acción común. |
-| `chronicles-party-blender-art.yml` | Genera y valida party/escena canónica de Chronicles con previews deterministas; read-only en PR. |
 | `combat-operations-room-blender-art.yml` | Genera, valida y publica a staging/revisión exacta la Combat Operations Room; `main` puede publicar su canal runtime sin tocar War Room. |
+| `combat-cpu-benchmark.yml` | Benchmark CPU estructural A/B de Combat: PR acotada o manual, JSON reproducible sin umbrales de tiempo bloqueantes; no despliega. |
 | `home-matthias-blender-art.yml` | Genera y valida el Matthias canónico de Home desde sus fuentes Blender; lane read-only y path-aware. |
 | `home-matthias-materialize.yml` | Materialización explícita de binarios canónicos de Matthias al etiquetar una PR interna; separa build read-only y commit write con guard de SHA. |
 | `pvp-duel-room-blender-art.yml` | Genera/valida/publica el shell Blender de la Sala de Duelos en su superficie path-aware. |
 | `war-room-v4-blender-art.yml` | Genera/valida/publica War Room v4 sin reemplazar las generaciones anteriores. |
+| `war-room-published-geometry.yml` | Censo read-only de los tres GLB R2 inmutables V2/V3/V4: GET y verificación SHA/tamaño, reporte JSON + summary, sin benchmark GPU ni publicar arte. PR path-aware, main sólo cuando cambia auditor/manifiesto, y ejecución manual. |
+| `war-room-v3-r2-pin.yml` | Acredita el GLB inmutable público de V3 con hash/tamaño/Hans antes de capturar el runtime WebGL de escritorio, Android vertical y apaisado del manifest exacto. No usa alias mutable ni revisión staging. |
+| `war-room-v4-r2-pin.yml` | Gate ligero para promociones de V4: descarga el GLB inmutable desde el CDN público y verifica SHA-256, tamaño, cabecera glTF y anclajes de Hans contra el manifiesto, sin modificar R2. |
 | `pawn-slug-enemy-cast-v2.yml` | Regenera, prueba y publica el cast enemigo v2 de Pawn Slug; conserva evidencia visual e identidad R2 verificable. |
-| `staging-pvp-compositor-ab.yml` | **Sólo manual**: cuatro aperturas reales Home → lobby PvP, mismo runner y SHA; `comparison=product` (predeterminado) compara Home visible forzada contra **CSS real del modal**, `comparison=prehidden` compara visible contra ocultación forzada (control histórico). Chromium `default` replica CI; `software` opt-in se analiza aparte. Test A/B exclusivamente de primer GET, diálogo y cierre; no sustituye el smoke obligatorio, que sigue comprobando roster, pulsos, War Room, partida rápida y F5. Identidades sintéticas efímeras, limpieza verificada, sin despliegue/acreditación. |
+| `staging-pvp-compositor-ab.yml` | **Sólo manual**: cuatro aperturas reales Home → lobby PvP, mismo runner y SHA; `comparison=product` (predeterminado) compara Home visible forzada contra **CSS real del modal**, `comparison=prehidden` compara visible contra ocultación forzada (control histórico). Chromium `default` replica CI; `software` opt-in se analiza aparte. Test A/B exclusivamente de primer GET, diálogo y cierre; no sustituye el smoke obligatorio, que sigue comprobando roster, pulsos, War Room, partida rápida y F5. `comparison=native-hall-ab` ejecuta el control cruzado normal/GLB bloqueado/GLB bloqueado/normal **sólo en el navegador de diagnóstico**, sin modificar la app, con marcador `STAGING_PVP_HALL_ABLATION` y verificación del fallback CSS. `comparison=native` fija el último SHA desplegado con smoke completo, hace checkout de esa versión **pero usa el test de diagnóstico de main** y ejecuta una sola smoke con CDP opt-in (20 s máx.) hasta después del render de la sala, y publica resúmenes nativos/CPU permitidos sin traces crudos. Identidades sintéticas efímeras, limpieza verificada, sin despliegue/acreditación. |
 | `staging-pawn-slug-visual.yml` | Reusable/manual de evidencia live de Pawn Slug. Comparte con Resend/continuity el baseline durable calculado una vez por `staging_deploy_prepare.py`; sólo se invoca cuando ese diff contiene cambios directos de Pawn Slug, su test de staging o su infraestructura específica, y vuelve a exigir backend/frontend/worker en el SHA solicitado. El clasificador `scripts/staging_pawn_slug_visual_scope.py` es independiente de `quality_scope.py`: cambios en el harness compartido (`e2e/helpers.js`, `cicd.yml`, `staging-deploy.yml` o tooling general) mantienen su cobertura en Quality sin pagar la captura Godot. El self-test del clasificador fija casos positivos, negativos y cambios combinados. |
 | `home-r2-assets.yml` | Valida y publica a R2 los assets 3D específicos de Home; PR sólo valida y `main`/manual publican. |
+| `war-room-r2-cache-rule.yml` | Regla Cloudflare Cache Rules exacta para los dos GLB SHA de V3/V4: en PR valida sin secretos; en `main` reconcilia solo su regla y exige dos GET `HIT` reales, preservando todas las reglas no gestionadas. |
+| `war-room-r2-cache-observer.yml` | Observación read-only de caché CDN para los GLB inmutables de V3/V4: dos GET por sala, validación SHA+Hans y medición `CF-Cache-Status` sin secretos; no configura reglas. |
 | `r2-assets-infra.yml` | Contrato/reconciliación de bucket, dominio, CORS y manifiesto R2 compartido. Además ejecuta GC conservador diario: protege manifest/runtime/aliases `current.*`, poda duplicados y generaciones/revisiones obsoletas, y presiona hacia 8.0 GB al superar 8.5 GB; muta sólo fuera de PR. |
 
 ## Calidad especializada
@@ -106,12 +118,10 @@ Render staging está retirado del plano de despliegue: el **release canónico y 
 | Workflow | Responsabilidad |
 | --- | --- |
 | `app-visual-artifact.yml` | Capturas visuales generales de la app (Home, War Room, entrenamiento, PvP, etc.). El productor excluye Chronicles y Tactics, y omite el navegador cuando los cambios no afectan a estas superficies. Misma cobertura fail-closed para archivos comunes o desconocidos. |
-| `chronicles-visual-artifact.yml` | Gate visual independiente para **Chronicles primera persona** (gameplay y avatars): PNG propio `chronicles-visual-*`, runners/SwiftShader aislados, controles desktop/móvil y ningún test de Tactics. |
-| `tactics-visual-artifact.yml` | Gate visual independiente para **Tactics**: PNG propio `tactics-visual-*`, runner/SwiftShader aislado y ningún test de Chronicles primera persona. Los cambios compartidos activan ambos según el clasificador de propietarios. |
 | `e2e-full.yml` | Sweep completo Chromium/Firefox/WebKit mensual/manual e informativo. Ya no duplica PR: la matriz requerida y path-aware War Room/Matthias vive en `cicd.yml`. |
 | `home-blender-v2-preview.yml` | Evidencia PNG Home path-aware en PR con envelope de revisión barato; los renders manuales conservan calidad alta. |
 | `home-blender-v2-runtime.yml` | Exporta/publica el GLB Home sólo en `main` o manual, luego ejecuta su gate browser y promoción. No repite el export runtime en PR: la revisión visual PR pertenece al preview PNG. |
-| `war-room-blender-art.yml` | War Room v2 congelada como variante histórica: **sólo manual** (`workflow_dispatch`, staging por defecto). Permite validar/recuperar la escena y publicar canal runtime únicamente desde `main`; ya no consume Blender en cada PR/push compartido con v3/v4. |
+| `war-room-blender-art.yml` | V2 histórica, con reactivación **solo para PRs que cambien su generador/flujo**: Blender + GLB de revisión inmutable **exclusivamente en staging**, para prueba visual exacta en app. `workflow_dispatch` conserva staging y recuperación manual de runtime desde `main`; ningún push a `main` ni modificación ajena de V3/V4 dispara el render V2. |
 | `pvp-duel-hall-blender-art.yml` | Genera y valida la shell 3D authored de la Sala de Duelos del lobby; en esta fase produce preview/GLB revisables sin promocionarlos todavía a runtime. |
 | `war-room-v3-blender-art.yml` | Genera, valida y publica la sala cartográfica de War Room v3 sin reemplazar v1/v2. |
 | `coverage.yml` | Señales periódicas no bloqueantes: coverage frontend/backend mensual y CodeQL semanal; `workflow_dispatch` ejecuta ambos bajo demanda. CodeQL mantiene `security-events: write` limitado a su propio job. |
@@ -136,7 +146,7 @@ Para producción pública, un fallo del synthetic es una señal operativa, no ru
 | `capacity-virtual-players.yml` | Probe 20/50/100 jugadores virtuales. PR valida contratos; la carga real queda restringida a manual o ramas `ops/capacity-*`, nunca a un push normal de `main`. |
 | `observability-live.yml` | Comprueba cada hora y tras publicar dashboards que señales de host/backend llegan a Grafana; sólo lectura. |
 | `production-frontend-watchdog.yml` | Vigila el frontend público cada 5 min y dispone de self-heal acotado, serializado con promoción para no competir con un deploy. |
-| `production-target-smoke.yml` | Smoke read-only del target de producción y gameplay/ruta pública cuando cambia el selector o sus helpers; manual bajo demanda. |
+| `production-target-smoke.yml` | Smoke read-only del target de producción, gameplay y ruta pública tras un tren de producción exitoso, cambios del selector/helpers o invocación manual. Los trenes fallidos/cancelados no acreditan un smoke posrelease. |
 
 ## Flujo
 
@@ -250,8 +260,17 @@ El objetivo no es tener el mínimo número de YAML, sino **mínimo estado, míni
 
 `.github/production-deploy.env` contiene un único `DEPLOY_TARGET=render|oci`. Es deliberadamente distinto de `DEPLOY_ENV`: ambos targets ejecutan producción y usan la configuración/BD de producción. El workflow valida el archivo antes de cualquier mutación. El CNAME público del API ya no pertenece a Terraform; `scripts/oci_production_tunnel.py` lo conmuta sólo después de acreditar el SHA exacto en el target elegido. El rollback de producción siempre restaura primero la ruta del API a Render.
 
-## Chronicles vs. Tactics · deuda visual independiente
+## Chronicles y Tactics · capturas fuera de Chess Studio
 
-Chronicles y Tactics tienen productores, artifacts y workflows visuales distintos. Las modificaciones a la pantalla de guardados de Chronicles, el transporte HTTP del catálogo y la identidad local de expediciones no activan capturas Tactics. Los cambios estrictamente auditados de cableado de GET para recuperar una run en el bootstrap compartido y en el shell Tactics se normalizan como **no visuales** sólo si todas sus líneas modificadas pertenecen al allowlist exacto de `scripts/app_visual_changed_files.py`.
+Los juegos Chronicles of Matthias y Tactics viven en el repositorio
+`evilsysadmin/chronicles-of-matthias`. Sus capturas visuales y criterios de
+aceptación deben ejecutarse allí, no mediante dos workflows sin producto
+embebido en Chess Studio. En este repositorio permanece únicamente el
+workflow `app-visual-artifact.yml` para Home, War Room, entrenamiento,
+PvP y las demás superficies propias de ajedrez.
 
-Una edición nueva de JSX, mapa, renderer, scene, lógica de mundo fuera de ese allowlist, diff ilegible o path desconocido **restablece fail-closed** el gate visual Tactics. Pruebas de estado/contrato y Quality siguen siendo obligatorias en los cambios compartidos; no se relajan por esta separación. Las excepciones se comprueban en los self-tests de los clasificadores.
+Los clasificadores aún admiten aliases legacy de Chronicles/Tactics para
+evitar que una ruta antigua active capturas ajenas; **no son gates requeridos**.
+Las referencias legacy de `staging_deploy_scope.py` a YAML retirados
+sirven únicamente para clasificar su borrado como cambio no runtime,
+sin publicar una nueva versión del juego por eliminar un workflow.

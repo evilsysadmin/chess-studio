@@ -1,0 +1,55 @@
+name: War Room · immutable GLB edge cache observation
+
+on:
+  pull_request:
+    paths:
+      - scripts/r2_war_room_cache_probe.py
+      - scripts/r2_war_room_live_freeze.py
+      - .github/workflows/war-room-r2-cache-observer.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  observe:
+    name: Observe public R2 GLB edge responses
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - name: Verify observer's offline contract
+        run: python3 -S scripts/r2_war_room_cache_probe.py self-test
+      - name: Download immutable V3/V4 GLBs twice and audit CDN response
+        run: python3 -S scripts/r2_war_room_cache_probe.py probe --output /tmp/war-room-r2-edge-cache.json
+      - name: Upload exact request/response diagnostics
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: war-room-r2-edge-observation
+          path: /tmp/war-room-r2-edge-cache.json
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Explain cache assessment
+        if: success()
+        shell: bash
+        run: |
+          python3 - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import json
+          from pathlib import Path
+
+          report = json.loads(Path("/tmp/war-room-r2-edge-cache.json").read_text())
+          print("### Immutable War Room GLB CDN observations")
+          print()
+          print("| Room | First GET | Second GET | Same colo | Proven edge HIT |")
+          print("| --- | --- | --- | --- | --- |")
+          for room in report["rooms"]:
+              print(
+                  f'| {room["variant"]} | {room["first"]["cfCacheStatus"]}'
+                  f' | {room["second"]["cfCacheStatus"]}'
+                  f' | {room["sameColo"]} | {room["edgeHitConfirmed"]} |'
+              )
+          print()
+          print("A second browser-cache HIT is not evidence of a Cloudflare edge HIT.")
+          print("A MISS/DYNAMIC is reported, not treated as broken chess or a bad SHA.")
+          PY

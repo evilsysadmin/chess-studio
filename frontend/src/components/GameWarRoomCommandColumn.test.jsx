@@ -75,6 +75,79 @@ describe('GameWarRoomCommandColumn', () => {
     expect(busyHtml).toContain('Pensando…');
   });
 
+  it('confirma visualmente la jugada optimista sin afirmar que el backend la aceptó', () => {
+    const game = { turn: 'w', humanColor: 'w', isGameOver: false };
+    for (const compactViewport of [false, true]) {
+      const render = (status) => renderToStaticMarkup(
+        <GameWarRoomCommandColumn game={game} status={status} board={{}} compactViewport={compactViewport} />,
+      );
+      const pending = render({ statusText: 'La CPU está pensando…', busy: true, pendingMove: true });
+      expect(pending).toContain(compactViewport ? 'game-3d-turn-pill is-compact is-amber' : 'game-3d-turn-pill is-amber');
+      expect(pending).toContain('Confirmando jugada…');
+      expect(pending).not.toContain('>Pensando…</strong>');
+      expect(render({ statusText: 'La CPU está pensando…', busy: true, pendingMove: false })).toContain('Pensando…');
+      expect(render({ statusText: 'Tu turno', busy: false, pendingMove: false })).toContain('Tu turno');
+      const terminal = render({ statusText: 'Jaque mate', busy: true, pendingMove: true });
+      expect(terminal).toContain('Jaque mate');
+      expect(terminal).not.toContain('Confirmando jugada…');
+    }
+  });
+
+  it('señala reintentos reales de conexión sin duplicar confirmación ni ocultar mate', () => {
+    const game = { turn: 'w', humanColor: 'w', isGameOver: false };
+    for (const compactViewport of [false, true]) {
+      const render = (status, match = game) => renderToStaticMarkup(
+        <GameWarRoomCommandColumn game={match} status={status} board={{}} compactViewport={compactViewport} />,
+      );
+      const retry = render({ statusText: 'Reintentando conexión…', busy: true, pendingMove: true });
+      expect(retry).toContain(compactViewport ? 'game-3d-turn-pill is-compact is-amber' : 'game-3d-turn-pill is-amber');
+      expect(retry).toContain('>Reconectando…</strong>');
+      expect(retry).not.toContain('>Confirmando jugada…</strong>');
+      expect(render({ statusText: 'La CPU está pensando…', busy: true, pendingMove: true })).toContain('>Confirmando jugada…</strong>');
+      expect(render({ statusText: 'Tu turno', busy: false, pendingMove: false })).toContain('>Tu turno</strong>');
+      expect(render({ statusText: 'Jaque mate', busy: true, pendingMove: true }, { ...game, isGameOver: true })).toContain('>Jaque mate</strong>');
+    }
+  });
+
+  it('señala en ámbar la recuperación tras una jugada sin confirmar, también en móvil', () => {
+    const game = { turn: 'w', humanColor: 'w', isGameOver: false };
+    for (const compactViewport of [false, true]) {
+      const status = { statusText: 'Jugada sin confirmar · posición restaurada', busy: false };
+      const html = renderToStaticMarkup(<GameWarRoomCommandColumn game={game} status={status} board={{}} compactViewport={compactViewport} />);
+      expect(html).toContain(compactViewport ? 'game-3d-turn-pill is-compact is-amber' : 'game-3d-turn-pill is-amber');
+      expect(html).toContain('>Jugada sin confirmar</strong>');
+      expect(html).not.toContain('>Tu turno</strong>');
+      expect(html).not.toContain('>Pensando…</strong>');
+      const terminal = renderToStaticMarkup(<GameWarRoomCommandColumn game={{ ...game, isGameOver: true }} status={{ ...status, statusText: 'Jaque mate' }} board={{}} compactViewport={compactViewport} />);
+      expect(terminal).toContain('>Jaque mate</strong>');
+    }
+  });
+
+  it('no muestra a Matthias pensando tras mate o caída de bandera aunque busy sea antiguo', () => {
+    for (const { game, status, expected } of [
+      {
+        game: { turn: 'b', humanColor: 'w', isGameOver: true },
+        status: { statusText: 'La CPU está pensando…', busy: true },
+        expected: 'Partida terminada',
+      },
+      {
+        game: { turn: 'w', humanColor: 'w', isGameOver: false },
+        status: { statusText: 'Se acabó el tiempo (blancas)', busy: true },
+        expected: 'Se acabó el tiempo (blancas)',
+      },
+      {
+        game: { turn: 'b', humanColor: 'w', isGameOver: true },
+        status: { statusText: 'Jaque mate', busy: false },
+        expected: 'Jaque mate',
+      },
+    ]) {
+      const html = renderToStaticMarkup(<GameWarRoomCommandColumn game={game} status={status} board={{}} />);
+      expect(html).toContain('game-3d-turn-pill is-amber');
+      expect(html).toContain(expected);
+      expect(html).not.toContain('>Pensando…</strong>');
+    }
+  });
+
   it('mantiene las acciones comunes idénticas y limita los extras al HUD compacto', () => {
     const game = {
       difficulty: 5,

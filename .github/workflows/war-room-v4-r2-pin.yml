@@ -1,0 +1,77 @@
+name: War Room v4 · R2 immutable pin
+
+on:
+  pull_request:
+    paths:
+      - 'frontend/src/assets/r2-assets-manifest.json'
+      - 'scripts/verify_war_room_v4_r2_pin.py'
+      - '.github/workflows/war-room-v4-r2-pin.yml'
+      - 'e2e/v4-immutable-model.js'
+      - 'e2e/war-room-visual-artifact.spec.js'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-public-v4:
+    name: Verify public R2 GLB hash and Hans anchors
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v7
+      - name: Verify public immutable V4 GLB matches frontend manifest
+        run: python3 -S scripts/verify_war_room_v4_r2_pin.py
+
+  browser-proof:
+    name: Verify live V4 WebGL · desktop + Android pinned GLB
+    needs: verify-public-v4
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      CI: 'true'
+      VITE_WAR_ROOM_VARIANTS_ENABLE: '1'
+      VITE_APP_VISUAL_CAPTURE: 'true'
+      APP_VISUAL_ARTIFACT: '1'
+      APP_VISUAL_WARROOM_VARIANTS: 'v4'
+      # Force the exact reviewed R2 SHA+byte readback through Playwright's
+      # browser request route, not a previous Blender staging/alias model.
+      APP_VISUAL_EXPECTED_WAR_ROOM_V4_REVISION: ${{ github.event.pull_request.head.sha || github.sha }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+
+      - uses: ./.github/actions/setup-browser-e2e
+        with:
+          browser-scope: chromium
+
+      - name: Capture exact manifest-pinned V4 on real WebGL
+        working-directory: e2e
+        run: ./node_modules/.bin/playwright test war-room-visual-artifact.spec.js --workers=1
+
+      - name: Require the three V4 viewports and identity evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          for name in \
+            war-room-v4-desktop-1440x900 \
+            war-room-v4-android-390x844 \
+            war-room-v4-android-landscape-844x390; do
+            test -s ".artifacts/app-visual/${name}.png" || {
+              echo "::error::V4 runtime PNG missing: ${name}"
+              exit 1
+            }
+          done
+          echo "Exact V4 runtime GLB: desktop + portrait + landscape evidence present."
+
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: war-room-v4-pinned-browser-${{ github.event.pull_request.number || github.run_number }}
+          path: |
+            .artifacts/app-visual/war-room-v4*
+            e2e/test-results/
+          if-no-files-found: warn
+          retention-days: 10
+          compression-level: 0

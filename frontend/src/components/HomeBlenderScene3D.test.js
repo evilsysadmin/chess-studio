@@ -3,13 +3,22 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   HOME_BLENDER_RUNTIME_MIN_WIDTH,
   homeBlenderCameraFovForAspect,
+  homeBlenderCameraPoseForAspect,
+  createHomeBlenderRenderCameraReset,
   homeBlenderFireKind,
   homeBlenderSteamMotion,
+  homeBlenderSteamMotionPrepared,
+  applyHomeBlenderCoffeeTemperature,
   applyHomeBlenderPieceLift,
   disposeStaleHomeBlenderGltf,
   homeBlenderProjectAnchors,
   HOME_BLENDER_BEACON_ANCHORS,
   homeBlenderFireMotion,
+  homeBlenderFireMotionPrepared,
+  homeBlenderFireSeed,
+  homeBlenderCandleLightFactor,
+  homeBlenderCandleLightFactorPrepared,
+  homeBlenderSharedFireGust,
   rebaseFlameToPivot,
   homeBlenderFireFramePlan,
   homeBlenderGlowOpacity,
@@ -20,6 +29,7 @@ import {
   applyHomeBlenderMoonVisibility,
   HOME_BLENDER_TIME_OF_DAY,
   homeBlenderIsSoftwareRenderer,
+  homeBlenderShouldRenderShadows,
   applyFlameLook,
   HOME_BLENDER_FLAME_LOOK,
   HOME_BLENDER_FIRE_MAX_RENDER_MS,
@@ -28,9 +38,11 @@ import {
   HOME_BLENDER_FIRE_MAX_INTERVAL_MS,
   homeBlenderPolicyNeedsFallback,
   homeBlenderAdaptiveLodFloor,
+  homeBlenderAdaptiveLodCap,
   homeBlenderRuntimePolicy,
   homeBlenderDustSeeds,
   homeBlenderDustPosition,
+  homeBlenderWriteDustPositions,
   HOME_BLENDER_DUST,
   homeBlenderMoonShaftPose,
   HOME_BLENDER_MOON_SHAFT,
@@ -52,6 +64,72 @@ import {
   releaseHomeBlenderWebglContext,
 } from './HomeBlenderScene3D.jsx';
 import { tighterRuntimeLodCap } from './HomeCastle3DRenderPolicy.js';
+import { createHomeCastle3DPerformanceGovernor } from './HomeCastle3DPerformanceGovernor.js';
+
+describe('Home Blender stationary render camera', () => {
+  const canonical = homeBlenderCameraPoseForAspect(16 / 9);
+
+  it('restores the same position and quaternion as the original per-frame camera setup', () => {
+    const baseline = new THREE.PerspectiveCamera(22.9, 16 / 9, 0.1, 80);
+    baseline.position.set(canonical.position.x, canonical.position.y, canonical.position.z);
+    baseline.lookAt(canonical.target.x, canonical.target.y, canonical.target.z);
+
+    const camera = new THREE.PerspectiveCamera(22.9, 16 / 9, 0.1, 80);
+    const lookAt = vi.spyOn(camera, 'lookAt');
+    const reset = createHomeBlenderRenderCameraReset(camera);
+    expect(reset.restore()).toBe(true);
+    expect(camera.position.equals(baseline.position)).toBe(true);
+    expect(camera.quaternion.equals(baseline.quaternion)).toBe(true);
+    expect(lookAt).toHaveBeenCalledTimes(1);
+
+    for (let frame = 0; frame < 240; frame += 1) expect(reset.restore()).toBe(false);
+    expect(lookAt).toHaveBeenCalledTimes(1);
+    expect(camera.position.equals(baseline.position)).toBe(true);
+    expect(camera.quaternion.equals(baseline.quaternion)).toBe(true);
+  });
+
+  it('reapplies the exact canonical rendering pose after viewport and actor projections', () => {
+    const camera = new THREE.PerspectiveCamera(22.9, 16 / 9, 0.1, 80);
+    const baseline = new THREE.PerspectiveCamera(22.9, 16 / 9, 0.1, 80);
+    baseline.position.set(canonical.position.x, canonical.position.y, canonical.position.z);
+    baseline.lookAt(canonical.target.x, canonical.target.y, canonical.target.z);
+    const reset = createHomeBlenderRenderCameraReset(camera);
+    reset.restore();
+    const lookAt = vi.spyOn(camera, 'lookAt');
+    for (const aspect of [0.45, 0.8, 1, 1.5]) {
+      // The Home projects hotspots and Matthias using a temporary framing,
+      // then the next render returns to the existing stationary view.
+      const pose = homeBlenderCameraPoseForAspect(aspect);
+      camera.aspect = aspect;
+      camera.updateProjectionMatrix();
+      camera.position.set(pose.position.x, pose.position.y, pose.position.z);
+      camera.lookAt(pose.target.x, pose.target.y, pose.target.z);
+      reset.invalidate();
+      expect(reset.restore()).toBe(true);
+      expect(camera.position.equals(baseline.position)).toBe(true);
+      expect(camera.quaternion.equals(baseline.quaternion)).toBe(true);
+      expect(camera.aspect).toBe(aspect);
+      expect(reset.restore()).toBe(false);
+    }
+    expect(lookAt).toHaveBeenCalledTimes(8); // 4 temporary projections, 4 restorations
+  });
+
+  it('does not reset after a redundant request but invalidates after an actor update', () => {
+    const camera = new THREE.PerspectiveCamera();
+    const reset = createHomeBlenderRenderCameraReset(camera);
+    expect(reset.restore()).toBe(true);
+    expect(reset.restore()).toBe(false);
+    // A routine change temporarily aims at Matthias; restoration is deferred
+    // until the next actual room draw, never during the projection callback.
+    camera.position.set(8, 3, 9);
+    camera.lookAt(0, 1, 0);
+    reset.invalidate();
+    expect(camera.position.x).toBe(8);
+    expect(reset.restore()).toBe(true);
+    expect(camera.position.x).toBe(canonical.position.x);
+    expect(reset.restore()).toBe(false);
+  });
+});
 
 describe('HomeBlenderScene3D GLTF lifecycle', () => {
   it('releases the cached WebGL context exactly once when teardown owns it', () => {
@@ -79,6 +157,27 @@ describe('HomeBlenderScene3D GLTF lifecycle', () => {
     expect(disposeGeometry).toHaveBeenCalledTimes(1);
     expect(disposeMaterial).toHaveBeenCalledTimes(1);
     expect(disposeTexture).toHaveBeenCalledTimes(1);
+  });
+
+  it('disposes shared GLTF GPU resources only once, including multi-material meshes', () => {
+    const texture = new THREE.Texture();
+    const sharedGeometry = new THREE.BoxGeometry();
+    const extraGeometry = new THREE.SphereGeometry(1, 8, 6);
+    const primary = new THREE.MeshStandardMaterial({ map: texture, roughnessMap: texture });
+    const secondary = new THREE.MeshBasicMaterial({ map: texture });
+    const scene = new THREE.Group();
+    scene.add(
+      new THREE.Mesh(sharedGeometry, primary),
+      new THREE.Mesh(sharedGeometry, [primary, secondary]),
+      new THREE.Mesh(extraGeometry, secondary),
+    );
+    const disposals = [texture, sharedGeometry, extraGeometry, primary, secondary]
+      .map((resource) => vi.spyOn(resource, 'dispose'));
+
+    expect(disposeStaleHomeBlenderGltf({ scene }, true)).toBe(true);
+    for (const dispose of disposals) {
+      expect(dispose).toHaveBeenCalledTimes(1);
+    }
   });
 });
 
@@ -142,6 +241,29 @@ describe('HomeBlenderScene3D mobile runtime policy', () => {
 
 
 describe('HomeBlenderScene3D live fallback policy', () => {
+  it('preserves a 3D lite floor under sustained governor slowdown', () => {
+    const governorDecision = (lod, frameMs, count) => {
+      const governor = createHomeCastle3DPerformanceGovernor(lod);
+      let timestamp = 0;
+      let decision = governor.observe(timestamp);
+      for (let index = 0; index < count; index += 1) {
+        timestamp += frameMs;
+        decision = governor.observe(timestamp) || decision;
+      }
+      return decision;
+    };
+    const fullSignal = governorDecision('full', 33.4, 400);
+    expect(fullSignal).toBe('lite');
+    const cap = homeBlenderAdaptiveLodCap(null, fullSignal, 'lite');
+    expect(cap).toBe('lite');
+
+    const liteSignal = governorDecision('lite', 70, 320);
+    expect(liteSignal).toBe('2d');
+    expect(homeBlenderAdaptiveLodCap(cap, liteSignal, 'lite')).toBe('lite');
+    // A genuinely ineligible policy may still request the explicit 2D path.
+    expect(homeBlenderAdaptiveLodCap(null, liteSignal, '2d')).toBe('2d');
+  });
+
   it('never performance-ejects an eligible 3D session to static 2D', () => {
     expect(homeBlenderAdaptiveLodFloor({ enabled: true, lod: 'full' })).toBe('lite');
     expect(homeBlenderAdaptiveLodFloor({ enabled: true, lod: 'lite' })).toBe('lite');
@@ -348,6 +470,179 @@ describe('HomeBlenderScene3D live flame animation', () => {
     }
   });
 
+  it('preserves the exact legacy ember animation after skipping unused noise', () => {
+    // Frozen values from the pre-optimization flame motion; independent of the
+    // new short-circuit implementation. These cover time/phase boundaries.
+    const baseline = [
+      [0, 0, [1.0122549182805232, 1.0098039346244185, 0.981749589322135, 0.9945098365610465]],
+      [16.7, 0.137, [0.9945262594665164, 0.9956210075732131, 0.9027136644023754, 0.9590525189330328]],
+      [250, 1.234, [0.9978200971601904, 0.9982560777281523, 0.9062358420378366, 0.9656401943203806]],
+      [4321, 3.9, [0.9940415297832134, 0.9952332238265708, 0.9211409410307563, 0.9580830595664267]],
+      [12345, -1.2, [0.9990009236091998, 0.9992007388873598, 0.9418893486790095, 0.9680018472183994]],
+      [90000, 0.17, [1.0071406382438726, 1.0057125105950981, 0.9546136231161655, 0.9842812764877453]],
+      [1e7, Math.PI, [1.0094609018438496, 1.0075687214750797, 0.9614496365375818, 0.9889218036876991]],
+    ];
+    for (const [timeMs, phase, [scaleX, scaleY, emission, light]] of baseline) {
+      for (const commonGust of [undefined, -0.8, 0.71]) {
+        const motion = homeBlenderFireMotion({ timeMs, phase, kind: 'ember', commonGust });
+        // Object.is asserts exact binary parity, not a perceptual epsilon.
+        expect(Object.is(motion.scaleX, scaleX)).toBe(true);
+        expect(Object.is(motion.scaleY, scaleY)).toBe(true);
+        expect(Object.is(motion.scaleZ, scaleX)).toBe(true);
+        expect(Object.is(motion.emission, emission)).toBe(true);
+        expect(Object.is(motion.light, light)).toBe(true);
+        expect(motion.lean).toBe(0);
+      }
+    }
+    const negative = homeBlenderFireMotion({ timeMs: -4, phase: NaN, kind: 'ember' });
+    expect(negative).toEqual(homeBlenderFireMotion({ timeMs: 0, phase: 0, kind: 'ember' }));
+  });
+
+  it('shares the exact Klaus head pose with both ear flicks without changing standalone calls', () => {
+    // Runtime can reuse the posture it already calculated for the head skin.
+    // Standalone callers still calculate that same posture when omitted.
+    for (const timeMs of [
+      -50, 0, 16.7, 137, 1000, 5000, 10001, 18000, 30000,
+      45000, 65000, 120000, 600000, NaN,
+    ]) {
+      const up = homeBlenderKlausHeadPose(timeMs).up;
+      for (const ear of [0, 1]) {
+        const oldCall = homeBlenderKlausEarPose(timeMs, ear);
+        const sharedCall = homeBlenderKlausEarPose(timeMs, ear, up);
+        expect(Object.is(sharedCall, oldCall)).toBe(true);
+      }
+    }
+  });
+
+  it('reuses fixed per-mesh seeds without changing any fire-kind motion', () => {
+    // The runtime normalizes the frame clock once and stores each node's seed
+    // at GLB load; compare it against the unchanged public call contract.
+    for (const timeMs of [0, 16.7, 137, 1010, 4321, 90000, 1e7, -40, NaN]) {
+      const seconds = Math.max(0, Number(timeMs) || 0) / 1000;
+      for (const phase of [0, 0.137, 1.234, 3.9, -1.2, NaN]) {
+        const seed = homeBlenderFireSeed(phase);
+        for (const kind of ['flame', 'hot', 'ember', 'candle']) {
+          for (const gust of [undefined, -0.8, 0.71]) {
+            const normal = homeBlenderFireMotion({ timeMs, phase, kind, commonGust: gust });
+            const prepared = homeBlenderFireMotionPrepared(seconds, seed, kind, gust);
+            for (const key of Object.keys(normal)) {
+              expect(Object.is(prepared[key], normal[key]), `${kind} ${key} ${timeMs} ${phase}`).toBe(true);
+            }
+          }
+        }
+        const normalLight = homeBlenderCandleLightFactor(timeMs, phase);
+        const preparedLight = homeBlenderCandleLightFactorPrepared(seconds, seed);
+        expect(Object.is(preparedLight, normalLight), `torch ${timeMs} ${phase}`).toBe(true);
+      }
+    }
+    expect(homeBlenderFireSeed(0)).toBe(13);
+    expect(homeBlenderFireSeed(NaN)).toBe(13);
+  });
+
+  it('reuses independent fire records without changing a single output float', () => {
+    const a = {};
+    const b = {};
+    for (const timeMs of [0, 16.7, 137, 4321, 90000, -40, NaN]) {
+      const seconds = Math.max(0, Number(timeMs) || 0) / 1000;
+      for (const phase of [0, 0.137, 1.234, -1.2, NaN]) {
+        for (const kind of ['flame', 'hot', 'ember', 'candle']) {
+          for (const gust of [undefined, -0.8, 0.71]) {
+            const seed = homeBlenderFireSeed(phase);
+            const normal = homeBlenderFireMotion({ timeMs, phase, kind, commonGust: gust });
+            const result = homeBlenderFireMotionPrepared(seconds, seed, kind, gust, a);
+            expect(result).toBe(a);
+            expect(result).not.toBe(normal);
+            expect(Object.keys(result)).toEqual(Object.keys(normal));
+            for (const key of Object.keys(normal)) expect(Object.is(result[key], normal[key])).toBe(true);
+            // Repeated updates into a different node's record must not mutate this node.
+            const snapshot = { ...a };
+            expect(homeBlenderFireMotionPrepared(seconds, seed + 1, kind, gust, b)).toBe(b);
+            expect(a).toEqual(snapshot);
+          }
+        }
+      }
+    }
+    expect(homeBlenderFireMotionPrepared(0, 13)).not.toBe(homeBlenderFireMotionPrepared(0, 13));
+  });
+
+  it('reuses steam wisp records with exact standalone pose parity', () => {
+    const a = {};
+    const b = {};
+    for (const timeMs of [0, 16.7, 137, 4321, 90000, -40, NaN]) {
+      const seconds = Math.max(0, Number(timeMs) || 0) / 1000;
+      for (const phase of [0, 0.137, 1.234, -1.2, NaN]) {
+        for (const height of [0.05, 0.4, 1.1]) {
+          const standalone = homeBlenderSteamMotion({ timeMs, phase, height });
+          const actual = homeBlenderSteamMotionPrepared(seconds, Number(phase) || 0, height, a);
+          expect(actual).toBe(a);
+          expect(Object.keys(actual)).toEqual(Object.keys(standalone));
+          for (const key of Object.keys(standalone)) {
+            expect(Object.is(actual[key], standalone[key]), `steam ${key} ${timeMs}`).toBe(true);
+          }
+          const snapshot = { ...a };
+          expect(homeBlenderSteamMotionPrepared(seconds, 2, height, b)).toBe(b);
+          expect(a).toEqual(snapshot);
+        }
+      }
+    }
+    expect(homeBlenderSteamMotion({})).not.toBe(homeBlenderSteamMotion({}));
+  });
+
+  it('matches frozen pre-optimization fire motion floats for all four flame kinds', () => {
+    // Values recorded from the unmodified v5782 implementation; guard both
+    // public and prepared calculations against a correlated formula change.
+    const snapshots = [
+      [0, 0, 'flame', undefined, [0.9914785529787187, 1.0221567309859674, 0.03613860896322876, 0.9608031610553153, 0.9648247780883683]],
+      [167.5, 0.137, 'hot', undefined, [1.0024557310929514, 0.9942699607831132, -0.00701216115664675, 0.949488074345368, 0.9483243335734549]],
+      [4321, 1.234, 'candle', undefined, [0.9830012214151452, 1.0396638166979946, -0.003676956097189417, 0.9280848553342714, 0.9986189665025442]],
+      [12345, 3.9, 'ember', undefined, [1.0026574895446667, 1.0021259916357335, 0, 0.9312032649900317, 0.9753149790893334]],
+      [90000, -1.2, 'flame', 0.71, [0.9900500074561686, 1.0238630548380314, -0.0010382326656021151, 0.988840244259592, 0.9868274790951982]],
+      [-45, NaN, 'hot', -0.8, [0.9951715432952624, 1.0135397535806987, 0.0026599347880110133, 0.9608031610553153, 0.9648247780883683]],
+      [1e7, Math.PI, 'candle', undefined, [0.9880218338441104, 1.0279490543637424, -0.014262612294405699, 0.9356135656149126, 0.9123009193914012]],
+    ];
+    const keys = ['scaleX', 'scaleY', 'lean', 'emission', 'light'];
+    for (const [timeMs, phase, kind, commonGust, values] of snapshots) {
+      const motion = homeBlenderFireMotionPrepared(
+        Math.max(0, Number(timeMs) || 0) / 1000, homeBlenderFireSeed(phase), kind, commonGust,
+      );
+      for (let index = 0; index < keys.length; index += 1) {
+        expect(Object.is(motion[keys[index]], values[index]), `${kind} ${keys[index]} at ${timeMs}`).toBe(true);
+      }
+      expect(Object.is(motion.scaleX, motion.scaleZ)).toBe(true);
+    }
+  });
+
+  it('computes torch-only light intensity with exact candle-motion equivalence', () => {
+    // Verify the actual runtime optimization, not an approximation: the same
+    // intensity reaches each existing Three.js light for every sampled phase.
+    for (const timeMs of [0, 16.7, 250, 1010, 4321, 12345, 40000, 90000, 1e7, -4, NaN]) {
+      for (const phase of [0, 0.137, 1.234, 3.9, -1.2, NaN]) {
+        const oldIntensity = homeBlenderFireMotion({ timeMs, phase, kind: 'candle' }).light;
+        const newIntensity = homeBlenderCandleLightFactor(timeMs, phase);
+        expect(Object.is(newIntensity, oldIntensity)).toBe(true);
+      }
+    }
+    // Non-candle motion is unaffected by the specialised scalar path.
+    for (const kind of ['flame', 'ember', 'hot']) {
+      expect(homeBlenderFireMotion({ timeMs: 1234, phase: 1, kind }))
+        .toEqual(homeBlenderFireMotion({ timeMs: 1234, phase: 1, kind }));
+    }
+  });
+
+  it('shares one wind sample across every flame kind without changing their motion', () => {
+    // Pixel-equivalent contract: the canonical scalar path and the batched
+    // runtime path must return exactly the same floats, not merely be close.
+    for (const timeMs of [0, 16.7, 555, 5000, 12345, 90000]) {
+      const commonGust = homeBlenderSharedFireGust(timeMs);
+      for (const kind of ['flame', 'hot', 'ember', 'candle']) {
+        for (const phase of [0, 0.137, 1.234, 3.9]) {
+          expect(homeBlenderFireMotion({ timeMs, kind, phase, commonGust }))
+            .toEqual(homeBlenderFireMotion({ timeMs, kind, phase }));
+        }
+      }
+    }
+  });
+
   it('is deterministic for the same clock and phase', () => {
     const a = homeBlenderFireMotion({ timeMs: 4321, phase: 2.1, kind: 'flame' });
     const b = homeBlenderFireMotion({ timeMs: 4321, phase: 2.1, kind: 'flame' });
@@ -549,6 +844,24 @@ describe('HomeBlenderScene3D live flame animation', () => {
   });
 
   describe('software renderer detection', () => {
+    it('avoids the first full shadow pass only on software WebGL', () => {
+      for (const name of [
+        'ANGLE (Google, Vulkan (SwiftShader Device (Subzero)), SwiftShader driver)',
+        'Mesa llvmpipe (LLVM 15)',
+        'Software Rasterizer',
+      ]) {
+        expect(homeBlenderShouldRenderShadows('full', name)).toBe(false);
+      }
+      for (const name of [
+        'NVIDIA GeForce RTX 5070 Ti',
+        'AMD Radeon RX 7800 XT',
+        'Apple M2',
+      ]) {
+        expect(homeBlenderShouldRenderShadows('full', name)).toBe(true);
+        expect(homeBlenderShouldRenderShadows('lite', name)).toBe(false);
+        expect(homeBlenderShouldRenderShadows('2d', name)).toBe(false);
+      }
+    });
     it('recognises CPU rasterisers by name', () => {
       for (const name of [
         'ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)',
@@ -891,6 +1204,27 @@ describe('home dust motes', () => {
     }
   });
 
+  it('writes the exact original positions to the persistent float32 buffer without replacing it', () => {
+    const seeds = homeBlenderDustSeeds(64);
+    const buffer = new Float32Array(seeds.length * 3);
+    const original = buffer;
+    for (const timeMs of [0, 16.7, 555, 5000, 90000, 1e7]) {
+      buffer.fill(NaN);
+      expect(homeBlenderWriteDustPositions(seeds, timeMs, buffer)).toBe(original);
+      const reference = new Float32Array(seeds.length * 3);
+      seeds.forEach((seed, i) => {
+        const [x, y, z] = homeBlenderDustPosition(seed, timeMs);
+        reference[i * 3] = x;
+        reference[i * 3 + 1] = y;
+        reference[i * 3 + 2] = z;
+      });
+      expect(buffer).toEqual(reference);
+    }
+    const sentinel = new Float32Array([42, 43, 44]);
+    homeBlenderWriteDustPositions([], 123, sentinel);
+    expect(sentinel).toEqual(new Float32Array([42, 43, 44]));
+  });
+
   it('drifts slowly and wraps vertically', () => {
     const [seed] = homeBlenderDustSeeds(1);
     for (const t of [0, 5000, 90000, 1e7]) {
@@ -974,5 +1308,25 @@ describe('home blender runtime LOD cap', () => {
     expect(tighterRuntimeLodCap('lite', '2d')).toBe('2d');
     expect(tighterRuntimeLodCap('2d', 'lite')).toBe('2d');
     expect(tighterRuntimeLodCap('lite', null)).toBe('lite');
+  });
+});
+
+
+describe('Home coffee is cold only while Matthias sleeps', () => {
+  it('hides only the coffee particles while keeping the hearth and candles untouched', () => {
+    const steam = { userData: { steam: true }, visible: true };
+    const fire = { userData: { fire: true }, visible: true };
+    const candle = { userData: { candles: true }, visible: true };
+    const particles = [steam, fire, candle];
+    expect(applyHomeBlenderCoffeeTemperature(particles, { profile: 'sleep' })).toBe('cold');
+    expect(steam.visible).toBe(false);
+    expect(fire.visible).toBe(true);
+    expect(candle.visible).toBe(true);
+
+    expect(applyHomeBlenderCoffeeTemperature(particles, { profile: 'sip' })).toBe('hot');
+    expect(steam.visible).toBe(true);
+    expect(fire.visible).toBe(true);
+    expect(candle.visible).toBe(true);
+    expect(applyHomeBlenderCoffeeTemperature([], { profile: 'sleep' })).toBe('cold');
   });
 });

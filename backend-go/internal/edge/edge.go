@@ -61,6 +61,9 @@ type Config struct {
 	NativeSession http.Handler
 	// NativeLogin serves POST /api/auth/login; nil keeps it in Python.
 	NativeLogin http.Handler
+	// NativeSSO serves /api/identity/* (ShadowOps single sign-on); Python
+	// has no such routes.
+	NativeSSO http.Handler
 	// NativeAccount serves register, password and email changes and
 	// delete-account; nil keeps them in Python.
 	NativeAccount http.Handler
@@ -78,12 +81,6 @@ type Config struct {
 	NativeNarrative http.Handler
 	// NativePawnSlug serves Pawn Slug stage content; nil keeps it in Python.
 	NativePawnSlug http.Handler
-	// NativeChronicles serves Chronicles area content and MapCode previews;
-	// nil keeps them in Python.
-	NativeChronicles http.Handler
-	// NativeChroniclesRuns serves the Chronicles run routes; nil keeps them
-	// in Python.
-	NativeChroniclesRuns http.Handler
 	// NativeAdminFeedback serves Admin's feedback management; nil keeps it
 	// in Python.
 	NativeAdminFeedback http.Handler
@@ -139,14 +136,13 @@ type Handler struct {
 	nativeProfile             http.Handler
 	nativeSession             http.Handler
 	nativeLogin               http.Handler
+	nativeSSO                 http.Handler
 	nativeAccount             http.Handler
 	nativeRecovery            http.Handler
 	nativeFeedback            http.Handler
 	nativeMatthias            http.Handler
 	nativeNarrative           http.Handler
 	nativePawnSlug            http.Handler
-	nativeChronicles          http.Handler
-	nativeChroniclesRuns      http.Handler
 	nativeAdminFeedback       http.Handler
 	nativeAdminUsers          http.Handler
 	nativeAdminObservability  http.Handler
@@ -265,14 +261,13 @@ func New(cfg Config) (*Handler, error) {
 		nativeProfile:             cfg.NativeProfile,
 		nativeSession:             cfg.NativeSession,
 		nativeLogin:               cfg.NativeLogin,
+		nativeSSO:                 cfg.NativeSSO,
 		nativeAccount:             cfg.NativeAccount,
 		nativeRecovery:            cfg.NativeRecovery,
 		nativeFeedback:            cfg.NativeFeedback,
 		nativeMatthias:            cfg.NativeMatthias,
 		nativeNarrative:           cfg.NativeNarrative,
 		nativePawnSlug:            cfg.NativePawnSlug,
-		nativeChronicles:          cfg.NativeChronicles,
-		nativeChroniclesRuns:      cfg.NativeChroniclesRuns,
 		nativeAdminFeedback:       cfg.NativeAdminFeedback,
 		nativeAdminUsers:          cfg.NativeAdminUsers,
 		nativeAdminObservability:  cfg.NativeAdminObservability,
@@ -304,14 +299,13 @@ func (h *Handler) nativeRoutes() []nativeRoute {
 		{h.nativeProfile, gamesapi.ProfileRoute},
 		{h.nativeSession, gamesapi.SessionRoute},
 		{h.nativeLogin, gamesapi.LoginRoute},
+		{h.nativeSSO, gamesapi.SSORoute},
 		{h.nativeAccount, gamesapi.AccountRoute},
 		{h.nativeRecovery, gamesapi.RecoveryRoute},
 		{h.nativeFeedback, func(r *http.Request) (string, bool) { p, _, ok := gamesapi.FeedbackRoute(r); return p, ok }},
 		{h.nativeMatthias, gamesapi.MatthiasRoute},
 		{h.nativeNarrative, gamesapi.NarrativeRoute},
 		{h.nativePawnSlug, gamesapi.PawnSlugRoute},
-		{h.nativeChronicles, gamesapi.ChroniclesRoute},
-		{h.nativeChroniclesRuns, func(r *http.Request) (string, bool) { p, _, ok := gamesapi.ChroniclesRunsRoute(r); return p, ok }},
 		{h.nativeAdminFeedback, gamesapi.AdminFeedbackRoute},
 		{h.nativeAdminUsers, func(r *http.Request) (string, bool) { p, _, ok := gamesapi.AdminUsersRoute(r); return p, ok }},
 		{h.nativeAdminObservability, gamesapi.AdminObservabilityRoute},
@@ -550,8 +544,6 @@ func (h *Handler) statusPayload(status string) map[string]any {
 		"nativeMatthias":            h.nativeMatthias != nil,
 		"nativeNarrative":           h.nativeNarrative != nil,
 		"nativePawnSlug":            h.nativePawnSlug != nil,
-		"nativeChronicles":          h.nativeChronicles != nil,
-		"nativeChroniclesRuns":      h.nativeChroniclesRuns != nil,
 		"nativeAdminFeedback":       h.nativeAdminFeedback != nil,
 		"nativeAdminUsers":          h.nativeAdminUsers != nil,
 		"nativeAdminObservability":  h.nativeAdminObservability != nil,

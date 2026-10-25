@@ -3,6 +3,7 @@ import {
   loadWarRoomVariantInstaller,
   warRoomVariantSupportsHans,
 } from './WarRoomVariant.js';
+import { createWarRoomShellTiming } from './WarRoomShellTiming.js';
 
 export function shouldShowClassicWarRoomShell(options = {}) {
   return isClassicWarRoomVariant(options);
@@ -25,22 +26,36 @@ function isPromiseLike(value) {
   return Boolean(value && typeof value.then === 'function');
 }
 
+// Shared mapping keeps lifecycle clearing and reporting in lockstep.
+const BLENDER_SHADOW_TELEMETRY_ROWS = Object.freeze([
+  ['warRoomBlenderShadowCasterBudget', 'warRoomShadowCasterBudget'],
+  ['warRoomBlenderShadowCasterCandidates', 'warRoomShadowCasterCandidates'],
+  ['warRoomBlenderShadowCandidatePotentialTriangles', 'warRoomShadowCandidatePotentialTriangles'],
+  ['warRoomBlenderShadowSelectedPotentialTriangles', 'warRoomShadowSelectedPotentialTriangles'],
+  ['warRoomBlenderShadowProjectedCount', 'warRoomShadowProjectedCount'],
+  ['warRoomBlenderShadowCasterCount', 'warRoomShadowCasterCount'],
+  ['warRoomBlenderShadowWarmup', 'warRoomShadowWarmup'],
+]);
+
+export function clearWarRoomBlenderShadowTelemetry(canvas) {
+  if (!canvas?.dataset) return;
+  for (const [, key] of BLENDER_SHADOW_TELEMETRY_ROWS) delete canvas.dataset[key];
+  delete canvas.dataset.warRoomV3StaticTorchBatches;
+}
+
 function syncBlenderShadowTelemetry(scene, variant, canvas) {
   if (!canvas?.dataset || !scene?.children) return;
   const root = scene.children.find((child) => child?.userData?.warRoomVariant === variant);
   if (!root?.userData) return;
   const { userData } = root;
-  const rows = [
-    ['warRoomBlenderShadowCasterBudget', 'warRoomShadowCasterBudget'],
-    ['warRoomBlenderShadowCasterCandidates', 'warRoomShadowCasterCandidates'],
-    ['warRoomBlenderShadowProjectedCount', 'warRoomShadowProjectedCount'],
-    ['warRoomBlenderShadowCasterCount', 'warRoomShadowCasterCount'],
-    ['warRoomBlenderShadowWarmup', 'warRoomShadowWarmup'],
-  ];
-  for (const [source, target] of rows) {
+  for (const [source, target] of BLENDER_SHADOW_TELEMETRY_ROWS) {
     const value = userData[source];
     if (value === undefined || value === null) continue;
     canvas.dataset[target] = String(value);
+  }
+  // One-shot V3 mount diagnostic. This is not a per-frame DOM write.
+  if (variant === 'v3' && Number.isInteger(userData.warRoomV3StaticTorchBatches)) {
+    canvas.dataset.warRoomV3StaticTorchBatches = String(userData.warRoomV3StaticTorchBatches);
   }
 }
 
@@ -57,11 +72,20 @@ export function startWarRoomVariantScene({
   loadVariantInstaller = loadWarRoomVariantInstaller,
   loadHansStage = () => import('./WarRoomHansStage.js'),
 }) {
+  // Each room transition owns a fresh diagnostic snapshot. An old V3/V4
+  // shadow budget must never be attributed to a loading, classic or failed room.
+  clearWarRoomBlenderShadowTelemetry(canvas);
   let cancelled = false;
   let releaseShell = null;
   let releaseHans = null;
   const classicShellObjects = classicShellController?.current?.() || [];
   const ensureClassicShell = classicShellController?.ensure;
+  const parkedClassicObjects = [];
+  const restoreParkedClassicObjects = () => {
+    for (const { object, parent } of parkedClassicObjects.splice(0)) {
+      if (!object.parent) parent.add(object);
+    }
+  };
   const setStatus = (status, renderedVariant) => {
     if (canvas) {
       canvas.dataset.warRoomVariantStatus = status;
@@ -115,21 +139,40 @@ export function startWarRoomVariantScene({
   // classic room. Only hide an already-built classic shell; build it lazily if
   // the user switches back or if the selected GLB fails to load.
   setClassicShellVisible(classicShellObjects, false);
+  // A previously visited V1 room can remain mounted (but hidden) in Three's
+  // scene graph. Its old 'war-room-fireplace' and Hans actor names would steal
+  // Blender Hans' getObjectByName lookups or trip his 'occupied' guard.
+  // Park those legacy nodes without disposing them; restore on fallback/switch.
+  for (const object of classicShellObjects) {
+    const parent = object?.parent;
+    if (!parent?.remove || !parent?.add) continue;
+    parkedClassicObjects.push({ object, parent });
+    parent.remove(object);
+  }
   scene.userData ||= {};
   scene.userData.warRoomRenderedVariant = `${variant}-loading`;
   setStatus('loading', `${variant}-loading`);
   onPaint?.();
   const shellCoarsePointer = warRoomVariantShellCoarsePointer({ renderLite });
+  const shellTiming = createWarRoomShellTiming({ canvas });
   const onShellRefine = () => {
     syncBlenderShadowTelemetry(scene, variant, canvas);
     onPaint?.();
   };
   void loadVariantInstaller(variant)
-    .then((installShell) => installShell(scene, {
-      whiteSide,
-      coarsePointer: shellCoarsePointer,
-      onRefine: onShellRefine,
-    }))
+    .then((installShell) => {
+      // Navigation may have unmounted this room while its JS chunk was still
+      // importing. Never start a costly GLB fetch/install for a stale scene.
+      // If the GLB was already in flight, the next .then releases it as before.
+      if (cancelled) return null;
+      shellTiming.mark('import');
+      return installShell(scene, {
+        whiteSide,
+        coarsePointer: shellCoarsePointer,
+        onRefine: onShellRefine,
+        onTiming: (phase) => { if (!cancelled) shellTiming.mark(phase); },
+      });
+    })
     .then((release) => {
       if (cancelled) return release?.();
       releaseShell = release;
@@ -175,6 +218,7 @@ export function startWarRoomVariantScene({
       scene.userData.warRoomRenderedVariant = variant;
       setStatus('ready', variant);
       onPaint?.();
+      shellTiming.mark('readyPaint');
     })
     .catch((error) => {
       if (cancelled) return;
@@ -187,6 +231,7 @@ export function startWarRoomVariantScene({
           setClassicShellVisible(objects, false);
           return;
         }
+        restoreParkedClassicObjects();
         setClassicShellVisible(objects, true);
         scene.userData ||= {};
         scene.userData.warRoomRenderedVariant = 'classic';
@@ -218,9 +263,11 @@ export function startWarRoomVariantScene({
     if (canvas) {
       delete canvas.dataset.warRoomHansStage;
       delete canvas.dataset.warRoomHansStageError;
+      delete canvas.dataset.warRoomV3StaticTorchBatches;
     }
     releaseShell?.();
     releaseShell = null;
+    restoreParkedClassicObjects();
     scene.userData ||= {};
     scene.userData.warRoomRenderedVariant = 'classic';
   };

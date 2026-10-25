@@ -1,11 +1,29 @@
 import { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
+import { freezeHomeBlenderStaticTransforms } from './HomeBlenderStaticTransforms.js';
+import { recordHomeBlenderRuntimeEvent } from './HomeBlenderRuntimeTrace.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { loadHomeCastleR2Scene } from './HomeCastle3DR2Asset.js';
+import {
+  homeBlenderLightProbeMode,
+  homeBlenderWallTorchLayout,
+  homeBlenderLightProbeLocksFullLod,
+  applyHomeBlenderLightProbe,
+  homeBlenderWallPairFillPlan,
+} from './HomeBlenderLightProbe.js';
+import {
+  createHomeBlenderGpuTimer,
+  createHomeBlenderFrameSamples,
+  homeBlenderGpuResourceCounts,
+  homeBlenderModelDrawInventory,
+  homeBlenderFlamePassEligibility,
+} from './HomeBlenderPerformanceDiagnostics.js';
+import { installHomeBlenderDrawPassProbe, homeBlenderDrawFamily } from './HomeBlenderDrawPassProbe.js';
 import { FIRE_SPRITE_DEFAULTS, createFireSprites, createSteamSprites, disposeFireSprites, fireSpriteSeeds } from './fireSprites.js';
 import { getEffectiveReducedMotion } from '../userPreferences.js';
+import { threeSurfaceShouldRender } from '../threeRenderPolicy.js';
 import {
   HOME_CASTLE_3D_MOBILE_ENABLE_MIN_WIDTH,
   homeCastle3DRenderPolicy,
@@ -16,6 +34,7 @@ import {
   HOME_MATTHIAS_ACTOR_MODEL_PATH,
   createHomeMatthiasActor,
   homeMatthiasActorRoutine,
+  homeMatthiasIsSleeping,
   homeMatthiasProjectBounds,
 } from './HomeBlenderMatthiasActor.js';
 
@@ -231,13 +250,13 @@ export function homeBlenderKlausHeadPose(timeMs = 0) {
 
 // Ear flick angle (radians, outwards) for ear 0 or 1. Ears perk a little while
 // the head is up.
-export function homeBlenderKlausEarPose(timeMs = 0, index = 0) {
+export function homeBlenderKlausEarPose(timeMs = 0, index = 0, headUp = homeBlenderKlausHeadPose(timeMs).up) {
   const spec = HOME_BLENDER_KLAUS_EAR_MOTION;
   const seconds = Math.max(0, Number(timeMs) || 0) / 1000;
   const period = spec.periods[index % spec.periods.length];
   const local = ((seconds + index * 4.1) % period + period) % period;
   const flick = local < spec.flickSeconds ? Math.sin((local / spec.flickSeconds) * Math.PI) : 0;
-  const perk = homeBlenderKlausHeadPose(timeMs).up * 0.35;
+  const perk = headUp * 0.35;
   return THREE.MathUtils.degToRad(spec.flickDeg) * Math.max(flick, perk);
 }
 
@@ -414,7 +433,9 @@ const klausScratch = {
 export function applyHomeBlenderKlausHeadDeform(deform, timeMs = 0) {
   if (!deform) return false;
   const head = homeBlenderKlausHeadPose(timeMs);
-  const earAngles = [homeBlenderKlausEarPose(timeMs, 0), homeBlenderKlausEarPose(timeMs, 1)];
+  // Share the head posture used for the skin deformation with both ear flicks.
+  // The standalone public ear helper keeps its original default behaviour.
+  const earAngles = [homeBlenderKlausEarPose(timeMs, 0, head.up), homeBlenderKlausEarPose(timeMs, 1, head.up)];
   const moving = head.up > 1e-4 || earAngles[0] > 1e-4 || earAngles[1] > 1e-4;
   if (!moving && !deform.active) return false;
   deform.active = moving;
@@ -553,6 +574,25 @@ export function homeBlenderDustPosition(seed, timeMs = 0) {
   ];
 }
 
+// The live Home updates the same Float32BufferAttribute every animated draw.
+// Write directly into its persistent backing array: no [x, y, z] allocation
+// for every mote and no repeated division/span calculation per mote. Keep the
+// public homeBlenderDustPosition() helper for scalar consumers and reference tests.
+export function homeBlenderWriteDustPositions(seeds, timeMs, positions) {
+  const box = HOME_BLENDER_DUST;
+  const t = timeMs / 1000;
+  const span = box.yMax - box.yMin;
+  for (let i = 0; i < seeds.length; i += 1) {
+    const seed = seeds[i];
+    const fall = ((seed.y - box.yMin - seed.speed * t) % span + span) % span;
+    const offset = i * 3;
+    positions[offset] = seed.x + Math.sin(t * 0.21 + seed.phase) * 0.22;
+    positions[offset + 1] = box.yMin + fall;
+    positions[offset + 2] = seed.z + Math.cos(t * 0.17 + seed.phase * 1.3) * 0.18;
+  }
+  return positions;
+}
+
 // Blender window centre (7.82, 6.5, 4.3) -> three (7.82, 4.3, -6.5); the moon light lands near (4.35, 1.25, -1.85).
 export const HOME_BLENDER_MOON_SHAFT = {
   from: [7.9, 4.3, -6.35],
@@ -627,6 +667,16 @@ void main() {
   gl_FragColor = vec4(col, a * a * (1.0 - vLife) * smoothstep(0.0, 0.12, vLife) * uOpacity);
 }`;
 
+// Change only the coffee particles: fireplace, candles and embers keep
+// working while the sleepy pawn is resting. No per-frame clock check.
+export function applyHomeBlenderCoffeeTemperature(particles, routine) {
+  const hot = !homeMatthiasIsSleeping(routine);
+  for (const points of particles || []) {
+    if (points?.userData?.steam) points.visible = hot;
+  }
+  return hot ? 'hot' : 'cold';
+}
+
 export function homeBlenderSteamBase(nodes) {
   const steam = (nodes || []).filter((node) => node.kind === 'steam');
   if (!steam.length) return null;
@@ -695,15 +745,53 @@ function fireNoise(seconds, rate, seed) {
   return value * 2 - 1;
 }
 
+// Compute the shared draught once per draw rather than repeating identical
+// lattice-noise work for each flame mesh and every dynamic torch.
+export function homeBlenderSharedFireGust(timeMs = 0) {
+  return fireNoise(Math.max(0, Number(timeMs) || 0) / 1000, 0.33, 7);
+}
+
+// GLB flame names and torch identities have fixed phases across their lifespan.
+// Prepare the corresponding noise-lattice seed once instead of recomputing it
+// for every flame and torch on each animated frame.
+export function homeBlenderFireSeed(phase = 0) {
+  return Math.floor(Math.abs(Number(phase) || 0) * 997) + 13;
+}
+
 export function homeBlenderFireMotion({
   timeMs = 0,
   phase = 0,
   kind = 'flame',
+  commonGust,
 } = {}) {
-  const seconds = Math.max(0, Number(timeMs) || 0) / 1000;
-  const seed = Math.floor(Math.abs(Number(phase) || 0) * 997) + 13;
-  // One slow draught shared by every flame, so a hearth leans together.
-  const gust = fireNoise(seconds, 0.33, 7);
+  return homeBlenderFireMotionPrepared(
+    Math.max(0, Number(timeMs) || 0) / 1000,
+    homeBlenderFireSeed(phase),
+    kind,
+    commonGust,
+  );
+}
+
+// The live animation already knows the (seconds, seed) pair for each mesh.
+// Keep this scalar path separate to avoid repeated phase hashing/time coercion.
+// Its optional output record belongs to one GLB node and avoids per-frame
+// motion-object allocations; standalone callers still get a fresh object.
+export function homeBlenderFireMotionPrepared(seconds, seed, kind = 'flame', commonGust, output = {}) {
+  if (kind === 'ember') {
+    // Embers only consume slow glow and flicker. Skip the gust, body and
+    // drift lattice samples used by flames/candles: they never affect embers.
+    const flick = fireNoise(seconds, 8.6, seed + 401);
+    const glow = fireNoise(seconds, 1.6, seed + 601);
+    output.scaleX = 1 + glow * 0.015;
+    output.scaleY = 1 + glow * 0.012;
+    output.scaleZ = 1 + glow * 0.015;
+    output.lean = 0;
+    output.emission = 0.93 + glow * 0.06 + flick * 0.02;
+    output.light = 0.97 + glow * 0.03;
+    return output;
+  }
+  // Standalone callers retain their original deterministic output.
+  const gust = commonGust === undefined ? fireNoise(seconds, 0.33, 7) : commonGust;
   const body = (
     fireNoise(seconds, 4.4, seed) * 0.60
     + fireNoise(seconds, 7.3, seed + 101) * 0.28
@@ -713,60 +801,74 @@ export function homeBlenderFireMotion({
   const flick = fireNoise(seconds, 8.6, seed + 401);
 
   if (kind === 'candle') {
-    return {
-      scaleX: 1 - body * 0.030,
-      scaleY: 1 + body * 0.070,
-      scaleZ: 1 - body * 0.030,
-      lean: fireNoise(seconds, 2.6, seed + 503) * 0.050 + gust * 0.015,
-      emission: 0.95 + flick * 0.045,
-      // A candle or torch flame throws a light that wavers with it.
-      light: 0.90 + body * 0.09 + drift * 0.07,
-    };
-  }
-  if (kind === 'ember') {
-    // Embers breathe slowly instead of flickering.
-    const glow = fireNoise(seconds, 1.6, seed + 601);
-    return {
-      scaleX: 1 + glow * 0.015,
-      scaleY: 1 + glow * 0.012,
-      scaleZ: 1 + glow * 0.015,
-      lean: 0,
-      emission: 0.93 + glow * 0.06 + flick * 0.02,
-      light: 0.97 + glow * 0.03,
-    };
+    output.scaleX = 1 - body * 0.030;
+    output.scaleY = 1 + body * 0.070;
+    output.scaleZ = 1 - body * 0.030;
+    output.lean = fireNoise(seconds, 2.6, seed + 503) * 0.050 + gust * 0.015;
+    output.emission = 0.95 + flick * 0.045;
+    // A candle or torch flame throws a light that wavers with it.
+    output.light = 0.90 + body * 0.09 + drift * 0.07;
+    return output;
   }
 
   const hot = kind === 'hot';
   const stretch = body * (hot ? 0.75 : 1) + drift * 0.30;
-  return {
-    scaleX: 1 - stretch * (hot ? 0.030 : 0.045),
-    scaleY: 1 + stretch * (hot ? 0.070 : 0.105) + Math.max(0, body) * 0.02,
-    scaleZ: 1 - stretch * (hot ? 0.030 : 0.045),
-    lean: fireNoise(seconds, 3.4, seed + 503) * (hot ? 0.030 : 0.045) + gust * (hot ? 0.020 : 0.035),
-    emission: 0.95 + flick * 0.05 + body * 0.035,
-    light: 0.95 + body * 0.05 + flick * 0.03 + drift * 0.02,
-  };
+  output.scaleX = 1 - stretch * (hot ? 0.030 : 0.045);
+  output.scaleY = 1 + stretch * (hot ? 0.070 : 0.105) + Math.max(0, body) * 0.02;
+  output.scaleZ = 1 - stretch * (hot ? 0.030 : 0.045);
+  output.lean = fireNoise(seconds, 3.4, seed + 503) * (hot ? 0.030 : 0.045) + gust * (hot ? 0.020 : 0.035);
+  output.emission = 0.95 + flick * 0.05 + body * 0.035;
+  output.light = 0.95 + body * 0.05 + flick * 0.03 + drift * 0.02;
+  return output;
+}
+
+// Torch lights only consume .light from homeBlenderFireMotion('candle').
+// Skip six unused scale/lean/emission fields, the unused shared gust and
+// flick/lean lattice samples, and one ephemeral motion object per torch/draw.
+// Keep the *same arithmetic order* as the canonical candle expression so
+// candlelight intensity remains bit-for-bit identical.
+export function homeBlenderCandleLightFactor(timeMs = 0, phase = 0) {
+  return homeBlenderCandleLightFactorPrepared(
+    Math.max(0, Number(timeMs) || 0) / 1000,
+    homeBlenderFireSeed(phase),
+  );
+}
+
+export function homeBlenderCandleLightFactorPrepared(seconds, seed) {
+  const body = (
+    fireNoise(seconds, 4.4, seed) * 0.60
+    + fireNoise(seconds, 7.3, seed + 101) * 0.28
+    + fireNoise(seconds, 10.9, seed + 211) * 0.12
+  );
+  const drift = fireNoise(seconds, 0.9, seed + 307);
+  return 0.90 + body * 0.09 + drift * 0.07;
 }
 
 // Coffee steam: each wisp loops (fade in, rise, swell, sway, fade out) on its own
 // phase so the cup never pulses in unison. `height` is the wisp's own height, so
 // the motion scales with whatever size the GLB ships.
 export function homeBlenderSteamMotion({ timeMs = 0, phase = 0, height = 0.4 } = {}) {
-  const seconds = Math.max(0, Number(timeMs) || 0) / 1000;
-  const offset = ((Number(phase) || 0) / (Math.PI * 2)) % 1;
+  return homeBlenderSteamMotionPrepared(
+    Math.max(0, Number(timeMs) || 0) / 1000, Number(phase) || 0, height,
+  );
+}
+
+// The live GLB animation shares the normalized frame clock and writes into a
+// per-wisp record. Standalone callers still receive a fresh output object.
+export function homeBlenderSteamMotionPrepared(seconds, phase, height = 0.4, output = {}) {
+  const offset = (phase / (Math.PI * 2)) % 1;
   const period = 4.2 + offset * 1.6;
   const progress = ((seconds / period) + offset + 1) % 1;
   const envelope = Math.sin(Math.PI * progress) ** 1.25;
-  return {
-    progress,
-    opacity: 0.30 * envelope,
-    rise: progress * height * 0.55,
-    swayX: Math.sin((seconds * 1.15) + (Number(phase) || 0)) * height * 0.055 * (0.4 + progress),
-    swayZ: Math.cos((seconds * 0.9) + (Number(phase) || 0) * 1.7) * height * 0.035,
-    // The authored wisp is a thin tube; it swells into a soft plume as it rises.
-    scaleXZ: 1.8 + progress * 3.2,
-    scaleY: 0.85 + progress * 0.30,
-  };
+  output.progress = progress;
+  output.opacity = 0.30 * envelope;
+  output.rise = progress * height * 0.55;
+  output.swayX = Math.sin((seconds * 1.15) + phase) * height * 0.055 * (0.4 + progress);
+  output.swayZ = Math.cos((seconds * 0.9) + phase * 1.7) * height * 0.035;
+  // The authored wisp is a thin tube; it swells into a soft plume as it rises.
+  output.scaleXZ = 1.8 + progress * 3.2;
+  output.scaleY = 0.85 + progress * 0.30;
+  return output;
 }
 
 // The published runtime GLB was exported with every flame panel's origin at the
@@ -799,6 +901,13 @@ export function homeBlenderIsSoftwareRenderer(rendererName = '') {
   return /swiftshader|llvmpipe|softpipe|software|basic render/i.test(String(rendererName));
 }
 
+// The first full shadow-map pass can block a CPU rasteriser before Home's
+// LOADING/fallback timers get a chance to run. Keep every hardware-GPU shadow;
+// software WebGL still gets the real 3D room, without the costly shadow pass.
+export function homeBlenderShouldRenderShadows(lod, rendererName = '') {
+  return lod === 'full' && !homeBlenderIsSoftwareRenderer(rendererName);
+}
+
 function readRendererName(renderer) {
   try {
     const gl = renderer?.getContext?.();
@@ -824,6 +933,27 @@ export const HOME_BLENDER_FIRE_MAX_RENDER_MS = 80;
 export const HOME_BLENDER_FIRE_MAX_FRAME_GAP_MS = 60;
 export const HOME_BLENDER_FIRE_MAX_INTERVAL_MS = 200;
 export const HOME_BLENDER_FIRE_WARMUP_FRAMES = 20;
+export const HOME_BLENDER_FRAME_TELEMETRY_INTERVAL_MS = 1000;
+
+// Keep observability cheap: DOM attribute mutations are not free, particularly
+// on mobile. Refresh frame diagnostics at 1Hz, not every animated draw.
+export function homeBlenderFrameTelemetryDue(timestamp, lastPublishedAt) {
+  return Number.isFinite(timestamp)
+    && Number.isFinite(lastPublishedAt)
+    && timestamp - lastPublishedAt >= HOME_BLENDER_FRAME_TELEMETRY_INTERVAL_MS;
+}
+
+// A slow scene has no reason to wake on every vsync just to reject most frames.
+// Retain one adjacent RAF pair per rendered frame to observe real frame pacing;
+// planned timeout gaps must never masquerade as GPU jank for the LOD governor.
+export const HOME_BLENDER_FIRE_SLEEP_THRESHOLD_MS = 32;
+export function homeBlenderFireWakeDelay(timestamp, deadline, vsyncMs = 1000 / 60) {
+  if (!Number.isFinite(timestamp) || !Number.isFinite(deadline)) return 0;
+  const remaining = deadline - timestamp;
+  if (remaining < HOME_BLENDER_FIRE_SLEEP_THRESHOLD_MS) return 0;
+  const lead = Math.max(8, Math.min(20, Number.isFinite(vsyncMs) ? vsyncMs : 1000 / 60));
+  return Math.max(0, Math.floor(remaining - lead - 2));
+}
 
 export function homeBlenderFireFramePlan({
   baseIntervalMs = 42,
@@ -989,6 +1119,7 @@ function prepareRuntimeFireRig(root) {
       object.material = object.material.clone();
     }
 
+    const phase = stableFirePhase(object.name);
     for (const material of (Array.isArray(object.material) ? object.material : [object.material])) {
       if (kind === 'steam') {
         material.transparent = true;
@@ -1001,7 +1132,7 @@ function prepareRuntimeFireRig(root) {
       if (kind !== 'ember') {
         applyFlameGradient(material, flameHeightRange(object.geometry), {
           amp: kind === 'candle' ? 0.055 : 0.15,
-          phase: stableFirePhase(object.name),
+          phase,
         });
       }
     }
@@ -1022,7 +1153,11 @@ function prepareRuntimeFireRig(root) {
       basePosition: object.position.clone(),
       height: wispBox ? Math.max(0.05, wispBox.max.y - wispBox.min.y) : 0.4,
       hearth: lowered.includes('fireplace_left') ? 'left' : lowered.includes('fireplace_right') ? 'right' : null,
-      phase: stableFirePhase(object.name),
+      phase,
+      seed: homeBlenderFireSeed(phase),
+      // One stable motion record per GLB flame/ember/steam node; no short-lived
+      // per-node objects allocated during the ambient animation loop.
+      motion: {},
       baseScale: object.scale.clone(),
       baseRotationZ: object.rotation.z,
       materials,
@@ -1031,11 +1166,16 @@ function prepareRuntimeFireRig(root) {
   return nodes;
 }
 
-function applyRuntimeFireMotion(nodes, timeMs) {
+function applyRuntimeFireMotion(
+  nodes, timeMs, commonGust = homeBlenderSharedFireGust(timeMs),
+  seconds = Math.max(0, Number(timeMs) || 0) / 1000,
+) {
+  // Do not normalize shader clock: the WebGL uniform historically uses raw ms.
+  const shaderSeconds = timeMs / 1000;
   const light = { left: { sum: 0, count: 0 }, right: { sum: 0, count: 0 } };
   for (const node of nodes) {
     if (node.kind === 'steam') {
-      const steam = homeBlenderSteamMotion({ timeMs, phase: node.phase, height: node.height });
+      const steam = homeBlenderSteamMotionPrepared(seconds, node.phase, node.height, node.motion);
       node.object.position.set(
         node.basePosition.x + steam.swayX,
         node.basePosition.y + steam.rise,
@@ -1049,20 +1189,16 @@ function applyRuntimeFireMotion(nodes, timeMs) {
       for (const { material } of node.materials) material.opacity = steam.opacity;
       continue;
     }
-    const motion = homeBlenderFireMotion({
-      timeMs,
-      phase: node.phase,
-      kind: node.kind,
-    });
+    const motion = homeBlenderFireMotionPrepared(seconds, node.seed, node.kind, commonGust, node.motion);
     node.object.scale.set(
       node.baseScale.x * motion.scaleX,
       node.baseScale.y * motion.scaleY,
       node.baseScale.z * motion.scaleZ,
     );
     node.object.rotation.z = node.baseRotationZ + motion.lean;
-    const seconds = timeMs / 1000;
+    // Shader uniforms use the original raw timestamp, including the first frame.
     for (const { material } of node.materials) {
-      if (material.userData?.flameTime) material.userData.flameTime.value = seconds;
+      if (material.userData?.flameTime) material.userData.flameTime.value = shaderSeconds;
     }
     for (const { material, emissiveIntensity } of node.materials) {
       if ('emissiveIntensity' in material) {
@@ -1107,6 +1243,24 @@ export function homeBlenderCameraFovForAspect(aspect = 16 / 9) {
         + (portraitVerticalFov - HOME_BLENDER_CAMERA_FOV) * blend,
     ),
   );
+}
+
+// The rendering camera uses one canonical stationary pose. Projection helpers
+// temporarily move it to the aspect-dependent beacon/actor pose; restore only
+// after those helpers invalidate it. Avoid a camera lookAt/matrix recalculation
+// on every ambient draw while keeping the *exact same* rendered framing.
+export function createHomeBlenderRenderCameraReset(camera, position = CAMERA_BASE, target = CAMERA_TARGET) {
+  let dirty = true;
+  return {
+    invalidate() { dirty = true; },
+    restore() {
+      if (!dirty) return false;
+      camera.position.set(position.x, position.y, position.z);
+      camera.lookAt(target.x, target.y, target.z);
+      dirty = false;
+      return true;
+    },
+  };
 }
 
 export function homeBlenderCameraPoseForAspect(aspect = 16 / 9) {
@@ -1173,6 +1327,14 @@ export function homeBlenderAdaptiveLodFloor(policy) {
   return policy?.enabled && policy?.lod !== '2d' ? 'lite' : '2d';
 }
 
+// Pure version of the live governor clamp. Keep the floor and the monotonic
+// LOD cap in one testable decision so persistent jank cannot eject a valid
+// Blender session to static 2D by accident.
+export function homeBlenderAdaptiveLodCap(currentCap, governorSignal, floor) {
+  const requested = floor === 'lite' && governorSignal === '2d' ? 'lite' : governorSignal;
+  return tighterRuntimeLodCap(currentCap, requested);
+}
+
 
 // Wall-torch x positions from the authored Blender scene (Blender x maps to three x).
 const HOME_BLENDER_TORCH_X = Object.freeze([-8.0, -4.15, 2.45, 7.95]);
@@ -1227,7 +1389,7 @@ function createGlowSprite(texture, color, size, opacity, position) {
   return sprite;
 }
 
-function addRuntimeLights(scene, shadowsEnabled = true, ambientPeriod = 'day') {
+function addRuntimeLights(scene, shadowsEnabled = true, ambientPeriod = 'day', diagnosticLightMode = 'normal') {
   // Keep the browser rendition close to the authored Blender beauty pass:
   // dark stone stays dark and the warm practicals shape the room instead of
   // a large ambient wash flattening every material.
@@ -1291,6 +1453,7 @@ function addRuntimeLights(scene, shadowsEnabled = true, ambientPeriod = 'day') {
     ? HOME_BLENDER_TORCH_X.map((x) => {
       const light = new THREE.PointLight(0xff8a3c, 7, 6, 2);
       light.position.set(x, 3.15, -5.5);
+      light.userData.homeLightProbeFamily = 'wall';
       light.userData.glow = { size: 1.05, opacity: 0.5 };
       return light;
     })
@@ -1302,6 +1465,8 @@ function addRuntimeLights(scene, shadowsEnabled = true, ambientPeriod = 'day') {
   if (shadowsEnabled) {
     const dungeon = new THREE.PointLight(0xff5a18, 9, 6, 2);
     dungeon.position.set(6.42, -0.45, -1.05);
+    dungeon.userData.homeLightProbeFamily = 'accent';
+    dungeon.userData.homeLightProbeAccent = 'dungeon';
     torches.push(dungeon);
 
     // Three more flames that light the Blender scene but not the runtime: the eight
@@ -1317,29 +1482,47 @@ function addRuntimeLights(scene, shadowsEnabled = true, ambientPeriod = 'day') {
     boardPool.position.set(0, 4.5, -2.2);
     boardPool.target.position.set(0, 1.3, -1.05);
     boardPool.castShadow = false;
+    boardPool.userData.homeLightProbeFamily = 'board';
     scene.add(boardPool.target);
     torches.push(boardPool);
 
-    for (const [color, intensity, distance, x, y, z, glowSize] of [
+    for (const [color, intensity, distance, x, y, z, glowSize, probeFamily, probeAccent] of [
       // The chandelier is the natural light over the board. At 3.6 it barely reached the
       // pieces (about 0.27 at the board after inverse-square falloff from 3.65 m up), so they
       // read dull; this level lifts them while its warm colour keeps the squares honest.
-      [0xffa050, 16, 6.8, 0, 4.5, -2.2, 0],
-      [0xff9040, 3.2, 3.4, -2.72, 1.9, -1.4, 0.55],
-      [0xff9648, 3.2, 3.6, -3.1, 1.5, -3.76, 0.55],
+      [0xffa050, 16, 6.8, 0, 4.5, -2.2, 0, 'board'],
+      [0xff9040, 3.2, 3.4, -2.72, 1.9, -1.4, 0.55, 'accent', 'table'],
+      [0xff9648, 3.2, 3.6, -3.1, 1.5, -3.76, 0.55, 'accent', 'reading'],
       // The three lanterns on the profile stair's front rail: they give the step treads (in
       // shadow otherwise) a raking warm light, one per third of the flight.
-      [0xff7a30, 3.0, 3.2, 5.59, 1.00, -0.28, 0.5],
-      [0xff7a30, 3.0, 3.2, 6.40, 0.53, -0.28, 0.5],
-      [0xff7a30, 3.0, 3.2, 7.21, 0.06, -0.28, 0.5],
+      [0xff7a30, 3.0, 3.2, 5.59, 1.00, -0.28, 0.5, 'stairs'],
+      [0xff7a30, 3.0, 3.2, 6.40, 0.53, -0.28, 0.5, 'stairs'],
+      [0xff7a30, 3.0, 3.2, 7.21, 0.06, -0.28, 0.5, 'stairs'],
     ]) {
       const light = new THREE.PointLight(color, intensity, distance, 2);
       light.position.set(x, y, z);
+      light.userData.homeLightProbeFamily = probeFamily;
+      // Diagnostic label only; production positions, brightness and animation
+      // are unchanged. Enables fail-closed, single-source GPU isolation.
+      if (probeAccent) light.userData.homeLightProbeAccent = probeAccent;
       if (glowSize) light.userData.glow = { size: glowSize, opacity: 0.5 };
       torches.push(light);
     }
   }
 
+  // Diagnostic only: append the extra midpoint fills AFTER the existing
+  // torches, so every original light keeps its stable per-index flicker seed.
+  // The four flame sprites are still authored at their original sconces.
+  if (shadowsEnabled && (diagnosticLightMode === 'wall-pair'
+    || diagnosticLightMode.startsWith('pair-'))) {
+    for (const spec of homeBlenderWallPairFillPlan(HOME_BLENDER_TORCH_X)) {
+      const fillLight = new THREE.PointLight(spec.color, spec.intensity, spec.distance, spec.decay);
+      fillLight.position.set(spec.x, spec.y, spec.z);
+      fillLight.castShadow = false;
+      fillLight.userData.homeLightProbeFamily = 'wall-pair';
+      torches.push(fillLight);
+    }
+  }
   scene.add(ambient, hemi, key, fill, leftHearth, rightHearth, table, floorBounce, armour, armour.target, ...torches);
 
   const glowTexture = createGlowTexture();
@@ -1366,12 +1549,16 @@ function addRuntimeLights(scene, shadowsEnabled = true, ambientPeriod = 'day') {
   return {
     glows,
     disposeGlows,
-    torches: torches.map((light, index) => ({
-      light,
-      base: light.intensity,
-      // A stable phase per torch, so the four never flicker in step.
-      phase: stableFirePhase(`home_torch_light_${index}`),
-    })),
+    torches: torches.map((light, index) => {
+      // The light's phase never changes. Precompute its noise seed on mount.
+      const phase = stableFirePhase(`home_torch_light_${index}`);
+      return {
+        light,
+        base: light.intensity,
+        phase,
+        seed: homeBlenderFireSeed(phase),
+      };
+    }),
     leftHearth,
     rightHearth,
     leftHearthBase: leftHearth.intensity,
@@ -1401,20 +1588,27 @@ function installHomeEnvironment(renderer, scene, enabled = true) {
 }
 
 
-function disposeMaterial(material) {
-  if (!material) return;
-  for (const value of Object.values(material)) {
-    if (value?.isTexture) value.dispose();
-  }
-  material.dispose?.();
-}
-
 function disposeRuntimeScene(root) {
+  // GLTFLoader shares materials, textures and often geometries between mesh
+  // instances. Release each GPU resource exactly once per scene teardown,
+  // including when an async GLTF arrives after Home has unmounted.
+  const geometries = new Set();
+  const materials = new Set();
+  const textures = new Set();
   root?.traverse?.((object) => {
-    object.geometry?.dispose?.();
-    if (Array.isArray(object.material)) object.material.forEach(disposeMaterial);
-    else disposeMaterial(object.material);
+    if (object.geometry) geometries.add(object.geometry);
+    const entries = Array.isArray(object.material) ? object.material : [object.material];
+    for (const material of entries) {
+      if (!material || materials.has(material)) continue;
+      materials.add(material);
+      for (const value of Object.values(material)) {
+        if (value?.isTexture) textures.add(value);
+      }
+    }
   });
+  for (const geometry of geometries) geometry.dispose?.();
+  for (const texture of textures) texture.dispose?.();
+  for (const material of materials) material.dispose?.();
 }
 
 export function disposeStaleHomeBlenderGltf(gltf, stale) {
@@ -1435,12 +1629,14 @@ export const HOME_BLENDER_PIECE_LIFT = Object.freeze({
 
 export function applyHomeBlenderPieceLift(root) {
   let lifted = 0;
+  const prepared = new Set();
   root?.traverse?.((object) => {
     if (!object?.isMesh) return;
     const materials = Array.isArray(object.material) ? object.material : [object.material];
     for (const material of materials) {
       const match = /piece_(light|dark)/i.exec(String(material?.name || ''));
-      if (!match || !material.emissive) continue;
+      if (!match || !material.emissive || prepared.has(material)) continue;
+      prepared.add(material);
       const lift = HOME_BLENDER_PIECE_LIFT[match[1].toLowerCase()];
       material.emissive.setHex(lift.color);
       material.emissiveIntensity = lift.intensity;
@@ -1451,48 +1647,90 @@ export function applyHomeBlenderPieceLift(root) {
   return lifted;
 }
 
-function prepareRuntimeScene(root, shadowsEnabled = true, renderer = null) {
-  const maxAnisotropy = Math.min(
-    8,
-    renderer?.capabilities?.getMaxAnisotropy?.() || 1,
-  );
+// GLTFLoader reuses material/texture objects across meshes. Configure every
+// unique resource once: needsUpdate increments the resource version and must
+// not be repeated hundreds of times during Home startup.
+export function prepareHomeBlenderRuntimeMaterials(root, shadowsEnabled = true, renderer = null) {
+  const deviceAnisotropy = renderer?.capabilities?.getMaxAnisotropy?.() || 1;
+  // Colour textures benefit most from grazing-angle clarity. In the lite
+  // renderer, and on auxiliary PBR maps, keep sampling bounded without
+  // changing any image content, material parameters or shader features.
+  const colorAnisotropy = Math.min(shadowsEnabled ? 8 : 2, deviceAnisotropy);
+  const pbrAnisotropy = Math.min(2, deviceAnisotropy);
+  const materials = new Set();
+  const textures = new Set();
+  let meshCount = 0;
+
   root.traverse((object) => {
     if (!object.isMesh) return;
-    object.castShadow = shadowsEnabled;
-    object.receiveShadow = shadowsEnabled;
-    if (Array.isArray(object.material)) {
-      object.material.forEach((material) => {
-        if (!material) return;
-        for (const texture of [
-          material.map,
-          material.normalMap,
-          material.roughnessMap,
-          material.metalnessMap,
-          material.aoMap,
-        ]) {
-          if (!texture?.isTexture) continue;
-          texture.anisotropy = Math.max(texture.anisotropy || 1, maxAnisotropy);
-          texture.needsUpdate = true;
-        }
-        material.dithering = true;
-        material.needsUpdate = true;
-      });
-    } else if (object.material) {
-      for (const texture of [
-        object.material.map,
-        object.material.normalMap,
-        object.material.roughnessMap,
-        object.material.metalnessMap,
-        object.material.aoMap,
-      ]) {
-        if (!texture?.isTexture) continue;
-        texture.anisotropy = Math.max(texture.anisotropy || 1, maxAnisotropy);
-        texture.needsUpdate = true;
-      }
-      object.material.dithering = true;
-      object.material.needsUpdate = true;
+    meshCount += 1;
+    // These emissive flame/ember/steam meshes are visual light effects, not
+    // solid occluders. Keep them out of the initial shadow-map depth pass.
+    // Architectural fire surrounds and other meshes still cast shadows.
+    const isFireEffect = homeBlenderFireKind(object.name) !== null;
+    object.castShadow = shadowsEnabled && !isFireEffect;
+    object.receiveShadow = shadowsEnabled && !isFireEffect;
+    const meshMaterials = Array.isArray(object.material) ? object.material : [object.material];
+    for (const material of meshMaterials) {
+      if (material) materials.add(material);
     }
   });
+
+  for (const material of materials) {
+    for (const texture of [
+      material.map,
+      material.normalMap,
+      material.roughnessMap,
+      material.metalnessMap,
+      material.aoMap,
+    ]) {
+      if (!texture?.isTexture || textures.has(texture)) continue;
+      textures.add(texture);
+      const targetAnisotropy = texture === material.map ? colorAnisotropy : pbrAnisotropy;
+      if (texture.anisotropy !== targetAnisotropy || !texture.userData.homeBlenderPrepared) {
+        texture.anisotropy = targetAnisotropy;
+        texture.needsUpdate = true;
+        texture.userData.homeBlenderPrepared = true;
+      }
+    }
+    if (!material.userData.homeBlenderPrepared || !material.dithering) {
+      material.dithering = true;
+      material.needsUpdate = true;
+      material.userData.homeBlenderPrepared = true;
+    }
+  }
+
+  return { meshCount, materialCount: materials.size, textureCount: textures.size };
+}
+
+export function homeBlenderShouldRender({ documentHidden = false, intersecting = true } = {}) {
+  return threeSurfaceShouldRender({ documentHidden, intersecting });
+}
+
+// An active animation loop owns the next visible room draw. Scheduling an
+// independent on-demand RAF for a resize, resume or Matthias routine change
+// would submit the same full 3D scene twice on adjacent callbacks. Reduced
+// motion and software rendering have no ambient RAF and still need the
+// on-demand draw. A wake timer counts as an active animation: it leads to a
+// new RAF at the next bounded animation deadline.
+export function homeBlenderNeedsOnDemandFrame({
+  visible = true,
+  onDemandQueued = false,
+  ambientFrameQueued = false,
+  ambientWakeQueued = false,
+} = {}) {
+  return visible && !onDemandQueued && !ambientFrameQueued && !ambientWakeQueued;
+}
+
+// ResizeObserver and window.resize can report the same viewport repeatedly,
+// especially when mobile browser chrome changes. A redundant setSize() can
+// clear/reallocate the backing canvas and schedule unnecessary full-room draws.
+export function homeBlenderViewportChanged(previous, next) {
+  if (!previous || !next) return true;
+  return previous.width !== next.width
+    || previous.height !== next.height
+    || previous.pixelRatio !== next.pixelRatio
+    || previous.lod !== next.lod;
 }
 
 export default function HomeBlenderScene3D({
@@ -1524,16 +1762,40 @@ export default function HomeBlenderScene3D({
     // The Blender scene decided its LOD once at mount and never degraded before this.
     let lodCap = null;
     let performanceGovernor = createHomeCastle3DPerformanceGovernor(initialPolicy.lod);
+    // Hardware A/B only: keep the FULL source scene for both branches. The
+    // normal adaptive LOD is unchanged outside this explicit two-flag trial.
+    const lightProbeFullLod = homeBlenderLightProbeLocksFullLod(
+      window.location.search, initialPolicy.lod,
+    );
     const effectsAllowed = () => lodCap == null && initialPolicy.lod === 'full';
     if (!canvas || !homeBlenderRuntimeEligible()) {
+      recordHomeBlenderRuntimeEvent('fallback', { reason: 'policy-ineligible' });
       onUnavailable?.();
       return undefined;
     }
 
     canvas.classList.remove('is-ready');
     canvas.dataset.homeBlenderRuntime = 'loading';
+    canvas.dataset.homeBlenderPhase = 'initializing';
+    // Record relative phase durations in the scene itself. All marks are
+    // synchronous and bounded, and do not cause extra CDP/network requests.
+    // They remain inspectable even when the first frame stalls under SwiftShader.
+    const startupAt = performance.now();
+    const startupTimes = {};
+    const markStartup = (step) => {
+      startupTimes[step] = Math.round(performance.now() - startupAt);
+      canvas.dataset.homeBlenderStartup = JSON.stringify(startupTimes);
+    };
+    markStartup('effect-start');
 
     let disposed = false;
+    let lastViewport = null;
+    let viewportUpdateCount = 0;
+    let intersecting = true;
+    const isVisible = () => homeBlenderShouldRender({
+      documentHidden: document.hidden,
+      intersecting,
+    });
     let fallbackRequested = false;
     let model = null;
     let fireRig = [];
@@ -1549,6 +1811,7 @@ export default function HomeBlenderScene3D({
       if (!base) return;
       const points = createSteamSprites({ base, salt: 5, name: 'home-coffee-steam' });
       points.userData.steam = true;
+      points.visible = !homeMatthiasIsSleeping(homeMatthiasActorRoutine(matthiasPropsRef.current || {}));
       scene.add(points);
       fireParticles.push(points);
       // The baked wisp is a hard-edged ribbon; the soft puffs replace it while they run.
@@ -1663,18 +1926,30 @@ export default function HomeBlenderScene3D({
     const moveDust = (timestamp) => {
       if (!dust) return;
       const attr = dust.geometry.getAttribute('position');
-      dustSeeds.forEach((seed, i) => {
-        const [x, y, z] = homeBlenderDustPosition(seed, timestamp);
-        attr.setXYZ(i, x, y, z);
-      });
+      homeBlenderWriteDustPositions(dustSeeds, timestamp, attr.array);
       attr.needsUpdate = true;
     };
     let fireFrame = null;
+    let fireWakeTimer = null;
     let frame = null;
     let loadTimer = null;
-    let contextRecoveryTimer = null;
 
+    // WebGLRenderer includes both the browser's WebGL context acquisition
+    // and Three's own renderer setup. Observe the original getContext call
+    // without changing its arguments, context, or the browser's GL backend.
+    // Restore the canvas method even if WebGLRenderer throws.
+    const getNativeContext = canvas.getContext;
+    canvas.getContext = function timedHomeContext(...args) {
+      const isWebgl = args[0] === 'webgl2' || args[0] === 'webgl';
+      if (isWebgl) markStartup('webgl-context-request-start');
+      try {
+        return getNativeContext.apply(this, args);
+      } finally {
+        if (isWebgl) markStartup('webgl-context-request-end');
+      }
+    };
     let renderer;
+    markStartup('before-webgl-constructor');
     try {
       renderer = new THREE.WebGLRenderer({
         canvas,
@@ -1682,16 +1957,54 @@ export default function HomeBlenderScene3D({
         antialias: initialPolicy.antialias,
         powerPreference: initialPolicy.powerPreference,
       });
+      markStartup('webgl-constructor-finished');
     } catch {
+      recordHomeBlenderRuntimeEvent('fallback', { reason: 'webgl-constructor' });
       onUnavailable?.();
       return undefined;
+    } finally {
+      delete canvas.getContext;
     }
 
     const gl = renderer.getContext();
+    markStartup('webgl-context-accessed');
+    const rendererName = readRendererName(renderer);
+    markStartup('webgl-renderer-identified');
+    const softwareRenderer = homeBlenderIsSoftwareRenderer(rendererName);
+    canvas.dataset.homeBlenderSoftware = softwareRenderer ? 'true' : 'false';
+    // Explicit opt-in, never run timer queries or the model draw inventory
+    // in ordinary sessions. Diagnostics must not affect production startup.
+    const gpuProfiling = new URLSearchParams(window.location.search).get('homeGpuProfile') === '1';
+    const lightProbeMode = homeBlenderLightProbeMode(window.location.search);
+    const wallTorchLayout = homeBlenderWallTorchLayout(window.location.search);
+    // Historical A/B modes keep their four-point baseline; new pair-* A/B
+    // modes explicitly benchmark the reviewed production two-fill layout.
+    // ?homeWallTorches=legacy is an immediate, reload-only operational rollback.
+    const torchLightMode = lightProbeMode !== 'normal'
+      ? lightProbeMode : wallTorchLayout === 'pair' ? 'wall-pair' : 'normal';
+    canvas.dataset.homeWallTorches = wallTorchLayout;
+    if (gpuProfiling) {
+      canvas.dataset.homeBlenderLightProbe = lightProbeMode;
+      canvas.dataset.homeBlenderLightProbeLod = lightProbeFullLod ? 'full-locked' : 'automatic';
+    }
+    const gpuTimer = createHomeBlenderGpuTimer(gl, {
+      enabled: gpuProfiling,
+      software: softwareRenderer,
+    });
+    const drawPassProbe = gpuProfiling ? installHomeBlenderDrawPassProbe(renderer, (object) =>
+      homeBlenderDrawFamily(object, model, matthiasActor?.object)) : null;
+    canvas.dataset.homeBlenderGpuStatus = gpuTimer.status;
+    canvas.dataset.homeBlenderGpuSampleCount = String(gpuTimer.completedSamples);
+    canvas.dataset.homeBlenderPhase = 'renderer-created';
+    recordHomeBlenderRuntimeEvent('mount');
+    markStartup('renderer-created');
     glContextRef.current = gl;
     glLoseContextRef.current = gl?.getExtension?.('WEBGL_lose_context') || null;
     renderer.outputColorSpace = THREE.SRGBColorSpace;
-    renderer.shadowMap.enabled = initialPolicy.lod === 'full';
+    renderer.shadowMap.enabled = homeBlenderShouldRenderShadows(initialPolicy.lod, rendererName);
+    canvas.dataset.homeBlenderShadows = renderer.shadowMap.enabled ? 'enabled' : 'disabled';
+    // Record the authored lighting period for like-for-like hardware A/B reports.
+    canvas.dataset.homeBlenderAmbient = ambient;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     // The room is static and only emissive flames move, so the shadow map is
     // computed once instead of re-rasterising every mesh on each animated frame.
@@ -1705,6 +2018,10 @@ export default function HomeBlenderScene3D({
     renderer.setClearColor(0x000000, 0);
 
     const scene = new THREE.Scene();
+    // Stationary world origin: moving actors/lights still update themselves,
+    // but a fresh frame no longer forces the entire static room to recompute
+    // matrixWorld through the Scene parent.
+    freezeHomeBlenderStaticTransforms(scene);
     const releaseEnvironment = installHomeEnvironment(
       renderer,
       scene,
@@ -1713,7 +2030,25 @@ export default function HomeBlenderScene3D({
     // Keep haze behind the playing surface: foreground remains crisp while the
     // rear architecture picks up a restrained warm atmospheric falloff.
     scene.fog = new THREE.Fog(0x170d09, 20, 34);
-    const runtimeLights = addRuntimeLights(scene, initialPolicy.lod === 'full', ambient);
+    const runtimeLights = addRuntimeLights(
+      scene, initialPolicy.lod === 'full', ambient,
+      torchLightMode,
+    );
+    // Full-quality Home uses the accepted two-fill torch layout by default.
+    // Retain the four original lights as invisible shading sources: their
+    // animated glow sprites use their own intensities and stay independently
+    // flickering. An explicit A/B trial still tests the legacy reference; the
+    // legacy URL switch provides instant rollback without changing the GLB.
+    const disabled = applyHomeBlenderLightProbe(runtimeLights.torches, torchLightMode);
+    if (gpuProfiling) {
+      canvas.dataset.homeBlenderLightProbeDisabled = String(disabled);
+      canvas.dataset.homeBlenderLightProbeAdded = String(
+        runtimeLights.torches.filter(({ light }) =>
+          light.userData.homeLightProbeFamily === 'wall-pair').length,
+      );
+    }
+    canvas.dataset.homeBlenderPhase = 'scene-created';
+    markStartup('scene-created');
 
     const camera = new THREE.PerspectiveCamera(
       HOME_BLENDER_CAMERA_FOV,
@@ -1722,19 +2057,56 @@ export default function HomeBlenderScene3D({
       80,
     );
 
+    const frameSamples = createHomeBlenderFrameSamples();
+    const renderCameraReset = createHomeBlenderRenderCameraReset(camera);
+    const publishResourceCounts = () => {
+      const resources = homeBlenderGpuResourceCounts(renderer);
+      for (const [key, count] of [
+        ['homeBlenderGpuTextures', resources.textures],
+        ['homeBlenderGpuGeometries', resources.geometries],
+        ['homeBlenderGpuPrograms', resources.programs],
+      ]) {
+        if (count !== null && canvas.dataset[key] !== String(count)) canvas.dataset[key] = String(count);
+      }
+    };
     const renderFrame = () => {
       if (disposed || !model) return;
-      camera.position.set(CAMERA_BASE.x, CAMERA_BASE.y, CAMERA_BASE.z);
-      camera.lookAt(CAMERA_TARGET.x, CAMERA_TARGET.y, CAMERA_TARGET.z);
-      renderer.render(scene, camera);
+      renderCameraReset.restore();
+      drawPassProbe?.begin();
+      gpuTimer.begin();
+      let successful = false;
+      try {
+        renderer.render(scene, camera);
+        successful = true;
+      } finally {
+        gpuTimer.end();
+        gpuTimer.poll();
+        if (gpuProfiling) {
+          const split = successful ? drawPassProbe?.sample(renderer.info?.render?.calls) : null;
+          if (split) canvas.dataset.homeBlenderDrawPass = JSON.stringify(split);
+          else delete canvas.dataset.homeBlenderDrawPass;
+        }
+      }
     };
 
+    const needsOnDemandFrame = () => homeBlenderNeedsOnDemandFrame({
+      visible: isVisible(),
+      onDemandQueued: frame !== null,
+      ambientFrameQueued: fireFrame !== null,
+      ambientWakeQueued: fireWakeTimer !== null,
+    });
     const requestRender = () => {
-      if (frame !== null) return;
+      if (!needsOnDemandFrame()) return;
       frame = window.requestAnimationFrame(() => {
         frame = null;
-        renderFrame();
+        // The ambient loop might have started after this RAF was queued.
+        // Never draw a second full room if an animation RAF owns the frame.
+        if (needsOnDemandFrame()) renderFrame();
       });
+    };
+    const cancelPendingRender = () => {
+      if (frame !== null) window.cancelAnimationFrame(frame);
+      frame = null;
     };
     renderRequestRef.current = requestRender;
 
@@ -1747,16 +2119,20 @@ export default function HomeBlenderScene3D({
     let fireFrameGapMs = 0;
     let fireRafCount = 0;
     let lastFireRafAt = null;
+    let sampledRafClock = 0;
+    let frameTelemetryStartAt = null;
+    let frameTelemetryDraws = 0;
     // Drop the extra GPU effects and shadows in place (no scene reload), then re-read the
     // capped policy for pixel ratio; '2d' hands the Home back to the painted master.
     const applyLodCap = (next) => {
-      const requested = adaptiveLodFloor === 'lite' && next === '2d' ? 'lite' : next;
-      lodCap = tighterRuntimeLodCap(lodCap, requested);
+      const previousCap = lodCap;
+      lodCap = homeBlenderAdaptiveLodCap(lodCap, next, adaptiveLodFloor);
       if (lodCap === '2d') {
-        failToFallback(true);
+        failToFallback(true, 'adaptive-2d');
         return;
       }
       if (lodCap === 'lite') {
+        if (previousCap !== 'lite') recordHomeBlenderRuntimeEvent('lod-lite');
         // Only the costly full-screen effects go. The soft fire, candle and steam sprites are a
         // handful of points and are what keeps the hall from snapping back to the hard baked
         // flames and the vertical steam strands (a jarring regression a few seconds in).
@@ -1768,23 +2144,34 @@ export default function HomeBlenderScene3D({
         resize();
       }
     };
-    const animateFire = (timestamp) => {
-      fireFrame = null;
-      if (disposed || !model || document.hidden) return;
-      const degradeTo = performanceGovernor.observe(timestamp);
-      if (degradeTo) {
-        applyLodCap(degradeTo);
-        if (lodCap === '2d') return;
-      }
+    const observeNaturalFrame = (timestamp) => {
       if (lastFireRafAt !== null) {
-        fireRafCount += 1;
-        // Ignore the warm-up: decoding the scene legitimately delays the first frames.
-        if (fireRafCount > HOME_BLENDER_FIRE_WARMUP_FRAMES) {
-          const gap = timestamp - lastFireRafAt;
-          fireFrameGapMs = fireFrameGapMs ? fireFrameGapMs * 0.9 + gap * 0.1 : gap;
+        const gap = timestamp - lastFireRafAt;
+        if (Number.isFinite(gap) && gap > 0 && gap <= 250) {
+          // Only adjacent RAF timestamps measure browser/GPU pacing. The
+          // intentional timer sleep is excluded from both the quality governor
+          // and the fire frame-gap EWMA.
+          sampledRafClock += gap;
+          // Full-light A/B cannot change scene complexity halfway through a
+          // visit. This opt-in diagnostic intentionally bears the full cost;
+          // production still degrades to lite under sustained slow frames.
+          const degradeTo = lightProbeFullLod
+            ? null : performanceGovernor.observe(sampledRafClock);
+          if (degradeTo) applyLodCap(degradeTo);
+          fireRafCount += 1;
+          if (fireRafCount > HOME_BLENDER_FIRE_WARMUP_FRAMES) {
+            fireFrameGapMs = fireFrameGapMs ? fireFrameGapMs * 0.9 + gap * 0.1 : gap;
+            frameSamples.addVsyncGap(gap);
+          }
         }
       }
       lastFireRafAt = timestamp;
+    };
+    const animateFire = (timestamp) => {
+      fireFrame = null;
+      if (disposed || !model || !isVisible()) return;
+      observeNaturalFrame(timestamp);
+      if (lodCap === '2d') return;
       if (homeBlenderFireFrameDue(timestamp, nextFireRenderAt)) {
         moveDust(timestamp);
         moveFireParticles(timestamp);
@@ -1794,12 +2181,15 @@ export default function HomeBlenderScene3D({
           lastActorTickAt = timestamp;
           matthiasActor.update(dt);
         }
-        const lightFactor = applyRuntimeFireMotion(fireRig, timestamp);
+        const seconds = Math.max(0, Number(timestamp) || 0) / 1000;
+        const commonGust = homeBlenderSharedFireGust(timestamp);
+        const lightFactor = applyRuntimeFireMotion(fireRig, timestamp, commonGust, seconds);
         runtimeLights.leftHearth.intensity = runtimeLights.leftHearthBase * lightFactor.left;
         runtimeLights.rightHearth.intensity = runtimeLights.rightHearthBase * lightFactor.right;
         for (const torch of runtimeLights.torches) {
-          torch.light.intensity = torch.base
-            * homeBlenderFireMotion({ timeMs: timestamp, phase: torch.phase, kind: 'candle' }).light;
+          // These torch meshes only use the candle's light intensity, not
+          // its geometry/emission motion. Avoid creating an unused motion object.
+          torch.light.intensity = torch.base * homeBlenderCandleLightFactorPrepared(seconds, torch.seed);
         }
         for (const glow of runtimeLights.glows) {
           glow.sprite.material.opacity = homeBlenderGlowOpacity(
@@ -1810,6 +2200,7 @@ export default function HomeBlenderScene3D({
         const startedAt = performance.now();
         renderFrame();
         const cost = performance.now() - startedAt;
+        frameSamples.addCpu(cost);
         fireRenderCostMs = fireSamples === 0 ? cost : fireRenderCostMs * 0.8 + cost * 0.2;
         fireSamples += 1;
         const plan = homeBlenderFireFramePlan({
@@ -1820,18 +2211,69 @@ export default function HomeBlenderScene3D({
         });
         fireIntervalMs = plan.intervalMs;
         nextFireRenderAt = homeBlenderFireNextDeadline(timestamp, nextFireRenderAt, fireIntervalMs);
-        canvas.dataset.homeFireCostMs = fireRenderCostMs.toFixed(1);
-        canvas.dataset.homeFireGapMs = fireFrameGapMs.toFixed(1);
+        if (frameTelemetryStartAt === null) frameTelemetryStartAt = timestamp;
+        frameTelemetryDraws += 1;
+        if (homeBlenderFrameTelemetryDue(timestamp, frameTelemetryStartAt)) {
+          // CPU-side renderer call duration != GPU execution time. Keep the
+          // renderer backend flag alongside this diagnostic in visual-health.
+          const elapsedMs = timestamp - frameTelemetryStartAt;
+          canvas.dataset.homeFireCostMs = fireRenderCostMs.toFixed(1);
+          canvas.dataset.homeFireGapMs = fireFrameGapMs.toFixed(1);
+          canvas.dataset.homeFireIntervalMs = fireIntervalMs.toFixed(1);
+          canvas.dataset.homeBlenderDrawnFps = (frameTelemetryDraws * 1000 / elapsedMs).toFixed(1);
+          const frameStats = frameSamples.snapshot();
+          if (frameStats.cpuP95Ms !== null) canvas.dataset.homeBlenderCpuP95Ms = frameStats.cpuP95Ms.toFixed(2);
+          if (frameStats.vsyncP95Ms !== null) canvas.dataset.homeBlenderVsyncP95Ms = frameStats.vsyncP95Ms.toFixed(2);
+          // Real GPU timer queries are opt-in and asynchronously resolved, never inferred from CPU time.
+          canvas.dataset.homeBlenderGpuStatus = gpuTimer.status;
+          // Distinguish a fresh query result from a previously published value.
+          // Read/write only once per telemetry window, never every frame.
+          canvas.dataset.homeBlenderGpuSampleCount = String(gpuTimer.completedSamples);
+          if (gpuTimer.status === 'ready' && gpuTimer.lastMs !== null) {
+            canvas.dataset.homeBlenderGpuMs = gpuTimer.lastMs.toFixed(2);
+          } else {
+            delete canvas.dataset.homeBlenderGpuMs;
+          }
+          publishResourceCounts();
+          if (Number.isFinite(renderer.info?.render?.calls)) {
+            canvas.dataset.homeBlenderDrawCalls = String(renderer.info.render.calls);
+          }
+          if (Number.isFinite(renderer.info?.render?.triangles)) {
+            canvas.dataset.homeBlenderTriangles = String(renderer.info.render.triangles);
+          }
+          frameTelemetryStartAt = timestamp;
+          frameTelemetryDraws = 0;
+        }
         // The frame planner only throttles. It intentionally never terminates
         // this shared loop, because doing so freezes Matthias and every ambient
         // animation until the Home is remounted.
       }
-      fireFrame = window.requestAnimationFrame(animateFire);
+      if (homeBlenderFireWakeDelay(timestamp, nextFireRenderAt, fireFrameGapMs || 1000 / 60) > 0) {
+        // A second, adjacent RAF samples real vsync without adding a room draw.
+        // Wake close to the desired draw deadline, then align the draw to RAF.
+        fireFrame = window.requestAnimationFrame((probeAt) => {
+          fireFrame = null;
+          if (disposed || !model || !isVisible()) return;
+          observeNaturalFrame(probeAt);
+          if (lodCap === '2d') return;
+          const delay = homeBlenderFireWakeDelay(probeAt, nextFireRenderAt, fireFrameGapMs || 1000 / 60);
+          if (delay > 0) {
+            fireWakeTimer = window.setTimeout(() => {
+              fireWakeTimer = null;
+              if (!isVisible() || disposed || !model) return;
+              lastFireRafAt = null;
+              fireFrame = window.requestAnimationFrame(animateFire);
+            }, delay);
+          } else {
+            fireFrame = window.requestAnimationFrame(animateFire);
+          }
+        });
+      } else {
+        fireFrame = window.requestAnimationFrame(animateFire);
+      }
     };
 
     const prefersReducedMotion = getEffectiveReducedMotion();
-
-    const softwareRenderer = homeBlenderIsSoftwareRenderer(readRendererName(renderer));
 
     const startFireAnimation = () => {
       if (prefersReducedMotion) {
@@ -1844,7 +2286,7 @@ export default function HomeBlenderScene3D({
         if (klausRig) canvas.dataset.homeKlausMotion = 'off-software';
         return;
       }
-      if (disposed || !model || document.hidden || fireFrame !== null) return;
+      if (disposed || !model || !isVisible() || fireFrame !== null || fireWakeTimer !== null) return;
       canvas.dataset.homeFireMotion = 'live';
       if (klausRig) canvas.dataset.homeKlausMotion = 'live';
       if (effectsAllowed()) {
@@ -1854,18 +2296,51 @@ export default function HomeBlenderScene3D({
       ensureFireParticles();
       ensureCandleParticles();
       ensureSteamSprites();
+      // Unlike the GLB pre-animation census, this read-only opt-in snapshot
+      // sees the alpha materials that the REAL live fire has activated. Hosted
+      // SwiftShader/reduced-motion never enters this path. It is a candidate
+      // count, not a claim about WebGL draw savings or GPU duration.
+      if (gpuProfiling) {
+        canvas.dataset.homeBlenderFlamePassLiveEligibility = JSON.stringify(
+          homeBlenderFlamePassEligibility(fireRig, THREE.DoubleSide, THREE.FrontSide),
+        );
+      }
       lastFireRafAt = null;
+      lastActorTickAt = null;
+      // A queued resize/resume draw is superseded by the imminent ambient
+      // frame. Cancel it instead of submitting the whole GLTF scene twice.
+      cancelPendingRender();
       fireFrame = window.requestAnimationFrame(animateFire);
     };
 
     const stopFireAnimation = () => {
       if (fireFrame !== null) window.cancelAnimationFrame(fireFrame);
+      if (fireWakeTimer !== null) window.clearTimeout(fireWakeTimer);
       fireFrame = null;
+      fireWakeTimer = null;
+      frameTelemetryStartAt = null;
+      frameTelemetryDraws = 0;
     };
 
     const onVisibilityChange = () => {
-      if (document.hidden) stopFireAnimation();
-      else startFireAnimation();
+      if (!isVisible()) {
+        stopFireAnimation();
+        cancelPendingRender();
+      } else {
+        startFireAnimation();
+        requestRender();
+      }
+    };
+    const onIntersectionChange = (entries) => {
+      intersecting = entries[0]?.isIntersecting !== false;
+      if (!isVisible()) {
+        stopFireAnimation();
+        cancelPendingRender();
+        if (!document.hidden) canvas.dataset.homeFireMotion = 'paused-offscreen';
+      } else {
+        startFireAnimation();
+        requestRender();
+      }
     };
 
     const resize = () => {
@@ -1874,11 +2349,28 @@ export default function HomeBlenderScene3D({
       const policy = browserPolicy(lodCap);
       canvas.dataset.homeCastleLod = policy.lod;
       if (homeBlenderPolicyNeedsFallback(policy)) {
-        failToFallback(true);
+        failToFallback(true, 'policy-ineligible');
         return;
       }
-      renderer.setPixelRatio(Math.min(policy.pixelRatio || 1, 1.5));
-      renderer.setSize(width, height, false);
+      const viewport = {
+        width,
+        height,
+        pixelRatio: Math.min(policy.pixelRatio || 1, 1.5),
+        lod: policy.lod,
+      };
+      if (!homeBlenderViewportChanged(lastViewport, viewport)) return;
+
+      // Three.setPixelRatio() already updates the drawing buffer. Never
+      // repeat it for a plain CSS resize, nor setSize() just because a
+      // LOD/effects state changed while physical dimensions stayed fixed.
+      if (renderer.getPixelRatio() !== viewport.pixelRatio) {
+        renderer.setPixelRatio(viewport.pixelRatio);
+      }
+      if (!lastViewport || lastViewport.width !== width || lastViewport.height !== height) {
+        renderer.setSize(width, height, false);
+      }
+      lastViewport = viewport;
+      canvas.dataset.homeBlenderViewportUpdates = String(++viewportUpdateCount);
       camera.aspect = width / height;
       camera.fov = homeBlenderCameraFovForAspect(camera.aspect);
       canvas.dataset.homeBlenderCamera = camera.aspect < 1 ? 'portrait-wide' : 'canonical';
@@ -1887,6 +2379,7 @@ export default function HomeBlenderScene3D({
         const pose = homeBlenderCameraPoseForAspect(camera.aspect);
         camera.position.set(pose.position.x, pose.position.y, pose.position.z);
         camera.lookAt(pose.target.x, pose.target.y, pose.target.z);
+        renderCameraReset.invalidate();
         onAnchorLayout(homeBlenderProjectAnchors(camera));
       }
       reportMatthiasLayout();
@@ -1906,6 +2399,7 @@ export default function HomeBlenderScene3D({
       const pose = homeBlenderCameraPoseForAspect(camera.aspect);
       camera.position.set(pose.position.x, pose.position.y, pose.position.z);
       camera.lookAt(pose.target.x, pose.target.y, pose.target.z);
+      renderCameraReset.invalidate();
       const rect = homeMatthiasProjectBounds(matthiasActor.bounds(), camera);
       const routine = matthiasActor.routine;
       report(rect ? { ...rect, station: routine.stationId, posture: routine.posture, profile: routine.profile } : null);
@@ -1922,6 +2416,8 @@ export default function HomeBlenderScene3D({
       canvas.dataset.homeMatthiasStation = routine.stationId;
       canvas.dataset.homeMatthiasPosture = routine.posture;
       canvas.dataset.homeMatthiasClip = routine.clip;
+      canvas.dataset.homeMatthiasCap = matthiasActor.capLocation;
+      canvas.dataset.homeCoffeeTemperature = applyHomeBlenderCoffeeTemperature(fireParticles, routine);
       if (moved && renderer.shadowMap.enabled) renderer.shadowMap.needsUpdate = true;
       reportMatthiasLayout();
       requestRender();
@@ -1949,16 +2445,21 @@ export default function HomeBlenderScene3D({
       );
     };
 
-    const failToFallback = (force = false) => {
+    const failToFallback = (force = false, reason = 'model-unavailable') => {
       if (disposed || fallbackRequested || (!force && model)) return;
       fallbackRequested = true;
       matthiasLayoutRef.current?.(null);
       canvas.classList.remove('is-ready');
       canvas.dataset.homeBlenderRuntime = 'fallback';
+      canvas.dataset.homeBlenderPhase = 'fallback';
+      recordHomeBlenderRuntimeEvent('fallback', { reason });
+      markStartup('fallback');
       onUnavailable?.();
     };
-    loadTimer = window.setTimeout(() => failToFallback(), 20_000);
+    loadTimer = window.setTimeout(() => failToFallback(false, 'model-timeout'), 20_000);
 
+    canvas.dataset.homeBlenderPhase = 'model-loading';
+    markStartup('model-loading');
     const loader = new GLTFLoader();
     // The runtime scene is published Meshopt-compressed; uncompressed files still load.
     loader.setMeshoptDecoder(MeshoptDecoder);
@@ -1978,41 +2479,93 @@ export default function HomeBlenderScene3D({
         window.clearTimeout(loadTimer);
         loadTimer = null;
       }
+      canvas.dataset.homeBlenderPhase = 'model-preparing';
+      markStartup('model-decoded');
       model = root;
-      prepareRuntimeScene(model, initialPolicy.lod === 'full', renderer);
+      const resourceStats = prepareHomeBlenderRuntimeMaterials(model, renderer.shadowMap.enabled, renderer);
+      canvas.dataset.homeBlenderMeshes = String(resourceStats.meshCount);
+      canvas.dataset.homeBlenderMaterials = String(resourceStats.materialCount);
+      canvas.dataset.homeBlenderTextures = String(resourceStats.textureCount);
+      markStartup('materials-prepared');
       applyHomeBlenderPieceLift(model);
       applyHomeBlenderMoonVisibility(model, ambient);
       fireRig = prepareRuntimeFireRig(model);
+      if (gpuProfiling) {
+        canvas.dataset.homeBlenderFlamePassEligibility = JSON.stringify(
+          homeBlenderFlamePassEligibility(fireRig, THREE.DoubleSide, THREE.FrontSide),
+        );
+      }
       klausRig = prepareHomeBlenderKlausRig(model);
       canvas.dataset.homeKlausMotion = klausRig ? 'ready' : 'missing';
+      // Only authored GLB stationary nodes are frozen. Flame/steam meshes,
+      // the whole Klaus rig and the separately mounted Matthias remain live.
+      const frozenTransforms = freezeHomeBlenderStaticTransforms(
+        model, [...fireRig.map((node) => node.object), klausRig],
+      );
+      canvas.dataset.homeBlenderFrozenTransforms = String(frozenTransforms);
+      markStartup('rigs-prepared');
       scene.add(model);
       resize();
       applyRuntimeFireMotion(fireRig, 0);
       renderer.shadowMap.needsUpdate = true;
+      canvas.dataset.homeBlenderPhase = 'first-frame-rendering';
+      markStartup('first-frame-start');
+      // resize() requested an on-demand RAF for this newly attached model.
+      // The explicit first-frame draw below supersedes it; otherwise the
+      // startup path draws the whole room twice (plus the ambient loop).
+      const hadPendingInitialFrame = frame !== null;
+      cancelPendingRender();
+      canvas.dataset.homeBlenderInitialFrameCoalesced = hadPendingInitialFrame ? 'true' : 'false';
       renderFrame();
+      if (gpuProfiling && canvas.dataset.homeBlenderDrawPass) {
+        canvas.dataset.homeBlenderFirstFrameDrawPass = canvas.dataset.homeBlenderDrawPass;
+      }
+      // One-time, actual WebGL draw calls (including any initial shadow pass),
+      // not the mesh count. Browser profiling can read these without tracing
+      // every animation frame or changing the visual.
+      const firstFrameInfo = renderer.info?.render;
+      if (Number.isFinite(firstFrameInfo?.calls)) {
+        canvas.dataset.homeBlenderFirstFrameDrawCalls = String(firstFrameInfo.calls);
+      }
+      if (Number.isFinite(firstFrameInfo?.triangles)) {
+        canvas.dataset.homeBlenderFirstFrameTriangles = String(firstFrameInfo.triangles);
+      }
+      publishResourceCounts();
+      markStartup('first-frame-end');
+      canvas.dataset.homeBlenderPhase = 'ready';
       canvas.dataset.homeBlenderRuntime = 'ready';
       canvas.classList.add('is-ready');
+      recordHomeBlenderRuntimeEvent('ready');
+      markStartup('ready');
+      // One-time authored-GLB inventory. These are potential draw/material
+      // slots, not observed renderer calls and not GPU timings. Excludes
+      // Matthias and runtime particle effects, which load separately.
+      if (gpuProfiling) {
+        canvas.dataset.homeBlenderModelDrawInventory = JSON.stringify(homeBlenderModelDrawInventory(model));
+      }
       startFireAnimation();
       loadMatthiasActor();
     });
 
     const onContextLost = (event) => {
       event.preventDefault();
+      gpuTimer.dispose();
+      canvas.dataset.homeBlenderGpuStatus = 'context-lost';
+      delete canvas.dataset.homeBlenderGpuMs;
       canvas.classList.remove('is-ready');
       canvas.dataset.homeBlenderRuntime = 'recovering';
+      canvas.dataset.homeBlenderLastContextEvent = 'lost';
+      recordHomeBlenderRuntimeEvent('context-lost');
+      // Keep the original canvas and event listeners mounted. The painted
+      // master is already visible while is-ready is absent; unmounting after
+      // an arbitrary eight seconds made a later browser GPU restoration
+      // permanently impossible until a full page reload.
       stopFireAnimation();
-      if (contextRecoveryTimer !== null) window.clearTimeout(contextRecoveryTimer);
-      contextRecoveryTimer = window.setTimeout(() => {
-        contextRecoveryTimer = null;
-        failToFallback(true);
-      }, 8_000);
     };
     const onContextRestored = () => {
       if (disposed || fallbackRequested) return;
-      if (contextRecoveryTimer !== null) {
-        window.clearTimeout(contextRecoveryTimer);
-        contextRecoveryTimer = null;
-      }
+      canvas.dataset.homeBlenderLastContextEvent = 'restored';
+      recordHomeBlenderRuntimeEvent('context-restored');
       // A restored WebGL context invalidates renderer-owned GPU resources.
       // Re-run the complete runtime effect so renderer, scene, GLTF resources,
       // PMREM/environment, materials and animations are recreated together.
@@ -2022,6 +2575,10 @@ export default function HomeBlenderScene3D({
     canvas.addEventListener('webglcontextrestored', onContextRestored);
     document.addEventListener('visibilitychange', onVisibilityChange);
 
+    const intersectionObserver = typeof IntersectionObserver === 'function'
+      ? new IntersectionObserver(onIntersectionChange, { threshold: 0.01 })
+      : null;
+    intersectionObserver?.observe(canvas);
     const resizeObserver = typeof ResizeObserver !== 'undefined'
       ? new ResizeObserver(resize)
       : null;
@@ -2032,11 +2589,11 @@ export default function HomeBlenderScene3D({
     return () => {
       disposed = true;
       renderRequestRef.current = null;
-      if (frame !== null) window.cancelAnimationFrame(frame);
+      cancelPendingRender();
       stopFireAnimation();
       if (loadTimer !== null) window.clearTimeout(loadTimer);
-      if (contextRecoveryTimer !== null) window.clearTimeout(contextRecoveryTimer);
       resizeObserver?.disconnect();
+      intersectionObserver?.disconnect();
       window.removeEventListener('resize', resize);
       document.removeEventListener('visibilitychange', onVisibilityChange);
       canvas.removeEventListener('webglcontextlost', onContextLost);
@@ -2076,6 +2633,8 @@ export default function HomeBlenderScene3D({
       }
       runtimeLights.disposeGlows?.();
       releaseEnvironment();
+      gpuTimer.dispose();
+      drawPassProbe?.dispose();
       renderer.dispose();
     };
   }, [ambient, contextGeneration, onUnavailable]);

@@ -2,9 +2,9 @@
 
 War Room v2, v3 and v4 have deterministic Blender generators for their static room shells. Each can generate an editable `.blend`, runtime `.glb`, review PNG and JSON manifest from source code, keeping large generated blobs out of normal Git history.
 
-**v2 frozen as a historical selectable/rollback variant (2026-10-11).** `war-room-blender-art.yml` is deliberately **manual-only**: no PR/main event rebuilds or republishes this old room on shared foundation changes. Its last published R2 assets and runtime alias are not altered by this policy. `workflow_dispatch` can rebuild and validate v2 to `staging` (default); publishing `runtime` is an explicit restoration operation restricted to `main`. This is not a claim that v2 was removed from the game. **v3 (current default) and v4 (opt-in) retain their own path-aware Blender gates and automatic publication on relevant code changes.** Do not re-add v2 to the automatic Blender CI classifier unless a deliberate decision reactivates v2 art development.
+**v2 remains a selectable historical/rollback variant, reactivated for narrowly scoped visual repair PRs (2026-10-21).** `war-room-blender-art.yml` runs on an explicit edit to the V2 builder or its workflow, **not** on unrelated shared v3/v4 foundation or main pushes. In an in-repo PR it renders V2 and publishes only `war-room/v2/staging/revisions/<PR-head-SHA>.glb` plus the staging alias, so the App visual gate can compare the **exact PR GLB** and fail instead of mistaking the old room for the new one. The `runtime` alias is never changed by any PR. `workflow_dispatch` still rebuilds v2 manually, with publishing `runtime` restricted to `main`. V3 remains the default and V4 opt-in, each with its own gates. Keep V2 absent from the general Blender-required classifier: explicit V2 PR provenance is instead enforced by the App visual revision probe.
 
-**War Room v3 is the default variant** when variants are enabled (staging and production builds set `VITE_WAR_ROOM_VARIANTS_ENABLE`); a player's explicit pick in the War Room «…» menu is stored per device and always wins. The War Room v1 remains the rollback baseline: removing that flag from the production build workflows still returns everyone to v1. The canonical Docker Compose path (`make game`) enables variants by default for local/staging parity and can opt back into the rollback path with `VITE_WAR_ROOM_VARIANTS_ENABLE=0`; ad-hoc builds without the flag, including the plain e2e build, stay on v1. If a Blender shell fails to load, the scene falls back to the classic room on its own. Variant work must not irreversibly delete or entangle that rollback lane. The in-game scene selector exposes v1, v2, v3 and v4 as separate rooms and persists only their stable IDs (`classic`, `v2`, `v3`, `v4`). v4 is explicit-only while it is validated on device: the «Aleatoria» preference never draws it (`randomPool: false`). **Its camera is now the canonical play-camera contract for every playable castle room: v1/v2/v3/v4 and the PvP Duel Room use the same 22° lens and ≈43.9° pitch.** Device/layout profiles may adapt only framing variables such as target, distance, half-span and crop so all 64 squares remain usable; they do not invent a second optical language. This contract is opt-in through the runtime `cameraProfile: 'warroom'`; teaching/training surfaces such as Class Room keep their own instructional framing and are not silently retuned by War Room art changes. Mobile landscape follows the same contract exactly, with a tighter board-first fit. Runtime captures run only when the relevant shell, shared Blender runtime or variant registry/camera contract changes.
+**War Room v3 is the default variant** when variants are enabled (staging and production builds set `VITE_WAR_ROOM_VARIANTS_ENABLE`); a player's explicit pick in the War Room «…» menu is stored per device and always wins. The War Room v1 remains the rollback baseline: removing that flag from the production build workflows still returns everyone to v1. The canonical Docker Compose path (`make game`) enables variants by default for local/staging parity and can opt back into the rollback path with `VITE_WAR_ROOM_VARIANTS_ENABLE=0`; ad-hoc builds without the flag, including the plain e2e build, stay on v1. If a Blender shell fails to load, the scene falls back to the classic room on its own. Variant work must not irreversibly delete or entangle that rollback lane. The in-game scene selector exposes v1, v2, v3 and v4 as separate rooms and persists only their stable IDs (`classic`, `v2`, `v3`, `v4`). v4 is explicit-only while it is validated on device: the «Aleatoria» preference never draws it (`randomPool: false`). **The 22° / ≈43.9° shared camera remains canonical for v1/v2/v3 and the PvP Duel Room. V4 is currently an explicit-only, reversible board-forward camera experiment** (22° lens, ≈48° desktop pitch, authored War Room target; normal canonical mobile fit). Do not propagate V4 optics before reviewing live desktop/mobile captures and Hans' actual stage. Device/layout profiles may adapt only framing variables such as target, distance, half-span and crop so all 64 squares remain usable; they do not invent a second optical language. This contract is opt-in through the runtime `cameraProfile: 'warroom'`; teaching/training surfaces such as Class Room keep their own instructional framing and are not silently retuned by War Room art changes. Mobile landscape follows the same contract exactly, with a tighter board-first fit. Runtime captures run only when the relevant shell, shared Blender runtime or variant registry/camera contract changes.
 
 ## Variant ownership
 
@@ -32,9 +32,9 @@ Non-negotiable cues: a Teutonic brick hall (dark red Backstein walls, limestone 
 
 `build_war_room_v4.py` owns the v4 Moonlit Royal Observatory. v3 stays untouched as its rollback. The approved 2026-09-29 golden mock has SHA-256 `e16adf4e3a2ea0ba9f8e7a0b4a82a988b8a2bb821c491f9ff48ba4129cdf3871` and is kept in the design library, not in Git.
 
-The v4 review camera is the runtime's shared desktop play camera (22° lens, ≈43.9° play pitch, immersive distance), so the Blender preview judges exactly what the player sees; the mock mixes perspectives and cannot be matched by one camera anyway. From that angle the whole circular observatory reads around the board: a 4.5 m wall with a brass crown and finials, open night sky over a dark pine meadow, and an elliptical oculus sitting on the desk with a lion crest. v4 materials carry no sheen: Blender exports it as full white, which washes dark leather and fabric out in three.js.
+The immutable v4 Blender preview uses the original shared desktop play camera (22° lens, ≈43.9° pitch). The temporary runtime-only V4 hybrid framing is different and **must be validated by runtime screenshots** rather than treated as equal to the authored preview; the mock mixes perspectives and cannot be matched by one camera anyway. From that angle the whole circular observatory reads around the board: a 4.5 m wall with a brass crown and finials, open night sky over a dark pine meadow, and an elliptical oculus sitting on the desk with a lion crest. v4 materials carry no sheen: Blender exports it as full white, which washes dark leather and fabric out in three.js.
 
-Non-negotiable cues: a broad walnut board frame with brass fillets, corner domes and warm rim bulbs; crimson gold-bordered runners flanking the dais; ivory marble inside a ring of green diamonds; cream fireplace left; library and red-tripod telescope right; silver armour on both sides; blue lion banners flanking the oculus; navy club chair on a round crimson rug. The preview seats White on the camera side. The runtime draw budget of ≤150 batched static meshes still applies, so fuse many-part distant decor (sky ridges, pines) into a single mesh.
+Non-negotiable cues: a broad walnut board frame with brass fillets, corner domes and warm rim bulbs; crimson gold-bordered runners flanking the dais; ivory marble inside a ring of green diamonds; cream fireplace left; library and red-tripod telescope right; silver armour on both sides; blue lion banners flanking the oculus; navy club chair on a round crimson rug. The preview seats White on the camera side. **Hans' west service aisle is a physical gameplay clearance contract**, not just a valid anchor name or an in-camera projection: V4 must keep a 0.56 m swept-body radius clear from the tower door around the board plinth to the fireplace, basket, work position and tools, with both board orientations supported. The previous ivory hearth intersected the 11.3 m board plinth; the revised compact hearth is repositioned west of the board without scaling or moving any chess square. Blender validates the real **rotated mantel** footprint against the circular wall, densely samples the corridor and checks that the right armour does not intersect the club chair, rug or side table; frontend frame tests validate Hans' actual choreography, not just static waypoints. The left-wall fireplace is oriented along the tower tangent, rather than packed flat against a straight wall that does not exist. The teal service doorway has its own forward-left wall bay and its **inner leaf is splayed 30° toward the play camera relative to the curved wall tangent**, making the closed porthole legible from the approved V4 play camera. Two angled timber alcove returns preserve the connection to the actual wall; its floor threshold and Hans' anchors are unchanged (the old door/hearth spacing was under 2 m); the Blender build rejects under 4.0 m between entry/hearth or under 3.0 m between the door and actual mantle. The left ceremonial armour is moved out of Hans' entrance corridor; the right suit remains separate from the lounge. A GLB from before that change must not be treated as proof of clearance. The runtime draw budget of ≤150 batched static meshes still applies, so fuse many-part distant decor (sky ridges, pines) into a single mesh.
 
 ## Iteration loop
 
@@ -96,6 +96,36 @@ Performance adaptations are renderer-specific:
 - quality reductions need an observable trigger and a regression test.
 
 Do not trade legibility for frame rate without evidence; measure draw/paint cadence and validate on midrange hardware or an equivalent budget.
+
+### Censo de geometría de los GLB publicados (sin medición GPU)
+
+Para comparar las salas V2/V3/V4 de R2, descargar cada archivo desde el
+`url` inmutable de `frontend/src/assets/r2-assets-manifest.json` (IDs
+`warRoom.v2.runtime`, `warRoom.v3.runtime` y `warRoom.v4.runtime`),
+conservando el nombre original. No usar el alias `latest`, exportaciones
+locales de Blender ni copias de staging como si fueran producción.
+
+```bash
+python3 scripts/blender/war_room_glb_census.py \
+  --runtime-manifest frontend/src/assets/r2-assets-manifest.json \
+  --output-json /tmp/war-room-published-geometry.json \
+  /tmp/war-room-glb/*.glb
+```
+
+El censo comprueba el nombre publicado, tipo, bytes y SHA-256 de **cada** GLB
+y falla si falta o no corresponde a una de las tres variantes. El JSON
+incluye `runtimeManifestProvenance.logicalId` y `r2Key`.
+El modo sin `--runtime-manifest` sigue admitiendo candidatos de Blender sin
+afirmar que sean los assets publicados. En ambos casos, triángulos y
+primitivas son **potenciales**, no draw calls, shadow passes ni FPS reales:
+las pruebas con GPU física siguen siendo un gate independiente.
+
+El workflow `War Room · published GLB census` descarga automáticamente los tres
+assets inmutables desde las URL fijadas en R2 cuando cambia el auditor, el
+manifiesto o el propio workflow. Compara SHA-256 y longitud **antes** de
+contar triángulos; publica el JSON de geometría como artifact y el resumen
+en GitHub Actions. También se puede iniciar con `workflow_dispatch`.
+Ningún resultado de este job representa FPS, draws o consumo de GPU real.
 
 ## Acceptance
 

@@ -9,7 +9,15 @@ const SURFACE_NAMES = Object.freeze([
   'war-room-command-carpet-inner-field',
   'war-room-command-carpet-bed',
   'war-room-castle-floor-slab',
+  // V2 Blender retains a named structural floor mesh in the runtime GLB.
+  // Without it, Hans never receives visible-ground telemetry and can float.
+  'WR_ARCH_floor',
+  'WR2_HANS_alcove_floor',
   'WR3_ARM_floor',
+  // V4 Blender exposes a single authored floor node. Without it the visible
+  // ground-lock has no surface, Hans lacks ground-gap telemetry and his shoes
+  // may float between animation phases.
+  'WR4_OBS_floor',
 ]);
 const SURFACE_PREFIXES = Object.freeze([
   'WR3_ARM_flagstones_',

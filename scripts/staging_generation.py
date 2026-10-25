@@ -140,12 +140,19 @@ def wait_for_surfaces(
 
 
 def current_main(runner: Callable[..., subprocess.CompletedProcess] = subprocess.run) -> str:
-    result = runner(
-        ["git", "ls-remote", "origin", "refs/heads/main"],
-        capture_output=True, text=True, check=False,
-    )
+    # GitHub/DNS can stall a read-only probe indefinitely. This is a release
+    # boundary: an unproven HEAD may not authorize Cloudflare or OCI mutations.
+    try:
+        result = runner(
+            ["git", "ls-remote", "origin", "refs/heads/main"],
+            capture_output=True, text=True, check=False, timeout=10,
+        )
+    except subprocess.TimeoutExpired as exc:
+        raise GenerationError("Timeout consultando main HEAD (10s)") from exc
+    if result.returncode != 0:
+        raise GenerationError("git ls-remote main falló; no hay SHA acreditado")
     head = (result.stdout or "").split()[0] if (result.stdout or "").split() else ""
-    if not SHA_RE.match(head):
+    if not SHA_RE.fullmatch(head):
         raise GenerationError(f"No pude resolver un main HEAD válido: {head or '<vacío>'}")
     return head
 
@@ -181,7 +188,14 @@ def watch_committed(
     for attempt in range(1, attempts + 1):
         status, body = fetch(f"{url('STAGING_API_URL')}/_deploy/committed?probe={attempt}")
         if status == 200 and body.strip().lower() == sha and accredited():
-            return True
+            # A marker/attestation can become stale when another PR lands
+            # while the watcher polls. Never issue convergence credit for a
+            # generation that is no longer the current main HEAD. An
+            # unavailable HEAD is also not a valid authorization.
+            try:
+                return main_head() == sha
+            except GenerationError:
+                return False
         if attempt % main_every == 0:
             try:
                 if main_head() != sha:
@@ -273,20 +287,56 @@ def self_test() -> None:
     assert not dist_identity(sha, tmp.with_suffix(".missing"))
 
     class Done:
-        def __init__(self, out: str) -> None:
+        def __init__(self, out: str, returncode: int = 0) -> None:
             self.stdout = out
-    assert current_main(lambda *a, **k: Done(f"{sha}\trefs/heads/main\n")) == sha
+            self.returncode = returncode
+    seen_kwargs = {}
+    def good_head(*_args, **kwargs):
+        seen_kwargs.update(kwargs)
+        return Done(f"{sha}\trefs/heads/main\n")
+    assert current_main(good_head) == sha
+    assert seen_kwargs.get("timeout") == 10 and seen_kwargs.get("check") is False
+    for failed in (Done(""), Done(f"{sha}\trefs/heads/main\n", 128)):
+        try:
+            current_main(lambda *a, **k: failed)
+        except GenerationError:
+            pass
+        else:
+            raise AssertionError("failed/empty git probe allowed a deploy")
+    def stalled_git(*_args, **_kwargs):
+        raise subprocess.TimeoutExpired(cmd="git ls-remote", timeout=10)
     try:
-        current_main(lambda *a, **k: Done(""))
-        raise AssertionError("main vacío debería fallar")
-    except GenerationError:
-        pass
+        current_main(stalled_git)
+    except GenerationError as exc:
+        assert "Timeout" in str(exc)
+    else:
+        raise AssertionError("hanging Git main probe allowed a deploy")
 
     committed = lambda body: (lambda _target: (200, body))  # noqa: E731
     assert watch_committed(sha, attempts=2, interval=0, main_every=8, fetch=committed(sha + "\n"),
                            accredited=lambda: True, main_head=lambda: sha, sleep=quiet)
     assert not watch_committed(sha, attempts=2, interval=0, main_every=8, fetch=committed(sha),
                                accredited=lambda: False, main_head=lambda: sha, sleep=quiet)
+    # The commit marker and backend proof alone cannot accredit an obsolete
+    # generation. Verify main HEAD at the *moment of success*, not only at
+    # the periodic stale checks; otherwise a newer merge can race the return.
+    assert not watch_committed(sha, attempts=2, interval=0, main_every=8,
+                               fetch=committed(sha), accredited=lambda: True,
+                               main_head=lambda: other, sleep=quiet)
+    def inaccessible_head() -> str:
+        raise GenerationError("GitHub main unavailable")
+    assert not watch_committed(sha, attempts=2, interval=0, main_every=8,
+                               fetch=committed(sha), accredited=lambda: True,
+                               main_head=inaccessible_head, sleep=quiet)
+    def must_not_probe_head() -> str:
+        raise AssertionError("HEAD probe on unaccredited watcher marker")
+    assert not watch_committed(sha, attempts=2, interval=0, main_every=8,
+                               fetch=committed(other), accredited=lambda: True,
+                               main_head=must_not_probe_head, sleep=quiet)
+    assert not watch_committed(sha, attempts=2, interval=0, main_every=8,
+                               fetch=committed(sha), accredited=lambda: False,
+                               main_head=must_not_probe_head, sleep=quiet)
+
     seen = {"n": 0}
 
     def head() -> str:
@@ -304,6 +354,14 @@ def self_test() -> None:
         raise AssertionError("SHA corto debería fallar")
     except GenerationError:
         pass
+    # Strict HEAD probe is used just before an OCI command, never for admission.
+    # The existing informational mode still exits zero for an old generation.
+    from unittest.mock import patch
+    with patch(f"{__name__}.current_main", return_value=other):
+        assert main(["main-head", "--sha", sha]) == 0
+        assert main(["main-head", "--sha", sha, "--fail-stale"]) == 87
+    with patch(f"{__name__}.current_main", return_value=sha):
+        assert main(["main-head", "--sha", sha, "--fail-stale"]) == 0
     print("staging-generation self-test OK")
 
 
@@ -314,6 +372,7 @@ def main(argv: list[str]) -> int:
     p = sub.add_parser("main-head")
     p.add_argument("--sha", required=True)
     p.add_argument("--probe-backend", action="store_true")
+    p.add_argument("--fail-stale", action="store_true", help="return 87 for superseded main HEAD")
     p.add_argument("--github-output")
     p = sub.add_parser("dist-identity")
     p.add_argument("--sha", required=True)
@@ -344,7 +403,7 @@ def main(argv: list[str]) -> int:
                 print(f"::notice title=Staging superseded::{sha} != main {head}; sin mutación.")
             extra = {"requires_sdk": str(needs_oci_fallback(sha, head, lambda: backend_accredited(sha))).lower()} if args.probe_backend else {}
             write_output(args.github_output, superseded=str(superseded).lower(), current_main=head, **extra)
-            return 0
+            return 87 if superseded and args.fail_stale else 0
         if args.command == "dist-identity":
             return 0 if dist_identity(valid_sha(args.sha), pathlib.Path(args.path)) else 1
         if args.command == "wait":

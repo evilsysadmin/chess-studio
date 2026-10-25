@@ -15,6 +15,23 @@ export const PIECE_RANKS = [
   { id: 'general', label: 'General', short: 'GEN', minLevel: 12 },
 ];
 
+// Read-only presentation contract for permanent purchased stat points.
+// Saves may contain legacy numeric strings or damaged values. Never turn
+// fractions, Infinity, NaN or unsafe integers into an invented military rank.
+// Battle math and the XP economy keep their own canonical rules.
+function displayPurchasedPoints(value) {
+  if (typeof value !== 'number' && typeof value !== 'string') return 0;
+  if (typeof value === 'string' && !/^\d+$/.test(value.trim())) return 0;
+  const points = Number(value);
+  return Number.isSafeInteger(points) && points >= 0 ? points : 0;
+}
+
+export function combatVeteranDisplayLevel(saved) {
+  const level = 1 + displayPurchasedPoints(saved?.strengthPoints)
+    + displayPurchasedPoints(saved?.speedPoints);
+  return Number.isSafeInteger(level) ? level : 1;
+}
+
 export const METAMORPHOSIS_MIN_RANK_ID = 'commander';
 
 // Insignia compacta para UI. Cada rango usa una silueta propia para que

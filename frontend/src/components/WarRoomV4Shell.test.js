@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
+import r2Manifest from '../assets/r2-assets-manifest.json';
+import { warRoomVariantRuntimeModelUrl } from './WarRoomVariant.js';
 import {
   WAR_ROOM_V4_FLAME_NAMES,
   WAR_ROOM_V4_RUNTIME_MODEL_URL,
@@ -10,11 +12,25 @@ import { WAR_ROOM_V3_RUNTIME_MODEL_URL } from './WarRoomV3Shell.js';
 import { installWarRoomV3FireAnimation } from './WarRoomV3Fire.js';
 
 describe('War Room v4 runtime shell', () => {
-  it('owns a stable runtime alias separate from v3 (v3 stays the rollback)', () => {
-    expect(WAR_ROOM_V4_RUNTIME_MODEL_URL).toContain('/war-room/v4/runtime/current.glb');
+  it('reuses the exact byte-identical V4 immutable model across builds', () => {
+    const expected = warRoomVariantRuntimeModelUrl('v4', { buildSha: 'abc123' });
+    const asset = r2Manifest.assets['warRoom.v4.runtime'];
+    // Immutable version comes from the audited manifest, not a stale hash
+    // copied into tests each time a reviewed GLB is promoted.
+    expect(asset.sha256).toMatch(/^[0-9a-f]{64}$/);
+    expect(asset.key).toBe(`war-room/v4/runtime/war-room-v4-shell-${asset.sha256.slice(0, 16)}.glb`);
+    expect(asset.url).toBe(`${r2Manifest.baseUrl}/${asset.key}`);
+    expect(expected).toBe(asset.url);
     expect(WAR_ROOM_V4_RUNTIME_MODEL_URL).not.toBe(WAR_ROOM_V3_RUNTIME_MODEL_URL);
-    expect(warRoomV4ModelUrl({ buildSha: 'abc123' }))
-      .toBe(`${WAR_ROOM_V4_RUNTIME_MODEL_URL}?build=abc123`);
+    expect(WAR_ROOM_V4_RUNTIME_MODEL_URL).toBe(expected);
+    expect(warRoomV4ModelUrl({ buildSha: 'abc123' })).toBe(expected);
+    expect(warRoomV4ModelUrl({ buildSha: 'next-deploy' })).toBe(expected);
+    expect(warRoomV4ModelUrl({ buildSha: '' })).toBe(expected);
+  });
+
+  it('keeps existing query parameters on an explicit immutable GLB', () => {
+    const url = 'https://assets.example.test/war-room/v4/runtime/shell-0123456789abcdef.glb?source=staging';
+    expect(warRoomV4ModelUrl({ baseUrl: url, buildSha: 'new/sha' })).toBe(url);
   });
 
   it('drives the authored v4 fireplace flames with the shared flicker', () => {
@@ -27,10 +43,21 @@ describe('War Room v4 runtime shell', () => {
     }
     const release = installWarRoomV3FireAnimation(root, { flameNames: WAR_ROOM_V4_FLAME_NAMES });
     const driver = root.getObjectByName('WR4_OBS_fireplace_flame_body');
-    driver.onBeforeRender({ userData: { board3DMotionNowMs: 840 } });
+    const extraFlames = WAR_ROOM_V4_FLAME_NAMES.slice(1).map((name) => root.getObjectByName(name));
+    expect(driver.visible).toBe(true);
+    expect(extraFlames.every((flame) => flame.visible === false)).toBe(true);
+    const dormantScales = extraFlames.map((flame) => flame.scale.clone());
+    const dormantPositions = extraFlames.map((flame) => flame.position.clone());
+    for (const time of [840, 1450, 380]) {
+      driver.onBeforeRender({ userData: { board3DMotionNowMs: time } });
+    }
+    expect(extraFlames.every((flame, i) => (
+      flame.scale.equals(dormantScales[i]) && flame.position.equals(dormantPositions[i])
+    ))).toBe(true);
     expect(driver.userData.warRoomV3FireDriver).toBe(true);
     expect(driver.scale.y).not.toBe(1);
     release();
+    expect(extraFlames.every((flame) => flame.visible === true)).toBe(true);
     expect(driver.scale.y).toBe(1);
   });
 

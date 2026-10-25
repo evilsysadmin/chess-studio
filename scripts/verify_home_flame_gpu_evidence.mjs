@@ -1,0 +1,372 @@
+import { execFileSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
+import { readFileSync } from 'node:fs';
+import { inflateSync } from 'node:zlib';
+import { join, resolve } from 'node:path';
+import { classifyHomeFlamePassContrast } from '../e2e/home-blender-gpu-flame-contrast.mjs';
+import { fileURLToPath } from 'node:url';
+
+// Local offline consistency check; this is NOT proof of physical GPU origin
+// or visual approval. Run only after the actual browser A/B/B/A benchmark.
+export const HOME_FLAME_REPORT = 'home-3d-flame-single-pass-hardware.json';
+export const HOME_FLAME_PNGS = Object.freeze([
+  'home-3d-flame-pass-normal-hardware.png',
+  'home-3d-flame-pass-single-hardware.png',
+  'home-3d-flame-pass-single-repeat-hardware.png',
+  'home-3d-flame-pass-normal-repeat-hardware.png',
+]);
+const MODES = ['normal', 'single', 'single', 'normal'];
+const HEX_256 = /^[0-9a-f]{64}$/;
+const HEX_COMMIT = /^[0-9a-f]{40}$/;
+const PNG_SIGNATURE = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
+const fail = (reason) => { throw new Error(`Home flame evidence: ${reason}`); };
+
+const pngCrc32 = (bytes) => {
+  let crc = 0xffffffff;
+  for (const byte of bytes) {
+    crc ^= byte;
+    for (let bit = 0; bit < 8; bit += 1) {
+      crc = (crc >>> 1) ^ ((crc & 1) ? 0xedb88320 : 0);
+    }
+  }
+  return (crc ^ 0xffffffff) >>> 0;
+};
+
+// A 33-byte IHDR with an invented checksum is not an actual screenshot.
+// Inspect the complete PNG structure and its decompressed image rows in the
+// local offline verifier, without treating this as visual or GPU approval.
+function verifyCompletePng(png, file, width, height) {
+  let offset = 8;
+  let seenIHDR = false;
+  let seenIEND = false;
+  const payloads = [];
+  let channels = 0;
+  let bits = 0;
+  while (offset < png.length) {
+    if (offset + 12 > png.length) fail(`${file} PNG truncated chunk`);
+    const length = png.readUInt32BE(offset);
+    if (length > png.length - offset - 12) fail(`${file} PNG truncated payload`);
+    const type = png.toString('ascii', offset + 4, offset + 8);
+    if (!/^[A-Za-z]{4}$/.test(type)) fail(`${file} PNG invalid chunk type`);
+    const dataOffset = offset + 8;
+    const crcOffset = dataOffset + length;
+    if (pngCrc32(png.subarray(offset + 4, crcOffset)) !== png.readUInt32BE(crcOffset)) {
+      fail(`${file} PNG chunk CRC mismatch`);
+    }
+    if (!seenIHDR) {
+      if (type !== 'IHDR' || length !== 13) fail(`${file} PNG IHDR must be first`);
+      seenIHDR = true;
+      const colorType = png[dataOffset + 9];
+      bits = png[dataOffset + 8];
+      channels = ({ 0: 1, 2: 3, 3: 1, 4: 2, 6: 4 })[colorType] || 0;
+      const bitDepths = {
+        0: [1, 2, 4, 8, 16], 2: [8, 16], 3: [1, 2, 4, 8],
+        4: [8, 16], 6: [8, 16],
+      };
+      if (!channels || !bitDepths[colorType].includes(bits)
+          || png[dataOffset + 10] !== 0 || png[dataOffset + 11] !== 0
+          || png[dataOffset + 12] !== 0) {
+        fail(`${file} PNG unsupported physical screenshot format`);
+      }
+    } else if (type === 'IHDR') {
+      fail(`${file} PNG repeated IHDR`);
+    }
+    if (type === 'IDAT') payloads.push(png.subarray(dataOffset, crcOffset));
+    if (type === 'IEND') {
+      if (length !== 0) fail(`${file} PNG invalid IEND`);
+      seenIEND = true;
+    }
+    offset = crcOffset + 4;
+    if (seenIEND) break;
+  }
+  if (!seenIHDR || !seenIEND || !payloads.length || offset !== png.length) {
+    fail(`${file} PNG missing IDAT/IEND or trailing bytes`);
+  }
+  const stride = Math.ceil(width * channels * bits / 8);
+  const expected = height * (1 + stride);
+  if (!Number.isSafeInteger(expected) || expected <= 0 || expected > 64 * 1024 * 1024) {
+    fail(`${file} PNG decoded image exceeds bounded capture size`);
+  }
+  let pixels;
+  try {
+    pixels = inflateSync(Buffer.concat(payloads), { maxOutputLength: expected + 1 });
+  } catch {
+    fail(`${file} PNG invalid compressed image`);
+  }
+  if (pixels.length !== expected) fail(`${file} PNG decoded rows do not match canvas`);
+  for (let y = 0; y < height; y += 1) {
+    if (pixels[y * (stride + 1)] > 4) fail(`${file} PNG invalid row filter`);
+  }
+}
+
+const median = (values) => {
+  const sorted = [...values].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+};
+const closeEnough = (actual, calculated) => Number.isFinite(actual)
+  && Number.isFinite(calculated)
+  && Math.abs(actual - calculated) <= 1e-8 * Math.max(1, Math.abs(calculated));
+
+export function validateHomeFlameEvidence(report, readPng, expectedRevision = null) {
+  if (!report || report.schema !== 1 || report.status !== 'complete'
+      || report.mode !== 'hardware') fail('complete hardware report required');
+  // Files captured from a different checkout cannot certify the current PR.
+  // SHA ties the report to a source revision, not to an attested GPU/clean tree.
+  if (!HEX_COMMIT.test(report.revision)) fail('full source revision SHA required');
+  if (expectedRevision !== null
+      && (!HEX_COMMIT.test(expectedRevision) || report.revision !== expectedRevision)) {
+    fail('report source revision differs from checked-out HEAD');
+  }
+  if (!Array.isArray(report.sequence)
+      || report.sequence.join(',') !== MODES.join(',')
+      || !Array.isArray(report.visits) || report.visits.length !== 4) {
+    fail('four ordered normal/single/single/normal hardware visits required');
+  }
+  if (!Array.isArray(report.visualEvidence)
+      || report.visualEvidence.join(',') !== HOME_FLAME_PNGS.join(',')) {
+    fail('expected four ordered runtime PNG names');
+  }
+  if (!report.visualEvidenceHashes
+      || Object.keys(report.visualEvidenceHashes).sort().join(',')
+        !== [...HOME_FLAME_PNGS].sort().join(',')) {
+    fail('four screenshot hashes required, no stale or extra entries');
+  }
+  if (report.interpretation?.productionApproved !== false
+      || report.interpretation?.visualReviewRequired !== true
+      || report.interpretation?.repeatHardwareRunRequired !== true
+      || report.drawEvidence?.visualReviewRequired !== true) {
+    fail('measurements cannot imply production or visual approval');
+  }
+  const models = report.visits[0]?.modelUrlFingerprints;
+  if (!Array.isArray(models) || models.length < 2 || !models.every((hash) => HEX_256.test(hash))) {
+    fail('two or more SHA-256 GLB resource identities required');
+  }
+  for (let i = 0; i < MODES.length; i += 1) {
+    const visit = report.visits[i];
+    if (visit?.visit !== i + 1 || visit.flamePass !== MODES[i]
+        || visit.actual !== 'hardware' || visit.fireMotion !== 'live'
+        || !Number.isFinite(visit.gpuMedianMs) || visit.gpuMedianMs <= 0
+        || !Array.isArray(visit.gpuSamplesMs) || visit.gpuSamplesMs.length < 4
+        || !visit.gpuSamplesMs.every((ms) => Number.isFinite(ms) && ms > 0)
+        || !Number.isSafeInteger(visit.completedQueryObservations)
+        || visit.completedQueryObservations < 5
+        || !Array.isArray(visit.modelUrlFingerprints)
+        || visit.modelUrlFingerprints.join(',') !== models.join(',')
+        || !Number.isFinite(visit.liveEligibility?.transparentDoubleSidedNow)
+        || visit.liveEligibility.transparentDoubleSidedNow <= 0
+        || !Number.isSafeInteger(visit.singlePassMaterials)
+        || (MODES[i] === 'normal' ? visit.singlePassMaterials !== 0
+          : visit.singlePassMaterials <= 0)) {
+      fail(`visit ${i + 1} missing physical / live alpha / query / GLB consistency evidence`);
+    }
+    if (!closeEnough(visit.gpuMedianMs, median(visit.gpuSamplesMs))) {
+      fail(`visit ${i + 1} GPU median does not match completed query samples`);
+    }
+    const file = HOME_FLAME_PNGS[i];
+    const record = report.visualEvidenceHashes[file];
+    if (!record || record.sourceVisit !== i + 1 || record.flamePass !== MODES[i]
+        || !HEX_256.test(record.sha256)
+        || !Number.isSafeInteger(visit.canvasWidth) || visit.canvasWidth <= 0
+        || !Number.isSafeInteger(visit.canvasHeight) || visit.canvasHeight <= 0
+        || record.canvasWidth !== visit.canvasWidth
+        || record.canvasHeight !== visit.canvasHeight) {
+      fail(`visit ${i + 1} PNG manifest doesn't match the hardware canvas`);
+    }
+    const png = readPng(file);
+    // The WebGL drawing buffer is 1:1 with the captured screenshot in this
+    // locked-DPR=1 benchmark. Checking only JSON dimensions would accept a
+    // mismatched image whose SHA was accidentally paired with the wrong run.
+    // Validate the PNG IHDR dimensions against BOTH the manifest and canvas.
+    if (!Buffer.isBuffer(png) || png.length < 33
+        || !png.subarray(0, 8).equals(PNG_SIGNATURE)
+        || png.readUInt32BE(8) !== 13
+        || png.toString('ascii', 12, 16) !== 'IHDR') {
+      fail(`${file} has no valid PNG IHDR header`);
+    }
+    const imageWidth = png.readUInt32BE(16);
+    const imageHeight = png.readUInt32BE(20);
+    if (imageWidth === 0 || imageHeight === 0
+        || imageWidth !== visit.canvasWidth || imageHeight !== visit.canvasHeight
+        || imageWidth !== record.canvasWidth || imageHeight !== record.canvasHeight) {
+      fail(`${file} PNG dimensions do not match the hardware canvas`);
+    }
+    verifyCompletePng(png, file, visit.canvasWidth, visit.canvasHeight);
+    if (createHash('sha256').update(png).digest('hex') !== record.sha256) {
+      fail(`${file} bytes differ from recorded SHA-256`);
+    }
+  }
+  // A reported draw saving must come from the same four WebGL submit counts
+  // as the GPU samples. A stale/edited summary must not certify an apparent
+  // pass reduction. Allow normal per-mode variation but lock the invariant
+  // Matthias/runtime/shadow submissions, as in the Playwright capture.
+  const drawPasses = [];
+  for (let i = 0; i < MODES.length; i += 1) {
+    const pass = report.visits[i].drawPass;
+    const validFamilies = (group) => group
+      && ['castle', 'matthias', 'runtime'].every((key) =>
+        Number.isSafeInteger(group[key]) && group[key] >= 0);
+    if (!pass || !Number.isSafeInteger(pass.mainCalls) || pass.mainCalls <= 0
+        || !Number.isSafeInteger(pass.shadowCalls) || pass.shadowCalls < 0
+        || !Number.isSafeInteger(pass.totalCalls)
+        || pass.mainCalls + pass.shadowCalls !== pass.totalCalls
+        || !validFamilies(pass.families?.main) || !validFamilies(pass.families?.shadow)
+        || pass.families.main.castle <= 0 || pass.families.main.matthias <= 0
+        || ['main', 'shadow'].some((phase) =>
+          ['castle', 'matthias', 'runtime'].reduce(
+            (sum, family) => sum + pass.families[phase][family], 0,
+          ) !== pass[phase + 'Calls'])) {
+      fail(`visit ${i + 1} invalid measured draw-pass families`);
+    }
+    drawPasses.push(pass);
+  }
+  const original = drawPasses[0];
+  for (const pass of drawPasses.slice(1)) {
+    if (pass.shadowCalls !== original.shadowCalls
+        || pass.families.main.matthias !== original.families.main.matthias
+        || pass.families.main.runtime !== original.families.main.runtime) {
+      fail('flame trial changed shadow/Matthias/runtime draw submissions');
+    }
+  }
+  const normalMain = median([drawPasses[0].mainCalls, drawPasses[3].mainCalls]);
+  const singleMain = median([drawPasses[1].mainCalls, drawPasses[2].mainCalls]);
+  const savedMain = normalMain - singleMain;
+  if (!closeEnough(report.mainDrawCalls?.normal, normalMain)
+      || !closeEnough(report.mainDrawCalls?.single, singleMain)
+      || !closeEnough(report.drawEvidence?.savedMainDrawCalls, savedMain)
+      || report.drawEvidence?.reduced !== (savedMain > 0)
+      || report.drawEvidence?.gpuMedianImproved !== (report.gpuDifferenceMs > 0)) {
+    fail('four-visit draw saving summary differs from measured WebGL submissions');
+  }
+
+  // The browser harness fixes the lighting, Matthias station and framebuffer
+  // for all four cold visits. The offline verifier must independently enforce
+  // that contract: valid PNG hashes cannot justify mismatched scene states.
+  const identityFields = [
+    'vendor', 'rendererFingerprint', 'ambient', 'lod', 'shadows',
+    'lightProbe', 'wallTorches', 'lightsDisabled', 'lightsAdded',
+    'matthiasStation', 'matthiasActor', 'fireMotion',
+    'canvasWidth', 'canvasHeight',
+  ];
+  const firstVisit = report.visits[0];
+  if (!['intel', 'nvidia', 'amd'].includes(firstVisit.vendor)
+      || typeof firstVisit.rendererFingerprint !== 'string'
+      || !/^[0-9a-f]{8}$/.test(firstVisit.rendererFingerprint)
+      || !['dawn', 'day', 'dusk', 'night'].includes(firstVisit.ambient)
+      || firstVisit.lod !== 'full' || firstVisit.shadows !== 'enabled'
+      || firstVisit.lightProbe !== 'pair-normal'
+      || firstVisit.wallTorches !== 'pair'
+      || firstVisit.lightsDisabled !== 4 || firstVisit.lightsAdded !== 2
+      || typeof firstVisit.matthiasStation !== 'string'
+      || !firstVisit.matthiasStation.trim()
+      || firstVisit.matthiasActor !== 'ready'
+      || report.benchmarkAmbient !== firstVisit.ambient
+      || report.rendererFingerprint !== firstVisit.rendererFingerprint) {
+    fail('baseline has invalid fixed physical Home scene identity');
+  }
+  for (let i = 1; i < report.visits.length; i += 1) {
+    const visit = report.visits[i];
+    for (const field of identityFields) {
+      if (visit[field] !== firstVisit[field]) {
+        fail(`visit ${i + 1} changed fixed physical scene identity: ${field}`);
+      }
+    }
+  }
+  const baselineMaterials = firstVisit.liveEligibility;
+  const materialKeys = [
+    'flameNodes', 'hotNodes', 'candleNodes', 'materialSlots',
+    'doubleSided', 'frontSided', 'otherSided', 'transparentNow',
+    'transparentDoubleSidedNow',
+  ];
+  if (!baselineMaterials || materialKeys.some((key) =>
+    !Number.isSafeInteger(baselineMaterials[key]) || baselineMaterials[key] < 0)) {
+    fail('baseline live flame material census incomplete');
+  }
+  for (let i = 1; i < report.visits.length; i += 1) {
+    const live = report.visits[i].liveEligibility;
+    if (!live || materialKeys.some((key) =>
+      !Number.isSafeInteger(live[key]) || live[key] !== baselineMaterials[key])) {
+      fail(`visit ${i + 1} changed authored flame material identity`);
+    }
+  }
+  // The finished report must reflect the underlying four visits, not an
+  // optimistic aggregate pasted over valid per-visit measurements.
+  const baseline = median([report.visits[0].gpuMedianMs, report.visits[3].gpuMedianMs]);
+  const candidate = median([report.visits[1].gpuMedianMs, report.visits[2].gpuMedianMs]);
+  const difference = baseline - candidate;
+  if (!closeEnough(report.gpuMedianMs?.normal, baseline)
+      || !closeEnough(report.gpuMedianMs?.single, candidate)
+      || !closeEnough(report.gpuDifferenceMs, difference)
+      || !closeEnough(report.gpuContrastPct, 100 * difference / baseline)) {
+    fail('A/B/B/A GPU summary differs from its recorded physical visits');
+  }
+
+  // Report-level drift flags must be derived from the A/B/B/A samples, not
+  // trusted as a self-certification that a noisy run is repeatable.
+  const pair = [
+    report.visits[0].gpuMedianMs - report.visits[1].gpuMedianMs,
+    report.visits[3].gpuMedianMs - report.visits[2].gpuMedianMs,
+  ];
+  const normalDriftPct =
+    100 * Math.abs(report.visits[0].gpuMedianMs - report.visits[3].gpuMedianMs) / baseline;
+  const singleDriftPct =
+    100 * Math.abs(report.visits[1].gpuMedianMs - report.visits[2].gpuMedianMs) / candidate;
+  const stabilityFlags = [];
+  if (normalDriftPct > 15) stabilityFlags.push('normal-drift-over-15pct');
+  if (singleDriftPct > 15) stabilityFlags.push('single-drift-over-15pct');
+  if (!((pair[0] > 0 && pair[1] > 0) || (pair[0] < 0 && pair[1] < 0))) {
+    stabilityFlags.push('paired-direction-disagrees');
+  }
+  const recorded = report.stability;
+  if (!recorded || !closeEnough(recorded.baseDriftPct, normalDriftPct)
+      || !closeEnough(recorded.variantDriftPct, singleDriftPct)
+      || !Array.isArray(recorded.pairedDifferencesMs)
+      || recorded.pairedDifferencesMs.length !== 2
+      || recorded.pairedDifferencesMs.some((value, i) => !closeEnough(value, pair[i]))
+      || !Array.isArray(recorded.flags)
+      || recorded.flags.join(',') !== stabilityFlags.join(',')
+      || recorded.repeatRecommended !== true
+      || report.drawEvidence?.physicalResultsStable !== (stabilityFlags.length === 0)) {
+    fail('A/B/B/A stability and paired-drift claims differ from physical visits');
+  }
+
+  // The verdict comes from the pure conservative experimental classifier,
+  // not from a mutable label in the JSON file. The fourth visit can overturn
+  // a promising first A/B pair; no report may hide that behind a stale label.
+  const expectedInterpretation = classifyHomeFlamePassContrast({
+    savedMainDrawCalls: savedMain,
+    gpuDifferenceMs: difference,
+    pairedDifferencesMs: pair,
+    baseDriftMs: Math.abs(report.visits[0].gpuMedianMs - report.visits[3].gpuMedianMs),
+    variantDriftMs: Math.abs(report.visits[1].gpuMedianMs - report.visits[2].gpuMedianMs),
+    flags: stabilityFlags,
+  });
+  if (report.interpretation?.verdict !== expectedInterpretation.verdict
+      || !closeEnough(report.interpretation?.observedSpreadMs,
+        expectedInterpretation.observedSpreadMs)) {
+    fail('A/B/B/A reported interpretation contradicts measured hardware receipts');
+  }
+  return {
+    checkedScreenshots: 4,
+    verdict: report.interpretation.verdict,
+    productionApproved: false,
+    hardwareOriginVerified: false,
+    visualReviewRequired: true,
+  };
+}
+
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  try {
+    const directory = resolve(process.argv[2] || '.artifacts/home-gpu-benchmark');
+    const report = JSON.parse(readFileSync(join(directory, HOME_FLAME_REPORT), 'utf8'));
+    const currentRevision = execFileSync('git', ['rev-parse', 'HEAD'],
+      { encoding: 'utf8' }).trim();
+    const result = validateHomeFlameEvidence(report,
+      (name) => readFileSync(join(directory, name)), currentRevision);
+    console.log(`Home flame A/B/B/A: ${result.checkedScreenshots} PNG SHA-256 matches; verdict=${result.verdict}`);
+    console.log('Local consistency only. Physical origin and visual appearance still require human review.');
+  } catch (error) {
+    console.error(error instanceof Error ? error.message : String(error));
+    process.exitCode = 1;
+  }
+}

@@ -38,7 +38,10 @@ export function pickBoard3DSquare({
     {
       selectedSquare: latestProps?.selectedSquare,
       legalTargets: latestProps?.legalTargets,
-      preferLegalTargets,
+      // For an actual click, honour a highlighted legal tile underneath a
+      // taller foreground piece. Hover remains literal to prevent the cursor
+      // from jumping to destinations hidden behind other pieces.
+      preferLegalTargets: preferLegalTargets || Boolean(latestProps?.selectedSquare && event?.type !== 'pointermove'),
       movableSquares: board3DMovableSquares(latestProps?.fen),
     },
   );

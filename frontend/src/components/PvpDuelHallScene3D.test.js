@@ -2,21 +2,23 @@ import { describe, expect, it } from 'vitest';
 import { shouldPaintPvpHallResize } from './PvpDuelHallScene3D.jsx';
 
 describe('PvP Duel Hall WebGL resize budget', () => {
-  const same = { width: 1100, height: 690 };
+  const size = { width: 1100, height: 690 };
 
-  it('always paints the first initialized canvas', () => {
-    expect(shouldPaintPvpHallResize({ width: 0, height: 0 }, same)).toBe(true);
+  it('paints initialization and actual width/height changes', () => {
+    expect(shouldPaintPvpHallResize({ width: 0, height: 0 }, size)).toBe(true);
+    expect(shouldPaintPvpHallResize(size, { width: 1101, height: 690 })).toBe(true);
+    expect(shouldPaintPvpHallResize(size, { width: 1100, height: 691 })).toBe(true);
   });
 
-  it('skips redundant ResizeObserver notifications without a real size change', () => {
-    expect(shouldPaintPvpHallResize(same, same)).toBe(false);
-    expect(shouldPaintPvpHallResize(same, { width: 1101, height: 690 })).toBe(true);
-    expect(shouldPaintPvpHallResize(same, { width: 1100, height: 691 })).toBe(true);
+  it('does not paint when the canvas dimensions are unchanged', () => {
+    expect(shouldPaintPvpHallResize(size, size)).toBe(false);
+    // ResizeObserver and window resize supply a callback parameter, not a
+    // deliberate force-paint request. Only the exact boolean true forces it.
+    expect(shouldPaintPvpHallResize(size, size, [])).toBe(false);
+    expect(shouldPaintPvpHallResize(size, size, { type: 'resize' })).toBe(false);
   });
 
-  it('forces a model-ready paint even at identical dimensions', () => {
-    expect(shouldPaintPvpHallResize(same, same, true)).toBe(true);
-    // ResizeObserver supplies an entries array, not an explicit paint request.
-    expect(shouldPaintPvpHallResize(same, same, [])).toBe(false);
+  it('always renders the newly loaded scene once at the existing size', () => {
+    expect(shouldPaintPvpHallResize(size, size, true)).toBe(true);
   });
 });

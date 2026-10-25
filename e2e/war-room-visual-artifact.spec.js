@@ -2,6 +2,7 @@ import { chromium, expect, test } from '@playwright/test';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { buttonWithVisibleText, clickBoardMove, gameStatus, login, mockApi } from './helpers.js';
 import { WAR_ROOM_CAT_VERSION } from '../frontend/src/components/WarRoomCatDecor.js';
+import { installManifestPinnedV4Model } from './v4-immutable-model.js';
 
 const ARTIFACT_DIR = '../.artifacts/app-visual';
 const SEEN_WAR_ROOM_TUTORIAL_PROFILE = Object.freeze({
@@ -12,6 +13,9 @@ const SEEN_WAR_ROOM_TUTORIAL_PROFILE = Object.freeze({
 const WAR_ROOM_VARIANT_STORAGE_KEY = 'chess-study-war-room-variant-v1';
 const WAR_ROOM_V2_REVISION_BASE =
   'https://assets.chess-studio.shadowops.dpdns.org/war-room/v2/staging/revisions';
+// An env-enabled staging proof must fail if no browser model request actually
+// consumes the staged GLB. A passing PNG of the immutable OLD model is not proof.
+const v2RevisionProof = new WeakMap();
 const WAR_ROOM_V3_REVISION_BASE =
   'https://assets.chess-studio.shadowops.dpdns.org/war-room/v3/staging/revisions';
 const LOCAL_GPU_CAPTURE = process.env.APP_VISUAL_LOCAL_GPU === '1';
@@ -55,13 +59,17 @@ async function installWarRoomV2RevisionRoute(page) {
   }
   if (!body) throw new Error('War Room v2 revision GLB timeout: ' + expected);
 
-  await page.route('**/war-room/v2/runtime/current.glb*', async (route) => {
+  v2RevisionProof.set(page, { revision: expected, fulfilled: 0 });
+  // V2's runtime is content-addressed (war-room-premium-shell-<sha>.glb).
+  // Intercept both immutable filenames and the pre-manifest current.glb alias.
+  await page.route('**/war-room/v2/runtime/*.glb*', async (route) => {
     await route.fulfill({
       status: 200,
       contentType: 'model/gltf-binary',
       body,
       headers: { 'cache-control': 'no-store' },
     });
+    v2RevisionProof.get(page).fulfilled += 1;
   });
 }
 
@@ -92,7 +100,10 @@ async function installWarRoomV3RevisionRoute(page) {
   }
   if (!body) throw new Error('War Room v3 revision GLB timeout: ' + expected);
 
-  await page.route('**/war-room/v3/runtime/current.glb*', async (route) => {
+  // Runtime V3 uses a content-addressed R2 GLB. Match that same URL as
+  // intent prefetch (and tolerate the legacy current.glb alias) so a staged
+  // Blender revision is actually exercised by the canonical visual capture.
+  await page.route('**/war-room/v3/runtime/*.glb*', async (route) => {
     await route.fulfill({
       status: 200,
       contentType: 'model/gltf-binary',
@@ -100,6 +111,13 @@ async function installWarRoomV3RevisionRoute(page) {
       headers: { 'cache-control': 'no-store' },
     });
   });
+}
+
+// Exact-asset V4 proof uses the manifest-pinned immutable GLB, not the last
+// Blender staging revision (which can differ on a clean rebuild).
+async function installWarRoomV4RevisionRoute(page) {
+  if (!String(process.env.APP_VISUAL_EXPECTED_WAR_ROOM_V4_REVISION || '').trim()) return;
+  await installManifestPinnedV4Model(page);
 }
 const CAPTURE_PROFILES = Object.freeze([
   Object.freeze({
@@ -370,6 +388,28 @@ async function captureViewportPng(page, path) {
   }
 
   try {
+    if (process.env.APP_VISUAL_EXPECTED_WAR_ROOM_V4_REVISION) {
+      // SwiftShader can return a black WebGL drawing buffer even after a real
+      // GLB render and a green scene-readiness check. A technically valid
+      // screenshot of a black board is NOT visual evidence for a Blender PR.
+      const litShare = await page.evaluate(() => {
+        const image = document.querySelector('img[data-war-room-webgl-capture]');
+        if (!image) return 0;
+        const sample = document.createElement('canvas');
+        sample.width = 32;
+        sample.height = 24;
+        const ctx = sample.getContext('2d', { willReadFrequently: true });
+        ctx.drawImage(image, 0, 0, sample.width, sample.height);
+        const data = ctx.getImageData(0, 0, sample.width, sample.height).data;
+        let lit = 0;
+        for (let i = 0; i < data.length; i += 4) {
+          if (data[i] + data[i + 1] + data[i + 2] > 120) lit += 1;
+        }
+        return lit / (sample.width * sample.height);
+      });
+      expect(litShare, 'blank WebGL capture: actual V4 board is not visible').toBeGreaterThan(0.12);
+    }
+
     const viewport = page.viewportSize();
     if (!viewport) throw new Error('War Room visual capture requires a fixed viewport');
     const png = await page.screenshot({
@@ -507,13 +547,52 @@ async function captureWarRoomHealth(page, label) {
       renderer: canvas?.dataset.board3dRenderer || null,
       rendererClass: canvas?.dataset.board3dRendererClass || null,
       renderPath: canvas?.dataset.board3dRenderPath || null,
+      // Five one-shot measurements per Blender shell; null until completed.
+      // Reported in canonical visual JSON without running a second 3D session.
+      shellTiming: canvas ? Object.fromEntries(
+        ['import', 'glb', 'materials', 'effects', 'render', 'postRender', 'readyPaint'].map((phase) => {
+          const key = `warRoomShellTiming${phase[0].toUpperCase()}${phase.slice(1)}Ms`;
+          const raw = canvas.dataset[key];
+          return [phase, raw === undefined ? null : Number(raw)];
+        }),
+      ) : null,
+      firstReadyRender: canvas ? Object.fromEntries(
+        ['Calls', 'Triangles', 'Lines', 'Points'].map((name) => {
+          const value = canvas.dataset[`warRoomFirstReadyRender${name}`];
+          return [name.toLowerCase(), value === undefined ? null : Number(value)];
+        }),
+      ) : null,
+      // Read the installed V3 hardware batch count from the actual GLB
+      // session, not a synthetic unit-test root.
+      v3StaticTorchBatches: canvas?.dataset.warRoomV3StaticTorchBatches === undefined
+        ? null : Number(canvas.dataset.warRoomV3StaticTorchBatches),
+      capturedRendererMemory: canvas ? {
+        geometries: Number(canvas.dataset.board3dMemoryGeometries || 0),
+        textures: Number(canvas.dataset.board3dMemoryTextures || 0),
+        programs: Number(canvas.dataset.board3dMemoryPrograms || 0),
+      } : null,
       blenderShadow: canvas ? {
         budget: Number(canvas.dataset.warRoomShadowCasterBudget || 0),
         candidates: Number(canvas.dataset.warRoomShadowCasterCandidates || 0),
+        // Potential geometry counts, not WebGL shadow draw submissions.
+        // SwiftShader/lite deliberately disables the shadow pass: selected=0.
+        candidatePotentialTriangles: canvas.dataset.warRoomShadowCandidatePotentialTriangles === undefined
+          ? null : Number(canvas.dataset.warRoomShadowCandidatePotentialTriangles),
+        selectedPotentialTriangles: canvas.dataset.warRoomShadowSelectedPotentialTriangles === undefined
+          ? null : Number(canvas.dataset.warRoomShadowSelectedPotentialTriangles),
         projectedCount: Number(canvas.dataset.warRoomShadowProjectedCount || 0),
         count: Number(canvas.dataset.warRoomShadowCasterCount || 0),
         warmup: canvas.dataset.warRoomShadowWarmup || null,
       } : null,
+      // V1 rollback has no GLB. This separate inventory is populated only
+      // after the lazily constructed procedural classic shell exists.
+      classicGeometry: canvas?.dataset.warRoomClassicMeshNodes === undefined ? null : {
+        meshNodes: Number(canvas.dataset.warRoomClassicMeshNodes),
+        meshInstances: Number(canvas.dataset.warRoomClassicMeshInstances),
+        uniqueGeometries: Number(canvas.dataset.warRoomClassicUniqueGeometries),
+        potentialTriangles: Number(canvas.dataset.warRoomClassicPotentialTriangles),
+        uniqueTriangles: Number(canvas.dataset.warRoomClassicUniqueTriangles),
+      },
       horizontalOverflowPx: Math.max(0, root.scrollWidth - viewport.width),
       verticalOverflowPx: Math.max(0, root.scrollHeight - viewport.height),
       overflowOffenders,
@@ -547,6 +626,9 @@ async function openCanonicalWarRoom(page, { variant = 'classic' } = {}) {
   }
   if (variant === 'v3') {
     await installWarRoomV3RevisionRoute(page);
+  }
+  if (variant === 'v4') {
+    await installWarRoomV4RevisionRoute(page);
   }
   await page.addInitScript(({ key, value }) => {
     window.localStorage.setItem(key, value);
@@ -704,7 +786,23 @@ async function assertAndCaptureProfile(page, profile, board3d) {
     await expect(page.locator('.board3d-main-canvas'))
       .toHaveAttribute('data-war-room-variant-status', 'ready', { timeout: 30_000 });
   }
+  if (profile.variant === 'v2' && expectedWarRoomV2Revision()) {
+    const proof = v2RevisionProof.get(page);
+    expect(proof?.revision).toBe(expectedWarRoomV2Revision());
+    expect(proof?.fulfilled, 'the V2 browser must fetch the exact staged GLB, not the old immutable manifest GLB')
+      .toBeGreaterThan(0);
+    // A Blender PNG and intact door/anchor nodes are insufficient. The exact
+    // PR GLB must also install Hans' real service-door routine in Three.js.
+    // Historical V2 runtime aliases are exempt until manually promoted.
+    await expect(page.locator('.board3d-main-canvas'))
+      .toHaveAttribute('data-war-room-hans-stage', /^v2-blender-hall:(quick|idle)$/, { timeout: 45_000 });
+  }
   if (profile.variant === 'v4') {
+    // The observatory's Blender shell must really install Hans' authored
+    // service door/hearth stage. Hans himself only appears for the event
+    // chosen for this game; never force a fake permanent NPC into the scene.
+    await expect(page.locator('.board3d-main-canvas'))
+      .toHaveAttribute('data-war-room-hans-stage', /^v4-tower-study:(quick|idle)$/, { timeout: 45_000 });
     const variantMenu = page.getByRole('button', { name: 'Más acciones de partida', exact: true });
     await variantMenu.click();
     await expect(page.getByRole('menuitemradio', { name: 'War Room v3', exact: true })).toBeVisible();
@@ -735,6 +833,16 @@ async function assertAndCaptureProfile(page, profile, board3d) {
   await page.waitForTimeout(350);
 
   const health = await captureWarRoomHealth(page, profile.label);
+  if (['v2', 'v3', 'v4'].includes(profile.variant)) {
+    console.log(`WAR_ROOM_SHELL_PHASES ${JSON.stringify({
+      variant: profile.variant,
+      profile: profile.label,
+      shellTiming: health.shellTiming,
+      firstReadyRender: health.firstReadyRender,
+      capturedRendererMemory: health.capturedRendererMemory,
+      blenderShadow: health.blenderShadow,
+    })}`);
+  }
   await writeFile(
     `${ARTIFACT_DIR}/${profile.label}-health.json`,
     `${JSON.stringify({ schema: 3, capture: health }, null, 2)}\n`,
@@ -743,6 +851,9 @@ async function assertAndCaptureProfile(page, profile, board3d) {
 
   expectSharedHealth(health);
   expectDefaultImmersiveShell(health);
+  if (profile.variant === 'v3') {
+    expect(health.v3StaticTorchBatches).toBe(profile.hasTouch ? 22 : 12);
+  }
   if (profile.hasTouch) {
     expect(health.coarsePointer, `${profile.title} must emulate a coarse pointer`).toBe(true);
     expect(health.touchPoints, `${profile.title} must expose touch points`).toBeGreaterThan(0);
@@ -758,15 +869,27 @@ async function assertAndCaptureProfile(page, profile, board3d) {
     ).toBeHidden();
   }
 
-  await freezeVisualFrame(page);
-  try {
-    await captureViewportPng(
-      page,
-      `${ARTIFACT_DIR}/${profile.label}.png`,
-    );
-  } finally {
-    await thawVisualFrame(page);
+  let captureError = null;
+  const maxAttempts = process.env.APP_VISUAL_EXPECTED_WAR_ROOM_V4_REVISION ? 3 : 1;
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    await freezeVisualFrame(page);
+    try {
+      await captureViewportPng(page, `${ARTIFACT_DIR}/${profile.label}.png`);
+      captureError = null;
+      break;
+    } catch (error) {
+      if (!String(error?.message || '').includes('blank WebGL capture')) throw error;
+      captureError = error;
+      console.warn(`V4 WebGL black frame ${attempt}/${maxAttempts}: retrying live render`);
+    } finally {
+      await thawVisualFrame(page);
+    }
+    if (attempt < maxAttempts) {
+      await page.waitForTimeout(850);
+      await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(resolve)));
+    }
   }
+  if (captureError) throw captureError;
 }
 
 function registerIndependentCaptureProfile(profile) {
@@ -788,6 +911,7 @@ function registerIndependentCaptureProfile(profile) {
 async function switchDesktopVariant(page, board3d, variant) {
   if (variant === 'v2') await installWarRoomV2RevisionRoute(page);
   if (variant === 'v3') await installWarRoomV3RevisionRoute(page);
+  if (variant === 'v4') await installWarRoomV4RevisionRoute(page);
 
   const menu = page.getByRole('button', { name: 'Más acciones de partida', exact: true });
   await menu.click();

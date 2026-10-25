@@ -5,7 +5,7 @@ import {
 } from './WarRoomHansActor.js';
 import { registerWarRoomHansPostRenderStage } from './WarRoomHansPostRenderPipeline.js';
 
-export const WAR_ROOM_HANS_ACTOR_TELEMETRY_VERSION = 'war-room-hans-actor-telemetry-v4-door-state';
+export const WAR_ROOM_HANS_ACTOR_TELEMETRY_VERSION = 'war-room-hans-actor-telemetry-v5-final-closure';
 
 const POST_RENDER_ORDER = 6;
 
@@ -30,7 +30,13 @@ export function installWarRoomHansActorTelemetry(root) {
       const state = getWarRoomHansRouteState(actor);
       setDatasetIfChanged(canvas, 'warRoomHansRoute', state.route || 'none');
       setDatasetIfChanged(canvas, 'warRoomHansLogicalX', Number(state.logicalX).toFixed(3));
+      // Stage-entry on V4 moves mostly in Z before it turns toward the hearth.
+      // Sampling only X misdiagnosed a real doorway walk as a stationary actor.
+      // This is a local canvas diagnostic, never sent in admin presence.
+      setDatasetIfChanged(canvas, 'warRoomHansSceneZ', Number(actor.hans.position?.z || 0).toFixed(3));
       setDatasetIfChanged(canvas, 'warRoomHansDoorOpen', Number(actor.hans.userData?.warRoomHansDoorOpen || 0).toFixed(3));
+      setDatasetIfChanged(canvas, 'warRoomHansRoutineCompleted', driver.userData?.warRoomHansCompleted === true);
+      setDatasetIfChanged(canvas, 'warRoomHansActorVisible', actor.hans.visible === true);
       setDatasetIfChanged(canvas, 'warRoomHansChoreographyPhase', driver.userData?.warRoomHansPhase || 'none');
       setDatasetIfChanged(canvas, 'warRoomHansActiveTask', actor.hans.userData?.warRoomHansActiveTask || 'none');
       setDatasetIfChanged(canvas, 'warRoomHansTaskPhase', actor.hans.userData?.warRoomHansTaskPhase || 'none');
