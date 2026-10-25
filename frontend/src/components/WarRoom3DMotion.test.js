@@ -1,3 +1,4 @@
+import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
 import {
   adaptiveRenderScale,
@@ -5,6 +6,7 @@ import {
   applyWarRoomMaterialGrade,
   deriveMoveKinetics,
   inferCapturedPiece,
+  installWarRoomRenderDiscipline,
   materialGradeRefreshInterval,
   nextRuntimeRenderScale,
   reactiveLightProfile,
@@ -33,6 +35,52 @@ function fakeColor(hex) {
 }
 
 describe('WarRoom3DMotion', () => {
+  it('installs on the actual renderer instance and refreshes shadows across V3/V4 paints', () => {
+    const draws = [];
+    const renderer = {
+      shadowMap: { autoUpdate: true, needsUpdate: false },
+      domElement: { dataset: {} },
+      getPixelRatio: () => 1,
+      render(scene, camera) {
+        draws.push({
+          scene, camera,
+          autoUpdate: this.shadowMap.autoUpdate,
+          needsUpdate: this.shadowMap.needsUpdate,
+        });
+        // Three clears this flag after a real shadow-depth pass.
+        this.shadowMap.needsUpdate = false;
+        return 'painted';
+      },
+    };
+    const original = renderer.render;
+    expect(installWarRoomRenderDiscipline(renderer)).toBe(true);
+    expect(renderer.render).not.toBe(original);
+    const installed = renderer.render;
+    expect(installWarRoomRenderDiscipline(renderer)).toBe(false);
+    expect(renderer.render).toBe(installed);
+
+    const scene = new THREE.Scene();
+    scene.userData.warRoomRenderBudget = { pixelRatio: 1 };
+    scene.userData.warRoomRenderedVariant = 'v3';
+    scene.userData.warRoomAdaptiveQuality = false;
+    const camera = {};
+    expect(renderer.render(scene, camera)).toBe('painted');
+    expect(draws.at(-1)).toMatchObject({ scene, camera, autoUpdate: false, needsUpdate: true });
+    expect(renderer.shadowMap.autoUpdate).toBe(true);
+
+    renderer.render(scene, camera);
+    expect(draws.at(-1).needsUpdate).toBe(false);
+    scene.userData.warRoomRenderedVariant = 'v4';
+    renderer.render(scene, camera);
+    expect(draws.at(-1).needsUpdate).toBe(true);
+    expect(renderer.shadowMap.autoUpdate).toBe(true);
+
+    // Non-War-Room draws on the same renderer keep their original policy.
+    const other = new THREE.Scene();
+    renderer.render(other, camera);
+    expect(draws.at(-1)).toMatchObject({ scene: other, autoUpdate: true, needsUpdate: false });
+  });
+
   it('resets shadow cadence and adaptive governor when the same canvas switches War Rooms', () => {
     const renderer = {};
     const scene = { userData: { warRoomRenderedVariant: 'v3' } };

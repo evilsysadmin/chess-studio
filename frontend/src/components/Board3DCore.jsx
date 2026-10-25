@@ -6,7 +6,7 @@ import { applyWarRoomPixelRatioIfChanged, installPremiumEnvironment, makePremium
 import { loadBoardTheme } from '../career.js';
 import { loadSelectedSkin } from '../tournamentRewards.js';
 import { USER_PREFERENCES_CHANGED_EVENT, getEffectiveReducedMotion } from '../userPreferences.js';
-import { adaptiveRenderScale, clamp01, deriveMoveKinetics, easeOutCubic, inferCapturedPiece, reactiveLightProfile, smoothstep } from './WarRoom3DMotion.js';
+import { adaptiveRenderScale, clamp01, deriveMoveKinetics, easeOutCubic, inferCapturedPiece, installWarRoomRenderDiscipline, reactiveLightProfile, smoothstep } from './WarRoom3DMotion.js';
 import {
   compactWebGLRendererLabel,
   isSoftwareWebGLRenderer,
@@ -147,6 +147,9 @@ function Board3DCanvas({
       latestPropsRef.current.onRendererFailure?.(rendererError || new Error('WebGL renderer unavailable'));
       return undefined;
     }
+    // Three r186 installs render as an own instance method, not on its prototype.
+    // Scope the War Room shadow budget to this canvas rather than patching Three globally.
+    installWarRoomRenderDiscipline(renderer);
 
     let rendererName = ''; let maxTextureSize = null;
     let softwareRenderer = Boolean(rendererAttempt.liteFallback);

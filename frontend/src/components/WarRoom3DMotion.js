@@ -572,19 +572,20 @@ export function renderWarRoomWithScopedShadowUpdates(renderer, originalRender, s
   }
 }
 
-function installWarRoomRenderDiscipline() {
-  const prototype = THREE.WebGLRenderer?.prototype;
-  if (!prototype || prototype[WAR_ROOM_RENDER_DISCIPLINE]) return;
-
-  const originalRender = prototype.render;
-  Object.defineProperty(prototype, WAR_ROOM_RENDER_DISCIPLINE, {
+export function installWarRoomRenderDiscipline(renderer) {
+  // Three r186 defines render on each WebGLRenderer instance. Patching the
+  // prototype is inert, so the former global hook never budgeted real frames.
+  if (!renderer || typeof renderer.render !== 'function'
+    || Object.prototype.hasOwnProperty.call(renderer, WAR_ROOM_RENDER_DISCIPLINE)) return false;
+  const originalRender = renderer.render;
+  Object.defineProperty(renderer, WAR_ROOM_RENDER_DISCIPLINE, {
     value: true,
     configurable: false,
     enumerable: false,
     writable: false,
   });
 
-  prototype.render = function renderWithWarRoomShadowBudget(scene, camera) {
+  renderer.render = function renderWithWarRoomShadowBudget(scene, camera) {
     const budget = scene?.userData?.warRoomRenderBudget;
     if (!budget || !this.shadowMap) return originalRender.call(this, scene, camera);
 
@@ -663,9 +664,8 @@ function installWarRoomRenderDiscipline() {
 
     return renderWarRoomWithScopedShadowUpdates(this, originalRender, scene, camera);
   };
+  return true;
 }
-
-installWarRoomRenderDiscipline();
 
 // The v4 golden is a warm, luminous observatory. This is the lighting path the
 // runtime actually applies (initial scene, move animation and check/game-over
