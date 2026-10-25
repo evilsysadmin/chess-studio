@@ -667,6 +667,13 @@ export function installWarRoomRenderDiscipline(renderer) {
   return true;
 }
 
+/** Keep renderer construction and its shadow discipline out of Board3DCore. */
+export function createWarRoomRenderer(parameters) {
+  const renderer = new THREE.WebGLRenderer(parameters);
+  installWarRoomRenderDiscipline(renderer);
+  return renderer;
+}
+
 // The v4 golden is a warm, luminous observatory. This is the lighting path the
 // runtime actually applies (initial scene, move animation and check/game-over
 // changes), so the v4 lift lives here: more exposure and warm fill, while the
