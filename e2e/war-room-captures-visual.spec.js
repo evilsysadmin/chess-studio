@@ -75,6 +75,11 @@ test('War Room · cajón de capturas abierto: escritorio, móvil vertical y hori
     expect(hit).not.toBeNull();
     expect(hit.width).toBeGreaterThanOrEqual(viewport.width < 900 ? 42 : 30);
     expect(hit.height).toBeGreaterThanOrEqual(viewport.width < 900 ? 42 : 38);
+    // Pair both states from the same running room and viewport. A separate
+    // golden screenshot may use different camera framing, chat, or GPU state.
+    const boardBefore = await page.locator('.board3d-main-shell').boundingBox();
+    expect(boardBefore).not.toBeNull();
+    await captureRoomWithDrawer(page, 'war-room-captures-closed-' + viewport.width + 'x' + viewport.height);
     await toggle.click({ timeout: 45_000 });
     const panel = page.getByRole('region', { name: 'Capturas de la partida' });
     await expect(panel).toBeVisible({ timeout: 45_000 });
@@ -86,6 +91,14 @@ test('War Room · cajón de capturas abierto: escritorio, móvil vertical y hori
     expect(box.y).toBeGreaterThanOrEqual(-1);
     expect(box.x + box.width).toBeLessThanOrEqual(viewport.width + 1);
     expect(box.y + box.height).toBeLessThanOrEqual(viewport.height + 1);
+    // The opt-in drawer must overlay the scene, not shrink or displace the
+    // playable board when expanded on desktop, portrait or landscape.
+    const boardAfter = await page.locator('.board3d-main-shell').boundingBox();
+    expect(boardAfter).not.toBeNull();
+    for (const axis of ['x', 'y', 'width', 'height']) {
+      expect(boardAfter[axis], 'board ' + axis + ' moved when captures opened')
+        .toBeCloseTo(boardBefore[axis], 0);
+    }
     expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
     await captureRoomWithDrawer(page, 'war-room-captures-open-' + viewport.width + 'x' + viewport.height);
     await page.getByRole('button', { name: 'Ocultar capturas', exact: true }).click({ timeout: 45_000 });
