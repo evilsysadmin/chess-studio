@@ -3,6 +3,9 @@ import { mkdir } from 'node:fs/promises';
 import { login, mockApi } from './helpers.js';
 
 const ARTIFACT_DIR = '../.artifacts/app-visual/pvp-handoff';
+// Keep the mocked server start sufficiently far in the future for slow
+// SwiftShader screenshot capture; polling must reuse the same timestamp.
+const HANDOFF_VISUAL_START_LEAD_MS = 5 * 60_000;
 const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 
 function startingMatch() {
@@ -50,7 +53,7 @@ async function prepareHandoff(page, { holdReady = false } = {}) {
     released = true;
     // A single server timestamp for the entire simulated match: polling must
     // never re-arm the countdown. Leave room for slow CI screenshots.
-    activationStartsAt ||= new Date(Date.now() + 45_000).toISOString();
+    activationStartsAt ||= new Date(Date.now() + HANDOFF_VISUAL_START_LEAD_MS).toISOString();
   };
   let releaseReady = () => {};
   const readyGate = new Promise((resolve) => { releaseReady = resolve; });
@@ -141,6 +144,9 @@ test('PvP handoff · desktop seals the duel before authoritative readiness', asy
 test.use({ hasTouch: true, isMobile: true });
 
 test('PvP handoff · Android landscape opens the gate on authoritative start', async ({ page }) => {
+  // CI defaults to a 45s test budget; this visual producer deliberately
+  // allows a 60s phase assertion plus WebGL setup and screenshot time.
+  test.setTimeout(120_000);
   await page.setViewportSize({ width: 844, height: 390 });
   // The Android capture must observe the same actual server-backed transition
   // as desktop. Immediate mock replies can race the initial React handoff
@@ -149,8 +155,8 @@ test('PvP handoff · Android landscape opens the gate on authoritative start', a
   await expect(handoff).toHaveAttribute('data-handoff-phase', 'sealing');
   await expect.poll(wasReadyRequested, { timeout: 30_000, message: 'PvP must send POST /ready before release' }).toBe(true);
   releaseReady();
-  await expect(handoff).toHaveAttribute('data-handoff-phase', 'opening');
-  await expect(handoff.getByText('PORTÓN ABRIENDO', { exact: true })).toBeVisible();
+  await expect(handoff).toHaveAttribute('data-handoff-phase', 'opening', { timeout: 60_000 });
+  await expect(handoff.getByText('PORTÓN ABRIENDO', { exact: true })).toBeVisible({ timeout: 60_000 });
   await expect(handoff.getByText(/Entrando en 1 vs 1 en/)).toBeVisible();
 
   const box = await handoff.boundingBox();
