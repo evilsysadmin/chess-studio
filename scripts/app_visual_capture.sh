@@ -154,6 +154,14 @@ case "$mode" in
     fi
 
     if [[ "$warroom_core_selected" == "true" ]]; then
+      echo "War Room captures drawer: real open-state desktop + portrait + landscape screenshots."
+      ./node_modules/.bin/playwright test \
+        war-room-captures-visual.spec.js \
+        --workers=1 \
+        "${warroom_core_args[@]}"
+    fi
+
+    if [[ "$warroom_core_selected" == "true" ]]; then
       echo "War Room core desktop evidence: reuse one authenticated 1440x900 game across active variants."
       APP_VISUAL_WARROOM_PROFILE_SHARD=desktop-remainder \
         ./node_modules/.bin/playwright test \

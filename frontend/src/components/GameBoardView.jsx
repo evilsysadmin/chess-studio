@@ -4,6 +4,7 @@ import GamePlayerRail from './GamePlayerRail.jsx';
 import GameSideColumn from './GameSideColumn.jsx';
 import GameStatusStrips from './GameStatusStrips.jsx';
 import GameWarRoomCommandColumn from './GameWarRoomCommandColumn.jsx';
+import WarRoomCapturedPieces from './WarRoomCapturedPieces.jsx';
 import WarRoomBoardSurface from './WarRoomBoardSurface.jsx';
 import WarRoomExitOverlay from './WarRoomExitOverlay.jsx';
 import GlossaryTerm from './GlossaryTerm.jsx';
@@ -354,6 +355,9 @@ export default function GameBoardView({
 
           {!zenMode && !focusActive && (
             <GameSideColumn game={game} side={side} isThreeD={isThreeD} compactViewport={compactViewport} showMusic={!warRoomImmersive} />
+          )}
+          {isThreeD && !zenMode && !focusActive && (
+            <WarRoomCapturedPieces key={game.id} game={game} humanColor={humanColor} />
           )}
         </div>
 

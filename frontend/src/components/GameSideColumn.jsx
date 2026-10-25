@@ -5,15 +5,16 @@ import NotationPanel from './NotationPanel.jsx';
 import WarRoomAmbienceToggle from './WarRoomAmbienceToggle.jsx';
 import { formatLongMove } from '../notation.js';
 import { identifyOpening } from '../openings.js';
+import { chessFromFen, safeChessMove } from '../chessRules.js';
 import './GameSideColumn.css';
 import './WarRoomTabbedRail.css';
 
 const CAPTURE_PIECES = {
-  p: { label: 'Peón', white: '♙', black: '♟' },
-  n: { label: 'Caballo', white: '♘', black: '♞' },
-  b: { label: 'Alfil', white: '♗', black: '♝' },
-  r: { label: 'Torre', white: '♖', black: '♜' },
-  q: { label: 'Dama', white: '♕', black: '♛' },
+  p: { label: 'Peón', white: '♙', black: '♟', value: 1 },
+  n: { label: 'Caballo', white: '♘', black: '♞', value: 3 },
+  b: { label: 'Alfil', white: '♗', black: '♝', value: 3 },
+  r: { label: 'Torre', white: '♖', black: '♜', value: 5 },
+  q: { label: 'Dama', white: '♕', black: '♛', value: 9 },
 };
 
 function recentNotationPairs(history, limit = 1) {
@@ -57,80 +58,55 @@ function CompactNotationPreview({ history, difficulty }) {
   );
 }
 
-export function warRoomCaptureLedger(history = []) {
+export function warRoomCaptureLedger(history = [], initialFen = null, humanColor = 'w') {
   const ledger = { white: [], black: [], unknown: [] };
+  let chess = chessFromFen(initialFen || undefined);
+  const moves = Array.isArray(history) ? history : [];
 
-  history.forEach((move, index) => {
-    const piece = CAPTURE_PIECES[move?.captured];
-    if (!piece) return;
+  moves.forEach((move, index) => {
+    // Some backend/legacy histories contain only `captured: true`. Replay
+    // from the authoritative initial position to recover the actual piece and
+    // mover colour, including en passant. Never infer a piece from SAN alone.
+    let played = null;
+    if (chess) {
+      if (move?.from && move?.to) played = safeChessMove(chess, move);
+      else if (move?.san) {
+        try { played = chess.move(move.san); } catch { played = null; }
+      }
+      if (!played) chess = null;
+    }
 
+    const type = played ? played.captured : (typeof move?.captured === 'string' ? move.captured : null);
+    const piece = CAPTURE_PIECES[type];
+    if (!piece) {
+      if ((!played && move?.captured) || (played && played.captured && !piece)) {
+        ledger.unknown.push({ key: index });
+      }
+      return;
+    }
+
+    const color = played?.color || move?.color
+      || (move?.by === 'human' ? humanColor : move?.by === 'cpu' ? (humanColor === 'w' ? 'b' : 'w') : null);
     const entry = {
-      key: `${index}-${move?.san || move?.captured}`,
+      key: `${index}-${move?.san || type}`,
       label: piece.label,
+      value: piece.value,
       san: move?.san || '',
-      glyph: move?.color === 'w' ? piece.black : move?.color === 'b' ? piece.white : '×',
+      glyph: color === 'w' ? piece.black : color === 'b' ? piece.white : '×',
     };
-
-    if (move?.color === 'w') ledger.white.push(entry);
-    else if (move?.color === 'b') ledger.black.push(entry);
+    if (color === 'w') ledger.white.push(entry);
+    else if (color === 'b') ledger.black.push(entry);
     else ledger.unknown.push(entry);
   });
 
   return ledger;
 }
 
-function CaptureRow({ label, entries }) {
-  return (
-    <div className="game-warroom-capture-row">
-      <span>{label}</span>
-      <div className="game-warroom-capture-pieces">
-        {entries.length === 0 ? (
-          <small>—</small>
-        ) : entries.map((entry) => (
-          <span
-            key={entry.key}
-            className="game-warroom-capture-piece"
-            title={`${entry.label}${entry.san ? ` · ${entry.san}` : ''}`}
-          >
-            {entry.glyph}
-          </span>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function WarRoomCaptures({ history }) {
-  const ledger = warRoomCaptureLedger(history);
-  const captureCount = ledger.white.length + ledger.black.length + ledger.unknown.length;
-
-  return (
-    <div className="game-warroom-captures" aria-label="Capturas de la partida">
-      {captureCount === 0 ? (
-        <p>Sin capturas todavía.</p>
-      ) : (
-        <>
-          <CaptureRow label="Blancas" entries={ledger.white} />
-          <CaptureRow label="Negras" entries={ledger.black} />
-          {ledger.unknown.length > 0 && (
-            <p className="game-warroom-capture-warning">
-              {ledger.unknown.length} {ledger.unknown.length === 1 ? 'captura' : 'capturas'} sin bando fiable en el historial.
-            </p>
-          )}
-        </>
-      )}
-    </div>
-  );
-}
-
 function WarRoomTabbedRail({ game, side }) {
   const [activeTab, setActiveTab] = useState('matthias');
-  const ledger = warRoomCaptureLedger(game.history);
-  const captureCount = ledger.white.length + ledger.black.length + ledger.unknown.length;
   const tabs = [
     { id: 'matthias', label: 'Matthias' },
     { id: 'notebook', label: 'Cuaderno', count: game.history.length },
-    { id: 'captures', label: 'Capturas', count: captureCount },
   ];
   const active = tabs.find((tab) => tab.id === activeTab) || tabs[0];
 
@@ -169,7 +145,6 @@ function WarRoomTabbedRail({ game, side }) {
         {activeTab === 'notebook' && (
           <CompactNotationPreview history={game.history} difficulty={game.difficulty} />
         )}
-        {activeTab === 'captures' && <WarRoomCaptures history={game.history} />}
       </div>
     </section>
   );

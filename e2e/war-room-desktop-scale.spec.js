@@ -36,6 +36,20 @@ test('War Room · desktop usa inmersión única con tablero protagonista y HUD f
   await expect(exit).toBeVisible();
   await expect(account).toBeVisible();
 
+  // Secondary captured-piece information must never steal board area. The
+  // drawer is present and closed by default, and supports an actual click.
+  const captures = page.getByRole('button', { name: 'Mostrar capturas', exact: true });
+  await expect(captures).toBeVisible();
+  await expect(captures).toHaveAttribute('aria-expanded', 'false');
+  await captures.click();
+  const capturedPanel = page.getByRole('region', { name: 'Capturas de la partida' });
+  await expect(capturedPanel).toBeVisible();
+  await expect(capturedPanel).toContainText('Tus capturas');
+  await expect(capturedPanel).toContainText('Capturas de Matthias');
+  await page.getByRole('button', { name: 'Ocultar capturas', exact: true }).click();
+  await expect(captures).toHaveAttribute('aria-expanded', 'false');
+  await expect(capturedPanel).toHaveCount(0);
+
   await expect(page.locator('.game-side-column.game-side-column-3d')).toBeHidden();
   await expect(page.locator('.game-board-stack-3d > .game-player-rail.is-human')).toBeHidden();
   await expect(page.locator('.game-board-stack-3d > .game-command-deck')).toBeHidden();
