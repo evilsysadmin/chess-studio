@@ -537,6 +537,29 @@ export function warRoomShadowStateForScene(renderer, scene) {
   return fresh;
 }
 
+/**
+ * CPU-verifiable depth-pass request. Three consumes needsUpdate when drawing;
+ * this helper only requests the pass on budget expiry or the first frame of a
+ * different room (whose state has just been reset).
+ */
+export function requestWarRoomShadowRefresh(shadowMap, state, {
+  now,
+  coarsePointer = false,
+  activeMotion = false,
+} = {}) {
+  if (!shadowMap || !state) return false;
+  if (!shouldRefreshShadowMap({
+    now,
+    lastShadowAt: state.lastShadowAt,
+    coarsePointer,
+    activeMotion,
+    factor: warRoomShadowFactorForGovernor(state.governor),
+  })) return false;
+  shadowMap.needsUpdate = true;
+  state.lastShadowAt = now;
+  return true;
+}
+
 export function renderWarRoomWithScopedShadowUpdates(renderer, originalRender, scene, camera) {
   const shadowMap = renderer?.shadowMap;
   if (!shadowMap) return originalRender.call(renderer, scene, camera);
@@ -636,16 +659,7 @@ function installWarRoomRenderDiscipline() {
     // The scene can keep its premium ambient heartbeat without paying the full
     // directional-shadow pass on every idle paint. Contiguous motion restores the
     // tighter cadence so piece movement still gets responsive real shadows.
-    if (shouldRefreshShadowMap({
-      now,
-      lastShadowAt: state.lastShadowAt,
-      coarsePointer,
-      activeMotion,
-      factor: warRoomShadowFactorForGovernor(state.governor),
-    })) {
-      this.shadowMap.needsUpdate = true;
-      state.lastShadowAt = now;
-    }
+    requestWarRoomShadowRefresh(this.shadowMap, state, { now, coarsePointer, activeMotion });
 
     return renderWarRoomWithScopedShadowUpdates(this, originalRender, scene, camera);
   };

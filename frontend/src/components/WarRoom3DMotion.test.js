@@ -9,6 +9,7 @@ import {
   nextRuntimeRenderScale,
   reactiveLightProfile,
   renderWarRoomWithScopedShadowUpdates,
+  requestWarRoomShadowRefresh,
   shadowRefreshInterval,
   shouldRefreshMaterialGrade,
   shouldRefreshShadowMap,
@@ -63,6 +64,28 @@ describe('WarRoom3DMotion', () => {
     expect(shouldRefreshShadowMap({ now: 305, lastShadowAt: ready.lastShadowAt })).toBe(true);
     ready.lastShadowAt = 305;
     expect(warRoomShadowStateForScene(renderer, scene)).toBe(ready);
+  });
+
+  it('requests depth passes for each V3/V4 handoff while keeping stable paints throttled (CPU-only)', () => {
+    const renderer = { shadowMap: { needsUpdate: false } };
+    const scene = { userData: { warRoomRenderedVariant: 'v3' } };
+    const frame = (variant, now) => {
+      scene.userData.warRoomRenderedVariant = variant;
+      renderer.shadowMap.needsUpdate = false; // Three consumes the previous request.
+      const state = warRoomShadowStateForScene(renderer, scene);
+      const requested = requestWarRoomShadowRefresh(renderer.shadowMap, state, { now });
+      expect(renderer.shadowMap.needsUpdate).toBe(requested);
+      return requested;
+    };
+
+    expect(frame('v3', 100)).toBe(true);
+    expect(frame('v3', 101)).toBe(false);
+    expect(frame('v4-loading', 102)).toBe(true);
+    expect(frame('v4', 103)).toBe(true);
+    expect(frame('v4', 104)).toBe(false);
+    expect(frame('v3', 105)).toBe(true);
+    expect(frame('v3', 106)).toBe(false);
+    expect(requestWarRoomShadowRefresh(null, warRoomShadowStateForScene(renderer, scene), { now: 107 })).toBe(false);
   });
 
   it('isolates shadow timestamps across scenes and renderers without resetting stable paints', () => {
