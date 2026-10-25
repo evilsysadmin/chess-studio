@@ -1,3 +1,4 @@
+import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
 import {
   adaptiveRenderScale,
@@ -5,10 +6,12 @@ import {
   applyWarRoomMaterialGrade,
   deriveMoveKinetics,
   inferCapturedPiece,
+  installWarRoomRenderDiscipline,
   materialGradeRefreshInterval,
   nextRuntimeRenderScale,
   reactiveLightProfile,
   renderWarRoomWithScopedShadowUpdates,
+  requestWarRoomShadowRefresh,
   shadowRefreshInterval,
   shouldRefreshMaterialGrade,
   shouldRefreshShadowMap,
@@ -17,6 +20,7 @@ import {
   warRoomMaterialIblProfile,
   warRoomShadowFactorForGovernor,
   warRoomInteractionCoarsePointer,
+  warRoomShadowStateForScene,
 } from './WarRoom3DMotion.js';
 
 function fakeColor(hex) {
@@ -31,6 +35,121 @@ function fakeColor(hex) {
 }
 
 describe('WarRoom3DMotion', () => {
+  it('installs on the actual renderer instance and refreshes shadows across V3/V4 paints', () => {
+    const draws = [];
+    const renderer = {
+      shadowMap: { autoUpdate: true, needsUpdate: false },
+      domElement: { dataset: {} },
+      getPixelRatio: () => 1,
+      render(scene, camera) {
+        draws.push({
+          scene, camera,
+          autoUpdate: this.shadowMap.autoUpdate,
+          needsUpdate: this.shadowMap.needsUpdate,
+        });
+        // Three clears this flag after a real shadow-depth pass.
+        this.shadowMap.needsUpdate = false;
+        return 'painted';
+      },
+    };
+    const original = renderer.render;
+    expect(installWarRoomRenderDiscipline(renderer)).toBe(true);
+    expect(renderer.render).not.toBe(original);
+    const installed = renderer.render;
+    expect(installWarRoomRenderDiscipline(renderer)).toBe(false);
+    expect(renderer.render).toBe(installed);
+
+    const scene = new THREE.Scene();
+    scene.userData.warRoomRenderBudget = { pixelRatio: 1 };
+    scene.userData.warRoomRenderedVariant = 'v3';
+    scene.userData.warRoomAdaptiveQuality = false;
+    const camera = {};
+    expect(renderer.render(scene, camera)).toBe('painted');
+    expect(draws.at(-1)).toMatchObject({ scene, camera, autoUpdate: false, needsUpdate: true });
+    expect(renderer.shadowMap.autoUpdate).toBe(true);
+
+    renderer.render(scene, camera);
+    expect(draws.at(-1).needsUpdate).toBe(false);
+    scene.userData.warRoomRenderedVariant = 'v4';
+    renderer.render(scene, camera);
+    expect(draws.at(-1).needsUpdate).toBe(true);
+    expect(renderer.shadowMap.autoUpdate).toBe(true);
+
+    // Non-War-Room draws on the same renderer keep their original policy.
+    const other = new THREE.Scene();
+    renderer.render(other, camera);
+    expect(draws.at(-1)).toMatchObject({ scene: other, autoUpdate: true, needsUpdate: false });
+  });
+
+  it('resets shadow cadence and adaptive governor when the same canvas switches War Rooms', () => {
+    const renderer = {};
+    const scene = { userData: { warRoomRenderedVariant: 'v3' } };
+    const v3 = warRoomShadowStateForScene(renderer, scene);
+    expect(v3.lastShadowAt).toBe(Number.NEGATIVE_INFINITY);
+    expect(shouldRefreshShadowMap({ now: 300, lastShadowAt: v3.lastShadowAt })).toBe(true);
+    v3.lastShadowAt = 290;
+    v3.lastRenderAt = 299;
+    v3.slowFrameCount = 4;
+    v3.governor = { tier: 'lite' };
+    expect(warRoomShadowStateForScene(renderer, scene)).toBe(v3);
+    expect(shouldRefreshShadowMap({ now: 300, lastShadowAt: v3.lastShadowAt })).toBe(false);
+
+    // A new GLB on the same THREE.Scene/renderer must warm up shadows once,
+    // not inherit a stale 360 ms V3 depth-map interval.
+    scene.userData.warRoomRenderedVariant = 'v4-loading';
+    const loading = warRoomShadowStateForScene(renderer, scene);
+    expect(loading).not.toBe(v3);
+    expect(loading.lastShadowAt).toBe(Number.NEGATIVE_INFINITY);
+    expect(loading.lastRenderAt).toBeNaN();
+    expect(loading.slowFrameCount).toBe(0);
+    expect(loading.governor).toBeUndefined();
+    expect(shouldRefreshShadowMap({ now: 300, lastShadowAt: loading.lastShadowAt })).toBe(true);
+    loading.lastShadowAt = 300;
+
+    scene.userData.warRoomRenderedVariant = 'v4';
+    const ready = warRoomShadowStateForScene(renderer, scene);
+    expect(ready).not.toBe(loading);
+    expect(shouldRefreshShadowMap({ now: 305, lastShadowAt: ready.lastShadowAt })).toBe(true);
+    ready.lastShadowAt = 305;
+    expect(warRoomShadowStateForScene(renderer, scene)).toBe(ready);
+  });
+
+  it('requests depth passes for each V3/V4 handoff while keeping stable paints throttled (CPU-only)', () => {
+    const renderer = { shadowMap: { needsUpdate: false } };
+    const scene = { userData: { warRoomRenderedVariant: 'v3' } };
+    const frame = (variant, now) => {
+      scene.userData.warRoomRenderedVariant = variant;
+      renderer.shadowMap.needsUpdate = false; // Three consumes the previous request.
+      const state = warRoomShadowStateForScene(renderer, scene);
+      const requested = requestWarRoomShadowRefresh(renderer.shadowMap, state, { now });
+      expect(renderer.shadowMap.needsUpdate).toBe(requested);
+      return requested;
+    };
+
+    expect(frame('v3', 100)).toBe(true);
+    expect(frame('v3', 101)).toBe(false);
+    expect(frame('v4-loading', 102)).toBe(true);
+    expect(frame('v4', 103)).toBe(true);
+    expect(frame('v4', 104)).toBe(false);
+    expect(frame('v3', 105)).toBe(true);
+    expect(frame('v3', 106)).toBe(false);
+    expect(requestWarRoomShadowRefresh(null, warRoomShadowStateForScene(renderer, scene), { now: 107 })).toBe(false);
+  });
+
+  it('isolates shadow timestamps across scenes and renderers without resetting stable paints', () => {
+    const renderer = {};
+    const a = { userData: { warRoomRenderedVariant: 'v3' } };
+    const b = { userData: { warRoomRenderedVariant: 'v3' } };
+    const first = warRoomShadowStateForScene(renderer, a);
+    first.lastShadowAt = 100;
+    expect(warRoomShadowStateForScene(renderer, a)).toBe(first);
+    expect(warRoomShadowStateForScene({}, a)).not.toBe(first);
+    const second = warRoomShadowStateForScene(renderer, b);
+    expect(second).not.toBe(first);
+    expect(second.lastShadowAt).toBe(Number.NEGATIVE_INFINITY);
+    expect(warRoomShadowStateForScene(renderer, b)).toBe(second);
+  });
+
   it('scopes manual shadow updates to a War Room draw and restores the prior renderer policy', () => {
     const scene = { name: 'war-room-v4' };
     const camera = { name: 'fixed-camera' };

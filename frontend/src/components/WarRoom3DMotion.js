@@ -515,6 +515,51 @@ export function writeWarRoomCanvasTelemetry(canvas, key, value) {
  * Three's needsUpdate handling; only the temporary autoUpdate override belongs
  * to this wrapper, even when rendering throws.
  */
+/**
+ * The canvas and Three.Scene may survive a Blender room switch. The previous
+ * room's throttled shadow timestamp must not suppress the new room's first
+ * depth pass; likewise its frame cadence/governor must not penalize entry.
+ * Reset only on a scene identity or rendered-variant transition, never on an
+ * ordinary idle/animation paint of the same room.
+ */
+export function warRoomShadowStateForScene(renderer, scene) {
+  const variant = scene?.userData?.warRoomRenderedVariant ?? 'classic';
+  const existing = shadowRefreshState.get(renderer);
+  if (existing?.scene === scene && existing?.variant === variant) return existing;
+  const fresh = {
+    scene,
+    variant,
+    lastShadowAt: Number.NEGATIVE_INFINITY,
+    lastRenderAt: Number.NaN,
+    slowFrameCount: 0,
+  };
+  shadowRefreshState.set(renderer, fresh);
+  return fresh;
+}
+
+/**
+ * CPU-verifiable depth-pass request. Three consumes needsUpdate when drawing;
+ * this helper only requests the pass on budget expiry or the first frame of a
+ * different room (whose state has just been reset).
+ */
+export function requestWarRoomShadowRefresh(shadowMap, state, {
+  now,
+  coarsePointer = false,
+  activeMotion = false,
+} = {}) {
+  if (!shadowMap || !state) return false;
+  if (!shouldRefreshShadowMap({
+    now,
+    lastShadowAt: state.lastShadowAt,
+    coarsePointer,
+    activeMotion,
+    factor: warRoomShadowFactorForGovernor(state.governor),
+  })) return false;
+  shadowMap.needsUpdate = true;
+  state.lastShadowAt = now;
+  return true;
+}
+
 export function renderWarRoomWithScopedShadowUpdates(renderer, originalRender, scene, camera) {
   const shadowMap = renderer?.shadowMap;
   if (!shadowMap) return originalRender.call(renderer, scene, camera);
@@ -527,19 +572,20 @@ export function renderWarRoomWithScopedShadowUpdates(renderer, originalRender, s
   }
 }
 
-function installWarRoomRenderDiscipline() {
-  const prototype = THREE.WebGLRenderer?.prototype;
-  if (!prototype || prototype[WAR_ROOM_RENDER_DISCIPLINE]) return;
-
-  const originalRender = prototype.render;
-  Object.defineProperty(prototype, WAR_ROOM_RENDER_DISCIPLINE, {
+export function installWarRoomRenderDiscipline(renderer) {
+  // Three r186 defines render on each WebGLRenderer instance. Patching the
+  // prototype is inert, so the former global hook never budgeted real frames.
+  if (!renderer || typeof renderer.render !== 'function'
+    || Object.prototype.hasOwnProperty.call(renderer, WAR_ROOM_RENDER_DISCIPLINE)) return false;
+  const originalRender = renderer.render;
+  Object.defineProperty(renderer, WAR_ROOM_RENDER_DISCIPLINE, {
     value: true,
     configurable: false,
     enumerable: false,
     writable: false,
   });
 
-  prototype.render = function renderWithWarRoomShadowBudget(scene, camera) {
+  renderer.render = function renderWithWarRoomShadowBudget(scene, camera) {
     const budget = scene?.userData?.warRoomRenderBudget;
     if (!budget || !this.shadowMap) return originalRender.call(this, scene, camera);
 
@@ -574,12 +620,7 @@ function installWarRoomRenderDiscipline() {
     const now = typeof performance !== 'undefined' && typeof performance.now === 'function'
       ? performance.now()
       : Date.now();
-    const state = shadowRefreshState.get(this) || {
-      lastShadowAt: Number.NEGATIVE_INFINITY,
-      lastRenderAt: Number.NaN,
-      slowFrameCount: 0,
-    };
-    shadowRefreshState.set(this, state);
+    const state = warRoomShadowStateForScene(this, scene);
 
     const frameMs = Number.isFinite(state.lastRenderAt) ? now - state.lastRenderAt : 16;
     const activeMotion = Number.isFinite(state.lastRenderAt) && frameMs < 50;
@@ -619,22 +660,19 @@ function installWarRoomRenderDiscipline() {
     // The scene can keep its premium ambient heartbeat without paying the full
     // directional-shadow pass on every idle paint. Contiguous motion restores the
     // tighter cadence so piece movement still gets responsive real shadows.
-    if (shouldRefreshShadowMap({
-      now,
-      lastShadowAt: state.lastShadowAt,
-      coarsePointer,
-      activeMotion,
-      factor: warRoomShadowFactorForGovernor(state.governor),
-    })) {
-      this.shadowMap.needsUpdate = true;
-      state.lastShadowAt = now;
-    }
+    requestWarRoomShadowRefresh(this.shadowMap, state, { now, coarsePointer, activeMotion });
 
     return renderWarRoomWithScopedShadowUpdates(this, originalRender, scene, camera);
   };
+  return true;
 }
 
-installWarRoomRenderDiscipline();
+/** Keep renderer construction and its shadow discipline out of Board3DCore. */
+export function createWarRoomRenderer(parameters) {
+  const renderer = new THREE.WebGLRenderer(parameters);
+  installWarRoomRenderDiscipline(renderer);
+  return renderer;
+}
 
 // The v4 golden is a warm, luminous observatory. This is the lighting path the
 // runtime actually applies (initial scene, move animation and check/game-over

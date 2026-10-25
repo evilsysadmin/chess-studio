@@ -6,7 +6,7 @@ import { applyWarRoomPixelRatioIfChanged, installPremiumEnvironment, makePremium
 import { loadBoardTheme } from '../career.js';
 import { loadSelectedSkin } from '../tournamentRewards.js';
 import { USER_PREFERENCES_CHANGED_EVENT, getEffectiveReducedMotion } from '../userPreferences.js';
-import { adaptiveRenderScale, clamp01, deriveMoveKinetics, easeOutCubic, inferCapturedPiece, reactiveLightProfile, smoothstep } from './WarRoom3DMotion.js';
+import { adaptiveRenderScale, clamp01, deriveMoveKinetics, easeOutCubic, inferCapturedPiece, createWarRoomRenderer, reactiveLightProfile, smoothstep } from './WarRoom3DMotion.js';
 import {
   compactWebGLRendererLabel,
   isSoftwareWebGLRenderer,
@@ -136,7 +136,7 @@ function Board3DCanvas({
     let rendererError = null;
     for (const attempt of rendererAttempts) {
       try {
-        renderer = new THREE.WebGLRenderer(attempt.parameters);
+        renderer = createWarRoomRenderer(attempt.parameters);
         rendererAttempt = attempt;
         break;
       } catch (error) {
