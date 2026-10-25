@@ -144,6 +144,9 @@ test('PvP handoff · desktop seals the duel before authoritative readiness', asy
 test.use({ hasTouch: true, isMobile: true });
 
 test('PvP handoff · Android landscape opens the gate on authoritative start', async ({ page }) => {
+  // CI defaults to a 45s test budget; this visual producer deliberately
+  // allows a 60s phase assertion plus WebGL setup and screenshot time.
+  test.setTimeout(120_000);
   await page.setViewportSize({ width: 844, height: 390 });
   // The Android capture must observe the same actual server-backed transition
   // as desktop. Immediate mock replies can race the initial React handoff
