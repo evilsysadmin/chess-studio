@@ -118,6 +118,7 @@ async function collectRenderMetadata(page, host, label) {
         overlap:headerOverlap,
       } : null,
       renderer:node.dataset.chesscomRenderer || node.closest('[data-chesscom-renderer]')?.dataset.chesscomRenderer || null,
+      babylonVersion:window.BABYLON?.Engine?.Version || null,
       backend:node.dataset.chesscomBackend || null,
       renderScale:node.dataset.chesscomRenderScale || null,
       sceneTier:node.dataset.chesscomSceneTier || null,
@@ -134,6 +135,11 @@ async function collectRenderMetadata(page, host, label) {
 
 function expectHealthyCapture(capture) {
   expect(capture.svenSprite).toBe('ready');
+  // A green build is not proof that the updated Babylon engine booted in WebGL.
+  // Keep the exact runtime version in the desktop/mobile PNG metadata as well.
+  const [major, minor] = String(capture.babylonVersion || '').split('.').map(Number);
+  expect(Number.isInteger(major) && (major > 9 || (major === 9 && minor >= 32)),
+    `CHESSCOM Babylon runtime must be >=9.32: ${capture.babylonVersion}`).toBe(true);
   expect(capture.svenSource).toBe('v45');
   expect(capture.canvas).not.toBeNull();
   expect(capture.canvas?.width).toBeGreaterThan(0);
