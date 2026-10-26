@@ -43,6 +43,31 @@ class R2PublicProbeContract(unittest.TestCase):
         self.assertEqual(result["cache"], "unsafe-ttl")
         self.assertEqual(p.inspect([GOOD], lambda _: (404, {}))["asset"], "http-404")
 
+    def test_inventory_reports_counts_only_and_flags_sensitive_assets(self):
+        rows = [
+            {"key": "sprites/ash-goblin.webp", "size": 100},
+            {"key": "music/first-verse.mp3", "size": 200},
+            {"key": "models/source/secret-master.blend", "size": 300},
+        ]
+        summary = p.summarize_objects(rows)
+        self.assertEqual(summary["objects"], "3")
+        self.assertEqual(summary["bytes"], "600")
+        self.assertEqual(summary["prefix_counts"], "models:1,music:1,sprites:1")
+        self.assertEqual(summary["needs_review"], "1")
+        self.assertEqual(summary["public_readiness"], "manual-review-required")
+        self.assertNotIn("ash-goblin.webp", str(summary))
+        self.assertNotIn("secret-master.blend", str(summary))
+
+    def test_inventory_never_assumes_media_only_means_public_safe(self):
+        summary = p.summarize_objects([{"key": "sprites/ash-goblin.webp", "size": 123}])
+        self.assertEqual(summary["needs_review"], "0")
+        self.assertEqual(summary["public_readiness"], "manual-review-required")
+        for invalid in ([{"key": "", "size": 0}], [{"key": "sprites/a.webp", "size": -1}],
+                        [{"key": "/private/a.webp", "size": 1}], [{"size": 3}]):
+            with self.subTest(invalid=invalid):
+                with self.assertRaises(ValueError):
+                    p.summarize_objects(invalid)
+
     def test_no_cloudflare_mutations(self):
         source = pathlib.Path(p.__file__).read_text()
         for forbidden in ('method="PUT"', 'method="POST"', 'method="DELETE"',
