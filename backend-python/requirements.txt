@@ -1,9 +1,9 @@
 # Keep FastAPI/Pydantic on the validated HTTP error contract until Go parity is migrated.
-fastapi==0.143.0
+fastapi==0.161.1
 uvicorn[standard]==0.54.0
 chess==1.11.2
 pymongo==4.19.0
-pydantic==2.14.0
+pydantic==2.14.1
 slowapi==0.1.10
 bcrypt==4.2.1
 argon2-cffi==25.1.0
