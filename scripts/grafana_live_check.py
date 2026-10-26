@@ -548,12 +548,12 @@ def run_checks(
         f"/api/datasources/proxy/uid/{urllib.parse.quote(logs_uid, safe='')}/loki/api/v1/query",
         {"query": oci_stdout_log_query, "time": str(now)},
     )
-    ok = _vector_positive(payload)
+    stdout_ok = _vector_positive(payload)
     _report(
         "oci_backend_stdout_logs",
-        ok,
+        stdout_ok,
         "structured backend stdout reached Loki"
-        if ok
+        if stdout_ok
         else (
             "direct OTLP logs work but backend stdout capture is missing"
             if direct_probe_ok
@@ -574,9 +574,7 @@ def run_checks(
     _report(
         "oci_backend_stdout_country",
         country_ok,
-        "staging stdout carries client_country on http_request"
-        if country_ok
-        else "staging stdout has http_request logs but no client_country; inspect Cloudflare headers/trust boundary",
+        _stdout_country_detail(stdout_ok, country_ok),
     )
 
     production_oci_stdout_log_query = (
@@ -640,7 +638,24 @@ def run_checks(
     return passed
 
 
+def _stdout_country_detail(stdout_ok: bool, country_ok: bool) -> str:
+    if country_ok:
+        return "staging stdout carries client_country on http_request"
+    if not stdout_ok:
+        return "staging stdout capture is missing; cannot assess client_country"
+    return "staging stdout has http_request logs but no client_country; inspect Cloudflare headers/trust boundary"
+
+
 def self_test() -> int:
+    assert _stdout_country_detail(False, False) == (
+        "staging stdout capture is missing; cannot assess client_country"
+    )
+    assert _stdout_country_detail(True, False) == (
+        "staging stdout has http_request logs but no client_country; inspect Cloudflare headers/trust boundary"
+    )
+    assert _stdout_country_detail(True, True) == (
+        "staging stdout carries client_country on http_request"
+    )
     assert _lookback_seconds("15m") == 900
     assert _lookback_seconds("3h") == 10800
     assert _vector_positive({"data": {"result": [{"value": [1, "1"]}]}})
