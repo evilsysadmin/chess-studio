@@ -32,6 +32,7 @@ INVENTORY = {
     'cloudflare-prometheus-exporter.yml': 'observability',
     'chronicles-odo-r2-publish.yml': 'infra-assets',
     'chronicles-r2-public-probe.yml': 'infra-readonly-diagnostics',
+    'chronicles-r2-publish-goblin.yml': 'infra-assets-promotion',
     'coverage.yml': 'quality-scheduled',
     'e2e-full.yml': 'quality-scheduled',
     'grafana-dashboards.yml': 'observability',
