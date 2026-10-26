@@ -28,6 +28,7 @@ INVENTORY = {
     'chess-football-godot-poc.yml': 'game-runtime-experiment',
     'chesscom-sven-sprite-forge.yml': 'art-quality',
     'chesscom-oss-character-forge.yml': 'art-generation-preview',
+    'chesscom-babylon-baseline.yml': 'visual-compatibility-baseline',
     'cicd.yml': 'quality-required',
     'cloudflare-prometheus-exporter.yml': 'observability',
     'chronicles-odo-r2-publish.yml': 'infra-assets',
