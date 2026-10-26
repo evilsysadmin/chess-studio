@@ -1,0 +1,39 @@
+name: CHESSCOM · Babylon baseline
+on:
+  pull_request:
+    paths:
+      - frontend/package.json
+      - frontend/package-lock.json
+      - e2e/chesscom-visual-artifact.spec.js
+permissions: {contents: read}
+jobs:
+  baseline:
+    if: contains(github.event.pull_request.labels.*.name, 'track-chesscom') && contains(github.event.pull_request.title, 'babylonjs')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+        with: {ref: ${{ github.event.pull_request.base.sha }}}
+      - uses: ./.github/actions/setup-browser-e2e
+        env: {VITE_WAR_ROOM_VARIANTS_ENABLE: 'true', VITE_APP_VISUAL_CAPTURE: 'true'}
+        with: {browser-scope: chromium, build-frontend: 'true'}
+      - name: Capture exact main baseline
+        working-directory: e2e
+        env: {APP_VISUAL_ARTIFACT: '1'}
+        run: ./node_modules/.bin/playwright test chesscom-visual-artifact.spec.js --workers=1 --retries=0
+      - name: Stamp base SHA and pinned engine
+        env: {BASE_SHA: ${{ github.event.pull_request.base.sha }}}
+        run: |
+          node <<'NODE'
+          const fs = require('fs'), pkg = require('./frontend/package.json');
+          fs.writeFileSync('.artifacts/chesscom-visual/baseline-provenance.json',
+            JSON.stringify({baseSha:process.env.BASE_SHA,babylon:pkg.dependencies.babylonjs,
+              viewports:['1600x900','390x844']},null,2)+'\n');
+          NODE
+      - uses: actions/upload-artifact@v7
+        with:
+          name: chesscom-baseline-${{ github.event.pull_request.number }}
+          path: .artifacts/chesscom-visual/
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
