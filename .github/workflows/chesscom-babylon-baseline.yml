@@ -13,7 +13,7 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
-        with: {ref: ${{ github.event.pull_request.base.sha }}}
+        with: {ref: '${{ github.event.pull_request.base.sha }}'}
       - uses: ./.github/actions/setup-browser-e2e
         env: {VITE_WAR_ROOM_VARIANTS_ENABLE: 'true', VITE_APP_VISUAL_CAPTURE: 'true'}
         with: {browser-scope: chromium, build-frontend: 'true'}
