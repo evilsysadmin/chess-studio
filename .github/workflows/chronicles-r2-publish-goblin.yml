@@ -1,0 +1,43 @@
+name: R2 · Chronicles guarded goblin-domain publication
+on:
+  pull_request:
+    paths:
+      - .github/workflows/chronicles-r2-publish-goblin.yml
+      - scripts/chronicles_r2_publish_goblin_domain.py
+      - tests/test_chronicles_r2_publish_goblin_domain.py
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/chronicles-r2-publish-goblin.yml
+      - scripts/chronicles_r2_publish_goblin_domain.py
+      - tests/test_chronicles_r2_publish_goblin_domain.py
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: chronicles-r2-guarded-publish
+  cancel-in-progress: false
+jobs:
+  contracts:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Reject unapproved public exposure (offline checks)
+        run: python3 -S -m unittest discover -s tests -p 'test_chronicles_r2_publish_goblin_domain.py' -v
+  guarded-publication:
+    needs: contracts
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && github.repository == 'evilsysadmin/chess-studio'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Verify exact approved R2 inventory and bytes before public domain attachment
+        run: python3 -S scripts/chronicles_r2_publish_goblin_domain.py
