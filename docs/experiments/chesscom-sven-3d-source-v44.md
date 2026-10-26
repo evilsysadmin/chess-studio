@@ -243,3 +243,20 @@ capturas desktop y móvil del mismo SHA antes de cualquier promoción.
 El camino de producción será: modelado 3D externo → master propio
 auditable → GLB + manifiesto con hash → flag A/B → PNG runtime &
 comparativa visual → aprobación → promoción reversible por actor.
+
+## V51 — importador glTF local y bajo demanda
+
+El A/B `?chesscomSven=authored` incluye ahora el módulo local
+`babylonjs-loaders@9.29.0` (mismo release que `babylonjs`).
+Se carga **sólo al activar el experimento**, y se comprueba que
+`SceneLoader.IsPluginForExtensionAvailable('.glb')` queda registrado
+antes de descargar cualquier manifest o GLB.
+
+Este corte soluciona la ausencia del importador en el bundle original sin
+usar CDN remoto y conserva el fallback V4 si falla el módulo, el hash o
+la construcción del actor. **No crea un modelo artístico ni promociona Sven**:
+hasta recibir un GLB original revisado con V41/V48 no hay ninguna
+apariencia nueva que aceptar. Tras disponer del modelo siguen siendo
+obligatorios el gate estructural V40/V47, las ocho vistas y el smoke real
+desktop/móvil. Los tests de carga del módulo no acreditan animaciones
+reales con contenido binario.
