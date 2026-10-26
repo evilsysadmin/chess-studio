@@ -5,6 +5,7 @@ import path from 'node:path';
 import process from 'node:process';
 import { gzipSync } from 'node:zlib';
 import { fileURLToPath } from 'node:url';
+import { summarizeInitialJsAssets } from './initial_js_asset_breakdown.mjs';
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(SCRIPT_DIR, '..');
@@ -109,7 +110,10 @@ const initialJsPreloadAssets = [...indexHtml.matchAll(/<link\b[^>]*\brel=["']mod
   .map((match) => match[1]);
 const initialJsAssets = [...new Set([...initialJsEntryAssets, ...initialJsPreloadAssets])];
 const initialCssGzipBytes = gzipDistAssets(initialCssAssets);
-const initialJsGzipBytes = gzipDistAssets(initialJsAssets);
+const { totalBytes: initialJsGzipBytes, rows: initialJsAssetRows } = summarizeInitialJsAssets(
+  initialJsAssets,
+  (asset) => gzipSync(fs.readFileSync(path.join(FRONTEND_DIST, normalizeDistAsset(asset)))).byteLength,
+);
 const report = {
   generatedAt: new Date().toISOString(),
   sourceFileCount: sourceRows.length,
@@ -190,6 +194,10 @@ if (initialJsGzipBytes > INITIAL_JS_GZIP_BUDGET_BYTES &&
 }
 
 if (initialJsGzipBytes > INITIAL_JS_GZIP_BUDGET_BYTES + INITIAL_JS_GZIP_ROUNDING_EPSILON_BYTES) {
+  console.error('Initial JS gzip breakdown (largest first):');
+  for (const row of initialJsAssetRows) {
+    console.error(`- ${row.path}: ${kib(row.bytes)} KiB gzip`);
+  }
   throw new Error(`Initial JS is ${kib(initialJsGzipBytes)} KiB gzip; hard budget is ${INITIAL_JS_GZIP_BUDGET_BYTES / 1024} KiB`);
 }
 
