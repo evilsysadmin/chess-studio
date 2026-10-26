@@ -1,0 +1,42 @@
+name: R2 · Chronicles immutable goblin asset
+on:
+  pull_request:
+    paths:
+      - .github/workflows/chronicles-r2-immutable-goblin.yml
+      - scripts/chronicles_r2_publish_immutable_goblin.py
+      - tests/test_chronicles_r2_publish_immutable_goblin.py
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/chronicles-r2-immutable-goblin.yml
+      - scripts/chronicles_r2_publish_immutable_goblin.py
+      - tests/test_chronicles_r2_publish_immutable_goblin.py
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: chronicles-r2-immutable-goblin
+  cancel-in-progress: false
+jobs:
+  contracts:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - run: python3 -S -m unittest discover -s tests -p 'test_chronicles_r2_publish_immutable_goblin.py' -v
+  guarded-publish:
+    needs: contracts
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && github.repository == 'evilsysadmin/chess-studio'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Publish only immutable reviewed goblin and verify bytes plus HTTP metadata
+        run: python3 -S scripts/chronicles_r2_publish_immutable_goblin.py
