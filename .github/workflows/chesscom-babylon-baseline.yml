@@ -1,6 +1,7 @@
 name: CHESSCOM · Babylon baseline
 on:
   pull_request:
+    types: [opened, synchronize, reopened, labeled]
     paths:
       - frontend/package.json
       - frontend/package-lock.json
