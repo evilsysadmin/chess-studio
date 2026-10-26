@@ -1,6 +1,6 @@
 import { difficultyLabel } from './difficulty.js';
 import { loadGameActivity } from './gameActivity.js';
-import { loadCleanGameRecords } from './cleanGames.js';
+import { loadCleanGameRecords } from './cleanGameRecords.js';
 import { PROVISIONAL_GAMES, cpuRatingForDifficulty } from './playerRating.js';
 import {
   difficultyForQuickMatchRating,

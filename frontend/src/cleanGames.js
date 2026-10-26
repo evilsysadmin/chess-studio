@@ -1,18 +1,13 @@
-import { STORAGE_LOCAL, readJsonStorage } from './safeStorage.js';
+import { CLEAN_GAMES_KEY, loadCleanGameRecords } from './cleanGameRecords.js';
+export { CLEAN_GAMES_KEY, loadCleanGameRecords } from './cleanGameRecords.js';
 import { setProfileStorageItem } from './profileKeys.js';
 import { buildPostGameIncidentEvidence } from './postGameIncidentEvidence.js';
 
-export const CLEAN_GAMES_KEY = 'chess-study-clean-games-v1';
 export const CLEAN_GAME_MIN_ANALYZED_MOVES = 8;
 export const CLEAN_GAME_INCIDENT_COVERAGE_VERSION = 1;
 export const CLEAN_GAME_POSITIVE_EVIDENCE_VERSION = 1;
 const MAX_RECORDS = 100;
 const MAJOR_MINOR = new Set(['q', 'r', 'b', 'n']);
-
-function safeRecords() {
-  const parsed = readJsonStorage(STORAGE_LOCAL, CLEAN_GAMES_KEY, { fallback: {} });
-  return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
-}
 
 function finiteRows(report) {
   return (Array.isArray(report?.moveReports) ? report.moveReports : []).filter((row) => Number.isFinite(row?.loss));
@@ -156,17 +151,13 @@ export function competitiveGameSignals(report, meta = {}) {
 export function recordCleanGameEvidence(gameId, report, meta = {}) {
   if (!gameId || !report) return null;
   const evidence = cleanGameEvidence(report, { ...meta, gameId });
-  const records = safeRecords();
+  const records = loadCleanGameRecords();
   records[String(gameId)] = evidence;
   const pruned = Object.fromEntries(Object.entries(records)
     .sort((a, b) => new Date(b[1]?.date || 0) - new Date(a[1]?.date || 0))
     .slice(0, MAX_RECORDS));
   setProfileStorageItem(CLEAN_GAMES_KEY, JSON.stringify(pruned));
   return evidence;
-}
-
-export function loadCleanGameRecords() {
-  return safeRecords();
 }
 
 export function cleanGameSummary(records = loadCleanGameRecords()) {
