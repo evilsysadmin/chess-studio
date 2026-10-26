@@ -27,6 +27,7 @@ INVENTORY = {
     'combat-cpu-benchmark.yml': 'performance-diagnostics',
     'chess-football-godot-poc.yml': 'game-runtime-experiment',
     'chesscom-sven-sprite-forge.yml': 'art-quality',
+    'chesscom-babylon-baseline.yml': 'visual-compatibility-baseline',
     'chesscom-oss-character-forge.yml': 'art-generation-preview',
     'cicd.yml': 'quality-required',
     'cloudflare-prometheus-exporter.yml': 'observability',
