@@ -21,19 +21,12 @@ jobs:
         working-directory: e2e
         env: {APP_VISUAL_ARTIFACT: '1'}
         run: ./node_modules/.bin/playwright test chesscom-visual-artifact.spec.js --workers=1 --retries=0
-      - name: Stamp base SHA and pinned engine
-        env: {BASE_SHA: ${{ github.event.pull_request.base.sha }}}
+      - name: Stamp provenance
         run: |
-          node <<'NODE'
-          const fs = require('fs'), pkg = require('./frontend/package.json');
-          fs.writeFileSync('.artifacts/chesscom-visual/baseline-provenance.json',
-            JSON.stringify({baseSha:process.env.BASE_SHA,babylon:pkg.dependencies.babylonjs,
-              viewports:['1600x900','390x844']},null,2)+'\n');
-          NODE
+          echo "${{ github.event.pull_request.base.sha }}" > .artifacts/chesscom-visual/base-sha.txt
+          node -p "require('./frontend/package.json').dependencies.babylonjs" > .artifacts/chesscom-visual/babylon-version.txt
       - uses: actions/upload-artifact@v7
         with:
           name: chesscom-baseline-${{ github.event.pull_request.number }}
           path: .artifacts/chesscom-visual/
           if-no-files-found: error
-          retention-days: 7
-          compression-level: 0
