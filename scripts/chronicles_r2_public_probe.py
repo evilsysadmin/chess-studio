@@ -77,14 +77,62 @@ def head_public(url: str) -> tuple[int, dict[str, str]]:
         return exc.code, {}
 
 
+
+# This classification is a conservative inventory aid, not permission to
+# expose the entire bucket. Never log individual object keys.
+PUBLIC_MEDIA_SUFFIXES = frozenset({
+    ".webp", ".png", ".jpg", ".jpeg", ".avif", ".glb", ".gltf",
+    ".mp3", ".ogg", ".wav", ".webm", ".svg", ".woff2",
+})
+PRIVATE_SEGMENTS = frozenset({
+    "backup", "backups", "private", "secret", "secrets", "draft",
+    "drafts", "source", "sources", "master", "masters",
+    "users", "customer", "customers", "export", "exports",
+})
+
+
+def summarize_objects(rows: Any) -> dict[str, str]:
+    if not isinstance(rows, list):
+        raise ValueError("R2 object inventory malformed")
+    prefixes: dict[str, int] = {}
+    suspicious = 0
+    total_bytes = 0
+    for item in rows:
+        if not isinstance(item, dict) or not isinstance(item.get("key"), str):
+            raise ValueError("R2 object row malformed")
+        key = item["key"]
+        size = item.get("size")
+        if not key or key.startswith("/") or not isinstance(size, int) or size < 0:
+            raise ValueError("Invalid R2 key or size")
+        parts = [part.lower() for part in key.split("/")]
+        prefix = parts[0] if len(parts) > 1 else "(root)"
+        prefixes[prefix] = prefixes.get(prefix, 0) + 1
+        suffix = "." + parts[-1].rsplit(".", 1)[-1] if "." in parts[-1] else ""
+        if any(part in PRIVATE_SEGMENTS for part in parts) or suffix not in PUBLIC_MEDIA_SUFFIXES:
+            suspicious += 1
+        total_bytes += size
+    return {
+        "objects": str(len(rows)),
+        "bytes": str(total_bytes),
+        "prefix_counts": ",".join(f"{name}:{count}" for name, count in sorted(prefixes.items())) or "none",
+        "needs_review": str(suspicious),
+        # A heuristic alone NEVER authorizes publishing the whole bucket.
+        "public_readiness": "manual-review-required",
+    }
+
+
 def main() -> int:
     from cloudflare_r2_assets import custom_domains, require_env
+    from r2_asset_gc import list_objects
     try:
         token, account = require_env()
+        inventory = summarize_objects(list_objects(token, account, BUCKET))
         result = inspect(custom_domains(token, account, BUCKET), head_public)
     except Exception as exc:
         print("CHRONICLES_R2_OPERATOR_PROBE_BLOCKED " + type(exc).__name__, file=sys.stderr)
         return 1
+    for key, value in sorted(inventory.items()):
+        print("CHRONICLES_R2_OPERATOR_INVENTORY " + key + " " + value)
     for key, value in sorted(result.items()):
         print("CHRONICLES_R2_OPERATOR_PROBE " + key + " " + value)
     return 0 if all(result.get(k) == "ok" for k in ("asset", "cors")) and result.get("cache") == "mutable-safe" else 1
