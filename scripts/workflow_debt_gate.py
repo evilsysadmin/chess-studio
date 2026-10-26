@@ -33,6 +33,7 @@ INVENTORY = {
     'chronicles-odo-r2-publish.yml': 'infra-assets',
     'chronicles-r2-public-probe.yml': 'infra-readonly-diagnostics',
     'chronicles-r2-publish-goblin.yml': 'infra-assets-promotion',
+    'chronicles-r2-immutable-goblin.yml': 'infra-assets-integrity',
     'coverage.yml': 'quality-scheduled',
     'e2e-full.yml': 'quality-scheduled',
     'grafana-dashboards.yml': 'observability',
