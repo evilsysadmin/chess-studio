@@ -1,25 +1,25 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
+import { cleanGameSummary, CLEAN_GAME_INCIDENT_COVERAGE_VERSION, CLEAN_GAME_POSITIVE_EVIDENCE_VERSION } from './cleanGameRecords.js';
+import { cleanGameSummary as publicCleanGameSummary } from './cleanGames.js';
 
-const storage = vi.hoisted(() => ({ readJsonStorage: vi.fn() }));
-vi.mock('./safeStorage.js', () => ({
-  STORAGE_LOCAL: 'local',
-  readJsonStorage: storage.readJsonStorage,
-}));
-
-import { CLEAN_GAMES_KEY, loadCleanGameRecords } from './cleanGameRecords.js';
-
-describe('lightweight clean-game records reader', () => {
-  beforeEach(() => storage.readJsonStorage.mockReset());
-
-  it('reads the same profile storage key without loading post-game analysis', () => {
-    const records = { game1: { clean: true } };
-    storage.readJsonStorage.mockReturnValue(records);
-    expect(loadCleanGameRecords()).toEqual(records);
-    expect(storage.readJsonStorage).toHaveBeenCalledWith('local', CLEAN_GAMES_KEY, { fallback: {} });
+describe('lightweight clean-game read model', () => {
+  it('preserves the existing summary and public cleanGames facade', () => {
+    const records = {
+      c: { version: 1, sufficientSample: true, clean: true, date: '2026-09-03' },
+      a: { version: 1, sufficientSample: true, clean: true, date: '2026-09-01' },
+      b: { version: 1, sufficientSample: true, clean: false, date: '2026-09-02' },
+      ignored: { version: 1, sufficientSample: false, clean: true, date: '2026-09-04' },
+    };
+    const summary = cleanGameSummary(records);
+    expect(summary).toMatchObject({ eligible: 3, clean: 2, rate: 67, currentStreak: 1, bestStreak: 1 });
+    expect(summary.latest.date).toBe('2026-09-03');
+    expect(summary.latestClean.date).toBe('2026-09-03');
+    expect(publicCleanGameSummary(records)).toEqual(summary);
+    expect(CLEAN_GAME_INCIDENT_COVERAGE_VERSION).toBe(1);
+    expect(CLEAN_GAME_POSITIVE_EVIDENCE_VERSION).toBe(1);
   });
 
-  it.each([null, [], 'invalid', 42])('rejects malformed record payload %s', (value) => {
-    storage.readJsonStorage.mockReturnValue(value);
-    expect(loadCleanGameRecords()).toEqual({});
+  it('does not invent a clean streak without eligible records', () => {
+    expect(cleanGameSummary({})).toMatchObject({ eligible: 0, clean: 0, rate: null, currentStreak: 0, bestStreak: 0, latest: null, latestClean: null });
   });
 });

@@ -2,7 +2,7 @@ import {
   CLEAN_GAME_INCIDENT_COVERAGE_VERSION,
   CLEAN_GAME_POSITIVE_EVIDENCE_VERSION,
   cleanGameSummary,
-} from './cleanGames.js';
+} from './cleanGameRecords.js';
 import { buildRecurringErrorPatterns } from './insightsRecurringErrors.js';
 import { isPersonalPuzzleCurrentlyClean, personalSpacedReviewSummary } from './spacedReview.js';
 import { personalTrainingDebtSummary } from './trainingDebt.js';

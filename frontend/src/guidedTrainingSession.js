@@ -2,7 +2,7 @@ import { STORAGE_SESSION, readJsonStorage, removeStorageItem, writeJsonStorage }
 import { getUsername } from './auth.js';
 import { buildNemesisDossier } from './nemesis.js';
 import { loadPersonalPuzzles } from './personalPuzzles.js';
-import { loadCleanGameRecords } from './cleanGames.js';
+import { loadCleanGameRecords } from './cleanGameRecords.js';
 import { buildPlayerModel, PATTERN_IMPROVEMENT_STATES } from './playerModel.js';
 import { loadRivalry } from './rivalry.js';
 
