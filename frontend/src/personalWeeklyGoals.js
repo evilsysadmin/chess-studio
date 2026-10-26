@@ -1,4 +1,4 @@
-import { loadCleanGameRecords } from './cleanGames.js';
+import { loadCleanGameRecords } from './cleanGameRecords.js';
 import { loadPersonalPuzzles } from './personalPuzzles.js';
 import { buildPlayerModel } from './playerModel.js';
 

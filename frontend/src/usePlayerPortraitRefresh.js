@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { loadCachedPlayerPortrait, playerPortraitGenerationKey, saveCachedPlayerPortrait } from './aiPlayerPortrait.js';
+import { loadCachedPlayerPortrait, playerPortraitGenerationKey, saveCachedPlayerPortrait } from './playerPortraitCache.js';
 import { getToken, getUsername } from './auth.js';
 import { requestRemoteNarrative } from './narrativeRemote.js';
 
