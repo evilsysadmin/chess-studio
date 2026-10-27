@@ -28,6 +28,7 @@ import {
   getWarRoomHansV2MobileHearthCueCopy,
   showWarRoomHansV2MobileHearthCue,
 } from './WarRoomHansMobileHearthCue.js';
+import { createWarRoomHansNarrativePulse } from './WarRoomHansNarrativePulse.js';
 import './WarRoomHansFireCall.css';
 
 function sameAnchor(current, next) {
@@ -103,7 +104,6 @@ export default function WarRoomHansFireCall({
 
     let live = true;
     let currentPhase = 'loading';
-    let frameId = 0;
     let previousTime = null;
     let elapsed = 0;
     let readyPaints = 0;
@@ -145,10 +145,7 @@ export default function WarRoomHansFireCall({
         // king anchor. Hans' choreography still waits for the complete Three.js
         // scene, so a slow deferred finalizer cannot make the first bubble vanish
         // behind a readiness timeout or release Hans before his actor exists.
-        if (canvas.dataset.warRoomHansSceneReady !== 'true') {
-          frameId = window.requestAnimationFrame(tick);
-          return;
-        }
+        if (canvas.dataset.warRoomHansSceneReady !== 'true') return true;
 
         const hansScreen = canvas.dataset.warRoomHansScreen || 'missing';
         const route = canvas.dataset.warRoomHansRoute || '';
@@ -304,18 +301,30 @@ export default function WarRoomHansFireCall({
           setPhase('epilogue');
         }
       }
-      if (currentPhase !== '') frameId = window.requestAnimationFrame(tick);
+      return currentPhase !== '';
     };
 
-    const resetVisibleClock = () => { previousTime = null; };
+    // This is an orchestration clock for speech and phase metadata, not the
+    // Three.js/Hans animation clock. Pause completely in hidden tabs.
+    const pulse = createWarRoomHansNarrativePulse({
+      onTick: tick,
+      now: () => performance.now(),
+      isHidden: () => document.visibilityState === 'hidden',
+      setTimer: (callback, delay) => window.setTimeout(callback, delay),
+      clearTimer: (id) => window.clearTimeout(id),
+    });
+    const resetVisibleClock = () => {
+      previousTime = null;
+      pulse.onVisibilityChange();
+    };
     document.addEventListener('visibilitychange', resetVisibleClock);
-    frameId = window.requestAnimationFrame(tick);
+    pulse.start();
     return () => {
       document.removeEventListener('visibilitychange', resetVisibleClock);
       const canvas = portalHost.querySelector('.board3d-main-canvas');
       if (canvas) canvas.dataset.warRoomHansNarrativePhase = 'done';
       live = false;
-      window.cancelAnimationFrame(frameId);
+      pulse.dispose();
     };
   }, [anchorReady, enabled, gameId, isThreeD, onComplete, portalHost]);
 
