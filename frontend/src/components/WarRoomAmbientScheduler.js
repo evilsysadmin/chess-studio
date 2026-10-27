@@ -4,6 +4,8 @@ const DUE_EPSILON_MS = 1;
 // paying the full ambient GPU budget until gameplay paints again.
 const SETTLED_IDLE_AFTER_MS = 12_000;
 const SETTLED_IDLE_INTERVAL_FACTOR = 2;
+// A motionless board should not keep repainting hundreds of 3D objects.
+const DEEP_SLEEP_AFTER_MS = 30_000;
 
 function numericNow(now) {
   const value = Number(now?.());
@@ -49,7 +51,8 @@ export function createWarRoomAmbientScheduler({
     const elapsedMs = Math.max(0, frameNow - lastPaintAt);
     const plan = planFrame?.(elapsedMs) || {};
 
-    if (plan.active && plan.shouldRender) {
+    const deepIdle = !plan.keepAmbientAwake && frameNow - lastNonAmbientPaintAt >= DEEP_SLEEP_AFTER_MS;
+    if (plan.active && plan.shouldRender && !deepIdle) {
       paintingAmbient = true;
       try {
         onFrame?.(frameNow, plan);
@@ -75,6 +78,10 @@ export function createWarRoomAmbientScheduler({
     const elapsedMs = Math.max(0, current - lastPaintAt);
     const plan = planFrame?.(elapsedMs) || {};
     if (!plan.active) return;
+    // Beyond 30 seconds with no gameplay/hover/keyboard interaction, no
+    // timers and no WebGL ambient submissions remain. Explicit state paints
+    // and user interaction can wake the scheduler instantly.
+    if (!plan.keepAmbientAwake && current - lastNonAmbientPaintAt >= DEEP_SLEEP_AFTER_MS) return;
 
     const normalIntervalMs = Math.max(0, Number(plan.intervalMs) || 0);
     // Only slow the heartbeat, never the fast inspect-camera/animation path.
@@ -122,6 +129,14 @@ export function createWarRoomAmbientScheduler({
     if (wasSettled && !disposed) wake();
   };
 
+  const markInteraction = (timestamp = numericNow(now)) => {
+    const value = Number(timestamp);
+    const at = Number.isFinite(value) ? value : numericNow(now);
+    const wasDeepSleeping = at - lastNonAmbientPaintAt >= DEEP_SLEEP_AFTER_MS;
+    lastNonAmbientPaintAt = at;
+    if (wasDeepSleeping && !disposed) wake();
+  };
+
   const dispose = () => {
     disposed = true;
     cancelPending();
@@ -131,6 +146,7 @@ export function createWarRoomAmbientScheduler({
     start,
     wake,
     markPaint,
+    markInteraction,
     dispose,
     getDebugState: () => ({
       disposed,
@@ -138,6 +154,7 @@ export function createWarRoomAmbientScheduler({
       timerPending: Boolean(timerId),
       lastPaintAt,
       lastNonAmbientPaintAt,
+      deepSleeping: numericNow(now) - lastNonAmbientPaintAt >= DEEP_SLEEP_AFTER_MS,
     }),
   };
 }
