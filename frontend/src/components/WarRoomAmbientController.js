@@ -39,9 +39,16 @@ export function createWarRoomAmbientController({
   });
 
   const wake = () => scheduler.wake();
+  const onInteraction = () => scheduler.markInteraction();
   const query = win.matchMedia?.('(prefers-reduced-motion: reduce)') || null;
   canvas.dataset.warRoomAmbientScheduler = 'deadline-v1';
   canvas.addEventListener('warroom-hans-call-release', wake);
+  // Input is a wake signal, not a request to redraw on every pointer event.
+  // In particular, a quiet board can stop rendering without going inert.
+  canvas.addEventListener('pointermove', onInteraction, { passive: true });
+  canvas.addEventListener('pointerdown', onInteraction, { passive: true });
+  canvas.addEventListener('wheel', onInteraction, { passive: true });
+  canvas.addEventListener('keydown', onInteraction);
   doc.addEventListener('visibilitychange', wake);
   win.addEventListener(USER_PREFERENCES_CHANGED_EVENT, wake);
   query?.addEventListener?.('change', wake);
@@ -68,6 +75,10 @@ export function createWarRoomAmbientController({
     dispose: () => {
       visibilityObserver?.disconnect();
       canvas.removeEventListener('warroom-hans-call-release', wake);
+      canvas.removeEventListener('pointermove', onInteraction);
+      canvas.removeEventListener('pointerdown', onInteraction);
+      canvas.removeEventListener('wheel', onInteraction);
+      canvas.removeEventListener('keydown', onInteraction);
       doc.removeEventListener('visibilitychange', wake);
       win.removeEventListener(USER_PREFERENCES_CHANGED_EVENT, wake);
       query?.removeEventListener?.('change', wake);
