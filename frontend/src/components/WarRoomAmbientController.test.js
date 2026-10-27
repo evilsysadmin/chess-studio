@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createWarRoomAmbientController } from './WarRoomAmbientController.js';
 
 function target() {
@@ -60,6 +60,11 @@ function fixture({ intersectionSupported = true, softwareRenderer = false } = {}
 }
 
 describe('War Room ambient visibility lifecycle', () => {
+  // The injected clock owns the tested deadlines, but real browser timers
+  // must remain mocked if any lifecycle callback gains scheduling work.
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => vi.useRealTimers());
+
   it('cancels offscreen work, repaints on re-entry and releases observers/listeners', () => {
     const f = fixture();
     expect(f.observer()?.target).toBe(f.host);
