@@ -58,6 +58,7 @@ export default function WarRoomHansServiceDialogue({
     if (!portalHost || !enabled || !gameId || !isThreeD) return undefined;
     return observeWarRoomHansDialogue({
       host: portalHost,
+      watchUiClasses: true,
       onChange: (canvas) => {
       const rawPhase = canvas?.dataset?.warRoomHansServiceDialogue || '';
       const spec = warRoomHansServiceDialogueSpec(rawPhase) || warRoomHansChoreDialogueSpec(rawPhase);
