@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   WAR_ROOM_TUTORIAL_PHASE,
   resolveWarRoomTutorialPhase,
+  shouldRebaseWarRoomTutorialReplay,
   warRoomTutorialCopy,
 } from './warRoomFirstRunTutorial.js';
 
@@ -35,6 +36,25 @@ describe('War Room first-run tutorial contract', () => {
       .toBe(WAR_ROOM_TUTORIAL_PHASE.COMPLETE);
     expect(resolveWarRoomTutorialPhase({ selectedSquare: '', turn: 'human' }))
       .toBe(WAR_ROOM_TUTORIAL_PHASE.SELECT);
+  });
+
+  it('rebases late server history on Help replay but never hides a move made during that replay', () => {
+    const lateHistory = {
+      replay: true, interacted: false, selectedSquare: '', turn: 'human',
+      historyLength: 2, baselineHistoryLength: 1,
+    };
+    expect(shouldRebaseWarRoomTutorialReplay(lateHistory)).toBe(true);
+    expect(resolveWarRoomTutorialPhase({
+      ...lateHistory, baselineHistoryLength: lateHistory.historyLength,
+    })).toBe(WAR_ROOM_TUTORIAL_PHASE.SELECT);
+
+    expect(shouldRebaseWarRoomTutorialReplay({ ...lateHistory, replay: false })).toBe(false);
+    expect(shouldRebaseWarRoomTutorialReplay({ ...lateHistory, turn: 'cpu' })).toBe(false);
+    expect(shouldRebaseWarRoomTutorialReplay({ ...lateHistory, selectedSquare: 'e2' })).toBe(false);
+    expect(shouldRebaseWarRoomTutorialReplay({ ...lateHistory, interacted: true })).toBe(false);
+    expect(resolveWarRoomTutorialPhase({
+      ...lateHistory, baselineHistoryLength: 1,
+    })).toBe(WAR_ROOM_TUTORIAL_PHASE.COMPLETE);
   });
 
   it('keeps the tutorial voice in Matthias instead of generic system copy', () => {

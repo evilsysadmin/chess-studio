@@ -39,6 +39,24 @@ export function resolveWarRoomTutorialPhase({
   return WAR_ROOM_TUTORIAL_PHASE.BLOCKED;
 }
 
+// A replay may start while the backend's move history is still reconciling.
+// Do not treat that late history entry as a move made during the new lesson.
+// Once the player has selected a piece in this replay, history changes are real.
+export function shouldRebaseWarRoomTutorialReplay({
+  replay = false,
+  interacted = false,
+  selectedSquare = '',
+  turn = '',
+  historyLength = 0,
+  baselineHistoryLength = 0,
+} = {}) {
+  return Boolean(replay)
+    && !interacted
+    && !String(selectedSquare || '').trim()
+    && turn === 'human'
+    && Number(historyLength) > Number(baselineHistoryLength);
+}
+
 export function warRoomTutorialCopy(phase) {
   switch (phase) {
     case WAR_ROOM_TUTORIAL_PHASE.BLOCKED:

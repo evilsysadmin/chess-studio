@@ -40,6 +40,11 @@ describe('War Room ambient render cadence', () => {
     expect(mobile.updateCamera).toBe(true);
   });
 
+  it('mantiene despierto el pulso narrativo aunque no haya interacción reciente', () => {
+    expect(warRoomAmbientFramePlan({ elapsedMs: 100, narrativeActive: true }).keepAmbientAwake).toBe(true);
+    expect(warRoomAmbientFramePlan({ elapsedMs: 100, narrativeActive: false }).keepAmbientAwake).toBe(false);
+  });
+
   it('no fuerza repaint ambiental fuera del viewport, con pestaña oculta, reduced motion o rasterizador software', () => {
     for (const options of [
       { elapsedMs: 1000, intersecting: false },

@@ -10,11 +10,10 @@ import { adaptiveRenderScale, clamp01, deriveMoveKinetics, easeOutCubic, inferCa
 import {
   compactWebGLRendererLabel,
   isSoftwareWebGLRenderer,
-  warRoomAmbientFramePlan,
   warRoomRendererAttempts,
   warRoomSceneProfile,
 } from './WarRoom3DAnimation.js';
-import { createWarRoomAmbientScheduler } from './WarRoomAmbientScheduler.js';
+import { createWarRoomAmbientController } from './WarRoomAmbientController.js';
 import { createWarRoomRenderBatcher } from './WarRoomRenderBatcher.js';
 import { applyWarRoomLightDiagnostics } from './WarRoomDomDiagnostics.js';
 import { createWarRoomHansScreenProbe } from './WarRoomHansScreenProbe.js';
@@ -475,39 +474,14 @@ function Board3DCanvas({
     renderer.domElement.addEventListener('pointercancel', onPointerCancel, { passive: true });
     renderer.domElement.addEventListener('webglcontextlost', onContextLost, false);
 
-    const reducedMotionQuery = window.matchMedia?.('(prefers-reduced-motion: reduce)') || null;
-    const wakeAmbientScheduler = () => ambientScheduler?.wake();
-
-    if (!softwareRenderer || hansDiagnosticsRequested) {
-      ambientScheduler = createWarRoomAmbientScheduler({
-        requestFrame: (callback) => window.requestAnimationFrame(callback),
-        cancelFrame: (id) => window.cancelAnimationFrame(id),
-        setTimer: (callback, delay) => window.setTimeout(callback, delay),
-        clearTimer: (id) => window.clearTimeout(id),
-        now: () => performance.now(),
-        planFrame: (elapsedMs) => warRoomAmbientFramePlan({
-          documentHidden: document.hidden,
-          reducedMotion: getEffectiveReducedMotion(),
-          coarsePointer,
-          softwareRenderer,
-          narrativeActive: Boolean(cachedHansDriver?.userData.warRoomHansQuickIteration
-            && !cachedHansDriver.userData.warRoomHansCompleted
-            && (hansReadyFrames < 2 || !latestPropsRef.current.hansFireCallEnabled
-              || renderer.domElement.dataset.warRoomHansCallReleased === 'true')),
-          elapsedMs,
-        }),
-        onFrame: () => {
-          // Fire and premium interaction pulses update from onBeforeRender, so
-          // one quiet heartbeat paints both without another animation loop.
-          paintNow();
-        },
-      });
-      renderer.domElement.dataset.warRoomAmbientScheduler = 'deadline-v1';
-      renderer.domElement.addEventListener('warroom-hans-call-release', wakeAmbientScheduler);
-      document.addEventListener('visibilitychange', wakeAmbientScheduler);
-      window.addEventListener(USER_PREFERENCES_CHANGED_EVENT, wakeAmbientScheduler);
-      reducedMotionQuery?.addEventListener?.('change', wakeAmbientScheduler);
-    }
+    ambientScheduler = createWarRoomAmbientController({
+      host, canvas: renderer.domElement, coarsePointer, softwareRenderer,
+      hansDiagnosticsRequested, onPaint: paintNow,
+      narrativeActive: () => Boolean(cachedHansDriver?.userData.warRoomHansQuickIteration
+        && !cachedHansDriver.userData.warRoomHansCompleted
+        && (hansReadyFrames < 2 || !latestPropsRef.current.hansFireCallEnabled
+          || renderer.domElement.dataset.warRoomHansCallReleased === 'true')),
+    });
 
     sceneStateRef.current = {
       scene,
@@ -549,10 +523,6 @@ function Board3DCanvas({
       ambientScheduler = null;
       gpuProfile?.dispose();
       renderBatcher.dispose();
-      renderer.domElement.removeEventListener('warroom-hans-call-release', wakeAmbientScheduler);
-      document.removeEventListener('visibilitychange', wakeAmbientScheduler);
-      window.removeEventListener(USER_PREFERENCES_CHANGED_EVENT, wakeAmbientScheduler);
-      reducedMotionQuery?.removeEventListener?.('change', wakeAmbientScheduler);
       observer?.disconnect();
       renderer.domElement.removeEventListener('pointerdown', onPointerDown);
       renderer.domElement.removeEventListener('pointermove', onPointerMove);
