@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { createWarRoomAmbientScheduler } from './WarRoomAmbientScheduler.js';
 
-function makeClock({ active = true, intervalMs = 100, ambientMarksPaint = false } = {}) {
+function makeClock({ active = true, intervalMs = 100, ambientMarksPaint = false, keepAmbientAwake = false } = {}) {
   let nowMs = 0;
   let nextId = 1;
   const timers = new Map();
@@ -13,6 +13,7 @@ function makeClock({ active = true, intervalMs = 100, ambientMarksPaint = false 
     intervalMs,
     shouldRender: active && elapsedMs >= intervalMs,
     updateCamera: intervalMs <= 34,
+    keepAmbientAwake,
   });
 
   const scheduler = createWarRoomAmbientScheduler({
@@ -103,6 +104,13 @@ describe('War Room ambient deadline scheduler', () => {
     mobile.runTimer();
     mobile.runFrame(12_000);
     expect([...mobile.timers.values()][0].delay).toBeCloseTo(300, 6);
+
+    const narrative = makeClock({ intervalMs: 100, keepAmbientAwake: true });
+    narrative.scheduler.start();
+    narrative.setNow(12_000);
+    narrative.runTimer();
+    narrative.runFrame(12_000);
+    expect([...narrative.timers.values()][0].delay).toBeCloseTo(100, 6);
 
     const fast = makeClock({ intervalMs: 16 });
     fast.scheduler.start();
