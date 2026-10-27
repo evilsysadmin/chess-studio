@@ -7,6 +7,7 @@ import {
   MATTHIAS_MOP_SIGH_LINE,
 } from './WarRoomHansMopContract.js';
 import { projectHansFireReplyAnchor } from './WarRoomHansFireCallContract.js';
+import { observeWarRoomHansDialogue } from './WarRoomHansDialogueObserver.js';
 import './WarRoomHansFireCall.css';
 
 function sameAnchor(current, next) {
@@ -55,11 +56,9 @@ export default function WarRoomHansMopDialogue({
 
   useEffect(() => {
     if (!portalHost || !enabled || !gameId || !isThreeD) return undefined;
-    let frameId = 0;
-    let live = true;
-    const tick = () => {
-      if (!live) return;
-      const canvas = portalHost.querySelector('.board3d-main-canvas');
+    return observeWarRoomHansDialogue({
+      host: portalHost,
+      onChange: (canvas) => {
       const nextPhase = canvas?.dataset?.warRoomHansMopDialogue || '';
       setPhase((current) => current === nextPhase ? current : nextPhase);
       if (nextPhase === 'hans') {
@@ -75,13 +74,8 @@ export default function WarRoomHansMopDialogue({
           setHansAnchor((current) => current == null ? current : null);
         }
       }
-      frameId = window.requestAnimationFrame(tick);
-    };
-    frameId = window.requestAnimationFrame(tick);
-    return () => {
-      live = false;
-      window.cancelAnimationFrame(frameId);
-    };
+      },
+    });
   }, [enabled, gameId, isThreeD, portalHost]);
 
   const hansStyle = useMemo(() => hansAnchor ? {
