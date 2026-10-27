@@ -7,6 +7,7 @@ import {
   WAR_ROOM_TUTORIAL_PHASE,
   WAR_ROOM_TUTORIAL_REPLAY_EVENT,
   resolveWarRoomTutorialPhase,
+  shouldRebaseWarRoomTutorialReplay,
   warRoomTutorialCopy,
 } from '../warRoomFirstRunTutorial.js';
 import useMatthiasBubbleFit from './useMatthiasBubbleFit.js';
@@ -94,11 +95,14 @@ export default function Matthias3DOpeningBanter({
         && next.turn === 'human'
       ) {
         tutorialWasShownRef.current = gameId;
+        const replay = tutorialReplayRequestedRef.current;
         tutorialReplayRequestedRef.current = false;
         setLine('');
         setTutorialSession({
           gameId,
           baselineHistoryLength: Number(historyLength) || 0,
+          replay,
+          interacted: false,
         });
       }
     };
@@ -131,6 +135,8 @@ export default function Matthias3DOpeningBanter({
       setTutorialSession({
         gameId,
         baselineHistoryLength: Number(historyLength) || 0,
+        replay: true,
+        interacted: Boolean(next.selectedSquare),
       });
     };
 
@@ -138,15 +144,39 @@ export default function Matthias3DOpeningBanter({
     return () => window.removeEventListener(WAR_ROOM_TUTORIAL_REPLAY_EVENT, replayTutorial);
   }, [portalHost, isThreeD, gameId, enabled, anchorReady, historyLength]);
 
+  const replayNeedsRebase = shouldRebaseWarRoomTutorialReplay({
+    replay: tutorialSession?.replay,
+    interacted: tutorialSession?.interacted,
+    selectedSquare: boardSignal.selectedSquare,
+    turn: boardSignal.turn,
+    historyLength,
+    baselineHistoryLength: tutorialSession?.baselineHistoryLength,
+  });
+
+  // A delayed server history update must not immediately complete a replay
+  // opened from Help before the player has selected anything.
   const tutorialPhase = tutorialSession
     ? resolveWarRoomTutorialPhase({
       selectedSquare: boardSignal.selectedSquare,
       legalTargetCount: boardSignal.legalTargetCount,
       turn: boardSignal.turn,
       historyLength,
-      baselineHistoryLength: tutorialSession.baselineHistoryLength,
+      baselineHistoryLength: replayNeedsRebase ? historyLength : tutorialSession.baselineHistoryLength,
     })
     : null;
+
+  useEffect(() => {
+    if (!tutorialSession?.replay || tutorialSession.interacted) return;
+    if (boardSignal.selectedSquare) {
+      setTutorialSession((current) => current?.replay && !current.interacted
+        ? { ...current, interacted: true }
+        : current);
+    } else if (replayNeedsRebase) {
+      setTutorialSession((current) => current?.replay && !current.interacted
+        ? { ...current, baselineHistoryLength: Math.max(Number(current.baselineHistoryLength) || 0, Number(historyLength) || 0) }
+        : current);
+    }
+  }, [tutorialSession, boardSignal.selectedSquare, replayNeedsRebase, historyLength]);
 
   useEffect(() => {
     if (!tutorialSession || tutorialPhase !== WAR_ROOM_TUTORIAL_PHASE.COMPLETE) return undefined;
