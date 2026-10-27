@@ -91,7 +91,7 @@ export default function WarRoomHansFireCall({
     setPhase('');
     setHansAnchor(null);
     setSuggestion(null);
-    setMobileHearthCue(false);
+    setMobileHearthCuePhase('');
     if (!portalHost || !enabled || !isThreeD || !gameId || !anchorReady) return undefined;
 
     const existingCanvas = portalHost.querySelector('.board3d-main-canvas');
