@@ -245,6 +245,39 @@ if (REVISION) test('War Room V2 · Hans crosses the real service door on touch m
         const cue = page.getByTestId('warroom-hans-mobile-offscreen-cue');
         await expect(cue).toBeVisible({ timeout: 8_000 });
         await expect(cue).toContainText('Atizando el fuego');
+        await expect(cue).toHaveAttribute('role', 'status');
+        await expect(cue).toHaveAttribute('aria-label', 'Hans está atizando el fuego fuera de cámara');
+        // A visible cue must not become an invisible touch shield, cover the
+        // top navigation, spill outside the phone or introduce horizontal scroll.
+        // These assertions use the actual rendered DOM, not a CSS-source check.
+        const cueSafety = await cue.evaluate((node) => {
+          const rect = node.getBoundingClientRect();
+          const overlay = node.closest('.warroom-hans-fire-call-overlay');
+          const hit = document.elementFromPoint(rect.left + rect.width / 2,
+            rect.top + rect.height / 2);
+          return {
+            left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom,
+            width: rect.width, height: rect.height,
+            viewportWidth: window.innerWidth, viewportHeight: window.innerHeight,
+            pageWidth: document.documentElement.scrollWidth,
+            clientWidth: document.documentElement.clientWidth,
+            cuePointerEvents: getComputedStyle(node).pointerEvents,
+            overlayPointerEvents: overlay ? getComputedStyle(overlay).pointerEvents : '',
+            cueInterceptsTouch: node.contains(hit),
+            overlayInterceptsTouch: Boolean(overlay?.contains(hit)),
+          };
+        });
+        expect(cueSafety.cuePointerEvents).toBe('none');
+        expect(cueSafety.overlayPointerEvents).toBe('none');
+        expect(cueSafety.cueInterceptsTouch).toBe(false);
+        expect(cueSafety.overlayInterceptsTouch).toBe(false);
+        expect(cueSafety.left).toBeGreaterThanOrEqual(0);
+        expect(cueSafety.right).toBeLessThanOrEqual(cueSafety.viewportWidth + 1);
+        expect(cueSafety.top).toBeGreaterThanOrEqual(72);
+        expect(cueSafety.bottom).toBeLessThanOrEqual(cueSafety.viewportHeight);
+        expect(cueSafety.width).toBeLessThanOrEqual(cueSafety.viewportWidth * 0.5);
+        expect(cueSafety.height).toBeLessThanOrEqual(72);
+        expect(cueSafety.pageWidth).toBeLessThanOrEqual(cueSafety.clientWidth + 1);
         await page.screenshot({ path: DIR + '/war-room-v2-hans-touch-hearth-cue-390x844.png' });
         savedHearth = true;
       }
