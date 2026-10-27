@@ -237,12 +237,12 @@ if (REVISION) test('War Room V2 · Hans crosses the real service door on touch m
         groundGap: Number(node.dataset.warRoomHansGroundGap),
       }));
       captures.push(sample);
-      if (!savedLog && sample.phase === 'place-log') {
+      if (!savedLog && sample.phase === 'carry-log') {
         const cue = page.getByTestId('warroom-hans-mobile-offscreen-cue');
         await expect(cue).toBeVisible({ timeout: 8_000 });
-        await expect(cue).toContainText('Colocando leña');
+        await expect(cue).toContainText('Preparando el fuego');
         await expect(cue).toHaveAttribute('aria-label',
-          'Hans está colocando leña fuera de cámara');
+          'Hans está preparando el fuego fuera de cámara');
         await page.screenshot({ path: DIR + '/war-room-v2-hans-touch-log-cue-390x844.png' });
         savedLog = true;
       }
@@ -327,6 +327,9 @@ if (REVISION) test('War Room V2 · Hans crosses the real service door on touch m
     expect(entries.some((s) => s.x > wallLocalX + 0.56)).toBe(true);
     expect(entries.some((s) => s.x < wallLocalX - 0.56)).toBe(true);
     expect(exits.some((s) => s.x > wallLocalX + 0.56)).toBe(true);
+    expect(result.phases).toContain('carry-log');
+    expect(captures.filter((s) => s.phase === 'carry-log').length).toBeGreaterThan(5);
+    expect(result.phases).toContain('place-log');
     expect(result.phases).toContain('stoke-fire');
     expect(result.phases).toContain('leave');
     expect(result.final?.completed).toBe(true);
