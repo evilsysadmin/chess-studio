@@ -222,6 +222,7 @@ if (REVISION) test('War Room V2 · Hans crosses the real service door on touch m
     expect(served, 'Real mobile WebGL canvas must consume this revision').toBeGreaterThan(0);
     const captures = [];
     let savedHearth = false;
+    let savedLog = false;
     const started = Date.now();
     while (Date.now() - started < 300_000) {
       const sample = await canvas.evaluate((node) => ({
@@ -236,6 +237,15 @@ if (REVISION) test('War Room V2 · Hans crosses the real service door on touch m
         groundGap: Number(node.dataset.warRoomHansGroundGap),
       }));
       captures.push(sample);
+      if (!savedLog && sample.phase === 'carry-log') {
+        const cue = page.getByTestId('warroom-hans-mobile-offscreen-cue');
+        await expect(cue).toBeVisible({ timeout: 8_000 });
+        await expect(cue).toContainText('Preparando el fuego');
+        await expect(cue).toHaveAttribute('aria-label',
+          'Hans está preparando el fuego fuera de cámara');
+        await page.screenshot({ path: DIR + '/war-room-v2-hans-touch-log-cue-390x844.png' });
+        savedLog = true;
+      }
       if (!savedHearth && sample.phase === 'stoke-fire') {
         const png = await canvas.evaluate((node) => node.toDataURL('image/png').split(',')[1]);
         await writeFile(DIR + '/war-room-v2-hans-touch-hearth-390x844.png',
@@ -317,12 +327,15 @@ if (REVISION) test('War Room V2 · Hans crosses the real service door on touch m
     expect(entries.some((s) => s.x > wallLocalX + 0.56)).toBe(true);
     expect(entries.some((s) => s.x < wallLocalX - 0.56)).toBe(true);
     expect(exits.some((s) => s.x > wallLocalX + 0.56)).toBe(true);
+    expect(result.phases).toContain('carry-log');
+    expect(captures.filter((s) => s.phase === 'carry-log').length).toBeGreaterThan(5);
     expect(result.phases).toContain('stoke-fire');
     expect(result.phases).toContain('leave');
     expect(result.final?.completed).toBe(true);
     expect(result.final?.visible).toBe(false);
     expect(result.final?.doorOpen).toBeLessThanOrEqual(0.02);
     expect(savedHearth).toBe(true);
+    expect(savedLog).toBe(true);
     for (const sample of captures.filter((s) => s.visible && s.screen === 'onscreen')) {
       expect(Number.isFinite(sample.groundGap)).toBe(true);
       expect(Math.abs(sample.groundGap)).toBeLessThanOrEqual(0.03);
