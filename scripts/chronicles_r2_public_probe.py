@@ -78,6 +78,72 @@ def head_public(url: str) -> tuple[int, dict[str, str]]:
 
 
 
+
+# This exact immutable object has already passed the private R2 readback and
+# SHA check. It must now pass the independent *public CDN* GET/HEAD contract.
+IMMUTABLE_KEY = "sprites/ash-goblin-96ed70aafe94827f.webp"
+IMMUTABLE_SHA256 = "96ed70aafe94827f3663228896af612055c9abf12b441a78f7bb4c1fa3b17656"
+IMMUTABLE_BYTES = 122882
+IMMUTABLE_BROWSER_MAX_AGE = 31536000
+
+
+def immutable_http_check(domains: Any,
+                         head: Callable[[str], tuple[int, dict[str, str]]],
+                         get: Callable[[str], tuple[int, dict[str, str], bytes]]) -> dict[str, str]:
+    """Fail closed unless both public HTTP metadata and public bytes are exact."""
+    import hashlib
+
+    host = active_domain(domains)
+    if host is None:
+        return {"asset": "no-active-public-domain"}
+    url = f"https://{host}/{IMMUTABLE_KEY}"
+    code, headers = head(url)
+    if code != 200:
+        return {"asset": f"head-http-{code}"}
+    mime = headers.get("content-type", "").split(";", 1)[0].strip().lower()
+    cors = headers.get("access-control-allow-origin", "")
+    cache = headers.get("cache-control", "").lower()
+    directives = [part.strip() for part in cache.split(",")]
+    has_public = "public" in directives
+    has_immutable = "immutable" in directives
+    max_age = [part.split("=", 1)[1].strip().strip('"')
+               for part in directives if part.startswith("max-age=")]
+    if mime != "image/webp":
+        return {"asset": "bad-mime"}
+    if cors not in ("*", STAGING_ORIGIN):
+        return {"asset": "bad-cors"}
+    if not has_public or not has_immutable or max_age != [str(IMMUTABLE_BROWSER_MAX_AGE)]:
+        return {"asset": "bad-public-browser-cache"}
+    status, get_headers, data = get(url)
+    if status != 200:
+        return {"asset": f"get-http-{status}"}
+    get_mime = get_headers.get("content-type", "").split(";", 1)[0].strip().lower()
+    get_cors = get_headers.get("access-control-allow-origin", "")
+    if get_mime != "image/webp" or get_cors not in ("*", STAGING_ORIGIN):
+        return {"asset": "bad-get-headers"}
+    if not isinstance(data, bytes) or len(data) != IMMUTABLE_BYTES:
+        return {"asset": "wrong-public-byte-length"}
+    if hashlib.sha256(data).hexdigest() != IMMUTABLE_SHA256:
+        return {"asset": "wrong-public-digest"}
+    return {"asset": "ok", "url": url, "browser_cache": "immutable-one-year",
+            "public_bytes": str(len(data)), "public_sha256": IMMUTABLE_SHA256}
+
+
+def get_public(url: str) -> tuple[int, dict[str, str], bytes]:
+    request = urllib.request.Request(
+        url, method="GET",
+        headers={"Origin": STAGING_ORIGIN, "User-Agent": "chess-studio-chronicles-r2-probe/2"},
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=20) as response:
+            # A runaway response must not become an unbounded CI download.
+            data = response.read(IMMUTABLE_BYTES + 1)
+            return response.status, {k.lower(): v for k, v in response.headers.items()}, data
+    except urllib.error.HTTPError as exc:
+        return exc.code, {}, b""
+
+
+
 # This classification is a conservative inventory aid, not permission to
 # expose the entire bucket. Never log individual object keys.
 PUBLIC_MEDIA_SUFFIXES = frozenset({
@@ -127,7 +193,9 @@ def main() -> int:
     try:
         token, account = require_env()
         inventory = summarize_objects(list_objects(token, account, BUCKET))
-        result = inspect(custom_domains(token, account, BUCKET), head_public)
+        domains = custom_domains(token, account, BUCKET)
+        result = inspect(domains, head_public)
+        immutable = immutable_http_check(domains, head_public, get_public)
     except Exception as exc:
         print("CHRONICLES_R2_OPERATOR_PROBE_BLOCKED " + type(exc).__name__, file=sys.stderr)
         return 1
@@ -135,7 +203,13 @@ def main() -> int:
         print("CHRONICLES_R2_OPERATOR_INVENTORY " + key + " " + value)
     for key, value in sorted(result.items()):
         print("CHRONICLES_R2_OPERATOR_PROBE " + key + " " + value)
-    return 0 if all(result.get(k) == "ok" for k in ("asset", "cors")) and result.get("cache") == "mutable-safe" else 1
+    for key, value in sorted(immutable.items()):
+        print("CHRONICLES_R2_IMMUTABLE_EDGE " + key + " " + value)
+    return 0 if (
+        all(result.get(k) == "ok" for k in ("asset", "cors"))
+        and result.get("cache") == "mutable-safe"
+        and immutable.get("asset") == "ok"
+    ) else 1
 
 
 if __name__ == "__main__":
