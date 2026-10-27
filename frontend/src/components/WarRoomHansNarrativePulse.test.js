@@ -8,7 +8,7 @@ function harness(onTick = vi.fn(() => true)) {
   let hidden = false;
   const pulse = createWarRoomHansNarrativePulse({
     onTick,
-    now: () => Date.now(),
+    now: () => vi.getMockedSystemTime()?.getTime() ?? 0,
     setTimer: (callback, ms) => setTimeout(callback, ms),
     clearTimer: (id) => clearTimeout(id),
     isHidden: () => hidden,
@@ -75,7 +75,7 @@ describe('War Room Hans dialogue cadence', () => {
     const onTick = vi.fn();
     const pulse = createWarRoomHansNarrativePulse({
       onTick,
-      now: () => Date.now(),
+      now: () => vi.getMockedSystemTime()?.getTime() ?? 0,
       setTimer: (callback, ms) => setTimeout(callback, ms),
       clearTimer: (id) => clearTimeout(id),
       isHidden: () => hidden,
