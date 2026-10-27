@@ -12,6 +12,7 @@ export const WAR_ROOM_HANS_DIALOGUE_ATTRIBUTES = Object.freeze([
 export function observeWarRoomHansDialogue({
   host,
   onChange,
+  watchUiClasses = false,
   Observer = typeof MutationObserver === 'undefined' ? null : MutationObserver,
   setTimer = (callback, delay) => setTimeout(callback, delay),
   clearTimer = (id) => clearTimeout(id),
@@ -32,6 +33,17 @@ export function observeWarRoomHansDialogue({
       attributes: true,
       attributeFilter: WAR_ROOM_HANS_DIALOGUE_ATTRIBUTES,
     });
+    // Service speech is suppressed in Focus/Zen. A parent CSS class can
+    // change without a new WebGL frame, so watch only those two ancestor
+    // class attributes rather than polling the whole page.
+    if (watchUiClasses) {
+      for (const selector of ['.game-layout-3d', '.board-live-row']) {
+        const parent = host.closest?.(selector);
+        if (parent && parent !== host) {
+          observer.observe(parent, { attributes: true, attributeFilter: ['class'] });
+        }
+      }
+    }
     return () => {
       disposed = true;
       observer.disconnect();
