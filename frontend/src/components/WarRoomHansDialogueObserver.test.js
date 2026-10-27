@@ -11,7 +11,7 @@ class TestMutationObserver {
     this.disconnected = false;
     TestMutationObserver.instances.push(this);
   }
-  observe(node, options) { this.node = node; this.options = options; }
+  observe(node, options) { this.node = node; this.options = options; (this.observed ||= []).push({ node, options }); }
   disconnect() { this.disconnected = true; }
   notify() { this.callback(); }
 }
@@ -53,6 +53,28 @@ describe('War Room Hans dialogue canvas observation', () => {
     expect(observer.disconnected).toBe(true);
     observer.notify();
     expect(changes).toHaveBeenCalledTimes(2);
+  });
+
+  it('observes Focus and Zen class changes without an animation loop', () => {
+    const f = hostFixture();
+    const layout = { className: 'game-layout-3d' };
+    const row = { className: 'board-live-row' };
+    f.host.closest = vi.fn((selector) => selector === '.game-layout-3d' ? layout : row);
+    const changes = vi.fn();
+    const stop = observeWarRoomHansDialogue({
+      host: f.host, onChange: changes, Observer: TestMutationObserver,
+      watchUiClasses: true,
+    });
+    const observer = TestMutationObserver.instances[0];
+    expect(observer.observed).toHaveLength(3);
+    expect(observer.observed.slice(1)).toEqual([
+      { node: layout, options: { attributes: true, attributeFilter: ['class'] } },
+      { node: row, options: { attributes: true, attributeFilter: ['class'] } },
+    ]);
+    observer.notify();
+    expect(changes).toHaveBeenCalledTimes(2);
+    stop();
+    expect(observer.disconnected).toBe(true);
   });
 
   it('does not leak polling after disposal on browsers without MutationObserver', () => {
