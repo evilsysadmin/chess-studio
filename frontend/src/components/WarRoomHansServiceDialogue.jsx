@@ -4,6 +4,7 @@ import { warRoomHansChoreDialogueSpec } from './WarRoomHansChoreContract.js';
 import { hansDialogueAnchorScreenEligible } from './WarRoomHansDialogueAnchor.js';
 import { warRoomHansServiceDialogueSpec } from './WarRoomHansServiceContract.js';
 import { projectHansFireReplyAnchor } from './WarRoomHansFireCallContract.js';
+import { observeWarRoomHansDialogue } from './WarRoomHansDialogueObserver.js';
 import './WarRoomHansFireCall.css';
 
 function sameAnchor(current, next) {
@@ -55,11 +56,9 @@ export default function WarRoomHansServiceDialogue({
 
   useEffect(() => {
     if (!portalHost || !enabled || !gameId || !isThreeD) return undefined;
-    let frameId = 0;
-    let live = true;
-    const tick = () => {
-      if (!live) return;
-      const canvas = portalHost.querySelector('.board3d-main-canvas');
+    return observeWarRoomHansDialogue({
+      host: portalHost,
+      onChange: (canvas) => {
       const rawPhase = canvas?.dataset?.warRoomHansServiceDialogue || '';
       const spec = warRoomHansServiceDialogueSpec(rawPhase) || warRoomHansChoreDialogueSpec(rawPhase);
       const nextPhase = !dialogueUiSuppressed() && spec ? rawPhase : '';
@@ -77,13 +76,8 @@ export default function WarRoomHansServiceDialogue({
           setHansAnchor((current) => current == null ? current : null);
         }
       }
-      frameId = window.requestAnimationFrame(tick);
-    };
-    frameId = window.requestAnimationFrame(tick);
-    return () => {
-      live = false;
-      window.cancelAnimationFrame(frameId);
-    };
+      },
+    });
   }, [enabled, gameId, isThreeD, portalHost]);
 
   const hansStyle = useMemo(() => hansAnchor ? {
