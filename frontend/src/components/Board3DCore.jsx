@@ -10,11 +10,10 @@ import { adaptiveRenderScale, clamp01, deriveMoveKinetics, easeOutCubic, inferCa
 import {
   compactWebGLRendererLabel,
   isSoftwareWebGLRenderer,
-  warRoomAmbientFramePlan,
   warRoomRendererAttempts,
   warRoomSceneProfile,
 } from './WarRoom3DAnimation.js';
-import { createWarRoomAmbientScheduler } from './WarRoomAmbientScheduler.js';
+import { createWarRoomAmbientController } from './WarRoomAmbientController.js';
 import { createWarRoomRenderBatcher } from './WarRoomRenderBatcher.js';
 import { applyWarRoomLightDiagnostics } from './WarRoomDomDiagnostics.js';
 import { createWarRoomHansScreenProbe } from './WarRoomHansScreenProbe.js';
@@ -475,55 +474,14 @@ function Board3DCanvas({
     renderer.domElement.addEventListener('pointercancel', onPointerCancel, { passive: true });
     renderer.domElement.addEventListener('webglcontextlost', onContextLost, false);
 
-    const reducedMotionQuery = window.matchMedia?.('(prefers-reduced-motion: reduce)') || null;
-    const wakeAmbientScheduler = () => ambientScheduler?.wake();
-    // The ambient plan already understands offscreen surfaces; feed it the
-    // real viewport intersection instead of assuming the board is visible.
-    // Keep normal initial/explicit paints untouched for first-frame readiness.
-    let ambientIntersecting = true;
-    let ambientIntersectionObserver = null;
-
-    if (!softwareRenderer || hansDiagnosticsRequested) {
-      if (typeof IntersectionObserver !== 'undefined') {
-        ambientIntersectionObserver = new IntersectionObserver(([entry]) => {
-          if (!entry) return;
-          const intersecting = Boolean(entry.isIntersecting);
-          if (intersecting === ambientIntersecting) return;
-          ambientIntersecting = intersecting;
-          wakeAmbientScheduler();
-        });
-        ambientIntersectionObserver.observe(host);
-      }
-      ambientScheduler = createWarRoomAmbientScheduler({
-        requestFrame: (callback) => window.requestAnimationFrame(callback),
-        cancelFrame: (id) => window.cancelAnimationFrame(id),
-        setTimer: (callback, delay) => window.setTimeout(callback, delay),
-        clearTimer: (id) => window.clearTimeout(id),
-        now: () => performance.now(),
-        planFrame: (elapsedMs) => warRoomAmbientFramePlan({
-          documentHidden: document.hidden,
-          intersecting: ambientIntersecting,
-          reducedMotion: getEffectiveReducedMotion(),
-          coarsePointer,
-          softwareRenderer,
-          narrativeActive: Boolean(cachedHansDriver?.userData.warRoomHansQuickIteration
-            && !cachedHansDriver.userData.warRoomHansCompleted
-            && (hansReadyFrames < 2 || !latestPropsRef.current.hansFireCallEnabled
-              || renderer.domElement.dataset.warRoomHansCallReleased === 'true')),
-          elapsedMs,
-        }),
-        onFrame: () => {
-          // Fire and premium interaction pulses update from onBeforeRender, so
-          // one quiet heartbeat paints both without another animation loop.
-          paintNow();
-        },
-      });
-      renderer.domElement.dataset.warRoomAmbientScheduler = 'deadline-v1';
-      renderer.domElement.addEventListener('warroom-hans-call-release', wakeAmbientScheduler);
-      document.addEventListener('visibilitychange', wakeAmbientScheduler);
-      window.addEventListener(USER_PREFERENCES_CHANGED_EVENT, wakeAmbientScheduler);
-      reducedMotionQuery?.addEventListener?.('change', wakeAmbientScheduler);
-    }
+    ambientScheduler = createWarRoomAmbientController({
+      host, canvas: renderer.domElement, coarsePointer, softwareRenderer,
+      hansDiagnosticsRequested, onPaint: paintNow,
+      narrativeActive: () => Boolean(cachedHansDriver?.userData.warRoomHansQuickIteration
+        && !cachedHansDriver.userData.warRoomHansCompleted
+        && (hansReadyFrames < 2 || !latestPropsRef.current.hansFireCallEnabled
+          || renderer.domElement.dataset.warRoomHansCallReleased === 'true')),
+    });
 
     sceneStateRef.current = {
       scene,
@@ -563,13 +521,8 @@ function Board3DCanvas({
       animationFrameRef.current = 0;
       ambientScheduler?.dispose();
       ambientScheduler = null;
-      ambientIntersectionObserver?.disconnect();
       gpuProfile?.dispose();
       renderBatcher.dispose();
-      renderer.domElement.removeEventListener('warroom-hans-call-release', wakeAmbientScheduler);
-      document.removeEventListener('visibilitychange', wakeAmbientScheduler);
-      window.removeEventListener(USER_PREFERENCES_CHANGED_EVENT, wakeAmbientScheduler);
-      reducedMotionQuery?.removeEventListener?.('change', wakeAmbientScheduler);
       observer?.disconnect();
       renderer.domElement.removeEventListener('pointerdown', onPointerDown);
       renderer.domElement.removeEventListener('pointermove', onPointerMove);
