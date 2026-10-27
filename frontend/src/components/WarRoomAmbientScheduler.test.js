@@ -120,6 +120,45 @@ describe('War Room ambient deadline scheduler', () => {
     expect(fast.timers.size).toBe(0);
   });
 
+  it('enters zero-WebGL deep sleep after 30 seconds and wakes on real interaction', () => {
+    const clock = makeClock({ intervalMs: 100, ambientMarksPaint: true });
+    clock.scheduler.start();
+
+    clock.setNow(29_999);
+    clock.runTimer();
+    clock.runFrame(29_999);
+    expect(clock.paints()).toBe(1);
+    expect(clock.timers.size).toBe(1);
+
+    clock.setNow(30_250);
+    clock.runTimer();
+    clock.runFrame(30_250);
+    expect(clock.paints()).toBe(1);
+    expect(clock.timers.size).toBe(0);
+    expect(clock.frames.size).toBe(0);
+    expect(clock.scheduler.getDebugState().deepSleeping).toBe(true);
+
+    clock.setNow(30_260);
+    clock.scheduler.markInteraction(30_260);
+    expect(clock.scheduler.getDebugState().deepSleeping).toBe(false);
+    expect(clock.frames.size).toBe(1);
+    clock.runFrame(30_260);
+    expect(clock.paints()).toBe(2);
+    expect(clock.timers.size).toBe(1);
+    clock.scheduler.dispose();
+    expect(clock.timers.size).toBe(0);
+  });
+
+  it('keeps narrative ambience alive past the deep-sleep threshold', () => {
+    const clock = makeClock({ intervalMs: 100, keepAmbientAwake: true });
+    clock.scheduler.start();
+    clock.setNow(30_000);
+    clock.runTimer();
+    clock.runFrame(30_000);
+    expect(clock.paints()).toBe(1);
+    expect(clock.timers.size).toBe(1);
+  });
+
   it('stops completely while inactive and restarts only when explicitly woken', () => {
     const clock = makeClock({ active: false, intervalMs: 100 });
     clock.scheduler.start();
