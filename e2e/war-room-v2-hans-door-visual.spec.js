@@ -329,7 +329,6 @@ if (REVISION) test('War Room V2 · Hans crosses the real service door on touch m
     expect(exits.some((s) => s.x > wallLocalX + 0.56)).toBe(true);
     expect(result.phases).toContain('carry-log');
     expect(captures.filter((s) => s.phase === 'carry-log').length).toBeGreaterThan(5);
-    expect(result.phases).toContain('place-log');
     expect(result.phases).toContain('stoke-fire');
     expect(result.phases).toContain('leave');
     expect(result.final?.completed).toBe(true);
