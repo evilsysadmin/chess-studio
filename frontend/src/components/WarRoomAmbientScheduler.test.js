@@ -133,6 +133,30 @@ describe('War Room ambient deadline scheduler', () => {
     expect(clock.timers.size).toBe(0);
   });
 
+  it('cancels an existing idle deadline when scrolled away and paints again on re-entry', () => {
+    const clock = makeClock({ intervalMs: 100 });
+    clock.scheduler.start();
+    expect(clock.timers.size).toBe(1);
+
+    clock.setNow(40);
+    clock.setActive(false);
+    clock.scheduler.wake();
+    expect(clock.timers.size).toBe(0);
+    expect(clock.frames.size).toBe(0);
+
+    clock.setNow(500);
+    clock.setActive(true);
+    clock.scheduler.wake();
+    expect(clock.frames.size).toBe(1);
+    clock.runFrame(500);
+    expect(clock.paints()).toBe(1);
+    expect(clock.timers.size).toBe(1);
+
+    clock.scheduler.dispose();
+    expect(clock.timers.size).toBe(0);
+    expect(clock.frames.size).toBe(0);
+  });
+
   it('treats any explicit WebGL paint as fresh idle budget without rescheduling on every paint', () => {
     const clock = makeClock({ intervalMs: 100 });
     clock.scheduler.start();
