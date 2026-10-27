@@ -24,7 +24,10 @@ import {
   shouldStartHansFireEpilogue,
   shouldStartHansLeavingGrumble,
 } from './WarRoomHansFireCallContract.js';
-import { showWarRoomHansV2MobileHearthCue } from './WarRoomHansMobileHearthCue.js';
+import {
+  getWarRoomHansV2MobileHearthCueCopy,
+  showWarRoomHansV2MobileHearthCue,
+} from './WarRoomHansMobileHearthCue.js';
 import './WarRoomHansFireCall.css';
 
 function sameAnchor(current, next) {
@@ -50,7 +53,7 @@ export default function WarRoomHansFireCall({
   const [phase, setPhase] = useState('');
   const [hansAnchor, setHansAnchor] = useState(null);
   const [suggestion, setSuggestion] = useState(null);
-  const [mobileHearthCue, setMobileHearthCue] = useState(false);
+  const [mobileHearthCuePhase, setMobileHearthCuePhase] = useState('');
   const fenRef = useRef(fen);
   fenRef.current = fen;
   const anchorReady = Boolean(matthiasAnchorStyle && matthiasTrackedSquare);
@@ -59,7 +62,7 @@ export default function WarRoomHansFireCall({
     setPhase('');
     setHansAnchor(null);
     setSuggestion(null);
-    setMobileHearthCue(false);
+    setMobileHearthCuePhase('');
   }, [gameId]);
 
   useEffect(() => {
@@ -163,7 +166,9 @@ export default function WarRoomHansFireCall({
           compactTouch: Boolean(window.matchMedia?.('(pointer: coarse) and (max-width: 760px)')?.matches),
           narrativePhase: currentPhase,
         });
-        setMobileHearthCue((previous) => previous === showCue ? previous : showCue);
+        const nextCuePhase = showCue ? choreographyPhase : '';
+        setMobileHearthCuePhase((previous) =>
+          previous === nextCuePhase ? previous : nextCuePhase);
 
         if (currentPhase === 'matthias') {
           elapsed += delta;
@@ -328,6 +333,7 @@ export default function WarRoomHansFireCall({
     '--warroom-fire-call-tail-x': '50%',
   } : null, [matthiasAnchorStyle]);
 
+  const mobileHearthCueCopy = getWarRoomHansV2MobileHearthCueCopy(mobileHearthCuePhase);
   if (!isThreeD || !portalHost || !enabled || quiet) return null;
 
   return createPortal(
@@ -336,14 +342,14 @@ export default function WarRoomHansFireCall({
       data-testid="warroom-hans-fire-call-overlay"
       data-fire-call-phase={phase || 'done'}
     >
-      {mobileHearthCue && (
+      {mobileHearthCueCopy && (
         <aside
           className="warroom-hans-mobile-hearth-cue"
           data-testid="warroom-hans-mobile-offscreen-cue"
           role="status"
           aria-live="polite"
-          aria-label="Hans está atizando el fuego fuera de cámara"
-        ><span>HANS · JUNTO AL HOGAR</span>Atizando el fuego</aside>
+          aria-label={mobileHearthCueCopy.ariaLabel}
+        ><span>HANS · JUNTO AL HOGAR</span>{mobileHearthCueCopy.text}</aside>
       )}
       {phase === 'matthias' && matthiasStyle && (
         <aside className="warroom-fire-call-bubble warroom-fire-call-bubble-matthias" style={matthiasStyle} data-matthias-square={matthiasTrackedSquare || ''} role="status" aria-live="polite" aria-label="Matthias llama a Hans por el fuego">
