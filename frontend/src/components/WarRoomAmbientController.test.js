@@ -51,6 +51,11 @@ function fixture({ intersectionSupported = true, softwareRenderer = false } = {}
     controller, canvas, host, doc, win, media, timers, frames,
     observer: () => observer, paints: () => paints,
     setTime(value) { time = value; },
+    runTimer() {
+      const [id, task] = [...timers.entries()][0] || [];
+      timers.delete(id);
+      task?.callback();
+    },
     runFrame(value = time) {
       const [id, callback] = [...frames.entries()][0] || [];
       frames.delete(id);
@@ -93,6 +98,30 @@ describe('War Room ambient visibility lifecycle', () => {
     expect(f.doc.listeners()).toBe(0);
     expect(f.win.listeners()).toBe(0);
     expect(f.media.listeners()).toBe(0);
+  });
+
+  it('deep-sleeps with no GPU frames and wakes on pointer or keyboard interaction', () => {
+    const f = fixture();
+    f.controller.start();
+    f.setTime(29_999);
+    f.runTimer();
+    f.runFrame();
+    expect(f.paints()).toBe(1);
+    expect(f.timers.size).toBe(1);
+
+    f.setTime(30_250);
+    f.runTimer();
+    f.runFrame();
+    expect(f.paints()).toBe(1);
+    expect(f.timers.size).toBe(0);
+    expect(f.frames.size).toBe(0);
+
+    f.canvas.emit('pointermove');
+    expect(f.frames.size).toBe(1);
+    f.runFrame();
+    expect(f.paints()).toBe(2);
+    f.controller.dispose();
+    expect(f.canvas.listeners()).toBe(0);
   });
 
   it('preserves visibility fallback when IntersectionObserver is unavailable', () => {
