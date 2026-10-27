@@ -477,8 +477,23 @@ function Board3DCanvas({
 
     const reducedMotionQuery = window.matchMedia?.('(prefers-reduced-motion: reduce)') || null;
     const wakeAmbientScheduler = () => ambientScheduler?.wake();
+    // The ambient plan already understands offscreen surfaces; feed it the
+    // real viewport intersection instead of assuming the board is visible.
+    // Keep normal initial/explicit paints untouched for first-frame readiness.
+    let ambientIntersecting = true;
+    let ambientIntersectionObserver = null;
 
     if (!softwareRenderer || hansDiagnosticsRequested) {
+      if (typeof IntersectionObserver !== 'undefined') {
+        ambientIntersectionObserver = new IntersectionObserver(([entry]) => {
+          if (!entry) return;
+          const intersecting = Boolean(entry.isIntersecting);
+          if (intersecting === ambientIntersecting) return;
+          ambientIntersecting = intersecting;
+          wakeAmbientScheduler();
+        });
+        ambientIntersectionObserver.observe(host);
+      }
       ambientScheduler = createWarRoomAmbientScheduler({
         requestFrame: (callback) => window.requestAnimationFrame(callback),
         cancelFrame: (id) => window.cancelAnimationFrame(id),
@@ -487,6 +502,7 @@ function Board3DCanvas({
         now: () => performance.now(),
         planFrame: (elapsedMs) => warRoomAmbientFramePlan({
           documentHidden: document.hidden,
+          intersecting: ambientIntersecting,
           reducedMotion: getEffectiveReducedMotion(),
           coarsePointer,
           softwareRenderer,
@@ -547,6 +563,7 @@ function Board3DCanvas({
       animationFrameRef.current = 0;
       ambientScheduler?.dispose();
       ambientScheduler = null;
+      ambientIntersectionObserver?.disconnect();
       gpuProfile?.dispose();
       renderBatcher.dispose();
       renderer.domElement.removeEventListener('warroom-hans-call-release', wakeAmbientScheduler);
