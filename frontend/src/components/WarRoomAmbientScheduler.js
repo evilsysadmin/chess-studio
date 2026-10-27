@@ -79,7 +79,7 @@ export function createWarRoomAmbientScheduler({
     const normalIntervalMs = Math.max(0, Number(plan.intervalMs) || 0);
     // Only slow the heartbeat, never the fast inspect-camera/animation path.
     // Ambient's own renderNow() calls markPaint(), but must not count as input.
-    const settled = current - lastNonAmbientPaintAt >= SETTLED_IDLE_AFTER_MS;
+    const settled = !plan.keepAmbientAwake && current - lastNonAmbientPaintAt >= SETTLED_IDLE_AFTER_MS;
     const intervalMs = settled && normalIntervalMs > FAST_RAF_INTERVAL_MS
       ? normalIntervalMs * SETTLED_IDLE_INTERVAL_FACTOR
       : normalIntervalMs;
