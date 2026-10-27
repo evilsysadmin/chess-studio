@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { clearCombatHistory, loadCombatHistory } from './combatHistory.js';
 import { clearGameHistory, loadGameHistory } from './gameHistory.js';
-import { computeInsights } from './insights.js';
+import { computeInsights } from './insightsSummary.js';
 import { HISTORY_GAME_OPEN_EVENT } from './historyNavigation.js';
 import { loadRatingHistory } from './playerRating.js';
 
