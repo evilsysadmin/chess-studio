@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { createWarRoomAmbientScheduler } from './WarRoomAmbientScheduler.js';
 
-function makeClock({ active = true, intervalMs = 100 } = {}) {
+function makeClock({ active = true, intervalMs = 100, ambientMarksPaint = false } = {}) {
   let nowMs = 0;
   let nextId = 1;
   const timers = new Map();
@@ -30,7 +30,7 @@ function makeClock({ active = true, intervalMs = 100 } = {}) {
     clearTimer: (id) => timers.delete(id),
     now: () => nowMs,
     planFrame,
-    onFrame: () => { paints += 1; },
+    onFrame: () => { paints += 1; if (ambientMarksPaint) scheduler.markPaint(nowMs); },
   });
 
   return {
@@ -71,6 +71,45 @@ describe('War Room ambient deadline scheduler', () => {
     expect(clock.paints()).toBe(1);
     expect(clock.frames.size).toBe(0);
     expect(clock.timers.size).toBe(1);
+  });
+
+  it('halves only the settled ambient heartbeat and restores it after a real paint', () => {
+    const clock = makeClock({ intervalMs: 100, ambientMarksPaint: true });
+    clock.scheduler.start();
+
+    // Jump past the quiet threshold to demonstrate that ambient renderNow()
+    // calls to markPaint() do not accidentally reset the inactivity timer.
+    clock.setNow(12_000);
+    clock.runTimer();
+    clock.runFrame(12_000);
+    expect(clock.paints()).toBe(1);
+    expect([...clock.timers.values()][0].delay).toBeCloseTo(200, 6);
+    expect(clock.scheduler.getDebugState().lastNonAmbientPaintAt).toBe(0);
+
+    // A genuine state change renders outside the ambient callback: wake and
+    // return to 100 ms cadence without sacrificing that state-change paint.
+    clock.setNow(12_020);
+    clock.scheduler.markPaint(12_020);
+    expect(clock.frames.size).toBe(0);
+    expect(clock.timers.size).toBe(1);
+    expect([...clock.timers.values()][0].delay).toBeCloseTo(100, 6);
+    expect(clock.scheduler.getDebugState().lastNonAmbientPaintAt).toBe(12_020);
+
+    // Mobile's 150 ms idle interval scales proportionally; direct 16 ms
+    // camera/animation work must never be slowed by the settled policy.
+    const mobile = makeClock({ intervalMs: 150 });
+    mobile.scheduler.start();
+    mobile.setNow(12_000);
+    mobile.runTimer();
+    mobile.runFrame(12_000);
+    expect([...mobile.timers.values()][0].delay).toBeCloseTo(300, 6);
+
+    const fast = makeClock({ intervalMs: 16 });
+    fast.scheduler.start();
+    fast.setNow(12_000);
+    fast.runFrame(12_000);
+    expect(fast.frames.size).toBe(1);
+    expect(fast.timers.size).toBe(0);
   });
 
   it('stops completely while inactive and restarts only when explicitly woken', () => {
