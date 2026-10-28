@@ -124,6 +124,45 @@ describe('War Room ambient visibility lifecycle', () => {
     expect(f.canvas.listeners()).toBe(0);
   });
 
+  it('wakes from 30-second deep sleep when the tab becomes visible without mouse input', () => {
+    const f = fixture();
+    f.controller.start();
+    f.setTime(30_200);
+    f.runTimer();
+    f.runFrame();
+    expect(f.paints()).toBe(0);
+    expect(f.frames.size).toBe(0);
+    expect(f.timers.size).toBe(0);
+
+    f.doc.hidden = true;
+    f.doc.emit('visibilitychange');
+    f.setTime(31_000);
+    f.doc.hidden = false;
+    f.doc.emit('visibilitychange');
+
+    expect(f.controller.getDebugState().deepSleeping).toBe(false);
+    expect(f.frames.size).toBe(1);
+    f.runFrame();
+    expect(f.paints()).toBe(1);
+    f.controller.dispose();
+    expect(f.doc.listeners()).toBe(0);
+  });
+
+  it('wakes on viewport re-entry after deep sleep without synthesizing pointer events', () => {
+    const f = fixture();
+    f.controller.start();
+    f.observer().callback([{ isIntersecting: false }]);
+    expect(f.timers.size).toBe(0);
+
+    f.setTime(31_000);
+    f.observer().callback([{ isIntersecting: true }]);
+    expect(f.frames.size).toBe(1);
+    expect(f.controller.getDebugState().deepSleeping).toBe(false);
+    f.runFrame();
+    expect(f.paints()).toBe(1);
+    f.controller.dispose();
+  });
+
   it('preserves visibility fallback when IntersectionObserver is unavailable', () => {
     const f = fixture({ intersectionSupported: false });
     expect(f.observer()).toBeNull();
