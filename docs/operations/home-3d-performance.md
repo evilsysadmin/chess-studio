@@ -43,6 +43,22 @@ counts verify stopped submissions; they are not GPU milliseconds or FPS gains.
 The ordinary active GPU benchmark sends real pointer input before sampling, so
 a late actor download cannot turn its active workload into an idle sample.
 
+The inactivity interval also rejects pointer/keyboard/focus activity or a
+visibility transition; a foreground sample interrupted by a person using the
+test window is not evidence that the idle scheduler failed. On the local Intel
+Mesa host, the opt-in Vulkan backend was observed to retain physical WebGL in
+headless Chromium, avoiding interference from the desktop's physical pointer:
+
+```bash
+CHESS_HOME_GPU_BACKEND=vulkan make home-gpu-idle-probe \
+  HOME_GPU_NVIDIA_PRIME=0 HOME_GPU_EXPECT_VENDOR=intel HOME_GPU_HEADLESS=1
+```
+
+The existing GL backend remains the default. Backend flags alone prove nothing:
+the probe still checks the actual Home context and fails on software/unknown.
+Do not compare timings between GL and Vulkan cohorts or assume this Intel result
+also applies to NVIDIA, other drivers or devices.
+
 ## Everyday diagnostics (no profiling overhead)
 
 On a ready Home canvas, inspect `document.querySelector('.illustrated-home__castle-3d.is-ready')?.dataset` in browser DevTools. The relevant `data-home-*` counters are:

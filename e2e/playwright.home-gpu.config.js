@@ -9,8 +9,14 @@ if (!['hardware', 'software'].includes(mode)) {
 if (process.env.CI) {
   throw new Error('Home physical GPU benchmark must be run locally, never on hosted CI');
 }
+const backend = process.env.CHESS_HOME_GPU_BACKEND || 'gl';
+if (!['gl', 'vulkan'].includes(backend)) {
+  throw new Error('CHESS_HOME_GPU_BACKEND must be gl or vulkan');
+}
 const args = mode === 'hardware'
-  ? ['--use-gl=angle', '--use-angle=gl', '--ignore-gpu-blocklist', '--enable-gpu-rasterization']
+  ? backend === 'vulkan'
+    ? ['--use-angle=vulkan', '--enable-features=Vulkan', '--disable-vulkan-surface', '--ignore-gpu-blocklist']
+    : ['--use-gl=angle', '--use-angle=gl', '--ignore-gpu-blocklist', '--enable-gpu-rasterization']
   : ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'];
 
 export default defineConfig({

@@ -591,7 +591,28 @@ if (idleProbe) test('Home 3D physical GPU · visible idle sleeps and real input 
       const active = await countPaints();
       expect(active.hidden).toBe(false);
       expect(active.paints).toBeGreaterThan(0);
-      await expect(castle).toHaveAttribute('data-home-fire-motion', 'idle', { timeout: 35_000 });
+      await castle.evaluate((node) => {
+        const host = node.closest('.illustrated-home');
+        const audit = { inputs: 0, visibilityChanges: 0 };
+        const input = () => { audit.inputs += 1; };
+        const visibility = () => { audit.visibilityChanges += 1; };
+        const events = ['pointermove', 'pointerdown', 'wheel', 'keydown', 'focusin'];
+        for (const event of events) host.addEventListener(event, input, { passive: true });
+        document.addEventListener('visibilitychange', visibility);
+        node.__finishIdleInputAudit = () => {
+          for (const event of events) host.removeEventListener(event, input);
+          document.removeEventListener('visibilitychange', visibility);
+          delete node.__finishIdleInputAudit;
+          return audit;
+        };
+      });
+      try {
+        await expect(castle).toHaveAttribute('data-home-fire-motion', 'idle', { timeout: 35_000 });
+      } finally {
+        const audit = await castle.evaluate((node) => node.__finishIdleInputAudit());
+        expect(audit, 'Idle evidence requires uninterrupted foreground inactivity')
+          .toEqual({ inputs: 0, visibilityChanges: 0 });
+      }
       const requestsAtIdle = modelRequests;
       const idle = await countPaints();
       expect(idle).toEqual({ paints: 0, hidden: false });
@@ -618,7 +639,8 @@ if (idleProbe) test('Home 3D physical GPU · visible idle sleeps and real input 
     }
   }
   await writeFile(`${artifactDir}/home-idle-hardware.json`, JSON.stringify({
-    schema: 1, revision, browserVersion: browser.version(), visits,
+    schema: 1, revision, browserVersion: browser.version(),
+    requestedBackend: process.env.CHESS_HOME_GPU_BACKEND || 'gl', sampleWindowMs: 2_500, visits,
   }, null, 2) + '\n');
   console.log('HOME_IDLE_GPU ' + JSON.stringify(visits));
 });
