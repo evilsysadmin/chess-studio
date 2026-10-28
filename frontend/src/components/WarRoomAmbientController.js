@@ -40,12 +40,13 @@ export function createWarRoomAmbientController({
 
   const wake = () => scheduler.wake();
   const onInteraction = () => scheduler.markInteraction();
+  const resumeVisible = () => scheduler.markInteraction(undefined, true);
   // Visibility returning to foreground is a meaningful wake signal after
   // deep sleep: wake() alone would keep the old 30s idle timestamp and refuse
   // every new ambient frame until the next pointer event.
   const onVisibilityChange = () => {
     if (doc.hidden) wake();
-    else onInteraction();
+    else resumeVisible();
   };
   const query = win.matchMedia?.('(prefers-reduced-motion: reduce)') || null;
   canvas.dataset.warRoomAmbientScheduler = 'deadline-v1';
@@ -69,7 +70,7 @@ export function createWarRoomAmbientController({
       const next = Boolean(entry.isIntersecting);
       if (intersecting === next) return;
       intersecting = next;
-      if (intersecting && !doc.hidden) onInteraction();
+      if (intersecting && !doc.hidden) resumeVisible();
       else wake();
     });
     visibilityObserver.observe(host);
