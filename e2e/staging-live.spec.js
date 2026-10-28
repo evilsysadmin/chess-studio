@@ -1223,8 +1223,13 @@ test('staging live · auth real → War Room v2 → recovery 3D → jugada real'
 
   let gameId = null;
   try {
-    await page.goto(STAGING_URL, { waitUntil: 'domcontentloaded' });
-    await expect(page.getByRole('heading', { name: 'Iniciar sesión', exact: true })).toBeVisible();
+    // Playwright traced HTTP 200 + healthy hashed assets, yet Chromium could
+    // wait >30s for DOMContentLoaded while deferred JS/SwiftShader was busy.
+    // Observe the committed document first, then fail closed on a real login
+    // UI. Do not mistake navigation timing for app readiness or weaken auth.
+    await page.goto(STAGING_URL, { waitUntil: 'commit', timeout: 30_000 });
+    await expect(page.getByRole('heading', { name: 'Iniciar sesión', exact: true }))
+      .toBeVisible({ timeout: 45_000 });
     await page.getByLabel('Usuario').fill(username);
     await page.getByLabel('Contraseña').fill(password);
 
