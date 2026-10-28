@@ -15,7 +15,7 @@ function target() {
   };
 }
 
-function fixture({ intersectionSupported = true, softwareRenderer = false } = {}) {
+function fixture({ intersectionSupported = true, softwareRenderer = false, diagnostics = false } = {}) {
   let time = 0;
   let nextId = 1;
   let paints = 0;
@@ -24,6 +24,7 @@ function fixture({ intersectionSupported = true, softwareRenderer = false } = {}
   const frames = new Map();
   const host = target();
   const canvas = target();
+  if (diagnostics) canvas.__warRoomRenderCostJournal = { latestSeq: 0 };
   const doc = { ...target(), hidden: false };
   const media = target();
   const win = {
@@ -196,6 +197,40 @@ describe('War Room ambient visibility lifecycle', () => {
     expect(f.timers.size).toBe(1);
     f.controller.dispose();
     expect(f.timers.size).toBe(0);
+  });
+
+  it('exposes no debug poller in normal sessions, even while running', () => {
+    const f = fixture();
+    expect(f.canvas.__warRoomAmbientDebug).toBeUndefined();
+    f.controller.start();
+    f.setTime(31_000);
+    f.runTimer();
+    f.runFrame();
+    expect(f.canvas.__warRoomAmbientDebug).toBeUndefined();
+    f.controller.dispose();
+  });
+
+  it('exposes only an opt-in read-only snapshot and removes it on unmount', () => {
+    const f = fixture({ diagnostics: true });
+    const read = f.canvas.__warRoomAmbientDebug;
+    expect(typeof read).toBe('function');
+    expect(read()).toMatchObject({ disposed: false, deepSleeping: false });
+    f.controller.start();
+    f.setTime(31_000);
+    f.runTimer();
+    f.runFrame();
+    expect(read()).toMatchObject({ deepSleeping: true, timerPending: false, rafPending: false });
+    f.controller.dispose();
+    expect(f.canvas.__warRoomAmbientDebug).toBeUndefined();
+    expect(read()).toMatchObject({ disposed: true });
+  });
+
+  it('does not erase a replacement profiler snapshot after old controller disposal', () => {
+    const f = fixture({ diagnostics: true });
+    const replacement = () => ({ replacement: true });
+    f.canvas.__warRoomAmbientDebug = replacement;
+    f.controller.dispose();
+    expect(f.canvas.__warRoomAmbientDebug).toBe(replacement);
   });
 
   it('does not attach listeners or schedule ambience for the software renderer', () => {
