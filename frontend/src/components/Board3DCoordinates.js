@@ -1,8 +1,19 @@
 import { FILES } from './Board3DConfig.js';
 import { makeTextSprite } from './Board3DScene.js';
 
-// Board labels are static decoration: construct them exactly once per board
-// mount, in the correct orientation. The render core owns no sprite layout.
+// Board labels are static decoration: construct them once, only when needed.
+// Toggling the preference must not recreate the room, pieces or WebGL context.
+export function updateBoard3DCoordinates(coordinateGroup, whiteSide, visible) {
+  const nextVisible = Boolean(visible);
+  const changed = coordinateGroup.visible !== nextVisible;
+  coordinateGroup.visible = nextVisible;
+  if (nextVisible && coordinateGroup.children.length === 0) {
+    installBoard3DCoordinates(coordinateGroup, whiteSide);
+    return true;
+  }
+  return changed;
+}
+
 export function installBoard3DCoordinates(coordinateGroup, whiteSide) {
   const fileOrder = whiteSide ? FILES : [...FILES].reverse();
   const rankOrder = whiteSide

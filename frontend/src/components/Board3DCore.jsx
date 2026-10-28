@@ -33,7 +33,7 @@ import { fitBoardCamera } from './Board3DScene.js';
 import { resolveStableBoardViewportForHost } from './Board3DViewportSize.js';
 import { createWarRoomCanvasSizeGate } from './WarRoomCanvasSizeGate.js';
 import { createWarRoomGpuProfile } from './WarRoomGpuProfile.js';
-import { installBoard3DCoordinates } from './Board3DCoordinates.js';
+import { updateBoard3DCoordinates } from './Board3DCoordinates.js';
 import { applyBoard3DProjectionDiagnostics, applyBoard3DRendererMemoryDiagnostics } from './Board3DProjectionDiagnostics.js';
 import { beginWarRoomFirstReadyPaintTiming } from './WarRoomFirstReadyPaintTiming.js';
 import { board3DForensicGhost, board3DTechniqueTargetCount, board3DTerrainSquares, buildBoard3DLegalMap } from './Board3DParityVisuals.js';
@@ -175,6 +175,7 @@ function Board3DCanvas({
     const pickTargets = [pieceGroup];
     const forensicGroup = new THREE.Group();
     const coordinateGroup = new THREE.Group();
+    coordinateGroup.visible = false;
     const boardGroup = new THREE.Group();
     const theme = BOARD_THEME_3D[effectiveThemeId] || BOARD_THEME_3D.classic;
     const whiteSide = orientation !== 'black';
@@ -290,7 +291,6 @@ function Board3DCanvas({
     boardGroup.add(coordinateGroup);
     boardGroup.scale.setScalar(warRoomVariant === 'v3' ? 1.08 : 1); scene.add(boardGroup);
 
-    if (showCoordinates) installBoard3DCoordinates(coordinateGroup, whiteSide);
     const gpuProfile = createWarRoomGpuProfile(renderer, { softwareRenderer });
     let cachedHansDriver = null;
     let ambientScheduler = null;
@@ -490,6 +490,7 @@ function Board3DCanvas({
       terrainGroup,
       pieceGroup,
       forensicGroup,
+      coordinateGroup,
       pieceMeshes,
       highlightMeshes,
       coarsePointer,
@@ -541,7 +542,13 @@ function Board3DCanvas({
       if (renderer.domElement.parentNode === host) host.removeChild(renderer.domElement);
       sceneStateRef.current = null;
     };
-  }, [effectiveThemeId, orientation, showCoordinates, cameraProfile, playAriaLabel, trainingRoom]);
+  }, [effectiveThemeId, orientation, cameraProfile, playAriaLabel, trainingRoom]);
+  useEffect(() => {
+    const state = sceneStateRef.current;
+    if (state && updateBoard3DCoordinates(state.coordinateGroup, state.whiteSide, showCoordinates)) {
+      state.requestRender();
+    }
+  }, [showCoordinates, effectiveThemeId, orientation, cameraProfile, playAriaLabel, trainingRoom]);
   useEffect(() => {
     const state = sceneStateRef.current;
     if (!state || trainingRoom) return undefined;
@@ -556,7 +563,7 @@ function Board3DCanvas({
       onStatus: setWarRoomVariantStatus,
       onPaint: state.render,
     });
-  }, [warRoomVariant, warRoomVariantSelectable, setWarRoomVariantStatus, effectiveThemeId, orientation, showCoordinates, trainingRoom]);
+  }, [warRoomVariant, warRoomVariantSelectable, setWarRoomVariantStatus, effectiveThemeId, orientation, trainingRoom]);
   useCombatOperationsCartography({ sceneStateRef, variant: warRoomVariant, status: warRoomVariantStatus, projection: combatOperationsMap });
   useEffect(() => {
     const state = sceneStateRef.current, host = hostRef.current;
@@ -809,7 +816,7 @@ function Board3DCanvas({
         disposeObject(capturedGhost);
       }
     };
-  }, [fen, skinId, animate, effectiveThemeId, orientation, showCoordinates, matthiasKingColor, checkSquare, gameOver, warRoomVariant]);
+  }, [fen, skinId, animate, effectiveThemeId, orientation, matthiasKingColor, checkSquare, gameOver, warRoomVariant]);
   useBoard3DCombatMedalRefresh({ sceneStateRef, animationFrameRef, warRoomVariant, pieceMedalCounts, pieceRankLevels });
   useEffect(() => {
     const state = sceneStateRef.current;
@@ -908,7 +915,7 @@ function Board3DCanvas({
 
     applyMatthiasCheckPose(state, checkSquare, orientation);
     state.requestRender();
-  }, [fen, selectedSquare, legalMap, lastMove, hintMove, checkSquare, focusedSquare, hoveredSquare, effectiveThemeId, orientation, showCoordinates]);
+  }, [fen, selectedSquare, legalMap, lastMove, hintMove, checkSquare, focusedSquare, hoveredSquare, effectiveThemeId, orientation]);
 
   useEffect(() => {
     const state = sceneStateRef.current;
@@ -921,7 +928,7 @@ function Board3DCanvas({
     if (state.scene.fog?.isFogExp2) state.scene.fog.density = lights.fogDensity;
     applyMatthiasCheckPose(state, checkSquare, orientation);
     state.requestRender();
-  }, [checkSquare, gameOver, effectiveThemeId, orientation, showCoordinates, warRoomVariant]);
+  }, [checkSquare, gameOver, effectiveThemeId, orientation, warRoomVariant]);
 
   function handleKeyDown(event) {
     handleBoard3DKeyboardEvent(event, { focusedSquare, orientation, selectedSquare, onSquareClick, setFocusedSquare });

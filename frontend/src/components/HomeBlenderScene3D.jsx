@@ -22,7 +22,7 @@ import {
 } from './HomeBlenderPerformanceDiagnostics.js';
 import { installHomeBlenderDrawPassProbe, homeBlenderDrawFamily } from './HomeBlenderDrawPassProbe.js';
 import { FIRE_SPRITE_DEFAULTS, createFireSprites, createSteamSprites, disposeFireSprites, fireSpriteSeeds } from './fireSprites.js';
-import { getEffectiveReducedMotion } from '../userPreferences.js';
+import { getEffectiveReducedMotion, USER_PREFERENCES_CHANGED_EVENT } from '../userPreferences.js';
 import { threeSurfaceShouldRender } from '../threeRenderPolicy.js';
 import {
   HOME_CASTLE_3D_MOBILE_ENABLE_MIN_WIDTH,
@@ -1745,8 +1745,12 @@ export default function HomeBlenderScene3D({
   const matthiasPropsRef = useRef(matthias);
   const matthiasLayoutRef = useRef(onMatthiasLayout);
   const matthiasApplyRef = useRef(null);
+  const unavailableRef = useRef(onUnavailable);
+  const anchorLayoutRef = useRef(onAnchorLayout);
   matthiasPropsRef.current = matthias;
   matthiasLayoutRef.current = onMatthiasLayout;
+  unavailableRef.current = onUnavailable;
+  anchorLayoutRef.current = onAnchorLayout;
   const glContextRef = useRef(null);
   const glLoseContextRef = useRef(null);
   const [contextGeneration, setContextGeneration] = useState(0);
@@ -1770,7 +1774,7 @@ export default function HomeBlenderScene3D({
     const effectsAllowed = () => lodCap == null && initialPolicy.lod === 'full';
     if (!canvas || !homeBlenderRuntimeEligible()) {
       recordHomeBlenderRuntimeEvent('fallback', { reason: 'policy-ineligible' });
-      onUnavailable?.();
+      unavailableRef.current?.();
       return undefined;
     }
 
@@ -1960,7 +1964,7 @@ export default function HomeBlenderScene3D({
       markStartup('webgl-constructor-finished');
     } catch {
       recordHomeBlenderRuntimeEvent('fallback', { reason: 'webgl-constructor' });
-      onUnavailable?.();
+      unavailableRef.current?.();
       return undefined;
     } finally {
       delete canvas.getContext;
@@ -2273,7 +2277,7 @@ export default function HomeBlenderScene3D({
       }
     };
 
-    const prefersReducedMotion = getEffectiveReducedMotion();
+    let prefersReducedMotion = getEffectiveReducedMotion();
 
     const startFireAnimation = () => {
       if (prefersReducedMotion) {
@@ -2375,12 +2379,12 @@ export default function HomeBlenderScene3D({
       camera.fov = homeBlenderCameraFovForAspect(camera.aspect);
       canvas.dataset.homeBlenderCamera = camera.aspect < 1 ? 'portrait-wide' : 'canonical';
       camera.updateProjectionMatrix();
-      if (onAnchorLayout) {
+      if (anchorLayoutRef.current) {
         const pose = homeBlenderCameraPoseForAspect(camera.aspect);
         camera.position.set(pose.position.x, pose.position.y, pose.position.z);
         camera.lookAt(pose.target.x, pose.target.y, pose.target.z);
         renderCameraReset.invalidate();
-        onAnchorLayout(homeBlenderProjectAnchors(camera));
+        anchorLayoutRef.current(homeBlenderProjectAnchors(camera));
       }
       reportMatthiasLayout();
       requestRender();
@@ -2424,6 +2428,18 @@ export default function HomeBlenderScene3D({
     };
     matthiasApplyRef.current = applyMatthiasRoutine;
 
+    const onMotionPreferenceChange = () => {
+      const next = getEffectiveReducedMotion();
+      if (next === prefersReducedMotion) return;
+      prefersReducedMotion = next;
+      stopFireAnimation();
+      // Apply the resident's static pose before the one final reduced-motion
+      // paint. Re-enabling motion resumes the existing rigs and resources.
+      applyMatthiasRoutine();
+      startFireAnimation();
+      requestRender();
+    };
+
     const loadMatthiasActor = () => {
       if (!matthiasPropsRef.current || matthiasActor) return;
       canvas.dataset.homeMatthiasActor = 'loading';
@@ -2454,7 +2470,7 @@ export default function HomeBlenderScene3D({
       canvas.dataset.homeBlenderPhase = 'fallback';
       recordHomeBlenderRuntimeEvent('fallback', { reason });
       markStartup('fallback');
-      onUnavailable?.();
+      unavailableRef.current?.();
     };
     loadTimer = window.setTimeout(() => failToFallback(false, 'model-timeout'), 20_000);
 
@@ -2574,6 +2590,7 @@ export default function HomeBlenderScene3D({
     canvas.addEventListener('webglcontextlost', onContextLost);
     canvas.addEventListener('webglcontextrestored', onContextRestored);
     document.addEventListener('visibilitychange', onVisibilityChange);
+    window.addEventListener(USER_PREFERENCES_CHANGED_EVENT, onMotionPreferenceChange);
 
     const intersectionObserver = typeof IntersectionObserver === 'function'
       ? new IntersectionObserver(onIntersectionChange, { threshold: 0.01 })
@@ -2596,6 +2613,7 @@ export default function HomeBlenderScene3D({
       intersectionObserver?.disconnect();
       window.removeEventListener('resize', resize);
       document.removeEventListener('visibilitychange', onVisibilityChange);
+      window.removeEventListener(USER_PREFERENCES_CHANGED_EVENT, onMotionPreferenceChange);
       canvas.removeEventListener('webglcontextlost', onContextLost);
       canvas.removeEventListener('webglcontextrestored', onContextRestored);
       canvas.classList.remove('is-ready');
@@ -2637,7 +2655,7 @@ export default function HomeBlenderScene3D({
       drawPassProbe?.dispose();
       renderer.dispose();
     };
-  }, [ambient, contextGeneration, onUnavailable]);
+  }, [ambient, contextGeneration]);
 
   // Routine changes (hourly schedule, greeting) move the resident between
   // stations without reloading the hall or the rig.
