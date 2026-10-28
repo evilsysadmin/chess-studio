@@ -38,6 +38,11 @@ export function createWarRoomAmbientController({
     onFrame: onPaint,
   });
 
+  // Expose a read-only snapshot ONLY when the existing opt-in GPU journal is
+  // present. No sampling, timers, DOM writes or new work in normal sessions.
+  const readAmbientDebug = () => scheduler.getDebugState();
+  if (canvas.__warRoomRenderCostJournal) canvas.__warRoomAmbientDebug = readAmbientDebug;
+
   const wake = () => scheduler.wake();
   const onInteraction = () => scheduler.markInteraction();
   const resumeVisible = () => scheduler.markInteraction(undefined, true);
@@ -82,6 +87,10 @@ export function createWarRoomAmbientController({
     markPaint: scheduler.markPaint,
     getDebugState: scheduler.getDebugState,
     dispose: () => {
+      // Do not erase a newer controller's snapshot after a rapid remount.
+      if (canvas.__warRoomAmbientDebug === readAmbientDebug) {
+        delete canvas.__warRoomAmbientDebug;
+      }
       visibilityObserver?.disconnect();
       canvas.removeEventListener('warroom-hans-call-release', wake);
       canvas.removeEventListener('pointermove', onInteraction);
