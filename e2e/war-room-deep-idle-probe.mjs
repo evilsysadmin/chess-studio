@@ -24,8 +24,10 @@ export function assessWarRoomDeepIdleCapture({
     !Number.isFinite(frame?.startedAtMs) || !Number.isFinite(frame?.endedAtMs)
       || frame.endedAtMs < frame.startedAtMs || !Number.isSafeInteger(frame.calls)
       || frame.calls < 0)) return { status: 'invalid-render-sample' };
+  // Count a draw that overlaps the tail boundary. A slow frame starting
+  // slightly earlier must never be mistaken for zero WebGL activity.
   const tail = entries.filter((frame) =>
-    frame.startedAtMs >= cutoff && frame.endedAtMs <= endedAtMs);
+    frame.endedAtMs >= cutoff && frame.startedAtMs <= endedAtMs);
   return {
     status: 'ready',
     elapsedMs: Math.round(elapsedMs),
