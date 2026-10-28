@@ -283,23 +283,39 @@ async function sampleIdle(page) {
 }
 
 async function sampleDeepIdle(page) {
-  // One snapshot before and one after: no rAF/MutationObserver/per-frame
-  // instrumentation is installed while the renderer is supposed to sleep.
+  // No rAF/per-frame hooks are installed while the renderer should sleep.
+  // Observe only visibility changes; even a brief hidden interval would
+  // invalidate an apparent zero-WebGL reading.
   const before = await page.evaluate(() => {
     const journal = document.querySelector('canvas.board3d-main-canvas')?.__warRoomRenderCostJournal;
-    return journal ? { seq: journal.latestSeq, startedAtMs: performance.now() } : null;
+    if (!journal) return null;
+    const tracker = { transitions: 0 };
+    const onVisibilityChange = () => { tracker.transitions += 1; };
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    window.__warRoomDeepIdleVisibility = { tracker, onVisibilityChange };
+    return { seq: journal.latestSeq, startedAtMs: performance.now(),
+      visibilityBefore: document.visibilityState };
   });
   if (!before) return { status: 'missing-journal' };
-  await page.waitForTimeout(WAR_ROOM_DEEP_IDLE_WAIT_MS);
-  const after = await page.evaluate((seq) => {
-    const journal = document.querySelector('canvas.board3d-main-canvas')?.__warRoomRenderCostJournal;
-    return {
-      capture: journal?.readAfter(seq) || null,
-      endedAtMs: performance.now(),
-      visibility: document.visibilityState,
-    };
-  }, before.seq);
-  return assessWarRoomDeepIdleCapture({ ...before, ...after });
+  try {
+    await page.waitForTimeout(WAR_ROOM_DEEP_IDLE_WAIT_MS);
+    const after = await page.evaluate((seq) => {
+      const journal = document.querySelector('canvas.board3d-main-canvas')?.__warRoomRenderCostJournal;
+      return {
+        capture: journal?.readAfter(seq) || null,
+        endedAtMs: performance.now(),
+        visibility: document.visibilityState,
+        visibilityTransitions: window.__warRoomDeepIdleVisibility?.tracker.transitions ?? null,
+      };
+    }, before.seq);
+    return assessWarRoomDeepIdleCapture({ ...before, ...after });
+  } finally {
+    await page.evaluate(() => {
+      const tracker = window.__warRoomDeepIdleVisibility;
+      if (tracker) document.removeEventListener('visibilitychange', tracker.onVisibilityChange);
+      delete window.__warRoomDeepIdleVisibility;
+    }).catch(() => {});
+  }
 }
 
 async function openWarRoom(page, requestLog) {
