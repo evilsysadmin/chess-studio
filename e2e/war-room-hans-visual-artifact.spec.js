@@ -283,3 +283,98 @@ test('War Room · un diálogo de Hans cede al seleccionar una pieza, con PNG de 
     await browser.close();
   }
 });
+
+
+test('War Room · secuencia móvil de llamada y respuesta de Hans en 390×844', async () => {
+  // A desktop PNG or a video of ambient chores cannot prove this dialogue.
+  // Capture real consecutive states in one V3 game on a touch viewport.
+  // SwiftShader is a compatibility renderer, never a physical GPU benchmark.
+  test.setTimeout(270_000);
+  await mkdir(ARTIFACT_DIR, { recursive: true });
+  const browser = await chromium.launch({
+    headless: true,
+    args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'],
+  });
+  const context = await browser.newContext({
+    viewport: { width: 390, height: 844 },
+    isMobile: true,
+    hasTouch: true,
+    deviceScaleFactor: 1,
+  });
+  const page = await context.newPage();
+  const states = [];
+  const canvas = page.locator('.board3d-main-canvas');
+  const overlay = page.getByTestId('warroom-hans-fire-call-overlay');
+
+  async function capturePhase(label) {
+    const state = await canvas.evaluate((node) => ({
+      phase: document.querySelector('[data-testid="warroom-hans-fire-call-overlay"]')?.getAttribute('data-fire-call-phase'),
+      screen: node.dataset.warRoomHansScreen || '',
+      sceneReady: node.dataset.warRoomHansSceneReady === 'true',
+      callReleased: node.dataset.warRoomHansCallReleased === 'true',
+      replySeen: node.dataset.warRoomHansReplySeen === 'true',
+      viewport: { width: innerWidth, height: innerHeight },
+      timestamp: performance.now(),
+    }));
+    states.push({ label, ...state });
+    await captureViewportPng(context, page, ARTIFACT_DIR + '/war-room-hans-v3-mobile-390x844-' + label + '.png');
+  }
+
+  try {
+    await page.emulateMedia({ reducedMotion: 'no-preference' });
+    await mockApi(page, {
+      profileSeed: {
+        'matthias.onboarded': '2',
+        'chess-study-home-guide-dismissed-v1': '1',
+      },
+    });
+    await login(page);
+    await page.evaluate(() => localStorage.setItem('chess-study-war-room-variant-v1', 'v3'));
+    await seedGamesBeforeFire(page);
+    await buttonWithVisibleText(page, 'Partida rápida').press('Enter');
+    const quickDialog = page.getByRole('dialog', { name: 'Configurar partida rápida' });
+    await expect(quickDialog).toBeVisible();
+    await quickDialog.getByRole('button', { name: 'Empezar partida', exact: true }).press('Enter');
+
+    await expect(canvas).toBeVisible({ timeout: MOUNT_BUDGET_MS });
+    await expect(canvas).toHaveAttribute('data-war-room-variant', 'v3', { timeout: MOUNT_BUDGET_MS });
+    await expect(canvas).toHaveAttribute('data-war-room-hans-scene-ready', 'true', { timeout: hansBudget(20_000) });
+
+    const matthias = page.getByRole('status', { name: 'Matthias llama a Hans por el fuego' });
+    await expect(matthias).toBeVisible({ timeout: hansBudget(15_000) });
+    await expect(matthias).toContainText('HANS! El fuego, bitte.');
+    await expect(overlay).toHaveAttribute('data-fire-call-phase', 'matthias');
+    await capturePhase('matthias');
+
+    await expect(canvas).toHaveAttribute('data-war-room-hans-call-released', 'true', { timeout: 20_000 });
+    await expect(canvas).toHaveAttribute('data-war-room-hans-reply-seen', 'true', { timeout: hansBudget(30_000) });
+    const hans = page.getByRole('status', { name: 'Hans responde a Matthias' });
+    await expect(hans).toBeVisible({ timeout: 15_000 });
+    await expect(hans).toContainText('Sí, señor.');
+    await expect(overlay).toHaveAttribute('data-fire-call-phase', 'hans');
+    await capturePhase('hans');
+
+    await expect(overlay).not.toHaveAttribute('data-fire-call-phase', 'hans', { timeout: 20_000 });
+    await expect(hans).toHaveCount(0);
+    await capturePhase('after-reply');
+    expect(states.map(({ label }) => label)).toEqual(['matthias', 'hans', 'after-reply']);
+    expect(states[0].phase).toBe('matthias');
+    expect(states[1].phase).toBe('hans');
+    expect(states[2].phase).not.toBe('hans');
+    expect(states[1].replySeen).toBe(true);
+    expect(states.every(({ viewport }) => viewport.width === 390 && viewport.height === 844)).toBe(true);
+    await writeFile(
+      ARTIFACT_DIR + '/war-room-hans-v3-mobile-390x844-timeline.json',
+      JSON.stringify({
+        schema: 1,
+        runnerSha: process.env.GITHUB_SHA || 'local',
+        renderer: 'SwiftShader (compatibility only)',
+        states,
+      }, null, 2) + '\n',
+      'utf8',
+    );
+  } finally {
+    await context.close();
+    await browser.close();
+  }
+});
