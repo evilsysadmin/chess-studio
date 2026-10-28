@@ -21,6 +21,10 @@ RUN npx vite build --base=/
 # --- Etapa 2: nginx sin privilegios ---
 FROM nginx:stable-alpine3.23
 
+# Alpine 3.23's patched Brotli decoder is required for CVE-2026-111497.
+# Fail the image build if the fixed package is unavailable; never suppress Trivy.
+RUN apk add --no-cache 'brotli-libs>=1.2.1-r0'
+
 # El master de nginx también corre como usuario no-root. Para ello movemos
 # PID/temp a /tmp y escuchamos en 8080 (puerto no privilegiado).
 RUN cat > /etc/nginx/nginx.conf <<'NGINX'
