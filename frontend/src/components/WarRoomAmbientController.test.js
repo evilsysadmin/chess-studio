@@ -124,6 +124,32 @@ describe('War Room ambient visibility lifecycle', () => {
     expect(f.canvas.listeners()).toBe(0);
   });
 
+  it('resumes quickly after a brief hidden tab or offscreen visit (before 12s idle)', () => {
+    const tab = fixture();
+    tab.controller.start();
+    tab.doc.hidden = true;
+    tab.doc.emit('visibilitychange');
+    expect(tab.timers.size).toBe(0);
+    tab.setTime(200);
+    tab.doc.hidden = false;
+    tab.doc.emit('visibilitychange');
+    expect(tab.frames.size).toBe(1);
+    tab.runFrame();
+    expect(tab.paints()).toBe(1);
+    tab.controller.dispose();
+
+    const offscreen = fixture();
+    offscreen.controller.start();
+    offscreen.observer().callback([{ isIntersecting: false }]);
+    expect(offscreen.timers.size).toBe(0);
+    offscreen.setTime(200);
+    offscreen.observer().callback([{ isIntersecting: true }]);
+    expect(offscreen.frames.size).toBe(1);
+    offscreen.runFrame();
+    expect(offscreen.paints()).toBe(1);
+    offscreen.controller.dispose();
+  });
+
   it('wakes from 30-second deep sleep when the tab becomes visible without mouse input', () => {
     const f = fixture();
     f.controller.start();
