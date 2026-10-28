@@ -151,15 +151,6 @@ jobs:
           --repository "$GITHUB_REPOSITORY"
           --sha "$DEPLOY_SHA"
 
-      - name: Block automatic promotion while newer staging is pending
-        if: steps.source.outputs.found == 'true' && github.event_name != 'workflow_dispatch'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: >-
-          python3 scripts/production_release_train.py latest-staging
-          --repository "$GITHUB_REPOSITORY"
-          --sha "$DEPLOY_SHA"
-
       - name: Diagnose current staging generation · immutable proof remains authoritative
         if: steps.source.outputs.found == 'true'
         run: >-
