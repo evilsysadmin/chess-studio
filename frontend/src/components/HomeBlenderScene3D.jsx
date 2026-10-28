@@ -2347,7 +2347,9 @@ export default function HomeBlenderScene3D({
       }
     };
     const onIntersectionChange = (entries) => {
-      intersecting = entries[0]?.isIntersecting !== false;
+      const next = entries[0]?.isIntersecting !== false;
+      if (intersecting === next) return;
+      intersecting = next;
       if (!isVisible()) {
         idleController?.setEnabled(false);
         stopFireAnimation();
