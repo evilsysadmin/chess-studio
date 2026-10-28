@@ -323,8 +323,10 @@ test('War Room · secuencia móvil de llamada y respuesta de Hans en 390×844', 
       timestamp: performance.now(),
     }));
     states.push({ label, ...state });
-    // A full WebGL PNG on SwiftShader can outlast Hans' 1.6s reply.
-    // Only still-capture durable states; video proves the transient frames.
+    // The Playwright video recorder can transiently letterbox/scale its 390px
+    // surface on SwiftShader, producing misleading dialogue evidence. Prefer
+    // actual viewport PNGs even for Hans' short reply; the video is secondary.
+    // This may expose slow CI screenshot captures as a failed evidence test.
     if (screenshot) {
       const filePath = ARTIFACT_DIR + '/war-room-hans-v3-mobile-390x844-' + label + '.png';
       // CDP captureScreenshot defaults to an 800×600 surface in some mobile
@@ -368,7 +370,17 @@ test('War Room · secuencia móvil de llamada y respuesta de Hans en 390×844', 
     await expect(hans).toBeVisible({ timeout: 15_000 });
     await expect(hans).toContainText('Sí, señor.');
     await expect(overlay).toHaveAttribute('data-fire-call-phase', 'hans');
-    await capturePhase('hans', false);
+    const bubbleBounds = await hans.boundingBox();
+    expect(bubbleBounds).not.toBeNull();
+    // More than just a visible DOM flag: require an actual readable bubble
+    // inside the physical 390px viewport before capturing the transient frame.
+    const bubbleIntersection = Math.max(0,
+      Math.min(390, bubbleBounds.x + bubbleBounds.width) - Math.max(0, bubbleBounds.x));
+    expect(bubbleIntersection).toBeGreaterThan(bubbleBounds.width * 0.75);
+    await capturePhase('hans');
+    // Reject a delayed screenshot that has advanced past the short response:
+    // that PNG would not prove the altered 80ms narrative pulse.
+    await expect(overlay).toHaveAttribute('data-fire-call-phase', 'hans');
 
     await expect(overlay).not.toHaveAttribute('data-fire-call-phase', 'hans', { timeout: 20_000 });
     await expect(hans).toHaveCount(0);
@@ -385,7 +397,10 @@ test('War Room · secuencia móvil de llamada y respuesta de Hans en 390×844', 
         schema: 1,
         runnerSha: process.env.GITHUB_SHA || 'local',
         renderer: 'SwiftShader (compatibility only)',
-        transientDialogueVideo: 'war-room-hans-v3-mobile-390x844-dialogue.webm',
+        transientReplyPng: 'war-room-hans-v3-mobile-390x844-hans.png',
+        // Playwright recorder is informational only until viewport stability
+        // is demonstrated on the SwiftShader CI runner.
+        informationalVideo: 'war-room-hans-v3-mobile-390x844-dialogue.webm',
         states,
       }, null, 2) + '\n',
       'utf8',
