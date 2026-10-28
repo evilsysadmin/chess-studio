@@ -111,6 +111,7 @@ describe('War Room ambient deadline scheduler', () => {
     narrative.runTimer();
     narrative.runFrame(12_000);
     expect([...narrative.timers.values()][0].delay).toBeCloseTo(100, 6);
+    expect(narrative.scheduler.getDebugState().narrativeAwake).toBe(true);
 
     const fast = makeClock({ intervalMs: 16 });
     fast.scheduler.start();
@@ -178,6 +179,30 @@ describe('War Room ambient deadline scheduler', () => {
     clock.runFrame(30_000);
     expect(clock.paints()).toBe(1);
     expect(clock.timers.size).toBe(1);
+  });
+
+  it('does not falsely report deep sleep while a long Hans narrative is still painting', () => {
+    const narrative = makeClock({ intervalMs: 100, keepAmbientAwake: true });
+    narrative.scheduler.start();
+    narrative.setNow(32_000);
+    narrative.runTimer();
+    narrative.runFrame();
+    const state = narrative.scheduler.getDebugState();
+    expect(state).toMatchObject({
+      inactive: false, narrativeAwake: true, deepSleeping: false, timerPending: true,
+    });
+    expect(narrative.paints()).toBe(1);
+    narrative.scheduler.dispose();
+  });
+
+  it('reports a hidden/offscreen surface as inactive, not as a deep-sleep measurement', () => {
+    const clock = makeClock({ active: false });
+    clock.scheduler.start();
+    clock.setNow(33_000);
+    expect(clock.scheduler.getDebugState()).toMatchObject({
+      inactive: true, narrativeAwake: false, deepSleeping: false,
+      timerPending: false, rafPending: false,
+    });
   });
 
   it('stops completely while inactive and restarts only when explicitly woken', () => {
