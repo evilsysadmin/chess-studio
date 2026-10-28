@@ -1,0 +1,59 @@
+import { expect, test } from '@playwright/test';
+import {
+  assessWarRoomDeepIdleCapture,
+  WAR_ROOM_DEEP_IDLE_WAIT_MS,
+} from './war-room-deep-idle-probe.mjs';
+
+const completed = (startedAtMs, calls = 480) => ({
+  startedAtMs, endedAtMs: startedAtMs + 8, calls,
+});
+
+test.describe('War Room opt-in deep-idle GPU benchmark evidence', () => {
+  test('counts completed WebGL submissions rather than browser RAF callbacks', () => {
+    const status = assessWarRoomDeepIdleCapture({
+      capture: { overflow: false, samples: [completed(10_000), completed(29_900)] },
+      startedAtMs: 0, endedAtMs: 34_000, visibility: 'visible',
+    });
+    expect(status.status).toBe('ready');
+    expect(status.totalRenderSubmissions).toBe(2);
+    expect(status.tailRenderSubmissions).toBe(0);
+    expect(status.tailDrawCalls).toBe(0);
+    expect(status.deepSleepObserved).toBe(true);
+    expect(WAR_ROOM_DEEP_IDLE_WAIT_MS).toBeGreaterThan(30_000);
+  });
+
+  test('does not hide a late ambient frame after the deep-sleep deadline', () => {
+    const status = assessWarRoomDeepIdleCapture({
+      capture: { overflow: false, samples: [completed(29_900), completed(32_000, 485)] },
+      startedAtMs: 0, endedAtMs: 34_000, visibility: 'visible',
+    });
+    expect(status.status).toBe('ready');
+    expect(status.tailRenderSubmissions).toBe(1);
+    expect(status.tailDrawCalls).toBe(485);
+    expect(status.deepSleepObserved).toBe(false);
+  });
+
+  test('fails closed on hidden tab, short measurement and journal loss', () => {
+    const sample = { overflow: false, samples: [] };
+    expect(assessWarRoomDeepIdleCapture({
+      capture: sample, startedAtMs: 0, endedAtMs: 34_000,
+      visibility: 'hidden',
+    }).status).toBe('not-foreground');
+    expect(assessWarRoomDeepIdleCapture({
+      capture: sample, startedAtMs: 0, endedAtMs: 30_000,
+      visibility: 'visible',
+    }).status).toBe('insufficient-duration');
+    expect(assessWarRoomDeepIdleCapture({
+      capture: null, startedAtMs: 0, endedAtMs: 34_000,
+      visibility: 'visible',
+    }).status).toBe('missing-journal');
+    expect(assessWarRoomDeepIdleCapture({
+      capture: { ...sample, overflow: true }, startedAtMs: 0, endedAtMs: 34_000,
+      visibility: 'visible',
+    }).status).toBe('journal-overflow');
+    expect(assessWarRoomDeepIdleCapture({
+      capture: { overflow: false, samples: [{ startedAtMs: 20_000, endedAtMs: 20_001, calls: -1 }] },
+      startedAtMs: 0, endedAtMs: 34_000, visibility: 'visible',
+    }).status).toBe('invalid-render-sample');
+  });
+});
