@@ -33,6 +33,16 @@ test.describe('War Room opt-in deep-idle GPU benchmark evidence', () => {
     expect(status.deepSleepObserved).toBe(false);
   });
 
+  test('counts a slow render overlapping the observation-tail boundary', () => {
+    const status = assessWarRoomDeepIdleCapture({
+      capture: { overflow: false, samples: [{ startedAtMs: 31_498, endedAtMs: 31_510, calls: 400 }] },
+      startedAtMs: 0, endedAtMs: 34_000, visibility: 'visible',
+    });
+    expect(status.status).toBe('ready');
+    expect(status.tailRenderSubmissions).toBe(1);
+    expect(status.deepSleepObserved).toBe(false);
+  });
+
   test('fails closed on hidden tab, short measurement and journal loss', () => {
     const sample = { overflow: false, samples: [] };
     expect(assessWarRoomDeepIdleCapture({
