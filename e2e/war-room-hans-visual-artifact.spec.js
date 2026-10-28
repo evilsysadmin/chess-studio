@@ -1,5 +1,5 @@
 import { chromium, expect, test } from '@playwright/test';
-import { mkdir, stat, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, stat, writeFile } from 'node:fs/promises';
 import { buttonWithVisibleText, login, mockApi } from './helpers.js';
 import { navigateWarRoomKeyboard } from './war-room-board-input.js';
 import { warRoomHansEventForGame } from '../frontend/src/components/WarRoomHansEventContract.js';
@@ -301,6 +301,7 @@ test('War Room · secuencia móvil de llamada y respuesta de Hans en 390×844', 
   const context = await browser.newContext({
     recordVideo: { dir: videoDir, size: { width: 390, height: 844 } },
     viewport: { width: 390, height: 844 },
+    screen: { width: 390, height: 844 },
     isMobile: true,
     hasTouch: true,
     deviceScaleFactor: 1,
@@ -325,7 +326,14 @@ test('War Room · secuencia móvil de llamada y respuesta de Hans en 390×844', 
     // A full WebGL PNG on SwiftShader can outlast Hans' 1.6s reply.
     // Only still-capture durable states; video proves the transient frames.
     if (screenshot) {
-      await captureViewportPng(context, page, ARTIFACT_DIR + '/war-room-hans-v3-mobile-390x844-' + label + '.png');
+      const filePath = ARTIFACT_DIR + '/war-room-hans-v3-mobile-390x844-' + label + '.png';
+      // CDP captureScreenshot defaults to an 800×600 surface in some mobile
+      // emulation contexts even when innerWidth is 390. Playwright's viewport
+      // screenshot and PNG IHDR dimensions are the actual evidence contract.
+      await page.screenshot({ path: filePath, fullPage: false, timeout: 30_000 });
+      const png = await readFile(filePath);
+      expect(png.readUInt32BE(16)).toBe(390);
+      expect(png.readUInt32BE(20)).toBe(844);
     }
   }
 
