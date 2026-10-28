@@ -69,6 +69,7 @@ INVENTORY = {
     'r2-assets-infra.yml': 'infra-assets',
     'render-production-guardrail.yml': 'delivery-guardrail',
     'staging-ai-worker.yml': 'delivery-accreditation',
+    'star-adventures-four-view-r2-copy.yml': 'infra-assets-integrity',
     'staging-deploy.yml': 'delivery-staging',
     'staging-deploy-continuity.yml': 'delivery-staging-resilience',
     'staging-pawn-slug-visual.yml': 'visual-staging-evidence',
