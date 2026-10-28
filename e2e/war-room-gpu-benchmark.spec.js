@@ -6,11 +6,18 @@ import { resolve } from 'node:path';
 import { mockApi, waitForHomeInteractive } from './helpers.js';
 import { enterWarRoomGpuQuickMatch } from './war-room-gpu-quick-match.js';
 import { navigateWarRoomKeyboard } from './war-room-board-input.js';
+import {
+  assessWarRoomDeepIdleCapture,
+  WAR_ROOM_DEEP_IDLE_WAIT_MS,
+} from './war-room-deep-idle-probe.mjs';
 
 // Opt-in local benchmark only. rAF is not GPU time; emulated touch is not a phone GPU.
 const requested = process.env.WAR_ROOM_GPU_BENCH_RENDERER;
 const revision = process.env.WAR_ROOM_GPU_BENCH_SHA || '';
 const variant = process.env.WAR_ROOM_GPU_BENCH_VARIANT || 'v3';
+// Opt-in extra 34s only for physical desktop's first visit. Default 2.5s
+// idle benchmark remains fast; it cannot prove the 30s deep-sleep contract.
+const measureDeepIdle = process.env.WAR_ROOM_GPU_BENCH_DEEP_IDLE === '1';
 // One ID per invocation: repeated A/B runs must never overwrite old samples.
 const runId = randomUUID();
 if (process.env.WAR_ROOM_GPU_BENCH !== '1'
@@ -275,6 +282,26 @@ async function sampleIdle(page) {
   return result;
 }
 
+async function sampleDeepIdle(page) {
+  // One snapshot before and one after: no rAF/MutationObserver/per-frame
+  // instrumentation is installed while the renderer is supposed to sleep.
+  const before = await page.evaluate(() => {
+    const journal = document.querySelector('canvas.board3d-main-canvas')?.__warRoomRenderCostJournal;
+    return journal ? { seq: journal.latestSeq, startedAtMs: performance.now() } : null;
+  });
+  if (!before) return { status: 'missing-journal' };
+  await page.waitForTimeout(WAR_ROOM_DEEP_IDLE_WAIT_MS);
+  const after = await page.evaluate((seq) => {
+    const journal = document.querySelector('canvas.board3d-main-canvas')?.__warRoomRenderCostJournal;
+    return {
+      capture: journal?.readAfter(seq) || null,
+      endedAtMs: performance.now(),
+      visibility: document.visibilityState,
+    };
+  }, before.seq);
+  return assessWarRoomDeepIdleCapture({ ...before, ...after });
+}
+
 async function openWarRoom(page, requestLog) {
   await mockApi(page, { requestLog, profileSeed: onboarding });
   // Page navigation uses the existing authenticated E2E session. The test
@@ -452,7 +479,7 @@ test.afterAll(async () => { await browser?.close(); });
 
 for (const profile of profiles) {
   test('War Room ' + variant.toUpperCase() + ' sustained GPU diagnostic · ' + profile.id, async () => {
-    test.setTimeout(240_000);
+    test.setTimeout(measureDeepIdle && !profile.touch ? 300_000 : 240_000);
     const context = await browser.newContext({
       // Manual browser.newContext does not inherit fixture-level baseURL.
       baseURL: test.info().project.use.baseURL || 'http://127.0.0.1:4173/chess-studio/',
@@ -502,12 +529,19 @@ for (const profile of profiles) {
           expect(renderer.firstReady.calls).toBeGreaterThan(0);
           const idle = await sampleIdle(page);
           const move = await sampleConfirmedMove(page, board, canvas, requestLog);
+          const deepIdle = measureDeepIdle && !profile.touch && visitType === 'first-visit'
+            ? await sampleDeepIdle(page)
+            : null;
+          if (deepIdle) {
+            expect(deepIdle.status, 'Real deep idle sample must have valid renderer journal').toBe('ready');
+            expect(deepIdle.deepSleepObserved, 'No WebGL renders allowed after 30s idle').toBe(true);
+          }
           const gpuTimerQueryMeasured = Boolean(
             idle.gpuTimer.samplesMs.length || move.gpuTimer.samplesMs.length,
           );
           visits.push({
             visitType, openToReadyWallMs, hansStage, hansReadyAfterShellMs,
-            ...renderer, idle, move,
+            ...renderer, idle, move, ...(deepIdle ? { deepIdle } : {}),
             // GPU elapsed is phase-specific: an aggregated frame time would
             // conflate idle and move; retain null rather than manufacture it.
             gpuFrameTimeMs: null, gpuTimerQueryMeasured,
@@ -529,6 +563,7 @@ for (const profile of profiles) {
       profile: profile.id, viewport: profile.viewport,
       emulatedTouch: profile.touch, physicalAndroidVerified: false,
       browserFramePacingOnly: !visits.some(({ gpuTimerQueryMeasured }) => gpuTimerQueryMeasured),
+      deepIdleRequested: measureDeepIdle && !profile.touch,
       visits,
     };
     await mkdir(outputDir, { recursive: true });
@@ -542,6 +577,7 @@ for (const profile of profiles) {
         moveGpuQueries: move.gpuTimer.samplesMs.length,
         idleRenderedFrames: idle.renderCost.renderedFrames,
         moveRenderedFrames: move.renderCost.renderedFrames,
+        deepIdleTailDrawCalls: visits.find(({ visitType: visit }) => visit === visitType)?.deepIdle?.tailDrawCalls ?? null,
         moveConfirmationMs: move.inputToConfirmationMs,
       })),
     }));
