@@ -109,6 +109,18 @@ export function shouldStartHansFireEpilogue({
     && (hansScreen === 'hidden' || hansScreen === 'missing');
 }
 
+// On a touch viewport the bubble occupies up to 62% of the host width
+// (WarRoomHansFireCall.css). Clamp its *visible box*, not merely the actor
+// anchor; an off-center Hans can otherwise leave all his text offscreen.
+function keepHansMobileBubbleInViewport(anchor) {
+  const widthPct = 62;
+  const insetPct = 2;
+  const minShift = (insetPct - anchor.left) * 100 / widthPct;
+  const maxShift = (100 - insetPct - widthPct - anchor.left) * 100 / widthPct;
+  const shift = clamp(anchor.bubbleShiftPercent, minShift, maxShift);
+  return { ...anchor, bubbleShiftPercent: shift, tailPercent: -shift };
+}
+
 export function projectHansFireReplyAnchor({ ndcX, ndcY, coarsePointer = false } = {}) {
   const x = Number(ndcX);
   const y = Number(ndcY);
@@ -119,9 +131,12 @@ export function projectHansFireReplyAnchor({ ndcX, ndcY, coarsePointer = false }
   const safeTop = coarsePointer ? 22 : 18;
   const top = clamp(((1 - y) * 50) - headLift, safeTop, 92);
 
-  if (x > 0.48) return { left, top, bubbleShiftPercent: -82, tailPercent: 82 };
-  if (x < -0.48) return { left, top, bubbleShiftPercent: -18, tailPercent: 18 };
-  return { left, top, bubbleShiftPercent: -50, tailPercent: 50 };
+  const anchor = x > 0.48
+    ? { left, top, bubbleShiftPercent: -82, tailPercent: 82 }
+    : x < -0.48
+      ? { left, top, bubbleShiftPercent: -18, tailPercent: 18 }
+      : { left, top, bubbleShiftPercent: -50, tailPercent: 50 };
+  return coarsePointer ? keepHansMobileBubbleInViewport(anchor) : anchor;
 }
 
 export function projectHansInitialReplyAnchor({ ndcX, ndcY, coarsePointer = false } = {}) {
@@ -134,9 +149,12 @@ export function projectHansInitialReplyAnchor({ ndcX, ndcY, coarsePointer = fals
   const safeTop = coarsePointer ? 20 : 16;
   const top = clamp(((1 - y) * 50) - headLift, safeTop, 92);
 
-  if (x > 0.48) return { left, top, bubbleShiftPercent: -62, tailPercent: 62 };
-  if (x < -0.48) return { left, top, bubbleShiftPercent: -38, tailPercent: 38 };
-  return { left, top, bubbleShiftPercent: -50, tailPercent: 50 };
+  const anchor = x > 0.48
+    ? { left, top, bubbleShiftPercent: -62, tailPercent: 62 }
+    : x < -0.48
+      ? { left, top, bubbleShiftPercent: -38, tailPercent: 38 }
+      : { left, top, bubbleShiftPercent: -50, tailPercent: 50 };
+  return coarsePointer ? keepHansMobileBubbleInViewport(anchor) : anchor;
 }
 
 export function fireCallPhase(elapsedMs, hansOnscreen = false) {
