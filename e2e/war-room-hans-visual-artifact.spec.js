@@ -307,6 +307,10 @@ test('War Room · secuencia móvil de llamada y respuesta de Hans en 390×844', 
     deviceScaleFactor: 1,
   });
   const page = await context.newPage();
+  // Install before the app starts: only the short live Hans reply is paused
+  // below, so a slow SwiftShader screenshot cannot outlive its 1.6s phase.
+  // Time otherwise flows normally, preserving the genuine 3D choreography.
+  await page.clock.install();
   const video = page.video();
   const states = [];
   const canvas = page.locator('.board3d-main-canvas');
@@ -370,21 +374,24 @@ test('War Room · secuencia móvil de llamada y respuesta de Hans en 390×844', 
     await expect(hans).toBeVisible({ timeout: 15_000 });
     await expect(hans).toContainText('Sí, señor.');
     await expect(overlay).toHaveAttribute('data-fire-call-phase', 'hans');
-    const bubbleBounds = await hans.boundingBox();
-    expect(bubbleBounds).not.toBeNull();
-    // More than just a visible DOM flag: require an actual readable bubble
-    // inside the physical 390px viewport before capturing the transient frame.
-    // Require the *whole text panel*, not merely 75% of its outline.
-    // The 80ms narrative continues while SwiftShader captures the image,
-    // so assert the live phase and geometry BEFORE screenshot starts.
-    expect(bubbleBounds.x).toBeGreaterThanOrEqual(4);
-    expect(bubbleBounds.x + bubbleBounds.width).toBeLessThanOrEqual(386);
-    expect(bubbleBounds.width).toBeGreaterThan(100);
-    await expect(hans).toContainText('Sí, señor.');
-    await capturePhase('hans');
-    // A screenshot can take longer than the authored 1.6s Hans reply under
-    // SwiftShader. Do not require it still to exist AFTER synchronous capture.
-    // Inspect the actual saved PNG as the visual acceptance evidence.
+    // Freeze only the real, already-visible reply while photographing it.
+    // Without this, the SwiftShader screenshot records the empty next phase
+    // despite having observed Hans in DOM *before* capture.
+    await page.clock.pauseAt(await page.evaluate(() => Date.now()));
+    try {
+      const bubbleBounds = await hans.boundingBox();
+      expect(bubbleBounds).not.toBeNull();
+      // Actual on-screen geometry at 390px: both edges and text must fit.
+      expect(bubbleBounds.x).toBeGreaterThanOrEqual(4);
+      expect(bubbleBounds.x + bubbleBounds.width).toBeLessThanOrEqual(386);
+      expect(bubbleBounds.width).toBeGreaterThan(100);
+      await expect(hans).toContainText('Sí, señor.');
+      await capturePhase('hans');
+      await expect(overlay).toHaveAttribute('data-fire-call-phase', 'hans');
+    } finally {
+      // The clock resumes before validating the actual authored exit phase.
+      await page.clock.resume();
+    }
 
     await expect(overlay).not.toHaveAttribute('data-fire-call-phase', 'hans', { timeout: 20_000 });
     await expect(hans).toHaveCount(0);
