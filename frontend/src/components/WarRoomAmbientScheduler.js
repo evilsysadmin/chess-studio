@@ -154,13 +154,25 @@ export function createWarRoomAmbientScheduler({
     markPaint,
     markInteraction,
     dispose,
-    getDebugState: () => ({
-      disposed,
-      rafPending: Boolean(rafId),
-      timerPending: Boolean(timerId),
-      lastPaintAt,
-      lastNonAmbientPaintAt,
-      deepSleeping: numericNow(now) - lastNonAmbientPaintAt >= DEEP_SLEEP_AFTER_MS,
-    }),
+    getDebugState: () => {
+      // The profiler must describe the scheduler's *actual* decision, not
+      // merely a quiet timestamp. During a Hans narrative, ambience keeps
+      // painting past 30s, while a hidden/offscreen surface is inactive.
+      const current = numericNow(now);
+      const plan = disposed ? {} : (planFrame?.(Math.max(0, current - lastPaintAt)) || {});
+      const active = Boolean(plan.active);
+      const narrativeAwake = Boolean(plan.keepAmbientAwake);
+      return {
+        disposed,
+        rafPending: Boolean(rafId),
+        timerPending: Boolean(timerId),
+        lastPaintAt,
+        lastNonAmbientPaintAt,
+        inactive: !active,
+        narrativeAwake,
+        deepSleeping: !disposed && active && !narrativeAwake
+          && current - lastNonAmbientPaintAt >= DEEP_SLEEP_AFTER_MS,
+      };
+    },
   };
 }
