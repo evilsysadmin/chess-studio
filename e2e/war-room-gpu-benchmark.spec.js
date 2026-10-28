@@ -570,14 +570,14 @@ for (const profile of profiles) {
     await writeFile(resolve(outputDir, revision + '-' + variant + '-' + requested + '-' + profile.id + '-' + runId + '.json'), JSON.stringify(report, null, 2) + '\n');
     console.log('WAR_ROOM_GPU_BENCH ' + JSON.stringify({
       revision, variant, runId, profile: profile.id, renderer: requested,
-      visits: visits.map(({ visitType, hansStage, hansReadyAfterShellMs, idle, move }) => ({
+      visits: visits.map(({ visitType, hansStage, hansReadyAfterShellMs, idle, move, deepIdle }) => ({
         visitType, hansStage, hansReadyAfterShellMs,
         idleRafP95Ms: idle.rafP95Ms, moveRafP95Ms: move.rafP95Ms,
         idleGpuQueries: idle.gpuTimer.samplesMs.length,
         moveGpuQueries: move.gpuTimer.samplesMs.length,
         idleRenderedFrames: idle.renderCost.renderedFrames,
         moveRenderedFrames: move.renderCost.renderedFrames,
-        deepIdleTailDrawCalls: visits.find(({ visitType: visit }) => visit === visitType)?.deepIdle?.tailDrawCalls ?? null,
+        deepIdleTailDrawCalls: deepIdle?.tailDrawCalls ?? null,
         moveConfirmationMs: move.inputToConfirmationMs,
       })),
     }));
