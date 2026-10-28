@@ -26,6 +26,7 @@ HARNESS_FILES = (
     'e2e/helpers.js', 'e2e/war-room-board-input.js',
     'e2e/war-room-gpu-quick-match.js',
     'e2e/war-room-gpu-shadow-readiness.mjs',
+    'e2e/war-room-deep-idle-probe.mjs',
     'e2e/package.json', 'e2e/package-lock.json',
     'scripts/e2e_dist_server.py',
 )
@@ -312,13 +313,15 @@ def self_test():
     assert 'e2e/war-room-board-input.js' in HARNESS_FILES
     assert 'e2e/war-room-gpu-quick-match.js' in HARNESS_FILES
     assert 'e2e/war-room-gpu-shadow-readiness.mjs' in HARNESS_FILES
+    assert 'e2e/war-room-deep-idle-probe.mjs' in HARNESS_FILES
     assert 'scripts/e2e_dist_server.py' in HARNESS_FILES
     pinned_files = {filename: (root / filename).read_bytes() for filename in HARNESS_FILES}
     require_complete_harness_imports(pinned_files)
     check_gpu_harness_syntax(pinned_files)
     # Both .js and .mjs imports must fail fast even when the entry spec parses.
     for broken_path in ('e2e/war-room-gpu-quick-match.js',
-                        'e2e/war-room-gpu-shadow-readiness.mjs'):
+                        'e2e/war-room-gpu-shadow-readiness.mjs',
+                        'e2e/war-room-deep-idle-probe.mjs'):
         broken_files = dict(pinned_files)
         broken_files[broken_path] = b'export const malformed = ];'
         try:
