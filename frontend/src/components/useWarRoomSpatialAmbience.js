@@ -267,7 +267,9 @@ export function startWarRoomSpatialAmbience({ context, atmosphere = resolveWarRo
     for (const loop of interiorToneLoops) stopToneLoop(loop);
     interiorToneLoops = [];
   };
-  const noiseBuffer = makeNoiseBuffer(context);
+  // Generate the ~2.4s weather noise only if the player listens at the window.
+  // Entering the War Room should never allocate/fill it just for idle silence.
+  let noiseBuffer = null;
 
   let disposed = false;
   let roomVisible = typeof document === 'undefined' || !document.hidden;
@@ -283,7 +285,10 @@ export function startWarRoomSpatialAmbience({ context, atmosphere = resolveWarRo
 
   const startWeatherLoops = () => {
     stopWeatherLoops();
-    weatherLoops = warRoomWeatherLoopSpecs(mix, true)
+    const specs = warRoomWeatherLoopSpecs(mix, true);
+    if (!specs.length) return;
+    noiseBuffer ||= makeNoiseBuffer(context);
+    weatherLoops = specs
       .map((spec) => startNoiseLoop(context, weatherBus, noiseBuffer, spec))
       .filter(Boolean);
   };
