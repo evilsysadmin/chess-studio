@@ -399,6 +399,16 @@ home-gpu-draw-census: ensure-e2e-deps frontend-build
 		./node_modules/.bin/playwright test --config=playwright.home-gpu.config.js
 	@echo "Home real draw census: .artifacts/home-gpu-benchmark/home-3d-hardware.json"
 
+.PHONY: home-gpu-idle-probe
+home-gpu-idle-probe: ensure-e2e-deps frontend-build
+	cd e2e && ./node_modules/.bin/playwright install chromium
+	@cd e2e && $(HOME_GPU_ENV) CHESS_HOME_GPU_MODE=hardware \
+		CHESS_HOME_GPU_IDLE_PROBE=1 CHESS_HOME_GPU_HEADLESS=$(HOME_GPU_HEADLESS) \
+		CHESS_HOME_GPU_EXPECT_VENDOR=$(HOME_GPU_EXPECT_VENDOR) \
+		CHESS_HOME_GPU_REVISION="$$(git rev-parse HEAD)" \
+		./node_modules/.bin/playwright test --config=playwright.home-gpu.config.js
+	@echo "Home idle/wake: .artifacts/home-gpu-benchmark/home-idle-hardware.json"
+
 # Only checks physical A/B/B/A PNG/report integrity; never claims visual or GPU
 # approval. The experimental flame capture remains in Draft until accepted.
 home-gpu-flame-pass-verify:

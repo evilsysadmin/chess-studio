@@ -11,6 +11,7 @@ import { homeGpuBenchmarkRevision, homeGpuPhysicalCheckoutProvenance } from './h
 // Explicit, local-only hardware diagnostic. CI excludes this file from its
 // standard Playwright matrix; no identity, passwords or raw GPU names are logged.
 const requested = process.env.CHESS_HOME_GPU_MODE;
+const idleProbe = process.env.CHESS_HOME_GPU_IDLE_PROBE === '1';
 const lightProbe = process.env.CHESS_HOME_GPU_LIGHT_PROBE === '1';
 const lightProbeFamily = String(process.env.CHESS_HOME_GPU_LIGHT_GROUP || 'all').trim().toLowerCase();
 // Legacy is intentionally the default to keep historical A/B reports
@@ -198,7 +199,7 @@ async function readRealCanvas(castle) {
   };
 }
 
-test('Home 3D physical GPU benchmark · three visits or opt-in light A/B/B/A', async ({ browser, baseURL }) => {
+if (!idleProbe) test('Home 3D physical GPU benchmark · three visits or opt-in light A/B/B/A', async ({ browser, baseURL }) => {
   test.setTimeout(lightProbe ? 600_000 : 450_000);
   if (lightProbe && requested !== 'hardware') {
     throw new Error('CHESS_HOME_GPU_LIGHT_PROBE=1 requires CHESS_HOME_GPU_MODE=hardware');
@@ -256,6 +257,9 @@ test('Home 3D physical GPU benchmark · three visits or opt-in light A/B/B/A', a
     });
     try {
       const castle = await openRealHome(page, sequence[index]);
+      // This workload measures active ambience. A late actor download must
+      // not accidentally sample a Home that already entered deep idle.
+      await page.mouse.move(20, 150);
       // Wait for one real post-actor render interval before recording a GPU
       // query watermark. A pending pre-actor query might still complete; the
       // watermark excludes already completed results, and the first fresh
@@ -537,4 +541,81 @@ test('Home 3D physical GPU benchmark · three visits or opt-in light A/B/B/A', a
   await mkdir(artifactDir, { recursive: true });
   await writeFile(`${artifactDir}/home-3d-${requested}.json`, `${JSON.stringify(summary, null, 2)}\n`, 'utf8');
   console.log('HOME_3D_GPU_SUMMARY ' + JSON.stringify(summary.medians));
+});
+
+if (idleProbe) test('Home 3D physical GPU · visible idle sleeps and real input resumes the same scene', async ({ browser, baseURL }) => {
+  test.setTimeout(300_000);
+  expect(requested).toBe('hardware');
+  const revision = homeGpuPhysicalCheckoutProvenance(
+    process.env.CHESS_HOME_GPU_REVISION,
+    execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }),
+    execFileSync('git', ['status', '--porcelain=v1', '--untracked-files=no'], { encoding: 'utf8' }),
+  );
+  const visits = [];
+  await mkdir(artifactDir, { recursive: true });
+  for (const viewport of [{ width: 1440, height: 900 }, { width: 844, height: 390 }]) {
+    const touch = viewport.width < 1000;
+    const context = await browser.newContext({
+      baseURL, viewport, deviceScaleFactor: 1, reducedMotion: 'no-preference',
+      isMobile: touch, hasTouch: touch, serviceWorkers: 'block',
+    });
+    try {
+      const page = await context.newPage();
+      let modelRequests = 0;
+      page.on('request', (request) => {
+        if (/\.glb(?:\?|$)/i.test(request.url())) modelRequests += 1;
+      });
+      const castle = await openRealHome(page);
+      const initial = await readRealCanvas(castle);
+      expect(initial.actual).toBe('hardware');
+      if (expectedVendor) expect(initial.vendor).toBe(expectedVendor);
+      const original = await castle.elementHandle();
+      const startup = await castle.getAttribute('data-home-blender-startup');
+      await page.mouse.move(20, 150);
+      await expect(castle).toHaveAttribute('data-home-fire-motion', 'live');
+      const countPaints = () => castle.evaluate((node) => new Promise((resolve) => {
+        let paints = 0;
+        let hidden = document.hidden;
+        const visibility = () => { hidden ||= document.hidden; };
+        const observer = new MutationObserver((records) => {
+          paints += records.filter(({ attributeName }) => attributeName === 'data-home-blender-draw-pass').length;
+        });
+        document.addEventListener('visibilitychange', visibility);
+        observer.observe(node, { attributes: true, attributeFilter: ['data-home-blender-draw-pass'] });
+        setTimeout(() => {
+          observer.disconnect();
+          document.removeEventListener('visibilitychange', visibility);
+          resolve({ paints, hidden: hidden || document.hidden });
+        }, 1_000);
+      }));
+      const active = await countPaints();
+      expect(active.hidden).toBe(false);
+      expect(active.paints).toBeGreaterThan(0);
+      await expect(castle).toHaveAttribute('data-home-fire-motion', 'idle', { timeout: 35_000 });
+      const requestsAtIdle = modelRequests;
+      const idle = await countPaints();
+      expect(idle).toEqual({ paints: 0, hidden: false });
+      await page.screenshot({ path: `${artifactDir}/home-idle-${viewport.width}x${viewport.height}.png` });
+      // Focus reaches the real hotspot while the canvas ignores pointer events.
+      await page.locator('.illustrated-home__destination--play').focus();
+      await expect(castle).toHaveAttribute('data-home-fire-motion', 'live');
+      const resumed = await countPaints();
+      expect(resumed.hidden).toBe(false);
+      expect(resumed.paints).toBeGreaterThan(0);
+      expect(await castle.evaluate((node, old) => node === old, original)).toBe(true);
+      expect(await castle.getAttribute('data-home-blender-startup')).toBe(startup);
+      expect(modelRequests).toBe(requestsAtIdle);
+      const final = await readRealCanvas(castle);
+      expect(final.rendererFingerprint).toBe(initial.rendererFingerprint);
+      visits.push({ viewport, touch, actual: final.actual, vendor: final.vendor,
+        rendererFingerprint: final.rendererFingerprint, active, idle, resumed, sameCanvas: true });
+      await original.dispose();
+    } finally {
+      await context.close();
+    }
+  }
+  await writeFile(`${artifactDir}/home-idle-hardware.json`, JSON.stringify({
+    schema: 1, revision, browserVersion: browser.version(), visits,
+  }, null, 2) + '\n');
+  console.log('HOME_IDLE_GPU ' + JSON.stringify(visits));
 });
