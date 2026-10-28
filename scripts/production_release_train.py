@@ -377,10 +377,6 @@ def main(argv: list[str] | None = None) -> int:
     lineage.add_argument("--repository", required=True)
     lineage.add_argument("--sha", required=True)
 
-    latest = sub.add_parser("latest-staging")
-    latest.add_argument("--repository", required=True)
-    latest.add_argument("--sha", required=True)
-
     current = sub.add_parser("current")
     current.add_argument("--sha", required=True)
     current.add_argument("--backend-url", required=True)
@@ -425,12 +421,12 @@ def main(argv: list[str] | None = None) -> int:
         print(f"Production provenance: Staging AI run {args.run_id} (#{args.run_number}) acreditó {sha}")
         return 0
     if args.command == "lineage":
+        # Scheduled/target-switch promotions must not overtake a newer staging generation.
+        # Manual expected_sha + immutable accreditation remains the explicit escape hatch.
+        if os.environ.get("GITHUB_EVENT_NAME") != "workflow_dispatch":
+            require_latest_staging_generation(args.repository, args.sha.lower())
         current_sha, status = require_main_lineage(args.repository, args.sha.lower())
         print(f"Production lineage admission OK: {args.sha.lower()} pertenece a main {current_sha} ({status}).")
-        return 0
-    if args.command == "latest-staging":
-        require_latest_staging_generation(args.repository, args.sha.lower())
-        print(f"Latest staging deployment matches accredited SHA {args.sha.lower()}.")
         return 0
     if args.command == "current":
         return 0 if production_is_current(args.sha.lower(), args.backend_url, args.frontend_url, args.ai_url) else 1
