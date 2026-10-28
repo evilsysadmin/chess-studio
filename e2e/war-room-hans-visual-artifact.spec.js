@@ -1,5 +1,5 @@
 import { chromium, expect, test } from '@playwright/test';
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, stat, writeFile } from 'node:fs/promises';
 import { buttonWithVisibleText, login, mockApi } from './helpers.js';
 import { navigateWarRoomKeyboard } from './war-room-board-input.js';
 import { warRoomHansEventForGame } from '../frontend/src/components/WarRoomHansEventContract.js';
@@ -291,22 +291,27 @@ test('War Room · secuencia móvil de llamada y respuesta de Hans en 390×844', 
   // SwiftShader is a compatibility renderer, never a physical GPU benchmark.
   test.setTimeout(270_000);
   await mkdir(ARTIFACT_DIR, { recursive: true });
+  const videoDir = '../.artifacts/hans-dialogue-video-tmp';
+  const videoPath = ARTIFACT_DIR + '/war-room-hans-v3-mobile-390x844-dialogue.webm';
+  await mkdir(videoDir, { recursive: true });
   const browser = await chromium.launch({
     headless: true,
     args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'],
   });
   const context = await browser.newContext({
+    recordVideo: { dir: videoDir, size: { width: 390, height: 844 } },
     viewport: { width: 390, height: 844 },
     isMobile: true,
     hasTouch: true,
     deviceScaleFactor: 1,
   });
   const page = await context.newPage();
+  const video = page.video();
   const states = [];
   const canvas = page.locator('.board3d-main-canvas');
   const overlay = page.getByTestId('warroom-hans-fire-call-overlay');
 
-  async function capturePhase(label) {
+  async function capturePhase(label, screenshot = true) {
     const state = await canvas.evaluate((node) => ({
       phase: document.querySelector('[data-testid="warroom-hans-fire-call-overlay"]')?.getAttribute('data-fire-call-phase'),
       screen: node.dataset.warRoomHansScreen || '',
@@ -317,7 +322,11 @@ test('War Room · secuencia móvil de llamada y respuesta de Hans en 390×844', 
       timestamp: performance.now(),
     }));
     states.push({ label, ...state });
-    await captureViewportPng(context, page, ARTIFACT_DIR + '/war-room-hans-v3-mobile-390x844-' + label + '.png');
+    // A full WebGL PNG on SwiftShader can outlast Hans' 1.6s reply.
+    // Only still-capture durable states; video proves the transient frames.
+    if (screenshot) {
+      await captureViewportPng(context, page, ARTIFACT_DIR + '/war-room-hans-v3-mobile-390x844-' + label + '.png');
+    }
   }
 
   try {
@@ -352,7 +361,7 @@ test('War Room · secuencia móvil de llamada y respuesta de Hans en 390×844', 
     await expect(hans).toBeVisible({ timeout: 15_000 });
     await expect(hans).toContainText('Sí, señor.');
     await expect(overlay).toHaveAttribute('data-fire-call-phase', 'hans');
-    await capturePhase('hans');
+    await capturePhase('hans', false);
 
     await expect(overlay).not.toHaveAttribute('data-fire-call-phase', 'hans', { timeout: 20_000 });
     await expect(hans).toHaveCount(0);
@@ -369,12 +378,16 @@ test('War Room · secuencia móvil de llamada y respuesta de Hans en 390×844', 
         schema: 1,
         runnerSha: process.env.GITHUB_SHA || 'local',
         renderer: 'SwiftShader (compatibility only)',
+        transientDialogueVideo: 'war-room-hans-v3-mobile-390x844-dialogue.webm',
         states,
       }, null, 2) + '\n',
       'utf8',
     );
   } finally {
+    await page.close().catch(() => {});
+    if (video) await video.saveAs(videoPath);
     await context.close();
     await browser.close();
   }
+  expect((await stat(videoPath)).size).toBeGreaterThan(1024);
 });
