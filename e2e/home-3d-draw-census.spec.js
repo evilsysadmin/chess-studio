@@ -130,4 +130,32 @@ test('Home 3D · profiler attributes real WebGL draws to castle, Matthias and de
   console.log('HOME_3D_FLAME_SIDE_CENSUS ' + JSON.stringify(eligibility));
   // These tests run on SwiftShader. Never interpret its timer as hardware GPU.
   expect(gpuStatus).not.toBe('ready');
+
+  // A system preference change must stop/restart the existing runtime rather
+  // than retaining the motion value captured at mount or reloading the GLB.
+  const originalCanvas = await canvas.elementHandle();
+  const startup = await canvas.getAttribute('data-home-blender-startup');
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await expect(canvas).toHaveAttribute('data-home-fire-motion', 'reduced');
+  await expect(canvas).toHaveAttribute('data-home-klaus-motion', 'reduced');
+  await expect(canvas).toHaveAttribute('data-home-blender-runtime', 'ready');
+  expect(await canvas.evaluate((node, original) => node === original, originalCanvas)).toBe(true);
+  expect(await canvas.getAttribute('data-home-blender-startup')).toBe(startup);
+  // Observe real renderer submissions through the opt-in profiler after the
+  // one final preference paint has settled. A quiet reduced-motion hall sleeps.
+  await page.waitForTimeout(250);
+  const paints = await canvas.evaluate((node) => new Promise((resolve) => {
+    let count = 0;
+    const observer = new MutationObserver((records) => {
+      count += records.filter(({ attributeName }) => attributeName === 'data-home-blender-draw-pass').length;
+    });
+    observer.observe(node, { attributes: true, attributeFilter: ['data-home-blender-draw-pass'] });
+    setTimeout(() => { observer.disconnect(); resolve(count); }, 500);
+  }));
+  expect(paints).toBe(0);
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await expect(canvas).toHaveAttribute('data-home-fire-motion', 'off-software');
+  expect(await canvas.evaluate((node, original) => node === original, originalCanvas)).toBe(true);
+  expect(await canvas.getAttribute('data-home-blender-startup')).toBe(startup);
+  await originalCanvas.dispose();
 });

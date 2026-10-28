@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { mockApi, waitForHomeInteractive } from './helpers.js';
 import { enterWarRoomGpuQuickMatch } from './war-room-gpu-quick-match.js';
+import { navigateWarRoomKeyboard } from './war-room-board-input.js';
 
 // Lightweight software/CI regression for the exact session-restoration route
 // used by the local GPU A/B harness. GPU timings remain local-only.
@@ -100,6 +101,36 @@ test('War Room benchmark restores Home and enters a real quick-match 3D board', 
       timeout: 45_000,
       message: 'Real War Room main-pass objects must account for every actual draw',
     }).toBe(true);
+
+    // Coordinates are a visibility preference, not a renderer lifecycle.
+    // Keeping a non-default focus exposes accidental full-room reconstruction.
+    const originalCanvas = await canvas.elementHandle();
+    await navigateWarRoomKeyboard(canvas, board, 'e2');
+    await canvas.press('Enter');
+    await expect(board).toHaveAttribute('data-board3d-selected', 'e2');
+    await navigateWarRoomKeyboard(canvas, board, 'f2');
+    await page.getByRole('button', { name: 'Más acciones de partida', exact: true }).click();
+    await page.getByRole('menuitem', { name: 'Apariencia', exact: true }).click();
+    const settings = page.getByRole('dialog', { name: 'Ajustes', exact: true });
+    const coordinates = settings.getByRole('checkbox', { name: 'Mostrar coordenadas del tablero' });
+    const initial = await coordinates.isChecked();
+    for (const checked of [!initial, initial, !initial, initial]) {
+      await coordinates.setChecked(checked);
+      expect(await canvas.evaluate((node, original) => node === original, originalCanvas)).toBe(true);
+      await expect(board).toHaveAttribute('data-board3d-selected', 'e2');
+      await expect(board).toHaveAttribute('data-board3d-focused', 'f2');
+      await expect(board).toHaveAttribute('data-board3d-legal-target-count', '2');
+    }
+    await settings.getByRole('button', { name: 'Cerrar', exact: true }).click();
+    // A move still uses the authoritative board after all preference toggles.
+    await navigateWarRoomKeyboard(canvas, board, 'e4');
+    const moveResponse = page.waitForResponse((response) =>
+      /\/games\/[^/]+\/move(?:\?|$)/.test(response.url())
+      && response.request().method() === 'POST');
+    await canvas.press('Enter');
+    expect((await moveResponse).ok()).toBe(true);
+    await expect(board).toHaveAttribute('data-board3d-selected', '');
+    await originalCanvas.dispose();
   } finally {
     await context.close();
   }

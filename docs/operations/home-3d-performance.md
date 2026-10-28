@@ -2,6 +2,21 @@
 
 Goal: compare a candidate against the same baseline on **physical GPU hardware**, without treating the GitHub Actions SwiftShader screenshots as real-device benchmarks.
 
+## Preference updates without scene reloads
+
+The Home renderer reads layout/fallback callbacks through refs; callback identity
+changes do not reload the hall, actor, environment or WebGL resources. Ambient
+period changes and WebGL context restoration still rebuild the scene.
+
+Effective reduced-motion changes are applied to the existing runtime via
+`USER_PREFERENCES_CHANGED_EVENT` (including the system media-query bridge).
+Enabling reduction cancels both the ambient RAF and its sleeping timer, applies
+the resident's static pose and requests one final paint. Disabling it resumes
+the existing rigs when visible; software rendering retains its no-animation
+policy. Unrelated preference events do not restart the loop. The real-browser
+draw-census smoke verifies motion state, canvas/startup continuity and zero
+profiler draw publications after the final reduced-motion paint settles.
+
 ## Everyday diagnostics (no profiling overhead)
 
 On a ready Home canvas, inspect `document.querySelector('.illustrated-home__castle-3d.is-ready')?.dataset` in browser DevTools. The relevant `data-home-*` counters are:

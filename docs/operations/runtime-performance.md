@@ -71,6 +71,12 @@ La adaptación debe ser estable/histerética; evitar oscilar de calidad cada poc
 - La posición final de cada movimiento siempre se renderiza aunque se reduzca la animación intermedia.
 - Una optimización del renderer no crea un segundo modelo de ajedrez.
 - v1 y v2 se miden por separado; una degradación diseñada para v1 no se hereda automáticamente a v2.
+- Mostrar/ocultar coordenadas sólo cambia la visibilidad de su grupo. Los 16
+  sprites se construyen al mostrarlos por primera vez y se reutilizan hasta el
+  desmontaje real; el ajuste no recrea renderer, shell o piezas ni reinicia una
+  animación de jugada. El smoke `war-room-gpu-session-bootstrap.spec.js` cambia
+  el ajuste repetidamente y exige el mismo canvas, foco, selección y destinos
+  legales, además de poder jugar después.
 
 ## Mobile
 
