@@ -1,5 +1,5 @@
 import { chromium, expect, test } from '@playwright/test';
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, stat, writeFile } from 'node:fs/promises';
 import { buttonWithVisibleText, login, mockApi } from './helpers.js';
 import { navigateWarRoomKeyboard } from './war-room-board-input.js';
 import { warRoomHansEventForGame } from '../frontend/src/components/WarRoomHansEventContract.js';
@@ -282,4 +282,145 @@ test('War Room · un diálogo de Hans cede al seleccionar una pieza, con PNG de 
     await context.close();
     await browser.close();
   }
+});
+
+
+test('War Room · secuencia móvil de llamada y respuesta de Hans en 390×844', async () => {
+  // A desktop PNG or a video of ambient chores cannot prove this dialogue.
+  // Capture real consecutive states in one V3 game on a touch viewport.
+  // SwiftShader is a compatibility renderer, never a physical GPU benchmark.
+  test.setTimeout(270_000);
+  await mkdir(ARTIFACT_DIR, { recursive: true });
+  const videoDir = '../.artifacts/hans-dialogue-video-tmp';
+  const videoPath = ARTIFACT_DIR + '/war-room-hans-v3-mobile-390x844-dialogue.webm';
+  await mkdir(videoDir, { recursive: true });
+  const browser = await chromium.launch({
+    headless: true,
+    args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'],
+  });
+  const context = await browser.newContext({
+    recordVideo: { dir: videoDir, size: { width: 390, height: 844 } },
+    viewport: { width: 390, height: 844 },
+    screen: { width: 390, height: 844 },
+    isMobile: true,
+    hasTouch: true,
+    deviceScaleFactor: 1,
+  });
+  const page = await context.newPage();
+  // Install before the app starts: only the short live Hans reply is paused
+  // below, so a slow SwiftShader screenshot cannot outlive its 1.6s phase.
+  // Time otherwise flows normally, preserving the genuine 3D choreography.
+  await page.clock.install();
+  const video = page.video();
+  const states = [];
+  const canvas = page.locator('.board3d-main-canvas');
+  const overlay = page.getByTestId('warroom-hans-fire-call-overlay');
+
+  async function capturePhase(label, screenshot = true) {
+    const state = await canvas.evaluate((node) => ({
+      phase: document.querySelector('[data-testid="warroom-hans-fire-call-overlay"]')?.getAttribute('data-fire-call-phase'),
+      screen: node.dataset.warRoomHansScreen || '',
+      sceneReady: node.dataset.warRoomHansSceneReady === 'true',
+      callReleased: node.dataset.warRoomHansCallReleased === 'true',
+      replySeen: node.dataset.warRoomHansReplySeen === 'true',
+      viewport: { width: innerWidth, height: innerHeight },
+      timestamp: performance.now(),
+    }));
+    states.push({ label, ...state });
+    // The Playwright video recorder can transiently letterbox/scale its 390px
+    // surface on SwiftShader, producing misleading dialogue evidence. Prefer
+    // actual viewport PNGs even for Hans' short reply; the video is secondary.
+    // This may expose slow CI screenshot captures as a failed evidence test.
+    if (screenshot) {
+      const filePath = ARTIFACT_DIR + '/war-room-hans-v3-mobile-390x844-' + label + '.png';
+      // CDP captureScreenshot defaults to an 800×600 surface in some mobile
+      // emulation contexts even when innerWidth is 390. Playwright's viewport
+      // screenshot and PNG IHDR dimensions are the actual evidence contract.
+      const png = await page.screenshot({ path: filePath, fullPage: false, timeout: 30_000 });
+      expect(png.readUInt32BE(16)).toBe(390);
+      expect(png.readUInt32BE(20)).toBe(844);
+    }
+  }
+
+  try {
+    await page.emulateMedia({ reducedMotion: 'no-preference' });
+    await mockApi(page, {
+      profileSeed: {
+        'matthias.onboarded': '2',
+        'chess-study-home-guide-dismissed-v1': '1',
+      },
+    });
+    await login(page);
+    await page.evaluate(() => localStorage.setItem('chess-study-war-room-variant-v1', 'v3'));
+    await seedGamesBeforeFire(page);
+    await buttonWithVisibleText(page, 'Partida rápida').press('Enter');
+    const quickDialog = page.getByRole('dialog', { name: 'Configurar partida rápida' });
+    await expect(quickDialog).toBeVisible();
+    await quickDialog.getByRole('button', { name: 'Empezar partida', exact: true }).press('Enter');
+
+    await expect(canvas).toBeVisible({ timeout: MOUNT_BUDGET_MS });
+    await expect(canvas).toHaveAttribute('data-war-room-variant', 'v3', { timeout: MOUNT_BUDGET_MS });
+    await expect(canvas).toHaveAttribute('data-war-room-hans-scene-ready', 'true', { timeout: hansBudget(20_000) });
+
+    const matthias = page.getByRole('status', { name: 'Matthias llama a Hans por el fuego' });
+    await expect(matthias).toBeVisible({ timeout: hansBudget(15_000) });
+    await expect(matthias).toContainText('HANS! El fuego, bitte.');
+    await expect(overlay).toHaveAttribute('data-fire-call-phase', 'matthias');
+    await capturePhase('matthias');
+
+    await expect(canvas).toHaveAttribute('data-war-room-hans-call-released', 'true', { timeout: 20_000 });
+    await expect(canvas).toHaveAttribute('data-war-room-hans-reply-seen', 'true', { timeout: hansBudget(30_000) });
+    const hans = page.getByRole('status', { name: 'Hans responde a Matthias' });
+    await expect(hans).toBeVisible({ timeout: 15_000 });
+    await expect(hans).toContainText('Sí, señor.');
+    await expect(overlay).toHaveAttribute('data-fire-call-phase', 'hans');
+    // Freeze only the real, already-visible reply while photographing it.
+    // Without this, the SwiftShader screenshot records the empty next phase
+    // despite having observed Hans in DOM *before* capture.
+    await page.clock.pauseAt(await page.evaluate(() => Date.now()));
+    try {
+      const bubbleBounds = await hans.boundingBox();
+      expect(bubbleBounds).not.toBeNull();
+      // Actual on-screen geometry at 390px: both edges and text must fit.
+      expect(bubbleBounds.x).toBeGreaterThanOrEqual(4);
+      expect(bubbleBounds.x + bubbleBounds.width).toBeLessThanOrEqual(386);
+      expect(bubbleBounds.width).toBeGreaterThan(100);
+      await expect(hans).toContainText('Sí, señor.');
+      await capturePhase('hans');
+      await expect(overlay).toHaveAttribute('data-fire-call-phase', 'hans');
+    } finally {
+      // The clock resumes before validating the actual authored exit phase.
+      await page.clock.resume();
+    }
+
+    await expect(overlay).not.toHaveAttribute('data-fire-call-phase', 'hans', { timeout: 20_000 });
+    await expect(hans).toHaveCount(0);
+    await capturePhase('after-reply');
+    expect(states.map(({ label }) => label)).toEqual(['matthias', 'hans', 'after-reply']);
+    expect(states[0].phase).toBe('matthias');
+    expect(states[1].phase).toBe('hans');
+    expect(states[2].phase).not.toBe('hans');
+    expect(states[1].replySeen).toBe(true);
+    expect(states.every(({ viewport }) => viewport.width === 390 && viewport.height === 844)).toBe(true);
+    await writeFile(
+      ARTIFACT_DIR + '/war-room-hans-v3-mobile-390x844-timeline.json',
+      JSON.stringify({
+        schema: 1,
+        runnerSha: process.env.GITHUB_SHA || 'local',
+        renderer: 'SwiftShader (compatibility only)',
+        transientReplyPng: 'war-room-hans-v3-mobile-390x844-hans.png',
+        // Playwright recorder is informational only until viewport stability
+        // is demonstrated on the SwiftShader CI runner.
+        informationalVideo: 'war-room-hans-v3-mobile-390x844-dialogue.webm',
+        states,
+      }, null, 2) + '\n',
+      'utf8',
+    );
+  } finally {
+    await page.close().catch(() => {});
+    if (video) await video.saveAs(videoPath);
+    await context.close();
+    await browser.close();
+  }
+  expect((await stat(videoPath)).size).toBeGreaterThan(1024);
 });
