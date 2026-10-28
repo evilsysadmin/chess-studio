@@ -40,6 +40,14 @@ export function createWarRoomAmbientController({
 
   const wake = () => scheduler.wake();
   const onInteraction = () => scheduler.markInteraction();
+  const resumeVisible = () => scheduler.markInteraction(undefined, true);
+  // Visibility returning to foreground is a meaningful wake signal after
+  // deep sleep: wake() alone would keep the old 30s idle timestamp and refuse
+  // every new ambient frame until the next pointer event.
+  const onVisibilityChange = () => {
+    if (doc.hidden) wake();
+    else resumeVisible();
+  };
   const query = win.matchMedia?.('(prefers-reduced-motion: reduce)') || null;
   canvas.dataset.warRoomAmbientScheduler = 'deadline-v1';
   canvas.addEventListener('warroom-hans-call-release', wake);
@@ -49,7 +57,7 @@ export function createWarRoomAmbientController({
   canvas.addEventListener('pointerdown', onInteraction, { passive: true });
   canvas.addEventListener('wheel', onInteraction, { passive: true });
   canvas.addEventListener('keydown', onInteraction);
-  doc.addEventListener('visibilitychange', wake);
+  doc.addEventListener('visibilitychange', onVisibilityChange);
   win.addEventListener(USER_PREFERENCES_CHANGED_EVENT, wake);
   query?.addEventListener?.('change', wake);
 
@@ -62,7 +70,8 @@ export function createWarRoomAmbientController({
       const next = Boolean(entry.isIntersecting);
       if (intersecting === next) return;
       intersecting = next;
-      wake();
+      if (intersecting && !doc.hidden) resumeVisible();
+      else wake();
     });
     visibilityObserver.observe(host);
   }
@@ -79,7 +88,7 @@ export function createWarRoomAmbientController({
       canvas.removeEventListener('pointerdown', onInteraction);
       canvas.removeEventListener('wheel', onInteraction);
       canvas.removeEventListener('keydown', onInteraction);
-      doc.removeEventListener('visibilitychange', wake);
+      doc.removeEventListener('visibilitychange', onVisibilityChange);
       win.removeEventListener(USER_PREFERENCES_CHANGED_EVENT, wake);
       query?.removeEventListener?.('change', wake);
       scheduler.dispose();

@@ -129,12 +129,18 @@ export function createWarRoomAmbientScheduler({
     if (wasSettled && !disposed) wake();
   };
 
-  const markInteraction = (timestamp = numericNow(now)) => {
+  const markInteraction = (timestamp = numericNow(now), forceWake = false) => {
     const value = Number(timestamp);
     const at = Number.isFinite(value) ? value : numericNow(now);
-    const wasDeepSleeping = at - lastNonAmbientPaintAt >= DEEP_SLEEP_AFTER_MS;
+    // Resume the ordinary ambient deadline on the first real interaction
+    // after *either* quiet tier. Otherwise a 200/300ms idle timer survives
+    // pointer activity until it fires, even though the user is active again.
+    const wasSettled = at - lastNonAmbientPaintAt >= SETTLED_IDLE_AFTER_MS;
     lastNonAmbientPaintAt = at;
-    if (wasDeepSleeping && !disposed) wake();
+    // Returning from a hidden tab/offscreen viewport must restart the
+    // scheduler even if its last input was only a few milliseconds ago:
+    // the hidden state had cancelled every pending deadline.
+    if ((wasSettled || forceWake) && !disposed) wake();
   };
 
   const dispose = () => {

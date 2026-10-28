@@ -120,6 +120,27 @@ describe('War Room ambient deadline scheduler', () => {
     expect(fast.timers.size).toBe(0);
   });
 
+  it('restores full cadence on first input after 12s without rescheduling every pointer move', () => {
+    const clock = makeClock({ intervalMs: 100, ambientMarksPaint: true });
+    clock.scheduler.start();
+    clock.setNow(12_000);
+    clock.runTimer();
+    clock.runFrame();
+    expect([...clock.timers.values()][0].delay).toBeCloseTo(200, 6);
+
+    clock.setNow(12_020);
+    clock.scheduler.markInteraction();
+    const nextTimer = [...clock.timers.entries()][0];
+    expect(nextTimer[1].delay).toBeCloseTo(80, 6);
+    expect(clock.scheduler.getDebugState().lastNonAmbientPaintAt).toBe(12_020);
+
+    clock.setNow(12_030);
+    clock.scheduler.markInteraction();
+    expect([...clock.timers.keys()]).toEqual([nextTimer[0]]);
+    clock.scheduler.dispose();
+    expect(clock.timers.size).toBe(0);
+  });
+
   it('enters zero-WebGL deep sleep after 30 seconds and wakes on real interaction', () => {
     const clock = makeClock({ intervalMs: 100, ambientMarksPaint: true });
     clock.scheduler.start();

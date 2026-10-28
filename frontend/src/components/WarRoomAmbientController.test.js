@@ -124,6 +124,71 @@ describe('War Room ambient visibility lifecycle', () => {
     expect(f.canvas.listeners()).toBe(0);
   });
 
+  it('resumes quickly after a brief hidden tab or offscreen visit (before 12s idle)', () => {
+    const tab = fixture();
+    tab.controller.start();
+    tab.doc.hidden = true;
+    tab.doc.emit('visibilitychange');
+    expect(tab.timers.size).toBe(0);
+    tab.setTime(200);
+    tab.doc.hidden = false;
+    tab.doc.emit('visibilitychange');
+    expect(tab.frames.size).toBe(1);
+    tab.runFrame();
+    expect(tab.paints()).toBe(1);
+    tab.controller.dispose();
+
+    const offscreen = fixture();
+    offscreen.controller.start();
+    offscreen.observer().callback([{ isIntersecting: false }]);
+    expect(offscreen.timers.size).toBe(0);
+    offscreen.setTime(200);
+    offscreen.observer().callback([{ isIntersecting: true }]);
+    expect(offscreen.frames.size).toBe(1);
+    offscreen.runFrame();
+    expect(offscreen.paints()).toBe(1);
+    offscreen.controller.dispose();
+  });
+
+  it('wakes from 30-second deep sleep when the tab becomes visible without mouse input', () => {
+    const f = fixture();
+    f.controller.start();
+    f.setTime(30_200);
+    f.runTimer();
+    f.runFrame();
+    expect(f.paints()).toBe(0);
+    expect(f.frames.size).toBe(0);
+    expect(f.timers.size).toBe(0);
+
+    f.doc.hidden = true;
+    f.doc.emit('visibilitychange');
+    f.setTime(31_000);
+    f.doc.hidden = false;
+    f.doc.emit('visibilitychange');
+
+    expect(f.controller.getDebugState().deepSleeping).toBe(false);
+    expect(f.frames.size).toBe(1);
+    f.runFrame();
+    expect(f.paints()).toBe(1);
+    f.controller.dispose();
+    expect(f.doc.listeners()).toBe(0);
+  });
+
+  it('wakes on viewport re-entry after deep sleep without synthesizing pointer events', () => {
+    const f = fixture();
+    f.controller.start();
+    f.observer().callback([{ isIntersecting: false }]);
+    expect(f.timers.size).toBe(0);
+
+    f.setTime(31_000);
+    f.observer().callback([{ isIntersecting: true }]);
+    expect(f.frames.size).toBe(1);
+    expect(f.controller.getDebugState().deepSleeping).toBe(false);
+    f.runFrame();
+    expect(f.paints()).toBe(1);
+    f.controller.dispose();
+  });
+
   it('preserves visibility fallback when IntersectionObserver is unavailable', () => {
     const f = fixture({ intersectionSupported: false });
     expect(f.observer()).toBeNull();
