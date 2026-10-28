@@ -32,7 +32,7 @@ function fakeAudio() {
     createGain: () => node({ gain: { value: 0, setValueAtTime: vi.fn(), setTargetAtTime: vi.fn(), cancelScheduledValues: vi.fn() } }),
     createStereoPanner: () => node({ pan: { value: 0 } }),
     createBiquadFilter: () => node({ frequency: { value: 0 }, Q: { value: 0 } }),
-    createBuffer: () => ({ getChannelData: () => new Float32Array(8) }),
+    createBuffer: vi.fn(() => ({ getChannelData: () => new Float32Array(8) })),
     createOscillator: () => {
       const oscillator = node({
         frequency: { value: 0, setValueAtTime: vi.fn(), exponentialRampToValueAtTime: vi.fn() },
@@ -74,6 +74,7 @@ describe('War Room spatial audio hidden-tab lifecycle', () => {
   it('stops room oscillators and rare tick timers while hidden, resumes exactly once', () => {
     const f = harness();
     expect(f.oscillators).toHaveLength(2);
+    expect(f.context.createBuffer).not.toHaveBeenCalled();
     expect(f.oscillators.every((o) => o.start.mock.calls.length === 1)).toBe(true);
     expect(vi.getTimerCount()).toBe(1);
     f.doc.hidden = true;
@@ -106,6 +107,28 @@ describe('War Room spatial audio hidden-tab lifecycle', () => {
     expect(vi.getTimerCount()).toBe(0);
   });
 
+  it('allocates weather noise only on first inner-window hover and reuses it', () => {
+    const f = harness();
+    const canvas = {
+      classList: { contains: (name) => name === 'board3d-main-canvas' },
+      getBoundingClientRect: () => ({ left: 0, top: 0, width: 1000, height: 1000 }),
+      dataset: { warRoomWeatherWindowHitbox: '0.7200,0.1200,0.8800,0.6200' },
+    };
+    const listen = { target: canvas, pointerType: 'mouse', clientX: 800, clientY: 300 };
+    const leave = { target: canvas, pointerType: 'mouse', clientX: 100, clientY: 300 };
+    expect(f.context.createBuffer).not.toHaveBeenCalled();
+    f.win.emit('pointermove', listen);
+    expect(f.context.createBuffer).toHaveBeenCalledTimes(1);
+    expect(f.buffers).toHaveLength(2);
+    f.win.emit('pointermove', leave);
+    expect(f.buffers.every((o) => o.stop.mock.calls.length === 1)).toBe(true);
+    f.win.emit('pointermove', listen);
+    expect(f.context.createBuffer).toHaveBeenCalledTimes(1);
+    expect(f.buffers).toHaveLength(4);
+    f.dispose();
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
   it('never restarts window weather audio from pointer events while hidden', () => {
     const f = harness();
     const canvas = {
@@ -114,12 +137,15 @@ describe('War Room spatial audio hidden-tab lifecycle', () => {
       dataset: { warRoomWeatherWindowHitbox: '0.7200,0.1200,0.8800,0.6200' },
     };
     const event = { target: canvas, pointerType: 'mouse', clientX: 800, clientY: 300 };
+    expect(f.context.createBuffer).not.toHaveBeenCalled();
     f.win.emit('pointermove', event);
+    expect(f.context.createBuffer).toHaveBeenCalledTimes(1);
     expect(f.buffers).toHaveLength(2);
     f.doc.hidden = true;
     f.doc.emit('visibilitychange');
     expect(f.buffers.every((o) => o.stop.mock.calls.length === 1)).toBe(true);
     f.win.emit('pointermove', event);
+    expect(f.context.createBuffer).toHaveBeenCalledTimes(1);
     expect(f.buffers).toHaveLength(2);
     expect(vi.getTimerCount()).toBe(0);
     f.dispose();
