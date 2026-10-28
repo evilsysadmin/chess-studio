@@ -6,11 +6,18 @@ import { resolve } from 'node:path';
 import { mockApi, waitForHomeInteractive } from './helpers.js';
 import { enterWarRoomGpuQuickMatch } from './war-room-gpu-quick-match.js';
 import { navigateWarRoomKeyboard } from './war-room-board-input.js';
+import {
+  assessWarRoomDeepIdleCapture,
+  WAR_ROOM_DEEP_IDLE_WAIT_MS,
+} from './war-room-deep-idle-probe.mjs';
 
 // Opt-in local benchmark only. rAF is not GPU time; emulated touch is not a phone GPU.
 const requested = process.env.WAR_ROOM_GPU_BENCH_RENDERER;
 const revision = process.env.WAR_ROOM_GPU_BENCH_SHA || '';
 const variant = process.env.WAR_ROOM_GPU_BENCH_VARIANT || 'v3';
+// Opt-in extra 34s only for physical desktop's first visit. Default 2.5s
+// idle benchmark remains fast; it cannot prove the 30s deep-sleep contract.
+const measureDeepIdle = process.env.WAR_ROOM_GPU_BENCH_DEEP_IDLE === '1';
 // One ID per invocation: repeated A/B runs must never overwrite old samples.
 const runId = randomUUID();
 if (process.env.WAR_ROOM_GPU_BENCH !== '1'
@@ -275,6 +282,42 @@ async function sampleIdle(page) {
   return result;
 }
 
+async function sampleDeepIdle(page) {
+  // No rAF/per-frame hooks are installed while the renderer should sleep.
+  // Observe only visibility changes; even a brief hidden interval would
+  // invalidate an apparent zero-WebGL reading.
+  const before = await page.evaluate(() => {
+    const journal = document.querySelector('canvas.board3d-main-canvas')?.__warRoomRenderCostJournal;
+    if (!journal) return null;
+    const tracker = { transitions: 0 };
+    const onVisibilityChange = () => { tracker.transitions += 1; };
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    window.__warRoomDeepIdleVisibility = { tracker, onVisibilityChange };
+    return { seq: journal.latestSeq, startedAtMs: performance.now(),
+      visibilityBefore: document.visibilityState };
+  });
+  if (!before) return { status: 'missing-journal' };
+  try {
+    await page.waitForTimeout(WAR_ROOM_DEEP_IDLE_WAIT_MS);
+    const after = await page.evaluate((seq) => {
+      const journal = document.querySelector('canvas.board3d-main-canvas')?.__warRoomRenderCostJournal;
+      return {
+        capture: journal?.readAfter(seq) || null,
+        endedAtMs: performance.now(),
+        visibility: document.visibilityState,
+        visibilityTransitions: window.__warRoomDeepIdleVisibility?.tracker.transitions ?? null,
+      };
+    }, before.seq);
+    return assessWarRoomDeepIdleCapture({ ...before, ...after });
+  } finally {
+    await page.evaluate(() => {
+      const tracker = window.__warRoomDeepIdleVisibility;
+      if (tracker) document.removeEventListener('visibilitychange', tracker.onVisibilityChange);
+      delete window.__warRoomDeepIdleVisibility;
+    }).catch(() => {});
+  }
+}
+
 async function openWarRoom(page, requestLog) {
   await mockApi(page, { requestLog, profileSeed: onboarding });
   // Page navigation uses the existing authenticated E2E session. The test
@@ -452,7 +495,7 @@ test.afterAll(async () => { await browser?.close(); });
 
 for (const profile of profiles) {
   test('War Room ' + variant.toUpperCase() + ' sustained GPU diagnostic · ' + profile.id, async () => {
-    test.setTimeout(240_000);
+    test.setTimeout(measureDeepIdle && !profile.touch ? 300_000 : 240_000);
     const context = await browser.newContext({
       // Manual browser.newContext does not inherit fixture-level baseURL.
       baseURL: test.info().project.use.baseURL || 'http://127.0.0.1:4173/chess-studio/',
@@ -502,12 +545,19 @@ for (const profile of profiles) {
           expect(renderer.firstReady.calls).toBeGreaterThan(0);
           const idle = await sampleIdle(page);
           const move = await sampleConfirmedMove(page, board, canvas, requestLog);
+          const deepIdle = measureDeepIdle && !profile.touch && visitType === 'first-visit'
+            ? await sampleDeepIdle(page)
+            : null;
+          if (deepIdle) {
+            expect(deepIdle.status, 'Real deep idle sample must have valid renderer journal').toBe('ready');
+            expect(deepIdle.deepSleepObserved, 'No WebGL renders allowed after 30s idle').toBe(true);
+          }
           const gpuTimerQueryMeasured = Boolean(
             idle.gpuTimer.samplesMs.length || move.gpuTimer.samplesMs.length,
           );
           visits.push({
             visitType, openToReadyWallMs, hansStage, hansReadyAfterShellMs,
-            ...renderer, idle, move,
+            ...renderer, idle, move, ...(deepIdle ? { deepIdle } : {}),
             // GPU elapsed is phase-specific: an aggregated frame time would
             // conflate idle and move; retain null rather than manufacture it.
             gpuFrameTimeMs: null, gpuTimerQueryMeasured,
@@ -529,19 +579,21 @@ for (const profile of profiles) {
       profile: profile.id, viewport: profile.viewport,
       emulatedTouch: profile.touch, physicalAndroidVerified: false,
       browserFramePacingOnly: !visits.some(({ gpuTimerQueryMeasured }) => gpuTimerQueryMeasured),
+      deepIdleRequested: measureDeepIdle && !profile.touch,
       visits,
     };
     await mkdir(outputDir, { recursive: true });
     await writeFile(resolve(outputDir, revision + '-' + variant + '-' + requested + '-' + profile.id + '-' + runId + '.json'), JSON.stringify(report, null, 2) + '\n');
     console.log('WAR_ROOM_GPU_BENCH ' + JSON.stringify({
       revision, variant, runId, profile: profile.id, renderer: requested,
-      visits: visits.map(({ visitType, hansStage, hansReadyAfterShellMs, idle, move }) => ({
+      visits: visits.map(({ visitType, hansStage, hansReadyAfterShellMs, idle, move, deepIdle }) => ({
         visitType, hansStage, hansReadyAfterShellMs,
         idleRafP95Ms: idle.rafP95Ms, moveRafP95Ms: move.rafP95Ms,
         idleGpuQueries: idle.gpuTimer.samplesMs.length,
         moveGpuQueries: move.gpuTimer.samplesMs.length,
         idleRenderedFrames: idle.renderCost.renderedFrames,
         moveRenderedFrames: move.renderCost.renderedFrames,
+        deepIdleTailDrawCalls: deepIdle?.tailDrawCalls ?? null,
         moveConfirmationMs: move.inputToConfirmationMs,
       })),
     }));
