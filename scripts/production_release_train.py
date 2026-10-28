@@ -102,6 +102,41 @@ def select_latest(repository: str, pinned_run_id: int | None = None) -> tuple[in
     return run_id, run_number
 
 
+
+def require_latest_staging_generation(repository: str, accredited_sha: str) -> None:
+    """Automatic promotions must not race a newer or incomplete staging deployment."""
+    if _SHA_RE.fullmatch(accredited_sha) is None:
+        raise ValueError(f"SHA acreditado inválido: {accredited_sha!r}")
+    payload = _gh_json(
+        repository,
+        "actions/workflows/staging-deploy.yml/runs?branch=main&per_page=5",
+    )
+    if not isinstance(payload, dict) or not isinstance(payload.get("workflow_runs"), list):
+        raise RuntimeError("No se pudo verificar el estado del último staging deploy")
+    candidates = [
+        row for row in payload["workflow_runs"]
+        if isinstance(row, dict)
+        and row.get("event") == "workflow_run"
+        and isinstance(row.get("run_number"), int)
+    ]
+    if not candidates:
+        raise RuntimeError("No existe un staging deploy automático verificable en main")
+    latest = max(candidates, key=lambda row: row["run_number"])
+    latest_sha = str(latest.get("head_sha") or "").lower()
+    if (
+        _SHA_RE.fullmatch(latest_sha) is None
+        or latest_sha != accredited_sha
+        or latest.get("status") != "completed"
+        or latest.get("conclusion") != "success"
+    ):
+        raise RuntimeError(
+            f"Promoción automática bloqueada: último staging deploy "
+            f"#{latest['run_number']} (SHA={latest_sha or 'sin dato'}, "
+            f"estado={latest.get('status')}, conclusión={latest.get('conclusion')}) "
+            f"no coincide con la acreditación completa {accredited_sha}; "
+            "esperar la nueva acreditación o usar promoción manual explícita"
+        )
+
 def read_accreditation(path: str, run_id: int, expected_sha: str = "", event: str = "schedule") -> str:
     payload = json.loads(pathlib.Path(path).read_text(encoding="utf-8"))
     if payload.get("schema") != 1:
@@ -276,6 +311,46 @@ def self_test() -> None:
         }
         write_record(str(record), "c" * 40, 78, "push")
         assert json.loads(record.read_text(encoding="utf-8"))["event"] == "push"
+
+    # A newer staging generation must block an automatic release of an older proof.
+    original_gh_json = globals()["_gh_json"]
+    try:
+        state = {"head_sha": "b" * 40, "status": "in_progress", "conclusion": None}
+        def staging_gh_json(_repository: str, endpoint: str) -> object:
+            assert endpoint == "actions/workflows/staging-deploy.yml/runs?branch=main&per_page=5"
+            return {"workflow_runs": [
+                {"id": 44, "run_number": 44, "event": "workflow_run", **state},
+                {"id": 43, "run_number": 43, "event": "workflow_run",
+                 "head_sha": "a" * 40, "status": "completed", "conclusion": "success"},
+            ]}
+        globals()["_gh_json"] = staging_gh_json
+        for sha in ("a" * 40, "b" * 40):
+            try:
+                require_latest_staging_generation("example/repo", sha)
+                raise AssertionError("Pending/newer staging must block automatic promotion")
+            except RuntimeError as exc:
+                assert "Promoción automática bloqueada" in str(exc)
+        state.update(status="completed", conclusion="failure")
+        try:
+            require_latest_staging_generation("example/repo", "b" * 40)
+            raise AssertionError("Failed staging must block automatic promotion")
+        except RuntimeError:
+            pass
+        state.update(status="completed", conclusion="success")
+        require_latest_staging_generation("example/repo", "b" * 40)
+        try:
+            require_latest_staging_generation("example/repo", "a" * 40)
+            raise AssertionError("Old accreditation must not be auto-promoted")
+        except RuntimeError:
+            pass
+        globals()["_gh_json"] = lambda _r, _e: {"workflow_runs": []}
+        try:
+            require_latest_staging_generation("example/repo", "b" * 40)
+            raise AssertionError("Missing staging history must fail closed")
+        except RuntimeError:
+            pass
+    finally:
+        globals()["_gh_json"] = original_gh_json
     print("production-release-train self-test OK")
 
 
@@ -346,6 +421,10 @@ def main(argv: list[str] | None = None) -> int:
         print(f"Production provenance: Staging AI run {args.run_id} (#{args.run_number}) acreditó {sha}")
         return 0
     if args.command == "lineage":
+        # Scheduled/target-switch promotions must not overtake a newer staging generation.
+        # Manual expected_sha + immutable accreditation remains the explicit escape hatch.
+        if os.environ.get("GITHUB_EVENT_NAME") != "workflow_dispatch":
+            require_latest_staging_generation(args.repository, args.sha.lower())
         current_sha, status = require_main_lineage(args.repository, args.sha.lower())
         print(f"Production lineage admission OK: {args.sha.lower()} pertenece a main {current_sha} ({status}).")
         return 0
