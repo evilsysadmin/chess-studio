@@ -8,10 +8,21 @@ export function assessWarRoomDeepIdleCapture({
   startedAtMs,
   endedAtMs,
   visibility,
+  visibilityBefore,
+  visibilityTransitions,
   tailMs = WAR_ROOM_DEEP_IDLE_TAIL_MS,
 } = {}) {
   const elapsedMs = Number(endedAtMs) - Number(startedAtMs);
-  if (visibility !== 'visible') return { status: 'not-foreground' };
+  // A tab that went hidden and returned is not a valid foreground idle
+  // sample. It can report zero paints simply because browser throttling
+  // suspended the page instead of our own scheduler doing so.
+  if (visibility !== 'visible' || visibilityBefore !== 'visible') {
+    return { status: 'not-foreground' };
+  }
+  if (!Number.isSafeInteger(visibilityTransitions) || visibilityTransitions < 0) {
+    return { status: 'missing-visibility-history' };
+  }
+  if (visibilityTransitions > 0) return { status: 'visibility-interrupted', visibilityTransitions };
   if (!Number.isFinite(elapsedMs) || elapsedMs < WAR_ROOM_DEEP_IDLE_WAIT_MS) {
     return { status: 'insufficient-duration', elapsedMs: Number.isFinite(elapsedMs) ? elapsedMs : null };
   }
