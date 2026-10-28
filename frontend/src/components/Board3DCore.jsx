@@ -34,6 +34,7 @@ import { resolveStableBoardViewportForHost } from './Board3DViewportSize.js';
 import { createWarRoomCanvasSizeGate } from './WarRoomCanvasSizeGate.js';
 import { createWarRoomGpuProfile } from './WarRoomGpuProfile.js';
 import { updateBoard3DCoordinates } from './Board3DCoordinates.js';
+import { updateBoard3DTerrainObstacles } from './Board3DTerrainObstacles.js';
 import { applyBoard3DProjectionDiagnostics, applyBoard3DRendererMemoryDiagnostics } from './Board3DProjectionDiagnostics.js';
 import { beginWarRoomFirstReadyPaintTiming } from './WarRoomFirstReadyPaintTiming.js';
 import { board3DForensicGhost, board3DTechniqueTargetCount, board3DTerrainSquares, buildBoard3DLegalMap } from './Board3DParityVisuals.js';
@@ -840,26 +841,7 @@ function Board3DCanvas({
   useEffect(() => {
     const state = sceneStateRef.current;
     if (!state) return;
-    clearObjectGroup(state.terrainGroup);
-    for (const square of terrainSquares) {
-      const { x, z } = squarePosition(square);
-      const obstacle = new THREE.Mesh(
-        new THREE.BoxGeometry(0.62, 0.24, 0.62),
-        new THREE.MeshPhysicalMaterial({
-          color: 0x4f5558,
-          metalness: 0.1,
-          roughness: 0.86,
-          clearcoat: 0.06,
-          clearcoatRoughness: 0.7,
-        }),
-      );
-      obstacle.position.set(x, 0.19, z);
-      obstacle.rotation.y = Math.PI / 4;
-      obstacle.castShadow = true;
-      obstacle.receiveShadow = true;
-      obstacle.userData.terrainBlocked = square;
-      state.terrainGroup.add(obstacle);
-    }
+    updateBoard3DTerrainObstacles(state.terrainGroup, terrainSquares);
     state.requestRender();
   }, [terrainSquares, effectiveThemeId]);
 
