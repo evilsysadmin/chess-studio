@@ -1,5 +1,5 @@
 import { chromium, expect, test } from '@playwright/test';
-import { mkdir, readFile, stat, writeFile } from 'node:fs/promises';
+import { mkdir, stat, writeFile } from 'node:fs/promises';
 import { buttonWithVisibleText, login, mockApi } from './helpers.js';
 import { navigateWarRoomKeyboard } from './war-room-board-input.js';
 import { warRoomHansEventForGame } from '../frontend/src/components/WarRoomHansEventContract.js';
@@ -330,8 +330,7 @@ test('War Room · secuencia móvil de llamada y respuesta de Hans en 390×844', 
       // CDP captureScreenshot defaults to an 800×600 surface in some mobile
       // emulation contexts even when innerWidth is 390. Playwright's viewport
       // screenshot and PNG IHDR dimensions are the actual evidence contract.
-      await page.screenshot({ path: filePath, fullPage: false, timeout: 30_000 });
-      const png = await readFile(filePath);
+      const png = await page.screenshot({ path: filePath, fullPage: false, timeout: 30_000 });
       expect(png.readUInt32BE(16)).toBe(390);
       expect(png.readUInt32BE(20)).toBe(844);
     }
