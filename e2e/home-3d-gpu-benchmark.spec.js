@@ -586,7 +586,7 @@ if (idleProbe) test('Home 3D physical GPU · visible idle sleeps and real input 
           observer.disconnect();
           document.removeEventListener('visibilitychange', visibility);
           resolve({ paints, hidden: hidden || document.hidden });
-        }, 1_000);
+        }, 2_500);
       }));
       const active = await countPaints();
       expect(active.hidden).toBe(false);
@@ -595,7 +595,10 @@ if (idleProbe) test('Home 3D physical GPU · visible idle sleeps and real input 
       const requestsAtIdle = modelRequests;
       const idle = await countPaints();
       expect(idle).toEqual({ paints: 0, hidden: false });
-      await page.screenshot({ path: `${artifactDir}/home-idle-${viewport.width}x${viewport.height}.png` });
+      await page.screenshot({
+        path: `${artifactDir}/home-idle-${viewport.width}x${viewport.height}.png`,
+        animations: 'disabled', timeout: 45_000,
+      });
       // Focus reaches the real hotspot while the canvas ignores pointer events.
       await page.locator('.illustrated-home__destination--play').focus();
       await expect(castle).toHaveAttribute('data-home-fire-motion', 'live');
