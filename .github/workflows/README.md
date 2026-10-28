@@ -84,6 +84,10 @@ Docker/Compose es el runtime canónico de la A1 Always Free. K3s/Flux queda en *
 Render staging está retirado del plano de despliegue: el **release canónico y `runtime-sync` consumen Vault + Git y no consultan Render**, y ya no existe un workflow capaz de reconciliar, reanudar o desplegar el antiguo servicio staging. El cutover inicial a CURRENT Vault ya está acreditado; su workflow/helper one-shot se retiraron para que una migración histórica no permanezca como superficie operativa activa. Render producción permanece independiente y no forma parte de esta retirada.
 
 
+## Publicación inmutable Star Adventures
+
+- `star-adventures-four-view-r2-copy.yml`: copia **un único WebP** `star-adventures/tactical/officer-female-walk4-v1-8ee3e84f15310061.webp` desde el bucket privado `star-adventures` al bucket público existente `chess-studio-assets`, respetando su ruta. Requiere tamaño y SHA-256 exactos, no sobrescribe un destino existente ni elimina objetos, y comprueba CDN público después de copiar. En PR ejecuta tests sin secretos; solo en `main` puede realizar la copia con credenciales. Desbloquea exclusivamente el pin de Star Adventures PR #165.
+
 ## Publicación cross-repo de arte Chronicles
 
 - `chronicles-r2-immutable-goblin.yml`: copia inmutable del goblin aprobado desde el bucket `chronicles` a `sprites/ash-goblin-96ed70aafe94827f.webp`, con SHA-256 y lectura de vuelta exactos. Prueba la retención real de `Cache-Control: public, max-age=31536000, immutable` en metadata R2 antes de acreditar publicación; sin sobrescribir el original ni objetos existentes, sin mover manifiestos de runtime ni modificar la caché de URLs mutables.
