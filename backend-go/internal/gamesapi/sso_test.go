@@ -170,7 +170,9 @@ func TestSSOExplicitSigningSeedDoesNotChangeChessSessionSecret(t *testing.T) {
 	if w.Code != http.StatusOK {
 		t.Fatalf("legacy session broke: %d %s", w.Code, w.Body)
 	}
-	var issued struct { Token string `json:"token"` }
+	var issued struct {
+		Token string `json:"token"`
+	}
 	if err := json.Unmarshal(w.Body.Bytes(), &issued); err != nil || issued.Token == "" {
 		t.Fatalf("no game token: %v", err)
 	}
