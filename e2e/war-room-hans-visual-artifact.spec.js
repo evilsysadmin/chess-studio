@@ -377,7 +377,10 @@ test('War Room · secuencia móvil de llamada y respuesta de Hans en 390×844', 
     // Freeze only the real, already-visible reply while photographing it.
     // Without this, the SwiftShader screenshot records the empty next phase
     // despite having observed Hans in DOM *before* capture.
-    await page.clock.pauseAt(await page.evaluate(() => Date.now()));
+    // The page clock advances between the timestamp read and pauseAt(). On
+    // slow SwiftShader runners an exact-now target can already be in the past.
+    // A short lead avoids that race without skipping Hans' 1.6s reply.
+    await page.clock.pauseAt(await page.evaluate(() => Date.now() + 200));
     try {
       const bubbleBounds = await hans.boundingBox();
       expect(bubbleBounds).not.toBeNull();
