@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { Chess } from 'chess.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
 import { acknowledgeLabLaunch, clearRememberedLabMode, loadLabLaunch, loadRememberedLabMode, rememberLabMode, subscribeLabLaunch } from '../labLaunchIntent.js';
@@ -41,6 +41,7 @@ export default function LabScreen({ onExit, onStart }){
   const [labMode,setLabMode]=useState(() => loadLabLaunch() || loadRememberedLabMode() || 'hub');
   const [map,setMap]=useState(initial.map);
   const [brush,setBrush]=useState('');
+  const boardStageRef = useRef(null);
   const [turn,setTurn]=useState(initial.turn);
   const [castling,setCastling]=useState(initial.castling);
   const [ep,setEp]=useState(initial.ep);
@@ -78,6 +79,15 @@ export default function LabScreen({ onExit, onStart }){
     const raw=prompt('Pega una posición en formato FEN:',fen); if(!raw)return;
     try { applyPosition(parseLabPosition(raw, turn)); }
     catch { setError('La posición no es válida. Revisa el texto e inténtalo de nuevo.'); }
+  }
+
+  function selectBrush(nextBrush) {
+    setBrush(nextBrush);
+    // On narrow screens the palette sits below the board. Return to the
+    // editing surface after choosing a piece, without affecting desktop.
+    if (window.matchMedia('(max-width: 620px)').matches) {
+      boardStageRef.current?.scrollIntoView({ block: 'start', behavior: 'auto' });
+    }
   }
 
   function editSquare(sq) {
@@ -231,10 +241,10 @@ export default function LabScreen({ onExit, onStart }){
 
       {labMode==='arena' ? <Suspense fallback={<p className="hint-text friendly-lead">Cargando Arena…</p>}><ArenaExperiment /></Suspense> : (
         <section className="lab-position-workspace" aria-label="Mesa de trabajo del laboratorio">
-          <div className="lab-position-stage">
+          <div className="lab-position-stage" ref={boardStageRef}>
             <div className="lab-position-stage-head">
               <strong>Tablero de pruebas</strong>
-              <span>Selecciona una pieza y pulsa una casilla</span>
+              <span aria-live="polite">{brush ? `Pieza ${GLYPH[brush]} seleccionada · pulsa una casilla` : 'Borrador activo · pulsa una casilla'}</span>
             </div>
             <div className="lab-board-editor">
               <PreferredBoard fen={fen} orientation="white" onSquareClick={editSquare} cameraProfile="classroom" warRoomVariantOverride="classic" />
@@ -253,7 +263,7 @@ export default function LabScreen({ onExit, onStart }){
                   {BRUSHES.slice(1,7).map(p=>(
                     <button type="button" key={p} className={`lab-brush ${brush===p?'active':''}`}
                       aria-pressed={brush===p} aria-label={`Colocar ${GLYPH[p]} blanco`} title={`Colocar ${GLYPH[p]}`}
-                      onClick={()=>setBrush(p)}>{GLYPH[p]}</button>
+                      onClick={()=>selectBrush(p)}>{GLYPH[p]}</button>
                   ))}
                 </div>
                 <div className="lab-position-brush-row">
@@ -261,11 +271,11 @@ export default function LabScreen({ onExit, onStart }){
                   {BRUSHES.slice(7).map(p=>(
                     <button type="button" key={p} className={`lab-brush ${brush===p?'active':''}`}
                       aria-pressed={brush===p} aria-label={`Colocar ${GLYPH[p]} negro`} title={`Colocar ${GLYPH[p]}`}
-                      onClick={()=>setBrush(p)}>{GLYPH[p]}</button>
+                      onClick={()=>selectBrush(p)}>{GLYPH[p]}</button>
                   ))}
                 </div>
                 <button type="button" className={`lab-brush lab-position-erase ${brush===''?'active':''}`}
-                  aria-pressed={brush===''} onClick={()=>setBrush('')}>⌫ <span>Borrar casilla</span></button>
+                  aria-pressed={brush===''} onClick={()=>selectBrush('')}>⌫ <span>Borrar casilla</span></button>
               </div>
               <div className="lab-position-presets">
                 <button type="button" className="secondary-btn" onClick={resetInitial}>Posición inicial</button>
