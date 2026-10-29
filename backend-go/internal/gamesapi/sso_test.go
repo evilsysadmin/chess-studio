@@ -372,7 +372,7 @@ func TestSSOCanonicalRuntimeEnvironmentPinsIssuerAndCookieSecurity(t *testing.T)
 	} {
 		t.Run(tc.canonical, func(t *testing.T) {
 			h, err := NewSSO(SSOConfig{
-				Config: Config{Accounts: fakeAccounts{}, JWTSecret: "test-secret"},
+				Config:      Config{Accounts: fakeAccounts{}, JWTSecret: "test-secret"},
 				Environment: tc.input,
 			})
 			if err != nil {
