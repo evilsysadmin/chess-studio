@@ -343,3 +343,47 @@ func TestSSOUnsafeRotationConfigFailsClosed(t *testing.T) {
 		}
 	}
 }
+
+func TestSSORejectsMissingOrAmbiguousRuntimeEnvironment(t *testing.T) {
+	for _, environment := range []string{
+		"", " ", "prod", "stage", "stagin", "production2", "test",
+		"ci", "localhost", "https://id.shadowops.dpdns.org",
+	} {
+		t.Run(environment, func(t *testing.T) {
+			_, err := NewSSO(SSOConfig{
+				Config: Config{Accounts: fakeAccounts{}, JWTSecret: "test-secret"},
+				Environment: environment,
+			})
+			if err == nil {
+				t.Fatalf("SSO environment %q unexpectedly fell back to local identity", environment)
+			}
+		})
+	}
+}
+
+func TestSSOCanonicalRuntimeEnvironmentPinsIssuerAndCookieSecurity(t *testing.T) {
+	for _, tc := range []struct {
+		input, canonical, issuer string
+		secure                   bool
+	}{
+		{"staging", "staging", "https://api-staging.chess-studio.shadowops.dpdns.org", true},
+		{" PRODUCTION ", "production", "https://api.chess-studio.shadowops.dpdns.org", true},
+		{"development", "development", "http://localhost:8000", false},
+	} {
+		t.Run(tc.canonical, func(t *testing.T) {
+			h, err := NewSSO(SSOConfig{
+				Config: Config{Accounts: fakeAccounts{}, JWTSecret: "test-secret"},
+				Environment: tc.input,
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if h.env != tc.canonical || h.issuer != tc.issuer || h.secureCk != tc.secure {
+				t.Fatalf("untrusted runtime identity: env=%q issuer=%q secure=%v", h.env, h.issuer, h.secureCk)
+			}
+			if tc.secure && ssoauth.Audience(h.env, "http://localhost:4173") != "" {
+				t.Fatal("deployed SSO must not authorize local browser origins")
+			}
+		})
+	}
+}
