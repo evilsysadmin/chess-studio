@@ -32,18 +32,22 @@ test('Laboratorio libre · herramientas táctiles sin desbordamiento móvil', as
 
   const workspace = page.locator('.lab-position-workspace');
   await expect(workspace).toBeVisible();
-  const health = await page.evaluate(() => ({
-    overflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
-    board: document.querySelector('.lab-position-stage')?.getBoundingClientRect().toJSON(),
-    tools: document.querySelector('.lab-position-tools')?.getBoundingClientRect().toJSON(),
-  }));
-  expect(health.overflow).toBe(false);
-  expect(health.tools.y).toBeGreaterThan(health.board.y);
   const whiteKing = page.getByRole('button', { name: 'Colocar ♔ blanco' });
-  await expect(whiteKing).toBeVisible();
-  const box = await whiteKing.boundingBox();
-  expect(box.width).toBeGreaterThanOrEqual(44);
-  expect(box.height).toBeGreaterThanOrEqual(44);
+  for (const width of [360, 390, 430]) {
+    await page.setViewportSize({ width, height: 844 });
+    const health = await page.evaluate(() => ({
+      overflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
+      board: document.querySelector('.lab-position-stage')?.getBoundingClientRect().toJSON(),
+      tools: document.querySelector('.lab-position-tools')?.getBoundingClientRect().toJSON(),
+    }));
+    expect(health.overflow, `${width}px: no horizontal overflow`).toBe(false);
+    expect(health.board.y, `${width}px: board begins in first viewport`).toBeLessThan(844);
+    expect(health.tools.y, `${width}px: tools follow board`).toBeGreaterThan(health.board.y);
+    await expect(whiteKing).toBeVisible();
+    const box = await whiteKing.boundingBox();
+    expect(box.width, `${width}px: touch target width`).toBeGreaterThanOrEqual(44);
+    expect(box.height, `${width}px: touch target height`).toBeGreaterThanOrEqual(44);
+  }
   await whiteKing.click();
   await expect(whiteKing).toHaveAttribute('aria-pressed', 'true');
   await expect(page.getByRole('button', { name: 'Posición inicial', exact: true })).toBeVisible();
