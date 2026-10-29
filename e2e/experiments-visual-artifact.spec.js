@@ -675,6 +675,21 @@ if (scopeEnabled('landing')) {
           path: `${ARTIFACT_DIR}/lab-position-editor-${capture.label}.png`,
           fullPage: true,
         });
+        if (capture.hasTouch) {
+          // A static full-page image cannot prove the brush-to-board return.
+          // Capture the actual viewport after selecting a piece below the board.
+          const whiteKing = root.getByRole('button', { name: 'Colocar ♔ blanco' });
+          await whiteKing.click();
+          await expect(whiteKing).toHaveAttribute('aria-pressed', 'true');
+          await expect(root.locator('.lab-position-stage-head [aria-live="polite"]'))
+            .toContainText('Pieza ♔ seleccionada');
+          await expect.poll(async () => (await root.locator('.lab-position-stage').boundingBox())?.y ?? Infinity)
+            .toBeLessThan(120);
+          await captureFrozenFrame(page, {
+            path: `${ARTIFACT_DIR}/lab-position-selected-${capture.label}.png`,
+            fullPage: false,
+          });
+        }
       });
     }
   });
