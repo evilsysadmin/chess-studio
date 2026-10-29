@@ -684,8 +684,19 @@ if (scopeEnabled('landing')) {
           await expect(root.locator('.lab-position-stage-head [aria-live="polite"]'))
             .toContainText('Pieza ♔ seleccionada');
           const boardTop = async () => (await root.locator('.lab-position-stage').boundingBox())?.y ?? -Infinity;
-          await expect.poll(boardTop).toBeGreaterThanOrEqual(110);
-          await expect.poll(boardTop).toBeLessThan(175);
+          await expect.poll(boardTop).toBeGreaterThanOrEqual(175);
+          await expect.poll(boardTop).toBeLessThan(250);
+          // The audio overlay previously covered the page heading after brush selection.
+          // Verify a point in the first heading line remains visible and unobstructed.
+          const headingHit = await root.getByRole('heading', { name: 'Prepara una posición y juega' }).evaluate((heading) => {
+            const bounds = heading.getBoundingClientRect();
+            const x = bounds.left + Math.min(16, bounds.width / 4);
+            const y = bounds.top + Math.min(20, bounds.height / 2);
+            const hit = document.elementFromPoint(x, y);
+            return { inViewport: y >= 0 && y < window.innerHeight, unobscured: hit === heading || heading.contains(hit) };
+          });
+          expect(headingHit.inViewport, `${capture.label}: editor heading remains visible`).toBe(true);
+          expect(headingHit.unobscured, `${capture.label}: audio does not cover editor heading`).toBe(true);
           // The fixed audio player must not steal the first touch on the mode tab.
           // Check the left side of the tab, not only its center (which stayed free).
           const modeTabHit = await root.getByRole('tab', { name: 'Posición normal' }).evaluate((tab) => {
