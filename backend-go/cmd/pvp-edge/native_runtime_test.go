@@ -53,6 +53,8 @@ func TestAdminUsersSharesTheNarrativeGateway(t *testing.T) {
 		t.Skip("PVP_MONGO_TEST_URL not set (startup pings Mongo)")
 	}
 	t.Setenv("CHESS_PVP_SPARRING_ENABLED", "false")
+	// The SSO HTTP handler requires an explicitly declared local identity environment.
+	t.Setenv("ENVIRONMENT", "development")
 	t.Setenv("MONGO_URL", url)
 	t.Setenv("MONGO_DB_NAME", "chess_test")
 	t.Setenv("JWT_SECRET", "secret")
