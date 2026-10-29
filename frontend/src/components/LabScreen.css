@@ -635,11 +635,12 @@
   .lab-screen--position .lab-position-intro .friendly-lead { font-size: .82rem; }
   .lab-screen--position .lab-position-controls { grid-template-columns: minmax(0, 1fr); }
   .lab-screen--position .lab-position-stage-head { gap: 2px; }
-  .lab-screen--position .lab-position-stage {
-    padding: 5px;
-    /* Return the board below the floating audio player without hiding the page heading or mode tabs. */
-    scroll-margin-top: 210px;
+  .lab-screen--position .lab-position-intro {
+    /* Return to the editor introduction below the fixed music dock, keeping
+       the heading, mode tabs and board in the same mobile viewport. */
+    scroll-margin-top: 136px;
   }
+  .lab-screen--position .lab-position-stage { padding: 5px; }
   .lab-screen--position .lab-position-workspace { gap: 12px; }
   .lab-screen--position .lab-position-brush-row { gap: 6px; }
   .lab-screen--position .lab-brush { font-size: 1.42rem; }

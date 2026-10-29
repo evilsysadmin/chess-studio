@@ -41,7 +41,7 @@ export default function LabScreen({ onExit, onStart }){
   const [labMode,setLabMode]=useState(() => loadLabLaunch() || loadRememberedLabMode() || 'hub');
   const [map,setMap]=useState(initial.map);
   const [brush,setBrush]=useState('');
-  const boardStageRef = useRef(null);
+  const positionIntroRef = useRef(null);
   const [turn,setTurn]=useState(initial.turn);
   const [castling,setCastling]=useState(initial.castling);
   const [ep,setEp]=useState(initial.ep);
@@ -84,9 +84,10 @@ export default function LabScreen({ onExit, onStart }){
   function selectBrush(nextBrush) {
     setBrush(nextBrush);
     // On narrow screens the palette sits below the board. Return to the
-    // editing surface after choosing a piece, without affecting desktop.
+    // editor introduction so the fixed music dock cannot cover its heading
+    // or mode tabs. The board remains visible in the same viewport.
     if (typeof window !== 'undefined' && window.matchMedia?.('(max-width: 620px)')?.matches) {
-      boardStageRef.current?.scrollIntoView?.({ block: 'start', behavior: 'auto' });
+      positionIntroRef.current?.scrollIntoView?.({ block: 'start', behavior: 'auto' });
     }
   }
 
@@ -229,7 +230,7 @@ export default function LabScreen({ onExit, onStart }){
         </section>
       </div>
     ) : <>
-      <div className={`menu-section friendly-primary-zone ${labMode==='position'?'lab-position-intro':''}`}>
+      <div ref={labMode==='position'?positionIntroRef:null} className={`menu-section friendly-primary-zone ${labMode==='position'?'lab-position-intro':''}`}>
         <div className="combat-heading-row"><span className="section-label">Laboratorio libre</span><MechanicTutorialHelp tutorialId="lab" /></div>
         <h2>{labMode==='arena'?'Arenas experimentales':'Prepara una posición y juega'}</h2>
         <p className="hint-text friendly-lead">{labMode==='arena'?'Geometría que rompe el tablero sin tocar el ajedrez normal. Aquí es donde hacemos barbaridades con casco y gafas.':'Coloca las piezas en el tablero y empieza desde ahí. No afecta a tu rating competitivo.'}</p>
@@ -241,7 +242,7 @@ export default function LabScreen({ onExit, onStart }){
 
       {labMode==='arena' ? <Suspense fallback={<p className="hint-text friendly-lead">Cargando Arena…</p>}><ArenaExperiment /></Suspense> : (
         <section className="lab-position-workspace" aria-label="Mesa de trabajo del laboratorio">
-          <div className="lab-position-stage" ref={boardStageRef}>
+          <div className="lab-position-stage">
             <div className="lab-position-stage-head">
               <strong>Tablero de pruebas</strong>
               <span aria-live="polite">{brush ? `Pieza ${GLYPH[brush]} seleccionada · pulsa una casilla` : 'Borrador activo · pulsa una casilla'}</span>

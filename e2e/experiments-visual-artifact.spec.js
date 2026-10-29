@@ -684,9 +684,9 @@ if (scopeEnabled('landing')) {
           await expect(root.locator('.lab-position-stage-head [aria-live="polite"]'))
             .toContainText('Pieza ♔ seleccionada');
           const boardTop = async () => (await root.locator('.lab-position-stage').boundingBox())?.y ?? -Infinity;
-          await expect.poll(boardTop).toBeGreaterThanOrEqual(175);
-          await expect.poll(boardTop).toBeLessThan(250);
-          // The audio overlay previously covered the page heading after brush selection.
+          await expect.poll(boardTop).toBeGreaterThanOrEqual(240);
+          await expect.poll(boardTop).toBeLessThan(410);
+          // Returning to the editor intro must keep the heading clear of fixed audio.
           // Verify a point in the first heading line remains visible and unobstructed.
           const headingHit = await root.getByRole('heading', { name: 'Prepara una posición y juega' }).evaluate((heading) => {
             const bounds = heading.getBoundingClientRect();

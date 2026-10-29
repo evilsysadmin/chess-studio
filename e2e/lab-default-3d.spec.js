@@ -53,8 +53,16 @@ test('Laboratorio libre · herramientas táctiles sin desbordamiento móvil', as
     await expect(whiteKing).toHaveAttribute('aria-pressed', 'true');
     await expect(page.locator('.lab-position-stage-head [aria-live="polite"]')).toContainText('Pieza ♔ seleccionada');
     const boardTop = async () => (await page.locator('.lab-position-stage').boundingBox())?.y ?? -Infinity;
-    await expect.poll(boardTop).toBeGreaterThanOrEqual(120);
-    await expect.poll(boardTop).toBeLessThan(220);
+    await expect.poll(boardTop).toBeGreaterThanOrEqual(240);
+    await expect.poll(boardTop).toBeLessThan(410);
+    const headingClear = await page.getByRole('heading', { name: 'Prepara una posición y juega' }).evaluate((heading) => {
+      const rect = heading.getBoundingClientRect();
+      const x = rect.left + Math.min(16, rect.width / 4);
+      const y = rect.top + Math.min(20, rect.height / 2);
+      const hit = document.elementFromPoint(x, y);
+      return y >= 0 && y < window.innerHeight && Boolean(hit && (hit === heading || heading.contains(hit)));
+    });
+    expect(headingClear, `${width}px: audio must not obscure editor heading`).toBe(true);
   }
   await expect(page.getByRole('button', { name: 'Posición inicial', exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Jugar esta posición', exact: true })).toBeVisible();
