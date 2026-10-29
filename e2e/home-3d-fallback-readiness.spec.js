@@ -42,14 +42,19 @@ test('Home Blender no muestra el fallback mientras espera su primer frame', asyn
     // configured delay and the actual recovery handler, without disabling
     // any WebGL asset watchdog or letting unrelated timers advance.
     window.setTimeout = (callback, delay, ...args) => {
-      const id = nativeSetTimeout(callback, delay, ...args);
       if (delay === 6_000 && typeof callback === 'function') {
+        // Hold only the painted-preview callback. Slow assertions must not
+        // let its native deadline expose the preview before this test asks.
+        const id = nativeSetTimeout(() => {
+          if (!holding) callback(...args);
+        }, delay);
         previewCallback = () => {
           nativeClearTimeout(id);
           callback(...args);
         };
+        return id;
       }
-      return id;
+      return nativeSetTimeout(callback, delay, ...args);
     };
 
     window.__homeFrameGate = {
@@ -99,14 +104,16 @@ test('Home Blender no muestra el fallback mientras espera su primer frame', asyn
   await expect(loadingCover).toContainText('LOADING');
   await expect(canvas).toHaveCount(1);
   await expect.poll(() => art.evaluate((image) => image.complete && image.naturalWidth > 0)).toBe(true);
-  await page.waitForTimeout(150);
-
-  // The GLB may already be downloaded, but no WebGL frame has been allowed
-  // through. Eligible Blender devices must stay on the intentional dark loading
-  // surface instead of flashing the legacy hall before the real room appears.
-  await expect(canvas).not.toHaveClass(/is-ready/);
+  // The first WebGL draw happens synchronously after GLB decode, independently
+  // of RAF. The gate holds the two compositor RAFs, not that draw: a fast GLB
+  // can already be ready here. Require that fast-draw case explicitly: until
+  // those RAFs run, the loading cover must still mask the rendered canvas.
   await expect(canvas).toHaveAttribute('data-home-castle-compositor', 'blender-runtime');
-  await expect(canvas).toHaveAttribute('data-home-blender-runtime', 'loading');
+  await expect(canvas).toHaveAttribute('data-home-blender-runtime', 'ready', { timeout: 75_000 });
+  await expect(canvas).toHaveClass(/is-ready/);
+  await expect(loadingCover).toBeVisible();
+  await expect(loadingCover).toHaveAttribute('data-home-loading', 'waiting-for-frame');
+  await expect(home.locator('.illustrated-home__stage')).not.toHaveAttribute('data-home3d-preview', 'painted');
   await expect(art).toHaveCSS('opacity', '0');
 
   // The real 6s recovery callback was armed. Fire that exact callback at
