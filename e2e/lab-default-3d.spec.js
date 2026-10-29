@@ -63,6 +63,13 @@ test('Laboratorio libre · herramientas táctiles sin desbordamiento móvil', as
       return y >= 0 && y < window.innerHeight && Boolean(hit && (hit === heading || heading.contains(hit)));
     });
     expect(headingClear, `${width}px: audio must not obscure editor heading`).toBe(true);
+    // Verify a real pointer action at the left edge of the mode tab without
+    // Playwright auto-scrolling it away from the fixed music player.
+    const modeTab = page.getByRole('tab', { name: 'Posición normal' });
+    const tabBox = await modeTab.boundingBox();
+    expect(tabBox, `${width}px: mode tab has a hit area`).not.toBeNull();
+    await page.mouse.click(tabBox.x + Math.min(16, tabBox.width / 4), tabBox.y + tabBox.height / 2);
+    await expect(modeTab, `${width}px: mode tab receives the pointer event`).toBeFocused();
   }
   await expect(page.getByRole('button', { name: 'Posición inicial', exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Jugar esta posición', exact: true })).toBeVisible();
