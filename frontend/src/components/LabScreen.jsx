@@ -85,8 +85,8 @@ export default function LabScreen({ onExit, onStart }){
     setBrush(nextBrush);
     // On narrow screens the palette sits below the board. Return to the
     // editing surface after choosing a piece, without affecting desktop.
-    if (window.matchMedia('(max-width: 620px)').matches) {
-      boardStageRef.current?.scrollIntoView({ block: 'start', behavior: 'auto' });
+    if (typeof window !== 'undefined' && window.matchMedia?.('(max-width: 620px)')?.matches) {
+      boardStageRef.current?.scrollIntoView?.({ block: 'start', behavior: 'auto' });
     }
   }
 
