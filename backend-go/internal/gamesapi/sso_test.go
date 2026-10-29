@@ -139,9 +139,9 @@ func TestSSOExplicitSigningSeedDoesNotChangeChessSessionSecret(t *testing.T) {
 	seed := bytes.Repeat([]byte{0x42}, ed25519.SeedSize)
 	h, err := NewSSO(SSOConfig{
 		Config: Config{
-			Accounts: fakeAccounts{version: 2},
+			Accounts:  fakeAccounts{version: 2},
 			JWTSecret: "test-secret",
-			Now: func() time.Time { return now },
+			Now:       func() time.Time { return now },
 		},
 		Environment: "staging",
 		SigningSeed: seed,
@@ -190,7 +190,7 @@ func TestSSOExplicitSigningSeedDoesNotChangeChessSessionSecret(t *testing.T) {
 func TestSSOInvalidExplicitSeedFailsClosed(t *testing.T) {
 	for _, seed := range [][]byte{{}, {0x01}, bytes.Repeat([]byte{0x04}, ed25519.SeedSize-1), bytes.Repeat([]byte{0x05}, ed25519.SeedSize+1)} {
 		_, err := NewSSO(SSOConfig{
-			Config: Config{Accounts: fakeAccounts{}, JWTSecret: "test-secret"},
+			Config:      Config{Accounts: fakeAccounts{}, JWTSecret: "test-secret"},
 			Environment: "staging", SigningSeed: seed,
 		})
 		if err == nil {
