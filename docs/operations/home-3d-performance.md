@@ -17,6 +17,48 @@ policy. Unrelated preference events do not restart the loop. The real-browser
 draw-census smoke verifies motion state, canvas/startup continuity and zero
 profiler draw publications after the final reduced-motion paint settles.
 
+## Visible inactivity
+
+After 30 seconds without pointer, wheel, keyboard or focus activity in Home,
+the hall cancels the shared ambient RAF and sleeping timer. Fire, Klaus and
+Matthias retain their last rendered frame; `homeFireMotion` and `homeKlausMotion`
+report `idle`. This is presentation-only and keeps the canvas and loaded rigs.
+Automatic routine changes still apply their final pose and request a single
+frame, without restarting continuous animation. Real input resumes the same
+scene; returning from offscreen/background starts a fresh inactivity budget.
+Reduced-motion and software rendering leave the idle deadline disabled too.
+
+The controller owns one deadline while active, updates an input timestamp
+instead of replacing timers per pointer event, and leaves no timer while
+sleeping. The local-only physical regression covers desktop and touch landscape:
+
+```bash
+make home-gpu-idle-probe HOME_GPU_NVIDIA_PRIME=0 HOME_GPU_EXPECT_VENDOR=intel
+```
+
+It requires a clean exact-SHA checkout and hardware WebGL, counts real opt-in
+draw publications while active/idle/resumed, rejects hidden-tab samples, checks
+same-canvas/startup/GLB-request continuity and captures the idle room. These
+counts verify stopped submissions; they are not GPU milliseconds or FPS gains.
+The ordinary active GPU benchmark sends real pointer input before sampling, so
+a late actor download cannot turn its active workload into an idle sample.
+
+The inactivity interval also rejects pointer/keyboard/focus activity or a
+visibility transition; a foreground sample interrupted by a person using the
+test window is not evidence that the idle scheduler failed. On the local Intel
+Mesa host, the opt-in Vulkan backend was observed to retain physical WebGL in
+headless Chromium, avoiding interference from the desktop's physical pointer:
+
+```bash
+CHESS_HOME_GPU_BACKEND=vulkan make home-gpu-idle-probe \
+  HOME_GPU_NVIDIA_PRIME=0 HOME_GPU_EXPECT_VENDOR=intel HOME_GPU_HEADLESS=1
+```
+
+The existing GL backend remains the default. Backend flags alone prove nothing:
+the probe still checks the actual Home context and fails on software/unknown.
+Do not compare timings between GL and Vulkan cohorts or assume this Intel result
+also applies to NVIDIA, other drivers or devices.
+
 ## Everyday diagnostics (no profiling overhead)
 
 On a ready Home canvas, inspect `document.querySelector('.illustrated-home__castle-3d.is-ready')?.dataset` in browser DevTools. The relevant `data-home-*` counters are:

@@ -15,6 +15,7 @@ package gamesapi
 import (
 	"crypto/ed25519"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strings"
 	"time"
@@ -43,6 +44,18 @@ func SSORoute(r *http.Request) (string, bool) {
 type SSOConfig struct {
 	Config
 	Environment string
+	// SigningSeed optionally provides an independent Ed25519 signing key.
+	// nil preserves the legacy JWT_SECRET-derived key and all existing sessions.
+	// Non-nil seeds must be exactly 32 bytes; empty/invalid seeds fail closed.
+	// The caller is responsible for provisioning environment-isolated seeds.
+	SigningSeed []byte
+	// NextSigningPublicKey prepublishes the *future* public verification key
+	// while the legacy key still signs. It must not be used with SigningSeed.
+	NextSigningPublicKey ed25519.PublicKey
+	// RetainLegacyVerificationKey serves the previous public signing key
+	// alongside SigningSeed's new key. Requires SigningSeed; disable after
+	// the old token lifetime plus the consumer JWKS cache window.
+	RetainLegacyVerificationKey bool
 }
 
 type SSOHandler struct {
@@ -57,20 +70,67 @@ type SSOHandler struct {
 }
 
 func NewSSO(cfg SSOConfig) (*SSOHandler, error) {
+	// The legacy helper resolves unknown environments to localhost for
+	// historical test callers. An HTTP IdP must never silently inherit that
+	// fallback: a typo such as "prod" would use the wrong issuer and drop
+	// Secure from the SSO cookie. Local usage must opt into development.
+	env := strings.ToLower(strings.TrimSpace(cfg.Environment))
+	switch env {
+	case "staging", "production", "development":
+	default:
+		return nil, errors.New("SSO requires an explicit staging, production or development environment")
+	}
 	baseCfg := cfg.Config
 	baseCfg.Store = readOnlyStore{}
 	base, err := New(baseCfg)
 	if err != nil {
 		return nil, err
 	}
-	key, kid, err := ssoauth.Key(base.secret)
+	var key ed25519.PrivateKey
+	var kid string
+	if cfg.SigningSeed == nil {
+		// Preserve legacy behavior until an explicit environment-specific
+		// cutover has its own test, backup and rollback plan.
+		key, kid, err = ssoauth.Key(base.secret)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		if len(cfg.SigningSeed) != ed25519.SeedSize {
+			return nil, errors.New("SSO signing seed must contain exactly 32 bytes")
+		}
+		key = ed25519.NewKeyFromSeed(cfg.SigningSeed)
+		kid = ssoauth.KeyID(key.Public().(ed25519.PublicKey))
+	}
+	// Explicit phases: legacy-only (default), prepublish-next (legacy
+	// signs), rotate-and-retain (new signs), new-only. Never combine phases
+	// or silently enable compatibility for other issuers/environments.
+	if cfg.NextSigningPublicKey != nil && (cfg.SigningSeed != nil || cfg.RetainLegacyVerificationKey) {
+		return nil, errors.New("SSO prepublication cannot overlap another rotation phase")
+	}
+	if cfg.RetainLegacyVerificationKey && cfg.SigningSeed == nil {
+		return nil, errors.New("SSO legacy verification requires independent signing seed")
+	}
+	var jwks []byte
+	switch {
+	case cfg.NextSigningPublicKey != nil:
+		jwks, err = ssoauth.JWKSWithAdditional(key.Public().(ed25519.PublicKey), cfg.NextSigningPublicKey)
+	case cfg.RetainLegacyVerificationKey:
+		legacy, _, legacyErr := ssoauth.Key(base.secret)
+		if legacyErr != nil {
+			return nil, legacyErr
+		}
+		jwks, err = ssoauth.JWKSWithAdditional(key.Public().(ed25519.PublicKey), legacy.Public().(ed25519.PublicKey))
+	default:
+		jwks = ssoauth.JWKS(key.Public().(ed25519.PublicKey))
+	}
 	if err != nil {
 		return nil, err
 	}
-	issuer := ssoauth.Issuer(cfg.Environment)
+	issuer := ssoauth.Issuer(env)
 	return &SSOHandler{
-		base: base, env: cfg.Environment, issuer: issuer, key: key, kid: kid,
-		jwks:  ssoauth.JWKS(key.Public().(ed25519.PublicKey)),
+		base: base, env: env, issuer: issuer, key: key, kid: kid,
+		jwks:  jwks,
 		limit: newLimiter(60, time.Minute),
 		// Browsers drop Secure cookies over plain http (local development).
 		secureCk: strings.HasPrefix(issuer, "https://"),
