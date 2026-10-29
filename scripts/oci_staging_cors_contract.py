@@ -583,12 +583,11 @@ assert 'exit 77' in deploy
 # Native Pawn Slug: staging first, attested by Go's 401 for an anonymous stage.
 assert 'games_native_attest "http://127.0.0.1:${port}/api/pawn-slug/stages/pawn-slug-v1" GET X-Chess-PawnSlug-Native 401; then' in deploy
 assert 'exit 78' in deploy
-# Native Chronicles: staging first, attested by Go's 401 for an anonymous area.
-assert 'games_native_attest "http://127.0.0.1:${port}/api/chronicles/maps/ash-vault" GET X-Chess-Chronicles-Native 401; then' in deploy
-assert 'exit 79' in deploy
-# Native Chronicles runs: staging first, attested by Go's 401 for an anonymous run read.
-assert 'games_native_attest "http://127.0.0.1:${port}/api/chronicles/runs/attest" GET X-Chess-Chronicles-Native 401; then' in deploy
-assert 'exit 80' in deploy
+# The extracted Chronicles API lives in its dedicated repository. Never
+# reintroduce native Chronicles attestation as a Chess Studio deploy gate.
+for retired_path in ("/api/chronicles/maps/ash-vault", "/api/chronicles/runs/attest"):
+    assert retired_path not in deploy, f"retired Chronicles native check returned: {retired_path}"
+assert "X-Chess-Chronicles-Native" not in deploy
 # Native Admin feedback: staging first, attested by Go's 401 for an anonymous summary.
 assert 'games_native_attest "http://127.0.0.1:${port}/api/admin/feedback/summary" GET X-Chess-Admin-Native 401; then' in deploy
 assert 'exit 81' in deploy
@@ -730,6 +729,11 @@ assert '["docker", "manifest", "inspect", ref]' in deploy_watcher
 assert 'return image_available(go_image_ref(candidate))' in deploy_watcher
 assert 'git -C "$repo" ls-remote --exit-code origin refs/heads/main' in deploy
 assert '["sudo", "--non-interactive", DEPLOY_WRAPPER, candidate]' in deploy_watcher
+# The unprivileged watcher must never SIGKILL only sudo at a deadline:
+# the privileged wrapper could keep FD8's flock via an orphaned descendant.
+assert "DEPLOY_TIMEOUT_SECONDS" not in deploy_watcher
+assert "supervised_run.assert_called_once_with(" in deploy_watcher
+assert "check=True," in deploy_watcher
 assert "ENABLE_MARKER.is_symlink()" in deploy_watcher
 assert "import oci" not in deploy_watcher
 assert "User=ocarun" in deploy_watcher_unit
@@ -767,7 +771,7 @@ for route_attest in (
 ):
     assert f'if ! wait_pvp_browser_attest games_native_attest {route_attest}' in deploy, route_attest
 for exit_code in range(58, 85):
-    if exit_code in (64, 66, 69, 70, 75):  # unrelated/unused codes
+    if exit_code in (64, 66, 69, 70, 75, 79, 80):  # unrelated/retired codes
         continue
     assert f"  exit {exit_code}\n" in deploy, f"missing post-cutover attestation exit {exit_code}"
 assert deploy.rfind('record_successful_backend "$sha"') < deploy.rfind('render_edge "$candidate_color" "$sha"')

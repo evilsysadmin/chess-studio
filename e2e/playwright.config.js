@@ -10,9 +10,16 @@ const visualArtifactMode = Boolean(
   process.env.APP_VISUAL_ARTIFACT || process.env.APP_VISUAL_EXPERIMENTS_SCOPE,
 );
 const stagingLiveSpec = '**/staging-live.spec.js';
+// Hardware comparison is strictly local/opt-in, never a hosted CI gate.
+const pvpGpuSpec = '**/pvp-hall-gpu-benchmark.spec.js';
+const homeGpuSpec = '**/home-3d-gpu-benchmark.spec.js';
+// Local-only physical renderer comparison for the War Room; excluded by default.
+const warRoomGpuSpec = '**/war-room-gpu-benchmark.spec.js';
+const warRoomGpuMode = process.env.WAR_ROOM_GPU_BENCH === '1';
 const testIgnore = chaosMode
-  ? [stagingLiveSpec]
-  : ['**/chaos-local.spec.js', stagingLiveSpec];
+  ? [stagingLiveSpec, pvpGpuSpec, homeGpuSpec]
+  : ['**/chaos-local.spec.js', stagingLiveSpec, pvpGpuSpec, homeGpuSpec];
+if (!warRoomGpuMode) testIgnore.push(warRoomGpuSpec);
 if (fullSweep) {
   // Artifact producers already have scoped Chromium capture workflows. Replaying
   // screenshot/video generation in Chromium + Firefox + WebKit adds runner cost
@@ -37,7 +44,7 @@ export default defineConfig({
   // gets the measured renderer budget instead of treating a slow GPU-less mount
   // as a product failure.
   expect: { timeout: ciMode ? 20_000 : 4_000 },
-  workers: ciMode ? 2 : undefined,
+  workers: warRoomGpuMode ? 1 : (ciMode ? 2 : undefined),
   projects: allBrowsers ? [
     { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
     { name: 'firefox', use: { ...devices['Desktop Firefox'] } },
@@ -57,7 +64,7 @@ export default defineConfig({
     // makes Playwright's actionability "stable" check flaky on hosted CI.
     // Exercise the app's real reduced-motion contract for functional E2E while
     // preserving full motion in the dedicated visual-artifact pipeline.
-    reducedMotion: visualArtifactMode ? 'no-preference' : 'reduce',
+    reducedMotion: (warRoomGpuMode || visualArtifactMode) ? 'no-preference' : 'reduce',
     // Switching 2D↔3D remounts WebGL while the settings control is still
     // settling. The dedicated War Room helpers already budget 12 s for the
     // opening action; use the same ceiling for the close/actionability phase.
@@ -80,7 +87,8 @@ export default defineConfig({
       ? 'npm --prefix ../frontend run dev -- --host 127.0.0.1 --port 4173 --base /chess-studio/'
       : 'python3 -S ../scripts/e2e_dist_server.py --root ../frontend/dist --base /chess-studio/ --host 127.0.0.1 --port 4173',
     url: 'http://127.0.0.1:4173/chess-studio/',
-    reuseExistingServer: !ciMode,
+    // Hardware A/B cannot reuse a stale build served on port 4173.
+    reuseExistingServer: warRoomGpuMode ? false : !ciMode,
     timeout: 20_000,
   },
 });

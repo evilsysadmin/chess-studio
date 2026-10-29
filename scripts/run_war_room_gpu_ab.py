@@ -1,0 +1,542 @@
+#!/usr/bin/env python3
+"""Run reproducible A/B/B/A War Room V3/V4 frame-pacing captures on one local GPU.
+
+Local operator tool, NEVER an unattended GitHub Actions GPU benchmark.
+Uses detached git worktrees and an identical benchmark harness for both
+revisions. No production source or runtime assets are changed.
+"""
+import argparse
+import datetime as dt
+import json
+import os
+import posixpath
+import re
+import shutil
+import socket
+import subprocess
+import sys
+import tempfile
+import uuid
+from pathlib import Path
+
+SHA_RE = re.compile(r'^[0-9a-f]{40}$')
+PROFILES = ('desktop-1440x900', 'touch-portrait-390x844', 'touch-landscape-844x390')
+HARNESS_FILES = (
+    'e2e/war-room-gpu-benchmark.spec.js', 'e2e/playwright.config.js',
+    'e2e/helpers.js', 'e2e/war-room-board-input.js',
+    'e2e/war-room-gpu-quick-match.js',
+    'e2e/war-room-gpu-shadow-readiness.mjs',
+    'e2e/war-room-deep-idle-probe.mjs',
+    'e2e/package.json', 'e2e/package-lock.json',
+    'scripts/e2e_dist_server.py',
+)
+COMPARE_PATH = 'scripts/compare_war_room_gpu.py'
+
+
+class BenchError(Exception):
+    pass
+
+
+def require(condition, message):
+    if not condition:
+        raise BenchError(message)
+
+
+def require_complete_harness_imports(harness_blobs):
+    """Fail before npm/GPU if a shared harness imports an unpinned local file.
+
+    The benchmark spec is copied into historical runtime worktrees. Syntax
+    checks alone cannot detect a missing imported module at browser startup.
+    """
+    pinned = set(HARNESS_FILES)
+    for filename, source in harness_blobs.items():
+        if not filename.endswith(('.js', '.mjs')):
+            continue
+        text = source.decode('utf-8')
+        # Static import/export-from, side-effect imports, and literal dynamic
+        # imports. Bare package specifiers stay in the pinned npm lockfile.
+        for spec in re.findall(
+            r"""(?:\bfrom\s*|\bimport\s*\(\s*|\bimport\s*)['"]([^'"]+)['"]""",
+            text,
+        ):
+            if not spec.startswith('.'):
+                continue
+            target = posixpath.normpath(posixpath.join(posixpath.dirname(filename), spec))
+            require(target in pinned and target in harness_blobs,
+                    f'GPU benchmark harness missing local import {target} (from {filename})')
+
+
+def check_gpu_harness_syntax(harness_blobs):
+    """Parse every pinned JS/MJS as ESM before builds or real-GPU captures.
+
+    node --check of only the entry spec does not parse imported helpers. Read
+    the *actual pinned bytes*, including the same historical-harness override
+    that will be copied into both detached worktrees.
+    """
+    for filename in HARNESS_FILES:
+        if not filename.endswith(('.js', '.mjs')):
+            continue
+        source = harness_blobs.get(filename)
+        require(type(source) is bytes,
+                f'GPU harness missing module for syntax preflight: {filename}')
+        result = subprocess.run(
+            ('node', '--check', '--input-type=module'),
+            input=source, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            check=False,
+        )
+        if result.returncode:
+            reason = result.stderr.decode('utf-8', errors='replace').strip()[:800]
+            raise BenchError(f'GPU harness invalid JavaScript syntax in {filename}: {reason}')
+
+
+def run(command, *, cwd=None, env=None, stdout=None, check=True):
+    # Never run a shell and never echo the inherited environment or secrets.
+    result = subprocess.run(
+        [str(part) for part in command], cwd=cwd, env=env,
+        stdout=stdout, check=False,
+    )
+    if check and result.returncode:
+        raise BenchError(f'Command failed with exit {result.returncode}: {command[0]}')
+    return result
+
+
+def capture(command, *, cwd=None):
+    result = subprocess.run(
+        [str(part) for part in command], cwd=cwd,
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False,
+    )
+    if result.returncode:
+        raise BenchError(f'Cannot inspect git revision: {command[-1]}')
+    return result.stdout
+
+
+def resolve_sha(root, value):
+    require(SHA_RE.fullmatch(value) is not None, 'Use complete 40-character commit SHAs')
+    resolved = capture(('git', 'rev-parse', '--verify', value + '^{commit}'), cwd=root).decode().strip()
+    require(resolved == value, f'Commit {value} is missing or is not a commit')
+    return resolved
+
+
+def execution_order(repetitions):
+    require(2 <= repetitions <= 8, 'Choose 2..8 runs per revision')
+    return tuple(item for pair in range(repetitions)
+                 for item in (('A', 'B') if pair % 2 == 0 else ('B', 'A')))
+
+
+def gpu_env(renderer, offload):
+    require(renderer in ('hardware', 'software'), 'Unknown renderer')
+    require(offload in ('nvidia', 'mesa', 'none'), 'Unknown GPU offload type')
+    env = os.environ.copy()
+    env['WAR_ROOM_GPU_BENCH'] = '1'
+    env['WAR_ROOM_GPU_BENCH_RENDERER'] = renderer
+    # An explicitly selected offload must win over variables leaked from a
+    # previous process, which could silently bias A/B renderer selection.
+    for name in ('__NV_PRIME_RENDER_OFFLOAD', '__GLX_VENDOR_LIBRARY_NAME',
+                 '__VK_LAYER_NV_optimus', 'DRI_PRIME'):
+        env.pop(name, None)
+    if offload == 'nvidia':
+        env['__NV_PRIME_RENDER_OFFLOAD'] = '1'
+        env['__GLX_VENDOR_LIBRARY_NAME'] = 'nvidia'
+    elif offload == 'mesa':
+        env['DRI_PRIME'] = '1'
+    return env
+
+
+def require_port_free(host='127.0.0.1', port=4173):
+    # The benchmark's Playwright server must serve the exact checkout's dist.
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+        sock.settimeout(0.5)
+        if sock.connect_ex((host, port)) == 0:
+            raise BenchError(f'{host}:{port} is already serving content; stop the old E2E server first')
+
+
+def check_gpu_benchmark_syntax(spec_path):
+    """Verify the exact Playwright spec with Node before npm/build/GPU work.
+
+    Vite does not compile this E2E-only file and CI's regular smoke doesn't
+    collect the optional local benchmark. A broken test must fail in preflight.
+    """
+    result = subprocess.run(
+        ['node', '--check', str(spec_path)],
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False,
+    )
+    if result.returncode:
+        reason = result.stderr.decode('utf-8', errors='replace').strip()[:1500]
+        raise BenchError(f'War Room GPU benchmark spec syntax invalid: {reason}')
+
+
+def prepare_worktree(root, temporary, label, sha, harness_blobs):
+    target = temporary / label
+    print(f'==> Creating detached {label} worktree at {sha[:12]}', flush=True)
+    run(('git', 'worktree', 'add', '--detach', str(target), sha), cwd=root)
+    for filename, raw in harness_blobs.items():
+        path = target / filename
+        # Historical baseline SHAs predate the benchmark spec: safely add it.
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(raw)
+    check_gpu_benchmark_syntax(target / 'e2e/war-room-gpu-benchmark.spec.js')
+    for scope in ('frontend', 'e2e'):
+        print(f'==> Installing {label} {scope} dependencies', flush=True)
+        run(('npm', '--prefix', str(target / scope), 'ci'), cwd=root)
+    if label == 'A':
+        # Both worktrees now use the identical pinned e2e lockfile.
+        run((str(target / 'e2e/node_modules/.bin/playwright'), 'install', 'chromium'), cwd=root)
+    print(f'==> Building exact {label} frontend with explicit War Room variants', flush=True)
+    # Localhost is not the staging hostname. Without this build-time Vite
+    # flag the normal selector falls back to classic, invalidating V3/V4
+    # captures even though localStorage requests the correct variant.
+    build_env = os.environ.copy()
+    build_env['VITE_WAR_ROOM_VARIANTS_ENABLE'] = '1'
+    run(('npm', '--prefix', str(target / 'frontend'), 'run', 'build'),
+        cwd=root, env=build_env)
+    return target
+
+
+def run_playwright_logged(command, *, cwd, env, log_path):
+    """Stream test output AND retain full logs, even on a failed browser run."""
+    with log_path.open('wb') as logfile:
+        with subprocess.Popen(
+            [str(part) for part in command], cwd=cwd, env=env,
+            stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+        ) as process:
+            for line in process.stdout:
+                logfile.write(line)
+                # Avoid buffering away operator-visible progress.
+                sys.stdout.buffer.write(line)
+                sys.stdout.buffer.flush()
+            return process.wait()
+
+
+def preserve_failed_playwright_evidence(target, destination, ordinal, label, *,
+                                        max_bytes=64 * 1024 * 1024):
+    """Retain bounded browser diagnostics before deleting the temporary worktree.
+
+    Playwright's default test-results directory holds failure screenshots,
+    traces, and error context. Merely streaming the log loses those artifacts
+    when the detached checkout disappears. Keep a relative layout for each run
+    and deliberately skip symlinks and arbitrary unrelated files.
+    """
+    source = target / 'e2e' / 'test-results'
+    if not source.is_dir() or source.is_symlink():
+        return 0, 0
+    folder = destination / f'playwright-{ordinal:02d}-{label}-evidence'
+    suffixes = {'.png', '.jpg', '.jpeg', '.webp', '.zip', '.txt', '.md', '.json'}
+    retained = skipped = total_bytes = 0
+    for path in sorted(source.rglob('*')):
+        if not path.is_file() or path.is_symlink() or path.suffix.lower() not in suffixes:
+            continue
+        parent = path.parent
+        if any(ancestor.is_symlink() for ancestor in (parent, *parent.parents)
+               if ancestor == source or source in ancestor.parents):
+            skipped += 1
+            continue
+        size = path.stat().st_size
+        if retained >= 48 or size > max_bytes - total_bytes:
+            skipped += 1
+            continue
+        dest = folder / path.relative_to(source)
+        require(not dest.exists(), f'Browser evidence filename collision: {dest}')
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(path, dest)
+        total_bytes += size
+        retained += 1
+    return retained, skipped
+
+
+def preserve_fresh_captures(target, prior, destination, sha, renderer, *, strict, variant='v3'):
+    """Copy first, validate afterward. Failed runs must retain partial evidence."""
+    directory = target / '.artifacts/war-room-gpu-benchmark'
+    produced = sorted(set(directory.glob('*.json')) - prior)
+    names = set()
+    for path in produced:
+        copied = destination / path.name
+        require(not copied.exists(), f'Collision while preserving A/B capture: {copied}')
+        shutil.copy2(path, copied)
+        if not strict:
+            continue  # Partial/invalid JSON is diagnostics, never an accepted sample.
+        try:
+            report = json.loads(path.read_text(encoding='utf-8'))
+        except (OSError, ValueError) as exc:
+            raise BenchError(f'Invalid capture {path}: {exc}') from exc
+        require(report.get('schema') == 2 and report.get('revision') == sha,
+                f'{path}: invalid capture schema/revision')
+        require(report.get('requestedRenderer') == renderer, f'{path}: renderer mismatch')
+        require(report.get('variant', 'v3') == variant, f'{path}: War Room variant mismatch')
+        names.add(report.get('profile'))
+    if strict:
+        require(len(produced) == len(PROFILES),
+                f'Expected {len(PROFILES)} fresh JSON captures; got {len(produced)}')
+        require(names == set(PROFILES), f'Missing/duplicate profile: {names}')
+    return len(produced)
+
+
+def exercise_once(label, target, sha, renderer, env, destination, ordinal, total):
+    require_port_free()
+    print(f'==> Run {ordinal}/{total}: {label} at {sha[:12]} ({renderer})', flush=True)
+    prior = set((target / '.artifacts/war-room-gpu-benchmark').glob('*.json'))
+    local_env = env.copy()
+    local_env['WAR_ROOM_GPU_BENCH_SHA'] = sha
+    log_path = destination / f'playwright-{ordinal:02d}-{label}.log'
+    result = run_playwright_logged(
+        ('./node_modules/.bin/playwright', 'test', 'war-room-gpu-benchmark.spec.js',
+         '--config=playwright.config.js', '--project=chromium', '--workers=1'),
+        cwd=target / 'e2e', env=local_env, log_path=log_path,
+    )
+    # On failure, browser screenshots and traces live inside the temporary
+    # worktree; save them before the checkout is removed. The JSON capture
+    # preservation below remains independent and also retains partial data.
+    evidence, skipped = preserve_failed_playwright_evidence(
+        target, destination, ordinal, label,
+    ) if result else (0, 0)
+    # Preserve every profile recorded so far before propagating a failed test
+    # or deleting the detached worktree in the caller's finally block.
+    count = preserve_fresh_captures(
+        target, prior, destination, sha, renderer, strict=result == 0,
+        variant=local_env['WAR_ROOM_GPU_BENCH_VARIANT'],
+    )
+    if result:
+        raise BenchError(
+            f'Playwright failed (exit {result}); retained {count} partial capture(s) '
+            f'and diagnostic log in {destination}; '
+            f'browser evidence files retained={evidence}, skipped={skipped}',
+        )
+
+
+def self_test():
+    # Runs in static-preflight even without Playwright installed. Fail before
+    # any operator spends time compiling or launching Chromium on a broken spec.
+    root = Path(__file__).resolve().parent.parent
+    check_gpu_benchmark_syntax(root / 'e2e/war-room-gpu-benchmark.spec.js')
+    assert execution_order(2) == ('A', 'B', 'B', 'A')
+    assert execution_order(3) == ('A', 'B', 'B', 'A', 'A', 'B')
+    assert 'e2e/helpers.js' in HARNESS_FILES
+    assert 'e2e/war-room-board-input.js' in HARNESS_FILES
+    assert 'e2e/war-room-gpu-quick-match.js' in HARNESS_FILES
+    assert 'e2e/war-room-gpu-shadow-readiness.mjs' in HARNESS_FILES
+    assert 'e2e/war-room-deep-idle-probe.mjs' in HARNESS_FILES
+    assert 'scripts/e2e_dist_server.py' in HARNESS_FILES
+    pinned_files = {filename: (root / filename).read_bytes() for filename in HARNESS_FILES}
+    require_complete_harness_imports(pinned_files)
+    check_gpu_harness_syntax(pinned_files)
+    # Both .js and .mjs imports must fail fast even when the entry spec parses.
+    for broken_path in ('e2e/war-room-gpu-quick-match.js',
+                        'e2e/war-room-gpu-shadow-readiness.mjs',
+                        'e2e/war-room-deep-idle-probe.mjs'):
+        broken_files = dict(pinned_files)
+        broken_files[broken_path] = b'export const malformed = ];'
+        try:
+            check_gpu_harness_syntax(broken_files)
+        except BenchError as exc:
+            assert broken_path in str(exc) and 'syntax' in str(exc)
+        else:
+            raise AssertionError(f'Malformed imported GPU helper accepted: {broken_path}')
+    incomplete_files = dict(pinned_files)
+    incomplete_files.pop('e2e/war-room-gpu-shadow-readiness.mjs')
+    try:
+        require_complete_harness_imports(incomplete_files)
+    except BenchError as exc:
+        assert 'war-room-gpu-shadow-readiness.mjs' in str(exc)
+    else:
+        raise AssertionError('Missing imported GPU shadow helper passed preflight')
+    for count in (0, 1, 9):
+        try:
+            execution_order(count)
+        except BenchError:
+            pass
+        else:
+            raise AssertionError('Unsafe iteration count accepted')
+    nvidia = gpu_env('hardware', 'nvidia')
+    mesa = gpu_env('hardware', 'mesa')
+    clean = gpu_env('software', 'none')
+    assert nvidia['__GLX_VENDOR_LIBRARY_NAME'] == 'nvidia' and 'DRI_PRIME' not in nvidia
+    assert mesa['DRI_PRIME'] == '1' and '__GLX_VENDOR_LIBRARY_NAME' not in mesa
+    assert '__NV_PRIME_RENDER_OFFLOAD' not in clean and 'DRI_PRIME' not in clean
+
+    # Reproduce a failed Playwright process without a browser or GPU.
+    with tempfile.TemporaryDirectory(prefix='warroom-runner-selftest-') as tmp:
+        root = Path(tmp)
+        broken = root / 'invalid-gpu.spec.js'
+        broken.write_text('const invalid = ];', encoding='utf-8')
+        try:
+            check_gpu_benchmark_syntax(broken)
+        except BenchError as exc:
+            assert 'spec syntax invalid' in str(exc)
+        else:
+            raise AssertionError('Malformed local GPU benchmark spec accepted')
+        target = root / 'worktree'
+        sources = target / '.artifacts/war-room-gpu-benchmark'
+        sources.mkdir(parents=True)
+        destination = root / 'retained'
+        destination.mkdir()
+        log = destination / 'playwright.log'
+        exit_code = run_playwright_logged(
+            (sys.executable, '-c', "print('synthetic Playwright failure');raise SystemExit(23)"),
+            cwd=root, env=os.environ.copy(), log_path=log,
+        )
+        assert exit_code == 23
+        assert b'synthetic Playwright failure' in log.read_bytes()
+        valid = sources / 'partial.json'
+        valid.write_text(json.dumps({
+            'schema': 2, 'revision': 'a' * 40,
+            'requestedRenderer': 'software',
+            'profile': PROFILES[0],
+        }), encoding='utf-8')
+        malformed = sources / 'incomplete.json'
+        malformed.write_text('{', encoding='utf-8')
+        count = preserve_fresh_captures(
+            target, set(), destination, 'a' * 40, 'software', strict=False,
+        )
+        assert count == 2
+        assert (destination / valid.name).is_file()
+        assert (destination / malformed.name).read_text() == '{'
+        # Failed browser runs must not silently lose trace/screenshot evidence
+        # when the temporary worktree gets deleted; require per-run isolation,
+        # skip unrelated files/symlinks, and exercise bounded-copy behavior.
+        test_results = target / 'e2e' / 'test-results' / 'critical-lane'
+        test_results.mkdir(parents=True)
+        (test_results / 'failure.png').write_bytes(b'png-image')
+        (test_results / 'trace.zip').write_bytes(b'zip-trace')
+        (test_results / 'error-context.md').write_text('failed board gate')
+        (test_results / 'secrets.env').write_text('not a Playwright attachment')
+        outside = root / 'outside.png'
+        outside.write_bytes(b'outside-path')
+        (test_results / 'outside.png').symlink_to(outside)
+        retained, skipped = preserve_failed_playwright_evidence(
+            target, destination, 1, 'A',
+        )
+        assert (retained, skipped) == (3, 0)
+        saved = destination / 'playwright-01-A-evidence' / 'critical-lane'
+        assert (saved / 'failure.png').read_bytes() == b'png-image'
+        assert (saved / 'trace.zip').read_bytes() == b'zip-trace'
+        assert (saved / 'error-context.md').read_text() == 'failed board gate'
+        assert not (saved / 'secrets.env').exists()
+        assert not (saved / 'outside.png').exists()
+        tight_destination = root / 'bounded'
+        tight_destination.mkdir()
+        copied, skipped = preserve_failed_playwright_evidence(
+            target, tight_destination, 2, 'B', max_bytes=5,
+        )
+        assert copied <= 2 and skipped >= 1
+        # A successful invocation must reject truncated/invalid output, not
+        # accidentally count diagnostics as clean benchmark measurements.
+        accepted = root / 'accepted'
+        accepted.mkdir()
+        try:
+            preserve_fresh_captures(
+                target, set(), accepted, 'a' * 40, 'software', strict=True,
+            )
+        except BenchError:
+            pass
+        else:
+            raise AssertionError('Invalid benchmark JSON was accepted')
+        shutil.rmtree(target)
+        assert (saved / 'trace.zip').read_bytes() == b'zip-trace'
+        assert preserve_failed_playwright_evidence(target, destination, 3, 'A') == (0, 0)
+    print('War Room GPU A/B local runner self-test: OK')
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--baseline-sha', required=False)
+    parser.add_argument('--candidate-sha', required=False)
+    parser.add_argument('--harness-sha', help='SHA providing ONE identical Playwright harness for A+B (default: HEAD)')
+    parser.add_argument('--renderer', choices=('hardware', 'software'), default='hardware')
+    parser.add_argument('--variant', choices=('v3', 'v4'), default='v3', help='Room measured by both revisions, default V3')
+    parser.add_argument('--offload', choices=('nvidia', 'mesa', 'none'), default='nvidia')
+    parser.add_argument('--repetitions', type=int, default=2, help='Independent captures per revision, min 2; default 2')
+    parser.add_argument('--output-root', type=Path, help='Parent for immutable session results (default .artifacts/war-room-gpu-ab)')
+    parser.add_argument('--dry-run', action='store_true', help='Validate SHAs and show sequence without modifying files')
+    parser.add_argument('--self-test', action='store_true')
+    args = parser.parse_args()
+    if args.self_test:
+        self_test()
+        return 0
+
+    root = Path(__file__).resolve().parent.parent
+    try:
+        require(args.baseline_sha and args.candidate_sha, 'Specify --baseline-sha and --candidate-sha')
+        baseline = resolve_sha(root, args.baseline_sha)
+        candidate = resolve_sha(root, args.candidate_sha)
+        harness = resolve_sha(root, args.harness_sha or
+                              capture(('git', 'rev-parse', 'HEAD'), cwd=root).decode().strip())
+        require(baseline != candidate, 'A and B must be distinct revisions')
+        order = execution_order(args.repetitions)
+        require(args.renderer == 'software' or args.renderer == 'hardware', 'Renderer invalid')
+        env = gpu_env(args.renderer, args.offload)
+        env['WAR_ROOM_GPU_BENCH_VARIANT'] = args.variant
+        print(f'War Room benchmark: A={baseline} B={candidate} harness={harness}', flush=True)
+        print('Sequence: ' + ' → '.join(order) + f' · variant={args.variant} renderer={args.renderer} offload={args.offload}', flush=True)
+        if args.dry_run:
+            print('Dry run: no worktrees, build, browser or GPU comparison executed')
+            return 0
+
+        require_port_free()
+        harness_blobs = {}
+        for filename in (*HARNESS_FILES, COMPARE_PATH):
+            harness_blobs[filename] = capture(('git', 'show', harness + ':' + filename), cwd=root)
+        require_complete_harness_imports(harness_blobs)
+        check_gpu_harness_syntax(harness_blobs)
+        require(b'schema: 2' in harness_blobs[HARNESS_FILES[0]]
+                and b'runId' in harness_blobs[HARNESS_FILES[0]]
+                and (args.variant == 'v3' or b'WAR_ROOM_GPU_BENCH_VARIANT' in harness_blobs[HARNESS_FILES[0]]),
+                'Harness must produce schema 2, per-run JSON')
+        session = dt.datetime.now(dt.timezone.utc).strftime('%Y%m%dT%H%M%SZ') + '-' + uuid.uuid4().hex[:8]
+        destination_root = (args.output_root or root / '.artifacts/war-room-gpu-ab') / session
+        destination_root.mkdir(parents=True, exist_ok=False)
+        (destination_root / 'A').mkdir()
+        (destination_root / 'B').mkdir()
+        # Persist provenance immediately so interrupted/failed sessions never
+        # masquerade as a completed comparison or become unattributed JSON.
+        session_metadata = {
+            'schema': 1, 'baseline': baseline, 'candidate': candidate,
+            'harness': harness, 'variant': args.variant,
+            'renderer': args.renderer, 'offload': args.offload,
+            'sequence': order, 'repetitions': args.repetitions,
+            'physicalAndroidVerified': False,
+            'metric': 'browser rAF cadence (not GPU frame time)',
+            'status': 'incomplete',
+        }
+        manifest = destination_root / 'session.json'
+        manifest.write_text(json.dumps(session_metadata, indent=2) + '\n', encoding='utf-8')
+        print(f'==> Permanent benchmark results: {destination_root}', flush=True)
+
+        with tempfile.TemporaryDirectory(prefix='chess-warroom-gpu-ab-') as tmp:
+            temporary = Path(tmp)
+            worktrees = {}
+            try:
+                for label, sha in (('A', baseline), ('B', candidate)):
+                    # Append even before checkout completes, for failed-add cleanup.
+                    target = temporary / label
+                    worktrees[label] = target
+                    prepare_worktree(root, temporary, label, sha, harness_blobs)
+                for i, label in enumerate(order, start=1):
+                    sha = baseline if label == 'A' else candidate
+                    exercise_once(label, worktrees[label], sha, args.renderer,
+                                  env, destination_root / label, i, len(order))
+                comparator = temporary / 'compare_war_room_gpu.py'
+                comparator.write_bytes(harness_blobs[COMPARE_PATH])
+                report_path = destination_root / 'comparison.md'
+                run(('python3', '-S', str(comparator),
+                     '--baseline-dir', str(destination_root / 'A'),
+                     '--candidate-dir', str(destination_root / 'B'),
+                     '--baseline-sha', baseline, '--candidate-sha', candidate,
+                     '--renderer', args.renderer, '--min-runs', str(args.repetitions),
+                     '--output', str(report_path)), cwd=root)
+                session_metadata['status'] = 'complete'
+                manifest.write_text(
+                    json.dumps(session_metadata, indent=2) + '\n', encoding='utf-8',
+                )
+                print(f'==> A/B report complete: {report_path}', flush=True)
+            finally:
+                for path in worktrees.values():
+                    if path.exists():
+                        run(('git', 'worktree', 'remove', '--force', str(path)),
+                            cwd=root, check=False)
+        return 0
+    except (BenchError, OSError, ValueError) as exc:
+        print('War Room A/B refused/failed: ' + str(exc), file=sys.stderr)
+        return 2
+
+
+if __name__ == '__main__':
+    sys.exit(main())

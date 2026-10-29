@@ -40,10 +40,10 @@
         "name": "selector",
         "label": "Entorno",
         "type": "custom",
-        "query": "production : {service_name=\"chess-studio-backend\"},staging : {service_name=\"chess-studio-backend-staging\"},production OCI stdout : {service_name=\"chess-studio-oci-backend-production-stdout\"},staging OCI stdout : {service_name=\"chess-studio-oci-backend-staging-stdout\"}",
+        "query": "production : {service_name=\"chess-studio-backend-go\"},staging : {service_name=\"chess-studio-backend-staging-go\"},production OCI stdout : {service_name=\"chess-studio-oci-backend-production-stdout\"},staging OCI stdout : {service_name=\"chess-studio-oci-backend-staging-stdout\"}",
         "current": {
           "text": "production",
-          "value": "{service_name=\"chess-studio-backend\"}"
+          "value": "{service_name=\"chess-studio-backend-go\"}"
         },
         "hide": 0,
         "skipUrlSync": false,

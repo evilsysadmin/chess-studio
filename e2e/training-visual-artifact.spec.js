@@ -55,17 +55,23 @@ async function assertInsightsActionableFold(room, label) {
   const geometry = await room.evaluate((root) => {
     const tools = root.querySelector('.insights-room-tools')?.getBoundingClientRect();
     const session = root.querySelector('.insights-guided-session:not(.active)')?.getBoundingClientRect();
-    const recommended = root.querySelector('.insights-guided-focus .primary-btn')?.getBoundingClientRect();
+    // Direct practice owns the first viewport when a real FEN exists.
+    // The guided time budget is secondary and may continue below the fold.
+    const direct = root.querySelector('.insights-guided-direct-button')?.getBoundingClientRect();
+    const recommended = root.querySelector('.insights-guided-start')?.getBoundingClientRect();
     return {
       viewportHeight: window.innerHeight,
       toolsBottom: tools?.bottom || 0,
       sessionTop: session?.top || 0,
-      recommendedBottom: recommended?.bottom || 0,
+      primaryBottom: direct?.bottom || recommended?.bottom || 0,
+      teaserSquares: root.querySelectorAll('.insights-guided-position .insights-position-square').length,
+      hasDirect: Boolean(direct),
     };
   });
 
   expect(geometry.sessionTop, `${label}: training action starts too low`).toBeLessThan(geometry.viewportHeight * .7);
-  expect(geometry.recommendedBottom, `${label}: recommended task CTA falls below the first viewport`).toBeLessThanOrEqual(geometry.viewportHeight - 8);
+  expect(geometry.primaryBottom, `${label}: primary training action falls below the first viewport`).toBeLessThanOrEqual(geometry.viewportHeight - 8);
+  if (geometry.hasDirect) expect(geometry.teaserSquares, `${label}: real position preview`).toBe(64);
   expect(geometry.toolsBottom, `${label}: archive tools should sit before the task`).toBeLessThanOrEqual(geometry.sessionTop + 8);
 }
 
@@ -480,8 +486,121 @@ scopedTest('tournament', 'Entrenar · Torneo', async ({ page }) => {
   await captureAt(page, 'tournament', { width: 390, height: 844, variant: 'mobile' });
 });
 
+scopedTest('progress', 'Mi progreso · Salón de la Gloria con partida demostrable', async ({ page }) => {
+  test.setTimeout(100_000);
+  await prepare(page, {
+    profileSeed: { 'chess-study-game-history': JSON.stringify(INSIGHTS_DOSSIER_HISTORY) },
+  });
+  await page.locator('.illustrated-home__matthias').click();
+  await expect(page.getByRole('heading', { name: 'Así juegas', exact: true })).toBeVisible();
+  const trainingRoom = page.locator('[data-insights-room="training-room-v1"]');
+  const drawer = trainingRoom.locator('details[data-insights-archive]');
+  if (await drawer.getAttribute('open') === null) await drawer.locator('summary').click();
+  await drawer.getByRole('button', { name: 'Mi progreso', exact: true }).click();
+  const hall = trainingRoom.locator('.career-hall-of-fame');
+  await expect(hall.getByRole('heading', { name: 'Salón de la Gloria' })).toBeVisible();
+  await expect(hall.locator('[data-career-honor="hardest"]')).toContainText('CPU nivel 10');
+  await expect(hall.getByRole('button', { name: 'Revisar partida →' }).first()).toBeVisible();
+  // A page-level screenshot is not visual evidence of the hall if the
+  // selected archive view is mounted below the viewport. Frame it explicitly.
+  async function captureHall(width, height, variant) {
+    await page.setViewportSize({ width, height });
+    await hall.scrollIntoViewIfNeeded();
+    await expect.poll(() => hall.evaluate((root) => {
+      const bounds = root.getBoundingClientRect();
+      return bounds.width > 0 && bounds.height > 0
+        && bounds.top < window.innerHeight - 44
+        && bounds.bottom > 44;
+    }), { message: `career-hall-${variant}: museum must be inside screenshot` }).toBe(true);
+    await captureAt(page, 'career-hall', { width, height, variant });
+  }
+  await captureHall(1440, 900, 'desktop');
+  await captureHall(360, 800, 'mobile-compact');
+  await captureHall(390, 844, 'mobile');
+  await captureHall(430, 932, 'mobile-wide');
+});
+
+scopedTest('progress', 'Mi progreso · Atlas de aperturas de partidas reales', async ({ page }) => {
+  test.setTimeout(100_000);
+  // The archive stores Move objects with SAN. The Hall fixture uses bare SAN
+  // strings, which buildOpeningTree treats as legacy from/to-less records.
+  // Give the opening explorer a genuinely reconstructible four-ply history.
+  const openingHistory = INSIGHTS_DOSSIER_HISTORY.map((record) => ({
+    ...record,
+    moves: record.moves.map((san) => ({ san })),
+  }));
+  await prepare(page, {
+    profileSeed: { 'chess-study-game-history': JSON.stringify(openingHistory) },
+  });
+  await page.locator('.illustrated-home__matthias').click();
+  const room = page.locator('[data-insights-room="training-room-v1"]');
+  const drawer = room.locator('details[data-insights-archive]');
+  if (await drawer.getAttribute('open') === null) await drawer.locator('summary').click();
+  await drawer.getByRole('button', { name: 'Mi progreso', exact: true }).click();
+  await room.getByRole('button', { name: 'Aperturas', exact: true }).click();
+  const atlas = room.getByRole('region', { name: 'Explorar aperturas de mis partidas' });
+  await expect(atlas).toBeVisible();
+  await expect(atlas.getByRole('img', { name: /Vista previa de una posición real/ })).toBeVisible();
+  await expect(atlas.getByRole('button', { name: /e5.*4 partidas/ })).toBeVisible();
+  await atlas.getByRole('button', { name: /e5.*4 partidas/ }).click();
+  await expect(atlas).toContainText('e4 · e5');
+  await expect(atlas.getByRole('button', { name: 'Revisar partida de esta línea →' })).toBeVisible();
+  for (const { width, height, variant } of [
+    { width: 1440, height: 900, variant: 'desktop' },
+    { width: 360, height: 800, variant: 'mobile-compact' },
+    { width: 390, height: 844, variant: 'mobile' },
+    { width: 430, height: 932, variant: 'mobile-wide' },
+  ]) {
+    await page.setViewportSize({ width, height });
+    await atlas.scrollIntoViewIfNeeded();
+    await expect(atlas).toBeVisible();
+    await captureAt(page, 'career-opening-atlas', { width, height, variant });
+  }
+});
+
+scopedTest('progress', 'Mi progreso · Crónica de carrera acreditada', async ({ page }) => {
+  test.setTimeout(100_000);
+  const records = Array.from({ length: 24 }, (_, index) => ({
+    id: 'career-chronicle-evidence-' + index,
+    sourceGameId: 'career-chronicle-evidence-' + index,
+    date: new Date(Date.UTC(2026, 7 + Math.floor(index / 20), 1 + index % 20)).toISOString(),
+    outcome: index % 3 === 0 ? 'win' : index % 3 === 1 ? 'draw' : 'loss',
+    mode: 'casual', difficulty: 20 + (index % 7), humanColor: 'w',
+    opening: 'Apertura italiana',
+    moves: ['e4', 'e5', 'Nf3', 'Nc6'], captured: [],
+  }));
+  await prepare(page, {
+    profileSeed: { 'chess-study-game-history': JSON.stringify(records) },
+  });
+  await page.locator('.illustrated-home__matthias').click();
+  const room = page.locator('[data-insights-room="training-room-v1"]');
+  const drawer = room.locator('details[data-insights-archive]');
+  if (await drawer.getAttribute('open') === null) await drawer.locator('summary').click();
+  await drawer.getByRole('button', { name: 'Mi progreso', exact: true }).click();
+  const chronicle = room.locator('[data-career-chronicle="v1"]');
+  await expect(chronicle.getByRole('heading', { name: 'Tus temporadas, capítulo a capítulo' })).toBeVisible();
+  await expect(chronicle).toContainText('Capítulo 2');
+  await expect(chronicle).toContainText('4/20 partidas');
+  await chronicle.getByLabel('Consultar temporada').selectOption('1');
+  await expect(chronicle).toContainText('Capítulo 1');
+  await expect(chronicle).toContainText('20/20 partidas');
+  await expect(chronicle.getByRole('button', { name: 'Revisar esta partida →' })).toBeVisible();
+  for (const { width, height, variant } of [
+    { width: 1440, height: 900, variant: 'desktop' },
+    { width: 360, height: 800, variant: 'mobile-compact' },
+    { width: 390, height: 844, variant: 'mobile' },
+    { width: 430, height: 932, variant: 'mobile-wide' },
+  ]) {
+    await page.setViewportSize({ width, height });
+    await chronicle.scrollIntoViewIfNeeded();
+    await expect(chronicle).toBeVisible();
+    await assertNoHorizontalOverflow(page, 'career-chronicle-' + variant);
+    await captureAt(page, 'career-chronicle', { width, height, variant });
+  }
+});
+
 scopedTest('progress', 'Entrenar · Así juegas y Mi progreso', async ({ page }) => {
-  test.setTimeout(70_000);
+  test.setTimeout(100_000);
   await prepare(page);
 
   await page.evaluate(() => {
@@ -504,10 +623,28 @@ scopedTest('progress', 'Entrenar · Así juegas y Mi progreso', async ({ page })
         description: 'Material de fixture para acreditar la sesión guiada.',
         fen: '6k1/5ppp/8/8/8/8/5PPP/R5K1 w - - 0 1',
         solution: ['Ra8#'],
+        played: 'Kf1',
         incidentKeys: ['human:MISSED_MATE'],
         sourceGameId: 'visual-guided-source',
         loss: 420,
         createdAt: '2026-10-01T10:00:00Z',
+        attempts: 0,
+        solves: 0,
+        cleanSolves: 0,
+      },
+      {
+        id: 'visual-guided-session-second',
+        kind: 'personal',
+        source: 'autopsy',
+        title: 'Segunda reincidencia real',
+        description: 'Segundo caso registrado para el expediente visual.',
+        fen: '6k1/5ppp/8/8/8/8/5PPP/R5K1 w - - 0 1',
+        solution: ['Ra8#'],
+        played: 'Kf1',
+        incidentKeys: ['human:MISSED_MATE'],
+        sourceGameId: 'visual-guided-source-second',
+        loss: 270,
+        createdAt: '2026-09-30T10:00:00Z',
         attempts: 0,
         solves: 0,
         cleanSolves: 0,
@@ -525,14 +662,84 @@ scopedTest('progress', 'Entrenar · Así juegas y Mi progreso', async ({ page })
     { timeout: 20_000 },
   );
   await assertInsightsActionableFold(trainingRoom, 'insights-desktop');
+  const openAutopsy = trainingRoom.getByRole('button', { name: /Abrir autopsia/ });
+  await expect(openAutopsy).toBeVisible();
+  await expect(trainingRoom.locator('.insights-position-arrow')).toHaveCount(0);
+  await openAutopsy.click();
+  await trainingRoom.getByRole('button', { name: 'Tu jugada', exact: true }).click();
+  await expect(trainingRoom.locator('.insights-position-arrow')).toBeVisible();
+  await expect(trainingRoom.locator('.insights-position-autopsy-fact')).toContainText('Kf1');
+  await trainingRoom.getByRole('button', { name: 'Alternativa', exact: true }).click();
+  await expect(trainingRoom.locator('.insights-position-autopsy-fact')).toContainText('Ra8#');
+  await trainingRoom.getByRole('button', { name: 'Ocultar autopsia' }).click();
+  await expect(trainingRoom.locator('.insights-position-arrow')).toHaveCount(0);
   await captureAt(page, 'insights', { width: 1440, height: 900, variant: 'desktop' });
   await captureAt(page, 'insights', { width: 1800, height: 900, variant: 'wide' });
+  await captureAt(page, 'insights', { width: 360, height: 800, variant: 'mobile-compact' });
   await captureAt(page, 'insights', { width: 390, height: 844, variant: 'mobile' });
   await assertInsightsActionableFold(trainingRoom, 'insights-mobile');
+  await captureAt(page, 'insights', { width: 430, height: 932, variant: 'mobile-wide' });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await settle(page);
+  // A tap on a physical archive tab must reveal its content immediately:
+  // no silent view switch stranded above a full-page background on phones.
+  const archiveOnMobile = trainingRoom.locator('details[data-insights-archive]');
+  await archiveOnMobile.locator('> summary').click();
+  await archiveOnMobile.getByRole('button', { name: 'Errores', exact: true }).click();
+  const errorRegion = trainingRoom.getByRole('region', { name: 'Errores recurrentes' });
+  await expect(errorRegion).toHaveAttribute('data-insights-section', 'errors');
+  await expect(errorRegion.getByText('El libro negro de Matthias', { exact: true })).toBeVisible();
+  await expect(errorRegion.locator('.insights-blackbook-position .insights-position-preview')).toBeVisible();
+  await expect(errorRegion.getByRole('button', { name: 'Entrenar este patrón →' })).toBeVisible();
+  await expect(errorRegion).toBeFocused();
+  await expect.poll(() => errorRegion.evaluate((node) => {
+    const rect = node.getBoundingClientRect();
+    return rect.top >= -8 && rect.top < window.innerHeight / 3 && rect.bottom > 0;
+  }), { message: 'Archive content must be in mobile viewport after selecting it' }).toBe(true);
+  await expect(errorRegion.getByRole('button', { name: 'Volver a mi tarea' })).toBeVisible();
+  await assertNoHorizontalOverflow(page, 'insights-blackbook-mobile-390');
+  await captureAt(page, 'insights-errors-navigation', { width: 1440, height: 900, variant: 'desktop' });
+  await captureAt(page, 'insights-errors-navigation', { width: 360, height: 800, variant: 'mobile-compact' });
+  await captureAt(page, 'insights-errors-navigation', { width: 390, height: 844, variant: 'mobile' });
+  await captureAt(page, 'insights-errors-navigation', { width: 430, height: 932, variant: 'mobile-wide' });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await settle(page);
+  await errorRegion.getByRole('button', { name: 'Volver a mi tarea' }).click();
+  const taskRegion = trainingRoom.getByRole('region', { name: 'Tarea de Matthias' });
+  await expect(taskRegion).toBeFocused();
+  await expect(taskRegion).toHaveAttribute('data-insights-section', 'task');
+  await expect(trainingRoom.getByRole('button', { name: 'Empezar sesión recomendada de 5 min' })).toBeVisible();
+  const directPractice = trainingRoom.getByRole('button', { name: 'Entrenar esta posición real ahora' });
+  await expect(directPractice).toBeVisible();
+  await directPractice.click();
+  const actualPosition = page.locator('.puzzle-screen[data-training-origin="insights-action"]');
+  await expect(actualPosition).toBeVisible();
+  // On touch viewports the back button becomes icon-only via ::before,
+  // so Playwright's computed accessible name differs from the desktop label.
+  const backToStudy = actualPosition.locator('> .back-link');
+  await expect(backToStudy).toBeVisible();
+  await backToStudy.click();
+  await expect(trainingRoom.getByRole('heading', { name: 'Tu siguiente tarea' })).toBeVisible();
+
   await page.setViewportSize({ width: 1440, height: 900 });
   await settle(page);
 
-  const recommendedSession = trainingRoom.getByRole('button', { name: /^Empezar sesión recomendada de (5|15|30) min$/ });
+  const preview = trainingRoom.locator('[data-training-preview-minutes]');
+  const choose15 = trainingRoom.getByRole('button', { name: 'Tengo 15 min' });
+  const choose30 = trainingRoom.getByRole('button', { name: 'Tengo 30 min' });
+  await choose15.click();
+  await expect(preview).toHaveAttribute('data-training-preview-minutes', '15');
+  await expect(choose15).toHaveAttribute('aria-pressed', 'true');
+  await expect(trainingRoom.locator('.insights-guided-session.active')).toHaveCount(0);
+  await expect(trainingRoom.getByRole('button', { name: 'Empezar sesión recomendada de 15 min' })).toBeVisible();
+  await trainingRoom.locator('.insights-guided-preview-details > summary').click();
+  await expect(trainingRoom.locator('.insights-guided-preview-details li').first()).toBeVisible();
+  await choose30.click();
+  await expect(preview).toHaveAttribute('data-training-preview-minutes', '30');
+  await expect(trainingRoom.getByRole('button', { name: 'Empezar sesión recomendada de 30 min' })).toBeVisible();
+  await trainingRoom.getByRole('button', { name: 'Tengo 5 min' }).click();
+  await expect(preview).toHaveAttribute('data-training-preview-minutes', '5');
+  const recommendedSession = trainingRoom.getByRole('button', { name: 'Empezar sesión recomendada de 5 min' });
   await expect(recommendedSession).toBeVisible();
   await recommendedSession.click();
 

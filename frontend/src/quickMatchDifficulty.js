@@ -1,5 +1,5 @@
 import { loadGameActivity } from './gameActivity.js';
-import { loadCleanGameRecords } from './cleanGames.js';
+import { loadCleanGameRecords } from './cleanGameRecords.js';
 import {
   PROVISIONAL_GAMES,
   cpuRatingForDifficulty,

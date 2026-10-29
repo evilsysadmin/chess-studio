@@ -46,6 +46,36 @@ function fixture() {
 }
 
 describe('War Room material grade invalidation', () => {
+  it('preserves an ordered, exact per-group child-identity signature without temporary arrays', () => {
+    const board = new THREE.Group();
+    const loosePiece = mesh('ivory');
+    const first = new THREE.Group();
+    const last = new THREE.Group();
+    const pieceA = mesh('ivory');
+    const pieceB = mesh('ivory');
+    first.add(pieceA, pieceB);
+    board.add(loosePiece, first, last);
+
+    const initial = warRoomMaterialGradeDynamicSignature(board);
+    expect(initial).toMatch(/^\d+:2:\d+:\d+\|\d+:0$/);
+    expect(warRoomMaterialGradeDynamicSignature(board)).toBe(initial);
+    // Only Groups influence the signature; a loose static mesh does not.
+    board.add(mesh('ivory'));
+    expect(warRoomMaterialGradeDynamicSignature(board)).toBe(initial);
+
+    // Changing the first or last child with the same count must invalidate.
+    first.remove(pieceA);
+    first.add(pieceA);
+    const reordered = warRoomMaterialGradeDynamicSignature(board);
+    expect(reordered).not.toBe(initial);
+    expect(warRoomMaterialGradeDynamicSignature(board)).toBe(reordered);
+
+    last.add(mesh('ivory'));
+    expect(warRoomMaterialGradeDynamicSignature(board)).not.toBe(reordered);
+    expect(warRoomMaterialGradeDynamicSignature(new THREE.Group())).toBe('');
+    expect(warRoomMaterialGradeDynamicSignature(null)).toBe('');
+  });
+
   it('runs once for a stable board instead of following the ambient render cadence', () => {
     const { scene, board } = fixture();
 
@@ -80,6 +110,37 @@ describe('War Room material grade invalidation', () => {
     expect(replacement.material.envMapIntensity).toBe(0.07);
     expect(replacement.material.roughness).toBeGreaterThanOrEqual(0.92);
     expect(replacement.material.color.getHex()).not.toBe(before);
+  });
+
+  it('grades newly rebuilt middle pieces with unchanged group count and unchanged edge identities', () => {
+    const { scene, pieces, firstPiece } = fixture();
+    const middle = mesh('ivory');
+    const last = mesh('ivory');
+    pieces.add(middle, last);
+    expect(shouldRunWarRoomMaterialGrade(scene)).toBe(true);
+    applyWarRoomMaterialGrade(scene);
+    expect(shouldRunWarRoomMaterialGrade(scene)).toBe(false);
+
+    const previousSignature = warRoomMaterialGradeDynamicSignature(scene.children[0]);
+    const replacement = mesh('ivory');
+    const ungradedHex = replacement.material.color.getHex();
+    pieces.remove(middle);
+    pieces.add(replacement);
+    // Keep the original first/last objects in place: the old edge-only
+    // signature silently missed this normal group reorder/rebuild case.
+    pieces.children.splice(1, 0, pieces.children.pop());
+    expect(pieces.children).toEqual([firstPiece, replacement, last]);
+    expect(pieces.children).toHaveLength(3);
+    expect(warRoomMaterialGradeDynamicSignature(scene.children[0])).not.toBe(previousSignature);
+    expect(shouldRunWarRoomMaterialGrade(scene)).toBe(true);
+    expect(shouldRunWarRoomMaterialGrade(scene)).toBe(false);
+
+    const graded = applyWarRoomMaterialGrade(scene);
+    expect(graded.ivory).toBeGreaterThanOrEqual(1);
+    expect(replacement.material.envMapIntensity).toBe(0.07);
+    expect(replacement.material.roughness).toBeGreaterThanOrEqual(0.92);
+    expect(replacement.material.color.getHex()).not.toBe(ungradedHex);
+    expect(scene.userData.warRoomMaterialGradeInvalidations).toBe(2);
   });
 
   it('invalidates when a forensic or capture-style group gains a transient piece', () => {

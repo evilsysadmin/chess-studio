@@ -10,6 +10,12 @@ export const PVP_DUEL_HALL_CAMERA = Object.freeze({
   target: Object.freeze([0, 2.18, -0.8]),
 });
 
+// ResizeObserver delivers an initial notification even without a size change.
+// A fully loaded GLB must still be painted explicitly once regardless of size.
+export function shouldPaintPvpHallResize(previous, next, forcePaint = false) {
+  return forcePaint === true || previous.width !== next.width || previous.height !== next.height;
+}
+
 export default function PvpDuelHallScene3D() {
   const canvasRef = useRef(null);
   const [status, setStatus] = useState('loading');
@@ -68,13 +74,22 @@ export default function PvpDuelHallScene3D() {
       if (!disposed) renderer.render(scene, camera);
     };
 
-    const resize = () => {
+    let lastWidth = 0;
+    let lastHeight = 0;
+    const resize = (forcePaint = false) => {
       if (disposed) return;
       const width = Math.max(1, host?.clientWidth || canvas.clientWidth || 1);
       const height = Math.max(1, host?.clientHeight || canvas.clientHeight || 1);
-      renderer.setSize(width, height, false);
-      camera.aspect = width / height;
-      camera.updateProjectionMatrix();
+      if (!shouldPaintPvpHallResize(
+        { width: lastWidth, height: lastHeight }, { width, height }, forcePaint,
+      )) return;
+      if (width !== lastWidth || height !== lastHeight) {
+        lastWidth = width;
+        lastHeight = height;
+        renderer.setSize(width, height, false);
+        camera.aspect = width / height;
+        camera.updateProjectionMatrix();
+      }
       render();
     };
 
@@ -83,7 +98,11 @@ export default function PvpDuelHallScene3D() {
         const cleanup = await installPvpDuelHallShell(scene, {
           coarsePointer,
           whiteSide: true,
-          onRefine: render,
+          // The Hall has no shadow maps: a post-paint shadow-caster pass
+          // cannot alter its pixels. Avoid only that extra WebGL render;
+          // leave the shared War Room shell and all other variants untouched.
+          shadowMapsEnabled: Boolean(renderer.shadowMap?.enabled),
+          onRefine: renderer.shadowMap?.enabled ? render : undefined,
         });
         if (disposed) {
           cleanup?.();
@@ -91,7 +110,9 @@ export default function PvpDuelHallScene3D() {
         }
         disposeShell = cleanup || (() => {});
         setStatus('ready');
-        resize();
+        // Force the first complete frame after the GLB arrives, irrespective
+        // of the empty canvas's earlier size and ResizeObserver notifications.
+        resize(true);
       } catch {
         if (!disposed) setStatus('fallback');
       }

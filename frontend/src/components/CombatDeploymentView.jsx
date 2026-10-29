@@ -2,11 +2,13 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import './CombatDeploymentRoute.css';
 import './CombatDeploymentWarTable.css';
 import { CombatDeploymentPresetDrawer, CombatDeploymentWarTableHeader } from './CombatDeploymentWarTableChrome.jsx';
+import { CombatDeploymentFooter, CombatDeploymentGuidance } from './CombatDeploymentDecisionChrome.jsx';
+import CombatCasualtiesPanel from './CombatCasualtiesPanel.jsx';
 import { createPortal } from 'react-dom';
 import Board2D from './Board2D.jsx';
 import { pieceRankForLevel } from '../combatRanks.js';
 import RankInsignia from './RankInsignia.jsx';
-import { costForNextPoint, reviveCost, SPEED_POINT_VALUE, STRENGTH_POINT_VALUE, statsFor } from '../combat.js';
+import { costForNextPoint, SPEED_POINT_VALUE, STRENGTH_POINT_VALUE, statsFor } from '../combat.js';
 import { unlockedDeploymentTypes } from '../combatMetamorphosis.js';
 import { unitDecorations, unitRecordForKey } from '../combatUnitService.js';
 import { techniqueById, unlockedTechniquesFor } from '../combatTechniques.js';
@@ -376,13 +378,14 @@ export default function CombatDeploymentView({
   const canConfirm = summary.ready && (!requireExplicitConfirmation || summary.fallenCount === 0);
   const [query, setQuery] = useState('');
   const draggingUnitRef = useRef(null);
+  const casualtiesRef = useRef(null);
   const previewTimerRef = useRef(null);
   const previewHideTimerRef = useRef(null);
   const [dragHoverSquare, setDragHoverSquare] = useState(null);
   const [typeFilter, setTypeFilter] = useState('all');
   const [sortBy, setSortBy] = useState('rank');
   const [showTutorial, setShowTutorial] = useState(() => !loadMechanicTutorialProgress()?.['combat-deployment']?.seen);
-  const [selectedUnitKey, setSelectedUnitKey] = useState(() => summary.reserveKeys[0] || summary.deployedKeys[0] || null);
+  const [selectedUnitKey, setSelectedUnitKey] = useState(null);
   const [hoveredDossierUnitKey, setHoveredDossierUnitKey] = useState(null);
   const [pinnedDossierUnitKey, setPinnedDossierUnitKey] = useState(null);
   const [dossierAnchorRect, setDossierAnchorRect] = useState(null);
@@ -683,83 +686,22 @@ export default function CombatDeploymentView({
               <small>{summary.fallenCount > 0 ? `${summary.fallenCount} caídas pendientes` : 'Fuera de la formación'}</small>
             </div>
             {summary.fallenCount > 0 && (
-              <section className="deployment-casualties" aria-label="Bajas pendientes">
-                <div className="deployment-casualties-heading">
-                  <div><span>BAJAS PENDIENTES</span><b>{summary.fallenCount}</b></div>
-                  <div className="deployment-casualties-xp" title="Créditos disponibles para recuperar veteranos caídos">
-                    <small>CRÉDITOS</small><strong>{Number(roster.credits || 0)}</strong>
-                  </div>
-                </div>
-                <p>Decide a quién recuperar. El saldo se comparte con contratos y equipo.</p>
-                <div className="deployment-casualty-list">
-                  {summary.fallenKeys.map((unitKey) => {
-                    const origin = originTypeForRosterKey(unitKey);
-                    const saved = roster.pieces?.[unitKey] || {};
-                    const alias = roster.identities?.[unitKey]?.alias || 'Sin alias';
-                    const level = levelForSaved(saved);
-                    const progress = Math.max(0, Number(saved.strengthPoints) || 0) + Math.max(0, Number(saved.speedPoints) || 0);
-                    const cost = reviveCost(origin);
-                    const canRevive = progress > 0 && Number(roster.credits || 0) >= cost;
-                    const reviveTitle = progress <= 0
-                      ? 'Recluta de nivel 1: no tiene progreso que recuperar.'
-                      : canRevive
-                        ? `Revivir conserva la identidad y devuelve la mitad del progreso · ${cost} créditos.`
-                        : `Necesitas ${cost} créditos para revivir esta unidad.`;
-                    const dossierVisible = dossierUnitKey === unitKey;
-                    return (
-                      <div className={`deployment-casualty-card ${selectedUnitKey === unitKey ? 'selected' : ''}`} key={unitKey}>
-                        <span className="deployment-casualty-symbol" aria-hidden="true">{TYPE_SYMBOL[origin] || '♙'}</span>
-                        <div className="deployment-casualty-copy">
-                          <button
-                            type="button"
-                            className="deployment-casualty-name"
-                            onMouseEnter={(event) => previewUnitDossier(unitKey, event)}
-                            onMouseLeave={hideUnitDossierPreview}
-                            onFocus={(event) => previewUnitDossier(unitKey, event, true)}
-                            onBlur={hideUnitDossierPreview}
-                            onClick={(event) => pinUnitDossier(unitKey, event)}
-                            data-unit-dossier-trigger="true"
-                            aria-label={`Ver ficha de unidad de ${alias}`}
-                            aria-haspopup="dialog"
-                            aria-expanded={dossierVisible}
-                            aria-controls={dossierVisible ? 'deployment-unit-dossier-popover' : undefined}
-                            title="Pasa el cursor para ver la ficha · clic para fijarla antes de decidir si revivir"
-                          >
-                            <span>{alias}</span><span className="deployment-casualty-name-cue" aria-hidden="true">ⓘ</span>
-                          </button>
-                          <small>{TYPE_NAME[origin]} · {pieceRankForLevel(level).label} · nv.{level}</small>
-                        </div>
-                        <div className="deployment-casualty-actions">
-                          <button type="button" className="secondary-btn" disabled={!canRevive} title={reviveTitle} onClick={() => { onRevive?.(unitKey, origin); setSelectedUnitKey(unitKey); closeUnitDossier(); }}>
-                            Revivir · {cost} cr
-                          </button>
-                          <button type="button" className="secondary-btn danger-soft" title="La identidad actual pasa al Memorial. El recluta nuevo sólo cubre el hueco si no hay otra reserva compatible." onClick={() => { onReplaceFallen?.(unitKey); setSelectedUnitKey(unitKey); closeUnitDossier(); }}>
-                            Nuevo recluta
-                          </button>
-                          {!canRevive && progress > 0 && (
-                            <small className="deployment-revive-shortfall">Faltan {Math.max(0, cost - Number(roster.credits || 0))} créditos para recuperar esta unidad.</small>
-                          )}
-                          {progress <= 0 && (
-                            <small className="deployment-revive-shortfall neutral">Sin progreso invertido que recuperar: el reemplazo no pierde veteranía.</small>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-                {summary.fallenCount > 1 && (
-                  <button type="button" className="secondary-btn deployment-replace-all" title="Los nuevos sólo cubren huecos sin otra reserva compatible." onClick={() => summary.fallenKeys.forEach((unitKey) => onReplaceFallen?.(unitKey))}>
-                    Aceptar {summary.fallenCount} reclutas nuevos
-                  </button>
-                )}
-              </section>
+              <CombatCasualtiesPanel
+                sectionRef={casualtiesRef} roster={roster} fallenKeys={summary.fallenKeys}
+                selectedUnitKey={selectedUnitKey} activeDossierKey={dossierUnitKey}
+                onPreviewDossier={previewUnitDossier} onHideDossier={hideUnitDossierPreview}
+                onPinDossier={pinUnitDossier} onRevive={onRevive}
+                onReplace={onReplaceFallen}
+                onAfterDecision={() => { setSelectedUnitKey(null); closeUnitDossier(); }}
+              />
             )}
 
             <CombatDeploymentPresetDrawer presets={presets} onLoad={loadPreset} onSave={savePreset} />
 
             <div className="deployment-list-heading">
               <div><span>UNIDADES EN RESERVA</span><b>{summary.reserveCount}</b></div>
-              <small>Arrastra una unidad a un slot compatible.</small>
+              <small>Pulsa «Desplegar» para ocupar un puesto libre, o selecciona una pieza y una casilla resaltada para intercambiarla.</small>
+              {onOpenMarket && <button type="button" className="deployment-reserve-market" onClick={onOpenMarket}>Mercado →</button>}
             </div>
             {summary.reserveCount > 0 && <div className="deployment-filters">
                 <input aria-label="Buscar unidad en reserva" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar en reserva…" />
@@ -779,29 +721,43 @@ export default function CombatDeploymentView({
                   {summary.reserveCount === 0 ? 'No hay unidades en el banquillo.' : 'Ninguna reserva coincide con esos filtros.'}
                 </p>
               )}
-              {reserveUnits.map((unitKey) => (
-                <UnitCard
-                  key={unitKey}
-                  roster={roster}
-                  unitKey={unitKey}
-                  deployedSlotKey={null}
-                  selected={selectedUnitKey === unitKey}
-                  dossierVisible={dossierUnitKey === unitKey}
-                  onPreview={previewUnitDossier}
-                  onPreviewEnd={hideUnitDossierPreview}
-                  onPin={pinUnitDossier}
-                  onDoubleClick={deployReserveUnitToFirstFreeSlot}
-                  onDragStart={handleDragStart}
-                  onDragEnd={handleDragEnd}
-                />
-              ))}
+              {reserveUnits.map((unitKey) => {
+                const freeSlot = firstFreeDeploymentSlotForUnit(roster, unitKey);
+                const alias = roster.identities?.[unitKey]?.alias || 'Unidad';
+                return (
+                  <div className="deployment-reserve-entry" key={unitKey}>
+                    <UnitCard
+                      roster={roster}
+                      unitKey={unitKey}
+                      deployedSlotKey={null}
+                      selected={selectedUnitKey === unitKey}
+                      dossierVisible={dossierUnitKey === unitKey}
+                      onPreview={previewUnitDossier}
+                      onPreviewEnd={hideUnitDossierPreview}
+                      onPin={pinUnitDossier}
+                      onDoubleClick={deployReserveUnitToFirstFreeSlot}
+                      onDragStart={handleDragStart}
+                      onDragEnd={handleDragEnd}
+                    />
+                    <button type="button" className="secondary-btn deployment-quick-deploy"
+                      disabled={!freeSlot}
+                      aria-label={`Desplegar ${alias} en primer puesto libre`}
+                      title={freeSlot
+                        ? `Ocupar ${slotLabel(freeSlot.key)} sin desplazar a nadie`
+                        : 'No hay hueco compatible libre. Selecciona una pieza y una casilla resaltada para intercambiar.'}
+                      onClick={(event) => deployReserveUnitToFirstFreeSlot(unitKey, event)}
+                    >+ Desplegar</button>
+                  </div>
+                );
+              })}
             </div>
           </aside>
           <main className="deployment-board-zone">
             <div className="deployment-board-caption">
               <span>FORMACIÓN PROPIA</span>
-              <small title="Fila superior: piezas mayores. Fila inferior: ocho slots de peón.">16 slots</small>
+              <small title="Fila superior: piezas mayores. Fila inferior: ocho slots de peón.">16 puestos</small>
             </div>
+            <CombatDeploymentGuidance selectedUnitKey={selectedUnitKey} roster={roster} reverseDeployment={reverseDeployment} />
             <Board2D
               fen={fen}
               orientation="white"
@@ -882,29 +838,10 @@ export default function CombatDeploymentView({
           document.body,
         )}
 
-        <footer className="combat-deployment-footer">
-          <div className="deployment-auto-actions">
-            <button type="button" className="secondary-btn" onClick={() => onAutoFill?.(true)}>Auto · veteranos</button>
-            <button type="button" className="secondary-btn" onClick={() => onAutoFill?.(false)}>Auto · reclutas</button>
-            <button type="button" className="secondary-btn" onClick={onResetDeployment}>Restablecer</button>
-          </div>
-          <div className="deployment-footer-copy">
-            <span>Reservas: <b>{summary.reserveCount}</b></span>
-            <span>Créditos: <b>{Number(roster.credits || 0)}</b></span>
-            {summary.fallenCount > 0 && <span>Bajas pendientes: <b>{summary.fallenCount}</b></span>}
-          </div>
-          <button type="button" className="primary-btn" disabled={!canConfirm} onClick={() => {
-            if (!canConfirm) return;
-            if (onConfirm) onConfirm();
-            else onClose();
-          }}>
-            {requireExplicitConfirmation && summary.fallenCount > 0
-              ? `Resuelve ${summary.fallenCount} baja${summary.fallenCount === 1 ? '' : 's'}`
-              : summary.ready
-                ? (requireExplicitConfirmation ? 'CONFIRMAR DESPLIEGUE' : 'Confirmar despliegue')
-                : 'Completa los 16 puestos'}
-          </button>
-        </footer>
+        <CombatDeploymentFooter summary={summary} canConfirm={canConfirm}
+          requireExplicitConfirmation={requireExplicitConfirmation} onAutoFill={onAutoFill}
+          onResetDeployment={onResetDeployment} onConfirm={onConfirm || onClose}
+          onReviewCasualties={() => casualtiesRef.current?.scrollIntoView({ block: 'center' })} />
         {showTutorial && <MechanicTutorialModal tutorialId="combat-deployment" onClose={() => setShowTutorial(false)} />}
       </section>
     </div>

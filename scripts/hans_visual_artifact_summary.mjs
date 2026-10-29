@@ -45,12 +45,25 @@ export async function summarizeHansVisualArtifact(inputDir) {
     const groundingObserved = manifest.groundTelemetryObserved === true;
     const maxGroundGap = Number.isFinite(manifest.maxGroundGap) ? manifest.maxGroundGap : null;
     const groundingOk = !groundingObserved || (maxGroundGap !== null && maxGroundGap <= MAX_GROUND_GAP);
+    // Old route-only manifests are retained as historical evidence. Once a
+    // newer espresso capture claims actual service completion, accept it
+    // only if BOTH real milestones and the delivered-cup screenshot exist.
+    const espressoProofClaimed = event === 'espresso' && (
+      Object.hasOwn(manifest, 'deliveredCupVisible')
+      || Object.hasOwn(manifest, 'returnedToServiceDoor')
+    );
+    const espressoProofOk = !espressoProofClaimed || (
+      manifest.deliveredCupVisible === true && manifest.returnedToServiceDoor === true
+    );
+    const deliveredPng = !espressoProofClaimed || await nonEmptyFile(join(dir, 'espresso-delivered.png'));
 
     if (!routeOk) failures.push(`${event}: expected route ${expectedRoute || '<none>'} not observed`);
     if (!screenOk) failures.push(`${event}: no visible screen state observed`);
     if (!groundingOk) failures.push(`${event}: max grounding gap ${maxGroundGap} exceeds ${MAX_GROUND_GAP}`);
     if (!png) failures.push(`${event}: PNG capture missing or empty`);
     if (!webm) failures.push(`${event}: WebM capture missing or empty`);
+    if (!espressoProofOk) failures.push('espresso: delivery and service-door return must both be proven');
+    if (!deliveredPng) failures.push('espresso: delivered-cup PNG missing or empty');
 
     routines.push({
       event,
@@ -61,7 +74,11 @@ export async function summarizeHansVisualArtifact(inputDir) {
       maxGroundGap,
       png,
       webm,
-      ok: routeOk && screenOk && groundingOk && png && webm,
+      espressoProofClaimed,
+      espressoProofOk,
+      deliveredPng,
+      ok: routeOk && screenOk && groundingOk && png && webm
+        && espressoProofOk && deliveredPng,
     });
   }
 
@@ -99,6 +116,13 @@ export function renderHansVisualSummary(summary) {
     lines.push(`| ${routine.event} | ${route} | ${screen} | ${grounding} | ${routine.png ? '✓' : '✗'} | ${routine.webm ? '✓' : '✗'} |`);
   }
 
+  const espresso = summary.routines.find((routine) => routine.event === 'espresso');
+  if (espresso) {
+    lines.push('',
+      espresso.espressoProofClaimed
+        ? `Espresso completion: ${espresso.espressoProofOk && espresso.deliveredPng ? '✓ delivered cup + returned to service door + PNG' : '✗ incomplete'}`
+        : 'Espresso completion: not claimed (historical route-only evidence)');
+  }
   lines.push('', `Validated ${summary.passed}/${summary.routineCount} Hans routine captures.`);
   return `${lines.join('\n')}\n`;
 }

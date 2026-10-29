@@ -146,6 +146,8 @@ def main() -> int:
         # complete public accreditation live in staging_generation.py and are
         # proven by its self-test (run below), not by matching inline bash.
         ("staging_generation.py watch-committed --sha \"$DEPLOY_SHA\"", "generation zero-cost watcher helper"),
+        ("--probe-backend", "late public probe after stale-main guard"),
+        ("steps.fallback_admission.outputs.requires_sdk == 'true'", "SDK gated by exact public accreditation"),
         ("OCI fallback avoided", "late watcher completion re-check"),
         ("A1 terminó y acreditó $DEPLOY_SHA", "late fallback skip requires complete public accreditation"),
         ("Re-check main before OCI fallback", "late stale-generation guard"),
@@ -156,7 +158,7 @@ def main() -> int:
         ('python3 scripts/oci_run_command.py deploy --repo-ref "$DEPLOY_SHA"', "OCI deploy owns transport readiness"),
         ("Deploy tested frontend to Cloudflare Pages", "generation frontend deploy"),
         ("Deploy and verify exact staging Worker generation", "generation Worker deploy + runtime identity gate"),
-        ("run: python3 scripts/deploy_staging_ai_worker.py", "generation Worker helper"),
+        ('run: python3 -S scripts/staging_cloudflare_publish.py worker --sha "$DEPLOY_SHA"', "generation guarded Worker helper"),
         ("Verify staging generation parity before browser smoke", "generation parity gate"),
         ("--surfaces backend,frontend,worker --attempts 60 --interval 5", "generation N/N/N parity incl. Worker, bounded 5 min"),
         ("Load ephemeral staging invite code from OCI runtime", "smoke invite source"),
@@ -343,6 +345,46 @@ def main() -> int:
         require(blocks["backend"], "id: watcher", "backend watcher convergence output", errors)
         require(blocks["backend"], "steps.watcher.outputs.converged != 'true'", "backend Run Command fallback condicional", errors)
         require(blocks["backend"], "Validate zero-cost host watcher contract", "backend watcher self-test", errors)
+        # The three fallback steps depend on the prior exact-SHA, stale-safe probe.
+        backend_block = blocks["backend"]
+        for label in ("Restore cached OCI SDK toolchain", "Validate OCI deploy contracts", "Deploy exact backend commit to OCI staging"):
+            marker = f"      - name: {label}\n"
+            if marker not in backend_block:
+                errors.append(f"staging backend: missing fallback step {label}")
+                continue
+            section = backend_block.split(marker, 1)[1].split("\n      - name: ", 1)[0]
+            if "if: steps.fallback_admission.outputs.requires_sdk == 'true'" not in section:
+                errors.append(f"staging backend: {label} requires exact public probe and stale-main admission")
+
+        # The host's rc=87 means a *superseded* generation: it may finish
+        # without failing CI, but it must never reach public verification or
+        # staging smoke/accreditation. Other non-receipt failures still fail closed.
+        for needle, label in (
+            ("id: oci_fallback", "OCI fallback explicit supersession output"),
+            ('if [[ "$rc" == 87 ]]; then', "only host-declared rc87 may be a no-op"),
+            ('echo \'superseded=true\' >> "$GITHUB_OUTPUT"', "superseded output from host"),
+            ('[[ "$rc" == 78 ]] || exit "$rc"', "other OCI failure codes fail closed"),
+            ("steps.oci_fallback.outputs.superseded != 'true'", "do not recheck superseded release"),
+            ("steps.oci_fallback.outputs.superseded == 'true'", "backend state includes late OCI supersession"),
+            ("needs.backend.outputs.superseded != 'true'", "browser smoke must not accredit superseded backend"),
+        ):
+            require(staging_deploy, needle, label, errors)
+
+        # Image publish/pull can outlive a newer merge. Recheck HEAD before
+        # sending an expensive Run Command, not just before waiting for GHCR.
+        fallback = blocks["backend"].split(
+            "      - name: Deploy exact backend commit to OCI staging", 1
+        )[-1].split("\n      - name: ", 1)[0]
+        images_ready = fallback.find('scripts/staging_image_ready.py --sha "$DEPLOY_SHA"')
+        strict_guard = fallback.find('main-head --sha "$DEPLOY_SHA" --fail-stale')
+        remote = fallback.find('scripts/oci_run_command.py deploy --repo-ref "$DEPLOY_SHA"')
+        if min(images_ready, strict_guard, remote) < 0 or not images_ready < strict_guard < remote:
+            errors.append("staging backend: no strict SHA guard after GHCR wait before OCI mutation")
+        if "&& python3 scripts/oci_run_command.py deploy" not in fallback:
+            errors.append("staging backend: stale pre-OCI gate must share rc87 handling")
+        if '[[ "$rc" == 78 ]] || exit "$rc"' not in fallback:
+            errors.append("staging backend: non-supersession failure must remain fatal")
+
         forbid(
             blocks["backend"],
             "python3 scripts/oci_vault_sync.py sync-current",

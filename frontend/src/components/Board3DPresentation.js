@@ -1,8 +1,8 @@
 import { normalizeWarRoomVariant, warRoomVariantDomData } from './WarRoomVariant.js';
 
-const TACTICAL_PLAY = 'Tablero de ajedrez 3D en Sala de guerra. Cámara táctica fija desde tu lado. Usa flechas y Enter para jugar con teclado.';
-const CLASSROOM_PLAY = 'Tablero de ajedrez 3D en Class Room. Cámara docente fija y cercana. Usa flechas y Enter para jugar con teclado.';
-const TRAINING_ROOM_PLAY = 'Tablero de ajedrez 3D en Training Room. Cámara de estudio fija y cercana. Usa flechas y Enter para jugar con teclado.';
+const TACTICAL_PLAY = 'Tablero de ajedrez 3D en Sala de guerra. Cámara táctica fija desde tu lado. Usa flechas y Enter para jugar con teclado; Escape cancela la selección.';
+const CLASSROOM_PLAY = 'Tablero de ajedrez 3D en Class Room. Cámara docente fija y cercana. Usa flechas y Enter para jugar con teclado; Escape cancela la selección.';
+const TRAINING_ROOM_PLAY = 'Tablero de ajedrez 3D en Training Room. Cámara de estudio fija y cercana. Usa flechas y Enter para jugar con teclado; Escape cancela la selección.';
 
 export function resolveBoard3DPresentation({
   cameraProfile = 'tactical',

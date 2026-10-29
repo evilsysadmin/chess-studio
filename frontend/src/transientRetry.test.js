@@ -69,20 +69,25 @@ describe('api.playMove durante un deploy', () => {
       .mockRejectedValueOnce(new TypeError('Failed to fetch'))
       .mockResolvedValueOnce({ ok: false, status: 530, headers: { get: () => null }, json: async () => ({}) })
       .mockResolvedValue({ ok: true, status: 200, json: async () => game });
-    const pending = api.playMove('g1', 'e2', 'e4', null, { operationId: 'move-op-0000001' });
+    const onRetry = vi.fn();
+    const pending = api.playMove('g1', 'e2', 'e4', null, { operationId: 'move-op-0000001', onRetry });
     await vi.runAllTimersAsync();
     await expect(pending).resolves.toMatchObject({ id: 'g1' });
     expect(global.fetch).toHaveBeenCalledTimes(3);
+    expect(onRetry).toHaveBeenCalledTimes(2);
+    expect(onRetry.mock.calls.map(([retry]) => retry.attempt)).toEqual([1, 2]);
     const keys = global.fetch.mock.calls.map(([, options]) => options.headers['Idempotency-Key']);
     expect(new Set(keys)).toEqual(new Set(['move-op-0000001']));
   });
 
   it('sin operationId no reintenta la jugada', async () => {
     global.fetch.mockRejectedValue(new TypeError('Failed to fetch'));
-    const pending = api.playMove('g1', 'e2', 'e4');
+    const onRetry = vi.fn();
+    const pending = api.playMove('g1', 'e2', 'e4', null, { onRetry });
     const assertion = expect(pending).rejects.toBeTruthy();
     await vi.runAllTimersAsync();
     await assertion;
     expect(global.fetch).toHaveBeenCalledTimes(1);
+    expect(onRetry).not.toHaveBeenCalled();
   });
 });

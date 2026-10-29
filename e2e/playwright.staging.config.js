@@ -1,6 +1,17 @@
 import { defineConfig, devices } from '@playwright/test';
 
 const baseURL = process.env.STAGING_URL || 'https://staging.chess-studio.shadowops.dpdns.org';
+// Opt-in local A/B comparison only. CI's canonical staging run remains exactly
+// as before, with Playwright's default software/headless renderer.
+const rendererMode = process.env.CHESS_STAGING_RENDERER || 'default';
+if (!['default', 'software', 'hardware'].includes(rendererMode)) {
+  throw new Error('CHESS_STAGING_RENDERER debe ser default, software o hardware');
+}
+const rendererArgs = rendererMode === 'hardware'
+  ? ['--use-angle=gl', '--use-gl=angle', '--ignore-gpu-blocklist', '--enable-gpu-rasterization']
+  : rendererMode === 'software'
+    ? ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader']
+    : [];
 
 export default defineConfig({
   testDir: '.',
@@ -17,6 +28,7 @@ export default defineConfig({
   ],
   use: {
     baseURL,
+    ...(rendererArgs.length ? { launchOptions: { args: rendererArgs } } : {}),
     serviceWorkers: 'block',
     actionTimeout: 15_000,
     navigationTimeout: 30_000,

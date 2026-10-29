@@ -1,6 +1,4 @@
 import { expect, test } from '@playwright/test';
-import { readFile, readdir } from 'node:fs/promises';
-import { basename, resolve } from 'node:path';
 import { clickWarRoomMove } from './war-room-board-input.js';
 
 // Setup-only controls may be remounted while renderer/CPU state settles.
@@ -10,83 +8,6 @@ export async function activateSetupControl(locator, timeout = 45_000) {
   await expect(locator).toBeVisible({ timeout });
   await expect(locator).toBeEnabled();
   await locator.dispatchEvent('click', undefined, { timeout });
-}
-
-// E2E must serve the exact published Chronicles fallback catalog. Keeping an
-// 11-map literal here made every new authored region fail bootstrap in browser
-// tests even when the runtime manifests and Python/Go parity were correct.
-let chroniclesManifestPromise = null;
-
-function chroniclesE2EManifests() {
-  if (!chroniclesManifestPromise) {
-    const repoRoot = process.env.GITHUB_WORKSPACE || resolve(process.cwd(), basename(process.cwd()) === 'e2e' ? '..' : '.');
-    const dir = resolve(repoRoot, 'frontend', 'src', 'chronicles', 'maps');
-    chroniclesManifestPromise = readdir(dir)
-      .then((names) => names.filter((name) => name.endsWith('.json')).sort())
-      .then((names) => Promise.all(names.map(async (name) => {
-        const manifest = JSON.parse(await readFile(resolve(dir, name), 'utf8'));
-        if (manifest.id !== name.slice(0, -5)) {
-          throw new Error(`Chronicles E2E manifest ID mismatch: ${name}`);
-        }
-        return [manifest.id, manifest];
-      }))).then((entries) => Object.fromEntries(entries));
-  }
-  return chroniclesManifestPromise;
-}
-
-async function chroniclesE2ERunPayload({
-  operationKey = 'anonymous',
-  seed = 417,
-  currentMapId = 'crypt-eight-squares',
-  status = 'active',
-  worldFlags = null,
-  areaTransform = null,
-} = {}) {
-  const manifests = await chroniclesE2EManifests();
-  const areas = Object.keys(manifests).map((mapId, index) => {
-    const manifest = typeof areaTransform === 'function'
-      ? areaTransform(mapId, manifests[mapId])
-      : manifests[mapId];
-    const marker = ((seed + index + 1) % 16).toString(16);
-    return {
-      schemaVersion: 1,
-      mapId,
-      contentVersion: manifest.version,
-      seed,
-      instanceId: marker.repeat(24),
-      manifestRevision: marker.repeat(64),
-      manifest,
-    };
-  });
-  const area = areas.find((entry) => entry.mapId === currentMapId);
-  const defeated = status === 'defeated';
-  return {
-    runId: `e2e-chronicles-${operationKey}`,
-    seed,
-    currentMapId,
-    contentVersion: area.contentVersion,
-    manifestRevision: area.manifestRevision,
-    status,
-    worldVersion: 0,
-    consumedContentIds: [],
-    claimedRewards: [],
-    ...((worldFlags || defeated) ? {
-      worldFlags: {
-        ...(worldFlags && typeof worldFlags === 'object' ? worldFlags : {}),
-        ...(defeated ? {
-          '__chrRuntime.version': 1,
-          '__chrRuntime.phase': 'defeated',
-          '__chrRuntime.turnPhase': 'party',
-          '__chrRuntime.party.matthias.hp': 0,
-          '__chrRuntime.party.rook.hp': 0,
-          '__chrRuntime.party.bishop.hp': 0,
-          '__chrRuntime.party.knight.hp': 0,
-        } : {}),
-      },
-    } : {}),
-    area,
-    areas,
-  };
 }
 
 const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
@@ -210,11 +131,6 @@ export async function mockApi(page, {
   analysisMoves = [],
   adminUsers = [],
   requestLog = [],
-  chroniclesRunFailureStatus = 0,
-  chroniclesCurrentMapId = 'crypt-eight-squares',
-  chroniclesRunStatus = 'active',
-  chroniclesWorldFlags = null,
-  chroniclesAreaTransform = null,
 } = {}) {
   // Seed tutorials as seen so overlays cannot intercept unrelated E2E clicks.
   let profileData = {
@@ -241,8 +157,6 @@ export async function mockApi(page, {
   let remainingGameCreateCommitThenFailures = Math.max(0, Number(gameCreateCommitThenFailures || 0));
   let remainingMoveCommitThenFailures = Math.max(0, Number(moveCommitThenFailures || 0));
   let analysisIndex = 0;
-  let nextChroniclesSeed = 417;
-  const chroniclesRuns = new Map();
   const games = new Map();
   const idempotentCreates = new Map();
   const idempotentMoves = new Map();
@@ -266,51 +180,6 @@ export async function mockApi(page, {
     const headers = route.request().headers();
     requestLog.push({ method, path, idempotencyKey: headers['idempotency-key'] || null, presenceSession: headers['x-presence-session'] || null });
     const json = (body, status = 200) => route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) });
-
-    // Chronicles saved expeditions are an owner-scoped inventory. Keep the mock
-    // consistent across create, list, GET bootstrap and permanent deletion.
-    if (path.endsWith('/chronicles/runs') && method === 'GET') {
-      return json({ runs: Array.from(chroniclesRuns.values())
-        .filter((run) => run.status === 'active')
-        .map((run) => ({
-          runId: run.runId,
-          currentMapId: run.currentMapId,
-          status: run.status,
-          worldVersion: run.worldVersion,
-          updatedAtMs: Date.now(),
-        })) });
-    }
-    const bootstrapSave = path.match(/\/chronicles\/runs\/([^/]+)\/bootstrap$/);
-    if (bootstrapSave && method === 'GET') {
-      const payload = Array.from(chroniclesRuns.values()).find((run) => run.runId === decodeURIComponent(bootstrapSave[1]));
-      return payload ? json(payload) : json({ detail: 'Run not found' }, 404);
-    }
-    const deleteSave = path.match(/\/chronicles\/runs\/([^/]+)$/);
-    if (deleteSave && method === 'DELETE') {
-      const key = Array.from(chroniclesRuns.entries())
-        .find(([, run]) => run.runId === decodeURIComponent(deleteSave[1]))?.[0];
-      if (!key) return json({ detail: 'Run not found' }, 404);
-      chroniclesRuns.delete(key);
-      return route.fulfill({ status: 204, body: '' });
-    }
-
-    if (path.endsWith('/chronicles/runs') && method === 'POST') {
-      if (Number(chroniclesRunFailureStatus) > 0) {
-        return json({ detail: 'Chronicles bootstrap E2E failure' }, Number(chroniclesRunFailureStatus));
-      }
-      const operationKey = headers['idempotency-key'] || 'anonymous';
-      if (chroniclesRuns.has(operationKey)) return json(chroniclesRuns.get(operationKey), 201);
-      const payload = await chroniclesE2ERunPayload({
-        operationKey,
-        seed: nextChroniclesSeed++,
-        currentMapId: chroniclesCurrentMapId,
-        status: chroniclesRunStatus,
-        worldFlags: chroniclesWorldFlags,
-        areaTransform: chroniclesAreaTransform,
-      });
-      chroniclesRuns.set(operationKey, payload);
-      return json(payload, 201);
-    }
 
     if (path.endsWith('/auth/login') && method === 'POST') return json({ token: 'e2e-token', username: 'e2e' });
     if (path.endsWith('/auth/me')) return json({ username: 'e2e', isAdmin, email: 'e2e@example.test' });
@@ -525,12 +394,39 @@ export async function mockApi(page, {
   });
 }
 
-export async function login(page) {
+// Home's 3D/compositor mount is async even after a successful form submit.
+// This timeout is for the Home landmark, not a replacement for the readiness gate.
+export async function login(page, { navigationWaitUntil = 'load', homeVisibleTimeout = 30_000, initialView = 'menu' } = {}) {
+  // Exercise the same persisted-authentication session that F5/reopening a
+  // tab restores in production. Explicit login clears restorable view state;
+  // these dungeon-only captures intentionally reuse a previously authenticated
+  // user instead. Independent Home canaries still exercise the actual form
+  // login, full WebGL compositor and Home→Lab click route.
+  if (initialView === 'lab') {
+    await page.addInitScript(() => {
+      localStorage.setItem('chess-study-auth-token', 'e2e-token');
+      localStorage.setItem('chess-study-auth-username', 'e2e');
+      sessionStorage.setItem('chess-study-current-view', 'lab');
+    });
+  } else if (initialView !== 'menu') {
+    throw new Error(`Unsupported E2E initial view: ${initialView}`);
+  }
   if (process.env.CHESS_E2E_LIGHTWEIGHT === '1') {
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await page.addInitScript(() => localStorage.setItem('chess-study-device-board-renderer-v1', '2d'));
   }
-  await page.goto('./');
+  // Visual captures may wait for DOM readiness instead of all heavyweight assets.
+  // The explicit Home-ready gate below still checks real app interactivity.
+  await page.goto('./', { waitUntil: navigationWaitUntil });
+  if (initialView === 'lab') {
+    test.setTimeout(Math.max(test.info().timeout, 90_000));
+    // The real persisted session must open the genuine production Lab
+    // without mounting the expensive Home castle in the background.
+    await expect(page.locator('.lab-workshop-portal--chronicles'))
+      .toBeVisible({ timeout: homeVisibleTimeout });
+    await expect(page.locator('.illustrated-home__stage')).toHaveCount(0);
+    return;
+  }
   await page.getByLabel('Usuario').fill('e2e');
   const password = page.getByLabel('Contraseña');
   await password.fill('clave123456');
@@ -540,13 +436,16 @@ export async function login(page) {
   // handleSubmit contract without coupling CI to transient button geometry
   // while fonts/layout settle during the login screen's first frames.
   await password.press('Enter');
+  test.setTimeout(Math.max(test.info().timeout, 90_000));
   // Stable Home-ready landmark shared by immersive desktop and compact mobile.
-  await expect(page.getByRole('region', { name: 'Modos principales', exact: true })).toBeVisible();
+  // Slow isolated Chromium/SwiftShader visual runs may need more time *after*
+  // successful authentication; never resubmit the login form on this timeout.
+  await expect(page.getByRole('region', { name: 'Modos principales', exact: true }))
+    .toBeVisible({ timeout: homeVisibleTimeout });
   // From this release the visible Home is intentionally non-interactive while
   // the real scene is compositing. Functional journeys wait for that single
   // contract (Blender ready OR complete static fallback) before clicking.
   // Dedicated Home loading/readiness tests log in manually to inspect the gate.
-  test.setTimeout(Math.max(test.info().timeout, 90_000));
   await waitForHomeInteractive(page);
 }
 
@@ -697,7 +596,7 @@ export async function openDeployment(page) {
     }
   }
 
-  const reviewDeployment = page.getByRole('button', { name: /PREPARAR DESPLIEGUE|REVISAR Y CONFIRMAR|Personalizar despliegue/i });
+  const reviewDeployment = page.getByRole('button', { name: /PREPARAR DESPLIEGUE|REVISAR Y CONFIRMAR|Editar formación desde el tablero/i });
   await expect(reviewDeployment).toBeVisible();
   await reviewDeployment.click();
   await dismissTutorialIfVisible(page);
@@ -836,53 +735,6 @@ export async function openMoreGameModes(page) {
   }
   if (!(await details.evaluate((node) => node.open))) await details.locator('summary').click();
   return details;
-}
-
-export async function openChroniclesStartNewGame(page) {
-  const menu = page.locator('[data-chronicles-save-menu]');
-  const setup = page.locator('[data-chronicles-character-setup]');
-  // Chronicles is route-lazy. Never sample isVisible() before its first React
-  // render or the helper races the entry menu and falsely reports no creator.
-  await expect.poll(async () => {
-    if (await setup.isVisible().catch(() => false)) return 'recovered-draft';
-    if (await menu.isVisible().catch(() => false)) return 'entry-menu';
-    return 'pending';
-  }, { timeout: 20_000 }).not.toBe('pending');
-  if (await menu.isVisible()) {
-    await menu.getByRole('button', { name: 'Nuevo juego', exact: true }).click();
-  }
-  await expect(setup).toBeVisible({ timeout: 10_000 });
-}
-
-export async function confirmChroniclesCharacterSetup(page, { newTown = false } = {}) {
-  await openChroniclesStartNewGame(page);
-  const setup = page.locator('[data-chronicles-character-setup]');
-  await expect(setup).toBeVisible({ timeout: 10_000 });
-
-  // Existing crypt regression tests preserve their server's creation fingerprint.
-  // Explicit newTown tests exercise a fresh expedition instead.
-  if (!newTown) {
-    await page.evaluate(() => {
-      const key = 'chess-study-chronicles-run-v1';
-      const existing = localStorage.getItem(key);
-      let current = null;
-      try { current = existing ? JSON.parse(existing) : null; } catch { /* malformed old save */ }
-      // Historical crypt tests explicitly create a new crypt run using a
-      // stable fixture ID, not a previously persisted server save. A freshly
-      // allocated identity is pending until its first authoritative POST;
-      // only real legacy IDs without this flag are restored via GET.
-      if (current && !current.ended && !current.entryMapId && current.pending === true) return;
-      const owner = (localStorage.getItem('chess-study-auth-username') || 'e2e').trim().toLowerCase();
-      localStorage.setItem(key, JSON.stringify({
-        id: 'e2e-existing-crypt-run', owner, ended: false, pending: true,
-      }));
-    });
-  }
-  const canonical = setup.getByRole('button', { name: /Entrar con grupo canónico|Volver al grupo canónico/ });
-  await expect(canonical).toBeVisible();
-  await canonical.click();
-  await expect(setup).toBeHidden();
-  return true;
 }
 
 export async function openFreeCombat(page) {

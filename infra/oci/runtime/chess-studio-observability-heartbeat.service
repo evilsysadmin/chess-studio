@@ -1,0 +1,14 @@
+[Unit]
+Description=Chess Studio staging OCI independent log ingestion probes
+After=network-online.target
+Wants=network-online.target
+ConditionPathExists=/var/lib/chess-studio/deployed.sha
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 -S /usr/local/libexec/chess-studio-observability-heartbeat
+TimeoutStartSec=45
+NoNewPrivileges=true
+ProtectSystem=strict
+ReadWritePaths=/var/lib/chess-studio/observability
+ProtectHome=true

@@ -115,7 +115,12 @@ describe('InsightsScreen Matthias-led coaching workspace', () => {
 
     expect(html).toContain('Así juegas');
     expect(html).toContain('Matthias · mesa de trabajo');
-    expect(html).toContain('ha dejado una tarea concreta sobre la mesa');
+    expect(html).toContain('tareas respaldadas por partidas y posiciones reales');
+    expect(html).toContain('Ver errores y progreso');
+    expect(html).toContain('class="insights-room-archive-drawer"');
+    expect(html).toContain('data-insights-section="task"');
+    expect(html).not.toContain('insights-archive-context-label');
+    expect(html).not.toContain('Volver a mi tarea');
     expect(html).toContain('Errores');
     expect(html).toContain('Expediente');
     expect(html).toContain('Mi progreso');
@@ -139,6 +144,9 @@ describe('InsightsScreen Matthias-led coaching workspace', () => {
     expect(html).toContain('insights-workspace-view-errors');
     expect(html).toContain('id="insights-view-errors"');
     expect(html).toContain('aria-label="Errores recurrentes"');
+    expect(html).toContain('data-insights-section="errors"');
+    expect(html).toContain('Archivo de Matthias · Errores recurrentes');
+    expect(html).toContain('Volver a mi tarea');
     expect(html).not.toContain('data-insights-dossier="true"');
     expect(html).not.toContain('data-weekly-goals="true"');
     expect(html).not.toContain('data-guided-session="true"');
@@ -152,6 +160,8 @@ describe('InsightsScreen Matthias-led coaching workspace', () => {
 
     expect(html).toContain('insights-workspace-view-dossier');
     expect(html).toContain('aria-label="Expediente"');
+    expect(html).toContain('data-insights-section="dossier"');
+    expect(html).toContain('Archivo de Matthias · Expediente');
     expect(html).not.toContain('data-insights-dossier="true"');
     expect(html).not.toContain('data-weekly-goals="true"');
     expect(html).not.toContain('data-guided-session="true"');
@@ -170,6 +180,8 @@ describe('InsightsScreen Matthias-led coaching workspace', () => {
 
     expect(html).toContain('insights-workspace-section-career');
     expect(html).toContain('aria-label="Mi progreso"');
+    expect(html).toContain('data-insights-section="career"');
+    expect(html).toContain('Volver a mi tarea');
     expect(html).not.toContain('data-insights-dossier="true"');
     expect(html).not.toContain('data-career-activity-calendar="monthly-v1"');
     expect(html).not.toContain('aria-label="Áreas de Así juegas"');

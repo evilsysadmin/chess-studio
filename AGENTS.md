@@ -6,14 +6,15 @@ Las reglas detalladas viven en los `.md` especializados enlazados aquí. Antes d
 
 ## Contexto básico
 
-- `Chronicles` = **Chronicles of Matthias**.
-- `Tactics` = **Chronicles of Matthias Tactics**.
+- Chronicles of Matthias y Tactics **pertenecen exclusivamente** a `evilsysadmin/chronicles-of-matthias`; aquí solo queda el enlace externo desde Lab. No desarrollar ni reintroducir mapas, arte, runtime, E2E ni workflows del juego en Chess Studio.
+- Los backends Go/Python y datos legados de Chronicles aún pendientes de retirar se tratan **solo como migración controlada** en [#5632](https://github.com/evilsysadmin/chess-studio/issues/5632). Mantener `chronicles_runs` cubierto por borrado de cuenta hasta acreditar su salida.
 - Pawn Slug en Godot es **2D puro**. Sus sprites no usan Blender. Matthias conserva una única escala corporal canónica entre armas; variantes grandes/pequeñas son regresión.
 - Home 3D y War Room v2 usan la pipeline Blender.
 - La War Room **v3 es la variante por defecto** cuando las variantes están habilitadas; una elección explícita del jugador se conserva por dispositivo y siempre manda sobre el default. v1 clásica sigue siendo el baseline de rollback y v1/v2/v3/v4 continúan seleccionables en el menú «…». Deshabilitar variantes debe seguir devolviendo de forma segura a v1.
 - Para assets grandes de runtime, preferir R2/CDN y mantener Git centrado en código, manifests y contratos.
 - Trabajar incrementalmente, con cambios pequeños, reversibles y verificables. No dar por buena una iteración visual sólo porque el build o CI estén verdes.
 - Cuando haya artefactos PNG de una pipeline visual, revisarlos y compararlos con el último baseline validado antes de integrar.
+- **Regla obligatoria de visibilidad en chat para toda PR visual:** mostrar al usuario las capturas/renders **reales y embebidos directamente en el mismo chat donde se itera la PR**, con PR/SHA y viewport/estado. No basta un enlace a GitHub, un nombre de artifact, una descripción o un mockup. Mostrar un antes/después cuando exista baseline comparable. Si no se pueden obtener o mostrar las imágenes, decirlo explícitamente y conservar la PR en Draft, sin aprobarla ni armar automerge. Procedimiento: [`docs/operations/visual-evidence.md`](docs/operations/visual-evidence.md).
 - En Chess Football, el tamaño proyectado de ambos equipos/porteros, la luminosidad entre orientaciones, el apoyo de botas/sombras y los atlas canónicos son **contratos de producto**; ver [`docs/operations/chess-football-product.md`](docs/operations/chess-football-product.md).
 
 ## Flujo global de PR
@@ -47,10 +48,8 @@ El contrato de entrega está en [`docs/auto-merge-delivery.md`](docs/auto-merge-
 | Música / radio de sesión / Pawn Slug OST / composición y mezcla | [`docs/music.md`](docs/music.md), [`skills/pawn-slug-synthwave/SKILL.md`](skills/pawn-slug-synthwave/SKILL.md) |
 | Publicación/migración de assets a R2 | [`docs/r2-asset-publisher.md`](docs/r2-asset-publisher.md), [`docs/r2-assets.md`](docs/r2-assets.md), [`docs/visual-assets-r2-flow.md`](docs/visual-assets-r2-flow.md) |
 | War Room visual / Blender / v2 | [`docs/operations/war-room-blender-pipeline.md`](docs/operations/war-room-blender-pipeline.md), [`docs/operations/war-room-parity.md`](docs/operations/war-room-parity.md), [`docs/operations/war-room-visual-freeze.md`](docs/operations/war-room-visual-freeze.md), [`skills/local-gpu-rendering/SKILL.md`](skills/local-gpu-rendering/SKILL.md) |
-| Home / Castillo / Blender | [`skills/home-blender/SKILL.md`](skills/home-blender/SKILL.md), [`docs/VISUAL_LANGUAGE.md`](docs/VISUAL_LANGUAGE.md), [`docs/home-castle-life-minimal.md`](docs/home-castle-life-minimal.md), [`docs/visual-assets-r2-flow.md`](docs/visual-assets-r2-flow.md), [`skills/local-gpu-rendering/SKILL.md`](skills/local-gpu-rendering/SKILL.md) |
-| Chronicles / Tactics | [`docs/operations/chronicles-tactics.md`](docs/operations/chronicles-tactics.md) |
-| Chronicles · estadísticas MM3 y economía | [`docs/operations/chronicles-mm3-economy.md`](docs/operations/chronicles-mm3-economy.md) |
-| Chronicles campaña y atlas narrativo | [`backend-python/chronicles_campaign/DESIGN.md`](backend-python/chronicles_campaign/DESIGN.md) |
+| Home / Castillo / Blender | [`skills/home-blender/SKILL.md`](skills/home-blender/SKILL.md), [`docs/VISUAL_LANGUAGE.md`](docs/VISUAL_LANGUAGE.md), [`docs/home-castle-life-minimal.md`](docs/home-castle-life-minimal.md), [`docs/visual-assets-r2-flow.md`](docs/visual-assets-r2-flow.md), [`docs/operations/home-3d-performance.md`](docs/operations/home-3d-performance.md), [`skills/local-gpu-rendering/SKILL.md`](skills/local-gpu-rendering/SKILL.md) |
+| Chronicles / Tactics · migración y privacidad legacy (no desarrollo de juego) | [`issue #5632`](https://github.com/evilsysadmin/chess-studio/issues/5632), [`archivo y restore drill`](docs/operations/chronicles-legacy-archive.md); proteger purga de `chronicles_runs` y recuperación opt-in hasta verificar migración |
 | Matthias / comentarios / espectadores / memoria narrativa | [`docs/operations/matthias-runtime.md`](docs/operations/matthias-runtime.md) |
 | Combat Chess / veteranos / despliegue / intel | [`docs/operations/combat-chess.md`](docs/operations/combat-chess.md), [`docs/experiments/combat-tactical-deployment.md`](docs/experiments/combat-tactical-deployment.md), [`frontend/src/AGENTS.md`](frontend/src/AGENTS.md) |
 | Puzzles / Así juegas / autopsia / entrenamiento personal | [`docs/operations/training-quality.md`](docs/operations/training-quality.md), [`docs/experiments/cinematic-game-autopsy.md`](docs/experiments/cinematic-game-autopsy.md), [`frontend/src/AGENTS.md`](frontend/src/AGENTS.md) |
@@ -64,11 +63,11 @@ El contrato de entrega está en [`docs/auto-merge-delivery.md`](docs/auto-merge-
 | CHESSCOM Sven · preparación para master 3D de fuente propia V44 | [`docs/experiments/chesscom-sven-3d-source-v44.md`](docs/experiments/chesscom-sven-3d-source-v44.md) |
 | CHESSCOM Dust Veil · referencia original Sven/Dieter/Matthias | [`docs/experiments/chesscom-golden-art-v41.json`](docs/experiments/chesscom-golden-art-v41.json), [`docs/experiments/chesscom-sven-2p5d-v33.md`](docs/experiments/chesscom-sven-2p5d-v33.md) |
 | Espectador / CPU-vs-CPU | [`docs/operations/spectator.md`](docs/operations/spectator.md), [`frontend/src/AGENTS.md`](frontend/src/AGENTS.md) |
-| OCI / staging / secretos / runtime | [`skills/oci-release-observability/SKILL.md`](skills/oci-release-observability/SKILL.md), [`docs/operations/oci-backend-migration.md`](docs/operations/oci-backend-migration.md), [`docs/operations/oci-secret-lifecycle.md`](docs/operations/oci-secret-lifecycle.md), READMEs bajo `infra/oci/` |
+| OCI / staging / secretos / runtime | [`skills/oci-release-observability/SKILL.md`](skills/oci-release-observability/SKILL.md), [`docs/operations/oci-staging-host-lock.md`](docs/operations/oci-staging-host-lock.md), [`docs/operations/oci-backend-migration.md`](docs/operations/oci-backend-migration.md), [`docs/operations/oci-secret-lifecycle.md`](docs/operations/oci-secret-lifecycle.md), READMEs bajo `infra/oci/` |
 | Grafana / observabilidad | [`skills/oci-release-observability/SKILL.md`](skills/oci-release-observability/SKILL.md), [`infra/grafana/README.md`](infra/grafana/README.md), [`ops/grafana/README.md`](ops/grafana/README.md) |
 | Presencia / Admin | [`docs/operations/presence-admin.md`](docs/operations/presence-admin.md), [`backend-python/AGENTS.md`](backend-python/AGENTS.md), [`frontend/src/AGENTS.md`](frontend/src/AGENTS.md) |
 | Migración Python → Go / edge API / kill-switches | [`docs/operations/go-migration.md`](docs/operations/go-migration.md), [`docs/operations/pvp.md`](docs/operations/pvp.md) |
-| PvP / lobby / retos / Sala de Duelos | [`docs/operations/pvp-duel-hall.md`](docs/operations/pvp-duel-hall.md), [`backend-python/AGENTS.md`](backend-python/AGENTS.md), [`frontend/src/AGENTS.md`](frontend/src/AGENTS.md) |
+| PvP / lobby / retos / Sala de Duelos | [`docs/operations/pvp-duel-hall.md`](docs/operations/pvp-duel-hall.md), [`docs/operations/pvp-hall-physical-gpu-benchmark.md`](docs/operations/pvp-hall-physical-gpu-benchmark.md), [`backend-python/AGENTS.md`](backend-python/AGENTS.md), [`frontend/src/AGENTS.md`](frontend/src/AGENTS.md) |
 | PvP / 1v1 / lobby / handoff / rating humano | [`docs/operations/pvp.md`](docs/operations/pvp.md), [`docs/operations/resilience-degraded-mode.md`](docs/operations/resilience-degraded-mode.md), [`backend-python/AGENTS.md`](backend-python/AGENTS.md), [`frontend/src/AGENTS.md`](frontend/src/AGENTS.md) |
 | Web Storage / perfil / migraciones | [`docs/operations/client-storage.md`](docs/operations/client-storage.md), [`frontend/src/AGENTS.md`](frontend/src/AGENTS.md) |
 | CI, workflows, entrega y automerge | [`.github/workflows/README.md`](.github/workflows/README.md), [`docs/auto-merge-delivery.md`](docs/auto-merge-delivery.md) |
@@ -106,6 +105,9 @@ El contrato de entrega está en [`docs/auto-merge-delivery.md`](docs/auto-merge-
 
 - [`docs/experiments/chesscom-oss-character-forge-v52.md`](docs/experiments/chesscom-oss-character-forge-v52.md) — pipeline CPU y revisión 3D CC0, sin sustitución automática de Sven.
 - [`docs/experiments/chesscom-sven-art-direction-v53.md`](docs/experiments/chesscom-sven-art-direction-v53.md) — equipamiento modelado en Blender sobre rig CC0; evidencia de animación antes de promover.
+- [`docs/experiments/chesscom-sven-motion-v54.md`](docs/experiments/chesscom-sven-motion-v54.md) — clips de fuente no son automáticamente apoyo bimanual; validar frames y separación entre manos.
+- [`docs/experiments/chesscom-sven-organic-v55.md`](docs/experiments/chesscom-sven-organic-v55.md) — diseño V55 sobre rig CC0: materiales, superficies curvas, asimetría, prueba 72 px y poses reales.
+- [`docs/experiments/chesscom-sven-base-mesh-v56.md`](docs/experiments/chesscom-sven-base-mesh-v56.md) — refinamiento del cuerpo skinned, presupuesto de polígonos y revisión real de poses y renders.
 
 - [`docs/music.md`](docs/music.md) — criterio duradero de composición, instrumentos, interpretación, percusión, riffs, humanización y anti-regresiones musicales.
 - [`docs/VISUAL_LANGUAGE.md`](docs/VISUAL_LANGUAGE.md) — lenguaje visual.
@@ -121,13 +123,11 @@ El contrato de entrega está en [`docs/auto-merge-delivery.md`](docs/auto-merge-
 - [`docs/operations/architecture-ownership.md`](docs/operations/architecture-ownership.md)
 - [`docs/operations/go-migration.md`](docs/operations/go-migration.md) — plan y contrato de la migración strangler de Python a Go.
 - [`docs/operations/tutorials.md`](docs/operations/tutorials.md)
+- [`docs/operations/chronicles-legacy-archive.md`](docs/operations/chronicles-legacy-archive.md) — archivo/restore drill read-only de las partidas históricas.
 - [`docs/operations/game-state-recovery.md`](docs/operations/game-state-recovery.md)
 - [`docs/operations/training-quality.md`](docs/operations/training-quality.md)
 - [`docs/operations/matthias-runtime.md`](docs/operations/matthias-runtime.md)
-- [`docs/operations/chronicles-tactics.md`](docs/operations/chronicles-tactics.md)
-- [`docs/operations/chronicles-mm3-economy.md`](docs/operations/chronicles-mm3-economy.md) — siete estadísticas MM3, compatibilidad legacy y ownership de economía.
 - [`docs/operations/chess-football-product.md`](docs/operations/chess-football-product.md) — calidad del partido y diseño futuro de mánager de clubes.
-- [`backend-python/chronicles_campaign/DESIGN.md`](backend-python/chronicles_campaign/DESIGN.md) — atlas, actos, portales y contrato de autoría de la campaña.
 - [`docs/operations/combat-chess.md`](docs/operations/combat-chess.md)
 - [`docs/operations/client-storage.md`](docs/operations/client-storage.md)
 - [`docs/operations/oci-backend-migration.md`](docs/operations/oci-backend-migration.md)
@@ -135,6 +135,7 @@ El contrato de entrega está en [`docs/auto-merge-delivery.md`](docs/auto-merge-
 - [`docs/operations/presence-admin.md`](docs/operations/presence-admin.md)
 - [`docs/operations/pvp.md`](docs/operations/pvp.md)
 - [`docs/operations/resilience-degraded-mode.md`](docs/operations/resilience-degraded-mode.md)
+- [`docs/operations/home-3d-performance.md`](docs/operations/home-3d-performance.md) — perfilado opt-in de GPU real, contadores Three.js y comparación sin confundir SwiftShader.
 - [`docs/operations/runtime-performance.md`](docs/operations/runtime-performance.md)
 - [`docs/operations/visual-evidence.md`](docs/operations/visual-evidence.md)
 - [`docs/operations/spectator.md`](docs/operations/spectator.md)

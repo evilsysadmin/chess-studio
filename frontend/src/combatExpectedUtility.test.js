@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { chooseCombatCandidate, combatCandidateUtility, rankCombatCandidates } from './combatExpectedUtility.js';
+import { chooseCombatCandidate, combatCandidateUtility, hasMeasuredChessScoreCp, rankCombatCandidates } from './combatExpectedUtility.js';
 
 describe('combatExpectedUtility', () => {
   it('keeps checkmate as a hard chess guardrail', () => {
@@ -51,6 +51,32 @@ describe('combatExpectedUtility', () => {
       { moveKey: 'h7h5', chessScoreCp: -70, enemyValue: 9, hitChance: 1, enemyPersistentValue: 20 },
     ], { maxChessLossCp: 80 });
     expect(ranked.map((candidate) => candidate.moveKey)).toEqual(['e7e5']);
+  });
+
+  it('no confunde ausencia de evaluación con 0 centipeones', () => {
+    for (const value of [null, undefined, '', ' ', false, {}, Number.POSITIVE_INFINITY]) {
+      expect(hasMeasuredChessScoreCp({ chessScoreCp: value })).toBe(false);
+    }
+    for (const value of [0, -25, '0', ' -25 ']) {
+      expect(hasMeasuredChessScoreCp({ chessScoreCp: value })).toBe(true);
+    }
+    const ranked = rankCombatCandidates([
+      { moveKey: 'a1a2', chessScoreCp: null, enemyPersistentValue: 500, hitChance: 1 },
+      { moveKey: 'a1a3', chessScoreCp: '', enemyPersistentValue: 500, hitChance: 1 },
+      { moveKey: 'a1a4', chessScoreCp: -15, enemyValue: 0 },
+      { moveKey: 'a1a5', chessScoreCp: '-18', enemyValue: 0 },
+    ]);
+    expect(ranked.map((move) => move.moveKey)).toEqual(['a1a4', 'a1a5']);
+    expect(rankCombatCandidates([{ moveKey: 'none', chessScoreCp: null }])).toEqual([]);
+    expect(chooseCombatCandidate([{ moveKey: 'mate', isMate: true, chessScoreCp: null }]).moveKey).toBe('mate');
+  });
+
+  it('acota la doctrina a pocos centipeones sin desplazar los hechos de combate', () => {
+    const plain = { moveKey: 'a8b8', chessScoreCp: 10, hitChance: 1 };
+    const baseline = combatCandidateUtility(plain);
+    expect(combatCandidateUtility({ ...plain, doctrineBonusCp: 999 })).toBe(baseline + 6);
+    expect(combatCandidateUtility({ ...plain, doctrineBonusCp: -999 })).toBe(baseline - 6);
+    expect(combatCandidateUtility({ ...plain, doctrineBonusCp: null })).toBe(baseline);
   });
 
   it('filters illegal candidates and uses a deterministic move-key tiebreak', () => {

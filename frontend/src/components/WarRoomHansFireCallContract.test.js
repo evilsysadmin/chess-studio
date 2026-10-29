@@ -210,6 +210,26 @@ describe('War Room Hans fire call contract', () => {
     expect(projectHansInitialReplyAnchor({ ndcX: 'wat', ndcY: 0 })).toBeNull();
   });
 
+  it('conserva la burbuja completa en 390px al entrar Hans por cualquiera de los lados', () => {
+    // CSS móvil usa width min(15.5rem, 62%) y un margen interior del 2%.
+    // Verifica los bordes del recuadro y que la cola señale al actor.
+    for (const projector of [projectHansInitialReplyAnchor, projectHansFireReplyAnchor]) {
+      for (const ndcX of [-1, -0.9, -0.65, -0.25, 0, 0.25, 0.65, 0.9, 1]) {
+        const point = projector({ ndcX, ndcY: 0.12, coarsePointer: true });
+        const leftBox = point.left + point.bubbleShiftPercent * 0.62;
+        const rightBox = leftBox + 62;
+        expect(leftBox).toBeGreaterThanOrEqual(1.9999);
+        expect(rightBox).toBeLessThanOrEqual(98.0001);
+        expect(point.tailPercent).toBeCloseTo(-point.bubbleShiftPercent, 5);
+      }
+    }
+    const leftEdge = projectHansInitialReplyAnchor({ ndcX: -0.9, ndcY: 0.1, coarsePointer: true });
+    expect(leftEdge.bubbleShiftPercent).toBeGreaterThan(-12);
+    // Desktop uses unchanged authored anchors; mobile-only repair.
+    const desktop = projectHansInitialReplyAnchor({ ndcX: -0.9, ndcY: 0.1 });
+    expect(desktop.bubbleShiftPercent).toBe(-38);
+  });
+
   it('reserva altura para que los bocadillos de Hans no desaparezcan por arriba', () => {
     const genericNearTop = projectHansFireReplyAnchor({ ndcX: 0.6, ndcY: 0.75 });
     const initialNearTop = projectHansInitialReplyAnchor({ ndcX: 0.6, ndcY: 0.75 });

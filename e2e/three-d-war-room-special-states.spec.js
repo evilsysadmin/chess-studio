@@ -227,9 +227,10 @@ test('War Room parity · selección 2D puede rematar jaque mate desde el teclado
   await setRendererViaAppearance(page, '3D');
   const { board3d, canvas } = await waitForWarRoom(page);
   await expect(board3d).toHaveAttribute('data-board3d-selected', 'g6');
+  await expect(board3d).toHaveAttribute('data-board3d-focused', 'g6');
 
   await canvas.focus();
-  await pressKeys(page, ['ArrowRight', 'ArrowRight', ...Array(6).fill('ArrowUp')]);
+  await pressKeys(page, ['ArrowUp']);
   await expect(board3d).toHaveAttribute('data-board3d-focused', 'g7');
   await page.keyboard.press('Enter');
 
@@ -284,10 +285,10 @@ test('War Room parity · en passant 2D→3D retira el peón lateral con una sola
   await setRendererViaAppearance(page, '3D');
   const { board3d, canvas } = await waitForWarRoom(page);
   await expect(board3d).toHaveAttribute('data-board3d-selected', 'e5');
-  await expect(board3d).toHaveAttribute('data-board3d-focused', 'e1');
+  await expect(board3d).toHaveAttribute('data-board3d-focused', 'e5');
 
   await canvas.focus();
-  await pressKeys(page, ['ArrowLeft', ...Array(5).fill('ArrowUp')]);
+  await pressKeys(page, ['ArrowLeft', 'ArrowUp']);
   await expect(board3d).toHaveAttribute('data-board3d-focused', 'd6');
   await page.keyboard.press('Enter');
 
@@ -315,10 +316,10 @@ test('War Room parity · promoción 3D abre selector y conserva la pieza elegida
   await setRendererViaAppearance(page, '3D');
   const { board3d, canvas } = await waitForWarRoom(page);
   await expect(board3d).toHaveAttribute('data-board3d-selected', 'g7');
-  await expect(board3d).toHaveAttribute('data-board3d-focused', 'e1');
+  await expect(board3d).toHaveAttribute('data-board3d-focused', 'g7');
 
   await canvas.focus();
-  await pressKeys(page, ['ArrowRight', 'ArrowRight', ...Array(7).fill('ArrowUp')]);
+  await pressKeys(page, ['ArrowUp']);
   await expect(board3d).toHaveAttribute('data-board3d-focused', 'g8');
   await page.keyboard.press('Enter');
 

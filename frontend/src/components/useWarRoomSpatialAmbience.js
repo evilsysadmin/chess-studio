@@ -256,12 +256,23 @@ export function startWarRoomSpatialAmbience({ context, atmosphere = resolveWarRo
   // Broadband noise is reserved exclusively for weather. The old fire/room
   // noise floor was always audible and, especially on phone speakers, sounded
   // indistinguishable from distant rain even while the weather bus was silent.
-  const interiorToneLoops = warRoomInteriorToneSpecs(mix)
-    .map((spec) => startToneLoop(context, master, spec))
-    .filter(Boolean);
-  const noiseBuffer = makeNoiseBuffer(context);
+  const interiorToneSpecs = warRoomInteriorToneSpecs(mix);
+  // Pause just the room's spatial tones, not the session radio/music.
+  let interiorToneLoops = [];
+  const startInteriorTones = () => {
+    if (interiorToneLoops.length) return;
+    interiorToneLoops = interiorToneSpecs.map((spec) => startToneLoop(context, master, spec)).filter(Boolean);
+  };
+  const stopInteriorTones = () => {
+    for (const loop of interiorToneLoops) stopToneLoop(loop);
+    interiorToneLoops = [];
+  };
+  // Generate the ~2.4s weather noise only if the player listens at the window.
+  // Entering the War Room should never allocate/fill it just for idle silence.
+  let noiseBuffer = null;
 
   let disposed = false;
+  let roomVisible = typeof document === 'undefined' || !document.hidden;
   let rareTimer = 0;
   let weatherWindowHovered = false;
   let weatherBusConnected = false;
@@ -274,13 +285,18 @@ export function startWarRoomSpatialAmbience({ context, atmosphere = resolveWarRo
 
   const startWeatherLoops = () => {
     stopWeatherLoops();
-    weatherLoops = warRoomWeatherLoopSpecs(mix, true)
+    const specs = warRoomWeatherLoopSpecs(mix, true);
+    if (!specs.length) return;
+    noiseBuffer ||= makeNoiseBuffer(context);
+    weatherLoops = specs
       .map((spec) => startNoiseLoop(context, weatherBus, noiseBuffer, spec))
       .filter(Boolean);
   };
 
   const applyWeatherWindowHover = (active) => {
-    if (disposed || weatherWindowHovered === active) return;
+    if (disposed) return;
+    active = active && roomVisible;
+    if (weatherWindowHovered === active) return;
     weatherWindowHovered = active;
     if (active) {
       if (!weatherBusConnected) {
@@ -309,28 +325,43 @@ export function startWarRoomSpatialAmbience({ context, atmosphere = resolveWarRo
   const handlePointerOut = (event) => {
     if (warRoomWeatherPointerOutShouldMute(event)) applyWeatherWindowHover(false);
   };
-  const handleVisibilityChange = () => {
-    if (typeof document !== 'undefined' && document.hidden) applyWeatherWindowHover(false);
+  const scheduleRareTick = () => {
+    if (disposed || !roomVisible || typeof window === 'undefined') return;
+    const span = mix.rareEventMaxMs - mix.rareEventMinMs;
+    const delay = mix.rareEventMinMs + Math.floor(Math.max(0, Math.min(1, random())) * span);
+    rareTimer = window.setTimeout(() => {
+      rareTimer = 0;
+      if (disposed || !roomVisible) return;
+      const roll = Math.max(0, Math.min(1, random()));
+      playRareRoomTick(context, master, roll > 0.72 ? 'metal' : 'wood', roll > 0.5 ? 0.48 : -0.35);
+      scheduleRareTick();
+    }, delay);
   };
+  const handleVisibilityChange = () => {
+    if (disposed) return;
+    const visible = typeof document === 'undefined' || !document.hidden;
+    if (visible === roomVisible) return;
+    roomVisible = visible;
+    if (!visible) {
+      applyWeatherWindowHover(false);
+      stopInteriorTones();
+      if (rareTimer && typeof window !== 'undefined') window.clearTimeout(rareTimer);
+      rareTimer = 0;
+    } else {
+      startInteriorTones();
+      scheduleRareTick();
+    }
+  };
+  if (roomVisible) {
+    startInteriorTones();
+    scheduleRareTick();
+  }
   if (typeof window !== 'undefined') {
     window.addEventListener('pointermove', handlePointerMove, { passive: true });
     window.addEventListener('pointerout', handlePointerOut, { passive: true });
     window.addEventListener('blur', handlePointerOut);
     if (typeof document !== 'undefined') document.addEventListener('visibilitychange', handleVisibilityChange);
   }
-
-  const scheduleRareTick = () => {
-    if (disposed || typeof window === 'undefined') return;
-    const span = mix.rareEventMaxMs - mix.rareEventMinMs;
-    const delay = mix.rareEventMinMs + Math.floor(Math.max(0, Math.min(1, random())) * span);
-    rareTimer = window.setTimeout(() => {
-      if (disposed) return;
-      const roll = Math.max(0, Math.min(1, random()));
-      playRareRoomTick(context, master, roll > 0.72 ? 'metal' : 'wood', roll > 0.5 ? 0.48 : -0.35);
-      scheduleRareTick();
-    }, delay);
-  };
-  scheduleRareTick();
 
   return () => {
     disposed = true;
@@ -342,7 +373,7 @@ export function startWarRoomSpatialAmbience({ context, atmosphere = resolveWarRo
       if (typeof document !== 'undefined') document.removeEventListener('visibilitychange', handleVisibilityChange);
     }
     stopWeatherLoops();
-    for (const loop of interiorToneLoops) stopToneLoop(loop);
+    stopInteriorTones();
     try { weatherBus.disconnect(); } catch { /* already disconnected */ }
     try { master.disconnect(); } catch { /* already disconnected */ }
   };

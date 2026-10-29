@@ -1,0 +1,48 @@
+/* Career is a chapter-based record, not a second statistics dashboard. */
+.career-screen .career-chronicle {
+  min-width: 0;
+  padding: clamp(.9rem, 1.8vw, 1.4rem);
+  background: linear-gradient(125deg, rgba(44, 31, 24, .96), rgba(23, 21, 20, .96));
+  border: 1px solid rgba(207, 171, 106, .4);
+}
+.career-chronicle-heading {
+  display: flex; justify-content: space-between; align-items: start;
+  gap: .8rem 1rem; margin-bottom: .9rem;
+}
+.career-chronicle-heading h2 { margin: .22rem 0; color: var(--parchment); font-size: clamp(1.25rem, 2vw, 1.8rem); }
+.career-chronicle-heading p { max-width: 58ch; margin: .3rem 0; }
+.career-chronicle-picker { display: grid; gap: .3rem; min-width: 170px; color: var(--parchment-dim); font: 700 .7rem/1.35 var(--font-mono); }
+.career-chronicle-picker select {
+  min-height: 44px; max-width: 100%; padding: .5rem .7rem;
+  border: 1px solid rgba(209,166,102,.56); border-radius: 5px;
+  color: var(--parchment); background: #322820; font: 700 .8rem/1.3 var(--font-mono);
+}
+.career-chronicle-story { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: .85rem; }
+.career-chronicle-main, .career-chronicle-evidence {
+  min-width: 0; padding: .92rem; border: 1px solid rgba(202,160,103,.21);
+  border-radius: 6px; background: rgba(18,17,17,.53);
+}
+.career-chronicle-chapter { color: #e0b978; font: 700 .7rem/1.5 var(--font-mono); letter-spacing: .03em; }
+.career-chronicle-main h3 { margin: .42rem 0; color: var(--parchment); font-size: clamp(1.1rem, 1.65vw, 1.32rem); }
+.career-chronicle-main p, .career-chronicle-evidence p { margin: .55rem 0; color: var(--parchment-dim); line-height: 1.5; font-size: .83rem; }
+.career-chronicle-progress { width: 100%; height: 7px; border-radius: 4px; overflow: hidden; background: rgba(240,217,168,.13); }
+.career-chronicle-progress span { display: block; height: 100%; border-radius: inherit; background: #d4a957; }
+.career-chronicle-evidence { display: grid; align-content: start; gap: .5rem; }
+.career-chronicle-highlight { display: grid; gap: .4rem; }
+.career-chronicle-highlight strong { color: var(--parchment); line-height: 1.35; }
+.career-chronicle-highlight button {
+  justify-self: start; min-height: 44px; padding: .52rem .8rem;
+  border: 1px solid #a57b43; border-radius: 5px;
+  background: #634321; color: #ffe8be; font-weight: 700; cursor: pointer;
+}
+.career-chronicle-highlight button:focus-visible, .career-chronicle-picker select:focus-visible, .career-chronicle-autopsy summary:focus-visible { outline: 2px solid #f9dc98; outline-offset: 2px; }
+.career-chronicle-highlight small, .career-chronicle-empty { color: var(--parchment-dim); }
+.career-chronicle-autopsy { font-size: .78rem; }
+.career-chronicle-autopsy summary { display: flex; align-items: center; min-height: 44px; cursor: pointer; color: #efcc90; }
+@media (max-width: 760px) {
+  .career-chronicle-heading { flex-direction: column; }
+  .career-chronicle-picker { width: 100%; }
+  .career-chronicle-story { grid-template-columns: minmax(0, 1fr); }
+  .career-chronicle-main, .career-chronicle-evidence { padding: .76rem; }
+}
+@media (prefers-reduced-motion: reduce) { .career-chronicle-highlight button { transition: none; } }

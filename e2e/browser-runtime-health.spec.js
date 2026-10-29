@@ -206,6 +206,11 @@ test('Browser WebGL · Home 3D recupera el contexto perdido', async ({ page }) =
   await expect(canvas).toBeVisible();
   await expect(canvas).toHaveAttribute('data-home-blender-runtime', 'ready', { timeout:25_000 });
   await expect(canvas).toHaveClass(/is-ready/, { timeout:25_000 });
+  await expect.poll(() => page.evaluate(() => document.documentElement.dataset.homeBlenderLastEvent)).toBe('ready');
+  // The protection starts when the LOADING gate has genuinely COMPOSITED
+  // Blender, not just when the renderer has toggled a readiness class.
+  await expect(page.locator('.route-loading.home-3d-loading')).toHaveCount(0);
+  await expect(home.locator('.illustrated-home__art')).toHaveCSS('opacity', '0');
 
   const canLoseContext = await canvas.evaluate((node) => {
     const gl = node.getContext('webgl2') || node.getContext('webgl');
@@ -222,9 +227,53 @@ test('Browser WebGL · Home 3D recupera el contexto perdido', async ({ page }) =
   expect(canLoseContext, 'El Chromium CI debe exponer WEBGL_lose_context para validar recuperación real').toBe(true);
 
   await expect(canvas).not.toHaveClass(/is-ready/);
+  // Actual browser WEBGL_lose_context, not just a synthetic DOM event.
+  // Cross BOTH historical irreversible deadlines (8 s in the renderer,
+  // 30 s in Home3DLoadingGate) without remounting away the recovering
+  // WebGL canvas. The painted Home must remain usable throughout.
+  await page.clock.install();
+  await page.clock.fastForward(31_100);
+  await expect(canvas).toHaveAttribute('data-home-castle-compositor', 'blender-runtime');
+  await expect(canvas).toHaveAttribute('data-home-blender-runtime', 'recovering');
+  await expect(canvas).toHaveAttribute('data-home-blender-last-context-event', 'lost');
+  await expect(home.locator('.illustrated-home__stage')).toHaveAttribute('data-home3d-preview', 'painted');
+  await expect(home.locator('.illustrated-home__art')).toHaveCSS('opacity', '1');
+  await expect(canvas).toHaveCSS('opacity', '0');
+  await expect(page.locator('.route-loading.home-3d-loading')).toHaveCount(0);
+  // A lost GPU context may take minutes to restore; the safety illustration
+  // must leave global shell controls usable, not just visually present.
+  // Reuse this same real WEBGL_lose_context browser journey.
+  const dock = page.locator('.global-music-dock');
+  const openPlayer = page.getByRole('button', { name:'Abrir reproductor de música', exact:true });
+  const foldPlayer = page.getByRole('button', { name:'Plegar reproductor de música', exact:true });
+  await expect(dock).toBeVisible();
+  await openPlayer.click();
+  await expect(dock.locator('.music-deck-expanded')).toBeVisible();
+  await foldPlayer.click();
+  await expect(dock.locator('.music-deck-collapsed')).toBeVisible();
+  await expect(canvas).toHaveAttribute('data-home-blender-runtime', 'recovering');
+  await expect(home.locator('.illustrated-home__stage')).toHaveAttribute('data-home3d-preview', 'painted');
+  await expect.poll(() => page.evaluate(() => document.documentElement.dataset.homeBlenderLastEvent)).toBe('context-lost');
   await page.evaluate(() => window.__homeWebglLoseContext?.restoreContext());
   await expect(canvas).toHaveAttribute('data-home-blender-runtime', 'ready', { timeout:15_000 });
   await expect(canvas).toHaveClass(/is-ready/, { timeout:15_000 });
+  await expect(home.locator('.illustrated-home__stage')).not.toHaveAttribute('data-home3d-preview', 'painted');
+  await expect(canvas).toHaveCSS('opacity', '1');
+  // The same shell remains clickable after the recovering canvas is revealed.
+  await openPlayer.click();
+  await expect(dock.locator('.music-deck-expanded')).toBeVisible();
+  await foldPlayer.click();
+  await expect(dock.locator('.music-deck-collapsed')).toBeVisible();
+  const history = await page.evaluate(() => JSON.parse(
+    document.documentElement.dataset.homeBlenderTrace || '[]',
+  ));
+  const lifecycle = history.map((entry) => entry.event);
+  const lossIndex = lifecycle.indexOf('context-lost');
+  expect(lossIndex).toBeGreaterThanOrEqual(0);
+  expect(lifecycle.slice(lossIndex)).toEqual([
+    'context-lost', 'context-restored', 'mount', 'ready',
+  ]);
+  expect(history.at(-1).at - history[lossIndex].at).toBeGreaterThanOrEqual(31_000);
   await settle(page);
 
   const restored = await canvas.evaluate((node) => {
@@ -240,6 +289,11 @@ test('Browser WebGL · Home 3D recupera el contexto perdido', async ({ page }) =
   await matthias.click();
   await expect(page.getByRole('heading', { name:'Así juegas', exact:true })).toBeVisible();
   await expect(page.locator('.illustrated-home__castle-3d')).toHaveCount(0);
+  // The forensic history belongs to the page, not to an eventually unmounted
+  // canvas: it remains inspectable after navigation or permanent 2D fallback.
+  expect(await page.evaluate(() => JSON.parse(
+    document.documentElement.dataset.homeBlenderTrace || '[]',
+  ))).toEqual(history);
 
   await page.getByRole('button', { name:'← Volver al menú', exact:true }).click();
   const remountedHome = page.getByRole('region', { name:'Modos principales' });

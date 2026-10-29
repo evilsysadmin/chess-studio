@@ -12,7 +12,7 @@ BUDGETS = {
     "frontend/src/App.jsx": 712,
     "frontend/src/useGameLaunchController.js": 95,
     "frontend/src/components/GameScreen.jsx": 864,
-    "frontend/src/components/Board3DCore.jsx": 1022,
+    "frontend/src/components/Board3DCore.jsx": 965,
     "frontend/src/components/useCombatController.js": 1270,
     "backend-python/game_api.py": 386,
     # Backlog hotspots: lower these ceilings whenever an extraction shrinks them.
@@ -23,9 +23,8 @@ BUDGETS = {
     "frontend/src/ambientCatalog.js": 179,
     "frontend/src/ambientProfilesLegacy.js": 630,
     # Mode/render hotspots not covered by the original orchestration budget.
-    "frontend/src/components/RoguelikeScreen.jsx": 976,
-    "frontend/src/components/CombatDeploymentView.jsx": 912,
-    "frontend/src/chroniclesOfMatthiasIsometric.js": 1056,
+    "frontend/src/components/RoguelikeScreen.jsx": 953,
+    "frontend/src/components/CombatDeploymentView.jsx": 849,
     # Godot runtime hotspots: keep behavior stable while responsibilities are extracted.
     "games/pawn-slug-godot/scripts/main.gd": 2987,
     "games/pawn-slug-godot/scripts/matthias_art.gd": 2117,

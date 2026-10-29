@@ -32,17 +32,18 @@ type nativeFeatureFlags struct {
 	profile             bool
 	authSession         bool
 	login               bool
-	account             bool
-	recovery            bool
-	feedback            bool
-	matthiasRead        bool
-	narrative           bool
-	pawnSlug            bool
-	chronicles          bool
-	chroniclesRuns      bool
-	adminFeedback       bool
-	adminUsers          bool
-	adminObservability  bool
+	// sso serves /api/identity/* (on by default; a kill-switch only). It
+	// rides on the MongoDB other native routes open and never opens it.
+	sso                bool
+	account            bool
+	recovery           bool
+	feedback           bool
+	matthiasRead       bool
+	narrative          bool
+	pawnSlug           bool
+	adminFeedback      bool
+	adminUsers         bool
+	adminObservability bool
 }
 
 func loadNativeFeatureFlags() nativeFeatureFlags {
@@ -68,23 +69,22 @@ func loadNativeFeatureFlags() nativeFeatureFlags {
 		profile:             envBool("GO_NATIVE_PROFILE_ENABLED", false),
 		authSession:         envBool("GO_NATIVE_AUTH_SESSION_ENABLED", false),
 		login:               envBool("GO_NATIVE_LOGIN_ENABLED", false),
+		sso:                 envBool("GO_NATIVE_SSO_ENABLED", true),
 		account:             envBool("GO_NATIVE_ACCOUNT_ENABLED", false),
 		recovery:            envBool("GO_NATIVE_RECOVERY_ENABLED", false),
 		feedback:            envBool("GO_NATIVE_FEEDBACK_ENABLED", false),
 		matthiasRead:        envBool("GO_NATIVE_MATTHIAS_READ_ENABLED", false),
 		narrative:           envBool("GO_NATIVE_NARRATIVE_ENABLED", false),
 		pawnSlug:            envBool("GO_NATIVE_PAWN_SLUG_ENABLED", false),
-		chronicles:          envBool("GO_NATIVE_CHRONICLES_ENABLED", false),
-		chroniclesRuns:      envBool("GO_NATIVE_CHRONICLES_RUNS_ENABLED", false),
 		adminFeedback:       envBool("GO_NATIVE_ADMIN_FEEDBACK_ENABLED", false),
 		adminUsers:          envBool("GO_NATIVE_ADMIN_USERS_ENABLED", false),
 		adminObservability:  envBool("GO_NATIVE_ADMIN_OBSERVABILITY_ENABLED", false),
 	}
 }
 
-// allNative turns every native route on: the edge once Python is retired
-// (GO_PYTHON_RETIRED), where nothing may fall back to a proxy.
-// TestAllNativeTurnsEveryFlagOn keeps a flag added later from being missed.
+// allNative enables only Chess Studio's active domains after Python retires.
+// The extracted Chronicles API has no startup flags or handlers in this edge;
+// the historical account-data purge remains separate.
 func allNative() nativeFeatureFlags {
 	return nativeFeatureFlags{
 		pulse:               true,
@@ -108,14 +108,13 @@ func allNative() nativeFeatureFlags {
 		profile:             true,
 		authSession:         true,
 		login:               true,
+		sso:                 true,
 		account:             true,
 		recovery:            true,
 		feedback:            true,
 		matthiasRead:        true,
 		narrative:           true,
 		pawnSlug:            true,
-		chronicles:          true,
-		chroniclesRuns:      true,
 		adminFeedback:       true,
 		adminUsers:          true,
 		adminObservability:  true,
@@ -149,8 +148,6 @@ func (f nativeFeatureFlags) needsMongo() bool {
 		f.matthiasRead ||
 		f.narrative ||
 		f.pawnSlug ||
-		f.chronicles ||
-		f.chroniclesRuns ||
 		f.adminFeedback ||
 		f.adminUsers ||
 		f.adminObservability

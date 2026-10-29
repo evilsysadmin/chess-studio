@@ -53,12 +53,23 @@ export default function CampaignBriefing({ campaign, node, armySummary, onBuyInt
         <span><small>Intel</small><b>{intel.levelLabel}</b></span>
       </div>
 
+      <div className="campaign-operation-primary-zone campaign-briefing-primary-zone friendly-primary-zone">
+        <div>
+          <span>SIGUIENTE</span>
+          <small>Elige qué unidades quieres llevar.</small>
+        </div>
+        <button type="button" className="primary-btn campaign-main-cta" onClick={onContinue}>PREPARAR EJÉRCITO →</button>
+      </div>
+
       {enemyOfficer && (
-        <article className="campaign-rule-alert campaign-enemy-officer" aria-label={`Oficial enemigo: ${enemyOfficer.name}`}>
-          <span>OFICIAL ENEMIGO · {enemyOfficer.rank}</span>
-          <strong>{enemyOfficer.name} · «{enemyOfficer.callsign}»</strong>
-          <p>{enemyOfficer.note}{enemyOfficer.known ? ` ${enemyOfficer.record.encounters} encuentros registrados.` : ' No modifica la fuerza de la CPU: es identidad e historial, no un buff oculto.'}</p>
-        </article>
+        <details className="campaign-officer-orders" aria-label={`Oficial enemigo: ${enemyOfficer.name}`}>
+          <summary>
+            <span>CONTACTO ENEMIGO · {enemyOfficer.rank}</span>
+            <strong>{enemyOfficer.name} · «{enemyOfficer.callsign}»</strong>
+            <small>Consultar expediente ↗</small>
+          </summary>
+          <p>{enemyOfficer.note}{enemyOfficer.known ? ` ${enemyOfficer.record.encounters} encuentros registrados.` : ' Su rango es narrativo: no modifica la fuerza de la CPU.'}</p>
+        </details>
       )}
 
       <CombatEnemyOfficerDossier currentOfficerId={enemyOfficer?.id || null} />
@@ -74,11 +85,18 @@ export default function CampaignBriefing({ campaign, node, armySummary, onBuyInt
         </article>
       )}
 
-      <div className="campaign-rule-alert" aria-label="Regla visible del encuentro">
-        <span>EN ESTA BATALLA</span>
-        <strong>{boss ? boss.mechanicLabel : intel.modifierLabel}</strong>
-        <p>{boss ? boss.mechanicDescription : intel.modifierDescription}</p>
-      </div>
+      {boss || intel.modifierLabel !== 'Material estándar' ? (
+        <div className="campaign-rule-alert campaign-special-rules" aria-label="Regla visible del encuentro">
+          <span>EN ESTA BATALLA · REGLA ESPECIAL</span>
+          <strong>{boss ? boss.mechanicLabel : intel.modifierLabel}</strong>
+          <p>{boss ? boss.mechanicDescription : intel.modifierDescription}</p>
+        </div>
+      ) : (
+        <details className="campaign-standard-rules" aria-label="Reglas del encuentro">
+          <summary>Reglas habituales · Material estándar</summary>
+          <p>{intel.modifierDescription}</p>
+        </details>
+      )}
 
       {(aiBriefingLoading || aiBriefing) && (
         <div className={`ai-task-card combat-ai-briefing ${aiBriefingLoading ? 'is-loading' : ''}`} aria-live="polite">
@@ -88,37 +106,36 @@ export default function CampaignBriefing({ campaign, node, armySummary, onBuyInt
       )}
 
       {missionOrders.length > 0 && (
-        <section className="campaign-mission-orders" aria-label="Órdenes opcionales de misión">
-          <div className="campaign-mission-orders-heading">
-            <span>ÓRDENES OPCIONALES</span>
-            <small>No bloquean la victoria. Cumplirlas da suministros extra.</small>
-          </div>
-          <div className="campaign-mission-order-grid">
-            {missionOrders.map((order) => (
-              <article key={order.id} className="campaign-mission-order">
-                <div><strong>{order.label}</strong><span>{order.description}</span></div>
-                <b>+{order.reward}</b>
+        <details className="campaign-mission-orders-fold">
+          <summary>
+            <span>ÓRDENES SECUNDARIAS</span>
+            <strong>{missionOrders.length} objetivos opcionales</strong>
+            <small>Bonificación en suministros ↗</small>
+          </summary>
+          <section className="campaign-mission-orders" aria-label="Órdenes opcionales de misión">
+            <div className="campaign-mission-orders-heading">
+              <span>OPORTUNIDADES DE CAMPAÑA</span>
+              <small>No bloquean la victoria. Cumplirlas da suministros extra.</small>
+            </div>
+            <div className="campaign-mission-order-grid">
+              {missionOrders.map((order) => (
+                <article key={order.id} className="campaign-mission-order">
+                  <div><strong>{order.label}</strong><span>{order.description}</span></div>
+                  <b>+{order.reward}</b>
+                </article>
+              ))}
+            </div>
+            {classifiedMission ? (
+              <article className="campaign-classified-order" aria-label="Operación clasificada revelada">
+                <div><small>INTEL CLASIFICADA</small><strong>{classifiedMission.label}</strong><span>{classifiedMission.description}</span></div>
+                <b>+{classifiedMission.reward}</b>
               </article>
-            ))}
-          </div>
-          {classifiedMission ? (
-            <article className="campaign-classified-order" aria-label="Operación clasificada revelada">
-              <div><small>INTEL CLASIFICADA</small><strong>{classifiedMission.label}</strong><span>{classifiedMission.description}</span></div>
-              <b>+{classifiedMission.reward}</b>
-            </article>
-          ) : intel.level === 1 ? (
-            <p className="campaign-classified-teaser">⌖ Se detecta una oportunidad clasificada. Intel de Evaluación revelará el objetivo exacto.</p>
-          ) : null}
-        </section>
+            ) : intel.level === 1 ? (
+              <p className="campaign-classified-teaser">⌖ Se detecta una oportunidad clasificada. Intel de Evaluación revelará el objetivo exacto.</p>
+            ) : null}
+          </section>
+        </details>
       )}
-
-      <div className="campaign-operation-primary-zone campaign-briefing-primary-zone friendly-primary-zone">
-        <div>
-          <span>SIGUIENTE</span>
-          <small>Elige qué unidades quieres llevar.</small>
-        </div>
-        <button type="button" className="primary-btn campaign-main-cta" onClick={onContinue}>PREPARAR EJÉRCITO →</button>
-      </div>
 
       <details className="campaign-optional-panel campaign-intel-optional">
         <summary>Ver informe completo</summary>

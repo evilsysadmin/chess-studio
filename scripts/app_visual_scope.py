@@ -13,7 +13,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 GROUP_ORDER = ("home", "experiments", "training", "warroom", "health")
-EXPERIMENT_ORDER = ("landing", "chronicles", "pawnslug", "football")
+EXPERIMENT_ORDER = ("landing", "pawnslug", "football")
 
 NONVISUAL_FRONTEND_PATHS = {
     # Domain/session ownership with no canonical visual producer of its own.
@@ -55,6 +55,17 @@ QUICK_MATCH_VISUAL_SURFACES = {
     "frontend/src/components/usewarroomimmersive.js": {"warroom"},
 }
 
+COMBAT_BRIEFING_VISUAL_SURFACES = {
+    "frontend/src/components/combatcampaignbriefingroom.jsx",
+    "frontend/src/components/combatcampaignbriefingroom.css",
+    "frontend/src/components/combatoperationscampaignbriefingroute.jsx",
+    "frontend/src/components/campaignbriefing.jsx",
+    "frontend/src/components/campaigncommandstatus.jsx",
+    "frontend/src/combatveteraninspection.js",
+    "frontend/src/components/combatveterandossier.jsx",
+    "frontend/src/components/combatveterandossier.css",
+}
+
 WARROOM_MOBILE_VISUAL_SURFACES = {
     # Phone-only War Room composition/orientation. These must never wake Home,
     # Chronicles, training or browser-health canonical captures.
@@ -63,6 +74,13 @@ WARROOM_MOBILE_VISUAL_SURFACES = {
     "frontend/src/components/warroomlandscapegate.jsx",
     "frontend/src/components/warroomlandscapegate.css",
     "frontend/src/components/warroommobilelandscape.css",
+}
+
+WARROOM_NARRATIVE_VISUAL_SURFACES = {
+    # In-game commentary and status strips are owned by War Room 2D/3D, not
+    # Home's Matthias greeting or unrelated gameplay surfaces.
+    "frontend/src/components/usematthiasboardreactions.js",
+    "frontend/src/components/gamestatusstrips.jsx",
 }
 
 WARROOM_MATTHIAS_VISUAL_SURFACES = {
@@ -152,7 +170,6 @@ class Scope:
     hans: bool = False
     chesscom: bool = False
     experiment_parts: tuple[str, ...] = ()
-    chronicles_avatar: bool = False
     warroom_revision_required: bool = False
     warroom_v3_revision_required: bool = False
     pvp_duel_revision_required: bool = False
@@ -178,7 +195,6 @@ def full_scope() -> Scope:
         hans=True,
         chesscom=True,
         experiment_parts=EXPERIMENT_ORDER,
-        chronicles_avatar=True,
     )
 
 
@@ -221,12 +237,9 @@ def _surface_groups(path: str) -> set[str] | None:
 
     if lower.endswith(".md"):
         return set()
-    if lower in {"makefile", ".github/workflows/staging-deploy.yml", ".github/workflows/production-promote.yml"}:
+    if lower in {"makefile", ".github/workflows/staging-deploy.yml", ".github/workflows/production-promote.yml", ".github/workflows/cicd.yml", "scripts/run_core_e2e_lane.py", "scripts/test_entrypoint_parity.py"}:
         return set()
     if lower == "scripts/css_architecture_manifest.json":
-        return set()
-    if lower == "scripts/chronicles_area_parity_corpus.py":
-        # Backend parity-fixture generator: no browser-owned visual surface.
         return set()
     if lower in {
         "scripts/architecture_debt_budget.py",
@@ -256,6 +269,8 @@ def _surface_groups(path: str) -> set[str] | None:
         return {"warroom"}
     if lower in POSTGAME_VISUAL_SURFACES:
         return set(POSTGAME_VISUAL_SURFACES[lower])
+    if lower in COMBAT_BRIEFING_VISUAL_SURFACES:
+        return {"warroom"}
     if lower in QUICK_MATCH_VISUAL_SURFACES:
         return set(QUICK_MATCH_VISUAL_SURFACES[lower])
     if lower == "frontend/src/components/shareresultmodal.jsx":
@@ -265,6 +280,8 @@ def _surface_groups(path: str) -> set[str] | None:
     if lower == "frontend/src/components/homemobilegoldenpath.css":
         return {"home"}
     if lower in WARROOM_MOBILE_VISUAL_SURFACES:
+        return {"warroom"}
+    if lower in WARROOM_NARRATIVE_VISUAL_SURFACES:
         return {"warroom"}
     if lower in WARROOM_MATTHIAS_VISUAL_SURFACES:
         return {"warroom"}
@@ -326,11 +343,7 @@ def _surface_groups(path: str) -> set[str] | None:
         "frontend/src/assets/r2-assets-manifest.json",
     }:
         return set()
-    if lower in {
-        ".github/workflows/app-visual-artifact.yml",
-        ".github/workflows/chronicles-visual-artifact.yml",
-        ".github/workflows/tactics-visual-artifact.yml",
-    }:
+    if lower == ".github/workflows/app-visual-artifact.yml":
         return set()
     if lower.startswith(".github/actions/app-visual-pipeline/"):
         # Visual orchestration owns no product surface. Its classifier self-tests
@@ -370,9 +383,6 @@ def _surface_groups(path: str) -> set[str] | None:
         if name in {
             "experiments-visual-artifact.spec.js",
             "pawn-slug-godot-visual-artifact.spec.js",
-            "chronicles-avatar-visual-artifact.spec.js",
-            "chronicles-gameplay-visual-artifact.spec.js",
-            "chronicles-tactics-visual-artifact.spec.js",
         }:
             return {"experiments"}
         if name == "training-visual-artifact.spec.js":
@@ -381,7 +391,9 @@ def _surface_groups(path: str) -> set[str] | None:
             # Behaviour/lifecycle coverage only. The Godot workflow owns the
             # runtime pixels; this spec must not wake unrelated app visuals.
             return set()
-        if name == "war-room-entry-latency-visual.spec.js":
+        if name in {"war-room-entry-latency-visual.spec.js", "three-d-war-room.spec.js", "war-room-variant-lifecycle-soak.spec.js"}:
+            return {"warroom"}
+        if name == "combat-briefing-room-visual-artifact.spec.js":
             return {"warroom"}
         if name.startswith("war-room-") and "visual" in name:
             return {"warroom"}
@@ -392,8 +404,6 @@ def _surface_groups(path: str) -> set[str] | None:
         return set()
     if lower in PUBLIC_NONCANONICAL_PATHS:
         return set()
-    if lower == "frontend/public/models/chronicles-tactics-party.glb":
-        return {"experiments"}
     if lower in {
         "frontend/public/models/matthias-home-canonical.glb",
         "frontend/public/matthias-home-canonical.b64",
@@ -406,6 +416,12 @@ def _surface_groups(path: str) -> set[str] | None:
         return None
     if "chesscom" in lower:
         return set()
+    if lower == "frontend/src/labchronicleslink.js":
+        # External Lab link belongs to the Lab landing, not an owned game.
+        return {"experiments"}
+    if "chronicles" in lower:
+        # Reintroduced game runtime is unknown after extraction: fail closed.
+        return None
     if ".test." in name or ".spec." in name:
         return set()
     if lower.startswith("frontend/src/footballmanager"):
@@ -415,6 +431,18 @@ def _surface_groups(path: str) -> set[str] | None:
         return {"experiments"}
     if _is_noncanonical_admin_surface(path):
         return set()
+    # Career modules are owned by the Training Room / Mi progreso. Exact
+    # runtime paths only; unknown modules must still fail closed to all.
+    if lower in {
+        "frontend/src/careeropeningatlas.js",
+        "frontend/src/components/careeropeningatlas.jsx",
+        "frontend/src/components/careeropeningatlas.css",
+        "frontend/src/components/careeropeningssection.jsx",
+        "frontend/src/components/careerchronicle.jsx",
+        "frontend/src/components/careerchronicle.css",
+        "frontend/src/components/careerperformancesection.jsx",
+    }:
+        return {"training"}
     if lower.startswith("frontend/src/components/homematthias"):
         return {"home"}
 
@@ -454,21 +482,12 @@ def _surface_groups(path: str) -> set[str] | None:
 def _experiment_parts(path: str) -> set[str]:
     lower = path.lower()
     name = Path(lower).name
-    if (
-        lower in {
-            "scripts/app_visual_scope.py",
-            "scripts/app_visual_producer_scope.py",
-            ".github/workflows/app-visual-artifact.yml",
-        }
-        or lower.startswith(".github/actions/app-visual-pipeline/")
-    ):
-        return {"chronicles"}
     if name == "labworkshopmobile.css":
         return {"landing"}
     if name == "experiments-visual-artifact.spec.js":
         return {"landing", "pawnslug"}
-    if name == "chronicles-avatar-visual-artifact.spec.js" or "chronicles" in lower:
-        return {"chronicles"}
+    if lower == "frontend/src/labchronicleslink.js":
+        return {"landing"}
     if "pawnslug" in lower or "pawn-slug" in lower:
         return {"pawnslug"}
     if "trailblazer" in lower or "arcade" in lower:
@@ -513,6 +532,10 @@ WAR_ROOM_V2_REVISION_OWNERS = {
     "scripts/blender/build_war_room_premium.py",
     "scripts/blender/publish_war_room_v2_staging.py",
     ".github/workflows/war-room-blender-art.yml",
+    # A V2 browser-proof-only PR still needs the exact PR-SHA staged GLB.
+    # Otherwise the app visual lane passes general room screenshots while
+    # silently SKIPPING the requested mobile Hans route test.
+    "e2e/war-room-v2-hans-door-visual.spec.js",
 }
 
 WAR_ROOM_V3_REVISION_OWNERS = {
@@ -541,21 +564,6 @@ def _needs_warroom_v3_revision(path: str) -> bool:
 
 def _needs_pvp_duel_revision(path: str) -> bool:
     return path.lower().replace("\\", "/") in PVP_DUEL_REVISION_OWNERS
-
-
-def _needs_chronicles_avatar(path: str) -> bool:
-    """The 8-avatar proof is only needed for portrait/UI/Three ownership."""
-    lower = path.lower()
-    name = Path(lower).name
-    if name == "chronicles-avatar-visual-artifact.spec.js":
-        return True
-    if lower.startswith("e2e/"):
-        return False
-    if lower.startswith("frontend/src/components/chronicles"):
-        return True
-    if "chronicles" not in lower:
-        return False
-    return any(token in name for token in ("three", "party", "portrait", "relic", "condition", "visual", "art"))
 
 
 HOME_MOBILE_TOOLS_FAST_PATH = {
@@ -638,7 +646,6 @@ def classify(paths: list[str]) -> Scope:
     experiment_parts: set[str] = set()
     hans = False
     chesscom = False
-    chronicles_avatar = False
     has_v2_revision_owner = any(_needs_warroom_revision(path) for path in cleaned)
     has_v3_revision_owner = any(_needs_warroom_v3_revision(path) for path in cleaned)
     has_pvp_duel_revision_owner = any(_needs_pvp_duel_revision(path) for path in cleaned)
@@ -659,7 +666,6 @@ def classify(paths: list[str]) -> Scope:
                 hans=fallback.hans,
                 chesscom=fallback.chesscom,
                 experiment_parts=fallback.experiment_parts,
-                chronicles_avatar=fallback.chronicles_avatar,
                 warroom_revision_required=has_v2_revision_owner,
                 warroom_v3_revision_required=has_v3_revision_owner,
                 pvp_duel_revision_required=has_pvp_duel_revision_owner,
@@ -670,8 +676,6 @@ def classify(paths: list[str]) -> Scope:
         if "experiments" in surface:
             parts = _experiment_parts(path)
             experiment_parts.update(parts)
-            if "chronicles" in parts and _needs_chronicles_avatar(path):
-                chronicles_avatar = True
 
     ordered = tuple(group for group in GROUP_ORDER if group in groups)
     ordered_experiments = tuple(part for part in EXPERIMENT_ORDER if part in experiment_parts)
@@ -680,7 +684,6 @@ def classify(paths: list[str]) -> Scope:
         hans=hans,
         chesscom=chesscom,
         experiment_parts=ordered_experiments,
-        chronicles_avatar=chronicles_avatar,
         warroom_revision_required=browser_warroom and has_v2_revision_owner,
         warroom_v3_revision_required=browser_warroom and has_v3_revision_owner,
         pvp_duel_revision_required=browser_warroom and has_pvp_duel_revision_owner,
@@ -691,7 +694,6 @@ def write_outputs(scope: Scope, output_path: str) -> None:
     values = {
         "capture_groups": scope.capture_groups,
         "experiments_scope": scope.experiments_scope,
-        "chronicles_avatar": str(scope.chronicles_avatar).lower(),
         "warroom": str(scope.warroom).lower(),
         "hans": str(scope.hans).lower(),
         "chesscom": str(scope.chesscom).lower(),
@@ -706,9 +708,16 @@ def write_outputs(scope: Scope, output_path: str) -> None:
 
 def self_test() -> None:
     assert classify(["e2e/staging-live.spec.js"]).capture_groups == "none"
-    assert classify(["scripts/chronicles_area_parity_corpus.py"]).capture_groups == "none"
-    assert classify(["scripts/chronicles_area_parity_corpus.py", "frontend/src/chronicles/chroniclesMapCatalog.js"]).capture_groups == "experiments"
+    assert classify(["frontend/src/components/CombatCampaignBriefingRoom.jsx", "e2e/combat-briefing-room-visual-artifact.spec.js"]).capture_groups == "warroom"
+    assert classify(["scripts/chronicles_area_parity_corpus.py"]).capture_groups == "home,experiments,training,warroom,health"
+    for retired_workflow in (
+        ".github/workflows/chronicles-visual-artifact.yml",
+        ".github/workflows/tactics-visual-artifact.yml",
+    ):
+        assert classify([retired_workflow]).capture_groups == ",".join(GROUP_ORDER)
+    assert classify(["scripts/chronicles_area_parity_corpus.py", "frontend/src/chronicles/chroniclesMapCatalog.js"]).capture_groups == "home,experiments,training,warroom,health"
     assert classify(["scripts/unknown_unowned_generator.py"]).capture_groups == "home,experiments,training,warroom,health"
+    assert classify([".github/workflows/cicd.yml", "scripts/run_core_e2e_lane.py", "scripts/test_entrypoint_parity.py", "frontend/src/components/RoguelikeScreen.jsx", "e2e/war-room-combat-battle-visual-artifact.spec.js"]).capture_groups == "warroom"
     assert classify(["e2e/staging-live.spec.js", "frontend/src/components/PvpHandoffModal.jsx"]).capture_groups == "home"
     cpu_scope = classify([
         "frontend/src/components/GameScreen.jsx",
@@ -719,6 +728,16 @@ def self_test() -> None:
     assert cpu_scope.capture_groups == "warroom"
     assert classify(["frontend/public/sw.js", "scripts/pwa_check.mjs"]).capture_groups == "none"
     assert classify(["frontend/src/components/ShareResultModal.jsx"]).capture_groups == "warroom"
+    narrative_scope = classify([
+        "frontend/src/components/GameBoardView.jsx",
+        "frontend/src/components/GameStatusStrips.jsx",
+        "frontend/src/components/useMatthiasBoardReactions.js",
+        "frontend/src/components/warRoomLiveNarrative.js",
+        "frontend/src/components/WarRoomHansFireCall.jsx",
+    ])
+    assert narrative_scope.capture_groups == "warroom"
+    assert narrative_scope.hans  # Dialogue edits still require Hans visual evidence.
+    assert classify(["frontend/src/components/HomeMatthiasDailyConsult.jsx"]).capture_groups == "home"
     assert classify(["frontend/src/components/ProfileBackupModal.jsx"]).capture_groups == "home"
     assert classify([
         "frontend/src/components/GameScreen.jsx",
@@ -726,6 +745,12 @@ def self_test() -> None:
         "frontend/src/components/HomeIllustrated.jsx",
     ]).capture_groups != "warroom"
     assert classify(["e2e/smoke.spec.js"]).capture_groups == "none"
+    assert classify(["e2e/war-room-variant-lifecycle-soak.spec.js"]).capture_groups == "warroom"
+    assert classify([
+        "frontend/src/components/GameBoardView.jsx",
+        "frontend/src/components/warRoomSelectionAnnouncement.js",
+        "e2e/three-d-war-room.spec.js",
+    ]).capture_groups == "warroom"
     quick_match = classify([
         "frontend/src/components/QuickMatchModal.jsx",
         "frontend/src/components/useWarRoomImmersive.js",
@@ -904,34 +929,27 @@ def self_test() -> None:
     visual_pipeline = classify([".github/actions/app-visual-pipeline/action.yml"])
     assert visual_pipeline.capture_groups == "none"
     assert not browser_quality_scope.hans and not browser_quality_scope.chesscom
-    chronicles_visual = classify(["e2e/chronicles-tactics-visual-artifact.spec.js"])
-    assert chronicles_visual.capture_groups == "experiments"
-    assert chronicles_visual.experiments_scope == "chronicles"
-    assert not chronicles_visual.hans and not chronicles_visual.chesscom
-    chronicles_logic = classify(["frontend/src/chroniclesDungeon.js"])
-    assert chronicles_logic.capture_groups == "experiments"
-    assert chronicles_logic.experiments_scope == "chronicles"
-    assert not chronicles_logic.chronicles_avatar
-    chronicles_ui = classify(["frontend/src/components/ChroniclesOfMatthias.jsx"])
-    assert chronicles_ui.capture_groups == "experiments"
-    assert chronicles_ui.experiments_scope == "chronicles" and chronicles_ui.chronicles_avatar
-    chronicles_three = classify(["frontend/src/chroniclesOfMatthiasThree.js"])
-    assert chronicles_three.capture_groups == "experiments" and chronicles_three.chronicles_avatar
-    chronicles_party = classify(["frontend/src/chroniclesOfMatthiasPartyCondition.js"])
-    assert chronicles_party.capture_groups == "experiments" and chronicles_party.chronicles_avatar
-    chronicles_atmosphere = classify(["frontend/src/chroniclesOfMatthiasAtmosphere.js"])
-    assert chronicles_atmosphere.capture_groups == "experiments"
-    assert chronicles_atmosphere.experiments_scope == "chronicles"
-    assert not chronicles_atmosphere.chronicles_avatar
-    chronicles_patina = classify(["frontend/src/chroniclesOfMatthiasSurfacePatina.js"])
-    assert chronicles_patina.capture_groups == "experiments"
-    assert chronicles_patina.experiments_scope == "chronicles"
-    assert not chronicles_patina.chronicles_avatar
+    # Returning a removed game's source/spec must never silently select
+    # an empty Chronicles-only browser lane. Fail closed to real app captures.
+    for retired in (
+        "e2e/chronicles-tactics-visual-artifact.spec.js",
+        "frontend/src/chroniclesDungeon.js",
+        "frontend/src/components/ChroniclesOfMatthias.jsx",
+        "frontend/src/chroniclesOfMatthiasThree.js",
+        "frontend/src/chroniclesOfMatthiasPartyCondition.js",
+        "frontend/src/chroniclesOfMatthiasAtmosphere.js",
+        "frontend/src/chroniclesOfMatthiasSurfacePatina.js",
+    ):
+        ghost = classify([retired])
+        assert ghost.capture_groups == ",".join(GROUP_ORDER), retired
+        assert ghost.experiments_scope == ",".join(EXPERIMENT_ORDER), retired
+    external = classify(["frontend/src/labChroniclesLink.js"])
+    assert external.capture_groups == "experiments"
+    assert external.experiments_scope == "landing"
     trailblazer = classify(["frontend/src/pawnTrailblazerThree.js"])
     assert trailblazer.experiments_scope == "landing"
     hub = classify(["frontend/src/components/ExperimentsScreen.jsx"])
-    assert hub.experiments_scope == "landing,chronicles,pawnslug,football"
-    assert not hub.chronicles_avatar
+    assert hub.experiments_scope == "landing,pawnslug,football"
 
     pawn_visual = classify(["e2e/pawn-slug-godot-visual-artifact.spec.js"])
     assert pawn_visual.capture_groups == "experiments"
@@ -945,6 +963,12 @@ def self_test() -> None:
     ])
     assert blender_duel_hall.capture_groups == "none"
     assert not blender_duel_hall.hans and not blender_duel_hall.chesscom
+    # Test-only V2 proof must force exact-head staging, not silently green
+    # general War Room screenshots with APP_VISUAL_EXPECTED_WAR_ROOM_REVISION=''.
+    v2_browser_proof = classify(["e2e/war-room-v2-hans-door-visual.spec.js"])
+    assert v2_browser_proof.capture_groups == "warroom"
+    assert v2_browser_proof.warroom_revision_required
+    assert not v2_browser_proof.warroom_v3_revision_required
     blender_warroom = classify(["scripts/blender/build_war_room_premium.py"])
     blender_publish = classify(["scripts/blender/publish_war_room_v2_staging.py"])
     blender_workflow = classify([".github/workflows/war-room-blender-art.yml"])
@@ -1046,9 +1070,9 @@ def self_test() -> None:
         public_scope = classify([public_meta])
         assert public_scope.capture_groups == "none"
         assert not public_scope.hans and not public_scope.chesscom
-    public_chronicles_model = classify(["frontend/public/models/chronicles-tactics-party.glb"])
-    assert public_chronicles_model.capture_groups == "experiments"
-    assert public_chronicles_model.experiments_scope == "chronicles"
+    # The removed Tactics GLB cannot suppress coverage on a future unknown
+    # public model: unlike the actual Home Matthias GLB, it no longer exists.
+    assert classify(["frontend/public/models/chronicles-tactics-party.glb"]) == full_scope()
     public_home_model = classify(["frontend/public/models/matthias-home-canonical.glb"])
     assert public_home_model.capture_groups == "home"
     public_home_b64 = classify(["frontend/public/matthias-home-canonical.b64"])
@@ -1147,10 +1171,18 @@ def self_test() -> None:
     visual_pipeline = classify([".github/actions/app-visual-pipeline/action.yml"])
     assert visual_pipeline.capture_groups == "none"
     assert visual_pipeline.experiments_scope == "none"
-    assert not visual_pipeline.chronicles_avatar
     assert classify(["frontend/src/tutorialRoute.js"]).capture_groups == "training"
     assert classify(["frontend/src/components/trainingSchoolIntentPreload.js"]).capture_groups == "training"
     assert classify(["frontend/src/components/HomeIllustrated.jsx"]).capture_groups == "home"
+    assert classify(["frontend/src/careerOpeningAtlas.js"]).capture_groups == "training"
+    assert classify(["frontend/src/components/CareerOpeningAtlas.jsx"]).capture_groups == "training"
+    assert classify(["frontend/src/components/CareerOpeningAtlas.css"]).capture_groups == "training"
+    assert classify(["frontend/src/components/CareerOpeningsSection.jsx"]).capture_groups == "training"
+    assert classify(["frontend/src/components/CareerChronicle.jsx"]).capture_groups == "training"
+    assert classify(["frontend/src/components/CareerChronicle.css"]).capture_groups == "training"
+    assert classify(["frontend/src/components/CareerPerformanceSection.jsx"]).capture_groups == "training"
+    assert classify(["frontend/src/components/CareerOpeningAtlas.jsx", "e2e/training-visual-artifact.spec.js"]).capture_groups == "training"
+    assert classify(["frontend/src/components/CareerOpeningAtlas.jsx", "frontend/src/components/SomeUnknownGlobalWidget.jsx"]).capture_groups == ",".join(GROUP_ORDER)
     print("app visual scope self-test: OK")
 
 
@@ -1169,7 +1201,6 @@ def main(argv: list[str] | None = None) -> int:
     else:
         print(f"capture_groups={scope.capture_groups}")
         print(f"experiments_scope={scope.experiments_scope}")
-        print(f"chronicles_avatar={str(scope.chronicles_avatar).lower()}")
         print(f"warroom={str(scope.warroom).lower()}")
         print(f"hans={str(scope.hans).lower()}")
         print(f"chesscom={str(scope.chesscom).lower()}")

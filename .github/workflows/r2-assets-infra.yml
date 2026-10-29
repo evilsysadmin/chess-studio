@@ -7,6 +7,7 @@ on:
       - scripts/cloudflare_r2_assets.py
       - scripts/r2_asset_publisher.py
       - scripts/r2_asset_publish.py
+      - scripts/r2_war_room_live_freeze.py
       - scripts/r2_asset_gc.py
       - scripts/r2_storage_governance.py
       - frontend/src/assets/r2-assets-manifest.json
@@ -20,6 +21,7 @@ on:
       - scripts/cloudflare_r2_assets.py
       - scripts/r2_asset_publisher.py
       - scripts/r2_asset_publish.py
+      - scripts/r2_war_room_live_freeze.py
       - scripts/r2_asset_gc.py
       - scripts/r2_storage_governance.py
       - frontend/src/assets/r2-assets-manifest.json
@@ -50,12 +52,16 @@ jobs:
         run: python3 -S scripts/cloudflare_r2_assets.py validate
       - name: Static publisher contract
         run: python3 -S scripts/r2_asset_publish.py self-test
+      - name: Live War Room byte-lock contract
+        run: python3 -S scripts/r2_war_room_live_freeze.py self-test
       - name: Static retention contract
         run: python3 -S scripts/r2_asset_gc.py self-test
       - name: Static storage governance contract
         run: python3 -S scripts/r2_storage_governance.py self-test
       - name: Validate asset manifest
         run: python3 -S scripts/r2_asset_publish.py check-manifest
+      - name: Verify immutable War Room GLBs through public CDN
+        run: python3 -S scripts/r2_war_room_live_freeze.py public-verify
 
   reconcile:
     name: Reconcile · R2 assets

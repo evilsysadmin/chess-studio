@@ -14,6 +14,8 @@ vi.mock('../cleanGames.js', () => ({
 
 vi.mock('../personalPuzzles.js', () => ({
   loadPersonalPuzzles: mocks.loadPersonalPuzzles,
+  isPlayablePersonalPuzzle: () => false,
+  focusPersonalPuzzle: vi.fn(),
 }));
 
 vi.mock('../playerModel.js', () => ({

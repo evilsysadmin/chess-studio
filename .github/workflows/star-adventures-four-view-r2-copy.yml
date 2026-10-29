@@ -1,0 +1,47 @@
+name: Assets · Star Adventures exact four-view R2 copy
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/star-adventures-four-view-r2-copy.yml'
+      - 'scripts/star_adventures_four_view_r2_copy.py'
+      - 'tests/test_star_adventures_four_view_r2_copy.py'
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/star-adventures-four-view-r2-copy.yml'
+      - 'scripts/star_adventures_four_view_r2_copy.py'
+      - 'tests/test_star_adventures_four_view_r2_copy.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: star-adventures-immutable-four-view-copy
+  cancel-in-progress: false
+
+jobs:
+  contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - run: python3 -S -m unittest discover -s tests -p 'test_star_adventures_four_view_r2_copy.py' -v
+
+  guarded-copy:
+    needs: contract
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && github.repository == 'evilsysadmin/chess-studio'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Copy one hashed WebP from private Star Adventures bucket to existing public CDN and verify bytes
+        run: python3 -S scripts/star_adventures_four_view_r2_copy.py

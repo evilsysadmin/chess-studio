@@ -1,18 +1,10 @@
-import { STORAGE_LOCAL, readJsonStorage } from './safeStorage.js';
+import { CLEAN_GAMES_KEY, loadCleanGameRecords, CLEAN_GAME_MIN_ANALYZED_MOVES, CLEAN_GAME_INCIDENT_COVERAGE_VERSION, CLEAN_GAME_POSITIVE_EVIDENCE_VERSION } from './cleanGameRecords.js';
+export { CLEAN_GAMES_KEY, loadCleanGameRecords, CLEAN_GAME_MIN_ANALYZED_MOVES, CLEAN_GAME_INCIDENT_COVERAGE_VERSION, CLEAN_GAME_POSITIVE_EVIDENCE_VERSION, cleanGameSummary } from './cleanGameRecords.js';
 import { setProfileStorageItem } from './profileKeys.js';
 import { buildPostGameIncidentEvidence } from './postGameIncidentEvidence.js';
 
-export const CLEAN_GAMES_KEY = 'chess-study-clean-games-v1';
-export const CLEAN_GAME_MIN_ANALYZED_MOVES = 8;
-export const CLEAN_GAME_INCIDENT_COVERAGE_VERSION = 1;
-export const CLEAN_GAME_POSITIVE_EVIDENCE_VERSION = 1;
 const MAX_RECORDS = 100;
 const MAJOR_MINOR = new Set(['q', 'r', 'b', 'n']);
-
-function safeRecords() {
-  const parsed = readJsonStorage(STORAGE_LOCAL, CLEAN_GAMES_KEY, { fallback: {} });
-  return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
-}
 
 function finiteRows(report) {
   return (Array.isArray(report?.moveReports) ? report.moveReports : []).filter((row) => Number.isFinite(row?.loss));
@@ -156,39 +148,11 @@ export function competitiveGameSignals(report, meta = {}) {
 export function recordCleanGameEvidence(gameId, report, meta = {}) {
   if (!gameId || !report) return null;
   const evidence = cleanGameEvidence(report, { ...meta, gameId });
-  const records = safeRecords();
+  const records = loadCleanGameRecords();
   records[String(gameId)] = evidence;
   const pruned = Object.fromEntries(Object.entries(records)
     .sort((a, b) => new Date(b[1]?.date || 0) - new Date(a[1]?.date || 0))
     .slice(0, MAX_RECORDS));
   setProfileStorageItem(CLEAN_GAMES_KEY, JSON.stringify(pruned));
   return evidence;
-}
-
-export function loadCleanGameRecords() {
-  return safeRecords();
-}
-
-export function cleanGameSummary(records = loadCleanGameRecords()) {
-  const eligible = Object.values(records || {})
-    .filter((row) => row?.version === 1 && row.sufficientSample === true)
-    .sort((a, b) => new Date(a.date || 0) - new Date(b.date || 0));
-  const clean = eligible.filter((row) => row.clean === true);
-  let currentStreak = 0;
-  for (let i = eligible.length - 1; i >= 0 && eligible[i].clean; i -= 1) currentStreak += 1;
-  let bestStreak = 0;
-  let running = 0;
-  for (const row of eligible) {
-    running = row.clean ? running + 1 : 0;
-    bestStreak = Math.max(bestStreak, running);
-  }
-  return {
-    eligible: eligible.length,
-    clean: clean.length,
-    rate: eligible.length ? Math.round(clean.length / eligible.length * 100) : null,
-    currentStreak,
-    bestStreak,
-    latest: eligible.at(-1) || null,
-    latestClean: [...clean].reverse()[0] || null,
-  };
 }

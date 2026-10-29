@@ -1,0 +1,397 @@
+#!/usr/bin/env python3
+"""Report potential static-shell geometry cost from the actual exported War Room GLB.
+
+This is an offline geometry census, not a WebGL draw or FPS benchmark. It counts
+only nodes reachable from the default glTF scene, including repeated mesh uses.
+"""
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+import struct
+import sys
+from pathlib import Path
+
+
+def read_glb_json(path: Path) -> dict:
+    """Parse glTF 2.0 JSON chunk without interpreting compressed BIN buffer layout.
+
+    EXT_meshopt_compression can have logical buffer sizes differing from the
+    on-disk compressed BIN chunk. Accessor.count remains the authoritative
+    decoded geometry count. No decompression is required for this census.
+    """
+    data = path.read_bytes()
+    if len(data) < 20:
+        raise ValueError(f"{path}: truncated GLB header")
+    magic, version, total_length = struct.unpack_from("<4sII", data, 0)
+    if magic != b"glTF" or version != 2 or total_length != len(data):
+        raise ValueError(f"{path}: invalid GLB header")
+    offset = 12
+    document = None
+    bin_chunks = 0
+    chunk_index = 0
+    while offset < total_length:
+        if offset + 8 > total_length:
+            raise ValueError(f"{path}: truncated GLB chunk header")
+        chunk_length, chunk_type = struct.unpack_from("<II", data, offset)
+        offset += 8
+        if chunk_length % 4 or offset + chunk_length > total_length:
+            raise ValueError(f"{path}: truncated or unaligned GLB chunk")
+        if chunk_index == 0 and chunk_type != 0x4E4F534A:
+            raise ValueError(f"{path}: JSON must be first GLB chunk")
+        if chunk_type == 0x4E4F534A:
+            if document is not None:
+                raise ValueError(f"{path}: duplicate GLB JSON chunk")
+            document = json.loads(data[offset:offset + chunk_length].decode("utf-8").rstrip(" \t\r\n\0"))
+        elif chunk_type == 0x004E4942:
+            bin_chunks += 1
+        offset += chunk_length
+        chunk_index += 1
+    if not isinstance(document, dict) or bin_chunks != 1:
+        raise ValueError(f"{path}: expected JSON and one BIN chunk")
+    return document
+
+
+def _accessor_count(accessors, index: int) -> int:
+    if type(index) is not int or not 0 <= index < len(accessors):
+        raise ValueError(f"invalid glTF accessor index: {index!r}")
+    count = accessors[index].get("count")
+    if type(count) is not int or count < 0:
+        raise ValueError(f"invalid glTF accessor count: {count!r}")
+    return count
+
+
+def _mesh_cost(mesh: dict, accessors: list[dict]) -> tuple[int, int, int]:
+    triangles = vertices = 0
+    primitives = mesh.get("primitives", [])
+    for primitive in primitives:
+        # Blender exports triangle primitives. Never label strips/lines as zero.
+        if primitive.get("mode", 4) != 4:
+            raise ValueError("non-triangle primitive; census would undercount")
+        position = primitive.get("attributes", {}).get("POSITION")
+        vertex_count = _accessor_count(accessors, position)
+        index_count = (
+            _accessor_count(accessors, primitive["indices"])
+            if "indices" in primitive else vertex_count
+        )
+        if index_count % 3:
+            raise ValueError("triangle primitive index/vertex count not divisible by 3")
+        triangles += index_count // 3
+        vertices += vertex_count
+    return triangles, vertices, len(primitives)
+
+
+def census_scene(document: dict, *, top: int = 12) -> dict:
+    """Count triangles submitted *if all shell nodes were visible*, not actual GPU work."""
+    scenes = document.get("scenes", [])
+    scene_index = document.get("scene", 0)
+    if type(scene_index) is not int or not 0 <= scene_index < len(scenes):
+        raise ValueError("GLB has no valid default scene")
+    nodes = document.get("nodes", [])
+    meshes = document.get("meshes", [])
+    accessors = document.get("accessors", [])
+    materials = document.get("materials", [])
+    # Validate/count only meshes reached by the default scene. A library GLB
+    # may carry unused meshes with different primitive topologies.
+    costs = {}
+    rows = []
+    material_costs = {}
+    mesh_costs = {}
+    used_meshes = set()
+    visited_nodes = set()
+    total_triangles = total_vertices = draw_primitives = 0
+
+    def visit(index: int, parents: frozenset[int]) -> None:
+        nonlocal total_triangles, total_vertices, draw_primitives
+        if type(index) is not int or not 0 <= index < len(nodes):
+            raise ValueError(f"invalid scene node: {index!r}")
+        if index in parents:
+            raise ValueError("cyclic glTF node graph")
+        # glTF node ownership is a tree. Repeated references would inflate
+        # potential triangles and make comparisons between War Rooms misleading.
+        if index in visited_nodes:
+            raise ValueError("glTF node referenced more than once in default scene")
+        visited_nodes.add(index)
+        node = nodes[index]
+        if "EXT_mesh_gpu_instancing" in node.get("extensions", {}):
+            raise ValueError("GPU instancing needs a separate instance census")
+        if "mesh" in node:
+            mesh_id = node["mesh"]
+            if type(mesh_id) is not int or not 0 <= mesh_id < len(meshes):
+                raise ValueError(f"invalid mesh reference: {mesh_id!r}")
+            if mesh_id not in costs:
+                costs[mesh_id] = _mesh_cost(meshes[mesh_id], accessors)
+            triangles, vertices, primitives = costs[mesh_id]
+            used_meshes.add(mesh_id)
+            mesh_row = mesh_costs.setdefault(mesh_id, {
+                "meshIndex": mesh_id,
+                "mesh": meshes[mesh_id].get("name") or f"mesh-{mesh_id}",
+                "instances": 0,
+                "potentialTriangles": 0,
+                "uniqueTriangles": triangles,
+                "primitiveInstances": 0,
+            })
+            mesh_row["instances"] += 1
+            mesh_row["potentialTriangles"] += triangles
+            mesh_row["primitiveInstances"] += primitives
+            total_triangles += triangles
+            total_vertices += vertices
+            draw_primitives += primitives
+            # The GLB's primitive material index is more reliable than mesh
+            # names after Blender merges many authored objects by material.
+            # Count every *scene instance*; this is potential geometry, not
+            # actual material switches or draw calls in the renderer.
+            for primitive in meshes[mesh_id].get("primitives", []):
+                material_id = primitive.get("material", -1)
+                if type(material_id) is not int or not -1 <= material_id < len(materials):
+                    raise ValueError(f"invalid glTF material reference: {material_id!r}")
+                material_name = (
+                    materials[material_id].get("name") or f"material-{material_id}"
+                    if material_id >= 0 else "(unassigned)"
+                )
+                accessor_id = primitive.get("indices", primitive["attributes"]["POSITION"])
+                primitive_triangles = _accessor_count(accessors, accessor_id) // 3
+                material_row = material_costs.setdefault(material_id, {
+                    "materialIndex": material_id,
+                    "material": material_name,
+                    "potentialTriangles": 0,
+                    "primitiveInstances": 0,
+                })
+                material_row["potentialTriangles"] += primitive_triangles
+                material_row["primitiveInstances"] += 1
+            rows.append({
+                "node": node.get("name") or f"node-{index}",
+                "mesh": meshes[mesh_id].get("name") or f"mesh-{mesh_id}",
+                "nodeIndex": index,
+                "meshIndex": mesh_id,
+                "triangles": triangles,
+                "vertices": vertices,
+                "primitives": primitives,
+            })
+        for child in node.get("children", []):
+            visit(child, parents | {index})
+
+    for root in scenes[scene_index].get("nodes", []):
+        visit(root, frozenset())
+
+    return {
+        "scene": scenes[scene_index].get("name", str(scene_index)),
+        "meshInstances": len(rows),
+        "uniqueMeshes": len(used_meshes),
+        "primitiveInstances": draw_primitives,
+        "potentialTriangles": total_triangles,
+        "uniqueMeshTriangles": sum(costs[i][0] for i in used_meshes),
+        "vertexReferences": total_vertices,
+        "materialCosts": sorted(
+            material_costs.values(),
+            key=lambda row: (-row["potentialTriangles"], row["materialIndex"]),
+        ),
+        "topNodes": sorted(rows, key=lambda row: (-row["triangles"], row["nodeIndex"]))[:top],
+        # Rank repeated meshes by their accumulated *scene* cost; ranking
+        # single nodes alone can hide geometry reused across many objects.
+        "topMeshes": sorted(
+            mesh_costs.values(),
+            key=lambda row: (-row["potentialTriangles"], row["meshIndex"]),
+        )[:top],
+    }
+
+
+def render_census_markdown(reports: list[dict]) -> str:
+    """CI geometry report: potential shell cost, not observed renderer work."""
+    lines = [
+        "### War Room · exported GLB geometry census", "",
+        "Potential triangle/primitive counts assume every shell node is visible. "
+        "**Not** actual GPU draw calls, shadows, culling or FPS.", "",
+        "| GLB | SHA-256 | Potential triangles | Unique triangles | Mesh instances | Primitive instances | Bytes |",
+        "| --- | --- | ---: | ---: | ---: | ---: | ---: |",
+    ]
+    for row in reports:
+        lines.append(
+            f"| {Path(row['file']).name} | {row['sha256']} | "
+            f"{row['potentialTriangles']:,} | {row['uniqueMeshTriangles']:,} | "
+            f"{row['meshInstances']:,} | {row['primitiveInstances']:,} | {row['glbBytes']:,} |"
+        )
+        lines.extend([
+            "", f"**Largest nodes — {Path(row['file']).name}**", "",
+            "| Node | Mesh | Potential triangles |", "| --- | --- | ---: |",
+        ])
+        for node in row["topNodes"]:
+            lines.append(f"| {node['node']} | {node['mesh']} | {node['triangles']:,} |")
+        lines.extend([
+            "", "**Repeated mesh cost across scene instances**", "",
+            "| Mesh | Instances | Potential triangles | Unique triangles |",
+            "| --- | ---: | ---: | ---: |",
+        ])
+        for mesh in row["topMeshes"]:
+            lines.append(
+                f"| {mesh['mesh']} | {mesh['instances']:,} "
+                f"| {mesh['potentialTriangles']:,} | {mesh['uniqueTriangles']:,} |"
+            )
+        lines.extend([
+            "", "**Geometry by GLB material (not runtime draw calls)**", "",
+            "| Material | Potential triangles | Primitive instances |",
+            "| --- | ---: | ---: |",
+        ])
+        for material in row["materialCosts"]:
+            lines.append(
+                f"| {material['material']} | {material['potentialTriangles']:,} "
+                f"| {material['primitiveInstances']:,} |"
+            )
+    return "\n".join(lines) + "\n"
+
+
+def verify_runtime_manifest_provenance(
+    path: Path, report: dict, manifest: dict,
+) -> dict:
+    """Bind a local GLB to one *published* V2/V3/V4 logical runtime asset.
+
+    This deliberately rejects builder previews, staging candidates and
+    same-named stale files. It does not contact R2; the caller owns download.
+    """
+    assets = manifest.get("assets")
+    if not isinstance(assets, dict):
+        raise ValueError("R2 manifest has no assets object")
+    matched = []
+    for variant in ("v2", "v3", "v4"):
+        logical_id = f"warRoom.{variant}.runtime"
+        entry = assets.get(logical_id)
+        if not isinstance(entry, dict):
+            raise ValueError(f"R2 manifest missing {logical_id}")
+        key = entry.get("key")
+        if not isinstance(key, str) or not key.startswith(f"war-room/{variant}/runtime/"):
+            raise ValueError(f"R2 manifest has invalid runtime key for {logical_id}")
+        if Path(key).name == path.name:
+            matched.append((logical_id, entry))
+    if len(matched) != 1:
+        raise ValueError(f"{path}: no unique published War Room runtime match")
+    logical_id, entry = matched[0]
+    expected_sha = entry.get("sha256")
+    expected_bytes = entry.get("bytes")
+    if not isinstance(expected_sha, str) or len(expected_sha) != 64 or any(
+        digit not in "0123456789abcdef" for digit in expected_sha
+    ):
+        raise ValueError(f"{logical_id}: invalid manifest SHA-256")
+    if type(expected_bytes) is not int or expected_bytes <= 0:
+        raise ValueError(f"{logical_id}: invalid manifest byte length")
+    if entry.get("contentType") != "model/gltf-binary":
+        raise ValueError(f"{logical_id}: not a GLB runtime asset")
+    if report["glbBytes"] != expected_bytes or report["sha256"] != expected_sha:
+        raise ValueError(
+            f"{path}: published {logical_id} provenance mismatch "
+            f"(size {report['glbBytes']}/{expected_bytes}, "
+            f"SHA-256 {report['sha256']}/{expected_sha})"
+        )
+    return {"logicalId": logical_id, "r2Key": entry["key"],
+            "sha256": expected_sha, "bytes": expected_bytes}
+
+
+def geometry_budget_violations(
+    report: dict, *, max_triangles: int | None = None, max_bytes: int | None = None,
+) -> list[str]:
+    """Compare an authored shell against explicit regression limits.
+
+    These limits concern exported potential geometry, not runtime FPS or draws.
+    Each budget belongs to the versioned Blender workflow, so art changes may
+    adjust the limit only with an explicit, reviewed diff and visual evidence.
+    """
+    violations = []
+    if max_triangles is not None and report["potentialTriangles"] > max_triangles:
+        violations.append(
+            f"{report['file']}: potential triangles {report['potentialTriangles']:,} "
+            f"exceed budget {max_triangles:,}"
+        )
+    if max_bytes is not None and report["glbBytes"] > max_bytes:
+        violations.append(
+            f"{report['file']}: GLB bytes {report['glbBytes']:,} exceed budget {max_bytes:,}"
+        )
+    return violations
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("glb", nargs="+", type=Path, help="exported War Room GLB(s)")
+    parser.add_argument("--top", type=int, default=12, help="largest scene nodes (default 12)")
+    parser.add_argument("--runtime-manifest", type=Path,
+                        help="require each GLB to match published v2/v3/v4 R2 manifest name, SHA and size")
+    parser.add_argument("--json", action="store_true", help="machine-readable JSON")
+    parser.add_argument("--output-json", type=Path, help="write geometry JSON artifact")
+    parser.add_argument("--summary-file", type=Path, help="append Markdown to CI step summary")
+    parser.add_argument("--max-triangles", type=int, help="optional upper bound for exported potential triangles")
+    parser.add_argument("--max-bytes", type=int, help="optional upper bound for compressed GLB size")
+    args = parser.parse_args(argv)
+    if args.top < 0:
+        parser.error("--top cannot be negative")
+    if args.max_triangles is not None and args.max_triangles <= 0:
+        parser.error("--max-triangles must be positive")
+    if args.max_bytes is not None and args.max_bytes <= 0:
+        parser.error("--max-bytes must be positive")
+    manifest = None
+    if args.runtime_manifest is not None:
+        manifest = json.loads(args.runtime_manifest.read_text(encoding="utf-8"))
+        if not isinstance(manifest, dict):
+            raise ValueError("R2 runtime manifest is not a JSON object")
+    reports = []
+    verified_variants = set()
+    for path in args.glb:
+        document = read_glb_json(path)
+        report = {"file": str(path), "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+                  "glbBytes": path.stat().st_size, **census_scene(document, top=args.top)}
+        if manifest is not None:
+            provenance = verify_runtime_manifest_provenance(path, report, manifest)
+            if provenance["logicalId"] in verified_variants:
+                raise ValueError(f"{path}: duplicate runtime variant {provenance['logicalId']}")
+            verified_variants.add(provenance["logicalId"])
+            report["runtimeManifestProvenance"] = provenance
+        if report["meshInstances"] <= 0 or report["potentialTriangles"] <= 0:
+            raise ValueError(f"{path}: exported War Room scene has no renderable geometry")
+        if args.max_triangles is not None or args.max_bytes is not None:
+            budget_errors = geometry_budget_violations(
+                report, max_triangles=args.max_triangles, max_bytes=args.max_bytes,
+            )
+            report["geometryBudget"] = {
+                "maxTriangles": args.max_triangles,
+                "maxBytes": args.max_bytes,
+                "status": "fail" if budget_errors else "pass",
+                "violations": budget_errors,
+            }
+        reports.append(report)
+    if args.output_json:
+        args.output_json.write_text(json.dumps(reports, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    if args.summary_file:
+        with args.summary_file.open("a", encoding="utf-8") as handle:
+            handle.write(render_census_markdown(reports))
+            for report in reports:
+                if "geometryBudget" in report:
+                    budget = report["geometryBudget"]
+                    handle.write(
+                        f"**Geometry budget for {Path(report['file']).name}: "
+                        f"{budget['status'].upper()}** "
+                        f"(triangles <= {budget['maxTriangles']}, "
+                        f"bytes <= {budget['maxBytes']}).\n\n"
+                    )
+    if args.json:
+        print(json.dumps(reports, indent=2, ensure_ascii=False))
+    else:
+        for row in reports:
+            print(f"{row['file']}: {row['potentialTriangles']:,} potential triangles, "
+                  f"{row['uniqueMeshTriangles']:,} unique mesh triangles; "
+                  f"{row['meshInstances']} mesh instances, "
+                  f"{row['primitiveInstances']} potential primitive submissions, "
+                  f"{row['glbBytes']:,} GLB bytes")
+            for node in row["topNodes"]:
+                print(f"  {node['triangles']:>10,} tri  {node['node']}  [{node['mesh']}]")
+            for material in row["materialCosts"]:
+                print(f"  {material['potentialTriangles']:>10,} tri  material: {material['material']}")
+    failures = [
+        error
+        for report in reports
+        for error in report.get("geometryBudget", {}).get("violations", [])
+    ]
+    for error in failures:
+        print(f"GEOMETRY REGRESSION: {error}", file=sys.stderr)
+    return 2 if failures else 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

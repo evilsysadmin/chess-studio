@@ -25,14 +25,14 @@ OCI_SSH_USER ?= ubuntu
 OCI_SSH_KEY ?=
 OCI_SSH_PUBLIC_KEY ?=
 OCI_SSH_HOSTNAME ?= ssh-chess-studio-staging.shadowops.dpdns.org
-CRITICAL_E2E_GREP := login → menú|Partida rápida · una partida activa|Torneo · una partida activa|Partida rápida · un 503 al restaurar|Combat Chess · Campaña permite jugar con defaults|Combat Chess · salir al menú conserva campaña|Combat Chess · una batalla activa sobrevive a reload|deploy · una release nueva no fuerza reload|sesión · dos contextos de navegador|admin · presencia distingue|admin · evidencia visual de cinco áreas|Matthias · saluda una vez tras login y no repite el saludo con F5|Home · el avatar residente de Matthias abre Así juegas|Matthias · el briefing persistente aparece antes de una partida rápida|Matthias · banco de personalidad Admin usa sólo datos sintéticos|Escuela de Matthias · el primer movimiento se aprende hands-on y persiste tras F5|Escuela de Matthias · el examen básico bloquea la promoción hasta aprobar
+CRITICAL_E2E_GREP := login → menú|Partida rápida · una partida activa|Torneo · una partida activa|Partida rápida · un 503 al restaurar|Combat Chess · Campaña permite jugar con defaults|Combat Chess · salir al menú conserva campaña|Combat Chess · una batalla activa sobrevive a reload|deploy · una release nueva no fuerza reload|sesión · dos contextos de navegador|admin · presencia distingue|admin · evidencia visual de cinco áreas|Matthias · saluda una vez tras login y no repite el saludo con F5|Home · el avatar residente de Matthias abre Así juegas|Matthias · el briefing persistente aparece antes de una partida rápida|Matthias · banco de personalidad Admin usa sólo datos sintéticos|Escuela de Matthias · el primer movimiento se aprende hands-on y persiste tras F5|Escuela de Matthias · el examen básico bloquea la promoción hasta aprobar|Campaña · F5 tras JAQUE MATE|Torre · F5 tras JAQUE MATE
 
 .PHONY: game game-bg ungame restart logs status build clean help install \
 	frontend-install backend-install ensure-pip-audit python-check ensure-hook-script install-hooks ensure-hooks hooks ensure-frontend-deps ensure-backend-deps \
 	test tests test-fe test-be tests-fe tests-be tests/fe tests/be e2e e2e-combat-dom e2e-install compose-smoke coverage coverage-fe coverage-be release-gate \
 	test-frontend test-frontend-smoke test-frontend-unit test-frontend-contract test-backend test-backend-smoke test-backend-integration backend-check quality-gate gate-core \
 	gate-frontend-critical gate-critical combat-smoke frontend-build bundle-report puzzles-check audio-check data-ux-check pwa-check campaign-map-check copy-check release-check test-suite-audit test-suite-audit-ci static-contract-risk-audit css-check css-debt-check visual-ux-check state-resilience-check idempotency-check npm-audit-parser-check architecture-debt-check workflow-debt-check dependency-cycle-check dead-code-check session-continuity-check safe-storage-check async-resilience-check chess-rules-check grafana-check render-staging-check static-preflight \
-	security security-full security-images security-fe security-be security-trivy security-api ensure-trivy deps-status doctor worker-test load-probe synthetic-check bootstrap-test test-all-local test-in-docker ensure-e2e-deps e2e-critical test-parity-check chronicles-contracts chronicles-contracts-check \
+	security security-full security-images security-fe security-be security-trivy security-api ensure-trivy deps-status doctor worker-test load-probe synthetic-check bootstrap-test test-all-local test-in-docker ensure-e2e-deps e2e-critical home-gpu-light-probe home-gpu-draw-census home-gpu-flame-pass-verify home-gpu-flame-pass-review test-parity-check \
 	oci-login oci-session oci-a1-info oci-a1-status oci-a1-ip oci-a1-authorize-ssh oci-a1-ssh-check oci-a1-ssh
 
 ## Diagnóstico local sin instalar nada: runtimes, lockfiles, CI y tooling opcional.
@@ -303,14 +303,6 @@ test-backend: test-backend-integration
 backend-check: ensure-backend-deps
 	$(VENV_PY) -m pip check
 
-## Chronicles authored manifests live in backend-python. Materialize the exact
-## frontend/Go mirrors and both Go parity corpora with one deterministic command.
-chronicles-contracts: ensure-backend-deps
-	$(VENV_PY) scripts/chronicles_contracts.py
-
-chronicles-contracts-check: ensure-backend-deps
-	$(VENV_PY) scripts/chronicles_contracts.py --check
-
 frontend-build: ensure-frontend-deps
 	cd frontend && npm run build
 
@@ -356,6 +348,65 @@ e2e: ensure-e2e-deps frontend-build
 e2e-combat-dom: ensure-e2e-deps frontend-build
 	cd e2e && ./node_modules/.bin/playwright install chromium
 	cd e2e && ./node_modules/.bin/playwright test combat-dom.spec.js
+
+# Opt-in Home lighting A/B/B/A on the operator's physical GPU. This is
+# NEVER a CI check or a software-renderer benchmark. By default, enable
+# NVIDIA PRIME for Nobara hybrid graphics; set HOME_GPU_NVIDIA_PRIME=0 to use
+# the current GPU (e.g. native AMD). The Playwright config refuses to attach
+# to an existing port 4173, preventing stale builds from contaminating data.
+HOME_GPU_NVIDIA_PRIME ?= 1
+HOME_GPU_HEADLESS ?= 0
+HOME_GPU_LIGHT_GROUP ?= all
+# legacy preserves original report semantics; production compares against the
+# currently deployed two-fill wall-torch layout (board/stairs/accent only).
+HOME_GPU_BASELINE ?= legacy
+# For wall-pair hardware + real WebGL canvas before/after images, set
+# HOME_GPU_LIGHT_GROUP=wall-pair; do not promote without reviewing both PNGs.
+# Test-context-only ambient clock for reproducible physical GPU comparisons.
+HOME_GPU_AMBIENT ?= night
+HOME_GPU_LIGHT_OUTPUT = $(if $(filter production,$(HOME_GPU_BASELINE)),home-3d-light-probe-$(HOME_GPU_LIGHT_GROUP)-production-hardware.json,$(if $(filter all,$(HOME_GPU_LIGHT_GROUP)),home-3d-light-probe-hardware.json,home-3d-light-probe-$(HOME_GPU_LIGHT_GROUP)-hardware.json))
+# An offload request alone cannot prove Chromium used NVIDIA. Require its
+# observed WebGL vendor by default; native GPU modes may set amd/intel etc.
+HOME_GPU_EXPECT_VENDOR ?= $(if $(filter 1,$(HOME_GPU_NVIDIA_PRIME)),nvidia,)
+ifeq ($(HOME_GPU_NVIDIA_PRIME),1)
+HOME_GPU_ENV := __NV_PRIME_RENDER_OFFLOAD=1 __GLX_VENDOR_LIBRARY_NAME=nvidia
+else
+HOME_GPU_ENV :=
+endif
+home-gpu-light-probe: ensure-e2e-deps frontend-build
+	cd e2e && ./node_modules/.bin/playwright install chromium
+	@cd e2e && $(HOME_GPU_ENV) CHESS_HOME_GPU_MODE=hardware \
+		CHESS_HOME_GPU_LIGHT_PROBE=1 CHESS_HOME_GPU_HEADLESS=$(HOME_GPU_HEADLESS) \
+		CHESS_HOME_GPU_LIGHT_GROUP=$(HOME_GPU_LIGHT_GROUP) \
+		CHESS_HOME_GPU_BASELINE=$(HOME_GPU_BASELINE) \
+		CHESS_HOME_GPU_AMBIENT=$(HOME_GPU_AMBIENT) \
+		CHESS_HOME_GPU_EXPECT_VENDOR=$(HOME_GPU_EXPECT_VENDOR) \
+		CHESS_HOME_GPU_REVISION="$$(git rev-parse HEAD)" \
+		./node_modules/.bin/playwright test --config=playwright.home-gpu.config.js
+	@echo "Home A/B/B/A: .artifacts/home-gpu-benchmark/$(HOME_GPU_LIGHT_OUTPUT)"
+
+# Stable 3-visit HOME profile: no lights are disabled, no A/B variant is
+# installed, and a real timer plus an exact draw-family census are mandatory.
+# Run on physical GPU only; fail if WebGL or a draw family cannot be measured.
+home-gpu-draw-census: ensure-e2e-deps frontend-build
+	cd e2e && ./node_modules/.bin/playwright install chromium
+	@cd e2e && $(HOME_GPU_ENV) CHESS_HOME_GPU_MODE=hardware \
+		CHESS_HOME_GPU_LIGHT_PROBE=0 CHESS_HOME_GPU_HEADLESS=$(HOME_GPU_HEADLESS) \
+		CHESS_HOME_GPU_REQUIRE_TIMER=1 CHESS_HOME_GPU_REQUIRE_DRAW_CENSUS=1 \
+		CHESS_HOME_GPU_AMBIENT=$(HOME_GPU_AMBIENT) \
+		CHESS_HOME_GPU_EXPECT_VENDOR=$(HOME_GPU_EXPECT_VENDOR) \
+		CHESS_HOME_GPU_REVISION="$$(git rev-parse HEAD)" \
+		./node_modules/.bin/playwright test --config=playwright.home-gpu.config.js
+	@echo "Home real draw census: .artifacts/home-gpu-benchmark/home-3d-hardware.json"
+
+# Only checks physical A/B/B/A PNG/report integrity; never claims visual or GPU
+# approval. The experimental flame capture remains in Draft until accepted.
+home-gpu-flame-pass-verify:
+	@node scripts/verify_home_flame_gpu_evidence.mjs
+
+home-gpu-flame-pass-review:
+	@node scripts/render_home_flame_visual_review.mjs
+
 
 ## Smoke de integración REAL: nginx frontend + API Go + Mongo + auth/perfil.
 ## Usa imágenes construidas por docker compose y sólo stdlib Python para el probe.
@@ -479,6 +530,26 @@ static-preflight: capacity-probe-check test-parity-check test-flake-check audio-
 	@python3 scripts/pawn_slug_canonical_integrity.py
 	@python3 scripts/synthetic_health_contract.py
 	@python3 -S scripts/oci_cloudflare_tunnel.py --self-test
+	@python3 -S scripts/oci_backend_diagnose.py --self-test
+	@python3 -S scripts/oci_public_staging_release.py --self-test
+	@python3 -S scripts/main_ci_source.py --self-test
+	@python3 -S scripts/compare_war_room_gpu.py --self-test
+	@python3 -S scripts/run_war_room_gpu_ab.py --self-test
+	@python3 -S scripts/run_war_room_gpu_baseline.py --self-test
+	@python3 -S tests/test_war_room_v2_single_hearth.py
+	@python3 -S tests/test_war_room_v2_revision_immutability.py
+	@python3 -S -m unittest discover -s tests -p 'test_war_room_glb_census.py' -v
+	@python3 -S -m unittest discover -s tests -p 'test_war_room_published_geometry.py' -v
+	@node --test e2e/home-blender-gpu-light-contrast.test.mjs
+	@node --test e2e/home-gpu-ambient-clock.test.mjs
+	@node --test e2e/home-gpu-revision.test.mjs
+	@node --test e2e/war-room-gpu-shadow-readiness.test.mjs
+	@node --test e2e/home-gpu-flame-eligibility.test.mjs
+	@node --test scripts/verify_home_flame_gpu_evidence.test.mjs
+	@node --test scripts/render_home_flame_visual_review.test.mjs
+	@node --test scripts/hans_visual_artifact_summary.test.mjs
+	@node --test e2e/home-blender-gpu-flame-contrast.test.mjs
+	@python3 -S -m unittest discover -s scripts -p 'test_compare_home_3d_gpu.py' -v
 	@python3 -S scripts/oci_k3s_staging2_root.py self-test infra/oci/gitops/staging2/backend.yaml.tmpl
 	@find frontend/src scripts e2e -type f \( -name '*.js' -o -name '*.mjs' \) -print0 | xargs -0 -P $(NODE_CHECK_JOBS) -n1 node --check
 	@python3 scripts/python_syntax_check.py

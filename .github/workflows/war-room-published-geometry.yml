@@ -1,0 +1,48 @@
+name: War Room · published GLB census
+on:
+  pull_request:
+    paths:
+      - scripts/blender/war_room_glb_census.py
+      - scripts/blender/census_published_war_rooms.py
+      - tests/test_war_room_published_geometry.py
+      - frontend/src/assets/r2-assets-manifest.json
+      - .github/workflows/war-room-published-geometry.yml
+  push:
+    branches: [main]
+    paths:
+      - scripts/blender/war_room_glb_census.py
+      - scripts/blender/census_published_war_rooms.py
+      - frontend/src/assets/r2-assets-manifest.json
+      - .github/workflows/war-room-published-geometry.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: war-room-published-census-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  census:
+    name: Verify and census immutable V2/V3/V4
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.13'
+      - name: Network-free geometry census tests
+        run: |
+          python3 -S -m unittest discover -s tests -p 'test_war_room_glb_census.py' -v
+          python3 -S -m unittest discover -s tests -p 'test_war_room_published_geometry.py' -v
+      - name: Download and verify exact published GLBs
+        run: |
+          python3 -S scripts/blender/census_published_war_rooms.py \
+            --manifest frontend/src/assets/r2-assets-manifest.json \
+            --output-json "$RUNNER_TEMP/war-room-published-geometry.json" \
+            --summary-file "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: war-room-published-geometry
+          path: ${{ runner.temp }}/war-room-published-geometry.json
+          if-no-files-found: error
+          retention-days: 14

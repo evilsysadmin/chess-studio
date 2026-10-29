@@ -25,6 +25,23 @@ def sha256_bytes(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
 
+def revision_already_published(token: str, account_id: str, bucket: str, key: str, digest: str) -> bool:
+    """Never repurpose an allegedly immutable PR/release revision key.
+
+    A repeat build may reuse the key only if its bytes match. Any R2 error
+    other than a confirmed 404 is fatal *before* changing the current alias.
+    """
+    try:
+        existing = core.get_object(token, account_id, bucket, key)
+    except core.PublishError as exc:
+        if str(exc) == f"Cloudflare GET HTTP 404 para {key}":
+            return False
+        raise
+    if sha256_bytes(existing) != digest:
+        raise SystemExit(f"War Room v2 revision ya existe con otros bytes: {key}")
+    return True
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("source", type=pathlib.Path)
@@ -48,34 +65,31 @@ def main() -> int:
     alias = RUNTIME_ALIAS if args.channel == "runtime" else STAGING_ALIAS
     revision_prefix = RUNTIME_REVISION_PREFIX if args.channel == "runtime" else STAGING_REVISION_PREFIX
 
+    revision_key = f"{revision_prefix}/{revision}.glb"
+    # First check the exact SHA-scoped key, before writing *anything*.
+    # A rerun with different bytes must not rewrite earlier reviewed evidence,
+    # nor move the mutable alias to an unreviewed, conflicting GLB.
+    present = revision_already_published(
+        token, account_id, config["bucket"], revision_key, digest,
+    )
+    if not present:
+        transport.raw_upload_object(
+            token, account_id, config["bucket"], revision_key, data, CONTENT_TYPE,
+        )
+        received_revision = core.get_object(token, account_id, config["bucket"], revision_key)
+        if sha256_bytes(received_revision) != digest:
+            raise SystemExit("War Room v2 revision GLB corrupto tras publicar")
+
+    # The mutable staging/runtime alias is only updated *after* immutable
+    # revision provenance is proven. The content-addressed key stays stable.
     for key in (canonical_key, alias):
         transport.raw_upload_object(
-            token,
-            account_id,
-            config["bucket"],
-            key,
-            data,
-            CONTENT_TYPE,
+            token, account_id, config["bucket"], key, data, CONTENT_TYPE,
         )
 
     received = core.get_object(token, account_id, config["bucket"], alias)
     if sha256_bytes(received) != digest:
         raise SystemExit(f"War Room v2 {args.channel} alias corrupto tras publicar")
-
-    # The immutable PR key is published last. Visual CI points directly at
-    # this object, so it can never validate a stale current.glb alias.
-    revision_key = f"{revision_prefix}/{revision}.glb"
-    transport.raw_upload_object(
-        token,
-        account_id,
-        config["bucket"],
-        revision_key,
-        data,
-        CONTENT_TYPE,
-    )
-    received_revision = core.get_object(token, account_id, config["bucket"], revision_key)
-    if sha256_bytes(received_revision) != digest:
-        raise SystemExit("War Room v2 revision GLB corrupto tras publicar")
 
     print(
         f"War Room v2 R2 OK · revision={revision} · sha256={digest} · "

@@ -88,6 +88,22 @@ describe('game board chrome extracted from GameBoardView', () => {
     expect(html).toContain('Abandonar partida');
   });
 
+  it('prioriza la jugada activa: esconde ambiente, nunca el estado ni el control táctico', () => {
+    const base = {
+      game: {}, zenMode: false, focusActive: false,
+      status: { statusText: 'Confirmando jugada…', audienceReaction: 'Oh.', matthiasSilentBeat: true },
+      context: { memoryContext: {}, controlPrompt: 'Revise la amenaza', onContinueControl: noop },
+    };
+    const quiet = renderToStaticMarkup(<GameStatusStrips {...base} narrativeQuiet />);
+    expect(quiet).toContain('Confirmando jugada…');
+    expect(quiet).toContain('Revise la amenaza');
+    expect(quiet).not.toContain('Grada anónima');
+    expect(quiet).not.toContain('matthias-silent-beat');
+    const idle = renderToStaticMarkup(<GameStatusStrips {...base} />);
+    expect(idle).toContain('Grada anónima');
+    expect(idle).toContain('matthias-silent-beat');
+  });
+
   it('preserves status strips including Matthias silent avatar', () => {
     const html = renderToStaticMarkup(
       <GameStatusStrips

@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { mkdir, writeFile } from 'node:fs/promises';
-import { confirmChroniclesCharacterSetup, login, mockApi, openMoreGameModes } from './helpers.js';
+import { login, mockApi, openMoreGameModes } from './helpers.js';
 
 const ARTIFACT_DIR = '../.artifacts/app-visual';
 const CAPTURES = [
@@ -356,33 +356,6 @@ async function captureHealth(page, label) {
   }, label);
 }
 
-async function captureChroniclesHealth(page) {
-  return page.evaluate(() => {
-    const root = document.documentElement;
-    const rect = (selector) => {
-      const node = document.querySelector(selector);
-      if (!node) return null;
-      const box = node.getBoundingClientRect();
-      return {
-        left: Number(box.left.toFixed(1)),
-        top: Number(box.top.toFixed(1)),
-        right: Number(box.right.toFixed(1)),
-        bottom: Number(box.bottom.toFixed(1)),
-        width: Number(box.width.toFixed(1)),
-        height: Number(box.height.toFixed(1)),
-      };
-    };
-    return {
-      horizontalOverflow: root.scrollWidth > root.clientWidth + 1,
-      gameCanvasCount: document.querySelectorAll('[data-chronicles-renderer="three"] canvas').length,
-      portraitThumbnailCount: document.querySelectorAll('[data-chronicles-party-thumbnail]').length,
-      stage: rect('.chronicles-stage'),
-      gameCanvas: rect('[data-chronicles-renderer="three"] canvas'),
-      firstPortrait: rect('[data-chronicles-party-thumbnail]'),
-    };
-  });
-}
-
 async function capturePawnSlugReadyHealth(page) {
   return page.evaluate(() => {
     const root = document.documentElement;
@@ -585,83 +558,6 @@ if (scopeEnabled('football')) {
     await writeFile(
       `${ARTIFACT_DIR}/chess-football-visual-health.json`,
       `${JSON.stringify({ schema: 1, scope: 'football', captures }, null, 2)}\n`,
-      'utf8',
-    );
-  });
-}
-
-if (scopeEnabled('chronicles')) {
-  test('Chronicles · gameplay visual desktop + Android', async ({ browser }) => {
-    // This visual proof renders two full Three.js sessions plus an authored combat state.
-    // Keep interaction/assertion timeouts strict; widen only its total hosted wall clock.
-    test.setTimeout(240_000);
-    await mkdir(ARTIFACT_DIR, { recursive: true });
-
-    const captures = [];
-    for (const capture of CAPTURES) {
-      await withCapturePage(browser, capture, async (page) => {
-        const chronicles = page.getByRole('button', { name: /Chronicles of Matthias/ });
-        await expect(chronicles).toBeVisible();
-        await chronicles.click();
-        // Chronicles opens an expedition book and character setup before
-        // mounting the first-person scene. Exercise that real player flow.
-        await confirmChroniclesCharacterSetup(page);
-        await expect(page.locator('[data-chronicles="true"]')).toBeVisible();
-        const chroniclesCanvas = page.locator('[data-chronicles-renderer="three"] canvas');
-        const portraitThumbnails = page.locator('[data-chronicles-party-thumbnail]');
-        await expect(chroniclesCanvas).toHaveCount(1, { timeout: 20_000 });
-        await expect(chroniclesCanvas).toBeVisible();
-        await expect(portraitThumbnails).toHaveCount(4);
-        await expect(portraitThumbnails.first()).toBeVisible();
-        await page.waitForTimeout(450);
-
-        const health = await captureChroniclesHealth(page);
-        captures.push({ label: capture.label, ...health });
-        expect(health.horizontalOverflow, `${capture.label}: Chronicles overflow`).toBe(false);
-        expect(health.gameCanvasCount, `${capture.label}: Chronicles dungeon canvas`).toBe(1);
-        expect(health.portraitThumbnailCount, `${capture.label}: Chronicles authored portraits`).toBe(4);
-        expect(health.stage?.width || 0, `${capture.label}: Chronicles stage visible`).toBeGreaterThan(0);
-        expect(health.gameCanvas?.width || 0, `${capture.label}: Chronicles dungeon canvas visible`).toBeGreaterThan(0);
-        expect(health.gameCanvas?.height || 0, `${capture.label}: Chronicles dungeon canvas height`).toBeGreaterThan(0);
-        expect(health.firstPortrait?.width || 0, `${capture.label}: Chronicles authored portrait visible`).toBeGreaterThan(0);
-        expect(health.firstPortrait?.height || 0, `${capture.label}: Chronicles authored portrait height`).toBeGreaterThan(0);
-
-        await captureFrozenFrame(page, {
-          path: `${ARTIFACT_DIR}/chronicles-playing-${capture.label}.png`,
-          fullPage: true,
-        });
-
-        // Walk through the real Swordhaven south gate to the original crypt.
-        // The crypt tactical encounter is still owned by the authored map.
-        await page.keyboard.press('d');
-        await page.keyboard.press('d');
-        await page.keyboard.press('w');
-        const game = page.locator('[data-chronicles="true"]');
-        await expect(game).toHaveAttribute('data-chronicles-map-id', 'crypt-eight-squares');
-        await expect(page.getByText('Derrota al peón corrompido', { exact: true })).toBeVisible();
-        // Record the real crypt entrance rather than scripting a brittle
-        // battle/AI sequence. Sigil mechanics have their own focused tests.
-        await captureFrozenFrame(page, {
-          path: `${ARTIFACT_DIR}/chronicles-crypt-entry-${capture.label}.png`,
-          fullPage: true,
-        });
-        // The established first-person return portal must remain actionable
-        // after the Swordhaven → crypt crossing.
-        const returnAction = game.locator('[data-chronicles-touch-action="interact"]');
-        await expect(returnAction).toHaveAttribute('aria-label', 'Regresar a Swordhaven');
-        await page.keyboard.press('f');
-        await expect(game).toHaveAttribute('data-chronicles-map-id', 'swordhaven-square');
-        await expect(game).toHaveAttribute('data-chronicles-phase', 'explore');
-        await captureFrozenFrame(page, {
-          path: `${ARTIFACT_DIR}/chronicles-swordhaven-return-${capture.label}.png`,
-          fullPage: true,
-        });
-      });
-    }
-
-    await writeFile(
-      `${ARTIFACT_DIR}/chronicles-visual-health.json`,
-      `${JSON.stringify({ schema: 1, scope: 'chronicles', captures }, null, 2)}\n`,
       'utf8',
     );
   });

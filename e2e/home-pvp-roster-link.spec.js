@@ -23,7 +23,15 @@ test('Home · el roster 1 vs 1 abre la sala y puede minimizarse', async ({ page 
 
   const lobby = page.getByRole('dialog', { name: 'Duelo 1 contra 1 · War Room' });
   await expect(lobby).toBeVisible();
+  const homeCanvas = page.locator('canvas.illustrated-home__castle-3d');
+  const hasHomeCanvas = (await homeCanvas.count()) === 1;
+  if (hasHomeCanvas) {
+    await expect(homeCanvas, 'Home stays mounted but is not composited under Duel Hall')
+      .toHaveCSS('visibility', 'hidden');
+  }
   await expect(lobby.getByRole('heading', { name: 'Sala de Duelos' })).toBeVisible();
+  // Passive browsing must not preload the separate gameplay Duel Room scene.
+  await expect(page.locator('link[data-war-room-prefetch="duel"]')).toHaveCount(0);
   await expect(lobby.getByRole('list', { name: 'Cómo jugar 1 contra 1' })).toContainText('Ponte disponible');
   await expect(lobby.getByRole('list', { name: 'Cómo jugar 1 contra 1' })).toContainText('Pulsa Retar');
   await expect(rosterLink).toBeHidden();
@@ -35,6 +43,10 @@ test('Home · el roster 1 vs 1 abre la sala y puede minimizarse', async ({ page 
   await minimizeButton.click();
 
   await expect(lobby).toBeHidden();
+  if (hasHomeCanvas) {
+    await expect(homeCanvas, 'Closing Duel Hall restores the existing Home canvas')
+      .toHaveCSS('visibility', 'visible');
+  }
   // Available but nobody waiting on him: still no floating card.
   await expect(page.locator('.menu.menu-illustrated > .home-pvp-roster-link')).toHaveCount(0);
   const more = page.locator('.illustrated-home__play-more');
@@ -79,8 +91,11 @@ test('Roster 1v1 · retar a un rival es una acción directa sin selección inter
 
   await expect(lobby.getByText('RIVAL SELECCIONADO', { exact: true })).toHaveCount(0);
   await expect(bobRow.getByText('VS TI · 1V 0T 1D', { exact: true })).toBeVisible();
+  await expect(page.locator('link[data-war-room-prefetch="duel"]')).toHaveCount(0);
   await bobRow.getByRole('button', { name: 'Retar a bob', exact: true }).click();
   await expect.poll(() => challengePosts).toBe(1);
+  // The deliberate challenge starts the game-room warmup, without blocking the POST.
+  await expect(page.locator('link[data-war-room-prefetch="duel"]')).toHaveCount(1);
 });
 
 

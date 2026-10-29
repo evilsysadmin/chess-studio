@@ -569,3 +569,248 @@
     backdrop-filter: none;
   }
 }
+/* Accessible one-tap alternative to dragging reserves. Each action is a sibling
+ * of the dossier button, never a nested interactive element. */
+.combat-war-table .deployment-reserve-entry {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: .34rem;
+  align-items: stretch;
+}
+.combat-war-table .deployment-reserve-entry .deployment-unit-card {
+  min-width: 0;
+  grid-template-columns: 32px minmax(0, 1fr);
+  gap: .32rem;
+  padding: .42rem;
+}
+.combat-war-table .deployment-reserve-entry .deployment-unit-state { display: none; }
+.combat-war-table .deployment-quick-deploy {
+  min-width: 92px;
+  min-height: 44px;
+  margin: 0;
+  padding: .32rem .4rem;
+  border-color: rgba(215, 182, 111, .42);
+  background: rgba(167, 126, 42, .18);
+  color: #f0d9aa;
+  font-size: .69rem;
+  font-weight: 750;
+}
+.combat-war-table .deployment-quick-deploy:disabled {
+  cursor: not-allowed;
+  opacity: .4;
+}
+.combat-war-table .deployment-reserve-market {
+  justify-self: start;
+  min-height: 44px;
+  padding: .32rem .55rem;
+  border: 1px solid rgba(215, 182, 111, .28);
+  border-radius: 8px;
+  background: rgba(7, 10, 14, .76);
+  color: #ebd094;
+  cursor: pointer;
+}
+.combat-war-table .deployment-board-guidance {
+  width: min(100%, 76dvh, 760px);
+  min-height: 34px;
+  box-sizing: border-box;
+  margin: 0;
+  padding: .42rem .66rem;
+  border: 1px solid rgba(215, 182, 111, .24);
+  border-radius: 8px;
+  background: rgba(7, 10, 14, .82);
+  color: rgba(242, 226, 190, .9);
+  font-size: .68rem;
+  line-height: 1.35;
+  text-align: center;
+}
+.combat-war-table .deployment-mobile-autofill { display: none; }
+.combat-war-table .deployment-footer-copy { min-width: 0; color: #e5d4b1; }
+@media (max-width: 780px) {
+  .combat-war-table .deployment-board-guidance { width: 100%; min-height: 40px; }
+  .combat-war-table .deployment-mobile-autofill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    margin: 0;
+    font-size: .7rem;
+  }
+  .combat-war-table .combat-deployment-footer:has(.deployment-mobile-autofill) {
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1.5fr);
+  }
+  .combat-war-table .combat-deployment-footer .primary-btn {
+    min-width: 0;
+    padding-inline: .44rem;
+    white-space: normal;
+    line-height: 1.2;
+  }
+  .combat-war-table .deployment-footer-copy { font-size: .63rem; line-height: 1.24; }
+  .combat-war-table .deployment-quick-deploy { min-width: 110px; }
+}
+@media (max-width: 430px) {
+  .combat-war-table .combat-deployment-footer:has(.deployment-mobile-autofill) {
+    grid-template-columns: 66px 106px minmax(0, 1fr);
+  }
+  .combat-war-table .deployment-mobile-autofill { padding-inline: .28rem; font-size: .6rem; }
+  .combat-war-table .deployment-footer-copy { font-size: .58rem; }
+}
+/* Consequential decisions should be legible, without accidentally replacing veterans. */
+.combat-war-table .deployment-barracks:has(.deployment-casualties) .deployment-casualties {
+  max-height: min(57dvh, 520px);
+  border-color: rgba(215, 115, 95, .48);
+  overscroll-behavior: contain;
+}
+.combat-war-table .deployment-casualties-warning {
+  color: #f1c3ae;
+  font-size: .68rem;
+  line-height: 1.45;
+}
+.combat-war-table .deployment-casualty-card {
+  grid-template-columns: 28px minmax(0, 1fr);
+  gap: .35rem .45rem;
+  padding: .57rem;
+  background: rgba(7, 10, 14, .67);
+}
+.combat-war-table .deployment-casualty-name { min-height: 44px; white-space: normal; }
+.combat-war-table .deployment-casualty-symbol { font-size: 1.7rem; }
+.combat-war-table .deployment-casualty-record {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: .25rem;
+}
+.combat-war-table .deployment-casualty-record span {
+  padding: .23rem .32rem;
+  border: 1px solid rgba(212, 180, 110, .20);
+  border-radius: 5px;
+  color: #ead3ab;
+  font: .61rem/1.45 var(--font-mono);
+}
+.combat-war-table .deployment-casualty-record .deployment-casualty-honours { color: #f7d683; }
+.combat-war-table .deployment-casualty-outcomes {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: .32rem;
+}
+.combat-war-table .deployment-casualty-path {
+  display: grid;
+  gap: .18rem;
+  padding: .48rem;
+  border: 1px solid rgba(210, 181, 111, .25);
+  border-radius: 8px;
+  background: rgba(23, 56, 34, .17);
+}
+.combat-war-table .deployment-casualty-path.retire {
+  border-color: rgba(205, 97, 85, .28);
+  background: rgba(85, 27, 24, .16);
+}
+.combat-war-table .deployment-casualty-path b { font: .61rem var(--font-mono); color: #dfc994; letter-spacing: .07em; }
+.combat-war-table .deployment-casualty-path span { font-size: .75rem; font-weight: 700; }
+.combat-war-table .deployment-casualty-path small { font-size: .66rem; line-height: 1.45; color: rgba(232, 220, 195, .76); }
+.combat-war-table .deployment-casualty-actions .secondary-btn,
+.combat-war-table .deployment-casualty-confirm button { min-height: 44px; font-size: .67rem; }
+.combat-war-table .deployment-casualty-confirm {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: .45rem;
+  padding: .62rem;
+  border: 1px solid rgba(227, 113, 95, .65);
+  border-radius: 8px;
+  background: rgba(83, 23, 22, .55);
+}
+.combat-war-table .deployment-casualty-confirm strong { color: #ffe3d2; font-size: .77rem; }
+.combat-war-table .deployment-casualty-confirm p { margin: 0; font-size: .69rem; line-height: 1.45; }
+.combat-war-table .deployment-casualty-confirm > div { display: grid; gap: .38rem; }
+@media (max-width: 780px) {
+  .combat-war-table .combat-deployment-layout:has(.deployment-casualties) .deployment-barracks { order: 0; }
+  .combat-war-table .deployment-barracks:has(.deployment-casualties) .deployment-casualties { max-height: min(63dvh, 510px); }
+}
+
+
+/* Casualty UX: character first, two readable decisions, rules on demand. */
+.combat-war-table .deployment-casualty-question {
+  grid-column: 1 / -1;
+  margin: .25rem 0 0;
+  color: #f6e4bf;
+  font-size: .81rem;
+  line-height: 1.4;
+  font-weight: 750;
+}
+.combat-war-table .deployment-casualty-choices {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: .5rem;
+}
+.combat-war-table .deployment-casualty-choice {
+  display: grid;
+  gap: .4rem;
+  padding: .56rem;
+  border: 1px solid rgba(219, 185, 111, .30);
+  border-radius: 9px;
+  background: rgba(34, 52, 28, .25);
+}
+.combat-war-table .deployment-casualty-choice.retire {
+  border-color: rgba(164, 115, 106, .24);
+  background: rgba(65, 29, 28, .14);
+}
+.combat-war-table .deployment-casualty-choice-copy {
+  display: grid;
+  gap: .12rem;
+}
+.combat-war-table .deployment-casualty-choice-copy strong {
+  color: #ecd49e;
+  font-size: .79rem;
+}
+.combat-war-table .deployment-casualty-choice-copy small {
+  color: rgba(232, 221, 193, .80);
+  font-size: .68rem;
+  line-height: 1.42;
+}
+.combat-war-table .deployment-casualty-choice .primary-btn,
+.combat-war-table .deployment-casualty-choice .secondary-btn {
+  width: 100%;
+  min-height: 44px;
+  margin: 0;
+  font-size: .73rem;
+}
+.combat-war-table .deployment-casualty-choice .primary-btn:disabled {
+  opacity: .52;
+}
+.combat-war-table .deployment-casualty-mechanics {
+  grid-column: 1 / -1;
+  border: 1px solid rgba(215, 182, 111, .18);
+  border-radius: 8px;
+  background: rgba(10, 14, 17, .40);
+}
+.combat-war-table .deployment-casualty-mechanics > summary {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  gap: .4rem;
+  padding: .5rem .65rem;
+  color: #e4d1a9;
+  font-size: .68rem;
+  cursor: pointer;
+}
+.combat-war-table .deployment-casualty-mechanics > summary::after {
+  content: '+';
+  margin-left: auto;
+  font-size: 1rem;
+}
+.combat-war-table .deployment-casualty-mechanics[open] > summary::after { content: '−'; }
+.combat-war-table .deployment-casualty-mechanics > div {
+  display: grid;
+  gap: .45rem;
+  padding: .1rem .65rem .65rem;
+}
+.combat-war-table .deployment-casualty-mechanics p {
+  margin: 0;
+  color: rgba(235, 224, 202, .85);
+  font-size: .68rem;
+  line-height: 1.5;
+}
+@media (max-width: 780px) {
+  .combat-war-table .deployment-casualty-choices { gap: .45rem; }
+  .combat-war-table .deployment-casualty-choices .primary-btn,
+  .combat-war-table .deployment-casualty-choices .secondary-btn { min-height: 46px; }
+}

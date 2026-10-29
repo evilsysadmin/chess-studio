@@ -24,6 +24,11 @@ import {
   shouldStartHansFireEpilogue,
   shouldStartHansLeavingGrumble,
 } from './WarRoomHansFireCallContract.js';
+import {
+  getWarRoomHansV2MobileHearthCueCopy,
+  showWarRoomHansV2MobileHearthCue,
+} from './WarRoomHansMobileHearthCue.js';
+import { createWarRoomHansNarrativePulse } from './WarRoomHansNarrativePulse.js';
 import './WarRoomHansFireCall.css';
 
 function sameAnchor(current, next) {
@@ -40,6 +45,7 @@ export default function WarRoomHansFireCall({
   fen = '',
   isThreeD = false,
   enabled = false,
+  quiet = false,
   matthiasAnchorStyle = null,
   matthiasTrackedSquare = null,
   onComplete = null,
@@ -48,6 +54,7 @@ export default function WarRoomHansFireCall({
   const [phase, setPhase] = useState('');
   const [hansAnchor, setHansAnchor] = useState(null);
   const [suggestion, setSuggestion] = useState(null);
+  const [mobileHearthCuePhase, setMobileHearthCuePhase] = useState('');
   const fenRef = useRef(fen);
   fenRef.current = fen;
   const anchorReady = Boolean(matthiasAnchorStyle && matthiasTrackedSquare);
@@ -56,6 +63,7 @@ export default function WarRoomHansFireCall({
     setPhase('');
     setHansAnchor(null);
     setSuggestion(null);
+    setMobileHearthCuePhase('');
   }, [gameId]);
 
   useEffect(() => {
@@ -84,6 +92,7 @@ export default function WarRoomHansFireCall({
     setPhase('');
     setHansAnchor(null);
     setSuggestion(null);
+    setMobileHearthCuePhase('');
     if (!portalHost || !enabled || !isThreeD || !gameId || !anchorReady) return undefined;
 
     const existingCanvas = portalHost.querySelector('.board3d-main-canvas');
@@ -95,7 +104,6 @@ export default function WarRoomHansFireCall({
 
     let live = true;
     let currentPhase = 'loading';
-    let frameId = 0;
     let previousTime = null;
     let elapsed = 0;
     let readyPaints = 0;
@@ -137,16 +145,27 @@ export default function WarRoomHansFireCall({
         // king anchor. Hans' choreography still waits for the complete Three.js
         // scene, so a slow deferred finalizer cannot make the first bubble vanish
         // behind a readiness timeout or release Hans before his actor exists.
-        if (canvas.dataset.warRoomHansSceneReady !== 'true') {
-          frameId = window.requestAnimationFrame(tick);
-          return;
-        }
+        if (canvas.dataset.warRoomHansSceneReady !== 'true') return true;
 
         const hansScreen = canvas.dataset.warRoomHansScreen || 'missing';
         const route = canvas.dataset.warRoomHansRoute || '';
         const logicalX = Number(canvas.dataset.warRoomHansLogicalX);
         const doorOpen = Number(canvas.dataset.warRoomHansDoorOpen);
         const choreographyPhase = canvas.dataset.warRoomHansChoreographyPhase || '';
+        // On 390px portrait the board stays fully playable but Hans works
+        // beyond the left crop. A tiny hearth-adjacent cue communicates the
+        // *real* stoke-fire event without claiming he is visually on-screen.
+        const showCue = showWarRoomHansV2MobileHearthCue({
+          variant: canvas.dataset.warRoomVariant,
+          screen: hansScreen,
+          choreographyPhase,
+          actorVisible: canvas.dataset.warRoomHansActorVisible === 'true',
+          compactTouch: Boolean(window.matchMedia?.('(pointer: coarse) and (max-width: 760px)')?.matches),
+          narrativePhase: currentPhase,
+        });
+        const nextCuePhase = showCue ? choreographyPhase : '';
+        setMobileHearthCuePhase((previous) =>
+          previous === nextCuePhase ? previous : nextCuePhase);
 
         if (currentPhase === 'matthias') {
           elapsed += delta;
@@ -282,18 +301,30 @@ export default function WarRoomHansFireCall({
           setPhase('epilogue');
         }
       }
-      if (currentPhase !== '') frameId = window.requestAnimationFrame(tick);
+      return currentPhase !== '';
     };
 
-    const resetVisibleClock = () => { previousTime = null; };
+    // This is an orchestration clock for speech and phase metadata, not the
+    // Three.js/Hans animation clock. Pause completely in hidden tabs.
+    const pulse = createWarRoomHansNarrativePulse({
+      onTick: tick,
+      now: () => performance.now(),
+      isHidden: () => document.visibilityState === 'hidden',
+      setTimer: (callback, delay) => window.setTimeout(callback, delay),
+      clearTimer: (id) => window.clearTimeout(id),
+    });
+    const resetVisibleClock = () => {
+      previousTime = null;
+      pulse.onVisibilityChange();
+    };
     document.addEventListener('visibilitychange', resetVisibleClock);
-    frameId = window.requestAnimationFrame(tick);
+    pulse.start();
     return () => {
       document.removeEventListener('visibilitychange', resetVisibleClock);
       const canvas = portalHost.querySelector('.board3d-main-canvas');
       if (canvas) canvas.dataset.warRoomHansNarrativePhase = 'done';
       live = false;
-      window.cancelAnimationFrame(frameId);
+      pulse.dispose();
     };
   }, [anchorReady, enabled, gameId, isThreeD, onComplete, portalHost]);
 
@@ -311,7 +342,8 @@ export default function WarRoomHansFireCall({
     '--warroom-fire-call-tail-x': '50%',
   } : null, [matthiasAnchorStyle]);
 
-  if (!isThreeD || !portalHost || !enabled) return null;
+  const mobileHearthCueCopy = getWarRoomHansV2MobileHearthCueCopy(mobileHearthCuePhase);
+  if (!isThreeD || !portalHost || !enabled || quiet) return null;
 
   return createPortal(
     <div
@@ -319,6 +351,15 @@ export default function WarRoomHansFireCall({
       data-testid="warroom-hans-fire-call-overlay"
       data-fire-call-phase={phase || 'done'}
     >
+      {mobileHearthCueCopy && (
+        <aside
+          className="warroom-hans-mobile-hearth-cue"
+          data-testid="warroom-hans-mobile-offscreen-cue"
+          role="status"
+          aria-live="polite"
+          aria-label={mobileHearthCueCopy.ariaLabel}
+        ><span>HANS · JUNTO AL HOGAR</span>{mobileHearthCueCopy.text}</aside>
+      )}
       {phase === 'matthias' && matthiasStyle && (
         <aside className="warroom-fire-call-bubble warroom-fire-call-bubble-matthias" style={matthiasStyle} data-matthias-square={matthiasTrackedSquare || ''} role="status" aria-live="polite" aria-label="Matthias llama a Hans por el fuego">
           <span>MATTHIAS</span><p>{MATTHIAS_FIRE_CALL_LINE}</p>

@@ -51,22 +51,19 @@ describe('labLaunchIntent', () => {
     unsubscribe();
   });
 
-  it('can remember Chronicles modes for refresh without widening one-shot launch requests', () => {
-    expect(rememberLabMode('chronicles')).toBe('chronicles');
-    expect(loadRememberedLabMode()).toBe('chronicles');
-    expect(rememberLabMode('chronicles-tactics')).toBe('chronicles-tactics');
-    expect(loadRememberedLabMode()).toBe('chronicles-tactics');
+  it('no longer remembers Chronicles modes: they open their own site', () => {
+    expect(rememberLabMode('chronicles')).toBeNull();
+    expect(loadRememberedLabMode()).toBeNull();
+    expect(rememberLabMode('chronicles-tactics')).toBeNull();
+    expect(loadRememberedLabMode()).toBeNull();
 
     requestLabLaunch('chronicles');
     expect(loadLabLaunch()).toBeNull();
     expect(consumeLabLaunch()).toBeNull();
-
-    clearRememberedLabMode();
-    expect(loadRememberedLabMode()).toBeNull();
   });
 
   it('restores each game mode after a reload, and clears it when leaving to the hub', () => {
-    for (const mode of ['chronicles', 'chronicles-tactics', 'chess-football-godot', 'chesscom']) {
+    for (const mode of ['chess-football-godot', 'chesscom']) {
       expect(rememberLabMode(mode)).toBe(mode);
       expect(loadRememberedLabMode()).toBe(mode);
     }

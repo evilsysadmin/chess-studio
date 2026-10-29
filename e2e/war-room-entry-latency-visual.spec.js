@@ -1,4 +1,8 @@
 import { expect, test } from '@playwright/test';
+import { mkdir } from 'node:fs/promises';
+import { r2AssetEntry } from '../frontend/src/r2Assets.js';
+import { WAR_ROOM_V4_RUNTIME_ASSET_URL } from '../frontend/src/components/WarRoomV4Asset.js';
+import { WAR_ROOM_V3_RUNTIME_ASSET_URL } from '../frontend/src/components/WarRoomV3Asset.js';
 import {
   activateSetupControl,
   buttonWithVisibleText,
@@ -21,7 +25,84 @@ async function leaveGame(page) {
   await expect(page.getByRole('region', { name: 'Modos principales', exact: true })).toBeVisible({ timeout: 30_000 });
 }
 
-async function enterAndMeasure(page, requestLog, variant, visit) {
+
+/**
+ * Observe actual GLB requests without changing cache policy or buffering the
+ * response in JS. CDP's encodedDataLength is wire traffic (including protocol
+ * overhead), NOT decoded model bytes, GPU memory, or a hardware GPU benchmark.
+ * Each Playwright test starts in a fresh browser context: first visit is cold;
+ * the return to the room is warm in the same browser/cache context.
+ */
+async function installRuntimeGlbProbe(page, variant) {
+  const cdp = await page.context().newCDPSession(page);
+  const requests = new Map();
+  let currentVisit = 'cold';
+  const relevant = (url) => url.includes(`/war-room/${variant}/`) && /\.glb(?:[?#]|$)/.test(url);
+
+  cdp.on('Network.requestWillBeSent', ({ requestId, request, initiator, timestamp }) => {
+    if (!relevant(request.url)) return;
+    requests.set(requestId, {
+      visit: currentVisit,
+      url: request.url,
+      initiator: initiator?.type || 'unknown',
+      startedAt: timestamp,
+      elapsedMs: null,
+      encodedBytes: null,
+      cacheHit: false,
+      status: null,
+      cacheControl: null,
+      ageSeconds: null,
+      failed: false,
+    });
+  });
+  cdp.on('Network.responseReceived', ({ requestId, response }) => {
+    const entry = requests.get(requestId);
+    if (!entry) return;
+    entry.status = response.status;
+    const headers = Object.fromEntries(
+      Object.entries(response.headers || {}).map(([name, value]) => [name.toLowerCase(), value]),
+    );
+    entry.cacheControl = headers['cache-control'] || null;
+    entry.ageSeconds = headers.age === undefined ? null : Number(headers.age);
+    entry.cacheHit ||= response.fromDiskCache === true || response.fromPrefetchCache === true;
+  });
+  cdp.on('Network.requestServedFromCache', ({ requestId }) => {
+    const entry = requests.get(requestId);
+    if (entry) entry.cacheHit = true;
+  });
+  cdp.on('Network.loadingFinished', ({ requestId, encodedDataLength, timestamp }) => {
+    const entry = requests.get(requestId);
+    if (!entry) return;
+    entry.encodedBytes = Math.max(0, Math.round(encodedDataLength || 0));
+    entry.elapsedMs = Math.round(Math.max(0, timestamp - entry.startedAt) * 1000);
+  });
+  cdp.on('Network.loadingFailed', ({ requestId }) => {
+    const entry = requests.get(requestId);
+    if (entry) entry.failed = true;
+  });
+  await cdp.send('Network.enable');
+
+  return {
+    begin(visit) { currentVisit = visit; },
+    snapshot(visit) {
+      const matches = [...requests.values()].filter((entry) => entry.visit === visit);
+      return {
+        requestCount: matches.length,
+        cacheHits: matches.filter((entry) => entry.cacheHit).length,
+        transferredBytes: matches.reduce((sum, entry) => sum + (entry.encodedBytes || 0), 0),
+        failedRequests: matches.filter((entry) => entry.failed).length,
+        urls: [...new Set(matches.map((entry) => entry.url))],
+        requests: matches.map(({ initiator, status, cacheControl, ageSeconds, cacheHit, encodedBytes, elapsedMs }) => ({
+          initiator, status, cacheControl, ageSeconds, cacheHit, encodedBytes, elapsedMs,
+        })),
+      };
+    },
+    close: () => cdp.detach(),
+  };
+}
+
+async function enterAndMeasure(page, requestLog, variant, visit, assetProbe) {
+  assetProbe?.begin(visit);
   await buttonWithVisibleText(page, 'Partida rápida').click();
   const start = await page.evaluate(() => performance.now());
   await activateSetupControl(page.getByRole('button', { name: 'Empezar partida', exact: true }));
@@ -53,9 +134,32 @@ async function enterAndMeasure(page, requestLog, variant, visit) {
     programs: Number(element.dataset.board3dMemoryPrograms || 0),
   }));
 
+  // Diagnostics are emitted once per shell phase, and are not CPU-clock
+  // measurements. This separates GLB transfer/parse, material setup,
+  // effects install and the synchronous ready paint.
+  const shellPhases = await canvas.evaluate((element) => {
+    const names = ['import', 'glb', 'materials', 'effects', 'render', 'postRender', 'readyPaint'];
+    return Object.fromEntries(names.map((phase) => {
+      const key = `warRoomShellTiming${phase[0].toUpperCase()}${phase.slice(1)}Ms`;
+      const raw = element.dataset[key];
+      return [phase, raw === undefined ? null : Number(raw)];
+    }));
+  });
+
+  const prefetchHref = await page.evaluate((id) => (
+    document.querySelector(`link[data-war-room-prefetch="${id}"]`)?.href || null
+  ), variant);
+  const runtimeAsset = assetProbe?.snapshot(visit) || null;
+
   const row = {
     variant,
     visit,
+    prefetchHref,
+    runtimeAsset,
+    // mockApi(page) installs page.route(); Playwright disables HTTP caching
+    // whenever routing is active. These are first/return scene timings only.
+    cacheMeasurement: 'disabled-by-mocked-routes',
+    shellPhases,
     firstFrameMs: Math.round(firstFrame),
     shellReadyMs: Math.round(shellReady),
     interactiveMs: Math.round(interactive),
@@ -87,11 +191,56 @@ for (const variant of ['v3', 'v4']) {
         }),
       },
     });
+    // Listen before Home appears: pointer/intent prefetch can start while
+    // login finishes, and cold bytes must include that earliest GLB request.
+    // CDP is Chromium-only; other projects retain the latency assertions.
+    const assetProbe = test.info().project.name === 'chromium'
+      ? await installRuntimeGlbProbe(page, variant)
+      : null;
     await login(page);
 
-    const cold = await enterAndMeasure(page, requestLog, variant, 'cold');
-    await leaveGame(page);
-    const warm = await enterAndMeasure(page, requestLog, variant, 'warm');
+    let cold;
+    let warm;
+    try {
+      cold = await enterAndMeasure(page, requestLog, variant, 'cold', assetProbe);
+      await leaveGame(page);
+      warm = await enterAndMeasure(page, requestLog, variant, 'warm', assetProbe);
+    } finally {
+      await assetProbe?.close();
+    }
+
+    // Visual evidence for the V4 loader change: capture the real interactive
+    // room after timing has finished, never counting screenshot cost as latency.
+    // Canonical V1/V2/V3 screenshots are owned by the existing visual producer.
+    if (variant === 'v4' && process.env.APP_VISUAL_ARTIFACT === '1') {
+      const viewport = page.viewportSize();
+      const dimensions = viewport ? `${viewport.width}x${viewport.height}` : 'viewport';
+      const directory = '../.artifacts/app-visual';
+      await mkdir(directory, { recursive: true });
+      await page.screenshot({
+        path: `${directory}/war-room-v4-entry-${dimensions}.png`,
+        animations: 'disabled',
+        timeout: 30_000,
+      });
+    }
+
+    if (assetProbe) {
+      // Guard the exact content-hash revision, not merely any GLB under the
+      // same directory. Neither preload nor runtime may revisit current.glb.
+      expect(cold.runtimeAsset.requestCount).toBeGreaterThan(0);
+      const immutableUrl = variant === 'v3'
+        ? WAR_ROOM_V3_RUNTIME_ASSET_URL : WAR_ROOM_V4_RUNTIME_ASSET_URL;
+      const published = r2AssetEntry(`warRoom.${variant}.runtime`);
+      expect(immutableUrl).toBe(published.url);
+      expect(cold.runtimeAsset.urls).toEqual([immutableUrl]);
+      expect(warm.runtimeAsset.urls).toEqual([immutableUrl]);
+      if (cold.prefetchHref) {
+        expect(cold.runtimeAsset.urls).toEqual([cold.prefetchHref]);
+      }
+      if (warm.runtimeAsset.urls.length && warm.prefetchHref) {
+        expect(warm.runtimeAsset.urls).toEqual([warm.prefetchHref]);
+      }
+    }
 
     // Diagnostic baseline only: do not invent latency budgets before hardware
     // and software-rendered numbers are observed. Guard only against session
@@ -99,3 +248,97 @@ for (const variant of ['v3', 'v4']) {
     expect(warm.interactiveMs).toBeLessThanOrEqual(Math.round(cold.interactiveMs * 1.25 + 1000));
   });
 }
+
+
+// This isolated test deliberately NEVER calls mockApi, page.route, context.route,
+// routeFromHAR, or a request interception helper. Playwright disables HTTP cache
+// as soon as routing is enabled, even when the GLB itself is not intercepted.
+// The existing first/return chess journeys measure rendering and interaction;
+// only this unmapped browser context can assess actual HTTP cache reuse.
+test('War Room · real browser HTTP cache probe without request interception', async ({ page }, testInfo) => {
+  if (testInfo.project.name !== 'chromium') return; // CDP probe applies to Chromium only.
+  test.setTimeout(120_000);
+  // Login surface needs no simulated backend/game state. Keep the browser's
+  // normal cache behavior while fetching the *actual* runtime model URLs.
+  // V3/V4 use SHA-pinned copies of the exact approved #5721 runtime bytes.
+  // Their older content-addressed manifest snapshots were NOT Hans-ready.
+  await page.goto('./', { waitUntil: 'domcontentloaded' });
+  for (const variant of ['v3', 'v4']) {
+    const entry = r2AssetEntry(`warRoom.${variant}.runtime`);
+    const modelUrl = variant === 'v3'
+      ? WAR_ROOM_V3_RUNTIME_ASSET_URL : WAR_ROOM_V4_RUNTIME_ASSET_URL;
+    expect(modelUrl).toBe(entry.url);
+    expect(modelUrl).toContain(`/war-room/${variant}/runtime/`);
+    const probe = await installRuntimeGlbProbe(page, variant);
+    const load = () => page.evaluate(async (url) => {
+      const response = await fetch(url, { cache: 'default', mode: 'cors' });
+      if (!response.ok || !response.body) {
+        throw new Error(`R2 model fetch failed: HTTP ${response.status}`);
+      }
+      let decodedBytes = 0;
+      const reader = response.body.getReader();
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        decodedBytes += value?.byteLength || 0;
+      }
+      return {
+        status: response.status,
+        decodedBytes,
+        cacheControl: response.headers.get('cache-control'),
+      };
+    }, modelUrl);
+
+    // Read measurements only after CDP loadingFinished. A 0-byte value for
+    // an *unfinished* request is not evidence of a browser cache hit.
+    const finishedSnapshot = async (visit) => {
+      await expect.poll(() => {
+        const report = probe.snapshot(visit);
+        return report.requestCount > 0 && report.requests.every((request) =>
+          request.encodedBytes !== null || request.failed);
+      }, { timeout: 20_000 }).toBe(true);
+      return probe.snapshot(visit);
+    };
+    let first;
+    let second;
+    try {
+      probe.begin('cold');
+      const coldResponse = await load();
+      first = { ...(await finishedSnapshot('cold')), response: coldResponse };
+      probe.begin('warm');
+      const warmResponse = await load();
+      second = { ...(await finishedSnapshot('warm')), response: warmResponse };
+    } finally {
+      await probe.close();
+    }
+    expect(first.response.decodedBytes).toBe(entry.bytes);
+    expect(second.response.decodedBytes).toBe(first.response.decodedBytes);
+    console.log(`War Room R2 unmapped browser cache ${JSON.stringify({
+      variant,
+      modelUrl,
+      first,
+      second,
+      cacheValidated: second.cacheHits > 0 && second.transferredBytes === 0,
+    })}`);
+
+    {
+      // The model fetched from the browser must prove the manifest's exact
+      // SHA-256, not just a matching URL/length or a successfully drawn frame.
+      const immutable = await page.evaluate(async (url) => {
+        const response = await fetch(url, { cache: 'no-store', mode: 'cors' });
+        if (!response.ok) throw new Error(`War Room immutable GLB HTTP ${response.status}`);
+        const bytes = await response.arrayBuffer();
+        const digest = await crypto.subtle.digest('SHA-256', bytes);
+        const sha256 = [...new Uint8Array(digest)]
+          .map((byte) => byte.toString(16).padStart(2, '0')).join('');
+        return { bytes: bytes.byteLength, sha256 };
+      }, modelUrl);
+      expect(immutable.sha256).toBe(entry.sha256);
+      expect(immutable.bytes).toBe(entry.bytes);
+      console.log(`War Room immutable GLB content parity ${JSON.stringify({
+        variant, url: modelUrl, sha256: immutable.sha256, bytes: immutable.bytes,
+        manifestMatched: true,
+      })}`);
+    }
+  }
+});

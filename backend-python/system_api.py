@@ -13,7 +13,6 @@ import time
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 
 
-import chronicles_run_store
 import db
 import feedback_store as fstore
 import game_store as gstore
@@ -33,7 +32,6 @@ from runtime_contract import staging_runtime_contract_ready
 from api_models import ClientTelemetryRequest, DeleteAccountRequest
 from client_telemetry import record_client_event
 from pvp_api import build_pvp_router
-from chronicles_api import build_chronicles_router
 from pawn_slug_api import build_pawn_slug_router
 
 _logger = logging.getLogger("chess.system")
@@ -103,13 +101,27 @@ def _parse_billing_costs(body: bytes) -> list[tuple[str, float, str]]:
     return costs
 
 
+def _legacy_chronicles_routes_enabled() -> bool:
+    """Rollback-only escape hatch; independent Chronicles has its own Go API.
+
+    Never mount a second game API by default in Chess Studio. A deliberate
+    environment opt-in keeps a short recovery window for historical saves.
+    The account-data purge remains active regardless of this setting.
+    """
+    return os.getenv("CHESS_STUDIO_LEGACY_CHRONICLES_API_ENABLED", "").strip().lower() in {"1", "true", "yes"}
+
+
 def build_system_router(*, auth_dependency, is_admin_check, limiter, admin_usernames_getter=None) -> APIRouter:
     router = APIRouter()
     # Keep experimental/game-adjacent transports behind the same authenticated
     # system-router aggregate already mounted by main.py. This avoids a second
     # auth stack while their runtime logic stays isolated from the CPU game API.
     router.include_router(build_pvp_router(auth_dependency=auth_dependency, limiter=limiter))
-    router.include_router(build_chronicles_router(auth_dependency=auth_dependency))
+    if _legacy_chronicles_routes_enabled():
+        # Imported lazily: normal Chess Studio startup does not load a second
+        # game's map engine. Do not remove the legacy user-data purge.
+        from chronicles_api import build_chronicles_router
+        router.include_router(build_chronicles_router(auth_dependency=auth_dependency))
     router.include_router(build_pawn_slug_router(auth_dependency=auth_dependency))
 
     @router.get("/")

@@ -816,10 +816,10 @@
         "name": "selector",
         "label": "Loki selector",
         "type": "textbox",
-        "query": "{service_name=\"chess-studio-backend\"}",
+        "query": "{service_name=\"chess-studio-backend-go\"}",
         "current": {
-          "text": "{service_name=\"chess-studio-backend\"}",
-          "value": "{service_name=\"chess-studio-backend\"}"
+          "text": "{service_name=\"chess-studio-backend-go\"}",
+          "value": "{service_name=\"chess-studio-backend-go\"}"
         },
         "hide": 0,
         "skipUrlSync": false

@@ -1,7 +1,7 @@
 import { CPU_IDENTITY } from '../cpuIdentity.js';
 import { seriesLiveMoment, seriesStatusText } from '../series.js';
 
-export default function GameStatusStrips({ game, zenMode, focusActive, status, context }) {
+export default function GameStatusStrips({ game, zenMode, focusActive, status, context, narrativeQuiet = false }) {
   const liveSeriesMoment = context.seriesState ? seriesLiveMoment(context.seriesState) : null;
 
   return (
@@ -9,8 +9,8 @@ export default function GameStatusStrips({ game, zenMode, focusActive, status, c
       <div className={`status-line ${status.statusClass} ${!zenMode && status.turnBanner && !status.busy ? 'pulse' : ''}`} role="status" aria-label="Estado de la partida" aria-live="polite">
         {status.statusText}
       </div>
-      {!zenMode && !focusActive && status.audienceReaction && <div className="audience-reaction"><span>Grada anónima</span><b>{status.audienceReaction}</b></div>}
-      {!zenMode && !focusActive && status.matthiasSilentBeat && <div className="matthias-silent-beat" role="status" aria-label="Matthias observa en silencio"><img src={CPU_IDENTITY.avatar} alt="" aria-hidden="true" /><span>Matthias</span><b>…</b></div>}
+      {!zenMode && !focusActive && !narrativeQuiet && status.audienceReaction && <div className="audience-reaction"><span>Grada anónima</span><b>{status.audienceReaction}</b></div>}
+      {!zenMode && !focusActive && !narrativeQuiet && status.matthiasSilentBeat && <div className="matthias-silent-beat" role="status" aria-label="Matthias observa en silencio"><img src={CPU_IDENTITY.avatar} alt="" aria-hidden="true" /><span>Matthias</span><b>…</b></div>}
       {!focusActive && context.memoryContext.suddenDeath && <div className="sudden-strip">Sudden Death · vidas: {'♥'.repeat(Math.max(0, context.suddenLives))}{'♡'.repeat(Math.max(0, 3 - context.suddenLives))}</div>}
       {context.controlPrompt && <div className="control-check-strip"><b>Control táctico</b><span>{context.controlPrompt}</span><button className="secondary-btn" onClick={context.onContinueControl}>Ya lo he mirado · que siga</button></div>}
       {!zenMode && !focusActive && context.memoryContext.nemesis && <div className="series-strip nemesis-strip">Némesis · {context.memoryContext.nemesisLabel || 'posición de tu historial'} · entrenamiento sin afectar al rating</div>}

@@ -17,6 +17,14 @@ on:
         required: false
         default: false
         type: boolean
+      expected_sha:
+        description: SHA exacto de 40 caracteres de la acreditación que autorizas
+        required: true
+        type: string
+      staging_ai_run_id:
+        description: Opcional; ID del Staging AI run acreditado para una promoción anterior explícita
+        required: false
+        type: string
 
 permissions:
   actions: write
@@ -102,10 +110,12 @@ jobs:
         id: source
         env:
           GH_TOKEN: ${{ github.token }}
+          PINNED_STAGING_RUN_ID: ${{ inputs.staging_ai_run_id || '' }}
         run: |
           python3 -S scripts/production_release_train.py --self-test
           python3 scripts/production_release_train.py select \
             --repository "$GITHUB_REPOSITORY" \
+            --pinned-run-id "$PINNED_STAGING_RUN_ID" \
             --github-output "$GITHUB_OUTPUT"
 
       - name: Download immutable staging accreditation
@@ -120,6 +130,8 @@ jobs:
       - name: Read accredited source SHA
         if: steps.source.outputs.found == 'true'
         id: accreditation
+        env:
+          EXPECTED_SHA: ${{ inputs.expected_sha || '' }}
         run: >-
           python3 scripts/production_release_train.py read
           --artifact "$RUNNER_TEMP/staging-accreditation/staging-promotion-accreditation.json"
@@ -127,6 +139,8 @@ jobs:
           --run-number "${{ steps.source.outputs.staging_ai_run_number }}"
           --github-output "$GITHUB_OUTPUT"
           --github-env "$GITHUB_ENV"
+          --event "$GITHUB_EVENT_NAME"
+          --expected-sha "$EXPECTED_SHA"
 
       - name: Require current main before starting promotion · lineage, not HEAD
         if: steps.source.outputs.found == 'true'
@@ -166,6 +180,21 @@ jobs:
           else
             echo 'should_deploy=true' >> "$GITHUB_OUTPUT"
           fi
+
+      # Read-only gate before any production mutations, against the selected
+      # staging-accredited source (which may differ from current main).
+      - name: Checkout accredited V4 asset manifest
+        if: steps.production_state.outputs.should_deploy == 'true'
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ env.DEPLOY_SHA }}
+          path: release-proof
+
+      - name: Verify pinned V4 GLB on public R2 before promotion
+        if: steps.production_state.outputs.should_deploy == 'true'
+        run: >-
+          python3 -S scripts/verify_war_room_v4_r2_pin.py
+          --manifest release-proof/frontend/src/assets/r2-assets-manifest.json
 
       - name: Production backend target contract
         if: steps.source.outputs.found == 'true'

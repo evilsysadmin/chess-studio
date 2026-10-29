@@ -68,3 +68,64 @@
   text-transform: uppercase;
   background: #080b10;
 }
+
+
+/* One keyboard/touch accessible entrance to the real deployment editor.
+ * No transparent hit area covers the 3D board or camera controls. */
+.combat-preparation-edit {
+  position: absolute;
+  z-index: 2;
+  left: 50%;
+  bottom: .82rem;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: .65rem;
+  max-width: calc(100% - 1rem);
+  padding: .34rem .42rem .34rem .75rem;
+  border: 1px solid rgba(219, 188, 121, .38);
+  border-radius: 999px;
+  background: rgba(5, 8, 12, .87);
+  color: rgba(232, 220, 196, .72);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, .35);
+  backdrop-filter: blur(12px);
+  white-space: nowrap;
+}
+.combat-preparation-edit > span {
+  font: .58rem var(--font-mono);
+  letter-spacing: .08em;
+}
+.combat-preparation-edit > button {
+  min-height: 42px;
+  padding: .5rem .8rem;
+  border: 1px solid rgba(219, 188, 121, .34);
+  border-radius: 999px;
+  background: rgba(154, 120, 40, .26);
+  color: #f0dba8;
+  font-weight: 700;
+  cursor: pointer;
+}
+.combat-preparation-edit > button:hover,
+.combat-preparation-edit > button:focus-visible {
+  background: rgba(154, 120, 40, .43);
+  outline-offset: 3px;
+}
+@media (max-width: 720px) {
+  .combat-preparation-edit {
+    top: 39%;
+    bottom: auto;
+    gap: 0;
+    padding: .22rem;
+  }
+  .combat-preparation-edit > span {
+    display: none;
+  }
+  .combat-preparation-edit > button {
+    min-height: 44px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .combat-preparation-edit {
+    backdrop-filter: none;
+  }
+}

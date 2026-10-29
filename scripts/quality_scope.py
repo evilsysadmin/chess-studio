@@ -83,6 +83,7 @@ GLOBAL_HARNESS_PATHS = {
 }
 FRONTEND_HARNESS_PATHS = {"scripts/frontend_test_groups.mjs", "scripts/run_frontend_test_group.mjs"}
 NODE_HARNESS_PATHS = {".github/actions/cache-node-modules/action.yml"}
+GO_BUILD_TOOLING_PATHS = {"scripts/go_binary_build_verify.sh", "scripts/go_vulncheck_crossarch.sh"}
 BACKEND_HARNESS_PATHS = {".github/actions/cache-python-venv/action.yml"}
 GO_AUTHORITY_PATHS = {
     "backend-python/pvp_api.py",
@@ -93,9 +94,6 @@ GO_AUTHORITY_PATHS = {
     "backend-python/operation_idempotency_core.py",
     "backend-python/api_models.py",
     "backend-python/game_store.py",
-    "backend-python/chronicles_map_code.py",
-    "backend-python/chronicles_map_generator.py",
-    "scripts/chronicles_topology_parity_corpus.py",
     "scripts/engine_parity_corpus.py",
     "scripts/games_parity_corpus.py",
     "scripts/games_ops_corpus.py",
@@ -125,30 +123,9 @@ GO_AUTHORITY_PATHS = {
     "scripts/admin_users_parity_corpus.py",
     "backend-python/admin_insights.py",
     "scripts/pawn_slug_parity_corpus.py",
-    "scripts/chronicles_area_parity_corpus.py",
-    "scripts/chronicles_contracts.py",
     "backend-python/feedback_store.py",
     "backend-python/admin_api.py",
     "scripts/admin_feedback_parity_corpus.py",
-    "backend-python/chronicles_run_store.py",
-    "scripts/chronicles_runs_parity_corpus.py",
-    "backend-python/chronicles_api.py",
-    "backend-python/chronicles_content_variation.py",
-    "backend-python/chronicles_difficulty.py",
-    "backend-python/chronicles_manifest_procedural.py",
-    "backend-python/chronicles_map_planner.py",
-    "backend-python/chronicles_topology_quality.py",
-    "backend-python/chronicles_entry_catalog.json",
-    "backend-python/chronicles_maps/ash-vault.json",
-    "backend-python/chronicles_maps/black-glass-chapel.json",
-    "backend-python/chronicles_maps/blind-king-archive.json",
-    "backend-python/chronicles_maps/chain-basilica.json",
-    "backend-python/chronicles_maps/crypt-eight-squares.json",
-    "backend-python/chronicles_maps/echo-cistern.json",
-    "backend-python/chronicles_maps/gallery-of-forks.json",
-    "backend-python/chronicles_maps/hollow-bell-tower.json",
-    "backend-python/chronicles_maps/iron-foundry.json",
-    "backend-python/chronicles_maps/menagerie-of-ash.json",
     "backend-python/pawn_slug_api.py",
     "backend-python/pawn_slug_manifests/pawn-slug-v1.json",
     "backend-python/narrative_cloudflare.py",
@@ -171,7 +148,7 @@ GO_AUTHORITY_PATHS = {
     "scripts/go_python_parity_check.sh",
 }
 GO_PARITY_FIXTURE_RE = re.compile(
-    r"^backend-go/internal/(?:residenteval|residentsearch|residentpolicy|gamecore|gameops|gamesapi|obshistory|httpwindow|profilestore|authcrypto|authguard|chronicles|chroniclesmap|chroniclesrun|matthiasmem|narrative|pawnslug|admininsights)/"
+    r"^backend-go/internal/(?:residenteval|residentsearch|residentpolicy|gamecore|gameops|gamesapi|obshistory|httpwindow|profilestore|authcrypto|authguard|matthiasmem|narrative|pawnslug|admininsights)/"
     r"testdata/python_[^/]*_corpus\.json$"
 )
 BROWSER_HARNESS_PATHS = {".github/actions/setup-browser-e2e/action.yml", "scripts/run_core_e2e_lane.py"}
@@ -220,8 +197,7 @@ STAGING_ONLY_E2E = {
 }
 FRONTEND_TEST_RE = re.compile(r"^frontend/src/.*\.(?:test|spec)\.(?:js|jsx|ts|tsx)$")
 CHRONICLES_MANIFEST_RE = re.compile(
-    r"^(?:frontend/src/chronicles/maps|backend-python/chronicles_maps|"
-    r"backend-go/internal/chronicles/content/maps)/[^/]+\.json$"
+    r"^backend-python/chronicles_maps/[^/]+\.json$"
 )
 CORE_E2E_RE = re.compile(
     r"^frontend/src/.*\.(?:js|jsx|ts|tsx)$|"
@@ -282,6 +258,7 @@ CORE_E2E_SPEC_LANES = {
 }
 E2E_SHARED = {"e2e/helpers.js", "e2e/playwright.config.js", "e2e/playwright.config.mjs"}
 SECURITY_RE = re.compile(
+    r"^scripts/art/requirements[^/]*\.txt$|"
     r"(^|/)(?:Dockerfile[^/]*|docker-compose[^/]*\.ya?ml|\.dockerignore)$|"
     r"^compose\.ya?ml$|^frontend/package-lock\.json$|"
     r"^backend-python/requirements[^/]*\.txt$|^\.trivy(?:ignore|\.ya?ml)?$|"
@@ -361,16 +338,12 @@ def classify(paths: Iterable[str]) -> Scope:
         if SECURITY_RE.search(path):
             scope.run_security = True
 
-        # Chronicles map manifests are one cross-runtime contract. A change in
-        # any copy must exercise every authority lane so frontend-only edits
-        # cannot ship ahead of Python/Go and break authoritative bootstrap.
+        # Python's retained recovery maps are no longer mirrored into Go.
+        # They still require backend tests, not a nonexistent Go parity gate.
         if CHRONICLES_MANIFEST_RE.search(path):
-            scope.run_frontend = True
             scope.run_backend = True
-            scope.run_go = True
-            scope.run_go_parity = True
 
-        if path.startswith("backend-go/") or path in GO_AUTHORITY_PATHS:
+        if path.startswith("backend-go/") or path in GO_AUTHORITY_PATHS or path in GO_BUILD_TOOLING_PATHS:
             scope.run_go = True
         if path in GO_AUTHORITY_PATHS or GO_PARITY_FIXTURE_RE.search(path):
             scope.run_go_parity = True
@@ -527,23 +500,14 @@ def self_test() -> None:
         ["frontend/src/chronicles/maps/crypt-eight-squares.json"],
         lanes=("app-boot",),
         run_frontend=True,
-        run_backend=True,
-        run_go=True,
-        run_go_parity=True,
     )
     _expect(
         ["backend-python/chronicles_maps/crypt-eight-squares.json"],
-        run_frontend=True,
         run_backend=True,
-        run_go=True,
-        run_go_parity=True,
     )
     _expect(
         ["backend-go/internal/chronicles/content/maps/crypt-eight-squares.json"],
-        run_frontend=True,
-        run_backend=True,
         run_go=True,
-        run_go_parity=True,
     )
     _expect_core(["frontend/src/components/ChroniclesOfMatthias.jsx", "frontend/src/App.jsx"], run_frontend=True)
     _expect_core(["frontend/src/combatBosses.js"], lanes=("combat",), run_frontend=True)
@@ -574,15 +538,8 @@ def self_test() -> None:
     _expect(["frontend/src/assets/home-canonical/great-hall-dungeon.webp"], run_frontend=True)
     _expect(["backend-python/game_api.py"], run_backend=True)
     _expect(["backend-go/internal/pulse/pulse.go"], run_go=True)
-    _expect(["backend-go/internal/chroniclesmap/generator.go"], run_go=True)
-    _expect(
-        ["backend-go/internal/chroniclesmap/testdata/python_topology_corpus.json"],
-        run_go=True,
-        run_go_parity=True,
-    )
-    _expect(["backend-python/chronicles_map_code.py"], run_backend=True, run_go=True, run_go_parity=True)
-    _expect(["backend-python/chronicles_map_generator.py"], run_backend=True, run_go=True, run_go_parity=True)
-    _expect(["scripts/chronicles_topology_parity_corpus.py"], run_go=True, run_go_parity=True)
+    _expect(["backend-python/chronicles_map_code.py"], run_backend=True)
+    _expect(["backend-python/chronicles_map_generator.py"], run_backend=True)
     _expect(["scripts/engine_parity_corpus.py"], run_go=True, run_go_parity=True)
     _expect(["scripts/cpu_policy_parity_corpus.py"], run_go=True, run_go_parity=True)
     _expect(["scripts/engine_history_parity_corpus.py"], run_go=True, run_go_parity=True)
@@ -599,6 +556,9 @@ def self_test() -> None:
     _expect(["backend-python/cpu_difficulty.py"], run_backend=True, run_go=True, run_go_parity=True)
     _expect(["backend-python/pvp_api.py"], run_backend=True, run_go=True, run_go_parity=True)
     _expect(["backend-python/requirements.txt"], run_backend=True, run_go=True, run_go_parity=True, run_security=True)
+    assert classify(["scripts/art/requirements.txt"]).run_security
+    assert classify(["scripts/art/requirements-dev.txt"]).run_security
+    assert not classify(["scripts/art/requirements.md"]).run_security
     _expect(["e2e/pawn-slug.spec.js"], run_pawn_slug_e2e=True)
     _expect_core(
         [LAB_LAUNCH_INTENT_PATH],
@@ -645,13 +605,12 @@ def self_test() -> None:
     _expect_core(["e2e/learning-golden-path.spec.js"], lanes=("learning-golden",))
     _expect_core(["e2e/learning-second-observation.spec.js"], lanes=("learning-observation",))
     _expect_core(["e2e/smoke.spec.js"], lanes=("smoke",))
-    _expect(["e2e/chronicles-of-matthias-tactics.spec.js"])
     _expect(["e2e/mobile-tournament-ux.spec.js"])
     _expect(["e2e/war-room-pvp.spec.js"])
     _expect(["e2e/quick-match-2d.spec.js"])
     _expect_core(
         [
-            "e2e/chronicles-of-matthias-tactics.spec.js",
+            "e2e/mobile-tournament-ux.spec.js",
             "frontend/src/chroniclesTacticsTurnMode.js",
         ],
         lanes=("app-boot",),
@@ -663,6 +622,9 @@ def self_test() -> None:
     _expect(["infra/terraform/main.tf"], run_security=True)
     _expect(["Dockerfile"], run_security=True)
     _expect(["scripts/npm_audit_gate.py"], run_security=True)
+    _expect(["scripts/go_binary_build_verify.sh"], run_go=True)
+    _expect(["scripts/go_vulncheck_crossarch.sh"], run_go=True)
+    _expect(["scripts/go_binary_build_verify.sh", "backend-python/observability.py"], run_go=True, run_go_parity=True, run_backend=True)
 
     for tooling_path in (
         ".github/workflows/production-promote.yml", ".github/workflows/e2e-full.yml",

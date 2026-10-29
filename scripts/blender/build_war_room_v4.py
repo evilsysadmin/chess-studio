@@ -49,32 +49,57 @@ V4_WALL_END_DEG = 112.0
 V4_WALL_SEGMENT_COUNT = 19
 # Snap the entry to an authored wall bay so the door plane is truly tangent to
 # the same circular shell instead of looking like a freestanding prop.
-V4_ENTRY_THETA_DEG = -76.0
+# Further round the left tower perimeter: the teal service entrance must read
+# as an independent bay, not as a side panel glued to the ivory fireplace.
+V4_ENTRY_THETA_DEG = -95.0
+# The teal door must coincide with Hans' authored doorway anchor rather than
+# hiding half a metre beyond it at the left edge of the board-forward camera.
+# Timber wall returns connect the deeper alcove to the curved exterior shell.
+V4_ENTRY_RECESS_METERS = 1.30
+# The circular wall's true tangent presents a closed door almost edge-on in
+# the accepted V4 hybrid camera. Splay only the inner entry and its leaf
+# toward the player; a restrained 30° splay improves the closed silhouette.
+# Its threshold and Hans' authored walking anchors stay put.
+V4_ENTRY_VISUAL_SPLAY_DEG = -30.0
 V4_ENTRY_DOOR_Z = 1.90
 
 # Hans' tower door: the teal leaf is its own runtime node, hinged on the jamb
 # nearer the player so it swings into the room away from his path to the
-# hearth (Blender Z yaw == three.js Y yaw). A dark void behind it reads as the
+# hearth (Blender Z yaw == three.js Y yaw). The 60° swing compensates
+# the 30° splay to retain the proven in-room opening direction.
+# A dark void behind it reads as the
 # stair landing once it opens.
 V4_HANS_DOOR_LEAF = "WR_HANS_door_leaf"
-V4_HANS_DOOR_OPEN_YAW = -1.45
+V4_HANS_DOOR_OPEN_YAW = -1.048
 V4_HANS_DOOR_HALF = 0.88
 # The left armour guards the tower door from the player's side of it: in front
 # of the hearth it would stand on Hans' work spot and hide him from the camera.
-V4_HANS_LEFT_ARMOR_Y = -0.75
+V4_HANS_LEFT_ARMOR_Y = -4.20
 
 # Where Hans works (WarRoomHansStage.js). The hearth anchor sits on the left of
 # the fire mouth: the board dais covers the floor in front of its right half.
 V4_HANS_ANCHOR_PREFIX = "WR_ANCHOR_hans_"
 V4_HANS_ANCHORS = (
-    ("WR_ANCHOR_hans_hearth", (-6.15, 3.95, 0.0)),
-    ("WR_ANCHOR_hans_door", (-7.82, 1.23, 0.0)),
-    ("WR_ANCHOR_hans_basket", (-7.00, 3.55, 0.0)),
-    ("WR_ANCHOR_hans_tools", (-6.00, 3.60, 0.0)),
-    ("WR_ANCHOR_hans_corridor_0", (-7.45, 1.95, 0.0)),
-    ("WR_ANCHOR_hans_corridor_1", (-7.42, 2.75, 0.0)),
-    ("WR_ANCHOR_hans_corridor_2", (-7.15, 3.20, 0.0)),
+    ("WR_ANCHOR_hans_hearth", (-6.28, 3.05, 0.0)),
+    ("WR_ANCHOR_hans_door", (-7.38, -1.37, 0.0)),
+    ("WR_ANCHOR_hans_basket", (-6.42, 2.26, 0.0)),
+    ("WR_ANCHOR_hans_tools", (-6.25, 2.23, 0.0)),
+    ("WR_ANCHOR_hans_corridor_0", (-7.45, -0.53, 0.0)),
+    ("WR_ANCHOR_hans_corridor_1", (-7.30, 0.50, 0.0)),
+    ("WR_ANCHOR_hans_corridor_2", (-6.62, 1.76, 0.0)),
 )
+
+# The old fireplace overlapped the live 11.3 m board plinth by >1 m and
+# left no adult-width passage. Preserve its ivory identity, but author it as a
+# compact wall hearth entirely west of the board, with a usable front apron.
+V4_HANS_HEARTH_CENTER = (-7.12, 3.08)
+V4_HANS_HEARTH_XY_SCALE = (0.72, 0.55)
+# Tangent to the observatory's curved western wall; front faces INTO the room.
+# The former unrotated mantel was almost embedded in the circular wall.
+V4_HANS_HEARTH_YAW_DEG = 62.0
+# Move the right armour away from the club chair, rug and side table.
+V4_RIGHT_ARMOR_POSITION = (7.45, -1.20)
+V4_HANS_BODY_CLEARANCE_RADIUS = 0.56  # shoulders plus walking allowance
 
 V4_WEATHER_MATERIALS = frozenset({
     "WR4_MAT_warm_travertine",
@@ -251,6 +276,18 @@ def cylinder_between(name, start, end, radius, material, owner, *, vertices=24):
     obj.rotation_euler = direction.to_track_quat("Z", "Y").to_euler()
     return obj
 
+    
+def thin_brass_trim(name, loc, half, material, owner, *, bevel):
+    """Keep thin golden inlays' authored chamfer width, without 3 bevel bands.
+
+    Small decorative metal strips occupy only a few pixels at play zoom.
+    This is opt-in; important rounded crowns, arches, armour and board
+    structural elements keep the original high-quality profile.
+    """
+    obj = base.cube(name, loc, half, material, owner, bevel=bevel)
+    obj.modifiers["premium-bevel"].segments = 1
+    return obj
+
 
 def build_curved_observatory(static, palette):
     """Build the canonical circular room: tiled floor, rug and curved paneled wall."""
@@ -271,10 +308,15 @@ def build_curved_observatory(static, palette):
             # deep green diamonds that frames the room without fighting the board.
             green_inlay = (x * x + (y + 0.18) ** 2 > 6.1 * 6.1) and (row + col) % 2 == 0
             material = palette["green_marble"] if green_inlay else palette["stone_light"]
-            base.cube(
+            tile = base.cube(
                 f"WR4_OBS_floor_tile_{tile_index}", (x, y, 0.010),
                 (tile_half, tile_half, 0.030), material, static, bevel=0.018,
             )
+            # The 18 mm marble chamfer reads as a crisp seam from the
+            # play camera. The generic 3-band bevel adds subdivisions that
+            # are imperceptible on these low, flat floor tiles. Keep their
+            # exact layout, materials, dimensions and bevel *width*.
+            tile.modifiers["premium-bevel"].segments = 1
             tile_index += 1
 
     # A thin brass perimeter inlay makes the green/ivory marble floor read as
@@ -338,7 +380,7 @@ def build_curved_observatory(static, palette):
             (half_length * 0.76, 0.065, (V4_WALL_TOP_Z - 2.70) / 2.0 - 0.12), palette["walnut"], static, bevel=0.045,
         )
         panel.rotation_euler.z = tangent
-        rail = base.cube(
+        rail = thin_brass_trim(
             f"WR4_OBS_apse_brass_rail_{index}", (x, y - 0.235, 2.62),
             (half_length * 0.80, 0.022, 0.030), palette["brass_dark"], static, bevel=0.012,
         )
@@ -381,7 +423,7 @@ def build_curved_observatory(static, palette):
         theta = start + (index + 0.5) * step
         x = radius * math.sin(theta)
         y = center_y + radius * math.cos(theta)
-        rail = base.cube(
+        rail = thin_brass_trim(
             f"WR4_OBS_apse_crown_rail_{index}", (x, y - 0.02, V4_WALL_TOP_Z + 0.06),
             (half_length, 0.24, 0.07), palette["brass_dark"], static, bevel=0.03,
         )
@@ -549,7 +591,10 @@ def build_celestial_window(static, palette):
             0.035, palette["fire_core"], static, scale=(1.0, 0.3, 1.0),
         )
 
-    # Lion crest crowning the oculus.
+    # Keep the heraldic crown above the lunette. Lowering it by 39 cm made
+    # the play-camera top crop sever the shield into a floating gold fragment;
+    # the tiny side hour marks below carry the new visible architectural detail.
+    # Do not move the playing camera, moon, window opening or Hans anchors.
     crest_z = cz + r + 0.55
     base.cube("WR4_OBS_oculus_crest_shield", (cx, cy - 0.30, crest_z), (0.42, 0.06, 0.48),
               palette["brass"], static, bevel=0.20)
@@ -560,6 +605,24 @@ def build_celestial_window(static, palette):
         wing = base.cube(f"WR4_OBS_oculus_crest_scroll_{side}", (cx + side * 0.78, cy - 0.28, crest_z - 0.22),
                          (0.42, 0.05, 0.07), palette["brass_dark"], static, bevel=0.035)
         wing.rotation_euler.y = math.radians(-side * 24)
+
+    # Ten restrained radial brass hour marks sit ON the walnut oculus reveal.
+    # They strengthen the visible architectural surround at play-camera scale
+    # rather than adding freestanding ornament or blocking the lunar sky.
+    # Mirror both sides to keep the centre/crest optically balanced.
+    for side in (-1, 1):
+        for index, degrees in enumerate((40, 64, 88, 112, 136)):
+            angle = math.radians(side * degrees)
+            ring_radius = r + 0.36
+            tick = thin_brass_trim(
+                f"WR4_OBS_oculus_hour_mark_{side}_{index}",
+                (cx + ring_radius * V4_OCULUS_ASPECT * math.sin(angle),
+                 cy - 0.215,
+                 cz + ring_radius * math.cos(angle)),
+                (0.050, 0.020, 0.155), palette["brass"], static,
+                bevel=0.014,
+            )
+            tick.rotation_euler.y = angle
 
     # Heraldic blue banners with a gold lion flank the oculus (replace the
     # earlier green drapery, which the golden does not have).
@@ -677,13 +740,13 @@ def build_round_command_table(static, palette):
                 band_half = [offset + width, offset + width, 0.020]
                 band[1 - axis] = side * offset
                 band_half[1 - axis] = width
-                base.cube(f"WR4_OBS_board_brass_{label}_{name}_{side}", tuple(band), tuple(band_half),
+                thin_brass_trim(f"WR4_OBS_board_brass_{label}_{name}_{side}", tuple(band), tuple(band_half),
                           palette["brass"], static, bevel=0.010)
             outer = [0.0, 0.0, 1.10]
             outer_half = [fh + 0.02, fh + 0.02, 0.06]
             outer[1 - axis] = side * (fh + 0.01)
             outer_half[1 - axis] = 0.035
-            base.cube(f"WR4_OBS_board_edge_{name}_{side}", tuple(outer), tuple(outer_half),
+            thin_brass_trim(f"WR4_OBS_board_edge_{name}_{side}", tuple(outer), tuple(outer_half),
                       palette["brass"], static, bevel=0.015)
             # Warm bulbs set into the rim, as in the golden.
             for index in range(11):
@@ -707,7 +770,8 @@ def build_round_command_table(static, palette):
 
 
 def build_white_fireplace(static, palette):
-    """Canonical pale masonry fireplace from the approved V4 golden."""
+    """Ivory hearth, moved and narrowed to give Hans a physical aisle beside the board."""
+    existing_names = {obj.name for obj in static.objects}
     x, y = -5.65, 4.48
     # Broad ivory surround: visually warm/architectural, not a freestanding stove.
     base.cube("WR4_OBS_fireplace_plinth", (x, y, 0.30), (1.42, 0.62, 0.20),
@@ -751,6 +815,24 @@ def build_white_fireplace(static, palette):
     base.light("WR4_LIGHT_fireplace", "POINT", (x, y - 1.12, 1.58), 430.0,
                (1.0, 0.27, 0.045), static, radius=2.05)
     base.anchor("WR_ANCHOR_fireplace_practical", (x, y - 0.82, 1.65), static)
+
+    # The ivory fireplace is built into the CURVED western wall. Rotate its
+    # entire masonry/log/fire/light/anchor collection along the wall tangent,
+    # not merely its render mesh. This also seats the mouth towards Hans' aisle.
+    target_x, target_y = V4_HANS_HEARTH_CENTER
+    scale_x, scale_y = V4_HANS_HEARTH_XY_SCALE
+    yaw = math.radians(V4_HANS_HEARTH_YAW_DEG)
+    c, sn = math.cos(yaw), math.sin(yaw)
+    for obj in static.objects:
+        if obj.name in existing_names:
+            continue
+        dx, dy = (obj.location.x - x) * scale_x, (obj.location.y - y) * scale_y
+        obj.location.x = target_x + dx * c - dy * sn
+        obj.location.y = target_y + dx * sn + dy * c
+        if obj.type == "MESH":
+            obj.scale.x *= scale_x
+            obj.scale.y *= scale_y
+            obj.rotation_euler.z += yaw
 
 
 def build_oculus_desk(static, palette):
@@ -805,7 +887,7 @@ def build_library_wall(static, palette):
 def build_armor_pair(static, palette):
     """Two restrained ceremonial suits framing the room without stealing board focus."""
     for side in (-1, 1):
-        x, y = side * 6.55, (V4_HANS_LEFT_ARMOR_Y if side < 0 else 2.85)
+        x, y = ((-6.55, V4_HANS_LEFT_ARMOR_Y) if side < 0 else V4_RIGHT_ARMOR_POSITION)
         base.cylinder(f"WR4_OBS_armor_base_{side}", (x, y, 0.22), 0.48, 0.16,
                       palette["walnut_dark"], static, vertices=36)
         base.cube(f"WR4_OBS_armor_torso_{side}", (x, y, 1.32), (0.38, 0.25, 0.44),
@@ -1189,19 +1271,24 @@ def build_desk_candles(static, palette):
 
 
 def build_tower_entry(static, palette):
-    """Tower door sits on a real threshold and has a small entry rug."""
+    """Splayed inner entry in an alcove joined to the actual curved tower wall."""
     theta = math.radians(V4_ENTRY_THETA_DEG)
-    radial = Vector((math.sin(theta), math.cos(theta), 0.0))
-    tangent = Vector((math.cos(theta), -math.sin(theta), 0.0))
+    wall_radial = Vector((math.sin(theta), math.cos(theta), 0.0))
+    wall_tangent = Vector((math.cos(theta), -math.sin(theta), 0.0))
     wall = Vector((
-        V4_WALL_RADIUS * radial.x,
-        V4_WALL_CENTER_Y + V4_WALL_RADIUS * radial.y,
+        V4_WALL_RADIUS * wall_radial.x,
+        V4_WALL_CENTER_Y + V4_WALL_RADIUS * wall_radial.y,
         0.0,
     ))
-    # Seat the leaf against the inner face of the authored wall and use the exact
-    # tangent of that circular shell. This keeps the whole portal visually welded
-    # into the observatory rather than floating a few centimetres in front of it.
-    center = wall - radial * 0.205
+    # Rotate the INNER doorway only; the outer shell and the actual opening
+    # position remain untouched. Keep the door's normal consistent with the
+    # splay so its porthole, handle, hinge and animation share one plane.
+    splay = math.radians(V4_ENTRY_VISUAL_SPLAY_DEG)
+    cs, sn = math.cos(splay), math.sin(splay)
+    tangent = Vector((wall_tangent.x * cs - wall_tangent.y * sn,
+                      wall_tangent.x * sn + wall_tangent.y * cs, 0.0))
+    radial = Vector((-tangent.y, tangent.x, 0.0))
+    center = wall - wall_radial * V4_ENTRY_RECESS_METERS
     angle = math.atan2(tangent.y, tangent.x)
     door_z = V4_ENTRY_DOOR_Z
 
@@ -1218,23 +1305,98 @@ def build_tower_entry(static, palette):
     )
     inset.rotation_euler.z = angle
 
+    # Bridge the inset threshold to the actual curved wall. Otherwise the
+    # door would appear as a freestanding prop once pushed inside the room.
+    # The splayed inner jambs connect to the unchanged circular outer-wall
+    # bay through two angled timber returns. Do not leave the portal floating.
+    outer_face = wall - wall_radial * 0.205
+    for side in (-1, 1):
+        front_point = center + tangent * (side * 1.02)
+        back_point = outer_face + wall_tangent * (side * 1.02)
+        bridge = back_point - front_point
+        join_center = (front_point + back_point) * 0.5
+        return_wall = base.cube(
+            f"WR4_OBS_entry_alcove_return_{side}",
+            (join_center.x, join_center.y, 2.08),
+            (0.12, bridge.length / 2 + 0.07, 1.91),
+            palette["walnut_dark"], static, bevel=0.055,
+        )
+        return_wall.rotation_euler.z = math.atan2(-bridge.x, bridge.y)
+
     for side in (-1, 1):
         point = center + tangent * (side * 1.02)
         jamb = base.cube(
             f"WR4_OBS_entry_jamb_{side}", (point.x, point.y, 2.02),
-            (0.105, 0.20, 1.98), palette["copper"], static, bevel=0.055,
+            (0.105, 0.20, 1.98), palette["walnut_dark"], static, bevel=0.055,
         )
         jamb.rotation_euler.z = angle
     lintel = base.cube(
         "WR4_OBS_entry_lintel", (center.x, center.y, 4.00),
-        (1.12, 0.20, 0.11), palette["copper"], static, bevel=0.055,
+        (1.12, 0.20, 0.11), palette["walnut_dark"], static, bevel=0.055,
     )
     lintel.rotation_euler.z = angle
+    # Readable front architrave: the previous narrow rebates sat behind the
+    # green leaf and made it look free-standing against a black cavity.
+    # These THREE stationary walnut pieces wrap the inner opening from the
+    # player's side, outside the leaf sweep; the leaf, hinge and walking
+    # anchors remain exactly where they were.
+    for side in (-1, 1):
+        face_point = center + tangent * (side * 1.055) - radial * 0.255
+        facing_jamb = base.cube(
+            f"WR4_OBS_entry_portal_facing_{side}",
+            (face_point.x, face_point.y, door_z),
+            (0.105, 0.085, 1.82), palette["walnut"], static, bevel=0.034,
+        )
+        facing_jamb.rotation_euler.z = angle
+    cap_point = center - radial * 0.255
+    facing_cap = base.cube(
+        "WR4_OBS_entry_portal_facing_head",
+        (cap_point.x, cap_point.y, door_z + 1.915),
+        (1.155, 0.085, 0.125), palette["walnut"], static, bevel=0.034,
+    )
+    facing_cap.rotation_euler.z = angle
     threshold = base.cube(
         "WR4_OBS_entry_threshold", (center.x, center.y, 0.105),
         (1.12, 0.24, 0.075), palette["brass_dark"], static, bevel=0.040,
     )
     threshold.rotation_euler.z = angle
+
+    # A splayed door can read as ajar against the circular outer-wall return.
+    # Put a continuous CLOSED-PLANE rebate on the inner jamb, directly behind
+    # the leaf edges, instead of rotating the playable doorway again. The
+    # narrow fixed lips never join the dynamic leaf and do not obstruct its
+    # inward swing; bring them to the visible room-side frame to make the
+    # closed outline legible; use aged dark brass so the jamb does not look
+    # like a second teal door standing open behind the moving leaf.
+    for side in (-1, 1):
+        stop_point = center + tangent * (side * (V4_HANS_DOOR_HALF + 0.145)) - radial * 0.155
+        stop = base.cube(
+            f"WR4_OBS_entry_closed_stop_{side}",
+            (stop_point.x, stop_point.y, door_z),
+            (0.125, 0.055, 1.82),
+            palette["brass_dark"], static, bevel=0.020,
+        )
+        stop.rotation_euler.z = angle
+    head_point = center - radial * 0.155
+    head_stop = base.cube(
+        "WR4_OBS_entry_closed_head",
+        (head_point.x, head_point.y, door_z + 1.90),
+        (V4_HANS_DOOR_HALF + 0.17, 0.055, 0.115),
+        palette["brass_dark"], static, bevel=0.020,
+    )
+    head_stop.rotation_euler.z = angle
+
+    # The fixed brass keeper is deliberately subtle: the existing handle is
+    # already part of the moving leaf. A protruding ornamental bolt made the
+    # closed door read even more like an open gate in the play camera.
+    strike_point = center + tangent * (V4_HANS_DOOR_HALF + 0.085) - radial * 0.17
+    strike = base.cube(
+        "WR4_OBS_entry_closed_strike",
+        (strike_point.x, strike_point.y, door_z - 0.30),
+        (0.048, 0.022, 0.125),
+        palette["brass_dark"], static, bevel=0.012,
+    )
+    strike.rotation_euler.z = angle
 
     front = Vector((center.x, center.y, door_z)) - radial * 0.17
     glass_start = front - radial * 0.035 + Vector((0, 0, 0.72))
@@ -1275,17 +1437,21 @@ def build_tower_entry(static, palette):
 
 def validate_v4_entry_door(door):
     """The leaf is authored tangent to the shell and seated on its threshold."""
-    expected_angle = math.radians(-V4_ENTRY_THETA_DEG)
+    expected_angle = math.radians(-V4_ENTRY_THETA_DEG + V4_ENTRY_VISUAL_SPLAY_DEG)
     angle_error = abs(math.atan2(
         math.sin(door.rotation_euler.z - expected_angle),
         math.cos(door.rotation_euler.z - expected_angle),
     ))
     if angle_error > math.radians(0.25):
         raise RuntimeError(
-            f"War Room v4 entry lost wall tangent: error={math.degrees(angle_error):.3f}deg"
+            f"War Room v4 inner door lost authored splay: error={math.degrees(angle_error):.3f}deg"
         )
+    projected_width = 2 * V4_HANS_DOOR_HALF * abs(math.cos(door.rotation_euler.z))
+    if projected_width < 0.70:
+        raise RuntimeError("War Room v4 closed service door is edge-on in desktop play camera")
     if abs(float(door.location.z) - V4_ENTRY_DOOR_Z) > 0.01:
         raise RuntimeError(f"War Room v4 entry door floated vertically: z={door.location.z:.3f}")
+
 
 
 def v4_hans_door_hinge(center, tangent, radial):
@@ -1328,11 +1494,40 @@ def validate_v4_hans_stage():
         raise RuntimeError("War Room v4 Hans door leaf must stay a dynamic runtime node")
     if any(abs(value) > 1e-6 for value in leaf.rotation_euler):
         raise RuntimeError("War Room v4 Hans door leaf must export closed with no rotation")
+    # The new facing is STATIC decor, seated in the closed door plane. The
+    # sweep remains controlled by the existing dynamic leaf and open-yaw.
+    face_angle = math.radians(-V4_ENTRY_THETA_DEG + V4_ENTRY_VISUAL_SPLAY_DEG)
+    for name in ("WR4_OBS_entry_portal_facing_-1", "WR4_OBS_entry_portal_facing_1",
+                 "WR4_OBS_entry_portal_facing_head"):
+        face = objects.get(name)
+        if face is None or abs(float(face.rotation_euler.z) - face_angle) > 1e-5:
+            raise RuntimeError("War Room v4 closed portal facing missing/misaligned: " + name)
+    # The closing frame belongs to the stationary alcove; it must stay in
+    # the same authored plane as the sealed leaf, not float at the outer arch.
+    scene_objects = bpy.context.scene.objects
+    expected_closed_angle = math.radians(-V4_ENTRY_THETA_DEG + V4_ENTRY_VISUAL_SPLAY_DEG)
+    for side in (-1, 1):
+        stop = scene_objects.get(f"WR4_OBS_entry_closed_stop_{side}")
+        if stop is None or abs(stop.rotation_euler.z - expected_closed_angle) > 1e-5:
+            raise RuntimeError("War Room v4 inner closing jamb lost its splayed plane")
+    head = scene_objects.get("WR4_OBS_entry_closed_head")
+    strike = scene_objects.get("WR4_OBS_entry_closed_strike")
+    if head is None or strike is None:
+        raise RuntimeError("War Room v4 service door lost its closing head or brass keeper")
+    if abs(head.rotation_euler.z - expected_closed_angle) > 1e-5:
+        raise RuntimeError("War Room v4 closing head is not aligned to the closed leaf")
+
     theta = math.radians(V4_ENTRY_THETA_DEG)
     radial = Vector((math.sin(theta), math.cos(theta), 0.0))
-    tangent = Vector((math.cos(theta), -math.sin(theta), 0.0))
+    wall_tangent = Vector((math.cos(theta), -math.sin(theta), 0.0))
+    turn = math.radians(V4_ENTRY_VISUAL_SPLAY_DEG)
+    tangent = Vector((
+        wall_tangent.x * math.cos(turn) - wall_tangent.y * math.sin(turn),
+        wall_tangent.x * math.sin(turn) + wall_tangent.y * math.cos(turn), 0.0,
+    ))
+    door_radial = Vector((-tangent.y, tangent.x, 0.0))
     wall = Vector((V4_WALL_RADIUS * radial.x, V4_WALL_CENTER_Y + V4_WALL_RADIUS * radial.y, 0.0))
-    hinge = v4_hans_door_hinge(wall - radial * 0.205, tangent, radial)
+    hinge = v4_hans_door_hinge(wall - radial * V4_ENTRY_RECESS_METERS, tangent, door_radial)
     if (Vector((leaf.location.x, leaf.location.y, leaf.location.z)) - hinge).length > 1e-3:
         raise RuntimeError(f"War Room v4 Hans door origin is not on its hinge: {tuple(leaf.location)}")
     yaw = V4_HANS_DOOR_OPEN_YAW
@@ -1341,9 +1536,21 @@ def validate_v4_hans_stage():
     if open_dir.dot(-radial) < 0.95:
         raise RuntimeError(f"War Room v4 Hans door does not open into the room: {tuple(open_dir)}")
     anchors = dict(V4_HANS_ANCHORS)
+    # On the previous iteration the door mesh was ~0.49m outside its Hans
+    # anchor: the actor could enter but half the portal vanished offscreen.
+    # Validate the real hinge/door center against that authored walk anchor.
+    expected_door = wall - radial * V4_ENTRY_RECESS_METERS
+    door_point = Vector((*anchors["WR_ANCHOR_hans_door"][:2], 0.0))
+    if (door_point - expected_door).length > 0.055:
+        raise RuntimeError(
+            f"War Room v4 door center drifted from Hans entrance: "
+            f"{(door_point - expected_door).length:.3f}m"
+        )
+    if not 1.20 <= V4_ENTRY_RECESS_METERS <= 1.40:
+        raise RuntimeError("War Room v4 door lost its visible inset into the curved wall")
     # Every walk anchor stays off the board dais and clear of the armour bases.
     dais = V4_PLINTH_HALF + 0.20
-    armors = ((-6.55, V4_HANS_LEFT_ARMOR_Y), (6.55, 2.85))
+    armors = ((-6.55, V4_HANS_LEFT_ARMOR_Y), V4_RIGHT_ARMOR_POSITION)
     for name, (x, y, _z) in V4_HANS_ANCHORS:
         if name == "WR_ANCHOR_hans_hearth":
             continue
@@ -1363,8 +1570,107 @@ def validate_v4_hans_stage():
     if (hinge2 + (tip - hinge2) * t - armor).length < 0.48 + 0.15:
         raise RuntimeError("War Room v4 Hans door swings into the door armour")
     work_y = anchors["WR_ANCHOR_hans_hearth"][1] - 0.72
-    # The armour (x -6.55) shares Hans' work lane; it must neither stand on his
-    # spot nor right in front of it, between him and the play camera.
+    # End-to-end *swept* clearance, not merely point anchors: the former V4
+    # hearth overlapped the command table while every old anchor check passed.
+    bpy.context.view_layer.update()
+    mantel = objects["WR4_OBS_fireplace_mantel"]
+    # The mantle is ROTATED tangent to the circular wall. Local XY half extents
+    # must be used; axis-aligned Blender dimensions falsely flag a good angle.
+    hx = max(abs(float(corner[0])) for corner in mantel.bound_box) * abs(float(mantel.scale.x))
+    hy = max(abs(float(corner[1])) for corner in mantel.bound_box) * abs(float(mantel.scale.y))
+    cx, cy = float(mantel.location.x), float(mantel.location.y)
+    yaw = float(mantel.rotation_euler.z)
+    if abs(cx - V4_HANS_HEARTH_CENTER[0]) > 0.02 or abs(cy - V4_HANS_HEARTH_CENTER[1]) > 0.02:
+        raise RuntimeError("War Room v4 Hans fireplace is not at the authored service alcove")
+    if hx > 1.23 or hy > 0.43:
+        raise RuntimeError("War Room v4 fireplace expanded into Hans' service lane")
+    tangent_theta = math.atan2(cx, cy - V4_WALL_CENTER_Y)
+    tangent_yaw = math.atan2(-math.sin(tangent_theta), math.cos(tangent_theta))
+    delta_yaw = math.atan2(math.sin(yaw - tangent_yaw), math.cos(yaw - tangent_yaw))
+    if abs(delta_yaw) > math.radians(9):
+        raise RuntimeError("War Room v4 fireplace is not tangent to the curved wall")
+    cyaw, syaw = math.cos(yaw), math.sin(yaw)
+    for dx in (-hx, hx):
+        for dy in (-hy, hy):
+            corner_x = cx + dx * cyaw - dy * syaw
+            corner_y = cy + dx * syaw + dy * cyaw
+            wall_gap = V4_WALL_RADIUS - math.hypot(corner_x, corner_y - V4_WALL_CENTER_Y)
+            if wall_gap < 0.08:
+                raise RuntimeError(f"War Room v4 fireplace embedded into tower wall: {wall_gap:.3f}m")
+
+    # The tower entrance and hearth must occupy two clearly separate bays.
+    # Collision alone is insufficient: previously the fireplace technically
+    # fitted the wall but looked jammed directly against the teal door.
+    door_x, door_y, _door_z = anchors["WR_ANCHOR_hans_door"]
+    hearth_x, hearth_y, _hearth_z = anchors["WR_ANCHOR_hans_hearth"]
+    if math.hypot(door_x - hearth_x, door_y - hearth_y) < 4.0:
+        raise RuntimeError("War Room v4 fireplace crowds Hans' tower doorway")
+    door_mantel_dx = (door_x - cx) * cyaw + (door_y - cy) * syaw
+    door_mantel_dy = -(door_x - cx) * syaw + (door_y - cy) * cyaw
+    door_mantel_gap = math.hypot(
+        max(abs(door_mantel_dx) - hx, 0), max(abs(door_mantel_dy) - hy, 0)
+    )
+    if door_mantel_gap < 3.0:
+        raise RuntimeError("War Room v4 doorway and fireplace have no distinct architectural spacing")
+
+    # Armour/right lounge are distinct architectural beats, never overlapping
+    # furniture. Validate authored meshes rather than visually trusting a render.
+    stand = objects["WR4_OBS_armor_base_1"]
+    ax, ay = float(stand.location.x), float(stand.location.y)
+    if math.hypot(ax - V4_RIGHT_ARMOR_POSITION[0], ay - V4_RIGHT_ARMOR_POSITION[1]) > 0.02:
+        raise RuntimeError("War Room v4 right armour drifted from its free wall bay")
+    if V4_WALL_RADIUS - math.hypot(ax, ay - V4_WALL_CENTER_Y) < 0.48 + 0.15:
+        raise RuntimeError("War Room v4 right armour clips the tower wall")
+    for seat_part in (part for part in objects if part.name.startswith("WR4_OBS_chair_")):
+        corners = [seat_part.matrix_world @ Vector(local) for local in seat_part.bound_box]
+        left, right = min(p.x for p in corners), max(p.x for p in corners)
+        bottom, top = min(p.y for p in corners), max(p.y for p in corners)
+        gap = math.hypot(max(left - ax, ax - right, 0), max(bottom - ay, ay - top, 0))
+        if gap < 0.48 + 0.15:
+            raise RuntimeError(f"War Room v4 right armour is embedded in chair: {seat_part.name}")
+    for fixture, radius in (("WR4_OBS_lounge_rug_gold", 1.42), ("WR4_OBS_side_table_top", 0.55)):
+        cx_f, cy_f = objects[fixture].location.xy
+        gap = math.hypot(ax - cx_f, ay - cy_f) - radius - 0.48
+        if gap < 0.15:
+            raise RuntimeError(f"War Room v4 right armour overlaps {fixture}: {gap:.3f}m")
+    route = [
+        anchors["WR_ANCHOR_hans_door"][:2],
+        *[anchors[f"WR_ANCHOR_hans_corridor_{index}"][:2] for index in range(3)],
+        (anchors["WR_ANCHOR_hans_basket"][0], work_y),
+        (anchors["WR_ANCHOR_hans_hearth"][0], work_y),
+        (anchors["WR_ANCHOR_hans_tools"][0], work_y),
+    ]
+
+    def rectangle_gap(px, py, ox, oy, half_x, half_y):
+        return math.hypot(max(abs(px - ox) - half_x, 0),
+                          max(abs(py - oy) - half_y, 0))
+
+    def oriented_mantel_gap(px, py):
+        dx = (px - cx) * cyaw + (py - cy) * syaw
+        dy = -(px - cx) * syaw + (py - cy) * cyaw
+        return math.hypot(max(abs(dx) - hx, 0), max(abs(dy) - hy, 0))
+
+    for before, after in zip(route, route[1:]):
+        length = math.dist(before, after)
+        count = max(1, math.ceil(length / 0.08))
+        for step in range(count + 1):
+            ratio = step / count
+            px = before[0] + (after[0] - before[0]) * ratio
+            py = before[1] + (after[1] - before[1]) * ratio
+            gaps = {
+                "wall": V4_WALL_RADIUS - math.hypot(px, py - V4_WALL_CENTER_Y),
+                "board_dais": rectangle_gap(px, py, 0, 0, V4_PLINTH_HALF + 0.03, V4_PLINTH_HALF + 0.03),
+                "fireplace": oriented_mantel_gap(px, py),
+                "left_armour": math.hypot(px + 6.55, py - V4_HANS_LEFT_ARMOR_Y) - 0.48,
+            }
+            for obstacle, gap in gaps.items():
+                if gap < V4_HANS_BODY_CLEARANCE_RADIUS:
+                    raise RuntimeError(
+                        f"War Room v4 Hans cannot pass {obstacle}: gap={gap:.3f}m"
+                        f" at ({px:.2f}, {py:.2f}), needs {V4_HANS_BODY_CLEARANCE_RADIUS:.2f}m"
+                    )
+    # The armour remains in its own forward-left bay, away from the entrance,
+    # Hans' walkway and the fireplace work spot.
     if V4_HANS_LEFT_ARMOR_Y - 0.48 < work_y + 0.25 and V4_HANS_LEFT_ARMOR_Y + 0.48 > work_y - 1.6:
         raise RuntimeError("War Room v4 left armour blocks or hides Hans' hearth work spot")
 
@@ -1529,6 +1835,8 @@ def validate_v4():
         "WR4_OBS_board_plinth",
         "WR4_OBS_board_corner_dome_1_1",
         "WR4_OBS_oculus_crest_shield",
+        "WR4_OBS_oculus_hour_mark_-1_0",
+        "WR4_OBS_oculus_hour_mark_1_4",
         "WR4_OBS_banner_-1",
         "WR4_OBS_banner_1",
         "WR4_OBS_celestial_window",
@@ -1551,6 +1859,13 @@ def validate_v4():
     missing = sorted(required - names)
     if missing:
         raise RuntimeError(f"War Room v4 contract objects missing: {missing}")
+    crest = bpy.data.objects.get("WR4_OBS_oculus_crest_shield")
+    expected_crest_z = V4_OCULUS_CENTER[2] + V4_OCULUS_RADIUS + 0.55
+    if crest is None or abs(crest.location.z - expected_crest_z) > 0.01:
+        raise RuntimeError("War Room v4 lunar crest must remain above the oculus rim")
+    hour_marks = [name for name in names if name.startswith("WR4_OBS_oculus_hour_mark_")]
+    if len(hour_marks) != 10:
+        raise RuntimeError(f"War Room v4 expected ten symmetrical oculus hour marks; got {len(hour_marks)}")
     forbidden_prefixes = (
         "WR_ARCH_", "WR_TABLE_", "WR_FIREPLACE_", "WR_DESK_", "WR_CREST_",
         "WR_WINDOW_", "WR_CANON_", "WR4_OBS_drafting_", "WR4_OBS_map_",

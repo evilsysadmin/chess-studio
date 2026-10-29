@@ -9,6 +9,9 @@ const HANS_NAME = 'war-room-hans-butler';
 const DRIVER_NAME = 'war-room-hans-fireplace-driver';
 const FIREPLACE_NAME = 'war-room-fireplace';
 const SERVICE_DOOR_NAME = 'war-room-hans-service-door';
+const AUTHORED_DOOR_PIVOT_NAME = 'war-room-hans-door-pivot';
+const authoredDoorWorld = new THREE.Vector3();
+const hearthWorld = new THREE.Vector3();
 const VISUAL_ROOT_NAME = 'war-room-hans-visual-root';
 const HANS_UNSCALED_HALF_WIDTH = 0.49;
 const WALL_MARGIN = 0.13;
@@ -185,6 +188,19 @@ function applyRearWallEntryPath(hans, {
 }
 
 function actualDoorWallFrameX(fireplace, door, scale) {
+  if (door?.userData?.refs?.authored === true && fireplace && door.getWorldPosition) {
+    // An authored Blender door has no procedural 'service-door-recess'. Its
+    // hinge is the real structural wall plane; never use the legacy 2.28 m
+    // fallback or Hans will be stopped over a metre before the door.
+    door.updateWorldMatrix?.(true, false);
+    fireplace.updateWorldMatrix?.(true, false);
+    door.getWorldPosition(authoredDoorWorld);
+    fireplace.getWorldPosition(hearthWorld);
+    const distance = Math.abs(authoredDoorWorld.x - hearthWorld.x);
+    if (Number.isFinite(distance) && distance > 0) {
+      return Math.max(1.8, distance - HANS_UNSCALED_HALF_WIDTH * scale - WALL_MARGIN);
+    }
+  }
   const recess = door?.getObjectByName?.('war-room-hans-service-door-recess');
   const frame = door?.getObjectByName?.('war-room-hans-service-door-frame');
   const wallX = Number(recess?.position?.x ?? frame?.position?.x);
@@ -242,6 +258,15 @@ export function clampHansExitToDoorGeometry(hans, {
   scale = WAR_ROOM_HANS_CANONICAL_SCALE,
 } = {}) {
   if (!hans || (phase !== 'leave' && !String(route || '').startsWith('leave-'))) return false;
+  // V2 authors an actual aperture and an outside-alcove endpoint. The
+  // legacy inner-wall clamp blocked Hans inside the room even after the leaf
+  // swung open. Keep that guard for closed V2 doors and all other variants.
+  const v2AuthoredPassageOpen =
+    fireplace?.userData?.warRoomHansStage?.id === 'v2-blender-hall'
+    && route === 'stage-leave'
+    && door?.userData?.refs?.authored === true
+    && Number(door.userData?.warRoomHansDoorOpen) >= 0.9;
+  if (v2AuthoredPassageOpen) return false;
   const safeFrameX = actualDoorWallFrameX(fireplace, door, scale);
   const frameX = Number(hans.position.x) / side;
   if (!Number.isFinite(frameX) || frameX <= safeFrameX) return false;
@@ -351,7 +376,8 @@ export function installWarRoomHansMotionPolish(root) {
   const hans = root.getObjectByName?.(HANS_NAME);
   const driver = root.getObjectByName?.(DRIVER_NAME);
   const fireplace = root.getObjectByName?.(FIREPLACE_NAME);
-  const door = root.getObjectByName?.(SERVICE_DOOR_NAME);
+  const door = root.getObjectByName?.(SERVICE_DOOR_NAME)
+    || root.getObjectByName?.(AUTHORED_DOOR_PIVOT_NAME);
   const body = hans?.userData?.refs;
   if (!hans || !driver || !fireplace || !body || typeof driver.onBeforeRender !== 'function') return 0;
   if (driver.userData?.warRoomHansMotionPolishV2 === WAR_ROOM_HANS_MOTION_POLISH_V2_VERSION) return 0;

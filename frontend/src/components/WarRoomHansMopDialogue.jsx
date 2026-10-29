@@ -7,6 +7,7 @@ import {
   MATTHIAS_MOP_SIGH_LINE,
 } from './WarRoomHansMopContract.js';
 import { projectHansFireReplyAnchor } from './WarRoomHansFireCallContract.js';
+import { observeWarRoomHansDialogue } from './WarRoomHansDialogueObserver.js';
 import './WarRoomHansFireCall.css';
 
 function sameAnchor(current, next) {
@@ -22,6 +23,7 @@ export default function WarRoomHansMopDialogue({
   gameId = '',
   isThreeD = false,
   enabled = false,
+  quiet = false,
   matthiasAnchorStyle = null,
   matthiasTrackedSquare = null,
 }) {
@@ -54,11 +56,9 @@ export default function WarRoomHansMopDialogue({
 
   useEffect(() => {
     if (!portalHost || !enabled || !gameId || !isThreeD) return undefined;
-    let frameId = 0;
-    let live = true;
-    const tick = () => {
-      if (!live) return;
-      const canvas = portalHost.querySelector('.board3d-main-canvas');
+    return observeWarRoomHansDialogue({
+      host: portalHost,
+      onChange: (canvas) => {
       const nextPhase = canvas?.dataset?.warRoomHansMopDialogue || '';
       setPhase((current) => current === nextPhase ? current : nextPhase);
       if (nextPhase === 'hans') {
@@ -74,13 +74,8 @@ export default function WarRoomHansMopDialogue({
           setHansAnchor((current) => current == null ? current : null);
         }
       }
-      frameId = window.requestAnimationFrame(tick);
-    };
-    frameId = window.requestAnimationFrame(tick);
-    return () => {
-      live = false;
-      window.cancelAnimationFrame(frameId);
-    };
+      },
+    });
   }, [enabled, gameId, isThreeD, portalHost]);
 
   const hansStyle = useMemo(() => hansAnchor ? {
@@ -97,7 +92,7 @@ export default function WarRoomHansMopDialogue({
     '--warroom-fire-call-tail-x': '50%',
   } : null, [matthiasAnchorStyle]);
 
-  if (!isThreeD || !enabled || !gameId || !portalHost || !phase) return null;
+  if (!isThreeD || !enabled || !gameId || !portalHost || !phase || quiet) return null;
 
   return createPortal(
     <div className="warroom-hans-fire-call-overlay" data-testid="warroom-hans-mop-dialogue" data-mop-dialogue-phase={phase}>

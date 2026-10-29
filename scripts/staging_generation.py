@@ -118,28 +118,41 @@ def wait_for_surfaces(
     for attempt in range(1, attempts + 1):
         results = [observe(surface, sha, fetch) for surface in surfaces]
         if all(ok for ok, _ in results):
-            if root:
-                status, _ = fetch(f"{url('STAGING_URL')}/")
-                if status != 200:
-                    print(f"::error::Frontend staging raíz devuelve HTTP {status or 'error'}")
-                    return False
-            print(f"Staging sirve {sha} en {', '.join(surfaces)}")
-            return True
-        detail = ", ".join(text for _, text in results)
+            if not root:
+                print(f"Staging sirve {sha} en {', '.join(surfaces)}")
+                return True
+            status, _ = fetch(f"{url('STAGING_URL')}/")
+            if status == 200:
+                print(f"Staging sirve {sha} en {', '.join(surfaces)} con raíz HTTP 200")
+                return True
+            # The release receipt may propagate before the Pages root. A
+            # transient 503/transport error must consume the remaining polling
+            # budget, not fail a correctly deployed SHA on the first mismatch.
+            detail = f"frontend raíz HTTP {status or 'error'} (esperado 200)"
+        else:
+            detail = ", ".join(text for _, text in results)
         print(f"Aún no converge: {detail}; esperado {sha} (intento {attempt}/{attempts})")
         if attempt < attempts:
             sleep(interval)
-    print(f"::error::{'/'.join(surfaces)} no sirvió {sha} tras {attempts} intentos")
+    print(f"::error::{'/'.join(surfaces)} no sirvió {sha} con raíz HTTP 200 tras {attempts} intentos" if root
+          else f"::error::{'/'.join(surfaces)} no sirvió {sha} tras {attempts} intentos")
     return False
 
 
 def current_main(runner: Callable[..., subprocess.CompletedProcess] = subprocess.run) -> str:
-    result = runner(
-        ["git", "ls-remote", "origin", "refs/heads/main"],
-        capture_output=True, text=True, check=False,
-    )
+    # GitHub/DNS can stall a read-only probe indefinitely. This is a release
+    # boundary: an unproven HEAD may not authorize Cloudflare or OCI mutations.
+    try:
+        result = runner(
+            ["git", "ls-remote", "origin", "refs/heads/main"],
+            capture_output=True, text=True, check=False, timeout=10,
+        )
+    except subprocess.TimeoutExpired as exc:
+        raise GenerationError("Timeout consultando main HEAD (10s)") from exc
+    if result.returncode != 0:
+        raise GenerationError("git ls-remote main falló; no hay SHA acreditado")
     head = (result.stdout or "").split()[0] if (result.stdout or "").split() else ""
-    if not SHA_RE.match(head):
+    if not SHA_RE.fullmatch(head):
         raise GenerationError(f"No pude resolver un main HEAD válido: {head or '<vacío>'}")
     return head
 
@@ -175,7 +188,14 @@ def watch_committed(
     for attempt in range(1, attempts + 1):
         status, body = fetch(f"{url('STAGING_API_URL')}/_deploy/committed?probe={attempt}")
         if status == 200 and body.strip().lower() == sha and accredited():
-            return True
+            # A marker/attestation can become stale when another PR lands
+            # while the watcher polls. Never issue convergence credit for a
+            # generation that is no longer the current main HEAD. An
+            # unavailable HEAD is also not a valid authorization.
+            try:
+                return main_head() == sha
+            except GenerationError:
+                return False
         if attempt % main_every == 0:
             try:
                 if main_head() != sha:
@@ -195,6 +215,11 @@ def backend_accredited(sha: str) -> bool:
         capture_output=True, text=True, check=False,
     )
     return result.returncode == 0
+
+
+def needs_oci_fallback(sha: str, head: str, accredited: Callable[[], bool]) -> bool:
+    """Only current main without full public accreditation may use OCI SDK."""
+    return head == sha and not accredited()
 
 
 def self_test() -> None:
@@ -226,6 +251,24 @@ def self_test() -> None:
                              fetch=fake({**all_new, "backend": other}), sleep=quiet)
     assert not wait_for_surfaces(sha, ["frontend"], attempts=1, interval=0,
                                  fetch=fake(all_new, root_status=503), sleep=quiet, root=True)
+    # Pages can publish the exact release.json receipt slightly before the
+    # root CDN route. Retry the 503 but never accept it as green.
+    root_hits = {"n": 0}
+    def transient_root(target: str) -> tuple[int, str]:
+        if target.endswith("/"):
+            root_hits["n"] += 1
+            return (503 if root_hits["n"] < 3 else 200), ""
+        return fake(all_new)(target)
+    assert wait_for_surfaces(sha, ["frontend"], attempts=3, interval=0,
+                             fetch=transient_root, sleep=quiet, root=True)
+    assert root_hits["n"] == 3
+    root_hits["n"] = 0
+    assert not wait_for_surfaces(sha, ["frontend"], attempts=2, interval=0,
+                                 fetch=transient_root, sleep=quiet, root=True)
+    assert root_hits["n"] == 2, "un root sin 200 nunca acredita el deploy"
+    # A green root cannot conceal a stale frontend release receipt.
+    assert not wait_for_surfaces(sha, ["frontend"], attempts=2, interval=0,
+                                 fetch=fake({**all_new, "frontend": other}), sleep=quiet, root=True)
     # A Worker serving the SHA but with broken routing is not converged.
     broken = lambda target: (200, json.dumps({**health, "models": {}})) if target.endswith("/health") else fake(all_new)(target)  # noqa: E731
     assert not observe("worker", sha, broken)[0]
@@ -244,20 +287,56 @@ def self_test() -> None:
     assert not dist_identity(sha, tmp.with_suffix(".missing"))
 
     class Done:
-        def __init__(self, out: str) -> None:
+        def __init__(self, out: str, returncode: int = 0) -> None:
             self.stdout = out
-    assert current_main(lambda *a, **k: Done(f"{sha}\trefs/heads/main\n")) == sha
+            self.returncode = returncode
+    seen_kwargs = {}
+    def good_head(*_args, **kwargs):
+        seen_kwargs.update(kwargs)
+        return Done(f"{sha}\trefs/heads/main\n")
+    assert current_main(good_head) == sha
+    assert seen_kwargs.get("timeout") == 10 and seen_kwargs.get("check") is False
+    for failed in (Done(""), Done(f"{sha}\trefs/heads/main\n", 128)):
+        try:
+            current_main(lambda *a, **k: failed)
+        except GenerationError:
+            pass
+        else:
+            raise AssertionError("failed/empty git probe allowed a deploy")
+    def stalled_git(*_args, **_kwargs):
+        raise subprocess.TimeoutExpired(cmd="git ls-remote", timeout=10)
     try:
-        current_main(lambda *a, **k: Done(""))
-        raise AssertionError("main vacío debería fallar")
-    except GenerationError:
-        pass
+        current_main(stalled_git)
+    except GenerationError as exc:
+        assert "Timeout" in str(exc)
+    else:
+        raise AssertionError("hanging Git main probe allowed a deploy")
 
     committed = lambda body: (lambda _target: (200, body))  # noqa: E731
     assert watch_committed(sha, attempts=2, interval=0, main_every=8, fetch=committed(sha + "\n"),
                            accredited=lambda: True, main_head=lambda: sha, sleep=quiet)
     assert not watch_committed(sha, attempts=2, interval=0, main_every=8, fetch=committed(sha),
                                accredited=lambda: False, main_head=lambda: sha, sleep=quiet)
+    # The commit marker and backend proof alone cannot accredit an obsolete
+    # generation. Verify main HEAD at the *moment of success*, not only at
+    # the periodic stale checks; otherwise a newer merge can race the return.
+    assert not watch_committed(sha, attempts=2, interval=0, main_every=8,
+                               fetch=committed(sha), accredited=lambda: True,
+                               main_head=lambda: other, sleep=quiet)
+    def inaccessible_head() -> str:
+        raise GenerationError("GitHub main unavailable")
+    assert not watch_committed(sha, attempts=2, interval=0, main_every=8,
+                               fetch=committed(sha), accredited=lambda: True,
+                               main_head=inaccessible_head, sleep=quiet)
+    def must_not_probe_head() -> str:
+        raise AssertionError("HEAD probe on unaccredited watcher marker")
+    assert not watch_committed(sha, attempts=2, interval=0, main_every=8,
+                               fetch=committed(other), accredited=lambda: True,
+                               main_head=must_not_probe_head, sleep=quiet)
+    assert not watch_committed(sha, attempts=2, interval=0, main_every=8,
+                               fetch=committed(sha), accredited=lambda: False,
+                               main_head=must_not_probe_head, sleep=quiet)
+
     seen = {"n": 0}
 
     def head() -> str:
@@ -266,11 +345,23 @@ def self_test() -> None:
     assert not watch_committed(sha, attempts=20, interval=0, main_every=2, fetch=committed(other),
                                accredited=lambda: True, main_head=head, sleep=quiet)
     assert seen["n"] == 1, "un main nuevo corta la espera en la primera comprobación"
+    assert not needs_oci_fallback(sha, other, lambda: (_ for _ in ()).throw(AssertionError("stale probed")))
+    assert not needs_oci_fallback(sha, sha, lambda: True)
+    assert needs_oci_fallback(sha, sha, lambda: False)
+
     try:
         valid_sha("abc")
         raise AssertionError("SHA corto debería fallar")
     except GenerationError:
         pass
+    # Strict HEAD probe is used just before an OCI command, never for admission.
+    # The existing informational mode still exits zero for an old generation.
+    from unittest.mock import patch
+    with patch(f"{__name__}.current_main", return_value=other):
+        assert main(["main-head", "--sha", sha]) == 0
+        assert main(["main-head", "--sha", sha, "--fail-stale"]) == 87
+    with patch(f"{__name__}.current_main", return_value=sha):
+        assert main(["main-head", "--sha", sha, "--fail-stale"]) == 0
     print("staging-generation self-test OK")
 
 
@@ -280,6 +371,8 @@ def main(argv: list[str]) -> int:
     sub = parser.add_subparsers(dest="command")
     p = sub.add_parser("main-head")
     p.add_argument("--sha", required=True)
+    p.add_argument("--probe-backend", action="store_true")
+    p.add_argument("--fail-stale", action="store_true", help="return 87 for superseded main HEAD")
     p.add_argument("--github-output")
     p = sub.add_parser("dist-identity")
     p.add_argument("--sha", required=True)
@@ -308,8 +401,9 @@ def main(argv: list[str]) -> int:
             superseded = head != sha
             if superseded:
                 print(f"::notice title=Staging superseded::{sha} != main {head}; sin mutación.")
-            write_output(args.github_output, superseded=str(superseded).lower(), current_main=head)
-            return 0
+            extra = {"requires_sdk": str(needs_oci_fallback(sha, head, lambda: backend_accredited(sha))).lower()} if args.probe_backend else {}
+            write_output(args.github_output, superseded=str(superseded).lower(), current_main=head, **extra)
+            return 87 if superseded and args.fail_stale else 0
         if args.command == "dist-identity":
             return 0 if dist_identity(valid_sha(args.sha), pathlib.Path(args.path)) else 1
         if args.command == "wait":

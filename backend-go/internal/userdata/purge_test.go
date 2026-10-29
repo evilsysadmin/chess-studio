@@ -78,7 +78,7 @@ func TestPurgeCoversPythonsCascade(t *testing.T) {
 	}
 	want := []string{
 		"game_store.delete_games_by_owner", "profile_store.delete_profile", "pvp_store.delete_user_data",
-		"chronicles_run_store.delete_user_runs", "matthias_daily_store.delete_user_daily",
+		"legacy_chronicles_purge.delete_legacy_chronicles_runs", "matthias_daily_store.delete_user_daily",
 		"matthias_memory_store.delete_user_memory", "feedback_store.delete_feedback_by_user",
 	}
 	if strings.Join(got, ",") != strings.Join(want, ",") {

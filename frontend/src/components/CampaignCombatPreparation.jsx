@@ -7,6 +7,7 @@ import CampaignArmyGlance from './CampaignArmyGlance.jsx';
 import MechanicTutorialModal from './MechanicTutorialModal.jsx';
 import { deploymentSummary } from '../combatDeployment.js';
 import { buildTacticalDeploymentBrief } from '../combatTacticalDeployment.js';
+import { combatPreparationChoice } from '../combatPreparationChoice.js';
 import { loadMechanicTutorialProgress } from '../mechanicTutorials.js';
 import './CampaignCombatPreparationRoom.css';
 
@@ -60,18 +61,17 @@ export default function CampaignCombatPreparation({
     : encounterIntel?.level === 1
       ? encounterIntel.threatBand || `CPU ${encounterIntel.threatRange}`
       : `CPU ${encounterIntel?.exactDifficulty ?? difficulty}`;
-  const nextAction = deadCount > 0
-    ? `Tienes ${deadCount} baja${deadCount === 1 ? '' : 's'} pendiente${deadCount === 1 ? '' : 's'}. Resuélvela antes de combatir.`
-    : !deploy.ready
-      ? `Faltan ${missing} puesto${missing === 1 ? '' : 's'}. Puedes jugar con la recomendada o personalizarla.`
-      : !deploymentConfirmed
-        ? 'La formación está lista. Puedes jugar ya o personalizarla.'
-        : 'Todo listo. Puedes iniciar el combate.';
+  const nextStep = combatPreparationChoice({
+    deadCount, ready: deploy.ready, missing, confirmed: deploymentConfirmed,
+  });
+  const doPrimaryAction = nextStep.action === 'resolve'
+    ? () => setShowDeployment(true)
+    : nextStep.action === 'start' ? handleStartBattleClick : handleQuickStartBattle;
 
   return (
     <div className={`menu combat-setup campaign-preparation-screen combat-operations-screen${showDeployment ? ' combat-deployment-active' : ''}`}>
       <section className="campaign-preparation-shell simplified-stage combat-operations-shell" aria-label="Preparación de Combat Chess">
-        <CombatPreparationRoom roster={roster} />
+        <CombatPreparationRoom roster={roster} onCustomize={() => setShowDeployment(true)} />
 
         <div className="combat-operations-topbar">
           <button className="back-link combat-operations-exit" onClick={onExit}>← Salir de Combat Chess</button>
@@ -94,55 +94,27 @@ export default function CampaignCombatPreparation({
         </header>
 
         <div className="campaign-preparation-quick-status combat-operations-status" aria-label="Resumen de preparación">
-          <span>Formación <b>{tactical.deployedCount}/{tactical.battleSlots}</b></span>
-          {tactical.reserveCount > 0 && <span>Reserva <b>{tactical.reserveCount}</b></span>}
+          <span>Tu ejército <b>{tactical.deployedCount}/{tactical.battleSlots}</b></span>
           {deadCount > 0 && <span className="danger-text">Bajas <b>{deadCount}</b></span>}
-          <span>Amenaza <b>{intelLabel}</b></span>
+          <span>Rival <b>{intelLabel}</b></span>
           <button type="button" className="campaign-market-link" onClick={onOpenMarket}>Mercado · {roster.credits || 0} cr →</button>
-        </div>
-
-        <div className={`campaign-situation-banner combat-operations-order ${deploymentConfirmed ? 'ready' : deadCount ? 'danger' : ''}`}>
-          <span>ORDEN ACTUAL</span>
-          <strong>{nextAction}</strong>
         </div>
 
         <div className="campaign-operation-primary-zone campaign-preparation-primary-zone friendly-primary-zone combat-operations-primary">
           <div>
-            <span>{deadCount > 0 ? 'BAJAS PENDIENTES' : deploymentConfirmed ? 'LISTO PARA COMBATIR' : 'FORMACIÓN DE COMBATE'}</span>
-            <small>{deadCount > 0
-              ? 'Una baja puede implicar perder una identidad. Decide antes de avanzar.'
-              : deploymentConfirmed
-                ? 'La formación ya está confirmada.'
-                : deploy.ready
-                  ? 'Puedes entrar ya con esta formación o ajustarla antes.'
-                  : 'La recomendada cubre los puestos vacíos sin tocar reservas innecesarias.'}</small>
+            <span>{nextStep.cue}</span>
+            <small id="combat-operation-next-step" role="status">{nextStep.help}</small>
           </div>
           <div className="combat-operations-primary-actions">
-            {deadCount > 0 ? (
-              <button type="button" className="primary-btn campaign-main-cta" onClick={() => setShowDeployment(true)}>RESOLVER BAJAS →</button>
-            ) : deploymentConfirmed ? (
-              <button type="button" className="primary-btn campaign-main-cta" onClick={handleStartBattleClick}>INICIAR COMBATE →</button>
-            ) : (
-              <button type="button" className="primary-btn campaign-main-cta" onClick={handleQuickStartBattle}>
-                {deploy.ready ? 'JUGAR CON ESTA FORMACIÓN →' : 'JUGAR CON FORMACIÓN RECOMENDADA →'}
-              </button>
-            )}
-
-            {deadCount === 0 && !deploymentConfirmed && (
-              <button type="button" className="secondary-btn campaign-recommended-formation" onClick={() => setShowDeployment(true)}>
-                Personalizar despliegue
-              </button>
-            )}
-            {deploymentConfirmed && (
-              <button type="button" className="secondary-btn campaign-recommended-formation" onClick={() => setShowDeployment(true)}>
-                Revisar despliegue
-              </button>
-            )}
+            <button type="button" className="primary-btn campaign-main-cta"
+              aria-describedby="combat-operation-next-step" onClick={doPrimaryAction}>
+              {nextStep.label}
+            </button>
           </div>
         </div>
 
         <details className="campaign-optional-panel campaign-preparation-options combat-operations-drawer">
-          <summary>Inteligencia y logística</summary>
+          <summary>Más opciones · inteligencia y veteranos</summary>
           <div className="combat-operations-drawer-body">
             <div className="campaign-preparation-secondary-actions">
               <button type="button" className="secondary-btn" onClick={() => setShowArmy(true)}>Ejército y veteranos</button>

@@ -93,7 +93,7 @@ export function warRoomBlenderPracticalLightProfile({ coarsePointer = false } = 
   };
 }
 
-function installAuthoredPracticalLights(root, { coarsePointer = false } = {}) {
+export function installAuthoredPracticalLights(root, { coarsePointer = false } = {}) {
   const profile = warRoomBlenderPracticalLightProfile({ coarsePointer });
   const entries = [
     ['WR_ANCHOR_fireplace_practical', 'war-room-blender-fire-practical', profile.fire],
@@ -102,10 +102,19 @@ function installAuthoredPracticalLights(root, { coarsePointer = false } = {}) {
     ['WR_ANCHOR_window_moonlight', 'war-room-blender-moon-practical', profile.moon],
   ];
 
+  // getObjectByName recursively walks the full hierarchy. The four authored
+  // practicals share one lookup census instead of repeatedly walking every
+  // decorative mesh on room install. First encounter retains Three.js DFS
+  // semantics when a GLB contains duplicate anchor names.
+  const wanted = new Set(entries.filter(([, , spec]) => spec?.intensity > 0).map(([name]) => name));
+  const anchors = new Map();
+  root.traverse((node) => {
+    if (wanted.has(node.name) && !anchors.has(node.name)) anchors.set(node.name, node);
+  });
   let installed = 0;
   for (const [anchorName, lightName, spec] of entries) {
     if (!spec || spec.intensity <= 0) continue;
-    const authoredAnchor = root.getObjectByName(anchorName);
+    const authoredAnchor = anchors.get(anchorName);
     if (!authoredAnchor) continue;
     const practical = new THREE.PointLight(spec.color, spec.intensity, spec.distance, spec.decay);
     practical.name = lightName;
@@ -120,13 +129,19 @@ function installAuthoredPracticalLights(root, { coarsePointer = false } = {}) {
 
 export const WAR_ROOM_BLENDER_SHADOW_CASTER_LIMIT = 32;
 
-function warRoomBlenderShadowCasterScore(node) {
+function warRoomBlenderMaterialIsTranslucent(material) {
+  return material?.transparent && Number(material.opacity) < 0.9;
+}
+
+function warRoomBlenderShadowCasterScore(node, position, scale) {
   if (!node?.isMesh || !node.geometry) return Number.NEGATIVE_INFINITY;
 
   if (!node.geometry.boundingSphere) node.geometry.computeBoundingSphere?.();
   const radiusLocal = Math.max(0.05, Number(node.geometry.boundingSphere?.radius) || 0.25);
-  const position = new THREE.Vector3();
-  const scale = new THREE.Vector3(1, 1, 1);
+  // The deferred census is synchronous. Share scratch vectors across meshes
+  // rather than allocating two Three objects for every decorative candidate.
+  position.set(0, 0, 0);
+  scale.set(1, 1, 1);
   node.getWorldPosition?.(position);
   node.getWorldScale?.(scale);
 
@@ -140,8 +155,9 @@ function warRoomBlenderShadowCasterScore(node) {
   const proximity = 1 / (1 + boardDistance * 0.18);
   const nearBoardBoost = boardDistance <= 8 ? 1.6 : 1;
   const elevatedBoost = position.y >= 0.25 ? 1.15 : 0.8;
-  const materials = (Array.isArray(node.material) ? node.material : [node.material]).filter(Boolean);
-  const translucent = materials.some((material) => material.transparent && Number(material.opacity) < 0.9);
+  const translucent = Array.isArray(node.material)
+    ? node.material.some(warRoomBlenderMaterialIsTranslucent)
+    : Boolean(warRoomBlenderMaterialIsTranslucent(node.material));
   const transparencyPenalty = translucent ? 0.35 : 1;
 
   return sizeScore * proximity * nearBoardBoost * elevatedBoost * transparencyPenalty;
@@ -154,15 +170,41 @@ export function selectWarRoomBlenderShadowCasters(
   const maxCasters = Math.max(0, Math.floor(Number(limit) || 0));
   if (!maxCasters) return [];
 
+  const position = new THREE.Vector3();
+  const scale = new THREE.Vector3(1, 1, 1);
   return (meshes || [])
-    .map((node, index) => ({ node, index, score: warRoomBlenderShadowCasterScore(node) }))
+    .map((node, index) => ({
+      node,
+      index,
+      score: warRoomBlenderShadowCasterScore(node, position, scale),
+    }))
     .filter((entry) => Number.isFinite(entry.score))
     .sort((a, b) => b.score - a.score || a.index - b.index)
     .slice(0, maxCasters)
     .map((entry) => entry.node);
 }
 
-function disposeShell(root) {
+/**
+ * Upper bound on potential geometry sent to a shell's shadow pass.
+ * Index/position accessor counts only; NOT actual WebGL shadow draw calls,
+ * culled triangles, timings or FPS. Invoked once per installed GLB.
+ */
+export function warRoomBlenderPotentialShadowTriangles(meshes = []) {
+  let total = 0;
+  for (const mesh of meshes || []) {
+    if (!mesh?.isMesh) continue;
+    const geometry = mesh.geometry;
+    const count = Number(geometry?.index?.count ?? geometry?.attributes?.position?.count ?? 0);
+    if (!Number.isFinite(count) || count <= 0) continue;
+    const copies = mesh.isInstancedMesh
+      ? Math.max(0, Math.floor(Number(mesh.count) || 0))
+      : 1;
+    total += Math.floor(count / 3) * copies;
+  }
+  return total;
+}
+
+export function disposeWarRoomBlenderShellResources(root) {
   const geometries = new Set();
   const materials = new Set();
   const textures = new Set();
@@ -212,6 +254,36 @@ export function createWarRoomBlenderVariantShell({
   return Object.freeze({ modelUrl, install });
 }
 
+// Defaults to the long-standing War Room behavior; the separate PvP Hall
+// opts out when its WebGL renderer has shadow maps disabled.
+export function shouldPrepareWarRoomShadowPass({
+  coarsePointer = false,
+  shadowMapsEnabled = true,
+} = {}) {
+  return !coarsePointer && Boolean(shadowMapsEnabled);
+}
+
+// Shadow ranking needs world transforms; neither belongs on the first room paint.
+// Schedule the census once, then enable the same budgeted casters when idle.
+export function deferWarRoomBlenderShadowPass({
+  root,
+  meshes,
+  onRefine,
+  schedule = scheduleWarRoomAfterFirstPaint,
+} = {}) {
+  return schedule(() => {
+    if (!root?.parent) return;
+    root.updateMatrixWorld?.(true);
+    const selectedShadowCasters = selectWarRoomBlenderShadowCasters(meshes);
+    selectedShadowCasters.forEach((node) => { node.castShadow = true; });
+    root.userData.warRoomBlenderShadowProjectedCount = selectedShadowCasters.length;
+    root.userData.warRoomBlenderShadowWarmup = 'ready-budgeted';
+    root.userData.warRoomBlenderShadowCasterCount = selectedShadowCasters.length;
+    root.userData.warRoomBlenderShadowSelectedPotentialTriangles = warRoomBlenderPotentialShadowTriangles(selectedShadowCasters);
+    onRefine?.();
+  });
+}
+
 export async function installWarRoomBlenderShell(
   scene,
   {
@@ -219,17 +291,21 @@ export async function installWarRoomBlenderShell(
     coarsePointer = false,
     url,
     onRefine,
+    shadowMapsEnabled = true,
     variant = 'blender',
     rootName = `war-room-${variant}-blender-shell`,
     runtimeFinish = 'gltf-pbr-runtime',
     boardAnchorY = WAR_ROOM_BLENDER_BOARD_ANCHOR_Y,
     installRuntimeEffects,
+    onTiming,
   } = {},
 ) {
   if (!scene?.add) throw new Error(`War Room ${variant} requires a Three.js scene`);
   if (!url) throw new Error(`War Room ${variant} requires a GLB URL`);
+  const markTiming = typeof onTiming === 'function' ? onTiming : () => {};
   const loader = configureWarRoomBlenderLoader(new GLTFLoader());
   const gltf = await loader.loadAsync(url);
+  markTiming('glb');
   const root = gltf?.scene;
   if (!root) throw new Error(`War Room ${variant} GLB has no scene`);
 
@@ -271,6 +347,7 @@ export async function installWarRoomBlenderShell(
       if (installRuntimeLeatherSurface(material, runtimeLeatherTextures, { coarsePointer })) runtimeLeatherMaterials += 1;
     });
   });
+  markTiming('materials');
   const practicalLights = installAuthoredPracticalLights(root, { coarsePointer });
   root.userData.warRoomVariant = variant;
   root.userData.warRoomRuntimeFinish = runtimeFinish;
@@ -285,30 +362,37 @@ export async function installWarRoomBlenderShell(
   root.userData.warRoomBlenderRuntimeFabricTextures = Object.keys(runtimeFabricTextures).length;
   root.userData.warRoomBlenderRuntimeLeatherMaterials = runtimeLeatherMaterials;
   root.userData.warRoomBlenderRuntimeLeatherTextures = Object.keys(runtimeLeatherTextures).length;
-  root.userData.warRoomBlenderShadowWarmup = coarsePointer ? 'disabled-lite' : 'deferred-after-first-paint';
-  root.userData.warRoomBlenderShadowCasterBudget = coarsePointer ? 0 : WAR_ROOM_BLENDER_SHADOW_CASTER_LIMIT;
+  // Existing War Rooms preserve their default shadow pass. The PvP Hall is
+  // the only caller that explicitly has no WebGL shadow maps.
+  const needsShadowPass = shouldPrepareWarRoomShadowPass({ coarsePointer, shadowMapsEnabled });
+  root.userData.warRoomBlenderShadowWarmup = needsShadowPass
+    ? 'deferred-after-first-paint'
+    : (coarsePointer ? 'disabled-lite' : 'disabled-no-shadow-maps');
+  root.userData.warRoomBlenderShadowCasterBudget = needsShadowPass ? WAR_ROOM_BLENDER_SHADOW_CASTER_LIMIT : 0;
   root.userData.warRoomBlenderShadowCasterCandidates = shadowCandidateMeshes.length;
+  // This pass is on shell mount, never in render or animation frames.
+  root.userData.warRoomBlenderShadowCandidatePotentialTriangles = warRoomBlenderPotentialShadowTriangles(shadowCandidateMeshes);
+  root.userData.warRoomBlenderShadowSelectedPotentialTriangles = 0;
   root.userData.warRoomBlenderShadowCasterCount = 0;
   const disposeRuntimeEffects = installRuntimeEffects?.(root, { coarsePointer }) || (() => {});
   scene.add(root);
-  root.updateMatrixWorld?.(true);
-  const projectedShadowCasters = selectWarRoomBlenderShadowCasters(shadowCandidateMeshes);
-  root.userData.warRoomBlenderShadowProjectedCount = projectedShadowCasters.length;
+  // Until the deferred census, zero means "not ranked yet", not "no casters".
+  root.userData.warRoomBlenderShadowProjectedCount = 0;
 
-  const cancelShadowWarmup = coarsePointer ? () => {} : scheduleWarRoomAfterFirstPaint(() => {
-    if (!root.parent) return;
-    root.updateMatrixWorld?.(true);
-    const selectedShadowCasters = selectWarRoomBlenderShadowCasters(shadowCandidateMeshes);
-    selectedShadowCasters.forEach((node) => { node.castShadow = true; });
-    root.userData.warRoomBlenderShadowWarmup = 'ready-budgeted';
-    root.userData.warRoomBlenderShadowCasterCount = selectedShadowCasters.length;
-    onRefine?.();
+  // Do not schedule *any* idle shadow-caster ranking or matrix traversal when
+  // the consumer renderer cannot display shadow maps. Avoiding only onRefine
+  // did not prevent a 6-second post-ready native task in software Chromium.
+  const cancelShadowWarmup = !needsShadowPass ? () => {} : deferWarRoomBlenderShadowPass({
+    root,
+    meshes: shadowCandidateMeshes,
+    onRefine,
   });
+  markTiming('effects');
 
   return () => {
     cancelShadowWarmup();
     disposeRuntimeEffects();
     root.removeFromParent();
-    disposeShell(root);
+    disposeWarRoomBlenderShellResources(root);
   };
 }

@@ -2,6 +2,15 @@
    The authoritative PvP state remains in PvPLobbyModal; this file only turns
    that projection into a spatial castle room instead of a dashboard. */
 
+/* The Duel Hall covers Home with an opaque backdrop. Keep Home's WebGL
+   mounted for an instant return, but omit its invisible canvas from Chromium
+   composition while this modal exists. Matched browser A/B: 4.3–5.3s pre-GET
+   stall with Home visible vs 0.43–0.51s when hidden (software renderer).
+   No scene/GLB/render loop is removed; visibility restores on close. */
+body:has(.pvp-lobby-backdrop) canvas.illustrated-home__castle-3d {
+  visibility: hidden !important;
+}
+
 .pvp-lobby-backdrop {
   padding: clamp(.45rem, 1.4vw, 1.3rem);
   background:
@@ -83,7 +92,9 @@
   z-index: 1;
   opacity: 0;
   pointer-events: none;
-  transition: opacity 220ms ease;
+  /* Reveal the first complete GLB frame atomically. A 220ms alpha tween
+     forces compositor blending of the full WebGL layer on software GPUs. */
+  transition: none;
 }
 
 .pvp-duel-hall__3d canvas {
@@ -100,18 +111,13 @@
   position: absolute;
   inset: 0;
   z-index: 0;
-  transition: opacity 220ms ease;
+  /* Retire the 2D fallback at the same frame instead of blending two full-room
+     surfaces during the first expensive 3D compositing pass. */
+  transition: none;
 }
 
 .pvp-duel-hall__3d.is-ready + .pvp-duel-hall__architecture {
   opacity: .10;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .pvp-duel-hall__3d,
-  .pvp-duel-hall__architecture {
-    transition: none;
-  }
 }
 
 .pvp-duel-hall__arch {

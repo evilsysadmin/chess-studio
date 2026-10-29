@@ -5,6 +5,8 @@ import CombatServicePanel from './CombatServicePanel.jsx';
 import CampaignArmyGlance from './CampaignArmyGlance.jsx';
 import { ArmyRosterPanel } from './ArmyScreen.jsx';
 import CombatOperationsCampaignMissionRoute from './CombatOperationsCampaignMissionRoute.jsx';
+import CombatOperationsCampaignBriefingRoute from './CombatOperationsCampaignBriefingRoute.jsx';
+import CampaignCommandStatus from './CampaignCommandStatus.jsx';
 import CampaignBriefing from './CampaignBriefing.jsx';
 import MechanicTutorialModal from './MechanicTutorialModal.jsx';
 import CombatDebrief from './CombatDebrief.jsx';
@@ -73,21 +75,17 @@ import {
   difficultyForFloor,
   ROGUELIKE_TOWER_FLOORS,
 } from '../roguelikeRun.js';
-
 const HUMAN_COLOR = 'w';
 const CPU_COLOR = 'b';
-
 function campaignDebriefContextId(state) {
   if (!state?.active || !state.seed || !state.selectedNodeId) return null;
   if (!['briefing', 'reward'].includes(state.phase)) return null;
   return `campaign:${state.seed}:${state.selectedNodeId}`;
 }
-
 function runDebriefContextId(state) {
   if (!state?.inRun || !state.seed || !['cleared', 'completed'].includes(state.phase)) return null;
   return `run:${state.seed}:${state.floor}`;
 }
-
 export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBattle, onBattleUiActive, onPersistenceState }) {
   const [run, setRun] = useState(() => loadRun());
   const [campaign, setCampaign] = useState(() => loadCampaign());
@@ -100,6 +98,7 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
 
   const [serviceRecord, setServiceRecord] = useState(() => loadCombatService());
   const [roster, setRoster] = useState(() => loadRoster());
+  const [postBattleGate, setPostBattleGate] = useState(null);
   const [battleDebrief, setBattleDebrief] = useState(() => {
     const contextId = campaignDebriefContextId(campaign) || runDebriefContextId(run);
     return contextId ? loadCombatDebriefSession(contextId) : null;
@@ -301,6 +300,7 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
   }
 
   function handleCampaignBattleResult(outcome, debrief = null, meta = {}) {
+    if (outcome === 'win') setPostBattleGate({ kind: 'campaign', sessionId: campaignCombatSessionId });
     if (debrief && campaignCombatSessionId && ['win', 'retired'].includes(outcome)) saveCombatDebriefSession(campaignCombatSessionId, debrief);
     setBattleDebrief(debrief);
     if (meta.gameId) recordGameActivity({
@@ -451,6 +451,7 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
   }
 
   function handleBattleResult(outcome, debrief = null, meta = {}) {
+    if (outcome === 'win') setPostBattleGate({ kind: 'run', sessionId: runCombatSessionId });
     if (debrief && runCombatSessionId && outcome === 'win') saveCombatDebriefSession(runCombatSessionId, debrief);
     setBattleDebrief(debrief);
     if (meta.gameId) recordGameActivity({
@@ -518,7 +519,7 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
     );
   }
 
-  if (!run.inRun && campaign.active && (campaign.phase === 'battle' || (campaign.phase === 'fighting' && campaignBattleSessionPresent))) {
+  if (!run.inRun && campaign.active && (campaign.phase === 'battle' || (campaign.phase === 'fighting' && campaignBattleSessionPresent) || (postBattleGate?.kind === 'campaign' && postBattleGate.sessionId === campaignCombatSessionId))) {
     const node = selectedCampaignNode;
     const campaignFen = node ? applyModifierToFen(new Chess().fen(), node.modifierId, CPU_COLOR) : new Chess().fen();
     const isBoss = node?.type === 'boss';
@@ -550,7 +551,7 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
         runPerkDetails={campaignPerkDetails}
         bossConfig={isBoss ? campaignBossForSeed(campaign.seed) : null}
         onBattleStart={handleCampaignBattleStarted}
-        onBattleResult={handleCampaignBattleResult}
+        onBattleResult={handleCampaignBattleResult} onOpenDebrief={() => setPostBattleGate(null)}
         roguelikeFloor={node?.floor || node?.stage || 1}
         roguelikeMode="campaign"
         combatSessionId={campaignCombatSessionId || `campaign:${campaign.seed}:${node?.id || 'node'}`}
@@ -580,7 +581,7 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
     );
   }
 
-  if (run.inRun && (run.phase === 'battle' || (run.phase === 'fighting' && runBattleSessionPresent))) {
+  if (run.inRun && (run.phase === 'battle' || (run.phase === 'fighting' && runBattleSessionPresent) || (postBattleGate?.kind === 'run' && postBattleGate.sessionId === runCombatSessionId))) {
     const isBoss = run.mode === 'tower' && run.floor === ROGUELIKE_BOSS_FLOOR;
     return (
       <CombatScreen
@@ -603,7 +604,7 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
         runPerkDetails={runPerkDetails}
         bossConfig={isBoss ? ROGUELIKE_BOSS : null}
         onBattleStart={handleBattleStarted}
-        onBattleResult={handleBattleResult}
+        onBattleResult={handleBattleResult} onOpenDebrief={() => setPostBattleGate(null)}
         roguelikeFloor={run.floor}
         roguelikeMode={run.mode}
         combatSessionId={runCombatSessionId || `run:${run.seed}:${run.floor}`}
@@ -613,6 +614,13 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
 
   if (!run.inRun && campaign.active && campaign.phase === 'map' && campaignMapState) {
     return <CombatOperationsCampaignMissionRoute campaign={campaign} map={campaignMapState} availableNodes={campaignAvailable} roster={roster} serviceSummary={serviceSummary} showTutorial={showCampaignTutorial} showMarket={showMarket} onExit={onExit} onSelect={handleCampaignNodeSelect} onRestart={handleRestartCampaign} onFinishCampaign={finishCampaign} setShowTutorial={setShowCampaignTutorial} setShowMarket={setShowMarket} onHire={handleHireMercenary} onBuyEquipment={handleBuyEquipment} />;
+  }
+
+  if (!run.inRun && campaign.active && campaign.phase === 'briefing' && selectedCampaignNode) {
+    return <CombatOperationsCampaignBriefingRoute
+      campaign={campaign} node={selectedCampaignNode} roster={roster} armySummary={deploymentSummary(roster)} serviceSummary={serviceSummary}
+      showTutorial={showCampaignTutorial} showMarket={showMarket} onExit={onExit} onRestart={handleRestartCampaign} onBuyIntel={handleCampaignBuyIntel} onContinue={handleCampaignBriefingContinue} onRetire={() => finishCampaign('retired')}
+      setShowTutorial={setShowCampaignTutorial} setShowMarket={setShowMarket} onHire={handleHireMercenary} onBuyEquipment={handleBuyEquipment} />;
   }
 
   if (!run.inRun && campaign.active) {
@@ -628,39 +636,8 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
           <div className="combat-heading-row"><h2>Campaña de Combat Chess</h2><button type="button" className="context-help-btn" onClick={() => setShowCampaignTutorial(true)}>?</button></div>
           <p className="combat-operational-hint" title="La cartografía muestra rutas y tipos de sector. La fuerza enemiga precisa requiere inteligencia.">Elige tu siguiente sector.</p>
 
-          {(() => {
-            const nextStep = campaign.phase === 'map'
-              ? 'Elige uno de los sectores iluminados en el mapa.'
-              : campaign.phase === 'briefing'
-                ? 'Revisa qué cambia y prepara tu ejército.'
-                : campaign.phase === 'reward'
-                  ? 'Elige una recompensa para seguir avanzando.'
-                  : campaign.phase === 'camp'
-                    ? 'Elige una ventaja y continúa.'
-                    : campaign.phase === 'event'
-                      ? 'Elige una respuesta al evento.'
-                      : campaign.phase === 'completed'
-                        ? 'Operación cumplida. Archiva la campaña.'
-                        : 'Continúa con la siguiente fase.';
-            return (
-              <>
-                <div className="campaign-quick-status" aria-label="Resumen de campaña">
-                  <span>Sector <b>{Math.max(0, (campaign.route || []).length - 1)}/7</b></span>
-                  <span title="Recurso temporal de esta campaña"><b>{campaign.operationalCredits}</b> suministros</span>
-                  <span title="Fondos persistentes para mercado y bajas"><b>{roster.credits || 0}</b> créditos</span>
-                  {rosterDeployment.fallenCount > 0 && <span className="danger-text"><b>{rosterDeployment.fallenCount}</b> bajas</span>}
-                </div>
-                <div className="campaign-command-actions" aria-label="Acciones de campaña">
-                  <button type="button" className="secondary-btn campaign-market-primary" onClick={() => setShowMarket(true)}>▣ Mercado</button>
-                  <button type="button" className="secondary-btn campaign-restart-action" onClick={handleRestartCampaign}>↻ Reiniciar campaña</button>
-                </div>
-                <div className={`campaign-situation-banner campaign-friendly-next ${rosterDeployment.fallenCount ? 'danger' : ''}`}>
-                  <span>QUÉ HACER AHORA</span>
-                  <strong>{nextStep}</strong>
-                </div>
-              </>
-            );
-          })()}
+          <CampaignCommandStatus campaign={campaign} roster={roster} fallenCount={rosterDeployment.fallenCount}
+            onMarket={() => setShowMarket(true)} onRestart={handleRestartCampaign} />
 
           {battleDebrief && <CombatDebrief debrief={battleDebrief} onViewBattle={onViewBattle} nextAction={campaign.phase === 'reward' ? 'Elige una recompensa para cerrar el sector.' : null} />}
 
@@ -890,7 +867,7 @@ export default function RoguelikeScreen({ onExit, onError, onHistory, onViewBatt
             )}
           </div>
         )}
-
+        {run.inRun && battleDebrief && ['cleared', 'completed'].includes(run.phase) && <CombatDebrief debrief={battleDebrief} onViewBattle={onViewBattle} nextAction={run.phase === 'cleared' ? 'Elige una ventaja antes de continuar al siguiente piso.' : 'Continúa en infinito o cierra el intento.'} />}
         {run.inRun && run.phase === 'cleared' && (
           <div className="tournament-result roguelike-reward-screen" style={{ marginTop: '0.8rem' }}>
             <h3>¡Piso {run.floor} superado!</h3>

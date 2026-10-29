@@ -62,6 +62,52 @@ describe('Combat tactical deployment fingerprint', () => {
     expect(deploymentSelectionFingerprint(changed)).not.toBe(before);
   });
 
+  it('reconfirma cuando cambia servicio que permite metamorfosis, sin reaccionar a fechas', () => {
+    const roster = loadRoster();
+    const id = roster.identities['p-a'].identityId;
+    const record = roster.unitRecords[id];
+    const before = deploymentSelectionFingerprint(roster);
+    const earned = {
+      ...roster,
+      unitRecords: {
+        ...roster.unitRecords,
+        [id]: {
+          ...record,
+          stats: { ...record.stats, survivals: Number(record.stats.survivals || 0) + 3 },
+        },
+      },
+    };
+    expect(deploymentSelectionFingerprint(earned)).not.toBe(before);
+
+    const cosmetic = {
+      ...roster,
+      unitRecords: {
+        ...roster.unitRecords,
+        [id]: { ...record, lastBattleAt: '2026-10-20T20:00:00.000Z' },
+      },
+    };
+    expect(deploymentSelectionFingerprint(cosmetic)).toBe(before);
+  });
+
+  it('reconoce méritos de mando sin reutilizar el snapshot anterior', () => {
+    const roster = loadRoster();
+    const id = roster.identities['p-b'].identityId;
+    const frozen = freezeTacticalRosterSnapshot(roster);
+    const before = deploymentSelectionFingerprint(frozen);
+    const promoted = {
+      ...roster,
+      unitRecords: {
+        ...roster.unitRecords,
+        [id]: {
+          ...roster.unitRecords[id],
+          stats: { ...roster.unitRecords[id].stats, bossVictories: 1, bestSurvivalStreak: 5, kills: 5 },
+        },
+      },
+    };
+    expect(deploymentSelectionFingerprint(promoted)).not.toBe(before);
+    expect(deploymentSelectionFingerprint(frozen)).toBe(before);
+  });
+
   it('la copia confirmada no cambia aunque el barracón vivo se modifique después', () => {
     let roster = loadRoster();
     roster = {

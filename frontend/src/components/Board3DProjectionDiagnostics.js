@@ -96,6 +96,8 @@ export function applyBoard3DProjectionDiagnostics(canvas, camera) {
   if (lastKeyByCanvas.get(canvas) === key) return 0;
   viewProjection.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
   canvas.dataset.board3dViewProjection = viewProjection.elements.map((value) => Number(value.toFixed(6))).join(',');
+  // One write per camera change, including the opt-in Combat portrait profile.
+  canvas.dataset.board3dCameraFraming = camera.userData.framingProfile || 'standard';
   lastKeyByCanvas.set(canvas, key);
   if (typeof canvas.dispatchEvent === 'function' && typeof CustomEvent === 'function') {
     canvas.dispatchEvent(new CustomEvent(BOARD3D_PROJECTION_EVENT, { bubbles: true }));
@@ -106,8 +108,19 @@ export function applyBoard3DProjectionDiagnostics(canvas, camera) {
 
 export function applyBoard3DRendererMemoryDiagnostics(canvas, renderer) {
   if (!canvas?.dataset || !renderer?.info?.memory) return 0;
-  canvas.dataset.board3dMemoryGeometries = String(renderer.info.memory.geometries || 0);
-  canvas.dataset.board3dMemoryTextures = String(renderer.info.memory.textures || 0);
-  canvas.dataset.board3dMemoryPrograms = String(renderer.info.programs?.length || 0);
-  return 1;
+  // Most frames do not allocate GPU resources. Rewriting three canvas
+  // attributes each frame forces avoidable DOM mutations/compositor work.
+  const counters = [
+    ['board3dMemoryGeometries', renderer.info.memory.geometries || 0],
+    ['board3dMemoryTextures', renderer.info.memory.textures || 0],
+    ['board3dMemoryPrograms', renderer.info.programs?.length || 0],
+  ];
+  let changed = false;
+  for (const [key, count] of counters) {
+    const value = String(count);
+    if (canvas.dataset[key] === value) continue;
+    canvas.dataset[key] = value;
+    changed = true;
+  }
+  return changed ? 1 : 0;
 }

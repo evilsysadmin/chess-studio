@@ -10,6 +10,16 @@ describe('War Room 3D touch targeting', () => {
     expect(resolveBoardTap(start, end, { coarsePointer: false })).toBeNull();
   });
 
+  it('ancla también el clic de ratón al punto inicial sin convertir un arrastre en jugada', () => {
+    const start = { x: 100, y: 100, id: 10 };
+    expect(resolveBoardTap(start, { x: 106, y: 104, id: 10 }, { coarsePointer: false }))
+      .toEqual({ x: 100, y: 100 });
+    expect(resolveBoardTap(start, { x: 108, y: 100, id: 10 }, { coarsePointer: false }))
+      .toEqual({ x: 100, y: 100 });
+    expect(resolveBoardTap(start, { x: 109, y: 100, id: 10 }, { coarsePointer: false })).toBeNull();
+    expect(resolveBoardTap(start, { x: 102, y: 100, id: 11 }, { coarsePointer: false })).toBeNull();
+  });
+
   it('rechaza un arrastre real incluso en táctil', () => {
     const start = { x: 100, y: 100, id: 3 };
     const end = { x: 128, y: 120, id: 3 };

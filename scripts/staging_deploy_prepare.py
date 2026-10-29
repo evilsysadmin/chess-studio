@@ -38,6 +38,18 @@ def append_summary(text: str) -> None:
             handle.write(text.rstrip() + "\n")
 
 
+def optional_scope_receipt(sha: str, values: dict[str, str]) -> str:
+    """Read-only receipt: expose why optional work was scheduled, even on fail-open."""
+    reason = values["optional_scope_reason"]
+    return (
+        f"### Staging optional follow-ups · {sha[:12]}\n\n"
+        f"- Scope: `{reason}`\n"
+        f"- Pawn Slug visual: `{values['pawn_slug_visual_required']}`\n"
+        f"- Resend recovery: `{values['resend_bootstrap_required']}`\n"
+        f"- Continuity drill: `{values['continuity_required']}`"
+    )
+
+
 def resolve_source(sha: str) -> str:
     repository = os.environ.get("GITHUB_REPOSITORY", "").strip()
     token = os.environ.get("GITHUB_TOKEN", "").strip()
@@ -80,10 +92,16 @@ def manual_main_admission_green(sha: str, repository: str, token: str, *, get=ad
     )
 
 
+# Shared with the backend image publisher: never omit the immutable OCI tag
+# when staging still has an unapplied runtime generation.
+require_pending_since_complete = deploy_scope.require_pending_since_complete
+
+
 def prepare(sha: str) -> dict[str, str]:
     head = generation.valid_sha(sha)
     source = resolve_source(head)
     required, reason = deploy_scope.decide(head, source)
+    required, reason = require_pending_since_complete(head, required, reason)
     values = {
         "deploy_sha": head,
         "admitted": "false",
@@ -132,6 +150,12 @@ def prepare(sha: str) -> dict[str, str]:
         append_summary(f"### Staging smoke-only · tests {head} · runtime {smoke_sha} · {smoke_reason} · tests {','.join(smoke_keys)}")
         return values
     values.update(optional_scope.decide(head))
+    # Observability is explicitly non-blocking; never turn a valid deploy red
+    # because writing the GitHub Step Summary failed.
+    try:
+        append_summary(optional_scope_receipt(head, values))
+    except OSError as exc:
+        print(f"::warning title=Staging follow-ups receipt unavailable::{type(exc).__name__}")
     return values
 
 
@@ -175,6 +199,43 @@ def self_test() -> None:
             {"head_sha": sha, "event": "workflow_dispatch", "status": "completed", "conclusion": "success"},
         ]},
     )
+    receipt_flags = {
+        "optional_scope_reason": "complete-staging:123:" + sha[:12] + ".." + sha[:12],
+        "pawn_slug_visual_required": "false",
+        "resend_bootstrap_required": "false",
+        "continuity_required": "true",
+    }
+    receipt = optional_scope_receipt(sha, receipt_flags)
+    assert "complete-staging:123:" in receipt
+    assert "Continuity drill: `true`" in receipt
+    receipt_flags.update({
+        "optional_scope_reason": "fail-open:GenerationError",
+        "pawn_slug_visual_required": "true",
+        "resend_bootstrap_required": "true",
+    })
+    assert "fail-open:GenerationError" in optional_scope_receipt(sha, receipt_flags)
+    assert "Resend recovery: `true`" in optional_scope_receipt(sha, receipt_flags)
+    # A docs-only HEAD must not conceal an older runtime deploy that never
+    # completed. Purely non-runtime changes still avoid the expensive deploy.
+    pending = lambda _head: (["docs/staging.md", "scripts/pages_runtime_asset_grace.py"], "b" * 40, 987)
+    required, reason = require_pending_since_complete(sha, False, "non-runtime-only", diff_lookup=pending)
+    assert required and reason.startswith("pending-since-complete:") and "pages_runtime_asset_grace.py" in reason
+    non_runtime = lambda _head: (["docs/staging.md", "AGENTS.md"], "b" * 40, 987)
+    required, reason = require_pending_since_complete(sha, False, "non-runtime-only", diff_lookup=non_runtime)
+    assert not required and reason.startswith("non-runtime-since-complete:")
+    required, reason = require_pending_since_complete(
+        sha, False, "non-runtime-only", diff_lookup=lambda _head: ([], "b" * 40, 987))
+    assert not required and reason.startswith("no-pending-diff:")
+    # A locally detected runtime change must not make a redundant API request.
+    required, reason = require_pending_since_complete(
+        sha, True, "runtime:frontend/src/App.jsx",
+        diff_lookup=lambda _head: (_ for _ in ()).throw(AssertionError("unexpected API call")))
+    assert required and reason == "runtime:frontend/src/App.jsx"
+    def unreadable_baseline(_head):
+        raise RuntimeError("history unavailable")
+    required, reason = require_pending_since_complete(
+        sha, False, "non-runtime-only", diff_lookup=unreadable_baseline)
+    assert required and reason == "pending-diff-fail-open:RuntimeError"
     deploy_scope.self_test()
     generation.self_test()
     optional_scope.self_test()

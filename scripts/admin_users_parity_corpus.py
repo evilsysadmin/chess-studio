@@ -279,6 +279,26 @@ def main() -> int:
         current = FIXTURE.read_text(encoding="utf-8") if FIXTURE.exists() else ""
         if current != text:
             print(f"{FIXTURE.relative_to(ROOT)} is stale: run python3 scripts/admin_users_parity_corpus.py", file=sys.stderr)
+            try:
+                previous, generated = json.loads(current), json.loads(text)
+                for key in generated:
+                    if previous.get(key) == generated[key]:
+                        continue
+                    if key == "steps":
+                        for index, (before, after) in enumerate(zip(previous.get(key, []), generated[key])):
+                            if before != after:
+                                changed = [field for field in set(before) | set(after) if before.get(field) != after.get(field)]
+                                print(f"First changed step {index} ({after.get('label', '?')}): {', '.join(sorted(changed))}", file=sys.stderr)
+                                for field in sorted(changed):
+                                    print(f"  {field}: before={str(before.get(field))[:240]!r} after={str(after.get(field))[:240]!r}", file=sys.stderr)
+                                break
+                        else:
+                            print(f"Step count changed: {len(previous.get(key, []))} -> {len(generated[key])}", file=sys.stderr)
+                    else:
+                        print(f"First changed top-level field: {key}", file=sys.stderr)
+                    break
+            except (ValueError, TypeError) as exc:
+                print(f"Cannot compare existing fixture: {exc}", file=sys.stderr)
             return 1
         print(f"{FIXTURE.relative_to(ROOT)} up to date")
         return 0

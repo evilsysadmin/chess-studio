@@ -8,7 +8,7 @@ Este archivo complementa el `AGENTS.md` raíz para cambios bajo `backend-python/
 Lee según el área:
 
 - persistencia/restore de partidas: `docs/operations/game-state-recovery.md`;
-- Chronicles/Tactics: `docs/operations/chronicles-tactics.md`;
+- Chronicles/Tactics: solo recuperación y purga de guardados legacy (issue #5632); el gameplay y el diseño nuevo pertenecen exclusivamente a `evilsysadmin/chronicles-of-matthias`;
 - OCI/runtime/secrets: `docs/operations/oci-backend-migration.md`, `docs/operations/oci-secret-lifecycle.md` y `skills/oci-release-observability/SKILL.md`.
 - presencia/Admin: `docs/operations/presence-admin.md`.
 - PvP/1v1: `docs/operations/pvp.md`.

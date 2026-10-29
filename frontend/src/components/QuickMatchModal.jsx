@@ -73,6 +73,14 @@ export default function QuickMatchModal({
     };
   }, []);
 
+  // Start warming the chosen Blender room while the player is configuring
+  // the match, rather than only when the launch CTA is touched (too late on
+  // phones). The existing intent guard skips hidden tabs, Save-Data and 2G.
+  useEffect(() => {
+    if (selectedRenderer !== '3d') return;
+    void preloadPreferredWarRoomOnIntent({ boardRenderer: '3d' });
+  }, [selectedRenderer]);
+
   function warmWarRoomPath() {
     void prefetchGameScreenRoute();
     if (selectedRenderer === '3d') {
@@ -127,7 +135,7 @@ export default function QuickMatchModal({
               <MechanicTutorialHelp tutorialId="quick-match-rules" />
             </div>
             <p className="hint-text friendly-lead">
-              Todo está listo con tus valores por defecto. Juega ya o cambia sólo lo que quieras.
+              La mesa está preparada. Entra a jugar o ajusta tu partida.
             </p>
           </header>
 
@@ -141,20 +149,27 @@ export default function QuickMatchModal({
             </aside>
           )}
 
-          <div className="quick-match-ready-room__launch">
-            <p className="quick-match-ready-room__summary" aria-label="Configuración actual">
-              <span>{opponentLabel}</span>
-              <span aria-hidden="true">·</span>
-              <span>{colorLabel(color)}</span>
-              <span aria-hidden="true">·</span>
-              <span>{timeControl?.label || 'Sin reloj'}</span>
-              {seriesBestOf > 1 ? (
-                <>
-                  <span aria-hidden="true">·</span>
-                  <span>{series?.label}</span>
-                </>
-              ) : null}
-            </p>
+          <div className="quick-match-ready-room__launch" role="group" aria-label="Preparar y empezar partida">
+            <div className="quick-match-ready-room__summary" role="group" aria-label="Configuración actual">
+              <span className="quick-match-ready-room__detail">
+                <small>Rival</small>
+                <b>{opponentLabel}</b>
+              </span>
+              <span className="quick-match-ready-room__detail">
+                <small>Color</small>
+                <b>{colorLabel(color)}</b>
+              </span>
+              <span className="quick-match-ready-room__detail">
+                <small>Reloj</small>
+                <b>{timeControl?.label || 'Sin reloj'}</b>
+              </span>
+              {seriesBestOf > 1 && (
+                <span className="quick-match-ready-room__detail">
+                  <small>Serie</small>
+                  <b>{series?.label}</b>
+                </span>
+              )}
+            </div>
 
             {error && <p className="quick-match-error" role="alert">{error}</p>}
 

@@ -124,5 +124,6 @@ export function warRoomAmbientFramePlan({
     intervalMs,
     shouldRender: due,
     updateCamera: due && inspectMode,
+    keepAmbientAwake: Boolean(narrativeActive),
   });
 }

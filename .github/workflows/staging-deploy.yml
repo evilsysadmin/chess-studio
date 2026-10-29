@@ -87,22 +87,23 @@ jobs:
       - name: Re-check main before OCI fallback
         id: fallback_admission
         if: steps.watcher.outputs.converged != 'true'
-        run: python3 -S scripts/staging_generation.py main-head --sha "$DEPLOY_SHA" --github-output "$GITHUB_OUTPUT"
+        run: python3 -S scripts/staging_generation.py main-head --sha "$DEPLOY_SHA" --github-output "$GITHUB_OUTPUT" --probe-backend
       - name: Restore cached OCI SDK toolchain
-        if: steps.watcher.outputs.converged != 'true' && steps.fallback_admission.outputs.superseded != 'true'
+        if: steps.fallback_admission.outputs.requires_sdk == 'true'
         uses: ./.github/actions/setup-oci-sdk
         with:
           version: '2.185.2'
           python-version: '3.13'
       - name: Validate OCI deploy contracts
-        if: steps.watcher.outputs.converged != 'true' && steps.fallback_admission.outputs.superseded != 'true'
+        if: steps.fallback_admission.outputs.requires_sdk == 'true'
         run: |
           python3 -S scripts/oci_run_command.py --self-test
           python3 -S scripts/oci_runtime_config.py --self-test
           python3 -S scripts/oci_vault_sync.py --self-test
           python3 -S scripts/verify_backend_staging.py --self-test
       - name: Deploy exact backend commit to OCI staging
-        if: steps.watcher.outputs.converged != 'true' && steps.fallback_admission.outputs.superseded != 'true'
+        id: oci_fallback
+        if: steps.fallback_admission.outputs.requires_sdk == 'true'
         shell: bash
         env:
           OCI_TENANCY_OCID: ${{ secrets.OCI_TENANCY_OCID }}
@@ -113,20 +114,31 @@ jobs:
         run: |
           set -euo pipefail
           if python3 scripts/verify_backend_staging.py --api-url "$STAGING_API_URL" --sha "$DEPLOY_SHA" --attempts 1 --interval 0 >/dev/null 2>&1; then
-            echo "::notice title=OCI fallback avoided::A1 terminó y acreditó $DEPLOY_SHA; skip Run Command."
+            echo "::notice title=OCI fallback avoided::A1 terminó y acreditó $DEPLOY_SHA."
             exit 0
           fi
-          python3 -S scripts/staging_image_ready.py --sha "$DEPLOY_SHA"
-          python3 scripts/oci_run_command.py deploy --repo-ref "$DEPLOY_SHA"
+          python3 -S scripts/staging_image_ready.py --sha "$DEPLOY_SHA" && python3 -S scripts/staging_generation.py main-head --sha "$DEPLOY_SHA" --fail-stale && python3 scripts/oci_run_command.py deploy --repo-ref "$DEPLOY_SHA" || {
+            rc=$?
+            if [[ "$rc" == 87 ]]; then
+              echo 'superseded=true' >> "$GITHUB_OUTPUT"
+              echo "::notice::Stale $DEPLOY_SHA (rc=87); no accreditation."
+              exit 0
+            fi
+            [[ "$rc" == 78 ]] || exit "$rc"
+            echo "::warning::No OCI receipt; public exact-SHA check required"
+          }
       - name: Re-check main after OCI fallback
         id: post_deploy
-        if: steps.watcher.outputs.converged != 'true' && steps.fallback_admission.outputs.superseded != 'true'
+        if: >-
+          steps.watcher.outputs.converged != 'true' &&
+          steps.fallback_admission.outputs.superseded != 'true' &&
+          steps.oci_fallback.outputs.superseded != 'true'
         run: python3 -S scripts/staging_generation.py main-head --sha "$DEPLOY_SHA" --github-output "$GITHUB_OUTPUT"
       - name: Resolve backend generation state
         id: backend_state
         if: always()
         env:
-          SUPERSEDED: ${{ steps.fallback_admission.outputs.superseded == 'true' || steps.post_deploy.outputs.superseded == 'true' }}
+          SUPERSEDED: ${{ steps.fallback_admission.outputs.superseded == 'true' || steps.post_deploy.outputs.superseded == 'true' || steps.oci_fallback.outputs.superseded == 'true' }}
         run: echo "superseded=$SUPERSEDED" >> "$GITHUB_OUTPUT"
       - name: Verify backend public path reaches exact OCI generation
         if: steps.backend_state.outputs.superseded != 'true'
@@ -140,6 +152,8 @@ jobs:
     name: Frontend · exact Pages generation
     needs: prepare
     if: needs.prepare.outputs.admitted == 'true' && needs.prepare.outputs.smoke_only != 'true'
+    outputs:
+      superseded: ${{ steps.pages_publish.outputs.superseded }}
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     environment:
@@ -201,22 +215,18 @@ jobs:
           api-url: ${{ env.STAGING_API_URL }}
           repo-vars: ${{ toJSON(vars) }}
       - name: Deploy tested frontend to Cloudflare Pages
+        id: pages_publish
         working-directory: frontend
-        shell: bash
-        run: |
-          set -euo pipefail
-          python3 -S ../scripts/pages_runtime_asset_grace.py --dist dist --site staging
-          "$WRANGLER_BIN" pages deploy dist \
-            --project-name chess-studio-staging \
-            --branch main \
-            --commit-hash "$DEPLOY_SHA" \
-            --commit-dirty=false
+        run: python3 -S ../scripts/staging_cloudflare_publish.py pages --sha "$DEPLOY_SHA"
       - name: Verify frontend staging build identity
+        if: steps.pages_publish.outputs.superseded != 'true'
         run: python3 -S scripts/staging_generation.py wait --sha "$DEPLOY_SHA" --surfaces frontend --attempts 150 --interval 2 --root
   worker:
     name: Worker · exact AI generation
     needs: prepare
     if: needs.prepare.outputs.admitted == 'true' && needs.prepare.outputs.smoke_only != 'true'
+    outputs:
+      superseded: ${{ steps.worker_publish.outputs.superseded }}
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     environment:
@@ -243,8 +253,10 @@ jobs:
       - name: Staging Worker isolation contract
         run: python3 -S scripts/deploy_staging_ai_worker.py --self-test
       - name: Deploy and verify exact staging Worker generation
-        run: python3 scripts/deploy_staging_ai_worker.py
+        id: worker_publish
+        run: python3 -S scripts/staging_cloudflare_publish.py worker --sha "$DEPLOY_SHA"
       - name: Shared Workers AI live contract
+        if: steps.worker_publish.outputs.superseded != 'true'
         run: python3 scripts/cloudflare_ai_preflight.py --worker-url "$STAGING_AI_URL"
   smoke:
     name: Browser smoke · ${{ matrix.label }}
@@ -252,7 +264,7 @@ jobs:
     if: >
       always() && needs.prepare.outputs.admitted == 'true' &&
       ((needs.prepare.outputs.smoke_only == 'true' && needs.backend.result == 'skipped' && needs.frontend.result == 'skipped' && needs.worker.result == 'skipped') ||
-      (needs.backend.result == 'success' && needs.frontend.result == 'success' && needs.worker.result == 'success' && needs.backend.outputs.superseded != 'true'))
+      (needs.backend.result == 'success' && needs.frontend.result == 'success' && needs.worker.result == 'success' && needs.backend.outputs.superseded != 'true' && needs.frontend.outputs.superseded != 'true' && needs.worker.outputs.superseded != 'true'))
     runs-on: ubuntu-24.04
     timeout-minutes: 8
     environment:
@@ -260,9 +272,7 @@ jobs:
       url: https://staging.chess-studio.shadowops.dpdns.org
     strategy:
       fail-fast: false
-      # For full deployment, stage both staging-live.spec.js and
-      # staging-war-room-restore.spec.js. Narrow the smoke-only matrix only
-      # when the exact diff touches a single isolated smoke spec; helpers run both.
+      # Full smoke: staging-live.spec.js + staging-war-room-restore.spec.js
       matrix: ${{ fromJSON(needs.prepare.outputs.smoke_matrix) }}
     env:
       DEPLOY_SHA: ${{ needs.prepare.outputs.smoke_sha || needs.prepare.outputs.deploy_sha }}
@@ -335,7 +345,7 @@ jobs:
   pawn_slug_visual:
     name: Pawn Slug Godot · live visual evidence
     needs: [prepare, backend, frontend, worker, smoke]
-    if: needs.prepare.outputs.admitted == 'true' && needs.prepare.outputs.pawn_slug_visual_required == 'true' && needs.backend.outputs.superseded != 'true'
+    if: needs.prepare.outputs.admitted == 'true' && needs.prepare.outputs.pawn_slug_visual_required == 'true' && needs.backend.outputs.superseded != 'true' && needs.frontend.outputs.superseded != 'true' && needs.worker.outputs.superseded != 'true'
     uses: ./.github/workflows/staging-pawn-slug-visual.yml
     with:
       deploy_sha: ${{ needs.prepare.outputs.deploy_sha }}
@@ -362,9 +372,6 @@ jobs:
     steps:
       - name: Summary
         run: echo "### Staging $DEPLOY_SHA · backend=$BACKEND · frontend=$FRONTEND · worker=$WORKER · smoke=$SMOKE" >> "$GITHUB_STEP_SUMMARY"
-      # Diagnostics must never invalidate a successfully deployed generation.
-      # The summary job has no checkout by default: the first metrics revision
-      # forgot this and blocked accreditation even when all smokes were green.
       - name: Checkout staging metrics scripts
         id: metrics_checkout
         continue-on-error: true

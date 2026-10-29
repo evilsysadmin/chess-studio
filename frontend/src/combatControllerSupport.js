@@ -1,6 +1,7 @@
 import { Chess } from 'chess.js';
-import { BASE_STATS, capturedSquareFor, derivedLevel, hitChance, isForcedCombatCapture } from './combat.js';
-import { chooseCombatCandidate, combatCandidateUtility } from './combatExpectedUtility.js';
+import { BASE_STATS, capturedSquareFor, derivedLevel, hitChance, isForcedCombatCapture, passTurnFen } from './combat.js';
+import { chooseCombatCandidate, combatCandidateUtility, hasMeasuredChessScoreCp } from './combatExpectedUtility.js';
+import { combatDoctrineBonusForMove } from './combatEnemyDoctrine.js';
 import { proceduralNarrative } from './narrativeProvider.js';
 
 export const STATUS_LABELS = Object.freeze({
@@ -50,29 +51,170 @@ export function isLegalCombatCpuSuggestion(fen, suggestion) {
 
 
 const EMERGENCY_CPU_PIECE_VALUE = Object.freeze({ p: 1, n: 3, b: 3, r: 5, q: 9, k: 0 });
+const EMERGENCY_CPU_MISS_TEMPO_SCORE = 90;
+
+// El fallback no dispone de búsqueda profunda. Comprueba únicamente si la
+// pieza recién movida puede ser capturada LEGALMENTE en la réplica inmediata.
+// Una captura Combat puede fallar: el tablero de chess.js después de capturar
+// sólo existe en la rama de éxito, ponderada por su probabilidad real.
+// El máximo riesgo mide exposición táctica, no predice qué elegirá el rival.
+// Sin registro coherente, no se fabrican porcentajes ni amenazas.
+function emergencyRecapturePenalty(after, move, registry, focus, branchChance = 1, threatenedSquare = move.to, replies = null) {
+  // Una promoción sólo cambia el tipo si la captura acierta. Tras un fallo,
+  // el peón sigue en su casilla inicial y puede ser atacado normalmente.
+  if (!registry || (move.promotion && threatenedSquare !== move.from)
+    || /[kq]/.test(move.flags || '') || move.piece === 'k') return 0;
+  const original = registry[move.from];
+  if (!original || original.color !== move.color || original.type !== move.piece
+    || !pieceSquareMatches(original, move.from)) return 0;
+  const moved = { ...original, square: threatenedSquare };
+  let maxChance = 0;
+  for (const reply of replies || after.moves({ verbose: true })) {
+    if (!reply.captured || reply.captured !== move.piece || capturedSquareFor(reply) !== threatenedSquare) continue;
+    const enemy = registry[reply.from];
+    if (!enemy || enemy.color === move.color || enemy.type !== reply.piece
+      || !pieceSquareMatches(enemy, reply.from)) return 0;
+    const forced = isForcedCombatCapture(after.fen(), reply.from, reply.to, reply.promotion);
+    const chance = forced ? 1 : hitChance(enemy, moved, focusStreakFor(focus, enemy.color, original.id));
+    maxChance = Math.max(maxChance, chance);
+  }
+  const pieceValue = EMERGENCY_CPU_PIECE_VALUE[move.piece] || 0;
+  const chance = Math.max(0, Math.min(1, Number(branchChance) || 0));
+  return maxChance * chance * (100 + pieceValue * 10);
+}
+
+// En una réplica el rival sólo puede realizar UNA captura: se toma el mayor
+// riesgo medido para otra pieza propia, sin sumar ataques independientes.
+// Un objetivo que no concuerda con el FEN o el registro no aporta riesgo.
+function emergencyOtherUnitExposurePenalty(after, move, registry, focus, branchChance = 1, excludedSquare = move.to, replies = null) {
+  if (!registry || move.piece === 'k') return 0;
+  const chance = Math.max(0, Math.min(1, Number(branchChance) || 0));
+  if (chance <= 0) return 0;
+  let worst = 0;
+  for (const reply of replies || after.moves({ verbose: true })) {
+    if (!reply.captured || reply.captured === 'k') continue;
+    const targetSquare = capturedSquareFor(reply);
+    if (targetSquare === excludedSquare) continue;
+    const victim = registry[targetSquare];
+    const attacker = registry[reply.from];
+    const actual = after.get(targetSquare);
+    if (!victim || victim.color !== move.color || victim.type !== reply.captured
+      || !pieceSquareMatches(victim, targetSquare) || actual?.color !== victim.color
+      || actual.type !== victim.type || !attacker || attacker.color === move.color
+      || attacker.type !== reply.piece || !pieceSquareMatches(attacker, reply.from)) continue;
+    const forced = isForcedCombatCapture(after.fen(), reply.from, reply.to, reply.promotion);
+    const probability = forced ? 1 : hitChance(attacker, victim, focusStreakFor(focus, attacker.color, victim.id));
+    worst = Math.max(worst, probability * (100 + (EMERGENCY_CPU_PIECE_VALUE[victim.type] || 0) * 10));
+  }
+  return worst * chance;
+}
+
+// La segunda rama de una captura Combat NO contiene el movimiento intentado:
+// un fallo es un turno nulo, no una captura de chess.js. Sólo inspeccionamos
+// recapturas legales del atacante en su casilla ORIGINAL; nunca damos por
+// muerto al defensor ni mantenemos un derecho al paso ya consumido.
+// Si el fallo crearía un turno enemigo sin jugadas legales, Combat fuerza
+// el acierto: esa rama no existe y no debe recibir una penalización ficticia.
+// El turno perdido tiene el mismo FEN para TODAS las capturas candidatas
+// de la posición actual: sólo cambian qué atacante intentó capturar y su
+// probabilidad de fallo. Este helper acepta respuestas ya enumeradas y es
+// puro respecto al tablero compartido.
+function measuredMissExposure(afterMiss, replies, move, registry, focus, missChance) {
+  if (!replies?.length) return 0;
+  return Math.max(
+    emergencyRecapturePenalty(afterMiss, move, registry, focus, missChance, move.from, replies),
+    emergencyOtherUnitExposurePenalty(afterMiss, move, registry, focus, missChance, move.from, replies),
+  );
+}
+
+export function emergencyCombatMissExposurePenalty(fen, move, registry, focus = {}, missChance = 0) {
+  if (!move?.captured || !registry || !Number.isFinite(missChance) || missChance <= 0) return 0;
+  try {
+    const afterMiss = new Chess(passTurnFen(fen));
+    // El mismo contrato público sirve para evaluar una captura aislada.
+    return measuredMissExposure(afterMiss, afterMiss.moves({ verbose: true }), move, registry, focus, missChance);
+  } catch {
+    return 0;
+  }
+}
 
 // Fallback estrictamente local para que una caída del endpoint de análisis no
 // secuestre una campaña. Sólo elige entre jugadas legales de chess.js y nunca
 // altera dificultad, XP ni reglas de Combat. Prioriza mate, capturas, promoción
 // y jaques; los empates se resuelven de forma determinista para facilitar tests
 // y recuperación de sesión.
-export function emergencyCombatCpuSuggestion(fen) {
+export function emergencyCombatCpuSuggestion(fen, registry = null, focus = {}, doctrine = null) {
   try {
     const chess = new Chess(fen);
     const moves = chess.moves({ verbose: true });
     if (!moves.length) return null;
+    // Cache efímera de UNA decisión, creada sólo si hay una captura con
+    // probabilidades completas de fallo. Nunca cruza FENs, turnos ni usuarios.
+    let missedTurn = null;
+    let missedTurnChecked = false;
+    // Ya hemos enumerado las candidatas sobre chess: reutilizar el mismo
+    // tablero, siempre restaurándolo tras analizar cada jugada.
+    const probe = chess;
     const ranked = moves.map((move) => {
-      const probe = new Chess(fen);
       let applied = null;
       try { applied = probe.move({ from: move.from, to: move.to, promotion: move.promotion || 'q' }); } catch { applied = null; }
       if (!applied) return null;
-      let score = 0;
-      if (probe.isCheckmate()) score += 10000;
-      if (move.captured) score += 100 + (EMERGENCY_CPU_PIECE_VALUE[move.captured] || 0) * 10 - (EMERGENCY_CPU_PIECE_VALUE[move.piece] || 0);
-      if (move.promotion) score += 70 + (EMERGENCY_CPU_PIECE_VALUE[move.promotion] || 0) * 4;
-      if (probe.isCheck()) score += 18;
-      if (move.flags?.includes('k') || move.flags?.includes('q')) score += 2;
-      return { from: move.from, to: move.to, promotion: move.promotion || undefined, score, key: `${move.from}${move.to}${move.promotion || ''}` };
+      try {
+        let score = 0;
+        if (probe.isCheckmate()) score += 10000;
+        let captureSuccessChance = 1;
+        let measuredCapture = !move.captured;
+        if (move.captured) {
+          const chessCaptureScore = 100 + (EMERGENCY_CPU_PIECE_VALUE[move.captured] || 0) * 10
+            - (EMERGENCY_CPU_PIECE_VALUE[move.piece] || 0);
+          const facts = registry ? measuredCombatCapture(fen, registry, move, focus) : null;
+          // Con hechos completos, una captura que puede fallar no vale lo
+          // mismo que una captura garantizada. Un fallo también consume turno.
+          // Si el registro está incompleto mantenemos el fallback histórico.
+          captureSuccessChance = facts?.hitChance ?? 0;
+          measuredCapture = Boolean(facts);
+          score += facts
+            ? facts.hitChance * chessCaptureScore - (1 - facts.hitChance) * EMERGENCY_CPU_MISS_TEMPO_SCORE
+            : chessCaptureScore;
+        }
+        // Sin engine, una dama expuesta a una recaptura legal no es un premio
+        // gratis. Para capturas, sólo valoramos la rama cuyo éxito es medible.
+        if (measuredCapture) {
+          // Una sola generación de respuestas para el riesgo propio y aliado.
+          const replies = probe.moves({ verbose: true });
+          score -= Math.max(
+            emergencyRecapturePenalty(probe, move, registry, focus, captureSuccessChance, move.to, replies),
+            emergencyOtherUnitExposurePenalty(probe, move, registry, focus, captureSuccessChance, move.to, replies),
+          );
+          if (move.captured && captureSuccessChance < 1) {
+            if (!missedTurnChecked) {
+              missedTurnChecked = true;
+              try {
+                const board = new Chess(passTurnFen(fen));
+                missedTurn = { board, replies: board.moves({ verbose: true }) };
+              } catch {
+                missedTurn = null;
+              }
+            }
+            if (missedTurn) {
+              score -= measuredMissExposure(
+                missedTurn.board, missedTurn.replies, move, registry, focus, 1 - captureSuccessChance,
+              );
+            }
+          }
+        }
+        if (move.promotion) score += 70 + (EMERGENCY_CPU_PIECE_VALUE[move.promotion] || 0) * 4;
+        if (probe.isCheck()) score += 18;
+        if (move.flags?.includes('k') || move.flags?.includes('q')) score += 2;
+        // Misma doctrina factual que la shortlist remota, acotada a ±6.
+        // No altera mates, grandes diferencias materiales ni la ruta clásica.
+        score += combatDoctrineBonusForMove(doctrine, move);
+        return { from: move.from, to: move.to, promotion: move.promotion || undefined, score, key: `${move.from}${move.to}${move.promotion || ''}` };
+      } finally {
+        // chess.js restaura FEN, enroque, turno y al paso de esta candidata.
+        // La siguiente se evalúa siempre desde la posición ORIGINAL.
+        probe.undo();
+      }
     }).filter(Boolean);
     ranked.sort((a, b) => b.score - a.score || a.key.localeCompare(b.key));
     const best = ranked[0];
@@ -95,11 +237,37 @@ function focusStreakFor(focus, attackerColor, defenderId) {
   return Math.max(0, Number(current.streak) || 0);
 }
 
+// Una única fuente de hechos para la shortlist remota y la CPU local:
+// verifica captura, defensor real (incluido al paso), posibilidad de golpe
+// forzado y foco actual. Nunca inventa porcentajes si falta el registro.
+// Los snapshots antiguos pueden omitir square; si la incluyen, debe coincidir
+// con el FEN. Nunca atribuir XP/veteranía a una identidad desplazada.
+function pieceSquareMatches(piece, square) {
+  return piece?.square == null || piece.square === square;
+}
+
+function measuredCombatCapture(fen, registry, move, focus) {
+  if (!move.captured) return null;
+  const attacker = registry?.[move.from];
+  if (!attacker || attacker.color !== move.color || attacker.type !== move.piece
+    || !pieceSquareMatches(attacker, move.from)) return null;
+  const defenderSquare = capturedSquareFor(move);
+  const defender = registry?.[defenderSquare];
+  if (!defender || defender.color === attacker.color || defender.type !== move.captured
+    || !pieceSquareMatches(defender, defenderSquare)) return null;
+  const forcedHit = isForcedCombatCapture(fen, move.from, move.to, move.promotion);
+  return {
+    hitChance: forcedHit ? 1 : hitChance(attacker, defender, focusStreakFor(focus, attacker.color, defender.id)),
+    enemyValue: BASE_STATS[defender.type]?.strength || 0,
+    enemyPersistentValue: defender.identityId ? Math.max(0, derivedLevel(defender) - 1) : 0,
+  };
+}
+
 // Adjunta sólo hechos que Combat conoce de verdad en el momento de elegir:
 // probabilidad de que una captura conecte y veteranía persistente del objetivo.
 // Si FEN/registro no permiten demostrar esos datos, la candidata permanece
 // sin marcar y jamás puede desplazar la jugada principal del motor.
-export function annotateCombatCandidates(fen, registry, remote, focus = {}) {
+export function annotateCombatCandidates(fen, registry, remote, focus = {}, doctrine = null) {
   const candidates = Array.isArray(remote?.candidates) ? remote.candidates : null;
   if (!candidates?.length || !registry || typeof registry !== 'object' || Array.isArray(registry)) return remote;
 
@@ -121,27 +289,28 @@ export function annotateCombatCandidates(fen, registry, remote, focus = {}) {
     if (!move) return candidate;
 
     const attacker = registry[move.from];
-    if (!attacker || attacker.color !== move.color || attacker.type !== move.piece) return candidate;
+    if (!attacker || attacker.color !== move.color || attacker.type !== move.piece
+      || !pieceSquareMatches(attacker, move.from)) return candidate;
+
+    // Comprobar el mate contra el FEN, nunca confiar en una marca de la API.
+    let verifiedCandidate = candidate;
+    if (candidate.isMate === true) {
+      try {
+        const after = new Chess(fen);
+        after.move({ from: move.from, to: move.to, promotion: move.promotion || 'q' });
+        verifiedCandidate = { ...candidate, isMate: after.isCheckmate() };
+      } catch {
+        return candidate;
+      }
+    }
+    const doctrineBonusCp = combatDoctrineBonusForMove(doctrine, move);
 
     if (!move.captured) {
-      return { ...candidate, combatReady: true, hitChance: 1, enemyValue: 0, enemyPersistentValue: 0 };
+      return { ...verifiedCandidate, combatReady: true, hitChance: 1, enemyValue: 0, enemyPersistentValue: 0, doctrineBonusCp };
     }
 
-    const defender = registry[capturedSquareFor(move)];
-    if (!defender || defender.color === attacker.color || defender.type !== move.captured) return candidate;
-
-    const forcedHit = isForcedCombatCapture(fen, move.from, move.to, move.promotion);
-    const chance = forcedHit
-      ? 1
-      : hitChance(attacker, defender, focusStreakFor(focus, attacker.color, defender.id));
-
-    return {
-      ...candidate,
-      combatReady: true,
-      hitChance: chance,
-      enemyValue: BASE_STATS[defender.type]?.strength || 0,
-      enemyPersistentValue: defender.identityId ? Math.max(0, derivedLevel(defender) - 1) : 0,
-    };
+    const facts = measuredCombatCapture(fen, registry, move, focus);
+    return facts ? { ...verifiedCandidate, combatReady: true, ...facts, doctrineBonusCp } : candidate;
   });
 
   return { ...remote, candidates: enriched };
@@ -165,6 +334,9 @@ export function selectCombatAwareRemoteSuggestion(remote) {
   if (sameCombatMove(chosen, primary)) return chosen;
   if (primary.isMate === true) return remote;
   if (chosen.isMate === true) return chosen;
+  // La shortlist no puede promover un supuesto 0 cp cuando la puntuación
+  // es null/vacía: conservar la jugada profunda si falta cualquier prueba.
+  if (!hasMeasuredChessScoreCp(primary) || !hasMeasuredChessScoreCp(chosen)) return remote;
 
   const primaryUtility = combatCandidateUtility(primary);
   const chosenUtility = combatCandidateUtility(chosen);
@@ -183,11 +355,11 @@ export function selectCombatAwareRemoteSuggestion(remote) {
 // Política de disponibilidad del turno CPU: el análisis remoto mejora la
 // calidad de la jugada, pero nunca tiene derecho a bloquear una campaña.
 // Este helper hace el fail-open comprobable con tests sin montar React.
-export async function resolveCombatCpuTurnSuggestion({ fen, difficulty, analyzePosition, registry = null, focus = {} }) {
+export async function resolveCombatCpuTurnSuggestion({ fen, difficulty, analyzePosition, registry = null, focus = {}, doctrine = null }) {
   let remoteError = null;
   try {
     const response = await analyzePosition(fen, difficulty);
-    const measured = annotateCombatCandidates(fen, registry, response, focus);
+    const measured = annotateCombatCandidates(fen, registry, response, focus, doctrine);
     const remote = selectCombatAwareRemoteSuggestion(measured);
     if (!isLegalCombatCpuSuggestion(fen, remote)) throw new Error('La CPU devolvió una jugada inválida.');
     return { suggestion: remote, source: 'remote', remoteError: null };
@@ -195,7 +367,7 @@ export async function resolveCombatCpuTurnSuggestion({ fen, difficulty, analyzeP
     remoteError = error;
   }
 
-  const local = emergencyCombatCpuSuggestion(fen);
+  const local = emergencyCombatCpuSuggestion(fen, registry, focus, doctrine);
   if (local && isLegalCombatCpuSuggestion(fen, local)) {
     return { suggestion: local, source: 'local', remoteError };
   }

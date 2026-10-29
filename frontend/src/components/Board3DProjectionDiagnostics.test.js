@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import {
   BOARD3D_PROJECTION_VERSION,
   applyBoard3DProjectionDiagnostics,
+  applyBoard3DRendererMemoryDiagnostics,
   board3DProjectionSnapshot,
   projectWorldPointNdc,
   readBoard3DViewProjection,
@@ -57,6 +58,41 @@ describe('Board3DProjectionDiagnostics', () => {
     const actual = projectWorldPointNdc(elements, point);
     expect(actual.x).toBeCloseTo(expected.x, 4);
     expect(actual.y).toBeCloseTo(expected.y, 4);
+  });
+
+  it('evita mutaciones DOM de memoria GPU durante frames sin cambios', () => {
+    const writes = [];
+    const dataset = new Proxy({}, {
+      set(target, key, value) {
+        writes.push([key, value]);
+        target[key] = value;
+        return true;
+      },
+    });
+    const canvas = { dataset };
+    const renderer = {
+      info: {
+        memory: { geometries: 42, textures: 7 },
+        programs: [{}, {}],
+      },
+    };
+    expect(applyBoard3DRendererMemoryDiagnostics(canvas, renderer)).toBe(1);
+    expect(writes).toHaveLength(3);
+    expect(dataset.board3dMemoryTextures).toBe('7');
+
+    // War Room idle draws about 10 FPS; those should not touch the DOM.
+    expect(applyBoard3DRendererMemoryDiagnostics(canvas, renderer)).toBe(0);
+    expect(writes).toHaveLength(3);
+
+    renderer.info.memory.textures = 8;
+    expect(applyBoard3DRendererMemoryDiagnostics(canvas, renderer)).toBe(1);
+    expect(writes).toEqual([
+      ['board3dMemoryGeometries', '42'],
+      ['board3dMemoryTextures', '7'],
+      ['board3dMemoryPrograms', '2'],
+      ['board3dMemoryTextures', '8'],
+    ]);
+    expect(applyBoard3DRendererMemoryDiagnostics(null, renderer)).toBe(0);
   });
 
   it('rechaza matrices inválidas', () => {

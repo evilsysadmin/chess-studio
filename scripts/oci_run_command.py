@@ -171,10 +171,25 @@ run_deploy() {{
   sudo --non-interactive '{DEPLOY_WRAPPER}' '{sha}' >"$log" 2>&1
   deploy_rc=$?
   set -e
+  # rc87 identifies a host-declared supersession; rc86 means no receipt.
+  if [ "$deploy_rc" -eq 0 ] && ! grep -q '^CHESS_STUDIO_DEPLOY_OK target=staging repo_ref={sha} ' "$log"; then
+    grep -q '^OCI_DEPLOY_SUPERSEDED ' "$log" && deploy_rc=87 || deploy_rc=86
+  fi
   return "$deploy_rc"
+}}
+emit_version() {{
+  launcher_hash="$(sha256sum '{DEPLOY_WRAPPER}' 2>/dev/null | cut -c1-16 || true)"
+  printf 'OCI_DEPLOY_LAUNCHER_HASH_PREFIX=%s\n' "${{launcher_hash:-unknown}}"
+}}
+emit_failure() {{
+  printf 'OCI_DEPLOY_REMOTE_FAILURE rc=%s\n' "$1"
+  grep -E '^OCI_DEPLOY_(LOCK|MAIN|SUPERSEDED)' "$log" | tail -n 8 || true
+  emit_version
+  exit "$1"
 }}
 emit_success() {{
   printf 'OCI_RUN_COMMAND_AGENT version=%s\n' "${{agent_version:-unknown}}"
+  emit_version
   awk -v runtime="$1" '/^OCI_DEPLOY_WATCHER / {{print}} /^OCI_DEPLOY_WATCHER_DIAG / {{print}} /^OCI_AGENT_DIAG / {{print}} /^OCI_DEPLOY_TIMINGS / {{print $0 " runtime=" runtime}} /^CHESS_STUDIO_DEPLOY_OK / {{print}}' "$log"
 }}
 
@@ -185,8 +200,8 @@ else
   deploy_rc=$?
 fi
 if [ "$deploy_rc" -ne 42 ]; then
-  cat "$log" >&2
-  exit "$deploy_rc"
+  emit_failure "$deploy_rc"
+  # Transport carries the real host exit code even when TEXT is omitted.
 fi
 
 tmp="$(mktemp /tmp/chess-studio-backend.env.XXXXXX)"
@@ -230,8 +245,7 @@ if run_deploy; then
 else
   deploy_rc=$?
 fi
-cat "$log" >&2
-exit "$deploy_rc"
+emit_failure "$deploy_rc"
 """
     assert_nonsecret_command(command)
     if len(command.encode("utf-8")) > RUN_COMMAND_INLINE_MAX_BYTES:
@@ -483,6 +497,55 @@ def bounded_command_output(text: str, *, head_chars: int = 2000, tail_chars: int
     )
 
 
+def reject_remote_deploy_failure(output: str) -> None:
+    """Treat a remote failure sentinel as fatal even when the OCI transport succeeds.
+
+    The remote shell now exits nonzero on failure. Reject embedded sentinels
+    too, in case the transport reports an inconsistent successful status.
+    """
+    for line in output.splitlines():
+        if not line.startswith("OCI_DEPLOY_REMOTE_FAILURE"):
+            continue
+        match = re.fullmatch(r"OCI_DEPLOY_REMOTE_FAILURE rc=([1-9][0-9]{0,2})", line.strip())
+        if not match:
+            raise SystemExit("OCI Run Command remote deploy emitted invalid failure sentinel")
+        raise SystemExit(f"OCI Run Command remote deploy FAILED: rc={match.group(1)}")
+
+
+class MissingDeployReceiptError(Exception):
+    """No host receipt was returned; public exact-SHA verification is required."""
+
+
+def validate_deploy_output(output: str, expected_sha: str) -> None:
+    """Accept only an explicit exact-SHA completion receipt from the host."""
+    sha = validate_sha(expected_sha)
+    marker = f"CHESS_STUDIO_DEPLOY_OK target=staging repo_ref={sha} "
+    if not any(line.startswith(marker) for line in output.splitlines()):
+        raise MissingDeployReceiptError("OCI deploy returned without exact-SHA CHESS_STUDIO_DEPLOY_OK receipt")
+
+
+def deploy_receipt_exit_status(output: str, expected_sha: str) -> int:
+    """0 = verified host receipt; 78 = missing receipt, public check required.
+
+    This result is NOT the host's exit code: execute() already rejected
+    nonzero OCI exit codes and all explicit remote-failure sentinels.
+    """
+    try:
+        validate_deploy_output(output, expected_sha)
+    except MissingDeployReceiptError:
+        return 78
+    return 0
+
+
+def host_declared_supersession(exc: BaseException) -> bool:
+    """Only host exit 87 means an obsolete generation, never transport timeout."""
+    message = str(exc)
+    return bool(
+        re.match(r"^OCI Run Command failed: state=FAILED exit=87\b", message)
+        or re.fullmatch(r"OCI Run Command remote deploy FAILED: rc=87", message)
+    )
+
+
 def execute(
     oci: Any,
     config: dict[str, str],
@@ -547,12 +610,126 @@ def execute(
             message = (getattr(content, "message", "") or "").strip()
             if text:
                 print(bounded_command_output(text), flush=True)
-            if state != "SUCCEEDED" or exit_code not in (None, 0):
+                reject_remote_deploy_failure(text)
+            if state != "SUCCEEDED" or exit_code != 0:
                 detail = message or text or "no command output"
                 raise SystemExit(f"OCI Run Command failed: state={state} exit={exit_code} detail={detail[:500]}")
             return text
         time.sleep(1)
     raise SystemExit("OCI Run Command polling timed out waiting for delivery/execution")
+
+
+def local_deploy_diagnostics_self_test() -> None:
+    """Exercise the generated Bash payload using isolated executable shims."""
+    import hashlib
+    import subprocess
+    import tempfile
+    from pathlib import Path
+
+    global DEPLOY_WRAPPER, RUNTIME_WRAPPER
+    with tempfile.TemporaryDirectory(prefix="chess-oci-deploy-test-") as directory:
+        root = Path(directory)
+        deploy_path = root / "deploy"
+        installer_path = root / "runtime"
+        sudo_path = root / "sudo"
+        sudo_path.write_text(
+            '#!/bin/sh\n[ "$1" = "--non-interactive" ] && shift\nexec "$@"\n',
+            encoding="utf-8",
+        )
+        installer_path.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+        sudo_path.chmod(0o700)
+        installer_path.chmod(0o700)
+        original_deploy, original_runtime = DEPLOY_WRAPPER, RUNTIME_WRAPPER
+        try:
+            DEPLOY_WRAPPER = str(deploy_path)
+            RUNTIME_WRAPPER = str(installer_path)
+            sample_sha = "0123456789abcdef0123456789abcdef01234567"
+            def run_script() -> subprocess.CompletedProcess[str]:
+                payload = deploy_command(sample_sha)
+                return subprocess.run(
+                    ["bash", "-c", payload],
+                    env={**os.environ, "PATH": str(root) + os.pathsep + os.environ.get("PATH", "")},
+                    capture_output=True, text=True, check=False, timeout=10,
+                )
+
+            deploy_path.write_text(
+                "#!/bin/sh\n"
+                "printf '%s\\n' 'OCI_DEPLOY_LOCK_TIMEOUT phase=launcher_checkout waited_s=420'\n"
+                "printf '%s\\n' 'PRIVATE_LOG_CANARY_SHOULD_NOT_LEAK'\n"
+                "exit 75\n",
+                encoding="utf-8",
+            )
+            deploy_path.chmod(0o700)
+            failed = run_script()
+            assert failed.returncode == 75, failed.stderr[-300:]
+            assert "OCI_DEPLOY_REMOTE_FAILURE rc=75" in failed.stdout
+            # OCI must see nonzero even if it drops the TEXT output entirely.
+            try:
+                reject_remote_deploy_failure(failed.stdout)
+            except SystemExit as exc:
+                assert "FAILED: rc=75" in str(exc)
+            else:
+                raise AssertionError("remote failure sentinel must block despite missing transport checks")
+            assert "OCI_DEPLOY_LOCK_TIMEOUT phase=launcher_checkout" in failed.stdout
+            assert "OCI_DEPLOY_LAUNCHER_HASH_PREFIX=" in failed.stdout
+            assert "PRIVATE_LOG_CANARY_SHOULD_NOT_LEAK" not in failed.stdout + failed.stderr
+
+            # A superseded host generation returns zero but has NO deploy
+            # receipt. This must survive even when OCI returns no TEXT output.
+            deploy_path.write_text(
+                "#!/bin/sh\n"
+                "printf '%s\\n' 'OCI_DEPLOY_SUPERSEDED phase=launcher_lock_acquired'\n"
+                "exit 0\n",
+                encoding="utf-8",
+            )
+            superseded = run_script()
+            assert superseded.returncode == 87, superseded.stderr[-300:]
+            assert "OCI_DEPLOY_REMOTE_FAILURE rc=87" in superseded.stdout
+            assert "CHESS_STUDIO_DEPLOY_OK" not in superseded.stdout
+            assert "OCI_DEPLOY_SUPERSEDED phase=launcher_lock_acquired" in superseded.stdout
+            # A generic rc0 with no host receipt remains distinct from supersession.
+            deploy_path.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+            silent = run_script()
+            assert silent.returncode == 86, silent.stderr[-300:]
+            assert "OCI_DEPLOY_REMOTE_FAILURE rc=86" in silent.stdout
+            assert "OCI_DEPLOY_SUPERSEDED" not in silent.stdout
+
+            replacement_path = root / "new-launcher"
+            replacement_path.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+            replacement_path.chmod(0o700)
+            deploy_path.write_text(
+                "#!/bin/sh\n"
+                f'mv "{replacement_path}" "$0"\n'
+                f"printf '%s\\n' 'CHESS_STUDIO_DEPLOY_OK target=staging repo_ref={sample_sha} color=blue'\n",
+                encoding="utf-8",
+            )
+            old_hash = hashlib.sha256(deploy_path.read_bytes()).hexdigest()[:16]
+            passed = run_script()
+            new_hash = hashlib.sha256(deploy_path.read_bytes()).hexdigest()[:16]
+            assert old_hash != new_hash
+            assert passed.returncode == 0, passed.stderr[-300:]
+            assert f"CHESS_STUDIO_DEPLOY_OK target=staging repo_ref={sample_sha} " in passed.stdout
+            assert "OCI_DEPLOY_LAUNCHER_HASH_PREFIX=" + new_hash in passed.stdout
+            assert "OCI_DEPLOY_LAUNCHER_HASH_PREFIX=" + old_hash not in passed.stdout
+            assert "OCI_DEPLOY_REMOTE_FAILURE" not in passed.stdout
+            reject_remote_deploy_failure(passed.stdout)
+            deploy_path.write_text(
+                "#!/bin/sh\n"
+                "printf '%s\\n' 'CHESS_STUDIO_DEPLOY_OK target=staging repo_ref=0000000000000000000000000000000000000000 color=blue'\n"
+                "exit 0\n",
+                encoding="utf-8",
+            )
+            bad_receipt = run_script()
+            assert bad_receipt.returncode == 86
+            assert "OCI_DEPLOY_REMOTE_FAILURE rc=86" in bad_receipt.stdout
+            try:
+                reject_remote_deploy_failure("OCI_DEPLOY_REMOTE_FAILURE rc=invalid")
+            except SystemExit as exc:
+                assert "invalid failure sentinel" in str(exc)
+            else:
+                raise AssertionError("malformed remote failure must fail closed")
+        finally:
+            DEPLOY_WRAPPER, RUNTIME_WRAPPER = original_deploy, original_runtime
 
 
 def self_test() -> None:
@@ -645,6 +822,12 @@ def self_test() -> None:
     assert "/^OCI_DEPLOY_WATCHER_DIAG / {print}" in deploy
     assert "/^OCI_AGENT_DIAG / {print}" in deploy
     assert "emit_success object-storage" in deploy
+    assert "OCI_DEPLOY_LAUNCHER_HASH_PREFIX=%s" in deploy
+    assert "OCI_DEPLOY_REMOTE_FAILURE rc=%s" in deploy
+    assert "grep -E '^OCI_DEPLOY_(LOCK|MAIN|SUPERSEDED)' " in deploy
+    assert deploy.count('emit_failure "$deploy_rc"') == 2
+    assert 'cat "$log" >&2' not in deploy
+    assert deploy.count("emit_version") >= 2
     assert 'if [ "$deploy_rc" -ne 42 ]' in deploy
     assert deploy.index(f"sudo --non-interactive '{DEPLOY_WRAPPER}'") < deploy.index("InstancePrincipalsSecurityTokenSigner")
     assert "COMMIT_SHA" in deploy
@@ -664,6 +847,22 @@ def self_test() -> None:
     else:
         raise AssertionError("secret-bearing command must be rejected")
 
+    receipt = "CHESS_STUDIO_DEPLOY_OK target=staging repo_ref=" + sample + " color=blue"
+    validate_deploy_output(receipt, sample)
+    assert deploy_receipt_exit_status(receipt, sample) == 0
+    assert deploy_receipt_exit_status("", sample) == 78
+    assert deploy_receipt_exit_status(
+        "CHESS_STUDIO_DEPLOY_OK target=staging repo_ref=" + "f" * 40 + " color=blue",
+        sample,
+    ) == 78
+    for invalid in ("", "OCI_DEPLOY_LAUNCHER_HASH_PREFIX=deadbeef", "CHESS_STUDIO_DEPLOY_OK repo_ref=" + sample):
+        try:
+            validate_deploy_output(invalid, sample)
+        except MissingDeployReceiptError as exc:
+            assert "without exact-SHA" in str(exc)
+        else:
+            raise AssertionError("missing/wrong deployment receipt must fail closed")
+
     class Capture:
         def __init__(self, **kwargs: Any) -> None:
             self.kwargs = kwargs
@@ -677,6 +876,16 @@ def self_test() -> None:
     assert "command_string" not in command_content.kwargs
     assert command_content.kwargs["source"].kwargs["text"] == smoke
     assert command_content.kwargs["output"].kwargs["output_type"] == "TEXT"
+    for error_text, classified in (
+        ("OCI Run Command failed: state=FAILED exit=87 detail=no command output", True),
+        ("OCI Run Command remote deploy FAILED: rc=87", True),
+        ("OCI Run Command failed: state=FAILED exit=86 detail=no command output", False),
+        ("OCI Run Command failed: state=FAILED exit=875 detail=unrelated", False),
+        ("OCI Run Command polling timed out waiting for delivery/execution", False),
+        ("OCI Run Command remote deploy FAILED: rc=75", False),
+    ):
+        assert host_declared_supersession(SystemExit(error_text)) is classified
+    local_deploy_diagnostics_self_test()
     print("OCI Run Command self-test: OK")
 
 
@@ -724,14 +933,27 @@ def main() -> int:
             resolved=resolved,
             include_desired_config=False,
         )
-        execute(
-            oci,
-            config,
-            deploy_command(args.repo_ref),
-            display_name=f"chess-studio-deploy-{args.repo_ref[:12]}",
-            timeout=900,
-            resolved=resolved,
-        )
+        try:
+            output = execute(
+                oci,
+                config,
+                deploy_command(args.repo_ref),
+                display_name=f"chess-studio-deploy-{args.repo_ref[:12]}",
+                timeout=900,
+                resolved=resolved,
+            )
+        except SystemExit as exc:
+            if not host_declared_supersession(exc):
+                raise
+            print("OCI_DEPLOY_SUPERSEDED host_exit=87", file=sys.stderr)
+            return 87
+        receipt_exit = deploy_receipt_exit_status(output, args.repo_ref)
+        if receipt_exit:
+            # Only the staging workflow may handle this provisional outcome.
+            # It MUST run the independent public exact-SHA accreditation.
+            # CLI users receive a nonzero exit until that check succeeds.
+            print("OCI_DEPLOY_RECEIPT_MISSING public_exact_sha_verification_required", file=sys.stderr)
+            return receipt_exit
     return 0
 
 

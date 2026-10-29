@@ -871,6 +871,32 @@ def self_test() -> None:
     }
     load_policy({"retention": policy})
     live_policy = load_policy(core.load_config(core.DEFAULT_CONFIG))
+    # Cross-repository contract: Star Adventures pins live in a *different*
+    # repository, so this Chess Studio R2 collector cannot discover them via
+    # its normal local-manifest/runtime-URL scanner. Fail closed for all of
+    # Star Adventures' immutable objects, including older active clients.
+    assert "star-adventures/" in live_policy["protectedPrefixes"]
+    # Chronicles' premium store-room manifest lives in its independent repo.
+    # The local pin scanner cannot see these URLs. Protect the entire shop
+    # family against age expiry, duplicate-SHA and capacity-pressure cleanup.
+    assert "chronicles/shops/" in live_policy["protectedPrefixes"]
+    cross_repo_test = plan_cleanup(
+        [
+            row("star-adventures/tactical/officer-sentinel-abcdef0123456789.webp", 100, 180),
+            row("chronicles/shops/odo/odo-premium-composite-79e0b13fc2ee2ffb.webp", 200_250, 180),
+            row("unrelated/old-sentinel-abcdef0123456789.webp", 101, 180),
+        ],
+        manifest_keys=set(),
+        repo_pins=set(),
+        policy=live_policy,
+        now=now,
+    )
+    assert cross_repo_test["protectedObjects"] == 2
+    assert cross_repo_test["protectedBytes"] == 200_350
+    assert all(
+        not deletion["key"].startswith(("star-adventures/", "chronicles/shops/"))
+        for deletion in cross_repo_test["deletions"]
+    )
     for bundle in live_policy["releaseBundles"]:
         # Any older open tab must be able to fetch its *complete* export
         # across several deployments; this is not a one-day single fallback.

@@ -8,6 +8,8 @@ if expected OCI/backend signals are absent from the requested lookback window.
 from __future__ import annotations
 
 import argparse
+import contextlib
+import io
 import json
 import math
 import os
@@ -309,8 +311,8 @@ def run_checks(
     metric_checks = {
         "alloy_self_staging": f'count({{service_name="chess-studio-alloy-self",deployment_environment="staging",cloud_provider="oci",cloud_region="eu-frankfurt-1",{version_selector}}})',
         "oci_host_staging": f'count({{service_name="chess-studio-oci-host",deployment_environment="staging",cloud_provider="oci",cloud_region="eu-frankfurt-1",{version_selector}}})',
-        "backend_production_metrics": f'count(count_over_time(chess_studio_http_server_requests_total{{service_name="chess-studio-backend"}}[{lookback_seconds}s]))',
-        "backend_staging_metrics": f'count(count_over_time(chess_studio_http_server_requests_total{{service_name="chess-studio-backend-staging"}}[{lookback_seconds}s]))',
+        "backend_production_metrics": f'count(count_over_time(chess_studio_http_server_requests_total{{service_name="chess-studio-backend-go"}}[{lookback_seconds}s]))',
+        "backend_staging_metrics": f'count(count_over_time(chess_studio_http_server_requests_total{{service_name="chess-studio-backend-staging-go"}}[{lookback_seconds}s]))',
     }
     for name, query in metric_checks.items():
         payload = api.get_json(
@@ -323,25 +325,25 @@ def run_checks(
     requests_15m = _prom_value(
         api,
         metrics_uid,
-        'sum(increase(chess_studio_http_server_requests_total{service_name="chess-studio-backend",http_route!="/api/ready"}[15m])) or vector(0)',
+        'sum(increase(chess_studio_http_server_requests_total{service_name="chess-studio-backend-go",http_route!="/api/ready"}[15m])) or vector(0)',
         now,
     )
     errors_15m = _prom_value(
         api,
         metrics_uid,
-        'sum(increase(chess_studio_http_server_requests_total{service_name="chess-studio-backend",http_route!="/api/ready",http_response_status_class="5xx"}[15m])) or vector(0)',
+        'sum(increase(chess_studio_http_server_requests_total{service_name="chess-studio-backend-go",http_route!="/api/ready",http_response_status_class="5xx"}[15m])) or vector(0)',
         now,
     )
     p95_ms = _prom_value(
         api,
         metrics_uid,
-        '1000 * histogram_quantile(0.95, sum by (le) (rate(chess_studio_http_server_duration_seconds_bucket{service_name="chess-studio-backend",http_route!="/api/ready"}[15m])))',
+        '1000 * histogram_quantile(0.95, sum by (le) (rate(chess_studio_http_server_duration_seconds_bucket{service_name="chess-studio-backend-go",http_route!="/api/ready"}[15m])))',
         now,
     )
     route_p95_payload = api.get_json(
         f"/api/datasources/proxy/uid/{urllib.parse.quote(metrics_uid, safe='')}/api/v1/query",
         {
-            "query": 'topk(8, 1000 * histogram_quantile(0.95, sum by (le, http_route) (rate(chess_studio_http_server_duration_seconds_bucket{service_name="chess-studio-backend"}[15m]))))',
+            "query": 'topk(8, 1000 * histogram_quantile(0.95, sum by (le, http_route) (rate(chess_studio_http_server_duration_seconds_bucket{service_name="chess-studio-backend-go"}[15m]))))',
             "time": str(now),
         },
     )
@@ -389,19 +391,19 @@ def run_checks(
     staging_requests_15m = _prom_value(
         api,
         metrics_uid,
-        'sum(increase(chess_studio_http_server_requests_total{service_name="chess-studio-backend-staging",http_route!="/api/ready"}[15m])) or vector(0)',
+        'sum(increase(chess_studio_http_server_requests_total{service_name="chess-studio-backend-staging-go",http_route!="/api/ready"}[15m])) or vector(0)',
         now,
     )
     staging_errors_15m = _prom_value(
         api,
         metrics_uid,
-        'sum(increase(chess_studio_http_server_requests_total{service_name="chess-studio-backend-staging",http_route!="/api/ready",http_response_status_class="5xx"}[15m])) or vector(0)',
+        'sum(increase(chess_studio_http_server_requests_total{service_name="chess-studio-backend-staging-go",http_route!="/api/ready",http_response_status_class="5xx"}[15m])) or vector(0)',
         now,
     )
     staging_p95_ms = _prom_value(
         api,
         metrics_uid,
-        '1000 * histogram_quantile(0.95, sum by (le) (rate(chess_studio_http_server_duration_seconds_bucket{service_name="chess-studio-backend-staging",http_route!="/api/ready"}[15m])))',
+        '1000 * histogram_quantile(0.95, sum by (le) (rate(chess_studio_http_server_duration_seconds_bucket{service_name="chess-studio-backend-staging-go",http_route!="/api/ready"}[15m])))',
         now,
     )
     staging_enough_requests = staging_requests_15m is not None and staging_requests_15m >= min_requests_15m
@@ -423,7 +425,7 @@ def run_checks(
         evaluated=staging_enough_requests,
     ) and passed
 
-    log_query = f'sum(count_over_time({{service_name="chess-studio-backend"}}[{lookback_seconds}s]))'
+    log_query = f'sum(count_over_time({{service_name="chess-studio-backend-go"}}[{lookback_seconds}s]))'
     payload = api.get_json(
         f"/api/datasources/proxy/uid/{urllib.parse.quote(logs_uid, safe='')}/loki/api/v1/query",
         {"query": log_query, "time": str(now)},
@@ -431,7 +433,7 @@ def run_checks(
     ok = _vector_positive(payload)
     passed = _report("backend_production_logs", ok, "queryable Loki data" if ok else "no matching Loki data") and passed
 
-    staging_log_query = f'sum(count_over_time({{service_name="chess-studio-backend-staging"}}[{lookback_seconds}s]))'
+    staging_log_query = f'sum(count_over_time({{service_name="chess-studio-backend-staging-go"}}[{lookback_seconds}s]))'
     payload = api.get_json(
         f"/api/datasources/proxy/uid/{urllib.parse.quote(logs_uid, safe='')}/loki/api/v1/query",
         {"query": staging_log_query, "time": str(now)},
@@ -449,15 +451,15 @@ def run_checks(
 
     staging_log_diagnostics = {
         "otlp_http_request": _loki_count(
-            f'sum(count_over_time({{service_name="chess-studio-backend-staging"}}'
+            f'sum(count_over_time({{service_name="chess-studio-backend-staging-go"}}'
             f' | json | __error__="" | event="http_request" [{lookback_seconds}s]))'
         ),
         "otlp_http_request_ip": _loki_count(
-            f'sum(count_over_time({{service_name="chess-studio-backend-staging"}}'
+            f'sum(count_over_time({{service_name="chess-studio-backend-staging-go"}}'
             f' | json | __error__="" | event="http_request" | client_ip != "" [{lookback_seconds}s]))'
         ),
         "otlp_http_request_country": _loki_count(
-            f'sum(count_over_time({{service_name="chess-studio-backend-staging"}}'
+            f'sum(count_over_time({{service_name="chess-studio-backend-staging-go"}}'
             f' | json | __error__="" | event="http_request" | client_country != "" [{lookback_seconds}s]))'
         ),
         "stdout_http_request_raw": _loki_count(
@@ -546,12 +548,12 @@ def run_checks(
         f"/api/datasources/proxy/uid/{urllib.parse.quote(logs_uid, safe='')}/loki/api/v1/query",
         {"query": oci_stdout_log_query, "time": str(now)},
     )
-    ok = _vector_positive(payload)
+    stdout_ok = _vector_positive(payload)
     _report(
         "oci_backend_stdout_logs",
-        ok,
+        stdout_ok,
         "structured backend stdout reached Loki"
-        if ok
+        if stdout_ok
         else (
             "direct OTLP logs work but backend stdout capture is missing"
             if direct_probe_ok
@@ -572,9 +574,7 @@ def run_checks(
     _report(
         "oci_backend_stdout_country",
         country_ok,
-        "staging stdout carries client_country on http_request"
-        if country_ok
-        else "staging stdout has http_request logs but no client_country; inspect Cloudflare headers/trust boundary",
+        _stdout_country_detail(stdout_ok, country_ok),
     )
 
     production_oci_stdout_log_query = (
@@ -596,7 +596,7 @@ def run_checks(
     )
 
     log_explorer_default_query = (
-        'sum(count_over_time({service_name="chess-studio-backend"}'
+        'sum(count_over_time({service_name="chess-studio-backend-go"}'
         ' | json | __error__=""'
         ' | event="http_request" | status=~".*" | method=~".*" | route=~".*"'
         ' | request_path=~".*" | client_release=~".*" | request_id=~".*" | trace_id=~".*"'
@@ -608,7 +608,7 @@ def run_checks(
     )
     passed = _report("log_explorer_default_query", True, "default Explorer LogQL accepted by Loki") and passed
 
-    trace_query = '{ resource.service.name = "chess-studio-backend" && resource.deployment.environment.name = "production" }'
+    trace_query = '{ resource.service.name = "chess-studio-backend-go" && resource.deployment.environment.name = "production" }'
     payload = api.get_json(
         f"/api/datasources/proxy/uid/{urllib.parse.quote(traces_uid, safe='')}/api/search",
         {"q": trace_query, "start": str(start), "end": str(now), "limit": "1"},
@@ -616,7 +616,7 @@ def run_checks(
     ok = _tempo_has_result(payload)
     passed = _report("backend_production_traces", ok, "queryable Tempo trace" if ok else "no matching Tempo trace") and passed
 
-    staging_trace_query = '{ resource.service.name = "chess-studio-backend-staging" && resource.deployment.environment.name = "staging" }'
+    staging_trace_query = '{ resource.service.name = "chess-studio-backend-staging-go" && resource.deployment.environment.name = "staging" }'
     payload = api.get_json(
         f"/api/datasources/proxy/uid/{urllib.parse.quote(traces_uid, safe='')}/api/search",
         {"q": staging_trace_query, "start": str(start), "end": str(now), "limit": "1"},
@@ -625,8 +625,8 @@ def run_checks(
     passed = _report("backend_staging_traces", ok, "queryable Tempo trace" if ok else "no matching Tempo trace") and passed
 
     contamination_queries = {
-        "backend_production_environment_isolation": '{ resource.service.name = "chess-studio-backend" && resource.deployment.environment.name = "staging" }',
-        "backend_staging_environment_isolation": '{ resource.service.name = "chess-studio-backend-staging" && resource.deployment.environment.name = "production" }',
+        "backend_production_environment_isolation": '{ resource.service.name = "chess-studio-backend-go" && resource.deployment.environment.name = "staging" }',
+        "backend_staging_environment_isolation": '{ resource.service.name = "chess-studio-backend-staging-go" && resource.deployment.environment.name = "production" }',
     }
     for name, query in contamination_queries.items():
         payload = api.get_json(
@@ -638,7 +638,24 @@ def run_checks(
     return passed
 
 
+def _stdout_country_detail(stdout_ok: bool, country_ok: bool) -> str:
+    if country_ok:
+        return "staging stdout carries client_country on http_request"
+    if not stdout_ok:
+        return "staging stdout capture is missing; cannot assess client_country"
+    return "staging stdout has http_request logs but no client_country; inspect Cloudflare headers/trust boundary"
+
+
 def self_test() -> int:
+    assert _stdout_country_detail(False, False) == (
+        "staging stdout capture is missing; cannot assess client_country"
+    )
+    assert _stdout_country_detail(True, False) == (
+        "staging stdout has http_request logs but no client_country; inspect Cloudflare headers/trust boundary"
+    )
+    assert _stdout_country_detail(True, True) == (
+        "staging stdout carries client_country on http_request"
+    )
     assert _lookback_seconds("15m") == 900
     assert _lookback_seconds("3h") == 10800
     assert _vector_positive({"data": {"result": [{"value": [1, "1"]}]}})
@@ -666,6 +683,51 @@ def self_test() -> int:
     assert _slo_report("self-pass", 4.0, 5.0, "%")
     assert not _slo_report("self-fail", 6.0, 5.0, "%")
     assert _slo_report("self-skip", None, 5.0, "%", evaluated=False)
+    # Check queries as sent to Grafana, not merely static token occurrences.
+    # The retired Python exporter used unsuffixed OTEL service names; Go now
+    # emits service_name and Tempo resource.service.name with the -go suffix.
+    class QueryRecorder:
+        def __init__(self) -> None:
+            self.queries: list[str] = []
+
+        def get_json(self, path: str, params: dict[str, str] | None = None) -> dict:
+            assert path.startswith("/api/datasources/proxy/uid/")
+            assert params is not None
+            query = params.get("query", params.get("q", ""))
+            self.queries.append(query)
+            return {"data": {"result": []}, "traces": []}
+
+    recorder = QueryRecorder()
+    with contextlib.redirect_stdout(io.StringIO()):
+        assert not run_checks(
+            recorder,
+            metrics_uid="prom",
+            logs_uid="logs",
+            traces_uid="traces",
+            lookback_seconds=3600,
+            max_5xx_percent=5.0,
+            max_p95_ms=3000.0,
+            max_host_ram_percent=90.0,
+            min_requests_15m=20,
+            expected_staging_sha=None,
+        )  # No telemetry in fixture must still fail closed.
+    generated = "\n".join(recorder.queries)
+    for expected in (
+        'service_name="chess-studio-backend-go"',
+        'service_name="chess-studio-backend-staging-go"',
+        'resource.service.name = "chess-studio-backend-go"',
+        'resource.service.name = "chess-studio-backend-staging-go"',
+    ):
+        assert expected in generated, expected
+    for stale in (
+        'service_name="chess-studio-backend"',
+        'service_name="chess-studio-backend-staging"',
+        'resource.service.name = "chess-studio-backend"',
+        'resource.service.name = "chess-studio-backend-staging"',
+    ):
+        assert stale not in generated, stale
+    assert 'resource.deployment.environment.name = "production"' in generated
+    assert 'resource.deployment.environment.name = "staging"' in generated
     print("grafana-live-check self-test OK")
     return 0
 

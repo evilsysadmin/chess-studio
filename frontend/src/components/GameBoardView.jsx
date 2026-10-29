@@ -4,6 +4,7 @@ import GamePlayerRail from './GamePlayerRail.jsx';
 import GameSideColumn from './GameSideColumn.jsx';
 import GameStatusStrips from './GameStatusStrips.jsx';
 import GameWarRoomCommandColumn from './GameWarRoomCommandColumn.jsx';
+import WarRoomCapturedPieces from './WarRoomCapturedPieces.jsx';
 import WarRoomBoardSurface from './WarRoomBoardSurface.jsx';
 import WarRoomExitOverlay from './WarRoomExitOverlay.jsx';
 import GlossaryTerm from './GlossaryTerm.jsx';
@@ -21,6 +22,7 @@ import WarRoomImmersiveMusicDock from './WarRoomImmersiveMusicDock.jsx';
 import { useGameFocusBubble, useGameMobileFocus } from './useGameMobileFocus.js';
 import useMatthias3DBubbleAnchor from './useMatthias3DBubbleAnchor.js';
 import useMatthiasBoardReactions from './useMatthiasBoardReactions.js';
+import { warRoomSelectionAnnouncement } from './warRoomSelectionAnnouncement.js';
 import { warRoomHansEventForGame } from './WarRoomHansEventContract.js';
 import { shouldForceHansQuickIteration } from './WarRoomHansIteration.js';
 import { resolveHansFireOpeningLatch } from './WarRoomHansFireCallContract.js';
@@ -93,6 +95,9 @@ export default function GameBoardView({
     activeMessage: activeMatthiasMessage,
     activeMessageKey: activeMatthiasKey,
   });
+  // Presentation-only gate; chess, narration history and Hans choreography
+  // continue, but their ambient speech yields to piece selection/move commits.
+  const narrativeQuiet = Boolean(board.selected || status.busy);
   const boardOrientation = humanColor === 'b' ? 'black' : 'white';
   const {
     stageRef: matthias3DStageRef,
@@ -191,6 +196,7 @@ export default function GameBoardView({
           focusActive={focusActive}
           status={status}
           context={context}
+          narrativeQuiet={narrativeQuiet}
         />
 
         <div className={`board-live-row ${zenMode ? 'zen-mode' : ''}${isThreeD ? ' is-3d-warroom' : ''}`}>
@@ -220,6 +226,13 @@ export default function GameBoardView({
             {isThreeD ? (
               <div ref={matthias3DStageRef} className="game-board-3d-stage">
                 <WarRoomBoardSurface isThreeD boardProps={boardProps} />
+                <div className="sr-only" role="status" aria-live="polite" aria-atomic="true" aria-label="Destinos legales del tablero">
+                  {warRoomSelectionAnnouncement({
+                    selectedSquare: board.selected,
+                    legalTargets: board.legalTargets,
+                    disabled: zenMode || status.busy || boardProps.gameOver,
+                  })}
+                </div>
                 <WarRoomExitOverlay
                   onClick={controls.onAbandon}
                   ariaLabel="Salir de la partida"
@@ -234,7 +247,7 @@ export default function GameBoardView({
                     <span>{board.selectionNotice.text}</span>
                   </div>
                 )}
-                {!zenMode && !focusActive && activeBoardBubble && matthias3DBubbleStyle && (
+                {!zenMode && !focusActive && !narrativeQuiet && activeBoardBubble && matthias3DBubbleStyle && (
                   <aside
                     key={activeBoardBubble.id}
                     className="matthias-board-bubble matthias-board-bubble-tracked"
@@ -258,6 +271,7 @@ export default function GameBoardView({
               anchorStyle={matthias3DBubbleStyle}
               trackedSquare={matthias3DTrackedSquare}
               leadIn={hansFireCallEnabled ? 'AH, SÍ!' : ''}
+              quiet={narrativeQuiet}
             />
 
             <WarRoomHansFireCall
@@ -268,12 +282,14 @@ export default function GameBoardView({
               matthiasAnchorStyle={matthias3DBubbleStyle}
               matthiasTrackedSquare={matthias3DTrackedSquare}
               onComplete={handleHansFireCallComplete}
+              quiet={narrativeQuiet}
             />
 
             <WarRoomHansMopDialogue
               gameId={game.id}
               isThreeD={isThreeD}
               enabled={!zenMode && !focusActive && hansPresentation.mopDialogue}
+              quiet={narrativeQuiet}
               matthiasAnchorStyle={matthias3DBubbleStyle}
               matthiasTrackedSquare={matthias3DTrackedSquare}
             />
@@ -282,18 +298,19 @@ export default function GameBoardView({
               gameId={game.id}
               isThreeD={isThreeD}
               enabled={!zenMode && !focusActive && hansPresentation.serviceDialogue}
+              quiet={narrativeQuiet}
               matthiasAnchorStyle={matthias3DBubbleStyle}
               matthiasTrackedSquare={matthias3DTrackedSquare}
             />
 
-            {!isThreeD && !zenMode && !focusActive && activeBoardBubble && (
+            {!isThreeD && !zenMode && !focusActive && !narrativeQuiet && activeBoardBubble && (
               <aside key={activeBoardBubble.id} className="matthias-board-bubble" role="status" aria-live="polite" aria-label="Comentario de Matthias sobre el tablero">
                 <span>MATTHIAS</span>
                 <p>{activeBoardBubble.text}</p>
               </aside>
             )}
 
-            {!zenMode && focusActive && focusBubble && (
+            {!zenMode && focusActive && !narrativeQuiet && focusBubble && (
               <aside key={focusBubble.id || focusBubble.text} className="matthias-board-bubble game-mobile-focus-bubble" role="status" aria-label="Comentario de Matthias en Focus">
                 <span>MATTHIAS</span>
                 <p>{focusBubble.text}</p>
@@ -338,6 +355,9 @@ export default function GameBoardView({
 
           {!zenMode && !focusActive && (
             <GameSideColumn game={game} side={side} isThreeD={isThreeD} compactViewport={compactViewport} showMusic={!warRoomImmersive} />
+          )}
+          {isThreeD && !zenMode && !focusActive && (
+            <WarRoomCapturedPieces key={game.id} game={game} humanColor={humanColor} />
           )}
         </div>
 
