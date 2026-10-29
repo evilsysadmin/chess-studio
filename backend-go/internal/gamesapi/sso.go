@@ -70,6 +70,16 @@ type SSOHandler struct {
 }
 
 func NewSSO(cfg SSOConfig) (*SSOHandler, error) {
+	// The legacy helper resolves unknown environments to localhost for
+	// historical test callers. An HTTP IdP must never silently inherit that
+	// fallback: a typo such as "prod" would use the wrong issuer and drop
+	// Secure from the SSO cookie. Local usage must opt into development.
+	env := strings.ToLower(strings.TrimSpace(cfg.Environment))
+	switch env {
+	case "staging", "production", "development":
+	default:
+		return nil, errors.New("SSO requires an explicit staging, production or development environment")
+	}
 	baseCfg := cfg.Config
 	baseCfg.Store = readOnlyStore{}
 	base, err := New(baseCfg)
@@ -117,9 +127,9 @@ func NewSSO(cfg SSOConfig) (*SSOHandler, error) {
 	if err != nil {
 		return nil, err
 	}
-	issuer := ssoauth.Issuer(cfg.Environment)
+	issuer := ssoauth.Issuer(env)
 	return &SSOHandler{
-		base: base, env: cfg.Environment, issuer: issuer, key: key, kid: kid,
+		base: base, env: env, issuer: issuer, key: key, kid: kid,
 		jwks:  jwks,
 		limit: newLimiter(60, time.Minute),
 		// Browsers drop Secure cookies over plain http (local development).
