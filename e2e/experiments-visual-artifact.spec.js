@@ -7,6 +7,12 @@ const CAPTURES = [
   { label: 'desktop-1440x900', width: 1440, height: 900, hasTouch: false },
   { label: 'android-390x844', width: 390, height: 844, hasTouch: true },
 ];
+const LAB_CAPTURES = [
+  CAPTURES[0],
+  { label: 'android-360x800', width: 360, height: 800, hasTouch: true },
+  CAPTURES[1],
+  { label: 'android-430x932', width: 430, height: 932, hasTouch: true },
+];
 const LANDING_CAPTURES = [
   ...CAPTURES,
   { label: 'android-landscape-915x412', width: 915, height: 412, hasTouch: true },
@@ -635,9 +641,9 @@ if (scopeEnabled('pawnslug')) {
 
 if (scopeEnabled('landing')) {
   test('Laboratorio libre · tablero protagonista en desktop y móvil', async ({ browser }) => {
-    test.setTimeout(180_000);
+    test.setTimeout(240_000);
     await mkdir(ARTIFACT_DIR, { recursive: true });
-    for (const capture of CAPTURES) {
+    for (const capture of LAB_CAPTURES) {
       await withCapturePage(browser, capture, async (page) => {
         await page.locator('.lab-workshop-tool:not(.lab-workshop-tool--arena)').click();
         const root = page.locator('.lab-screen--position');
