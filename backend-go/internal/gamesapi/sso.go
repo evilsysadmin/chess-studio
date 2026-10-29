@@ -15,6 +15,7 @@ package gamesapi
 import (
 	"crypto/ed25519"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strings"
 	"time"
@@ -43,6 +44,11 @@ func SSORoute(r *http.Request) (string, bool) {
 type SSOConfig struct {
 	Config
 	Environment string
+	// SigningSeed optionally provides an independent Ed25519 signing key.
+	// nil preserves the legacy JWT_SECRET-derived key and all existing sessions.
+	// Non-nil seeds must be exactly 32 bytes; empty/invalid seeds fail closed.
+	// The caller is responsible for provisioning environment-isolated seeds.
+	SigningSeed []byte
 }
 
 type SSOHandler struct {
@@ -63,9 +69,21 @@ func NewSSO(cfg SSOConfig) (*SSOHandler, error) {
 	if err != nil {
 		return nil, err
 	}
-	key, kid, err := ssoauth.Key(base.secret)
-	if err != nil {
-		return nil, err
+	var key ed25519.PrivateKey
+	var kid string
+	if cfg.SigningSeed == nil {
+		// Preserve legacy behavior until an explicit environment-specific
+		// cutover has its own test, backup and rollback plan.
+		key, kid, err = ssoauth.Key(base.secret)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		if len(cfg.SigningSeed) != ed25519.SeedSize {
+			return nil, errors.New("SSO signing seed must contain exactly 32 bytes")
+		}
+		key = ed25519.NewKeyFromSeed(cfg.SigningSeed)
+		kid = ssoauth.KeyID(key.Public().(ed25519.PublicKey))
 	}
 	issuer := ssoauth.Issuer(cfg.Environment)
 	return &SSOHandler{
