@@ -170,6 +170,33 @@ func JWKS(public ed25519.PublicKey) []byte {
 	return body
 }
 
+// JWKSWithAdditional publishes two distinct signing keys for a staged
+// migration. Only public keys are accepted. The first key is the active
+// signer; the second is verification-only (next key during prepublication
+// or old key during the short compatibility window).
+//
+// It never changes the signer or the issuer. Consumers must continue to
+// validate iss/aud and may cache JWKS, so prepublication is mandatory.
+func JWKSWithAdditional(active, additional ed25519.PublicKey) ([]byte, error) {
+	if len(active) != ed25519.PublicKeySize || len(additional) != ed25519.PublicKeySize {
+		return nil, errors.New("both SSO public keys must be 32 bytes")
+	}
+	if string(active) == string(additional) {
+		return nil, errors.New("SSO rotation keys must differ")
+	}
+	keys := []map[string]string{
+		{
+			"kty": "OKP", "crv": "Ed25519", "use": "sig", "alg": "EdDSA",
+			"kid": KeyID(active), "x": base64.RawURLEncoding.EncodeToString(active),
+		},
+		{
+			"kty": "OKP", "crv": "Ed25519", "use": "sig", "alg": "EdDSA",
+			"kid": KeyID(additional), "x": base64.RawURLEncoding.EncodeToString(additional),
+		},
+	}
+	return json.Marshal(map[string]any{"keys": keys})
+}
+
 // SetCookie stores the SSO session (a Chess Studio session token).
 func SetCookie(w http.ResponseWriter, session string, secure bool) {
 	http.SetCookie(w, &http.Cookie{

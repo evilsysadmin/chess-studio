@@ -3,6 +3,7 @@ package gamesapi
 import (
 	"bytes"
 	"crypto/ed25519"
+	"encoding/base64"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -195,6 +196,150 @@ func TestSSOInvalidExplicitSeedFailsClosed(t *testing.T) {
 		})
 		if err == nil {
 			t.Fatalf("unexpectedly accepted invalid seed length %d", len(seed))
+		}
+	}
+}
+
+func ssoPublishedKeys(t *testing.T, handler *SSOHandler) map[string]ed25519.PublicKey {
+	t.Helper()
+	var jwks struct {
+		Keys []struct {
+			KeyType string `json:"kty"`
+			Curve   string `json:"crv"`
+			Use     string `json:"use"`
+			Alg     string `json:"alg"`
+			Kid     string `json:"kid"`
+			X       string `json:"x"`
+		} `json:"keys"`
+	}
+	if err := json.Unmarshal(handler.jwks, &jwks); err != nil {
+		t.Fatal(err)
+	}
+	publicKeys := make(map[string]ed25519.PublicKey)
+	for _, key := range jwks.Keys {
+		public, err := base64.RawURLEncoding.DecodeString(key.X)
+		if err != nil || len(public) != ed25519.PublicKeySize || key.KeyType != "OKP" || key.Curve != "Ed25519" || key.Alg != "EdDSA" || key.Use != "sig" {
+			t.Fatalf("invalid published signing key %q", key.Kid)
+		}
+		if _, exists := publicKeys[key.Kid]; exists {
+			t.Fatalf("duplicate JWKS key id %q", key.Kid)
+		}
+		publicKeys[key.Kid] = public
+	}
+	return publicKeys
+}
+
+func TestSSOTwoPhaseJWKSRotationPreservesExistingGameTokens(t *testing.T) {
+	now := time.Unix(1_800_000_000, 0)
+	config := Config{
+		Accounts:  fakeAccounts{version: 2},
+		JWTSecret: "test-secret",
+		Now:       func() time.Time { return now },
+	}
+	legacy := newTestSSO(t, fakeAccounts{version: 2}, now)
+	seed := bytes.Repeat([]byte{0x42}, ed25519.SeedSize)
+	nextPublic := ed25519.NewKeyFromSeed(seed).Public().(ed25519.PublicKey)
+	claims := ssoauth.Claims{
+		Issuer:         ssoauth.Issuer("staging"),
+		Audience:       "chronicles",
+		Subject:        "rotating-player",
+		SessionVersion: 2,
+		IssuedAt:       now.Unix(),
+		ExpiresAt:      now.Add(ssoauth.TokenLifetime).Unix(),
+	}
+	oldToken, err := ssoauth.Sign(legacy.key, legacy.kid, claims)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Phase 1: unchanged default signs with legacy; exactly one key is public.
+	legacyOnly := ssoPublishedKeys(t, legacy)
+	if len(legacyOnly) != 1 {
+		t.Fatal("default JWKS must keep its existing single-key contract")
+	}
+
+	// Phase 2: publish new verification key first; still sign with old key.
+	prepublish, err := NewSSO(SSOConfig{
+		Config: config, Environment: "staging",
+		NextSigningPublicKey: nextPublic,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if prepublish.kid != legacy.kid {
+		t.Fatal("prepublication must not switch active signer")
+	}
+	preKeys := ssoPublishedKeys(t, prepublish)
+	if len(preKeys) != 2 {
+		t.Fatal("prepublication should contain two distinct public keys")
+	}
+	if _, err := ssoauth.Verify(oldToken, preKeys, ssoauth.Issuer("staging"), "chronicles", now); err != nil {
+		t.Fatalf("old token became invalid during prepublication: %v", err)
+	}
+	// Phase 3: new key signs, old key remains verification-only.
+	rotating, err := NewSSO(SSOConfig{
+		Config: config, Environment: "staging",
+		SigningSeed: seed, RetainLegacyVerificationKey: true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rotating.kid == legacy.kid {
+		t.Fatal("new signer did not activate")
+	}
+	newToken, err := ssoauth.Sign(rotating.key, rotating.kid, claims)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rotationKeys := ssoPublishedKeys(t, rotating)
+	if len(rotationKeys) != 2 {
+		t.Fatal("switch window must publish old and new keys")
+	}
+	for _, token := range []string{oldToken, newToken} {
+		if _, err := ssoauth.Verify(token, rotationKeys, ssoauth.Issuer("staging"), "chronicles", now); err != nil {
+			t.Fatalf("rotation window must accept both signatures: %v", err)
+		}
+		if _, err := ssoauth.Verify(token, rotationKeys, ssoauth.Issuer("production"), "chronicles", now); err == nil {
+			t.Fatal("staging token accepted by production issuer")
+		}
+	}
+	// Phase 4: only after max token age and JWKS cache have elapsed.
+	final, err := NewSSO(SSOConfig{
+		Config: config, Environment: "staging", SigningSeed: seed,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	finalKeys := ssoPublishedKeys(t, final)
+	if len(finalKeys) != 1 {
+		t.Fatal("final JWKS must not retain old signing keys")
+	}
+	if _, err := ssoauth.Verify(newToken, finalKeys, ssoauth.Issuer("staging"), "chronicles", now); err != nil {
+		t.Fatalf("new tokens must survive removal of legacy key: %v", err)
+	}
+	if _, err := ssoauth.Verify(oldToken, finalKeys, ssoauth.Issuer("staging"), "chronicles", now); err == nil {
+		t.Fatal("old token still verified after its key was retired")
+	}
+	// Rollback is also explicit: the legacy-only handler remains functional.
+	if _, err := ssoauth.Verify(oldToken, legacyOnly, ssoauth.Issuer("staging"), "chronicles", now); err != nil {
+		t.Fatalf("legacy-only rollback path broke: %v", err)
+	}
+}
+
+func TestSSOUnsafeRotationConfigFailsClosed(t *testing.T) {
+	legacy := newTestSSO(t, fakeAccounts{}, time.Unix(1_800_000_000, 0))
+	seed := bytes.Repeat([]byte{0x42}, ed25519.SeedSize)
+	nextPublic := ed25519.NewKeyFromSeed(seed).Public().(ed25519.PublicKey)
+	cases := []SSOConfig{
+		{Config: Config{Accounts: fakeAccounts{}, JWTSecret: "test-secret"}, Environment: "staging", RetainLegacyVerificationKey: true},
+		{Config: Config{Accounts: fakeAccounts{}, JWTSecret: "test-secret"}, Environment: "staging", SigningSeed: seed, NextSigningPublicKey: nextPublic},
+		{Config: Config{Accounts: fakeAccounts{}, JWTSecret: "test-secret"}, Environment: "staging", SigningSeed: seed, RetainLegacyVerificationKey: true, NextSigningPublicKey: nextPublic},
+		{Config: Config{Accounts: fakeAccounts{}, JWTSecret: "test-secret"}, Environment: "staging", NextSigningPublicKey: ed25519.PublicKey{}},
+		{Config: Config{Accounts: fakeAccounts{}, JWTSecret: "test-secret"}, Environment: "staging", NextSigningPublicKey: legacy.key.Public().(ed25519.PublicKey)},
+		{Config: Config{Accounts: fakeAccounts{}, JWTSecret: "test-secret"}, Environment: "staging", SigningSeed: legacy.key.Seed(), RetainLegacyVerificationKey: true},
+	}
+	for index, cfg := range cases {
+		if _, err := NewSSO(cfg); err == nil {
+			t.Fatalf("unsafe rotation configuration %d was accepted", index)
 		}
 	}
 }

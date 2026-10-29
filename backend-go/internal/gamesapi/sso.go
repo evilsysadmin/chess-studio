@@ -49,6 +49,13 @@ type SSOConfig struct {
 	// Non-nil seeds must be exactly 32 bytes; empty/invalid seeds fail closed.
 	// The caller is responsible for provisioning environment-isolated seeds.
 	SigningSeed []byte
+	// NextSigningPublicKey prepublishes the *future* public verification key
+	// while the legacy key still signs. It must not be used with SigningSeed.
+	NextSigningPublicKey ed25519.PublicKey
+	// RetainLegacyVerificationKey serves the previous public signing key
+	// alongside SigningSeed's new key. Requires SigningSeed; disable after
+	// the old token lifetime plus the consumer JWKS cache window.
+	RetainLegacyVerificationKey bool
 }
 
 type SSOHandler struct {
@@ -85,10 +92,35 @@ func NewSSO(cfg SSOConfig) (*SSOHandler, error) {
 		key = ed25519.NewKeyFromSeed(cfg.SigningSeed)
 		kid = ssoauth.KeyID(key.Public().(ed25519.PublicKey))
 	}
+	// Explicit phases: legacy-only (default), prepublish-next (legacy
+	// signs), rotate-and-retain (new signs), new-only. Never combine phases
+	// or silently enable compatibility for other issuers/environments.
+	if cfg.NextSigningPublicKey != nil && (cfg.SigningSeed != nil || cfg.RetainLegacyVerificationKey) {
+		return nil, errors.New("SSO prepublication cannot overlap another rotation phase")
+	}
+	if cfg.RetainLegacyVerificationKey && cfg.SigningSeed == nil {
+		return nil, errors.New("SSO legacy verification requires independent signing seed")
+	}
+	var jwks []byte
+	switch {
+	case cfg.NextSigningPublicKey != nil:
+		jwks, err = ssoauth.JWKSWithAdditional(key.Public().(ed25519.PublicKey), cfg.NextSigningPublicKey)
+	case cfg.RetainLegacyVerificationKey:
+		legacy, _, legacyErr := ssoauth.Key(base.secret)
+		if legacyErr != nil {
+			return nil, legacyErr
+		}
+		jwks, err = ssoauth.JWKSWithAdditional(key.Public().(ed25519.PublicKey), legacy.Public().(ed25519.PublicKey))
+	default:
+		jwks = ssoauth.JWKS(key.Public().(ed25519.PublicKey))
+	}
+	if err != nil {
+		return nil, err
+	}
 	issuer := ssoauth.Issuer(cfg.Environment)
 	return &SSOHandler{
 		base: base, env: cfg.Environment, issuer: issuer, key: key, kid: kid,
-		jwks:  ssoauth.JWKS(key.Public().(ed25519.PublicKey)),
+		jwks:  jwks,
 		limit: newLimiter(60, time.Minute),
 		// Browsers drop Secure cookies over plain http (local development).
 		secureCk: strings.HasPrefix(issuer, "https://"),
