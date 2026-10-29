@@ -31,3 +31,43 @@ jobs:
         with: {fetch-depth: 2}
       - uses: ./.github/actions/app-visual-pipeline
         with: {mode: canonical}
+      # Opt-in baseline: a Lab visual PR can request the exact accepted main
+      # screenshots without paying for a second build on unrelated PRs.
+      - name: Capture exact-main Laboratorio baseline
+        id: lab_baseline
+        if: github.event_name == 'pull_request' && contains(github.event.pull_request.body, '<!-- lab-main-baseline -->')
+        shell: bash
+        env:
+          LAB_MAIN_BASELINE_SHA: ${{ github.event.pull_request.base.sha }}
+          VITE_WAR_ROOM_VARIANTS_ENABLE: 'true'
+          VITE_APP_VISUAL_CAPTURE: 'true'
+        run: |
+          set -euo pipefail
+          [[ "$LAB_MAIN_BASELINE_SHA" =~ ^[a-f0-9]{40}$ ]] || { echo 'Invalid base SHA'; exit 1; }
+          git cat-file -e "$LAB_MAIN_BASELINE_SHA^{commit}" 2>/dev/null || \
+            git fetch --no-tags --depth=1 origin "$LAB_MAIN_BASELINE_SHA"
+          baseline_dir="$RUNNER_TEMP/lab-main-baseline-${LAB_MAIN_BASELINE_SHA:0:12}"
+          git worktree add --detach "$baseline_dir" "$LAB_MAIN_BASELINE_SHA"
+          # Reuse restored node_modules only if both revisions have the same lockfile.
+          cmp frontend/package-lock.json "$baseline_dir/frontend/package-lock.json"
+          ln -s "$GITHUB_WORKSPACE/frontend/node_modules" "$baseline_dir/frontend/node_modules"
+          (cd "$baseline_dir/frontend" && npm run build)
+          mv frontend/dist frontend/dist-pr-head
+          restore_dist() {
+            rm -rf frontend/dist
+            mv frontend/dist-pr-head frontend/dist
+            git worktree remove --force "$baseline_dir" || true
+          }
+          trap restore_dist EXIT
+          cp -a "$baseline_dir/frontend/dist" frontend/dist
+          (cd e2e && APP_VISUAL_ARTIFACT=1 ./node_modules/.bin/playwright test \
+            experiments-visual-artifact.spec.js --grep 'baseline main exacto' --workers=1 --retries=0)
+      - name: Upload exact-main Laboratorio baseline
+        if: always() && steps.lab_baseline.outcome != 'skipped'
+        uses: actions/upload-artifact@v7
+        with:
+          name: lab-main-baseline-${{ github.event.pull_request.number }}
+          path: .artifacts/app-visual/lab-main-baseline-*/
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0

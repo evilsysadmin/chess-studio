@@ -720,3 +720,41 @@ if (scopeEnabled('landing')) {
     }
   });
 }
+
+// Opt-in comparison against the exact PR base. The workflow builds that SHA
+// into frontend/dist before invoking only this test. Do not apply the new
+// Lab geometry assertions to the old, accepted main layout.
+if (process.env.LAB_MAIN_BASELINE_SHA) {
+  test('Laboratorio libre · baseline main exacto desktop y móvil', async ({ browser }) => {
+    test.setTimeout(300_000);
+    const baseSha = process.env.LAB_MAIN_BASELINE_SHA;
+    expect(baseSha).toMatch(/^[a-f0-9]{40}$/);
+    const dir = `${ARTIFACT_DIR}/lab-main-baseline-${baseSha.slice(0, 12)}`;
+    await mkdir(dir, { recursive: true });
+    for (const capture of LAB_CAPTURES) {
+      await withCapturePage(browser, capture, async (page) => {
+        await page.locator('.lab-workshop-tool:not(.lab-workshop-tool--arena)').click();
+        await expect(page.getByRole('heading', { name: 'Prepara una posición y juega', exact: true })).toBeVisible();
+        await expect(page.locator('.lab-board-editor [data-board3d-war-room="true"]'))
+          .toBeVisible({ timeout: 45_000 });
+        await captureFrozenFrame(page, {
+          path: `${dir}/lab-position-editor-${capture.label}.png`,
+          fullPage: true,
+        });
+        if (capture.hasTouch) {
+          // Main's original toolbar has no PR-only palette labels or auto-return.
+          await page.locator('.lab-brush').filter({ hasText: '♔' }).click();
+          await captureFrozenFrame(page, {
+            path: `${dir}/lab-position-selected-${capture.label}.png`,
+            fullPage: false,
+          });
+        }
+      });
+    }
+    await writeFile(`${dir}/provenance.json`, `${JSON.stringify({
+      source: 'pull_request.base.sha', baseSha,
+      viewports: LAB_CAPTURES.map(({ label, width, height }) => ({ label, width, height })),
+      states: ['initial editor', 'white king selected on mobile'],
+    }, null, 2)}\n`, 'utf8');
+  });
+}
