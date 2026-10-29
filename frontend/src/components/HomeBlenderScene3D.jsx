@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { freezeHomeBlenderStaticTransforms } from './HomeBlenderStaticTransforms.js';
+import { createHomeBlenderIdleController } from './HomeBlenderIdleController.js';
 import { recordHomeBlenderRuntimeEvent } from './HomeBlenderRuntimeTrace.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
@@ -1806,6 +1807,7 @@ export default function HomeBlenderScene3D({
     let klausRig = null;
     let matthiasActor = null;
     let lastActorTickAt = null;
+    let idleController = null;
     let dust = null;
     let shaft = null;
     const fireParticles = [];
@@ -2281,16 +2283,20 @@ export default function HomeBlenderScene3D({
 
     const startFireAnimation = () => {
       if (prefersReducedMotion) {
+        idleController?.setEnabled(false);
         canvas.dataset.homeFireMotion = 'reduced';
         if (klausRig) canvas.dataset.homeKlausMotion = 'reduced';
         return;
       }
       if (softwareRenderer) {
+        idleController?.setEnabled(false);
         canvas.dataset.homeFireMotion = 'off-software';
         if (klausRig) canvas.dataset.homeKlausMotion = 'off-software';
         return;
       }
       if (disposed || !model || !isVisible() || fireFrame !== null || fireWakeTimer !== null) return;
+      idleController?.setEnabled(true);
+      if (idleController?.sleeping) return;
       canvas.dataset.homeFireMotion = 'live';
       if (klausRig) canvas.dataset.homeKlausMotion = 'live';
       if (effectsAllowed()) {
@@ -2328,20 +2334,30 @@ export default function HomeBlenderScene3D({
 
     const onVisibilityChange = () => {
       if (!isVisible()) {
+        idleController?.setEnabled(false);
         stopFireAnimation();
         cancelPendingRender();
       } else {
+        // A routine may have changed to its static final pose while idle.
+        // Returning to the room restores its live clip before ticking again.
+        idleController?.setEnabled(false);
+        applyMatthiasRoutine();
         startFireAnimation();
         requestRender();
       }
     };
     const onIntersectionChange = (entries) => {
-      intersecting = entries[0]?.isIntersecting !== false;
+      const next = entries[0]?.isIntersecting !== false;
+      if (intersecting === next) return;
+      intersecting = next;
       if (!isVisible()) {
+        idleController?.setEnabled(false);
         stopFireAnimation();
         cancelPendingRender();
         if (!document.hidden) canvas.dataset.homeFireMotion = 'paused-offscreen';
       } else {
+        idleController?.setEnabled(false);
+        applyMatthiasRoutine();
         startFireAnimation();
         requestRender();
       }
@@ -2414,7 +2430,7 @@ export default function HomeBlenderScene3D({
       const props = matthiasPropsRef.current || {};
       const routine = homeMatthiasActorRoutine(props);
       const moved = matthiasActor.setRoutine(routine, {
-        reducedMotion: prefersReducedMotion || softwareRenderer,
+        reducedMotion: prefersReducedMotion || softwareRenderer || idleController?.sleeping === true,
       });
       canvas.dataset.homeMatthiasActor = 'ready';
       canvas.dataset.homeMatthiasStation = routine.stationId;
@@ -2427,6 +2443,22 @@ export default function HomeBlenderScene3D({
       requestRender();
     };
     matthiasApplyRef.current = applyMatthiasRoutine;
+
+    idleController = softwareRenderer ? null : createHomeBlenderIdleController({
+      // The canvas ignores pointer events; real hotspots and keyboard targets
+      // live in the surrounding Home, so listen to their bubbling input.
+      host: canvas.closest('.illustrated-home') || canvas.parentElement,
+      onSleep: () => {
+        stopFireAnimation();
+        canvas.dataset.homeFireMotion = 'idle';
+        if (klausRig) canvas.dataset.homeKlausMotion = 'idle';
+      },
+      onWake: () => {
+        applyMatthiasRoutine();
+        startFireAnimation();
+        requestRender();
+      },
+    });
 
     const onMotionPreferenceChange = () => {
       const next = getEffectiveReducedMotion();
@@ -2576,6 +2608,7 @@ export default function HomeBlenderScene3D({
       // master is already visible while is-ready is absent; unmounting after
       // an arbitrary eight seconds made a later browser GPU restoration
       // permanently impossible until a full page reload.
+      idleController?.setEnabled(false);
       stopFireAnimation();
     };
     const onContextRestored = () => {
@@ -2605,6 +2638,7 @@ export default function HomeBlenderScene3D({
 
     return () => {
       disposed = true;
+      idleController?.dispose();
       renderRequestRef.current = null;
       cancelPendingRender();
       stopFireAnimation();
