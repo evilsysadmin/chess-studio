@@ -7,6 +7,12 @@ const CAPTURES = [
   { label: 'desktop-1440x900', width: 1440, height: 900, hasTouch: false },
   { label: 'android-390x844', width: 390, height: 844, hasTouch: true },
 ];
+const LAB_CAPTURES = [
+  CAPTURES[0],
+  { label: 'android-360x800', width: 360, height: 800, hasTouch: true },
+  CAPTURES[1],
+  { label: 'android-430x932', width: 430, height: 932, hasTouch: true },
+];
 const LANDING_CAPTURES = [
   ...CAPTURES,
   { label: 'android-landscape-915x412', width: 915, height: 412, hasTouch: true },
@@ -630,5 +636,135 @@ if (scopeEnabled('pawnslug')) {
       `${JSON.stringify({ schema: 3, scope: 'pawnslug-godot', captures }, null, 2)}\n`,
       'utf8',
     );
+  });
+}
+
+if (scopeEnabled('landing')) {
+  test('Laboratorio libre · tablero protagonista en desktop y móvil', async ({ browser }) => {
+    test.setTimeout(240_000);
+    await mkdir(ARTIFACT_DIR, { recursive: true });
+    for (const capture of LAB_CAPTURES) {
+      await withCapturePage(browser, capture, async (page) => {
+        await page.locator('.lab-workshop-tool:not(.lab-workshop-tool--arena)').click();
+        const root = page.locator('.lab-screen--position');
+        await expect(root.getByRole('heading', { name: 'Prepara una posición y juega' })).toBeVisible();
+        await expect(root.locator('.lab-board-editor [data-board3d-war-room="true"]'))
+          .toBeVisible({ timeout: 45_000 });
+        const geom = await root.evaluate((node) => {
+          const rect = (selector) => {
+            const bounds = node.querySelector(selector).getBoundingClientRect();
+            return { left: bounds.left, right: bounds.right, top: bounds.top, bottom: bounds.bottom };
+          };
+          return {
+            overflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
+            board: rect('.lab-position-stage'),
+            tools: rect('.lab-position-controls'),
+          };
+        });
+        expect(geom.overflow, `${capture.label}: no horizontal overflow`).toBe(false);
+        expect(geom.board.top, `${capture.label}: board starts in first viewport`)
+          .toBeLessThan(capture.height);
+        if (capture.width > 900) {
+          expect(geom.tools.left, `${capture.label}: tools beside board`)
+            .toBeGreaterThanOrEqual(geom.board.right - 2);
+        } else {
+          expect(geom.tools.top, `${capture.label}: tools follow board on phone`)
+            .toBeGreaterThanOrEqual(geom.board.top);
+        }
+        await captureFrozenFrame(page, {
+          path: `${ARTIFACT_DIR}/lab-position-editor-${capture.label}.png`,
+          fullPage: true,
+        });
+        // Also capture the actual first viewport: full-page PNGs alone hide
+        // fixed audio overlap and above-the-fold hierarchy.
+        await captureFrozenFrame(page, {
+          path: `${ARTIFACT_DIR}/lab-position-editor-viewport-${capture.label}.png`,
+          fullPage: false,
+        });
+        if (capture.hasTouch) {
+          // A static full-page image cannot prove the brush-to-board return.
+          // Capture the actual viewport after selecting a piece below the board.
+          const whiteKing = root.getByRole('button', { name: 'Colocar ♔ blanco' });
+          await whiteKing.click();
+          await expect(whiteKing).toHaveAttribute('aria-pressed', 'true');
+          await expect(root.locator('.lab-position-stage-head [aria-live="polite"]'))
+            .toContainText('Pieza ♔ seleccionada');
+          const boardTop = async () => (await root.locator('.lab-position-stage').boundingBox())?.y ?? -Infinity;
+          await expect.poll(boardTop).toBeGreaterThanOrEqual(240);
+          await expect.poll(boardTop).toBeLessThan(410);
+          // Returning to the editor intro must keep the heading clear of fixed audio.
+          // Verify a point in the first heading line remains visible and unobstructed.
+          const headingHit = await root.getByRole('heading', { name: 'Prepara una posición y juega' }).evaluate((heading) => {
+            const bounds = heading.getBoundingClientRect();
+            const x = bounds.left + Math.min(16, bounds.width / 4);
+            const y = bounds.top + Math.min(20, bounds.height / 2);
+            const hit = document.elementFromPoint(x, y);
+            return { inViewport: y >= 0 && y < window.innerHeight, unobscured: hit === heading || heading.contains(hit) };
+          });
+          expect(headingHit.inViewport, `${capture.label}: editor heading remains visible`).toBe(true);
+          expect(headingHit.unobscured, `${capture.label}: audio does not cover editor heading`).toBe(true);
+          // The fixed audio player must not steal the first touch on the mode tab.
+          // Check the left side of the tab, not only its center (which stayed free).
+          const modeTabHit = await root.getByRole('tab', { name: 'Posición normal' }).evaluate((tab) => {
+            const bounds = tab.getBoundingClientRect();
+            const x = bounds.left + Math.min(16, bounds.width / 4);
+            const y = bounds.top + bounds.height / 2;
+            const topmost = document.elementFromPoint(x, y);
+            return {
+              inViewport: bounds.top >= 0 && bounds.bottom <= window.innerHeight,
+              tappable: Boolean(topmost && (topmost === tab || tab.contains(topmost))),
+            };
+          });
+          expect(modeTabHit.inViewport, `${capture.label}: mode tab visible after brush return`).toBe(true);
+          expect(modeTabHit.tappable, `${capture.label}: mode tab not obscured by audio`).toBe(true);
+          await captureFrozenFrame(page, {
+            path: `${ARTIFACT_DIR}/lab-position-selected-${capture.label}.png`,
+            fullPage: false,
+          });
+        }
+      });
+    }
+  });
+}
+
+// Opt-in comparison against the exact PR base. The workflow builds that SHA
+// into frontend/dist before invoking only this test. Do not apply the new
+// Lab geometry assertions to the old, accepted main layout.
+if (process.env.LAB_MAIN_BASELINE_SHA) {
+  test('Laboratorio libre · baseline main exacto desktop y móvil', async ({ browser }) => {
+    test.setTimeout(300_000);
+    const baseSha = process.env.LAB_MAIN_BASELINE_SHA;
+    expect(baseSha).toMatch(/^[a-f0-9]{40}$/);
+    const dir = `${ARTIFACT_DIR}/lab-main-baseline-${baseSha.slice(0, 12)}`;
+    await mkdir(dir, { recursive: true });
+    for (const capture of LAB_CAPTURES) {
+      await withCapturePage(browser, capture, async (page) => {
+        await page.locator('.lab-workshop-tool:not(.lab-workshop-tool--arena)').click();
+        await expect(page.getByRole('heading', { name: 'Prepara una posición y juega', exact: true })).toBeVisible();
+        await expect(page.locator('.lab-board-editor [data-board3d-war-room="true"]'))
+          .toBeVisible({ timeout: 45_000 });
+        await captureFrozenFrame(page, {
+          path: `${dir}/lab-position-editor-${capture.label}.png`,
+          fullPage: true,
+        });
+        await captureFrozenFrame(page, {
+          path: `${dir}/lab-position-editor-viewport-${capture.label}.png`,
+          fullPage: false,
+        });
+        if (capture.hasTouch) {
+          // Main's original toolbar has no PR-only palette labels or auto-return.
+          await page.locator('.lab-brush').filter({ hasText: '♔' }).click();
+          await captureFrozenFrame(page, {
+            path: `${dir}/lab-position-selected-${capture.label}.png`,
+            fullPage: false,
+          });
+        }
+      });
+    }
+    await writeFile(`${dir}/provenance.json`, `${JSON.stringify({
+      source: 'pull_request.base.sha', baseSha,
+      viewports: LAB_CAPTURES.map(({ label, width, height }) => ({ label, width, height })),
+      states: ['initial editor', 'white king selected on mobile'],
+    }, null, 2)}\n`, 'utf8');
   });
 }
