@@ -675,6 +675,12 @@ if (scopeEnabled('landing')) {
           path: `${ARTIFACT_DIR}/lab-position-editor-${capture.label}.png`,
           fullPage: true,
         });
+        // Also capture the actual first viewport: full-page PNGs alone hide
+        // fixed audio overlap and above-the-fold hierarchy.
+        await captureFrozenFrame(page, {
+          path: `${ARTIFACT_DIR}/lab-position-editor-viewport-${capture.label}.png`,
+          fullPage: false,
+        });
         if (capture.hasTouch) {
           // A static full-page image cannot prove the brush-to-board return.
           // Capture the actual viewport after selecting a piece below the board.
@@ -740,6 +746,10 @@ if (process.env.LAB_MAIN_BASELINE_SHA) {
         await captureFrozenFrame(page, {
           path: `${dir}/lab-position-editor-${capture.label}.png`,
           fullPage: true,
+        });
+        await captureFrozenFrame(page, {
+          path: `${dir}/lab-position-editor-viewport-${capture.label}.png`,
+          fullPage: false,
         });
         if (capture.hasTouch) {
           // Main's original toolbar has no PR-only palette labels or auto-return.
