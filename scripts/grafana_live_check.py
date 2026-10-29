@@ -18,6 +18,7 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
+from unittest import mock
 
 
 def fail(message: str) -> "NoReturn":
@@ -91,27 +92,40 @@ class GrafanaReadApi:
                 "User-Agent": "chess-studio-grafana-live-check/1",
             },
         )
-        try:
-            with urllib.request.urlopen(req, timeout=20) as response:
-                raw = response.read().decode("utf-8")
-                payload = json.loads(raw or "[]")
-                status = int(response.status)
-        except urllib.error.HTTPError as exc:
-            raw = exc.read().decode("utf-8", errors="replace")
+        # Grafana Cloud can return 503/Loading while waking an instance.
+        # Retry only that explicit transient state, with a finite budget;
+        # all other errors and missing telemetry still fail closed.
+        for attempt in range(4):
             try:
-                payload = json.loads(raw or "{}")
-            except json.JSONDecodeError:
-                payload = {"raw": raw[:1000]}
-            if exc.code == 403:
-                print(json.dumps({
-                    "check": "datasource_discovery",
-                    "ok": True,
-                    "detail": "datasources:read forbidden; keeping configured UIDs",
-                }, separators=(",", ":"), sort_keys=True))
-                return None
-            fail(f"GET {path}: HTTP {exc.code}: {payload}")
-        except (OSError, TimeoutError) as exc:
-            fail(f"GET {path}: {type(exc).__name__}: {exc}")
+                with urllib.request.urlopen(req, timeout=20) as response:
+                    raw = response.read().decode("utf-8")
+                    payload = json.loads(raw or "[]")
+                    status = int(response.status)
+                break
+            except urllib.error.HTTPError as exc:
+                raw = exc.read().decode("utf-8", errors="replace")
+                try:
+                    payload = json.loads(raw or "{}")
+                except json.JSONDecodeError:
+                    payload = {"raw": raw[:1000]}
+                if exc.code == 403:
+                    print(json.dumps({
+                        "check": "datasource_discovery",
+                        "ok": True,
+                        "detail": "datasources:read forbidden; keeping configured UIDs",
+                    }, separators=(",", ":"), sort_keys=True))
+                    return None
+                if (
+                    exc.code == 503
+                    and isinstance(payload, dict)
+                    and payload.get("code") == "Loading"
+                    and attempt < 3
+                ):
+                    time.sleep((5, 10, 20)[attempt])
+                    continue
+                fail(f"GET {path}: HTTP {exc.code}: {payload}")
+            except (OSError, TimeoutError) as exc:
+                fail(f"GET {path}: {type(exc).__name__}: {exc}")
         if status != 200:
             fail(f"GET {path}: unexpected HTTP {status}")
         if not isinstance(payload, list):
@@ -728,6 +742,53 @@ def self_test() -> int:
         assert stale not in generated, stale
     assert 'resource.deployment.environment.name = "production"' in generated
     assert 'resource.deployment.environment.name = "staging"' in generated
+    # A waking Grafana instance is transient; persistent Loading remains red.
+    def loading_error() -> urllib.error.HTTPError:
+        return urllib.error.HTTPError(
+            "https://grafana.example/api/datasources", 503, "Service Unavailable",
+            {}, io.BytesIO(b'{"code":"Loading","message":"Your instance is loading"}'),
+        )
+
+    api = GrafanaReadApi("https://grafana.example", "fixture-token")
+    response = mock.MagicMock()
+    response.status = 200
+    response.read.return_value = b'[{"uid":"prom","type":"prometheus"}]'
+    response.__enter__.return_value = response
+    with (
+        mock.patch.object(urllib.request, "urlopen", side_effect=[loading_error(), response]),
+        mock.patch.object(time, "sleep") as sleep,
+    ):
+        assert api.get_list("/api/datasources") == [{"uid": "prom", "type": "prometheus"}]
+        sleep.assert_called_once_with(5)
+
+    with (
+        mock.patch.object(urllib.request, "urlopen", side_effect=[loading_error() for _ in range(4)]),
+        mock.patch.object(time, "sleep") as sleep,
+    ):
+        try:
+            api.get_list("/api/datasources")
+            assert False, "persistent Grafana Loading must fail"
+        except SystemExit as exc:
+            assert "HTTP 503" in str(exc)
+        assert [call.args[0] for call in sleep.call_args_list] == [5, 10, 20]
+
+    with (
+        mock.patch.object(
+            urllib.request, "urlopen",
+            side_effect=urllib.error.HTTPError(
+                "https://grafana.example/api/datasources", 500, "Server Error",
+                {}, io.BytesIO(b'{"message":"broken"}'),
+            ),
+        ),
+        mock.patch.object(time, "sleep") as sleep,
+    ):
+        try:
+            api.get_list("/api/datasources")
+            assert False, "non-Loading HTTP errors must fail immediately"
+        except SystemExit as exc:
+            assert "HTTP 500" in str(exc)
+        sleep.assert_not_called()
+
     print("grafana-live-check self-test OK")
     return 0
 
