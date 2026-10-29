@@ -637,8 +637,8 @@
   .lab-screen--position .lab-position-stage-head { gap: 2px; }
   .lab-screen--position .lab-position-stage {
     padding: 5px;
-    /* Keep the board heading below the fixed session audio control on return. */
-    scroll-margin-top: 76px;
+    /* Keep the board heading and mode tabs clear of the fixed session audio control. */
+    scroll-margin-top: 140px;
   }
   .lab-screen--position .lab-position-workspace { gap: 12px; }
   .lab-screen--position .lab-position-brush-row { gap: 6px; }

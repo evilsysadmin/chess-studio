@@ -684,8 +684,22 @@ if (scopeEnabled('landing')) {
           await expect(root.locator('.lab-position-stage-head [aria-live="polite"]'))
             .toContainText('Pieza ♔ seleccionada');
           const boardTop = async () => (await root.locator('.lab-position-stage').boundingBox())?.y ?? -Infinity;
-          await expect.poll(boardTop).toBeGreaterThanOrEqual(64);
-          await expect.poll(boardTop).toBeLessThan(120);
+          await expect.poll(boardTop).toBeGreaterThanOrEqual(110);
+          await expect.poll(boardTop).toBeLessThan(175);
+          // The fixed audio player must not steal the first touch on the mode tab.
+          // Check the left side of the tab, not only its center (which stayed free).
+          const modeTabHit = await root.getByRole('tab', { name: 'Posición normal' }).evaluate((tab) => {
+            const bounds = tab.getBoundingClientRect();
+            const x = bounds.left + Math.min(16, bounds.width / 4);
+            const y = bounds.top + bounds.height / 2;
+            const topmost = document.elementFromPoint(x, y);
+            return {
+              inViewport: bounds.top >= 0 && bounds.bottom <= window.innerHeight,
+              tappable: Boolean(topmost && (topmost === tab || tab.contains(topmost))),
+            };
+          });
+          expect(modeTabHit.inViewport, `${capture.label}: mode tab visible after brush return`).toBe(true);
+          expect(modeTabHit.tappable, `${capture.label}: mode tab not obscured by audio`).toBe(true);
           await captureFrozenFrame(page, {
             path: `${ARTIFACT_DIR}/lab-position-selected-${capture.label}.png`,
             fullPage: false,
