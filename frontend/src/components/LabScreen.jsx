@@ -30,7 +30,7 @@ function initialState() {
 }
 
 function LabModeFallback() {
-  return <div className={`menu tournament-panel lab-screen ${labMode==='position'?'lab-screen--position':''}`}><p className="hint-text friendly-lead">Cargando experimento…</p></div>;
+  return <div className="menu tournament-panel lab-screen"><p className="hint-text friendly-lead">Cargando experimento…</p></div>;
 }
 
 export default function LabScreen({ onExit, onStart }){
@@ -120,7 +120,7 @@ export default function LabScreen({ onExit, onStart }){
   if (labMode==='chess-football-godot') return <Suspense fallback={<LabModeFallback />}><ChessFootballEntry onExit={()=>setLabMode('hub')} /></Suspense>;
   if (labMode==='chesscom') return <Suspense fallback={<LabModeFallback />}><Chesscom onExit={()=>setLabMode('hub')} /></Suspense>;
 
-  return <div className="menu tournament-panel lab-screen">
+  return <div className={`menu tournament-panel lab-screen ${labMode==='position'?'lab-screen--position':''}`}>
     <button className="back-link" onClick={labMode==='hub'?onExit:()=>setLabMode('hub')}>← {labMode==='hub'?'Volver al menú':'Experimentos geniales'}</button>
 
     {labMode==='hub' ? (

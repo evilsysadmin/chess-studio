@@ -16,11 +16,6 @@ async function dismissGuide(page) {
 }
 
 async function openPawnTrailblazer(page) {
-  const browserErrors = [];
-  page.on('pageerror', (error) => browserErrors.push(error.stack || error.message));
-  page.on('console', (message) => {
-    if (message.type() === 'error') browserErrors.push(message.text());
-  });
   await mockApi(page);
   await login(page);
   await dismissGuide(page);
@@ -31,11 +26,7 @@ async function openPawnTrailblazer(page) {
     .click();
   await expect(page.getByRole('heading', { name: 'Experimentos geniales', exact: true })).toBeVisible();
   await page.getByRole('button', { name: /Pawn Trailblazer/ }).click();
-  try {
-    await expect(page.getByRole('heading', { name: 'Pawn Trailblazer', exact: true })).toBeVisible();
-  } catch (error) {
-    throw new Error(`Pawn Trailblazer failed after Lab navigation. Browser errors:\n${browserErrors.join('\n').slice(-6000) || '(none recorded)'}`, { cause: error });
-  }
+  await expect(page.getByRole('heading', { name: 'Pawn Trailblazer', exact: true })).toBeVisible();
 }
 
 test('Pawn Trailblazer · arranca con Three.js real y entra en carrera', async ({ page }) => {
