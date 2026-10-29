@@ -47,9 +47,14 @@ test('Laboratorio libre · herramientas táctiles sin desbordamiento móvil', as
     const box = await whiteKing.boundingBox();
     expect(box.width, `${width}px: touch target width`).toBeGreaterThanOrEqual(44);
     expect(box.height, `${width}px: touch target height`).toBeGreaterThanOrEqual(44);
+    // The palette is below the board on mobile: selecting a piece should
+    // bring the playable board back without requiring a manual reverse scroll.
+    await whiteKing.click();
+    await expect(whiteKing).toHaveAttribute('aria-pressed', 'true');
+    await expect(page.locator('.lab-position-stage-head [aria-live="polite"]')).toContainText('Pieza ♔ seleccionada');
+    await expect.poll(async () => (await page.locator('.lab-position-stage').boundingBox())?.y ?? Infinity)
+      .toBeLessThan(120);
   }
-  await whiteKing.click();
-  await expect(whiteKing).toHaveAttribute('aria-pressed', 'true');
   await expect(page.getByRole('button', { name: 'Posición inicial', exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Jugar esta posición', exact: true })).toBeVisible();
 });
