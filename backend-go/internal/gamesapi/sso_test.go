@@ -351,7 +351,7 @@ func TestSSORejectsMissingOrAmbiguousRuntimeEnvironment(t *testing.T) {
 	} {
 		t.Run(environment, func(t *testing.T) {
 			_, err := NewSSO(SSOConfig{
-				Config: Config{Accounts: fakeAccounts{}, JWTSecret: "test-secret"},
+				Config:      Config{Accounts: fakeAccounts{}, JWTSecret: "test-secret"},
 				Environment: environment,
 			})
 			if err == nil {
