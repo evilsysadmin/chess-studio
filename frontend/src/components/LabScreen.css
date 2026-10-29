@@ -635,7 +635,11 @@
   .lab-screen--position .lab-position-intro .friendly-lead { font-size: .82rem; }
   .lab-screen--position .lab-position-controls { grid-template-columns: minmax(0, 1fr); }
   .lab-screen--position .lab-position-stage-head { gap: 2px; }
-  .lab-screen--position .lab-position-stage { padding: 5px; }
+  .lab-screen--position .lab-position-stage {
+    padding: 5px;
+    /* Keep the board heading below the fixed session audio control on return. */
+    scroll-margin-top: 76px;
+  }
   .lab-screen--position .lab-position-workspace { gap: 12px; }
   .lab-screen--position .lab-position-brush-row { gap: 6px; }
   .lab-screen--position .lab-brush { font-size: 1.42rem; }

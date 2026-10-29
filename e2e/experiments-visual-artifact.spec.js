@@ -683,8 +683,9 @@ if (scopeEnabled('landing')) {
           await expect(whiteKing).toHaveAttribute('aria-pressed', 'true');
           await expect(root.locator('.lab-position-stage-head [aria-live="polite"]'))
             .toContainText('Pieza ♔ seleccionada');
-          await expect.poll(async () => (await root.locator('.lab-position-stage').boundingBox())?.y ?? Infinity)
-            .toBeLessThan(120);
+          const boardTop = async () => (await root.locator('.lab-position-stage').boundingBox())?.y ?? -Infinity;
+          await expect.poll(boardTop).toBeGreaterThanOrEqual(64);
+          await expect.poll(boardTop).toBeLessThan(120);
           await captureFrozenFrame(page, {
             path: `${ARTIFACT_DIR}/lab-position-selected-${capture.label}.png`,
             fullPage: false,

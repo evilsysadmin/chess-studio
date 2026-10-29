@@ -52,8 +52,9 @@ test('Laboratorio libre · herramientas táctiles sin desbordamiento móvil', as
     await whiteKing.click();
     await expect(whiteKing).toHaveAttribute('aria-pressed', 'true');
     await expect(page.locator('.lab-position-stage-head [aria-live="polite"]')).toContainText('Pieza ♔ seleccionada');
-    await expect.poll(async () => (await page.locator('.lab-position-stage').boundingBox())?.y ?? Infinity)
-      .toBeLessThan(120);
+    const boardTop = async () => (await page.locator('.lab-position-stage').boundingBox())?.y ?? -Infinity;
+    await expect.poll(boardTop).toBeGreaterThanOrEqual(64);
+    await expect.poll(boardTop).toBeLessThan(120);
   }
   await expect(page.getByRole('button', { name: 'Posición inicial', exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Jugar esta posición', exact: true })).toBeVisible();
