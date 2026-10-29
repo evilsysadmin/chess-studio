@@ -1,6 +1,7 @@
 package gamesapi
 
 import (
+	"bytes"
 	"crypto/ed25519"
 	"encoding/json"
 	"net/http"
@@ -129,5 +130,69 @@ func TestSSOLogoutClearsTheCookie(t *testing.T) {
 	w := ssoCall(h, http.MethodPost, "/api/identity/logout", ssoGame, "", nil, "")
 	if w.Code != http.StatusNoContent || len(w.Result().Cookies()) != 1 || w.Result().Cookies()[0].MaxAge >= 0 {
 		t.Fatalf("logout: %d %+v", w.Code, w.Result().Cookies())
+	}
+}
+
+func TestSSOExplicitSigningSeedDoesNotChangeChessSessionSecret(t *testing.T) {
+	now := time.Unix(1_800_000_000, 0)
+	legacy := newTestSSO(t, fakeAccounts{version: 2}, now)
+	seed := bytes.Repeat([]byte{0x42}, ed25519.SeedSize)
+	h, err := NewSSO(SSOConfig{
+		Config: Config{
+			Accounts: fakeAccounts{version: 2},
+			JWTSecret: "test-secret",
+			Now: func() time.Time { return now },
+		},
+		Environment: "staging",
+		SigningSeed: seed,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if h.kid == legacy.kid {
+		t.Fatal("independent signing key unexpectedly matches legacy session-derived key")
+	}
+	wantKey := ed25519.NewKeyFromSeed(seed).Public().(ed25519.PublicKey)
+	if !bytes.Equal(h.key.Public().(ed25519.PublicKey), wantKey) {
+		t.Fatal("handler is not using the injected signing key")
+	}
+	if !bytes.Contains(h.jwks, []byte(h.kid)) || bytes.Contains(h.jwks, []byte(legacy.kid)) {
+		t.Fatal("JWKS must publish the injected public signing key only")
+	}
+
+	// Session authentication still uses the unchanged Chess JWT secret:
+	// only the outward-facing game's signing key becomes independent.
+	session, err := sessionauth.Sign("evilsysadmin", 2, []byte("test-secret"), now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	w := ssoCall(h, http.MethodPost, "/api/identity/session", ssoGame, session, nil, `{"audience":"chronicles"}`)
+	if w.Code != http.StatusOK {
+		t.Fatalf("legacy session broke: %d %s", w.Code, w.Body)
+	}
+	var issued struct { Token string `json:"token"` }
+	if err := json.Unmarshal(w.Body.Bytes(), &issued); err != nil || issued.Token == "" {
+		t.Fatalf("no game token: %v", err)
+	}
+	newKeys := map[string]ed25519.PublicKey{h.kid: wantKey}
+	claims, err := ssoauth.Verify(issued.Token, newKeys, ssoauth.Issuer("staging"), "chronicles", now)
+	if err != nil || claims.Subject != "evilsysadmin" {
+		t.Fatalf("new signing key did not verify: %v", err)
+	}
+	legacyPublic := legacy.key.Public().(ed25519.PublicKey)
+	if _, err := ssoauth.Verify(issued.Token, map[string]ed25519.PublicKey{legacy.kid: legacyPublic}, ssoauth.Issuer("staging"), "chronicles", now); err == nil {
+		t.Fatal("old JWKS must not validate a token signed by the independent key")
+	}
+}
+
+func TestSSOInvalidExplicitSeedFailsClosed(t *testing.T) {
+	for _, seed := range [][]byte{{}, {0x01}, bytes.Repeat([]byte{0x04}, ed25519.SeedSize-1), bytes.Repeat([]byte{0x05}, ed25519.SeedSize+1)} {
+		_, err := NewSSO(SSOConfig{
+			Config: Config{Accounts: fakeAccounts{}, JWTSecret: "test-secret"},
+			Environment: "staging", SigningSeed: seed,
+		})
+		if err == nil {
+			t.Fatalf("unexpectedly accepted invalid seed length %d", len(seed))
+		}
 	}
 }
