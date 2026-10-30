@@ -1510,7 +1510,20 @@ test('staging live · auth real → War Room v2 → recovery 3D → jugada real'
 
     await leaveCurrentGameThroughUi(page);
     await expect(page.getByRole('region', { name: 'Modos principales', exact: true })).toBeVisible({ timeout: 30_000 });
-    phase('leave-game-home');
+    // A mounted Home menu is not proof that the full-screen loading curtain
+    // has released input. The 3D first-frame gate may still cover the screen.
+    // Wait for its real ready/safe-fallback path, then probe click actionability
+    // without starting another game or mutating the staging smoke profile.
+    await expect(
+      page.locator('[data-home-loading="waiting-for-frame"]'),
+      'Returning from War Room must clear the Home first-frame curtain',
+    ).toHaveCount(0, { timeout: 45_000 });
+    await expect(
+      page.locator('.route-loading:visible'),
+      'Returning from War Room must leave no visible route loading cover',
+    ).toHaveCount(0, { timeout: 45_000 });
+    await buttonWithVisibleText(page, 'Partida rápida').click({ trial: true, timeout: 15_000 });
+    phase('leave-game-home-ready');
 
     // Staging deploy admission stops here: tournament, insights and broader UX
     // journeys stay in Quality/full-browser coverage instead of extending every
