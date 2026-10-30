@@ -1,0 +1,32 @@
+name: Production · release schedule watch
+
+on:
+  # Independent read-only check. GitHub schedules may themselves be delayed.
+  schedule:
+    - cron: '30 13 * * *'
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/production-release-schedule-watch.yml
+      - scripts/production_release_schedule_watch.py
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  release_slot:
+    name: Madrid 08:00 release slot admitted
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      - name: Validate read-only detector
+        run: python3 -S scripts/production_release_schedule_watch.py --self-test
+      - name: Check today's admitted release slot
+        # The push trigger only validates the script; it should not alert before the daily deadline.
+        if: github.event_name != 'push'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 -S scripts/production_release_schedule_watch.py --repository "$GITHUB_REPOSITORY"
