@@ -77,6 +77,19 @@ def validate_staging_frontend_build_single_source(root: Path = ROOT) -> None:
     ):
         if token not in admission:
             raise SystemExit(f"main-admission perdió el deploy-scope no-runtime: {token}")
+    # The optional prebuild must not turn an exhausted Actions cache egress
+    # quota into a cancelled Main admission. Staging retains its cached fallback.
+    prebuild = admission.split("\n  frontend_staging_artifact:\n", 1)[1].split("\n  source:\n", 1)[0]
+    if "cache-enabled: 'false'" not in prebuild or "cache: npm" in prebuild:
+        raise SystemExit("main speculative prebuild must avoid Actions cache egress")
+    action_text = action.read_text(encoding="utf-8")
+    for token in (
+        "if: inputs.cache-enabled != 'false'",
+        "if: inputs.cache-enabled == 'false'",
+        "timeout --signal=TERM --kill-after=15s 300s npm ci --no-audit --fund=false",
+    ):
+        if token not in action_text:
+            raise SystemExit(f"staging frontend uncached prebuild contract missing: {token}")
     subprocess.run(
         [sys.executable, "-S", "scripts/staging_deploy_scope.py", "--self-test"],
         cwd=root,

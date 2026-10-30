@@ -19,16 +19,31 @@ inputs:
     description: Node major used by the runner (setup-node stays in the caller).
     required: false
     default: '22'
+  cache-enabled:
+    description: Use Actions cache; disable for speculative prebuilds when cache egress is unreliable.
+    required: false
+    default: 'true'
 
 runs:
   using: composite
   steps:
     - name: Restore exact frontend dependencies
+      if: inputs.cache-enabled != 'false'
       uses: ./.github/actions/cache-node-modules
       with:
         working-directory: frontend
         lockfile: frontend/package-lock.json
         node-version: ${{ inputs.node-version }}
+
+    # Fail this best-effort job as a normal step failure before the job-level
+    # timeout; Main admission can then succeed and staging builds on demand.
+    - name: Install uncached speculative frontend dependencies
+      if: inputs.cache-enabled == 'false'
+      shell: bash
+      working-directory: frontend
+      run: |
+        set -euo pipefail
+        timeout --signal=TERM --kill-after=15s 300s npm ci --no-audit --fund=false
 
     - name: Build exact staging frontend
       shell: bash
