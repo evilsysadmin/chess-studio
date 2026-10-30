@@ -6,6 +6,7 @@ import {
   homeBlenderCameraPoseForAspect,
   createHomeBlenderRenderCameraReset,
   homeBlenderFireKind,
+  applyHomeBlenderFlameSinglePass,
   homeBlenderSteamMotion,
   homeBlenderSteamMotionPrepared,
   applyHomeBlenderCoffeeTemperature,
@@ -65,6 +66,34 @@ import {
 } from './HomeBlenderScene3D.jsx';
 import { tighterRuntimeLodCap } from './HomeCastle3DRenderPolicy.js';
 import { createHomeCastle3DPerformanceGovernor } from './HomeCastle3DPerformanceGovernor.js';
+
+describe('Home flame single-pass diagnostic', () => {
+  it('is strictly opt-in and does not alter materials that cannot benefit', () => {
+    const eligible = new THREE.MeshStandardMaterial({
+      transparent: true, side: THREE.DoubleSide,
+    });
+    expect(applyHomeBlenderFlameSinglePass(eligible, 'flame', false)).toBe(false);
+    expect(eligible.forceSinglePass).toBe(false);
+    expect(applyHomeBlenderFlameSinglePass(eligible, 'hot', true)).toBe(true);
+    expect(eligible.forceSinglePass).toBe(true);
+    const candle = new THREE.MeshStandardMaterial({ transparent: true, side: THREE.DoubleSide });
+    expect(applyHomeBlenderFlameSinglePass(candle, 'candle', true)).toBe(true);
+    expect(candle.forceSinglePass).toBe(true);
+
+    for (const opts of [
+      { transparent: false, side: THREE.DoubleSide },
+      { transparent: true, side: THREE.FrontSide },
+      { transparent: true, side: THREE.BackSide },
+    ]) {
+      const material = new THREE.MeshStandardMaterial(opts);
+      expect(applyHomeBlenderFlameSinglePass(material, 'flame', true)).toBe(false);
+      expect(material.forceSinglePass).toBe(false);
+    }
+    const steam = new THREE.MeshStandardMaterial({ transparent: true, side: THREE.DoubleSide });
+    expect(applyHomeBlenderFlameSinglePass(steam, 'steam', true)).toBe(false);
+    expect(steam.forceSinglePass).toBe(false);
+  });
+});
 
 describe('Home Blender stationary render camera', () => {
   const canonical = homeBlenderCameraPoseForAspect(16 / 9);
