@@ -62,6 +62,7 @@ INVENTORY = {
     'pvp-duel-hall-blender-art.yml': 'art-generation',
     'pvp-python-fallback.yml': 'pvp-runtime',
     'production-promote.yml': 'delivery-production',
+    'production-release-schedule-watch.yml': 'delivery-production-observability',
     'production-frontend-watchdog.yml': 'delivery-production-health',
     'production-mongo-backup.yml': 'delivery-production-data-safety',
     'production-rollback.yml': 'delivery-rollback',
