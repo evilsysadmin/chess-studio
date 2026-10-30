@@ -305,6 +305,7 @@ def validate_workflow_static_contracts(root: Path = ROOT) -> None:
     promotion_supersede_self_test()
     staging_release_identity_self_test()
     workflow_debt_self_test()
+    subprocess.run([sys.executable, '-S', 'scripts/production_release_schedule_watch.py', '--self-test'], cwd=root, check=True)
     validate_main_admission_fallback(root)
     validate_staging_frontend_build_single_source(root)
     validate_production_pages_asset_grace_checkout(root)
