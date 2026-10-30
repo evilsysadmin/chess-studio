@@ -68,6 +68,8 @@ Lección operativa: no resolver falsos positivos de CI debilitando el gate a cie
 | `staging-preview.yml` | Preview/restauración manual frontend-only sobre staging; no acredita ni entra en producción. Usa deps exactas + Wrangler cacheado. |
 | `render-production-guardrail.yml` | Guardrail específico de auto-deploy/configuración Render producción. |
 
+El prebuild especulativo de frontend en Main admission usa `npm ci` acotado a 300 s sin Actions cache (incidente de egress agotado el 2026-10-30). Si falla, el job es best-effort y staging conserva su build canónico de fallback con cache; la acreditación Quality y los controles de SHA no se relajan.
+
 ## OCI staging · infraestructura y control-plane
 
 | Workflow | Responsabilidad |
