@@ -99,6 +99,8 @@ const GOAL_CROSSBAR_RESTITUTION := 0.68
 const GOAL_CROSSBAR_DROP_SPEED := 125.0
 
 const PASS_CHARGE_SECONDS := 0.90
+# Aiming assist only locks onto teammates in the intended forward cone.
+const PASS_MIN_TARGET_ALIGNMENT := 0.35
 const PASS_MIN_POWER := 560.0
 const PASS_MAX_POWER := 1180.0
 const PASS_SHORT_MAX_RATIO := 0.24
@@ -478,7 +480,7 @@ func _handle_human(delta: float) -> void:
 		else:
 			if pass_directional_charge and direction.length_squared() > 0.0324:
 				pass_aim_direction = direction.normalized()
-				pass_target = _best_pass_target(controlled, direction)
+				pass_target = _best_directional_pass_target(controlled, direction)
 			if (
 				pass_target != null
 				and (not is_instance_valid(pass_target) or pass_target.sent_off)
@@ -553,7 +555,7 @@ func _begin_directional_pass_charge(input_direction: Vector2) -> bool:
 	pass_charging = true
 	pass_charge_seconds = 0.0
 	pass_aim_direction = wanted.normalized()
-	pass_target = _best_pass_target(controlled, pass_aim_direction)
+	pass_target = _best_directional_pass_target(controlled, pass_aim_direction)
 	pass_directional_charge = true
 	pass_select_receiver_on_release = false
 	return true
@@ -590,6 +592,7 @@ func _release_charged_pass() -> bool:
 	var target := pass_target
 	var aim_direction := pass_aim_direction
 	var select_receiver := pass_select_receiver_on_release
+	var directional := pass_directional_charge
 	var ratio := _pass_charge_ratio()
 	var power := _pass_power_from_ratio(ratio)
 	_cancel_pass_charge()
@@ -603,6 +606,14 @@ func _release_charged_pass() -> bool:
 		and target.team_id == passer.team_id
 		and target != passer
 	)
+	# A directional Space pass obeys the input even if a teammate crosses
+	# behind the passer during the charge; direct touch-target passes are unchanged.
+	if valid_target and directional:
+		var offset: Vector2 = target.global_position - passer.global_position
+		valid_target = (
+			offset.length_squared() > 0.001
+			and aim_direction.normalized().dot(offset.normalized()) >= PASS_MIN_TARGET_ALIGNMENT
+		)
 	if valid_target:
 		release_direction = target.global_position - passer.global_position
 	if release_direction.length_squared() < 0.001:
@@ -1235,6 +1246,31 @@ func _pass_from(player: Footballer, input_direction: Vector2) -> void:
 		ball.release(fallback, 470.0)
 		return
 	ball.release(target.global_position - player.global_position, 540.0)
+
+func _best_directional_pass_target(player: Footballer, input_direction: Vector2) -> Footballer:
+	# Never curve a manually aimed pass toward a teammate outside the cone.
+	# Keep the original best-target helper for AI and explicit touch targeting.
+	var wanted := input_direction.normalized()
+	if wanted.length_squared() < 0.001:
+		wanted = Vector2.RIGHT if player.team_id == 0 else Vector2.LEFT
+	var best: Footballer = null
+	var best_score := -INF
+	for teammate in teams[player.team_id]:
+		if teammate.sent_off or teammate == player:
+			continue
+		var offset: Vector2 = teammate.global_position - player.global_position
+		var distance := offset.length()
+		if distance < 1.0:
+			continue
+		var alignment := wanted.dot(offset / distance)
+		if alignment < PASS_MIN_TARGET_ALIGNMENT:
+			continue
+		var score_value := alignment * 800.0 - distance * 0.35
+		if score_value > best_score:
+			best_score = score_value
+			best = teammate
+	return best
+
 
 func _best_pass_target(player: Footballer, input_direction: Vector2) -> Footballer:
 	var wanted := input_direction.normalized()
