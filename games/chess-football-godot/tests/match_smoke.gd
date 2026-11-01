@@ -1072,6 +1072,73 @@ func _initialize() -> void:
 	assert(match_node.controlled == desktop_passer_before)
 	print("SMOKE_STAGE=desktop-pass-charge")
 
+	# Directional pass recipient should run onto the moving ball and inherit
+	# player control only near receipt (not instantly on Space release).
+	var pickup_origin: Vector2 = ChessFootballMath.PITCH_RECT.get_center()
+	var pickup_passer: Footballer = match_node.teams[0][2]
+	var pickup_receiver: Footballer = match_node.teams[0][4]
+	pickup_passer.global_position = pickup_origin + Vector2(-350.0, 0.0)
+	pickup_receiver.global_position = pickup_origin + Vector2(350.0, 40.0)
+	for teammate in match_node.teams[0]:
+		if teammate == pickup_passer or teammate == pickup_receiver:
+			continue
+		teammate.global_position = pickup_origin + Vector2(
+			-560.0, float(teammate.squad_index - 2) * 170.0
+		)
+	match_node._select_player(pickup_passer)
+	match_node.ball.attach_to(pickup_passer)
+	assert(match_node._begin_directional_pass_charge(Vector2.RIGHT))
+	assert(match_node.pass_target == pickup_receiver)
+	assert(match_node._release_charged_pass())
+	assert(match_node.controlled == pickup_passer)
+	assert(match_node.pending_human_pass_receiver == pickup_receiver)
+	match_node.ball.global_position = pickup_origin + Vector2(-120.0, 0.0)
+	match_node.ball.velocity = Vector2.RIGHT * 850.0
+	match_node.ball.flight_height = 0.0
+	match_node._update_ai(0.05)
+	assert(pickup_receiver.velocity.x < 0.0)
+	match_node._maybe_select_pass_receiver()
+	assert(match_node.controlled == pickup_passer)
+	# The receiver is now close enough to adjust its run under manual control.
+	match_node.ball.global_position = pickup_receiver.global_position + Vector2(-90.0, 0.0)
+	match_node._maybe_select_pass_receiver()
+	assert(match_node.controlled == pickup_receiver)
+	assert(match_node.pending_human_pass_receiver == null)
+
+	# Intercepted passes cannot cause a late control switch to the old target.
+	match_node._select_player(pickup_passer)
+	match_node.ball.attach_to(pickup_passer)
+	assert(match_node._begin_directional_pass_charge(Vector2.RIGHT))
+	assert(match_node._release_charged_pass())
+	assert(match_node.pending_human_pass_receiver == pickup_receiver)
+	match_node.ball.attach_to(match_node.teams[1][1])
+	match_node._maybe_select_pass_receiver()
+	assert(match_node.pending_human_pass_receiver == null)
+	assert(match_node.controlled == pickup_passer)
+
+	# Manual switching overrides any queued handoff.
+	match_node.ball.attach_to(pickup_passer)
+	assert(match_node._begin_directional_pass_charge(Vector2.RIGHT))
+	assert(match_node._release_charged_pass())
+	assert(match_node.pending_human_pass_receiver == pickup_receiver)
+	var pickup_manual_choice: Footballer = match_node.teams[0][1]
+	match_node._select_player(pickup_manual_choice)
+	assert(match_node.pending_human_pass_receiver == null)
+	match_node.ball.global_position = pickup_receiver.global_position
+	match_node._maybe_select_pass_receiver()
+	assert(match_node.controlled == pickup_manual_choice)
+
+	# A free directional pass with nobody ahead must not force a receiver.
+	pickup_receiver.global_position = pickup_passer.global_position + Vector2(-220.0, 40.0)
+	match_node._select_player(pickup_passer)
+	match_node.ball.attach_to(pickup_passer)
+	assert(match_node._begin_directional_pass_charge(Vector2.RIGHT))
+	assert(match_node.pass_target == null)
+	assert(match_node._release_charged_pass())
+	assert(match_node.pending_human_pass_receiver == null)
+	assert(match_node.controlled == pickup_passer)
+	print("SMOKE_STAGE=directed-receiver-handoff")
+
 	assert(not match_node.debug_pause_menu_open())
 	assert(match_node.debug_pause_button_text() == "MENÚ")
 	assert(match_node.debug_pause_first_option() == "SALIR")
