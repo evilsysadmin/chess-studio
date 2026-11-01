@@ -1002,11 +1002,52 @@ func _initialize() -> void:
 	match_node.ball.tick_ball(1.0 / 60.0)
 	assert(match_node.ball.velocity.length() > released_full_speed * 0.97)
 	print("SMOKE_STAGE=shots")
+	# Manual directional passes should never snap to a teammate behind
+	# the aim. Preserve direct/touch passes to that exact teammate.
+	var cone_passer: Footballer = match_node.teams[0][2]
+	var cone_origin: Vector2 = ChessFootballMath.PITCH_RECT.get_center()
+	cone_passer.global_position = cone_origin
+	for cone_teammate in match_node.teams[0]:
+		if cone_teammate == cone_passer:
+			continue
+		cone_teammate.global_position = cone_origin + Vector2(
+			-260.0, float(cone_teammate.squad_index - 2) * 155.0
+		)
+	match_node._select_player(cone_passer)
+	match_node.ball.attach_to(cone_passer)
+	assert(match_node._best_pass_target(cone_passer, Vector2.RIGHT) != null)
+	assert(match_node._best_directional_pass_target(cone_passer, Vector2.RIGHT) == null)
+	assert(match_node._begin_directional_pass_charge(Vector2.RIGHT))
+	assert(match_node.pass_target == null)
+	assert(match_node._release_charged_pass())
+	assert(match_node.ball.velocity.x > 0.0)
+	assert(absf(match_node.ball.velocity.y) < 0.001)
+	# The cone still assists when a teammate is actually in front.
+	var in_cone: Footballer = match_node.teams[0][4]
+	in_cone.global_position = cone_origin + Vector2(320.0, 70.0)
+	match_node.ball.attach_to(cone_passer)
+	assert(match_node._begin_directional_pass_charge(Vector2.RIGHT))
+	assert(match_node.pass_target == in_cone)
+	# A moving receiver crosses behind during charge: aim still wins.
+	in_cone.global_position = cone_origin + Vector2(-240.0, 70.0)
+	assert(match_node._release_charged_pass())
+	assert(match_node.ball.velocity.x > 0.0)
+	assert(absf(match_node.ball.velocity.y) < 0.001)
+	# Explicit receiver selection must still pass backward on demand.
+	match_node.ball.attach_to(cone_passer)
+	assert(match_node._begin_pass_charge(in_cone))
+	assert(match_node._release_charged_pass())
+	assert(match_node.ball.velocity.x < 0.0)
+	print("SMOKE_STAGE=directional-pass-cone")
+
 	# Desktop parity: the real Space action charges pass power just like touch.
 	# Press starts the meter, hold increases power, release executes the pass,
 	# and desktop keeps control on the passer as before.
 	var desktop_passer: Footballer = match_node.teams[0][2]
 	desktop_passer.global_position = Vector2(980.0, 620.0)
+	# Fix the receiver's position instead of relying on state inherited from
+	# unrelated keeper/foul/restart test stages.
+	match_node.teams[0][4].global_position = desktop_passer.global_position + Vector2(320.0, 55.0)
 	match_node._select_player(desktop_passer)
 	match_node.ball.attach_to(desktop_passer)
 	Input.action_release("pass_ball")
