@@ -68,6 +68,40 @@ def has_current_accreditation(payload: object) -> bool:
     return len(matches) == 1
 
 
+
+def verified_non_deployment(payload: object) -> bool:
+    """Recognize the staging-accreditation workflow's *explicit* no-deploy path.
+
+    A green workflow_run alone is not proof: a failed/missing artifact after
+    normal accreditation must still block the release train. Only the exact
+    successful upstream-proof + skipped lineage/write/upload sequence certifies
+    that the upstream staging run did not deploy a complete generation.
+    """
+    if not isinstance(payload, dict) or not isinstance(payload.get("jobs"), list):
+        return False
+    jobs = payload["jobs"]
+    if len(jobs) != 1 or not isinstance(jobs[0], dict):
+        return False
+    job = jobs[0]
+    if job.get("name") != "Accredit coherent staging generation" or job.get("conclusion") != "success":
+        return False
+    steps = job.get("steps")
+    if not isinstance(steps, list) or any(not isinstance(step, dict) for step in steps):
+        return False
+    names = [step.get("name") for step in steps]
+    if len(names) != len(set(names)):
+        return False
+    outcomes = {step["name"]: step.get("conclusion") for step in steps}
+    expected = {
+        "Validate accredited source commit": "success",
+        "Prove upstream generation": "success",
+        "Supersede stale staging accreditation outside current main lineage": "skipped",
+        "Write immutable production accreditation": "skipped",
+        "Upload immutable production accreditation": "skipped",
+    }
+    return all(outcomes.get(name) == conclusion for name, conclusion in expected.items())
+
+
 def select_latest(repository: str, pinned_run_id: int | None = None) -> tuple[int, int] | None:
     runs = _gh_json(
         repository,
@@ -94,6 +128,27 @@ def select_latest(repository: str, pinned_run_id: int | None = None) -> tuple[in
         run_id, run_number = candidates[0]
     artifacts = _gh_json(repository, f"actions/runs/{run_id}/artifacts?per_page=100")
     if not has_current_accreditation(artifacts):
+        # No previous SHA is ever selected automatically. A deliberately
+        # smoke-only staging run can end green without a promotion artifact;
+        # distinguish that documented no-op from missing/expired proof.
+        artifact_rows = artifacts.get("artifacts") if isinstance(artifacts, dict) else None
+        if (
+            pinned_run_id is None
+            and isinstance(artifact_rows, list)
+            and not any(
+                isinstance(row, dict) and row.get("name") == ARTIFACT_NAME
+                for row in artifact_rows
+            )
+            and verified_non_deployment(
+                _gh_json(repository, f"actions/runs/{run_id}/jobs?per_page=100")
+            )
+        ):
+            print(
+                f"::notice title=Staging sin nueva generación::Staging AI #{run_number} "
+                "verificó una ejecución sin despliegue completo. No existe SHA nuevo "
+                "promocionable; producción queda intacta y no se reutiliza un SHA anterior."
+            )
+            return None
         label = "Manual selected" if pinned_run_id is not None else "Latest successful"
         raise RuntimeError(
             f"{label} staging AI run {run_id} (#{run_number}) "
@@ -255,6 +310,8 @@ def self_test() -> None:
                 return {"artifacts": []}
             if endpoint == "actions/runs/1/artifacts?per_page=100":
                 return {"artifacts": [{"name": ARTIFACT_NAME, "expired": False}]}
+            if endpoint == "actions/runs/2/jobs?per_page=100":
+                return {"jobs": []}
             raise AssertionError(endpoint)
 
         globals()["_gh_json"] = fake_gh_json
@@ -271,6 +328,55 @@ def self_test() -> None:
                 raise AssertionError("Unknown/invalid manual run must fail closed")
             except (ValueError, RuntimeError):
                 pass
+        # A verified smoke-only/no-deploy run is a clean no-candidate,
+        # not a reason to silently fall back to run 1.
+        non_deploy_job = {"name": "Accredit coherent staging generation", "conclusion": "success", "steps": [
+            {"name": "Validate accredited source commit", "conclusion": "success"},
+            {"name": "Prove upstream generation", "conclusion": "success"},
+            {"name": "Supersede stale staging accreditation outside current main lineage", "conclusion": "skipped"},
+            {"name": "Write immutable production accreditation", "conclusion": "skipped"},
+            {"name": "Upload immutable production accreditation", "conclusion": "skipped"},
+        ]}
+        assert verified_non_deployment({"jobs": [non_deploy_job]})
+        for step_name in ("Prove upstream generation", "Write immutable production accreditation"):
+            broken_job = {**non_deploy_job, "steps": [
+                {**step, "conclusion": "failure"} if step["name"] == step_name else step
+                for step in non_deploy_job["steps"]
+            ]}
+            assert not verified_non_deployment({"jobs": [broken_job]})
+        assert not verified_non_deployment({"jobs": []})
+        assert not verified_non_deployment({"jobs": [non_deploy_job, non_deploy_job]})
+        assert not verified_non_deployment({"jobs": [{**non_deploy_job, "conclusion": "failure"}]})
+        assert not verified_non_deployment({"jobs": [{**non_deploy_job, "steps":
+            non_deploy_job["steps"] + [non_deploy_job["steps"][0]]}]})
+
+        def non_deploy_gh_json(repository: str, endpoint: str) -> object:
+            if endpoint == "actions/runs/2/jobs?per_page=100":
+                return {"jobs": [non_deploy_job]}
+            return fake_gh_json(repository, endpoint)
+
+        globals()["_gh_json"] = non_deploy_gh_json
+        assert select_latest("example/repo") is None
+        try:
+            select_latest("example/repo", pinned_run_id=2)
+            raise AssertionError("An explicit pin to a no-op run must fail closed")
+        except RuntimeError:
+            pass
+
+        # Expired accreditation is not a deliberate no-op, even if job
+        # metadata is contradictory: no expired/missing promotion is accepted.
+        def expired_gh_json(repository: str, endpoint: str) -> object:
+            if endpoint == "actions/runs/2/artifacts?per_page=100":
+                return {"artifacts": [{"name": ARTIFACT_NAME, "expired": True}]}
+            return non_deploy_gh_json(repository, endpoint)
+
+        globals()["_gh_json"] = expired_gh_json
+        try:
+            select_latest("example/repo")
+            raise AssertionError("Expired accreditation must fail closed")
+        except RuntimeError:
+            pass
+        globals()["_gh_json"] = fake_gh_json
         def accredited_gh_json(repository: str, endpoint: str) -> object:
             if endpoint == "actions/runs/2/artifacts?per_page=100":
                 return {"artifacts": [{"name": ARTIFACT_NAME, "expired": False}]}
@@ -408,7 +514,7 @@ def main(argv: list[str] | None = None) -> int:
         selected = select_latest(args.repository, pinned_run_id=int(pin) if pin else None)
         if selected is None:
             _append(args.github_output, found="false")
-            print("No hay una acreditación automática de staging vigente.")
+            print("No hay un nuevo SHA acreditado promocionable; producción queda intacta.")
         else:
             run_id, run_number = selected
             _append(args.github_output, found="true", staging_ai_run_id=run_id, staging_ai_run_number=run_number)
