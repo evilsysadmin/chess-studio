@@ -539,6 +539,7 @@ capacity-probe-check:
 static-preflight: capacity-probe-check test-parity-check test-flake-check audio-check data-ux-check pwa-check campaign-map-check copy-check release-check test-suite-audit-ci static-contract-risk-audit css-check css-debt-check visual-ux-check state-resilience-check idempotency-check npm-audit-parser-check architecture-debt-check workflow-debt-check dependency-cycle-check dead-code-check session-continuity-check safe-storage-check docs-index-check async-resilience-check chess-rules-check grafana-check render-staging-check security-api cf-ai-preflight worker-test
 	@python3 scripts/pawn_slug_canonical_integrity.py
 	@python3 scripts/synthetic_health_contract.py
+	@python3 -S scripts/production_release_train.py --self-test
 	@python3 -S scripts/oci_cloudflare_tunnel.py --self-test
 	@python3 -S scripts/oci_backend_diagnose.py --self-test
 	@python3 -S scripts/oci_public_staging_release.py --self-test
