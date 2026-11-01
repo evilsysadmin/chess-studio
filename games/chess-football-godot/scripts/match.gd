@@ -1670,6 +1670,9 @@ func _nearest_player_to_ball(team_id: int) -> Footballer:
 func _select_player(player: Footballer) -> void:
 	if player == null or player.sent_off:
 		return
+	# Explicit/manual or possession-driven selection overrides a queued pass.
+	if pending_human_pass_receiver != null and player != pending_human_pass_receiver:
+		pending_human_pass_receiver = null
 	if controlled != null:
 		controlled.set_active(false)
 	controlled = player
