@@ -264,7 +264,21 @@ for (const viewport of VIEWPORTS) {
       }
 
       await touch(cdp, to);
-      await expect(page.getByRole('heading', { name: /Jaque mate/i })).toBeVisible({ timeout: 15_000 });
+      const mateHeading = page.getByRole('heading', { name: /Jaque mate/i });
+      await expect(mateHeading).toBeVisible({ timeout: 15_000 });
+      // The endgame dialog is part of the first-play mobile golden path too:
+      // capture it on green runs and catch horizontal overflow after checkmate.
+      const mateBox = await mateHeading.boundingBox();
+      expect(mateBox).not.toBeNull();
+      expect(mateBox.x).toBeGreaterThanOrEqual(0);
+      expect(mateBox.x + mateBox.width).toBeLessThanOrEqual(viewport.width + 1);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(1);
+      await page.screenshot({
+        path: testInfo.outputPath(`mate-${profile.id}-${viewport.width}x${viewport.height}.png`),
+        fullPage: false,
+        animations: 'disabled',
+        caret: 'hide',
+      });
     });
   }
 }
