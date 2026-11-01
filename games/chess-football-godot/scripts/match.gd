@@ -101,6 +101,10 @@ const GOAL_CROSSBAR_DROP_SPEED := 125.0
 const PASS_CHARGE_SECONDS := 0.90
 # Aiming assist only locks onto teammates in the intended forward cone.
 const PASS_MIN_TARGET_ALIGNMENT := 0.35
+# Keep the passer under manual control until a directed receiver can play the
+# ball; do not snap across the pitch as soon as Space is released.
+const PASS_RECEIVER_HANDOFF_RADIUS := 120.0
+const PASS_RECEIVER_LEAD_SECONDS := 0.12
 const PASS_MIN_POWER := 560.0
 const PASS_MAX_POWER := 1180.0
 const PASS_SHORT_MAX_RATIO := 0.24
@@ -166,6 +170,7 @@ var pass_target: Footballer = null
 var pass_aim_direction: Vector2 = Vector2.RIGHT
 var pass_directional_charge: bool = false
 var pass_select_receiver_on_release: bool = true
+var pending_human_pass_receiver: Footballer = null
 var desktop_pass_input_active: bool = false
 var pending_tackle_player: Footballer = null
 var pending_tackle_seconds: float = 0.0
@@ -223,6 +228,7 @@ func _physics_process(delta: float) -> void:
 	_update_keeper_saves()
 	_update_pending_tackle_claim(delta)
 	_try_claim_loose_ball()
+	_maybe_select_pass_receiver()
 	_check_goal()
 	_check_ball_out()
 	_update_3d_presentation(delta)
@@ -446,6 +452,8 @@ func _handle_human(delta: float) -> void:
 		_cancel_pass_charge()
 
 	if Input.is_action_just_pressed("change_player"):
+		# A manual switch always overrides an automatic pass handoff.
+		pending_human_pass_receiver = null
 		_cancel_shot_charge()
 		_cancel_pass_charge()
 		_select_player(_best_switch_candidate())
@@ -622,6 +630,12 @@ func _release_charged_pass() -> bool:
 	if audio_fx != null:
 		audio_fx.play_pass()
 	ball.release(release_direction, power)
+	# Desktop directional passes retain the passer at release. The intended
+	# receiver moves toward the flight path and inherits control near arrival.
+	# Explicit touch-target passes keep their existing immediate selection.
+	pending_human_pass_receiver = (
+		target if directional and valid_target and passer.team_id == 0 else null
+	)
 	if select_receiver and valid_target:
 		_select_player(target)
 	return true
@@ -718,7 +732,14 @@ func _update_ai(delta: float) -> void:
 			var target: Vector2 = player.home_position
 			var intensity: float = 0.66
 			if ball.carrier == null:
-				if player == presser:
+				if player == pending_human_pass_receiver and player.team_id == 0:
+					# A pass aimed at this teammate should be received by *this*
+					# runner, not accidentally by whoever was closest at release.
+					target = ChessFootballMath.clamp_to_pitch(
+						ball.global_position + ball.velocity * PASS_RECEIVER_LEAD_SECONDS
+					)
+					intensity = 1.0
+				elif player == presser:
 					target = ball.global_position
 					intensity = _ai_adaptive_intensity(1.0)
 				elif player == cover:
@@ -749,7 +770,11 @@ func _update_ai(delta: float) -> void:
 
 			# Keep supporting teammates from targeting the same spot. The
 			# dribbler and lead defender retain direct control of their duels.
-			if ball.carrier != player and (team_has_ball or player != presser):
+			if (
+				ball.carrier != player
+				and player != pending_human_pass_receiver
+				and (team_has_ball or player != presser)
+			):
 				target = _ai_spaced_target(player, target)
 			player.move_ai(delta, target, intensity)
 
@@ -1579,6 +1604,31 @@ func _try_claim_loose_ball() -> void:
 		ball.attach_to(best)
 		if best.team_id == 0:
 			_select_player(best)
+
+func _maybe_select_pass_receiver() -> void:
+	var receiver := pending_human_pass_receiver
+	if receiver == null:
+		return
+	# Do not seize control after an interception, restart, red card, or when
+	# the player has deliberately switched. A catch already selects the
+	# actual human ball carrier through _try_claim_loose_ball.
+	if (
+		not is_instance_valid(receiver)
+		or receiver.sent_off
+		or ball.carrier != null
+		or controlled == null
+		or controlled.team_id != 0
+	):
+		pending_human_pass_receiver = null
+		return
+	if ball.flight_height > 24.0:
+		return
+	if receiver.global_position.distance_squared_to(ball.global_position) <= (
+		PASS_RECEIVER_HANDOFF_RADIUS * PASS_RECEIVER_HANDOFF_RADIUS
+	):
+		pending_human_pass_receiver = null
+		_select_player(receiver)
+
 
 func _restore_outfield_control_after_keeper_release() -> void:
 	if controlled == null or controlled.role != "keeper" or ball.carrier == controlled:
