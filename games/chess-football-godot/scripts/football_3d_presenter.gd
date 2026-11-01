@@ -112,6 +112,35 @@ func _material(color: Color, roughness: float = 0.84) -> StandardMaterial3D:
 
 func _build_pitch() -> void:
 	_add_stadium_apron()
+	# One shared shader gives every stripe continuous pitch-space variation,
+	# without textures, extra geometry, or camera-dependent UV seams.
+	var turf_shader := Shader.new()
+	turf_shader.code = """
+shader_type spatial;
+render_mode cull_disabled, specular_disabled;
+
+uniform vec4 stripe_color : source_color;
+varying vec2 turf_coordinate;
+
+void vertex() {
+	turf_coordinate = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xz;
+}
+
+void fragment() {
+	// Soft mowing grain, with a restrained cross-grain visible at match zoom.
+	float broad = sin(turf_coordinate.x * 0.81 + turf_coordinate.y * 0.37)
+		* sin(turf_coordinate.y * 0.91);
+	float fiber = sin(turf_coordinate.x * 8.6 + turf_coordinate.y * 2.8)
+		* sin(turf_coordinate.y * 7.4);
+	float variation = 1.0 + 0.080 * broad + 0.022 * fiber;
+	// Narrow, softened wear in the two goalmouths; never cover pitch lines.
+	float wear = smoothstep(12.7, 16.7, abs(turf_coordinate.x))
+		* (1.0 - smoothstep(0.9, 3.2, abs(turf_coordinate.y)));
+	vec3 turf = stripe_color.rgb * variation;
+	ALBEDO = mix(turf, turf * vec3(1.14, 0.89, 0.76), wear * 0.25);
+	ROUGHNESS = 0.96;
+}
+"""
 	var stripe_width := field_width / 16.0
 	for i in range(16):
 		var stripe := MeshInstance3D.new()
@@ -119,9 +148,14 @@ func _build_pitch() -> void:
 		mesh.size = Vector2(stripe_width + 0.01, field_depth)
 		stripe.mesh = mesh
 		stripe.position = Vector3(-field_width * 0.5 + stripe_width * (float(i) + 0.5), 0.0, 0.0)
-		stripe.material_override = _material(
-			Color(0.050, 0.245, 0.090) if i % 2 == 0 else Color(0.070, 0.315, 0.112)
+		stripe.name = "TurfStripe_%02d" % i
+		var turf_material := ShaderMaterial.new()
+		turf_material.shader = turf_shader
+		turf_material.set_shader_parameter(
+			"stripe_color",
+			Color(0.067, 0.272, 0.099) if i % 2 == 0 else Color(0.085, 0.321, 0.120),
 		)
+		stripe.material_override = turf_material
 		stripe.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		add_child(stripe)
 
