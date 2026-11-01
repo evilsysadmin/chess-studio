@@ -279,6 +279,20 @@ for (const viewport of VIEWPORTS) {
         animations: 'disabled',
         caret: 'hide',
       });
+
+      // A green screenshot of the heading is not enough: on short 360px
+      // phones the debrief used to clip its primary action below the fold.
+      // Verify the *initial* position before Playwright can auto-scroll it.
+      const endgame = page.locator('.endgame-dialog');
+      const primary = endgame.locator(':scope > .primary-btn');
+      await expect(primary).toBeVisible();
+      const primaryBox = await primary.boundingBox();
+      expect(primaryBox, 'postgame primary exists').not.toBeNull();
+      expect(primaryBox.y, 'postgame primary starts inside the viewport').toBeGreaterThanOrEqual(0);
+      expect(primaryBox.y + primaryBox.height, 'postgame primary needs no first scroll').toBeLessThanOrEqual(viewport.height + 1);
+      expect(primaryBox.height, 'postgame primary is touch-safe').toBeGreaterThanOrEqual(44);
+      await primary.tap();
+      await expect(endgame).toBeHidden({ timeout: 15_000 });
     });
   }
 }
