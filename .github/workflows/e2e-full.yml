@@ -1,12 +1,6 @@
 name: Browser E2E sweep
 
 on:
-  # Exercise the complete sweep on the PR that changes its own contract or Football E2E fixture.
-  # Other PRs keep the inexpensive required browser lanes; the monthly sweep remains scheduled.
-  pull_request:
-    paths:
-      - '.github/workflows/e2e-full.yml'
-      - 'e2e/chess-football.spec.js'
   workflow_dispatch:
   schedule:
     - cron: '17 2 1 * *'
