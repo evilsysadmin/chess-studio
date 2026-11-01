@@ -11,6 +11,14 @@ func _initialize() -> void:
 	assert(counts == [5, 5])
 	assert(match_node.debug_ball_exists())
 	assert(match_node.debug_pitch_exists())
+	# Visual-only netting: one thin line mesh on each goal, never extra collision.
+	for net_name in ["GoalNetLeft", "GoalNetRight"]:
+		var net := match_node.presentation_3d.get_node_or_null(net_name) as MeshInstance3D
+		assert(net != null, "Goal net missing")
+		assert(net.mesh is ImmediateMesh)
+		assert(net.mesh.get_surface_count() == 1)
+		assert(net.mesh.surface_get_primitive_type(0) == Mesh.PRIMITIVE_LINES)
+		assert(net.cast_shadow == GeometryInstance3D.SHADOW_CASTING_SETTING_OFF)
 	# Broadcast HUD must remain readable and click-through outside MENU.
 	var hud := match_node.get_node_or_null("MatchHud") as CanvasLayer
 	assert(hud != null)
