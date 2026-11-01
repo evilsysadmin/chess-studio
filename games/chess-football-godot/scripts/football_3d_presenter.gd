@@ -132,7 +132,7 @@ void fragment() {
 		* sin(turf_coordinate.y * 0.91);
 	float fiber = sin(turf_coordinate.x * 8.6 + turf_coordinate.y * 2.8)
 		* sin(turf_coordinate.y * 7.4);
-	float variation = 1.0 + 0.080 * broad + 0.022 * fiber;
+	float variation = 1.0 + 0.060 * broad + 0.014 * fiber;
 	// Narrow, softened wear in the two goalmouths; never cover pitch lines.
 	float wear = smoothstep(12.7, 16.7, abs(turf_coordinate.x))
 		* (1.0 - smoothstep(0.9, 3.2, abs(turf_coordinate.y)));
@@ -153,7 +153,7 @@ void fragment() {
 		turf_material.shader = turf_shader
 		turf_material.set_shader_parameter(
 			"stripe_color",
-			Color(0.067, 0.272, 0.099) if i % 2 == 0 else Color(0.085, 0.321, 0.120),
+			Color(0.210, 0.287, 0.153) if i % 2 == 0 else Color(0.252, 0.341, 0.174),
 		)
 		stripe.material_override = turf_material
 		stripe.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
