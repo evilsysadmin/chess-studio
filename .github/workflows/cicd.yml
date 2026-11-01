@@ -404,15 +404,19 @@ jobs:
       - name: Run ${{ matrix.label }}
         working-directory: e2e
         run: ${{ matrix.command }}
-      - name: Upload Playwright diagnostics on failure
-        if: failure()
+      # Keep real mobile War Room PNGs from green runs for exact-SHA visual
+      # review. Other specialized browser lanes stay failure-only to save storage.
+      - name: Upload mobile golden-path evidence or diagnostics on failure
+        if: failure() || matrix.id == 'mobile-golden-path'
         uses: actions/upload-artifact@v7
         with:
           name: required-browser-e2e-${{ matrix.id }}
           path: |
             e2e/test-results/
             e2e/playwright-report/
-          if-no-files-found: ignore
+          # The mobile golden-path specs always capture runtime PNGs. Missing
+          # evidence is a CI failure, not a silently green visual acceptance.
+          if-no-files-found: ${{ matrix.id == 'mobile-golden-path' && 'error' || 'ignore' }}
           retention-days: 7
   e2e:
     name: Tests · Playwright
