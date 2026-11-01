@@ -1205,5 +1205,69 @@ func _initialize() -> void:
 	assert(match_node.debug_3d_visible_players() == 8)
 	print("SMOKE_STAGE=discipline")
 
+	# Fast ground passes previously sailed through players until falling
+	# below 560 units/s. A precise first touch is available now, equally to
+	# teammates and defenders; high balls and uncontrolled shots stay loose.
+	match_node.pending_tackle_player = null
+	match_node.pending_human_pass_receiver = null
+	for side in range(2):
+		for actor in match_node.teams[side]:
+			actor.global_position = Vector2(
+				180.0 + float(side) * 90.0 + float(actor.squad_index) * 40.0,
+				225.0 + float(actor.squad_index) * 185.0
+			)
+	var first_passer: Footballer = match_node.teams[0][4]
+	var first_receiver: Footballer = match_node.teams[0][3]
+	var first_defender: Footballer = match_node.teams[1][1]
+	first_passer.global_position = Vector2(1030.0, 900.0)
+	first_receiver.global_position = Vector2(1480.0, 900.0)
+	first_defender.global_position = Vector2(1770.0, 900.0)
+	match_node._select_player(first_passer)
+	match_node.ball.attach_to(first_passer)
+	match_node.ball.release(Vector2.RIGHT, 850.0)
+	match_node.ball.global_position = first_receiver.global_position + Vector2(20.0, 0.0)
+	match_node._try_claim_loose_ball()
+	assert(match_node.ball.carrier == first_receiver)
+	assert(match_node.controlled == first_receiver)
+	assert(match_node.ball.velocity == Vector2.ZERO)
+
+	# Outside the narrower 22px foot envelope, a rapid pass stays in play.
+	match_node.ball.attach_to(first_passer)
+	match_node.ball.release(Vector2.RIGHT, 850.0)
+	match_node.ball.global_position = first_receiver.global_position + Vector2(27.0, 0.0)
+	match_node._try_claim_loose_ball()
+	assert(match_node.ball.carrier == null)
+	match_node.ball.velocity = Vector2.RIGHT * 520.0
+	match_node._try_claim_loose_ball()
+	assert(match_node.ball.carrier == first_receiver)
+
+	# A nearer defender must be able to cut out the same fast pass; never
+	# grant the user's queued receiver a preferential magnetic catch.
+	match_node.ball.attach_to(first_passer)
+	match_node.ball.release(Vector2.RIGHT, 850.0)
+	match_node.ball.global_position = first_receiver.global_position + Vector2(18.0, 0.0)
+	first_defender.global_position = match_node.ball.global_position + Vector2(10.0, 0.0)
+	match_node._try_claim_loose_ball()
+	assert(match_node.ball.carrier == first_defender)
+	assert(match_node.controlled == first_receiver)
+
+	# Lofted or too-fast deliveries are not instant traps; the original
+	# reclaim lock also prevents the kicker catching their own ball.
+	first_defender.global_position = Vector2(1770.0, 900.0)
+	match_node.ball.attach_to(first_passer)
+	match_node.ball.release(Vector2.RIGHT, 1000.0)
+	match_node.ball.global_position = first_receiver.global_position + Vector2(9.0, 0.0)
+	match_node._try_claim_loose_ball()
+	assert(match_node.ball.carrier == null)
+	match_node.ball.velocity = Vector2.RIGHT * 850.0
+	match_node.ball.flight_height = 16.0
+	match_node._try_claim_loose_ball()
+	assert(match_node.ball.carrier == null)
+	match_node.ball.flight_height = 0.0
+	match_node.ball.global_position = first_passer.global_position + Vector2(12.0, 0.0)
+	match_node._try_claim_loose_ball()
+	assert(match_node.ball.carrier == null)
+	print("SMOKE_STAGE=fast-ground-first-touch")
+
 	print("chess-football godot smoke: OK")
 	quit(0)

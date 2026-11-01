@@ -101,6 +101,14 @@ const GOAL_CROSSBAR_DROP_SPEED := 125.0
 const PASS_CHARGE_SECONDS := 0.90
 # Aiming assist only locks onto teammates in the intended forward cone.
 const PASS_MIN_TARGET_ALIGNMENT := 0.35
+# Normal control stays forgiving. A rapid *ground* pass can be trapped only
+# with closer foot contact; driven/lofted shots still pass through.
+const FIRST_TOUCH_SLOW_MAX_SPEED := 560.0
+const FIRST_TOUCH_SLOW_RADIUS := 31.0
+const FIRST_TOUCH_SLOW_MAX_HEIGHT := 24.0
+const FIRST_TOUCH_FAST_MAX_SPEED := 920.0
+const FIRST_TOUCH_FAST_RADIUS := 22.0
+const FIRST_TOUCH_FAST_MAX_HEIGHT := 12.0
 # Keep the passer under manual control until a directed receiver can play the
 # ball; do not snap across the pitch as soon as Space is released.
 const PASS_RECEIVER_HANDOFF_RADIUS := 120.0
@@ -1584,17 +1592,23 @@ func _update_pending_tackle_claim(delta: float) -> void:
 			_select_player(winner)
 
 func _try_claim_loose_ball() -> void:
-	if pending_tackle_player != null:
+	if pending_tackle_player != null or ball.carrier != null:
 		return
-	if ball.carrier != null or ball.velocity.length() > 560.0 or ball.flight_height > 24.0:
+	var speed := ball.velocity.length()
+	var fast_touch := speed > FIRST_TOUCH_SLOW_MAX_SPEED
+	if fast_touch:
+		if speed > FIRST_TOUCH_FAST_MAX_SPEED or ball.flight_height > FIRST_TOUCH_FAST_MAX_HEIGHT:
+			return
+	elif ball.flight_height > FIRST_TOUCH_SLOW_MAX_HEIGHT:
 		return
+	# Slow balls keep the existing 31px capture envelope. Fast ground passes
+	# must be met within 22px: no magnetic catches and no team-specific bonus.
+	# Compare *all* eligible boots so the nearer defender can intercept.
 	var best: Footballer = null
-	var best_distance := 31.0
+	var best_distance := FIRST_TOUCH_FAST_RADIUS if fast_touch else FIRST_TOUCH_SLOW_RADIUS
 	for team in teams:
 		for player in team:
-			if player.sent_off:
-				continue
-			if ball.reclaim_blocked_for(player):
+			if player.sent_off or ball.reclaim_blocked_for(player):
 				continue
 			var distance: float = player.global_position.distance_to(ball.global_position)
 			if distance < best_distance:
