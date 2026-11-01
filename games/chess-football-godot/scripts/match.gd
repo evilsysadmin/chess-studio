@@ -109,6 +109,11 @@ const FIRST_TOUCH_SLOW_MAX_HEIGHT := 24.0
 const FIRST_TOUCH_FAST_MAX_SPEED := 920.0
 const FIRST_TOUCH_FAST_RADIUS := 22.0
 const FIRST_TOUCH_FAST_MAX_HEIGHT := 12.0
+# A heavily pressed, driven ground pass needs closer boot contact; neither
+# team receives an automatic tackle or a random bad first touch.
+const FIRST_TOUCH_PRESSURE_MIN_SPEED := 750.0
+const FIRST_TOUCH_PRESSURE_RADIUS := 105.0
+const FIRST_TOUCH_PRESSURED_RADIUS := 15.0
 # Keep the passer under manual control until a directed receiver can play the
 # ball; do not snap across the pitch as soon as Space is released.
 const PASS_RECEIVER_HANDOFF_RADIUS := 120.0
@@ -1601,23 +1606,40 @@ func _try_claim_loose_ball() -> void:
 			return
 	elif ball.flight_height > FIRST_TOUCH_SLOW_MAX_HEIGHT:
 		return
-	# Slow balls keep the existing 31px capture envelope. Fast ground passes
-	# must be met within 22px: no magnetic catches and no team-specific bonus.
-	# Compare *all* eligible boots so the nearer defender can intercept.
+	# Slow balls retain the forgiving 31px envelope; fast balls use 22px,
+	# narrowed to 15px only for driven passes under actual nearby pressure.
+	# Every eligible player is evaluated independently and closest contact
+	# wins, whether it is the intended receiver or an opposing defender.
 	var best: Footballer = null
-	var best_distance := FIRST_TOUCH_FAST_RADIUS if fast_touch else FIRST_TOUCH_SLOW_RADIUS
+	var best_distance := INF
 	for team in teams:
 		for player in team:
 			if player.sent_off or ball.reclaim_blocked_for(player):
 				continue
+			var reach := _first_touch_reach(player, speed)
 			var distance: float = player.global_position.distance_to(ball.global_position)
-			if distance < best_distance:
+			if distance < reach and distance < best_distance:
 				best_distance = distance
 				best = player
 	if best != null:
 		ball.attach_to(best)
 		if best.team_id == 0:
 			_select_player(best)
+
+func _first_touch_reach(player: Footballer, speed: float) -> float:
+	if speed <= FIRST_TOUCH_SLOW_MAX_SPEED:
+		return FIRST_TOUCH_SLOW_RADIUS
+	if speed <= FIRST_TOUCH_PRESSURE_MIN_SPEED:
+		return FIRST_TOUCH_FAST_RADIUS
+	for opponent in teams[1 - player.team_id]:
+		if opponent.sent_off:
+			continue
+		if opponent.global_position.distance_squared_to(player.global_position) < (
+			FIRST_TOUCH_PRESSURE_RADIUS * FIRST_TOUCH_PRESSURE_RADIUS
+		):
+			return FIRST_TOUCH_PRESSURED_RADIUS
+	return FIRST_TOUCH_FAST_RADIUS
+
 
 func _maybe_select_pass_receiver() -> void:
 	var receiver := pending_human_pass_receiver

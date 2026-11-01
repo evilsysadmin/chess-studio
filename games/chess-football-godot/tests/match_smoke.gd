@@ -1268,6 +1268,48 @@ func _initialize() -> void:
 	match_node._try_claim_loose_ball()
 	assert(match_node.ball.carrier == null)
 	print("SMOKE_STAGE=fast-ground-first-touch")
+	# Same fast, low ball: near pressure requires a tighter (15px) trap
+	# than an unmarked 22px trap. No RNG, tackle/foul, or team advantage.
+	first_defender.global_position = first_receiver.global_position + Vector2(0.0, 75.0)
+	assert(is_equal_approx(match_node._first_touch_reach(first_receiver, 850.0), 15.0))
+	assert(is_equal_approx(match_node._first_touch_reach(first_receiver, 700.0), 22.0))
+	match_node.ball.attach_to(first_passer)
+	match_node.ball.release(Vector2.RIGHT, 850.0)
+	match_node.ball.global_position = first_receiver.global_position + Vector2(20.0, 0.0)
+	match_node._try_claim_loose_ball()
+	assert(match_node.ball.carrier == null) # pressed, imperfect contact
+	match_node.ball.global_position = first_receiver.global_position + Vector2(12.0, 0.0)
+	match_node._try_claim_loose_ball()
+	assert(match_node.ball.carrier == first_receiver) # well-timed first touch
+
+	# At moderate pace the same close pressure does not steal 7px of reach.
+	match_node.ball.attach_to(first_passer)
+	match_node.ball.release(Vector2.RIGHT, 700.0)
+	match_node.ball.global_position = first_receiver.global_position + Vector2(20.0, 0.0)
+	match_node._try_claim_loose_ball()
+	assert(match_node.ball.carrier == first_receiver)
+
+	# Pressed CPU footballers follow the identical rules.
+	first_defender.global_position = Vector2(1770.0, 900.0)
+	first_receiver.global_position = first_defender.global_position + Vector2(0.0, 75.0)
+	assert(is_equal_approx(match_node._first_touch_reach(first_defender, 850.0), 15.0))
+	match_node.ball.attach_to(first_passer)
+	match_node.ball.release(Vector2.RIGHT, 850.0)
+	match_node.ball.global_position = first_defender.global_position + Vector2(19.0, 0.0)
+	match_node._try_claim_loose_ball()
+	assert(match_node.ball.carrier == null)
+	match_node.ball.global_position = first_defender.global_position + Vector2(12.0, 0.0)
+	match_node._try_claim_loose_ball()
+	assert(match_node.ball.carrier == first_defender)
+
+	# A dismissed or distant opponent cannot create phantom pressure.
+	first_receiver.global_position = Vector2(1450.0, 700.0)
+	first_defender.global_position = first_receiver.global_position + Vector2(0.0, 75.0)
+	first_defender.receive_red_card()
+	assert(is_equal_approx(match_node._first_touch_reach(first_receiver, 850.0), 22.0))
+	first_defender.global_position = Vector2(1770.0, 900.0)
+	assert(is_equal_approx(match_node._first_touch_reach(first_receiver, 850.0), 22.0))
+	print("SMOKE_STAGE=pressured-first-touch")
 
 	print("chess-football godot smoke: OK")
 	quit(0)
