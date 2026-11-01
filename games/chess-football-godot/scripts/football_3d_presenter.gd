@@ -322,7 +322,6 @@ func _build_goals() -> void:
 	var goal_half := ChessFootballMath.GOAL_HALF_HEIGHT * WORLD_SCALE
 	var post_height := GOAL_POST_HEIGHT
 	var post := 0.075
-	var net_thin := 0.022
 	var depth := 1.00
 	var white := Color(0.95, 0.96, 0.94)
 	var net_color := Color(0.58, 0.63, 0.66)
@@ -339,13 +338,48 @@ func _build_goals() -> void:
 		_add_box(Vector3(x, post_height, 0.0), Vector3(post, post, goal_half * 2.0 + post), white)
 		_add_box(Vector3(back_x, post_height, 0.0), Vector3(post * 0.65, post * 0.65, goal_half * 2.0), net_color)
 		_add_box(Vector3(back_x, 0.045, 0.0), Vector3(post * 0.55, post * 0.55, goal_half * 2.0), net_color)
-		for line in range(1, 6):
-			var net_z := lerpf(-goal_half, goal_half, float(line) / 6.0)
-			_add_box(Vector3(back_x, post_height * 0.5, net_z), Vector3(net_thin, post_height, net_thin), net_color)
-			_add_box(Vector3((x + back_x) * 0.5, post_height, net_z), Vector3(depth, net_thin, net_thin), net_color)
-		for line in range(1, 5):
-			var net_y := post_height * float(line) / 5.0
-			_add_box(Vector3(back_x, net_y, 0.0), Vector3(net_thin, net_thin, goal_half * 2.0), net_color)
+		# Fine netting is one line-mesh draw per goal. Never add physics bodies:
+		# gameplay goal-mouth checks stay owned by ChessFootballMath.
+		_add_goal_net_grid(x, back_x, goal_half, post_height, side < 0.0)
+
+func _add_net_segment(net: ImmediateMesh, from_point: Vector3, to_point: Vector3) -> void:
+	net.surface_add_vertex(from_point)
+	net.surface_add_vertex(to_point)
+
+func _add_goal_net_grid(
+	front_x: float, back_x: float, half_width: float, height: float, is_left: bool
+) -> void:
+	var net := ImmediateMesh.new()
+	net.surface_begin(Mesh.PRIMITIVE_LINES)
+	# Vertical and horizontal strands across the back of the goal.
+	for z_index in range(17):
+		var z := lerpf(-half_width, half_width, float(z_index) / 16.0)
+		_add_net_segment(net, Vector3(back_x, 0.05, z), Vector3(back_x, height, z))
+		_add_net_segment(net, Vector3(front_x, height, z), Vector3(back_x, height, z))
+	for y_index in range(11):
+		var y := lerpf(0.05, height, float(y_index) / 10.0)
+		_add_net_segment(net, Vector3(back_x, y, -half_width), Vector3(back_x, y, half_width))
+		# Side panels keep a clean opening between the front goalposts.
+		for edge in [-half_width, half_width]:
+			_add_net_segment(net, Vector3(front_x, y, edge), Vector3(back_x, y, edge))
+	# Complete both side panels and the roof, rather than a few thick rails.
+	for depth_index in range(7):
+		var net_x := lerpf(front_x, back_x, float(depth_index) / 6.0)
+		_add_net_segment(
+			net, Vector3(net_x, height, -half_width), Vector3(net_x, height, half_width)
+		)
+		for edge in [-half_width, half_width]:
+			_add_net_segment(net, Vector3(net_x, 0.05, edge), Vector3(net_x, height, edge))
+	net.surface_end()
+	var instance := MeshInstance3D.new()
+	instance.name = "GoalNetLeft" if is_left else "GoalNetRight"
+	instance.mesh = net
+	var material := StandardMaterial3D.new()
+	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	material.albedo_color = Color(0.68, 0.74, 0.78)
+	instance.material_override = material
+	instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(instance)
 
 func _build_player_proxies() -> void:
 	for team in match_node.teams:
