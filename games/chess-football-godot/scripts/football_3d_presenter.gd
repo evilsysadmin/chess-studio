@@ -153,7 +153,7 @@ void fragment() {
 		turf_material.shader = turf_shader
 		turf_material.set_shader_parameter(
 			"stripe_color",
-			Color(0.210, 0.287, 0.153) if i % 2 == 0 else Color(0.252, 0.341, 0.174),
+			Color(0.150, 0.299, 0.140) if i % 2 == 0 else Color(0.185, 0.347, 0.159),
 		)
 		stripe.material_override = turf_material
 		stripe.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
