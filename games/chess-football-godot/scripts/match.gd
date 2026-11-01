@@ -263,35 +263,90 @@ func _create_3d_presentation() -> void:
 
 func _create_hud() -> void:
 	var hud := CanvasLayer.new()
+	hud.name = "MatchHud"
 	hud.layer = 20
 	add_child(hud)
 
+	# Match broadcast overlay: readable without a full-width opaque top bar.
+	var score_panel := Panel.new()
+	score_panel.name = "ScoreboardPanel"
+	score_panel.position = Vector2(16, 12)
+	score_panel.size = Vector2(622, 48)
+	score_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var score_style := StyleBoxFlat.new()
+	score_style.bg_color = Color(0.014, 0.027, 0.048, 0.92)
+	score_style.border_color = Color(0.16, 0.49, 0.85, 0.86)
+	score_style.set_border_width_all(1)
+	score_style.border_width_left = 4
+	score_style.corner_radius_top_left = 8
+	score_style.corner_radius_top_right = 8
+	score_style.corner_radius_bottom_left = 8
+	score_style.corner_radius_bottom_right = 8
+	score_style.shadow_color = Color(0.0, 0.008, 0.016, 0.48)
+	score_style.shadow_size = 6
+	score_panel.add_theme_stylebox_override("panel", score_style)
+	hud.add_child(score_panel)
+
 	score_label = Label.new()
-	score_label.position = Vector2(24, 18)
+	score_label.position = Vector2(18, 7)
+	score_label.size = Vector2(590, 34)
 	score_label.add_theme_font_size_override("font_size", 24)
-	score_label.add_theme_color_override("font_color", Color.WHITE)
-	hud.add_child(score_label)
+	score_label.add_theme_color_override("font_color", Color(0.97, 0.98, 1.0))
+	score_panel.add_child(score_label)
 
 	pause_menu_button = Button.new()
 	pause_menu_button.text = "MENÚ"
 	pause_menu_button.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
-	pause_menu_button.position = Vector2(-194, 18)
-	pause_menu_button.size = Vector2(170, 52)
+	pause_menu_button.position = Vector2(-164, 12)
+	pause_menu_button.size = Vector2(148, 48)
 	pause_menu_button.focus_mode = Control.FOCUS_NONE
-	pause_menu_button.add_theme_font_size_override("font_size", 17)
+	pause_menu_button.add_theme_font_size_override("font_size", 18)
+	pause_menu_button.add_theme_color_override("font_color", Color(0.93, 0.97, 1.0))
+	var menu_style := StyleBoxFlat.new()
+	menu_style.bg_color = Color(0.025, 0.044, 0.072, 0.94)
+	menu_style.border_color = Color(0.35, 0.58, 0.79, 0.76)
+	menu_style.set_border_width_all(1)
+	menu_style.corner_radius_top_left = 7
+	menu_style.corner_radius_top_right = 7
+	menu_style.corner_radius_bottom_left = 7
+	menu_style.corner_radius_bottom_right = 7
+	pause_menu_button.add_theme_stylebox_override("normal", menu_style)
+	var menu_hover := menu_style.duplicate() as StyleBoxFlat
+	menu_hover.bg_color = Color(0.075, 0.17, 0.26, 0.96)
+	pause_menu_button.add_theme_stylebox_override("hover", menu_hover)
+	var menu_pressed := menu_style.duplicate() as StyleBoxFlat
+	menu_pressed.bg_color = Color(0.035, 0.13, 0.22, 0.96)
+	pause_menu_button.add_theme_stylebox_override("pressed", menu_pressed)
 	pause_menu_button.pressed.connect(_toggle_pause_menu)
 	hud.add_child(pause_menu_button)
 
+	var controls_panel := Panel.new()
+	controls_panel.name = "MatchControlsPanel"
+	controls_panel.position = Vector2(16, 66)
+	controls_panel.size = Vector2(1248, 29)
+	controls_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var controls_style := StyleBoxFlat.new()
+	controls_style.bg_color = Color(0.007, 0.013, 0.024, 0.79)
+	controls_style.corner_radius_top_left = 4
+	controls_style.corner_radius_top_right = 4
+	controls_style.corner_radius_bottom_left = 4
+	controls_style.corner_radius_bottom_right = 4
+	controls_panel.add_theme_stylebox_override("panel", controls_style)
+	hud.add_child(controls_panel)
+
 	help_label = Label.new()
-	help_label.position = Vector2(24, 52)
-	help_label.add_theme_font_size_override("font_size", 15)
-	help_label.add_theme_color_override("font_color", Color(1, 1, 1, 0.78))
-	hud.add_child(help_label)
+	help_label.position = Vector2(12, 3)
+	help_label.size = Vector2(1224, 24)
+	help_label.add_theme_font_size_override("font_size", 13)
+	help_label.add_theme_color_override("font_color", Color(0.84, 0.89, 0.96, 0.96))
+	controls_panel.add_child(help_label)
 
 	view_label = Label.new()
-	view_label.position = Vector2(24, 82)
-	view_label.add_theme_font_size_override("font_size", 14)
-	view_label.add_theme_color_override("font_color", Color(1.0, 0.84, 0.28))
+	view_label.position = Vector2(1030, 100)
+	view_label.size = Vector2(230, 23)
+	view_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	view_label.add_theme_font_size_override("font_size", 13)
+	view_label.add_theme_color_override("font_color", Color(1.0, 0.82, 0.35))
 	hud.add_child(view_label)
 
 	goal_label = Label.new()

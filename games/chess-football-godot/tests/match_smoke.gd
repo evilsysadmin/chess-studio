@@ -11,6 +11,19 @@ func _initialize() -> void:
 	assert(counts == [5, 5])
 	assert(match_node.debug_ball_exists())
 	assert(match_node.debug_pitch_exists())
+	# Broadcast HUD must remain readable and click-through outside MENU.
+	var hud := match_node.get_node_or_null("MatchHud") as CanvasLayer
+	assert(hud != null)
+	var score_panel := hud.get_node_or_null("ScoreboardPanel") as Panel
+	var controls_panel := hud.get_node_or_null("MatchControlsPanel") as Panel
+	assert(score_panel != null and controls_panel != null)
+	assert(score_panel.mouse_filter == Control.MOUSE_FILTER_IGNORE)
+	assert(controls_panel.mouse_filter == Control.MOUSE_FILTER_IGNORE)
+	assert(score_panel.size == Vector2(622, 48))
+	assert(controls_panel.size == Vector2(1248, 29))
+	assert(match_node.score_label.get_parent() == score_panel)
+	assert(match_node.help_label.get_parent() == controls_panel)
+	assert(match_node.debug_pause_button_text() == "MENÚ")
 	assert(ChessFootballMath.PITCH_RECT.size.x >= 2400.0)
 	assert(ChessFootballMath.PITCH_RECT.size.y >= 1680.0)
 	assert(ChessFootballMath.GOAL_HALF_HEIGHT >= 180.0)
