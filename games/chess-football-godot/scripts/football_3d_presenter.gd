@@ -49,6 +49,10 @@ var player_run_views: Dictionary = {}
 # Hidden authoritative 2D AnimatedSprite2D nodes are not a reliable clock.
 var keeper_visual_phases: Dictionary = {}
 var keeper_visual_names: Dictionary = {}
+# Outfield actors also need a visible 3D clock. The hidden 2D sprites can
+# remain on a stale frame in the Web runtime while match physics continues.
+var outfield_visual_phases: Dictionary = {}
+var outfield_visual_names: Dictionary = {}
 var body_scale_cache: Dictionary = {}
 # Lighting is already disabled for billboards. The remaining brightness jump
 # comes from shadows baked differently into the authored view families.
@@ -476,8 +480,8 @@ func sync_presentation(delta: float, mode: String) -> void:
 				var directional_animation := ChessFootballRunDirection.animation_for(wanted_animation, run_view)
 				if sprite.sprite_frames.has_animation(directional_animation):
 					wanted_animation = directional_animation
+				_sync_visible_animation(key, player, sprite, wanted_animation, delta)
 				if player.role == "keeper":
-					_sync_keeper_animation(key, player, sprite, wanted_animation, delta)
 					# The approved front/back keeper atlas does not alternate which
 					# leg leads strongly enough. Mirroring only the second half of
 					# those symmetric views yields a real left/right step without
@@ -492,10 +496,6 @@ func sync_presentation(delta: float, mode: String) -> void:
 					)
 					sprite.flip_h = player.visual.flip_h != alternate_leg
 				else:
-					if sprite.animation != wanted_animation:
-						sprite.play(wanted_animation)
-					sprite.speed_scale = player.visual.speed_scale
-					sprite.frame = player.visual.frame
 					sprite.flip_h = player.visual.flip_h
 			sprite.pixel_size = TACTICAL_PLAYER_PIXEL_SIZE if mode == "tactical" else PLAYER_PIXEL_SIZE
 			_sync_player_secondary_motion(player, sprite, proxy)
@@ -559,34 +559,39 @@ static func _keeper_locomotion(animation_name: StringName) -> bool:
 	return name == "run" or name == "sprint" or name.begins_with("run_") or name.begins_with("sprint_")
 
 
-func _sync_keeper_animation(
+func _sync_visible_animation(
 	key: int, player: Footballer, sprite: AnimatedSprite3D, wanted: StringName, delta: float
 ) -> void:
-	# The gameplay actor can remain hidden as its 3D proxy is drawn. In the
-	# previous implementation, copying player.visual.frame on every physics
-	# tick made goalkeeper running poses appear static even while moving.
-	# One clock owns the *visible* goalkeeper frames; the 2D actor still owns
-	# the action state, stamina, and actual movement/rules.
+	# Keepers already use a dedicated visible raster clock; outfield actors
+	# must use the same strategy or their 3D poses can freeze while the hidden
+	# 2D game actor stays on a stale frame. Gameplay, actions and speed remain
+	# authoritative in the 2D actor; only raster frame timing lives here.
 	var frames := sprite.sprite_frames
 	if not frames.has_animation(wanted):
 		return
 	var count := frames.get_frame_count(wanted)
 	if count < 1:
 		return
-	var previous: StringName = keeper_visual_names.get(key, &"")
-	var phase: float = float(keeper_visual_phases.get(key, 0.0))
+	var is_keeper := player.role == "keeper"
+	var phases: Dictionary = keeper_visual_phases if is_keeper else outfield_visual_phases
+	var names: Dictionary = keeper_visual_names if is_keeper else outfield_visual_names
+	var previous: StringName = names.get(key, &"")
+	var phase: float = float(phases.get(key, 0.0))
 	if previous != wanted or sprite.animation != wanted:
 		if not (_keeper_locomotion(previous) and _keeper_locomotion(wanted)):
 			phase = 0.0
+			if not is_keeper and _keeper_locomotion(wanted):
+				# Retain the roster's deterministic staggered starting stride.
+				# Subsequent turns and run/sprint switches keep the live 3D phase.
+				phase = float(player.visual.frame)
 		sprite.play(wanted)
-		# Do not let the built-in 3D timer race against this fixed-physics
-		# clock; only this function advances keeper frames.
+		# Never race Godot's built-in AnimatedSprite3D clock against physics.
 		sprite.pause()
-		keeper_visual_names[key] = wanted
+		names[key] = wanted
 	var advance := maxf(delta, 0.0) * frames.get_animation_speed(wanted)
 	if _keeper_locomotion(wanted):
-		# Movement-phase continuity survives diagonal turns and run/sprint
-		# switches; a stationary keeper must not run in place.
+		# Movement-phase continuity survives turns and run/sprint switches.
+		# A stationary actor must not run in place.
 		if player.velocity.length() >= 12.0:
 			phase += advance * maxf(player.visual.speed_scale, 0.0)
 	elif wanted != &"idle":
@@ -595,7 +600,7 @@ func _sync_keeper_animation(
 		phase = fposmod(phase, float(count))
 	else:
 		phase = minf(phase, float(count - 1))
-	keeper_visual_phases[key] = phase
+	phases[key] = phase
 	sprite.frame = clampi(int(floorf(phase)), 0, count - 1)
 
 
