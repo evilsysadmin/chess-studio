@@ -10,6 +10,23 @@ func _initialize() -> void:
 		await process_frame
 		await physics_frame
 
+	# Turf must use one shared, pitch-space shader across all 16 bands.
+	# This catches accidental material fallbacks and duplicate shader builds.
+	var turf_shader: Shader = null
+	for stripe_id in range(16):
+		var stripe := match_node.presentation_3d.get_node_or_null(
+			"TurfStripe_%02d" % stripe_id
+		) as MeshInstance3D
+		assert(stripe != null, "Pitch stripe missing")
+		assert(stripe.mesh is PlaneMesh)
+		assert(stripe.cast_shadow == GeometryInstance3D.SHADOW_CASTING_SETTING_OFF)
+		var material := stripe.material_override as ShaderMaterial
+		assert(material != null, "Pitch stripe needs the authored turf shader")
+		if turf_shader == null:
+			turf_shader = material.shader
+		assert(material.shader == turf_shader and turf_shader != null)
+		assert(material.get_shader_parameter("stripe_color") is Color)
+
 	# Pin a real pre-kickoff tableau: both teams in their own halves and the
 	# selected team standing over the centre spot.
 	match_node.debug_prepare_kickoff(0)
