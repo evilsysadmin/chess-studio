@@ -238,6 +238,21 @@ jobs:
             exit 1
           fi
           grep -q 'chess-football keeper motion smoke: OK' "$log"
+      - name: Outfield frame advance and action poses in real 3D runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          godot="$GITHUB_WORKSPACE/.godot-ci/$GODOT_VERSION/godot"
+          log="$RUNNER_TEMP/chess-football-outfield-frame-advance.log"
+          set +e
+          timeout 40s "$godot" --headless --quit-after 360 --path games/chess-football-godot --script res://tests/outfield_frame_advance_smoke.gd 2>&1 | tee "$log"
+          status=${PIPESTATUS[0]}
+          set -e
+          if [[ "$status" -ne 0 ]] || grep -Eq 'SCRIPT ERROR:|Assertion failed|ERROR: Failed to load script|Parse Error:' "$log"; then
+            echo '::error::Chess Football outfield 3D raster animation regression.'
+            exit 1
+          fi
+          grep -q 'chess-football outfield frame-advance smoke: OK' "$log"
       - name: Keeper frame advance in real 3D runtime
         shell: bash
         run: |
