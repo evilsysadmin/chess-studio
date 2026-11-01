@@ -227,7 +227,9 @@ body:has([data-board3d-war-room="true"]) .game-autopsy {
 
   body:has([data-board3d-war-room="true"]) .endgame-dialog {
     width: 100%;
-    max-height: min(76dvh, 690px);
+    /* Short portrait phones must expose the primary next-game action without
+       requiring a first scroll inside the debrief. Keep the card scrollable. */
+    max-height: min(88dvh, 690px);
     border-radius: 12px 12px 8px 8px;
   }
 
