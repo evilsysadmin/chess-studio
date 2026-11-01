@@ -404,7 +404,7 @@ jobs:
       - name: Run ${{ matrix.label }}
         working-directory: e2e
         run: ${{ matrix.command }}
-      - name: Upload Playwright evidence
+      - name: Upload E2E
         if: failure() || matrix.id == 'mobile-golden-path'
         uses: actions/upload-artifact@v7
         with:
