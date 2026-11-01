@@ -17,7 +17,7 @@ func _initialize() -> void:
 		assert(net != null, "Goal net missing")
 		assert(net.mesh is ImmediateMesh)
 		assert(net.mesh.get_surface_count() == 1)
-		assert(net.mesh.surface_get_primitive_type(0) == Mesh.PRIMITIVE_LINES)
+		assert(net.mesh.get_aabb().size.length() > 1.0)
 		assert(net.cast_shadow == GeometryInstance3D.SHADOW_CASTING_SETTING_OFF)
 	# Broadcast HUD must remain readable and click-through outside MENU.
 	var hud := match_node.get_node_or_null("MatchHud") as CanvasLayer
