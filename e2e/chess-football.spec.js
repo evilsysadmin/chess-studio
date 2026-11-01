@@ -24,7 +24,8 @@ async function openExperiments(page) {
   await page.route(INDEX_URL, (route) => route.fulfill({
     status: 200,
     contentType: 'text/html',
-    body: '<!doctype html><html><body><main>Chess Football mock runtime</main><script>window.parent.postMessage({source:'chess-football-godot',type:'ready'},'*')</script></body></html>',
+    // Keep the script's single-quoted postMessage arguments valid JS inside the HTML fixture.
+    body: `<!doctype html><html><body><main>Chess Football mock runtime</main><script>window.parent.postMessage({source:'chess-football-godot',type:'ready'},'*')</script></body></html>`,
   }));
 
   await login(page);

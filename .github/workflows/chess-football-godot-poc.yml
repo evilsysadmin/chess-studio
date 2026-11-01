@@ -13,6 +13,7 @@ on:
       - scripts/art/sprite_forge_contract_v2.schema.json
       - scripts/art/contracts/chess_football_players_v1.json
       - scripts/pawn_slug_godot_bundle.py
+      - e2e/chess-football.spec.js
       - .github/workflows/chess-football-godot-poc.yml
   workflow_dispatch:
 
@@ -64,6 +65,7 @@ jobs:
               'scripts/art/sprite_forge_contract_v2.schema.json',
               'scripts/art/contracts/chess_football_players_v1.json',
               'scripts/pawn_slug_godot_bundle.py',
+              'e2e/chess-football.spec.js',
               '.github/workflows/chess-football-godot-poc.yml',
             ]);
             const changed = files.some(file =>
