@@ -217,7 +217,20 @@ def query_with_uid_recovery(
     """
     def query(candidate: str) -> dict:
         path = f"/api/datasources/proxy/uid/{urllib.parse.quote(candidate, safe='')}{suffix}"
-        return api.get_json(path, params)
+        # Retry only transport/gateway failures. Do not retry auth, stale UID
+        # 404, or invalid Prometheus/Loki responses; those must fail closed.
+        for attempt in range(3):
+            try:
+                return api.get_json(path, params)
+            except SystemExit as exc:
+                prefix = f"grafana-live-check FAIL · GET {path}: HTTP "
+                message = str(exc)
+                code = message[len(prefix):].split(":", 1)[0] if message.startswith(prefix) else ""
+                if code not in {"502", "503", "504", "522", "524"} or attempt == 2:
+                    raise
+                print(f"Grafana datasource transient HTTP {code}; retry {attempt + 1}/2", file=sys.stderr)
+                sleep(attempt + 1)  # at most 3s per query, not a 120s CI stall
+        raise AssertionError("unreachable")
 
     try:
         return query(uid), uid
@@ -321,6 +334,42 @@ def self_test() -> int:
     )
     assert recovered_uid == "new-prom" and recovered_payload == {"data": {"result": []}}
     assert stale.queries == 2 and stale.discovery_calls == 2 and stale.sleeps == [1]
+
+    class TransientGrafana:
+        calls = 0
+
+        def get_json(self, path: str, params: dict[str, str]) -> dict:
+            self.calls += 1
+            if self.calls <= 2:
+                code = (522, 503)[self.calls - 1]
+                raise SystemExit(f"grafana-live-check FAIL · GET {path}: HTTP {code}: transient")
+            return {"data": {"result": []}}
+
+    transient = TransientGrafana()
+    delays: list[int] = []
+    recovered, uid = query_with_uid_recovery(
+        transient, "prom", "prometheus", "/api/v1/query", {"query": "up"},
+        sleep=delays.append,
+    )
+    assert transient.calls == 3 and delays == [1, 2]
+    assert uid == "prom" and recovered == {"data": {"result": []}}
+
+    class AlwaysUnavailable(TransientGrafana):
+        def get_json(self, path: str, params: dict[str, str]) -> dict:
+            self.calls += 1
+            raise SystemExit(f"grafana-live-check FAIL · GET {path}: HTTP 503: DatasourceError")
+
+    unavailable = AlwaysUnavailable()
+    delays = []
+    try:
+        query_with_uid_recovery(
+            unavailable, "prom", "prometheus", "/api/v1/query", {}, sleep=delays.append,
+        )
+    except SystemExit as exc:
+        assert "HTTP 503" in str(exc)
+    else:
+        raise AssertionError("exhausted datasource retries must fail closed")
+    assert unavailable.calls == 3 and delays == [1, 2]
 
     class DeniedGrafana(StaleGrafana):
         def get_json(self, path: str, params: dict[str, str]) -> dict:
