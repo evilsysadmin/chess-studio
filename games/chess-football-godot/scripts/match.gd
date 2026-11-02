@@ -71,6 +71,10 @@ const AI_COVER_DISTANCE := 150.0
 const AI_LOOSE_BALL_LEAD_SECONDS := 0.14
 const AI_LOOSE_BALL_LEAD_MAX_DISTANCE := 95.0
 const AI_LOOSE_BALL_MAX_HEIGHT := 24.0
+# Avoid flipping presser/cover assignments for tiny ball movements. Once an
+# opponent can actually tackle, let a clearly closer defender take over.
+const AI_PRESS_ROLE_SWITCH_MARGIN := 48.0
+const AI_PRESS_ROLE_CLOSE_SWITCH_MARGIN := 14.0
 const AI_DEFENSIVE_SHIFT_RATIO := 0.16
 const AI_COVER_INTENSITY := 0.86
 const AI_TEAM_PRESS_INTENSITY := 0.75
@@ -165,6 +169,9 @@ var camera_hint_seconds: float = 4.5
 var presentation_3d: ChessFootball3DPresenter
 var audio_fx: ChessFootballAudio
 var ai_next_decision: Dictionary = {}
+# Cached only while the ball is loose; possession resets the assignments.
+var ai_primary_presser_cache: Array = [null, null]
+var ai_secondary_presser_cache: Array = [null, null]
 var keeper_distribution_started_at: Dictionary = {}
 var ai_adaptive_level: int = 0
 var ai_adapt_human_pressure: float = 0.0
@@ -890,36 +897,69 @@ func _ai_loose_ball_pursuit_point() -> Vector2:
 	return ChessFootballMath.clamp_to_pitch(ball.global_position + lead)
 
 
-func _ai_primary_presser(team_id: int) -> Footballer:
-	var point: Vector2 = _ai_loose_ball_pursuit_point()
-	var best: Footballer = null
-	var best_distance: float = INF
-	for player in teams[team_id]:
-		if player.sent_off or player == controlled or player.role == "keeper":
-			continue
-		var distance: float = player.global_position.distance_squared_to(point)
-		if distance < best_distance:
-			best_distance = distance
-			best = player
-	return best
+func _ai_press_role_margin(nearest_distance: float) -> float:
+	# Do not defend a stale assignment when the ball is within tackle range.
+	return (
+		AI_PRESS_ROLE_CLOSE_SWITCH_MARGIN
+		if nearest_distance <= TACKLE_ATTEMPT_RANGE
+		else AI_PRESS_ROLE_SWITCH_MARGIN
+	)
 
-func _ai_secondary_presser(team_id: int, primary: Footballer) -> Footballer:
-	var point: Vector2 = _ai_loose_ball_pursuit_point()
-	var best: Footballer = null
-	var best_distance: float = INF
+
+func _ai_stable_press_role(
+	team_id: int,
+	point: Vector2,
+	excluded: Footballer,
+	cache: Array,
+) -> Footballer:
+	var closest: Footballer = null
+	var closest_distance := INF
 	for player in teams[team_id]:
 		if (
 			player.sent_off
 			or player == controlled
 			or player.role == "keeper"
-			or player == primary
+			or player == excluded
 		):
 			continue
-		var distance: float = player.global_position.distance_squared_to(point)
-		if distance < best_distance:
-			best_distance = distance
-			best = player
-	return best
+		var distance: float = player.global_position.distance_to(point)
+		if distance < closest_distance:
+			closest_distance = distance
+			closest = player
+
+	# While a team is in possession the presser/cover roles aren't used;
+	# reselect by distance, clearing the old chase assignment.
+	if ball.carrier != null:
+		cache[team_id] = null
+		return closest
+
+	var previous: Footballer = cache[team_id]
+	if (
+		previous != null
+		and is_instance_valid(previous)
+		and previous.team_id == team_id
+		and not previous.sent_off
+		and previous != controlled
+		and previous.role != "keeper"
+		and previous != excluded
+		and previous.global_position.distance_to(point)
+			<= closest_distance + _ai_press_role_margin(closest_distance)
+	):
+		closest = previous
+	cache[team_id] = closest
+	return closest
+
+
+func _ai_primary_presser(team_id: int) -> Footballer:
+	return _ai_stable_press_role(
+		team_id, _ai_loose_ball_pursuit_point(), null, ai_primary_presser_cache
+	)
+
+
+func _ai_secondary_presser(team_id: int, primary: Footballer) -> Footballer:
+	return _ai_stable_press_role(
+		team_id, _ai_loose_ball_pursuit_point(), primary, ai_secondary_presser_cache
+	)
 
 # Soft tactical spacing, not a collision force: no player teleportation,
 # no repulsion from opponents during intentional dribbles or tackles.
