@@ -308,7 +308,7 @@ func _add_ad_panels() -> void:
 		var color: Color = accents[i % accents.size()]
 		var panel := _add_box(
 			Vector3(x, 0.24, z), Vector3(panel_width - 0.045, 0.43, 0.08),
-			Color(0.022, 0.047, 0.072)
+			Color(0.045, 0.085, 0.124)
 		)
 		panel.name = "MatchLedPanel_%02d" % i
 		panel.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
@@ -316,7 +316,7 @@ func _add_ad_panels() -> void:
 		# Thin top accent is emissive-looking, but does not illuminate the pitch.
 		var band := _add_box(
 			Vector3(x, 0.462, z + 0.052),
-			Vector3(panel_width - 0.055, 0.028, 0.012), color
+			Vector3(panel_width - 0.055, 0.035, 0.012), color
 		)
 		band.name = "MatchLedAccent_%02d" % i
 		band.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
@@ -328,10 +328,10 @@ func _add_ad_panels() -> void:
 		var sign := Label3D.new()
 		sign.name = "MatchLedSign_%02d" % i
 		sign.text = messages[i]
-		sign.font_size = 33
-		sign.pixel_size = 0.0048
+		sign.font_size = 47
+		sign.pixel_size = 0.0050
 		sign.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		sign.modulate = Color(0.86, 0.93, 0.97)
+		sign.modulate = Color(0.97, 0.98, 1.0)
 		sign.shaded = false
 		sign.no_depth_test = false
 		sign.position = Vector3(x, 0.253, z + 0.061)
