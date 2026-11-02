@@ -30,6 +30,24 @@ func _initialize() -> void:
 			BaseMaterial3D.SHADING_MODE_UNSHADED)
 		assert(not sign.text.is_empty())
 		assert(not sign.no_depth_test)
+	# The new goal-area paint and penalty arcs are present on BOTH halves;
+	# only 3D meshes, with no new bodies or gameplay geometry.
+	for pitch_side in ["Left", "Right"]:
+		for mark_name in [
+			"GoalArea%sSideNear" % pitch_side,
+			"GoalArea%sSideFar" % pitch_side,
+			"GoalArea%sInner" % pitch_side,
+		]:
+			var paint := match_node.presentation_3d.get_node_or_null(
+				mark_name
+			) as MeshInstance3D
+			assert(paint != null and paint.mesh is BoxMesh)
+		var arc := match_node.presentation_3d.get_node_or_null(
+			"PenaltyArc%s" % pitch_side
+		) as MeshInstance3D
+		assert(arc != null and arc.mesh is ImmediateMesh)
+		assert(arc.mesh.get_surface_count() == 1)
+		assert(arc.cast_shadow == GeometryInstance3D.SHADOW_CASTING_SETTING_OFF)
 	# End terraces use instanced seating and visible shadow-free railings,
 	# avoiding many individual per-seat meshes even at full pitch depth.
 	var end_seats := match_node.presentation_3d.get_node_or_null(
@@ -1384,6 +1402,80 @@ func _initialize() -> void:
 	first_defender.global_position = Vector2(1770.0, 900.0)
 	assert(is_equal_approx(match_node._first_touch_reach(first_receiver, 850.0), 22.0))
 	print("SMOKE_STAGE=pressured-first-touch")
+
+	# Contested loose-ball contact: a runner approaching the ball can win
+	# against a marginally closer opponent moving away. This is symmetric
+	# between CPU and human; clear proximity still wins outside a 5px duel.
+	var duel_origin: Vector2 = ChessFootballMath.PITCH_RECT.get_center()
+	var duel_human: Footballer = match_node.teams[0][3]
+	var duel_cpu: Footballer = match_node.teams[1][4]
+	for side in range(2):
+		for actor in match_node.teams[side]:
+			actor.global_position = Vector2(
+				ChessFootballMath.PITCH_RECT.position.x + 105.0 + float(actor.squad_index) * 70.0,
+				ChessFootballMath.PITCH_RECT.position.y + 110.0 + float(side) * 360.0 + float(actor.squad_index) * 55.0
+			)
+	first_passer.global_position = duel_origin + Vector2(-450.0, -280.0)
+	duel_human.global_position = duel_origin + Vector2(-16.0, 0.0)
+	duel_cpu.global_position = duel_origin + Vector2(18.0, 0.0)
+	duel_human.velocity = Vector2.LEFT * duel_human.base_speed # away from ball
+	duel_cpu.velocity = Vector2.LEFT * duel_cpu.base_speed # toward ball
+	match_node.ball.attach_to(first_passer)
+	match_node.ball.release(Vector2.RIGHT, 320.0)
+	match_node.ball.global_position = duel_origin
+	match_node._try_claim_loose_ball()
+	assert(match_node.ball.carrier == duel_cpu)
+
+	# Mirroring approach and team positions must give the human the same edge.
+	duel_human.global_position = duel_origin + Vector2(18.0, 0.0)
+	duel_cpu.global_position = duel_origin + Vector2(-16.0, 0.0)
+	duel_human.velocity = Vector2.LEFT * duel_human.base_speed
+	duel_cpu.velocity = Vector2.LEFT * duel_cpu.base_speed
+	match_node.ball.attach_to(first_passer)
+	match_node.ball.release(Vector2.RIGHT, 320.0)
+	match_node.ball.global_position = duel_origin
+	match_node._try_claim_loose_ball()
+	assert(match_node.ball.carrier == duel_human)
+	assert(match_node.controlled == duel_human)
+
+	# The approaching player cannot steal a decisive 12px distance lead.
+	duel_human.global_position = duel_origin + Vector2(-8.0, 0.0)
+	duel_cpu.global_position = duel_origin + Vector2(20.0, 0.0)
+	duel_human.velocity = Vector2.LEFT * duel_human.base_speed
+	duel_cpu.velocity = Vector2.LEFT * duel_cpu.base_speed
+	match_node.ball.attach_to(first_passer)
+	match_node.ball.release(Vector2.RIGHT, 320.0)
+	match_node.ball.global_position = duel_origin
+	match_node._try_claim_loose_ball()
+	assert(match_node.ball.carrier == duel_human)
+
+	# Truly identical stationary opponents do not grant possession based
+	# on whether a team was enumerated first: the ball stays contested.
+	duel_human.global_position = duel_origin + Vector2(-18.0, 0.0)
+	duel_cpu.global_position = duel_origin + Vector2(18.0, 0.0)
+	duel_human.velocity = Vector2.ZERO
+	duel_cpu.velocity = Vector2.ZERO
+	match_node.ball.attach_to(first_passer)
+	match_node.ball.release(Vector2.RIGHT, 320.0)
+	match_node.ball.global_position = duel_origin
+	match_node._try_claim_loose_ball()
+	assert(match_node.ball.carrier == null)
+	duel_cpu.velocity = Vector2.LEFT * duel_cpu.base_speed
+	match_node._try_claim_loose_ball()
+	assert(match_node.ball.carrier == duel_cpu)
+
+	# Two same-team receivers must not stall their own possession in a
+	# geometrically tied position; duels apply only against opponents.
+	duel_cpu.global_position = duel_origin + Vector2(380.0, 220.0)
+	var duel_teammate: Footballer = match_node.teams[0][2]
+	duel_teammate.global_position = duel_origin + Vector2(18.0, 0.0)
+	duel_teammate.velocity = Vector2.ZERO
+	match_node.ball.attach_to(first_passer)
+	match_node.ball.release(Vector2.RIGHT, 320.0)
+	match_node.ball.global_position = duel_origin
+	match_node._try_claim_loose_ball()
+	assert(match_node.ball.carrier == duel_teammate or match_node.ball.carrier == duel_human)
+	print("SMOKE_STAGE=contested-loose-ball")
 
 	print("chess-football godot smoke: OK")
 	quit(0)
