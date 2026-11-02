@@ -233,6 +233,50 @@ func _add_far_roof() -> void:
 		_add_box(Vector3(x, 1.75, roof_z + 0.55), Vector3(0.11, 3.0, 0.11), Color(0.20, 0.22, 0.24))
 		_add_box(Vector3(x, 3.03, roof_z + 0.10), Vector3(0.10, 0.10, 1.05), Color(0.20, 0.22, 0.24))
 
+	# A recessed concourse and an illuminated upper circulation level help
+	# the far stand read as architecture, not a floating black slab. Decorative
+	# unshaded strips DO NOT cast light onto the pitch or alter player exposure.
+	var concourse := _add_box(
+		Vector3(0.0, 2.55, roof_z + 0.23),
+		Vector3(field_width + 5.1, 0.76, 0.10),
+		Color(0.045, 0.056, 0.073)
+	)
+	concourse.name = "GrandstandConcourseWall"
+	concourse.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+
+	var fascia := _add_box(
+		Vector3(0.0, 3.11, roof_z + 1.12),
+		Vector3(field_width + 6.2, 0.17, 0.14),
+		Color(0.15, 0.19, 0.23)
+	)
+	fascia.name = "GrandstandRoofFascia"
+	fascia.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+
+	# Eight warm recessed bays; each has one low-intensity lit lintel. These are
+	# emissive-looking materials, not OmniLights, so Web GL compatibility stays
+	# predictable and gameplay brightness is completely unchanged.
+	for bay in range(8):
+		var x := lerpf(
+			-field_width * 0.43, field_width * 0.43, (float(bay) + 0.5) / 8.0
+		)
+		var opening := _add_box(
+			Vector3(x, 2.56, roof_z + 0.32),
+			Vector3(2.10, 0.43, 0.06),
+			Color(0.22, 0.20, 0.19)
+		)
+		opening.name = "GrandstandConcourseBay_%02d" % bay
+		opening.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		var lintel := _add_box(
+			Vector3(x, 2.80, roof_z + 0.38),
+			Vector3(1.68, 0.045, 0.07),
+			Color(0.64, 0.45, 0.26)
+		)
+		lintel.name = "GrandstandConcourseLight_%02d" % bay
+		lintel.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		var lit_material := lintel.material_override as StandardMaterial3D
+		lit_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+
+
 func _add_benches() -> void:
 	for x_value in [-4.2, 4.2]:
 		var x: float = float(x_value)
