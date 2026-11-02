@@ -181,9 +181,6 @@ def static_check() -> list[str]:
         ("Write immutable production accreditation", "staging AI immutable accreditation writer"),
         ("staging_deploy_run_id", "staging AI binds deploy run id"),
         ("staging_ai_run_id", "staging AI binds accreditation run id"),
-        # Accept supported major upgrades without weakening the accreditation artifact contract.
-        # The action must remain an upload-artifact step; artifact name and ordering are checked separately.
-
         ("staging-promotion-accreditation", "staging AI accreditation artifact name"),
     ):
         require(staging_ai, needle, label, errors)
@@ -210,7 +207,10 @@ def static_check() -> list[str]:
         (valid_upload_step, True),
         (valid_upload_step.replace("@v7", "@v5"), False),
         (valid_upload_step.replace("@v7", "@v8"), False),
-        (valid_upload_step.replace("if: steps.lineage.outputs.accredited == 'true' && github.event_name == 'workflow_run'", "if: always()"), False),
+        (valid_upload_step.replace(
+            "if: steps.lineage.outputs.accredited == 'true' && github.event_name == 'workflow_run'",
+            "if: always()",
+        ), False),
         (valid_upload_step.replace("Upload immutable production accreditation", "Upload unrelated artifact"), False),
     ):
         if (re.search(upload_step_pattern, changed_step) is not None) != should_match:
