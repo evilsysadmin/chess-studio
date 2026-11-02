@@ -114,6 +114,11 @@ const FIRST_TOUCH_FAST_MAX_HEIGHT := 12.0
 const FIRST_TOUCH_PRESSURE_MIN_SPEED := 750.0
 const FIRST_TOUCH_PRESSURE_RADIUS := 105.0
 const FIRST_TOUCH_PRESSURED_RADIUS := 15.0
+# Only nearly simultaneous *opposing-team* foot contacts become a duel.
+# Outside this narrow gap, pure proximity still decides possession.
+const LOOSE_BALL_DUEL_DISTANCE_MARGIN := 5.0
+const LOOSE_BALL_DUEL_APPROACH_BONUS := 3.5
+const LOOSE_BALL_DUEL_SCORE_TIE_EPSILON := 0.01
 # Keep the passer under manual control until a directed receiver can play the
 # ball; do not snap across the pitch as soon as Space is released.
 const PASS_RECEIVER_HANDOFF_RADIUS := 120.0
@@ -1661,25 +1666,44 @@ func _try_claim_loose_ball() -> void:
 			return
 	elif ball.flight_height > FIRST_TOUCH_SLOW_MAX_HEIGHT:
 		return
-	# Slow balls retain the forgiving 31px envelope; fast balls use 22px,
-	# narrowed to 15px only for driven passes under actual nearby pressure.
-	# Every eligible player is evaluated independently and closest contact
-	# wins, whether it is the intended receiver or an opposing defender.
-	var best: Footballer = null
-	var best_distance := INF
+	# Existing speed/height/reclaim limits remain authoritative. Find the
+	# closest eligible foot for each team, then resolve only genuinely tight
+	# opposing-team duels by whether the player is moving toward the ball.
+	var nearest: Array = [null, null]
+	var distances: Array[float] = [INF, INF]
 	for team in teams:
 		for player in team:
 			if player.sent_off or ball.reclaim_blocked_for(player):
 				continue
-			var reach := _first_touch_reach(player, speed)
 			var distance: float = player.global_position.distance_to(ball.global_position)
-			if distance < reach and distance < best_distance:
-				best_distance = distance
-				best = player
+			if distance < _first_touch_reach(player, speed) and distance < distances[player.team_id]:
+				distances[player.team_id] = distance
+				nearest[player.team_id] = player
+	var home: Footballer = nearest[0]
+	var away: Footballer = nearest[1]
+	var best: Footballer = home if distances[0] <= distances[1] else away
+	if home != null and away != null and absf(distances[0] - distances[1]) <= LOOSE_BALL_DUEL_DISTANCE_MARGIN:
+		var home_score := distances[0] - LOOSE_BALL_DUEL_APPROACH_BONUS * _loose_ball_approach(home)
+		var away_score := distances[1] - LOOSE_BALL_DUEL_APPROACH_BONUS * _loose_ball_approach(away)
+		# An exact neutral contest stays loose; roster iteration order
+		# must never silently grant the home team possession.
+		if absf(home_score - away_score) <= LOOSE_BALL_DUEL_SCORE_TIE_EPSILON:
+			return
+		best = home if home_score < away_score else away
 	if best != null:
 		ball.attach_to(best)
 		if best.team_id == 0:
 			_select_player(best)
+
+func _loose_ball_approach(player: Footballer) -> float:
+	var to_ball: Vector2 = ball.global_position - player.global_position
+	if to_ball.length_squared() < 0.001:
+		return 0.0
+	return clampf(
+		player.velocity.dot(to_ball.normalized()) / maxf(player.base_speed, 1.0),
+		-1.0, 1.0,
+	)
+
 
 func _first_touch_reach(player: Footballer, speed: float) -> float:
 	if speed <= FIRST_TOUCH_SLOW_MAX_SPEED:
