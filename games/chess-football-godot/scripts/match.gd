@@ -880,7 +880,7 @@ func _update_ai(delta: float) -> void:
 func _ai_loose_ball_pursuit_point() -> Vector2:
 	if ball.carrier != null:
 		return ball.carrier.global_position
-	if ball.flight_height > AI_LOOSE_BALL_MAX_HEIGHT:
+	if ball.flight_height > AI_LOOSE_BALL_MAX_HEIGHT or ball.vertical_velocity > 1.0:
 		return ball.global_position
 	# Short deterministic lead for a rolling loose ball, capped so a driven
 	# shot cannot pull the defensive line across the whole pitch in one tick.
