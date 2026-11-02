@@ -295,6 +295,24 @@ if (scopeEnabled('football')) {
         await portal.scrollIntoViewIfNeeded();
         await expect(portal).toContainText('Football of Matthias');
         await expect(page.locator('.chess-football-entry, .chess-football-godot-host')).toHaveCount(0);
+        // The legacy export is secondary and must not cover the Lab title,
+        // back navigation or any experiment hotspot on desktop/Android.
+        const exportLayout = await page.evaluate(() => {
+          const button = document.querySelector('.lab-football-export');
+          const rect = button?.getBoundingClientRect();
+          const title = document.querySelector('.lab-workshop-masthead h2')?.getBoundingClientRect();
+          const back = document.querySelector('.lab-screen > .back-link')?.getBoundingClientRect();
+          const portals = [...document.querySelectorAll('.lab-workshop-portal')].map((node) => node.getBoundingClientRect());
+          const overlaps = (a, b) => Boolean(a && b && a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top);
+          return {
+            present: Boolean(rect),
+            insideViewport: Boolean(rect && rect.left >= 0 && rect.right <= innerWidth && rect.top >= 0 && rect.bottom <= innerHeight),
+            collision: Boolean(rect && [title, back, ...portals].some((other) => overlaps(rect, other))),
+          };
+        });
+        expect(exportLayout.present, `${capture.label}: legacy export visible`).toBe(true);
+        expect(exportLayout.insideViewport, `${capture.label}: legacy export within viewport`).toBe(true);
+        expect(exportLayout.collision, `${capture.label}: legacy export must not cover Lab navigation/content`).toBe(false);
         await captureFrozenFrame(page, { path: `${ARTIFACT_DIR}/football-portal-${capture.label}.png`, fullPage: true });
         const popupPromise = page.waitForEvent('popup');
         await portal.click();

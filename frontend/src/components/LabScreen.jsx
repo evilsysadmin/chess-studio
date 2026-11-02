@@ -129,7 +129,7 @@ export default function LabScreen({ onExit, onStart }){
   return <div className={`menu tournament-panel lab-screen ${labMode==='position'?'lab-screen--position':''}`}>
     <button className="back-link" onClick={labMode==='hub'?onExit:()=>setLabMode('hub')}>← {labMode==='hub'?'Volver al menú':'Experimentos geniales'}</button>
 
-    {labMode==='hub' && hasLegacyFootballCareer && <button type="button" className="back-link lab-football-export" onClick={exportLegacyFootballCareer}>Exportar carrera antigua de Football</button>}
+    {labMode==='hub' && hasLegacyFootballCareer && <button type="button" className="lab-football-export" onClick={exportLegacyFootballCareer}>Exportar carrera antigua de Football</button>}
 
     {labMode==='hub' ? (
       <div className="lab-workshop" style={{ width: '100%' }}>
