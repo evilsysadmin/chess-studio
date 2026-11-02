@@ -167,6 +167,8 @@ void fragment() {
 	_add_box(Vector3(0.0, 0.022, 0.0), Vector3(0.045, 0.03, field_depth), line_color)
 	_add_penalty_box(false, line_color)
 	_add_penalty_box(true, line_color)
+	_add_goal_area_markings(false, line_color)
+	_add_goal_area_markings(true, line_color)
 	_add_center_circle(line_color)
 
 	var far_stand := MeshInstance3D.new()
@@ -415,6 +417,60 @@ func _add_penalty_box(right_side: bool, color: Color) -> void:
 		else edge_x + ChessFootballMath.PENALTY_SPOT_DEPTH * WORLD_SCALE
 	)
 	_add_box(Vector3(penalty_spot_x, 0.024, 0.0), Vector3(0.11, 0.025, 0.11), color)
+
+func _add_goal_area_markings(right_side: bool, color: Color) -> void:
+	# The six-yard box and penalty D are pitch paint only. They deliberately
+	# derive from the same 5v5 arcade proportions without changing physics.
+	var right_name := "Right" if right_side else "Left"
+	var side := -1.0 if right_side else 1.0
+	var edge_x := side * -field_width * 0.5
+	var goal_area_depth := ChessFootballMath.PENALTY_AREA_DEPTH * 0.40 * WORLD_SCALE
+	var goal_area_half_width := ChessFootballMath.PENALTY_AREA_HALF_WIDTH * 0.79 * WORLD_SCALE
+	var inner_x := edge_x + side * goal_area_depth
+	var mid_x := edge_x + side * goal_area_depth * 0.5
+	var line_thickness := 0.035
+
+	for z_side in [-1.0, 1.0]:
+		var mark := _add_box(
+			Vector3(mid_x, 0.027, z_side * goal_area_half_width),
+			Vector3(goal_area_depth, 0.026, line_thickness), color
+		)
+		mark.name = "GoalArea%sSide%s" % [right_name, "Near" if z_side > 0.0 else "Far"]
+	var inner := _add_box(
+		Vector3(inner_x, 0.027, 0.0),
+		Vector3(line_thickness, 0.026, goal_area_half_width * 2.0), color
+	)
+	inner.name = "GoalArea%sInner" % right_name
+
+	# Arc is clipped to the part outside the penalty rectangle. The centre of
+	# the D is exactly the marked penalty spot; its ends touch the box edge.
+	var arc_radius := ChessFootballMath.PENALTY_AREA_DEPTH * 0.58 * WORLD_SCALE
+	var spot_x := edge_x + side * ChessFootballMath.PENALTY_SPOT_DEPTH * WORLD_SCALE
+	var box_gap := (
+		ChessFootballMath.PENALTY_AREA_DEPTH - ChessFootballMath.PENALTY_SPOT_DEPTH
+	) * WORLD_SCALE
+	var cutoff_angle := acos(box_gap / arc_radius)
+	var arc_mesh := ImmediateMesh.new()
+	arc_mesh.surface_begin(Mesh.PRIMITIVE_LINE_STRIP)
+	for i in range(33):
+		var angle := lerpf(-cutoff_angle, cutoff_angle, float(i) / 32.0)
+		arc_mesh.surface_add_vertex(
+			Vector3(
+				spot_x + side * cos(angle) * arc_radius,
+				0.038,
+				sin(angle) * arc_radius
+			)
+		)
+	arc_mesh.surface_end()
+	var penalty_arc := MeshInstance3D.new()
+	penalty_arc.name = "PenaltyArc%s" % right_name
+	penalty_arc.mesh = arc_mesh
+	var arc_material := StandardMaterial3D.new()
+	arc_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	arc_material.albedo_color = color
+	penalty_arc.material_override = arc_material
+	penalty_arc.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(penalty_arc)
 
 func _add_center_circle(color: Color) -> void:
 	var mesh := ImmediateMesh.new()
