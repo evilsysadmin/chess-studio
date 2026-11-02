@@ -268,23 +268,104 @@ func _add_ad_panels() -> void:
 		_add_box(Vector3(x, 0.24, z), Vector3(panel_width - 0.05, 0.42, 0.08), color)
 
 func _add_crowd() -> void:
+	# The grandstand is one authored crowd, not 170 individual shadow-casting
+	# boxes. Shared 3D instances keep WebGL draw calls and memory predictable.
 	var rows := 5
 	var seats := 34
+	var bodies := MultiMesh.new()
+	bodies.transform_format = MultiMesh.TRANSFORM_3D
+	bodies.use_colors = true
+	var body_mesh := BoxMesh.new()
+	body_mesh.size = Vector3(0.21, 0.24, 0.14)
+	bodies.mesh = body_mesh
+	var heads := MultiMesh.new()
+	heads.transform_format = MultiMesh.TRANSFORM_3D
+	heads.use_colors = true
+	var head_mesh := SphereMesh.new()
+	head_mesh.radius = 0.075
+	head_mesh.height = 0.15
+	head_mesh.radial_segments = 8
+	head_mesh.rings = 4
+	heads.mesh = head_mesh
+
+	# Leave two clearly readable stair aisles; crowd positions remain static,
+	# deterministic and visually separate from footballers and the field.
+	var crowd_positions: Array[Vector3] = []
+	var body_colors: Array[Color] = []
+	var head_colors: Array[Color] = []
 	for row in range(rows):
 		for seat in range(seats):
+			if seat in [10, 11, 22, 23]:
+				continue
 			var ratio := (float(seat) + 0.5) / float(seats)
 			var x := lerpf(-field_width * 0.47, field_width * 0.47, ratio)
-			var y := 0.42 + float(row) * 0.38
+			var y := 0.43 + float(row) * 0.38
 			var z := -field_depth * 0.5 - 1.02 - float(row) * 0.48
-			var palette := (seat + row * 2) % 7
-			var color := Color(0.23, 0.25, 0.28)
+			crowd_positions.append(Vector3(x, y, z))
+			var palette := (seat + row * 3) % 9
+			var shirt := Color(0.24, 0.29, 0.36)
 			if palette in [0, 4]:
-				color = Color(0.12, 0.34, 0.72)
-			elif palette in [1, 5]:
-				color = Color(0.55, 0.075, 0.11)
+				shirt = Color(0.13, 0.37, 0.70)
+			elif palette in [1, 6]:
+				shirt = Color(0.49, 0.15, 0.21)
 			elif palette == 2:
-				color = Color(0.72, 0.56, 0.16)
-			_add_box(Vector3(x, y, z), Vector3(0.17, 0.22, 0.12), color)
+				shirt = Color(0.69, 0.53, 0.18)
+			elif palette == 5:
+				shirt = Color(0.55, 0.59, 0.65)
+			body_colors.append(shirt)
+			head_colors.append(
+				Color(0.49, 0.34, 0.26) if (seat + row) % 3 == 0
+				else Color(0.64, 0.51, 0.39) if (seat + row) % 3 == 1
+				else Color(0.33, 0.29, 0.27)
+			)
+	bodies.instance_count = crowd_positions.size()
+	heads.instance_count = crowd_positions.size()
+	for i in range(crowd_positions.size()):
+		bodies.set_instance_transform(i, Transform3D(Basis.IDENTITY, crowd_positions[i]))
+		bodies.set_instance_color(i, body_colors[i])
+		heads.set_instance_transform(
+			i, Transform3D(Basis.IDENTITY, crowd_positions[i] + Vector3(0.0, 0.18, 0.0))
+		)
+		heads.set_instance_color(i, head_colors[i])
+	_add_crowd_instances("GrandstandCrowdBodies", bodies)
+	_add_crowd_instances("GrandstandCrowdHeads", heads)
+
+	# Warm, unlit tread edges give both stair aisles depth without extra lights.
+	# No light/shadow changes on the playing field or canonical player sprites.
+	var treads := MultiMesh.new()
+	treads.transform_format = MultiMesh.TRANSFORM_3D
+	var tread_mesh := BoxMesh.new()
+	tread_mesh.size = Vector3(0.52, 0.035, 0.10)
+	treads.mesh = tread_mesh
+	treads.instance_count = rows * 2
+	for row in range(rows):
+		for aisle in range(2):
+			var middle_seat := 10.5 if aisle == 0 else 22.5
+			var x := lerpf(-field_width * 0.47, field_width * 0.47, (middle_seat + 0.5) / float(seats))
+			var y := 0.45 + float(row) * 0.39
+			var z := -field_depth * 0.5 - 0.82 - float(row) * 0.49
+			treads.set_instance_transform(
+				row * 2 + aisle, Transform3D(Basis.IDENTITY, Vector3(x, y, z))
+			)
+	var tread_instance := MultiMeshInstance3D.new()
+	tread_instance.name = "GrandstandAisleTreads"
+	tread_instance.multimesh = treads
+	var amber := _material(Color(0.91, 0.62, 0.25))
+	amber.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	tread_instance.material_override = amber
+	tread_instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(tread_instance)
+
+func _add_crowd_instances(label: String, instances: MultiMesh) -> void:
+	var node := MultiMeshInstance3D.new()
+	node.name = label
+	node.multimesh = instances
+	var material := StandardMaterial3D.new()
+	material.vertex_color_use_as_albedo = true
+	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	node.material_override = material
+	node.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(node)
 
 func _add_penalty_box(right_side: bool, color: Color) -> void:
 	var width := ChessFootballMath.PENALTY_AREA_DEPTH * WORLD_SCALE
