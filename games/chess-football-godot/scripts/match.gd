@@ -66,6 +66,11 @@ const AI_SUPPORT_FORWARD := 225.0
 const AI_TEAMMATE_SEPARATION_RADIUS := 130.0
 const AI_TEAMMATE_SEPARATION_MAX_CORRECTION := 110.0
 const AI_COVER_DISTANCE := 150.0
+# Forecast only a short, bounded stretch of a *ground* rebound. Keep the
+# presser and second defender in their existing roles; nobody teleports.
+const AI_LOOSE_BALL_LEAD_SECONDS := 0.14
+const AI_LOOSE_BALL_LEAD_MAX_DISTANCE := 95.0
+const AI_LOOSE_BALL_MAX_HEIGHT := 24.0
 const AI_DEFENSIVE_SHIFT_RATIO := 0.16
 const AI_COVER_INTENSITY := 0.86
 const AI_TEAM_PRESS_INTENSITY := 0.75
@@ -794,6 +799,7 @@ func _release_charged_shot() -> void:
 func _update_ai(delta: float) -> void:
 	for team_id in range(2):
 		var team_has_ball: bool = ball.carrier != null and ball.carrier.team_id == team_id
+		var loose_target: Vector2 = _ai_loose_ball_pursuit_point()
 		var presser: Footballer = _ai_primary_presser(team_id)
 		var cover: Footballer = _ai_secondary_presser(team_id, presser)
 		for player in teams[team_id]:
@@ -816,10 +822,10 @@ func _update_ai(delta: float) -> void:
 					)
 					intensity = 1.0
 				elif player == presser:
-					target = ball.global_position
+					target = loose_target
 					intensity = _ai_adaptive_intensity(1.0)
 				elif player == cover:
-					target = _ai_cover_target(player, ball.global_position)
+					target = _ai_cover_target(player, loose_target)
 					intensity = _ai_adaptive_intensity(AI_COVER_INTENSITY)
 			elif team_has_ball:
 				if ball.carrier == player:
@@ -871,10 +877,21 @@ func _update_ai(delta: float) -> void:
 			if ball.carrier == player and team_id == 1 and _ai_decision_ready(player):
 				_ai_attack(player)
 
-func _ai_primary_presser(team_id: int) -> Footballer:
-	var point: Vector2 = ball.global_position
+func _ai_loose_ball_pursuit_point() -> Vector2:
 	if ball.carrier != null:
-		point = ball.carrier.global_position
+		return ball.carrier.global_position
+	if ball.flight_height > AI_LOOSE_BALL_MAX_HEIGHT or ball.vertical_velocity > 1.0:
+		return ball.global_position
+	# Short deterministic lead for a rolling loose ball, capped so a driven
+	# shot cannot pull the defensive line across the whole pitch in one tick.
+	var lead: Vector2 = (
+		ball.velocity * AI_LOOSE_BALL_LEAD_SECONDS
+	).limit_length(AI_LOOSE_BALL_LEAD_MAX_DISTANCE)
+	return ChessFootballMath.clamp_to_pitch(ball.global_position + lead)
+
+
+func _ai_primary_presser(team_id: int) -> Footballer:
+	var point: Vector2 = _ai_loose_ball_pursuit_point()
 	var best: Footballer = null
 	var best_distance: float = INF
 	for player in teams[team_id]:
@@ -887,9 +904,7 @@ func _ai_primary_presser(team_id: int) -> Footballer:
 	return best
 
 func _ai_secondary_presser(team_id: int, primary: Footballer) -> Footballer:
-	var point: Vector2 = ball.global_position
-	if ball.carrier != null:
-		point = ball.carrier.global_position
+	var point: Vector2 = _ai_loose_ball_pursuit_point()
 	var best: Footballer = null
 	var best_distance: float = INF
 	for player in teams[team_id]:

@@ -1527,5 +1527,55 @@ func _initialize() -> void:
 	assert(match_node.ball.carrier == duel_teammate or match_node.ball.carrier == duel_human)
 	print("SMOKE_STAGE=contested-loose-ball")
 
+	# Ground rebounds move rapidly enough that chasing their *old* position
+	# makes the primary defender run behind them. Give only the presser and
+	# cover a short bounded forecast, never the whole defensive line.
+	var pursuit_center: Vector2 = ChessFootballMath.PITCH_RECT.get_center()
+	var pursuit_passer: Footballer = match_node.teams[0][4]
+	var pursuit_presser: Footballer = match_node.teams[0][1]
+	var pursuit_cover: Footballer = match_node.teams[0][2]
+	assert(not pursuit_presser.sent_off and not pursuit_cover.sent_off)
+	for side in range(2):
+		for athlete in match_node.teams[side]:
+			athlete.global_position = Vector2(
+				ChessFootballMath.PITCH_RECT.position.x + 90.0 + float(athlete.squad_index) * 65.0,
+				ChessFootballMath.PITCH_RECT.position.y + 105.0 + float(side) * 360.0 + float(athlete.squad_index) * 50.0,
+			)
+	pursuit_presser.global_position = pursuit_center + Vector2(102.0, 8.0)
+	pursuit_cover.global_position = pursuit_center + Vector2(-120.0, 150.0)
+	match_node._select_player(pursuit_passer)
+	match_node.pending_human_pass_receiver = null
+	match_node.ball.attach_to(pursuit_passer)
+	match_node.ball.release(Vector2.RIGHT, 900.0)
+	match_node.ball.global_position = pursuit_center
+	var forecast: Vector2 = pursuit_center + Vector2.RIGHT * match_node.AI_LOOSE_BALL_LEAD_MAX_DISTANCE
+	assert(match_node._ai_loose_ball_pursuit_point().distance_to(forecast) < 0.01)
+	assert(match_node._ai_primary_presser(0) == pursuit_presser)
+	assert(match_node._ai_secondary_presser(0, pursuit_presser) == pursuit_cover)
+	var expected_cover: Vector2 = match_node._ai_cover_target(pursuit_cover, forecast)
+	match_node._update_ai(1.0 / 60.0)
+	assert(pursuit_presser.ai_target.distance_to(forecast) < 0.01)
+	assert(
+		pursuit_cover.ai_target.distance_to(expected_cover)
+		<= match_node.AI_TEAMMATE_SEPARATION_MAX_CORRECTION + 0.1
+	)
+	# Stationary balls, high lofts and the initial rising phase of a chip
+	# must never drag the defensive line toward an imaginary landing point.
+	match_node.ball.velocity = Vector2.ZERO
+	assert(match_node._ai_loose_ball_pursuit_point().distance_to(pursuit_center) < 0.01)
+	match_node.ball.velocity = Vector2.RIGHT * 900.0
+	match_node.ball.flight_height = 35.0
+	assert(match_node._ai_loose_ball_pursuit_point().distance_to(pursuit_center) < 0.01)
+	match_node.ball.flight_height = 0.0
+	match_node.ball.vertical_velocity = 180.0
+	assert(match_node._ai_loose_ball_pursuit_point().distance_to(pursuit_center) < 0.01)
+	# Keeper possession / ordinary dribbles must not use loose-ball lead.
+	match_node.ball.attach_to(pursuit_passer)
+	assert(
+		match_node._ai_loose_ball_pursuit_point().distance_to(pursuit_passer.global_position)
+		< 0.01
+	)
+	print("SMOKE_STAGE=loose-ball-defensive-anticipation")
+
 	print("chess-football godot smoke: OK")
 	quit(0)
