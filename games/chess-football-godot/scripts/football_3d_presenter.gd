@@ -290,17 +290,54 @@ func _add_floodlights() -> void:
 			add_child(lamp)
 
 func _add_ad_panels() -> void:
-	var panel_count := 12
+	# Match-side signs are intentionally static and lightweight for Godot Web.
+	# Distinctive club/studio identities replace the old primary-color blocks;
+	# no external sponsors, animated textures, or extra realtime light sources.
+	var messages := [
+		"FC MATTHIAS", "CHESS FOOTBALL", "SHADOWOPS", "REAL ENROQUE",
+		"FC MATTHIAS", "SHADOWOPS", "CHESS FOOTBALL", "REAL ENROQUE",
+		"SHADOWOPS", "FC MATTHIAS", "REAL ENROQUE", "CHESS FOOTBALL",
+	]
+	var accents := [
+		Color(0.26, 0.72, 0.91), Color(0.90, 0.69, 0.33),
+		Color(0.62, 0.81, 0.89), Color(0.77, 0.41, 0.44),
+	]
+	var panel_count := messages.size()
 	var panel_width := field_width / float(panel_count)
 	var z := -field_depth * 0.5 - 0.30
 	for i in range(panel_count):
 		var x := -field_width * 0.5 + panel_width * (float(i) + 0.5)
-		var color := Color(0.08, 0.22, 0.48)
-		if i % 3 == 1:
-			color = Color(0.42, 0.055, 0.085)
-		elif i % 3 == 2:
-			color = Color(0.55, 0.40, 0.10)
-		_add_box(Vector3(x, 0.24, z), Vector3(panel_width - 0.05, 0.42, 0.08), color)
+		var color: Color = accents[i % accents.size()]
+		var panel := _add_box(
+			Vector3(x, 0.24, z), Vector3(panel_width - 0.045, 0.43, 0.08),
+			Color(0.045, 0.085, 0.124)
+		)
+		panel.name = "MatchLedPanel_%02d" % i
+		panel.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+
+		# Thin top accent is emissive-looking, but does not illuminate the pitch.
+		var band := _add_box(
+			Vector3(x, 0.462, z + 0.052),
+			Vector3(panel_width - 0.055, 0.035, 0.012), color
+		)
+		band.name = "MatchLedAccent_%02d" % i
+		band.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		var band_material := band.material_override as StandardMaterial3D
+		band_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+
+		# Front-facing Label3D is visible to the broadcast camera (+Z).
+		# The panel's mesh remains an actual stadium object, not HUD UI.
+		var sign := Label3D.new()
+		sign.name = "MatchLedSign_%02d" % i
+		sign.text = messages[i]
+		sign.font_size = 47
+		sign.pixel_size = 0.0050
+		sign.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		sign.modulate = Color(0.97, 0.98, 1.0)
+		sign.shaded = false
+		sign.no_depth_test = false
+		sign.position = Vector3(x, 0.253, z + 0.061)
+		add_child(sign)
 
 func _add_crowd() -> void:
 	# The grandstand is one authored crowd, not 170 individual shadow-casting
