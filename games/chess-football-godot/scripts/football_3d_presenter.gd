@@ -208,9 +208,19 @@ func _add_stadium_apron() -> void:
 	_add_box(Vector3(0.0, -0.12, field_depth * 0.5 + 4.0), Vector3(field_width + 8.0, 0.22, 0.16), Color(0.030, 0.038, 0.048))
 
 func _add_end_stands() -> void:
+	# The end terraces are very visible during corners and goals. Their seats
+	# share a single mesh rather than adding hundreds of per-seat draw calls.
+	var seat_pads := MultiMesh.new()
+	seat_pads.transform_format = MultiMesh.TRANSFORM_3D
+	seat_pads.use_colors = true
+	var pad_mesh := BoxMesh.new()
+	pad_mesh.size = Vector3(0.35, 0.075, 0.32)
+	seat_pads.mesh = pad_mesh
+	seat_pads.instance_count = 2 * 4 * 24
+	var seat_id := 0
 	var stand_x := field_width * 0.5 + 2.05
-	for side_value in [-1.0, 1.0]:
-		var side: float = float(side_value)
+	for side_index in range(2):
+		var side := -1.0 if side_index == 0 else 1.0
 		_add_box(
 			Vector3(side * stand_x, 0.82, 0.0),
 			Vector3(2.15, 1.70, field_depth + 1.8),
@@ -219,11 +229,34 @@ func _add_end_stands() -> void:
 		for row in range(4):
 			var x := side * (field_width * 0.5 + 0.72 + float(row) * 0.42)
 			var height := 0.22 + float(row) * 0.34
+			var tier_depth := field_depth + 1.25 - float(row) * 0.24
 			_add_box(
 				Vector3(x, height, 0.0),
-				Vector3(0.56, 0.34, field_depth + 1.25 - float(row) * 0.24),
-				Color(0.050 + float(row) * 0.010, 0.058, 0.069)
+				Vector3(0.56, 0.34, tier_depth),
+				Color(0.060, 0.083 + float(row) * 0.014, 0.115 + float(row) * 0.014)
 			)
+			# Continuous steel-blue aisle-edge safety rail, always outside play.
+			var rail := _add_box(
+				Vector3(x - side * 0.23, height + 0.24, 0.0),
+				Vector3(0.065, 0.09, tier_depth - 0.20),
+				Color(0.19, 0.30, 0.38)
+			)
+			rail.name = "EndStandTierRail_%d_%d" % [side_index, row]
+			rail.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			for seat in range(24):
+				var z := lerpf(-tier_depth * 0.44, tier_depth * 0.44, (float(seat) + 0.5) / 24.0)
+				seat_pads.set_instance_transform(
+					seat_id,
+					Transform3D(Basis.IDENTITY, Vector3(x, height + 0.22, z))
+				)
+				var color := Color(0.18, 0.31, 0.49)
+				if (seat + row * 2 + side_index) % 7 == 0:
+					color = Color(0.58, 0.42, 0.22)
+				elif (seat + row + side_index) % 5 == 0:
+					color = Color(0.27, 0.43, 0.58)
+				seat_pads.set_instance_color(seat_id, color)
+				seat_id += 1
+	_add_crowd_instances("EndStandSeatPads", seat_pads)
 
 func _add_far_roof() -> void:
 	var roof_z := -field_depth * 0.5 - 3.70

@@ -11,6 +11,22 @@ func _initialize() -> void:
 	assert(counts == [5, 5])
 	assert(match_node.debug_ball_exists())
 	assert(match_node.debug_pitch_exists())
+	# End terraces use instanced seating and visible shadow-free railings,
+	# avoiding many individual per-seat meshes even at full pitch depth.
+	var end_seats := match_node.presentation_3d.get_node_or_null(
+		"EndStandSeatPads"
+	) as MultiMeshInstance3D
+	assert(end_seats != null)
+	assert(end_seats.multimesh.instance_count == 192)
+	assert(end_seats.multimesh.use_colors)
+	assert(end_seats.cast_shadow == GeometryInstance3D.SHADOW_CASTING_SETTING_OFF)
+	for side_index in range(2):
+		for row in range(4):
+			var rail := match_node.presentation_3d.get_node_or_null(
+				"EndStandTierRail_%d_%d" % [side_index, row]
+			) as MeshInstance3D
+			assert(rail != null)
+			assert(rail.cast_shadow == GeometryInstance3D.SHADOW_CASTING_SETTING_OFF)
 	# Decorative grandstand uses instancing, not one mesh/draw call per fan.
 	var crowd_bodies := match_node.presentation_3d.get_node_or_null(
 		"GrandstandCrowdBodies"
