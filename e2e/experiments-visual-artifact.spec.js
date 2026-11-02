@@ -34,7 +34,15 @@ async function dismissMatthiasSpeech(page) {
   const speech = page.getByRole('region', { name: 'Mensaje de Matthias', exact: true });
   if (!(await speech.isVisible().catch(() => false))) return;
   const close = speech.getByRole('button', { name: 'Cerrar comentario de Matthias', exact: true });
-  if (await close.isVisible().catch(() => false)) await close.click({ force: true });
+  if (await close.isVisible().catch(() => false)) {
+    // Matthias can auto-dismiss while Playwright waits for the button to settle.
+    // Only ignore a detached click when the speech has actually disappeared.
+    try {
+      await close.click({ force: true, timeout: 2_000 });
+    } catch (error) {
+      if (await speech.isVisible().catch(() => false)) throw error;
+    }
+  }
 }
 
 async function openExperiments(page, profileSeed = {}) {
