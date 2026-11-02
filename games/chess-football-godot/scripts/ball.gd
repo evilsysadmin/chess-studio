@@ -17,10 +17,16 @@ var spin_direction: float = 1.0
 var reclaim_block_player: Footballer = null
 var reclaim_block_seconds: float = 0.0
 const RECLAIM_BLOCK_SECONDS := 0.22
+# On a glancing (non-clean) tackle, the tackler must not magnetically
+# reclaim the deflection in the same frame. Other nearby players stay eligible.
+var contact_reclaim_block_player: Footballer = null
+var contact_reclaim_block_seconds: float = 0.0
 
 func attach_to(player: Footballer) -> void:
 	reclaim_block_player = null
 	reclaim_block_seconds = 0.0
+	contact_reclaim_block_player = null
+	contact_reclaim_block_seconds = 0.0
 	if carrier != null:
 		carrier.has_ball = false
 		carrier.queue_redraw()
@@ -35,6 +41,9 @@ func attach_to(player: Footballer) -> void:
 	global_position = player.global_position + player.ball_anchor()
 
 func release(direction: Vector2, power: float, lift_velocity: float = 0.0) -> void:
+	# The new kick/deflection supersedes any old glancing-contact restriction.
+	contact_reclaim_block_player = null
+	contact_reclaim_block_seconds = 0.0
 	var previous_carrier: Footballer = carrier
 	if previous_carrier != null:
 		last_touch_team_id = previous_carrier.team_id
@@ -53,6 +62,9 @@ func tick_ball(delta: float) -> void:
 	reclaim_block_seconds = maxf(0.0, reclaim_block_seconds - delta)
 	if reclaim_block_seconds <= 0.0:
 		reclaim_block_player = null
+	contact_reclaim_block_seconds = maxf(0.0, contact_reclaim_block_seconds - delta)
+	if contact_reclaim_block_seconds <= 0.0:
+		contact_reclaim_block_player = null
 	if carrier != null:
 		global_position = carrier.global_position + carrier.ball_anchor()
 		flight_height = 0.0
@@ -80,8 +92,19 @@ func tick_ball(delta: float) -> void:
 	if velocity.length() < 4.0:
 		velocity = Vector2.ZERO
 
+func block_glancing_reclaim(player: Footballer, seconds: float) -> void:
+	contact_reclaim_block_player = player
+	contact_reclaim_block_seconds = maxf(0.0, seconds)
+
+
 func reclaim_blocked_for(player: Footballer) -> bool:
-	return reclaim_block_seconds > 0.0 and reclaim_block_player == player
+	return (
+		(reclaim_block_seconds > 0.0 and reclaim_block_player == player)
+		or (
+			contact_reclaim_block_seconds > 0.0
+			and contact_reclaim_block_player == player
+		)
+	)
 
 func airborne() -> bool:
 	return flight_height > 1.0 or vertical_velocity > 1.0
