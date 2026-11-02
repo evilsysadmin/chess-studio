@@ -48,6 +48,16 @@ func _initialize() -> void:
 		assert(absf(body_pos.x) > match_node.presentation_3d.field_width * 0.5)
 		assert(is_equal_approx(head_pos.y - body_pos.y, 0.20))
 		assert(head_pos.x == body_pos.x and head_pos.z == body_pos.z)
+		var wall_index := 0 if n < 96 else 1
+		var rear_wall := match_node.presentation_3d.get_node_or_null(
+			"EndStandRearWall_%d" % wall_index
+		) as MeshInstance3D
+		assert(rear_wall != null and rear_wall.mesh is BoxMesh)
+		var wall_front_x: float = (
+			absf(rear_wall.position.x) - (rear_wall.mesh as BoxMesh).size.x * 0.5
+		)
+		assert(wall_front_x > absf(body_pos.x) + 0.12,
+			"Rear stadium wall clips the seated supporter")
 
 	# Pin a real pre-kickoff tableau: both teams in their own halves and the
 	# selected team standing over the centre spot.
