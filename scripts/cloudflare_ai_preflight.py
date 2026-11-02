@@ -181,10 +181,40 @@ def static_check() -> list[str]:
         ("Write immutable production accreditation", "staging AI immutable accreditation writer"),
         ("staging_deploy_run_id", "staging AI binds deploy run id"),
         ("staging_ai_run_id", "staging AI binds accreditation run id"),
-        ("actions/upload-artifact@v6", "staging AI accreditation artifact upload"),
         ("staging-promotion-accreditation", "staging AI accreditation artifact name"),
     ):
         require(staging_ai, needle, label, errors)
+    # Bind the upload action to the *guarded accreditation step*, not to any
+    # unrelated artifact upload elsewhere in the workflow. New action majors
+    # require an explicit review of the immutable promotion boundary.
+    upload_step_pattern = (
+        r"(?m)^      - name: Upload immutable production accreditation\n"
+        r"        if: steps\.lineage\.outputs\.accredited == 'true' && github\.event_name == 'workflow_run'\n"
+        r"        uses: actions/upload-artifact@v(?:6|7)(?:\.\d+)*\s*$"
+    )
+    require_pattern(
+        staging_ai, upload_step_pattern,
+        "staging AI guarded accreditation artifact upload (v6/v7)", errors,
+    )
+    # Mutation fixtures keep this static guard from passing if a later refactor
+    # accidentally checks only for an upload action somewhere in the YAML.
+    valid_upload_step = (
+        "      - name: Upload immutable production accreditation\n"
+        "        if: steps.lineage.outputs.accredited == 'true' && github.event_name == 'workflow_run'\n"
+        "        uses: actions/upload-artifact@v7\n"
+    )
+    for changed_step, should_match in (
+        (valid_upload_step, True),
+        (valid_upload_step.replace("@v7", "@v5"), False),
+        (valid_upload_step.replace("@v7", "@v8"), False),
+        (valid_upload_step.replace(
+            "if: steps.lineage.outputs.accredited == 'true' && github.event_name == 'workflow_run'",
+            "if: always()",
+        ), False),
+        (valid_upload_step.replace("Upload immutable production accreditation", "Upload unrelated artifact"), False),
+    ):
+        if (re.search(upload_step_pattern, changed_step) is not None) != should_match:
+            errors.append("staging AI upload contract: mutation fixture did not behave as expected")
     if "actions: write" in staging_ai:
         errors.append("staging AI: actions: write ya no está permitido; supersede debe terminar limpio sin mutar Actions")
     for needle, label in (
