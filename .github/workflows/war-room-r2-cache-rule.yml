@@ -128,7 +128,7 @@ jobs:
           exit 1
       - name: Save edge response evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: warroom-r2-cache-rule-check
           path: ${{ runner.temp }}/warroom-edge-after-rule.json

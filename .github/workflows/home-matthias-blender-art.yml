@@ -120,7 +120,7 @@ jobs:
             frontend/public/models/matthias-home-canonical.glb \
             /tmp/home-matthias-art/matthias-home-canonical.glb
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: home-matthias-canonical-${{ github.event.pull_request.number || github.run_number }}
