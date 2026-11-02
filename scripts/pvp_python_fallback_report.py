@@ -56,16 +56,17 @@ def fallback_query(window_seconds: int) -> str:
     )
 
 
-def telemetry_coverage_query() -> str:
+def telemetry_coverage_query(window_seconds: int) -> str:
     """Recent *Python* HTTP samples prove the fallback metric pipeline is alive.
 
     A healthy Grafana query with no /api/pvp series is not enough: it can also
     mean that Python metrics stopped arriving. Require both environments.
     """
     services = "|".join(sorted(SERVICES))
+    lookback = min(window_seconds, 86400)  # short reports need same-window evidence
     return (
         "sum by (service_name) (count_over_time("
-        f'chess_studio_http_server_requests_total{{service_name=~"{services}"}}[24h]))'
+        f'chess_studio_http_server_requests_total{{service_name=~"{services}"}}[{lookback}s]))'
     )
 
 
@@ -314,8 +315,9 @@ def self_test() -> int:
     assert rows == [{"environment": "production", "route": "/api/pvp/lobby", "status": "2xx", "requests": 3}], rows
     assert "**3** public PvP requests" in markdown(rows, "14d")
     assert "No public" in markdown([], "14d")
-    control = telemetry_coverage_query()
-    assert '[24h]' in control and 'http_route' not in control
+    control = telemetry_coverage_query(14 * 86400)
+    assert '[86400s]' in control and 'http_route' not in control
+    assert '[3600s]' in telemetry_coverage_query(3600)
     assert 'chess-studio-backend|chess-studio-backend-staging' in control
     healthy = {"data": {"result": [
         {"metric": {"service_name": service}, "value": [0, "12"]}
@@ -481,11 +483,11 @@ def main() -> int:
         # samples establish recent ingestion for both monitored environments.
         control_payload, metrics_uid = query_with_uid_recovery(
             api, metrics_uid, "prometheus", "/api/v1/query",
-            {"query": telemetry_coverage_query(), "time": str(int(time.time()))},
+            {"query": telemetry_coverage_query(window_seconds), "time": str(int(time.time()))},
         )
         verify_telemetry_coverage(control_payload)
         print(json.dumps({"check": "pvp_python_telemetry_coverage", "ok": True,
-                          "lookback": "24h", "services": sorted(SERVICES)},
+                          "lookback_seconds": min(window_seconds, 86400), "services": sorted(SERVICES)},
                          separators=(",", ":"), sort_keys=True))
     report = markdown(rows, args.window)
     print(report)
