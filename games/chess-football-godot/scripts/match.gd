@@ -23,6 +23,9 @@ const TACKLE_CLEAN_HALF_WIDTH := 22.0
 const TACKLE_STEAL_DELAY := 0.20
 const TACKLE_STEAL_POKE_POWER := 220.0
 const TACKLE_LOOSE_POKE_POWER := 310.0
+# A glancing poke leaves a loose ball; neither an instant free steal nor a
+# general post-tackle invulnerability. Every other player can contest it.
+const TACKLE_GLANCING_RECLAIM_DELAY := 0.12
 const SLIDE_TACKLE_FORWARD_BONUS := 26.0
 const SLIDE_TACKLE_HALF_WIDTH_BONUS := 4.0
 const PENALTY_SHOT_POWER := 930.0
@@ -1597,6 +1600,7 @@ func _resolve_tackle_contact(
 	if tackler.velocity.length_squared() > 16.0:
 		lateral = (tackler.velocity.normalized() * 0.70 + lateral * 0.30).normalized()
 	ball.release(lateral, TACKLE_LOOSE_POKE_POWER)
+	ball.block_glancing_reclaim(tackler, TACKLE_GLANCING_RECLAIM_DELAY)
 	return true
 
 func _foul_card_for(hitbox: Dictionary) -> String:
