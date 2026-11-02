@@ -179,14 +179,32 @@ void fragment() {
 	far_stand.material_override = _material(Color(0.024, 0.033, 0.046), 0.96)
 	add_child(far_stand)
 
+	# Separate riser faces from their tread edges. Both remain static and
+	# behind the LED hoardings/crowd; only the visible five levels get detail.
 	for row in range(5):
 		var step := MeshInstance3D.new()
 		var step_mesh := BoxMesh.new()
-		step_mesh.size = Vector3(field_width + 5.5 - row * 0.42, 0.40, 0.64)
+		var tier_width := field_width + 5.5 - float(row) * 0.42
+		step_mesh.size = Vector3(tier_width, 0.40, 0.64)
 		step.mesh = step_mesh
-		step.position = Vector3(0.0, 0.23 + row * 0.39, -field_depth * 0.5 - 1.0 - row * 0.49)
-		step.material_override = _material(Color(0.050 + row * 0.010, 0.057, 0.067), 0.94)
+		var tier_y := 0.23 + float(row) * 0.39
+		var tier_z := -field_depth * 0.5 - 1.0 - float(row) * 0.49
+		step.position = Vector3(0.0, tier_y, tier_z)
+		step.name = "FarStandRiser_%02d" % row
+		step.material_override = _material(
+			Color(0.062 + float(row) * 0.009, 0.083 + float(row) * 0.011, 0.108 + float(row) * 0.012),
+			0.94
+		)
 		add_child(step)
+		# Thin, satin-metal nosing on the exposed front face (towards +Z).
+		# It brings out the stadium's depth without additional lights/shadows.
+		var nosing := _add_box(
+			Vector3(0.0, tier_y + 0.135, tier_z + 0.338),
+			Vector3(tier_width - 0.10, 0.052, 0.035),
+			Color(0.17, 0.25, 0.31) if row % 2 == 0 else Color(0.19, 0.27, 0.33)
+		)
+		nosing.name = "FarStandNosing_%02d" % row
+		nosing.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 
 	_add_ad_panels()
 	_add_crowd()
