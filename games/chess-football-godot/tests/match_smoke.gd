@@ -799,6 +799,55 @@ func _initialize() -> void:
 	assert(match_node.ball.carrier == tackler)
 	print("SMOKE_STAGE=tackle")
 
+	# A glancing tackle should release a contested ball, not silently
+	# teleport possession back to the tackler in the same physics tick.
+	# Only the glancing tackler is briefly blocked: an unrelated teammate
+	# or defender can still pick up a genuinely loose rebound immediately.
+	tackler._process(2.0)
+	victim._process(2.0)
+	tackler.global_position = Vector2(640.0, 500.0)
+	tackler.velocity = Vector2.RIGHT * tackler.base_speed
+	victim.global_position = Vector2(680.0, 530.0)
+	match_node.ball.attach_to(victim)
+	var glancing_contact: Dictionary = match_node.debug_tackle_hitbox(tackler, victim.global_position)
+	assert(bool(glancing_contact["contact"]))
+	assert(not bool(glancing_contact["clean"]))
+	assert(not bool(glancing_contact["foul"]))
+	assert(match_node.debug_try_tackle(tackler))
+	assert(match_node.ball.carrier == null)
+	assert(match_node.ball.reclaim_blocked_for(tackler))
+	assert(match_node.ball.reclaim_blocked_for(victim))
+	var loose_third: Footballer = match_node.teams[0][1]
+	assert(loose_third != tackler)
+	var third_original_position: Vector2 = loose_third.global_position
+	loose_third.global_position = Vector2(100.0, 200.0)
+	match_node.ball.velocity = Vector2.ZERO
+	match_node.ball.global_position = tackler.global_position + Vector2(9.0, 0.0)
+	match_node._try_claim_loose_ball()
+	assert(match_node.ball.carrier == null)
+	loose_third.global_position = match_node.ball.global_position + Vector2(6.0, 0.0)
+	match_node._try_claim_loose_ball()
+	assert(match_node.ball.carrier == loose_third)
+	assert(not match_node.ball.reclaim_blocked_for(tackler))
+	loose_third.global_position = third_original_position
+
+	# A fresh glancing poke restarts its own short block, then expires with
+	# normal ball time. It is not a persistent immunity to lawful recovery.
+	tackler._process(2.0)
+	victim._process(2.0)
+	tackler.global_position = Vector2(640.0, 500.0)
+	tackler.velocity = Vector2.RIGHT * tackler.base_speed
+	victim.global_position = Vector2(680.0, 530.0)
+	match_node.ball.attach_to(victim)
+	assert(match_node.debug_try_tackle(tackler))
+	match_node.ball.velocity = Vector2.ZERO
+	match_node.ball.tick_ball(0.13)
+	assert(not match_node.ball.reclaim_blocked_for(tackler))
+	match_node.ball.global_position = tackler.global_position + Vector2(9.0, 0.0)
+	match_node._try_claim_loose_ball()
+	assert(match_node.ball.carrier == tackler)
+	print("SMOKE_STAGE=glancing-loose-rebound")
+
 	# Pressing tackle slightly early still leaves a short active contact window.
 	# The rival starts outside the capsule, enters it during the animation, and
 	# must be stealable without a second button press.
