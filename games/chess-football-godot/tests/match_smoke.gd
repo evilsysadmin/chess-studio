@@ -11,6 +11,25 @@ func _initialize() -> void:
 	assert(counts == [5, 5])
 	assert(match_node.debug_ball_exists())
 	assert(match_node.debug_pitch_exists())
+	# Pitch-side signage must be game-world geometry with no extra light/shadow
+	# sources, preserving the original hitboxes and both canonical teams.
+	for i in range(12):
+		var panel := match_node.presentation_3d.get_node_or_null(
+			"MatchLedPanel_%02d" % i
+		) as MeshInstance3D
+		var accent := match_node.presentation_3d.get_node_or_null(
+			"MatchLedAccent_%02d" % i
+		) as MeshInstance3D
+		var sign := match_node.presentation_3d.get_node_or_null(
+			"MatchLedSign_%02d" % i
+		) as Label3D
+		assert(panel != null and accent != null and sign != null)
+		assert(panel.cast_shadow == GeometryInstance3D.SHADOW_CASTING_SETTING_OFF)
+		assert(accent.cast_shadow == GeometryInstance3D.SHADOW_CASTING_SETTING_OFF)
+		assert((accent.material_override as StandardMaterial3D).shading_mode ==
+			BaseMaterial3D.SHADING_MODE_UNSHADED)
+		assert(not sign.text.is_empty())
+		assert(not sign.no_depth_test)
 	# The new goal-area paint and penalty arcs are present on BOTH halves;
 	# only 3D meshes, with no new bodies or gameplay geometry.
 	for pitch_side in ["Left", "Right"]:
@@ -847,6 +866,7 @@ func _initialize() -> void:
 	match_node._try_claim_loose_ball()
 	assert(match_node.ball.carrier == tackler)
 	print("SMOKE_STAGE=glancing-loose-rebound")
+
 
 	# Pressing tackle slightly early still leaves a short active contact window.
 	# The rival starts outside the capsule, enters it during the animation, and
