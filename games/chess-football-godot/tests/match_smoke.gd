@@ -11,6 +11,24 @@ func _initialize() -> void:
 	assert(counts == [5, 5])
 	assert(match_node.debug_ball_exists())
 	assert(match_node.debug_pitch_exists())
+	# Decorative grandstand uses instancing, not one mesh/draw call per fan.
+	var crowd_bodies := match_node.presentation_3d.get_node_or_null(
+		"GrandstandCrowdBodies"
+	) as MultiMeshInstance3D
+	var crowd_heads := match_node.presentation_3d.get_node_or_null(
+		"GrandstandCrowdHeads"
+	) as MultiMeshInstance3D
+	var aisle_treads := match_node.presentation_3d.get_node_or_null(
+		"GrandstandAisleTreads"
+	) as MultiMeshInstance3D
+	assert(crowd_bodies != null and crowd_heads != null and aisle_treads != null)
+	assert(crowd_bodies.multimesh.instance_count == 150)
+	assert(crowd_heads.multimesh.instance_count == 150)
+	assert(aisle_treads.multimesh.instance_count == 10)
+	assert(crowd_bodies.multimesh.use_colors and crowd_heads.multimesh.use_colors)
+	for crowd_node in [crowd_bodies, crowd_heads, aisle_treads]:
+		assert(crowd_node.cast_shadow == GeometryInstance3D.SHADOW_CASTING_SETTING_OFF)
+		assert(crowd_node.get_child_count() == 0)
 	# Visual-only netting: one thin line mesh on each goal, never extra collision.
 	for net_name in ["GoalNetLeft", "GoalNetRight"]:
 		var net := match_node.presentation_3d.get_node_or_null(net_name) as MeshInstance3D
