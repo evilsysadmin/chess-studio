@@ -32,17 +32,25 @@ const scopeEnabled = (scope) => REQUESTED_SCOPES.has('all') || REQUESTED_SCOPES.
 
 async function dismissMatthiasSpeech(page) {
   const speech = page.getByRole('region', { name: 'Mensaje de Matthias', exact: true });
-  if (!(await speech.isVisible().catch(() => false))) return;
   const close = speech.getByRole('button', { name: 'Cerrar comentario de Matthias', exact: true });
-  if (await close.isVisible().catch(() => false)) {
-    // Matthias can auto-dismiss while Playwright waits for the button to settle.
-    // Only ignore a detached click when the speech has actually disappeared.
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    if (!(await speech.isVisible().catch(() => false))) return;
+    if (!(await close.isVisible().catch(() => false))) {
+      // The close button can unmount before the speech region finishes exiting.
+      await expect(speech).toBeHidden({ timeout: 1_500 }).catch(() => {});
+      continue;
+    }
     try {
       await close.click({ force: true, timeout: 2_000 });
     } catch (error) {
-      if (await speech.isVisible().catch(() => false)) throw error;
+      if (!(await speech.isVisible().catch(() => false))) return;
+      // Retry only when a re-render detached the button; other click errors are real.
+      if (await close.isVisible().catch(() => false)) throw error;
     }
+    await expect(speech).toBeHidden({ timeout: 1_500 }).catch(() => {});
   }
+  // Never silently ignore a persistent overlay that can block Lab navigation.
+  await expect(speech).toBeHidden({ timeout: 2_000 });
 }
 
 async function openExperiments(page, profileSeed = {}) {
