@@ -20,7 +20,7 @@ export default function FootballManagerDesk({ club, season, standings, onNavigat
         <div>
           <small>Despacho del míster · Liga</small>
           <strong>{club.name}</strong>
-          <span>{season.currentRound} de {season.rounds.length} jornadas disputadas</span>
+          <span>Jornada {season.currentRound} de {season.rounds.length} · Temporada en curso</span>
         </div>
       </header>
       <div className="football-manager-desk__overview">
