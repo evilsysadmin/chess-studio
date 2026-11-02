@@ -219,15 +219,37 @@ func _add_end_stands() -> void:
 	pad_mesh.size = Vector3(0.35, 0.075, 0.32)
 	seat_pads.mesh = pad_mesh
 	seat_pads.instance_count = 2 * 4 * 24
+	# Two shared meshes add occupants to previously empty end stands without
+	# hundreds of individual nodes or extra lighting in the WebGL renderer.
+	var supporter_bodies := MultiMesh.new()
+	supporter_bodies.transform_format = MultiMesh.TRANSFORM_3D
+	supporter_bodies.use_colors = true
+	var supporter_body_mesh := BoxMesh.new()
+	supporter_body_mesh.size = Vector3(0.22, 0.24, 0.20)
+	supporter_bodies.mesh = supporter_body_mesh
+	supporter_bodies.instance_count = seat_pads.instance_count
+	var supporter_heads := MultiMesh.new()
+	supporter_heads.transform_format = MultiMesh.TRANSFORM_3D
+	supporter_heads.use_colors = true
+	var supporter_head_mesh := SphereMesh.new()
+	supporter_head_mesh.radius = 0.080
+	supporter_head_mesh.height = 0.16
+	supporter_head_mesh.radial_segments = 8
+	supporter_head_mesh.rings = 4
+	supporter_heads.mesh = supporter_head_mesh
+	supporter_heads.instance_count = seat_pads.instance_count
 	var seat_id := 0
-	var stand_x := field_width * 0.5 + 2.05
+	# The structural wall must sit BEHIND the upper seating. The old block
+	# overlapped rows 2-4, clipping torsos and leaving floating heads.
+	var stand_x := field_width * 0.5 + 3.30
 	for side_index in range(2):
 		var side := -1.0 if side_index == 0 else 1.0
-		_add_box(
+		var rear_wall := _add_box(
 			Vector3(side * stand_x, 0.82, 0.0),
 			Vector3(2.15, 1.70, field_depth + 1.8),
 			Color(0.025, 0.034, 0.047)
 		)
+		rear_wall.name = "EndStandRearWall_%d" % side_index
 		for row in range(4):
 			var x := side * (field_width * 0.5 + 0.72 + float(row) * 0.42)
 			var height := 0.22 + float(row) * 0.34
@@ -257,8 +279,30 @@ func _add_end_stands() -> void:
 				elif (seat + row + side_index) % 5 == 0:
 					color = Color(0.27, 0.43, 0.58)
 				seat_pads.set_instance_color(seat_id, color)
+				# Bodies rest on the visible seating, and heads keep the far
+				# grandstand's restrained, readable low-poly vocabulary.
+				supporter_bodies.set_instance_transform(
+					seat_id, Transform3D(Basis.IDENTITY, Vector3(x, height + 0.38, z))
+				)
+				supporter_heads.set_instance_transform(
+					seat_id, Transform3D(Basis.IDENTITY, Vector3(x, height + 0.58, z))
+				)
+				var shirt := Color(0.15, 0.37, 0.67) if side_index == 0 else Color(0.51, 0.15, 0.22)
+				if (seat + row * 3) % 9 == 0:
+					shirt = Color(0.73, 0.56, 0.20)
+				elif (seat + row + side_index) % 7 == 0:
+					shirt = Color(0.34, 0.40, 0.47)
+				supporter_bodies.set_instance_color(seat_id, shirt)
+				var skin := Color(0.62, 0.46, 0.33)
+				if (seat + row) % 3 == 0:
+					skin = Color(0.37, 0.29, 0.24)
+				elif (seat + row) % 3 == 2:
+					skin = Color(0.74, 0.59, 0.44)
+				supporter_heads.set_instance_color(seat_id, skin)
 				seat_id += 1
 	_add_crowd_instances("EndStandSeatPads", seat_pads)
+	_add_crowd_instances("EndStandSupporterBodies", supporter_bodies)
+	_add_crowd_instances("EndStandSupporterHeads", supporter_heads)
 
 func _add_far_roof() -> void:
 	var roof_z := -field_depth * 0.5 - 3.70
