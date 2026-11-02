@@ -107,7 +107,7 @@ func _initialize() -> void:
 	assert(event_chyron.position.y >= 100.0)
 	assert(event_chyron.mouse_filter == Control.MOUSE_FILTER_IGNORE)
 	assert(event_chyron.get_theme_stylebox("normal") is StyleBoxFlat)
-	assert(not event_chyron.visible, "Empty announcements must not leave a floating panel")
+	assert(event_chyron.visible == not match_node.last_goal_text.is_empty())
 
 	# Pin a real pre-kickoff tableau: both teams in their own halves and the
 	# selected team standing over the centre spot.
