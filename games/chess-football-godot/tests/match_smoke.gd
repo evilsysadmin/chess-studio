@@ -1530,6 +1530,9 @@ func _initialize() -> void:
 	# Ground rebounds move rapidly enough that chasing their *old* position
 	# makes the primary defender run behind them. Give only the presser and
 	# cover a short bounded forecast, never the whole defensive line.
+	# Previous smoke stages may have elected different loose-ball pressers.
+	match_node.ai_primary_presser_cache = [null, null]
+	match_node.ai_secondary_presser_cache = [null, null]
 	var pursuit_center: Vector2 = ChessFootballMath.PITCH_RECT.get_center()
 	var pursuit_passer: Footballer = match_node.teams[0][4]
 	var pursuit_presser: Footballer = match_node.teams[0][1]
@@ -1576,6 +1579,61 @@ func _initialize() -> void:
 		< 0.01
 	)
 	print("SMOKE_STAGE=loose-ball-defensive-anticipation")
+
+	# Keep defender roles stable when a rolling ball shifts only a little.
+	# A clearly nearer player must still take over, especially in tackle range.
+	var role_center: Vector2 = ChessFootballMath.PITCH_RECT.get_center()
+	var role_passer: Footballer = match_node.teams[0][4]
+	var role_first: Footballer = match_node.teams[0][1]
+	var role_second: Footballer = match_node.teams[0][2]
+	var role_reserve: Footballer = match_node.teams[0][3]
+	match_node._select_player(role_passer)
+	for side in range(2):
+		for actor in match_node.teams[side]:
+			actor.global_position = role_center + Vector2(
+				480.0 + float(actor.squad_index) * 50.0,
+				480.0 + float(side) * 100.0
+			)
+	role_first.global_position = role_center + Vector2(-190.0, 0.0)
+	role_second.global_position = role_center + Vector2(205.0, 0.0)
+	role_reserve.global_position = role_center + Vector2(420.0, 440.0)
+	match_node.ball.attach_to(role_passer)
+	match_node.ball.release(Vector2.RIGHT, 0.0)
+	match_node.ball.global_position = role_center
+	match_node.ball.velocity = Vector2.ZERO
+	match_node.ball.flight_height = 0.0
+	match_node.ball.vertical_velocity = 0.0
+	match_node.ai_primary_presser_cache = [null, null]
+	match_node.ai_secondary_presser_cache = [null, null]
+	assert(match_node._ai_primary_presser(0) == role_first)
+	assert(match_node._ai_secondary_presser(0, role_first) == role_second)
+	# Nearest swaps by 13px, not enough to change either duty.
+	role_first.global_position = role_center + Vector2(-213.0, 0.0)
+	role_second.global_position = role_center + Vector2(200.0, 0.0)
+	assert(match_node._ai_primary_presser(0) == role_first)
+	assert(match_node._ai_secondary_presser(0, role_first) == role_second)
+	# With a real 120px advantage, the second player takes pressing.
+	role_first.global_position = role_center + Vector2(-290.0, 0.0)
+	role_second.global_position = role_center + Vector2(170.0, 0.0)
+	assert(match_node._ai_primary_presser(0) == role_second)
+	assert(match_node._ai_secondary_presser(0, role_second) == role_first)
+	# Near contact, only 14px of tolerance remains: a defender 16px nearer
+	# gets the press rather than keeping the other player 60px away.
+	role_second.global_position = role_center + Vector2(60.0, 0.0)
+	role_first.global_position = role_center + Vector2(-44.0, 0.0)
+	assert(match_node._ai_primary_presser(0) == role_first)
+	assert(match_node._ai_secondary_presser(0, role_first) == role_second)
+	# Switching control must invalidate a previously cached role.
+	match_node._select_player(role_first)
+	assert(match_node._ai_primary_presser(0) == role_second)
+	assert(match_node._ai_secondary_presser(0, role_second) == role_reserve)
+	# When the ball is carried, the loose-ball cache is discarded.
+	match_node.ball.attach_to(role_passer)
+	match_node._ai_primary_presser(0)
+	match_node._ai_secondary_presser(0, role_second)
+	assert(match_node.ai_primary_presser_cache[0] == null)
+	assert(match_node.ai_secondary_presser_cache[0] == null)
+	print("SMOKE_STAGE=stable-defensive-roles")
 
 	print("chess-football godot smoke: OK")
 	quit(0)
