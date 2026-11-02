@@ -1,0 +1,37 @@
+/* Retro manager control strip: original design, not third-party graphics. */
+.chess-football-entry[data-football-view="season"] .chess-football-entry__content { justify-content: flex-start; gap: .65rem; }
+.chess-football-entry[data-football-view="season"] .chess-football-entry__masthead h1 { font-size: clamp(1.6rem, 4vw, 2.15rem); margin: .1rem 0; }
+.chess-football-entry[data-football-view="season"] .chess-football-entry__masthead p { display: none; }
+.chess-football-entry[data-football-view="season"] .chess-football-entry__manager { padding: clamp(.85rem, 2.5vw, 1.45rem); }
+.chess-football-entry[data-football-view="season"] .chess-football-entry__manager h2 { font-size: clamp(1.5rem, 4vw, 2.1rem); margin: .25rem 0 .55rem; }
+.football-manager-desk { overflow: hidden; text-align: left; color: #f4ead4; border: 1px solid #83976c; border-radius: 12px; background: linear-gradient(145deg,#2b4b34,#10251d); box-shadow: inset 0 1px rgba(255,240,184,.16),0 12px 25px rgba(0,0,0,.2); }
+.football-manager-desk__identity { display: flex; align-items: center; gap: .8rem; padding: .75rem .9rem; background: linear-gradient(90deg,#27543d,#173026); border-bottom: 1px solid rgba(240,215,156,.24); }
+.football-manager-desk__crest { flex: 0 0 46px; height: 48px; display: grid; place-items: center; border: 2px solid #dcc48a; border-radius: 10px 10px 17px 17px; color: #f5dba0; background: #0b241b; font: 800 1rem Georgia,serif; }
+.football-manager-desk__identity > div { min-width: 0; display: grid; gap: .1rem; }
+.football-manager-desk__identity small,.football-manager-desk__fixture > small { color: #d3d9a3; font-size: .68rem; font-weight: 800; text-transform: uppercase; letter-spacing: .1em; }
+.football-manager-desk__identity strong { font: 700 1.23rem Georgia,serif; overflow-wrap: anywhere; }
+.football-manager-desk__identity > div > span { color: #cbd8c5; font-size: .76rem; }
+.football-manager-desk__overview { display: grid; grid-template-columns: minmax(0,1.3fr) minmax(0,1fr); gap: .6rem; padding: .75rem; }
+.football-manager-desk__fixture { min-width: 0; padding: .75rem; background: rgba(4,17,15,.57); border: 1px solid rgba(235,211,158,.25); border-radius: 8px; }
+.football-manager-desk__versus { display: flex; align-items: center; justify-content: space-between; gap: .4rem; padding: .65rem 0 .15rem; }
+.football-manager-desk__versus strong { min-width: 0; flex: 1 1 0; font-size: .82rem; line-height: 1.25; overflow-wrap: anywhere; }
+.football-manager-desk__versus strong:last-child { text-align: right; }
+.football-manager-desk__versus b { color: #efd38e; font-size: .75rem; }
+.football-manager-desk__fixture p { margin: .5rem 0 0; color: #d3dfc7; font-size: .79rem; line-height: 1.35; }
+.football-manager-desk__metrics { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); margin: 0; border: 1px solid rgba(235,211,158,.2); border-radius: 8px; background: rgba(7,25,19,.68); }
+.football-manager-desk__metrics > div { min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .55rem; padding: .4rem .15rem; }
+.football-manager-desk__metrics > div + div { border-left: 1px solid rgba(235,211,158,.14); }
+.football-manager-desk__metrics dt { color: #b8d4a6; font-size: .64rem; font-weight: 800; text-transform: uppercase; }
+.football-manager-desk__metrics dd { margin: 0; color: #f8e3a9; font: 750 clamp(1.1rem,3vw,1.6rem) Georgia,serif; font-variant-numeric: tabular-nums; }
+.football-manager-desk__navigation { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: .35rem; padding: 0 .75rem .6rem; }
+.football-manager-desk__navigation button { min-width: 0; min-height: 44px; padding: .5rem .18rem; border: 1px solid rgba(219,225,169,.4); border-radius: 6px; color: #fff5dd; background: linear-gradient(#4b6745,#284c33); font: 750 clamp(.72rem,1.7vw,.85rem) system-ui,sans-serif; cursor: pointer; }
+.football-manager-desk__navigation button:hover { background: #5c7850; }
+.football-manager-desk__navigation button:focus-visible { outline: 3px solid #f3da99; outline-offset: 2px; }
+.football-manager-desk__scope { display: block; padding: 0 .8rem .7rem; color: #b8cbaa; font-size: .7rem; }
+.chess-football-entry__manager--season [data-manager-section] { scroll-margin-top: 1rem; }
+.chess-football-entry__manager--season [data-manager-section]:focus { outline: 2px solid #f3da99; outline-offset: 3px; }
+@media (max-width: 560px) {
+  .football-manager-desk__overview { grid-template-columns: minmax(0,1fr); }
+  .football-manager-desk__metrics { min-height: 72px; }
+  .football-manager-desk__navigation { grid-template-columns: repeat(2,minmax(0,1fr)); }
+}
