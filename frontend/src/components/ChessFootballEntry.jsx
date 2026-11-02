@@ -8,6 +8,7 @@ import { getDevelopedFootballRoster, FOOTBALL_MAX_GROWTH_PER_ATTRIBUTE } from '.
 import { createFootballCareer, editFootballCareer, playFootballCareerRound, startNextFootballSeason, FOOTBALL_CAREER_MAX_SEASONS, readFootballCareer, replayFootballCareer, writeFootballCareer } from '../footballManagerCareer.js';
 import { getFootballClubRoster, getDefaultFootballLineup, FOOTBALL_FIVE_POSITIONS, getFootballFatigue } from '../footballManagerRoster.js';
 import './ChessFootballEntry.css';
+import FootballManagerDesk from './FootballManagerDesk.jsx';
 
 const ChessFootballGodotHost = lazy(() => import('./ChessFootballGodotHost.jsx'));
 
@@ -48,6 +49,16 @@ export default function ChessFootballEntry({ onExit }) {
   const standings = season ? footballStandings(season) : [];
   const objective = season && selectedClubId ? footballClubObjectiveReport(season, selectedClubId) : null;
   const seasonNumber = (journal?.completedSeasons?.length || 0) + 1;
+  const navigateManagerDesk = (area) => {
+    const root = scrollSurface.current;
+    const target = root?.querySelector('[data-manager-section="' + area + '"]')
+      || (area === 'results' && root?.querySelector('[data-manager-section="fixtures"]'))
+      || (area === 'plan' && root?.querySelector('[data-manager-section="objective"]'));
+    if (!target) return;
+    if (area === 'squad') target.querySelector('details')?.setAttribute('open', '');
+    target.scrollIntoView({ block: 'start', behavior: 'auto' });
+    target.focus({ preventScroll: true });
+  };
 
   // Each new room starts at its entrance. Reusing this mounted full-screen
   // scroller otherwise carries a deep standings offset back into Welcome.
@@ -237,7 +248,7 @@ export default function ChessFootballEntry({ onExit }) {
           <section className="chess-football-entry__manager chess-football-entry__manager--season" aria-labelledby="football-season-title">
             <span className="chess-football-entry__eyebrow">Temporada {seasonNumber} de {FOOTBALL_CAREER_MAX_SEASONS} · Carrera del club</span>
             <h2 id="football-season-title">{selectedClub?.name || 'Mi club'}</h2>
-            <p>Jornada {season?.currentRound || 0} de {season?.rounds.length || 10}. Los resultados pertenecen a esta simulación estadística, no a un partido jugado en Godot.</p>
+            <FootballManagerDesk club={selectedClub} season={season} standings={standings} onNavigate={navigateManagerDesk} />
             {careerHistory.length ? (
               <details className="chess-football-entry__history" aria-label="Historial del club">
                 <summary>Archivo de temporadas · {careerHistory.length} {careerHistory.length === 1 ? "completada" : "completadas"}</summary>
@@ -251,7 +262,7 @@ export default function ChessFootballEntry({ onExit }) {
             {saveStatus === 'saved' ? <p className="chess-football-entry__save-state" role="status">Progreso guardado en este dispositivo y pendiente de sincronización del perfil.</p> : null}
             {saveStatus === 'memory' ? <p className="chess-football-entry__career-warning" role="status">El almacenamiento está bloqueado: los cambios sólo están disponibles en esta pestaña.</p> : null}
             {objective ? (
-              <section className="chess-football-entry__objective" aria-label="Objetivo del club">
+              <section className="chess-football-entry__objective" aria-label="Objetivo del club" data-manager-section="objective" tabIndex={-1}>
                 <div className="chess-football-entry__objective-heading">
                   <strong>Objetivo del club · {objective.title}</strong>
                   <span>{objective.statusLabel}</span>
@@ -260,7 +271,7 @@ export default function ChessFootballEntry({ onExit }) {
                 <p className="chess-football-entry__objective-progress">{objective.progress}</p>
               </section>
             ) : null}
-            <table className="chess-football-entry__standings" aria-label="Clasificación de liga">
+            <table className="chess-football-entry__standings" aria-label="Clasificación de liga" data-manager-section="table" tabIndex={-1}>
               <thead><tr><th scope="col">#</th><th scope="col">Club</th><th scope="col">PJ</th><th scope="col">Pts</th></tr></thead>
               <tbody>
                 {standings.map((club, index) => (
@@ -271,7 +282,7 @@ export default function ChessFootballEntry({ onExit }) {
               </tbody>
             </table>
             {season && season.currentRound < season.rounds.length ? (
-              <section className="chess-football-entry__lineup" aria-label="Alineación del míster">
+              <section className="chess-football-entry__lineup" aria-label="Alineación del míster" data-manager-section="squad" tabIndex={-1}>
                 <details>
                   <summary>Preparar quinteto titular</summary>
                   <p>Fútbol 5: portero, defensa, dos medios y delantero. Cada jornada suma 17 puntos de cansancio a los titulares y recupera 22 a los suplentes. La fatiga reduce su rendimiento hasta que roten.</p>
@@ -310,7 +321,7 @@ export default function ChessFootballEntry({ onExit }) {
               </section>
             ) : null}
             {season && season.currentRound < season.rounds.length ? (
-              <section className="chess-football-entry__plan" aria-label="Plan del míster para la próxima jornada">
+              <section className="chess-football-entry__plan" aria-label="Plan del míster para la próxima jornada" data-manager-section="plan" tabIndex={-1}>
                 <h3>Tu planteamiento</h3>
                 <p>Elige cómo afrontará tu club el próximo encuentro. Sólo afecta a tu partido; los demás siguen su simulación normal.</p>
                 <div className="chess-football-entry__plan-options" role="group" aria-label="Táctica del siguiente partido">
@@ -348,14 +359,14 @@ export default function ChessFootballEntry({ onExit }) {
               </section>
             ) : null}
             {season && season.currentRound < season.rounds.length ? (
-              <div className="chess-football-entry__fixture-list" aria-label="Próxima jornada">
+              <div className="chess-football-entry__fixture-list" aria-label="Próxima jornada" data-manager-section="fixtures" tabIndex={-1}>
                 <h3>Próxima jornada</h3>
                 {season.rounds[season.currentRound].map((fixture) => (
                   <p key={fixture.id}>{season.clubs.find((club) => club.id === fixture.homeId)?.name} – {season.clubs.find((club) => club.id === fixture.awayId)?.name}</p>
                 ))}
               </div>
             ) : (
-              <section className="chess-football-entry__lineup" aria-label="Plantilla al cierre">
+              <section className="chess-football-entry__lineup" aria-label="Plantilla al cierre" data-manager-section="squad" tabIndex={-1}>
                 <p>Temporada completada. La clasificación final ya está calculada.</p>
                 <FootballSquadDevelopment players={developedRoster} />
               </section>
@@ -372,7 +383,7 @@ export default function ChessFootballEntry({ onExit }) {
               </section>
             ) : null}
             {season?.results.length ? (
-              <div className="chess-football-entry__fixture-list" aria-label="Resultados de la última jornada">
+              <div className="chess-football-entry__fixture-list" aria-label="Resultados de la última jornada" data-manager-section="results" tabIndex={-1}>
                 <h3>Últimos resultados</h3>
                 {season.results.slice(-3).map((result) => (
                   <p key={result.fixtureId}>
