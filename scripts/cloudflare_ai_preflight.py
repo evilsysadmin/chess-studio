@@ -181,10 +181,18 @@ def static_check() -> list[str]:
         ("Write immutable production accreditation", "staging AI immutable accreditation writer"),
         ("staging_deploy_run_id", "staging AI binds deploy run id"),
         ("staging_ai_run_id", "staging AI binds accreditation run id"),
-        ("actions/upload-artifact@v6", "staging AI accreditation artifact upload"),
+        # Accept supported major upgrades without weakening the accreditation artifact contract.
+        # The action must remain an upload-artifact step; artifact name and ordering are checked separately.
+
         ("staging-promotion-accreditation", "staging AI accreditation artifact name"),
     ):
         require(staging_ai, needle, label, errors)
+    require_pattern(
+        staging_ai,
+        r"(?m)^\s*uses:\s*actions/upload-artifact@v(?:[6-9]|\d{2,})(?:\.\d+)*\s*$",
+        "staging AI accreditation artifact upload (v6+)",
+        errors,
+    )
     if "actions: write" in staging_ai:
         errors.append("staging AI: actions: write ya no está permitido; supersede debe terminar limpio sin mutar Actions")
     for needle, label in (
