@@ -38,6 +38,14 @@ describe('LabScreen experiment hub', () => {
     expect(html).not.toContain('<strong>Pawn Slug</strong>');
   });
 
+  it('offers only the standalone Football portal and explicit legacy export', () => {
+    const html = renderHub();
+    expect(html).toContain('Football of Matthias');
+    expect(html).toContain('Abrir Football');
+    expect(html).toContain('Exportar carrera antigua de Football');
+    expect(html).not.toContain('chess-football-entry');
+  });
+
   it('usa un contrato común con todos los estados de madurez del producto', () => {
     expect(EXPERIMENT_MATURITY_VALUES).toEqual([
       EXPERIMENT_MATURITY.POC,

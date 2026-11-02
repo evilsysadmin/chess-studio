@@ -101,224 +101,6 @@ async function withPawnSlugCapturePage(browser, capture, callback) {
   }
 }
 
-async function withChessFootballCapturePage(browser, capture, callback) {
-  const context = await browser.newContext({
-    viewport: { width: capture.width, height: capture.height },
-    hasTouch: true,
-    isMobile: true,
-  });
-  const page = await context.newPage();
-  try {
-    await page.addInitScript(() => {
-      const nativeMatchMedia = window.matchMedia.bind(window);
-      window.matchMedia = (query) => {
-        if (query !== '(pointer: coarse)') return nativeMatchMedia(query);
-        return {
-          matches: true,
-          media: query,
-          onchange: null,
-          addListener() {},
-          removeListener() {},
-          addEventListener() {},
-          removeEventListener() {},
-          dispatchEvent() { return true; },
-        };
-      };
-      Element.prototype.requestFullscreen = function requestFullscreen() {
-        return Promise.resolve();
-      };
-      try {
-        Object.defineProperty(Screen.prototype, 'orientation', {
-          configurable: true,
-          get() {
-            return {
-              lock() { return Promise.resolve(); },
-              unlock() {},
-            };
-          },
-        });
-      } catch {
-        // The host gate is still deterministic from viewport + coarse pointer.
-      }
-    });
-    const release = '0123456789abcdef';
-    const indexUrl = `https://assets.chess-studio.shadowops.dpdns.org/chess-football-godot/releases/${release}/index.html`;
-    await page.route('**/chess-football-godot/current.json**', (route) => route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({
-        version: 1,
-        release,
-        sourceSha: 'a'.repeat(40),
-        index: indexUrl,
-      }),
-    }));
-    await page.route(indexUrl, (route) => route.fulfill({
-      status: 200,
-      contentType: 'text/html',
-      body: '<!doctype html><html><body style="margin:0;background:#060a07;color:#eee2bd"><main>Chess Football mock runtime</main><script>window.parent.postMessage({source:\"chess-football-godot\",type:\"ready\"},\"*\")</script></body></html>',
-    }));
-    await openExperiments(page);
-    const portal = page.locator('.lab-workshop-portal--football');
-    await expect(portal).toBeVisible();
-    await portal.click();
-    const welcome = page.locator('.chess-football-entry');
-    await expect(welcome).toBeVisible();
-    await expect(page.locator('iframe[title="Chess Football Godot"]')).toHaveCount(0);
-    await expect(welcome.locator('.chess-football-entry__choice')).toHaveCount(2);
-    const welcomeHealth = await welcome.evaluate((node) => ({
-      viewportWidth: node.clientWidth,
-      contentWidth: node.scrollWidth,
-    }));
-    expect(welcomeHealth.contentWidth, 'Football welcome: no horizontal overflow').toBeLessThanOrEqual(welcomeHealth.viewportWidth + 1);
-    const choicesBounds = await welcome.locator('.chess-football-entry__choices').boundingBox();
-    expect(choicesBounds, 'Football welcome: both mode choices visible').not.toBeNull();
-    expect(choicesBounds.y + choicesBounds.height, 'Football welcome: both CTAs fit the first viewport').toBeLessThanOrEqual(capture.height + 1);
-    await captureFrozenFrame(page, {
-      path: `${ARTIFACT_DIR}/chess-football-welcome-${capture.label}.png`,
-      fullPage: true,
-    });
-    await welcome.locator('.chess-football-entry__choice--manager').click();
-    await expect(welcome.locator('.chess-football-entry__club')).toHaveCount(6);
-    await captureFrozenFrame(page, {
-      path: `${ARTIFACT_DIR}/chess-football-clubs-${capture.label}.png`,
-      fullPage: true,
-    });
-    await welcome.getByRole('button', { name: 'Elegir FC Matthias', exact: true }).click();
-    await expect(page.getByRole('heading', { name: 'FC Matthias', exact: true })).toBeVisible();
-    await captureFrozenFrame(page, {
-      path: `${ARTIFACT_DIR}/chess-football-manager-preview-${capture.label}.png`,
-      fullPage: true,
-    });
-    await welcome.getByRole('button', { name: 'Empezar temporada de prueba', exact: true }).click();
-    const desk = welcome.getByLabel('Panel del despacho');
-    await expect(desk).toBeVisible();
-    expect(await welcome.evaluate((node) => node.scrollWidth > node.clientWidth + 1),
-      'Manager desk: no horizontal overflow').toBe(false);
-    // Capture the actual manager surface before scrolling down to league table.
-    await desk.screenshot({
-      path: `${ARTIFACT_DIR}/chess-football-desk-${capture.label}.png`,
-      animations: 'disabled',
-    });
-    const standings = welcome.locator('.chess-football-entry__standings');
-    await expect(standings.locator('tbody tr')).toHaveCount(6);
-    await standings.scrollIntoViewIfNeeded();
-    await captureFrozenFrame(page, {
-      path: `${ARTIFACT_DIR}/chess-football-season-${capture.label}.png`,
-      fullPage: true,
-    });
-    await expect(welcome.getByLabel('Objetivo del club')).toContainText('En disputa');
-    await welcome.getByLabel('Objetivo del club').screenshot({
-      path: `${ARTIFACT_DIR}/chess-football-objective-${capture.label}.png`,
-      animations: 'disabled',
-    });
-    const lineupPanel = welcome.getByLabel('Alineación del míster');
-    await lineupPanel.locator(':scope > details > summary').click();
-    await lineupPanel.getByRole('combobox', { name: 'Titular 5 · DEL' }).selectOption('fc-matthias-del-2');
-    await captureFrozenFrame(page, {
-      path: `${ARTIFACT_DIR}/chess-football-lineup-${capture.label}.png`,
-      fullPage: true,
-    });
-    await lineupPanel.locator(':scope > details > summary').click();
-    const attacking = welcome.getByRole('button', { name: 'Ataque total', exact: true });
-    await attacking.click();
-    await expect(attacking).toHaveAttribute('aria-pressed', 'true');
-    const tacticalOverflow = await welcome.evaluate((node) => node.scrollWidth > node.clientWidth + 1);
-    expect(tacticalOverflow, 'Manager tactical selector: no horizontal overflow').toBe(false);
-    await captureFrozenFrame(page, {
-      path: `${ARTIFACT_DIR}/chess-football-tactics-${capture.label}.png`,
-      fullPage: true,
-    });
-    const training = welcome.getByLabel('Entrenamiento de la jornada');
-    await training.locator('summary').click();
-    await welcome.getByRole('group', { name: 'Plan de entrenamiento' }).getByRole('button', { name: 'Remates' }).click();
-    await captureFrozenFrame(page, {
-      path: `${ARTIFACT_DIR}/chess-football-training-${capture.label}.png`,
-      fullPage: true,
-    });
-    await training.locator('summary').click();
-    await welcome.getByRole('button', { name: 'Simular siguiente jornada', exact: true }).click();
-    await expect(welcome).toContainText('Jornada 1 de 10');
-    await lineupPanel.locator(':scope > details > summary').click();
-    await expect(lineupPanel).toContainText('Fatiga 24%');
-    await expect(lineupPanel.locator('.chess-football-entry__slot-fatigue')).toHaveCount(5);
-    if (capture.portrait) {
-      await lineupPanel.screenshot({
-        path: `${ARTIFACT_DIR}/chess-football-fatigue-${capture.label}.png`,
-        animations: 'disabled',
-      });
-    } else {
-      // A DOM element taller than 390px may produce an unpainted white strip
-      // in headless Chromium's off-viewport element screenshot. Capture the
-      // actual scrolled handset viewport instead of inventing white pixels.
-      await lineupPanel.locator(':scope > details > summary').scrollIntoViewIfNeeded();
-      await page.screenshot({
-        path: `${ARTIFACT_DIR}/chess-football-fatigue-${capture.label}.png`,
-        animations: 'disabled',
-      });
-    }
-    await lineupPanel.locator(':scope > details > summary').click();
-    for (let day = 2; day <= 4; day += 1) {
-      await welcome.getByRole('button', { name: 'Simular siguiente jornada', exact: true }).click();
-    }
-    const development = welcome.getByLabel('Evolución de la plantilla');
-    await lineupPanel.locator(':scope > details > summary').click();
-    await expect(development.locator('summary')).toContainText('5 mejorados');
-    await development.locator('summary').click();
-    await expect(development.locator('li')).toHaveCount(9);
-    const developmentOverflow = await welcome.evaluate(node => node.scrollWidth > node.clientWidth + 1);
-    expect(developmentOverflow, 'Manager development: no horizontal overflow').toBe(false);
-    await captureFrozenFrame(page, {
-      path: `${ARTIFACT_DIR}/chess-football-development-${capture.label}.png`,
-      fullPage: true,
-    });
-    await development.locator('summary').click();
-    await lineupPanel.locator(':scope > details > summary').click();
-    for (let day = 5; day <= 10; day += 1) {
-      await welcome.getByRole('button', { name: 'Simular siguiente jornada', exact: true }).click();
-    }
-    const renewal = welcome.getByLabel('Cierre de temporada');
-    await expect(renewal).toContainText('Temporada 1 completada');
-    await captureFrozenFrame(page, {
-      path: `${ARTIFACT_DIR}/chess-football-renewal-${capture.label}.png`,
-      fullPage: true,
-    });
-    await welcome.getByRole('button', { name: 'Comenzar temporada 2', exact: true }).click();
-    await expect(welcome).toContainText('Temporada 2 de 4');
-    await expect(welcome.getByLabel('Historial del club')).toBeVisible();
-    expect(await welcome.evaluate(node => node.scrollWidth > node.clientWidth + 1),
-      'Manager second season: no horizontal overflow').toBe(false);
-    await captureFrozenFrame(page, {
-      path: `${ARTIFACT_DIR}/chess-football-second-season-${capture.label}.png`,
-      fullPage: true,
-    });
-    await welcome.locator('.chess-football-entry__back').click();
-    await welcome.locator('.chess-football-entry__back').click();
-    await welcome.getByRole('button', { name: 'Volver a elegir modo' }).click();
-    const resume = welcome.getByRole('button', { name: 'Continuar temporada' });
-    await expect(resume).toBeVisible();
-    expect(await welcome.evaluate((node) => node.scrollTop), 'Welcome must reset to its entrance').toBe(0);
-    const resumeBounds = await resume.boundingBox();
-    expect(resumeBounds?.y, 'Resume CTA must be on screen').toBeGreaterThanOrEqual(0);
-    expect(resumeBounds.y + resumeBounds.height, 'Resume CTA visible in first viewport').toBeLessThanOrEqual(capture.height + 1);
-    await captureFrozenFrame(page, {
-      path: `${ARTIFACT_DIR}/chess-football-resume-${capture.label}.png`,
-      fullPage: true,
-    });
-    await resume.click();
-    await expect(welcome).toContainText('Temporada 2 de 4');
-    await expect(welcome).toContainText('Jornada 0 de 10');
-    await welcome.locator('.chess-football-entry__back').click();
-    await welcome.locator('.chess-football-entry__back').click();
-    await welcome.locator('.chess-football-entry__back').click();
-    await welcome.locator('.chess-football-entry__choice--quick').click();
-    await expect(page.locator('.chess-football-godot-host')).toBeVisible();
-    return await callback(page);
-  } finally {
-    await context.close();
-  }
-}
-
 async function captureFrozenFrame(page, options) {
   const style = await page.addStyleTag({
     content: '*, *::before, *::after { animation: none !important; transition: none !important; caret-color: transparent !important; }',
@@ -503,78 +285,24 @@ if (scopeEnabled('landing')) {
 }
 
 if (scopeEnabled('football')) {
-  test('Chess Football · mobile host visual portrait + landscape', async ({ browser }) => {
-    test.setTimeout(90_000);
+  test('Football · standalone portal and legacy career export', async ({ browser }) => {
+    test.setTimeout(120_000);
     await mkdir(ARTIFACT_DIR, { recursive: true });
-
-    const captures = [];
-    const footballCaptures = [
-      { label: 'android-portrait-390x844', width: 390, height: 844, portrait: true },
-      { label: 'android-landscape-844x390', width: 844, height: 390, portrait: false },
-    ];
-
-    for (const capture of footballCaptures) {
-      await withChessFootballCapturePage(browser, capture, async (page) => {
-        const host = page.locator('.chess-football-godot-host');
-        const frame = page.locator('iframe[title="Chess Football Godot"]');
-        await expect(frame).toBeVisible();
-        await expect(host).toHaveAttribute('data-runtime-ready', 'true');
-        await expect(host).toHaveAttribute('data-mobile-portrait', capture.portrait ? 'true' : 'false');
-
-        if (capture.portrait) {
-          await expect(page.getByRole('heading', { name: 'Gira el móvil' })).toBeVisible();
-          await expect(page.getByRole('button', { name: 'Activar apaisado' })).toBeVisible();
-          await expect(page.getByRole('button', { name: 'Salir de Chess Football' })).toBeVisible();
-        } else {
-          await expect(page.getByRole('heading', { name: 'Gira el móvil' })).toHaveCount(0);
-          await expect(page.getByRole('button', { name: 'Salir de Chess Football' })).toBeVisible();
-        }
-
-        const health = await page.evaluate(() => {
-          const root = document.documentElement;
-          const rect = (selector) => {
-            const node = document.querySelector(selector);
-            if (!node) return null;
-            const box = node.getBoundingClientRect();
-            return {
-              left: Number(box.left.toFixed(1)),
-              top: Number(box.top.toFixed(1)),
-              right: Number(box.right.toFixed(1)),
-              bottom: Number(box.bottom.toFixed(1)),
-              width: Number(box.width.toFixed(1)),
-              height: Number(box.height.toFixed(1)),
-            };
-          };
-          return {
-            horizontalOverflow: root.scrollWidth > root.clientWidth + 1,
-            host: rect('.chess-football-godot-host'),
-            portraitGate: rect('.chess-football-godot-host__portrait-gate'),
-            mobileExit: rect('.chess-football-godot-host__mobile-exit'),
-          };
-        });
-        captures.push({ label: capture.label, ...health });
-        expect(health.horizontalOverflow, `${capture.label}: horizontal overflow`).toBe(false);
-        expect(health.host?.width || 0, `${capture.label}: host visible`).toBeGreaterThanOrEqual(capture.width - 1);
-        expect(health.host?.height || 0, `${capture.label}: host height`).toBeGreaterThanOrEqual(capture.height - 1);
-        if (capture.portrait) {
-          expect(health.portraitGate?.width || 0, `${capture.label}: portrait gate visible`).toBeGreaterThan(0);
-        } else {
-          expect(health.mobileExit?.width || 0, `${capture.label}: landscape escape visible`).toBeGreaterThanOrEqual(44);
-          expect(health.mobileExit?.height || 0, `${capture.label}: landscape escape touch target`).toBeGreaterThanOrEqual(44);
-        }
-
-        await captureFrozenFrame(page, {
-          path: `${ARTIFACT_DIR}/chess-football-${capture.label}.png`,
-          fullPage: true,
-        });
+    for (const capture of CAPTURES) {
+      await withCapturePage(browser, capture, async (page) => {
+        const portal = page.locator('.lab-workshop-portal--football');
+        await portal.scrollIntoViewIfNeeded();
+        await expect(portal).toContainText('Football of Matthias');
+        await expect(page.locator('.chess-football-entry, .chess-football-godot-host')).toHaveCount(0);
+        await captureFrozenFrame(page, { path: `${ARTIFACT_DIR}/football-portal-${capture.label}.png`, fullPage: true });
+        const popupPromise = page.waitForEvent('popup');
+        await portal.click();
+        const popup = await popupPromise;
+        await popup.waitForURL('https://staging.football.shadowops.dpdns.org/**');
+        expect(await popup.evaluate(() => window.opener === null)).toBe(true);
+        await popup.close();
       });
     }
-
-    await writeFile(
-      `${ARTIFACT_DIR}/chess-football-visual-health.json`,
-      `${JSON.stringify({ schema: 1, scope: 'football', captures }, null, 2)}\n`,
-      'utf8',
-    );
   });
 }
 

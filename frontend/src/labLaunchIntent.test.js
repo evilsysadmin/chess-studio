@@ -63,7 +63,7 @@ describe('labLaunchIntent', () => {
   });
 
   it('restores each game mode after a reload, and clears it when leaving to the hub', () => {
-    for (const mode of ['chess-football-godot', 'chesscom']) {
+    for (const mode of ['chesscom']) {
       expect(rememberLabMode(mode)).toBe(mode);
       expect(loadRememberedLabMode()).toBe(mode);
     }
@@ -71,9 +71,9 @@ describe('labLaunchIntent', () => {
     expect(loadRememberedLabMode()).toBeNull();
   });
 
-  it('remembers Chess Football across a browser refresh', () => {
-    expect(rememberLabMode('chess-football-godot')).toBe('chess-football-godot');
-    expect(loadRememberedLabMode()).toBe('chess-football-godot');
+  it('returns legacy Football sessions to the hub', () => {
+    expect(rememberLabMode('chess-football-godot')).toBeNull();
+    expect(loadRememberedLabMode()).toBeNull();
   });
 
   it('remembers Pawn Slug Godot across a browser refresh without turning it into a one-shot intent', () => {

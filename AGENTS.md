@@ -6,6 +6,8 @@ Las reglas detalladas viven en los `.md` especializados enlazados aquí. Antes d
 
 ## Contexto básico
 
+- Football **pertenece exclusivamente** a `evilsysadmin/football-of-matthias`; aquí sólo queda el portal externo y la exportación legacy. No reintroducir partido, mánager, arte, runtime o publicador. Ver [`migración Football`](docs/operations/football-migration.md).
+
 - Chronicles of Matthias y Tactics **pertenecen exclusivamente** a `evilsysadmin/chronicles-of-matthias`; aquí solo queda el enlace externo desde Lab. No desarrollar ni reintroducir mapas, arte, runtime, E2E ni workflows del juego en Chess Studio.
 - Los backends Go/Python y datos legados de Chronicles aún pendientes de retirar se tratan **solo como migración controlada** en [#5632](https://github.com/evilsysadmin/chess-studio/issues/5632). Mantener `chronicles_runs` cubierto por borrado de cuenta hasta acreditar su salida.
 - Pawn Slug en Godot es **2D puro**. Sus sprites no usan Blender. Matthias conserva una única escala corporal canónica entre armas; variantes grandes/pequeñas son regresión.
@@ -43,7 +45,7 @@ El contrato de entrega está en [`docs/auto-merge-delivery.md`](docs/auto-merge-
 | Tarea | Documentos que hay que leer |
 | --- | --- |
 | Producto Chess Football / QA visual / futuro modo mánager | [`docs/operations/chess-football-product.md`](docs/operations/chess-football-product.md), [`docs/ci/football-required-merge-gate.md`](docs/ci/football-required-merge-gate.md) |
-| Sprites, frames, atlases o animaciones de Pawn Slug/Godot/Chess Football | [`docs/pawnslug-sprites.md`](docs/pawnslug-sprites.md), [`skills/godot-spritesheets/SKILL.md`](skills/godot-spritesheets/SKILL.md), [`scripts/art/README.md`](scripts/art/README.md), [`frontend/src/assets/pawnSlug/README.md`](frontend/src/assets/pawnSlug/README.md), [`games/chess-football-godot/assets/players/run_canon/README.md`](games/chess-football-godot/assets/players/run_canon/README.md) |
+| Sprites, frames, atlases o animaciones de Pawn Slug/Godot/Chess Football | [`docs/pawnslug-sprites.md`](docs/pawnslug-sprites.md), [`skills/godot-spritesheets/SKILL.md`](skills/godot-spritesheets/SKILL.md), [`scripts/art/README.md`](scripts/art/README.md), [`frontend/src/assets/pawnSlug/README.md`](frontend/src/assets/pawnSlug/README.md) |
 | Pawn Slug runtime, Web export, Playwright smoke o input real | [`skills/pawn-slug-runtime-smoke/SKILL.md`](skills/pawn-slug-runtime-smoke/SKILL.md) |
 | Música / radio de sesión / Pawn Slug OST / composición y mezcla | [`docs/music.md`](docs/music.md), [`skills/pawn-slug-synthwave/SKILL.md`](skills/pawn-slug-synthwave/SKILL.md) |
 | Publicación/migración de assets a R2 | [`docs/r2-asset-publisher.md`](docs/r2-asset-publisher.md), [`docs/r2-assets.md`](docs/r2-assets.md), [`docs/visual-assets-r2-flow.md`](docs/visual-assets-r2-flow.md) |
@@ -120,6 +122,8 @@ El contrato de entrega está en [`docs/auto-merge-delivery.md`](docs/auto-merge-
 
 ### Operaciones y runtime
 
+- [`docs/operations/football-migration.md`](docs/operations/football-migration.md) — ownership externo y carrera legacy.
+
 - [`docs/operations/architecture-ownership.md`](docs/operations/architecture-ownership.md)
 - [`docs/operations/go-migration.md`](docs/operations/go-migration.md) — plan y contrato de la migración strangler de Python a Go.
 - [`docs/operations/tutorials.md`](docs/operations/tutorials.md)
@@ -151,8 +155,6 @@ El contrato de entrega está en [`docs/auto-merge-delivery.md`](docs/auto-merge-
 - [`docs/visual-assets-r2-flow.md`](docs/visual-assets-r2-flow.md)
 - [`frontend/src/assets/pawnSlug/README.md`](frontend/src/assets/pawnSlug/README.md)
 - [`scripts/art/README.md`](scripts/art/README.md)
-- [`games/chess-football-godot/assets/players/keeper_canon_v1/README.md`](games/chess-football-godot/assets/players/keeper_canon_v1/README.md) — porteros 3D canónicos, guantes/gorra, 32 frames y fallback lateral de tres cuartos.
-- [`games/chess-football-godot/assets/players/run_directions_v1/README.md`](games/chess-football-godot/assets/players/run_directions_v1/README.md) — canon adicional de las 32 poses de carrera direccional de Football; conserva intacta la vista lateral.
 
 ### Pawn Slug — contratos de escenario
 
