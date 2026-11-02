@@ -27,6 +27,28 @@ func _initialize() -> void:
 		assert(material.shader == turf_shader and turf_shader != null)
 		assert(material.get_shader_parameter("stripe_color") is Color)
 
+	# End-stand patrons are visual-only. Verify the real renderer has
+	# all 192 bodies and heads, with both terraces outside the pitch.
+	var stand_bodies := match_node.presentation_3d.get_node_or_null(
+		"EndStandSupporterBodies"
+	) as MultiMeshInstance3D
+	var stand_heads := match_node.presentation_3d.get_node_or_null(
+		"EndStandSupporterHeads"
+	) as MultiMeshInstance3D
+	assert(stand_bodies != null and stand_heads != null)
+	assert(stand_bodies.multimesh.instance_count == 192)
+	assert(stand_heads.multimesh.instance_count == 192)
+	assert(stand_bodies.multimesh.use_colors and stand_heads.multimesh.use_colors)
+	assert(stand_bodies.cast_shadow == GeometryInstance3D.SHADOW_CASTING_SETTING_OFF)
+	assert(stand_heads.cast_shadow == GeometryInstance3D.SHADOW_CASTING_SETTING_OFF)
+	assert(stand_bodies.get_child_count() == 0 and stand_heads.get_child_count() == 0)
+	for n in [0, 95, 96, 191]:
+		var body_pos := stand_bodies.multimesh.get_instance_transform(n).origin
+		var head_pos := stand_heads.multimesh.get_instance_transform(n).origin
+		assert(absf(body_pos.x) > match_node.presentation_3d.field_width * 0.5)
+		assert(is_equal_approx(head_pos.y - body_pos.y, 0.20))
+		assert(head_pos.x == body_pos.x and head_pos.z == body_pos.z)
+
 	# Pin a real pre-kickoff tableau: both teams in their own halves and the
 	# selected team standing over the centre spot.
 	match_node.debug_prepare_kickoff(0)
