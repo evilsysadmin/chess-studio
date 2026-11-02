@@ -191,6 +191,15 @@ async function withChessFootballCapturePage(browser, capture, callback) {
       fullPage: true,
     });
     await welcome.getByRole('button', { name: 'Empezar temporada de prueba', exact: true }).click();
+    const desk = welcome.getByLabel('Panel del despacho');
+    await expect(desk).toBeVisible();
+    expect(await welcome.evaluate((node) => node.scrollWidth > node.clientWidth + 1),
+      'Manager desk: no horizontal overflow').toBe(false);
+    // Capture the actual manager surface before scrolling down to league table.
+    await desk.screenshot({
+      path: `${ARTIFACT_DIR}/chess-football-desk-${capture.label}.png`,
+      animations: 'disabled',
+    });
     const standings = welcome.locator('.chess-football-entry__standings');
     await expect(standings.locator('tbody tr')).toHaveCount(6);
     await standings.scrollIntoViewIfNeeded();
