@@ -239,14 +239,17 @@ func _add_end_stands() -> void:
 	supporter_heads.mesh = supporter_head_mesh
 	supporter_heads.instance_count = seat_pads.instance_count
 	var seat_id := 0
-	var stand_x := field_width * 0.5 + 2.05
+	# The structural wall must sit BEHIND the upper seating. The old block
+	# overlapped rows 2-4, clipping torsos and leaving floating heads.
+	var stand_x := field_width * 0.5 + 3.30
 	for side_index in range(2):
 		var side := -1.0 if side_index == 0 else 1.0
-		_add_box(
+		var rear_wall := _add_box(
 			Vector3(side * stand_x, 0.82, 0.0),
 			Vector3(2.15, 1.70, field_depth + 1.8),
 			Color(0.025, 0.034, 0.047)
 		)
+		rear_wall.name = "EndStandRearWall_%d" % side_index
 		for row in range(4):
 			var x := side * (field_width * 0.5 + 0.72 + float(row) * 0.42)
 			var height := 0.22 + float(row) * 0.34
