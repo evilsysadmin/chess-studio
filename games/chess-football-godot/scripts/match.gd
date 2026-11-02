@@ -369,12 +369,27 @@ func _create_hud() -> void:
 	view_label.add_theme_color_override("font_color", Color(1.0, 0.82, 0.35))
 	hud.add_child(view_label)
 
+	# Compact broadcast event chyron. The old full-width yellow headline
+	# obscured the grandstand whenever a kick-off or penalty was announced.
 	goal_label = Label.new()
-	goal_label.position = Vector2(0, 126)
-	goal_label.size = Vector2(1280, 42)
+	goal_label.name = "MatchEventChyron"
+	goal_label.position = Vector2(380, 105)
+	goal_label.size = Vector2(520, 36)
 	goal_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	goal_label.add_theme_font_size_override("font_size", 27)
-	goal_label.add_theme_color_override("font_color", Color(1.0, 0.84, 0.28))
+	goal_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	goal_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	goal_label.add_theme_font_size_override("font_size", 18)
+	goal_label.add_theme_color_override("font_color", Color(1.0, 0.88, 0.57))
+	var event_style := StyleBoxFlat.new()
+	event_style.bg_color = Color(0.012, 0.025, 0.047, 0.91)
+	event_style.border_color = Color(0.70, 0.52, 0.25, 0.79)
+	event_style.set_border_width_all(1)
+	event_style.corner_radius_top_left = 6
+	event_style.corner_radius_top_right = 6
+	event_style.corner_radius_bottom_left = 6
+	event_style.corner_radius_bottom_right = 6
+	goal_label.add_theme_stylebox_override("normal", event_style)
+	goal_label.visible = false
 	hud.add_child(goal_label)
 
 	shot_meter_label = Label.new()
@@ -524,6 +539,7 @@ func _refresh_hud() -> void:
 	var view_name := "BROADCAST 3D" if camera_mode == CAMERA_MODE_BROADCAST else "TÁCTICA AÉREA"
 	view_label.text = "VISTA · %s" % view_name if camera_hint_seconds > 0.0 else ""
 	goal_label.text = last_goal_text
+	goal_label.visible = not last_goal_text.is_empty()
 
 func _handle_human(delta: float) -> void:
 	if Input.is_action_just_pressed("toggle_view"):
