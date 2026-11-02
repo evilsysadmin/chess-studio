@@ -1532,8 +1532,9 @@ func _initialize() -> void:
 	# cover a short bounded forecast, never the whole defensive line.
 	var pursuit_center: Vector2 = ChessFootballMath.PITCH_RECT.get_center()
 	var pursuit_passer: Footballer = match_node.teams[0][4]
-	var pursuit_presser: Footballer = match_node.teams[1][3]
-	var pursuit_cover: Footballer = match_node.teams[1][4]
+	var pursuit_presser: Footballer = match_node.teams[0][1]
+	var pursuit_cover: Footballer = match_node.teams[0][2]
+	assert(not pursuit_presser.sent_off and not pursuit_cover.sent_off)
 	for side in range(2):
 		for athlete in match_node.teams[side]:
 			athlete.global_position = Vector2(
@@ -1549,8 +1550,8 @@ func _initialize() -> void:
 	match_node.ball.global_position = pursuit_center
 	var forecast: Vector2 = pursuit_center + Vector2.RIGHT * match_node.AI_LOOSE_BALL_LEAD_MAX_DISTANCE
 	assert(match_node._ai_loose_ball_pursuit_point().distance_to(forecast) < 0.01)
-	assert(match_node._ai_primary_presser(1) == pursuit_presser)
-	assert(match_node._ai_secondary_presser(1, pursuit_presser) == pursuit_cover)
+	assert(match_node._ai_primary_presser(0) == pursuit_presser)
+	assert(match_node._ai_secondary_presser(0, pursuit_presser) == pursuit_cover)
 	var expected_cover: Vector2 = match_node._ai_cover_target(pursuit_cover, forecast)
 	match_node._update_ai(1.0 / 60.0)
 	assert(pursuit_presser.ai_target.distance_to(forecast) < 0.01)
