@@ -59,6 +59,28 @@ func _initialize() -> void:
 		assert(wall_front_x > absf(body_pos.x) + 0.12,
 			"Rear stadium wall clips the seated supporter")
 
+	# Side-stand architecture must stay behind the spectators and must
+	# never add dynamic lighting, physics or shadows in WebGL.
+	for side_index in range(2):
+		var rim := match_node.presentation_3d.get_node_or_null(
+			"EndStandParapetRim_%d" % side_index
+		) as MeshInstance3D
+		var wall := match_node.presentation_3d.get_node_or_null(
+			"EndStandRearWall_%d" % side_index
+		) as MeshInstance3D
+		assert(rim != null and wall != null)
+		assert(rim.cast_shadow == GeometryInstance3D.SHADOW_CASTING_SETTING_OFF)
+		assert(rim.position.y > wall.position.y)
+		assert((rim.material_override as StandardMaterial3D).shading_mode ==
+			BaseMaterial3D.SHADING_MODE_UNSHADED)
+		for pillar_index in range(7):
+			var pillar := match_node.presentation_3d.get_node_or_null(
+				"EndStandParapetPillar_%d_%d" % [side_index, pillar_index]
+			) as MeshInstance3D
+			assert(pillar != null)
+			assert(pillar.cast_shadow == GeometryInstance3D.SHADOW_CASTING_SETTING_OFF)
+			assert(pillar.get_child_count() == 0)
+
 	# Pin a real pre-kickoff tableau: both teams in their own halves and the
 	# selected team standing over the centre spot.
 	match_node.debug_prepare_kickoff(0)

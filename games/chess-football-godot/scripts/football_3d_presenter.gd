@@ -247,9 +247,31 @@ func _add_end_stands() -> void:
 		var rear_wall := _add_box(
 			Vector3(side * stand_x, 0.82, 0.0),
 			Vector3(2.15, 1.70, field_depth + 1.8),
-			Color(0.025, 0.034, 0.047)
+			Color(0.045, 0.067, 0.089)
 		)
 		rear_wall.name = "EndStandRearWall_%d" % side_index
+		# Thin architectural accents are unshaded surfaces, NOT real floodlights.
+		# Place them on the field-facing edge of the back wall, behind every
+		# spectator row so the crowd remains the star of the corner camera.
+		var wall_face_x := side * (stand_x - 1.10)
+		var rim := _add_box(
+			Vector3(wall_face_x, 1.71, 0.0),
+			Vector3(0.065, 0.075, field_depth + 1.62),
+			Color(0.26, 0.63, 0.77) if side_index == 0 else Color(0.77, 0.43, 0.32)
+		)
+		rim.name = "EndStandParapetRim_%d" % side_index
+		rim.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		var rim_material := rim.material_override as StandardMaterial3D
+		rim_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		for pillar_index in range(7):
+			var z := lerpf(-field_depth * 0.43, field_depth * 0.43, float(pillar_index) / 6.0)
+			var pillar := _add_box(
+				Vector3(wall_face_x, 1.00, z),
+				Vector3(0.070, 1.34, 0.15),
+				Color(0.16, 0.23, 0.27)
+			)
+			pillar.name = "EndStandParapetPillar_%d_%d" % [side_index, pillar_index]
+			pillar.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		for row in range(4):
 			var x := side * (field_width * 0.5 + 0.72 + float(row) * 0.42)
 			var height := 0.22 + float(row) * 0.34
