@@ -32,26 +32,40 @@ const scopeEnabled = (scope) => REQUESTED_SCOPES.has('all') || REQUESTED_SCOPES.
 
 async function dismissMatthiasSpeech(page) {
   const speech = page.getByRole('region', { name: 'Mensaje de Matthias', exact: true });
-  const close = speech.getByRole('button', { name: 'Cerrar comentario de Matthias', exact: true });
-  for (let attempt = 0; attempt < 3; attempt += 1) {
+  for (let attempt = 0; attempt < 5; attempt += 1) {
     if (!(await speech.isVisible().catch(() => false))) return;
-    if (!(await close.isVisible().catch(() => false))) {
-      // The close button can unmount before the speech region finishes exiting.
-      await expect(speech).toBeHidden({ timeout: 1_500 }).catch(() => {});
-      continue;
-    }
-    try {
-      await close.click({ force: true, timeout: 2_000 });
-    } catch (error) {
-      if (!(await speech.isVisible().catch(() => false))) return;
-      // Retry only when a re-render detached the button; other click errors are real.
-      if (await close.isVisible().catch(() => false)) throw error;
-    }
-    await expect(speech).toBeHidden({ timeout: 1_500 }).catch(() => {});
+    // Visual capture setup: dispatch the real DOM button click synchronously.
+    // Playwright's actionability wait can outlive a Matthias re-render and
+    // time out while the speech region is still transitioning.
+    const state = await page.evaluate(() => {
+      const bubble = document.querySelector('.illustrated-home__speech[aria-label="Mensaje de Matthias"]');
+      if (!bubble) return 'gone';
+      const close = bubble.querySelector('button[aria-label="Cerrar comentario de Matthias"]');
+      if (!close) return 'pending';
+      close.click();
+      return 'clicked';
+    });
+    if (state === 'gone') return;
+    await expect(speech).toBeHidden({ timeout: 600 }).catch(() => {});
   }
-  // Never silently ignore a persistent overlay that can block Lab navigation.
-  await expect(speech).toBeHidden({ timeout: 2_000 });
+  // A persistent speech bubble with no working close button is a real failure.
+  await expect(speech).toBeHidden({ timeout: 1_500 });
 }
+
+test('Matthias visual setup waits for a transiently missing close button', async ({ page }) => {
+  await page.setContent('<section class="illustrated-home__speech" role="region" aria-label="Mensaje de Matthias"></section>');
+  await page.evaluate(() => {
+    const bubble = document.querySelector('.illustrated-home__speech');
+    setTimeout(() => {
+      const close = document.createElement('button');
+      close.setAttribute('aria-label', 'Cerrar comentario de Matthias');
+      close.addEventListener('click', () => bubble.remove());
+      bubble.append(close);
+    }, 150);
+  });
+  await dismissMatthiasSpeech(page);
+  await expect(page.getByRole('region', { name: 'Mensaje de Matthias', exact: true })).toHaveCount(0);
+});
 
 async function openExperiments(page, profileSeed = {}) {
   await mockApi(page, {
