@@ -263,7 +263,7 @@ if (checkCiWiring) {
 
   const backendAggregateBlock = jobBlock('backend');
   for (const marker of [
-    'actions/setup-go@v6',
+    'actions/setup-go@v7',
     "PVP_MONGO_TEST_REQUIRED: '1'",
     'go test -race -short ./...',
     "if: needs.preflight.outputs.run_go_parity == 'true'",
