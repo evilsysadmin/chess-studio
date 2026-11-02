@@ -42,7 +42,7 @@ describe('LabScreen experiment hub', () => {
     const html = renderHub();
     expect(html).toContain('Football of Matthias');
     expect(html).toContain('Abrir Football');
-    expect(html).toContain('Exportar carrera antigua de Football');
+    expect(html).not.toContain('lab-football-export');
     expect(html).not.toContain('chess-football-entry');
   });
 

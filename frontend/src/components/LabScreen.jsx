@@ -9,9 +9,10 @@ import PreferredBoard from './PreferredBoard.jsx';
 import GlossaryTerm from './GlossaryTerm.jsx';
 import MechanicTutorialHelp from './MechanicTutorialHelp.jsx';
 import { openChroniclesStandalone } from '../labChroniclesLink.js';
-import { FOOTBALL_STAGING_URL, exportLegacyFootballCareer } from '../labFootballLink.js';
+import { FOOTBALL_STAGING_URL, exportLegacyFootballCareer, legacyFootballCareerJson } from '../labFootballLink.js';
 import { requestChesscomLandscapeOnEntry } from './chesscomLandscape.js';
 import './LabScreen.css';
+import './LabFootballLink.css';
 import './LabArcade.css';
 import './LabWorkshop.css';
 import './LabWorkshopHotfix.css';
@@ -49,6 +50,7 @@ export default function LabScreen({ onExit, onStart }){
   const [fullmove,setFullmove]=useState(initial.fullmove);
   const [difficulty,setDifficulty]=useState(50);
   const [error,setError]=useState('');
+  const hasLegacyFootballCareer = Boolean(legacyFootballCareerJson());
 
   useEffect(() => {
     if (labMode !== 'hub') rememberLabMode(labMode);
@@ -127,6 +129,8 @@ export default function LabScreen({ onExit, onStart }){
   return <div className={`menu tournament-panel lab-screen ${labMode==='position'?'lab-screen--position':''}`}>
     <button className="back-link" onClick={labMode==='hub'?onExit:()=>setLabMode('hub')}>← {labMode==='hub'?'Volver al menú':'Experimentos geniales'}</button>
 
+    {labMode==='hub' && hasLegacyFootballCareer && <button type="button" className="back-link lab-football-export" onClick={exportLegacyFootballCareer}>Exportar carrera antigua de Football</button>}
+
     {labMode==='hub' ? (
       <div className="lab-workshop" style={{ width: '100%' }}>
         <img className="lab-workshop-art" src={experimentsRoomCanonical} alt="" aria-hidden="true" />
@@ -188,9 +192,6 @@ export default function LabScreen({ onExit, onStart }){
             </button>
           </div>
         </section>
-
-        <button type="button" className="back-link" onClick={()=>{ if (!exportLegacyFootballCareer()) setError('No hay una carrera antigua de Football para exportar en este navegador.'); }}>Exportar carrera antigua de Football</button>
-        {error && <p role="status">{error}</p>}
 
         <section className="lab-workshop-wing lab-workshop-wing--ops" style={{ zIndex: 'auto' }} aria-labelledby="lab-ops-title">
           <div className="lab-workshop-wing-copy">

@@ -37,11 +37,12 @@ async function dismissMatthiasSpeech(page) {
   if (await close.isVisible().catch(() => false)) await close.click({ force: true });
 }
 
-async function openExperiments(page) {
+async function openExperiments(page, profileSeed = {}) {
   await mockApi(page, {
     profileSeed: {
       'matthias.onboarded': '2',
       'chess-study-home-guide-dismissed-v1': '1',
+      ...profileSeed,
     },
     // Fresh first-person runs now start in the authored Swordhaven settlement.
     chroniclesCurrentMapId: 'swordhaven-square',
@@ -56,7 +57,7 @@ async function openExperiments(page) {
   await expect(page.getByRole('heading', { name: 'Experimentos geniales', exact: true })).toBeVisible();
 }
 
-async function withCapturePage(browser, capture, callback) {
+async function withCapturePage(browser, capture, callback, profileSeed = {}) {
   const context = await browser.newContext({
     viewport: { width: capture.width, height: capture.height },
     hasTouch: capture.hasTouch,
@@ -64,7 +65,7 @@ async function withCapturePage(browser, capture, callback) {
   });
   const page = await context.newPage();
   try {
-    await openExperiments(page);
+    await openExperiments(page, profileSeed);
     return await callback(page);
   } finally {
     await context.close();
@@ -301,7 +302,11 @@ if (scopeEnabled('football')) {
         await popup.waitForURL('https://staging.football.shadowops.dpdns.org/**');
         expect(await popup.evaluate(() => window.opener === null)).toBe(true);
         await popup.close();
-      });
+        const downloadPromise = page.waitForEvent('download');
+        await page.getByRole('button', {name:'Exportar carrera antigua de Football',exact:true}).click();
+        const download = await downloadPromise;
+        expect(download.suggestedFilename()).toBe('football-carrera.json');
+      }, { 'chess-study-football-manager-career-v1': JSON.stringify({version:4,clubId:'fc-matthias',initialSeed:2026,seed:2026,completedSeasons:[],rounds:[],legacyRounds:0,nextTactic:'balanced',nextTraining:'standard',nextLineup:['fc-matthias-por-1','fc-matthias-def-1','fc-matthias-med-1','fc-matthias-med-2','fc-matthias-del-1']}) });
     }
   });
 }
