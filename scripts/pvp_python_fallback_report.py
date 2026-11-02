@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import os
 import sys
 import time
@@ -53,6 +54,44 @@ def fallback_query(window_seconds: int) -> str:
         "sum by (service_name, http_route, http_response_status_class) "
         f"(increase(chess_studio_http_server_requests_total{{{selector}}}[{window_seconds}s]))"
     )
+
+
+def telemetry_coverage_query(window_seconds: int) -> str:
+    """Recent *Python* HTTP samples prove the fallback metric pipeline is alive.
+
+    A healthy Grafana query with no /api/pvp series is not enough: it can also
+    mean that Python metrics stopped arriving. Require both environments.
+    """
+    services = "|".join(sorted(SERVICES))
+    lookback = min(window_seconds, 86400)  # short reports need same-window evidence
+    return (
+        "sum by (service_name) (count_over_time("
+        f'chess_studio_http_server_requests_total{{service_name=~"{services}"}}[{lookback}s]))'
+    )
+
+
+def verify_telemetry_coverage(payload: dict) -> None:
+    data = payload.get("data") if isinstance(payload, dict) else None
+    result = data.get("result") if isinstance(data, dict) else None
+    if not isinstance(result, list):
+        fail("cannot attest zero PvP fallback: invalid Python telemetry control response")
+    seen = set()
+    for item in result:
+        metric = item.get("metric") if isinstance(item, dict) else None
+        value = item.get("value") if isinstance(item, dict) else None
+        service = metric.get("service_name") if isinstance(metric, dict) else None
+        if service not in SERVICES or not isinstance(value, list) or len(value) != 2:
+            fail("cannot attest zero PvP fallback: malformed Python telemetry control series")
+        try:
+            samples = float(value[1])
+        except (TypeError, ValueError):
+            fail("cannot attest zero PvP fallback: invalid Python telemetry sample count")
+        if not math.isfinite(samples) or samples <= 0:
+            fail("cannot attest zero PvP fallback: missing recent Python telemetry samples")
+        seen.add(service)
+    missing = sorted(set(SERVICES) - seen)
+    if missing:
+        fail("cannot attest zero PvP fallback: no Python HTTP metric samples in 24h for " + ", ".join(missing))
 
 
 def parse_rows(payload: dict) -> list[dict]:
@@ -276,6 +315,30 @@ def self_test() -> int:
     assert rows == [{"environment": "production", "route": "/api/pvp/lobby", "status": "2xx", "requests": 3}], rows
     assert "**3** public PvP requests" in markdown(rows, "14d")
     assert "No public" in markdown([], "14d")
+    control = telemetry_coverage_query(14 * 86400)
+    assert '[86400s]' in control and 'http_route' not in control
+    assert '[3600s]' in telemetry_coverage_query(3600)
+    assert 'chess-studio-backend|chess-studio-backend-staging' in control
+    healthy = {"data": {"result": [
+        {"metric": {"service_name": service}, "value": [0, "12"]}
+        for service in SERVICES
+    ]}}
+    verify_telemetry_coverage(healthy)
+    for missing_payload in (
+        {"data": {"result": []}},
+        {"data": {"result": healthy["data"]["result"][:1]}},
+        {"data": {"result": [
+            {"metric": {"service_name": service}, "value": [0, "NaN"]}
+            for service in SERVICES
+        ]}},
+        {"data": {"result": "not-a-vector"}},
+    ):
+        try:
+            verify_telemetry_coverage(missing_payload)
+        except SystemExit as exc:
+            assert "cannot attest zero PvP fallback" in str(exc)
+        else:
+            raise AssertionError("missing or invalid telemetry must fail closed")
     bq = breakdown_query("chess-studio-backend-staging", 86400)
     assert 'route=~"/api/pvp.*"' in bq and "username" not in bq and "client_ip" not in bq
     brows = breakdown_rows({"data": {"result": [
@@ -415,6 +478,17 @@ def main() -> int:
         {"query": fallback_query(window_seconds), "time": str(int(time.time()))},
     )
     rows = parse_rows(payload)
+    if not rows:
+        # Empty PvP series are ambiguous until independent non-PvP Python HTTP
+        # samples establish recent ingestion for both monitored environments.
+        control_payload, metrics_uid = query_with_uid_recovery(
+            api, metrics_uid, "prometheus", "/api/v1/query",
+            {"query": telemetry_coverage_query(window_seconds), "time": str(int(time.time()))},
+        )
+        verify_telemetry_coverage(control_payload)
+        print(json.dumps({"check": "pvp_python_telemetry_coverage", "ok": True,
+                          "lookback_seconds": min(window_seconds, 86400), "services": sorted(SERVICES)},
+                         separators=(",", ":"), sort_keys=True))
     report = markdown(rows, args.window)
     print(report)
     print(json.dumps({"check": "pvp_python_fallback", "window": args.window,
