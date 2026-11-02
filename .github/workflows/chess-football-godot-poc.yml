@@ -36,6 +36,8 @@ jobs:
         uses: ./.github/actions/setup-browser-e2e
         with: {browser-scope: chromium, build-frontend: 'true'}
       - name: Verify dedicated source, deployed release and retired inline owner
+        env:
+          GH_TOKEN: ${{ github.token }}
         if: steps.scope.outputs.affected == 'true'
         run: |
           set -euo pipefail
@@ -44,11 +46,12 @@ jobs:
           test ! -e frontend/src/footballManagerCareer.js
           curl -fLsS https://staging.football.shadowops.dpdns.org/release.json -o /tmp/football-release.json
           python3 - <<'PY'
-          import json,re,urllib.request
+          import json,os,re,urllib.request
           r=json.load(open('/tmp/football-release.json'))
           assert r['application']=='football-of-matthias' and r['environment']=='staging'
           assert re.fullmatch('[a-f0-9]{40}',r['source_sha'])
-          source=json.load(urllib.request.urlopen('https://api.github.com/repos/evilsysadmin/football-of-matthias/commits/'+r['source_sha']))
+          request=urllib.request.Request('https://api.github.com/repos/evilsysadmin/football-of-matthias/commits/'+r['source_sha'],headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
+          source=json.load(urllib.request.urlopen(request,timeout=20))
           assert source['sha']==r['source_sha']
           assert r['runtime']['sourceSha']==r['source_sha']
           print('FOOTBALL_DEDICATED_RELEASE_VERIFIED source_sha='+r['source_sha'])
