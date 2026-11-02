@@ -234,8 +234,12 @@ test('Chess Football manager can simulate ten reproducible matchdays without loa
   await expect(season).toContainText('Jornada 0 de 10');
   await expect(page.getByLabel('Objetivo del club')).toContainText('Conquistar la liga');
   await expect(page.getByLabel('Objetivo del club')).toContainText('En disputa');
+  const desk = season.getByLabel('Panel del despacho');
+  await expect(desk.getByLabel('Próximo partido del club')).toContainText('FC Matthias');
+  await expect(desk.getByLabel('Situación en liga')).toContainText('Posición');
   const lineupPanel = page.getByLabel('Alineación del míster');
-  await lineupPanel.locator(':scope > details > summary').click();
+  await desk.getByRole('navigation', { name: 'Secciones del despacho' }).getByRole('button', { name: 'Plantilla' }).click();
+  await expect(lineupPanel.locator(':scope > details')).toHaveAttribute('open', '');
   await lineupPanel.getByRole('combobox', { name: 'Titular 5 · DEL' }).selectOption('fc-matthias-del-2');
   await expect(lineupPanel.getByRole('combobox', { name: 'Titular 5 · DEL' })).toHaveValue('fc-matthias-del-2');
   const tactics = page.getByRole('group', { name: 'Táctica del siguiente partido' });
