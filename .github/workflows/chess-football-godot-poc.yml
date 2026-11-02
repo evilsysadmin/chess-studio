@@ -208,6 +208,21 @@ jobs:
             exit 1
           fi
           grep -q 'chess-football godot smoke: OK' "$log"
+      - name: Full-match endurance smoke (90s simulated)
+        shell: bash
+        run: |
+          set -euo pipefail
+          godot="$GITHUB_WORKSPACE/.godot-ci/$GODOT_VERSION/godot"
+          log="$RUNNER_TEMP/chess-football-endurance.log"
+          set +e
+          timeout 80s "$godot" --headless --quit-after 12000 --path games/chess-football-godot --script res://tests/match_endurance_smoke.gd 2>&1 | tee "$log"
+          status=${PIPESTATUS[0]}
+          set -e
+          if [[ "$status" -ne 0 ]] || grep -Eq 'SCRIPT ERROR:|Assertion failed|ERROR: Failed to load script|Parse Error:' "$log"; then
+            echo '::error::Chess Football 90s live-match endurance regression.'
+            exit 1
+          fi
+          grep -q 'MATCH_ENDURANCE_90S_OK' "$log"
       - name: Wide pitch and lane spacing smoke
         shell: bash
         run: |
