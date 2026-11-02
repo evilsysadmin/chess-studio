@@ -11,6 +11,25 @@ func _initialize() -> void:
 	assert(counts == [5, 5])
 	assert(match_node.debug_ball_exists())
 	assert(match_node.debug_pitch_exists())
+	# Pitch-side signage must be game-world geometry with no extra light/shadow
+	# sources, preserving the original hitboxes and both canonical teams.
+	for i in range(12):
+		var panel := match_node.presentation_3d.get_node_or_null(
+			"MatchLedPanel_%02d" % i
+		) as MeshInstance3D
+		var accent := match_node.presentation_3d.get_node_or_null(
+			"MatchLedAccent_%02d" % i
+		) as MeshInstance3D
+		var sign := match_node.presentation_3d.get_node_or_null(
+			"MatchLedSign_%02d" % i
+		) as Label3D
+		assert(panel != null and accent != null and sign != null)
+		assert(panel.cast_shadow == GeometryInstance3D.SHADOW_CASTING_SETTING_OFF)
+		assert(accent.cast_shadow == GeometryInstance3D.SHADOW_CASTING_SETTING_OFF)
+		assert((accent.material_override as StandardMaterial3D).shading_mode ==
+			BaseMaterial3D.SHADING_MODE_UNSHADED)
+		assert(not sign.text.is_empty())
+		assert(not sign.no_depth_test)
 	# End terraces use instanced seating and visible shadow-free railings,
 	# avoiding many individual per-seat meshes even at full pitch depth.
 	var end_seats := match_node.presentation_3d.get_node_or_null(
