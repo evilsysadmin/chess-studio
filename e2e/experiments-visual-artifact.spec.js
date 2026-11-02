@@ -53,7 +53,7 @@ async function dismissMatthiasSpeech(page) {
 }
 
 test('Matthias visual setup waits for a transiently missing close button', async ({ page }) => {
-  await page.setContent('<section class="illustrated-home__speech" role="region" aria-label="Mensaje de Matthias"></section>');
+  await page.setContent('<section class="illustrated-home__speech" role="region" aria-label="Mensaje de Matthias">Comentario visible de Matthias</section>');
   await page.evaluate(() => {
     const bubble = document.querySelector('.illustrated-home__speech');
     setTimeout(() => {
