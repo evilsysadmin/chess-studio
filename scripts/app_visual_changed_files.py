@@ -18,7 +18,7 @@ MATTHIAS_MODEL = "frontend/public/models/matthias-home-canonical.glb"
 MATTHIAS_BLEND = "frontend/art-source/matthias-home-canonical.blend"
 CHRONICLES_BOOTSTRAP_OWNER = "frontend/src/chronicles/chroniclesGameBootstrap.js"
 FOOTBALL_PROFILE_REGISTRY = "frontend/src/profileKeys.js"
-FOOTBALL_MANAGER_VISUAL_OWNER = "frontend/src/footballManagerCareer.js"
+FOOTBALL_MANAGER_VISUAL_OWNER = "frontend/src/components/LabScreen.jsx"
 # Exact registry-only addition: changes elsewhere in profileKeys fail closed
 # into the full canonical visual suite as before.
 NONVISUAL_FOOTBALL_REGISTRY_LINES = {"'chess-study-football-manager-career-v1',"}
@@ -54,7 +54,7 @@ NONVISUAL_CHRONICLES_SAVE_BOOTSTRAP_LINES = {
 }
 
 PAWN_SLUG_OWNER = "frontend/src/components/PawnSlugGodotHost.jsx"
-CHESS_FOOTBALL_OWNER = "frontend/src/components/ChessFootballGodotHost.jsx"
+CHESS_FOOTBALL_OWNER = "frontend/src/components/LabScreen.jsx"
 CHESS_FOOTBALL_GAME_ROOT = "games/chess-football-godot/"
 PAWN_SLUG_POW_MODEL = "frontend/public/models/pawn-slug/pawn_slug_pow_squad_v1.glb"
 PAWN_SLUG_POW_BLEND = "art/blender/pawn-slug/pawn_slug_pow_squad_v1.blend"

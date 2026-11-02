@@ -59,8 +59,8 @@
     "authority": "backend:/api/features",
     "recovery": "frontend:defaults"
   },
-  "footballManagerCareer": {
-    "authority": "profileStorage:chess-study-football-manager-career-v1",
+  "legacyFootballCareerExport": {
+    "authority": "legacy-export-only:chess-study-football-manager-career-v1",
     "recovery": null
   }
 }

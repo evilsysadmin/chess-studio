@@ -143,9 +143,6 @@ LANE_COMMANDS: dict[str, tuple[LaneCommand, ...]] = {
             ('--grep', HOME_WEBGL_GREP, '--workers=1', '--retries=0', '--max-failures=1', '--timeout=45000'),
             canonical_critical=False,
         ),
-        # New R2 current.json must not tear down an in-flight Godot iframe:
-        # the same browser session continues on A while a new one chooses B.
-        LaneCommand('godot-release-continuity.spec.js', ('--workers=1', '--retries=0', '--max-failures=1')),
         # Keep the opt-in GPU timing suite local, but exercise its persisted
         # auth/Home bootstrap in the ordinary hosted Chromium smoke gate.
         LaneCommand('war-room-gpu-session-bootstrap.spec.js',
@@ -247,7 +244,7 @@ def self_test() -> None:
     assert LANE_COMMANDS['home'][2].grep == HOME_WEBGL_GREP
     assert [command.spec for command in LANE_COMMANDS['smoke']] == [
         'smoke.spec.js', 'feedback-draft-recovery.spec.js', 'combat-critical.spec.js', 'combat-critical.spec.js', 'mobile-final-interactions.spec.js',
-        'browser-runtime-health.spec.js', 'godot-release-continuity.spec.js', 'war-room-gpu-session-bootstrap.spec.js',
+        'browser-runtime-health.spec.js', 'war-room-gpu-session-bootstrap.spec.js',
         'home-3d-draw-census.spec.js', 'home-3d-fallback-readiness.spec.js', 'home-android-composition.spec.js',
     ]
     assert LANE_COMMANDS['smoke'][1].canonical_critical is False
@@ -256,6 +253,8 @@ def self_test() -> None:
     assert LANE_COMMANDS['smoke'][5].grep == HOME_WEBGL_GREP
     assert LANE_COMMANDS['smoke'][5].canonical_critical is False
     assert LANE_COMMANDS['smoke'][-1].canonical_critical is False
+    # Football Godot continuity belongs to football-of-matthias after the portal cutover.
+    assert all('godot-release-continuity' not in command.spec for command in LANE_COMMANDS['smoke'])
     assert '--timeout=150000' in LANE_COMMANDS['smoke'][-4].args
     assert '--timeout=180000' in LANE_COMMANDS['smoke'][-3].args
     assert '--timeout=135000' in LANE_COMMANDS['smoke'][-2].args

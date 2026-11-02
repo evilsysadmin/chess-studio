@@ -1,9 +1,9 @@
 import { STORAGE_SESSION, getStorageItem, removeStorageItem, setStorageItem } from './safeStorage.js';
 
 const LAB_LAUNCH_MODES = new Set(['pawnslug-godot']);
-// Chronicles and Tactics open their own site, so a session that remembered
+// Football, Chronicles and Tactics open their own site, so a session that remembered
 // them falls back to the Lab hub.
-const LAB_REMEMBERED_MODES = new Set(['pawnslug-godot', 'chess-football-godot', 'chesscom']);
+const LAB_REMEMBERED_MODES = new Set(['pawnslug-godot', 'chesscom']);
 const LAB_MODE_ALIASES = new Map([
   ['pawnslug', 'pawnslug-godot'],
 ]);

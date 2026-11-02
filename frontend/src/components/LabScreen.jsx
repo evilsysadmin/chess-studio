@@ -9,8 +9,10 @@ import PreferredBoard from './PreferredBoard.jsx';
 import GlossaryTerm from './GlossaryTerm.jsx';
 import MechanicTutorialHelp from './MechanicTutorialHelp.jsx';
 import { openChroniclesStandalone } from '../labChroniclesLink.js';
+import { FOOTBALL_STAGING_URL, exportLegacyFootballCareer, legacyFootballCareerJson } from '../labFootballLink.js';
 import { requestChesscomLandscapeOnEntry } from './chesscomLandscape.js';
 import './LabScreen.css';
+import './LabFootballLink.css';
 import './LabArcade.css';
 import './LabWorkshop.css';
 import './LabWorkshopHotfix.css';
@@ -19,7 +21,6 @@ import './LabWorkshopMobile.css';
 const ArenaExperiment = lazy(() => import('./ArenaExperiment.jsx'));
 const PawnTrailblazer = lazy(() => import('./PawnTrailblazer.jsx'));
 const PawnSlugGodotHost = lazy(() => import('./PawnSlugGodotHost.jsx'));
-const ChessFootballEntry = lazy(() => import('./ChessFootballEntry.jsx'));
 const Chesscom = lazy(() => import('./Chesscom.jsx'));
 
 const GLYPH={K:'♔',Q:'♕',R:'♖',B:'♗',N:'♘',P:'♙',k:'♚',q:'♛',r:'♜',b:'♝',n:'♞',p:'♟','':''};
@@ -49,6 +50,7 @@ export default function LabScreen({ onExit, onStart }){
   const [fullmove,setFullmove]=useState(initial.fullmove);
   const [difficulty,setDifficulty]=useState(50);
   const [error,setError]=useState('');
+  const hasLegacyFootballCareer = Boolean(legacyFootballCareerJson());
 
   useEffect(() => {
     if (labMode !== 'hub') rememberLabMode(labMode);
@@ -63,7 +65,7 @@ export default function LabScreen({ onExit, onStart }){
     setLabMode(mode);
   }), []);
 
-  const childOwnsBack = labMode==='trailblazer' || labMode==='pawnslug-godot' || labMode==='chess-football-godot' || labMode==='chesscom';
+  const childOwnsBack = labMode==='trailblazer' || labMode==='pawnslug-godot' || labMode==='chesscom';
   useEscapeToClose(() => labMode==='hub' ? onExit() : setLabMode('hub'), { disabled: childOwnsBack });
 
   const fen=useMemo(()=>fenFromLabState({map,turn,castling,ep,halfmove,fullmove}),[map,turn,castling,ep,halfmove,fullmove]);
@@ -115,12 +117,6 @@ export default function LabScreen({ onExit, onStart }){
     setLabMode('chesscom');
   }
 
-  function enterChessFootball() {
-    // The Football welcome screen owns the two entry paths. A mobile
-    // landscape request belongs to the later "Play now" user gesture.
-    setLabMode('chess-football-godot');
-  }
-
   function launch(){
     try{const legal=assertLegalLabPosition(fen,turn); const c=new Chess(legal.fen); setError(''); onStart(c.fen(),c.turn(),difficulty,{lab:true});}
     catch(e){setError(`Posición inválida: ${e.message}`);}
@@ -128,11 +124,12 @@ export default function LabScreen({ onExit, onStart }){
 
   if (labMode==='trailblazer') return <Suspense fallback={<LabModeFallback />}><PawnTrailblazer onExit={()=>setLabMode('hub')} /></Suspense>;
   if (labMode==='pawnslug-godot') return <Suspense fallback={<LabModeFallback />}><PawnSlugGodotHost onExit={()=>setLabMode('hub')} /></Suspense>;
-  if (labMode==='chess-football-godot') return <Suspense fallback={<LabModeFallback />}><ChessFootballEntry onExit={()=>setLabMode('hub')} /></Suspense>;
   if (labMode==='chesscom') return <Suspense fallback={<LabModeFallback />}><Chesscom onExit={()=>setLabMode('hub')} /></Suspense>;
 
   return <div className={`menu tournament-panel lab-screen ${labMode==='position'?'lab-screen--position':''}`}>
     <button className="back-link" onClick={labMode==='hub'?onExit:()=>setLabMode('hub')}>← {labMode==='hub'?'Volver al menú':'Experimentos geniales'}</button>
+
+    {labMode==='hub' && hasLegacyFootballCareer && <button type="button" className="lab-football-export" onClick={exportLegacyFootballCareer}>Exportar carrera antigua de Football</button>}
 
     {labMode==='hub' ? (
       <div className="lab-workshop" style={{ width: '100%' }}>
@@ -181,11 +178,11 @@ export default function LabScreen({ onExit, onStart }){
               <span>Runtime canónico con motor propio: Godot manda; React sólo abre la puerta.</span>
               <b>Entrar en operación</b>
             </button>
-            <button type="button" className="lab-workshop-portal lab-workshop-portal--shutter lab-workshop-portal--football" data-glyph="⚽" onClick={enterChessFootball}>
+            <button type="button" className="lab-workshop-portal lab-workshop-portal--shutter lab-workshop-portal--football" data-glyph="⚽" onClick={()=>window.open(FOOTBALL_STAGING_URL, '_blank', 'noopener,noreferrer')}>
               <small>{experimentMaturityLabel(EXPERIMENT_MATURITY.POC, 'Godot Web')}</small>
-              <strong>Chess Football</strong>
-              <span>Fútbol arcade 5 contra 5 con piezas de ajedrez, pases, tiros, sprint y cambio de jugador.</span>
-              <b>Abrir vestuario</b>
+              <strong>Football of Matthias</strong>
+              <span>Partidos arcade y carrera de mánager. Continúa en el sitio propio de Football.</span>
+              <b>Abrir Football ↗</b>
             </button>
             <button type="button" className="lab-workshop-portal lab-workshop-portal--shutter lab-workshop-portal--trailblazer" data-glyph="♙" onClick={()=>setLabMode('trailblazer')}>
               <small>{experimentMaturityLabel(EXPERIMENT_MATURITY.POC, 'jugable')}</small>

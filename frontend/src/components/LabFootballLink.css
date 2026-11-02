@@ -1,0 +1,18 @@
+.lab-screen > .lab-football-export {
+  /* Secondary legacy action: never inherit the absolute top-left back-link. */
+  position: absolute;
+  z-index: 12;
+  right: clamp(16px, 2vw, 32px);
+  bottom: max(16px, env(safe-area-inset-bottom));
+  max-width: min(300px, calc(100% - 32px));
+  min-height: 44px;
+  box-sizing: border-box;
+  text-align: center;
+  cursor: pointer;
+  padding: 10px 14px;
+  border: 1px solid #806a33;
+  border-radius: 8px;
+  background: #10100ff2;
+  color: #eddbac;
+  font-size: 12px;
+}
