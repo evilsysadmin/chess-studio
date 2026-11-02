@@ -99,6 +99,16 @@ func _initialize() -> void:
 		assert(nosing.get_child_count() == 0)
 		assert((nosing.mesh as BoxMesh).size.x < (riser.mesh as BoxMesh).size.x)
 
+	# The transient event must not monopolize the full broadcast canvas.
+	var event_chyron := match_node.goal_label as Label
+	assert(event_chyron != null and event_chyron.name == "MatchEventChyron")
+	assert(event_chyron.size.x == 520.0)
+	assert(event_chyron.size.y == 36.0)
+	assert(event_chyron.position.y >= 100.0)
+	assert(event_chyron.mouse_filter == Control.MOUSE_FILTER_IGNORE)
+	assert(event_chyron.get_theme_stylebox("normal") is StyleBoxFlat)
+	assert(not event_chyron.visible, "Empty announcements must not leave a floating panel")
+
 	# Pin a real pre-kickoff tableau: both teams in their own halves and the
 	# selected team standing over the centre spot.
 	match_node.debug_prepare_kickoff(0)
