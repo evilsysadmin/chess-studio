@@ -239,7 +239,14 @@ test('Chess Football manager can simulate ten reproducible matchdays without loa
   await expect(desk.getByLabel('Situación en liga')).toContainText('Posición');
   const lineupPanel = page.getByLabel('Alineación del míster');
   await desk.getByRole('navigation', { name: 'Secciones del despacho' }).getByRole('button', { name: 'Plantilla' }).click();
-  await expect(lineupPanel.locator(':scope > details')).toHaveAttribute('open', '');
+  const pitch = lineupPanel.getByLabel('Campo táctico del quinteto');
+  await expect(pitch.locator('.football-manager-pitch__player')).toHaveCount(5);
+  await expect(lineupPanel.locator(':scope > details')).not.toHaveAttribute('open', '');
+  await pitch.getByRole('button', { name: /Cambiar delantero:/ }).click();
+  await pitch.locator('[data-football-candidate="fc-matthias-del-2"]').click();
+  await expect(pitch.locator('.football-manager-pitch__player[data-player-id="fc-matthias-del-2"]')).toHaveCount(1);
+  await lineupPanel.locator(':scope > details > summary').click();
+  await expect(lineupPanel.getByRole('combobox', { name: 'Titular 5 · DEL' })).toHaveValue('fc-matthias-del-2');
   await lineupPanel.getByRole('combobox', { name: 'Titular 5 · DEL' }).selectOption('fc-matthias-del-2');
   await expect(lineupPanel.getByRole('combobox', { name: 'Titular 5 · DEL' })).toHaveValue('fc-matthias-del-2');
   const tactics = page.getByRole('group', { name: 'Táctica del siguiente partido' });

@@ -213,6 +213,15 @@ async function withChessFootballCapturePage(browser, capture, callback) {
       animations: 'disabled',
     });
     const lineupPanel = welcome.getByLabel('Alineación del míster');
+    const pitch = lineupPanel.getByLabel('Campo táctico del quinteto');
+    await expect(pitch.locator('.football-manager-pitch__player')).toHaveCount(5);
+    expect(await welcome.evaluate((node) => node.scrollWidth > node.clientWidth + 1),
+      'Manager pitch: no horizontal overflow').toBe(false);
+    await pitch.scrollIntoViewIfNeeded();
+    await captureFrozenFrame(page, {
+      path: `${ARTIFACT_DIR}/chess-football-pitch-${capture.label}.png`,
+      fullPage: !capture.portrait,
+    });
     await lineupPanel.locator(':scope > details > summary').click();
     await lineupPanel.getByRole('combobox', { name: 'Titular 5 · DEL' }).selectOption('fc-matthias-del-2');
     await captureFrozenFrame(page, {
@@ -503,6 +512,25 @@ if (scopeEnabled('landing')) {
 }
 
 if (scopeEnabled('football')) {
+  test('Chess Football · manager tactical pitch desktop', async ({ browser }) => {
+    test.setTimeout(60_000);
+    await mkdir(ARTIFACT_DIR, { recursive: true });
+    await withCapturePage(browser, { width: 1280, height: 800, hasTouch: false }, async (page) => {
+      await page.locator('.lab-workshop-portal--football').click();
+      await page.locator('.chess-football-entry__choice--manager').click();
+      await page.getByRole('button', { name: 'Elegir FC Matthias', exact: true }).click();
+      await page.getByRole('button', { name: 'Empezar temporada de prueba', exact: true }).click();
+      const pitch = page.getByLabel('Campo táctico del quinteto');
+      await expect(pitch.locator('.football-manager-pitch__player')).toHaveCount(5);
+      await pitch.screenshot({
+        path: `${ARTIFACT_DIR}/chess-football-pitch-desktop-1280x800.png`,
+        animations: 'disabled',
+      });
+      const overflow = await page.locator('.chess-football-entry').evaluate((node) => node.scrollWidth > node.clientWidth + 1);
+      expect(overflow, 'Desktop manager pitch: no horizontal overflow').toBe(false);
+    });
+  });
+
   test('Chess Football · mobile host visual portrait + landscape', async ({ browser }) => {
     test.setTimeout(90_000);
     await mkdir(ARTIFACT_DIR, { recursive: true });

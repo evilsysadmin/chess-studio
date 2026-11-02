@@ -1,0 +1,161 @@
+/* Classic football management hierarchy, drawn in CSS: no copied PC Fútbol art. */
+.football-manager-pitch {
+  margin: .1rem 0 .75rem;
+  border: 1px solid rgba(210, 196, 136, .38);
+  border-radius: 12px;
+  overflow: hidden;
+  color: #f4eddd;
+  background: #13291e;
+}
+.football-manager-pitch__heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: .4rem 1rem;
+  flex-wrap: wrap;
+  padding: .8rem 1rem;
+  background: linear-gradient(90deg, #31523a, #193326);
+  border-bottom: 1px solid rgba(247, 218, 153, .2);
+}
+.football-manager-pitch__heading > div { display: grid; gap: .1rem; }
+.football-manager-pitch__heading strong { color: #f4deab; font: bold 1.08rem Georgia, serif; }
+.football-manager-pitch__heading small,
+.football-manager-pitch__heading > span { color: #d3e0ca; font-size: .74rem; line-height: 1.35; }
+.football-manager-pitch__columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, .95fr);
+  gap: .65rem;
+  padding: .7rem;
+}
+.football-manager-pitch__field {
+  position: relative;
+  min-width: 0;
+  height: 350px;
+  overflow: hidden;
+  border: 2px solid #9cb38a;
+  border-radius: 7px;
+  background:
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, .036) 0 44px, transparent 44px 88px),
+    linear-gradient(130deg, #2a563b, #19442e);
+  box-shadow: inset 0 0 30px rgba(1, 17, 7, .33);
+}
+.football-manager-pitch__outer {
+  position: absolute;
+  inset: 8px;
+  border: 1px solid rgba(239, 250, 225, .47);
+  pointer-events: none;
+}
+.football-manager-pitch__halfway {
+  position: absolute;
+  top: 50%; left: 8px; right: 8px;
+  border-top: 1px solid rgba(239, 250, 225, .40);
+  pointer-events: none;
+}
+.football-manager-pitch__circle {
+  position: absolute;
+  top: 50%; left: 50%;
+  width: 64px; height: 64px;
+  transform: translate(-50%, -50%);
+  border: 1px solid rgba(239, 250, 225, .45);
+  border-radius: 50%;
+  pointer-events: none;
+}
+.football-manager-pitch__area {
+  position: absolute;
+  left: 25%; width: 50%; height: 38px;
+  border: 1px solid rgba(239, 250, 225, .45);
+  pointer-events: none;
+}
+.football-manager-pitch__area--top { top: 8px; border-top: 0; }
+.football-manager-pitch__area--bottom { bottom: 8px; border-bottom: 0; }
+.football-manager-pitch__player {
+  position: absolute;
+  display: grid;
+  justify-items: center;
+  gap: 0;
+  width: 92px;
+  min-height: 64px;
+  padding: .15rem .2rem .25rem;
+  transform: translate(-50%, -50%);
+  border: 1px solid rgba(230, 213, 167, .7);
+  border-radius: 8px;
+  background: rgba(5, 25, 17, .91);
+  color: #fff2d7;
+  text-align: center;
+  font: inherit;
+  font-size: .8rem;
+  cursor: pointer;
+  box-shadow: 0 4px 9px rgba(0, 0, 0, .35);
+}
+.football-manager-pitch__shirt {
+  display: grid;
+  place-items: center;
+  width: 23px; height: 21px;
+  margin-top: -7px;
+  border-radius: 5px 5px 3px 3px;
+  background: #d1dbaa;
+  color: #183521;
+  font-weight: 900;
+  font-size: .72rem;
+}
+.football-manager-pitch__player strong { max-width: 100%; font-size: .74rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.football-manager-pitch__player small { color: #bed8ad; font-size: .67rem; }
+.football-manager-pitch__player[data-fatigue-tier="medium"] small { color: #ffe2a4; }
+.football-manager-pitch__player[data-fatigue-tier="high"] { border-color: #e7a090; }
+.football-manager-pitch__player[data-fatigue-tier="high"] small { color: #ffb4a2; }
+.football-manager-pitch__player[aria-pressed="true"] { outline: 3px solid #f5d992; background: #294e2c; z-index: 1; }
+.football-manager-pitch__player:hover { border-color: #fff1cb; }
+.football-manager-pitch__player:focus-visible,
+.football-manager-pitch__candidate:focus-visible,
+.football-manager-pitch__close:focus-visible { outline: 3px solid #f5d992; outline-offset: 2px; z-index: 2; }
+.football-manager-pitch__bench {
+  min-width: 0;
+  border: 1px solid rgba(210, 196, 136, .24);
+  border-radius: 8px;
+  padding: .75rem;
+  background: rgba(5, 19, 15, .62);
+}
+.football-manager-pitch__bench-heading { display: flex; align-items: center; justify-content: space-between; gap: .5rem; }
+.football-manager-pitch__bench-heading strong { color: #f1dfa9; font: bold 1.02rem Georgia, serif; }
+.football-manager-pitch__bench-heading > span { color: #b9d3a9; font-size: .73rem; }
+.football-manager-pitch__bench p { margin: .4rem 0 .65rem; color: #c6d7bd; font-size: .74rem; line-height: 1.4; }
+.football-manager-pitch__bench ul { display: grid; gap: .35rem; list-style: none; margin: 0; padding: 0; }
+.football-manager-pitch__reserve,
+.football-manager-pitch__candidate {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: .15rem .5rem;
+  width: 100%;
+  min-width: 0;
+  min-height: 52px;
+  padding: .45rem .55rem;
+  box-sizing: border-box;
+  background: rgba(30, 60, 40, .8);
+  border: 1px solid rgba(218, 205, 160, .22);
+  border-radius: 6px;
+  color: #f2eadb;
+  text-align: left;
+  font: inherit;
+}
+.football-manager-pitch__candidate { cursor: pointer; }
+.football-manager-pitch__candidate:hover { border-color: #d6d894; background: #36533c; }
+.football-manager-pitch__candidate[aria-pressed="true"] { border-color: #d9c88c; background: #3c583e; }
+.football-manager-pitch__bench-name { display: grid; gap: .13rem; min-width: 0; }
+.football-manager-pitch__bench-name strong { font-size: .78rem; }
+.football-manager-pitch__bench-name small { font-size: .69rem; color: #c3d1b6; }
+.football-manager-pitch__attributes { color: #f1d99b; font-size: .70rem; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.football-manager-pitch__current { color: #d8edb9; font-size: .67rem; }
+.football-manager-pitch__close { border: 1px solid #b9c6a3; border-radius: 5px; min-height: 34px; padding: .25rem .6rem; color: #f9ebd0; background: #2c4631; font: inherit; font-size: .74rem; cursor: pointer; }
+@media (max-width: 620px) {
+  .football-manager-pitch__columns { grid-template-columns: minmax(0, 1fr); }
+  .football-manager-pitch__field { height: 325px; }
+  .football-manager-pitch__heading > span { flex: 1 1 100%; }
+  .football-manager-pitch__bench { padding: .65rem; }
+}
+@media (max-width: 360px) {
+  .football-manager-pitch__columns { padding: .4rem; }
+  .football-manager-pitch__field { height: 310px; }
+  .football-manager-pitch__player { width: 86px; }
+}

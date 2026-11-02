@@ -9,6 +9,7 @@ import { createFootballCareer, editFootballCareer, playFootballCareerRound, star
 import { getFootballClubRoster, getDefaultFootballLineup, FOOTBALL_FIVE_POSITIONS, getFootballFatigue } from '../footballManagerRoster.js';
 import './ChessFootballEntry.css';
 import FootballManagerDesk from './FootballManagerDesk.jsx';
+import FootballManagerLineupPitch from './FootballManagerLineupPitch.jsx';
 
 const ChessFootballGodotHost = lazy(() => import('./ChessFootballGodotHost.jsx'));
 
@@ -55,7 +56,6 @@ export default function ChessFootballEntry({ onExit }) {
       || (area === 'results' && root?.querySelector('[data-manager-section="fixtures"]'))
       || (area === 'plan' && root?.querySelector('[data-manager-section="objective"]'));
     if (!target) return;
-    if (area === 'squad') target.querySelector('details')?.setAttribute('open', '');
     target.scrollIntoView({ block: 'start', behavior: 'auto' });
     target.focus({ preventScroll: true });
   };
@@ -283,8 +283,14 @@ export default function ChessFootballEntry({ onExit }) {
             </table>
             {season && season.currentRound < season.rounds.length ? (
               <section className="chess-football-entry__lineup" aria-label="Alineación del míster" data-manager-section="squad" tabIndex={-1}>
+                <FootballManagerLineupPitch
+                  players={developedRoster}
+                  lineupIds={startingFive}
+                  fatigue={season.managerFatigue}
+                  onLineupChange={(next) => changeDraft({ lineup: next })}
+                />
                 <details>
-                  <summary>Preparar quinteto titular</summary>
+                  <summary>Editar quinteto con listas · opción alternativa</summary>
                   <p>Fútbol 5: portero, defensa, dos medios y delantero. Cada jornada suma 17 puntos de cansancio a los titulares y recupera 22 a los suplentes. La fatiga reduce su rendimiento hasta que roten.</p>
                   <div className="chess-football-entry__lineup-slots">
                     {startingFive.map((playerId, index) => {
