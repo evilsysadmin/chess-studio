@@ -11,6 +11,24 @@ func _initialize() -> void:
 	assert(counts == [5, 5])
 	assert(match_node.debug_ball_exists())
 	assert(match_node.debug_pitch_exists())
+	# The new goal-area paint and penalty arcs are present on BOTH halves;
+	# only 3D meshes, with no new bodies or gameplay geometry.
+	for pitch_side in ["Left", "Right"]:
+		for mark_name in [
+			"GoalArea%sSideNear" % pitch_side,
+			"GoalArea%sSideFar" % pitch_side,
+			"GoalArea%sInner" % pitch_side,
+		]:
+			var paint := match_node.presentation_3d.get_node_or_null(
+				mark_name
+			) as MeshInstance3D
+			assert(paint != null and paint.mesh is BoxMesh)
+		var arc := match_node.presentation_3d.get_node_or_null(
+			"PenaltyArc%s" % pitch_side
+		) as MeshInstance3D
+		assert(arc != null and arc.mesh is ImmediateMesh)
+		assert(arc.mesh.get_surface_count() == 1)
+		assert(arc.cast_shadow == GeometryInstance3D.SHADOW_CASTING_SETTING_OFF)
 	# End terraces use instanced seating and visible shadow-free railings,
 	# avoiding many individual per-seat meshes even at full pitch depth.
 	var end_seats := match_node.presentation_3d.get_node_or_null(
