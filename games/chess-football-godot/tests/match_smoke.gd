@@ -11,6 +11,29 @@ func _initialize() -> void:
 	assert(counts == [5, 5])
 	assert(match_node.debug_ball_exists())
 	assert(match_node.debug_pitch_exists())
+	# Decorative roof/concourse bays remain unlit geometry from gameplay's POV:
+	# no OmniLights or accidental shadow casting on canonical football sprites.
+	var concourse := match_node.presentation_3d.get_node_or_null(
+		"GrandstandConcourseWall"
+	) as MeshInstance3D
+	var roof_fascia := match_node.presentation_3d.get_node_or_null(
+		"GrandstandRoofFascia"
+	) as MeshInstance3D
+	assert(concourse != null and roof_fascia != null)
+	assert(concourse.cast_shadow == GeometryInstance3D.SHADOW_CASTING_SETTING_OFF)
+	assert(roof_fascia.cast_shadow == GeometryInstance3D.SHADOW_CASTING_SETTING_OFF)
+	for bay in range(8):
+		var opening := match_node.presentation_3d.get_node_or_null(
+			"GrandstandConcourseBay_%02d" % bay
+		) as MeshInstance3D
+		var lit_lintel := match_node.presentation_3d.get_node_or_null(
+			"GrandstandConcourseLight_%02d" % bay
+		) as MeshInstance3D
+		assert(opening != null and lit_lintel != null)
+		assert(opening.cast_shadow == GeometryInstance3D.SHADOW_CASTING_SETTING_OFF)
+		assert(lit_lintel.cast_shadow == GeometryInstance3D.SHADOW_CASTING_SETTING_OFF)
+		var material := lit_lintel.material_override as StandardMaterial3D
+		assert(material.shading_mode == BaseMaterial3D.SHADING_MODE_UNSHADED)
 	# Decorative grandstand uses instancing, not one mesh/draw call per fan.
 	var crowd_bodies := match_node.presentation_3d.get_node_or_null(
 		"GrandstandCrowdBodies"
