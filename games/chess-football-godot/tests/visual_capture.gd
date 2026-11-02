@@ -81,6 +81,24 @@ func _initialize() -> void:
 			assert(pillar.cast_shadow == GeometryInstance3D.SHADOW_CASTING_SETTING_OFF)
 			assert(pillar.get_child_count() == 0)
 
+	# Architectural depth is on the visible five riser faces, not hidden
+	# under the top HUD. The paint is visual-only and must never shadow players.
+	for tier in range(5):
+		var riser := match_node.presentation_3d.get_node_or_null(
+			"FarStandRiser_%02d" % tier
+		) as MeshInstance3D
+		var nosing := match_node.presentation_3d.get_node_or_null(
+			"FarStandNosing_%02d" % tier
+		) as MeshInstance3D
+		assert(riser != null and riser.mesh is BoxMesh)
+		assert(nosing != null and nosing.mesh is BoxMesh)
+		assert(nosing.cast_shadow == GeometryInstance3D.SHADOW_CASTING_SETTING_OFF)
+		assert(nosing.position.z > riser.position.z + 0.32)
+		assert(nosing.position.y > riser.position.y)
+		assert(nosing.position.y < riser.position.y + 0.20)
+		assert(nosing.get_child_count() == 0)
+		assert((nosing.mesh as BoxMesh).size.x < (riser.mesh as BoxMesh).size.x)
+
 	# Pin a real pre-kickoff tableau: both teams in their own halves and the
 	# selected team standing over the centre spot.
 	match_node.debug_prepare_kickoff(0)
