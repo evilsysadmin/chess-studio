@@ -10,7 +10,7 @@ Las reglas detalladas viven en los `.md` especializados enlazados aquí. Antes d
 
 - Chronicles of Matthias y Tactics **pertenecen exclusivamente** a `evilsysadmin/chronicles-of-matthias`; aquí solo queda el enlace externo desde Lab. No desarrollar ni reintroducir mapas, arte, runtime, E2E ni workflows del juego en Chess Studio.
 - Los backends Go/Python y datos legados de Chronicles aún pendientes de retirar se tratan **solo como migración controlada** en [#5632](https://github.com/evilsysadmin/chess-studio/issues/5632). Mantener `chronicles_runs` cubierto por borrado de cuenta hasta acreditar su salida.
-- Pawn Slug en Godot es **2D puro**. Sus sprites no usan Blender. Matthias conserva una única escala corporal canónica entre armas; variantes grandes/pequeñas son regresión.
+- **Pawn Action** (antes Pawn Slug) se está extrayendo a `evilsysadmin/pawn-action`: todo nuevo gameplay, arte, herramientas y CI propios van al repo nuevo. Las copias Godot/host/publisher de Chess Studio permanecen sólo como rollback hasta acreditar el nuevo Web release y hacer el cutover controlado. 2D puro, sin Blender y escala corporal canónica compartida. Ver [`migración Pawn Action`](docs/operations/pawn-action-migration.md).
 - Home 3D y War Room v2 usan la pipeline Blender.
 - La War Room **v3 es la variante por defecto** cuando las variantes están habilitadas; una elección explícita del jugador se conserva por dispositivo y siempre manda sobre el default. v1 clásica sigue siendo el baseline de rollback y v1/v2/v3/v4 continúan seleccionables en el menú «…». Deshabilitar variantes debe seguir devolviendo de forma segura a v1.
 - Para assets grandes de runtime, preferir R2/CDN y mantener Git centrado en código, manifests y contratos.
