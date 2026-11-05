@@ -57,6 +57,26 @@ def game_state_matches(game_id: str, expected: dict, actual: dict) -> bool:
     )
 
 
+class SyntheticTransportError(OSError):
+    """Safe request context for a failed synthetic HTTP transport."""
+
+    def __init__(self, method: str, path: str, request_id: str, cause: BaseException):
+        super().__init__(type(cause).__name__)
+        self.method = method
+        self.path = path.split("?", 1)[0]
+        self.request_id = request_id
+        self.error = type(cause).__name__
+
+
+def _transport_record(check: str, exc: BaseException) -> dict:
+    record = {"check": check, "ok": False, "error": type(exc).__name__}
+    if isinstance(exc, SyntheticTransportError):
+        record.update(method=exc.method, path=exc.path, request_id=exc.request_id, cause=exc.error)
+    else:
+        record["detail"] = type(exc).__name__
+    return record
+
+
 def _call(base: str, path: str, *, method: str = "GET", token: str | None = None, body: dict | None = None, timeout: float = 8.0) -> tuple[int, dict, float, str | None]:
     url = f"{base}{path}"
     request_id = f"synthetic-{uuid.uuid4().hex[:12]}"
@@ -82,6 +102,8 @@ def _call(base: str, path: str, *, method: str = "GET", token: str | None = None
             payload = {"detail": raw[:200]}
         response_request_id = exc.headers.get("X-Request-ID") if exc.headers else None
         return int(exc.code), payload, (time.perf_counter() - started) * 1000, response_request_id
+    except (URLError, TimeoutError, OSError) as exc:
+        raise SyntheticTransportError(method, path, request_id, exc) from exc
 
 
 def _check(name: str, status: int, payload: dict, latency_ms: float, request_id: str | None, *, expected: int = 200, slo_ms: float | None = None) -> bool:
@@ -332,7 +354,7 @@ def main() -> int:
                 "authenticated gameplay requested without credentials or ephemeral identity",
             ) and passed
     except (URLError, TimeoutError, OSError) as exc:
-        print(json.dumps({"check": "transport", "ok": False, "error": type(exc).__name__, "detail": str(exc)[:160]}, separators=(",", ":"), sort_keys=True))
+        print(json.dumps(_transport_record("transport", exc), separators=(",", ":"), sort_keys=True))
         passed = False
     finally:
         if ephemeral_created:
@@ -376,7 +398,7 @@ def main() -> int:
                             slo_ms=auth_slo_ms,
                         ) and passed
                 except (URLError, TimeoutError, OSError) as exc:
-                    print(json.dumps({"check": "account_cleanup_transport", "ok": False, "error": type(exc).__name__, "detail": str(exc)[:160]}, separators=(",", ":"), sort_keys=True))
+                    print(json.dumps(_transport_record("account_cleanup_transport", exc), separators=(",", ":"), sort_keys=True))
                     passed = False
 
     return 0 if passed else 1
