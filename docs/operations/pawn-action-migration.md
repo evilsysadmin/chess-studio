@@ -14,7 +14,7 @@ El juego anteriormente denominado **Pawn Slug** pasa a desarrollarse como **Pawn
 
 - Mantener inicialmente el identificador `pawn-slug-godot` del bridge y los logical IDs / URLs R2. **El rebranding público no implica migrar ni borrar keys inmutables.**
 - El pointer compartido `pawn-slug-godot/current.json` sigue gobernado por el publicador actual de Chess Studio hasta traspaso expreso. No autorizar doble publicador escribiendo ese alias.
-- Conservar los objetos R2 activos y política de retención; proteger cualquier nuevo prefijo de Pawn Action antes de activar otro publicador.
+- Conservar los objetos R2 activos y política de retención. El prefijo independiente `pawn-action/` ya está protegido en `infra/cloudflare/r2-assets.json`; el recolector de Chess Studio **rechaza cualquier plan/apply** en el bucket compartido si desaparece el prefijo, y su self-test acredita releases/atlases viejos sin pins locales. No retirar esta protección al cambiar el launcher: requiere un handoff de pinning, retención y rollback explícito y probado. Esto no verifica por sí solo otros recolectores remotos ni el scope del token.
 - No migrar bases de datos, identidad, perfiles, secretos ni historial de usuarios de manera implícita.
 
 ## Criterios para finalizar el cutover
