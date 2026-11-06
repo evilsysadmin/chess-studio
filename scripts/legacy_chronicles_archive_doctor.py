@@ -132,6 +132,23 @@ def aggregate_digest(entries: dict[str, str]) -> str:
     return digest.hexdigest()
 
 
+def _has_minimum_resume_fields(row: dict[str, Any]) -> bool:
+    """Check the *minimum* fields consumed by the old Chronicles run reader.
+
+    This intentionally cannot prove that a map/content version is playable.
+    `seed` and `contentVersion` may be BSON Int32/Int64 wrappers from
+    mongoexport --jsonFormat canonical, or plain nonnegative JSON integers.
+    """
+    return (
+        _valid_world_version(row.get("seed"))
+        and isinstance(row.get("currentMapId"), str)
+        and bool(row["currentMapId"].strip())
+        and _valid_world_version(row.get("contentVersion"))
+        and isinstance(row.get("manifestRevision"), str)
+        and bool(row["manifestRevision"].strip())
+    )
+
+
 def reconcile_owner_runs(source_docs: list[dict[str, Any]], target_docs: list[dict[str, Any]]) -> dict[str, Any]:
     """Compare original runs to the independent archive; native target runs may coexist.
 
@@ -163,8 +180,17 @@ def reconcile_owner_runs(source_docs: list[dict[str, Any]], target_docs: list[di
     # string _id. The archive doctor can preserve BSON ObjectIds, but they are
     # NOT valid evidence of successful import by today's Go reader.
     unsupported_ids = sum(not isinstance(row.get("_id"), str) for row in source_docs)
+    unsupported_resume = 0
+    for row in source_docs:
+        if not _has_minimum_resume_fields(row):
+            unsupported_resume += 1
+            affected_owners.add(row["owner"])
+        if not isinstance(row.get("_id"), str):
+            affected_owners.add(row["owner"])
     owners = set(source_owners.values())
-    ready = bool(source_docs) and not (missing or modified or owner_conflicts or unsupported_ids)
+    ready = bool(source_docs) and not (
+        missing or modified or owner_conflicts or unsupported_ids or unsupported_resume
+    )
     return {
         "archiveCheck": "reconciliation-matching" if ready else "reconciliation-incomplete",
         "sourceDocuments": len(source_docs),
@@ -175,6 +201,7 @@ def reconcile_owner_runs(source_docs: list[dict[str, Any]], target_docs: list[di
         "modifiedRuns": modified,
         "ownerConflicts": owner_conflicts,
         "unsupportedSourceIds": unsupported_ids,
+        "unsupportedResumeShape": unsupported_resume,
         "ownersAffected": len(affected_owners),
         "ownersWithoutMatchedRuns": len(owners - owners_with_matches),
         "targetNativeExtraRuns": len(target_hashes.keys() - source_hashes.keys()),

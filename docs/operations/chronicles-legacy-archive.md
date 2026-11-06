@@ -82,8 +82,21 @@ propietario, propietarios afectados y partidas adicionales creadas
 legítimamente en el juego independiente. Las partidas nuevas del destino no
 se consideran pérdida de información. Rechaza fuente vacía y cualquier `_id`
 BSON ObjectId heredado: el importador Go actual exige identificadores
-`_id` de texto. Soporta BSON Int32/Int64 exportados mediante
-`{"$numberInt":"3"}` y `{"$numberLong":"3"}` en `worldVersion`.
+`_id` de texto. También cuenta `unsupportedResumeShape` para partidas
+históricas sin el **mínimo estructural** que necesita el lector del backend
+original para reconstruir la respuesta: `seed` y `contentVersion` enteros
+no negativos, `currentMapId` y `manifestRevision` textos no vacíos. La
+verificación admite BSON Int32/Int64 exportados mediante
+`{"$numberInt":"3"}` y `{"$numberLong":"3"}` para los enteros; `worldVersion`
+mantiene su validación previa. Estos controles solo afectan a la comparación
+contra destino: no impiden archivar o restaurar documentos históricos
+incompletos. Cualquier `unsupportedResumeShape` impide que el informe sea
+`reconciliation-matching`, aunque los bytes fuente/destino coincidan.
+
+**No confundir estructura mínima con compatibilidad real**: incluso una
+partida con esos cuatro campos puede referenciar un mapa o manifest obsoleto,
+tener contenido incompleto, fallar en autorización de usuario o no recuperarse
+en la API Go. Sigue siendo obligatorio el ensayo real de apertura/reanudación.
 
 Códigos de salida: **0** si todos los documentos fuente son idénticos y
 conservan propietario; **1** si faltan, difieren, hay conflictos o hay
