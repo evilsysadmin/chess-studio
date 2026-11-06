@@ -11,12 +11,14 @@ artifacts de CI y chats**. Contiene identificadores de propietarios e inventario
 
 ```bash
 umask 077
-mongoexport --uri "$MONGODB_URI" \
+# La fuente histórica de producción es chess_study, NO chess_study_staging.
+# Confirmar URI/identidad con el operador; el export jamás debe escribir.
+mongoexport --uri "$MONGODB_URI" --db chess_study \
   --collection chronicles_runs \
   --jsonFormat canonical \
   --out /ruta/privada/chronicles-before.jsonl
 python3 scripts/legacy_chronicles_archive_doctor.py \
-  /ruta/privada/chronicles-before.jsonl --importer-cap 200
+  /ruta/privada/chronicles-before.jsonl
 ```
 
 El comprobador requiere un `_id` y `owner` válidos por documento, detecta
@@ -25,21 +27,33 @@ Calcula una huella SHA-256 de **todos** los campos persistidos, independiente
 del orden de filas/llaves JSON. La salida muestra solo contadores y un hash
 agregado, nunca partidas ni identificadores individuales.
 
-### Alarma de límite por propietario
+### Estado real del importador y fuentes de datos
 
-El repositorio independiente `evilsysadmin/chronicles-of-matthias` ya conecta
-un importador Go: `api/internal/legacyimport/legacyimport.go`, invocado desde
-`api/cmd/chronicles-api/main.go`. A fecha de esta revisión, lee de la base
-`chess_study_staging` y limita cada búsqueda por propietario a **200 runs**
-(`SetLimit(maxRuns)`). Un propietario con 200 o más documentos podría sufrir
-una importación incompleta sin que el número de copias revele el truncamiento.
+El importador Go del repositorio `evilsysadmin/chronicles-of-matthias`
+(`api/internal/legacyimport/legacyimport.go`) **ya no limita el número total
+de runs por propietario a 200**: usa `SetBatchSize(200)` para transferencias de
+red y recorre el cursor hasta el final con comprobaciones de errores. Los tests
+`TestReadRunCursorNeverTruncatesAtBatchSize` ejercitan 201 y 431 registros y
+verifican que el import siga siendo idempotente. Por tanto, **no añadir
+`--importer-cap 200` al archivo canónico**: generaría falsos bloqueos. La
+opción `--importer-cap` del doctor permanece para auditar versiones antiguas
+u otros importadores si se ha verificado un límite total auténtico.
 
-Con `--importer-cap 200`, el comprobador sale con código 1 y
-`archiveCheck=importer-cap-unsafe` si algún propietario alcanza el límite;
-solo imprime cuántos lo alcanzan, sin identificarlos. Esta alarma **no
-demuestra** que el importador se ejecutó ni que su base fuente cubra todos
-los datos históricos; obliga a comprobar ambos extremos y a revisar el límite
-contra el código del importador antes de retirar el motor Python.
+**El bloqueo actual es la base fuente y la compatibilidad, no 200 filas.**
+El importador Go fija `SourceDatabase = "chess_study_staging"` y rechaza
+expresamente leer desde `chess_study` mediante
+`ValidateDistinctDatabases`. Esta restricción es intencionada: no permitir
+que una migración acceda accidentalmente a producción ni relajarla para
+saltarse un paso. El export de arriba preserva el archivo histórico de
+`chess_study`; **no demuestra** que esos registros estén presentes en
+`chess_study_staging` ni que el importador los haya copiado.
+
+Antes de retirar rutas Python o purga de cuentas, verificar un plan aprobado
+de transferencia de datos por propietario desde un archivo privado íntegro
+hacia un staging aislado, con autorización, evidencia de conteos/hash,
+compatibilidad de esquema, acceso limitado, rollback y pruebas de recuperación
+sin escribir ni borrar la colección histórica de producción. Ningún
+`--importer-cap` sustituye estas pruebas.
 
 ## 2. Restore drill fuera de la colección real
 
