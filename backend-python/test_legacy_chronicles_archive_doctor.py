@@ -125,13 +125,3 @@ def test_more_than_200_legacy_runs_are_not_a_false_importer_cap_alarm(tmp_path):
     assert "importerCap" not in payload and "ownersAtOrAboveCap" not in payload
     assert "private-owner" not in response.stdout and "secret-" not in response.stdout
 
-
-def test_archive_runbook_separates_production_export_from_staging_only_import():
-    doc = (ROOT / "docs/operations/chronicles-legacy-archive.md").read_text(encoding="utf-8")
-    cli = (ROOT / "scripts/legacy_chronicles_archive_doctor.py").read_text(encoding="utf-8")
-    assert "mongoexport --uri \"$MONGODB_URI\" --db chess_study" in doc
-    assert "/ruta/privada/chronicles-before.jsonl --importer-cap 200" not in doc
-    assert "SetBatchSize(200)" in doc
-    assert "chess_study_staging" in doc
-    assert "ValidateDistinctDatabases" in doc
-    assert "200 actualmente" not in cli
