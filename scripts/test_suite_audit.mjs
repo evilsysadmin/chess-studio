@@ -32,6 +32,52 @@ const frontendFiles = listRecursive(frontendSrc, (name) => /\.test\.(?:js|jsx|mj
 const backendFiles = list(backendDir, (name) => /^test_.*\.py$/.test(name));
 const e2eFiles = list(e2eDir, (name) => name.endsWith('.spec.js'));
 
+
+// Chronicles/Tactics are independent games. Chess Studio retains only the Lab
+// outbound link and separate historical save recovery in backend-python.
+// Stop an accidental copy of their old frontend runtime or dedicated E2E from
+// silently re-entering this repository after extraction (#5632).
+const isEmbeddedChroniclesRuntimePath = (relativePath) => {
+  const value = String(relativePath).replace(/\\/g, '/').toLowerCase();
+  return (
+    /^frontend\/src\/chronicles(?:\/.*|[^/]*\.(?:js|jsx|ts|tsx|json|css))$/.test(value) ||
+    /^frontend\/src\/components\/chronicles[^/]*\.(?:js|jsx|ts|tsx|css)$/.test(value) ||
+    /^e2e\/chronicles[^/]*\.spec\.js$/.test(value)
+  );
+};
+for (const forbidden of [
+  'frontend/src/chronicles/chroniclesGameBootstrap.js',
+  'frontend/src/chroniclesOfMatthias.js',
+  'frontend/src/components/ChroniclesOfMatthias.jsx',
+  'frontend/src/components/ChroniclesOfMatthiasTactics.jsx',
+  'frontend/src/components/ChroniclesOfMatthias.css',
+  'e2e/chronicles-of-matthias-tactics.spec.js',
+  'frontend\\src\\chronicles\\chroniclesMapCatalog.js',
+]) {
+  if (!isEmbeddedChroniclesRuntimePath(forbidden)) fail('Chronicles ownership classifier missed ' + forbidden);
+}
+for (const allowed of [
+  'frontend/src/labChroniclesLink.js',
+  'frontend/src/components/LabScreen.jsx',
+  'backend-python/chronicles_api.py',
+  'backend-python/legacy_chronicles_purge.py',
+  'e2e/experiments-room-discoverability.spec.js',
+]) {
+  if (isEmbeddedChroniclesRuntimePath(allowed)) fail('Chronicles ownership classifier rejects the legitimate ' + allowed);
+}
+const retiredChroniclesPaths = [
+  ...listRecursive(frontendSrc, (name) => /\.(?:js|jsx|ts|tsx|json|css)$/.test(name))
+    .map((name) => 'frontend/src/' + name),
+  ...e2eFiles.map((name) => 'e2e/' + name),
+].filter(isEmbeddedChroniclesRuntimePath);
+if (retiredChroniclesPaths.length) {
+  fail('Chronicles/Tactics runtime belongs to evilsysadmin/chronicles-of-matthias, not Chess Studio: ' +
+    retiredChroniclesPaths.join(', '));
+}
+if (!fs.existsSync(path.join(frontendSrc, 'labChroniclesLink.js'))) {
+  fail('Missing outbound Chronicles Lab link; extraction must preserve navigation');
+}
+
 const frontendTests = frontendFiles.reduce((sum, name) => sum + (read(path.join(frontendSrc, name)).match(/\b(?:it|test)\s*\(/g)?.length || 0), 0);
 const frontendParameterized = frontendFiles.reduce((sum, name) => sum + (read(path.join(frontendSrc, name)).match(/\b(?:it|test)\.each\s*\(/g)?.length || 0), 0);
 const backendTests = backendFiles.reduce((sum, name) => sum + (read(path.join(backendDir, name)).match(/^(?:async\s+)?def test_[A-Za-z0-9_]+\s*\(/gm)?.length || 0), 0);
