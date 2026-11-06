@@ -288,7 +288,7 @@ def test_matching_archive_cannot_mask_unresumable_source_shape(tmp_path, field, 
     info = json.loads(reply.stdout)
     # Completely malformed currentMapId is invalid archive input (code 2);
     # absent fields are valid archive data but not usable run-state evidence.
-    if field == "currentMapId" and value is not None:
+    if field == "currentMapId":
         assert reply.returncode == 2
         assert info["archiveCheck"] == "input-error"
     elif field == "seed" and value in (None, "3"):
