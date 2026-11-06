@@ -85,8 +85,9 @@ def test_empty_collection_has_stable_fingerprint(tmp_path):
 
 def test_legacy_importer_limit_cannot_silently_truncate_owner_runs(tmp_path):
     source = tmp_path / "original.jsonl"
-    # Go's existing source reader uses SetLimit(200) per owner. Exercise a
-    # lower synthetic cap rather than creating real or expensive save data.
+    # The doctor still supports explicit *historical hard-limit* audits, but
+    # today's Go reader uses SetBatchSize(200), not a total owner limit.
+    # Exercise this optional diagnostic with a synthetic hard limit only.
     source.write_text(json.dumps([
         _run("sensitive-one", "same-owner"),
         _run("sensitive-two", "same-owner"),
@@ -106,3 +107,31 @@ def test_legacy_importer_limit_cannot_silently_truncate_owner_runs(tmp_path):
     response = subprocess.run(cmd[:-1] + ["4"], capture_output=True, text=True, check=False, timeout=10)
     assert response.returncode == 0
     assert json.loads(response.stdout)["ownersAtOrAboveCap"] == 0
+
+
+def test_more_than_200_legacy_runs_are_not_a_false_importer_cap_alarm(tmp_path):
+    source = tmp_path / "same-owner-205.jsonl"
+    # BatchSize(200) is a transport setting; the existing Go importer must
+    # read the complete owner cursor, not reject or silently cap 201+ saves.
+    rows = [_run(f"secret-{n}", "private-owner") for n in range(205)]
+    source.write_text("\n".join(json.dumps(row) for row in rows) + "\n", encoding="utf-8")
+    cmd = [sys.executable, str(ROOT / "scripts/legacy_chronicles_archive_doctor.py"), str(source)]
+    response = subprocess.run(cmd, capture_output=True, text=True, check=False, timeout=10)
+    payload = json.loads(response.stdout)
+    assert response.returncode == 0, response.stderr
+    assert payload["archiveCheck"] == "ok"
+    assert payload["documents"] == 205
+    assert len(payload["sha256"]) == 64
+    assert "importerCap" not in payload and "ownersAtOrAboveCap" not in payload
+    assert "private-owner" not in response.stdout and "secret-" not in response.stdout
+
+
+def test_archive_runbook_separates_production_export_from_staging_only_import():
+    doc = (ROOT / "docs/operations/chronicles-legacy-archive.md").read_text(encoding="utf-8")
+    cli = (ROOT / "scripts/legacy_chronicles_archive_doctor.py").read_text(encoding="utf-8")
+    assert "mongoexport --uri \"$MONGODB_URI\" --db chess_study" in doc
+    assert "/ruta/privada/chronicles-before.jsonl --importer-cap 200" not in doc
+    assert "SetBatchSize(200)" in doc
+    assert "chess_study_staging" in doc
+    assert "ValidateDistinctDatabases" in doc
+    assert "200 actualmente" not in cli
