@@ -17,6 +17,7 @@ def _run(run_id="private-run-1", owner="private-owner", **changes):
     return {
         "_id": run_id, "owner": owner, "seed": 123,
         "currentMapId": "crypt-eight-squares", "worldVersion": 3,
+        "contentVersion": 1, "manifestRevision": "test-fixture-revision",
         "inventory": {"potion": {"quantity": 2}},
         **changes,
     }
@@ -257,3 +258,86 @@ def test_reconcile_rejects_duplicate_destination_ids(tmp_path):
     assert result.returncode == 2
     assert json.loads(result.stdout)["archiveCheck"] == "input-error"
     assert "alice" not in result.stdout and "hidden" not in result.stdout
+
+
+@pytest.mark.parametrize("field,value", [
+    ("seed", None),
+    ("seed", "3"),
+    ("seed", {"$numberInt": "-1"}),
+    ("seed", {"$numberInt": "2147483648"}),
+    ("seed", True),
+    ("currentMapId", None),
+    ("currentMapId", "  "),
+    ("contentVersion", None),
+    ("contentVersion", {"$numberLong": "9223372036854775808"}),
+    ("contentVersion", False),
+    ("manifestRevision", None),
+    ("manifestRevision", ""),
+])
+def test_matching_archive_cannot_mask_unresumable_source_shape(tmp_path, field, value):
+    # An identical source and target must not be enough if the legacy reader
+    # cannot reconstruct essential fields. No sensitive identifiers in output.
+    original = _run("hidden-source-id", "private-owner", **{field: value})
+    src, dst = tmp_path / "source.jsonl", tmp_path / "target.jsonl"
+    src.write_text(json.dumps([original]), encoding="utf-8")
+    dst.write_text(json.dumps([original]), encoding="utf-8")
+    reply = subprocess.run([
+        sys.executable, str(ROOT / "scripts/legacy_chronicles_archive_doctor.py"),
+        str(src), "--reconcile-target", str(dst),
+    ], capture_output=True, text=True, check=False, timeout=10)
+    info = json.loads(reply.stdout)
+    # Completely malformed currentMapId is invalid archive input (code 2);
+    # absent fields are valid archive data but not usable run-state evidence.
+    if field == "currentMapId" and value is not None:
+        assert reply.returncode == 2
+        assert info["archiveCheck"] == "input-error"
+    elif field == "seed" and value in (None, "3"):
+        assert reply.returncode == 1
+        assert info["unsupportedResumeShape"] == 1
+        assert info["matchedRuns"] == 1
+    elif field in ("seed", "contentVersion") and value in (True, False):
+        assert reply.returncode == 1
+        assert info["unsupportedResumeShape"] == 1
+    else:
+        assert reply.returncode == 1, reply.stdout
+        assert info["unsupportedResumeShape"] == 1
+        assert info["matchedRuns"] == 1
+    if reply.returncode == 1:
+        assert info["ownersAffected"] == 1
+        assert info["authorizesLegacyRetirement"] is False
+        assert info["provesGameplayCompatibility"] is False
+    assert "hidden-source-id" not in reply.stdout + reply.stderr
+    assert "private-owner" not in reply.stdout + reply.stderr
+
+
+def test_canonical_required_resume_fields_and_optional_fields_are_supported():
+    original = _run("hidden", "private-owner",
+                    seed={"$numberLong": "3299000063"},
+                    contentVersion={"$numberInt": "1"},
+                    worldVersion={"$numberInt": "4"})
+    assert doctor._has_minimum_resume_fields(original)
+    outcome = doctor.reconcile_owner_runs([original], [dict(original)])
+    assert outcome["archiveCheck"] == "reconciliation-matching"
+    assert outcome["unsupportedResumeShape"] == 0
+    assert outcome["ownersAffected"] == 0
+    assert outcome["authorizesLegacyRetirement"] is False
+
+
+def test_unsupported_resume_shape_and_owner_mismatch_count_once():
+    source = [
+        _run("one", "private-owner", contentVersion=None),
+        _run("two", "private-owner", manifestRevision=""),
+        _run("three", "independent-owner"),
+    ]
+    target = [
+        dict(source[0]),
+        {**source[1], "owner": "wrong-owner"},
+        dict(source[2]),
+    ]
+    report = doctor.reconcile_owner_runs(source, target)
+    assert report["matchedRuns"] == 2
+    assert report["ownerConflicts"] == 1
+    assert report["unsupportedResumeShape"] == 2
+    assert report["ownersAffected"] == 1
+    assert report["sourceOwners"] == 2
+    assert report["archiveCheck"] == "reconciliation-incomplete"
