@@ -121,7 +121,7 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Comprueba un archivo histórico de chronicles_runs sin usar Mongo.")
     parser.add_argument("export", help="mongoexport JSONL/JSON/array; '-' lee stdin")
     parser.add_argument("--baseline", help="export original para comparar tras un restore aislado")
-    parser.add_argument("--importer-cap", type=int, help="límite por propietario del importador externo; 200 actualmente")
+    parser.add_argument("--importer-cap", type=int, help="límite TOTAL por propietario, solo si está acreditado para otra versión/importador; no usar con SetBatchSize(200)")
     args = parser.parse_args(argv)
     if args.baseline == "-" and args.export == "-":
         parser.error("baseline y restore no pueden leer simultáneamente de stdin")
