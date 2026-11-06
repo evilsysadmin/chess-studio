@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import re
 import sys
 from pathlib import Path
 from typing import Any
@@ -60,6 +61,24 @@ def load_export(path: str) -> list[dict[str, Any]]:
     return parsed
 
 
+def _valid_world_version(value: Any) -> bool:
+    # mongoexport --jsonFormat canonical wraps BSON Int32/Int64; a plain
+    # nonnegative JSON int is valid in relaxed exports and synthetic fixtures.
+    if isinstance(value, bool):
+        return False
+    if isinstance(value, int):
+        return value >= 0
+    if not isinstance(value, dict) or len(value) != 1:
+        return False
+    kind, raw = next(iter(value.items()))
+    limit = {"$numberInt": (2 ** 31) - 1, "$numberLong": (2 ** 63) - 1}.get(kind)
+    if limit is None or not isinstance(raw, str):
+        return False
+    if not re.fullmatch(r"0|[1-9][0-9]{0,18}", raw):
+        return False
+    return int(raw) <= limit
+
+
 def _identity(row: dict[str, Any]) -> str:
     run_id = row.get("_id")
     if isinstance(run_id, dict) and set(run_id) == {"$oid"}:
@@ -73,11 +92,7 @@ def _identity(row: dict[str, Any]) -> str:
         not isinstance(row["currentMapId"], str) or not row["currentMapId"].strip()
     ):
         raise ValueError("currentMapId inválido")
-    if "worldVersion" in row and (
-        isinstance(row["worldVersion"], bool)
-        or not isinstance(row["worldVersion"], int)
-        or row["worldVersion"] < 0
-    ):
+    if "worldVersion" in row and not _valid_world_version(row["worldVersion"]):
         raise ValueError("worldVersion inválido")
     return run_id
 
@@ -117,19 +132,82 @@ def aggregate_digest(entries: dict[str, str]) -> str:
     return digest.hexdigest()
 
 
+def reconcile_owner_runs(source_docs: list[dict[str, Any]], target_docs: list[dict[str, Any]]) -> dict[str, Any]:
+    """Compare original runs to the independent archive; native target runs may coexist.
+
+    Reconciliation is strict about full source-document equality and ownership,
+    and never exports owner names or run IDs. It does NOT prove gameplay replay.
+    """
+    source_hashes = fingerprints(source_docs)
+    target_hashes = fingerprints(target_docs)
+    source_owners = {_identity(row): row["owner"] for row in source_docs}
+    target_owners = {_identity(row): row["owner"] for row in target_docs}
+    matched = missing = modified = owner_conflicts = 0
+    affected_owners: set[str] = set()
+    owners_with_matches: set[str] = set()
+    for run_id, owner in source_owners.items():
+        if run_id not in target_hashes:
+            missing += 1
+            affected_owners.add(owner)
+        elif target_owners[run_id] != owner:
+            owner_conflicts += 1
+            affected_owners.add(owner)
+        elif target_hashes[run_id] != source_hashes[run_id]:
+            modified += 1
+            affected_owners.add(owner)
+        else:
+            matched += 1
+            owners_with_matches.add(owner)
+
+    # MongoSource and legacyIdentity in the Go importer currently require
+    # string _id. The archive doctor can preserve BSON ObjectIds, but they are
+    # NOT valid evidence of successful import by today's Go reader.
+    unsupported_ids = sum(not isinstance(row.get("_id"), str) for row in source_docs)
+    owners = set(source_owners.values())
+    ready = bool(source_docs) and not (missing or modified or owner_conflicts or unsupported_ids)
+    return {
+        "archiveCheck": "reconciliation-matching" if ready else "reconciliation-incomplete",
+        "sourceDocuments": len(source_docs),
+        "targetDocuments": len(target_docs),
+        "sourceOwners": len(owners),
+        "matchedRuns": matched,
+        "missingRuns": missing,
+        "modifiedRuns": modified,
+        "ownerConflicts": owner_conflicts,
+        "unsupportedSourceIds": unsupported_ids,
+        "ownersAffected": len(affected_owners),
+        "ownersWithoutMatchedRuns": len(owners - owners_with_matches),
+        "targetNativeExtraRuns": len(target_hashes.keys() - source_hashes.keys()),
+        "readOnly": True,
+        "provesGameplayCompatibility": False,
+        "authorizesLegacyRetirement": False,
+    }
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Comprueba un archivo histórico de chronicles_runs sin usar Mongo.")
     parser.add_argument("export", help="mongoexport JSONL/JSON/array; '-' lee stdin")
     parser.add_argument("--baseline", help="export original para comparar tras un restore aislado")
+    parser.add_argument("--reconcile-target", help="export privado de destino Chronicles para cotejo por propietario, sin red")
     parser.add_argument("--importer-cap", type=int, help="límite TOTAL por propietario, solo si está acreditado para otra versión/importador; no usar con SetBatchSize(200)")
     args = parser.parse_args(argv)
     if args.baseline == "-" and args.export == "-":
         parser.error("baseline y restore no pueden leer simultáneamente de stdin")
+    if args.reconcile_target is not None:
+        if args.baseline is not None or args.importer_cap is not None:
+            parser.error("--reconcile-target no puede combinarse con --baseline o --importer-cap")
+        if args.reconcile_target == "-" and args.export == "-":
+            parser.error("origen y destino no pueden leer simultáneamente de stdin")
     if args.importer_cap is not None and args.importer_cap < 1:
         parser.error("--importer-cap debe ser un entero positivo")
     try:
         current_docs = load_export(args.export)
         current = fingerprints(current_docs)
+        if args.reconcile_target is not None:
+            target_docs = load_export(args.reconcile_target)
+            output = reconcile_owner_runs(current_docs, target_docs)
+            print(json.dumps(output, ensure_ascii=False, sort_keys=True))
+            return 0 if output["archiveCheck"] == "reconciliation-matching" else 1
         baseline_docs = load_export(args.baseline) if args.baseline else None
         baseline = fingerprints(baseline_docs) if baseline_docs is not None else None
     except (OSError, UnicodeError, ValueError) as exc:
