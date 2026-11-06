@@ -125,3 +125,135 @@ def test_more_than_200_legacy_runs_are_not_a_false_importer_cap_alarm(tmp_path):
     assert "importerCap" not in payload and "ownersAtOrAboveCap" not in payload
     assert "private-owner" not in response.stdout and "secret-" not in response.stdout
 
+
+
+@pytest.mark.parametrize("value,accepted", [
+    ({"$numberInt": "3"}, True),
+    ({"$numberLong": "3"}, True),
+    ({"$numberInt": "2147483647"}, True),
+    ({"$numberLong": "9223372036854775807"}, True),
+    ({"$numberInt": "-1"}, False),
+    ({"$numberLong": "-1"}, False),
+    ({"$numberInt": "2147483648"}, False),
+    ({"$numberLong": "9223372036854775808"}, False),
+    ({"$numberInt": "03"}, False),
+    ({"$numberDouble": "3.0"}, False),
+    ({"$numberInt": "3", "other": "bad"}, False),
+    ({"$numberInt": True}, False),
+    (False, False),
+])
+def test_canonical_mongoexport_world_version_validation(value, accepted):
+    row = _run(worldVersion=value)
+    if accepted:
+        assert len(doctor.fingerprints([row])) == 1
+    else:
+        with pytest.raises(ValueError):
+            doctor.fingerprints([row])
+
+
+def test_canonical_jsonl_archive_and_restore_readback(tmp_path):
+    source = tmp_path / "archive-canonical.jsonl"
+    restored = tmp_path / "restored-canonical.jsonl"
+    # MongoDB's canonical Extended JSON preserves BSON integer tags and dates.
+    rows = [
+        _run("hidden-a", "alice", worldVersion={"$numberInt": "3"},
+             seed={"$numberLong": "3299000063"},
+             createdAt={"$date": {"$numberLong": "1712345678901"}}),
+        _run("hidden-b", "bob", worldVersion={"$numberLong": "4294967297"}),
+    ]
+    source.write_text("\n".join(json.dumps(row) for row in rows), encoding="utf-8")
+    restored.write_text(json.dumps([dict(reversed(list(row.items()))) for row in reversed(rows)]), encoding="utf-8")
+    result = subprocess.run(
+        [sys.executable, str(ROOT / "scripts/legacy_chronicles_archive_doctor.py"),
+         str(restored), "--baseline", str(source)],
+        capture_output=True, text=True, check=False, timeout=10,
+    )
+    assert result.returncode == 0, result.stdout
+    assert json.loads(result.stdout)["archiveCheck"] == "ok"
+    assert "hidden-a" not in result.stdout and "alice" not in result.stdout
+
+
+def test_reconcile_matches_owner_runs_with_legitimate_new_target_runs(tmp_path):
+    source = tmp_path / "prod-snapshot.jsonl"
+    target = tmp_path / "independent-target.jsonl"
+    originals = [
+        _run("hidden-a", "alice", worldVersion={"$numberInt": "3"}),
+        _run("hidden-b", "alice", worldVersion={"$numberLong": "10"}),
+        _run("hidden-c", "bob", worldVersion={"$numberInt": "0"}),
+    ]
+    new_native = _run("native-d", "charlie", worldVersion={"$numberInt": "0"})
+    source.write_text("\n".join(json.dumps(row) for row in originals), encoding="utf-8")
+    target.write_text(json.dumps([new_native, *reversed(originals)]), encoding="utf-8")
+    command = [
+        sys.executable, str(ROOT / "scripts/legacy_chronicles_archive_doctor.py"),
+        str(source), "--reconcile-target", str(target),
+    ]
+    response = subprocess.run(command, capture_output=True, text=True, check=False, timeout=10)
+    metrics = json.loads(response.stdout)
+    assert response.returncode == 0, response.stdout
+    assert metrics["archiveCheck"] == "reconciliation-matching"
+    assert metrics["sourceOwners"] == 2
+    assert metrics["matchedRuns"] == 3
+    assert metrics["targetNativeExtraRuns"] == 1
+    assert metrics["missingRuns"] == metrics["modifiedRuns"] == metrics["ownerConflicts"] == 0
+    assert metrics["provesGameplayCompatibility"] is False
+    assert metrics["authorizesLegacyRetirement"] is False
+    assert metrics["readOnly"] is True
+    for token in ("alice", "bob", "charlie", "hidden-a", "native-d"):
+        assert token not in response.stdout + response.stderr
+
+
+@pytest.mark.parametrize("case,expected_field", [
+    ("missing", "missingRuns"),
+    ("modified", "modifiedRuns"),
+    ("wrong-owner", "ownerConflicts"),
+    ("object-id-source", "unsupportedSourceIds"),
+    ("empty-source", "sourceDocuments"),
+])
+def test_reconcile_fails_closed_without_disclosing_owners(tmp_path, case, expected_field):
+    original = [_run("secret-1", "alice"), _run("secret-2", "alice"),
+                _run("secret-3", "bob")]
+    target = [dict(row) for row in original]
+    if case == "missing":
+        target.pop(1)
+    elif case == "modified":
+        target[0] = {**target[0], "inventory": {"potion": {"quantity": 99}}}
+    elif case == "wrong-owner":
+        target[0] = {**target[0], "owner": "mallory"}
+    elif case == "object-id-source":
+        original[0] = {**original[0], "_id": {"$oid": "507f1f77bcf86cd799439011"}}
+        target[0] = dict(original[0])
+    elif case == "empty-source":
+        original.clear()
+    source = tmp_path / "source.jsonl"
+    target_file = tmp_path / "target.jsonl"
+    source.write_text(json.dumps(original), encoding="utf-8")
+    target_file.write_text(json.dumps(target), encoding="utf-8")
+    result = subprocess.run([
+        sys.executable, str(ROOT / "scripts/legacy_chronicles_archive_doctor.py"),
+        str(source), "--reconcile-target", str(target_file),
+    ], capture_output=True, text=True, check=False, timeout=10)
+    assert result.returncode == 1, result.stdout + result.stderr
+    data = json.loads(result.stdout)
+    assert data["archiveCheck"] == "reconciliation-incomplete"
+    assert data["authorizesLegacyRetirement"] is False
+    if expected_field != "sourceDocuments":
+        assert data[expected_field] >= 1
+    else:
+        assert data[expected_field] == 0
+    for private in ("alice", "bob", "mallory", "secret-1", "secret-2", "secret-3"):
+        assert private not in result.stdout + result.stderr
+
+
+def test_reconcile_rejects_duplicate_destination_ids(tmp_path):
+    src = tmp_path / "source.jsonl"
+    dst = tmp_path / "target.jsonl"
+    src.write_text(json.dumps([_run("hidden", "alice")]), encoding="utf-8")
+    dst.write_text(json.dumps([_run("hidden", "alice"), _run("hidden", "alice")]), encoding="utf-8")
+    result = subprocess.run([
+        sys.executable, str(ROOT / "scripts/legacy_chronicles_archive_doctor.py"),
+        str(src), "--reconcile-target", str(dst),
+    ], capture_output=True, text=True, check=False, timeout=10)
+    assert result.returncode == 2
+    assert json.loads(result.stdout)["archiveCheck"] == "input-error"
+    assert "alice" not in result.stdout and "hidden" not in result.stdout

@@ -55,7 +55,52 @@ compatibilidad de esquema, acceso limitado, rollback y pruebas de recuperación
 sin escribir ni borrar la colección histórica de producción. Ningún
 `--importer-cap` sustituye estas pruebas.
 
-## 2. Restore drill fuera de la colección real
+## 2. Reconciliar partidas históricas por propietario (sin acceso a red)
+
+Una vez que un proceso **autorizado y validado por separado** haya copiado los
+saves al destino independiente de Chronicles, exportar su colección
+`chronicles_runs` con **permisos de lectura** a otro archivo privado, desde
+el URI/DB de destino aprobado (no confundir con `chess_study` ni con la base
+intermedia `chess_study_staging`). No ejecutar `mongoimport` ni borrar nada
+mediante este paso:
+
+```bash
+umask 077
+# CHRONICLES_DB debe ser la base independiente aprobada, no chess_study.
+mongoexport --uri "$CHRONICLES_MONGODB_URI" --db "$CHRONICLES_DB" \
+  --collection chronicles_runs --jsonFormat canonical \
+  --out /ruta/privada/chronicles-target.jsonl
+python3 scripts/legacy_chronicles_archive_doctor.py \
+  /ruta/privada/chronicles-before.jsonl \
+  --reconcile-target /ruta/privada/chronicles-target.jsonl
+```
+
+El doctor compara **cada documento fuente completo**, incluida su identidad
+`_id` y `owner`, contra su correspondiente en el destino. Informa **solo
+contadores agregados**: partidas iguales, ausentes, modificadas, conflictos de
+propietario, propietarios afectados y partidas adicionales creadas
+legítimamente en el juego independiente. Las partidas nuevas del destino no
+se consideran pérdida de información. Rechaza fuente vacía y cualquier `_id`
+BSON ObjectId heredado: el importador Go actual exige identificadores
+`_id` de texto. Soporta BSON Int32/Int64 exportados mediante
+`{"$numberInt":"3"}` y `{"$numberLong":"3"}` en `worldVersion`.
+
+Códigos de salida: **0** si todos los documentos fuente son idénticos y
+conservan propietario; **1** si faltan, difieren, hay conflictos o hay
+identidades fuente incompatibles; **2** si el archivo es inválido o corrupto.
+Este cotejo es offline, sin red ni escrituras, y **no imprime IDs ni nombres**.
+Los archivos fuente y destino pueden contener información privada; conservar
+ambos fuera de Git, artifacts de Actions y chats.
+
+**Importante:** una reconciliación satisfactoria no prueba que la copia
+proceda de un run oficial, que la snapshot no esté obsoleta, que el login
+autorice a cada propietario ni que el juego pueda recuperar esas partidas.
+Verificar por separado: ventana de exportación sin escrituras concurrentes,
+origen y destino autenticados, proceso autorizado de transferencia,
+restauración jugable y rollback. Tampoco autoriza retirar las rutas heredadas
+ni la purga por propietario de `chronicles_runs`.
+
+## 3. Restore drill fuera de la colección real
 
 Importar la copia **solo a una colección aislada de pruebas**, usando una base
 scratch separada de producción. Verificar que `SCRATCH_MONGO_URI` **no**
