@@ -94,6 +94,43 @@ def verify_telemetry_coverage(payload: dict) -> None:
         fail("cannot attest zero PvP fallback: no Python HTTP metric samples in 24h for " + ", ".join(missing))
 
 
+def coverage_diagnostic_queries() -> tuple[str, ...]:
+    """Bounded, read-only controls; never infer zero PvP from these probes."""
+    return (
+        'count by (service_name) (chess_studio_http_server_requests_total)',
+        'count by (service_name) (count_over_time(chess_studio_http_server_requests_total[24h]))',
+        'count({__name__="chess_studio_http_server_requests_total"})',
+    )
+
+
+def diagnose_missing_coverage(api: GrafanaReadApi, metrics_uid: str) -> None:
+    """Emit aggregate series counts only, never raw labels or secret endpoints."""
+    for index, query in enumerate(coverage_diagnostic_queries(), start=1):
+        try:
+            payload, metrics_uid = query_with_uid_recovery(
+                api, metrics_uid, "prometheus", "/api/v1/query",
+                {"query": query, "time": str(int(time.time()))},
+            )
+            result = payload.get("data", {}).get("result", [])
+            if not isinstance(result, list):
+                raise ValueError("invalid vector")
+            counts = {}
+            for item in result:
+                metric = item.get("metric", {})
+                value = item.get("value", [])
+                service = metric.get("service_name")
+                if service not in SERVICES and index != 3:
+                    continue
+                if len(value) != 2:
+                    continue
+                counts[SERVICES[service] if service in SERVICES else "all"] = value[1]
+            print(json.dumps({"check": "pvp_metric_diagnostic", "probe": index,
+                              "counts": counts}, sort_keys=True))
+        except (SystemExit, ValueError, TypeError, AttributeError):
+            print(json.dumps({"check": "pvp_metric_diagnostic", "probe": index,
+                              "status": "unavailable"}, sort_keys=True), file=sys.stderr)
+
+
 def parse_rows(payload: dict) -> list[dict]:
     data = payload.get("data") if isinstance(payload, dict) else None
     result = data.get("result") if isinstance(data, dict) else None
@@ -319,6 +356,9 @@ def self_test() -> int:
     assert '[86400s]' in control and 'http_route' not in control
     assert '[3600s]' in telemetry_coverage_query(3600)
     assert 'chess-studio-backend|chess-studio-backend-staging' in control
+    probes = coverage_diagnostic_queries()
+    assert len(probes) == 3 and "count_over_time" in probes[1]
+    assert all("api/pvp" not in probe for probe in probes)
     healthy = {"data": {"result": [
         {"metric": {"service_name": service}, "value": [0, "12"]}
         for service in SERVICES
@@ -485,7 +525,11 @@ def main() -> int:
             api, metrics_uid, "prometheus", "/api/v1/query",
             {"query": telemetry_coverage_query(window_seconds), "time": str(int(time.time()))},
         )
-        verify_telemetry_coverage(control_payload)
+        try:
+            verify_telemetry_coverage(control_payload)
+        except SystemExit:
+            diagnose_missing_coverage(api, metrics_uid)
+            raise
         print(json.dumps({"check": "pvp_python_telemetry_coverage", "ok": True,
                           "lookback_seconds": min(window_seconds, 86400), "services": sorted(SERVICES)},
                          separators=(",", ":"), sort_keys=True))
