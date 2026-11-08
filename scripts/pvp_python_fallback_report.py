@@ -359,6 +359,16 @@ def self_test() -> int:
     probes = coverage_diagnostic_queries()
     assert len(probes) == 3 and "count_over_time" in probes[1]
     assert all("api/pvp" not in probe for probe in probes)
+    class DiagnosticGrafana:
+        def get_json(self, path: str, params: dict[str, str]) -> dict:
+            assert "/api/v1/query" in path
+            return {"data": {"result": [
+                {"metric": {"service_name": "chess-studio-backend"}, "value": [0, "4"]}
+            ]}}
+
+    # The diagnostic is observational only: it must not turn missing
+    # telemetry into a successful attestation.
+    diagnose_missing_coverage(DiagnosticGrafana(), "test-prom")
     healthy = {"data": {"result": [
         {"metric": {"service_name": service}, "value": [0, "12"]}
         for service in SERVICES
