@@ -4,6 +4,12 @@ Este archivo es el **contexto básico y el índice operativo** del repositorio. 
 
 Las reglas detalladas viven en los `.md` especializados enlazados aquí. Antes de tocar un área, lee su contrato correspondiente. Si se crea un nuevo documento persistente que condiciona cómo trabajar en el repo, añádelo también a este índice.
 
+## Cuenta GitHub para ShadowOps
+
+- **Obligatorio:** al operar sobre repositorios `evilsysadmin/*`, usar explícitamente la cuenta/conexión de GitHub **ShadowOps** (perfil `evilsysadmin`) para lecturas, escrituras, PR, checks, merges y workflows. Si la herramienta ofrece `link_id`, seleccionar el **identificador vigente** asociado a `link_name: ShadowOps` en el esquema de esa sesión; nunca omitirlo cuando existan varias cuentas.
+- **Nullforge** (perfil `nullforgeops`) es una conexión independiente: no utilizarla para ShadowOps ni como alternativa automática. Si ShadowOps falla o no está disponible, detener la operación, diagnosticar la selección de cuenta y comunicar el bloqueo; no dar por desconectada la cuenta sin haber probado su `link_id` explícito.
+- Verificar propietario y repositorio antes de operar; no almacenar `link_id`, tokens, claves o credenciales en Git: los identificadores de conexión pueden cambiar al reconectar.
+
 ## Contexto básico
 
 - Football **pertenece exclusivamente** a `evilsysadmin/football-of-matthias`; aquí sólo queda el portal externo y la exportación legacy. No reintroducir partido, mánager, arte, runtime o publicador. Ver [`migración Football`](docs/operations/football-migration.md).
