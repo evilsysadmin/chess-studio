@@ -115,6 +115,14 @@
     right: max(0px, calc(50cqw - 50vw + 16px)) !important;
   }
 
+  /* The projected Dungeon beacon is a second, mouse-only action at the
+     very edge of the authored scene. It is clipped under cover and duplicates
+     the fully accessible stair trigger relocated above. Suppress only this
+     redundant beacon; all other real scene destinations remain interactive. */
+  .illustrated-home__beacon--dungeon {
+    display: none !important;
+  }
+
   /* Progress objects are factual interactive buttons, not disposable scenery.
      Only the rightmost slot needs a crop guard; preserve the other slot offsets. */
   .illustrated-home__memory-object:not(.is-slot-2):not(.is-slot-3) {
