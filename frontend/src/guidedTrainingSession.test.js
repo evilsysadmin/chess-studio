@@ -59,7 +59,7 @@ describe('sesiones guiadas 5/15/30 minutos', () => {
     const plan = buildGuidedTrainingPlan({
       minutes: 15,
       history: [],
-      puzzles: [],
+      puzzles: [{ id: 'debt-available', incidentKeys: ['human:ALLOWED_MATE'], cleanSolves: 0 }],
       rivalry: {},
       playerModel: {
         trainingDebt: {
@@ -89,7 +89,7 @@ describe('sesiones guiadas 5/15/30 minutos', () => {
     const plan = buildGuidedTrainingPlan({
       minutes: 5,
       history: [],
-      puzzles: [],
+      puzzles: [{ id: 'relapse-available', incidentKeys: ['human:MISSED_MATE'], cleanSolves: 0 }],
       rivalry: {},
       playerModel: {
         recurringErrors: [{
@@ -197,6 +197,65 @@ describe('sesiones guiadas 5/15/30 minutos', () => {
       minutes: 4,
     });
     expect(plan.steps[0].detail).toContain('1 posición real pendiente');
+  });
+
+  it('no propone puzzles que la biblioteca considera ya resueltos, aunque cleanSolves sea cero', () => {
+    const plan = buildGuidedTrainingPlan({
+      minutes: 5,
+      history: [],
+      puzzles: [{ id: 'completed', incidentKeys: ['human:MISSED_MATE'], solves: 1, cleanSolves: 0 }],
+      rivalry: {},
+      playerModel: { recurringErrors: [], trainingDebt: { top: null } },
+    });
+    expect(plan.available).toBe(false);
+    expect(plan.steps).toEqual([]);
+  });
+
+  it('no ofrece un filtro de deuda vacío cuando sólo hay puzzles de otro incidente', () => {
+    const plan = buildGuidedTrainingPlan({
+      minutes: 5,
+      history: [],
+      puzzles: [{ id: 'other', incidentKeys: ['human:ALLOWED_MATE'], cleanSolves: 0 }],
+      rivalry: {},
+      playerModel: {
+        recurringErrors: [{
+          incidentKey: 'human:MISSED_MATE',
+          filter: { incidentKey: 'human:MISSED_MATE' },
+          improvementState: 'still-occurring',
+          debt: { active: true },
+        }],
+      },
+    });
+    expect(plan.available).toBe(true);
+    expect(plan.steps[0]).toMatchObject({ kind: 'personal-errors', action: 'personal' });
+  });
+
+  it('no inventa una sesión por deuda recurrente sin posiciones disponibles', () => {
+    const plan = buildGuidedTrainingPlan({
+      minutes: 5,
+      history: [],
+      puzzles: [],
+      rivalry: {},
+      playerModel: {
+        recurringErrors: [{ incidentKey: 'human:MISSED_MATE', improvementState: 'still-occurring' }],
+      },
+    });
+    expect(plan.available).toBe(false);
+  });
+
+  it('ignora dificultad nula, vacía, cero o no numérica antes de recomendar una partida', () => {
+    const history = [
+      { difficulty: 60 },
+      { difficulty: null },
+      { difficulty: undefined },
+      { difficulty: 0 },
+      { difficulty: '' },
+      { difficulty: 'sin dato' },
+      { difficulty: 80 },
+    ];
+    const plan = buildGuidedTrainingPlan({ minutes: 15, history, puzzles: debtPuzzles, rivalry: {} });
+    const practice = plan.steps.find((step) => step.kind === 'short-game');
+    expect(practice.training.difficulty).toBe(70);
   });
 
   it('ajusta la práctica desde datos recientes sin convertirlos en una afirmación inventada', () => {
