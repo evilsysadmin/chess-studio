@@ -74,6 +74,41 @@ describe('sesiones guiadas 5/15/30 minutos', () => {
     });
   });
 
+  it('no descarta partidas reales a CPU nivel 0 al calibrar práctica reciente', () => {
+    const history = [
+      { difficulty: null, humanColor: null },
+      { difficulty: false, humanColor: 'w' },
+      { difficulty: '', humanColor: 'w' },
+      { difficulty: 200, humanColor: 'w' },
+      { difficulty: 0, humanColor: 'b' },
+      { difficulty: '0', humanColor: 'b' },
+      { difficulty: 0, humanColor: 'b' },
+      { difficulty: 0, humanColor: 'b' },
+      { difficulty: 0, humanColor: 'b' },
+      { difficulty: 90, humanColor: 'w' },
+    ];
+    const plan = buildGuidedTrainingPlan({ minutes: 15, history, puzzles: debtPuzzles, rivalry: {} });
+    expect(plan.steps.find((step) => step.kind === 'short-game')).toMatchObject({
+      training: { humanColor: 'w', difficulty: 5 },
+    });
+    // With only genuinely missing difficulties, the existing safe fallback
+    // remains 50; missing is not the same as an explicit numeric zero.
+    const unknown = buildGuidedTrainingPlan({
+      minutes: 15, history: history.slice(0, 4), puzzles: debtPuzzles, rivalry: {},
+    });
+    expect(unknown.steps.find((step) => step.kind === 'short-game').training.difficulty).toBe(50);
+  });
+
+  it('pondera el nivel cero junto a rivales recientes de mayor fuerza', () => {
+    const plan = buildGuidedTrainingPlan({
+      minutes: 15,
+      history: [{ difficulty: 0 }, { difficulty: 0 }, { difficulty: 20 }],
+      puzzles: debtPuzzles,
+      rivalry: {},
+    });
+    expect(plan.steps.find((step) => step.kind === 'short-game').training.difficulty).toBe(7);
+  });
+
   it('toma la deuda focal del Player Model sin recalcularla en la sesión', () => {
     const plan = buildGuidedTrainingPlan({
       minutes: 15,
@@ -262,7 +297,7 @@ describe('sesiones guiadas 5/15/30 minutos', () => {
     expect(plan.available).toBe(false);
   });
 
-  it('ignora dificultad nula, vacía, cero o no numérica antes de recomendar una partida', () => {
+  it('ignora dificultades ausentes o no numéricas pero incluye el nivel cero real', () => {
     const history = [
       { difficulty: 60 },
       { difficulty: null },
@@ -274,7 +309,8 @@ describe('sesiones guiadas 5/15/30 minutos', () => {
     ];
     const plan = buildGuidedTrainingPlan({ minutes: 15, history, puzzles: debtPuzzles, rivalry: {} });
     const practice = plan.steps.find((step) => step.kind === 'short-game');
-    expect(practice.training.difficulty).toBe(70);
+    // Real observations are 60, 0 and 80. Missing data do not count.
+    expect(practice.training.difficulty).toBe(47);
   });
 
   it('liga la deuda recurrente a una posición pendiente del mismo incidente', () => {

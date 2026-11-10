@@ -139,11 +139,14 @@ function nemesisStep(history, rivalry) {
 
 // gameHistory.saveGameRecord unshifts: history is newest first. Keep difficulty
 // and color on the same chronological end rather than sampling old matches.
+// CPU level 0 is real evidence: the 5..95 practice floor applies only after
+// computing the sample, not by throwing away those games as missing.
 function recentPracticeDifficulty(history = []) {
   const values = (Array.isArray(history) ? history : [])
     .map((row) => row?.difficulty)
-    .filter((value) => value !== null && value !== undefined && value !== ''
-      && Number.isFinite(Number(value)) && Number(value) > 0)
+    .filter((value) => value !== null && value !== undefined
+      && typeof value !== 'boolean' && String(value).trim() !== ''
+      && Number.isFinite(Number(value)) && Number(value) >= 0 && Number(value) <= 100)
     .slice(0, 5)
     .map(Number);
   if (!values.length) return 50;
