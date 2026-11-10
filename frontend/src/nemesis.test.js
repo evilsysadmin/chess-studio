@@ -107,12 +107,16 @@ describe('nemesisTrainingPosition', () => {
   it('conserva el nivel 0 de una derrota real al preparar entrenamiento Némesis', () => {
     const weak = game(1, 'loss', 'Defensa Siciliana', 'w', 0);
     expect(nemesisTrainingPosition(weak)?.difficulty).toBe(0);
+    // The dossier trains from the most recent actual defeat; make that
+    // latest loss the level-zero game rather than the older fixture.
+    const latestZero = game(4, 'loss', 'Defensa Siciliana', 'w', 0);
     const dossier = buildNemesisDossier([
-      weak,
+      game(1, 'loss'),
       game(2, 'loss'),
       game(3, 'draw'),
-      game(4, 'loss'),
+      latestZero,
     ]);
+    expect(dossier.training?.sourceRecord.id).toBe('g-4');
     expect(dossier.training?.difficulty).toBe(0);
     expect(nemesisTrainingPosition({ ...weak, difficulty: null })?.difficulty).toBe(50);
   });
