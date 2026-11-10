@@ -470,7 +470,10 @@ export function gameStatus(page) {
   // War Room immersion intentionally hides the legacy status strip and exposes
   // the same accessible live status in Matthias' turn pill. Select the visible
   // status surface so shared journeys work in both classic/2D and immersive 3D.
-  return page.locator('[role="status"][aria-label="Estado de la partida"]:visible');
+  // 2D keeps the fixed label; War Room includes the *actual* live state in
+  // its accessible name (turn, reconnect, mate). Match both without assuming
+  // an old static name, while still ignoring hidden duplicate status surfaces.
+  return page.locator('[role="status"][aria-label^="Estado de la partida"]:visible');
 }
 
 export function gameTurn(page, text = 'Tu turno') {
