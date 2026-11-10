@@ -50,6 +50,12 @@ export function recordGameActivity({
   const normalizedRenderer = BOARD_RENDERERS.some((row) => row.id === rendererCandidate) ? rendererCandidate : null;
   const baseModeLabel = gameModeLabel(record);
   const rendererLabel = normalizedRenderer ? normalizedRenderer.toUpperCase() : null;
+  // A missing difficulty is unknown, not level zero. Keep explicit numeric
+  // zero valid; adaptive matchmaking can fall back to the started event only
+  // if a finished event genuinely has no difficulty of its own.
+  const hasDifficulty = difficulty !== null && difficulty !== undefined
+    && typeof difficulty !== 'boolean' && String(difficulty).trim() !== '';
+  const numericDifficulty = hasDifficulty ? Number(difficulty) : NaN;
   const event = {
     id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
     dedupeKey,
@@ -62,7 +68,7 @@ export function recordGameActivity({
     // diga claramente 2D/3D usando el mismo journal que ya sincronizamos.
     modeLabel: rendererLabel ? `${baseModeLabel} · ${rendererLabel}` : baseModeLabel,
     outcome: outcome || null,
-    difficulty: Number.isFinite(Number(difficulty)) ? Number(difficulty) : null,
+    difficulty: Number.isFinite(numericDifficulty) ? numericDifficulty : null,
     detail: detail || null,
     boardRenderer: normalizedRenderer,
   };
