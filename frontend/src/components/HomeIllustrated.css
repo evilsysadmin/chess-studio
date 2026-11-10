@@ -85,3 +85,34 @@
 @media (prefers-reduced-motion: reduce) {
   .illustrated-home__destination { transition: none; }
 }
+
+
+/* Desktop 16:10 / taller windows: the 16:9 hall previously stopped at 90% of
+   the viewport height (1440x900), leaving horizontal empty bands. Cover the
+   viewport with the *whole stage* (Blender canvas, fallback art and hotspots),
+   not the picture alone: their coordinates must stay in sync. Preserve the
+   peripheral History and Dungeon affordances within the visible safe area.
+   Narrow 4:3 desktop and the touch vestibule keep their existing layout. */
+@media (min-width: 1200px) and (max-aspect-ratio: 16/9) {
+  .illustrated-home__stage {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 177.7778dvh;
+    max-width: none;
+    margin: 0;
+    transform: translate(-50%, -50%);
+  }
+  .illustrated-home__destination--history {
+    left: max(3.7%, calc(50% - 50vw + 16px));
+  }
+  .illustrated-home__dungeon-copy {
+    right: max(3.6cqw, calc(50% - 50vw + 16px));
+  }
+  .illustrated-home__dungeon-chevron {
+    right: max(2.65cqw, calc(50% - 50vw + 16px));
+  }
+  .illustrated-home__utilities > .illustrated-home__dungeon-panel {
+    right: max(2.1cqw, calc(50% - 50vw + 16px));
+  }
+}
