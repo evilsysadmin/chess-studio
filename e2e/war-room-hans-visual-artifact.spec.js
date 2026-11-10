@@ -307,9 +307,9 @@ test('War Room · secuencia móvil de llamada y respuesta de Hans en 390×844', 
     deviceScaleFactor: 1,
   });
   const page = await context.newPage();
-  // Install before the app starts: only the short live Hans reply is paused
-  // below, so a slow SwiftShader screenshot cannot outlive its 1.6s phase.
-  // Time otherwise flows normally, preserving the genuine 3D choreography.
+  // Install before the app starts: pause only the *already visible* real
+  // Matthias/Hans dialogue frames during their slow SwiftShader screenshots.
+  // Time otherwise flows normally, preserving genuine 3D choreography.
   await page.clock.install();
   const video = page.video();
   const states = [];
