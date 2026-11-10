@@ -104,15 +104,15 @@
     transform: translate(-50%, -50%);
   }
   .illustrated-home__destination--history {
-    left: max(3.7%, calc(50% - 50vw + 16px));
+    left: max(3.7%, calc(50cqw - 50vw + 16px));
   }
   .illustrated-home__dungeon-copy {
-    right: max(3.6cqw, calc(50% - 50vw + 16px));
+    right: max(3.6cqw, calc(50cqw - 50vw + 16px));
   }
   .illustrated-home__dungeon-chevron {
-    right: max(2.65cqw, calc(50% - 50vw + 16px));
+    right: max(2.65cqw, calc(50cqw - 50vw + 16px));
   }
   .illustrated-home__utilities > .illustrated-home__dungeon-panel {
-    right: max(2.1cqw, calc(50% - 50vw + 16px));
+    right: max(2.1cqw, calc(50cqw - 50vw + 16px));
   }
 }
