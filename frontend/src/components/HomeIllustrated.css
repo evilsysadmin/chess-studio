@@ -92,7 +92,7 @@
    its projected hotspots and the 2D fallback keep identical coordinates.
    Shift the peripheral interactive *surfaces*, not just their copy, into view.
    Leave 4:3, 16:9 and mobile layouts on their established compositions. */
-@media (min-width: 1200px) and (max-aspect-ratio: 17/10) {
+@media (min-width: 1200px) and (min-aspect-ratio: 8/5) and (max-aspect-ratio: 17/10) {
   .illustrated-home__stage {
     position: absolute;
     left: 50%;
