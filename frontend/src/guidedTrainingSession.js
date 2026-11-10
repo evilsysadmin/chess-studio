@@ -137,19 +137,21 @@ function nemesisStep(history, rivalry) {
   };
 }
 
+// gameHistory.saveGameRecord unshifts: history is newest first. Keep difficulty
+// and color on the same chronological end rather than sampling old matches.
 function recentPracticeDifficulty(history = []) {
   const values = (Array.isArray(history) ? history : [])
     .map((row) => row?.difficulty)
     .filter((value) => value !== null && value !== undefined && value !== ''
       && Number.isFinite(Number(value)) && Number(value) > 0)
-    .slice(-5)
+    .slice(0, 5)
     .map(Number);
   if (!values.length) return 50;
   return Math.max(5, Math.min(95, Math.round(values.reduce((sum, value) => sum + value, 0) / values.length)));
 }
 
 function recentHumanColor(history = []) {
-  const row = [...(Array.isArray(history) ? history : [])].reverse().find((entry) => ['w', 'b'].includes(entry?.humanColor));
+  const row = (Array.isArray(history) ? history : []).find((entry) => ['w', 'b'].includes(entry?.humanColor));
   return row?.humanColor || 'w';
 }
 
