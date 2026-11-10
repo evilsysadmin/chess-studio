@@ -88,6 +88,7 @@ test('Home 16:10 · el salón cubre el escritorio y conserva Historia y Mazmorra
       stage: rect('.illustrated-home__stage'),
       history: rect('.illustrated-home__destination--history'),
       dungeonCopy: rect('.illustrated-home__dungeon-copy'),
+      dungeonTrigger: rect('.illustrated-home__dungeon-trigger'),
       dungeonPanel: rect('.illustrated-home__dungeon-panel'),
     };
   });
@@ -99,6 +100,8 @@ test('Home 16:10 · el salón cubre el escritorio y conserva Historia y Mazmorra
   expect(geometry.history.left).toBeGreaterThanOrEqual(0);
   expect(geometry.history.right).toBeLessThanOrEqual(viewport.width);
   expect(geometry.dungeonCopy.right).toBeLessThanOrEqual(viewport.width - 1);
+  expect(geometry.dungeonTrigger.left).toBeGreaterThanOrEqual(0);
+  expect(geometry.dungeonTrigger.right).toBeLessThanOrEqual(viewport.width);
 
   const history = home.locator('.illustrated-home__destination--history');
   await expect(history).toBeVisible();
