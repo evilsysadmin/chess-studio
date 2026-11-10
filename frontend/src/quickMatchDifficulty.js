@@ -55,7 +55,14 @@ function recentAdaptiveResults(activity = [], nowMs = Date.now()) {
       const started = starts.get(event?.gameId);
       if (!started) return null;
       if (event?.state === 'finished' && ['win', 'draw', 'loss'].includes(event?.outcome)) {
-        return { ...event, difficulty: Number(event?.difficulty ?? started?.difficulty) };
+        const rawDifficulty = event?.difficulty ?? started?.difficulty;
+        // Unknown opponent strength is not a rated win/loss against level 0.
+        // Prefer the original start event when the finish lacks difficulty.
+        if (rawDifficulty === null || rawDifficulty === undefined
+          || typeof rawDifficulty === 'boolean' || String(rawDifficulty).trim() === '') return null;
+        const difficulty = Number(rawDifficulty);
+        if (!Number.isFinite(difficulty)) return null;
+        return { ...event, difficulty };
       }
       return null;
     })
