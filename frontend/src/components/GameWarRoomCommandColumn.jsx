@@ -233,7 +233,7 @@ function CompactWarRoomPill({
           className="game-3d-turn-pill-label"
           role="status"
           aria-live="polite"
-          aria-label="Estado de la partida"
+          aria-label={`Estado de la partida: ${signal.label}`}
         >
           {signal.label}
         </strong>
@@ -309,7 +309,7 @@ export default function GameWarRoomCommandColumn({
             className="game-3d-turn-pill-label"
             role="status"
             aria-live="polite"
-            aria-label="Estado de la partida"
+            aria-label={`Estado de la partida: ${signal.label}`}
           >
             {signal.label}
           </strong>
