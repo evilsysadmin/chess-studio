@@ -55,6 +55,25 @@ describe('sesiones guiadas 5/15/30 minutos', () => {
     expect(plan30.steps[0].minutes).toBe(16);
   });
 
+  it('calibra la práctica con las cinco partidas recientes y el color reciente, no con las antiguas', () => {
+    // saveGameRecord unshifts the newest entry; invalid values do not count
+    // toward the five-game window or the most recent valid human color.
+    const history = [
+      { difficulty: null, humanColor: null },
+      { difficulty: 85, humanColor: 'b' },
+      { difficulty: 75, humanColor: 'w' },
+      { difficulty: 70, humanColor: 'w' },
+      { difficulty: 65, humanColor: 'w' },
+      { difficulty: 55, humanColor: 'w' },
+      { difficulty: 10, humanColor: 'w' },
+      { difficulty: 15, humanColor: 'w' },
+    ];
+    const plan = buildGuidedTrainingPlan({ minutes: 15, history, puzzles: debtPuzzles, rivalry: {} });
+    expect(plan.steps.find((step) => step.kind === 'short-game')).toMatchObject({
+      training: { humanColor: 'b', difficulty: 70 },
+    });
+  });
+
   it('toma la deuda focal del Player Model sin recalcularla en la sesión', () => {
     const plan = buildGuidedTrainingPlan({
       minutes: 15,
