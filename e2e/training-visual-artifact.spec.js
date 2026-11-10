@@ -59,6 +59,8 @@ async function assertInsightsActionableFold(room, label) {
     // The guided time budget is secondary and may continue below the fold.
     const direct = root.querySelector('.insights-guided-direct-button')?.getBoundingClientRect();
     const recommended = root.querySelector('.insights-guided-start')?.getBoundingClientRect();
+    const taskTitle = root.querySelector('.insights-guided-session-intro h2')?.getBoundingClientRect();
+    const preview = root.querySelector('.insights-guided-position')?.getBoundingClientRect();
     return {
       viewportHeight: window.innerHeight,
       toolsBottom: tools?.bottom || 0,
@@ -66,12 +68,16 @@ async function assertInsightsActionableFold(room, label) {
       primaryBottom: direct?.bottom || recommended?.bottom || 0,
       teaserSquares: root.querySelectorAll('.insights-guided-position .insights-position-square').length,
       hasDirect: Boolean(direct),
+      titleOffsetFromPreview: taskTitle && preview ? taskTitle.top - preview.top : null,
     };
   });
 
   expect(geometry.sessionTop, `${label}: training action starts too low`).toBeLessThan(geometry.viewportHeight * .7);
   expect(geometry.primaryBottom, `${label}: primary training action falls below the first viewport`).toBeLessThanOrEqual(geometry.viewportHeight - 8);
-  if (geometry.hasDirect) expect(geometry.teaserSquares, `${label}: real position preview`).toBe(64);
+  if (geometry.hasDirect) {
+    expect(geometry.teaserSquares, `${label}: real position preview`).toBe(64);
+    expect(geometry.titleOffsetFromPreview, `${label}: task heading must align with the preview, not float halfway down`).toBeLessThanOrEqual(48);
+  }
   expect(geometry.toolsBottom, `${label}: archive tools should sit before the task`).toBeLessThanOrEqual(geometry.sessionTop + 8);
 }
 
@@ -676,6 +682,7 @@ scopedTest('progress', 'Entrenar · Así juegas y Mi progreso', async ({ page })
   await captureAt(page, 'insights', { width: 1440, height: 900, variant: 'desktop' });
   await captureAt(page, 'insights', { width: 1800, height: 900, variant: 'wide' });
   await captureAt(page, 'insights', { width: 360, height: 800, variant: 'mobile-compact' });
+  await assertInsightsActionableFold(trainingRoom, 'insights-mobile-360');
   await captureAt(page, 'insights', { width: 390, height: 844, variant: 'mobile' });
   await assertInsightsActionableFold(trainingRoom, 'insights-mobile');
   await captureAt(page, 'insights', { width: 430, height: 932, variant: 'mobile-wide' });
