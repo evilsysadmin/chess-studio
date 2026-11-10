@@ -61,7 +61,7 @@ function actionableRecurringPattern(playerModel, pending) {
   }) || null;
 }
 
-function recurringPatternFocus(pattern) {
+function recurringPatternFocus(pattern, featuredPuzzleId) {
   const debt = pattern?.debt;
   const relapse = pattern?.improvementState === PATTERN_IMPROVEMENT_STATES.STILL_OCCURRING && debt?.paid === true;
   const recurrenceGames = Math.max(0, Number(pattern?.postTrainingObservations?.recurrenceGames || 0));
@@ -75,13 +75,18 @@ function recurringPatternFocus(pattern) {
       : `${Number(debt?.progress || 0)}/${Number(debt?.target || 2)} casos limpios · ${Number(debt?.realCases || pattern?.positions || 0)} posiciones reales en el expediente.`,
     action: 'personal-filter',
     filter: pattern?.filter || { incidentKey: pattern.incidentKey },
+    featuredPuzzleId,
   };
 }
 
 function focusStep(puzzles, playerModel) {
   const pending = pendingPersonalPuzzles(puzzles, playerModel);
   const pattern = actionableRecurringPattern(playerModel, pending);
-  if (pattern) return recurringPatternFocus(pattern);
+  if (pattern) {
+    const filter = pattern.filter || { incidentKey: pattern.incidentKey };
+    const featured = pending.find((puzzle) => matchesPersonalPuzzleFilter(puzzle, filter));
+    return recurringPatternFocus(pattern, featured?.id || null);
+  }
 
   // Compatibilidad con modelos parciales/antiguos: si aún no traen
   // recurringErrors, conserva la deuda factual existente como fallback.
@@ -95,6 +100,7 @@ function focusStep(puzzles, playerModel) {
         detail: `${debt.progress}/${debt.target} casos limpios · ${debt.cases} posiciones reales en el expediente.`,
         action: 'personal-filter',
         filter: { incidentKey: debt.incidentKey },
+        featuredPuzzleId: pending.find((puzzle) => matchesPersonalPuzzleFilter(puzzle, { incidentKey: debt.incidentKey }))?.id || null,
       };
     }
   }
@@ -106,6 +112,7 @@ function focusStep(puzzles, playerModel) {
     title: 'Acciones inmediatas',
     detail: `${pending.length} ${pending.length === 1 ? 'posición real pendiente' : 'posiciones reales pendientes'} para trabajar sin inventar deberes.`,
     action: 'personal',
+    featuredPuzzleId: pending[0]?.id || null,
   };
 }
 
