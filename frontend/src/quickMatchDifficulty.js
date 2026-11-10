@@ -41,6 +41,13 @@ function eventIsFresh(event, nowMs = Date.now()) {
   return ageMs <= QUICK_MATCH_FORM_MAX_AGE_DAYS * 24 * 60 * 60 * 1000;
 }
 
+function verifiedDifficulty(value) {
+  if (value === null || value === undefined || typeof value === 'boolean'
+    || String(value).trim() === '') return null;
+  const difficulty = Number(value);
+  return Number.isFinite(difficulty) ? difficulty : null;
+}
+
 function recentAdaptiveResults(activity = [], nowMs = Date.now()) {
   const rows = Array.isArray(activity) ? activity : [];
   const starts = new Map(
@@ -55,7 +62,10 @@ function recentAdaptiveResults(activity = [], nowMs = Date.now()) {
       const started = starts.get(event?.gameId);
       if (!started) return null;
       if (event?.state === 'finished' && ['win', 'draw', 'loss'].includes(event?.outcome)) {
-        return { ...event, difficulty: Number(event?.difficulty ?? started?.difficulty) };
+        // Prefer the actual opponent from start when finish has no valid
+        // difficulty. Without either, this is not a trustworthy form sample.
+        const difficulty = verifiedDifficulty(event?.difficulty) ?? verifiedDifficulty(started?.difficulty);
+        return difficulty === null ? null : { ...event, difficulty };
       }
       return null;
     })
@@ -218,10 +228,10 @@ function previousAdaptiveDifficulty(activity = [], nowMs = Date.now()) {
     (row) => row?.state === 'started'
       && row?.detail === 'adaptive-difficulty'
       && ['casual', 'tournament'].includes(row?.mode)
-      && Number.isFinite(Number(row?.difficulty))
+      && verifiedDifficulty(row?.difficulty) !== null
       && eventIsFresh(row, nowMs),
   );
-  return event ? clamp(Math.round(Number(event.difficulty)), 0, 100) : null;
+  return event ? clamp(Math.round(verifiedDifficulty(event.difficulty)), 0, 100) : null;
 }
 
 export function difficultyForQuickMatchRating(rating, activity = null, games = null, qualityRecords = null, nowMs = Date.now()) {

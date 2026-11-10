@@ -79,6 +79,24 @@ describe('quick-match Elo chaser', () => {
     expect(quickMatchTargetLeadElo(losses, 3, {})).toBe(-75);
   });
 
+  it('no atribuye victorias a un rival de nivel cero cuando falta la dificultad', () => {
+    const unknown = ['g3', 'g2', 'g1'].flatMap((gameId) => [
+      { gameId, state: 'finished', outcome: 'win', difficulty: null, mode: 'casual' },
+      { gameId, state: 'started', detail: 'adaptive-difficulty', difficulty: null, mode: 'casual' },
+    ]);
+    expect(quickMatchEarlyCalibrationSignal(unknown, 3)).toBe(0);
+    expect(quickMatchTargetLeadElo(unknown, 3, {})).toBe(provisionalQuickMatchLeadElo(3));
+
+    // An unknown finish is still actionable if the actual opponent is in
+    // its matching start event. Explicit zero is a real legal CPU difficulty.
+    const knownStarts = unknown.map((row) => (
+      row.state === 'started' ? { ...row, difficulty: 45 } : row
+    ));
+    const explicitZero = unknown.map((row) => ({ ...row, difficulty: 0 }));
+    expect(quickMatchEarlyCalibrationSignal(knownStarts, 3)).toBe(1);
+    expect(quickMatchEarlyCalibrationSignal(explicitZero, 3)).toBe(1);
+  });
+
   it('does not force early convergence on mixed provisional evidence', () => {
     const mixed = [
       ...adaptiveGame('m3', 'win', 45),
@@ -97,6 +115,21 @@ describe('quick-match Elo chaser', () => {
     const previousLead = cpuRatingForDifficulty(previousDifficulty) - 1000;
     expect(Math.abs(previousLead - QUICK_MATCH_TARGET_LEAD_ELO)).toBeLessThanOrEqual(QUICK_MATCH_HYSTERESIS_ELO);
     expect(difficultyForQuickMatchRating(1000, activity, 20)).toBe(previousDifficulty);
+  });
+
+  it('no fija histéresis a nivel 0 cuando el rival anterior no tiene dificultad', () => {
+    // At this edge rating, a real level-0 opponent is inside the 25-Elo band,
+    // so an invented zero would incorrectly pin the next match there.
+    const expected = difficultyForQuickMatchRating(325, [], 20);
+    expect(expected).toBeGreaterThan(0);
+    for (const missing of [null, '', false, 'dato corrupto']) {
+      const activity = [
+        { gameId: 'unknown', state: 'started', detail: 'adaptive-difficulty', difficulty: missing, mode: 'casual' },
+      ];
+      expect(difficultyForQuickMatchRating(325, activity, 20)).toBe(expected);
+    }
+    const realZero = [{ gameId: 'real-zero', state: 'started', detail: 'adaptive-difficulty', difficulty: 0, mode: 'casual' }];
+    expect(difficultyForQuickMatchRating(325, realZero, 20)).toBe(0);
   });
 
   it('recalibrates when the previous opponent falls outside the Elo band', () => {
