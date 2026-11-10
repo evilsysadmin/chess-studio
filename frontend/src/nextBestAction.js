@@ -16,11 +16,21 @@ export function nextBestAction({ outcome, moveCount = 0, hasReport = false, canT
       label: 'Jugar otra partida',
     };
   }
+  // The fallback action only returns to Home. A win does not prove that the
+  // next opponent will be stronger, and a draw does not prove a missed advantage.
   if (outcome === 'win') {
-    return { id: 'advance', eyebrow: 'Mantén el ritmo', title: 'Sube un poco la exigencia', detail: 'Tu siguiente objetivo ya puede pedirte un rival más fuerte.', label: 'Ver siguiente objetivo' };
+    return { id: 'advance', eyebrow: 'Mantén el ritmo', title: 'Elige tu siguiente reto', detail: 'Vuelve al castillo para elegir otra partida o entrenar.', label: 'Ver siguiente objetivo' };
   }
   if (outcome === 'draw') {
-    return { id: 'advance', eyebrow: 'Siguiente paso', title: 'Convierte mejor la ventaja', detail: 'Revisa el cierre y avanza con un objetivo concreto.', label: 'Ver siguiente objetivo' };
+    return {
+      id: 'advance',
+      eyebrow: 'Siguiente paso',
+      title: 'Decide cómo continuar',
+      detail: hasReport
+        ? 'Consulta el resumen para comprobar si hubo oportunidades reales, o elige otro reto.'
+        : 'Vuelve al castillo y elige cómo continuar.',
+      label: 'Ver siguiente objetivo',
+    };
   }
   return { id: 'advance', eyebrow: 'Siguiente paso', title: 'Entrena una decisión', detail: 'Avanza con un objetivo nuevo en lugar de repetir la misma partida.', label: 'Ver siguiente objetivo' };
 }
