@@ -87,34 +87,37 @@
 }
 
 
-/* Desktop 16:10 / taller windows: the 16:9 hall previously stopped at 90% of
-   the viewport height (1440x900), leaving horizontal empty bands. Cover the
-   viewport with the *whole stage* (Blender canvas, fallback art and hotspots),
-   not the picture alone: their coordinates must stay in sync. Preserve the
-   peripheral History and Dungeon affordances within the visible safe area.
-   Narrow 4:3 desktop and the touch vestibule keep their existing layout. */
-@media (min-width: 1200px) and (max-aspect-ratio: 16/9) {
+/* 16:10 desktop framing: the canonical Great Hall is 1814×867 (not 16:9).
+   Crop the entire stage uniformly to cover the viewport: the Blender camera,
+   its projected hotspots and the 2D fallback keep identical coordinates.
+   Shift the peripheral interactive *surfaces*, not just their copy, into view.
+   Leave 4:3, 16:9 and mobile layouts on their established compositions. */
+@media (min-width: 1200px) and (max-aspect-ratio: 17/10) {
   .illustrated-home__stage {
     position: absolute;
     left: 50%;
     top: 50%;
-    width: 177.7778dvh;
+    width: 209.2272dvh;
     max-width: none;
     margin: 0;
     transform: translate(-50%, -50%);
   }
+
+  /* The far-left archive plaque would otherwise be cropped by the cover. */
   .illustrated-home__destination--history {
     left: max(3.7%, calc(50cqw - 50vw + 16px));
   }
-  /* DungeonCanonical.css is imported after this base stylesheet and owns
-     the normal 16:9 positions. The safe offsets override only this crop mode. */
-  .illustrated-home__dungeon-copy {
-    right: max(3.6cqw, calc(50cqw - 50vw + 16px)) !important;
+
+  /* DungeonCanonical.css is imported later and anchors the stair surface at
+     right:0. Move that entire transparent hit-area into the safe viewport;
+     its label, chevron and opened drawer follow without separate offsets. */
+  .illustrated-home__utilities {
+    right: max(0px, calc(50cqw - 50vw + 16px)) !important;
   }
-  .illustrated-home__dungeon-chevron {
-    right: max(2.65cqw, calc(50cqw - 50vw + 16px)) !important;
-  }
-  .illustrated-home__utilities > .illustrated-home__dungeon-panel {
-    right: max(2.1cqw, calc(50cqw - 50vw + 16px)) !important;
+
+  /* Progress objects are factual interactive buttons, not disposable scenery.
+     Only the rightmost slot needs a crop guard; preserve the other slot offsets. */
+  .illustrated-home__memory-object:not(.is-slot-2):not(.is-slot-3) {
+    left: min(87.3%, calc(50cqw + 50vw - 16px - 3.2cqw)) !important;
   }
 }
