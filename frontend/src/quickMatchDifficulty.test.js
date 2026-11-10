@@ -117,6 +117,21 @@ describe('quick-match Elo chaser', () => {
     expect(difficultyForQuickMatchRating(1000, activity, 20)).toBe(previousDifficulty);
   });
 
+  it('no fija histéresis a nivel 0 cuando el rival anterior no tiene dificultad', () => {
+    // At this edge rating, a real level-0 opponent is inside the 25-Elo band,
+    // so an invented zero would incorrectly pin the next match there.
+    const expected = difficultyForQuickMatchRating(325, [], 20);
+    expect(expected).toBeGreaterThan(0);
+    for (const missing of [null, '', false, 'dato corrupto']) {
+      const activity = [
+        { gameId: 'unknown', state: 'started', detail: 'adaptive-difficulty', difficulty: missing, mode: 'casual' },
+      ];
+      expect(difficultyForQuickMatchRating(325, activity, 20)).toBe(expected);
+    }
+    const realZero = [{ gameId: 'real-zero', state: 'started', detail: 'adaptive-difficulty', difficulty: 0, mode: 'casual' }];
+    expect(difficultyForQuickMatchRating(325, realZero, 20)).toBe(0);
+  });
+
   it('recalibrates when the previous opponent falls outside the Elo band', () => {
     const activity = [
       { gameId: 'too-easy', state: 'started', detail: 'adaptive-difficulty', difficulty: 45, mode: 'casual' },
