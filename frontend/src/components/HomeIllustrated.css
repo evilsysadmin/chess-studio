@@ -108,6 +108,14 @@
     left: max(3.7%, calc(50cqw - 50vw + 16px));
   }
 
+  /* A second, pointer-active History beacon uses the 3D projected position
+     as an inline left%. The authored prop sits beyond the crop on 16:10.
+     Clamp only that visible marker into the viewport; the original scene and
+     keyboard destination remain unchanged. */
+  .illustrated-home__stage[data-home-beacons='projected'] .illustrated-home__beacon--history {
+    left: max(14%, calc(50cqw - 50vw + 48px)) !important;
+  }
+
   /* DungeonCanonical.css is imported later and anchors the stair surface at
      right:0. Move that entire transparent hit-area into the safe viewport;
      its label, chevron and opened drawer follow without separate offsets. */
