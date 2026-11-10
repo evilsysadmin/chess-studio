@@ -75,12 +75,11 @@ export default function InsightsGuidedSession({
 
   function runStep(step) {
     if (!step) return;
-    if (step.action === 'personal-filter') {
-      onOpenPuzzles?.('personal', false, step.filter || null);
-      return;
-    }
-    if (step.action === 'personal') {
-      onOpenPuzzles?.('personal', false);
+    if (step.action === 'personal-filter' || step.action === 'personal') {
+      // Both the direct shortcut and the guided route must open the same real
+      // position shown in the preview, not an unrelated pending puzzle.
+      if (step.featuredPuzzleId) focusPersonalPuzzle(step.featuredPuzzleId);
+      onOpenPuzzles?.('personal', false, step.action === 'personal-filter' ? step.filter || null : undefined);
       return;
     }
     if (step.action === 'nemesis-position') {
@@ -106,9 +105,9 @@ export default function InsightsGuidedSession({
     const available = Boolean(previewPlan?.available);
     // Preview only puzzles already admitted by the playable personal bank.
     const personalFocus = focus?.action === 'personal' || focus?.action === 'personal-filter';
-    const featuredPuzzle = personalFocus && Array.isArray(personalPuzzles)
+    const featuredPuzzle = personalFocus && focus?.featuredPuzzleId && Array.isArray(personalPuzzles)
       ? personalPuzzles.find((puzzle) => (
-        puzzle?.fen && !isPersonalPuzzleMastered(puzzle)
+        puzzle?.id === focus.featuredPuzzleId && puzzle?.fen && !isPersonalPuzzleMastered(puzzle)
         && Number(puzzle?.cleanSolves || 0) === 0
         && matchesPersonalPuzzleFilter(puzzle, focus?.filter || null)
       ))
@@ -160,7 +159,6 @@ export default function InsightsGuidedSession({
                   className="primary-btn insights-guided-direct-button"
                   aria-label="Entrenar esta posición real ahora"
                   onClick={() => {
-                    if (featuredPuzzle?.id) focusPersonalPuzzle(featuredPuzzle.id);
                     runStep(focus);
                   }}
                 >
