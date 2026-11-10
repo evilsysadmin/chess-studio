@@ -103,6 +103,13 @@ test('Home 16:10 · el salón cubre el escritorio y conserva Historia y Mazmorra
   expect(geometry.dungeonTrigger.left).toBeGreaterThanOrEqual(0);
   expect(geometry.dungeonTrigger.right).toBeLessThanOrEqual(viewport.width);
 
+  const projectedHistory = home.locator('.illustrated-home__beacon--history');
+  await expect(projectedHistory).toBeVisible();
+  const beaconBox = await projectedHistory.boundingBox();
+  expect(beaconBox).not.toBeNull();
+  expect(beaconBox.x, 'History 3D marker must stay inside the cropped viewport').toBeGreaterThanOrEqual(0);
+  expect(beaconBox.x + beaconBox.width, 'History marker must not clip on the right').toBeLessThanOrEqual(viewport.width);
+
   const history = home.locator('.illustrated-home__destination--history');
   await expect(history).toBeVisible();
   // The peripheral destination must remain usable, not merely have a DOM box.
