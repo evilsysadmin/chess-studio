@@ -79,6 +79,24 @@ describe('quick-match Elo chaser', () => {
     expect(quickMatchTargetLeadElo(losses, 3, {})).toBe(-75);
   });
 
+  it('no atribuye victorias a un rival de nivel cero cuando falta la dificultad', () => {
+    const unknown = ['g3', 'g2', 'g1'].flatMap((gameId) => [
+      { gameId, state: 'finished', outcome: 'win', difficulty: null, mode: 'casual' },
+      { gameId, state: 'started', detail: 'adaptive-difficulty', difficulty: null, mode: 'casual' },
+    ]);
+    expect(quickMatchEarlyCalibrationSignal(unknown, 3)).toBe(0);
+    expect(quickMatchTargetLeadElo(unknown, 3, {})).toBe(provisionalQuickMatchLeadElo(3));
+
+    // An unknown finish is still actionable if the actual opponent is in
+    // its matching start event. Explicit zero is a real legal CPU difficulty.
+    const knownStarts = unknown.map((row) => (
+      row.state === 'started' ? { ...row, difficulty: 45 } : row
+    ));
+    const explicitZero = unknown.map((row) => ({ ...row, difficulty: 0 }));
+    expect(quickMatchEarlyCalibrationSignal(knownStarts, 3)).toBe(1);
+    expect(quickMatchEarlyCalibrationSignal(explicitZero, 3)).toBe(1);
+  });
+
   it('does not force early convergence on mixed provisional evidence', () => {
     const mixed = [
       ...adaptiveGame('m3', 'win', 45),
