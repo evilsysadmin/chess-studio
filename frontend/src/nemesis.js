@@ -1,5 +1,6 @@
 import { Chess } from 'chess.js';
 import { isCompetitiveHistoryRecord } from './gameHistory.js';
+import { resolveTrainingDifficulty } from './trainingDifficulty.js';
 
 const INCIDENT_LABELS = {
   'human:MISSED_MATE': 'mates en una ignorados',
@@ -147,7 +148,7 @@ export function nemesisTrainingPosition(record, preferredPlies = 10) {
       ply: target,
       moveNumber: Math.floor(target / 2) + 1,
       humanColor,
-      difficulty: Number(record.difficulty || 50),
+      difficulty: resolveTrainingDifficulty(record.difficulty),
       sourceRecord: record,
     };
   }
