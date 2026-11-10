@@ -297,7 +297,7 @@ describe('sesiones guiadas 5/15/30 minutos', () => {
     expect(plan.available).toBe(false);
   });
 
-  it('ignora dificultad nula, vacía, cero o no numérica antes de recomendar una partida', () => {
+  it('ignora dificultades ausentes o no numéricas pero incluye el nivel cero real', () => {
     const history = [
       { difficulty: 60 },
       { difficulty: null },
@@ -309,7 +309,8 @@ describe('sesiones guiadas 5/15/30 minutos', () => {
     ];
     const plan = buildGuidedTrainingPlan({ minutes: 15, history, puzzles: debtPuzzles, rivalry: {} });
     const practice = plan.steps.find((step) => step.kind === 'short-game');
-    expect(practice.training.difficulty).toBe(70);
+    // Real observations are 60, 0 and 80. Missing data do not count.
+    expect(practice.training.difficulty).toBe(47);
   });
 
   it('liga la deuda recurrente a una posición pendiente del mismo incidente', () => {
