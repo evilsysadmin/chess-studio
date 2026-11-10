@@ -258,6 +258,55 @@ describe('sesiones guiadas 5/15/30 minutos', () => {
     expect(practice.training.difficulty).toBe(70);
   });
 
+  it('liga la deuda recurrente a una posición pendiente del mismo incidente', () => {
+    const plan = buildGuidedTrainingPlan({
+      minutes: 5,
+      history: [],
+      rivalry: {},
+      puzzles: [
+        { id: 'wrong-incident', incidentKeys: ['cpu:KNIGHT_FORK'], cleanSolves: 0 },
+        { id: 'correct-incident', incidentKeys: ['human:MISSED_MATE'], cleanSolves: 0 },
+      ],
+      playerModel: {
+        recurringErrors: [{
+          incidentKey: 'human:MISSED_MATE',
+          filter: { incidentKey: 'human:MISSED_MATE' },
+          improvementState: 'still-occurring',
+          debt: { paid: true, active: false },
+        }],
+      },
+    });
+    expect(plan.steps[0]).toMatchObject({
+      kind: 'debt',
+      action: 'personal-filter',
+      featuredPuzzleId: 'correct-incident',
+    });
+  });
+
+  it('la acción personal destaca el caso entrenable, no un viejo error ya corregido', () => {
+    const plan = buildGuidedTrainingPlan({
+      minutes: 5,
+      history: [],
+      rivalry: {},
+      puzzles: [
+        { id: 'old-paid', incidentKeys: ['cpu:KNIGHT_FORK'], cleanSolves: 0 },
+        { id: 'still-actionable', incidentKeys: ['human:ALLOWED_MATE'], cleanSolves: 0 },
+      ],
+      playerModel: {
+        recurringErrors: [{
+          incidentKey: 'cpu:KNIGHT_FORK',
+          improvementState: 'corrected-with-sufficient-sample',
+          debt: { paid: true, active: false },
+        }],
+      },
+    });
+    expect(plan.steps[0]).toMatchObject({
+      kind: 'personal-errors',
+      action: 'personal',
+      featuredPuzzleId: 'still-actionable',
+    });
+  });
+
   it('ajusta la práctica desde datos recientes sin convertirlos en una afirmación inventada', () => {
     const history = [
       { id: 'g1', difficulty: 40, humanColor: 'b' },
