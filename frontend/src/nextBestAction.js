@@ -32,7 +32,7 @@ export function nextBestAction({ outcome, moveCount = 0, hasReport = false, canT
       label: 'Ver siguiente objetivo',
     };
   }
-  return { id: 'advance', eyebrow: 'Siguiente paso', title: 'Entrena una decisión', detail: 'Avanza con un objetivo nuevo en lugar de repetir la misma partida.', label: 'Ver siguiente objetivo' };
+  return { id: 'advance', eyebrow: 'Siguiente paso', title: 'Elige cómo continuar', detail: 'Vuelve al castillo para jugar otra partida o abrir entrenamiento.', label: 'Ver siguiente objetivo' };
 }
 
 const HOME_CORE_MODE_ACTIONS = Object.freeze({
