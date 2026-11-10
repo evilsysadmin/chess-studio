@@ -159,6 +159,9 @@ export function quickMatchRecentFormAdjustment(activity = [], games = PROVISIONA
 
 function qualityScore(evidence) {
   if (!evidence || evidence.sufficientSample !== true) return null;
+  // Missing analysis is not a perfect 0-cp game. Keep a real measured zero.
+  if (evidence.averageLoss === null || evidence.averageLoss === undefined
+    || typeof evidence.averageLoss === 'boolean' || String(evidence.averageLoss).trim() === '') return null;
   const averageLoss = Number(evidence.averageLoss);
   const blunders = Math.max(0, Number(evidence.blunders || 0));
   if (!Number.isFinite(averageLoss)) return null;

@@ -52,6 +52,40 @@ describe('Partida limpia', () => {
     expect(evidence.clean).toBe(false);
   });
 
+  it('no acredita ocho jugadas a partir de un resumen sin ocho evidencias reales', () => {
+    const incomplete = {
+      analyzedCount: 20,
+      averageLoss: null,
+      moveReports: [move(10)],
+    };
+    expect(cleanGameEvidence(incomplete)).toMatchObject({
+      analyzedCount: 1,
+      sufficientSample: false,
+      clean: false,
+      averageLoss: null,
+    });
+    expect(competitiveGameSignals({
+      ...incomplete,
+      moveReports: [{ loss: 10, humanEvaluation: 350 }],
+    }, { outcome: 'draw' })).toMatchObject({
+      sufficientSample: false,
+      winningPositionEscaped: false,
+      stalemateFromWinningPosition: false,
+    });
+    expect(cleanGameEvidence({ analyzedCount: 30, averageLoss: 0, moveReports: [] })).toMatchObject({
+      analyzedCount: 0,
+      sufficientSample: false,
+      clean: false,
+    });
+  });
+
+  it('no transforma una pérdida media desconocida en cero errores por jugada', () => {
+    const rows = Array.from({ length: CLEAN_GAME_MIN_ANALYZED_MOVES }, () => move(10));
+    expect(cleanGameEvidence({ analyzedCount: rows.length, moveReports: rows, averageLoss: null }).averageLoss).toBeNull();
+    expect(cleanGameEvidence({ analyzedCount: rows.length, moveReports: rows, averageLoss: '  ' }).averageLoss).toBeNull();
+    expect(cleanGameEvidence({ analyzedCount: rows.length, moveReports: rows, averageLoss: 0 }).averageLoss).toBe(0);
+  });
+
   it('concede el sello sólo sin mistakes, blunders, mate omitido ni regalo severo de pieza', () => {
     const clean = cleanGameEvidence(report(Array.from({ length: 10 }, () => move(18))));
     expect(clean).toMatchObject({
