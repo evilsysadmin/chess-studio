@@ -56,7 +56,9 @@ export function openingNemeses(history = [], { minGames = 4, maxScorePct = 45, i
     if (!isCompetitiveHistoryRecord(record)) continue;
     const opening = String(record?.opening || '').trim();
     if (!opening) continue;
-    const color = normalizedColor(record?.humanColor);
+    // A missing player color does not prove a weakness with White.
+    if (record?.humanColor !== 'w' && record?.humanColor !== 'b') continue;
+    const color = normalizedColor(record.humanColor);
     const key = `${opening}|${color}`;
     const rows = groups.get(key) || [];
     rows.push(record);
@@ -122,12 +124,16 @@ export function tacticalNemesis(rivalry = {}, minCount = 2) {
 // No inventa una FEN ni evalúa con motor: reproduce el historial guardado.
 export function nemesisTrainingPosition(record, preferredPlies = 10) {
   if (!record || !Array.isArray(record.moves) || record.moves.length < 4) return null;
-  const humanColor = normalizedColor(record.humanColor);
+  if (record.humanColor !== 'w' && record.humanColor !== 'b') return null;
+  const humanColor = record.humanColor;
   const maxTarget = Math.min(Math.max(4, preferredPlies), record.moves.length - 1);
 
   for (let target = maxTarget; target >= 2; target -= 1) {
-    const chess = new Chess(record.initialFen || undefined);
+    let chess;
     try {
+      // Old savegames may contain an invalid initial FEN. Construction can
+      // throw just like replay, so neither can escape the recovery guard.
+      chess = new Chess(record.initialFen || undefined);
       for (let i = 0; i < target; i += 1) {
         const m = record.moves[i];
         chess.move(m?.san || { from: m?.from, to: m?.to, promotion: m?.promotion || 'q' });
