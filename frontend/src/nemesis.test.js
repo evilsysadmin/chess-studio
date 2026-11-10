@@ -31,6 +31,14 @@ describe('openingNemeses', () => {
     expect(rows[0].confidence.key).toBe('initial');
   });
 
+  it('no atribuye a blancas derrotas cuyo color humano se desconoce', () => {
+    const unknown = [1, 2, 3, 4].map((id) => game(id, 'loss', 'Defensa Siciliana', null));
+    expect(openingNemeses(unknown)).toEqual([]);
+    expect(buildNemesisDossier(unknown).opening).toBeNull();
+    expect(openingNemeses([...unknown, ...[5, 6, 7, 8].map((id) => game(id, 'loss'))]))
+      .toMatchObject([{ humanColor: 'w', games: 4 }]);
+  });
+
   it('ignora modos de entrenamiento aunque pierdas de forma espectacular', () => {
     const rows = [1, 2, 3, 4].map((i) => ({ ...game(i, 'loss'), mode: 'practice' }));
     expect(openingNemeses(rows)).toEqual([]);
@@ -94,6 +102,22 @@ describe('nemesisTrainingPosition', () => {
     expect(target.ply % 2).toBe(0);
     expect(target.fen.split(' ')[1]).toBe('w');
     expect(target.sourceRecord.id).toBe('g-1');
+  });
+
+  it('aísla una FEN legacy inválida sin romper el expediente ni inventar una posición', () => {
+    const bad = { ...game(1, 'loss'), initialFen: 'FEN-corrupta' };
+    expect(nemesisTrainingPosition(bad)).toBeNull();
+    const dossier = buildNemesisDossier([1, 2, 3, 4].map((id) => ({
+      ...game(id, 'loss'),
+      initialFen: 'FEN-corrupta',
+    })));
+    expect(dossier.opening).toMatchObject({ opening: 'Defensa Siciliana', games: 4 });
+    expect(dossier.training).toBeNull();
+  });
+
+  it('no reconstruye la posición si el color humano del savegame es desconocido', () => {
+    expect(nemesisTrainingPosition({ ...game(1, 'loss'), humanColor: null })).toBeNull();
+    expect(nemesisTrainingPosition({ ...game(1, 'loss'), humanColor: 'x' })).toBeNull();
   });
 
   it('también alinea correctamente el turno cuando el humano lleva negras', () => {
