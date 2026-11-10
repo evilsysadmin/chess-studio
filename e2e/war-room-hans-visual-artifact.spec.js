@@ -366,22 +366,28 @@ test('War Room · secuencia móvil de llamada y respuesta de Hans en 390×844', 
     await expect(matthias).toBeVisible({ timeout: hansBudget(15_000) });
     await expect(matthias).toContainText('HANS! El fuego, bitte.');
     await expect(overlay).toHaveAttribute('data-fire-call-phase', 'matthias');
-    await capturePhase('matthias');
-
-    await expect(canvas).toHaveAttribute('data-war-room-hans-call-released', 'true', { timeout: 20_000 });
-    await expect(canvas).toHaveAttribute('data-war-room-hans-reply-seen', 'true', { timeout: hansBudget(30_000) });
-    const hans = page.getByRole('status', { name: 'Hans responde a Matthias' });
-    await expect(hans).toBeVisible({ timeout: 15_000 });
-    await expect(hans).toContainText('Sí, señor.');
-    await expect(overlay).toHaveAttribute('data-fire-call-phase', 'hans');
-    // Freeze only the real, already-visible reply while photographing it.
-    // Without this, the SwiftShader screenshot records the empty next phase
-    // despite having observed Hans in DOM *before* capture.
-    // The page clock advances between the timestamp read and pauseAt(). On
-    // slow SwiftShader runners an exact-now target can already be in the past.
-    // A short lead avoids that race without skipping Hans' 1.6s reply.
-    await page.clock.pauseAt(await page.evaluate(() => Date.now() + 200));
+    // A real SwiftShader viewport screenshot can take longer than Matthias'
+    // authored shout. Hold that *already visible* frame while capturing, so
+    // the subsequent 1.6s Hans reply is not consumed by the prior PNG.
+    await page.clock.pauseAt(await page.evaluate(() => Date.now() + 100));
     try {
+      await capturePhase('matthias');
+    } finally {
+      await page.clock.resume();
+    }
+
+    const hans = page.getByRole('status', { name: 'Hans responde a Matthias' });
+    // Do not await the persistent "reply seen" canvas marker first. It stays
+    // true after the transient bubble has gone, making that wait race the UI.
+    await expect(hans).toBeVisible({ timeout: hansBudget(30_000) });
+    // Freeze the genuine visible reply before making any more round-trips to
+    // the canvas. This does not forge a phase or extend the gameplay duration.
+    await page.clock.pauseAt(await page.evaluate(() => Date.now() + 100));
+    try {
+      await expect(canvas).toHaveAttribute('data-war-room-hans-call-released', 'true');
+      await expect(canvas).toHaveAttribute('data-war-room-hans-reply-seen', 'true');
+      await expect(hans).toContainText('Sí, señor.');
+      await expect(overlay).toHaveAttribute('data-fire-call-phase', 'hans');
       const bubbleBounds = await hans.boundingBox();
       expect(bubbleBounds).not.toBeNull();
       // Actual on-screen geometry at 390px: both edges and text must fit.
