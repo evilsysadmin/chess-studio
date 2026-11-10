@@ -18,6 +18,7 @@ import { loadRivalry } from './rivalry.js';
 import { clearActiveSeries, createSeries, saveActiveSeries } from './series.js';
 import { attachSeriesGame } from './seriesFlow.js';
 import { userFacingError } from './userFacingError.js';
+import { resolveTrainingDifficulty } from './trainingDifficulty.js';
 
 export function gameContextFromOptions(options = {}) {
   return {
@@ -204,7 +205,7 @@ export function useGameStartFlow({
     loading(true);
     error(null);
     try {
-      const resolvedDifficulty = difficulty || 50;
+      const resolvedDifficulty = resolveTrainingDifficulty(difficulty);
       const resolvedColor = humanColor || 'w';
       const operationId = launch.operationId(operation, [resolvedDifficulty, resolvedColor, null, fen, null]);
       const created = await api.createGame(resolvedDifficulty, resolvedColor, null, fen, {
