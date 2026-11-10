@@ -462,3 +462,49 @@ test('mobile golden path · release compacta en apaisado 844x390', async ({ page
   const clipped = await copy.evaluate((node) => node.scrollWidth > node.clientWidth + 1 || node.scrollHeight > node.clientHeight + 1);
   expect(clipped, 'release copy must not clip').toBe(false);
 });
+
+test('mobile golden path · Coordenadas sincroniza preferencias externas sin F5 · 390x844', async ({ page }, testInfo) => {
+  test.setTimeout(120_000);
+  await page.setViewportSize({ width: 390, height: 844 });
+  const releaseState = { current: APP_RELEASE };
+  await startGame(page, { profileSeed: PROFILES[1].profileSeed, releaseState });
+
+  const menu = page.locator('.game-3d-utility-menu > summary');
+  await menu.click();
+  const coordinates = page.getByRole('menuitemcheckbox', { name: /Coordenadas del tablero/ });
+  await expect(coordinates).toBeVisible();
+  const initial = await coordinates.getAttribute('aria-checked');
+  expect(['true', 'false']).toContain(initial);
+
+  // Exercise the real menu action first; this persists and dispatches the
+  // canonical event. Then change preferences as Settings does while the menu
+  // remains mounted: no page reload, no 3D renderer remount.
+  await coordinates.click();
+  const enabled = initial === 'false';
+  expect(await page.evaluate(() => localStorage.getItem('chess-study-board-coordinates')))
+    .toBe(enabled ? '1' : '0');
+
+  await page.evaluate((original) => {
+    localStorage.setItem('chess-study-board-coordinates', original ? '1' : '0');
+    window.dispatchEvent(new Event('chess-study-user-preferences-changed'));
+  }, initial === 'true');
+
+  await menu.click();
+  await expect(coordinates, 'War Room menu must mirror Settings changes without remount').toHaveAttribute('aria-checked', initial);
+  await expect(coordinates).toContainText(initial === 'true' ? 'activadas' : 'desactivadas');
+  await page.screenshot({
+    path: testInfo.outputPath('war-room-coordinates-after-external-preference-390x844.png'),
+    animations: 'disabled',
+    caret: 'hide',
+  });
+
+  // Crucially, the next tap must use the latest persisted value, never the
+  // snapshot from the first render of this session.
+  await coordinates.click();
+  expect(await page.evaluate(() => localStorage.getItem('chess-study-board-coordinates')))
+    .toBe(enabled ? '1' : '0');
+  await menu.click();
+  await expect(coordinates).toHaveAttribute('aria-checked', enabled ? 'true' : 'false');
+  const horizontalOverflow = await page.evaluate(() => document.documentElement.scrollWidth - innerWidth);
+  expect(horizontalOverflow).toBeLessThanOrEqual(1);
+});

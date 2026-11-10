@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { getBoardCoordinates, setBoardCoordinates } from '../userPreferences.js';
+import { useEffect, useState } from 'react';
+import { getBoardCoordinates, setBoardCoordinates, USER_PREFERENCES_CHANGED_EVENT } from '../userPreferences.js';
 import { CPU_IDENTITY } from '../cpuIdentity.js';
 import { zenModeSummary } from '../zenMode.js';
 import { requestWarRoomTutorialReplay } from '../warRoomFirstRunTutorial.js';
@@ -98,6 +98,15 @@ export function WarRoomUtilityMenu({
   const hasAppearance = showAppearance && (compactViewport || typeof board?.onCustomize === 'function');
   const [showCoordinates, setShowCoordinates] = useState(() => getBoardCoordinates());
 
+  // GameScreen and Board3D already observe this event. The mounted War Room
+  // utility menu must reflect a preference changed in Settings (or another
+  // mounted control) without F5 or reopening the whole game.
+  useEffect(() => {
+    const refresh = () => setShowCoordinates(getBoardCoordinates());
+    window.addEventListener(USER_PREFERENCES_CHANGED_EVENT, refresh);
+    return () => window.removeEventListener(USER_PREFERENCES_CHANGED_EVENT, refresh);
+  }, []);
+
   return (
     <details className="game-3d-utility-menu">
       <summary role="button" aria-label="Más acciones de partida" title="Más acciones de partida">⋯</summary>
@@ -164,7 +173,9 @@ export function WarRoomUtilityMenu({
           aria-checked={showCoordinates}
           onClick={(event) => {
             closeUtilityMenu(event);
-            setShowCoordinates(setBoardCoordinates(!showCoordinates));
+            // Read the canonical preference at click time: a concurrent
+            // Settings change must not invert an out-of-date React snapshot.
+            setBoardCoordinates(!getBoardCoordinates());
           }}
         >
           Coordenadas del tablero · {showCoordinates ? 'activadas' : 'desactivadas'}
