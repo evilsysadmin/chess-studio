@@ -66,3 +66,51 @@ test('illustrated Home keeps the admin inbox actionable', async ({ page }) => {
   await page.getByRole('tab', { name: /Feedback/ }).click();
   await expect(page.getByRole('region', { name: 'Feedback de usuarios' })).toBeVisible();
 });
+
+test('Home 16:10 · el salón cubre el escritorio y conserva Historia y Mazmorras accesibles', async ({ page }) => {
+  const viewport = { width: 1440, height: 900 };
+  await page.setViewportSize(viewport);
+  await mockApi(page);
+  await login(page);
+
+  const home = page.locator('.illustrated-home');
+  const stage = home.locator('.illustrated-home__stage');
+  await expect(stage).toBeVisible();
+
+  const geometry = await page.evaluate(() => {
+    const rect = (selector) => {
+      const node = document.querySelector(selector);
+      if (!node) return null;
+      const box = node.getBoundingClientRect();
+      return { left: box.left, top: box.top, right: box.right, bottom: box.bottom, width: box.width, height: box.height };
+    };
+    return {
+      stage: rect('.illustrated-home__stage'),
+      history: rect('.illustrated-home__destination--history'),
+      dungeonCopy: rect('.illustrated-home__dungeon-copy'),
+      dungeonPanel: rect('.illustrated-home__dungeon-panel'),
+    };
+  });
+
+  expect(geometry.stage).not.toBeNull();
+  expect(geometry.stage.height).toBeGreaterThanOrEqual(viewport.height - 1);
+  expect(geometry.stage.top).toBeLessThanOrEqual(1);
+  expect(geometry.stage.bottom).toBeGreaterThanOrEqual(viewport.height - 1);
+  expect(geometry.history.left).toBeGreaterThanOrEqual(0);
+  expect(geometry.history.right).toBeLessThanOrEqual(viewport.width);
+  expect(geometry.dungeonCopy.right).toBeLessThanOrEqual(viewport.width - 1);
+
+  const history = home.locator('.illustrated-home__destination--history');
+  await expect(history).toBeVisible();
+  // The peripheral destination must remain usable, not merely have a DOM box.
+  await history.focus();
+  await expect(history).toBeFocused();
+
+  await home.locator('.illustrated-home__dungeon-trigger').click();
+  const dungeonPanel = home.locator('.illustrated-home__dungeon-panel');
+  await expect(dungeonPanel).toBeVisible();
+  const panelBox = await dungeonPanel.boundingBox();
+  expect(panelBox).not.toBeNull();
+  expect(panelBox.x).toBeGreaterThanOrEqual(0);
+  expect(panelBox.x + panelBox.width).toBeLessThanOrEqual(viewport.width);
+});
