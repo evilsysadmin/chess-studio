@@ -184,6 +184,44 @@ for (const viewport of VIEWPORTS) {
         caret: 'hide',
       });
 
+      // The phone HUD used to render its turn status in ~9px text because four
+      // 44px tools squeezed name + state onto one row. Keep the tools at their
+      // physical target size, but use two readable lines in the same 44px HUD.
+      await expect(page.locator('body')).toHaveClass(/war-room-immersive-active/);
+      const turnHud = page.locator('.game-3d-turn-pill.is-compact');
+      await expect(turnHud).toBeVisible();
+      const hudReadability = await turnHud.evaluate((root) => {
+        const identity = root.querySelector('.game-3d-turn-pill-identity strong');
+        const signal = root.querySelector('.game-3d-turn-pill-label');
+        const idRect = identity?.getBoundingClientRect();
+        const signalRect = signal?.getBoundingClientRect();
+        const controls = [...root.querySelectorAll(
+          '.game-3d-compact-action, .context-help-btn, .game-3d-utility-menu > summary, .war-room-account-button',
+        )].map((item) => {
+          const rect = item.getBoundingClientRect();
+          return { x: rect.x, y: rect.y, width: rect.width, height: rect.height };
+        });
+        return {
+          display: getComputedStyle(root).display,
+          identityFontPx: parseFloat(getComputedStyle(identity).fontSize),
+          statusFontPx: parseFloat(getComputedStyle(signal).fontSize),
+          idBottom: idRect?.bottom ?? 0,
+          statusTop: signalRect?.top ?? 0,
+          statusWidth: signalRect?.width ?? 0,
+          controls,
+        };
+      });
+      expect(hudReadability.display, 'mobile turn HUD must stack name and status').toBe('grid');
+      expect(hudReadability.identityFontPx, 'Matthias name must not be microtext').toBeGreaterThanOrEqual(10.5);
+      expect(hudReadability.statusFontPx, 'live turn status must remain readable').toBeGreaterThanOrEqual(12);
+      expect(hudReadability.statusTop, 'turn status below identity').toBeGreaterThanOrEqual(hudReadability.idBottom - 2);
+      expect(hudReadability.statusWidth, 'turn state must receive real label space').toBeGreaterThanOrEqual(65);
+      expect(hudReadability.controls, 'all four 44px controls must survive').toHaveLength(4);
+      for (const control of hudReadability.controls) {
+        expect(control.width).toBeGreaterThanOrEqual(44);
+        expect(control.height).toBeGreaterThanOrEqual(44);
+      }
+
       const projection = await readBoard3DProjection(canvas);
       const projectedBoard = projection.board;
 
