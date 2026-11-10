@@ -19,6 +19,7 @@ vi.mock('../guidedTrainingSession.js', () => ({
         detail: 'Basado en evidencia.',
         action: 'personal-filter',
         filter: { incidentKey: 'human:MISSED_MATE' },
+        featuredPuzzleId: 'chosen-drill',
         minutes,
       },
     ],
@@ -36,6 +37,10 @@ vi.mock('../guidedTrainingCompletion.js', () => ({
       { id: 'game', kind: 'short-game', title: 'Partida corta de práctica', minutes: 6 },
     ],
   }),
+}));
+
+vi.mock('./InsightsPositionAutopsy.jsx', () => ({
+  default: ({ puzzle }) => 'Preview: ' + (puzzle?.id || 'none'),
 }));
 
 import InsightsGuidedSession from './InsightsGuidedSession.jsx';
@@ -58,6 +63,30 @@ describe('InsightsGuidedSession time budgets', () => {
     expect(html).toContain('1 bloque de práctica');
     expect(html).toContain('Patrón registrado');
     expect(html).not.toContain('Hoy toca esto');
+  });
+
+  it('previsualiza sólo el puzzle seleccionado por el plan, aunque otro aparezca primero', () => {
+    const html = renderToStaticMarkup(<InsightsGuidedSession
+      gameHistory={[]}
+      personalPuzzles={[
+        { id: 'wrong-drill', fen: 'fen-one', incidentKeys: ['human:MISSED_MATE'], cleanSolves: 0 },
+        { id: 'chosen-drill', fen: 'fen-two', incidentKeys: ['human:MISSED_MATE'], cleanSolves: 0 },
+      ]}
+    />);
+    expect(html).toContain('Preview: chosen-drill');
+    expect(html).not.toContain('Preview: wrong-drill');
+    expect(html).toContain('aria-label="Entrenar esta posición real ahora"');
+  });
+
+  it('oculta el atajo directo cuando el caso seleccionado ya no está disponible', () => {
+    const html = renderToStaticMarkup(<InsightsGuidedSession
+      gameHistory={[]}
+      personalPuzzles={[
+        { id: 'wrong-drill', fen: 'fen-one', incidentKeys: ['human:MISSED_MATE'], cleanSolves: 0 },
+      ]}
+    />);
+    expect(html).not.toContain('aria-label="Entrenar esta posición real ahora"');
+    expect(html).toContain('Empezar · 5 min');
   });
 
   it('resume sólo los bloques que el usuario marcó como hechos y no vende mejora', () => {
