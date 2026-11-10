@@ -211,6 +211,14 @@ async function captureHealth(page, label) {
       gpuTimerStatus:castle3d.dataset.homeBlenderGpuStatus ?? null,
       gpuTimerMs:numericSceneStat('homeBlenderGpuMs'),
     } : null;
+    const speechNode = document.querySelector('.illustrated-home__speech');
+    const musicDeck = document.querySelector('.global-music-dock .music-deck-collapsed');
+    const speechRect = speechNode?.getBoundingClientRect();
+    const musicRect = musicDeck?.getBoundingClientRect();
+    const speechDockOverlap = speechRect && musicRect
+      ? speechRect.left < musicRect.right && musicRect.left < speechRect.right
+        && speechRect.top < musicRect.bottom && musicRect.top < speechRect.bottom
+      : null;
     const matthiasNode = document.querySelector('.illustrated-home__matthias');
     const matthiasRect = matthiasNode?.getBoundingClientRect();
     const matthiasStyle = matthiasNode ? getComputedStyle(matthiasNode) : null;
@@ -239,6 +247,7 @@ async function captureHealth(page, label) {
       stage,
       visibleDestinationCount,
       projectedHistory,
+      speechDockOverlap,
       matthiasVisible,
       document:{
         clientWidth:root.clientWidth,
@@ -467,6 +476,9 @@ test('App · captura visual canónica desktop + Android normal/desktop-site', as
       expect(capture.projectedHistory, '3D History marker must be present').not.toBeNull();
       expect(capture.projectedHistory.left, '3D History marker must not sit beyond left crop').toBeGreaterThanOrEqual(0);
       expect(capture.projectedHistory.right, '3D History marker must not sit beyond right crop').toBeLessThanOrEqual(capture.viewport.width);
+      if (capture.speechDockOverlap !== null) {
+        expect(capture.speechDockOverlap, 'Matthias speech must not sit under the collapsed music player').toBe(false);
+      }
     }
     expect(capture.reducedMotion, `${capture.label}: reduced-motion media state`).toBe(capture.expectedReducedMotion);
     if (capture.expectedCastleReady) {
