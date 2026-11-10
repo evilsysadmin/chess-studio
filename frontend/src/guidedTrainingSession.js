@@ -1,7 +1,7 @@
 import { STORAGE_SESSION, readJsonStorage, removeStorageItem, writeJsonStorage } from './safeStorage.js';
 import { getUsername } from './auth.js';
 import { buildNemesisDossier } from './nemesis.js';
-import { loadPersonalPuzzles } from './personalPuzzles.js';
+import { isPersonalPuzzleMastered, loadPersonalPuzzles, matchesPersonalPuzzleFilter } from './personalPuzzles.js';
 import { loadCleanGameRecords } from './cleanGameRecords.js';
 import { buildPlayerModel, PATTERN_IMPROVEMENT_STATES } from './playerModel.js';
 import { loadRivalry } from './rivalry.js';
@@ -41,15 +41,17 @@ function nonActionablePatternIncidentKeys(playerModel) {
 function pendingPersonalPuzzles(puzzles = [], playerModel = null) {
   const suppressedKeys = nonActionablePatternIncidentKeys(playerModel);
   return (Array.isArray(puzzles) ? puzzles : []).filter((puzzle) => {
-    if (puzzle?.masteredAt || Number(puzzle?.cleanSolves || 0) > 0) return false;
+    if (isPersonalPuzzleMastered(puzzle) || Number(puzzle?.cleanSolves || 0) > 0) return false;
     const incidentKeys = Array.isArray(puzzle?.incidentKeys) ? puzzle.incidentKeys.filter(Boolean) : [];
     if (!incidentKeys.length || !suppressedKeys.size) return true;
     return incidentKeys.some((incidentKey) => !suppressedKeys.has(incidentKey));
   });
 }
 
-function actionableRecurringPattern(playerModel) {
+function actionableRecurringPattern(playerModel, pending) {
   return (Array.isArray(playerModel?.recurringErrors) ? playerModel.recurringErrors : []).find((pattern) => {
+    const filter = pattern?.filter || { incidentKey: pattern?.incidentKey };
+    if (!pending.some((puzzle) => matchesPersonalPuzzleFilter(puzzle, filter))) return false;
     if (pattern?.improvementState === PATTERN_IMPROVEMENT_STATES.STILL_OCCURRING) return true;
     if ([
       PATTERN_IMPROVEMENT_STATES.PROBABLE_IMPROVEMENT,
@@ -77,14 +79,15 @@ function recurringPatternFocus(pattern) {
 }
 
 function focusStep(puzzles, playerModel) {
-  const pattern = actionableRecurringPattern(playerModel);
+  const pending = pendingPersonalPuzzles(puzzles, playerModel);
+  const pattern = actionableRecurringPattern(playerModel, pending);
   if (pattern) return recurringPatternFocus(pattern);
 
   // Compatibilidad con modelos parciales/antiguos: si aún no traen
   // recurringErrors, conserva la deuda factual existente como fallback.
   if (!Array.isArray(playerModel?.recurringErrors)) {
     const debt = playerModel?.trainingDebt?.top;
-    if (debt) {
+    if (debt?.incidentKey && pending.some((puzzle) => matchesPersonalPuzzleFilter(puzzle, { incidentKey: debt.incidentKey }))) {
       return {
         id: `debt:${debt.incidentKey}`,
         kind: 'debt',
@@ -96,7 +99,6 @@ function focusStep(puzzles, playerModel) {
     }
   }
 
-  const pending = pendingPersonalPuzzles(puzzles, playerModel);
   if (!pending.length) return null;
   return {
     id: 'personal-errors',
@@ -129,11 +131,14 @@ function nemesisStep(history, rivalry) {
 }
 
 function recentPracticeDifficulty(history = []) {
-  const rows = (Array.isArray(history) ? history : [])
-    .filter((row) => Number.isFinite(Number(row?.difficulty)))
-    .slice(-5);
-  if (!rows.length) return 50;
-  return Math.max(5, Math.min(95, Math.round(rows.reduce((sum, row) => sum + Number(row.difficulty), 0) / rows.length)));
+  const values = (Array.isArray(history) ? history : [])
+    .map((row) => row?.difficulty)
+    .filter((value) => value !== null && value !== undefined && value !== ''
+      && Number.isFinite(Number(value)) && Number(value) > 0)
+    .slice(-5)
+    .map(Number);
+  if (!values.length) return 50;
+  return Math.max(5, Math.min(95, Math.round(values.reduce((sum, value) => sum + value, 0) / values.length)));
 }
 
 function recentHumanColor(history = []) {
