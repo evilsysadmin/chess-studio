@@ -109,6 +109,10 @@ test('Home 16:10 · el salón cubre el escritorio y conserva Historia y Mazmorra
   await history.focus();
   await expect(history).toBeFocused();
 
+  // Only the in-view full-size Dungeon trigger should be actionable under cover:
+  // the projected duplicate beacon sits outside the cropped physical scene.
+  await expect(home.locator('.illustrated-home__beacon--dungeon')).toBeHidden();
+
   await home.locator('.illustrated-home__dungeon-trigger').click();
   const dungeonPanel = home.locator('.illustrated-home__dungeon-panel');
   await expect(dungeonPanel).toBeVisible();
