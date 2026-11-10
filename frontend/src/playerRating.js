@@ -102,8 +102,14 @@ export function resetRatingHistory() {
 }
 
 function validRatingPoint(point) {
-  const time = new Date(point?.date).getTime();
-  const rating = Number(point?.rating);
+  // Missing dates parse as 1970 and missing ratings parse as 0 in JavaScript.
+  // Neither is observed player progress, so exclude incomplete legacy points.
+  if (point?.date === null || point?.date === undefined
+    || typeof point.date === 'boolean' || String(point.date).trim() === '') return null;
+  if (point?.rating === null || point?.rating === undefined
+    || typeof point.rating === 'boolean' || String(point.rating).trim() === '') return null;
+  const time = new Date(point.date).getTime();
+  const rating = Number(point.rating);
   return Number.isFinite(time) && Number.isFinite(rating) ? { ...point, time, rating } : null;
 }
 

@@ -199,6 +199,30 @@ describe('ratingPeriodCheckpoints', () => {
     expect(checkpoints[2]).toMatchObject({ delta: 70, games: 4, hasData: true });
   });
 
+  it('ignora rating/fechas ausentes sin inventar caídas de Elo ni partidas', () => {
+    const now = new Date('2026-08-25T12:00:00Z');
+    const incomplete = [
+      { date: null, rating: 900 },
+      { date: '2026-08-25T09:00:00Z', rating: null },
+      { date: '2026-08-25T09:30:00Z', rating: '  ' },
+      { date: '2026-08-25T10:00:00Z', rating: false },
+      { date: '', rating: 860 },
+    ];
+    expect(ratingPeriodCheckpoints(incomplete, now)).toEqual([]);
+
+    const history = [
+      { date: '2026-08-01T12:00:00Z', rating: 700 },
+      ...incomplete,
+      { date: '2026-08-25T11:00:00Z', rating: '720' },
+    ];
+    expect(ratingPeriodCheckpoints(history, now)[0]).toMatchObject({
+      delta: 20,
+      games: 1,
+      rating: 720,
+      hasData: true,
+    });
+  });
+
   it('tolera historial vacío o puntos inválidos sin fabricar progreso', () => {
     expect(ratingPeriodCheckpoints([], new Date('2026-08-25T12:00:00Z'))).toEqual([]);
     expect(ratingPeriodCheckpoints([{ date: 'no', rating: 'x' }], new Date('2026-08-25T12:00:00Z'))).toEqual([]);
