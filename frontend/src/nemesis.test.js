@@ -104,6 +104,19 @@ describe('nemesisTrainingPosition', () => {
     expect(target.sourceRecord.id).toBe('g-1');
   });
 
+  it('conserva el nivel 0 de una derrota real al preparar entrenamiento Némesis', () => {
+    const weak = game(1, 'loss', 'Defensa Siciliana', 'w', 0);
+    expect(nemesisTrainingPosition(weak)?.difficulty).toBe(0);
+    const dossier = buildNemesisDossier([
+      weak,
+      game(2, 'loss'),
+      game(3, 'draw'),
+      game(4, 'loss'),
+    ]);
+    expect(dossier.training?.difficulty).toBe(0);
+    expect(nemesisTrainingPosition({ ...weak, difficulty: null })?.difficulty).toBe(50);
+  });
+
   it('aísla una FEN legacy inválida sin romper el expediente ni inventar una posición', () => {
     const bad = { ...game(1, 'loss'), initialFen: 'FEN-corrupta' };
     expect(nemesisTrainingPosition(bad)).toBeNull();
