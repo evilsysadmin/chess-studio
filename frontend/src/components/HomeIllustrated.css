@@ -85,3 +85,55 @@
 @media (prefers-reduced-motion: reduce) {
   .illustrated-home__destination { transition: none; }
 }
+
+
+/* 16:10 desktop framing: the canonical Great Hall is 1814×867 (not 16:9).
+   Crop the entire stage uniformly to cover the viewport: the Blender camera,
+   its projected hotspots and the 2D fallback keep identical coordinates.
+   Shift the peripheral interactive *surfaces*, not just their copy, into view.
+   Leave 4:3, 16:9 and mobile layouts on their established compositions. */
+@media (min-width: 1200px) and (min-aspect-ratio: 8/5) and (max-aspect-ratio: 17/10) {
+  .illustrated-home__stage {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 209.2272dvh;
+    max-width: none;
+    margin: 0;
+    transform: translate(-50%, -50%);
+  }
+
+  /* The far-left archive plaque would otherwise be cropped by the cover. */
+  .illustrated-home__destination--history {
+    left: max(3.7%, calc(50cqw - 50vw + 16px));
+  }
+
+  /* A second, pointer-active History beacon uses the 3D projected position
+     as an inline left%. The authored prop sits beyond the crop on 16:10.
+     Clamp only that visible marker into the viewport; the original scene and
+     keyboard destination remain unchanged. */
+  .illustrated-home__stage[data-home-beacons='projected'] .illustrated-home__beacon--history {
+    left: max(14%, calc(50cqw - 50vw + 48px)) !important;
+  }
+
+  /* DungeonCanonical.css is imported later and anchors the stair surface at
+     right:0. Move that entire transparent hit-area into the safe viewport;
+     its label, chevron and opened drawer follow without separate offsets. */
+  .illustrated-home__utilities {
+    right: max(0px, calc(50cqw - 50vw + 16px)) !important;
+  }
+
+  /* The projected Dungeon beacon is a second, mouse-only action at the
+     very edge of the authored scene. It is clipped under cover and duplicates
+     the fully accessible stair trigger relocated above. Suppress only this
+     redundant beacon; all other real scene destinations remain interactive. */
+  .illustrated-home__beacon--dungeon {
+    display: none !important;
+  }
+
+  /* Progress objects are factual interactive buttons, not disposable scenery.
+     Only the rightmost slot needs a crop guard; preserve the other slot offsets. */
+  .illustrated-home__memory-object:not(.is-slot-2):not(.is-slot-3) {
+    left: min(87.3%, calc(50cqw + 50vw - 16px - 3.2cqw)) !important;
+  }
+}
