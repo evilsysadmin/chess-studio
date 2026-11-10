@@ -48,6 +48,15 @@ describe('nextBestAction', () => {
     }
   });
 
+  it('sin informe ni revancha el CTA genérico no promete un objetivo que no ha creado', () => {
+    expect(nextBestAction({ outcome: 'loss', moveCount: 2, hasReport: false, canPlayAgain: false }))
+      .toMatchObject({
+        id: 'advance',
+        title: 'Elige cómo continuar',
+        detail: 'Vuelve al castillo para jugar otra partida o abrir entrenamiento.',
+      });
+  });
+
   it('hace que Home continúe el último modo principal terminado', () => {
     expect(homeNextBestAction([
       { state: 'started', mode: 'casual' },
