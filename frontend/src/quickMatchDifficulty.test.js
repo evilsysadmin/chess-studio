@@ -250,6 +250,24 @@ describe('quick-match Elo chaser', () => {
     expect(quickMatchQualityAdjustment(activityThree, 20, three)).toBe(-15);
   });
 
+  it('no premia un análisis incompleto como si la pérdida media fuera cero', () => {
+    const activity = [
+      ...adaptiveGame('missing3', 'draw', 56),
+      ...adaptiveGame('missing2', 'draw', 55),
+      ...adaptiveGame('missing1', 'draw', 54),
+    ];
+    for (const missing of [null, undefined, '', false]) {
+      const quality = Object.fromEntries(['missing3', 'missing2', 'missing1'].map((gameId) => [
+        gameId, { sufficientSample: true, clean: true, averageLoss: missing, blunders: 0 },
+      ]));
+      expect(quickMatchQualityAdjustment(activity, 20, quality)).toBe(0);
+    }
+    const measuredZero = Object.fromEntries(['missing3', 'missing2', 'missing1'].map((gameId) => [
+      gameId, { sufficientSample: true, clean: true, averageLoss: 0, blunders: 0 },
+    ]));
+    expect(quickMatchQualityAdjustment(activity, 20, measuredZero)).toBe(10);
+  });
+
   it('lets repeated clean analyzed play add only a small quality boost', () => {
     const activity = [
       ...adaptiveGame('g3', 'draw', 56),
