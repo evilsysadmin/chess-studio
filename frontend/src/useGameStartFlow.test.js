@@ -3,6 +3,7 @@ import { api } from './api.js';
 import { resolveTrainingDifficulty } from './trainingDifficulty.js';
 import {
   gameContextFromOptions,
+  guidedOriginForLaunch,
   labContextFromMeta,
   shouldOfferCasualContract,
   useGameStartFlow,
@@ -33,6 +34,30 @@ describe('game start flow decisions', () => {
     expect(shouldOfferCasualContract({ options: { lab: true } })).toBe(false);
     expect(shouldOfferCasualContract({ options: { rescue: true } })).toBe(false);
     expect(shouldOfferCasualContract({ options: { runMode: 'streak' } })).toBe(false);
+  });
+
+  it('identifica solo el bloque activo con FEN, color, fuerza y contexto idénticos', () => {
+    const fen = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
+    const session = {
+      id: 'guided-real-15', currentIndex: 0,
+      steps: [{ id: 'short-game', action: 'short-game', training: { fen, humanColor: 'w', difficulty: 0 } }],
+    };
+    const request = { sourceView: 'insights', session, fen, humanColor: 'w', difficulty: 0 };
+    expect(guidedOriginForLaunch(request)).toEqual({
+      guidedTrainingSessionId: session.id,
+      guidedTrainingStepId: 'short-game',
+    });
+    for (const different of [
+      { sourceView: 'lab' },
+      { session: null },
+      { session: { ...session, currentIndex: 1 } },
+      { fen: fen.replace(' w ', ' b ') },
+      { humanColor: 'b' },
+      { difficulty: 50 },
+      { meta: { nemesis: true } },
+    ]) {
+      expect(guidedOriginForLaunch({ ...request, ...different })).toBeNull();
+    }
   });
 
   it('adjunta origen guiado sólo cuando la sesión y el bloque están identificados', () => {
