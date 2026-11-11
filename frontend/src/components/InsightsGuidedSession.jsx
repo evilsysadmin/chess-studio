@@ -69,11 +69,6 @@ export default function InsightsGuidedSession({
     if (!training?.fen) return;
     onPlayFromHere?.(training.fen, training.humanColor, training.difficulty, {
       ...meta,
-      // Only an active guided block owns a return destination; the direct
-      // preview has no session and must not hijack the game's exit route.
-      ...(session?.id && session.steps[session.currentIndex]?.id === step.id
-        ? { guidedTrainingSessionId: session.id, guidedTrainingStepId: step.id }
-        : {}),
       sourceRecord: training.sourceRecordId ? { id: training.sourceRecordId } : undefined,
     });
   }
