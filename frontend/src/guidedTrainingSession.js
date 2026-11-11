@@ -10,6 +10,7 @@ export {
   loadGuidedTrainingSession,
   startGuidedTrainingSession,
   advanceGuidedTrainingSession,
+  isCurrentGuidedTrainingStep,
   clearGuidedTrainingSession,
 } from './guidedTrainingSessionStore.js';
 
