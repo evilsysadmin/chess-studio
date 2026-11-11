@@ -81,8 +81,21 @@ export default function InsightsGuidedSession({
     });
   }
 
-  function runStep(step) {
-    if (!step) return;
+  function runStep(requestedStep) {
+    if (!requestedStep) return;
+    let step = requestedStep;
+    if (session) {
+      const active = loadGuidedTrainingSession();
+      if (!isCurrentGuidedTrainingStep(session, active)
+        || requestedStep.id !== active.steps[active.currentIndex].id) {
+        // A click from a stale tab/step must not open a puzzle or launch a
+        // game on behalf of a cancelled/replaced training itinerary.
+        setSession(active);
+        return;
+      }
+      // Launch the authoritative position, never a stale React snapshot.
+      step = active.steps[active.currentIndex];
+    }
     if (step.action === 'personal-filter' || step.action === 'personal') {
       // Both the direct shortcut and the guided route must open the same real
       // position shown in the preview, not an unrelated pending puzzle.
