@@ -347,6 +347,17 @@ jobs:
           path: frontend/dist/
           if-no-files-found: error
           retention-days: 1
+      # Browser E2E keeps its immutable default-build artifact above. Now prove
+      # the *same* staging configuration as the Pages deploy before PR merge;
+      # VITE_* flags changed the 166-KiB initial-JS budget even when the
+      # generic Quality build passed. This action is shared with staging
+      # admission/fallback, so the configuration cannot silently drift.
+      - name: Staging frontend budget parity · exact Pages build (no deploy)
+        uses: ./.github/actions/build-staging-frontend
+        with:
+          sha: ${{ github.sha }}
+          api-url: https://api-staging.chess-studio.shadowops.dpdns.org/api
+          repo-vars: ${{ toJSON(vars) }}
   e2e_lanes:
     name: Tests · Playwright · ${{ matrix.lane }}
     needs: [preflight, e2e_build]
