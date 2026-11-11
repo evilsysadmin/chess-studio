@@ -459,6 +459,32 @@ describe('sesiones guiadas 5/15/30 minutos', () => {
   });
 
 
+  it('rechaza planes que exceden minutos o tienen revisión/descriptores ambiguos, también tras F5', () => {
+    const plan = buildGuidedTrainingPlan({ minutes: 15, history: [], puzzles: debtPuzzles, rivalry: {} });
+    const started = startGuidedTrainingSession(plan, { now: NOW });
+    const healthy = plan.steps;
+    const invalidSteps = [
+      [{ ...healthy[0], minutes: 15 }, ...healthy.slice(1)],
+      [{ ...healthy[0], minutes: 8.5 }, ...healthy.slice(1)],
+      [{ ...healthy[0], id: healthy[1].id }, ...healthy.slice(1)],
+      [healthy[2], ...healthy.slice(0, 2)],
+      healthy.slice(0, 2),
+      [healthy[0], { ...healthy[1], minutes: 0 }, healthy[2]],
+    ];
+    for (const steps of invalidSteps) {
+      expect(startGuidedTrainingSession({ ...plan, steps }, { now: NOW })).toBeNull();
+      // Starting a bad plan must not overwrite an active legitimate session.
+      expect(loadGuidedTrainingSession({ now: NOW })?.id).toBe(started.id);
+      sessionStorage.setItem(GUIDED_TRAINING_SESSION_KEY, JSON.stringify({ ...started, steps }));
+      expect(loadGuidedTrainingSession({ now: NOW })).toBeNull();
+      expect(sessionStorage.getItem(GUIDED_TRAINING_SESSION_KEY)).toBeNull();
+      sessionStorage.setItem(GUIDED_TRAINING_SESSION_KEY, JSON.stringify(started));
+    }
+    expect(loadGuidedTrainingSession({ now: NOW })).toMatchObject({
+      id: started.id, minutes: 15, currentIndex: 0,
+    });
+  });
+
   it('rechaza índices de progreso corruptos en vez de saltar silenciosamente a otro bloque', () => {
     const plan = buildGuidedTrainingPlan({ minutes: 15, history: [], puzzles: debtPuzzles, rivalry: {} });
     const started = startGuidedTrainingSession(plan, { now: NOW });

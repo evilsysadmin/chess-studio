@@ -37,6 +37,24 @@ describe('lightweight guided game origin', () => {
     expect(readGuidedGameOrigin({ now: NOW + 5 * 60 * 60 * 1000 })).toBeNull();
   });
 
+  it('no atribuye una partida a un plan cuyo presupuesto o cierre no son válidos', () => {
+    const started = startGuidedTrainingSession(plan, { now: NOW });
+    const brokenSteps = [
+      [{ ...started.steps[0], minutes: 15 }, started.steps[1]],
+      [{ ...started.steps[0], minutes: 6.5 }, started.steps[1]],
+      [{ ...started.steps[0], id: 'review' }, started.steps[1]],
+      [started.steps[1], started.steps[0]],
+      [started.steps[0]],
+    ];
+    for (const steps of brokenSteps) {
+      sessionStorage.setItem(GUIDED_TRAINING_SESSION_KEY, JSON.stringify({ ...started, steps }));
+      expect(readGuidedGameOrigin({ now: NOW })).toBeNull();
+      expect(loadGuidedTrainingSession({ now: NOW })).toBeNull();
+    }
+    sessionStorage.setItem(GUIDED_TRAINING_SESSION_KEY, JSON.stringify(started));
+    expect(readGuidedGameOrigin({ now: NOW })?.id).toBe(started.id);
+  });
+
   it('no convierte la revisión u otro paso inválido en una partida entrenable', () => {
     const started = startGuidedTrainingSession(plan, { now: NOW });
     const put = (overrides) => sessionStorage.setItem(GUIDED_TRAINING_SESSION_KEY, JSON.stringify({ ...started, ...overrides }));
