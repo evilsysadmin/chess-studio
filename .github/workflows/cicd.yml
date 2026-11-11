@@ -112,6 +112,8 @@ jobs:
           python3 -S scripts/security_scope.py --self-test
       - name: Staging preview isolation contract
         run: python3 scripts/staging_preview_contract.py
+      - name: Staging smoke janitor recovery contract
+        run: python3 -S scripts/staging_smoke_user_cleanup.py --self-test
   frontend:
     name: Tests · Frontend
     needs: preflight
