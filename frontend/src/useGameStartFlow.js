@@ -48,6 +48,10 @@ export function labContextFromMeta(meta = {}) {
     nemesisLabel: meta.nemesisLabel || null,
     nemesisOpening: meta.nemesisOpening || null,
     sourceRecordId: meta.sourceRecord?.id || null,
+    ...(typeof meta.guidedTrainingSessionId === 'string' && meta.guidedTrainingSessionId
+      && typeof meta.guidedTrainingStepId === 'string' && meta.guidedTrainingStepId
+      ? { guidedTraining: { sessionId: meta.guidedTrainingSessionId, stepId: meta.guidedTrainingStepId } }
+      : {}),
   };
 }
 
