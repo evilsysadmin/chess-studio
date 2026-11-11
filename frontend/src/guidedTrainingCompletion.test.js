@@ -59,6 +59,39 @@ describe('guided training completion summary', () => {
     expect(saveGuidedTrainingCompletion(completedSession({ currentIndex: 2 }), { now: NOW })).not.toBeNull();
   });
 
+  it('no convierte duraciones dañadas en una acreditación de 15 minutos', () => {
+    for (const minutes of [null, undefined, '15', false, 0, 99]) {
+      expect(saveGuidedTrainingCompletion(completedSession({ minutes }), { now: NOW })).toBeNull();
+      expect(sessionStorage.getItem(GUIDED_TRAINING_COMPLETION_KEY)).toBeNull();
+    }
+    const healthy = saveGuidedTrainingCompletion(completedSession(), { now: NOW });
+    for (const minutes of [null, '15', 99]) {
+      sessionStorage.setItem(GUIDED_TRAINING_COMPLETION_KEY, JSON.stringify({ ...healthy, minutes }));
+      expect(loadGuidedTrainingCompletion({ now: NOW })).toBeNull();
+      expect(sessionStorage.getItem(GUIDED_TRAINING_COMPLETION_KEY)).toBeNull();
+    }
+    expect(saveGuidedTrainingCompletion(completedSession(), { now: NOW })?.minutes).toBe(15);
+  });
+
+  it('rechaza bloques cuyo tiempo es desconocido o imposible en vez de publicar NaN', () => {
+    const original = completedSession();
+    for (const minutes of [null, '8', -1, 0, 31, Infinity]) {
+      const steps = original.steps.map((step, index) => index === 0 ? { ...step, minutes } : step);
+      expect(saveGuidedTrainingCompletion(completedSession({ steps }), { now: NOW })).toBeNull();
+      expect(sessionStorage.getItem(GUIDED_TRAINING_COMPLETION_KEY)).toBeNull();
+    }
+    const saved = saveGuidedTrainingCompletion(original, { now: NOW });
+    for (const minutes of [null, 'Infinity', -1, 31, 16]) {
+      sessionStorage.setItem(GUIDED_TRAINING_COMPLETION_KEY, JSON.stringify({
+        ...saved, blocks: [{ ...saved.blocks[0], minutes }, saved.blocks[1]],
+      }));
+      expect(loadGuidedTrainingCompletion({ now: NOW })).toBeNull();
+      expect(sessionStorage.getItem(GUIDED_TRAINING_COMPLETION_KEY)).toBeNull();
+    }
+    expect(loadGuidedTrainingCompletion({ now: NOW })).toBeNull();
+    expect(saveGuidedTrainingCompletion(original, { now: NOW })?.blocks).toHaveLength(2);
+  });
+
   it('no deja que otra cuenta herede el resumen anterior', () => {
     localStorage.setItem('chess-study-auth-username', 'alice');
     expect(saveGuidedTrainingCompletion(completedSession(), { now: NOW })?.owner).toBe('alice');
