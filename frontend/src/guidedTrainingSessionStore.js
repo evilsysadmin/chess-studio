@@ -1,6 +1,6 @@
 import { STORAGE_SESSION, readJsonStorage, removeStorageItem, writeJsonStorage } from './safeStorage.js';
 import { getUsername } from './auth.js';
-import { GUIDED_TRAINING_SESSION_KEY } from './guidedTrainingOriginReader.js';
+import { GUIDED_TRAINING_SESSION_KEY, GUIDED_TRAINING_MINUTES } from './guidedTrainingOriginReader.js';
 export { GUIDED_TRAINING_SESSION_KEY } from './guidedTrainingOriginReader.js';
 
 // Lightweight persisted-session contract. Game start/exit must not eagerly
@@ -14,7 +14,7 @@ function sessionOwner() {
 
 export function normalizeDuration(value) {
   const minutes = Number(value);
-  if (minutes === 5 || minutes === 15 || minutes === 30) return minutes;
+  if (GUIDED_TRAINING_MINUTES.includes(minutes)) return minutes;
   return 5;
 }
 
@@ -41,7 +41,11 @@ function validSessionSteps(steps) {
 }
 
 function normalizeStoredSession(value, now = Date.now()) {
-  if (!value || value.schema !== SESSION_SCHEMA || !validSessionSteps(value.steps)) return null;
+  // A missing identity or an invalid budget cannot be reconstructed from a
+  // fallback: doing so changes what the player sees after F5.
+  if (!value || value.schema !== SESSION_SCHEMA || !validSessionSteps(value.steps)
+    || typeof value.id !== 'string' || !value.id.trim()
+    || !GUIDED_TRAINING_MINUTES.includes(value.minutes)) return null;
   if ((value.owner || null) !== sessionOwner()) return null;
   const startedAt = Number(value.startedAt || 0);
   if (!startedAt || now - startedAt > MAX_SESSION_AGE_MS || startedAt - now > 60_000) return null;
@@ -52,9 +56,9 @@ function normalizeStoredSession(value, now = Date.now()) {
   const currentIndex = value.currentIndex;
   return {
     schema: SESSION_SCHEMA,
-    id: String(value.id || `guided-${startedAt}`),
+    id: value.id,
     owner: value.owner || null,
-    minutes: normalizeDuration(value.minutes),
+    minutes: value.minutes,
     startedAt,
     currentIndex,
     steps: value.steps,
@@ -69,7 +73,7 @@ export function loadGuidedTrainingSession({ now = Date.now() } = {}) {
 }
 
 export function startGuidedTrainingSession(plan, { now = Date.now() } = {}) {
-  if (!plan?.available || !validSessionSteps(plan.steps)) return null;
+  if (!plan?.available || !GUIDED_TRAINING_MINUTES.includes(plan.minutes) || !validSessionSteps(plan.steps)) return null;
   const startedAt = Number(now);
   const session = {
     schema: SESSION_SCHEMA,

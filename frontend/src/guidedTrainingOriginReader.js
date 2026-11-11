@@ -5,13 +5,15 @@ import { STORAGE_SESSION, readJsonStorage } from './safeStorage.js';
 // stays in its lazy-loaded Training Room module; the app bootstrap must not
 // eagerly include all the planning/persistence machinery.
 export const GUIDED_TRAINING_SESSION_KEY = 'chess-study-guided-training-session-v1';
+export const GUIDED_TRAINING_MINUTES = Object.freeze([5, 15, 30]);
 const MAX_AGE_MS = 4 * 60 * 60 * 1000;
 
 export function readGuidedGameOrigin({ now = Date.now() } = {}) {
   const saved = readJsonStorage(STORAGE_SESSION, GUIDED_TRAINING_SESSION_KEY, { fallback: null });
-  if (!saved || saved.schema !== 1 || !Array.isArray(saved.steps) || !saved.steps.length) return null;
+  if (!saved || saved.schema !== 1 || !Array.isArray(saved.steps) || !saved.steps.length
+    || !GUIDED_TRAINING_MINUTES.includes(saved.minutes)) return null;
   const owner = String(getUsername() || '').trim().toLowerCase() || null;
-  if ((saved.owner || null) !== owner || typeof saved.id !== 'string' || !saved.id) return null;
+  if ((saved.owner || null) !== owner || typeof saved.id !== 'string' || !saved.id.trim()) return null;
   const startedAt = Number(saved.startedAt);
   if (!Number.isFinite(startedAt) || startedAt <= 0 || now - startedAt > MAX_AGE_MS
     || startedAt - now > 60_000) return null;

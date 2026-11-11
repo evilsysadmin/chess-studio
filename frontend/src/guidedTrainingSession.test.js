@@ -404,6 +404,26 @@ describe('sesiones guiadas 5/15/30 minutos', () => {
     expect(sessionStorage.getItem(GUIDED_TRAINING_SESSION_KEY)).toBeNull();
   });
 
+  it('no inventa identidad ni duración al restaurar un expediente corrupto', () => {
+    const plan = buildGuidedTrainingPlan({ minutes: 15, history: [], puzzles: debtPuzzles, rivalry: {} });
+    const original = startGuidedTrainingSession(plan, { now: NOW });
+    const corruptFields = [
+      { id: null }, { id: '' }, { id: '   ' }, { id: 123 },
+      { minutes: null }, { minutes: '15' }, { minutes: 7 }, { minutes: undefined },
+    ];
+    for (const fields of corruptFields) {
+      sessionStorage.setItem(GUIDED_TRAINING_SESSION_KEY, JSON.stringify({ ...original, ...fields }));
+      expect(loadGuidedTrainingSession({ now: NOW })).toBeNull();
+      expect(sessionStorage.getItem(GUIDED_TRAINING_SESSION_KEY)).toBeNull();
+    }
+    expect(startGuidedTrainingSession({ ...plan, minutes: '15' }, { now: NOW })).toBeNull();
+    expect(startGuidedTrainingSession({ ...plan, minutes: 7 }, { now: NOW })).toBeNull();
+    const restored = startGuidedTrainingSession(plan, { now: NOW });
+    expect(loadGuidedTrainingSession({ now: NOW })).toMatchObject({
+      id: restored.id, minutes: 15, steps: restored.steps,
+    });
+  });
+
   it('no deja que otra cuenta herede la sesión guiada de la anterior', () => {
     localStorage.setItem('chess-study-auth-username', 'alice');
     const plan = buildGuidedTrainingPlan({ minutes: 15, history: [], puzzles: debtPuzzles, rivalry: {} });
