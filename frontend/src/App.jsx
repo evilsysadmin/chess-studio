@@ -245,7 +245,6 @@ function AppInner({ isAdminUser }) {
     context: setGameContext,
     series: setActiveSeries,
     back: goBack,
-    returnToGuidedTraining: () => replaceView('insights'),
   });
   useProfileSyncLifecycle(view);
 
