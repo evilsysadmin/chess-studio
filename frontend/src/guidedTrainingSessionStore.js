@@ -1,9 +1,10 @@
 import { STORAGE_SESSION, readJsonStorage, removeStorageItem, writeJsonStorage } from './safeStorage.js';
 import { getUsername } from './auth.js';
+import { GUIDED_TRAINING_SESSION_KEY } from './guidedTrainingOriginReader.js';
+export { GUIDED_TRAINING_SESSION_KEY } from './guidedTrainingOriginReader.js';
 
 // Lightweight persisted-session contract. Game start/exit must not eagerly
 // bundle Player Model, puzzle planning and their analysis dependencies.
-export const GUIDED_TRAINING_SESSION_KEY = 'chess-study-guided-training-session-v1';
 const SESSION_SCHEMA = 1;
 const MAX_SESSION_AGE_MS = 4 * 60 * 60 * 1000;
 
