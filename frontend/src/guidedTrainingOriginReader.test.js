@@ -50,6 +50,21 @@ describe('lightweight guided game origin', () => {
     expect(readGuidedGameOrigin({ now: NOW })).toBeNull();
   });
 
+  it('no enlaza una partida con un expediente de identidad o duración falsificada', () => {
+    const started = startGuidedTrainingSession(plan, { now: NOW });
+    for (const overrides of [
+      { id: '' }, { id: '  ' }, { minutes: null },
+      { minutes: '15' }, { minutes: 999 },
+    ]) {
+      sessionStorage.setItem(GUIDED_TRAINING_SESSION_KEY, JSON.stringify({ ...started, ...overrides }));
+      expect(readGuidedGameOrigin({ now: NOW })).toBeNull();
+    }
+    sessionStorage.setItem(GUIDED_TRAINING_SESSION_KEY, JSON.stringify(started));
+    expect(readGuidedGameOrigin({ now: NOW })).toMatchObject({
+      id: started.id, minutes: 15,
+    });
+  });
+
   it('rechaza niveles CPU fuera de rango al iniciar o restaurar una sesión', () => {
     const withDifficulty = (difficulty) => ({
       ...plan,
