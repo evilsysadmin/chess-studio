@@ -9,54 +9,56 @@ function completionOwner() {
   return String(getUsername() || '').trim().toLowerCase() || null;
 }
 
-function normalizeMinutes(value) {
-  const minutes = Number(value);
-  if (minutes === 5 || minutes === 30) return minutes;
-  return 15;
-}
+const VALID_DURATIONS = new Set([5, 15, 30]);
 
 function normalizeBlock(step, index) {
   if (!step || step.kind === 'review') return null;
   const title = String(step.title || '').trim();
-  if (!title) return null;
+  // Stored minutes are measured plan allocations, not values to guess.
+  if (!title || !Number.isFinite(step.minutes) || step.minutes <= 0 || step.minutes > 30) return null;
   return {
     id: String(step.id || `block-${index + 1}`),
     kind: String(step.kind || 'practice'),
     title,
-    minutes: Math.max(0, Math.round(Number(step.minutes || 0))),
+    minutes: Math.round(step.minutes),
   };
 }
 
 function normalizeCompletion(value, now = Date.now()) {
-  if (!value || value.schema !== COMPLETION_SCHEMA || !Array.isArray(value.blocks)) return null;
+  if (!value || value.schema !== COMPLETION_SCHEMA || !Array.isArray(value.blocks)
+    || !VALID_DURATIONS.has(value.minutes)) return null;
   if ((value.owner || null) !== completionOwner()) return null;
   const completedAt = Number(value.completedAt || 0);
   if (!completedAt || now - completedAt > MAX_COMPLETION_AGE_MS || completedAt - now > 60_000) return null;
-  const blocks = value.blocks.map(normalizeBlock).filter(Boolean);
-  if (!blocks.length) return null;
+  const blocks = value.blocks.map(normalizeBlock);
+  if (!blocks.length || blocks.some((block) => !block || block.minutes > value.minutes)) return null;
   return {
     schema: COMPLETION_SCHEMA,
     owner: value.owner || null,
     completedAt,
-    minutes: normalizeMinutes(value.minutes),
+    minutes: value.minutes,
     blocks,
   };
 }
 
 export function saveGuidedTrainingCompletion(session, { now = Date.now() } = {}) {
-  if (!session || !Array.isArray(session.steps) || !session.steps.length) return null;
+  if (!session || !Array.isArray(session.steps) || !session.steps.length
+    || !VALID_DURATIONS.has(session.minutes)) return null;
   // Only the exact last step proves that the user closed this itinerary.
   // Flooring/clamping a corrupt cursor could invent a completed session.
   if (!Number.isInteger(session.currentIndex)
     || session.currentIndex !== session.steps.length - 1) return null;
-  const blocks = session.steps.map(normalizeBlock).filter(Boolean);
-  if (!blocks.length) return null;
+  const normalizedSteps = session.steps.map(normalizeBlock);
+  // Review is intentionally omitted; a damaged practice block is not.
+  if (normalizedSteps.some((block, index) => !block && session.steps[index]?.kind !== 'review')) return null;
+  const blocks = normalizedSteps.filter(Boolean);
+  if (!blocks.length || blocks.some((block) => block.minutes > session.minutes)) return null;
 
   const completion = {
     schema: COMPLETION_SCHEMA,
     owner: completionOwner(),
     completedAt: Number(now),
-    minutes: normalizeMinutes(session.minutes),
+    minutes: session.minutes,
     blocks,
   };
   writeJsonStorage(STORAGE_SESSION, GUIDED_TRAINING_COMPLETION_KEY, completion);
