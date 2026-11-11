@@ -3,6 +3,8 @@ import {
   GUIDED_TRAINING_SESSION_KEY,
   advanceGuidedTrainingSession,
   buildGuidedTrainingPlan,
+  clearGuidedTrainingSession,
+  isCurrentGuidedTrainingStep,
   loadGuidedTrainingSession,
   startGuidedTrainingSession,
 } from './guidedTrainingSession.js';
@@ -453,6 +455,36 @@ describe('sesiones guiadas 5/15/30 minutos', () => {
     expect(loadGuidedTrainingSession({ now: NOW })).toMatchObject({
       id: started.id, currentIndex: 1,
     });
+  });
+
+  it('no permite que un clic antiguo salte dos bloques de un expediente', () => {
+    const plan = buildGuidedTrainingPlan({ minutes: 15, history: [], puzzles: debtPuzzles, rivalry: {} });
+    const started = startGuidedTrainingSession(plan, { now: NOW });
+    const second = advanceGuidedTrainingSession(started, { now: NOW });
+    expect(second.currentIndex).toBe(1);
+    expect(isCurrentGuidedTrainingStep(started, second)).toBe(false);
+    expect(advanceGuidedTrainingSession(started, { now: NOW })).toBeNull();
+    expect(loadGuidedTrainingSession({ now: NOW })).toMatchObject({ id: started.id, currentIndex: 1 });
+    expect(isCurrentGuidedTrainingStep(second, loadGuidedTrainingSession({ now: NOW }))).toBe(true);
+  });
+
+  it('no resucita expedientes cancelados ni modifica otro nuevo, ni acredita su cierre', () => {
+    const plan = buildGuidedTrainingPlan({ minutes: 5, history: [], puzzles: debtPuzzles, rivalry: {} });
+    const started = startGuidedTrainingSession(plan, { now: NOW });
+    const finalStep = advanceGuidedTrainingSession(started, { now: NOW });
+    expect(finalStep.currentIndex).toBe(finalStep.steps.length - 1);
+    clearGuidedTrainingSession();
+    expect(advanceGuidedTrainingSession(finalStep, { now: NOW })).toBeNull();
+    expect(loadGuidedTrainingSession({ now: NOW })).toBeNull();
+
+    const replacement = startGuidedTrainingSession(plan, { now: NOW + 1 });
+    expect(replacement.id).not.toBe(started.id);
+    expect(isCurrentGuidedTrainingStep(finalStep, replacement)).toBe(false);
+    expect(advanceGuidedTrainingSession(finalStep, { now: NOW + 1 })).toBeNull();
+    expect(loadGuidedTrainingSession({ now: NOW + 1 })).toMatchObject({
+      id: replacement.id, currentIndex: 0,
+    });
+    expect(isCurrentGuidedTrainingStep(replacement, loadGuidedTrainingSession({ now: NOW + 1 }))).toBe(true);
   });
 
   it('restaura una sesión legítima al mismo paso tras F5, sin reiniciar el entrenamiento', () => {
