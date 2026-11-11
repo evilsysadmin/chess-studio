@@ -49,8 +49,8 @@ export default function InsightsGuidedSession({
   }
 
   function cancel() {
-    clearGuidedTrainingSession();
-    setSession(null);
+    const removed = clearGuidedTrainingSession(session);
+    setSession(removed ? null : loadGuidedTrainingSession());
   }
 
   function nextStep() {
