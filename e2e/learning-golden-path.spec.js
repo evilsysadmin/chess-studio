@@ -435,3 +435,54 @@ test('Así juegas · la partida de práctica regresa a su bloque tras F5 sin his
   await expect.poll(() => page.evaluate(() => JSON.parse(sessionStorage.getItem('chess-study-guided-training-session-v1'))?.currentIndex)).toBe(1);
   expect(await page.evaluate(() => sessionStorage.getItem('chess-study-guided-training-completion-v1'))).toBeNull();
 });
+
+test('Así juegas · una acción antigua no secuestra el recorrido sustituido en otra pestaña', async ({ page }) => {
+  test.setTimeout(150_000);
+  await mockApi(page, {
+    profileSeed: {
+      'chess-study-personal-puzzles': JSON.stringify([{
+        id: 'stale-guided-drill',
+        kind: 'personal',
+        source: 'autopsy',
+        title: 'Un error real pendiente',
+        description: 'La acción guiada debe respetar el expediente actual.',
+        fen: PERSONAL_MATE_FEN,
+        solution: ['Ra8#'],
+        incidentKeys: ['human:MISSED_MATE'],
+        sourceGameId: 'stale-guided-source',
+        loss: 210,
+        createdAt: '2026-11-10T12:00:00Z',
+        attempts: 0, solves: 0, cleanSolves: 0,
+      }]),
+    },
+  });
+  await login(page);
+  await dismissHomeGuide(page);
+  const corner = page.getByRole('complementary', { name: 'Rincón de Matthias' });
+  await corner.getByRole('button', { name: 'Abrir Así juegas con Matthias', exact: true }).click();
+  await waitForTrainingRoomSettled(page);
+  await page.getByRole('button', { name: 'Empezar sesión recomendada de 5 min', exact: true }).click();
+  const active = page.locator('.insights-guided-session.active');
+  await expect(active.getByText('Paso 1/2', { exact: false })).toBeVisible();
+
+  // Simulate another tab replacing the itinerary while this React instance
+  // still displays an old button. The storage owner is authoritative.
+  const newId = await page.evaluate(() => {
+    const key = 'chess-study-guided-training-session-v1';
+    const snapshot = JSON.parse(sessionStorage.getItem(key));
+    snapshot.id = `${snapshot.id}-replacement`;
+    sessionStorage.setItem(key, JSON.stringify(snapshot));
+    return snapshot.id;
+  });
+  await active.locator('.coaching-action .primary-btn').click();
+  await expect(active).toBeVisible();
+  await expect(page.locator('.puzzle-screen')).toHaveCount(0);
+  expect(await page.evaluate(() => JSON.parse(
+    sessionStorage.getItem('chess-study-guided-training-session-v1'),
+  )?.id)).toBe(newId);
+
+  // Once reconciled, the current button can open the genuine puzzle.
+  await active.locator('.coaching-action .primary-btn').click();
+  await expect(page.locator('.puzzle-screen')).toBeVisible();
+});
+
