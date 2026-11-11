@@ -207,13 +207,27 @@ export function openingClinic(history = []) {
     .slice(0, 5);
 }
 
+function analysisMatchesHistoryRecord(analysis, record) {
+  const gameId = analysis?.gameId == null ? '' : String(analysis.gameId).trim();
+  if (!gameId || !record) return false;
+  const ids = [record.sourceGameId, record.gameId, record.id]
+    .filter((value) => value !== null && value !== undefined && String(value).trim() !== '')
+    .map(String);
+  if (ids.includes(gameId)) return true;
+  // Pre-sourceGameId archives used `<gameId>-<timestamp>` as a record ID.
+  // Restrict this fallback to legacy rows and a real "-" boundary: game-1
+  // must never count the analysis of game-10 (or vice versa).
+  if (record.sourceGameId || record.gameId) return false;
+  return typeof record.id === 'string' && record.id.startsWith(`${gameId}-`);
+}
+
 export function weeklyReport(history = [], archive = loadAnalysisArchive(), now = new Date()) {
   const end = now.getTime(); const week = 7 * 86400000;
   const current = history.filter((r) => end - new Date(r.date).getTime() >= 0 && end - new Date(r.date).getTime() < week);
   const previous = history.filter((r) => end - new Date(r.date).getTime() >= week && end - new Date(r.date).getTime() < 2 * week);
   function summarise(rows) {
-    const keys = new Set(rows.flatMap((r) => [String(r.sourceGameId || r.gameId || r.id || '')]));
-    const analyses = Object.values(archive).filter((a) => keys.has(String(a.gameId)) || rows.some((r) => String(r.id || '').startsWith(String(a.gameId))));
+    const analyses = Object.values(archive)
+      .filter((analysis) => rows.some((record) => analysisMatchesHistoryRecord(analysis, record)));
     const wins = rows.filter((r) => r.outcome === 'win').length;
     const acc = analyses.map((a) => a.accuracy).filter(Number.isFinite);
     return { games: rows.length, wins, winPct: rows.length ? Math.round(wins / rows.length * 100) : 0, accuracy: acc.length ? Math.round(acc.reduce((s,n)=>s+n,0)/acc.length) : null };
