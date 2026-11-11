@@ -413,6 +413,40 @@ describe('sesiones guiadas 5/15/30 minutos', () => {
     expect(sessionStorage.getItem(GUIDED_TRAINING_SESSION_KEY)).toBeNull();
   });
 
+  it('descarta snapshots con pasos corruptos antes de que Así juegas los renderice', () => {
+    const plan = buildGuidedTrainingPlan({ minutes: 15, history: [], puzzles: debtPuzzles, rivalry: {} });
+    const started = startGuidedTrainingSession(plan, { now: NOW });
+    const healthy = started.steps[0];
+    const brokenSteps = [
+      [null],
+      [{}],
+      [{ ...healthy, title: null }],
+      [{ ...healthy, action: 'unknown-action' }],
+      [{ ...healthy, minutes: Infinity }],
+      [{ ...healthy, minutes: 0 }],
+      [{ ...healthy, action: 'short-game', training: null }],
+      [{ ...healthy, action: 'nemesis-position', training: { fen: 'invalid', humanColor: 'x', difficulty: 50 } }],
+    ];
+    for (const steps of brokenSteps) {
+      sessionStorage.setItem(GUIDED_TRAINING_SESSION_KEY, JSON.stringify({ ...started, steps }));
+      expect(loadGuidedTrainingSession({ now: NOW })).toBeNull();
+      expect(sessionStorage.getItem(GUIDED_TRAINING_SESSION_KEY)).toBeNull();
+    }
+    expect(startGuidedTrainingSession({ ...plan, steps: [null] }, { now: NOW })).toBeNull();
+    expect(sessionStorage.getItem(GUIDED_TRAINING_SESSION_KEY)).toBeNull();
+  });
+
+  it('restaura una sesión legítima al mismo paso tras F5, sin reiniciar el entrenamiento', () => {
+    const plan = buildGuidedTrainingPlan({ minutes: 15, history: [], puzzles: debtPuzzles, rivalry: {} });
+    const started = startGuidedTrainingSession(plan, { now: NOW });
+    const advanced = advanceGuidedTrainingSession(started, { now: NOW });
+    const rehydrated = loadGuidedTrainingSession({ now: NOW + 10 * 60 * 1000 });
+    expect(rehydrated).toMatchObject({ id: started.id, currentIndex: 1, minutes: 15 });
+    expect(rehydrated.steps).toEqual(advanced.steps);
+    expect(rehydrated.steps[rehydrated.currentIndex]).toMatchObject({ action: 'short-game' });
+    expect(advanceGuidedTrainingSession(rehydrated, { now: NOW + 10 * 60 * 1000 })?.currentIndex).toBe(2);
+  });
+
   it('descarta sesiones viejas en vez de resucitarlas en otra visita', () => {
     sessionStorage.setItem(GUIDED_TRAINING_SESSION_KEY, JSON.stringify({
       schema: 1,
