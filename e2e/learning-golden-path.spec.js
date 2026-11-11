@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import {
+  buttonWithHeading,
   buttonWithVisibleText,
   clickBoardMove,
   gameTurn,
@@ -309,3 +310,67 @@ test.describe('Mobile · pérdida factual y entrenamiento tras F5', () => {
   }
 });
 
+
+test('Así juegas · la sesión guiada sobrevive al tablero personal y F5; un snapshot corrupto no bloquea la sala', async ({ page }) => {
+  test.setTimeout(150_000);
+  await mockApi(page, {
+    profileSeed: {
+      'chess-study-personal-puzzles': JSON.stringify([{
+        id: 'resume-personal-drill',
+        kind: 'personal',
+        source: 'autopsy',
+        title: 'Posición recuperable',
+        description: 'Un caso factual pendiente de revisar.',
+        fen: PERSONAL_MATE_FEN,
+        solution: ['Ra8#'],
+        incidentKeys: ['human:MISSED_MATE'],
+        sourceGameId: 'resume-source-game',
+        loss: 210,
+        createdAt: '2026-11-10T12:00:00Z',
+        attempts: 0,
+        solves: 0,
+        cleanSolves: 0,
+      }]),
+    },
+  });
+  await login(page);
+  await dismissHomeGuide(page);
+  await buttonWithHeading(page, 'Así juegas').click();
+  await waitForTrainingRoomSettled(page);
+  await expect(page.getByRole('heading', { name: 'Tu siguiente tarea', exact: true })).toBeVisible();
+
+  await page.getByRole('button', { name: 'Tengo 5 min', exact: true }).click();
+  const active = page.locator('.insights-guided-session.active');
+  await expect(active.getByText('Paso 1/2', { exact: false })).toBeVisible();
+  const initial = await page.evaluate(() => JSON.parse(sessionStorage.getItem('chess-study-guided-training-session-v1')));
+  expect(initial?.currentIndex).toBe(0);
+
+  // Leave the guided plan for its real personal chessboard and come back.
+  await active.locator('.coaching-action .primary-btn').click();
+  const puzzle = page.locator('.puzzle-screen');
+  await expect(puzzle).toBeVisible();
+  const back = puzzle.locator('> .back-link');
+  await expect(back).toHaveText('← Volver a Así juegas');
+  await back.click();
+  await waitForTrainingRoomSettled(page);
+  await expect(active.getByText('Paso 1/2', { exact: false })).toBeVisible();
+
+  // Mark only the visited block and prove F5 restores the *next* step.
+  await active.getByRole('button', { name: 'Hecho · siguiente →', exact: true }).click();
+  await expect(active.getByText('Cierre rápido', { exact: true })).toBeVisible();
+  await page.reload();
+  await expect(page.getByRole('heading', { name: 'Así juegas', exact: true })).toBeVisible();
+  await expect(active.getByText('Paso 2/2', { exact: false })).toBeVisible();
+  await expect.poll(() => page.evaluate(() => JSON.parse(sessionStorage.getItem('chess-study-guided-training-session-v1'))?.currentIndex)).toBe(1);
+
+  // A malformed legacy snapshot must fall back to the plan, not crash React.
+  await page.evaluate(() => {
+    const key = 'chess-study-guided-training-session-v1';
+    const snapshot = JSON.parse(sessionStorage.getItem(key));
+    snapshot.steps[1] = null;
+    sessionStorage.setItem(key, JSON.stringify(snapshot));
+  });
+  await page.reload();
+  await expect(page.getByRole('heading', { name: 'Tu siguiente tarea', exact: true })).toBeVisible();
+  expect(await page.evaluate(() => sessionStorage.getItem('chess-study-guided-training-session-v1'))).toBeNull();
+});
