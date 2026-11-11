@@ -18,6 +18,14 @@ describe('view navigation helpers', () => {
     });
   });
 
+  it('prioriza el retorno guiado acreditado aunque el historial se perdiera con F5', () => {
+    expect(popPreviousView([], 'game', 'insights')).toEqual({ previous: 'insights', history: [] });
+    expect(popPreviousView(['menu', 'insights'], 'game', 'insights'))
+      .toEqual({ previous: 'insights', history: ['menu'] });
+    expect(popPreviousView([], 'game', 'not-allowed'))
+      .toEqual({ previous: 'menu', history: [] });
+  });
+
   it('cae al menú cuando no hay una vista anterior válida', () => {
     expect(popPreviousView([], 'tutorial')).toEqual({ previous: 'menu', history: [] });
   });
