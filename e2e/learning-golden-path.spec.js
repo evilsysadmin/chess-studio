@@ -340,6 +340,8 @@ test('Así juegas · la sesión guiada sobrevive al tablero personal y F5; un sn
   await expect(page.getByRole('heading', { name: 'Tu siguiente tarea', exact: true })).toBeVisible();
 
   await page.getByRole('button', { name: 'Tengo 5 min', exact: true }).click();
+  // Duration chips preview only; the explicit primary CTA starts persistence.
+  await page.getByRole('button', { name: 'Empezar sesión recomendada de 5 min', exact: true }).click();
   const active = page.locator('.insights-guided-session.active');
   await expect(active.getByText('Paso 1/2', { exact: false })).toBeVisible();
   const initial = await page.evaluate(() => JSON.parse(sessionStorage.getItem('chess-study-guided-training-session-v1')));
