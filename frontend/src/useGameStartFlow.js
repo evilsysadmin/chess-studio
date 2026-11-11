@@ -19,7 +19,7 @@ import { clearActiveSeries, createSeries, saveActiveSeries } from './series.js';
 import { attachSeriesGame } from './seriesFlow.js';
 import { userFacingError } from './userFacingError.js';
 import { resolveTrainingDifficulty } from './trainingDifficulty.js';
-import { loadGuidedTrainingSession } from './guidedTrainingSession.js';
+import { loadGuidedTrainingSession } from './guidedTrainingSessionStore.js';
 import { getStorageItem, STORAGE_SESSION } from './safeStorage.js';
 import { VIEW_STORAGE_KEY } from './viewState.js';
 
