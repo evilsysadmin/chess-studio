@@ -84,9 +84,26 @@ export function startGuidedTrainingSession(plan, { now = Date.now() } = {}) {
   return session;
 }
 
+// Compare the caller's assignment to the actual persisted assignment. An
+// old click must not resurrect a cancelled plan, skip a newer step or finish
+// a different session after return/navigation.
+export function isCurrentGuidedTrainingStep(session, active) {
+  const step = session?.steps?.[session.currentIndex];
+  const activeStep = active?.steps?.[active.currentIndex];
+  return Boolean(
+    typeof session?.id === 'string' && session.id
+    && session.id === active?.id
+    && session.startedAt === active?.startedAt
+    && Number.isInteger(session.currentIndex)
+    && session.currentIndex === active?.currentIndex
+    && typeof step?.id === 'string' && step.id && step.id === activeStep?.id
+  );
+}
+
 export function advanceGuidedTrainingSession(session, { now = Date.now() } = {}) {
-  const normalized = normalizeStoredSession(session, Number(now));
-  if (!normalized) return null;
+  const checkedAt = Number(now);
+  const normalized = normalizeStoredSession(session, checkedAt);
+  if (!normalized || !isCurrentGuidedTrainingStep(normalized, loadGuidedTrainingSession({ now: checkedAt }))) return null;
   const nextIndex = normalized.currentIndex + 1;
   if (nextIndex >= normalized.steps.length) {
     removeStorageItem(STORAGE_SESSION, GUIDED_TRAINING_SESSION_KEY);
