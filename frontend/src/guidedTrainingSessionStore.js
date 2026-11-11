@@ -1,6 +1,6 @@
 import { STORAGE_SESSION, readJsonStorage, removeStorageItem, writeJsonStorage } from './safeStorage.js';
 import { getUsername } from './auth.js';
-import { GUIDED_TRAINING_SESSION_KEY, GUIDED_TRAINING_MINUTES } from './guidedTrainingOriginReader.js';
+import { GUIDED_TRAINING_SESSION_KEY, GUIDED_TRAINING_MINUTES, validGuidedTrainingBudget } from './guidedTrainingOriginReader.js';
 export { GUIDED_TRAINING_SESSION_KEY } from './guidedTrainingOriginReader.js';
 
 // Lightweight persisted-session contract. Game start/exit must not eagerly
@@ -51,14 +51,14 @@ function validSessionStep(step) {
   return true;
 }
 
-function validSessionSteps(steps) {
-  return Array.isArray(steps) && steps.length > 0 && steps.every(validSessionStep);
+function validSessionSteps(steps, minutes) {
+  return validGuidedTrainingBudget(steps, minutes) && steps.every(validSessionStep);
 }
 
 function normalizeStoredSession(value, now = Date.now()) {
   // A missing identity or an invalid budget cannot be reconstructed from a
   // fallback: doing so changes what the player sees after F5.
-  if (!value || value.schema !== SESSION_SCHEMA || !validSessionSteps(value.steps)
+  if (!value || value.schema !== SESSION_SCHEMA || !validSessionSteps(value.steps, value.minutes)
     || typeof value.id !== 'string' || !value.id.trim()
     || !GUIDED_TRAINING_MINUTES.includes(value.minutes)) return null;
   if ((value.owner || null) !== sessionOwner()) return null;
@@ -88,7 +88,7 @@ export function loadGuidedTrainingSession({ now = Date.now() } = {}) {
 }
 
 export function startGuidedTrainingSession(plan, { now = Date.now() } = {}) {
-  if (!plan?.available || !GUIDED_TRAINING_MINUTES.includes(plan.minutes) || !validSessionSteps(plan.steps)) return null;
+  if (!plan?.available || !validSessionSteps(plan.steps, plan.minutes)) return null;
   const startedAt = Number(now);
   const session = {
     schema: SESSION_SCHEMA,
