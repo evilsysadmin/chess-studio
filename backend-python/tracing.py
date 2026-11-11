@@ -607,8 +607,11 @@ def configure_tracing(app: Any, *, release: str | None = None) -> bool:
             from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
             reader = PeriodicExportingMetricReader(OTLPMetricExporter(endpoint=settings["metrics_endpoint"], headers=exporter_headers or None), export_interval_millis=30000)
             meter_provider = MeterProvider(resource=resource, metric_readers=[reader])
+            # An external library may have already installed the global
+            # provider; set_meter_provider() cannot replace it. Bind our own
+            # instruments explicitly to the provider with the OTLP reader.
             metrics.set_meter_provider(meter_provider)
-            meter = metrics.get_meter("chess-studio.backend")
+            meter = meter_provider.get_meter("chess-studio.backend")
             _HTTP_COUNTER = meter.create_counter("chess_studio_http_server_requests", description="Chess Studio HTTP requests")
             _HTTP_LATENCY = meter.create_histogram("chess_studio_http_server_duration", unit="s", description="Chess Studio HTTP request duration")
             _FRONTEND_COUNTER = meter.create_counter("chess_studio_frontend_events", description="Coarse frontend telemetry events")
