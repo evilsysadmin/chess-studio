@@ -45,8 +45,10 @@ function normalizeCompletion(value, now = Date.now()) {
 
 export function saveGuidedTrainingCompletion(session, { now = Date.now() } = {}) {
   if (!session || !Array.isArray(session.steps) || !session.steps.length) return null;
-  const currentIndex = Math.max(0, Math.floor(Number(session.currentIndex) || 0));
-  if (currentIndex < session.steps.length - 1) return null;
+  // Only the exact last step proves that the user closed this itinerary.
+  // Flooring/clamping a corrupt cursor could invent a completed session.
+  if (!Number.isInteger(session.currentIndex)
+    || session.currentIndex !== session.steps.length - 1) return null;
   const blocks = session.steps.map(normalizeBlock).filter(Boolean);
   if (!blocks.length) return null;
 
