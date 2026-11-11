@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { startGuidedTrainingSession } from './guidedTrainingSession.js';
+import { loadGuidedTrainingSession, startGuidedTrainingSession } from './guidedTrainingSession.js';
 import { GUIDED_TRAINING_SESSION_KEY, readGuidedGameOrigin } from './guidedTrainingOriginReader.js';
 
 const NOW = 1_800_000_000_000;
@@ -48,5 +48,29 @@ describe('lightweight guided game origin', () => {
     expect(readGuidedGameOrigin({ now: NOW })).toBeNull();
     put({ currentIndex: 0, id: '' });
     expect(readGuidedGameOrigin({ now: NOW })).toBeNull();
+  });
+
+  it('rechaza niveles CPU fuera de rango al iniciar o restaurar una sesión', () => {
+    const withDifficulty = (difficulty) => ({
+      ...plan,
+      steps: [
+        { ...plan.steps[0], training: { ...plan.steps[0].training, difficulty } },
+        plan.steps[1],
+      ],
+    });
+    for (const difficulty of [-1, 101]) {
+      expect(startGuidedTrainingSession(withDifficulty(difficulty), { now: NOW })).toBeNull();
+    }
+    expect(sessionStorage.getItem(GUIDED_TRAINING_SESSION_KEY)).toBeNull();
+
+    const saved = startGuidedTrainingSession(plan, { now: NOW });
+    for (const difficulty of [-1, 101]) {
+      sessionStorage.setItem(GUIDED_TRAINING_SESSION_KEY, JSON.stringify({
+        ...saved, steps: withDifficulty(difficulty).steps,
+      }));
+      expect(readGuidedGameOrigin({ now: NOW })).toBeNull();
+      expect(loadGuidedTrainingSession({ now: NOW })).toBeNull();
+    }
+    expect(startGuidedTrainingSession(plan, { now: NOW })?.steps[0].training.difficulty).toBe(0);
   });
 });
