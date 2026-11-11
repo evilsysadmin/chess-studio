@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('../guidedTrainingSession.js', () => ({
   advanceGuidedTrainingSession: vi.fn(),
+  isCurrentGuidedTrainingStep: vi.fn(),
   clearGuidedTrainingSession: vi.fn(),
   loadGuidedTrainingSession: () => null,
   startGuidedTrainingSession: vi.fn(),
