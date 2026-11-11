@@ -19,6 +19,9 @@ import { clearActiveSeries, createSeries, saveActiveSeries } from './series.js';
 import { attachSeriesGame } from './seriesFlow.js';
 import { userFacingError } from './userFacingError.js';
 import { resolveTrainingDifficulty } from './trainingDifficulty.js';
+import { loadGuidedTrainingSession } from './guidedTrainingSession.js';
+import { getStorageItem, STORAGE_SESSION } from './safeStorage.js';
+import { VIEW_STORAGE_KEY } from './viewState.js';
 
 export function gameContextFromOptions(options = {}) {
   return {
@@ -53,6 +56,21 @@ export function labContextFromMeta(meta = {}) {
       ? { guidedTraining: { sessionId: meta.guidedTrainingSessionId, stepId: meta.guidedTrainingStepId } }
       : {}),
   };
+}
+
+// Link back to an active guided block only when the launched position really
+// matches the block owned by Insights. Standalone Lab/Nemesis shortcuts are
+// not allowed to steal a guided session's return destination.
+export function guidedOriginForLaunch({ sourceView, session, fen, humanColor, difficulty, meta = {} }) {
+  if (sourceView !== 'insights' || !session?.id) return null;
+  const step = session.steps?.[session.currentIndex];
+  if (!step || !['short-game', 'nemesis-position'].includes(step.action)) return null;
+  const training = step.training;
+  if (!training || training.fen !== fen || training.humanColor !== humanColor
+    || resolveTrainingDifficulty(training.difficulty) !== difficulty
+    || Boolean(meta.nemesis) !== (step.action === 'nemesis-position')) return null;
+  if (typeof step.id !== 'string' || !step.id) return null;
+  return { guidedTrainingSessionId: session.id, guidedTrainingStepId: step.id };
 }
 
 export function useGameStartFlow({
@@ -221,7 +239,15 @@ export function useGameStartFlow({
         return;
       }
       launch.confirmCreated(operation);
-      const nextContext = labContextFromMeta(meta);
+      const guidedOrigin = guidedOriginForLaunch({
+        sourceView: getStorageItem(STORAGE_SESSION, VIEW_STORAGE_KEY),
+        session: loadGuidedTrainingSession(),
+        fen,
+        humanColor: resolvedColor,
+        difficulty: resolvedDifficulty,
+        meta,
+      });
+      const nextContext = labContextFromMeta({ ...meta, ...guidedOrigin });
       recordGameActivity({
         gameId: created.id,
         state: 'started',
