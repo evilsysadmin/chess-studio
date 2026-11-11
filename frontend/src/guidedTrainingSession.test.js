@@ -436,6 +436,25 @@ describe('sesiones guiadas 5/15/30 minutos', () => {
     expect(sessionStorage.getItem(GUIDED_TRAINING_SESSION_KEY)).toBeNull();
   });
 
+
+  it('rechaza índices de progreso corruptos en vez de saltar silenciosamente a otro bloque', () => {
+    const plan = buildGuidedTrainingPlan({ minutes: 15, history: [], puzzles: debtPuzzles, rivalry: {} });
+    const started = startGuidedTrainingSession(plan, { now: NOW });
+    const invalidIndices = [-1, started.steps.length, 1.5, '1', null, undefined, false];
+    for (const currentIndex of invalidIndices) {
+      sessionStorage.setItem(GUIDED_TRAINING_SESSION_KEY, JSON.stringify({ ...started, currentIndex }));
+      expect(loadGuidedTrainingSession({ now: NOW })).toBeNull();
+      expect(sessionStorage.getItem(GUIDED_TRAINING_SESSION_KEY)).toBeNull();
+      expect(advanceGuidedTrainingSession({ ...started, currentIndex }, { now: NOW })).toBeNull();
+    }
+
+    const validSecondStep = { ...started, currentIndex: 1 };
+    sessionStorage.setItem(GUIDED_TRAINING_SESSION_KEY, JSON.stringify(validSecondStep));
+    expect(loadGuidedTrainingSession({ now: NOW })).toMatchObject({
+      id: started.id, currentIndex: 1,
+    });
+  });
+
   it('restaura una sesión legítima al mismo paso tras F5, sin reiniciar el entrenamiento', () => {
     const plan = buildGuidedTrainingPlan({ minutes: 15, history: [], puzzles: debtPuzzles, rivalry: {} });
     const started = startGuidedTrainingSession(plan, { now: NOW });
