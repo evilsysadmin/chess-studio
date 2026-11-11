@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { clearGuidedTrainingSession, startGuidedTrainingSession } from './guidedTrainingSession.js';
 import {
   CANCELLED_GAME_EXIT_NOTICE,
@@ -53,14 +53,19 @@ describe('guided practice return after live game/F5', () => {
     ],
   };
 
+  const NOW = 1_800_000_000_000;
+
   beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(NOW);
     localStorage.clear();
     sessionStorage.clear();
   });
 
+  afterEach(() => vi.useRealTimers());
+
   function fixture(context) {
     const back = vi.fn();
-    const returnToGuidedTraining = vi.fn();
     const flow = useGameExitFlow({
       game: { id: 'guidance-game', difficulty: 0 },
       casualResult: { gameId: 'guidance-game', outcome: 'win' },
@@ -75,19 +80,17 @@ describe('guided practice return after live game/F5', () => {
       context: vi.fn(),
       series: vi.fn(),
       back,
-      returnToGuidedTraining,
     });
-    return { flow, back, returnToGuidedTraining };
+    return { flow, back };
   }
 
   it('recupera exactamente la sesión de origen sin conceder un avance automático', () => {
     const session = startGuidedTrainingSession(plan);
     const gameContext = { lab: true, guidedTraining: { sessionId: session.id, stepId: 'short-game' } };
     expect(isCurrentGuidedTrainingGame(gameContext, session)).toBe(true);
-    const { flow, back, returnToGuidedTraining } = fixture(gameContext);
+    const { flow, back } = fixture(gameContext);
     flow();
-    expect(returnToGuidedTraining).toHaveBeenCalledOnce();
-    expect(back).not.toHaveBeenCalled();
+    expect(back).toHaveBeenCalledExactlyOnceWith('insights');
     const recovered = JSON.parse(sessionStorage.getItem('chess-study-guided-training-session-v1'));
     expect(recovered).toMatchObject({ id: session.id, currentIndex: 0 });
   });
@@ -101,15 +104,13 @@ describe('guided practice return after live game/F5', () => {
     clearGuidedTrainingSession();
     const cancelled = fixture(origin);
     cancelled.flow();
-    expect(cancelled.back).toHaveBeenCalledOnce();
-    expect(cancelled.returnToGuidedTraining).not.toHaveBeenCalled();
+    expect(cancelled.back).toHaveBeenCalledExactlyOnceWith();
 
-    const replacement = startGuidedTrainingSession(plan, { now: Date.now() + 1000 });
+    const replacement = startGuidedTrainingSession(plan, { now: NOW + 1000 });
     expect(replacement.id).not.toBe(session.id);
     expect(isCurrentGuidedTrainingGame(origin, replacement)).toBe(false);
     const stale = fixture(origin);
     stale.flow();
-    expect(stale.back).toHaveBeenCalledOnce();
-    expect(stale.returnToGuidedTraining).not.toHaveBeenCalled();
+    expect(stale.back).toHaveBeenCalledExactlyOnceWith();
   });
 });
