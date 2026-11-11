@@ -329,18 +329,18 @@ jobs:
           node-version: 22
           cache: npm
           cache-dependency-path: frontend/package-lock.json
-      - name: Restore exact frontend dependencies
+      - name: Restore frontend deps
         uses: ./.github/actions/cache-node-modules
         with:
           working-directory: frontend
           lockfile: frontend/package-lock.json
           node-version: '22'
-      - name: Build E2E frontend
+      - name: Build frontend once for all required browser gates
         working-directory: frontend
         run: npm run build
-      - name: Bundle report
+      - name: Size
         run: node scripts/bundle_size_report.mjs
-      - name: Upload E2E frontend
+      - name: E2E upload
         uses: actions/upload-artifact@v7
         with:
           name: quality-browser-frontend-${{ github.sha }}
