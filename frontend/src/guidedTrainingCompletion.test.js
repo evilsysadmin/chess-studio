@@ -51,6 +51,14 @@ describe('guided training completion summary', () => {
     expect(sessionStorage.getItem(GUIDED_TRAINING_COMPLETION_KEY)).toBeNull();
   });
 
+  it('no acredita sesiones con un cursor corrupto o situado después del cierre', () => {
+    for (const currentIndex of [-1, 3, 999, '2', 2.5, null, undefined, false, NaN]) {
+      expect(saveGuidedTrainingCompletion(completedSession({ currentIndex }), { now: NOW })).toBeNull();
+      expect(sessionStorage.getItem(GUIDED_TRAINING_COMPLETION_KEY)).toBeNull();
+    }
+    expect(saveGuidedTrainingCompletion(completedSession({ currentIndex: 2 }), { now: NOW })).not.toBeNull();
+  });
+
   it('no deja que otra cuenta herede el resumen anterior', () => {
     localStorage.setItem('chess-study-auth-username', 'alice');
     expect(saveGuidedTrainingCompletion(completedSession(), { now: NOW })?.owner).toBe('alice');
