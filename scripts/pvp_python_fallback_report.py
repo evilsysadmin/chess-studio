@@ -57,16 +57,17 @@ def fallback_query(window_seconds: int) -> str:
 
 
 def telemetry_coverage_query(window_seconds: int) -> str:
-    """Recent *Python* HTTP samples prove the fallback metric pipeline is alive.
+    """Require a Python-specific OTLP heartbeat from both environments.
 
-    A healthy Grafana query with no /api/pvp series is not enough: it can also
-    mean that Python metrics stopped arriving. Require both environments.
+    Zero FastAPI HTTP requests is now a legitimate outcome as Go takes over
+    PvP. A request counter cannot prove an idle Python exporter is healthy.
+    The observable gauge is exported periodically without incoming traffic.
     """
     services = "|".join(sorted(SERVICES))
     lookback = min(window_seconds, 86400)  # short reports need same-window evidence
     return (
         "sum by (service_name) (count_over_time("
-        f'chess_studio_http_server_requests_total{{service_name=~"{services}"}}[{lookback}s]))'
+        f'chess_studio_python_telemetry_heartbeat{{service_name=~"{services}"}}[{lookback}s]))'
     )
 
 
@@ -74,31 +75,32 @@ def verify_telemetry_coverage(payload: dict) -> None:
     data = payload.get("data") if isinstance(payload, dict) else None
     result = data.get("result") if isinstance(data, dict) else None
     if not isinstance(result, list):
-        fail("cannot attest zero PvP fallback: invalid Python telemetry control response")
+        fail("cannot attest zero PvP fallback: invalid Python heartbeat response")
     seen = set()
     for item in result:
         metric = item.get("metric") if isinstance(item, dict) else None
         value = item.get("value") if isinstance(item, dict) else None
         service = metric.get("service_name") if isinstance(metric, dict) else None
         if service not in SERVICES or not isinstance(value, list) or len(value) != 2:
-            fail("cannot attest zero PvP fallback: malformed Python telemetry control series")
+            fail("cannot attest zero PvP fallback: malformed Python heartbeat series")
         try:
             samples = float(value[1])
         except (TypeError, ValueError):
-            fail("cannot attest zero PvP fallback: invalid Python telemetry sample count")
+            fail("cannot attest zero PvP fallback: invalid Python heartbeat sample count")
         if not math.isfinite(samples) or samples <= 0:
-            fail("cannot attest zero PvP fallback: missing recent Python telemetry samples")
+            fail("cannot attest zero PvP fallback: missing recent Python heartbeat samples")
         seen.add(service)
     missing = sorted(set(SERVICES) - seen)
     if missing:
-        fail("cannot attest zero PvP fallback: no Python HTTP metric samples in 24h for " + ", ".join(missing))
+        fail("cannot attest zero PvP fallback: no Python heartbeat samples in 24h for " + ", ".join(missing))
 
 
 def coverage_diagnostic_queries() -> tuple[str, ...]:
     """Bounded, read-only controls; never infer zero PvP from these probes."""
     return (
-        'count by (service_name) (chess_studio_http_server_requests_total)',
-        'count by (service_name) (count_over_time(chess_studio_http_server_requests_total[24h]))',
+        'count by (service_name) (chess_studio_python_telemetry_heartbeat)',
+        'count by (service_name) (count_over_time(chess_studio_python_telemetry_heartbeat[24h]))',
+        'count({__name__="chess_studio_python_telemetry_heartbeat"})',
         'count({__name__="chess_studio_http_server_requests_total"})',
     )
 
@@ -354,10 +356,14 @@ def self_test() -> int:
     assert "No public" in markdown([], "14d")
     control = telemetry_coverage_query(14 * 86400)
     assert '[86400s]' in control and 'http_route' not in control
+    assert 'chess_studio_python_telemetry_heartbeat' in control
+    assert 'chess_studio_http_server_requests_total' not in control
     assert '[3600s]' in telemetry_coverage_query(3600)
     assert 'chess-studio-backend|chess-studio-backend-staging' in control
     probes = coverage_diagnostic_queries()
-    assert len(probes) == 3 and "count_over_time" in probes[1]
+    assert len(probes) == 4 and "count_over_time" in probes[1]
+    assert "chess_studio_python_telemetry_heartbeat" in probes[0]
+    assert "chess_studio_http_server_requests_total" in probes[3]
     assert all("api/pvp" not in probe for probe in probes)
     class DiagnosticGrafana:
         def get_json(self, path: str, params: dict[str, str]) -> dict:
@@ -529,8 +535,9 @@ def main() -> int:
     )
     rows = parse_rows(payload)
     if not rows:
-        # Empty PvP series are ambiguous until independent non-PvP Python HTTP
-        # samples establish recent ingestion for both monitored environments.
+        # Empty PvP series are ambiguous until an independent Python
+        # heartbeat confirms both exporters are actively shipping OTLP.
+        # In particular, an idle Python HTTP counter is not proof of failure.
         control_payload, metrics_uid = query_with_uid_recovery(
             api, metrics_uid, "prometheus", "/api/v1/query",
             {"query": telemetry_coverage_query(window_seconds), "time": str(int(time.time()))},
@@ -541,7 +548,8 @@ def main() -> int:
             diagnose_missing_coverage(api, metrics_uid)
             raise
         print(json.dumps({"check": "pvp_python_telemetry_coverage", "ok": True,
-                          "lookback_seconds": min(window_seconds, 86400), "services": sorted(SERVICES)},
+                          "lookback_seconds": min(window_seconds, 86400), "services": sorted(SERVICES),
+                          "metric": "chess_studio_python_telemetry_heartbeat"},
                          separators=(",", ":"), sort_keys=True))
     report = markdown(rows, args.window)
     print(report)
