@@ -376,3 +376,62 @@ test('Así juegas · la sesión guiada sobrevive al tablero personal y F5; un sn
   await expect(page.getByRole('heading', { name: 'Tu siguiente tarea', exact: true })).toBeVisible();
   expect(await page.evaluate(() => sessionStorage.getItem('chess-study-guided-training-session-v1'))).toBeNull();
 });
+
+test('Así juegas · la partida de práctica regresa a su bloque tras F5 sin historial de navegación', async ({ page }) => {
+  test.setTimeout(150_000);
+  await mockApi(page, {
+    profileSeed: {
+      'chess-study-personal-puzzles': JSON.stringify([{
+        id: 'guided-return-debt',
+        kind: 'personal',
+        source: 'autopsy',
+        title: 'Error registrado para sesión guiada',
+        description: 'Una posición entrenable procedente de una partida real.',
+        fen: PERSONAL_MATE_FEN,
+        solution: ['Ra8#'],
+        incidentKeys: ['human:MISSED_MATE'],
+        sourceGameId: 'guided-return-source',
+        loss: 210,
+        createdAt: '2026-11-10T12:00:00Z',
+        attempts: 0, solves: 0, cleanSolves: 0,
+      }]),
+    },
+  });
+  await login(page);
+  await dismissHomeGuide(page);
+  const corner = page.getByRole('complementary', { name: 'Rincón de Matthias' });
+  await corner.getByRole('button', { name: 'Abrir Así juegas con Matthias', exact: true }).click();
+  await waitForTrainingRoomSettled(page);
+  await page.getByRole('button', { name: 'Tengo 15 min', exact: true }).click();
+  await page.getByRole('button', { name: 'Empezar sesión recomendada de 15 min', exact: true }).click();
+
+  const active = page.locator('.insights-guided-session.active');
+  await expect(active.getByText('Paso 1/3', { exact: false })).toBeVisible();
+  await active.getByRole('button', { name: 'Hecho · siguiente →', exact: true }).click();
+  await expect(active.locator('.insights-recurring-error-topline strong')).toHaveText('Partida corta de práctica');
+  const snapshot = await page.evaluate(() => JSON.parse(sessionStorage.getItem('chess-study-guided-training-session-v1')));
+  expect(snapshot?.currentIndex).toBe(1);
+
+  await active.getByRole('button', { name: 'Abrir partida de práctica →', exact: true }).click();
+  await expect(page.locator('.game-screen')).toBeVisible({ timeout: 30_000 });
+  await expect.poll(() => page.evaluate(() => {
+    const session = JSON.parse(localStorage.getItem('chess-study-active-game-session-v1') || 'null');
+    return session?.gameContext?.guidedTraining || null;
+  })).toEqual({ sessionId: snapshot.id, stepId: snapshot.steps[1].id });
+
+  // The return must not depend on the old view back-stack after a hard F5.
+  await page.evaluate(() => sessionStorage.setItem('chess-study-view-history', '[]'));
+  await page.reload();
+  await expect(page.locator('.game-screen')).toBeVisible({ timeout: 30_000 });
+  await page.getByRole('button', { name: /^(Salir de la partida|Abandonar partida)$/ }).click();
+  const abandon = page.getByRole('dialog', { name: '¿Abandonar la partida?' });
+  await expect(abandon).toBeVisible();
+  await abandon.getByRole('button', { name: 'Cancelar sin penalización', exact: true }).click();
+
+  await expect(page.getByRole('heading', { name: 'Así juegas', exact: true })).toBeVisible();
+  const restored = page.locator('.insights-guided-session.active');
+  await expect(restored.getByText('Paso 2/3', { exact: false })).toBeVisible();
+  await expect(restored.locator('.insights-recurring-error-topline strong')).toHaveText('Partida corta de práctica');
+  await expect.poll(() => page.evaluate(() => JSON.parse(sessionStorage.getItem('chess-study-guided-training-session-v1'))?.currentIndex)).toBe(1);
+  expect(await page.evaluate(() => sessionStorage.getItem('chess-study-guided-training-completion-v1'))).toBeNull();
+});
