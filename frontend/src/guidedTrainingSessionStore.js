@@ -31,7 +31,7 @@ function validSessionStep(step) {
     if (!training || typeof training !== 'object' || Array.isArray(training)) return false;
     if (typeof training.fen !== 'string' || !training.fen.trim()) return false;
     if (training.humanColor !== 'w' && training.humanColor !== 'b') return false;
-    if (!Number.isFinite(training.difficulty)) return false;
+    if (!Number.isFinite(training.difficulty) || training.difficulty < 0 || training.difficulty > 100) return false;
   }
   return true;
 }
