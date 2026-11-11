@@ -3,6 +3,7 @@ import {
   advanceGuidedTrainingSession,
   buildGuidedTrainingPlan,
   clearGuidedTrainingSession,
+  isCurrentGuidedTrainingStep,
   loadGuidedTrainingSession,
   startGuidedTrainingSession,
 } from '../guidedTrainingSession.js';
@@ -53,10 +54,17 @@ export default function InsightsGuidedSession({
   }
 
   function nextStep() {
-    const finishing = session && session.currentIndex >= session.steps.length - 1;
-    const next = advanceGuidedTrainingSession(session);
+    const active = loadGuidedTrainingSession();
+    if (!isCurrentGuidedTrainingStep(session, active)) {
+      // Another action cancelled/replaced/advanced the plan. Follow its real
+      // state instead of recording a false completion from a stale click.
+      setSession(active);
+      return;
+    }
+    const finishing = active.currentIndex === active.steps.length - 1;
+    const next = advanceGuidedTrainingSession(active);
     setSession(next);
-    if (finishing && !next) setCompletion(saveGuidedTrainingCompletion(session));
+    if (finishing && !next) setCompletion(saveGuidedTrainingCompletion(active));
   }
 
   function hideCompletion() {
