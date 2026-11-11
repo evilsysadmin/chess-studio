@@ -226,8 +226,30 @@ export function buildGuidedTrainingPlan({
   return { minutes: duration, available: true, reason: null, steps };
 }
 
+const GUIDED_ACTIONS = new Set(['personal', 'personal-filter', 'nemesis-position', 'short-game', 'review']);
+
+function validSessionStep(step) {
+  if (!step || typeof step !== 'object' || Array.isArray(step)) return false;
+  if (typeof step.id !== 'string' || !step.id.trim()) return false;
+  if (typeof step.title !== 'string' || !step.title.trim()) return false;
+  if (!GUIDED_ACTIONS.has(step.action)) return false;
+  if (typeof step.minutes !== 'number' || !Number.isFinite(step.minutes) || step.minutes <= 0) return false;
+  if (step.action === 'nemesis-position' || step.action === 'short-game') {
+    const training = step.training;
+    if (!training || typeof training !== 'object' || Array.isArray(training)) return false;
+    if (typeof training.fen !== 'string' || !training.fen.trim()) return false;
+    if (training.humanColor !== 'w' && training.humanColor !== 'b') return false;
+    if (!Number.isFinite(training.difficulty)) return false;
+  }
+  return true;
+}
+
+function validSessionSteps(steps) {
+  return Array.isArray(steps) && steps.length > 0 && steps.every(validSessionStep);
+}
+
 function normalizeStoredSession(value, now = Date.now()) {
-  if (!value || value.schema !== SESSION_SCHEMA || !Array.isArray(value.steps) || !value.steps.length) return null;
+  if (!value || value.schema !== SESSION_SCHEMA || !validSessionSteps(value.steps)) return null;
   if ((value.owner || null) !== sessionOwner()) return null;
   const startedAt = Number(value.startedAt || 0);
   if (!startedAt || now - startedAt > MAX_SESSION_AGE_MS || startedAt - now > 60_000) return null;
@@ -251,7 +273,7 @@ export function loadGuidedTrainingSession({ now = Date.now() } = {}) {
 }
 
 export function startGuidedTrainingSession(plan, { now = Date.now() } = {}) {
-  if (!plan?.available || !Array.isArray(plan.steps) || !plan.steps.length) return null;
+  if (!plan?.available || !validSessionSteps(plan.steps)) return null;
   const startedAt = Number(now);
   const session = {
     schema: SESSION_SCHEMA,
