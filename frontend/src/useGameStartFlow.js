@@ -19,7 +19,7 @@ import { clearActiveSeries, createSeries, saveActiveSeries } from './series.js';
 import { attachSeriesGame } from './seriesFlow.js';
 import { userFacingError } from './userFacingError.js';
 import { resolveTrainingDifficulty } from './trainingDifficulty.js';
-import { loadGuidedTrainingSession } from './guidedTrainingSessionStore.js';
+import { readGuidedGameOrigin } from './guidedTrainingOriginReader.js';
 import { getStorageItem, STORAGE_SESSION } from './safeStorage.js';
 import { VIEW_STORAGE_KEY } from './viewState.js';
 
@@ -241,7 +241,7 @@ export function useGameStartFlow({
       launch.confirmCreated(operation);
       const guidedOrigin = guidedOriginForLaunch({
         sourceView: getStorageItem(STORAGE_SESSION, VIEW_STORAGE_KEY),
-        session: loadGuidedTrainingSession(),
+        session: readGuidedGameOrigin(),
         fen,
         humanColor: resolvedColor,
         difficulty: resolvedDifficulty,
