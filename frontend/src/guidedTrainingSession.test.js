@@ -516,7 +516,7 @@ describe('sesiones guiadas 5/15/30 minutos', () => {
     expect(replacement.id).not.toBe(oldSession.id);
     expect(isCurrentGuidedTrainingStep(oldSession, replacement)).toBe(false);
     expect(advanceGuidedTrainingSession(oldSession, { now: NOW })).toBeNull();
-    expect(clearGuidedTrainingSession(oldSession)).toBe(false);
+    expect(clearGuidedTrainingSession(oldSession, { now: NOW })).toBe(false);
     expect(loadGuidedTrainingSession({ now: NOW })).toMatchObject({
       id: replacement.id, currentIndex: 0,
     });
@@ -527,9 +527,9 @@ describe('sesiones guiadas 5/15/30 minutos', () => {
     const plan = buildGuidedTrainingPlan({ minutes: 15, history: [], puzzles: debtPuzzles, rivalry: {} });
     const first = startGuidedTrainingSession(plan, { now: NOW });
     const second = advanceGuidedTrainingSession(first, { now: NOW });
-    expect(clearGuidedTrainingSession(first)).toBe(false);
+    expect(clearGuidedTrainingSession(first, { now: NOW })).toBe(false);
     expect(loadGuidedTrainingSession({ now: NOW })?.currentIndex).toBe(1);
-    expect(clearGuidedTrainingSession(second)).toBe(true);
+    expect(clearGuidedTrainingSession(second, { now: NOW })).toBe(true);
     expect(loadGuidedTrainingSession({ now: NOW })).toBeNull();
   });
 
