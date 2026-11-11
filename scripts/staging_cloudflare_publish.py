@@ -59,6 +59,10 @@ def publish(
 
 
 def self_test() -> None:
+    # Exercise Cloudflare's bounded GET retry within the existing release
+    # preflight, without contacting its API or requiring account credentials.
+    import cloudflare_staging_pages
+    cloudflare_staging_pages.self_test()
     a, b = "a" * 40, "b" * 40
     calls: list[tuple[list[str], dict]] = []
     def runner(cmd, **kwargs):
