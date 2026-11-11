@@ -35,6 +35,20 @@ describe('game start flow decisions', () => {
     expect(shouldOfferCasualContract({ options: { runMode: 'streak' } })).toBe(false);
   });
 
+  it('adjunta origen guiado sólo cuando la sesión y el bloque están identificados', () => {
+    expect(labContextFromMeta({
+      guidedTrainingSessionId: 'guided-1700000-15',
+      guidedTrainingStepId: 'short-game',
+    })).toMatchObject({
+      lab: true,
+      guidedTraining: { sessionId: 'guided-1700000-15', stepId: 'short-game' },
+    });
+    expect(labContextFromMeta({
+      guidedTrainingSessionId: 'guided-1700000-15',
+    })).not.toHaveProperty('guidedTraining');
+    expect(labContextFromMeta({})).not.toHaveProperty('guidedTraining');
+  });
+
   it('conserva sólo el contexto demostrable al arrancar desde laboratorio', () => {
     expect(labContextFromMeta({
       rescue: true,
