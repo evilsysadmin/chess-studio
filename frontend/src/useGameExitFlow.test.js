@@ -1,8 +1,11 @@
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { clearGuidedTrainingSession, startGuidedTrainingSession } from './guidedTrainingSession.js';
 import {
   CANCELLED_GAME_EXIT_NOTICE,
   gameExitTrainingPosition,
+  isCurrentGuidedTrainingGame,
   resolveGameExit,
+  useGameExitFlow,
 } from './useGameExitFlow.js';
 
 describe('game exit flow decisions', () => {
@@ -35,5 +38,78 @@ describe('game exit flow decisions', () => {
     expect(gameExitTrainingPosition({ suddenDeath: true })).toBe(true);
     expect(gameExitTrainingPosition({ threatCheck: true })).toBe(false);
     expect(gameExitTrainingPosition({})).toBe(false);
+  });
+});
+
+describe('guided practice return after live game/F5', () => {
+  const initialFen = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
+  const plan = {
+    available: true,
+    minutes: 15,
+    steps: [
+      { id: 'short-game', action: 'short-game', title: 'Partida corta de práctica', minutes: 6,
+        training: { fen: initialFen, humanColor: 'w', difficulty: 0 } },
+      { id: 'review', action: 'review', title: 'Cierre rápido', minutes: 1 },
+    ],
+  };
+
+  beforeEach(() => {
+    localStorage.clear();
+    sessionStorage.clear();
+  });
+
+  function fixture(context) {
+    const back = vi.fn();
+    const returnToGuidedTraining = vi.fn();
+    const flow = useGameExitFlow({
+      game: { id: 'guidance-game', difficulty: 0 },
+      casualResult: { gameId: 'guidance-game', outcome: 'win' },
+      gameContext: context,
+      learningMode: true,
+      finish: vi.fn(),
+      notice: vi.fn(),
+      saved: vi.fn(),
+      setGame: vi.fn(),
+      learning: vi.fn(),
+      contract: vi.fn(),
+      context: vi.fn(),
+      series: vi.fn(),
+      back,
+      returnToGuidedTraining,
+    });
+    return { flow, back, returnToGuidedTraining };
+  }
+
+  it('recupera exactamente la sesión de origen sin conceder un avance automático', () => {
+    const session = startGuidedTrainingSession(plan);
+    const gameContext = { lab: true, guidedTraining: { sessionId: session.id, stepId: 'short-game' } };
+    expect(isCurrentGuidedTrainingGame(gameContext, session)).toBe(true);
+    const { flow, back, returnToGuidedTraining } = fixture(gameContext);
+    flow();
+    expect(returnToGuidedTraining).toHaveBeenCalledOnce();
+    expect(back).not.toHaveBeenCalled();
+    const recovered = JSON.parse(sessionStorage.getItem('chess-study-guided-training-session-v1'));
+    expect(recovered).toMatchObject({ id: session.id, currentIndex: 0 });
+  });
+
+  it('no secuestra el retorno de un plan cancelado, sustituido o ya avanzado', () => {
+    const session = startGuidedTrainingSession(plan);
+    const origin = { lab: true, guidedTraining: { sessionId: session.id, stepId: 'short-game' } };
+    expect(isCurrentGuidedTrainingGame(origin, { ...session, currentIndex: 1 })).toBe(false);
+    expect(isCurrentGuidedTrainingGame({ lab: true }, session)).toBe(false);
+
+    clearGuidedTrainingSession();
+    const cancelled = fixture(origin);
+    cancelled.flow();
+    expect(cancelled.back).toHaveBeenCalledOnce();
+    expect(cancelled.returnToGuidedTraining).not.toHaveBeenCalled();
+
+    const replacement = startGuidedTrainingSession(plan, { now: Date.now() + 1000 });
+    expect(replacement.id).not.toBe(session.id);
+    expect(isCurrentGuidedTrainingGame(origin, replacement)).toBe(false);
+    const stale = fixture(origin);
+    stale.flow();
+    expect(stale.back).toHaveBeenCalledOnce();
+    expect(stale.returnToGuidedTraining).not.toHaveBeenCalled();
   });
 });
