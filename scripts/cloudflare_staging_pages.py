@@ -10,6 +10,7 @@ Los secretos sólo llegan por variables de entorno del runner y nunca se imprime
 from __future__ import annotations
 
 import argparse
+import io
 import json
 import os
 import sys
@@ -26,6 +27,7 @@ PAGES_TARGET = f"{PAGES_PROJECT}.pages.dev"
 API_HOSTNAME = "api-staging.chess-studio.shadowops.dpdns.org"
 DOMAIN_ACTIVE_TIMEOUT_S = 600
 DOMAIN_ACTIVE_POLL_S = 5
+TRANSIENT_CONTROL_PLANE_HTTP = frozenset({502, 503, 504, 520, 521, 522, 523})
 
 
 def required(name: str) -> str:
@@ -35,7 +37,10 @@ def required(name: str) -> str:
     return value
 
 
-def request_json(method: str, path: str, payload: dict | None = None) -> tuple[int, object]:
+def request_json(
+    method: str, path: str, payload: dict | None = None, *,
+    opener=None, sleep=time.sleep,
+) -> tuple[int, object]:
     data = None if payload is None else json.dumps(payload).encode("utf-8")
     request = urllib.request.Request(
         f"{API}{path}",
@@ -47,18 +52,28 @@ def request_json(method: str, path: str, payload: dict | None = None) -> tuple[i
             "Content-Type": "application/json",
         },
     )
-    try:
-        with urllib.request.urlopen(request, timeout=30) as response:
-            raw = response.read()
-            body = json.loads(raw) if raw else {}
-            return response.status, body
-    except urllib.error.HTTPError as exc:
-        raw = exc.read()
+    # Idempotent GET reads may outlive a transient Cloudflare 521/523.
+    # Never blindly replay POST/PATCH mutations after an ambiguous response.
+    attempts = 3 if method == "GET" else 1
+    for attempt in range(attempts):
         try:
-            body = json.loads(raw) if raw else {}
-        except json.JSONDecodeError:
-            body = {"errors": [{"message": raw.decode("utf-8", "replace")[:500]}]}
-        return exc.code, body
+            with (opener or urllib.request.urlopen)(request, timeout=30) as response:
+                raw = response.read()
+                body = json.loads(raw) if raw else {}
+                status = response.status
+        except urllib.error.HTTPError as exc:
+            raw = exc.read()
+            try:
+                body = json.loads(raw) if raw else {}
+            except json.JSONDecodeError:
+                body = {"errors": [{"message": raw.decode("utf-8", "replace")[:500]}]}
+            status = exc.code
+        if status in TRANSIENT_CONTROL_PLANE_HTTP and attempt + 1 < attempts:
+            print(f"::notice title=Cloudflare staging retry::GET HTTP {status}; attempt {attempt + 2}/{attempts}")
+            sleep(attempt + 1)
+            continue
+        return status, body
+    raise AssertionError("unreachable Cloudflare request retry state")
 
 
 def error_messages(body: object) -> set[str]:
@@ -387,5 +402,63 @@ def main() -> None:
     )
 
 
+def self_test() -> None:
+    from unittest.mock import patch
+
+    class Response:
+        status = 200
+        def __enter__(self):
+            return self
+        def __exit__(self, *_):
+            return False
+        def read(self):
+            return b'{"success":true,"result":[]}'
+    calls = []
+    delays = []
+
+    def flaky(request, timeout=30):
+        calls.append(request.get_method())
+        if len(calls) == 1:
+            raise urllib.error.HTTPError(request.full_url, 521, "origin down", {},
+                                         io.BytesIO(b'<html>Cloudflare edge error</html>'))
+        return Response()
+    with patch.dict(os.environ, {"CLOUDFLARE_API_TOKEN": "self-test"}):
+        status, result = request_json("GET", "/zones", opener=flaky, sleep=delays.append)
+        assert status == 200 and result["success"] is True
+        assert calls == ["GET", "GET"] and delays == [1]
+
+        calls.clear()
+        delays.clear()
+        def forbidden(request, timeout=30):
+            calls.append(request.get_method())
+            raise urllib.error.HTTPError(request.full_url, 403, "denied", {},
+                                         io.BytesIO(b'{"success":false}'))
+        status, _ = request_json("GET", "/zones", opener=forbidden, sleep=delays.append)
+        assert status == 403 and calls == ["GET"] and not delays
+
+        calls.clear()
+        delays.clear()
+        def failed_mutation(request, timeout=30):
+            calls.append(request.get_method())
+            raise urllib.error.HTTPError(request.full_url, 523, "unavailable", {},
+                                         io.BytesIO(b'{"success":false}'))
+        status, _ = request_json("POST", "/zones", payload={}, opener=failed_mutation,
+                                 sleep=delays.append)
+        assert status == 523 and calls == ["POST"] and not delays
+
+        calls.clear()
+        delays.clear()
+        def persistent(request, timeout=30):
+            calls.append(request.get_method())
+            raise urllib.error.HTTPError(request.full_url, 523, "origin down", {},
+                                         io.BytesIO(b'{"success":false}'))
+        status, _ = request_json("GET", "/zones", opener=persistent, sleep=delays.append)
+        assert status == 523 and calls == ["GET"] * 3 and delays == [1, 2]
+    print("cloudflare-staging-pages GET retry self-test OK")
+
+
 if __name__ == "__main__":
-    main()
+    if "--self-test" in sys.argv:
+        self_test()
+    else:
+        main()
