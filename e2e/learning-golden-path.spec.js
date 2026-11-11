@@ -1,6 +1,5 @@
 import { expect, test } from '@playwright/test';
 import {
-  buttonWithHeading,
   buttonWithVisibleText,
   clickBoardMove,
   gameTurn,
@@ -335,7 +334,8 @@ test('Así juegas · la sesión guiada sobrevive al tablero personal y F5; un sn
   });
   await login(page);
   await dismissHomeGuide(page);
-  await buttonWithHeading(page, 'Así juegas').click();
+  const corner = page.getByRole('complementary', { name: 'Rincón de Matthias' });
+  await corner.getByRole('button', { name: 'Abrir Así juegas con Matthias', exact: true }).click();
   await waitForTrainingRoomSettled(page);
   await expect(page.getByRole('heading', { name: 'Tu siguiente tarea', exact: true })).toBeVisible();
 
