@@ -7,6 +7,21 @@ export { GUIDED_TRAINING_SESSION_KEY } from './guidedTrainingOriginReader.js';
 // bundle Player Model, puzzle planning and their analysis dependencies.
 const SESSION_SCHEMA = 1;
 const MAX_SESSION_AGE_MS = 4 * 60 * 60 * 1000;
+let sessionSequence = 0;
+
+// A timestamp alone is not a unique session identity: a cancel/restart
+// within the same millisecond must never make an older click authoritative.
+function newGuidedSessionId(startedAt, minutes) {
+  sessionSequence += 1;
+  let nonce = null;
+  try {
+    nonce = globalThis.crypto?.randomUUID?.();
+  } catch {
+    // Embedded/privacy-restricted browsers may deny Web Crypto.
+  }
+  const suffix = nonce || `${sessionSequence.toString(36)}-${Math.random().toString(36).slice(2)}`;
+  return `guided-${startedAt}-${minutes}-${suffix}`;
+}
 
 function sessionOwner() {
   return String(getUsername() || '').trim().toLowerCase() || null;
@@ -77,7 +92,7 @@ export function startGuidedTrainingSession(plan, { now = Date.now() } = {}) {
   const startedAt = Number(now);
   const session = {
     schema: SESSION_SCHEMA,
-    id: `guided-${startedAt}-${plan.minutes}`,
+    id: newGuidedSessionId(startedAt, plan.minutes),
     owner: sessionOwner(),
     minutes: normalizeDuration(plan.minutes),
     startedAt,
@@ -118,6 +133,10 @@ export function advanceGuidedTrainingSession(session, { now = Date.now() } = {})
   return next;
 }
 
-export function clearGuidedTrainingSession() {
+export function clearGuidedTrainingSession(expected = null) {
+  // A stale Cancel click must not destroy a replacement or a step that has
+  // already advanced. Explicit account reset can still clear unconditionally.
+  if (expected !== null && !isCurrentGuidedTrainingStep(expected, loadGuidedTrainingSession())) return false;
   removeStorageItem(STORAGE_SESSION, GUIDED_TRAINING_SESSION_KEY);
+  return true;
 }
