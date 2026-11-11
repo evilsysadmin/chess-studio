@@ -26,6 +26,7 @@ _HTTP_COUNTER: Any | None = None
 _HTTP_LATENCY: Any | None = None
 _FRONTEND_COUNTER: Any | None = None
 _FRONTEND_VITAL: Any | None = None
+_PYTHON_HEARTBEAT: Any | None = None
 _BILLING_GAUGE: Any | None = None
 _BILLING_EMIT_TTL_SECONDS = 300.0
 _BILLING_COSTS: dict[str, tuple[float, str, float]] = {}
@@ -296,6 +297,16 @@ def record_frontend_otel(event_type: str, *, metric_name: str | None = None, val
         pass
 
 
+def _python_telemetry_heartbeat(_options=None):
+    """Prove Python's own metric pipeline is alive even with zero HTTP traffic.
+
+    The reader invokes this on every OTLP export cycle. This constant,
+    label-free signal is independent of PvP and never contains user data.
+    """
+    from opentelemetry.metrics import Observation
+    return [Observation(1, {})]
+
+
 def _billing_cost_observations(_options=None):
     try:
         from opentelemetry.metrics import Observation
@@ -470,7 +481,7 @@ def emit_observability_probe() -> dict[str, Any]:
 def configure_tracing(app: Any, *, release: str | None = None) -> bool:
     """Configure OTLP traces, metrics and logs once; fail-open per signal."""
     global _CONFIGURED, _TRACE_PROVIDER, _METER_PROVIDER, _LOGGER_PROVIDER
-    global _HTTP_COUNTER, _HTTP_LATENCY, _FRONTEND_COUNTER, _FRONTEND_VITAL, _BILLING_GAUGE
+    global _HTTP_COUNTER, _HTTP_LATENCY, _FRONTEND_COUNTER, _FRONTEND_VITAL, _BILLING_GAUGE, _PYTHON_HEARTBEAT
     global _LAST_INIT_ERROR, _OTEL_LOG_HANDLER, _STARTUP_TRACE_ID
     if _CONFIGURED:
         return True
@@ -602,6 +613,11 @@ def configure_tracing(app: Any, *, release: str | None = None) -> bool:
             _HTTP_LATENCY = meter.create_histogram("chess_studio_http_server_duration", unit="s", description="Chess Studio HTTP request duration")
             _FRONTEND_COUNTER = meter.create_counter("chess_studio_frontend_events", description="Coarse frontend telemetry events")
             _FRONTEND_VITAL = meter.create_histogram("chess_studio_frontend_web_vital", description="Web Vital value reported by the frontend")
+            _PYTHON_HEARTBEAT = meter.create_observable_gauge(
+                "chess_studio_python_telemetry_heartbeat",
+                callbacks=[_python_telemetry_heartbeat],
+                description="Python OTLP metric export alive, independent of HTTP requests",
+            )
             _BILLING_GAUGE = meter.create_observable_gauge(
                 "chess_studio_billing_cost_current_cycle",
                 callbacks=[_billing_cost_observations],
