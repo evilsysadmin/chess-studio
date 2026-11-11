@@ -92,6 +92,33 @@ describe('guided training completion summary', () => {
     expect(saveGuidedTrainingCompletion(original, { now: NOW })?.blocks).toHaveLength(2);
   });
 
+  it('no publica más minutos de práctica que el presupuesto total de la sesión', () => {
+    const fiveMinute = {
+      minutes: 5,
+      currentIndex: 2,
+      steps: [
+        { id: 'a', kind: 'debt', title: 'Primer ejercicio', minutes: 4 },
+        { id: 'b', kind: 'short-game', title: 'Segundo ejercicio', minutes: 4 },
+        { id: 'review', kind: 'review', title: 'Cierre', minutes: 1 },
+      ],
+    };
+    expect(saveGuidedTrainingCompletion(fiveMinute, { now: NOW })).toBeNull();
+    expect(sessionStorage.getItem(GUIDED_TRAINING_COMPLETION_KEY)).toBeNull();
+
+    const valid = saveGuidedTrainingCompletion(completedSession(), { now: NOW });
+    expect(valid.blocks.reduce((sum, block) => sum + block.minutes, 0)).toBe(14);
+
+    // Each block fits in 15 minutes individually, but 9 + 7 exceeds 15.
+    sessionStorage.setItem(GUIDED_TRAINING_COMPLETION_KEY, JSON.stringify({
+      ...valid, blocks: [
+        { ...valid.blocks[0], minutes: 9 },
+        { ...valid.blocks[1], minutes: 7 },
+      ],
+    }));
+    expect(loadGuidedTrainingCompletion({ now: NOW })).toBeNull();
+    expect(sessionStorage.getItem(GUIDED_TRAINING_COMPLETION_KEY)).toBeNull();
+  });
+
   it('no deja que otra cuenta herede el resumen anterior', () => {
     localStorage.setItem('chess-study-auth-username', 'alice');
     expect(saveGuidedTrainingCompletion(completedSession(), { now: NOW })?.owner).toBe('alice');

@@ -24,6 +24,14 @@ function normalizeBlock(step, index) {
   };
 }
 
+function fitsCompletionBudget(blocks, minutes) {
+  // The review step is deliberately absent from completion summaries.
+  // A corrupted snapshot must not nevertheless claim more practice time
+  // than the itinerary ever allocated.
+  return blocks.every((block) => block && block.minutes <= minutes)
+    && blocks.reduce((sum, block) => sum + block.minutes, 0) <= minutes;
+}
+
 function normalizeCompletion(value, now = Date.now()) {
   if (!value || value.schema !== COMPLETION_SCHEMA || !Array.isArray(value.blocks)
     || !VALID_DURATIONS.has(value.minutes)) return null;
@@ -31,7 +39,7 @@ function normalizeCompletion(value, now = Date.now()) {
   const completedAt = Number(value.completedAt || 0);
   if (!completedAt || now - completedAt > MAX_COMPLETION_AGE_MS || completedAt - now > 60_000) return null;
   const blocks = value.blocks.map(normalizeBlock);
-  if (!blocks.length || blocks.some((block) => !block || block.minutes > value.minutes)) return null;
+  if (!blocks.length || !fitsCompletionBudget(blocks, value.minutes)) return null;
   return {
     schema: COMPLETION_SCHEMA,
     owner: value.owner || null,
@@ -52,7 +60,7 @@ export function saveGuidedTrainingCompletion(session, { now = Date.now() } = {})
   // Review is intentionally omitted; a damaged practice block is not.
   if (normalizedSteps.some((block, index) => !block && session.steps[index]?.kind !== 'review')) return null;
   const blocks = normalizedSteps.filter(Boolean);
-  if (!blocks.length || blocks.some((block) => block.minutes > session.minutes)) return null;
+  if (!blocks.length || !fitsCompletionBudget(blocks, session.minutes)) return null;
 
   const completion = {
     schema: COMPLETION_SCHEMA,
