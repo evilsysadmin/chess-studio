@@ -507,6 +507,32 @@ describe('sesiones guiadas 5/15/30 minutos', () => {
     expect(isCurrentGuidedTrainingStep(replacement, loadGuidedTrainingSession({ now: NOW + 1 }))).toBe(true);
   });
 
+  it('distingue reinicios en el mismo milisegundo y no autoriza acciones antiguas', () => {
+    const plan = buildGuidedTrainingPlan({ minutes: 5, history: [], puzzles: debtPuzzles, rivalry: {} });
+    const oldSession = startGuidedTrainingSession(plan, { now: NOW });
+    const replacement = startGuidedTrainingSession(plan, { now: NOW });
+    expect(replacement.startedAt).toBe(oldSession.startedAt);
+    expect(replacement.minutes).toBe(oldSession.minutes);
+    expect(replacement.id).not.toBe(oldSession.id);
+    expect(isCurrentGuidedTrainingStep(oldSession, replacement)).toBe(false);
+    expect(advanceGuidedTrainingSession(oldSession, { now: NOW })).toBeNull();
+    expect(clearGuidedTrainingSession(oldSession)).toBe(false);
+    expect(loadGuidedTrainingSession({ now: NOW })).toMatchObject({
+      id: replacement.id, currentIndex: 0,
+    });
+    expect(advanceGuidedTrainingSession(replacement, { now: NOW })?.currentIndex).toBe(1);
+  });
+
+  it('no permite cancelar un bloque que ya ha avanzado, pero sí el bloque actual', () => {
+    const plan = buildGuidedTrainingPlan({ minutes: 15, history: [], puzzles: debtPuzzles, rivalry: {} });
+    const first = startGuidedTrainingSession(plan, { now: NOW });
+    const second = advanceGuidedTrainingSession(first, { now: NOW });
+    expect(clearGuidedTrainingSession(first)).toBe(false);
+    expect(loadGuidedTrainingSession({ now: NOW })?.currentIndex).toBe(1);
+    expect(clearGuidedTrainingSession(second)).toBe(true);
+    expect(loadGuidedTrainingSession({ now: NOW })).toBeNull();
+  });
+
   it('restaura una sesión legítima al mismo paso tras F5, sin reiniciar el entrenamiento', () => {
     const plan = buildGuidedTrainingPlan({ minutes: 15, history: [], puzzles: debtPuzzles, rivalry: {} });
     const started = startGuidedTrainingSession(plan, { now: NOW });
