@@ -1,6 +1,92 @@
 from tracing import tracing_settings
 
 
+def test_python_telemetry_heartbeat_has_no_request_or_user_dependency():
+    from tracing import _python_telemetry_heartbeat
+    samples = _python_telemetry_heartbeat()
+    assert len(samples) == 1
+    assert samples[0].value == 1
+    assert not samples[0].attributes
+    assert _python_telemetry_heartbeat()[0].value == 1
+
+
+
+def test_metrics_use_explicit_provider_when_global_otel_meter_is_occupied(monkeypatch):
+    import tracing
+    from opentelemetry import metrics
+    from opentelemetry.exporter.otlp.proto.http import metric_exporter
+    from opentelemetry.sdk import metrics as sdk_metrics
+    from opentelemetry.sdk.metrics import export as metrics_export
+
+    registered = {}
+
+    class Meter:
+        def create_counter(self, name, **kwargs):
+            registered[name] = ("counter", kwargs)
+            return object()
+
+        def create_histogram(self, name, **kwargs):
+            registered[name] = ("histogram", kwargs)
+            return object()
+
+        def create_observable_gauge(self, name, **kwargs):
+            registered[name] = ("gauge", kwargs)
+            return object()
+
+    class Provider:
+        def __init__(self, *, resource, metric_readers):
+            assert len(metric_readers) == 1
+            self.meter = Meter()
+
+        def get_meter(self, name):
+            assert name == "chess-studio.backend"
+            return self.meter
+
+    class Exporter:
+        def __init__(self, **kwargs):
+            pass
+
+    class Reader:
+        def __init__(self, exporter, *, export_interval_millis):
+            assert isinstance(exporter, Exporter)
+            assert export_interval_millis == 30000
+
+    monkeypatch.setattr(sdk_metrics, "MeterProvider", Provider)
+    monkeypatch.setattr(metrics_export, "PeriodicExportingMetricReader", Reader)
+    monkeypatch.setattr(metric_exporter, "OTLPMetricExporter", Exporter)
+    monkeypatch.setattr(metrics, "set_meter_provider", lambda provider: None)
+    def wrong_global_meter(*args, **kwargs):
+        raise AssertionError("global MeterProvider must not own Chess Studio instruments")
+    monkeypatch.setattr(metrics, "get_meter", wrong_global_meter)
+
+    # The integration must not mutate any real global OTel provider or leave
+    # a fake instrument active for tests that run after this one.
+    for name in (
+        "_CONFIGURED", "_TRACE_PROVIDER", "_METER_PROVIDER", "_LOGGER_PROVIDER",
+        "_HTTP_COUNTER", "_HTTP_LATENCY", "_FRONTEND_COUNTER", "_FRONTEND_VITAL",
+        "_BILLING_GAUGE", "_PYTHON_HEARTBEAT", "_LAST_INIT_ERROR",
+    ):
+        monkeypatch.setattr(tracing, name, getattr(tracing, name))
+    monkeypatch.setattr(tracing, "_CONFIGURED", False)
+    monkeypatch.setattr(tracing, "_TRACE_PROVIDER", None)
+    monkeypatch.setattr(tracing, "_METER_PROVIDER", None)
+    monkeypatch.setattr(tracing, "_LOGGER_PROVIDER", None)
+    monkeypatch.setattr(tracing, "_SIGNAL_ERRORS", dict(tracing._SIGNAL_ERRORS))
+    monkeypatch.setenv("OTEL_EXPORTER_OTLP_ENDPOINT", "https://local.example/otlp")
+    monkeypatch.setenv("OTEL_TRACES_ENABLED", "false")
+    monkeypatch.setenv("OTEL_LOGS_ENABLED", "false")
+    monkeypatch.setenv("OTEL_METRICS_ENABLED", "true")
+
+    assert tracing.configure_tracing(object()) is True
+    assert isinstance(tracing._METER_PROVIDER, Provider)
+    kind, attrs = registered["chess_studio_python_telemetry_heartbeat"]
+    assert kind == "gauge"
+    assert len(attrs["callbacks"]) == 1
+    assert attrs["callbacks"][0]()[0].value == 1
+    assert not attrs["callbacks"][0]()[0].attributes
+    assert "chess_studio_http_server_requests" in registered
+
+
 def test_tracing_auto_enables_only_with_otlp_endpoint():
     assert tracing_settings({})["enabled"] is False
     cfg = tracing_settings({"OTEL_EXPORTER_OTLP_ENDPOINT": "https://tempo.example/otlp"})
