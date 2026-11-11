@@ -5,7 +5,7 @@ import { clearClockSnapshot } from './clockPersistence.js';
 import { recordGameActivity } from './gameActivity.js';
 import { chessGameExitDisposition } from './gameOutcome.js';
 import { gameModeFromContext } from './gameModes.js';
-import { loadGuidedTrainingSession } from './guidedTrainingSession.js';
+import { loadGuidedTrainingSession } from './guidedTrainingSessionStore.js';
 import { STORAGE_LOCAL, removeStorageItem } from './safeStorage.js';
 import { clearActiveSeries } from './series.js';
 import { LEARNING_STORAGE_KEY } from './useActiveSessionRestore.js';
