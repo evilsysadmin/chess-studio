@@ -1,6 +1,16 @@
 from tracing import tracing_settings
 
 
+def test_python_telemetry_heartbeat_has_no_request_or_user_dependency():
+    from tracing import _python_telemetry_heartbeat
+    samples = _python_telemetry_heartbeat()
+    assert len(samples) == 1
+    assert samples[0].value == 1
+    assert not samples[0].attributes
+    assert _python_telemetry_heartbeat()[0].value == 1
+
+
+
 def test_tracing_auto_enables_only_with_otlp_endpoint():
     assert tracing_settings({})["enabled"] is False
     cfg = tracing_settings({"OTEL_EXPORTER_OTLP_ENDPOINT": "https://tempo.example/otlp"})
