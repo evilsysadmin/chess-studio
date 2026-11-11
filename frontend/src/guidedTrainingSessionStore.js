@@ -45,7 +45,11 @@ function normalizeStoredSession(value, now = Date.now()) {
   if ((value.owner || null) !== sessionOwner()) return null;
   const startedAt = Number(value.startedAt || 0);
   if (!startedAt || now - startedAt > MAX_SESSION_AGE_MS || startedAt - now > 60_000) return null;
-  const currentIndex = Math.max(0, Math.min(value.steps.length - 1, Math.floor(Number(value.currentIndex) || 0)));
+  // A corrupted cursor must not silently turn into a different assignment
+  // after F5 (especially the review/final step). Preserve only exact positions.
+  if (!Number.isInteger(value.currentIndex) || value.currentIndex < 0
+    || value.currentIndex >= value.steps.length) return null;
+  const currentIndex = value.currentIndex;
   return {
     schema: SESSION_SCHEMA,
     id: String(value.id || `guided-${startedAt}`),
