@@ -541,6 +541,7 @@ static-preflight: capacity-probe-check test-parity-check test-flake-check audio-
 	@python3 scripts/synthetic_health_contract.py
 	@python3 -S scripts/production_release_train.py --self-test
 	@python3 -S scripts/pvp_python_fallback_report.py --self-test
+	@python3 -S scripts/staging_smoke_user_cleanup.py --self-test
 	@python3 -S scripts/oci_cloudflare_tunnel.py --self-test
 	@python3 -S scripts/oci_backend_diagnose.py --self-test
 	@python3 -S scripts/oci_public_staging_release.py --self-test
