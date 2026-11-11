@@ -51,7 +51,6 @@ export function useGameExitFlow({
   context,
   series,
   back,
-  returnToGuidedTraining,
 }) {
   function exitGame() {
     // Match both session and current block. An old game must never resurrect
@@ -96,7 +95,7 @@ export function useGameExitFlow({
     context({});
     clearActiveSeries();
     series(null);
-    if (returnToGuided && returnToGuidedTraining) returnToGuidedTraining();
+    if (returnToGuided) back('insights');
     else back();
   }
 
