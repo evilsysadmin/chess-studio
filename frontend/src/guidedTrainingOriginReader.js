@@ -23,6 +23,7 @@ export function readGuidedGameOrigin({ now = Date.now() } = {}) {
   const training = step.training;
   if (!training || typeof training.fen !== 'string' || !training.fen.trim()
     || (training.humanColor !== 'w' && training.humanColor !== 'b')
-    || !Number.isFinite(training.difficulty)) return null;
+    || !Number.isFinite(training.difficulty)
+    || training.difficulty < 0 || training.difficulty > 100) return null;
   return saved;
 }
