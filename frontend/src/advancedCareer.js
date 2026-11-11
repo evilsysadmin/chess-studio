@@ -24,10 +24,25 @@ function saveAnalysisArchive(archive) {
   return pruned;
 }
 
+function validAnalyzedCount(value) {
+  if (value === null || value === undefined || typeof value === 'boolean' || String(value).trim() === '') return 0;
+  const count = Number(value);
+  return Number.isFinite(count) && count > 0 ? Math.floor(count) : 0;
+}
+
+function measuredAverageLoss(value) {
+  // Number(null) and Number('') are zero, but neither is a measured loss.
+  if (value === null || value === undefined || typeof value === 'boolean' || String(value).trim() === '') return null;
+  const loss = Number(value);
+  return Number.isFinite(loss) && loss >= 0 ? loss : null;
+}
+
 export function accuracyScore(report) {
-  if (!report?.analyzedCount) return null;
+  if (!validAnalyzedCount(report?.analyzedCount)) return null;
+  const averageLoss = measuredAverageLoss(report?.averageLoss);
+  if (averageLoss === null) return null;
   // Intencionadamente no se llama "accuracy oficial": es una escala propia y estable.
-  return Math.max(1, Math.min(100, Math.round(100 * Math.exp(-Number(report.averageLoss || 0) / 170))));
+  return Math.max(1, Math.min(100, Math.round(100 * Math.exp(-averageLoss / 170))));
 }
 
 export function bestMoveOfReport(report) {
@@ -118,8 +133,8 @@ export function archiveAnalysis(key, report, meta = {}) {
     opening: meta.opening || null,
     timeControlId: meta.timeControlId || 'none',
     accuracy: accuracyScore(report),
-    averageLoss: Number(report.averageLoss || 0),
-    analyzedCount: Number(report.analyzedCount || 0),
+    averageLoss: measuredAverageLoss(report.averageLoss),
+    analyzedCount: validAnalyzedCount(report.analyzedCount),
     worst: report.worst || null,
     best: best || null,
     pointOfNoReturn: noReturn || null,

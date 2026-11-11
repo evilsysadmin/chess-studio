@@ -1,11 +1,47 @@
 import { describe, expect, it, beforeEach } from 'vitest';
-import { accuracyScore, bestMoveOfReport, pointOfNoReturn, materialDonated, recurrenceIndex, openingClinic, conversionStats } from './advancedCareer.js';
+import { accuracyScore, archiveAnalysis, loadAnalysisArchive, bestMoveOfReport, pointOfNoReturn, materialDonated, recurrenceIndex, openingClinic, conversionStats } from './advancedCareer.js';
 
 describe('advancedCareer', () => {
   beforeEach(() => localStorage.clear());
 
   it('calcula accuracy propia de forma monotónica', () => {
     expect(accuracyScore({ analyzedCount: 10, averageLoss: 10 })).toBeGreaterThan(accuracyScore({ analyzedCount: 10, averageLoss: 200 }));
+  });
+
+  it('no concede 100% de accuracy cuando la pérdida media no fue medida', () => {
+    for (const missing of [null, undefined, '', '  ', false, true, 'desconocido', -1, Infinity]) {
+      expect(accuracyScore({ analyzedCount: 12, averageLoss: missing })).toBeNull();
+    }
+    for (const invalidCount of [null, undefined, '', '  ', false, -5, 'desconocido']) {
+      expect(accuracyScore({ analyzedCount: invalidCount, averageLoss: 0 })).toBeNull();
+    }
+    // Una medición auténtica de cero sí es compatible con máxima accuracy.
+    expect(accuracyScore({ analyzedCount: 12, averageLoss: 0 })).toBe(100);
+    expect(accuracyScore({ analyzedCount: '12', averageLoss: '20' })).toBeGreaterThan(0);
+  });
+
+  it('archiva informes incompletos sin convertir pérdidas desconocidas en cero', () => {
+    const missing = archiveAnalysis('missing-loss', {
+      analyzedCount: 12,
+      averageLoss: null,
+      moveReports: [],
+    });
+    expect(missing).toMatchObject({ gameId: 'missing-loss', analyzedCount: 12, averageLoss: null, accuracy: null });
+    expect(loadAnalysisArchive()['missing-loss']).toMatchObject({ averageLoss: null, accuracy: null });
+
+    const noEvidence = archiveAnalysis('invalid-count', {
+      analyzedCount: null,
+      averageLoss: 0,
+      moveReports: [],
+    });
+    expect(noEvidence).toMatchObject({ analyzedCount: 0, accuracy: null, averageLoss: 0 });
+
+    const measured = archiveAnalysis('measured-zero', {
+      analyzedCount: 10,
+      averageLoss: 0,
+      moveReports: [],
+    });
+    expect(measured).toMatchObject({ analyzedCount: 10, averageLoss: 0, accuracy: 100 });
   });
 
   it('elige la jugada más cercana al motor como jugada de la partida', () => {
