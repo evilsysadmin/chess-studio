@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { api } from './api.js';
 import { analyzeGame } from './gameReport.js';
-import { focusPersonalPuzzle, loadPersonalPuzzles, personalPuzzleFromMistake, savePersonalPuzzlesFromReport } from './personalPuzzles.js';
+import { focusPersonalPuzzle, isPersonalPuzzleMastered, loadPersonalPuzzles, personalPuzzleFromMistake, savePersonalPuzzlesFromReport } from './personalPuzzles.js';
 
 export async function preparePostGameTrainingOpportunity({ game, humanColor, meta = {}, signal } = {}) {
   if (!game?.id || !Array.isArray(game.history) || game.history.length === 0 || !humanColor) return null;
@@ -17,7 +17,7 @@ export async function preparePostGameTrainingOpportunity({ game, humanColor, met
 
   savePersonalPuzzlesFromReport(game.history, humanColor, report, meta);
   // Never offer a postgame CTA for a candidate that did not reach the playable queue.
-  if (!loadPersonalPuzzles().some((puzzle) => puzzle.id === candidate.id)) return null;
+  if (!loadPersonalPuzzles().some((puzzle) => puzzle.id === candidate.id && !isPersonalPuzzleMastered(puzzle))) return null;
   return {
     puzzleId: candidate.id,
     moveNumber: candidate.moveNumber,
@@ -46,5 +46,11 @@ export function usePostGameTrainingOpportunity({ game, humanColor, finished, met
 }
 
 export function focusPostGameTrainingOpportunity(opportunity) {
-  return opportunity?.puzzleId ? focusPersonalPuzzle(opportunity.puzzleId) : false;
+  // The bank can change after analysis (quality retirement, another tab, reset).
+  // Never send the post-game CTA to an unrelated adaptive fallback puzzle.
+  const id = typeof opportunity?.puzzleId === 'string' ? opportunity.puzzleId : '';
+  if (!id || !loadPersonalPuzzles().some((puzzle) => puzzle.id === id && !isPersonalPuzzleMastered(puzzle))) {
+    return false;
+  }
+  return focusPersonalPuzzle(id);
 }
