@@ -11,6 +11,8 @@ import { playMoveSound, playCaptureSound, playSuccessSound } from '../sound.js';
 import { incrementPuzzlesSolved, loadPuzzleStreak, incrementPuzzleStreak, resetPuzzleStreak, loadBestPuzzleStreak } from '../puzzleStats.js';
 import { puzzleRetryCost } from '../tournament.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
+import { clearFocusedPuzzleResume, loadFocusedPuzzleResume, saveFocusedPuzzleResume, validFocusedPuzzleFilter } from '../focusedPuzzleResume.js';
+import { rememberSessionView } from '../viewState.js';
 import { recordPuzzleRush } from '../career.js';
 import { lastDailyCells } from '../careerVisuals.js';
 import { checkAchievements } from '../achievements.js';
@@ -31,9 +33,23 @@ const RECENT_CURATED_LIMIT = 5;
 // rival, para que se note que hubo dos jugadas separadas.
 const REPLY_DELAY_MS = 550;
 
-export default function PuzzleScreen({ onExit, onPlayAgain = null, points = 0, onSpendPoints, initialSource = 'curated', rushMode = false, initialFilter = null, dailySlot = 'tactic', trainingOrigin = null }) {
+export default function PuzzleScreen({ onExit, onPlayAgain = null, points = 0, onSpendPoints, initialSource: requestedSource = 'curated', rushMode = false, initialFilter: requestedFilter = null, dailySlot = 'tactic', trainingOrigin: requestedOrigin = null }) {
   useEscapeToClose(onExit);
   const [personalPuzzles, setPersonalPuzzles] = useState(() => loadPersonalPuzzles());
+  const [focusedResume] = useState(() => loadFocusedPuzzleResume());
+  // On F5 the eager route only knows that a same-account recovery exists.
+  // The lazy screen validates the descriptor before deriving these props.
+  const restoring = requestedOrigin === 'f5-pending';
+  const initialSource = restoring && focusedResume ? 'personal' : requestedSource;
+  const initialFilter = restoring && focusedResume ? focusedResume.filter : requestedFilter;
+  const trainingOrigin = restoring && focusedResume ? focusedResume.origin : requestedOrigin;
+  const resumedTarget = focusedResume && initialSource === 'personal' && focusedResume.origin === trainingOrigin
+    && validFocusedPuzzleFilter(focusedResume.filter)
+    ? personalPuzzles.find((item) => item.id === focusedResume.puzzleId && matchesPersonalPuzzleFilter(item, focusedResume.filter)) || null
+    : null;
+  const missingResumedTarget = Boolean((restoring && !focusedResume)
+    || (focusedResume && initialSource === 'personal'
+      && focusedResume.origin === trainingOrigin && !resumedTarget));
   const [sourcePickerOpen, setSourcePickerOpen] = useState(false);
   const filteredInitialPersonalTotal = personalPuzzles.filter((item) => matchesPersonalPuzzleFilter(item, initialFilter)).length;
   const focusedInsightsTraining = trainingOrigin === 'insights-action';
@@ -42,7 +58,7 @@ export default function PuzzleScreen({ onExit, onPlayAgain = null, points = 0, o
   const personalSourceFallback = initialSource === 'personal' && filteredInitialPersonalTotal === 0;
   const resolvedInitialSource = personalSourceFallback ? 'curated' : initialSource;
   const [source, setSource] = useState(resolvedInitialSource); // curated | personal | daily
-  const [puzzle, setPuzzle] = useState(() => resolvedInitialSource === 'personal' ? (randomPersonalPuzzle(null, initialFilter, { fallbackToMastered: true }) || randomPuzzle()) : resolvedInitialSource === 'daily' ? dailyPuzzle(PUZZLES, new Date(), dailySlot) : randomPuzzle());
+  const [puzzle, setPuzzle] = useState(() => resumedTarget || (resolvedInitialSource === 'personal' ? (randomPersonalPuzzle(null, initialFilter, { fallbackToMastered: true }) || randomPuzzle()) : resolvedInitialSource === 'daily' ? dailyPuzzle(PUZZLES, new Date(), dailySlot) : randomPuzzle()));
   const [recentCuratedIds, setRecentCuratedIds] = useState([]);
   const [dailyStats, setDailyStats] = useState(() => currentDailyStreak());
   const [achievementUnlocked, setAchievementUnlocked] = useState(null);
@@ -100,6 +116,28 @@ export default function PuzzleScreen({ onExit, onPlayAgain = null, points = 0, o
   const dailyCells = useMemo(() => lastDailyCells(dailyStats.solvedDates, 28), [dailyStats]);
   const dailyBrief = useMemo(() => dailyChallengeBrief(dailyStats, puzzle.dailyKey), [dailyStats, puzzle.dailyKey]);
   const revealGuide = useMemo(() => buildPuzzleReveal(puzzle), [puzzle]);
+
+  useEffect(() => {
+    if (!missingResumedTarget) return;
+    clearFocusedPuzzleResume();
+    rememberSessionView(focusedInsightsTraining ? 'insights' : 'menu');
+    onExit?.();
+  }, [missingResumedTarget, focusedInsightsTraining, onExit]);
+
+  useEffect(() => {
+    if (!focusedTrainingJourney || missingResumedTarget) return;
+    const currentIsPersonal = source === 'personal'
+      && personalPuzzles.some((item) => item.id === puzzle?.id);
+    if (currentIsPersonal && status === 'playing' && !personalHadError) {
+      saveFocusedPuzzleResume({ puzzleId: puzzle.id, origin: trainingOrigin, filter: initialFilter });
+      rememberSessionView('puzzle');
+    } else {
+      // Solved/revealed or already wrong: F5 must not start a new 'clean' attempt.
+      clearFocusedPuzzleResume();
+      rememberSessionView(focusedInsightsTraining ? 'insights' : 'menu');
+    }
+  }, [focusedTrainingJourney, missingResumedTarget, source, puzzle?.id, status,
+    personalHadError, personalPuzzles, trainingOrigin, initialFilter, focusedInsightsTraining]);
 
   useEffect(() => {
     puzzleGenerationRef.current += 1;
@@ -284,6 +322,10 @@ export default function PuzzleScreen({ onExit, onPlayAgain = null, points = 0, o
 
     const expected = puzzle.solution[stepIndex];
     if (!matchesExpectedPuzzleMove(fen, expected, move)) {
+      if (focusedTrainingJourney) {
+        clearFocusedPuzzleResume();
+        rememberSessionView(focusedInsightsTraining ? 'insights' : 'menu');
+      }
       advancePuzzleState('wrong');
       setPersonalHadError(true);
       if (rushMode) {
@@ -324,6 +366,10 @@ export default function PuzzleScreen({ onExit, onPlayAgain = null, points = 0, o
 
     const nextIndex = stepIndex + 1;
     if (nextIndex >= puzzle.solution.length) {
+      if (focusedTrainingJourney) {
+        clearFocusedPuzzleResume();
+        rememberSessionView(focusedInsightsTraining ? 'insights' : 'menu');
+      }
       advancePuzzleState('correct_done');
       setRetryOffer(false);
       setStatus('solved');
@@ -411,6 +457,10 @@ export default function PuzzleScreen({ onExit, onPlayAgain = null, points = 0, o
   }
 
   function revealSolution() {
+    if (focusedTrainingJourney) {
+      clearFocusedPuzzleResume();
+      rememberSessionView(focusedInsightsTraining ? 'insights' : 'menu');
+    }
     if (source === 'personal') {
       recordPersonalPuzzleResult(puzzle.id, { solved: false, clean: false });
       setPersonalPuzzles(loadPersonalPuzzles());
@@ -449,6 +499,8 @@ export default function PuzzleScreen({ onExit, onPlayAgain = null, points = 0, o
 
   const replayIsNextStep = focusedPostGameTraining && source === 'personal'
     && status === 'solved' && typeof onPlayAgain === 'function';
+
+  if (missingResumedTarget) return <div className="route-loading" role="status">La posición ya no está disponible. Volviendo al entrenamiento…</div>;
 
   return (
     <div

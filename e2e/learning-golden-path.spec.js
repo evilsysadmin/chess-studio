@@ -293,6 +293,16 @@ test.describe('Mobile · pérdida factual y entrenamiento tras F5', () => {
       await expect(focused).toBeVisible({ timeout: 15_000 });
       await expect(focused.getByText(/Aquí jugaste g4 y perdiste/)).toBeVisible();
       await expect(focused.getByRole('group', { name: 'Tipo de puzzle' })).toHaveCount(0);
+      // F5 must restore the same focused crime, not send the player home or
+      // serve an unrelated adaptive puzzle after the one-shot focus was consumed.
+      const focusedHeading = await focused.locator('h2').first().textContent();
+      await expect.poll(() => page.evaluate(() => sessionStorage.getItem('chess-study-current-view')))
+        .toBe('puzzle');
+      await page.reload();
+      const resumed = page.locator('.puzzle-screen[data-training-origin="postgame-error"]');
+      await expect(resumed).toBeVisible({ timeout: 30_000 });
+      await expect(resumed.locator('h2').first()).toHaveText(focusedHeading);
+      await expect(resumed.getByText(/Aquí jugaste g4 y perdiste/)).toBeVisible();
       await clickBoardMove(page, 'e2', 'e4');
       await expect(focused.getByText('¡Resuelto!', { exact: true })).toBeVisible({ timeout: 15_000 });
       const replay = focused.getByRole('button', { name: 'Volver a jugar', exact: true });

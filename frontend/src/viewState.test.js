@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
+import { FOCUSED_PUZZLE_RESUME_KEY, saveFocusedPuzzleResume, clearFocusedPuzzleResume } from './focusedPuzzleResume.js';
 import {
   VIEW_STORAGE_KEY,
   VIEW_HISTORY_STORAGE_KEY,
@@ -20,6 +21,18 @@ describe('navegación resistente a refresh', () => {
   it('restaura el hub de Desafíos diarios después de refresh', () => {
     rememberSessionView('dailyChallenges');
     expect(loadSessionView()).toBe('dailyChallenges');
+  });
+
+  it('sólo restaura el puzzle cuando existe un foco personal vigente de esta cuenta', () => {
+    localStorage.setItem('chess-study-auth-username', 'alice');
+    expect(saveFocusedPuzzleResume({ puzzleId: 'real-drill', origin: 'insights-action' })).not.toBeNull();
+    rememberSessionView('puzzle');
+    expect(loadSessionView()).toBe('puzzle');
+    expect(loadSessionViewHistory()).toEqual([]);
+    clearFocusedPuzzleResume();
+    expect(loadSessionView()).toBe('menu');
+    expect(sessionStorage.getItem(FOCUSED_PUZZLE_RESUME_KEY)).toBeNull();
+    localStorage.removeItem('chess-study-auth-username');
   });
 
   it('no restaura Admin para un usuario que no es admin', () => {
