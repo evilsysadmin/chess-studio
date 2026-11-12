@@ -138,7 +138,7 @@ export default function PuzzleScreen({ onExit, onPlayAgain = null, points = 0, o
       && personalPuzzles.some((item) => item.id === puzzle?.id);
     if (currentIsPersonal && status === 'playing' && !personalHadError) {
       const committedPly = committedPlyRef.current.puzzleId === puzzle.id ? committedPlyRef.current.ply : 0;
-      saveFocusedPuzzleResume({ puzzleId: puzzle.id, origin: trainingOrigin, filter: initialFilter, ply: committedPly });
+      saveFocusedPuzzleResume({ puzzleId: puzzle.id, origin: trainingOrigin, filter: initialFilter, ply: committedPly, puzzle });
       rememberSessionView('puzzle');
     } else {
       // Solved/revealed or already wrong: F5 must not start a new 'clean' attempt.
@@ -445,7 +445,7 @@ export default function PuzzleScreen({ onExit, onPlayAgain = null, points = 0, o
       if (focusedTrainingJourney && source === 'personal' && !personalHadError
         && committedPly < puzzle.solution.length) {
         saveFocusedPuzzleResume({
-          puzzleId: puzzle.id, origin: trainingOrigin, filter: initialFilter, ply: committedPly,
+          puzzleId: puzzle.id, origin: trainingOrigin, filter: initialFilter, ply: committedPly, puzzle,
         });
       }
       setStepIndex(committedPly);

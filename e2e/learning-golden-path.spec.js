@@ -352,6 +352,10 @@ test('Así juegas · F5 conserva el turno exacto tras la respuesta de Matthias e
   await expect.poll(() => page.evaluate(() =>
     JSON.parse(sessionStorage.getItem('chess-study-focused-puzzle-resume-v1') || 'null')?.ply,
   )).toBe(2);
+  const revision = await page.evaluate(() =>
+    JSON.parse(sessionStorage.getItem('chess-study-focused-puzzle-resume-v1') || 'null')?.revision,
+  );
+  expect(revision).toMatch(/^[0-9a-f]{8}$/);
   expect(await page.evaluate(() =>
     JSON.parse(localStorage.getItem('chess-study-personal-puzzles') || '[]')
       .find((item) => item.id === 'focused-multipy-f5')?.solves,
@@ -364,6 +368,9 @@ test('Así juegas · F5 conserva el turno exacto tras la respuesta de Matthias e
   await expect.poll(() => page.evaluate(() =>
     JSON.parse(sessionStorage.getItem('chess-study-focused-puzzle-resume-v1') || 'null')?.ply,
   )).toBe(2);
+  expect(await page.evaluate(() => JSON.parse(
+    sessionStorage.getItem('chess-study-focused-puzzle-resume-v1') || 'null',
+  )?.revision)).toBe(revision);
   await clickBoardMove(page, 'f1', 'c4');
   await expect(resumed.getByText('¡Resuelto!', { exact: true })).toBeVisible();
   const trained = await page.evaluate(() => JSON.parse(
