@@ -320,6 +320,60 @@ test.describe('Mobile · pérdida factual y entrenamiento tras F5', () => {
 });
 
 
+test('Así juegas · F5 conserva el turno exacto tras la respuesta de Matthias en un puzzle de varias jugadas', async ({ page }) => {
+  test.setTimeout(150_000);
+  const title = 'Secuencia personal de tres jugadas · F5';
+  await mockApi(page, {
+    profileSeed: {
+      'chess-study-personal-puzzles': JSON.stringify([{
+        id: 'focused-multipy-f5',
+        kind: 'personal', source: 'autopsy', title,
+        description: 'Continuación legal del ejercicio personal.',
+        fen: 'rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq e6 0 2',
+        solution: ['Qh5', 'Nc6', 'Bc4'],
+        sourceGameId: 'f5-test-multipy',
+        incidentKeys: [],
+        createdAt: '2026-11-10T12:00:00Z',
+        loss: 120, attempts: 0, solves: 0, cleanSolves: 0,
+      }]),
+    },
+  });
+  await login(page);
+  await dismissHomeGuide(page);
+  const corner = page.getByRole('complementary', { name: 'Rincón de Matthias' });
+  await corner.getByRole('button', { name: 'Abrir Así juegas con Matthias', exact: true }).click();
+  await waitForTrainingRoomSettled(page);
+  await page.getByRole('button', { name: 'Entrenar esta posición real ahora' }).click();
+  const focused = page.locator('.puzzle-screen[data-training-origin="insights-action"]');
+  await expect(focused).toBeVisible();
+  await expect(focused.getByRole('heading', { name: title })).toBeVisible();
+  await clickBoardMove(page, 'd1', 'h5');
+  // A complete human+opponent exchange is the only durable checkpoint.
+  await expect.poll(() => page.evaluate(() =>
+    JSON.parse(sessionStorage.getItem('chess-study-focused-puzzle-resume-v1') || 'null')?.ply,
+  )).toBe(2);
+  expect(await page.evaluate(() =>
+    JSON.parse(localStorage.getItem('chess-study-personal-puzzles') || '[]')
+      .find((item) => item.id === 'focused-multipy-f5')?.solves,
+  )).toBe(0);
+
+  await page.reload();
+  const resumed = page.locator('.puzzle-screen[data-training-origin="insights-action"]');
+  await expect(resumed).toBeVisible({ timeout: 30_000 });
+  await expect(resumed.getByRole('heading', { name: title })).toBeVisible();
+  await expect.poll(() => page.evaluate(() =>
+    JSON.parse(sessionStorage.getItem('chess-study-focused-puzzle-resume-v1') || 'null')?.ply,
+  )).toBe(2);
+  await clickBoardMove(page, 'f1', 'c4');
+  await expect(resumed.getByText('¡Resuelto!', { exact: true })).toBeVisible();
+  const trained = await page.evaluate(() => JSON.parse(
+    localStorage.getItem('chess-study-personal-puzzles') || '[]',
+  ).find((item) => item.id === 'focused-multipy-f5'));
+  expect(trained?.solves).toBe(1);
+  expect(trained?.cleanSolves).toBe(1);
+  expect(await page.evaluate(() => sessionStorage.getItem('chess-study-focused-puzzle-resume-v1'))).toBeNull();
+});
+
 test('Así juegas · la sesión guiada sobrevive al tablero personal y F5; un snapshot corrupto no bloquea la sala', async ({ page }) => {
   test.setTimeout(150_000);
   await mockApi(page, {
