@@ -153,7 +153,11 @@ export function advanceGuidedTrainingSession(session, { now = Date.now() } = {})
 export function clearGuidedTrainingSession(expected = null, { now = Date.now() } = {}) {
   // A stale Cancel click must not destroy a replacement or a step that has
   // already advanced. Explicit account reset can still clear unconditionally.
-  if (expected !== null && !isCurrentGuidedTrainingStep(expected, loadGuidedTrainingSession({ now }))) return false;
-  removeStorageItem(STORAGE_SESSION, GUIDED_TRAINING_SESSION_KEY);
-  return true;
+  const current = expected === null ? null : loadGuidedTrainingSession({ now });
+  if (expected !== null && !isCurrentGuidedTrainingStep(expected, current)) return false;
+  if (removeStorageItem(STORAGE_SESSION, GUIDED_TRAINING_SESSION_KEY)) return true;
+  // A failed native remove must not report a successful cancellation. Restore
+  // the last confirmed assignment in the same tab, just like failed advances.
+  if (current) writeJsonStorage(STORAGE_SESSION, GUIDED_TRAINING_SESSION_KEY, current);
+  return false;
 }

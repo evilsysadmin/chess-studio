@@ -72,6 +72,21 @@ describe('sesión guiada · durabilidad real tras F5', () => {
     expect(advanceGuidedTrainingSession(refused, { now: NOW })?.currentIndex).toBe(1);
   });
 
+  it('no confirma una cancelación cuyo borrado nativo fue denegado, ni resucita otro expediente', () => {
+    const started = startGuidedTrainingSession(PLAN, { now: NOW });
+    const nativeValue = sessionStorage.getItem(GUIDED_TRAINING_SESSION_KEY);
+    const denied = denyNativeRemoval();
+    expect(clearGuidedTrainingSession(started, { now: NOW })).toBe(false);
+    expect(sessionStorage.getItem(GUIDED_TRAINING_SESSION_KEY)).toBe(nativeValue);
+    expect(loadGuidedTrainingSession({ now: NOW })).toMatchObject({
+      id: started.id, currentIndex: 0,
+    });
+    denied.mockRestore();
+    expect(clearGuidedTrainingSession(started, { now: NOW })).toBe(true);
+    expect(sessionStorage.getItem(GUIDED_TRAINING_SESSION_KEY)).toBeNull();
+    expect(loadGuidedTrainingSession({ now: NOW })).toBeNull();
+  });
+
   it('no acredita el cierre mientras la eliminación del expediente esté bloqueada', () => {
     const started = startGuidedTrainingSession(PLAN, { now: NOW });
     const finalStep = advanceGuidedTrainingSession(started, { now: NOW });

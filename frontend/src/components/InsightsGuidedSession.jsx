@@ -58,17 +58,27 @@ export default function InsightsGuidedSession({
   }), [gameHistory, playerModel, personalPuzzles, cleanGameRecords]);
 
   function begin(minutes) {
+    const next = startGuidedTrainingSession(plans[minutes]);
+    if (!next) {
+      // A failed native write must not erase the prior summary or imply a
+      // new itinerary exists. Respect a previously confirmed active plan.
+      setSession(loadGuidedTrainingSession());
+      setLaunchError('No se pudo guardar la sesión. Revisa el almacenamiento del navegador e inténtalo de nuevo.');
+      return;
+    }
     setLaunchError('');
     clearGuidedTrainingCompletion();
     setCompletion(null);
-    const next = startGuidedTrainingSession(plans[minutes]);
     setSession(next);
   }
 
   function cancel() {
-    setLaunchError('');
     const removed = clearGuidedTrainingSession(session);
-    setSession(removed ? null : loadGuidedTrainingSession());
+    const current = removed ? null : loadGuidedTrainingSession();
+    setSession(current);
+    setLaunchError(removed ? '' : isCurrentGuidedTrainingStep(session, current)
+      ? 'No se pudo guardar la cancelación. Tu sesión sigue en el último bloque confirmado.'
+      : 'La sesión cambió antes de cancelar. Se muestra el estado actual.');
   }
 
   function nextStep() {
@@ -79,9 +89,19 @@ export default function InsightsGuidedSession({
       setSession(active);
       return;
     }
-    setLaunchError('');
     const finishing = active.currentIndex === active.steps.length - 1;
     const next = advanceGuidedTrainingSession(active);
+    if (next && isCurrentGuidedTrainingStep(active, next)) {
+      setSession(next);
+      setLaunchError('No se pudo guardar el avance. Sigues en el último bloque confirmado; inténtalo de nuevo.');
+      return;
+    }
+    if (!finishing && !next) {
+      setSession(loadGuidedTrainingSession());
+      setLaunchError('El bloque ya no está disponible. Se ha recuperado el estado guardado.');
+      return;
+    }
+    setLaunchError('');
     setSession(next);
     if (finishing && !next) setCompletion(saveGuidedTrainingCompletion(active));
   }
