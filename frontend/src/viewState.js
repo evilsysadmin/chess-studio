@@ -1,6 +1,24 @@
-import { STORAGE_SESSION, getStorageItem, readJsonStorage, removeStorageItem, setStorageItem, writeJsonStorage } from './safeStorage.js';
+import { STORAGE_LOCAL, STORAGE_SESSION, getStorageItem, readJsonStorage, removeStorageItem, setStorageItem, writeJsonStorage } from './safeStorage.js';
 import { MAX_VIEW_HISTORY } from './viewNavigationContract.js';
-import { clearFocusedPuzzleResume, loadFocusedPuzzleResume } from './focusedPuzzleResume.js';
+// Minimal pre-login/F5 reader. The write path lives with lazy PuzzleScreen.
+export const FOCUSED_PUZZLE_RESUME_KEY = 'chess-study-focused-puzzle-resume-v1';
+export function loadFocusedPuzzleResume({ now = Date.now() } = {}) {
+  const value = readJsonStorage(STORAGE_SESSION, FOCUSED_PUZZLE_RESUME_KEY, { fallback: null, removeMalformed: true });
+  const owner = String(getStorageItem(STORAGE_LOCAL, 'chess-study-auth-username') || '').trim().toLowerCase();
+  if (owner && value?.version === 1 && value.owner === owner
+    && ['insights-action', 'postgame-error'].includes(value.origin)
+    && typeof value.puzzleId === 'string' && value.puzzleId.trim()
+    && Number.isFinite(value.savedAt) && value.savedAt > 0
+    && now - value.savedAt <= 4 * 60 * 60 * 1000 && value.savedAt - now <= 60_000
+    && (value.filter == null || (typeof value.filter === 'object' && !Array.isArray(value.filter)
+      && Object.entries(value.filter).every(([key, field]) =>
+        ['incidentKey', 'opening', 'label'].includes(key) && typeof field === 'string' && field.length > 0 && field.length <= 160)))) return value;
+  removeStorageItem(STORAGE_SESSION, FOCUSED_PUZZLE_RESUME_KEY);
+  return null;
+}
+export function clearFocusedPuzzleResume() {
+  removeStorageItem(STORAGE_SESSION, FOCUSED_PUZZLE_RESUME_KEY);
+}
 
 // viewState.js — navegación de sesión resistente a refresh y con historial.
 // Solo persistimos pantallas que pueden reconstruirse únicamente desde el

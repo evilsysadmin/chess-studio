@@ -1,8 +1,5 @@
 import { useState } from 'react';
-import { STORAGE_SESSION, getStorageItem, removeStorageItem } from './safeStorage.js';
-import {
-  PERSONAL_PUZZLE_FOCUS_KEY, clearFocusedPuzzleResume, loadFocusedPuzzleResume, saveFocusedPuzzleResume,
-} from './focusedPuzzleResume.js';
+import { clearFocusedPuzzleResume, loadFocusedPuzzleResume } from './viewState.js';
 
 const DEFAULT_PUZZLE_LAUNCH = Object.freeze({
   source: 'curated',
@@ -27,15 +24,9 @@ export function useLearningJourneyFlow({ navigateTo, resetNavigation }) {
   const [insightsLandingSection, setInsightsLandingSection] = useState(DEFAULT_INSIGHTS_SECTION);
 
   function openPuzzleMode(source = 'curated', rush = false, filter = null, dailySlot = 'tactic', origin = null) {
+    // The lazy puzzle screen captures the *chosen* exercise after consuming
+    // the one-shot focus. No puzzle persistence code belongs in initial JS.
     clearFocusedPuzzleResume();
-    if (source === 'personal' && !rush && ['insights-action', 'postgame-error'].includes(origin)) {
-      const focusedId = getStorageItem(STORAGE_SESSION, PERSONAL_PUZZLE_FOCUS_KEY);
-      // Capture the exact target before the one-shot focus is consumed.
-      // If persistence fails, leave it available to the existing live launch.
-      if (saveFocusedPuzzleResume({ puzzleId: focusedId, origin, filter })) {
-        removeStorageItem(STORAGE_SESSION, PERSONAL_PUZZLE_FOCUS_KEY);
-      }
-    }
     setPuzzleLaunch({ source, rush, filter, dailySlot, origin });
     navigateTo('puzzle');
   }
