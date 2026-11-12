@@ -1,5 +1,6 @@
 import { STORAGE_SESSION, getStorageItem, readJsonStorage, removeStorageItem, setStorageItem, writeJsonStorage } from './safeStorage.js';
 import { MAX_VIEW_HISTORY } from './viewNavigationContract.js';
+import { clearFocusedPuzzleResume, loadFocusedPuzzleResume } from './focusedPuzzleResume.js';
 
 // viewState.js — navegación de sesión resistente a refresh y con historial.
 // Solo persistimos pantallas que pueden reconstruirse únicamente desde el
@@ -26,6 +27,8 @@ const RESTORABLE_VIEWS = Object.freeze([
 ]);
 
 function allowedView(view, { isAdminUser = false } = {}) {
+  // Only a proven focused personal puzzle can recover this otherwise ephemeral route.
+  if (view === 'puzzle') return Boolean(loadFocusedPuzzleResume());
   if (!RESTORABLE_VIEWS.includes(view)) return false;
   if (view === 'admin' && !isAdminUser) return false;
   return true;
@@ -37,13 +40,19 @@ export function loadSessionView({ isAdminUser = false } = {}) {
 }
 
 export function rememberSessionView(view) {
+  if (view === 'puzzle') {
+    if (loadFocusedPuzzleResume()) setStorageItem(STORAGE_SESSION, VIEW_STORAGE_KEY, 'puzzle');
+    return;
+  }
+  // Any other route ends the focused F5 recovery opportunity.
+  clearFocusedPuzzleResume();
   if (RESTORABLE_VIEWS.includes(view)) setStorageItem(STORAGE_SESSION, VIEW_STORAGE_KEY, view);
 }
 
 export function loadSessionViewHistory({ isAdminUser = false } = {}) {
   const parsed = readJsonStorage(STORAGE_SESSION, VIEW_HISTORY_STORAGE_KEY, { fallback: [], removeMalformed: true });
   if (!Array.isArray(parsed)) return [];
-  return parsed.filter((view) => allowedView(view, { isAdminUser })).slice(-MAX_VIEW_HISTORY);
+  return parsed.filter((view) => RESTORABLE_VIEWS.includes(view) && allowedView(view, { isAdminUser })).slice(-MAX_VIEW_HISTORY);
 }
 
 export function rememberSessionViewHistory(history) {
@@ -54,6 +63,7 @@ export function rememberSessionViewHistory(history) {
 }
 
 export function clearSessionView() {
+  clearFocusedPuzzleResume();
   removeStorageItem(STORAGE_SESSION, VIEW_STORAGE_KEY);
   removeStorageItem(STORAGE_SESSION, VIEW_HISTORY_STORAGE_KEY);
 }
