@@ -43,10 +43,14 @@ export default function PuzzleScreen({ onExit, onPlayAgain = null, points = 0, o
   const initialSource = restoring && focusedResume ? 'personal' : requestedSource;
   const initialFilter = restoring && focusedResume ? focusedResume.filter : requestedFilter;
   const trainingOrigin = restoring && focusedResume ? focusedResume.origin : requestedOrigin;
-  const resumedTarget = focusedResume && initialSource === 'personal' && focusedResume.origin === trainingOrigin
-    && validFocusedPuzzleFilter(focusedResume.filter)
+  // F5 validity belongs to the initial hydration only. A solved puzzle
+  // becomes mastered in the bank during the same mounted screen; rechecking
+  // its recovery eligibility then would wrongly send the player Home before
+  // the success and "Volver a jugar" controls can be shown.
+  const [resumedTarget] = useState(() => focusedResume && initialSource === 'personal'
+    && focusedResume.origin === trainingOrigin && validFocusedPuzzleFilter(focusedResume.filter)
     ? personalPuzzles.find((item) => item.id === focusedResume.puzzleId && matchesPersonalPuzzleFilter(item, focusedResume.filter)) || null
-    : null;
+    : null);
   const resumedProgress = restoring && resumedTarget
     ? rebuildFocusedPuzzleProgress(resumedTarget, focusedResume) : null;
   const missingResumedTarget = Boolean(restoring && (!focusedResume || !resumedTarget
