@@ -16,7 +16,7 @@ export function loadFocusedPuzzleResume({ now = Date.now() } = {}) {
     && now - snapshot.savedAt <= 14_400_000 && snapshot.savedAt - now <= 60_000
     && validFocusedPuzzleFilter(snapshot.filter)
     // v1 descriptors without a ply belong to the original start-only format.
-    && validFocusedPuzzlePly(snapshot.ply ?? 0)) return snapshot;
+    && validFocusedPuzzlePly(snapshot.ply === undefined ? 0 : snapshot.ply)) return snapshot;
   clearFocusedPuzzleResume();
   return null;
 }
@@ -34,8 +34,8 @@ export function validFocusedPuzzlePly(ply) {
 // This is recovery metadata, NOT a second source of position truth. Rebuild
 // the board exclusively from the validated puzzle's original FEN and SAN line.
 export function rebuildFocusedPuzzleProgress(puzzle, snapshot) {
-  const ply = snapshot?.ply ?? 0;
-  if (!puzzle?.fen || !Array.isArray(puzzle.solution) || !validFocusedPuzzlePly(ply)
+  const ply = snapshot?.ply === undefined ? 0 : snapshot.ply;
+  if (!snapshot || !puzzle?.fen || !Array.isArray(puzzle.solution) || !validFocusedPuzzlePly(ply)
     || ply >= puzzle.solution.length) return null;
   let fen = puzzle.fen;
   for (let index = 0; index < ply; index += 1) {
