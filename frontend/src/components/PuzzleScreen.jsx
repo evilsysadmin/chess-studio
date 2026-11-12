@@ -11,7 +11,7 @@ import { playMoveSound, playCaptureSound, playSuccessSound } from '../sound.js';
 import { incrementPuzzlesSolved, loadPuzzleStreak, incrementPuzzleStreak, resetPuzzleStreak, loadBestPuzzleStreak } from '../puzzleStats.js';
 import { puzzleRetryCost } from '../tournament.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
-import { clearFocusedPuzzleResume, loadFocusedPuzzleResume, saveFocusedPuzzleResume, validFocusedPuzzleFilter } from '../focusedPuzzleResume.js';
+import { clearFocusedPuzzleResume, loadFocusedPuzzleResume, rebuildFocusedPuzzleProgress, saveFocusedPuzzleResume, validFocusedPuzzleFilter } from '../focusedPuzzleResume.js';
 import { rememberSessionView } from '../viewState.js';
 import { recordPuzzleRush } from '../career.js';
 import { lastDailyCells } from '../careerVisuals.js';
@@ -47,9 +47,10 @@ export default function PuzzleScreen({ onExit, onPlayAgain = null, points = 0, o
     && validFocusedPuzzleFilter(focusedResume.filter)
     ? personalPuzzles.find((item) => item.id === focusedResume.puzzleId && matchesPersonalPuzzleFilter(item, focusedResume.filter)) || null
     : null;
-  const missingResumedTarget = Boolean((restoring && !focusedResume)
-    || (focusedResume && initialSource === 'personal'
-      && focusedResume.origin === trainingOrigin && !resumedTarget));
+  const resumedProgress = restoring && resumedTarget
+    ? rebuildFocusedPuzzleProgress(resumedTarget, focusedResume) : null;
+  const missingResumedTarget = Boolean(restoring && (!focusedResume || !resumedTarget
+    || !resumedProgress || isPersonalPuzzleMastered(resumedTarget)));
   const [sourcePickerOpen, setSourcePickerOpen] = useState(false);
   const filteredInitialPersonalTotal = personalPuzzles.filter((item) => matchesPersonalPuzzleFilter(item, initialFilter)).length;
   const focusedInsightsTraining = trainingOrigin === 'insights-action';
@@ -62,8 +63,11 @@ export default function PuzzleScreen({ onExit, onPlayAgain = null, points = 0, o
   const [recentCuratedIds, setRecentCuratedIds] = useState([]);
   const [dailyStats, setDailyStats] = useState(() => currentDailyStreak());
   const [achievementUnlocked, setAchievementUnlocked] = useState(null);
-  const [fen, setFen] = useState(puzzle.fen);
-  const [stepIndex, setStepIndex] = useState(0);
+  const [fen, setFen] = useState(() => resumedProgress?.fen || puzzle.fen);
+  const [stepIndex, setStepIndex] = useState(() => resumedProgress?.stepIndex || 0);
+  // Track only stable human+opponent exchanges. A refresh during the 550 ms
+  // reply animation replays the last confirmed position, never half a turn.
+  const committedPlyRef = useRef({ puzzleId: puzzle.id, ply: resumedProgress?.stepIndex || 0 });
   const [selected, setSelected] = useState(null);
   const [status, setStatus] = useState('playing'); // 'playing' | 'solved' | 'revealed'
   const puzzleMachineRef = useRef(PUZZLE_STATE.SOLVING);
@@ -129,7 +133,8 @@ export default function PuzzleScreen({ onExit, onPlayAgain = null, points = 0, o
     const currentIsPersonal = source === 'personal'
       && personalPuzzles.some((item) => item.id === puzzle?.id);
     if (currentIsPersonal && status === 'playing' && !personalHadError) {
-      saveFocusedPuzzleResume({ puzzleId: puzzle.id, origin: trainingOrigin, filter: initialFilter });
+      const committedPly = committedPlyRef.current.puzzleId === puzzle.id ? committedPlyRef.current.ply : 0;
+      saveFocusedPuzzleResume({ puzzleId: puzzle.id, origin: trainingOrigin, filter: initialFilter, ply: committedPly });
       rememberSessionView('puzzle');
     } else {
       // Solved/revealed or already wrong: F5 must not start a new 'clean' attempt.
@@ -145,8 +150,10 @@ export default function PuzzleScreen({ onExit, onPlayAgain = null, points = 0, o
     advancePuzzleState('ready');
     if (replyTimeout.current) { clearTimeout(replyTimeout.current); replyTimeout.current = null; }
     if (rushNextTimeout.current) { clearTimeout(rushNextTimeout.current); rushNextTimeout.current = null; }
-    setFen(puzzle.fen);
-    setStepIndex(0);
+    const recovered = restoring && puzzle === resumedTarget ? resumedProgress : null;
+    committedPlyRef.current = { puzzleId: puzzle.id, ply: recovered?.stepIndex || 0 };
+    setFen(recovered?.fen || puzzle.fen);
+    setStepIndex(recovered?.stepIndex || 0);
     setSelected(null);
     setStatus('playing');
     setFeedback(null);
@@ -429,7 +436,15 @@ export default function PuzzleScreen({ onExit, onPlayAgain = null, points = 0, o
       advancePuzzleState('replied');
       setFen(reply.fen);
       playMoveSound();
-      setStepIndex(nextIndex + 1);
+      const committedPly = nextIndex + 1;
+      committedPlyRef.current = { puzzleId: puzzle.id, ply: committedPly };
+      if (focusedTrainingJourney && source === 'personal' && !personalHadError
+        && committedPly < puzzle.solution.length) {
+        saveFocusedPuzzleResume({
+          puzzleId: puzzle.id, origin: trainingOrigin, filter: initialFilter, ply: committedPly,
+        });
+      }
+      setStepIndex(committedPly);
       setBusy(false);
     }, REPLY_DELAY_MS);
   }
