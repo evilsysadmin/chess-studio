@@ -320,6 +320,53 @@ test.describe('Mobile · pérdida factual y entrenamiento tras F5', () => {
 });
 
 
+test('Puzzles · revelar mientras el rival prepara su respuesta no deja movimientos fantasma', async ({ page }) => {
+  test.setTimeout(150_000);
+  const title = 'Revelar durante una réplica';
+  await mockApi(page, {
+    profileSeed: {
+      'chess-study-personal-puzzles': JSON.stringify([{
+        id: 'reveal-while-replying',
+        kind: 'personal', source: 'autopsy', title,
+        description: 'Comprueba la salida durante una respuesta forzada.',
+        fen: 'rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq e6 0 2',
+        solution: ['Qh5', 'Nc6', 'Bc4'],
+        incidentKeys: [], sourceGameId: 'reveal-timer-source',
+        loss: 120, createdAt: '2026-11-10T12:00:00Z',
+        attempts: 0, solves: 0, cleanSolves: 0,
+      }]),
+    },
+  });
+  await login(page);
+  await dismissHomeGuide(page);
+  await page.getByRole('complementary', { name: 'Rincón de Matthias' })
+    .getByRole('button', { name: 'Abrir Así juegas con Matthias', exact: true }).click();
+  await waitForTrainingRoomSettled(page);
+  await page.getByRole('button', { name: 'Entrenar esta posición real ahora' }).click();
+  const focused = page.locator('.puzzle-screen[data-training-origin="insights-action"]');
+  await expect(focused.getByRole('heading', { name: title })).toBeVisible();
+
+  // Freeze only after the room is ready: no race between the 550 ms reply
+  // timer and Playwright actionability/screenshot overhead.
+  await page.clock.install();
+  await focused.getByRole('button', { name: /^Casilla d1,/ }).click();
+  await page.clock.pauseAt(new Date());
+  await focused.getByRole('button', { name: /^Casilla h5,/ }).dispatchEvent('click');
+  await expect(focused.getByText('El rival responde…', { exact: true })).toBeVisible();
+  await focused.getByRole('button', { name: 'Ver solución', exact: true }).dispatchEvent('click');
+  await expect(focused.getByText('Esta era la solución', { exact: true })).toBeVisible();
+  await page.clock.runFor(1200);
+  await expect(focused.getByText('Esta era la solución', { exact: true })).toBeVisible();
+  await expect(focused.getByText('¡Resuelto!', { exact: true })).toHaveCount(0);
+  const bank = await page.evaluate(() => JSON.parse(
+    localStorage.getItem('chess-study-personal-puzzles') || '[]',
+  ).find((item) => item.id === 'reveal-while-replying'));
+  expect(bank?.solves).toBe(0);
+  expect(await page.evaluate(() => sessionStorage.getItem('chess-study-focused-puzzle-resume-v1'))).toBeNull();
+  await focused.getByRole('button', { name: 'Siguiente puzzle', exact: true }).click();
+  await expect(focused.getByText('El rival responde…', { exact: true })).toHaveCount(0);
+});
+
 test('Así juegas · F5 conserva el turno exacto tras la respuesta de Matthias en un puzzle de varias jugadas', async ({ page }) => {
   test.setTimeout(150_000);
   const title = 'Secuencia personal de tres jugadas · F5';
