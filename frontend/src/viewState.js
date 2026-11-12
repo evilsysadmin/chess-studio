@@ -2,13 +2,12 @@ import { STORAGE_LOCAL, STORAGE_SESSION, getStorageItem, readJsonStorage, remove
 import { MAX_VIEW_HISTORY } from './viewNavigationContract.js';
 // Minimal pre-login/F5 reader. The write path lives with lazy PuzzleScreen.
 export const FOCUSED_PUZZLE_RESUME_KEY = 'chess-study-focused-puzzle-resume-v1';
-export function loadFocusedPuzzleResume({ now = Date.now() } = {}) {
+export function loadFocusedPuzzleResume() {
   const value = readJsonStorage(STORAGE_SESSION, FOCUSED_PUZZLE_RESUME_KEY);
   const username = getStorageItem(STORAGE_LOCAL, 'chess-study-auth-username');
   if (username && value?.version === 1 && value.owner === String(username).trim().toLowerCase()
     && (value.origin === 'insights-action' || value.origin === 'postgame-error')
-    && typeof value.puzzleId === 'string' && value.puzzleId.trim()
-    && value.savedAt > 0 && value.savedAt >= now - 14_400_000 && value.savedAt <= now + 60_000) return value;
+    && typeof value.puzzleId === 'string' && value.puzzleId) return value;
   removeStorageItem(STORAGE_SESSION, FOCUSED_PUZZLE_RESUME_KEY);
   return null;
 }
