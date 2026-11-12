@@ -1,4 +1,5 @@
 import { getUsername } from './auth.js';
+import { validGuidedTrainingBudget } from './guidedTrainingOriginReader.js';
 import { STORAGE_SESSION, readJsonStorage, removeStorageItem, writeJsonStorage } from './safeStorage.js';
 
 export const GUIDED_TRAINING_COMPLETION_KEY = 'chess-study-guided-training-completion-v1';
@@ -11,16 +12,18 @@ function completionOwner() {
 
 const VALID_DURATIONS = new Set([5, 15, 30]);
 
-function normalizeBlock(step, index) {
+function normalizeBlock(step) {
   if (!step || step.kind === 'review') return null;
-  const title = String(step.title || '').trim();
-  // Stored minutes are measured plan allocations, not values to guess.
-  if (!title || !Number.isFinite(step.minutes) || step.minutes <= 0 || step.minutes > 30) return null;
+  const id = typeof step.id === 'string' ? step.id.trim() : '';
+  const title = typeof step.title === 'string' ? step.title.trim() : '';
+  // Preserve the allocated minutes exactly. Rounding a fractional/corrupt
+  // snapshot could invent a valid-looking block in the completion record.
+  if (!id || !title || !Number.isInteger(step.minutes) || step.minutes <= 0 || step.minutes > 30) return null;
   return {
-    id: String(step.id || `block-${index + 1}`),
+    id,
     kind: String(step.kind || 'practice'),
     title,
-    minutes: Math.round(step.minutes),
+    minutes: step.minutes,
   };
 }
 
@@ -28,8 +31,12 @@ function fitsCompletionBudget(blocks, minutes) {
   // The review step is deliberately absent from completion summaries.
   // A corrupted snapshot must not nevertheless claim more practice time
   // than the itinerary ever allocated.
-  return blocks.every((block) => block && block.minutes <= minutes)
-    && blocks.reduce((sum, block) => sum + block.minutes, 0) <= minutes;
+  const ids = new Set();
+  return blocks.every((block) => {
+    if (!block || ids.has(block.id) || block.minutes > minutes) return false;
+    ids.add(block.id);
+    return true;
+  }) && blocks.reduce((sum, block) => sum + block.minutes, 0) <= minutes;
 }
 
 function normalizeCompletion(value, now = Date.now()) {
@@ -50,8 +57,11 @@ function normalizeCompletion(value, now = Date.now()) {
 }
 
 export function saveGuidedTrainingCompletion(session, { now = Date.now() } = {}) {
-  if (!session || !Array.isArray(session.steps) || !session.steps.length
-    || !VALID_DURATIONS.has(session.minutes)) return null;
+  if (!session || !validGuidedTrainingBudget(session.steps, session.minutes)) return null;
+  // The active plan requires a terminal action=review. The completion record
+  // must also prove that the only review-kind block is that terminal step.
+  if (session.steps[session.steps.length - 1].kind !== 'review'
+    || session.steps.slice(0, -1).some((step) => step.kind === 'review')) return null;
   // Only the exact last step proves that the user closed this itinerary.
   // Flooring/clamping a corrupt cursor could invent a completed session.
   if (!Number.isInteger(session.currentIndex)
