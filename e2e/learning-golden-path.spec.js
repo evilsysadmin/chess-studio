@@ -486,3 +486,29 @@ test('Así juegas · una acción antigua no secuestra el recorrido sustituido en
   await expect(page.locator('.puzzle-screen')).toBeVisible();
 });
 
+// Regression: the preview's selected puzzle may be removed while the Training
+// Room stays mounted. Navigation must not silently open a different puzzle.
+test('Así juegas · no sustituye una posición pendiente que desapareció del banco', async ({ page }) => {
+  test.setTimeout(120_000);
+  await mockApi(page, {
+    profileSeed: { 'chess-study-personal-puzzles': recurringTrainingDebtProfileValue() },
+  });
+  await login(page);
+  await dismissHomeGuide(page);
+  const corner = page.getByRole('complementary', { name: 'Rincón de Matthias' });
+  await corner.getByRole('button', { name: 'Abrir Así juegas con Matthias', exact: true }).click();
+  await waitForTrainingRoomSettled(page);
+
+  const direct = page.getByRole('button', { name: 'Entrenar esta posición real ahora' });
+  await expect(direct).toBeVisible();
+  await page.evaluate(() => {
+    const key = 'chess-study-personal-puzzles';
+    const bank = JSON.parse(localStorage.getItem(key) || '[]');
+    localStorage.setItem(key, JSON.stringify(bank.filter((puzzle) => puzzle.id !== 'golden-fork-pending')));
+  });
+  await direct.click();
+  await expect(page.locator('.insights-guided-session [role="status"]'))
+    .toContainText('Esta posición ya no está disponible para entrenar');
+  await expect(page.locator('.puzzle-screen')).toHaveCount(0);
+  await expect(page.getByRole('heading', { name: 'Así juegas', exact: true })).toBeVisible();
+});

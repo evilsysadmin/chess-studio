@@ -44,9 +44,24 @@ vi.mock('./InsightsPositionAutopsy.jsx', () => ({
   default: ({ puzzle }) => 'Preview: ' + (puzzle?.id || 'none'),
 }));
 
-import InsightsGuidedSession from './InsightsGuidedSession.jsx';
+import InsightsGuidedSession, { findGuidedPersonalPuzzle } from './InsightsGuidedSession.jsx';
 
 describe('InsightsGuidedSession time budgets', () => {
+  it('elige únicamente la posición recomendada, sin sustituir por otra del mismo patrón', () => {
+    const step = {
+      action: 'personal-filter',
+      featuredPuzzleId: 'chosen-drill',
+      filter: { incidentKey: 'human:MISSED_MATE' },
+    };
+    const matching = { id: 'chosen-drill', fen: 'fen-two', incidentKeys: ['human:MISSED_MATE'], cleanSolves: 0 };
+    const different = { id: 'wrong-drill', fen: 'fen-one', incidentKeys: ['human:MISSED_MATE'], cleanSolves: 0 };
+    expect(findGuidedPersonalPuzzle(step, [different, matching])).toBe(matching);
+    expect(findGuidedPersonalPuzzle(step, [different])).toBeNull();
+    expect(findGuidedPersonalPuzzle(step, [{ ...matching, solves: 1 }, different])).toBeNull();
+    expect(findGuidedPersonalPuzzle(step, [{ ...matching, cleanSolves: 1 }, different])).toBeNull();
+    expect(findGuidedPersonalPuzzle(step, [{ ...matching, incidentKeys: ['human:ALLOWED_MATE'] }, different])).toBeNull();
+    expect(findGuidedPersonalPuzzle({ ...step, featuredPuzzleId: null }, [matching])).toBeNull();
+  });
   it('pone una tarea real en primer plano y muestra 5/15/30 sin esconder el tiempo', () => {
     const html = renderToStaticMarkup(<InsightsGuidedSession gameHistory={[]} />);
 
