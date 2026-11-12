@@ -17,17 +17,17 @@ const PLAN = {
   ],
 };
 function denyNativeWrite() {
-  const native = Storage.prototype.setItem;
-  return vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function setItem(key, value) {
+  const native = sessionStorage.setItem.bind(sessionStorage);
+  return vi.spyOn(sessionStorage, 'setItem').mockImplementation((key, value) => {
     if (key === GUIDED_TRAINING_SESSION_KEY) throw new DOMException('Quota exceeded', 'QuotaExceededError');
-    return native.call(this, key, value);
+    return native(key, value);
   });
 }
 function denyNativeRemoval() {
-  const native = Storage.prototype.removeItem;
-  return vi.spyOn(Storage.prototype, 'removeItem').mockImplementation(function removeItem(key) {
+  const native = sessionStorage.removeItem.bind(sessionStorage);
+  return vi.spyOn(sessionStorage, 'removeItem').mockImplementation((key) => {
     if (key === GUIDED_TRAINING_SESSION_KEY) throw new DOMException('Denied', 'SecurityError');
-    return native.call(this, key);
+    return native(key);
   });
 }
 
