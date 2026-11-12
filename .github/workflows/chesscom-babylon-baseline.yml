@@ -8,9 +8,10 @@ on:
       - e2e/chesscom-visual-artifact.spec.js
       - .github/workflows/chesscom-babylon-baseline.yml
 permissions: {contents: read}
+# Explicit opt-in by label; Dependabot's grouped PR titles need not mention Babylon.
 jobs:
   baseline:
-    if: contains(github.event.pull_request.labels.*.name, 'track-chesscom') && contains(github.event.pull_request.title, 'babylonjs')
+    if: contains(github.event.pull_request.labels.*.name, 'track-chesscom')
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
@@ -33,7 +34,7 @@ jobs:
           path: .artifacts/chesscom-visual/
           if-no-files-found: error
   candidate:
-    if: contains(github.event.pull_request.labels.*.name, 'track-chesscom') && contains(github.event.pull_request.title, 'babylonjs')
+    if: contains(github.event.pull_request.labels.*.name, 'track-chesscom')
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
