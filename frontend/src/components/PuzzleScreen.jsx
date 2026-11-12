@@ -11,7 +11,7 @@ import { playMoveSound, playCaptureSound, playSuccessSound } from '../sound.js';
 import { incrementPuzzlesSolved, loadPuzzleStreak, incrementPuzzleStreak, resetPuzzleStreak, loadBestPuzzleStreak } from '../puzzleStats.js';
 import { puzzleRetryCost } from '../tournament.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
-import { clearFocusedPuzzleResume, loadFocusedPuzzleResume, saveFocusedPuzzleResume } from '../focusedPuzzleResume.js';
+import { clearFocusedPuzzleResume, loadFocusedPuzzleResume, saveFocusedPuzzleResume, validFocusedPuzzleFilter } from '../focusedPuzzleResume.js';
 import { rememberSessionView } from '../viewState.js';
 import { recordPuzzleRush } from '../career.js';
 import { lastDailyCells } from '../careerVisuals.js';
@@ -38,6 +38,7 @@ export default function PuzzleScreen({ onExit, onPlayAgain = null, points = 0, o
   const [personalPuzzles, setPersonalPuzzles] = useState(() => loadPersonalPuzzles());
   const [focusedResume] = useState(() => loadFocusedPuzzleResume());
   const resumedTarget = focusedResume && initialSource === 'personal' && focusedResume.origin === trainingOrigin
+    && validFocusedPuzzleFilter(focusedResume.filter)
     ? personalPuzzles.find((item) => item.id === focusedResume.puzzleId && matchesPersonalPuzzleFilter(item, focusedResume.filter)) || null
     : null;
   const missingResumedTarget = Boolean(focusedResume && initialSource === 'personal'

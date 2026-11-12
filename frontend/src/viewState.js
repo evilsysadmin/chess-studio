@@ -9,10 +9,7 @@ export function loadFocusedPuzzleResume({ now = Date.now() } = {}) {
     && ['insights-action', 'postgame-error'].includes(value.origin)
     && typeof value.puzzleId === 'string' && value.puzzleId.trim()
     && Number.isFinite(value.savedAt) && value.savedAt > 0
-    && now - value.savedAt <= 4 * 60 * 60 * 1000 && value.savedAt - now <= 60_000
-    && (value.filter == null || (typeof value.filter === 'object' && !Array.isArray(value.filter)
-      && Object.entries(value.filter).every(([key, field]) =>
-        ['incidentKey', 'opening', 'label'].includes(key) && typeof field === 'string' && field.length > 0 && field.length <= 160)))) return value;
+    && now - value.savedAt <= 4 * 60 * 60 * 1000 && value.savedAt - now <= 60_000) return value;
   removeStorageItem(STORAGE_SESSION, FOCUSED_PUZZLE_RESUME_KEY);
   return null;
 }
