@@ -3,9 +3,38 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const { analyzeMove } = vi.hoisted(() => ({ analyzeMove: vi.fn() }));
 vi.mock('./api.js', () => ({ api: { analyzeMove } }));
 
-import { preparePostGameTrainingOpportunity } from './usePostGameTrainingOpportunity.js';
+import { focusPostGameTrainingOpportunity, preparePostGameTrainingOpportunity } from './usePostGameTrainingOpportunity.js';
 
 describe('preparePostGameTrainingOpportunity', () => {
+  it('en el clic no secuestra otro puzzle si el crimen recomendado desapareció o ya se superó', () => {
+    const target = {
+      id: 'postgame-focused',
+      kind: 'personal', source: 'autopsy',
+      fen: '6k1/5ppp/8/8/8/8/5PPP/R5K1 w - - 0 1',
+      solution: ['Ra8+'], incidentKeys: [],
+    };
+    const alternate = { ...target, id: 'another-real-puzzle' };
+    const writeBank = (bank) => localStorage.setItem('chess-study-personal-puzzles', JSON.stringify(bank));
+    const focusKey = 'chess-study-personal-puzzle-focus';
+    const opportunity = { puzzleId: target.id };
+
+    writeBank([alternate, target]);
+    expect(focusPostGameTrainingOpportunity(opportunity)).toBe(true);
+    expect(sessionStorage.getItem(focusKey)).toBe(target.id);
+
+    sessionStorage.removeItem(focusKey);
+    writeBank([alternate]);
+    expect(focusPostGameTrainingOpportunity(opportunity)).toBe(false);
+    expect(sessionStorage.getItem(focusKey)).toBeNull();
+
+    writeBank([alternate, { ...target, solves: 1 }]);
+    expect(focusPostGameTrainingOpportunity(opportunity)).toBe(false);
+    expect(sessionStorage.getItem(focusKey)).toBeNull();
+
+    expect(focusPostGameTrainingOpportunity({ puzzleId: 'unknown' })).toBe(false);
+    expect(focusPostGameTrainingOpportunity(null)).toBe(false);
+  });
+
   beforeEach(() => {
     localStorage.clear();
     sessionStorage.clear();
