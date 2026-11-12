@@ -33,16 +33,23 @@ const RECENT_CURATED_LIMIT = 5;
 // rival, para que se note que hubo dos jugadas separadas.
 const REPLY_DELAY_MS = 550;
 
-export default function PuzzleScreen({ onExit, onPlayAgain = null, points = 0, onSpendPoints, initialSource = 'curated', rushMode = false, initialFilter = null, dailySlot = 'tactic', trainingOrigin = null }) {
+export default function PuzzleScreen({ onExit, onPlayAgain = null, points = 0, onSpendPoints, initialSource: requestedSource = 'curated', rushMode = false, initialFilter: requestedFilter = null, dailySlot = 'tactic', trainingOrigin: requestedOrigin = null }) {
   useEscapeToClose(onExit);
   const [personalPuzzles, setPersonalPuzzles] = useState(() => loadPersonalPuzzles());
   const [focusedResume] = useState(() => loadFocusedPuzzleResume());
+  // On F5 the eager route only knows that a same-account recovery exists.
+  // The lazy screen validates the descriptor before deriving these props.
+  const restoring = requestedOrigin === 'f5-pending';
+  const initialSource = restoring && focusedResume ? 'personal' : requestedSource;
+  const initialFilter = restoring && focusedResume ? focusedResume.filter : requestedFilter;
+  const trainingOrigin = restoring && focusedResume ? focusedResume.origin : requestedOrigin;
   const resumedTarget = focusedResume && initialSource === 'personal' && focusedResume.origin === trainingOrigin
     && validFocusedPuzzleFilter(focusedResume.filter)
     ? personalPuzzles.find((item) => item.id === focusedResume.puzzleId && matchesPersonalPuzzleFilter(item, focusedResume.filter)) || null
     : null;
-  const missingResumedTarget = Boolean(focusedResume && initialSource === 'personal'
-    && focusedResume.origin === trainingOrigin && !resumedTarget);
+  const missingResumedTarget = Boolean((restoring && !focusedResume)
+    || (focusedResume && initialSource === 'personal'
+      && focusedResume.origin === trainingOrigin && !resumedTarget));
   const [sourcePickerOpen, setSourcePickerOpen] = useState(false);
   const filteredInitialPersonalTotal = personalPuzzles.filter((item) => matchesPersonalPuzzleFilter(item, initialFilter)).length;
   const focusedInsightsTraining = trainingOrigin === 'insights-action';

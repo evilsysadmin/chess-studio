@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { clearFocusedPuzzleResume, loadFocusedPuzzleResume } from './viewState.js';
+import { clearFocusedPuzzleResume, hasFocusedPuzzleResume } from './viewState.js';
 
 const DEFAULT_PUZZLE_LAUNCH = Object.freeze({
   source: 'curated',
@@ -16,10 +16,9 @@ export function normalizeInsightsLandingSection(section) {
 }
 
 export function useLearningJourneyFlow({ navigateTo, resetNavigation }) {
-  const [puzzleLaunch, setPuzzleLaunch] = useState(() => {
-    const saved = loadFocusedPuzzleResume();
-    return saved ? { source: 'personal', rush: false, filter: saved.filter, dailySlot: 'tactic', origin: saved.origin } : DEFAULT_PUZZLE_LAUNCH;
-  });
+  const [puzzleLaunch, setPuzzleLaunch] = useState(() => hasFocusedPuzzleResume()
+    ? { ...DEFAULT_PUZZLE_LAUNCH, source: 'personal', origin: 'f5-pending' }
+    : DEFAULT_PUZZLE_LAUNCH);
   const [quickMatchLaunchNonce, setQuickMatchLaunchNonce] = useState(0);
   const [insightsLandingSection, setInsightsLandingSection] = useState(DEFAULT_INSIGHTS_SECTION);
 

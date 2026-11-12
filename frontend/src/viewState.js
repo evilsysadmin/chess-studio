@@ -2,14 +2,10 @@ import { STORAGE_LOCAL, STORAGE_SESSION, getStorageItem, readJsonStorage, remove
 import { MAX_VIEW_HISTORY } from './viewNavigationContract.js';
 // Minimal pre-login/F5 reader. The write path lives with lazy PuzzleScreen.
 export const FOCUSED_PUZZLE_RESUME_KEY = 'chess-study-focused-puzzle-resume-v1';
-export function loadFocusedPuzzleResume() {
+export function hasFocusedPuzzleResume() {
   const value = readJsonStorage(STORAGE_SESSION, FOCUSED_PUZZLE_RESUME_KEY);
   const username = getStorageItem(STORAGE_LOCAL, 'chess-study-auth-username');
-  if (username && value?.version === 1 && value.owner === String(username).trim().toLowerCase()
-    && (value.origin === 'insights-action' || value.origin === 'postgame-error')
-    && typeof value.puzzleId === 'string' && value.puzzleId) return value;
-  removeStorageItem(STORAGE_SESSION, FOCUSED_PUZZLE_RESUME_KEY);
-  return null;
+  return Boolean(username && value?.owner === String(username).trim().toLowerCase());
 }
 export function clearFocusedPuzzleResume() {
   removeStorageItem(STORAGE_SESSION, FOCUSED_PUZZLE_RESUME_KEY);
@@ -41,7 +37,7 @@ const RESTORABLE_VIEWS = Object.freeze([
 
 function allowedView(view, { isAdminUser = false } = {}) {
   // Only a proven focused personal puzzle can recover this otherwise ephemeral route.
-  if (view === 'puzzle') return Boolean(loadFocusedPuzzleResume());
+  if (view === 'puzzle') return hasFocusedPuzzleResume();
   if (!RESTORABLE_VIEWS.includes(view)) return false;
   if (view === 'admin' && !isAdminUser) return false;
   return true;
@@ -54,7 +50,7 @@ export function loadSessionView({ isAdminUser = false } = {}) {
 
 export function rememberSessionView(view) {
   if (view === 'puzzle') {
-    if (loadFocusedPuzzleResume()) setStorageItem(STORAGE_SESSION, VIEW_STORAGE_KEY, 'puzzle');
+    if (hasFocusedPuzzleResume()) setStorageItem(STORAGE_SESSION, VIEW_STORAGE_KEY, 'puzzle');
     return;
   }
   // Any other route ends the focused F5 recovery opportunity.

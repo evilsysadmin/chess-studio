@@ -1,15 +1,16 @@
 // Recovery only: the personal puzzle bank still owns FEN, scoring and solution.
 // Loaded with PuzzleScreen, never during initial app bootstrap.
 import { STORAGE_LOCAL, STORAGE_SESSION, getStorageItem, writeJsonStorage } from './safeStorage.js';
-import {
-  FOCUSED_PUZZLE_RESUME_KEY, clearFocusedPuzzleResume,
-  loadFocusedPuzzleResume as loadFocusedPuzzleSnapshot,
-} from './viewState.js';
+import { FOCUSED_PUZZLE_RESUME_KEY, clearFocusedPuzzleResume } from './viewState.js';
+import { readJsonStorage, removeStorageItem } from './safeStorage.js';
 export { FOCUSED_PUZZLE_RESUME_KEY, clearFocusedPuzzleResume } from './viewState.js';
 
 export function loadFocusedPuzzleResume({ now = Date.now() } = {}) {
-  const snapshot = loadFocusedPuzzleSnapshot();
-  if (snapshot && typeof snapshot.puzzleId === 'string' && snapshot.puzzleId.length <= 160
+  const snapshot = readJsonStorage(STORAGE_SESSION, FOCUSED_PUZZLE_RESUME_KEY);
+  const owner = String(getStorageItem(STORAGE_LOCAL, 'chess-study-auth-username') || '').trim().toLowerCase();
+  if (owner && snapshot?.version === 1 && snapshot.owner === owner
+    && ['insights-action', 'postgame-error'].includes(snapshot.origin)
+    && typeof snapshot.puzzleId === 'string' && snapshot.puzzleId.trim() && snapshot.puzzleId.length <= 160
     && Number.isFinite(snapshot.savedAt) && snapshot.savedAt > 0
     && now - snapshot.savedAt <= 14_400_000 && snapshot.savedAt - now <= 60_000
     && validFocusedPuzzleFilter(snapshot.filter)) return snapshot;
