@@ -13,9 +13,9 @@ function completedSession(overrides = {}) {
     minutes: 15,
     currentIndex: 2,
     steps: [
-      { id: 'debt', kind: 'debt', title: 'Ataca la deuda: mates', minutes: 8 },
-      { id: 'game', kind: 'short-game', title: 'Partida corta de práctica', minutes: 6 },
-      { id: 'review', kind: 'review', title: 'Cierre rápido', minutes: 1 },
+      { id: 'debt', kind: 'debt', action: 'personal-filter', title: 'Ataca la deuda: mates', minutes: 8 },
+      { id: 'game', kind: 'short-game', action: 'short-game', title: 'Partida corta de práctica', minutes: 6 },
+      { id: 'review', kind: 'review', action: 'review', title: 'Cierre rápido', minutes: 1 },
     ],
     ...overrides,
   };
@@ -97,9 +97,9 @@ describe('guided training completion summary', () => {
       minutes: 5,
       currentIndex: 2,
       steps: [
-        { id: 'a', kind: 'debt', title: 'Primer ejercicio', minutes: 4 },
-        { id: 'b', kind: 'short-game', title: 'Segundo ejercicio', minutes: 4 },
-        { id: 'review', kind: 'review', title: 'Cierre', minutes: 1 },
+        { id: 'a', kind: 'debt', action: 'personal-filter', title: 'Primer ejercicio', minutes: 4 },
+        { id: 'b', kind: 'short-game', action: 'short-game', title: 'Segundo ejercicio', minutes: 4 },
+        { id: 'review', kind: 'review', action: 'review', title: 'Cierre', minutes: 1 },
       ],
     };
     expect(saveGuidedTrainingCompletion(fiveMinute, { now: NOW })).toBeNull();
@@ -114,6 +114,49 @@ describe('guided training completion summary', () => {
         { ...valid.blocks[0], minutes: 9 },
         { ...valid.blocks[1], minutes: 7 },
       ],
+    }));
+    expect(loadGuidedTrainingCompletion({ now: NOW })).toBeNull();
+    expect(sessionStorage.getItem(GUIDED_TRAINING_COMPLETION_KEY)).toBeNull();
+  });
+
+  it('no redondea fracciones en el cierre ni en resúmenes restaurados', () => {
+    const original = completedSession();
+    for (const invalid of [0.1, 8.5, 8.9]) {
+      const steps = original.steps.map((step, index) => index === 0 ? { ...step, minutes: invalid } : step);
+      expect(saveGuidedTrainingCompletion(completedSession({ steps }), { now: NOW })).toBeNull();
+      expect(sessionStorage.getItem(GUIDED_TRAINING_COMPLETION_KEY)).toBeNull();
+    }
+
+    const saved = saveGuidedTrainingCompletion(original, { now: NOW });
+    expect(saved.blocks[0].minutes).toBe(8);
+    for (const invalid of [0.1, 8.5, 8.9]) {
+      sessionStorage.setItem(GUIDED_TRAINING_COMPLETION_KEY, JSON.stringify({
+        ...saved, blocks: [{ ...saved.blocks[0], minutes: invalid }, saved.blocks[1]],
+      }));
+      expect(loadGuidedTrainingCompletion({ now: NOW })).toBeNull();
+      expect(sessionStorage.getItem(GUIDED_TRAINING_COMPLETION_KEY)).toBeNull();
+    }
+  });
+
+  it('exige identidades únicas, cierre terminal y presupuesto válido del plan original', () => {
+    const original = completedSession();
+    const corruptions = [
+      original.steps.map((step, index) => index === 1 ? { ...step, id: 'debt' } : step),
+      original.steps.map((step, index) => index === 0 ? { ...step, id: '' } : step),
+      original.steps.map((step, index) => index === 0 ? { ...step, action: 'review' } : step),
+      original.steps.map((step, index) => index === 2 ? { ...step, action: 'personal' } : step),
+      original.steps.map((step, index) => index === 0 ? { ...step, kind: 'review' } : step),
+      original.steps.map((step, index) => index === 2 ? { ...step, kind: 'debt' } : step),
+      original.steps.map((step, index) => index === 2 ? { ...step, minutes: 2 } : step),
+    ];
+    for (const steps of corruptions) {
+      expect(saveGuidedTrainingCompletion(completedSession({ steps }), { now: NOW })).toBeNull();
+      expect(sessionStorage.getItem(GUIDED_TRAINING_COMPLETION_KEY)).toBeNull();
+    }
+
+    const saved = saveGuidedTrainingCompletion(original, { now: NOW });
+    sessionStorage.setItem(GUIDED_TRAINING_COMPLETION_KEY, JSON.stringify({
+      ...saved, blocks: [{ ...saved.blocks[0] }, { ...saved.blocks[1], id: saved.blocks[0].id }],
     }));
     expect(loadGuidedTrainingCompletion({ now: NOW })).toBeNull();
     expect(sessionStorage.getItem(GUIDED_TRAINING_COMPLETION_KEY)).toBeNull();
