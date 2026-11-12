@@ -8,6 +8,7 @@ import {
   waitForTrainingRoomSettled,
   waitForHomeInteractive,
 } from './helpers.js';
+import { navigateWarRoomKeyboard } from './war-room-board-input.js';
 
 const PERSONAL_MATE_FEN = '6k1/5ppp/8/8/8/8/5PPP/R5K1 w - - 0 1';
 
@@ -349,9 +350,18 @@ test('Puzzles · revelar mientras el rival prepara su respuesta no deja movimien
   // Freeze only after the room is ready: no race between the 550 ms reply
   // timer and Playwright actionability/screenshot overhead.
   await page.clock.install();
-  await focused.getByRole('button', { name: /^Casilla d1,/ }).click();
+  // TrainingRoomBoard is a real 3D canvas, not the accessible 2D square
+  // buttons. Use its existing keyboard contract and pause just before the
+  // final Enter, guaranteeing that the reply timeout cannot elapse.
+  const board = page.locator('[data-board3d-war-room="true"]');
+  const canvas = page.locator('.board3d-main-canvas');
+  await navigateWarRoomKeyboard(canvas, board, 'd1');
+  await canvas.focus();
+  await page.keyboard.press('Enter');
+  await expect(board).toHaveAttribute('data-board3d-selected', 'd1');
+  await navigateWarRoomKeyboard(canvas, board, 'h5');
   await page.clock.pauseAt(new Date());
-  await focused.getByRole('button', { name: /^Casilla h5,/ }).dispatchEvent('click');
+  await page.keyboard.press('Enter');
   await expect(focused.getByText('El rival responde…', { exact: true })).toBeVisible();
   await focused.getByRole('button', { name: 'Ver solución', exact: true }).dispatchEvent('click');
   await expect(focused.getByText('Esta era la solución', { exact: true })).toBeVisible();
