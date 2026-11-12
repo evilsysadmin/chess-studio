@@ -4,7 +4,7 @@ export const PUZZLE_STATE = Object.freeze({ LOADING: 'loading', SOLVING: 'solvin
 const T = Object.freeze({
   loading: { ready: 'solving', load_error: 'failed' },
   solving: { correct_continue: 'opponent_reply', correct_done: 'solved', wrong: 'solving', load_error: 'failed', reveal: 'failed', reset: 'solving', next: 'loading' },
-  opponent_reply: { replied: 'solving', mate: 'solved', reply_error: 'failed' },
+  opponent_reply: { replied: 'solving', mate: 'solved', reply_error: 'failed', reveal: 'failed' },
   solved: { next: 'loading', reset: 'solving' },
   failed: { retry: 'solving', next: 'loading' },
 });

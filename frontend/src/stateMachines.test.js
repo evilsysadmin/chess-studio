@@ -52,6 +52,18 @@ describe('explicit state machines', () => {
     expect(puzzleTransition('opponent_reply', 'replied').nextState).toBe('solving');
   });
 
+  it('Ver solución durante la réplica rival termina el puzzle sin permitir una respuesta tardía', () => {
+    // The button is intentionally available during the 550 ms reply delay.
+    // Revealing cannot leave the machine stuck at opponent_reply.
+    const waiting = puzzleTransition('solving', 'correct_continue');
+    expect(waiting).toMatchObject({ ok: true, nextState: 'opponent_reply' });
+    const revealed = puzzleTransition(waiting.nextState, 'reveal');
+    expect(revealed).toMatchObject({ ok: true, nextState: 'failed' });
+    expect(puzzleTransition(revealed.nextState, 'replied').ok).toBe(false);
+    expect(puzzleTransition(revealed.nextState, 'next').nextState).toBe('loading');
+    expect(puzzleTransition('solving', 'reveal').nextState).toBe('failed');
+  });
+
   it('10k generated combat events never manufacture an unknown state', () => {
     let state = 'setup';
     const events = deterministicSequence(0xC0FFEE, 10_000, Object.values(COMBAT_FLOW_EVENT));
