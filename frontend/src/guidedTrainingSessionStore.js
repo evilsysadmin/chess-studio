@@ -90,6 +90,7 @@ export function loadGuidedTrainingSession({ now = Date.now() } = {}) {
 export function startGuidedTrainingSession(plan, { now = Date.now() } = {}) {
   if (!plan?.available || !validSessionSteps(plan.steps, plan.minutes)) return null;
   const startedAt = Number(now);
+  const previous = loadGuidedTrainingSession({ now: startedAt });
   const session = {
     schema: SESSION_SCHEMA,
     id: newGuidedSessionId(startedAt, plan.minutes),
@@ -99,7 +100,14 @@ export function startGuidedTrainingSession(plan, { now = Date.now() } = {}) {
     currentIndex: 0,
     steps: plan.steps,
   };
-  writeJsonStorage(STORAGE_SESSION, GUIDED_TRAINING_SESSION_KEY, session);
+  // safeStorage offers a same-tab memory fallback when Web Storage rejects a
+  // write. That is not an F5-durable training session: don't report it started.
+  // If a prior session existed, preserve it as the last confirmed assignment.
+  if (!writeJsonStorage(STORAGE_SESSION, GUIDED_TRAINING_SESSION_KEY, session)) {
+    if (previous) writeJsonStorage(STORAGE_SESSION, GUIDED_TRAINING_SESSION_KEY, previous);
+    else removeStorageItem(STORAGE_SESSION, GUIDED_TRAINING_SESSION_KEY);
+    return null;
+  }
   return session;
 }
 
@@ -125,11 +133,20 @@ export function advanceGuidedTrainingSession(session, { now = Date.now() } = {})
   if (!normalized || !isCurrentGuidedTrainingStep(normalized, loadGuidedTrainingSession({ now: checkedAt }))) return null;
   const nextIndex = normalized.currentIndex + 1;
   if (nextIndex >= normalized.steps.length) {
-    removeStorageItem(STORAGE_SESSION, GUIDED_TRAINING_SESSION_KEY);
+    if (!removeStorageItem(STORAGE_SESSION, GUIDED_TRAINING_SESSION_KEY)) {
+      // Cannot certify completion if the old session would return after F5.
+      writeJsonStorage(STORAGE_SESSION, GUIDED_TRAINING_SESSION_KEY, normalized);
+      return normalized;
+    }
     return null;
   }
   const next = { ...normalized, currentIndex: nextIndex };
-  writeJsonStorage(STORAGE_SESSION, GUIDED_TRAINING_SESSION_KEY, next);
+  if (!writeJsonStorage(STORAGE_SESSION, GUIDED_TRAINING_SESSION_KEY, next)) {
+    // Do not show a new step when only an in-memory override changed. On F5
+    // the browser would otherwise resurrect the previous step.
+    writeJsonStorage(STORAGE_SESSION, GUIDED_TRAINING_SESSION_KEY, normalized);
+    return normalized;
+  }
   return next;
 }
 
