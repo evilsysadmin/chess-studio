@@ -3,13 +3,12 @@ import { MAX_VIEW_HISTORY } from './viewNavigationContract.js';
 // Minimal pre-login/F5 reader. The write path lives with lazy PuzzleScreen.
 export const FOCUSED_PUZZLE_RESUME_KEY = 'chess-study-focused-puzzle-resume-v1';
 export function loadFocusedPuzzleResume({ now = Date.now() } = {}) {
-  const value = readJsonStorage(STORAGE_SESSION, FOCUSED_PUZZLE_RESUME_KEY, { fallback: null, removeMalformed: true });
-  const owner = String(getStorageItem(STORAGE_LOCAL, 'chess-study-auth-username') || '').trim().toLowerCase();
-  if (owner && value?.version === 1 && value.owner === owner
-    && ['insights-action', 'postgame-error'].includes(value.origin)
+  const value = readJsonStorage(STORAGE_SESSION, FOCUSED_PUZZLE_RESUME_KEY);
+  const username = getStorageItem(STORAGE_LOCAL, 'chess-study-auth-username');
+  if (username && value?.version === 1 && value.owner === String(username).trim().toLowerCase()
+    && (value.origin === 'insights-action' || value.origin === 'postgame-error')
     && typeof value.puzzleId === 'string' && value.puzzleId.trim()
-    && Number.isFinite(value.savedAt) && value.savedAt > 0
-    && now - value.savedAt <= 4 * 60 * 60 * 1000 && value.savedAt - now <= 60_000) return value;
+    && value.savedAt > 0 && value.savedAt >= now - 14_400_000 && value.savedAt <= now + 60_000) return value;
   removeStorageItem(STORAGE_SESSION, FOCUSED_PUZZLE_RESUME_KEY);
   return null;
 }
