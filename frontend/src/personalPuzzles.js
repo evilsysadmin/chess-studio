@@ -153,15 +153,25 @@ export function personalPuzzleFromMistake(history, humanColor, moveReport, meta 
 }
 
 export function savePersonalPuzzlesFromReport(history, humanColor, report, meta = {}) {
-  const candidates = (report?.topMistakes || [])
+  const playable = (report?.topMistakes || [])
     .filter((m) => m.loss >= 80)
     .map((m) => personalPuzzleFromMistake(history, humanColor, m, meta))
-    .filter(Boolean)
-    .slice(0, 2);
-  if (!candidates.length) return { added: 0, total: loadPersonalPuzzles().length };
-
+    .filter(Boolean);
   const current = loadPersonalPuzzles();
+  if (!playable.length) return { added: 0, total: current.length };
+
   const byId = new Map(current.map((p) => [p.id, p]));
+  const seen = new Set();
+  // The two slots are for distinct training opportunities, not for repeating
+  // mastered mistakes or duplicate reports of the same original position.
+  // Keep mastered records untouched in the user's archive and let the next
+  // still-pending factual mistake enter the queue.
+  const candidates = playable.filter((puzzle) => {
+    if (seen.has(puzzle.id)) return false;
+    seen.add(puzzle.id);
+    return !isPersonalPuzzleMastered(byId.get(puzzle.id));
+  }).slice(0, 2);
+  if (!candidates.length) return { added: 0, total: current.length };
   let added = 0;
   let changed = false;
   for (const puzzle of candidates) {
