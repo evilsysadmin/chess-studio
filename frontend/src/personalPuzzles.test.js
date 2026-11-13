@@ -50,6 +50,60 @@ describe('personal puzzles', () => {
     expect(loadPersonalPuzzles()).toMatchObject([{ played: 'Nf3', suggested: 'Bc4' }]);
   });
 
+  it('conserva errores dominados y guarda el tercer error factual pendiente aunque los dos peores ya estén superados', () => {
+    const history = [
+      { san: 'e4', from: 'e2', to: 'e4' },
+      { san: 'e5', from: 'e7', to: 'e5' },
+      { san: 'Nf3', from: 'g1', to: 'f3' },
+      { san: 'Nc6', from: 'b8', to: 'c6' },
+      { san: 'Bc4', from: 'f1', to: 'c4' },
+    ];
+    const mistakes = [
+      { index: 0, moveNumber: 1, played: 'e4', suggested: 'd4', loss: 450 },
+      { index: 2, moveNumber: 2, played: 'Nf3', suggested: 'Nh3', loss: 350 },
+      { index: 4, moveNumber: 3, played: 'Bc4', suggested: 'Bb5', loss: 250 },
+    ];
+    const initial = savePersonalPuzzlesFromReport(history, 'w', {
+      topMistakes: mistakes.slice(0, 2),
+    }, { gameId: 'g-mastered-old' });
+    expect(initial.added).toBe(2);
+    const old = loadPersonalPuzzles();
+    expect(old).toHaveLength(2);
+    for (const puzzle of old) recordPersonalPuzzleResult(puzzle.id, { solved: true, clean: true });
+    const masteredBefore = loadPersonalPuzzles();
+    expect(masteredBefore.every(isPersonalPuzzleMastered)).toBe(true);
+
+    const saved = savePersonalPuzzlesFromReport(history, 'w', {
+      topMistakes: mistakes,
+    }, { gameId: 'g-new-third' });
+    expect(saved.added).toBe(1);
+    const bank = loadPersonalPuzzles();
+    expect(bank).toHaveLength(3);
+    for (const previous of masteredBefore) {
+      expect(bank.find((p) => p.id === previous.id)).toEqual(previous);
+    }
+    const pending = bank.filter((p) => !isPersonalPuzzleMastered(p));
+    expect(pending).toMatchObject([
+      { played: 'Bc4', suggested: 'Bb5', sourceGameId: 'g-new-third' },
+    ]);
+  });
+
+  it('repetir dos veces el mismo error no agota el cupo de dos ejercicios distintos', () => {
+    const history = [
+      { san: 'e4', from: 'e2', to: 'e4' },
+      { san: 'e5', from: 'e7', to: 'e5' },
+      { san: 'Nf3', from: 'g1', to: 'f3' },
+    ];
+    const repeated = { index: 0, moveNumber: 1, played: 'e4', suggested: 'd4', loss: 400 };
+    const unique = { index: 2, moveNumber: 2, played: 'Nf3', suggested: 'Bc4', loss: 250 };
+    expect(savePersonalPuzzlesFromReport(history, 'w', {
+      topMistakes: [repeated, { ...repeated, loss: 350 }, unique],
+    }).added).toBe(2);
+    const bank = loadPersonalPuzzles();
+    expect(bank).toHaveLength(2);
+    expect(bank.map((p) => p.suggested).sort()).toEqual(['Bc4', 'd4']);
+  });
+
   it('conserva la apertura de la autopsia y permite filtrar entrenamiento némesis', () => {
     const history = [{ san: 'e4' }, { san: 'e5' }, { san: 'Nf3' }];
     const report = { topMistakes: [{ index: 2, played: 'Nf3', suggested: 'Bc4', loss: 150 }] };
