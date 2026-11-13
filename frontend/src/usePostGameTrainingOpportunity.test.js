@@ -4,6 +4,7 @@ const { analyzeMove } = vi.hoisted(() => ({ analyzeMove: vi.fn() }));
 vi.mock('./api.js', () => ({ api: { analyzeMove } }));
 
 import { focusPostGameTrainingOpportunity, preparePostGameTrainingOpportunity } from './usePostGameTrainingOpportunity.js';
+import { personalPuzzleFromMistake } from './personalPuzzles.js';
 
 describe('preparePostGameTrainingOpportunity', () => {
   it('en el clic no secuestra otro puzzle si el crimen recomendado desapareció o ya se superó', () => {
@@ -89,6 +90,46 @@ describe('preparePostGameTrainingOpportunity', () => {
     expect(JSON.parse(localStorage.getItem('chess-study-personal-puzzles'))).toEqual([
       expect.objectContaining({ id: opportunity.puzzleId, sourceGameId: game.id, suggested: 'Bb5' }),
     ]);
+  });
+
+  it('ofrece el siguiente error real pendiente cuando el peor ya está superado', async () => {
+    const game = {
+      id: 'g-already-mastered-worst',
+      history: [
+        { from: 'e2', to: 'e4', san: 'e4', piece: 'p' },
+        { from: 'e7', to: 'e5', san: 'e5', piece: 'p' },
+        { from: 'g1', to: 'f3', san: 'Nf3', piece: 'n' },
+        { from: 'b8', to: 'c6', san: 'Nc6', piece: 'n' },
+        { from: 'f1', to: 'c4', san: 'Bc4', piece: 'b' },
+      ],
+    };
+    const meta = { gameId: game.id };
+    const alreadyMastered = personalPuzzleFromMistake(game.history, 'w', {
+      index: 0, moveNumber: 1, played: 'e4', suggested: 'd4', loss: 440,
+    }, meta);
+    expect(alreadyMastered?.id).toMatch(/^personal-/);
+    localStorage.setItem('chess-study-personal-puzzles', JSON.stringify([{
+      ...alreadyMastered, solves: 1, cleanSolves: 1,
+      masteredAt: '2026-11-12T12:00:00Z',
+    }]));
+    analyzeMove
+      .mockResolvedValueOnce({ suggested: { from: 'd2', to: 'd4', san: 'd4' }, loss: 440 })
+      .mockResolvedValueOnce({ suggested: { from: 'g1', to: 'h3', san: 'Nh3' }, loss: 320 })
+      .mockResolvedValueOnce({ suggested: { from: 'f1', to: 'b5', san: 'Bb5' }, loss: 160 });
+
+    const opportunity = await preparePostGameTrainingOpportunity({ game, humanColor: 'w', meta });
+    expect(opportunity).toMatchObject({ moveNumber: 2, played: 'Nf3', suggested: 'Nh3' });
+    expect(opportunity.puzzleId).not.toBe(alreadyMastered.id);
+
+    const bank = JSON.parse(localStorage.getItem('chess-study-personal-puzzles'));
+    expect(bank.find((item) => item.id === alreadyMastered.id)).toMatchObject({
+      solves: 1, cleanSolves: 1, masteredAt: '2026-11-12T12:00:00Z',
+    });
+    expect(bank.find((item) => item.id === opportunity.puzzleId)).toMatchObject({
+      suggested: 'Nh3', sourceGameId: game.id,
+    });
+    expect(focusPostGameTrainingOpportunity(opportunity)).toBe(true);
+    expect(sessionStorage.getItem('chess-study-personal-puzzle-focus')).toBe(opportunity.puzzleId);
   });
 
   it('no inventa entrenamiento si el análisis no demuestra un error de 80 cp', async () => {
