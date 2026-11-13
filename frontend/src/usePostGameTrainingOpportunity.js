@@ -9,15 +9,21 @@ export async function preparePostGameTrainingOpportunity({ game, humanColor, met
     signal,
     initialFen: meta.initialFen || game.initialFen || null,
   });
-  const candidate = (report?.topMistakes || [])
+  const candidates = (report?.topMistakes || [])
     .filter((move) => Number(move?.loss || 0) >= 80)
     .map((move) => personalPuzzleFromMistake(game.history, humanColor, move, meta))
-    .find(Boolean) || null;
-  if (!candidate) return null;
+    .filter(Boolean);
+  if (!candidates.length) return null;
 
   savePersonalPuzzlesFromReport(game.history, humanColor, report, meta);
-  // Never offer a postgame CTA for a candidate that did not reach the playable queue.
-  if (!loadPersonalPuzzles().some((puzzle) => puzzle.id === candidate.id && !isPersonalPuzzleMastered(puzzle))) return null;
+  // The worst reconstructed error may already be mastered or retired by the
+  // canonical bank's quality gates. Offer the first *playable pending* error
+  // from this report, never an unrelated fallback or a completed exercise.
+  const pendingIds = new Set(loadPersonalPuzzles()
+    .filter((puzzle) => !isPersonalPuzzleMastered(puzzle))
+    .map((puzzle) => puzzle.id));
+  const candidate = candidates.find((puzzle) => pendingIds.has(puzzle.id));
+  if (!candidate) return null;
   return {
     puzzleId: candidate.id,
     moveNumber: candidate.moveNumber,
