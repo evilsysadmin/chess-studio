@@ -13,12 +13,13 @@ const stagingLiveSpec = '**/staging-live.spec.js';
 // Hardware comparison is strictly local/opt-in, never a hosted CI gate.
 const pvpGpuSpec = '**/pvp-hall-gpu-benchmark.spec.js';
 const homeGpuSpec = '**/home-3d-gpu-benchmark.spec.js';
+const homeFlameGpuSpec = '**/home-3d-flame-pass-benchmark.spec.js';
 // Local-only physical renderer comparison for the War Room; excluded by default.
 const warRoomGpuSpec = '**/war-room-gpu-benchmark.spec.js';
 const warRoomGpuMode = process.env.WAR_ROOM_GPU_BENCH === '1';
 const testIgnore = chaosMode
-  ? [stagingLiveSpec, pvpGpuSpec, homeGpuSpec]
-  : ['**/chaos-local.spec.js', stagingLiveSpec, pvpGpuSpec, homeGpuSpec];
+  ? [stagingLiveSpec, pvpGpuSpec, homeGpuSpec, homeFlameGpuSpec]
+  : ['**/chaos-local.spec.js', stagingLiveSpec, pvpGpuSpec, homeGpuSpec, homeFlameGpuSpec];
 if (!warRoomGpuMode) testIgnore.push(warRoomGpuSpec);
 if (fullSweep) {
   // Artifact producers already have scoped Chromium capture workflows. Replaying
