@@ -20,9 +20,11 @@ on:
 permissions:
   contents: read
 
+# PR contract checks must not queue behind live telemetry verification.
+# Superseded PR revisions cancel; production observations remain serialized.
 concurrency:
-  group: chess-studio-observability-live
-  cancel-in-progress: false
+  group: ${{ github.event_name == 'pull_request' && format('chess-studio-observability-pr-{0}', github.event.pull_request.number) || 'chess-studio-observability-live' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   query-contract:
