@@ -182,10 +182,8 @@ jobs:
           cat "$log"
           [[ -f "$result" ]] && cat "$result"
 
-          if [[ "$deploy_rc" -ne 0 || "$probe_rc" -ne 0 ]]; then
-            echo "::error::continuity drill failed: deploy=$deploy_rc probe=$probe_rc"
-            exit 1
-          fi
+          python3 -S scripts/staging_continuity_receipt_gate.py \
+            "$deploy_rc" "$probe_rc" "$STAGING_API_URL" "$DEPLOY_SHA"
       - name: Verify exact generation survived the switch
         shell: bash
         run: |
