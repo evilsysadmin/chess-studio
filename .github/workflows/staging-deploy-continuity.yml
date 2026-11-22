@@ -182,7 +182,22 @@ jobs:
           cat "$log"
           [[ -f "$result" ]] && cat "$result"
 
-          if [[ "$deploy_rc" -ne 0 || "$probe_rc" -ne 0 ]]; then
+          # A host Run Command may finish successfully without returning its
+          # exact-SHA receipt (oci_run_command exits 78). This is provisional,
+          # never equivalent to a verified deploy: preserve the live-game gate
+          # and demand independent public exact-SHA accreditation here.
+          if [[ "$probe_rc" -ne 0 ]]; then
+            echo "::error::continuity drill failed: deploy=$deploy_rc probe=$probe_rc"
+            exit 1
+          fi
+          if [[ "$deploy_rc" -eq 78 ]]; then
+            echo "::warning::OCI host receipt missing; checking public staging exact SHA"
+            if ! python3 scripts/verify_backend_staging.py \
+              --api-url "$STAGING_API_URL" --sha "$DEPLOY_SHA" --attempts 10 --interval 2; then
+              echo "::error::OCI receipt missing and public exact-SHA verification failed"
+              exit 1
+            fi
+          elif [[ "$deploy_rc" -ne 0 ]]; then
             echo "::error::continuity drill failed: deploy=$deploy_rc probe=$probe_rc"
             exit 1
           fi
