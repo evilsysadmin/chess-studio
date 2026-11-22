@@ -121,15 +121,15 @@ otelcol.receiver.filelog "oci_backend_stdout" {
   storage       = otelcol.storage.file.oci_backend_stdout.handler
 
   operators = [{
-    type = "container"
+    type = "container",
   }]
 
   resource = {
-    "service.name"                 = sys.env("OCI_LOG_SERVICE_NAME")
-    "deployment.environment.name" = sys.env("ENVIRONMENT")
-    "cloud.provider"               = "oci"
-    "cloud.region"                 = "eu-frankfurt-1"
-    "service.version"              = sys.env("GIT_COMMIT_SHA")
+    "service.name"                 = sys.env("OCI_LOG_SERVICE_NAME"),
+    "deployment.environment.name" = sys.env("ENVIRONMENT"),
+    "cloud.provider"               = "oci",
+    "cloud.region"                 = "eu-frankfurt-1",
+    "service.version"              = sys.env("GIT_COMMIT_SHA"),
   }
 
   retry_on_failure {
@@ -153,15 +153,15 @@ otelcol.receiver.filelog "oci_filelog_probe" {
   storage       = otelcol.storage.file.oci_filelog_probe.handler
 
   operators = [{
-    type = "container"
+    type = "container",
   }]
 
   resource = {
-    "service.name"                 = sys.env("OCI_LOG_SERVICE_NAME")
-    "deployment.environment.name" = sys.env("ENVIRONMENT")
-    "cloud.provider"               = "oci"
-    "cloud.region"                 = "eu-frankfurt-1"
-    "service.version"              = sys.env("GIT_COMMIT_SHA")
+    "service.name"                 = sys.env("OCI_LOG_SERVICE_NAME"),
+    "deployment.environment.name" = sys.env("ENVIRONMENT"),
+    "cloud.provider"               = "oci",
+    "cloud.region"                 = "eu-frankfurt-1",
+    "service.version"              = sys.env("GIT_COMMIT_SHA"),
   }
 
   retry_on_failure {
