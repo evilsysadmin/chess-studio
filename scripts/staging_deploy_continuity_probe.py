@@ -274,6 +274,8 @@ def self_test() -> None:
             raise AssertionError("resume invariant accepted a duplicate, stale or wrong-game replay")
     godot_pins_self_test()
     pvp.self_test()
+    from staging_continuity_receipt_gate import self_test as receipt_gate_self_test
+    receipt_gate_self_test()
     print("deploy-continuity probe self-test: OK")
 
 
