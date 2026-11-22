@@ -3,6 +3,10 @@ name: PvP · Python fallback usage
 # Evidence gate for retiring the Python PvP fallback: how many public
 # /api/pvp requests still reached FastAPI. Read-only Grafana query.
 on:
+  pull_request:
+    paths:
+      - scripts/pvp_python_fallback_report.py
+      - .github/workflows/pvp-python-fallback.yml
   workflow_dispatch:
     inputs:
       window:
@@ -55,6 +59,7 @@ jobs:
       - name: Self-test
         run: python3 -S scripts/pvp_python_fallback_report.py --self-test
       - name: Query Grafana
+        if: github.event_name != 'pull_request'
         shell: bash
         run: |
           set -euo pipefail
