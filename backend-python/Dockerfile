@@ -8,7 +8,12 @@ RUN apk add --no-cache build-base linux-headers
 RUN python -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# Only requirements.txt owns the CA-bundle pin. Reject an unpinned or
+# mismatched package in the builder, before copying the venv into runtime.
+RUN pip install --no-cache-dir -r requirements.txt \
+    && installed_certifi="$(python -c 'from importlib.metadata import version; print(version("certifi"))')" \
+    && [ "$(grep -Ec '^certifi==' requirements.txt)" -eq 1 ] \
+    && grep -Fxq "certifi==${installed_certifi}" requirements.txt
 
 FROM ${PYTHON_IMAGE}
 WORKDIR /app
@@ -28,7 +33,7 @@ ENV PATH="/opt/venv/bin:$PATH"
 # so the final container does not ship a second, obsolete TLS trust bundle.
 RUN /opt/venv/bin/python -m pip uninstall --yes pip \
     && /usr/local/bin/python -m pip uninstall --yes pip \
-    && /opt/venv/bin/python -c "from importlib.metadata import version; assert version('certifi') == '2026.10.23'" \
+    && /opt/venv/bin/python -c "from importlib.metadata import version; assert version('certifi')" \
     && /opt/venv/bin/python -c "import importlib.util; assert importlib.util.find_spec('pip') is None" \
     && /usr/local/bin/python -c "import importlib.util; assert importlib.util.find_spec('pip') is None"
 
