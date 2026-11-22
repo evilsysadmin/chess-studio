@@ -21,9 +21,9 @@ The backend is the Go API (`backend-go`, binary `api-edge`); Python was retired 
 
 Each target runs two blue/green Go slots (`pvp_blue`, `pvp_green`, `GO_PYTHON_RETIRED=true`) behind a stable nginx `edge` on the target port. The deploy pulls the immutable SHA tag (retrying while CI is still publishing it) **before** touching the serving slot, recreates only the inactive slot, proves `/api/ready`, `/api/release` and `/readyz` inside it, switches nginx, attests every native route through the edge, commits, and only then drains the previous slot. A failed attestation puts nginx back on the previous slot, which is still running.
 
-### Rollback to Python (until 2026-10-17)
+### Historic Python rollback archive (window closed 2026-10-17)
 
-The supported path is the **Production · rollback** workflow (or a staging deploy) to `6a558ff5c62716efa217cd3a3228439ba0365026`, the last release that can still start Python: it brings back its own deploy script, compose file and images together. `docker-compose.python-rollback.yml.bak` is a reference snapshot of that Python-capable compose for a manual recovery only; no deploy reads it. Both disappear when the rollback window closes.
+The Python-capable rollback window closed on **2026-10-17**. Production and staging use the native Go backend; current deploys roll back between attested Go blue/green slots. The obsolete, unused `docker-compose.python-rollback.yml.bak` working-tree snapshot has been retired. For emergency historical forensics, the last Python-capable release remains accessible by immutable Git SHA `6a558ff5c62716efa217cd3a3228439ba0365026` with its matching deployment script, Compose file and images. Do **not** assume deploying that expired generation is a safe supported production rollback; assess recovery prerequisites and authorization first.
 
 The host port defaults to `127.0.0.1:4000`; no public backend ingress is introduced here. Runtime secrets stay in `/etc/chess-studio/backend.env` (or `CHESS_STUDIO_ENV_FILE`) and never enter Git, Compose, Terraform state, registry images, or Run Command payloads.
 

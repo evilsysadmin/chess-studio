@@ -780,8 +780,10 @@ rollback_body = deploy.split("rollback() {", 1)[1].split("\n}\n", 1)[0]
 assert 'render_edge "$previous_color" "${previous_sha:-}"' in rollback_body
 assert 'wait_pvp_edge_attest "$port" "$previous_sha"' in rollback_body
 assert "backend_" not in rollback_body
-python_rollback = (ROOT / "infra" / "oci" / "runtime" / "docker-compose.python-rollback.yml.bak").read_text(encoding="utf-8")
-assert python_rollback.startswith("# ROLLBACK ONLY")
-assert "6a558ff5c62716efa217cd3a3228439ba0365026" in python_rollback
-assert "backend_blue:" in python_rollback and "backend_legacy:" in python_rollback
+# The Python-capable rollback window closed in October 2026. Historical
+# recovery remains in immutable Git history, never as an active runtime file.
+assert not (ROOT / "infra" / "oci" / "runtime" / "docker-compose.python-rollback.yml.bak").exists()
+archive_notes = (ROOT / "infra" / "oci" / "runtime" / "README.md").read_text(encoding="utf-8")
+assert "6a558ff5c62716efa217cd3a3228439ba0365026" in archive_notes
+assert "window closed 2026-10-17" in archive_notes
 print("OCI Go-only runtime contract: OK")
