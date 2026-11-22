@@ -1,0 +1,42 @@
+name: OCI · validate pinned Alloy config
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/oci-alloy-config.yml"
+      - "infra/oci/runtime/alloy.alloy"
+      - "infra/oci/runtime/docker-compose.yml"
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/oci-alloy-config.yml"
+      - "infra/oci/runtime/alloy.alloy"
+      - "infra/oci/runtime/docker-compose.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  alloy-config:
+    name: OCI Alloy · config validation
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v7
+      - name: Validate with exactly the OCI runtime image and preview flag
+        shell: bash
+        env:
+          ENVIRONMENT: staging
+          GIT_COMMIT_SHA: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+          OCI_LOG_SERVICE_NAME: chess-studio-oci-backend-staging-stdout
+          OTEL_EXPORTER_OTLP_ENDPOINT: https://example.invalid/otlp
+          OTEL_EXPORTER_OTLP_HEADERS: Authorization=Basic%20ci-placeholder
+        run: |
+          set -euo pipefail
+          docker run --rm --pull=always --network none \
+            -e ENVIRONMENT -e GIT_COMMIT_SHA -e OCI_LOG_SERVICE_NAME \
+            -e OTEL_EXPORTER_OTLP_ENDPOINT -e OTEL_EXPORTER_OTLP_HEADERS \
+            -v "$GITHUB_WORKSPACE/infra/oci/runtime/alloy.alloy:/etc/alloy/config.alloy:ro" \
+            grafana/alloy:v1.19.2 \
+            validate --stability.level=public-preview /etc/alloy/config.alloy

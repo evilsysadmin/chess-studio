@@ -147,6 +147,7 @@ Para producción pública, un fallo del synthetic es una señal operativa, no ru
 | Workflow | Responsabilidad |
 | --- | --- |
 | `grafana-dashboards.yml` | Publica cuatro dashboards idempotentemente con la Grafana HTTP API. **Sin Terraform, provider, state, import, plan ni apply.** |
+| `oci-alloy-config.yml` | Valida con `grafana/alloy:v1.19.2` y sin secretos que `infra/oci/runtime/alloy.alloy` cumple la sintaxis River del collector OCI antes de desplegar. No muta hosts ni contacta Grafana. |
 | `cloudflare-prometheus-exporter.yml` | Valida/despliega el exporter oficial Cloudflare cuando cambia su superficie. |
 | `synthetic-health.yml` | Canary sintético de producción cada 15 minutos (minutos 07/22/37/52 para evitar el top-of-hour herd). Valida liveness, readiness y gameplay autenticado; vive separado para funcionar aunque no haya releases. |
 | `weekly-actions-hygiene.yml` | Higiene semanal (domingos 04:17 UTC) de historiales de workflows cuyo YAML ya no existe en `main`: 30 días sin actividad, protege ramas/PR vivas, sólo runs completados, máximo 100 eliminaciones por pasada. Manual con `dry_run=true` por defecto. Sólo borra historiales, nunca YAML ni workflows vigentes. |
