@@ -72,9 +72,16 @@ def verify_native_runtime(
     """Independent, live Go-only proof; do not infer deployment from Git config."""
     if fetcher is None:
         def fetcher(url: str) -> dict:
+            # Match the established public staging verifier's cache-busting
+            # headers so Cloudflare does not serve a stale or blocked probe.
             request = urllib.request.Request(
-                url,
-                headers={"Accept": "application/json", "Cache-Control": "no-cache"},
+                url + f"?probe={time.time_ns()}",
+                headers={
+                    "Accept": "application/json",
+                    "Cache-Control": "no-cache, no-store",
+                    "Pragma": "no-cache",
+                    "User-Agent": "chess-studio-staging-deploy/6",
+                },
             )
             try:
                 with urllib.request.urlopen(request, timeout=8) as response:
@@ -87,6 +94,8 @@ def verify_native_runtime(
                 if not isinstance(result, dict):
                     fail("cannot attest zero PvP fallback: invalid Go readiness payload")
                 return result
+            except urllib.error.HTTPError as exc:
+                fail(f"cannot attest zero PvP fallback: Go readiness HTTP {exc.code} at {url}")
             except (urllib.error.URLError, TimeoutError, ValueError) as exc:
                 fail(f"cannot attest zero PvP fallback: Go readiness unavailable: {type(exc).__name__}")
     for environment, url in NATIVE_READY.items():
