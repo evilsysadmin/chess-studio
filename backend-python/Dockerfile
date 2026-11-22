@@ -28,7 +28,7 @@ ENV PATH="/opt/venv/bin:$PATH"
 # so the final container does not ship a second, obsolete TLS trust bundle.
 RUN /opt/venv/bin/python -m pip uninstall --yes pip \
     && /usr/local/bin/python -m pip uninstall --yes pip \
-    && /opt/venv/bin/python -c "from importlib.metadata import version; assert version('certifi') == '2026.10.19'" \
+    && /opt/venv/bin/python -c "from importlib.metadata import version; assert version('certifi') == '2026.10.23'" \
     && /opt/venv/bin/python -c "import importlib.util; assert importlib.util.find_spec('pip') is None" \
     && /usr/local/bin/python -c "import importlib.util; assert importlib.util.find_spec('pip') is None"
 
