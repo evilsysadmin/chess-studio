@@ -25,6 +25,8 @@ import os
 import sys
 import time
 import urllib.parse
+import urllib.request
+import urllib.error
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
@@ -34,6 +36,62 @@ SERVICES = {
     "chess-studio-backend": "production",
     "chess-studio-backend-staging": "staging",
 }
+
+# The current OCI runtime has no Python container. The Go-only service must
+# independently prove that it is serving all routes, and Grafana must contain
+# recent native Go request counters. Absence of Python metrics alone is not zero.
+NATIVE_SERVICES = {
+    "chess-studio-backend-go": "production",
+    "chess-studio-backend-staging-go": "staging",
+}
+NATIVE_READY = {
+    "production": "https://api.chess-studio.shadowops.dpdns.org/api/pvp/_edge/ready",
+    "staging": "https://api-staging.chess-studio.shadowops.dpdns.org/api/pvp/_edge/ready",
+}
+
+
+def verify_native_ready_payload(payload: dict, environment: str) -> None:
+    native = {k: v for k, v in payload.items() if k.startswith("native")}
+    release = str(payload.get("release") or "")
+    if not (
+        payload.get("status") == "ready"
+        and payload.get("service") == "chess-studio-pvp-go"
+        and payload.get("runtimeService") == "chess-studio-backend-go"
+        and payload.get("pythonRetired") is True
+        and len(native) >= 30
+        and all(value is True for value in native.values())
+        and len(release) == 40
+        and all(ch in "0123456789abcdef" for ch in release.lower())
+    ):
+        fail(f"cannot attest zero PvP fallback: {environment} is not fully Go-only")
+
+
+def verify_native_runtime(
+    fetcher=None,
+) -> None:
+    """Independent, live Go-only proof; do not infer deployment from Git config."""
+    if fetcher is None:
+        def fetcher(url: str) -> dict:
+            request = urllib.request.Request(
+                url,
+                headers={"Accept": "application/json", "Cache-Control": "no-cache"},
+            )
+            try:
+                with urllib.request.urlopen(request, timeout=8) as response:
+                    if response.status != 200:
+                        fail(f"cannot attest zero PvP fallback: Go readiness HTTP {response.status}")
+                    raw = response.read(65537)
+                if len(raw) > 65536:
+                    fail("cannot attest zero PvP fallback: oversized Go readiness response")
+                result = json.loads(raw)
+                if not isinstance(result, dict):
+                    fail("cannot attest zero PvP fallback: invalid Go readiness payload")
+                return result
+            except (urllib.error.URLError, TimeoutError, ValueError) as exc:
+                fail(f"cannot attest zero PvP fallback: Go readiness unavailable: {type(exc).__name__}")
+    for environment, url in NATIVE_READY.items():
+        verify_native_ready_payload(fetcher(url), environment)
+
 
 
 def _window_seconds(raw: str) -> int:
@@ -57,17 +115,16 @@ def fallback_query(window_seconds: int) -> str:
 
 
 def telemetry_coverage_query(window_seconds: int) -> str:
-    """Require a Python-specific OTLP heartbeat from both environments.
+    """Require positive recent Go request counters from production and staging.
 
-    Zero FastAPI HTTP requests is now a legitimate outcome as Go takes over
-    PvP. A request counter cannot prove an idle Python exporter is healthy.
-    The observable gauge is exported periodically without incoming traffic.
+    The Python exporter was retired with its container: its heartbeat cannot
+    attest the currently deployed Go-only runtime.
     """
-    services = "|".join(sorted(SERVICES))
-    lookback = min(window_seconds, 86400)  # short reports need same-window evidence
+    services = "|".join(sorted(NATIVE_SERVICES))
+    lookback = min(window_seconds, 86400)
     return (
         "sum by (service_name) (count_over_time("
-        f'chess_studio_python_telemetry_heartbeat{{service_name=~"{services}"}}[{lookback}s]))'
+        f'chess_studio_http_server_requests_total{{service_name=~"{services}"}}[{lookback}s]))'
     )
 
 
@@ -75,33 +132,34 @@ def verify_telemetry_coverage(payload: dict) -> None:
     data = payload.get("data") if isinstance(payload, dict) else None
     result = data.get("result") if isinstance(data, dict) else None
     if not isinstance(result, list):
-        fail("cannot attest zero PvP fallback: invalid Python heartbeat response")
+        fail("cannot attest zero PvP fallback: invalid native Go telemetry response")
     seen = set()
     for item in result:
         metric = item.get("metric") if isinstance(item, dict) else None
         value = item.get("value") if isinstance(item, dict) else None
         service = metric.get("service_name") if isinstance(metric, dict) else None
-        if service not in SERVICES or not isinstance(value, list) or len(value) != 2:
-            fail("cannot attest zero PvP fallback: malformed Python heartbeat series")
+        if service not in NATIVE_SERVICES or not isinstance(value, list) or len(value) != 2:
+            fail("cannot attest zero PvP fallback: malformed native Go metric series")
         try:
             samples = float(value[1])
         except (TypeError, ValueError):
-            fail("cannot attest zero PvP fallback: invalid Python heartbeat sample count")
+            fail("cannot attest zero PvP fallback: invalid native Go metric count")
         if not math.isfinite(samples) or samples <= 0:
-            fail("cannot attest zero PvP fallback: missing recent Python heartbeat samples")
+            fail("cannot attest zero PvP fallback: no recent native Go samples")
         seen.add(service)
-    missing = sorted(set(SERVICES) - seen)
+    missing = sorted(set(NATIVE_SERVICES) - seen)
     if missing:
-        fail("cannot attest zero PvP fallback: no Python heartbeat samples in 24h for " + ", ".join(missing))
+        fail("cannot attest zero PvP fallback: no native Go metrics in 24h for " + ", ".join(missing))
 
 
 def coverage_diagnostic_queries() -> tuple[str, ...]:
-    """Bounded, read-only controls; never infer zero PvP from these probes."""
+    """Read-only diagnostics: native evidence, then legacy Python series."""
+    services = "|".join(sorted(NATIVE_SERVICES))
     return (
-        'count by (service_name) (chess_studio_python_telemetry_heartbeat)',
-        'count by (service_name) (count_over_time(chess_studio_python_telemetry_heartbeat[24h]))',
-        'count({__name__="chess_studio_python_telemetry_heartbeat"})',
+        f'count by (service_name) (chess_studio_http_server_requests_total{{service_name=~"{services}"}})',
+        f'count by (service_name) (count_over_time(chess_studio_http_server_requests_total{{service_name=~"{services}"}}[24h]))',
         'count({__name__="chess_studio_http_server_requests_total"})',
+        'count({__name__="chess_studio_python_telemetry_heartbeat"})',
     )
 
 
@@ -121,11 +179,12 @@ def diagnose_missing_coverage(api: GrafanaReadApi, metrics_uid: str) -> None:
                 metric = item.get("metric", {})
                 value = item.get("value", [])
                 service = metric.get("service_name")
-                if service not in SERVICES and index != 3:
+                labels = {**SERVICES, **NATIVE_SERVICES}
+                if service not in labels and index not in (3, 4):
                     continue
                 if len(value) != 2:
                     continue
-                counts[SERVICES[service] if service in SERVICES else "all"] = value[1]
+                counts[labels[service] if service in labels else "all"] = value[1]
             print(json.dumps({"check": "pvp_metric_diagnostic", "probe": index,
                               "counts": counts}, sort_keys=True))
         except (SystemExit, ValueError, TypeError, AttributeError):
@@ -356,14 +415,14 @@ def self_test() -> int:
     assert "No public" in markdown([], "14d")
     control = telemetry_coverage_query(14 * 86400)
     assert '[86400s]' in control and 'http_route' not in control
-    assert 'chess_studio_python_telemetry_heartbeat' in control
-    assert 'chess_studio_http_server_requests_total' not in control
+    assert 'chess_studio_http_server_requests_total' in control
+    assert 'chess_studio_python_telemetry_heartbeat' not in control
     assert '[3600s]' in telemetry_coverage_query(3600)
-    assert 'chess-studio-backend|chess-studio-backend-staging' in control
+    assert 'chess-studio-backend-go|chess-studio-backend-staging-go' in control
     probes = coverage_diagnostic_queries()
     assert len(probes) == 4 and "count_over_time" in probes[1]
-    assert "chess_studio_python_telemetry_heartbeat" in probes[0]
-    assert "chess_studio_http_server_requests_total" in probes[3]
+    assert "chess_studio_http_server_requests_total" in probes[0]
+    assert "chess_studio_python_telemetry_heartbeat" in probes[3]
     assert all("api/pvp" not in probe for probe in probes)
     class DiagnosticGrafana:
         def get_json(self, path: str, params: dict[str, str]) -> dict:
@@ -377,7 +436,7 @@ def self_test() -> int:
     diagnose_missing_coverage(DiagnosticGrafana(), "test-prom")
     healthy = {"data": {"result": [
         {"metric": {"service_name": service}, "value": [0, "12"]}
-        for service in SERVICES
+        for service in NATIVE_SERVICES
     ]}}
     verify_telemetry_coverage(healthy)
     for missing_payload in (
@@ -385,7 +444,7 @@ def self_test() -> int:
         {"data": {"result": healthy["data"]["result"][:1]}},
         {"data": {"result": [
             {"metric": {"service_name": service}, "value": [0, "NaN"]}
-            for service in SERVICES
+            for service in NATIVE_SERVICES
         ]}},
         {"data": {"result": "not-a-vector"}},
     ):
@@ -395,6 +454,34 @@ def self_test() -> int:
             assert "cannot attest zero PvP fallback" in str(exc)
         else:
             raise AssertionError("missing or invalid telemetry must fail closed")
+    good_ready = {
+        "status": "ready",
+        "service": "chess-studio-pvp-go",
+        "runtimeService": "chess-studio-backend-go",
+        "pythonRetired": True,
+        "release": "a" * 40,
+        **{f"nativeFeature{i}": True for i in range(31)},
+    }
+    urls = []
+    def ready_fetcher(url: str) -> dict:
+        urls.append(url)
+        return dict(good_ready)
+    verify_native_runtime(ready_fetcher)
+    assert len(urls) == 2 and set(urls) == set(NATIVE_READY.values())
+    for broken in (
+        {"pythonRetired": False},
+        {"nativeFeature0": False},
+        {"release": "main"},
+        {"runtimeService": "chess-studio-backend"},
+        {"status": "not-ready"},
+    ):
+        try:
+            verify_native_ready_payload({**good_ready, **broken}, "staging")
+        except SystemExit as exc:
+            assert "cannot attest zero PvP fallback" in str(exc)
+        else:
+            raise AssertionError(f"unsafe Go-only attestation accepted {broken}")
+
     bq = breakdown_query("chess-studio-backend-staging", 86400)
     assert 'route=~"/api/pvp.*"' in bq and "username" not in bq and "client_ip" not in bq
     brows = breakdown_rows({"data": {"result": [
@@ -535,9 +622,10 @@ def main() -> int:
     )
     rows = parse_rows(payload)
     if not rows:
-        # Empty PvP series are ambiguous until an independent Python
-        # heartbeat confirms both exporters are actively shipping OTLP.
-        # In particular, an idle Python HTTP counter is not proof of failure.
+        # The Python service is retired. Require positive public Go-only
+        # readiness and independent recent Go telemetry for both environments;
+        # missing Python series alone cannot establish zero fallback.
+        verify_native_runtime()
         control_payload, metrics_uid = query_with_uid_recovery(
             api, metrics_uid, "prometheus", "/api/v1/query",
             {"query": telemetry_coverage_query(window_seconds), "time": str(int(time.time()))},
@@ -547,9 +635,9 @@ def main() -> int:
         except SystemExit:
             diagnose_missing_coverage(api, metrics_uid)
             raise
-        print(json.dumps({"check": "pvp_python_telemetry_coverage", "ok": True,
-                          "lookback_seconds": min(window_seconds, 86400), "services": sorted(SERVICES),
-                          "metric": "chess_studio_python_telemetry_heartbeat"},
+        print(json.dumps({"check": "pvp_native_go_telemetry_coverage", "ok": True,
+                          "lookback_seconds": min(window_seconds, 86400), "services": sorted(NATIVE_SERVICES),
+                          "metric": "chess_studio_http_server_requests_total"},
                          separators=(",", ":"), sort_keys=True))
     report = markdown(rows, args.window)
     print(report)
