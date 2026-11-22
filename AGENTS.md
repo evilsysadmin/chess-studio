@@ -4,11 +4,19 @@ Este archivo es el **contexto básico y el índice operativo** del repositorio. 
 
 Las reglas detalladas viven en los `.md` especializados enlazados aquí. Antes de tocar un área, lee su contrato correspondiente. Si se crea un nuevo documento persistente que condiciona cómo trabajar en el repo, añádelo también a este índice.
 
+## Cuenta GitHub para ShadowOps
+
+- **Obligatorio:** al operar sobre repositorios `evilsysadmin/*`, usar explícitamente la cuenta/conexión de GitHub **ShadowOps** (perfil `evilsysadmin`) para lecturas, escrituras, PR, checks, merges y workflows. Si la herramienta ofrece `link_id`, seleccionar el **identificador vigente** asociado a `link_name: ShadowOps` en el esquema de esa sesión; nunca omitirlo cuando existan varias cuentas.
+- **Nullforge** (perfil `nullforgeops`) es una conexión independiente: no utilizarla para ShadowOps ni como alternativa automática. Si ShadowOps falla o no está disponible, detener la operación, diagnosticar la selección de cuenta y comunicar el bloqueo; no dar por desconectada la cuenta sin haber probado su `link_id` explícito.
+- Verificar propietario y repositorio antes de operar; no almacenar `link_id`, tokens, claves o credenciales en Git: los identificadores de conexión pueden cambiar al reconectar.
+
 ## Contexto básico
+
+- Football **pertenece exclusivamente** a `evilsysadmin/football-of-matthias`; aquí sólo queda el portal externo y la exportación legacy. No reintroducir partido, mánager, arte, runtime o publicador. Ver [`migración Football`](docs/operations/football-migration.md).
 
 - Chronicles of Matthias y Tactics **pertenecen exclusivamente** a `evilsysadmin/chronicles-of-matthias`; aquí solo queda el enlace externo desde Lab. No desarrollar ni reintroducir mapas, arte, runtime, E2E ni workflows del juego en Chess Studio.
 - Los backends Go/Python y datos legados de Chronicles aún pendientes de retirar se tratan **solo como migración controlada** en [#5632](https://github.com/evilsysadmin/chess-studio/issues/5632). Mantener `chronicles_runs` cubierto por borrado de cuenta hasta acreditar su salida.
-- Pawn Slug en Godot es **2D puro**. Sus sprites no usan Blender. Matthias conserva una única escala corporal canónica entre armas; variantes grandes/pequeñas son regresión.
+- **Pawn Action** (antes Pawn Slug) se está extrayendo a `evilsysadmin/pawn-action`: todo nuevo gameplay, arte, herramientas y CI propios van al repo nuevo. Las copias Godot/host/publisher de Chess Studio permanecen sólo como rollback hasta acreditar el nuevo Web release y hacer el cutover controlado. 2D puro, sin Blender y escala corporal canónica compartida. Ver [`migración Pawn Action`](docs/operations/pawn-action-migration.md).
 - Home 3D y War Room v2 usan la pipeline Blender.
 - La War Room **v3 es la variante por defecto** cuando las variantes están habilitadas; una elección explícita del jugador se conserva por dispositivo y siempre manda sobre el default. v1 clásica sigue siendo el baseline de rollback y v1/v2/v3/v4 continúan seleccionables en el menú «…». Deshabilitar variantes debe seguir devolviendo de forma segura a v1.
 - Para assets grandes de runtime, preferir R2/CDN y mantener Git centrado en código, manifests y contratos.
@@ -43,7 +51,7 @@ El contrato de entrega está en [`docs/auto-merge-delivery.md`](docs/auto-merge-
 | Tarea | Documentos que hay que leer |
 | --- | --- |
 | Producto Chess Football / QA visual / futuro modo mánager | [`docs/operations/chess-football-product.md`](docs/operations/chess-football-product.md), [`docs/ci/football-required-merge-gate.md`](docs/ci/football-required-merge-gate.md) |
-| Sprites, frames, atlases o animaciones de Pawn Slug/Godot/Chess Football | [`docs/pawnslug-sprites.md`](docs/pawnslug-sprites.md), [`skills/godot-spritesheets/SKILL.md`](skills/godot-spritesheets/SKILL.md), [`scripts/art/README.md`](scripts/art/README.md), [`frontend/src/assets/pawnSlug/README.md`](frontend/src/assets/pawnSlug/README.md), [`games/chess-football-godot/assets/players/run_canon/README.md`](games/chess-football-godot/assets/players/run_canon/README.md) |
+| Sprites, frames, atlases o animaciones de Pawn Slug/Godot/Chess Football | [`docs/pawnslug-sprites.md`](docs/pawnslug-sprites.md), [`skills/godot-spritesheets/SKILL.md`](skills/godot-spritesheets/SKILL.md), [`scripts/art/README.md`](scripts/art/README.md), [`frontend/src/assets/pawnSlug/README.md`](frontend/src/assets/pawnSlug/README.md) |
 | Pawn Slug runtime, Web export, Playwright smoke o input real | [`skills/pawn-slug-runtime-smoke/SKILL.md`](skills/pawn-slug-runtime-smoke/SKILL.md) |
 | Música / radio de sesión / Pawn Slug OST / composición y mezcla | [`docs/music.md`](docs/music.md), [`skills/pawn-slug-synthwave/SKILL.md`](skills/pawn-slug-synthwave/SKILL.md) |
 | Publicación/migración de assets a R2 | [`docs/r2-asset-publisher.md`](docs/r2-asset-publisher.md), [`docs/r2-assets.md`](docs/r2-assets.md), [`docs/visual-assets-r2-flow.md`](docs/visual-assets-r2-flow.md) |
@@ -120,6 +128,8 @@ El contrato de entrega está en [`docs/auto-merge-delivery.md`](docs/auto-merge-
 
 ### Operaciones y runtime
 
+- [`docs/operations/football-migration.md`](docs/operations/football-migration.md) — ownership externo y carrera legacy.
+
 - [`docs/operations/architecture-ownership.md`](docs/operations/architecture-ownership.md)
 - [`docs/operations/go-migration.md`](docs/operations/go-migration.md) — plan y contrato de la migración strangler de Python a Go.
 - [`docs/operations/tutorials.md`](docs/operations/tutorials.md)
@@ -151,8 +161,6 @@ El contrato de entrega está en [`docs/auto-merge-delivery.md`](docs/auto-merge-
 - [`docs/visual-assets-r2-flow.md`](docs/visual-assets-r2-flow.md)
 - [`frontend/src/assets/pawnSlug/README.md`](frontend/src/assets/pawnSlug/README.md)
 - [`scripts/art/README.md`](scripts/art/README.md)
-- [`games/chess-football-godot/assets/players/keeper_canon_v1/README.md`](games/chess-football-godot/assets/players/keeper_canon_v1/README.md) — porteros 3D canónicos, guantes/gorra, 32 frames y fallback lateral de tres cuartos.
-- [`games/chess-football-godot/assets/players/run_directions_v1/README.md`](games/chess-football-godot/assets/players/run_directions_v1/README.md) — canon adicional de las 32 poses de carrera direccional de Football; conserva intacta la vista lateral.
 
 ### Pawn Slug — contratos de escenario
 

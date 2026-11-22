@@ -118,6 +118,30 @@ Before narrowing this protection, implement explicit cross-repo pin ingestion,
 release rollback protection and live byte checks. Do not delete it merely
 because a Chess Studio manifest has no Chronicles shop entry.
 
+## Independent Pawn Action Web release protection
+
+Pawn Action is owned by [`evilsysadmin/pawn-action`](https://github.com/evilsysadmin/pawn-action).
+During the standalone migration, its `pawn-action/current.json` pointer and
+immutable Web releases under `pawn-action/releases/` share the
+`chess-studio-assets` bucket with Chess Studio's legacy
+`pawn-slug-godot/` release family. They have **different publishers and
+rollback owners**. The Chess Studio GC cannot derive safe pins from the
+separate game's runtime or its deployment history.
+
+Therefore `infra/cloudflare/r2-assets.json` protects the entire
+`pawn-action/` prefix. The GC refuses to plan or apply cleanup for the
+shared bucket if this exact prefix is missing, and its self-test checks
+old, otherwise-unreferenced release and atlas objects even under storage
+pressure. This is deliberately conservative: it can retain unused
+generations, and the separate Pawn Action writer must govern its own
+releases before any finer-grained pruning is introduced.
+
+**Do not remove this prefix merely after publishing the first Pawn Action
+release or switching the Chess Studio launcher.** A separate, tested
+cross-repository ownership/pin/rollback handoff is required. This source
+policy/test protects the checked-in collector; remote schedules, Cloudflare
+access scopes and other cleanup processes still need separate verification.
+
 ## Storage budget and retention
 
 The repository owns an automatic retention policy for the public asset bucket.

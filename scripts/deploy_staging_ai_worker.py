@@ -16,12 +16,15 @@ import argparse
 import json
 import os
 import pathlib
+import re
 import subprocess
 import time
 import tomllib
 import urllib.error
 import urllib.parse
 import urllib.request
+
+import staging_generation as generation
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 CONFIG = ROOT / "infra/cloudflare/wrangler.staging.toml"
@@ -31,6 +34,11 @@ ZONE_NAME = "shadowops.dpdns.org"
 WORKER_NAME = "chess-studio-narrative-ai-staging"
 WORKER_HOSTNAME = "ai-staging.shadowops.dpdns.org"
 WORKER_URL = f"https://{WORKER_HOSTNAME}"
+# Only an explicit transient Cloudflare control-plane error on the Worker
+# versions endpoint can justify replaying a deploy. No generic exit-code retry.
+RETRYABLE_WORKER_VERSION_ERROR = re.compile(
+    r"\bPOST /accounts/[^\s]+/workers/scripts/[^\s]+/versions\s*->\s*(?:502|503|504|520|521|522|523)\b"
+)
 
 
 def required(name: str) -> str:
@@ -178,7 +186,7 @@ def wait_for_runtime_build(deploy_sha: str, *, attempts: int = 60, interval: flo
     )
 
 
-def wrangler(args: list[str], *, stdin: str | None = None) -> None:
+def wrangler(args: list[str], *, stdin: str | None = None, sleep=time.sleep, main_head=None) -> None:
     required("CLOUDFLARE_API_TOKEN")
     required("CLOUDFLARE_ACCOUNT_ID")
     # setup-wrangler publishes an absolute, exact-version CLI path. Never
@@ -187,16 +195,40 @@ def wrangler(args: list[str], *, stdin: str | None = None) -> None:
     if not binary.is_absolute() or not binary.is_file() or not os.access(binary, os.X_OK):
         raise SystemExit("Wrangler staging exige un WRANGLER_BIN absoluto y ejecutable")
     command = [str(binary), *args, "--config", str(CONFIG)]
-    result = subprocess.run(
-        command,
-        cwd=ROOT,
-        env=os.environ.copy(),
-        input=stdin,
-        text=True,
-        check=False,
-    )
-    if result.returncode:
-        raise SystemExit(f"Wrangler falló con código {result.returncode}; staging AI no queda acreditado")
+    # Keep the actual Wrangler diagnostic, but classify failures before retry.
+    # Unknown/failed auth/build responses never receive a blind second write.
+    for attempt in range(3):
+        result = subprocess.run(
+            command,
+            cwd=ROOT,
+            env=os.environ.copy(),
+            input=stdin,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            check=False,
+        )
+        output = result.stdout if isinstance(result.stdout, str) else ""
+        if output:
+            print(output, end="" if output.endswith("\n") else "\n")
+        if result.returncode == 0:
+            return
+        transient = (args and args[0] == "deploy"
+                     and RETRYABLE_WORKER_VERSION_ERROR.search(output))
+        if not transient or attempt == 2:
+            raise SystemExit(f"Wrangler falló con código {result.returncode}; staging AI no queda acreditado")
+        # A commit superseded while Cloudflare was failing cannot be written
+        # after recovery; an unreadable main HEAD likewise fails closed.
+        expected = required_deploy_sha()
+        try:
+            actual = (main_head or generation.current_main)()
+        except Exception as exc:
+            raise SystemExit("No se pudo acreditar main HEAD antes de reintentar Wrangler") from exc
+        if actual != expected:
+            raise SystemExit("Publicación Wrangler obsoleta: main HEAD ya cambió")
+        print(f"::notice title=Workers AI staging retry::Cloudflare versions 5xx · intento {attempt + 2}/3")
+        sleep(attempt + 1)
+    raise AssertionError("unreachable Wrangler retry state")
 
 
 def self_test() -> None:
@@ -245,7 +277,7 @@ def self_test() -> None:
         binary.write_text("#!/bin/sh" + chr(10) + "exit 0" + chr(10), encoding="utf-8")
         binary.chmod(0o755)
         env = {"CLOUDFLARE_API_TOKEN": "test", "CLOUDFLARE_ACCOUNT_ID": "test",
-               "WRANGLER_BIN": str(binary)}
+               "WRANGLER_BIN": str(binary), "DEPLOY_SHA": "a" * 40}
         with patch.dict(os.environ, env), patch(f"{__name__}.subprocess.run") as run:
             run.return_value.returncode = 0
             wrangler(["deploy", "--var", "BUILD_SHA:" + "a" * 40])
@@ -253,13 +285,52 @@ def self_test() -> None:
             assert argv[:2] == [str(binary), "deploy"]
             assert argv[-2:] == ["--config", str(CONFIG)]
             assert "npx" not in argv and run.call_args.kwargs["check"] is False
+            assert run.call_args.kwargs["stdout"] == subprocess.PIPE
+            assert run.call_args.kwargs["stderr"] == subprocess.STDOUT
             run.return_value.returncode = 1
+            run.return_value.stdout = "POST /accounts/hidden/workers/scripts/worker/versions -> 403"
+            before = run.call_count
             try:
                 wrangler(["deploy"])
             except SystemExit:
                 pass
             else:
                 raise AssertionError("failed pinned Wrangler was accepted")
+            assert run.call_count == before + 1, "403 must not replay a deploy"
+
+            from types import SimpleNamespace
+            transient = "POST /accounts/hidden/workers/scripts/worker/versions -> 523 <none>"
+            run.reset_mock()
+            run.side_effect = [
+                SimpleNamespace(returncode=1, stdout=transient),
+                SimpleNamespace(returncode=0, stdout="deployed"),
+            ]
+            delays = []
+            wrangler(["deploy"], sleep=delays.append, main_head=lambda: "a" * 40)
+            assert run.call_count == 2 and delays == [1]
+
+            run.reset_mock(side_effect=True)
+            run.side_effect = [SimpleNamespace(returncode=1, stdout=transient)]
+            try:
+                wrangler(["deploy"], sleep=lambda _: None, main_head=lambda: "b" * 40)
+            except SystemExit:
+                pass
+            else:
+                raise AssertionError("superseded main permitted a second Worker write")
+            assert run.call_count == 1
+
+            run.reset_mock(side_effect=True)
+            run.side_effect = [
+                SimpleNamespace(returncode=1, stdout=transient) for _ in range(3)
+            ]
+            delays = []
+            try:
+                wrangler(["deploy"], sleep=delays.append, main_head=lambda: "a" * 40)
+            except SystemExit:
+                pass
+            else:
+                raise AssertionError("persistent Cloudflare 523 was accepted")
+            assert run.call_count == 3 and delays == [1, 2]
         with patch.dict(os.environ, {**env, "WRANGLER_BIN": str(binary) + "-missing"}):
             try:
                 wrangler(["deploy"])

@@ -1,25 +1,20 @@
-import { STORAGE_SESSION, readJsonStorage, removeStorageItem, writeJsonStorage } from './safeStorage.js';
-import { getUsername } from './auth.js';
 import { buildNemesisDossier } from './nemesis.js';
-import { loadPersonalPuzzles } from './personalPuzzles.js';
+import { isPersonalPuzzleMastered, loadPersonalPuzzles, matchesPersonalPuzzleFilter } from './personalPuzzles.js';
 import { loadCleanGameRecords } from './cleanGameRecords.js';
 import { buildPlayerModel, PATTERN_IMPROVEMENT_STATES } from './playerModel.js';
 import { loadRivalry } from './rivalry.js';
 
-export const GUIDED_TRAINING_SESSION_KEY = 'chess-study-guided-training-session-v1';
-const SESSION_SCHEMA = 1;
-const MAX_SESSION_AGE_MS = 4 * 60 * 60 * 1000;
+import { normalizeDuration } from './guidedTrainingSessionStore.js';
+export {
+  GUIDED_TRAINING_SESSION_KEY,
+  loadGuidedTrainingSession,
+  startGuidedTrainingSession,
+  advanceGuidedTrainingSession,
+  isCurrentGuidedTrainingStep,
+  clearGuidedTrainingSession,
+} from './guidedTrainingSessionStore.js';
+
 const INITIAL_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
-
-function sessionOwner() {
-  return String(getUsername() || '').trim().toLowerCase() || null;
-}
-
-function normalizeDuration(value) {
-  const minutes = Number(value);
-  if (minutes === 5 || minutes === 15 || minutes === 30) return minutes;
-  return 5;
-}
 
 function nonActionablePatternIncidentKeys(playerModel) {
   return new Set((Array.isArray(playerModel?.recurringErrors) ? playerModel.recurringErrors : [])
@@ -41,15 +36,17 @@ function nonActionablePatternIncidentKeys(playerModel) {
 function pendingPersonalPuzzles(puzzles = [], playerModel = null) {
   const suppressedKeys = nonActionablePatternIncidentKeys(playerModel);
   return (Array.isArray(puzzles) ? puzzles : []).filter((puzzle) => {
-    if (puzzle?.masteredAt || Number(puzzle?.cleanSolves || 0) > 0) return false;
+    if (isPersonalPuzzleMastered(puzzle) || Number(puzzle?.cleanSolves || 0) > 0) return false;
     const incidentKeys = Array.isArray(puzzle?.incidentKeys) ? puzzle.incidentKeys.filter(Boolean) : [];
     if (!incidentKeys.length || !suppressedKeys.size) return true;
     return incidentKeys.some((incidentKey) => !suppressedKeys.has(incidentKey));
   });
 }
 
-function actionableRecurringPattern(playerModel) {
+function actionableRecurringPattern(playerModel, pending) {
   return (Array.isArray(playerModel?.recurringErrors) ? playerModel.recurringErrors : []).find((pattern) => {
+    const filter = pattern?.filter || { incidentKey: pattern?.incidentKey };
+    if (!pending.some((puzzle) => matchesPersonalPuzzleFilter(puzzle, filter))) return false;
     if (pattern?.improvementState === PATTERN_IMPROVEMENT_STATES.STILL_OCCURRING) return true;
     if ([
       PATTERN_IMPROVEMENT_STATES.PROBABLE_IMPROVEMENT,
@@ -59,7 +56,7 @@ function actionableRecurringPattern(playerModel) {
   }) || null;
 }
 
-function recurringPatternFocus(pattern) {
+function recurringPatternFocus(pattern, featuredPuzzleId) {
   const debt = pattern?.debt;
   const relapse = pattern?.improvementState === PATTERN_IMPROVEMENT_STATES.STILL_OCCURRING && debt?.paid === true;
   const recurrenceGames = Math.max(0, Number(pattern?.postTrainingObservations?.recurrenceGames || 0));
@@ -73,18 +70,24 @@ function recurringPatternFocus(pattern) {
       : `${Number(debt?.progress || 0)}/${Number(debt?.target || 2)} casos limpios · ${Number(debt?.realCases || pattern?.positions || 0)} posiciones reales en el expediente.`,
     action: 'personal-filter',
     filter: pattern?.filter || { incidentKey: pattern.incidentKey },
+    featuredPuzzleId,
   };
 }
 
 function focusStep(puzzles, playerModel) {
-  const pattern = actionableRecurringPattern(playerModel);
-  if (pattern) return recurringPatternFocus(pattern);
+  const pending = pendingPersonalPuzzles(puzzles, playerModel);
+  const pattern = actionableRecurringPattern(playerModel, pending);
+  if (pattern) {
+    const filter = pattern.filter || { incidentKey: pattern.incidentKey };
+    const featured = pending.find((puzzle) => matchesPersonalPuzzleFilter(puzzle, filter));
+    return recurringPatternFocus(pattern, featured?.id || null);
+  }
 
   // Compatibilidad con modelos parciales/antiguos: si aún no traen
   // recurringErrors, conserva la deuda factual existente como fallback.
   if (!Array.isArray(playerModel?.recurringErrors)) {
     const debt = playerModel?.trainingDebt?.top;
-    if (debt) {
+    if (debt?.incidentKey && pending.some((puzzle) => matchesPersonalPuzzleFilter(puzzle, { incidentKey: debt.incidentKey }))) {
       return {
         id: `debt:${debt.incidentKey}`,
         kind: 'debt',
@@ -92,11 +95,11 @@ function focusStep(puzzles, playerModel) {
         detail: `${debt.progress}/${debt.target} casos limpios · ${debt.cases} posiciones reales en el expediente.`,
         action: 'personal-filter',
         filter: { incidentKey: debt.incidentKey },
+        featuredPuzzleId: pending.find((puzzle) => matchesPersonalPuzzleFilter(puzzle, { incidentKey: debt.incidentKey }))?.id || null,
       };
     }
   }
 
-  const pending = pendingPersonalPuzzles(puzzles, playerModel);
   if (!pending.length) return null;
   return {
     id: 'personal-errors',
@@ -104,6 +107,7 @@ function focusStep(puzzles, playerModel) {
     title: 'Acciones inmediatas',
     detail: `${pending.length} ${pending.length === 1 ? 'posición real pendiente' : 'posiciones reales pendientes'} para trabajar sin inventar deberes.`,
     action: 'personal',
+    featuredPuzzleId: pending[0]?.id || null,
   };
 }
 
@@ -128,16 +132,24 @@ function nemesisStep(history, rivalry) {
   };
 }
 
+// gameHistory.saveGameRecord unshifts: history is newest first. Keep difficulty
+// and color on the same chronological end rather than sampling old matches.
+// CPU level 0 is real evidence: the 5..95 practice floor applies only after
+// computing the sample, not by throwing away those games as missing.
 function recentPracticeDifficulty(history = []) {
-  const rows = (Array.isArray(history) ? history : [])
-    .filter((row) => Number.isFinite(Number(row?.difficulty)))
-    .slice(-5);
-  if (!rows.length) return 50;
-  return Math.max(5, Math.min(95, Math.round(rows.reduce((sum, row) => sum + Number(row.difficulty), 0) / rows.length)));
+  const values = (Array.isArray(history) ? history : [])
+    .map((row) => row?.difficulty)
+    .filter((value) => value !== null && value !== undefined
+      && typeof value !== 'boolean' && String(value).trim() !== ''
+      && Number.isFinite(Number(value)) && Number(value) >= 0 && Number(value) <= 100)
+    .slice(0, 5)
+    .map(Number);
+  if (!values.length) return 50;
+  return Math.max(5, Math.min(95, Math.round(values.reduce((sum, value) => sum + value, 0) / values.length)));
 }
 
 function recentHumanColor(history = []) {
-  const row = [...(Array.isArray(history) ? history : [])].reverse().find((entry) => ['w', 'b'].includes(entry?.humanColor));
+  const row = (Array.isArray(history) ? history : []).find((entry) => ['w', 'b'].includes(entry?.humanColor));
   return row?.humanColor || 'w';
 }
 
@@ -209,59 +221,3 @@ export function buildGuidedTrainingPlan({
   return { minutes: duration, available: true, reason: null, steps };
 }
 
-function normalizeStoredSession(value, now = Date.now()) {
-  if (!value || value.schema !== SESSION_SCHEMA || !Array.isArray(value.steps) || !value.steps.length) return null;
-  if ((value.owner || null) !== sessionOwner()) return null;
-  const startedAt = Number(value.startedAt || 0);
-  if (!startedAt || now - startedAt > MAX_SESSION_AGE_MS || startedAt - now > 60_000) return null;
-  const currentIndex = Math.max(0, Math.min(value.steps.length - 1, Math.floor(Number(value.currentIndex) || 0)));
-  return {
-    schema: SESSION_SCHEMA,
-    id: String(value.id || `guided-${startedAt}`),
-    owner: value.owner || null,
-    minutes: normalizeDuration(value.minutes),
-    startedAt,
-    currentIndex,
-    steps: value.steps,
-  };
-}
-
-export function loadGuidedTrainingSession({ now = Date.now() } = {}) {
-  const parsed = readJsonStorage(STORAGE_SESSION, GUIDED_TRAINING_SESSION_KEY, { fallback: null });
-  const normalized = normalizeStoredSession(parsed, Number(now));
-  if (!normalized) removeStorageItem(STORAGE_SESSION, GUIDED_TRAINING_SESSION_KEY);
-  return normalized;
-}
-
-export function startGuidedTrainingSession(plan, { now = Date.now() } = {}) {
-  if (!plan?.available || !Array.isArray(plan.steps) || !plan.steps.length) return null;
-  const startedAt = Number(now);
-  const session = {
-    schema: SESSION_SCHEMA,
-    id: `guided-${startedAt}-${plan.minutes}`,
-    owner: sessionOwner(),
-    minutes: normalizeDuration(plan.minutes),
-    startedAt,
-    currentIndex: 0,
-    steps: plan.steps,
-  };
-  writeJsonStorage(STORAGE_SESSION, GUIDED_TRAINING_SESSION_KEY, session);
-  return session;
-}
-
-export function advanceGuidedTrainingSession(session, { now = Date.now() } = {}) {
-  const normalized = normalizeStoredSession(session, Number(now));
-  if (!normalized) return null;
-  const nextIndex = normalized.currentIndex + 1;
-  if (nextIndex >= normalized.steps.length) {
-    removeStorageItem(STORAGE_SESSION, GUIDED_TRAINING_SESSION_KEY);
-    return null;
-  }
-  const next = { ...normalized, currentIndex: nextIndex };
-  writeJsonStorage(STORAGE_SESSION, GUIDED_TRAINING_SESSION_KEY, next);
-  return next;
-}
-
-export function clearGuidedTrainingSession() {
-  removeStorageItem(STORAGE_SESSION, GUIDED_TRAINING_SESSION_KEY);
-}

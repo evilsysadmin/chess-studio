@@ -104,6 +104,19 @@ def load_policy(config: dict[str, Any]) -> dict[str, Any]:
         ):
             raise RetentionError(f"retention.{name} debe ser una lista de prefijos relativos")
 
+    # This shared bucket serves a separately owned game. No Chess Studio
+    # manifest/runtime pin scanner can determine which Pawn Action release
+    # is still in use. Refuse *any* GC plan/apply if this invariant vanishes.
+    # Do not silently treat an unlisted old release as safe to delete.
+    if (
+        config.get("bucket") == "chess-studio-assets"
+        and "pawn-action/" not in policy.get("protectedPrefixes", [])
+    ):
+        raise RetentionError(
+            "GC inseguro: falta pawn-action/ en retention.protectedPrefixes "
+            "del bucket compartido chess-studio-assets"
+        )
+
     bundles = policy.get("releaseBundles", [])
     if not isinstance(bundles, list):
         raise RetentionError("retention.releaseBundles debe ser una lista")
@@ -880,10 +893,29 @@ def self_test() -> None:
     # The local pin scanner cannot see these URLs. Protect the entire shop
     # family against age expiry, duplicate-SHA and capacity-pressure cleanup.
     assert "chronicles/shops/" in live_policy["protectedPrefixes"]
+    assert "pawn-action/" in live_policy["protectedPrefixes"]
+    # Even a misconfigured future copy of this production policy cannot
+    # run GC if the independent Pawn Action release family loses its pin.
+    unprotected = dict(live_policy)
+    unprotected["protectedPrefixes"] = [
+        prefix for prefix in live_policy["protectedPrefixes"]
+        if prefix != "pawn-action/"
+    ]
+    try:
+        load_policy({"bucket": "chess-studio-assets", "retention": unprotected})
+    except RetentionError as exc:
+        assert "pawn-action/" in str(exc)
+    else:
+        raise AssertionError("Shared-bucket GC accepted missing Pawn Action pin")
     cross_repo_test = plan_cleanup(
         [
             row("star-adventures/tactical/officer-sentinel-abcdef0123456789.webp", 100, 180),
             row("chronicles/shops/odo/odo-premium-composite-79e0b13fc2ee2ffb.webp", 200_250, 180),
+            # An unreferenced release (far outside grace and rollback) and an
+            # unreferenced atlas remain untouchable despite capacity pressure.
+            row("pawn-action/releases/deadbeefdeadbeef/index.pck", 500_000, 180),
+            row("pawn-action/matthias/retired-0123456789abcdef.png", 300_000, 180),
+            row("pawn-action/current.json", 100, 180),
             row("unrelated/old-sentinel-abcdef0123456789.webp", 101, 180),
         ],
         manifest_keys=set(),
@@ -891,12 +923,15 @@ def self_test() -> None:
         policy=live_policy,
         now=now,
     )
-    assert cross_repo_test["protectedObjects"] == 2
-    assert cross_repo_test["protectedBytes"] == 200_350
+    assert cross_repo_test["protectedObjects"] == 5
+    assert cross_repo_test["protectedBytes"] == 1_000_450
     assert all(
-        not deletion["key"].startswith(("star-adventures/", "chronicles/shops/"))
+        not deletion["key"].startswith((
+            "star-adventures/", "chronicles/shops/", "pawn-action/",
+        ))
         for deletion in cross_repo_test["deletions"]
     )
+    assert cross_repo_test["protectedBytesByReason"]["protected-prefix"] >= 1_000_350
     for bundle in live_policy["releaseBundles"]:
         # Any older open tab must be able to fetch its *complete* export
         # across several deployments; this is not a one-day single fallback.

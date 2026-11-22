@@ -39,6 +39,7 @@ must(active.activeSessionTransition('creating', 'cancel_create').nextState === '
 must(combat.combatFlowTransition('battle', 'reset').ok === false, 'battle may not reset directly');
 must(campaign.campaignPhaseTransition('fighting', 'win').nextState === 'reward', 'campaign win transition broken');
 must(puzzle.puzzleTransition('solving', 'correct_continue').nextState === 'opponent_reply', 'puzzle reply state broken');
+must(puzzle.puzzleTransition('opponent_reply', 'reveal').nextState === 'failed', 'reveal during opponent reply must cancel the pending solution turn');
 must(series.seriesFlowPhase(series.attachSeriesGame({ winner: null, currentGameId: null }, 'g-1')) === 'playing', 'series game attachment broken');
 must(ownership.activeGame, 'durable state domains must declare activeGame ownership');
 for (const [domain, owner] of Object.entries(ownership)) {

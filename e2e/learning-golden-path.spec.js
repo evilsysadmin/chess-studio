@@ -8,6 +8,7 @@ import {
   waitForTrainingRoomSettled,
   waitForHomeInteractive,
 } from './helpers.js';
+import { navigateWarRoomKeyboard } from './war-room-board-input.js';
 
 const PERSONAL_MATE_FEN = '6k1/5ppp/8/8/8/8/5PPP/R5K1 w - - 0 1';
 
@@ -293,6 +294,16 @@ test.describe('Mobile · pérdida factual y entrenamiento tras F5', () => {
       await expect(focused).toBeVisible({ timeout: 15_000 });
       await expect(focused.getByText(/Aquí jugaste g4 y perdiste/)).toBeVisible();
       await expect(focused.getByRole('group', { name: 'Tipo de puzzle' })).toHaveCount(0);
+      // F5 must restore the same focused crime, not send the player home or
+      // serve an unrelated adaptive puzzle after the one-shot focus was consumed.
+      const focusedHeading = await focused.locator('h2').first().textContent();
+      await expect.poll(() => page.evaluate(() => sessionStorage.getItem('chess-study-current-view')))
+        .toBe('puzzle');
+      await page.reload();
+      const resumed = page.locator('.puzzle-screen[data-training-origin="postgame-error"]');
+      await expect(resumed).toBeVisible({ timeout: 30_000 });
+      await expect(resumed.locator('h2').first()).toHaveText(focusedHeading);
+      await expect(resumed.getByText(/Aquí jugaste g4 y perdiste/)).toBeVisible();
       await clickBoardMove(page, 'e2', 'e4');
       await expect(focused.getByText('¡Resuelto!', { exact: true })).toBeVisible({ timeout: 15_000 });
       const replay = focused.getByRole('button', { name: 'Volver a jugar', exact: true });
@@ -309,3 +320,323 @@ test.describe('Mobile · pérdida factual y entrenamiento tras F5', () => {
   }
 });
 
+
+test('Puzzles · revelar mientras el rival prepara su respuesta no deja movimientos fantasma', async ({ page }) => {
+  test.setTimeout(150_000);
+  const title = 'Revelar durante una réplica';
+  await mockApi(page, {
+    profileSeed: {
+      'chess-study-personal-puzzles': JSON.stringify([{
+        id: 'reveal-while-replying',
+        kind: 'personal', source: 'autopsy', title,
+        description: 'Comprueba la salida durante una respuesta forzada.',
+        fen: 'rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq e6 0 2',
+        solution: ['Qh5', 'Nc6', 'Bc4'],
+        incidentKeys: [], sourceGameId: 'reveal-timer-source',
+        loss: 120, createdAt: '2026-11-10T12:00:00Z',
+        attempts: 0, solves: 0, cleanSolves: 0,
+      }]),
+    },
+  });
+  await login(page);
+  await dismissHomeGuide(page);
+  await page.getByRole('complementary', { name: 'Rincón de Matthias' })
+    .getByRole('button', { name: 'Abrir Así juegas con Matthias', exact: true }).click();
+  await waitForTrainingRoomSettled(page);
+  await page.getByRole('button', { name: 'Entrenar esta posición real ahora' }).click();
+  const focused = page.locator('.puzzle-screen[data-training-origin="insights-action"]');
+  await expect(focused.getByRole('heading', { name: title })).toBeVisible();
+
+  // Freeze only after the room is ready: no race between the 550 ms reply
+  // timer and Playwright actionability/screenshot overhead.
+  await page.clock.install();
+  // TrainingRoomBoard is a real 3D canvas, not the accessible 2D square
+  // buttons. Use its existing keyboard contract and pause just before the
+  // final Enter, guaranteeing that the reply timeout cannot elapse.
+  const board = page.locator('[data-board3d-war-room="true"]');
+  const canvas = page.locator('.board3d-main-canvas');
+  await navigateWarRoomKeyboard(canvas, board, 'd1');
+  await canvas.focus();
+  await page.keyboard.press('Enter');
+  await expect(board).toHaveAttribute('data-board3d-selected', 'd1');
+  await navigateWarRoomKeyboard(canvas, board, 'h5');
+  await page.clock.pauseAt(new Date());
+  await page.keyboard.press('Enter');
+  await expect(focused.getByText('El rival responde…', { exact: true })).toBeVisible();
+  await focused.getByRole('button', { name: 'Ver solución', exact: true }).dispatchEvent('click');
+  await expect(focused.getByText('Esta era la solución', { exact: true })).toBeVisible();
+  await page.clock.runFor(1200);
+  await expect(focused.getByText('Esta era la solución', { exact: true })).toBeVisible();
+  await expect(focused.getByText('¡Resuelto!', { exact: true })).toHaveCount(0);
+  const bank = await page.evaluate(() => JSON.parse(
+    localStorage.getItem('chess-study-personal-puzzles') || '[]',
+  ).find((item) => item.id === 'reveal-while-replying'));
+  expect(bank?.solves).toBe(0);
+  expect(await page.evaluate(() => sessionStorage.getItem('chess-study-focused-puzzle-resume-v1'))).toBeNull();
+  await focused.getByRole('button', { name: 'Siguiente puzzle', exact: true }).click();
+  await expect(focused.getByText('El rival responde…', { exact: true })).toHaveCount(0);
+});
+
+test('Así juegas · F5 conserva el turno exacto tras la respuesta de Matthias en un puzzle de varias jugadas', async ({ page }) => {
+  test.setTimeout(150_000);
+  const title = 'Secuencia personal de tres jugadas · F5';
+  await mockApi(page, {
+    profileSeed: {
+      'chess-study-personal-puzzles': JSON.stringify([{
+        id: 'focused-multipy-f5',
+        kind: 'personal', source: 'autopsy', title,
+        description: 'Continuación legal del ejercicio personal.',
+        fen: 'rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq e6 0 2',
+        solution: ['Qh5', 'Nc6', 'Bc4'],
+        sourceGameId: 'f5-test-multipy',
+        incidentKeys: [],
+        createdAt: '2026-11-10T12:00:00Z',
+        loss: 120, attempts: 0, solves: 0, cleanSolves: 0,
+      }]),
+    },
+  });
+  await login(page);
+  await dismissHomeGuide(page);
+  const corner = page.getByRole('complementary', { name: 'Rincón de Matthias' });
+  await corner.getByRole('button', { name: 'Abrir Así juegas con Matthias', exact: true }).click();
+  await waitForTrainingRoomSettled(page);
+  await page.getByRole('button', { name: 'Entrenar esta posición real ahora' }).click();
+  const focused = page.locator('.puzzle-screen[data-training-origin="insights-action"]');
+  await expect(focused).toBeVisible();
+  await expect(focused.getByRole('heading', { name: title })).toBeVisible();
+  await clickBoardMove(page, 'd1', 'h5');
+  // A complete human+opponent exchange is the only durable checkpoint.
+  await expect.poll(() => page.evaluate(() =>
+    JSON.parse(sessionStorage.getItem('chess-study-focused-puzzle-resume-v1') || 'null')?.ply,
+  )).toBe(2);
+  const revision = await page.evaluate(() =>
+    JSON.parse(sessionStorage.getItem('chess-study-focused-puzzle-resume-v1') || 'null')?.revision,
+  );
+  expect(revision).toMatch(/^[0-9a-f]{8}$/);
+  expect(await page.evaluate(() =>
+    JSON.parse(localStorage.getItem('chess-study-personal-puzzles') || '[]')
+      .find((item) => item.id === 'focused-multipy-f5')?.solves,
+  )).toBe(0);
+
+  await page.reload();
+  const resumed = page.locator('.puzzle-screen[data-training-origin="insights-action"]');
+  await expect(resumed).toBeVisible({ timeout: 30_000 });
+  await expect(resumed.getByRole('heading', { name: title })).toBeVisible();
+  await expect.poll(() => page.evaluate(() =>
+    JSON.parse(sessionStorage.getItem('chess-study-focused-puzzle-resume-v1') || 'null')?.ply,
+  )).toBe(2);
+  expect(await page.evaluate(() => JSON.parse(
+    sessionStorage.getItem('chess-study-focused-puzzle-resume-v1') || 'null',
+  )?.revision)).toBe(revision);
+  await clickBoardMove(page, 'f1', 'c4');
+  await expect(resumed.getByText('¡Resuelto!', { exact: true })).toBeVisible();
+  const trained = await page.evaluate(() => JSON.parse(
+    localStorage.getItem('chess-study-personal-puzzles') || '[]',
+  ).find((item) => item.id === 'focused-multipy-f5'));
+  expect(trained?.solves).toBe(1);
+  expect(trained?.cleanSolves).toBe(1);
+  expect(await page.evaluate(() => sessionStorage.getItem('chess-study-focused-puzzle-resume-v1'))).toBeNull();
+});
+
+test('Así juegas · la sesión guiada sobrevive al tablero personal y F5; un snapshot corrupto no bloquea la sala', async ({ page }) => {
+  test.setTimeout(150_000);
+  await mockApi(page, {
+    profileSeed: {
+      'chess-study-personal-puzzles': JSON.stringify([{
+        id: 'resume-personal-drill',
+        kind: 'personal',
+        source: 'autopsy',
+        title: 'Posición recuperable',
+        description: 'Un caso factual pendiente de revisar.',
+        fen: PERSONAL_MATE_FEN,
+        solution: ['Ra8#'],
+        incidentKeys: ['human:MISSED_MATE'],
+        sourceGameId: 'resume-source-game',
+        loss: 210,
+        createdAt: '2026-11-10T12:00:00Z',
+        attempts: 0,
+        solves: 0,
+        cleanSolves: 0,
+      }]),
+    },
+  });
+  await login(page);
+  await dismissHomeGuide(page);
+  const corner = page.getByRole('complementary', { name: 'Rincón de Matthias' });
+  await corner.getByRole('button', { name: 'Abrir Así juegas con Matthias', exact: true }).click();
+  await waitForTrainingRoomSettled(page);
+  await expect(page.getByRole('heading', { name: 'Tu siguiente tarea', exact: true })).toBeVisible();
+
+  await page.getByRole('button', { name: 'Tengo 5 min', exact: true }).click();
+  // Duration chips preview only; the explicit primary CTA starts persistence.
+  await page.getByRole('button', { name: 'Empezar sesión recomendada de 5 min', exact: true }).click();
+  const active = page.locator('.insights-guided-session.active');
+  await expect(active.getByText('Paso 1/2', { exact: false })).toBeVisible();
+  const initial = await page.evaluate(() => JSON.parse(sessionStorage.getItem('chess-study-guided-training-session-v1')));
+  expect(initial?.currentIndex).toBe(0);
+
+  // Leave the guided plan for its real personal chessboard and come back.
+  await active.locator('.coaching-action .primary-btn').click();
+  const puzzle = page.locator('.puzzle-screen');
+  await expect(puzzle).toBeVisible();
+  const back = puzzle.locator('> .back-link');
+  await expect(back).toHaveText('← Volver a Así juegas');
+  await back.click();
+  await waitForTrainingRoomSettled(page);
+  await expect(active.getByText('Paso 1/2', { exact: false })).toBeVisible();
+
+  // Mark only the visited block and prove F5 restores the *next* step.
+  await active.getByRole('button', { name: 'Hecho · siguiente →', exact: true }).click();
+  await expect(active.getByText('Cierre rápido', { exact: true })).toBeVisible();
+  await page.reload();
+  await expect(page.getByRole('heading', { name: 'Así juegas', exact: true })).toBeVisible();
+  await expect(active.getByText('Paso 2/2', { exact: false })).toBeVisible();
+  await expect.poll(() => page.evaluate(() => JSON.parse(sessionStorage.getItem('chess-study-guided-training-session-v1'))?.currentIndex)).toBe(1);
+
+  // A malformed legacy snapshot must fall back to the plan, not crash React.
+  await page.evaluate(() => {
+    const key = 'chess-study-guided-training-session-v1';
+    const snapshot = JSON.parse(sessionStorage.getItem(key));
+    snapshot.steps[1] = null;
+    sessionStorage.setItem(key, JSON.stringify(snapshot));
+  });
+  await page.reload();
+  await expect(page.getByRole('heading', { name: 'Tu siguiente tarea', exact: true })).toBeVisible();
+  expect(await page.evaluate(() => sessionStorage.getItem('chess-study-guided-training-session-v1'))).toBeNull();
+});
+
+test('Así juegas · la partida de práctica regresa a su bloque tras F5 sin historial de navegación', async ({ page }) => {
+  test.setTimeout(150_000);
+  await mockApi(page, {
+    profileSeed: {
+      'chess-study-personal-puzzles': JSON.stringify([{
+        id: 'guided-return-debt',
+        kind: 'personal',
+        source: 'autopsy',
+        title: 'Error registrado para sesión guiada',
+        description: 'Una posición entrenable procedente de una partida real.',
+        fen: PERSONAL_MATE_FEN,
+        solution: ['Ra8#'],
+        incidentKeys: ['human:MISSED_MATE'],
+        sourceGameId: 'guided-return-source',
+        loss: 210,
+        createdAt: '2026-11-10T12:00:00Z',
+        attempts: 0, solves: 0, cleanSolves: 0,
+      }]),
+    },
+  });
+  await login(page);
+  await dismissHomeGuide(page);
+  const corner = page.getByRole('complementary', { name: 'Rincón de Matthias' });
+  await corner.getByRole('button', { name: 'Abrir Así juegas con Matthias', exact: true }).click();
+  await waitForTrainingRoomSettled(page);
+  await page.getByRole('button', { name: 'Tengo 15 min', exact: true }).click();
+  await page.getByRole('button', { name: 'Empezar sesión recomendada de 15 min', exact: true }).click();
+
+  const active = page.locator('.insights-guided-session.active');
+  await expect(active.getByText('Paso 1/3', { exact: false })).toBeVisible();
+  await active.getByRole('button', { name: 'Hecho · siguiente →', exact: true }).click();
+  await expect(active.locator('.insights-recurring-error-topline strong')).toHaveText('Partida corta de práctica');
+  const snapshot = await page.evaluate(() => JSON.parse(sessionStorage.getItem('chess-study-guided-training-session-v1')));
+  expect(snapshot?.currentIndex).toBe(1);
+
+  await active.getByRole('button', { name: 'Abrir partida de práctica →', exact: true }).click();
+  await expect(page.locator('.game-screen')).toBeVisible({ timeout: 30_000 });
+  await expect.poll(() => page.evaluate(() => {
+    const session = JSON.parse(localStorage.getItem('chess-study-active-game-session-v1') || 'null');
+    return session?.gameContext?.guidedTraining || null;
+  })).toEqual({ sessionId: snapshot.id, stepId: snapshot.steps[1].id });
+
+  // The return must not depend on the old view back-stack after a hard F5.
+  await page.evaluate(() => sessionStorage.setItem('chess-study-view-history', '[]'));
+  await page.reload();
+  await expect(page.locator('.game-screen')).toBeVisible({ timeout: 30_000 });
+  await page.getByRole('button', { name: /^(Salir de la partida|Abandonar partida)$/ }).click();
+  const abandon = page.getByRole('dialog', { name: '¿Abandonar la partida?' });
+  await expect(abandon).toBeVisible();
+  await abandon.getByRole('button', { name: 'Cancelar sin penalización', exact: true }).click();
+
+  await expect(page.getByRole('heading', { name: 'Así juegas', exact: true })).toBeVisible();
+  const restored = page.locator('.insights-guided-session.active');
+  await expect(restored.getByText('Paso 2/3', { exact: false })).toBeVisible();
+  await expect(restored.locator('.insights-recurring-error-topline strong')).toHaveText('Partida corta de práctica');
+  await expect.poll(() => page.evaluate(() => JSON.parse(sessionStorage.getItem('chess-study-guided-training-session-v1'))?.currentIndex)).toBe(1);
+  expect(await page.evaluate(() => sessionStorage.getItem('chess-study-guided-training-completion-v1'))).toBeNull();
+});
+
+test('Así juegas · una acción antigua no secuestra el recorrido sustituido en otra pestaña', async ({ page }) => {
+  test.setTimeout(150_000);
+  await mockApi(page, {
+    profileSeed: {
+      'chess-study-personal-puzzles': JSON.stringify([{
+        id: 'stale-guided-drill',
+        kind: 'personal',
+        source: 'autopsy',
+        title: 'Un error real pendiente',
+        description: 'La acción guiada debe respetar el expediente actual.',
+        fen: PERSONAL_MATE_FEN,
+        solution: ['Ra8#'],
+        incidentKeys: ['human:MISSED_MATE'],
+        sourceGameId: 'stale-guided-source',
+        loss: 210,
+        createdAt: '2026-11-10T12:00:00Z',
+        attempts: 0, solves: 0, cleanSolves: 0,
+      }]),
+    },
+  });
+  await login(page);
+  await dismissHomeGuide(page);
+  const corner = page.getByRole('complementary', { name: 'Rincón de Matthias' });
+  await corner.getByRole('button', { name: 'Abrir Así juegas con Matthias', exact: true }).click();
+  await waitForTrainingRoomSettled(page);
+  await page.getByRole('button', { name: 'Empezar sesión recomendada de 5 min', exact: true }).click();
+  const active = page.locator('.insights-guided-session.active');
+  await expect(active.getByText('Paso 1/2', { exact: false })).toBeVisible();
+
+  // Simulate another tab replacing the itinerary while this React instance
+  // still displays an old button. The storage owner is authoritative.
+  const newId = await page.evaluate(() => {
+    const key = 'chess-study-guided-training-session-v1';
+    const snapshot = JSON.parse(sessionStorage.getItem(key));
+    snapshot.id = `${snapshot.id}-replacement`;
+    sessionStorage.setItem(key, JSON.stringify(snapshot));
+    return snapshot.id;
+  });
+  await active.locator('.coaching-action .primary-btn').click();
+  await expect(active).toBeVisible();
+  await expect(page.locator('.puzzle-screen')).toHaveCount(0);
+  expect(await page.evaluate(() => JSON.parse(
+    sessionStorage.getItem('chess-study-guided-training-session-v1'),
+  )?.id)).toBe(newId);
+
+  // Once reconciled, the current button can open the genuine puzzle.
+  await active.locator('.coaching-action .primary-btn').click();
+  await expect(page.locator('.puzzle-screen')).toBeVisible();
+});
+
+// Regression: the preview's selected puzzle may be removed while the Training
+// Room stays mounted. Navigation must not silently open a different puzzle.
+test('Así juegas · no sustituye una posición pendiente que desapareció del banco', async ({ page }) => {
+  test.setTimeout(120_000);
+  await mockApi(page, {
+    profileSeed: { 'chess-study-personal-puzzles': recurringTrainingDebtProfileValue() },
+  });
+  await login(page);
+  await dismissHomeGuide(page);
+  const corner = page.getByRole('complementary', { name: 'Rincón de Matthias' });
+  await corner.getByRole('button', { name: 'Abrir Así juegas con Matthias', exact: true }).click();
+  await waitForTrainingRoomSettled(page);
+
+  const direct = page.getByRole('button', { name: 'Entrenar esta posición real ahora' });
+  await expect(direct).toBeVisible();
+  await page.evaluate(() => {
+    const key = 'chess-study-personal-puzzles';
+    const bank = JSON.parse(localStorage.getItem(key) || '[]');
+    localStorage.setItem(key, JSON.stringify(bank.filter((puzzle) => puzzle.id !== 'golden-fork-pending')));
+  });
+  await direct.click();
+  await expect(page.locator('.insights-guided-session [role="status"]'))
+    .toContainText('Esta posición ya no está disponible para entrenar');
+  await expect(page.locator('.puzzle-screen')).toHaveCount(0);
+  await expect(page.getByRole('heading', { name: 'Así juegas', exact: true })).toBeVisible();
+});

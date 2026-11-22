@@ -294,11 +294,14 @@
    dock's right edge plus a 14px gap. Stations already right of it are
    untouched. */
 @media (min-width: 1000px) and (pointer: fine) {
+  /* The stage may overhang the viewport on 16:10 cover. Add the half-crop
+     to the desktop player exclusion zone, otherwise the same local coordinate
+     puts the speech card UNDER the fixed RetroPlayer. */
   .illustrated-home__resident .illustrated-home__matthias {
-    left: max(var(--home-matthias-zone-left), calc(max(6px, .45vw) + 210px));
+    left: max(var(--home-matthias-zone-left), calc(50cqw - 50vw + max(6px, .45vw) + 210px));
   }
 
   .illustrated-home__resident .illustrated-home__speech {
-    left: max(13.3%, calc(max(6px, .45vw) + 210px));
+    left: max(13.3%, calc(50cqw - 50vw + max(6px, .45vw) + 210px));
   }
 }

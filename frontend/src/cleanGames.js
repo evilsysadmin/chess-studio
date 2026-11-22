@@ -10,6 +10,25 @@ function finiteRows(report) {
   return (Array.isArray(report?.moveReports) ? report.moveReports : []).filter((row) => Number.isFinite(row?.loss));
 }
 
+// Aggregate counts cannot certify more moves than the move-by-move engine
+// evidence we actually have. Legacy reports may omit analyzedCount; in that
+// case the verifiable finite move rows remain authoritative.
+function verifiedAnalyzedCount(report, rows) {
+  const declared = report?.analyzedCount;
+  if (declared === null || declared === undefined || declared === '') return rows.length;
+  const count = Number(declared);
+  return Number.isFinite(count) && count >= 0
+    ? Math.min(rows.length, Math.floor(count))
+    : rows.length;
+}
+
+function verifiedAverageLoss(report) {
+  const raw = report?.averageLoss;
+  if (raw === null || raw === undefined || typeof raw === 'boolean' || String(raw).trim() === '') return null;
+  const average = Number(raw);
+  return Number.isFinite(average) ? average : null;
+}
+
 function incidentCoverage(rows) {
   const keys = new Set();
   let coveredMoves = 0;
@@ -74,7 +93,7 @@ export function cleanGameEvidence(report, meta = {}) {
   const rows = finiteRows(report);
   const coverage = incidentCoverage(rows);
   const positive = positiveDecisionEvidence(rows);
-  const analyzedCount = Math.max(0, Number(report?.analyzedCount || rows.length) || 0);
+  const analyzedCount = verifiedAnalyzedCount(report, rows);
   const blunders = rows.filter((row) => row.severity === 'blunder' || Number(row.loss) >= 150).length;
   const mistakes = rows.filter((row) => row.severity === 'mistake' || (Number(row.loss) >= 60 && Number(row.loss) < 150)).length;
   const materialGifts = rows.filter((row) => (
@@ -103,7 +122,7 @@ export function cleanGameEvidence(report, meta = {}) {
     materialGifts,
     missedMates,
     maxLoss,
-    averageLoss: Number.isFinite(Number(report?.averageLoss)) ? Number(report.averageLoss) : null,
+    averageLoss: verifiedAverageLoss(report),
     incidentCoverageVersion: coverage.version,
     incidentCoveredMoves: coverage.coveredMoves,
     incidentCoverageSufficient: coverage.sufficient,
@@ -116,7 +135,7 @@ export function cleanGameEvidence(report, meta = {}) {
 
 export function competitiveGameSignals(report, meta = {}) {
   const rows = finiteRows(report);
-  const analyzedCount = Math.max(0, Number(report?.analyzedCount || rows.length) || 0);
+  const analyzedCount = verifiedAnalyzedCount(report, rows);
   if (analyzedCount < CLEAN_GAME_MIN_ANALYZED_MOVES) {
     return { sufficientSample: false, closeGame: false, winningPositionEscaped: false, stalemateFromWinningPosition: false };
   }

@@ -151,7 +151,7 @@ def get_game(api: str, token: str, game_id: str) -> tuple[dict, float]:
 # Verify R2 binaries for the *pinned* release of each Godot game. HEAD avoids
 # downloading the large WebAssembly and PCK payloads during deploy drills.
 _R2_BASE = "https://assets.chess-studio.shadowops.dpdns.org"
-_R2_MODES = ("pawn-slug-godot", "chess-football-godot")
+_R2_MODES = ("pawn-slug-godot",)
 _R2_FILES = ("index.html", "index.js", "index.wasm", "index.pck")
 
 

@@ -3,6 +3,7 @@ import {
   advanceGuidedTrainingSession,
   buildGuidedTrainingPlan,
   clearGuidedTrainingSession,
+  isCurrentGuidedTrainingStep,
   loadGuidedTrainingSession,
   startGuidedTrainingSession,
 } from '../guidedTrainingSession.js';
@@ -11,7 +12,7 @@ import {
   loadGuidedTrainingCompletion,
   saveGuidedTrainingCompletion,
 } from '../guidedTrainingCompletion.js';
-import { focusPersonalPuzzle, isPersonalPuzzleMastered, matchesPersonalPuzzleFilter } from '../personalPuzzles.js';
+import { focusPersonalPuzzle, isPersonalPuzzleMastered, loadPersonalPuzzles, matchesPersonalPuzzleFilter } from '../personalPuzzles.js';
 import InsightsPositionAutopsy from './InsightsPositionAutopsy.jsx';
 
 function actionLabel(step) {
@@ -20,6 +21,21 @@ function actionLabel(step) {
   if (step?.action === 'personal-filter') return 'Entrenar esta deuda →';
   if (step?.action === 'personal') return 'Abrir Acciones inmediatas →';
   return 'Cerrar sesión';
+}
+
+// The planned ID is a promise to train that exact real puzzle. Never fall back
+// to a different debt when the bank has changed since Matthias planned it.
+export function findGuidedPersonalPuzzle(step, puzzles) {
+  if (!['personal', 'personal-filter'].includes(step?.action)
+    || typeof step.featuredPuzzleId !== 'string' || !step.featuredPuzzleId.trim()
+    || !Array.isArray(puzzles)) return null;
+  return puzzles.find((puzzle) => (
+    puzzle?.id === step.featuredPuzzleId
+    && typeof puzzle.fen === 'string' && Boolean(puzzle.fen.trim())
+    && !isPersonalPuzzleMastered(puzzle)
+    && Number(puzzle.cleanSolves ?? 0) === 0
+    && matchesPersonalPuzzleFilter(puzzle, step.filter || null)
+  )) || null;
 }
 
 export default function InsightsGuidedSession({
@@ -32,6 +48,7 @@ export default function InsightsGuidedSession({
 }) {
   const [session, setSession] = useState(() => loadGuidedTrainingSession());
   const [completion, setCompletion] = useState(() => loadGuidedTrainingCompletion());
+  const [launchError, setLaunchError] = useState('');
   // A time choice previews a plan; only the single primary CTA starts it.
   const [selectedMinutes, setSelectedMinutes] = useState(5);
   const plans = useMemo(() => ({
@@ -41,22 +58,52 @@ export default function InsightsGuidedSession({
   }), [gameHistory, playerModel, personalPuzzles, cleanGameRecords]);
 
   function begin(minutes) {
+    const next = startGuidedTrainingSession(plans[minutes]);
+    if (!next) {
+      // A failed native write must not erase the prior summary or imply a
+      // new itinerary exists. Respect a previously confirmed active plan.
+      setSession(loadGuidedTrainingSession());
+      setLaunchError('No se pudo guardar la sesión. Revisa el almacenamiento del navegador e inténtalo de nuevo.');
+      return;
+    }
+    setLaunchError('');
     clearGuidedTrainingCompletion();
     setCompletion(null);
-    const next = startGuidedTrainingSession(plans[minutes]);
     setSession(next);
   }
 
   function cancel() {
-    clearGuidedTrainingSession();
-    setSession(null);
+    const removed = clearGuidedTrainingSession(session);
+    const current = removed ? null : loadGuidedTrainingSession();
+    setSession(current);
+    setLaunchError(removed ? '' : isCurrentGuidedTrainingStep(session, current)
+      ? 'No se pudo guardar la cancelación. Tu sesión sigue en el último bloque confirmado.'
+      : 'La sesión cambió antes de cancelar. Se muestra el estado actual.');
   }
 
   function nextStep() {
-    const finishing = session && session.currentIndex >= session.steps.length - 1;
-    const next = advanceGuidedTrainingSession(session);
+    const active = loadGuidedTrainingSession();
+    if (!isCurrentGuidedTrainingStep(session, active)) {
+      // Another action cancelled/replaced/advanced the plan. Follow its real
+      // state instead of recording a false completion from a stale click.
+      setSession(active);
+      return;
+    }
+    const finishing = active.currentIndex === active.steps.length - 1;
+    const next = advanceGuidedTrainingSession(active);
+    if (next && isCurrentGuidedTrainingStep(active, next)) {
+      setSession(next);
+      setLaunchError('No se pudo guardar el avance. Sigues en el último bloque confirmado; inténtalo de nuevo.');
+      return;
+    }
+    if (!finishing && !next) {
+      setSession(loadGuidedTrainingSession());
+      setLaunchError('El bloque ya no está disponible. Se ha recuperado el estado guardado.');
+      return;
+    }
+    setLaunchError('');
     setSession(next);
-    if (finishing && !next) setCompletion(saveGuidedTrainingCompletion(session));
+    if (finishing && !next) setCompletion(saveGuidedTrainingCompletion(active));
   }
 
   function hideCompletion() {
@@ -73,14 +120,33 @@ export default function InsightsGuidedSession({
     });
   }
 
-  function runStep(step) {
-    if (!step) return;
-    if (step.action === 'personal-filter') {
-      onOpenPuzzles?.('personal', false, step.filter || null);
-      return;
+  function runStep(requestedStep) {
+    if (!requestedStep) return;
+    let step = requestedStep;
+    if (session) {
+      const active = loadGuidedTrainingSession();
+      if (!isCurrentGuidedTrainingStep(session, active)
+        || requestedStep.id !== active.steps[active.currentIndex].id) {
+        // A click from a stale tab/step must not open a puzzle or launch a
+        // game on behalf of a cancelled/replaced training itinerary.
+        setSession(active);
+        return;
+      }
+      // Launch the authoritative position, never a stale React snapshot.
+      step = active.steps[active.currentIndex];
     }
-    if (step.action === 'personal') {
-      onOpenPuzzles?.('personal', false);
+    if (step.action === 'personal-filter' || step.action === 'personal') {
+      // The bank can change after the preview/session was built (solved,
+      // retired or filtered). Reject stale targets instead of silently opening
+      // the adaptive fallback's *different* puzzle.
+      const target = findGuidedPersonalPuzzle(step, loadPersonalPuzzles());
+      if (!target) {
+        setLaunchError('Esta posición ya no está disponible para entrenar. Actualiza Así juegas para recibir un encargo vigente.');
+        return;
+      }
+      setLaunchError('');
+      focusPersonalPuzzle(target.id);
+      onOpenPuzzles?.('personal', false, step.action === 'personal-filter' ? step.filter || null : undefined);
       return;
     }
     if (step.action === 'nemesis-position') {
@@ -106,13 +172,7 @@ export default function InsightsGuidedSession({
     const available = Boolean(previewPlan?.available);
     // Preview only puzzles already admitted by the playable personal bank.
     const personalFocus = focus?.action === 'personal' || focus?.action === 'personal-filter';
-    const featuredPuzzle = personalFocus && Array.isArray(personalPuzzles)
-      ? personalPuzzles.find((puzzle) => (
-        puzzle?.fen && !isPersonalPuzzleMastered(puzzle)
-        && Number(puzzle?.cleanSolves || 0) === 0
-        && matchesPersonalPuzzleFilter(puzzle, focus?.filter || null)
-      ))
-      : null;
+    const featuredPuzzle = personalFocus ? findGuidedPersonalPuzzle(focus, personalPuzzles) : null;
     const featuredFen = featuredPuzzle?.fen || (focus?.action === 'nemesis-position' ? focus.training?.fen : null);
     const directPracticeAvailable = Boolean(featuredFen);
     const featuredTitle = focus?.title === 'Acciones inmediatas' ? 'Tus posiciones pendientes' : focus?.title;
@@ -160,7 +220,6 @@ export default function InsightsGuidedSession({
                   className="primary-btn insights-guided-direct-button"
                   aria-label="Entrenar esta posición real ahora"
                   onClick={() => {
-                    if (featuredPuzzle?.id) focusPersonalPuzzle(featuredPuzzle.id);
                     runStep(focus);
                   }}
                 >
@@ -169,6 +228,7 @@ export default function InsightsGuidedSession({
                 <p>Te llevamos al tablero con esta misma posición. Sin cronómetro ni trámites.</p>
               </div>
             ) : null}
+            {launchError ? <p role="status" className="hint-text">{launchError}</p> : null}
             <div className="insights-guided-focus-actions">
               <div className="insights-duration-quick" role="group" aria-label="Cambiar tiempo">
                 <span>O elige un recorrido guiado</span>
@@ -253,6 +313,7 @@ export default function InsightsGuidedSession({
           <span>~{current.minutes} min</span>
         </div>
         <p>{current.detail}</p>
+        {launchError ? <p role="status" className="hint-text">{launchError}</p> : null}
         <div className="insights-recurring-error-footer">
           <small>{isLast ? 'Último paso: cierra aquí y deja que los datos futuros digan si sirvió.' : 'Haz este bloque y vuelve aquí para pasar al siguiente.'}</small>
           <div className="coaching-action">

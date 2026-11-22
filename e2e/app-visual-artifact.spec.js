@@ -163,6 +163,17 @@ async function captureHealth(page, label) {
           && rect.bottom > 0
           && rect.top < viewport.height;
       }).length;
+    // A projected marker is a separate pointer target from its accessible
+    // destination. Do not mistake a visible keyboard button for a visible
+    // diegetic marker when the 3D prop sits beyond a cover crop.
+    const historyBeacon = document.querySelector('.illustrated-home__beacon--history');
+    const historyBeaconBox = historyBeacon?.getBoundingClientRect();
+    const projectedHistory = historyBeaconBox ? {
+      left: Number(historyBeaconBox.left.toFixed(1)),
+      right: Number(historyBeaconBox.right.toFixed(1)),
+      top: Number(historyBeaconBox.top.toFixed(1)),
+      bottom: Number(historyBeaconBox.bottom.toFixed(1)),
+    } : null;
     const castle3d = document.querySelector('.illustrated-home__castle-3d.is-ready');
     // This artifact runs with SwiftShader on GitHub runners. Snapshot *actual*
     // WebGL geometry and canvas resolution, but never label it real-GPU FPS.
@@ -200,6 +211,14 @@ async function captureHealth(page, label) {
       gpuTimerStatus:castle3d.dataset.homeBlenderGpuStatus ?? null,
       gpuTimerMs:numericSceneStat('homeBlenderGpuMs'),
     } : null;
+    const speechNode = document.querySelector('.illustrated-home__speech');
+    const musicDeck = document.querySelector('.global-music-dock .music-deck-collapsed');
+    const speechRect = speechNode?.getBoundingClientRect();
+    const musicRect = musicDeck?.getBoundingClientRect();
+    const speechDockOverlap = speechRect && musicRect
+      ? speechRect.left < musicRect.right && musicRect.left < speechRect.right
+        && speechRect.top < musicRect.bottom && musicRect.top < speechRect.bottom
+      : null;
     const matthiasNode = document.querySelector('.illustrated-home__matthias');
     const matthiasRect = matthiasNode?.getBoundingClientRect();
     const matthiasStyle = matthiasNode ? getComputedStyle(matthiasNode) : null;
@@ -227,6 +246,8 @@ async function captureHealth(page, label) {
       castle3dDiagnostics,
       stage,
       visibleDestinationCount,
+      projectedHistory,
+      speechDockOverlap,
       matthiasVisible,
       document:{
         clientWidth:root.clientWidth,
@@ -451,6 +472,14 @@ test('App · captura visual canónica desktop + Android normal/desktop-site', as
   for (const capture of captures) {
     expect(capture.horizontalOverflow, `${capture.label}: horizontal overflow`).toBe(false);
     expect(capture.clippedInteractiveCount, `${capture.label}: clipped interactive controls`).toBe(0);
+    if (capture.label === 'desktop-1440x900') {
+      expect(capture.projectedHistory, '3D History marker must be present').not.toBeNull();
+      expect(capture.projectedHistory.left, '3D History marker must not sit beyond left crop').toBeGreaterThanOrEqual(0);
+      expect(capture.projectedHistory.right, '3D History marker must not sit beyond right crop').toBeLessThanOrEqual(capture.viewport.width);
+      if (capture.speechDockOverlap !== null) {
+        expect(capture.speechDockOverlap, 'Matthias speech must not sit under the collapsed music player').toBe(false);
+      }
+    }
     expect(capture.reducedMotion, `${capture.label}: reduced-motion media state`).toBe(capture.expectedReducedMotion);
     if (capture.expectedCastleReady) {
       expect(capture.castle3dReady, `${capture.label}: 3D canvas ready before screenshot`).toBe(true);

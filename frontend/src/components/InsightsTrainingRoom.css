@@ -1185,6 +1185,9 @@ body:has(.insights-training-room) .global-music-dock {
   .insights-training-room .insights-guided-session[data-guided-session-home='desk-task'] > .insights-guided-session-intro {
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(104px, 36%);
+    /* The preview spans three rows. Without explicit sizing, its height
+       expands the label/title rows and strands the heading halfway down. */
+    grid-template-rows: min-content min-content minmax(0, 1fr);
     align-items: start;
     gap: .1rem .55rem;
     padding: .12rem;

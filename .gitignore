@@ -42,3 +42,6 @@ e2e/test-results/
 e2e/playwright-report/
 
 docs/
+
+# Generated local/browser evidence is kept outside source control.
+/.artifacts/

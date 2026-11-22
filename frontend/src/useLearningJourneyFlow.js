@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { clearFocusedPuzzleResume, hasFocusedPuzzleResume } from './viewState.js';
 
 const DEFAULT_PUZZLE_LAUNCH = Object.freeze({
   source: 'curated',
@@ -15,11 +16,16 @@ export function normalizeInsightsLandingSection(section) {
 }
 
 export function useLearningJourneyFlow({ navigateTo, resetNavigation }) {
-  const [puzzleLaunch, setPuzzleLaunch] = useState(DEFAULT_PUZZLE_LAUNCH);
+  const [puzzleLaunch, setPuzzleLaunch] = useState(() => hasFocusedPuzzleResume()
+    ? { ...DEFAULT_PUZZLE_LAUNCH, source: 'personal', origin: 'f5-pending' }
+    : DEFAULT_PUZZLE_LAUNCH);
   const [quickMatchLaunchNonce, setQuickMatchLaunchNonce] = useState(0);
   const [insightsLandingSection, setInsightsLandingSection] = useState(DEFAULT_INSIGHTS_SECTION);
 
   function openPuzzleMode(source = 'curated', rush = false, filter = null, dailySlot = 'tactic', origin = null) {
+    // The lazy puzzle screen captures the *chosen* exercise after consuming
+    // the one-shot focus. No puzzle persistence code belongs in initial JS.
+    clearFocusedPuzzleResume();
     setPuzzleLaunch({ source, rush, filter, dailySlot, origin });
     navigateTo('puzzle');
   }
@@ -38,6 +44,7 @@ export function useLearningJourneyFlow({ navigateTo, resetNavigation }) {
   }
 
   function returnToQuickMatchFromPersonalTraining() {
+    clearFocusedPuzzleResume();
     resetNavigation();
     setQuickMatchLaunchNonce((current) => current + 1);
   }

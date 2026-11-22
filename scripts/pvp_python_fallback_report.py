@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import os
 import sys
 import time
@@ -53,6 +54,83 @@ def fallback_query(window_seconds: int) -> str:
         "sum by (service_name, http_route, http_response_status_class) "
         f"(increase(chess_studio_http_server_requests_total{{{selector}}}[{window_seconds}s]))"
     )
+
+
+def telemetry_coverage_query(window_seconds: int) -> str:
+    """Require a Python-specific OTLP heartbeat from both environments.
+
+    Zero FastAPI HTTP requests is now a legitimate outcome as Go takes over
+    PvP. A request counter cannot prove an idle Python exporter is healthy.
+    The observable gauge is exported periodically without incoming traffic.
+    """
+    services = "|".join(sorted(SERVICES))
+    lookback = min(window_seconds, 86400)  # short reports need same-window evidence
+    return (
+        "sum by (service_name) (count_over_time("
+        f'chess_studio_python_telemetry_heartbeat{{service_name=~"{services}"}}[{lookback}s]))'
+    )
+
+
+def verify_telemetry_coverage(payload: dict) -> None:
+    data = payload.get("data") if isinstance(payload, dict) else None
+    result = data.get("result") if isinstance(data, dict) else None
+    if not isinstance(result, list):
+        fail("cannot attest zero PvP fallback: invalid Python heartbeat response")
+    seen = set()
+    for item in result:
+        metric = item.get("metric") if isinstance(item, dict) else None
+        value = item.get("value") if isinstance(item, dict) else None
+        service = metric.get("service_name") if isinstance(metric, dict) else None
+        if service not in SERVICES or not isinstance(value, list) or len(value) != 2:
+            fail("cannot attest zero PvP fallback: malformed Python heartbeat series")
+        try:
+            samples = float(value[1])
+        except (TypeError, ValueError):
+            fail("cannot attest zero PvP fallback: invalid Python heartbeat sample count")
+        if not math.isfinite(samples) or samples <= 0:
+            fail("cannot attest zero PvP fallback: missing recent Python heartbeat samples")
+        seen.add(service)
+    missing = sorted(set(SERVICES) - seen)
+    if missing:
+        fail("cannot attest zero PvP fallback: no Python heartbeat samples in 24h for " + ", ".join(missing))
+
+
+def coverage_diagnostic_queries() -> tuple[str, ...]:
+    """Bounded, read-only controls; never infer zero PvP from these probes."""
+    return (
+        'count by (service_name) (chess_studio_python_telemetry_heartbeat)',
+        'count by (service_name) (count_over_time(chess_studio_python_telemetry_heartbeat[24h]))',
+        'count({__name__="chess_studio_python_telemetry_heartbeat"})',
+        'count({__name__="chess_studio_http_server_requests_total"})',
+    )
+
+
+def diagnose_missing_coverage(api: GrafanaReadApi, metrics_uid: str) -> None:
+    """Emit aggregate series counts only, never raw labels or secret endpoints."""
+    for index, query in enumerate(coverage_diagnostic_queries(), start=1):
+        try:
+            payload, metrics_uid = query_with_uid_recovery(
+                api, metrics_uid, "prometheus", "/api/v1/query",
+                {"query": query, "time": str(int(time.time()))},
+            )
+            result = payload.get("data", {}).get("result", [])
+            if not isinstance(result, list):
+                raise ValueError("invalid vector")
+            counts = {}
+            for item in result:
+                metric = item.get("metric", {})
+                value = item.get("value", [])
+                service = metric.get("service_name")
+                if service not in SERVICES and index != 3:
+                    continue
+                if len(value) != 2:
+                    continue
+                counts[SERVICES[service] if service in SERVICES else "all"] = value[1]
+            print(json.dumps({"check": "pvp_metric_diagnostic", "probe": index,
+                              "counts": counts}, sort_keys=True))
+        except (SystemExit, ValueError, TypeError, AttributeError):
+            print(json.dumps({"check": "pvp_metric_diagnostic", "probe": index,
+                              "status": "unavailable"}, sort_keys=True), file=sys.stderr)
 
 
 def parse_rows(payload: dict) -> list[dict]:
@@ -217,7 +295,20 @@ def query_with_uid_recovery(
     """
     def query(candidate: str) -> dict:
         path = f"/api/datasources/proxy/uid/{urllib.parse.quote(candidate, safe='')}{suffix}"
-        return api.get_json(path, params)
+        # Retry only transport/gateway failures. Do not retry auth, stale UID
+        # 404, or invalid Prometheus/Loki responses; those must fail closed.
+        for attempt in range(3):
+            try:
+                return api.get_json(path, params)
+            except SystemExit as exc:
+                prefix = f"grafana-live-check FAIL · GET {path}: HTTP "
+                message = str(exc)
+                code = message[len(prefix):].split(":", 1)[0] if message.startswith(prefix) else ""
+                if code not in {"502", "503", "504", "522", "524"} or attempt == 2:
+                    raise
+                print(f"Grafana datasource transient HTTP {code}; retry {attempt + 1}/2", file=sys.stderr)
+                sleep(attempt + 1)  # at most 3s per query, not a 120s CI stall
+        raise AssertionError("unreachable")
 
     try:
         return query(uid), uid
@@ -263,6 +354,47 @@ def self_test() -> int:
     assert rows == [{"environment": "production", "route": "/api/pvp/lobby", "status": "2xx", "requests": 3}], rows
     assert "**3** public PvP requests" in markdown(rows, "14d")
     assert "No public" in markdown([], "14d")
+    control = telemetry_coverage_query(14 * 86400)
+    assert '[86400s]' in control and 'http_route' not in control
+    assert 'chess_studio_python_telemetry_heartbeat' in control
+    assert 'chess_studio_http_server_requests_total' not in control
+    assert '[3600s]' in telemetry_coverage_query(3600)
+    assert 'chess-studio-backend|chess-studio-backend-staging' in control
+    probes = coverage_diagnostic_queries()
+    assert len(probes) == 4 and "count_over_time" in probes[1]
+    assert "chess_studio_python_telemetry_heartbeat" in probes[0]
+    assert "chess_studio_http_server_requests_total" in probes[3]
+    assert all("api/pvp" not in probe for probe in probes)
+    class DiagnosticGrafana:
+        def get_json(self, path: str, params: dict[str, str]) -> dict:
+            assert "/api/v1/query" in path
+            return {"data": {"result": [
+                {"metric": {"service_name": "chess-studio-backend"}, "value": [0, "4"]}
+            ]}}
+
+    # The diagnostic is observational only: it must not turn missing
+    # telemetry into a successful attestation.
+    diagnose_missing_coverage(DiagnosticGrafana(), "test-prom")
+    healthy = {"data": {"result": [
+        {"metric": {"service_name": service}, "value": [0, "12"]}
+        for service in SERVICES
+    ]}}
+    verify_telemetry_coverage(healthy)
+    for missing_payload in (
+        {"data": {"result": []}},
+        {"data": {"result": healthy["data"]["result"][:1]}},
+        {"data": {"result": [
+            {"metric": {"service_name": service}, "value": [0, "NaN"]}
+            for service in SERVICES
+        ]}},
+        {"data": {"result": "not-a-vector"}},
+    ):
+        try:
+            verify_telemetry_coverage(missing_payload)
+        except SystemExit as exc:
+            assert "cannot attest zero PvP fallback" in str(exc)
+        else:
+            raise AssertionError("missing or invalid telemetry must fail closed")
     bq = breakdown_query("chess-studio-backend-staging", 86400)
     assert 'route=~"/api/pvp.*"' in bq and "username" not in bq and "client_ip" not in bq
     brows = breakdown_rows({"data": {"result": [
@@ -322,6 +454,42 @@ def self_test() -> int:
     assert recovered_uid == "new-prom" and recovered_payload == {"data": {"result": []}}
     assert stale.queries == 2 and stale.discovery_calls == 2 and stale.sleeps == [1]
 
+    class TransientGrafana:
+        calls = 0
+
+        def get_json(self, path: str, params: dict[str, str]) -> dict:
+            self.calls += 1
+            if self.calls <= 2:
+                code = (522, 503)[self.calls - 1]
+                raise SystemExit(f"grafana-live-check FAIL · GET {path}: HTTP {code}: transient")
+            return {"data": {"result": []}}
+
+    transient = TransientGrafana()
+    delays: list[int] = []
+    recovered, uid = query_with_uid_recovery(
+        transient, "prom", "prometheus", "/api/v1/query", {"query": "up"},
+        sleep=delays.append,
+    )
+    assert transient.calls == 3 and delays == [1, 2]
+    assert uid == "prom" and recovered == {"data": {"result": []}}
+
+    class AlwaysUnavailable(TransientGrafana):
+        def get_json(self, path: str, params: dict[str, str]) -> dict:
+            self.calls += 1
+            raise SystemExit(f"grafana-live-check FAIL · GET {path}: HTTP 503: DatasourceError")
+
+    unavailable = AlwaysUnavailable()
+    delays = []
+    try:
+        query_with_uid_recovery(
+            unavailable, "prom", "prometheus", "/api/v1/query", {}, sleep=delays.append,
+        )
+    except SystemExit as exc:
+        assert "HTTP 503" in str(exc)
+    else:
+        raise AssertionError("exhausted datasource retries must fail closed")
+    assert unavailable.calls == 3 and delays == [1, 2]
+
     class DeniedGrafana(StaleGrafana):
         def get_json(self, path: str, params: dict[str, str]) -> dict:
             raise SystemExit("grafana-live-check FAIL · HTTP 403: Forbidden")
@@ -366,6 +534,23 @@ def main() -> int:
         {"query": fallback_query(window_seconds), "time": str(int(time.time()))},
     )
     rows = parse_rows(payload)
+    if not rows:
+        # Empty PvP series are ambiguous until an independent Python
+        # heartbeat confirms both exporters are actively shipping OTLP.
+        # In particular, an idle Python HTTP counter is not proof of failure.
+        control_payload, metrics_uid = query_with_uid_recovery(
+            api, metrics_uid, "prometheus", "/api/v1/query",
+            {"query": telemetry_coverage_query(window_seconds), "time": str(int(time.time()))},
+        )
+        try:
+            verify_telemetry_coverage(control_payload)
+        except SystemExit:
+            diagnose_missing_coverage(api, metrics_uid)
+            raise
+        print(json.dumps({"check": "pvp_python_telemetry_coverage", "ok": True,
+                          "lookback_seconds": min(window_seconds, 86400), "services": sorted(SERVICES),
+                          "metric": "chess_studio_python_telemetry_heartbeat"},
+                         separators=(",", ":"), sort_keys=True))
     report = markdown(rows, args.window)
     print(report)
     print(json.dumps({"check": "pvp_python_fallback", "window": args.window,

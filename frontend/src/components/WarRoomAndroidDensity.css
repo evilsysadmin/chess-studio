@@ -296,6 +296,83 @@
 }
 
 
+/* Portrait HUD: the old one-row matrix made Matthias and the live turn state
+   ~9px labels at 360px, despite four full-size touch actions occupying 176px.
+   Stack identity + turn status in the one remaining text column instead of
+   shrinking either. All four action targets remain 44x44 and the room stays
+   board-first (no extra row above the canvas). */
+@media (max-width: 520px) and (orientation: portrait) {
+  body.war-room-immersive-active .game-screen .game-layout-immersive .game-3d-turn-pill.is-compact {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) 8px repeat(4, 44px) !important;
+    grid-template-rows: minmax(0, 1fr) minmax(0, 1fr) !important;
+    column-gap: .18rem !important;
+    row-gap: 0 !important;
+    align-items: center !important;
+    justify-content: stretch !important;
+    height: 44px !important;
+    min-height: 44px !important;
+    padding: .12rem .24rem !important;
+  }
+
+  .game-screen .game-layout-immersive .game-3d-turn-pill.is-compact .game-3d-turn-pill-identity {
+    grid-column: 1;
+    grid-row: 1;
+    align-self: end;
+    min-width: 0;
+    width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .game-screen .game-layout-immersive .game-3d-turn-pill.is-compact .game-3d-turn-pill-identity strong {
+    font-size: .69rem !important;
+    line-height: 1.1 !important;
+  }
+
+  .game-screen .game-layout-immersive .game-3d-turn-pill.is-compact .game-3d-turn-pill-label {
+    grid-column: 1;
+    grid-row: 2;
+    align-self: start;
+    justify-self: start;
+    width: 100%;
+    min-width: 0 !important;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: .76rem !important;
+    line-height: 1.16 !important;
+  }
+
+  .game-screen .game-layout-immersive .game-3d-turn-pill.is-compact .game-3d-turn-pill-light {
+    grid-column: 2;
+    grid-row: 2;
+    justify-self: center;
+  }
+
+  .game-screen .game-layout-immersive .game-3d-turn-pill.is-compact .game-3d-compact-actions {
+    grid-column: 3;
+    grid-row: 1 / span 2;
+  }
+
+  .game-screen .game-layout-immersive .game-3d-turn-pill.is-compact > .context-help-btn {
+    grid-column: 4;
+    grid-row: 1 / span 2;
+  }
+
+  .game-screen .game-layout-immersive .game-3d-turn-pill.is-compact > .game-3d-utility-menu {
+    grid-column: 5;
+    grid-row: 1 / span 2;
+  }
+
+  .game-screen .game-layout-immersive .game-3d-turn-pill.is-compact > .war-room-account-button {
+    grid-column: 6;
+    grid-row: 1 / span 2;
+  }
+}
+
+
 /* Código Rojo GP-8 (#4406): un teléfono en apaisado puede medir 844px de
  * ancho y sólo ~390px de alto, así que queda fuera del breakpoint max-width.
  * Compactamos por altura/orientación: el deploy avisa sin comerse HUD ni fila 8. */

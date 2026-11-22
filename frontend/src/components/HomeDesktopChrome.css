@@ -201,3 +201,14 @@
     pointer-events: auto;
   }
 }
+
+/* Covering the 1814:867 hall at 16:10 changes the actor's projected box.
+   Its exact hit-area cannot be moved away from the physical pawn just to
+   clear the player. Keep the full-size collapsed RetroPlayer on the bottom
+   floor instead; the original canonical dock anchor is retained elsewhere. */
+@media (min-width: 1200px) and (min-aspect-ratio: 8/5) and (max-aspect-ratio: 17/10) and (pointer: fine) {
+  html body:has(.app-shell-home) .global-music-dock:has(.music-deck-collapsed) {
+    top: auto !important;
+    bottom: max(16px, env(safe-area-inset-bottom)) !important;
+  }
+}

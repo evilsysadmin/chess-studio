@@ -11,12 +11,16 @@ export function appendViewHistory(history, currentView) {
   return [...(Array.isArray(history) ? history : []), currentView].slice(-MAX_VIEW_HISTORY);
 }
 
-export function popPreviousView(history, currentView) {
+export function popPreviousView(history, currentView, preferredView = null) {
   const nextHistory = [...(Array.isArray(history) ? history : [])];
   let previous = nextHistory.pop();
   while (previous === currentView && nextHistory.length) previous = nextHistory.pop();
   return {
-    previous: previous && previous !== currentView ? previous : 'menu',
+    // A guided game may explicitly return to its proven Insights origin even
+    // when an F5/deploy lost the old back-stack. Other callers use normal Back.
+    previous: preferredView === 'insights'
+      ? 'insights'
+      : previous && previous !== currentView ? previous : 'menu',
     history: nextHistory,
   };
 }
@@ -50,8 +54,8 @@ export function useViewNavigation({ isAdminUser = false, initialView = null } = 
     setView(nextView);
   }, []);
 
-  const goBack = useCallback(() => {
-    const { previous, history } = popPreviousView(viewHistoryRef.current, currentViewRef.current);
+  const goBack = useCallback((preferredView = null) => {
+    const { previous, history } = popPreviousView(viewHistoryRef.current, currentViewRef.current, preferredView);
     viewHistoryRef.current = history;
     rememberSessionViewHistory(history);
     currentViewRef.current = previous;

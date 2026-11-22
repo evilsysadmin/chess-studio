@@ -1,0 +1,15 @@
+name: Check exact Pages staging bundle
+description: Prove the production-equivalent staging frontend is under runtime budgets without deploying
+inputs:
+  repo-vars:
+    description: Repository variables supplied by the calling workflow (same as staging)
+    required: false
+    default: '{}'
+runs:
+  using: composite
+  steps:
+    - uses: ./.github/actions/build-staging-frontend
+      with:
+        sha: ${{ github.sha }}
+        api-url: https://api-staging.chess-studio.shadowops.dpdns.org/api
+        repo-vars: ${{ inputs.repo-vars }}

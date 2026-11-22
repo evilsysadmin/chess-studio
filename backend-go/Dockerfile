@@ -1,6 +1,6 @@
-FROM golang:1.27.3-alpine3.23 AS build
+FROM golang:1.27.4-alpine3.23 AS build
 ARG TARGETARCH
-ARG EXPECTED_GO_VERSION=1.27.3
+ARG EXPECTED_GO_VERSION=1.27.4
 # Keep dependency and binary steps on the bundled patched Go, with no auto-switch.
 ENV GOTOOLCHAIN=local
 WORKDIR /src

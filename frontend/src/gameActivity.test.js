@@ -25,6 +25,26 @@ describe('game activity lifecycle', () => {
     expect(JSON.parse(sessionStorage.getItem('chess-study-matthias-session-context-v1'))).toMatchObject({ games: 1, wins: 1, losses: 0 });
   });
 
+  it('preserva dificultad desconocida como null y no la inventa como nivel cero', () => {
+    recordGameActivity({ gameId: 'g-missing', state: 'started', mode: 'casual', detail: 'adaptive-difficulty' });
+    recordGameActivity({ gameId: 'g-missing', state: 'finished', mode: 'casual', outcome: 'draw', difficulty: null });
+    expect(loadGameActivity().filter((row) => row.gameId === 'g-missing').map((row) => row.difficulty))
+      .toEqual([null, null]);
+
+    recordGameActivity({ gameId: 'g-blank', state: 'started', difficulty: '  ' });
+    recordGameActivity({ gameId: 'g-boolean', state: 'started', difficulty: false });
+    recordGameActivity({ gameId: 'g-invalid', state: 'started', difficulty: 'imposible' });
+    expect(loadGameActivity().filter((row) => ['g-blank', 'g-boolean', 'g-invalid'].includes(row.gameId))
+      .map((row) => row.difficulty)).toEqual([null, null, null]);
+  });
+
+  it('mantiene dificultad cero explícita y valores numéricos recibidos como texto', () => {
+    recordGameActivity({ gameId: 'g-zero', state: 'started', difficulty: 0 });
+    recordGameActivity({ gameId: 'g-sixty', state: 'started', difficulty: '60' });
+    expect(loadGameActivity().find((row) => row.gameId === 'g-zero').difficulty).toBe(0);
+    expect(loadGameActivity().find((row) => row.gameId === 'g-sixty').difficulty).toBe(60);
+  });
+
   it('does not record a cancellation after the same game has finished', () => {
     recordGameActivity({ gameId: 'g-2', state: 'started', mode: 'casual', boardRenderer: '2d' });
     recordGameActivity({ gameId: 'g-2', state: 'finished', mode: 'casual', outcome: 'draw', boardRenderer: '2d' });

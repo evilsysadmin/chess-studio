@@ -2,7 +2,9 @@
 """Cheap no-network contract for the synthetic registration probes."""
 from pathlib import Path
 
-from synthetic_health_check import _check, api_base, env_enabled, ephemeral_credentials, game_state_matches
+from synthetic_health_check import _check, _call, _transport_record, SyntheticTransportError, api_base, env_enabled, ephemeral_credentials, game_state_matches
+from unittest.mock import patch
+from urllib.error import URLError
 
 assert api_base("https://api.example.test") == "https://api.example.test/api"
 assert api_base("https://api.example.test/api/") == "https://api.example.test/api"
@@ -54,5 +56,19 @@ assert not game_state_matches("game-1", {"id": "game-1", "moves": []}, loaded)
 assert _check("slo-pass", 200, {}, 99.0, "req-1", slo_ms=100.0)
 assert not _check("slo-fail", 200, {}, 101.0, "req-2", slo_ms=100.0)
 assert not _check("status-fail", 503, {"detail": "down"}, 1.0, "req-3", slo_ms=100.0)
+
+# A transport reset must preserve correlation without logging credentials or request body.
+with patch("synthetic_health_check.urlopen", side_effect=URLError("secret-token")):
+    try:
+        _call("https://api.example.test/api", "/auth/register", method="POST", body={"password": "secret-password"})
+    except SyntheticTransportError as exc:
+        record = _transport_record("transport", exc)
+        assert record["method"] == "POST"
+        assert record["path"] == "/auth/register"
+        assert record["request_id"].startswith("synthetic-")
+        assert record["cause"] == "URLError"
+        assert "secret" not in str(record)
+    else:
+        raise AssertionError("transport failure must fail closed")
 
 print("synthetic-health-contract OK")
